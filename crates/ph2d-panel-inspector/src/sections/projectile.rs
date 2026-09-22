@@ -22,8 +22,6 @@ use ph2d_editor_core::projectile_edits::InspectorProjectileInfo;
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_i18n::tr;
 
-const CHECK_H: f32 = 18.0; // LITERAL-PX-OK: altura visual do Checkbox, igual à das irmãs
-
 /// **Os AVISOS** — a metade que responde a *«pus o componente e ele não faz nada»*.
 ///
 /// ⚠️ Eles vêm ANTES dos números, e por isso são uma função própria: quem não vê nada mexer não
@@ -250,25 +248,22 @@ fn corpo(
         }
     }
 
-    let rect = Rect::new(x, cur_y, w, CHECK_H);
-    hit_index.register(crate::ids::INSP_PJ_FACE_VELOCITY, rect);
-    paint_checkbox(
-        &Checkbox::new(
-            crate::ids::INSP_PJ_FACE_VELOCITY,
-            tr("panel.inspector.projectile.face_velocity"),
-        )
-        .visual(store.checkbox_visual(crate::ids::INSP_PJ_FACE_VELOCITY))
-        .value(if i.face_velocity {
-            CheckboxValue::Checked
-        } else {
-            CheckboxValue::Unchecked
-        }),
-        rect,
+    ph2d_editor_core::property_row::paint_check_row(
         scene,
         text_system,
         theme,
-    );
-    cur_y + CHECK_H + ph2d_tokens::control_gap_px()
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        (
+            crate::ids::INSP_PJ_FACE_VELOCITY,
+            tr("panel.inspector.projectile.face_velocity"),
+            i.face_velocity,
+        ),
+        seccao,
+    )
 }
 
 /// Pinta a secção. Devolve o `y` seguinte.

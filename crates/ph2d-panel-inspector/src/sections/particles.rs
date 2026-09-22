@@ -25,8 +25,6 @@ use ph2d_editor_core::widget::SectionFold;
 use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 
-const CHECK_H: f32 = 18.0; // LITERAL-PX-OK: altura visual do Checkbox, igual à das irmãs
-
 /// O rótulo, o passo e a que módulo pertence cada número — **pela ordem do modelo**.
 ///
 /// ⚠️ A tabela é indexada pela [`PARTICLES_NUMBERS`], e há gate a atar os comprimentos: uma linha
@@ -187,6 +185,11 @@ fn seg_row(
 
 /// Uma caixa.
 #[allow(clippy::too_many_arguments)]
+/// Uma caixa — **pela porta**, com a coluna do nome da SECÇÃO.
+///
+/// ⛔⛔ Ela era uma cópia local do [`ph2d_editor_core::property_row::paint_check_row`] com a
+/// altura escrita à mão (`18`, que é a aresta da MARCA e não a altura da LINHA) — o report do
+/// dono de 2026-09-21: *«apenas o checkbox tem sua moldura e ele próprio menores que o padrão»*.
 fn check_row(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
@@ -200,22 +203,25 @@ fn check_row(
     label: &str,
     on: bool,
 ) -> f32 {
-    let rect = Rect::new(x, y, w, CHECK_H);
-    hit_index.register(id, rect);
-    paint_checkbox(
-        &Checkbox::new(id, label)
-            .visual(store.checkbox_visual(id))
-            .value(if on {
-                CheckboxValue::Checked
-            } else {
-                CheckboxValue::Unchecked
-            }),
-        rect,
+    // ⚠️ A MESMA coluna que a [`num_row`] desta secção mede, e pela mesma tabela — senão o nome
+    //    de uma linha de marcar cai num `x` e o da linha de número acima dela noutro.
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &ROTULOS.map(|(chave, _, _)| chave.tr()),
+    );
+    ph2d_editor_core::property_row::paint_check_row(
         scene,
         text_system,
         theme,
-    );
-    y + CHECK_H + ph2d_tokens::control_gap_px()
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        (id, label, on),
+        seccao,
+    )
 }
 
 /// Uma linha de número, pela ordem do modelo.

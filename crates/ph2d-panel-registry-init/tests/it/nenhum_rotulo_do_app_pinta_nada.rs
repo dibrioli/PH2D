@@ -558,7 +558,11 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⭐⭐ `102 → 90` em 2026-09-21: **treze** rótulos do Inspector perderam a REGRA que
     //    carregavam entre parêntesis (`Acceleration (0 = instant)` → `Acceleration`), e ela foi
     //    para o balão do controlo. *Um nome que encolhe tira um corte* — e aqui tirou doze.
-    ("inspector", 90),
+    // ⭐ `90 → 89` em 2026-09-21: as SETE linhas de marcar do Inspector passaram pela porta
+    //    `paint_check_row` (report do dono sobre a ALTURA), e com isso entraram na coluna da
+    //    SECÇÃO em vez da de omissão. ⚠️ **Ela desceu porque a coluna ficou mais CERTA**, não
+    //    porque alguém encurtou um nome — e o censo de obsolescência foi quem o exigiu.
+    ("inspector", 89),
     // ⭐ Era `6`: o `Mute` do Master deixou de ler `…` quando a coluna aperta (report do dono,
     //    19/09). *Uma catraca que desce é a metade justa dela a funcionar.*
     ("audio_mixer", 5),
@@ -630,7 +634,8 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⭐ `86 → 85` em 2026-09-21: o `Per-Corner Tint (vertex gradient)` virou
     //    `Per-corner Tint` por ordem do dono, e a explicação foi para o BALÃO. *Um nome
     //    que encolhe tira um corte* — a catraca a DESCER é a lei a funcionar.
-    ("inspector", 85),
+    // ⭐ `85 → 84` em 2026-09-21, pela mesma passagem pela porta — ver a irmã acima.
+    ("inspector", 84),
     ("audio_mixer", 5),
     ("sculpt3d", 6),
     ("hierarchy", 5),

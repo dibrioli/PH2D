@@ -108,9 +108,21 @@ fn slugs_de(src: &str) -> Vec<String> {
 }
 
 /// ⭐⭐⭐ **O MAPA INVERSO** — `NodeId` → o *slug* que o produziu.
-fn nomes() -> BTreeMap<NodeId, String> {
+/// ⭐ **Dois leitores desde 2026-09-21**: a sonda daqui e o censo da altura de uma marca
+/// ([`super::a_marca_tem_a_altura_da_linha`]) — *uma segunda cópia deste extractor seria a segunda
+/// resposta a «de que slug veio este id?»*.
+pub(crate) fn nomes() -> BTreeMap<NodeId, String> {
+    nomes_de(&FONTES, PISO_DE_SLUGS)
+}
+
+/// ⭐⭐ **O MESMO extractor, sobre as árvores que a PERGUNTA pede.**
+///
+/// ⚠️ A lista de fontes e o piso são **por pergunta** — o censo da altura de uma marca varre os
+/// ids do Inspector, que esta sonda não precisa de ler. ⛔ O que NÃO se duplica é o
+/// [`slugs_de`]: *uma segunda cópia do FNV-1a seria a segunda resposta a «que id é este?»*.
+pub(crate) fn nomes_de(fontes: &[&str], piso: usize) -> BTreeMap<NodeId, String> {
     let mut ficheiros = Vec::new();
-    for f in FONTES {
+    for f in fontes {
         varre(&raiz(f), &mut ficheiros);
     }
     let mut mapa = BTreeMap::new();
@@ -121,8 +133,8 @@ fn nomes() -> BTreeMap<NodeId, String> {
         }
     }
     assert!(
-        mapa.len() >= PISO_DE_SLUGS,
-        "o varrimento leu {} slugs e esperava >= {PISO_DE_SLUGS} — o extractor cegou, e um mapa \
+        mapa.len() >= piso,
+        "o varrimento leu {} slugs e esperava >= {piso} — o extractor cegou, e um mapa \
          vazio faz esta sonda imprimir `(sem nome)` em toda linha",
         mapa.len()
     );

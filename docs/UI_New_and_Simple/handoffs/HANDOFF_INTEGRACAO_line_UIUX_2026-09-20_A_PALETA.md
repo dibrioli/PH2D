@@ -1730,6 +1730,125 @@ tocadas · `cargo fmt --check` limpo · as 5 catracas de elisão PASS a partir d
 
 ---
 
+## §9-quindecies — ⭐⭐⭐ DUAS GRANDEZAS COM NOMES PARECIDOS, e cinco secções trocaram-nas
+
+Report do dono, 2026-09-21, com foto da secção `PROJECTILE MOTION`: *«Apenas o checkbox tem sua
+moldura e ele próprio menores que o padrão. isso acontece em vários painéis do APP.»*
+
+### §9-quindecies.1 — A causa, e porque ela encolhe DUAS coisas
+
+| grandeza | porta | valor | o que é |
+|---|---|---:|---|
+| altura de uma LINHA | `ph2d_tokens::ROW_H_PX` | `22` | a caixa do controlo, em toda fileira |
+| aresta da MARCA | `ph2d_tokens::CHECKBOX_BOX_PX` | `18` | o quadrado que leva o visto |
+
+A marca vive **dentro** da caixa com um degrau de recuo de cada lado
+(`lado = min(18, h − 2·Xs)`), logo escrever `18` onde se pedia a altura da linha encolhe as
+**duas** coisas de que o report fala: a moldura `22 → 18` e a marca `14 → 10`. ⭐ *As duas frases
+do report são um número só.*
+
+### §9-quindecies.2 — ⛔⛔ A cura já tinha sido escrita — para UM dos treze sítios
+
+O `sections/anchor_mount_row.rs` diz-o no próprio comentário desde **2026-09-15**: *«era `18.0`, o
+MESMO literal em TREZE sítios»*. Quatro sítios foram curados nesse dia (`anchors`, `slice_nine`,
+`visibility`, `anchor_mount_row`) e **cinco ficaram**, com um comentário a afirmar
+`igual à das irmãs` — *uma frase que era verdade no dia em que foi escrita e que a cura da irmã
+tornou falsa, sem nada deixar de compilar*.
+
+⚠️ **Não havia censo.** É a lei do `CLAUDE.md` §5.0 (*«uma catraca sem censo de obsolescência não
+desce: ela vira LICENÇA»*) um degrau abaixo: aqui nem catraca havia, e a única régua capaz de
+encontrar aquilo era o olho do dono.
+
+### §9-quindecies.3 — A medição, pela porta do produto
+
+A régua nova ([`a_marca_tem_a_altura_da_linha.rs`](../../../crates/ph2d-panel-registry-init/tests/it/a_marca_tem_a_altura_da_linha.rs))
+lê o **rect que o painel REGISTA** para cada id cujo estado no store é `Checkbox` ou `Toggle` — a
+altura da linha pelo caminho do produto, e não um literal lido no fonte.
+
+| | antes | depois |
+|---|---|---|
+| `inspector` | `18 px × 7` · `22 px × 33` | **`22 px × 40`** |
+| `timeline` | `22 px × 10` | igual |
+| `grid_snap` | `22 px × 1` · `44 px × 1` | igual (o `44` é uma isenção NOMEADA) |
+
+**As sete, pelo nome:** `insp_factory_aim` · `insp_factory_pick_random` · `insp_hud_disabled` ·
+`insp_part_emitting` · `insp_part_one_shot` · `insp_pj_face_velocity` · `insp_td_default_controls`.
+
+⭐ A sonda NOMEIA-as porque reutiliza o mapa inverso `NodeId → slug` que o
+`o_que_o_artista_nao_alcanca` já tinha — ele passou a receber a lista de fontes por argumento
+(`nomes_de`), porque *a pergunta muda as árvores a varrer e o extractor não*.
+
+### §9-quindecies.4 — A cura é a PORTA, não um número melhor
+
+Os cinco sítios eram a mesma montagem à mão de quatro passos que o
+`ph2d_editor_core::property_row::paint_check_row` existe para substituir — e dois deles
+(`hud`, `particles`) tinham **cópias locais** da porta. Hoje os sete passam por ela, e **ela não
+aceita altura nenhuma**: não há onde escrever o literal outra vez.
+
+⭐⭐ **E isso trouxe de graça a coluna certa:** montadas à mão, as sete usavam
+`Seccao::apenas_campos(1)` — *o nome de uma linha de marcar caía num `x` e o da linha de número
+acima dela noutro*. Pela porta, cada uma entra na coluna da SECÇÃO.
+
+⚠️⚠️ **E o preço apareceu num gate, não num smoke:** a `factory` mede a coluna de uma lista
+escrita à mão que **não continha** os dois nomes de marcar, logo `"Aim from spawner"` — o nome mais
+comprido da secção — saía **cortado**. Quem o apanhou foi o `nenhum_corte_novo_entra_sem_ser_nomeado`,
+e a cura é a que o comentário três linhas acima da lista **já mandava por escrito**
+(*«os nomes são os da secção INTEIRA»*): os dois entram na medição.
+
+⭐ **E as duas catracas de elisão DESCERAM** (`90 → 89` cortes, `85 → 84` letras), exigido pelo
+censo de obsolescência delas — *a coluna ficou mais CERTA, e nenhum nome foi encurtado para isso*.
+As `18` linhas empurradas pelo próprio nome ficam em `18`.
+
+### §9-quindecies.5 — ⚠️ O que a régua NÃO alcança, e o que fechou o buraco
+
+A varredura só vê **três** painéis com marcas booleanas — um painel cujas caixas só aparecem com um
+documento que a `paineis_armados::TABELA` não sabe montar é invisível a ela. ⭐ O buraco foi fechado
+por **ENUMERAÇÃO**: só quem chama `paint_checkbox` **fora da porta** pode escolher a altura, e são
+`17` ficheiros (inspector 5 · painter-layers 4 · vector 1 · wet-tuning 1 · a porta e os gates do
+`editor-core`). **Todos os de fora do Inspector passam `ROW_H_PX`** ⇒ a doença era do Inspector e só
+dele, e *«vários painéis»* eram cinco SECÇÕES do mesmo painel. ⛔ Isto é uma medição com data: quem
+escrever o 18.º chamador não é avisado por nada.
+
+⏳ **ABERTO, com o mecanismo:** o `sections/script.rs` passa ao pintor **só a coluna do controlo** em
+vez da linha, logo o `colunas_da_linha` volta a partir esse rectângulo em duas e a caixa nasce a
+meio dele. A altura é `22`, logo este gate não a vê.
+
+### §9-quindecies.6 — Prova de mutação: **8 de 8 sangram**
+
+| # | mutação | veredito |
+|---|---|---|
+| 1 | uma secção volta a registar a linha a `18 px` | SANGRA |
+| 2 | a isenção do `grid_snap` desaparece | SANGRA |
+| 3 | a isenção declara uma altura que ninguém tem | SANGRA |
+| 4 | **a PORTA** passa a pintar a linha com a aresta da marca | SANGRA |
+| 5 | o censo deixa de colher (o piso de população) | SANGRA |
+| 6 | a isenção passa a casar só pelo PAINEL | SANGRA |
+| 7 | o painel excluído passa a ser um nome que não existe | SANGRA |
+| 8 | o CONTROLO da fixtura passa a ser o próprio id declarado | SANGRA |
+
+⛔⛔ **A nº 6 SOBREVIVEU primeiro, e a cura não foi um gate a mais — foi uma FIXTURA:** hoje o
+`grid_snap` tem **uma só** marca fora do padrão, logo a população do produto não discrimina
+*«isento por painel»* de *«isento por par»*. *Um corpus que não contém o fenómeno não o pode
+testar* ⇒ o discriminador é `a_isencao_e_do_par_e_nao_do_painel`, com o CONTROLO (um id do mesmo
+painel que ninguém declarou) dentro.
+
+⚠️ **E a nº 7 só discrimina numa direcção:** pôr `|| true` na verificação da exclusão **não sangra**
+(hoje o painel existe); o que sangra é trocar o nome excluído por um que não existe. *Uma asserção
+que só morde no dia em que alguém renomeia não se prova pelo lado do `true`.*
+
+⚠️⚠️ **E o arnês mentiu à primeira:** `grep -cF` conta **LINHAS**, logo uma agulha multi-linha casou
+`1` vez e ele leu `20` — a lei que este repo já tinha escrito, paga outra vez. A contagem passou a
+ser de OCORRÊNCIAS.
+
+### §9-quindecies.7 — Portão
+
+`nextest-impacted` · clippy `-D warnings` zero nas três crates tocadas · `cargo fmt --check` limpo ·
+as catracas de elisão **DESCERAM** com o censo de obsolescência a exigi-lo.
+
+⚠️⚠️ **ISTO MUDA O PRODUTO** — as sete linhas ficam `4 px` mais altas e a marca delas `4 px` maior.
+
+---
+
 ## §11 — O que esta linha recomenda a quem a integrar
 
 1. **Correr o `diag_onde_cai_a_pista_do_pente` da `line/sculpt3d` DEPOIS da fusão** e reescrever com

@@ -32,8 +32,6 @@ use ph2d_editor_core::screens::hero::{
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_i18n::{tr, tr_with};
 
-const CHECK_H: f32 = 18.0; // LITERAL-PX-OK: altura visual do Checkbox, igual à das irmãs
-
 /// O segmentado do ONDE. ⚠️ A selecção vem do SNAPSHOT, nunca do store.
 #[allow(clippy::too_many_arguments)]
 fn where_row(
@@ -156,25 +154,22 @@ fn onde_rows(
             TextInput::new(crate::ids::INSP_FACTORY_TAG, "")
                 .placeholder(ph2d_i18n::tr("panel.factory.tag")),
         );
-        let rect = Rect::new(x, cur_y, w, CHECK_H);
-        hit_index.register(crate::ids::INSP_FACTORY_PICK_RANDOM, rect);
-        paint_checkbox(
-            &Checkbox::new(
-                crate::ids::INSP_FACTORY_PICK_RANDOM,
-                tr("panel.inspector.factory.pick_at_random"),
-            )
-            .visual(store.checkbox_visual(crate::ids::INSP_FACTORY_PICK_RANDOM))
-            .value(if f.pick_random {
-                CheckboxValue::Checked
-            } else {
-                CheckboxValue::Unchecked
-            }),
-            rect,
+        cur_y = ph2d_editor_core::property_row::paint_check_row(
             scene,
             text_system,
             theme,
+            hit_index,
+            store,
+            x,
+            w,
+            cur_y,
+            (
+                crate::ids::INSP_FACTORY_PICK_RANDOM,
+                tr("panel.inspector.factory.pick_at_random"),
+                f.pick_random,
+            ),
+            seccao,
         );
-        cur_y += CHECK_H + ph2d_tokens::control_gap_px();
     }
 
     cur_y
@@ -210,6 +205,13 @@ fn factory_body(
             tr("panel.inspector.factory.max_alive_0_no_limit"),
             tr("panel.inspector.factory.max_total_0_no_limit"),
             tr("panel.inspector.factory.seed"),
+            // ⭐⭐ **As duas linhas de MARCAR entram aqui** — a lei está escrita três linhas
+            //    acima (*«os nomes são os da secção INTEIRA»*) e elas faltavam, porque até
+            //    2026-09-21 as duas eram montadas à mão com a coluna de omissão
+            //    (`Seccao::apenas_campos(1)`). ⛔ Sem elas a coluna mede-se sem o nome mais
+            //    comprido da secção, e ao passar pela porta ele saía CORTADO.
+            tr("panel.inspector.factory.pick_at_random"),
+            tr("panel.inspector.factory.aim_from_spawner"),
         ],
     );
     cur_y = factory_avisos(scene, text_system, theme, x, w, cur_y, f, clock_playing);
@@ -256,25 +258,22 @@ fn factory_body(
     //
     // ⚠️ **Ela mora AQUI e não na secção do projéctil**, e a razão é de quem decide: quem sabe a
     // direcção é a FÁBRICA (a arma), não a bala — a bala já lê o ângulo do próprio corpo.
-    let rect = Rect::new(x, cur_y, w, CHECK_H);
-    hit_index.register(crate::ids::INSP_FACTORY_AIM, rect);
-    paint_checkbox(
-        &Checkbox::new(
-            crate::ids::INSP_FACTORY_AIM,
-            tr("panel.inspector.factory.aim_from_spawner"),
-        )
-        .visual(store.checkbox_visual(crate::ids::INSP_FACTORY_AIM))
-        .value(if f.aim_from_spawner {
-            CheckboxValue::Checked
-        } else {
-            CheckboxValue::Unchecked
-        }),
-        rect,
+    cur_y = ph2d_editor_core::property_row::paint_check_row(
         scene,
         text_system,
         theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        (
+            crate::ids::INSP_FACTORY_AIM,
+            tr("panel.inspector.factory.aim_from_spawner"),
+            f.aim_from_spawner,
+        ),
+        seccao,
     );
-    cur_y += CHECK_H + ph2d_tokens::control_gap_px();
 
     for (label, id, step) in [
         (

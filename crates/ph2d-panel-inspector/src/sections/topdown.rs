@@ -26,8 +26,6 @@ use ph2d_editor_core::topdown_edits::{
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_i18n::tr;
 
-const CHECK_H: f32 = 18.0; // LITERAL-PX-OK: altura visual do Checkbox, igual à das irmãs
-
 /// Um segmentado. ⚠️ **A selecção vem do SNAPSHOT, nunca do store** — ler o store faria o primeiro
 /// clique depois de trocar de objecto mandar o valor do objecto anterior.
 #[allow(clippy::too_many_arguments)]
@@ -364,25 +362,22 @@ fn deslize(
         );
     }
 
-    let rect = Rect::new(x, cur_y, w, CHECK_H);
-    hit_index.register(crate::ids::INSP_TD_DEFAULT_CONTROLS, rect);
-    paint_checkbox(
-        &Checkbox::new(
-            crate::ids::INSP_TD_DEFAULT_CONTROLS,
-            tr("panel.inspector.topdown.default_controls"),
-        )
-        .visual(store.checkbox_visual(crate::ids::INSP_TD_DEFAULT_CONTROLS))
-        .value(if i.default_controls {
-            CheckboxValue::Checked
-        } else {
-            CheckboxValue::Unchecked
-        }),
-        rect,
+    cur_y = ph2d_editor_core::property_row::paint_check_row(
         scene,
         text_system,
         theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        (
+            crate::ids::INSP_TD_DEFAULT_CONTROLS,
+            tr("panel.inspector.topdown.default_controls"),
+            i.default_controls,
+        ),
+        seccao,
     );
-    cur_y += CHECK_H + ph2d_tokens::control_gap_px();
     if !i.default_controls {
         cur_y = super::rows::aviso(
             scene,

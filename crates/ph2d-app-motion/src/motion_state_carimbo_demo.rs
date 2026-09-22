@@ -141,16 +141,16 @@ use ph2d_nodegraph::graph::{Edge, NodeId, Pos};
 
 /// **Quantos píxeis de ecrã vale uma unidade de mundo na câmara de arranque** — medido na foto da
 /// cena `=124` e citado dela, nunca re-estimado.
-const PX_POR_UNIDADE: f32 = 55.5;
+pub(crate) const PX_POR_UNIDADE: f32 = 55.5;
 
 /// **A pegada de uma estrela, em píxeis** — o que faz dela uma ESTRELA e não um ponto.
 ///
 /// ⚠️ Abaixo disto as cinco pontas fundem-se e o campo lê-se como um granulado: a cena passaria a
 /// mostrar *«um rectângulo que fica mais lento»*, que não é o assunto dela.
-const ESTRELA_PX: f32 = 6.0;
+pub(crate) const ESTRELA_PX: f32 = 6.0;
 
 /// O `size` do `source.shape` é o **raio** (metade da pegada) — ver o doc do param.
-pub(super) const TAMANHO: f32 = ESTRELA_PX / (2.0 * PX_POR_UNIDADE);
+pub(crate) const TAMANHO: f32 = ESTRELA_PX / (2.0 * PX_POR_UNIDADE);
 
 /// O vão entre posições: a pegada inteira mais `20 %` de ar.
 ///

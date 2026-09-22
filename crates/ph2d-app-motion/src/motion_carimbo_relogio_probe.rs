@@ -540,3 +540,9 @@ fn audit_the_corner_radius_cost() {
 /// certo): aqui medem-se as ROTAS do encode, ali mede-se quem paga o quê.
 #[path = "motion_carimbo_atribuicao_probe.rs"]
 mod atribuicao;
+
+/// ⭐⭐⭐ **O LOD DA FORMA** — a sonda do report de 2026-09-21 (*«ao dar o zoom … o app trava. Não
+/// seria interessante criar um LOD para shapes?»*). Irmã por RESPONSABILIDADE: ali mede-se quem
+/// paga o quê no quadro de hoje, aqui mede-se **o que o tamanho no ecrã torna desnecessário**.
+#[path = "motion_carimbo_lod_probe.rs"]
+mod lod;

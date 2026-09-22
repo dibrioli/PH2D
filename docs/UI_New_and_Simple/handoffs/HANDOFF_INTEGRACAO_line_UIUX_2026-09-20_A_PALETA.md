@@ -20,6 +20,7 @@
 | 6 | `3c1d0e632` | os reports 1, 2 e 4 do dono — o teclado do modal e o botão invisível |
 | 7 | `05ac23b52` | o report 3 — **um modal de ecrã inteiro é dono do PONTEIRO, não só do teclado** |
 | — | (este) | a régua que diz, **pelo NOME**, o que fica abaixo da dobra |
+| — | §9-bis .. §9-quaterdecies | ⚠️ **a partir daqui esta tabela não cresce:** cada wave seguinte da linha tem a secção `§9-*` dela, na ordem em que foi escrita. `git log --oneline ac39f40ad..HEAD` dá os commits |
 
 **Ordem do dono que a abriu** (2026-09-20, sobre a medição do degrau `G`): *«sim»* — tirar a secção
 `Tool` inteira do painel para uma paleta.
@@ -1660,6 +1661,70 @@ que os quatro do Inspector levaram.
 
 Portão: `nextest-impacted` **`15 498/15 498`** · censos da árvore combinada **`127/127`** ·
 `ph2d-panel-painter-layers` **`179/179`** · clippy `-D warnings` zero · fmt limpo.
+
+⚠️⚠️ **ISTO MUDA O PRODUTO** e o smoke do dono está por fazer.
+
+---
+
+## §9-quaterdecies — ⭐⭐⭐ O NOME perde a REGRA e ganha o BALÃO — e a UNIDADE vive no CAMPO
+
+Ordem do dono (2026-09-21), a 4.ª das cinco direcções dele: *«quanto aos nomes grandes precisamos
+reduzir, as dicas devem ser passadas para o mouse Hover»*.
+
+### §9-quaterdecies.1 — Porque encurtar um nome NESTE painel é aritmética, não estética
+
+A coluna do nome é `min(50 %, …)` da largura da fileira, e ela é propriedade da **SECÇÃO** ⇒
+*o nome mais comprido de uma secção come a coluna do CONTROLO de todos os vizinhos dela*. Medido:
+`Per-Corner Tint (vertex gradient)` deixava as quatro amostras a **`35 px`**; `Per-corner Tint`
+deixa-as a **`59`** — `68 %` mais alvo, de uma string.
+
+| régua (`diag_que_linhas_o_nome_espreme`, `--run-ignored all`, workspace) | antes | depois |
+|---|---|---|
+| linhas empurradas pelo próprio nome | `45` | **`18`** |
+| pior empurrão | `+48 px` | **`+17 px`** (`insp_mount_pick`) |
+
+As `18` que ficam: `+17` o `insp_mount_pick`, `+8` o bloco do áudio e os `insp_vis_*`, `+3` o bloco
+da sprite.
+
+### §9-quaterdecies.2 — ⛔⛔ Um parêntesis é uma de DUAS coisas, e encurtar mal converte uma na outra
+
+`(0 = forever)` é uma **REGRA DE VALOR** e vai ao balão; `(s)`, `(m)`, `(deg/s)` é uma **UNIDADE** e
+mora no **CAMPO** (o 12.º argumento do `paint_fields_row`, que já existia). ⚠️ Encurtar
+`Lifetime (s, 0 = forever)` para `Lifetime (s)` **parece** a cura e deixa a unidade dentro do texto
+— quem o apanhou foi um gate **PRÉ-EXISTENTE** (`no_row_label_carries_its_own_unit`), e a cura certa
+não perde nada: o artista continua a ler `2 s` no campo e `0 = lives forever.` ao passar o rato.
+
+Três sítios: `lifecycle.rs` (`Unit::Seconds`) · `projectile.rs` (`Meters`) · `topdown.rs`
+(`DegreesPerSecond`). ⭐ **A CHAVE de i18n mantém o sufixo** (`..._s_0_forever`): ela é um ENDEREÇO,
+nunca o texto.
+
+### §9-quaterdecies.3 — O par `(controlo, dica)` escreve-se À MÃO
+
+⛔ A 1.ª tentativa derivou-o por **proximidade no fonte** e mapeou o `Homing` para o
+`INSP_PJ_SPEED` — *um balão no controlo errado é pior do que balão nenhum*. ⇒ só entram os pares em
+que o `tr(<rótulo>)` é **imediatamente** seguido pelo id: **13** dos `21` rótulos com regra. Os
+outros `8` ficam NOMEADOS em `AINDA_COM_REGRA` (`nenhum_nome_carrega_uma_regra.rs`), com catraca que
+só encolhe — a forma de chamada deles (entradas de texto, linhas de lista) não põe o id ao lado do
+rótulo.
+
+### §9-quaterdecies.4 — A mutação que escreveu o terceiro gate
+
+⛔ Apagar o laço de `populate_dicas::dicas()` deixava **verdes** as duas metades declarativas
+(*«cada dica citada tem texto»* · *«nenhum rótulo carrega regra»*) — *uma régua que lê a DECLARAÇÃO
+nunca vê o FIO* ⇒ `cada_dica_declarada_chega_ao_store`, que mede o `WidgetStore` **depois** do
+`populate`. **5 de 5 mutações sangram.**
+
+### §9-quaterdecies.5 — Catracas e portão
+
+`CORTES_NO_DEGRAU_ESTREITO["inspector"]` **`102 → 90`** e
+`LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO["inspector"]` em **`85`** — as duas **exactas**, com o censo de
+obsolescência a passar (uma catraca que passa ainda pode estar obsoleta; esta não está).
+⚠️ A corrida autoritativa é `--workspace`: um `-p` lê `23` painéis / `12 418` rótulos contra o piso
+de `27` / `12 000` e **recusa alto com a cura na mensagem**, que é a lei que a integração de 20/09
+pagou.
+
+Portão: `nextest-impacted` **`17 656/17 656`** · clippy `-D warnings` zero nas quatro crates
+tocadas · `cargo fmt --check` limpo · as 5 catracas de elisão PASS a partir da workspace.
 
 ⚠️⚠️ **ISTO MUDA O PRODUTO** e o smoke do dono está por fazer.
 

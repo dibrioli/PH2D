@@ -423,8 +423,19 @@ pub(super) fn announce() {
          `raw` cai para `70` e poucos — perto de um terco da folga desaparece.\n\
          (5) Compare. A imagem e' a MESMA, ponto por ponto — so' a folga muda.\n\
          \n\
+         (6) AFASTE com a roda ate' o campo INTEIRO caber no ecra. As estrelas ficam\n    \
+         com 3 pixeis ou menos, e a esse tamanho o app troca cada desenho pela\n    \
+         FOTOGRAFIA dele — medido: a essa distancia as duas sao indistinguiveis\n    \
+         (menos de um tom de 255 de diferenca). O `raw` tem de SUBIR, nao cair.\n\
+         (7) APROXIME outra vez ate' ver as pontas: elas voltam a ser DESENHO nitido.\n    \
+         A troca tem os dois sentidos, e a fronteira e' `4 px` de lado.\n\
+         (8) Corra o mesmo comando com `PH2D_LOD_DA_FORMA=0` a' frente e repita o (6):\n    \
+         e' o caminho de antes desta cura, sem a troca.\n\
+         \n\
          DEU ERRADO se: o campo nao aparecer; se o `raw` for IGUAL nas duas corridas;\n\
-         ou se a imagem for DIFERENTE entre as duas.\n"
+         se a imagem for DIFERENTE entre as duas; ou se ao AFASTAR as estrelas\n\
+         DESAPARECEREM, ficarem BRANCAS ou PISCAREM — isso e' a troca a falhar,\n\
+         e `PH2D_LOD_DA_FORMA=0` confirma-o num comando.\n"
     );
 }
 

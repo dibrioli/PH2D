@@ -180,19 +180,31 @@ pub fn geometrias_para_lod_com(
     if caixas.is_empty() {
         return std::collections::BTreeSet::new();
     }
-    // 2.ª passagem: o lado da MAIOR cópia de cada candidata.
-    let mut maior: std::collections::BTreeMap<u32, f64> = std::collections::BTreeMap::new();
+    // 2.ª passagem: basta **UMA** cópia acima da barra para a geometria ficar crisp.
+    //
+    // ⭐⭐ **É um `any`, não um `max`, e a diferença é MEDIDA.** As duas respondem o mesmo (*«o
+    // máximo cabe»* ⟺ *«nenhuma excede»*), e a primeira pode parar na cópia que decide. No zoom
+    // de nascimento da cena `=126` a PRIMEIRA já excede ⇒ a decisão passa de `O(N)` a `O(1)`
+    // exactamente no quadro em que ela é trabalho para o lixo. *Uma cura cujo teste custa o que
+    // ela poupa não é uma cura* — a lei que o recorte por câmara desta mesma linha já pagou.
+    let mut fora: std::collections::BTreeSet<u32> = std::collections::BTreeSet::new();
     for vi in insts {
+        if fora.contains(&vi.geometry_id) {
+            continue;
+        }
         let Some(&(w, h)) = caixas.get(&vi.geometry_id) else {
             continue;
         };
-        let lado = lado_no_ecra(crate::motion_shape_gen::instance_pose(vi, cam), w, h);
-        let e = maior.entry(vi.geometry_id).or_insert(0.0);
-        *e = e.max(lado);
+        if lado_no_ecra(crate::motion_shape_gen::instance_pose(vi, cam), w, h) > LADO_MAXIMO_PX {
+            fora.insert(vi.geometry_id);
+            if fora.len() == caixas.len() {
+                break; // já não há candidata nenhuma — nada mais a medir
+            }
+        }
     }
-    maior
-        .into_iter()
-        .filter_map(|(gid, lado)| (lado <= LADO_MAXIMO_PX).then_some(gid))
+    caixas
+        .into_keys()
+        .filter(|gid| !fora.contains(gid))
         .collect()
 }
 

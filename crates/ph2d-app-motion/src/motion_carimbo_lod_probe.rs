@@ -642,3 +642,69 @@ fn audit_where_the_shipped_lod_arms() {
 /// onde o LOD arma, ali mede-se a FIDELIDADE que autoriza a troca.
 #[path = "motion_carimbo_lod_regua_probe.rs"]
 mod regua;
+
+/// ⛔⛔ **PERGUNTA 8 — QUANTO CUSTA A DECISÃO, no quadro em que ela NÃO arma?**
+///
+/// A lei desta casa, escrita no `standalone.rs` quando o recorte por câmara a pagou: *uma cura
+/// cujo teste custa o que ela poupa não é uma cura*. O [`geometrias_para_lod`] corre em TODO
+/// quadro e faz **duas** passagens sobre as instâncias — e no zoom de nascimento ele decide
+/// `não`, logo essas passagens são trabalho puro para o lixo.
+///
+/// ⚠️ **O CONTROLO é a coluna desligada** (a porta devolve vazio antes das passagens): a
+/// diferença entre as duas colunas É o preço da decisão, e nada mais.
+#[test]
+#[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]
+fn audit_what_the_decision_itself_costs() {
+    let _fatia = fatia();
+    let (m, _saida) = cena_do_report(0.5);
+    let insts = &m.pump.vector_instances;
+    let nasce = f64::from(crate::motion_state::carimbo_demo::PX_POR_UNIDADE);
+    let (mut x0, mut x1) = (f64::MAX, f64::MIN);
+    for i in insts {
+        x0 = x0.min(f64::from(i.world_pos[0]));
+        x1 = x1.max(f64::from(i.world_pos[0]));
+    }
+    let centro = (x0 + x1) * 0.5;
+
+    eprintln!("\n  ═══ O PREÇO DA DECISÃO (load {}) ═══\n", carga());
+    eprintln!("    zoom | arma? | LIGADA | DESLIGADA (controlo) | o que a decisão custa");
+    eprintln!("  -------|-------|--------|----------------------|----------------------");
+    for mult in [1.0f64, 0.25] {
+        let z = nasce * mult;
+        let cam = ph2d_vector::Affine::translate((JANELA_PX.0 * 0.5, JANELA_PX.1 * 0.5))
+            * ph2d_vector::Affine::scale(z)
+            * ph2d_vector::Affine::translate((-centro, -centro));
+        let mede = |ligado: bool| {
+            let mut melhor = f64::INFINITY;
+            for _ in 0..5 {
+                let t = std::time::Instant::now();
+                let q = crate::motion_shape_lod::geometrias_para_lod_com(
+                    insts,
+                    &m.shape_store,
+                    cam,
+                    crate::motion_bridge::objects::LOD_COUNT,
+                    ligado,
+                );
+                melhor = melhor.min(t.elapsed().as_secs_f64() * 1e3);
+                std::hint::black_box(&q);
+            }
+            melhor
+        };
+        let (on, off) = (mede(true), mede(false));
+        let arma = !crate::motion_shape_lod::geometrias_para_lod_com(
+            insts,
+            &m.shape_store,
+            cam,
+            crate::motion_bridge::objects::LOD_COUNT,
+            true,
+        )
+        .is_empty();
+        eprintln!(
+            "   {mult:>5.3} | {:>5} | {on:>4.2} ms | {off:>17.2} ms | {:>5.2} ms ({:>4.1}% de um quadro)",
+            if arma { "SIM" } else { "não" },
+            on - off,
+            (on - off) / 16.67 * 100.0,
+        );
+    }
+    eprintln!("\n  load no fim: {}\n", carga());
+}

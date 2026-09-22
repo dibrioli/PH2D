@@ -110,12 +110,12 @@ impl PainterTool {
         } else {
             dabs
         };
-        let mut bbox = coverage.iter().fold(None, |acc, d| {
-            match (acc, self.dab_bbox(d.center, d.radius_px)) {
-                (Some(a), Some(r)) => Some(union_region(a, r)),
-                (a, r) => a.or(r),
-            }
-        });
+        // ⛔⛔ **A caixa é a do CARIMBO e não a do PINCEL** (report do dono, 2026-09-21:
+        // *«artefatos de imagem nas margens retangulares»*, e a dica dele — *«com Anchored, ao
+        // crescer desenha corretamente mas se no mesmo movimento reduzir, vários artefatos
+        // aparecem»* — é o diagnóstico inteiro: a crescer, o quadro seguinte TAPA o que o anterior
+        // deixou; a encolher, ele fica à vista). Ver [`super::region::PainterTool::caixa_do_lote`].
+        let mut bbox = self.caixa_do_lote(coverage);
         // **Style: Solid** (W7): num método de RE-CARIMBO a mancha viaja DENTRO desta transação, e
         // não numa segunda — as duas encadeariam no mesmo slot `drag_preview` e só a última ficaria
         // de pé, restaurando por cima dos dabs que a outra acabou de carimbar. Então a região salva

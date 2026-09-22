@@ -32,6 +32,51 @@ impl PainterTool {
         })
     }
 
+    /// **A ESCALA a que o carimbo de facto ESCREVE.**
+    ///
+    /// ⛔⛔ Um dab do Composite Brush não é pintado com o raio do PINCEL: a
+    /// [`super::composite::PainterTool::camada_dabs`] faz `radius_px *= escala` por camada, e a
+    /// escala do dono chega a **`1,904×`**. ⇒ *o pincel e o carimbo respondem números diferentes à
+    /// pergunta «até onde isto vai escrever»*, e quem salvava a região para o descasque perguntava
+    /// ao pincel.
+    ///
+    /// Devolve `1,0` quando o Composite não conduz o traço — aí as duas respostas coincidem, que é
+    /// porque este defeito não existia antes de ele existir.
+    pub(super) fn escala_do_carimbo(&self) -> f32 {
+        #[cfg(test)]
+        if CAIXA_DO_PINCEL.with(std::cell::Cell::get) {
+            return 1.0; // a bissecção: a caixa de ANTES da cura, para o A/B ser repetível.
+        }
+        if !self.composite_active() {
+            return 1.0;
+        }
+        (0..super::composite::N_CAMADAS)
+            .filter(|&p| self.paint.composite[p].strength > 0.0)
+            .map(|p| self.tamanho_da_camada(p))
+            .fold(1.0, f32::max)
+    }
+
+    /// **A PEGADA DO DESCASQUE: a caixa de tudo o que este lote vai escrever.**
+    ///
+    /// ⭐ É a porta ÚNICA da pergunta que o preview de re-carimbo tem de responder para que
+    /// descascar seja completo — a mesma que a
+    /// [`super::stamp_preview::PainterTool::watercolor_preview_footprint`] responde para a aquarela,
+    /// que infla o raio pelo alcance da lavagem pelo MESMO motivo. *Inflar a mais é inócuo (pixels
+    /// intactos restauram-se a um no-op); inflar a menos deixa rasto que nunca mais sai.*
+    ///
+    /// ⚠️ Ela cobre o carimbo porque a única mudança GEOMÉTRICA que uma camada faz a um dab é
+    /// escalar o raio — o centro não se move (`camada_dabs`) —, e a escala usada aqui é o **máximo**
+    /// sobre as camadas vivas.
+    pub(super) fn caixa_do_lote(&self, dabs: &[Dab]) -> Option<Region> {
+        let escala = self.escala_do_carimbo();
+        dabs.iter().fold(None, |acc, d| {
+            match (acc, self.dab_bbox(d.center, d.radius_px * escala)) {
+                (Some(a), Some(r)) => Some(super::union_region(a, r)),
+                (a, r) => a.or(r),
+            }
+        })
+    }
+
     /// Copy the RGBA8 pixels of `rect` out of `canvas_rgba` (row-major over the region).
     pub(super) fn save_region(&self, rect: &Region) -> Vec<u8> {
         let stride = self.source_size.0 as usize * 4;
@@ -246,4 +291,12 @@ mod dab_bounds_tests {
     fn an_empty_dab_list_writes_nowhere() {
         assert_eq!(dabs_bounds(&[], 256, 256), None);
     }
+}
+
+#[cfg(test)]
+thread_local! {
+    /// **A bissecção da cura de 2026-09-21:** ligada, a pegada do descasque volta a ser a do raio do
+    /// PINCEL, que é o defeito. ⚠️ Um CAMPO e não uma env var — *um gate que lê o ambiente mede a
+    /// máquina*.
+    pub(super) static CAIXA_DO_PINCEL: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }

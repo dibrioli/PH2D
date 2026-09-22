@@ -218,6 +218,62 @@ pub fn acende_imagem_com(
     Ok(out)
 }
 
+/// ⭐⭐⭐⭐ **O PREENCHIMENTO DA BORDA — a forma do vizinho COBERTO, para um texel vazio.**
+///
+/// ⛔⛔ **Report do dono, 2026-09-21 (2.º sobre a mesma orla, com foto):** *«não resolveu. é o
+/// branco de baixo com alpha ruim»*. Ele acertou no plano: medido no caminho do produto e na
+/// placa, o último texel da peça lê `131,135,143` com alfa `255` e o seguinte lê **`255,255,255`
+/// com alfa `0`** — fora da silhueta a normal do G-buffer é degenerada, a lei cai no **albedo
+/// verbatim**, e com [`Planos::materia_da_forma`] esse albedo é branco puro.
+///
+/// ⚠️ **O alfa `0` não basta, e é isso que engana:** uma amostragem bilinear entre os dois texels
+/// devolve `mix(131, 255) = 193` com alfa `128`, que sobre o fundo dá **`160` contra `131` do
+/// miolo** — um fio *mais claro* que a peça, com a largura de um texel e a forma da grelha. É a
+/// «outline branca pixelada».
+///
+/// ⭐ **A cura é a da indústria e tem nome: *edge padding* / *alpha bleed*.** O texel vazio herda a
+/// FORMA dos vizinhos cobertos — normal e oclusão —, e a lei acende-o com ela; o alfa continua `0`,
+/// logo nada de novo se vê, e o que a filtragem encontra do outro lado da borda passa a ser a mesma
+/// luz. ⚠️ **Um anel basta** para a magnificação bilinear, que amostra no máximo um texel de
+/// distância; mipmaps pediriam mais, e isso está declarado.
+///
+/// ⛔ **A média e não «o primeiro que aparecer»:** com a cobertura BINÁRIA que o G-buffer entrega,
+/// escolher um vizinho seria escolher pela ORDEM da varredura — e as duas redacções da lei (esta e
+/// o gémeo em WGSL) teriam de concordar nessa ordem para a paridade fechar. *Uma média é simétrica
+/// e não tem ordem.*
+///
+/// Devolve `None` quando nenhum vizinho tem cobertura — ali o texel nunca é amostrado.
+fn forma_do_vizinho(p: &Planos, i: usize) -> Option<([f32; 3], f32)> {
+    let (w, h) = (p.size.0 as usize, p.size.1 as usize);
+    let (x, y) = (i % w, i / w);
+    let (mut n, mut occ, mut quantos) = ([0.0f32; 3], 0.0f32, 0u32);
+    for dy in -1i32..=1 {
+        for dx in -1i32..=1 {
+            if dx == 0 && dy == 0 {
+                continue;
+            }
+            let (vx, vy) = (x as i32 + dx, y as i32 + dy);
+            if vx < 0 || vy < 0 || vx >= w as i32 || vy >= h as i32 {
+                continue;
+            }
+            let k = vy as usize * w + vx as usize;
+            if p.form[k * 4 + 3] <= 0.0 {
+                continue;
+            }
+            n[0] += p.form[k * 4];
+            n[1] += p.form[k * 4 + 1];
+            n[2] += p.form[k * 4 + 2];
+            occ += p.form_occ[k];
+            quantos += 1;
+        }
+    }
+    if quantos == 0 {
+        return None;
+    }
+    let inv = 1.0 / quantos as f32;
+    Some(([n[0] * inv, n[1] * inv, n[2] * inv], occ * inv))
+}
+
 /// ⭐ **A LEI, sobre uma faixa** — e a única cópia dela neste ficheiro.
 ///
 /// `i0` é o índice do primeiro texel da faixa, e `fatia` são os bytes `RGBA` dela, que chegam com o
@@ -239,10 +295,16 @@ fn acende_faixa(
     // ⚠️ `as_chunks_mut` e não `chunks_exact_mut(4)`: com um tamanho constante o clippy pede o
     // primeiro, e ele dá um `&mut [u8; 4]` — o índice deixa de poder sair da casa.
     for (j, px) in fatia.as_chunks_mut::<4>().0.iter_mut().enumerate() {
+        // ⭐⭐⭐⭐ **O PREENCHIMENTO DA BORDA** — ver [`forma_do_vizinho`]: com a matéria a ser a
+        // forma, um texel VAZIO herda a forma dos vizinhos cobertos em vez de devolver o albedo
+        // branco. É o 2.º report da orla, e o alfa dele continua `0`.
+        let emprestada = (p.materia_da_forma && p.form[(i0 + j) * 4 + 3] <= 0.0)
+            .then(|| forma_do_vizinho(p, i0 + j))
+            .flatten();
         let t = Texel {
             normal: {
                 let f = (i0 + j) * 4;
-                [p.form[f], p.form[f + 1], p.form[f + 2]]
+                emprestada.map_or([p.form[f], p.form[f + 1], p.form[f + 2]], |(n, _)| n)
             },
             // ⭐⭐⭐ **DESCODIFICA — e esta metade é OBRIGATÓRIA assim que a outra existe.**
             //
@@ -283,7 +345,7 @@ fn acende_faixa(
             } else {
                 p.form[(i0 + j) * 4 + 3]
             },
-            oclusao: p.form_occ[i0 + j],
+            oclusao: emprestada.map_or(p.form_occ[i0 + j], |(_, o)| o),
         };
         let c = acende_texel(s, &t, lampadas, ceu, olhar);
         for k in 0..3 {

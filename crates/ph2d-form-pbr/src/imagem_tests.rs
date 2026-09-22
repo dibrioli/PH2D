@@ -590,48 +590,41 @@ fn com_a_materia_da_forma_o_albedo_e_o_neutro() {
     );
 }
 
-/// ⭐⭐⭐⭐ **NÃO HÁ DEGRAU DE ALBEDO NA BORDA** — a orla branca do report de 2026-09-21.
+/// ⭐⭐⭐⭐ **NÃO HÁ DEGRAU DE ALBEDO ATRAVESSANDO A BORDA** — a orla branca, nos dois reports.
 ///
-/// ⛔⛔ **O report, com foto:** *«funcionou mas o objeto fica com uma outline branca pixelada
-/// indesejada»*, sobre a silhueta recortada que a wave anterior destravou.
+/// ⛔⛔ **Report do dono (2026-09-21):** *«funcionou mas o objeto fica com uma outline branca
+/// pixelada indesejada»* e, depois da 1.ª cura, *«não resolveu. é o branco de baixo com alpha
+/// ruim»*.
 ///
-/// **O mecanismo:** a mistura do [`super::super::acende_texel`] é uma **COMPOSIÇÃO sobre o
-/// albedo** — num texel de borda meio coberto, metade do pixel é a arte por baixo e metade é a
-/// peça. Ela está certa quando existe arte por baixo. Com a matéria a ser a forma **não existe**:
-/// o albedo é o neutro (branco) e o que está por baixo é *nada*, dito pelo alfa. ⇒ fora da
-/// silhueta a lei devolvia **branco puro** ao lado de um miolo **ACESO** (medido: `255` contra
-/// `183`, **`72` códigos**), e toda amostragem bilinear através da borda arrasta esse degrau para
-/// dentro dela. É a orla, e ela é **pixelada** porque segue a silhueta rasterizada.
+/// **O mecanismo, medido no caminho do produto e na placa:** o último texel da peça lê
+/// `131,135,143` com alfa `255` e o seguinte lê `255,255,255` com alfa `0` — fora da silhueta a
+/// normal do G-buffer é **degenerada**, a lei cai no **albedo verbatim**, e com
+/// [`Planos::materia_da_forma`] ele é branco puro. ⚠️ O alfa `0` não basta: uma amostragem bilinear
+/// devolve `mix(131,255) = 193` com alfa `128`, que sobre o fundo dá `160` contra `131` do miolo.
 ///
-/// ⚠️⚠️ **E isto era uma premissa MINHA, escrita como decisão:** o `§11.7` do `docs/Render3d/17`
-/// dizia que o branco fora da silhueta era *«deliberado e melhor, porque branco ao pé de branco não
-/// deixa orla escura»*. Ele comparava o exterior com o **ALBEDO** (branco) em vez de com a
-/// **SAÍDA** (o cinzento aceso). *Uma troca declarada sem a medição ao lado é um palpite com cara
-/// de decisão.*
-///
-/// ⭐ A cura é a cobertura entrar **cheia** na lei, porque ela já viaja no alfa.
+/// ⛔⛔⛔ **E a 1.ª redacção deste gate ficou VERDE sobre esse defeito**, porque a fixtura dela
+/// escrevia uma normal VÁLIDA fora da silhueta — logo a lei acendia-a em vez de cair no albedo.
+/// *Uma fixtura que não contém o fenómeno lê-se exactamente como uma lei que já o cura*, e quem o
+/// apanhou foi a foto do dono, pela segunda vez. ⇒ aqui a forma fora da peça é **ZERO**, que é o
+/// que o rasterizador de facto deixa.
 #[test]
-fn a_materia_da_forma_nao_deixa_um_degrau_de_albedo_na_borda() {
+fn a_materia_da_forma_nao_deixa_um_degrau_de_albedo_atravessando_a_borda() {
     let s = superficie();
     let (w, h) = (48u32, 48u32);
     let n = (w * h) as usize;
     let (mut base, mut form) = (vec![0u8; n * 4], vec![0f32; n * 4]);
     let occ = vec![1f32; n];
-    // Um disco: metade esquerda dentro, metade direita fora. O que se mede é o DEGRAU entre os
-    // dois lados da fronteira, que é o que a filtragem mistura.
     let (cx, cy, r) = (23.5f32, 23.5, 16.0);
     for i in 0..n {
         let (x, y) = ((i as u32 % w) as f32, (i as u32 / w) as f32);
-        let d = ((x - cx).powi(2) + (y - cy).powi(2)).sqrt();
-        let dentro = d <= r;
+        if ((x - cx).powi(2) + (y - cy).powi(2)).sqrt() > r {
+            continue; // ⚠️ **ZERO fora da peça** — ver o cabeçalho: é o que o G-buffer deixa.
+        }
         form[i * 4] = (x - cx) / r * 0.4;
         form[i * 4 + 1] = (y - cy) / r * 0.4;
         form[i * 4 + 2] = 1.0;
-        form[i * 4 + 3] = f32::from(dentro);
-        // O `base` VESTIDO, letra por letra o que o `veste_a_forma` escreve.
-        if dentro {
-            base[i * 4..i * 4 + 4].copy_from_slice(&[255, 255, 255, 255]);
-        }
+        form[i * 4 + 3] = 1.0;
+        base[i * 4..i * 4 + 4].copy_from_slice(&[255, 255, 255, 255]);
     }
     let acende = |b: &[u8], m: bool| {
         acende_imagem_com(
@@ -650,33 +643,51 @@ fn a_materia_da_forma_nao_deixa_um_degrau_de_albedo_na_borda() {
         )
         .unwrap()
     };
-    // O degrau: o miolo contra o texel logo a seguir à fronteira, na mesma linha.
+    let out = acende(&base, true);
     let linha = (h / 2) as usize;
-    let degrau = |px: &[u8]| {
-        let miolo = i32::from(px[(linha * w as usize + (cx as usize)) * 4]);
-        let fora = i32::from(px[(linha * w as usize + (cx as usize + r as usize + 3)) * 4]);
-        (fora - miolo).abs()
-    };
-
-    let vestido = degrau(&acende(&base, true));
+    let em = |x: usize| i32::from(out[(linha * w as usize + x) * 4]);
+    // O último coberto e o primeiro vazio — o par que uma amostragem bilinear mistura.
+    let ultimo = (0..w as usize)
+        .rfind(|x| out[(linha * w as usize + x) * 4 + 3] > 0)
+        .expect("controlo: a peça tem de ter silhueta nesta linha");
+    let degrau = (em(ultimo + 1) - em(ultimo)).abs();
     assert!(
-        vestido <= 4,
-        "a matéria da forma deixa um degrau de {vestido} códigos na borda — é a orla branca que o \
-         dono fotografou, e ela nasce de a cobertura ser aplicada DUAS vezes (na cor e no alfa)"
+        degrau <= 4,
+        "o texel logo a seguir à silhueta lê {} contra {} do último coberto ({degrau} códigos) — \
+         é a orla branca do report, e uma filtragem bilinear arrasta-a para dentro da borda",
+        em(ultimo + 1),
+        em(ultimo)
+    );
+    // ⭐⭐ **O CONTROLO, e é ele que prova que a fixtura CONTÉM o fenómeno:** o preenchimento é de
+    // UM anel — o alcance de uma amostragem bilinear a magnificar —, logo dois texels para fora a
+    // lei ainda devolve o albedo branco. *Sem esta metade o gate ficava verde sobre uma lei que
+    // nunca tivesse produzido branco nenhum, que foi exactamente o que a 1.ª redacção fez.*
+    assert_eq!(
+        em(ultimo + 2),
+        255,
+        "controlo: a DOIS texels da peça a lei tem de devolver o albedo branco — é o defeito que \
+         o anel de preenchimento fecha, e ele tem de ser reproduzível"
+    );
+    // ⛔ **E o anel não engorda a peça:** ele dá COR, nunca visibilidade.
+    assert_eq!(
+        out[(linha * w as usize + ultimo + 1) * 4 + 3],
+        0,
+        "o anel de preenchimento tem alfa ZERO — se ele entrasse no alfa, a silhueta crescia um \
+         texel a cada acendida"
     );
 
-    // ⭐⭐ **O CONTROLO, e ele é uma lei CERTA e não um defeito:** com arte por baixo — um cartão
-    // branco OPACO — o texel fora da silhueta É o cartão, logo o degrau existe e tem de existir.
-    // *Sem esta metade a régua acima ficaria verde sobre uma lei que devolvesse sempre a mesma
-    // cor, e não saberíamos que ela é capaz de LER um degrau.*
+    // ⭐⭐ **E o outro CONTROLO é uma lei CERTA:** com arte por baixo — um cartão branco OPACO — o
+    // texel fora da silhueta É o cartão, logo o degrau existe e tem de existir.
     let mut cartao = base.clone();
     for p in cartao.as_chunks_mut::<4>().0 {
         *p = [255, 255, 255, 255];
     }
-    let com_arte = degrau(&acende(&cartao, false));
+    let com_arte = acende(&cartao, false);
+    let d = i32::from(com_arte[(linha * w as usize + ultimo + 1) * 4])
+        - i32::from(com_arte[(linha * w as usize + ultimo) * 4]);
     assert!(
-        com_arte >= 40,
-        "controlo: sobre um cartão branco o degrau é a própria arte e tem de ser legível \
-         ({com_arte} códigos) — a régua tem de saber ler um degrau"
+        d >= 40,
+        "controlo: sobre um cartão branco o degrau é a própria arte e tem de ser legível ({d} \
+         códigos) — a régua tem de saber LER um degrau"
     );
 }

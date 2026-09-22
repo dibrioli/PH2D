@@ -393,3 +393,62 @@ fn catavento_com_materia_da_forma_a_silhueta_segue_a_peca() {
         "controlo: sem a lei o alfa é o do `base` (opaco) nas duas poses — é isso o report"
     );
 }
+
+/// SONDA (versionada): o PERFIL da borda, no caminho do produto e na placa.
+///
+/// ⛔ Ela existe porque o 2.º report da orla (*«é o branco de baixo com alpha ruim»*) aponta para
+/// um plano que a lei não devia estar a ler — e as duas hipóteses (a lei contra o `base`) só se
+/// separam olhando os quatro canais, texel a texel, atravessando a silhueta.
+///
+/// ```text
+/// bash scripts/ph2d-run.sh env PH2D_GPU=1 cargo test -p ph2d-app-sculpt3d --release \
+///     diag_o_perfil_da_borda -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda: imprime o perfil, nao afirma nada"]
+fn diag_o_perfil_da_borda() {
+    let Some(gpu) = placa() else {
+        eprintln!("sem placa — a sonda desiste");
+        return;
+    };
+    let esfera = ph2d_mesh::shapes::uv_sphere(48, 64, 1.0);
+    let px = um_quadro_com(&gpu, esfera, PoseDaForma::default(), true);
+    let linha = (LADO / 2) as usize;
+    eprintln!("\n  a linha do meio, do miolo para fora (materia_da_forma = true):");
+    eprintln!("    x     R    G    B     A");
+    let mut ultimo_opaco = 0usize;
+    for x in 0..LADO as usize {
+        if px[(linha * LADO as usize + x) * 4 + 3] > 0 {
+            ultimo_opaco = x;
+        }
+    }
+    for x in ultimo_opaco.saturating_sub(8)..=(ultimo_opaco + 4).min(LADO as usize - 1) {
+        let i = (linha * LADO as usize + x) * 4;
+        eprintln!(
+            "  {x:>4}  {:>4} {:>4} {:>4}  {:>4}{}",
+            px[i],
+            px[i + 1],
+            px[i + 2],
+            px[i + 3],
+            if x == ultimo_opaco {
+                "   <- ultimo opaco"
+            } else {
+                ""
+            }
+        );
+    }
+    // E o mesmo com a lei desligada, para ver o que o `base` tem lá.
+    let esfera = ph2d_mesh::shapes::uv_sphere(48, 64, 1.0);
+    let sem = um_quadro_com(&gpu, esfera, PoseDaForma::default(), false);
+    eprintln!("\n  o mesmo com materia_da_forma = FALSE (o `base` manda):");
+    for x in ultimo_opaco.saturating_sub(8)..=(ultimo_opaco + 4).min(LADO as usize - 1) {
+        let i = (linha * LADO as usize + x) * 4;
+        eprintln!(
+            "  {x:>4}  {:>4} {:>4} {:>4}  {:>4}",
+            sem[i],
+            sem[i + 1],
+            sem[i + 2],
+            sem[i + 3]
+        );
+    }
+}

@@ -76,8 +76,8 @@ fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
     // que é RELATIVO e trata estes bytes como códigos de propósito. *Cada lei paga a convenção
     // dela na porta dela.* Ver o cabeçalho da [`ph2d_form_pbr::imagem`].
     let px = textureLoad(base_tex, p, 0);
-    let f = textureLoad(form_tex, p, 0);
-    let occ = textureLoad(occ_tex, p, 0).r;
+    var f = textureLoad(form_tex, p, 0);
+    var occ = textureLoad(occ_tex, p, 0).r;
     // ⭐⭐⭐⭐ **SEM ARTE, o albedo é o NEUTRO** — ver `BakedForm::materia_da_forma`. É exactamente
     // o branco que o `veste_a_forma` grava no `base`, logo na pose em que o bake correu isto não
     // muda um bit; o que ele compra é a peça poder VIRAR sem arrastar o recorte do primeiro gesto.
@@ -88,6 +88,36 @@ fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
     // porque ele não pode ler o `g` directamente.
     ceu_base = g.ceu_base.rgb;
     ceu_inclinacao = g.ceu_inclinacao.rgb;
+
+    // ⭐⭐⭐⭐ **O PREENCHIMENTO DA BORDA** — o gémeo do `ph2d_form_pbr::imagem::forma_do_vizinho`,
+    // onde o report, a medição e o porquê da MÉDIA estão escritos. Um texel vazio herda a forma dos
+    // vizinhos cobertos; o alfa dele continua `0`.
+    //
+    // ⚠️ **A ordem da varredura é a mesma dos dois lados** (`dy` de `-1` a `1`, `dx` dentro), e com
+    // a soma em `f32` isso é o que faz a paridade fechar ao bit.
+    let cobertura_propria = f.w;
+    if (materia_e_a_forma && cobertura_propria <= 0.0) {
+        var soma = vec3<f32>(0.0);
+        var soma_occ = 0.0;
+        var quantos = 0.0;
+        for (var dy = -1; dy <= 1; dy = dy + 1) {
+            for (var dx = -1; dx <= 1; dx = dx + 1) {
+                if (dx == 0 && dy == 0) { continue; }
+                let v = p + vec2<i32>(dx, dy);
+                if (v.x < 0 || v.y < 0 || v.x >= i32(dim.x) || v.y >= i32(dim.y)) { continue; }
+                let vf = textureLoad(form_tex, v, 0);
+                if (vf.w <= 0.0) { continue; }
+                soma = soma + vf.xyz;
+                soma_occ = soma_occ + textureLoad(occ_tex, v, 0).r;
+                quantos = quantos + 1.0;
+            }
+        }
+        if (quantos > 0.0) {
+            let inv = 1.0 / quantos;
+            f = vec4<f32>(soma * inv, f.w);
+            occ = soma_occ * inv;
+        }
+    }
 
     // ⭐⭐⭐⭐ **A cobertura entra CHEIA quando a matéria é a forma, porque ela já vai no ALFA** —
     // aplicá-la duas vezes é a orla branca do report de 2026-09-21. A mistura do
@@ -115,7 +145,13 @@ fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
     // ⚠️ E a quantização é nossa, não do backend — ver o cabeçalho do módulo.
     // ⭐ A CURVA vem ANTES dela, e a ordem é load-bearing: quantizar o linear e codificar depois
     // dava os degraus do linear espalhados pela curva (bandas visíveis no escuro).
-    let alfa = select(px.a, floor(clamp(f.w, 0.0, 1.0) * 255.0 + 0.5) / 255.0, materia_e_a_forma);
+    // ⚠️ **A cobertura PRÓPRIA e não a emprestada**: o preenchimento dá COR ao texel vazio e nunca
+    // o torna visível — se ele entrasse aqui, a silhueta crescia um texel a cada acendida.
+    let alfa = select(
+        px.a,
+        floor(clamp(cobertura_propria, 0.0, 1.0) * 255.0 + 0.5) / 255.0,
+        materia_e_a_forma,
+    );
     let q = floor(linear_to_srgb(c) * 255.0 + 0.5) / 255.0;
     textureStore(saida, p, vec4<f32>(q, alfa));
 }

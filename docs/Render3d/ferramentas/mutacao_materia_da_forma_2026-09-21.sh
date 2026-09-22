@@ -97,6 +97,12 @@ muta "a cobertura entra CHEIA (CPU)" "$PBR" \
             } else {' 1 \
   a_materia_da_forma_nao_deixa_um_degrau ph2d-form-pbr
 
+# (2-ter) O texel vazio deixa de herdar a forma do vizinho — a orla do 2.º report.
+muta "o PREENCHIMENTO da borda (CPU)" "$PBR" \
+  'let emprestada = (p.materia_da_forma && p.form[(i0 + j) * 4 + 3] <= 0.0)' \
+  'let emprestada = (false && p.form[(i0 + j) * 4 + 3] <= 0.0)' 1 \
+  a_materia_da_forma_nao_deixa_um_degrau ph2d-form-pbr
+
 echo
 echo "== O GÉMEO NA PLACA (precisa de adapter) =="
 
@@ -108,8 +114,8 @@ muta "o albedo é o NEUTRO (WGSL)" "$WGSL" \
 
 # (4) O alfa do shader volta a atravessar o do `base`.
 muta "o alfa é a COBERTURA deste quadro (WGSL)" "$WGSL" \
-  'let alfa = select(px.a, floor(clamp(f.w, 0.0, 1.0) * 255.0 + 0.5) / 255.0, materia_e_a_forma);' \
-  'let alfa = px.a;' 1 \
+  'floor(clamp(cobertura_propria, 0.0, 1.0) * 255.0 + 0.5) / 255.0,' \
+  'px.a,' 1 \
   a_placa_e_a_regua_concordam_no_pixel ph2d-form-donation --release -- --ignored
 
 # (4-bis) O gémeo aplica a cobertura duas vezes.
@@ -117,6 +123,20 @@ muta "a cobertura entra CHEIA (WGSL)" "$WGSL" \
   'let cobertura = select(f.w, 1.0, materia_e_a_forma);' \
   'let cobertura = f.w;' 1 \
   a_placa_e_a_regua_concordam_no_pixel ph2d-form-donation --release -- --ignored
+
+# (4-ter) O gémeo não preenche a borda.
+muta "o PREENCHIMENTO da borda (WGSL)" "$WGSL" \
+  'if (materia_e_a_forma && cobertura_propria <= 0.0) {' \
+  'if (false && cobertura_propria <= 0.0) {' 1 \
+  a_placa_e_a_regua_concordam_no_pixel ph2d-form-donation --release -- --ignored
+
+# (4-quater) O anel de preenchimento entra no ALFA e a silhueta engorda.
+muta "o anel NAO engorda a peca (CPU)" "$PBR" \
+  'let cobertura = p.form[(i0 + j) * 4 + 3];
+            px[3] = (cobertura.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;' \
+  'let cobertura = if emprestada.is_some() { 1.0 } else { p.form[(i0 + j) * 4 + 3] };
+            px[3] = (cobertura.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;' 1 \
+  a_materia_da_forma_nao_deixa_um_degrau ph2d-form-pbr
 
 # (5) O bit nunca sobe ao uniform — a lei existe dos dois lados e o shader nunca a vê.
 muta "o bit chega ao uniform" "$PASSE" \

@@ -951,11 +951,59 @@ de sprite vazio já escrevia branco onde a peça não está. O que esta wave fez
 **visível e móvel** — antes ela estava congelada dentro de um cartão. ⭐ A cura cobre exactamente a
 população certa **por construção**: `materia_da_forma` é `vestidos > 0`, logo *vestido ⟺ curado*.
 
+### §11.7-ter — ⛔⛔⛔ E ela NÃO estava curada: o 2.º report, e a régua que não continha o fenómeno
+
+> *«não resolveu. é o branco de baixo com alpha ruim»* — o dono, com foto.
+
+**Ele acertou no plano.** Medido no caminho do PRODUTO e na placa (a sonda `diag_o_perfil_da_borda`,
+versionada), a linha do meio de uma esfera:
+
+| x | R,G,B | alfa | |
+|---|---|---|---|
+| `190` | `131,135,143` | `255` | último texel da peça |
+| `191` | **`255,255,255`** | `0` | |
+| `192`+ | `255,255,255` | `0` | |
+
+⇒ a cura da §11.7-bis endireitou a **mistura** e não tocou no que está **fora**: ali a normal do
+G-buffer é **degenerada** (o rasterizador deixa zeros), a lei cai no **albedo verbatim**, e com esta
+bandeira ele é branco puro.
+
+⚠️⚠️ **O alfa `0` não basta, e é isso que engana.** Uma amostragem bilinear entre `190` e `191`
+devolve `mix(131, 255) = 193` com alfa `128`, que sobre o fundo dá **`160` contra `131`** do miolo —
+*um fio mais claro que a peça*, com a largura de um texel e a forma da grelha. É a orla, e é por isso
+que ela é **pixelada**.
+
+⭐ **A cura é a da indústria e tem nome: *edge padding* / *alpha bleed*.** O texel vazio herda a
+FORMA dos vizinhos cobertos — a média das normais e da oclusão — e a lei acende-o com ela; o **alfa
+continua `0`**, logo nada de novo se vê. Medido no mesmo sítio: `191` passa a ler **`131,135,143`**,
+o degrau através da borda vai a **`0`**, e a paridade placa↔régua continua **`100,000 %`, pior `0`**.
+
+⛔ **A MÉDIA e não «o primeiro vizinho»:** com a cobertura BINÁRIA que o G-buffer entrega, escolher
+um seria escolher pela ORDEM da varredura, e as duas redacções da lei teriam de concordar nessa
+ordem para a paridade fechar. *Uma média é simétrica e não tem ordem* — e o que faz a paridade fechar
+ao bit é a varredura ser a mesma dos dois lados (`dy` de `−1` a `1`, `dx` dentro).
+
+⚠️ **UM anel, e o recurso é a AMOSTRAGEM:** a magnificação bilinear lê no máximo um texel de
+distância. ⏳ **Mipmaps pediriam mais** — declarado, não medido, e o gate afirma-o pelo lado
+positivo: a dois texels a lei **tem** de voltar ao branco.
+
+⛔⛔⛔ **E A 1.ª REDACÇÃO DO GATE FICOU VERDE SOBRE ISTO.** A fixtura dela escrevia uma normal
+**válida** fora da silhueta, logo a lei acendia-a em vez de cair no albedo — *uma fixtura que não
+contém o fenómeno lê-se exactamente como uma lei que já o cura*. Quem o apanhou foi a foto do dono,
+**pela segunda vez no mesmo assunto**. ⇒ hoje a forma fora da peça é **ZERO** na fixtura, que é o que
+o rasterizador deixa, e o gate leva **três** controlos: o degrau na borda · o branco a dois texels
+(a prova de que ele reproduz o defeito) · e o cartão arted, onde o degrau é uma lei CERTA.
+
+⏳ **ABERTO e declarado:** a cobertura que o G-buffer entrega é **BINÁRIA** (`255` e depois `0`, sem
+um valor pelo meio) — não há anti-serrilhado na rasterização da forma. ⇒ a silhueta de um recorte é
+**dura**, e num zoom alto isso lê-se como escada. É outra grandeza e outra wave (MSAA ou super-
+amostragem no `form_plane_for`), com custo por medir.
+
 ⚠️ **E o vestir tem memória:** depois de o artista pintar um traço na tela, o sprite deixa de estar
 vazio ⇒ o bake seguinte não veste, `materia_da_forma` volta a `false`, e a silhueta passa a ser a da
 ARTE. *É a resposta certa, e é a razão de o facto ser do gesto que assa e não da cena.*
 
-**14 provas de mutação, todas a sangrar** — `docs/Render3d/ferramentas/mutacao_materia_da_forma_2026-09-21.sh`.
+**17 provas de mutação, todas a sangrar** — `docs/Render3d/ferramentas/mutacao_materia_da_forma_2026-09-21.sh`.
 
 ---
 
@@ -965,6 +1013,9 @@ ARTE. *É a resposta certa, e é a razão de o facto ser do gesto que assa e nã
 
 | o que | porquê | onde |
 |---|---|---|
+| ⛔ ~~a cura da mistura (§11.7-bis) como suficiente~~ | **REFUTADA pela foto seguinte**: ela endireita a MISTURA e não toca no que está FORA, onde a normal é degenerada e a lei cai no albedo branco | §11.7-ter |
+| escolher «o primeiro vizinho coberto» no preenchimento | com cobertura binária isso é escolher pela ORDEM da varredura, e as duas redacções teriam de a partilhar para a paridade fechar | §11.7-ter |
+| o anel de preenchimento entrar no ALFA | ele dá COR e nunca visibilidade — no alfa, a silhueta engordaria um texel a cada acendida | §11.7-ter |
 | ⛔ ~~o branco fora da silhueta como halo «melhor»~~ | **REFUTADA pela foto do dono no dia seguinte**: a comparação era com o ALBEDO (branco) e não com a SAÍDA (o aceso, `183`) — `72` códigos de degrau, que é a orla | §11.7 |
 | aplicar a cobertura na COR quando a matéria é a forma | ela já viaja no alfa; aplicá-la duas vezes puxa a borda para o branco do vestido | §11.7-bis |
 | uma regra de vestir/recortar por TEXEL | num sprite com arte desenhada ela enche de branco a volta do desenho sempre que a malha for maior — *a pergunta é «este sprite tem arte?» e responde-se UMA vez* | §11.3 |

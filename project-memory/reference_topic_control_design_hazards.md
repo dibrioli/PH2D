@@ -158,3 +158,28 @@ coordenada do pintor, e resolvê-la do outro lado seria a segunda cópia do `ban
   controlo errado é pior do que balão nenhum*. E **uma régua que lê a DECLARAÇÃO nunca vê o FIO**
   (apagar o laço que semeia os balões deixava as duas metades declarativas verdes) ⇒ a terceira
   metade mede o `WidgetStore` **depois** do `populate`.
+- ⛔⛔⛔ **CURAR UM SÍTIO DE UM LITERAL REPETIDO E ESCREVER A CONTAGEM NUM COMENTÁRIO NÃO CURA OS
+  OUTROS — e torna FALSA a frase dos que ficaram.** Medido 2026-09-21 (`line/UIUX`, report do dono
+  com foto: *«apenas o checkbox tem sua moldura e ele próprio menores que o padrão»*). Em
+  2026-09-15 alguém curou a altura de uma linha de marcar e escreveu no sítio curado *«era `18.0`,
+  o MESMO literal em TREZE sítios»* — **quatro** foram curados e **cinco** ficaram, cada um com um
+  comentário a afirmar `igual à das irmãs`, *uma frase que era verdade no dia em que foi escrita e
+  que a cura da irmã tornou falsa sem nada deixar de compilar*. ⚠️ **A contagem num comentário é um
+  censo que se CORRE, nunca uma frase que se escreve** — e enquanto ela for prosa, a única régua
+  capaz de achar os que sobraram é o olho do dono.
+  ⭐⭐ **O mecanismo por baixo é DUAS GRANDEZAS COM NOMES PARECIDOS:** a altura de uma LINHA
+  (`ROW_H_PX = 22`) e a aresta da MARCA (`CHECKBOX_BOX_PX = 18`). A marca vive DENTRO da caixa com
+  um recuo de cada lado (`lado = min(aresta, altura − 2·Xs)`), logo escrever a segunda onde se
+  pedia a primeira **encolhe as duas coisas de uma vez** — a moldura `22 → 18` e a marca `14 → 10`.
+  *As duas queixas do report eram um número só.*
+  ⭐⭐⭐ **A cura de um literal repetido é a PORTA QUE NÃO O ACEITA, nunca o valor certo escrito N
+  vezes:** os cinco sítios eram a montagem à mão de quatro passos que uma porta já existente
+  (`paint_check_row`) substitui, e dois deles eram **cópias locais** dela. Pela porta não há
+  argumento de altura — não há onde reescrever o literal. ⭐ E de graça ela trouxe a coluna da
+  SECÇÃO (à mão as linhas usavam a de omissão, logo *o nome de uma linha de marcar caía num `x` e o
+  da linha de número acima dela noutro*).
+  ⚠️⚠️ **E o preço de passar pela porta apareceu num GATE, não num smoke:** a lista de nomes com
+  que uma secção mede a coluna não continha os das linhas de marcar, logo ao entrar na coluna certa
+  o nome mais comprido saía CORTADO — apanhado pela varredura de elisões, e curado como o
+  comentário ao lado da lista já mandava por escrito. *Uma régua que mede o ECRÃ é o que torna
+  seguro mexer numa coluna.*

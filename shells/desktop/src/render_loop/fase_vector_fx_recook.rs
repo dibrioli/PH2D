@@ -122,70 +122,17 @@ impl crate::App {
             surface.format(),
             sim,
         );
-        // ⚠️ **E os tiles das formas PARAMÉTRICAS** (bug do Enio, 2026-08-20:
-        // *"tudo deve brilhar"*). Irmão do bake acima e no mesmo sítio pela mesma
-        // razão — `renderer` + `gpu` em mão. Só assa o que FALTA, e só o que o
-        // `object_bake` não cobre: as duas rotas partilham o store, então uma
-        // geometria de objeto já tem tile e não pode pagar um segundo.
-        {
-            // ⚠️ **E só assa se HOUVER quem consuma o tile.** Ele existe para o
-            // bright-pass do glow e para mais nada; o `present` já pergunta pelo
-            // `fx.glow` com esta mesma função, e a pergunta é feita AQUI pela MESMA
-            // porta para as duas não divergirem. Sem a guarda, uma forma com um param
-            // animado paga um **readback de GPU por quadro** por um tile que ninguém
-            // lê — e o readback é a metade lenta deste assador, como o doc dele diz.
-            let glows =
-                ph2d_node_fx_glow::from_graph(&motion.doc.graph).is_some_and(|g| g.intensity > 0.0);
-            let ph2d_app_motion::motion_state::MotionState {
-                shape_bake,
-                shape_store,
-                object_bake,
-                pump,
-                ..
-            } = &mut *motion;
-            // ⚠️ **O conjunto VIVO é o de todas as instâncias deste quadro** — é ele
-            // que decide o DESPEJO. O pedido ao assador é um subconjunto (tira o que
-            // o `object_bake` já cobre); despejar por ele largaria um tile que ainda
-            // está em cena. Ver `ShapeBake::evict_outside`, e o OOM que o motivou.
-            let live: std::collections::BTreeSet<u32> = pump
-                .vector_instances
-                .iter()
-                .map(|vi| vi.geometry_id)
-                .collect();
-            // Sem glow ninguém lê tile nenhum, então o conjunto pedido é VAZIO — e o
-            // despejo abaixo corre na mesma, largando o que a sessão já assou.
-            let wanted: Vec<u32> = live
-                .iter()
-                .copied()
-                .filter(|_| glows)
-                .filter(|gid| object_bake.tile_texture_for_gid(*gid).is_none())
-                .collect();
-            // ⚠️ **`PH2D_GLOW_DIAG=1`** diz se este assador correu e o que ele
-            // conseguiu — sem isto, «não assou» e «não foi chamado» leem igual.
-            let asked = wanted.len();
-            shape_bake.bake_missing(
-                shape_store,
-                wanted,
-                surface.gpu(),
-                renderer,
-                surface.format(),
-            );
-            // ⚠️ **E LARGA o que saiu de cena, libertando a textura.** Sem isto um
-            // param de forma animado assa um tile por QUADRO e a placa acaba
-            // (medido: OOM no quadro 19706 da `=76`).
-            let freed = shape_bake.evict_outside(&live, renderer);
-            if freed > 0 && std::env::var_os("PH2D_GLOW_DIAG").is_some() {
-                eprintln!("[glow-diag] assador de formas: tiles largados={freed}");
-            }
-            if asked > 0 && std::env::var_os("PH2D_GLOW_DIAG").is_some() {
-                let done = pump
-                    .vector_instances
-                    .iter()
-                    .filter(|vi| shape_bake.tile_for_gid(vi.geometry_id).is_some())
-                    .count();
-                eprintln!("[glow-diag] assador de formas: pedidas={asked} com_tile_agora={done}");
-            }
-        }
+        // ⚠️ **E os tiles das formas PARAMÉTRICAS** — assados, e desde 2026-09-21 também
+        // PARTICIONADOS pelo LOD. Vive numa função própria porque é um assunto próprio (e o tecto
+        // de LOC da fase obrigou-o a acontecer no dia certo): aqui compõe-se a fase, ali
+        // decide-se quem desenha crisp e quem desenha como tile.
+        assa_e_particiona_tiles_de_forma(
+            motion,
+            cam_affine,
+            surface.gpu(),
+            renderer,
+            surface.format(),
+        );
         // doc 86 §2 (A3): bake the named FLIP objects to tiles, alongside the
         // vector bake. The Flip doc is destructured above (`flip`); the entity
         // map + playhead are disjoint `self` fields. Composes each object's
@@ -200,5 +147,105 @@ impl crate::App {
             sim,
         );
         Some((vec_view, vec_xf, cam_affine, vec_live))
+    }
+}
+
+/// ⭐⭐⭐ **Os tiles das formas paramétricas: assar, PARTICIONAR e despejar** — as três metades do
+/// mesmo assunto, no sítio onde `renderer` + `gpu` estão em mão.
+///
+/// Irmã livre da [`crate::App::fase_vector_fx_recook`] por RESPONSABILIDADE: a fase COMPÕE o
+/// quadro, isto decide **quem desenha crisp e quem desenha como tile**. O corte veio do tecto de
+/// LOC da fase, e o ficheiro ficou melhor do que era.
+fn assa_e_particiona_tiles_de_forma(
+    motion: &mut ph2d_app_motion::motion_state::MotionState,
+    cam_affine: ph2d_vector::Affine,
+    gpu: &ph2d_gpu::GpuContext,
+    renderer: &mut ph2d_render::SpriteRenderer,
+    surface_format: wgpu::TextureFormat,
+) {
+    {
+        // ⚠️ **E só assa se HOUVER quem consuma o tile.** Ele existe para o
+        // bright-pass do glow e para mais nada; o `present` já pergunta pelo
+        // `fx.glow` com esta mesma função, e a pergunta é feita AQUI pela MESMA
+        // porta para as duas não divergirem. Sem a guarda, uma forma com um param
+        // animado paga um **readback de GPU por quadro** por um tile que ninguém
+        // lê — e o readback é a metade lenta deste assador, como o doc dele diz.
+        let glows =
+            ph2d_node_fx_glow::from_graph(&motion.doc.graph).is_some_and(|g| g.intensity > 0.0);
+        let ph2d_app_motion::motion_state::MotionState {
+            shape_bake,
+            shape_store,
+            object_bake,
+            pump,
+            ..
+        } = &mut *motion;
+        // ⚠️ **O conjunto VIVO é o de todas as instâncias deste quadro** — é ele
+        // que decide o DESPEJO. O pedido ao assador é um subconjunto (tira o que
+        // o `object_bake` já cobre); despejar por ele largaria um tile que ainda
+        // está em cena. Ver `ShapeBake::evict_outside`, e o OOM que o motivou.
+        let live: std::collections::BTreeSet<u32> = pump
+            .vector_instances
+            .iter()
+            .map(|vi| vi.geometry_id)
+            .collect();
+        // ⭐⭐⭐ **O LOD DA FORMA — o SEGUNDO consumidor da tile** (report do Enio,
+        // 2026-09-21: *«ao dar o zoom … o app trava. Não seria interessante criar um LOD
+        // para shapes?»*). A guarda acima dizia `glows` porque o bright-pass era o ÚNICO
+        // leitor; medido, a cena `=126` está `5,6×` acima do joelho do LOD e ele movia ZERO
+        // cópias, porque o irmão pergunta ao `ObjectBake` e uma forma paramétrica não tem
+        // `VecPathId`. ⇒ o assador passa a ter dois leitores, e a lei de QUEM é do
+        // `motion_shape_lod` (tamanho no ecrã + contagem), não daqui.
+        let quer = ph2d_app_motion::motion_shape_lod::geometrias_para_lod(
+            &pump.vector_instances,
+            shape_store,
+            cam_affine,
+            ph2d_app_motion::motion_bridge::objects::LOD_COUNT,
+        );
+        // Sem glow E sem LOD ninguém lê tile nenhum, então o conjunto pedido é VAZIO — e o
+        // despejo abaixo corre na mesma, largando o que a sessão já assou.
+        let wanted: Vec<u32> = live
+            .iter()
+            .copied()
+            .filter(|gid| glows || quer.contains(gid))
+            .filter(|gid| object_bake.tile_texture_for_gid(*gid).is_none())
+            .collect();
+        // ⚠️ **`PH2D_GLOW_DIAG=1`** diz se este assador correu e o que ele
+        // conseguiu — sem isto, «não assou» e «não foi chamado» leem igual.
+        let asked = wanted.len();
+        shape_bake.bake_missing(shape_store, wanted, gpu, renderer, surface_format);
+        // **E A PARTIÇÃO** — as geometrias que o LOD quer e que já têm tile passam a
+        // quads de sprite. ⚠️ Corre DEPOIS do assado (a tile do 1.º quadro só existe agora) e
+        // ANTES do despejo, que é o que lê o resultado dela.
+        ph2d_app_motion::motion_shape_lod::aplica_lod_de_forma(
+            &mut pump.instances,
+            &mut pump.vector_instances,
+            shape_bake,
+            &quer,
+        );
+        // ⚠️ **E LARGA o que saiu de cena, libertando a textura.** Sem isto um
+        // param de forma animado assa um tile por QUADRO e a placa acaba
+        // (medido: OOM no quadro 19706 da `=76`).
+        //
+        // ⛔⛔ **O conjunto vivo NÃO é o `live` de cima desde que o LOD existe:** o que ele
+        // moveu já não está em `vector_instances` — está em `instances`, como quad —, e com a
+        // cena parada o cozimento devolve cedo e as duas listas persistem. Despejar pelo
+        // `live` largaria a textura que os quads ainda amostram, para sempre.
+        let vivas = ph2d_app_motion::motion_shape_lod::vivas_com_o_lod(
+            &pump.vector_instances,
+            &pump.instances,
+            shape_bake,
+        );
+        let freed = shape_bake.evict_outside(&vivas, renderer);
+        if freed > 0 && std::env::var_os("PH2D_GLOW_DIAG").is_some() {
+            eprintln!("[glow-diag] assador de formas: tiles largados={freed}");
+        }
+        if asked > 0 && std::env::var_os("PH2D_GLOW_DIAG").is_some() {
+            let done = pump
+                .vector_instances
+                .iter()
+                .filter(|vi| shape_bake.tile_for_gid(vi.geometry_id).is_some())
+                .count();
+            eprintln!("[glow-diag] assador de formas: pedidas={asked} com_tile_agora={done}");
+        }
     }
 }

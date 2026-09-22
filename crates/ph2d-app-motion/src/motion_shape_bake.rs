@@ -81,6 +81,14 @@ pub struct ShapeBake {
 }
 
 impl ShapeBake {
+    /// **As geometrias que este assador tem em cache** — a população que o
+    /// [`vivas_com_o_lod`](crate::motion_shape_lod::vivas_com_o_lod) varre para saber quais tiles
+    /// o LOD ainda está a desenhar. ⚠️ Ela é pequena por construção (uma entrada por geometria
+    /// DISTINTA da cena, não por cópia).
+    pub fn gids(&self) -> Vec<u32> {
+        self.tiles.keys().copied().collect()
+    }
+
     /// O tile de uma geometria, se ela já foi assada.
     pub fn tile_for_gid(&self, geometry_id: u32) -> Option<ShapeTile> {
         self.tiles.get(&geometry_id).copied()

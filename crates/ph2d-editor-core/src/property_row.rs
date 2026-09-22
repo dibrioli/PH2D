@@ -483,3 +483,49 @@ pub fn paint_check_rows(
     }
     cur_y
 }
+
+/// ⭐⭐⭐ **A LINHA DE COR — o nome à esquerda, a amostra a ENCHER a coluna do valor.**
+///
+/// ⛔⛔ **Report do dono, 2026-09-21, com uma foto do Inspector e um DESENHO ao lado:** *«os
+/// seletores de cor de todo o app precisam ser padronizados»*. Ele desenhou a amostra como uma
+/// **barra larga** na coluna do valor — como a caixa de marcar e o campo numérico — e não como o
+/// quadradinho encostado à direita que o app pinta hoje.
+///
+/// ⛔ **MEDIDO no mesmo dia:** o app pinta **`109`** selectores de cor em **CINCO** larguras
+/// diferentes — `18`, `24`, `32`, `120` e `268 px`. ⭐ E a forma que ele desenhou **já existia**,
+/// num painel só: o `authored`, que é o painel gerado por TABELA (`268 px`, a coluna inteira). *O
+/// padrão não foi inventado aqui — foi promovido a porta.*
+///
+/// ⚠️ **Ela não é uma segunda aritmética de colunas:** passa pela [`row_and_layout`], a mesma do
+/// campo e da caixa, com **um** campo — e um campo só recebe a coluna do controlo inteira. É isso
+/// que a alinha com as vizinhas, que é a outra metade do report (*«o alinhamento precisa melhorar
+/// em todos os lugares»*).
+///
+/// ⚠️ **O hit é a BARRA INTEIRA**, não o quadradinho: com o alvo do tamanho do controlo, apontar a
+/// cor deixa de ser pontaria.
+#[allow(clippy::too_many_arguments)]
+pub fn paint_color_row(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    label: &str,
+    id: NodeId,
+    fallback_rgba: [u8; 4],
+    mixed: bool,
+    seccao: Seccao,
+) -> f32 {
+    let (row, _por_linha, _linhas, cw) =
+        row_and_layout(text_system, scene, theme, x, w, y, label, 1, seccao);
+    let rect = Rect::new(row.control.x, row.control.y, cw, ROW_H_PX);
+    // ⚠️ Quem resolve o valor é ESTE lado — ver o doc do `paint_swatch_or_mixed`.
+    let rgba = (!mixed).then(|| store.widget_color(id).unwrap_or(fallback_rgba));
+    crate::widget::paint_swatch_or_mixed(rect, id, rgba, scene, theme);
+    hit_index.register(id, rect);
+    crate::widget::paint_decorator_dot(scene, theme, row.dot);
+    y + ph2d_tokens::row_pitch_px()
+}

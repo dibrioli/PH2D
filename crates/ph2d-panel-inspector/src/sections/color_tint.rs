@@ -16,6 +16,61 @@ use ph2d_i18n::tr;
 /// segunda linha de cor escrita noutro sítio seria uma segunda resposta a *«como se pinta uma
 /// amostra»* — e a coluna de animação (que este ajudante reserva) é exactamente o que a segunda
 /// esqueceria.
+/// ⭐ **A COLUNA de um bloco de linhas de cor** — medida sobre TODOS os nomes do bloco.
+///
+/// ⛔ Sem ela cada linha mede a coluna com o próprio nome e duas vizinhas caem em `x` diferentes,
+/// que é metade do report do dono de 2026-09-21 (*«o alinhamento precisa melhorar em todos os
+/// lugares»*). ⚠️ Ela nasceu porque a MESMA conta ia aparecer em **três** secções (tint ·
+/// partículas · tween) no mesmo commit.
+#[must_use]
+pub(super) fn seccao_de_cores(
+    text_system: &mut TextSystem,
+    rotulos: &[&str],
+) -> ph2d_editor_core::property_row::Seccao {
+    ph2d_editor_core::property_row::Seccao::medida(text_system, 1, rotulos)
+}
+
+/// ⭐⭐⭐ **UM BLOCO DE LINHAS DE COR** — N amostras que partilham a coluna do bloco.
+///
+/// ⛔⛔ Ela nasceu de um TECTO: extrair o par do tween para um irmão levava o `tween_editor.rs`
+/// acima do cap de ficheiro, e a mesma forma já existia nas PARTÍCULAS. ⇒ *duas cópias do mesmo
+/// bloco, a nascer no mesmo commit* — a lei desta casa é que isso é uma PORTA.
+///
+/// ⚠️ **A coluna sai de TODOS os nomes do bloco**, que é o que alinha as linhas entre si — a outra
+/// metade do report do dono de 2026-09-21 sobre alinhamento.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn bloco_de_cores(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    mut y: f32,
+    cores: &[(NodeId, &str, [f32; 4])],
+) -> f32 {
+    let rotulos: Vec<&str> = cores.iter().map(|(_, l, _)| *l).collect();
+    let sec = seccao_de_cores(text_system, &rotulos);
+    for (id, label, rgba) in cores {
+        y = paint_tint_swatch_cell(
+            Rect::new(x, y, w, ph2d_tokens::ROW_H_PX),
+            label,
+            *id,
+            crate::state_tint::tint_f32_to_u8(*rgba),
+            false,
+            store,
+            hit_index,
+            scene,
+            text_system,
+            theme,
+            sec,
+        );
+    }
+    y
+}
+
+#[allow(clippy::too_many_arguments)]
 pub(super) fn paint_tint_swatch_cell(
     cell: Rect,
     label: &str,
@@ -27,92 +82,23 @@ pub(super) fn paint_tint_swatch_cell(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
-) {
-    let label_font = TypeToken::Sm.px();
-    let swatch_px = SwatchSize::Sm.px();
-    // ⭐ A coluna de animação **dentro do ajudante**, não em cada chamador: as três linhas de cor
-    // desta secção passam por aqui, e uma delas a esquecer seria a coluna com dois `x`.
-    let (control_w, dot) =
-        ph2d_editor_core::widget::form_row_columns(cell.x, cell.w, cell.y, cell.h);
-    let cell = Rect::new(cell.x, cell.y, control_w, cell.h);
-    let swatch_rect = Rect::new(
-        cell.x + cell.w - swatch_px,
-        cell.y + (cell.h - swatch_px) * 0.5,
-        swatch_px,
-        swatch_px,
-    );
-    paint_text(
-        text_system,
+    seccao: ph2d_editor_core::property_row::Seccao,
+) -> f32 {
+    ph2d_editor_core::property_row::paint_color_row(
         scene,
-        label,
+        text_system,
+        theme,
+        hit_index,
+        store,
         cell.x,
-        cell.y + (cell.h - label_font) * 0.5,
-        label_font,
-        (cell.w - swatch_px - Spacing::Sm.px()).max(0.0),
-        resolve(ColorToken::Text2, theme),
-    );
-    paint_swatch_or_mixed(
-        swatch_rect,
+        cell.w,
+        cell.y,
+        label,
         swatch_id,
         fallback_rgba,
         mixed,
-        store,
-        scene,
-        theme,
-    );
-    hit_index.register(swatch_id, swatch_rect);
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
-}
-
-/// Paint a color swatch, or — when the value diverges across a
-/// multi-selection (`mixed`) — a neutral chip with a centered dash
-/// (BulkSelect, audit F5). A swatch can't go blank like a NumberInput,
-/// so the dash reuses the Indeterminate-checkbox "Mixed" language to warn
-/// the user that picking a color will collapse the diverging tints. The
-/// hit rect is still registered (clicking opens the picker → applies to
-/// all) — the dash is the warning, not a lock.
-fn paint_swatch_or_mixed(
-    rect: Rect,
-    swatch_id: NodeId,
-    fallback_rgba: [u8; 4],
-    mixed: bool,
-    store: &WidgetStore,
-    scene: &mut VectorScene,
-    theme: Theme,
-) {
-    if mixed {
-        paint_mixed_swatch_rect(rect, scene, theme);
-    } else {
-        let rgba = store.widget_color(swatch_id).unwrap_or(fallback_rgba);
-        let swatch = ColorSwatch::new(swatch_id, "", rgba).size(SwatchSize::Sm);
-        paint_color_swatch(&swatch, rect, scene, theme);
-    }
-}
-
-/// The "Mixed" swatch visual (BulkSelect): a neutral chip with a centered
-/// dash, reusing the Indeterminate-checkbox language. Size-agnostic (fills
-/// whatever `rect` it's given), so both the Tint/Self cells and the 2×2
-/// per-corner grid share it.
-fn paint_mixed_swatch_rect(rect: Rect, scene: &mut VectorScene, theme: Theme) {
-    // ⭐ Raio e moldura pela porta do TEMA: a célula é plana num tema moderno.
-    let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
-    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::Bg2, theme));
-    ph2d_editor_core::paint::stroke_frame(
-        scene,
-        rect,
-        radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
-    paint_icon(
-        scene,
-        IconId::Minus,
-        rect,
-        resolve(ColorToken::Text2, theme),
-        2.0,
-    );
+        seccao,
+    )
 }
 
 /// W2 Sprite Inspector v2 — Color & Tint section (anatomia §03 §3.6).
@@ -188,7 +174,17 @@ pub(crate) fn paint_color_tint_section(
         .as_ref()
         .map(|s| crate::state_tint::tint_f32_to_u8(s.tint))
         .unwrap_or([0xff, 0xff, 0xff, 0xff]); // LITERAL-COLOR-OK: WHITE = tint default
-    paint_tint_swatch_cell(
+    // ⚠️ **A secção das duas linhas de cor é UMA** — a coluna sai dos DOIS nomes, senão a `Tint`
+    //    e a `Self Tint` caem em `x` diferentes, que é metade do report do alinhamento.
+    let sec_tint = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &[
+            tr("panel.inspector.color_tint.tint"),
+            tr("panel.inspector.color_tint.self_tint"),
+        ],
+    );
+    cur_y = paint_tint_swatch_cell(
         Rect::new(x, cur_y, w, field_h),
         tr("panel.inspector.color_tint.tint"),
         ids::INSP_SPRITE_TINT_SWATCH,
@@ -199,15 +195,15 @@ pub(crate) fn paint_color_tint_section(
         scene,
         text_system,
         theme,
+        sec_tint,
     );
-    cur_y += field_h + row_gap;
 
     // Self Tint — local modulate (does NOT cascade).
     let self_seed = sp
         .as_ref()
         .map(|s| crate::state_tint::tint_f32_to_u8(s.self_tint))
         .unwrap_or([0xff, 0xff, 0xff, 0xff]); // LITERAL-COLOR-OK: WHITE = self_tint default
-    paint_tint_swatch_cell(
+    cur_y = paint_tint_swatch_cell(
         Rect::new(x, cur_y, w, field_h),
         tr("panel.inspector.color_tint.self_tint"),
         ids::INSP_SPRITE_SELF_TINT_SWATCH,
@@ -218,8 +214,8 @@ pub(crate) fn paint_color_tint_section(
         scene,
         text_system,
         theme,
+        sec_tint,
     );
-    cur_y += field_h + row_gap;
 
     // Per-corner — 2×2 swatch grid + live bilinear gradient preview +
     // Equalize. Renders via the shader's @location(9..12) attributes.
@@ -361,7 +357,7 @@ fn paint_per_corner_tab(
         live[i] = crate::state_tint::tint_u8_to_f32(rgba);
         let sr = Rect::new(positions[i].0, positions[i].1, swatch_px, swatch_px);
         if per_corner_mixed {
-            paint_mixed_swatch_rect(sr, scene, theme);
+            ph2d_editor_core::widget::paint_mixed_swatch(sr, scene, theme);
         } else {
             let sw = ColorSwatch::new(corner_ids[i], a11y[i], rgba).size(SwatchSize::Md);
             paint_color_swatch(&sw, sr, scene, theme);

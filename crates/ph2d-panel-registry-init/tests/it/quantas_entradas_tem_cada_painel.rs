@@ -2306,3 +2306,289 @@ fn a_altura_de_abertura_de_um_painel_so_encolhe() {
         desceram.join("\n  ")
     );
 }
+
+/// SONDA TEMPORÁRIA — **os selectores de cor do app**: quantos, onde, e com que largura.
+///
+/// ⚠️ A pergunta do dono (2026-09-21) é *«os selectores de cor de todo o app precisam ser
+/// padronizados»*, com um desenho: a amostra deve **encher a coluna do valor**, como a caixa de
+/// marcar, em vez de ser um quadrado encostado à direita.
+#[test]
+#[ignore]
+fn diag_os_selectores_de_cor_do_app() {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    ph2d_editor_core::panel::with_registry(|reg| {
+        let mut total = 0usize;
+        let mut larguras: std::collections::BTreeMap<i32, usize> =
+            std::collections::BTreeMap::new();
+        println!("\n  painel                  cores  larguras distintas");
+        for painel in reg.panels_mut() {
+            let id = painel.manifest.id;
+            let mut host = MockPanelHost::new();
+            let arm = super::paineis_armados::TABELA
+                .iter()
+                .find(|a| a.painel == id);
+            if let Some(a) = arm {
+                (a.arma)(host.store_mut());
+            }
+            painel.populate(host.store_mut());
+            abre_tudo(host.store_mut());
+            let (_, _g) = ph2d_editor_core::widget::composto::medindo(|| {
+                let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
+            });
+            let pintados = host.registos_da_ultima_pintura();
+            let store = host.store();
+            if let Some(a) = arm {
+                (a.desarma)();
+            }
+            let mut w_locais: std::collections::BTreeMap<i32, usize> =
+                std::collections::BTreeMap::new();
+            for (nid, r) in &pintados {
+                // ⚠️ **A 1.ª régua lia `is_picker_swatch` + estado de picker e dava ZERO no
+                //    Inspector** — que é exactamente o painel de onde veio o report. As swatches
+                //    de tint guardam a cor em `widget_color` e não estão naquele conjunto.
+                let e_cor = store.is_picker_swatch(*nid)
+                    || store.widget_color(*nid).is_some()
+                    || matches!(
+                        store.get(*nid),
+                        Some(ph2d_editor_core::interaction::InteractiveState::ColorPicker { .. })
+                            | Some(
+                                ph2d_editor_core::interaction::InteractiveState::BlenderPicker { .. }
+                            )
+                    );
+                if e_cor {
+                    *w_locais.entry(r.w.round() as i32).or_default() += 1;
+                    *larguras.entry(r.w.round() as i32).or_default() += 1;
+                    total += 1;
+                }
+            }
+            if !w_locais.is_empty() {
+                let n: usize = w_locais.values().sum();
+                println!(
+                    "  {id:22} {n:6}  {:?}",
+                    w_locais
+                        .iter()
+                        .map(|(w, c)| format!("{w}px×{c}"))
+                        .collect::<Vec<_>>()
+                );
+            }
+        }
+        println!("\n  TOTAL de selectores de cor pintados: {total}");
+        println!("  larguras no app inteiro: {:?}", larguras);
+    });
+}
+
+/// As larguras distintas com que o app pinta um selector de cor, com quantos há de cada.
+#[cfg(test)]
+fn larguras_dos_selectores_de_cor() -> std::collections::BTreeMap<i32, usize> {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let mut out = std::collections::BTreeMap::new();
+    ph2d_editor_core::panel::with_registry(|reg| {
+        for painel in reg.panels_mut() {
+            let id = painel.manifest.id;
+            let mut host = MockPanelHost::new();
+            let arm = super::paineis_armados::TABELA
+                .iter()
+                .find(|a| a.painel == id);
+            if let Some(a) = arm {
+                (a.arma)(host.store_mut());
+            }
+            painel.populate(host.store_mut());
+            abre_tudo(host.store_mut());
+            let (_, _g) = ph2d_editor_core::widget::composto::medindo(|| {
+                let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
+            });
+            let pintados = host.registos_da_ultima_pintura();
+            let store = host.store();
+            if let Some(a) = arm {
+                (a.desarma)();
+            }
+            for (nid, r) in &pintados {
+                let e_cor = store.is_picker_swatch(*nid)
+                    || store.widget_color(*nid).is_some()
+                    || matches!(
+                        store.get(*nid),
+                        Some(ph2d_editor_core::interaction::InteractiveState::ColorPicker { .. })
+                            | Some(
+                                ph2d_editor_core::interaction::InteractiveState::BlenderPicker { .. }
+                            )
+                    );
+                if e_cor {
+                    *out.entry(r.w.round() as i32).or_default() += 1;
+                }
+            }
+        }
+    });
+    out
+}
+
+/// ⛔⛔ **O NÚMERO DE FORMAS DE UM SELECTOR DE COR SÓ ENCOLHE.**
+///
+/// ⛔ **Report do dono, 2026-09-21, com um DESENHO:** *«os seletores de cor de todo o app precisam
+/// ser padronizados»*. Medido no mesmo dia: **`109`** selectores em **CINCO** larguras — `18`,
+/// `24`, `32`, `120` e `268 px`.
+///
+/// ⭐ **A forma que ele desenhou já existia no app**, num painel só — o `authored`, gerado por
+/// TABELA, com a amostra a encher a coluna do valor (`268`). Ela virou a porta
+/// [`ph2d_editor_core::property_row::paint_color_row`], e as **seis** linhas de cor do Inspector
+/// (tint · self tint · as duas das partículas · as duas do tween) passaram de `24` para a coluna.
+///
+/// ⚠️ **A catraca conta FORMAS e não sítios:** o alvo é *uma* forma, e cada wave que converte um
+/// grupo tira uma linha daqui. ⛔ Uma forma NOVA reprova.
+const LARGURAS_DE_COR: &[i32] = &[18, 32, 120, 268];
+
+#[test]
+fn as_formas_de_um_selector_de_cor_so_encolhem() {
+    let medido = larguras_dos_selectores_de_cor();
+    let vistas: Vec<i32> = medido.keys().copied().collect();
+    let novas: Vec<&i32> = vistas
+        .iter()
+        .filter(|w| !LARGURAS_DE_COR.contains(w))
+        .collect();
+    assert!(
+        novas.is_empty(),
+        "formas NOVAS de selector de cor: {novas:?}\n  medido: {medido:?}\n\
+         ⇒ um selector de cor novo passa pela porta `paint_color_row`, que o põe na coluna do \
+         valor. ⛔ Acrescentar a largura aqui é desfazer a padronização que o dono pediu."
+    );
+    let mortas: Vec<&i32> = LARGURAS_DE_COR
+        .iter()
+        .filter(|w| !vistas.contains(w))
+        .collect();
+    assert!(
+        mortas.is_empty(),
+        "estas formas já não existem — APAGUE a linha, a catraca desceu: {mortas:?}\n  medido: {medido:?}"
+    );
+    // ⚠️ O piso: sem ele uma varredura partida lê zero selectores e as duas metades acima ficam
+    //    trivialmente verdadeiras.
+    let total: usize = medido.values().sum();
+    assert!(
+        total >= 100,
+        "a varredura viu {total} selectores de cor e o app tem ~109 — ela partiu-se"
+    );
+}
+
+/// ⭐⭐⭐ **A LINHA DE COR ENCHE A COLUNA DO VALOR** — o desenho do dono, medido.
+#[test]
+fn a_linha_de_cor_enche_a_coluna_do_valor() {
+    let medido = larguras_dos_selectores_de_cor();
+    // A coluna do valor nesta viewport, pela MESMA porta que desenha — nunca uma segunda conta.
+    let interior = 268.0_f32;
+    let row = ph2d_editor_core::widget::property_row_columns_for(
+        0.0,
+        interior,
+        0.0,
+        ph2d_tokens::ROW_H_PX,
+        None,
+        None,
+    );
+    let coluna = row.control.w.round() as i32;
+    let n = medido.get(&coluna).copied().unwrap_or(0);
+    assert!(
+        n >= 6,
+        "só {n} selectores de cor medem a coluna do valor ({coluna} px) — as seis linhas do \
+         Inspector passam pela `paint_color_row`.\n  medido: {medido:?}"
+    );
+    // ⛔ **O CONTROLO**: a forma ANTIGA (o quadrado `SwatchSize::Sm`, `24 px`) não pode voltar.
+    //    Sem ele este gate ficaria verde num app onde alguém acrescentasse seis barras E deixasse
+    //    os quadradinhos onde estavam.
+    let antigos = medido
+        .get(&(ph2d_editor_core::widget::SwatchSize::Sm.px().round() as i32))
+        .copied()
+        .unwrap_or(0);
+    assert_eq!(
+        antigos, 0,
+        "voltaram {antigos} selectores com a forma antiga (o quadrado de \
+         `SwatchSize::Sm`).\n  medido: {medido:?}"
+    );
+}
+
+/// ⭐⭐⭐ **A COLUNA DE UM BLOCO DE CORES SAI DE TODOS OS NOMES DELE.**
+///
+/// ⛔ **Report do dono, 2026-09-21:** *«quanto ao alinhamento precisamos melhorar em todos os
+/// lugares»*. Se cada linha medisse a coluna com o próprio nome, duas amostras da mesma secção
+/// começavam em `x` diferentes.
+///
+/// ⚠️⚠️ **Este gate nasceu de uma mutação SOBREVIVENTE** (pôr a coluna a sair de UM nome passava
+/// `332` gates do painel) — e a 1.ª redacção dele media o `x` das amostras no painel, com o
+/// **CONTROLO a reprovar**: nas larguras que o produto usa a coluna **satura** (os blocos `Tint` e
+/// `Particles` caem os dois em `1 760,0`), logo a escolha dos nomes não é observável ali.
+/// *Uma lei cuja consequência satura no regime do produto não se gateia pelo produto.*
+///
+/// ⇒ duas metades: a **medida**, que prova na PORTA que a largura do nome move a coluna (senão a
+/// outra afirmaria sobre um parâmetro inerte), e a **textual**, que prova que o bloco recolhe
+/// TODOS os rótulos.
+#[test]
+fn a_coluna_de_um_bloco_de_cores_sai_de_todos_os_nomes() {
+    let col = |label_w: f32| {
+        ph2d_editor_core::widget::property_row_columns_for(
+            0.0,
+            268.0,
+            0.0,
+            ph2d_tokens::ROW_H_PX,
+            Some(label_w),
+            None,
+        )
+        .control
+        .x
+    };
+    // ⛔⛔ **O REGIME em que a lei existe está MEDIDO** (`diag_quando_o_nome_move_a_coluna`): a
+    //    coluna do nome é `min(50 %, …)`, logo **só um nome mais largo do que METADE do painel a
+    //    move**. Num painel de `268` os nomes de `20`, `60` e `120` px dão os TRÊS `x = 134`; o de
+    //    `200` dá `182`. ⇒ *com os nomes curtos de hoje esta lei é INERTE, e ela morde no regime
+    //    dos «nomes grandes» que o dono nomeou no mesmo report.*
+    let curto = col(20.0);
+    let comprido = col(200.0);
+    assert!(
+        (curto - comprido).abs() > 1.0,
+        "a largura do nome não move a coluna ({curto:.1} contra {comprido:.1}) — sem isso a \
+         metade de baixo afirma sobre um parâmetro inerte"
+    );
+    // ⚠️ E o CONTROLO do controlo: abaixo de meia largura ela de facto NÃO move, que é o que
+    //    explica porque a 1.ª redacção deste gate media o painel e reprovava.
+    assert!(
+        (col(20.0) - col(120.0)).abs() < 0.5,
+        "um nome abaixo de meia largura passou a mover a coluna — o regime medido mudou, e a nota \
+         acima deixou de descrever o produto"
+    );
+
+    let fonte = include_str!("../../../ph2d-panel-inspector/src/sections/color_tint.rs");
+    let agulha = "let rotulos: Vec<&str> = cores.iter().map(|(_, l, _)| *l).collect();";
+    assert_eq!(
+        fonte.matches(agulha).count(),
+        1,
+        "o `bloco_de_cores` deixou de recolher TODOS os rótulos do bloco — com um filtro a coluna \
+         passa a ser do PRIMEIRO nome, e duas linhas da mesma secção caem em `x` diferentes assim \
+         que o painel for estreito o bastante para a coluna deixar de saturar."
+    );
+}
+
+/// SONDA TEMPORÁRIA — **onde a largura do NOME move a coluna do controlo?**
+#[test]
+#[ignore]
+fn diag_quando_o_nome_move_a_coluna() {
+    println!("\n  painel   nome=20  nome=60  nome=120  nome=200");
+    for w in [180.0_f32, 220.0, 268.0, 336.0, 420.0, 600.0] {
+        let col = |lw: f32| {
+            ph2d_editor_core::widget::property_row_columns_for(
+                0.0,
+                w,
+                0.0,
+                ph2d_tokens::ROW_H_PX,
+                Some(lw),
+                None,
+            )
+            .control
+        };
+        println!(
+            "  {w:6.0}  {:7.1}  {:7.1}  {:8.1}  {:8.1}   (larguras: {:.0}/{:.0}/{:.0}/{:.0})",
+            col(20.0).x,
+            col(60.0).x,
+            col(120.0).x,
+            col(200.0).x,
+            col(20.0).w,
+            col(60.0).w,
+            col(120.0).w,
+            col(200.0).w
+        );
+    }
+}

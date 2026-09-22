@@ -301,3 +301,94 @@ mod tests {
         );
     }
 }
+
+/// ⭐⭐ **A amostra, ou o traço de «misto»** — a lei de *como se pinta um valor de cor*, numa porta.
+///
+/// ⛔ Ela vivia **privada** na secção *Color & Tint* do Inspector, e os dois consumidores dela (a
+/// linha de cor e a grelha de quatro cantos) já estavam do mesmo lado da parede. Ao nascer a
+/// [`crate::property_row::paint_color_row`] apareceu o terceiro, noutra crate — *uma lei escrita
+/// em dois sítios ainda não é uma lei*.
+///
+/// ⚠️ **O rect manda:** ela enche o que recebe, e é isso que deixa a mesma lei servir uma BARRA na
+/// coluna do valor e uma célula de `24 px` na grelha.
+///
+/// ⛔⛔ **Ela recebe o VALOR e não o store, e quem o impôs foi a catraca do DAG** (`widget →
+/// interaction` foi a `50` contra um tecto de `49`): *um pintor de widget não vai buscar o que
+/// pinta* — quem resolve `widget_color(id) ?? fallback` é o chamador, que já vive do lado da
+/// interacção. `None` é o **misto**.
+pub fn paint_swatch_or_mixed(
+    rect: Rect,
+    swatch_id: NodeId,
+    rgba: Option<[u8; 4]>,
+    scene: &mut VectorScene,
+    theme: Theme,
+) {
+    let Some(rgba) = rgba else {
+        paint_mixed_swatch(rect, scene, theme);
+        return;
+    };
+    let swatch = ColorSwatch::new(swatch_id, "", rgba).size(SwatchSize::Sm);
+    paint_color_swatch(&swatch, rect, scene, theme);
+}
+
+/// O visual de **«misto»** (multi-selecção com tintas divergentes): uma pastilha neutra com um
+/// traço ao centro, no idioma da caixa de marcar indeterminada.
+///
+/// ⚠️ Uma amostra não pode ficar em branco como um campo numérico — por isso o traço. ⭐ E o hit
+/// continua registado: *o traço é o aviso, não uma tranca.*
+pub fn paint_mixed_swatch(rect: Rect, scene: &mut VectorScene, theme: Theme) {
+    let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
+    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::Bg2, theme));
+    crate::paint::stroke_frame(
+        scene,
+        rect,
+        radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
+        1.0,
+        resolve(ColorToken::Border, theme),
+    );
+    crate::paint::paint_icon(
+        scene,
+        crate::icons::IconId::Minus,
+        rect,
+        resolve(ColorToken::Text2, theme),
+        2.0,
+    );
+}
+
+#[cfg(test)]
+mod swatch_ou_misto_tests {
+    use super::*;
+    use crate::zones::Rect;
+
+    fn segmentos(mixed: bool) -> u32 {
+        let mut scene = VectorScene::new();
+        paint_swatch_or_mixed(
+            Rect::new(0.0, 0.0, 120.0, 22.0),
+            NodeId(1),
+            (!mixed).then_some([0xff, 0x00, 0x00, 0xff]),
+            &mut scene,
+            Theme::default(),
+        );
+        scene.inner().encoding().n_path_segments
+    }
+
+    /// ⛔⛔ **O «misto» tem de ser VISÍVEL, e a mutação que o apagava SOBREVIVEU a `332` gates.**
+    ///
+    /// Uma amostra não pode ficar em branco como um campo numérico: numa multi-selecção com tintas
+    /// divergentes ela pintava a cor de UM dos objectos e afirmava, em silêncio, que todos a têm.
+    /// ⚠️ Nenhum gate deste repo media isto — a lei existia desde a auditoria `F5` e vivia privada
+    /// dentro do painel.
+    #[test]
+    fn o_misto_nao_se_le_como_uma_cor() {
+        let cor = segmentos(false);
+        let misto = segmentos(true);
+        assert!(cor > 0, "o controlo falhou: a amostra normal pintou NADA");
+        assert!(
+            misto != cor,
+            "a amostra de «misto» desenha o mesmo que uma cor ({misto} segmentos contra {cor}) — \
+             o artista não consegue distinguir «todos têm esta cor» de «cada um tem a sua»"
+        );
+    }
+}

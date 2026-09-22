@@ -186,33 +186,28 @@ fn corpo(
     for n in [N::Size, N::SizeRandom, N::SizeEnd] {
         cur_y = num_row(scene, text_system, theme, hit_index, store, x, w, cur_y, n);
     }
-    for (id, label, rgba) in [
-        (
-            crate::ids::INSP_PART_COLOR,
-            tr("panel.inspector.particles.color"),
-            i.color,
-        ),
-        (
-            crate::ids::INSP_PART_COLOR_END,
-            tr("panel.inspector.particles.color_at_death"),
-            i.color_end,
-        ),
-    ] {
-        let cell = Rect::new(x, cur_y, w, ph2d_tokens::ROW_H_PX);
-        super::color_tint::paint_tint_swatch_cell(
-            cell,
-            label,
-            id,
-            crate::state_tint::tint_f32_to_u8(rgba),
-            false,
-            store,
-            hit_index,
-            scene,
-            text_system,
-            theme,
-        );
-        cur_y += ph2d_tokens::row_pitch_px();
-    }
+    cur_y = super::color_tint::bloco_de_cores(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        &[
+            (
+                crate::ids::INSP_PART_COLOR,
+                tr("panel.inspector.particles.color"),
+                i.color,
+            ),
+            (
+                crate::ids::INSP_PART_COLOR_END,
+                tr("panel.inspector.particles.color_at_death"),
+                i.color_end,
+            ),
+        ],
+    );
     // ── Onde vivem ───────────────────────────────────────────────────────────
     cur_y = seg_row(
         scene,

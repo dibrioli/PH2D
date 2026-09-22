@@ -477,34 +477,28 @@ pub(super) fn editor(
     // pintar os dois daria duas respostas a *«que cor é esta?»*, e elas divergiriam no primeiro
     // arrasto de um dos campos.
     if canal.e_cor() {
-        for (id, label, rgba) in [
-            (
-                crate::ids::INSP_TWEEN_COR_DE,
-                tr("panel.inspector.tween.from"),
-                row.de,
-            ),
-            (
-                crate::ids::INSP_TWEEN_COR_PARA,
-                tr("panel.inspector.tween.to"),
-                row.para,
-            ),
-        ] {
-            let cell = Rect::new(x, cur_y, w, ROW_H);
-            super::color_tint::paint_tint_swatch_cell(
-                cell,
-                label,
-                id,
-                crate::state_tint::tint_f32_to_u8(rgba),
-                false,
-                store,
-                hit_index,
-                scene,
-                text_system,
-                theme,
-            );
-            cur_y += ph2d_tokens::row_pitch_px();
-        }
-        cur_y += ph2d_tokens::control_gap_px();
+        cur_y = super::color_tint::bloco_de_cores(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            cur_y,
+            &[
+                (
+                    crate::ids::INSP_TWEEN_COR_DE,
+                    tr("panel.inspector.tween.from"),
+                    row.de,
+                ),
+                (
+                    crate::ids::INSP_TWEEN_COR_PARA,
+                    tr("panel.inspector.tween.to"),
+                    row.para,
+                ),
+            ],
+        ) + ph2d_tokens::control_gap_px();
     } else {
         cur_y = campos_de_para(
             scene,

@@ -215,13 +215,13 @@ fn a_tile_que_o_lod_desenha_nao_e_largada() {
         "controlo: a partição esvaziou o lado crisp"
     );
 
-    let vivas = vivas_com_o_lod(&insts, &quads, &bake);
+    let vivas = vivas_com_o_lod(&vivos(&insts), &quads, &bake);
     assert!(
         vivas.contains(&gid),
         "⛔ o gid tem de continuar VIVO: os quads ainda amostram a tile dele"
     );
     // E a metade que impede a lei de virar «nunca larga nada»: sem os quads, o gid sai.
-    let sem_quads = vivas_com_o_lod(&insts, &[], &bake);
+    let sem_quads = vivas_com_o_lod(&vivos(&insts), &[], &bake);
     assert!(
         !sem_quads.contains(&gid),
         "⛔ sem ninguém a desenhar a tile, ela TEM de poder ser largada (o OOM de 2026-08-21)"
@@ -237,7 +237,7 @@ fn o_lado_crisp_continua_a_contar_como_vivo() {
     let insts = copias(gid, 3, [1.0, 1.0]);
     let _ = &s;
     let bake = ShapeBake::default();
-    let vivas = vivas_com_o_lod(&insts, &[], &bake);
+    let vivas = vivas_com_o_lod(&vivos(&insts), &[], &bake);
     assert!(vivas.contains(&gid), "quem desenha crisp está vivo");
 }
 
@@ -335,4 +335,9 @@ fn desligada_a_porta_nao_quer_ninguem() {
         geometrias_para_lod_com(&insts, &s, Affine::scale(2.0), 10, true).contains(&gid),
         "controlo: ligada, esta é exactamente a cena que ela quer"
     );
+}
+
+/// O conjunto vivo do lado CRISP — o que a fase constrói antes da partição e passa à lei.
+fn vivos(insts: &[VectorInstance]) -> std::collections::BTreeSet<u32> {
+    insts.iter().map(|vi| vi.geometry_id).collect()
 }

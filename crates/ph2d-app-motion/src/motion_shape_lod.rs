@@ -275,23 +275,38 @@ mod tests;
 /// LOD decide por geometria, mas uma cena com duas grelhas da mesma forma a zooms diferentes é
 /// exprimível), e despejar por um dos lados largaria uma tile ainda em cena.
 pub fn vivas_com_o_lod(
-    vector_instances: &[VectorInstance],
+    live: &std::collections::BTreeSet<u32>,
     instances: &[RenderInstance],
     shape_bake: &ShapeBake,
 ) -> std::collections::BTreeSet<u32> {
-    let mut vivas: std::collections::BTreeSet<u32> =
-        vector_instances.iter().map(|vi| vi.geometry_id).collect();
-    // As texturas que os quads deste quadro amostram — o outro lado da conversão.
-    let em_uso: std::collections::BTreeSet<u32> = instances.iter().map(|i| i.texture_id).collect();
-    if em_uso.is_empty() {
-        return vivas;
+    let mut vivas = live.clone();
+    // ⭐⭐⭐ **O `live` chega FEITO, e isso custou uma foto para eu aprender.** A 1.ª redacção
+    // reconstruía-o das `vector_instances` — `90 000` inserções num `BTreeSet` de UMA chave — ao
+    // lado do chamador, que já o tinha construído: com a varredura do `instances` eram **três**
+    // passagens de `90 000` por quadro. Medido na app, no zoom onde o LOD nem arma: `73 raw` para
+    // **`43 raw`**, `16,5 ms` para `24,6`. ⚠️⚠️ *E a minha sonda tinha medido `0,17 ms` — ela
+    // media a DECISÃO e ignorava as outras duas peças da cura.*
+    //
+    // O mapa é `texture_id → gid` e tem uma entrada por geometria DISTINTA assada (unidades), e a
+    // varredura **para assim que todas estiverem marcadas** — no caso comum, ao primeiro quad.
+    let por_textura: std::collections::BTreeMap<u32, u32> = shape_bake
+        .gids()
+        .into_iter()
+        .filter(|gid| !vivas.contains(gid))
+        .filter_map(|gid| Some((shape_bake.tile_for_gid(gid)?.texture_id, gid)))
+        .collect();
+    if por_textura.is_empty() {
+        return vivas; // nada assado fora do que já está vivo — nem vale varrer
     }
-    for gid in shape_bake.gids() {
-        if shape_bake
-            .tile_for_gid(gid)
-            .is_some_and(|t| em_uso.contains(&t.texture_id))
+    let mut falta = por_textura.len();
+    for i in instances {
+        if let Some(&gid) = por_textura.get(&i.texture_id)
+            && vivas.insert(gid)
         {
-            vivas.insert(gid);
+            falta -= 1;
+            if falta == 0 {
+                break;
+            }
         }
     }
     vivas

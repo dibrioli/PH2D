@@ -12,6 +12,7 @@ uma continua a ser um ficheiro próprio; o que mudou foi o endereço.
 *Pergunta-mãe da família: **o número que eu li mede o que eu penso que mede?***
 
 - ⭐⭐⭐ [Régua GEOMÉTRICA × régua do PIXEL: num LOD só a do pixel decide (e a barra de uma tile não é o lado dela)](feedback_a_geometric_ruler_and_a_pixel_ruler_decides.md)
+- ⭐⭐⭐ [Sonda que mede UMA peça de uma cura não mede a cura — medi 0,17 ms e o produto pagava 8 ms; quem acusou foi a FOTO](feedback_a_probe_that_measures_one_piece_of_a_cure_does_not_measure_the_cure.md)
 
 - [1º cruzamento ressonante ≠ fronteira](feedback_the_first_crossing_of_a_resonant_response_is_not_the_boundary.md) · [grelha uniforme ≠ esquina](feedback_a_uniform_grid_cannot_represent_a_corner.md)
 - [A/B de duas corridas = soma dos ruídos; mesmo processo, mediana](feedback_subtracting_two_clocks_from_separate_runs_gives_the_sum_of_the_noises.md) · [especialização paga-se por AMORTIZAÇÃO — conte os raios por região](feedback_specialisation_pays_by_amortisation_count_the_rays_per_region.md)

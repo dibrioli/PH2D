@@ -14,6 +14,11 @@ const FASE: &str = include_str!("../../src/render_loop/fase_vector_fx_recook.rs"
 /// (`geometrias_para_lod`), mover (`aplica_lod_de_forma`) e manter o despejo honesto
 /// (`vivas_com_o_lod`).
 ///
+/// ⚠️ **E a QUARTA é a que o roteiro da cena PROMETE**: a partição esvazia o lado crisp e, com a
+/// cena parada, o cozimento devolve cedo ⇒ sem forçá-lo, APROXIMAR nunca devolve o desenho e a
+/// forma fica tile para sempre. *Um passo de smoke que promete uma coisa que o código não faz é
+/// pior que um passo ausente — o dono acredita nele.*
+///
 /// ⚠️ **A terceira é a que ninguém se lembraria de repor.** Sem ela o despejo larga a tile que os
 /// quads ainda amostram — e com a cena PARADA o cozimento devolve cedo, logo isso é permanente:
 /// a forma desaparece ou pisca. *Um defeito que só aparece com a cena quieta é o que menos
@@ -24,6 +29,7 @@ fn o_lod_da_forma_esta_ligado_a_fase() {
         ("motion_shape_lod::geometrias_para_lod(", "quem vira tile"),
         ("motion_shape_lod::aplica_lod_de_forma(", "a partição"),
         ("motion_shape_lod::vivas_com_o_lod(", "o despejo honesto"),
+        ("if movidas > 0 {", "desfazer ao aproximar"),
     ] {
         assert!(
             FASE.contains(chamada),

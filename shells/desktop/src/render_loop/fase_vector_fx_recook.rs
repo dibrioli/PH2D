@@ -216,12 +216,25 @@ fn assa_e_particiona_tiles_de_forma(
         // **E A PARTIÇÃO** — as geometrias que o LOD quer e que já têm tile passam a
         // quads de sprite. ⚠️ Corre DEPOIS do assado (a tile do 1.º quadro só existe agora) e
         // ANTES do despejo, que é o que lê o resultado dela.
-        ph2d_app_motion::motion_shape_lod::aplica_lod_de_forma(
+        let movidas = ph2d_app_motion::motion_shape_lod::aplica_lod_de_forma(
             &mut pump.instances,
             &mut pump.vector_instances,
             shape_bake,
             &quer,
         );
+        // ⭐⭐⭐ **E QUEM MOVEU TEM DE PODER DESFAZER** — senão APROXIMAR não devolve o desenho.
+        //
+        // ⛔⛔ A partição ESVAZIA o lado crisp, e com a cena parada o cozimento devolve cedo
+        // (`if !self.dirty && self.last_cooked_tick == Some(tick)`): no quadro seguinte não há
+        // instâncias para decidir, logo o LOD não pode mudar de ideias e os quads ficam **para
+        // sempre**. O artista aproxima e a forma continua a ser a tile — exactamente o passo (7)
+        // do roteiro desta cena, que prometia o contrário.
+        //
+        // ⚠️ E ele só marca quando de facto MOVEU: sem o LOD armado o cozimento não é forçado, e
+        // o caminho de omissão fica como estava.
+        if movidas > 0 {
+            pump.mark_dirty();
+        }
         // ⚠️ **E LARGA o que saiu de cena, libertando a textura.** Sem isto um
         // param de forma animado assa um tile por QUADRO e a placa acaba
         // (medido: OOM no quadro 19706 da `=76`).
@@ -230,11 +243,8 @@ fn assa_e_particiona_tiles_de_forma(
         // moveu já não está em `vector_instances` — está em `instances`, como quad —, e com a
         // cena parada o cozimento devolve cedo e as duas listas persistem. Despejar pelo
         // `live` largaria a textura que os quads ainda amostram, para sempre.
-        let vivas = ph2d_app_motion::motion_shape_lod::vivas_com_o_lod(
-            &pump.vector_instances,
-            &pump.instances,
-            shape_bake,
-        );
+        let vivas =
+            ph2d_app_motion::motion_shape_lod::vivas_com_o_lod(&live, &pump.instances, shape_bake);
         let freed = shape_bake.evict_outside(&vivas, renderer);
         if freed > 0 && std::env::var_os("PH2D_GLOW_DIAG").is_some() {
             eprintln!("[glow-diag] assador de formas: tiles largados={freed}");

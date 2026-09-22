@@ -129,9 +129,17 @@ da W73, agora com o quarto passageiro): o quadro de MOVIMENTO fica **byte-idênt
    inteiro; é a mesma cura que o [`08` §14.6](08_a_luz_indirecta.md) já nomeia para as sondas, e aqui
    é mais barata (o campo tem `32² × 3` floats).
 
-   ⭐⭐⭐ **E a premissa deixou de ser uma afirmação: está MEDIDA, e é mais forte do que esta linha
-   dizia** (2026-09-20, sonda `sonda_o_campo_do_chao_depende_da_camera`). Ela dizia *«a dependência
-   da câmera é só a tolerância de acerto»* — e a tolerância também não a move:
+   ⛔⛔⛔ **A redacção de 2026-09-20 dizia que a premissa estava medida e era MAIS FORTE do que esta
+   linha afirmava — e estava errada.** Ela concluía *«a tolerância também não move o campo»* a
+   partir da tabela abaixo; medido em 2026-09-21 com o CONTROLO que faltava, **nas três leituras
+   daquela tabela o `hit` esteve preso no tecto** (`HIT_EPS = 2e-4`), porque
+   `hit = min(HIT_EPS, half_extent/(2·lado_px))` só desce com `lado_px > 2500 × half_extent`.
+   ⇒ *a tabela media o CLAMP e não o eixo*, e esta linha — *«a dependência da câmera é só a
+   tolerância de acerto»* — **estava certa**. Abaixo do clamp a tolerância move o campo até
+   **`0,91` de um byte**, e a chave da cache leva-a; o que sai da chave é a **orientação**, que move
+   `6e-9` (`3` ULP). A tabela do plano, os dois gates e a barra derivada do byte estão no
+   [`03` §W9](03_o_plano.md). *A tabela que segue fica como estava, com o que ela de facto mede
+   escrito por cima:*
 
    | eixo | `|Δ|` máximo de uma célula | em fracção do campo |
    |---|---:|---:|

@@ -229,14 +229,50 @@ report em que aprovou o smoke do chão colorido, e a ordem é o que decide a pos
   ⭐ **As duas primeiras linhas são a MESMA cura** — *o que não depende da câmera reassa-se uma vez
   por cena e luz, não uma vez por quadro* —, e é isso que faz orbitar uma peça deixar de pagar.
 
-  ⭐⭐⭐ **E o primeiro acto da wave já foi pago, com o resultado a SIMPLIFICAR a cura** (2026-09-20):
-  medido, o campo do chão é **byte-idêntico** sob `8` azimutes **e** sob `4×` de zoom, contra
-  `100,000 %` de desvio ao trocar a LUZ (o controlo). ⇒ *a chave não leva a câmera de todo* — nem a
-  orientação nem a tolerância de acerto que esta linha e a [`09` §6](09_a_cor_que_a_peca_devolve_ao_chao.md)
-  davam como a dependência restante —, e a cache é **exacta** em vez de aproximada.
-  ⚠️ **Ela é uma medição de VALOR e não de relógio**, e é por isso que correu com a máquina ocupada:
-  contenção não move bytes. *A coluna do relógio desta wave continua por tirar, e essa precisa da
-  máquina calma.*
+  ⛔⛔⛔ **E o primeiro acto da wave foi pago DUAS vezes, porque a primeira leitura estava errada
+  nos dois sentidos** (2026-09-20, corrigida em 2026-09-21). Ela dizia: *«o campo do chão é
+  byte-idêntico sob `8` azimutes e sob `4×` de zoom ⇒ a chave não leva a câmera de todo, e a cache
+  é exacta»*. **As duas metades dessa frase são falsas**, e o que as derrubou foi pôr a medição
+  dentro de um GATE em vez de a deixar numa impressora:
+
+  | eixo | `|Δ|` máximo | em bytes | células iguais |
+  |---|---:|---:|---:|
+  | **orbitar** `90°`/`180°`/`270°` | `6e-9` | `0,00002` | `262`–`506` de `1024` |
+  | **zoom, com o clamp a morder** (`half_extent ≥ 0,8`) | `0,000000000` | `0` | `1024` de `1024` |
+  | **zoom, abaixo do clamp** (`half_extent 0,005`) | `2,8e-4` | **`0,910`** | `130` de `1024` |
+  | CONTROLO: a luz do outro lado | `0,0164` | `54` | `14` de `1024` |
+
+  ⭐⭐ **Orbitar NÃO é byte-idêntico** — três quartos das células mudam no último bit —, e a
+  impressora não o via porque escrevia `|Δ|` com **seis casas**, e `6e-9` lê-se `0.000000`.
+  ⭐⭐⭐ **E o zoom É chave: a varredura anterior media um CLAMP.** A única porta por onde a câmera
+  entra na assadura é a [`Sharpness::for_frame`], que faz `hit = min(HIT_EPS, half_extent/(2·lado_px))`
+  — e nas três leituras de 20/09 o `hit` esteve **preso em `2e-4`**. O clamp solta-se com
+  `lado_px > 2500 × half_extent`, que a `0,2` de enquadramento são **`500` píxeis**: *um zoom
+  apertado numa janela normal já está do outro lado.*
+
+  ⇒ **a chave leva a TOLERÂNCIA DE ACERTO e não leva a ORIENTAÇÃO**, e o que separa os dois eixos
+  são quatro ordens de grandeza (`2,8e-4` contra `6e-9`). A barra NOMEIA o recurso e é **o BYTE de
+  saída** (`1/(255 × 12,92)` de radiância, o troço linear do sRGB junto de zero): a orientação está
+  `50 000×` abaixo dela, a tolerância chega a `0,91` dela.
+
+  ⚠️ **A cache continua a valer o que valia** — orbitar é o gesto que paga os `+4,98 ms` por quadro
+  e ele **não** mexe no `hit` —, mas ela deixa de ser *«por cena-e-luz»* e passa a ser *«por
+  cena-luz-e-tolerância»*.
+
+  ⭐ **Os dois gates que afirmam isto**, em `ph2d-field-render/src/tests/chao_ricochete.rs`:
+  `o_campo_do_chao_nao_muda_o_que_um_byte_ve_ao_orbitar` e
+  `a_tolerancia_de_acerto_entra_na_chave_da_cache_do_chao` — ⛔ o segundo tem o **controlo primeiro**
+  (com o clamp a morder o zoom não move um bit), senão alguém lê a metade de baixo e põe o
+  `half_extent` na chave, invalidando a cache em todo arrasto de zoom.
+  ⚠️ **Elas são medições de VALOR e não de relógio**, e é por isso que correram com a máquina
+  ocupada: contenção não move bytes. *A coluna do relógio desta wave continua por tirar, e essa
+  precisa da máquina calma.*
+
+  ⏳ **E fica NOMEADO o que a construção da cache ainda tem de resolver:** a chave precisa de uma
+  identidade EXACTA para o `Registry` (as esculturas amostradas **não** são inlinadas na fita — o
+  prefixo `escultura_` dela é uma ligação, não texto), logo *duas esculturas diferentes podem dar a
+  MESMA fita*. Uma cache que se contente com a fita entrega o campo da escultura anterior, e o
+  defeito é mudo.
 - ⚠️ **O tecto de cada número tem de NOMEAR O RECURSO** (`CLAUDE.md` §0.0): `GROUND_BOUNCE_SPAN`
   (`6` raios) e `GROUND_BOUNCE_FADE` (`0,25`) são os dois desta família ainda **sem tabela por
   baixo**, e quem lhes tocar mede-os como os outros dois foram medidos ([`09` §5](09_a_cor_que_a_peca_devolve_ao_chao.md)).

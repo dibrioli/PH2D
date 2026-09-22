@@ -365,7 +365,10 @@ fn todo_click_despachado_pela_seccao_e_alcancavel() {
     // Os ids que o `route_brush_watercolor_event` consome como Click.
     let mut despachados: Vec<&str> = Vec::new();
     for l in despacho.lines() {
-        if let Some(r) = l.split("PanelEvent::Click(id) if *id == crate::ids::").nth(1) {
+        if let Some(r) = l
+            .split("PanelEvent::Click(id) if *id == crate::ids::")
+            .nth(1)
+        {
             despachados.push(r.trim_end_matches(" => {").trim());
         }
     }

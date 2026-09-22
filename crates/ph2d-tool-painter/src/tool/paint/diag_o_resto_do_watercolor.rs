@@ -93,7 +93,10 @@ fn difere(a: &[u8], b: &[u8]) -> Vec<(u32, u32, u8, f32)> {
     for y in 0..S {
         for x in 0..S {
             let i = ((y * S + x) * 4) as usize;
-            let d = (0..4).map(|k| a[i + k].abs_diff(b[i + k])).max().unwrap_or(0);
+            let d = (0..4)
+                .map(|k| a[i + k].abs_diff(b[i + k]))
+                .max()
+                .unwrap_or(0);
             if d > 0 {
                 let dx = x as f32 - C[0];
                 let dy = y as f32 - C[1];
@@ -139,7 +142,16 @@ fn celula_knob(nome: &str, raio: f32, alto: f32, final_: f32, rewet: f32, charge
 
     let limpa = cena_wc(raio, final_, rewet, charge);
     let salva = final_.round().clamp(0.0, 48.0) * 2.0 + 4.0;
-    linha(nome, &a, &b, &limpa, format!("salva_pad={salva:>5.1} sessao_pad={:>5.1}", alto.round().clamp(0.0, 48.0) * 2.0 + 4.0));
+    linha(
+        nome,
+        &a,
+        &b,
+        &limpa,
+        format!(
+            "salva_pad={salva:>5.1} sessao_pad={:>5.1}",
+            alto.round().clamp(0.0, 48.0) * 2.0 + 4.0
+        ),
+    );
 }
 
 /// **(2) A FIGURA QUE ANDA:** re-carimbar numa posição e depois noutra, contra ir direito à segunda.
@@ -197,7 +209,10 @@ fn celula_campo(nome: &str, repor: impl Fn(&mut PainterTool)) {
 
     let v = difere(&a.canvas_rgba, &b.canvas_rgba);
     let pior = v.iter().map(|t| t.2).max().unwrap_or(0);
-    println!("  repondo {nome:<34} -> difere={:>7} pior={pior:>3}", v.len());
+    println!(
+        "  repondo {nome:<34} -> difere={:>7} pior={pior:>3}",
+        v.len()
+    );
 }
 
 /// **(0) O DESCASQUE É EXACTO?** Carimbar, descascar à mão, e comparar com a tela intocada. Se isto
@@ -211,7 +226,10 @@ fn celula_peel(nome: &str, rewet: f32, charge: f32) {
     let v = difere(&a.canvas_rgba, &limpa.canvas_rgba);
     let pior = v.iter().map(|t| t.2).max().unwrap_or(0);
     let r_max = v.iter().map(|t| t.3).fold(0.0f32, f32::max);
-    println!("  descasque {nome:<32} -> resto={:>7} pior={pior:>3} r_max={r_max:>6.1}", v.len());
+    println!(
+        "  descasque {nome:<32} -> resto={:>7} pior={pior:>3} r_max={r_max:>6.1}",
+        v.len()
+    );
 }
 
 /// **(5) A ESCADA:** `n` re-carimbos contra UM. Um artista mexe num knob dezenas de vezes; se o
@@ -257,7 +275,10 @@ fn celula_anchored(n: usize, charge: f32) {
     let mexeu = difere(&limpa.canvas_rgba, &b.canvas_rgba).len();
     let v = difere(&a.canvas_rgba, &b.canvas_rgba);
     let pior = v.iter().map(|t| t.2).max().unwrap_or(0);
-    println!("  anchored n={n:<2} charge={charge:<4} -> MEXEU={mexeu:>7} difere={:>7} pior={pior:>3}", v.len());
+    println!(
+        "  anchored n={n:<2} charge={charge:<4} -> MEXEU={mexeu:>7} difere={:>7} pior={pior:>3}",
+        v.len()
+    );
 }
 
 /// A TABELA. ⚠️ Ela não conserta nada — ela mede, e cada linha é uma ablação de UM termo.
@@ -284,33 +305,84 @@ fn diag_o_resto_do_watercolor() {
         let v = difere(&a.canvas_rgba, &b.canvas_rgba);
         println!(
             "{:<38} | {:>52} | difere={:>7} MEXEU={mexeu:>7} (CONTROLO: digital, sem watercolor)",
-            "digital, figura que ANDA", "", v.len()
+            "digital, figura que ANDA",
+            "",
+            v.len()
         );
     }
 
     println!();
     // (1) o knob BAIXADO entre dois re-carimbos.
     celula_knob("wc, spread 40 -> 7, sem mixer", 200.0, 40.0, 7.0, 0.0, 1.0);
-    celula_knob("wc, spread 40 -> 7, MIXER armado", 200.0, 40.0, 7.0, 0.0, 0.5);
+    celula_knob(
+        "wc, spread 40 -> 7, MIXER armado",
+        200.0,
+        40.0,
+        7.0,
+        0.0,
+        0.5,
+    );
     celula_knob("wc, spread 40 -> 7, REWET alto", 200.0, 40.0, 7.0, 1.0, 0.5);
     celula_knob("wc, spread  7 ->  7 (controlo)", 200.0, 7.0, 7.0, 0.0, 1.0);
     // ⭐⭐ O CONTROLO QUE DISCRIMINA: o MESMO spread nos dois re-carimbos, com o mixer ARMADO.
     // Se ele diferir, o defeito NÃO e o knob — e o dois re-carimbos que nao fecham.
-    celula_knob("wc, spread  7 ->  7, MIXER (ctrl)", 200.0, 7.0, 7.0, 0.0, 0.5);
-    celula_knob("wc, spread  7 ->  7, REWET (ctrl)", 200.0, 7.0, 7.0, 1.0, 0.5);
+    celula_knob(
+        "wc, spread  7 ->  7, MIXER (ctrl)",
+        200.0,
+        7.0,
+        7.0,
+        0.0,
+        0.5,
+    );
+    celula_knob(
+        "wc, spread  7 ->  7, REWET (ctrl)",
+        200.0,
+        7.0,
+        7.0,
+        1.0,
+        0.5,
+    );
 
     println!();
     // (2) a figura que ANDA (o `wet_cum_dirty` cumulativo).
     celula_move("wc, figura ANDA 120 px", 200.0, 7.0, 120.0, 0.0, 1.0);
     celula_move("wc, figura ANDA 120 px, MIXER", 200.0, 7.0, 120.0, 0.0, 0.5);
-    celula_move("wc, figura ANDA   0 px (controlo)", 200.0, 7.0, 0.0, 0.0, 1.0);
-    celula_move("wc, figura ANDA   0 px, MIXER (ctrl)", 200.0, 7.0, 0.0, 0.0, 0.5);
+    celula_move(
+        "wc, figura ANDA   0 px (controlo)",
+        200.0,
+        7.0,
+        0.0,
+        0.0,
+        1.0,
+    );
+    celula_move(
+        "wc, figura ANDA   0 px, MIXER (ctrl)",
+        200.0,
+        7.0,
+        0.0,
+        0.0,
+        0.5,
+    );
 
     println!();
     // (3) a ABLAÇÃO: o mesmo par, largando o plano da reserva entre os dois re-carimbos.
     celula_ablacao("wc, 2 re-carimbos, MIXER", 200.0, 7.0, 0.0, 0.5, false);
-    celula_ablacao("wc, 2 re-carimbos, MIXER, LARGA plano", 200.0, 7.0, 0.0, 0.5, true);
-    celula_ablacao("wc, 2 re-carimbos, REWET, LARGA plano", 200.0, 7.0, 1.0, 0.5, true);
+    celula_ablacao(
+        "wc, 2 re-carimbos, MIXER, LARGA plano",
+        200.0,
+        7.0,
+        0.0,
+        0.5,
+        true,
+    );
+    celula_ablacao(
+        "wc, 2 re-carimbos, REWET, LARGA plano",
+        200.0,
+        7.0,
+        1.0,
+        0.5,
+        true,
+    );
 
     println!("\n-- (0) o DESCASQUE deixa resto? --");
     celula_peel("sem mixer", 0.0, 1.0);
@@ -328,10 +400,14 @@ fn diag_o_resto_do_watercolor() {
         t.paint.wet_soak_pos = None;
         t.paint.wet_soak_active = false;
     });
-    celula_campo("wet_shape_active=false", |t| t.paint.wet_shape_active = false);
+    celula_campo("wet_shape_active=false", |t| {
+        t.paint.wet_shape_active = false
+    });
     celula_campo("wet_backdrop", |t| t.paint.wet_backdrop = None);
     celula_campo("wet_session_canvas", |t| t.paint.wet_session_canvas = None);
-    celula_campo("wet_level_smear_pos", |t| t.paint.wet_level_smear_pos = None);
+    celula_campo("wet_level_smear_pos", |t| {
+        t.paint.wet_level_smear_pos = None
+    });
 
     println!("\n-- (5) a ESCADA: n re-carimbos contra UM --");
     for n in [1usize, 2, 3, 5, 10, 30] {
@@ -345,6 +421,8 @@ fn diag_o_resto_do_watercolor() {
     }
     celula_anchored(10, 1.0); // CONTROLO: mixer desarmado
 
-    println!("\n(banda = distâncias ao centro onde há diferença; salva_pad = o que a caixa salva\n \
-              cobre além do dab no pincel FINAL; sessao_pad = o que ela cobriria no valor VELHO)\n");
+    println!(
+        "\n(banda = distâncias ao centro onde há diferença; salva_pad = o que a caixa salva\n \
+              cobre além do dab no pincel FINAL; sessao_pad = o que ela cobriria no valor VELHO)\n"
+    );
 }

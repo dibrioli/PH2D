@@ -113,3 +113,35 @@ gate **já uma vez endurecido contra a grandeza errada**.
 escreve** (DIRETRIZ §1.5.9). Antes de culpar um diff por este ✗, confira as três assinaturas:
 gate de razão · zero linhas do diff naquela crate · 3/3 verde sozinho **com o `loadavg` impresso ao
 lado**.
+
+
+---
+
+## ⭐ **Candidato NOVO, medido pela `line/motion-value` em 2026-09-22**
+
+`tool::paint::tests::measure_input_cost::the_pen_down_is_still_a_canvas_copy_and_this_is_its_number`
+([`crates/ph2d-tool-painter/src/tool/paint/measure_input_cost.rs`](crates/ph2d-tool-painter/src/tool/paint/measure_input_cost.rs))
+— **gate de RAZÃO entre dois relógios, e o doc dele di-lo por escrito**: *«O oráculo é a RAZÃO
+contra a CÓPIA DO CANVAS medida no mesmo instante»*.
+
+| assinatura | leitura |
+|---|---|
+| mede um recurso partilhado | **sim** — divide dois relógios, e é declarado no doc |
+| zero linhas do diff acusado naquela crate | **sim** — a rodada era do LOD da forma (`ph2d-app-motion` + `ph2d-eval-motion` + shell) |
+| verde sozinho, com a carga impressa | `3 de 3` a `load 5,4` / **`97`–`98 %` de CPU ociosa** |
+
+⚠️ **A 3.ª assinatura é mais FRACA aqui do que nos membros de 10/09**, e isso está declarado: lá a
+confirmação correu a `load 17`–`19` (mais carga do que aquela em que tinham reprovado), o que
+mostra que o discriminador é o **FAN-OUT** e não o relógio. Aqui a máquina estava **calma**, logo o
+que está provado é *«passa com a máquina calma»* — não *«passa sob a mesma carga»*.
+
+⭐⭐ **Mas a QUARTA assinatura fechou-o, e ela é a mais forte de todas:** a **MESMA árvore**, o
+**mesmo commit**, corrida outra vez, deu `18 796` de `18 796` — o Painter **não repetiu**. *Um
+defeito de lógica reprova o mesmo caso sempre; só um recurso partilhado troca de vítima entre
+corridas.*
+
+⇒ **Promoção PEDIDA ao integrador** (a linha pede, o integrador escreve no `CLAUDE.md` §5.0).
+
+**Why:** ele reprovou no `nextest-impacted` (`18 796` testes em paralelo) de uma rodada que não toca
+uma linha do Painter, e um agente que leia o vermelho como defeito vai procurar a causa num diff
+que não a contém.

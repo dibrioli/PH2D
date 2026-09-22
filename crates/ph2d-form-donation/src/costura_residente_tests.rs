@@ -67,6 +67,7 @@ fn bola() -> BakedForm {
         rig: LightRig::default(),
         lit_with: None,
         lei: crate::lei_da_luz::Lei::Forma,
+        materia_da_forma: false,
         recorte: None,
     }
 }
@@ -210,6 +211,8 @@ fn pela_rota_residente(gpu: &GpuContext, bake: &BakedForm, meia: bool) -> Vec<u8
                 lampadas: &lampadas,
                 ceu: ceu_do_rig(&lampadas),
                 olhar: crate::lei_da_luz::OLHAR_DA_FORMA,
+                // CONTROLO: a lei de sempre. Ver `BakedForm::materia_da_forma`.
+                materia_da_forma: false,
             },
             bake.size,
             &bake.base,
@@ -352,6 +355,8 @@ fn a_cerca_do_tamanho_do_base_recusa_em_voz_alta() {
                     lampadas: &lampadas,
                     ceu: ceu_do_rig(&lampadas),
                     olhar: crate::lei_da_luz::OLHAR_DA_FORMA,
+                    // CONTROLO: a lei de sempre. Ver `BakedForm::materia_da_forma`.
+                    materia_da_forma: false,
                 },
                 bake.size,
                 base,

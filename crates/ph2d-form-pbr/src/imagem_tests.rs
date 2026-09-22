@@ -56,6 +56,7 @@ impl Peca {
             base: &self.base,
             form: &self.form,
             form_occ: &self.occ,
+            materia_da_forma: false,
         }
     }
 }
@@ -202,6 +203,7 @@ fn um_plano_curto_recusa_e_diz_qual() {
                 base: &p.base[..4],
                 form: &p.form,
                 form_occ: &p.occ,
+                materia_da_forma: false,
             },
         ),
         (
@@ -211,6 +213,7 @@ fn um_plano_curto_recusa_e_diz_qual() {
                 base: &p.base,
                 form: &p.form[..4],
                 form_occ: &p.occ,
+                materia_da_forma: false,
             },
         ),
         (
@@ -220,6 +223,7 @@ fn um_plano_curto_recusa_e_diz_qual() {
                 base: &p.base,
                 form: &p.form,
                 form_occ: &p.occ[..1],
+                materia_da_forma: false,
             },
         ),
     ] {
@@ -262,6 +266,7 @@ fn um_sprite_vazio_nao_estoura() {
             base: &[],
             form: &[],
             form_occ: &[],
+            materia_da_forma: false,
         },
         &[lampada()],
         Ceu::chapado([0.0; 3]),
@@ -347,5 +352,207 @@ fn fora_da_silhueta_o_byte_sai_intacto_para_qualquer_olhar() {
     assert!(
         mexeram >= 3,
         "controlo: os olhares TÊM de mexer no miolo ({mexeram} de 4)"
+    );
+}
+
+/// ⭐⭐⭐⭐ **COM A MATÉRIA DA FORMA O ALFA É A COBERTURA DESTE QUADRO** — e sem ela é a do `base`,
+/// que é o defeito do report.
+///
+/// ⛔⛔ **O report do dono (2026-09-21, foto com uma seta):** *«logo que roda o objeto o fundo
+/// aparece … parece que vc criou uma máscara»*. Não era uma máscara: era a silhueta que o PRIMEIRO
+/// bake gravou no [`Planos::base`], com a forma a ser re-rasterizada por quadro debaixo dela.
+///
+/// ⚠️ **A fixtura encena exactamente isso** — um `base` cuja silhueta é a metade ESQUERDA (o gesto
+/// de ontem) e uma forma cuja cobertura é a metade DIREITA (a peça depois de virar). São dois
+/// conjuntos **disjuntos**, logo as duas leis não podem concordar por acidente.
+#[test]
+fn com_a_materia_da_forma_o_alfa_e_a_cobertura_deste_quadro() {
+    let s = superficie();
+    let (w, h) = (16u32, 16u32);
+    let n = (w * h) as usize;
+    let (mut base, mut form) = (vec![0u8; n * 4], vec![0f32; n * 4]);
+    let occ = vec![1f32; n];
+    for i in 0..n {
+        let esquerda = (i as u32 % w) < w / 2;
+        // O gesto de ONTEM: a peça estava à esquerda, e o `veste_a_forma` gravou isto.
+        base[i * 4..i * 4 + 3].copy_from_slice(&[255, 255, 255]);
+        base[i * 4 + 3] = u8::from(esquerda) * 255;
+        // O quadro de HOJE: ela virou e está à direita.
+        form[i * 4 + 2] = 1.0;
+        form[i * 4 + 3] = f32::from(!esquerda);
+    }
+    let planos = |m| Planos {
+        size: (w, h),
+        base: &base,
+        form: &form,
+        form_occ: &occ,
+        materia_da_forma: m,
+    };
+    let acende = |m| {
+        acende_imagem_com(
+            &s,
+            &planos(m),
+            &[lampada()],
+            Ceu::chapado([0.2; 3]),
+            Look::default(),
+            4,
+        )
+        .unwrap()
+    };
+    let (congelada, viva) = (acende(false), acende(true));
+
+    let mut fugiu = 0usize; // opaco onde a peça JÁ NÃO está — o que o dono vê como «fundo»
+    let mut acompanha = 0usize;
+    for i in 0..n {
+        let esquerda = (i as u32 % w) < w / 2;
+        if esquerda && congelada[i * 4 + 3] > 0 {
+            fugiu += 1;
+        }
+        assert_eq!(
+            viva[i * 4 + 3],
+            u8::from(!esquerda) * 255,
+            "o texel {i} tem de mostrar a cobertura DESTE quadro"
+        );
+        if !esquerda && viva[i * 4 + 3] > 0 {
+            acompanha += 1;
+        }
+    }
+    // ⭐ **O CONTROLO é a metade que reproduz o report:** sem ele este gate ficaria verde sobre uma
+    // fixtura onde as duas silhuetas por acaso coincidem, e não afirmaria nada.
+    assert_eq!(
+        fugiu,
+        n / 2,
+        "controlo: sem a lei, o alfa tem de ficar preso à silhueta de ontem"
+    );
+    assert_eq!(acompanha, n / 2, "controlo: a peça de hoje tem de aparecer");
+}
+
+/// ⭐⭐⭐ **NA POSE EM QUE O BAKE CORREU a lei nova não muda um bit** — é isso que a torna segura.
+///
+/// ⚠️ Ali o `base` **é** a forma vestida (branco, com o alfa da cobertura), logo o albedo neutro é
+/// o albedo que lá está e a cobertura é o alfa que lá está. *A cura não move o que o dono já
+/// aprovou; ela só deixa de congelar o que a rota B re-rasteriza.*
+///
+/// ⛔ **A promessa é sobre os texels COBERTOS.** Fora da cobertura o alfa é `0` nos dois lados —
+/// logo nada de novo se vê —, e o RGB passa de `[0,0,0]` a branco: isso é **deliberado** e melhor,
+/// porque é o halo que uma amostragem bilinear puxa para dentro da borda.
+#[test]
+fn na_pose_do_bake_a_materia_da_forma_nao_muda_um_bit() {
+    let s = superficie();
+    let (w, h) = (16u32, 16u32);
+    let n = (w * h) as usize;
+    let (mut base, mut form) = (vec![0u8; n * 4], vec![0f32; n * 4]);
+    let occ = vec![1f32; n];
+    let mut cobertos = 0usize;
+    for i in 0..n {
+        let c = if i % 3 == 0 {
+            0.0
+        } else {
+            (i % 17) as f32 / 16.0
+        };
+        form[i * 4] = (i % 37) as f32 / 37.0 - 0.5;
+        form[i * 4 + 1] = (i % 41) as f32 / 41.0 - 0.5;
+        form[i * 4 + 2] = 1.0;
+        form[i * 4 + 3] = c;
+        if c > 0.0 {
+            cobertos += 1;
+            // Letra por letra o que o `ph2d_app_sculpt3d::albedo::veste_a_forma` escreve.
+            base[i * 4..i * 4 + 4].copy_from_slice(&[255, 255, 255, (c * 255.0).round() as u8]);
+        }
+    }
+    let planos = |m| Planos {
+        size: (w, h),
+        base: &base,
+        form: &form,
+        form_occ: &occ,
+        materia_da_forma: m,
+    };
+    let acende = |m| {
+        acende_imagem_com(
+            &s,
+            &planos(m),
+            &[lampada()],
+            Ceu::chapado([0.2; 3]),
+            Look::default(),
+            4,
+        )
+        .unwrap()
+    };
+    let (antes, depois) = (acende(false), acende(true));
+    for i in 0..n {
+        if form[i * 4 + 3] > 0.0 {
+            assert_eq!(
+                depois[i * 4..i * 4 + 4],
+                antes[i * 4..i * 4 + 4],
+                "o texel COBERTO {i} mudou na pose do bake"
+            );
+        } else {
+            assert_eq!(depois[i * 4 + 3], 0, "fora da cobertura o alfa é zero");
+            assert_eq!(antes[i * 4 + 3], 0, "controlo: e já era zero antes");
+        }
+    }
+    assert!(
+        cobertos >= n / 3,
+        "controlo: a fixtura tem de ter texels cobertos ({cobertos})"
+    );
+    // ⭐ **E o CONTROLO de que a lei não é inerte na fixtura**: sem ele bastaria um corredor que
+    // devolvesse o `base` para este gate passar.
+    assert_ne!(antes, base, "controlo: a luz tem de mexer nos pixels");
+}
+
+/// ⭐⭐⭐ **COM A MATÉRIA DA FORMA O ALBEDO É O NEUTRO** — a outra metade da lei.
+///
+/// ⚠️ **Ela precisa de um gate PRÓPRIO porque os dois gates irmãos são cegos a ela:** as fixturas
+/// deles têm o `base` **branco** (é o que o vestir escreve), e ali `para_luz(255)` **é** `1.0` —
+/// logo a metade do albedo lê-se igual com a lei e sem ela. *Uma fixtura no ponto neutro de uma
+/// metade não testa essa metade.*
+///
+/// ⛔ Este `base` é COLORIDO de propósito: ele encena um sprite que chegou vazio e a que alguém
+/// escreveu bytes por outro caminho — e afirma que a lei não os lê.
+#[test]
+fn com_a_materia_da_forma_o_albedo_e_o_neutro() {
+    let s = superficie();
+    let (w, h) = (12u32, 12u32);
+    let n = (w * h) as usize;
+    let (mut base, mut form) = (vec![0u8; n * 4], vec![0f32; n * 4]);
+    let occ = vec![1f32; n];
+    for i in 0..n {
+        base[i * 4..i * 4 + 4].copy_from_slice(&[40, 200, 90, 255]);
+        form[i * 4 + 2] = 1.0;
+        form[i * 4 + 3] = 1.0;
+    }
+    // A MESMA peça, com o `base` já branco: é essa a saída que a lei tem de reproduzir.
+    let mut branco = base.clone();
+    for p in branco.as_chunks_mut::<4>().0 {
+        *p = [255, 255, 255, 255];
+    }
+    let acende = |b: &[u8], m: bool| {
+        acende_imagem_com(
+            &s,
+            &Planos {
+                size: (w, h),
+                base: b,
+                form: &form,
+                form_occ: &occ,
+                materia_da_forma: m,
+            },
+            &[lampada()],
+            Ceu::chapado([0.2; 3]),
+            Look::default(),
+            2,
+        )
+        .unwrap()
+    };
+    assert_eq!(
+        acende(&base, true),
+        acende(&branco, false),
+        "com a matéria da forma o albedo tem de ser o NEUTRO, e não os bytes do `base`"
+    );
+    // ⭐ **O CONTROLO**: sem a lei, os bytes do `base` mandam — senão o gate acima compara duas
+    // corridas de uma lei que já ignorava o albedo.
+    assert_ne!(
+        acende(&base, false),
+        acende(&branco, false),
+        "controlo: sem a lei, um `base` verde e um branco TÊM de dar imagens diferentes"
     );
 }

@@ -148,6 +148,7 @@ fn a_form_that_came_from_a_file_asks_to_be_lit_by_its_own_rig() {
         rig: authored,
         lit_with: None,
         lei: crate::lei_da_luz::Lei::default(),
+        materia_da_forma: false,
         recorte: None,
     };
     assert!(

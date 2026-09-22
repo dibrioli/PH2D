@@ -84,6 +84,11 @@ mod bake_veredito_tests;
 #[path = "vivo_tests.rs"]
 mod vivo_tests;
 
+/// A FIAÇÃO da matéria da forma — do gesto que assa até à rota B. Ver o módulo.
+#[cfg(test)]
+#[path = "materia_da_forma_tests.rs"]
+mod materia_da_forma_tests;
+
 /// Os gates da CENA do catavento (`=52`) — ver o módulo.
 #[cfg(test)]
 #[path = "catavento_cena_tests.rs"]

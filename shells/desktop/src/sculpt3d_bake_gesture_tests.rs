@@ -278,3 +278,58 @@ fn uma_tela_vazia_veste_a_peca_e_sai_visivel() {
         );
     }
 }
+
+/// ⭐⭐⭐⭐ **DE QUEM É O ALFA DO ASSADO** — a sonda do report do dono de 2026-09-21:
+/// *«o algoritmo que vc criou tem esse fundo branco na sprite transparente. logo que roda o objeto
+/// o fundo aparece. OU seja: parece que vc criou uma máscara»*.
+///
+/// ⚠️ **Ela existe porque eu ia responder por leitura de código, e a leitura dava DUAS respostas
+/// compatíveis com a foto** (a tela branca opaca da cena · um alfa escrito pelo bake). *Uma foto e
+/// um doc-comment não discriminam; uma contagem de texels discrimina.*
+///
+/// Corre com um adapter e imprime, para os TRÊS fundos que o `spawn_blank_canvas` oferece:
+/// quantos texels ficam opacos, quantos transparentes, e o que é o alfa longe da peça.
+///
+/// `#[ignore]`: precisa de placa.
+#[test]
+#[ignore = "needs a GPU adapter"]
+fn diag_o_alfa_do_assado() {
+    let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
+        eprintln!("no GPU adapter on this machine — nothing to measure");
+        return;
+    };
+    for (nome, bg) in [("transparente", 0u8), ("preto", 1), ("branco", 2)] {
+        let (veredito, mut renderer, sim, bits) = assa_uma_tela(&gpu, bg);
+        let px = texels(&mut renderer, &sim, bits);
+        let opacos = px.iter().filter(|p| p[3] == 255).count();
+        let vazios = px.iter().filter(|p| p[3] == 0).count();
+        // O CANTO do canvas: o texel mais longe do centro da peça que existe.
+        let canto = px[0];
+        let centro = px[(EDGE as usize / 2) * EDGE as usize + EDGE as usize / 2];
+        eprintln!(
+            "[alfa] fundo={nome:<12} assou={:<5} opacos={opacos:>6} vazios={vazios:>6} \
+             de {:>6}  canto={canto:?}  centro={centro:?}",
+            veredito.assou(),
+            px.len()
+        );
+        // ⚠️ **E a IMAGEM ao lado da tabela**: uma contagem diz QUANTOS e nunca ONDE, e o report do
+        // dono é sobre a FORMA da região branca. *Depois de eu ter lido a foto dele de duas
+        // maneiras incompatíveis, nenhuma tabela decide sem o desenho ao lado.*
+        if let Ok(dir) = std::env::var("PH2D_ALFA_DUMP") {
+            // ⚠️ **Composto sobre MAGENTA**, e não guardado com alfa: um visualizador pinta
+            // transparência do fundo que lhe apetecer, e a pergunta do report é *«o que fica
+            // OPACO?»*. Sobre magenta, o que sobrar de magenta é, por construção, o que o assado
+            // deixou transparente. ⭐ E PPM (P6) porque ele não pede dependência nenhuma — o
+            // precedente é o `PH2D_FIELD_DUMP`.
+            let mut ppm = format!("P6\n{EDGE} {EDGE}\n255\n").into_bytes();
+            for p in &px {
+                let a = f32::from(p[3]) / 255.0;
+                // MAGENTA: cheio no vermelho e no azul, zero no verde.
+                for (canal, fundo) in p[..3].iter().zip([255.0, 0.0, 255.0]) {
+                    ppm.push(a.mul_add(f32::from(*canal), (1.0 - a) * fundo) as u8);
+                }
+            }
+            let _ = std::fs::write(std::path::Path::new(&dir).join(format!("{nome}.ppm")), ppm);
+        }
+    }
+}

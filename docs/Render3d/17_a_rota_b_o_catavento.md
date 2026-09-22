@@ -792,10 +792,140 @@ que ele não devia.
 
 ---
 
+## §11 — ⭐⭐⭐⭐ **A MATÉRIA DA PEÇA**, e a «máscara» que era uma silhueta CONGELADA (2026-09-21)
+
+### §11.1 — O report, e a leitura que ele convida
+
+> *«veja: O algoritmo que vc criou tem esse fundo branco na sprite transparente. logo que roda o
+> objeto o fundo aparece. OU seja: parece que vc criou uma máscara. Encontre o modo de tirar a
+> máscara. que o objeto pleno no fundo transparente.»* — o dono, com foto e uma seta vermelha.
+
+⛔⛔ **A palavra *«máscara»* aponta para o sítio errado, e é por isso que ela merece esta secção.**
+Não há máscara nenhuma no caminho: o que há é uma **SILHUETA CONGELADA**.
+
+A §8.5 desta wave pôs o `albedo::veste_a_forma` — quando o sprite chega **inteiramente
+transparente**, o bake veste-o da peça: branco (o neutro multiplicativo) com o alfa da **cobertura**
+do G-buffer. ⚠️ **E ele escreve isso no `base`, que é o plano que o documento GRAVA.**
+
+A rota A (o assado) é coerente com isso, porque a forma e o `base` foram escritos no MESMO gesto. A
+rota B **não é**: ela re-rasteriza a forma **por quadro** e lê o `base` do primeiro gesto ⇒
+
+| o que segue a peça a virar | o que NÃO seguia |
+|---|---|
+| as normais (re-rasterizadas) | — |
+| a luz e a sombra (recalculadas) | — |
+| a oclusão de forma | — |
+| — | **o ALFA**, que vinha do `base` de ontem |
+
+⇒ *a peça rodava por baixo do recorte dela própria*, e o que aparecia por trás era o branco que o
+vestir tinha deixado. **Ele descreveu o sintoma com precisão e o mecanismo tinha outro nome.**
+
+### §11.2 — A medição que fechou o diagnóstico
+
+A primeira leitura do código disse o contrário: o doc do `acende_faixa` promete *«o ALFA atravessa
+intacto»*, o que se lê como *«o bake não escreve alfa nenhum»*. A sonda `diag_o_alfa_do_assado`
+(versionada, `#[ignore]`) mediu os três fundos de tela:
+
+| fundo da tela | assou? | opacos | vazios | canto | centro |
+|---|---|---|---|---|---|
+| transparente | sim | `12 284` | `53 252` | `[0,0,0,0]` | `[211,213,218,255]` |
+| preto | sim | `65 536` | `0` | `[0,0,0,255]` | `[26,27,29,255]` |
+| branco | sim | `65 536` | `0` | `[255,255,255,255]` | `[211,213,218,255]` |
+
+⇒ **o bake DE FACTO escreve alfa** numa tela transparente — `53 252` texels vazios de `65 536` —, e
+quem o escreve é o vestir. *A promessa do `acende_faixa` é verdadeira sobre a LEI e a lei não era o
+sítio onde o alfa nascia.*
+
+### §11.3 — A cura: um facto por OBJECTO
+
+`BakedForm::materia_da_forma` (e o gémeo `ph2d_form_pbr::imagem::Planos::materia_da_forma`) —
+*este sprite não tinha arte, logo o que ele mostra é a peça 3D e mais nada*. Com ele ligado:
+
+* o **albedo** é o **neutro** (branco) — exactamente o que o vestir escreve, logo na pose do bake a
+  saída não se mexe um bit;
+* o **alfa** é a **cobertura DESTE quadro** — a silhueta passa a seguir a peça.
+
+⭐ **Ele nasce no GESTO que assa** (`materia_da_forma: vestidos > 0`), viaja no documento (degrau
+`165`) e atravessa **quatro** sítios em duas crates até à porta da rota B. ⚠️ *Um motor com a lei
+certa e a shell a não a ligar lê-se como um motor sem a lei* — e é por isso que a fiação tem um
+censo derivado próprio (`materia_da_forma_tests`), com a coluna da contagem.
+
+⛔⛔ **É por OBJECTO e nunca por TEXEL, e a diferença tem um defeito com nome.** Uma regra
+por-texel — *«onde o `base` é transparente, usa o alfa da forma»* — parece equivalente e não é: num
+sprite com arte **DESENHADA** ela encheria de branco toda a volta do desenho sempre que a malha
+fosse maior do que ele. *A pergunta é «este sprite tem arte?», e ela responde-se UMA vez.* É a mesma
+cerca que a §8.5 já tinha pago para o vestir.
+
+### §11.4 — O gémeo na placa, e a paridade
+
+O bit sobe no `y` do `vec4<u32>` da vista, que era reserva declarada ⇒ **a disposição do uniform não
+se mexe** e o gate que a prende fica intacto. Medido num adaptador real, com a fixtura das quatro
+bolas, **nos dois lados do interruptor**:
+
+| `materia_da_forma` | `|Δ| = 0` | pior |
+|---|---|---|
+| `false` | `100,000 %` de `262 144` bytes | `0` |
+| `true` | `100,000 %` de `262 144` bytes | `0` |
+
+⚠️ **A segunda linha só existe porque o gate passou a percorrer as DUAS.** Sem o laço, *nenhuma
+corrida deste repo tocava nas duas linhas novas do shader* — é letra por letra a cegueira que o
+matcap pagou com um report do dono (`docs/3D`, §101: *«uma suíte que nunca arma o canal não pode ver
+o canal a ser deitado fora»*).
+
+### §11.5 — E a CENA tinha de mudar, senão a wave era invisível
+
+⛔⛔⛔ A `=52` pedia uma tela **BRANCA** (`bg: 2`). Sobre branco o vestir **nunca arma** — o sprite
+já tem alfa em todo o lado —, logo `materia_da_forma` seria sempre `false` e a cena mostraria a peça
+dentro de um cartão branco: **exactamente o que a cura existe para tirar**.
+
+⇒ o fundo passa a ser da CENA (`donation::fundo_da_tela`): a `=11` continua a julgar a **LUZ** sobre
+branco, que é o neutro multiplicativo, e a `=52` pede **transparente**, porque o que ela julga é o
+**RECORTE a virar**. ⚠️ *Uma cena que não contém o fenómeno é o mesmo que uma cena ausente*, e o dono
+aprova-a sem nunca julgar a metade que importa.
+
+### §11.6 — A régua do produto, e o eixo que foi MEDIDO
+
+O gate `catavento_com_materia_da_forma_a_silhueta_segue_a_peca` corre a rota B inteira num
+adaptador e lê o ALFA do sprite. A fixtura é um **TORO** e a escolha é a régua: a silhueta de uma
+esfera não muda com pose nenhuma — ela é o CONTROLO dos gates vizinhos, e seria exactamente a
+fixtura que **não contém** o fenómeno.
+
+⛔⛔ **E o EIXO foi medido, não escolhido.** A 1.ª redacção virava pelo `yaw` e leu **`0` de
+`65 536`** texels a mexer: este toro assenta no plano do `yaw`, logo rodá-lo por ali é simétrico.
+Pelo `pitch` ele passa de `6 624` para `13 776` texels opacos, com `12 680` a mudar de alfa.
+
+⚠️ *Uma fixtura que não contém o fenómeno lê-se exactamente como uma lei que não chega ao pixel*, e
+as duas curas eram opostas — o que as separou foi a **linha dos opacos ficar impressa ao lado do
+veredito**.
+
+⭐ E o CONTROLO é o report: com a lei desligada o alfa lê `255` nas duas poses, em todo o texel.
+
+### §11.7 — O que fica declarado
+
+⚠️ **Fora da cobertura o RGB passa de `[0,0,0]` a branco**, com o alfa a `0` nos dois casos. Isso é
+deliberado e melhor: é o halo que uma amostragem bilinear puxa para dentro da borda, e branco ao pé
+de branco não deixa orla escura. *Nada de novo se VÊ; o que muda é o que a filtragem encontra.*
+
+⚠️ **E o vestir tem memória:** depois de o artista pintar um traço na tela, o sprite deixa de estar
+vazio ⇒ o bake seguinte não veste, `materia_da_forma` volta a `false`, e a silhueta passa a ser a da
+ARTE. *É a resposta certa, e é a razão de o facto ser do gesto que assa e não da cena.*
+
+**12 provas de mutação, todas a sangrar** — `docs/Render3d/ferramentas/mutacao_materia_da_forma_2026-09-21.sh`.
+
+---
+
+---
+
 ## ⛔ Recusas MEDIDAS
 
 | o que | porquê | onde |
 |---|---|---|
+| uma regra de vestir/recortar por TEXEL | num sprite com arte desenhada ela enche de branco a volta do desenho sempre que a malha for maior — *a pergunta é «este sprite tem arte?» e responde-se UMA vez* | §11.3 |
+| ler o doc do `acende_faixa` (*«o alfa atravessa intacto»*) como *«o bake não escreve alfa»* | a promessa é verdadeira sobre a LEI, e o alfa nascia no VESTIR, a montante dela — a sonda mediu `53 252` de `65 536` texels vazios | §11.2 |
+| deixar a `=52` com a tela BRANCA | sobre branco o vestir nunca arma ⇒ a cena mostraria a peça num cartão e a cura seria invisível a quem a smoka | §11.5 |
+| medir a silhueta a virar com uma ESFERA | ela é invariante a toda pose — é o controlo dos gates vizinhos e a fixtura que não contém o fenómeno | §11.6 |
+| virar o toro pelo `yaw` | ele assenta nesse plano ⇒ `0` de `65 536` texels a mexer, que se lê como uma lei que não chega ao pixel | §11.6 |
+| uma paridade de placa com a matéria DESLIGADA só | as duas linhas novas do shader nunca eram percorridas — a cegueira do matcap, que custou um report | §11.4 |
 | chamar a porta `form_plane` por quadro | `4` objectos a `512²` contra `26` — o readback é `31×` a rasterização | §1.2 |
 | baixar a resolução do G-buffer para poupar relógio | não compra rasterização (ela é plana no lado) **nem** acendida (o passe despacha sobre os pixels do SPRITE) | §1.1 + §1.2-bis + §1.3 |
 | medir a rasterização com uma esfera leve | o custo é de VÉRTICES: `33×` de malha vale `1,6×` de tempo, e a fixtura não continha a grandeza | §1.4 |

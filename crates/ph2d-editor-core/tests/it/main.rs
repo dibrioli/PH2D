@@ -106,6 +106,7 @@ mod number_input_mapped_link;
 mod o_bake_enquadra_o_sprite_que_ele_escreve;
 mod o_balao_de_um_rotulo_cortado_chega_a_pixel;
 mod o_censo_das_elisoes_ve_o_que_foi_cortado;
+mod o_documento_do_assado_carrega_o_que_o_artista_escolheu;
 mod o_indice_da_memoria_conta_o_que_aponta;
 mod only_one_door_lays_out_a_row_of_fields;
 mod the_animation_column_has_one_x;

@@ -311,11 +311,13 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
         // `31,69°`).
         eprintln!(
             "[sculpt3d] =52 THE WEATHERVANE: the same table as =11, and the piece now TURNS.\n\
-             [sculpt3d]    (1) A white SPRITE is on the table (already SELECTED) and the sphere\n\
-             [sculpt3d]        arrives with RIDGES -- the light takes its shape from them.\n\
+             [sculpt3d]    (1) The SPRITE on the table is TRANSPARENT (already SELECTED), so you\n\
+             [sculpt3d]        see nothing there yet -- only its outline. The sphere arrives with\n\
+             [sculpt3d]        RIDGES: the light takes its shape from them.\n\
              [sculpt3d]    (2) Shift+B BAKES. The log states the size.\n\
-             [sculpt3d]    (3) Press D ONCE: the clay leaves the canvas and the SPRITE appears,\n\
-             [sculpt3d]        with the relief drawn in light and shadow.\n\
+             [sculpt3d]    (3) Press D ONCE: the clay leaves the canvas and the SPRITE appears --\n\
+             [sculpt3d]        the PIECE ALONE, cut out, with no white card around it, and the\n\
+             [sculpt3d]        relief drawn in light and shadow.\n\
              [sculpt3d]    (4) THE CONTROL, and do it FIRST: with the transport STOPPED the sprite\n\
              [sculpt3d]        is motionless. This is what the usual route delivers.\n\
              [sculpt3d]    (5) THE TEST OF THIS WAVE: press PLAY (the time ruler). The piece TURNS\n\
@@ -323,6 +325,9 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]        enter the shadow as it swings to the far side. If the whole image\n\
              [sculpt3d]        spins like a stamp, with the highlight glued to it, REJECT -- that\n\
              [sculpt3d]        is the usual route with a rotated image.\n\
+             [sculpt3d]    (5-bis) AND THE CUT-OUT TURNS WITH IT: the outline of the sprite has to\n\
+             [sculpt3d]        follow the piece. If a white patch shows up behind it the moment it\n\
+             [sculpt3d]        starts turning, REJECT -- the cut-out would be frozen at the bake.\n\
              [sculpt3d]    (6) STOP the transport: the piece freezes where it was. Rewind: it\n\
              [sculpt3d]        returns to the start. The spin obeys the RULER, not the wall clock.\n\
              [sculpt3d]    (7) Q/E swing the lamp while the piece turns -- the two must compose,\n\

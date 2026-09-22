@@ -639,7 +639,7 @@
 ///
 /// ⚠️ Com `spin = 0` a peca fica parada no `yaw` autorado, **ao bit** — e ha' gate.
 ///
-/// # `164` — **o que se ve^ e' o que se assa** (`BakedFormDocument::recorte`, 2026-09-21)
+/// # `174 → 175` — **o que se ve^ e' o que se assa** (`BakedFormDocument::recorte`, 2026-09-21)
 ///
 /// ⛔⛔ **Report do dono, com foto:** *«O Bake nao e' feito projetando o objeto 3d exatamente como
 /// o posiciono sobre a sprite e tem perspectiva, posicao e escala diferente do que eu coloquei»* —
@@ -662,4 +662,27 @@
 /// ⛔ Ainda assim o degrau existe, e o motivo e' o de sempre: *o postcard e' POSICIONAL*.
 ///
 /// ⚠️ **A tripla NAO ve^ este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
-pub(crate) const PROJECT_SCHEMA: u32 = 175;
+///
+/// # `175 → 176` — **a materia da peca** (`BakedFormDocument::materia_da_forma`, 2026-09-21)
+///
+/// ⛔⛔ **Report do dono, com foto e uma seta:** *«O algoritmo que vc criou tem esse fundo branco
+/// na sprite transparente. logo que roda o objeto o fundo aparece. OU seja: parece que vc criou
+/// uma mascara.»*
+///
+/// ⭐⭐ **O que ele viu NAO era uma mascara — era uma SILHUETA CONGELADA.** Quando o sprite chega
+/// **inteiramente transparente**, o bake veste-o da forma (branco, com o alfa da COBERTURA) e
+/// grava isso no `base`, que e' o que o arquivo guarda. A rota B re-rasteriza a forma **por
+/// quadro**, logo a luz e as normais seguem a peca a virar… e o alfa NAO, porque ele vinha de um
+/// `base` do PRIMEIRO gesto. *A peca rodava por baixo do recorte dela propria.*
+///
+/// ⭐ A cura e' um facto **por OBJECTO** (`vestidos > 0` no assar): com ele o albedo e' o neutro e
+/// o alfa e' a cobertura DESTE quadro. ⛔ Uma regra **por texel** (*«onde o base e' transparente,
+/// usa o alfa da forma»*) parece equivalente e nao e': num sprite com arte DESENHADA ela encheria
+/// de branco toda a volta do desenho sempre que a malha fosse maior do que ele.
+///
+/// ⚠️ **`false` num documento anterior**, e ele e' o valor CERTO para todos: ate' aqui nenhum bake
+/// sabia disto, e um sprite com arte nunca o quer. ⛔ O degrau existe pelo motivo de sempre — *o
+/// postcard e' POSICIONAL*.
+///
+/// ⚠️ **A tripla NAO ve^ este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
+pub(crate) const PROJECT_SCHEMA: u32 = 176;

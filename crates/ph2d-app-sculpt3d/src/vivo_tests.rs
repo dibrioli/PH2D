@@ -39,8 +39,18 @@ fn base_chapado() -> Vec<u8> {
     v
 }
 
-/// Os pixels do sprite depois de um quadro da rota B, na pose pedida.
+/// Os pixels do sprite depois de um quadro da rota B, na pose pedida, com a lei de sempre.
 fn um_quadro(gpu: &GpuContext, malha: ph2d_mesh::Mesh, pose: PoseDaForma) -> Vec<u8> {
+    um_quadro_com(gpu, malha, pose, false)
+}
+
+/// O mesmo, com a **matéria** dita — ver [`AlvoVivo::materia_da_forma`].
+fn um_quadro_com(
+    gpu: &GpuContext,
+    malha: ph2d_mesh::Mesh,
+    pose: PoseDaForma,
+    materia_da_forma: bool,
+) -> Vec<u8> {
     let base = base_chapado();
     let atlas = TextureAtlas::new(gpu, LADO.max(256));
     let mut renderer = SpriteRenderer::new(gpu.clone(), wgpu::TextureFormat::Rgba8Unorm, atlas, 64);
@@ -61,6 +71,7 @@ fn um_quadro(gpu: &GpuContext, malha: ph2d_mesh::Mesh, pose: PoseDaForma) -> Vec
                 size: (LADO, LADO),
                 base: &base,
                 texture_id: slot,
+                materia_da_forma,
             },
             viva: &mut viva,
             pose,
@@ -178,6 +189,7 @@ fn catavento_o_carimbo_poupa_a_rasterizacao() {
                     size: (LADO, LADO),
                     base: &base,
                     texture_id: slot,
+                    materia_da_forma: false,
                 },
                 viva,
                 pose,
@@ -268,6 +280,7 @@ fn a_fase_acende_larga_e_carimba() {
                 rig: LightRig::default(),
                 lit_with: None,
                 lei: ph2d_form_donation::lei_da_luz::Lei::default(),
+                materia_da_forma: false,
                 recorte: None,
             },
         );
@@ -307,5 +320,76 @@ fn a_fase_acende_larga_e_carimba() {
     assert!(
         assados[&sem.to_bits()].lit_with.is_none(),
         "a fase carimbou um objecto que ela nao acendeu — o carimbo deixaria de dizer a verdade"
+    );
+}
+
+/// ⭐⭐⭐⭐ **A SILHUETA SEGUE A PEÇA — o report da «máscara», afirmado no PIXEL.**
+///
+/// ⛔⛔ **O report do dono (2026-09-21, foto com uma seta):** *«o algoritmo que vc criou tem esse
+/// fundo branco na sprite transparente. logo que roda o objeto o fundo aparece. OU seja: parece que
+/// vc criou uma máscara»*.
+///
+/// Não era uma máscara: era a silhueta que o PRIMEIRO bake gravou no `base` (o
+/// `albedo::veste_a_forma` veste um sprite vazio de branco com o alfa da cobertura) enquanto a rota
+/// B re-rasteriza a forma **por quadro**. A luz seguia a peça a virar e o RECORTE não.
+///
+/// ⚠️ **A fixtura é um TORO e a escolha é a régua:** a silhueta de uma esfera não muda com pose
+/// nenhuma — ela é o CONTROLO dos gates acima, e seria exactamente a fixtura que **não contém** o
+/// fenómeno. Um toro de lado é uma barra e de frente é um anel.
+///
+/// ⛔⛔ **E o EIXO é medido, não escolhido:** a 1.ª redacção virava pelo `yaw` e leu **`0` de
+/// `65 536`** texels a mexer — este toro assenta no plano do `yaw`, logo rodá-lo por ali é
+/// simétrico. Pelo `pitch` ele passa de `6 624` para `13 776` texels opacos. *Uma fixtura que não
+/// contém o fenómeno lê-se exactamente como uma lei que não chega ao pixel*, e as duas curas eram
+/// opostas — o que as separou foi a linha dos opacos ficar impressa **ao lado** do veredito.
+///
+/// ⚠️ **As duas metades, porque cada uma sozinha mente:** sem a segunda, um gate que só medisse
+/// *«o alfa mexeu-se»* passaria com uma lei que escrevesse ruído no canal.
+#[test]
+#[ignore = "precisa de adapter"]
+fn catavento_com_materia_da_forma_a_silhueta_segue_a_peca() {
+    let Some(gpu) = placa() else {
+        eprintln!("sem placa — a sonda desiste (skip gracioso NÃO é verde)");
+        return;
+    };
+    let reta = core::f32::consts::FRAC_PI_2;
+    let toro = || ph2d_mesh::shapes::torus(64, 32, 0.7, 0.28);
+    let virado = PoseDaForma {
+        yaw: 0.0,
+        pitch: reta,
+    };
+    let alfas = |px: &[u8]| px.iter().skip(3).step_by(4).copied().collect::<Vec<u8>>();
+    let opacos = |a: &[u8]| a.iter().filter(|v| **v > 127).count();
+    let n = (LADO * LADO) as usize;
+
+    // ── A lei nova: o alfa é a cobertura DESTE quadro ───────────────────────
+    let a0 = alfas(&um_quadro_com(&gpu, toro(), PoseDaForma::default(), true));
+    let a90 = alfas(&um_quadro_com(&gpu, toro(), virado, true));
+    let mudou = a0.iter().zip(&a90).filter(|(x, y)| x != y).count();
+    eprintln!(
+        "  matéria da forma: opacos {} → {} de {n}, {mudou} texels com o alfa a mexer",
+        opacos(&a0),
+        opacos(&a90)
+    );
+    assert!(
+        mudou >= n / 100,
+        "a silhueta tem de SEGUIR a peça: só {mudou} de {n} texels mudaram de alfa"
+    );
+    // ⭐ **E ela tem de ser uma SILHUETA e não ruído:** um toro de frente tapa mais tela do que de
+    // lado, e a fracção coberta tem de ficar nos dois casos entre um piso e um tecto plausíveis.
+    for (rotulo, a) in [("repouso", &a0), ("virado", &a90)] {
+        let o = opacos(a);
+        assert!(
+            o > n / 50 && o < n * 3 / 4,
+            "a {rotulo} o toro cobre {o} de {n} texels — isto não é uma silhueta"
+        );
+    }
+
+    // ── O CONTROLO: a lei de sempre CONGELA o recorte, que é o report ───────
+    let c0 = alfas(&um_quadro_com(&gpu, toro(), PoseDaForma::default(), false));
+    let c90 = alfas(&um_quadro_com(&gpu, toro(), virado, false));
+    assert!(
+        c0.iter().all(|v| *v == 255) && c90.iter().all(|v| *v == 255),
+        "controlo: sem a lei o alfa é o do `base` (opaco) nas duas poses — é isso o report"
     );
 }

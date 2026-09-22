@@ -117,6 +117,7 @@ fn peca() -> BakedForm {
         rig: LightRig::default(),
         lit_with: None,
         lei: crate::lei_da_luz::Lei::default(),
+        materia_da_forma: false,
         recorte: None,
     }
 }
@@ -244,6 +245,7 @@ fn so_a_forma(bake: &BakedForm, olhar: Look) -> Vec<u8> {
         base: &bake.base,
         form: &bake.form,
         form_occ: &bake.form_occ,
+        materia_da_forma: false,
     };
     let material = ph2d_form_pbr::OpenPbr::default().prepare();
     let lampadas: Vec<ph2d_form_pbr::Lampada> = ph2d_light::resolve(&bake.rig)
@@ -302,6 +304,7 @@ fn as_duas_leis_sobre_a_mesma_forma() {
             base: bake.base.clone(),
             form: bake.form.clone(),
             form_occ: bake.form_occ.clone(),
+            materia_da_forma: false,
             ..bake
         };
         b.rig = LightRig::default();
@@ -422,14 +425,31 @@ fn a_placa_e_a_regua_concordam_no_pixel() {
         eprintln!("sem placa — a sonda desiste (skip gracioso NÃO é verde)");
         return;
     };
-    let bake = peca();
+    // ⭐⭐⭐⭐ **AS DUAS MATÉRIAS, e a segunda existe por uma cegueira MEDIDA nesta casa.**
+    //
+    // O gémeo em WGSL da [`ph2d_form_pbr::imagem::Planos::materia_da_forma`] é ~duas linhas, e sem
+    // este laço **nenhuma** corrida deste repo as percorria: a fixtura nasce com a lei de sempre.
+    // ⚠️ É letra por letra a lição do matcap (*«uma suíte que nunca arma o canal não pode ver o
+    // canal a ser deitado fora»*), que custou um report do dono.
+    for materia in [false, true] {
+        println!("\n  ###### materia_da_forma = {materia} ######");
+        mede_a_paridade(&gpu, materia);
+    }
+}
+
+/// Uma corrida da paridade, com a matéria dita. Ver o chamador.
+fn mede_a_paridade(gpu: &GpuContext, materia: bool) {
+    let bake = BakedForm {
+        materia_da_forma: materia,
+        ..peca()
+    };
     let rig = LightRig::default();
 
     // A RÉGUA — a lei em Rust, pela porta do produto.
     let cpu = pixels_pela_forma_na_cpu(&bake, &rig).expect("a régua acende");
 
     // A PLACA — o caminho que o app corre.
-    let atlas = TextureAtlas::new(&gpu, 256);
+    let atlas = TextureAtlas::new(gpu, 256);
     let mut renderer = SpriteRenderer::new(gpu.clone(), wgpu::TextureFormat::Rgba8Unorm, atlas, 64);
     let mut b = BakedForm {
         texture_id: renderer
@@ -442,7 +462,7 @@ fn a_placa_e_a_regua_concordam_no_pixel() {
     };
     b.rig = rig;
     let mut passes = PassesDaLuz::default();
-    acende_com(Lei::Forma, &gpu, &mut renderer, &mut passes, &b.rig, &b).expect("a placa acende");
+    acende_com(Lei::Forma, gpu, &mut renderer, &mut passes, &b.rig, &b).expect("a placa acende");
     let (_, _, placa_px) = renderer
         .readback_individual(b.texture_id)
         .expect("le de volta");
@@ -468,7 +488,7 @@ fn a_placa_e_a_regua_concordam_no_pixel() {
         }
     }
     let n = cpu.len();
-    println!("\n  == a placa contra a régua, {LADO}x{LADO} ==");
+    println!("  == a placa contra a régua, {LADO}x{LADO} ==");
     for (d, c) in hist.iter().enumerate() {
         let rotulo = if d == 4 {
             "4+".to_string()
@@ -506,8 +526,23 @@ fn a_placa_e_a_regua_concordam_no_pixel() {
     assert!(
         fraccao <= POPULACAO_MAXIMA,
         "{fraccao:.3} % dos bytes divergem — acima de {POPULACAO_MAXIMA} % isto é uma LEI \
-         diferente e não a representação (ver a tabela acima)"
+         diferente e não a representação (ver a tabela acima), com materia_da_forma = {materia}"
     );
+
+    // ⛔ **E o CONTROLO de que a fixtura CONTÉM o fenómeno:** com a matéria ligada o alfa passa a
+    // ser a cobertura, logo ele TEM de deixar de ser o do `base` — senão as duas voltas do laço
+    // medem o mesmo programa e a segunda não afirma nada.
+    let alfa_do_base = bake.base.iter().skip(3).step_by(4);
+    let alfa_saiu = cpu.iter().skip(3).step_by(4);
+    let mudou = alfa_do_base.zip(alfa_saiu).filter(|(a, b)| a != b).count();
+    if materia {
+        assert!(
+            mudou >= LADO as usize,
+            "controlo: com a matéria ligada o alfa tem de seguir a cobertura ({mudou} texels)"
+        );
+    } else {
+        assert_eq!(mudou, 0, "controlo: sem ela o alfa atravessa intacto");
+    }
 }
 
 /// ⭐⭐⭐⭐ **O QUE A PLACA CUSTA** — a segunda coluna da tabela que a §7 do `docs/Render3d/15` abriu.
@@ -556,6 +591,7 @@ fn diag_quanto_a_placa_custa() {
             base: &base,
             form: &form,
             form_occ: &occ,
+            materia_da_forma: false,
         };
         for (rotulo, lampadas) in [("1", &uma), ("4", &quatro)] {
             let mut passe = passe_da_forma::PasseDaForma::new(&gpu);
@@ -570,6 +606,8 @@ fn diag_quanto_a_placa_custa() {
                             lampadas,
                             ceu: ceu_do_rig(lampadas),
                             olhar: crate::lei_da_luz::OLHAR_DA_FORMA,
+                            // CONTROLO: a lei de sempre. Ver `BakedForm::materia_da_forma`.
+                            materia_da_forma: false,
                         },
                         &planos,
                     )

@@ -102,10 +102,14 @@ pub(crate) fn materia_para(
 /// por texel ([`ph2d_mesh_render::FormPlanes::normal`]), e a cobertura é exactamente *«onde a peça
 /// está»*. ⇒ onde o sprite não tem nada e a peça tem, a matéria passa a ser a **NEUTRA**.
 ///
-/// ⚠️ **E o branco não é escolha minha:** é o que as cenas de bake desta casa já põem na mesa
-/// (`donation::canvas_wanted` pede `bg: 2`), com a razão escrita no gate do gesto — *«a luz da
-/// forma MULTIPLICA, então sobre branco o que se vê é ela e mais nada»*. Branco é o **neutro
-/// multiplicativo**, e usá-lo aqui é aplicar a escolha que o produto já fez.
+/// ⚠️ **E o branco não é escolha minha:** é o que a cena do bake desta casa já põe na mesa
+/// ([`super::donation::fundo_da_tela`] pede branco para a `=11`), com a razão escrita no gate do
+/// gesto — *«a luz da forma MULTIPLICA, então sobre branco o que se vê é ela e mais nada»*. Branco
+/// é o **neutro multiplicativo**, e usá-lo aqui é aplicar a escolha que o produto já fez.
+///
+/// ⚠️⚠️ **E a partir de 2026-09-21 a cena do CATAVENTO (`=52`) pede TRANSPARENTE**, exactamente
+/// para esta lei armar lá: é onde a peça tem de sair recortada e continuar recortada a virar. *Uma
+/// cena que não contém o fenómeno é o mesmo que uma cena ausente.*
 ///
 /// ## ⛔⛔ A CERCA é «o sprite inteiro está vazio», e sem ela isto seria uma regressão grave
 ///

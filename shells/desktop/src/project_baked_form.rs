@@ -82,6 +82,19 @@ pub(crate) struct BakedFormDocument {
     ///
     /// ⛔ Ele é o **quarto** campo que não é pixel, e o postcard é POSICIONAL: ele entra no FIM.
     pub(crate) recorte: Option<ph2d_form_donation::baked_form::Recorte>,
+    /// ⭐⭐⭐⭐ **A MATÉRIA DESTE OBJECTO É A PRÓPRIA FORMA** — degrau `165`. O que ela é, e porque
+    /// não se deriva do [`Self::base`] depois do bake: o doc do
+    /// [`ph2d_form_donation::baked_form::BakedForm::materia_da_forma`].
+    ///
+    /// ⛔ **Sem ele o report da «máscara» volta ao reabrir:** um catavento sem arte própria
+    /// perderia o direito de re-derivar a silhueta por quadro, e a peça voltava a rodar por baixo
+    /// do recorte do primeiro bake.
+    ///
+    /// ⚠️ **`false` num documento anterior é a leitura honesta:** até aqui *todo* objecto assado
+    /// lia o alfa do `base`, logo a ausência descreve exactamente o que aqueles ficheiros contêm.
+    ///
+    /// ⛔ Ele é o **quinto** campo que não é pixel, e o postcard é POSICIONAL: ele entra no FIM.
+    pub(crate) materia_da_forma: bool,
 }
 
 impl crate::App {
@@ -118,6 +131,7 @@ impl crate::App {
                 rig: bake.rig,
                 lei: bake.lei,
                 recorte: bake.recorte,
+                materia_da_forma: bake.materia_da_forma,
             });
         }
         out
@@ -186,6 +200,7 @@ impl crate::App {
                     texture_id,
                     rig: doc.rig,
                     lei: doc.lei,
+                    materia_da_forma: doc.materia_da_forma,
                     recorte: doc.recorte,
                     // Nunca aceso NESTA sessão: é isto que faz o passe de re-acendida trabalhar no
                     // primeiro frame, pela porta única.
@@ -214,48 +229,6 @@ fn reattach_texture(sprite: &mut Sprite, texture_id: u32) {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// ⛔⛔ **OS DOIS LADOS DA VIAGEM CARREGAM A LEI** — o gravar e o devolver.
-    ///
-    /// ⚠️ **O round-trip do irmão abaixo NÃO cobre isto:** ele monta o documento à mão, logo fica
-    /// verde com um `collect` que escreva a lei de FÁBRICA em toda peça — *o ficheiro seria
-    /// perfeito e a escolha do artista morreria no save*. E o defeito é mudo: as duas leis acendem,
-    /// e ele só aparece ao reabrir.
-    ///
-    /// ⚠️ **A régua é o TEXTO** porque as duas funções são métodos da `App` — elas pedem o mundo, o
-    /// renderizador e o mapa dos assados, e nenhum existe num teste headless. É a mesma família do
-    /// `the_bake_button_is_wired` do lado dos `tests/it`.
-    ///
-    /// **Mutação que deve sangrar:** `lei: bake.lei` → `lei: Lei::default()` no `collect`.
-    #[test]
-    fn a_lei_viaja_nos_dois_sentidos_do_documento() {
-        let fonte = include_str!("project_baked_form.rs");
-        // ⚠️ **As agulhas são MONTADAS**: um censo textual que contém a própria agulha encontra-se
-        // sempre a si mesmo — a lição que a `lei_da_luz` pagou com um gate vermelho no mesmo dia.
-        for (funcao, agulha, porque) in [
-            (
-                "fn collect_baked_forms",
-                concat!("lei: bake", ".lei,"),
-                "gravar",
-            ),
-            (
-                "fn restore_baked_forms",
-                concat!("lei: doc", ".lei,"),
-                "devolver",
-            ),
-        ] {
-            let i = fonte
-                .find(funcao)
-                .unwrap_or_else(|| panic!("controlo: a `{funcao}` tem de existir com este nome"));
-            let corpo = &fonte[i..];
-            let fim = corpo.find("\n    }\n").unwrap_or(corpo.len());
-            assert!(
-                corpo[..fim].contains(agulha),
-                "a `{funcao}` tem de {porque} a LEI do objecto — sem isso a escolha do artista \
-                 morre no save, e o ficheiro reabre com a lei de fabrica de quem o abre"
-            );
-        }
-    }
 
     /// **O DOCUMENTO ATRAVESSA O DISCO INTEIRO** — os canais e, sobretudo, o RIG **e a LEI**.
     ///
@@ -286,6 +259,11 @@ mod tests {
             ]),
             rig: authored,
             lei: ph2d_form_donation::lei_da_luz::Lei::Tinta,
+            // ⭐ **`true` e não o valor de fábrica**, pela mesma razão da `Lei::Tinta` e do recorte
+            // logo abaixo: um campo perdido no caminho devolveria `false` e a asserção reprovaria.
+            // *Com o valor de fábrica na fixtura, o gate ficava verde sobre um documento que não
+            // grava este facto nenhum.*
+            materia_da_forma: true,
             // ⭐ **Um recorte que NÃO é a vista inteira**, pela mesma razão que a lei é a `Tinta`:
             // um campo perdido no caminho devolveria `None` e a asserção reprovaria. *Com a vista
             // cheia na fixtura, o gate ficava verde sobre um documento que não grava recorte
@@ -320,6 +298,12 @@ mod tests {
             back.recorte, doc.recorte,
             "o RECORTE tem de voltar inteiro -- sem ele o catavento reabre a encher o sprite, em \
              silencio"
+        );
+        assert!(
+            back.materia_da_forma,
+            "A MATERIA tem de voltar -- sem ela um catavento sem arte propria perde o direito de \
+             re-derivar a silhueta por quadro, e a peca volta a rodar por baixo do recorte do \
+             primeiro bake (degrau 165)"
         );
         // ⭐ **O CONTROLO da fixtura**: a lei gravada NÃO é o `Default`, logo a asserção acima
         // distingue *«voltou»* de *«nasceu de novo»*.

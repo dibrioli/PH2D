@@ -134,6 +134,7 @@ fn a_oclusao_de_forma_chega_ao_pixel() {
                 base: &base,
                 form: &form,
                 form_occ: occ,
+                materia_da_forma: false,
             },
             &lampadas,
             ceu,

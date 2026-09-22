@@ -117,6 +117,10 @@ fn bake_one(
         rig,
         lit_with: None,
         lei,
+        // ⭐⭐⭐⭐ **A resposta vem do VESTIR, e é o mesmo gesto que a decide** — ver o doc do campo:
+        // se o sprite chegou sem arte, o que ele mostra é a peça 3D, logo a silhueta dele tem de
+        // ser re-derivada por quadro em vez de ficar congelada neste bake.
+        materia_da_forma: vestidos > 0,
         // ⚠️ **CONGELADO aqui**, e é isso que faz o catavento não saltar: a rota B re-rasteriza
         // por quadro e tem de reproduzir o enquadramento deste gesto, nunca o do ecrã de agora —
         // senão a peça deslizava dentro do sprite ao arrastar o canvas 2D.
@@ -189,6 +193,7 @@ mod lei_ao_assar_tests {
             rig: ph2d_light::LightRig::default(),
             lit_with: None,
             lei: Lei::Tinta,
+            materia_da_forma: false,
             recorte: None,
         };
         assert_ne!(

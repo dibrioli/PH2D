@@ -108,6 +108,28 @@ pub struct Planos<'a> {
     pub form: &'a [f32],
     /// A oclusão de forma, um escalar por texel. O neutro é `1`.
     pub form_occ: &'a [f32],
+    /// ⭐⭐⭐⭐ **A MATÉRIA DESTE OBJECTO É A PRÓPRIA FORMA** — o sprite não tinha arte, logo o que
+    /// ele mostra é a peça 3D e mais nada.
+    ///
+    /// ⛔⛔ **Ela existe por um report do dono** (2026-09-21, com foto): *«o algoritmo que vc criou
+    /// tem esse fundo branco na sprite transparente. logo que roda o objeto o fundo aparece. OU
+    /// seja: parece que vc criou uma máscara»*.
+    ///
+    /// ⚠️ **O que ele viu não era uma máscara, era uma SILHUETA CONGELADA.** Quando o sprite chega
+    /// sem arte, o bake veste-o da forma — branco com o alfa da COBERTURA — e grava isso no
+    /// [`Self::base`]. A rota B re-rasteriza a forma **por quadro**, logo a luz e as normais
+    /// seguem a peça a virar… e o alfa não, porque ele vinha de um `base` do primeiro gesto. *A
+    /// peça rodava por baixo do recorte dela própria.*
+    ///
+    /// ⭐ Com ela ligada o albedo é o **neutro** (branco, exactamente o que o vestir escreve) e o
+    /// alfa é a **cobertura DESTE quadro** ⇒ a silhueta passa a seguir a peça. ⚠️ Na pose em que o
+    /// bake correu a saída é a mesma ao bit, e há gate.
+    ///
+    /// ⛔ **É por OBJECTO e nunca por texel**, e a diferença tem um defeito com nome: uma regra
+    /// por-texel (*«sem arte aqui ⇒ veste»*) encheria de branco o que rodeia um personagem
+    /// desenhado, sempre que a malha fosse maior que ele. *A pergunta é «este sprite tem arte?», e
+    /// ela responde-se UMA vez.*
+    pub materia_da_forma: bool,
 }
 
 impl Planos<'_> {
@@ -231,11 +253,17 @@ fn acende_faixa(
             // sozinha, um `3` saía `28` (medido; foi um gate que o apanhou).
             //
             // ⭐ O ida-e-volta é exacto nos **256** bytes (varrido), logo o no-op é byte-idêntico.
-            albedo: [
-                codigo::para_luz(px[0]),
-                codigo::para_luz(px[1]),
-                codigo::para_luz(px[2]),
-            ],
+            // ⭐⭐⭐ **Sem arte, o albedo é o NEUTRO** — ver [`Planos::materia_da_forma`]. É
+            // exactamente o branco que o vestir escreve, logo na pose do bake a saída não se mexe.
+            albedo: if p.materia_da_forma {
+                [1.0, 1.0, 1.0]
+            } else {
+                [
+                    codigo::para_luz(px[0]),
+                    codigo::para_luz(px[1]),
+                    codigo::para_luz(px[2]),
+                ]
+            },
             cobertura: p.form[(i0 + j) * 4 + 3],
             oclusao: p.form_occ[i0 + j],
         };
@@ -254,6 +282,15 @@ fn acende_faixa(
             // `NaN` atravessa a curva e vira `0` na saturação do `as`, como antes — a cerca do
             // meio-vector degenerado continua a ser a primeira linha de defesa, não esta.
             px[k] = codigo::de_luz(c[k]);
+        }
+        // ⭐⭐⭐⭐ **E o ALFA é a COBERTURA DESTE quadro quando a matéria é a forma** — a metade que
+        // cura o report da «máscara»: sem ela a peça roda por baixo do recorte que o primeiro bake
+        // lhe deu. ⚠️ Fora disso ele **atravessa intacto**, e a razão de sempre continua de pé:
+        // ali ele é a silhueta do SPRITE, e uma lei de luz que lhe tocasse mudaria o recorte do
+        // objecto ao mover a lâmpada.
+        if p.materia_da_forma {
+            let cobertura = p.form[(i0 + j) * 4 + 3];
+            px[3] = (cobertura.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
         }
     }
 }

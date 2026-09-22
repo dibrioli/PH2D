@@ -95,161 +95,12 @@ const ARESTA: u32 = 8;
 /// contra o literal `4`, ou seja um gate que não podia falhar pelo motivo que alegava).
 pub const MAX_LAMPADAS: usize = ph2d_light::MAX_LIGHTS;
 
-/// ⭐ **O PONTO DE ENTRADA — e a única coisa deste ficheiro que é WGSL.**
-///
-/// Ver o cabeçalho do módulo para a ordem da composição e para os dois stubs do ambiente.
-const ENTRADA: &str = r#"
-struct Globais {
-    material: Mat,
-    // ⚠️ `rgb` = RESERVA DECLARADA (era o ambiente, que hoje vive na ranhura do ambiente e é função da
-    // normal); `a` = os stops de exposição do olhar. *Uma posição sem dono e sem régua é onde o
-    // campo seguinte aterra por engano* — o `Globais::novo` deixa-a a ZERO, e há gate.
-    olhar: vec4<f32>,
-    // ⭐ O CÉU (`ph2d_form_pbr::Ceu`), em `rgb`: a base da rampa e a inclinação dela.
-    //
-    // ⚠️ Ele viaja como DADOS e não como constantes geradas: a rampa é derivada do RIG (ver o
-    // `ceu_do_rig`), logo ela muda quando o artista mexe numa lâmpada — e uma constante no shader
-    // pediria uma recompilação por gesto.
-    ceu_base: vec4<f32>,
-    ceu_inclinacao: vec4<f32>,
-    // x = o código da vista (`ph2d_view_transform::wgsl::view_code`).
-    vista: vec4<u32>,
-    lampadas: Lampadas,
-};
+/// O TEXTO do shader — ver o módulo. ⚠️ **`pub(super)` e não privado:** o `ENTRADA` é citado por
+/// nome em meia dúzia de docs deste ficheiro, e o gate que valida o WGSL chama a [`fonte`].
+#[path = "passe_da_forma_wgsl.rs"]
+mod wgsl_da_forma;
 
-@group(0) @binding(0) var base_tex: texture_2d<f32>;
-@group(0) @binding(1) var form_tex: texture_2d<f32>;
-@group(0) @binding(2) var occ_tex: texture_2d<f32>;
-@group(0) @binding(3) var saida: texture_storage_2d<rgba8unorm, write>;
-@group(0) @binding(4) var<uniform> g: Globais;
-
-// ⭐⭐⭐ **IEC 61966-2-1, linear → sRGB, por canal** — o GEMEO do
-// `ph2d_color::linear_to_srgb_unit`, que é quem a `ph2d_form_pbr::imagem` chama.
-//
-// ⚠️ **Ele NÃO pode vir do backend:** a saída é um `rgba8unorm` (armazenamento LINEAR) e o
-// `textureStore` não codifica nada. Um `rgba8unorm-srgb` como alvo de armazenamento **não é
-// suportado** pelo `wgpu`, logo a curva é nossa — como a quantização já era, e pela mesma razão.
-//
-// ⚠️ A forma é a que esta casa já escreve em `band_blit.wgsl` e `compositor.wgsl` (`step` + `mix`,
-// sem ramo), e o `clamp` vem primeiro para o `pow` nunca ver um negativo.
-fn srgb_to_linear(c: vec3<f32>) -> vec3<f32> {
-    let lo = c / 12.92;
-    let hi = pow((c + vec3<f32>(0.055)) / 1.055, vec3<f32>(2.4));
-    let cutoff = step(vec3<f32>(0.04045), c);
-    return mix(lo, hi, cutoff);
-}
-
-fn linear_to_srgb(c: vec3<f32>) -> vec3<f32> {
-    let safe = clamp(c, vec3<f32>(0.0), vec3<f32>(1.0));
-    let lo = safe * 12.92;
-    let hi = 1.055 * pow(safe, vec3<f32>(1.0 / 2.4)) - vec3<f32>(0.055);
-    let cutoff = step(vec3<f32>(0.0031308), safe);
-    return mix(lo, hi, cutoff);
-}
-
-@compute @workgroup_size(8, 8, 1)
-fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
-    let dim = textureDimensions(saida);
-    if (gid.x >= dim.x || gid.y >= dim.y) { return; }
-    let p = vec2<i32>(i32(gid.x), i32(gid.y));
-
-    // ⚠️ A textura é `rgba8unorm` e NUNCA `…Srgb` — logo o `textureLoad` entrega o **código**
-    // normalizado e não a luz, e quem descodifica somos nós. ⛔ Pedir a ranhura como `…Srgb` para o
-    // backend o fazer **não serve**: o `base` vai ao device pelo mesmo caminho do passe da TINTA,
-    // que é RELATIVO e trata estes bytes como códigos de propósito. *Cada lei paga a convenção
-    // dela na porta dela.* Ver o cabeçalho da [`ph2d_form_pbr::imagem`].
-    let px = textureLoad(base_tex, p, 0);
-    let albedo = srgb_to_linear(px.rgb);
-    let f = textureLoad(form_tex, p, 0);
-    let occ = textureLoad(occ_tex, p, 0).r;
-
-    // ⚠️ **O céu entra pelos `var<private>` ANTES da chamada** — ver o `CEU_NA_RANHURA` para
-    // porque ele não pode ler o `g` directamente.
-    ceu_base = g.ceu_base.rgb;
-    ceu_inclinacao = g.ceu_inclinacao.rgb;
-
-    let c = forma_acende_texel(
-        g.material,
-        f.xyz,
-        albedo,
-        f.w,
-        occ,
-        g.lampadas,
-        g.olhar.a,
-        g.vista.x,
-    );
-
-    // ⚠️ **O ALFA atravessa intacto** — ele é a silhueta do sprite, e uma lei de luz que lhe
-    // tocasse mudaria o RECORTE do objecto ao mover a lâmpada.
-    // ⚠️ E a quantização é nossa, não do backend — ver o cabeçalho do módulo.
-    // ⭐ A CURVA vem ANTES dela, e a ordem é load-bearing: quantizar o linear e codificar depois
-    // dava os degraus do linear espalhados pela curva (bandas visíveis no escuro).
-    let q = floor(linear_to_srgb(c) * 255.0 + 0.5) / 255.0;
-    textureStore(saida, p, vec4<f32>(q, px.a));
-}
-"#;
-
-/// ⭐⭐⭐ **O CÉU DA CASA, em WGSL — as duas funções que a ranhura `{ENV}` pede.**
-///
-/// ⚠️ **As três constantes são GERADAS da [`ph2d_light`] e nunca transcritas**, que é o que impede a
-/// segunda cópia de um número. O `{:?}` de um `f32` é a representação mais curta que faz round-trip,
-/// e é um literal válido de WGSL.
-///
-/// ⚠️ **O `fma` é EXPLÍCITO e isso é para a paridade**: a [`ph2d_light::env_ambient`] escreve
-/// `ENV_SLOPE[i].mul_add(up, ENV_BASE[i])`, que é uma multiplicação-soma com **um** arredondamento.
-/// Escrito como `base - slope * n.y`, o WGSL fica livre de contrair ou não — e esta casa já mediu
-/// uma placa a contrair `a*b + c` num `fma` onde o fonte não o pedia. *Pedir o `fma` nos dois lados
-/// é a única forma de a igualdade não depender do compilador.*
-///
-/// ⭐⭐⭐ **O `env_radiance` DEIXOU DE SER ZERO em 2026-09-20 (a coluna B3)** — e a redacção anterior
-/// desta linha dizia *«ele fica a ZERO de propósito: nada nesta lei o chama»*. Chama.
-const CEU_NA_RANHURA: &str = r#"
-// **O CEU** — a rampa linear na altura da TELA (`ph2d_form_pbr::Ceu`).
-//
-// ⛔⛔ Os dois valores chegam por `var<private>` e NAO por uma leitura do `g`, e a razao e' a ORDEM
-// da composicao: esta ranhura e' preenchida DENTRO da fonte da lei, que vem antes do `ENTRADA` —
-// logo o `struct Globais` ainda nao existe aqui. Quem os escreve e' o `cs_main`, no topo.
-var<private> ceu_base: vec3<f32>;
-var<private> ceu_inclinacao: vec3<f32>;
-
-// ⚠️ O ceu e' o topo da TELA, e neste referencial (CANVAS) o topo e' `-y`.
-// ⚠️ **`fma` EXPLICITO** — o gemeo em Rust usa `mul_add`, que tem UM arredondamento; escrito solto,
-// a igualdade ao bit passaria a depender de o compilador do WGSL contrair a multiplicacao-soma.
-fn env_irradiance(n: vec3<f32>) -> vec3<f32> {
-    return fma(ceu_inclinacao, vec3<f32>(-n.y), ceu_base);
-}
-
-// ⭐⭐⭐ **A ESPELHADA PRE'-FILTRADA** — o gemeo da `ph2d_form_pbr::Ceu::radiancia`.
-//
-// ⚠️ **O `alpha` NAO e' lido e o `shrink` e'**: o encolhimento do lobulo e' constante por MATERIAL e
-// viaja PRONTO dentro do `Mat` empacotado. Correr aqui o logaritmo que o produz seria por a mesma
-// conta a dar o mesmo numero um milhao de vezes. ⛔ O NOME da funcao que o calcula nao se escreve
-// neste texto: ha' gate a varre'-lo, e uma agulha num comentario le-se igual a uma chamada.
-//
-// ⚠️ **`1.5` e' `1/(2/3)`**: o `ceu_inclinacao` e' a inclinacao da IRRADIANCIA, que ja' traz o `A1`
-// do lobulo cosseno la' dentro; a radiancia quer a rampa crua. ⚠️ E a ASSOCIACAO e' a do gemeo em
-// Rust — o `1.5 * inc` primeiro, e so' depois o `fma`.
-fn env_radiance(dir: vec3<f32>, alpha: f32, shrink: f32) -> vec3<f32> {
-    let up = shrink * -dir.y;
-    return fma(1.5 * ceu_inclinacao, vec3<f32>(up), ceu_base);
-}
-"#;
-
-/// ⭐⭐ **O corpo do shader, composto** — e uma função pública porque o gate o quer **sem placa**.
-///
-/// ⚠️ Um WGSL que ninguém compila é prosa, e todo gate desta casa que olha para um shader precisa de
-/// adapter e é `#[ignore]`. Com a montagem numa porta, a `naga` pode parsá-la e validá-la como
-/// aritmética — que é o que apanhou os dois defeitos que o gémeo tinha antes de haver um pixel.
-#[must_use]
-pub fn fonte() -> String {
-    format!(
-        "{}\n{}\n{}\n{}",
-        ph2d_view_transform::wgsl::SOURCE,
-        gemeo::SOURCE_DA_LEI.replace(gemeo::ENV_SLOT, CEU_NA_RANHURA),
-        gemeo::SOURCE.replace(gemeo::CAP_SLOT, &format!("{MAX_LAMPADAS}u")),
-        ENTRADA,
-    )
-}
+pub use wgsl_da_forma::fonte;
 
 /// O uniform, com a disposição do `struct Globais` do [`ENTRADA`].
 ///
@@ -277,6 +128,10 @@ pub struct LuzDaCena<'a> {
     pub ceu: Ceu,
     /// O olhar (exposição + vista), que o `vt_to_display` pede.
     pub olhar: Look,
+    /// ⭐⭐⭐⭐ **A MATÉRIA DESTE OBJECTO É A PRÓPRIA FORMA** — ver
+    /// [`crate::baked_form::BakedForm::materia_da_forma`]. Com ela o albedo é o neutro e o alfa é a
+    /// cobertura DESTE quadro, que é o que faz a silhueta seguir a peça a virar.
+    pub materia_da_forma: bool,
 }
 
 struct Globais {
@@ -293,6 +148,7 @@ impl Globais {
             lampadas,
             ceu,
             olhar,
+            materia_da_forma,
         } = luz;
         if lampadas.len() > MAX_LAMPADAS {
             return Err(format!(
@@ -315,6 +171,9 @@ impl Globais {
         // ⚠️ O código da vista viaja como `u32` e é escrito aqui pelos bits: o `f32` do vector é só
         // o transporte, e o WGSL lê o slot como `vec4<u32>`.
         d[i + 12] = f32::from_bits(ph2d_view_transform::wgsl::view_code(olhar.view));
+        // ⭐ **A matéria, no `y` do MESMO `vec4`** — ver o `struct Globais` do [`ENTRADA`]: ele mora
+        // aí para a disposição que o gate prende não se mexer. ⚠️ Viaja pelos BITS, como o vizinho.
+        d[i + 13] = f32::from_bits(u32::from(materia_da_forma));
         // O `n` das lâmpadas, no primeiro slot do `Lampadas` — os três a seguir são o padding que o
         // alinhamento de 16 bytes do array exige (ver [`gemeo::LAMPADA_FLOATS`]).
         let j = i + 16;

@@ -5,6 +5,9 @@
 //! uniform tem a forma que o WGSL lê, e as duas cercas de montagem.
 
 use super::*;
+// ⚠️ **O TEXTO do shader mudou de ficheiro** (o tecto de LOC obrigou ao corte por
+// responsabilidade), e estes gates lêem-no por NOME — eles são a régua dele.
+use super::wgsl_da_forma::{CEU_NA_RANHURA, ENTRADA};
 
 /// ⭐⭐⭐ **A FONTE DO PRODUTO PARSA E VALIDA.**
 ///
@@ -251,6 +254,7 @@ fn um_rig_maior_que_o_uniform_recusa() {
         lampadas: &muitas,
         ceu: Ceu::PRETO,
         olhar: Look::default(),
+        materia_da_forma: false,
     }) else {
         panic!("um rig maior que o uniform tem de recusar");
     };
@@ -264,7 +268,8 @@ fn um_rig_maior_que_o_uniform_recusa() {
             material: &s,
             lampadas: &muitas[..MAX_LAMPADAS],
             ceu: Ceu::PRETO,
-            olhar: Look::default()
+            olhar: Look::default(),
+            materia_da_forma: false,
         })
         .is_ok()
     );
@@ -291,6 +296,7 @@ fn a_contagem_e_a_vista_viajam_pelos_bits() {
         lampadas: &[l, l],
         ceu: Ceu::PRETO,
         olhar,
+        materia_da_forma: false,
     })
     .expect("duas lâmpadas cabem");
     let i = gemeo::PACKED;

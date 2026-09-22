@@ -48,8 +48,17 @@ const CANVAS_EDGE: u32 = 1024;
 pub struct TelaPedida {
     /// O lado, em pixels.
     pub edge: u32,
-    /// Branco opaco: a doação MULTIPLICA a tinta (o modelo é RELATIVO), então sobre branco a
-    /// luz da forma é o que se vê, sem cor competindo.
+    /// O fundo, na escada do `image_import`: `0` transparente · `1` preto · `2` branco.
+    ///
+    /// ⭐ **A `=11` pede BRANCO:** a doação MULTIPLICA a tinta (o modelo é RELATIVO), então sobre
+    /// branco a luz da forma é o que se vê, sem cor competindo.
+    ///
+    /// ⭐⭐⭐⭐ **E a `=52` pede TRANSPARENTE, por um report do dono** (2026-09-21): é a cena do
+    /// catavento, e é ali que a peça tem de sair **RECORTADA** e continuar recortada a virar. Sobre
+    /// branco o `veste_a_forma` nunca arma — o sprite já tem alfa em todo o lado —, logo a cena
+    /// mostraria a peça dentro de um cartão branco e a cura desta wave seria **invisível** a quem a
+    /// smoka. ⚠️ *Uma cena que não contém o fenómeno é a mesma coisa que uma cena ausente, e o
+    /// dono aprova-a sem nunca julgar a metade que importa.*
     pub bg: u8,
     /// O centro do mundo onde ela pousa.
     pub center: Vec2,
@@ -66,9 +75,24 @@ pub struct TelaPedida {
 pub fn canvas_wanted() -> Option<TelaPedida> {
     super::wants_canvas().then(|| TelaPedida {
         edge: CANVAS_EDGE,
-        bg: 2,
+        // ⭐⭐⭐⭐ **O fundo é DA CENA** — ver o campo: a `=11` julga a luz sobre branco e a `=52`
+        // julga o RECORTE a virar, que sobre branco não existe.
+        bg: fundo_da_tela(super::scenes::catavento_scene()),
         center: Vec2::new(0.0, 0.0),
     })
+}
+
+/// **O FUNDO que cada cena quer** — a LEI, separada da leitura da env.
+///
+/// A escada é a do `ph2d_image_import::spawn_blank_canvas`: `0` transparente · `1` preto ·
+/// `2` branco (as três escolhas do diálogo de imagem nova).
+///
+/// ⚠️ **Ela é uma função própria pela mesma razão do [`catavento_da_cena`]:** esta crate proíbe
+/// `unsafe`, logo um gate não pode armar a variável de ambiente — ele mediria a cena de fábrica e
+/// ficava verde a afirmar nada.
+#[must_use]
+pub fn fundo_da_tela(catavento: bool) -> u8 {
+    if catavento { 0 } else { 2 }
 }
 
 /// ⭐⭐ **A TELA DESTA CENA É UM CATAVENTO?** — o componente que a `=52` quer na tela que acabou de

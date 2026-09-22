@@ -278,7 +278,7 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // forma foi rasterizada). ⭐ Como o degrau `161`, o documento e' campo do `ProjectFile` e
         // nao bytes dentro de um `ComponentBlob` — mas a tripla conta a forma do `FlipDoc` e da
         // `VecScene`, e **nenhuma das duas se mexe**. Quem integrar conta o DELTA (+3).
-        (175, 13, 22),
+        (176, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

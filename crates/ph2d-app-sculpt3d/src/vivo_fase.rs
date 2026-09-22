@@ -132,6 +132,10 @@ pub fn acende_os_cataventos(
                     size: assado.size,
                     base: &assado.base,
                     texture_id: assado.texture_id,
+                    // ⭐ Ver o campo: com o sprite sem arte, o que a rota B mostra é a PEÇA, e o
+                    // alfa tem de ser a cobertura DESTE quadro — senão ela roda por baixo do
+                    // recorte que o primeiro bake lhe deu.
+                    materia_da_forma: assado.materia_da_forma,
                 },
                 viva,
                 pose,

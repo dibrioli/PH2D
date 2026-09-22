@@ -43,6 +43,14 @@ pub struct AlvoVivo<'a> {
     pub base: &'a [u8],
     /// A ranhura individual do sprite, para onde a saída é copiada.
     pub texture_id: u32,
+    /// ⭐⭐⭐⭐ **A MATÉRIA DESTE OBJECTO É A PRÓPRIA FORMA** — ver
+    /// [`crate::baked_form::BakedForm::materia_da_forma`].
+    ///
+    /// ⚠️ **É aqui que ele importa a sério.** Na irmã ASSADA o `base` e a forma foram escritos no
+    /// mesmo gesto, logo a silhueta congelada está certa; nesta rota a forma é **re-rasterizada
+    /// por quadro** e o `base` não — sem esta linha a peça roda por baixo do recorte que o
+    /// primeiro bake lhe deu, que é o report da «máscara» (2026-09-21, com foto).
+    pub materia_da_forma: bool,
 }
 
 /// ⭐⭐⭐ **Acende um objecto VIVO e copia o resultado para o slot do sprite.**
@@ -79,6 +87,7 @@ pub fn acende_vivo(
             lampadas: &lampadas,
             ceu: ceu_do_rig(&lampadas),
             olhar: crate::lei_da_luz::OLHAR_DA_FORMA,
+            materia_da_forma: alvo.materia_da_forma,
         },
         alvo.size,
         alvo.base,

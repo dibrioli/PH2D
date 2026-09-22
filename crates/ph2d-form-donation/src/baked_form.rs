@@ -145,6 +145,15 @@ pub struct BakedForm {
     /// ⛔ **Quem o lê é a [`light`], através da [`crate::lei_da_luz::efectiva`]** — nunca
     /// directamente, senão o bissector deixaria de alcançar metade dos caminhos.
     pub lei: crate::lei_da_luz::Lei,
+    /// ⭐⭐⭐⭐ **A MATÉRIA DESTE OBJECTO É A PRÓPRIA FORMA** — o sprite chegou sem arte, logo o que
+    /// ele mostra é a peça 3D e mais nada. Mecanismo, o report que a obrigou e porque ela é por
+    /// OBJECTO: [`ph2d_form_pbr::imagem::Planos::materia_da_forma`].
+    ///
+    /// ⚠️ **Ela NÃO é derivável do [`Self::base`] depois do bake:** ao vestir, o bake escreve
+    /// branco opaco lá dentro — logo *«a base está toda transparente»* passa a ser falso
+    /// exactamente nos objectos em que a resposta é SIM. *Um facto que a própria cura apaga tem de
+    /// ser guardado.*
+    pub materia_da_forma: bool,
     /// ⭐⭐⭐⭐ **O ENQUADRAMENTO com que a forma foi rasterizada** — ver [`Recorte`].
     ///
     /// ⚠️ **`None` = a vista inteira**, que é o que todo documento anterior a 2026-09-21 quer
@@ -265,6 +274,7 @@ fn acende_pela_forma(
             lampadas: &lampadas,
             ceu: ceu_do_rig(&lampadas),
             olhar: crate::lei_da_luz::OLHAR_DA_FORMA,
+            materia_da_forma: bake.materia_da_forma,
         },
         &planos,
     )?;
@@ -388,6 +398,7 @@ fn planos_de(bake: &BakedForm) -> ph2d_form_pbr::imagem::Planos<'_> {
         base: &bake.base,
         form: &bake.form,
         form_occ: &bake.form_occ,
+        materia_da_forma: bake.materia_da_forma,
     }
 }
 

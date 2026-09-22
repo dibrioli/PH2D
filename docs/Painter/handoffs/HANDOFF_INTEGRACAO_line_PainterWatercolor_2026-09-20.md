@@ -2130,3 +2130,47 @@ vez reabre o defeito.*
 (§5.3 da [auditoria](../40_auditoria_da_pilha_2026-09-21.md)) — ela é refrescada só dentro da região
 recomposta enquanto o render lê `p − disp(p)`, que pode cair fora dela. *Outro mecanismo, com a cura
 endereçada lá.*
+
+---
+
+## §30 — ⏳ A FILA DA PRÓXIMA JANELA (ordem do dono, 2026-09-21, fim do dia)
+
+⛔⛔ **Isto NÃO é dívida de integração.** Nada aqui bloqueia a fusão desta linha nem descreve
+código escrito — são **duas ordens do dono guardadas para amanhã**, e o sítio é este porque o
+handoff é o que a próxima janela desta linha lê por protocolo. *O integrador salta esta secção.*
+
+### (1) O slider `Spacing` sobe para debaixo do dropdown `Method`
+
+> *«O slider spacing nos strokes vivos (como freehand, elipse, line, etc) deve ser posicionado logo
+> abaixo do dropdown Method.»*
+
+Assunto de **disposição** na secção Stroke ([`paint_stroke.rs`](../../../crates/ph2d-panel-painter-layers/src/paint_stroke.rs),
+que é onde o `Method` e o `Spacing` vivem os dois).
+
+⚠️ **Antes da 1.ª linha, MEÇA o que a subida empurra para baixo.** Esta casa já pagou isto duas
+vezes este mês: uma fileira que muda de sítio custa altura a **todos** os pincéis, e a catraca da
+DOBRA do painel foi o que apanhou o defeito das duas vezes — uma delas transformou um preço de
+disposição num diagnóstico de LEI. *A pergunta não é «cabe?», é «o que é que isto atira para
+debaixo da dobra?».*
+
+### (2) O composite tem de OBEDECER à lei do re-carimbo: apagar → actualizar → voltar a mostrar
+
+> *«Nos strokes vivos, o ajuste de propriedades no painel deve apagar o traço, atualizar e voltar a
+> mostrar. Isso já acontece com todos os ajustes, menos o composite que deve ser atualizado para
+> obedecer essa regra.»*
+
+⭐ **Ele nomeou a lei e nomeou o único infractor** — logo o trabalho é **alinhar**, não desenhar
+nada novo: a rota do descasque já faz exactamente isso para os outros ajustes, e a pergunta é
+*porque é que uma edição na pilha não passa por ela*.
+
+⚠️ **E esta linha acabou de pagar o vizinho deste defeito duas vezes**, o que dá dois avisos
+concretos a quem pegar nisto:
+
+* o descasque tem de repor **tudo** o que é por-traço (§26: os planos, os lotes, o acumulador de
+  ARCO e o campo do esfregão — foi o **quarto canal** de uma lista que já existia e onde a pilha
+  não estava), e o **§29.2** acrescentou o quinto para o Enter. *Se a cura for «mais um canal»,
+  conte os canais primeiro.*
+* ⛔ e a caixa que ele repõe é a do **LOTE**, nunca a do raio do pincel (§29.1) — *repor a região
+  errada é o rectângulo que o dono acabou de ver sete vezes.*
+
+⏳ **Nenhum dos dois foi medido, reproduzido ou planeado** — ficam como ele os disse.

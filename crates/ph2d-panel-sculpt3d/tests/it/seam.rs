@@ -3562,3 +3562,48 @@ fn o_pick_da_paleta_e_a_ficha_produzem_a_mesma_lei() {
         "o botão que ABRE a paleta não é um pincel",
     );
 }
+
+/// ⭐⭐⭐ **A FILEIRA DA LENTE É PINTADA, E O ROTEIRO TEM DE DIZER ONDE.**
+///
+/// Report do dono, 2026-09-21: *«só temos a visão em perspectiva em sculpt. Não temos Ortográfica.
+/// Precisamos de ambas»*. A tecla (`Numpad5`) é a memória de dedo; esta fileira é a porta que se
+/// **vê** — e as duas despacham pela mesma função.
+///
+/// ⚠️⚠️ **O gate MEDE o `y` e imprime-o**, porque a `=49` pagou exactamente esta lição em 19/09: a
+/// secção *Shading* é a última do painel, o encaixe real mede `880 px`, e uma fileira ali nasce
+/// **abaixo da dobra**. *Um roteiro que mande o dono «ir à secção Shading» sem lhe dizer que tem de
+/// ROLAR manda-o procurar uma linha que o ecrã dele não mostra.*
+///
+/// ⛔ **A catraca é ao contrário, e é de propósito:** no dia em que a arrumação que o dono anunciou
+/// subir esta fileira acima da dobra, este gate REPROVA — e a cura é apagar a frase da rolagem do
+/// roteiro, nunca afrouxar o número.
+#[test]
+fn a_fileira_da_lente_e_pintada_e_o_roteiro_diz_onde() {
+    /// O encaixe MEDIDO desta casa — o mesmo número do
+    /// [`os_controlos_proprios_de_um_pincel_cabem_no_encaixe`], e não um escolhido aqui.
+    const ALTURA_DO_ENCAIXE_PX: f32 = 880.0;
+
+    let (mut host, mut state) = arrange(Sculpt3dUi::default());
+    let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+    let mut fundo = 0.0f32;
+    let mut vistos = 0usize;
+    for id in &ids::SCULPT3D_LENS {
+        if let Some((_, r)) = painted.iter().rev().find(|(p, _)| p == id) {
+            vistos += 1;
+            fundo = fundo.max(r.y + r.h);
+        }
+    }
+    assert_eq!(
+        vistos,
+        ids::SCULPT3D_LENS.len(),
+        "so' {vistos} dos {} chips da lente foram pintados — a fileira nao chega a pixel",
+        ids::SCULPT3D_LENS.len()
+    );
+    eprintln!("[lente] a fileira acaba em y = {fundo:.0} px (encaixe {ALTURA_DO_ENCAIXE_PX:.0})");
+    assert!(
+        fundo > ALTURA_DO_ENCAIXE_PX,
+        "a fileira da lente acaba em y = {fundo:.0}, ACIMA da dobra de {ALTURA_DO_ENCAIXE_PX:.0} — \
+         o roteiro da =11 manda o dono ROLAR ate' a' seccao Shading, e essa frase passou a mentir. \
+         ⇒ apague-a do roteiro, nao afrouxe este numero."
+    );
+}

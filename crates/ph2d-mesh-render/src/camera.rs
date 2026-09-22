@@ -526,3 +526,8 @@ impl Camera3d {
 #[cfg(test)]
 #[path = "camera_tests.rs"]
 mod tests;
+
+/// **A LENTE, e o valor ABSOLUTO da paralela** — ver o irmão.
+#[cfg(test)]
+#[path = "camera_lente_tests.rs"]
+mod lente_tests;

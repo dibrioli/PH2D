@@ -340,11 +340,14 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]    (1) A esfera chega com CRISTAS -- e' delas que a luz toma a forma.\n\
              [sculpt3d]        Gire (botao direito) ate' a vista que voce quer assar: o bake usa a\n\
              [sculpt3d]        camera do ESCULTOR, entao o que voce ve' e' o que ele grava.\n\
-             [sculpt3d]    (1-bis) VOCE ESCOLHE A LENTE. No painel, secao Shading, a fileira `Lens`\n\
-             [sculpt3d]        tem `Perspective` (de fabrica) e `Orthographic`. Numpad5 alterna pelo\n\
-             [sculpt3d]        teclado. Na ortografica duas cristas do mesmo tamanho medem o mesmo na\n\
-             [sculpt3d]        tela, esteja uma perto e a outra longe -- e' a vista que um sprite\n\
-             [sculpt3d]        quase sempre quer. Troque e veja a esfera mudar NA HORA.\n\
+             [sculpt3d]    (1-bis) VOCE ESCOLHE A LENTE, e a porta rapida e' a TECLA: Numpad5 alterna.\n\
+             [sculpt3d]        Na ortografica duas cristas do mesmo tamanho medem o mesmo na tela,\n\
+             [sculpt3d]        esteja uma perto e a outra longe -- e' a vista que um sprite quase\n\
+             [sculpt3d]        sempre quer. Aperte e veja a esfera mudar NA HORA.\n\
+             [sculpt3d]        No painel ela tambem esta': ROLE ate' o FIM (secao Shading), fileira\n\
+             [sculpt3d]        `Lens`, com `Perspective` e `Orthographic`.\n\
+             [sculpt3d]        ⚠️ Ela fica 946 px abaixo da dobra de um encaixe de 880 -- medido, e\n\
+             [sculpt3d]        e' o painel inteiro que esta' sobre o orcamento, nao esta fileira.\n\
              [sculpt3d]    (1-ter) E AGORA O ENQUADRAMENTO E' O SEU. Arraste o sprite branco pela\n\
              [sculpt3d]        tela e redimensione-o: a esfera pode ficar onde estiver.\n\
              [sculpt3d]    (2) Shift+B ASSA. O log diz o tamanho.\n\

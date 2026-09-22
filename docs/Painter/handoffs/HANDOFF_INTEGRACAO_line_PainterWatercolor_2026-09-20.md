@@ -1369,31 +1369,55 @@ propriedade do motor.
 ### §22.6-bis — O PREÇO, re-medido com a máquina CALMA (2026-09-22)
 
 `--release`, canvas `1024²`, traço de 720 px em passos de 2 px (**362 eventos**), mínimo de três
-corridas, `load 3,1` com **95 % de CPU ociosa** — e estável (`24,49` · `24,95` · `25,37` em três
-corridas). ⚠️ A minha cura do dia foi **ablada** para a atribuição: sem ela lê `24,08`, dentro do
-ruído ⇒ ilibada.
+corridas, **91–96 % de CPU ociosa**. ⚠️ A minha cura do dia foi **ablada** para a atribuição: sem ela
+lê `24,08` contra `24,49`, dentro do ruído ⇒ ilibada. ⚠️ **A variação entre corridas da sonda inteira
+é real** (`1 Brush` leu `6,01` e `7,94` em duas corridas calmas, `+32 %`): *leia as colunas umas
+contra as outras, não o dígito*.
 
-| pilha | raio | traço | **ms/evento** | **% de um quadro** |
+⛔⛔ **A COLUNA QUE DECIDE É A DO QUADRO, e ela não é «um evento a dividir por 16,7».** O método de
+omissão é o `Space`, que **NÃO** está no `coalesces_canvas_motion` (`Arc | Ellipse | Polygon | Line |
+Anchored | DragDot`) ⇒ **um rato de `1000 Hz` entrega ~16 eventos por quadro e a pilha paga-os
+todos** (a aritmética é da §21.10, que já a tinha escrita). ⚠️⚠️ *A 1.ª redacção desta secção,
+escrita hoje, dividia UM evento por um quadro e lia `10,7 %` onde a conta honesta lê `181 %` — um
+erro de `16×`, na direcção que descansa.* Ele foi apanhado por eu ler a nota antiga em vez de confiar
+no meu próprio enquadramento.
+
+| pilha | raio | traço | ms/evento | **% do quadro (16 ev)** |
 |---|---|---|---|---|
-| 1 Brush (sem recomposição) | 24 | `6,01` | `0,017` | `0,1 %` |
-| 2 Brush | 24 | `24,49` | `0,068` | `0,4 %` |
-| 3 Brush | 24 | `35,73` | `0,099` | `0,6 %` |
-| Blur sobre Brush | 24 | `88,51` | `0,245` | `1,5 %` |
-| Smear sobre Brush | 24 | `43,35` | `0,120` | `0,7 %` |
-| 1 Brush (sem recomposição) | 96 | `6,79` | `0,019` | `0,1 %` |
-| 2 Brush | 96 | `64,26` | `0,178` | `1,1 %` |
-| 3 Brush | 96 | `96,32` | `0,266` | `1,6 %` |
-| **Blur sobre Brush** | 96 | `342,34` | `0,946` | **`5,7 %`** |
-| Smear sobre Brush | 96 | `90,03` | `0,249` | `1,5 %` |
+| 1 Brush (sem recomposição) | 24 | `7,94` | `0,022` | `2,1 %` |
+| 2 Brush | 24 | `29,73` | `0,082` | `7,9 %` |
+| 3 Brush | 24 | `43,74` | `0,121` | `11,6 %` |
+| Blur sobre Brush | 24 | `110,01` | `0,304` | `29,1 %` |
+| Smear sobre Brush | 24 | `51,59` | `0,143` | `13,7 %` |
+| 1 Brush (sem recomposição) | 96 | `11,36` | `0,031` | `3,0 %` |
+| 2 Brush | 96 | `96,51` | `0,267` | `25,5 %` |
+| 3 Brush | 96 | `129,03` | `0,356` | `34,1 %` |
+| **Blur sobre Brush** | 96 | `362,94` | `1,003` | **`96,1 %`** |
+| Smear sobre Brush | 96 | `95,20` | `0,263` | `25,2 %` |
 
-⭐⭐ **A COLUNA QUE DECIDE É A DO EVENTO, e a tabela antiga só tinha a do traço.** O que tem de caber
-num quadro de `16,7 ms` é o custo de **um** evento de ponteiro; somar o traço inteiro faz um custo
-perfeitamente interactivo (`0,4 %` de um quadro) parecer um congelamento de `24 ms`. ⇒ **o pior caso
-da pilha é `5,7 %` de um quadro**, e não há problema de relógio nenhum a resolver aqui. A sonda passou
-a imprimir as duas colunas.
+### §22.6-ter — O TOPO DA QUOTA, que nunca tinha sido medido (item 6 da fila)
 
-⭐ **E a acumulação da §24 está confirmada a fazer o trabalho dela:** no mesmo traço recto, o replay
-(`PH2D_COMPOSITE_REPLAY=1`) lê `111,28` contra `24,49` — **`4,5×`**.
+A quota é `3 Brush · 2 Erase · 1 Blur · 1 Smear` = **7 camadas**, e a tabela de cima pára em três de
+depósito. ⚠️ **E o `2048²` é a cena da decisão do dono sobre a tela grande** — sem esta linha, aquela
+decisão era tomada sobre um número que ninguém tinha tirado.
+
+| lado | raio | traço | ms/evento | **% do quadro (16 ev)** |
+|---|---|---|---|---|
+| `1024` | 24 | `201,25` | `0,556` | `53,3 %` |
+| `1024` | 96 | `685,08` | `1,892` | **`181,3 %`** |
+| `2048` | 24 | `266,01` | `0,735` | `70,4 %` |
+| `2048` | 96 | `771,94` | `2,132` | **`204,3 %`** |
+
+⭐⭐⭐ **E o achado reenquadra a decisão: a alavanca é o RAIO, não a TELA.** Dobrar o lado da tela
+custa `1,32×` (`53,3 → 70,4` a raio 24); ir de raio 24 a 96 custa **`3,4×`** (`53,3 → 181,3`). ⇒ *a
+pergunta «a tela grande aguenta a pilha?» estava a olhar para a variável errada* — a `2048²` com
+raio pequeno sobra folga (`70 %`), e a `1024²` com raio grande já não (`181 %`).
+
+⛔ **O que passa de um quadro passa com a pilha CHEIA e o pincel GRANDE**, e a saída medida continua
+a ser a que a §21.10 nomeou: o Blur é `96,1 %` de um quadro sozinho a raio 96. ⏳ **Decisão do dono**,
+agora com o número: viver com isso (a pilha cheia é uma escolha do artista), cortar por orçamento
+(⛔ que é o *«aceita e mente»* que esta casa recusa por escrito), ou atacar o Blur — que é o item 12
+desta fila e tem a cura nomeada.
 
 ⛔ **Com MENOS DE DUAS camadas activas nada disto corre** — não há ordem para arrumar, e nem a
 fotografia do `pre` é paga (gate `uma_camada_so_nao_abre_a_recomposicao`, com controlo).
@@ -2293,6 +2317,9 @@ watercolor** ⇒ a cura desta jornada não corre naquele caminho. **Pedido de pr
 ### A seguir — **pedem uma DECISÃO SUA** (medidos, com o preço ao lado; não há trabalho a fazer até
 o veredito)
 
+0. ⚠️ **A tela grande com a pilha cheia** — **respondida por medição** na §22.6-ter, e a pergunta
+   mudou: o que estoura o quadro é o **raio**, não a tela. Fica a escolha entre viver com o custo da
+   pilha cheia e atacar o Blur (item 12).
 1. **O `Mixing` no Impasto** (§19) — ele entrou porque a medição diz que aquele meio LÊ a lei, e
    você nunca o pediu. Reverter é uma linha.
 2. **A tela grande com a pilha de cinco camadas** (§21.10) — a `2048²` a pilha põe o quadro no
@@ -2309,8 +2336,9 @@ existem, e sem eles não se pode decidir)
    frase *«duas e três camadas não se distinguem de uma»* era a assinatura de uma fixtura que não
    continha o fenómeno. ⇒ **não há problema de relógio na pilha**: o pior caso é `5,7 %` de um
    quadro por evento.
-6. **Sete camadas nunca foram medidas no produto real** (§25) — a tabela existente é de `+1 Brush` /
-   `+1 Erase`, não do topo da quota.
+6. ✅ **FEITO em 2026-09-22 — §22.6-ter.** O topo da quota custa `53 %` de um quadro a raio 24 e
+   **`181`–`204 %`** a raio 96. ⭐ E a alavanca é o **RAIO** (`3,4×`) e não a **TELA** (`1,32×`), o
+   que reenquadra a decisão (a) acima.
 7. **O cartão de cinco camadas × três fileiras** (§22.9) — quanto empurra o resto do painel para
    debaixo da dobra. ⚠️ Hoje o cartão nasce a `63 px` e não a `413`, logo isto encolheu — mas o
    número do topo da quota continua por medir.

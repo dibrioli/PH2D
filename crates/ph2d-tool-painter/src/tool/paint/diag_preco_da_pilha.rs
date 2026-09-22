@@ -30,9 +30,9 @@ fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
     }
 }
 
-fn tela(raio: f32) -> PainterTool {
+fn tela_de(lado: u32, raio: f32) -> PainterTool {
     let mut t = PainterTool::default();
-    t.set_source(vec![255u8; (SIZE * SIZE * 4) as usize], SIZE, SIZE);
+    t.set_source(vec![255u8; (lado * lado * 4) as usize], lado, lado);
     t.paint.brush.radius_px = raio;
     t.paint.brush.strength = 1.0;
     t.paint.brush.space_attenuation = false;
@@ -62,14 +62,21 @@ fn diag_preco_da_pilha() {
     let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
     println!("\n  O PREÇO DA ORDEM POR TRAÇO   (load {})", carga.trim());
     println!("  canvas {SIZE}² · traço de {} px · passo 2 px", X1 - X0);
-    // ⭐ **A coluna que DECIDE é a de EVENTO, e não a do traço.** Um traço de 720 px em passos de
-    // 2 px são `362` eventos de ponteiro, e o que tem de caber num quadro de `16,7 ms` é o custo de
-    // UM — *somar o traço inteiro faz um custo perfeitamente interactivo parecer um congelamento*.
-    // (Auditoria de 2026-09-22: a tabela de 21/09 foi lida só na coluna do traço, e a leitura dela
-    // não sobreviveu à máquina calma.)
+    // ⭐ **A coluna que DECIDE não é a do traço NEM a de um evento: é a do QUADRO.** Um traço de
+    // 720 px em passos de 2 px são `362` eventos, e somar o traço inteiro faz um custo interactivo
+    // parecer um congelamento. ⛔⛔ **Mas dividir um evento por `16,7 ms` é o erro OPOSTO, e ele é
+    // `16×`:** o método de omissão é o `Space`, que **NÃO** está no `coalesces_canvas_motion`
+    // (`Arc | Ellipse | Polygon | Line | Anchored | DragDot`), logo um rato de `1000 Hz` entrega
+    // **~16 eventos por quadro** e a pilha paga-os TODOS. *A 1.ª redacção desta coluna assumia um
+    // evento por quadro e lia `10,7 %` onde a conta honesta lê `171 %`* — quem a apanhou foi a
+    // §21.10, que já tinha a aritmética escrita.
     let eventos = ((X1 - X0) / 2.0).ceil() + 2.0;
-    println!("\n  pilha                          |  raio |    ms | ms/evento | % de um quadro");
-    println!("  -------------------------------+-------+-------+-----------+----------------");
+    /// Eventos de ponteiro por quadro com um rato de 1000 Hz a 60 fps (§21.10, medido).
+    const EV_POR_QUADRO: f64 = 16.0;
+    println!(
+        "\n  pilha                          |  raio |    ms | ms/evento | % do quadro (16 ev)"
+    );
+    println!("  -------------------------------+-------+-------+-----------+---------------------");
     let casos: [(&str, &[(CompositeOp, f32)]); 5] = [
         ("1 Brush (sem recomposição)", &[(CompositeOp::Brush, 1.0)]),
         (
@@ -97,7 +104,7 @@ fn diag_preco_da_pilha() {
         for (nome, ops) in casos {
             let mut melhor = f64::MAX;
             for _ in 0..3 {
-                let mut t = tela(raio);
+                let mut t = tela_de(SIZE, raio);
                 for (i, &(op, s)) in ops.iter().enumerate() {
                     t.paint.composite[i] = CompositeLayer {
                         op,
@@ -110,7 +117,45 @@ fn diag_preco_da_pilha() {
             let por_ev = melhor / f64::from(eventos);
             println!(
                 "  {nome:30} | {raio:5.0} | {melhor:6.2} | {por_ev:9.3} | {:14.1}",
-                por_ev / 16.7 * 100.0
+                por_ev * EV_POR_QUADRO / 16.7 * 100.0
+            );
+        }
+    }
+
+    // ⭐⭐ **O TOPO DA QUOTA, na tela que o dono nomeou.** A quota é `3 Brush · 2 Erase · 1 Blur ·
+    // 1 Smear` = **7**, e ela nunca tinha sido medida no produto — a tabela de cima pára em três
+    // camadas de depósito. ⚠️ E o `2048²` é a cena da decisão dele sobre a tela grande: sem esta
+    // linha, aquela decisão é tomada sobre um número que ninguém tirou.
+    println!("\n  o TOPO DA QUOTA (3 Brush + 2 Erase + 1 Blur + 1 Smear = 7 camadas)");
+    println!("  lado  |  raio |     ms | ms/evento | % do quadro (16 ev)");
+    println!("  ------+-------+--------+-----------+----------------");
+    let quota: [(CompositeOp, f32); 7] = [
+        (CompositeOp::Brush, 1.0),
+        (CompositeOp::Brush, 1.0),
+        (CompositeOp::Brush, 1.0),
+        (CompositeOp::Erase, 1.0),
+        (CompositeOp::Erase, 1.0),
+        (CompositeOp::Blur, 1.0),
+        (CompositeOp::Smear, 1.0),
+    ];
+    for lado in [SIZE, 2048] {
+        for raio in [24.0f32, 96.0] {
+            let mut melhor = f64::MAX;
+            for _ in 0..3 {
+                let mut t = tela_de(lado, raio);
+                for (i, &(op, s)) in quota.iter().enumerate() {
+                    t.paint.composite[i] = CompositeLayer {
+                        op,
+                        strength: s,
+                        ..CompositeLayer::default()
+                    };
+                }
+                melhor = melhor.min(traco(&mut t).as_secs_f64() * 1e3);
+            }
+            let por_ev = melhor / f64::from(eventos);
+            println!(
+                "  {lado:5} | {raio:5.0} | {melhor:6.2} | {por_ev:9.3} | {:14.1}",
+                por_ev * EV_POR_QUADRO / 16.7 * 100.0
             );
         }
     }

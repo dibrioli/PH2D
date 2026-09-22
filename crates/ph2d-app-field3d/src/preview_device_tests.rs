@@ -522,3 +522,213 @@ fn na_faixa_do_produto_a_placa_ganha_com_margem() {
 //
 // O que sobra no lugar: a `na_faixa_do_produto_a_placa_ganha_com_margem` (acima) e, para os
 // penhascos, um laço fechado que ninguém mediu — `docs/Render3d/05` §43.10.
+
+/// ⏱️⭐⭐⭐⭐ **A PRIMEIRA CHAMADA DE UMA CENA PAGA A COMPILAÇÃO — e é ela que o gate vermelho mede.**
+///
+/// O [`com_o_dispositivo_a_maioria_das_cenas_e_nitida_em_movimento`] cronometra **UMA** chamada a
+/// [`crate::gpu_frame::paint`] por cena e chama-lhe *«o quadro de movimento»*. ⛔⛔ Mas a primeira
+/// chamada de uma cena compila o programa da placa: o cache do pintor tem por chave o **TEXTO** do
+/// shader, e o texto leva a FITA da peça — logo *cada cena é um texto novo e um compilador inteiro*.
+/// O quadro que o artista arrasta é o **N-ésimo**, com tudo compilado.
+///
+/// ⚠️⚠️ **E a `W9` já prescreve a régua certa, por escrito**
+/// ([`03`](../../../docs/Render3d/03_o_plano.md)): *«`1920×1080`, **mínimo de N**, A/B intercalado
+/// no MESMO processo»*. O gate não o faz — *uma régua que o próprio plano do módulo corrige e
+/// ninguém emendou*.
+///
+/// ⇒ esta sonda pinta a MESMA cena três vezes seguidas e põe as três a par. Se a 1.ª for a cara e
+/// as outras baratas, o vermelho é da régua.
+#[test]
+#[ignore = "sonda de diagnóstico: separa a compilação do custo do quadro"]
+fn diag_o_primeiro_quadro_de_uma_cena_paga_a_compilacao() {
+    let Some(t) = crate::gpu_frame::shared() else {
+        println!("sem adaptador — saltado");
+        return;
+    };
+    let materiais = [ph2d_material::OpenPbr::default().prepare()];
+    let olhar = ph2d_view_transform::Look::default();
+    const BG: [u8; 4] = [0, 0, 0, 0];
+    println!(
+        "\n  cena · quadro de MOVIMENTO a {LW}×{LH} · {}",
+        contexto()
+    );
+    println!("  cena ·      1.ª ·      2.ª ·      3.ª ·  1.ª/mín");
+    let (mut pior_razao, mut nitidas_pela_1a, mut nitidas_pelo_min) = (0.0f32, 0usize, 0usize);
+    for n in 0..crate::smoke::scenes::CENAS {
+        if crate::smoke::scenes::PODADAS.contains(&n) {
+            continue;
+        }
+        let doc = crate::smoke::scene(n);
+        let reg = crate::smoke::sampled_registry();
+        let cam = ph2d_field_render::Orbit::default();
+        let luz = [crate::gpu_frame::tests_lampada(&cam)];
+        let surfaces = ph2d_field_render::Surfaces {
+            all: &materiais,
+            owners: None,
+        };
+        let mut ts = Vec::new();
+        for _ in 0..3 {
+            let t0 = std::time::Instant::now();
+            let saiu = crate::gpu_frame::paint(
+                t,
+                &doc,
+                &reg,
+                &cam,
+                &luz,
+                &surfaces,
+                &ph2d_field_render::Presentation::of(olhar),
+                BG,
+                None,
+                LW,
+                LH,
+                false,
+            );
+            #[allow(clippy::cast_possible_truncation)]
+            let ms = t0.elapsed().as_secs_f32() * 1e3;
+            if saiu.is_none() {
+                break;
+            }
+            ts.push(ms);
+        }
+        if ts.len() < 3 {
+            println!("  {n:>4} ·        na CPU");
+            continue;
+        }
+        let minimo = ts.iter().copied().fold(f32::INFINITY, f32::min);
+        let razao = ts[0] / minimo;
+        pior_razao = pior_razao.max(razao);
+        if ts[0] <= PREVIEW_BUDGET_MS {
+            nitidas_pela_1a += 1;
+        }
+        if minimo <= PREVIEW_BUDGET_MS {
+            nitidas_pelo_min += 1;
+        }
+        println!(
+            "  {n:>4} · {:>7.2} · {:>7.2} · {:>7.2} · {razao:>7.2}x",
+            ts[0], ts[1], ts[2]
+        );
+    }
+    println!(
+        "\n  ⇒ pela 1.ª chamada: {nitidas_pela_1a} nítidas · pelo MÍNIMO de 3: {nitidas_pelo_min} \
+         · pior razão 1.ª/mín {pior_razao:.2}x\n"
+    );
+}
+
+/// ⏱️⭐⭐⭐⭐ **O QUE O ARTISTA PAGA: arrastar um número, ou ACRESCENTAR uma forma?**
+///
+/// A [`diag_o_primeiro_quadro_de_uma_cena_paga_a_compilacao`] mede `1,4`–`4,4 s` na primeira
+/// pintura de cada cena e `6`–`130 ms` nas seguintes, e o custo **não é da CPU**: a 2.ª chamada
+/// refaz a MESMA fita (a [`crate::gpu_frame::paint`] reconstrói o `DeviceField` a cada chamada) e
+/// custa `12 ms`. ⇒ *o segundo e meio é a placa a compilar o programa.*
+///
+/// ⛔⛔ **E a pergunta que decide se isto é um defeito de PRODUTO ou uma nota de bancada é outra:**
+/// o cache do pintor tem por chave o **TEXTO** do shader, e o texto leva a FITA da peça. Um
+/// **arrasto de slider** muda os números (o armazém `k`) e o texto fica igual; **acrescentar uma
+/// forma** muda a árvore, logo muda a fita, logo muda o texto. *Se for assim, toda mudança de
+/// ESTRUTURA custa um segundo e meio, e nenhum doc deste módulo o diz.*
+///
+/// Esta sonda põe as duas lado a lado: a mesma peça com o RAIO mudado, e uma peça com uma forma a
+/// mais.
+#[test]
+#[ignore = "sonda de diagnóstico: separa mudar um NÚMERO de mudar a ESTRUTURA"]
+fn diag_mudar_um_numero_contra_acrescentar_uma_forma() {
+    use ph2d_field::{FieldDoc, NodeId, Primitive, Xform};
+    let Some(t) = crate::gpu_frame::shared() else {
+        println!("sem adaptador — saltado");
+        return;
+    };
+    let materiais = [ph2d_material::OpenPbr::default().prepare()];
+    let olhar = ph2d_view_transform::Look::default();
+    const BG: [u8; 4] = [0, 0, 0, 0];
+    let reg = crate::smoke::sampled_registry();
+    let cam = ph2d_field_render::Orbit::default();
+    let luz = [crate::gpu_frame::tests_lampada(&cam)];
+    let surfaces = ph2d_field_render::Surfaces {
+        all: &materiais,
+        owners: None,
+    };
+
+    let uma_bola = |r: f32| {
+        FieldDoc::new(
+            vec![ph2d_field_eval::leaf(
+                Primitive::Sphere { radius: r },
+                Xform::at(0.0, 0.0, 0.0),
+            )],
+            NodeId(0),
+        )
+        .expect("a bola")
+    };
+    let pinta = |doc: &FieldDoc| -> f32 {
+        let t0 = std::time::Instant::now();
+        let saiu = crate::gpu_frame::paint(
+            t,
+            doc,
+            &reg,
+            &cam,
+            &luz,
+            &surfaces,
+            &ph2d_field_render::Presentation::of(olhar),
+            BG,
+            None,
+            LW,
+            LH,
+            false,
+        );
+        assert!(saiu.is_some(), "o pintor recusou a peça");
+        #[allow(clippy::cast_possible_truncation)]
+        let ms = t0.elapsed().as_secs_f32() * 1e3;
+        ms
+    };
+
+    println!("\n  {}", contexto());
+    println!("  gesto                              ·       ms");
+    println!("  ───────────────────────────────────·─────────");
+    println!(
+        "  bola r=0,50, 1.ª vez (compila)     · {:>8.2}",
+        pinta(&uma_bola(0.50))
+    );
+    println!(
+        "  a MESMA, outra vez                 · {:>8.2}",
+        pinta(&uma_bola(0.50))
+    );
+    println!(
+        "  ARRASTAR o raio: r=0,60            · {:>8.2}",
+        pinta(&uma_bola(0.60))
+    );
+    println!(
+        "  arrastar outra vez: r=0,70         · {:>8.2}",
+        pinta(&uma_bola(0.70))
+    );
+
+    // ⚠️ A forma a mais é o que muda a ÁRVORE. Duas folhas unidas: é a estrutura mais barata que
+    // deixa de ser a fita de uma bola.
+    let duas = FieldDoc::new(
+        vec![
+            ph2d_field_eval::leaf(Primitive::Sphere { radius: 0.5 }, Xform::at(-0.3, 0.0, 0.0)),
+            ph2d_field_eval::leaf(Primitive::Sphere { radius: 0.4 }, Xform::at(0.3, 0.0, 0.0)),
+            ph2d_field::Node {
+                xform: Xform::IDENTITY,
+                kind: ph2d_field::NodeKind::Combine {
+                    op: ph2d_field::Op::Union(ph2d_field::Blend::Sharp),
+                    children: vec![NodeId(0), NodeId(1)],
+                },
+                mods: Vec::new(),
+                verb: None,
+            },
+        ],
+        NodeId(2),
+    )
+    .expect("as duas");
+    println!(
+        "  ACRESCENTAR uma forma (1.ª vez)    · {:>8.2}",
+        pinta(&duas)
+    );
+    println!(
+        "  a MESMA peça de duas, outra vez    · {:>8.2}",
+        pinta(&duas)
+    );
+    println!(
+        "  voltar à bola r=0,50               · {:>8.2}\n",
+        pinta(&uma_bola(0.50))
+    );
+}

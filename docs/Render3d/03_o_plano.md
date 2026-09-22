@@ -282,6 +282,66 @@ report em que aprovou o smoke do chão colorido, e a ordem é o que decide a pos
   gateada no dia em que houver duas.
 - **Smoke:** a mesma cena, o mesmo gesto, com o número do quadro à vista antes e depois.
 
+### ⭐⭐⭐⭐ O PRIMEIRO ACTO DA `W9` FOI PAGO, E ACHOU UM PREÇO QUE NENHUM DOC DESTE MÓDULO NOMEIA
+
+**`1,4` a `4,4` segundos, e o artista paga-os cada vez que ACRESCENTA uma forma à peça.**
+
+Medido 2026-09-21 numa janela de calma REAL (`97`–`100 %` de CPU ociosa, `--release`, três corridas
+concordantes — ⚠️ o `loadavg` lia `2,6` a `6,3` e a régua é o `vmstat`, nunca ele). As sondas vivem
+ao lado do gate, em `ph2d-app-field3d/src/preview_device_tests.rs`:
+
+| gesto | ms |
+|---|---:|
+| a peça, **1.ª vez** | **`1 449`** |
+| a mesma, outra vez | `4,45` |
+| **arrastar um número** (raio `0,50 → 0,60 → 0,70`) | `4,24` · `4,28` |
+| **ACRESCENTAR uma forma, 1.ª vez** | **`1 406`** |
+| a mesma peça de duas, outra vez | `6,09` |
+| voltar à peça anterior | `4,84` |
+
+⭐ **Arrastar um número está CERTO e é barato** — o cache do pintor tem por chave o TEXTO do shader,
+um slider muda o armazém `k` e o texto fica igual, exactamente como o `paint.rs` promete por escrito.
+⛔⛔ **Acrescentar uma forma muda a ÁRVORE ⇒ muda a fita ⇒ muda o texto ⇒ compila tudo outra vez.**
+
+⭐⭐⭐ **E o custo é da PLACA, não da CPU, com a prova a ser a segunda chamada:** a
+[`gpu_frame::paint`] reconstrói o `DeviceField` e a fita **a cada chamada**, e a 2.ª custa `4`–`12 ms`
+— *logo o segundo e meio é inteiramente a compilação do programa*.
+
+⭐⭐⭐⭐ **E ele DECOMPÕE-SE, sobre as 22 cenas:**
+
+```
+  ms = 1 307 + 2,62 × instruções-da-fita      (resíduo p50 130 ms, pior 625)
+```
+
+⇒ **o termo constante — `1,31 s` — é o KERNEL DO PINTOR**, e a inclinação é a peça. *Isso reabre a
+variante de shader com um valor completamente diferente do que eu lhe tinha dado:* ela não compra
+`5 %` de um quadro, compra uma fracção de `1,31 s` pagos **em toda edição estrutural**.
+
+⛔⛔ **E o VERMELHO é, em boa parte, a RÉGUA — o gate viola a régua que esta própria página
+prescreve.** O §W9 acima escreve *«`1920×1080`, **mínimo de N**, A/B intercalado no MESMO
+processo»*, e o `com_o_dispositivo_a_maioria_das_cenas_e_nitida_em_movimento` cronometra **UMA**
+chamada por cena. Medido na mesma janela calma:
+
+* a leitura de UMA chamada: **`8 de 22`**, estável nas três corridas;
+* pelo **mínimo de 3**: `10` e `12 de 22` em duas corridas;
+* e as cenas individuais movem-se até **`11,7×`** entre corridas do mesmo binário com a máquina a
+  `100 %` ociosa.
+
+⚠️⚠️ **Uma leitura anterior deste gate acusava a cena `=30` a `96`–`98 ms`; na janela calma ela lê
+`17,9`–`18,2 ms`.** *Aquela leitura era da máquina.* ⇒ a atribuição do §10 do handoff da linha —
+*«o que ficou caro é o DESENHO»* — não tem suporte, e a linha está ILIBADA por uma segunda via: o
+diff dela no caminho do dispositivo são **4 linhas de WGSL** (`mx_at_base_color`) num kernel de
+`687`, e a população do gate é **`22` nos dois lados** do merge-base.
+
+⏳ **A fila da `W9`, reordenada pelo preço medido:**
+
+1. **`1,31 s` de kernel por edição estrutural** — a maior de longe, e tem duas curas conhecidas: um
+   cache de pipelines **em disco** (ele é hoje por-processo) e **encolher o kernel** (o `pinta`
+   alcança `687` linhas de `1 255`; a camada de estilo são `32`, o material `354`).
+2. **`+5,50 ms` por quadro assente** — o campo do chão (`+4,98`) e as sondas (`+0,52`), a MESMA
+   cura, com a chave já medida e gateada acima.
+3. **a régua do gate** — mínimo de N, que esta página já prescreve.
+
 ### ⛔⛔⛔ A `W9` COMEÇA COM UM VERMELHO JÁ MEDIDO — e ele é a primeira coisa a resolver
 
 **Ordem do dono, 2026-09-20:** a `line/3DModeling` fechou com o

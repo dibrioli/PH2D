@@ -1671,3 +1671,208 @@ pintado** — *a excepção tem de continuar a ser uma excepção*.
 
 Réguas da cena e do painel: **411 / 411** · clippy `-D warnings` zero · as 10
 vassouras sobre os dois ficheiros **zero achados** · LOC `227` e `267`.
+
+## §20 — A SAÍDA: exportar uma peça pintada a `8x` DIZ o que fica para trás
+
+> Ordem do dono: *«siga conforme sua própria orientação»*, e a orientação era a **P5 — a SAÍDA**,
+> começando pela metade barata: **o app passar a avisar**. A segunda metade (assar o detalhe numa
+> imagem que acompanha a peça) fica para a wave seguinte, e o §20.7 diz o que ela precisa.
+
+### §20.1 — O defeito: uma perda SILENCIOSA, e ela não estava em lado nenhum
+
+`Ctrl+Shift+E` escreve a cena num `.obj`/`.ply`/`.stl`. Os três guardam cor **POR VÉRTICE**, e o
+escritor recebe a **projecção do plano nos vértices** — *a tinta de volta à resolução da malha*,
+que é exactamente a grandeza que esta linha inteira existiu para separar.
+
+⛔ **E o app não dizia nada.** O [`export.rs`](../../../crates/ph2d-app-sculpt3d/src/export.rs) nunca
+toca em `tinta`, e o toast que ele escreve — *«not carried: …»* — nomeava `mask`, `colour` e
+`pieces merged` e **nunca** a tinta fina.
+
+⚠️ É a espécie que este repo já nomeia por escrito: *um importador que ignora em silêncio é pior
+que um que recusa*, aqui do lado da **saída**. O artista arma o `8x`, pinta o detalhe que só existe
+por causa dele, exporta, e descobre a perda **no outro programa**.
+
+### §20.2 — A cláusula entra na LEI PARTILHADA, nunca no wrapper da escultura
+
+A pergunta *«este formato carrega a tinta fina?»* é uma propriedade **do FORMATO**, e o formato tem
+**dois** consumidores: a escultura e a modelação 3D. ⇒ a cláusula vive em
+[`ph2d_mesh::lost_by`](../../../crates/ph2d-mesh/src/read.rs), ao lado das outras três, e a tabela
+ganha [`MeshFormat::keeps_fine_paint`](../../../crates/ph2d-mesh/src/export.rs) — `false` nos três,
+com o mecanismo escrito ao lado.
+
+⭐ **É isso que faz os dois consumidores pararem de avisar JUNTOS** no dia em que um formato passar
+a carregá-la, sem ninguém se lembrar de ir apagar a segunda cópia. Escrevê-la no wrapper da
+escultura seria a segunda lista que diverge — a forma que o próprio doc daquele wrapper já condena
+por extenso (*«duas listas divergem — a que fica errada diz "cor preservada" sobre um STL com a
+confiança da certa»*).
+
+### §20.3 — A porta pergunta pelo DONO do empréstimo, e essa é a lição do §18 outra vez
+
+A cláusula precisa de saber se **esta cena** carrega algum plano. ⛔ E a resposta ingénua
+(`objects.iter().any(|o| o.tinta.is_some())`) está **errada a meio de uma pincelada**: o plano é
+EMPRESTADO ao traço por um `take`, logo durante um traço o `Option` da peça está **VAZIO** e o
+aviso **calava-se exactamente enquanto o artista pinta**.
+
+⇒ [`tinta_da_peca::alguma_peca_tem_plano`](../../../crates/ph2d-app-sculpt3d/src/tinta_da_peca.rs),
+construída sobre a `plano_da_peca` que já pergunta ao **dono** do empréstimo (§13), com a
+`Sculpt3dScene::alguma_peca_tem_tinta_fina` a ser a fachada de cena.
+
+⚠️ **É o mesmo mecanismo que o SAVE pagou no §18** — ali o 3.º consumidor de uma porta que não
+existia, aqui o 4.º. *Todo consumidor que leia o `Option` da peça em vez da porta inventa o seu
+próprio defeito, e todos eles são invisíveis fora de um traço.*
+
+### §20.4 — A modelação 3D passa `false` POR MEDIÇÃO, e uma nota envelhecida foi corrigida
+
+O [`ph2d-app-field3d/src/export.rs`](../../../crates/ph2d-app-field3d/src/export.rs) chama
+`ph2d_mesh::lost_by(fmt, false)`: uma peça de campo implícito **não tem plano de amostras**, e o
+`false` está escrito com essa razão ao lado — não é um valor de conforto.
+
+⛔⛔ **E o doc do wrapper da escultura dizia uma coisa FALSA:** *«`pub(crate)` porque a modelação 3D
+o CHAMA ([`crate::field3d_export`])»* — esse módulo **não existe nesta crate** desde que a família
+saiu da shell (W2), e a modelação chama `ph2d_mesh::lost_by` **directamente**. *Uma nota que
+justifica uma visibilidade por um chamador que mudou de casa lê-se como medição e é um palpite* — a
+frase ficou, com a correcção à vista.
+
+⚠️⚠️ **E a MESMA prosa envelhecida vivia em TRÊS sítios, não dois:** o doc do wrapper, o doc do
+`pub use` no `lib.rs` da escultura (*«partilhado com a modelagem 3D ([`crate::field3d_export`])»*)
+e o cabeçalho do `export.rs` da própria modelação, que dizia que o aviso vem *«do
+`sculpt3d::lost_by`»*. ⇒ *três módulos a nomear um chamador que mudou de casa, e nenhum dos três a
+saltar por onde a nota dizia* — os três foram corrigidos nesta wave. ⭐ **E é a mesma lei que o
+repo já escreve sobre o CÓDIGO, aplicada à PROSA:** uma afirmação repetida em três sítios viaja
+para os que alguém se lembrar de emendar, e *só uma PORTA é uma lei* — aqui a porta é o
+`ph2d_mesh::lost_by`, que já existia; o que faltava era as notas concordarem com ela.
+
+### §20.5 — Os gates, e o CONTROLO de cada um
+
+| gate | onde | o que afirma | CONTROLO |
+|---|---|---|---|
+| `the_warning_names_fine_paint_only_when_the_scene_carries_some` | `ph2d-mesh/src/export_tests.rs` | sobre `MeshFormat::ALL`: sem tinta a frase é **byte a byte** a de antes da wave (reconstruída à mão no gate); com tinta a cláusula aparece; e `!keeps_fine_paint()` nos três | a frase pré-wave, montada no gate a partir das outras três cláusulas — *sem ela, uma cláusula que soasse sempre passava* |
+| `a_saida_pergunta_pela_porta_e_ve_a_tinta_emprestada_ao_traco` | `ph2d-app-sculpt3d/src/tinta_da_peca_portas_tests.rs` | com o plano EMPRESTADO, a porta responde `true` | `pecas.iter().all(|p| p.tinta.is_none())` **primeiro** — sem ele o gate passaria com a resposta ingénua |
+| elo nº **20** do censo da fiação | `ph2d-app-sculpt3d/src/tinta_fiacao_tests.rs` | o `export.rs` da ESCULTURA chama `alguma_peca_tem_tinta_fina` | a prosa é cortada antes de medir; o inverso exige a agulha **ausente** da metade comentada |
+| elo nº **21** do mesmo censo | idem, por `include_str!` relativo | o `export.rs` da MODELAÇÃO 3D passa `false` | o mesmo par corte-de-prosa / controlo |
+
+⚠️ O censo passou de `dezanove_sitios` para **`vinte_e_um_sitios`**, e a razão de ele existir é a
+mesma das M19–M22 do §12: *a prova de comportamento do elo vive num gate `#[ignore]` de GPU, que
+nem o arnês nem o CI correm* — sem o elo textual, apagar a chamada no `export.rs` seria silencioso
+em todo o sítio onde alguém a fosse procurar.
+
+⛔⛔ **E os dois elos da saída falham ao CONTRÁRIO um do outro, que é porque são dois:** se o da
+escultura morre, o artista perde o detalhe **em silêncio**; se o da modelação morre (um `true` no
+lugar do `false`), ela **avisa de uma perda que não acontece** — e *um aviso errado é pior que
+aviso nenhum, porque o artista confia nele*.
+
+### §20.6 — O ARNÊS, e as duas coisas que ele obrigou a corrigir
+
+[`muta_a_saida_da_tinta.sh`](../ferramentas/muta_a_saida_da_tinta.sh), 7 mutações + pré-voo.
+
+⚠️ **A população são DUAS crates** (`ph2d-mesh` tem a lei, `ph2d-app-sculpt3d` tem a porta): *uma
+corrida só de uma delas leria VERDE sobre a mutação da outra, e isso é um placar fabricado.*
+
+⚠️ **Ele corre por `cargo nextest` e não por `--lib`**, pela razão que o §18 deste handoff já mediu:
+o `cargo test --lib` desta crate morre em `SIGSEGV` de forma intermitente, e um binário que morre
+leva o `test result:` com ele — *um aborto mudo lê-se exactamente como uma mutação que não entrou*.
+
+⛔⛔ **E DUAS mutações minhas tinham de ser reescritas antes de correr.** A `S2` apagava o bloco
+inteiro e a `S3` apagava o `has_fine_paint &&` — as duas deixam o parâmetro **sem uso**, logo o
+veredito delas passa a depender da política de warnings da árvore: com `-D warnings` elas **não
+compilam** e o arnês aborta. ⇒ hoje a `S2` **esvazia o corpo** do `if` e a `S3` troca `&&` por
+`||`, e cada uma isola **uma metade** da lei com o parâmetro lido:
+
+| | o que morre | o que se vê |
+|---|---|---|
+| **S1** | a tabela mente (`keeps_fine_paint → true`) | a cláusula nunca soa |
+| **S2** | a cláusula cala-se | a perda volta a ser silenciosa |
+| **S3** | a metade da CENA deixa de decidir | o aviso soa **sempre**, até sem tinta |
+| **S4** | a porta lê o `Option` da peça | o aviso cala-se a meio de um traço |
+| **S5** | o elo crava `false` | o aviso nunca soa |
+| **S6** | a modelação 3D passa `true` | ela avisa de uma perda que não acontece |
+| **S7** | CONTROLO (uma linha em branco) | **não pode sangrar** |
+
+*Uma mutação imune à configuração de lint mede a LEI; a outra mede o ambiente.*
+
+⛔⛔⛔ **E a 1.ª corrida deu `5 de 7` com o `S6` a SOBREVIVER — um sobrevivente FABRICADO pelo
+próprio arnês.** Ele muta a `ph2d-app-field3d`, e a população era `-p ph2d-mesh
+-p ph2d-app-sculpt3d`: **a crate mutada nem é compilada por aquela corrida**, logo a mutação não
+podia sangrar de maneira nenhuma. ⚠️ *O cabeçalho que eu tinha acabado de escrever no arnês já
+condenava isto por extenso* — eu escrevi a lei para DUAS crates e mutei uma TERCEIRA.
+
+⭐⭐ **A cura não foi acrescentar a crate à população** (isso paga uma suíte inteira em cada uma
+das sete corridas): foi escrever o **elo dela no censo da fiação**, que vive na
+`ph2d-app-sculpt3d` e a alcança por `include_str!` relativo — o mesmo caminho pelo qual ele já
+alcança o MOTOR e a PLACA, com a mesma razão declarada. ⇒ quem **OBSERVA** a mutação passou a
+estar na população, e ela sangra sem uma crate nova no arnês.
+
+⇒ **A população de um arnês é de quem OBSERVA a mutação, nunca de quem a CONTÉM.** Um `-p` por
+crate mutada é a leitura ingénua e a mais cara.
+
+⚠️ **E a rede foi re-corrida INTEIRA depois da cura**, não emendada no lugar da `S6`: *um placar
+herdado é um placar sobre outra árvore* (§12).
+
+**Placar depois da cura: `6 de 7` sangram** — a 7.ª é o `S7`, o CONTROLO, e ela **não pode**.
+*(A 1.ª corrida, antes do elo do field3d, deu `5 de 7` com o `S6` a sobreviver.)*
+
+
+### §20.7 — E o PORTÃO abriu um buraco MAIOR que a wave: metade dos arneses desta linha estava CEGA, e DOIS estavam MORTOS
+
+O passo 2 do portão desta wave corre o **pré-voo de todas as âncoras** — e ele devolveu isto:
+
+| arnês | pré-voo | veredito |
+|---|---|---|
+| `muta_a_cerca_do_plano` · `muta_a_metade_visivel` · `muta_o_plano_no_ficheiro` · `muta_a_saida_da_tinta` | tinha | verdes |
+| **`muta_a_origem_do_triangulo`** | **não tinha** | ⛔ **`0 de 3` âncoras — MORTO** |
+| **`muta_a_lei_da_reticula`** | **não tinha** | ⛔ **`15 de 16` — a `M16` morta** |
+| `muta_o_gemeo_em_wgsl` · `muta_o_upload_da_tinta` | não tinha | âncoras vivas |
+
+⛔⛔⛔ **O `muta_a_origem_do_triangulo` não media NADA.** As três âncoras dele apontam a
+`mesh.rs`, e a lei mudou-se para **`mesh_indices.rs`** quando um **corte de tecto de LOC** partiu
+aquele ficheiro (`723 → 691`) numa wave posterior desta mesma linha. ⚠️ É a lei que o repo já
+escreve — *mover código parte gates em DUAS espécies e só UMA avisa* — aqui na espécie **MUDA**:
+um arnês com âncora morta imprime `0 de 3` e **um placar lê-se como uma corrida**.
+
+⛔⛔ **E a `M16` do `muta_a_lei_da_reticula` morreu no `7d446fde6` — um commit desta jornada.** A
+forma que ela ancorava (`out.push(if s < n { cantos[s] } else { TRI });`) saiu do `topo.rs` quando
+o laço foi reescrito para o idioma que o clippy aceita, na wave do **gémeo em WGSL**. Durante
+quatro waves aquele arnês leu `15 de 16` e ninguém re-leu o log.
+
+⭐⭐ **A cura tem TRÊS metades, e nenhuma basta sozinha:**
+
+1. **re-ancorar** — `mesh.rs` → `mesh_indices.rs` (3 âncoras) e a `M16` sobre o laço novo
+   (`cantos.iter().take(n)` → `.rev()`, que é a MESMA intenção: *os cantos viajam invertidos*);
+2. **o pré-voo nos quatro** que não o tinham — senão o mesmo corte cega-os outra vez;
+3. **a guarda da corrida limpa** — ⚠️ a 1.ª redacção da cura pôs o pré-voo e **deixou a corrida
+   limpa correr**, logo ele imprimia `VERDE antes: 579 testes correram` e a seguir *«ZERO testes
+   corridos»*. *Um sumário que diz «zero» depois de correr a suíte é o instrumento a mentir sobre
+   si mesmo*, e a coluna `corridas-limpas` do portão é o que o prova.
+
+⛔ **E um quarto achado, no `muta_o_upload_da_tinta`: ele NÃO TINHA TECTO NENHUM.** O ficheiro
+acabava num `echo`, logo o código de saída era o do `echo` — **zero**, com ou sem sobrevivente.
+*Um arnês sem tecto não reprova; ele RELATA* — e um laço de portão que leia só o `rc` lê-o verde
+para sempre. Hoje o tecto é `total - 1`, com o número tirado de uma corrida (`6 de 7`, a `U3`
+NOMEADA) e nunca de um palpite.
+
+**A prova de que os mortos voltaram a viver** (corrida completa, não pré-voo):
+
+| arnês | antes | depois |
+|---|---|---|
+| `muta_a_origem_do_triangulo` | `0 de 3` (três ABORTOS) | **`3 de 3` sangram** |
+| `muta_a_lei_da_reticula` | `15 de 16` | **`16 de 16` sangram** |
+| `muta_o_upload_da_tinta` | `6 de 7`, sem tecto | `6 de 7`, **com tecto medido** |
+
+⇒ os oito arneses desta linha somam hoje **104 âncoras, todas a casar exactamente uma vez, com
+`corridas-limpas = 0`**.
+
+⚠️⚠️ **E o laço do meu portão tinha o mesmo defeito de família:** ele passou `MUTA_SO_ANCORAS=1` a
+todos, e os quatro que o ignoram **correram as mutações todas** — um passo de segundos virou um
+passo de dezenas de minutos, e o sinal era o mesmo `rc=0`. *Um laço que assume uma capacidade não
+medida não falha: ele fica caro e cala-se.* ⇒ a cura foi dar a capacidade aos quatro; a alternativa
+(derivar o suporte por `grep` no próprio laço) fica registada como a segunda saída.
+
+### §20.8 — ABERTO: a segunda metade da P5
+
+⏳ **A tinta fina ainda não SAI.** A cura de fundo é **assar o plano numa textura UV** que acompanhe
+a peça — e o substrato existe pela metade: a [`ph2d-uv-atlas`](../../../crates/ph2d-uv-atlas/) já
+vive no repo e **o único consumidor dela hoje é um `example`** (`ph2d-quadchain/examples/atlas_probe`),
+ou seja ela nunca correu no caminho de um produto.
+
+⚠️ E o aviso desta wave é o que torna essa segunda metade **honesta de adiar**: enquanto ela não
+existir, o artista sabe o que perde **antes** de abrir o ficheiro noutro programa.

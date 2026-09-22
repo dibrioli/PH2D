@@ -20,8 +20,20 @@
 //! # ⚠️ Nada de segunda tabela de formatos
 //!
 //! O diálogo, os três formatos e o aviso do que se perde vêm todos da
-//! [`ph2d_mesh::MeshFormat`] e do `sculpt3d::lost_by`, que a escultura já tinha.
+//! [`ph2d_mesh::MeshFormat`] e do [`ph2d_mesh::lost_by`], que a escultura já tinha.
 //! Uma cópia local diria *"cor preservada"* sobre um STL no dia em que alguém trocasse o escritor.
+//!
+//! ⚠️⚠️ **Esta linha dizia `sculpt3d::lost_by` e ENVELHECEU (22/09):** a lei mudou-se para a
+//! `ph2d-mesh` quando a família saiu da shell (W2), e este módulo chama-a **directamente** — não
+//! há aqui nenhum salto pela escultura. *Uma nota que nomeia o chamador errado lê-se como medição
+//! e é um palpite*, e foi a wave do aviso da tinta fina que a apanhou nos DOIS sítios (o outro é
+//! o doc do `ph2d_app_sculpt3d::export::lost_by`).
+//!
+//! ⛔ **O segundo argumento é `false` por MEDIÇÃO, não por conforto:** a tinta fina é um plano de
+//! amostras do módulo de ESCULTURA e uma peça de campo implícito não tem nenhum, logo dizer aqui
+//! que ela se perde seria avisar de uma perda que não acontece — *e um aviso errado é pior que
+//! aviso nenhum, porque o artista confia nele*. O elo está gateado no censo da fiação da tinta
+//! fina (`ph2d-app-sculpt3d/src/tinta_fiacao_tests.rs`).
 //!
 //! [ADR-0161 §2]: ../../../docs/architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md
 
@@ -475,7 +487,11 @@ fn export_to_file(
                     ("size", &(size / 1024)),
                     ("ms_0", &format!("{:.0}", ms)),
                     ("name", &name),
-                    ("fmt", &(ph2d_mesh::lost_by(fmt))),
+                    // ⭐ **O `false` é uma MEDIÇÃO e não um valor por omissão:** a
+                    // tinta fina é um plano de amostras do módulo de ESCULTURA, e
+                    // uma peça de campo implícito não tem nenhum. *Dizer aqui que
+                    // ela se perde seria avisar de uma perda que não acontece.*
+                    ("fmt", &(ph2d_mesh::lost_by(fmt, false))),
                     ("sitio", &sitio),
                     ("quality", &quality),
                 ],

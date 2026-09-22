@@ -10,6 +10,10 @@
 #   (c) a corrida tem de correr N > 0 testes, contados no `tests run`.
 #   (d) a corrida LIMPA tem de estar VERDE — senao todo o placar e' fabricado.
 set -u
+# ⭐ O PRE-VOO (`MUTA_SO_ANCORAS=1`) — acrescentado em 22/09. Uma ancora que
+#   casa ZERO le-se num placar exactamente como uma mutacao que SOBREVIVEU,
+#   e um `cargo fmt` ou um corte de tecto de LOC reescreve-a sem avisar.
+SO_ANCORAS="${MUTA_SO_ANCORAS:-}"
 SC=crates/ph2d-sculpt3d/src
 MR=crates/ph2d-mesh-render/src
 BK=$(mktemp -d)
@@ -29,14 +33,20 @@ populacao() { grep -oP '\K[0-9]+(?= tests? run)' | awk '{s+=$1}END{print s+0}'; 
 # deitava fora o codigo de saida. Com a arvore vermelha ANTES de mutar, TODA
 # mutacao le-se como SANGRA e o placar sai perfeito e fabricado — e o erro e'
 # para o lado que nao se nota, porque um placar cheio nao faz ninguem olhar.
-limpa=$(corrida); rc_limpo=$?
-verde=$(printf '%s' "$limpa" | populacao)
-echo "VERDE antes: $verde testes correram"
-[ "${verde:-0}" -gt 0 ] || { echo "ABORTO: a corrida limpa nao correu teste nenhum"; exit 2; }
-if [ "$rc_limpo" -ne 0 ]; then
-  echo "ABORTO: a corrida limpa esta' VERMELHA -- um placar tirado daqui e' fabricado."
-  printf '%s' "$limpa" | grep -E '^ *(FAIL|test result:|Summary)' | tail -8 | sed 's/^/      | /'
-  exit 2
+# ⚠️⚠️ A corrida limpa SO' corre quando nao e' pre-voo. Sem esta guarda
+#   o sumario do pre-voo diz "ZERO testes corridos" DEPOIS de ter corrido a
+#   suite inteira — *o instrumento a mentir sobre si mesmo*, e foi assim que
+#   este ficheiro ficou na 1.a redaccao da cura (22/09).
+if [ -z "$SO_ANCORAS" ]; then
+  limpa=$(corrida); rc_limpo=$?
+  verde=$(printf '%s' "$limpa" | populacao)
+  echo "VERDE antes: $verde testes correram"
+  [ "${verde:-0}" -gt 0 ] || { echo "ABORTO: a corrida limpa nao correu teste nenhum"; exit 2; }
+  if [ "$rc_limpo" -ne 0 ]; then
+    echo "ABORTO: a corrida limpa esta' VERMELHA -- um placar tirado daqui e' fabricado."
+    printf '%s' "$limpa" | grep -E '^ *(FAIL|test result:|Summary)' | tail -8 | sed 's/^/      | /'
+    exit 2
+  fi
 fi
 
 sangram=0; total=0
@@ -44,6 +54,10 @@ muta() {
   local f="$1" agulha="$2" subst="$3" nome="$4"
   total=$((total+1))
   local n; n=$(python3 -c 'import sys;print(open(sys.argv[1]).read().count(sys.argv[2]))' "$f" "$agulha")
+  if [ -n "$SO_ANCORAS" ]; then
+    if [ "$n" -ne 1 ]; then echo "  ✗ ANCORA [$nome]: casou $n vezes (esperado 1)"; else sangram=$((sangram+1)); fi
+    return
+  fi
   if [ "$n" -ne 1 ]; then echo "  ABORTO [$nome]: a ancora casou $n vezes (esperado 1)"; return; fi
   python3 -c '
 import sys
@@ -119,4 +133,16 @@ muta "$MR/tinta_gpu.rs" \
   'U7 a lista chega por ordem de TOQUE e nao e ordenada'
 
 echo
-echo "MUTACAO DO UPLOAD: $sangram de $total sangram"
+if [ -n "$SO_ANCORAS" ]; then
+  echo "PRE-VOO: $sangram de $total ancoras casam exactamente uma vez (ZERO testes corridos)"
+  [ "$sangram" -eq "$total" ]
+  exit $?
+fi
+echo "MUTACAO DO UPLOAD: $sangram de $total sangram (a U3 sobrevive de proposito)"
+# ⛔⛔ **Este arnes NAO tinha tecto nenhum ate 22/09, e isso foi medido:
+#   ele acabava num `echo`, logo o codigo de saida era o do `echo` — **zero**,
+#   com ou sem sobrevivente. *Um arnes sem tecto nao reprova; ele RELATA*, e um
+#   laco de portao que so' leia o `rc` le-o como verde para sempre.
+# ⚠️ O tecto e' `total - 1`: a U3 esta' NOMEADA acima, e o numero saiu de uma
+#   corrida (`6 de 7`, 22/09), nunca de um palpite.
+[ "$sangram" -eq $((total - 1)) ]

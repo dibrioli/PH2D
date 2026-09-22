@@ -7,6 +7,9 @@
 
 use super::*;
 use crate::face::Face;
+// ⚠️ A lei do aviso mora no `read.rs`; o gate dela vive aqui porque o sujeito é a
+//    TABELA do formato, que é deste ficheiro.
+use crate::lost_by;
 use crate::mesh::Mesh;
 use crate::ply::PlyError;
 use crate::{import_obj, import_ply, import_stl, shapes};
@@ -248,4 +251,64 @@ fn an_empty_scene_writes_a_valid_empty_file() {
     assert!(head.contains("element vertex 0") && head.contains("element face 0"));
     // E ele volta como recusa NOMEADA, não como malha fantasma.
     assert!(matches!(import_ply(&ply), Err(PlyError::NoPositions)));
+}
+
+/// ⭐⭐⭐⭐ **GATE — o aviso diz que a TINTA FINA não viaja, e só quando ela existe.**
+///
+/// ⛔⛔ **O defeito que ele fecha é uma PERDA SILENCIOSA:** os três formatos
+/// guardam cor **por vértice**, e o que o escritor recebe de uma peça pintada a
+/// `8x` é a PROJECÇÃO do plano nos vértices — *a tinta de volta à resolução da
+/// malha*. Até aqui o app listava o que se perde (a máscara, a cor num STL) e
+/// **não dizia isto**: o artista exportava, abria noutro programa e via a marca
+/// grossa, sem uma palavra.
+///
+/// ⚠️⚠️ **As DUAS metades, e nenhuma basta:**
+/// - sem a do FORMATO, o aviso nunca podia deixar de soar no dia em que a
+///   exportação levar uma imagem ao lado da malha;
+/// - sem a da CENA, ele soaria **sempre** — e um aviso que soa sempre é ruído
+///   que o artista aprende a ignorar, exactamente quando ele passar a ser
+///   verdade.
+///
+/// ⭐ **E o CONTROLO é a metade que protege o caso comum:** sem tinta fina a
+/// frase tem de ser **exactamente** a de antes desta wave, byte a byte. *Uma
+/// cláusula nova que mude o aviso de toda a gente não é uma cláusula, é uma
+/// regressão.*
+#[test]
+fn the_warning_names_fine_paint_only_when_the_scene_carries_some() {
+    for fmt in MeshFormat::ALL {
+        let sem = lost_by(fmt, false);
+        let com = lost_by(fmt, true);
+
+        // O CONTROLO: o caso comum não se mexeu.
+        let de_antes = {
+            let mut lost = vec!["mask"];
+            if !fmt.keeps_colour() {
+                lost.push("colour");
+            }
+            if !fmt.keeps_pieces() {
+                lost.push("pieces merged");
+            }
+            format!("not carried: {}", lost.join(", "))
+        };
+        assert_eq!(
+            sem, de_antes,
+            "sem tinta fina o aviso do {fmt:?} tem de ser o de sempre, byte a byte"
+        );
+
+        assert!(
+            !sem.contains("fine paint"),
+            "o {fmt:?} avisou de tinta fina numa cena que não tem nenhuma: o aviso \
+             passa a soar sempre e vira ruído"
+        );
+        assert!(
+            com.contains("fine paint"),
+            "o {fmt:?} NÃO avisa que a tinta fina fica para trás, e nenhum dos três \
+             a carrega: é a perda silenciosa que este gate existe para fechar"
+        );
+        assert!(
+            !fmt.keeps_fine_paint(),
+            "o {fmt:?} passou a dizer que carrega tinta fina: se isso é verdade, a \
+             metade de cima deste gate deixou de descrever o produto"
+        );
+    }
 }

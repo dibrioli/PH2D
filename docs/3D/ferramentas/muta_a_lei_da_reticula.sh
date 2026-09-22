@@ -9,6 +9,11 @@
 #   (c) a corrida tem de correr N > 0 testes, contados de `test result:`
 #       (o `running N tests` CONTA os `#[ignore]`).
 set -u
+# ⭐ O PRE-VOO (`MUTA_SO_ANCORAS=1`) — acrescentado em 22/09. Uma ancora
+#   que casa ZERO le-se num placar exactamente como uma mutacao que
+#   SOBREVIVEU, e o `cargo fmt` (ou um corte de tecto de LOC) reescreve-a
+#   sem avisar ninguem.
+SO_ANCORAS="${MUTA_SO_ANCORAS:-}"
 CRATE=crates/ph2d-mesh-colors
 SRC=$CRATE/src
 BK=$(mktemp -d)
@@ -16,9 +21,11 @@ cp -r "$SRC" "$BK/src"
 restore() { rm -rf "$SRC"; cp -r "$BK/src" "$SRC"; find "$SRC" -name '*.rs' -exec touch {} +; }
 trap restore EXIT
 
-verde=$(cargo test -p ph2d-mesh-colors 2>&1 | grep -oP 'test result: ok\. \K[0-9]+' | paste -sd+ - | tr '+' ' ' | awk '{s=0;for(i=1;i<=NF;i++)s+=$i;print s}')
-echo "VERDE antes: $verde testes correram"
-[ "${verde:-0}" -gt 0 ] || { echo "ABORTO: a corrida limpa não correu teste nenhum"; exit 2; }
+if [ -z "$SO_ANCORAS" ]; then
+  verde=$(cargo test -p ph2d-mesh-colors 2>&1 | grep -oP 'test result: ok\. \K[0-9]+' | paste -sd+ - | tr '+' ' ' | awk '{s=0;for(i=1;i<=NF;i++)s+=$i;print s}')
+  echo "VERDE antes: $verde testes correram"
+  [ "${verde:-0}" -gt 0 ] || { echo "ABORTO: a corrida limpa não correu teste nenhum"; exit 2; }
+fi
 
 sangram=0; total=0
 muta() { # ficheiro  agulha  substituto  nome
@@ -27,6 +34,10 @@ muta() { # ficheiro  agulha  substituto  nome
   # ⚠️ A contagem é em PYTHON e não `grep -cF`: o grep conta LINHAS, logo uma
   #    âncora de duas linhas casa "duas vezes" numa ocorrência só. Já mordeu.
   local n; n=$(python3 -c 'import sys;print(open(sys.argv[1]).read().count(sys.argv[2]))' "$f" "$agulha")
+  if [ -n "$SO_ANCORAS" ]; then
+    if [ "$n" -ne 1 ]; then echo "  ✗ ANCORA [$nome]: casou $n vezes (esperado 1)"; else sangram=$((sangram+1)); fi
+    return
+  fi
   if [ "$n" -ne 1 ]; then echo "  ABORTO [$nome]: a âncora casou $n vezes (esperado 1)"; return; fi
   python3 - "$f" "$agulha" "$subst" <<'PY'
 import sys
@@ -159,11 +170,22 @@ muta topo.rs \
   'M15 payload: o bloco de interior e o mesmo para todas as faces'
 
 # ── M16: os cantos viajam ao contrario ────────────────────────────────────
+# ⚠️⚠️ **Esta ancora MORREU e ninguem viu** (medido 22/09): a forma antiga
+#   (`out.push(if s < n { cantos[s] } else { TRI });`) saiu do `topo.rs` no
+#   `7d446fde6` — o gemeo em WGSL —, quando o laco foi reescrito para o idioma
+#   que o clippy aceita. A partir dai ela casava ZERO vezes, e o arnes lia
+#   `15 de 16` num log que ninguem re-le. *Foi o PRE-VOO que a achou, e e' por
+#   isso que ele foi acrescentado aqui no mesmo dia.*
 muta topo.rs \
-  'out.push(if s < n { cantos[s] } else { TRI });' \
-  'out.push(if s < n { cantos[n - 1 - s] } else { TRI });' \
+  '            for c in cantos.iter().take(n) {' \
+  '            for c in cantos.iter().take(n).rev() {' \
   'M16 payload: os cantos viajam invertidos'
 
 echo
+if [ -n "$SO_ANCORAS" ]; then
+  echo "PRE-VOO: $sangram de $total ancoras casam exactamente uma vez (ZERO testes corridos)"
+  [ "$sangram" -eq "$total" ]
+  exit $?
+fi
 echo "MUTACAO: $sangram de $total sangram"
 [ "$sangram" -eq "$total" ]

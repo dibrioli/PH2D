@@ -454,3 +454,53 @@ fn o_degrau_do_documento_sai_da_peca_activa_e_recorre_as_outras() {
         "com a activa a ter plano, é o degrau DELA que volta para a fileira"
     );
 }
+
+/// ⭐⭐⭐⭐ **GATE — a SAÍDA pergunta pela porta, e vê a tinta que o TRAÇO segura.**
+///
+/// O aviso da exportação diz *«a tinta fina fica para trás»* — e ele só o pode
+/// dizer se souber que ela existe. ⛔⛔ **Lido do `Option` de cada peça, ele
+/// mente exactamente no instante em que há um traço aberto:** o pen-down
+/// **empresta** o plano ao gesto e o `Option` da peça dona fica VAZIO.
+///
+/// ⚠️ **O CONTROLO está dentro e é a metade que dá valor ao resto:** com o
+/// plano emprestado, **nenhuma** peça tem `tinta.is_some()` — é isso que um
+/// leitor ingénuo veria, e é isso que o faria dizer *«nada de fino se perde»*
+/// sobre uma peça pintada a `8x`.
+#[test]
+fn a_saida_pergunta_pela_porta_e_ve_a_tinta_emprestada_ao_traco() {
+    use crate::objects::{ObjectId, SceneObject};
+    use crate::tinta_da_peca::alguma_peca_tem_plano;
+    let m = dois_tris();
+    let mut pecas = vec![
+        SceneObject::new(ObjectId(7), m.clone(), ph2d_mesh::Pose::default()),
+        SceneObject::new(ObjectId(9), m, ph2d_mesh::Pose::default()),
+    ];
+
+    assert!(
+        !alguma_peca_tem_plano(&pecas, None),
+        "sem plano nenhum a saída não pode avisar de uma perda que não acontece"
+    );
+
+    {
+        let SceneObject { stack, tinta, .. } = &mut pecas[0];
+        garante(stack.mesh(), tinta, Some(3));
+    }
+    assert!(
+        alguma_peca_tem_plano(&pecas, None),
+        "com o plano na peça, a saída tem de o ver"
+    );
+
+    // O traço abre: o plano sai da peça e vai para a mão do gesto.
+    let emprestado = empresta(&mut pecas[0].tinta, ObjectId(7)).expect("a peça tinha plano");
+    assert!(
+        pecas.iter().all(|p| p.tinta.is_none()),
+        "o CONTROLO: com o plano emprestado NENHUMA peça tem `tinta.is_some()` -- \
+         é exactamente isto que um leitor ingénuo vê, e é por isso que ele diria \
+         «nada de fino se perde» a meio de uma pincelada"
+    );
+    assert!(
+        alguma_peca_tem_plano(&pecas, Some(&emprestado)),
+        "⛔ e a porta TEM de o ver: exportar a meio de um traço continua a perder \
+         a tinta fina, logo continua a ter de avisar"
+    );
+}

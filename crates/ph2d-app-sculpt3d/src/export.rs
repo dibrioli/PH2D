@@ -110,7 +110,7 @@ pub fn export(scene: Option<&Sculpt3dScene>, toasts: &mut ph2d_editor_core::Toas
                         ("n", &n),
                         ("size", &(size / 1024)),
                         ("name", &name),
-                        ("fmt", &(lost_by(fmt))),
+                        ("fmt", &(lost_by(fmt, scene.alguma_peca_tem_tinta_fina()))),
                     ],
                 ),
             );
@@ -124,10 +124,17 @@ pub fn export(scene: Option<&Sculpt3dScene>, toasts: &mut ph2d_editor_core::Toas
 
 /// O que este formato deixa para trás, em palavras.
 ///
-/// ⚠️ **`pub(crate)` porque a modelagem 3D o CHAMA** ([`crate::field3d_export`]). Copiá-lo para lá
-/// era a alternativa, e é exatamente o defeito que o doc abaixo descreve: duas listas divergem, e a
-/// que fica errada diz *"cor preservada"* sobre um STL com a confiança da certa. **Uma tabela, um
-/// aviso** — e a máscara, que nenhum formato carrega, é dita nos dois sítios pelo mesmo motivo.
+/// ⚠️⚠️ **A nota que aqui estava ENVELHECEU, e o código di-lo:** ela dizia
+/// *«`pub(crate)` porque a modelagem 3D o CHAMA ([`crate::field3d_export`])»*, e
+/// esse módulo **não existe nesta crate** desde que a família saiu da shell — a
+/// modelagem 3D chama hoje o [`ph2d_mesh::lost_by`] **directamente**. *Uma nota
+/// que justifica uma visibilidade por um chamador que mudou de casa lê-se como
+/// medição e é um palpite.*
+///
+/// ⭐ **O que continua verdade é a lei, e é ela que o gate da shell afirma:** há
+/// **uma** tabela, e os dois consumidores delegam nela. Copiá-la para lá era a
+/// alternativa, e duas listas divergem — a que fica errada diz *"cor
+/// preservada"* sobre um STL com a confiança da certa.
 ///
 /// ⚠️ **Deriva da MESMA tabela que o escritor consulta.** Uma segunda lista aqui
 /// diria *"cor preservada"* sobre um STL no dia em que alguém trocasse o
@@ -136,9 +143,9 @@ pub fn export(scene: Option<&Sculpt3dScene>, toasts: &mut ph2d_editor_core::Toas
 ///
 /// ⚠️ A **máscara** é dita sempre: nenhum dos três formatos tem campo para ela, e
 /// isso não é uma pergunta — é uma constante. Quem a preserva é o documento.
-pub(crate) fn lost_by(fmt: MeshFormat) -> String {
+pub(crate) fn lost_by(fmt: MeshFormat, has_fine_paint: bool) -> String {
     // ⚠️ **UMA porta, e ela mudou-se para o dono** (W2): esta lei é puro `MeshFormat`
     // (`keeps_colour` / `keeps_pieces`), e o módulo de modelagem 3D passou a ser o **segundo**
     // consumidor dela ao sair da shell. Duas cópias divergiriam no dia do quarto formato.
-    ph2d_mesh::lost_by(fmt)
+    ph2d_mesh::lost_by(fmt, has_fine_paint)
 }

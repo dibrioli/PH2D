@@ -9,6 +9,11 @@
 #   (c) a corrida tem de correr N > 0 testes, contados de `test result:`
 #       (o `running N tests` CONTA os `#[ignore]`).
 set -u
+# ⭐ O PRE-VOO (`MUTA_SO_ANCORAS=1`) — acrescentado em 22/09, e este arnes
+#   e' a razao de ele existir: as TRES ancoras dele casavam ZERO vezes
+#   porque um CORTE de tecto de LOC mudou a lei de `mesh.rs` para
+#   `mesh_indices.rs`, e sem pre-voo isso le-se no log como `0 de 3`.
+SO_ANCORAS="${MUTA_SO_ANCORAS:-}"
 CRATE=crates/ph2d-mesh
 SRC=$CRATE/src
 BK=$(mktemp -d)
@@ -16,9 +21,11 @@ cp -r "$SRC" "$BK/src"
 restore() { rm -rf "$SRC"; cp -r "$BK/src" "$SRC"; find "$SRC" -name '*.rs' -exec touch {} +; }
 trap restore EXIT
 
-verde=$(cargo test -p ph2d-mesh 2>&1 | grep -oP 'test result: ok\. \K[0-9]+' | paste -sd+ - | tr '+' ' ' | awk '{s=0;for(i=1;i<=NF;i++)s+=$i;print s}')
-echo "VERDE antes: $verde testes correram"
-[ "${verde:-0}" -gt 0 ] || { echo "ABORTO: a corrida limpa não correu teste nenhum"; exit 2; }
+if [ -z "$SO_ANCORAS" ]; then
+  verde=$(cargo test -p ph2d-mesh 2>&1 | grep -oP 'test result: ok\. \K[0-9]+' | paste -sd+ - | tr '+' ' ' | awk '{s=0;for(i=1;i<=NF;i++)s+=$i;print s}')
+  echo "VERDE antes: $verde testes correram"
+  [ "${verde:-0}" -gt 0 ] || { echo "ABORTO: a corrida limpa não correu teste nenhum"; exit 2; }
+fi
 
 sangram=0; total=0
 muta() { # ficheiro  agulha  substituto  nome
@@ -27,6 +34,10 @@ muta() { # ficheiro  agulha  substituto  nome
   # ⚠️ A contagem é em PYTHON e não `grep -cF`: o grep conta LINHAS, logo uma
   #    âncora de duas linhas casa "duas vezes" numa ocorrência só. Já mordeu.
   local n; n=$(python3 -c 'import sys;print(open(sys.argv[1]).read().count(sys.argv[2]))' "$f" "$agulha")
+  if [ -n "$SO_ANCORAS" ]; then
+    if [ "$n" -ne 1 ]; then echo "  ✗ ANCORA [$nome]: casou $n vezes (esperado 1)"; else sangram=$((sangram+1)); fi
+    return
+  fi
   if [ "$n" -ne 1 ]; then echo "  ABORTO [$nome]: a âncora casou $n vezes (esperado 1)"; return; fi
   python3 - "$f" "$agulha" "$subst" <<'PY'
 import sys
@@ -55,22 +66,28 @@ PY
   restore
 }
 
-muta mesh.rs \
+muta mesh_indices.rs \
   'o.push(((fi as u32) << 1) | sub as u32);' \
   'o.push((fi as u32) << 1);' \
   'A1 a origem esquece qual metade do quad'
 
-muta mesh.rs \
+muta mesh_indices.rs \
   'o.push(((fi as u32) << 1) | sub as u32);' \
   'o.push((fi as u32) | sub as u32);' \
   'A2 a origem nao desloca a face'
 
-muta mesh.rs \
+muta mesh_indices.rs \
   '        self.triangle_indices_com_origem(out, None);' \
   '        self.triangle_indices_com_origem(out, None);
         out.truncate(out.len().saturating_sub(1));' \
   'A3 a porta sem origem deixa de entregar a mesma lista'
 
 echo
+if [ -n "$SO_ANCORAS" ]; then
+  # ⚠️ O sumario DIZ o que mediu: aqui nenhum teste correu.
+  echo "PRE-VOO: $sangram de $total ancoras casam exactamente uma vez (ZERO testes corridos)"
+  [ "$sangram" -eq "$total" ]
+  exit $?
+fi
 echo "MUTACAO: $sangram de $total sangram"
 [ "$sangram" -eq "$total" ]

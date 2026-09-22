@@ -185,6 +185,24 @@ pub(crate) fn degrau_do_documento(objects: &[crate::SceneObject], activa: usize)
     })
 }
 
+/// ⭐⭐⭐⭐ **ALGUMA peça carrega tinta fina AGORA?** — a lei que o aviso da
+/// exportação faz, sobre as partes.
+///
+/// ⛔⛔ **Ela percorre a [`plano_da_peca`] e nunca o `Option` de cada peça, e
+/// isso é o defeito que ela existe para não ter:** durante um traço o plano
+/// está **emprestado ao gesto** e o `Option` da peça dona está VAZIO. Lido daí,
+/// um `Ctrl+Shift+E` a meio de uma pincelada dizia *«nada de fino se perde»*
+/// sobre uma peça cujo plano está na mão do traço. *Cada consumidor que lê o
+/// `Option` directo inventa o seu próprio defeito* — a lei que a porta do plano
+/// nasceu a escrever, e este é o **quarto** consumidor dela.
+#[must_use]
+pub(crate) fn alguma_peca_tem_plano(
+    objects: &[crate::SceneObject],
+    do_traco: Option<&ph2d_sculpt3d::tinta_fina::TintaDoTraco>,
+) -> bool {
+    (0..objects.len()).any(|i| plano_da_peca(objects, do_traco, i).is_some())
+}
+
 /// A lei da [`crate::Sculpt3dScene::plano_de`], com as partes que o laço de
 /// upload consegue emprestar em separado.
 pub(crate) fn plano_da_peca<'a>(
@@ -301,6 +319,12 @@ impl crate::Sculpt3dScene {
     /// `wgpu::Device`.
     pub(crate) fn plano_de(&self, i: usize) -> Option<&Tinta> {
         plano_da_peca(&self.objects, self.stroke.tinta_fina.as_ref(), i)
+    }
+
+    /// ⭐⭐⭐⭐ **Alguma peça desta cena carrega TINTA FINA?** — a pergunta que o
+    /// aviso da exportação faz, e a irmã de cena da [`alguma_peca_tem_plano`].
+    pub(crate) fn alguma_peca_tem_tinta_fina(&self) -> bool {
+        alguma_peca_tem_plano(&self.objects, self.stroke.tinta_fina.as_ref())
     }
 
     /// ⭐⭐⭐ **A [`o_passe_corre_no_pen_down`] com as quatro entradas que a cena

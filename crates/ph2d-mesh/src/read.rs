@@ -51,14 +51,28 @@ pub fn read_pieces(path: &Path) -> Result<Vec<ImportedPiece>, String> {
 ///
 /// ⚠️ A máscara nunca viaja em formato nenhum dos três, então ela está sempre na lista; a cor e a
 /// separação em peças dependem do formato, e a resposta é do próprio [`MeshFormat`].
+///
+/// ⭐⭐⭐⭐ **E a TINTA FINA é a terceira espécie, com a pergunta partida em DUAS:**
+/// *o formato leva?* (nunca, hoje — [`MeshFormat::keeps_fine_paint`]) **e** *esta
+/// cena TEM alguma?*. A máscara não precisa da segunda metade porque é um canal
+/// que toda peça tem; a tinta fina é **opcional** e a esmagadora maioria das
+/// peças não a tem.
+///
+/// ⚠️⚠️ **Sem essa segunda metade o aviso soava SEMPRE**, e um aviso que soa
+/// sempre é ruído que o artista aprende a ignorar — exactamente quando ele
+/// passar a ser verdade. *É a mesma lei que a recusa do pen-down desta família
+/// já paga: as metades NEGATIVAS são metade do valor.*
 #[must_use]
-pub fn lost_by(fmt: MeshFormat) -> String {
+pub fn lost_by(fmt: MeshFormat, has_fine_paint: bool) -> String {
     let mut lost = vec!["mask"];
     if !fmt.keeps_colour() {
         lost.push("colour");
     }
     if !fmt.keeps_pieces() {
         lost.push("pieces merged");
+    }
+    if has_fine_paint && !fmt.keeps_fine_paint() {
+        lost.push("fine paint (mesh resolution only)");
     }
     format!("not carried: {}", lost.join(", "))
 }

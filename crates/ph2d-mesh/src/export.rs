@@ -108,6 +108,22 @@ impl MeshFormat {
         matches!(self, Self::Obj)
     }
 
+    /// ⭐⭐⭐⭐ **A TINTA FINA atravessa?** — hoje **nenhum** dos três, e o
+    /// `false` é uma medição e não uma omissão.
+    ///
+    /// Os três formatos guardam cor **por VÉRTICE**, e a tinta fina mora num
+    /// plano de amostras que é `L²` por vértice: o que o escritor recebe é a
+    /// PROJECÇÃO dela nos vértices, ou seja a tinta de volta à resolução da
+    /// malha. *Exportar a `8x` e abrir noutro programa devolve a marca grossa.*
+    ///
+    /// ⚠️⚠️ **Ela é uma pergunta de FORMATO e não do escritor, e é por isso que
+    /// mora nesta tabela:** no dia em que a exportação levar uma imagem ao lado
+    /// da malha, é aqui que o `true` entra — e o aviso deixa de soar **nos dois
+    /// consumidores ao mesmo tempo**, sem ninguém se lembrar de ir apagá-lo.
+    pub fn keeps_fine_paint(self) -> bool {
+        false
+    }
+
     /// Escreve a cena inteira neste formato.
     pub fn write(self, pieces: &[ExportPiece<'_>]) -> Vec<u8> {
         match self {

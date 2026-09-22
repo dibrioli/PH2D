@@ -324,9 +324,11 @@ pub mod import;
 pub mod export;
 
 /// ⭐ **O aviso do que cada formato NÃO carrega**, partilhado com a modelagem 3D
-/// ([`crate::field3d_export`]). Uma segunda cópia lá diria *"cor preservada"*
-/// sobre um STL no dia em que alguém trocasse o escritor — e um aviso errado é
-/// pior que aviso nenhum, porque o artista confia nele. **Uma tabela, um aviso.**
+/// — que desde a saída da shell chama o [`ph2d_mesh::lost_by`] **directamente**,
+/// e não este módulo (a nota anterior apontava a um `field3d_export` que já não
+/// vive aqui). Uma segunda cópia da tabela diria *"cor preservada"* sobre um STL
+/// no dia em que alguém trocasse o escritor — e um aviso errado é pior que aviso
+/// nenhum, porque o artista confia nele. **Uma tabela, um aviso.**
 pub use import::is_mesh_file;
 
 // ⚠️ Só o que ATRAVESSA a fronteira do módulo: o `SCULPT_DOC_VERSION` e o

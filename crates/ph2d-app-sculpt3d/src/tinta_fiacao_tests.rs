@@ -1,4 +1,4 @@
-//! ⭐⭐⭐⭐ **O CENSO DA FIAÇÃO DA TINTA FINA** — os DEZANOVE elos que as curas
+//! ⭐⭐⭐⭐ **O CENSO DA FIAÇÃO DA TINTA FINA** — os VINTE E UM elos que as curas
 //! desta jornada precisam de ter LIGADOS: os três consumidores da porta
 //! [`crate::tinta_da_peca::o_gesto_muda_a_topologia`], a metade da porta que lê
 //! a tinta **EMPRESTADA**, o `close_stroke` do gesto que **erra** a peça, as
@@ -79,6 +79,31 @@ const VOZ: &str = include_str!("recusa.rs");
 /// ficheiro e falham de maneiras opostas: sem a primeira o `Ctrl+S` grava a
 /// peça sem o detalhe fino, sem a segunda o `Ctrl+O` lê-o e deita-o fora.
 const DOCUMENTO: &str = include_str!("doc.rs");
+
+/// ⭐⭐⭐⭐ **A SAÍDA.** A rota do `Ctrl+Shift+E` pede um `ToastQueue` e um
+/// diálogo de ficheiro — ela **não é alcançável de um teste**, logo a régua do
+/// elo tem de ser o texto.
+const SAIDA: &str = include_str!("export.rs");
+
+/// ⭐⭐⭐⭐ **E A SAÍDA DA MODELAÇÃO 3D**, pelo mesmo caminho relativo do motor
+/// e da placa, e pela mesma razão: *a cura mora onde a lei corre; a régua mora
+/// onde há cena para a exercitar.*
+///
+/// ⛔⛔ **Ele falha ao CONTRÁRIO do irmão, e é por isso que são dois elos:** se
+/// o da escultura morre, o artista perde o detalhe **em silêncio**; se este
+/// morre (um `true` no lugar do `false`), a modelação avisa de uma perda que
+/// **não acontece** — e um aviso errado é pior que aviso nenhum, porque o
+/// artista confia nele.
+///
+/// ⚠️⚠️ **E ele nasceu de um SOBREVIVENTE FABRICADO pelo arnês** (22/09): a
+/// `S6` do [`docs/3D/ferramentas/muta_a_saida_da_tinta.sh`] muta este ficheiro
+/// e a população daquela corrida era `-p ph2d-mesh -p ph2d-app-sculpt3d` — *a
+/// crate mutada nem era compilada*, logo a mutação não podia sangrar. O
+/// cabeçalho do próprio arnês já escrevia a lei que ele violava. ⭐ Com o elo
+/// AQUI, quem OBSERVA a mutação está na população, e ela passa a sangrar sem
+/// uma crate nova no arnês — *a população de um arnês é de quem OBSERVA, nunca
+/// de quem CONTÉM*.
+const SAIDA_DO_CAMPO: &str = include_str!("../../ph2d-app-field3d/src/export.rs");
 
 /// Cada elo: o ficheiro, a agulha, e o nome da mutação que ela mata.
 fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
@@ -308,6 +333,23 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
                 .to_string(),
             DOCUMENTO,
         ),
+        // ⛔⛔ **A PERDA SILENCIOSA da saída (22/09).** Os três formatos guardam
+        // cor por VÉRTICE, logo exportar uma peça pintada a `8x` entrega a
+        // PROJECÇÃO do plano — a tinta de volta à resolução da malha. O aviso
+        // só existe se o `lost_by` for CHAMADO com a resposta da porta: com um
+        // `false` cravado ele fica verde a afirmar nada.
+        (
+            "export.rs",
+            "S1 a saida deixa de perguntar se ha' tinta fina, e o aviso cala-se",
+            "lost_by(fmt, scene.alguma_peca_tem_tinta_fina())".to_string(),
+            SAIDA,
+        ),
+        (
+            "../ph2d-app-field3d/src/export.rs",
+            "S6 a modelacao 3D passa a avisar de uma perda que nao acontece",
+            "ph2d_mesh::lost_by(fmt, false)".to_string(),
+            SAIDA_DO_CAMPO,
+        ),
         (
             "undo.rs",
             "M32 o quarto canal deixa de ser aplicado no desfazer",
@@ -329,12 +371,12 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
 /// busca falhar em voz alta — mas um que devolvesse **tudo** faria a prosa
 /// satisfazer a agulha, e é isso que o [`so_a_prosa`] recusa.
 #[test]
-fn a_cura_da_tinta_fina_esta_ligada_nos_dezanove_sitios() {
+fn a_cura_da_tinta_fina_esta_ligada_nos_vinte_e_um_sitios() {
     let elos = elos();
     assert_eq!(
         elos.len(),
-        19,
-        "a população deste censo são os dezanove elos"
+        21,
+        "a população deste censo são os vinte e um elos"
     );
 
     for (ficheiro, mutacao, agulha, fonte) in elos {

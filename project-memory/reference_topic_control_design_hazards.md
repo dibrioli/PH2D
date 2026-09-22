@@ -138,3 +138,23 @@ coordenada do pintor, e resolvê-la do outro lado seria a segunda cópia do `ban
   **`None`** — a fileira cai para o controlo normal, *visível e diferente*, que se lê como uma falta.
   ⭐ A régua que faltava: **os ids das fileiras de cor que o produto publica são todos DISTINTOS**,
   com piso de população, mais um censo DERIVADO de que o id é cunhado **num sítio só**.
+- ⛔⛔⛔ **Um parêntesis num rótulo é uma de DUAS coisas, e encurtar mal converte uma na outra em
+  silêncio.** Medido 2026-09-21 (`line/UIUX`, ordem do dono: *«quanto aos nomes grandes precisamos
+  reduzir, as dicas devem ser passadas para o mouse Hover»*). `(0 = forever)` é uma **REGRA DE
+  VALOR** e vai para o balão do controlo; `(s)`, `(m)`, `(deg/s)`, `(kg)`, `(dB)` é uma **UNIDADE**
+  e mora no **CAMPO** (`Unit` / `NumberInput::suffix`), ao lado do número. ⚠️ Encurtar
+  `Lifetime (s, 0 = forever)` para `Lifetime (s)` parece a cura e deixa a unidade **dentro do
+  texto** — foi um gate PRÉ-EXISTENTE (`no_row_label_carries_its_own_unit`) que o apanhou, e a cura
+  certa (declará-la no campo) não perde nada: o artista continua a ler `2 s`. ⭐ **A CHAVE de i18n
+  mantém o sufixo** (`..._s_0_forever`): ela é um ENDEREÇO, nunca o texto.
+  ⭐⭐ **E a razão de encurtar não é estética, é ARITMÉTICA:** a coluna do nome é `min(50 %, …)` da
+  largura da fileira e é propriedade da **SECÇÃO** ⇒ *o nome mais comprido de uma secção come a
+  coluna do CONTROLO de todos os vizinhos dela*. Medido: `Per-Corner Tint (vertex gradient)` deixava
+  as quatro amostras a `35 px`; `Per-corner Tint` deixa-as a **`59`** — `68 %` mais alvo, de uma
+  string. No painel inteiro, `45 → 18` linhas empurradas pelo próprio nome e o pior empurrão
+  `+48 → +17 px`.
+  ⛔ **O par `(controlo, dica)` escreve-se À MÃO e lê-se do SÍTIO DA CHAMADA, nunca se adivinha:**
+  derivá-lo por proximidade no fonte mapeou o `Homing` para o campo da velocidade — *um balão no
+  controlo errado é pior do que balão nenhum*. E **uma régua que lê a DECLARAÇÃO nunca vê o FIO**
+  (apagar o laço que semeia os balões deixava as duas metades declarativas verdes) ⇒ a terceira
+  metade mede o `WidgetStore` **depois** do `populate`.

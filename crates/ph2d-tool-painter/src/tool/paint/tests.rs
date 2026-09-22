@@ -242,5 +242,8 @@ mod diag_o_enter_e_a_pilha; // o que FIXAR deixa por fechar
 #[path = "diag_o_resto_do_descasque.rs"]
 pub(super) mod diag_o_resto_do_descasque; // o que o descasque de uma figura em voo NAO alcanca
 
+#[path = "diag_o_resto_do_watercolor.rs"]
+mod diag_o_resto_do_watercolor; // a MESMA pergunta do descasque, no meio Watercolor (auditoria 2026-09-22)
+
 #[path = "diag_cura_da_pilha.rs"]
 mod diag_cura_da_pilha; // o que a ACUMULAÇÃO entregou // AUDITORIA 2026-09-21: o preço e o carimbo da recomposição regional

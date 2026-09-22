@@ -74,6 +74,42 @@ mostra **slivers verticais**, não um rectângulo. *Uma erosão de borda e um re
 `390×140` não são a mesma grandeza, e declarar a causa a partir do que reproduziu seria escolher entre
 duas medições que não discriminam.*
 
+### A régua estava APONTADA AO CONTRÁRIO (2.ª e 3.ª fotos)
+
+⭐⭐⭐ O dono acrescentou o facto que decide: *«usei também uma sprite TRANSPARENTE e o retângulo
+aparece (o brush não tem seu fundo transparente)»*. ⇒ o defeito **não é arte a ser apagada, é a tela
+a ficar OPACA** — e as duas primeiras réguas desta sonda procuravam alfa a **CAIR**. Pior, a fixtura
+escondia-o: `tela_com(_, 0)` é branco transparente, onde um rectângulo **branco** só difere no alfa.
+
+Refeita sobre tela **preta transparente** (`0,0,0,0`), onde um rectângulo branco opaco é
+inconfundível nos quatro canais, e excluindo a figura (a `150 px` do caminho):
+
+| caso | texels opacos LONGE da figura |
+|---|---|
+| FreeHand largada, pilha do dono | **`0`** |
+| CONTROLO: Space cumulativo no mesmo caminho | `0` |
+| cada uma das quatro camadas calada | `0` |
+
+⛔⛔ ⇒ **A bancada de CPU não o produz em regime nenhum.** ⚠️ E a 1.ª redacção desta régua contava
+todo texel opaco e leu `27 006` — *o próprio desenho*, com o controlo cumulativo a ler `19 436` e a
+mesma caixa: *uma exclusão que não descreve o sujeito mede-o*. Correr Ellipse e Anchored contra a
+geometria da MÃO LIVRE fazia as duas acusarem a figura delas.
+
+### ⭐ O PRÓXIMO PASSO É A ARMADILHA DO BUG #11, e ela já está armada
+
+Ela separa **composite** de **overlay/GPU** numa corrida só, e é a única coisa que a bancada não
+alcança (estes testes não têm device). Ligue `PH2D_PREVIEW_DUMP=<dir>` ao arrancar o app: ele grava
+o composite de CPU de cada quadro (os bytes exactos que vão subir, **antes de qualquer overlay**) em
+`<dir>/preview_NNNN.png`, com tecto de `240` quadros. Reproduza o rectângulo e feche o app:
+
+* **rectângulo NOS PNGs** ⇒ é o composite, e esta bancada tem um ponto cego a nomear;
+* **PNGs LIMPOS com o rectângulo na tela** ⇒ é **overlay** ou o **produtor de GPU** — o que a 4.ª
+  foto favorece: *depois de um undo, o rectângulo trouxe resquícios da imagem ANTERIOR ao undo*,
+  conteúdo real e velho, que é a assinatura de uma região da textura que **não foi re-enviada**.
+
+⚠️ A metade 1 da armadilha (`PH2D_PREVIEW_DIAG=1`) diz, quadro a quadro, **qual produtor tem o
+slot** — e foi ela que, no Bug #11, produziu a única pista real.
+
 ### Os ingredientes que FALTAM à bancada (já nomeados pela [auditoria §4](40_auditoria_da_pilha_2026-09-21.md))
 
 * a **textura em Shape** — o dono declarou-a duas vezes (*«uma textura em Shape. Jitter 0»*) e

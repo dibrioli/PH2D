@@ -526,6 +526,119 @@ fn diag_o_resto_do_descasque() {
     );
 }
 
+/// ⛔⛔⛔ **O RECTÂNGULO OPACO numa sprite TRANSPARENTE** — a 2.ª e a 3.ª fotos do dono
+/// (2026-09-21): *«usei também uma sprite transparente e o retângulo aparece (o brush não tem seu
+/// fundo transparente)»*.
+///
+/// ⭐⭐⭐ **A régua anterior estava APONTADA AO CONTRÁRIO, e por isso lia `0`:** ela procurava alfa a
+/// CAIR (arte apagada) e o que acontece é o alfa a SUBIR — a tela transparente fica **opaca**. E a
+/// fixtura piorava-o: `tela_com(_, 0)` é branco transparente, onde um rectângulo BRANCO só difere
+/// no alfa. Aqui a tela nasce **preta transparente** (`0,0,0,0`), onde um rectângulo branco opaco é
+/// inconfundível nos quatro canais.
+#[test]
+#[ignore = "sonda: corre à mão, --release --nocapture"]
+fn diag_o_rectangulo_opaco() {
+    println!(
+        "\n  O RECTÁNGULO OPACO — tela PRETA TRANSPARENTE, opacidade a MAIS de 150 px da figura"
+    );
+    println!("  canvas {S}² · pilha do dono\n");
+    println!("  caso                                 | texels | pior |     caixa | por oitante");
+    println!("  -------------------------------------+--------+------+-----------+------------");
+
+    let tela_transparente = || {
+        let mut t = PainterTool::default();
+        t.set_source(vec![0u8; (S * S * 4) as usize], S, S);
+        t.paint.brush.radius_px = 24.0;
+        t.paint.brush.hardness = 1.0;
+        t.paint.brush.strength = 1.0;
+        t.paint.brush.space_attenuation = false;
+        t.paint.composite_enabled = true;
+        for pos in 0..composite::N_CAMADAS {
+            t.paint.composite[pos] = composite::CompositeLayer::default();
+        }
+        pilha_do_dono(&mut t);
+        t
+    };
+    // ⚠️ **A régua tem de EXCLUIR a figura, senão ela mede a tinta legítima.** A 1.ª redacção
+    // contava todo texel opaco e leu `27 006` — *o desenho*, com o CONTROLO cumulativo a ler
+    // `19 436` e a mesma caixa. O que o dono vê é opacidade **longe** de onde o pincel passou.
+    const LONGE: f64 = 150.0;
+    let opacos_longe = |t: &PainterTool, de: [f32; 2], ate: [f32; 2]| {
+        let (ax, ay) = (f64::from(de[0]), f64::from(de[1]));
+        let (bx, by) = (f64::from(ate[0]), f64::from(ate[1]));
+        let (dx, dy) = (bx - ax, by - ay);
+        let ll = dx.mul_add(dx, dy * dy).max(1e-9);
+        let mut v = Vec::new();
+        for y in 0..S {
+            for x in 0..S {
+                let a = t.canvas_rgba[((y * S + x) * 4 + 3) as usize];
+                if a <= 8 {
+                    continue;
+                }
+                let (px, py) = (f64::from(x) - ax, f64::from(y) - ay);
+                let u = px.mul_add(dx, py * dy).div_euclid(1.0).min(ll).max(0.0) / ll;
+                let d = (px - u * dx).hypot(py - u * dy);
+                if d > LONGE {
+                    v.push((x, y, a));
+                }
+            }
+        }
+        v
+    };
+    let opacos = |t: &PainterTool| opacos_longe(t, [380.0, 440.0], [640.0, 580.0]);
+    // ⚠️ **Só os gestos que a régua sabe EXCLUIR entram na tabela.** A 1.ª redacção corria também
+    // Ellipse e Anchored contra a geometria da MÃO LIVRE — e as duas «acusaram» a própria figura
+    // delas, que a régua não sabia onde ficava. *Uma exclusão que não descreve o sujeito mede-o.*
+    let casos: [Caso; 2] = [
+        ("FreeHand largada", |t| {
+            mao_livre(t, [380.0, 440.0], [640.0, 580.0], true);
+        }),
+        ("CONTROLO: Space (cumulativo) no mesmo caminho", |t| {
+            t.paint.brush.stroke_method = ph2d_painter_brush::StrokeMethod::Space;
+            t.on_canvas_pointer(cp([380.0, 440.0], PointerPhase::Down));
+            for i in 1..=40 {
+                let u = i as f32 / 40.0;
+                t.on_canvas_pointer(cp(
+                    [380.0 + 260.0 * u, 440.0 + 140.0 * u],
+                    PointerPhase::Move,
+                ));
+            }
+            t.on_canvas_pointer(cp([640.0, 580.0], PointerPhase::Up));
+        }),
+    ];
+    for (nome, gesto) in casos {
+        let mut t = tela_transparente();
+        gesto(&mut t);
+        let v = opacos(&t);
+        conta(nome, &v);
+        if let Some(&(x, y, _)) = v.first() {
+            let i = ((y * S + x) * 4) as usize;
+            println!(
+                "      1.º texel ({x},{y}) rgba = [{},{},{},{}]",
+                t.canvas_rgba[i],
+                t.canvas_rgba[i + 1],
+                t.canvas_rgba[i + 2],
+                t.canvas_rgba[i + 3]
+            );
+        }
+    }
+    // ABLAÇÃO sobre o caso mais forte.
+    println!();
+    for alvo in 0..composite::N_CAMADAS {
+        let op = tela_transparente().paint.composite[alvo].op;
+        if tela_transparente().paint.composite[alvo].strength <= 0.0 {
+            continue;
+        }
+        let mut t = tela_transparente();
+        t.paint.composite[alvo].strength = 0.0;
+        mao_livre(&mut t, [380.0, 440.0], [640.0, 580.0], true);
+        conta(
+            &format!("  ablação: camada {alvo} ({op:?}) calada"),
+            &opacos(&t),
+        );
+    }
+}
+
 /// ⭐⭐⭐ **UM RE-CARIMBO QUE ENCOLHE NÃO DEIXA RASTO** — o gate do report de 2026-09-21
 /// (*«artefatos de imagem nas margens retangulares»*, três fotos) e da **dica** do dono, que é o
 /// diagnóstico inteiro: *«com Anchored, ao crescer ele desenha corretamente, mas se no mesmo

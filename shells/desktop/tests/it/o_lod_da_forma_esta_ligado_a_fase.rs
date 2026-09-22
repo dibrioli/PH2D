@@ -30,6 +30,10 @@ fn o_lod_da_forma_esta_ligado_a_fase() {
         ("motion_shape_lod::aplica_lod_de_forma(", "a partição"),
         ("motion_shape_lod::vivas_com_o_lod(", "o despejo honesto"),
         ("if movidas > 0 {", "desfazer ao aproximar"),
+        (
+            "pump.mark_dirty_keeping_ring()",
+            "sem deitar fora o anel de scrub",
+        ),
     ] {
         assert!(
             FASE.contains(chamada),
@@ -81,5 +85,27 @@ fn o_cozimento_corre_antes_da_particao() {
         cozer < particao,
         "o cozimento LIMPA as duas listas: correndo depois da partição, ele apaga os quads dela \
          (cozer @ {cozer}, partição @ {particao})"
+    );
+}
+
+/// ⛔⛔ **E a porta é a que PRESERVA o anel de scrub, nunca o `mark_dirty` normal.**
+///
+/// O `mark_dirty` existe para uma EDIÇÃO do documento e deita fora o anel, porque o que ele
+/// guardava passou a descrever outro grafo. Aqui o documento é o MESMO — mudou a CÂMARA —, e
+/// usá-lo limparia o anel **a cada quadro em que o LOD está armado**. ⚠️ O doc do `is_dirty`
+/// nomeia esse defeito por escrito: *«a stray `mark_dirty` … would re-cook the whole graph every
+/// frame of the gesture»*.
+///
+/// ⚠️ **O CONTROLO é a segunda asserção**: sem ela, este gate passaria numa fase que chamasse as
+/// DUAS, e o anel seria limpo na mesma.
+#[test]
+fn o_lod_preserva_o_anel_de_scrub() {
+    assert!(
+        FASE.contains("pump.mark_dirty_keeping_ring()"),
+        "o re-cozimento do LOD tem de preservar o anel"
+    );
+    assert!(
+        !FASE.contains("pump.mark_dirty()"),
+        "⛔ o `mark_dirty` normal deita fora o anel — nesta fase ele não pode aparecer"
     );
 }

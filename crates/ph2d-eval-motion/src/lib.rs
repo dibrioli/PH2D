@@ -249,6 +249,24 @@ impl MotionCookPump {
         self.ring.clear();
     }
 
+    /// ⭐⭐⭐ **Marca sujo SEM deitar fora o anel de scrub** — para quem precisa de re-cozinhar por
+    /// uma razão que NÃO é uma edição do documento.
+    ///
+    /// O [`Self::mark_dirty`] existe para uma EDIÇÃO: o grafo mudou, logo tudo o que o anel
+    /// guardava descreve outro documento e tem de sair. O LOD da forma
+    /// ([`ph2d_app_motion::motion_shape_lod`]) precisa do contrário — o documento é o MESMO e o
+    /// que mudou foi a CÂMARA: ele esvazia o lado crisp ao particionar, e sem um re-cozimento no
+    /// quadro seguinte não há instâncias para ele mudar de ideias sobre, logo APROXIMAR nunca
+    /// devolveria o desenho.
+    ///
+    /// ⚠️ **Usar o `mark_dirty` ali seria limpar o anel a cada quadro em que o LOD está armado** —
+    /// e o doc do [`Self::is_dirty`] nomeia esse defeito por escrito (*«a stray `mark_dirty` …
+    /// would re-cook the whole graph every frame of the gesture»*). O anel é o cache do scrub:
+    /// deitá-lo fora por uma razão que não o invalidou faz o scrub seguinte cozinhar do zero.
+    pub fn mark_dirty_keeping_ring(&mut self) {
+        self.dirty = true;
+    }
+
     /// Whether the next [`Self::pump`] will re-cook. Exposed so an edit that must
     /// NOT re-cook can prove it: the editor's decoration (the graph panel's group
     /// backdrops) is document state but cannot change what the graph cooks, and a

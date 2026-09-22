@@ -233,7 +233,7 @@ fn assa_e_particiona_tiles_de_forma(
         // ⚠️ E ele só marca quando de facto MOVEU: sem o LOD armado o cozimento não é forçado, e
         // o caminho de omissão fica como estava.
         if movidas > 0 {
-            pump.mark_dirty();
+            pump.mark_dirty_keeping_ring();
         }
         // ⚠️ **E LARGA o que saiu de cena, libertando a textura.** Sem isto um
         // param de forma animado assa um tile por QUADRO e a placa acaba

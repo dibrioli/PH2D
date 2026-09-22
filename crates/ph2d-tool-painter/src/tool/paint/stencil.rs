@@ -20,6 +20,21 @@ use std::sync::Arc;
 #[derive(Clone, Copy, PartialEq)]
 pub(crate) struct AppearanceSig {
     brush: BrushSpec,
+    // ⭐ **A PILHA entra aqui** (ordem do dono 2026-09-21: *«o ajuste de propriedades no painel deve
+    // apagar o traço, atualizar e voltar a mostrar — isso já acontece com todos os ajustes, menos o
+    // composite»*). A causa era esta assinatura: ela leva o `BrushSpec` inteiro e a pilha **não vive
+    // no `BrushSpec`**, vive no `paint` ⇒ uma edição de camada mudava o que se vê e não mudava um bit
+    // aqui, o `refill_if_appearance_changed` lia `false`, e a figura viva ficava com a pilha ANTIGA.
+    //
+    // ⚠️ **São TRÊS dos seis campos do composite, e a ausência dos outros é DECIDIDA e não esquecida:**
+    // o `composite_mask` e o `composite_arco` são acumuladores por-TRAÇO (o cap de Accumulate e o
+    // `arc_len` de cada camada) — eles mudam **enquanto se pinta**, logo pô-los aqui faria cada dab
+    // pedir um re-carimbo da figura inteira; e o `composite_mask` nem caberia, porque esta struct é
+    // `Copy` e ele é um `[Vec<u8>; N]`. O `composite_add_op` é a operação que o menu ao lado do `+`
+    // tem escolhida: ele decide o que a PRÓXIMA camada será e não muda um pixel do que já está lá.
+    composite_enabled: bool,
+    composite: [super::composite::CompositeLayer; super::composite::N_CAMADAS],
+    composite_len: usize,
     tex_ramp_enabled: bool,
     tex_ramp_bw: bool,
     shape_ramp_enabled: bool,
@@ -294,6 +309,9 @@ impl PainterTool {
     pub(crate) fn appearance_sig(&self) -> AppearanceSig {
         AppearanceSig {
             brush: self.paint.brush,
+            composite_enabled: self.paint.composite_enabled,
+            composite: self.paint.composite,
+            composite_len: self.paint.composite_len,
             tex_ramp_enabled: self.paint.texture_ramp_enabled,
             tex_ramp_bw: self.paint.texture_ramp_bw,
             shape_ramp_enabled: self.paint.shape_color_ramp_enabled,

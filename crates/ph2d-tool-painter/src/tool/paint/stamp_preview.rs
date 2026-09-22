@@ -255,6 +255,13 @@ impl PainterTool {
         self.commit_stroke_height();
         self.end_sculpt_session(); // committed ⇒ the sculpt session dies (the card arms the NEXT stroke)
         self.drop_erase_session(); // …e a da borracha com ela: a mordida commitada e permanente
+        // …e a PILHA do Composite Brush, que é o QUARTO canal desta lista e não estava nela (report
+        // do dono, 2026-09-21: *«apertei enter … o retângulo voltou mas com a cor do canvas cobrindo
+        // o desenho anterior»*). O pen-up de uma figura não fecha o traço, então sem isto o `pre` da
+        // pilha continua a ser a tela de ANTES do que o Enter acabou de assar — e a figura seguinte
+        // reconstrói-se dessa tela velha, apagando-o. Mecanismo e tabela em
+        // [`super::composite_acumulado::PainterTool::commit_reset_pilha`].
+        self.commit_reset_pilha();
         // (The protection epoch does NOT die here — it belongs to the protection, not to the gesture.)
         self.paint.drag_preview = None;
         // #3: end any shape watercolor session so the ground (backdrop) rebuilds fresh for the next shape

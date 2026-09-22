@@ -165,6 +165,7 @@ mod composite;
 mod composite_acumulado;
 mod composite_montagem;
 mod composite_pilha;
+mod composite_reposicoes; // as duas reposicoes da pilha: descascar e FIXAR
 /// **Grid Stamp** — os controles do método (célula, deslocamento, Show Grid) e a régua norm↔px.
 /// ⭐ **O dab que o motor vai emitir** — irmão do [`grid_stamp_settings`] pelo tecto de LOC,
 /// cortado por responsabilidade: *a grelha do carimbo* e *que forma a próxima marca terá* são duas

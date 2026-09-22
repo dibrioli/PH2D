@@ -236,8 +236,11 @@ fn click(t: &mut PainterTool, x: f32, y: f32) {
 #[path = "diag_auditoria_da_pilha.rs"]
 pub(super) mod diag_auditoria_da_pilha;
 
+#[path = "diag_o_enter_e_a_pilha.rs"]
+mod diag_o_enter_e_a_pilha; // o que FIXAR deixa por fechar
+
 #[path = "diag_o_resto_do_descasque.rs"]
-mod diag_o_resto_do_descasque; // o que o descasque de uma figura em voo NAO alcanca
+pub(super) mod diag_o_resto_do_descasque; // o que o descasque de uma figura em voo NAO alcanca
 
 #[path = "diag_cura_da_pilha.rs"]
 mod diag_cura_da_pilha; // o que a ACUMULAÇÃO entregou // AUDITORIA 2026-09-21: o preço e o carimbo da recomposição regional

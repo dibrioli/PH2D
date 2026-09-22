@@ -16,8 +16,81 @@
 
 use ph2d_editor_core::interaction::WidgetStore;
 
+/// ⭐⭐⭐ **O PAR `(controlo, dica)`** — o que saiu de um nome e onde a mão o volta a encontrar.
+///
+/// ⛔⛔ **O par escreve-se À MÃO e LÊ-SE do sítio da chamada, nunca se adivinha.** A 1.ª tentativa
+/// derivou-o por proximidade no fonte e mapeou o `Homing` para o `INSP_PJ_SPEED` — *um balão no
+/// controlo errado é pior do que balão nenhum*. ⇒ só entram aqui os pares em que o `tr(<rótulo>)`
+/// é IMEDIATAMENTE seguido pelo id: **13** dos `21` rótulos com regra.
+///
+/// ⏳ Os outros **8** usam outra forma de chamada (entradas de texto, linhas de lista) e ficam
+/// NOMEADOS no gate `nenhum_rotulo_do_inspector_carrega_uma_regra`, com a catraca a só encolher.
+const DICAS: &[(ph2d_a11y::NodeId, &str)] = &[
+    (
+        crate::ids::INSP_ANIM_FRAME_MS_THIS,
+        "panel.inspector.animation.this_frame_hint",
+    ),
+    (
+        crate::ids::INSP_LIFE_SECONDS,
+        "panel.inspector.factory.lifetime_hint",
+    ),
+    (
+        crate::ids::INSP_FACTORY_ALIVE_MAX,
+        "panel.inspector.factory.max_alive_hint",
+    ),
+    (
+        crate::ids::INSP_FACTORY_TOTAL_MAX,
+        "panel.inspector.factory.max_total_hint",
+    ),
+    (
+        crate::ids::INSP_PJ_BOUNCINESS,
+        "panel.inspector.projectile.bounciness_hint",
+    ),
+    (
+        crate::ids::INSP_PJ_GRAVITY,
+        "panel.inspector.projectile.gravity_hint",
+    ),
+    (
+        crate::ids::INSP_PJ_HOMING_ACCEL,
+        "panel.inspector.projectile.homing_hint",
+    ),
+    (
+        crate::ids::INSP_PJ_MAX_SPEED,
+        "panel.inspector.projectile.max_speed_hint",
+    ),
+    (
+        crate::ids::INSP_PJ_RANGE,
+        "panel.inspector.projectile.range_hint",
+    ),
+    // ⚠️ O `Size X / Y` é UM nome sobre DOIS campos — a dica vai aos dois, senão ela aparece
+    //    em metade da linha.
+    (
+        crate::ids::INSP_SLICE_SIZE[0],
+        "panel.inspector.slice.size_hint",
+    ),
+    (
+        crate::ids::INSP_SLICE_SIZE[1],
+        "panel.inspector.slice.size_hint",
+    ),
+    (
+        crate::ids::INSP_TD_ACCEL,
+        "panel.inspector.topdown.acceleration_hint",
+    ),
+    (
+        crate::ids::INSP_TD_DECEL,
+        "panel.inspector.topdown.deceleration_hint",
+    ),
+    (
+        crate::ids::INSP_TD_TURN_SPEED,
+        "panel.inspector.topdown.turn_speed_hint",
+    ),
+];
+
 /// Semeia o balão de cada controlo cujo nome foi encurtado.
 pub(crate) fn dicas(store: &mut WidgetStore) {
+    for (id, chave) in DICAS {
+        store.set_tooltip(*id, ph2d_i18n::tr(chave));
+    }
     for id in [
         crate::ids::INSP_SPRITE_CORNER_TL,
         crate::ids::INSP_SPRITE_CORNER_TR,

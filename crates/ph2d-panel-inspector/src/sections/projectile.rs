@@ -201,7 +201,7 @@ fn corpo(
         tr("panel.inspector.projectile.range_m_0_forever"),
         &[crate::ids::INSP_PJ_RANGE],
         1.0, // LITERAL-PX-OK: metros
-        None,
+        Some(ph2d_editor_core::widget::Unit::Meters),
         seccao,
     );
     cur_y = super::rows::fields_row(

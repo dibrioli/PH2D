@@ -2739,3 +2739,97 @@ fn a_dica_que_saiu_do_nome_do_per_corner_esta_no_balao() {
         );
     });
 }
+
+/// SONDA TEMPORÁRIA — **que linhas do Inspector são espremidas pelo próprio NOME.**
+///
+/// ⚠️ Medido em 2026-09-21 no per-corner: a coluna do nome é `min(50 %, …)`, logo um nome mais
+/// largo do que METADE do painel **come a coluna do controlo** — ali isso valia `35` contra
+/// `59 px` de amostra (`68 %` de alvo).
+///
+/// ⛔ **O discriminador NÃO é a LARGURA do controlo** — a 1.ª redacção usou-a e acusou `126`
+/// linhas, todas a `72 px`, que é o **PISO do campo**: aquelas são linhas de DOIS campos a
+/// partilhar a coluna, e isso é o desenho, não um aperto. O discriminador é **ONDE a coluna
+/// COMEÇA**: um nome que não aperta deixa-a no mesmo `x` de todas as outras.
+#[test]
+#[ignore]
+fn diag_que_linhas_o_nome_espreme() {
+    let nomes = nomes_do_inspector();
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    ph2d_editor_core::panel::with_registry(|reg| {
+        let painel = reg
+            .panels_mut()
+            .iter_mut()
+            .find(|p| p.manifest.id == "inspector")
+            .expect("o inspector");
+        let arm = super::paineis_armados::TABELA
+            .iter()
+            .find(|a| a.painel == "inspector")
+            .expect("armação");
+        let mut host = MockPanelHost::new();
+        (arm.arma)(host.store_mut());
+        painel.populate(host.store_mut());
+        abre_tudo(host.store_mut());
+        let (_, grupos) = ph2d_editor_core::widget::composto::medindo(|| {
+            let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
+        });
+        let pintados = host.registos_da_ultima_pintura();
+        let store = host.store();
+        let celula: std::collections::BTreeSet<u64> =
+            grupos.iter().flatten().map(|n| n.0).collect();
+
+        // ⭐ A coluna SEM aperto lê-se do PRODUTO: a barra da `Tint`, cujo nome é curto.
+        let norma_x = pintados
+            .iter()
+            .find(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_SPRITE_TINT_SWATCH)
+            .map(|(_, r)| r.x)
+            .expect("a `Tint` é a referência da coluna");
+
+        // ⛔⛔ **Só o controlo MAIS À ESQUERDA de cada faixa**, e a 2.ª redacção não o fazia: o
+        //    segundo campo de uma linha `X`/`Y` está `+48 px` à direita **por desenho**, e ele
+        //    enchia a lista de falsos. *Um par de componentes é UMA propriedade.*
+        let mut por_faixa: std::collections::BTreeMap<i32, (f32, u64)> =
+            std::collections::BTreeMap::new();
+        let mut espremidas: Vec<(f32, String)> = Vec::new();
+        for (id, r) in &pintados {
+            if celula.contains(&id.0) || r.h > ph2d_tokens::ROW_H_PX + 1.0 {
+                continue;
+            }
+            if !matches!(
+                store.get(*id),
+                Some(
+                    ph2d_editor_core::interaction::InteractiveState::NumberInput { .. }
+                        | ph2d_editor_core::interaction::InteractiveState::TextInput { .. }
+                        | ph2d_editor_core::interaction::InteractiveState::Dropdown { .. }
+                        | ph2d_editor_core::interaction::InteractiveState::Slider { .. }
+                        | ph2d_editor_core::interaction::InteractiveState::Checkbox { .. }
+                )
+            ) {
+                continue;
+            }
+            let e = por_faixa.entry(r.y.round() as i32).or_insert((r.x, id.0));
+            if r.x < e.0 {
+                *e = (r.x, id.0);
+            }
+        }
+        for (x, id) in por_faixa.values() {
+            if *x > norma_x + 1.0 {
+                let lit = nomes.get(id).cloned().unwrap_or_default();
+                if !lit.is_empty() {
+                    espremidas.push((x - norma_x, lit));
+                }
+            }
+        }
+        (arm.desarma)();
+        espremidas.sort_by(|a, b| b.0.total_cmp(&a.0));
+        espremidas.dedup_by(|a, b| a.1 == b.1);
+        println!("\n  a coluna sem aperto começa em x = {norma_x:.0}");
+        println!(
+            "  linhas empurradas pelo próprio nome: {}\n",
+            espremidas.len()
+        );
+        println!("  empurra  id");
+        for (d, lit) in espremidas.iter().take(30) {
+            println!("  {d:7.0}  {lit}");
+        }
+    });
+}

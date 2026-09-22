@@ -296,7 +296,7 @@ fn corpo(
             tr("panel.inspector.topdown.turn_speed_deg_s_0_instant"),
             &[crate::ids::INSP_TD_TURN_SPEED],
             10.0, // LITERAL-PX-OK: graus/s
-            None,
+            Some(ph2d_editor_core::widget::Unit::DegreesPerSecond),
             seccao,
         );
     }

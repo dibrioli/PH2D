@@ -208,7 +208,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.animation.loop_override" => "Loop override",
         "panel.inspector.animation.on" => "On",
         "panel.inspector.animation.off" => "Off",
-        "panel.inspector.animation.this_frame_ms_0_use" => "This frame (0 = use Frame)",
+        "panel.inspector.animation.this_frame_ms_0_use" => "This frame",
+        "panel.inspector.animation.this_frame_hint" => "0 = use the Frame value.",
         "panel.inspector.animation.this_sprite_has_no_animation" => {
             "This sprite has no animation with that name, or the grid shrank under it."
         }
@@ -619,7 +620,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.inspector.slice.borders_l_t_px" => "Borders L / T",
         "panel.inspector.slice.borders_r_b_px" => "Borders R / B",
-        "panel.inspector.slice.size_x_y_m_0" => "Size X / Y (0 = sprite)",
+        "panel.inspector.slice.size_x_y_m_0" => "Size X / Y",
+        "panel.inspector.slice.size_hint" => "0 = use the sprite size.",
         "panel.inspector.wheel.motor_s" => "Motor",
         // ph2d-migrar-texto:end
         _ => return None,

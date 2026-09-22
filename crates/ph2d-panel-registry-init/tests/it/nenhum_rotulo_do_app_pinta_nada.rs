@@ -555,7 +555,10 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⭐ `103 → 102` em 2026-09-21: o `Per-Corner Tint (vertex gradient)` virou
     //    `Per-corner Tint` por ordem do dono, e a explicação foi para o BALÃO. *Um nome
     //    que encolhe tira um corte* — a catraca a DESCER é a lei a funcionar.
-    ("inspector", 102),
+    // ⭐⭐ `102 → 90` em 2026-09-21: **treze** rótulos do Inspector perderam a REGRA que
+    //    carregavam entre parêntesis (`Acceleration (0 = instant)` → `Acceleration`), e ela foi
+    //    para o balão do controlo. *Um nome que encolhe tira um corte* — e aqui tirou doze.
+    ("inspector", 90),
     // ⭐ Era `6`: o `Mute` do Master deixou de ler `…` quando a coluna aperta (report do dono,
     //    19/09). *Uma catraca que desce é a metade justa dela a funcionar.*
     ("audio_mixer", 5),

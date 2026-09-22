@@ -18,8 +18,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.factory.where" => "Where",
         "panel.inspector.factory.area_m" => "Area",
         "panel.inspector.factory.burst" => "Burst",
-        "panel.inspector.factory.max_alive_0_no_limit" => "Max Alive (0 = no limit)",
-        "panel.inspector.factory.max_total_0_no_limit" => "Max Total (0 = no limit)",
+        "panel.inspector.factory.max_alive_0_no_limit" => "Max Alive",
+        "panel.inspector.factory.max_alive_hint" => "0 = no limit.",
+        "panel.inspector.factory.max_total_0_no_limit" => "Max Total",
+        "panel.inspector.factory.max_total_hint" => "0 = no limit.",
         "panel.inspector.factory.seed" => "Seed",
         "panel.inspector.factory.no_recipe_u_nothing_to_make_copies_of" => {
             "No recipe \u{2014} nothing to make copies of."
@@ -33,7 +35,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.factory.pick_at_random" => "Pick at random",
         "panel.inspector.factory.aim_from_spawner" => "Aim from spawner",
         "panel.inspector.factory.alive_now" => "{n} alive now",
-        "panel.inspector.factory.lifetime_s_0_forever" => "Lifetime (s, 0 = forever)",
+        "panel.inspector.factory.lifetime_s_0_forever" => "Lifetime",
+        "panel.inspector.factory.lifetime_hint" => "0 = lives forever.",
         "panel.inspector.factory.off_screen_margin_m" => "Off-screen margin",
         "panel.inspector.factory.nothing_is_born_from_this_object_u_put_this_on_the_recipe_a_factory_makes" => {
             "Nothing is born from this object \u{2014} put this on the recipe a Factory makes."
@@ -151,12 +154,17 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.inspector.projectile.speed_m_s" => "Speed",
         "panel.inspector.projectile.acceleration" => "Acceleration",
-        "panel.inspector.projectile.max_speed_0_no_cap" => "Max Speed (0 = no cap)",
-        "panel.inspector.projectile.gravity_0_straight" => "Gravity (0 = straight)",
+        "panel.inspector.projectile.max_speed_0_no_cap" => "Max Speed",
+        "panel.inspector.projectile.max_speed_hint" => "0 = no cap.",
+        "panel.inspector.projectile.gravity_0_straight" => "Gravity",
+        "panel.inspector.projectile.gravity_hint" => "0 = flies straight.",
         "panel.inspector.projectile.max_bounces" => "Max Bounces",
-        "panel.inspector.projectile.bounciness_1_perfect" => "Bounciness (1 = perfect)",
-        "panel.inspector.projectile.range_m_0_forever" => "Range (m, 0 = forever)",
-        "panel.inspector.projectile.homing_0_none" => "Homing (0 = none)",
+        "panel.inspector.projectile.bounciness_1_perfect" => "Bounciness",
+        "panel.inspector.projectile.bounciness_hint" => "1 = a perfect bounce.",
+        "panel.inspector.projectile.range_m_0_forever" => "Range",
+        "panel.inspector.projectile.range_hint" => "0 = flies forever.",
+        "panel.inspector.projectile.homing_0_none" => "Homing",
+        "panel.inspector.projectile.homing_hint" => "0 = no homing.",
         "panel.inspector.projectile.target_object_name_u" => "target object name\u{2026}",
         "panel.inspector.projectile.no_object_in_the_scene_has_that_name" => {
             "No object in the scene has that name."
@@ -282,10 +290,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "The clock is stopped \u{2014} it moves while the clock plays."
         }
         "panel.inspector.topdown.speed_m_s" => "Speed",
-        "panel.inspector.topdown.acceleration_0_instant" => "Acceleration (0 = instant)",
-        "panel.inspector.topdown.deceleration_0_instant" => "Deceleration (0 = instant)",
+        "panel.inspector.topdown.acceleration_0_instant" => "Acceleration",
+        "panel.inspector.topdown.acceleration_hint" => "0 = instant.",
+        "panel.inspector.topdown.deceleration_0_instant" => "Deceleration",
+        "panel.inspector.topdown.deceleration_hint" => "0 = instant.",
         "panel.inspector.topdown.board_angle_deg" => "Board Angle",
-        "panel.inspector.topdown.turn_speed_deg_s_0_instant" => "Turn Speed (deg/s, 0 = instant)",
+        "panel.inspector.topdown.turn_speed_deg_s_0_instant" => "Turn Speed",
+        "panel.inspector.topdown.turn_speed_hint" => "0 = instant.",
         "panel.inspector.topdown.min_slide_angle_deg" => "Min Slide Angle",
         "panel.inspector.topdown.max_slides" => "Max Slides",
         "panel.inspector.topdown.directions" => "Directions",

@@ -77,7 +77,7 @@ fn lifecycle_body(
             tr("panel.inspector.factory.lifetime_s_0_forever"),
             &[crate::ids::INSP_LIFE_SECONDS],
             0.1, // LITERAL-PX-OK: passo em segundos
-            None,
+            Some(ph2d_editor_core::widget::Unit::Seconds),
             seccao,
         );
         cur_y = super::anim_rows::text_row(

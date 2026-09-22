@@ -461,8 +461,11 @@ fn forma_do_catalogo(kind: ph2d_node_motion_shape::ShapeKind) -> Option<ph2d_vec
 /// `=126`, e imprime o erro da tile ao lado do erro de simplificar. ⚠️ **O CONTROLO é a coluna
 /// `4 px`**: é lá que a barra vive, e nenhuma forma pode passar `1` nível — se alguma passar, a
 /// barra é dela e não da estrela.
+/// ⚠️ **Ela demora `~16 min`** (as `45` formas × a tile que cada uma recebe × o controlo da
+/// régua), e imprime linha a linha desde a primeira — *o silêncio de um `| tail` lê-se como
+/// pendurada, e não é*.
 #[test]
-#[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]
+#[ignore = "sonda de medição — ~16 min; corra à mão, em RELEASE e com a máquina calma"]
 fn audit_whether_the_bar_holds_for_every_shape() {
     let _fatia = fatia();
     eprintln!(

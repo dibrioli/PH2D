@@ -2037,3 +2037,96 @@ sangrar.** Dois tectos de LOC curados por **CORTE**, nenhum por isenção:
   8): quem quiser o degrau seguinte ataca os BYTES, não os fios.
 - Os dois itens da §26.6 continuam abertos e **não são da pilha** (a camada `Smear` inerte sob
   `Style: Solid`; dois `Ctrl+Z` a meio de uma sessão de figuras, que faz o mesmo SEM pilha).
+
+---
+
+## §29 — «ARTEFATOS DE IMAGEM NAS MARGENS RETANGULARES» — DOIS mecanismos, uma pergunta (2026-09-21)
+
+**Sete fotos do dono ao longo do dia**, do fantasma cinzento nas margens ao **rectângulo branco
+opaco** a cobrir arte pintada — *e ele aparece numa sprite TRANSPARENTE*, onde o «branco» não podia
+vir do papel. ✅ **Smoke do dono aprovado:** *«Ficou tudo curado e sem nenhum retângulo nem
+artefato»* e, depois da 2.ª cura, *«Perfeito! Tudo corrigido!»*.
+
+⭐⭐⭐ **Eram DOIS mecanismos sem nada em comum, e os dois respondem mal à MESMA pergunta: «que
+região é que este gesto mexe?»** O post-mortem completo — com as **quatro réguas erradas** e a
+**atribuição falsa** que eu reportei ao dono — é o **[Bug #24](../BUGS_painter.md)**; aqui fica o
+que o INTEGRADOR precisa: a superfície tocada.
+
+### §29.1 — A caixa SALVA é a do PINCEL, a ESCRITA é a da CAMADA
+
+Um método de re-carimbo **restaura** o recorte do quadro anterior e re-emite a figura. A região
+guardada era `∪ dab_bbox(centro, radius_px)` — o raio do **PINCEL** —, e a pilha escreve
+`caixa_das_camadas`, onde o `camada_dabs` faz `radius_px *= escala` **por camada** (na pilha do dono
+a escala é `1,904`). ⇒ o anel entre as duas caixas **nunca era restaurado**: a crescer o quadro
+seguinte tapa-o, a encolher ele fica à vista — *que é a dica do dono à letra*.
+
+| ablação (Anchored `40→200→40` contra `40` directo) | texels de rasto |
+|---|---|
+| nenhuma (o que shipava) | **`290 534`** |
+| sem composite · todos os tamanhos a `1,0` · calar a camada de `size 1,904` | `0` |
+| calar qualquer outra camada | `290 534` |
+
+O resíduo acabava em **raio `380` = `200 × 1,904`**. Depois da cura: `0` em todas as células.
+
+**Cura:** `region::caixa_do_lote` + `escala_do_carimbo` (`region.rs` `+53`), lida pelo descasque em
+`stamp_preview.rs`. Gate `um_recarimbo_que_encolhe_nao_deixa_rasto`, com o interruptor
+`region::CAIXA_DO_PINCEL` (**campo `#[cfg(test)]`, nunca env** — *um gate que lê o ambiente mede a
+máquina*) como CONTROLO.
+
+### §29.2 — FIXAR (Enter) não fechava a pilha
+
+O pen-up de uma figura **não** fecha o traço; o **Enter** (`commit_open_shape`) assa os pixels e
+larga os editores, e o `pre` da pilha continuava a ser a tela de **antes** delas ⇒ a figura seguinte
+reconstrói-se dessa base velha e, na região dela, **apaga o que acabou de ser fixado**.
+
+| caso (tela preta transparente, pilha do dono, duas elipses `r = 110`) | arte fixada destruída | calando o Smear |
+|---|---|---|
+| sem Enter entre as duas | `0` | — |
+| **com Enter, SEM a cura** | **`12 530`** (pior `127`, caixa `119×280`) | `12 530` |
+| **com Enter, com a cura** | `3 083` | **`0`** |
+
+⭐⭐ **A atribuição é DISJUNTA, e é ela que fecha o assunto:** sem a cura o esfregão **não é a
+causa**; com a cura o que sobra é **só** ele.
+
+**Cura:** `composite_reposicoes::commit_reset_pilha` — o **quarto canal** da lista do
+`commit_drag_preview`, ao lado do relevo do traço, da sessão do escultor e da borracha. Gate
+`fixar_fecha_a_pilha` (⚠️ a pilha mede-se **logo a seguir** ao Enter: a 2.ª figura reabre-a).
+
+### §29.3 — A SUPERFÍCIE DE MERGE (o que o integrador precisa de saber)
+
+| ficheiro | antes → depois | porquê |
+|---|---|---|
+| `paint/region.rs` | `249 → 302` | as duas portas novas |
+| `paint/stamp_preview.rs` | `−/+19` | o descasque lê a caixa do lote; `commit_drag_preview` ganha o 4.º canal |
+| `paint/composite_acumulado.rs` | **`676 → 600`** | **CORTE por responsabilidade** (o tecto é `700` e a porta nova cruzava-o) |
+| `paint/composite_reposicoes.rs` | **NOVO, `155`** | as DUAS reposições da pilha |
+| `paint/diag_o_resto_do_descasque.rs` | **NOVO, `596`** | a sonda + o gate do descasque |
+| `paint/diag_o_enter_e_a_pilha.rs` | **NOVO, `343`** | a sonda + o gate do Enter |
+
+⚠️⚠️ **O corte tem uma razão que não é o tecto, e ela é a que interessa a quem funde:** as duas
+reposições (`restamp_reset_pilha` · `commit_reset_pilha`) são **OPOSTAS no `pre`** — descascar
+MANTÉM-NO, fixar tem de o MATAR —, e escritas longe uma da outra a segunda nasce como cópia da
+primeira e leva o `pre` que não devia levar. *Elas vivem lado a lado de propósito; separá-las outra
+vez reabre o defeito.*
+
+⚠️ **Zero `PROJECT_SCHEMA`, zero contrato, zero registo, zero pacote novo, zero linha de shell.**
+
+### §29.4 — As armadilhas que esta wave pagou (as de MÉTODO estão no Bug #24)
+
+* ⛔ **`cargo check` sem `--all-targets` foi CEGO ao corte:** mover a porta deixou o
+  `COMMIT_SEM_FECHAR` fora de âmbito e o check simples passou **verde**; o `E0425` só apareceu com
+  `--all-targets`. A armadilha que o `CLAUDE.md` §2 escreve por extenso.
+* ⛔ **O gate do Enter, na 1.ª redacção, media a pilha no FIM do gesto** — a 2.ª figura reabre-a, e
+  ele lia-a aberta sobre uma cura correcta. *Uma régua lida depois do gesto seguinte não afirma nada
+  sobre o commit.*
+* ⚠️ **A numeração colidiu:** a entrada nasceu `#16` e o `#16` já existia (aquarela, 20/07) ⇒ é
+  **`#24`**. *Um número que soma numa lista conta-se, nunca se escolhe.*
+* ⚠️ **E dois números da mensagem do `bf612ece1` estão ERRADOS** (ela diz `734 → 600` e `912 → 596`):
+  os committados são **`676 → 600`** e **`709 → 596`**. Os `734`/`912` eram picos **transitórios** da
+  árvore de trabalho, não estados gravados — *um número lido do editor e não do `git show` descreve
+  um ficheiro que nunca existiu*. A tabela do §29.3 é a que vale.
+
+⏳ **ABERTO e ATRIBUÍDO:** os `3 083` que sobram são o resíduo da **base congelada do esfregão**
+(§5.3 da [auditoria](../40_auditoria_da_pilha_2026-09-21.md)) — ela é refrescada só dentro da região
+recomposta enquanto o render lê `p − disp(p)`, que pode cair fora dela. *Outro mecanismo, com a cura
+endereçada lá.*

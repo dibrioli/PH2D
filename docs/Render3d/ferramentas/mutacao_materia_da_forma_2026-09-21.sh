@@ -87,6 +87,16 @@ muta "o alfa é a COBERTURA deste quadro (CPU)" "$PBR" \
             let cobertura' 1 \
   com_a_materia_da_forma_o_alfa_e_a_cobertura ph2d-form-pbr
 
+# (2-bis) A cobertura volta a ser aplicada DUAS vezes — a orla branca do 2.º report.
+muta "a cobertura entra CHEIA (CPU)" "$PBR" \
+  'cobertura: if p.materia_da_forma {
+                1.0
+            } else {' \
+  'cobertura: if false {
+                1.0
+            } else {' 1 \
+  a_materia_da_forma_nao_deixa_um_degrau ph2d-form-pbr
+
 echo
 echo "== O GÉMEO NA PLACA (precisa de adapter) =="
 
@@ -100,6 +110,12 @@ muta "o albedo é o NEUTRO (WGSL)" "$WGSL" \
 muta "o alfa é a COBERTURA deste quadro (WGSL)" "$WGSL" \
   'let alfa = select(px.a, floor(clamp(f.w, 0.0, 1.0) * 255.0 + 0.5) / 255.0, materia_e_a_forma);' \
   'let alfa = px.a;' 1 \
+  a_placa_e_a_regua_concordam_no_pixel ph2d-form-donation --release -- --ignored
+
+# (4-bis) O gémeo aplica a cobertura duas vezes.
+muta "a cobertura entra CHEIA (WGSL)" "$WGSL" \
+  'let cobertura = select(f.w, 1.0, materia_e_a_forma);' \
+  'let cobertura = f.w;' 1 \
   a_placa_e_a_regua_concordam_no_pixel ph2d-form-donation --release -- --ignored
 
 # (5) O bit nunca sobe ao uniform — a lei existe dos dois lados e o shader nunca a vê.

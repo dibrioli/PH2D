@@ -427,17 +427,22 @@ fn com_a_materia_da_forma_o_alfa_e_a_cobertura_deste_quadro() {
     assert_eq!(acompanha, n / 2, "controlo: a peça de hoje tem de aparecer");
 }
 
-/// ⭐⭐⭐ **NA POSE EM QUE O BAKE CORREU a lei nova não muda um bit** — é isso que a torna segura.
+/// ⭐⭐⭐ **NA POSE DO BAKE, um texel CHEIO não muda um bit — e um texel de BORDA muda, de
+/// propósito.**
 ///
-/// ⚠️ Ali o `base` **é** a forma vestida (branco, com o alfa da cobertura), logo o albedo neutro é
-/// o albedo que lá está e a cobertura é o alfa que lá está. *A cura não move o que o dono já
-/// aprovou; ela só deixa de congelar o que a rota B re-rasteriza.*
+/// ⛔⛔ **A redacção anterior deste gate prometia as duas metades** (*«na pose do bake a saída não
+/// muda um bit»*) e a promessa era **falsa na borda** — ela só era verdade porque a fixtura de
+/// então tinha o `base` já vestido e ninguém olhava para o passo entre os dois lados. O report
+/// seguinte do dono (*«o objeto fica com uma outline branca pixelada indesejada»*, com foto) é
+/// exactamente essa metade, e a cura dela faz este gate reprovar. ⇒ *a premissa morre à vista no
+/// diff*, e o irmão [`a_materia_da_forma_nao_deixa_um_degrau_de_albedo_na_borda`] é quem mede o
+/// que ela escondia.
 ///
-/// ⛔ **A promessa é sobre os texels COBERTOS.** Fora da cobertura o alfa é `0` nos dois lados —
-/// logo nada de novo se vê —, e o RGB passa de `[0,0,0]` a branco: isso é **deliberado** e melhor,
-/// porque é o halo que uma amostragem bilinear puxa para dentro da borda.
+/// ⚠️ Num texel **CHEIO** a mistura da cobertura é a identidade (`c = 1`), logo entrar com ela
+/// cheia não muda nada — e é ali que o *«a cura não move o que o dono já aprovou»* continua
+/// verdadeiro, ao bit.
 #[test]
-fn na_pose_do_bake_a_materia_da_forma_nao_muda_um_bit() {
+fn na_pose_do_bake_um_texel_cheio_nao_muda_um_bit_e_um_de_borda_muda() {
     let s = superficie();
     let (w, h) = (16u32, 16u32);
     let n = (w * h) as usize;
@@ -445,10 +450,14 @@ fn na_pose_do_bake_a_materia_da_forma_nao_muda_um_bit() {
     let occ = vec![1f32; n];
     let mut cobertos = 0usize;
     for i in 0..n {
-        let c = if i % 3 == 0 {
-            0.0
-        } else {
-            (i % 17) as f32 / 16.0
+        // ⚠️ **As TRÊS espécies de texel, e a mistura é medida:** fora (`0`), CHEIO (`1`) e de
+        // BORDA (fraccionário). A 1.ª redacção só tinha `(i % 17) / 16` e dava `10` cheios em
+        // `256` — *um piso de população a reprovar sobre uma fixtura que não continha a metade
+        // que o gate promete*.
+        let c = match i % 3 {
+            0 => 0.0,
+            1 => 1.0,
+            _ => (i % 17) as f32 / 17.0,
         };
         form[i * 4] = (i % 37) as f32 / 37.0 - 0.5;
         form[i * 4 + 1] = (i % 41) as f32 / 41.0 - 0.5;
@@ -479,18 +488,42 @@ fn na_pose_do_bake_a_materia_da_forma_nao_muda_um_bit() {
         .unwrap()
     };
     let (antes, depois) = (acende(false), acende(true));
+    let (mut cheios, mut bordas) = (0usize, 0usize);
     for i in 0..n {
-        if form[i * 4 + 3] > 0.0 {
+        let c = form[i * 4 + 3];
+        if c >= 1.0 {
+            cheios += 1;
             assert_eq!(
                 depois[i * 4..i * 4 + 4],
                 antes[i * 4..i * 4 + 4],
-                "o texel COBERTO {i} mudou na pose do bake"
+                "o texel CHEIO {i} mudou na pose do bake"
+            );
+        } else if c > 0.0 {
+            bordas += 1;
+            // ⭐ E a mudança tem SENTIDO: a lei nova devolve a luz e não uma mistura com o branco
+            // do vestido, logo o texel só pode ficar MAIS ESCURO ou igual.
+            assert!(
+                depois[i * 4] <= antes[i * 4],
+                "o texel de BORDA {i} ficou mais claro ({} contra {}) — a mistura com o albedo \
+                 branco é exactamente a orla que esta cura tira",
+                depois[i * 4],
+                antes[i * 4]
             );
         } else {
             assert_eq!(depois[i * 4 + 3], 0, "fora da cobertura o alfa é zero");
             assert_eq!(antes[i * 4 + 3], 0, "controlo: e já era zero antes");
         }
     }
+    // ⛔ **Os DOIS pisos de população**, porque cada metade sozinha fica trivialmente verdadeira
+    // sobre um conjunto vazio — e a fixtura tem de conter as duas espécies de texel.
+    assert!(
+        cheios >= n / 10,
+        "controlo: a fixtura tem de ter texels CHEIOS ({cheios})"
+    );
+    assert!(
+        bordas >= n / 10,
+        "controlo: a fixtura tem de ter texels de BORDA ({bordas})"
+    );
     assert!(
         cobertos >= n / 3,
         "controlo: a fixtura tem de ter texels cobertos ({cobertos})"
@@ -554,5 +587,96 @@ fn com_a_materia_da_forma_o_albedo_e_o_neutro() {
         acende(&base, false),
         acende(&branco, false),
         "controlo: sem a lei, um `base` verde e um branco TÊM de dar imagens diferentes"
+    );
+}
+
+/// ⭐⭐⭐⭐ **NÃO HÁ DEGRAU DE ALBEDO NA BORDA** — a orla branca do report de 2026-09-21.
+///
+/// ⛔⛔ **O report, com foto:** *«funcionou mas o objeto fica com uma outline branca pixelada
+/// indesejada»*, sobre a silhueta recortada que a wave anterior destravou.
+///
+/// **O mecanismo:** a mistura do [`super::super::acende_texel`] é uma **COMPOSIÇÃO sobre o
+/// albedo** — num texel de borda meio coberto, metade do pixel é a arte por baixo e metade é a
+/// peça. Ela está certa quando existe arte por baixo. Com a matéria a ser a forma **não existe**:
+/// o albedo é o neutro (branco) e o que está por baixo é *nada*, dito pelo alfa. ⇒ fora da
+/// silhueta a lei devolvia **branco puro** ao lado de um miolo **ACESO** (medido: `255` contra
+/// `183`, **`72` códigos**), e toda amostragem bilinear através da borda arrasta esse degrau para
+/// dentro dela. É a orla, e ela é **pixelada** porque segue a silhueta rasterizada.
+///
+/// ⚠️⚠️ **E isto era uma premissa MINHA, escrita como decisão:** o `§11.7` do `docs/Render3d/17`
+/// dizia que o branco fora da silhueta era *«deliberado e melhor, porque branco ao pé de branco não
+/// deixa orla escura»*. Ele comparava o exterior com o **ALBEDO** (branco) em vez de com a
+/// **SAÍDA** (o cinzento aceso). *Uma troca declarada sem a medição ao lado é um palpite com cara
+/// de decisão.*
+///
+/// ⭐ A cura é a cobertura entrar **cheia** na lei, porque ela já viaja no alfa.
+#[test]
+fn a_materia_da_forma_nao_deixa_um_degrau_de_albedo_na_borda() {
+    let s = superficie();
+    let (w, h) = (48u32, 48u32);
+    let n = (w * h) as usize;
+    let (mut base, mut form) = (vec![0u8; n * 4], vec![0f32; n * 4]);
+    let occ = vec![1f32; n];
+    // Um disco: metade esquerda dentro, metade direita fora. O que se mede é o DEGRAU entre os
+    // dois lados da fronteira, que é o que a filtragem mistura.
+    let (cx, cy, r) = (23.5f32, 23.5, 16.0);
+    for i in 0..n {
+        let (x, y) = ((i as u32 % w) as f32, (i as u32 / w) as f32);
+        let d = ((x - cx).powi(2) + (y - cy).powi(2)).sqrt();
+        let dentro = d <= r;
+        form[i * 4] = (x - cx) / r * 0.4;
+        form[i * 4 + 1] = (y - cy) / r * 0.4;
+        form[i * 4 + 2] = 1.0;
+        form[i * 4 + 3] = f32::from(dentro);
+        // O `base` VESTIDO, letra por letra o que o `veste_a_forma` escreve.
+        if dentro {
+            base[i * 4..i * 4 + 4].copy_from_slice(&[255, 255, 255, 255]);
+        }
+    }
+    let acende = |b: &[u8], m: bool| {
+        acende_imagem_com(
+            &s,
+            &Planos {
+                size: (w, h),
+                base: b,
+                form: &form,
+                form_occ: &occ,
+                materia_da_forma: m,
+            },
+            &[lampada()],
+            Ceu::chapado([0.2; 3]),
+            Look::default(),
+            4,
+        )
+        .unwrap()
+    };
+    // O degrau: o miolo contra o texel logo a seguir à fronteira, na mesma linha.
+    let linha = (h / 2) as usize;
+    let degrau = |px: &[u8]| {
+        let miolo = i32::from(px[(linha * w as usize + (cx as usize)) * 4]);
+        let fora = i32::from(px[(linha * w as usize + (cx as usize + r as usize + 3)) * 4]);
+        (fora - miolo).abs()
+    };
+
+    let vestido = degrau(&acende(&base, true));
+    assert!(
+        vestido <= 4,
+        "a matéria da forma deixa um degrau de {vestido} códigos na borda — é a orla branca que o \
+         dono fotografou, e ela nasce de a cobertura ser aplicada DUAS vezes (na cor e no alfa)"
+    );
+
+    // ⭐⭐ **O CONTROLO, e ele é uma lei CERTA e não um defeito:** com arte por baixo — um cartão
+    // branco OPACO — o texel fora da silhueta É o cartão, logo o degrau existe e tem de existir.
+    // *Sem esta metade a régua acima ficaria verde sobre uma lei que devolvesse sempre a mesma
+    // cor, e não saberíamos que ela é capaz de LER um degrau.*
+    let mut cartao = base.clone();
+    for p in cartao.as_chunks_mut::<4>().0 {
+        *p = [255, 255, 255, 255];
+    }
+    let com_arte = degrau(&acende(&cartao, false));
+    assert!(
+        com_arte >= 40,
+        "controlo: sobre um cartão branco o degrau é a própria arte e tem de ser legível \
+         ({com_arte} códigos) — a régua tem de saber ler um degrau"
     );
 }

@@ -89,11 +89,18 @@ fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
     ceu_base = g.ceu_base.rgb;
     ceu_inclinacao = g.ceu_inclinacao.rgb;
 
+    // ⭐⭐⭐⭐ **A cobertura entra CHEIA quando a matéria é a forma, porque ela já vai no ALFA** —
+    // aplicá-la duas vezes é a orla branca do report de 2026-09-21. A mistura do
+    // `forma_acende_texel` é uma COMPOSIÇÃO sobre o albedo, e sem sprite por baixo não há sobre o
+    // quê compor: `255` fora contra `183` no miolo, `72` códigos que a amostragem bilinear
+    // arrasta para dentro da borda. Ver o gémeo em Rust (`ph2d_form_pbr::imagem`).
+    let cobertura = select(f.w, 1.0, materia_e_a_forma);
+
     let c = forma_acende_texel(
         g.material,
         f.xyz,
         albedo,
-        f.w,
+        cobertura,
         occ,
         g.lampadas,
         g.olhar.a,

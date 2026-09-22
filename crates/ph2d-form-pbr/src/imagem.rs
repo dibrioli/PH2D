@@ -264,7 +264,25 @@ fn acende_faixa(
                     codigo::para_luz(px[2]),
                 ]
             },
-            cobertura: p.form[(i0 + j) * 4 + 3],
+            // ⭐⭐⭐⭐ **E quando a matéria é a forma a cobertura entra CHEIA, porque ela já vai
+            // no ALFA** (logo abaixo) — *aplicá-la duas vezes é a orla branca do report de
+            // 2026-09-21*.
+            //
+            // A mistura do [`super::acende_texel`] é uma COMPOSIÇÃO sobre o albedo, e ela está
+            // certa quando o albedo é a arte que o artista desenhou: metade do texel é cartão e
+            // metade é peça. Com a matéria a ser a forma não há cartão nenhum — o que está por
+            // baixo é **nada**, e quem o diz é o alfa.
+            //
+            // ⛔⛔ **A consequência MEDIDA é fora da silhueta:** ali a lei devolve o albedo
+            // verbatim, que com esta bandeira é branco puro, e o miolo da peça é o cinzento
+            // ACESO ⇒ `255` contra `183`, **`72` códigos** de contraste que uma amostragem
+            // bilinear arrasta para dentro da borda. Com a cobertura cheia os dois lados são a
+            // mesma luz e o degrau desaparece.
+            cobertura: if p.materia_da_forma {
+                1.0
+            } else {
+                p.form[(i0 + j) * 4 + 3]
+            },
             oclusao: p.form_occ[i0 + j],
         };
         let c = acende_texel(s, &t, lampadas, ceu, olhar);

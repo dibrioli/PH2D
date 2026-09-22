@@ -900,17 +900,62 @@ veredito**.
 
 ⭐ E o CONTROLO é o report: com a lei desligada o alfa lê `255` nas duas poses, em todo o texel.
 
-### §11.7 — O que fica declarado
+### §11.7 — ⛔⛔⛔ A ORLA BRANCA: a premissa que eu declarei e a foto derrubou
 
-⚠️ **Fora da cobertura o RGB passa de `[0,0,0]` a branco**, com o alfa a `0` nos dois casos. Isso é
-deliberado e melhor: é o halo que uma amostragem bilinear puxa para dentro da borda, e branco ao pé
-de branco não deixa orla escura. *Nada de novo se VÊ; o que muda é o que a filtragem encontra.*
+**A redacção anterior desta secção dizia:**
+
+> ⚠️ *Fora da cobertura o RGB passa de `[0,0,0]` a branco, com o alfa a `0` nos dois casos. Isso é
+> **deliberado e melhor**: é o halo que uma amostragem bilinear puxa para dentro da borda, e branco
+> ao pé de branco não deixa orla escura.*
+
+⛔⛔ **O report seguinte do dono, com foto:** *«funcionou mas o objeto fica com uma outline branca
+pixelada indesejada»*.
+
+⚠️⚠️ **O erro é de COMPARAÇÃO e cabe numa frase:** *branco ao pé de branco* comparava o exterior com
+o **ALBEDO**, e o que está do outro lado da borda é a **SAÍDA** — o cinzento **ACESO**. Medido no
+caminho da lei, num disco:
+
+| | R |
+|---|---|
+| miolo da peça (aceso) | `183` |
+| logo fora da silhueta | **`255`** |
+| ⇒ degrau que a filtragem arrasta para dentro da borda | **`72` códigos** |
+
+*Uma troca declarada sem a medição ao lado é um palpite com cara de decisão.*
+
+### §11.7-bis — O mecanismo, e porque ele é a COBERTURA aplicada duas vezes
+
+A mistura do `acende_texel` é uma **COMPOSIÇÃO sobre o albedo**:
+
+```
+saída = albedo × (1 − cobertura) + aceso × cobertura
+```
+
+Ela está **certa** quando existe arte por baixo: num texel de borda meio coberto, metade do pixel é
+o cartão do artista e metade é a peça. ⛔ Com a matéria a ser a forma **não existe nada por baixo** —
+o albedo é o neutro e quem diz *«aqui não há nada»* é o **ALFA**. ⇒ a cobertura era aplicada **duas
+vezes**, uma na cor (a puxar para o branco) e outra no alfa, e fora da silhueta sobrava o albedo
+verbatim, que é branco puro.
+
+⭐ **A cura é uma linha nas duas redacções da lei:** com a matéria a ser a forma a cobertura entra
+**CHEIA**, porque ela já viaja no alfa. Degrau **`72 → 1`**, e a paridade placa↔régua continua
+**`100,000 %` com pior `0`** nos dois lados do interruptor.
+
+⚠️ **E o gate que prometia byte-identidade na pose do bake tinha a mesma premissa**: ela é verdadeira
+num texel **CHEIO** (onde `c = 1` torna a mistura a identidade) e falsa num de **BORDA**. Ele foi
+reescrito nas duas metades, e a metade nova exige que o texto de borda fique **mais escuro ou
+igual** — *a mudança é a cura, e ela tem sentido*.
+
+⛔⛔ **E a orla NÃO nasceu nesta wave: ela nasceu com o VESTIR (§8.5), um dia antes.** Qualquer bake
+de sprite vazio já escrevia branco onde a peça não está. O que esta wave fez foi tornar a borda
+**visível e móvel** — antes ela estava congelada dentro de um cartão. ⭐ A cura cobre exactamente a
+população certa **por construção**: `materia_da_forma` é `vestidos > 0`, logo *vestido ⟺ curado*.
 
 ⚠️ **E o vestir tem memória:** depois de o artista pintar um traço na tela, o sprite deixa de estar
 vazio ⇒ o bake seguinte não veste, `materia_da_forma` volta a `false`, e a silhueta passa a ser a da
 ARTE. *É a resposta certa, e é a razão de o facto ser do gesto que assa e não da cena.*
 
-**12 provas de mutação, todas a sangrar** — `docs/Render3d/ferramentas/mutacao_materia_da_forma_2026-09-21.sh`.
+**14 provas de mutação, todas a sangrar** — `docs/Render3d/ferramentas/mutacao_materia_da_forma_2026-09-21.sh`.
 
 ---
 
@@ -920,6 +965,8 @@ ARTE. *É a resposta certa, e é a razão de o facto ser do gesto que assa e nã
 
 | o que | porquê | onde |
 |---|---|---|
+| ⛔ ~~o branco fora da silhueta como halo «melhor»~~ | **REFUTADA pela foto do dono no dia seguinte**: a comparação era com o ALBEDO (branco) e não com a SAÍDA (o aceso, `183`) — `72` códigos de degrau, que é a orla | §11.7 |
+| aplicar a cobertura na COR quando a matéria é a forma | ela já viaja no alfa; aplicá-la duas vezes puxa a borda para o branco do vestido | §11.7-bis |
 | uma regra de vestir/recortar por TEXEL | num sprite com arte desenhada ela enche de branco a volta do desenho sempre que a malha for maior — *a pergunta é «este sprite tem arte?» e responde-se UMA vez* | §11.3 |
 | ler o doc do `acende_faixa` (*«o alfa atravessa intacto»*) como *«o bake não escreve alfa»* | a promessa é verdadeira sobre a LEI, e o alfa nascia no VESTIR, a montante dela — a sonda mediu `53 252` de `65 536` texels vazios | §11.2 |
 | deixar a `=52` com a tela BRANCA | sobre branco o vestir nunca arma ⇒ a cena mostraria a peça num cartão e a cura seria invisível a quem a smoka | §11.5 |

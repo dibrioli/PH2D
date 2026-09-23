@@ -161,6 +161,7 @@ fn audit_the_cpu_frame_with_resolve() {
                 &mut sem_arte,
                 ph2d_vector::Affine::IDENTITY,
                 None,
+                ph2d_render::ImageFilterMode::Smooth,
                 cena,
             );
         };
@@ -326,6 +327,7 @@ fn audit_what_the_camera_can_see() {
                 &mut sem_arte,
                 ph2d_vector::Affine::IDENTITY,
                 None,
+                ph2d_render::ImageFilterMode::Smooth,
                 cena,
             );
         };
@@ -502,6 +504,7 @@ fn audit_what_the_cull_buys() {
                 &mut sem_arte,
                 ph2d_vector::Affine::IDENTITY,
                 janela,
+                ph2d_render::ImageFilterMode::Smooth,
                 cena,
             );
         };

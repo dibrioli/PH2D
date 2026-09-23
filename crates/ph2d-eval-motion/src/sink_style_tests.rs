@@ -395,10 +395,22 @@ fn a_vector_row_gets_the_geometric_half_of_the_style_and_declares_the_rest() {
         vectors[0].anchor[0], vectors[1].anchor[0],
         "CONTROLE: duas larguras diferentes dao pivos diferentes"
     );
+    // ⭐ A AMOSTRAGEM viaja também (doc 118 §8) — o MESMO número que a sprite recebe. A linha
+    // não a usa enquanto é forma viva; usa-a o quad de imagem desta cena e a tile do LOD.
+    assert!(
+        vectors.iter().all(|v| v.sampling == style.sampling),
+        "a amostragem do sink nao chegou a linha vectorial"
+    );
     // E o estilo neutro continua a não mover nada.
     let mut plain = Vec::new();
     crate::lower::lower_to_vector_instances_onto(&vector_rows, SinkStyle::PLAIN, &mut plain);
     assert!(plain.iter().all(|v| v.anchor == [0.0, 0.0]));
+    assert!(
+        plain
+            .iter()
+            .all(|v| v.sampling == RenderInstance::SAMPLING_DEFAULT),
+        "CONTROLE: o estilo neutro da' a amostragem de fabrica"
+    );
 
     // ⚠️ A struct tem SEIS campos, e a destruturação é o gate: um campo novo aqui obriga
     // quem o acrescentar a decidir se o estilo passa a alcançá-lo.
@@ -413,6 +425,9 @@ fn a_vector_row_gets_the_geometric_half_of_the_style_and_declares_the_rest() {
             basis: _,
             tint: _,
             anchor: _,
+            // ⭐ O estilo ALCANÇA-O (doc 118 §8): o `Filter` do sink vale no quad de imagem da cena
+            // vectorial e na tile do LOD — afirmado acima, neste mesmo gate.
+            sampling: _,
             // ⭐ O estilo NÃO o alcança, de propósito: a mistura em GRUPO é carimbada pela BOMBA
             // depois do lowering (doc 118) — o lowering não sabe de que sink a linha é.
             mistura: _,
@@ -434,7 +449,7 @@ fn a_vector_row_gets_the_geometric_half_of_the_style_and_declares_the_rest() {
 fn every_draw_route_answers_the_sink_style() {
     use ph2d_render::StyleReach;
     assert!(
-        StyleReach::ALL.len() >= 2,
+        StyleReach::ALL.len() >= 3,
         "CONTROLE: a lista de rotas nao esta' vazia"
     );
     for r in StyleReach::ALL {
@@ -459,4 +474,61 @@ fn every_draw_route_answers_the_sink_style() {
     }
     // E a rota das sprites — a que tem imagem — honra os quatro.
     assert!(StyleReach::SPRITE.honours_everything());
+    // ⭐ E a imagem na cena vectorial também (doc 118 §8) — a mesma imagem, noutra média.
+    assert!(StyleReach::IMAGE_ON_VECTOR.honours_everything());
+    assert!(
+        StyleReach::ALL.contains(&StyleReach::IMAGE_ON_VECTOR),
+        "a rota da imagem na cena vectorial desenha e tem de estar na lista"
+    );
+}
+
+/// ⭐⭐ **Só o `motion.sub_uv` ESCREVE a célula de UV** — o censo que sustenta o `uv_cell: true` da
+/// [`ph2d_render::StyleReach::IMAGE_ON_VECTOR`] (doc 118 §8).
+///
+/// ⚠️ A rota vectorial compõe um RECORTE exactamente e cortaria um LADRILHO (escala `> 1`). Hoje
+/// nenhum nó escreve um ladrilho: o `sub_uv` só escreve `1/colunas × 1/linhas`, e os escritores
+/// genéricos não alcançam a coluna (o `motion.drive` recusa uma coluna não-escalar que já existe, e
+/// o `value.attribute` esconde-a com motivo). ⇒ um nó NOVO que a nomeie reprova aqui, e quem o
+/// escrever decide se a rota vectorial passa a ladrilhar (o `fill_path_image` com `Extend` é a porta).
+#[test]
+fn so_o_sub_uv_escreve_a_celula_de_uv() {
+    let crates = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("a pasta das crates");
+    let agulha = concat!("\"", "uv_cell", "\"");
+    let mut nos = 0usize;
+    let mut quem = Vec::new();
+    for e in std::fs::read_dir(crates).expect("ler crates/") {
+        let dir = e.expect("entrada").path();
+        let nome = dir.file_name().unwrap().to_string_lossy().to_string();
+        if !nome.starts_with("ph2d-node-") {
+            continue;
+        }
+        nos += 1;
+        let mut pilha = vec![dir.join("src")];
+        while let Some(d) = pilha.pop() {
+            let Ok(rd) = std::fs::read_dir(&d) else {
+                continue;
+            };
+            for f in rd.flatten() {
+                let p = f.path();
+                if p.is_dir() {
+                    pilha.push(p);
+                } else if p.extension().is_some_and(|x| x == "rs")
+                    && std::fs::read_to_string(&p).is_ok_and(|t| t.contains(agulha))
+                {
+                    quem.push(nome.clone());
+                }
+            }
+        }
+    }
+    // PISO DE POPULAÇÃO: uma varredura que lê zero crates é trivialmente verde.
+    assert!(nos >= 100, "a varredura so' viu {nos} crates de no'");
+    quem.sort();
+    quem.dedup();
+    assert_eq!(
+        quem,
+        ["ph2d-node-motion-sub-uv"],
+        "um no' novo escreve a celula de UV — a rota vectorial corta um LADRILHO em vez de o repetir"
+    );
 }

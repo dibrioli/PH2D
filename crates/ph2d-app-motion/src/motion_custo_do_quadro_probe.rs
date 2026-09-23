@@ -405,6 +405,7 @@ fn quanto_custa_desenhar_as_formas() {
                 &mut sem_arte,
                 ph2d_vector::Affine::IDENTITY,
                 None,
+                ph2d_render::ImageFilterMode::Smooth,
                 &mut cena,
             );
             melhor = melhor.min(t.elapsed().as_secs_f64() * 1e3);

@@ -329,6 +329,9 @@ pub struct VectorInstance {
     /// (`SinkStyle::anchor_for`), porque um pivô que diferisse entre as rotas partiria a
     /// composição de mídia mista sem que gate nenhum de uma rota o visse.
     pub anchor: [f32; 2],
+    /// ⭐⭐ **A AMOSTRAGEM do sink** (doc 118 §8) — a MESMA chave da [`RenderInstance::sampling`]; lida
+    /// pelo quad de IMAGEM e pela tile do LOD, nunca por uma forma viva (`StyleReach::VECTOR`).
+    pub sampling: u32,
     /// ⭐⭐⭐ **A mistura do sink e o grupo desta cópia** (doc 118 W1) — ver
     /// [`crate::MisturaDoSink`]. O lowering deixa-a no [`Default`]; o pump carimba-a.
     pub mistura: crate::MisturaDoSink,
@@ -562,6 +565,7 @@ fn lower_vector_onto(
             // ⚠️ A MESMA função que a sprite usa. `StyleReach::VECTOR` declara que esta
             // rota honra o pivô e a ordem, e NOMEIA por que não honra os outros dois.
             anchor: style.anchor_for(sz),
+            sampling: style.sampling,
             // O lowering não conhece o grupo — o pump carimba-o depois do sink inteiro.
             mistura: crate::MisturaDoSink::default(),
         })

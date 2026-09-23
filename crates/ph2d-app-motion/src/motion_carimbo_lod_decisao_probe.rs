@@ -203,6 +203,7 @@ fn audit_where_the_shipped_lod_arms() {
                 &mut sem_arte,
                 cam,
                 Some(ph2d_vector::Rect::new(0.0, 0.0, JANELA_PX.0, JANELA_PX.1)),
+                ph2d_render::ImageFilterMode::Smooth,
                 cena,
             );
         };

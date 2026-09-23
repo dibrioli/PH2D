@@ -272,7 +272,15 @@ fn audit_the_zoom_and_the_screen_size() {
             * ph2d_vector::Affine::translate((-centro.0, -centro.1));
         let encoda = |cena: &mut ph2d_vector::VectorScene| {
             let mut sem_arte = |_: u32, _: [f32; 4]| None;
-            crate::motion_shape_gen::encode(insts, store, &mut sem_arte, cam, Some(janela), cena);
+            crate::motion_shape_gen::encode(
+                insts,
+                store,
+                &mut sem_arte,
+                cam,
+                Some(janela),
+                ph2d_render::ImageFilterMode::Smooth,
+                cena,
+            );
         };
         let desenho = melhor_quente(3, encoda);
         let mut cena = ph2d_vector::VectorScene::new();

@@ -142,6 +142,7 @@ fn an_unpublished_handle_is_none_and_encodes_without_panic() {
         basis: [1.0, 0.0, 0.0, 1.0],
         tint: [1.0, 1.0, 1.0, 1.0],
         anchor: [0.0, 0.0],
+        sampling: 0,
         mistura: Default::default(),
     };
     let mut scene = ph2d_vector::VectorScene::new();
@@ -151,6 +152,7 @@ fn an_unpublished_handle_is_none_and_encodes_without_panic() {
         &mut |_, _| None,
         ph2d_vector::Affine::IDENTITY,
         None,
+        ph2d_render::ImageFilterMode::Smooth,
         &mut scene,
     );
     // Reaching here without a panic IS the assertion.
@@ -317,13 +319,22 @@ fn a_live_document_vector_renders_its_authored_fill_not_the_tint() {
         basis: [1.0, 0.0, 0.0, 1.0], // identity rotation
         tint: [1.0, 1.0, 1.0, 1.0],  // WHITE — the object tint must NOT paint the star
         anchor: [0.0, 0.0],
+        sampling: 0,
         mistura: Default::default(),
     };
     // Fit the unit-radius star into a 64² tile: world [-0.5, 0.5] → device [7, 57].
     let (w, h) = (64u32, 64u32);
     let cam = ph2d_vector::Affine::translate((32.0, 32.0)) * ph2d_vector::Affine::scale(50.0);
     let mut scene = ph2d_vector::VectorScene::new();
-    encode(&[inst], &store, &mut |_, _| None, cam, None, &mut scene);
+    encode(
+        &[inst],
+        &store,
+        &mut |_, _| None,
+        cam,
+        None,
+        ph2d_render::ImageFilterMode::Smooth,
+        &mut scene,
+    );
 
     let mut pass =
         ph2d_render::VelloPass::new(&gpu, wgpu::TextureFormat::Rgba8UnormSrgb, (w, h)).unwrap();
@@ -437,6 +448,7 @@ fn the_pivot_rides_before_the_basis_on_the_vector_route() {
             basis,
             tint: [1.0; 4],
             anchor,
+            sampling: 0,
             mistura: Default::default(),
         };
         let [b0, b1, b2, b3] = inst.basis;
@@ -547,6 +559,7 @@ fn com_rot_de_90_graus_a_junta_fica_parada_e_o_osso_aponta_para_cima() {
         basis: [cos_r, sin_r, -sin_r, cos_r],
         tint: [1.0; 4],
         anchor: [0.0, 0.0],
+        sampling: 0,
         mistura: Default::default(),
     };
     let a = super::instance_pose(&inst, ph2d_vector::Affine::IDENTITY);

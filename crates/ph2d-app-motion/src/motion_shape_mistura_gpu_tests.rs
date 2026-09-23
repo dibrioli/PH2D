@@ -101,6 +101,7 @@ fn copia(
         atlas_uv: [0.0, 0.0, 1.0, 1.0],
         premultiplied: 0.0,
         anchor: [0.0, 0.0],
+        sampling: 0,
         mistura,
     }
 }
@@ -149,7 +150,15 @@ fn mede(
         _ => None,
     };
     let mut cena = VectorScene::new();
-    encode(&insts, &store, &mut art, Affine::IDENTITY, None, &mut cena);
+    encode(
+        &insts,
+        &store,
+        &mut art,
+        Affine::IDENTITY,
+        None,
+        ph2d_render::ImageFilterMode::Smooth,
+        &mut cena,
+    );
     let px = pass
         .render_and_readback(gpu, cena.inner(), (W, H))
         .expect("o readback");
@@ -201,7 +210,15 @@ fn so_quem_mistura_com_o_cenario_pede_o_mundo() {
         let insts = [copia(16.0, 24.0, A1, m, None)];
         let mut art = |_: u32, _: [f32; 4]| None;
         let mut cena = VectorScene::new();
-        encode(&insts, &store, &mut art, Affine::IDENTITY, None, &mut cena);
+        encode(
+            &insts,
+            &store,
+            &mut art,
+            Affine::IDENTITY,
+            None,
+            ph2d_render::ImageFilterMode::Smooth,
+            &mut cena,
+        );
         assert_eq!(
             cena.quer_o_mundo_por_baixo(),
             pede,
@@ -366,7 +383,15 @@ fn o_preco_da_mistura_em_grupo() {
             for _ in 0..5 {
                 cena.reset();
                 let t = std::time::Instant::now();
-                encode(&insts, &store, &mut art, Affine::IDENTITY, None, &mut cena);
+                encode(
+                    &insts,
+                    &store,
+                    &mut art,
+                    Affine::IDENTITY,
+                    None,
+                    ph2d_render::ImageFilterMode::Smooth,
+                    &mut cena,
+                );
                 melhor = melhor.min(t.elapsed().as_secs_f64() * 1e3);
             }
             let palavras = cena.probe_bin_info_words();
@@ -443,6 +468,7 @@ fn mede_tinta(pass: &mut VelloPass, gpu: &GpuContext, tinta: [f32; 4]) -> [[i32;
         &mut art,
         Affine::IDENTITY,
         None,
+        ph2d_render::ImageFilterMode::Smooth,
         &mut cena,
     );
     let px = pass

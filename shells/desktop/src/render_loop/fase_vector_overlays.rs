@@ -64,6 +64,9 @@ impl crate::App {
                 &mut art,
                 cam_affine,
                 Some(janela),
+                // ⭐ O filtro do PROJECTO — o MESMO que o `fase_extract_inputs` dá a uma sprite
+                // `Inherit` (doc 118 §8): uma folha não muda de filtro por mudar de média.
+                hero.project.image_filter,
                 vector_scene,
             );
             // ⛔⛔ **LARGAR O ATLAS** (auditoria §2.5): a cópia em CPU dele é `268 MB` e

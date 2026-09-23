@@ -69,13 +69,14 @@ pub(super) fn desenha_corrida(
     art: &mut dyn FnMut(u32, [f32; 4]) -> Option<crate::motion_leaf_images::Art>,
     cam: Affine,
     janela: Option<ph2d_vector::Rect>,
+    filtro: ph2d_render::ImageFilterMode,
     scene: &mut VectorScene,
 ) {
     let Some((tag, com, _)) = chave else {
-        return desenha_linhas(corrida, None, store, art, cam, janela, scene);
+        return desenha_linhas(corrida, None, store, art, cam, janela, filtro, scene);
     };
     let Some(m) = mistura_vello(tag) else {
-        return desenha_linhas(corrida, None, store, art, cam, janela, scene);
+        return desenha_linhas(corrida, None, store, art, cam, janela, filtro, scene);
     };
     let normal =
         ph2d_vector::VelloBlend::new(ph2d_vector::Mix::Normal, ph2d_vector::Compose::SrcOver);
@@ -86,15 +87,17 @@ pub(super) fn desenha_corrida(
         scene.pede_o_mundo_por_baixo();
     }
     match com {
-        BlendWith::Everything => desenha_linhas(corrida, Some(m), store, art, cam, janela, scene),
+        BlendWith::Everything => {
+            desenha_linhas(corrida, Some(m), store, art, cam, janela, filtro, scene)
+        }
         BlendWith::Copies => {
             scene.push_object_layer(&rect_do_grupo(janela), normal, 1.0);
-            desenha_linhas(corrida, Some(m), store, art, cam, janela, scene);
+            desenha_linhas(corrida, Some(m), store, art, cam, janela, filtro, scene);
             scene.pop_layer();
         }
         BlendWith::Scene => {
             scene.push_object_layer(&rect_do_grupo(janela), m, 1.0);
-            desenha_linhas(corrida, None, store, art, cam, janela, scene);
+            desenha_linhas(corrida, None, store, art, cam, janela, filtro, scene);
             scene.pop_layer();
         }
     }
@@ -118,6 +121,7 @@ fn desenha_linhas(
     art: &mut dyn FnMut(u32, [f32; 4]) -> Option<crate::motion_leaf_images::Art>,
     cam: Affine,
     janela: Option<ph2d_vector::Rect>,
+    filtro: ph2d_render::ImageFilterMode,
     scene: &mut VectorScene,
 ) {
     let mut lote: Vec<(u32, Affine, [f32; 4])> = Vec::new();
@@ -153,7 +157,7 @@ fn desenha_linhas(
             continue;
         };
         despeja(&mut lote, scene);
-        draw_quad(inst, &rgba, w, h, cam, por_copia, scene);
+        draw_quad(inst, &rgba, w, h, cam, por_copia, filtro, scene);
     }
     despeja(&mut lote, scene);
 }
@@ -168,6 +172,7 @@ fn desenha_linhas(
 /// ⚠️ **`camada = Some(m)` embrulha o quad numa camada recortada à caixa DELE** — a mesma lei
 /// da porta das formas (`draw_shared_instances_em_camadas`): uma camada do tamanho da janela por
 /// cópia misturaria o ecrã inteiro uma vez por cópia.
+#[allow(clippy::too_many_arguments)]
 fn draw_quad(
     inst: &VectorInstance,
     rgba: &std::sync::Arc<Vec<u8>>,
@@ -175,6 +180,7 @@ fn draw_quad(
     h: u32,
     cam: Affine,
     camada: Option<ph2d_vector::VelloBlend>,
+    filtro: ph2d_render::ImageFilterMode,
     scene: &mut VectorScene,
 ) {
     if w == 0 || h == 0 {
@@ -192,22 +198,49 @@ fn draw_quad(
     }
     let quad = ph2d_vector::Rect::new(0.0, 0.0, f64::from(w), f64::from(h));
     tinta.abre(quad, t, scene);
+    let qualidade = qualidade_da_imagem(inst.sampling, filtro);
     // ⚠️ **A alfa da FONTE decide a porta**, como no lowering de sprites: uma textura já
     // premultiplicada entra pela porta que NÃO volta a multiplicar.
     if inst.premultiplied > 0.5 {
-        scene.draw_image_rgba_premultiplied_transformed(
-            rgba,
-            w,
-            h,
-            t,
-            ph2d_vector::ImageQuality::Medium,
-        );
+        scene.draw_image_rgba_premultiplied_transformed(rgba, w, h, t, qualidade);
     } else {
-        scene.draw_image_rgba_transformed(rgba, w, h, t, ph2d_vector::ImageQuality::Medium);
+        scene.draw_image_rgba_transformed(rgba, w, h, t, qualidade);
     }
     tinta.fecha(scene);
     if camada.is_some() {
         scene.pop_layer();
+    }
+}
+
+/// ⭐⭐ **O FILTRO de um quad de imagem na cena vectorial** (doc 118 §8) — a MESMA pergunta que o
+/// sampler da sprite responde, feita ao pincel de imagem do Vello.
+///
+/// ⚠️ **A tag `0` HERDA o projecto, como na sprite** (`fase_extract_inputs`: `PixelArt → Nearest`,
+/// `Smooth → Linear`). Até 2026-09-23 esta rota desenhava `Medium` para TUDO, logo num projecto em
+/// `PixelArt` uma imagem era nítida como sprite e borrada no quadro em que entrava na cena
+/// vectorial — *a MESMA folha a mudar de filtro por mudar de média*. ⭐ O projecto de fábrica é
+/// `Smooth` ⇒ `Medium`, que é o que já se desenhava: o caminho de omissão fica **byte-idêntico**.
+///
+/// ⛔ **O resto da tag NÃO tem destino, e é DECLARADO** (`StyleReach::IMAGE_ON_VECTOR`): o pincel
+/// de imagem do Vello escolhe só a lei de AMPLIAÇÃO (`Low` = ponto, `Medium` = bilinear) — ele não
+/// tem cadeia de mips nem anisotropia, logo as tags `3..=6` reduzem-se à metade de ampliação delas
+/// ([`ph2d_render::filter_tag_magnifies_by_point`], a MESMA função que monta o sampler). ⛔ E o
+/// `High` (bicúbico) não entra: nenhuma tag o pede, e a sprite nunca o faz.
+#[must_use]
+pub(crate) fn qualidade_da_imagem(
+    sampling: u32,
+    projeto: ph2d_render::ImageFilterMode,
+) -> ph2d_vector::ImageQuality {
+    let (tag, _repeat) = ph2d_render::RenderInstance::unpack_sampling(sampling);
+    let ponto = if tag == 0 {
+        projeto == ph2d_render::ImageFilterMode::PixelArt
+    } else {
+        ph2d_render::filter_tag_magnifies_by_point(tag)
+    };
+    if ponto {
+        ph2d_vector::ImageQuality::Low
+    } else {
+        ph2d_vector::ImageQuality::Medium
     }
 }
 
@@ -310,3 +343,7 @@ pub(crate) fn caixa_do_quad(t: Affine, w: u32, h: u32) -> ph2d_vector::Rect {
 #[cfg(test)]
 #[path = "motion_shape_mistura_gpu_tests.rs"]
 mod gpu_tests;
+
+#[cfg(test)]
+#[path = "motion_shape_mistura_filtro_tests.rs"]
+mod filtro_tests;

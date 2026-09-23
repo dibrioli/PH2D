@@ -391,6 +391,7 @@ fn audit_the_stamp_frame_split() {
             &mut sem_arte,
             ph2d_vector::Affine::IDENTITY,
             None,
+            ph2d_render::ImageFilterMode::Smooth,
             cena,
         );
     });
@@ -519,6 +520,7 @@ fn audit_the_corner_radius_cost() {
                 &mut sem_arte,
                 ph2d_vector::Affine::IDENTITY,
                 None,
+                ph2d_render::ImageFilterMode::Smooth,
                 cena,
             );
         });

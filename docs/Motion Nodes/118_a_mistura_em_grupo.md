@@ -168,9 +168,8 @@ escurece a sobreposição outra vez, `Copies` deixa o cenário intacto e escurec
 **Limites DECLARADOS:**
 
 - ⛔ `Subtract` não tem camada (o W3C não o tem) — o seletor `Blend With` não aparece para ele.
-- ⚠️ Uma imagem na rota vectorial ignora o **modo por linha**, a **amostragem** e o **ladrilhar** do
-  `uv_cell` — o quad desenha a UV, o tamanho e a textura. Só o recorte da célula é composto.
-  (O **tint** deixou de estar nesta lista na W6 — §7.)
+- ⚠️ Uma imagem na rota vectorial ignora o **modo por linha** (W8). (O **tint** saiu desta lista na
+  W6 — §7; a **amostragem** e o **ladrilhar** saíram na W7 — §8.)
 - ⚠️ **Ordem entre sprites do mundo e sprites do Motion, MEDIDA e não investigada:** com o cenário por
   baixo da coluna de controlo, as quatro imagens `Normal` (desenhadas pelo passe) ficavam TAPADAS por
   ele, e um `ZIndexOverride(-1)` no cenário não as trouxe à frente. É anterior a esta wave; a cena põe
@@ -210,16 +209,59 @@ exacta mais de `4×` a barra. **Mutação 4 de 4** (ignorar a tinta · `SrcIn �
 
 ### §7.1 — O que continua ABERTO neste doc, em ordem, cada um a MEDIR antes de construir
 
-- **W7 — amostragem e ladrilhar da imagem na rota vectorial.** O sink tem `sampling`
-  (`filter | repeat<<8`) e um `uv_cell` que pode ladrilhar (escala `> 1`); o `draw_quad` ignora os
-  dois. A porta do Vello existe (`ImageQuality` Low/Medium/High = nearest/bilinear/bicúbico · `Extend`
-  · `fill_path_image` com `brush_transform`). ⚠️ `Inherit → Medium` para ficar byte-idêntico; o
-  `VectorInstance` não carrega hoje nem a amostragem nem a célula de repetição — o gate de
-  destruturação em `sink_style_tests.rs` obriga a decidir cada campo novo.
+- ✅ **W7 — FECHADA (§8).**
 - **W8 — o modo por LINHA dentro de um grupo.** A coluna `blend` (`0` = o do sink, `m+1` = o modo `m`)
   é honrada pela rota de sprites e não pela vectorial; com grupo, quem decide é o grupo.
-- **W9 — a terceira rota no `StyleReach`.** O `sink_style.rs` declara só SPRITE e VECTOR; o quad de
-  imagem no Vello é uma rota de desenho que o censo `every_draw_route_answers_the_sink_style` não
-  conhece.
+- ✅ **W9 — FECHADA (§8).**
 - **W10 — a ordem entre as sprites do MUNDO e as do Motion** (medida na W5, não investigada: um
   `ZIndexOverride(-1)` no cenário não trouxe as imagens `Normal` para a frente).
+
+## §8 — W7 + W9 FECHADAS (2026-09-23): o filtro da imagem, a tile do LOD, e a terceira rota declarada
+
+**A medição antes da 1.ª linha partiu a W7 em duas, e só UMA tinha trabalho.**
+
+- ⛔ **O LADRILHAR não tem escritor.** Censo dos escritores de `uv_cell`: só o `motion.sub_uv`, e ele
+  escreve **recortes** (`1/colunas × 1/linhas`, deslocamento em `[0, 1)`). Os escritores genéricos não
+  a alcançam: o `motion.drive` recusa uma coluna não-escalar que já existe (`drive_named`), a
+  `value.expression` emite um escalar, e o `value.attribute` esconde-a com motivo. E o `repeat` do
+  `sampling` é **sempre** `Inherit` (`sink_style` crava `pack_sampling(filtro, 0)`). ⇒ na rota
+  vectorial não há ladrilho a honrar, e o recorte já era composto exactamente (`uv_do_pedaco`).
+  ⭐ Em vez de construir o que nada produz, um **censo** (`so_o_sub_uv_escreve_a_celula_de_uv`, piso
+  de `100` crates de nó) reprova no dia em que um nó novo a escrever — e a porta para ladrilhar
+  nesse dia está nomeada no doc dele (`fill_path_image` com `Extend`).
+- ✅ **O FILTRO tinha trabalho, e um defeito que ninguém tinha visto.** A rota desenhava `Medium` para
+  toda imagem; a sprite, com o sink em `Inherit`, amostra pelo filtro do **projecto** — logo num
+  projecto em `PixelArt` uma folha era **nítida como sprite e borrada na cena vectorial**, e o
+  comentário da W3 (*«mudar uma sprite do passe HDR para a camada LDR não muda um pixel»*) só era
+  verdade para a cor. Hoje `qualidade_da_imagem(sampling, projecto)`: a tag `0` herda o projecto
+  (`PixelArt → Low`, `Smooth → Medium`), as outras perguntam o `filter_tag_magnifies_by_point` — a
+  MESMA função que monta o sampler da sprite. ⭐ O projecto de fábrica é `Smooth` ⇒ `Medium`, que é o
+  que já se desenhava: **o caminho de omissão é byte-idêntico**. ⛔ **Declarado:** o pincel de imagem
+  do Vello não tem mips nem anisotropia — as tags `3..=6` honram a metade de AMPLIAÇÃO e reduzem sem
+  mips; o `High` (bicúbico) não entra porque nenhuma tag o pede.
+- ⛔⛔ **E a TILE do LOD largava o PIVÔ e o FILTRO** (achado a ler o `vector_instance_as_tile` para
+  saber quem mais lê a amostragem): os dois estavam cravados na identidade, contra o que o
+  `StyleReach::VECTOR` prometia por escrito (*«acima de `LOD_COUNT` a linha passa a ser uma sprite,
+  que honra os quatro»*). Com um `Pivot` no sink a forma **saltava de sítio** no quadro em que as
+  cópias passavam o tecto do LOD. Curado com `anchor: vi.anchor` e `sampling: vi.sampling`; o gate
+  mede a **posição de um canto** pelas duas rotas com a base rodada, não os campos.
+- ⭐ **W9: a terceira rota está na lista.** `StyleReach::IMAGE_ON_VECTOR` desenhava desde 30/08 **fora**
+  do censo que existe para que nenhuma rota desenhe sem declarar — honra os quatro, cada um pela
+  mesma função da sprite, e o gate afirma-o.
+
+**Gates:** `a_lei_do_filtro_da_imagem_e_a_do_sampler_da_sprite` (a tabela `7 tags × 4 repeats × 2
+projectos`, com o controlo de que ela exercita as duas leis e de que o projecto de fábrica é `Smooth`)
+· `o_filtro_do_sink_chega_ao_pixel_da_imagem` (GPU; uma imagem `PRETO | BRANCO` ampliada `24×` —
+`20` píxeis intermédios com a lei bilinear, `0` por ponto, nas quatro células `Inherit×2` e
+`explícita×2`) · `a_tile_do_lod_leva_o_pivo_e_o_filtro_do_sink` · a asserção nova em
+`a_vector_row_gets_the_geometric_half…` (a linha leva o `sampling` do sink) ·
+`the_frame_hands_the_project_filter_to_the_motion_encoder` (shell: o QUADRO passa o filtro do
+projecto e não uma constante — ⚠️ sem ele a suíte da família fica verde com o `Smooth` cravado,
+porque todo gate dela entra pelo `encode` com o filtro que o teste escolhe) ·
+`so_o_sub_uv_escreve_a_celula_de_uv` · e o `every_draw_route_answers_the_sink_style` a exigir a rota.
+
+**Mutação 10 de 10:** o `Medium` cravado · a herança a ignorar o projecto · a tile sem filtro · a tile
+sem pivô · o lowering sem filtro · o quadro a cravar `Smooth` · a linha a ignorar o próprio
+`sampling` · a rota fora da lista · a rota a mentir sobre a amostragem · um nó novo a escrever
+`uv_cell`.
+

@@ -299,6 +299,7 @@ fn lod_vi(gid: u32, x: f32) -> VectorInstance {
         basis: [1.0, 0.0, 0.0, 1.0],
         tint: [1.0, 1.0, 1.0, 1.0],
         anchor: [0.0, 0.0],
+        sampling: 0,
         mistura: Default::default(),
     }
 }
@@ -355,6 +356,7 @@ fn the_lod_tile_lands_exactly_where_the_crisp_vector_would() {
         basis: [0.0, 1.0, -1.0, 0.0], // a 90° rotation — carried, not dropped
         tint: [0.2, 0.4, 0.6, 0.8],
         anchor: [0.0, 0.0],
+        sampling: 0,
         mistura: Default::default(),
     };
     let tile = vector_instance_as_tile(&vi, 42);
@@ -371,6 +373,53 @@ fn the_lod_tile_lands_exactly_where_the_crisp_vector_would() {
     assert_eq!(tile.opacity, 1.0, "identity default (no opacity authoring)");
     assert_eq!(tile.premultiplied, 0.0, "straight alpha (not pre-bake)");
     assert_eq!(tile.clip_group, RenderInstance::CLIP_GROUP_NONE);
+}
+
+/// ⛔⛔ **A tile leva o PIVÔ e o FILTRO do sink** (doc 118 §8, 2026-09-23) — os dois estavam cravados
+/// no valor de identidade, e com um `Pivot` no sink a forma SALTAVA de sítio no quadro em que as
+/// cópias passavam o tecto do LOD (a rota viva põe o ponto local em `P + basis·(anchor + q·size)`).
+///
+/// ⚠️ A régua é a POSIÇÃO de um ponto, não os campos: o canto `q = (½, ½)` tem de cair no MESMO
+/// sítio do mundo pelas duas rotas, com uma base rodada — um `anchor` trocado de sinal ou aplicado
+/// depois da base mudaria o ponto e deixaria a igualdade de campos a meio caminho.
+#[test]
+fn a_tile_do_lod_leva_o_pivo_e_o_filtro_do_sink() {
+    let vi = VectorInstance {
+        geometry_id: 9,
+        texture_id: 0,
+        atlas_uv: [0.0, 0.0, 1.0, 1.0],
+        premultiplied: 0.0,
+        world_pos: [3.5, -2.0],
+        size: [2.0, 0.5],
+        basis: [0.0, 1.0, -1.0, 0.0],
+        tint: [1.0; 4],
+        anchor: [0.75, -0.25],
+        sampling: RenderInstance::pack_sampling(1, 0),
+        mistura: Default::default(),
+    };
+    let tile = vector_instance_as_tile(&vi, 42);
+    // A rota viva: `P + basis · (anchor + q · size)`, a mesma do `instance_pose`.
+    let canto = |p: [f32; 2], b: [f32; 4], a: [f32; 2], s: [f32; 2]| {
+        let l = [a[0] + 0.5 * s[0], a[1] + 0.5 * s[1]];
+        [
+            p[0] + b[0] * l[0] + b[2] * l[1],
+            p[1] + b[1] * l[0] + b[3] * l[1],
+        ]
+    };
+    assert_eq!(
+        canto(tile.world_pos, tile.basis, tile.anchor, tile.size),
+        canto(vi.world_pos, vi.basis, vi.anchor, vi.size),
+        "o canto da tile nao cai onde o da forma viva cai"
+    );
+    assert_ne!(
+        canto(vi.world_pos, vi.basis, [0.0, 0.0], vi.size),
+        canto(vi.world_pos, vi.basis, vi.anchor, vi.size),
+        "CONTROLE: o pivo desta fixtura move o canto"
+    );
+    assert_eq!(
+        tile.sampling, vi.sampling,
+        "o filtro do sink perdeu-se na tile"
+    );
 }
 
 /// **Correctness before speed:** below the threshold, OR when no tile was baked, every

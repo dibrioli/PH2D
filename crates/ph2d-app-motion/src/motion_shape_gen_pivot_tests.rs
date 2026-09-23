@@ -262,6 +262,7 @@ fn a_forma_roda_em_torno_do_pivot() {
             basis: [cos_r, sin_r, -sin_r, cos_r],
             tint: [1.0; 4],
             anchor: [0.0, 0.0],
+            sampling: 0,
             mistura: Default::default(),
         };
         let a = super::instance_pose(&inst, ph2d_vector::Affine::IDENTITY);

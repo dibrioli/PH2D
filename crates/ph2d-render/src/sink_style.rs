@@ -223,9 +223,34 @@ impl StyleReach {
                      e' assada numa tile e a linha passa a ser uma sprite, que honra os quatro",
     };
 
+    /// ⭐⭐ **A TERCEIRA rota: um quad de IMAGEM desenhado na cena VECTORIAL** (a «terceira média»
+    /// de 2026-08-30 — uma folha-imagem que tem de ficar à frente dos galhos-forma). Ela desenhava
+    /// desde então **sem estar nesta lista**, que é exactamente a ausência que ela existe para
+    /// impedir (doc 118 §8, 2026-09-23).
+    ///
+    /// Honra os quatro, cada um pela MESMA função da sprite:
+    /// - **pivô** — a pose é o `instance_pose` das formas, que o aplica antes da base;
+    /// - **amostragem** — `qualidade_da_imagem` lê a MESMA chave com o MESMO
+    ///   `filter_tag_magnifies_by_point`, e a tag `0` herda o projecto como a sprite. ⚠️ Honra-a
+    ///   na AMPLIAÇÃO, que é o que a tag decide: o pincel de imagem do Vello não tem cadeia de
+    ///   mips nem anisotropia, logo na REDUÇÃO as tags `3..=6` amostram bilinear sem mips;
+    /// - **célula de UV** — o `uv_do_pedaco` compõe o recorte do `motion.sub_uv` exactamente. ⚠️ Um
+    ///   `uv_cell` que LADRILHASSE (escala `> 1`) seria cortado e não repetido — e **não tem
+    ///   escritor**: o censo `so_o_sub_uv_escreve_a_celula_de_uv` prova que o `sub_uv` é o único nó
+    ///   que a escreve, e ele só escreve recortes (`1/colunas`, `1/linhas`);
+    /// - **ordem** — as linhas vão à cena pela ordem delas, como as formas.
+    pub const IMAGE_ON_VECTOR: Self = Self {
+        route: "imagem na cena vectorial",
+        pivot: true,
+        sampling: true,
+        uv_cell: true,
+        order: true,
+        why_absent: "",
+    };
+
     /// Toda rota de desenho que consome um [`SinkStyle`]. ⚠️ **Uma rota nova (o 3D que o
     /// Enio nomeou) entra AQUI**, e o gate obriga-a a declarar antes de desenhar.
-    pub const ALL: &'static [Self] = &[Self::SPRITE, Self::VECTOR];
+    pub const ALL: &'static [Self] = &[Self::SPRITE, Self::VECTOR, Self::IMAGE_ON_VECTOR];
 
     /// `true` se esta rota honra os quatro campos.
     #[must_use]

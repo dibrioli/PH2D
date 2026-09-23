@@ -91,6 +91,15 @@ pub fn apply_object_lod(
 /// `texture_id` and the individual-texture unit UV `[0,0,1,1]` (the
 /// [`SpriteSource::Individual`] branch); every other field takes its identity value (a
 /// Motion instance has no per-corner / opacity / flip / clip authoring surface).
+///
+/// ⛔⛔ **Menos DOIS, que são do SINK e não da forma — o PIVÔ e a AMOSTRAGEM** (doc 118 §8,
+/// 2026-09-23). Os dois estavam cravados no valor de identidade, e isso contradizia à letra o que
+/// o `StyleReach::VECTOR` promete (*«acima de `LOD_COUNT` a linha passa a ser uma sprite, que
+/// honra os quatro»*): com um `Pivot` no sink, a forma **saltava** de sítio no quadro em que as
+/// cópias passavam o tecto do LOD (a rota viva põe o ponto local em `P + basis·(anchor + q·size)`,
+/// e a tile punha-o em `P + basis·q·size`), e o `Filter` do sink **deixava de valer** no mesmo
+/// quadro. ⚠️ Os dois são o MESMO campo que a membrana escreve numa sprite
+/// (`lower_to_instances_onto`), logo a tile continua indistinguível de uma sprite rebaixada.
 pub fn vector_instance_as_tile(vi: &VectorInstance, texture_id: u32) -> RenderInstance {
     RenderInstance {
         world_pos: vi.world_pos,
@@ -99,13 +108,13 @@ pub fn vector_instance_as_tile(vi: &VectorInstance, texture_id: u32) -> RenderIn
         tint: vi.tint,
         basis: vi.basis,
         premultiplied: 0.0,
-        anchor: [0.0, 0.0],
+        anchor: vi.anchor,
         per_corner_tint: [[1.0; 4]; 4],
         opacity: 1.0,
         flip_uv: 0,
         texture_id,
         z_order: 0,
-        sampling: 0,
+        sampling: vi.sampling,
         uv_xform: RenderInstance::IDENTITY_UV_XFORM,
         clip_group: RenderInstance::CLIP_GROUP_NONE,
         clip_meta: 0,

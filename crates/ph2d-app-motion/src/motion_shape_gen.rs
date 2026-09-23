@@ -552,6 +552,9 @@ pub fn publish(motion: &mut MotionState, seconds: f64) {
 /// do alvo uma forma é invisível **por construção**, e recortar ali não pode estar errado.
 /// `None` desliga o recorte.
 ///
+/// ⭐⭐ **E o `filtro` é o do PROJECTO** (doc 118 §8): um quad de IMAGEM cujo sink diz `Inherit`
+/// amostra como a sprite amostraria — `PixelArt` nítido, `Smooth` bilinear. Só a imagem o lê.
+///
 /// ⚠️ **N instances of ONE geometry pay ONE tessellation, not N** — the 160k-star
 /// freeze (report 2026-08-05). This is a thin adapter over the crate's batch door
 /// [`ph2d_vec_render::draw_shared_instances`], which caches the tessellated
@@ -564,6 +567,7 @@ pub fn encode(
     art: &mut dyn FnMut(u32, [f32; 4]) -> Option<crate::motion_leaf_images::Art>,
     cam: Affine,
     janela: Option<ph2d_vector::Rect>,
+    filtro: ph2d_render::ImageFilterMode,
     scene: &mut VectorScene,
 ) {
     // ⭐⭐⭐ **A TERCEIRA MÉDIA, e a ORDEM é o ponto** (report do Enio, 2026-08-30, três vezes:
@@ -595,7 +599,7 @@ pub fn encode(
         while j < insts.len() && mistura::chave_de_mistura(&insts[j].mistura) == chave {
             j += 1;
         }
-        mistura::desenha_corrida(&insts[i..j], chave, store, art, cam, janela, scene);
+        mistura::desenha_corrida(&insts[i..j], chave, store, art, cam, janela, filtro, scene);
         i = j;
     }
 }

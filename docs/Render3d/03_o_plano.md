@@ -1263,6 +1263,24 @@ piso é `8`, e `9 > 8` já recusava a placa mínima.)*
 ⇒ *a forma 2 NUNCA teria apanhado este defeito*. **Uma asserção sobre um número escrito à mão
 confirma o que alguém escreveu, nunca o que o código faz.**
 
+#### ⏳ E a metade *«compatível com mobile»* da ordem tem ENDEREÇO e ARITMÉTICA
+
+O pintor de **material** liga `12` contra o piso de `8` ⇒ numa placa mínima conforme ele **não
+corre**, e o quadro cai na CPU. ⭐ **Três dos doze são estruturalmente opcionais, e os comentários do
+próprio passe já o dizem:** as **sondas** (*«existe mesmo sem ricochete»*), o **campo do chão**
+(*«existe sempre — um armazém vazio não é ligável»*) e a **cena do brilho** (*«com o brilho
+desligado ele tem UM texel»*). Eles são declarados e ligados **mesmo quando o quadro não os lê**,
+porque um `BindGroup` recusa uma entrada em falta.
+
+⇒ **a conta do caminho:** declarar o layout **por quadro** (só o que aquele quadro lê) leva `12 → 9`;
+o último degrau é fundir o **`conta`** (um `atomic<u32>` num buffer de `16 B`) na primeira palavra do
+**`borda`**, e dá **`8`**.
+
+⚠️ **Isto é um caminho com números, não uma wave feita:** ele muda a chave do cache de pipelines (o
+layout passa a variar com o quadro) e pede gate de paridade por configuração. ⛔ E a ordem é
+importante — *o modo de OMISSÃO já corre em toda placa conforme*, logo isto é o que falta ao modo de
+**material**, não ao que o artista vê ao abrir uma cena.
+
 ### ⭐⭐⭐⭐ E A PERGUNTA QUE DECIDE A GRELHA DE VOLUME FOI MEDIDA
 
 A proposta (o mecanismo do MagicaCSG) troca **avaliar o campo** por **uma consulta trilinear** ⇒ ela

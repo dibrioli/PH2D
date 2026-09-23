@@ -288,13 +288,6 @@ pub const SCULPT3D_TINTA_DETALHE: [NodeId; 5] = [
     hash_node_id("sculpt3d.tinta_detalhe.4"),
 ];
 
-/// **A TINTA IGUALADA** — o interruptor que gradua o plano por ÁREA de face.
-///
-/// ⚠️ Ele é pintado e oferecido **só com um plano armado** (`Paint Detail`
-/// acima de `Mesh`): sem plano não há o que igualar, e a fileira seria um
-/// controlo morto sob o dedo.
-pub const SCULPT3D_TINTA_IGUALADA: NodeId = hash_node_id("sculpt3d.tinta_igualada");
-
 /// **QUAL MOTOR DE RETOPOLOGIA** — os chips `Global` · `Local`.
 ///
 /// ⚠️ **O tamanho se CONTA e não se escolhe** — o censo

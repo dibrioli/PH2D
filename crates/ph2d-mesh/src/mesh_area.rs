@@ -57,34 +57,18 @@ impl Mesh {
         sum as f32
     }
 
-    /// ⭐⭐⭐ **A ÁREA DE CADA FACE, uma por face** — a irmã da
-    /// [`Self::surface_area`], com a MESMA aritmética por triângulo.
-    ///
-    /// ⚠️⚠️ **Elas partilham o triângulo e NÃO a soma, e isso é deliberado:**
-    /// a [`Self::surface_area`] acumula triângulo a triângulo num `f64` só, e
-    /// somar aqui por FACE e depois somar as faces dá outra ordem — *logo
-    /// outros últimos bits*. Ela alimenta o tecto de quads da retopologia e o
-    /// alvo da topologia dinâmica, e mudar-lhe um ULP move gates que nada têm a
-    /// ver com esta porta. ⇒ a lei partilhada é
-    /// [`area_do_triangulo`]; a acumulação é de cada um.
-    ///
-    /// ⭐ O consumidor é a GRADUAÇÃO da tinta fina (a P2): o nível de uma face
-    /// sai da área dela, e sem esta porta a família teria de reescrever a soma
-    /// do leque — *a segunda resposta à mesma pergunta*.
-    #[must_use]
-    pub fn face_areas(&self) -> Vec<f32> {
-        let p = self.positions();
-        self.faces()
-            .iter()
-            .map(|f| {
-                let v = f.verts();
-                let mut a = 0.0f64;
-                for k in 1..v.len() - 1 {
-                    a +=
-                        area_do_triangulo(p[v[0] as usize], p[v[k] as usize], p[v[k + 1] as usize]);
-                }
-                a as f32
-            })
-            .collect()
-    }
+    // ⛔⛔⛔ **AQUI VIVIA A `face_areas`, e ela saiu em 2026-09-23** com o
+    // `Even Detail` que o dono retirou: o único consumidor dela era a
+    // GRADUAÇÃO da tinta fina, e sem ele ela ficou **viva e órfã**.
+    //
+    // ⚠️ A [`Self::surface_area`] FICA e não é a mesma coisa: ela alimenta o
+    // tecto de quads da retopologia e o alvo da topologia dinâmica
+    // ([`crate::dyntopo_alvo`]), e é por LÁ que ela é medida.
+    //
+    // ⛔⛔ **E o gate da área por face saiu com a porta**, o que apagou o único
+    // teste do irmão `mesh_area_tests.rs` — o ficheiro e o `mod` dele foram
+    // retirados. ⚠️ **A 1.ª redacção desta nota dizia «a metade que sobrevive é
+    // o gate da `surface_area` abaixo» e isso era FALSO: não existe tal gate
+    // nesta crate.** *Uma prosa que promete um gate é indistinguível de um
+    // gate, e foi preciso ler o ficheiro para o ver.*
 }

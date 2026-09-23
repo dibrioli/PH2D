@@ -68,7 +68,6 @@ impl Sculpt3dScene {
             wireframe: false,
             wire_grade: false,
             tinta_nivel: None,
-            tinta_igualada: false,
             brush: Brush::default(),
             // ⚠️ **DERIVADO do que cada verbo DECLARA**, e não um `S` chapado: o
             // `[RefMode::default(); N]` que morava aqui fazia **7 dos 23**

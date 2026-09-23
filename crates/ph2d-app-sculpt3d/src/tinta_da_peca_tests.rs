@@ -32,10 +32,7 @@ fn o_plano_novo_nasce_com_a_cor_que_a_peca_ja_tinha() {
         *c = [0.2, 0.7, 0.1];
     }
     let mut t = None;
-    assert!(
-        garante(&pintada, &mut t, Some(2), false),
-        "o plano tem de nascer"
-    );
+    assert!(garante(&pintada, &mut t, Some(2)), "o plano tem de nascer");
     let plano = t.expect("nasceu");
     for (i, a) in plano.amostras().iter().enumerate() {
         for k in 0..3 {
@@ -48,7 +45,7 @@ fn o_plano_novo_nasce_com_a_cor_que_a_peca_ja_tinha() {
 
     let crua = dois_tris();
     let mut t2 = None;
-    assert!(garante(&crua, &mut t2, Some(2), false));
+    assert!(garante(&crua, &mut t2, Some(2)));
     let branco = t2.expect("nasceu");
     assert!(
         branco.amostras().iter().all(|a| *a == [1.0, 1.0, 1.0]),
@@ -62,23 +59,14 @@ fn o_plano_novo_nasce_com_a_cor_que_a_peca_ja_tinha() {
 fn reconciliar_o_mesmo_nivel_nao_reconstroi_nada() {
     let m = dois_tris();
     let mut t = None;
-    assert!(
-        garante(&m, &mut t, Some(1), false),
-        "a primeira vez constrói"
-    );
-    assert!(
-        !garante(&m, &mut t, Some(1), false),
-        "a segunda não mexe em nada"
-    );
-    assert!(
-        garante(&m, &mut t, Some(2), false),
-        "outro nível reconstrói"
-    );
+    assert!(garante(&m, &mut t, Some(1)), "a primeira vez constrói");
+    assert!(!garante(&m, &mut t, Some(1)), "a segunda não mexe em nada");
+    assert!(garante(&m, &mut t, Some(2)), "outro nível reconstrói");
     assert_eq!(t.as_ref().map(ph2d_mesh_colors::Tinta::nivel), Some(2));
-    assert!(garante(&m, &mut t, None, false), "desarmar larga o plano");
+    assert!(garante(&m, &mut t, None), "desarmar larga o plano");
     assert!(t.is_none());
     assert!(
-        !garante(&m, &mut t, None, false),
+        !garante(&m, &mut t, None),
         "desarmar duas vezes não é mudança"
     );
 }
@@ -90,7 +78,7 @@ fn reconciliar_o_mesmo_nivel_nao_reconstroi_nada() {
 fn a_concordancia_ve_os_vertices_e_as_faces() {
     let m = dois_tris();
     let mut t = None;
-    garante(&m, &mut t, Some(1), false);
+    garante(&m, &mut t, Some(1));
     let plano = t.expect("nasceu");
     assert!(concorda_com(&plano, &m), "ela concorda consigo mesma");
 
@@ -143,7 +131,7 @@ fn devolver_o_plano_reescreve_a_cor_por_vertice() {
         *c = [1.0, 0.0, 0.0];
     }
     let mut t = None;
-    garante(&m, &mut t, Some(1), false);
+    garante(&m, &mut t, Some(1));
     // Pinta o PLANO de verde, sem tocar na malha.
     for a in t.as_mut().expect("nasceu").amostras_mut() {
         *a = [0.0, 1.0, 0.0];
@@ -195,7 +183,7 @@ fn devolver_nada_deixa_a_peca_como_estava() {
 fn um_plano_desactualizado_nao_escreve_no_canal_por_vertice() {
     let m = dois_tris();
     let mut t = None;
-    garante(&m, &mut t, Some(1), false);
+    garante(&m, &mut t, Some(1));
     for a in t.as_mut().expect("nasceu").amostras_mut() {
         *a = [0.0, 0.0, 1.0];
     }
@@ -249,7 +237,7 @@ fn o_custo_do_tecto_por_vertice_e_o_que_a_constante_diz() {
         "a fixtura tem de ser de QUADS: a constante só descreve essa família"
     );
     let mut t = None;
-    garante(&m, &mut t, Some(NIVEL_MAX), false);
+    garante(&m, &mut t, Some(NIVEL_MAX));
     let amostras = t.expect("nasceu").amostras().len();
     let por_vertice = amostras as f64 / m.vert_count() as f64;
     let alvo = CUSTO_POR_VERTICE_NO_TECTO as f64;
@@ -269,7 +257,7 @@ fn o_custo_do_tecto_por_vertice_e_o_que_a_constante_diz() {
 fn o_nivel_acima_do_tecto_e_cortado_no_tecto() {
     let m = dois_tris();
     let mut t = None;
-    garante(&m, &mut t, Some(NIVEL_MAX + 4), false);
+    garante(&m, &mut t, Some(NIVEL_MAX + 4));
     assert_eq!(
         t.as_ref().map(ph2d_mesh_colors::Tinta::nivel),
         Some(NIVEL_MAX)
@@ -324,14 +312,14 @@ fn o_plano_conta_no_que_a_peca_pesa() {
     let sem = peca.footprint_bytes();
 
     // CONTROLO: reconciliar para `None` não muda um byte.
-    garante(&m, &mut peca.tinta, None, false);
+    garante(&m, &mut peca.tinta, None);
     assert_eq!(
         peca.footprint_bytes(),
         sem,
         "sem plano o peso da peça não pode mudar"
     );
 
-    garante(&m, &mut peca.tinta, Some(NIVEL_MAX), false);
+    garante(&m, &mut peca.tinta, Some(NIVEL_MAX));
     let com = peca.footprint_bytes();
     let plano = peca
         .tinta
@@ -448,7 +436,7 @@ fn o_plano_volta_a_peca_que_o_emprestou_e_nao_a_activa() {
     ];
     {
         let crate::objects::SceneObject { stack, tinta, .. } = &mut pecas[0];
-        garante(stack.mesh(), tinta, Some(1), false);
+        garante(stack.mesh(), tinta, Some(1));
     }
     let emprestado = empresta(&mut pecas[0].tinta, ObjectId(7)).expect("a peça tinha plano");
     assert!(
@@ -489,7 +477,7 @@ fn um_dono_que_ja_nao_existe_leva_o_plano_consigo() {
     )];
     {
         let crate::objects::SceneObject { stack, tinta, .. } = &mut pecas[0];
-        garante(stack.mesh(), tinta, Some(1), false);
+        garante(stack.mesh(), tinta, Some(1));
     }
     let emprestado = empresta(&mut pecas[0].tinta, ObjectId(7)).expect("a peça tinha plano");
     pecas.clear();
@@ -505,159 +493,14 @@ fn um_dono_que_ja_nao_existe_leva_o_plano_consigo() {
     );
 }
 
-/// ⭐⭐⭐⭐ **A IGUALAÇÃO CHEGA AO PLANO, e desligá-la volta ao uniforme.**
-///
-/// ⛔⛔ **A metade que decide é a TERCEIRA:** sem ela, um `garante` que
-/// ignorasse o `igualado` passa nas duas primeiras — ele constrói um plano
-/// uniforme, o nível bate, e *nada no produto acusa*. ⇒ o gate exige que as
-/// duas chamadas dêem planos DIFERENTES e que a segunda reconstrua.
-///
-/// ⛔⛔⛔ **E A FIXTURA TROCOU DE PEÇA POR ORDEM DA MEDIÇÃO (23/09): uma ESFERA
-/// deixou de conter o fenómeno no dia em que o `k` passou a ser um PISO.**
-///
-/// Ela era uma `uv_sphere(24, 32)` e a razão escrita ao lado era a dispersão de
-/// área (`15,3×`, `1,97` degraus da escada) — que continua verdade e **deixou
-/// de bastar**. Com a lei a só SUBIR, o que decide é *«há faces bastante
-/// maiores do que a TÍPICA?»*, e numa esfera UV a área é `∝ sin θ`: a maioria
-/// das faces vive perto do equador, que é onde elas são MAIORES ⇒ **a mediana
-/// senta-se no topo da distribuição** e ninguém está acima dela. Medido pela
-/// porta do produto: `0` de `768` faces sobem, e o plano sai UNIFORME.
-///
-/// ⭐ **O cilindro é a peça canónica desta lei:** as duas TAMPAS são leques de
-/// triângulos gordos e os lados são quadriláteros finos ⇒ `24` das `72` faces
-/// sobem um degrau. *A dispersão não é a pergunta; a pergunta é de que lado da
-/// mediana ela está.*
-#[test]
-fn a_igualacao_chega_ao_plano_e_desliga_se() {
-    let m = ph2d_mesh::shapes::cylinder(24, 1.0, 2.0);
-
-    // (1) Sem igualar: o plano é UNIFORME.
-    let mut t = None;
-    assert!(garante(&m, &mut t, Some(2), false), "o plano tem de nascer");
-    let uniforme = t.as_ref().expect("nasceu");
-    assert!(
-        uniforme.lado_uniforme().is_some(),
-        "sem igualar o plano tem de ser uniforme"
-    );
-    let n_uniforme = uniforme.amostras().len();
-
-    // (2) A igualar: ele é GRADUADO e o degrau pedido continua a ser o `k`.
-    assert!(
-        garante(&m, &mut t, Some(2), true),
-        "trocar a igualação tem de reconstruir o plano"
-    );
-    let igualado = t.as_ref().expect("nasceu");
-    assert!(
-        igualado.lado_uniforme().is_none(),
-        "a igualação não chegou ao plano — ele saiu uniforme"
-    );
-    let mut d = igualado.topologia().niveis().to_vec();
-    d.sort_unstable();
-    d.dedup();
-    // ⚠️ **DOIS e não três, e a premissa que morreu está no `>=`:** ela pedia
-    //    três porque a lei descia as faces pequenas E subia as grandes. Com o
-    //    piso há um sentido só, logo numa peça cuja dispersão cabe num degrau
-    //    da escada o máximo exprimível é `{k, k+1}`.
-    assert!(d.len() >= 2, "níveis {d:?} — isto é um plano uniforme");
-    assert!(
-        d.iter().all(|n| *n >= 2),
-        "níveis {d:?} — alguma face saiu ABAIXO do degrau pedido"
-    );
-
-    // (3) ⭐ E os dois planos são DIFERENTES — a régua que mata um `garante`
-    //     que aceitasse o argumento e o deitasse fora.
-    assert_ne!(
-        igualado.amostras().len(),
-        n_uniforme,
-        "os dois planos têm o mesmo tamanho — a igualação não fez nada"
-    );
-
-    // (4) E voltar atrás devolve o uniforme, sem ficar preso no graduado.
-    assert!(garante(&m, &mut t, Some(2), false), "tem de reconstruir");
-    assert!(
-        t.as_ref().expect("nasceu").lado_uniforme().is_some(),
-        "desligar a igualação não voltou ao uniforme"
-    );
-
-    // (5) ⭐ CONTROLO: sem mudar nada, ela NÃO reconstrói.
-    assert!(
-        !garante(&m, &mut t, Some(2), false),
-        "o mesmo pedido duas vezes tem de ser um no-op"
-    );
-    assert!(
-        !garante(&m, &mut t, Some(2), false),
-        "e continua a sê-lo à terceira"
-    );
-
-    // (6) ⛔⛔⛔ **E O MESMO CONTROLO DO LADO GRADUADO — a metade que faltava.**
-    //     O report do dono de 23/09 (*«com Even Detail o resultado é pior em
-    //     todas as resoluções, a resolução fica bem baixa»*) é ESTE `assert`:
-    //     um `garante` que reconstrói a cada quadro re-semeia o plano da cor
-    //     POR VÉRTICE, logo *a tinta nunca sobrevive um quadro* e o que se vê é
-    //     a resolução da malha. ⚠️ A metade uniforme acima passava, e por isso
-    //     o gate estava verde sobre o defeito.
-    assert!(garante(&m, &mut t, Some(2), true), "arma a igualação");
-    assert!(
-        !garante(&m, &mut t, Some(2), true),
-        "um plano GRADUADO tem de ser um no-op à segunda — se ele se \
-         reconstrói, a tinta é re-semeada da cor por vértice a cada quadro"
-    );
-    assert!(
-        !garante(&m, &mut t, Some(2), true),
-        "e continua a sê-lo à terceira"
-    );
-}
-
-/// ⚠️ **SONDA versionada, não um gate:** ela responde *«que peça tem de que
-/// igualar?»*, que é a pergunta que o report de 23/09 obrigou a fazer — com o
-/// piso, a lei só SOBE, logo só tem trabalho numa peça onde haja faces bastante
-/// maiores do que a TÍPICA.
-#[test]
-#[ignore = "sonda: `--ignored` para imprimir a tabela"]
-fn diag_que_peca_tem_de_que_igualar() {
-    use ph2d_mesh::shapes;
-    let pecas: Vec<(&str, ph2d_mesh::Mesh)> = vec![
-        ("uv_sphere(24,32)", shapes::uv_sphere(24, 32, 1.0)),
-        ("uv_sphere(12,16)", shapes::uv_sphere(12, 16, 1.0)),
-        ("sculpt_sphere", shapes::sculpt_sphere(1.0)),
-        ("cube", shapes::cube(1.0)),
-        ("octahedron", shapes::octahedron(1.0)),
-        ("cylinder(24)", shapes::cylinder(24, 1.0, 2.0)),
-        ("torus(24,12)", shapes::torus(24, 12, 1.0, 0.35)),
-        (
-            "uv_sphere_noisy(24,32,.3)",
-            shapes::uv_sphere_noisy(24, 32, 1.0, 0.3),
-        ),
-        (
-            "shuffled(uv_sphere(24,32))",
-            shapes::shuffled(&shapes::uv_sphere(24, 32, 1.0), 7),
-        ),
-    ];
-    println!(
-        "{:28} {:>6} {:>9} {:>7} {:>7} {:>9}",
-        "peça", "faces", "área p1/p99", "passos", "acima", "níveis"
-    );
-    for (nome, m) in &pecas {
-        let areas = m.face_areas();
-        let topo = ph2d_mesh_colors::Topologia::nova(
-            m.vert_count(),
-            m.faces().iter().map(ph2d_mesh::Face::verts),
-            0,
-        );
-        let ns = ph2d_mesh_colors::niveis_igualados(&topo, &areas, 3, super::TECTO_DE_SALTO);
-        let mut a: Vec<f32> = areas.iter().copied().filter(|x| *x > 0.0).collect();
-        a.sort_by(|x, y| x.partial_cmp(y).expect("sem NaN"));
-        let (lo, hi) = (a[a.len() / 100], a[a.len() - 1 - a.len() / 100]);
-        let passos = (hi / lo).sqrt().log2();
-        let acima = ns.iter().filter(|n| **n > 3).count();
-        let mut d = ns.clone();
-        d.sort_unstable();
-        d.dedup();
-        println!(
-            "{nome:28} {:>6} {:>9.2} {passos:>7.2} {acima:>7} {:>9?}",
-            m.faces().len(),
-            hi / lo,
-            d
-        );
-    }
-}
+// ⛔⛔⛔ **AQUI VIVIA O GATE DA IGUALAÇÃO CHEGAR AO PLANO, e ele saiu com o
+// sujeito dele** (ordem do dono, 2026-09-23). Ele exigia que ligar a caixa
+// desse um plano GRADUADO e desligá-la o devolvesse ao uniforme.
+//
+// ⭐ **O que o substitui é mais forte do que ele:** o `garante` já não tem por
+// onde construir um plano graduado — as duas portas que o faziam deixaram de
+// ser chamadas —, logo a recaída é **erro de compilação** e não um censo.
+//
+// ⚠️ **E o que ele apanhou fica registado**, porque foi o CONTROLO dele que o
+// achou: o plano graduado era reconstruído em TODO quadro, porque o campo
+// `nivel` guardava o nível mais fino e não o degrau pedido. Handoff §25.4.

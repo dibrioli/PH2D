@@ -6,9 +6,7 @@
 //! (é a diferença de espécie para o Ptex), e é a primeira a partir-se quando
 //! cada face passa a ter a resolução dela.
 
-use crate::{
-    NIVEL_MAX, Tinta, Topologia, amostragem::posicao_tri, interior_por_face, niveis_por_area, total,
-};
+use crate::{NIVEL_MAX, Tinta, Topologia, amostragem::posicao_tri, interior_por_face, total};
 
 /// Dois triângulos que partilham a aresta `(1, 2)`.
 ///
@@ -68,6 +66,48 @@ fn amostras_da_face(
 /// ⚠️ **O CONTROLO está dentro:** a fixtura tem de PRODUZIR uma amostra
 /// partilhada que não seja um canto, senão o gate mede os dois vértices e fica
 /// verde sobre um endereço partido.
+/// ⭐⭐⭐⭐ **O PLANO GUARDA O DEGRAU QUE FOI PEDIDO, e ele NÃO é o nível mais
+/// fino.**
+///
+/// ⛔⛔⛔ **Este gate nasceu de uma mutação SOBREVIVENTE (2026-09-23), e o que
+/// ela expôs é que a lei tinha ficado SEM RÉGUA quando o `Even Detail` saiu:**
+/// quem a matava era o gate da igualação chegar ao plano, que se foi com o
+/// sujeito dele. *Uma lei pode ficar descoberta porque o único gate que a
+/// cobria era de outra feature* — e o pré-voo não o vê, porque a âncora dela
+/// continua a casar.
+///
+/// ⚠️⚠️ **E a ida-e-volta do ficheiro é CEGA a isto, por construção:** ela
+/// afirma `volta.nivel() == t.nivel()`, e sob a confusão os DOIS lados leem o
+/// nível mais fino ⇒ ela passa. *Um oráculo de igualdade não vê um erro que os
+/// dois lados cometem.*
+///
+/// ⭐ **E porque isto importa:** o consumidor compara o `nivel()` com o degrau
+/// que a fileira do painel pede. Confundi-los faz a resposta ser **NÃO em todo
+/// quadro** num plano onde alguma face subiu — o plano é reconstruído e
+/// **re-semeado da cor por vértice**, e a tinta fina do artista desaparece a
+/// `60 Hz` (handoff §25.4).
+#[test]
+fn o_plano_graduado_guarda_o_pedido_e_nao_o_mais_fino() {
+    let (pos, faces) = duas_faces();
+    let t = Tinta::graduada(pos.len(), it(&faces), &[2, 4], 2).expect("dois níveis, duas faces");
+
+    // ⭐ CONTROLO PRIMEIRO: a fixtura tem de DISCRIMINAR. Com uma lista cujo
+    //   máximo é o próprio pedido, as duas leituras coincidem e este gate
+    //   passaria a afirmar nada.
+    assert_eq!(
+        t.topologia().nivel_mais_fino(),
+        4,
+        "o CONTROLO: a fixtura tem de ter uma face ACIMA do pedido"
+    );
+
+    assert_eq!(
+        t.nivel(),
+        2,
+        "o plano guardou {} — o degrau pedido era 2 e o mais fino é 4",
+        t.nivel()
+    );
+}
+
 #[test]
 fn as_duas_faces_concordam_na_fronteira_com_niveis_diferentes() {
     let (pos, faces) = duas_faces();
@@ -188,288 +228,32 @@ fn uma_lista_de_niveis_do_tamanho_errado_e_recusada() {
     assert_eq!(alto.nivel_de(0), NIVEL_MAX);
 }
 
-/// ⭐⭐⭐ **A LEI DA ÁREA baixa a dispersão, e o CHÃO dela é `2×`.**
-///
-/// ⚠️⚠️ **É este gate que desmente o handoff de 21/09**, que escreveu
-/// *«o pior caso é `√2 = 1,41×`»*: o `√2` é o desvio ao alvo de UMA face e a
-/// dispersão é uma razão entre DUAS. Ver [`niveis_por_area`].
-#[test]
-fn o_nivel_por_area_baixa_a_dispersao_e_o_chao_e_dois() {
-    // Uma tira de triângulos cujas áreas crescem 64× de ponta a ponta.
-    let n = 32usize;
-    let mut pos = Vec::new();
-    let mut faces = Vec::new();
-    let mut x = 0.0f32;
-    for i in 0..n {
-        let h = 0.1 * (1.0 + i as f32 * 0.25);
-        pos.push([x, 0.0, 0.0]);
-        pos.push([x, h, 0.0]);
-        x += h;
-    }
-    pos.push([x, 0.0, 0.0]);
-    pos.push([x, 0.1 * (1.0 + n as f32 * 0.25), 0.0]);
-    for i in 0..n {
-        let a = (2 * i) as u32;
-        faces.push(vec![a, a + 2, a + 1]);
-    }
-    let areas: Vec<f32> = faces
-        .iter()
-        .map(|f| {
-            let (a, b, c) = (pos[f[0] as usize], pos[f[1] as usize], pos[f[2] as usize]);
-            let u = [b[0] - a[0], b[1] - a[1]];
-            let v = [c[0] - a[0], c[1] - a[1]];
-            0.5 * (u[0] * v[1] - u[1] * v[0]).abs()
-        })
-        .collect();
+// ⛔⛔⛔ **AQUI VIVIAM OS DOIS GATES DA LEI POR ÁREA** — o da dispersão e o da
+// cerca do salto —, e **saíram com a lei** em 2026-09-23, quando o dono
+// retirou o `Even Detail`.
+//
+// ⚠️ A `niveis_por_area` tinha UM consumidor, o escolhedor; sem ele ela ficou
+// **viva e órfã** e estes dois passaram a medir só a si mesmos. *Um gate cujo
+// único chamador é ele próprio não cobre nada.*
+//
+// ⭐ **E o que eles mediram fica:** o chão da dispersão é `2×` e não `√2` — *o
+// `√2` é o desvio ao alvo de UMA face e a dispersão é uma razão entre DUAS*,
+// que é o que desmentia o handoff de 21/09 —, e a cerca do salto era um GUARDA
+// com o custo medido (`1`–`6` arestas de `16 k`–`43 k`). A tabela inteira, com
+// as três peças do dono, está no handoff §25–§26; é de lá que se parte se a
+// graduação voltar, nunca deste ficheiro.
 
-    let densidade = |k: &[u8]| -> (f32, f32) {
-        let mut d: Vec<f32> = k
-            .iter()
-            .zip(&areas)
-            .map(|(k, a)| f32::from(1u16 << k) / a.sqrt())
-            .collect();
-        d.sort_by(|a, b| a.partial_cmp(b).expect("sem NaN"));
-        (d[0], d[d.len() - 1])
-    };
-
-    let base = Topologia::nova(pos.len(), it(&faces), 0);
-    let uniforme = vec![3u8; faces.len()];
-    let (u0, u1) = densidade(&uniforme);
-    let disp_uniforme = u1 / u0;
-
-    // O alvo é a MEDIANA do uniforme — orçamento parecido, não «mais ganha».
-    let mut d: Vec<f32> = areas.iter().map(|a| 8.0 / a.sqrt()).collect();
-    d.sort_by(|a, b| a.partial_cmp(b).expect("sem NaN"));
-    let alvo = d[d.len() / 2];
-
-    let k = niveis_por_area(&base, &areas, alvo, 1);
-    let (p0, p1) = densidade(&k);
-    let disp_por_face = p1 / p0;
-
-    assert!(
-        disp_uniforme > 4.0,
-        "a fixtura tem de CONTER o defeito: dispersão uniforme {disp_uniforme:.2}×"
-    );
-    assert!(
-        disp_por_face <= 2.0 + 1e-3,
-        "o chão é 2× (duas faces, cada uma a meia escada do alvo): {disp_por_face:.3}×"
-    );
-    assert!(
-        disp_por_face < disp_uniforme / 2.0,
-        "a lei tem de COMPRAR alguma coisa: {disp_uniforme:.2}× → {disp_por_face:.2}×"
-    );
-    // E ela produz mesmo níveis diferentes, senão o número acima é um acidente.
-    let mut distintos = k.clone();
-    distintos.sort_unstable();
-    distintos.dedup();
-    assert!(distintos.len() >= 3, "níveis distintos: {distintos:?}");
-}
-
-/// ⭐⭐ **A CERCA do salto entre vizinhas chega ao PONTO FIXO e nunca DESCE
-/// ninguém.**
-///
-/// ⚠️ **Ela é um GUARDA e isso é declarado:** medida no corpus do dono ela é
-/// quase inerte (o salto natural já é `≤ 2`), e a fixtura aqui é construída
-/// para o fenómeno — uma tira onde a área salta de uma ponta à outra.
-#[test]
-fn a_cerca_do_salto_sobe_a_vizinha_e_chega_ao_ponto_fixo() {
-    // ⛔⛔ **Uma TIRA a sério, e a 1.ª redacção NÃO era uma:** ela emitia um
-    //    triângulo por coluna, e dois deles partilham só um VÉRTICE — a cerca
-    //    corre por ARESTA, logo não propagava nada e o gate ficava verde sobre
-    //    uma corrente que não existia. Quem o apanhou foi o clippy, na
-    //    asserção final: `NIVEL_MAX - 5` é `0`, e `x >= 0` num `u8` é
-    //    **sempre** verdade. *Uma asserção que não pode falhar é comentário
-    //    com sintaxe de código.*
-    //
-    //    A tira certa alterna `A` e `B`: `A_i` e `B_i` partilham `(2i+1,2i+2)`
-    //    e `B_i` e `A_{i+1}` partilham `(2i+2,2i+3)`.
-    let n = 8usize;
-    let mut pos = Vec::new();
-    let mut faces = Vec::new();
-    for i in 0..=n {
-        pos.push([i as f32, 0.0, 0.0]);
-        pos.push([i as f32, 1.0, 0.0]);
-    }
-    for i in 0..n {
-        let a = (2 * i) as u32;
-        faces.push(vec![a, a + 2, a + 1]);
-        faces.push(vec![a + 1, a + 2, a + 3]);
-    }
-    let n = faces.len();
-    let base = Topologia::nova(pos.len(), it(&faces), 0);
-
-    // Um degrau brutal escrito à mão: a primeira no topo, as outras no chão.
-    let mut cru = vec![0u8; n];
-    cru[0] = NIVEL_MAX;
-    let areas: Vec<f32> = cru
-        .iter()
-        .map(|k| {
-            // A área que devolve exactamente este nível com `alvo = 1`.
-            let lado = f32::from(1u16 << k);
-            lado * lado
-        })
-        .collect();
-
-    let sem = niveis_por_area(&base, &areas, 1.0, NIVEL_MAX);
-    assert_eq!(sem, cru, "sem cerca a lei devolve o degrau cru");
-
-    let com = niveis_por_area(&base, &areas, 1.0, 1);
-    // Ponto fixo: nenhuma aresta tem salto acima da cerca.
-    let g = base.regraduada(&com).expect("regradua");
-    for f in 0..g.faces() {
-        for s in 0..g.cantos_de(f) {
-            let (id, _) = g.aresta(f, s);
-            let vizinhas: Vec<u8> = (0..g.faces())
-                .filter(|&o| (0..g.cantos_de(o)).any(|t| g.aresta(o, t).0 == id))
-                .map(|o| com[o])
-                .collect();
-            let (lo, hi) = (
-                vizinhas.iter().copied().min().expect("tem"),
-                vizinhas.iter().copied().max().expect("tem"),
-            );
-            assert!(
-                hi - lo <= 1,
-                "aresta {id}: salto {} em {vizinhas:?}",
-                hi - lo
-            );
-        }
-    }
-    // ⭐ Ela SOBE e nunca DESCE — descer apagaria detalhe que o artista pediu.
-    for (f, (antes, depois)) in cru.iter().zip(&com).enumerate() {
-        assert!(depois >= antes, "face {f}: {antes} desceu para {depois}");
-    }
-    // ⭐⭐ **E a escada é EXACTA ao longo da corrente** — é isto que prova que a
-    //    cerca é transitiva e que a fixtura é mesmo uma tira. ⛔ A asserção que
-    //    aqui esteve (`com[5] >= NIVEL_MAX - 5`) era **vácua** num `u8`.
-    for (j, &k) in com.iter().enumerate().take(usize::from(NIVEL_MAX) + 2) {
-        let esperado = NIVEL_MAX.saturating_sub(u8::try_from(j).unwrap_or(u8::MAX));
-        assert_eq!(k, esperado, "face {j} da corrente: a escada é {com:?}");
-    }
-}
-
-/// ⭐⭐⭐⭐ **A PORTA DO PRODUTO ANCORA NA MEDIANA E O `k` É UM PISO — a face
-/// típica fica ao nível que o artista pediu, e NINGUÉM desce abaixo dele.**
-///
-/// ⛔⛔⛔ **A metade do PISO nasceu de um REPORT do dono (23/09) e ela MATOU
-/// duas premissas deste gate, que ficam aqui escritas porque a morte delas é a
-/// wave:**
-///
-/// 1. ***«os níveis são DISTINTOS, `≥ 3` deles»*** — com o piso, tudo o que
-///    ficava abaixo de `k` sobe para `k`, logo numa peça cuja dispersão cabe
-///    num degrau da escada saem **dois** níveis e não três. Medido nesta
-///    fixtura: `[k, k+1]` em todo `k` de `0` a `4`, com `7` das `32` faces
-///    acima. ⇒ a metade honesta é **«há faces ACIMA de `k`»**, que é o que
-///    aquela queria dizer (*isto não é um plano uniforme*) sem exigir a metade
-///    de baixo que a ordem do dono proíbe.
-/// 2. ***«a dispersão cai para menos de METADE»*** — ela caía porque a lei
-///    descia as faces pequenas **e** subia as grandes. Com só uma direcção ela
-///    cai de `8,75×` para `7,00×` aqui, e exigir metade seria exigir de volta
-///    exactamente o que o dono reprovou. ⇒ a barra é **descer estritamente**, e
-///    a lei que a torna forte é a monotonia: subir uma face nunca sobe o
-///    MÁXIMO (ele pertence à face mais pequena, que já está em `k`).
-///
-/// ⚠️ **A `k = NIVEL_MAX` a metade `2` é inexprimível** — no topo da escada não
-/// há para onde subir —, e a população do gate di-lo em vez de a contornar.
-///
-/// ⚠️ E a `k = 0` ela **não** é obrigada a devolver zeros: a densidade é
-/// `lado/√área`, logo quem satura contra o chão são as faces PEQUENAS, e as
-/// grandes sobem na mesma (medido: `7` acima em `k = 0`).
-#[test]
-fn a_porta_do_produto_poe_a_face_mediana_no_k_pedido() {
-    // A mesma tira do gate da dispersão: áreas que crescem de ponta a ponta.
-    let n = 32usize;
-    let (mut pos, mut faces) = (Vec::new(), Vec::new());
-    let mut x = 0.0f32;
-    for i in 0..n {
-        let h = 0.1 * (1.0 + i as f32 * 0.25);
-        pos.push([x, 0.0, 0.0]);
-        pos.push([x, h, 0.0]);
-        x += h;
-    }
-    pos.push([x, 0.0, 0.0]);
-    pos.push([x, 0.1 * (1.0 + n as f32 * 0.25), 0.0]);
-    for i in 0..n {
-        let a = (2 * i) as u32;
-        faces.push(vec![a, a + 2, a + 1]);
-    }
-    let areas: Vec<f32> = faces
-        .iter()
-        .map(|f| {
-            let (a, b, c) = (pos[f[0] as usize], pos[f[1] as usize], pos[f[2] as usize]);
-            let u = [b[0] - a[0], b[1] - a[1]];
-            let v = [c[0] - a[0], c[1] - a[1]];
-            0.5 * (u[0] * v[1] - u[1] * v[0]).abs()
-        })
-        .collect();
-    let base = Topologia::nova(pos.len(), it(&faces), 0);
-
-    for k in 1..=4u8 {
-        let niveis = super::niveis_igualados(&base, &areas, k, 1);
-        assert_eq!(niveis.len(), faces.len(), "k={k}: uma entrada por face");
-
-        // (1) A MEDIANA é o `k` pedido.
-        let mut ord = niveis.clone();
-        ord.sort_unstable();
-        let mediana = ord[(ord.len() - 1) / 2];
-        assert_eq!(
-            mediana, k,
-            "k={k}: a face típica saiu em {mediana} e o artista pediu {k} ({ord:?})"
-        );
-
-        // (2) ⭐⭐⭐ **O PISO: ninguém abaixo do que o artista pediu.** Esta é a
-        //     metade que o report de 23/09 comprou, e a única cuja violação o
-        //     dono VÊ (*«a resolução fica bem baixa, inclusive a 16x»*).
-        assert!(
-            niveis.iter().all(|n| *n >= k),
-            "k={k}: {niveis:?} — alguma face saiu MAIS GROSSA do que o degrau pedido"
-        );
-
-        // (3) ⭐ CONTROLO: há faces ACIMA — senão isto é um plano uniforme.
-        //     ⚠️ Inexprimível no topo da escada, e a população di-lo.
-        if k < NIVEL_MAX {
-            assert!(
-                niveis.iter().any(|n| *n > k),
-                "k={k}: {niveis:?} — a porta devolveu um plano uniforme"
-            );
-        }
-
-        // (4) E a dispersão cai contra o uniforme do MESMO `k` — ESTRITAMENTE,
-        //     que é tudo o que uma lei de um sentido só pode prometer.
-        let disp = |ks: &[u8]| -> f32 {
-            let mut v: Vec<f32> = ks
-                .iter()
-                .zip(&areas)
-                .map(|(k, a)| f32::from(1u16 << k) / a.sqrt())
-                .collect();
-            v.sort_by(|a, b| a.partial_cmp(b).expect("sem NaN"));
-            v[v.len() - 1] / v[0]
-        };
-        let (uni, por_face) = (disp(&vec![k; faces.len()]), disp(&niveis));
-        if k < NIVEL_MAX {
-            assert!(
-                por_face < uni,
-                "k={k}: a porta tem de COMPRAR alguma coisa — {uni:.2}× → {por_face:.2}×"
-            );
-        }
-    }
-
-    // ⭐⭐⭐ **O CHÃO, e a PREMISSA QUE ESTE GATE DERRUBOU.** Eu escrevi aqui
-    //   *«a `k = 0` não há como igualar, logo tudo devolve zeros»* e a corrida
-    //   respondeu `[0 × 25, 1 × 7]`. ⛔ Estava ao contrário: a densidade é
-    //   `lado / √área`, logo **uma face GRANDE precisa de MAIS subdivisões**
-    //   para chegar ao alvo, e quem satura contra o piso são as PEQUENAS.
-    //
-    //   ⇒ o que se afirma é o que a lei de facto faz: a mediana continua no
-    //   `k` pedido, **ninguém desce abaixo do chão**, e o único sentido
-    //   disponível ali é para CIMA. ⚠️ *Isto é o mesmo mecanismo que refutou a
-    //   leitura do TECTO (handoff §28.3) visto do outro lado da escada.*
-    let zero = super::niveis_igualados(&base, &areas, 0, 1);
-    let mut ord = zero.clone();
-    ord.sort_unstable();
-    assert_eq!(ord[(ord.len() - 1) / 2], 0, "k=0: a mediana saiu de zero");
-    assert!(zero.iter().any(|k| *k > 0), "k=0: ninguém subiu — {zero:?}");
-    assert!(
-        zero.iter().all(|k| *k <= NIVEL_MAX),
-        "k=0: alguém passou o tecto da escada — {zero:?}"
-    );
-}
+// ⛔⛔⛔⛔ **AQUI VIVIA O GATE DA PORTA DO PRODUTO
+// (`a_porta_do_produto_poe_a_face_mediana_no_k_pedido`), e ele saiu com o
+// sujeito dele: o `niveis_igualados` foi RETIRADO por ordem do dono em
+// 2026-09-23** (*«Even Detail derruba muito a resolução. retiro!»*).
+//
+// ⚠️ Ele tinha morrido e renascido DUAS vezes em vinte e quatro horas — a
+// metade dos «níveis distintos» e a da «dispersão a metade», as duas mortas
+// pelo piso —, e o que fica disso é a lição e não o código: *uma premissa que
+// morre e renasce num dia é a melhor prova de que tinha de estar num gate*.
+//
+// ⛔ O que ele mediu NÃO se perdeu: a [`niveis_por_area`] — a lei por baixo,
+// que responde «que nível uma face desta área quer» — continua com os gates
+// dela nesta mesma varredura. O que saiu foi quem escolhia o ALVO a partir de
+// um chip do painel. Medição inteira: handoff §25–§26.

@@ -186,19 +186,6 @@ pub struct Sculpt3dScene {
     /// tinta de uma peça a ser lida na geometria de outra.*
     pub(crate) tinta_nivel: Option<u8>,
 
-    /// ⭐⭐⭐⭐ **A tinta fina IGUALADA por ÁREA de face** — a P2 chegada ao
-    /// artista.
-    ///
-    /// Com ela ligada, o `tinta_nivel` deixa de ser *«toda face a este
-    /// degrau»* e passa a ser *«a face TÍPICA a este degrau, e as outras
-    /// igualam-se a ela»* — a âncora que a medição deixou de pé
-    /// (`ph2d_mesh_colors::niveis_igualados`, handoff §28).
-    ///
-    /// ⚠️ **Ela nasce DESLIGADA** e o preço dela está medido: `+4 %` a `+33 %`
-    /// de amostras, porque ela iguala SUBINDO as faces pequenas. *O que ela
-    /// compra é dispersão `1,92`–`2,37×` onde o uniforme lê `4,88`–`18,26×`.*
-    pub(crate) tinta_igualada: bool,
-
     pub(crate) brush: Brush,
     /// **A REFERÊNCIA de cada verbo** (`RefMode`), na ordem do `Verb::ALL`.
     ///

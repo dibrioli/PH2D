@@ -3097,3 +3097,110 @@ defeito. O que ele compra vive em peças de faces mistas (`2×` de dispersão po
 memória). ⇒ **manter a caixa ou retirá-la é decisão de produto**, com os números acima. ⛔ Enquanto
 ela ficar, nenhuma cena a nomeia, e o gate de cima reprova no dia em que alguém a puser num roteiro
 onde ela seja inerte.
+
+---
+
+## §26 — ⛔⛔⛔⛔ O `Even Detail` SAIU, por ordem do dono
+
+> **2026-09-23, a seguir ao report da §25 e à cura do piso:** *«Even Detail derruba muito a
+> resolução. retiro!»* — e, confirmado, *«retire!»*.
+
+### §26.1 — O que a medição da §25 tinha deixado na mesa
+
+Com o `k` virado **PISO** a caixa já não podia tirar resolução a ninguém. O que ela passou a comprar
+está medido: `6,74× → 3,49×` de dispersão em `_base_sculpt` (por `+9 %` de memória) e
+`18,26× → 9,26×` em `sculpt_antes` (por `+36 %`) — **e `no-op` na peça que o dono smoka**, porque
+numa esfera UV a mediana senta-se no topo da distribuição de área. *Uma caixa que não faz nada na
+peça em que ele trabalha é uma caixa que ele retira.*
+
+### §26.2 — ⭐⭐⭐ A fronteira: o que sai é **quem CRIA**, nunca **quem LÊ**
+
+A medição antes do primeiro corte deu a cascata exacta:
+
+| porta | chamadores de produto ANTES | DEPOIS |
+|---|---:|---:|
+| `niveis_igualados` (o escolhedor) | `1` (o `garante`) | **`0`** |
+| `niveis_por_area` (a lei por baixo) | `1` (o escolhedor) | **`0`** |
+| `Mesh::face_areas` (a entrada dela) | `1` (o escolhedor) | **`0`** |
+| `Tinta::graduada` / `semeada_graduada` | `2` | **`1` — o LEITOR DE FICHEIROS** |
+
+⇒ **a cascata do escolhedor é apagada** (as três, com os gates delas) e **o SUBSTRATO fica inteiro**
+— o nível por face, o registo de `19` palavras, o gémeo em WGSL e o `TintaDoc.niveis`.
+
+⭐⭐ **A razão é uma frase, e ela está no `garante`:** *retirar o botão tira a capacidade de CRIAR,
+nunca o direito de abrir o que já está gravado.* Um `.ph2dproj` escrito entre 21 e 23/09 pode trazer
+um plano graduado, e ele tem de abrir com a tinta fina que o artista lá pôs.
+
+⛔ **E isso mudou uma METADE da identidade do plano, de propósito:** o `garante` perguntava *«é o
+degrau pedido **E** é do tipo que a caixa pede?»*; hoje pergunta só a primeira. Sem essa mudança um
+plano graduado vindo de um ficheiro seria **reconstruído uniforme no primeiro quadro** — e a tinta
+fina que ele carrega ia com ele.
+
+### §26.3 — ⛔ O que foi APAGADO, e porquê não ficou «vivo e desligado»
+
+| saiu | porquê |
+|---|---|
+| a caixa `Even Detail` (id · fileira · `TOGGLES` `20 → 19` · campo da UI · chave i18n) | o dono retirou-a |
+| os 4 sítios da ponte (`cena` · `birth` · `panel` × 2 · `slots`) + o parâmetro do `garante` | sem a caixa não há o que conduzir |
+| `niveis_igualados` · `niveis_por_area` · `Mesh::face_areas` | **vivas e órfãs** — a classe que o §5.0 manda apagar |
+| `3` gates da cena · `2` sondas · `2` gates da lei por área · `1` gate da área por face · `1` gate da igualação · o elo da fiação (`28 → 27`) | *um gate cujo sujeito saiu mede o nada* |
+| `mesh_area_tests.rs` inteiro e o `mod` dele | ficou sem um único `#[test]` |
+
+⚠️ **A alternativa — deixá-las vivas e desligadas — foi considerada e recusada com a lei da casa:**
+*nenhuma sonda deste repo pergunta se uma PORTA tem chamador*, logo elas ficariam a ser medidas só
+pelos gates delas próprias. **O endereço da medição é o handoff, nunca código sem chamador**, e a
+§25 tem a tabela inteira para quem quiser reconstruir.
+
+### §26.4 — ⚠️ Quatro coisas que a retirada obrigou, e nenhuma é arrumação
+
+* ⛔⛔ **A minha própria prosa prometeu um gate que NÃO existe.** Ao registar a saída da
+  `face_areas` escrevi *«a metade que sobrevive é o gate da `surface_area` abaixo»* — e não existe
+  gate nenhum da `surface_area` nesta crate (ela é medida pelo `dyntopo_alvo`, que a consome).
+  *Uma prosa que promete um gate é indistinguível de um gate*, e o que a apanhou foi **ler o
+  ficheiro**, não um teste: o censo dos gates nomeados cobre a família da escultura e esta frase não
+  nomeava ninguém.
+* ⛔ **O censo dos gates NOMEADOS apanhou-me DUAS vezes** — os meus próprios blocos de «aqui vivia»
+  citam os nomes que acabei de matar. A cura é a **terceira** que ele oferece (`MEMORIAS`, com o
+  motivo), nunca apagar a frase: ela é a única coisa no repo que diz que a retirada foi **medida**.
+* ⚠️ **Apagar o `mod area;` foi seguro porque ele era o ÚLTIMO item do ficheiro** — verificado antes
+  do corte. A armadilha que este repo já pagou (*apagar um `mod` re-liga o `#[cfg(test)]` dele ao
+  VIZINHO, em silêncio*) só morde quando o `mod` se senta entre um atributo e o item dele.
+* ⛔⛔ **E o PRÉ-VOO apanhou SEIS âncoras mortas, de DUAS espécies que se leem igual num placar:**
+  quatro (`P6` · `P7` · `P8` · `P22`) morreram **com a lei** e saíram; duas (`M1` · `M2`) só
+  **mudaram de forma** (o `garante` perdeu um parâmetro) e foram **RE-ANCORADAS**. *Tratar as
+  segundas como as primeiras apagaria duas leis vivas do placar sem uma linha vermelha.*
+* ⛔⛔⛔ **E eu cortei a `P26` por acidente, com o bloco à volta dela** — ela é a âncora do
+  `nivel: pedido`, cuja lei **continua viva** porque o leitor de ficheiros a alcança. Quem a apanhou
+  foi ler o PLACAR e contar (`16` linhas onde deviam estar `17`), não o pré-voo — *um pré-voo conta
+  as âncoras que EXISTEM; ele não sabe quais deviam existir*.
+* ⛔⛔⛔⛔ **E reposta, ela SOBREVIVEU — a lei tinha ficado SEM RÉGUA, e a régua não morreu com
+  ela: morreu com a feature AO LADO.** Quem matava a `P26` era o gate da igualação chegar ao plano,
+  que saiu com o `Even Detail`. ⚠️ *Uma lei pode ficar descoberta porque o único gate que a cobria
+  era de outra feature — e nada neste repo o pergunta: o pré-voo vê a âncora a casar, a suíte fica
+  verde, e só a MUTAÇÃO o diz.* ⇒ `o_plano_graduado_guarda_o_pedido_e_nao_o_mais_fino`, escrito
+  **red-first** (com a mutação aplicada ele reprova, sem ela passa).
+  ⚠️⚠️ **E a ida-e-volta do ficheiro NÃO servia como régua:** ela afirma `volta.nivel() ==
+  t.nivel()`, e sob a confusão **os dois lados leem o nível mais fino** ⇒ passa. *Um oráculo de
+  igualdade não vê um erro que os dois lados cometem* — o CONTROLO do gate novo é justamente exigir
+  que a fixtura tenha uma face ACIMA do pedido, senão as duas leituras coincidem e ele afirma nada.
+
+### §26.5 — Portão
+
+* mutação do R por face **`17` de `18`** (o `P12` é o CONTROLO) — ⚠️ a 1.ª corrida deu `16`, com a
+  `P26` a sobreviver, e o gate que faltava está acima; da metade visível **`42` de `43`**, com as
+  duas re-ancoradas a sangrar;
+* pré-voo dos **onze** arneses, **âncoras vivas `152 → 145`** (as sete que morreram com a lei,
+  contando a `P26` que saiu por acidente e foi REPOSTA);
+* `nextest-impacted` **`18 616/18 616`** · censos da árvore COMBINADA **`127/127`** (controlo do
+  filtro `12 de 12`) · clippy `-D warnings` zero · `fmt` limpo · maior ficheiro tocado `691` de
+  `700`;
+* as **dez** vassouras: `8` limpas e `2` acusam **`0` linhas desta wave** (medido por
+  `git diff --stat` sobre os acusados, e a linha acusada já existe no commit anterior);
+* ⭐ e o **`885/885`** da família com o corte inteiro dentro.
+
+### §26.6 — ⏳ O que fica NOMEADO
+
+**O registo do device continua a pagar `9` palavras por face** (`PAYLOAD_STRIDE` `10 → 19`, medido
+em `7,6 MB` contra `4,0` a `100 k` faces) **para LER um plano que hoje só um ficheiro antigo traz.**
+Cortá-las é um degrau de formato (`SCULPT_DOC_VERSION`) mais uma decisão sobre os ficheiros já
+gravados — ⇒ **decisão do dono**, não da linha, e a medição está aqui.

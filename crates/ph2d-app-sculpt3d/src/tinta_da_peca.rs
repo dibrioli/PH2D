@@ -382,49 +382,37 @@ impl crate::Sculpt3dScene {
 /// no instante em que o artista pede mais resolução para ela**. A semente é
 /// exacta nos vértices e interpolada no resto, que é a única resposta que a
 /// malha sabe dar.
-pub(crate) fn garante(
-    mesh: &Mesh,
-    tinta: &mut Option<Tinta>,
-    nivel: Option<u8>,
-    igualado: bool,
-) -> bool {
+///
+/// ⛔⛔⛔ **O PLANO QUE ELA CONSTRÓI É SEMPRE UNIFORME desde 2026-09-23, por
+/// ordem do dono** (*«Even Detail derruba muito a resolução. retiro!»*): o
+/// interruptor que graduava o plano por ÁREA de face saiu do painel, e com ele
+/// o escolhedor. O que fica está no handoff §26.
+///
+/// ⚠️⚠️ **E ela CONTINUA a aceitar um plano GRADUADO, de propósito, e essa
+/// metade é a que faz a retirada ser honesta:** a identidade pergunta só *«é o
+/// degrau pedido, e ele descreve esta malha?»*. Um plano graduado que veio de
+/// um FICHEIRO gravado antes da retirada passa nas duas e **sobrevive** —
+/// *retirar o botão tira a capacidade de CRIAR, nunca o direito de abrir o que
+/// já está gravado*. Reconstruí-lo uniforme apagaria a tinta fina que o artista
+/// já tem no disco.
+pub(crate) fn garante(mesh: &Mesh, tinta: &mut Option<Tinta>, nivel: Option<u8>) -> bool {
     let Some(k) = nivel else {
         return tinta.take().is_some();
     };
     let k = k.min(NIVEL_MAX);
     if let Some(t) = tinta.as_ref()
         && t.nivel() == k
-        && t.lado_uniforme().is_none() == igualado
         && concorda_com(t, mesh)
     {
         return false;
     }
     let faces = || mesh.faces().iter().map(ph2d_mesh::Face::verts);
-    let niveis = igualado.then(|| {
-        // ⚠️ A `Topologia` de nível `0` é barata e serve só de ESQUELETO para a
-        //    lei ler a adjacência aresta → faces; o plano nasce a seguir.
-        let topo = ph2d_mesh_colors::Topologia::nova(mesh.vert_count(), faces(), 0);
-        ph2d_mesh_colors::niveis_igualados(&topo, &mesh.face_areas(), k, TECTO_DE_SALTO)
-    });
-    *tinta = Some(match (mesh.colors(), niveis.as_deref()) {
-        (Some(c), Some(ks)) => Tinta::semeada_graduada(c, faces(), ks, k)
-            .unwrap_or_else(|| Tinta::semeada(c, faces(), k)),
-        (Some(c), None) => Tinta::semeada(c, faces(), k),
-        (None, Some(ks)) => Tinta::graduada(mesh.vert_count(), faces(), ks, k)
-            .unwrap_or_else(|| Tinta::nova(mesh.vert_count(), faces(), k)),
-        (None, None) => Tinta::nova(mesh.vert_count(), faces(), k),
+    *tinta = Some(match mesh.colors() {
+        Some(c) => Tinta::semeada(c, faces(), k),
+        None => Tinta::nova(mesh.vert_count(), faces(), k),
     });
     true
 }
-
-/// ⭐ **A cerca do salto entre faces vizinhas, quando a tinta é IGUALADA.**
-///
-/// ⚠️ **Ela é um GUARDA e isso está MEDIDO** (handoff §28.5): no corpus do dono
-/// o salto natural já é `≤ 2` e ela toca `1` a `6` arestas de `16 k`–`35 k`,
-/// por `+0,03 %` de amostras. *Ela fica porque o caso que recusa é construível
-/// e porque sem ela um salto grande é detalhe que o lado grosso não mostra* —
-/// nunca porque ela mova um número no produto.
-const TECTO_DE_SALTO: u8 = 1;
 
 /// ⭐⭐⭐ **DE ONDE O QUADRO LÊ O PLANO DESTA PEÇA, e se o reconcilia.**
 ///

@@ -195,9 +195,6 @@ pub struct Sculpt3dUi {
     /// de interruptores diz isso: *um controlo de uma vista que não está
     /// desenhada é um controlo morto.*
     pub wire_grade: bool,
-    /// **A tinta fina graduada por ÁREA de face** — ver
-    /// `ph2d_mesh_colors::niveis_igualados`. Nasce DESLIGADO.
-    pub tinta_igualada: bool,
     /// **O ALVO DE DENSIDADE do passe de topologia dinâmica** — uma FRACÇÃO em
     /// `0..=1` contra o raio do pincel, nunca um comprimento.
     ///
@@ -308,7 +305,6 @@ impl Default for Sculpt3dUi {
             alpha_preview: true,
             wireframe: false,
             wire_grade: false,
-            tinta_igualada: false,
             // O MEIO da faixa, que é o valor com que a cena nasce — a fonte é
             // o `Dyntopo::default` do lado da cena, e este espelho existe só
             // para uma fixtura de costura ver o mesmo mundo que o artista vê.

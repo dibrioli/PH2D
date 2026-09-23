@@ -69,7 +69,20 @@ const PREFIXOS: [&str; 21] = [
 ];
 
 /// `(nome, onde a memória vive, porque é prosa e não endereço)`.
-const MEMORIAS: [(&str, &str, &str); 12] = [
+const MEMORIAS: [(&str, &str, &str); 13] = [
+    (
+        "a_porta_do_produto_poe_a_face_mediana_no_k_pedido",
+        "crates/ph2d-mesh-colors/src/p2_tests.rs",
+        "o gate do ESCOLHEDOR de níveis, que saiu com o sujeito dele quando o \
+         dono RETIROU o `Even Detail` em 2026-09-23 («Even Detail derruba \
+         muito a resolução. retiro!»). Ele tinha morrido e renascido DUAS \
+         vezes em vinte e quatro horas — a metade dos «níveis distintos» e a \
+         da «dispersão a metade», as duas mortas pelo `k` virar um PISO. A \
+         prosa fica porque esse ciclo é a prova de que uma premissa que morre \
+         e renasce num dia tinha de estar num gate, e porque a lei por baixo \
+         (`niveis_por_area`) continua viva e gateada nesta mesma varredura: o \
+         que saiu foi quem escolhia o ALVO a partir de um chip do painel.",
+    ),
     (
         "a_peca_da_cena_tem_de_que_igualar",
         "crates/ph2d-app-sculpt3d/src/scenes_tinta_fina_tests.rs",

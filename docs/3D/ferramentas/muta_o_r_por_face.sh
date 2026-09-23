@@ -36,7 +36,7 @@ restore() {
 }
 trap restore EXIT
 
-FILTRO='test(/p2_tests|assar_tests|vinte_e_oito|nivel_base|canto_de_uma_face|dois_lados_de_uma_aresta|ponto_de_uma_face|recusa_nomeia|graduado|payload|igualac|igualada|igualar|niveis_dele|v2_abre|area_por_face/)'
+FILTRO='test(/p2_tests|assar_tests|vinte_e_sete|nivel_base|canto_de_uma_face|dois_lados_de_uma_aresta|ponto_de_uma_face|recusa_nomeia|graduado|payload|igualac|igualada|igualar|niveis_dele|v2_abre|area_por_face/)'
 corrida() {
   cargo nextest run -p ph2d-mesh -p ph2d-mesh-colors -p ph2d-mesh-render -p ph2d-app-sculpt3d -E "$FILTRO" 2>&1
 }
@@ -125,21 +125,9 @@ muta "$COL/topo.rs" \
   'P5 tudo se le como uniforme: o assado e o device deixam de recusar'
 
 # ── A CERCA do salto entre vizinhas ─────────────────────────────────────
-muta "$COL/lib.rs" \
-  '                if hi - k[g as usize] > tecto_de_salto {' \
-  '                if false {' \
-  'P6 a cerca do salto deixa de armar'
 
-muta "$COL/lib.rs" \
-  '                    k[g as usize] = hi - tecto_de_salto;' \
-  '                    k[g as usize] = hi.min(k[g as usize]);' \
-  'P7 a cerca DESCE a vizinha fina em vez de subir a grossa'
 
 # ── A LEI DA AREA ───────────────────────────────────────────────────────
-muta "$COL/lib.rs" \
-  '            let ideal = (alvo * a.max(0.0).sqrt()).log2();' \
-  '            let ideal = (alvo * 1.0f32).log2();' \
-  'P8 o nivel deixa de olhar a AREA: a dispersao nao cai'
 
 # ── O ASSADO: o ladrilho e' da FACE ─────────────────────────────────────
 muta "$COL/assar.rs" \
@@ -222,42 +210,25 @@ muta "$REN/shaders/tinta.wgsl" \
     let l = 4u;' \
   'P20 o gemeo crava a reticula de um QUAD num lado so'
 
-# ── QUEM ESCOLHE OS NIVEIS: a ancora e' a MEDIANA e o `k` e' um PISO ────
-# ⚠️ A outra leitura (o TECTO) foi construida, medida e REFUTADA — §28.3. O que
-#    se muta aqui e' a ancora ficar na ponta em vez da mediana.
-muta "$COL/lib.rs" \
-  '    let alvo = d[(d.len() - 1) / 2];' \
-  '    let alvo = d[0];' \
-  'P21 a ancora sai da face mais PEQUENA em vez da tipica'
+# ⛔⛔ AQUI VIVIAM AS TRES ANCORAS DO ESCOLHEDOR (a mediana · o piso · o
+#    interruptor lido pelo `garante`), e elas sairam com ele por ordem do dono
+#    (2026-09-23). O que fica e' a `P26`, que mede o que o LEITOR DE FICHEIROS
+#    ainda alcanca: um plano graduado gravado antes da retirada tem de abrir.
 
-# ⛔⛔ E o PISO, que e' a cura do report do dono de 23/09: sem ele a lei DESCE
-#    faces abaixo do degrau pedido, que foi exactamente o que ele reprovou.
-muta "$COL/lib.rs" \
-  '        .map(|x| x.max(k))' \
-  '        .map(|x| x)' \
-  'P25 o `k` deixa de ser um PISO: faces saem mais grossas do que o pedido'
+# ⛔⛔ E AQUI VIVIAM AS ANCORAS DA LEI POR AREA (a cerca do salto, o nivel
+#    derivado da area, e a propria `face_areas`): as tres sairam em 2026-09-23
+#    com a `niveis_por_area`, que ficou sem consumidor quando o dono retirou o
+#    `Even Detail`. O que fica mede o PLANO, que o leitor de ficheiros alcanca.
 
-# ⛔⛔ E o que o plano GUARDA como pedido: com o piso, o nivel mais fino deixou
-#    de ser o pedido, e confundi-los reconstroi o plano em TODO quadro — a
-#    tinta fina do artista some-se a 60 Hz, sem uma linha vermelha.
+# ⛔⛔ O QUE O PLANO GUARDA COMO PEDIDO — e ele NAO e' o nivel mais fino.
+# ⚠️ Esta ancora sobreviveu a' retirada do `Even Detail` de proposito: quem
+#    alcanca a `graduada` hoje e' o LEITOR DE FICHEIROS, e um plano gravado
+#    antes de 23/09 tem de abrir com o degrau que ele pediu. Confundir os dois
+#    reconstroi o plano em TODO quadro e a tinta fina some-se a 60 Hz.
 muta "$COL/lib.rs" \
   '            nivel: pedido,' \
   '            nivel: topo.nivel_mais_fino(),' \
   'P26 o plano guarda o nivel MAIS FINO em vez do que foi PEDIDO'
-
-# ── A AREA POR FACE e' por FACE ─────────────────────────────────────────
-# ⚠️ O ficheiro mudou de nome no MESMO dia: o tecto de LOC cortou as duas
-#    portas da area para o `mesh_area.rs`, e o pre-voo apanhou a ancora morta.
-muta "$MSH/mesh_area.rs" \
-  '                let mut a = 0.0f64;' \
-  '                let mut a = 1.0f64;' \
-  'P22 toda face passa a ter area 1: a graduacao deixa de olhar a peca'
-
-# ── A IGUALACAO chega ao PLANO ──────────────────────────────────────────
-muta "$APP/tinta_da_peca.rs" \
-  '    let niveis = igualado.then(|| {' \
-  '    let niveis = false.then(|| {' \
-  'P23 o garante aceita o interruptor e deita-o fora'
 
 # ── E o PLANO GRADUADO atravessa o FICHEIRO ─────────────────────────────
 muta "$APP/doc.rs" \

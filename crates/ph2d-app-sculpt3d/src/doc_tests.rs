@@ -487,9 +487,16 @@ fn um_plano_graduado_atravessa_o_ficheiro_com_os_niveis_dele() {
     let pose = Pose::new([1.0, 0.0, 0.0], 1.5);
     let m = stack.mesh();
     let faces = || m.faces().iter().map(ph2d_mesh::Face::verts);
-    let areas = m.face_areas();
-    let topo = ph2d_mesh_colors::Topologia::nova(m.vert_count(), faces(), 0);
-    let niveis = ph2d_mesh_colors::niveis_igualados(&topo, &areas, 2, 1);
+    // ⛔⛔ **A lista é CONSTRUÍDA à mão desde 2026-09-23**, e a razão é o
+    //   assunto deste gate: o escolhedor que a produzia (`niveis_igualados`)
+    //   saiu por ordem do dono, e **este gate é justamente o que prova que um
+    //   plano graduado GRAVADO continua a abrir** — *retirar o botão tira a
+    //   capacidade de criar, nunca o direito de abrir o que já está no disco*.
+    //   ⇒ a fixtura não precisa de saber COMO a lista foi escolhida; precisa de
+    //   ser graduada, e o CONTROLO abaixo exige-o.
+    let niveis: Vec<u8> = (0..m.faces().len())
+        .map(|f| 2 + u8::from(f % 3 == 0))
+        .collect();
 
     let mut distintos = niveis.clone();
     distintos.sort_unstable();

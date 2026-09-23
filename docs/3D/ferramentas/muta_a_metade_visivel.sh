@@ -122,14 +122,17 @@ open(p,"w").write(s.replace(a, b, 1))
 
 # ── A PORTA que e' dona do plano ─────────────────────────────────────────
 muta "$APP/tinta_da_peca.rs" \
-  '        (Some(c), None) => Tinta::semeada(c, faces(), k),' \
-  '        (Some(_), None) => Tinta::nova(mesh.vert_count(), faces(), k),' \
+  '        Some(c) => Tinta::semeada(c, faces(), k),' \
+  '        Some(_) => Tinta::nova(mesh.vert_count(), faces(), k),' \
   'M1 garante: o plano novo nasce BRANCO em vez de semeado'
 
+# ⚠️ **RE-ANCORADA em 2026-09-23:** a identidade tinha DUAS metades enquanto o
+#    `Even Detail` existiu (o degrau E se o plano era graduado). Com a retirada
+#    dele sobra a do degrau — e a que saiu e' de proposito, porque um plano
+#    graduado GRAVADO tem de sobreviver a' abertura do ficheiro.
 muta "$APP/tinta_da_peca.rs" \
-  '        && t.nivel() == k
-        && t.lado_uniforme().is_none() == igualado' \
-  '        && t.lado_uniforme().is_none() == igualado' \
+  '        && t.nivel() == k' \
+  '        && true' \
   'M2 garante: trocar de nivel deixa de reconstruir'
 
 # ⚠️⚠️ **A CONTA MUDOU DE SITIO em 2026-09-21** — ela e' hoje a

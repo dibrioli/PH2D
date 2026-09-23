@@ -143,179 +143,23 @@ pub struct Tinta {
     amostras: Vec<[f32; 3]>,
 }
 
-/// ⭐⭐⭐⭐ **O NÍVEL DE CADA FACE PARA UMA DENSIDADE ALVO** — a lei da P2.
-///
-/// `areas[f]` é a área da face `f` no mundo, e `alvo` é a densidade LINEAR
-/// pedida (amostras por unidade de comprimento). O nível é
-/// `round(log2(alvo · √área))`, cortado na escada.
-///
-/// ⚠️⚠️ **O CHÃO desta lei é `2×` e não `√2`, e a medição desmente o handoff de
-/// 21/09.** Ele escreveu *«com o `R` por face quantizado a potências de dois o
-/// pior caso é `√2 = 1,41×`»* — ⛔ **as duas grandezas não são a mesma**: o `√2`
-/// é o desvio ao alvo de UMA face (meia escada) e a dispersão é uma razão entre
-/// DUAS, logo `√2 × √2 = 2`. Medido pelo [`examples/mede_o_r_por_face`] sobre o
-/// corpus do dono, `p99/p1` da densidade linear:
-///
-/// | peça | faces | hoje (uniforme) | com esta lei |
-/// |---|---:|---:|---:|
-/// | `nossa_com_calota` | 21 914 | `3,12×` | **`1,90×`** |
-/// | `Sculpt_Blender` | 8 291 | `4,88×` | **`1,97×`** |
-/// | `_base_sculpt` | 18 432 | `6,74×` | **`1,95×`** |
-/// | `sculpt_antes` | 13 824 | **`18,26×`** | **`1,92×`** |
-///
-/// ⚠️ **A única leitura acima de `2` é o CHÃO da escada a morder**: a `k` baixo
-/// a `sculpt_antes` lê `2,37×` porque as faces mais pequenas pedem um nível
-/// NEGATIVO e o corte em `0` deixa-as mais finas do que o alvo. *Uma face mais
-/// pequena que `1/alvo` não tem como ser mais grossa do que uma amostra por
-/// canto* — e isso é o fim da escada, não um defeito da lei.
-///
-/// `tecto_de_salto` é a cerca entre VIZINHAS: a face grossa lê um subconjunto
-/// da aresta fina, logo um salto grande é detalhe que o lado grosso não
-/// consegue mostrar. ⭐ **Medida, ela é quase inerte e quase de graça:** no
-/// corpus do dono o salto máximo já é `2` sem cerca nenhuma (e só em `1`–`6`
-/// arestas de `16 582`–`43 828`), e pô-la a `1` custa entre `+0` e `+360`
-/// amostras num plano de `1,4 M`. ⇒ *ela fica como GUARDA, e o gate dela precisa
-/// de uma fixtura construída para isso — o corpus não contém o fenómeno.*
-/// ⭐⭐⭐⭐ **O NÍVEL DE CADA FACE PARA UM `k` PEDIDO — a porta do PRODUTO.**
-///
-/// A [`niveis_por_area`] pede um **alvo de densidade**, que é a grandeza da
-/// lei; um artista carrega num chip que diz `8x`. Esta porta é a ponte, e ela
-/// tem **duas** metades:
-///
-/// 1. **a face TÍPICA fica ao `k` pedido** ⇒ `alvo = mediana(2^k / √área)`, que
-///    é a densidade linear que um plano UNIFORME de nível `k` entrega à face
-///    mediana;
-/// 2. ⭐⭐⭐⭐ **e NINGUÉM desce abaixo de `k`** — o degrau que o artista
-///    carregou é um **PISO**, nunca uma média que se possa pagar tirando
-///    resolução a uma parte da peça.
-///
-/// ⛔⛔⛔ **A metade `2` nasceu de um REPORT do dono (23/09) e ela derruba a
-/// nota que este doc-comment tinha ontem.** Com só a metade `1`, na peça que a
-/// cena `=52` usa — uma esfera UV — a lei **só sabe DESCER**: medido pela porta
-/// do produto, o máximo é exactamente `k` em todos os degraus e `192` das `768`
-/// faces saem em `k−1` ou `k−2`, com as amostras a cair para `0,83×`. *O que o
-/// dono viu foi a frase dele: «a resolução fica bem baixa, inclusive a 16x».*
-///
-/// ⭐⭐⭐ **E a causa é uma propriedade da FORMA, não um defeito:** numa esfera
-/// UV a área de uma face é `∝ sin θ`, logo a maioria das faces está perto do
-/// equador e **a mediana vive no topo da distribuição** — igualar por ela é
-/// igualar para baixo. Nas peças ESCULPIDAS do dono acontece o contrário (a
-/// mediana está no meio de uma cauda longa) e a mesma lei SOBE.
-///
-/// ⚠️⚠️ **O corpus da §28 não continha o fenómeno:** ele eram três peças
-/// esculpidas, e a peça que o dono smoka é uma primitiva. *Uma lei medida só
-/// numa família de peças afirma sobre essa família.*
-///
-/// ⛔ **A âncora no MAIS PEQUENO (o piso puro) foi medida e RECUSADA:** ela
-/// custa `14×`–`48×` as amostras nas peças esculpidas e **satura na escada**
-/// (`nivel 2..5` de um `k = 2`), logo nem chega a entregar o que promete.
-///
-/// ⛔ **E a âncora no MAIOR — *«nenhuma face passa de `k`»* — continua refutada**
-/// (handoff §28.3): não baixa a dispersão (`9,26×`) e engrossa a peça inteira.
-///
-/// **O que a lei com o piso entrega, medido:**
-///
-/// | peça | `k` | uniforme | com o piso | amostras |
-/// |---|---:|---:|---:|---:|
-/// | `_base_sculpt` | `2` | `6,74×` | **`3,49×`** | `+9 %` |
-/// | `sculpt_antes` | `2` | `18,26×` | **`9,26×`** | `+36 %` |
-/// | a esfera da `=52` | qualquer | — | **no-op** | `1,00×` |
-///
-/// ⚠️ **Ela nunca pode piorar**, e é isso que a torna shipável: o pior caso é
-/// não fazer nada.
-///
-/// ⭐ **E o piso não parte a cerca do salto:** ele levanta o MÍNIMO e deixa o
-/// máximo onde está, logo toda diferença entre vizinhas encolhe ou fica igual.
-///
-/// ⚠️ **Uma lista de áreas do tamanho errado devolve a lista CRUA**, como a
-/// irmã: quem recusa é a [`Topologia::regraduada`], que compara comprimentos.
-#[must_use]
-pub fn niveis_igualados(topo: &Topologia, areas: &[f32], k: u8, tecto_de_salto: u8) -> Vec<u8> {
-    let k = k.min(NIVEL_MAX);
-    let lado = f32::from(1u16 << k);
-    let mut d: Vec<f32> = areas
-        .iter()
-        .filter(|a| **a > 0.0)
-        .map(|a| lado / a.sqrt())
-        .filter(|x| x.is_finite())
-        .collect();
-    if d.is_empty() {
-        // ⚠️ Uma peça sem uma única face de área positiva não tem mediana, e o
-        //    valor conservador é o plano UNIFORME que o artista pediu.
-        return vec![k; areas.len()];
-    }
-    d.sort_by(|a, b| a.partial_cmp(b).unwrap_or(core::cmp::Ordering::Equal));
-    let alvo = d[(d.len() - 1) / 2];
-    // ⭐⭐⭐⭐ **O PISO, e ele vem DEPOIS da cerca de propósito.** Levantar um
-    //   valor só pode encolher a diferença para um vizinho mais alto, e o
-    //   máximo não se mexe ⇒ a cerca que a `niveis_por_area` acabou de impor
-    //   continua de pé. *Aplicá-lo ANTES obrigaria a correr a cerca outra vez.*
-    niveis_por_area(topo, areas, alvo, tecto_de_salto)
-        .into_iter()
-        .map(|x| x.max(k))
-        .collect()
-}
-
-#[must_use]
-pub fn niveis_por_area(topo: &Topologia, areas: &[f32], alvo: f32, tecto_de_salto: u8) -> Vec<u8> {
-    let mut k: Vec<u8> = areas
-        .iter()
-        .map(|a| {
-            // ⚠️ Uma face DEGENERADA (área zero, e elas existem — o `collapse`
-            //    desta casa deixa-as) pede `log2(0) = −∞`: o corte apanha-a, e
-            //    o valor conservador é o nível mais grosso.
-            let ideal = (alvo * a.max(0.0).sqrt()).log2();
-            if ideal.is_finite() {
-                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-                {
-                    ideal.round().clamp(0.0, f32::from(NIVEL_MAX)) as u8
-                }
-            } else {
-                0
-            }
-        })
-        .collect();
-    // ⛔ **Sem `resize`, de propósito:** uma lista de áreas mais curta que a
-    //    malha é o chamador a passar a peça errada, e a recusa é da
-    //    [`Topologia::regraduada`], que compara os comprimentos. *Preencher com
-    //    um valor de omissão aqui transformaria essa recusa num plano errado.*
-    if k.len() != topo.faces() {
-        return k;
-    }
-
-    // ⚠️ A adjacência ARESTA → faces é construída UMA vez: escrita dentro do
-    //    laço ela é `O(F²)`, e numa peça de `20 k` faces isso é uma exportação
-    //    que nunca acaba.
-    let mut por_aresta: Vec<Vec<u32>> = vec![Vec::new(); topo.arestas()];
-    for f in 0..topo.faces() {
-        for s in 0..topo.cantos_de(f) {
-            let (id, _) = topo.aresta(f, s);
-            por_aresta[id as usize].push(f as u32);
-        }
-    }
-
-    // ⭐ A cerca SOBE a vizinha grossa e nunca desce a fina: descer apagaria
-    //   detalhe que o artista pediu. Ela corre até ao PONTO FIXO — subir uma
-    //   vizinha pode obrigar a seguinte — e ele existe porque o nível só sobe e
-    //   está preso em [`NIVEL_MAX`].
-    loop {
-        let mut mexeu = false;
-        for vizinhas in &por_aresta {
-            let Some(hi) = vizinhas.iter().map(|&g| k[g as usize]).max() else {
-                continue;
-            };
-            for &g in vizinhas {
-                if hi - k[g as usize] > tecto_de_salto {
-                    k[g as usize] = hi - tecto_de_salto;
-                    mexeu = true;
-                }
-            }
-        }
-        if !mexeu {
-            return k;
-        }
-    }
-}
+// ⛔⛔⛔⛔ **E A LEI POR BAIXO (`niveis_por_area`) SAIU COM ELE.**
+//
+// Ela respondia *«que nível uma face desta área quer, para uma densidade
+// alvo»*, e tinha **um** consumidor: o escolhedor acima. Retirado ele, ela
+// ficou **viva e órfã** — alcançável só pelos gates dela próprios —, que é a
+// forma que o §5.0 manda apagar: *um instrumento que só mede a si mesmo lê-se
+// como uma lei coberta*.
+//
+// ⚠️ **A medição dela NÃO se perdeu:** a tabela das três peças do dono, o
+// mecanismo da cerca do salto e as duas âncoras estão no handoff §25–§26.
+// *O que foi medido e rejeitado não se reconstrói, e o endereço dele é o
+// handoff, nunca código sem chamador.*
+//
+// ⛔ **E a `Mesh::face_areas` saiu na mesma cascata**, pelo mesmo motivo — ela
+// era a entrada desta. A `Mesh::surface_area` FICA (ela alimenta o tecto de
+// quads da retopologia e o alvo da topologia dinâmica), e a lei partilhada do
+// triângulo com ela.
 
 impl Tinta {
     /// Uma tinta em branco sobre a topologia dada.

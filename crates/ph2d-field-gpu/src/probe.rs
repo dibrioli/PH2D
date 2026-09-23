@@ -34,6 +34,64 @@ pub fn evaluate(
     inputs: &[[f32; 4]],
     outs: usize,
 ) -> Vec<[f32; 4]> {
+    corre(
+        device, queue, source, entry, uniforms, storages, inputs, outs, 1,
+    )
+    .0
+}
+
+/// ⏱️⭐⭐⭐ **O MESMO, com o RELÓGIO DO DESPACHO separado da COMPILAÇÃO.**
+///
+/// # ⛔⛔ Porque ela existe
+///
+/// A [`evaluate`] compila o módulo e o pipeline **dentro** da chamada, logo cronometrá-la mede o
+/// compilador do driver — que a `W9` mediu entre `1,4` e `4,4 s` para um shader de peça, contra
+/// milissegundos de despacho. *Quem quisesse o custo de uma lei no dispositivo com esta porta
+/// mediria a compilação dela.* ⇒ aqui a compilação e os buffers ficam fora, e o que se cronometra
+/// é o **mínimo de `repeticoes` despachos**, que é a régua que a `W9` prescreve por escrito.
+///
+/// ⚠️ **A cópia de leitura fica FORA do laço** — ela cresce com `inputs` e é do instrumento, não
+/// da lei.
+///
+/// Devolve `(saída, ms do melhor despacho)`.
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+pub fn evaluate_medido(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    source: &str,
+    entry: &str,
+    uniforms: &[&[f32]],
+    storages: &[&[f32]],
+    inputs: &[[f32; 4]],
+    outs: usize,
+    repeticoes: usize,
+) -> (Vec<[f32; 4]>, f32) {
+    corre(
+        device,
+        queue,
+        source,
+        entry,
+        uniforms,
+        storages,
+        inputs,
+        outs,
+        repeticoes.max(1),
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn corre(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    source: &str,
+    entry: &str,
+    uniforms: &[&[f32]],
+    storages: &[&[f32]],
+    inputs: &[[f32; 4]],
+    outs: usize,
+    repeticoes: usize,
+) -> (Vec<[f32; 4]>, f32) {
     use wgpu::util::DeviceExt;
     let bytes = |v: &[f32]| -> Vec<u8> { v.iter().flat_map(|f| f.to_le_bytes()).collect() };
     let modulo = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -110,17 +168,29 @@ pub fn evaluate(
         entries: &entradas,
     });
 
-    let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-    {
-        let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
-            label: None,
-            timestamp_writes: None,
-        });
-        cp.set_pipeline(&pipeline);
-        cp.set_bind_group(0, &bg, &[]);
+    // ⏱️ O despacho, `repeticoes` vezes, com o MÍNIMO a valer — e sem a cópia de leitura dentro.
+    let mut melhor = f32::INFINITY;
+    for _ in 0..repeticoes {
+        let t0 = std::time::Instant::now();
+        let mut enc =
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        {
+            let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: None,
+                timestamp_writes: None,
+            });
+            cp.set_pipeline(&pipeline);
+            cp.set_bind_group(0, &bg, &[]);
+            #[allow(clippy::cast_possible_truncation)]
+            cp.dispatch_workgroups((inputs.len() as u32).div_ceil(64), 1, 1);
+        }
+        queue.submit([enc.finish()]);
+        device.poll(wgpu::PollType::wait_indefinitely()).ok();
         #[allow(clippy::cast_possible_truncation)]
-        cp.dispatch_workgroups((inputs.len() as u32).div_ceil(64), 1, 1);
+        let ms = t0.elapsed().as_secs_f32() * 1e3;
+        melhor = melhor.min(ms);
     }
+    let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
     enc.copy_buffer_to_buffer(&saida, 0, &leitura, 0, n.max(16));
     queue.submit([enc.finish()]);
     leitura.slice(..).map_async(wgpu::MapMode::Read, |_| {});
@@ -135,5 +205,5 @@ pub fn evaluate(
         .map(|q| [0, 1, 2, 3].map(|c| f4(q, c * 4)))
         .collect();
     drop(dados);
-    out
+    (out, melhor)
 }

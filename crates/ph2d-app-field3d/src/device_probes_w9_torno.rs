@@ -342,3 +342,7 @@ fn diag_que_celulas_degeneram() {
     }
     println!();
 }
+
+/// ⏱️⭐⭐⭐⭐ **O custo de uma ARESTA lida contra dobrada** — ver o cabeçalho do [`aresta`].
+#[path = "device_probes_w9_aresta.rs"]
+mod aresta;

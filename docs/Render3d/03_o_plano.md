@@ -708,6 +708,74 @@ redacção do segundo gate tinha **duas metades e a de cima era IMPLICADA pela d
 degenerado paga a fita inteira, logo `pior × 2 > inteira` já reprova. *Uma linha que a mutação não
 consegue matar não é lei, é comentário com sintaxe de código.*
 
+### ⛔⛔⛔⛔ E O DESENHO DA WAVE FOI REFUTADO POR MEDIÇÃO: na GPU a poda COBRA divergência
+
+A frase *«a cura do TORNO já existe — para a CPU; a obra que sobra é levá-la ao DISPOSITIVO»*
+supõe que uma poda por ramo-e-limite transfere. ⚠️ **Numa CPU uma poda é grátis** (um `if` que salta
+trabalho); **numa GPU ela cobra DIVERGÊNCIA**, porque threads vizinhas caem em células vizinhas e
+lêem listas **diferentes** — e o hardware serializa isso.
+
+⭐ **O instrumento é a `diag_o_custo_de_uma_aresta_lida_contra_dobrada`**: a MESMA aritmética
+(distância² ponto-segmento, com `e` e `e/‖e‖²` pré-calculados) em seis formas, sobre os mesmos
+`1 048 576` pontos, com a **compilação fora do relógio** (porta nova
+[`ph2d_field_gpu::probe::evaluate_medido`], que existe por causa desta medição: a irmã compila
+dentro da chamada, e cronometrá-la mede o driver). A coluna lida é a **inclinação em `N`**, que
+cancela o despacho, a leitura de volta e a compilação. ⭐ E a 1.ª asserção é que **as seis dão o
+mesmo número** — sem ela a tabela cronometraria leis diferentes.
+
+| forma | ns por aresta por amostra | × a dobrada |
+|---|---:|---:|
+| **dobrada** — literais no texto, desenrolada (a forma da FITA) | `0,00063` | `1,00×` |
+| `storage`, limite em `arrayLength` | `0,00200` | `3,19×` |
+| `storage`, contagem no texto | `0,00209` | `3,33×` |
+| **`uniform`, acesso UNIFORME no grupo** | `0,00099` | **`1,58×`** |
+| `storage`, acesso **DIVERGENTE** (4 listas por grupo) | `0,00760` | **`12,11×`** |
+| `uniform`, acesso **DIVERGENTE** (4 listas por grupo) | `0,01083` | **`17,26×`** |
+
+⭐⭐⭐ **E a curva da divergência é LINEAR no número de listas distintas que um grupo lê** — a
+assinatura de leituras SERIALIZADAS (`N = 32`, pegada `≤ 8 KiB`, que cabe na cache de 1.º nível ⇒ o
+que a coluna move é a divergência e não a memória):
+
+| listas distintas por grupo | `storage` | `uniform` |
+|---:|---:|---:|
+| **1** (uniforme) | `0,110 ms` | **`0,075`** |
+| 2 | `0,167` | `0,169` |
+| 4 | `0,290` | `0,351` |
+| 8 | `0,533` | `1,129` |
+
+⚠️ **E o `uniform` inverte-se:** ele é o mais barato quando o acesso é uniforme (é para isso que um
+banco de constantes existe) e o **mais caro** quando não é (`43×` do próprio D=1 a oito listas,
+contra `8×` do `storage`). *A escolha do tipo de buffer depende da coerência do acesso, não do
+tamanho dos dados.*
+
+### ⇒ A conta, e o que sobra do desenho
+
+Com o factor de poda do censo (`11,8×` na mediana, `3,4×` no pior caso de uma grelha `16×16`) contra
+o imposto de acesso:
+
+| desenho | poda | imposto | ganho |
+|---|---:|---:|---:|
+| **consulta por AMOSTRA** (lista da célula, 4 por grupo) | `11,8×` | `12,1×` | **`0,97×`** |
+| a mesma, no pior caso | `3,4×` | `12,1×` | **`0,28×`** — `3,6×` mais LENTA |
+| **lista por GRUPO, em `uniform`** (mediana) | `11,8×` | `1,58×` | **`7,5×`** |
+| a mesma, no pior caso | `3,4×` | `1,58×` | **`2,2×`** |
+
+⛔⛔⛔ **A consulta por amostra está REFUTADA: a poda compra `11,8×` e a divergência cobra `12,1×`, e
+elas cancelam-se.** *É a wave inteira salva por uma sonda de um dia — e a razão de a nota original
+estar errada não é o número, é o MECANISMO: uma poda por ramo-e-limite é um algoritmo de CPU.*
+
+⭐⭐⭐ **O desenho que sobrevive é o COERENTE POR GRUPO:** uma lista por grupo de threads, num buffer
+`uniform`, indexada pelo `workgroup_id` — e a unidade coerente por construção é o **ladrilho do
+ecrã**, que é exactamente por onde o traçado de CPU já corta. ⇒ com o censo de regiões de MUNDO
+(`16³`: p50 `109` linhas, pior `372`) e o imposto de `1,58×`, a cena `5` aterra em **`~9,5 ms`** na
+mediana e `~22` na pior região, contra `31,96` hoje e um orçamento de `16,7`.
+
+⏳ **E fica a pergunta que o desenho abre, com o mecanismo nomeado:** a granularidade que paga é
+**ladrilho × fatia de profundidade** (o traçado de CPU usa `SLABS = 4`), e numa esfera-marcha as
+threads de um ladrilho estão em `t` diferentes ⇒ *a fatia pode voltar a divergir*. A tabela acima diz
+exactamente quanto isso custa por lista extra, e é essa a medição que a wave seguinte tem de fazer
+antes de escrever um buffer.
+
 ⏳ **O que fica ABERTO, e é honesto dizê-lo com o gate verde:** as `8` cenas que sobram estão
 quase todas entre `17` e `31 ms` contra o orçamento de `16,7` — perto —, e **uma** está longe: a
 `28`, a `63,69 ms`, com `724` instruções, `28` transcendentes, `44` raízes e `95` valores vivos. *Ela

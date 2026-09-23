@@ -54,11 +54,35 @@ const MIN: u32 = 16;
 /// A [`W9`](../../../docs/Render3d/03_o_plano.md) prescreve *«`1920×1080`, **mínimo de N**, A/B
 /// intercalado no MESMO processo»*, e até 2026-09-21 este ficheiro cronometrava **uma** chamada.
 ///
-/// ⚠️ **O `3` é o joelho MEDIDO e não um número escolhido:** a 1.ª chamada de uma cena nova paga a
-/// compilação do programa da placa (`1,4`–`4,4 s` antes da cura da fita inerte) e a 2.ª já é
-/// regime; a 3.ª existe porque, numa janela de calma real, a 2.ª ainda apanhou picos isolados
-/// (cena `24` leu `176,62` e depois `9,84 ms`). *Mais do que três paga relógio sem mover a
-/// mediana.*
+/// # ⛔⛔ A TABELA, e ela NÃO diz que o `3` é o joelho
+///
+/// A 1.ª redacção desta nota afirmava que *«o `3` é o joelho MEDIDO»* a partir de uma OBSERVAÇÃO
+/// (a cena `24` leu `176,62` e depois `9,84 ms`). Uma auditoria (2026-09-23) apanhou-a sem tabela —
+/// o `CLAUDE.md` §0.0 manda escrever o número que a medição deu, **com a tabela ao lado**. Medida
+/// (sonda `diag_quantos_quadros_a_regua_precisa`, o mesmo processo, os `N` intercalados por cena):
+///
+/// | `N` | calma, 1.ª | calma, 2.ª | a `66 %` ociosa | mediana (calma) |
+/// |---:|---:|---:|---:|---:|
+/// | `1` | **`2` de 22** | `2` | `2` | `149,16 ms` |
+/// | `2` | `14` | `13` | `12` | `14,26 ms` |
+/// | `3` | `14` | `13` | `12` | `12,92 ms` |
+/// | `4` | `14` | `13` | **`14`** | `12,86 ms` |
+/// | `5` | `14` | `14` | `14` | `12,86 ms` |
+///
+/// ⭐⭐⭐ **O que ela de facto diz, e é mais do que eu afirmava:**
+///
+/// 1. **`N = 1` está CATASTROFICAMENTE errado** — `2` de `22`, com a pior cena a `1,6 s`. Ele mede
+///    a **compilação do programa da placa**, não o quadro. *É esta linha que justifica a régua, e
+///    ela é estável nas três corridas.*
+/// 2. **O joelho é `2`, não `3`** — na máquina calma a mediana já assenta (`14,26 → 12,92`) e o
+///    veredito não se move.
+/// 3. ⚠️ **E o `N` COMPENSA CARGA:** a `66 %` de ociosidade o `3` lê `12` e só o `4` chega a `14`.
+///    ⇒ *o `3` não é o joelho — é uma amostra de MARGEM, e a tabela mostra que a margem não o torna
+///    imune à carga.* Quem quiser um veredito que não dependa da máquina não sobe o `N`: lê a
+///    ociosidade ao lado, que é o que o [`contexto`] imprime.
+/// 4. ⚠️ **O veredito tem uma oscilação de ±1 cena** entre duas corridas calmas (`14` e `13`) — há
+///    uma cena exactamente na fronteira dos `16,7 ms`. *Uma leitura deste gate a UMA cena da barra
+///    não distingue produto de ruído.*
 const QUADROS_MEDIDOS: usize = 3;
 /// O fundo que as duas sondas usam.
 pub(super) const FUNDO: [u8; 4] = [0, 0, 0, 0];

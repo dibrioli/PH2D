@@ -540,6 +540,14 @@ modelo diz ONDE procurar, não o que uma cura vale.*
 4. ✅ **a régua do gate** — **FECHADA**: `QUADROS_MEDIDOS = 3`, o mínimo, com a 1.ª chamada a ficar
    na tabela ao lado (ela é um preço real e uma régua que a apaga faz uma cura desaparecer com ela).
 
+   ⛔⛔ **E a auditoria de 2026-09-23 apanhou o `3` a chamar-se «o joelho MEDIDO» SEM TABELA.**
+   Medida, ela diz três coisas e nenhuma é essa: **`N = 1` está catastroficamente errado** (`2` de
+   `22`, pior cena a `1,6 s` — ele mede a compilação); **o joelho é `2`**; e ⚠️ **o `N` compensa
+   CARGA** — a `66 %` de ociosidade o `3` lê `12` e só o `4` chega a `14`. ⇒ *o `3` é uma amostra de
+   margem, e a margem não o torna imune à máquina.* ⚠️ E o veredito oscila **±1 cena** entre duas
+   corridas calmas: há uma cena exactamente na fronteira dos `16,7 ms`, logo *uma leitura a uma cena
+   da barra não distingue produto de ruído* — o que reenquadra o `14 de 22` como `13`–`14`.
+
 ### ✅✅✅ O VERMELHO ESTÁ RESOLVIDO (2026-09-22) — `14 de 22`, quatro corridas, VERDE
 
 O dono mandou fundir o vermelho nesta wave e tratá-lo aqui (*«2»*, 20/09). Está fechado:

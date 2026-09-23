@@ -487,4 +487,22 @@
 /// rebobinar reconstroem-na sozinhos. *O que nao tem estado nao pode sobreviver errado.*
 ///
 /// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um v163 e' recusado em voz alta.
-pub(crate) const PROJECT_SCHEMA: u32 = 164;
+///
+/// # ⭐ 164 → 165 (2026-09-22) — a REPETIÇÃO INFINITA (plano 24, W2)
+///
+/// `ScrollRepeat { tile: [f32; 2] }` — quanto mede um ladrilho do fundo. O deslocamento da
+/// paralaxe passa a ser corrigido por um número **INTEIRO** de ladrilhos, que é a lei medida no
+/// alvo (a correcção do `Parallax2D` dele é sempre um múltiplo exacto do `repeat_size`) e é o que
+/// faz a costura não poder abrir: a imagem a seguir ao salto é a mesma. ⛔ **Somar um RESTO faria
+/// o erro de `f32` acumular**, e ao décimo milésimo ladrilho a costura estava aberta.
+///
+/// ⚠️ **Componente SEPARADO e não um campo do `ScrollFactor`** — a razão é a POPULAÇÃO: quase todo
+/// objecto com paralaxe **não** repete (um primeiro plano, uma nuvem solta), e um campo ali seria
+/// um knob morto em todos eles. É a mesma lei que separa o `CameraFollow` do `GameCamera`.
+///
+/// ⚠️ **O valor de fábrica é `[0, 0]` e não corrige nada** ⇒ anexar e não tocar deixa a cena
+/// byte-idêntica, e o zero é a ausência (a mesma convenção do alvo) — é ela que permite repetir só
+/// em X, que é o caso de quase todo fundo.
+///
+/// ⛔ **Sem degrau de migração**, pela mesma decisão — um v164 é recusado em voz alta.
+pub(crate) const PROJECT_SCHEMA: u32 = 165;

@@ -241,7 +241,10 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // registado novo** (`ScrollFactor`), logo os três contadores do registo SOBEM `+1`.
         // ⚠️ **A tripla NÃO vê este degrau** — a VIGÉSIMA vez: um componente registado viaja num
         // `ComponentBlob`, que para ela é opaco; ela mede o `FlipDoc` e a `VecScene`.
-        (164, 13, 22),
+        // ⭐ **PROJECT 164→165** (2026-09-22): a REPETIÇÃO (plano 24, W2) — ⭐ **UM componente
+        // registado novo** (`ScrollRepeat`), logo os três contadores do registo SOBEM `+1`.
+        // ⚠️ **A tripla NÃO vê este degrau** — a VIGÉSIMA PRIMEIRA vez.
+        (165, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

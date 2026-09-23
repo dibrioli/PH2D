@@ -44,4 +44,10 @@ pub(super) fn register_camera(reg: &mut ComponentRegistry) {
     // vista (`autorada + centro·(1 − k)`), logo não há um bit para guardar — um scrub e um
     // rebobinar reconstroem-na sozinhos. *O que não tem estado não pode sobreviver errado.*
     reg.register_default::<crate::ScrollFactor>("ph2d::ecs::ScrollFactor");
+    // ⭐⭐ **A REPETIÇÃO** (plano 24, W2) — irmã do de cima e da mesma família pela mesma razão: o
+    // número dela corrige o deslocamento que a CÂMERA impõe. ⛔ Ela é um componente SEPARADO e não
+    // um campo do `ScrollFactor`, e a razão é a populacao: quase todo objecto com paralaxe **não**
+    // repete (um primeiro plano, uma nuvem solta), e um campo a mais ali seria um knob morto em
+    // todos eles — a mesma lei que separa o `CameraFollow` do `GameCamera`, três linhas acima.
+    reg.register_default::<crate::ScrollRepeat>("ph2d::ecs::ScrollRepeat");
 }

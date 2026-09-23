@@ -87,6 +87,7 @@ pub mod scene;
 /// ⭐⭐⭐ **A PARALAXE — um número por objecto** (plano 24, W1). Módulo irmão, append-only: a lei é
 /// pura e mora no próprio tipo, e quem a corre é a ponte do `ph2d-app-components`.
 pub mod scroll_factor;
+pub mod scroll_repeat;
 /// ⭐⭐⭐ **A PEÇA DA ESCULTURA na árvore do editor** — ver [`sculpt_piece_ref`].
 pub mod sculpt_piece_ref;
 pub mod sequence;
@@ -197,6 +198,7 @@ pub use sampling::{
     resolve_texture_repeat,
 };
 pub use scroll_factor::ScrollFactor;
+pub use scroll_repeat::{ScrollRepeat, envolve_eixo};
 pub use sculpt_piece_ref::Sculpt3dPieceRef;
 pub use sequence::SequencePlayer;
 pub use sibling_order::{

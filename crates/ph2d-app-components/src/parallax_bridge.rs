@@ -42,7 +42,7 @@
 //! implementa é aquela ponte.*
 
 use ph2d_core::Vec2;
-use ph2d_ecs::{Entity, ScrollFactor, SimWorld, Transform, UiCanvas};
+use ph2d_ecs::{Entity, ScrollFactor, ScrollRepeat, SimWorld, Transform, UiCanvas};
 use ph2d_preview_drive::{Driven, Driver, PreviewDrive};
 
 /// **Quantos objectos da cena têm paralaxe** — o número que o painel mostra.
@@ -61,12 +61,12 @@ pub fn drive_parallax(
     centro: Option<[f32; 2]>,
     drive: &mut PreviewDrive,
 ) -> usize {
-    let antes: Vec<(Entity, Transform, ScrollFactor)> = {
+    let antes: Vec<(Entity, Transform, ScrollFactor, Option<ScrollRepeat>)> = {
         let world = sim.world_mut();
         world
-            .query_filtered::<(Entity, &Transform, &ScrollFactor), bevy_ecs::prelude::Without<UiCanvas>>()
+            .query_filtered::<(Entity, &Transform, &ScrollFactor, Option<&ScrollRepeat>), bevy_ecs::prelude::Without<UiCanvas>>()
             .iter(world)
-            .map(|(e, t, k)| (e, *t, *k))
+            .map(|(e, t, k, r)| (e, *t, *k, r.copied()))
             .collect()
     };
     let Some(centro) = centro else {
@@ -75,16 +75,24 @@ pub fn drive_parallax(
         return 0;
     };
     let mut n = 0;
-    for (entity, era, cfg) in antes {
+    for (entity, era, cfg, rep) in antes {
         if cfg.e_neutro() {
             // ⛔ `k = 1` é o objecto do mundo: não se escreve um bit e **não se declara**, senão
             // toda cena com o componente anexado passaria a ter uma entrada viva no ledger.
             continue;
         }
         let autorada = base_autorada(drive, entity, era);
-        let p = cfg.desloca([autorada.translation.x, autorada.translation.y], centro);
+        // ⭐⭐ **A REPETIÇÃO envolve o DESLOCAMENTO, nunca a soma** (plano 24, W2): a correcção é um
+        // número INTEIRO de ladrilhos, e um ladrilho é uma grandeza do deslocamento. Envolver a
+        // pose somada envolveria a posição que o artista autorou, e o fundo saltaria para a origem
+        // assim que ele o arrastasse para além de meio ladrilho.
+        //
+        // ⚠️ **Sem o componente a composição é a IDENTIDADE**, e não um caso à parte: a ausência é
+        // «não repete», que é o que quase todo objecto com paralaxe faz.
+        let d = cfg.deslocamento(centro);
+        let d = rep.map_or(d, |r| r.envolve(d));
         let agora = Transform {
-            translation: Vec2::new(p[0], p[1]),
+            translation: Vec2::new(autorada.translation.x + d[0], autorada.translation.y + d[1]),
             // ⚠️ O resto vem do VIVO e não do autorado: esta ponte só escreve a translação, e
             // roubar a rotação ao autorado apagaria o que outro motor tivesse escrito.
             ..era

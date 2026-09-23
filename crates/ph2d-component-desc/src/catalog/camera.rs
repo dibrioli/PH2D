@@ -94,6 +94,9 @@ const SHAKE_SOURCE_FIELDS: &[FieldDesc] = &[
 /// campo e um override gravado sobre metade dele não teria onde ser aplicado. *O descritor espelha
 /// a ESTRUTURA, nunca o layout do painel* — que aqui até é mesmo uma fileira com dois números.
 const SCROLL_FIELDS: &[FieldDesc] = &[f(0, "component.field.scroll_fields.0", K::Vec2)];
+/// ⚠️ Em METROS e não em pixels: o `Transform` desta casa já é métrico, e a única px→m é a do
+/// projecto (`pixels_per_meter`).
+const REPEAT_FIELDS: &[FieldDesc] = &[f(0, "component.field.repeat_fields.0", K::Vec2)];
 
 /// Os descritores da família.
 pub const DESCS: &[ComponentDesc] = &[
@@ -149,6 +152,16 @@ pub const DESCS: &[ComponentDesc] = &[
         C::Camera,
         O::ANY,
         SCROLL_FIELDS,
+    ),
+    // ⭐⭐ **A REPETIÇÃO** (plano 24, W2) — *quanto mede um ladrilho deste fundo*. ⛔ Irmã e não um
+    // campo da de cima: quase todo objecto com paralaxe não repete, e um campo ali seria um knob
+    // morto em todos eles.
+    D::authored(
+        "ph2d::ecs::ScrollRepeat",
+        "component.scroll_repeat.name",
+        C::Camera,
+        O::ANY,
+        REPEAT_FIELDS,
     ),
     // ⭐⭐⭐ **QUEM EXPLODE** (suplente #25) — e ele mora na família da CÂMERA apesar de nunca viver
     // numa: *o assunto é o abanão*, e pô-lo na família LÓGICA separaria as duas metades de uma lei

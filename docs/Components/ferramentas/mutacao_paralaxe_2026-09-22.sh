@@ -13,8 +13,23 @@ TMP="$(mktemp -d)"
 FALHAS=0
 TOTAL=0
 
-guarda()   { cp "$1" "$TMP/$(basename "$1").$2"; }
-restaura() { cp "$TMP/$(basename "$1").$2" "$1"; touch "$1"; }
+guarda()   { cp "$1" "$TMP/$(basename "$1").$2"; MUTADO="$1"; MUTADO_TAG="$2"; }
+restaura() { cp "$TMP/$(basename "$1").$2" "$1"; touch "$1"; MUTADO=""; }
+
+# ⛔⛔ **A REDE, e ela nasceu de um defeito MEDIDO (2026-09-22):** canalizar este arnes por `head`
+# mata-o com SIGPIPE **entre o `muta` e o `restaura`**, e o produto fica MUTADO na arvore. A
+# corrida seguinte leu «ancora aparece 0 vezes» — o arnes a ser honesto —, mas uma que nao tocasse
+# naquela ancora teria corrido a suite inteira sobre codigo mutado e chamado ao resultado verde.
+# ⚠️ *Um arnes que restaura no caminho feliz nao restaura; ele restaura quando NADA corre mal.*
+MUTADO=""
+MUTADO_TAG=""
+ao_sair() {
+  if [ -n "$MUTADO" ]; then
+    echo "⚠️  interrompido com $MUTADO mutado — a restaurar"
+    cp "$TMP/$(basename "$MUTADO").$MUTADO_TAG" "$MUTADO"; touch "$MUTADO"
+  fi
+}
+trap ao_sair EXIT INT TERM PIPE
 
 muta() { # ficheiro vezes antigo novo
   python3 - "$1" "$2" "$3" "$4" <<'PY'
@@ -72,20 +87,23 @@ echo "=== A LEI: o declive e' 1 − k (a tabela MEDIDA no alvo) ==="
 # PARADO no mundo (o oposto de um fundo de paralaxe) e `k = 1` colava-o a` camera.
 bloco "o declive vira k e nao 1 − k" ph2d-app-components o_declive_e_um_menos_k \
   "$LEI" 1 \
-  '            autorada[0] + centro[0] * (1.0 - self.k[0]),' \
-  '            autorada[0] + centro[0] * self.k[0],'
+  '            centro[0] * (1.0 - self.k[0]),' \
+  '            centro[0] * self.k[0],'
 
 bloco "os dois eixos partilham o k do x" ph2d-app-components os_dois_eixos \
   "$LEI" 1 \
-  '            autorada[1] + centro[1] * (1.0 - self.k[1]),' \
-  '            autorada[1] + centro[1] * (1.0 - self.k[0]),'
+  '            centro[1] * (1.0 - self.k[1]),' \
+  '            centro[1] * (1.0 - self.k[0]),'
 
 # ⛔ A referencia deixa de ser a ORIGEM DO MUNDO e passa a ser a propria peca — a forma do Flip,
 # que TELEPORTA para o centro da vista um fundo autorado num canto (ver o cabecalho da lei).
+# ⭐⭐ Depois da W2 a lei NAO consegue exprimir a forma do Flip — a `deslocamento(centro)` nao ve' a
+# pose autorada, e a assinatura proibe-a. Ela so' pode voltar por quem COMPOE, e e' la' que a
+# mutacao mora.
 bloco "a referencia vira a propria peca (a forma do Flip)" ph2d-app-components o_deslocamento_nao_depende \
-  "$LEI" 1 \
-  '            autorada[0] + centro[0] * (1.0 - self.k[0]),' \
-  '            autorada[0] + (centro[0] - autorada[0]) * (1.0 - self.k[0]),'
+  "$PONTE" 1 \
+  '        let d = cfg.deslocamento(centro);' \
+  '        let d = cfg.deslocamento([centro[0] - autorada.translation.x, centro[1] - autorada.translation.y]);'
 
 bloco "o neutro deixa de ser 1" ph2d-app-components o_neutro \
   "$LEI" 1 \
@@ -112,8 +130,8 @@ bloco "sem camera a vista vira a origem" ph2d-app-components sem_camera_de_jogo 
 # escrevem um por cima do outro.
 bloco "o HUD entra na populacao" ph2d-app-components um_hud_nao_e_tocado \
   "$PONTE" 1 \
-  '            .query_filtered::<(Entity, &Transform, &ScrollFactor), bevy_ecs::prelude::Without<UiCanvas>>()' \
-  '            .query::<(Entity, &Transform, &ScrollFactor)>()'
+  '            .query_filtered::<(Entity, &Transform, &ScrollFactor, Option<&ScrollRepeat>), bevy_ecs::prelude::Without<UiCanvas>>()' \
+  '            .query::<(Entity, &Transform, &ScrollFactor, Option<&ScrollRepeat>)>()'
 
 # ⛔ Esta ponte so' escreve a TRANSLACAO: roubar o resto ao autorado apagaria o que outro motor
 # tivesse escrito no mesmo quadro.
@@ -155,6 +173,56 @@ bloco "o last_written devolve o AUTORADO" ph2d-app-components o_declive_e_um_men
   "$LEDGER" 1 \
   '        self.memo.get(&(entity, driver)).map(|e| e.last_written)' \
   '        self.memo.get(&(entity, driver)).map(|e| e.authored)'
+
+echo "=== A REPETICAO INFINITA (W2) ==="
+
+REP=crates/ph2d-ecs/src/scroll_repeat.rs
+
+# ⛔⛔ A lei inteira: somar um RESTO em vez de um INTEIRO de ladrilhos. E' o que faz o erro de `f32`
+# acumular, e ao decimo milesimo ladrilho a costura esta' aberta.
+bloco "a correccao vira um RESTO" ph2d-app-components a_correccao_e_um_numero_inteiro \
+  "$REP" 1 \
+  '    d - tile * (d / tile).round()' \
+  '    d - tile * (d / tile)'
+
+# ⛔ A JANELA e' a nossa divergencia DECLARADA (centrada), e ela e' load-bearing: com `floor` o
+# valor corrigido cresce sempre para um lado e as reguas de `± t/2` deixam de descrever a lei.
+bloco "a janela deixa de ser centrada" ph2d-app-components a_repeticao_nao_envolve \
+  "$REP" 1 \
+  '    d - tile * (d / tile).round()' \
+  '    d - tile * (d / tile).floor()'
+
+# ⛔ O `0` e' a AUSENCIA e nao um erro — sem a guarda ele divide por zero e a pose vira `NaN`.
+bloco "o ladrilho ZERO passa a corrigir" ph2d-app-components um_ladrilho_zero \
+  "$REP" 1 \
+  '    if !(tile > 0.0) || !tile.is_finite() || !d.is_finite() {' \
+  '    if false {'
+
+# ⛔ A composicao morre: o componente existe, tem lei, tem gates — e a ponte ignora-o.
+bloco "a ponte ignora o componente" ph2d-app-components a_fase_e_a_mesma \
+  "$PONTE" 1 \
+  '        let d = rep.map_or(d, |r| r.envolve(d));' \
+  '        let d = { let _ = rep; d };'
+
+# ⛔⛔ A repeticao envolve a SOMA e nao o DESLOCAMENTO ⇒ ela envolve tambem a pose que o artista
+# autorou, e o fundo salta para a origem assim que ele o arrasta para alem de meio ladrilho.
+bloco "a repeticao envolve a POSE somada" ph2d-app-components a_repeticao_nao_envolve \
+  "$PONTE" 1 \
+  '        let d = rep.map_or(d, |r| r.envolve(d));
+        let agora = Transform {
+            translation: Vec2::new(autorada.translation.x + d[0], autorada.translation.y + d[1]),' \
+  '        let agora = Transform {
+            translation: {
+                let p = [autorada.translation.x + d[0], autorada.translation.y + d[1]];
+                let p = rep.map_or(p, |r| r.envolve(p));
+                Vec2::new(p[0], p[1])
+            },'
+
+# ⛔⛔ **A MUTACAO «a desloca deixa de delegar» MORREU com a premissa dela, e fica registada:** ela
+# defendia a delegacao entre `desloca` e `deslocamento` (duas respostas a` mesma pergunta). A W2
+# fez a `deslocamento` ser a unica lei e a `desloca` ficou **sem um chamador de produto** — `pub`
+# numa crate de BIBLIOTECA e' API, e API sem chamador e' divida ⇒ foi apagada. *A delegacao deixou
+# de poder divergir porque um dos dois lados deixou de existir*, que e' mais forte que a mutacao.
 
 echo "=== A ORDEM no quadro, e o que ATRAVESSA ==="
 

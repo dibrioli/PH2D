@@ -89,19 +89,21 @@ impl ScrollFactor {
         self.k == Self::NEUTRO
     }
 
-    /// ⭐ **A LEI, numa porta só** — o deslocamento que a vista impõe a uma pose autorada.
+    /// ⭐⭐⭐ **O DESLOCAMENTO sozinho** — `centro · (1 − k)`, sem a pose.
     ///
-    /// `saida = autorada + centro · (1 − k)`, por eixo. Ver o cabeçalho para a referência ser a
-    /// origem do mundo.
+    /// ⚠️ **Ele existe porque a REPETIÇÃO envolve o deslocamento e não a posição** (a W2 do plano
+    /// 24): a lei dela é *«corrige por um número INTEIRO de ladrilhos»*, e um ladrilho é uma
+    /// grandeza do deslocamento. Somar a pose primeiro e envolver a soma envolveria também a
+    /// posição que o artista autorou — o fundo saltaria para a origem assim que ele o arrastasse
+    /// para além de meio ladrilho.
     ///
-    /// ⚠️ **Ela é PURA e não vê o mundo**: é isso que a torna gateável sem montar uma cena, e é
-    /// isso que faz a ponte ter um chamador só. *Uma lei escrita na ponte é uma lei que o gate da
-    /// ponte tem de reconstruir para a medir.*
+    /// ⭐ **E a `desloca` DELEGA-lhe**, e não o contrário: escrita duas vezes, o dia em que a lei
+    /// mudasse deixava a repetição a corrigir um deslocamento que já não é o que o produto aplica.
     #[must_use]
-    pub fn desloca(&self, autorada: [f32; 2], centro: [f32; 2]) -> [f32; 2] {
+    pub fn deslocamento(&self, centro: [f32; 2]) -> [f32; 2] {
         [
-            autorada[0] + centro[0] * (1.0 - self.k[0]),
-            autorada[1] + centro[1] * (1.0 - self.k[1]),
+            centro[0] * (1.0 - self.k[0]),
+            centro[1] * (1.0 - self.k[1]),
         ]
     }
 }

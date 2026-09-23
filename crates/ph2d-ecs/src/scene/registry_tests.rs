@@ -209,7 +209,13 @@ fn register_ecs_components_populates_registry() {
     //   uma lei**: nao ha' `ScrollFactorRuntime`, porque a pose deslocada e' funcao PURA da vista
     //   (`autorada + centro·(1 − k)`) -- nao ha' um bit para guardar, e um scrub reconstroi-a.
     //   Quem integrar conta o DELTA, nunca o literal.
-    assert_eq!(reg.len(), 104);
+    // ⚠️ **2026-09-22: `104` -> `105`, delta +1** -- o `ScrollRepeat` (a REPETICAO, plano 24 W2):
+    //   o deslocamento corrigido por um numero INTEIRO de ladrilhos. ⛔ **Componente SEPARADO e
+    //   nao um campo do `ScrollFactor`**, e a razao e' a POPULACAO: quase todo objecto com
+    //   paralaxe nao repete, e um campo ali seria um knob morto em todos eles. Quem integrar
+    //   conta o DELTA, nunca o literal.
+    assert_eq!(reg.len(), 105);
+    assert!(reg.get_by_name("ph2d::ecs::ScrollRepeat").is_some());
     assert!(reg.get_by_name("ph2d::ecs::ScrollFactor").is_some());
     assert!(reg.get_by_name("ph2d::ecs::WeaponFire").is_some());
     assert!(reg.get_by_name("ph2d::ecs::CameraShake").is_some());

@@ -7,7 +7,7 @@
 //! ⛔ **O `0,5` não discrimina** (`1 − 0,5 = 0,5`): quem decide são o `0`, o `1` e o `2`.
 
 use ph2d_core::Vec2;
-use ph2d_ecs::{Fit, ScrollFactor, SimWorld, Transform, UiCanvas};
+use ph2d_ecs::{Fit, ScrollFactor, ScrollRepeat, SimWorld, Transform, UiCanvas};
 use ph2d_preview_drive::{Driven, Driver, PreviewDrive};
 
 use super::{drive_parallax, parallax_count};
@@ -227,14 +227,14 @@ fn o_neutro_declarado_e_a_identidade_da_lei() {
             k: ScrollFactor::NEUTRO,
         };
         assert_eq!(
-            neutro.desloca(autorada, centro),
-            autorada,
+            neutro.deslocamento(centro),
+            [0.0, 0.0],
             "o NEUTRO desloca com a vista em {centro:?}: ele deixou de querer dizer \
              «este objecto e' do MUNDO»"
         );
         assert_eq!(
-            ScrollFactor::default().desloca(autorada, centro),
-            autorada,
+            ScrollFactor::default().deslocamento(centro),
+            [0.0, 0.0],
             "um `ScrollFactor` acabado de criar desloca: o componente anexado e nao tocado deixa \
              de ser inerte"
         );
@@ -242,9 +242,10 @@ fn o_neutro_declarado_e_a_identidade_da_lei() {
     // O CONTROLO: um `k` de fundo move-se — sem ele as asserções acima passariam sobre uma lei
     // que nunca desloca nada.
     assert_ne!(
-        ScrollFactor { k: [0.5, 0.5] }.desloca(autorada, [400.0, 0.0]),
-        autorada
+        ScrollFactor { k: [0.5, 0.5] }.deslocamento([400.0, 0.0]),
+        [0.0, 0.0]
     );
+    let _ = autorada;
 }
 
 /// ⭐⭐⭐ **A REFERÊNCIA é a ORIGEM DO MUNDO, e não a peça** — o gate que separa esta lei da forma
@@ -379,4 +380,171 @@ fn o_deslocamento_nao_depende_do_angulo_da_peca() {
     // O CONTROLO: o deslocamento não é zero — sem ele as duas asserções acima passariam sobre uma
     // lei que nunca desloca nada.
     assert!(deltas[0].length() > 1.0, "delta = {:?}", deltas[0]);
+}
+
+// ══ A REPETIÇÃO INFINITA (plano 24, W2) ════════════════════════════════════════════════════════
+
+fn cena_rep(k: [f32; 2], tile: [f32; 2], pose: Transform) -> (SimWorld, ph2d_ecs::Entity) {
+    let mut sim = SimWorld::default();
+    let e = sim
+        .world_mut()
+        .spawn((ScrollFactor { k }, ScrollRepeat { tile }, pose))
+        .id();
+    (sim, e)
+}
+
+/// ⭐⭐⭐ **A CORRECÇÃO É UM NÚMERO INTEIRO DE LADRILHOS** — a lei medida no alvo, e a única metade
+/// dela que a sonda de facto gravou.
+///
+/// ⚠️ **É isto que faz a costura não poder abrir:** a imagem a seguir ao salto é a mesma. ⛔ Somar
+/// um RESTO faria o erro de `f32` acumular, e ao décimo milésimo ladrilho a costura estaria aberta.
+#[test]
+fn a_correccao_e_um_numero_inteiro_de_ladrilhos() {
+    let tile = 256.0_f32;
+    let rep = ScrollRepeat {
+        tile: [tile, tile],
+    };
+    let mut corrigiu = 0;
+    for i in -400_i16..=400 {
+        let d = f32::from(i) * 37.0; // ⚠️ um passo que NÃO divide o ladrilho, de propósito
+        let e = rep.envolve([d, -d]);
+        for (bruto, envolvido) in [(d, e[0]), (-d, e[1])] {
+            let n = (bruto - envolvido) / tile;
+            assert!(
+                (n - n.round()).abs() < 1e-3,
+                "a correccao de {bruto} nao e' um inteiro de ladrilhos: {n}"
+            );
+            if n.abs() > 0.5 {
+                corrigiu += 1;
+            }
+        }
+    }
+    // O CONTROLO: a varredura de facto passou por ladrilhos — sem ele as asserções acima passariam
+    // sobre uma lei que nunca corrige nada.
+    assert!(corrigiu > 700, "so' {corrigiu} correccoes: a varredura nao sai do 1.o ladrilho");
+}
+
+/// ⭐⭐⭐ **A FASE é a mesma ao DÉCIMO MILÉSIMO ladrilho** — o gate que o plano encomendou.
+///
+/// Com `k = 0,5` e um ladrilho de `256`, a câmera avança `512` por ladrilho. A varredura vai a
+/// `10 240` unidades (**vinte** ladrilhos) e a pose tem de cair na mesma fase — ⚠️ **módulo o
+/// ladrilho**, que é o que «a mesma fase» quer dizer: `+128` e `−128` são o MESMO ponto de uma
+/// imagem que se repete a cada `256`, e uma régua que os comparasse como números crus acusaria a
+/// lei certa.
+///
+/// # ⭐ E o tecto de `f32` está MEDIDO, e não é da lei
+///
+/// A fase mantém-se exacta até câmeras de `5 × 10¹⁰` para uma fase de zero; a que se perde primeiro
+/// é a **coordenada da câmera** — a `5,12 × 10⁹` um `f32` já não consegue guardar um desvio de
+/// `256` sobre ela, e o `+256` do meio-ladrilho evapora ANTES de chegar à lei. *O limite não é o
+/// envolvimento; é representar onde a câmera está.*
+#[test]
+fn a_fase_e_a_mesma_ao_decimo_milesimo_ladrilho() {
+    let tile = 256.0_f32;
+    let autorada = pose_em(-3.0, 7.0);
+    for fase_inicial in [0.0_f32, 256.0, 61.0] {
+        let mut poses = Vec::new();
+        for n in 0_i16..=20 {
+            let (mut sim, e) = cena_rep([0.5, 1.0], [tile, 0.0], autorada);
+            let mut drive = PreviewDrive::default();
+            let centro = [fase_inicial + 512.0 * f32::from(n), 0.0];
+            drive_parallax(&mut sim, Some(centro), &mut drive);
+            poses.push(sim.world().get::<Transform>(e).expect("pose").translation.x);
+        }
+        for (n, p) in poses.iter().enumerate() {
+            let delta = ph2d_ecs::envolve_eixo(p - poses[0], tile);
+            assert!(
+                delta.abs() < 1e-3,
+                "fase {fase_inicial}: ao ladrilho {n} a pose e' {p} contra {} — a costura ABRIU \
+                 (desvio de {delta} dentro do ladrilho)",
+                poses[0]
+            );
+            // ⭐⭐⭐ **A METADE ABSOLUTA, e ela nasceu de uma MUTAÇÃO SOBREVIVENTE:** apagar a
+            // repetição da ponte deixava a asserção de cima VERDE, porque a varredura anda
+            // exactamente um ladrilho por passo e a diferença envolve para zero. *Uma régua que
+            // compara a fase MÓDULO o ladrilho não distingue «a costura fechou» de «o fundo fugiu
+            // um número inteiro de ladrilhos»* — e fugir é precisamente o que a repetição existe
+            // para impedir. ⚠️ O controlo do fim mede outra CENA (sem o componente): ele prova que
+            // a varredura mexe, nunca que é o componente que a segura.
+            assert!(
+                (p - autorada.translation.x).abs() <= tile / 2.0 + 1e-3,
+                "fase {fase_inicial}: ao ladrilho {n} a pose FUGIU para {p} — o fundo deixou de \
+                 ser infinito (autorada {}, meio ladrilho {})",
+                autorada.translation.x,
+                tile / 2.0
+            );
+        }
+        // ⭐ O CONTROLO: **sem** a repetição a mesma varredura afasta-se `5 120` unidades. Sem ele
+        // este gate passaria sobre uma paralaxe que nunca desloca nada.
+        let (mut sim, e) = cena([0.5, 1.0], autorada);
+        let mut drive = PreviewDrive::default();
+        drive_parallax(&mut sim, Some([fase_inicial + 512.0 * 20.0, 0.0]), &mut drive);
+        let solto = sim.world().get::<Transform>(e).expect("pose").translation.x;
+        assert!(
+            (solto - poses[0]).abs() > 1000.0,
+            "sem repeticao a pose devia ter fugido, e leu {solto} contra {}",
+            poses[0]
+        );
+    }
+}
+
+/// ⛔ **A ausência e o `0` são a mesma coisa** — a convenção do alvo, e é ela que permite repetir
+/// só em X, que é o caso de quase todo fundo.
+#[test]
+fn um_ladrilho_zero_nao_corrige_e_o_eixo_livre_desloca() {
+    let autorada = pose_em(0.0, 0.0);
+    let centro = [4000.0_f32, 4000.0];
+    // Repete em X (ladrilho 256) e NÃO em Y.
+    let (mut sim, e) = cena_rep([0.5, 0.5], [256.0, 0.0], autorada);
+    let mut drive = PreviewDrive::default();
+    drive_parallax(&mut sim, Some(centro), &mut drive);
+    let t = *sim.world().get::<Transform>(e).expect("pose");
+    assert!(
+        t.translation.x.abs() <= 128.0 + 1e-3,
+        "o eixo REPETIDO fugiu do ladrilho: x = {}",
+        t.translation.x
+    );
+    assert!(
+        (t.translation.y - 2000.0).abs() < 1e-2,
+        "o eixo LIVRE deixou de deslocar: y = {} contra 2000",
+        t.translation.y
+    );
+    // E o CONTROLO da própria convenção: sem o componente os dois eixos fogem.
+    let (mut sim2, e2) = cena([0.5, 0.5], autorada);
+    let mut drive2 = PreviewDrive::default();
+    drive_parallax(&mut sim2, Some(centro), &mut drive2);
+    let t2 = *sim2.world().get::<Transform>(e2).expect("pose");
+    assert!((t2.translation.x - 2000.0).abs() < 1e-2, "x = {}", t2.translation.x);
+}
+
+/// ⭐⭐ **A repetição não toca na POSE AUTORADA** — o artista continua a poder arrastar o fundo, e o
+/// que ele arrasta é o documento.
+///
+/// ⚠️ É esta a razão de a lei envolver o DESLOCAMENTO e não a soma: envolver a soma envolveria
+/// também o que ele autorou, e o fundo saltaria para a origem assim que ele o puxasse para além de
+/// meio ladrilho.
+#[test]
+fn a_repeticao_nao_envolve_a_pose_autorada() {
+    let tile = 256.0_f32;
+    // ⚠️ A pose autorada está MUITO para lá de meio ladrilho, que é onde a lei errada morde.
+    let autorada = pose_em(4000.0, 0.0);
+    let (mut sim, e) = cena_rep([0.5, 1.0], [tile, 0.0], autorada);
+    let mut drive = PreviewDrive::default();
+    drive_parallax(&mut sim, Some([0.0, 0.0]), &mut drive);
+    assert_eq!(
+        *sim.world().get::<Transform>(e).expect("pose"),
+        autorada,
+        "com a camera na origem a repeticao mexeu na pose que o artista autorou"
+    );
+    // E com a câmera longe, o que se vê é a autorada mais uma fase — nunca a autorada envolvida.
+    drive_parallax(&mut sim, Some([10_000.0, 0.0]), &mut drive);
+    let x = sim.world().get::<Transform>(e).expect("pose").translation.x;
+    assert!(
+        (x - 4000.0).abs() <= 128.0 + 1e-3,
+        "a pose fugiu do ladrilho a` volta do AUTORADO: {x} contra 4000 ± 128"
+    );
+    let Some(Driven::ParallaxPose(memo)) = drive.authored(e.to_bits(), Driver::ParallaxPose) else {
+        panic!("tinha de continuar a ser conduzido");
+    };
+    assert_eq!(memo, autorada, "o autorado foi envolvido");
 }

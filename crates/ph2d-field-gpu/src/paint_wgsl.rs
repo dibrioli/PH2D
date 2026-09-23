@@ -276,7 +276,7 @@ mod extraccao_tests {
         );
         // ⚠️ **O FIO, e não só a porta.** Sem esta metade, apagar o `.replace` do irmão deixa o
         // gate verde e o shader com um `{CURVATURA}` literal lá dentro.
-        let montagem = include_str!("paint.rs");
+        let montagem = include_str!("paint_fonte.rs");
         assert!(
             montagem.contains(r#".replace("{CURVATURA}", &{"#),
             "ninguém substitui a marca `{{CURVATURA}}` na montagem do shader"

@@ -94,7 +94,15 @@ fn o_gemeo_da_borda_mole_esta_ligado_no_dispositivo() {
         include_str!("../../ph2d-field-gpu/src/paint_wgsl_sondas.rs"),
         include_str!("../../ph2d-field-gpu/src/paint_wgsl_mole.rs"),
     );
-    let despacho = include_str!("../../ph2d-field-gpu/src/paint.rs");
+    // ⚠️⚠️ **E o DESPACHO também são dois ficheiros desde 2026-09-23** (o mesmo tecto de LOC, agora
+    // no `paint.rs`): a MONTAGEM do texto saiu para o `paint_fonte.rs` e o DESPACHO do passe ficou.
+    // ⇒ este gate lê a soma dos dois pela MESMA razão que lê a soma do corpo — *ler só um deles
+    // fazia-o ficar verde sobre a metade que mudou de sítio*, e foi exactamente isso que ele
+    // reprovou no dia do corte. ⭐ Falhou ALTO, que é a espécie barata desta família.
+    let despacho = concat!(
+        include_str!("../../ph2d-field-gpu/src/paint.rs"),
+        include_str!("../../ph2d-field-gpu/src/paint_fonte.rs"),
+    );
 
     // (0) ⛔⛔ **E as TRÊS metades são de facto CONCATENADAS.** *Um fragmento declarado que o
     // `format!` não junta compila, passa em todo gate de texto, e não chega ao shader.*

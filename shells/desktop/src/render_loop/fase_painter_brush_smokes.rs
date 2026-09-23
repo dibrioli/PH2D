@@ -50,6 +50,36 @@ impl crate::App {
             }
         }
 
+        // Composite smoke (`PH2D_COMPOSITE_SMOKE=1`): a pilha da foto do dono — a tela é uma IMAGEM
+        // gerada e a pilha arma-se no bind (`painter_bridge_phases`). O "uma vez" vive na cena.
+        if let Some(hero) = hero_screen.as_mut() {
+            let ppm = hero.project.pixels_per_meter;
+            if let Some(bits) = ph2d_app_painter::composite_smoke::spawn_if_enabled(
+                sim,
+                renderer,
+                asset_db,
+                *next_import_cell,
+                ppm,
+                atlas_asset_map,
+            ) {
+                *next_import_cell = next_import_cell.saturating_add(1);
+                hero.gizmo.replace_selection(Some(bits));
+                hero.bus
+                    .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
+                        kind: ph2d_editor_core::ViewFocusKind::Selected,
+                    });
+                // ⚠️ Esta cena abre com o Painter NA MÃO (ordem do dono: «pronto para testarmos»)
+                // — o mesmo pedido que o botão faz, e é ele que faz o bind armar a pilha. O botão
+                // só existe com as Image Tools LIGADAS (a `activation_gate` recusa sem elas), logo
+                // a cena liga-as primeiro, que é o que o artista faz à mão.
+                hero.image_edit.mode_on = true;
+                hero.bus
+                    .push(ph2d_editor_core::action_bus::EditorAction::ActivateTool {
+                        tool_id: "painter",
+                    });
+            }
+        }
+
         // Wet Paint smoke (`PH2D_WETPAINT_SMOKE=1`): the impasto smoke's exact dance for the fluid
         // mode (ADR-0134 W1) — spawn, seat the selection, arm in `painter_bridge`.
         if let Some(hero) = hero_screen.as_mut()

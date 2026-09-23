@@ -30,6 +30,9 @@ const LINE: &str = include_str!("../src/line_smoke.rs");
 // que vale para os seis. ⛔ Na metade POSITIVA ele nao entra: como o `mask`, o taper nao tem
 // `arm_brush_once` de proposito (ele da o canvas e o roteiro, e mais nada).
 const TAPER: &str = include_str!("../src/taper_smoke.rs");
+// ⚠️ O `composite` (2026-09-23) entra na metade NEGATIVA pela mesma razão do taper. Na POSITIVA não
+// entra: a tela dele é uma IMAGEM gerada (`spawn_rgba`), não o `spawn_blank_canvas` que ela procura.
+const COMPOSITE: &str = include_str!("../src/composite_smoke.rs");
 
 /// Nenhum smoke chama `set_paint_media(PaintMedia::<não-Digital>)`.
 ///
@@ -45,6 +48,7 @@ fn no_painter_smoke_forces_a_medium() {
         ("substrate", SUBSTRATE),
         ("line", LINE),
         ("taper", TAPER),
+        ("composite", COMPOSITE),
     ] {
         for medium in ["Impasto", "Watercolor", "WetPaint"] {
             // A chamada exata que abre num meio; a prosa dos docs cita os meios em texto, nunca nesta

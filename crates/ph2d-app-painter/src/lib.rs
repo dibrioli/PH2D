@@ -27,6 +27,7 @@
 // (`enabled()`), o que é a condição do «fim da linha» desta wave — a shell
 // só os chama.
 // ─────────────────────────────────────────────────────────────────────────
+pub mod composite_smoke;
 pub mod impasto_smoke;
 pub mod line_smoke;
 pub mod mask_smoke;
@@ -137,7 +138,7 @@ mod push_look_probe;
 /// ⛔⛔ **Uma família registada DECLARA roteador.** A catraca
 /// `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` morreu na Fase C, e a única ausência aceite é a da
 /// família cuja cena vive numa crate irmã — que **não** é o caso desta: os seis roteadores estão
-/// aqui, com a `env` lida aqui.
+/// aqui, com a `env` lida aqui (sete desde o `PH2D_COMPOSITE_SMOKE`, 2026-09-23).
 ///
 /// ⚠️ **Os `max_level` são CONTADOS, cada um no seu ficheiro** (CLAUDE.md §5.0), e a contagem tem
 /// duas espécies nesta família:
@@ -145,7 +146,7 @@ mod push_look_probe;
 /// | roteador | forma | `max_level` |
 /// |---|---|---:|
 /// | `PH2D_IMPASTO_SMOKE` | `match` com dois braços (`=2` abre 4096²) | [`impasto_smoke::NIVEIS`] = 2 |
-/// | os outros **cinco** | `var_os(..).is_some()` — **presença** | `NIVEIS` = 1 |
+/// | os outros **seis** | `var_os(..).is_some()` — **presença** | `NIVEIS` = 1 |
 ///
 /// ⛔ **`PH2D_PAINT_PERF`, `PH2D_PREVIEW_DIAG` e `PH2D_PREVIEW_DUMP` não estão aqui, e a ausência é
 /// a decisão:** eles são DIAGNÓSTICO, não cenas. *Um roteador declarado diz ao dono que ele tem uma
@@ -176,6 +177,10 @@ pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
         ph2d_app_host::SmokeRouter {
             env: "PH2D_LINE_SMOKE",
             max_level: line_smoke::NIVEIS,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_COMPOSITE_SMOKE",
+            max_level: composite_smoke::NIVEIS,
         },
     ],
 };

@@ -8,9 +8,10 @@
 //! ⚠️ **Quatro deles estavam em PORTUGUÊS num app inglês** (*«upload da preview pra GPU falhou»*) e
 //! foram reescritos em inglês na tabela — a chave deles não guarda a redacção antiga.
 //!
-//! ⚠️ **Esta crate não tem cena de smoke** (as do Painter vivem na shell), e o gate afirma-o: no dia
-//! em que uma nascer, a régua por NOME passa a isentá-la em silêncio — é por isso que o zero é
-//! medido em vez de suposto.
+//! ⚠️ **As cenas de smoke do Painter vivem aqui desde a W2 Fase D** (a nota dizia que viviam na
+//! shell), e até 2026-09-23 nenhuma escrevia um literal fora de um `println!` — por isso o gate media
+//! ZERO. O `composite_smoke` pôs o primeiro (o NOME do objecto da tela, que entra no `Name` e é
+//! identidade durável — a tabela `app_painter.rs` exclui-os por escrito), e o zero virou um PISO.
 
 use ph2d_label_census::gate::{self, Excecao, Isento};
 
@@ -53,11 +54,12 @@ fn every_named_exemption_still_shelters_what_it_names() {
         "isenções mortas:\n  {}",
         mortas.join("\n  ")
     );
-    assert_eq!(
-        gate::literais_de_cena(&src, gate::CENAS),
-        0,
-        "nasceu uma cena de smoke nesta crate — a régua por NOME isenta-a INTEIRA em silêncio. \
-         Troque este zero por um piso de população, como fazem as crates irmãs"
+    let em_cena = gate::literais_de_cena(&src, gate::CENAS);
+    assert!(
+        em_cena >= 1,
+        "as cenas de smoke abrigam {em_cena} textos — em 2026-09-23 era 1 (o nome da tela do \
+         `composite_smoke`). Ou ele saiu desta crate, ou a régua por NOME deixou de casar e este \
+         gate mede o nada"
     );
 }
 

@@ -6,7 +6,8 @@
 //! porque nada o obriga a aparecer numa lista escrita à mão).
 
 use super::{
-    FAMILY, impasto_smoke, line_smoke, mask_smoke, substrate_smoke, taper_smoke, wetpaint_smoke,
+    FAMILY, composite_smoke, impasto_smoke, line_smoke, mask_smoke, substrate_smoke, taper_smoke,
+    wetpaint_smoke,
 };
 
 /// **O roteador do impasto responde por todo nível que promete — e só por eles.**
@@ -56,6 +57,7 @@ fn o_family_declara_os_niveis_que_os_roteadores_contam() {
         ("PH2D_SUBSTRATE_SMOKE", substrate_smoke::NIVEIS),
         ("PH2D_TAPER_SMOKE", taper_smoke::NIVEIS),
         ("PH2D_LINE_SMOKE", line_smoke::NIVEIS),
+        ("PH2D_COMPOSITE_SMOKE", composite_smoke::NIVEIS),
     ];
     assert_eq!(FAMILY.key, "painter");
     assert_eq!(
@@ -105,7 +107,7 @@ fn todo_roteador_declarado_esta_no_family() {
     /// a varredura podia perder 29 ficheiros e passar.
     const FICHEIROS_MIN: usize = 30;
     /// Quantos roteadores existem — o mesmo número que o `FAMILY` declara.
-    const ROTEADORES: usize = 6;
+    const ROTEADORES: usize = 7; // o `composite_smoke` entrou em 2026-09-23
 
     let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
     let mut vistos = 0usize;

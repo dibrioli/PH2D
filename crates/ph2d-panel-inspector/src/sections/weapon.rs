@@ -31,32 +31,6 @@ use ph2d_editor_core::weapon_edits::{
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_i18n::{tr, tr_with};
 
-/// Uma linha de aviso. Devolve o `y` seguinte. (Gémea da da irmã RAY.)
-#[allow(clippy::too_many_arguments)]
-fn warn(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    x: f32,
-    w: f32,
-    y: f32,
-    texto: &str,
-    token: ColorToken,
-) -> f32 {
-    let font = TypeToken::Sm.px();
-    paint_text(
-        text_system,
-        scene,
-        texto,
-        x,
-        y,
-        font,
-        w,
-        resolve(token, theme),
-    );
-    y + font + ph2d_tokens::control_gap_px()
-}
-
 /// **A CHAVE de cada queixa — a PORTA, e não um `match` dentro do pintor.**
 ///
 /// ⛔ Ela traduz o enum da lei numa chave de i18n, e é o único sítio onde as duas coisas se tocam:
@@ -88,7 +62,7 @@ fn leitura(
     i: &InspectorWeaponInfo,
 ) -> f32 {
     if i.recarregando {
-        return warn(
+        return super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -102,7 +76,7 @@ fn leitura(
     let Some(n) = i.municao else {
         return y;
     };
-    warn(
+    super::rows::aviso(
         scene,
         text_system,
         theme,
@@ -168,7 +142,7 @@ fn corpo(
     let mut cur_y = y;
     // ⚠️ **A QUEIXA primeiro** — quem não vê nada acontecer não quer afinar uma cadência.
     if let Some(q) = i.queixa() {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -181,7 +155,7 @@ fn corpo(
     }
     cur_y = leitura(scene, text_system, theme, x, w, cur_y, i);
     if !i.clock_playing {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -319,18 +293,6 @@ pub(crate) fn paint_weapon_section(
         return y + header_h;
     };
     let mut cur_y = y + header_h;
-    if info.selected_count > 1 {
-        cur_y = warn(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            cur_y,
-            tr("panel.inspector.weapon.editing_the_first_of_the_selection_u"),
-            ColorToken::Text3,
-        );
-    }
     cur_y = corpo(
         scene,
         text_system,

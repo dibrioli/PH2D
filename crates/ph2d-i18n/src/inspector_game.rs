@@ -45,9 +45,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "No game camera \u{2014} off-screen has no screen to measure."
         }
         "panel.inspector.factory.factory" => "Factory",
-        "panel.inspector.factory.editing_the_primary_selection_only" => {
-            "Editing the primary selection only."
-        }
         "panel.inspector.factory.lifecycle" => "Lifecycle",
         // ⭐⭐⭐ O HUD (TOP-20 #20) — a raiz, o rótulo, o botão e o contador.
         "panel.inspector.hud.hud" => "HUD",
@@ -132,9 +129,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.particles.restart_u" => "restart\u{2026}",
         "panel.inspector.particles.shout_when_done_u" => "shout when done\u{2026}",
         "panel.inspector.particles.particles" => "Particles",
-        "panel.inspector.particles.editing_the_primary_selection_only" => {
-            "Editing the primary selection only."
-        }
         "panel.inspector.physics.only_for_tag_u_any" => "Only for tag\u{2026}  (any)",
         "panel.inspector.physics.that_tag_was_deleted_u_this_reaches_nobody" => {
             "That tag was deleted \u{b7} this reaches nobody."
@@ -171,9 +165,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.inspector.projectile.face_velocity" => "Face Velocity",
         "panel.inspector.projectile.projectile_motion" => "Projectile Motion",
-        "panel.inspector.projectile.editing_the_primary_selection_only" => {
-            "Editing the primary selection only."
-        }
         // ⭐⭐⭐ O RAIO (suplente #21) — o objecto que OLHA.
         "panel.inspector.ray.ray_sensor" => "Ray Sensor",
         "panel.inspector.ray.origin" => "Origin",
@@ -207,9 +198,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.ray.the_clock_is_stopped_u_the_reading_is_the_pose_you_see" => {
             "The clock is stopped \u{2014} the reading is the pose you see."
         }
-        "panel.inspector.ray.editing_the_primary_selection_only" => {
-            "Editing the primary selection only."
-        }
         "panel.inspector.script.reset" => "Reset",
         "panel.inspector.script.no_script_file_yet_u_use_browse_to_pick_a_luau_file" => {
             "No script file yet \u{2014} use Browse to pick a .luau file."
@@ -232,9 +220,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "The clock is stopped \u{2014} scripts only run while the scene plays."
         }
         "panel.inspector.script.script" => "Script",
-        "panel.inspector.script.multiple_selected_u_edits_apply_to_the_active_object_only" => {
-            "Multiple selected \u{b7} edits apply to the active object only."
-        }
         "panel.inspector.script.script_file_u" => "script file\u{2026}",
         "panel.inspector.script.browse" => "Browse",
         "panel.inspector.script.no_longer_in_the_script" => "No longer in the script:",
@@ -243,9 +228,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.script.remove" => "Remove",
         "panel.inspector.statemachine.never_fires" => "(never fires)",
         "panel.inspector.statemachine.state_machine" => "State Machine",
-        "panel.inspector.statemachine.multiple_selected_u_edits_apply_to_the_active_object_only" => {
-            "Multiple selected \u{b7} edits apply to the active object only."
-        }
         "panel.inspector.statemachine.now" => "Now: {nome}",
         "panel.inspector.statemachine.the_clock_is_stopped_u_it_only_thinks_while_the_scene_plays" => {
             "The clock is stopped \u{2014} it only thinks while the scene plays."
@@ -270,9 +252,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.inspector.tags.tags" => "Tags",
         "panel.inspector.tags.tags_count" => "Tags  ({n})",
-        "panel.inspector.tags.multiple_selected_u_tag_edits_apply_to_the_active_object_only" => {
-            "Multiple selected \u{b7} tag edits apply to the active object only."
-        }
         "panel.inspector.tags.no_tags_yet" => "No tags yet.",
         "panel.inspector.tags.this_object_holds_the_most_tags_the_section_can_show_remove_one_to_add_another" => {
             "This object holds the most tags the section can show. Remove one to add another."
@@ -307,9 +286,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Off \u{2014} the keys don't reach it; something else must drive it."
         }
         "panel.inspector.topdown.top_down_player" => "Top-Down Player",
-        "panel.inspector.topdown.editing_the_primary_selection_only" => {
-            "Editing the primary selection only."
-        }
         "panel.inspector.script.stopped_fix_and_save" => {
             "Stopped: {msg} \u{2014} fix the script and save it."
         }
@@ -352,7 +328,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "The timeline is editing keys \u{2014} cutscenes pause until you go back to Arrange."
         }
         "panel.inspector.sequence.now" => "Now: {t} s of {c}",
-        "panel.inspector.sequence.primary_only" => "Editing the primary selection only.",
         // ⭐⭐⭐ A VIGIA DO CONTADOR — as regras «quando o número X chegar a N, diz S».
         "panel.inspector.counter_watch.counter_watch" => "Counter Watch",
         "panel.inspector.counter_watch.title_count" => "Counter Watch ({n})",
@@ -386,9 +361,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "The clock is stopped \u{2014} rules are checked while it plays."
         }
         "panel.inspector.counter_watch.now_value" => "Now: {v}",
-        "panel.inspector.counter_watch.multiple_selected_edits_apply" => {
-            "Editing the primary selection only."
-        }
         // ⭐⭐⭐ O GATILHO — a mão de quem joga (suplente #24).
         "panel.inspector.trigger.trigger" => "Trigger",
         "panel.inspector.trigger.title_count" => "Trigger ({n})",
@@ -430,9 +402,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.trigger.the_clock_is_stopped" => {
             "The clock is stopped \u{2014} triggers listen while it plays."
         }
-        "panel.inspector.trigger.multiple_selected_edits_apply" => {
-            "Editing the primary selection only."
-        }
         // ⭐⭐⭐ O TWEEN (suplente #22) — «esta propriedade vai de A a B».
         "panel.inspector.tween.tween" => "Tween",
         "panel.inspector.tween.title_count" => "Tween ({n})",
@@ -472,9 +441,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.tween.a_silhouette_that_holds_stays_lit" => {
             "A silhouette that holds stays lit forever. Set When Done to Rewind."
         }
-        "panel.inspector.tween.multiple_selected_tween_edits_apply" => {
-            "Editing the primary selection only."
-        }
         // ⭐⭐⭐ **O ABANÃO DA VISTA** (suplente #25) — duas secções, dois objectos.
         //
         // ⚠️ **As unidades NÃO vão no texto** — elas são o chip do campo (`Unit::Meters`), e há
@@ -495,9 +461,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.inspector.shake.it_shakes_while_the_clock_plays" => {
             "It shakes while the clock plays."
-        }
-        "panel.inspector.shake.editing_the_primary_selection_only" => {
-            "Editing the primary selection only."
         }
         // ⭐⭐⭐ **O EMISSOR** — e o aviso mais valioso dele aponta para OUTRO objecto.
         "panel.inspector.emitter.shake_emitter" => "Shake Emitter",
@@ -523,9 +486,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.inspector.emitter.it_shakes_while_the_clock_plays" => {
             "It shakes while the clock plays."
-        }
-        "panel.inspector.emitter.editing_the_primary_selection_only" => {
-            "Editing the primary selection only."
         }
         // ⭐⭐⭐ **O SEGUIDOR DE CAMINHO** (suplente #23) — o objecto que anda sobre a curva que o
         // artista desenhou.
@@ -568,9 +528,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.inspector.path_follow.it_moves_while_the_clock_plays" => {
             "It moves while the clock plays."
-        }
-        "panel.inspector.path_follow.editing_the_primary_selection_only" => {
-            "Editing the primary selection only."
         }
         // ⭐⭐⭐ A ARMA DO JOGADOR — o ritmo, o pente e a recarga.
         "panel.inspector.weapon.weapon" => "Weapon",
@@ -638,9 +595,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.weapon.on_reloaded_label" => "On Reloaded",
         "panel.inspector.weapon.the_clock_is_stopped_u_a_weapon_only_fires_during_a_run" => {
             "The clock is stopped \u{2014} a weapon only fires during a run."
-        }
-        "panel.inspector.weapon.editing_the_first_of_the_selection_u" => {
-            "Editing the primary selection only."
         }
         // ph2d-migrar-texto:end
         _ => return None,

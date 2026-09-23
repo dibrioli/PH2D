@@ -47,32 +47,6 @@ fn legivel(v: &InspectorScriptValue) -> String {
     }
 }
 
-/// Uma nota de uma linha. Devolve o `y` seguinte.
-#[allow(clippy::too_many_arguments)]
-pub(super) fn nota(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    x: f32,
-    w: f32,
-    y: f32,
-    texto: &str,
-    token: ColorToken,
-) -> f32 {
-    let font = TypeToken::Sm.px();
-    paint_text(
-        text_system,
-        scene,
-        texto,
-        x,
-        y,
-        font,
-        w,
-        resolve(token, theme),
-    );
-    y + font + ph2d_tokens::control_gap_px()
-}
-
 /// Um botão de largura inteira ou à direita. Regista e pinta.
 #[allow(clippy::too_many_arguments)]
 fn botao(
@@ -317,18 +291,6 @@ pub(crate) fn paint_script_section(
         return y + header_h;
     };
     let mut cur_y = y + header_h;
-    if info.selected_count > 1 {
-        cur_y = nota(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            cur_y,
-            tr("panel.inspector.script.multiple_selected_u_edits_apply_to_the_active_object_only"),
-            ColorToken::Warn,
-        );
-    }
     // ── O FICHEIRO ───────────────────────────────────────────────────────────
     let seccao_do_ficheiro = ph2d_editor_core::property_row::Seccao::medida(
         text_system,
@@ -397,7 +359,7 @@ pub(crate) fn paint_script_section(
 
     // ── OS ÓRFÃOS ────────────────────────────────────────────────────────────
     if !info.orphans.is_empty() {
-        cur_y = nota(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,

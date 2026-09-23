@@ -68,7 +68,7 @@ fn bloco_raiz(
         );
         // ⭐ **A razão de o canvas não se mexer, dita em voz alta.**
         if !i.tem_camera {
-            cur_y = warn(
+            cur_y = super::rows::aviso(
                 scene,
                 text_system,
                 theme,
@@ -110,7 +110,7 @@ fn bloco_rotulo(
     // forma nenhuma): a Hierarquia é a única porta, e um aviso que não diga **qual** linha clicar
     // manda o artista procurar.
     if let Some(raiz) = i.canvas_parent.as_deref() {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -171,7 +171,7 @@ fn bloco_rotulo(
         // ⭐⭐ **O que ele mostra AGORA** — ou a razão de não mostrar nada derivado.
         if i.source != 0 {
             if i.vivo.is_empty() {
-                cur_y = warn(
+                cur_y = super::rows::aviso(
                     scene,
                     text_system,
                     theme,
@@ -186,7 +186,7 @@ fn bloco_rotulo(
                 // TEXTO de interface e vive na tabela (HR-15) — um `": "` no código é um
                 // literal pintado que o censo apanha, e que nenhuma tradução alcança.
                 let linha = ph2d_i18n::tr_with("panel.inspector.hud.showing", &[("v", &i.vivo)]);
-                cur_y = warn(
+                cur_y = super::rows::aviso(
                     scene,
                     text_system,
                     theme,
@@ -252,7 +252,7 @@ fn bloco_botao(
         );
         // ⚠️ As DUAS razões de um botão não responder, e elas são diferentes.
         if i.signal.trim().is_empty() {
-            cur_y = warn(
+            cur_y = super::rows::aviso(
                 scene,
                 text_system,
                 theme,
@@ -264,7 +264,7 @@ fn bloco_botao(
             );
         }
         if i.disabled {
-            cur_y = warn(
+            cur_y = super::rows::aviso(
                 scene,
                 text_system,
                 theme,
@@ -330,7 +330,7 @@ fn bloco_contador(
             "panel.inspector.hud.counter_now",
             &[("v", &i.counter_value)],
         );
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,

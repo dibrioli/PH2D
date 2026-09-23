@@ -39,7 +39,7 @@
 //! um chip que o artista não lê. *O corte não é do modelo — as `33` curvas do motor continuam todas
 //! alcançáveis —, é da LARGURA.*
 
-use super::tween::{ROW_H, warn};
+use super::tween::ROW_H;
 use super::*;
 use ph2d_editor_core::tween_edits::{InspectorTweenRow, TweenQueixa};
 use ph2d_i18n::{tr, tr_with};
@@ -236,7 +236,7 @@ fn relogio(
     row: &InspectorTweenRow,
     slot: usize,
 ) -> f32 {
-    let mut cur_y = warn(
+    let mut cur_y = super::rows::aviso(
         scene,
         text_system,
         theme,
@@ -401,7 +401,7 @@ pub(super) fn editor(
     // duração»*) diz a QUAL ir. *Um argumento a mais é grátis; um `match` a decidir quem o recebe
     // seria a segunda tabela sobre a mesma pergunta.*
     if let Some(q) = row.queixa(tem_sprite) {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,

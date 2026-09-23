@@ -25,6 +25,7 @@ mod o_sculpt3d_armado;
 mod os_campos_de_texto_tem_nome;
 mod paineis_armados;
 mod quantas_entradas_tem_cada_painel;
+mod quantas_mensagens_o_painel_escreve;
 mod resetting_the_layout_puts_all_three_things_back;
 mod scrub_range_census;
 mod staleness;

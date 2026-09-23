@@ -20,25 +20,7 @@ pub(super) fn setas(
     info: &InspectorStateMachineInfo,
     selected: usize,
 ) -> f32 {
-    let font = TypeToken::Sm.px();
     let mut cur_y = y;
-    let nota = |scene: &mut VectorScene,
-                text_system: &mut TextSystem,
-                cur_y: &mut f32,
-                texto: &str,
-                token: ColorToken| {
-        paint_text(
-            text_system,
-            scene,
-            texto,
-            x,
-            *cur_y,
-            font,
-            w,
-            resolve(token, theme),
-        );
-        *cur_y += font + ph2d_tokens::control_gap_px();
-    };
     // ── TRANSIÇÕES ───────────────────────────────────────────────────────────
     if !info.transitions.is_empty() {
         let linhas: Vec<(String, bool)> = info
@@ -140,10 +122,13 @@ pub(super) fn setas(
         );
         // ⚠️⚠️ **A LINHA QUE RESPONDE AO «não acontece nada»** — a mesma da tabela de acções.
         if t.on.is_empty() {
-            nota(
+            cur_y = super::rows::aviso(
                 scene,
                 text_system,
-                &mut cur_y,
+                theme,
+                x,
+                w,
+                cur_y,
                 tr(
                     "panel.inspector.statemachine.this_transition_never_fires_it_has_no_signal_name",
                 ),

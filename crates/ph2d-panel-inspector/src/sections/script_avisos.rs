@@ -11,7 +11,6 @@
 //! duas chamadas e o ficheiro passou o tecto por **uma** linha. *A cura de um tecto é sempre o
 //! corte, nunca uma entrada no `FILE_OVERAGE_OK`.*
 
-use super::script::nota;
 use super::*;
 use ph2d_editor_core::script_edits::{InspectorScriptInfo, InspectorScriptStatus};
 use ph2d_i18n::{tr, tr_with};
@@ -32,7 +31,7 @@ pub(super) fn avisos(
     // não quer afinar um número — quer saber porquê.
     match &info.status {
         InspectorScriptStatus::NoFile => {
-            y = nota(
+            y = super::rows::aviso(
                 scene,
                 text_system,
                 theme,
@@ -44,7 +43,7 @@ pub(super) fn avisos(
             );
         }
         InspectorScriptStatus::Unavailable => {
-            y = nota(
+            y = super::rows::aviso(
                 scene,
                 text_system,
                 theme,
@@ -56,7 +55,7 @@ pub(super) fn avisos(
             );
         }
         InspectorScriptStatus::Loading => {
-            y = nota(
+            y = super::rows::aviso(
                 scene,
                 text_system,
                 theme,
@@ -68,7 +67,7 @@ pub(super) fn avisos(
             );
         }
         InspectorScriptStatus::Missing => {
-            y = nota(
+            y = super::rows::aviso(
                 scene,
                 text_system,
                 theme,
@@ -80,7 +79,7 @@ pub(super) fn avisos(
             );
         }
         InspectorScriptStatus::Broken(msg) => {
-            y = nota(
+            y = super::rows::aviso(
                 scene,
                 text_system,
                 theme,
@@ -96,7 +95,7 @@ pub(super) fn avisos(
         }
         InspectorScriptStatus::Ready => {
             if info.props.is_empty() {
-                y = nota(
+                y = super::rows::aviso(
                     scene,
                     text_system,
                     theme,
@@ -110,7 +109,7 @@ pub(super) fn avisos(
         }
     }
     if let Some(msg) = &info.failure {
-        y = nota(
+        y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -125,7 +124,7 @@ pub(super) fn avisos(
         );
     }
     if info.kept > 0 {
-        y = nota(
+        y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -140,7 +139,7 @@ pub(super) fn avisos(
         );
     }
     if info.also_physics {
-        y = nota(
+        y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -152,7 +151,7 @@ pub(super) fn avisos(
         );
     }
     if !info.clock_playing {
-        y = nota(
+        y = super::rows::aviso(
             scene,
             text_system,
             theme,

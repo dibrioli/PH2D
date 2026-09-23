@@ -19,32 +19,6 @@ use ph2d_tween::Canal;
 /// A linha de uma lista é a linha do app — pela porta, nunca por um literal que coincide.
 pub(super) const ROW_H: f32 = ph2d_tokens::ROW_H_PX;
 
-/// Uma linha de aviso. Devolve o `y` seguinte.
-#[allow(clippy::too_many_arguments)]
-pub(super) fn warn(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    x: f32,
-    w: f32,
-    y: f32,
-    texto: &str,
-    token: ColorToken,
-) -> f32 {
-    let font = TypeToken::Sm.px();
-    paint_text(
-        text_system,
-        scene,
-        texto,
-        x,
-        y,
-        font,
-        w,
-        resolve(token, theme),
-    );
-    y + font + ph2d_tokens::control_gap_px()
-}
-
 /// A lista. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
 fn list(
@@ -248,18 +222,6 @@ pub(crate) fn paint_tween_section(
     // ⚠️ **A SELECÇÃO MÚLTIPLA tem de se dizer** — o índice que uma edição carrega só significa
     // alguma coisa na lista da primária. Vem antes de tudo, porque *«em quem é que isto pega?»* é
     // anterior a qualquer controlo.
-    if info.selected_count > 1 {
-        cur_y = warn(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            cur_y,
-            tr("panel.inspector.tween.multiple_selected_tween_edits_apply"),
-            ColorToken::Warn,
-        );
-    }
     if info.rows.is_empty() {
         paint_text(
             text_system,

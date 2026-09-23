@@ -387,20 +387,6 @@ pub(crate) fn paint_anim_section(
     //
     // ⚠️ Ela vem ANTES de tudo, inclusive da face vazia: a pergunta *«em quem é que isto pega?»* é
     // anterior a qualquer controlo.
-    if info.selected_count > 1 {
-        paint_text(
-            text_system,
-            scene,
-            tr("panel.inspector.animation.multiple_selected_animation_edits_apply"),
-            x,
-            cur_y,
-            font,
-            w,
-            resolve(ColorToken::Warn, theme),
-        );
-        cur_y += font + ph2d_tokens::control_gap_px();
-    }
-
     // ⛔ Sem tocador, UM botão — e mais nada. Ver o doc do módulo.
     if !info.player_present {
         paint_text(

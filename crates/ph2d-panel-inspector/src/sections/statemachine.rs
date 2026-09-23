@@ -224,37 +224,7 @@ pub(crate) fn paint_statemachine_section(
         return y + header_h;
     };
     let mut cur_y = y + header_h;
-    let font = TypeToken::Sm.px();
 
-    let nota = |scene: &mut VectorScene,
-                text_system: &mut TextSystem,
-                cur_y: &mut f32,
-                texto: &str,
-                token: ColorToken| {
-        paint_text(
-            text_system,
-            scene,
-            texto,
-            x,
-            *cur_y,
-            font,
-            w,
-            resolve(token, theme),
-        );
-        *cur_y += font + ph2d_tokens::control_gap_px();
-    };
-
-    if info.selected_count > 1 {
-        nota(
-            scene,
-            text_system,
-            &mut cur_y,
-            tr(
-                "panel.inspector.statemachine.multiple_selected_u_edits_apply_to_the_active_object_only",
-            ),
-            ColorToken::Warn,
-        );
-    }
     // ⭐⭐⭐ **O ESTADO CORRENTE** — a razão de esta secção existir com o relógio a andar.
     if let Some(c) = info.current {
         let nome = info
@@ -262,19 +232,25 @@ pub(crate) fn paint_statemachine_section(
             .get(c as usize)
             .filter(|s| !s.name.is_empty())
             .map_or_else(|| format!("#{c}"), |s| s.name.clone());
-        nota(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
-            &mut cur_y,
+            theme,
+            x,
+            w,
+            cur_y,
             &tr_with("panel.inspector.statemachine.now", &[("nome", &nome)]),
             ColorToken::Accent,
         );
     }
     if !info.clock_playing {
-        nota(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
-            &mut cur_y,
+            theme,
+            x,
+            w,
+            cur_y,
             tr(
                 "panel.inspector.statemachine.the_clock_is_stopped_u_it_only_thinks_while_the_scene_plays",
             ),
@@ -361,31 +337,16 @@ fn estados(
             tr("panel.inspector.statemachine.on_exit_label"),
         ],
     );
-    let font = TypeToken::Sm.px();
     let mut cur_y = y;
-    let nota = |scene: &mut VectorScene,
-                text_system: &mut TextSystem,
-                cur_y: &mut f32,
-                texto: &str,
-                token: ColorToken| {
-        paint_text(
-            text_system,
-            scene,
-            texto,
-            x,
-            *cur_y,
-            font,
-            w,
-            resolve(token, theme),
-        );
-        *cur_y += font + ph2d_tokens::control_gap_px();
-    };
     // ── ESTADOS ──────────────────────────────────────────────────────────────
     if info.states.is_empty() {
-        nota(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
-            &mut cur_y,
+            theme,
+            x,
+            w,
+            cur_y,
             tr("panel.inspector.statemachine.no_states_yet"),
             ColorToken::Text3,
         );
@@ -483,10 +444,13 @@ fn estados(
         );
         // ⚠️ **Um beco escreve-se em WARN** — quem lá entra fica, e isso é invisível numa lista.
         if !r.has_exit {
-            nota(
+            cur_y = super::rows::aviso(
                 scene,
                 text_system,
-                &mut cur_y,
+                theme,
+                x,
+                w,
+                cur_y,
                 tr("panel.inspector.statemachine.dead_end_no_transition_leaves_this_state"),
                 ColorToken::Warn,
             );

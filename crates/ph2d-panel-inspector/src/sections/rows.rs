@@ -329,7 +329,11 @@ pub(super) fn num_row_unit(
 /// reticência, logo não deixa registo — *zero lê-se como aprovação*. A régua é a TINTA, no gate
 /// irmão da crate `ph2d-editor-core`.
 #[allow(clippy::too_many_arguments)]
-pub(super) fn aviso(
+/// ⚠️ **`#[track_caller]` é o que torna o censo utilizável**: sem ele todo aviso do painel é
+/// registado na linha DESTE ficheiro, e a régua que diz *«esta frase saiu 21 vezes»* não sabe
+/// dizer de ONDE. (A lição que o censo das elisões pagou em 19/09, com nove buscas no Inspector.)
+#[track_caller]
+pub(crate) fn aviso(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -339,6 +343,7 @@ pub(super) fn aviso(
     texto: &str,
     token: ColorToken,
 ) -> f32 {
+    crate::censo_dos_avisos::regista(texto);
     let font = TypeToken::Sm.px();
     let alta = ph2d_editor_core::paint::paint_text_block(
         text_system,

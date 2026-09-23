@@ -600,44 +600,58 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
     );
 }
 
-/// **A SELEÇÃO MÚLTIPLA diz-se, e ela EMPURRA o resto da seção.**
+/// **A SELEÇÃO MÚLTIPLA diz-se UMA VEZ, e QUEM A DIZ É O PAINEL.**
 ///
-/// ⚠️ As edições da §11 não se espalham sobre a seleção — o índice que elas carregam só significa
-/// alguma coisa na biblioteca da entidade ativa. Sem o aviso, marcar cinco goblins e renomear uma
-/// animação muda **um**, em silêncio, e o artista descobre semanas depois.
+/// ⛔⛔⛔ **A PREMISSA DESTE GATE MORREU em 2026-09-22, e a morte está à vista no diff.** Ele
+/// afirmava que *a §11 avisa antes de oferecer controlo nenhum*, e isso era verdade — e era-o
+/// também em **vinte e uma** outras secções, cada uma com a própria redacção e o próprio pintor.
+/// Medido pela porta do produto com dois objectos escolhidos: **cinco** cópias idênticas da mesma
+/// frase no MESMO quadro do Inspector, mais uma sexta a dizê-lo por outras palavras — que é o
+/// report do dono (*«vários componentes cheios de mensagens»*) à letra.
 ///
-/// ⚠️ **O oráculo é a GEOMETRIA, e não um id**: um aviso é texto, e texto que despacha mente. O
-/// que se afirma é o que ele desloca — com dois selecionados, tudo o que vem a seguir desce.
+/// ⭐ **A frase é um facto da SELECÇÃO, não do componente:** o mesmo número, no mesmo instante,
+/// para todas as secções. ⇒ ela pinta-se **uma vez**, no cartão do topo
+/// ([`crate::paint_cards`]), e a §11 deixa de a escrever.
 ///
-/// **Mutação que deve sangrar:** trocar o `info.selected_count > 1` por `false`.
+/// ⚠️ **As duas metades são obrigatórias.** Sem a primeira, repor o aviso na secção passaria
+/// despercebido; sem a segunda, apagar o cartão deixaria a primeira VERDE — *zero cópias é zero
+/// repetições, e zero lê-se como aprovação*.
+///
+/// **Mutação que deve sangrar:** repor o bloco `if info.selected_count > 1 { … }` na §11 (RED na
+/// 1.ª metade) · apagar a chamada ao `paint_selection_card` (RED na 2.ª).
 #[test]
-fn a_multiple_selection_says_so_before_offering_any_control() {
-    let first_control_y = |count: usize| -> f32 {
+fn a_seleccao_multipla_diz_se_uma_vez_e_quem_a_diz_e_o_painel() {
+    let primeiro_controlo = |na_seccao: usize, no_painel: usize| -> f32 {
         let mut host = MockPanelHost::with_panel::<InspectorPanel>();
         let mut state = InspectorState::default();
         set_current_inspector_anim(Some(InspectorAnimInfo {
-            selected_count: count,
+            selected_count: na_seccao,
             ..anim(true, false)
         }));
+        ph2d_panel_inspector::set_current_inspector_selecionados(no_painel);
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
         clear();
+        ph2d_panel_inspector::set_current_inspector_selecionados(0);
         rects
             .iter()
             .find(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_ANIM_PLAYING)
             .map(|(_, r)| r.y)
-            .expect("a caixa Playing é pintada nos dois casos")
+            .expect("a caixa Playing é pintada nos três casos")
     };
-    let one = first_control_y(1);
-    let many = first_control_y(2);
+    let base = primeiro_controlo(1, 1);
+    // (a) ⛔ A SECÇÃO já não avisa: só o número DELA a mudar não desloca nada.
+    let so_a_seccao = primeiro_controlo(2, 1);
     assert!(
-        many > one,
-        "com dois selecionados a §11 tem de avisar ANTES de oferecer controlo nenhum \
-         (Playing ficou em {many} contra {one} — o aviso não foi pintado)"
+        (so_a_seccao - base).abs() < 0.5,
+        "a §11 voltou a pintar o aviso da selecção ({so_a_seccao} contra {base}) — ele é um facto \
+         do PAINEL e mora no cartão do topo, senão o artista lê-o uma vez por componente"
     );
-    // ⚠️ E com UM selecionado o aviso NÃO existe: um painel que avisa sempre não avisa de nada.
+    // (b) ⭐ O PAINEL avisa: o facto publicado pela shell empurra a secção inteira para baixo.
+    let com_o_cartao = primeiro_controlo(2, 2);
     assert!(
-        (many - one) > 4.0,
-        "o deslocamento tem de ser o de uma linha de texto, e não ruído de layout"
+        com_o_cartao - base > 4.0,
+        "com dois objectos escolhidos o painel tem de avisar ANTES de qualquer secção \
+         (Playing ficou em {com_o_cartao} contra {base} — o cartão do topo não foi pintado)"
     );
 }
 

@@ -441,20 +441,6 @@ pub(crate) fn paint_timer_section(
     // ⚠️ **A SELEÇÃO MÚLTIPLA tem de se dizer** — a lei da §11, e pela mesma razão: o índice que
     // uma edição carrega só significa alguma coisa na lista da primária. Vem antes de tudo,
     // porque *«em quem é que isto pega?»* é anterior a qualquer controlo.
-    if info.selected_count > 1 {
-        paint_text(
-            text_system,
-            scene,
-            tr("panel.inspector.timers.multiple_selected_timer_edits_apply"),
-            x,
-            cur_y,
-            font,
-            w,
-            resolve(ColorToken::Warn, theme),
-        );
-        cur_y += font + ph2d_tokens::control_gap_px();
-    }
-
     if info.rows.is_empty() {
         paint_text(
             text_system,

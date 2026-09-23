@@ -27,6 +27,44 @@ use ph2d_vector::VectorScene;
 /// ⚠️ **Cada um existe SEM o outro:** um objecto solto declara propriedades e não é cópia de nada
 /// (o report do Enio de 2026-08-31); uma cópia de um mestre sem chaves é o contrário.
 #[allow(clippy::too_many_arguments)]
+/// ⭐⭐⭐ **A FRASE DA SELECÇÃO — o TERCEIRO cartão, e o primeiro a ser lido.**
+///
+/// ⛔⛔⛔ Ela vivia em **vinte e uma** secções, escrita por **quatro** pintores diferentes, com
+/// quatro redacções. Medido pela porta do produto em 2026-09-22: **cinco** cópias idênticas no
+/// mesmo quadro do Inspector, mais uma sexta a dizer o mesmo por outras palavras — que é o report
+/// do dono (*«vários componentes cheios de mensagens»*) à letra.
+///
+/// ⚠️ **Ela é um facto da SELECÇÃO e não do componente**, logo é do painel: o mesmo número, no
+/// mesmo instante, para todas as secções. *Um facto do painel escrito por secção multiplica-se
+/// pelo número de componentes que o objecto tem.*
+///
+/// ⚠️ **Ela vem ANTES dos outros dois cartões**, e é uma decisão de ordem: *estás a editar uma de
+/// N* muda o significado de tudo o que vem abaixo, incluindo o cartão da cópia.
+fn paint_selection_card(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    inner_x: f32,
+    inner_w: f32,
+    y: f32,
+) -> f32 {
+    let n = crate::state::current_inspector_selecionados();
+    if n <= 1 {
+        return y;
+    }
+    crate::sections::rows::aviso(
+        scene,
+        text_system,
+        theme,
+        inner_x,
+        inner_w,
+        y,
+        &ph2d_i18n::tr_with("panel.inspector.selection.primary_only", &[("n", &n)]),
+        ph2d_tokens::ColorToken::Warn,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_top_cards(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
@@ -40,7 +78,7 @@ pub(crate) fn paint_top_cards(
     inner_w: f32,
     y: f32,
 ) -> f32 {
-    let mut y = y;
+    let mut y = paint_selection_card(scene, text_system, theme, inner_x, inner_w, y);
     if let Some(info) = instance_info {
         y = crate::sections::instance::paint_instance_card(
             scene,

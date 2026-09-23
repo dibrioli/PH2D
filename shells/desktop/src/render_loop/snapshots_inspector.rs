@@ -48,6 +48,10 @@ pub(super) fn publish(
     // collected (one alloc) for a MULTI-selection — single-select (the
     // common case) takes the empty path and skips the Mixed compare.
     let selected_count = hero.gizmo.selected_len();
+    // ⭐⭐⭐ **O facto da SELECÇÃO publicado UMA vez.** Ele já viajava daqui em vinte e quatro
+    //     campos `selected_count`; o que faltava era o painel poder lê-lo sem perguntar a uma
+    //     secção. Ver `ph2d_panel_inspector::set_current_inspector_selecionados`.
+    ph2d_panel_inspector::set_current_inspector_selecionados(selected_count);
     let inspector_selection: Vec<u64> = if selected_count > 1 {
         hero.gizmo.iter_selected().collect()
     } else {

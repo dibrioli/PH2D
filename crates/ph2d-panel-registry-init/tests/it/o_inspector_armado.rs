@@ -86,11 +86,34 @@ const RAIZ: u64 = 0x_A5_1D_E1;
 // ⭐⭐⭐ A ARMAÇÃO
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 
+thread_local! {
+    /// ⭐⭐⭐ **QUANTOS objectos a fixtura declara seleccionados.**
+    ///
+    /// ⛔ Ela existe porque **vinte e uma** secções pintam uma frase gateada em
+    /// `selected_count > 1`, e com a fixtura pregada em `1` nenhuma régua desta casa jamais as
+    /// via: *uma fixtura que não contém o fenómeno não afirma nada sobre ele*.
+    static SELECIONADOS: std::cell::Cell<usize> = const { std::cell::Cell::new(1) };
+}
+
+/// Quantos a fixtura declara agora.
+pub fn selecionados() -> usize {
+    SELECIONADOS.get()
+}
+
+/// ⚠️ Escreve-se ANTES do `arma_tudo` — os snapshots são construídos ali, de uma vez.
+pub fn com_seleccao_de(n: usize) {
+    SELECIONADOS.set(n);
+}
+
 /// **Arma as 28 portas condicionais do Inspector.**
 ///
 /// ⚠️ Elas são `thread_local`, logo isto vale para a thread que chamar — que é a mesma que pinta.
 #[allow(clippy::too_many_lines)]
 pub fn arma_tudo() {
+    // ⭐⭐⭐ **O facto do PAINEL** — a frase da selecção mora no cartão do topo desde 22/09, e
+    //    sem esta linha a fixtura arma vinte e oito snapshots e **não** arma o único número que
+    //    os resume. *Uma fixtura que não contém o fenómeno não afirma nada sobre ele.*
+    insp::set_current_inspector_selecionados(selecionados());
     insp::set_current_inspector_name(Some(InspectorNameInfo {
         entity_bits: BITS,
         name: "Hero".to_string(),
@@ -134,7 +157,7 @@ pub fn arma_tudo() {
         region_filter_clip: true,
         centered: true,
         offset: [0.0, 0.0],
-        selected_count: 1,
+        selected_count: selecionados(),
         mixed: ph2d_editor_core::screens::hero::InspectorSpriteMixed::default(),
     }));
     insp::set_current_inspector_sampling(Some(InspectorSamplingInfo {
@@ -143,13 +166,13 @@ pub fn arma_tudo() {
         repeat_tag: 1,
         uv_scale: [1.0, 1.0],
         uv_offset: [0.0, 0.0],
-        selected_count: 1,
+        selected_count: selecionados(),
         mixed: ph2d_editor_core::screens::hero::InspectorSamplingMixed::default(),
     }));
     insp::set_current_inspector_blend(Some(InspectorBlendInfo {
         entity_bits: BITS,
         blend_tag: 1,
-        selected_count: 1,
+        selected_count: selecionados(),
         mixed: ph2d_editor_core::screens::hero::InspectorBlendMixed::default(),
     }));
     insp::set_current_inspector_visibility_section(Some(InspectorVisibilitySectionInfo {
@@ -161,7 +184,7 @@ pub fn arma_tudo() {
         mask_source: true,
         on_screen: true,
         rect: [0.0, 0.0, 4.0, 4.0],
-        selected_count: 1,
+        selected_count: selecionados(),
         mixed: ph2d_editor_core::screens::hero::InspectorVisibilityMixed::default(),
     }));
     insp::set_current_inspector_ordering(Some(InspectorOrderingInfo {
@@ -177,7 +200,7 @@ pub fn arma_tudo() {
         sorting_group: true,
         sort_at_root: true,
         top_level: false,
-        selected_count: 1,
+        selected_count: selecionados(),
         mixed: ph2d_editor_core::screens::hero::InspectorOrderingMixed::default(),
     }));
     insp::set_current_inspector_slice(Some(InspectorSliceInfo {
@@ -190,7 +213,7 @@ pub fn arma_tudo() {
         centre_tile_mode: 1,
         tile_mode_tag: 1,
         fill_center: true,
-        selected_count: 1,
+        selected_count: selecionados(),
         mixed: ph2d_editor_core::screens::hero::InspectorSliceMixed::default(),
     }));
     insp::set_current_inspector_anchor(Some(InspectorAnchorInfo {
@@ -214,7 +237,7 @@ pub fn arma_tudo() {
             },
         ],
         present: true,
-        selected_count: 1,
+        selected_count: selecionados(),
         mixed: false,
         parent_anchors: vec!["hand_right".to_string(), "back".to_string()],
         mount: Some("hand_right".to_string()),
@@ -246,7 +269,7 @@ pub fn arma_tudo() {
         direction_override_tag: 0,
         loop_override_tag: 0,
         frame: 1,
-        selected_count: 1,
+        selected_count: selecionados(),
     }));
     insp::set_current_inspector_instance(Some(InspectorInstanceInfo {
         entity_bits: BITS,
@@ -341,7 +364,7 @@ pub fn arma_tudo() {
             },
         ],
         full: false,
-        selected_count: 1,
+        selected_count: selecionados(),
     }));
     arma_a_fisica();
     arma_o_top20();
@@ -546,7 +569,7 @@ fn arma_o_top20() {
             autostart: true,
             signal: "respawn_done".to_string(),
         }],
-        selected_count: 1,
+        selected_count: selecionados(),
     }));
     insp::set_current_inspector_action(Some(InspectorActionInfo {
         entity_bits: BITS,
@@ -573,7 +596,7 @@ fn arma_o_top20() {
             "Hide".to_string(),
             "Play Animation".to_string(),
         ],
-        selected_count: 1,
+        selected_count: selecionados(),
     }));
     insp::set_current_inspector_audio(Some(InspectorAudioInfo {
         entity_bits: BITS,
@@ -596,7 +619,7 @@ fn arma_o_top20() {
         listener_count: 1,
         is_active_listener: true,
         bus_labels: vec!["Master".to_string(), "Sfx".to_string()],
-        selected_count: 1,
+        selected_count: selecionados(),
     }));
     insp::set_current_inspector_camera(Some(InspectorCameraInfo {
         entity_bits: BITS,
@@ -623,7 +646,7 @@ fn arma_o_top20() {
         camera_count: 1,
         is_active_camera: true,
         preview_on: true,
-        selected_count: 1,
+        selected_count: selecionados(),
     }));
     insp::set_current_inspector_factory(Some(InspectorFactoryInfo {
         entity_bits: BITS,
@@ -654,7 +677,7 @@ fn arma_o_top20() {
         is_spawned: false,
         has_game_camera: true,
         clock_playing: true,
-        selected_count: 1,
+        selected_count: selecionados(),
     }));
     insp::set_current_inspector_topdown(Some(InspectorTopDownInfo {
         entity_bits: BITS,
@@ -673,7 +696,7 @@ fn arma_o_top20() {
         has_body: true,
         conflicts_with_platformer: false,
         clock_playing: true,
-        selected_count: 1,
+        selected_count: selecionados(),
     }));
     insp::set_current_inspector_projectile(Some(InspectorProjectileInfo {
         entity_bits: BITS,
@@ -692,7 +715,7 @@ fn arma_o_top20() {
         has_body: true,
         clock_playing: true,
         flight_over: false,
-        selected_count: 1,
+        selected_count: selecionados(),
     }));
     insp::set_current_inspector_statemachine(Some(InspectorStateMachineInfo {
         entity_bits: BITS,
@@ -718,7 +741,7 @@ fn arma_o_top20() {
         initial: 0,
         current: Some(0),
         clock_playing: true,
-        selected_count: 1,
+        selected_count: selecionados(),
     }));
     insp::set_current_inspector_particles(Some(InspectorParticlesInfo {
         entity_bits: BITS,
@@ -751,7 +774,7 @@ fn arma_o_top20() {
         finished_signal: "burst_done".to_string(),
         clock_playing: true,
         alive: 7,
-        selected_count: 1,
+        selected_count: selecionados(),
     }));
     insp::set_current_inspector_script(Some(InspectorScriptInfo {
         entity_bits: BITS,
@@ -792,7 +815,7 @@ fn arma_o_top20() {
         failure: None,
         clock_playing: true,
         also_physics: false,
-        selected_count: 1,
+        selected_count: selecionados(),
     }));
     // ⭐⭐⭐ **AS NOVE PORTAS que a `line/components` acrescentou em 17–20/09.** Elas chegaram
     //    depois desta fixtura e o censo DERIVADO acusou-as na integração — que é exactamente
@@ -809,7 +832,7 @@ fn arma_o_top20() {
             no_mapa: NoMapa::Ligada,
         }],
         clock_playing: true,
-        selected_count: 1,
+        selected_count: selecionados(),
     }));
     insp::set_current_inspector_counter_watch(Some(InspectorCounterWatchInfo {
         entity_bits: BITS,
@@ -823,7 +846,7 @@ fn arma_o_top20() {
             valor_vivo: Some(42),
         }],
         clock_playing: true,
-        selected_count: 1,
+        selected_count: selecionados(),
     }));
     insp::set_current_inspector_emitter(Some(InspectorEmitterInfo {
         entity_bits: BITS,
@@ -836,7 +859,7 @@ fn arma_o_top20() {
         }],
         ha_camera_que_treme: true,
         clock_playing: true,
-        selected_count: 1,
+        selected_count: selecionados(),
     }));
     insp::set_current_inspector_shake(Some(InspectorShakeInfo {
         entity_bits: BITS,
@@ -848,7 +871,7 @@ fn arma_o_top20() {
         trauma: 0.5,
         activa: true,
         clock_playing: true,
-        selected_count: 1,
+        selected_count: selecionados(),
     }));
     insp::set_current_inspector_hud(Some(InspectorHudInfo {
         entity_bits: BITS,
@@ -891,7 +914,7 @@ fn arma_o_top20() {
         angulo: 90.0,
         lado: 0.5,
         clock_playing: true,
-        selected_count: 1,
+        selected_count: selecionados(),
     }));
     insp::set_current_inspector_ray(Some(InspectorRayInfo {
         entity_bits: BITS,
@@ -906,7 +929,7 @@ fn arma_o_top20() {
         sees: "Player".to_string(),
         sees_at: 4.5,
         clock_playing: true,
-        selected_count: 1,
+        selected_count: selecionados(),
     }));
     insp::set_current_inspector_sequence(Some(InspectorSequenceInfo {
         entity_bits: BITS,
@@ -920,7 +943,7 @@ fn arma_o_top20() {
         t: 1.25,
         clock_playing: true,
         vista_deixa_correr: true,
-        selected_count: 1,
+        selected_count: selecionados(),
     }));
     insp::set_current_inspector_tween(Some(InspectorTweenInfo {
         entity_bits: BITS,
@@ -937,7 +960,7 @@ fn arma_o_top20() {
             autostart: true,
         }],
         tem_sprite: true,
-        selected_count: 1,
+        selected_count: selecionados(),
     }));
     insp::set_current_inspector_weapon(Some(InspectorWeaponInfo {
         entity_bits: BITS,
@@ -953,13 +976,14 @@ fn arma_o_top20() {
         pente: 12,
         recarregando: false,
         clock_playing: true,
-        selected_count: 1,
+        selected_count: selecionados(),
     }));
 }
 
 /// **Desarma as 28 portas.** ⚠️ Sem isto a varredura de fábrica passaria a medir um Inspector
 /// armado — *o estado que uma fixtura deixa para trás é o estado que a régua seguinte mede*.
 pub fn desarma_tudo() {
+    insp::set_current_inspector_selecionados(0);
     insp::set_current_inspector_action_trigger(None);
     insp::set_current_inspector_counter_watch(None);
     insp::set_current_inspector_emitter(None);
@@ -1091,13 +1115,29 @@ fn portas_do_inspector() -> Vec<String> {
             continue;
         }
         let src = std::fs::read_to_string(&p).expect("ficheiro de fonte");
-        for linha in src.lines() {
-            let t = linha.trim_start();
-            if let Some(resto) = t.strip_prefix("pub fn set_current_inspector_")
-                && let Some(nome) = resto.split('(').next()
-            {
-                portas.push(format!("set_current_inspector_{nome}"));
+        for (i, _) in src.match_indices("pub fn set_current_inspector_") {
+            let resto = &src[i + "pub fn set_current_inspector_".len()..];
+            let Some(nome) = resto.split('(').next() else {
+                continue;
+            };
+            // ⭐⭐⭐ **UMA PORTA DE SECÇÃO recebe um `Option`; um FACTO DO PAINEL não.**
+            //
+            // ⛔⛔ A 1.ª redacção colhia TODO `set_current_inspector_*` e presumia a semântica de
+            //    `Option` (`Some(` arma, `(None)` desarma). Em 2026-09-22 chegou o primeiro que
+            //    não é uma secção — `set_current_inspector_selecionados(usize)`, o número de
+            //    objectos escolhidos, que é um facto do PAINEL — e os TRÊS gates deste ficheiro
+            //    reprovaram sobre produto CERTO, um deles com um nome recortado a meio
+            //    (`"selecionados(0);\n    "`).
+            //
+            // ⭐ O discriminador é DERIVADO da assinatura e não uma lista escrita à mão: *uma
+            //   secção pode estar ausente, logo o setter dela aceita `None`.* Uma porta nova nasce
+            //   coberta; um facto novo do painel nasce de fora, sem ninguém se lembrar de nada.
+            let cabeca: String = resto.chars().take(200).collect();
+            let assinatura = cabeca.split(')').next().unwrap_or("");
+            if !assinatura.contains("Option<") {
+                continue;
             }
+            portas.push(format!("set_current_inspector_{nome}"));
         }
     }
     portas.sort_unstable();
@@ -1163,6 +1203,13 @@ fn a_tabela_de_portas_cobre_todas_as_portas() {
     let corpo = corpo.split_once("\n}").expect("o fim da desarma_tudo").0;
     let mut no_fonte: Vec<&str> = Vec::new();
     for pedaco in corpo.split("insp::set_current_inspector_").skip(1) {
+        // ⚠️ **O `(None)` tem de ESTAR no pedaço.** Sem esta guarda, uma chamada que desarme um
+        //    facto do painel com outro valor (`(0)`) faz o `split` devolver o resto INTEIRO do
+        //    corpo como se fosse um nome de porta — foi o que aconteceu em 2026-09-22, e o gate
+        //    acusou `"selecionados(0);\n    "`.
+        if !pedaco.contains("(None)") {
+            continue;
+        }
         if let Some(n) = pedaco.split("(None)").next() {
             no_fonte.push(n);
         }

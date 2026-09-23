@@ -46,32 +46,6 @@ const ROTULOS: [(TextKey, f64, Option<ph2d_editor_core::widget::Unit>); 3] = [
     ),
 ];
 
-/// Uma linha de aviso. (Gémea da do emissor — ver a irmã.)
-#[allow(clippy::too_many_arguments)]
-fn warn(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    x: f32,
-    w: f32,
-    y: f32,
-    texto: &str,
-    token: ColorToken,
-) -> f32 {
-    let font = TypeToken::Sm.px();
-    paint_text(
-        text_system,
-        scene,
-        texto,
-        x,
-        y,
-        font,
-        w,
-        resolve(token, theme),
-    );
-    y + font + ph2d_tokens::control_gap_px()
-}
-
 /// Um título de bloco.
 fn titulo(
     scene: &mut VectorScene,

@@ -70,13 +70,27 @@ fn sections_dir() -> PathBuf {
 /// uma régua textual. A régua estrutural (medir onde o rect REGISTADO caiu) não é alcançável: as
 /// rows destas secções pedem uma selecção que o `MockPanelHost` não produz.
 fn empilha_o_nome(src: &str) -> bool {
-    src.lines().any(|l| {
-        let Some(pos) = l.find("label_h") else {
-            return false;
-        };
+    src.lines().any(avanca_por_um_rotulo)
+}
+
+/// ⛔⛔⛔ **O SEGUNDO NOME do mesmo idioma, achado em 2026-09-22 — e o limite que o doc acima
+/// escreveu tornou-se verdade.** A `render_source.rs` — **a secção que o dono FOTOGRAFOU** —
+/// empilhava o nome sobre o valor em duas linhas, e escrevia a altura do rótulo como
+/// `label_font + row_gap` em vez de `label_h` ⇒ este censo passou **VERDE** sobre ela durante
+/// uma semana. *«Uma secção que empilhe por outro caminho e com outro nome continua invisível a
+/// uma régua textual»* estava escrito aqui, e era ela.
+///
+/// ⚠️ **A forma é somar uma FONTE DE RÓTULO a um `y`.** A subtracção (`(h - label_font) * 0.5`,
+/// que CENTRA um texto numa caixa) não conta, e é por isso que a agulha exige o `+` dos dois
+/// lados.
+fn avanca_por_um_rotulo(l: &str) -> bool {
+    if let Some(pos) = l.find("label_h") {
         let antes = l[..pos].trim_end();
-        antes.ends_with('+') || antes.ends_with("+=")
-    })
+        if antes.ends_with('+') || antes.ends_with("+=") {
+            return true;
+        }
+    }
+    l.contains("+ label_font +") || l.contains("+= (label_font") || l.contains("+ (label_font")
 }
 
 fn censo() -> Vec<(String, bool)> {
@@ -170,6 +184,22 @@ fn the_detector_can_see_a_stacked_label() {
     assert!(
         empilha_o_nome("        + label_h_used"),
         "o detector nao ve o empilhamento escrito com sufixo — foi este o buraco de 2026-09-15"
+    );
+    // ⭐⭐⭐ **E o SEGUNDO NOME** — foi assim que a `render_source.rs`, a secção que o dono
+    //    fotografou, escapou durante uma semana.
+    for fonte in [
+        "    let slot = Rect::new(x, y + label_font + row_gap, w, row_h);",
+        "        cur_y += (label_font + row_gap) * 2.0;",
+    ] {
+        assert!(
+            empilha_o_nome(fonte),
+            "o detector nao ve o empilhamento escrito como `label_font + row_gap`: {fonte:?}"
+        );
+    }
+    // ⛔ E a SUBTRACÇÃO, que centra um texto numa caixa, continua a não ser acusada.
+    assert!(
+        !empilha_o_nome("        slot.y + (slot.h - label_font) * 0.5,"),
+        "o detector acusa quem CENTRA um texto — isso e' o oposto de empilhar"
     );
     // ⛔ E NÃO inventa um onde não há.
     for fonte in [

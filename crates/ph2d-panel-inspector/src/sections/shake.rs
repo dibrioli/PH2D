@@ -17,7 +17,6 @@
 //! evento** — a lição que o `projectiles_finished` do #14 pagou: uma etiqueta que pisca uma vez não
 //! responde *«está a tremer AGORA?»*.
 
-use super::tween::warn;
 use super::tween_editor::grupo;
 use super::*;
 use ph2d_editor_core::shake_edits::InspectorShakeInfo;
@@ -96,7 +95,7 @@ fn corpo(
     // ⭐ **A DURAÇÃO é derivada e mostra-se**, porque `decaimento` é o número que a lei come e não o
     // que o artista pensa: ele pensa *«meio segundo»*, não *«2 de trauma por segundo»*.
     if i.decaimento > 0.0 {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -168,7 +167,7 @@ fn avisos(
         )
     } else if i.trauma > 0.0 {
         // ⭐ Não é um aviso: é o ESTADO, e é a única coluna que vem do vivo.
-        return warn(
+        return super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -185,7 +184,7 @@ fn avisos(
         (None, ColorToken::Text3)
     };
     if let Some(k) = chave {
-        return warn(scene, text_system, theme, x, w, y, tr(k), cor);
+        return super::rows::aviso(scene, text_system, theme, x, w, y, tr(k), cor);
     }
     y
 }
@@ -228,18 +227,6 @@ pub(crate) fn paint_shake_section(
         return y + header_h;
     };
     let mut cur_y = y + header_h;
-    if info.selected_count > 1 {
-        cur_y = warn(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            cur_y,
-            tr("panel.inspector.shake.editing_the_primary_selection_only"),
-            ColorToken::Text3,
-        );
-    }
     cur_y = avisos(scene, text_system, theme, x, w, cur_y, info);
     cur_y = corpo(
         scene,

@@ -157,6 +157,18 @@ thread_local! {
     pub(crate) static CURRENT_INSPECTOR_NAME: std::cell::RefCell<Option<InspectorNameInfo>> =
         const { std::cell::RefCell::new(None) };
 
+    /// ⭐⭐⭐ **QUANTOS OBJECTOS ESTÃO SELECCIONADOS — o facto do PAINEL.**
+    ///
+    /// ⛔⛔⛔ Ele viajava em **vinte e quatro** campos `selected_count`, um por snapshot, todos
+    /// enchidos do MESMO `hero.gizmo.selected_len()` — e **vinte e uma** secções liam o seu e
+    /// escreviam a mesma frase. *Um facto do painel copiado por secção é a quarta vez que esta
+    /// casa paga esta forma* (o `CHECKBOX_BOX_PX`, o `SwatchSize::Md`, as dezoito alturas).
+    ///
+    /// ⚠️ **Os campos por-secção FICAM**, e isso não é dívida: eles respondem *«este valor é
+    /// MISTO na selecção?»*, que é outra pergunta. O que saiu foi a FRASE.
+    pub(crate) static CURRENT_INSPECTOR_SELECIONADOS: std::cell::Cell<usize> =
+        const { std::cell::Cell::new(0) };
+
     /// ⭐ **A seção COMPONENT** (ADR-0164 / F5). Um `RefCell` como os irmãos que carregam nomes:
     /// a lista de componentes overridados não é `Copy`.
     pub(crate) static CURRENT_INSPECTOR_INSTANCE: std::cell::RefCell<
@@ -323,6 +335,18 @@ pub(crate) fn current_inspector_properties()
 pub fn probe_current_properties() -> Option<ph2d_editor_core::screens::hero::InspectorPropertiesInfo>
 {
     current_inspector_properties()
+}
+
+/// ⭐⭐⭐ **Quantos objectos o artista tem seleccionados.** Escrito UMA vez por quadro, do único
+/// sítio da shell onde o `selected_len()` é lido.
+pub fn set_current_inspector_selecionados(n: usize) {
+    CURRENT_INSPECTOR_SELECIONADOS.set(n);
+}
+
+/// ⚠️ Lido pelo CARTÃO do topo e por mais ninguém — uma secção que voltasse a perguntá-lo estaria
+/// a escrever a segunda resposta, e há gate.
+pub(crate) fn current_inspector_selecionados() -> usize {
+    CURRENT_INSPECTOR_SELECIONADOS.get()
 }
 
 pub fn set_current_inspector_name(info: Option<InspectorNameInfo>) {

@@ -433,18 +433,6 @@ pub(crate) fn paint_topdown_section(
         return y + header_h;
     };
     let mut cur_y = y + header_h;
-    if info.selected_count > 1 {
-        cur_y = super::rows::aviso(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            cur_y,
-            tr("panel.inspector.topdown.editing_the_primary_selection_only"),
-            ColorToken::Text3,
-        );
-    }
     cur_y = corpo(
         scene,
         text_system,

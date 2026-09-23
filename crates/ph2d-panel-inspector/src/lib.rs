@@ -15,6 +15,10 @@
 
 #![forbid(unsafe_code)]
 
+/// ⭐⭐⭐ **O CENSO DOS AVISOS** — a régua que o report *«componentes cheios de mensagens»*
+/// (dono, 2026-09-21) obrigou a existir. `pub` porque quem a corre é uma sonda de PRODUTO,
+/// noutra crate.
+pub mod censo_dos_avisos;
 mod event;
 /// ⭐ O despacho da secção SIGNAL ACTIONS — irmão do `event` por CAP de função.
 mod event_action;
@@ -241,8 +245,8 @@ pub use state::{
     set_current_inspector_blend, set_current_inspector_instance, set_current_inspector_joint,
     set_current_inspector_name, set_current_inspector_ordering, set_current_inspector_physics,
     set_current_inspector_player, set_current_inspector_properties, set_current_inspector_sampling,
-    set_current_inspector_slice, set_current_inspector_sprite, set_current_inspector_tags,
-    set_current_inspector_transform, set_current_inspector_visibility,
+    set_current_inspector_selecionados, set_current_inspector_slice, set_current_inspector_sprite,
+    set_current_inspector_tags, set_current_inspector_transform, set_current_inspector_visibility,
     set_current_inspector_visibility_section, set_current_inspector_wheel, set_current_tag_tree,
 };
 pub use state::{probe_current_instance, probe_current_properties, texture_slot_pick};

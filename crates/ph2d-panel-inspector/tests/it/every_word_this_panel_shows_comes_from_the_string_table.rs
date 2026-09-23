@@ -202,7 +202,11 @@ fn cada_letra_solta_deste_painel_vem_da_tabela() {
     // 2. As da REGIÃO, lidas do ficheiro que as pinta — elas nascem inline, ao lado do rect de
     //    cada célula, e juntá-las numa const só para o gate poria a ORDEM da grelha num sítio
     //    onde ninguém a lê.
-    const PINTOR: &str = include_str!("../../src/sections/render_source.rs");
+    // ⚠️⚠️ **O ficheiro é o IRMÃO da REGIÃO, e não o da proveniência** (2026-09-22): o bloco da
+    //    amostragem saiu do `render_source.rs` pelo tecto de LOC, e este gate reprovou em voz alta
+    //    a ler `0` células — *a espécie BARULHENTA de gate partido por mover código* (`CLAUDE.md`
+    //    §5.0), que é a sorte da história: a irmã MUDA teria ficado verde a medir nada.
+    const PINTOR: &str = include_str!("../../src/sections/render_source_regiao.rs");
     let mut do_fonte: Vec<String> = Vec::new();
     for pedaco in PINTOR.split("TextKey::new(\"").skip(1) {
         if let Some(k) = pedaco.split('"').next() {

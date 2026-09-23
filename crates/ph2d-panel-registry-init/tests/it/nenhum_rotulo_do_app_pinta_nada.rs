@@ -309,26 +309,38 @@ const A_PASSAGEM_ARMADA_AINDA_CORTA: &[(&str, &str, &str)] = &[
     //    `path_follow` · `ray` · `sequence` · `shake` · `tween` · `weapon`) passaram a ser
     //    ARMADAS por esta fixtura — antes delas a varredura media aquelas secções VAZIAS.
     // ⚠️ *Elas não são cortes novos do produto: são cortes que ninguém conseguia ver.*
-    (
-        "inspector",
-        "Fit and canvas size live on HUD — pick it in the Hierarchy",
-        "aviso de 57 caracteres numa caixa de 268 px: ele DIZ onde o controlo mora, e encurtá-lo          tira a metade que responde «onde». A cura é a frase QUEBRAR, como a do áudio — outra wave.",
-    ),
+    // ⭐⭐⭐ **A entrada do HUD SAIU em 2026-09-22, e a razão é a cura que ela própria prescrevia:**
+    //    *«a cura é a frase QUEBRAR, como a do áudio — outra wave»*. A wave foi a dos avisos: esta
+    //    frase era pintada por uma das **dez cópias** do pintor de aviso, todas a chamar o
+    //    `paint_text` (que CORTA) em vez do `paint_text_block` (que QUEBRA). Com a porta única
+    //    ela quebra em duas linhas e **deixa de ser um corte**.
+    // ⛔ *A dívida não foi silenciada — ela foi PAGA*, e o censo de obsolescência foi quem o disse.
     (
         "inspector",
         "Authored",
         "opção de um segmentado de 3 numa fileira de 268 px ⇒ 48 px por peça, e a palavra pede ~62.          A porta que mede as PALAVRAS (`segment_rects_for`) reparte o que há, e aqui não há.",
+    ),
+    // ⭐⭐⭐ **A PROVENIÊNCIA, cortada desde 2026-09-22 — e é o PREÇO de a secção alinhar.**
+    //
+    // ⛔ A `RENDER SOURCE` punha o nome POR CIMA do valor, logo a ranhura tinha a largura do painel
+    //    inteiro; hoje ela é uma linha de propriedade como as vizinhas (report do dono: *«várias
+    //    seções muito confusas e desorganizadas»* + *«o alinhamento precisa melhorar em todos os
+    //    lugares»*), e o valor vive na coluna do controlo — `112 px` no encaixe dele.
+    // ⚠️ **O nome da folha é texto do ARTISTA** (ele escolheu-o no Aseprite): encurtá-lo não é uma
+    //    saída, e a lei da casa para isso é o BALÃO — que este pintor passou a declarar.
+    (
+        "inspector",
+        "Hand-packed \u{b7} hero \u{b7} idle_0",
+        "ranhura de proveniencia \u{b7} 112,0 px \u{b7} nome de folha que o artista deu (tem balao)",
     ),
     (
         "inspector",
         "Counter",
         "a irmã da de cima, no mesmo segmentado — a mais larga das três é que decide.",
     ),
-    (
-        "inspector",
-        "The timer ends at 3.00 s and the cutscene is 6.50 s — it never reaches the end.",
-        "aviso DERIVADO de dois números (a duração do relógio e a da cutscene): ele não tem versão          curta que continue a dizer os dois. Mesma cura que o irmão do HUD — quebrar.",
-    ),
+    // ⭐ **E a irmã do TIMER saiu pela MESMA cura, no mesmo commit** (*«mesma cura que o irmão do
+    //    HUD — quebrar»*). As duas eram avisos DERIVADOS de números, sem versão curta possível; o
+    //    que faltava não era encurtá-los, era a porta que os quebra.
     // ✅ **As DUAS fileiras de MARCAR saíram em 2026-09-19, por ordem do dono.** O controlo de uma
     //    caixa precisa de `18 px` e a coluna do nome fica com `174`, porque ela é medida para as
     //    fileiras de CAMPOS da mesma secção — e `Center (makes it a 9-slice Region)` pedia `~190`.
@@ -562,7 +574,8 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    `paint_check_row` (report do dono sobre a ALTURA), e com isso entraram na coluna da
     //    SECÇÃO em vez da de omissão. ⚠️ **Ela desceu porque a coluna ficou mais CERTA**, não
     //    porque alguém encurtou um nome — e o censo de obsolescência foi quem o exigiu.
-    ("inspector", 89),
+    // ⬇️ `89 → 86` em 2026-09-22: as três frases que os avisos deixaram de CORTAR (elas quebram).
+    ("inspector", 86),
     // ⭐ Era `6`: o `Mute` do Master deixou de ler `…` quando a coluna aperta (report do dono,
     //    19/09). *Uma catraca que desce é a metade justa dela a funcionar.*
     ("audio_mixer", 5),
@@ -635,7 +648,8 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    `Per-corner Tint` por ordem do dono, e a explicação foi para o BALÃO. *Um nome
     //    que encolhe tira um corte* — a catraca a DESCER é a lei a funcionar.
     // ⭐ `85 → 84` em 2026-09-21, pela mesma passagem pela porta — ver a irmã acima.
-    ("inspector", 84),
+    // ⬇️ `84 → 81` em 2026-09-22, pela mesma cura — as letras deixaram de se perder.
+    ("inspector", 81),
     ("audio_mixer", 5),
     ("sculpt3d", 6),
     ("hierarchy", 5),

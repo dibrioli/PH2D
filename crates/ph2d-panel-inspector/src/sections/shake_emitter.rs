@@ -15,7 +15,6 @@
 //! este objecto**, porque a causa está noutro: ele ouve, a distância mede-se, e não há quem abane.
 //! É a mesma forma da recusa dos pincéis de escultura (*«falta uma pilha»*, *«falta bordo»*).
 
-use super::tween::warn;
 use super::tween_editor::grupo;
 use super::*;
 use ph2d_editor_core::shake_edits::{InspectorEmitterInfo, InspectorEmitterRow};
@@ -308,7 +307,7 @@ fn editor(
     // ⚠️ **Os raios trocados são LEGAIS e quase nunca intencionais** — a lei responde-os com um
     // corte duro, e o artista que escreveu `fora = 2` num `dentro = 5` trocou os campos.
     if row.raios_trocados() {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -377,23 +376,11 @@ pub(crate) fn paint_shake_emitter_section(
         return y + header_h;
     };
     let mut cur_y = y + header_h;
-    if info.selected_count > 1 {
-        cur_y = warn(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            cur_y,
-            tr("panel.inspector.emitter.editing_the_primary_selection_only"),
-            ColorToken::Text3,
-        );
-    }
     // ⭐⭐⭐ **O aviso que aponta para OUTRO objecto vem PRIMEIRO** — sem uma câmera que treme, nada
     // do que esta secção afina é visível, e afinar a força de uma fonte muda é o caminho mais longo
     // até à descoberta.
     if !info.ha_camera_que_treme {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -404,7 +391,7 @@ pub(crate) fn paint_shake_emitter_section(
             ColorToken::Warn,
         );
     } else if !info.clock_playing {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -416,7 +403,7 @@ pub(crate) fn paint_shake_emitter_section(
         );
     }
     if info.rows.is_empty() {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,

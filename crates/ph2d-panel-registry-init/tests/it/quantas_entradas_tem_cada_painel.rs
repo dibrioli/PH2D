@@ -390,7 +390,7 @@ impl Linha {
 /// ⚠️ **Pela porta [`ph2d_editor_core::interaction::WidgetStore::collapsible_ids`]**, que é o
 /// conjunto que o `populate` semeou — uma lista escrita à mão aqui ficaria cega à gaveta que a
 /// próxima wave acrescentar, e o modo de falha é o censo a encolher em silêncio.
-fn abre_tudo(store: &mut ph2d_editor_core::interaction::WidgetStore) {
+pub(super) fn abre_tudo(store: &mut ph2d_editor_core::interaction::WidgetStore) {
     // ⚠️⚠️ **O conjunto das gavetas é semeado pelo `populate_shared` do PRODUTO**, não pelo
     //    `Panel::populate` — sem esta chamada o `collapsible_ids` devolve **vazio** no arnês e o
     //    `abre_tudo` abre nada, em silêncio. *O censo lia `12` comandos no Inspector e a régua

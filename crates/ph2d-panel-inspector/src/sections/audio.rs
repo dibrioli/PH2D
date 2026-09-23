@@ -364,19 +364,6 @@ pub(crate) fn paint_audio_section(
     };
     let mut cur_y = y + header_h;
 
-    if info.selected_count > 1 {
-        cur_y = super::rows::aviso(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            cur_y,
-            tr("panel.inspector.audio.multiple_selected_audio_edits_apply"),
-            ColorToken::Warn,
-        );
-    }
-
     // **O corpo das ORELHAS** — um componente sem campo nenhum, e por isso uma linha que DIZ o que
     // ele faz. ⛔ Sem ela, anexar o `Audio Listener 2D` não muda nada na tela: exactamente o report
     // que o `Timers` custou.

@@ -60,32 +60,6 @@ pub(crate) fn placeholder(info: &InspectorSequenceInfo) -> String {
     tr("panel.inspector.sequence.none_chosen").to_owned()
 }
 
-/// Uma linha de aviso. (Gémea da do HUD e da do emissor — ver as irmãs.)
-#[allow(clippy::too_many_arguments)]
-fn warn(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    x: f32,
-    w: f32,
-    y: f32,
-    texto: &str,
-    token: ColorToken,
-) -> f32 {
-    let font = TypeToken::Sm.px();
-    paint_text(
-        text_system,
-        scene,
-        texto,
-        x,
-        y,
-        font,
-        w,
-        resolve(token, theme),
-    );
-    y + font + ph2d_tokens::control_gap_px()
-}
-
 /// **O selector da cutscene** — o nome à esquerda, o chip à direita.
 #[allow(clippy::too_many_arguments)]
 fn linha_do_selector(
@@ -185,7 +159,7 @@ fn avisos(
 ) -> f32 {
     let mut cur_y = y;
     let mut diz = |texto: &str, token: ColorToken, cur_y: &mut f32| {
-        *cur_y = warn(scene, text_system, theme, x, w, *cur_y, texto, token);
+        *cur_y = super::rows::aviso(scene, text_system, theme, x, w, *cur_y, texto, token);
     };
 
     // 1. Não há o que escolher · 2. não escolheu · 3. escolheu e desapareceu.
@@ -274,13 +248,6 @@ fn avisos(
     }
 
     // 7. ⚠️ A secção edita o PRIMÁRIO — a lei das irmãs.
-    if info.selected_count > 1 {
-        diz(
-            tr("panel.inspector.sequence.primary_only"),
-            ColorToken::Text3,
-            &mut cur_y,
-        );
-    }
     cur_y
 }
 

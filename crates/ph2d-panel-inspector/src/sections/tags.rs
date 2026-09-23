@@ -238,37 +238,19 @@ pub(crate) fn paint_tags_section(
         return y + header_h;
     };
     let mut cur_y = y + header_h;
-    let font = TypeToken::Sm.px();
 
     // ⚠️ **A SELEÇÃO MÚLTIPLA tem de se dizer** — a lei das irmãs. Aqui a razão é outra que a
     // delas (um `TagId` significa o mesmo em toda a cena, logo espalhar seria exprimível): ela
     // não se espalha porque *marcar N objectos de uma vez* é um gesto que o painel não desenha,
     // e um efeito invisível é pior que um botão ausente.
-    if info.selected_count > 1 {
-        cur_y = aviso(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            cur_y,
-            font,
-            tr(
-                "panel.inspector.tags.multiple_selected_u_tag_edits_apply_to_the_active_object_only",
-            ),
-            ColorToken::Warn,
-        );
-    }
-
     if info.on_object.is_empty() {
-        cur_y = aviso(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
             x,
             w,
             cur_y,
-            font,
             tr("panel.inspector.tags.no_tags_yet"),
             ColorToken::Text3,
         );
@@ -289,14 +271,13 @@ pub(crate) fn paint_tags_section(
     if info.full {
         // ⛔ **Cheio ⇒ a caixa SAI e o porquê fica no lugar dela.** Deixá-la ali a recusar cada
         // escolha ensinaria que o painel está avariado.
-        cur_y = aviso(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
             x,
             w,
             cur_y,
-            font,
             tr(
                 "panel.inspector.tags.this_object_holds_the_most_tags_the_section_can_show_remove_one_to_add_another",
             ),
@@ -325,14 +306,13 @@ pub(crate) fn paint_tags_section(
     // ⛔ **O que não coube é CONTADO** — ver o cabeçalho.
     let achadas = quantas_faltam(&arvore, &info.on_object, &filtro);
     if achadas > crate::ids::INSP_TAGS_OPT.len() {
-        cur_y = aviso(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
             x,
             w,
             cur_y,
-            font,
             &tr_with(
                 "panel.inspector.tags.showing_of_type_to_narrow",
                 &[
@@ -393,30 +373,4 @@ pub(crate) fn paint_tags_section(
     }
 
     fold.finish(store, scene, hit_index, cur_y + SECTION_BOTTOM_PAD_PX)
-}
-
-/// Uma linha de texto de aviso. Devolve o `y` seguinte.
-#[allow(clippy::too_many_arguments)]
-fn aviso(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    x: f32,
-    w: f32,
-    y: f32,
-    font: f32,
-    texto: &str,
-    cor: ColorToken,
-) -> f32 {
-    paint_text(
-        text_system,
-        scene,
-        texto,
-        x,
-        y,
-        font,
-        w,
-        resolve(cor, theme),
-    );
-    y + font + ph2d_tokens::control_gap_px()
 }

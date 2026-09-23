@@ -35,13 +35,18 @@ const TUTORIAL: &str =
 
 /// Os pintores que produzem os r&oacute;tulos citados — a sec&ccedil;&atilde;o e o cabe&ccedil;alho
 /// do Inspector (de onde vem o bot&atilde;o *Add Component*).
-const PINTORES: [&str; 4] = [
+const PINTORES: [&str; 5] = [
     include_str!("../../src/sections/statemachine.rs"),
     // ⚠️ **O irmão das SETAS** — o ficheiro passou o tecto de 600 na migração do HR-15 e as rows
     //    das transições mudaram-se para cá. Um gate que lesse só o pai acusava metade do tutorial.
     include_str!("../../src/sections/statemachine_setas.rs"),
     include_str!("../../src/paint_head.rs"),
     include_str!("../../src/sections/anchors.rs"),
+    // ⚠️⚠️ **O CARTÃO DO TOPO** — a frase da selecção múltipla deixou de ser pintada pela secção
+    //    e passou a ser pintada UMA vez pelo painel (2026-09-22: ela vivia em **vinte e uma**
+    //    secções e o artista lia-a uma vez por componente). O tutorial cita-a, e sem este ficheiro
+    //    o gate acusava-a de órfã sobre um produto CERTO.
+    include_str!("../../src/paint_cards.rs"),
 ];
 
 /// ⚠️⚠️ **A TABELA entra no gate porque o texto MUDOU DE SÍTIO** (`line/UIUX`, 2026-09-16): desde
@@ -133,6 +138,9 @@ fn desescapa(fonte: &str) -> String {
 }
 
 /// Os r&oacute;tulos que o tutorial afirma estarem na tela, pela ordem em que aparecem.
+/// ⚠️⚠️ **LIMITE NOMEADO: ele lê o HTML CRU.** Uma entidade (`&middot;`) nunca casa o texto da
+/// tabela, que traz o carácter. ⇒ um rótulo com `·` cita-se pela metade ASCII — foi o que a frase
+/// da selecção fez em 2026-09-22. *Curar isto é des-escapar entidades, e ninguém mediu se vale.*
 fn rotulos_citados() -> Vec<String> {
     const ABRE: &str = "<code class=\"ui\">";
     let mut v = Vec::new();

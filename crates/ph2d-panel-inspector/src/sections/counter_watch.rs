@@ -506,20 +506,6 @@ pub(crate) fn paint_counter_watch_section(
     let mut cur_y = y + header_h;
     let font = TypeToken::Sm.px();
 
-    if info.selected_count > 1 {
-        paint_text(
-            text_system,
-            scene,
-            tr("panel.inspector.counter_watch.multiple_selected_edits_apply"),
-            x,
-            cur_y,
-            font,
-            w,
-            resolve(ColorToken::Warn, theme),
-        );
-        cur_y += font + ph2d_tokens::control_gap_px();
-    }
-
     if info.rows.is_empty() {
         paint_text(
             text_system,

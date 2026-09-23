@@ -26,7 +26,6 @@
 //! SNAPSHOT. Copiá-lo aqui daria duas respostas à mesma pergunta de largura, que é o defeito que a
 //! foto do dono de 19/09 pagou.
 
-use super::tween::warn;
 use super::tween_editor::grupo;
 use super::*;
 use ph2d_editor_core::path_follow_edits::{InspectorPathFollowInfo, PathFollowQueixa};
@@ -65,7 +64,7 @@ fn relogio(
     y: f32,
     i: &InspectorPathFollowInfo,
 ) -> f32 {
-    let mut cur_y = warn(
+    let mut cur_y = super::rows::aviso(
         scene,
         text_system,
         theme,
@@ -141,7 +140,7 @@ fn corpo(
     let mut cur_y = y;
     // ⚠️ **A QUEIXA primeiro** — quem não vê nada mexer não quer afinar uma curva.
     if let Some(q) = i.queixa() {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -372,18 +371,6 @@ pub(crate) fn paint_path_follow_section(
         return y + header_h;
     };
     let mut cur_y = y + header_h;
-    if info.selected_count > 1 {
-        cur_y = warn(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            cur_y,
-            tr("panel.inspector.path_follow.editing_the_primary_selection_only"),
-            ColorToken::Text3,
-        );
-    }
     cur_y = corpo(
         scene,
         text_system,
@@ -398,7 +385,7 @@ pub(crate) fn paint_path_follow_section(
     // ⚠️ **O relógio parado NÃO é queixa** (ver o vocabulário): ele é o estado normal de uma cena em
     // edição, e por isso é uma linha de ESTADO, no fim, e não um aviso no topo.
     if info.queixa().is_none() && !info.clock_playing {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,

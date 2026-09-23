@@ -2185,6 +2185,117 @@ declarado; **se os dois devem ser iguais é decisão de PRODUTO**, e o dono tem 
 número ao lado. ⛔ Eu não a decidi sozinho: mudar a altura de um botão é visível em 12 secções.
 
 
+## §9-novendecies — ⭐⭐⭐ A MESMA FRASE EM VINTE E UMA SECÇÕES, POR SEIS PINTORES, E ONZE DECLARAÇÕES DE «PINTAR UM AVISO»
+
+**Report do dono, 2026-09-21:** *«vários componentes cheios de mensagens»* + *«várias seções muito
+confusas e desorganizadas»* + *«quanto ao alinhamento precisamos melhorar em todos os lugares»*.
+**Ordem de 2026-09-22:** *«faça ciclos de implementações maIORES»*.
+
+### §9-novendecies.1 — O instrumento que não existia
+
+Esta casa tinha censo de TEXTO (*«vem da tabela?»*), censo de ELISÕES (*«coube?»*), censo de IDS
+(*«é alcançável?»*) e gates de costura (*«o clique chega?»*) — e **nenhum** perguntava
+***quantas frases o painel escreve de uma vez***.
+
+⛔⛔ **E o censo das elisões não o podia responder, pela LEI dele:** um aviso é uma FRASE e ela
+**quebra** em vez de cortar, logo nunca passa pela lei da reticência e **não deixa rasto**. *Um
+censo cego àquilo de que o dono se queixa lê-se como um painel limpo.*
+
+⇒ [`ph2d_panel_inspector::censo_dos_avisos`] (o molde do censo das elisões: `thread_local`, nasce
+desarmado, `#[track_caller]` para a LOCALIZAÇÃO — *uma régua que diz «esta frase saiu 21 vezes» e
+não diz de ONDE obriga a arqueologia*), com a sonda e os gates em
+`quantas_mensagens_o_painel_escreve.rs`.
+
+⚠️⚠️ **A fixtura não continha o fenómeno.** A `o_inspector_armado::arma_tudo` declarava
+`selected_count: 1` em **28** sítios e a frase é gateada em `> 1` ⇒ *com a fixtura pregada em `1`
+nenhuma régua desta casa jamais a via*. Daí a `com_seleccao_de`.
+
+### §9-novendecies.2 — O que a medição achou
+
+| | |
+|---|---:|
+| secções que pintavam *«estás a editar só a primária»* | **21** |
+| redacções distintas da mesma frase | **4** |
+| pintores distintos que a escreviam | **6** |
+| **cópias IDÊNTICAS no MESMO quadro** (medido, 2 objectos) | **5** (+1 a dizê-lo por outras palavras) |
+| declarações de *«pintar uma linha de aviso»* | **11** (a porta + 7 fn + 3 fechos) |
+| das quais **byte a byte iguais** e **erradas do mesmo modo** | **10** |
+
+⛔⛔⛔ **As dez cópias chamavam o `paint_text` (que CORTA) em vez do `paint_text_block` (que
+QUEBRA) e devolviam UMA linha de altura qualquer que fosse a frase** — *os dois defeitos exactos
+que o gate da porta (`um_aviso_quebra_e_o_pintor_de_rotulo_corta`) existe para impedir, num sítio
+onde ele nunca olhou*.
+
+⚠️ **É a QUARTA e a QUINTA ocorrência da mesma forma em três dias** — `CHECKBOX_BOX_PX = 18` (21/09)
+· `SwatchSize::Md` como largura de linha (22/09) · as dezoito alturas (22/09) · **uma FRASE** ·
+**um PINTOR**.
+
+### §9-novendecies.3 — A cura
+
+1. **O facto da selecção passa a ter UMA fonte** — `set_current_inspector_selecionados`, escrito
+   uma vez por quadro do único sítio da shell onde `hero.gizmo.selected_len()` é lido, e pintado
+   **uma vez** pelo cartão do topo ([`paint_cards::paint_selection_card`], ANTES dos outros dois:
+   *«estás a editar uma de N»* muda o significado de tudo o que vem abaixo). **21 blocos apagados,
+   21 chaves de i18n órfãs apagadas**, e a frase passa a levar **o NÚMERO** — que com vinte e uma
+   cópias ninguém lhe punha.
+   ⚠️ Os **24** campos `selected_count` por-secção FICAM: eles respondem *«este valor é MISTO?»*,
+   que é outra pergunta.
+2. **Os 10 pintores copiados morrem** — tudo passa por `sections::rows::aviso`. ⭐ De graça, **duas
+   frases longas que eram CORTADAS passam a quebrar e a ler-se inteiras** (as duas linhas de dívida
+   que o diziam por escrito — *«a cura é a frase QUEBRAR — outra wave»* — saíram **pagas**, e foi o
+   censo de obsolescência a dizê-lo).
+3. **A RENDER SOURCE fala a língua da casa** — ela punha o nome POR CIMA do valor (a única secção
+   que o fazia) e tinha **altura de linha própria** (`Sm + vão = 15` contra `ROW_H_PX = 22`), logo
+   nada nela alinhava com nada. Hoje é linha de propriedade, com a coluna medida sobre os DOIS nomes.
+
+### §9-novendecies.4 — ⛔⛔ O gate que proibia isso NUNCA a viu, e o limite estava escrito nele
+
+O `no_row_paints_its_name_above_its_control` procura o idioma pelo **nome da variável** (`label_h`)
+e a `render_source.rs` escrevia `label_font + row_gap` ⇒ **verde durante uma semana sobre a secção
+que o dono FOTOGRAFOU**. O doc-comment dele já dizia: *«uma secção que empilhe por outro caminho e
+com outro nome continua invisível a uma régua textual»*. O detector aprendeu o segundo nome, com o
+controlo positivo dos dois e o negativo da SUBTRACÇÃO (que CENTRA um texto e não empilha).
+
+### §9-novendecies.5 — O preço da cura 3, nomeado
+
+Com a linha alinhada o valor deixa de ter a largura do painel e passa a ter a da coluna
+(`112 px`) ⇒ `Hand-packed · hero · idle_0` **é cortado**. ⚠️ O nome da folha é texto do **ARTISTA**:
+encurtá-lo não é saída, e a lei da casa é o **BALÃO** — que o pintor passou a declarar
+(`text_elide::balao::na_area`). A linha entra na dívida com o mecanismo; as duas catracas do
+Inspector **descem** (`89 → 86`, `84 → 81`).
+
+### §9-novendecies.6 — ⛔ Três gates partidos por MOVER código, e os três falharam ALTO
+
+- `every_word…::cada_letra_solta` lia as quatro células da região no `render_source.rs`, e o bloco
+  saiu para o irmão pelo tecto de LOC (curado por **CORTE POR RESPONSABILIDADE**, nomeado pelo
+  próprio ficheiro-pai antes de ser feito).
+- `o_inspector_armado` (×3) presumia que **todo** `set_current_inspector_*` é uma porta de SECÇÃO,
+  com semântica de `Option`. Chegou o primeiro que não é (um FACTO DO PAINEL) e os três reprovaram
+  sobre produto CERTO, um com o nome recortado a meio (`"selecionados(0);\n    "`).
+  ⭐ **A cura é DERIVADA da assinatura e não uma excepção à mão:** *uma secção pode estar ausente,
+  logo o setter dela aceita `None`*.
+- `seam_anim` e `o_tutorial_nomeia_rotulos…` tinham a **premissa morta** e foram reescritos com a
+  morte à vista no diff (o primeiro afirma hoje as duas metades: a secção **não** avisa · o painel
+  avisa).
+
+⚠️ **Limite NOMEADO do gate do tutorial:** ele lê o HTML **cru**, logo uma entidade (`&middot;`)
+nunca casa o texto da tabela.
+
+### §9-novendecies.7 — Portão
+
+`nextest-impacted` **17 666**, com **uma** vermelha: `the_pen_down_is_still_a_canvas_copy_and_this_is_its_number`
+(`ph2d-tool-painter`). ⚠️ **Promoção pedida à família de flakes de fan-out do §5.0** — as três
+assinaturas: **zero linhas do diff desta wave naquela crate** · **3 de 3 verde sozinho a
+`load 45`–`63`**, que é MAIS carga do que a do fan-out · e é um **gate de RAZÃO entre dois
+relógios**, cujo doc se declara curado da flake (*«medidos juntos, os dois números sobem e descem
+juntos»*) — ⚠️ **verdade sobre o PERFIL e falso sobre o FAN-OUT**, que é a distinção que aquela
+lista existe para guardar.
+
+Clippy `-D warnings` zero · `cargo fmt --all --check` limpo · tectos de LOC e `the_shell_only_shrinks`
+verdes · **6 de 6 mutações sangram** (com os três controlos do arnês: a agulha casa **uma** vez
+contada em OCORRÊNCIAS, a mutação **compila**, e a corrida teve população não-nula).
+
+
 ## §11 — O que esta linha recomenda a quem a integrar
 
 1. **Correr o `diag_onde_cai_a_pista_do_pente` da `line/sculpt3d` DEPOIS da fusão** e reescrever com

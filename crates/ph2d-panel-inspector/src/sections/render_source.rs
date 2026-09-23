@@ -2,6 +2,7 @@
 //! architecture_panel_loc_cap). Logic verbatim; behavior unchanged.
 
 use super::render_source_precision::paint_precision_row;
+use super::render_source_regiao::paint_region_rows;
 use super::*;
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_i18n::tr;
@@ -21,13 +22,16 @@ pub(crate) fn paint_render_source_section(
 ) -> f32 {
     // Match Transform's row-label style — Sm font, Text2 color — so
     // Render Source feels visually identical (user feedback 2026-05-24).
-    let line_font = TypeToken::Sm.px();
+    //
+    // ⭐⭐⭐ **E a ALTURA DE LINHA desta secção MORREU em 2026-09-22.** Ela era
+    //    `Sm + vão = 15` — a altura de um rótulo empilhado por cima de um valor —, e a da casa é
+    //    a `ROW_H_PX = 22`. *Uma secção com altura própria não alinha com nenhuma vizinha, e esta
+    //    é a que o dono fotografou.*
     let label_font = TypeToken::Sm.px();
     // ⚠️ **O vão entre dois controlos é a porta `control_gap_px` (3 px)**, e não o
     //    `Spacing::Xs` (4) escrito à mão — ordem do dono, 2026-09-07. Esta secção é
     //    anterior à porta. Ver `every_stack_of_rows_asks_the_rhythm`.
     let row_gap = ph2d_tokens::control_gap_px();
-    let row_h = line_font + row_gap;
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
     let color_id = core_ids::INSP_LIVE_RENDER_COLOR;
     let rgba = store
@@ -90,7 +94,6 @@ pub(crate) fn paint_render_source_section(
         w,
         cur_y,
         label_font,
-        row_h,
         row_gap,
     );
 
@@ -279,53 +282,6 @@ fn paint_strategy_row(
     cur_y + strategy_h + ph2d_editor_core::widget::panel_chrome::SECTION_INNER_ROW_GAP_PX
 }
 
-/// **Uma célula X/Y/W/H da região** — rótulo do eixo + o campo numérico.
-///
-/// ⚠️ Era uma closure DENTRO do `paint_render_source_section`, e sair paga o tecto de 200 LOC que
-/// a wave do hover fez a função cruzar. É também o *"per-row split"* que a tolerância dela nomeia
-/// como diferido desde 2026-07-10 — feito para UMA row.
-#[allow(clippy::too_many_arguments)]
-fn paint_region_num_cell(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    cell: Rect,
-    axis: ph2d_i18n::TextKey,
-    id: NodeId,
-    label_font: f32,
-    theme: Theme,
-) {
-    // ⚠️ Lido AQUI e não recebido: é um TOKEN, e o chamador não tem opinião sobre ele.
-    let axis_w = Spacing::Lg.px(); // mini X/Y/W/H label column
-    paint_text(
-        text_system,
-        scene,
-        axis.tr(),
-        cell.x,
-        cell.y + (cell.h - label_font) * 0.5,
-        label_font,
-        axis_w,
-        resolve(ColorToken::Text2, theme),
-    );
-    let input_rect = Rect::new(cell.x + axis_w, cell.y, (cell.w - axis_w).max(0.0), cell.h);
-    hit_index.register(id, input_rect);
-    let (state, value, buffer, caret, anchor) = read_number_input(store, id);
-    let input = NumberInput::new(id, "", value)
-        .step(1.0)
-        .visual((state, store.hover_live(id)));
-    paint_number_input_with_buffer(
-        &input,
-        Some(buffer),
-        caret,
-        anchor,
-        input_rect,
-        scene,
-        text_system,
-        theme,
-    );
-}
-
 /// ⭐⭐⭐ **A PROVENIÊNCIA** — a ranhura de *de onde os pixels vêm* (e onde se largam outros),
 /// mais o tamanho que eles tinham na origem.
 ///
@@ -352,7 +308,6 @@ fn paint_provenance(
     w: f32,
     y: f32,
     label_font: f32,
-    row_h: f32,
     row_gap: f32,
 ) -> f32 {
     // Cleaner phrasing — strategy name + key/id separated by middle dot (the only ASCII-safe
@@ -383,17 +338,40 @@ fn paint_provenance(
             tr("panel.inspector.render_source.cooked_texture").to_string()
         }
     };
-    paint_text(
+    // ⭐⭐⭐ **A PROVENIÊNCIA É UMA LINHA DE PROPRIEDADE — nome à ESQUERDA, valor à DIREITA.**
+    //
+    // ⛔⛔⛔ **Report do dono, 2026-09-21, com FOTO desta secção:** *«várias seções muito confusas
+    //    e desorganizadas»* e *«quanto ao alinhamento precisamos melhorar em todos os lugares»*.
+    //    Esta secção falava outra LÍNGUA: ela punha o nome POR CIMA do valor enquanto todas as
+    //    vizinhas o põem à esquerda ⇒ nada aqui alinhava com nada, e a «linha» media
+    //    `Sm + vão = 15` contra a `ROW_H_PX = 22` da casa.
+    //
+    // ⛔⛔ **E o gate que proíbe exactamente isto
+    //    (`no_row_paints_its_name_above_its_control`) NUNCA a viu**: ele procura o idioma pelo
+    //    nome da variável (`label_h`) e aqui ela chamava-se `label_font + row_gap`. *O limite
+    //    estava escrito no próprio doc-comment dele* — *«uma secção que empilhe por outro caminho
+    //    e com outro nome continua invisível a uma régua textual»* — e a secção que o dono
+    //    fotografou era essa.
+    //
+    // ⚠️ **A coluna sai dos DOIS nomes do bloco**, senão a `Storage` e a `Source size` caem em `x`
+    //    diferentes — a outra metade do mesmo report.
+    let sec = ph2d_editor_core::property_row::Seccao::medida(
         text_system,
-        scene,
-        STORAGE_LABEL.tr(),
-        x,
-        y,
-        label_font,
-        w,
-        resolve(ColorToken::Text2, theme),
+        1,
+        &[STORAGE_LABEL.tr(), SOURCE_SIZE_LABEL.tr()],
     );
-    let slot = Rect::new(x, y + label_font + row_gap, w, row_h);
+    let linha = ph2d_editor_core::property_row::paint_label_row(
+        scene,
+        text_system,
+        theme,
+        x,
+        w,
+        y,
+        ROW_H_PX,
+        STORAGE_LABEL.tr(),
+        sec,
+    );
+    let slot = linha.control;
     // ⭐ Raio e moldura pela porta do TEMA: o slot é plano num tema moderno.
     let slot_radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
     fill_rounded_rect(scene, slot, slot_radius, resolve(ColorToken::Bg2, theme));
@@ -406,35 +384,47 @@ fn paint_provenance(
         SLOT_BORDER_PX,
         resolve(ColorToken::Border, theme),
     );
-    paint_text(
-        text_system,
-        scene,
-        &detail,
-        slot.x + Spacing::Xs.px(),
-        slot.y + (slot.h - label_font) * 0.5,
-        label_font,
-        (slot.w - Spacing::Xs.px() * 2.0).max(0.0),
-        resolve(ColorToken::Text1, theme),
-    );
+    // ⭐⭐⭐ **O BALÃO** — ordem do dono, 2026-09-19: *«encurtar · balão ao passar o rato»*.
+    //
+    // ⛔ Com a linha a falar a língua da casa o valor deixou de ter a largura do painel e passou a
+    //    ter a da coluna do controlo (`112 px` no encaixe do dono) ⇒ um nome de folha comprido
+    //    (`Hand-packed · hero · idle_0`) passa a ser cortado. *O nome da folha é texto do ARTISTA:
+    //    encurtá-lo não é uma saída*, e a lei da casa para isso é o balão.
+    //
+    // ⚠️ **O âmbito é a porta, e não uma segunda lista:** quem decide o corte é a lei da reticência
+    //    ([`ph2d_editor_core::text_elide`]), e ela só sabe ONDE o texto caiu se o pintor lho disser.
+    ph2d_editor_core::text_elide::balao::na_area(slot, || {
+        paint_text(
+            text_system,
+            scene,
+            &detail,
+            slot.x + Spacing::Xs.px(),
+            slot.y + (slot.h - label_font) * 0.5,
+            label_font,
+            (slot.w - Spacing::Xs.px() * 2.0).max(0.0),
+            resolve(ColorToken::Text1, theme),
+        );
+    });
     // ⭐⭐⭐ **É AQUI que ela vira alvo.** O `HitIndex` é a porta única de *«o que está debaixo do
     // cursor»*, e é ela que dá de graça o recorte do corpo e a oclusão por um painel de cima.
     // ⛔ Sem `populate`: quem consome este id é o caminho da QUEDA, não o de clique — a mesma
     // classe das *swatches* do picker, e o `HIT_PARITY_ALLOW` nomeia-a.
     hit_index.register(ids::INSP_RENDER_TEXTURE_SLOT, slot);
-    let mut cur_y = slot.y + slot.h + row_gap;
+    let mut cur_y = y + ROW_H_PX + row_gap;
     // ⚠️ **O TAMANHO de origem fica ao lado da ranhura**, e não numa função irmã: as duas são a
     // mesma pergunta — *de onde vêm estes pixels, e que tamanho tinham* —, e separá-las custou ao
     // pai o tecto de 200 LOC por uma chamada.
     if let Some((pw, ph)) = info.source_pixels {
-        paint_text(
-            text_system,
+        let tamanho = ph2d_editor_core::property_row::paint_label_row(
             scene,
-            SOURCE_SIZE_LABEL.tr(),
+            text_system,
+            theme,
             x,
-            cur_y,
-            label_font,
             w,
-            resolve(ColorToken::Text2, theme),
+            cur_y,
+            ROW_H_PX,
+            SOURCE_SIZE_LABEL.tr(),
+            sec,
         );
         paint_text(
             text_system,
@@ -443,149 +433,13 @@ fn paint_provenance(
                 "panel.inspector.render_source.size_px",
                 &[("pw", &pw), ("ph", &ph)],
             ),
-            x,
-            cur_y + label_font + row_gap,
+            tamanho.control.x,
+            tamanho.control.y + (ROW_H_PX - label_font) * 0.5,
             label_font,
-            w,
+            tamanho.control.w,
             resolve(ColorToken::Text1, theme),
         );
-        cur_y += (label_font + row_gap) * 2.0;
-    }
-    cur_y
-}
-
-/// **A amostragem de REGIÃO** (spec §3.3) — o toggle + os quatro campos px + o Filter Clip.
-///
-/// Saiu do corpo de [`paint_render_source_section`] pelo cap de fn do painel, e é o *per-row
-/// split* que a nota do allowlist prescreve: é o maior bloco da seção e o único que fala um
-/// vocabulário próprio (um sub-retângulo do asset), enquanto o resto descreve a PROVENIÊNCIA.
-///
-/// ⚠️ Escondido para `HandPacked` — aquele traz o próprio rect do asset, então o controle aqui
-/// seria um knob que o extract ignora.
-#[allow(clippy::too_many_arguments)]
-fn paint_region_rows(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    info: &InspectorSpriteInfo,
-    x: f32,
-    w: f32,
-    y: f32,
-    label_font: f32,
-    row_gap: f32,
-) -> f32 {
-    let mut cur_y = y;
-    // Region sampling (spec §3.3) — hidden for Hand-packed (it brings its
-    // own rect from the asset). Toggle + (when on) X/Y/W/H px inputs +
-    // Filter Clip. Renders via the extract `region_subrect` (W2.T2.4).
-    if !matches!(info.source_kind, InspectorSpriteSource::HandPacked { .. }) {
-        // ⭐⭐ **As duas caixas desta sub-secção partilham UMA coluna** (2026-09-15), medida sobre
-        //    os dois nomes — e a segunda só é pintada com a primeira ligada, logo a coluna tem de
-        //    contar as duas ou ela salta no clique. Ver [`Seccao::medida`].
-        let sec = ph2d_editor_core::property_row::Seccao::medida(
-            text_system,
-            1,
-            &[
-                tr("panel.inspector.render_source.region"),
-                tr("panel.inspector.render_source.filter_clip"),
-            ],
-        );
-        let re_value = store
-            .checkbox(ids::INSP_REGION_ENABLED)
-            .map_or(CheckboxValue::Unchecked, |(_, v)| v);
-        cur_y = ph2d_editor_core::property_row::paint_check_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            cur_y,
-            (
-                ids::INSP_REGION_ENABLED,
-                tr("panel.inspector.render_source.region"),
-                matches!(re_value, CheckboxValue::Checked),
-            ),
-            sec,
-        );
-
-        if matches!(re_value, CheckboxValue::Checked) {
-            let field_h = ROW_H_PX;
-            let cell_gap = Spacing::Md.px();
-            let (region_w, region_dot) =
-                ph2d_editor_core::widget::form_row_columns(x, w, cur_y, field_h);
-            let cell_w = ((region_w - cell_gap) * 0.5).max(0.0);
-            paint_region_num_cell(
-                scene,
-                text_system,
-                hit_index,
-                store,
-                Rect::new(x, cur_y, cell_w, field_h),
-                ph2d_i18n::TextKey::new("panel.inspector.region.x"),
-                ids::INSP_REGION_X,
-                label_font,
-                theme,
-            );
-            paint_region_num_cell(
-                scene,
-                text_system,
-                hit_index,
-                store,
-                Rect::new(x + cell_w + cell_gap, cur_y, cell_w, field_h),
-                ph2d_i18n::TextKey::new("panel.inspector.region.y"),
-                ids::INSP_REGION_Y,
-                label_font,
-                theme,
-            );
-            ph2d_editor_core::widget::paint_decorator_dot(scene, theme, region_dot);
-            cur_y += field_h + row_gap;
-            paint_region_num_cell(
-                scene,
-                text_system,
-                hit_index,
-                store,
-                Rect::new(x, cur_y, cell_w, field_h),
-                ph2d_i18n::TextKey::new("panel.inspector.region.w"),
-                ids::INSP_REGION_W,
-                label_font,
-                theme,
-            );
-            paint_region_num_cell(
-                scene,
-                text_system,
-                hit_index,
-                store,
-                Rect::new(x + cell_w + cell_gap, cur_y, cell_w, field_h),
-                ph2d_i18n::TextKey::new("panel.inspector.region.h"),
-                ids::INSP_REGION_H,
-                label_font,
-                theme,
-            );
-            cur_y += field_h + row_gap;
-
-            let fc_value = store
-                .checkbox(ids::INSP_REGION_FILTER_CLIP)
-                .map_or(CheckboxValue::Checked, |(_, v)| v);
-            cur_y = ph2d_editor_core::property_row::paint_check_row(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                x,
-                w,
-                cur_y,
-                (
-                    ids::INSP_REGION_FILTER_CLIP,
-                    tr("panel.inspector.render_source.filter_clip"),
-                    matches!(fc_value, CheckboxValue::Checked),
-                ),
-                sec,
-            );
-        }
+        cur_y += ROW_H_PX + row_gap;
     }
     cur_y
 }

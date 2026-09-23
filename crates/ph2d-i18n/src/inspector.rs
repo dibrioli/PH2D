@@ -33,6 +33,19 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⚠️ A frase inteira mora aqui; o código entrega os valores já formatados quando a precisão
         //    é da UI (`{:.1}`), porque o marcador só conhece `Display`.
         "panel.inspector.properties.title_of" => "Properties of \u{201c}{n}\u{201d}",
+        // ⭐⭐⭐ **A FRASE DA SELECÇÃO — UMA, do PAINEL.**
+        //
+        // ⛔⛔⛔ Ela dizia o mesmo em **VINTE E UMA** secções, por **QUATRO** pintores diferentes
+        // (`rows::aviso`, um `nota`, o `paint_text` cru e uma cópia própria na `tags`), com
+        // quatro redacções. Medido em 2026-09-22 pela porta do produto: **cinco** cópias idênticas
+        // no MESMO quadro, mais uma sexta a dizer o mesmo por outras palavras.
+        //
+        // ⚠️ **Ela leva o NÚMERO porque agora pode**: com vinte e uma cópias ninguém lhe punha o
+        // `{n}` (cada secção teria de o formatar), e *«estás a editar só uma»* sem dizer de
+        // quantas obriga o artista a contar a selecção.
+        "panel.inspector.selection.primary_only" => {
+            "{n} selected \u{b7} edits apply to the active object only."
+        }
         "panel.inspector.properties.more_not_shown" => "{n} more not shown",
         "panel.inspector.actions.never_fires" => "never fires \u{b7} {verbo} \u{b7} {alvo}",
         "panel.inspector.actions.title_count" => "Signal Actions  ({n})",
@@ -164,9 +177,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "This action never runs: it has no signal name."
         }
         "panel.inspector.actions.signal_actions" => "Signal Actions",
-        "panel.inspector.actions.multiple_selected_action_edits_apply" => {
-            "Multiple selected \u{b7} action edits apply to the active object only."
-        }
         "panel.inspector.actions.no_actions_yet" => "No actions yet.",
         "panel.inspector.anchors.rides_parent_anchor" => "Rides Parent Anchor",
         "panel.inspector.anchors.the_parent_has_no_anchor" => {
@@ -215,9 +225,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.inspector.animation.rewind" => "Rewind",
         "panel.inspector.animation.animation" => "Animation",
-        "panel.inspector.animation.multiple_selected_animation_edits_apply" => {
-            "Multiple selected \u{b7} animation edits apply to the active object only."
-        }
         "panel.inspector.animation.this_sprite_does_not_play" => {
             "This sprite does not play animations yet."
         }
@@ -265,9 +272,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.audio.loop" => "Loop",
         "panel.inspector.audio.autoplay" => "Autoplay",
         "panel.inspector.audio.audio" => "Audio",
-        "panel.inspector.audio.multiple_selected_audio_edits_apply" => {
-            "Multiple selected \u{b7} audio edits apply to the active object only."
-        }
         "panel.inspector.audio.these_are_the_scene_s" => {
             "These are the scene's ears \u{2014} sound is heard from here."
         }
@@ -296,9 +300,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.camera.max_m" => "Max",
         "panel.inspector.camera.cull_mask" => "Cull Mask",
         "panel.inspector.camera.camera" => "Camera",
-        "panel.inspector.camera.editing_the_primary_selection_only" => {
-            "Editing the primary selection only."
-        }
         "panel.inspector.color_tint.color_and_tint" => "Color & Tint",
         "panel.inspector.color_tint.tint" => "Tint",
         "panel.inspector.color_tint.self_tint" => "Self Tint",
@@ -554,9 +555,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "This timer runs but says nothing: the signal name is empty."
         }
         "panel.inspector.timers.timers" => "Timers",
-        "panel.inspector.timers.multiple_selected_timer_edits_apply" => {
-            "Multiple selected \u{b7} timer edits apply to the active object only."
-        }
         "panel.inspector.timers.no_timers_yet" => "No timers yet.",
         "panel.inspector.transform.position_m" => "Position X / Y",
         "panel.inspector.transform.position_px" => "Position X / Y",

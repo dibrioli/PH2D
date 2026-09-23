@@ -303,56 +303,24 @@ impl ReserveFields {
                 nearest: true,
             });
         }
-        let lut = claim_lut();
-        let n = rw * rh;
-        // Numerador e denominador na janela, JUNTOS: `[L·q, q]` (0 fora da lavagem). O `q` é também a
-        // MÁSCARA das duas caixas — os dois campos correm os mesmos troços, logo uma passagem soma os
-        // dois. ⚠️ Era um campo de cada vez, com a máscara transposta de novo a cada caixa.
-        let mut ab = vec![[0u64; 2]; n];
-        let mut b = vec![0u64; n];
-        ab.par_chunks_mut(rw)
-            .zip(b.par_chunks_mut(rw))
-            .enumerate()
-            .for_each(|(wy, (abr, br))| {
-                let s = (ry0 + wy) * fw + rx0;
-                for wx in 0..rw {
-                    let q = u64::from(lut[prox[s + wx] as usize]);
-                    abr[wx] = [u64::from(level[s + wx]) * q, q];
-                    br[wx] = q;
-                }
-            });
-        let mut radii: Vec<u16> = table.iter().map(|s| s.reserve_r).collect();
-        radii.push(cur.reserve_r);
-        radii.sort_unstable();
-        radii.dedup();
-        let taper = taper_lut();
-        let mut caixa = Caixa::nova(&b, rw, rh);
-        let by_r = radii
-            .into_iter()
-            .map(|r| {
-                // Duas caixas (`r₁ + r₂ = R`) ⇒ núcleo triangular: a transição sai C¹ e o suporte
-                // total continua a ser `R`, que é o que a janela garante.
-                let (r1, r2) = ((r / 2) as usize, (r - r / 2) as usize);
-                let mut s = ab.clone();
-                for rr in [r1, r2] {
-                    if rr > 0 {
-                        caixa.aplica(&mut s, rr);
-                    }
-                }
-                let mut out = vec![0.0f32; n];
-                out.par_chunks_mut(rw).enumerate().for_each(|(wy, orow)| {
-                    let base = (ry0 + wy) * fw + rx0;
-                    for (wx, o) in orow.iter_mut().enumerate() {
-                        let [sa, sb] = s[wy * rw + wx];
-                        if sb > 0 {
-                            let lvl = (sa as f64 / (sb as f64 * 255.0)) as f32;
-                            *o = taper[prox[base + wx] as usize] * lvl.min(1.0);
-                        }
-                    }
-                });
-                (r, out)
-            })
-            .collect();
+        // ⚠️ `try_borrow_mut`: numa espera do rayon esta thread pode roubar outra tarefa que também
+        // constrói um campo — essa paga um rascunho novo em vez de entrar em pânico.
+        let by_r = RASCUNHO.with(|r| match r.try_borrow_mut() {
+            Ok(mut g) => campos(
+                &mut g,
+                (level, prox),
+                (fw, (rx0, ry0), (rw, rh)),
+                table,
+                cur,
+            ),
+            Err(_) => campos(
+                &mut Rascunho::default(),
+                (level, prox),
+                (fw, (rx0, ry0), (rw, rh)),
+                table,
+                cur,
+            ),
+        });
         Some(Self {
             by_r,
             rw,
@@ -377,6 +345,86 @@ impl ReserveFields {
     }
 }
 
+/// Os campos `T·S`, um por raio distinto entre os donos, sobre o rascunho.
+fn campos(
+    rasc: &mut Rascunho,
+    (level, prox): (&[u8], &[u8]),
+    (fw, (rx0, ry0), (rw, rh)): (usize, (usize, usize), (usize, usize)),
+    table: &[WetStrokeStyle],
+    cur: &WetStrokeStyle,
+) -> Vec<(u16, Vec<f32>)> {
+    let lut = claim_lut();
+    let n = rw * rh;
+    rasc.dimensiona(n);
+    let Rascunho {
+        ab,
+        b,
+        mask_t,
+        linhas,
+        colunas,
+        colunas_out,
+        s,
+    } = rasc;
+    // Numerador e denominador na janela, JUNTOS: `[L·q, q]` (0 fora da lavagem). O `q` é também a
+    // MÁSCARA das duas caixas — os dois campos correm os mesmos troços, logo uma passagem soma os
+    // dois. ⚠️ Era um campo de cada vez, com a máscara transposta de novo a cada caixa.
+    ab.par_chunks_mut(rw)
+        .zip(b.par_chunks_mut(rw))
+        .enumerate()
+        .for_each(|(wy, (abr, br))| {
+            let s = (ry0 + wy) * fw + rx0;
+            for wx in 0..rw {
+                let q = u64::from(lut[prox[s + wx] as usize]);
+                abr[wx] = [u64::from(level[s + wx]) * q, q];
+                br[wx] = q;
+            }
+        });
+    let mut radii: Vec<u16> = table.iter().map(|s| s.reserve_r).collect();
+    radii.push(cur.reserve_r);
+    radii.sort_unstable();
+    radii.dedup();
+    let taper = taper_lut();
+    transpoe(b, rw, rh, mask_t);
+    radii
+        .into_iter()
+        .map(|r| {
+            // Duas caixas (`r₁ + r₂ = R`) ⇒ núcleo triangular: a transição sai C¹ e o suporte
+            // total continua a ser `R`, que é o que a janela garante.
+            let (r1, r2) = ((r / 2) as usize, (r - r / 2) as usize);
+            s.copy_from_slice(ab);
+            for rr in [r1, r2] {
+                if rr > 0 {
+                    passagem(s, b, rw, rr, linhas);
+                    // Vertical = a mesma passagem sobre o TRANSPOSTO (linhas contíguas para o
+                    // rayon), e de volta.
+                    transpoe(linhas, rw, rh, colunas);
+                    passagem(colunas, mask_t, rh, rr, colunas_out);
+                    transpoe(colunas_out, rh, rw, s);
+                }
+            }
+            // A saída nasce por `collect_into_vec` de um iterador INDEXADO: o rayon escreve cada
+            // texel directamente na memória por iniciar, sem o `memset` de um `vec![0.0; n]`.
+            let s = &s[..];
+            let mut out = Vec::new();
+            (0..n)
+                .into_par_iter()
+                .with_min_len(4096)
+                .map(|i| {
+                    let [sa, sb] = s[i];
+                    if sb > 0 {
+                        let base = (ry0 + i / rw) * fw + rx0 + i % rw;
+                        let lvl = (sa as f64 / (sb as f64 * 255.0)) as f32;
+                        taper[prox[base] as usize] * lvl.min(1.0)
+                    } else {
+                        0.0
+                    }
+                })
+                .collect_into_vec(&mut out);
+            (r, out)
+        })
+        .collect()
+}
+
 /// Soma em caixa separável **restrita aos TROÇOS contíguos da máscara** (`mask > 0`): a caixa de
 /// cada pixel é cortada nas pontas do troço a que ele pertence, na horizontal e depois na vertical.
 /// Nenhuma soma atravessa um pixel seco ⇒ difusão sem fluxo na silhueta. `O(n)` por somas de
@@ -387,49 +435,50 @@ impl ReserveFields {
 /// `f32`, onde uma soma reordenada é outro número). O que ela guarda entre caixas:
 /// - a máscara TRANSPOSTA, calculada UMA vez por janela (era transposta de novo a cada caixa, dos
 ///   dois campos: quatro vezes por raio);
-/// - três planos de rascunho reusados por todas as caixas e todos os raios (eram cinco planos
-///   alocados e ZERADOS por caixa — a medição do produto via `alloc_zeroed` como a maior fatia da
-///   thread principal). Cada passagem escreve TODOS os píxeis, os de fora da lavagem a zero, logo o
-///   rascunho nunca precisa de nascer limpo.
-struct Caixa<'m> {
-    mask: &'m [u64],
+/// - o RASCUNHO inteiro — os pares, a máscara e a transposta, os três planos das passagens e o campo
+///   que as caixas alisam —, reusado por todas as caixas, todos os raios e todos os QUADROS (eram
+///   cinco planos alocados e ZERADOS por caixa, mais um clone por raio: a medição do produto via o
+///   `alloc_zeroed` como a maior fatia da thread principal). ⚠️ O rascunho de um quadro serve ao
+///   seguinte, cuja máscara é OUTRA, e os texels SECOS dele guardam somas velhas — que nunca são
+///   lidas: as passagens só leem dentro dos troços (o seco é saltado), e a saída multiplica cada
+///   texel pelo afilamento `T[prox]`, que no seco (`prox = 0`) é `0` exacto. Medido por mutação:
+///   escrever o zero no seco não mudava um bit, e a escrita saiu (gate
+///   `o_rascunho_de_um_quadro_nao_vaza_para_o_seguinte`).
+#[derive(Default)]
+struct Rascunho {
+    ab: Vec<[u64; 2]>,
+    b: Vec<u64>,
     mask_t: Vec<u64>,
-    w: usize,
-    h: usize,
     linhas: Vec<[u64; 2]>,
     colunas: Vec<[u64; 2]>,
     colunas_out: Vec<[u64; 2]>,
+    s: Vec<[u64; 2]>,
 }
 
-impl<'m> Caixa<'m> {
-    fn nova(mask: &'m [u64], w: usize, h: usize) -> Self {
-        let mut mask_t = vec![0u64; w * h];
-        transpoe(mask, w, h, &mut mask_t);
-        let n = w * h;
-        Self {
-            mask,
-            mask_t,
-            w,
-            h,
-            linhas: vec![[0; 2]; n],
-            colunas: vec![[0; 2]; n],
-            colunas_out: vec![[0; 2]; n],
+impl Rascunho {
+    /// Todo plano com `n` texels. Só CRESCER zera (a parte nova); encolher só corta o comprimento.
+    fn dimensiona(&mut self, n: usize) {
+        for v in [
+            &mut self.ab,
+            &mut self.linhas,
+            &mut self.colunas,
+            &mut self.colunas_out,
+            &mut self.s,
+        ] {
+            v.resize(n, [0; 2]);
         }
+        self.b.resize(n, 0);
+        self.mask_t.resize(n, 0);
     }
+}
 
-    /// Uma caixa de raio `r` sobre os dois campos de `s`, no lugar.
-    fn aplica(&mut self, s: &mut [[u64; 2]], r: usize) {
-        let (w, h) = (self.w, self.h);
-        passagem(s, self.mask, w, r, &mut self.linhas);
-        // Vertical = a mesma passagem sobre o TRANSPOSTO (linhas contíguas para o rayon), e de volta.
-        transpoe(&self.linhas, w, h, &mut self.colunas);
-        passagem(&self.colunas, &self.mask_t, h, r, &mut self.colunas_out);
-        transpoe(&self.colunas_out, h, w, s);
-    }
+thread_local! {
+    static RASCUNHO: std::cell::RefCell<Rascunho> = std::cell::RefCell::new(Rascunho::default());
 }
 
 /// Uma passagem por LINHAS: cada linha de `out` é a soma em caixa de raio `r` da linha de `src`,
-/// cortada nos troços da máscara. Escreve a linha inteira (zero fora dos troços).
+/// cortada nos troços da máscara. Escreve SÓ os troços: o seco fica com o que lá estava (ver a nota do
+/// [`Rascunho`] — ninguém o lê).
 fn passagem(src: &[[u64; 2]], mask: &[u64], w: usize, r: usize, out: &mut [[u64; 2]]) {
     out.par_chunks_mut(w)
         .zip(src.par_chunks(w).zip(mask.par_chunks(w)))
@@ -439,7 +488,6 @@ fn passagem(src: &[[u64; 2]], mask: &[u64], w: usize, r: usize, out: &mut [[u64;
                 let mut x = 0;
                 while x < w {
                     if mrow[x] == 0 {
-                        orow[x] = [0, 0];
                         x += 1;
                         continue;
                     }

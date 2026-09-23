@@ -541,3 +541,28 @@ fn the_field_is_read_bilinear_not_nearest() {
         "meio pixel lê {mid}, entre {a} e {b}"
     );
 }
+
+/// ⭐ **O rascunho da reserva vive entre QUADROS, e o quadro seguinte tem OUTRA máscara.** Depois de
+/// um campo sobre uma lavagem larga, o campo de uma lavagem que só cobre um canto da mesma janela
+/// tem de dar o byte da lei de antes. Onde a lavagem de antes existia e a de agora não, o rascunho
+/// GUARDA somas velhas — e elas não vazam por duas razões que este gate cobre juntas: as passagens
+/// só leem dentro dos troços, e a saída multiplica pelo afilamento, que no seco é `0` exacto.
+/// ⚠️ Uma 1.ª redacção dizia que era a escrita do zero no seco que impedia o vazamento; a mutação
+/// que a apagava SOBREVIVEU a este gate — a escrita era inerte, e saiu.
+#[test]
+fn o_rascunho_de_um_quadro_nao_vaza_para_o_seguinte() {
+    let win = ((0usize, 0usize), (W, H));
+    let (mut l1, mut p1) = (vec![0u8; W * H], vec![0u8; W * H]);
+    dab(&mut l1, &mut p1, (80.0, 48.0), 70.0, 0.8);
+    let _ = field(&l1, &p1, 9, win); // enche o rascunho em quase toda a janela
+    let (mut l2, mut p2) = (vec![0u8; W * H], vec![0u8; W * H]);
+    dab(&mut l2, &mut p2, (20.0, 20.0), 14.0, 0.5);
+    let novo = field(&l2, &p2, 9, win);
+    let antes = campo_de_antes((&l2, &p2), win, 9);
+    for (i, (a, b)) in novo.by_r[0].1.iter().zip(&antes).enumerate() {
+        assert_eq!(a.to_bits(), b.to_bits(), "texel {i}: {a} contra {b}");
+    }
+    // CONTROLO: a 1.ª lavagem cobre muito do que a 2.ª deixa seco (senão não havia lixo a vazar).
+    let seco_agora_molhado_antes = (0..W * H).filter(|&i| p2[i] == 0 && p1[i] != 0).count();
+    assert!(seco_agora_molhado_antes > 5000, "{seco_agora_molhado_antes}");
+}

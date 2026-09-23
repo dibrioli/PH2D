@@ -23,6 +23,7 @@ uma continua a ser um ficheiro próprio; o que mudou foi o endereço.
 - ⛔⛔ [Cronometrar UMA chamada de uma estrutura NOVA mede o COMPILADOR do driver — `1,4`–`4,4 s` contra `6 ms` de regime, e o veredito de um gate move-se `11,7×` por isso](feedback_timing_one_call_of_a_new_structure_measures_the_compiler.md)
 - ⭐⭐ [Duas hipóteses de CAUSA a cair é sinal para mudar de pergunta: não *«porque é caro»*, mas *«porque está aqui»* — `1 406 → 74 ms` sem a causa ser achada](feedback_a_cure_may_not_need_the_cause_ask_a_different_question.md)
 - ⛔⛔ [Varredura cujo parâmetro cai dentro de um CLAMP mede o clamp — imprima a grandeza INTERMÉDIA, e `6e-9` a seis casas lê-se `0.000000`](feedback_a_ruler_whose_parameter_sits_inside_a_clamp_measures_the_clamp.md)
+- ⛔⛔ [Limiar de «é zero» menor que o PASSO da varredura: o erro que ele fabrica não converge e lê-se como um achado sobre o sujeito — peça à régua ONDE](feedback_a_threshold_smaller_than_the_sampling_step_cannot_see_zero.md)
 - ⭐⭐⭐ [Custo LINEAR na contagem = trabalho DINÂMICO por amostra; TAMANHO DE TEXTO daria um degrau — o discriminador que decide se uma consulta compra algo](feedback_linear_in_the_count_means_dynamic_work_not_text_size.md)
 - [Fidelidade tem DUAS direcções; saída→entrada dá ZERO numa amputação](feedback_a_fidelity_ruler_has_two_directions_and_only_one_sees_an_amputation.md)
 - [Defeito que a ferramenta emite e não sabe ler REALIMENTA-SE — feche os dois lados](feedback_a_defect_the_tool_emits_and_cannot_read_is_a_feedback_loop.md)

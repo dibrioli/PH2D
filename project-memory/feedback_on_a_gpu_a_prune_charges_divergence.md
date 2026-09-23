@@ -47,6 +47,29 @@ dados uma amostra precisa, é quantas LISTAS DIFERENTES um grupo lê.*
    `ph2d_field_gpu::probe::evaluate` tinha esse defeito, e a cura foi uma porta que compila fora e
    devolve o mínimo de `N` despachos.
 
+⭐⭐⭐⭐ **E a segunda metade da lição, medida no mesmo dia: a granularidade que é COERENTE não
+poda, e a que PODA não é coerente — e o produto das duas é ~constante.**
+
+A saída óbvia da tabela de cima é *«uma lista por GRUPO de threads»*, e o grupo coerente por
+construção é o ladrilho de `8×8` px que um `workgroup_size(64)` cobre. Medido pela aritmética de
+região do próprio produto, no vaso a `1920×1080`:
+
+| granularidade | poda p50 | poda pior | imposto | ganho p50 | ganho pior |
+|---|---:|---:|---:|---:|---:|
+| célula em `(u, v)` (fina) | `11,8×` | `3,4×` | `12,1×` | `0,97×` | `0,28×` |
+| **ladrilho `8 px`, sem fatias** (coerente) | `2,7×` | `1,1×` | `1,58×` | **`1,7×`** | **`0,7×`** |
+| ladrilho `8 px` × `4` fatias | `5,2×` | `1,8×` | (rompe a coerência) | — | — |
+
+⭐ **E encolher o ladrilho não ajuda** (`64 → 8 px` move a poda de `2,4×` para `2,7×`): o que limita
+é a **PROFUNDIDADE** do tronco do ladrilho, que atravessa a peça e por isso vê quase tudo. Repartir
+em fatias cura a poda e é exactamente o que faz as threads lerem listas diferentes. ⇒ **a wave foi
+recusada**: `1,7×` na mediana e uma PERDA no pior caso.
+
+**How to apply (a segunda metade):** antes de desenhar uma consulta para GPU, ponha as duas colunas
+lado a lado — *quanto a poda compra nesta granularidade* e *quantas listas um grupo lê nela* — e
+multiplique. Se o produto não for confortavelmente maior que `1`, a estrutura de aceleração não
+transfere, **por muito bem que ela funcione na CPU**.
+
 Ver [[feedback_linear_in_the_count_means_dynamic_work_not_text_size]] ·
 [[reference_topic_measurement_discipline]] ·
 [[feedback_timing_one_call_of_a_new_structure_measures_the_compiler]].

@@ -346,3 +346,74 @@ fn diag_que_celulas_degeneram() {
 /// ⏱️⭐⭐⭐⭐ **O custo de uma ARESTA lida contra dobrada** — ver o cabeçalho do [`aresta`].
 #[path = "device_probes_w9_aresta.rs"]
 mod aresta;
+
+/// ⏱️⭐⭐⭐⭐ **Sonda: quanto a poda compra na granularidade COERENTE POR GRUPO.**
+///
+/// A [`aresta::diag_o_custo_de_uma_aresta_lida_contra_dobrada`] mediu que uma consulta cuja lista
+/// varia **por amostra** paga `12,1×`–`17,3×` por aresta, e que o desenho que sobrevive é **uma
+/// lista por grupo de threads** — cujo imposto é `1,58×` num buffer `uniform`. ⇒ a pergunta é
+/// quanto a poda ainda compra no **ladrilho do ecrã**, que é coerente por construção.
+///
+/// ⚠️ **A régua passa pela porta do produto** ([`ph2d_field_render::linhas_por_ladrilho_for_test`]),
+/// que percorre a MESMA aritmética de região que a marcha percorre. *Reconstruí-la aqui mediria
+/// outro programa.*
+#[test]
+#[ignore = "sonda de diagnóstico: conta as linhas por ladrilho"]
+fn diag_a_poda_coerente_por_grupo() {
+    let doc = crate::smoke::scenes::vaso(ph2d_field::DEFAULT_PROFILE_RESOLUTION);
+    let reg = crate::smoke::sampled_registry();
+    let cam = ph2d_field_render::Orbit::default();
+    let inteira = ph2d_field_eval::Field::new(&doc)
+        .tape_shape()
+        .expect("a fita do torno")
+        .guardados;
+    println!("\n  a fita INTEIRA paga {inteira} linhas em toda amostra");
+    println!(
+        "  ladrilho px · fatias · regiões · p50 · p90 · pior · ganho p50 · ganho pior · \
+         com o imposto de 1,58×"
+    );
+    for (tile, slabs) in [
+        (64usize, 1usize),
+        (64, 4),
+        (32, 1),
+        (32, 4),
+        (16, 1),
+        (16, 4),
+        (8, 1),
+        (8, 4),
+    ] {
+        let Some(mut linhas) = ph2d_field_render::linhas_por_ladrilho_for_test(
+            &doc,
+            &reg,
+            &cam,
+            super::super::LW,
+            super::super::LH,
+            tile,
+            slabs,
+        ) else {
+            println!("  {tile:>11} · {slabs:>6} ·   sem regiões");
+            continue;
+        };
+        let n = linhas.len();
+        let mut v: Vec<usize> = linhas.drain(..).map(|(_, l)| l).collect();
+        v.sort_unstable();
+        #[allow(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            clippy::cast_precision_loss
+        )]
+        let q = |f: f64| v[(((v.len() - 1) as f64) * f) as usize];
+        let (p50, p90, pior) = (q(0.5), q(0.9), q(1.0));
+        #[allow(clippy::cast_precision_loss)]
+        let g = |x: usize| inteira as f32 / x.max(1) as f32;
+        println!(
+            "  {tile:>11} · {slabs:>6} · {n:>7} · {p50:>4} · {p90:>4} · {pior:>4} · {:>8.1}× · \
+             {:>10.1}× · p50 {:>4.1}× · pior {:>4.1}×",
+            g(p50),
+            g(pior),
+            g(p50) / 1.58,
+            g(pior) / 1.58,
+        );
+    }
+    println!();
+}

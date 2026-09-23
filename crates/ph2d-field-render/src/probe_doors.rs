@@ -224,3 +224,80 @@ pub fn trace_by_rows_for_test(
         None,
     )
 }
+
+/// ⏱️⭐⭐⭐⭐ **Quantas linhas de WGSL a região de cada LADRILHO × FATIA paga** — a porta que a sonda
+/// da coerência por grupo dirige.
+///
+/// # Porque ela existe
+///
+/// A `W9` mediu que, num dispositivo, uma consulta cuja lista varia **por amostra** paga
+/// `12,1×`–`17,3×` por aresta (a divergência serializa as leituras), e que o desenho que sobrevive é
+/// **uma lista por GRUPO de threads**. ⇒ a pergunta passa a ser *quanto a poda ainda compra na
+/// granularidade que é coerente por construção*, que é o **ladrilho do ecrã**.
+///
+/// ⚠️ **A régua percorre a MESMA aritmética de região do produto** (`tile_t_range` · `slab_bounds` ·
+/// `slab_region`): reconstruí-la na sonda mediria outro programa, que é o defeito que esta linha já
+/// pagou quatro vezes.
+///
+/// Devolve uma linha por região: `(fatia, linhas da fita especializada)`. Com `slabs = 1` ela
+/// responde pela granularidade **só de ladrilho**, que é a coerente.
+#[doc(hidden)]
+#[must_use]
+#[allow(clippy::too_many_arguments)]
+pub fn linhas_por_ladrilho_for_test(
+    doc: &FieldDoc,
+    reg: &ph2d_field_eval::hybrid::Registry,
+    cam: &Orbit,
+    width: u32,
+    height: u32,
+    tile: usize,
+    slabs: usize,
+) -> Option<Vec<(usize, usize)>> {
+    let rc = ph2d_field_eval::RegionCompiler::new(doc);
+    if !rc.is_worth_it() {
+        return None;
+    }
+    let bbox = ph2d_field_eval::bounds::bounding_ball(doc, reg)
+        .map(ph2d_field_eval::bounds_clip::march_clip)?;
+    let plane = Screen::new(width, height, cam.half_extent);
+    let margem =
+        Sharpness::for_frame(cam.half_extent, (width as usize).min(height as usize)).normal;
+    let (w, h) = (width as usize, height as usize);
+    let mut out = Vec::new();
+    for ty in 0..h.div_ceil(tile) {
+        for tx in 0..w.div_ceil(tile) {
+            let (x0, y0) = (tx * tile, ty * tile);
+            let (x1, y1) = ((x0 + tile).min(w), (y0 + tile).min(h));
+            // ⚠️ Um ladrilho que nenhum raio de canto alcança **não** entra na tabela: ali não há
+            // região para especializar, e contá-lo como `0` baixaria a mediana sem a peça mudar.
+            let Some((t_lo, t_hi)) =
+                crate::tiles::tile_t_range(cam, plane, (x0, y0), (x1, y1), bbox)
+            else {
+                continue;
+            };
+            let bounds = crate::tiles::slab_bounds(t_lo, t_hi, slabs);
+            for k in 0..bounds.len().saturating_sub(1) {
+                let Some(r) = crate::tiles::slab_region(
+                    cam,
+                    plane,
+                    (x0, y0),
+                    (x1, y1),
+                    bbox,
+                    margem,
+                    &bounds,
+                    k,
+                ) else {
+                    continue;
+                };
+                let t = rc.compile_at(doc, r.lo, r.hi, &r.pts);
+                out.push((
+                    k,
+                    ph2d_field_eval::Field::from_tree(&t)
+                        .tape_shape()
+                        .map_or(0, |s| s.guardados),
+                ));
+            }
+        }
+    }
+    Some(out)
+}

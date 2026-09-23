@@ -770,11 +770,58 @@ ecrã**, que é exactamente por onde o traçado de CPU já corta. ⇒ com o cens
 (`16³`: p50 `109` linhas, pior `372`) e o imposto de `1,58×`, a cena `5` aterra em **`~9,5 ms`** na
 mediana e `~22` na pior região, contra `31,96` hoje e um orçamento de `16,7`.
 
-⏳ **E fica a pergunta que o desenho abre, com o mecanismo nomeado:** a granularidade que paga é
-**ladrilho × fatia de profundidade** (o traçado de CPU usa `SLABS = 4`), e numa esfera-marcha as
-threads de um ladrilho estão em `t` diferentes ⇒ *a fatia pode voltar a divergir*. A tabela acima diz
-exactamente quanto isso custa por lista extra, e é essa a medição que a wave seguinte tem de fazer
-antes de escrever um buffer.
+### ⛔⛔⛔⛔ E ESSA MEDIÇÃO FOI FEITA — A WAVE DO TORNO ESTÁ RECUSADA POR MEDIÇÃO
+
+A pergunta que o desenho abria era: *quanto a poda ainda compra na granularidade que é coerente por
+construção?* A sonda é a `diag_a_poda_coerente_por_grupo`, e ela percorre a **aritmética de região
+do PRODUTO** ([`ph2d_field_render::linhas_por_ladrilho_for_test`], que chama o `tile_t_range`, o
+`slab_bounds` e o `slab_region` da marcha) — *reconstruí-la mediria outro programa*.
+
+`1920×1080`, a peça do vaso, `931` linhas na fita inteira, e a última coluna já com o imposto de
+`1,58×` de um buffer `uniform` lido coerentemente:
+
+| ladrilho | fatias | regiões | p50 | pior | poda p50 | poda pior | **ganho p50** | **ganho pior** |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| `64 px` | 1 | `300` | `382` | `861` | `2,4×` | `1,1×` | **`1,5×`** | **`0,7×`** |
+| `32 px` | 1 | `1 072` | `356` | `835` | `2,6×` | `1,1×` | `1,7×` | `0,7×` |
+| **`8 px`** | **1** | `15 058` | `351` | `835` | `2,7×` | `1,1×` | **`1,7×`** | **`0,7×`** |
+| `8 px` | 4 | `39 406` | `178` | `505` | `5,2×` | `1,8×` | `3,3×` | `1,2×` |
+
+⭐⭐⭐ **A leitura é uma frase: a granularidade que é COERENTE não poda, e a que PODA não é
+coerente.** Um grupo de `64` threads cobre um ladrilho de `8×8` px, logo a linha `8 px · 1 fatia` é
+**a** granularidade coerente por construção — e ali a poda compra `2,7×` na mediana e **`1,1×` no
+pior caso**, que o imposto de acesso transforma em `1,7×` e **`0,7×`**.
+
+⭐ **E encolher o ladrilho não ajuda**, o que nomeia a causa: de `64` para `8 px` a poda vai de `2,4×`
+a `2,7×` — *o que limita não é a largura do ladrilho, é a PROFUNDIDADE do tronco dele*, que atravessa
+a peça inteira e por isso vê quase todo o perfil em `(u, v)`. Repartir em fatias de profundidade cura
+isso (`5,2×`) e é **exactamente** o que rompe a coerência: numa esfera-marcha as threads de um
+ladrilho estão em `t` diferentes, e a tabela da divergência diz que cada lista extra custa `~1×` o
+custo uniforme.
+
+⇒ ⛔⛔⛔ **A `W9` não leva o índice de perfil ao dispositivo.** O melhor caso honesto é `1,7×` na
+mediana e uma PERDA no pior caso, e mesmo o `1,7×` deixa a cena `5` em `~19 ms` contra um orçamento
+de `16,7`. *A obra não alcança o objectivo que a justificava.*
+
+### ⭐ O que fica no lugar, com o número: a lever é o custo POR PRIMITIVA
+
+O perfil do vaso tem `24` primitivas e paga `931` linhas — `38,8` por primitiva. Medido pela
+[`diag_o_tecto_da_wave_do_torno`] com a polilinha densa, uma primitiva **RECTA** custa `26,7`
+(`2 639 / 99`) ⇒ as `12` **ARCOS** custam `(931 − 12 × 26,7) / 12 =` **`51,0`**, ou seja **`1,9×`
+uma recta**, e elas são **`66 %`** da fita.
+
+⇒ *a contagem é o desenho do artista e não tem gordura; o que tem é o CONSTANTE.* Duas direcções,
+nenhuma medida ainda:
+
+1. **O arco mais barato.** `51` linhas para uma primitiva é muito, e a metade do enrolamento dele (a
+   meia-lua) é uma lei própria.
+2. **O SINAL.** Numa recta, `~10` das `26,7` linhas são o enrolamento; um sinal tirado da primitiva
+   MAIS PRÓXIMA (a normal pseudo-angular, exacta em 2D) trocaria `N` contribuições por **uma**.
+   ⚠️ Isto muda a lei nos DOIS motores e tem juiz (`the_query_is_the_same_law_as_the_tape`).
+
+⛔ **E nenhuma delas se abre sem medir primeiro a decomposição por linha**, que é a mesma disciplina
+que salvou esta wave: *a primeira redacção da sonda da poda somava três custos por aresta e os três
+estavam errados.*
 
 ⏳ **O que fica ABERTO, e é honesto dizê-lo com o gate verde:** as `8` cenas que sobram estão
 quase todas entre `17` e `31 ms` contra o orçamento de `16,7` — perto —, e **uma** está longe: a

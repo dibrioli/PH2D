@@ -209,41 +209,54 @@ impl PainterTool {
         // dissolve just inside the boundary from paint the user masked off). See `splat_keep`.
         let (sel, prot, alock) = self.wet_splat_gates();
         let gated = sel.is_some() || prot.is_some() || alock.is_some();
-        let soak = &mut self.paint.wet_soak;
-        let mut grew = false;
-        for y in y0..y1 {
-            let dy = (y as f32 + 0.5) - cy;
-            let base = y * fw;
-            for x in x0..x1 {
-                let dx = (x as f32 + 0.5) - cx;
-                let dn = (dx * dx + dy * dy).sqrt() * inv_r;
-                if dn >= 1.0 {
-                    continue;
+        // ⭐ Row-parallel (ADR-0109 class, ADR-0173): every texel reads only ITSELF (its soak, its
+        // gates) and writes only itself, no RNG, and the one reduction is the `grew` OR — the kind
+        // the fence exempts. The disc reaches `2 × 250` px at the owner's brush (~785 k texels, a
+        // `sqrt` each) on EVERY tick with Rewet on, and ran serial on the main thread: ~9 % of the
+        // frame's wall in the product profile. ⚠️ `reduce`, never `any`: `any` short-circuits and
+        // would SKIP the writes of the rows after the first that grew.
+        use rayon::prelude::*;
+        let (sel, prot, alock) = (
+            sel.as_deref().map(Vec::as_slice),
+            prot.as_deref().map(Vec::as_slice),
+            alock.as_deref().map(Vec::as_slice),
+        );
+        let grew = self.paint.wet_soak[y0 * fw..y1 * fw]
+            .par_chunks_mut(fw)
+            .with_min_len(8)
+            .enumerate()
+            .map(|(j, row)| {
+                let y = y0 + j;
+                let dy = (y as f32 + 0.5) - cy;
+                let base = y * fw;
+                let mut grew = false;
+                for x in x0..x1 {
+                    let dx = (x as f32 + 0.5) - cx;
+                    let dn = (dx * dx + dy * dy).sqrt() * inv_r;
+                    if dn >= 1.0 {
+                        continue;
+                    }
+                    let keep = if gated {
+                        super::watercolor_accum::splat_keep(sel, prot, alock, base + x)
+                    } else {
+                        1.0
+                    };
+                    if keep <= 0.0 {
+                        continue;
+                    }
+                    // Full pour inside the core, fading to the rim (the water pools under the nib).
+                    let w = (1.0 - dn).min(0.6) / 0.6;
+                    let cur = row[x];
+                    let next =
+                        (u16::from(cur) + (f32::from(add) * w * keep) as u16).min(255) as u8;
+                    if next != cur {
+                        row[x] = next;
+                        grew = true;
+                    }
                 }
-                let idx = base + x;
-                let keep = if gated {
-                    super::watercolor_accum::splat_keep(
-                        sel.as_deref().map(Vec::as_slice),
-                        prot.as_deref().map(Vec::as_slice),
-                        alock.as_deref().map(Vec::as_slice),
-                        idx,
-                    )
-                } else {
-                    1.0
-                };
-                if keep <= 0.0 {
-                    continue;
-                }
-                // Full pour inside the core, fading to the rim (the water pools under the nib).
-                let w = (1.0 - dn).min(0.6) / 0.6;
-                let cur = soak[idx];
-                let next = (u16::from(cur) + (f32::from(add) * w * keep) as u16).min(255) as u8;
-                if next != cur {
-                    soak[idx] = next;
-                    grew = true;
-                }
-            }
-        }
+                grew
+            })
+            .reduce(|| false, |a, b| a | b);
         if grew {
             self.paint.wet_soak_active = true;
         }
@@ -547,3 +560,7 @@ impl PainterTool {
 
 /// The on-canvas wetness overlay's read (#12a): `(moisture bytes, w, h, rect [x0, y0, x1, y1])`.
 pub type CanvasWetView<'a> = (&'a [u8], u32, u32, [u32; 4]);
+
+#[cfg(test)]
+#[path = "watercolor_backdrop_tests.rs"]
+mod tests;

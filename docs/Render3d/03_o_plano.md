@@ -819,9 +819,57 @@ nenhuma medida ainda:
    MAIS PRÓXIMA (a normal pseudo-angular, exacta em 2D) trocaria `N` contribuições por **uma**.
    ⚠️ Isto muda a lei nos DOIS motores e tem juiz (`the_query_is_the_same_law_as_the_tape`).
 
-⛔ **E nenhuma delas se abre sem medir primeiro a decomposição por linha**, que é a mesma disciplina
-que salvou esta wave: *a primeira redacção da sonda da poda somava três custos por aresta e os três
-estavam errados.*
+### ⭐⭐⭐ E a decomposição por linha FOI medida — e ela põe um CHÃO na cena `5`
+
+A `diag_a_decomposicao_de_uma_primitiva` (`ph2d-field-eval`) monta a metade da DISTÂNCIA pelas
+**mesmas portas** que o produto monta (`dist2_recta_tree` · `dist2_tree`, mesmo acumulador de `min`)
+e lê o SINAL por diferença, com a **inclinação em `N`** a tirar o `O(1)` (a raiz, o produto do sinal,
+a redução do enrolamento):
+
+| primitiva | total | distância | sinal |
+|---|---:|---:|---:|
+| **recta** | `26,52` | `15,82` (`60 %`) | `10,70` (`40 %`) |
+| **arco** | `50,86` | `25,64` (`50 %`) | **`25,21`** (`50 %`) |
+
+⭐ O `50,86` do arco confirma, por outro caminho, o `51,0` que saíra da subtracção no vaso. E a conta
+da cena `5` (`12` rectas + `12` arcos) fecha: distância `12 × 15,82 + 12 × 25,64 =` **`498`** ·
+sinal `12 × 10,70 + 12 × 25,21 =` **`431`** · total `929` contra `931` medidas.
+
+⭐⭐⭐ **O SINAL é `46 %` da fita, e no ARCO ele custa o mesmo que a distância** — porque o
+enrolamento de um arco é o da CORDA **mais** a meia-lua ([`meia_lua_raio_tree`]), e a meia-lua só
+existe por o enrolamento ser uma soma sobre cordas. *Um sinal tirado da primitiva MAIS PRÓXIMA
+(a normal pseudo-angular, exacta em 2D) trocaria `N` contribuições por uma e apagaria a meia-lua
+inteira.*
+
+⛔⛔ **Mas o CHÃO que isso deixa está acima do orçamento, e é ele o achado:**
+
+| cenário | linhas | quadro previsto |
+|---|---:|---:|
+| hoje | `931` | `31,96 ms` (medido) |
+| com o sinal em `O(1)` | `~513` | **`19,7 ms`** (`1,6×`) |
+| **distância sozinha, sinal GRÁTIS** | `498` | **`19,2 ms`** |
+| o orçamento | — | `16,7 ms` |
+
+⇒ ⛔⛔⛔ **Nenhuma cura que mantenha a distância como um `min` desenrolado sobre `24` primitivas põe
+a cena `5` dentro do orçamento** — o chão é `19,2 ms`. E encurtar a distância exige **poda**, que a
+divergência recusa. ⚠️ **E as `24` primitivas são o DESENHO**: o vaso tem `12` âncoras com `10` raios
+de quina não-nulos, e uma quina arredondada é um arco mais o que sobra das duas arestas que ela
+corta — *não há gordura na contagem*.
+
+### ⏳ O que a fila leva daqui, com o mecanismo de cada candidato
+
+1. ⭐⭐⭐ **O PERFIL COMO TEXTURA 2D** — o candidato que nenhuma medição desta wave recusa, e é a
+   resposta da indústria. Uma consulta a uma textura é `O(1)`, passa pela cache de texturas e é
+   **espacialmente coerente por construção** ⇒ *ela não paga o imposto de divergência que matou a
+   consulta por lista*, que é exactamente o que as tabelas acima medem. ⛔ **Ela é APROXIMADA**, e
+   isso é a decisão: um campo que SUBESTIMA a distância é seguro para a esfera-marcha (ela só dá
+   passos menores), e o acerto final pode ser refinado pela fita exacta. ⚠️ A paridade de
+   `100,000 %` que esta casa mantém entre os dois motores **não sobrevive** a isso sem uma
+   fronteira nova — *é decisão de produto, não de engenharia.*
+2. ⏳ **O sinal em `O(1)`** — `1,6×` medido, e apaga a meia-lua. ⚠️ Muda a lei nos **dois** motores e
+   tem juiz (`the_query_is_the_same_law_as_the_tape`). Sozinho não alcança o orçamento.
+3. ⏳ **A distância do ARCO a `25,64`** — uma distância a um arco é «a distância ao círculo, presa ao
+   sector»: `~10` operações. O `25,64` medido diz que a implementação faz mais, e ninguém foi ver.
 
 ⏳ **O que fica ABERTO, e é honesto dizê-lo com o gate verde:** as `8` cenas que sobram estão
 quase todas entre `17` e `31 ms` contra o orçamento de `16,7` — perto —, e **uma** está longe: a

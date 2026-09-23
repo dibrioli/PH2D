@@ -515,9 +515,14 @@ fn crossing_term(
     Tree::constant(0.0) - side * hit_ab * hit_cp
 }
 
+/// ⏱️⭐⭐⭐⭐ **A decomposição por linha de uma primitiva** — ver o cabeçalho do [`custo`].
+#[cfg(test)]
+#[path = "profile_custo_probe.rs"]
+mod custo;
 #[cfg(test)]
 #[path = "profile_arc_tests.rs"]
 mod profile_arc_tests;
+
 #[cfg(test)]
 #[path = "profile_meia_lua_tests.rs"]
 mod profile_meia_lua_tests;

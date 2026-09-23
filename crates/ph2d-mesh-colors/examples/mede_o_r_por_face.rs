@@ -254,6 +254,28 @@ fn main() {
                 let (pior, hist) = salto(&m, &k);
                 println!("      salto entre vizinhos: max={pior}  {hist:?}");
             }
+
+            // ---- e o que o EMPACOTADOR faz com os dois, no FICHEIRO ----
+            //
+            // ⚠️ É esta a coluna que o artista vê: o lado da textura e a
+            //    fracção dela que carrega uma amostra de verdade.
+            let faces_it = || m.faces.iter().map(Vec::as_slice);
+            let k = niveis(&m, alvo, Some(1));
+            let assa =
+                |t: &ph2d_mesh_colors::Tinta| match ph2d_mesh_colors::assar(t, faces_it(), 16384) {
+                    Ok(a) => format!(
+                        "{}x{} px, aproveitamento {:.1} %",
+                        a.lado_px,
+                        a.lado_px,
+                        a.relatorio.aproveitamento() * 100.0
+                    ),
+                    Err(e) => format!("RECUSA {e}"),
+                };
+            let uni = ph2d_mesh_colors::Tinta::nova(m.pos.len(), faces_it(), k_ref);
+            println!("      textura uniforme : {}", assa(&uni));
+            if let Some(g) = ph2d_mesh_colors::Tinta::graduada(m.pos.len(), faces_it(), &k) {
+                println!("      textura por face : {}", assa(&g));
+            }
         }
     }
 }

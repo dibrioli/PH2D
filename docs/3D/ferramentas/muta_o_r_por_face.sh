@@ -135,11 +135,32 @@ muta "$COL/lib.rs" \
   '            let ideal = (alvo * 1.0f32).log2();' \
   'P8 o nivel deixa de olhar a AREA: a dispersao nao cai'
 
-# ── O ASSADO recusa um plano graduado ───────────────────────────────────
+# ── O ASSADO: o ladrilho e' da FACE ─────────────────────────────────────
 muta "$COL/assar.rs" \
-  '    let Some(l) = tinta.lado_uniforme() else {' \
-  '    let Some(l) = Some(tinta.lado_da_face(0)) else {' \
-  'P9 o assado assa ao nivel da face 0 e perde amostras em silencio'
+  '        .map(|f| tinta.lado_da_face(f) + 1 + 2 * FOLGA_EM_TEXELS)' \
+  '        .map(|_| tinta.lado_da_face(0) + 1 + 2 * FOLGA_EM_TEXELS)' \
+  'P9 o assado assa tudo ao nivel da face 0 e perde amostras em silencio'
+
+# ── O EMPACOTADOR: a prateleira quebra de linha ─────────────────────────
+muta "$COL/assar.rs" \
+  '            if x + s > w {' \
+  '            if false {' \
+  'P13 a prateleira nunca quebra: nada cabe e o assado recusa por tamanho'
+
+# ── O EMPACOTADOR: a altura da prateleira e' a da MAIOR ─────────────────
+# ⚠️ Com `altura = s` a prateleira encolhe para a ULTIMA peca e as de baixo
+#    sobem por cima das de cima — dois ladrilhos no mesmo texel, com UV
+#    perfeitamente validas e os gates de COR todos verdes.
+muta "$COL/assar.rs" \
+  '            altura = altura.max(s);' \
+  '            altura = s;' \
+  'P14 as prateleiras pisam-se: dois ladrilhos no mesmo texel'
+
+# ⛔⛔ **O P15 SAIU, e o que ele achou foi codigo a mais.** Ele mutava um
+#    `if y + s > w { return None }` por peca e SOBREVIVEU — porque a ultima
+#    prateleira e' a mais funda por construcao e o teste final ja' respondia
+#    por todas. A cura nao foi um gate novo: foi apagar a linha.
+#    *Uma linha que a mutacao nao consegue matar nao e' lei.*
 
 # ── O PINCEL le o lado da FACE ──────────────────────────────────────────
 muta "$SCU/tinta_fina.rs" \

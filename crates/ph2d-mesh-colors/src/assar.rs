@@ -25,18 +25,16 @@
 //! é uma só —, logo a costura é invisível em cor e o que ela custa é
 //! **filtragem**, que é o que a [`FOLGA_EM_TEXELS`] paga.
 //!
-//! ⚠️⚠️ **E ele NÃO iguala densidades entre faces, de propósito:** o ladrilho
-//! tem o tamanho do `lado` da retícula, e a grelha aqui é de ladrilhos
-//! **IGUAIS**, logo uma face grande e uma pequena recebem o mesmo número de
-//! texels. *Isso não é distorção do assado — é a retícula que ele copia
-//! fielmente*, e a cura é a **P2** (o `R` por face). Medido no corpus do dono,
-//! a dispersão da densidade é `3,1×` a `18,3×`.
+//! # ⭐⭐⭐⭐ E o ladrilho é da FACE (a P2)
 //!
-//! ⛔⛔ **Desde 23/09 a retícula JÁ SABE ter um nível por face, e este assado
-//! ainda não sabe empacotar ladrilhos de tamanhos diferentes** ⇒ ele
-//! **RECUSA** um plano graduado em voz alta ([`Recusa::Graduado`]) em vez de o
-//! assar ao nível de uma face qualquer. *A fronteira está escrita, não
-//! escondida.*
+//! Cada ladrilho tem o tamanho do `lado` da retícula **daquela face**, e o
+//! [`empacota`] põe tamanhos diferentes na mesma textura. ⇒ *a densidade de
+//! texels por área deixa de dispersar* — medido no corpus do dono, `p99/p1` da
+//! densidade linear cai de `3,1×`–`18,3×` para menos de `2×`.
+//!
+//! ⭐ **Com um plano UNIFORME ele devolve a grelha de sempre, ao texel** — o
+//! mesmo lado e a mesma ordem —, e há gate a afirmá-lo. *Uma cura que muda o
+//! caso que já shipa não é uma cura, é um formato novo.*
 
 use crate::{Tinta, cantos};
 
@@ -88,23 +86,6 @@ pub enum Recusa {
         /// Quantas o plano conhece.
         plano: usize,
     },
-    /// ⛔⛔ **O plano tem um nível POR FACE e este assado só sabe uma grelha de
-    /// ladrilhos IGUAIS.**
-    ///
-    /// ⭐ **Ela é a FRONTEIRA da P2 escrita em voz alta, e não uma limitação
-    /// escondida.** A disposição aqui é `cols × cols` ladrilhos do mesmo lado
-    /// (`lado + 1 + 2 × folga`), e um plano graduado pede um **empacotador** —
-    /// ladrilhos de tamanhos diferentes numa textura só.
-    ///
-    /// ⛔ A saída barata seria assar tudo ao nível da PRIMEIRA face: as UV
-    /// continuariam a sair certas (elas são por canto) e cada face fina
-    /// perderia amostras **sem nada no ecrã a acusar**. *A resposta errada com
-    /// a confiança da certa é exactamente o que esta recusa existe para não
-    /// entregar.*
-    Graduado {
-        /// Quantos níveis distintos o plano tem (`>= 2`, senão ele é uniforme).
-        niveis: usize,
-    },
 }
 
 impl std::fmt::Display for Recusa {
@@ -119,10 +100,6 @@ impl std::fmt::Display for Recusa {
                 f,
                 "o plano de tinta fina conhece {plano} faces e a malha tem {faces}"
             ),
-            Self::Graduado { niveis } => write!(
-                f,
-                "o plano tem {niveis} niveis por face e este assado so' empacota ladrilhos iguais"
-            ),
         }
     }
 }
@@ -132,7 +109,12 @@ impl std::fmt::Display for Recusa {
 pub struct Relatorio {
     /// Faces assadas — uma por ladrilho.
     pub faces: usize,
-    /// O lado de um ladrilho **com** a folga, em texels.
+    /// O lado do MAIOR ladrilho, **com** a folga, em texels.
+    ///
+    /// ⚠️ **Ele era «o lado de UM ladrilho» e deixou de o ser com a P2:** os
+    /// ladrilhos têm o tamanho da face, logo o que resta é o extremo. *Um
+    /// campo que passou a descrever outra grandeza com o mesmo nome é como
+    /// uma tabela envelhece em silêncio.*
     pub ladrilho: u32,
     /// Texels que receberam uma amostra.
     pub com_amostra: usize,
@@ -207,6 +189,85 @@ fn byte(c: f32) -> u8 {
     (c.clamp(0.0, 1.0) * 255.0).round() as u8
 }
 
+/// ⭐⭐⭐⭐ **O EMPACOTADOR — ladrilhos de TAMANHOS DIFERENTES numa textura só.**
+///
+/// Ele é o que a P2 pediu: com um nível por face os ladrilhos deixam de ser
+/// iguais, e uma grelha `cols × cols` deixa de os saber pôr. Devolve o lado da
+/// textura e, por face, a **origem do conteúdo** dela (a folga já descontada).
+///
+/// ⚠️ **PRATELEIRAS, com as maiores primeiro.** As peças entram por ordem de
+/// lado decrescente; cada prateleira começa com a mais alta que ainda cabe,
+/// logo a altura dela é a da PRIMEIRA e nenhuma peça a faz crescer depois.
+/// *Ordenar ao contrário obriga toda prateleira a crescer para a última peça,
+/// que é onde um empacotador ingénuo desperdiça metade da textura.*
+///
+/// ⭐⭐⭐ **E para um plano UNIFORME ele devolve EXACTAMENTE a grelha de antes**,
+/// com a mesma ordem e o mesmo lado — não por acidente, por aritmética: com `n`
+/// peças iguais de lado `s`, o menor `W` que fecha é `ceil(√n) · s`, que é o
+/// `cols × ladrilho` que este ficheiro calculava à mão. ⛔ *É isso que permite
+/// haver UM caminho em vez de dois, e há gate a afirmá-lo.*
+///
+/// ⚠️ **A busca do `W` sobe de UM em UM durante `s_max` tentativas** e só
+/// depois cresce por fracção: é esse trecho fino que garante o óptimo do caso
+/// uniforme (ele está a menos de `s` acima do palpite da área), e o crescimento
+/// por fracção é o que impede uma peça enorme de varrer o tecto texel a texel.
+fn empacota(lados: &[u32], tecto_px: u32) -> Result<(u32, Vec<(u32, u32)>), Recusa> {
+    let s_max = lados.iter().copied().max().unwrap_or(1);
+    let area: u64 = lados.iter().map(|s| u64::from(*s) * u64::from(*s)).sum();
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let palpite = (area as f64).sqrt().ceil() as u32;
+
+    // ⚠️ A ordem é DETERMINISTA: lado decrescente, e o índice desempata. Sem o
+    //    desempate, duas exportações da mesma peça podiam dar texturas
+    //    diferentes — e um ficheiro que muda sem a peça mudar é o que torna um
+    //    golden impossível de escrever.
+    let mut ordem: Vec<usize> = (0..lados.len()).collect();
+    ordem.sort_by_key(|&f| (std::cmp::Reverse(lados[f]), f));
+
+    let tenta = |w: u32| -> Option<Vec<(u32, u32)>> {
+        let mut origem = vec![(0u32, 0u32); lados.len()];
+        let (mut x, mut y, mut altura) = (0u32, 0u32, 0u32);
+        for &f in &ordem {
+            let s = lados[f];
+            if x + s > w {
+                y += altura;
+                x = 0;
+                altura = 0;
+            }
+            origem[f] = (x, y);
+            x += s;
+            altura = altura.max(s);
+        }
+        // ⛔⛔ **A saída de baixo é UMA pergunta, e não duas.** Aqui esteve um
+        //    `if y + s > w { return None }` por peça, e a prova de mutação
+        //    REFUTOU-O: ele é **redundante**, porque a última prateleira é a
+        //    mais funda por construção (o `y` só cresce) e a linha abaixo já
+        //    responde por todas. *Uma linha que a mutação não consegue matar
+        //    não é lei, é comentário com sintaxe de código* — e o preço dela
+        //    era um ramo por peça no laço.
+        (y + altura <= w).then_some(origem)
+    };
+
+    let mut w = palpite.max(s_max);
+    for tentativa in 0..u32::MAX {
+        if w > tecto_px {
+            return Err(Recusa::NaoCabe {
+                preciso: w,
+                tecto: tecto_px,
+            });
+        }
+        if let Some(origem) = tenta(w) {
+            return Ok((w, origem));
+        }
+        w = if tentativa < s_max {
+            w + 1
+        } else {
+            w + (w / 8).max(1)
+        };
+    }
+    unreachable!("a busca do lado sai pelo tecto")
+}
+
 /// ⭐⭐⭐ **ASSA a retícula de uma peça numa textura quadrada.**
 ///
 /// `tecto_px` é o maior lado que o chamador aceita — ver [`Recusa::NaoCabe`].
@@ -245,28 +306,13 @@ pub fn assar<'a>(
             plano: tinta.topologia().faces(),
         });
     }
-    // ⛔ Ver [`Recusa::Graduado`]: a grelha aqui é de ladrilhos IGUAIS.
-    let Some(l) = tinta.lado_uniforme() else {
-        let mut ks: Vec<u8> = (0..faces.len())
-            .map(|f| tinta.topologia().nivel_de(f))
-            .collect();
-        ks.sort_unstable();
-        ks.dedup();
-        return Err(Recusa::Graduado { niveis: ks.len() });
-    };
-    let ladrilho = l + 1 + 2 * FOLGA_EM_TEXELS;
-    // ⭐ `cols` é o lado de uma grelha quadrada que cabe as faces todas, e as
-    // linhas nunca passam as colunas porque `rows = ceil(n / cols) <= cols`
-    // quando `cols = ceil(sqrt(n))`. *É isso que torna a textura quadrada sem
-    // uma segunda conta.*
-    let cols = (faces.len() as f64).sqrt().ceil() as u32;
-    let lado_px = cols * ladrilho;
-    if lado_px > tecto_px {
-        return Err(Recusa::NaoCabe {
-            preciso: lado_px,
-            tecto: tecto_px,
-        });
-    }
+    // ⭐⭐ **O ladrilho é da FACE** (a P2): `lado + 1` amostras mais a folga dos
+    //    dois lados. Com um plano uniforme os `n` valores são iguais e o
+    //    [`empacota`] devolve a grelha de sempre.
+    let ladrilhos: Vec<u32> = (0..faces.len())
+        .map(|f| tinta.lado_da_face(f) + 1 + 2 * FOLGA_EM_TEXELS)
+        .collect();
+    let (lado_px, origem) = empacota(&ladrilhos, tecto_px)?;
     let texels = (lado_px as usize) * (lado_px as usize);
     let mut rgba = vec![0u8; texels * 4];
     let mut coberto = vec![false; texels];
@@ -285,8 +331,9 @@ pub fn assar<'a>(
 
     for (f, face) in faces.iter().enumerate() {
         let n = cantos(face);
-        let ox = (f as u32 % cols) * ladrilho + FOLGA_EM_TEXELS;
-        let oy = (f as u32 / cols) * ladrilho + FOLGA_EM_TEXELS;
+        let l = tinta.lado_da_face(f);
+        let ox = origem[f].0 + FOLGA_EM_TEXELS;
+        let oy = origem[f].1 + FOLGA_EM_TEXELS;
         // ⚠️⚠️ **O CANTO de um triângulo é `(i = L)`, `(j = L)`, `(k = L)`** —
         // a ordem que a [`crate::sitio_tri`] declara. A disposição no ladrilho
         // é `(u, v) = (j, k)`, logo o canto `0` cai na origem, o `1` em `(L, 0)`
@@ -339,7 +386,7 @@ pub fn assar<'a>(
         off_uv,
         relatorio: Relatorio {
             faces: faces.len(),
-            ladrilho,
+            ladrilho: ladrilhos.iter().copied().max().unwrap_or(0),
             com_amostra,
             texels,
         },

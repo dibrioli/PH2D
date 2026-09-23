@@ -211,7 +211,6 @@ fn a_recusa_nomeia_o_que_pediu_e_o_que_ha() {
         //   alguém dizer o que ela significa aqui.
         Recusa::SemFaces => panic!("a peça tem faces"),
         Recusa::NaoDescreve { .. } => panic!("o plano descreve esta malha"),
-        Recusa::Graduado { .. } => panic!("esta fixtura é uniforme"),
     }
     let vazia = Tinta::nova(0, std::iter::empty(), 0);
     assert_eq!(
@@ -220,30 +219,138 @@ fn a_recusa_nomeia_o_que_pediu_e_o_que_ha() {
     );
 }
 
-/// ⛔⛔ **O ASSADO RECUSA um plano GRADUADO, e diz quantos níveis viu.**
+/// ⭐⭐⭐⭐ **O EMPACOTADOR: um plano GRADUADO assa, e cada face fica no ladrilho
+/// do tamanho DELA.**
 ///
-/// ⭐ Ela é a FRONTEIRA da P2 escrita em voz alta — ver [`Recusa::Graduado`].
-/// ⚠️ **O CONTROLO está dentro:** o MESMO plano com um nível só assa, senão
-/// este gate passaria por a fixtura estar partida noutra coisa qualquer.
+/// ⚠️ **A régua entra pela porta pública:** ela mede, nos `uv` que saem, a
+/// LARGURA do ladrilho de cada face — e ela tem de ser a da retícula daquela
+/// face, `lado + 1` texels. ⛔ *Um assado que empacotasse tudo ao tamanho de
+/// uma face qualquer daria UV certas na mesma e perderia amostras em silêncio;
+/// é a largura, e não a cor, que o acusa.*
+///
+/// ⚠️ **E o CONTROLO é a face grossa:** sem ele este gate passaria com todos os
+/// ladrilhos do tamanho do MAIOR, que é o desperdício que o empacotador existe
+/// para não ter.
 #[test]
-fn o_assado_recusa_um_plano_graduado_e_nomeia_os_niveis() {
+fn um_plano_graduado_assa_e_cada_face_leva_o_ladrilho_dela() {
     let faces: Vec<Vec<u32>> = vec![vec![0, 1, 2], vec![1, 3, 2]];
     let it = || faces.iter().map(Vec::as_slice);
 
     let graduado = Tinta::graduada(4, it(), &[1, 3]).expect("dois níveis");
-    let e = assar(&graduado, it(), 4096).expect_err("um plano graduado não assa");
-    assert_eq!(e, Recusa::Graduado { niveis: 2 });
-    assert!(
-        e.to_string().contains('2'),
-        "a recusa NOMEIA quantos níveis viu: {e}"
-    );
+    let a = assar(&graduado, it(), 4096).expect("um plano graduado ASSA");
 
-    // ⚠️ CONTROLO: o mesmo plano com um nível só assa.
-    let uniforme = Tinta::graduada(4, it(), &[3, 3]).expect("um nível");
+    // A largura do ladrilho de cada face, lida dos `uv` que saem.
+    let largura = |f: usize| -> f32 {
+        let c = &a.uv[a.off_uv[f] as usize..a.off_uv[f + 1] as usize];
+        (c[1][0] - c[0][0]).abs() * a.lado_px as f32
+    };
+    // Face 0 está ao nível `1` (lado `2`) e a face 1 ao `3` (lado `8`).
     assert!(
-        assar(&uniforme, it(), 4096).is_ok(),
-        "o controlo tem de assar"
+        (largura(0) - 2.0).abs() < 1e-3,
+        "a face grossa devia ocupar 2 texels de largura, ocupa {:.3}",
+        largura(0)
     );
+    assert!(
+        (largura(1) - 8.0).abs() < 1e-3,
+        "a face fina devia ocupar 8 texels de largura, ocupa {:.3}",
+        largura(1)
+    );
+    assert_eq!(
+        a.relatorio.ladrilho,
+        8 + 1 + 2 * crate::assar::FOLGA_EM_TEXELS
+    );
+}
+
+/// ⛔⛔⛔ **NENHUM LADRILHO PISA OUTRO — e é esta a lei que a cor não acusa.**
+///
+/// ⚠️⚠️ Duas faces empilhadas no mesmo sítio dão `uv` perfeitamente válidas e
+/// uma textura em que a segunda escreve por cima da primeira: *o canto de cada
+/// uma continua a ler a cor do vértice dela se elas partilharem o vértice*, e
+/// os gates de COR passam. O que as separa é a GEOMETRIA da disposição.
+///
+/// ⭐ A régua entra pela porta pública: o rectângulo de cada face sai dos `uv`
+/// dos cantos dela, **crescido da folga**, que é o ladrilho inteiro.
+#[test]
+fn nenhum_ladrilho_pisa_outro() {
+    // Uma tira de seis triângulos com quatro níveis diferentes — a mistura é o
+    // que obriga o empacotador a decidir alguma coisa.
+    let mut pos = 0usize;
+    let mut faces: Vec<Vec<u32>> = Vec::new();
+    for i in 0..6u32 {
+        faces.push(vec![3 * i, 3 * i + 1, 3 * i + 2]);
+        pos += 3;
+    }
+    let niveis = [0u8, 3, 1, 3, 2, 0];
+    let it = || faces.iter().map(Vec::as_slice);
+    let t = Tinta::graduada(pos, it(), &niveis).expect("seis níveis");
+    let a = assar(&t, it(), 4096).expect("assa");
+
+    let folga = crate::assar::FOLGA_EM_TEXELS as f32;
+    let s = a.lado_px as f32;
+    let rect = |f: usize| -> (f32, f32, f32, f32) {
+        let c = &a.uv[a.off_uv[f] as usize..a.off_uv[f + 1] as usize];
+        let xs: Vec<f32> = c.iter().map(|p| p[0] * s).collect();
+        // ⚠️ O `v` do ficheiro conta de BAIXO; aqui só interessam extremos.
+        let ys: Vec<f32> = c.iter().map(|p| (1.0 - p[1]) * s).collect();
+        let mn = |v: &[f32]| v.iter().copied().fold(f32::INFINITY, f32::min);
+        let mx = |v: &[f32]| v.iter().copied().fold(f32::NEG_INFINITY, f32::max);
+        (
+            mn(&xs) - folga - 0.5,
+            mn(&ys) - folga - 0.5,
+            mx(&xs) + folga + 0.5,
+            mx(&ys) + folga + 0.5,
+        )
+    };
+    for f in 0..faces.len() {
+        let (x0, y0, x1, y1) = rect(f);
+        assert!(
+            x0 >= -1e-3 && y0 >= -1e-3 && x1 <= s + 1e-3 && y1 <= s + 1e-3,
+            "face {f}: o ladrilho ({x0:.2},{y0:.2})..({x1:.2},{y1:.2}) sai da textura de {s}"
+        );
+        for g in (f + 1)..faces.len() {
+            let (u0, v0, u1, v1) = rect(g);
+            let pisa = x0 < u1 - 1e-3 && u0 < x1 - 1e-3 && y0 < v1 - 1e-3 && v0 < y1 - 1e-3;
+            assert!(
+                !pisa,
+                "as faces {f} e {g} partilham texels: \
+                 ({x0:.2},{y0:.2})..({x1:.2},{y1:.2}) contra ({u0:.2},{v0:.2})..({u1:.2},{v1:.2})"
+            );
+        }
+    }
+    // ⚠️ CONTROLO: a fixtura tem de ter ladrilhos de tamanhos DIFERENTES,
+    //    senão isto mede uma grelha e não um empacotador.
+    let larguras: std::collections::BTreeSet<u32> = (0..faces.len())
+        .map(|f| {
+            let (x0, _, x1, _) = rect(f);
+            (x1 - x0).round() as u32
+        })
+        .collect();
+    assert!(
+        larguras.len() >= 3,
+        "CONTROLO: a fixtura devia ter vários tamanhos de ladrilho ({larguras:?})"
+    );
+}
+
+/// ⭐⭐⭐ **E com um plano UNIFORME o empacotador devolve a GRELHA DE SEMPRE.**
+///
+/// ⚠️⚠️ **É esta metade que dá direito a haver UM caminho em vez de dois:** o
+/// lado tem de ser `ceil(√n) × ladrilho`, que é a conta que este ficheiro fazia
+/// à mão antes da P2. *Uma cura que muda o caso que já shipa não é uma cura.*
+#[test]
+fn com_um_nivel_so_o_empacotador_devolve_a_grelha_de_antes() {
+    for nivel in [0u8, 1, 3] {
+        let (t, faces) = tinta(nivel);
+        let a = assar(&t, faces.iter().map(Vec::as_slice), 4096).expect("a peça assa");
+        let ladrilho = (1u32 << nivel) + 1 + 2 * crate::assar::FOLGA_EM_TEXELS;
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let cols = (faces.len() as f64).sqrt().ceil() as u32;
+        assert_eq!(
+            a.lado_px,
+            cols * ladrilho,
+            "nível {nivel}: o lado tem de ser o da grelha de antes"
+        );
+        assert_eq!(a.relatorio.ladrilho, ladrilho);
+    }
 }
 
 /// ⭐ **Ao nível base o assado é a cor POR VÉRTICE, e nada mais.**

@@ -445,13 +445,16 @@ mod paralelo_tests {
     /// ⭐ **UMA BANDA NUNCA É MAIS ESTREITA DO QUE O PISO MEDIDO** — a lei que a tabela de
     /// [`super::super::LARGURA_MINIMA_DA_BANDA`] comprou, afirmada sem um relógio.
     ///
-    /// ⛔⛔ **A PREMISSA DELE MORREU em 2026-09-22 e ele fica a dizer outra coisa:** quando a
-    /// vertical fundiu, o produto deixou de chamar a `bandas_da_vertical` — quem parte hoje é a
-    /// [`super::super::caixa_v3`], pela [`super::super::LARGURA_DA_BANDA_FUNDIDA`], e a lei dela é
-    /// gateada por `a_vertical_fundida_parte_em_bandas_de_cache`, que mede a CONTA. ⇒ **o sujeito
-    /// deste gate passou a ser o ORÁCULO** (a `caixa_v` paralela, contra a qual a fusão se prova),
-    /// e ele fica por isso: *apagá-lo deixaria o oráculo sem régua nenhuma, e o oráculo é o que dá
-    /// direito a acreditar na fusão*.
+    /// ⚠️⚠️ **A premissa dele foi dada por MORTA e RENASCEU no mesmo dia — e isto fica escrito
+    /// porque é a lição.** Quando a vertical fundiu (2026-09-22) o caminho de omissão deixou de
+    /// chamar a `bandas_da_vertical`, e eu declarei a premissa morta; horas depois a **porta de
+    /// bissecção** ([`super::super::sem_fusao`], que a casa exige a toda troca de motor) devolveu
+    /// aquela rota ao produto, e com ela a lei. ⇒ *uma premissa só morre quando o código que a
+    /// realiza deixa de ser alcançável, e «o caminho de omissão mudou» não é isso.*
+    ///
+    /// ⭐ Hoje há **duas** leis de banda e cada uma tem o gate dela: esta, sobre a rota de
+    /// bissecção, e `a_vertical_fundida_parte_em_bandas_de_cache` sobre a
+    /// [`super::super::LARGURA_DA_BANDA_FUNDIDA`], que é a do caminho de omissão.
     ///
     /// ⚠️ **Ela não pode ser «`bandas_da_vertical(1484) == 4`»:** a contagem é limitada pela pool,
     /// logo esse número é da MÁQUINA e o gate mediria o escalonador. O que é da LEI é a relação —

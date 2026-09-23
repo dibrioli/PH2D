@@ -67,16 +67,9 @@ pub(crate) fn box_radii(k: usize) -> [usize; 3] {
 
 /// Uma passagem de caixa HORIZONTAL por soma corrente: a saída perde `r` de cada lado.
 ///
-/// ⚠️ **`#[cfg(test)]` de propósito: desde a FUSÃO (2026-09-22) ela não tem chamador de produto** —
-/// quem o produto corre é a [`caixa_h3`], que faz as três numa passagem sobre a memória. Ela FICA
-/// porque é o **ORÁCULO** do gate `as_tres_horizontais_fundidas_dao_o_mesmo_f32`: a fusão prova-se
-/// contra as três chamadas separadas, e apagá-la levaria a régua junto.
-///
-/// ⛔ Sem o `cfg`, ela é **código morto numa crate de biblioteca** e o CI reprova
-/// (`build.warnings = "deny"`), que é a armadilha que o §5.0 do roteador já regista para os
-/// `#[cfg(target_os)]`: *o `cargo check` local com `--all-targets` vê o uso do teste; o passe do CI
-/// não corre com `cfg(test)` e vê um `fn` sem chamadores.*
-#[cfg(test)]
+/// ⚠️ **Ela é o ORÁCULO da [`caixa_h3`] E o caminho da porta de bissecção** (ver [`sem_fusao`]):
+/// a fusão prova-se contra as três chamadas separadas, e `PH2D_BLUR_SEM_FUSAO=1` devolve o motor
+/// de antes de 2026-09-22 para comparar um relógio no MESMO binário.
 fn caixa_h(
     src: &[[f32; 4]],
     w: usize,
@@ -222,6 +215,21 @@ thread_local! {
     /// do colisor. O gate que o lê corre em SÉRIE, onde todas as bandas passam por esta thread.
     pub(crate) static BANDAS_PERCORRIDAS: std::cell::Cell<usize> =
         const { std::cell::Cell::new(0) };
+}
+
+/// **A PORTA DE BISSECÇÃO do motor do borrão** — `PH2D_BLUR_SEM_FUSAO=1` devolve as três passagens
+/// separadas, que é o que o produto corria até 2026-09-22.
+///
+/// ⚠️ **Ela existe porque comparar relógios entre SESSÕES não vale nada nesta máquina:** medido,
+/// a mesma porta lida duas vezes na mesma corrida deu `10,2` e `14,2 ms` a `load 14`. Um A/B
+/// honesto é o MESMO binário, na MESMA janela, com esta variável a mudar. É o precedente do
+/// `PH2D_RETOPO_LEGACY`, do `PH2D_CONTACT_UMA_CAMADA` e do `PH2D_SKIN_GPU=0`.
+///
+/// ⛔ **Nenhum gate a lê:** uma lei que só é alcançável pelo ambiente não é gateável, e um gate que
+/// lê o ambiente mede a máquina. Os gates chamam as duas rotas **pelo nome**.
+fn sem_fusao() -> bool {
+    static V: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *V.get_or_init(|| std::env::var("PH2D_BLUR_SEM_FUSAO").is_ok_and(|v| v != "0"))
 }
 
 /// **As TRÊS passagens verticais, uma BANDA de colunas de cada vez** (2026-09-22).
@@ -374,10 +382,8 @@ fn caixa_v3(
 /// Uma passagem de caixa VERTICAL por soma corrente. ⚠️ O acumulador é uma LINHA inteira e desliza
 /// para baixo — uma coluna de cada vez leria a memória com passo `w` e pagaria a cache.
 ///
-/// ⚠️ **`#[cfg(test)]` desde a fusão da vertical:** quem o produto corre é a [`caixa_v3`], e esta
-/// fica como ORÁCULO do gate dela — a mesma razão, e a mesma armadilha de código morto numa crate
-/// de biblioteca, que a [`caixa_h`] já traz escrita.
-#[cfg(test)]
+/// ⚠️ **Ela é o ORÁCULO da [`caixa_v3`] E o caminho da porta de bissecção** — a mesma razão que a
+/// [`caixa_h`] já traz escrita.
 fn caixa_v(
     src: &[[f32; 4]],
     w: usize,
@@ -477,11 +483,8 @@ fn caixa_v(
 /// mata-a parada* (a lei que a `line/motion-value` pagou com o app do dono a piorar `18,6 → 30,4
 /// ms`). Aqui ele é o que a pool de facto tem.
 ///
-/// ⚠️ **`#[cfg(test)]` desde a fusão da VERTICAL (2026-09-22):** o único consumidor destes três era
-/// o caminho paralelo da [`caixa_v`], que passou a ser o ORÁCULO do gate da fusão. Eles ficam por
-/// isso — apagá-los levava a régua junto —, e o `cfg` é o que impede que sejam **código morto numa
-/// crate de biblioteca**, que o CI reprova (`build.warnings = "deny"`).
-#[cfg(test)]
+/// ⚠️ Serve o caminho paralelo da [`caixa_v`], que hoje é o ORÁCULO da fusão **e** a rota da porta
+/// [`sem_fusao`].
 fn fatias_do_soquete() -> usize {
     rayon::current_num_threads().max(1)
 }
@@ -514,11 +517,8 @@ fn fatias_do_soquete() -> usize {
 /// ⚠️ A passagem HORIZONTAL não tem este piso — ali uma linha de saída já é contígua, e ela escala
 /// `3,6×` com uma fatia por thread (contra o tecto do soquete, que é `4,05×`).
 ///
-/// ⚠️ **`#[cfg(test)]` desde a fusão da VERTICAL (2026-09-22):** o único consumidor destes três era
-/// o caminho paralelo da [`caixa_v`], que passou a ser o ORÁCULO do gate da fusão. Eles ficam por
-/// isso — apagá-los levava a régua junto —, e o `cfg` é o que impede que sejam **código morto numa
-/// crate de biblioteca**, que o CI reprova (`build.warnings = "deny"`).
-#[cfg(test)]
+/// ⚠️ Serve o caminho paralelo da [`caixa_v`], que hoje é o ORÁCULO da fusão **e** a rota da porta
+/// [`sem_fusao`].
 pub(crate) const LARGURA_MINIMA_DA_BANDA: usize = 384;
 
 /// A largura da banda da [`caixa_v3`], e ela é de **CACHE** e não de threads.
@@ -548,15 +548,32 @@ pub(crate) const LARGURA_MINIMA_DA_BANDA: usize = 384;
 /// ⚠️ **E ele depende da FORMA:** numa região de `912×688` o ganho é `~1,05×` em toda a coluna,
 /// porque aqueles `10 MB` já cabiam na cache e as três passagens já não iam à DRAM. Quem paga o
 /// borrão caro é a região grande, que é onde ele compra.
+///
+/// ⭐⭐⭐ **E o A/B AO NÍVEL DO PRODUTO** (a pilha do composite, MESMO binário pela porta
+/// [`sem_fusao`], `96 %` de CPU ociosa) diz que a fusão inteira — horizontal **e** vertical — é
+/// uma lei do RAIO GRANDE e mais nada:
+///
+/// | pilha | raio | sem fusão | com fusão | ganho |
+/// |---|---|---|---|---|
+/// | Blur sobre Brush | **24** | `89,72 ms` | `89,63` | **`1,00×`** |
+/// | Blur sobre Brush | **96** | `432,60` | `387,07` | `1,12×` |
+/// | quota de 7 · `1024²` | 96 | `714,02` (`189,0 %` de um quadro) | `558,62` (`147,8 %`) | **`1,28×`** |
+/// | quota de 7 · `2048²` | 96 | `734,08` (`194,3 %`) | `550,80` (`145,8 %`) | **`1,33×`** |
+/// | quota de 7 | 24 | `265,89` | `264,43` | `1,00×` |
+///
+/// ⛔⛔ **No raio de FÁBRICA ela não compra NADA**, e a razão é a mesma da forma pequena: ali o
+/// avental e os intermédios cabem na cache, logo não há tráfego para cortar. *Uma fusão que poupa
+/// travessias de memória só se paga quando as travessias vão à DRAM.*
+///
+/// ⚠️ **O piso de ruído desta bancada é grande e está medido:** a linha `6 (sem Blur)` a `1024²`
+/// e raio `24` — que esta cura **não pode** tocar — leu `117,67` e `80,36 ms` nas duas corridas.
+/// As linhas de `2048²` são estáveis a `~2 %`, e é por isso que o veredito se lê nelas.
 pub(crate) const LARGURA_DA_BANDA_FUNDIDA: usize = 128;
 
 /// Quantas bandas de colunas a passagem vertical usa numa região de largura `w`.
 ///
-/// ⚠️ **`#[cfg(test)]` desde a fusão da VERTICAL (2026-09-22):** o único consumidor destes três era
-/// o caminho paralelo da [`caixa_v`], que passou a ser o ORÁCULO do gate da fusão. Eles ficam por
-/// isso — apagá-los levava a régua junto —, e o `cfg` é o que impede que sejam **código morto numa
-/// crate de biblioteca**, que o CI reprova (`build.warnings = "deny"`).
-#[cfg(test)]
+/// ⚠️ Serve o caminho paralelo da [`caixa_v`], que hoje é o ORÁCULO da fusão **e** a rota da porta
+/// [`sem_fusao`].
 fn bandas_da_vertical(w: usize) -> usize {
     (w / LARGURA_MINIMA_DA_BANDA).clamp(1, fatias_do_soquete())
 }
@@ -703,8 +720,34 @@ pub(crate) fn blur_region_caixa_com(
     // Separável: as três caixas na horizontal — FUNDIDAS numa passagem (2026-09-22) —, depois as
     // três na vertical. ⚠️ O `caixa_h` fica: ele é o oráculo do gate da fusão.
     // ⚠️ A largura NÃO muda nas verticais (só a altura), logo `w` não é `mut`.
-    let (mut cur, w) = caixa_h3(&apron, ap_w, ap_h, raios, paralelo);
-    let (n, h) = caixa_v3(&cur, w, ap_h, raios, LARGURA_DA_BANDA_FUNDIDA, paralelo);
+    let (mut cur, w) = if sem_fusao() {
+        let (mut c, mut ww) = (apron.clone(), ap_w);
+        for r in raios {
+            let (n, nw) = caixa_h(&c, ww, ap_h, r, paralelo);
+            c = n;
+            ww = nw;
+        }
+        (c, ww)
+    } else {
+        caixa_h3(&apron, ap_w, ap_h, raios, paralelo)
+    };
+    let (n, h) = if sem_fusao() {
+        let (mut c, mut hh) = (std::mem::take(&mut cur), ap_h);
+        for r in raios {
+            let (n, nh) = caixa_v(
+                &c,
+                w,
+                hh,
+                r,
+                if paralelo { bandas_da_vertical(w) } else { 1 },
+            );
+            c = n;
+            hh = nh;
+        }
+        (c, hh)
+    } else {
+        caixa_v3(&cur, w, ap_h, raios, LARGURA_DA_BANDA_FUNDIDA, paralelo)
+    };
     cur = n;
     debug_assert_eq!((w, h), (bw, bh));
     let desfaz = |p: &mut [f32; 4]| {

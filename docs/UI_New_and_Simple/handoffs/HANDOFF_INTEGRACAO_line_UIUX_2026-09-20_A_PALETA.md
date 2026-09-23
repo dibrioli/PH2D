@@ -2626,8 +2626,8 @@ exceção a apontar a um id inexistente **sangra**.
 
 ### §9-vicies-ter.3 — ⏳ ABERTO
 
-- A pergunta do dono (paleta ou menu suspenso ao lado do nome) continua a valer para o app inteiro,
-  e a troca continua a ser UMA função.
+- ✅ **DECIDIDO pelo dono (2026-09-23): a PALETA fica** (*«o formato atual»*) — o menu suspenso ao
+  lado do nome foi posto e recusado. Registado no doc da porta `paint_choice_row`.
 - `rows::seg_row` do Inspector segue fora da porta de propósito (widget com estado «misto»,
   aprovado em 15/09) — hoje é o único segmentado com nome que não passa por ela.
 

@@ -99,9 +99,12 @@ fn controlo_w(r: Rect) -> f32 {
 /// | cabe numa fileira | **ao lado**, alinhada com os campos da secção |
 /// | não cabe | **PALETA**: o nome por cima e o grupo a toda a largura |
 ///
-/// ⚠️ **A decisão vive AQUI e só aqui** — nenhum chamador escolhe a forma. Se o dono preferir um
-/// MENU SUSPENSO ao lado do nome para as paletas (a forma do Godot e do Unity), a troca é nesta
-/// função, e nenhuma secção muda.
+/// ⚠️ **A decisão vive AQUI e só aqui** — nenhum chamador escolhe a forma.
+///
+/// ⛔ **DECISÃO DO DONO (2026-09-23): a PALETA fica.** Posta a alternativa — um MENU SUSPENSO ao lado
+/// do nome para as escolhas que não cabem numa fileira (a forma do Godot e do Unity) —, depois de
+/// ver o app inteiro convertido, ele escolheu *«o formato atual»*. ⇒ não reabrir sem uma ordem nova
+/// dele; se ela vier, a troca continua a ser só nesta função.
 ///
 /// `segmentos` é `(rótulo, aceso, id)`; com **nenhum** aceso o grupo diz «misto». Devolve o `y`
 /// seguinte.

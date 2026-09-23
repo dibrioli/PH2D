@@ -258,7 +258,12 @@ impl Tinta {
             Self::SoAlfa(a) => scene.push_layer_shape(normal, a.min(1.0), t, &quad),
             Self::Cor([r, g, b, a]) => {
                 scene.push_layer_shape(normal, a.min(1.0), t, &quad);
-                let cor = ph2d_vector::Color::new([r.clamp(0.0, 1.0), g.clamp(0.0, 1.0), b.clamp(0.0, 1.0), 1.0]);
+                let cor = ph2d_vector::Color::new([
+                    r.clamp(0.0, 1.0),
+                    g.clamp(0.0, 1.0),
+                    b.clamp(0.0, 1.0),
+                    1.0,
+                ]);
                 scene.fill_path(
                     &ph2d_vector::Shape::to_path(&quad, 0.1),
                     &ph2d_vector::Brush::Solid(cor),

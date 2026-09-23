@@ -168,9 +168,9 @@ escurece a sobreposição outra vez, `Copies` deixa o cenário intacto e escurec
 **Limites DECLARADOS:**
 
 - ⛔ `Subtract` não tem camada (o W3C não o tem) — o seletor `Blend With` não aparece para ele.
-- ⚠️ Uma imagem na rota vectorial ignora o **tint**, o **modo por linha**, a **amostragem** e o
-  **ladrilhar** do `uv_cell` — o quad desenha a UV, o tamanho e a textura. Só o recorte da célula é
-  composto.
+- ⚠️ Uma imagem na rota vectorial ignora o **modo por linha**, a **amostragem** e o **ladrilhar** do
+  `uv_cell` — o quad desenha a UV, o tamanho e a textura. Só o recorte da célula é composto.
+  (O **tint** deixou de estar nesta lista na W6 — §7.)
 - ⚠️ **Ordem entre sprites do mundo e sprites do Motion, MEDIDA e não investigada:** com o cenário por
   baixo da coluna de controlo, as quatro imagens `Normal` (desenhadas pelo passe) ficavam TAPADAS por
   ele, e um `ZIndexOverride(-1)` no cenário não as trouxe à frente. É anterior a esta wave; a cena põe
@@ -182,3 +182,44 @@ escurece a sobreposição outra vez, `Copies` deixa o cenário intacto e escurec
 **sobrevivente e registada** acima como não-lei. Portão:
 `nextest-impacted` **20 150/20 150**, clippy `-D warnings` limpo nas sete crates tocadas, GPU
 `vello_fundo` **1/1**, `mistura` **5/5**, e o gate de pixel da mistura no dispositivo **2/2**.
+
+## §7 — W6 FECHADA (2026-09-23): a tinta de uma imagem é a conta da sprite
+
+**O defeito:** o `draw_quad` desenhava a imagem tal e qual e deitava fora o `tint` da linha. Uma cópia
+tintada que fosse ao grupo perdia a cor — e isto já valia **antes** do doc 118 para toda imagem da
+terceira mídia (as folhas `VectorQuad` da rota vectorial). ⚠️ **A fixtura da tabela da W1 só passava
+porque a tinta era ignorada:** pintava as imagens cinzentas com arte cinzenta **e** tinta cinzenta, e
+a conta certa dava o cinzento ao quadrado. Hoje as imagens levam tinta branca e o cinzento vem da arte.
+
+**A conta a igualar** é a do `sprite.wgsl`: `rgb = tex.rgb·tint.rgb`, `a = tex.a·tint.a`,
+pré-multiplicado. **A ordem ingénua vaza:** a imagem primeiro e a cor da tinta por cima numa camada
+`Multiply`+`SrcAtop` dá, pela lei W3C `cs' = mix(cs, B(cb,cs), αb)`, um resto `(1−αb)·T` em cada
+texel **meio transparente** — a borda anti-serrilhada de toda arte. ⇒ **a ordem exacta põe a COR por
+baixo, opaca e recortada ao quad, e a imagem por cima numa camada `Multiply`+`SrcIn`**: com o fundo
+opaco a mistura não tem resto, e o `SrcIn` guarda só a alfa da imagem. A alfa da tinta é a da camada
+de fora. Porta nova `VectorScene::push_layer_shape` (camada recortada a uma forma sob um afim).
+`Tinta { Neutra · SoAlfa · Cor · Apagada }` — a **branca opaca não abre camada nenhuma** (byte-idêntico
+ao que shipava), a de rgb branco abre UMA, e a alfa zero não desenha.
+
+**Gate de GPU** `a_tinta_da_imagem_e_a_conta_da_sprite`: arte `2×1` com um texel opaco e um a **meia
+alfa** (a fixtura tem de conter o fenómeno da ordem ingénua), três tintas (branca · `[1,0,5,0,25,0,8]`
+· só-alfa `0,6`), dois texels cada, contra a conta fechada à mão, barra `≤ 3` bytes (medido `≤ 2`).
+**Dois controlos dentro:** a tinta move os píxeis mais de `4×` a barra, e a ordem `SrcAtop` difere da
+exacta mais de `4×` a barra. **Mutação 4 de 4** (ignorar a tinta · `SrcIn → SrcAtop` ·
+`Multiply → Normal` · largar a alfa do `SoAlfa`).
+
+### §7.1 — O que continua ABERTO neste doc, em ordem, cada um a MEDIR antes de construir
+
+- **W7 — amostragem e ladrilhar da imagem na rota vectorial.** O sink tem `sampling`
+  (`filter | repeat<<8`) e um `uv_cell` que pode ladrilhar (escala `> 1`); o `draw_quad` ignora os
+  dois. A porta do Vello existe (`ImageQuality` Low/Medium/High = nearest/bilinear/bicúbico · `Extend`
+  · `fill_path_image` com `brush_transform`). ⚠️ `Inherit → Medium` para ficar byte-idêntico; o
+  `VectorInstance` não carrega hoje nem a amostragem nem a célula de repetição — o gate de
+  destruturação em `sink_style_tests.rs` obriga a decidir cada campo novo.
+- **W8 — o modo por LINHA dentro de um grupo.** A coluna `blend` (`0` = o do sink, `m+1` = o modo `m`)
+  é honrada pela rota de sprites e não pela vectorial; com grupo, quem decide é o grupo.
+- **W9 — a terceira rota no `StyleReach`.** O `sink_style.rs` declara só SPRITE e VECTOR; o quad de
+  imagem no Vello é uma rota de desenho que o censo `every_draw_route_answers_the_sink_style` não
+  conhece.
+- **W10 — a ordem entre as sprites do MUNDO e as do Motion** (medida na W5, não investigada: um
+  `ZIndexOverride(-1)` no cenário não trouxe as imagens `Normal` para a frente).

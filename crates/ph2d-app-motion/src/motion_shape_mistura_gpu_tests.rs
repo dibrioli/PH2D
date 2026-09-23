@@ -437,7 +437,14 @@ fn mede_tinta(pass: &mut VelloPass, gpu: &GpuContext, tinta: [f32; 4]) -> [[i32;
         })
     };
     let mut cena = VectorScene::new();
-    encode(&[fundo, quad], &store, &mut art, Affine::IDENTITY, None, &mut cena);
+    encode(
+        &[fundo, quad],
+        &store,
+        &mut art,
+        Affine::IDENTITY,
+        None,
+        &mut cena,
+    );
     let px = pass
         .render_and_readback(gpu, cena.inner(), (W, H))
         .expect("o readback");
@@ -468,7 +475,10 @@ fn a_tinta_da_imagem_e_a_conta_da_sprite() {
         let lido = mede_tinta(&mut pass, &gpu, tinta);
         for (metade, alfa) in alfas.iter().enumerate() {
             let alvo = [0, 1, 2].map(|c| byte(tinta_esperada(c, *alfa, tinta)));
-            println!("  tinta {tinta:?} metade {metade}: lido {:?} · conta {alvo:?}", lido[metade]);
+            println!(
+                "  tinta {tinta:?} metade {metade}: lido {:?} · conta {alvo:?}",
+                lido[metade]
+            );
             for c in 0..3 {
                 assert!(
                     (lido[metade][c] - alvo[c]).abs() <= BARRA,
@@ -489,7 +499,8 @@ fn a_tinta_da_imagem_e_a_conta_da_sprite() {
         "a tinta desta fixtura não se distingue do branco"
     );
     let a = TINTA_ALFA_DIREITA * TINTA[3];
-    let ingenua = TINTA[0] * ((1.0 - TINTA_ALFA_DIREITA) + TINTA_ALFA_DIREITA * TINTA_ARTE)
+    let ingenua = TINTA[0]
+        * ((1.0 - TINTA_ALFA_DIREITA) + TINTA_ALFA_DIREITA * TINTA_ARTE)
         * TINTA_ALFA_DIREITA
         * TINTA[3]
         + TINTA_FUNDO * (1.0 - a);

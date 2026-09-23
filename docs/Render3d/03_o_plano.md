@@ -18,7 +18,7 @@ que ela foi substituída não tem como ser lida certo.*
 |---|---|
 | **`W9`** (medição + o gate VERMELHO que o dono mandou tratar aqui) | **3.ª obra** — *a luz sobrevive ao movimento* ([`14` §6 `F1`](14_a_ordem_de_superar.md)), que a absorve com a causa já identificada |
 | **`W6`** (autoria: o grafo MaterialX no módulo de nós) | ⛔ **FORA da fila nova** — nenhuma das cinco obras a contém. Fica **NOMEADA e sem posição**, e pô-la numa é decisão do dono |
-| **`W7d`** (profundidade de campo) | proposta **FORA por omissão**, decisão do dono |
+| **`W7d`** (profundidade de campo) | ⛔ **FORA, por DECISÃO DO DONO (2026-09-22)** — ver [`12` §W7d](12_o_acabamento.md) |
 
 ---
 
@@ -165,14 +165,14 @@ Bloom sobre HDR verdadeiro · profundidade de campo · anti-aliasing temporal.
 colhida: o limiar é **duro** e a cadeia é um **mip chain** cujo raio dobra por nível
 ([`12` §3](12_o_acabamento.md)). ⛔⛔ **A primeira peça não é um efeito, é um BUFFER:** os dois
 motores fecham o quadro **pixel a pixel** e nada guarda o HDR que o brilho precisa de ler.
-⚠️ A profundidade de campo está proposta **FORA por omissão** — decisão do dono.
+⛔ **A profundidade de campo FICA DE FORA, por decisão do dono (2026-09-22).**
 
 ⭐⭐⭐ **O que fechou:** o brilho existe e corre no **dispositivo** ([`12` §11](12_o_acabamento.md)) e
 a borda **deixou de ferver** ([`12` §12](12_o_acabamento.md)) — esta última sem uma lei nova: a
 segunda passagem da silhueta já existia nos dois motores e estava desligada no quadro de movimento
 por uma tabela de CPU medida a `640×360`, antes de o quadro inteiro ir para a placa. No dispositivo
 ela custa `1,03×`–`1,09×`, e sem ela a silhueta que a mão arrasta não tem **um único** pixel de
-cobertura parcial. ⇒ **só a `W7d` (DOF) fica**, e ela está proposta FORA.
+cobertura parcial. ⇒ **a `W7d` (DOF) está FORA por decisão do dono** e a `W7` fecha.
 
 ## W8 — ⭐ A camada de ESTILO ✅ **FECHADA (19/09, ordem do dono: *«8 e depois do smoke o 7»*)**
 

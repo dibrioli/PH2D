@@ -216,10 +216,20 @@ tabela de CPU de `640×360`. Medida no dispositivo e no caminho do pintor, ela c
 
 ### `W7d` — A PROFUNDIDADE DE CAMPO
 
-⚠️ **Recomendação: FICA DE FORA por omissão**, e a razão não é preço — é que num **modelador** ela
-esconde a peça que se está a modelar. Ela é uma feature de **apresentação**, e o sítio dela é junto
-do botão de exportar imagem, não no viewport de trabalho. ⛔ **Decisão do dono** (ele já disse que
-a ouve: *«se preferir que a profundidade de campo fique de fora, diga»*).
+⛔⛔ **DECIDIDA E FORA — decisão do dono, 2026-09-22: *«Fica de fora por agora»*.** Nada foi
+construído, e a decisão volta ao dono no dia em que houver uma peça que a peça.
+
+A recomendação que ele ouviu era **FICAR DE FORA da área de trabalho**, e a razão não é preço — é
+que num **modelador** ela esconde a peça que se está a modelar: é uma feature de **apresentação** e
+o sítio dela é junto do botão de exportar imagem. As quatro saídas foram-lhe postas com o preço de
+cada uma (só na exportação · na área de trabalho desligada · na área de trabalho ligada · fora por
+agora), e ele escolheu a quarta *«para libertar a fila da performance, que é onde está o preço
+medido hoje»*.
+
+⚠️ **O que a 2.ª saída custava, e é a razão pela qual ela não era a recomendada:** um interruptor
+esquecido ligado deixa o artista a modelar através de um desfoque, e o sintoma — *«o detalhe está a
+sair mole»* — não aponta para o interruptor. Esta casa já pagou isso com o `reduced_motion=1` num
+ficheiro fora do projecto, que reprovava smokes sobre produto correcto.
 
 ## §6 — A UI
 

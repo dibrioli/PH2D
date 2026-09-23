@@ -393,6 +393,19 @@ fn box_corners(lo: [f32; 3], hi: [f32; 3]) -> Vec<[f32; 3]> {
 pub struct RegionCompiler {
     /// Índice por nó, só para os nós que são forma de perfil.
     idx: std::collections::BTreeMap<usize, profile_index::ProfileIndex>,
+    /// ⭐⭐⭐⭐ **A ÁRVORE DA FÓRMULA por nó, ajustada UMA vez** — pela mesma razão que o índice ao
+    /// lado, e com um número dez vezes maior.
+    ///
+    /// ⛔⛔ Medido em 2026-09-23: ajustar o torno da cena `5` custa **`0,0748 ms`**, e o
+    /// `specialised_profile` corre **por ladrilho × fatia** — `750` regiões a `1920×1080` com
+    /// ladrilho `64`, `39 406` com ladrilho `8`. ⇒ **`56 ms` a `2 948 ms` por quadro só a
+    /// ajustar**, contra `0,0280 ms` que montar a árvore exacta da peça inteira custa. *O A/B de
+    /// CPU leu `90,17` contra `88,23 ms` porque dois números grandes se cancelavam: a marcha
+    /// poupava o que a montagem gastava.*
+    ///
+    /// ⭐ **E a resposta da região é a MESMA árvore** — uma fórmula não depende da região —, logo o
+    /// que aqui se guarda serve toda região por clonagem de um ponteiro.
+    formula: std::collections::BTreeMap<usize, Tree>,
     /// ⭐ O mapa mundo→local de cada nó — do documento, e não da região, então compõe-se **uma** vez
     /// (W148). Ver [`affine::local_maps`].
     maps: Vec<Option<Affine>>,
@@ -403,6 +416,7 @@ impl RegionCompiler {
     #[must_use]
     pub fn new(doc: &FieldDoc) -> Self {
         let mut idx = std::collections::BTreeMap::new();
+        let mut formula = std::collections::BTreeMap::new();
         for (i, node) in doc.nodes().iter().enumerate() {
             // ⚠️ **O POLÍGONO entra aqui**, e esquecê-lo não daria erro nenhum: ele só perderia
             // a especialização por ladrilho e ficaria mais lento em silêncio. *Um `if let` não
@@ -414,19 +428,39 @@ impl RegionCompiler {
             ) = &node.kind
             {
                 idx.insert(i, profile_index::ProfileIndex::build(profile));
+                // ⭐ Só o TORNO desce por fórmula (a silhueta de um extrude é uma curva fechada,
+                // não uma função da altura) — ver [`profile_formula`].
+                if matches!(&node.kind, NodeKind::Leaf(Primitive::Revolve { .. }))
+                    && let Some(t) = profile::torno_por_formula(profile)
+                {
+                    formula.insert(i, t);
+                }
             }
         }
         Self {
             idx,
+            formula,
             maps: affine::local_maps(doc),
         }
     }
 
-    /// **Este documento tem alguma forma de perfil?** — se não, especializar não compra nada, e o
-    /// consumidor fica com a marcha de sempre.
+    /// ⭐ **A árvore da fórmula deste nó**, ou `None` se ele não desce por fórmula — ver
+    /// [`Self::formula`].
+    #[must_use]
+    pub(crate) fn formula_de(&self, i: usize) -> Option<&Tree> {
+        self.formula.get(&i)
+    }
+
+    /// **Este documento tem alguma forma de perfil que a especialização ENCURTE?** — se não,
+    /// especializar não compra nada, e o consumidor fica com a marcha de sempre.
+    ///
+    /// ⭐⭐⭐⭐ **E um torno por FÓRMULA não conta** (2026-09-23): a árvore dele não tem arestas para
+    /// cortar, logo a região é a **identidade** — e ladrilhar por causa dela faz o quadro pagar a
+    /// montagem por região sem poupar um passo. ⇒ uma peça feita só de tornos por fórmula corre a
+    /// marcha de sempre, com **uma** árvore.
     #[must_use]
     pub fn is_worth_it(&self) -> bool {
-        !self.idx.is_empty()
+        self.idx.keys().any(|i| !self.formula.contains_key(i))
     }
 
     /// A árvore do documento, especializada para a caixa de mundo `[lo, hi]`. Ver
@@ -476,10 +510,16 @@ fn compile_in_region_with(
         let inner = match &node.kind {
             // ⚠️ **Quem é especializado decide-o UMA função** ([`RegionCompiler::specialised_leaf`]),
             // que os cascos guardados pela cache também perguntam.
+            // ⭐⭐⭐⭐ **A ÁRVORE DA FÓRMULA vem do mapa e não de um ajuste novo** — ver
+            // [`RegionCompiler::formula`]: ajustá-la aqui custaria `0,0748 ms` **por região**, e
+            // um quadro pede centenas delas.
             NodeKind::Leaf(p) => rc
-                .specialised_leaf(node, i)
-                .and_then(|(m, idx)| {
-                    specialised_profile(p, idx, m.box_of(lo, hi), hulls.hull_of(i))
+                .formula_de(i)
+                .cloned()
+                .or_else(|| {
+                    rc.specialised_leaf(node, i).and_then(|(m, idx)| {
+                        specialised_profile(p, idx, m.box_of(lo, hi), hulls.hull_of(i))
+                    })
                 })
                 .unwrap_or_else(|| primitive(p)),
             NodeKind::Combine { op, children } => combine(*op, children, doc.nodes(), &built),
@@ -565,12 +605,15 @@ fn specialised_profile(
             ))
         }
         Primitive::Revolve { profile } => {
-            // ⭐⭐⭐⭐ **Um torno por FÓRMULA não tem arestas para cortar** — a região dele é a
-            // mesma árvore. ⛔ Sem esta linha o todo desce por fórmula e a região corta o contorno
-            // DESENHADO: duas leis, e três gates a dizê-lo. Ver [`profile::torno_por_formula`].
-            if let Some(t) = profile::torno_por_formula(profile) {
-                return Some(t);
-            }
+            // ⚠️ **Quem responde por um torno de FÓRMULA é o chamador**, pela árvore que o
+            // [`RegionCompiler`] ajustou uma vez — ajustá-la aqui custaria `0,0748 ms` por região.
+            // ⛔ E chegar aqui com um torno que desce por fórmula é o defeito que três gates
+            // apanharam: o todo pela fórmula e a região a cortar o contorno DESENHADO são duas
+            // leis. Ver [`profile::torno_por_formula`] e [`RegionCompiler::formula_de`].
+            debug_assert!(
+                profile::torno_por_formula(profile).is_none(),
+                "um torno por fórmula não passa por aqui — a região dele é a árvore guardada"
+            );
             // ⚠️ `u = √(x² + z²)`: a caixa local vira um **anel** em `u`, e o mínimo é a distância do
             // eixo à caixa no plano `xz` — zero quando ela o contém.
             let du = axis_gap(lo[0], hi[0]);

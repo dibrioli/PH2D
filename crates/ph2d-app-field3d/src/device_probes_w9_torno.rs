@@ -484,26 +484,38 @@ fn diag_o_arrasto_no_modo_de_omissao() {
             crate::preview::PREVIEW_BUDGET_MS,
             16,
         );
-        // ⭐⭐⭐ **E O QUE A PLACA CUSTARIA NO MESMO MODO** — ela sabe MARCHAR esta peça (é
-        // geometria), e a condição que hoje a impede é `Shading::Render`, que é uma pergunta sobre
-        // PINTAR. *Sem esta coluna, «fica grosseiro» não tem preço.*
+        // ⭐⭐⭐ **E O QUE A PLACA CUSTA NA ROTA DO PRODUTO** — o [`crate::gpu_frame::paint`], que
+        // devolve a IMAGEM.
+        //
+        // ⚠️⚠️ **A 1.ª redacção media o [`crate::gpu_frame::march`] e isso era outra rota:** ele
+        // traz o G-BUFFER de volta pelo barramento (`~50 MB` a `1920×1080`) e o Render só o pede
+        // quando REFINA. Medido, ele lia `119`–`123 ms` onde o pintor lê `16,6` — *uma coluna de
+        // uma rota que o produto não toma lê-se como o preço da placa.*
+        let materiais = [ph2d_material::OpenPbr::default().prepare()];
+        let surfaces = ph2d_field_render::Surfaces {
+            all: &materiais,
+            owners: None,
+        };
+        let olhar = ph2d_view_transform::Look::default();
         let placa = crate::gpu_frame::shared().and_then(|t| {
-            let luz = [crate::gpu_frame::tests_lampada(&cam).world];
+            let luz = [crate::gpu_frame::tests_lampada(&cam)];
             let mut melhor = f32::INFINITY;
             for _ in 0..super::super::QUADROS_MEDIDOS {
                 let t0 = std::time::Instant::now();
-                let r = crate::gpu_frame::march(
+                crate::gpu_frame::paint(
                     t,
                     &doc,
                     &reg,
                     &cam,
                     &luz,
+                    &surfaces,
+                    &ph2d_field_render::Presentation::of(olhar),
+                    [0, 0, 0, 0],
                     None,
                     w,
                     h,
-                    crate::preview::re_amostra_a_silhueta(),
-                );
-                r?;
+                    false,
+                )?;
                 #[allow(clippy::cast_possible_truncation)]
                 let ms = t0.elapsed().as_secs_f32() * 1e3;
                 melhor = melhor.min(ms);
@@ -529,6 +541,94 @@ fn diag_o_arrasto_no_modo_de_omissao() {
             (w / pw.max(1)).max(1),
             placa.unwrap_or(f32::NAN),
             minimo / placa.unwrap_or(f32::NAN),
+        );
+    }
+    println!();
+}
+
+/// ⏱️⭐⭐⭐⭐ **Sonda: QUANTO DO QUADRO É O CAMPO, E QUANTO É A MARCHA.**
+///
+/// # A pergunta que decide se uma GRELHA ASSADA paga
+///
+/// A proposta da grelha de volume (o mecanismo do MagicaCSG) troca **avaliar o campo** por **uma
+/// consulta trilinear**. ⇒ ela só paga se o campo for a maior parte do quadro. ⚠️ Se o que domina
+/// for a MARCHA — os raios, os passos, a memória —, uma consulta mais barata por passo não move o
+/// relógio, e a wave inteira seria construída contra a grandeza errada.
+///
+/// ⭐ **A régua é a mesma cena com peças de tamanhos de fita muito diferentes**, no motor de
+/// **CPU** (o caminho do modo de omissão) e no **dispositivo**, com os passos por acerto ao lado —
+/// sem eles, um relógio que não se move lê-se como *«o campo não custa»* quando pode ser *«a peça
+/// mais simples dá mais passos»*.
+#[test]
+#[ignore = "sonda de diagnóstico: mede quanto do quadro é o campo"]
+fn diag_quanto_do_quadro_e_o_campo() {
+    let reg = crate::smoke::sampled_registry();
+    let cam = ph2d_field_render::Orbit::default();
+    const W: u32 = 1920;
+    const H: u32 = 1080;
+    let pecas: Vec<(&str, ph2d_field::FieldDoc)> = vec![
+        (
+            "esfera",
+            ph2d_field::FieldDoc::new(
+                vec![ph2d_field::Node {
+                    xform: ph2d_field::Xform::IDENTITY,
+                    kind: ph2d_field::NodeKind::Leaf(ph2d_field::Primitive::Sphere { radius: 0.5 }),
+                    mods: Vec::new(),
+                    verb: None,
+                }],
+                ph2d_field::NodeId(0),
+            )
+            .expect("a esfera"),
+        ),
+        ("o vaso (cena 5)", crate::smoke::scene(5)),
+        ("o nó de toro (cena 28)", crate::smoke::scene(28)),
+    ];
+    println!(
+        "\n  {}\n  peça · linhas · passos/acerto · CPU ms · ns/amostra · placa ms · ns/amostra",
+        super::super::contexto()
+    );
+    for (nome, doc) in &pecas {
+        let linhas = ph2d_field_eval::Field::new(doc)
+            .tape_shape()
+            .map_or(0, |s| s.guardados);
+        use std::sync::atomic::Ordering;
+        ph2d_field_render::STEP_SAMPLES.store(0, Ordering::Relaxed);
+        let g = ph2d_field_render::trace(doc, &reg, &cam, 96, 54);
+        let acertos = g.hit.iter().filter(|h| **h).count().max(1);
+        #[allow(clippy::cast_precision_loss)]
+        let por_acerto =
+            ph2d_field_render::STEP_SAMPLES.load(Ordering::Relaxed) as f32 / acertos as f32;
+        let mut cpu = f32::INFINITY;
+        for _ in 0..super::super::QUADROS_MEDIDOS {
+            let t0 = std::time::Instant::now();
+            let _ = ph2d_field_render::trace(doc, &reg, &cam, W, H);
+            #[allow(clippy::cast_possible_truncation)]
+            let ms = t0.elapsed().as_secs_f32() * 1e3;
+            cpu = cpu.min(ms);
+        }
+        // ⚠️ **As amostras são `pixels × passos por acerto`** — é a conta que o próprio gate do
+        // corpus usa, e ela é a única que torna dois relógios comparáveis entre peças.
+        #[allow(clippy::cast_precision_loss)]
+        let amostras = (f64::from(W) * f64::from(H) * f64::from(por_acerto)).max(1.0);
+        let placa = crate::gpu_frame::shared().and_then(|t| {
+            let luz = [crate::gpu_frame::tests_lampada(&cam).world];
+            let mut melhor = f32::INFINITY;
+            for _ in 0..super::super::QUADROS_MEDIDOS {
+                let t0 = std::time::Instant::now();
+                crate::gpu_frame::march(t, doc, &reg, &cam, &luz, None, W, H, false)?;
+                #[allow(clippy::cast_possible_truncation)]
+                let ms = t0.elapsed().as_secs_f32() * 1e3;
+                melhor = melhor.min(ms);
+            }
+            Some(melhor)
+        });
+        let ns = |ms: f32| f64::from(ms) * 1.0e6 / amostras;
+        println!(
+            "  {nome:>22} · {linhas:>6} · {por_acerto:>13.1} · {cpu:>6.1} · {:>10.3} · {:>8.1} · \
+             {:>10.3}",
+            ns(cpu),
+            placa.unwrap_or(f32::NAN),
+            ns(placa.unwrap_or(f32::NAN)),
         );
     }
     println!();

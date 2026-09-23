@@ -1013,6 +1013,61 @@ corrida não bissecta nada* (e a lei do `CLAUDE.md` §5.0 di-lo por extenso).
 é uma **catraca ao contrário** — ela reprova no dia em que alguém tirar o modo daquela condição, para
 que a cura venha com a atribuição do estouro.
 
+### ⛔⛔⛔⛔ E O 2.º REPORT — *«ainda perde resolução ao arrastar»* — ACHOU UM DEFEITO MEU: o ajuste corria POR REGIÃO
+
+⭐ **A causa não é o modo nem a placa: é que a fórmula era ajustada por ladrilho.**
+
+O [`ph2d_field_eval::RegionCompiler`] chama o `specialised_profile` **por ladrilho × fatia de
+profundidade**, e a 1.ª redacção do torno por fórmula fazia **ali** a extracção da silhueta (`128`
+alturas) e **dois** ajustes de mínimos quadrados `17×17`.
+
+| | |
+|---|---:|
+| ajustar a fórmula | **`0,0748 ms`** |
+| montar a árvore EXACTA da peça inteira | `0,0280 ms` |
+| regiões por quadro a `1920×1080`, ladrilho `64` | `750` |
+| ⇒ **só a ajustar** | **`56 ms`** por quadro (`2 948` com ladrilho `8`) |
+
+⛔⛔ **E o A/B de relógio não o via, porque dois números grandes se cancelavam:** o traçado de CPU
+lia `90,17 ms` pela lei exacta e `88,23` pela fórmula — *a poupança da marcha pagava o gasto da
+montagem*, e eu escrevi «na CPU a fórmula não compra nada» sobre um defeito meu. ⚠️ *Uma diferença
+de `2 %` entre dois caminhos muito diferentes é um sinal para procurar o que se cancelou, não uma
+conclusão.*
+
+⭐⭐ **A cura é a que esta casa já tinha escrita ao lado:** o `RegionCompiler` constrói a
+[`ProfileIndex`] **uma vez** e não por região, com a razão no doc. ⇒ a árvore da fórmula passa a
+viver no mesmo mapa (`RegionCompiler::formula`), e a região devolve-a por clonagem de um ponteiro —
+*uma fórmula não depende da região, logo a resposta dela é a MESMA árvore*.
+
+⭐ **E uma peça feita só de tornos por fórmula deixa de pedir LADRILHOS** (`is_worth_it`): a árvore
+dela não tem arestas para cortar, logo ladrilhar faz o quadro pagar a montagem por região sem poupar
+um passo.
+
+**Medido depois da cura** (`diag_o_arrasto_no_modo_de_omissao`, a cena `5`, o traçado de **CPU** que
+é o do modo de omissão; ⚠️ `43`–`52 %` de CPU ociosa nos dois lados, logo a RAZÃO vale e os
+absolutos são pessimistas):
+
+| tela | contorno desenhado | por fórmula | ganho | divisor |
+|---|---:|---:|---:|---|
+| `1920×1080` | `79,0 ms` · `D=3` | **`46,9`** · `D=2` | `1,68×` | melhorou |
+| `1400×900` | `62,4` · `D=2` | **`25,2`** · `D=2` | **`2,48×`** | — |
+| `960×540` | `38,0` · `D=2` | **`13,6`** · **`D=1`** | **`2,79×`** | ⭐ resolução CHEIA |
+
+⇒ ⚠️ **E a verdade que fica:** a `1400×900` o quadro lê `25,2 ms` contra um orçamento de `16,7` —
+**o dono ainda vai perder resolução numa tela grande**, e a razão já não é a peça: *o traçado de CPU
+é ~`1,5×` lento de mais para aquela tela com qualquer peça*.
+
+⭐⭐⭐ **A régua desta cura é uma CONTAGEM e não um relógio**, e é por isso que ela existe: a árvore
+que a região devolve é a MESMA **ao bit** nos dois caminhos, e nenhuma régua de valor os distingue.
+Gates: `a_formula_e_ajustada_uma_vez_por_peca` (o contador, com o piso de população das regiões) e
+`uma_peca_so_de_formula_nao_pede_ladrilhos` (com um EXTRUDE como controlo — um `is_worth_it` sempre
+falso desligaria a especialização de toda a casa).
+
+⚠️ **E o meu sonda tinha uma coluna de outra rota:** ela media o `gpu_frame::march`, que traz o
+G-buffer de volta pelo barramento (`~50 MB`) e que o Render só pede quando REFINA — `119`–`123 ms`
+onde o pintor lê `16,6`. *Uma coluna de uma rota que o produto não toma lê-se como o preço da placa.*
+Corrigida para o `gpu_frame::paint`.
+
 ### ⛔⛔ As três coisas que a construção achou, e nenhuma era a lei
 
 1. **A decisão escrita em UM sítio divergiu na primeira corrida.** O todo descia por fórmula e o

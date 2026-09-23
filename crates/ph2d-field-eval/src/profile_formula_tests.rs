@@ -239,3 +239,129 @@ fn a_formula_nao_atravessa_a_peca() {
         );
     }
 }
+
+/// ⛔⛔⛔⛔ **A FÓRMULA É AJUSTADA UMA VEZ POR PEÇA, NUNCA POR REGIÃO.**
+///
+/// # O defeito que este gate mede, e ele era meu
+///
+/// O [`crate::RegionCompiler`] chama o `specialised_profile` **por ladrilho × fatia de
+/// profundidade**, e a 1.ª redacção do torno por fórmula ajustava ali: extracção da silhueta (`128`
+/// alturas) e **dois** ajustes de mínimos quadrados `17×17`, **por região**.
+///
+/// **Medido:** ajustar custa `0,0748 ms` (contra `0,0280 ms` que montar a árvore EXACTA da peça
+/// inteira custa) e um quadro a `1920×1080` pede `750` regiões com ladrilho `64` e `39 406` com
+/// ladrilho `8` ⇒ **`56` a `2 948 ms` por quadro só a ajustar**.
+///
+/// ⛔⛔ **E o A/B de relógio NÃO o viu:** o traçado de CPU leu `90,17 ms` pela lei exacta e
+/// `88,23 ms` pela fórmula — *dois números grandes a cancelarem-se*, a poupança da marcha contra o
+/// gasto da montagem. ⇒ **a régua tem de ser a CONTA**, porque a árvore que a região devolve é a
+/// MESMA ao bit nos dois caminhos e nenhuma régua de valor os distingue.
+///
+/// ⭐ **E o CONTROLO é o número de regiões**: sem ele, uma compilação que não especializasse nada
+/// leria `1` ajuste e passaria a afirmar o contrário do que mede.
+#[test]
+fn a_formula_e_ajustada_uma_vez_por_peca() {
+    use crate::profile_formula::AJUSTES;
+    use std::sync::atomic::Ordering;
+    let doc = ph2d_field::FieldDoc::new(
+        vec![ph2d_field::Node {
+            xform: ph2d_field::Xform::IDENTITY,
+            kind: ph2d_field::NodeKind::Leaf(ph2d_field::Primitive::Revolve { profile: copo() }),
+            mods: Vec::new(),
+            verb: None,
+        }],
+        ph2d_field::NodeId(0),
+    )
+    .expect("o copo girado é um documento válido");
+    let reg = crate::hybrid::Registry::default();
+
+    AJUSTES.store(0, Ordering::Relaxed);
+    let rc = crate::RegionCompiler::new(&doc);
+    let no_arranque = AJUSTES.load(Ordering::Relaxed);
+    assert!(
+        no_arranque >= 1,
+        "CONTROLO: a construção do compilador de regiões não ajustou nada ({no_arranque}) — ou o \
+         copo deixou de descer por fórmula, e então este gate mede o nada"
+    );
+
+    // ⭐ Uma grelha de regiões, como um quadro pede.
+    const LADO: usize = 6;
+    let bola = crate::bounds::bounding_ball(&doc, &reg).expect("a bola da peça");
+    let (lo, hi) = crate::bounds_clip::march_clip(bola);
+    AJUSTES.store(0, Ordering::Relaxed);
+    let mut regioes = 0usize;
+    for iz in 0..LADO {
+        for iy in 0..LADO {
+            for ix in 0..LADO {
+                let passo = [0, 1, 2].map(|k| (hi[k] - lo[k]) / LADO as f32);
+                #[allow(clippy::cast_precision_loss)]
+                let rlo = [
+                    lo[0] + ix as f32 * passo[0],
+                    lo[1] + iy as f32 * passo[1],
+                    lo[2] + iz as f32 * passo[2],
+                ];
+                let rhi = [rlo[0] + passo[0], rlo[1] + passo[1], rlo[2] + passo[2]];
+                let _ = rc.compile(&doc, rlo, rhi);
+                regioes += 1;
+            }
+        }
+    }
+    let por_regiao = AJUSTES.load(Ordering::Relaxed);
+    assert_eq!(
+        regioes,
+        LADO * LADO * LADO,
+        "CONTROLO: o laço compilou {regioes} regiões — o gate está a medir o nada"
+    );
+    assert_eq!(
+        por_regiao, 0,
+        "a fórmula foi ajustada {por_regiao} vezes ao compilar {regioes} regiões — ela voltou a ser \
+         ajustada POR REGIÃO, e isso custa 0,0748 ms cada (56 ms por quadro a 1920×1080)"
+    );
+}
+
+/// ⭐⭐⭐ **UMA PEÇA FEITA SÓ DE TORNOS POR FÓRMULA NÃO PEDE LADRILHOS.**
+///
+/// ⚠️ A árvore de uma fórmula não tem arestas para cortar, logo a região dela é a **identidade**.
+/// Ladrilhar por causa dela faz o quadro pagar a montagem por região **sem poupar um passo** — e o
+/// [`crate::RegionCompiler::is_worth_it`] é a porta que o consumidor lê para decidir se ladrilha.
+///
+/// ⭐ **E o CONTROLO é um EXTRUDE**, que continua a cortar arestas: sem ele, um `is_worth_it` que
+/// devolvesse sempre `false` passaria a metade de cima e desligaria a especialização de toda a casa.
+#[test]
+fn uma_peca_so_de_formula_nao_pede_ladrilhos() {
+    let torno = ph2d_field::FieldDoc::new(
+        vec![ph2d_field::Node {
+            xform: ph2d_field::Xform::IDENTITY,
+            kind: ph2d_field::NodeKind::Leaf(ph2d_field::Primitive::Revolve { profile: copo() }),
+            mods: Vec::new(),
+            verb: None,
+        }],
+        ph2d_field::NodeId(0),
+    )
+    .expect("o torno");
+    let extrude = ph2d_field::FieldDoc::new(
+        vec![ph2d_field::Node {
+            xform: ph2d_field::Xform::IDENTITY,
+            kind: ph2d_field::NodeKind::Leaf(ph2d_field::Primitive::Extrude {
+                profile: copo(),
+                half_height: 0.3,
+                round: 0.0,
+                chamfer: 0.0,
+            }),
+            mods: Vec::new(),
+            verb: None,
+        }],
+        ph2d_field::NodeId(0),
+    )
+    .expect("o extrude");
+    assert!(
+        !crate::RegionCompiler::new(&torno).is_worth_it(),
+        "um torno por fórmula pediu ladrilhos — o quadro paga a montagem por região sem poupar um \
+         passo"
+    );
+    assert!(
+        crate::RegionCompiler::new(&extrude).is_worth_it(),
+        "CONTROLO: o extrude deixou de pedir ladrilhos — um `is_worth_it` sempre falso desliga a \
+         especialização de toda a casa"
+    );
+}

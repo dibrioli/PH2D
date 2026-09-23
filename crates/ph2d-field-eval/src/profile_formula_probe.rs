@@ -281,6 +281,24 @@ fn linhas(t: &Tree) -> usize {
 /// vaso — abaixo de um pixel no uso normal.
 pub const GRAU: usize = 16;
 
+/// ⏱️⭐⭐⭐⭐ **Quantas vezes a fórmula foi AJUSTADA** — só sob teste.
+///
+/// # Porque um contador, e não um relógio
+///
+/// A economia desta cura é **invisível a toda régua de valor**: a árvore que a região devolve é a
+/// MESMA, ao bit, venha ela de um ajuste novo ou do mapa do [`crate::RegionCompiler`]. ⇒ o que se
+/// mede é a CONTA.
+///
+/// ⛔⛔ **E o número que a justifica:** ajustar custa `0,0748 ms` e o `specialised_profile` corria
+/// **por ladrilho × fatia** — `750` regiões a `1920×1080`, `39 406` com ladrilho `8` ⇒ `56` a
+/// `2 948 ms` por quadro. *O A/B de CPU não o viu porque a poupança da marcha e o gasto da montagem
+/// se cancelavam.*
+///
+/// ⚠️ **É um átomo GLOBAL, e isso é são sob `nextest`** (um processo por teste) e **poluído** sob
+/// `cargo test`, que corre vários testes no mesmo processo — a lei do `CLAUDE.md` §5.0.
+#[cfg(test)]
+pub static AJUSTES: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
 /// ⭐⭐⭐⭐ **A FIDELIDADE que a fórmula tem de alcançar para ser usada** — fracção do raio da peça.
 ///
 /// ⚠️⚠️ **Este é um limite de PRODUTO e o recurso dele é o OLHO, e é honesto dizê-lo.** A rota da
@@ -319,6 +337,9 @@ pub const FIDELIDADE: f64 = 0.01;
 /// valor maior do que a distância dá um passo para dentro do sólido.
 #[must_use]
 pub fn sd_revolve_por_formula(profile: &Profile) -> Option<Tree> {
+    // ⏱️⭐⭐⭐ **O CONTADOR que mede a CONTA e não o valor** — ver [`AJUSTES`].
+    #[cfg(test)]
+    AJUSTES.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let s = silhueta(profile)?;
     let vs: Vec<f64> = s.iter().map(|(v, _, _)| *v).collect();
     let ds: Vec<f64> = s.iter().map(|(_, d, _)| *d).collect();

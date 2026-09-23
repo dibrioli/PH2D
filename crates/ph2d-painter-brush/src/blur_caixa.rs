@@ -321,8 +321,9 @@ fn caixa_v3(
     type Rascunho = (Vec<[f32; 4]>, Vec<[f32; 4]>, Vec<[f32; 4]>, Vec<[f32; 4]>);
     let banda = |r: &mut Rascunho, c0: usize, largura: usize, dest: &mut [&mut [[f32; 4]]]| {
         // ⚠️ A CONTA, e não o valor: a identidade ao bit vale para toda partição, logo nenhuma
-        //    régua de VALOR consegue ver alguém cravar uma banda só — e uma banda só mede `0,57×`,
-        //    ou seja PIOR do que as três passagens separadas.
+        //    régua de VALOR consegue ver alguém cravar uma banda só — e uma banda só (a largura
+        //    CHEIA) mediu entre `0,45×` e `1,41×` das três passagens separadas conforme a corrida:
+        //    nunca melhor do que a banda de cache, e às vezes pior do que antes da fusão.
         #[cfg(test)]
         BANDAS_PERCORRIDAS.with(|c| c.set(c.get() + 1));
         let (t1, t2, t3, acc) = r;
@@ -530,7 +531,18 @@ pub(crate) const LARGURA_MINIMA_DA_BANDA: usize = 384;
 /// e a fusão não compra nada, com ela estreita de mais o laço interno fica curto para amortizar o
 /// percurso por linha. O número sai da varredura `diag_a_largura_da_banda_fundida`.
 ///
-/// **Medido** (série, `--release`, entrada `1024×1312` depois das horizontais):
+/// ⛔⛔ **AUDITORIA de 2026-09-23 — esta tabela NÃO é reproduzível e o óptimo `128` NÃO está
+/// demonstrado.** Ela é UMA corrida; o handoff §33.2 e o commit `f51b3c386` publicaram outros
+/// números para as MESMAS células (`512`: `1,07×` aqui contra `0,82×` lá; cheia: `0,81×` contra
+/// `0,57×`), um auditor independente leu `1,00×` e `0,86×`, e duas re-corridas de 2026-09-23 (com
+/// outra linha a compilar, `load 44`–`56`) leram a largura `128` a `1,02×` numa e `2,47×` na outra.
+/// ⇒ o que está demonstrado é a **identidade ao bit** (gates) e que **nenhuma largura de
+/// `16`–`256` é pior que as três passagens** nas corridas calmas; *qual* delas é a melhor é ruído
+/// abaixo do piso desta máquina. Re-medir com a máquina calma é item da fila do handoff (§33.12).
+///
+/// **Medido** (série, `--release`, entrada `1024×1062` depois das horizontais — `1024²` com o
+/// avental de `Σ box_radii(96) = 19` de cada lado; a nota dizia `1024×1312` e a coluna de KiB já o
+/// desmentia):
 ///
 /// | largura | fundida | ganho | KiB por intermédio |
 /// |---|---|---|---|

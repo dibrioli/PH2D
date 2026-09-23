@@ -74,6 +74,9 @@ mod composite_acumulado_tests; // a pilha que ACUMULA: o preço, a exactidão e 
 #[path = "composite_pilha_tests.rs"]
 mod composite_pilha_tests; // a ordem por TRAÇO + o escopo da borracha
 
+#[path = "composite_cerca_tests.rs"]
+mod composite_cerca_tests; // os gates de VALOR da cerca do borrão (auditoria de 2026-09-23)
+
 #[path = "diag_preco_da_pilha.rs"]
 mod diag_preco_da_pilha; // o relógio da recomposição regional
 

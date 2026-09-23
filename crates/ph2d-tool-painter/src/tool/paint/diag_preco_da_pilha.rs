@@ -139,11 +139,13 @@ fn diag_preco_da_pilha() {
         (CompositeOp::Smear, 0.596, 1.0),
         (CompositeOp::Erase, 0.104, 1.0),
     ];
-    let raio_do_dono = 1.0 + 0.4 * 0.4 * (512.0 - 1.0);
+    // ⚠️ Pela PORTA do produto e não pela fórmula à mão (auditoria de 2026-09-23): uma sonda que
+    //    recalcula a lei do slider mede outro programa no dia em que ela mudar.
+    let raio_do_dono = super::brush_settings::size_norm_to_px(0.4);
     println!("\n  A PILHA DO DONO   (raio do pincel {raio_do_dono:.1} px · foto de 2026-09-22)");
     println!("  camada viva                    |    ms | ms/evento | % do quadro (16 ev)");
     println!("  -------------------------------+-------+-----------+---------------------");
-    let mut monta = |so: Option<usize>| -> f64 {
+    let monta = |so: Option<usize>| -> f64 {
         let mut melhor = f64::MAX;
         for _ in 0..3 {
             let mut t = tela_de(SIZE, raio_do_dono);
@@ -160,7 +162,7 @@ fn diag_preco_da_pilha() {
         }
         melhor
     };
-    let mut linha = |nome: &str, ms: f64| {
+    let linha = |nome: &str, ms: f64| {
         let por_ev = ms / f64::from(eventos);
         println!(
             "  {nome:30} | {ms:5.1} | {por_ev:9.3} | {:14.1}",
@@ -246,7 +248,8 @@ fn diag_preco_da_pilha() {
     println!("\n  QUAL PAR ACENDE O CUSTO FIXO   (raio {raio_do_dono:.1} px)");
     println!("  par                            |     ms | ms por evento");
     println!("  -------------------------------+--------+--------------");
-    let pares: &[(&str, [(CompositeOp, f32, f32); 2])] = &[
+    type Par = (&'static str, [(CompositeOp, f32, f32); 2]);
+    let pares: &[Par] = &[
         (
             "Brush 1.0 + Brush 1.0",
             [

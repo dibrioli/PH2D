@@ -39,7 +39,7 @@
 //! [`super::plane_fork::swap_canvas_plane`] e o depósito de sempre corre sobre ele. É o truque que
 //! o ESCUDO da borracha de escopo `Traco` já usava — *uma lei, uma porta*.
 //!
-//! # Exacto em quatro das cinco operações, e a quinta é DECLARADA
+//! # Exacto em três das quatro operações, e a quarta é DECLARADA
 //!
 //! * **Brush** — acumular com `Mix` e compor uma vez é **idêntico** a depositar os dabs em ordem:
 //!   o `over` é associativo, e a cor de cada dab viaja no plano (logo o *Randomize Color* fica
@@ -129,7 +129,7 @@ impl PainterTool {
         #[cfg(test)]
         let t_acumular = std::time::Instant::now();
         for (pos, lista) in camadas.iter().enumerate() {
-            if self.paint.composite[pos].strength <= 0.0 || lista.is_empty() {
+            if !self.camada_viva(pos) || lista.is_empty() {
                 continue;
             }
             self.acumula_camada(pos, lista);
@@ -230,27 +230,54 @@ impl PainterTool {
         self.paint.brush.hardness = saved_hardness;
     }
 
-    /// **A composição: `pre` e depois cada camada UMA vez, de baixo para cima.**
+    /// **Uma camada está VIVA** — a pergunta que o laço da composição, a acumulação, a cerca do
+    /// borrão e o avental fazem, e que tem de ter UMA resposta.
+    ///
+    /// ⚠️ Ela era escrita quatro vezes, duas como `strength <= 0.0` (salta) e duas como
+    /// `strength > 0.0` (conta), e as duas formas **discordam em `NaN`**: o laço compunha uma camada
+    /// em `NaN` enquanto a cerca e o avental a ignoravam — um esfregão em `NaN` seria composto sem
+    /// a orla borrada, e um borrão em `NaN` correria com avental `0`. O painel não produz um `NaN`
+    /// (o commit do número recusa não-finitos), mas o `set_composite_layer_strength` é público e o
+    /// `clamp` deixa-o passar. ⇒ uma porta, e `NaN` está MORTA (`NaN > 0` é falso).
+    fn camada_viva(&self, pos: usize) -> bool {
+        self.paint.composite[pos].strength > 0.0
+    }
+
     /// ⭐⭐⭐ **O BORRÃO só precisa de LER a orla; ESCREVÊ-LA é trabalho que se deita fora.**
     ///
     /// A composição corre sobre `alvo = caixa_nova + 2·pad` porque o borrão tem de ler vizinhança
     /// já composta — e depois **só `caixa_nova` é guardada**. Medido na pilha do dono (2026-09-22,
     /// report *«ainda está lenta e engasgando com pincel grande»*): `alvo` mede `857 px` de lado
-    /// contra `355` de `caixa_nova`, ou seja **`5,8×` da área é calculada e deitada fora**, e o
+    /// contra `343` de `caixa_nova`, ou seja **`6,2×` da área é calculada e deitada fora**, e o
     /// borrão é a operação que a paga mais cara (`26,3 Mpx` contra `2,0` do mesmo borrão sozinho).
     ///
     /// ⇒ o borrão passa a ser **APLICADO** sobre `caixa_nova`. O avental que ele precisa de ler
     /// continua a ser lido — a [`ph2d_painter_brush::blur_region_por_peso`] lê a vizinhança dela
     /// própria, a partir da tela, que os passos de baixo compuseram sobre `alvo`.
     ///
-    /// ⛔⛔ **A CERCA, e sem ela isto não é byte-idêntico:** quem lê a SAÍDA do borrão fora de
-    /// `caixa_nova` é uma camada ACIMA dele que leia VIZINHANÇA — outro borrão, ou um esfregão, que
-    /// desloca píxeis. Com uma dessas acima, a orla borrada é entrada de alguém e tem de existir ⇒
-    /// ali fica o `alvo` de sempre. *Uma camada por-pixel (Brush, Erase) nunca lê o vizinho, logo
-    /// não vê a diferença.*
+    /// ⛔⛔ **A CERCA:** quem lê a SAÍDA do borrão fora de `caixa_nova` é uma camada ACIMA dele que
+    /// leia VIZINHANÇA — outro borrão, ou um esfregão, que desloca píxeis. Com uma dessas acima, a
+    /// orla borrada é entrada de alguém e tem de existir ⇒ ali fica o `alvo` de sempre. *Uma camada
+    /// por-pixel (Brush, Erase) nunca lê o vizinho, logo não vê a diferença.*
+    ///
+    /// ⚠️ **A cura NÃO é byte-idêntica ao código de antes, e isto é declarado** (esta nota dizia
+    /// o contrário até à auditoria de 2026-09-23): o borrão de uma sub-região não é o miolo do
+    /// borrão da região maior — a soma corrente carrega o sítio onde começou (`~6e-4` em `f32`) —,
+    /// logo um pixel em `~0,06 %` pode mudar UM byte. O que a cerca garante é que a orla que alguém
+    /// LÊ foi borrada; a barra do `a_ordem_e_da_pilha_e_nao_da_taxa_do_rato` é esse byte.
+    ///
+    /// ⚠️ O braço `Blur` é hoje inalcançável pelo painel (a quota é de UM borrão), e fica porque é
+    /// a resposta certa no dia em que a quota subir — com o gate `dois_borroes_empilhados_…` a
+    /// segurá-lo, já que o avental também passou a ser a SOMA.
     fn alguem_acima_le_vizinhanca(&self, pos: usize) -> bool {
+        #[cfg(test)]
+        match CERCA_DO_BORRAO.with(std::cell::Cell::get) {
+            CERCA_DESLIGADA => return false,
+            CURA_REVERTIDA => return true,
+            _ => {}
+        }
         (0..pos).any(|p| {
-            self.paint.composite[p].strength > 0.0
+            self.camada_viva(p)
                 && matches!(
                     self.paint.composite[p].op,
                     CompositeOp::Blur | CompositeOp::Smear
@@ -258,11 +285,12 @@ impl PainterTool {
         })
     }
 
+    /// **A composição: `pre` e depois cada camada UMA vez, de baixo para cima.**
     fn compoe_a_pilha(&mut self, r: Region, caixa_nova: Region, camadas: &[Vec<Dab>; N_CAMADAS]) {
         self.escreve_do_pre(r);
         for pos in (0..N_CAMADAS).rev() {
             let layer = self.paint.composite[pos];
-            if layer.strength <= 0.0 {
+            if !self.camada_viva(pos) {
                 continue;
             }
             match layer.op {
@@ -451,7 +479,26 @@ impl PainterTool {
     }
 }
 
+// ⚠️ **As duas ablações da cerca do borrão, só de teste** — o CONTROLO dos gates de valor da cura:
+// `CERCA_DESLIGADA` aplica sempre na `caixa_nova` (a cerca apagada), `CURA_REVERTIDA` aplica sempre
+// no `alvo` (o código de antes de 2026-09-22). *Um gate de valor sem o controlo que reprova não
+// prova que a fixtura contém o fenómeno.*
+#[cfg(test)]
+pub(super) const CERCA_DESLIGADA: u8 = 1;
+#[cfg(test)]
+pub(super) const CURA_REVERTIDA: u8 = 2;
+#[cfg(test)]
+thread_local! {
+    pub(super) static CERCA_DO_BORRAO: std::cell::Cell<u8> = const { std::cell::Cell::new(0) };
+}
+
 impl PainterTool {
+    /// A porta do gate — o produto lê o irmão privado.
+    #[cfg(test)]
+    pub(super) fn pad_do_borrao_para_teste(&self) -> u32 {
+        self.pad_do_borrao()
+    }
+
     /// **O avental que a composição tem de cobrir para o borrão ler vizinhança já composta.**
     ///
     /// ⛔⛔ Ele é `k × P` e **não** `k`, e isso custou um gate VERMELHO: com `P` passagens a
@@ -462,25 +509,23 @@ impl PainterTool {
     ///
     /// ⚠️ O irmão [`PainterTool::pad_do_nucleo`] (a rota de replay) fica em `k` **e está certo**:
     /// lá cada dab é uma chamada com o avental dela.
-    /// A porta do gate — o produto lê o irmão privado.
-    #[cfg(test)]
-    pub(super) fn pad_do_borrao_para_teste(&self) -> u32 {
-        self.pad_do_borrao()
-    }
-
+    ///
+    /// ⛔ **É a SOMA dos núcleos e não o MÁXIMO** (auditoria de 2026-09-23): com dois borrões
+    /// empilhados, a saída do de baixo só é exacta até ao alcance do de cima a partir da caixa, e
+    /// cada um desses píxeis lê mais o alcance do de baixo — os avental compõem-se. Com a quota de
+    /// UM borrão (`quota_da_operacao`) a soma É o máximo, ao bit; o que a troca compra é que subir
+    /// a quota deixa de partir isto em silêncio.
     fn pad_do_borrao(&self) -> u32 {
-        let k = (0..N_CAMADAS)
+        let k: usize = (0..N_CAMADAS)
             .filter(|&p| {
-                self.paint.composite[p].strength > 0.0
-                    && matches!(self.paint.composite[p].op, CompositeOp::Blur)
+                self.camada_viva(p) && matches!(self.paint.composite[p].op, CompositeOp::Blur)
             })
             .map(|p| {
                 ph2d_painter_brush::kernel_radius(
                     self.paint.brush.radius_px * self.tamanho_da_camada(p),
                 )
             })
-            .max()
-            .unwrap_or(0);
+            .sum();
         if k == 0 {
             return 0;
         }

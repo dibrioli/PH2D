@@ -1692,7 +1692,8 @@ usa.
 
 ### §25.7 — O que fica ABERTO
 
-* ✅ **FECHADO em 2026-09-22 — ver §33.** ⏳ **O Blur continua a governar o preço de todas as camadas** (§5.1 da auditoria: `+29 ms` por
+* ⏳ **PARCIAL — §33.9 e §33.12** (dizia «✅ FECHADO» com o custo ainda de pé; a métrica deste item
+  nunca foi re-medida). ⏳ **O Blur continua a governar o preço de todas as camadas** (§5.1 da auditoria: `+29 ms` por
   camada sem Blur, `+115` com um). Com sete posições isso importa mais, e a alavanca é o avental.
 * ⏳ **Sete camadas nunca foram medidas no produto real** — a tabela de `+1 Brush`/`+1 Erase` foi
   tirada com a pilha levada a sete à mão, antes desta wave existir.
@@ -2353,7 +2354,7 @@ que o artista vê)
 10. **O resíduo do par Blur+Smear** (§27) — `12` de `255` num canto, atribuído à base congelada do
     esfregão, com a cura nomeada.
 11. **O blend não-`Mix` de uma camada `Brush`** (§27) é aplicado uma vez na composição.
-12. **O Blur governa o preço de TODAS as camadas** (§28) — `+29 ms` por camada sem ele, `+115` com
+12. ⏳ **PARCIAL (§33.9, §33.12)** — **O Blur governa o preço de TODAS as camadas** (§28) — `+29 ms` por camada sem ele, `+115` com
     um. Com sete posições isto passou a pesar mais.
 13. **Metade dos BYTES da pilha** (§28) — os sete intermédios são `[f32; 4]`; um `u16`
     premultiplicado é `2×` e **não** é byte-idêntico ⇒ pede a barra de qualidade que a caixa já tem
@@ -2388,7 +2389,8 @@ vale para **toda** partição, e o gate varre larguras `1`, `2`, `3` e a cheia d
 
 ### §33.2 — A largura da banda é de CACHE e tem um PENHASCO
 
-Varrida sobre a entrada de `1024×1312` (série, `--release`):
+⛔ **Esta tabela NÃO é reproduzível — ver §33.12** (a entrada era `1024×1062`, não `1312`, e a
+doc da constante publicou outros números para as mesmas células). Varrida (série, `--release`):
 
 | largura | ganho | KiB por intermédio |
 |---|---|---|
@@ -2426,9 +2428,10 @@ travessias de memória só se paga quando as travessias vão à DRAM.*
 
 1. ⛔ **«o ganho é `4×`»** — era o ESCALONADOR. Em paralelo, com a máquina ocupada, três passagens
    pagam três junções de `rayon` e a fundida paga uma: lê-se `3,5×`–`5,6×`. **Em série, que é imune à
-   contenção, a horizontal compra `1,77×`–`2,04×`.**
-2. ⛔ **«a vertical é a grande alavanca porque é `74 %` do relógio»** — ela compra `1,02×`–`1,08×` de
-   ponta a ponta, contra `1,3×`–`2,0×` da horizontal, que é um terço do custo. *Ter a maior fatia do
+   contenção, a horizontal compra `1,30×`–`2,04×`** (a tabela do `f51b3c386`; esta linha dizia
+   `1,77×`, que não está em tabela nenhuma).
+2. ⛔ **«a vertical é a grande alavanca porque é `74 %` do relógio»** — ela compra `1,02×`–`1,08×` NA
+   VERTICAL (esta linha dizia «de ponta a ponta», e o rácio era só o da vertical), contra `1,3×`–`2,0×` da horizontal, que é um terço do custo. *Ter a maior fatia do
    RELÓGIO não é ter a maior fatia do TRÁFEGO.*
 3. ⛔ **«são as falhas de página das três alocações»** — medido, `0,10`/`0,17`/`0,54 ms` contra
    `0,93`/`1,73`/`7,34` das verticais: **`7`–`11 %`**. Reaproveitar o buffer não compraria nada, e
@@ -2437,8 +2440,9 @@ travessias de memória só se paga quando as travessias vão à DRAM.*
    ela **renasceu à tarde**, quando a porta de bissecção devolveu a `bandas_da_vertical` ao produto.
    *Uma premissa só morre quando o código que a realiza deixa de ser ALCANÇÁVEL, e «o caminho de
    omissão mudou» não é isso.* Está escrito no gate.
-5. ⛔ **o controlo da sonda de decomposição** acusou `+250,7 %` numa corrida a `load 91` — ou seja,
-   somou `10,8 ms` de partes contra uma porta de `1,8`. *É o instrumento a dizer que a máquina não
+5. ⛔ **o controlo da sonda de decomposição** acusou um erro enorme numa corrida a `load 91` — somou
+   `10,8 ms` de partes contra uma porta de `1,8`, ou seja **`+500 %`** (esta linha dizia `+250,7 %`,
+   e a conta não fecha). *É o instrumento a dizer que a máquina não
    está a dar relógio nenhum*, e foi ele que mandou medir em série.
 
 ### §33.5 — Gates e prova
@@ -2482,7 +2486,9 @@ reportar.
 ⚠️ **A primeira coisa medida foi que a minha BANCADA NÃO CONTINHA O REGIME DELE:** ela varre
 `raio 24` e `96`, e `size 0.4` no pincel é `1 + 0,4² × (512 − 1) = **82,8 px**`, com a camada de
 Blur a `Size 2.048` ⇒ **`~170 px`**. *Uma bancada cujo pior caso é metade do caso do dono não mede
-o produto dele.* A sonda `diag_preco_da_pilha` passou a trazer **a pilha dele, exacta**.
+o produto dele.* A sonda `diag_preco_da_pilha` passou a trazer **a pilha dele** — ⚠️ as seis camadas, o raio e os
+tamanhos da foto; o `Spacing` e o método ficam nos valores de fábrica, e o spacing entra no avental
+(`passagens_do_borrao`). «Exacta» era exagero.
 
 **A pilha dele, e a atribuição por camada** (`SIZE 1024²`, traço de 720 px, `99 %` de CPU ociosa):
 
@@ -2518,7 +2524,8 @@ da wave, são `24,3` de `644,8` — **`3,8 %`**.
 ⇒ é o **Blur dentro da recomposição**, e **não** o kernel dele (sozinho: `0,067 ms/ev`).
 
 **A CONTA, que é a única régua que podia responder** (contadores em
-[`blur_caixa::BORROES`/`PIXEIS_BORRADOS`/`PIXEIS_UTEIS`/`MAIOR_LADO`] — *as duas rotas desenham o
+[`blur_caixa::conta::{BORROES, PIXEIS_BORRADOS, PIXEIS_UTEIS, MAIOR_LADO}`] (por thread desde
+`4655a0ef1`) — *as duas rotas desenham o
 mesmo, logo nenhuma régua de VALOR as distingue*):
 
 | pilha | chamadas | Mpx lidos | Mpx úteis | avental | maior lado |
@@ -2535,7 +2542,7 @@ medido), enquanto o caminho de uma camada só produz `R` (`340` medido).
 ⭐⭐⭐ **O desperdício é a SOBREPOSIÇÃO, e o número é brutal:** `44` chamadas de `857 px` de lado,
 com os centros a `720/44 ≈ 16 px` de distância ⇒ **`98 %` de cada chamada é área que a chamada
 anterior já borrou**. Uma aplicação única sobre a união (`1 567 × 847`) mede `1,33 Mpx` contra os
-`31 Mpx` de hoje — **`~23×`**.
+`26,3 Mpx` de hoje (a tabela acima; esta linha dizia `31`) — **`~20×`**.
 
 ### §33.8 — ⏳ A próxima wave, com o alvo nomeado
 
@@ -2562,7 +2569,8 @@ com porta de bissecção) **fica e é bom**; o que ela não é, é a cura do rep
 `alvo = caixa_nova + 2·pad` *«porque o avental do Blur é o que impede a convolução de ler, na orla,
 bytes que a composição ainda não escreveu»* — e depois **só `caixa_nova` é guardada**. Medido:
 `alvo` mede `857 px` de lado contra `343` da pegada ⇒ **a operação mais cara da pilha escrevia
-`5,8×` a área que dela se aproveita**.
+`6,2×` a área que dela se aproveita** (`(857/343)²`; esta linha dizia `5,8×`, que é `(857/355)²` de
+uma leitura anterior).
 
 ⇒ o borrão passa a ser **APLICADO** na `caixa_nova` e a **LER** o avental dela, que os passos de
 baixo compuseram sobre `alvo`. A conta:
@@ -2576,7 +2584,8 @@ baixo compuseram sobre `alvo`. A conta:
 camada **ACIMA** dele que leia **VIZINHANÇA** — outro borrão, ou um esfregão, que desloca píxeis.
 Com uma dessas acima fica o `alvo` de sempre. *Uma camada por-pixel (Brush, Erase) nunca lê o
 vizinho, logo não vê a diferença.* Gate com o **CONTROLO dentro** (com um esfregão acima a região
-tem de CRESCER, e crescer o avental e não um pixel); **4 de 4 mutações sangram**.
+tem de CRESCER, e crescer o avental e não um pixel). ⚠️ «4 de 4» era o que aqui se lia e a doc do
+gate lista **3**; a auditoria de §33.12 correu **7** e **2 sobreviveram** — curadas lá.
 
 ### §33.10 — ⛔⛔⛔ E a barra de um gate era FALSA sobre o produto
 
@@ -2594,13 +2603,18 @@ Antes de lhe tocar, a pergunta certa: *a barra é uma lei, ou é a sorte desta f
 
 ⇒ **o produto de ontem já violava a barra de ontem**; ela lia zero porque a tela era chapada.
 
+⚠️ **Esta tabela não é reproduzível — a tela texturada dela nunca foi versionada.** A premissa foi
+re-medida e virou GATE na auditoria (§33.12): em `41` telas × dois passos o código de antes da cura
+sorteia o byte em `25` de `82` casos, a cura em `12`, os dois com `pior 1`.
+
 ⭐ **O mecanismo está medido na crate do borrão** (`diag_o_borrao_de_uma_sub_regiao_e_o_miolo_do_maior`):
 o borrão de uma sub-região **não é** o miolo do borrão da região maior — `1` a `5` píxeis de
 `48 400` saem idênticos ao bit, com desvio `~6e-4` em `f32`. *A soma corrente carrega o sítio onde
 COMEÇOU.* Em `u8` isso só vira um byte quando o valor exacto cai a menos de `6e-4` de uma fronteira
 de arredondamento — `~0,06 %` dos píxeis.
 
-⇒ a barra passa a **`pior ≤ 1` e `médio < 0,01`**, e ⚠️ **não é uma folga escolhida:** sai do vale
+⇒ a barra passa a **`pior ≤ 1` e `médio < 0,01`** (⚠️ hoje **`pior ≤ 1` e `≤ 16` bytes** — a
+média sobre a tela inteira deixava passar `~2 600` bytes, ver §33.12), e ⚠️ **não é uma folga escolhida:** sai do vale
 entre o último byte da quantização (`1`) e o defeito que a régua existe para apanhar (`41,59` de
 médio, medido em 2026-09-20). *Uma barra que mede a sorte da fixtura não é uma barra.*
 
@@ -2624,8 +2638,67 @@ essencialmente certa, e a hipótese de que elas tinham crescido é **refutada**.
 
 ⏳ **A composição sobre `alvo` é inerente enquanto houver um borrão de raio grande na pilha:** as
 camadas de BAIXO têm de ser válidas onde o borrão LÊ. O que sobra como alavanca é a **frequência**:
-`44` recomposições para `361` eventos, num traço que ocupa `~22` quadros ⇒ **cerca de duas por
+`44` recomposições para `362` eventos, num traço que ocupa `~22` quadros ⇒ **cerca de duas por
 quadro, quando uma bastaria**. Baixar isso é decisão de PRODUTO (latência do traço ao vivo contra
 custo), e é a wave seguinte.
 
-⏳ E o **Smear** passou a ser a camada mais cara sozinha (`119,2 ms`), agora que o borrão desceu.
+⏳ E o **Smear** é a camada mais cara sozinha (`101,6 ms` re-medido; ⚠️ esta linha dizia que ele
+*«passou a ser»*, e ele **já era** — `101,8` contra `24,3` do Blur no §33.7).
+
+⚠️ A tabela das fases acima é de UMA corrida (a sonda imprime as fases de uma só, não o mínimo de
+três), e é por isso que `compor 429,8` passa do total `425,8` de outra corrida.
+
+### §33.12 — A AUDITORIA de 2026-09-23 (quatro lentes independentes, antes de seguir)
+
+> Ordem do dono: *«antes de seguir, faça auditoria com alguns agentes»*. Quatro agentes, só
+> leitura (um deles com mutações restauradas): a cerca da pilha · a fusão do borrão · a
+> documentação contra o código · a prova de mutação. **Nenhum P0 no produto do dono**: a pilha da
+> sonda está na ordem da foto (a linha `1` do painel é a posição `0`, que é o TOPO) e a fusão é
+> byte-idêntica (`5 616` casos pela porta do produto, com controlo positivo de `411 843 628`).
+
+**Curado nesta auditoria:**
+
+| achado | severidade | cura |
+|---|---|---|
+| a doc, o `#[must_use]` e um 2.º `#[allow(too_many_arguments)]` da `blur_region_caixa_com` foram parar à `avental` no corte (clippy `-D warnings`: 2 avisos ⇒ o ship reprovava) | P1 | devolvidos |
+| a rota da porta `PH2D_BLUR_SEM_FUSAO` não tinha gate (o `OnceLock` fecha o ambiente) | P1 | `as_seis_caixas(.., fundido)` + gate `as_duas_rotas_do_motor_dao_o_mesmo_f32` (3/3 mutações) |
+| a rota separada clonava o avental (o motor de antes movia-o): `6`–`20 %` da diferença do A/B a favor da fusão | P2 | move |
+| **nenhum gate de VALOR compunha uma camada que lê vizinhança POR CIMA do borrão** | P1 | `com_um_esfregao_por_cima_a_cura_nao_muda_um_bit` (ao bit contra o código de antes; o CONTROLO sem cerca lê `72`–`78`) |
+| dois borrões empilhados (latente: a quota é UM) dependiam da taxa do rato sem a cerca (M4 sobrevivia) | P1 latente | `dois_borroes_empilhados_nao_dependem_da_taxa_do_rato` + o avental passa à SOMA dos núcleos |
+| um esfregão de força `0` por cima armava a cerca e devolvia a lentidão (M6 sobrevivia: `35` → `101` px) | P1 custo | 3.ª metade do `o_borrao_no_topo_…` |
+| «camada viva» escrita 4× em duas formas que discordam em `NaN` | P2 | porta `camada_viva` |
+| a premissa do byte tolerado (semente `999`) não era reproduzível | P1 | gate `o_byte_do_borrao_em_lotes_e_anterior_a_cura` + o `diag_o_borrao_de_uma_sub_regiao_…` passa a AFIRMAR |
+| a barra `médio < 0,01` sobre a tela inteira deixava passar `~2 600` bytes | P2 | `≤ 16` bytes diferentes |
+| 3 erros de clippy na sonda `diag_preco_da_pilha` (nenhuma auditoria os viu; o clippy do fecho sim) + a sonda recalculava a lei do slider à mão | P2 | curados; a sonda chama `size_norm_to_px` |
+| números e nomes do §33 e das docs (acima, marcados no sítio) | P2 | corrigidos no sítio |
+
+**Mutação:** as 8 da cerca e do avental — **7 sangram**; a 8.ª (o avental voltar ao MÁXIMO) é
+**equivalente hoje** e está declarada: o avental `k·P + 1` sobre-provisiona o alcance real do
+borrão de caixa por uma ordem de grandeza. As 3 da rota do motor — **3 sangram**.
+
+**A pilha do dono re-medida** (`95 %` de CPU ociosa): **`390,3 ms`, `103,3 %` de um quadro**
+(`compor 92,7 %`, `acumular 5,9 %`, `cópias 1,4 %`); o borrão toca `4,3 Mpx` e a maior região mede
+`343 px`.
+
+**⏳ Fica ABERTO, e entra na fila:**
+
+1. ⭐⭐ **O AVENTAL DA COMPOSIÇÃO SOBRE-PROVISIONA O BORRÃO POR `8×`** — o achado de maior valor da
+   auditoria, e veio de uma mutação SOBREVIVENTE (o máximo contra a soma). O `pad_do_borrao` é
+   `k·P + 1` (o alcance do núcleo BINOMIAL), e o composite usa o núcleo de CAIXA, cujo alcance é
+   `Σ box_radii(k·P)`. Na pilha do dono: `k·P = 32·8 = 256` ⇒ avental **`257 px`** contra um alcance
+   real de **`32`** ⇒ o `alvo` podia medir `~409 px` de lado em vez de `857` — **`~23 %` da área**,
+   e a composição é `92,7 %` do traço. ⚠️ **NÃO é só trocar o número:** o esfregão refresca a base
+   sobre `alvo` e lê píxeis deslocados — hoje a folga do avental cobre-o por acidente, e encolhê-lo
+   pode reabrir o resíduo do par Blur+Smear (§27). Pede o gate de valor do esfregão ABAIXO do
+   borrão (a pilha do dono) antes da primeira linha.
+2. **O esfregão POR CIMA do borrão depende da taxa do rato** (`pior 25`–`28` numa tela com textura)
+   — **PRÉ-EXISTENTE** (o código de antes da cura lê exactamente o mesmo). Não é a pilha do dono.
+3. **A tabela da largura da banda (§33.2 / doc da constante) re-medida com a máquina calma** — as
+   duas re-corridas de hoje saíram a `load 44`–`56` com outra linha a compilar e leram a largura
+   `128` a `1,02×` e `2,47×`. O A/B do produto (§33.3) também pede re-corrida: a cópia que a rota
+   separada fazia favorecia a fusão.
+4. **Tiling (P0 provável, por leitura, PRÉ-EXISTENTE):** o `grow_region` corta o `alvo` na borda do
+   canvas mas o avental do borrão dá a volta; junto a uma costura o borrão da caixa nova pode ler do
+   lado oposto o composto FINAL. Por reproduzir.
+5. **Pincéis minúsculos:** a `caixa_nova` não tem margem para o alcance do borrão quando
+   `r_total > 2r(1 − spacing)` (raio `1`–`2` px com `P` alto). Por leitura, por reproduzir.

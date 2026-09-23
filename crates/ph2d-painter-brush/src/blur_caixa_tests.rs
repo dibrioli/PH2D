@@ -768,8 +768,9 @@ mod fatias_tests {
     ///
     /// ⭐⭐ **Ele existe porque uma MUTAÇÃO SOBREVIVEU:** cravar `nb = 1` na
     /// [`super::super::caixa_v3`] deixa o gate da identidade ao bit **VERDE**, porque a igualdade
-    /// vale para toda partição — e o borrão passa a medir `0,57×`, ou seja **pior do que as três
-    /// passagens separadas que a fusão veio substituir**. *A lei da identidade não pode gatear a
+    /// vale para toda partição — e o borrão passa a medir entre `0,45×` e `1,41×` das três passagens
+    /// separadas conforme a corrida (re-medido na auditoria de 2026-09-23), ou seja **às vezes pior
+    /// do que o motor que a fusão veio substituir**. *A lei da identidade não pode gatear a
     /// lei do custo; quem a gateia é a contagem.*
     ///
     /// ⚠️ **Corre em SÉRIE de propósito:** o contador é por THREAD (senão o fan-out da suíte conta
@@ -1145,6 +1146,14 @@ mod fatias_tests {
     /// ⚠️ É a pergunta que decide se a aplicação do borrão pode encolher: se a resposta for NÃO, a
     /// soma corrente da caixa carrega o sítio onde COMEÇOU e o resultado passa a depender da região
     /// pedida — que é a não-associatividade do `f32` que a cerca das bandas desta crate já nomeia.
+    ///
+    /// ⚠️ **Gate desde a auditoria de 2026-09-23** (o nome `diag_` fica porque o handoff e três docs
+    /// o citam): ele corria na suíte sem afirmar NADA, e é a premissa sobre que a barra `pior ≤ 1`
+    /// do `a_ordem_e_da_pilha_e_nao_da_taxa_do_rato` assenta. As duas metades:
+    /// * **não é idêntico** — se um dia for (outra soma, outra ordem), aquela barra pode voltar a
+    ///   `pior == 0`, e isso tem de ser dito;
+    /// * **difere menos de `1e-2`** (numa escala `0..255`) — o bastante para mudar um byte só quando o
+    ///   valor exacto cai junto a uma fronteira de arredondamento, e nunca dois.
     #[test]
     fn diag_o_borrao_de_uma_sub_regiao_e_o_miolo_do_maior() {
         let (fw, fh) = (512i64, 512i64);
@@ -1175,6 +1184,14 @@ mod fatias_tests {
             println!(
                 "  k={k:3} r_total={r_total:3}  pior |Δ| = {pior:.3e}  ·  {iguais} de {} idênticos ao bit",
                 sw * sh
+            );
+            assert!(
+                pior > 0.0 && iguais < sw * sh,
+                "k={k}: a sub-região saiu IDÊNTICA ao miolo — a premissa do byte tolerado morreu"
+            );
+            assert!(
+                pior < 1e-2,
+                "k={k}: a sub-região difere do miolo mais do que o arredondamento explica ({pior:.3e})"
             );
         }
     }

@@ -184,19 +184,47 @@ fn a_big_plant_is_published_whole_and_no_second_ceiling_clips_it() {
         0.0,
     )
     .len();
-    // ⛔⛔⛔ **A BARRA DE `4096` MORREU COM O TECTO DO DONO, e ela ERA o tecto removido.** Ela
-    // dizia *«a fixtura tem de ser maior que o tecto que foi removido»*, e o tecto novo
-    // (`MAX_MODULES = 16 383` MÓDULOS) é mais apertado do que aquele era em RAMOS: nenhuma planta
-    // deste nó volta a passar `4096` ramos.
+    // ⛔⛔⛔ **A BARRA DE `4096` MORREU COM O TECTO DO DONO, e a que a substituiu — uma FRACÇÃO do
+    // `MAX_MODULES` — morreu no dia em que ele DOBROU.** Ela dizia *«a fixtura usa uma fracção
+    // significativa do que o nó pode dar»*, e isso lê-se bem e é **inseguível**: a população desta
+    // gramática é QUANTIZADA POR GERAÇÃO. O `F -> F[+F]F[-F]F` tem nove símbolos por `F`, logo a
+    // planta salta `9×` de cada vez (`9⁴ = 6 561`, `9⁵ = 59 049`) — ela completa a geração `4` sob
+    // um tecto de `16 383` **e sob um de `32 767`**, e entrega os MESMOS `3 124` ramos nos dois.
+    // *Uma fracção de um tecto que se move exige que a fixtura o siga, e esta não pode.*
     //
-    // ⭐ **O que a barra existe para garantir continua a ser garantido, e agora é DERIVADO**: a
-    // fixtura tem de usar uma fracção significativa do que o nó PODE dar, senão um corte a `N`
-    // ramos passaria despercebido nela. A planta satura o tecto (`3 124` ramos de `16 383`
-    // módulos — os `[`, `]`, `+` e `-` não são ramos), e a barra é uma fracção dele.
+    // ⭐⭐ **A propriedade que a barra sempre quis é outra, e essa é afirmável: a fixtura é a MAIOR
+    // que esta gramática consegue dar.** Se pedir mais uma geração não acrescenta um ramo, então
+    // não existe planta maior atrás da qual um corte se pudesse esconder — que é exactamente o
+    // *«um corte a N ramos passaria despercebido»* do cabeçalho, dito sem depender de nenhum
+    // número que outra pessoa possa mexer.
+    //
+    // ⚠️ **O piso fica ao lado, e é a metade que impede o vácuo:** uma fixtura partida que
+    // devolvesse `1` ramo nas duas gerações satisfaria a saturação e não provaria nada.
+    let ramos_com = |state: &mut crate::motion_state::MotionState, g: f32| -> usize {
+        state.doc.graph.set_param(n, ls::param::GENERATIONS, g);
+        let r = crate::motion_externals::resolved_params(state, n, 0.0, &ls::MANIFEST);
+        let sk = ls::skeleton("F", "F -> F[+F]F[-F]F", |name: &str| {
+            r.get(name).copied().unwrap_or(0.0)
+        });
+        ls::branch::branches(
+            &super::v2(&sk, "P"),
+            &super::v1(&sk, "parent"),
+            &super::v2(&sk, "size"),
+            &super::v1(&sk, "sym"),
+            0.0,
+        )
+        .len()
+    };
+    let mais_uma = ramos_com(&mut state, 7.0);
+    state.doc.graph.set_param(n, ls::param::GENERATIONS, 6.0);
+    assert_eq!(
+        want, mais_uma,
+        "a fixtura NÃO é a maior que esta gramática dá: mais uma geração leva-a de {want} para \
+         {mais_uma} ramos, logo existe uma planta maior onde um corte se esconderia"
+    );
     assert!(
-        want > ls::MAX_MODULES / 8,
-        "a fixtura tem de usar uma fracção significativa do tecto do nó ({}): {want}",
-        ls::MAX_MODULES
+        want > 1_000,
+        "a fixtura saturou em {want} ramos -- pequena demais para um corte se notar nela"
     );
     assert_eq!(
         built, want,

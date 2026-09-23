@@ -202,6 +202,55 @@ fn o_roteiro_nomeia_o_que_o_dono_vai_ver() {
     }
 }
 
+/// ⭐⭐⭐ **O ROTEIRO NÃO CITA UM NÚMERO DE RELÓGIO QUE ELE NÃO DERIVE.**
+///
+/// ⛔⛔⛔ **Ele nasceu de um defeito REAL, e ele passou despercebido durante um tecto inteiro.**
+/// O roteiro dizia *«o `raw` perto de `96`»* e *«cai para `70` e poucos»* — dois absolutos lidos
+/// no app a `90 000` estrelas. Quando o tecto do dono mudou a população (para `16 384` em 21/09 e
+/// `32 761` em 22/09) os dois ficaram errados e **nada** podia dizê-lo: o gate irmão afirma que o
+/// roteiro nomeia as PALAVRAS `fps`/`raw`, nunca que os números ao lado delas descrevem a cena.
+///
+/// ⚠️⚠️ **E a cura não podia ser «re-medir»**, porque o `raw` é do QUADRO INTEIRO (`1000/cpu`, com
+/// o custo fixo do chrome dentro) e as constantes desta cena são por CÓPIA — *um absoluto derivado
+/// de um declive é falso noutra população*. A grandeza que a cena PODE afirmar é a DIFERENÇA entre
+/// as duas rotas, que cancela o custo fixo; ver `DIFERENCA_NS`.
+///
+/// ⇒ este gate afirma a **DERIVAÇÃO**: o passo (4) tem de imprimir o valor calculado e não um
+/// literal. ⚠️ Aqui a proveniência **é** a verdade, ao contrário do caso da cena `=107`: um número
+/// derivado da população actual e de duas medições por-cópia está certo por construção, enquanto
+/// uma `const` de milissegundos medida noutra cena continua a ser um literal com nome.
+#[test]
+fn o_roteiro_deriva_o_numero_de_relogio_em_vez_de_o_escrever() {
+    let texto = include_str!("motion_state_carimbo_demo.rs");
+    let anuncio = texto
+        .split_once("pub(super) fn announce()")
+        .expect("a cena tem um roteiro")
+        .1;
+    assert!(
+        anuncio.contains("{DIFERENCA_MS:"),
+        "o passo (4) tem de IMPRIMIR a diferenca derivada; um numero de ms escrito a' mao ali \
+         envelhece no dia em que o tecto de instancias se mexer, e foi isso que aconteceu"
+    );
+    // A metade NEGATIVA: os dois absolutos que envelheceram não podem voltar.
+    for morto in ["perto de `96`", "cai para `70`"] {
+        assert!(
+            !anuncio.contains(morto),
+            "o roteiro voltou a citar {morto:?}, que foi medido a 90 000 estrelas -- a cena \
+             produz {} hoje",
+            super::ESTRELAS
+        );
+    }
+    // E a diferença que ele imprime tem de ser LEGÍVEL no readout. ⚠️ Ela é lida da PORTA
+    // (`DIFERENCA_NS`) e não recalculada aqui: repetir `ESTRELAS × (ANTES − HOJE)` neste ficheiro
+    // seria uma segunda resposta à mesma pergunta, e as duas divergiriam no dia em que uma das
+    // três constantes se mexesse — que é exactamente o defeito que este gate existe para impedir.
+    let ms = super::DIFERENCA_MS;
+    assert!(
+        ms >= 1.0,
+        "as duas rotas diferem {ms:.2} ms: o dono vai comparar dois `raw` que leem igual"
+    );
+}
+
 /// ⭐⭐⭐ **OS DOIS INSTRUMENTOS DE BISSECÇÃO NÃO MUDAM A CENA QUANDO NINGUÉM LHES TOCA.**
 ///
 /// Eles existem por causa do report do dono de 2026-09-20 (o `Corner Radius`) e do erro de

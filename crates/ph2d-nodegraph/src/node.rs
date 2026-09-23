@@ -135,6 +135,24 @@ const _: () = assert!(
      ser encolhido em silencio"
 );
 
+/// **Quantas células uma grelha QUADRADA no tecto entrega** — `LADO²`, que desde 2026-09-22
+/// **não** é o [`MAX_INSTANCIAS_POR_NO`].
+///
+/// ⛔⛔⛔ **ELE EXISTE PORQUE TRÊS GATES DERIVAVAM DO NÚMERO ERRADO E NINGUÉM PODIA VER.** Enquanto
+/// o tecto era `128² = 16 384`, *«o tecto»* e *«o que uma grelha quadrada cheia dá»* eram o MESMO
+/// número, e três afirmações escreveram `== MAX_INSTANCIAS_POR_NO` sobre uma população de grelha.
+/// Elas estavam certas **por coincidência aritmética**, e a dobra separou as duas grandezas:
+/// `181² = 32 761` contra um tecto de `32 768`.
+///
+/// ⚠️⚠️ **E o comentário de uma delas dizia, por escrito, *«o número é DERIVADO para não haver um
+/// segundo sítio a envelhecer»***. Ele era — do número errado. *Derivar da constante errada
+/// lê-se exactamente como derivar, e é por isso que só um dia em que as duas se separam o
+/// revela.*
+///
+/// ⇒ quem mede uma GRELHA usa este; quem mede o TECTO DE UM NÓ usa aquele. Eram a mesma coisa e
+/// deixaram de ser.
+pub const CELULAS_DE_UMA_GRELHA_CHEIA: usize = LADO_MAX_DE_GRELHA * LADO_MAX_DE_GRELHA;
+
 /// Interpret an `f32` parameter as a non-negative element count, **totally**:
 /// non-finite (`NaN`/`±∞`) and negative values map to `0`, fractional values
 /// floor, and the result is clamped to `max`. This mirrors `ph2d-expr`'s

@@ -303,6 +303,49 @@ const _: () = assert!(
      anuncia, que e' a cena a ensinar o contrario do que acontece"
 );
 
+/// ⭐⭐⭐ **O QUE AS DUAS ROTAS DIFEREM, EM MILISSEGUNDOS DE CPU POR QUADRO** — e ele é
+/// **DERIVADO**, que é a única forma honesta de o pôr no roteiro.
+///
+/// ⛔⛔⛔ **O ROTEIRO CITAVA DOIS NÚMEROS ABSOLUTOS (`raw ≈ 96` e `raw ≈ 70`) E ELES ESTAVAM
+/// ERRADOS DESDE O TECTO DE ONTEM.** Os dois foram lidos no app a **`90 000`** estrelas; com o
+/// tecto do dono a cena passou a `16 384` e hoje a `32 761`, e nenhum deles foi re-medido. *O
+/// dono abriria o smoke, leria `raw` muito acima de `96`, e o texto dir-lhe-ia que estava
+/// errado* — a cena a ensinar o contrário do que acontece (`CLAUDE.md` §5.0).
+///
+/// ⭐⭐ **E a cura NÃO é re-medir os dois, é trocar a GRANDEZA — porque o `raw` é do QUADRO
+/// INTEIRO e as constantes desta cena são por CÓPIA.** O `raw` da barra é
+/// `1000 / frame_cpu_ms`, e `frame_cpu` é *as estrelas MAIS um custo fixo* (a moldura, os
+/// painéis, o chrome). Os [`ANTES_NS`]/[`HOJE_NS`] foram obtidos DIVIDINDO um `frame_cpu` medido
+/// pela população, o que atribui o custo fixo inteiro às estrelas — inofensivo como **declive**
+/// e falso como **absoluto** noutra população.
+///
+/// ⇒ *a DIFERENÇA entre as duas rotas cancela o custo fixo exactamente; o QUOCIENTE não.* É por
+/// isso que esta é a única grandeza que esta cena pode afirmar sem voltar a correr o app, e é ela
+/// que o roteiro passa a citar.
+const DIFERENCA_NS: u64 = ESTRELAS * (ANTES_NS - HOJE_NS);
+/// A mesma diferença em ms, para o roteiro a imprimir.
+#[expect(
+    clippy::cast_precision_loss,
+    reason = "um relogio de quadro, < 2^24 ns"
+)]
+const DIFERENCA_MS: f32 = DIFERENCA_NS as f32 / 1e6;
+// ⭐⭐⭐ **A CERCA QUE SUBSTITUI AS DUAS QUE O TECTO MATOU** — e ela está na moeda CERTA.
+//
+// As mortas exigiam uma FRACÇÃO do quadro (`≥ 75 %` e `≥ 35 %`), e uma fracção depende do custo
+// fixo, que esta cena não mede. Esta exige a grandeza que ela MEDE: se as duas rotas diferirem
+// menos do que um milissegundo de CPU por quadro, a comparação que a cena existe para mostrar
+// dilui-se no ruído do `raw` e o roteiro manda o dono procurar o que não há.
+//
+// ⚠️ **O `1 ms` não é escolhido: é o passo do próprio readout.** O `raw` é `1000/cpu`, logo um
+// milissegundo é a menor diferença que move o número de forma legível em todo o regime desta cena
+// (a `5 ms` de CPU ele move `~45`; a `15 ms` move `~4`).
+const _: () = assert!(
+    DIFERENCA_NS >= 1_000_000,
+    "as duas rotas diferem menos de 1 ms de CPU por quadro: a cena deixou de poder discriminar, e \
+     o roteiro manda o dono comparar dois numeros que vao ler igual. Ou a populacao sobe, ou o \
+     passo (4) sai do roteiro"
+);
+
 /// **O índice da estrela no `kind` do `source.shape`, derivado do PRÓPRIO enum.**
 ///
 /// ⛔⛔ **E não do rótulo, que é o defeito que esta linha pagou em 2026-09-20:** os `KIND_LABELS`
@@ -437,17 +480,19 @@ pub(super) fn announce() {
          («usando shape star fps cai»). O `Grid` poe as posicoes e o `Duplicator` veste cada\n\
          uma com a MESMA estrela.\n\
          \n\
-         (1) Olhe a BARRA DE BAIXO do ecra. Ela diz `59 fps · 16.7 ms` e um TERCEIRO\n    \
-         numero, o `raw`, perto de `96`. E' o `raw` que interessa aqui: os `60 fps`\n    \
-         sao o tecto do ecra, e o `raw` e' a FOLGA — quanto maior, mais sobra por\n    \
-         quadro para o resto do trabalho.\n\
+         (1) Olhe a BARRA DE BAIXO do ecra. Ela diz `fps`, os milissegundos do quadro,\n    \
+         e um TERCEIRO numero: o `raw`. E' o `raw` que interessa aqui — os `60 fps`\n    \
+         sao o tecto do ecra, e o `raw` e' a FOLGA: quanto MAIOR, mais sobra por\n    \
+         quadro para o resto do trabalho. ANOTE o valor dele.\n\
          (2) Aproxime com a roda do rato ate' ver as pontas: sao ESTRELAS, todas iguais.\n    \
          O ecra mostra um pedaco do campo — as {n} existem e sao TODAS desenhadas.\n\
          (3) Arraste o fundo com o botao do meio: tem de passear LISO.\n\
          (4) Feche o app e corra o MESMO comando com `PH2D_CARIMBO_PREPARADO=0` a' frente:\n    \
-         e' o caminho ANTIGO. Os `fps` ficam nos mesmos `60` (e' o tecto do ecra), e o\n    \
-         `raw` cai para `70` e poucos — perto de um terco da folga desaparece.\n\
-         (5) Compare. A imagem e' a MESMA, ponto por ponto — so' a folga muda.\n\
+         e' o caminho ANTIGO. Os `fps` ficam nos mesmos `60` (e' o tecto do ecra) e o\n    \
+         `raw` CAI — o quadro passa a gastar cerca de {DIFERENCA_MS:.1} ms a mais de\n    \
+         CPU, so' para desenhar as MESMAS {n} estrelas.\n\
+         (5) Compare os dois `raw` que anotou. A imagem e' a MESMA, ponto por ponto —\n    \
+         so' a folga muda.\n\
          \n\
          (6) AFASTE com a roda ate' o campo INTEIRO caber no ecra. As estrelas ficam\n    \
          com 3 pixeis ou menos, e a esse tamanho o app troca cada desenho pela\n    \

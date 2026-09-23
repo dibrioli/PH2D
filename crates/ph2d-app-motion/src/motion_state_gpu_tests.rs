@@ -68,7 +68,7 @@ fn the_gpu_demo_document_fills_the_cap_claimed_fully_on_the_gpu() {
     // (*«vamos efetivar o limite de 16 384»*). O comentário que aqui estava dizia *«capped at
     // 16.7M — 2M is well under»*, e esse `16,7 M` era o `RECOMMENDED_MAX_ELEMENTS`: uma cerca de
     // SEGURANÇA contra alocação, não um tecto de produto. Hoje o `motion.grid` clampa cada LADO em
-    // `LADO_MAX_DE_GRELHA` e a cena entrega `16 384`.
+    // `LADO_MAX_DE_GRELHA` e a cena entrega `CELULAS_DE_UMA_GRELHA_CHEIA` — `32 761` hoje.
     //
     // ⚠️⚠️ **O NOME deste teste dizia `two_million` e isso era um sítio a mais onde o número
     // envelhecia** — ele passa a dizer a LEI (*enche o tecto*). É a segunda vez nesta rodada:
@@ -88,10 +88,14 @@ fn the_gpu_demo_document_fills_the_cap_claimed_fully_on_the_gpu() {
         .node_param_overrides(grid.id)
         .expect("grid params");
     let (rows, cols) = (ov["rows"], ov["cols"]);
+    // ⛔⛔ **A afirmação era `== MAX_INSTANCIAS_POR_NO` e estava certa por COINCIDÊNCIA**: com
+    // `128² = 16 384` o tecto de um nó e o que uma grelha quadrada cheia dá eram o MESMO número.
+    // A dobra de 2026-09-22 separou-os (`181² = 32 761` contra `32 768`), e a coincidência caiu.
+    // ⇒ quem mede uma GRELHA usa a grandeza da grelha.
     assert_eq!(
         rows as u64 * cols as u64,
-        ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO as u64,
-        "o documento do smoke de GPU tem de encher o tecto ({rows} × {cols})"
+        ph2d_nodegraph::node::CELULAS_DE_UMA_GRELHA_CHEIA as u64,
+        "o documento do smoke de GPU tem de encher a grelha ({rows} × {cols})"
     );
 
     // Every node is kernel-covered → the plan claims the WHOLE chain (no CPU
@@ -434,11 +438,11 @@ fn the_panel_demo_is_fully_gpu() {
             .cook(&doc.graph, &registry, n, 0.25)
             .unwrap_or_else(|e| panic!("{ty} cooks: {e:?}"));
         // ⛔ **`262 144` era o que a cena pedia; com o tecto do dono (2026-09-22) o lado clampa
-        // em `LADO_MAX_DE_GRELHA` e ela entrega `16 384`.** O número é DERIVADO para não haver um
+        // em `LADO_MAX_DE_GRELHA` e ela entrega `CELULAS_DE_UMA_GRELHA_CHEIA` — `32 761` hoje.** O número é DERIVADO para não haver um
         // segundo sítio a envelhecer.
         assert_eq!(
             outs[0].as_stream().count(),
-            ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO,
+            ph2d_nodegraph::node::CELULAS_DE_UMA_GRELHA_CHEIA,
             "{ty} must carry the cap — it is the number the smoke reads off the \
              card, and `value.math` carrying 1 would be the count law reading \
              port 0 instead of the widest input"

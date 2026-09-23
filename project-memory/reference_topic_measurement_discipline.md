@@ -1210,3 +1210,55 @@ varrida (aqui `PH2D_CARIMBO_LADO`) torna isto uma corrida em vez de onze recompi
 fica **pura** e gateada na metade negativa (*sem a variável, a cena é a de sempre*).
 Ver [[feedback_a_fixture_can_land_in_a_chaotic_regime]] e
 [[feedback_an_operation_count_is_not_a_profile_and_the_build_profile_decides_the_number]].
+
+---
+
+## ⛔⛔⛔ Contar CENAS não é contar TRABALHO — e um titular de censo decide a wave errada
+
+**Medido 2026-09-22 (`line/motion-value`).** O censo de rota do Motion lê *«**83** de `126` cenas
+caem para a CPU por terem mais de um sink, e **28** delas já estariam prontas para o
+dispositivo»*, e eu reportei isso ao dono como **o maior item aberto do módulo**. O número está
+certo e a leitura estava errada.
+
+⭐ A sonda que faltava conta **LINHAS**, que é a grandeza que o dispositivo amortiza:
+`54 771` linhas **somadas nas 83 cenas**; a maior tem `32 762`, a segunda `1 800`, e **`1` de `83`
+passa o joelho medido do módulo** (`PAR_THRESHOLD`, `8 192`). *`82` das `83` vivem onde uma corrida
+de GPU não paga sequer o custo fixo de subida e despacho.*
+
+⚠️ **Isto não matou a obra — mudou o titular.** As cenas de demo não são o produto: a cerca prende
+também todo documento grande que o artista venha a fazer, e o tecto que autoriza esses documentos
+tinha acabado de dobrar. O que caiu foi *«83 cenas presas»* como medida do GANHO.
+
+**Why:** um censo conta a população que é fácil de enumerar, e quase nunca a grandeza que decide.
+Um titular com um número grande passa por medição sem o ser.
+
+**How to apply:** antes de usar um censo para justificar uma wave, pergunte **em que unidade está
+o ganho** e conte essa. Se o censo conta unidades de ENUMERAÇÃO (cenas, ficheiros, nós) e o ganho
+vive noutra (linhas, ms, bytes), a segunda sonda é obrigatória — e imprima a **DISTRIBUIÇÃO**, não
+a média: concentrado em duas cenas ou espalhado por oitenta são decisões opostas.
+
+---
+
+## ⭐⭐ A DIFERENÇA cancela o custo fixo; o QUOCIENTE não
+
+**Medido 2026-09-22.** A cena `=126` do Motion carrega dois `const` de custo **por cópia**
+(`163` e `115` ns), obtidos **dividindo** um tempo de quadro medido pela população (`90 000`).
+Essa divisão atribui o custo fixo inteiro (moldura, painéis, chrome) às cópias — inofensivo como
+**declive**, falso como **absoluto** noutra população.
+
+⛔ O roteiro do smoke citava dois ABSOLUTOS lidos naquele dia (*«o `raw` perto de `96`»*, *«cai
+para `70` e poucos»*). Quando o tecto do dono mudou a população para menos de metade, os dois
+ficaram errados — e o dono abriria o smoke, leria um número muito acima, e o texto dir-lhe-ia que
+estava errado.
+
+⭐ **A cura não é re-medir, é trocar a GRANDEZA.** Com `raw = 1000/cpu` e
+`cpu = população × declive + fixo`, a **diferença** entre duas rotas é
+`população × (declive_A − declive_B)` — *o `fixo` cancela exactamente*. É a única coisa que a cena
+pode afirmar noutra população sem voltar a correr o app, e ela **acompanha o tecto sozinha**.
+
+**Why:** um declive obtido por divisão de um total carrega o custo fixo dentro dele, e ninguém o
+vê enquanto a população não muda.
+
+**How to apply:** quando um número por-item vier de `total / n`, escreva no doc que o fixo foi
+absorvido. A partir daí só **diferenças** (e não somas nem quocientes) são transportáveis para
+outro `n` — e um roteiro de smoke que precise de um absoluto tem de o MEDIR, nunca derivá-lo.

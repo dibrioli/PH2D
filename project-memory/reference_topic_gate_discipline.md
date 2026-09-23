@@ -644,3 +644,57 @@ censo morre. Ver [[feedback_a_textual_census_survives_an_if_false]].
   ENXERGA* (convertidos ou não), que a migração não consome. A metade que conta a dívida fica com
   a população **NOMEADA** e com a saída escrita — no dia em que ela chegar a zero, ela sai, e o
   controlo do instrumento fica.
+
+---
+
+## ⛔⛔⛔ Derivar da constante ERRADA lê-se exactamente como derivar
+
+**Medido 2026-09-22 (`line/motion-value`).** O dono dobrou o tecto de instâncias por nó
+(`16 384 → 32 768`). Três gates ficaram vermelhos de uma vez, e os três estavam **certos por
+coincidência aritmética**: eles afirmavam `contagem == MAX_INSTANCIAS_POR_NO` sobre uma população
+de **GRELHA**, e enquanto o tecto era `128² = 16 384` as duas grandezas — *«o tecto de um nó»* e
+*«o que uma grelha quadrada cheia dá»* — eram o MESMO número. Com `181² = 32 761` contra `32 768`
+elas separaram-se.
+
+⚠️⚠️ **O comentário de um deles dizia, por escrito, *«o número é DERIVADO para não haver um segundo
+sítio a envelhecer»***. Ele era — **do número errado**. *A derivação parecia correcta porque o
+resultado batia; só um dia em que as duas grandezas se separam revela de qual delas ela vinha.*
+
+⭐ **A cura é dar NOME à distinção** (`CELULAS_DE_UMA_GRELHA_CHEIA = LADO²` ao lado de
+`MAX_INSTANCIAS_POR_NO`), não escolher melhor: enquanto as duas partilham um nome, nada nesta casa
+pode dizer qual delas um gate queria.
+
+**Why:** um gate que deriva é declarado imune a envelhecer, e é isso que o torna perigoso quando
+deriva da grandeza errada — ninguém volta a olhar para ele.
+
+**How to apply:** ao escrever `assert_eq!(x, CONST)`, pergunte **de que grandeza `x` é** e não se
+o número bate. Se duas constantes do repo forem numericamente iguais hoje, isso é um acidente a
+documentar, não uma equivalência — e a hora de as separar é antes de alguém mexer numa delas.
+Ver [[feedback_a_sampled_maximum_that_becomes_a_safety_bound_errs_only_downwards]].
+
+---
+
+## ⛔⛔ Uma `const` CITADA continua a ser um literal quando o mundo que a produziu mudou
+
+**Medido 2026-09-22.** A cena `=107` do Motion tinha um gate
+(`the_announcement_cites_the_numbers_the_scene_uses`) a afirmar que o roteiro do smoke **cita as
+`const`s** em vez de repetir literais — escrito depois de um defeito real em que o anúncio
+divergia da cena. Ele é sobre a **PROVENIÊNCIA** do número.
+
+⛔ E a cena deriva a população do tecto de instâncias, enquanto os `COOK_*_MS` são **medições**.
+Quando o tecto se mexeu (duas vezes em dois dias), a população mudou sozinha e as medições não: o
+anúncio passou a dizer ao dono dois números medidos numa cena que já não existe, **com o gate
+verde**.
+
+⭐ **A cura é uma cerca de COMPILAÇÃO cujo sujeito é a POPULAÇÃO**
+(`const _: () = assert!(MEDIDO_EM_PECAS == 32_761, "…corra a sonda e traga os dois números")`):
+mover o tecto **parte a build** no sítio onde a medição vive, e quem o mover é obrigado a
+re-medir em vez de se lembrar.
+
+**Why:** proveniência e verdade são perguntas diferentes, e um gate de proveniência lê-se como
+cobertura da segunda.
+
+**How to apply:** toda `const` que é uma MEDIÇÃO e cujo sujeito é DERIVADO de outra constante leva
+ao lado a população/regime em que foi medida, **amarrada por `const _: () = assert!`**. Se a
+derivação for de facto a verdade (o número é calculado da população actual), aí sim a proveniência
+basta — e a diferença entre os dois casos escreve-se no doc.

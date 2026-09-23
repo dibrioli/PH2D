@@ -382,6 +382,31 @@ entrava na conta. *A cura foi a fixtura e o `--test-threads=1` no arnês, nunca 
 frouxa.* Mutação **3 a sangrar + 1 NOMEADA** (trocar as constantes da fita inerte por `Vec::new()`
 é hoje inobservável: aquela porta lê só o `.source`).
 
+### ⛔⛔ E O «SEGUNDO PRÉMIO» DA FITA INERTE NÃO EXISTE — refutado pelo A/B, menos numa cena
+
+Eu tinha escrito que a cura da fita inerte também parecia acelerar o quadro (cenas de fita grande a
+caírem de `50` para `15 ms` entre duas leituras). ⛔ **Era contaminação da máquina**, e o A/B
+INTERCALADO no mesmo processo — a régua que esta página prescreve — diz outra coisa:
+
+| corrida | CPU ociosa | razão `sem/com` em `21` das `22` cenas | a cena `4` |
+|---|---:|---:|---:|
+| 1 | `95 %` | `0,88×` – `1,21×` | **`3,03×`** (`17,46` contra `52,93 ms`) |
+| 2 | `92 %` | `0,90×` – `1,10×` | **`3,57×`** (`15,30` contra `54,64 ms`) |
+
+⇒ **a cura é NEUTRA no relógio do quadro** (a fita que sobrava no pintor já estava a ser eliminada
+pelo compilador do driver: ela custava COMPILAÇÃO e não custava quadro) — *e numa cena ela vale
+`3×`, reproduzido em duas corridas independentes.*
+
+⭐⭐⭐ **Essa cena é o penhasco de OCUPAÇÃO, finalmente medido.** A `4` tem `503` instruções e `43`
+valores vivos; a `5` tem `934` e `62`, e lê `1,02×`; a `27` tem `751` e `69`, e lê `1,03×`. ⇒ *não é
+o tamanho da fita — é um limiar de registos que só aquela cena atravessa*, e é por isso que o modelo
+linear abaixo fica com `R² 0,80` e um resíduo grande. **Um penhasco não se ajusta com uma recta.**
+
+⚠️⚠️ **E isto reatribui o modelo de custo:** se tirar a fita do PINTOR não move o relógio, o termo
+`0,039 × instruções` mora na **MARCHA**, que é quem de facto avalia o campo. *O custo do quadro de
+movimento é o campo ser caro POR AVALIAÇÃO, e não o raio dar muitos passos* — o que é coerente com
+os passos explicarem `R² 0,165`.
+
 ### ⭐⭐⭐ O QUE O QUADRO DE MOVIMENTO CUSTA — o modelo, ajustado às 22 cenas na janela calma
 
 O primeiro acto da `W9` é RE-MEDIR, e a tabela do gate já imprimia as colunas todas sem ninguém as

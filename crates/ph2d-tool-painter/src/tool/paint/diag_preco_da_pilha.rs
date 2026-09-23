@@ -171,6 +171,18 @@ fn diag_preco_da_pilha() {
     };
     let total = monta(None);
     linha("a pilha INTEIRA (6)", total);
+    // ⭐ O A/B do AVENTAL (2026-09-23): o estreito (o alcance da caixa) contra o largo (`k·P + 1`),
+    //    ALTERNADOS na mesma corrida — a contenção da máquina cai sobre os dois lados por igual.
+    let (mut estreito, mut largo) = (f64::MAX, f64::MAX);
+    for _ in 0..3 {
+        super::composite_acumulado::AVENTAL_LARGO.with(|c| c.set(true));
+        largo = largo.min(monta(None));
+        super::composite_acumulado::AVENTAL_LARGO.with(|c| c.set(false));
+        estreito = estreito.min(monta(None));
+    }
+    linha("  └ avental LARGO (k·P + 1)", largo);
+    linha("  └ avental ESTREITO (alcance)", estreito);
+    println!("     ⇒ o avental estreito: {:.2}×", largo / estreito);
     for (i, &(op, st, sz)) in dono.iter().enumerate() {
         let ms = monta(Some(i));
         linha(&format!("{} {op:?} str {st} size {sz}", i + 1), ms);

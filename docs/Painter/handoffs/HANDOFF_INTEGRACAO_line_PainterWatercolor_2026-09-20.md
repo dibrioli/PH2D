@@ -2682,7 +2682,7 @@ borrão de caixa por uma ordem de grandeza. As 3 da rota do motor — **3 sangra
 
 **⏳ Fica ABERTO, e entra na fila:**
 
-1. ⭐⭐ **O AVENTAL DA COMPOSIÇÃO SOBRE-PROVISIONA O BORRÃO POR `8×`** — o achado de maior valor da
+1. ✅ **FECHADO no §33.13.** ⭐⭐ **O AVENTAL DA COMPOSIÇÃO SOBRE-PROVISIONA O BORRÃO POR `8×`** — o achado de maior valor da
    auditoria, e veio de uma mutação SOBREVIVENTE (o máximo contra a soma). O `pad_do_borrao` é
    `k·P + 1` (o alcance do núcleo BINOMIAL), e o composite usa o núcleo de CAIXA, cujo alcance é
    `Σ box_radii(k·P)`. Na pilha do dono: `k·P = 32·8 = 256` ⇒ avental **`257 px`** contra um alcance
@@ -2702,3 +2702,48 @@ borrão de caixa por uma ordem de grandeza. As 3 da rota do motor — **3 sangra
    lado oposto o composto FINAL. Por reproduzir.
 5. **Pincéis minúsculos:** a `caixa_nova` não tem margem para o alcance do borrão quando
    `r_total > 2r(1 − spacing)` (raio `1`–`2` px com `P` alto). Por leitura, por reproduzir.
+
+### §33.13 — O AVENTAL ESTREITO: a pilha do dono `403 → 241 ms`, a imagem AO BIT
+
+> Ordem do dono (2026-09-23): *«siga»*, sobre o item 1 do §33.12.
+
+⭐⭐⭐ **A pilha do dono: `402,9 → 241,3 ms`** (`1,67×`; **`106,6 % → 63,9 %`** de um quadro), A/B
+**alternado na mesma corrida** (três rondas, mínimo de cada lado, `97 %` de CPU ociosa no arranque) pela
+porta de teste `AVENTAL_LARGO`. A quota de 7 a `2048²`/raio 96: `418,9 → 260,6 ms`.
+
+**A lei:** o avental da composição (`pad_do_borrao`) era `k·P + 1` — o alcance do núcleo BINOMIAL — e o
+composite borra com o de CAIXA, cujo alcance é `Σ box_radii(k·P)`. Na pilha do dono `257 → 33 px`.
+Uma porta nova, [`BlurKernel::alcance`], derivada das MESMAS contas que o avental interno de cada
+núcleo usa.
+
+⛔⛔ **O estreito só vale quando ninguém acima de um borrão lê vizinhança** — com um esfregão (ou outro
+borrão) acima fica o avental de antes, ao bit: o esfregão não tem tecto de transporte e lê a saída do
+borrão deslocada, e hoje é a folga larga que o cobre. ⭐ E no outro caso ele é **exacto**, com o
+argumento escrito no `pad_do_borrao`: abaixo do borrão só há leis por-pixel e o esfregão, e a base do
+esfregão fora do `alvo` não envelhece (ela só muda onde os planos por baixo dele mudam — a
+`caixa_nova` de cada evento, sempre dentro do `alvo` dele).
+
+**Gates:**
+
+* `o_avental_estreito_da_a_mesma_imagem_na_pilha_do_dono` — a pilha da foto (cores, forças,
+  tamanhos), tela com TEXTURA, traço ONDULADO, dois passos do rato: **zero bytes diferentes** contra o
+  avental largo, com o CONTROLO de que o avental de facto encolheu `> 4×`.
+* `com_um_leitor_de_vizinhanca_acima_o_avental_fica_o_largo` — a metade que protege o arranjo não provado.
+* `o_alcance_da_caixa_e_exactamente_ate_onde_ela_le` (crate do borrão) — o impulso a `alcance` px é
+  lido e a `alcance + 1` não, para `k` de `1` a `256`.
+* ⛔ **O `o_avental_do_borrao_cobre_todas_as_passagens` teve a PREMISSA MORTA** (afirmava `pad ≥ k·P`)
+  e virou `o_avental_do_borrao_cobre_o_alcance_de_todas_as_passagens`, com três metades: cobre o
+  alcance · as passagens contam (controlo) · **não voltou** ao `k·P`.
+
+**Mutação 6 de 6** (sem o `+ 1` · alcance a metade · nunca largo · alcance de um raio só — no
+composite; um raio só · o alcance do binomial — no impulso).
+
+⏳ **O que sobra:** a composição ainda é `89 %` do traço, e o **esfregão** sozinho é `102,9 ms`
+(`27 %` de um quadro) — é a camada mais cara e a próxima alavanca. A frequência de recomposição
+(`~2` por quadro) continua a ser decisão do dono.
+
+⚠️ **Flake NOVA para o integrador promover ao `CLAUDE.md` §5.0:**
+`the_cost_of_a_gated_stroke_follows_the_footprint_not_the_canvas` (`ph2d-tool-painter`, gate de
+RAZÃO de dois relógios) — reprovou na suíte das duas crates (`1,81` contra `4,70 ms`, barra `4×` do
+lado errado da razão) e passou **3 de 3 sozinho a `load 10`**, com **zero linhas do diff** em
+`mask*`. Irmã de ficheiro da `the_mask_stroke_cost_does_not_follow_the_canvas`, que já é membro.

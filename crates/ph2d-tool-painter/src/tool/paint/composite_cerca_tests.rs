@@ -353,3 +353,123 @@ fn o_byte_do_borrao_em_lotes_e_anterior_a_cura() {
          ({com_cura} contra {com_antes})"
     );
 }
+
+/// A pilha do DONO, da foto de 2026-09-22 — `(op, força, tamanho, cor)`, posição `0` = o TOPO.
+const PILHA_DO_DONO: [(CompositeOp, f32, f32, Option<[f32; 3]>); 6] = [
+    (CompositeOp::Blur, 1.0, 2.048, None),
+    (CompositeOp::Brush, 0.133, 0.574, Some([1.0, 1.0, 1.0])),
+    (CompositeOp::Brush, 0.204, 1.002, Some([1.0, 0.0, 0.0])),
+    (CompositeOp::Brush, 0.176, 1.221, Some([0.0, 0.0, 0.0])),
+    (CompositeOp::Smear, 0.596, 1.0, None),
+    (CompositeOp::Erase, 0.104, 1.0, None),
+];
+
+/// Um traço ONDULADO sobre uma tela com textura de `lado²`, com o pincel do dono — ondulado para
+/// o esfregão arrastar a tinta através de vários eventos, que é onde a base dele poderia ficar
+/// velha fora do `alvo`.
+fn traco_do_dono(
+    pilha: &[(CompositeOp, f32, f32, Option<[f32; 3]>)],
+    lado: u32,
+    passo: f32,
+    largo: bool,
+) -> (Vec<u8>, u32) {
+    super::composite_acumulado::AVENTAL_LARGO.with(|c| c.set(largo));
+    let mut t = PainterTool::default();
+    let mut s = 0x9E37_79B9_7F4A_7C15u64;
+    let mut px = vec![255u8; (lado * lado * 4) as usize];
+    for (i, b) in px.iter_mut().enumerate() {
+        if i % 4 != 3 {
+            s = s
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            *b = (s >> 56) as u8;
+        }
+    }
+    t.set_source(px, lado, lado);
+    t.set_brush_size_norm(0.4);
+    t.paint.composite_enabled = true;
+    t.paint.composite_len = pilha.len();
+    for pos in 0..N_CAMADAS {
+        t.paint.composite[pos].strength = 0.0;
+    }
+    for (pos, &(op, strength, size, color)) in pilha.iter().enumerate() {
+        t.paint.composite[pos] = CompositeLayer {
+            op,
+            strength,
+            size,
+            color,
+            ..CompositeLayer::default()
+        };
+    }
+    let pad = t.pad_do_borrao_para_teste();
+    #[allow(clippy::cast_precision_loss)]
+    let l = lado as f32;
+    let ponto = |x: f32| [x, l * 0.5 + (x / l * 12.0).sin() * l * 0.18];
+    let (x0, x1) = (l * 0.15, l * 0.85);
+    t.on_canvas_pointer(cp(ponto(x0), PointerPhase::Down));
+    let mut x = x0;
+    while x < x1 {
+        x = (x + passo).min(x1);
+        t.on_canvas_pointer(cp(ponto(x), PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp(ponto(x1), PointerPhase::Up));
+    super::composite_acumulado::AVENTAL_LARGO.with(|c| c.set(false));
+    ((*t.canvas_rgba).clone(), pad)
+}
+
+/// ⭐⭐⭐ **O AVENTAL ESTREITO DÁ A MESMA IMAGEM — na pilha do dono, AO BIT** (2026-09-23).
+///
+/// O avental da composição passou de `k·P + 1` (o alcance do núcleo binomial) para o alcance do
+/// núcleo de CAIXA que o composite de facto usa. Na pilha do dono isso é `257 → 33 px`, e a
+/// composição de todas as camadas corre sobre essa área.
+///
+/// ⚠️ **A régua é a IMAGEM contra a do avental de antes, ao bit** — não «dentro de uma barra»: o
+/// argumento é que nada do que o `alvo` largo compunha a mais chegava à `caixa_nova`, e isso só se
+/// prova com igualdade. A fixtura é a mais dura que a pilha do dono admite: tela com TEXTURA (numa
+/// chapada o borrão é um no-op), traço ONDULADO (o esfregão arrasta através de vários eventos) e
+/// dois passos do rato.
+///
+/// ⛔ **O CONTROLO é a primeira asserção:** o avental tem de ter de facto ENCOLHIDO nesta fixtura
+/// — sem ela, um avental que não mudasse passaria a igualdade por construção.
+///
+/// **Mutações que sangram:** o avental estreito sem o `+ 1` · o avental estreito também com um
+/// esfregão acima (ver o gate irmão) · o alcance da caixa trocado por metade dele.
+#[test]
+fn o_avental_estreito_da_a_mesma_imagem_na_pilha_do_dono() {
+    for passo in [3.0f32, 11.0] {
+        let (estreito, pad_estreito) = traco_do_dono(&PILHA_DO_DONO, 640, passo, false);
+        let (largo, pad_largo) = traco_do_dono(&PILHA_DO_DONO, 640, passo, true);
+        assert!(
+            pad_estreito * 4 < pad_largo,
+            "controlo: o avental tem de ENCOLHER na pilha do dono (estreito {pad_estreito} · \\
+             largo {pad_largo})"
+        );
+        let diferentes = estreito.iter().zip(&largo).filter(|(a, b)| a != b).count();
+        assert_eq!(
+            diferentes, 0,
+            "passo {passo}: o avental estreito mudou {diferentes} bytes da imagem do dono \\
+             (avental {pad_estreito} contra {pad_largo} px)"
+        );
+    }
+}
+
+/// ⛔ **Com um esfregão POR CIMA de um borrão o avental fica o LARGO** — a metade que protege o
+/// arranjo em que o estreito não está provado (o esfregão não tem tecto de transporte, e lê a
+/// saída do borrão deslocada).
+#[test]
+fn com_um_leitor_de_vizinhanca_acima_o_avental_fica_o_largo() {
+    let mut pilha = PILHA_DO_DONO;
+    pilha.swap(0, 4); // o esfregão sobe para o topo, o borrão desce
+    let (_, pad) = traco_do_dono(&pilha, 256, 40.0, false);
+    let (_, pad_largo) = traco_do_dono(&pilha, 256, 40.0, true);
+    assert_eq!(
+        pad, pad_largo,
+        "com um esfregão acima do borrão o avental tem de ser o de antes"
+    );
+    // CONTROLO: na pilha do dono ele encolhe — senão a igualdade acima não distingue nada.
+    let (_, pad_dono) = traco_do_dono(&PILHA_DO_DONO, 256, 40.0, false);
+    assert!(
+        pad_dono < pad_largo,
+        "controlo: {pad_dono} contra {pad_largo}"
+    );
+}

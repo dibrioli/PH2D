@@ -490,6 +490,9 @@ pub(super) const CURA_REVERTIDA: u8 = 2;
 #[cfg(test)]
 thread_local! {
     pub(super) static CERCA_DO_BORRAO: std::cell::Cell<u8> = const { std::cell::Cell::new(0) };
+    /// `true` = o avental de antes de 2026-09-23 (`k·P + 1`) em toda pilha — o CONTROLO do gate
+    /// que prova que o avental estreito dá a mesma imagem.
+    pub(super) static AVENTAL_LARGO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
 impl PainterTool {
@@ -515,21 +518,51 @@ impl PainterTool {
     /// cada um desses píxeis lê mais o alcance do de baixo — os avental compõem-se. Com a quota de
     /// UM borrão (`quota_da_operacao`) a soma É o máximo, ao bit; o que a troca compra é que subir
     /// a quota deixa de partir isto em silêncio.
+    ///
+    /// ⭐⭐⭐ **E ele é o ALCANCE do núcleo de CAIXA, não o `k·P` do binomial** (2026-09-23, achado
+    /// da auditoria por uma mutação sobrevivente). O composite borra com
+    /// [`ph2d_painter_brush::BlurKernel::Caixa`], e a caixa lê `Σ box_radii(k·P)` à volta da
+    /// região — `~1,5·√(2kP)`, contra os `k·P` que o avental pagava. Na pilha do dono:
+    /// `k·P = 32·8 = 256` ⇒ avental **`257 px`** contra um alcance real de **`32`**, e a composição
+    /// de TODAS as camadas corria sobre essa área (`92,7 %` do traço).
+    ///
+    /// ⛔⛔ **O avental ESTREITO só vale quando ninguém acima de um borrão lê vizinhança.** Com um
+    /// esfregão (ou outro borrão) acima, a cerca devolve ao borrão o `alvo` inteiro, e quem está
+    /// acima lê a SAÍDA dele deslocada — o esfregão não tem tecto de transporte, logo nenhum alcance
+    /// o limita, e hoje é a folga do avental largo que o cobre. Ali fica o avental de antes, **ao
+    /// bit** (gate `com_um_esfregao_por_cima_a_cura_nao_muda_um_bit`).
+    ///
+    /// ⭐ **Porque o estreito é EXACTO no outro caso:** abaixo do borrão só há leis por-pixel (Brush,
+    /// Erase) e o esfregão; o borrão lê a pegada mais o alcance, e é tudo o que tem de estar composto.
+    /// A base do esfregão fora do `alvo` não fica velha: ela só muda onde os planos por baixo dele
+    /// mudam, que é a `caixa_nova` de cada evento — sempre dentro do `alvo` desse evento.
     fn pad_do_borrao(&self) -> u32 {
-        let k: usize = (0..N_CAMADAS)
+        let passagens = passagens_do_borrao(self.paint.brush.spacing) as usize;
+        let borroes: Vec<usize> = (0..N_CAMADAS)
             .filter(|&p| {
                 self.camada_viva(p) && matches!(self.paint.composite[p].op, CompositeOp::Blur)
             })
-            .map(|p| {
-                ph2d_painter_brush::kernel_radius(
+            .collect();
+        let largo = borroes.iter().any(|&p| self.alguem_acima_le_vizinhanca(p));
+        #[cfg(test)]
+        let largo = largo || AVENTAL_LARGO.with(std::cell::Cell::get);
+        let soma: usize = borroes
+            .iter()
+            .map(|&p| {
+                let k = ph2d_painter_brush::kernel_radius(
                     self.paint.brush.radius_px * self.tamanho_da_camada(p),
-                )
+                ) * passagens;
+                if largo {
+                    k
+                } else {
+                    ph2d_painter_brush::BlurKernel::Caixa.alcance(k)
+                }
             })
             .sum();
-        if k == 0 {
+        if soma == 0 {
             return 0;
         }
-        (k as u32) * passagens_do_borrao(self.paint.brush.spacing) + 1
+        soma as u32 + 1
     }
 
     /// O trinco de alfa da camada ACTIVA do documento. ⚠️ Ele é propriedade da camada do

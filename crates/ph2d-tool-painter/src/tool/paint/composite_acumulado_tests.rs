@@ -267,29 +267,46 @@ fn a_regiao_quase_nao_deixa_rectangulo() {
     );
 }
 
-/// ⛔⛔ **O avental do borrão é `k × P` e não `k`** — e sem isso o resultado passa a depender de em
-/// quantos lotes o traço chegou.
+/// ⛔⛔ **O avental do borrão cobre o ALCANCE das `P` passagens** — e sem isso o resultado passa a
+/// depender de em quantos lotes o traço chegou.
 ///
 /// ⚠️ Este gate nasceu de um VERMELHO: com o avental de um raio só, o
 /// `a_ordem_e_da_pilha_e_nao_da_taxa_do_rato` reprovou. A régua aqui é a LEI (o avental contém o
 /// alcance das `P` passagens), porque a do irmão é a imagem e ela só acusa quando as duas se
 /// cruzam.
+///
+/// ⛔⛔ **A PREMISSA DE ANTES MORREU em 2026-09-23, e à vista:** ele afirmava `pad >= k·P` — o
+/// alcance do núcleo BINOMIAL — e o composite borra com o de CAIXA, cujo alcance para o mesmo
+/// parâmetro é `Σ box_radii(k·P)` (`32` contra `256` na pilha do dono). O avental passou a ser esse
+/// alcance e este gate passou a afirmá-lo; a igualdade da IMAGEM com o avental de antes é o gate
+/// `composite_cerca_tests::o_avental_estreito_da_a_mesma_imagem_na_pilha_do_dono`.
+///
+/// ⚠️ A 2.ª metade é o CONTROLO de que as passagens contam: o alcance de `k·P` tem de ser maior que
+/// o de `k`, senão a fixtura não distingue um avental de uma passagem de um de `P`.
 #[test]
-fn o_avental_do_borrao_cobre_todas_as_passagens() {
+fn o_avental_do_borrao_cobre_o_alcance_de_todas_as_passagens() {
     let mut t = tela();
     com(&mut t, 0, CompositeOp::Blur, 1.0, None);
     com(&mut t, 1, CompositeOp::Brush, 1.0, Some([1.0, 0.0, 0.0]));
     let k = ph2d_painter_brush::kernel_radius(t.paint.brush.radius_px);
-    let p = super::composite_acumulado::passagens_do_borrao(t.paint.brush.spacing);
-    let pad = t.pad_do_borrao_para_teste();
+    let p = super::composite_acumulado::passagens_do_borrao(t.paint.brush.spacing) as usize;
+    let pad = t.pad_do_borrao_para_teste() as usize;
+    let caixa = ph2d_painter_brush::BlurKernel::Caixa;
     assert!(
-        p > 1,
-        "a fixtura não contém o fenómeno: com UMA passagem o avental de `k` bastaria"
+        p > 1 && caixa.alcance(k * p) > caixa.alcance(k),
+        "a fixtura não contém o fenómeno: com UMA passagem o alcance de `k` bastaria"
     );
     assert!(
-        pad >= k as u32 * p,
-        "o avental ({pad}) não cobre as {p} passagens de raio {k} — a orla lê bytes que a \
-         composição ainda não escreveu, e o traço passa a depender da taxa do rato"
+        pad > caixa.alcance(k * p),
+        "o avental ({pad}) não cobre o alcance ({}) das {p} passagens de raio {k} — a orla lê \
+         bytes que a composição ainda não escreveu, e o traço passa a depender da taxa do rato",
+        caixa.alcance(k * p)
+    );
+    assert!(
+        pad < k * p,
+        "o avental ({pad}) voltou a ser o alcance do BINOMIAL (`k·P = {}`) — a composição de toda \
+         camada corre sobre essa área",
+        k * p
     );
 }
 

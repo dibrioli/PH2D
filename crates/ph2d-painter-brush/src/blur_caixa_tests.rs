@@ -824,6 +824,43 @@ mod fatias_tests {
         assert!(casos >= 5, "o corpus encolheu: {casos} casos");
     }
 
+    /// **O ALCANCE que a caixa declara é EXACTAMENTE até onde ela lê** — nem um pixel a mais (o
+    /// avental do composite pagaria área morta), nem um a menos (a orla leria bytes por compor).
+    ///
+    /// ⭐ A régua é o IMPULSO: um só pixel aceso a `d` píxeis da região muda a saída dela se e só
+    /// se `d ≤ alcance`. É ela que dá direito ao avental estreito do composite (2026-09-23), que
+    /// passou de `k·P + 1` para [`crate::BlurKernel::alcance`] `+ 1`.
+    ///
+    /// **Mutações que sangram:** o alcance ser um raio só · o alcance ser `k` (o do binomial).
+    #[test]
+    fn o_alcance_da_caixa_e_exactamente_ate_onde_ela_le() {
+        let (fw, fh) = (1400i64, 3i64);
+        let mut casos = 0usize;
+        for k in [1usize, 2, 3, 8, 24, 96, 256] {
+            let alcance = crate::BlurKernel::Caixa.alcance(k);
+            let (rx, ry) = (40i64, 1i64);
+            let le = |d: usize| {
+                let mut buf = vec![0u8; (fw * fh * 4) as usize];
+                let i = ((ry * fw + rx + d as i64) * 4) as usize;
+                buf[i..i + 4].copy_from_slice(&[255, 255, 255, 255]);
+                let out =
+                    blur_region_caixa_com(&buf, fw, fh, rx, ry, 1, 1, k, [false, false], false);
+                out[0][3] > 0.0
+            };
+            assert!(
+                le(alcance),
+                "k={k}: o pixel a {alcance} px (o alcance) tem de ser lido"
+            );
+            assert!(
+                !le(alcance + 1),
+                "k={k}: o pixel a {} px foi lido — o alcance declarado ({alcance}) é CURTO",
+                alcance + 1
+            );
+            casos += 1;
+        }
+        assert!(casos >= 7, "o corpus encolheu: {casos}");
+    }
+
     /// **A ROTA do motor dá o MESMO `f32` fundida e separada** — o gate que a auditoria de
     /// 2026-09-23 achou em falta.
     ///

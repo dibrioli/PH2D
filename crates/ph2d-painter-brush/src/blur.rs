@@ -74,6 +74,24 @@ pub enum BlurKernel {
     Caixa,
 }
 
+impl BlurKernel {
+    /// **Até onde o borrão LÊ** à volta da região que ele escreve, em píxeis, para o parâmetro `k`.
+    ///
+    /// ⚠️ É a mesma pergunta que o avental de cada núcleo já responde por dentro, e é por isso que
+    /// ela sai das MESMAS contas: o binomial lê `k` (o lado é `2k + 1`), a caixa lê a soma dos três
+    /// raios de [`crate::blur_caixa::box_radii`] — o `r_total` do avental dela.
+    ///
+    /// ⭐ A diferença é grande e é o que o composite paga ao ignorá-la: a variância é a MESMA
+    /// (`σ² = k/2`), mas o alcance da caixa cresce como `~1,5·√(2k)` — a `k = 256`, `32` contra `256`.
+    #[must_use]
+    pub fn alcance(self, k: usize) -> usize {
+        match self {
+            Self::Binomial => k,
+            Self::Caixa => crate::blur_caixa::box_radii(k).iter().sum(),
+        }
+    }
+}
+
 /// Read `(sx, sy)` mapping for one apron sample: toroidal (`rem_euclid`) on a `wrap` axis (seamless
 /// Tiling), else clamped to the nearest edge (extend — so a border neither fades the alpha nor bleeds
 /// transparent RGB into the blur).

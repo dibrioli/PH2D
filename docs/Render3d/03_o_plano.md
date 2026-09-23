@@ -333,6 +333,55 @@ chamada por cena. Medido na mesma janela calma:
 diff dela no caminho do dispositivo são **4 linhas de WGSL** (`mx_at_base_color`) num kernel de
 `687`, e a população do gate é **`22` nos dois lados** do merge-base.
 
+### ⭐⭐⭐⭐ E A PRIMEIRA CURA FOI CONSTRUÍDA: A FITA DA PEÇA SAI DO SHADER DO PINTOR
+
+**Acrescentar uma forma passa de `1 406 ms` para `74 ms` — `19×` — e a imagem é byte-idêntica.**
+
+⭐⭐⭐ **A atribuição veio primeiro, e é ela que torna a cura possível** (instrumento novo e
+permanente: `PH2D_PIPELINE_LOG=1`, no `FieldPipelines::entry_with_layout`):
+
+| pipeline | linhas | a NOSSA tradução | o DRIVER |
+|---|---:|---:|---:|
+| `centro_e_luz` (marcha) | `344` | `0,74 ms` | `44,2 ms` |
+| `bordas` (marcha) | `344` | `0,79 ms` | `24,7 ms` |
+| `pinta` | `1 927` | `3,80 ms` | `347,3 ms` |
+| **`pinta_bordas`** | `1 927` | `3,88 ms` | **`1 359,9 ms`** |
+
+⇒ **`99,5 %` é o DRIVER** (a nossa tradução WGSL→SPIR-V são `9,2` de `1 776 ms`), e o `pinta_bordas`
+sozinho é `77 %` do total — `3,9×` o `pinta` a partir do MESMO texto.
+
+⛔⛔ **DUAS explicações do `3,9×` foram construídas, medidas e REFUTADAS:** o laço das quatro
+sub-amostras a ser desenrolado (com **uma** sub-amostra ele ainda custa `1 213 ms`) e o laço em si
+(**sem laço nenhum**, uma sub-amostra em linha recta, `1 088 ms`). *O que resta é a pressão do
+próprio núcleo, e não é afinação.*
+
+⭐⭐⭐⭐ **Mas a cura não precisava dessa resposta.** O grafo de chamadas do WGSL diz que das seis
+entradas deste passe, o `pinta` e o `pinta_bordas` alcançam a fita da peça por **UM caminho só** — a
+CURVATURA —, o `assa_sondas` pela marcha, e o `pinta_ricochete` e as duas metades da borda mole **não
+a alcançam de todo**. ⇒ *no quadro de MOVIMENTO, com nada a ler a curvatura, o pintor não precisa da
+peça no texto dele* — e o cache de pipelines, que tem por chave o TEXTO, passa a acertar.
+
+⭐ **O predicado não é novo:** é o mesmo que o caminho de referência já usa para decidir se assa os
+canais da curvatura (`Surface::reads_curvature` ∪ `Presentation::reads_curvature`). *Uma terceira
+resposta à mesma pergunta seria a que envelhece.*
+
+**Três gates, e o do meio é o que a cura precisa:**
+
+* `a_fita_inerte_no_pintor_nao_muda_um_byte` — a mesma cena **com chão**, os dois caminhos, bytes
+  iguais (⚠️ com o CONTROLO de que a peça está na imagem: *duas imagens vazias também são iguais*);
+* `a_fita_inerte_faz_o_cache_acertar_na_peca_seguinte` — **a CONTA**, porque a economia é invisível
+  a toda régua de valor: `SEM a cura cresceu 4 pipelines · COM a cura cresceu 2`;
+* `quem_le_o_campo_continua_a_leva_lo_no_shader` — o jade (subsuperfície maciça) e o quadro assente,
+  que é o que torna os outros dois load-bearing.
+
+⚠️⚠️ **E o ARNÊS mentiu duas vezes, as duas da mesma família:** a 1.ª redacção do gate da CONTA
+variava o **raio** entre os dois lados — e um raio é uma **constante da fita**, logo os dois lados
+davam o mesmo texto e o segundo lia crescimento ZERO, passando com a cura apagada; e o
+`Tracer::compiled()` é um **contador global**, logo sob `cargo test` (threads num processo) um irmão
+entrava na conta. *A cura foi a fixtura e o `--test-threads=1` no arnês, nunca uma barra mais
+frouxa.* Mutação **3 a sangrar + 1 NOMEADA** (trocar as constantes da fita inerte por `Vec::new()`
+é hoje inobservável: aquela porta lê só o `.source`).
+
 ⏳ **A fila da `W9`, reordenada pelo preço medido:**
 
 1. **`1,31 s` de kernel por edição estrutural** — a maior de longe, e tem duas curas conhecidas: um

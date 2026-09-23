@@ -182,6 +182,15 @@ pub struct Sonda {
     /// dele. ⇒ *todo quadro a re-amostra*, e o que sobra aqui é a porta que a desliga para a voltar
     /// a medir ou para bissectar um report.
     pub bordas: bool,
+    /// ⭐⭐⭐⭐ **A fita da peça sai do shader do PINTOR quando ninguém a lê** — ver
+    /// [`crate::preview::a_fita_sai_do_pintor`] e
+    /// [`ph2d_field_gpu::paint::PaintSetup::le_o_campo`].
+    ///
+    /// ⚠️ **Ela é um campo da sonda e não só uma env var** porque a porta é um `OnceLock`: um gate
+    /// que precise dos DOIS lados não pode virá-la a meio do processo, e sem isto a única régua
+    /// possível seria um golden de GPU. *A régua desta cura é a CONTA de pipelines, e ela precisa de
+    /// comparar os dois caminhos na mesma corrida.*
+    pub fita_inerte: bool,
 }
 
 impl Default for Sonda {
@@ -193,6 +202,7 @@ impl Default for Sonda {
             chao_recebe_cor: true,
             ricochete: true,
             bordas: crate::preview::re_amostra_a_silhueta(),
+            fita_inerte: crate::preview::a_fita_sai_do_pintor(),
         }
     }
 }
@@ -321,6 +331,19 @@ pub fn paint_com(
         },
         // ⭐ O gémeo do `MarchSetup::mole`, do lado de quem COMPILA — os dois vêm da mesma decisão.
         mole: setup.mole.is_some(),
+        // ⭐⭐⭐⭐ **A FITA DA PEÇA SÓ ENTRA NO SHADER DO PINTOR QUANDO ALGUÉM A LÊ**
+        // (`docs/Render3d/03` §W9) — ver [`ph2d_field_gpu::paint::PaintSetup::le_o_campo`].
+        //
+        // ⚠️ **É o MESMO predicado que o caminho de referência usa** para decidir se assa os canais
+        // da curvatura ([`ph2d_field_render::curvatura::assar_canais`]), e é lido das mesmas duas
+        // portas: o material e a apresentação. *Escrever aqui uma terceira resposta à pergunta
+        // «alguém lê a curvatura?» seria a que envelhece.*
+        le_o_campo: !sonda.fita_inerte
+            || surfaces
+                .all
+                .iter()
+                .any(ph2d_material::Surface::reads_curvature)
+            || pres.reads_curvature(),
         stops: pres.look.exposure_stops,
         view: ph2d_view_transform::wgsl::view_code(pres.look.view),
         // ⭐⭐⭐ **A camada de ESTILO, no MESMO tipo que a CPU recebeu** (`docs/Render3d/03`, a

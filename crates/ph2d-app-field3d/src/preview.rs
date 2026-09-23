@@ -353,6 +353,22 @@ pub const MOVING_NORMAL_ERR_DEG: f32 = 1.0;
 /// arquivo, que é onde ele não é desperdício — ver o gate
 /// `the_export_never_goes_through_the_preview_coarsening`.
 pub const SETTLED_NORMAL_ERR_DEG: f32 = 0.5;
+/// ⭐⭐⭐⭐ **A FITA DA PEÇA SAI DO SHADER DO PINTOR QUANDO NINGUÉM A LÊ** — a porta que bisecta.
+///
+/// Ver [`ph2d_field_gpu::paint::PaintSetup::le_o_campo`] para o mecanismo e o grafo de chamadas que
+/// o decidiu. **Medido 2026-09-21: acrescentar uma forma à peça passa de `1 406 ms` para `74 ms`**,
+/// porque o `pinta` e o `pinta_bordas` deixam de ter a peça no texto e o cache de pipelines — que
+/// tem por chave o TEXTO — passa a acertar.
+///
+/// ⚠️ **Ela nasce LIGADA**, ao contrário da lei da casa, e a razão é que ela não é uma feature: a
+/// imagem é byte-idêntica por construção, e o que ela tira do caminho é uma espera que o dono
+/// aprovou como defeito no smoke de 2026-09-21. `PH2D_FIELD_FITA_INERTE=0` devolve o caminho
+/// antigo, e é por ela que o gate da CONTA mede os dois lados.
+#[must_use]
+pub fn a_fita_sai_do_pintor() -> bool {
+    static LIGADO: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *LIGADO.get_or_init(|| std::env::var("PH2D_FIELD_FITA_INERTE").as_deref() != Ok("0"))
+}
 
 /// ⭐⭐⭐ **A SILHUETA É RE-AMOSTRADA EM TODO QUADRO** (`W7c`, 2026-09-19).
 ///

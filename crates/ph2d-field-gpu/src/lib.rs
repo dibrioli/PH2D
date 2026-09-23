@@ -271,18 +271,44 @@ impl FieldPipelines {
         let src = molde.replace(FIELD_SLOT, &field.source);
         let chave = format!("{entrada}\u{0}{src}");
         self.por_texto.entry(chave).or_insert_with(|| {
+            // ⏱️⭐⭐⭐ **O INSTRUMENTO que atribui o segundo e meio** (`docs/Render3d/03` §W9):
+            // `PH2D_PIPELINE_LOG=1` imprime, por FALTA no cache, quanto custou cada metade. As duas
+            // têm curas OPOSTAS — o módulo é a nossa tradução (WGSL → SPIR-V, CPU no nosso
+            // processo) e o pipeline é o COMPILADOR DO DRIVER. *Sem esta linha, «compilar é caro» é
+            // uma frase sem endereço.*
+            //
+            // ⚠️ Ele mede uma FALTA e só uma: dentro do `or_insert_with` já se sabe que o cache não
+            // tinha. Um acerto não passa por aqui e custa o que uma busca num mapa custa.
+            let t0 = std::time::Instant::now();
             let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some("campo"),
                 source: wgpu::ShaderSource::Wgsl(src.as_str().into()),
             });
-            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            let ms_modulo = t0.elapsed().as_secs_f32() * 1e3;
+            let t1 = std::time::Instant::now();
+            let p = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                 label: Some("campo"),
                 layout,
                 module: &module,
                 entry_point: Some(entrada),
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
+                // ⏳ **A ranhura do cache EM DISCO, e ela está vazia** — é uma das duas curas
+                // nomeadas para os `1,31 s` constantes (`docs/Render3d/03` §W9). Hoje o cache é
+                // este mapa, que morre com o processo.
                 cache: None,
-            })
+            });
+            let ms_pipeline = t1.elapsed().as_secs_f32() * 1e3;
+            if *PIPELINE_LOG.get_or_init(|| std::env::var_os("PH2D_PIPELINE_LOG").is_some()) {
+                eprintln!(
+                    "[pipeline] {entrada:<16} · {:>6} linhas · módulo {ms_modulo:>8.2} ms · \
+                     driver {ms_pipeline:>8.2} ms",
+                    src.lines().count()
+                );
+            }
+            p
         })
     }
 }
+
+/// ⏱️ A porta do [`FieldPipelines::entry_with_layout`] — lida **uma vez**, como o resto do módulo.
+static PIPELINE_LOG: std::sync::OnceLock<bool> = std::sync::OnceLock::new();

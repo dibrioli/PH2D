@@ -75,6 +75,28 @@ pub struct PaintSetup<'a> {
     /// têm de concordar — um `true` aqui com o `mole` do `MarchSetup` a `None` despacha duas
     /// passagens sobre slots que o buffer não tem.
     pub mole: bool,
+    /// ⭐⭐⭐⭐ **ALGUMA COISA NESTE QUADRO LÊ O CAMPO DA PEÇA DENTRO DO PINTOR?**
+    ///
+    /// Medido 2026-09-21 sobre o grafo de chamadas do WGSL (`docs/Render3d/03` §W9): das seis
+    /// entradas deste passe, o `pinta` e o `pinta_bordas` alcançam a fita da peça **por UM caminho
+    /// só** — a CURVATURA (`curvatura_em` / `curvatura_do_estilo_em`) —, o `assa_sondas` alcança-a
+    /// pela marcha, e o `pinta_ricochete` e as duas metades da borda mole **não a alcançam de todo**.
+    ///
+    /// ⇒ quando nada lê a curvatura e o ricochete está desligado, **o pintor não precisa da fita**,
+    /// e a [`pinta`] entrega-lhe uma inerte. O texto do shader deixa de levar a peça, logo deixa de
+    /// mudar quando o artista acrescenta uma forma — e o cache, que tem por chave o TEXTO, acerta.
+    /// **Medido: acrescentar uma forma passa de `1 406 ms` para `74 ms`.**
+    ///
+    /// ⚠️ **A imagem é byte-idêntica por CONSTRUÇÃO, não por promessa:** as chamadas a `field()` que
+    /// sobram no texto estão atrás das guardas que este predicado descreve, logo nunca correm.
+    ///
+    /// ⚠️ **Ele vem do chamador e não do uniforme**, pela mesma razão que o [`Self::ao_rays`] e o
+    /// [`Self::mole`]: quem decide COMPILAR um pipeline é o Rust. E é o **mesmo predicado** que o
+    /// caminho de referência já usa para decidir se assa os canais da curvatura
+    /// (`ph2d_field_render::curvatura::assar_canais`): `Surface::reads_curvature` ∪
+    /// `Presentation::reads_curvature`. *Duas respostas à mesma pergunta divergiriam no dia em que
+    /// um terceiro consumidor da curvatura nascesse.*
+    pub le_o_campo: bool,
     /// A exposição, em paragens.
     pub stops: f32,
     /// A vista, no código do [`ph2d_view_transform::wgsl::view_code`].
@@ -181,6 +203,14 @@ pub(crate) struct Alvos<'a> {
     pub conta: &'a wgpu::Buffer,
     pub borda: &'a wgpu::Buffer,
 }
+
+/// ⭐⭐⭐ **O CAMPO QUE NINGUÉM CHAMA** — o corpo que substitui a fita da peça quando nada neste
+/// quadro a lê (ver [`PaintSetup::le_o_campo`]).
+///
+/// ⚠️ **Ele tem de existir e não tem de responder:** as chamadas a `field()` que sobram no texto
+/// estão todas atrás de guardas que não abrem, e o que este corpo compra é o texto do shader deixar
+/// de mudar com a peça. *Uma constante compila em nada e o cache passa a acertar.*
+const FITA_INERTE: &str = "fn field(p: vec3<f32>) -> f32 { return 1.0; }\n";
 
 /// ⛔ **A lei do dono numa peça de UMA folha** — a mesma resposta que o `Surfaces::owners: None` dá
 /// na CPU, e não um caso especial: não perguntar é exactamente o custo zero.
@@ -395,6 +425,24 @@ pub(crate) fn pinta(
     });
     // ⚠️ **O cache é o mesmo do traçado**, e a chave é o TEXTO: um arrasto de slider muda números e
     // não recompila nada, exactamente como na marcha.
+    // ⭐⭐⭐⭐ **A FITA INERTE** — ver [`PaintSetup::le_o_campo`].
+    //
+    // ⚠️⚠️ **As CONSTANTES viajam na mesma, e hoje isso é uma PRECAUÇÃO e não uma cura** — medido
+    // 2026-09-21 por mutação: o [`crate::FieldPipelines::entry_with_layout`] lê **só** o `.source`
+    // da fita, e o armazém `k` é montado pelo `trace.rs` a partir da fita REAL. ⇒ trocá-las por
+    // `Vec::new()` aqui é hoje **inobservável**, e a mutação que o faz SOBREVIVE — está nomeada
+    // como tal. Ficam porque `fita.consts.len()` é a ORIGEM dos offsets que a escultura e a lei do
+    // dono escrevem, e no dia em que esta porta os ler a versão encolhida fá-los ler as ranhuras
+    // erradas **em silêncio**.
+    let inerte = ph2d_field_eval::wgsl::TapeWgsl {
+        source: FITA_INERTE.to_string(),
+        consts: fita.consts.clone(),
+    };
+    let fita = if pintor.le_o_campo || pintor.ao_rays > 0 {
+        fita
+    } else {
+        &inerte
+    };
     let fonte = fonte(pintor, lei_do_dono, leis);
     // ⚠️ **A fita é a MESMA da marcha, e tem de o ser:** o `k` que o grupo `0` liga já traz as
     // constantes dela, e um texto gerado de outra fita indexaria aquele armazém por outra

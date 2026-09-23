@@ -1158,6 +1158,147 @@ DOBRO dos passos por acerto) devia sofrer mais — e ela **melhorou**.
 ⇒ Tudo, com o método de medição que evita os dois erros que esta medição já pagou:
 [`HANDOFF …_A_LINHA_2026-09-20` §10](../3DModeling/handoffs/HANDOFF_INTEGRACAO_line_3DModeling_A_LINHA_2026-09-20.md).
 
+### ⭐⭐⭐⭐ E A DÍVIDA NOMEADA FOI PAGA: **o modo de OMISSÃO vai à placa** — `31,45 → 13,11 ms`, `D=2 → D=1`
+
+**Ordem do dono, 2026-09-23:** *«nosso objetivo é ter tudo rodando em runtime com o melhor render
+que uma game engine já viu (desde que compatível com tudo, inclusive mobile) … faça tudo que for
+necessário para que tudo funcione em tempo real com boa resolução»*.
+
+O `#[default]` do `Shading` é o **matcap**, e até aqui só o `Render` era pintado no dispositivo ⇒ ao
+abrir uma cena o arrasto ia **todo** pela CPU. É o report *«ao arrastar fica grosseiro ainda»*.
+
+⛔⛔⛔ **E a 1.ª cura que eu desenhei era ABRIR A MARCHA ao matcap — ela PIORAVA.** O
+`gpu_frame::march` devolve o G-buffer pelo barramento (`49,8 MB` a `1920×1080`, `119`–`123 ms`), que
+é **mais lento do que a CPU inteira**. ⭐ *O ganho nunca foi a marcha estar na placa; é a IMAGEM não
+atravessar o barramento* — e é por isso que a cura é um **PASSE que pinta**, e não uma condição
+alargada.
+
+**MEDIDO** (`--release`, `87 %` de CPU ociosa, cena `5`, o matcap real de `749²`):
+
+| tela | CPU (modo de omissão) | divisor | **placa** | divisor | ganho |
+|---|---:|---|---:|---|---:|
+| `1920×1080` | `31,45 ms` | `D=2` | **`13,11`** | **`D=1`** | `2,40×` |
+| `1400×900` | `20,04` | `D=2` | **`9,56`** | **`D=1`** | `2,10×` |
+| `960×540` | `7,61` | `D=1` | `4,62` | `D=1` | `1,65×` |
+
+⇒ a `1080p` o quadro de omissão passa a caber no orçamento de `16,7 ms` **com resolução cheia**.
+
+**Paridade verde à 1.ª corrida** contra o `shade_with` da CPU sobre a MESMA marcha: pior byte `≤ 1`.
+⚠️ A barra é o **PIOR BYTE** e não uma fracção — em 19/09 uma paridade escrita como fracção leu
+`99,579 %` contra `99,5` e *passava por `0,079`* sobre um dispositivo que não pedia o canal.
+
+#### ⭐⭐⭐ Porque é um passe PRÓPRIO, e não um modo do pintor de material — três razões medidas
+
+1. **ARMAZÉNS.** O pintor de material liga **`12`** contra o piso garantido de **`8`** do WebGPU ⇒
+   numa placa que fique no piso o caminho de render **não corre**. Este liga **`8`**: *o modo de
+   omissão corre em toda placa conforme, e o de material só onde há folga.*
+2. **Um matcap não lê o CAMPO da peça.** O texto do shader não tem o `FIELD_SLOT`, logo o cache de
+   pipelines (cuja chave é o TEXTO) acerta para sempre — *acrescentar uma forma não recompila o modo
+   de omissão*.
+3. **Compilar é o caro.** Arrastar o OpenPBR, as sondas, o estilo e a lei do dono para um quadro que
+   não lê nenhum deles.
+
+#### ⛔⛔⛔⛔ E o `SIGSEGV` que bloqueava isto está ATRIBUÍDO, com controlo positivo nos dois lados
+
+A dívida dizia que separar os modos fazia três testes de `view_menu` morrerem com
+`NVVM compilation failed: 3` + `SIGSEGV`. Reproduzido **`3` de `3`**, e a assinatura é exacta:
+
+```text
+test result: ok            ← o teste PASSA
+NVVM compilation failed: 3 ← o driver, DEPOIS
+(signal: 11, SIGSEGV)      ← o PROCESSO não consegue sair
+```
+
+| sonda | em voo | veredito do **processo** |
+|---|---:|---|
+| `diag_esperar_pelo_quadro_cura` | `1` · chegaram `1` | **sai `0`** |
+| `diag_o_quadro_em_voo_mata_o_processo` | `1` | **`SIGSEGV`** |
+
+⇒ **o discriminador é a ESPERA, não a placa.** O mecanismo é trabalho na placa numa thread
+**DESANEXADA** (`std::thread::spawn`, sem `join`) a sobreviver ao processo — e os **77** gates de
+placa desta crate nunca estouraram porque chamam as portas **em série, na thread do teste**.
+
+⚠️⚠️ **A 1.ª redacção das duas sondas era VÁCUO:** ela drenava FORA do `armed_with`, onde o módulo já
+largou o `Receiver`; leu **`esperei por 0 quadro(s)`**, estourou nas DUAS metades, e eu quase a li
+como *«esperar não cura»*. ⇒ *o CONTROLO passou a ser uma ASSERÇÃO*, e uma corrida que não deixe
+quadro em voo reprova **alto** em vez de mentir.
+
+⭐ **A lei que fica:** *a placa é do PRODUTO; um teste de unidade comum não a entrega à thread que
+desenha* (`gpu_frame::para_o_quadro`, distinta do `shared` que os gates usam). É a mesma lei que o
+`CLAUDE.md` já escreve para os gates de GPU, aplicada ao único consumidor que a pedia **sem pedir**.
+
+⏳ **E a dívida de PRODUTO fica NOMEADA com a reprodução na mão:** ao fechar a janela com um quadro
+em voo o app pode morrer igual, e **isso já era verdade no `Render` antes desta wave**. A cura é o
+processo **DRENAR** os quadros em voo antes de sair — uma thread de desenho que o processo POSSUI em
+vez de N desanexadas — e ela é wave própria. A semente já existe
+(`Smoke::espera_pelos_quadros_em_voo`), sob `cfg(test)` e **sem consumidor de produto**, que é a
+forma que esta casa caça: *uma lei viva e órfã*.
+
+### ⭐⭐⭐⭐ E O NÚMERO DOS ARMAZÉNS ESTAVA **`3` ABAIXO** DO REAL — o guarda aceitava o que a `wgpu` recusa
+
+`paint::ARMAZENS` era o literal `9`, com o doc a contar *«seis do grupo `0` e três do grupo `1`»*.
+**Contado: o grupo `1` liga SEIS, e o passe liga `12`.** A contagem envelheceu quando o passe ganhou
+as sondas, o campo do chão e a cena do brilho.
+
+⛔ **A consequência é exactamente o que aquele número existe para impedir:** o guarda é
+`storage_slots() < ARMAZENS`, logo com `9` ele **aceita** uma placa que anuncie `9`, `10` ou `11`
+ranhuras — e ali a `wgpu` recusa o layout **a meio de um quadro**. *(O produto escapava por sorte: o
+piso é `8`, e `9 > 8` já recusava a placa mínima.)*
+
+⇒ **os dois números passam a ser CONTADOS** das listas de ligação (`trace::entradas_da_marcha` ·
+`paint::entradas_do_pintor` · `matcap::entradas`, com `conta_armazens`):
+
+```text
+[armazéns] matcap 8 · material 12 · piso 8
+```
+
+⚠️⚠️ **E a história deste gate em TRÊS formas vale mais que o número:**
+
+1. um `#[test]` sobre dois **literais** — o clippy apanhou-o (`assertions_on_constants`): *um
+   `assert!` sobre duas constantes é dobrado pelo compilador*, logo nunca podia reprovar numa árvore
+   que compila;
+2. um `const _: () = assert!(…)` — falha a compilar, **e ainda media o literal**;
+3. ⭐ **este**, que mede as **LISTAS DE LIGAÇÃO** que os passes de facto ligam.
+
+⇒ *a forma 2 NUNCA teria apanhado este defeito*. **Uma asserção sobre um número escrito à mão
+confirma o que alguém escreveu, nunca o que o código faz.**
+
+### ⭐⭐⭐⭐ E A PERGUNTA QUE DECIDE A GRELHA DE VOLUME FOI MEDIDA
+
+A proposta (o mecanismo do MagicaCSG) troca **avaliar o campo** por **uma consulta trilinear** ⇒ ela
+só paga se o campo for a maior parte do quadro.
+
+⛔⛔ **E a coluna da PLACA desta sonda media o `march` — a SEGUNDA vez nesta família** (a sonda irmã
+já carrega a mesma correcção escrita ao lado dela): ela lia `90`–`177 ms` onde a rota do produto lê
+`3`–`95`, e **ia decidir uma wave**. Repontada ao `pinta_matcap` (`42 %` ociosa, logo os absolutos
+são pessimistas e a FORMA é o que decide):
+
+| peça | linhas | passos/acerto | CPU | **placa** | ns/amostra (placa) |
+|---|---:|---:|---:|---:|---:|
+| esfera | `8` | `38,0` | `27,9 ms` | **`3,2`** | `0,041` |
+| vaso (cena `5`) | `121` | `110,4` | `44,6` | **`15,7`** | `0,069` |
+| nó de toro (cena `28`) | `721` | `410,2` | `641,6` | **`95,5`** | `0,112` |
+
+⭐⭐⭐ **A decomposição fecha com um factor CONSTANTE:** `placa ≈ 2,06 × passos × ns/amostra`
+(`2,05` · `2,07` · `2,08`) sobre **`90×`** de tamanho de fita. ⇒ *a avaliação do campo é cerca de
+METADE do quadro do dispositivo, e o tecto de «tornar a amostra grátis» é `~2×`.*
+
+⛔⛔ **E esse tecto é o preço BRUTO, não o líquido:** a própria proposta declara que a marcha sobre
+uma grelha tem de dar um passo **conservador** (`valor − meia diagonal da célula`), porque a
+interpolação trilinear **não é Lipschitz-1** ⇒ **mais passos**. Com o quadro a ser
+`passos × custo_por_passo`, uma grelha que faça o passo `2×` mais barato e a contagem `2×` maior
+**empata**.
+
+⭐⭐⭐⭐ **⇒ O QUE A TABELA DIZ É QUE A GRANDEZA DOMINANTE SÃO OS PASSOS, não o custo de cada um:**
+eles variam `38 → 110 → 410` (**`10,8×`**) enquanto o `ns/amostra` varia `0,041 → 0,112`
+(**`2,7×`**) sobre `90×` de fita. ⇒ *se uma grelha for construída, o propósito MEDIDO dela tem de
+ser **saltar espaço vazio** (menos passos), e nunca «uma amostra mais barata»* — e é essa a
+diferença entre a wave que paga e a que empata.
+
+⚠️ **O que fica por medir antes de a construir:** quanto do orçamento de passos é gasto **longe** da
+superfície (o único que um salto de tijolos pode devolver). Sem esse número, o `2×` de tecto acima é
+a única fronteira honesta.
+
 ## W10 — ✅ O GÉMEO DO AMACIAMENTO NO DISPOSITIVO — **FECHADA em 2026-09-19**
 
 > Ele adiou-a de manhã (*«coloque a possibilidade de melhoramento na fila mais no fim»*) e **trouxe-a

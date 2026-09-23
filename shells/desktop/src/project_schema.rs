@@ -468,4 +468,23 @@
 /// bala sair de um sitio que o artista nao escolheu.
 ///
 /// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um v162 e' recusado em voz alta.
-pub(crate) const PROJECT_SCHEMA: u32 = 163;
+/// # `163 → 164` — a PARALAXE: um objecto guarda uma FRACÇÃO do movimento do mundo
+///
+/// O `ph2d_ecs::ScrollFactor` e' um componente REGISTADO novo (plano 24, W1) ⇒ os tres contadores
+/// do registo sobem **+1** (`103 → 104` no ECS, `104 → 105` nos dois espelhos).
+///
+/// ⭐⭐⭐ **A lei e' UM numero, e ele NAO e' nosso: tres sistemas independentes convergiram nele**
+/// — `scroll_scale` (Godot, MEDIDO no binario: o declive vale `1 − k`), `scrollFactor` (Phaser),
+/// *Parallax %* (Construct) — e o **nosso multiplano do Flip ja' o tinha** (`FlipLayer::depth`,
+/// ADR-0114), so' que preso dentro daquele modulo. `k = 1` e' o objecto do mundo, `k = 0` e' preso
+/// a` vista (*que e' o que um HUD e'*), e entre eles esta' o fundo.
+///
+/// ⚠️ **O valor de fabrica e' `[1, 1]` e nao escreve um bit** ⇒ anexar o componente e nao lhe tocar
+/// deixa a cena **byte-identica**, e uma cena ja' gravada comporta-se exactamente como antes.
+///
+/// ⛔ **Sem `ScrollFactorRuntime`, e a ausencia e' a lei:** a pose deslocada e' funcao PURA da
+/// vista publicada (`autorada + centro·(1 − k)`), logo nao ha' estado para guardar — um scrub e um
+/// rebobinar reconstroem-na sozinhos. *O que nao tem estado nao pode sobreviver errado.*
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um v163 e' recusado em voz alta.
+pub(crate) const PROJECT_SCHEMA: u32 = 164;

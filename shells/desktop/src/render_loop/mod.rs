@@ -271,6 +271,7 @@ mod fase_hierarchy_group_merge;
 /// Fase do quadro: a trava do Painter na seleccao da Hierarquia.
 mod fase_hierarchy_select_lock;
 mod fase_hud;
+mod fase_paralaxe;
 /// Fase do quadro: o dreno de edicao de imagem e os desmontes do Apply.
 mod fase_image_edit_apply;
 /// Fase do quadro: a activacao da ferramenta de imagem.

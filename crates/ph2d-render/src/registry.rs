@@ -93,7 +93,10 @@ mod tests {
         // ⚠️ **2026-09-19: `103` -> `104`, delta +1** -- o `WeaponFire` (a ARMA do jogador),
         //   registado no ECS. ⛔ **UM so'**: nem o `WeaponRuntime` (a cerca e' o TIPO) nem a
         //   MUNICAO (ela e' um `Counter`, que ja' ca' esta') contam. Quem integrar conta o DELTA.
-        assert_eq!(reg.len(), 104);
+        // ⚠️ **2026-09-22: `104` -> `105`, delta +1** -- o `ScrollFactor` (a PARALAXE, plano 24
+        //   W1), registado no ECS. ⛔ **UM so'**: nao existe runtime dele, porque a lei e' pura.
+        //   Quem integrar conta o DELTA, nunca o literal.
+        assert_eq!(reg.len(), 105);
         assert!(reg.get_by_name("ph2d::render::Sprite").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpriteEmissive").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SliceNine").is_some());

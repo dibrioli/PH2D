@@ -40,6 +40,9 @@ impl crate::App {
         // cima acabou de calcular. Ver o cabecalho da fase: ela tem de correr DEPOIS da camera
         // e ANTES do extract, e as duas metades sao load-bearing.
         self.fase_hud(camera_rect);
+        // ⭐⭐⭐ **A PARALAXE** (plano 24, W1) — o fundo fica para tra's da mesma vista. Ver o
+        // cabecalho da fase: depois da camera e do HUD, e ANTES do extract.
+        self.fase_paralaxe(camera_rect);
         let fase_extract_inputs::ExtractInputs {
             dt,
             preview_overrides,

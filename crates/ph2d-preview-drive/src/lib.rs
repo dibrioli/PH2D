@@ -118,6 +118,12 @@ pub enum Driver {
     /// caixa de referência à vista da câmera do jogo, e por isso **não é documento**: sem esta
     /// entrada, *«o HUD acompanhou a câmera»* seria um passo de `Ctrl+Z` por quadro.
     CanvasPose,
+    /// ⭐⭐⭐ **A pose que a PARALAXE desloca** (plano 24, W1) — um objecto com `ScrollFactor` é
+    /// re-colocado a cada quadro contra o centro da vista, e por isso **não é documento**: sem esta
+    /// entrada, panhar a câmera num fundo seria um passo de `Ctrl+Z` por quadro (a mesma razão que
+    /// o [`Self::CanvasPose`] escreve, e ela vale aqui letra por letra — um HUD é a paralaxe com
+    /// fracção `0`).
+    ParallaxPose,
     /// ⭐⭐⭐ **A pose que um TWEEN escreve** (suplente #22).
     ///
     /// ⚠️ **Não é o [`Self::SolverPose`], e a razão é a do [`Self::ScriptPose`] e a do
@@ -189,6 +195,8 @@ pub enum Driven {
     ScriptPose(Transform),
     /// ⭐ A pose conduzida da raiz de um HUD — ver [`Driver::CanvasPose`].
     CanvasPose(Transform),
+    /// ⭐ A pose deslocada pela paralaxe — ver [`Driver::ParallaxPose`].
+    ParallaxPose(Transform),
     /// ⭐ A pose que um tween escreve — ver [`Driver::TweenPose`].
     TweenPose(Transform),
     /// ⭐⭐ A cor que um tween escreve — o `self_tint` **e** o `tint_fill`, que são um facto só.
@@ -215,6 +223,7 @@ impl Driven {
             Self::Visible(_) => Driver::SignalVisibility,
             Self::ScriptPose(_) => Driver::ScriptPose,
             Self::CanvasPose(_) => Driver::CanvasPose,
+            Self::ParallaxPose(_) => Driver::ParallaxPose,
             Self::TweenPose(_) => Driver::TweenPose,
             Self::TweenTint { .. } => Driver::TweenTint,
         }
@@ -258,6 +267,9 @@ impl Driven {
             )),
             Driver::ScriptPose => Some(Self::ScriptPose(*sim.world().get::<Transform>(entity)?)),
             Driver::CanvasPose => Some(Self::CanvasPose(*sim.world().get::<Transform>(entity)?)),
+            Driver::ParallaxPose => {
+                Some(Self::ParallaxPose(*sim.world().get::<Transform>(entity)?))
+            }
             Driver::TweenPose => Some(Self::TweenPose(*sim.world().get::<Transform>(entity)?)),
             Driver::TweenTint => {
                 let s = sim.world().get::<Sprite>(entity)?;
@@ -358,7 +370,10 @@ impl Driven {
                     *cur = j;
                 }
             }
-            Self::StagePose(pose) | Self::ScriptPose(pose) | Self::CanvasPose(pose) => {
+            Self::StagePose(pose)
+            | Self::ScriptPose(pose)
+            | Self::CanvasPose(pose)
+            | Self::ParallaxPose(pose) => {
                 if let Some(mut t) = sim.world_mut().get_mut::<Transform>(entity)
                     && *t != pose
                 {
@@ -568,6 +583,32 @@ impl PreviewDrive {
     #[must_use]
     pub fn authored(&self, entity: u64, driver: Driver) -> Option<Driven> {
         self.memo.get(&(entity, driver)).map(|e| e.authored)
+    }
+
+    /// ⭐⭐⭐ **O QUE ESTE MOTOR DEIXOU no quadro anterior** — a outra metade do par, e a que torna
+    /// «outra mão mexeu» uma pergunta que um motor pode fazer **antes** de escrever.
+    ///
+    /// # ⛔⛔ Porque ela precisou de existir (a ponte da PARALAXE, W1)
+    ///
+    /// A [`Self::driven`] já responde a esta pergunta — **internamente e tarde demais**: ela
+    /// compara `last_written` com o `before` que o motor lhe passa, e só então decide se o
+    /// documento mudou de mão. Isso chega a um motor cuja saída **não depende do autorado** (o
+    /// HUD: a pose da raiz é função pura da vista, e o autorado é descartado). Não chega a um cuja
+    /// lei é `saída = autorada + f(vista)`: ele precisa de saber de que pose PARTIR, e a pose viva
+    /// que ele encontra é a que ele próprio deslocou.
+    ///
+    /// ⚠️⚠️ **E a tentação é re-DERIVAR o deslocamento a partir da vista de AGORA — é errado, e o
+    /// modo de falha é mudo.** O que lá está foi escrito com a vista do quadro ANTERIOR; com a
+    /// câmera a andar as duas nunca coincidem, toda leitura se lê como *«outra mão mexeu»*, e o
+    /// motor «recupera» um autorado que ninguém escreveu — na paralaxe isso lia declive **ZERO**
+    /// com todos os outros gates verdes.
+    ///
+    /// ⭐ Com este par o deslocamento aplicado é `last_written − authored`, **medido e não
+    /// re-derivado**: ele não depende da vista nenhuma, logo a recuperação do autorado é exacta
+    /// mesmo com a câmera a mover-se entre os dois quadros.
+    #[must_use]
+    pub fn last_written(&self, entity: u64, driver: Driver) -> Option<Driven> {
+        self.memo.get(&(entity, driver)).map(|e| e.last_written)
     }
 
     /// ⭐ **QUE MOTORES conduzem esta entidade agora** — a lista, para quem precisa de a **largar**

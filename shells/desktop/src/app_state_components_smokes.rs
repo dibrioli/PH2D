@@ -26,6 +26,11 @@ pub(crate) struct ComponentsShell {
     pub(crate) sequence: SequenceShell,
     /// ⭐ O que a cena da VIGIA mede sobre si mesma — ver [`CounterWatchShell`].
     pub(crate) counter_watch: CounterWatchShell,
+    /// ⭐⭐⭐ **A PARALAXE** (plano 24, W1) — o último centro de vista já impresso pelo
+    /// `PH2D_PARALLAX_LOG`, para a linha sair **uma vez por mudança** em vez de sessenta vezes por
+    /// segundo. ⚠️ É a única coisa que esta família guarda entre quadros, e de propósito: a pose
+    /// deslocada é função PURA da vista, logo não há estado de produto para segurar aqui.
+    pub(crate) parallax_log: Option<String>,
 }
 
 /// ⭐⭐⭐ **A AUTO-CONFERÊNCIA da cena da cutscene** (TOP-20 #19) — o que ela mede sobre si mesma

@@ -237,7 +237,11 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // ⭐ **PROJECT 162→163** (2026-09-20): a MUNIÇÃO DE RESERVA — ⛔ **ZERO componentes
         // novos**, logo os três contadores do registo NÃO se mexem: é um CAMPO novo no
         // `WeaponFire` (`reserve_counter`). ⚠️ **A tripla NÃO vê este degrau** — a DÉCIMA NONA vez.
-        (163, 13, 22),
+        // ⭐ **PROJECT 163→164** (2026-09-22): a PARALAXE (plano 24, W1) — ⭐ **UM componente
+        // registado novo** (`ScrollFactor`), logo os três contadores do registo SOBEM `+1`.
+        // ⚠️ **A tripla NÃO vê este degrau** — a VIGÉSIMA vez: um componente registado viaja num
+        // `ComponentBlob`, que para ela é opaco; ela mede o `FlipDoc` e a `VecScene`.
+        (164, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

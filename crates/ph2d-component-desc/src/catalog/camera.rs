@@ -87,6 +87,14 @@ const SHAKE_SOURCE_FIELDS: &[FieldDesc] = &[
     f(4, "component.field.shake_source_fields.4", K::Scalar),
 ];
 
+/// ⭐⭐⭐ **A PARALAXE** (plano 24, W1) — **UM campo**, e é isso a wave inteira.
+///
+/// ⚠️ **`K::Vec2` e não dois `Scalar`**, e a razão é a que o [`K::Vec4`] já escreve ao lado: o
+/// componente guarda **um** `[f32; 2]`, logo descrevê-lo como dois daria dois `field_id` ao mesmo
+/// campo e um override gravado sobre metade dele não teria onde ser aplicado. *O descritor espelha
+/// a ESTRUTURA, nunca o layout do painel* — que aqui até é mesmo uma fileira com dois números.
+const SCROLL_FIELDS: &[FieldDesc] = &[f(0, "component.field.scroll_fields.0", K::Vec2)];
+
 /// Os descritores da família.
 pub const DESCS: &[ComponentDesc] = &[
     // ⚠️ **`O::ANY` nos três, e é a decisão**: uma câmera é quase sempre um objecto VAZIO — o ponto
@@ -129,6 +137,18 @@ pub const DESCS: &[ComponentDesc] = &[
         C::Camera,
         O::ANY,
         CAMERA_FIELDS,
+    ),
+    // ⭐⭐⭐ **A PARALAXE** (plano 24, W1) — *quanto do movimento do mundo este objecto guarda*.
+    // ⚠️ Ele mora na família da CÂMERA e nunca vive numa: o número inteiro dele é sobre o movimento
+    // DELA, e é ali que o artista o procura (a mesma fronteira do `ShakeEmitter`, abaixo).
+    // ⚠️ `O::ANY` porque a lei só lê o `Transform`: um fundo é uma sprite, um vector ou um objecto
+    // vazio com filhos, e nenhum deles é mais «paralaxe» que o outro.
+    D::authored(
+        "ph2d::ecs::ScrollFactor",
+        "component.scroll_factor.name",
+        C::Camera,
+        O::ANY,
+        SCROLL_FIELDS,
     ),
     // ⭐⭐⭐ **QUEM EXPLODE** (suplente #25) — e ele mora na família da CÂMERA apesar de nunca viver
     // numa: *o assunto é o abanão*, e pô-lo na família LÓGICA separaria as duas metades de uma lei

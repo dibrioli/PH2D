@@ -5,13 +5,17 @@
 //! de descritores já usa — a categoria `ComponentCategory::Camera`, com os mesmos cinco tipos.
 //! ⛔ **Curado por CORTE, nunca por uma entrada no `FILE_OVERAGE_OK`** — aquela lista está VAZIA.
 //!
+//! ⚠️ **A W1 da paralaxe acrescentou um SEXTO** (`ScrollFactor`): ele mora no objecto e não na
+//! câmera, e é desta família porque o número dele é sobre o movimento DELA — a mesma fronteira que
+//! o catálogo de descritores usa.
+//!
 //! ⚠️ **A ORDEM do registo não muda nada** (o registo é um mapa por nome, não uma escada), mas o
 //! bloco saiu **verbatim e na mesma posição** de propósito: um corte que reordene o que ele move
 //! obriga a próxima pessoa a provar que a ordem não importava.
 
 use super::ComponentRegistry;
 
-/// Os cinco tipos da família — ver o cabeçalho.
+/// Os SEIS tipos da família — ver o cabeçalho.
 pub(super) fn register_camera(reg: &mut ComponentRegistry) {
     // ⭐⭐⭐ **A CÂMERA DE JOGO** (TOP-20 #7). Os TRÊS são CONFIG e gravam-se; o centro que ela
     // ocupa agora é o `CameraRuntime`, que **não deriva `Serialize` e por isso não cabe aqui** —
@@ -32,4 +36,12 @@ pub(super) fn register_camera(reg: &mut ComponentRegistry) {
     // fixa de uma sala), e é a ausência do componente que o diz — não um campo `enabled` a mais.
     reg.register_default::<crate::CameraFollow>("ph2d::ecs::CameraFollow");
     reg.register_default::<crate::CameraLimits>("ph2d::ecs::CameraLimits");
+    // ⭐⭐⭐ **A PARALAXE** (plano 24, W1) — ela mora no OBJECTO e não na câmera, e ainda assim é
+    // desta família: o número inteiro dela quer dizer *«quanto do movimento da CÂMERA este objecto
+    // guarda»*, e é ali que o artista o vai procurar.
+    //
+    // ⛔ **Não há `ScrollFactorRuntime`**, e a ausência é a lei: a pose deslocada é função PURA da
+    // vista (`autorada + centro·(1 − k)`), logo não há um bit para guardar — um scrub e um
+    // rebobinar reconstroem-na sozinhos. *O que não tem estado não pode sobreviver errado.*
+    reg.register_default::<crate::ScrollFactor>("ph2d::ecs::ScrollFactor");
 }

@@ -130,6 +130,9 @@ pub mod particles_bridge;
 pub mod particles_inspector;
 /// ⭐⭐⭐ O smoke do EMISSOR DE PARTÍCULAS (TOP-20 #18) — ver o cabeçalho.
 pub mod particles_smoke;
+/// ⭐⭐⭐ **A PARALAXE** (plano 24, W1) — um objecto guarda uma fracção do movimento do mundo; a
+/// lei, a referência e o caso do arrasto estão no cabeçalho.
+pub mod parallax_bridge;
 /// ⭐⭐⭐ **O SEGUIDOR DE CAMINHO** (suplente #23) — onde o nome vira curva; ver o cabeçalho.
 pub mod path_follow_bridge;
 /// ⭐⭐⭐ **O SEGUIDOR DE CAMINHO** (suplente #23) — o instantâneo e o dreno da secção.

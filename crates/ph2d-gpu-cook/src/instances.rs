@@ -240,7 +240,7 @@ impl GpuCook {
     /// Grow (never shrink) the instance output to hold `count` instances —
     /// `InstanceBuffer`'s policy, plus STORAGE (the lowering writes it) and
     /// COPY_SRC (the parity gates read it back, deliberately off-path).
-    fn ensure_instance_capacity(&mut self, gpu: &GpuContext, count: u32) {
+    pub(crate) fn ensure_instance_capacity(&mut self, gpu: &GpuContext, count: u32) {
         let needs_grow = match &self.instances {
             Some(gi) => gi.capacity < count,
             None => true,

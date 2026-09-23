@@ -53,4 +53,9 @@ pub enum GpuCookError {
     /// wrote no `cp_rows`. An authoring bug in the node's own crate (its gates
     /// catch it); production refuses the frame and the CPU stays canonical.
     MalformedStreamOp(NodeTypeId),
+    /// ⭐ **Os estilos não batem com as saídas que o plano ENCENOU** (doc 119 W3) — um por
+    /// [`crate::GpuPlan::sinks`], na mesma ordem. O chamador pediu N saídas e uma não foi à placa
+    /// (ficou fronteira): cozinhar assim poria o estilo de uma saída nas linhas de outra, e a
+    /// recusa é a porta que as outras recusas desta lista já usam — a CPU desenha o quadro.
+    SinkStyleMismatch { sinks: usize, styles: usize },
 }

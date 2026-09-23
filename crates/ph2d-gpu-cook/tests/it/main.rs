@@ -29,6 +29,7 @@ mod gpu_cpu_parity_strobe;
 mod gpu_cpu_parity_table_seed;
 mod gpu_cpu_parity_time;
 mod gpu_cpu_parity_trail;
+mod gpu_cpu_parity_varias_saidas;
 mod gpu_cpu_parity_xy;
 mod gpu_grid;
 mod gpu_neighbor;

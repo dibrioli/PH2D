@@ -71,6 +71,7 @@ pub mod reduce;
 // expressions only ever met a compiler on a machine with an adapter.
 pub mod reduce_stage;
 pub mod ring;
+mod saidas;
 pub mod scan;
 pub mod shape;
 pub mod stream;
@@ -145,12 +146,45 @@ impl GpuCook {
         clock: CookClock,
         default_uv_rect: [f32; 4],
         default_size: [f32; 2],
+        style: ph2d_render::SinkStyle,
+    ) -> Result<u32, GpuCookError> {
+        self.cook_many(
+            gpu,
+            graph,
+            ops,
+            kernels,
+            plan,
+            boundary_streams,
+            clock,
+            default_uv_rect,
+            default_size,
+            std::slice::from_ref(&style),
+        )
+    }
+
+    /// ⭐⭐⭐ [`Self::cook`] com **várias saídas** (doc 119 W3): um estilo por [`GpuPlan::sinks`], na
+    /// mesma ordem, e as saídas baixadas uma a seguir à outra no MESMO buffer. ⚠️ Com uma saída
+    /// ela É o [`Self::cook`] — aquele delega aqui —, o que põe todos os gates de paridade desta
+    /// crate a guardar o caso de uma saída.
+    #[allow(clippy::too_many_arguments)] // the cook seam: graph + resolvers + plan + clock + defaults
+    pub fn cook_many(
+        &mut self,
+        gpu: &GpuContext,
+        graph: &Graph,
+        ops: &dyn OpResolver,
+        kernels: &dyn KernelResolver,
+        plan: &GpuPlan,
+        boundary_streams: &[(NodeId, &Stream)],
+        clock: CookClock,
+        default_uv_rect: [f32; 4],
+        default_size: [f32; 2],
+        // ⭐⭐ **O ESTILO DE CADA SAÍDA**, um por [`GpuPlan::sinks`] e na mesma ordem (doc 119 W3).
         // The sink's STYLE — lowering decisions the HOST owns, like the two
         // defaults above. It comes from the one door, `sink_style`; the why is
         // written there (this crate keeps `ph2d-eval-motion` a DEV dep on
         // purpose, so it cannot ask that door itself — daí o tipo viver no
         // `ph2d-render`, que é de quem os quatro campos são).
-        style: ph2d_render::SinkStyle,
+        styles: &[ph2d_render::SinkStyle],
     ) -> Result<u32, GpuCookError> {
         let CookClock { playhead, tick } = clock;
         let want: BTreeSet<NodeId> = plan.boundaries.iter().map(|(n, _)| *n).collect();
@@ -596,58 +630,19 @@ impl GpuCook {
             self.debug_streams = streams.clone();
         }
 
-        // The sink is the walk's post-order root, so it is the last stage.
-        let sink_stream = plan
-            .stages
-            .last()
-            .and_then(|s| streams.get(&s.node))
-            .cloned()
-            .unwrap_or_default();
-        let count = sink_stream.count;
-        // The texture-run partition, from the CPU boundary — no readback (see
-        // [`tex_runs`]). Empty for a non-object graph.
-        self.tex_runs.clear();
-        // ⚠️ A mistura vem do ESTILO, que e' o que a porta unica leu do sink — a
-        // mesma que o lowering embalou nas instancias. Ver [`GpuTexRun::blend`].
-        tex_runs::texture_runs_from_boundary(
-            boundary_streams,
-            count,
-            style.blend,
-            style.sampling,
-            &mut self.tex_runs,
-        );
-        // The instance buffer is the one binding that can outgrow the device's
-        // storage-binding limit below the id ceiling (184 B × count; every
-        // stream column caps at 16 B × ID_WRAP ≈ 268 MB). Refuse BEFORE the
-        // bind group turns it into a validation panic.
-        let instance_bytes =
-            u64::from(count) * std::mem::size_of::<ph2d_render::RenderInstance>() as u64;
-        // wgpu 29: `max_storage_buffer_binding_size` is already `u64`.
-        let binding_limit = gpu.device.limits().max_storage_buffer_binding_size;
-        if instance_bytes > binding_limit {
-            return Err(GpuCookError::BindingTooLarge {
-                bytes: instance_bytes,
-                limit: binding_limit,
-            });
-        }
-        // ⚠️ `0` é o deslocamento: UM sink escreve desde o princípio do buffer, e este é o
-        // caminho byte-idêntico ao de sempre. O `false` só é alcançável com um deslocamento > 0
-        // (ver [`GpuCook::encode_lowering`]), logo aqui ele não pode acontecer — e o `debug_assert`
-        // diz isso em vez de o deixar implícito.
-        let escreveu = self.encode_lowering(
+        // ⭐⭐⭐ **As saídas viram instâncias** (doc 119 W3) — uma a seguir à outra no MESMO buffer,
+        // com a partição a cobri-lo inteiro. Com uma saída é o caminho de sempre, byte a byte; a
+        // lei e as cercas vivem em [`saidas`].
+        let count = self.baixar_as_saidas(
             gpu,
             &mut encoder,
-            plan.stages.len(),
-            &sink_stream,
-            0,
+            plan,
+            &streams,
+            boundary_streams,
             default_uv_rect,
             default_size,
-            style,
-        );
-        debug_assert!(
-            escreveu,
-            "um sink so' escreve no deslocamento 0, onde o lowering nunca recusa"
-        );
+            styles,
+        )?;
         gpu.queue.submit(Some(encoder.finish()));
 
         // D1 — the ping-pong: hold the `Arc`s of every node a `pre` edge reads,

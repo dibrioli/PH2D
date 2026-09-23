@@ -119,6 +119,29 @@ impl GpuPlan {
             .any(|&sink| self.lineage_changes_count(sink, kernels))
     }
 
+    /// ⭐⭐ **A fronteira em que a linhagem da porta 0 de UMA saída acaba** (doc 119 W3) — o fluxo
+    /// de objectos que ESTA saída desenha, e portanto a única fronteira cuja coluna `texture_id`
+    /// se alinha com as linhas dela. `None` quando a linhagem acaba num gerador, num `pre` ou numa
+    /// porta por ligar (a saída é toda de átlas).
+    ///
+    /// ⚠️ Com uma saída a partição procura a fronteira pelo COMPRIMENTO entre todas (a lei de
+    /// sempre); com várias, duas fronteiras do mesmo comprimento seriam indistinguíveis — e é aí
+    /// que esta pergunta, que é a mesma caminhada da cerca do sufixo, dá o endereço certo.
+    pub fn lineage_boundary(&self, sink: NodeId) -> Option<NodeId> {
+        let stage_of = |node: NodeId| self.stages.iter().find(|s| s.node == node);
+        let mut budget = self.stages.len() + 1;
+        let mut cur = stage_of(sink);
+        while let Some(s) = cur {
+            budget = budget.checked_sub(1)?;
+            cur = match s.inputs.first() {
+                Some(GpuSource::Stage(node)) => stage_of(*node),
+                Some(GpuSource::Boundary(node, _)) => return Some(*node),
+                _ => None,
+            };
+        }
+        None
+    }
+
     /// A linhagem da porta 0 de UMA saída — a lei de [`Self::suffix_changes_count`].
     fn lineage_changes_count(&self, sink: NodeId, kernels: &dyn KernelResolver) -> bool {
         let stage_of = |node: NodeId| self.stages.iter().find(|s| s.node == node);

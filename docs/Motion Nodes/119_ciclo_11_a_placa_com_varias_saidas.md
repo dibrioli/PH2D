@@ -87,3 +87,37 @@ pergunta a cada saída, pelas duas ordens.
 **Mutação 5 de 5 a sangrar** — ⚠️ a 5.ª (re-planear o recuo só com a primeira saída)
 **sobreviveu primeiro**: o gate do recuo afirmava só que o laço saía, e ficava verde com a saída B
 apagada do plano. Hoje afirma as duas saídas e as duas fronteiras.
+
+## §5 — W3, metade da PLACA (2026-09-23): `cook_many`
+
+`GpuCook::cook_many(.., styles)` — um estilo por `GpuPlan::sinks`, na mesma ordem — baixa as
+saídas **uma a seguir à outra no MESMO buffer**; o `cook` de sempre delega nele com um estilo só
+(⇒ os gates de paridade da crate guardam o caso de uma saída, e correm verdes: 301 + 50, com a
+única vermelha a ser a pré-existente `value_slope`, `1,05e-4`, a mesma de sempre). A baixa saiu do
+`lib.rs` (a 6 linhas do tecto) para `saidas.rs`.
+
+- ⛔⛔ **A reserva do total vem ANTES da 1.ª escrita** — crescer o buffer substitui-o e apagaria as
+  saídas já escritas, em silêncio.
+- ⚠️ **O deslocamento de cada saída é o que FOI escrito**, não a soma das contagens: a lei do dono
+  (`so_com_forma`) cala uma saída sem forma, e somar a contagem dela deixaria lixo entre as vizinhas.
+- ⚠️ **Uma vaga de uniform por baixa**: a 1.ª na de sempre, as seguintes para lá da faixa das
+  compactações — duas escritas na mesma vaga chegam ambas à última (`write_buffer` é à submissão).
+- ⭐ **A partição cobre o buffer inteiro:** se nenhuma saída pede um run fica vazia (o caminho de
+  sempre); se uma pede, todas passam a ter — a de partição vazia ganha o run de átlas em `Mix`,
+  senão o ramo dos runs do desenho a saltava inteira.
+- ⭐ **Cada saída lê as texturas da SUA fronteira** (`GpuPlan::lineage_boundary`, a mesma caminhada
+  da porta 0 da cerca do sufixo): com uma saída a lei de sempre (a fronteira acha-se pelo
+  comprimento), com várias duas fronteiras do mesmo comprimento seriam indistinguíveis.
+- `GpuCookError::SinkStyleMismatch` (append-only): estilos que não batem com as saídas encenadas.
+
+**Gates** (`gpu_cpu_parity_varias_saidas.rs`, adaptador real): duas saídas (a 2.ª em `Add`) dão o
+buffer da CPU linha a linha e a partição cobre as duas faixas · uma saída calada no meio não deixa
+buraco · cada saída lê as texturas da sua fronteira (duas fronteiras do MESMO comprimento).
+Mais os dois de unidade da junção das partições. **Mutação 5 de 5 a sangrar** — ⚠️ a 4.ª redacção
+da mutação do deslocamento mexia na partição e não no deslocamento, e «sobreviveu»: *uma mutação
+que não toca a propriedade lê-se como um gate cego*; reescrita, sangra.
+
+⏳ **Por ligar no produto** (a ponte ainda recusa mais de uma saída) — e antes de a ligar, o W4:
+**a rota da CPU ordena as linhas do Motion por `(sub_order, texture_id, sampling)` de forma
+estável, e a placa desenha pela ordem do buffer.** Com saídas de texturas ou filtros diferentes, a
+sobreposição mudaria de rota para rota.

@@ -35,7 +35,7 @@ fn o_nivel_zero_e_a_cor_por_vertice_ao_bit() {
     ];
     let t = Tinta::do_plano_por_vertice(&cores, faces_de(&f));
     assert_eq!(t.nivel(), 0);
-    assert_eq!(t.lado(), 1);
+    assert_eq!(t.lado_uniforme().expect("a fixtura e' uniforme"), 1);
     assert_eq!(t.amostras(), &cores[..], "o plano É o vector de entrada");
     assert_eq!(t.plano_por_vertice(), &cores[..]);
     for (v, c) in cores.iter().enumerate() {
@@ -60,7 +60,7 @@ fn a_disposicao_e_uma_bijeccao_em_todos_os_niveis() {
     let (_, f) = tetra();
     for nivel in 0..=4u8 {
         let t = Tinta::nova(4, faces_de(&f), nivel);
-        let l = t.lado();
+        let l = t.lado_uniforme().expect("a fixtura e' uniforme");
         let n = t.amostras().len();
         let mut visto = vec![false; n];
         for (fi, tri) in f.iter().enumerate() {
@@ -105,7 +105,10 @@ fn o_nivel_e_cortado_no_tecto() {
     let (_, f) = tetra();
     let t = Tinta::nova(4, faces_de(&f), 9);
     assert_eq!(t.nivel(), NIVEL_MAX);
-    assert_eq!(t.lado(), 1 << NIVEL_MAX);
+    assert_eq!(
+        t.lado_uniforme().expect("a fixtura e' uniforme"),
+        1 << NIVEL_MAX
+    );
 }
 
 /// ⚠️ **Um QUAD e um TRIÂNGULO convivem na mesma malha**, e o interior deles
@@ -115,7 +118,7 @@ fn a_malha_mista_conta_cada_face_pela_forma_dela() {
     let faces: Vec<Vec<u32>> = vec![vec![0, 1, 2], vec![1, 3, 4, 2]];
     let it = || faces.iter().map(|f| &f[..]);
     let t = Tinta::nova(5, it(), 1);
-    let l = t.lado();
+    let l = t.lado_uniforme().expect("a fixtura e' uniforme");
     assert_eq!(l, 2, "nível 1 é lado 2 — o `k` não é o `lado`");
     assert_eq!(
         interior_por_face(3, l),
@@ -211,7 +214,7 @@ fn semear_preserva_a_cor_dos_vertices_tambem_num_quad() {
         // ⭐ E o CENTRO é a média dos quatro — a bilinear em `(½, ½)`. Um
         // `c[0]` ali passa no teste dos cantos e falha aqui.
         if nivel >= 1 {
-            let l = t.lado();
+            let l = t.lado_uniforme().expect("a fixtura e' uniforme");
             let centro = t.indice_quad(0, &faces[0], l / 2, l / 2) as usize;
             let m = t.amostras()[centro];
             for e in 0..3 {

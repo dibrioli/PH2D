@@ -24,6 +24,22 @@
 //! nenhuma a escrever. *Uma família nova cujo caso base é o produto actual
 //! entra sem um degrau de formato.*
 //!
+//! # ⭐⭐⭐⭐ E desde 23/09 o nível é POR FACE (a P2)
+//!
+//! Com um nível só para a peça, uma face grande e uma pequena recebem o mesmo
+//! número de amostras ⇒ a densidade por área dispersa `3,1×` a `18,3×` nas
+//! peças do dono (medido — ver [`niveis_por_area`]). Hoje cada face tem o
+//! nível dela e **cada aresta leva o MÁXIMO dos dois vizinhos**, o que mantém
+//! a fronteira partilhada: a face grossa lê um **subconjunto EXACTO** das
+//! amostras da aresta fina, sem arredondar e com as duas pontas preservadas.
+//!
+//! ⚠️ **Um plano UNIFORME é o mesmo de antes, ao bit** — os dois prefixos
+//! voltam a ser produtos (`id × (lado − 1)`, `f × interior(lado)`), que é a
+//! aritmética que o shader ainda faz; é isso que deixa o caminho da placa
+//! correcto sem uma linha de WGSL nova. ⛔ E quem ainda assume um lado só
+//! **recusa** um plano graduado em voz alta em vez de adivinhar: o assado por
+//! [`assar::Recusa::Graduado`], o device por [`Tinta::lado_uniforme`].
+//!
 //! ⚠️ **A escada é de potências de dois porque METADE tem de ser exacta:** as
 //! amostras estão em `i/L`, e ficar com as de `i` par dá exactamente `i/(L/2)`,
 //! **com as duas pontas preservadas**. Uma escada `2^r − 1` (a que o paper usa
@@ -64,6 +80,9 @@ mod enderecos_tests;
 #[cfg(test)]
 #[path = "lib_tests.rs"]
 mod lib_tests;
+#[cfg(test)]
+#[path = "p2_tests.rs"]
+mod p2_tests;
 #[cfg(test)]
 #[path = "topo_tests.rs"]
 mod topo_tests;
@@ -115,6 +134,100 @@ pub struct Tinta {
     amostras: Vec<[f32; 3]>,
 }
 
+/// ⭐⭐⭐⭐ **O NÍVEL DE CADA FACE PARA UMA DENSIDADE ALVO** — a lei da P2.
+///
+/// `areas[f]` é a área da face `f` no mundo, e `alvo` é a densidade LINEAR
+/// pedida (amostras por unidade de comprimento). O nível é
+/// `round(log2(alvo · √área))`, cortado na escada.
+///
+/// ⚠️⚠️ **O CHÃO desta lei é `2×` e não `√2`, e a medição desmente o handoff de
+/// 21/09.** Ele escreveu *«com o `R` por face quantizado a potências de dois o
+/// pior caso é `√2 = 1,41×`»* — ⛔ **as duas grandezas não são a mesma**: o `√2`
+/// é o desvio ao alvo de UMA face (meia escada) e a dispersão é uma razão entre
+/// DUAS, logo `√2 × √2 = 2`. Medido pelo [`examples/mede_o_r_por_face`] sobre o
+/// corpus do dono, `p99/p1` da densidade linear:
+///
+/// | peça | faces | hoje (uniforme) | com esta lei |
+/// |---|---:|---:|---:|
+/// | `nossa_com_calota` | 21 914 | `3,12×` | **`1,90×`** |
+/// | `Sculpt_Blender` | 8 291 | `4,88×` | **`1,97×`** |
+/// | `_base_sculpt` | 18 432 | `6,74×` | **`1,95×`** |
+/// | `sculpt_antes` | 13 824 | **`18,26×`** | **`1,92×`** |
+///
+/// ⚠️ **A única leitura acima de `2` é o CHÃO da escada a morder**: a `k` baixo
+/// a `sculpt_antes` lê `2,37×` porque as faces mais pequenas pedem um nível
+/// NEGATIVO e o corte em `0` deixa-as mais finas do que o alvo. *Uma face mais
+/// pequena que `1/alvo` não tem como ser mais grossa do que uma amostra por
+/// canto* — e isso é o fim da escada, não um defeito da lei.
+///
+/// `tecto_de_salto` é a cerca entre VIZINHAS: a face grossa lê um subconjunto
+/// da aresta fina, logo um salto grande é detalhe que o lado grosso não
+/// consegue mostrar. ⭐ **Medida, ela é quase inerte e quase de graça:** no
+/// corpus do dono o salto máximo já é `2` sem cerca nenhuma (e só em `1`–`6`
+/// arestas de `16 582`–`43 828`), e pô-la a `1` custa entre `+0` e `+360`
+/// amostras num plano de `1,4 M`. ⇒ *ela fica como GUARDA, e o gate dela precisa
+/// de uma fixtura construída para isso — o corpus não contém o fenómeno.*
+#[must_use]
+pub fn niveis_por_area(topo: &Topologia, areas: &[f32], alvo: f32, tecto_de_salto: u8) -> Vec<u8> {
+    let mut k: Vec<u8> = areas
+        .iter()
+        .map(|a| {
+            // ⚠️ Uma face DEGENERADA (área zero, e elas existem — o `collapse`
+            //    desta casa deixa-as) pede `log2(0) = −∞`: o corte apanha-a, e
+            //    o valor conservador é o nível mais grosso.
+            let ideal = (alvo * a.max(0.0).sqrt()).log2();
+            if ideal.is_finite() {
+                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                {
+                    ideal.round().clamp(0.0, f32::from(NIVEL_MAX)) as u8
+                }
+            } else {
+                0
+            }
+        })
+        .collect();
+    // ⛔ **Sem `resize`, de propósito:** uma lista de áreas mais curta que a
+    //    malha é o chamador a passar a peça errada, e a recusa é da
+    //    [`Topologia::regraduada`], que compara os comprimentos. *Preencher com
+    //    um valor de omissão aqui transformaria essa recusa num plano errado.*
+    if k.len() != topo.faces() {
+        return k;
+    }
+
+    // ⚠️ A adjacência ARESTA → faces é construída UMA vez: escrita dentro do
+    //    laço ela é `O(F²)`, e numa peça de `20 k` faces isso é uma exportação
+    //    que nunca acaba.
+    let mut por_aresta: Vec<Vec<u32>> = vec![Vec::new(); topo.arestas()];
+    for f in 0..topo.faces() {
+        for s in 0..topo.cantos_de(f) {
+            let (id, _) = topo.aresta(f, s);
+            por_aresta[id as usize].push(f as u32);
+        }
+    }
+
+    // ⭐ A cerca SOBE a vizinha grossa e nunca desce a fina: descer apagaria
+    //   detalhe que o artista pediu. Ela corre até ao PONTO FIXO — subir uma
+    //   vizinha pode obrigar a seguinte — e ele existe porque o nível só sobe e
+    //   está preso em [`NIVEL_MAX`].
+    loop {
+        let mut mexeu = false;
+        for vizinhas in &por_aresta {
+            let Some(hi) = vizinhas.iter().map(|&g| k[g as usize]).max() else {
+                continue;
+            };
+            for &g in vizinhas {
+                if hi - k[g as usize] > tecto_de_salto {
+                    k[g as usize] = hi - tecto_de_salto;
+                    mexeu = true;
+                }
+            }
+        }
+        if !mexeu {
+            return k;
+        }
+    }
+}
+
 impl Tinta {
     /// Uma tinta em branco sobre a topologia dada.
     ///
@@ -125,14 +238,39 @@ impl Tinta {
     #[must_use]
     pub fn nova<'a>(verts: usize, faces: impl Iterator<Item = &'a [u32]>, nivel: u8) -> Self {
         let nivel = nivel.min(NIVEL_MAX);
-        let lado = 1u32 << nivel;
-        let topo = Topologia::nova(verts, faces, lado);
-        let n = total(&topo, lado);
+        let topo = Topologia::nova(verts, faces, nivel);
+        let n = total(&topo);
         Self {
             nivel,
             topo,
             amostras: vec![BRANCO; n],
         }
+    }
+
+    /// ⭐⭐⭐⭐ **Uma tinta em branco com um nível POR FACE** — a P2.
+    ///
+    /// ⛔ Ela **RECUSA** (`None`) uma lista que não descreve esta malha, pela
+    /// mesma razão da [`Topologia::regraduada`]: *um plano com o tamanho errado
+    /// instalado numa malha é tinta no sítio errado*.
+    ///
+    /// ⚠️ **O `nivel` que ela guarda é o MAIS FINO do plano**, e isso é uma
+    /// definição e não um acidente: o campo é *o degrau que o artista pediu*, e
+    /// num plano graduado o pedido é o tecto — as faces mais pequenas recebem
+    /// menos porque a ÁREA delas não justifica mais, nunca porque alguém baixou
+    /// o pedido.
+    #[must_use]
+    pub fn graduada<'a>(
+        verts: usize,
+        faces: impl Iterator<Item = &'a [u32]>,
+        niveis: &[u8],
+    ) -> Option<Self> {
+        let topo = Topologia::nova(verts, faces, 0).regraduada(niveis)?;
+        let n = total(&topo);
+        Some(Self {
+            nivel: topo.nivel_mais_fino(),
+            topo,
+            amostras: vec![BRANCO; n],
+        })
     }
 
     /// ⭐ **A tinta do nível ZERO a partir do plano por-vértice que já existe.**
@@ -144,7 +282,7 @@ impl Tinta {
         cores: &[[f32; 3]],
         faces: impl Iterator<Item = &'a [u32]>,
     ) -> Self {
-        let topo = Topologia::nova(cores.len(), faces, 1);
+        let topo = Topologia::nova(cores.len(), faces, 0);
         Self {
             nivel: 0,
             topo,
@@ -171,8 +309,8 @@ impl Tinta {
         nivel: u8,
     ) -> Self {
         let mut t = Self::nova(cores.len(), faces.clone(), nivel);
-        let l = t.lado();
         for (fi, f) in faces.enumerate() {
+            let l = t.lado_da_face(fi);
             let n = topo::cantos(f);
             let c: Vec<[f32; 3]> = f[..n].iter().map(|&v| cores[v as usize]).collect();
             if n == 3 {
@@ -184,7 +322,7 @@ impl Tinta {
                             j as f32 / l as f32,
                             k as f32 / l as f32,
                         ];
-                        let idx = indice(&t.topo, l, fi, sitio_tri(l, i, j, k), &f[..n]) as usize;
+                        let idx = indice(&t.topo, fi, sitio_tri(l, i, j, k), &f[..n]) as usize;
                         t.amostras[idx] = mistura(&c, &w);
                     }
                 }
@@ -193,7 +331,7 @@ impl Tinta {
                     for i in 0..=l {
                         let (u, v) = (i as f32 / l as f32, j as f32 / l as f32);
                         let w = [(1.0 - u) * (1.0 - v), u * (1.0 - v), u * v, (1.0 - u) * v];
-                        let idx = indice(&t.topo, l, fi, sitio_quad(l, i, j), &f[..n]) as usize;
+                        let idx = indice(&t.topo, fi, sitio_quad(l, i, j), &f[..n]) as usize;
                         t.amostras[idx] = mistura(&c, &w);
                     }
                 }
@@ -218,10 +356,24 @@ impl Tinta {
         self.nivel
     }
 
-    /// Intervalos por aresta — `2^k`.
+    /// Intervalos por aresta da face `f` — `2^k` do nível DELA.
+    ///
+    /// ⭐ Ela substituiu um `lado()` da PEÇA: com a P2 o lado é propriedade da
+    /// FACE, e um `lado()` que devolvesse o de uma qualquer seria a resposta
+    /// errada com a confiança da certa.
     #[must_use]
-    pub fn lado(&self) -> u32 {
-        1u32 << self.nivel
+    pub fn lado_da_face(&self, f: usize) -> u32 {
+        self.topo.lado_de(f)
+    }
+
+    /// ⭐ **O lado da peça inteira, se ele for um só.**
+    ///
+    /// ⛔ Ela existe para os consumidores que **ainda** assumem um lado — o
+    /// caminho da placa é o principal — poderem RECUSAR um plano graduado em
+    /// vez de desenharem tinta no sítio errado.
+    #[must_use]
+    pub fn lado_uniforme(&self) -> Option<u32> {
+        self.topo.nivel_uniforme().map(|k| 1u32 << k)
     }
 
     /// A topologia derivada.
@@ -263,15 +415,15 @@ impl Tinta {
     /// `cantos` são os índices de vértice da face, na ordem do percurso.
     #[must_use]
     pub fn indice_tri(&self, face: usize, cantos: &[u32], i: u32, j: u32, k: u32) -> u32 {
-        let l = self.lado();
-        indice(&self.topo, l, face, sitio_tri(l, i, j, k), cantos)
+        let l = self.lado_da_face(face);
+        indice(&self.topo, face, sitio_tri(l, i, j, k), cantos)
     }
 
     /// O índice global de uma amostra da retícula de um QUAD.
     #[must_use]
     pub fn indice_quad(&self, face: usize, cantos: &[u32], i: u32, j: u32) -> u32 {
-        let l = self.lado();
-        indice(&self.topo, l, face, sitio_quad(l, i, j), cantos)
+        let l = self.lado_da_face(face);
+        indice(&self.topo, face, sitio_quad(l, i, j), cantos)
     }
 }
 

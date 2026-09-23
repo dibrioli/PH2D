@@ -1,4 +1,4 @@
-//! ⭐⭐⭐⭐ **O CENSO DA FIAÇÃO DA TINTA FINA** — os VINTE E UM elos que as curas
+//! ⭐⭐⭐⭐ **O CENSO DA FIAÇÃO DA TINTA FINA** — os VINTE E CINCO elos que as curas
 //! desta jornada precisam de ter LIGADOS: os três consumidores da porta
 //! [`crate::tinta_da_peca::o_gesto_muda_a_topologia`], a metade da porta que lê
 //! a tinta **EMPRESTADA**, o `close_stroke` do gesto que **erra** a peça, as
@@ -383,6 +383,25 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
             .join("\n"),
             UNDO,
         ),
+        // ⭐⭐⭐⭐ **OS DOIS DA P2 — o `R` por FACE.** Desde 23/09 a retícula
+        // deixou de ter um lado só, e as duas leis que isso obriga não têm
+        // prova de comportamento alcançável: a do pincel porque nenhum gesto
+        // produz hoje um plano graduado, e a do device porque ela vive atrás
+        // de um adaptador. *A lei certa numa porta que ninguém chama lê-se
+        // exactamente como a lei ausente.*
+        (
+            "tinta_fina.rs",
+            "P1 o pincel volta a ler UM lado para a peça inteira",
+            "                f32::from(u16::try_from(self.tinta.lado_da_face(fi as usize)).unwrap_or(u16::MAX));"
+                .to_string(),
+            TINTA_FINA,
+        ),
+        (
+            "tinta_gpu.rs",
+            "P2 o device volta a assumir um lado e desenha tinta no sítio errado",
+            "    let Some(lado) = t.lado_uniforme() else {".to_string(),
+            DEVICE,
+        ),
     ]
 }
 
@@ -393,12 +412,12 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
 /// busca falhar em voz alta — mas um que devolvesse **tudo** faria a prosa
 /// satisfazer a agulha, e é isso que o [`so_a_prosa`] recusa.
 #[test]
-fn a_cura_da_tinta_fina_esta_ligada_nos_vinte_e_tres_sitios() {
+fn a_cura_da_tinta_fina_esta_ligada_nos_vinte_e_cinco_sitios() {
     let elos = elos();
     assert_eq!(
         elos.len(),
-        23,
-        "a população deste censo são os vinte e três elos"
+        25,
+        "a população deste censo são os vinte e cinco elos"
     );
 
     for (ficheiro, mutacao, agulha, fonte) in elos {

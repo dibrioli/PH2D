@@ -211,11 +211,38 @@ fn a_recusa_nomeia_o_que_pediu_e_o_que_ha() {
         //   alguém dizer o que ela significa aqui.
         Recusa::SemFaces => panic!("a peça tem faces"),
         Recusa::NaoDescreve { .. } => panic!("o plano descreve esta malha"),
+        Recusa::Graduado { .. } => panic!("esta fixtura é uniforme"),
     }
     let vazia = Tinta::nova(0, std::iter::empty(), 0);
     assert_eq!(
         assar(&vazia, std::iter::empty(), 4096),
         Err(Recusa::SemFaces)
+    );
+}
+
+/// ⛔⛔ **O ASSADO RECUSA um plano GRADUADO, e diz quantos níveis viu.**
+///
+/// ⭐ Ela é a FRONTEIRA da P2 escrita em voz alta — ver [`Recusa::Graduado`].
+/// ⚠️ **O CONTROLO está dentro:** o MESMO plano com um nível só assa, senão
+/// este gate passaria por a fixtura estar partida noutra coisa qualquer.
+#[test]
+fn o_assado_recusa_um_plano_graduado_e_nomeia_os_niveis() {
+    let faces: Vec<Vec<u32>> = vec![vec![0, 1, 2], vec![1, 3, 2]];
+    let it = || faces.iter().map(Vec::as_slice);
+
+    let graduado = Tinta::graduada(4, it(), &[1, 3]).expect("dois níveis");
+    let e = assar(&graduado, it(), 4096).expect_err("um plano graduado não assa");
+    assert_eq!(e, Recusa::Graduado { niveis: 2 });
+    assert!(
+        e.to_string().contains('2'),
+        "a recusa NOMEIA quantos níveis viu: {e}"
+    );
+
+    // ⚠️ CONTROLO: o mesmo plano com um nível só assa.
+    let uniforme = Tinta::graduada(4, it(), &[3, 3]).expect("um nível");
+    assert!(
+        assar(&uniforme, it(), 4096).is_ok(),
+        "o controlo tem de assar"
     );
 }
 
@@ -228,7 +255,11 @@ fn a_recusa_nomeia_o_que_pediu_e_o_que_ha() {
 #[test]
 fn o_nivel_base_leva_a_cor_por_vertice() {
     let (t, faces) = tinta(0);
-    assert_eq!(t.lado(), 1, "o nível base tem lado 1");
+    assert_eq!(
+        t.lado_uniforme().expect("a fixtura e' uniforme"),
+        1,
+        "o nível base tem lado 1"
+    );
     let a = assar(&t, faces.iter().map(Vec::as_slice), 4096).expect("assa");
     for (f, face) in faces.iter().enumerate() {
         for (c, &vert) in face.iter().enumerate().take(cantos(face)) {

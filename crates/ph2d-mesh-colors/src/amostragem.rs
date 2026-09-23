@@ -142,12 +142,12 @@ impl Tinta {
         cantos: &[u32],
         mut f: impl FnMut(u32, (u32, u32, u32)),
     ) {
-        let l = self.lado();
+        let l = self.lado_da_face(face);
         for i in 0..=l {
             for j in 0..=(l - i) {
                 let k = l - i - j;
                 f(
-                    indice(self.topologia(), l, face, sitio_tri(l, i, j, k), cantos),
+                    indice(self.topologia(), face, sitio_tri(l, i, j, k), cantos),
                     (i, j, k),
                 );
             }
@@ -161,11 +161,11 @@ impl Tinta {
         cantos: &[u32],
         mut f: impl FnMut(u32, (u32, u32)),
     ) {
-        let l = self.lado();
+        let l = self.lado_da_face(face);
         for j in 0..=l {
             for i in 0..=l {
                 f(
-                    indice(self.topologia(), l, face, sitio_quad(l, i, j), cantos),
+                    indice(self.topologia(), face, sitio_quad(l, i, j), cantos),
                     (i, j),
                 );
             }
@@ -180,12 +180,11 @@ impl Tinta {
     /// redacção da mesma aritmética.
     #[must_use]
     pub fn cor_tri(&self, face: usize, cantos: &[u32], bar: [f32; 3]) -> [f32; 3] {
-        let l = self.lado();
+        let l = self.lado_da_face(face);
         let mut out = [0.0f32; 3];
         for (ijk, peso) in leitura_tri(l, bar) {
             let idx = indice(
                 self.topologia(),
-                l,
                 face,
                 sitio_tri(l, ijk.0, ijk.1, ijk.2),
                 cantos,
@@ -202,10 +201,10 @@ impl Tinta {
     /// e o outro dono da lei que o gémeo em WGSL confere.
     #[must_use]
     pub fn cor_quad(&self, face: usize, cantos: &[u32], uv: [f32; 2]) -> [f32; 3] {
-        let l = self.lado();
+        let l = self.lado_da_face(face);
         let mut out = [0.0f32; 3];
         for (ij, peso) in leitura_quad(l, uv) {
-            let idx = indice(self.topologia(), l, face, sitio_quad(l, ij.0, ij.1), cantos) as usize;
+            let idx = indice(self.topologia(), face, sitio_quad(l, ij.0, ij.1), cantos) as usize;
             let c = self.amostras()[idx];
             for e in 0..3 {
                 out[e] += c[e] * peso;
@@ -217,6 +216,6 @@ impl Tinta {
     /// O sítio de um ponto da retícula de `face`, resolvido em índice global.
     #[must_use]
     pub fn indice_de(&self, face: usize, cantos: &[u32], sitio: Sitio) -> u32 {
-        indice(self.topologia(), self.lado(), face, sitio, cantos)
+        indice(self.topologia(), face, sitio, cantos)
     }
 }

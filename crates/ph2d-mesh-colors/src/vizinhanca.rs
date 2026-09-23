@@ -59,7 +59,7 @@ impl Tinta {
     ///
     /// `f(a, b)` recebe os índices GLOBAIS das duas amostras.
     pub fn para_cada_par_tri(&self, face: usize, cantos: &[u32], mut f: impl FnMut(u32, u32)) {
-        let l = self.lado();
+        let l = self.lado_da_face(face);
         let idx = |i: u32, j: u32, k: u32| self.indice_de(face, cantos, sitio_tri(l, i, j, k));
         for i in 0..l {
             for j in 0..(l - i) {
@@ -84,7 +84,7 @@ impl Tinta {
 
     /// A irmã para QUADS — os pares horizontais e verticais da retícula.
     pub fn para_cada_par_quad(&self, face: usize, cantos: &[u32], mut f: impl FnMut(u32, u32)) {
-        let l = self.lado();
+        let l = self.lado_da_face(face);
         let idx = |i: u32, j: u32| self.indice_de(face, cantos, sitio_quad(l, i, j));
         let mut emite = |p: (u32, u32), q: (u32, u32), me: &Self| {
             if let Some(s) = lado_comum(lados_quad(l, p), lados_quad(l, q))

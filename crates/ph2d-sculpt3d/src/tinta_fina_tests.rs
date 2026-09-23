@@ -215,7 +215,7 @@ fn uma_amostra_nao_e_pintada_duas_vezes() {
     // A cor de um vértice pintado não pode estar MAIS perto do pincel do que
     // a amostra vizinha que está mais perto do centro do dab.
     let centro = [0.0, 0.0, 1.0];
-    let lado = t.lado();
+    let lado = t.lado_uniforme().expect("a fixtura e' uniforme");
     let mut pior: f32 = 0.0;
     for (f, face) in mesh.faces().iter().enumerate() {
         let cantos = face.verts();
@@ -352,7 +352,7 @@ fn diag_a_escada_da_tinta() {
             .fold(0.0, f32::max);
         println!(
             "{nivel:>6} {:>10} {:>12} {e:>10.5}",
-            t.lado(),
+            t.lado_uniforme().expect("a fixtura e' uniforme"),
             t.amostras().len()
         );
     }

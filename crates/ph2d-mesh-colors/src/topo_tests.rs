@@ -35,7 +35,7 @@ fn it(f: &[Vec<u32>]) -> impl Iterator<Item = &[u32]> {
 #[test]
 fn as_faces_de_que_o_plano_nasceu_sao_aceites_e_o_registo_fica_cheio() {
     let q = quads();
-    let topo = Topologia::nova(6, it(&q), 4);
+    let topo = Topologia::nova(6, it(&q), 2);
     let mut pay = Vec::new();
     assert!(
         topo.payload(it(&q), &mut pay),
@@ -70,7 +70,7 @@ fn as_faces_de_que_o_plano_nasceu_sao_aceites_e_o_registo_fica_cheio() {
 fn uma_malha_com_mais_faces_e_os_mesmos_cantos_e_recusada_e_nao_estoura() {
     let t = triangulados();
     let base: Vec<Vec<u32>> = vec![t[0].clone(), t[1].clone()];
-    let topo = Topologia::nova(6, it(&base), 4);
+    let topo = Topologia::nova(6, it(&base), 2);
     assert_eq!(topo.faces(), 2, "o CONTROLO da fixtura");
     let mut pay = Vec::new();
     assert!(
@@ -94,7 +94,7 @@ fn uma_malha_com_mais_faces_e_os_mesmos_cantos_e_recusada_e_nao_estoura() {
 #[test]
 fn o_panico_do_dono_reproduzido_uma_peca_de_quads_triangulada() {
     let (q, t) = (quads(), triangulados());
-    let topo = Topologia::nova(6, it(&q), 4);
+    let topo = Topologia::nova(6, it(&q), 2);
     let mut pay = vec![7u32; 3];
     assert!(
         !topo.payload(it(&t), &mut pay),
@@ -117,7 +117,7 @@ fn o_panico_do_dono_reproduzido_uma_peca_de_quads_triangulada() {
 #[test]
 fn uma_malha_com_menos_faces_e_recusada_embora_nada_saia_de_alcance() {
     let t = triangulados();
-    let topo = Topologia::nova(6, it(&t), 4);
+    let topo = Topologia::nova(6, it(&t), 2);
     let curta = vec![t[0].clone(), t[1].clone()];
     let mut pay = vec![7u32; 3];
     assert!(
@@ -141,7 +141,7 @@ fn uma_malha_com_menos_faces_e_recusada_embora_nada_saia_de_alcance() {
 #[test]
 fn a_mesma_contagem_de_faces_com_outros_cantos_e_recusada() {
     let q = quads();
-    let topo = Topologia::nova(6, it(&q), 4);
+    let topo = Topologia::nova(6, it(&q), 2);
     let dois_tris: Vec<Vec<u32>> = vec![vec![0, 1, 2], vec![1, 4, 5]];
     assert!(
         topo.descreve(6, dois_tris.len()),
@@ -165,7 +165,7 @@ fn a_mesma_contagem_de_faces_com_outros_cantos_e_recusada() {
 #[test]
 fn a_lei_de_descrever_mede_os_vertices_e_as_faces() {
     let q = quads();
-    let topo = Topologia::nova(6, it(&q), 4);
+    let topo = Topologia::nova(6, it(&q), 2);
     assert!(topo.descreve(6, 2), "o CONTROLO: a malha de que ele nasceu");
     assert!(!topo.descreve(7, 2), "um vértice a mais é outra malha");
     assert!(!topo.descreve(6, 4), "duas faces a mais são outra malha");

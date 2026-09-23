@@ -26,11 +26,17 @@
 //! **filtragem**, que é o que a [`FOLGA_EM_TEXELS`] paga.
 //!
 //! ⚠️⚠️ **E ele NÃO iguala densidades entre faces, de propósito:** o ladrilho
-//! tem o tamanho do `lado` da retícula, que hoje é UM para a peça toda, logo
-//! uma face grande e uma pequena recebem o mesmo número de texels. *Isso não é
-//! distorção do assado — é a retícula que ele copia fielmente*, e curá-la é a
-//! **P2** do plano (o `R` por face). Medido no corpus do dono, a dispersão da
-//! densidade é `3,1×` a `18,3×`.
+//! tem o tamanho do `lado` da retícula, e a grelha aqui é de ladrilhos
+//! **IGUAIS**, logo uma face grande e uma pequena recebem o mesmo número de
+//! texels. *Isso não é distorção do assado — é a retícula que ele copia
+//! fielmente*, e a cura é a **P2** (o `R` por face). Medido no corpus do dono,
+//! a dispersão da densidade é `3,1×` a `18,3×`.
+//!
+//! ⛔⛔ **Desde 23/09 a retícula JÁ SABE ter um nível por face, e este assado
+//! ainda não sabe empacotar ladrilhos de tamanhos diferentes** ⇒ ele
+//! **RECUSA** um plano graduado em voz alta ([`Recusa::Graduado`]) em vez de o
+//! assar ao nível de uma face qualquer. *A fronteira está escrita, não
+//! escondida.*
 
 use crate::{Tinta, cantos};
 
@@ -82,6 +88,23 @@ pub enum Recusa {
         /// Quantas o plano conhece.
         plano: usize,
     },
+    /// ⛔⛔ **O plano tem um nível POR FACE e este assado só sabe uma grelha de
+    /// ladrilhos IGUAIS.**
+    ///
+    /// ⭐ **Ela é a FRONTEIRA da P2 escrita em voz alta, e não uma limitação
+    /// escondida.** A disposição aqui é `cols × cols` ladrilhos do mesmo lado
+    /// (`lado + 1 + 2 × folga`), e um plano graduado pede um **empacotador** —
+    /// ladrilhos de tamanhos diferentes numa textura só.
+    ///
+    /// ⛔ A saída barata seria assar tudo ao nível da PRIMEIRA face: as UV
+    /// continuariam a sair certas (elas são por canto) e cada face fina
+    /// perderia amostras **sem nada no ecrã a acusar**. *A resposta errada com
+    /// a confiança da certa é exactamente o que esta recusa existe para não
+    /// entregar.*
+    Graduado {
+        /// Quantos níveis distintos o plano tem (`>= 2`, senão ele é uniforme).
+        niveis: usize,
+    },
 }
 
 impl std::fmt::Display for Recusa {
@@ -95,6 +118,10 @@ impl std::fmt::Display for Recusa {
             Self::NaoDescreve { faces, plano } => write!(
                 f,
                 "o plano de tinta fina conhece {plano} faces e a malha tem {faces}"
+            ),
+            Self::Graduado { niveis } => write!(
+                f,
+                "o plano tem {niveis} niveis por face e este assado so' empacota ladrilhos iguais"
             ),
         }
     }
@@ -218,7 +245,15 @@ pub fn assar<'a>(
             plano: tinta.topologia().faces(),
         });
     }
-    let l = tinta.lado();
+    // ⛔ Ver [`Recusa::Graduado`]: a grelha aqui é de ladrilhos IGUAIS.
+    let Some(l) = tinta.lado_uniforme() else {
+        let mut ks: Vec<u8> = (0..faces.len())
+            .map(|f| tinta.topologia().nivel_de(f))
+            .collect();
+        ks.sort_unstable();
+        ks.dedup();
+        return Err(Recusa::Graduado { niveis: ks.len() });
+    };
     let ladrilho = l + 1 + 2 * FOLGA_EM_TEXELS;
     // ⭐ `cols` é o lado de uma grelha quadrada que cabe as faces todas, e as
     // linhas nunca passam as colunas porque `rows = ceil(n / cols) <= cols`

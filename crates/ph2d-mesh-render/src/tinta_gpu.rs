@@ -97,18 +97,29 @@ pub(super) fn entradas_do_layout() -> [wgpu::BindGroupLayoutEntry; N] {
 }
 
 /// A configuração: `lado`, `verts`, `arestas`, `armado`.
+///
+/// ⛔⛔ **Um plano GRADUADO (um nível por face — a P2) desarma-se aqui, e isso
+/// é deliberado.** O registo que o shader lê descreve a retícula com UM `lado`,
+/// e o bloco das arestas com `id × (lado − 1)`; com níveis por face as duas
+/// contas passam a precisar de um **offset por aresta**, que é buffer novo.
+///
+/// ⭐ **Desarmar entrega a cor por VÉRTICE, que é o caso base desta família e
+/// está certo** — e a alternativa (assumir o lado da face `0`) desenharia a
+/// tinta de umas faces no sítio das outras **sem nada no ecrã a acusar**.
+/// *A resposta errada com a confiança da certa é o que esta guarda recusa.*
 fn cfg_de(t: Option<&Tinta>) -> [u32; 4] {
-    match t {
-        // ⚠️ O `lado` mínimo é `1` mesmo desarmado: um `lado = 0` faria o
-        //    shader dividir a retícula por zero se alguém o lesse por engano.
-        None => [1, 0, 0, 0],
-        Some(t) => [
-            t.lado(),
-            t.topologia().verts() as u32,
-            t.topologia().arestas() as u32,
-            1,
-        ],
-    }
+    // ⚠️ O `lado` mínimo é `1` mesmo desarmado: um `lado = 0` faria o shader
+    //    dividir a retícula por zero se alguém o lesse por engano.
+    let Some(t) = t else { return [1, 0, 0, 0] };
+    let Some(lado) = t.lado_uniforme() else {
+        return [1, 0, 0, 0];
+    };
+    [
+        lado,
+        t.topologia().verts() as u32,
+        t.topologia().arestas() as u32,
+        1,
+    ]
 }
 
 impl TintaGpu {

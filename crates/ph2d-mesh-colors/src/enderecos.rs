@@ -5,9 +5,15 @@
 //!
 //! ```text
 //!   [ 0 .. V )                         uma amostra por VÉRTICE
-//!   [ V .. V + A·(L−1) )               L−1 por ARESTA, do vértice MENOR para o maior
-//!   [ V + A·(L−1) .. )                 o INTERIOR de cada face
+//!   [ V .. V + Σ(Lₑ−1) )               Lₑ−1 por ARESTA, do vértice MENOR para o maior
+//!   [ V + Σ(Lₑ−1) .. )                 o INTERIOR de cada face, ao nível DELA
 //! ```
+//!
+//! ⚠️ **Os dois blocos de baixo são SOMAS e não produtos desde a P2:** cada face
+//! tem o nível dela e cada aresta leva o **máximo** dos dois vizinhos. Com um
+//! nível uniforme as somas valem `A·(L−1)` e `F·interior(L)` **exactamente**, e
+//! é isso que faz o plano graduado ser um superconjunto do uniforme em vez de
+//! um formato novo.
 //!
 //! ⭐⭐⭐ **O bloco dos vértices vem PRIMEIRO e na numeração da malha, e é isso que
 //! torna o nível base byte-idêntico à cor por-vértice de hoje:** a `L = 1` os
@@ -133,24 +139,36 @@ pub fn sitio_quad(lado: u32, i: u32, j: u32) -> Sitio {
 /// virar o `t` de uma aresta percorrida ao contrário. *Uma segunda cópia desta
 /// aritmética é a forma exacta como metade da peça fica espelhada.*
 #[must_use]
-pub fn indice(topo: &Topologia, lado: u32, face: usize, sitio: Sitio, cantos: &[u32]) -> u32 {
+pub fn indice(topo: &Topologia, face: usize, sitio: Sitio, cantos: &[u32]) -> u32 {
     let v = topo.verts as u32;
     match sitio {
         Sitio::Canto(c) => cantos[c],
         Sitio::Aresta { lado_da_face, t } => {
             let (id, virada) = topo.aresta(face, lado_da_face);
-            let t = if virada { lado - t } else { t };
-            debug_assert!(t >= 1 && t < lado, "uma amostra de aresta não é um canto");
-            v + id * (lado - 1) + (t - 1)
+            // ⭐⭐⭐⭐ **A LEI DO SUBCONJUNTO, e ela vive AQUI e em mais lado
+            //   nenhum.** A face conta `t` na retícula DELA (`0..lf`) e a aresta
+            //   guarda as amostras na retícula DELA (`0..le`, o máximo dos dois
+            //   vizinhos). O passo é inteiro porque as duas são potências de dois
+            //   e `le >= lf` ⇒ a amostra da face cai **em cima** de uma da aresta.
+            //   ⛔ *Uma segunda cópia desta multiplicação é como metade de uma
+            //   peça fica com a tinta da vizinha.*
+            let lf = topo.lado_de(face);
+            let le = topo.aresta_lado(id);
+            debug_assert!(
+                le >= lf && le.is_multiple_of(lf),
+                "a aresta é um múltiplo da face"
+            );
+            let t = t * (le / lf);
+            let t = if virada { le - t } else { t };
+            debug_assert!(t >= 1 && t < le, "uma amostra de aresta não é um canto");
+            v + topo.aresta_off(id) + (t - 1)
         }
-        Sitio::Interior(n) => v + (topo.arestas as u32) * (lado - 1) + topo.off_interior[face] + n,
+        Sitio::Interior(n) => v + topo.arestas_amostras() + topo.off_interior[face] + n,
     }
 }
 
 /// Quantas amostras a malha inteira tem.
 #[must_use]
-pub fn total(topo: &Topologia, lado: u32) -> usize {
-    topo.verts
-        + topo.arestas * (lado as usize - 1)
-        + *topo.off_interior.last().unwrap_or(&0) as usize
+pub fn total(topo: &Topologia) -> usize {
+    topo.verts + topo.arestas_amostras() as usize + *topo.off_interior.last().unwrap_or(&0) as usize
 }

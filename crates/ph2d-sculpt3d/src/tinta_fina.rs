@@ -264,8 +264,12 @@ impl TintaDoTraco {
             self.carimbo.fill(0);
         }
         let r2 = raio * raio;
-        let lado = f32::from(u16::try_from(self.tinta.lado()).unwrap_or(u16::MAX));
         for &fi in &faces {
+            // ⭐ **O lado é da FACE e não da peça** (a P2): ler um `lado` só
+            //   para o laço inteiro daria a uma face grossa os pesos de uma
+            //   fina, e a tinta sairia no sítio errado **sem nada a acusar**.
+            let lado =
+                f32::from(u16::try_from(self.tinta.lado_da_face(fi as usize)).unwrap_or(u16::MAX));
             let face = mesh.faces()[fi as usize];
             let cantos = face.verts();
             let (tinta, carimbo, local, amostras) = (

@@ -249,7 +249,7 @@ fn corre_na_placa(
     let idx: Vec<u32> = tris.iter().flat_map(|t| *t).collect();
     let posicoes: Vec<f32> = m.positions().iter().flat_map(|p| *p).collect();
     let cfg: [u32; 4] = [
-        t.lado(),
+        t.lado_uniforme().expect("a fixtura e' uniforme"),
         t.topologia().verts() as u32,
         t.topologia().arestas() as u32,
         1,

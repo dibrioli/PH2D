@@ -101,7 +101,7 @@ fn a_contagem_por_face_e_a_da_deducao() {
     let f = vec![[0u32, 1, 2]];
     for nivel in 0..=4u8 {
         let t = Tinta::nova(3, faces_de(&f), nivel);
-        let l = u64::from(t.lado());
+        let l = u64::from(t.lado_uniforme().expect("a fixtura e' uniforme"));
         let mut n = 0u64;
         t.para_cada_par_tri(0, &f[0][..], |_, _| n += 1);
         assert_eq!(n, 3 * l * (l + 1) / 2, "nível {nivel}");
@@ -116,7 +116,7 @@ fn o_quad_emite_cada_par_uma_vez() {
     let it = || faces.iter().map(|f| &f[..]);
     for nivel in 0..=3u8 {
         let t = Tinta::nova(4, it(), nivel);
-        let l = u64::from(t.lado());
+        let l = u64::from(t.lado_uniforme().expect("a fixtura e' uniforme"));
         let mut p = Vec::new();
         t.para_cada_par_quad(0, &faces[0], |a, b| p.push((a.min(b), a.max(b))));
         let antes = p.len() as u64;

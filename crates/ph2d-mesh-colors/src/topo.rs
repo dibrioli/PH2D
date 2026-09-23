@@ -54,6 +54,34 @@ pub struct Topologia {
     /// Prefixo das amostras de INTERIOR: `off[f]..off[f+1]` são as da face `f`,
     /// contadas a partir de zero (o bloco das faces começa depois das arestas).
     pub(crate) off_interior: Vec<u32>,
+    /// ⭐⭐⭐⭐ **O NÍVEL DE CADA FACE** — a P2, e a razão de este vector existir
+    /// em vez de um `u32` só.
+    ///
+    /// Com um `lado` para a peça inteira, uma face grande e uma pequena recebem
+    /// o MESMO número de amostras ⇒ a densidade por área dispersa. **Medido no
+    /// corpus do dono** (`examples/mede_o_r_por_face.rs`, `p99/p1` da densidade
+    /// linear): `3,12×` · `4,88×` · `6,74×` · **`18,26×`**.
+    ///
+    /// ⚠️ **É um NÍVEL e não um lado, e o tipo carrega a lei:** a escada é de
+    /// potências de dois porque a face grossa tem de ler um **subconjunto
+    /// EXACTO** das amostras da aresta fina — ver [`Self::aresta_lado`]. Guardar
+    /// `lado` como `u32` deixaria alguém escrever `6`, e aí `le / lf` trunca e
+    /// a tinta sai no sítio errado **em silêncio**.
+    pub(crate) nivel_da_face: Vec<u8>,
+    /// ⭐⭐⭐ **O NÍVEL DE CADA ARESTA — o MÁXIMO dos vizinhos.**
+    ///
+    /// A fronteira é **partilhada** (é a diferença de espécie para o Ptex),
+    /// logo ela só pode ter UMA resolução; tomar o máximo é o que deixa a face
+    /// fina escrever tudo o que ela sabe. ⛔ Tomar o mínimo apagaria detalhe que
+    /// o artista pintou do lado fino, e tomar a média não é uma potência de dois.
+    pub(crate) nivel_da_aresta: Vec<u8>,
+    /// Prefixo das amostras de ARESTA: a aresta `e` ocupa
+    /// `off_aresta[e]..off_aresta[e+1]`, e o comprimento é `lado_e − 1`.
+    ///
+    /// ⭐ Com um nível uniforme ele vale **exactamente** `e · (lado − 1)`, que é
+    /// a aritmética que o shader ainda faz — é isso que mantém o caminho da
+    /// placa correcto sem uma linha de WGSL nova enquanto ninguém gradua.
+    pub(crate) off_aresta: Vec<u32>,
     /// ⭐⭐ **A PRIMEIRA face que reclamou cada aresta.**
     ///
     /// Ela existe por uma razão só, e é a da [`crate::vizinhanca`]: um par de
@@ -73,10 +101,17 @@ impl Topologia {
     /// não precisa de conhecer a `ph2d_mesh::Face`. Um triângulo pode vir como
     /// `[a, b, c]` **ou** como `[a, b, c, TRI]`; os dois leem `3` cantos.
     ///
-    /// ⚠️ **`lado` entra aqui porque o prefixo do interior depende dele** — e é
-    /// por isso que mudar de nível reconstrói a topologia em vez de a reaproveitar.
+    /// ⚠️ **`nivel` entra aqui porque o prefixo do interior depende dele** — e é
+    /// por isso que mudar de nível reconstrói os prefixos em vez de os
+    /// reaproveitar. ⭐ Mudar SÓ o nível não precisa desta porta: a adjacência
+    /// não depende dele, e quem a reaproveita é a [`Self::regraduada`].
+    ///
+    /// ⛔ Ele é o **nível** (`k`) e não o **lado** (`2^k`): a escada é de
+    /// potências de dois por lei (ver [`Self::nivel_da_face`]), e um argumento
+    /// `lado: u32` deixaria alguém escrever `6`.
     #[must_use]
-    pub fn nova<'a>(verts: usize, faces: impl Iterator<Item = &'a [u32]>, lado: u32) -> Self {
+    pub fn nova<'a>(verts: usize, faces: impl Iterator<Item = &'a [u32]>, nivel: u8) -> Self {
+        let lado = 1u32 << nivel;
         let mut mapa: BTreeMap<(u32, u32), u32> = BTreeMap::new();
         let mut dono_da_aresta: Vec<u32> = Vec::new();
         let mut lado_da_face = Vec::new();
@@ -106,14 +141,88 @@ impl Topologia {
             fi += 1;
         }
         off_interior.push(acc);
+        let arestas = mapa.len();
+        let faces = cantos_da_face.len();
+        let mut off_aresta = Vec::with_capacity(arestas + 1);
+        let mut a = 0u32;
+        for _ in 0..arestas {
+            off_aresta.push(a);
+            a += lado - 1;
+        }
+        off_aresta.push(a);
         Self {
             verts,
-            arestas: mapa.len(),
+            arestas,
             lado_da_face,
             cantos_da_face,
             off_interior,
             dono_da_aresta,
+            nivel_da_face: vec![nivel; faces],
+            nivel_da_aresta: vec![nivel; arestas],
+            off_aresta,
         }
+    }
+
+    /// ⭐⭐⭐⭐ **A MESMA MALHA COM UM NÍVEL POR FACE** — a P2.
+    ///
+    /// ⭐ **A adjacência não depende do nível**, logo tudo o que ela custou a
+    /// construir (o mapa das arestas, quem as percorre ao contrário, quem é a
+    /// dona) é **reaproveitado ao bit**; o que se refaz são os três prefixos.
+    /// *É por isso que esta é uma porta sobre uma topologia e não um segundo
+    /// construtor: um segundo construtor voltaria a percorrer as faces, e as
+    /// faces são a única coisa que esta crate não guarda.*
+    ///
+    /// ⛔ **Ela RECUSA uma lista que não descreve esta malha** (`None`) em vez de
+    /// a preencher com um valor de omissão: um `niveis` curto é o chamador a
+    /// passar a peça errada, e um plano com o tamanho errado instalado numa
+    /// malha é **tinta no sítio errado, em silêncio**.
+    ///
+    /// ⚠️ Cada nível é **cortado** em [`crate::NIVEL_MAX`], pela mesma razão que
+    /// a [`crate::Tinta::nova`] o corta.
+    #[must_use]
+    pub fn regraduada(&self, niveis: &[u8]) -> Option<Self> {
+        if niveis.len() != self.faces() {
+            return None;
+        }
+        let nivel_da_face: Vec<u8> = niveis.iter().map(|k| (*k).min(crate::NIVEL_MAX)).collect();
+
+        // A aresta leva o MÁXIMO dos vizinhos — ver `nivel_da_aresta`.
+        let mut nivel_da_aresta = vec![0u8; self.arestas];
+        for (f, &k) in nivel_da_face.iter().enumerate() {
+            for s in 0..self.cantos_de(f) {
+                let (id, _) = self.aresta(f, s);
+                let e = &mut nivel_da_aresta[id as usize];
+                *e = (*e).max(k);
+            }
+        }
+
+        let mut off_aresta = Vec::with_capacity(self.arestas + 1);
+        let mut a = 0u32;
+        for k in &nivel_da_aresta {
+            off_aresta.push(a);
+            a += (1u32 << k) - 1;
+        }
+        off_aresta.push(a);
+
+        let mut off_interior = Vec::with_capacity(self.faces() + 1);
+        let mut acc = 0u32;
+        for (f, &k) in nivel_da_face.iter().enumerate() {
+            off_interior.push(acc);
+            acc += interior_por_face(self.cantos_de(f), 1u32 << k);
+        }
+        off_interior.push(acc);
+
+        Some(Self {
+            verts: self.verts,
+            arestas: self.arestas,
+            lado_da_face: self.lado_da_face.clone(),
+            cantos_da_face: self.cantos_da_face.clone(),
+            off_interior,
+            dono_da_aresta: self.dono_da_aresta.clone(),
+            nivel_da_face,
+            nivel_da_aresta,
+            off_aresta,
+        })
     }
 
     /// ⭐ **Quantos bytes esta topologia segura.**
@@ -132,6 +241,63 @@ impl Topologia {
             + self.cantos_da_face.capacity()
             + self.off_interior.capacity() * size_of::<u32>()
             + self.dono_da_aresta.capacity() * size_of::<u32>()
+            + self.nivel_da_face.capacity()
+            + self.nivel_da_aresta.capacity()
+            + self.off_aresta.capacity() * size_of::<u32>()
+    }
+
+    /// O nível (`k`) da face `f`.
+    #[must_use]
+    pub fn nivel_de(&self, f: usize) -> u8 {
+        self.nivel_da_face[f]
+    }
+
+    /// O lado (`2^k`) da retícula da face `f` — intervalos por aresta.
+    #[must_use]
+    pub fn lado_de(&self, f: usize) -> u32 {
+        1u32 << self.nivel_da_face[f]
+    }
+
+    /// O lado da aresta `id` — o **máximo** dos vizinhos dela.
+    ///
+    /// ⭐⭐⭐ **É esta função que faz a face grossa ler um SUBCONJUNTO EXACTO.**
+    /// Com `lado_e / lado_f` inteiro (as duas são potências de dois e
+    /// `lado_e >= lado_f`), a amostra `t` da face cai **em cima** da amostra
+    /// `t · (lado_e / lado_f)` da aresta — sem arredondar, sem interpolar, e com
+    /// as duas pontas preservadas.
+    #[must_use]
+    pub fn aresta_lado(&self, id: u32) -> u32 {
+        1u32 << self.nivel_da_aresta[id as usize]
+    }
+
+    /// Onde as amostras da aresta `id` começam, dentro do bloco das arestas.
+    #[must_use]
+    pub fn aresta_off(&self, id: u32) -> u32 {
+        self.off_aresta[id as usize]
+    }
+
+    /// Quantas amostras o bloco das ARESTAS tem ao todo.
+    #[must_use]
+    pub fn arestas_amostras(&self) -> u32 {
+        self.off_aresta.last().copied().unwrap_or(0)
+    }
+
+    /// O nível mais FINO do plano — ver [`crate::Tinta::graduada`].
+    #[must_use]
+    pub fn nivel_mais_fino(&self) -> u8 {
+        self.nivel_da_face.iter().copied().max().unwrap_or(0)
+    }
+
+    /// ⭐ **O nível da peça inteira, se ele for um só.**
+    ///
+    /// ⛔ Ela existe para os consumidores que **ainda** assumem um lado — o
+    /// caminho da placa é o principal — poderem dizer *«este plano não é para
+    /// mim»* em vez de desenhar tinta no sítio errado. *Um `lado()` que devolve
+    /// o de uma face qualquer é a resposta errada com a confiança da certa.*
+    #[must_use]
+    pub fn nivel_uniforme(&self) -> Option<u8> {
+        let k = *self.nivel_da_face.first()?;
+        self.nivel_da_face.iter().all(|x| *x == k).then_some(k)
     }
 
     /// ⭐ **Os dois globais que o payload não traz** — quantos vértices e

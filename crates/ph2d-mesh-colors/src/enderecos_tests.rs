@@ -50,7 +50,7 @@ fn as_duas_faces_leem_a_mesma_amostra_na_aresta_comum() {
     let it = || faces.iter().map(|f| &f[..]);
     for nivel in 1..=4u8 {
         let t = Tinta::nova(4, it(), nivel);
-        let l = t.lado();
+        let l = t.lado_uniforme().expect("a fixtura e' uniforme");
         for passo in 0..=l {
             // face 0 = (0,1,2): a aresta 1–2 é o lado `1` (b→c), `i = 0`.
             let a0 = t.indice_tri(0, &faces[0], 0, l - passo, passo);
@@ -93,7 +93,7 @@ fn a_leitura_reproduz_um_campo_linear() {
     // O campo: `cor = (x, y, x + y)`, linear na posição ⇒ linear nas baricêntricas.
     for nivel in 1..=4u8 {
         let mut t = Tinta::nova(4, it(), nivel);
-        let l = t.lado();
+        let l = t.lado_uniforme().expect("a fixtura e' uniforme");
         let cantos = [pos[0], pos[1], pos[2]];
         let tri: Vec<u32> = faces[0].clone();
         let mut onde: Vec<(u32, (u32, u32, u32))> = Vec::new();
@@ -227,7 +227,7 @@ fn dois_quads_leem_a_mesma_amostra_na_aresta_comum() {
 
     for nivel in 1..=4u8 {
         let t = Tinta::nova(p.len(), it(), nivel);
-        let l = t.lado();
+        let l = t.lado_uniforme().expect("a fixtura e' uniforme");
         let mut visto: BTreeMap<[u32; 3], u32> = BTreeMap::new();
         let mut partilhadas = 0usize;
 
@@ -302,7 +302,7 @@ fn a_leitura_de_um_quad_reproduz_um_campo_bilinear() {
     let it = || faces.iter().map(|f| &f[..]);
     for nivel in 0..=4u8 {
         let mut t = Tinta::nova(pos.len(), it(), nivel);
-        let l = t.lado();
+        let l = t.lado_uniforme().expect("a fixtura e' uniforme");
 
         let canto = |f: &[u32]| {
             [
@@ -430,7 +430,7 @@ fn o_payload_resolve_o_mesmo_endereco_que_a_lei() {
         let it = || faces.iter().map(|f| &f[..]);
         for nivel in 0..=3u8 {
             let t = Tinta::nova(verts_n, it(), nivel);
-            let l = t.lado();
+            let l = t.lado_uniforme().expect("a fixtura e' uniforme");
             let topo = t.topologia();
             let mut pay = Vec::new();
             assert!(

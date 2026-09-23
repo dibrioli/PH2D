@@ -80,7 +80,7 @@ muta topo.rs \
 
 # ── M3: a VIRADA de uma aresta partilhada ─────────────────────────────────
 muta enderecos.rs \
-  'let t = if virada { lado - t } else { t };' \
+  'let t = if virada { le - t } else { t };' \
   'let t = t;' \
   'M3 indice: a aresta percorrida ao contrario nao vira o t'
 
@@ -92,8 +92,8 @@ muta enderecos.rs \
 
 # ── M5: o bloco das arestas tem a largura errada ──────────────────────────
 muta enderecos.rs \
-  'topo.arestas * (lado as usize - 1)' \
-  'topo.arestas * (lado as usize)' \
+  'topo.verts + topo.arestas_amostras() as usize' \
+  'topo.verts + topo.arestas_amostras() as usize + 1' \
   'M5 total: o bloco das arestas conta uma amostra a mais'
 
 # ── M6: o lado d->a do QUAD anda para a frente ────────────────────────────
@@ -106,17 +106,17 @@ muta enderecos.rs \
 
 # ── M7: a semeadura do TRIANGULO troca dois eixos ─────────────────────────
 muta lib.rs \
-  'let idx = indice(&t.topo, l, fi, sitio_tri(l, i, j, k), &f[..n]) as usize;' \
-  'let idx = indice(&t.topo, l, fi, sitio_tri(l, j, i, k), &f[..n]) as usize;' \
+  'let idx = indice(&t.topo, fi, sitio_tri(l, i, j, k), &f[..n]) as usize;' \
+  'let idx = indice(&t.topo, fi, sitio_tri(l, j, i, k), &f[..n]) as usize;' \
   'M7 semeada(tri): i e j trocados'
 
 # ── M8: a semeadura do QUAD nao mistura ───────────────────────────────────
 #    ⚠️ Esta SOBREVIVEU a primeira corrida: a fixtura irma e um TETRAEDRO,
 #    so de triangulos, e o gate da bijeccao conta indices sem olhar valores.
 muta lib.rs \
-  'let idx = indice(&t.topo, l, fi, sitio_quad(l, i, j), &f[..n]) as usize;
+  'let idx = indice(&t.topo, fi, sitio_quad(l, i, j), &f[..n]) as usize;
                         t.amostras[idx] = mistura(&c, &w);' \
-  'let idx = indice(&t.topo, l, fi, sitio_quad(l, i, j), &f[..n]) as usize;
+  'let idx = indice(&t.topo, fi, sitio_quad(l, i, j), &f[..n]) as usize;
                         t.amostras[idx] = c[0];' \
   'M8 semeada(quad): a bilinear vira o primeiro canto'
 

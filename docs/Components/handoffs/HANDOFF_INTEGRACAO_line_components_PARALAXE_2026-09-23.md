@@ -189,6 +189,9 @@ diz. O veredito que conta é o do `--workspace`.
 
 ## §8 — A AUDITORIA e a CURA (23/09)
 
+✅ **Smoke do dono APROVADO depois da cura (23/09)** — as duas cenas, com os passos novos (andar
+mais de um minuto · o dolly de volta a `0` · desmarcar `Active` com o dolly longe de `0`).
+
 ⛔⛔ **O smoke aprovado escondia QUATRO P0.** O dono pediu *«auditoria completa»* e depois *«vamos
 corrigir tudo»*; a auditoria de quatro lentes está em
 [`26_auditoria_paralaxe_2026-09-23.md`](../26_auditoria_paralaxe_2026-09-23.md) e o **§5 dela** tem a

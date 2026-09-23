@@ -69,6 +69,15 @@ fn res_for(count: usize) -> usize {
 }
 
 fn voronoi_graph(count: f32, iterations: f32, seed: f32) -> (Graph, NodeId, NodeId) {
+    voronoi_graph_metric(count, iterations, seed, 0.0)
+}
+
+fn voronoi_graph_metric(
+    count: f32,
+    iterations: f32,
+    seed: f32,
+    metric: f32,
+) -> (Graph, NodeId, NodeId) {
     let mut g = Graph::new();
     let v = g.add_node("motion.voronoi");
     g.set_param(v, "count", count);
@@ -76,6 +85,7 @@ fn voronoi_graph(count: f32, iterations: f32, seed: f32) -> (Graph, NodeId, Node
     g.set_param(v, "height", H);
     g.set_param(v, "seed", seed);
     g.set_param(v, "iterations", iterations);
+    g.set_param(v, ph2d_node_motion_voronoi::METRIC, metric);
     let out = g.add_node("motion.output");
     g.connect(Edge {
         from: (v, 0),
@@ -146,7 +156,7 @@ fn position_deltas(cpu: &[RenderInstance], gpu: &[RenderInstance]) -> (f32, f32,
 /// The exact nearest-point owner of each texel centre — the CPU node's
 /// assignment rule, restated (strict `<` keeps the FIRST, so the lower id
 /// wins an exact tie).
-fn cpu_assignment(points: &[[f32; 2]], w: f32, h: f32, res: usize) -> Vec<u32> {
+fn cpu_assignment(points: &[[f32; 2]], w: f32, h: f32, res: usize, metric: i32) -> Vec<u32> {
     (0..res * res)
         .map(|s| {
             let (gy, gx) = (s / res, s % res);
@@ -157,8 +167,7 @@ fn cpu_assignment(points: &[[f32; 2]], w: f32, h: f32, res: usize) -> Vec<u32> {
             let mut best = 0u32;
             let mut best_d = f32::MAX;
             for (j, p) in points.iter().enumerate() {
-                let (dx, dy) = (tc[0] - p[0], tc[1] - p[1]);
-                let d = dx * dx + dy * dy;
+                let d = metric_distance([tc[0] - p[0], tc[1] - p[1]], metric);
                 if d < best_d {
                     best_d = d;
                     best = j as u32;
@@ -167,6 +176,15 @@ fn cpu_assignment(points: &[[f32; 2]], w: f32, h: f32, res: usize) -> Vec<u32> {
             best
         })
         .collect()
+}
+
+/// A distância que o `nearest` da CPU compara, por métrica (a Euclidiana ao QUADRADO).
+fn metric_distance(d: [f32; 2], metric: i32) -> f32 {
+    match metric {
+        ph2d_node_motion_voronoi::METRIC_MANHATTAN => d[0].abs() + d[1].abs(),
+        ph2d_node_motion_voronoi::METRIC_CHEBYSHEV => d[0].abs().max(d[1].abs()),
+        _ => d[0] * d[0] + d[1] * d[1],
+    }
 }
 
 /// The texel each point falls in — the collision precondition for the
@@ -260,7 +278,7 @@ fn an_exact_tie_prefers_the_lower_id() {
     };
     let points = vec![[-1.0f32, 0.0], [1.0, 0.0]];
     let res = 9;
-    let owners = voronoi::jfa_assignment(&gpu, &points, 4.0, 4.0, res);
+    let owners = voronoi::jfa_assignment(&gpu, &points, 4.0, 4.0, res, 0);
     for gy in 0..res {
         let mid = owners[gy * res + res / 2];
         assert_eq!(mid, 0, "middle column row {gy}: tie must prefer id 0");
@@ -288,8 +306,8 @@ fn the_jfa_assignment_agrees_with_the_linear_nearest() {
     for count in [40usize, 96] {
         let res = res_for(count);
         let (seed, pts) = collision_free_cloud(&reg, count);
-        let gpu_own = voronoi::jfa_assignment(&gpu, &pts, W, H, res);
-        let cpu_own = cpu_assignment(&pts, W, H, res);
+        let gpu_own = voronoi::jfa_assignment(&gpu, &pts, W, H, res, 0);
+        let cpu_own = cpu_assignment(&pts, W, H, res, 0);
         let mut divergent = 0usize;
         let mut worst_ratio = 1.0f32;
         for s in 0..res * res {
@@ -478,6 +496,7 @@ fn lifted_registry(max_points: usize, max_res: usize) -> NodeRegistry {
         samples_per_point,
         min_res,
         max_iterations,
+        metric_param,
         ..
     } = ph2d_node_motion_voronoi::GPU_ALGORITHM;
     reg.register_gpu_algorithm(
@@ -494,6 +513,7 @@ fn lifted_registry(max_points: usize, max_res: usize) -> NodeRegistry {
             max_res,
             samples_per_point,
             max_iterations,
+            metric_param,
         },
     );
     reg
@@ -559,5 +579,79 @@ fn how_far_does_the_lloyd_scale() {
         }
         let ms = start.elapsed().as_secs_f64() * 1e3 / TIMED as f64;
         eprintln!("  count {count:>9} res {res:>4}: {ms:>8.2} ms/frame");
+    }
+}
+
+/// ⭐⭐ **A MÉTRICA CHEGA À PLACA** (doc 119 §7) — o controlo «Distance» do `motion.voronoi`
+/// escolhe a distância com que um texel é de um dono, e a placa inundava SEMPRE com a
+/// Euclidiana: um Voronoi em Chebyshev saía **redondo pela placa e quadrado pela CPU**, com o
+/// controlo do painel inerte ali. Achado pela varredura das cenas de várias saídas (a `=93` põe
+/// as métricas lado a lado).
+///
+/// As DUAS réguas dos gates irmãos, por métrica: a ATRIBUIÇÃO texel a texel contra o `nearest`
+/// exacto (toda divergência tem de ser um quase-empate NA MÉTRICA pedida) e UM passo de Lloyd
+/// contra a CPU (ADR-0127 D4: um sistema sequencial gateia-se num passo).
+///
+/// ⚠️ **O CONTROLO vem primeiro:** na mesma nuvem as três métricas têm de dar atribuições
+/// DIFERENTES na CPU — senão a fixtura não contém o fenómeno e o gate passaria com a placa a
+/// ignorar a métrica, que é exactamente o defeito que ele existe para apanhar.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_metric_reaches_the_device() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let count = 96usize;
+    let res = res_for(count);
+    let (seed, pts) = collision_free_cloud(&reg, count);
+    let euclid = cpu_assignment(&pts, W, H, res, 0);
+    for metric in [
+        ph2d_node_motion_voronoi::METRIC_MANHATTAN,
+        ph2d_node_motion_voronoi::METRIC_CHEBYSHEV,
+    ] {
+        let cpu_own = cpu_assignment(&pts, W, H, res, metric);
+        let differ = cpu_own.iter().zip(&euclid).filter(|(a, b)| a != b).count();
+        assert!(
+            differ * 20 > res * res,
+            "metric {metric}: só {differ} texels mudam de dono contra a Euclidiana — a fixtura \
+             não contém o fenómeno"
+        );
+        // 1. A atribuição.
+        let gpu_own = voronoi::jfa_assignment(&gpu, &pts, W, H, res, metric);
+        let mut divergent = 0usize;
+        for s in 0..res * res {
+            if gpu_own[s] == cpu_own[s] {
+                continue;
+            }
+            divergent += 1;
+            let (gy, gx) = (s / res, s % res);
+            let tc = [
+                ((gx as f32 + 0.5) / res as f32 - 0.5) * W,
+                ((gy as f32 + 0.5) / res as f32 - 0.5) * H,
+            ];
+            let d = |p: [f32; 2]| metric_distance([tc[0] - p[0], tc[1] - p[1]], metric);
+            let ratio = d(pts[gpu_own[s] as usize]) / d(pts[cpu_own[s] as usize]).max(1e-9);
+            assert!(
+                ratio <= 1.05,
+                "metric {metric} texel {s}: o dono da placa não é um quase-empate (razão {ratio})"
+            );
+        }
+        let frac = divergent as f32 / (res * res) as f32;
+        eprintln!(
+            "metric {metric} res {res} seed {seed}: {differ} texels mudam contra a Euclidiana · \
+             {divergent} divergem da CPU ({frac:.5})"
+        );
+        assert!(frac <= 0.002, "metric {metric}: {frac} dos texels divergem");
+        // 2. Um passo de Lloyd, pela porta do produto.
+        let (g, _, out) = voronoi_graph_metric(count as f32, 1.0, seed, metric as f32);
+        g.validate(&reg).expect("well-typed");
+        let cpu = cpu_frame(&g, &reg, out);
+        let dev = gpu_frame(&gpu, &g, &reg, out);
+        let (mean, _, max) = position_deltas(&cpu, &dev);
+        eprintln!("metric {metric}: um passo Δ média {mean:.6} max {max:.6}");
+        assert!(mean <= 1e-5, "metric {metric}: um passo, média Δ {mean}");
+        assert!(max <= 1e-4, "metric {metric}: um passo, max Δ {max}");
     }
 }

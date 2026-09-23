@@ -178,45 +178,21 @@ pub(super) fn build_lazy_switch_demo_document(
     g.set_pos(out, Pos { x: 980.0, y: 0.0 });
     wire(g, drive, 0, out, 0)?;
 
-    // ⚠️ **UMA SEGUNDA SAÍDA, e ela é a razão de a cena existir como cena.** O cozimento é
-    // **GPU-residente por omissão**, e no device o grafo inteiro vira UM dispatch — não há
-    // ramo para saltar. Este modo é uma propriedade do cozimento de **CPU**, e um documento vai
-    // para a CPU quando o plano de GPU não o cobre: vector vivo, escopos de tempo, nós de
-    // CPU-only… ou **mais de um sink** (`motion_bridge_gpu`: `motion.sinks.len() != 1`).
-    //
-    // ⚠️ **MEDIDO, e é o número que decide o desenho:** neste mesmo grafo com um sink só, a rota
-    // de GPU faz o quadro em **3,75 ms** com os quatro ramos, contra **13,10 ms** da CPU com a
-    // preguiça ligada. ⇒ *forçar a CPU quando o artista liga o modo tornaria o botão uma
-    // armadilha*, e é por isso que a recusa NÃO existe: o modo vale onde a CPU já é o caminho.
-    // Uma segunda saída é a forma mais honesta de pôr esta cena lá — é autoria legítima, não um
-    // truque, e o texto do smoke di-lo.
-    // ⚠️⚠️ **E ela lê uma grelha PRÓPRIA de UMA peça — não o campo.** A 1.ª versão ligava o `peek`
-    // ao mesmo `size`, e o pump **ACUMULA** todos os sinks (`lower_to_instances_onto` sobre um
-    // `Vec` só, `ph2d-eval-motion`): a 2.ª saída lowerava outras `SIDE²` instâncias na posição de
-    // REPOUSO e, por ser a última, desenhava-as **por cima**. Medido pela auditoria de 2026-08-27:
-    // a banda parada cobria `3,78` dos `4,59` da onda ⇒ **só 17% da altura ondulava**, e o campo é
-    // opaco (cada peça cobre `2,65×` o passo). *A cena escondia exactamente aquilo que pedia ao
-    // artista para julgar* — e o defeito nasceu da cura de um smoke anterior, o que o torna a
-    // segunda vez que este demo foi entregue sem se olhar para ele a correr.
-    //
-    // ⚠️ **Uma peça basta, e um sink SEM aresta não serve:** o que a rota de GPU conta é
-    // `sinks.len()`, não o que eles cozem — mas o `diagnose` do sweep das 107 cenas acusa
-    // `MissingInput` numa saída solta, e com razão. ⇒ a âncora é autoria a sério, minúscula.
-    let anchor = g.add_node("motion.grid");
-    g.set_pos(anchor, Pos { x: 620.0, y: 700.0 });
-    g.set_param(anchor, "rows", 1.0);
-    g.set_param(anchor, "cols", 1.0);
-    let anchor_size = g.add_node("motion.scale");
-    g.set_pos(anchor_size, Pos { x: 800.0, y: 700.0 });
-    g.set_param(anchor_size, "amount", 0.002);
-    wire(g, anchor, 0, anchor_size, 0)?;
-
-    let peek = g.add_node("motion.output");
-    g.set_pos(peek, Pos { x: 980.0, y: 700.0 });
-    g.set_label(peek, "(segunda saida: poe a cena no cozimento de CPU)");
-    wire(g, anchor_size, 0, peek, 0)?;
-    Some(vec![out, peek])
+    // ⭐ **UMA SAÍDA SÓ, e a cena PEDE a CPU** (doc 119 W3 — ver [`PEDE_A_CPU`]). Até ao ciclo 11 ela
+    // tinha uma segunda saída minúscula, que era a cerca do multi-sink a pô-la na CPU; levantada a
+    // cerca, a cena iria à placa e o botão ficava inerte. A segunda saída também já custara uma
+    // auditoria (2026-08-27: desenhada por cima, escondia `83 %` da onda).
+    Some(vec![out])
 }
+
+/// ⭐ **Porque é que esta cena corre na CPU** — a frase que a leitura da rota imprime.
+///
+/// ⚠️ **MEDIDO, e é o número que decide o desenho:** neste grafo, a rota da placa faz o quadro em
+/// **3,75 ms** com os quatro ramos, contra **13,10 ms** da CPU com a preguiça ligada. ⇒ *forçar a
+/// CPU quando o ARTISTA liga o modo tornaria o botão uma armadilha*, e por isso a recusa não vive
+/// no nó: o modo vale onde a CPU já é o caminho, e esta cena — que existe para o ensinar — pede-a.
+pub(super) const PEDE_A_CPU: &str =
+    "CPU: a cena =107 ensina um modo do cozimento da CPU (Skip Unused Inputs) -- ela pede-a";
 
 #[cfg(test)]
 #[path = "motion_state_lazy_switch_demo_tests.rs"]

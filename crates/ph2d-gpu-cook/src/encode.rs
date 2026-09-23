@@ -111,25 +111,28 @@ impl GpuCook {
 
         let ty_key = manifest.id.0 ^ cache_salt;
         let sig = codegen::presence_signature(bindings, present);
-        self.kernel_pipelines
-            .entry((ty_key, sig))
-            .or_insert_with(|| {
-                let src = codegen::kernel_module(
-                    kernel,
-                    bindings,
-                    &port_names,
-                    codegen::ExtraBuffers {
-                        grid: grid.map(|(s, _)| s),
-                        reduces: reduces.0,
-                        luts: luts.0,
-                    },
-                    shared,
-                    present,
-                );
-                CachedPipeline {
-                    pipeline: create_pipeline(gpu, &src, manifest.name),
-                }
-            });
+        let key = crate::estado::PipelineKey::Kernel {
+            ty: ty_key,
+            module: crate::estado::kernel_identity(kernel),
+            sig,
+        };
+        self.kernel_pipelines.entry(key).or_insert_with(|| {
+            let src = codegen::kernel_module(
+                kernel,
+                bindings,
+                &port_names,
+                codegen::ExtraBuffers {
+                    grid: grid.map(|(s, _)| s),
+                    reduces: reduces.0,
+                    luts: luts.0,
+                },
+                shared,
+                present,
+            );
+            CachedPipeline {
+                pipeline: create_pipeline(gpu, &src, manifest.name),
+            }
+        });
 
         // Uniform: [count, playhead, params…, gather_prev_n?] — the layout
         // `kernel_module` declared, zero-padded to the slot size. `gather_prev_n`
@@ -284,7 +287,7 @@ impl GpuCook {
         let _ = slot;
         let pipeline = &self
             .kernel_pipelines
-            .get(&(ty_key, sig))
+            .get(&key)
             .expect("inserted above")
             .pipeline;
         let bind_group = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {

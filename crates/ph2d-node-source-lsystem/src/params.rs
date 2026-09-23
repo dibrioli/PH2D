@@ -1,7 +1,7 @@
 //! **OS NÚMEROS DO PAINEL, lidos uma vez** — irmão de [`super`] pelo tecto de LOC (HR-18), e o
 //! corte é por responsabilidade: lá fica *o que o nó faz*, aqui *o que ele lê antes de o fazer*.
 
-use crate::{GEOMETRY_BRANCHES, MODE_GRAMMAR, param, shape};
+use crate::{MODE_GRAMMAR, param, shape};
 use ph2d_nodegraph::cook::EvalCtx;
 
 /// Os dez números do painel, lidos uma vez.
@@ -242,6 +242,6 @@ impl Params {
 
     /// **Desenha em FITAS?** — a pergunta que decide de onde vem a geometria.
     pub(crate) fn ribbons(&self) -> bool {
-        self.geometry.round() as i32 == GEOMETRY_BRANCHES
+        crate::geometria_e_ramos(self.geometry)
     }
 }

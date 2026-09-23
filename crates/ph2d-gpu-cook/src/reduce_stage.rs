@@ -268,7 +268,8 @@ impl GpuCook {
             let scratch_buf = self.pool.acquire(gpu, u64::from(n) * 4);
 
             // --- map pass -------------------------------------------------
-            let key = map_cache_key(spec, present, &earlier, shared);
+            let (a, b) = map_cache_key(spec, present, &earlier, shared);
+            let key = crate::estado::PipelineKey::Map(a, b);
             self.kernel_pipelines.entry(key).or_insert_with(|| {
                 let src = map_module(spec, present, &earlier, shared);
                 CachedPipeline {

@@ -397,7 +397,8 @@ pub fn publish(motion: &mut MotionState, seconds: f64) {
     for id in ids {
         let resolved = super::motion_externals::resolved_params(motion, id, seconds, &ls::MANIFEST);
         let get = |name: &str| resolved.get(name).copied().unwrap_or(0.0);
-        if get(ls::param::GEOMETRY).round() as i32 != ls::GEOMETRY_BRANCHES {
+        // ⚠️ A MESMA regra que o `eval` e a cerca da placa leem (`ls::desenha_ramos`).
+        if !ls::desenha_ramos(&get) {
             continue;
         }
         let texts = motion.doc.graph.node_text_param_overrides(id);

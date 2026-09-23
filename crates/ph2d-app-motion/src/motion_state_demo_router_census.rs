@@ -333,8 +333,18 @@ fn motion_route_census() {
             continue;
         }
         let scopes = ph2d_node_motion_time_remap::time_scopes(&state.doc.graph, &state.registry);
-        let plan =
-            ph2d_gpu_cook::plan(&state.doc.graph, &state.registry, &state.registry, sinks[0]);
+        // ⭐ O plano da UNIÃO das saídas (doc 119 W3) — o que a ponte pede desde o ciclo 11.
+        let plan = ph2d_gpu_cook::plan_driven_many(
+            &state.doc.graph,
+            &state.registry,
+            &state.registry,
+            &sinks,
+            &ph2d_gpu_cook::DrivenParams::new(),
+        );
+        let estilos: Vec<_> = sinks
+            .iter()
+            .map(|&s| ph2d_eval_motion::sink_style(&state.doc.graph, s))
+            .collect();
         let route = gpu_route(
             true,
             sinks.len(),
@@ -345,9 +355,17 @@ fn motion_route_census() {
         // ⚠️ **A razão é a PRIMEIRA que morde**, na ordem em que o `gpu_route` as pergunta —
         // uma cena pode ter duas, e nomear a segunda mandaria alguém curar a errada.
         let porque = match route {
+            _ if crate::motion_state::demo_router::cena_pede_a_cpu_em(Some(&level.to_string()))
+                .is_some() =>
+            {
+                "0. CPU: a cena PEDE a CPU"
+            }
+            _ if sinks.len() > 1 && plan.sinks != sinks => "3a. CPU: uma saída não vai à placa",
+            _ if !ph2d_gpu_cook::ordem_reproduzivel(&estilos) => {
+                "3b. CPU: ordem por linha em várias saídas"
+            }
             GpuRoute::FullyGpu => "1. device inteiro",
             GpuRoute::Hybrid => "2. híbrido (prefixo na CPU)",
-            GpuRoute::Cpu if sinks.len() != 1 => "3. CPU: mais de UM sink",
             GpuRoute::Cpu if !scopes.is_empty() => "4. CPU: escopo de tempo (time_remap)",
             GpuRoute::Cpu => "5. CPU: fronteira sem estágio que despache",
         };

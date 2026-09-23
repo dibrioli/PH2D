@@ -15,13 +15,62 @@ use crate::{
 use ph2d_nodegraph::graph::NodeId;
 use std::collections::BTreeMap;
 
+/// **A chave da cache de pipelines de kernel: tudo aquilo de que o MÓDULO é função.**
+///
+/// ⛔⛔ Ela era `(tipo do nó, assinatura de presença)` e isso **não chega**: um nó cujo kernel
+/// escolhe uma VARIANTE por param (`GpuKernel::variant_by_param` — o `channel` do
+/// `motion.noise`, do `motion.oscillator`, do `motion.drive`) compila um módulo POR VARIANTE, e
+/// duas variantes com as MESMAS colunas presentes davam a MESMA chave ⇒ a segunda recebia o
+/// pipeline da primeira. Medido (doc 119 §7): dois ruídos `Y`/`Position XY` no mesmo plano
+/// saíam o segundo a `0,335` da CPU, e — pior, e sem multi-saída nenhuma — **trocar o canal no
+/// painel com a cena na placa não mudava nada no ecrã** (a cache persiste entre quadros).
+///
+/// ⭐ **A identidade da variante é a dos `&'static` que a definem** ([`KernelIdentity`]):
+/// ponteiros iguais ⇒ conteúdo igual, logo nunca há dois módulos diferentes na mesma chave; o
+/// inverso (dois estáticos com o mesmo texto) só custa um pipeline duplicado. `O(1)` por etapa
+/// e por quadro — hashear o texto do corpo seria `O(KB)` a cada dispatch.
+///
+/// ⚠️ **O mapa é partilhado com os mapas de REDUÇÃO** (`reduce_stage::map_cache_key`), que são
+/// derivados do CONTEÚDO por um hash — daí o enum e não um par de `u64`: com a mesma forma as
+/// duas famílias podiam colidir entre si.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+pub(crate) enum PipelineKey {
+    /// O kernel de um nó (ou um predicado de compactação, separado pelo `cache_salt`).
+    Kernel {
+        /// `manifest.id ^ cache_salt` — o tipo dá os nomes das portas, que entram no módulo.
+        ty: u64,
+        /// Qual variante (ver [`KernelIdentity`]).
+        module: KernelIdentity,
+        /// `codegen::presence_signature` — que colunas o módulo lê.
+        sig: u64,
+    },
+    /// O módulo de mapa de uma redução, derivado do conteúdo da `ReduceSpec`.
+    Map(u64, u64),
+}
+
+/// Os endereços e comprimentos dos `&'static` de que o módulo de um kernel é função — o corpo,
+/// a biblioteca e as colunas. Ver [`PipelineKey`].
+pub(crate) type KernelIdentity = [usize; 6];
+
+/// A identidade de uma variante de kernel — ver [`PipelineKey`].
+pub(crate) fn kernel_identity(k: &ph2d_nodegraph::gpu::GpuKernel) -> KernelIdentity {
+    [
+        k.wgsl.as_ptr() as usize,
+        k.wgsl.len(),
+        k.wgsl_lib.as_ptr() as usize,
+        k.wgsl_lib.len(),
+        k.bindings.as_ptr() as usize,
+        k.bindings.len(),
+    ]
+}
+
 /// The sequencer. Owns the buffer pool, the pipeline caches and the
 /// persistent instance output; reuse ONE across frames (like the CPU pump).
 #[derive(Default)]
 pub struct GpuCook {
     pub(crate) pool: BufferPool,
-    /// Kernel pipelines keyed by `(node type, column-presence signature)`.
-    pub(crate) kernel_pipelines: BTreeMap<(u64, u64), CachedPipeline>,
+    /// Kernel pipelines — see [`PipelineKey`] for what the key has to contain.
+    pub(crate) kernel_pipelines: BTreeMap<PipelineKey, CachedPipeline>,
     /// Lowering pipelines keyed by the 6-column presence signature.
     pub(crate) lower_pipelines: BTreeMap<u64, CachedPipeline>,
     /// Per-stage uniform buffers (index = stage position; last = lowering).

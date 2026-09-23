@@ -35,10 +35,24 @@ pub enum GpuAlgorithm {
         samples_per_point: usize,
         /// The iteration clamp (the CPU's `clamp(0, 64)`).
         max_iterations: i64,
+        /// **A MÉTRICA de distância** (doc 89, folha 01) — o param cujo valor escolhe a
+        /// distância com que um texel é de um dono: [`GpuAlgorithm::LLOYD_METRIC_MANHATTAN`],
+        /// [`GpuAlgorithm::LLOYD_METRIC_CHEBYSHEV`], e qualquer outro valor a Euclidiana.
+        ///
+        /// ⛔⛔ Ela chegou à CPU e não à placa: o device inundava SEMPRE com a Euclidiana, e um
+        /// Voronoi em Chebyshev saía redondo **pela placa e quadrado pela CPU**, com o controlo
+        /// do painel a não fazer nada ali (doc 119 §7, achado pela varredura das cenas de várias
+        /// saídas — a `=93` põe as duas métricas lado a lado).
+        metric_param: &'static str,
     },
 }
 
 impl GpuAlgorithm {
+    /// O valor do param de métrica que pede a Manhattan (`L¹`) — ver `metric_param`.
+    pub const LLOYD_METRIC_MANHATTAN: i32 = 1;
+    /// O valor do param de métrica que pede a Chebyshev (`L∞`) — ver `metric_param`.
+    pub const LLOYD_METRIC_CHEBYSHEV: i32 = 2;
+
     /// The Lloyd sampling-grid side for `count` points: `√(count·samples)`,
     /// clamped — **THE law**, called by the CPU node's `resolution` and the
     /// device service so the two paths discretise identically (a one-texel

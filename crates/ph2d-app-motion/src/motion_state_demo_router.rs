@@ -89,6 +89,21 @@ pub fn demo_wants_the_motion_tool(built_sinks: usize) -> bool {
     )
 }
 
+/// ⭐ **A cena de demo que PEDE a CPU** (doc 119 W3) — ver [`MotionState::cpu_pedida`].
+#[must_use]
+pub(super) fn cena_pede_a_cpu() -> Option<&'static str> {
+    cena_pede_a_cpu_em(std::env::var("PH2D_GPU_COOK_DEMO").ok().as_deref())
+}
+
+/// A lei de [`cena_pede_a_cpu`], sem o ambiente — chamável por um teste em paralelo.
+#[must_use]
+pub(super) fn cena_pede_a_cpu_em(level: Option<&str>) -> Option<&'static str> {
+    match level {
+        Some("107") => Some(lazy_switch_demo::PEDE_A_CPU),
+        _ => None,
+    }
+}
+
 /// **A lei, sem o ambiente** — a mesma extracção que o [`build_level`] já tinha, e pela mesma
 /// razão: um predicado que só se pode exercer pondo uma variável de ambiente não é testável em
 /// paralelo, e um teste que mexe no ambiente do processo envenena os vizinhos.

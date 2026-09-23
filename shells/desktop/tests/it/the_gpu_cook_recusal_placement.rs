@@ -39,6 +39,13 @@ fn the_recusals_run_in_the_right_place_relative_to_the_plan() {
     let live_vector = body.find("graph_has_live_vector_source(").expect(
         "cook_gpu consults graph_has_live_vector_source — the live-vector recusal was removed",
     );
+    // ⭐ A mesma lei por INSTÂNCIA (doc 119 §7): um nó que só desenha uma forma em alguns modos
+    // (o L-System em `Branches`). Achada pela varredura das cenas de várias saídas — a placa
+    // desenhava cinco quadrados onde a CPU desenha cinco plantas.
+    let live_conditional = body.find("forma::desenha_forma_condicional(").expect(
+        "cook_gpu consulta a forma viva CONDICIONAL — sem ela um L-System em Ramos seguido de um \
+         nó da placa sai como quadrados de atlas em branco",
+    );
     let live_geo = body.find("cook_publishes_live_geometry(").expect(
         "cook_gpu consults cook_publishes_live_geometry — the content-aware object recusal was removed",
     );
@@ -53,8 +60,10 @@ fn the_recusals_run_in_the_right_place_relative_to_the_plan() {
     // inteira para a CPU — medido, 6 de 6). A `plan` continua a existir e é esta com o mapa vazio,
     // mas quem o `cook_gpu` chama é a que leva os números. *Este gate quebrou ALTO ao renomear, que
     // é a espécie boa de gate partido.*
+    // ⚠️ **E de novo no doc 119 W3:** a ponte passou a planear a UNIÃO das saídas
+    // (`plan_driven_many`). Reprovou alto outra vez, que é a espécie boa.
     let plan = body
-        .find("ph2d_gpu_cook::plan_driven(")
+        .find("ph2d_gpu_cook::plan_driven_many(")
         .expect("cook_gpu still plans");
     let changes_count = body
         .find("suffix_changes_count(")
@@ -69,9 +78,9 @@ fn the_recusals_run_in_the_right_place_relative_to_the_plan() {
         "o ritmo do grafo tem de ser lido ANTES do plano (substeps@{substeps} vs plan@{plan})"
     );
     assert!(
-        live_vector < plan && live_geo < plan,
+        live_vector < plan && live_geo < plan && live_conditional < plan,
         "the live-vector recusals must run BEFORE planning \
-         (shape@{live_vector}, object@{live_geo} vs plan@{plan})"
+         (shape@{live_vector}, object@{live_geo}, conditional@{live_conditional} vs plan@{plan})"
     );
 
     // ⭐ **E a derivação dos valores dirigidos roda DEPOIS das recusas** (doc 110 §3): ela COZE as
@@ -85,6 +94,19 @@ fn the_recusals_run_in_the_right_place_relative_to_the_plan() {
         "os valores dirigidos derivam-se depois das recusas e antes do plano \
          (dirigidos@{dirigidos} vs shape@{live_vector}, object@{live_geo}, plan@{plan})"
     );
+
+    // ⭐ **As duas recusas do multi-sink** (doc 119 W3/W4) PRECISAM do plano — uma compara as saídas
+    // que ele encenou com as pedidas, a outra lê os estilos delas — e rodam antes de rotear.
+    for agulha in ["RECUSA_SAIDA_FORA_DA_PLACA)", "ordem_reproduzivel("] {
+        let at = body
+            .find(agulha)
+            .unwrap_or_else(|| panic!("cook_gpu perdeu a recusa `{agulha}`"));
+        assert!(
+            at > plan && at < route,
+            "`{agulha}` tem de correr depois do plano e antes de rotear (@{at} vs plan@{plan}, \
+             route@{route})"
+        );
+    }
 
     // A CERCA de contagem roda DEPOIS do plano (ela precisa do plano para inspecionar
     // os estágios do sufixo GPU) e ANTES de rotear.

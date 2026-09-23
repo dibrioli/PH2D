@@ -59,6 +59,15 @@ const MEMBRANES: &[&str] = &[
     "motion_lsystem_gen.rs",
 ];
 
+/// **Os LEITORES da escada que NÃO cunham chave** — resolvem os params de um nó para DECIDIR,
+/// e não para publicar.
+///
+/// ⭐ O primeiro é a cerca da placa para a forma viva CONDICIONAL (doc 119 §7): um L-System em
+/// `Branches` fica na CPU, e o modo tem de ser lido pela escada inteira, senão um fio que
+/// conduza o `geometry` poria a cerca a julgar um modo que o nó não está a cozer. Ele entra aqui
+/// e NÃO nas membranas porque não publica nada — e o censo de baixo exige-o.
+const LEITORES: &[&str] = &["motion_bridge_gpu_forma.rs"];
+
 /// **Tira comentários antes de contar** — e sem isto este censo MENTE.
 ///
 /// ⛔⛔ Medido na Fase C (2026-09-12), quando a varredura passou do `render_loop` para a crate
@@ -231,12 +240,26 @@ fn the_census_actually_scanned_something() {
         "o render_loop tem dezenas de arquivos de produto, achei {}",
         files.len()
     );
+    // Um leitor é leitor: lê a escada e NÃO publica. Se um dia publicar, é uma membrana e muda
+    // de lista — com o nome dele na mensagem.
+    for want in LEITORES {
+        let (_, src) = files
+            .iter()
+            .find(|(n, _)| n == want)
+            .unwrap_or_else(|| panic!("o leitor `{want}` tem de existir"));
+        assert!(src.contains(LADDER), "`{want}` deixou de ler a escada");
+        assert!(
+            !MINTS.iter().any(|m| src.contains(m)),
+            "`{want}` passou a cunhar uma chave — é uma MEMBRANA, mude-o de lista"
+        );
+    }
     let with_ladder = files.iter().filter(|(_, s)| s.contains(LADDER)).count();
     assert_eq!(
         with_ladder,
-        MEMBRANES.len() + 1,
-        "as {} membranas mais a porta — se este numero mudou, uma membrana nasceu ou morreu, e \
-         a fixture tem de dizer qual",
-        MEMBRANES.len()
+        MEMBRANES.len() + 1 + LEITORES.len(),
+        "as {} membranas mais a porta mais os {} leitores — se este numero mudou, uma membrana \
+         nasceu ou morreu, e a fixture tem de dizer qual",
+        MEMBRANES.len(),
+        LEITORES.len()
     );
 }

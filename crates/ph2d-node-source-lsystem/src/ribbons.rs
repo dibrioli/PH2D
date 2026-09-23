@@ -17,6 +17,24 @@ pub const GEOMETRY_SEGMENTS: i32 = 0;
 /// **O modo RAMOS** — uma fita contínua por ramo, o que as quatro referências fazem.
 pub const GEOMETRY_BRANCHES: i32 = 1;
 
+/// **Este valor do param `geometry` pede as FITAS?** — a regra UMA vez, lida por três sítios: o
+/// `eval` do nó, a shell que as constrói e a cerca da placa ([`desenha_ramos`]).
+///
+/// ⚠️ Ela vivia escrita DUAS vezes (aqui e à mão na shell), e a cerca da placa seria a terceira —
+/// *uma lei escrita em dois sítios ainda não é uma lei; só uma porta é*.
+#[must_use]
+pub fn geometria_e_ramos(geometry: f32) -> bool {
+    geometry.round() as i32 == GEOMETRY_BRANCHES
+}
+
+/// **Com estes params (já resolvidos), o nó emite a forma VIVA das fitas?** — o predicado que o
+/// nó regista como fonte vectorial condicional (`register_live_vector_source_when`): em `Branches`
+/// a saída é o `geometry_id` que a shell construiu, que o cozimento na placa não sabe desenhar.
+#[must_use]
+pub fn desenha_ramos(param: &dyn Fn(&str) -> f32) -> bool {
+    geometria_e_ramos(param(crate::param::GEOMETRY))
+}
+
 /// Os dois modos de geometria. ⚠️ A ordem É o valor gravado — `Segments` fica em `0` para
 /// sempre, mesmo sendo o `Branches` o **default** (ver o `ParamSpec` de [`param::GEOMETRY`]).
 pub const GEOMETRY_LABELS: &[&str] = &[

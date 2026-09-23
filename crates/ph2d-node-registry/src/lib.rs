@@ -50,7 +50,9 @@ pub use ui::{
 /// of `ui.rs`, because it is a new concept and the registry is extended
 /// concurrently by other lines (ADR-0107: foundational is designed for isolation).
 mod unit;
+mod vector_condicional;
 pub use unit::{ParamHardMin, ParamUnit, ParamUnitDecl, unit_of};
+pub use vector_condicional::LiveVectorWhen;
 
 /// A registered set of node operations, keyed by their stable type id.
 /// Deterministic iteration (`BTreeMap`, ADR-0022 / HR-5).
@@ -182,6 +184,8 @@ pub struct NodeRegistry {
     /// carries the id and the renderer binds the object's texture per run), so
     /// it is NOT here — it recuses only when its GPU suffix changes count.
     live_vector_sources: std::collections::BTreeSet<NodeTypeId>,
+    /// As fontes vectoriais CONDICIONAIS — ver [`Self::register_live_vector_source_when`].
+    live_vector_when: BTreeMap<NodeTypeId, LiveVectorWhen>,
     /// ADR-0154 / this wave — node types whose output carries a render OBJECT
     /// (`texture_id`, `source.object`: a sprite / baked-tile handle). Unlike a
     /// live vector, an object IS drawn by the GPU-resident cook (the lowering

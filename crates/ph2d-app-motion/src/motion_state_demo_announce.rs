@@ -155,10 +155,9 @@ pub(super) fn lazy_switch() {
 
   ⚠️ A IMAGEM E' A MESMA nos dois modos. Se ela MUDAR ao ligar/desligar, deu errado.
 
-  (i) Esta cena tem DUAS saidas de proposito. O app cozinha no cartao grafico quando
-      pode, e la' o grafo inteiro vira uma conta so' -- nao ha' ramo para saltar. Este
-      modo vale no cozimento de CPU, e duas saidas poem a cena la'. Nao e' truque: e'
-      onde o modo existe para servir.
+  (i) Esta cena corre no PROCESSADOR de proposito. O app cozinha no cartao grafico
+      quando pode, e la' o grafo inteiro vira uma conta so' -- nao ha' ramo para saltar.
+      Este modo vale no cozimento do processador, e a cena pede-o para o poder mostrar.
 
   DEU ERRADO se: a ondulacao ficar igual de lisa nos dois modos (o modo nao esta' a
   fazer nada); se a imagem mudar; ou se alguma pecinha sumir.",

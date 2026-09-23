@@ -57,6 +57,9 @@ impl GpuCook {
                 styles: styles.len(),
             });
         }
+        if !ordem_reproduzivel(styles) {
+            return Err(GpuCookError::OrdemEntreSaidas);
+        }
         let total: u64 = saidas.iter().map(|s| u64::from(s.count)).sum();
         // The instance buffer is the one binding that can outgrow the device's
         // storage-binding limit below the id ceiling (184 B × count; every
@@ -144,7 +147,35 @@ impl GpuCook {
         }
         self.tex_runs.clear();
         juntar_as_particoes(&partes, &mut self.tex_runs);
+        ordenar_como_a_cpu(styles, &mut self.tex_runs);
         Ok(total)
+    }
+}
+
+/// ⭐⭐⭐ **A placa reproduz a ordem de desenho da CPU?** (doc 119 W4) — a pergunta que a rota faz
+/// ANTES de cozinhar, e que o [`GpuCook::cook_many`] repete como recusa (uma lei, dois leitores).
+///
+/// A CPU ordena as linhas do Motion de forma ESTÁVEL por `(sub_order, texture_id, sampling)`
+/// (`ph2d_render::sort_render_order`). Sem `stream_order` o `sub_order` é `0` em todas, e a ordem
+/// é *agrupar por (textura, filtro), mantendo a ordem do buffer dentro de cada grupo* — que a placa
+/// reproduz EXACTAMENTE ordenando os runs (cada run é uma faixa de uma textura e um filtro). Com
+/// `stream_order` numa saída SÓ, `sub_order = i` e a ordem é a das linhas, que é a do buffer.
+///
+/// ⛔ **Com `stream_order` e mais de uma saída não há reprodução:** as linhas das saídas
+/// entrelaçam-se por índice na CPU (a linha `k` de uma sorteia com a linha `k` da outra — a
+/// fronteira NOMEADA do `SinkStyle::stream_order`), e a placa só sabe ordenar FAIXAS. Esse caso fica
+/// na CPU, com o motivo dito.
+pub fn ordem_reproduzivel(styles: &[SinkStyle]) -> bool {
+    styles.len() <= 1 || styles.iter().all(|s| !s.stream_order)
+}
+
+/// A lei de [`ordem_reproduzivel`] aplicada aos runs: sem `stream_order`, a ordem ESTÁVEL por
+/// `(texture_id, sampling)` — a mesma chave, e a mesma estabilidade, da CPU. ⚠️ Com uma saída só e
+/// objectos de texturas misturadas isto CORRIGE um desvio que já existia: a placa desenhava
+/// `[7, 9, 7]` pela ordem do buffer e a CPU `[7, 7, 9]`.
+pub(crate) fn ordenar_como_a_cpu(styles: &[SinkStyle], runs: &mut [GpuTexRun]) {
+    if styles.iter().all(|s| !s.stream_order) {
+        runs.sort_by_key(|r| (r.texture_id, r.sampling));
     }
 }
 
@@ -192,6 +223,35 @@ mod tests {
             blend,
             sampling: 0,
         }
+    }
+
+    /// ⭐⭐ **A ordem é a da CPU**: sem `stream_order`, agrupada por (textura, filtro) e estável;
+    /// com `stream_order` numa saída só, a do buffer. E a reprodução recusa-se com `stream_order`
+    /// em mais de uma saída.
+    #[test]
+    fn a_ordem_dos_runs_e_a_da_cpu() {
+        let plano = SinkStyle::PLAIN;
+        let linhas = SinkStyle {
+            stream_order: true,
+            ..SinkStyle::PLAIN
+        };
+        let mut r = vec![run(7, 0, 2, 0), run(9, 2, 3, 0), run(7, 3, 5, 0)];
+        ordenar_como_a_cpu(&[plano], &mut r);
+        assert_eq!(r, vec![run(7, 0, 2, 0), run(7, 3, 5, 0), run(9, 2, 3, 0)]);
+        let mut r = vec![run(7, 0, 2, 0), run(9, 2, 3, 0), run(7, 3, 5, 0)];
+        ordenar_como_a_cpu(&[linhas], &mut r);
+        assert_eq!(r, vec![run(7, 0, 2, 0), run(9, 2, 3, 0), run(7, 3, 5, 0)]);
+        // ⚠️ A chave é (textura, filtro) e NESTA ordem: aqui as duas discordam, e a textura manda.
+        let perto = |t, a, b| GpuTexRun {
+            sampling: 1,
+            ..run(t, a, b, 0)
+        };
+        let mut r = vec![run(9, 0, 2, 0), perto(7, 2, 4)];
+        ordenar_como_a_cpu(&[plano, plano], &mut r);
+        assert_eq!(r, vec![perto(7, 2, 4), run(9, 0, 2, 0)]);
+        assert!(ordem_reproduzivel(&[linhas]));
+        assert!(ordem_reproduzivel(&[plano, plano]));
+        assert!(!ordem_reproduzivel(&[plano, linhas]));
     }
 
     /// Nenhuma saída pede um run ⇒ a partição fica vazia (o caminho de sempre).

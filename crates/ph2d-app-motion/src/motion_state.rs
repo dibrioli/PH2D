@@ -358,6 +358,13 @@ pub struct MotionState {
     /// `PH2D_GPU_COOK=0` opts back out. The CPU pump remains the CANONICAL
     /// path either way (replay-hash, parity oracles — ADR-0126).
     pub gpu_enabled: bool,
+    /// ⭐ **A CENA que pede a CPU, e o motivo dito em voz alta** (doc 119 W3) — `None` em todo
+    /// documento de artista. Existe porque uma cena de demonstração pode ensinar um modo que SÓ o
+    /// cozimento da CPU tem (a `=107`, o *Skip Unused Inputs*): até ao ciclo 11 ela punha-se lá
+    /// com uma segunda saída, que era a cerca do multi-sink a fazer o trabalho; com a cerca
+    /// levantada a cena iria à placa e o botão ficava inerte. ⇒ o pedido é EXPLÍCITO, e a
+    /// leitura da rota diz porquê (nunca o `PH2D_GPU_COOK=0`, que é escolha do artista).
+    pub cpu_pedida: Option<&'static str>,
     /// **This frame's GPU tap** — the same `BTreeMap<NodeId, Stream>` the graph
     /// panel's readouts read (`readout::take_tap`), stashed so the PARAMS panel
     /// reads a GPU-cooked frame through the SAME door. On a GPU frame the CPU

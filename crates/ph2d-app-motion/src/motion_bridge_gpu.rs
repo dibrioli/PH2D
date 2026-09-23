@@ -72,9 +72,11 @@ fn fell(motion: &mut MotionState, reason: &'static str) -> GpuOutcome {
 /// Choose the cook route from the plan and this frame's flags — the one place
 /// the "fully vs hybrid vs CPU" policy lives.
 ///
-/// - GPU is opt-in (`gpu_enabled`, `PH2D_GPU_COOK=1`) and only for a **single**
-///   sink with **no time scopes** — multi-sink and `motion.time_remap` recuse to
-///   the CPU whole (F1.1's scope; F2+ territory).
+/// - GPU is on by default (`gpu_enabled`; `PH2D_GPU_COOK=0` opts out) and for a
+///   document with **at least one** sink and **no time scopes** — `motion.time_remap`
+///   recuses to the CPU whole. ⭐ **Several sinks go to the device since doc 119 W3**
+///   (the union plan + `cook_many`); it used to be *«F2+ territory»*, a note about a
+///   price nobody had measured.
 /// - Fully-GPU when the plan claims the whole chain (no boundaries).
 /// - Hybrid when the plan leaves **any** CPU boundaries **and** the GPU suffix
 ///   has at least one dispatching stage — a boundary whose only GPU stage is the
@@ -95,7 +97,7 @@ pub fn gpu_route(
     boundaries: &[(NodeId, usize)],
     dispatching_stages: usize,
 ) -> GpuRoute {
-    if !gpu_enabled || n_sinks != 1 || !scopes_empty {
+    if !gpu_enabled || n_sinks == 0 || !scopes_empty {
         return GpuRoute::Cpu;
     }
     match boundaries {
@@ -130,10 +132,22 @@ pub(super) fn graph_has_live_vector_source(graph: &Graph, reg: &NodeRegistry) ->
 /// dele. O que fica AQUI é o despacho, que é o que decide a ordem do cozimento.
 #[path = "motion_bridge_gpu_colisor.rs"]
 mod colisor;
+#[path = "motion_bridge_gpu_forma.rs"]
+pub(crate) mod forma;
 use colisor::{
     RECUSA_COLISOR, RECUSA_COLISOR_EXTERNO, RECUSA_PASSE, cook_publishes_collider,
     graph_declares_collider, graph_reads_declared_collider, sink_arma_a_separacao,
 };
+
+/// O motivo de um documento de várias saídas não ir à placa quando uma delas não pode ser encenada
+/// (doc 119 W3): ela ficaria fronteira, e o estilo de uma saída iria para as linhas de outra.
+pub(crate) const RECUSA_SAIDA_FORA_DA_PLACA: &str =
+    "CPU: uma das saidas nao vai a' placa (o plano deixou-a fronteira)";
+
+/// O motivo de a ordem por linha (`Draw Order: Stream`) em mais de uma saída ficar na CPU (doc 119
+/// W4): a CPU entrelaça as linhas das saídas por índice, e a placa só sabe ordenar faixas.
+pub(crate) const RECUSA_ORDEM_ENTRE_SAIDAS: &str =
+    "CPU: ordem por linha em mais de uma saida -- a placa so' ordena faixas (doc 119 W4)";
 
 /// O motivo, dito em voz alta, de um sink que mistura em grupo não ir à placa — ver o `cook`.
 pub(crate) const RECUSA_MISTURA_EM_GRUPO: &str = "CPU: o sink mistura EM GRUPO (Add/Multiply/Screen) -- so a cena vectorial sabe o alcance e o tom (doc 118)";
@@ -213,7 +227,8 @@ fn cook_publishes_live_geometry(cook: &ph2d_nodegraph::cook::Cook) -> bool {
 
 /// The GPU-resident cook for this frame (GPU/M5 Fase 1 + F1.2, ADR-0126).
 ///
-/// Unless `PH2D_GPU_COOK=0`, a single-sink, unscoped document cooks on the GPU:
+/// Unless `PH2D_GPU_COOK=0`, an unscoped document cooks on the GPU — ONE sink or
+/// several, planned as their UNION and lowered one after another (doc 119 W2–W4):
 /// compute passes in one submit, the lowering writes the renderer's instance
 /// buffer directly, zero readback. **Fully-GPU** when the plan claims the whole
 /// chain; **hybrid** when a node has no kernel — the CPU prefix cooks up to that
@@ -304,18 +319,22 @@ pub(super) fn cook_gpu(
     scopes: &TimeScopes,
 ) -> GpuOutcome {
     motion.gpu_live = false;
-    // Fast-path guard so a GPU-off or multi-sink document never plans.
+    // Fast-path guard so a GPU-off or sinkless document never plans.
     // ⚠️ **Os dois motivos separam-se aqui de propósito:** eles leem-se iguais numa recusa
     // («a CPU desenhou») e um deles é uma ESCOLHA do artista (`PH2D_GPU_COOK=0`) enquanto o
     // outro é uma escada que ele não pediu e cujo preço é `50,9×`.
     if !motion.gpu_enabled {
         return fell(motion, "CPU: o device esta desligado (PH2D_GPU_COOK=0)");
     }
-    if motion.sinks.len() != 1 {
-        return fell(
-            motion,
-            "CPU: mais de UM sink -- a escada do doc 98 §2, ~50x a contagem de objectos",
-        );
+    // ⭐⭐⭐ **A cerca do MULTI-SINK caiu** (doc 119 W3): o plano é a UNIÃO das saídas (cada nó
+    // cozido uma vez) e o `cook_many` baixa-as uma a seguir à outra no mesmo buffer. Fica só o
+    // documento SEM saída, que não tem o que desenhar.
+    if motion.sinks.is_empty() {
+        return fell(motion, "CPU: o documento nao tem saida");
+    }
+    // A cena de demo que ensina um modo SÓ da CPU pede-a, e a leitura da rota diz porquê.
+    if let Some(porque) = motion.cpu_pedida {
+        return fell(motion, porque);
     }
     // A document that brings in a live vector SHAPE (`source.shape`) recuses to
     // the CPU render — the GPU cook has no `geometry_id` route and would draw it
@@ -328,6 +347,10 @@ pub(super) fn cook_gpu(
             motion,
             "CPU: o grafo traz uma FORMA vectorial viva (source.shape)",
         );
+    }
+    // A mesma lei por INSTÂNCIA: um nó que desenha uma forma só em alguns modos (doc 119 §7).
+    if forma::desenha_forma_condicional(motion, target as f64 * fixed_dt) {
+        return fell(motion, forma::RECUSA_FORMA_CONDICIONAL);
     }
     // Doc 109: o contacto entre peças ainda só existe na CPU — ver [`graph_declares_collider`].
     if graph_declares_collider(&motion.doc.graph) {
@@ -353,7 +376,11 @@ pub(super) fn cook_gpu(
     // as imagens ao passe de sprites, que só sabe a mistura de hardware — em luz linear e sem
     // alcance nenhum. ⇒ a rota da placa desenharia o tom e o alcance ERRADOS, e cai para a CPU,
     // que baixa o sink inteiro para a cena vectorial. O preço está medido no doc 118 §6.
-    if sink_mistura_em_grupo(&motion.doc.graph, motion.sinks[0]) {
+    if motion
+        .sinks
+        .iter()
+        .any(|&s| sink_mistura_em_grupo(&motion.doc.graph, s))
+    {
         return fell(motion, RECUSA_MISTURA_EM_GRUPO);
     }
     // A `source.object` that resolves to a live VECTOR publishes a `geometry_id`
@@ -388,11 +415,11 @@ pub(super) fn cook_gpu(
     let plan = {
         let alvo_ph = target as f64 * fixed_dt;
         let dirigidos_do_plano = valores_dirigidos(motion, alvo_ph);
-        ph2d_gpu_cook::plan_driven(
+        ph2d_gpu_cook::plan_driven_many(
             &motion.doc.graph,
             &motion.registry,
             &motion.registry,
-            motion.sinks[0],
+            &motion.sinks,
             &dirigidos_do_plano,
         )
     };
@@ -401,7 +428,24 @@ pub(super) fn cook_gpu(
     // AQUI, ao lado do sink que o plano escolheu: um segundo leitor teria liberdade de
     // arredondar diferente, e as duas rotas desenhariam o mesmo documento de maneiras
     // diferentes, que nenhum gate que olha para uma rota consegue ver.
-    let blend = ph2d_eval_motion::sink_style(&motion.doc.graph, motion.sinks[0]);
+    //
+    // ⭐⭐ **UM ESTILO POR SAÍDA**, na ordem do plano (doc 119 W3). ⚠️ Com várias saídas elas têm de
+    // TODAS ter ido à placa — pedir uma saída não é garantir que ela chega lá (uma que o plano não
+    // encena fica fronteira), e cozinhar assim poria o estilo de uma nas linhas de outra.
+    if motion.sinks.len() > 1 && plan.sinks != motion.sinks {
+        return fell(motion, RECUSA_SAIDA_FORA_DA_PLACA);
+    }
+    let estilos: Vec<ph2d_render::SinkStyle> = motion
+        .sinks
+        .iter()
+        .map(|&s| ph2d_eval_motion::sink_style(&motion.doc.graph, s))
+        .collect();
+    // ⭐ **A ORDEM DE DESENHO** (doc 119 W4): a placa só reproduz a da CPU ordenando FAIXAS, logo a
+    // ordem por linha (`stream_order`) em mais de uma saída fica na CPU. A MESMA porta que o cook
+    // repete como recusa.
+    if !ph2d_gpu_cook::ordem_reproduzivel(&estilos) {
+        return fell(motion, RECUSA_ORDEM_ENTRE_SAIDAS);
+    }
     // The count-changing cerca (this wave): an OBJECT graph whose GPU suffix
     // reorders / changes count would mis-bind the texture-run partition — the
     // boundary `texture_id` column aligns with the sink ONLY when the suffix is
@@ -457,7 +501,7 @@ pub(super) fn cook_gpu(
                 motion.gpu_cook.set_driven(dirigidos);
                 motion
                     .gpu_cook
-                    .cook(
+                    .cook_many(
                         gpu,
                         &motion.doc.graph,
                         &motion.registry,
@@ -467,7 +511,7 @@ pub(super) fn cook_gpu(
                         ph2d_gpu_cook::CookClock { playhead, tick },
                         motion.default_uv_rect,
                         motion.default_size,
-                        blend,
+                        &estilos,
                     )
                     .is_ok()
             });
@@ -550,7 +594,7 @@ pub(super) fn cook_gpu(
                     motion.gpu_live = ticks.iter().all(|&(playhead, tick)| {
                         motion
                             .gpu_cook
-                            .cook(
+                            .cook_many(
                                 gpu,
                                 &motion.doc.graph,
                                 &motion.registry,
@@ -560,14 +604,14 @@ pub(super) fn cook_gpu(
                                 ph2d_gpu_cook::CookClock { playhead, tick },
                                 motion.default_uv_rect,
                                 motion.default_size,
-                                blend,
+                                &estilos,
                             )
                             .is_ok()
                     });
                 } else {
                     motion.gpu_live = motion
                         .gpu_cook
-                        .cook(
+                        .cook_many(
                             gpu,
                             &motion.doc.graph,
                             &motion.registry,
@@ -578,7 +622,7 @@ pub(super) fn cook_gpu(
                             ph2d_gpu_cook::CookClock::at(target as f64 * fixed_dt),
                             motion.default_uv_rect,
                             motion.default_size,
-                            blend,
+                            &estilos,
                         )
                         .is_ok();
                 }
@@ -641,3 +685,9 @@ mod tests;
 #[cfg(all(test, feature = "panel-motion-graph"))]
 #[path = "motion_bridge_gpu_taps_tests.rs"]
 mod taps_tests;
+
+/// ⭐⭐⭐ **As cenas de VÁRIAS saídas, pela placa, contra a CPU** (doc 119 W3/W4) — a prova no
+/// produto de que levantar a cerca do multi-sink não muda o que se vê.
+#[cfg(test)]
+#[path = "motion_bridge_gpu_varias_saidas_tests.rs"]
+mod varias_saidas_tests;

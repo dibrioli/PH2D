@@ -58,4 +58,8 @@ pub enum GpuCookError {
     /// (ficou fronteira): cozinhar assim poria o estilo de uma saída nas linhas de outra, e a
     /// recusa é a porta que as outras recusas desta lista já usam — a CPU desenha o quadro.
     SinkStyleMismatch { sinks: usize, styles: usize },
+    /// ⭐ **A placa não reproduz a ordem de desenho da CPU** (doc 119 W4) — `stream_order` em mais
+    /// de uma saída: a CPU entrelaça as linhas das saídas por índice e a placa só ordena faixas.
+    /// Ver [`crate::ordem_reproduzivel`], que a rota pergunta antes de cozinhar.
+    OrdemEntreSaidas,
 }

@@ -167,73 +167,53 @@ fn the_two_modes_agree_bit_for_bit_on_this_scene() {
     );
 }
 
-/// **A CENA TEM DUAS SAÍDAS, E ISSO É A CONDIÇÃO — não arrumação.**
+/// ⭐⭐ **A CENA PEDE A CPU, e a leitura da rota diz porquê** (doc 119 W3).
 ///
-/// ⚠️ **Sem isto a cena volta a não demonstrar nada, e em silêncio.** O cook é GPU-residente por
-/// omissão e o plano de GPU recusa um documento com mais de um sink
-/// (`motion_bridge_gpu`: `motion.sinks.len() != 1`); com um sink só, este grafo é inteiramente
-/// coberto, corre no device — onde o grafo é UM dispatch e não há ramo para saltar — e o botão
-/// fica inerte. Medido no quadro real: `motion_active=true` mas `pump.instances = 0`, e o modo
-/// não muda um milissegundo.
+/// ⛔ **A premissa que este gate substitui MORREU à vista:** até ao ciclo 11 a cena tinha DUAS
+/// saídas, e o gate `the_scene_keeps_two_sinks_so_it_cooks_on_the_cpu` afirmava que a contagem de
+/// sinks sozinha a mandava para a CPU — era a cerca do multi-sink a fazer o trabalho. O ciclo 11
+/// levantou a cerca (o plano da união + o `cook_many`), e com duas saídas a cena iria à placa, onde
+/// o grafo é UM dispatch e o botão da preguiça fica inerte.
+///
+/// ⇒ o pedido é EXPLÍCITO, e as duas metades afirmam-se: esta cena pede a CPU, e uma cena VIZINHA
+/// não (senão um pedido que respondesse sempre passaria aqui e mandaria o app inteiro para a CPU).
 #[test]
-fn the_scene_keeps_two_sinks_so_it_cooks_on_the_cpu() {
-    use crate::motion_bridge::gpu::{GpuRoute, gpu_route};
-    let (_, _, sinks) = scene();
+fn a_cena_pede_a_cpu_e_diz_porque() {
+    use crate::motion_state::demo_router::cena_pede_a_cpu_em;
     assert_eq!(
-        sinks.len(),
-        2,
-        "com um sink so' o plano de GPU cobre a cena e o modo fica INERTE"
+        cena_pede_a_cpu_em(Some("107")),
+        Some(super::PEDE_A_CPU),
+        "a cena que ensina o modo da CPU tem de a pedir"
     );
-    // ⚠️ **A metade que faltava: a ROTA, não a declaração.** `sinks.len() == 2` é o *proxy* —
-    // a lei mora em `gpu_route`, que é pura e chamável. Com a GPU LIGADA e sem escopos nem
-    // fronteiras (o melhor caso para o device), a contagem de sinks tem de ser sozinha o
-    // bastante para mandar a cena para a CPU. *Um gate sobre a premissa fica verde no dia em
-    // que a conclusão mudar de dono.*
-    assert_eq!(
-        gpu_route(true, sinks.len(), true, &[], 0),
-        GpuRoute::Cpu,
-        "a cena iria para o device — o botao da preguica ficaria inerte"
+    assert!(
+        super::PEDE_A_CPU.starts_with("CPU:"),
+        "a leitura da rota lê-se como as outras recusas"
     );
-    // E o controle: com UM sink a mesma chamada escolhe o device. Sem ele, um `gpu_route` que
-    // devolvesse `Cpu` sempre passaria neste gate.
-    assert_eq!(
-        gpu_route(true, 1, true, &[], 0),
-        GpuRoute::FullyGpu,
-        "controle: com um sink so' a rota TEM de ser a do device"
-    );
+    // O CONTROLO: a vizinha e o documento de artista não pedem nada.
+    assert_eq!(cena_pede_a_cpu_em(Some("106")), None);
+    assert_eq!(cena_pede_a_cpu_em(None), None);
 }
 
-/// ⛔⛔ **A SEGUNDA SAÍDA ESCOLHE A ROTA; ELA NÃO PODE DESENHAR O CAMPO.**
-///
-/// O pump **acumula** os sinks num `Vec` só e desenha por ordem, então uma 2.ª saída ligada ao
-/// mesmo fluxo lowerava `SIDE²` instâncias **em repouso, por cima da onda** — medido pela
-/// auditoria de 2026-08-27: a laje parada cobria `3,78` dos `4,59` da onda, restando `17%` da
-/// altura a ondular, sobre um campo opaco. A cena escondia o que pedia para se julgar.
-///
-/// ⚠️ **A régua é a CONTAGEM de instâncias, não a caixa.** Uma caixa menor ainda pode tapar o
-/// meio; o que torna a 2.ª saída inofensiva é ela não ter praticamente nada para desenhar.
+/// **UMA SAÍDA SÓ, e é o campo todo** — a 2.ª saída, que existia para contornar a cerca, saiu com
+/// ela. ⚠️ Ela custou uma auditoria (2026-08-27): desenhada por cima, escondia `83 %` da onda.
 #[test]
-fn the_second_sink_never_draws_over_the_field_the_artist_is_asked_to_judge() {
+fn a_cena_tem_uma_saida_e_ela_e_o_campo() {
     use ph2d_nodegraph::cook::Cook;
     let (doc, reg, sinks) = scene();
-    let count = |sink: NodeId| -> usize {
-        let mut cook = Cook::new();
-        cook.cook(&doc.graph, &reg, sink, 0.25).expect("coze")[0]
-            .as_stream()
-            .count()
-    };
-    let field = count(sinks[0]);
-    let anchor = count(sinks[1]);
+    assert_eq!(
+        sinks.len(),
+        1,
+        "a segunda saida era a cerca a fazer o trabalho"
+    );
+    let mut cook = Cook::new();
+    let field = cook.cook(&doc.graph, &reg, sinks[0], 0.25).expect("coze")[0]
+        .as_stream()
+        .count();
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
-        reason = "224"
+        reason = "um lado de grelha"
     )]
     let expected = (SIDE as usize) * (SIDE as usize);
-    assert_eq!(field, expected, "a saida principal tem de ser o campo todo");
-    assert!(
-        anchor <= 1,
-        "a segunda saida lowera {anchor} instancias — ela desenha POR CIMA do campo que o \
-         smoke pede ao Enio para julgar (o pump acumula os sinks e pinta por ordem)"
-    );
+    assert_eq!(field, expected, "a saida tem de ser o campo todo");
 }

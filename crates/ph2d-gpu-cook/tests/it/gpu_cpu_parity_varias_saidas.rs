@@ -281,3 +281,111 @@ fn cada_saida_le_as_texturas_da_sua_fronteira() {
         "a 2.ª saída tem de ler a textura da fronteira DELA"
     );
 }
+
+/// A ordem em que a placa DESENHA as linhas: os runs pela ordem da lista (cada um da sua faixa), ou
+/// o buffer inteiro por ordem quando a partição é vazia — é o que o laço do `renderer_draw` faz.
+fn ordem_de_desenho_da_placa(inst: &[RenderInstance], runs: &[GpuTexRun]) -> Vec<[f32; 2]> {
+    if runs.is_empty() {
+        return inst.iter().map(|i| i.world_pos).collect();
+    }
+    runs.iter()
+        .flat_map(|r| {
+            inst[r.start as usize..r.end as usize]
+                .iter()
+                .map(|i| i.world_pos)
+        })
+        .collect()
+}
+
+/// ⭐⭐⭐ **A placa desenha as linhas pela MESMA ordem que a CPU** (doc 119 W4).
+///
+/// A CPU ordena as linhas do Motion de forma ESTÁVEL por `(sub_order, texture_id, sampling)`
+/// (`ph2d_render::sort_render_order`, a régua deste gate) — com duas saídas de filtros diferentes, as
+/// do filtro de fábrica (`sampling = 0`) desenham PRIMEIRO, seja qual for a ordem das saídas. A
+/// placa desenhava pela ordem do buffer, e numa sobreposição a de cima trocava de rota para rota.
+#[test]
+#[ignore = "needs a GPU adapter"]
+fn a_placa_desenha_pela_ordem_da_cpu() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("sem adaptador — saltando");
+        return;
+    };
+    let reg = registry();
+    let (g, [a, b, _]) = tres_saidas(&reg);
+    let perto = SinkStyle {
+        sampling: RenderInstance::pack_sampling(1, 0),
+        ..SinkStyle::PLAIN
+    };
+    // A 1.ª saída com o filtro não-de-fábrica: a CPU desenha-a DEPOIS da 2.ª.
+    let styles = [perto, SinkStyle::PLAIN];
+    let c = cpu(&g, &reg, &[a, b], &styles);
+    let (p, runs, _) = placa(&gpu, &g, &reg, &[a, b], &styles);
+    paridade(&c, &p);
+    let mut ordenada = c.clone();
+    ph2d_render::sort_render_order(&mut ordenada);
+    let pos = |v: &[RenderInstance]| v.iter().map(|i| i.world_pos).collect::<Vec<_>>();
+    // O CONTROLO: a ordem da CPU NÃO é a do buffer — senão este gate não mede nada. (Medido na
+    // CPU contra ela própria: comparar com a placa mediria também os ULP do oscilador.)
+    assert_ne!(
+        pos(&ordenada),
+        pos(&c),
+        "a fixtura tem de conter o fenómeno: a CPU reordena"
+    );
+    let da_placa = ordem_de_desenho_da_placa(&p, &runs);
+    let da_cpu = pos(&ordenada);
+    assert_eq!(da_placa.len(), da_cpu.len());
+    for (k, (x, y)) in da_placa.iter().zip(&da_cpu).enumerate() {
+        assert!(
+            (x[0] - y[0]).abs() <= EPS && (x[1] - y[1]).abs() <= EPS,
+            "a {k}.a linha desenhada: placa {x:?} contra cpu {y:?} — a placa tem de desenhar pela \
+             ordem da CPU (runs: {runs:?})"
+        );
+    }
+}
+
+/// ⛔ **`stream_order` em mais de uma saída é RECUSADO pelo cozimento** (doc 119 W4) — a CPU
+/// entrelaça as linhas das saídas por índice, e a placa só ordena faixas: desenhar daria outra
+/// sobreposição. O CONTROLO: com `stream_order` numa saída SÓ o mesmo par coze. (Nasceu de uma
+/// mutação SOBREVIVENTE — apagar a recusa do cozimento deixava a suíte verde.)
+#[test]
+#[ignore = "needs a GPU adapter"]
+fn a_ordem_por_linha_em_duas_saidas_e_recusada() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("sem adaptador — saltando");
+        return;
+    };
+    let reg = registry();
+    let (g, [a, b, _]) = tres_saidas(&reg);
+    let linhas = SinkStyle {
+        stream_order: true,
+        ..SinkStyle::PLAIN
+    };
+    let plan = plan_driven_many(&g, &reg, &reg, &[a, b], &Default::default());
+    let coze = |styles: &[SinkStyle]| {
+        GpuCook::new().cook_many(
+            &gpu,
+            &g,
+            &reg,
+            &reg,
+            &plan,
+            &[],
+            CookClock::at(AT),
+            DEFAULT_UV,
+            DEFAULT_SIZE,
+            styles,
+        )
+    };
+    assert_eq!(
+        coze(&[linhas, linhas]),
+        Err(ph2d_gpu_cook::error::GpuCookError::OrdemEntreSaidas)
+    );
+    assert_eq!(
+        coze(&[linhas, SinkStyle::PLAIN]),
+        Err(ph2d_gpu_cook::error::GpuCookError::OrdemEntreSaidas),
+        "basta UMA com ordem por linha, havendo outra saída"
+    );
+    assert!(
+        coze(&[SinkStyle::PLAIN, SinkStyle::PLAIN]).is_ok(),
+        "CONTROLO"
+    );
+}

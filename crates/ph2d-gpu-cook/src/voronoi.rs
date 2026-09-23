@@ -63,7 +63,17 @@ const VALUE_COL: &str = "v";
 /// helper drives all six pipelines. `n` is the DISPATCH length (count or
 /// res²); `count` is always the point count (the accumulator sections and the
 /// seed-key inversion need it even in grid-sized passes).
-fn uniform_bytes(n: u32, res: u32, step: u32, count: u32, w: f32, h: f32, seed: u32) -> [u8; 32] {
+#[allow(clippy::too_many_arguments)] // o layout do uniform, campo a campo
+fn uniform_bytes(
+    n: u32,
+    res: u32,
+    step: u32,
+    count: u32,
+    w: f32,
+    h: f32,
+    seed: u32,
+    metric: u32,
+) -> [u8; 32] {
     let mut b = [0u8; 32];
     b[0..4].copy_from_slice(&n.to_le_bytes());
     b[4..8].copy_from_slice(&res.to_le_bytes());
@@ -72,12 +82,23 @@ fn uniform_bytes(n: u32, res: u32, step: u32, count: u32, w: f32, h: f32, seed: 
     b[16..20].copy_from_slice(&w.to_le_bytes());
     b[20..24].copy_from_slice(&h.to_le_bytes());
     b[24..28].copy_from_slice(&seed.to_le_bytes());
+    b[28..32].copy_from_slice(&metric.to_le_bytes());
     b
+}
+
+/// O valor do uniform `metric` para o valor do param — a MESMA escada do `nearest` da CPU
+/// (`motion.voronoi`): `1` Manhattan, `2` Chebyshev, **qualquer outro** a Euclidiana.
+fn metric_code(param: f32) -> u32 {
+    match param.round() as i32 {
+        GpuAlgorithm::LLOYD_METRIC_MANHATTAN => 1,
+        GpuAlgorithm::LLOYD_METRIC_CHEBYSHEV => 2,
+        _ => 0,
+    }
 }
 
 fn module(bindings: &str, body: &str, lib: &str) -> String {
     format!(
-        "struct U {{ n: u32, res: u32, step: u32, count: u32, w: f32, h: f32, seed: u32, pad: u32 }}\n\
+        "struct U {{ n: u32, res: u32, step: u32, count: u32, w: f32, h: f32, seed: u32, metric: u32 }}\n\
          @group(0) @binding(0) var<uniform> u: U;\n\
          {bindings}\n\
          {lib}\
@@ -168,7 +189,13 @@ pub(crate) fn sources() -> [(&'static str, String); 6] {
              \x20           let cand = src[u32(ny) * u.res + u32(nx)];\n\
              \x20           if (cand == 0u) { continue; }\n\
              \x20           let dv = tc - pts[u.count - cand];\n\
-             \x20           let d = dot(dv, dv);\n\
+             \x20           // ⚠️ A MESMA distância que o `nearest` da CPU compara: a Euclidiana\n\
+             \x20           // continua ao QUADRADO (sem `sqrt`) e as outras duas são monótonas\n\
+             \x20           // na sua própria grandeza.\n\
+             \x20           let ad = abs(dv);\n\
+             \x20           var d = dot(dv, dv);\n\
+             \x20           if (u.metric == 1u) { d = ad.x + ad.y; }\n\
+             \x20           if (u.metric == 2u) { d = max(ad.x, ad.y); }\n\
              \x20           // Strictly closer wins; an exact tie prefers the LOWER id —\n\
              \x20           // the CPU nearest's keep-first on strict `<`. The stored key\n\
              \x20           // is count−id, so the lower id is the HIGHER key.\n\
@@ -350,6 +377,7 @@ impl GpuCook {
             max_res,
             samples_per_point,
             max_iterations,
+            metric_param,
         } = alg;
         // The node's own param laws, to the letter (`motion.voronoi::eval`).
         let count = param_as_count(
@@ -367,6 +395,13 @@ impl GpuCook {
         let iterations = (resolve_param(graph, node, manifest, iterations_param, &self.driven)
             .round() as i64)
             .clamp(0, *max_iterations) as usize;
+        let metric = metric_code(resolve_param(
+            graph,
+            node,
+            manifest,
+            metric_param,
+            &self.driven,
+        ));
         let res = GpuAlgorithm::lloyd_resolution(count, *samples_per_point, *min_res, *max_res)
             .min(INT_CENTROID_RES_CEILING);
 
@@ -380,8 +415,9 @@ impl GpuCook {
         let out = self.pool.acquire(gpu, u64::from(n) * 8);
 
         let mut hold: Vec<wgpu::Buffer> = Vec::new();
-        let uni =
-            |dispatch: u32, step: u32| uniform_bytes(dispatch, res as u32, step, n, w, h, seed);
+        let uni = |dispatch: u32, step: u32| {
+            uniform_bytes(dispatch, res as u32, step, n, w, h, seed, metric)
+        };
         let pipes = self
             .voronoi_pipes
             .get_or_insert_with(|| VoronoiPipes::new(gpu));
@@ -494,6 +530,7 @@ pub fn jfa_assignment(
     w: f32,
     h: f32,
     res: usize,
+    metric: i32,
 ) -> Vec<u32> {
     let n = points.len() as u32;
     let cells = (res * res) as u32;
@@ -518,7 +555,9 @@ pub fn jfa_assignment(
         .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
     encoder.clear_buffer(&grid_a, 0, None);
     let mut hold = Vec::new();
-    let uni = |dispatch: u32, step: u32| uniform_bytes(dispatch, res as u32, step, n, w, h, 0);
+    let metric = metric_code(metric as f32);
+    let uni =
+        |dispatch: u32, step: u32| uniform_bytes(dispatch, res as u32, step, n, w, h, 0, metric);
     pipes.pass(
         gpu,
         &mut encoder,

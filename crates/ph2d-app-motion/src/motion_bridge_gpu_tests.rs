@@ -175,14 +175,20 @@ fn the_object_recusal_is_content_aware_a_live_vector_recuses_but_a_sprite_stays(
     );
 }
 
+/// Every gate is independent: flip one and the GPU is refused even when a
+/// fully-claimed plan is on offer.
+///
+/// ⛔ **A premissa «multi-sink ⇒ CPU» MORREU (doc 119 W3), à vista:** este gate chamava-se
+/// `disabled_or_multi_sink_or_scoped_is_always_cpu` e afirmava `gpu_route(true, 2, ..) == Cpu`.
+/// O plano da união e o `cook_many` levantaram a cerca; o que fica recusado é o documento SEM
+/// saída.
 #[test]
-fn disabled_or_multi_sink_or_scoped_is_always_cpu() {
-    // Every gate is independent: flip one and the GPU is refused even when a
-    // fully-claimed plan is on offer.
+fn disabled_or_sinkless_or_scoped_is_always_cpu() {
     assert_eq!(gpu_route(false, 1, true, &[], 3), GpuRoute::Cpu);
-    assert_eq!(gpu_route(true, 2, true, &[], 3), GpuRoute::Cpu);
     assert_eq!(gpu_route(true, 0, true, &[], 3), GpuRoute::Cpu);
     assert_eq!(gpu_route(true, 1, false, &[], 3), GpuRoute::Cpu);
+    // E várias saídas vão à placa como uma.
+    assert_eq!(gpu_route(true, 2, true, &[], 3), GpuRoute::FullyGpu);
 }
 
 /// **Two seams take the GPU now** — the assertion that flipped when the pump

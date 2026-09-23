@@ -61,7 +61,7 @@ impl MotionState {
             // (`bounded_readback_cost_probe`), and the panel reads the device.
             //
             // Turning it on is not a claim that every document runs there:
-            // `gpu_route` still recuses a multi-sink or time-scoped document
+            // `gpu_route` still recuses a time-scoped document
             // whole, and `plan` recuses any chain with an uncovered node in it.
             // Those all fall through to the CPU pump exactly as before — which is
             // why the flip is safe and why it is a DEFAULT rather than a
@@ -71,6 +71,7 @@ impl MotionState {
             // suspected device-path bug against the canonical path, which stays
             // the CPU's (ADR-0126 — the replay-hash never runs on a GPU).
             gpu_enabled: gpu_enabled_from_env(std::env::var("PH2D_GPU_COOK").ok().as_deref()),
+            cpu_pedida: demo_router::cena_pede_a_cpu(),
             // Filled each active frame by the bridge from the GPU tap (`None` until
             // then, and on every CPU-cooked frame).
             gpu_tap: None,

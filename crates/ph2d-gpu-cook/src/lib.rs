@@ -72,6 +72,7 @@ pub mod reduce;
 pub mod reduce_stage;
 pub mod ring;
 mod saidas;
+pub use saidas::ordem_reproduzivel;
 pub mod scan;
 pub mod shape;
 pub mod stream;

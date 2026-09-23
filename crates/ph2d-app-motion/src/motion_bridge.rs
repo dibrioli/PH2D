@@ -448,7 +448,7 @@ pub fn dispatch(
     let target = motion_tick(playhead, fixed_dt);
 
     // ── GPU-resident cook (GPU/M5 Fase 1 + F1.2, ADR-0126) — opt-in preview ──
-    // With `PH2D_GPU_COOK=1` a single-sink, unscoped document cooks on the GPU
+    // Unless `PH2D_GPU_COOK=0`, an unscoped document — one sink or several (doc 119) — cooks on the GPU
     // (fully, or hybrid from a CPU boundary). `Handled` = the GPU produced this
     // frame → skip the CPU pump; `FellThrough` = run the pump below. The whole
     // policy + dispatch lives in the `gpu` module (see there); this stays a seam.

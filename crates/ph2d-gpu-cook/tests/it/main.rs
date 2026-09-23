@@ -7,6 +7,7 @@
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
 mod a_lei_do_dono_no_dispositivo;
+mod a_variante_entra_na_chave_do_pipeline;
 mod boundary_arity;
 mod generated_wgsl_validates;
 mod gpu_boids;
@@ -45,5 +46,6 @@ mod measure_static_orbit;
 mod node_key_uniform;
 mod plan_analysis;
 mod plan_da_uniao;
+
 mod plan_simulation;
 mod sim_invalidation;

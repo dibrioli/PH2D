@@ -100,7 +100,15 @@ pub const GPU_ALGORITHM: GpuAlgorithm = GpuAlgorithm::LloydVoronoi {
     max_res: MAX_RES,
     samples_per_point: SAMPLES_PER_POINT,
     max_iterations: MAX_ITERATIONS,
+    metric_param: METRIC,
 };
+
+// ⚠️ A escada da métrica é UMA: os valores que o `nearest` da CPU casa são os que a inundação
+// da placa casa. Mudar um lado sem o outro é erro de compilação aqui.
+const _: () = assert!(
+    METRIC_MANHATTAN == GpuAlgorithm::LLOYD_METRIC_MANHATTAN
+        && METRIC_CHEBYSHEV == GpuAlgorithm::LLOYD_METRIC_CHEBYSHEV
+);
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {

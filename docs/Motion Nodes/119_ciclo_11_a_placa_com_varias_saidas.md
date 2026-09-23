@@ -121,3 +121,88 @@ que não toca a propriedade lê-se como um gate cego*; reescrita, sangra.
 **a rota da CPU ordena as linhas do Motion por `(sub_order, texture_id, sampling)` de forma
 estável, e a placa desenha pela ordem do buffer.** Com saídas de texturas ou filtros diferentes, a
 sobreposição mudaria de rota para rota.
+
+## §6 — W4 FECHADA (2026-09-23): a ORDEM entre saídas
+
+⭐ **A lei é a da CPU, e a placa passa a obedecer-lhe:** o `sort_render_order` da CPU é um sort
+ESTÁVEL por `(âncora de recorte, z_order, sub_order, texture_id, sampling)`, e a placa desenha os
+runs pela ordem da lista ⇒ `saidas::ordenar_como_a_cpu` ordena os runs, de forma estável, por
+`(texture_id, sampling)` quando nenhuma saída pede `Draw Order: Stream`.
+
+- ⛔⛔ **Isto corrige também um defeito PRÉ-EXISTENTE de UMA saída:** com texturas misturadas a
+  placa desenhava `[7, 9, 7]` onde a CPU desenha `[7, 7, 9]` — a sobreposição mudava de rota
+  para rota sem nenhum multi-sink no meio.
+- ⛔ **`stream_order` com mais de uma saída NÃO é reproduzível** (a CPU entrelaça as linhas das
+  saídas por índice; a placa só sabe ordenar faixas) ⇒ `GpuCookError::OrdemEntreSaidas` no motor
+  e `RECUSA_ORDEM_ENTRE_SAIDAS` na ponte, com a porta pura `ordem_reproduzivel` lida pelos dois.
+- Gates (`gpu_cpu_parity_varias_saidas.rs`): a placa desenha pela ordem da CPU · a ordem por linha
+  em duas saídas é recusada. ⚠️ A régua da ordem compara POSIÇÕES entre motores com `EPS` (ruído de
+  ULP) e o CONTROLO compara a CPU consigo mesma. A mutação que apagava a recusa **sobreviveu** até
+  existir o gate dela.
+
+## §7 — W3, metade da PONTE (2026-09-23): a cerca do multi-sink SAIU
+
+`cook_gpu` planeia a UNIÃO (`plan_driven_many(.., &motion.sinks, ..)`), recusa se o plano deixou
+alguma saída como fronteira (`RECUSA_SAIDA_FORA_DA_PLACA`) e coze com um estilo por saída
+(`cook_many(.., &estilos)`, as TRÊS chamadas). ⚠️ **A `=107` (o interruptor preguiçoso) só corria
+na CPU por ter uma segunda saída** — a âncora que a cena pendurava para isso saiu, e ela passa a
+**pedir** a CPU pelo nome (`MotionState::cpu_pedida`), com a razão dita no log de rota: ela ensina
+um modo SÓ da CPU (*Skip Unused Inputs*).
+
+⭐⭐⭐ **E a varredura que a torna honesta** (`as_cenas_de_varias_saidas_pela_placa_dao_o_que_a_cpu_da`,
+`#[ignore]`, adaptador real): corre a MESMA ponte do quadro sobre **toda cena de demo com mais de
+uma saída**, em estados GÉMEOS, e compara a coluna `P` de cada saída (placa contra as tomadas da
+bomba) e a ordem do desenho (runs contra o `sort_render_order`). **Resultado: 59 cenas julgadas,
+`19 798` posições comparadas, 22 recusadas pela ponte com a razão nomeada.** Piso nas duas
+grandezas (`≥ 20` cenas, `≥ 1 000` posições). ⚠️ A barra de cada saída sai do que a corrente DELA
+tem e é a que o gate irmão já DECLAROU — tabela `Custom` (`EPS_REL_LUT`, medido `6,65e-4`),
+inundação do Voronoi (a banda do `full_relax`, relativa ao lado), o resto `1e-3` absoluto.
+
+## §8 — O que a varredura ACHOU: TRÊS defeitos de produto que a cerca escondia
+
+⛔⛔⛔ **Nenhum dos três é do multi-sink** — a cerca mandava para a CPU os únicos documentos que os
+exercitavam, e o artista podia chegar a cada um com UMA saída.
+
+**(a) A cache de pipelines ignorava a VARIANTE do kernel.** A chave era `(tipo, presença)`, e um
+nó que escolhe o kernel por param (`variant_by_param`: o `channel` do `motion.noise`, do
+`oscillator`, do `drive`) compila um módulo POR VARIANTE ⇒ duas variantes com as mesmas colunas
+davam a mesma chave e a segunda recebia o pipeline da primeira. Medido: dois ruídos `Y`/`XY` no
+mesmo plano → o segundo a **`0,335`** da CPU; e, com UMA saída, **trocar o canal no painel com a
+cena na placa não mudava nada** (a cache persiste entre quadros; `0,26`). Cura: `PipelineKey` com a
+identidade dos `&'static` da variante (`O(1)`, ponteiros iguais ⇒ conteúdo igual), e enum porque o
+mapa é partilhado com os mapas de redução (hash de conteúdo). Gates:
+`a_variante_entra_na_chave_do_pipeline` (as duas ordens no mesmo plano · a troca entre quadros).
+
+**(b) A Voronoi da placa não tinha a MÉTRICA.** O `metric` (Euclidiana/Manhattan/Chebyshev, doc 89
+folha 01) chegou à CPU e não à inundação: um Voronoi em Chebyshev saía **redondo pela placa e
+quadrado pela CPU**. Cura: `GpuAlgorithm::LloydVoronoi::metric_param` (campo apendado), o valor na
+vaga livre do uniform e a MESMA distância no passo da inundação; a escada dos valores é uma, com
+`const assert!` no nó. Medido: a atribuição texel a texel diverge **`0`** da CPU nas duas métricas
+novas e um passo de Lloyd fica a `1e-6` (a mesma barra do gate da Euclidiana). Gate
+`the_metric_reaches_the_device`, com o CONTROLO primeiro (as métricas têm de mudar `≥ 5 %` dos
+donos na CPU, senão a fixtura não contém o fenómeno — medido `9,4 %`).
+
+**(c) O L-System em `Branches` saía como QUADRADOS.** A fita é um `geometry_id`, que a placa não
+desenha, e a cerca da forma viva perguntava pelo TIPO (o `source.shape`, o `source.text`); o
+L-System só é forma viva num modo. A `=108` desenhava cinco quadrados onde a CPU desenha cinco
+plantas, e qualquer `lsystem → move → output` do artista já caía nisto. ⛔ **Não se marcou o tipo:**
+a bandeira de tipo tem outros dois leitores (a lei da aparência e a das fontes de posições), para
+quem um L-System em `Lines` é uma fonte de POSIÇÕES. Cura: canal de registo NOVO e apendado
+(`register_live_vector_source_when` / `emits_live_vector`, a pergunta de INSTÂNCIA), o predicado é
+do NÓ (`ls::desenha_ramos`), e a regra do modo passou a ser UMA porta (`ls::geometria_e_ramos`) —
+ela vivia escrita à mão na shell, e a cerca seria a terceira cópia. A ponte recusa ANTES de
+planear (`forma::desenha_forma_condicional`, com os params pela escada inteira). Gates sem placa:
+`a_fita_do_lsystem_fica_na_cpu_e_os_segmentos_nao` · `a_bandeira_de_tipo_do_lsystem_nao_mudou`, e
+o de ORDEM das recusas (`the_gpu_cook_recusal_placement`) ganhou a agulha.
+
+**Mutação 6 de 6 a sangrar** (a chave sem a variante · o nó sem a condição · a métrica fora do
+uniform · o shader sem Chebyshev · a ponte sem a cerca · o predicado sempre falso), com controlo de
+filtro vazio no arnês. Portão: `nextest-impacted` `20 171 / 20 174` com os três vermelhos
+resolvidos — dois censos que a wave acordou (a razão nova da rota é texto de diagnóstico, isenta
+pelo mesmo mecanismo das irmãs; a cerca lê a escada sem cunhar chave ⇒ lista `LEITORES` no censo
+das membranas, com a metade que a impede de ser licença) e a flake conhecida
+`the_cost_of_sampling_a_path_is_flat_in_its_anchors` (3 de 3 verde sozinha a `load 76`–`85`, zero
+diff na crate).
+
+⏳ **Falta a W5:** a medição (o relógio da `=107` e o censo de rota refeito com as curas) e o smoke
+do dono.

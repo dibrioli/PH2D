@@ -23,7 +23,7 @@ const CENAS: &[&str] = &["smoke", "probe", "demos", "motion_state_"];
 const FORA: &[Isento] = &[
     (
         "motion_bridge_gpu.rs",
-        "as RAZÕES da rota do cook (`device: o plano inteiro`, `CPU: mais de UM sink`), impressas \
+        "as RAZÕES da rota do cook (`device: o plano inteiro`, `CPU: o documento nao tem saida`), impressas \
          atrás de `PH2D_MOTION_ROUTE_LOG` — diagnóstico de quem mede onde o grafo corre",
     ),
     (
@@ -36,6 +36,14 @@ const FORA: &[Isento] = &[
         "motion_bridge_gpu_colisor.rs",
         "as duas RAZÕES de recusa do colisor, irmãs das de cima e pela mesma porta `say_route` — \
          impressas atrás de `PH2D_MOTION_ROUTE_LOG`, nunca no ecrã",
+    ),
+    (
+        // A TERCEIRA irmã, pelo mesmo motivo (doc 119 §7): a razão da recusa da forma viva
+        // CONDICIONAL (o L-System em `Branches`) saiu para um ficheiro próprio pelo tecto de LOC
+        // do de cima, e é impressa pela mesma porta.
+        "motion_bridge_gpu_forma.rs",
+        "a RAZÃO da recusa da forma viva condicional, irmã das de cima e pela mesma porta \
+         `say_route` — impressa atrás de `PH2D_MOTION_ROUTE_LOG`, nunca no ecrã",
     ),
     (
         "motion_glow_layer.rs",

@@ -601,6 +601,8 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     reg.register_param_gates_above(MANIFEST.id, PARAM_GATES_ABOVE);
     reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
+    // Em `Branches` a saída é uma forma viva, que a placa não desenha (ver `desenha_ramos`).
+    reg.register_live_vector_source_when(MANIFEST.id, desenha_ramos);
     Ok(())
 }
 

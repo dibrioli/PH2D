@@ -76,7 +76,8 @@ fn every_blend_the_renderer_can_draw_has_a_name_and_no_more() {
 #[test]
 fn the_gpu_route_reads_the_tag_from_the_one_door() {
     assert!(
-        GPU_BRIDGE.contains("ph2d_eval_motion::sink_style(&motion.doc.graph, motion.sinks[0])"),
+        // ⚠️ Desde o doc 119 W3, UMA pergunta POR SAÍDA — a mesma porta, em cada uma.
+        GPU_BRIDGE.contains(".map(|&s| ph2d_eval_motion::sink_style(&motion.doc.graph, s))"),
         "a ponte da GPU deixou de perguntar à porta única — o mesmo documento \
          passa a compositar diferente conforme o `PH2D_GPU_COOK`"
     );
@@ -84,7 +85,8 @@ fn the_gpu_route_reads_the_tag_from_the_one_door() {
     // híbrida sequenciada, híbrida stateless) — a contagem é DERIVADA das
     // chamadas, não escrita à mão, senão uma rota nova nasce descoberta.
     let calls = GPU_BRIDGE.matches("motion.default_size,").count();
-    let handed = GPU_BRIDGE.matches("blend,").count();
+    // ⚠️ Desde o doc 119 W3 o estilo é UM POR SAÍDA (`cook_many(.., &estilos)`).
+    let handed = GPU_BRIDGE.matches("&estilos,").count();
     assert!(calls > 0, "nenhuma chamada de cook encontrada — gate cego");
     assert_eq!(
         handed, calls,
@@ -363,7 +365,8 @@ fn the_pivot_slider_ends_where_the_door_clamps() {
 #[test]
 fn every_gpu_cook_call_receives_the_style() {
     let calls = GPU_BRIDGE.matches("motion.default_size,").count();
-    let handed = GPU_BRIDGE.matches("blend,").count();
+    // ⚠️ Desde o doc 119 W3 o estilo é UM POR SAÍDA (`cook_many(.., &estilos)`).
+    let handed = GPU_BRIDGE.matches("&estilos,").count();
     assert!(calls > 0, "nenhuma chamada de cook encontrada — gate cego");
     assert_eq!(
         handed, calls,
@@ -381,7 +384,8 @@ fn every_gpu_cook_call_receives_the_style() {
 /// alcance), com toda a suíte verde.
 #[test]
 fn a_rota_da_placa_recusa_um_sink_que_mistura_em_grupo() {
-    let recusa = "if sink_mistura_em_grupo(&motion.doc.graph, motion.sinks[0]) {\n        return fell(motion, RECUSA_MISTURA_EM_GRUPO);";
+    // ⚠️ Desde o doc 119 W3 a pergunta é feita a CADA saída — basta uma que misture em grupo.
+    let recusa = ".any(|&s| sink_mistura_em_grupo(&motion.doc.graph, s))\n    {\n        return fell(motion, RECUSA_MISTURA_EM_GRUPO);";
     assert_eq!(
         GPU_BRIDGE.matches(recusa).count(),
         1,

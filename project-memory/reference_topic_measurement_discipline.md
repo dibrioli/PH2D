@@ -20,6 +20,8 @@ uma continua a ser um ficheiro próprio; o que mudou foi o endereço.
 - [Alvo tirado da CAIXA: entrada fina é puro desperdício](feedback_a_target_derived_from_the_box_makes_a_finer_input_pure_waste.md) · [régua que atravessa panic alheio mede a travessia](feedback_a_ruler_that_crosses_another_crates_panic_measures_the_crossing.md)
 - [Régua no mundo mede o gesto — centroide](feedback_a_ruler_anchored_in_the_world_measures_the_gesture_not_the_shape.md) · [lei de índice: espessura DERIVADA](feedback_generalising_an_index_law_needs_a_derived_thickness_not_an_epsilon.md)
 - [Superfície fechada pode conter outra — conte os COMPONENTES](feedback_a_closed_surface_can_contain_a_second_one_count_the_components.md) — 2.ª vez: régua que só IMPRIME não DECIDE
+- ⛔⛔ [Cronometrar UMA chamada de uma estrutura NOVA mede o COMPILADOR do driver — `1,4`–`4,4 s` contra `6 ms` de regime, e o veredito de um gate move-se `11,7×` por isso](feedback_timing_one_call_of_a_new_structure_measures_the_compiler.md)
+- ⭐⭐ [Duas hipóteses de CAUSA a cair é sinal para mudar de pergunta: não *«porque é caro»*, mas *«porque está aqui»* — `1 406 → 74 ms` sem a causa ser achada](feedback_a_cure_may_not_need_the_cause_ask_a_different_question.md)
 - ⛔⛔ [Varredura cujo parâmetro cai dentro de um CLAMP mede o clamp — imprima a grandeza INTERMÉDIA, e `6e-9` a seis casas lê-se `0.000000`](feedback_a_ruler_whose_parameter_sits_inside_a_clamp_measures_the_clamp.md)
 - [Fidelidade tem DUAS direcções; saída→entrada dá ZERO numa amputação](feedback_a_fidelity_ruler_has_two_directions_and_only_one_sees_an_amputation.md)
 - [Defeito que a ferramenta emite e não sabe ler REALIMENTA-SE — feche os dois lados](feedback_a_defect_the_tool_emits_and_cannot_read_is_a_feedback_loop.md)

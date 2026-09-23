@@ -384,8 +384,11 @@ impl SpriteRenderer {
                 pass.set_bind_group(2, self.skin_buffers.grupo_ligado(), &[]);
                 pass.set_vertex_buffer(0, self.quad_buffer.slice(..));
                 pass.set_vertex_buffer(1, buffer.slice(..));
-                pass.set_pipeline(self.pipeline.blend_pipeline(0));
                 if runs.is_empty() {
+                    // ⚠️ **A partição vazia é «o átlas, em `Mix`»** — o caminho de sempre,
+                    // byte a byte. Um sink que peça outra mistura emite um run explícito
+                    // (ver [`crate::GpuTexRun`]), logo este ramo nunca a perde.
+                    pass.set_pipeline(self.pipeline.blend_pipeline(0));
                     pass.set_bind_group(1, &self.material_bind_group, &[]);
                     pass.draw(0..4, 0..n);
                 } else {
@@ -396,6 +399,14 @@ impl SpriteRenderer {
                         let Some(bg) = material_bg(r.texture_id, 0) else {
                             continue;
                         };
+                        // ⭐⭐⭐ **A PIPELINE é POR RUN, como o bind da textura.** Até
+                        // 2026-09-22 estava cravada em `0` fora do laço, e o tag de mistura
+                        // que o cozimento embalava era descartado aqui — medido em PIXEL
+                        // (`a_mistura_do_device_chega_ao_pixel`): os cinco modos liam o byte
+                        // do `Mix`. ⚠️ O `set_pipeline` fica DENTRO do laço de propósito:
+                        // fora dele, dois runs com misturas diferentes desenhariam os dois
+                        // com a do último — e é isso que a caminhada de N sinks precisa.
+                        pass.set_pipeline(self.pipeline.blend_pipeline(r.blend));
                         pass.set_bind_group(1, bg, &[]);
                         pass.draw(0..4, r.start..r.end);
                     }

@@ -9,6 +9,7 @@
 #[path = "../fx_stack_common/mod.rs"]
 mod fx_stack_common;
 
+mod a_mistura_do_device_chega_ao_pixel;
 mod architecture_sprite_inspector_surface;
 mod blend_mode_regression;
 mod bloom_wgsl_valid;

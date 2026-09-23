@@ -607,7 +607,14 @@ impl GpuCook {
         // The texture-run partition, from the CPU boundary — no readback (see
         // [`tex_runs`]). Empty for a non-object graph.
         self.tex_runs.clear();
-        tex_runs::texture_runs_from_boundary(boundary_streams, count, &mut self.tex_runs);
+        // ⚠️ A mistura vem do ESTILO, que e' o que a porta unica leu do sink — a
+        // mesma que o lowering embalou nas instancias. Ver [`GpuTexRun::blend`].
+        tex_runs::texture_runs_from_boundary(
+            boundary_streams,
+            count,
+            style.blend,
+            &mut self.tex_runs,
+        );
         // The instance buffer is the one binding that can outgrow the device's
         // storage-binding limit below the id ceiling (184 B × count; every
         // stream column caps at 16 B × ID_WRAP ≈ 268 MB). Refuse BEFORE the

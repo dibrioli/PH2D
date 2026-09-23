@@ -35,11 +35,35 @@ use ph2d_render::GpuTexRun;
 pub(crate) fn texture_runs_from_boundary(
     boundary_streams: &[(NodeId, &Stream)],
     count: u32,
+    // ⭐⭐⭐ **A MISTURA DESTE SINK** — o tag que a `sink_style` leu da porta única. Ela
+    // entra aqui e não no shader porque a escolha de pipeline é da CPU, por chamada de
+    // desenho, exactamente como a textura (ver [`GpuTexRun`]).
+    //
+    // ⛔⛔ **E ela decide quando a partição pode ficar VAZIA.** Vazia quer dizer, para o
+    // desenho, *«o átlas, em `Mix`»* — o ramo `runs.is_empty()` do `renderer_draw`, que é
+    // o caminho de sempre. Com um tag diferente de `0` esse ramo **perderia a mistura em
+    // silêncio**, que é o defeito que esta wave mediu em pixel; logo aqui um sink que peça
+    // outra mistura emite um run EXPLÍCITO mesmo quando toda a textura é o átlas.
+    blend: u8,
     out: &mut Vec<GpuTexRun>,
 ) {
     if count == 0 {
         return;
     }
+    // ⚠️ O run de corpo inteiro: a saída dos dois casos que, com `Mix`, deixam `out`
+    // vazio. Escrito uma vez porque *os dois têm de concordar* — um deles a esquecer o
+    // tag seria uma cena a desenhar na mistura errada conforme o grafo traz ou não a
+    // coluna, que é a forma que ninguém liga a uma causa.
+    let tudo_num_run = |out: &mut Vec<GpuTexRun>| {
+        if blend != 0 {
+            out.push(GpuTexRun {
+                texture_id: 0,
+                start: 0,
+                end: count,
+                blend,
+            });
+        }
+    };
     let n = count as usize;
     let ids = boundary_streams
         .iter()
@@ -47,10 +71,14 @@ pub(crate) fn texture_runs_from_boundary(
             Some(Column::Scalar(v)) if v.len() == n => Some(v.as_slice()),
             _ => None,
         });
-    let Some(ids) = ids else { return };
+    let Some(ids) = ids else {
+        tudo_num_run(out);
+        return;
+    };
     // All-atlas object graph → the legacy path already draws it (an atlas run in
     // the device buffer needs no per-run bind), so stay byte-identical.
     if ids.iter().all(|&v| v as u32 == 0) {
+        tudo_num_run(out);
         return;
     }
     let mut start = 0u32;
@@ -62,6 +90,7 @@ pub(crate) fn texture_runs_from_boundary(
                 texture_id: cur,
                 start,
                 end: i as u32,
+                blend,
             });
             start = i as u32;
             cur = tid;
@@ -71,6 +100,7 @@ pub(crate) fn texture_runs_from_boundary(
         texture_id: cur,
         start,
         end: count,
+        blend,
     });
 }
 
@@ -91,10 +121,15 @@ mod tests {
     }
 
     fn runs(ids: &[f32]) -> Vec<GpuTexRun> {
+        runs_com(ids, 0)
+    }
+
+    /// A mesma coisa com a MISTURA do sink escolhida — o que a `sink_style` leu.
+    fn runs_com(ids: &[f32], blend: u8) -> Vec<GpuTexRun> {
         let s = boundary(ids);
         let node = NodeId(0);
         let mut out = Vec::new();
-        texture_runs_from_boundary(&[(node, &s)], ids.len() as u32, &mut out);
+        texture_runs_from_boundary(&[(node, &s)], ids.len() as u32, blend, &mut out);
         out
     }
 
@@ -111,12 +146,14 @@ mod tests {
                 GpuTexRun {
                     texture_id: 7,
                     start: 0,
-                    end: 3
+                    end: 3,
+                    blend: 0
                 },
                 GpuTexRun {
                     texture_id: 9,
                     start: 3,
-                    end: 6
+                    end: 6,
+                    blend: 0
                 },
             ]
         );
@@ -132,17 +169,20 @@ mod tests {
                 GpuTexRun {
                     texture_id: 5,
                     start: 0,
-                    end: 2
+                    end: 2,
+                    blend: 0
                 },
                 GpuTexRun {
                     texture_id: 8,
                     start: 2,
-                    end: 5
+                    end: 5,
+                    blend: 0
                 },
                 GpuTexRun {
                     texture_id: 3,
                     start: 5,
-                    end: 6
+                    end: 6,
+                    blend: 0
                 },
             ]
         );
@@ -157,7 +197,8 @@ mod tests {
             vec![GpuTexRun {
                 texture_id: 4,
                 start: 0,
-                end: 3
+                end: 3,
+                blend: 0
             }]
         );
     }
@@ -178,7 +219,7 @@ mod tests {
         let mut s = Stream::new(4);
         s.set("P", Column::Vec2(vec![[0.0, 0.0]; 4]));
         let mut out = Vec::new();
-        texture_runs_from_boundary(&[(NodeId(0), &s)], 4, &mut out);
+        texture_runs_from_boundary(&[(NodeId(0), &s)], 4, 0, &mut out);
         assert!(out.is_empty());
     }
 
@@ -190,8 +231,58 @@ mod tests {
     fn a_length_mismatch_is_ignored() {
         let s = boundary(&[7.0, 9.0, 7.0]); // 3-long column
         let mut out = Vec::new();
-        texture_runs_from_boundary(&[(NodeId(0), &s)], 5, &mut out); // sink count 5
+        texture_runs_from_boundary(&[(NodeId(0), &s)], 5, 0, &mut out); // sink count 5
         assert!(out.is_empty());
+    }
+
+    /// ⭐⭐⭐ **A MISTURA VIAJA EM CADA RUN** — sem isto o desenho escolhe a pipeline
+    /// `0` e o tag que o sink declarou morre entre o cozimento e o pixel (medido em
+    /// `ph2d-render`, gate `a_mistura_do_device_chega_ao_pixel`: os cinco modos liam o
+    /// byte do `Mix`).
+    #[test]
+    fn cada_run_carrega_a_mistura_do_sink() {
+        let r = runs_com(&[7.0, 7.0, 9.0], 3);
+        assert_eq!(r.len(), 2, "a particao por textura nao muda com a mistura");
+        assert!(
+            r.iter().all(|r| r.blend == 3),
+            "todo run deste sink leva o tag dele — leu {:?}",
+            r.iter().map(|r| r.blend).collect::<Vec<_>>()
+        );
+    }
+
+    /// ⛔⛔ **A METADE SUBTIL: com uma mistura que não é `Mix`, a partição deixa de poder
+    /// ficar VAZIA.** Vazia é, para o desenho, *«o átlas, em `Mix`»* — o ramo
+    /// `runs.is_empty()` do `renderer_draw`, que não tem onde levar um tag. Uma cena de
+    /// Motion comum é toda átlas (`texture_id == 0`), logo **este é o caso NORMAL** de um
+    /// artista que escolhe `Add` no sink: sem o run explícito ele desenharia em `Mix`.
+    #[test]
+    fn com_outra_mistura_o_atlas_deixa_de_cair_no_ramo_vazio() {
+        // O CONTROLO: em `Mix` os dois casos continuam vazios, byte a byte.
+        assert!(runs_com(&[0.0, 0.0, 0.0], 0).is_empty());
+        let mut so_p = Stream::new(3);
+        so_p.set("P", Column::Vec2(vec![[0.0, 0.0]; 3]));
+        let mut out = Vec::new();
+        texture_runs_from_boundary(&[(NodeId(0), &so_p)], 3, 0, &mut out);
+        assert!(out.is_empty(), "sem coluna de textura e em Mix: vazio");
+
+        // E com outra mistura os DOIS emitem um run de corpo inteiro sobre o átlas.
+        let esperado = vec![GpuTexRun {
+            texture_id: 0,
+            start: 0,
+            end: 3,
+            blend: 1,
+        }];
+        assert_eq!(
+            runs_com(&[0.0, 0.0, 0.0], 1),
+            esperado,
+            "todo átlas + Add tem de emitir o run explícito"
+        );
+        let mut out = Vec::new();
+        texture_runs_from_boundary(&[(NodeId(0), &so_p)], 3, 1, &mut out);
+        assert_eq!(
+            out, esperado,
+            "sem coluna de textura + Add tem de emitir o run explícito"
+        );
     }
 
     /// `v as u32` truncates toward zero, exactly like the CPU lowering and the
@@ -204,7 +295,8 @@ mod tests {
             vec![GpuTexRun {
                 texture_id: 7,
                 start: 0,
-                end: 2
+                end: 2,
+                blend: 0
             }]
         );
     }

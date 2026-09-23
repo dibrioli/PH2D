@@ -113,7 +113,10 @@ impl GpuCook {
             // apagaria os sinks já escritos, e escrever fora da capacidade é validação do wgpu.
             return false;
         }
-        let instances = self.instances.as_mut().expect("reservado acima ou pelo chamador");
+        let instances = self
+            .instances
+            .as_mut()
+            .expect("reservado acima ou pelo chamador");
         instances.len = fim;
         if count == 0 {
             return true;
@@ -219,7 +222,6 @@ impl GpuCook {
         pass.dispatch_workgroups(count.div_ceil(codegen::WORKGROUP_SIZE), 1, 1);
         true
     }
-
 
     /// The persistent uniform buffer for stage slot `idx` (created on demand).
     pub(crate) fn uniform_slot(&mut self, gpu: &GpuContext, idx: usize) -> &wgpu::Buffer {

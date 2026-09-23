@@ -201,11 +201,31 @@ impl PresentComponent for RenderInstance {}
 /// per run: **no readback of the device buffer**. `[start, end)` is the instance
 /// range; a lone `{ texture_id: 0, 0, n }` is the shared atlas — the exact draw
 /// a plain (non-object) Motion stream forms, byte-identical to the legacy path.
+///
+/// ⭐⭐⭐ **E ele carrega a MISTURA, porque um run é uma faixa de ESTADO DE DESENHO e
+/// não só de textura.** Até 2026-09-22 a rota do dispositivo cravava
+/// `blend_pipeline(0)` para o buffer inteiro: o `motion.output` declara um param
+/// `blend` com rótulos de artista, a `sink_style` lê-o, o lowering embala-o em
+/// `flip_uv` bits 5-7 — e o desenho **descartava-o uma camada depois**. Medido em
+/// PIXEL (`a_mistura_do_device_chega_ao_pixel`): os cinco modos liam `55`, o byte
+/// do `Mix`.
+///
+/// ⚠️ **O shader NÃO lê a mistura** (bits 5-7 são, por escrito, `[CPU-only]`): ela é
+/// uma escolha de PIPELINE, feita pela CPU por chamada de desenho — exactamente
+/// como a textura. É por isso que ela mora aqui e não numa palavra da instância.
+///
+/// ⛔ **A partição VAZIA continua a querer dizer «o átlas, em `Mix`»** — o caminho
+/// de sempre, byte a byte. Um sink que peça outra mistura emite um run EXPLÍCITO,
+/// mesmo que a textura dele seja o átlas: *o ramo vazio não tem onde levar um tag,
+/// e inventar-lhe um trocaria o desenho de toda cena que hoje lá cai.*
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct GpuTexRun {
     pub texture_id: u32,
     pub start: u32,
     pub end: u32,
+    /// O tag de mistura desta faixa — o índice em `pipeline::blend_pipeline`, que é
+    /// o mesmo que [`RenderInstance::unpack_blend`] devolve.
+    pub blend: u8,
 }
 
 impl RenderInstance {

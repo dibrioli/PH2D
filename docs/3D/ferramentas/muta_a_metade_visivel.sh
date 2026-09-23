@@ -122,14 +122,14 @@ open(p,"w").write(s.replace(a, b, 1))
 
 # ── A PORTA que e' dona do plano ─────────────────────────────────────────
 muta "$APP/tinta_da_peca.rs" \
-  'Some(c) => Tinta::semeada(c, faces(), k),' \
-  'Some(_) => Tinta::nova(mesh.vert_count(), faces(), k),' \
+  '        (Some(c), None) => Tinta::semeada(c, faces(), k),' \
+  '        (Some(_), None) => Tinta::nova(mesh.vert_count(), faces(), k),' \
   'M1 garante: o plano novo nasce BRANCO em vez de semeado'
 
 muta "$APP/tinta_da_peca.rs" \
   '        && t.nivel() == k
-        && concorda_com(t, mesh)' \
-  '        && concorda_com(t, mesh)' \
+        && t.lado_uniforme().is_none() == igualado' \
+  '        && t.lado_uniforme().is_none() == igualado' \
   'M2 garante: trocar de nivel deixa de reconstruir'
 
 # ⚠️⚠️ **A CONTA MUDOU DE SITIO em 2026-09-21** — ela e' hoje a

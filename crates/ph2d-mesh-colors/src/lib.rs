@@ -176,6 +176,55 @@ pub struct Tinta {
 /// arestas de `16 582`–`43 828`), e pô-la a `1` custa entre `+0` e `+360`
 /// amostras num plano de `1,4 M`. ⇒ *ela fica como GUARDA, e o gate dela precisa
 /// de uma fixtura construída para isso — o corpus não contém o fenómeno.*
+/// ⭐⭐⭐⭐ **O NÍVEL DE CADA FACE PARA UM `k` PEDIDO — a porta do PRODUTO.**
+///
+/// A [`niveis_por_area`] pede um **alvo de densidade**, que é a grandeza da
+/// lei; um artista carrega num chip que diz `8x`. Esta porta é a ponte, e a
+/// âncora dela é a que a MEDIÇÃO deixou de pé (handoff §28):
+///
+/// > **a face TÍPICA fica ao `k` pedido, e as outras igualam-se a ela.**
+///
+/// ⇒ `alvo = mediana(2^k / √área)`, que é exactamente a densidade linear que um
+/// plano UNIFORME de nível `k` entrega à face mediana. A comparação com o
+/// uniforme é, por construção, a **orçamento parecido**.
+///
+/// ⛔⛔ **A outra leitura — *«nenhuma face passa de `k`»* — foi CONSTRUÍDA,
+/// MEDIDA e REFUTADA, e não é uma decisão de produto por tomar.** Ela falha por
+/// três colunas ao mesmo tempo (handoff §28.3): não cumpre a própria promessa
+/// (a cerca do salto SOBE o vizinho e o máximo passa de `k`), **não baixa a
+/// dispersão** (`9,26×` na peça mais dispersa do dono, contra `1,92`–`2,37×`
+/// desta) e engrossa a peça inteira (`1,08 M → 91 k` amostras). ⭐ A causa é a
+/// escada ter CHÃO: o nível vive em `0..=NIVEL_MAX` e o `0` é cor por vértice,
+/// logo uma peça com `18×` de dispersão satura contra o piso. *É aritmética,
+/// não afinação.*
+///
+/// ⚠️ **O preço desta é POSITIVO e está medido:** ela SOBE a contagem de
+/// amostras em `+4 %` (`Sculpt_Blender`) a `+33 %` (`_base_sculpt`), porque
+/// iguala **subindo** as faces pequenas. ⛔ *Uma nota que dissesse «a graduação
+/// poupa memória» seria falsa* — o que ela compra é `1,92`–`2,37×` de dispersão
+/// onde o uniforme lê `4,88`–`18,26×`.
+///
+/// ⚠️ **Uma lista de áreas do tamanho errado devolve a lista CRUA**, como a
+/// irmã: quem recusa é a [`Topologia::regraduada`], que compara comprimentos.
+#[must_use]
+pub fn niveis_igualados(topo: &Topologia, areas: &[f32], k: u8, tecto_de_salto: u8) -> Vec<u8> {
+    let lado = f32::from(1u16 << k.min(NIVEL_MAX));
+    let mut d: Vec<f32> = areas
+        .iter()
+        .filter(|a| **a > 0.0)
+        .map(|a| lado / a.sqrt())
+        .filter(|x| x.is_finite())
+        .collect();
+    if d.is_empty() {
+        // ⚠️ Uma peça sem uma única face de área positiva não tem mediana, e o
+        //    valor conservador é o plano UNIFORME que o artista pediu.
+        return vec![k.min(NIVEL_MAX); areas.len()];
+    }
+    d.sort_by(|a, b| a.partial_cmp(b).unwrap_or(core::cmp::Ordering::Equal));
+    let alvo = d[(d.len() - 1) / 2];
+    niveis_por_area(topo, areas, alvo, tecto_de_salto)
+}
+
 #[must_use]
 pub fn niveis_por_area(topo: &Topologia, areas: &[f32], alvo: f32, tecto_de_salto: u8) -> Vec<u8> {
     let mut k: Vec<u8> = areas
@@ -318,6 +367,33 @@ impl Tinta {
         nivel: u8,
     ) -> Self {
         let mut t = Self::nova(cores.len(), faces.clone(), nivel);
+        t.semeia(cores, faces);
+        t
+    }
+
+    /// ⭐⭐⭐⭐ **A irmã GRADUADA da [`Self::semeada`]** — a mesma semente, sobre
+    /// um plano com um nível POR FACE (a P2).
+    ///
+    /// ⛔ Ela **RECUSA** (`None`) uma lista que não descreve esta malha, como a
+    /// [`Self::graduada`] de que ela nasce.
+    ///
+    /// ⚠️⚠️ **A semente é a MESMA função e não uma segunda redacção dela**
+    /// ([`Self::semeia`]): ela já lia o `lado_da_face`, logo estava P2-ready
+    /// antes de existir uma porta graduada. *Duas cópias divergiriam no dia da
+    /// primeira emenda, e o que se perde aí é a tinta do artista.*
+    pub fn semeada_graduada<'a>(
+        cores: &[[f32; 3]],
+        faces: impl Iterator<Item = &'a [u32]> + Clone,
+        niveis: &[u8],
+    ) -> Option<Self> {
+        let mut t = Self::graduada(cores.len(), faces.clone(), niveis)?;
+        t.semeia(cores, faces);
+        Some(t)
+    }
+
+    /// A semente, partilhada pelas duas portas acima.
+    fn semeia<'a>(&mut self, cores: &[[f32; 3]], faces: impl Iterator<Item = &'a [u32]>) {
+        let t = self;
         for (fi, f) in faces.enumerate() {
             let l = t.lado_da_face(fi);
             let n = topo::cantos(f);
@@ -346,7 +422,6 @@ impl Tinta {
                 }
             }
         }
-        t
     }
 
     /// ⭐ **Quantos bytes este plano segura** — as amostras mais a topologia.

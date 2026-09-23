@@ -272,3 +272,98 @@ fn todo_nome_entre_crases_do_roteiro_existe_na_tela() {
         "o roteiro nomeia só {nomeados} controlos: este censo ficou sem sujeito"
     );
 }
+
+/// ⭐⭐⭐⭐ **A PEÇA DESTA CENA TEM DE QUE IGUALAR — senão o passo do roteiro
+/// ensina o contrário do que acontece.**
+///
+/// ⛔⛔ O `Even Detail` gradua o plano pela ÁREA de cada face. Numa peça cujas
+/// faces têm todas a mesma área ele é um **no-op**, e um passo que mandasse o
+/// dono carregar nele mostraria a cura a não fazer nada — a espécie que o §5.0
+/// chama de *pior que uma cena ausente*. ⚠️ **E isto já mordeu na mesma
+/// jornada:** a fixtura do gate do documento era um OCTAEDRO (oito faces
+/// iguais) e o controlo dela leu `[2]`.
+///
+/// ⭐ A esfera UV desta cena tem as faces do pólo bem mais pequenas que as do
+/// equador, e é essa dispersão que a lei consome.
+#[test]
+fn a_peca_da_cena_tem_de_que_igualar() {
+    let m = super::peca();
+    let faces = || m.faces().iter().map(ph2d_mesh::Face::verts);
+    let areas = m.face_areas();
+    let topo = ph2d_mesh_colors::Topologia::nova(m.vert_count(), faces(), 0);
+
+    let k = super::DEGRAU_DA_LICAO
+        .nivel()
+        .expect("o degrau da lição arma um plano");
+    let niveis = ph2d_mesh_colors::niveis_igualados(&topo, &areas, k, 1);
+
+    let mut d = niveis.clone();
+    d.sort_unstable();
+    d.dedup();
+    assert!(
+        d.len() >= 3,
+        "a peça da =52 não tem de que igualar: níveis {d:?} — o passo do \
+         roteiro mandaria carregar num interruptor inerte"
+    );
+
+    // E a dispersão da densidade cai contra o uniforme do MESMO degrau.
+    let disp = |ks: &[u8]| -> f32 {
+        let mut v: Vec<f32> = ks
+            .iter()
+            .zip(&areas)
+            .filter(|(_, a)| **a > 0.0)
+            .map(|(k, a)| f32::from(1u16 << k) / a.sqrt())
+            .collect();
+        v.sort_by(|a, b| a.partial_cmp(b).expect("sem NaN"));
+        v[v.len() - 1] / v[0]
+    };
+    let uni = disp(&vec![k; areas.len()]);
+    let igual = disp(&niveis);
+    assert!(
+        uni > 2.0,
+        "o CONTROLO: a peça tem de CONTER a dispersão — uniforme {uni:.2}×"
+    );
+    assert!(
+        igual < uni / 1.5,
+        "igualar tem de COMPRAR alguma coisa nesta peça: {uni:.2}× → {igual:.2}×"
+    );
+}
+
+/// ⭐⭐⭐ **O roteiro nomeia a caixa `Even Detail`, e ela é um interruptor VIVO.**
+///
+/// ⚠️ **As duas metades, e cada uma sozinha mente:** só a do rótulo deixaria
+/// passar uma caixa que o painel nunca oferece, e só a da tabela deixaria
+/// passar um interruptor vivo com outro nome no ecrã.
+///
+/// ⛔ E a metade NEGATIVA é a que a torna honesta: sem um plano armado não há
+/// retícula para igualar, e oferecê-la seria um controlo morto sob o dedo.
+#[test]
+fn o_roteiro_da_cena_nomeia_a_caixa_da_tinta_igualada() {
+    let rotulo = ph2d_i18n::tr("panel.sculpt3d.tinta_igualada");
+    let roteiro = include_str!("scenes_tinta_fina.rs");
+    assert!(
+        roteiro.contains(&format!("`{rotulo}`")),
+        "o roteiro da =52 não nomeia a caixa `{rotulo}`"
+    );
+
+    let mut ui = ph2d_panel_sculpt3d::Sculpt3dUi {
+        tinta_detalhe: super::DEGRAU_DA_LICAO,
+        ..Default::default()
+    };
+    assert!(
+        ph2d_panel_sculpt3d::interruptor_oferecido(
+            &ui,
+            ph2d_panel_sculpt3d::ids::SCULPT3D_TINTA_IGUALADA
+        ),
+        "a caixa não é oferecida com o plano armado — o roteiro manda clicar \
+         numa linha que o painel não desenha"
+    );
+    ui.tinta_detalhe = ph2d_panel_sculpt3d::state::DetalheDaTinta::Malha;
+    assert!(
+        !ph2d_panel_sculpt3d::interruptor_oferecido(
+            &ui,
+            ph2d_panel_sculpt3d::ids::SCULPT3D_TINTA_IGUALADA
+        ),
+        "a caixa é oferecida SEM plano — sem retícula não há o que igualar"
+    );
+}

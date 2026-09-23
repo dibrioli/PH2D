@@ -19,22 +19,26 @@ SO_ANCORAS="${MUTA_SO_ANCORAS:-}"
 COL=crates/ph2d-mesh-colors/src
 REN=crates/ph2d-mesh-render/src
 SCU=crates/ph2d-sculpt3d/src
+MSH=crates/ph2d-mesh/src
+APP=crates/ph2d-app-sculpt3d/src
 BK=$(mktemp -d)
-cp -r "$COL" "$BK/col"; cp -r "$REN" "$BK/ren"; cp -r "$SCU" "$BK/scu"
+cp -r "$COL" "$BK/col"; cp -r "$REN" "$BK/ren"; cp -r "$SCU" "$BK/scu"; cp -r "$MSH" "$BK/msh"; cp -r "$APP" "$BK/app"
 restore() {
   rm -rf "$COL"; cp -r "$BK/col" "$COL"
   rm -rf "$REN"; cp -r "$BK/ren" "$REN"
   rm -rf "$SCU"; cp -r "$BK/scu" "$SCU"
+  rm -rf "$MSH"; cp -r "$BK/msh" "$MSH"
+  rm -rf "$APP"; cp -r "$BK/app" "$APP"
   # ⚠️ `cp -r` devolve o mtime ANTIGO e o cargo guarda o build DA MUTACAO.
   # ⚠️ `-name '*.rs'` deixava o `.wgsl` com o mtime ANTIGO — e desde 23/09 ha'
   #    mutacoes no gemeo. O `include_str!` do censo depende do mtime dele.
-  find "$COL" "$REN" "$SCU" \( -name '*.rs' -o -name '*.wgsl' \) -exec touch {} +
+  find "$COL" "$REN" "$SCU" "$MSH" "$APP" \( -name '*.rs' -o -name '*.wgsl' \) -exec touch {} +
 }
 trap restore EXIT
 
-FILTRO='test(/p2_tests|assar_tests|vinte_e_sete|nivel_base|canto_de_uma_face|dois_lados_de_uma_aresta|ponto_de_uma_face|recusa_nomeia|graduado|payload/)'
+FILTRO='test(/p2_tests|assar_tests|vinte_e_oito|nivel_base|canto_de_uma_face|dois_lados_de_uma_aresta|ponto_de_uma_face|recusa_nomeia|graduado|payload|igualac|igualada|igualar|niveis_dele|v2_abre|area_por_face/)'
 corrida() {
-  cargo nextest run -p ph2d-mesh-colors -p ph2d-mesh-render -p ph2d-app-sculpt3d -E "$FILTRO" 2>&1
+  cargo nextest run -p ph2d-mesh -p ph2d-mesh-colors -p ph2d-mesh-render -p ph2d-app-sculpt3d -E "$FILTRO" 2>&1
 }
 populacao() { grep -oP '\K[0-9]+(?= tests? run)' | awk '{s+=$1}END{print s+0}'; }
 
@@ -217,6 +221,34 @@ muta "$REN/shaders/tinta.wgsl" \
   'fn tinta_cor_quad(base: u32, uv: vec2<f32>) -> vec3<f32> {
     let l = 4u;' \
   'P20 o gemeo crava a reticula de um QUAD num lado so'
+
+# ── QUEM ESCOLHE OS NIVEIS: a ancora e' a MEDIANA ───────────────────────
+# ⚠️ A outra leitura (o TECTO) foi construida, medida e REFUTADA — §28.3. O que
+#    se muta aqui e' a ancora ficar na ponta em vez da mediana.
+muta "$COL/lib.rs" \
+  '    let alvo = d[(d.len() - 1) / 2];' \
+  '    let alvo = d[0];' \
+  'P21 a ancora sai da face mais PEQUENA em vez da tipica'
+
+# ── A AREA POR FACE e' por FACE ─────────────────────────────────────────
+# ⚠️ O ficheiro mudou de nome no MESMO dia: o tecto de LOC cortou as duas
+#    portas da area para o `mesh_area.rs`, e o pre-voo apanhou a ancora morta.
+muta "$MSH/mesh_area.rs" \
+  '                let mut a = 0.0f64;' \
+  '                let mut a = 1.0f64;' \
+  'P22 toda face passa a ter area 1: a graduacao deixa de olhar a peca'
+
+# ── A IGUALACAO chega ao PLANO ──────────────────────────────────────────
+muta "$APP/tinta_da_peca.rs" \
+  '    let niveis = igualado.then(|| {' \
+  '    let niveis = false.then(|| {' \
+  'P23 o garante aceita o interruptor e deita-o fora'
+
+# ── E o PLANO GRADUADO atravessa o FICHEIRO ─────────────────────────────
+muta "$APP/doc.rs" \
+  '                    niveis: if t.lado_uniforme().is_some() {' \
+  '                    niveis: if true {' \
+  'P24 o documento grava um plano graduado como se fosse uniforme'
 
 # ── O CONTROLO INERTE ───────────────────────────────────────────────────
 muta "$COL/enderecos.rs" \

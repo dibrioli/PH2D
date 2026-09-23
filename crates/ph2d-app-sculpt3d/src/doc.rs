@@ -41,11 +41,15 @@ use super::{SceneObject, Sculpt3dScene};
 /// não falha, devolve lixo bem-formado. O gate `the_shape_of_a_saved_scene_is_pinned`
 /// prende o tamanho codificado de uma cena-fixture justamente para transformar
 /// "lembre-se" em vermelho.
-pub(crate) const SCULPT_DOC_VERSION: u32 = 2;
+pub(crate) const SCULPT_DOC_VERSION: u32 = 3;
 
 /// A versão que ganhou o plano de tinta fina — e a primeira que este módulo
 /// teve de MIGRAR. Ver [`decode`].
 const V_ANTES_DA_TINTA: u32 = 1;
+
+/// A versão em que o plano tinha **um nível só** para a peça inteira, antes de
+/// a graduação por área (a P2) chegar ao artista. Ver [`decode`].
+const V_ANTES_DA_GRADUACAO: u32 = 2;
 
 /// ⭐⭐⭐⭐ **O PLANO DE TINTA FINA de uma peça, como o arquivo o guarda.**
 ///
@@ -61,6 +65,18 @@ const V_ANTES_DA_TINTA: u32 = 1;
 struct TintaDoc {
     nivel: u8,
     amostras: doc_tinta::AmostrasDoc,
+    /// ⭐⭐⭐⭐ **O nível de CADA FACE — vazio quer dizer UNIFORME.**
+    ///
+    /// ⛔⛔ **A lista é gravada e não re-derivada, e a decisão tem número:**
+    /// `1` byte por face (uns `18` KB numa peça do dono) contra um plano que a
+    /// `8x` mede dezenas de MB. Re-derivar era a outra saída e ela tem um
+    /// defeito que nenhuma régua vê — *uma mudança na lei da graduação
+    /// relayouta um ficheiro já gravado em silêncio*, e as amostras estão
+    /// guardadas POR ÍNDICE.
+    ///
+    /// ⚠️ **Vazio e não `Option`**: um plano uniforme é o caso comum e o
+    /// postcard escreve um `Vec` vazio num byte.
+    niveis: Vec<u8>,
 }
 
 /// Uma peça, como o arquivo a guarda.
@@ -79,6 +95,34 @@ struct ObjectDoc {
     /// plano exacto nos vértices e **interpolado no resto** — que é literalmente
     /// a tinta a voltar à resolução da malha.
     tinta: Option<TintaDoc>,
+}
+
+/// O plano de tinta de um documento **v2** — congelado, e lido só pela migração.
+///
+/// ⛔ Ele existe pela MESMA razão do [`ObjectDocV1`]: o campo `niveis` que o v3
+/// acrescentou não está lá, e ler os bytes de um v2 com a forma do v3 **não
+/// falha** — devolve lixo bem-formado.
+#[derive(Deserialize)]
+struct TintaDocV2 {
+    nivel: u8,
+    amostras: doc_tinta::AmostrasDoc,
+}
+
+/// A peça de um documento **v2** — congelada, e lida só pela migração.
+#[derive(Deserialize)]
+struct ObjectDocV2 {
+    stack: StackData,
+    pose: PoseData,
+    tinta: Option<TintaDocV2>,
+}
+
+/// Um documento **v2** — congelado, e lido só pela migração.
+#[derive(Deserialize)]
+struct SculptDocV2 {
+    #[allow(dead_code)]
+    version: u32,
+    objects: Vec<ObjectDocV2>,
+    active: u32,
 }
 
 /// A peça de um documento **v1** — congelada, e lida só pela migração.
@@ -185,6 +229,29 @@ pub fn decode(bytes: &[u8]) -> Result<(Vec<LoadedPiece>, usize), SculptDocError>
         SCULPT_DOC_VERSION => postcard::from_bytes(bytes).map_err(SculptDocError::Bytes)?,
         // ⭐⭐ **A MIGRAÇÃO.** Um documento gravado antes de a tinta fina viajar
         // abre, e as peças vêm sem plano — que é exactamente o que elas tinham.
+        // ⭐⭐ **A MIGRAÇÃO da graduação.** Um plano gravado antes da P2 tinha
+        // um nível só para a peça inteira ⇒ a lista vazia descreve-o
+        // exactamente, e o load não muda um bit da tinta.
+        V_ANTES_DA_GRADUACAO => {
+            let v2: SculptDocV2 = postcard::from_bytes(bytes).map_err(SculptDocError::Bytes)?;
+            SculptDoc {
+                version: SCULPT_DOC_VERSION,
+                objects: v2
+                    .objects
+                    .into_iter()
+                    .map(|o| ObjectDoc {
+                        stack: o.stack,
+                        pose: o.pose,
+                        tinta: o.tinta.map(|t| TintaDoc {
+                            nivel: t.nivel,
+                            amostras: t.amostras,
+                            niveis: Vec::new(),
+                        }),
+                    })
+                    .collect(),
+                active: v2.active,
+            }
+        }
         V_ANTES_DA_TINTA => {
             let v1: SculptDocV1 = postcard::from_bytes(bytes).map_err(SculptDocError::Bytes)?;
             SculptDoc {
@@ -235,7 +302,18 @@ pub fn decode(bytes: &[u8]) -> Result<(Vec<LoadedPiece>, usize), SculptDocError>
 fn tinta_de(stack: &Multires, doc: &TintaDoc, peca: usize) -> Result<Tinta, SculptDocError> {
     let mesh = stack.mesh();
     let faces = || mesh.faces().iter().map(ph2d_mesh::Face::verts);
-    let mut t = Tinta::nova(mesh.vert_count(), faces(), doc.nivel);
+    // ⭐⭐ **A lista vazia é o plano UNIFORME**, que é o que todo documento
+    // anterior à P2 tem. ⛔ E uma lista que não descreve esta malha é RECUSA e
+    // não um plano uniforme de consolação: *as amostras estão guardadas por
+    // ÍNDICE, e um índice contra outra disposição é tinta no sítio errado*.
+    let mut t = if doc.niveis.is_empty() {
+        Tinta::nova(mesh.vert_count(), faces(), doc.nivel)
+    } else {
+        Tinta::graduada(mesh.vert_count(), faces(), &doc.niveis).ok_or(SculptDocError::Tinta {
+            peca,
+            esperadas: doc.niveis.len(),
+        })?
+    };
     let esperadas = t.amostras().len();
     let amostras = doc
         .amostras
@@ -266,6 +344,14 @@ pub fn encode(pieces: &[(StackData, PoseData, Option<&Tinta>)], active: usize) -
                 tinta: tinta.map(|t| TintaDoc {
                     nivel: t.nivel(),
                     amostras: doc_tinta::a_menor_forma(t.amostras()),
+                    // ⭐ **Um plano UNIFORME grava a lista VAZIA**, e isso não é
+                    //   uma optimização: é o que faz um documento sem graduação
+                    //   sair byte a byte como saía antes da P2.
+                    niveis: if t.lado_uniforme().is_some() {
+                        Vec::new()
+                    } else {
+                        t.topologia().niveis().to_vec()
+                    },
                 }),
             })
             .collect(),

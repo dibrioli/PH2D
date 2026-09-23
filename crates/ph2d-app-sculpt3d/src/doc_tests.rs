@@ -456,3 +456,135 @@ fn as_duas_formas_das_amostras_fazem_o_que_prometem() {
          amostras distintas e a metade (b) mede outra coisa"
     );
 }
+
+/// ⭐⭐⭐⭐ **GATE — UM PLANO GRADUADO ATRAVESSA O FICHEIRO COM OS NÍVEIS DELE.**
+///
+/// ⛔⛔ **A metade que decide é a dos NÍVEIS, e não a das amostras:** a
+/// topologia é DERIVADA das faces, logo um `decode` que ignorasse a lista
+/// voltaria com um plano UNIFORME — a contagem de amostras não bateria e o
+/// load recusaria **em voz alta**, que é bom; mas o dia em que ela batesse por
+/// acaso, a tinta aterrava no sítio errado **em silêncio**. ⇒ afirma-se a
+/// lista, face a face.
+///
+/// ⚠️ **E o CONTROLO é a primeira asserção:** a fixtura tem de ter níveis
+/// DISTINTOS, senão isto mede um plano uniforme com outro nome.
+#[test]
+fn um_plano_graduado_atravessa_o_ficheiro_com_os_niveis_dele() {
+    // ⛔⛔ **O octaedro da `peca_com_plano` NÃO SERVE, e foi o CONTROLO que o
+    //   disse** (`saiu [2]`): as oito faces dele têm a MESMA área, logo a
+    //   graduação devolve um plano uniforme — *a fixtura não contém o
+    //   fenómeno*. Uma esfera UV tem as faces do pólo bem mais pequenas que as
+    //   do equador, que é exactamente a dispersão que esta lei consome.
+    let mut stack = Multires::new(shapes::uv_sphere(8, 10, 1.0));
+    for i in 0..stack.mesh().vert_count() {
+        stack.mesh_mut().colors_mut()[i] = [0.2, 0.4, 0.6];
+    }
+    let pose = Pose::new([1.0, 0.0, 0.0], 1.5);
+    let m = stack.mesh();
+    let faces = || m.faces().iter().map(ph2d_mesh::Face::verts);
+    let areas = m.face_areas();
+    let topo = ph2d_mesh_colors::Topologia::nova(m.vert_count(), faces(), 0);
+    let niveis = ph2d_mesh_colors::niveis_igualados(&topo, &areas, 2, 1);
+
+    let mut distintos = niveis.clone();
+    distintos.sort_unstable();
+    distintos.dedup();
+    assert!(
+        distintos.len() >= 2,
+        "o CONTROLO: a fixtura tem de ser GRADUADA, e saiu {distintos:?}"
+    );
+
+    let mut t = ph2d_mesh_colors::Tinta::semeada_graduada(m.colors().unwrap(), faces(), &niveis)
+        .expect("a lista descreve esta malha");
+    let n = t.amostras().len();
+    for i in (n / 4)..(n / 3) {
+        t.amostras_mut()[i] = [0.9, 0.1, 0.05];
+    }
+    assert!(
+        t.lado_uniforme().is_none(),
+        "o CONTROLO: o plano da fixtura não é uniforme"
+    );
+
+    let bytes = encode(&[(stack.to_data(), pose.to_data(), Some(&t))], 0);
+    let (lidas, _) = decode(&bytes).expect("ida e volta");
+    let volta = lidas[0].tinta.as_ref().expect("a peça tinha plano");
+
+    assert_eq!(
+        volta.topologia().niveis(),
+        t.topologia().niveis(),
+        "os níveis por face não voltaram"
+    );
+    let bits = |a: &[[f32; 3]]| -> Vec<[u32; 3]> {
+        a.iter()
+            .map(|c| [c[0].to_bits(), c[1].to_bits(), c[2].to_bits()])
+            .collect()
+    };
+    assert_eq!(
+        bits(volta.amostras()),
+        bits(t.amostras()),
+        "as amostras não voltaram AO BIT"
+    );
+}
+
+/// ⭐⭐⭐ **GATE — UM DOCUMENTO v2 ABRE, e o plano dele vem UNIFORME.**
+///
+/// ⛔⛔ **Sem esta migração, todo `.ph2dproj` gravado entre 21/09 e a P2 deixava
+/// de abrir** — o `decode` recusa por versão, e a recusa leva o load inteiro.
+/// *Subir a versão de um formato sem degrau é apagar o trabalho de quem já o
+/// usou*, que é a lei que a migração do v1 já escreveu neste ficheiro.
+///
+/// ⚠️ A fixtura escreve os bytes v2 **pela forma congelada** e não por um
+/// ficheiro guardado, pela mesma razão do gate do v1.
+#[test]
+fn um_documento_v2_abre_e_o_plano_dele_vem_uniforme() {
+    #[derive(serde::Serialize)]
+    struct TintaV2 {
+        nivel: u8,
+        amostras: super::doc_tinta::AmostrasDoc,
+    }
+    #[derive(serde::Serialize)]
+    struct ObjectV2 {
+        stack: StackData,
+        pose: PoseData,
+        tinta: Option<TintaV2>,
+    }
+    #[derive(serde::Serialize)]
+    struct DocV2 {
+        version: u32,
+        objects: Vec<ObjectV2>,
+        active: u32,
+    }
+
+    let (stack, pose, t) = peca_com_plano(2);
+    let bytes = postcard::to_allocvec(&DocV2 {
+        version: 2,
+        objects: vec![ObjectV2 {
+            stack: stack.to_data(),
+            pose: pose.to_data(),
+            tinta: Some(TintaV2 {
+                nivel: t.nivel(),
+                amostras: super::doc_tinta::a_menor_forma(t.amostras()),
+            }),
+        }],
+        active: 0,
+    })
+    .expect("os bytes v2");
+
+    let (lidas, _) = decode(&bytes).expect("um v2 tem de abrir");
+    let volta = lidas[0].tinta.as_ref().expect("o plano do v2");
+    assert_eq!(volta.nivel(), t.nivel(), "o degrau do plano v2");
+    assert!(
+        volta.lado_uniforme().is_some(),
+        "um plano v2 é UNIFORME por construção — ele é anterior à graduação"
+    );
+    let bits = |a: &[[f32; 3]]| -> Vec<[u32; 3]> {
+        a.iter()
+            .map(|c| [c[0].to_bits(), c[1].to_bits(), c[2].to_bits()])
+            .collect()
+    };
+    assert_eq!(
+        bits(volta.amostras()),
+        bits(t.amostras()),
+        "as amostras do v2 não voltaram AO BIT"
+    );
+}

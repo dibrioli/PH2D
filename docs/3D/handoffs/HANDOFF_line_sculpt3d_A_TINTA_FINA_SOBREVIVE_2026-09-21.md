@@ -2856,3 +2856,96 @@ Sem cerca o salto máximo entre vizinhas é **`2`** e ela toca `1` a `6` arestas
 com ela, o custo é `+44` a `+360` amostras (**`~0,03 %`**). *No corpus do produto ela é
 indistinguível de não existir* — e fica pela mesma razão que a cerca do pente: sem ela um salto
 grande é detalhe que o lado grosso não consegue mostrar, e o caso que ela recusa é construível.
+
+---
+
+## §29 — ⭐⭐⭐⭐ QUEM ESCOLHE OS NÍVEIS: o `Even Detail` — a P2 chegada ao artista
+
+> §26.6 nomeava três itens abertos e dizia a ordem: *o device · quem escolhe · a persistência*.
+> A §27 fechou o primeiro. Esta fecha os **outros dois**, e juntos — porque um degrau que o
+> artista escolhe e não consegue gravar não é uma feature.
+
+### §29.1 — O que o artista vê
+
+Uma caixa **`Even Detail`** colada por baixo da fileira `Paint Detail`, oferecida **só com um plano
+armado**. Com ela ligada, `8x` deixa de querer dizer *«toda face a este degrau»* e passa a querer
+dizer *«a face TÍPICA a este degrau, e as outras igualam-se a ela»*.
+
+⚠️ **Ela nasce DESLIGADA**, e o preço está medido (§28.4): `+4 %` a `+33 %` de amostras.
+
+### §29.2 — ⭐⭐ A ÁREA POR FACE é uma porta nova da `ph2d-mesh`, e ela partilha a lei sem partilhar a soma
+
+`Mesh::face_areas()` nasce ao lado da `surface_area()` que já existia, e as duas passam pela mesma
+[`area_do_triangulo`]. ⛔⛔ **O que elas NÃO partilham é a acumulação, e isso é deliberado:** a
+`surface_area` soma triângulo a triângulo num `f64` só, e somar por FACE e depois somar as faces é
+**outra ordem ⇒ outros últimos bits**. Ela alimenta o tecto de quads da retopologia e o alvo da
+topologia dinâmica — *mudar-lhe um ULP move gates que nada têm a ver com esta porta*.
+
+### §29.3 — ⭐⭐⭐ A ÂNCORA vive na `ph2d-mesh-colors`, não na família
+
+`niveis_igualados(topo, areas, k, tecto)` é a ponte entre *«o artista carregou em `8x`»* e o alvo de
+densidade que a lei pede: `alvo = mediana(2^k / √área)`. ⛔ Escrevê-la na família seria a **segunda
+resposta** à pergunta *«que densidade é um `8x`?»*, e a medição da §28 ficaria sem dono.
+
+⚠️ **E ela leva a REFUTAÇÃO da outra leitura no doc-comment, com os três números** — senão a
+pergunta *«e porque não o TECTO?»* volta a ser feita, e o custo de a responder outra vez é uma wave.
+
+### §29.4 — ⭐⭐ A semente é a MESMA função, e ela já estava P2-ready
+
+`Tinta::semeada_graduada` nasceu sem uma linha de aritmética nova: a semente já lia
+`lado_da_face(fi)`, logo ela estava pronta para um nível por face **antes de existir uma porta
+graduada**. ⇒ ela saiu para [`Tinta::semeia`], com **dois** chamadores. *Duas cópias divergiriam na
+primeira emenda, e o que se perde aí é a tinta do artista.*
+
+### §29.5 — ⭐⭐⭐ A PERSISTÊNCIA guarda a LISTA, e não a re-deriva
+
+`SCULPT_DOC_VERSION` **`2 → 3`**, com migração (um v2 abre e o plano dele vem UNIFORME, que é o que
+ele era). O `TintaDoc` ganha `niveis: Vec<u8>` — **vazio quer dizer uniforme**, logo um documento
+sem graduação sai byte a byte como saía.
+
+⛔⛔ **Re-derivar era a outra saída e tem um defeito que nenhuma régua vê:** as amostras estão
+guardadas **por ÍNDICE**, e o índice é função da disposição. *Uma mudança na lei da graduação
+relayouta um ficheiro já gravado em silêncio.* Guardar a lista custa `1` byte por face — uns `18` KB
+numa peça do dono, contra um plano que a `8x` mede dezenas de MB.
+
+⚠️ E uma lista que não descreve a malha é **RECUSA** e não um plano uniforme de consolação: um
+índice contra outra disposição é tinta no sítio errado.
+
+### §29.6 — ⛔⛔ DUAS fixturas minhas não continham o fenómeno, e os CONTROLOS disseram-no
+
+1. O gate da ida-e-volta do documento herdou a `peca_com_plano`, que é um **OCTAEDRO** — oito faces
+   da MESMA área ⇒ a graduação devolve um plano uniforme e o controlo leu **`saiu [2]`**.
+2. O gate de que a igualação chega ao plano nasceu numa `uv_sphere(10, 12)`, onde a razão entre a
+   maior e a menor face **não chega a quatro** ⇒ dois níveis distintos e não três.
+
+⇒ as duas passaram a usar a densidade da CENA (`uv_sphere(24, 32)`). *Uma fixtura barata mede meia
+lei*, e sem o controlo escrito ao lado as duas teriam passado a afirmar nada.
+
+### §29.7 — ⛔ E uma PREMISSA minha caiu dentro do próprio gate
+
+Eu escrevi que a `k = 0` a lei devolve zeros — *«não há como igualar por baixo»*. A corrida
+respondeu `[0 × 25, 1 × 7]`. **Estava ao contrário:** a densidade é `lado / √área`, logo **uma face
+GRANDE precisa de MAIS subdivisões** e quem satura contra o piso são as PEQUENAS. ⭐ É o mesmo
+mecanismo que refutou a leitura do TECTO, visto do outro lado da escada.
+
+### §29.8 — O placar
+
+* **Mutação (`muta_o_r_por_face.sh`): `22 de 23` sangram** — o `P12` é o CONTROLO inerte. As quatro
+  novas cobrem a âncora (`P21`), a área por face (`P22`), a fiação do interruptor (`P23`) e a
+  gravação da lista (`P24`).
+* Pré-voo: **`23 de 23`** âncoras nesse arnês.
+* `clippy -D warnings` **zero** sobre as cinco crates tocadas · `fmt` limpo.
+* Censo da fiação **`27 → 28`** elos (o laço do quadro lê o interruptor, e ele pede um device).
+* `nextest-impacted` **`18 622` de `18 622`**.
+* **TRÊS tectos de LOC curados por CORTE**, nenhum por isenção — e os três por RESPONSABILIDADE:
+  `ph2d-mesh/src/mesh.rs` (`728 → 655`, as duas portas da área para o `mesh_area.rs`),
+  `mesh_tests.rs` (`740 → 695`) e `ph2d-panel-sculpt3d/src/state.rs` (`603 → 500`, a INTENÇÃO para o
+  `state_intent.rs`: *o `state.rs` é o MODELO que o host entrega, e uma intenção viaja no sentido
+  contrário*).
+* ⛔⛔ **E o corte da `mesh.rs` pagou a armadilha do ATRIBUTO à letra:** a declaração do módulo novo
+  aterrou **entre o `#[path = "mesh_scratch.rs"]` e o `mod scratch;`**, o `scratch` perdeu o caminho
+  dele e o módulo novo ficou com ele. *Um corte que sobe por atributo corta DENTRO do item, e o
+  vizinho herda o que era do outro* — falha alta, felizmente.
+* ⚠️ **E o pré-voo dos ONZE arneses apanhou mais TRÊS âncoras mortas por esta wave** (`M1` e `M2` na
+  assinatura do `garante`, `P22` no ficheiro que o corte moveu no MESMO dia). `146 → 150` âncoras,
+  todas a casar uma vez.

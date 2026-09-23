@@ -689,3 +689,7 @@ fn a_origem_de_cada_triangulo_concorda_com_o_indice_dele() {
         );
     }
 }
+
+/// Os gates da ÁREA — irmão cortado por tecto de LOC (2026-09-23).
+#[path = "mesh_area_tests.rs"]
+mod area;

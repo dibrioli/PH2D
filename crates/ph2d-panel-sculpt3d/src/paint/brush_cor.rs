@@ -284,7 +284,7 @@ pub(super) fn paint_detalhe_da_tinta(
         .iter()
         .map(|d| d.label())
         .collect();
-    super::widgets::labelled_seg(
+    let y = super::widgets::labelled_seg(
         ctx,
         tr("panel.sculpt3d.tinta_detalhe"),
         &crate::ids::SCULPT3D_TINTA_DETALHE,
@@ -293,5 +293,23 @@ pub(super) fn paint_detalhe_da_tinta(
         x,
         w,
         y,
-    )
+    );
+    // ⭐⭐ **E a IGUALAÇÃO, colada ao degrau que ela iguala.**
+    //
+    // ⚠️ **Só com um plano armado** — é a MESMA condição que a tabela de
+    // interruptores declara, e as duas leem o mesmo campo: *uma fileira pintada
+    // que a tabela não oferece é um controlo morto sob o dedo*, que é o report
+    // que esta crate já pagou sete vezes.
+    if snap.ui.tinta_detalhe.nivel().is_some() {
+        return super::widgets::toggle(
+            ctx,
+            crate::ids::SCULPT3D_TINTA_IGUALADA,
+            tr("panel.sculpt3d.tinta_igualada"),
+            snap.ui.tinta_igualada,
+            x,
+            w,
+            y,
+        );
+    }
+    y
 }

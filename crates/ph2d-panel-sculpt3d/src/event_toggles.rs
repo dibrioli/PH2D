@@ -33,7 +33,7 @@ pub(crate) type Toggle = (NodeId, fn(&Sculpt3dUi) -> bool, fn(&mut Sculpt3dUi));
 /// `Brush::offers_front_faces`, `ClothArea::offers_pin`), nunca a uma lista de
 /// nomes aqui — o pintor faz a mesma pergunta para decidir se desenha a caixa, e
 /// duas cópias divergiriam num interruptor que aparece e não muda um vértice.
-pub(crate) const TOGGLES: [Toggle; 19] = [
+pub(crate) const TOGGLES: [Toggle; 20] = [
     (
         crate::ids::SCULPT3D_ACCUMULATE,
         |u| u.brush.verb.accumulates(),
@@ -160,6 +160,14 @@ pub(crate) const TOGGLES: [Toggle; 19] = [
         crate::ids::SCULPT3D_WIRE_GRADE,
         |u| u.wireframe,
         |u| u.wire_grade = !u.wire_grade,
+    ),
+    // ⚠️ **Ela PERGUNTA pelo plano**, pela mesma razão do arame acima: sem um
+    // plano armado não há retícula para igualar, e a fileira seria um controlo
+    // morto sob o dedo. A condição é a MESMA que o pintor lê.
+    (
+        crate::ids::SCULPT3D_TINTA_IGUALADA,
+        |u| u.tinta_detalhe.nivel().is_some(),
+        |u| u.tinta_igualada = !u.tinta_igualada,
     ),
 ];
 

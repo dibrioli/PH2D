@@ -145,6 +145,20 @@ pub(crate) fn announce() {
          [sculpt3d]        -> E' o mais fino que o app oferece. Numa peca desta grossura\n\
          [sculpt3d]           a diferenca para o `8x` e' pequena de proposito: o `8x` ja'\n\
          [sculpt3d]           passa a densidade da cena =51, e o `16x` e' a folga acima.\n\
+         [sculpt3d]    (4-ter) Volte ao `8x` e carregue na caixa `Even Detail`, logo\n\
+         [sculpt3d]        ABAIXO da fileira. Pinte uma marca no TOPO da bola (perto do\n\
+         [sculpt3d]        polo) e outra no MEIO dela (no equador).\n\
+         [sculpt3d]        -> Com ela DESLIGADA, as duas marcas tem grao diferente: o\n\
+         [sculpt3d]           `8x` e' o mesmo para toda face, e as faces do polo desta\n\
+         [sculpt3d]           esfera sao muito mais pequenas que as do equador -- logo a\n\
+         [sculpt3d]           tinta e' MAIS fina no polo sem ninguem ter pedido.\n\
+         [sculpt3d]        -> Com ela LIGADA, o `8x` passa a querer dizer *a face TIPICA\n\
+         [sculpt3d]           fica a 8x, e as outras igualam-se a ela*: o grao fica o\n\
+         [sculpt3d]           MESMO em toda a peca.\n\
+         [sculpt3d]        ⚠️ O PRECO esta' medido e nao e' zero: ela SOBE a memoria do\n\
+         [sculpt3d]           plano entre +4 % e +33 %, porque iguala SUBINDO as faces\n\
+         [sculpt3d]           pequenas. O que ela compra e' o grao deixar de depender de\n\
+         [sculpt3d]           onde a face esta'.\n\
          [sculpt3d]    (5) Volte a fileira para `Mesh`.\n\
          [sculpt3d]        -> A segunda marca ENGROSSA e fica como a primeira. E' o preco,\n\
          [sculpt3d]           e nao um defeito: sem o plano, a cor volta a morar nos\n\

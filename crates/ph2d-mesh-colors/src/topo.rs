@@ -282,6 +282,19 @@ impl Topologia {
         self.off_aresta.last().copied().unwrap_or(0)
     }
 
+    /// ⭐⭐ **O nível de cada face, na ordem delas** — o que um DOCUMENTO grava
+    /// para não ter de re-derivar a graduação no load.
+    ///
+    /// ⛔⛔ **Guardar a lista e não a re-derivar é a decisão, e ela tem número:**
+    /// `1` byte por face contra um plano que a `8x` mede dezenas de MB, e em
+    /// troca *uma mudança na lei da graduação deixa de relayoutar em silêncio
+    /// um ficheiro já gravado*. A re-derivação era a outra saída, e o handoff
+    /// §26.6 já a nomeava como a que pede um degrau de versão por si só.
+    #[must_use]
+    pub fn niveis(&self) -> &[u8] {
+        &self.nivel_da_face
+    }
+
     /// O nível mais FINO do plano — ver [`crate::Tinta::graduada`].
     #[must_use]
     pub fn nivel_mais_fino(&self) -> u8 {

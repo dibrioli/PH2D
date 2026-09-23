@@ -345,3 +345,103 @@ fn a_cerca_do_salto_sobe_a_vizinha_e_chega_ao_ponto_fixo() {
         assert_eq!(k, esperado, "face {j} da corrente: a escada é {com:?}");
     }
 }
+
+/// ⭐⭐⭐⭐ **A PORTA DO PRODUTO ANCORA NA MEDIANA — e a `k` a face típica fica
+/// exactamente ao nível que o artista pediu.**
+///
+/// ⛔⛔ **A segunda metade é a que separa esta lei de um plano uniforme:** sem
+/// ela, uma implementação que devolvesse `vec![k; n]` satisfaz *«a mediana é
+/// `k`»* trivialmente, e a P2 inteira evapora-se em silêncio. ⇒ o gate exige
+/// **três** coisas: a mediana ser `k`, os níveis serem DISTINTOS, e a dispersão
+/// cair.
+///
+/// ⚠️ E a `k = 0` ela é obrigada a devolver zeros: o `0` é o CHÃO da escada
+/// (cor por vértice), logo não há como igualar por baixo — é a mesma saturação
+/// que refutou a leitura do TECTO (handoff §28.3).
+#[test]
+fn a_porta_do_produto_poe_a_face_mediana_no_k_pedido() {
+    // A mesma tira do gate da dispersão: áreas que crescem de ponta a ponta.
+    let n = 32usize;
+    let (mut pos, mut faces) = (Vec::new(), Vec::new());
+    let mut x = 0.0f32;
+    for i in 0..n {
+        let h = 0.1 * (1.0 + i as f32 * 0.25);
+        pos.push([x, 0.0, 0.0]);
+        pos.push([x, h, 0.0]);
+        x += h;
+    }
+    pos.push([x, 0.0, 0.0]);
+    pos.push([x, 0.1 * (1.0 + n as f32 * 0.25), 0.0]);
+    for i in 0..n {
+        let a = (2 * i) as u32;
+        faces.push(vec![a, a + 2, a + 1]);
+    }
+    let areas: Vec<f32> = faces
+        .iter()
+        .map(|f| {
+            let (a, b, c) = (pos[f[0] as usize], pos[f[1] as usize], pos[f[2] as usize]);
+            let u = [b[0] - a[0], b[1] - a[1]];
+            let v = [c[0] - a[0], c[1] - a[1]];
+            0.5 * (u[0] * v[1] - u[1] * v[0]).abs()
+        })
+        .collect();
+    let base = Topologia::nova(pos.len(), it(&faces), 0);
+
+    for k in 1..=4u8 {
+        let niveis = super::niveis_igualados(&base, &areas, k, 1);
+        assert_eq!(niveis.len(), faces.len(), "k={k}: uma entrada por face");
+
+        // (1) A MEDIANA é o `k` pedido.
+        let mut ord = niveis.clone();
+        ord.sort_unstable();
+        let mediana = ord[(ord.len() - 1) / 2];
+        assert_eq!(
+            mediana, k,
+            "k={k}: a face típica saiu em {mediana} e o artista pediu {k} ({ord:?})"
+        );
+
+        // (2) ⭐ CONTROLO: eles são DISTINTOS — senão isto é um plano uniforme.
+        let mut d = ord.clone();
+        d.dedup();
+        assert!(
+            d.len() >= 3,
+            "k={k}: níveis {d:?} — a porta devolveu (quase) um plano uniforme"
+        );
+
+        // (3) E a dispersão cai contra o uniforme do MESMO `k`.
+        let disp = |ks: &[u8]| -> f32 {
+            let mut v: Vec<f32> = ks
+                .iter()
+                .zip(&areas)
+                .map(|(k, a)| f32::from(1u16 << k) / a.sqrt())
+                .collect();
+            v.sort_by(|a, b| a.partial_cmp(b).expect("sem NaN"));
+            v[v.len() - 1] / v[0]
+        };
+        let (uni, por_face) = (disp(&vec![k; faces.len()]), disp(&niveis));
+        assert!(
+            por_face < uni / 2.0,
+            "k={k}: a porta tem de COMPRAR alguma coisa — {uni:.2}× → {por_face:.2}×"
+        );
+    }
+
+    // ⭐⭐⭐ **O CHÃO, e a PREMISSA QUE ESTE GATE DERRUBOU.** Eu escrevi aqui
+    //   *«a `k = 0` não há como igualar, logo tudo devolve zeros»* e a corrida
+    //   respondeu `[0 × 25, 1 × 7]`. ⛔ Estava ao contrário: a densidade é
+    //   `lado / √área`, logo **uma face GRANDE precisa de MAIS subdivisões**
+    //   para chegar ao alvo, e quem satura contra o piso são as PEQUENAS.
+    //
+    //   ⇒ o que se afirma é o que a lei de facto faz: a mediana continua no
+    //   `k` pedido, **ninguém desce abaixo do chão**, e o único sentido
+    //   disponível ali é para CIMA. ⚠️ *Isto é o mesmo mecanismo que refutou a
+    //   leitura do TECTO (handoff §28.3) visto do outro lado da escada.*
+    let zero = super::niveis_igualados(&base, &areas, 0, 1);
+    let mut ord = zero.clone();
+    ord.sort_unstable();
+    assert_eq!(ord[(ord.len() - 1) / 2], 0, "k=0: a mediana saiu de zero");
+    assert!(zero.iter().any(|k| *k > 0), "k=0: ninguém subiu — {zero:?}");
+    assert!(
+        zero.iter().all(|k| *k <= NIVEL_MAX),
+        "k=0: alguém passou o tecto da escada — {zero:?}"
+    );
+}

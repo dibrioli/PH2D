@@ -215,48 +215,6 @@ impl Mesh {
         self.positions.len()
     }
 
-    /// ⭐⭐ **A ÁREA DA SUPERFÍCIE** — a soma dos triângulos de toda face, com
-    /// os n-gons abertos em leque a partir do primeiro canto.
-    ///
-    /// ⚠️⚠️ **É a PORTA ÚNICA, e ela nasceu com DOIS consumidores de crates
-    /// diferentes** (2026-09-14): o botão de retopologia, que já a usava para
-    /// ancorar a contagem de quads, e o alvo da **topologia dinâmica**, que
-    /// passou a ancorar-se nela pelo mesmo motivo. *Duas somas de triângulos em
-    /// duas crates seriam a segunda resposta à mesma pergunta.*
-    ///
-    /// ⭐ **Ela é da SUPERFÍCIE e não da tesselação** — é isso que a torna
-    /// invariante a remalhar, e por consequência ao ZOOM e à escala da peça.
-    ///
-    /// ⚠️ **A soma é em `f64`** e só desce a `f32` no fim: uma malha de milhões
-    /// de triângulos minúsculos perde a cauda numa soma de `f32`.
-    ///
-    /// ⚠️⚠️ **E este doc-comment ROUBOU o `#[must_use]` do vizinho ao nascer** —
-    /// ele foi inserido entre o atributo e o `face_count`, que ficou sem ele. É
-    /// a armadilha que este repo já regista duas vezes, e quem a apanhou foi o
-    /// `clippy`, não uma leitura.
-    #[must_use]
-    pub fn surface_area(&self) -> f32 {
-        let p = self.positions();
-        let mut sum = 0.0f64;
-        for f in self.faces() {
-            let v = f.verts();
-            for k in 1..v.len() - 1 {
-                let (a, b, c) = (p[v[0] as usize], p[v[k] as usize], p[v[k + 1] as usize]);
-                let (u, w) = (
-                    [b[0] - a[0], b[1] - a[1], b[2] - a[2]],
-                    [c[0] - a[0], c[1] - a[1], c[2] - a[2]],
-                );
-                let n = [
-                    u[1].mul_add(w[2], -(u[2] * w[1])),
-                    u[2].mul_add(w[0], -(u[0] * w[2])),
-                    u[0].mul_add(w[1], -(u[1] * w[0])),
-                ];
-                sum += f64::from(n[0].mul_add(n[0], n[1].mul_add(n[1], n[2] * n[2])).sqrt()) * 0.5;
-            }
-        }
-        sum as f32
-    }
-
     #[must_use]
     pub fn face_count(&self) -> usize {
         self.faces.len()
@@ -683,6 +641,14 @@ impl core::error::Error for MeshError {}
 #[path = "mesh_scratch.rs"]
 mod scratch;
 pub use self::scratch::{QueryScratch, RegionScratch};
+
+/// ⚠️⚠️ **Esta declaração vive DEPOIS do `scratch` de propósito.** A primeira
+/// redacção pô-la logo acima dele e aterrou **entre o `#[path]` e o `mod`** —
+/// o `scratch` perdeu o caminho dele e o `area` ficou com ele. *É a armadilha
+/// que este repo já regista: um corte que sobe por atributo corta DENTRO do
+/// item, e o vizinho herda o que era do outro.*
+#[path = "mesh_area.rs"]
+mod area;
 
 #[cfg(test)]
 #[path = "mesh_tests.rs"]

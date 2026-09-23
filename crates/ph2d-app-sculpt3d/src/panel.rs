@@ -70,6 +70,7 @@ impl Sculpt3dScene {
                 tinta_detalhe: ph2d_panel_sculpt3d::state::DetalheDaTinta::do_nivel(
                     self.tinta_nivel,
                 ),
+                tinta_igualada: self.tinta_igualada,
                 cavity: self.cavity,
                 env: self.env,
                 ao: self.ao,
@@ -219,6 +220,7 @@ impl Sculpt3dScene {
         self.wireframe = ui.wireframe;
         self.wire_grade = ui.wire_grade;
         self.tinta_nivel = ui.tinta_detalhe.nivel();
+        self.tinta_igualada = ui.tinta_igualada;
         self.cavity = ui.cavity;
         self.env = ui.env;
         self.ao = ui.ao;

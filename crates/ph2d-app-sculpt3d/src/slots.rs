@@ -174,10 +174,11 @@ impl Sculpt3dScene {
                 self.tinta_nivel,
             );
             let emprestado = rota == crate::tinta_da_peca::Rota::Emprestado;
+            let igualar = self.tinta_igualada;
             if let crate::tinta_da_peca::Rota::DaPeca { pedir } = rota {
                 let obj = &mut self.objects[i];
                 let crate::objects::SceneObject { stack, tinta, .. } = obj;
-                if crate::tinta_da_peca::garante(stack.mesh(), tinta, pedir) {
+                if crate::tinta_da_peca::garante(stack.mesh(), tinta, pedir, igualar) {
                     obj.tinta_suja = true;
                 }
             }

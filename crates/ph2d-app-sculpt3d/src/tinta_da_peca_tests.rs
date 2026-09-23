@@ -32,7 +32,10 @@ fn o_plano_novo_nasce_com_a_cor_que_a_peca_ja_tinha() {
         *c = [0.2, 0.7, 0.1];
     }
     let mut t = None;
-    assert!(garante(&pintada, &mut t, Some(2)), "o plano tem de nascer");
+    assert!(
+        garante(&pintada, &mut t, Some(2), false),
+        "o plano tem de nascer"
+    );
     let plano = t.expect("nasceu");
     for (i, a) in plano.amostras().iter().enumerate() {
         for k in 0..3 {
@@ -45,7 +48,7 @@ fn o_plano_novo_nasce_com_a_cor_que_a_peca_ja_tinha() {
 
     let crua = dois_tris();
     let mut t2 = None;
-    assert!(garante(&crua, &mut t2, Some(2)));
+    assert!(garante(&crua, &mut t2, Some(2), false));
     let branco = t2.expect("nasceu");
     assert!(
         branco.amostras().iter().all(|a| *a == [1.0, 1.0, 1.0]),
@@ -59,14 +62,23 @@ fn o_plano_novo_nasce_com_a_cor_que_a_peca_ja_tinha() {
 fn reconciliar_o_mesmo_nivel_nao_reconstroi_nada() {
     let m = dois_tris();
     let mut t = None;
-    assert!(garante(&m, &mut t, Some(1)), "a primeira vez constrói");
-    assert!(!garante(&m, &mut t, Some(1)), "a segunda não mexe em nada");
-    assert!(garante(&m, &mut t, Some(2)), "outro nível reconstrói");
+    assert!(
+        garante(&m, &mut t, Some(1), false),
+        "a primeira vez constrói"
+    );
+    assert!(
+        !garante(&m, &mut t, Some(1), false),
+        "a segunda não mexe em nada"
+    );
+    assert!(
+        garante(&m, &mut t, Some(2), false),
+        "outro nível reconstrói"
+    );
     assert_eq!(t.as_ref().map(ph2d_mesh_colors::Tinta::nivel), Some(2));
-    assert!(garante(&m, &mut t, None), "desarmar larga o plano");
+    assert!(garante(&m, &mut t, None, false), "desarmar larga o plano");
     assert!(t.is_none());
     assert!(
-        !garante(&m, &mut t, None),
+        !garante(&m, &mut t, None, false),
         "desarmar duas vezes não é mudança"
     );
 }
@@ -78,7 +90,7 @@ fn reconciliar_o_mesmo_nivel_nao_reconstroi_nada() {
 fn a_concordancia_ve_os_vertices_e_as_faces() {
     let m = dois_tris();
     let mut t = None;
-    garante(&m, &mut t, Some(1));
+    garante(&m, &mut t, Some(1), false);
     let plano = t.expect("nasceu");
     assert!(concorda_com(&plano, &m), "ela concorda consigo mesma");
 
@@ -131,7 +143,7 @@ fn devolver_o_plano_reescreve_a_cor_por_vertice() {
         *c = [1.0, 0.0, 0.0];
     }
     let mut t = None;
-    garante(&m, &mut t, Some(1));
+    garante(&m, &mut t, Some(1), false);
     // Pinta o PLANO de verde, sem tocar na malha.
     for a in t.as_mut().expect("nasceu").amostras_mut() {
         *a = [0.0, 1.0, 0.0];
@@ -183,7 +195,7 @@ fn devolver_nada_deixa_a_peca_como_estava() {
 fn um_plano_desactualizado_nao_escreve_no_canal_por_vertice() {
     let m = dois_tris();
     let mut t = None;
-    garante(&m, &mut t, Some(1));
+    garante(&m, &mut t, Some(1), false);
     for a in t.as_mut().expect("nasceu").amostras_mut() {
         *a = [0.0, 0.0, 1.0];
     }
@@ -237,7 +249,7 @@ fn o_custo_do_tecto_por_vertice_e_o_que_a_constante_diz() {
         "a fixtura tem de ser de QUADS: a constante só descreve essa família"
     );
     let mut t = None;
-    garante(&m, &mut t, Some(NIVEL_MAX));
+    garante(&m, &mut t, Some(NIVEL_MAX), false);
     let amostras = t.expect("nasceu").amostras().len();
     let por_vertice = amostras as f64 / m.vert_count() as f64;
     let alvo = CUSTO_POR_VERTICE_NO_TECTO as f64;
@@ -257,7 +269,7 @@ fn o_custo_do_tecto_por_vertice_e_o_que_a_constante_diz() {
 fn o_nivel_acima_do_tecto_e_cortado_no_tecto() {
     let m = dois_tris();
     let mut t = None;
-    garante(&m, &mut t, Some(NIVEL_MAX + 4));
+    garante(&m, &mut t, Some(NIVEL_MAX + 4), false);
     assert_eq!(
         t.as_ref().map(ph2d_mesh_colors::Tinta::nivel),
         Some(NIVEL_MAX)
@@ -312,14 +324,14 @@ fn o_plano_conta_no_que_a_peca_pesa() {
     let sem = peca.footprint_bytes();
 
     // CONTROLO: reconciliar para `None` não muda um byte.
-    garante(&m, &mut peca.tinta, None);
+    garante(&m, &mut peca.tinta, None, false);
     assert_eq!(
         peca.footprint_bytes(),
         sem,
         "sem plano o peso da peça não pode mudar"
     );
 
-    garante(&m, &mut peca.tinta, Some(NIVEL_MAX));
+    garante(&m, &mut peca.tinta, Some(NIVEL_MAX), false);
     let com = peca.footprint_bytes();
     let plano = peca
         .tinta
@@ -436,7 +448,7 @@ fn o_plano_volta_a_peca_que_o_emprestou_e_nao_a_activa() {
     ];
     {
         let crate::objects::SceneObject { stack, tinta, .. } = &mut pecas[0];
-        garante(stack.mesh(), tinta, Some(1));
+        garante(stack.mesh(), tinta, Some(1), false);
     }
     let emprestado = empresta(&mut pecas[0].tinta, ObjectId(7)).expect("a peça tinha plano");
     assert!(
@@ -477,7 +489,7 @@ fn um_dono_que_ja_nao_existe_leva_o_plano_consigo() {
     )];
     {
         let crate::objects::SceneObject { stack, tinta, .. } = &mut pecas[0];
-        garante(stack.mesh(), tinta, Some(1));
+        garante(stack.mesh(), tinta, Some(1), false);
     }
     let emprestado = empresta(&mut pecas[0].tinta, ObjectId(7)).expect("a peça tinha plano");
     pecas.clear();
@@ -490,5 +502,78 @@ fn um_dono_que_ja_nao_existe_leva_o_plano_consigo() {
     assert!(
         pecas[0].tinta.is_none(),
         "e o plano de uma peça apagada não pode aterrar numa estranha"
+    );
+}
+
+/// ⭐⭐⭐⭐ **A IGUALAÇÃO CHEGA AO PLANO, e desligá-la volta ao uniforme.**
+///
+/// ⛔⛔ **A metade que decide é a TERCEIRA:** sem ela, um `garante` que
+/// ignorasse o `igualado` passa nas duas primeiras — ele constrói um plano
+/// uniforme, o nível bate, e *nada no produto acusa*. ⇒ o gate exige que as
+/// duas chamadas dêem planos DIFERENTES e que a segunda reconstrua.
+///
+/// ⚠️ **A peça é uma esfera UV de propósito:** num octaedro as oito faces têm a
+/// mesma área e a igualação é um **no-op** — a mesma armadilha que o controlo
+/// do gate do documento apanhou nesta jornada (*a fixtura não contém o
+/// fenómeno*).
+#[test]
+fn a_igualacao_chega_ao_plano_e_desliga_se() {
+    // ⚠️ **E a DENSIDADE dela é load-bearing:** uma `uv_sphere(10, 12)` só dá
+    //    DOIS níveis distintos a `k = 2` — a razão entre a maior e a menor face
+    //    não chega a quatro. A da CENA (`24 × 32`) dá três. *Uma fixtura barata
+    //    mede meia lei e o controlo abaixo di-lo em voz alta.*
+    let m = ph2d_mesh::shapes::uv_sphere(24, 32, 1.0);
+
+    // (1) Sem igualar: o plano é UNIFORME.
+    let mut t = None;
+    assert!(garante(&m, &mut t, Some(2), false), "o plano tem de nascer");
+    let uniforme = t.as_ref().expect("nasceu");
+    assert!(
+        uniforme.lado_uniforme().is_some(),
+        "sem igualar o plano tem de ser uniforme"
+    );
+    let n_uniforme = uniforme.amostras().len();
+
+    // (2) A igualar: ele é GRADUADO e o degrau pedido continua a ser o `k`.
+    assert!(
+        garante(&m, &mut t, Some(2), true),
+        "trocar a igualação tem de reconstruir o plano"
+    );
+    let igualado = t.as_ref().expect("nasceu");
+    assert!(
+        igualado.lado_uniforme().is_none(),
+        "a igualação não chegou ao plano — ele saiu uniforme"
+    );
+    let mut d = igualado.topologia().niveis().to_vec();
+    d.sort_unstable();
+    d.dedup();
+    assert!(
+        d.len() >= 3,
+        "níveis {d:?} — isto é (quase) um plano uniforme"
+    );
+
+    // (3) ⭐ E os dois planos são DIFERENTES — a régua que mata um `garante`
+    //     que aceitasse o argumento e o deitasse fora.
+    assert_ne!(
+        igualado.amostras().len(),
+        n_uniforme,
+        "os dois planos têm o mesmo tamanho — a igualação não fez nada"
+    );
+
+    // (4) E voltar atrás devolve o uniforme, sem ficar preso no graduado.
+    assert!(garante(&m, &mut t, Some(2), false), "tem de reconstruir");
+    assert!(
+        t.as_ref().expect("nasceu").lado_uniforme().is_some(),
+        "desligar a igualação não voltou ao uniforme"
+    );
+
+    // (5) ⭐ CONTROLO: sem mudar nada, ela NÃO reconstrói.
+    assert!(
+        !garante(&m, &mut t, Some(2), false),
+        "o mesmo pedido duas vezes tem de ser um no-op"
+    );
+    assert!(
+        !garante(&m, &mut t, Some(2), false),
+        "e continua a sê-lo à terceira"
     );
 }

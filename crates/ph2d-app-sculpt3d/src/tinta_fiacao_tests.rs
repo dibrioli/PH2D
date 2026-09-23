@@ -82,6 +82,9 @@ const DEVICE: &str = include_str!("../../ph2d-mesh-render/src/tinta_gpu.rs");
 /// (`--lib`) também não lhe chega. *Uma lei cuja única régua vive atrás de um
 /// adaptador é, para toda a gente que não tem placa, uma lei sem régua.*
 const GEMEO: &str = include_str!("../../ph2d-mesh-render/src/shaders/tinta.wgsl");
+/// ⚠️ **O laço que reconcilia o plano por quadro** — ele pede um `wgpu::Device`
+/// e por isso nada do que ele decide é alcançável de um teste normal.
+const SLOTS: &str = include_str!("slots.rs");
 const VOZ: &str = include_str!("recusa.rs");
 /// ⭐⭐⭐ **E o DOCUMENTO** — a wave de 21/09 que faz o plano atravessar o
 /// `.ph2dproj`. As duas metades dele (escrever e instalar) vivem no mesmo
@@ -418,6 +421,18 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
         // fronteira partilhada parte-se. Sem o lado da FACE lido do registo, a
         // retícula volta a ser uma só e a tinta de umas faces desenha-se no
         // sítio das outras.
+        // ⭐⭐⭐ **E o ELO DA IGUALAÇÃO (a P2 chegada ao artista).** A lei tem
+        // gate de comportamento (`a_igualacao_chega_ao_plano_e_desliga_se`) e a
+        // FIAÇÃO não tem: o laço que a lê pede um `wgpu::Device`, logo um
+        // `igualar: false` cravado ali deixaria o interruptor **pintado, vivo
+        // no clique e sem efeito nenhum** — que é o report que esta crate já
+        // pagou sete vezes por outro caminho.
+        (
+            "slots.rs",
+            "P5 o quadro deixa de ler o interruptor da tinta igualada",
+            "            let igualar = self.tinta_igualada;".to_string(),
+            SLOTS,
+        ),
         (
             "tinta.wgsl",
             "P3 o gémeo deixa de escalar `t` pelo passo do subconjunto",
@@ -445,12 +460,12 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
 /// busca falhar em voz alta — mas um que devolvesse **tudo** faria a prosa
 /// satisfazer a agulha, e é isso que o [`so_a_prosa`] recusa.
 #[test]
-fn a_cura_da_tinta_fina_esta_ligada_nos_vinte_e_sete_sitios() {
+fn a_cura_da_tinta_fina_esta_ligada_nos_vinte_e_oito_sitios() {
     let elos = elos();
     assert_eq!(
         elos.len(),
-        27,
-        "a população deste censo são os vinte e sete elos"
+        28,
+        "a população deste censo são os vinte e oito elos"
     );
 
     for (ficheiro, mutacao, agulha, fonte) in elos {

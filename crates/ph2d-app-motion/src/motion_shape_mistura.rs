@@ -20,7 +20,8 @@ use super::{VecPathStore, instance_pose};
 pub(super) fn chave_de_mistura(
     m: &ph2d_eval_motion::MisturaDoSink,
 ) -> Option<(u8, BlendWith, u32)> {
-    mistura_vello(m.blend).map(|_| (m.blend, m.com, m.sink))
+    // ⚠️ A pergunta é a do `MisturaDoSink` — a MESMA que manda o sink inteiro ao Vello.
+    m.tem_camada().then_some((m.blend, m.com, m.sink))
 }
 
 /// **O tag de mistura do sink traduzido para a PLACA** — `None` quando não há camada a fazer.
@@ -78,6 +79,12 @@ pub(super) fn desenha_corrida(
     };
     let normal =
         ph2d_vector::VelloBlend::new(ph2d_vector::Mix::Normal, ph2d_vector::Compose::SrcOver);
+    // ⭐ **Os dois alcances que se misturam com o CENÁRIO pedem-no por baixo da cena** (W2): as
+    // sprites vivem noutra textura, e sem a marca a camada misturava-se com o vazio. O `Copies`
+    // pousa em `Normal` e não precisa dele — ⛔ pedi-lo ali custaria a cópia do mundo por nada.
+    if com != BlendWith::Copies {
+        scene.pede_o_mundo_por_baixo();
+    }
     match com {
         BlendWith::Everything => desenha_linhas(corrida, Some(m), store, art, cam, janela, scene),
         BlendWith::Copies => {

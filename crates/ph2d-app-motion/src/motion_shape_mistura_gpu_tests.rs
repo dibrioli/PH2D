@@ -150,6 +150,63 @@ fn mede(
     COLUNAS.map(|x| i32::from(px[linha + x as usize * 4]))
 }
 
+/// ⚠️ **As duas respostas a «este tag tem camada?» concordam** — a do `MisturaDoSink` (que manda o
+/// sink inteiro ao Vello) e a tradução para a placa. Um tag com camada e sem tradução pintaria sem
+/// mistura; um com tradução e sem camada ficaria nas sprites.
+#[test]
+fn a_camada_e_a_traducao_concordam_em_todo_tag() {
+    for tag in 0..=u8::MAX {
+        let m = MisturaDoSink {
+            blend: tag,
+            ..MisturaDoSink::default()
+        };
+        assert_eq!(
+            m.tem_camada(),
+            super::mistura_vello(tag).is_some(),
+            "tag {tag}: o sink e o codificador discordam sobre haver camada"
+        );
+    }
+}
+
+/// ⭐⭐ **Quem mistura com o CENÁRIO pede-o por baixo; quem não mistura, ou só entre as cópias, não**
+/// (doc 118 W2). A marca é o que faz o passe do Vello pôr o mundo por baixo da cena — sem ela o
+/// grupo mistura-se com o vazio e a imagem do cenário fica intacta.
+///
+/// ⚠️ As três metades: `Scene`/`Everything` pedem, `Copies` não (pousa em `Normal`), e o controlo em
+/// `Normal` também não — ⛔ pedir sempre custaria a cópia do mundo a TODO quadro com o Motion.
+#[test]
+fn so_quem_mistura_com_o_cenario_pede_o_mundo() {
+    let mut store = VecPathStore::default();
+    let _ = store.push(ph2d_vec_scene::rectangle([-0.5, -0.5], [0.5, 0.5]));
+    let casos = [
+        (0u8, BlendWith::Everything, false),
+        (3, BlendWith::Everything, true),
+        (3, BlendWith::Scene, true),
+        (3, BlendWith::Copies, false),
+        (2, BlendWith::Scene, false),
+    ];
+    for (tag, com, pede) in casos {
+        let m = MisturaDoSink {
+            blend: tag,
+            com,
+            sink: 1,
+        };
+        let insts = [copia(16.0, 24.0, A1, m, None)];
+        let mut art = |_: u32, _: [f32; 4]| None;
+        let mut cena = VectorScene::new();
+        encode(&insts, &store, &mut art, Affine::IDENTITY, None, &mut cena);
+        assert_eq!(
+            cena.quer_o_mundo_por_baixo(),
+            pede,
+            "tag {tag} {com:?}: a cena pediu o mundo? (esperado {pede})"
+        );
+        // E o `reset` do quadro seguinte ESQUECE-A — senão um quadro que deixou de misturar
+        // continuava a pagar a cópia.
+        cena.reset();
+        assert!(!cena.quer_o_mundo_por_baixo());
+    }
+}
+
 /// ⭐ O CONTROLO da fixtura: os três alcances DIFEREM em pelo menos uma coluna, para cada modo.
 #[test]
 fn a_fixtura_distingue_os_tres_alcances() {
@@ -232,5 +289,105 @@ fn a_mistura_em_grupo_pinta_a_tabela_do_doc_118() {
         falhas.is_empty(),
         "células fora da barra de {BARRA}:\n{}",
         falhas.join("\n")
+    );
+}
+
+/// `n` cópias de um quadrado de `12 px`, numa grelha que cobre `1920×1080` com as vizinhas a
+/// sobreporem-se — o caso de um sink cheio.
+fn grelha(n: usize, alcance: Option<BlendWith>) -> (VecPathStore, Vec<VectorInstance>) {
+    let mut store = VecPathStore::default();
+    let _ = store.push(ph2d_vec_scene::rectangle([-0.5, -0.5], [0.5, 0.5]));
+    let m = alcance.map_or(MisturaDoSink::default(), |com| MisturaDoSink {
+        blend: 3,
+        com,
+        sink: 1,
+    });
+    #[allow(
+        clippy::cast_precision_loss,
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss
+    )]
+    let lado = (n as f32).sqrt().ceil() as usize;
+    #[allow(clippy::cast_precision_loss)]
+    let insts = (0..n)
+        .map(|i| {
+            let (x, y) = ((i % lado) as f32, (i / lado) as f32);
+            let mut c = copia(0.0, 12.0, A1, m, None);
+            c.world_pos = [
+                8.0 + x * 1900.0 / lado as f32,
+                8.0 + y * 1060.0 / lado as f32,
+            ];
+            c.size = [12.0, 12.0];
+            c
+        })
+        .collect();
+    (store, insts)
+}
+
+/// ⭐⭐ **O PREÇO da mistura em grupo, medido** (doc 118 W4) — sonda manual.
+///
+/// Para `N` cópias, em cada alcance: o encode da cena (CPU), as palavras de informação por desenho
+/// que ela ocupa no buffer FIXO do Vello ([`ph2d_vector::VELLO_BIN_DATA_WORDS`] — passado dele o
+/// Vello dá a volta a um `u32`: pânico em debug, quadro em branco em release) e o quadro na placa
+/// (render + leitura, a `1920×1080`). ⚠️ Corre em `--release --nocapture`, com a carga ao lado.
+#[test]
+#[ignore = "sonda manual: --release --nocapture, com placa"]
+fn o_preco_da_mistura_em_grupo() {
+    let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    println!("\ncarga: {}", carga.trim());
+    let gpu = try_headless_gpu();
+    let mut pass = gpu
+        .as_ref()
+        .and_then(|g| VelloPass::new(g, wgpu::TextureFormat::Bgra8UnormSrgb, (1920, 1080)).ok());
+    println!(
+        "{:>7} {:>11} {:>10} {:>10} {:>22}",
+        "N", "alcance", "encode ms", "palavras", "placa ms"
+    );
+    for n in [
+        1_000usize, 4_000, 10_000, 20_000, 32_000, 65_536, 131_072, 200_000,
+    ] {
+        for (nome, alcance) in [
+            ("Normal", None),
+            ("Everything", Some(BlendWith::Everything)),
+            ("Copies", Some(BlendWith::Copies)),
+            ("Scene", Some(BlendWith::Scene)),
+        ] {
+            let (store, insts) = grelha(n, alcance);
+            let mut art = |_: u32, _: [f32; 4]| None;
+            let mut melhor = f64::MAX;
+            let mut cena = VectorScene::new();
+            for _ in 0..5 {
+                cena.reset();
+                let t = std::time::Instant::now();
+                encode(&insts, &store, &mut art, Affine::IDENTITY, None, &mut cena);
+                melhor = melhor.min(t.elapsed().as_secs_f64() * 1e3);
+            }
+            let palavras = cena.probe_bin_info_words();
+            // ⚠️ Em release o transbordo é um quadro EM BRANCO (medido pela contagem de píxeis
+            // abaixo); em debug é um pânico — só aí a sonda salta o render.
+            let cabe = palavras < ph2d_vector::VELLO_BIN_DATA_WORDS || !cfg!(debug_assertions);
+            let placa = match (gpu.as_ref(), pass.as_mut(), cabe) {
+                (_, _, false) => "ESTOURA".to_string(),
+                (Some(g), Some(p), true) => {
+                    let mut m = f64::MAX;
+                    let mut pintados = 0;
+                    for _ in 0..3 {
+                        let t = std::time::Instant::now();
+                        let px = p.render_and_readback(g, cena.inner(), (1920, 1080));
+                        m = m.min(t.elapsed().as_secs_f64() * 1e3);
+                        // ⚠️ O quadro EM BRANCO é o modo de falha do Vello quando um buffer dele
+                        // transborda em release — por isso a sonda conta o que foi pintado.
+                        pintados = px.map_or(0, |b| b.chunks(4).filter(|c| c[3] > 0).count());
+                    }
+                    format!("{m:.2} ({pintados} px)")
+                }
+                _ => "-".to_string(),
+            };
+            println!("{n:>7} {nome:>11} {melhor:>10.3} {palavras:>10} {placa:>22}");
+        }
+    }
+    println!(
+        "tecto do buffer: {} palavras",
+        ph2d_vector::VELLO_BIN_DATA_WORDS
     );
 }

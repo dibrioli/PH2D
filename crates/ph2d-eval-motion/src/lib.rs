@@ -63,8 +63,9 @@ pub use sink_style::{
 mod lower;
 pub use lower::{
     MediaColumns, RowMedium, VECTOR_PASS_COLUMN, VectorInstance, evaluate_motion,
-    evaluate_motion_into, lower_to_instances, lower_to_instances_into, lower_to_instances_onto,
-    lower_to_vector_instances_onto, row_medium, tem_aparencia,
+    evaluate_motion_into, lower_group_onto, lower_to_instances, lower_to_instances_into,
+    lower_to_instances_onto, lower_to_vector_instances_onto, row_medium, tem_aparencia,
+    uv_do_pedaco,
 };
 
 /// Per-frame Motion cook driver (plan §1.8). Owns the persistent [`Cook`] (its
@@ -464,31 +465,44 @@ impl MotionCookPump {
                                     so_com_forma,
                                     ..sink_style(graph, sink)
                                 };
-                                lower_to_instances_onto(
-                                    stream,
-                                    default_uv_rect,
-                                    default_size,
-                                    // Per SINK, not per document: two Output nodes
-                                    // may draw the same document in two modes, and
-                                    // each lowers with its own tag.
-                                    estilo,
-                                    &mut self.instances,
-                                );
-                                let antes = self.vector_instances.len();
-                                lower_to_vector_instances_onto(
-                                    stream,
-                                    estilo,
-                                    &mut self.vector_instances,
-                                );
                                 // ⭐⭐⭐ **O CARIMBO do grupo** (doc 118 W1) — ver
                                 // [`MisturaDoSink`]. O lowering não o conhece; aqui o sink
-                                // inteiro já foi baixado, e é o único sítio que sabe as três
+                                // inteiro é baixado, e é o único sítio que sabe as três
                                 // coisas ao mesmo tempo.
                                 let mistura = MisturaDoSink {
                                     blend: estilo.blend,
                                     com: sink_blend_with(graph, sink),
                                     sink: indice_do_sink as u32,
                                 };
+                                let antes = self.vector_instances.len();
+                                if mistura.tem_camada() {
+                                    // ⭐⭐⭐ **Um sink que mistura em grupo vai INTEIRO ao Vello**
+                                    // (doc 118 W3): as imagens saem do passe de sprites, porque só
+                                    // a cena vectorial sabe os três alcances e o tom das formas.
+                                    lower_group_onto(
+                                        stream,
+                                        default_uv_rect,
+                                        default_size,
+                                        estilo,
+                                        &mut self.vector_instances,
+                                    );
+                                } else {
+                                    lower_to_instances_onto(
+                                        stream,
+                                        default_uv_rect,
+                                        default_size,
+                                        // Per SINK, not per document: two Output nodes
+                                        // may draw the same document in two modes, and
+                                        // each lowers with its own tag.
+                                        estilo,
+                                        &mut self.instances,
+                                    );
+                                    lower_to_vector_instances_onto(
+                                        stream,
+                                        estilo,
+                                        &mut self.vector_instances,
+                                    );
+                                }
                                 for vi in &mut self.vector_instances[antes..] {
                                     vi.mistura = mistura;
                                 }
@@ -587,6 +601,9 @@ impl MotionCookPump {
 #[path = "eval_tests.rs"]
 mod tests;
 
+#[cfg(test)]
+#[path = "mistura_no_pump_tests.rs"]
+mod mistura_no_pump_tests;
 /// ⭐⭐⭐ O passe automático **percorrido pelo pump** (doc 115 W5) — ver o cabeçalho dele.
 #[cfg(test)]
 #[path = "passe_no_pump_tests.rs"]

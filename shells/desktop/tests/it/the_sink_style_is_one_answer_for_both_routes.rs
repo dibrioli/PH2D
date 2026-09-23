@@ -371,3 +371,39 @@ fn every_gpu_cook_call_receives_the_style() {
          desenha PLAIN em silencio"
     );
 }
+
+/// ⭐⭐⭐ **UM SINK QUE MISTURA EM GRUPO RECUSA A PLACA** (doc 118 W4) — e a cerca pergunta à MESMA
+/// porta que a cena e o pump perguntam (`sink_mistura_em_grupo` → `MisturaDoSink::tem_camada`).
+///
+/// ⚠️ **Um gate de TEXTO, e porquê:** o `cook` da rota da placa pede um `GpuContext` vivo, e nenhum
+/// arnês headless o alcança. A cena `=14` e o pump têm gates de lei; este prende o FIO — sem ele,
+/// apagar a linha deixava o device desenhar o grupo no passe de sprites (em luz linear e sem
+/// alcance), com toda a suíte verde.
+#[test]
+fn a_rota_da_placa_recusa_um_sink_que_mistura_em_grupo() {
+    let recusa = "if sink_mistura_em_grupo(&motion.doc.graph, motion.sinks[0]) {\n        return fell(motion, RECUSA_MISTURA_EM_GRUPO);";
+    assert_eq!(
+        GPU_BRIDGE.matches(recusa).count(),
+        1,
+        "a cerca do doc 118 W4 saiu do cook da placa (ou mudou de forma sem este gate a seguir)"
+    );
+}
+
+/// ⭐⭐⭐ **UMA CENA QUE MISTURA COM O CENÁRIO É PINTADA COM O MUNDO POR BAIXO** (doc 118 W2) — o
+/// ramo do `present_chrome` que lê a marca da cena e escolhe a porta do Vello.
+///
+/// ⚠️ Gate de TEXTO pela mesma razão do irmão: o quadro precisa de uma janela. A lei da porta tem o
+/// gate de placa dela (`ph2d-render`, `o_mundo_chega_ao_byte_e_a_camada_mistura_com_ele`); a marca,
+/// o dela (`so_quem_mistura_com_o_cenario_pede_o_mundo`). O que falta é o ELO entre as duas.
+#[test]
+fn o_quadro_le_a_marca_e_poe_o_mundo_por_baixo() {
+    const CHROME: &str = include_str!("../../src/render_loop/present_chrome.rs");
+    assert!(
+        CHROME.contains("if vector_scene.quer_o_mundo_por_baixo() {"),
+        "o quadro deixou de perguntar a' cena se ela quer o mundo por baixo"
+    );
+    assert!(
+        CHROME.contains("vello_pass.render_to_intermediate_over_world("),
+        "o quadro deixou de chamar a porta que poe o mundo por baixo"
+    );
+}

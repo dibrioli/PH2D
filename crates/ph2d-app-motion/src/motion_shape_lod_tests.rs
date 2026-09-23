@@ -342,3 +342,33 @@ fn desligada_a_porta_nao_quer_ninguem() {
 fn vivos(insts: &[VectorInstance]) -> std::collections::BTreeSet<u32> {
     insts.iter().map(|vi| vi.geometry_id).collect()
 }
+
+/// ⭐⭐ **Uma cópia de um grupo que MISTURA não vira quad, a zoom nenhum** (doc 118 W3/W4) — a
+/// camada dela só existe na cena vectorial. ⚠️ As duas metades na MESMA lista: as cópias em grupo
+/// ficam e as de controlo (sem camada) movem-se, senão o gate passava com um LOD desligado.
+#[test]
+fn uma_copia_em_grupo_fica_no_vello_a_qualquer_zoom() {
+    let (s, gid) = store_com_quadrado();
+    let mut insts = copias(gid, 22, [1.0, 1.0]);
+    for vi in insts.iter_mut().take(11) {
+        vi.mistura = ph2d_eval_motion::MisturaDoSink {
+            blend: 3,
+            ..Default::default()
+        };
+    }
+    let quer = geometrias_para_lod_com(&insts, &s, Affine::scale(2.0), 10, true);
+    let mut bake = ShapeBake::default();
+    bake.seed_for_test(
+        gid,
+        ShapeTile {
+            texture_id: 7,
+            world_size: [1.0, 1.0],
+            local_center: [0.0, 0.0],
+        },
+    );
+    let mut quads = Vec::new();
+    let movidas = aplica_lod_de_forma(&mut quads, &mut insts, &bake, &quer);
+    assert_eq!(movidas, 11, "as onze sem camada viram quads");
+    assert_eq!(insts.len(), 11, "as onze em grupo ficam no Vello");
+    assert!(insts.iter().all(|vi| vi.mistura.tem_camada()));
+}

@@ -135,6 +135,22 @@ use colisor::{
     graph_declares_collider, graph_reads_declared_collider, sink_arma_a_separacao,
 };
 
+/// O motivo, dito em voz alta, de um sink que mistura em grupo não ir à placa — ver o `cook`.
+pub(crate) const RECUSA_MISTURA_EM_GRUPO: &str = "CPU: o sink mistura EM GRUPO (Add/Multiply/Screen) -- so a cena vectorial sabe o alcance e o tom (doc 118)";
+
+/// **Este sink mistura EM GRUPO?** — a cerca da rota da placa, PURA para uma cena a poder
+/// perguntar sem montar o quadro (a `=13` pergunta-o).
+pub(crate) fn sink_mistura_em_grupo(graph: &Graph, sink: NodeId) -> bool {
+    // ⚠️ O tag numa variável, e não no campo: o gate `every_gpu_cook_call_receives_the_style` conta
+    // as ocorrências de `blend` seguido de vírgula neste ficheiro, uma por chamada de cook.
+    let tag = ph2d_eval_motion::sink_style(graph, sink).blend;
+    ph2d_eval_motion::MisturaDoSink {
+        blend: tag,
+        ..ph2d_eval_motion::MisturaDoSink::default()
+    }
+    .tem_camada()
+}
+
 /// Os relógios que o device marcha: um tique vira `sub` sub-passadas.
 ///
 /// ⚠️ **O TIQUE não se subdivide, só o PLAYHEAD** — e as duas metades disso são load-bearing.
@@ -332,6 +348,13 @@ pub(super) fn cook_gpu(
     // existe corrente de CPU para separar. Ver [`sink_arma_a_separacao`].
     if sink_arma_a_separacao(&motion.doc.graph, &motion.sinks) {
         return fell(motion, RECUSA_PASSE);
+    }
+    // ⭐⭐⭐ **Um sink que mistura EM GRUPO desenha-se no Vello** (doc 118 W3/W4): o device entrega
+    // as imagens ao passe de sprites, que só sabe a mistura de hardware — em luz linear e sem
+    // alcance nenhum. ⇒ a rota da placa desenharia o tom e o alcance ERRADOS, e cai para a CPU,
+    // que baixa o sink inteiro para a cena vectorial. O preço está medido no doc 118 §6.
+    if sink_mistura_em_grupo(&motion.doc.graph, motion.sinks[0]) {
+        return fell(motion, RECUSA_MISTURA_EM_GRUPO);
     }
     // A `source.object` that resolves to a live VECTOR publishes a `geometry_id`
     // external (ADR-0154 reused for objects, so a stamped vector stays crisp). The

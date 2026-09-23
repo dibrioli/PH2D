@@ -35,6 +35,8 @@ pub struct VelloPass {
     /// ⛔⛔⛔ **O que impede um quadro sem recurso tardio de apagar o atlas do Vello** — e com ele
     /// toda imagem ESTÁVEL, para sempre. Ver [`crate::vello_keepalive`].
     keepalive: crate::vello_keepalive::KeepAlive,
+    /// ⭐ O MUNDO por baixo da cena — criado no 1.º quadro que o pede. Ver [`crate::vello_fundo`].
+    fundo: Option<crate::vello_fundo::Fundo>,
 }
 
 impl VelloPass {
@@ -76,6 +78,7 @@ impl VelloPass {
             last_size: initial_size,
             surface_format,
             keepalive: crate::vello_keepalive::KeepAlive::new(),
+            fundo: None,
         })
     }
 
@@ -204,6 +207,36 @@ impl VelloPass {
             .map_err(|e| format!("vello render_to_texture: {e}"))
     }
 
+    /// ⭐⭐⭐ **O mesmo que [`Self::render_to_intermediate`], com o MUNDO por baixo da cena**
+    /// (doc 118 do Motion, W2) — para uma cena que [pede o mundo por baixo](
+    /// ph2d_vector::VectorScene::quer_o_mundo_por_baixo).
+    ///
+    /// `mundo` é uma vista **sRGB** da textura que o compositor poria por baixo do intermédio: o
+    /// resultado do tonemap no quadro de sempre, o acumulador `WorldRt` quando o compositor o lê.
+    /// O intermédio sai OPACO, e o `over` do compositor devolve-o tal e qual.
+    ///
+    /// ⚠️ **A MESMA porta de render**: a cena composta atravessa o `keepalive` e o `Area` como a
+    /// outra — duas entregas ao Vello com regras diferentes seriam o defeito que o `vello_keepalive`
+    /// já pagou.
+    pub fn render_to_intermediate_over_world(
+        &mut self,
+        gpu: &GpuContext,
+        scene: &Scene,
+        mundo: &wgpu::TextureView,
+        size: (u32, u32),
+    ) -> Result<(), String> {
+        self.ensure_size(gpu, size);
+        let mut fundo = self
+            .fundo
+            .take()
+            .unwrap_or_else(|| crate::vello_fundo::Fundo::new(gpu));
+        let imagem = fundo.copia(gpu, &mut self.renderer, mundo, self.last_size);
+        crate::vello_fundo::compoe(&mut fundo.composta, imagem, scene);
+        let feito = self.render_to_intermediate(gpu, &fundo.composta, size, Color::TRANSPARENT);
+        self.fundo = Some(fundo);
+        feito
+    }
+
     /// Render `scene` into the intermediate at `size` **on a transparent
     /// background** and read the whole region back to a straight-RGBA8 `Vec`
     /// (`size.0 * size.1 * 4` bytes, sRGB-encoded — ver a nota de espaço de cor na
@@ -233,6 +266,13 @@ impl VelloPass {
             return Ok(Vec::new());
         }
         self.render_to_intermediate(gpu, scene, size, Color::TRANSPARENT)?;
+        self.read_intermediate(gpu)
+    }
+
+    /// **Lê o intermédio inteiro** para um `Vec` RGBA8 compacto — a metade de leitura do
+    /// [`Self::render_and_readback`], separada para quem renderiza por outra porta (o gate do
+    /// mundo por baixo, [`Self::render_to_intermediate_over_world`]).
+    pub(crate) fn read_intermediate(&self, gpu: &GpuContext) -> Result<Vec<u8>, String> {
         let (w, h) = self.last_size;
         // 256-byte row alignment for texture→buffer copies.
         let unpadded = w * 4;

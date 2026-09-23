@@ -108,6 +108,20 @@ pub struct MisturaDoSink {
     pub sink: u32,
 }
 
+impl MisturaDoSink {
+    /// ⭐ **Esta mistura é desenhada por CAMADAS** — `Add`, `Multiply` e `Screen` (tags `1`, `3`,
+    /// `4`), os três que o Vello (o W3C) sabe. ⛔ `Subtract` não tem camada e continua no passe de
+    /// sprites, como sempre; `Mix` e a alfa pré-multiplicada não são mistura nenhuma.
+    ///
+    /// ⚠️ **UMA resposta para as duas perguntas** — *«este sink vai inteiro ao Vello?»* (a bomba)
+    /// e *«esta corrida leva camada?»* (o codificador das formas). Escritas em dois sítios, um sink
+    /// poderia ir ao Vello e pintar sem camada, ou ficar nas sprites e pedir uma.
+    #[must_use]
+    pub fn tem_camada(&self) -> bool {
+        matches!(self.blend, 1 | 3 | 4)
+    }
+}
+
 /// O alcance de um sink, lido pela MESMA leitura arredondada e presa dos outros tags.
 #[must_use]
 pub fn sink_blend_with(graph: &Graph, sink: NodeId) -> BlendWith {

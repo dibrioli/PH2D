@@ -33,18 +33,27 @@ fn a_cena_da_mistura_vai_a_placa() {
         "a =13 tem de ir a' placa pela rota HIBRIDA (o carimbo na CPU, o desenho no device) -- \
          noutra rota ela mostra a CPU, onde a mistura sempre funcionou"
     );
+    // ⚠️⚠️ **E a cerca do SINK, que o `gpu_route` não pergunta** (doc 118 W4): um sink que mistura
+    // em grupo recusa a placa ANTES do plano. O `gpu_route` acima é puro e dizia HÍBRIDA para uma
+    // `=13` em `Add` — que no app ia à CPU. *Um gate que pergunta a metade da decisão aprova a
+    // cena pela metade.*
+    assert!(
+        !crate::motion_bridge::gpu::sink_mistura_em_grupo(&m.doc.graph, out),
+        "a =13 abre num modo que mistura EM GRUPO -- esse sink recusa a placa e a cena mostra a \
+         CPU; o modo dela tem de ser o `Subtract`"
+    );
 }
 
 /// ⭐⭐ **A CENA NASCE NUMA MISTURA QUE SE VÊ** — o `Normal` é a omissão, e numa cena que abre
 /// em `Normal` o passo *«troque para Normal»* não muda nada.
 #[test]
-fn a_cena_nasce_em_add() {
+fn a_cena_nasce_em_subtract() {
     let mut m = MotionState::new();
     let out = build(&mut m.doc.graph, "Object");
     assert_eq!(
         ph2d_eval_motion::sink_blend_tag(&m.doc.graph, out),
-        1,
-        "a saida da =13 nasce em Add (o tag 1): o roteiro manda troca-la para Normal"
+        2,
+        "a saida da =13 nasce em Subtract (o tag 2): o roteiro manda troca-la para Normal"
     );
     // O CONTROLO da régua: a omissão do sink é `Normal`, senão o gate acima não afirma nada.
     let mut vazio = MotionState::new();

@@ -250,7 +250,7 @@ pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
         }, // ⭐ DERIVADO da constante, não escrito
         ph2d_app_host::SmokeRouter {
             env: "PH2D_MOTION_OBJ_SMOKE",
-            max_level: 13,
+            max_level: 14,
         },
         ph2d_app_host::SmokeRouter {
             env: "PH2D_AUTOFIX_SMOKE",

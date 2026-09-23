@@ -118,12 +118,31 @@ impl crate::App {
                 },
             );
         }
-        if let Err(e) = vello_pass.render_to_intermediate(
-            surface.gpu(),
-            vector_scene.inner(),
-            (window_size.width, window_size.height),
-            VelloColor::TRANSPARENT,
-        ) {
+        // ⭐⭐⭐ **Uma cena que mistura com o CENÁRIO leva o mundo por baixo** (doc 118 W2): o
+        // mundo é o que o compositor poria por baixo do intermédio — o acumulador quando ele o lê,
+        // o tonemap no quadro de sempre. ⛔ Sem a marca, o render de sempre, byte a byte.
+        let tamanho = (window_size.width, window_size.height);
+        let feito = if vector_scene.quer_o_mundo_por_baixo() {
+            let mundo = if banded || frosting {
+                world_rt.sample_view()
+            } else {
+                tonemap.output_view()
+            };
+            vello_pass.render_to_intermediate_over_world(
+                surface.gpu(),
+                vector_scene.inner(),
+                mundo,
+                tamanho,
+            )
+        } else {
+            vello_pass.render_to_intermediate(
+                surface.gpu(),
+                vector_scene.inner(),
+                tamanho,
+                VelloColor::TRANSPARENT,
+            )
+        };
+        if let Err(e) = feito {
             eprintln!("M14.5 vello_pass.render_to_intermediate error: {e}");
         }
         if let Some(t) = vello_span {

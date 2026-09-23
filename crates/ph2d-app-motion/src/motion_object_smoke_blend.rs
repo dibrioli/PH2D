@@ -20,11 +20,18 @@
 //!
 //! ⚠️ **E o ladrilho é do ÁTLAS** (`texture_id 0`), que é o caso subtil da cura: a partição de
 //! texturas ficava VAZIA, e vazia queria dizer «em `Normal`».
+//!
+//! ⛔⛔ **Desde o doc 118 (W3/W4) a cena abre em `Subtract` e não em `Add`, e o motivo é a ROTA:**
+//! `Add`, `Multiply` e `Screen` passaram a misturar EM GRUPO, na cena vectorial e no tom das formas
+//! (ordem do dono), e um sink assim **recusa a placa**. O `Subtract` é o único modo que continua na
+//! mistura de hardware do device — e é por isso o único em que esta cena ainda mostra o que diz
+//! mostrar. Os três modos de grupo têm a cena deles, a `=14`.
 
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 
-/// O tag de `Add` — a posição dele no seletor do `motion.output` (`Normal · Add · …`).
-const ADD: f32 = 1.0;
+/// O tag de `Subtract` — a posição dele no seletor do `motion.output` (`Normal · Add · Subtract ·
+/// …`). Ver o cabeçalho: é o único modo que ainda vai à placa.
+const SUBTRACT: f32 = 2.0;
 
 /// Monta a cena: o objecto, o grafo, e o cartão da SAÍDA já escolhido.
 pub(super) fn run(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
@@ -36,15 +43,15 @@ pub(super) fn run(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
         .set_active(&ph2d_editor_core::ToolId::new("motion"));
     eprintln!(
         "[motion.obj smoke =13] A MISTURA NA PLACA. A esquerda esta o 'Object' sozinho; a direita, \
-         16 copias dele que se SOBREPOEM, e o cartao 'Output' ja escolhido com o 'Blend' em 'Add' \
-         -- onde duas copias se empilham a cor CLAREIA. Troque o 'Blend' para 'Normal': as zonas \
-         empilhadas deixam de clarear. 'Multiply' escurece-as. Se nada mudar ao trocar, e' o \
-         defeito antigo (a mistura perdia-se no desenho). Com PH2D_MOTION_ROUTE_LOG=1 o terminal \
-         diz a rota, e ela tem de ser a HIBRIDA."
+         16 copias dele que se SOBREPOEM, e o cartao 'Output' ja escolhido com o 'Blend' em \
+         'Subtract' -- onde duas copias se empilham a cor ESCURECE. Troque o 'Blend' para 'Normal': \
+         as zonas empilhadas deixam de escurecer. Com PH2D_MOTION_ROUTE_LOG=1 o terminal diz a rota, \
+         e em 'Subtract' ela tem de ser a HIBRIDA. Add/Multiply/Screen misturam EM GRUPO e sao da \
+         cena =14 (aqui o terminal diz que recusam a placa)."
     );
 }
 
-/// `source.object → duplicator ← grid → move → output`, com o `Blend` da saída em `Add`.
+/// `source.object → duplicator ← grid → move → output`, com o `Blend` da saída em `Subtract`.
 fn build(graph: &mut Graph, name: &str) -> NodeId {
     let src = graph.add_node("source.object");
     let grid = graph.add_node("motion.grid");
@@ -96,7 +103,7 @@ fn build(graph: &mut Graph, name: &str) -> NodeId {
     // O estágio da PLACA, e ele tem um trabalho que se vê: põe as cópias ao lado do original.
     graph.set_param(mv, "dx", 2.5);
     graph.set_param(mv, "dy", 0.0);
-    graph.set_param(out, ph2d_eval_motion::SINK_BLEND_PARAM, ADD);
+    graph.set_param(out, ph2d_eval_motion::SINK_BLEND_PARAM, SUBTRACT);
     graph.set_label(src, "The Object");
     graph.set_label(dup, "Stamp On Grid");
     graph.set_label(mv, "Beside The Original");

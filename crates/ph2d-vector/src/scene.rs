@@ -16,6 +16,8 @@ use vello::peniko::{
 
 pub struct VectorScene {
     inner: Scene,
+    /// ⭐ **Esta cena pede o MUNDO por baixo dela** — ver [`VectorScene::pede_o_mundo_por_baixo`].
+    mundo_por_baixo: bool,
 }
 
 /// ⭐⭐ **O buffer FIXO de informação por desenho do Vello, em palavras — de UM QUADRO inteiro.**
@@ -217,6 +219,7 @@ impl VectorScene {
     pub fn new() -> Self {
         Self {
             inner: Scene::new(),
+            mundo_por_baixo: false,
         }
     }
 
@@ -225,6 +228,27 @@ impl VectorScene {
     /// reused across frames so this is cheap.
     pub fn reset(&mut self) {
         self.inner.reset();
+        self.mundo_por_baixo = false;
+    }
+
+    /// ⭐⭐⭐ **Marca a cena como precisando do MUNDO por baixo** (doc 118 do Motion, W2).
+    ///
+    /// Uma camada de mistura do Vello (`Multiply`, `Screen`, …) mistura-se com o que ESTA cena já
+    /// pintou — e as sprites da casa vivem noutra textura, que o compositor só junta depois. ⇒ um
+    /// grupo que mistura «com o cenário» misturava-se com o vazio. Quem codifica uma camada assim
+    /// chama isto, e o passe do Vello põe a imagem do mundo por baixo da cena antes de a pintar.
+    ///
+    /// ⚠️ **A marca viaja COM a cena e nasce a cada [`Self::reset`]**, de propósito: uma bandeira
+    /// guardada noutro sítio seria a segunda resposta a *«esta cena mistura com o mundo?»*, e um
+    /// quadro em que as duas discordassem pintaria o mundo duas vezes ou nenhuma.
+    pub fn pede_o_mundo_por_baixo(&mut self) {
+        self.mundo_por_baixo = true;
+    }
+
+    /// Esta cena pediu o mundo por baixo neste quadro?
+    #[must_use]
+    pub fn quer_o_mundo_por_baixo(&self) -> bool {
+        self.mundo_por_baixo
     }
 
     pub fn inner(&self) -> &Scene {

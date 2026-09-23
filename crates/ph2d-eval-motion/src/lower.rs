@@ -438,6 +438,62 @@ pub fn lower_to_vector_instances_onto(
     style: SinkStyle,
     out: &mut Vec<VectorInstance>,
 ) {
+    lower_vector_onto(stream, style, None, out);
+}
+
+/// ⭐⭐⭐ **O lowering de um sink que MISTURA EM GRUPO** (doc 118 W3): TODAS as linhas vão para o
+/// passe vectorial — as imagens como quads texturados —, porque só o Vello sabe os três alcances e
+/// o tom das formas (ordem do dono: *«Igual, como nas formas»*).
+///
+/// ⚠️ **Uma passagem só, e a razão é a ORDEM:** baixar as formas e depois as imagens poria toda
+/// imagem por cima de toda forma do mesmo sink; a ordem das linhas é a ordem do desenho, como no
+/// resto desta lista.
+///
+/// `default_uv_rect` / `default_size` são os MESMOS que o lowering de sprites recebe — uma imagem
+/// sem coluna de ladrilho é o ladrilho que a shell forneceu, venha pela rota que vier.
+///
+/// ⛔ **O que esta rota NÃO honra de uma linha de imagem, e é DECLARADO:** a tinta (o Vello desenha
+/// a imagem tal e qual), a coluna `blend` por linha (quem decide é o grupo), o `sampling` do sink e
+/// um `uv_cell` que LADRILHA (escala > 1 — um recorte não repete). Um `uv_cell` que só escolhe um
+/// pedaço (o flipbook) é honrado: compõe-se no recorte.
+pub fn lower_group_onto(
+    stream: &Stream,
+    default_uv_rect: [f32; 4],
+    default_size: [f32; 2],
+    style: SinkStyle,
+    out: &mut Vec<VectorInstance>,
+) {
+    lower_vector_onto(stream, style, Some((default_uv_rect, default_size)), out);
+}
+
+/// O pedaço `cell = [escala_u, escala_v, desloc_u, desloc_v]` do rectângulo `uv = [u0, v0, u1, v1]`
+/// — a MESMA conta que o `sprite.wgsl` faz por fragmento (`mix(uv.xy, uv.zw, local·escala + desloc)`),
+/// feita uma vez nos dois cantos.
+#[must_use]
+pub fn uv_do_pedaco(uv: [f32; 4], cell: [f32; 4]) -> [f32; 4] {
+    // ⚠️ A identidade devolve o rectângulo AO BIT: `u0 + (u1 − u0)` pode errar um ulp, e o recorte
+    // arredonda para píxeis com `floor`/`ceil` — um ulp pode ganhar uma coluna.
+    if cell == RenderInstance::IDENTITY_UV_XFORM {
+        return uv;
+    }
+    let (w, h) = (uv[2] - uv[0], uv[3] - uv[1]);
+    [
+        uv[0] + w * cell[2],
+        uv[1] + h * cell[3],
+        uv[0] + w * (cell[2] + cell[0]),
+        uv[1] + h * (cell[3] + cell[1]),
+    ]
+}
+
+/// O corpo dos dois lowerings vectoriais — `imagens = Some(defaults)` converte as linhas de
+/// sprite em quads (o [`lower_group_onto`]); `None` salta-as, que é o [`lower_to_vector_instances_onto`]
+/// de sempre, byte a byte.
+fn lower_vector_onto(
+    stream: &Stream,
+    style: SinkStyle,
+    imagens: Option<([f32; 4], [f32; 2])>,
+    out: &mut Vec<VectorInstance>,
+) {
     // ⭐⭐⭐ A MESMA lei, e ela tem de ser lida pelos DOIS lowerings. ⚠️ **Aqui ela devolve cedo
     // e no passe das sprites não**, e a assimetria é a lei e não um esquecimento: a MARCA é
     // desenhada **uma vez**, pelo passe que sabe amostrar um ladrilho do átlas. Se este passe
@@ -455,32 +511,46 @@ pub fn lower_to_vector_instances_onto(
     let tex = stream.get("texture_id");
     let uv = stream.get("uv_rect");
     let premul = stream.get("premultiplied");
+    let uv_cell = stream.get("uv_cell");
     // ⚠️ **As duas colunas da média, hasteadas** — este laço fazia TRÊS lookups por elemento
     // (os dois do [`row_medium`] mais o `geometry_id` repetido), ao lado de sete colunas que
     // já estavam içadas. Ver [`MediaColumns`] para a tabela medida.
     let media = MediaColumns::of(stream);
     let make = |i: usize| -> Option<VectorInstance> {
         let medium = media.at(i);
-        if medium == RowMedium::Sprite {
-            return None; // lowered by `lower_to_instances_onto`
-        }
+        let imagem = medium == RowMedium::Sprite;
+        let (uv_omissao, tamanho_omissao) = match (imagem, imagens) {
+            (true, None) => return None, // lowered by `lower_to_instances_onto`
+            (true, Some(d)) => d,
+            (false, _) => ([0.0, 0.0, 1.0, 1.0], [1.0, 1.0]),
+        };
         let id = media.geometry_at(i);
         // Same degrees→basis edge conversion as the sprite lowering (the `rot`
         // column is the app's one authored-angle unit).
         let (sin_r, cos_r) = scalar_at(rot, i, 0.0).to_radians().sin_cos();
-        let sz = vec2_at(size, i, [1.0, 1.0]);
+        let sz = vec2_at(size, i, tamanho_omissao);
+        let uv_linha = vec4_at(uv, i, uv_omissao);
         Some(VectorInstance {
             geometry_id: if medium == RowMedium::Shape {
                 id as u32
             } else {
                 0
             },
-            texture_id: if medium == RowMedium::VectorQuad {
-                scalar_at(tex, i, 0.0).max(0.0) as u32
-            } else {
+            texture_id: if medium == RowMedium::Shape {
                 0
+            } else {
+                scalar_at(tex, i, 0.0).max(0.0) as u32
             },
-            atlas_uv: vec4_at(uv, i, [0.0, 0.0, 1.0, 1.0]),
+            // ⚠️ Só uma IMAGEM compõe o pedaço: o quad vectorial de sempre nunca o leu, e passar a
+            // lê-lo mudaria uma cena gravada sem ninguém o pedir.
+            atlas_uv: if imagem {
+                uv_do_pedaco(
+                    uv_linha,
+                    vec4_at(uv_cell, i, RenderInstance::IDENTITY_UV_XFORM),
+                )
+            } else {
+                uv_linha
+            },
             premultiplied: scalar_at(premul, i, 0.0),
             world_pos: vec2_at(p, i, [0.0, 0.0]),
             size: sz,

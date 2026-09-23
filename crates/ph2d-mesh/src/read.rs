@@ -72,7 +72,22 @@ pub fn lost_by(fmt: MeshFormat, has_fine_paint: bool) -> String {
         lost.push("pieces merged");
     }
     if has_fine_paint && !fmt.keeps_fine_paint() {
-        lost.push("fine paint (mesh resolution only)");
+        // ⛔⛔ **A EXPLICAÇÃO sai, as LETRAS ficam** (report do dono, 22/09). Com o
+        // parêntesis o pior caso (o STL, que perde tudo) media `68` caracteres contra um
+        // orçamento de ~`48`, e o balão cortava-o com «…» — *um aviso elidido é um aviso que
+        // ninguém leu*. Sem ele o pior caso mede **`45`**, medido pela régua do produto no
+        // gate `o_aviso_cabe_no_balao`.
+        //
+        // ⚠️ **E não é `Paint Detail`, que cabia (`47`) e nomearia a fileira que o artista vê:**
+        // esta função devolve texto CRU e o rótulo daquela fileira vem da tabela de traduções —
+        // nomear um controlo a partir de uma frase não traduzida parte-se no dia em que alguém
+        // traduzir a fileira e não esta linha.
+        lost.push("fine paint");
     }
-    format!("not carried: {}", lost.join(", "))
+    // ⛔⛔ **`Lost:` e não `not carried:`, e o número é MEDIDO** (report do dono, 22/09: *«as
+    //   mensagens estão cortadas com … não consigo ler tudo»*). O balão de aviso tem um
+    //   orçamento de `300 px` ≈ 48 caracteres, e o pior caso desta frase (o STL, que perde tudo)
+    //   mede `50` com o prefixo antigo e **`45`** com este — *o prefixo mais curto é exactamente
+    //   o que compra o pior caso, sem tirar uma palavra de sentido*.
+    format!("Lost: {}", lost.join(", "))
 }

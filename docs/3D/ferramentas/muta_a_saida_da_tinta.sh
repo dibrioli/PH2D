@@ -113,12 +113,13 @@ muta "$MESH/export.rs" \
 # entao a mutacao passa a depender da politica de warnings da arvore: com
 # `-D warnings` ela NAO COMPILA e o arnes aborta, o que se le como «nao entrou».
 # Uma mutacao imune a' configuracao de lint mede a LEI; a outra mede o ambiente.
+# ⚠️ RE-APONTADA em 22/09: a clausula perdeu a EXPLICACAO (`(mesh resolution
+#    only)`) quando o aviso passou a ter de CABER no balao, e a ancora de tres
+#    linhas passou a casar ZERO. A de agora e' a chamada sozinha — ela mantem o
+#    parametro USADO (o `if` fica) e apaga so' o efeito, que e' o que a S2 mede.
 muta "$MESH/read.rs" \
-  '    if has_fine_paint && !fmt.keeps_fine_paint() {
-        lost.push("fine paint (mesh resolution only)");
-    }' \
-  '    if has_fine_paint && !fmt.keeps_fine_paint() {
-    }' \
+  '        lost.push("fine paint");' \
+  '' \
   'S2 a clausula cala-se: a perda volta a ser SILENCIOSA'
 
 muta "$MESH/read.rs" \

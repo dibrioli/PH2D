@@ -80,6 +80,12 @@ ph2d-label-census = { path = "../ph2d-label-census" }
 # branco), e a lei que põe a cor a variar vive num `#[cfg(test)]` da outra
 # crate — invisível daqui. ⛔ `dev` de propósito: o produto nunca semeia cor.
 ph2d-sculpt3d = { path = "../ph2d-sculpt3d", features = ["test-support"] }
+# ⚠️ **A RÉGUA DO BALÃO, e as duas são de TESTE:** o gate `o_aviso_cabe_no_balao`
+# mede a frase do aviso contra o orçamento real do balão, e para isso precisa do
+# sistema de texto (que mede) e do corpo da fonte (o token em que o pintor
+# desenha). ⛔ `dev` de propósito: o produto desta crate não mede texto.
+ph2d-text = { path = "../ph2d-text" }
+ph2d-tokens = { path = "../ph2d-tokens" }
 
 [lints]
 workspace = true

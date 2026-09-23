@@ -5193,6 +5193,8 @@ dependencies = [
  "ph2d-render",
  "ph2d-sculpt3d",
  "ph2d-sdf",
+ "ph2d-text",
+ "ph2d-tokens",
  "ph2d-trace",
  "ph2d-trim",
  "ph2d-untangle",

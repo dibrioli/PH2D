@@ -69,6 +69,16 @@ const SCALE: u32 = 1_000_000;
 // LITERAL-PX-OK: the toast card's established width — this is the same column, and the two
 // tenants must agree to the pixel. Not a design token (no token describes "notification card").
 const COLUMN_W: f32 = 360.0;
+
+/// A largura da coluna do topo, para quem precise de a PERGUNTAR.
+///
+/// ⚠️ Ela é o recurso do orçamento de texto de um balão ([`crate::toast::text_budget_px`]) — e é
+/// por isso que sai por uma porta em vez de a `const` virar `pub`: *uma constante pública é um
+/// número que alguém copia; uma porta é um número que alguém pergunta.*
+#[must_use]
+pub fn toast_column_w() -> f32 {
+    COLUMN_W
+}
 /// Height of one row in the column.
 // LITERAL-PX-OK: as COLUMN_W — the toast row height, preserved exactly so adding this second
 // tenant moves no existing pixel.

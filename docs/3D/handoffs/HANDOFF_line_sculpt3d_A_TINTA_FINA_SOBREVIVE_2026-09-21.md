@@ -1980,3 +1980,115 @@ exportar imagem, exportar SVG, os nove do editor de áudio, o importador de imag
 número está medido, e a decisão de quando é do dono. ⭐ **O que fica no sítio certo é a FORMA da
 cura:** a porta existe, e o que falta a cada família é um gate com a população dela — que é
 precisamente o que este §21 acrescentou à escultura.
+
+## §22 — «AS MENSAGENS ESTÃO CORTADAS COM …»: o aviso nunca coube no balão, e isso é PRÉ-EXISTENTE
+
+> Report do dono, 22/09, logo a seguir à cura do §21: ***«as mensgens estão cortadas com … não
+> consigo ler tudo»***.
+
+⚠️ **Conte o DELTA:** `PROJECT_SCHEMA` 0, os três registos 0, `SCULPT_DOC_VERSION` 0, zero
+contrato, zero ADR. ⛔ **Toca FOUNDATIONAL** (`ph2d-editor-core`: duas portas novas) e a **lei
+partilhada** da `ph2d-mesh` muda de TEXTO — ver §22.7.
+
+### §22.1 — A medição primeiro, e ela reatribui o defeito
+
+O balão vive numa coluna de largura fixa (`360 px`); o que sobra para o texto depois da faixa de
+severidade, do ícone e dos dois recuos é **`300 px`, e a `13 px` de corpo isso são ~`48`
+caracteres** ([`ph2d_editor_core::toast::text_budget_px`], porta nova).
+
+| frase | escrita | lida |
+|---|---|---|
+| com a cláusula da tinta fina (a do §20) | `95` | cortada aos `48` |
+| **sem ela — a de ANTES do §20** | **`60`** | **cortada aos `49`** |
+| em STL, o pior caso | `118` | cortada aos `50` |
+
+⛔⛔ ⇒ ***o aviso do que um formato não carrega NUNCA foi legível.*** A cláusula do §20 piorou-o
+(`60 → 95`); ela **não** o criou. *Uma wave que torna visível um defeito antigo é acusada de o ter
+causado, e a única defesa é a medição da linha do meio.*
+
+### §22.2 — ⭐⭐ A lei da partição, e ela sai de uma medição
+
+Uma frase única com as duas metades **cabe** com `teste.obj` (`48`) e **estoura com um nome de
+ficheiro real** — `retrato-da-personagem-v3.obj` ⇒ `62`. ⚠️ E a elisão corta o **FIM**, que é
+exactamente onde o aviso está.
+
+⇒ ***A metade que TEM de ser lida não pode ter parte variável.***
+
+A saída passa a escrever **dois** balões:
+
+1. a **confirmação**, que leva o nome do ficheiro — pode elidir, e o artista acabou de o escrever
+   (o balão do `text_elide` mostra-o ao passar o rato);
+2. o **aviso**, **sem uma única parte variável**, medido a caber no pior caso.
+
+### §22.3 — ⛔ E o GATE apanhou um erro MEU a meio da cura
+
+Eu medi o candidato curto (`Lost: mask, colour, pieces merged, fine paint`, `45` ✓) e depois
+troquei **só o prefixo** — a cláusula continuava `fine paint (mesh resolution only)`, e o gate
+reprovou com `68` no STL e `60` no PLY.
+
+⇒ a **EXPLICAÇÃO** sai e as **LETRAS** ficam, que é a lei que a `line/UIUX` já escreveu em 20/09:
+*um nome perde a explicação antes de perder letras*. Pior caso: **`68 → 45`**.
+
+⚠️ **E não é `Paint Detail`, que cabia (`47`) e nomearia a fileira que o artista vê:** o `lost_by`
+devolve texto **CRU** e o rótulo daquela fileira vem da tabela de traduções — nomear um controlo a
+partir de uma frase não traduzida parte-se no dia em que alguém traduzir a fileira e não esta
+linha.
+
+### §22.4 — As duas PORTAS, e porque não são `const` públicas
+
+| porta | o quê |
+|---|---|
+| `ph2d_editor_core::progress::toast_column_w()` | a largura da coluna |
+| `ph2d_editor_core::toast::text_budget_px()` | o que sobra para o TEXTO — *a mesma conta que o pintor faz* |
+
+⚠️ **UMA régua, DOIS consumidores** (o pintor e quem PERGUNTA se a frase cabe). Escrita duas
+vezes, a resposta do gate e a do produto divergem no dia em que um recuo mudar de token — e a que
+o artista vê é a errada. ⭐ O pintor leva um `debug_assert` que compara as duas contas, e é ele que
+a mutação `B3` faz sangrar.
+
+⛔ *Uma constante pública é um número que alguém copia; uma porta é um número que alguém pergunta.*
+
+### §22.5 — O gate, e o CONTROLO dentro dele
+
+`o_aviso_cabe_no_balao` (na família da escultura, a única que alcança a `ph2d-mesh` **e** a
+`ph2d-editor-core`) mede **os três formatos × as duas colunas** pela régua do produto.
+
+⚠️ **A barra é o PIOR CASO e não o comum:** o `.obj` guarda cor e peças, logo o aviso dele é curto
+— uma barra medida ali deixaria passar exactamente a linha que o dono não consegue ler.
+
+⭐ **O CONTROLO vem primeiro:** se o orçamento viesse a zero (uma porta partida, um token
+renomeado) tudo seria elidido e o gate reprovaria **por um motivo que não é o dele**. A mutação
+`B4` encolhe a coluna e é esse controlo que dispara.
+
+**Prova de mutação: `4 de 5` sangram** (`muta_o_balao_do_aviso.sh`), com o `B5` a ser o CONTROLO
+inerte. ⚠️ A população são **três** crates e o arnês corre as duas que **OBSERVAM** — a lei do
+§20.6, aplicada à primeira.
+
+### §22.6 — ⚠️ A SONDA fica versionada
+
+`toast_orcamento_tests.rs` (`diag_o_que_cabe_no_balao`, `-- --nocapture`) imprime a frase elidida
+ao lado da inteira: o estado **antes** da cura, as **quatro medições que decidiram a partição**, e
+o que a saída escreve hoje. ⛔ As frases são literais ali de propósito — a `ph2d-editor-core`
+**não alcança a `ph2d-mesh`** (medido antes de escrever, e teria sido um erro de compilação).
+
+### §22.7 — ⚠️ PARA O INTEGRADOR
+
+* `ph2d-editor-core` ganha **duas portas** (`toast::text_budget_px`, `progress::toast_column_w`),
+  as duas **aditivas**; o `toast.rs` ganha um `debug_assert` no pintor.
+* `ph2d-mesh::lost_by` **muda o TEXTO que devolve** (`not carried: …` → `Lost: …`, e a cláusula da
+  tinta fina perde o parêntesis). ⚠️ Ela é partilhada com a modelação 3D, que a lê **directamente**
+  — o texto dela muda também, e para melhor.
+* `ph2d-i18n`: a chave `app.sculpt3d.export.exported_piece_s_kb` **larga o `{fmt}`**.
+* `ph2d-app-sculpt3d/Cargo.toml` ganha duas **dev-dependencies** (`ph2d-text`, `ph2d-tokens`), só
+  para a régua do gate.
+
+### §22.8 — ⏳ ABERTO, e não é meu para decidir
+
+⛔ **A coluna de `360 px` não nomeia recurso nenhum.** Ela é uma `const` com `LITERAL-PX-OK` e sem
+medição ao lado, numa janela de ~`1900 px` — e é partilhada com as barras de trabalho. Alargá-la
+tornaria legível toda a família de mensagens longas deste app, e é **decisão do dono / da linha da
+UI**, não desta.
+
+⏳ **E a modelação 3D continua a meter o aviso DENTRO da frase da confirmação** (o `{fmt}` do
+template dela), logo a partição do §22.2 não a alcança. O prefixo mais curto ajudou-a; a partição
+é da família dela.

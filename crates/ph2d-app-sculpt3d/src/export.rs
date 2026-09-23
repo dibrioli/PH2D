@@ -109,18 +109,26 @@ pub fn export(scene: Option<&Sculpt3dScene>, toasts: &mut ph2d_editor_core::Toas
     match std::fs::write(&path, bytes) {
         Ok(()) => {
             let name = path.file_name().and_then(|s| s.to_str()).unwrap_or("?");
+            // ⛔⛔⛔ **DOIS balões, e a partição é MEDIDA** (report do dono, 22/09: *«as
+            // mensagens estão cortadas com … não consigo ler tudo»*). O balão tem `300 px`
+            // ≈ 48 caracteres e a frase única media `95`; ⚠️ **e a de antes desta wave já
+            // media `60` — ela NUNCA foi legível**, o que torna isto pré-existente e não uma
+            // dívida que a cláusula da tinta fina criou.
+            //
+            // ⭐⭐ **A lei da partição:** *a metade que TEM de ser lida não pode ter parte
+            // variável.* Uma frase única cabe com `teste.obj` (`48`) e **estoura com um nome
+            // real** (`retrato-da-personagem-v3.obj` ⇒ `62`) — e a elisão corta o FIM, que é
+            // exactamente o aviso. ⇒ a CONFIRMAÇÃO leva o nome (elide, e o artista acabou de
+            // o escrever; o balão do `text_elide` mostra-o ao passar o rato) e o AVISO fica
+            // sozinho, **sem uma única parte variável**, medido a caber no pior caso.
             crate::import::toast(
                 toasts,
                 ph2d_i18n::tr_with(
                     "app.sculpt3d.export.exported_piece_s_kb",
-                    &[
-                        ("n", &n),
-                        ("size", &(size / 1024)),
-                        ("name", &name),
-                        ("fmt", &(lost_by(fmt, scene.alguma_peca_tem_tinta_fina()))),
-                    ],
+                    &[("n", &n), ("size", &(size / 1024)), ("name", &name)],
                 ),
             );
+            crate::import::toast(toasts, lost_by(fmt, scene.alguma_peca_tem_tinta_fina()));
         }
         Err(e) => crate::import::toast(
             toasts,

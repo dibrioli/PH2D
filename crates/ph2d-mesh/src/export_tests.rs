@@ -288,7 +288,7 @@ fn the_warning_names_fine_paint_only_when_the_scene_carries_some() {
             if !fmt.keeps_pieces() {
                 lost.push("pieces merged");
             }
-            format!("not carried: {}", lost.join(", "))
+            format!("Lost: {}", lost.join(", "))
         };
         assert_eq!(
             sem, de_antes,

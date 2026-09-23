@@ -16,9 +16,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
         // ph2d-migrar-texto:begin
         "app.sculpt3d.export.export_failed" => "Export failed: {e}",
-        "app.sculpt3d.export.exported_piece_s_kb" => {
-            "Exported {n} piece(s), {size} KB -- {name} ({fmt})"
-        }
+        "app.sculpt3d.export.exported_piece_s_kb" => "Exported {n} piece(s), {size} KB -- {name}",
         "app.sculpt3d.export.unknown_extension_use" => "Unknown extension: use {join}",
         "app.sculpt3d.export.nothing_to_export_no_sculpture_open" => {
             "Nothing to export: no sculpture open"

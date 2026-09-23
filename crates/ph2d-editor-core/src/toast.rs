@@ -175,7 +175,29 @@ impl ToastQueue {
 /// ⚠️ **Não há token para este tamanho, e a ausência é a nota:** o `chrome.inline-icon` (14) é o
 /// glifo de uma linha e o `chrome.icon-btn-size` (36) é um botão — este está no meio, num balão
 /// que não é nem linha nem botão. Fica NOMEADO em vez de escrito no meio da pintura.
-const TOAST_ICON_PX: f32 = 24.0; // LITERAL-PX-OK: lado do ícone de severidade do balão de aviso
+const TOAST_ICON_PX: f32 = 24.0;
+/// ⭐⭐⭐ **O ORÇAMENTO DE TEXTO de um balão de aviso** — a largura, em píxeis, em que a mensagem
+/// tem de caber para ser LIDA.
+///
+/// ⛔⛔ **Ela existe por um report do dono** (22/09, sobre o aviso da exportação da escultura):
+/// *«as mensagens estão cortadas com … não consigo ler tudo»*. A fila vive numa coluna de
+/// [`crate::progress`] com largura FIXA, e o que sobra para o texto depois da faixa, do ícone e
+/// dos dois recuos é bem menos do que ela — *uma mensagem que não cabe é elidida, e um balão vive
+/// três segundos: chegar lá com o rato para ver o balão da elisão não é uma cura*.
+///
+/// ⚠️ **UMA régua, DOIS consumidores:** o pintor abaixo e quem quiser PERGUNTAR se a frase dele
+/// cabe. Escrita duas vezes, a resposta do gate e a do produto divergem no dia em que um dos
+/// recuos mudar de token — e a que o artista vê é a errada.
+#[must_use]
+pub fn text_budget_px() -> f32 {
+    use ph2d_tokens::Spacing;
+    (crate::progress::toast_column_w()
+        - Spacing::Xl.px() * 2.0
+        - TOAST_ICON_PX
+        - ph2d_tokens::icon_label_gap_px())
+    .max(0.0)
+}
+// LITERAL-PX-OK: lado do ícone de severidade do balão de aviso
 
 impl Paint for ToastQueue {
     fn paint(&self, scene: &mut VectorScene, ctx: &mut PaintCtx) {
@@ -247,12 +269,18 @@ impl Paint for ToastQueue {
 
             // Message text fills the rest, left-aligned with padding.
             let text_x = icon_rect.x + TOAST_ICON_PX + ph2d_tokens::icon_label_gap_px();
+            // ⚠️ A largura sai da PORTA (`text_budget_px`), que é a mesma que um gate pode
+            //   perguntar. O `debug_assert` é o controlo de que as duas contas não derivaram.
             let text_rect = Rect {
                 x: text_x,
                 y: r.y,
                 w: (r.x + r.w - text_x - Spacing::Xl.px()).max(0.0),
                 h: r.h,
             };
+            debug_assert!(
+                (text_rect.w - text_budget_px()).abs() < 0.5,
+                "a porta do orçamento e a conta do pintor divergiram"
+            );
             paint_text_centered(
                 ctx.text,
                 scene,
@@ -264,6 +292,10 @@ impl Paint for ToastQueue {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "toast_orcamento_tests.rs"]
+mod orcamento_tests;
 
 #[cfg(test)]
 mod tests {

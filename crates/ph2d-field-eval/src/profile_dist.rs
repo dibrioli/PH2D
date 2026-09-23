@@ -1,7 +1,9 @@
 //! **As primitivas de distância 2D** — ponto↔segmento, segmento↔caixa, segmento↔polígono convexo.
 //!
-//! Irmão do [`super::profile_index`] por responsabilidade (teto de LOC): ali mora *o índice e o
-//! corte*, aqui *a aritmética que eles perguntam*. ⚠️ A fórmula ponto↔segmento é a do
+//! Irmão do [`super::profile_index`] por responsabilidade (teto de LOC). ⚠️ **Desde 2026-09-23 são
+//! TRÊS e não dois**: ali mora *o índice* (a construção, a consulta por ponto, a grelha do
+//! enrolamento), no [`super::profile_index::corte`] *a pergunta que uma região faz*, e aqui *a
+//! aritmética que os dois perguntam*. ⚠️ A fórmula ponto↔segmento é a do
 //! [*2D distance functions*](https://iquilezles.org/articles/distfunctions2d/) de Inigo Quilez.
 
 use super::Edge;
@@ -147,4 +149,18 @@ pub(super) fn perto2(e: &Edge, corda2: f32) -> f32 {
     } else {
         (corda2.sqrt() - f).max(0.0).powi(2)
     }
+}
+
+/// ⭐⭐⭐ **A RÉGUA DA COSTURA DO EIXO** — os dois extremos da CORDA a menos de `on_axis` do eixo.
+///
+/// Ela é a porta de [`super::profile_index::ProfileIndex::no_eixo`], e existe porque a pergunta
+/// vivia em **dois** sítios: o `continue` do [`crate::profile::sd_profile_in_region`] e (agora) o
+/// corte que escolhe a população. Ver o defeito medido em
+/// [`super::profile_index::ProfileIndex::cull_com`].
+///
+/// ⚠️ **Num arco isto não é «o arco assenta no eixo»**: a corda pode estar no eixo e o arco sair
+/// dele até à flecha. A lei desta casa sempre a leu pela corda, e reproduzi-la aqui é o que mantém
+/// a imagem bit a bit.
+pub(super) fn aresta_no_eixo(e: &Edge, on_axis: f32) -> bool {
+    e.a[0].abs() <= on_axis && e.b[0].abs() <= on_axis
 }

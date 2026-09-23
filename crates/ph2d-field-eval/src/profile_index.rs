@@ -46,6 +46,14 @@
 //! caminho c→p`. Guardando `w` no canto de cada célula, a conta no ponto só olha as arestas que
 //! **atravessam aquela célula** — porque o caminho canto→ponto não sai dela.
 //!
+//! # ⚠️ Onde mora o quê (teto de LOC, 2026-09-23: `728` contra `700`)
+//!
+//! | ficheiro | responsabilidade |
+//! |---|---|
+//! | **este** | a construção, a consulta por PONTO e a grelha do enrolamento |
+//! | [`corte`] | que arestas uma REGIÃO precisa — os três conjuntos, e a costura do eixo |
+//! | [`crate::profile_dist`] | a aritmética que os dois perguntam |
+//!
 //! ⚠️ **Duas implementações da mesma lei, e a lei tem um JUIZ.** É o mesmo compromisso (e a mesma
 //! defesa) do [`crate::hybrid`]: o gate `the_query_is_the_same_law_as_the_tape` avalia as duas
 //! formas no mesmo perfil, ponto a ponto, e exige o mesmo número.
@@ -342,154 +350,6 @@ impl ProfileIndex {
         }
     }
 
-    /// As arestas que podem ser a mais próxima de **algum** ponto da caixa — ver
-    /// [`Self::sd_batch_culled`].
-    fn cull(&self, lo: [f32; 2], hi: [f32; 2], out: &mut Vec<u32>) {
-        out.clear();
-        let corners = [
-            [lo[0], lo[1]],
-            [hi[0], lo[1]],
-            [lo[0], hi[1]],
-            [hi[0], hi[1]],
-        ];
-        let mut dmax = f32::INFINITY;
-        for e in &self.edges {
-            dmax = dmax.min(longe2(e, &corners));
-        }
-        for (i, e) in self.edges.iter().enumerate() {
-            if perto2(e, seg_box_dist2(e, lo, hi)) <= dmax {
-                out.push(i as u32);
-            }
-        }
-    }
-
-    /// ⚠️ Só para o gate: a distância² da região ao contorno da aresta `i` — ver
-    /// [`seg_hull_dist2`]. É ela que tem de ser um **minorante verdadeiro**.
-    #[doc(hidden)]
-    #[must_use]
-    pub fn probe_hull_dist2(&self, i: u32, hull: &[[f32; 2]]) -> f32 {
-        seg_hull_dist2(&self.edges[i as usize], hull)
-    }
-
-    /// ⚠️ Só para o gate: o `dmax` que o corte por casco usa — ver [`Self::distance_edges_hull`].
-    #[doc(hidden)]
-    #[must_use]
-    pub fn probe_hull_dmax(&self, hull: &[[f32; 2]]) -> f32 {
-        let mut dmax = f32::INFINITY;
-        for e in &self.edges {
-            dmax = dmax.min(longe2(e, hull));
-        }
-        dmax
-    }
-
-    /// ⚠️ Só para a sonda: quantas arestas sobrevivem ao corte deste **casco convexo** (W59).
-    ///
-    /// ⭐ **A mesma regra, com a região a ser um polígono em vez de uma caixa.** A caixa de um tubo
-    /// de viés é muito maior do que o tubo, e o `dmax` do corte cresce com o **diâmetro** da região
-    /// — logo a caixa deita fora menos arestas do que a forma real deitaria.
-    ///
-    /// ⚠️ Ela é **sonda antes de ser produto**: a nota que a pediu diz que este é *"o único eixo que
-    /// não multiplica a montagem de JIT"*, e isso é uma afirmação sobre o **preço**. Se o casco não
-    /// cortar mais do que a caixa, não há obra a fazer — e esta linha já pagou quatro vezes por
-    /// construir antes de medir.
-    #[doc(hidden)]
-    #[must_use]
-    pub fn probe_cull_hull(&self, hull: &[[f32; 2]]) -> usize {
-        self.distance_edges_hull(hull).len()
-    }
-
-    /// ⭐⭐⭐ **AS ARESTAS QUE A DISTÂNCIA PRECISA NESTE POLÍGONO** (W59) — a irmã do
-    /// [`Self::distance_edges`], com a região a ser a forma real em vez da caixa dela.
-    ///
-    /// ⚠️ **A regra é a MESMA** (ver [`Self::sd_batch_culled`]): guarda-se toda aresta a menos de
-    /// `dmax = min_e (máx distância de um VÉRTICE da região a e)`. O que muda é a região — e é o
-    /// `dmax` que colhe: ele cresce com o **diâmetro**, e a diagonal de uma caixa é maior que a do
-    /// polígono que ela envolve.
-    ///
-    /// ⭐ **Medido** (`the_table_of_whether_a_hull_culls_better_than_its_box`, 640×480, contra a
-    /// caixa que shipava): `1,21×`–`1,28×` menos arestas na câmera de viés, `1,06×`–`1,08×` de
-    /// frente. ⚠️ E a **área** cai `1,97×` para render só `1,21×` — *o corte segue o diâmetro, não a
-    /// área*, e é por isso que o ganho é bem menor do que a figura sugere.
-    ///
-    /// ⚠️ Um polígono com menos de 3 vértices é degenerado (a região colapsou) ⇒ devolve **tudo**,
-    /// que é a resposta segura.
-    #[must_use]
-    pub fn distance_edges_hull(&self, hull: &[[f32; 2]]) -> Vec<u32> {
-        if hull.len() < 3 {
-            return (0..self.edges.len() as u32).collect();
-        }
-        let mut dmax = f32::INFINITY;
-        for e in &self.edges {
-            // ⚠️ O máximo de uma função **convexa** sobre um polígono convexo está num VÉRTICE — é
-            // a mesma lei que deixa a versão de caixa olhar só os quatro cantos.
-            dmax = dmax.min(longe2(e, hull));
-        }
-        self.edges
-            .iter()
-            .enumerate()
-            .filter(|(_, e)| perto2(e, seg_hull_dist2(e, hull)) <= dmax)
-            .map(|(i, _)| i as u32)
-            .collect()
-    }
-
-    /// ⚠️ Só para a sonda: quantas arestas sobrevivem ao corte desta caixa.
-    #[doc(hidden)]
-    #[must_use]
-    pub fn probe_cull(&self, lo: [f32; 2], hi: [f32; 2]) -> usize {
-        let mut v = Vec::new();
-        self.cull(lo, hi, &mut v);
-        v.len()
-    }
-
-    /// ⭐⭐ **As arestas que a DISTÂNCIA precisa nesta região** — a porta pública do corte.
-    ///
-    /// Ver [`Self::sd_batch_culled`] para a regra e para por que ela tem de ser conservadora.
-    #[must_use]
-    pub fn distance_edges(&self, lo: [f32; 2], hi: [f32; 2]) -> Vec<u32> {
-        let mut v = Vec::new();
-        self.cull(lo, hi, &mut v);
-        v
-    }
-
-    /// ⭐⭐ **As arestas que o SINAL precisa nesta região** — as que atravessam a caixa.
-    ///
-    /// ⚠️ **É um conjunto diferente do da distância, e menor.** O enrolamento é um invariante de
-    /// caminho: `w(p) = w(canto) + atravessamentos do caminho canto→p`, e esse caminho **não sai da
-    /// caixa** ⇒ só uma aresta que a atravessa o pode cruzar. Uma aresta longe muda a distância e
-    /// **não** pode mudar o sinal.
-    #[must_use]
-    pub fn crossing_edges(&self, lo: [f32; 2], hi: [f32; 2]) -> Vec<u32> {
-        let mut v = Vec::new();
-        for (i, e) in self.edges.iter().enumerate() {
-            let elo = [e.a[0].min(e.b[0]), e.a[1].min(e.b[1])];
-            let ehi = [e.a[0].max(e.b[0]), e.a[1].max(e.b[1])];
-            if elo[0] <= hi[0] && ehi[0] >= lo[0] && elo[1] <= hi[1] && ehi[1] >= lo[1] {
-                v.push(i as u32);
-            }
-        }
-        v
-    }
-
-    /// ⭐⭐⭐ **Os ARCOS cuja meia-lua pode tocar esta caixa** — o terceiro conjunto da região.
-    ///
-    /// ⚠️ Diferente dos outros dois: o SINAL da região é o enrolamento das CORDAS (que só as cordas
-    /// que atravessam a caixa mudam) mais a meia-lua de cada arco, e a meia-lua de um arco pode
-    /// tocar a caixa sem a corda dele tocar — ela sai da corda até à flecha.
-    #[must_use]
-    pub fn sliver_edges(&self, lo: [f32; 2], hi: [f32; 2]) -> Vec<u32> {
-        let mut v = Vec::new();
-        for (i, e) in self.edges.iter().enumerate() {
-            if e.arco.is_none() {
-                continue;
-            }
-            let (elo, ehi) = e.caixa();
-            if elo[0] <= hi[0] && ehi[0] >= lo[0] && elo[1] <= hi[1] && ehi[1] >= lo[1] {
-                v.push(i as u32);
-            }
-        }
-        v
-    }
-
     /// O arco da aresta `i`, se ela for um — ver [`crate::profile_arc`].
     pub(crate) fn arco(&self, i: u32) -> Option<crate::profile_arc::Arco> {
         self.edges[i as usize].arco
@@ -653,7 +513,11 @@ fn build_bvh(
 
 #[path = "profile_dist.rs"]
 mod dist;
-use dist::{box_dist2, edge_dist2, longe2, perto2, seg_box_dist2, seg_dist2, seg_hull_dist2};
+use dist::{box_dist2, edge_dist2, seg_dist2};
+
+/// ⭐⭐⭐ **O CORTE** — ver o cabeçalho do [`corte`].
+#[path = "profile_corte.rs"]
+mod corte;
 
 #[path = "profile_winding.rs"]
 mod winding;
@@ -662,6 +526,11 @@ use winding::{orient, partida_segura, path_crossing, ray_winding};
 #[cfg(test)]
 #[path = "profile_index_tests.rs"]
 mod tests;
+
+/// ⛔⛔⛔ **O gate da COSTURA DO EIXO** — ver o cabeçalho do [`eixo_tests`].
+#[cfg(test)]
+#[path = "profile_index_eixo_tests.rs"]
+mod eixo_tests;
 
 #[cfg(test)]
 #[path = "profile_index_tables.rs"]

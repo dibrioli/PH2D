@@ -524,3 +524,7 @@ fn diag_quantos_quadros_a_regua_precisa() {
     }
     println!();
 }
+
+/// ⏱️⭐⭐⭐⭐ **O tecto da wave do TORNO** — ver o cabeçalho do [`torno`].
+#[path = "device_probes_w9_torno.rs"]
+mod torno;

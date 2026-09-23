@@ -497,6 +497,88 @@ fn a_lei_do_dono_e_inerte_numa_peca_de_material_unico() {
     );
 }
 
+/// ⛔⛔⛔ **NENHUMA REGIÃO DO VASO PAGA A ÁRVORE INTEIRA** — o gate da costura do eixo, na peça do
+/// PRODUTO.
+///
+/// # O defeito, medido
+///
+/// O [`ph2d_field_eval::profile::sd_profile_in_region`] tirava as arestas do eixo com um `continue`
+/// **depois** do corte, e o corte não sabia disso: quando ele devolvia exactamente a costura, o
+/// filtro a jusante esvaziava a conta e a região recaía na árvore **INTEIRA**. Medido no vaso da
+/// cena `5` numa grelha `32×32` em `(u, v)`: **`5` de `1 024`** células pagavam `931` linhas de
+/// WGSL em vez de `~50` (**`18×`**), e eram as células **sobre o eixo à altura da costura** —
+/// dentro do sólido, por onde a marcha passa.
+///
+/// # ⚠️ Porque este gate existe ao lado do unitário
+///
+/// O irmão de `ph2d-field-eval`
+/// (`profile_index::eixo_tests::uma_regiao_sobre_a_costura_nao_paga_a_arvore_inteira`) prova a
+/// **LEI** sobre a fixtura mínima. Este prova a mesma coisa sobre **o desenho do dono**, que é
+/// quem tem arcos, `24` primitivas e a costura onde ela de facto está. *Uma lei verificada numa
+/// fixtura ainda pode ser contrariada pela peça que ship.*
+///
+/// ⭐ **E o CONTROLO é o piso de população:** sem ele, um dia em que a cena `5` deixe de ser um
+/// `Revolve` — ou em que o `RegionCompiler` deixe de especializar — este gate varre **zero**
+/// células e fica verde a afirmar nada.
+#[test]
+fn nenhuma_regiao_do_vaso_paga_a_arvore_inteira() {
+    const LADO: usize = 32;
+    let doc = crate::smoke::scenes::vaso(ph2d_field::DEFAULT_PROFILE_RESOLUTION);
+    let ph2d_field::NodeKind::Leaf(ph2d_field::Primitive::Revolve { profile }) =
+        &doc.nodes()[0].kind
+    else {
+        panic!("a cena 5 é um Revolve — se deixou de ser, este gate mede outra peça");
+    };
+    let rc = ph2d_field_eval::RegionCompiler::new(&doc);
+    assert!(rc.is_worth_it(), "o torno é uma forma de perfil");
+    let inteira = ph2d_field_eval::Field::new(&doc)
+        .tape_shape()
+        .expect("a fita do torno")
+        .guardados;
+    let (plo, phi) = profile.bounds();
+    // ⚠️ A caixa de mundo é **degenerada em `z`**, que é o que faz a região em `(u, v)` ser
+    // exactamente o rectângulo pedido (o `u` do torno é `√(x² + z²)`).
+    #[allow(clippy::cast_precision_loss)]
+    let (pu, pv) = (phi[0] / LADO as f32, (phi[1] - plo[1]) / LADO as f32);
+    let (mut medidas, mut degeneradas, mut pior) = (0usize, 0usize, 0usize);
+    for iv in 0..LADO {
+        for iu in 0..LADO {
+            #[allow(clippy::cast_precision_loss)]
+            let (a, b) = (iu as f32 * pu, plo[1] + iv as f32 * pv);
+            let t = rc.compile(&doc, [a, b, 0.0], [a + pu, b + pv, 0.0]);
+            let linhas = ph2d_field_eval::Field::from_tree(&t)
+                .tape_shape()
+                .map_or(0, |s| s.guardados);
+            medidas += 1;
+            pior = pior.max(linhas);
+            if linhas >= inteira {
+                degeneradas += 1;
+            }
+        }
+    }
+    assert_eq!(
+        medidas,
+        LADO * LADO,
+        "CONTROLO: o gate varreu {medidas} células de {} — ele está a medir o nada",
+        LADO * LADO
+    );
+    // ⭐⭐⭐ **UMA asserção, e ela diz as duas coisas.**
+    //
+    // ⚠️⚠️ **A 1.ª redacção tinha DUAS metades e a de cima era IMPLICADA pela de baixo** — uma
+    // mutação que apagasse a contagem de degeneradas ficou verde, e com razão: um degenerado paga
+    // a fita **inteira**, logo `pior × 2 > inteira` já reprova. *Uma linha que a mutação não
+    // consegue matar não é lei, é comentário com sintaxe de código* ⇒ a contagem fica na
+    // MENSAGEM, onde diz o mecanismo, e a lei é o pior caso.
+    //
+    // ⭐ A barra sai da medição desta grelha (`243` de `931`, `3,8×`) — ⛔ não de um número
+    // redondo: `2×` é o degrau abaixo do medido, e um degenerado lê `1,0×`.
+    assert!(
+        pior * 2 <= inteira,
+        "o pior caso da grelha paga {pior} linhas contra {inteira} da peça inteira ({degeneradas} \
+         de {medidas} células caíram no degenerado) — o corte deixou de cortar"
+    );
+}
+
 /// ⭐⭐⭐⭐ **Os gates da cache do campo do chão** — ver o cabeçalho do [`chao`].
 #[path = "preview_device_w9_chao_tests.rs"]
 mod chao;

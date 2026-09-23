@@ -326,22 +326,37 @@ pub fn sd_profile_in_region(
     hull: Option<&[[f32; 2]]>,
 ) -> Tree {
     let non_zero = profile.fill() == FillRule::NonZero;
-    // A mesma tolerância do [`sd_profile_inner`]: uma aresta a menos que isso do eixo **é** o eixo.
-    let on_axis = f64::from(profile.tolerance());
-    let near = hull.map_or_else(
-        || index.distance_edges(lo, hi),
-        |h| index.distance_edges_hull(h),
+    // ⭐⭐⭐ **A COSTURA DO EIXO sai na POPULAÇÃO do corte, e não num filtro depois dele**
+    // (2026-09-23). ⛔⛔ Até aqui ela saía num `continue` a jusante, e a nota do degenerado logo
+    // abaixo afirmava que um corte vazio é *«impossível»* — verdade sobre o CORTE e falsa sobre a
+    // composição dos dois filtros. Medido no vaso da cena `5`: **`5` de `1 024`** células de uma
+    // grelha `32×32` em `(u, v)` caíam no degenerado e pagavam a árvore **INTEIRA** (`931` linhas
+    // contra `~50`, **`18×`**), e eram as células **sobre o eixo à altura da costura** — dentro do
+    // sólido, onde a marcha passa. Ver [`crate::profile_index::ProfileIndex::cull_com`].
+    //
+    // ⚠️ **`axis_seam` e `hull` são exclusivos por construção**: só o `Revolve` liga a costura, e a
+    // região dele em `(u, v)` é um rectângulo (o `u` é `√(x²+z²)`), logo ele passa `hull: None`.
+    // Escrever o cruzamento seria um braço que nada exercita.
+    debug_assert!(
+        !(axis_seam && hull.is_some()),
+        "a costura do eixo é do Revolve, e a região dele é um rectângulo"
     );
+    let near = match (axis_seam, hull) {
+        (true, _) => index.distance_edges_fora_do_eixo(lo, hi, profile.tolerance()),
+        (false, Some(h)) => index.distance_edges_hull(h),
+        (false, None) => index.distance_edges(lo, hi),
+    };
     let mut dist2: Option<Tree> = None;
     for i in &near {
         let (a, b) = index.edge(*i);
         let (ax, ay) = (f64::from(a[0]), f64::from(a[1]));
-        // ⚠️ **A costura do eixo sai da DISTÂNCIA e fica no enrolamento** — a mesma lei (e a mesma
-        // razão medida) do [`sd_profile_inner`]: uma aresta sobre o eixo varre uma linha, não uma
-        // parede, e deixá-la na conta põe um nível zero DENTRO do sólido.
-        if axis_seam && ax.abs() <= on_axis && f64::from(b[0]).abs() <= on_axis {
-            continue;
-        }
+        // ⚠️ **A costura do eixo já saiu na POPULAÇÃO do corte** (acima). Repeti-la aqui seria uma
+        // linha que mutação nenhuma consegue matar — e foi essa segunda resposta que produziu o
+        // degenerado de `18×`.
+        debug_assert!(
+            !(axis_seam && index.no_eixo(*i, profile.tolerance())),
+            "o corte fora-do-eixo não devolve uma aresta da costura"
+        );
         // ⭐⭐⭐ **O ARCO, quando a primitiva for um** (2026-09-16) — pela mesma porta da árvore
         // global. Sem isto a região lia a polilinha densa, e o modo MODEL mostrava as facetas dela
         // como faixas de luz (`12 196` picos na cena `5`, contra `0` na placa).

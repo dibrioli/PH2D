@@ -355,7 +355,13 @@ mod censo_de_quem_toca_a_fita {
     /// | `marcha_ate`, `visivel` | `assa_sondas` | só com `ao_rays > 0` |
     /// | `ceu_do_chao` | `centro_e_luz` (a MARCHA, outro shader) | sempre — e ele leva a fita |
     /// | `assa_sondas` | ele próprio | só com `ao_rays > 0` |
-    const SABIDAS: [&str; 5] = ["{NOME}", "marcha_ate", "visivel", "ceu_do_chao", "assa_sondas"];
+    const SABIDAS: [&str; 5] = [
+        "{NOME}",
+        "marcha_ate",
+        "visivel",
+        "ceu_do_chao",
+        "assa_sondas",
+    ];
 
     #[test]
     fn so_as_funcoes_medidas_tocam_a_fita_da_peca() {

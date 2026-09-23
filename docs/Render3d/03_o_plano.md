@@ -603,9 +603,110 @@ folhas** e as `14` nítidas **`3,6`** — a contagem de peças não as separa. E
 ⭐⭐⭐ **A cura do TORNO já existe — para a CPU:** a [`ph2d_field_eval::profile_index::ProfileIndex`]
 troca a cadeia desenrolada por uma **consulta**, e o doc dela diz que ela existe *«por uma
 medição»*. ⇒ *a obra que sobra é levá-la ao DISPOSITIVO*, o que muda a geração da fita (um buffer em
-vez de texto) e pede paridade nos dois motores. Pelo modelo de custo (`0,039 ms` por instrução), tirar
-`~880` instruções vale **mais do que os `31,96 ms` da cena inteira** — *é a única obra desta fila cujo
-tecto de ganho é maior do que o custo que ela ataca.*
+vez de texto) e pede paridade nos dois motores.
+
+### ⛔⛔ E O TECTO DESTA OBRA FOI MEDIDO em 2026-09-23 — a frase acima estava OPTIMISTA
+
+A redacção anterior dizia, pelo modelo de custo (`0,039 ms` por instrução), que tirar `~880`
+instruções vale *«mais do que os `31,96 ms` da cena inteira»*. ⚠️ **Um modelo ajustado sobre `22`
+cenas prevê a MÉDIA delas**, e um ganho maior do que o total é aritmeticamente impossível: *o tecto
+de um ganho mede-se, e a forma de o medir é fazer o custo desaparecer*.
+
+⭐ **A sonda é a `diag_o_tecto_da_wave_do_torno`** (`ph2d-app-field3d`): a MESMA silhueta do vaso
+com o contorno reamostrado de `k` em `k` — a marcha vê a mesma peça e só a contagem de primitivas
+se move. `1920×1080`, mínimo de `3`, `--release`, `98 %` de CPU ociosa:
+
+| peça | primitivas | linhas de WGSL | vivos | quadro |
+|---|---:|---:|---:|---:|
+| **cilindro analítico (o PISO)** | — | `18` | `5` | **`4,32 ms`** |
+| vaso de 64 em 64 | `3` | `87` | `17` | `5,51` |
+| vaso de 16 em 16 | `7` | `198` | `29` | `8,56` |
+| vaso de 4 em 4 | `25` | `684` | `31` | `23,01` |
+| vaso de 2 em 2 | `50` | `1 342` | `31` | `43,34` |
+| vaso de 1 em 1 | `99` | `2 639` | `33` | `116,31` |
+
+⭐⭐ **A curva é LINEAR em `0,028`–`0,031 ms` por linha ao longo de duas ordens de grandeza**, e
+extrapolada às `931` linhas da cena `5` dá `31,8 ms` contra os `31,96` medidos — *o modelo desta
+cena é este, e a inclinação dela é `0,030` e não `0,039`*. ⛔ Acima de `1 342` linhas ela vira
+super-linear (`0,056`), que é onde a ocupação começa a morder (`vivos` `31 → 33`).
+
+⭐⭐⭐ **E a leitura que decide o DESENHO da wave:** ser linear na contagem ao longo de `18` → `1 342`
+é a assinatura de **trabalho dinâmico por amostra**; se o custo fosse o TAMANHO DO TEXTO a curva
+seria um degrau. ⇒ *uma consulta que troque texto por laço não compra nada — o que compra é a PODA*,
+e a poda mede-se contando.
+
+### ⭐⭐⭐ Quanto a PODA deixa — e a população certa é `(u, v)`, não a região de MUNDO
+
+A `diag_quantas_linhas_a_poda_deixa` conta as linhas da árvore **ESPECIALIZADA** que o produto já
+sabe construir ([`ph2d_field_eval::RegionCompiler`]), pela mesma porta de fita que o dispositivo
+usa. ⭐ **Zero constantes inventadas** — é o número que uma consulta de facto executaria naquela
+célula.
+
+⛔ **Medido primeiro em regiões de MUNDO, o pior caso ganha só `2,5×`**, e a causa é geométrica: o
+`u` do torno é `√(x² + z²)`, logo **toda** região que toque o eixo vê a largura INTEIRA do perfil.
+*Uma consulta POR AMOSTRA não tem esse problema: ela conhece o `u` do ponto.* ⇒ a população é a
+célula em `(u, v)`, e a caixa de mundo que a produz é **degenerada em `z`**.
+
+O perfil da cena `5` tem `24` primitivas (`12` arcos) e paga **`931`** linhas em toda amostra:
+
+| grelha em `(u, v)` | p50 | p90 | pior | ganho p50 | ganho pior |
+|---|---:|---:|---:|---:|---:|
+| `4×4` | `254` | `363` | `468` | `3,7×` | `2,0×` |
+| `8×8` | `131` | `217` | `376` | `7,1×` | `2,5×` |
+| **`16×16`** | **`79`** | `139` | **`270`** | **`11,8×`** | **`3,4×`** |
+| `32×32` | `56` | `103` | `243` | `16,6×` | `3,8×` |
+| `64×64` | `55` | `86` | `194` | `16,9×` | `4,8×` |
+
+⇒ **o tecto honesto da wave**: com a inclinação medida (`0,030`) e o piso (`4,32 ms`), a cena `5`
+aterra entre **`6,7 ms`** (a mediana) e **`12,4 ms`** (a pior célula) contra os `31,96` de hoje e um
+orçamento de `16,7`. ⚠️ **E as linhas de uma consulta são mais caras que as de uma árvore
+especializada** — nesta as arestas são constantes dobradas no texto, naquela são leituras de um
+buffer —, logo o número real fica acima da tabela. *A wave continua a valer, e vale `2,6×`–`4,8×`, não
+o tempo inteiro da cena.*
+
+⚠️ **A população é uniforme na caixa e isso é declarado:** a marcha dá passos grandes longe da
+superfície, logo a tabela **sobre-representa** as células baratas. *A coluna do PIOR CASO é a que não
+mente, e é ela que tem de caber no orçamento.*
+
+### ⛔⛔⛔ E o §0.0 da wave achou um DEFEITO no caminho que ela ia usar
+
+A `diag_que_celulas_degeneram` explica por que o «pior caso» das grelhas finas lia `931` — a fita
+**inteira**. O [`ph2d_field_eval::profile::sd_profile_in_region`] tirava as arestas que assentam no
+EIXO com um `continue` **depois** do corte, e tinha escrita ao lado a nota de que um corte vazio é
+*«impossível — a regra do corte guarda sempre pelo menos a aresta que realiza o `dmax`»*.
+
+⚠️⚠️ **A nota fala do CORTE e havia DOIS filtros.** O corte podia devolver exactamente a costura, o
+`continue` tirava-a, e a região caía no degenerado, que reconstrói a árvore INTEIRA. Medido no vaso
+(`1` das `24` arestas assenta no eixo), grelha `32×32`:
+
+| | antes | depois |
+|---|---:|---:|
+| células que pagam a fita inteira | **`5` de `1 024`** | **`0`** |
+| pior caso da grelha | `931` linhas | **`243`** (`3,8×`) |
+| p50 | `56` | `56` |
+
+⭐ **E as cinco eram as células SOBRE O EIXO à altura da costura** — dentro do sólido, por onde a
+marcha passa —, a pagar **`18×`**. ⇒ *a pergunta «esta aresta assenta no eixo?» passa a ter uma
+PORTA* ([`ProfileIndex::no_eixo`]) e o corte corre sobre a população que sobra
+([`ProfileIndex::distance_edges_fora_do_eixo`]), o que devolve à nota do degenerado a verdade que
+ela afirmava.
+
+⚠️ **O preço da cura está medido e é pequeno:** com a costura fora da população, o `dmax` sai de um
+conjunto menor e pode ser maior, logo sobrevivem mais arestas onde ela era o realizador — p50 `129 →
+131` a `8×8` (`+1,6 %`), e `0` nas outras quatro grelhas.
+
+⛔ **E ela NÃO muda o quadro que o artista vê hoje:** o caminho do DISPOSITIVO não usa o
+`RegionCompiler` (a fita dele é da peça inteira). Ela cura o traçado de **CPU** — que é o motor de
+referência das paridades e o recurso de quem não tem placa — e a **extracção**, e prepara o terreno
+da consulta no dispositivo. *Dizer que ela acelera o quadro seria vender o que não foi medido.*
+
+Gates: `profile_index::eixo_tests::uma_regiao_sobre_a_costura_nao_paga_a_arvore_inteira` (a LEI,
+sobre a fixtura mínima — um contorno cujo fecho assenta no eixo — com o CONTROLO de que a fixtura
+contém o fenómeno) e `nenhuma_regiao_do_vaso_paga_a_arvore_inteira` (a mesma coisa sobre **o desenho
+do dono**, com piso de população). **8 mutações, 8 sangram** — ⚠️ e uma delas mostrou que a 1.ª
+redacção do segundo gate tinha **duas metades e a de cima era IMPLICADA pela de baixo**: um
+degenerado paga a fita inteira, logo `pior × 2 > inteira` já reprova. *Uma linha que a mutação não
+consegue matar não é lei, é comentário com sintaxe de código.*
 
 ⏳ **O que fica ABERTO, e é honesto dizê-lo com o gate verde:** as `8` cenas que sobram estão
 quase todas entre `17` e `31 ms` contra o orçamento de `16,7` — perto —, e **uma** está longe: a

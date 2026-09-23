@@ -38,6 +38,11 @@ use crate::motion_state::MotionState;
 /// mudou de endereço.
 #[path = "motion_shape_store.rs"]
 mod store;
+
+// ⭐ A MISTURA EM GRUPO (doc 118) — o arranjo de camadas por corrida, irmão pelo tecto de LOC e
+// por ASSUNTO: este ficheiro diz QUE forma é desenhada, aquele diz COMO ela pousa no que já está.
+#[path = "motion_shape_mistura.rs"]
+mod mistura;
 pub use store::VecPathStore;
 
 /// Os dois raios de colisão de uma geometria (doc 109), no irmão que o tecto de LOC pede.
@@ -571,62 +576,27 @@ pub fn encode(
     // ⚠️ **As formas continuam a ir em LOTE** (o cache de tesselação por quadro que o
     // `draw_shared_instances` guarda): só uma imagem no meio o quebra, e o lote recomeça a
     // seguir. Sem imagem nenhuma, isto é **uma** chamada com tudo — byte-idêntico ao que havia.
-    let mut lote: Vec<(u32, Affine, [f32; 4])> = Vec::new();
-    let despeja = |lote: &mut Vec<(u32, Affine, [f32; 4])>, scene: &mut VectorScene| {
-        if lote.is_empty() {
-            return;
+    // ⭐⭐⭐ **A MISTURA EM GRUPO** (doc 118, ordem do dono: *«todas as opções possíveis sem excluir
+    // nenhuma, com seletor de modo no nó»*). A lista parte-se em CORRIDAS de linhas consecutivas
+    // com a mesma chave de mistura, e cada corrida recebe o arranjo de camadas do alcance dela.
+    //
+    // ⚠️ **A chave é CARIMBADA na instância pela bomba, e não uma faixa de índices**: os passes de
+    // LOD a jusante fazem `retain` sobre a lista, e uma faixa guardada à parte apontaria para as
+    // linhas erradas no quadro em que uma cópia sai. *A marca que viaja com a linha não pode
+    // desalinhar-se dela.*
+    //
+    // ⚠️ **Toda linha sem camada partilha a chave `None`**, e é isso que faz o caminho de sempre
+    // sair BYTE-IDÊNTICO: sem nenhum sink misturado a lista inteira é UMA corrida, e ela vai ao
+    // mesmo lote de antes.
+    let mut i = 0;
+    while i < insts.len() {
+        let chave = mistura::chave_de_mistura(&insts[i].mistura);
+        let mut j = i + 1;
+        while j < insts.len() && mistura::chave_de_mistura(&insts[j].mistura) == chave {
+            j += 1;
         }
-        ph2d_vec_render::draw_shared_instances(lote.drain(..), |h| store.get(h), janela, scene);
-    };
-    for inst in insts {
-        if inst.geometry_id > 0 {
-            lote.push((inst.geometry_id, instance_pose(inst, cam), inst.tint));
-            continue;
-        }
-        // ⚠️ **A arte pode não resolver** (a textura já não existe, o formato é recusado) — e aí
-        // a linha simplesmente não desenha, que é o mesmo que a membrana faz com um nome que
-        // ninguém publicou. ⛔ Desenhar um rectângulo de substituição seria inventar arte.
-        let Some((w, h, rgba)) = art(inst.texture_id, inst.atlas_uv) else {
-            continue;
-        };
-        despeja(&mut lote, scene);
-        draw_quad(inst, &rgba, w, h, cam, scene);
-    }
-    despeja(&mut lote, scene);
-}
-
-/// **Um quad texturado na cena vectorial** — a pose é a MESMA função das formas
-/// ([`instance_pose`]), e é isso que mantém as duas médias alinhadas ao pixel.
-///
-/// ⚠️ **A imagem desenha-se em coordenadas de PIXEL e a pose leva-a ao mundo**, então o
-/// transform compõe `pose · escala(1/w, 1/h) · translação(−w/2, −h/2)`: o quad de uma instância
-/// é `[−½, ½]²` no local, como o da sprite.
-fn draw_quad(
-    inst: &VectorInstance,
-    rgba: &std::sync::Arc<Vec<u8>>,
-    w: u32,
-    h: u32,
-    cam: Affine,
-    scene: &mut VectorScene,
-) {
-    if w == 0 || h == 0 {
-        return;
-    }
-    let t = instance_pose(inst, cam)
-        * Affine::scale_non_uniform(1.0 / f64::from(w), 1.0 / f64::from(h))
-        * Affine::translate((-f64::from(w) / 2.0, -f64::from(h) / 2.0));
-    // ⚠️ **A alfa da FONTE decide a porta**, como no lowering de sprites: uma textura já
-    // premultiplicada entra pela porta que NÃO volta a multiplicar.
-    if inst.premultiplied > 0.5 {
-        scene.draw_image_rgba_premultiplied_transformed(
-            rgba,
-            w,
-            h,
-            t,
-            ph2d_vector::ImageQuality::Medium,
-        );
-    } else {
-        scene.draw_image_rgba_transformed(rgba, w, h, t, ph2d_vector::ImageQuality::Medium);
+        mistura::desenha_corrida(&insts[i..j], chave, store, art, cam, janela, scene);
+        i = j;
     }
 }
 

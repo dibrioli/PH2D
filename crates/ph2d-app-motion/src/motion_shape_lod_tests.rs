@@ -31,6 +31,7 @@ fn copias(gid: u32, n: usize, size: [f32; 2]) -> Vec<VectorInstance> {
             basis: [1.0, 0.0, 0.0, 1.0],
             tint: [1.0; 4],
             anchor: [0.0, 0.0],
+            mistura: Default::default(),
         })
         .collect()
 }

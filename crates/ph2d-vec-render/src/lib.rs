@@ -498,7 +498,7 @@ mod instance;
 /// ⭐ **A PILHA DE APARÊNCIA** (v20) — módulo irmão pelo tecto de LOC: aqui desenha-se o CHÃO de
 /// uma forma, ali o que está por cima dele.
 mod stack_draw;
-pub use instance::{draw_shape_instance, draw_shared_instances};
+pub use instance::{draw_shape_instance, draw_shared_instances, draw_shared_instances_em_camadas};
 
 /// **O overlay de EDIÇÃO** (as âncoras, os handles) — módulo irmão pelo teto de 700 LOC. O corte
 /// é por assunto: aqui o desenho da ARTE, ali o dos controles que a editam.

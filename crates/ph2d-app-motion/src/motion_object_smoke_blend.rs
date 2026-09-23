@@ -53,9 +53,27 @@ fn build(graph: &mut Graph, name: &str) -> NodeId {
     let out = graph.add_node("motion.output");
     graph.set_pos(src, Pos { x: 0.0, y: -260.0 });
     graph.set_pos(grid, Pos { x: 0.0, y: -140.0 });
-    graph.set_pos(dup, Pos { x: 210.0, y: -200.0 });
-    graph.set_pos(mv, Pos { x: 420.0, y: -200.0 });
-    graph.set_pos(out, Pos { x: 630.0, y: -200.0 });
+    graph.set_pos(
+        dup,
+        Pos {
+            x: 210.0,
+            y: -200.0,
+        },
+    );
+    graph.set_pos(
+        mv,
+        Pos {
+            x: 420.0,
+            y: -200.0,
+        },
+    );
+    graph.set_pos(
+        out,
+        Pos {
+            x: 630.0,
+            y: -200.0,
+        },
+    );
     let wire = |g: &mut Graph, a: NodeId, ap: u16, b: NodeId, bp: u16| {
         g.connect(Edge {
             from: (a, ap),

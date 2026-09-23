@@ -53,9 +53,10 @@ pub use checkpoint::{CPU_RING_BYTES, CheckpointRing, RECENT_DENSE};
 
 mod sink_style;
 pub use sink_style::{
-    SINK_BLEND_PARAM, SINK_COLLIDE_ITERATIONS_DEFAULT, SINK_COLLIDE_ITERATIONS_MAX,
-    SINK_COLLIDE_ITERATIONS_PARAM, SINK_COLLIDE_PARAM, SINK_FILTER_PARAM, SINK_PIVOT_LIMIT,
-    SINK_PIVOT_X_PARAM, SINK_PIVOT_Y_PARAM, SINK_SORT_PARAM, o_que_o_sink_desenha, sink_blend_tag,
+    BlendWith, MisturaDoSink, SINK_BLEND_PARAM, SINK_BLEND_WITH_PARAM,
+    SINK_COLLIDE_ITERATIONS_DEFAULT, SINK_COLLIDE_ITERATIONS_MAX, SINK_COLLIDE_ITERATIONS_PARAM,
+    SINK_COLLIDE_PARAM, SINK_FILTER_PARAM, SINK_PIVOT_LIMIT, SINK_PIVOT_X_PARAM,
+    SINK_PIVOT_Y_PARAM, SINK_SORT_PARAM, o_que_o_sink_desenha, sink_blend_tag, sink_blend_with,
     sink_collide_sweeps, sink_style, so_com_forma_por_ordem,
 };
 
@@ -415,7 +416,7 @@ impl MotionCookPump {
                 // ⇒ quem desenha PUBLICA o que separou, e o laço das tomadas salta-o pela cerca de
                 // duplicado que ele já tinha. A corrente é a mesma; o que desaparece é a 2.ª conta.
                 self.tap_streams.clear();
-                for &sink in sinks {
+                for (indice_do_sink, &sink) in sinks.iter().enumerate() {
                     // A sink that fails to cook (an unknown type mid-edit, or a
                     // sequential node caught inside a remapped time scope)
                     // contributes nothing; the others still draw. The error is
@@ -473,11 +474,24 @@ impl MotionCookPump {
                                     estilo,
                                     &mut self.instances,
                                 );
+                                let antes = self.vector_instances.len();
                                 lower_to_vector_instances_onto(
                                     stream,
                                     estilo,
                                     &mut self.vector_instances,
                                 );
+                                // ⭐⭐⭐ **O CARIMBO do grupo** (doc 118 W1) — ver
+                                // [`MisturaDoSink`]. O lowering não o conhece; aqui o sink
+                                // inteiro já foi baixado, e é o único sítio que sabe as três
+                                // coisas ao mesmo tempo.
+                                let mistura = MisturaDoSink {
+                                    blend: estilo.blend,
+                                    com: sink_blend_with(graph, sink),
+                                    sink: indice_do_sink as u32,
+                                };
+                                for vi in &mut self.vector_instances[antes..] {
+                                    vi.mistura = mistura;
+                                }
                             }
                         }
                         Err(e) => self.last_error = Some(e),

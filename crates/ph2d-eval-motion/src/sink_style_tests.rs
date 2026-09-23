@@ -413,6 +413,9 @@ fn a_vector_row_gets_the_geometric_half_of_the_style_and_declares_the_rest() {
             basis: _,
             tint: _,
             anchor: _,
+            // ⭐ O estilo NÃO o alcança, de propósito: a mistura em GRUPO é carimbada pela BOMBA
+            // depois do lowering (doc 118) — o lowering não sabe de que sink a linha é.
+            mistura: _,
         } = vectors[0];
         6
     };

@@ -49,6 +49,9 @@ use art::{
 #[path = "motion_object_smoke_times.rs"]
 pub mod times;
 
+/// ⭐ O modo `=13` — A MISTURA NA PLACA: a única cena que vai à placa E desenha uma imagem.
+#[path = "motion_object_smoke_blend.rs"]
+mod blend;
 /// A cena do **RITMO** (`=11`) — os *holds* do `motion.sub_uv`, com o metrónomo ao lado.
 #[path = "motion_object_smoke_holds.rs"]
 pub mod holds;
@@ -56,9 +59,6 @@ pub mod holds;
 /// oito cadeias próprias e um segundo objecto, e este despachante está no teto de LOC.
 #[path = "motion_object_smoke_sink.rs"]
 pub mod sink;
-/// ⭐ O modo `=13` — A MISTURA NA PLACA: a única cena que vai à placa E desenha uma imagem.
-#[path = "motion_object_smoke_blend.rs"]
-mod blend;
 use times::{build_two_times_graph, spawn_flip_walk_named};
 
 /// O nome que o artista daria ao objeto — e que ele escolhe no campo `Object`.

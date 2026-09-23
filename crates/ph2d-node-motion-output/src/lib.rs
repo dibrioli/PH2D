@@ -70,6 +70,27 @@ pub const BLEND_LABELS: [&str; 6] = [
     "node.opts.node_motion_output.blend_labels.5",
 ];
 
+/// ⭐⭐⭐ **COM QUEM a mistura acontece** (doc 118, ordem do dono de 2026-09-23: *«todas as opções
+/// possíveis sem excluir nenhuma, com seletor de modo no nó»*). Com `f` a lei do modo, `B` o
+/// cenário e `S₁`, `S₂` duas cópias que se sobrepõem:
+///
+/// | tag | nome | uma cópia | onde duas se empilham |
+/// |---|---|---|---|
+/// | `0` | `Everything` — cada cópia com TUDO o que está por baixo | `f(B, S)` | `f(f(B, S₁), S₂)` |
+/// | `1` | `Copies` — só entre as cópias; o grupo pousa em `Normal` | `S` | `f(S₁, S₂)` |
+/// | `2` | `Scene` — as cópias juntam-se; o GRUPO mistura-se com o cenário | `f(B, S)` | `f(B, S₂)` |
+///
+/// ⚠️ **`0` é o que as imagens sempre fizeram**, e é por isso que ele é a omissão: o param é
+/// APENDADO e nenhum documento muda de alcance.
+pub const BLEND_WITH_PARAM: &str = "blend_with";
+
+/// Os alcances, na ordem dos tags — ver [`BLEND_WITH_PARAM`].
+pub const BLEND_WITH_LABELS: [&str; 3] = [
+    "node.opts.node_motion_output.blend_with_labels.0",
+    "node.opts.node_motion_output.blend_with_labels.1",
+    "node.opts.node_motion_output.blend_with_labels.2",
+];
+
 /// O pivô do elemento, em **fracção do tamanho dele**. Dois params porque a UI
 /// desta casa pinta um número por linha; a porta que os junta num `[f32; 2]` é o
 /// `sink_style`.
@@ -264,6 +285,12 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: COLLIDE_ITERATIONS_PARAM,
             default: 8.0,
         },
+        // ⚠️ APENDADO (a ordem é o contrato) — e é a ordem das DICAS que o pinta junto do
+        // `Blend`, não a posição aqui.
+        ParamSpec {
+            name: BLEND_WITH_PARAM,
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -281,6 +308,20 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         widget: ParamWidget::Enum {
             labels: &BLEND_LABELS,
+        },
+    },
+    // ⭐ **O `Blend With` é pintado LOGO A SEGUIR ao `Blend`** — o cartão pinta as rows na ordem
+    // DESTA tabela e não na do contrato (onde ele é APENDADO, porque a ordem dos params é a do
+    // ficheiro gravado). ⛔ Secções não eram precisas para o pôr aqui, e num cartão de 8 params
+    // custariam mais fileiras do que arrumam (o piso medido do doc 108 W3).
+    ParamUiHint {
+        param: BLEND_WITH_PARAM,
+        label: "node.motion.output.param.blend_with",
+        min: 0.0,
+        max: (BLEND_WITH_LABELS.len() - 1) as f32,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &BLEND_WITH_LABELS,
         },
     },
     // ⚠️ O pivo' e' um SLIDER e nao um enum: aqui o meio-caminho quer dizer
@@ -339,6 +380,21 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
 ];
 
+/// ⭐⭐ **O `Blend With` só se pinta onde muda alguma coisa.** Em `Normal` e em `Premultiplied`
+/// (tags `0` e `5`) não há mistura a arrumar — os três alcances desenham o mesmo —, e um knob que
+/// não faz nada é a espécie de controlo morto que o `CLAUDE.md` §5.0 caça.
+///
+/// ⛔ **O `Subtract` (tag `2`) fica de FORA, e isso é uma fronteira nomeada e não um esquecimento:**
+/// os alcances são desenhados pelo Vello, e o conjunto de misturas dele (o do W3C) **não tem**
+/// `Subtract` — a mesma razão pela qual o módulo Vector recusa os três modos do Photoshop
+/// (`ph2d_vec_render::blend`). Um `Subtract` continua a desenhar como sempre desenhou; o seletor
+/// não aparece para ele porque, ali, não teria onde chegar. Doc 118.
+static PARAM_SHOW_GATES: &[ph2d_node_registry::ParamGate] = &[ph2d_node_registry::ParamGate {
+    param: BLEND_WITH_PARAM,
+    when: BLEND_PARAM,
+    values: &[1, 3, 4],
+}];
+
 /// ⚠️ **As varreduras só se pintam com o passe LIGADO.** Um número que não faz nada é a espécie de
 /// knob morto que o `CLAUDE.md` §5.0 caça — e aqui a cura é a que o `ParamGateAbove` já dá.
 static PARAM_GATES: &[ph2d_node_registry::ParamGateAbove] = &[ph2d_node_registry::ParamGateAbove {
@@ -384,6 +440,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_gates_above(MANIFEST.id, PARAM_GATES);
+    reg.register_param_gates(MANIFEST.id, PARAM_SHOW_GATES);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     // ⭐⭐ **O SINK CONSOME `falloff` desde a W6 do doc 115** (§15.1): com o `Collide` deste cartão
     // armado, o passe do fim do cozimento (`ph2d_contact::passe`) lê aquela coluna e mistura a

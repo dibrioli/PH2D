@@ -155,6 +155,33 @@ pub fn draw_shared_instances<'p>(
         target,
         carimbo_preparado(),
         recorte_ligado().then_some(janela).flatten(),
+        None,
+    );
+}
+
+/// ⭐⭐⭐ **O MESMO lote, com cada cópia na SUA camada de mistura** (doc 118 do Motion, o alcance
+/// `Everything`/`Copies`: *cada cópia mistura-se com o que já está por baixo dela*).
+///
+/// ⚠️⚠️ **Ela é uma PORTA deste lote e não um laço à volta dele, por causa do CACHE:** a tesselação
+/// é guardada por geometria **dentro de uma chamada**. Chamar o lote uma cópia de cada vez para lhe
+/// pôr uma camada à volta re-tesselaria toda cópia — o congelamento das `160k` estrelas outra vez.
+///
+/// ⚠️ **A camada recorta à caixa da CÓPIA**, a mesma que o recorte por câmara já calcula: uma camada
+/// do tamanho da janela por cópia misturaria o ecrã inteiro uma vez por cópia.
+pub fn draw_shared_instances_em_camadas<'p>(
+    instances: impl IntoIterator<Item = (u32, Affine, [f32; 4])>,
+    resolve: impl Fn(u32) -> Option<&'p VecPath>,
+    janela: Option<Rect>,
+    mistura: ph2d_vector::VelloBlend,
+    target: &mut VectorScene,
+) {
+    draw_shared_instances_com(
+        instances,
+        resolve,
+        target,
+        carimbo_preparado(),
+        recorte_ligado().then_some(janela).flatten(),
+        Some(mistura),
     );
 }
 
@@ -209,6 +236,9 @@ pub(crate) fn draw_shared_instances_com<'p>(
     target: &mut VectorScene,
     preparado: bool,
     janela: Option<Rect>,
+    // ⭐ `Some(m)` = cada cópia na sua camada `m` — ver [`draw_shared_instances_em_camadas`].
+    // `None` é o lote de sempre, byte a byte.
+    por_copia: Option<ph2d_vector::VelloBlend>,
 ) {
     let janela = janela.map(|r| r.inflate(FOLGA_DA_JANELA, FOLGA_DA_JANELA));
     let mut cache: std::collections::BTreeMap<u32, (PathTess, Option<PreparedFill>)> =
@@ -237,11 +267,11 @@ pub(crate) fn draw_shared_instances_com<'p>(
         // geometria que desenhe»* ou que a tesselação não a soube medir — e nos dois casos o valor
         // conservador é desenhar. *Um recorte que decide sobre o que não mediu é um buraco na
         // tela.*
-        if let (Some(janela), Some(local)) = (janela, tess.caixa_local)
-            && !toca(
-                crate::bounds_from_local(&tess.transbordo, local, transform),
-                janela,
-            )
+        let caixa = tess
+            .caixa_local
+            .map(|local| crate::bounds_from_local(&tess.transbordo, local, transform));
+        if let (Some(janela), Some(caixa)) = (janela, caixa)
+            && !toca(caixa, janela)
         {
             #[cfg(test)]
             crate::encode_cost_tests::count_recortada();
@@ -249,7 +279,17 @@ pub(crate) fn draw_shared_instances_com<'p>(
         }
         #[cfg(test)]
         crate::encode_cost_tests::count_stamp(prep.is_some());
+        // ⚠️ **Sem caixa a camada cai para a JANELA** (o mesmo valor conservador do recorte: não
+        // medir não autoriza cortar); sem as duas, a cópia desenha sem camada — e é o caso em que
+        // não há geometria que pinte, logo não há mistura a perder.
+        let camada = por_copia.and_then(|m| caixa.or(janela).map(|r| (m, r)));
+        if let Some((m, r)) = camada {
+            target.push_object_layer(&r, m, 1.0);
+        }
         draw_shape_instance_tessellated(path, tess, prep.as_ref(), transform, tint, target);
+        if camada.is_some() {
+            target.pop_layer();
+        }
     }
 }
 

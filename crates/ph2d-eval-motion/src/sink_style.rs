@@ -56,6 +56,65 @@ pub const SINK_FILTER_PARAM: &str = "filter";
 /// Ver [`SINK_PIVOT_X_PARAM`].
 pub const SINK_SORT_PARAM: &str = "sort";
 
+/// ⭐⭐⭐ **COM QUEM a mistura acontece** — o mesmo nome que `ph2d-node-motion-output` declara como
+/// `BLEND_WITH_PARAM` (o gate da shell pina-o). A lei e as três arrumações estão no doc 118 §1.
+pub const SINK_BLEND_WITH_PARAM: &str = "blend_with";
+
+/// ⭐⭐⭐ **O ALCANCE da mistura de um sink** — ver [`SINK_BLEND_WITH_PARAM`].
+///
+/// ⚠️ **Ele NÃO vive no [`SinkStyle`], e o motivo é de PASSE:** o estilo é o que o LOWERING lê
+/// (uma instância de cada vez), e o alcance é uma decisão sobre o GRUPO — quem o lê é o passe que
+/// arruma as camadas, depois de todas as cópias existirem. Pô-lo no estilo dava ao lowering um campo
+/// que ele não tem como honrar.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum BlendWith {
+    /// Cada cópia com TUDO o que está por baixo — o que as imagens sempre fizeram (tag `0`).
+    #[default]
+    Everything,
+    /// Só entre as cópias; o grupo pousa sobre o cenário em `Normal` (tag `1`).
+    Copies,
+    /// As cópias juntam-se em `Normal`, e o GRUPO mistura-se com o cenário (tag `2`).
+    Scene,
+}
+
+impl BlendWith {
+    /// Os três, na ordem dos tags — a ordem é o contrato do `.ph2dproj`.
+    pub const ALL: [BlendWith; 3] = [BlendWith::Everything, BlendWith::Copies, BlendWith::Scene];
+}
+
+/// ⭐⭐⭐ **A MISTURA de uma cópia vectorial e o GRUPO a que ela pertence** (doc 118 W1).
+///
+/// ⚠️ **O lowering NÃO a conhece** — ele cria toda instância com o [`Default`] — e quem a CARIMBA é
+/// o pump, depois de o sink inteiro ter sido baixado: é essa a razão de o [`BlendWith`] não viver no
+/// [`ph2d_render::SinkStyle`]. O passe que ARRUMA as camadas lê-a instância a instância.
+///
+/// ⭐ **Ela viaja NA instância e não numa lista de intervalos ao lado**, e o motivo é medido no
+/// código: dois passes de LOD (`motion_bridge_objects_lod`, `motion_shape_lod`) fazem `retain`
+/// sobre a lista de instâncias DEPOIS do cozimento — um intervalo `[a, b)` guardado ao lado passaria
+/// a apontar para outras cópias em silêncio. O `retain` preserva a ORDEM e os campos, logo um carimbo
+/// sobrevive-lhe por construção.
+///
+/// ⚠️ **`sink` separa os grupos, e não os dois outros campos:** dois sinks com o MESMO modo e o MESMO
+/// alcance são dois grupos — no `Copies` cada um isola-se sozinho. É o índice do sink no laço do
+/// quadro, que é tudo o que o passe precisa (ele só compara vizinhos).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub struct MisturaDoSink {
+    /// O tag de mistura do sink — a MESMA leitura que o [`ph2d_render::SinkStyle::blend`] faz
+    /// ([`sink_blend_tag`]); `0` é o `Mix`, que o passe desenha sem camada nenhuma.
+    pub blend: u8,
+    /// Com quem a mistura acontece — [`BlendWith`].
+    pub com: BlendWith,
+    /// O índice do sink que produziu esta cópia, neste quadro.
+    pub sink: u32,
+}
+
+/// O alcance de um sink, lido pela MESMA leitura arredondada e presa dos outros tags.
+#[must_use]
+pub fn sink_blend_with(graph: &Graph, sink: NodeId) -> BlendWith {
+    let top = (BlendWith::ALL.len() - 1) as u8;
+    BlendWith::ALL[usize::from(tag(graph, sink, SINK_BLEND_WITH_PARAM, top))]
+}
+
 /// Quão longe do centro o pivô pode ir, em fracções do tamanho — o mesmo número
 /// que o nó publica como `PIVOT_LIMIT`, e o gate da shell pina que são iguais.
 pub const SINK_PIVOT_LIMIT: f32 = 1.0;

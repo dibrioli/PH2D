@@ -299,6 +299,7 @@ fn lod_vi(gid: u32, x: f32) -> VectorInstance {
         basis: [1.0, 0.0, 0.0, 1.0],
         tint: [1.0, 1.0, 1.0, 1.0],
         anchor: [0.0, 0.0],
+        mistura: Default::default(),
     }
 }
 
@@ -354,6 +355,7 @@ fn the_lod_tile_lands_exactly_where_the_crisp_vector_would() {
         basis: [0.0, 1.0, -1.0, 0.0], // a 90° rotation — carried, not dropped
         tint: [0.2, 0.4, 0.6, 0.8],
         anchor: [0.0, 0.0],
+        mistura: Default::default(),
     };
     let tile = vector_instance_as_tile(&vi, 42);
     assert_eq!(tile.world_pos, vi.world_pos, "same position");

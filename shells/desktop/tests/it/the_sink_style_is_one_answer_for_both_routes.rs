@@ -232,6 +232,11 @@ fn the_node_and_the_substrate_agree_on_every_style_param_name() {
             ph2d_node_motion_output::COLLIDE_ITERATIONS_PARAM,
             ph2d_eval_motion::SINK_COLLIDE_ITERATIONS_PARAM,
         ),
+        // doc 118: o ALCANCE da mistura — também fora do `SinkStyle` (é do passe do grupo).
+        (
+            ph2d_node_motion_output::BLEND_WITH_PARAM,
+            ph2d_eval_motion::SINK_BLEND_WITH_PARAM,
+        ),
     ] {
         assert_eq!(node, substrate, "o no e o substrato divergiram num param");
     }

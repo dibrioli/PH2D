@@ -92,7 +92,11 @@ fn ferramenta(com_seleccao: bool) -> PainterTool {
         .map(|i| {
             let (x, y) = (i % N, i / N);
             // Metade de baixo a caminho da saturação: o `min(255)` é exercido.
-            if y > 150 { 240 + (x % 16) as u8 } else { ((x * 7 + y * 13) % 200) as u8 }
+            if y > 150 {
+                240 + (x % 16) as u8
+            } else {
+                ((x * 7 + y * 13) % 200) as u8
+            }
         })
         .collect();
     t.paint.wet_soak_pos = Some(([230.5, 170.25], 41.0));
@@ -108,7 +112,11 @@ fn o_despejo_da_agua_em_paralelo_da_o_byte_da_serie() {
     for com_seleccao in [false, true] {
         for dt in [1.0 / 60.0, 0.05, 3.0] {
             let (mut novo, mut antes) = (ferramenta(com_seleccao), ferramenta(com_seleccao));
-            assert_eq!(novo.wet_splat_gates().0.is_some(), com_seleccao, "a porta armou?");
+            assert_eq!(
+                novo.wet_splat_gates().0.is_some(),
+                com_seleccao,
+                "a porta armou?"
+            );
             let antes_da_agua = novo.paint.wet_soak.clone();
             let rn = novo.grow_wet_soak(dt);
             let ra = grow_de_antes(&mut antes, dt);
@@ -123,7 +131,13 @@ fn o_despejo_da_agua_em_paralelo_da_o_byte_da_serie() {
                 "o plano da água diverge (seleção {com_seleccao}, dt {dt})"
             );
             // CONTROLO: a fixtura mexe mesmo na água (senão a igualdade é de duas cópias intactas).
-            let mudou = novo.paint.wet_soak.iter().zip(&antes_da_agua).filter(|(a, b)| a != b).count();
+            let mudou = novo
+                .paint
+                .wet_soak
+                .iter()
+                .zip(&antes_da_agua)
+                .filter(|(a, b)| a != b)
+                .count();
             assert!(mudou > 500, "o despejo tem de mudar a água: mudou {mudou}");
         }
     }

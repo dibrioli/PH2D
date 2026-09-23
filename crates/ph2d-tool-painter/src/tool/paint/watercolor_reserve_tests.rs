@@ -449,17 +449,31 @@ fn a_caixa_reescrita_da_o_byte_da_lei_de_antes() {
             .count(),
         0usize,
     );
-    assert!(seco > 1000, "CONTROLO: a janela tem de ter papel seco, tem {seco}");
+    assert!(
+        seco > 1000,
+        "CONTROLO: a janela tem de ter papel seco, tem {seco}"
+    );
     for (r, campo) in &novo.by_r {
         let antes = campo_de_antes((&l, &p), win, *r);
         assert_eq!(campo.len(), antes.len());
         for (i, (a, b)) in campo.iter().zip(&antes).enumerate() {
-            assert_eq!(a.to_bits(), b.to_bits(), "raio {r}, texel {i}: {a} contra {b}");
+            assert_eq!(
+                a.to_bits(),
+                b.to_bits(),
+                "raio {r}, texel {i}: {a} contra {b}"
+            );
         }
         let cru = campo_de_antes((&l, &p), win, 0);
-        mudou += campo.iter().zip(&cru).filter(|(a, b)| a.to_bits() != b.to_bits()).count();
+        mudou += campo
+            .iter()
+            .zip(&cru)
+            .filter(|(a, b)| a.to_bits() != b.to_bits())
+            .count();
     }
-    assert!(mudou > 1000, "CONTROLO: o alisamento tem de mudar o campo, mudou {mudou}");
+    assert!(
+        mudou > 1000,
+        "CONTROLO: o alisamento tem de mudar o campo, mudou {mudou}"
+    );
 }
 
 /// Re-carimbar o mesmo dab não mexe um bit (o traço passa ~20 dabs por pixel), e sem mixer o

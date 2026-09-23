@@ -84,10 +84,21 @@ fn o_borrao_em_faixas_da_o_byte_da_versao_de_antes() {
         let antes = box_blur_de_antes(&src, w, h, r);
         assert_eq!(novo.len(), antes.len());
         for (k, (a, b)) in novo.iter().zip(&antes).enumerate() {
-            assert_eq!(a.to_bits(), b.to_bits(), "{w}×{h} r{r}, texel {k}: {a} contra {b}");
+            assert_eq!(
+                a.to_bits(),
+                b.to_bits(),
+                "{w}×{h} r{r}, texel {k}: {a} contra {b}"
+            );
         }
-        mudou += novo.iter().zip(&src).filter(|(a, b)| a.to_bits() != b.to_bits()).count();
+        mudou += novo
+            .iter()
+            .zip(&src)
+            .filter(|(a, b)| a.to_bits() != b.to_bits())
+            .count();
     }
     // CONTROLO: o borrão de facto mexe no campo (senão compararíamos duas cópias da entrada).
-    assert!(mudou > 10_000, "o borrão tem de mudar o campo: mudou {mudou}");
+    assert!(
+        mudou > 10_000,
+        "o borrão tem de mudar o campo: mudou {mudou}"
+    );
 }

@@ -58,9 +58,40 @@ pub(super) fn box_blur(src: &[f32], w: usize, h: usize, radius: usize) -> Vec<f3
     if radius == 0 || w == 0 || h == 0 {
         return src.to_vec();
     }
+    // ⚠️ `try_borrow_mut`, nunca `borrow_mut`: numa espera do rayon esta thread pode ROUBAR outra
+    // tarefa que também borra — com o rascunho já emprestado, esse borrão paga buffers novos em vez
+    // de entrar em pânico.
+    RASCUNHO.with(|r| match r.try_borrow_mut() {
+        Ok(mut g) => {
+            let (tmp, pref) = &mut *g;
+            box_blur_com(src, w, h, radius, tmp, pref)
+        }
+        Err(_) => box_blur_com(src, w, h, radius, &mut Vec::new(), &mut Vec::new()),
+    })
+}
+
+thread_local! {
+    /// O rascunho do [`box_blur`] (o passe horizontal e os prefixos das faixas), GUARDADO entre
+    /// chamadas e entre quadros (ADR-0173). ⚠️ Os dois eram alocados e ZERADOS a cada borrão — dez
+    /// por quadro da aquarela —, e o `alloc_zeroed` de um bloco que o `malloc` recicla é um `memset`
+    /// na thread principal: o perfil do produto punha-o em `~6 %` da parede. Cada passagem escreve o
+    /// que depois lê, logo o rascunho nunca precisa de nascer limpo (a linha 0 de cada faixa é
+    /// zerada à mão, que é a única leitura sem escrita antes).
+    static RASCUNHO: std::cell::RefCell<(Vec<f32>, Vec<f32>)> =
+        const { std::cell::RefCell::new((Vec::new(), Vec::new())) };
+}
+
+fn box_blur_com(
+    src: &[f32],
+    w: usize,
+    h: usize,
+    radius: usize,
+    tmp: &mut Vec<f32>,
+    pref: &mut Vec<f32>,
+) -> Vec<f32> {
     // Horizontal pass (src → tmp, row-major): each output row depends only on its own source row, so the
     // per-row prefix from `x = 0` is exactly the serial `pref`.
-    let mut tmp = vec![0.0f32; w * h];
+    tmp.resize(w * h, 0.0);
     tmp.par_chunks_mut(w)
         .zip(src.par_chunks(w))
         // ⚠️ `for_each_init` em vez de `for_each`: o `pref` era alocado POR LINHA (608 alocações por
@@ -88,10 +119,12 @@ pub(super) fn box_blur(src: &[f32], w: usize, h: usize, radius: usize) -> Vec<f3
     // element and one extra full pass (doc 32 §4 measured the blur at ~2,1 ns/texel).
     let nf = w.div_ceil(FAIXA);
     let bloco = (h + 1) * FAIXA;
-    let mut pref = vec![0.0f32; nf * bloco];
+    pref.resize(nf * bloco, 0.0);
+    let tmp = &tmp[..];
     pref.par_chunks_mut(bloco).enumerate().for_each(|(s, blk)| {
         let x0 = s * FAIXA;
         let sw = FAIXA.min(w - x0);
+        blk[..sw].fill(0.0); // a linha 0 do prefixo: a única que nenhuma soma escreve
         for y in 0..h {
             let (prev, next) = blk.split_at_mut((y + 1) * FAIXA);
             let prev = &prev[y * FAIXA..y * FAIXA + sw];
@@ -101,20 +134,22 @@ pub(super) fn box_blur(src: &[f32], w: usize, h: usize, radius: usize) -> Vec<f3
             }
         }
     });
-    let mut out = vec![0.0f32; w * h];
-    out.par_chunks_mut(w).enumerate().for_each(|(y, orow)| {
-        let lo = y.saturating_sub(radius);
-        let hi = (y + radius).min(h - 1);
-        let cnt = (hi - lo + 1) as f32;
-        for (s, ochunk) in orow.chunks_mut(FAIXA).enumerate() {
-            let blk = &pref[s * bloco..(s + 1) * bloco];
-            let a = &blk[lo * FAIXA..lo * FAIXA + ochunk.len()];
-            let b = &blk[(hi + 1) * FAIXA..(hi + 1) * FAIXA + ochunk.len()];
-            for ((o, pb), pa) in ochunk.iter_mut().zip(b).zip(a) {
-                *o = (*pb - *pa) / cnt;
-            }
-        }
-    });
+    // A saída nasce por `collect_into_vec` de um iterador INDEXADO: o rayon escreve cada texel
+    // directamente na memória por iniciar, sem o `memset` que um `vec![0.0; n]` pagaria.
+    let pref = &pref[..];
+    let mut out = Vec::new();
+    (0..w * h)
+        .into_par_iter()
+        .with_min_len(4096)
+        .map(|i| {
+            let (y, x) = (i / w, i % w);
+            let lo = y.saturating_sub(radius);
+            let hi = (y + radius).min(h - 1);
+            let blk = &pref[(x / FAIXA) * bloco..];
+            let j = x % FAIXA;
+            (blk[(hi + 1) * FAIXA + j] - blk[lo * FAIXA + j]) / (hi - lo + 1) as f32
+        })
+        .collect_into_vec(&mut out);
     out
 }
 

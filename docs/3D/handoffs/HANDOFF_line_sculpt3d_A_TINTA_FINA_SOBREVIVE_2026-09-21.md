@@ -2480,7 +2480,7 @@ Com um nível uniforme os dois prefixos voltam a ser **produtos** — `off_arest
 
 | consumidor | com um plano graduado | porquê |
 |---|---|---|
-| o **assado** | `Recusa::Graduado { niveis }` | a grelha dele é de ladrilhos **iguais**; assar ao nível da face `0` daria UV certas e perderia amostras **sem nada no ecrã a acusar** |
+| o **assado** | ~~`Recusa::Graduado`~~ — **ASSA**, desde a §26 | a recusa durou **um commit**: o empacotador aprendeu o trabalho dela |
 | o **device** | **desarma** (`armado = 0`) | entrega a cor por VÉRTICE, que é o caso base desta família e está certo |
 | o **pincel** | **não recusa** | ele passou a ler `lado_da_face(fi)` DENTRO do laço, e fica correcto de graça |
 
@@ -2539,3 +2539,86 @@ duas espécies, e a que fica MUDA é a que se leva para o `main`.*
 * **A PERSISTÊNCIA de um plano graduado.** O formato guarda um `nivel` só; ou ele passa a guardar a
   lista, ou a graduação é **re-derivada** no load a partir das áreas — e aí uma mudança na lei
   relayouta ficheiros gravados **em silêncio**, o que pede um degrau.
+
+---
+
+## §26 — ⭐⭐⭐⭐ O EMPACOTADOR: a P2 chega ao FICHEIRO
+
+> Mesma ordem, a seguir à §25. **A recusa `Graduado` da §25.4 durou UM commit** — ela era a
+> fronteira honesta enquanto o empacotador não existia, e existe agora.
+
+⚠️ **Conte o DELTA: tudo a 0** (`PROJECT_SCHEMA`, os três registos, `SCULPT_DOC_VERSION`), zero
+contrato, zero ADR. **E zero mudança de produto:** nada no app produz hoje um plano graduado.
+
+### §26.1 — ⭐⭐⭐ O que ele compra no ficheiro, medido nas peças do dono
+
+Ao degrau que o artista escolhe (`8x`), pelo caminho do produto
+([`examples/mede_o_r_por_face.rs`](../../../crates/ph2d-mesh-colors/examples/mede_o_r_por_face.rs)):
+
+| peça | textura uniforme | textura por face | dispersão |
+|---|---|---|---|
+| `Sculpt_Blender` | `1196²` @ `46,9 %` | `1196²` @ **`47,9 %`** | `4,88× → 1,97×` |
+| `_base_sculpt` | `1768²` @ `44,2 %` | `1854²` @ **`50,2 %`** (`+4,9 %` de lado) | `6,74× → 1,95×` |
+| `sculpt_antes` | `1534²` @ `47,1 %` | `1578²` @ **`50,5 %`** (`+2,9 %`) | **`18,26× → 1,92×`** |
+| `nossa_com_calota` | `1937²` @ `47,3 %` | **`1845²`** @ `45,7 %` (**`−4,8 %`**) | `3,12× → 1,90×` |
+
+⇒ *o lado da textura mexe-se entre `−4,8 %` e `+4,9 %` e o aproveitamento **sobe** em três das
+quatro*, enquanto a dispersão cai `1,6×` a `9,5×`. **Não há troca a declarar.**
+
+### §26.2 — ⚠️ Prateleiras, com as MAIORES primeiro
+
+As peças entram por lado decrescente (com o índice a desempatar, para a saída ser **determinista**);
+cada prateleira começa com a mais alta que ainda cabe, logo **a altura dela é a da primeira** e
+nenhuma peça a faz crescer depois. ⛔ *Ordenar ao contrário obriga toda prateleira a crescer para a
+última peça, que é onde um empacotador ingénuo desperdiça metade da textura.*
+
+⭐⭐⭐ **E com um plano UNIFORME ele devolve a grelha de antes AO TEXEL** — por aritmética e não por
+acaso: com `n` peças iguais de lado `s`, o menor `W` que fecha é `ceil(√n)·s`, que é o
+`cols × ladrilho` que o ficheiro calculava à mão. *É isso que permite haver **UM** caminho em vez de
+dois*, e o gate afirma-o nos três níveis.
+
+⚠️ A busca do `W` sobe **de um em um** durante `s_max` tentativas e só depois cresce por fracção: é
+esse trecho fino que garante o óptimo do caso uniforme (ele está a menos de `s` acima do palpite da
+área), e a fracção é o que impede uma peça enorme de varrer o tecto texel a texel.
+
+### §26.3 — ⛔⛔ A prova de mutação achou CÓDIGO A MAIS
+
+O `P15` mutava um `if y + s > w { return None }` **por peça** e **SOBREVIVEU** — porque a última
+prateleira é a mais funda por construção (o `y` só cresce) e o teste final já respondia por todas.
+⭐ **A cura não foi um gate novo: foi APAGAR a linha.** *Uma linha que a mutação não consegue matar
+não é lei, é comentário com sintaxe de código* — e o preço dela era um ramo por peça no laço.
+
+### §26.4 — ⛔⛔⛔ E o gate que faltava é a NÃO-SOBREPOSIÇÃO, que a COR não acusa
+
+Duas faces empilhadas no mesmo sítio dão `uv` **perfeitamente válidas** e uma textura em que a
+segunda escreve por cima da primeira — e *o canto de cada uma continua a ler a cor do vértice dela*
+se elas partilharem o vértice, logo **todos os gates de COR passam**. O que as separa é a
+**GEOMETRIA da disposição** ⇒ `nenhum_ladrilho_pisa_outro`, que lê o rectângulo de cada face dos
+`uv` que saem, **crescido da folga**, e exige que eles sejam disjuntos e caibam na textura.
+
+⭐ Ele é o **único** que mata o `P14` (a prateleira a encolher para a última peça), e leva o
+CONTROLO dentro: *a fixtura tem de ter ladrilhos de pelo menos três tamanhos, senão isto mede uma
+grelha e não um empacotador*.
+
+### §26.5 — O placar
+
+* **Mutação: `13 de 14` sangram** (o `P12` é o CONTROLO), com as três novas do empacotador.
+* Pré-voo dos **onze** arneses: **`142`** âncoras, todas a casar uma vez.
+* `nextest-impacted` **`18 615` de `18 615`** · clippy `-D warnings` **zero** · `fmt` limpo ·
+  censos da árvore COMBINADA **`127/127`**.
+* A suíte da crate: `36` → **`44`** testes, e **nenhum gate antigo se mexeu**.
+
+### §26.6 — ⏳ O que fica ABERTO (a §25.8 menos o empacotador)
+
+* **O device.** O registo do shader descreve a retícula com um `lado` e o bloco das arestas com
+  `id × (lado − 1)`; com níveis por face as duas contas pedem um **offset por aresta** — buffer novo
+  no bind group. Até lá ele **desarma**, e o artista vê a cor por vértice.
+* **Quem ESCOLHE os níveis no produto.** A lei existe (`niveis_por_area`) e precisa das ÁREAS, que a
+  crate não conhece ⇒ o chamador é a família, e a pista `Paint Detail` passa a pedir uma
+  **densidade** em vez de um degrau.
+* **A PERSISTÊNCIA de um plano graduado.** O formato guarda um `nivel` só; ou passa a guardar a
+  lista, ou a graduação é **re-derivada** no load a partir das áreas — e aí uma mudança na lei
+  relayouta ficheiros gravados **em silêncio**, o que pede um degrau.
+* ⚠️ **E a ordem entre os três é load-bearing:** sem o device o artista não VÊ a P2, e sem quem
+  escolhe os níveis nada a produz. *O empacotador veio primeiro porque, sem ele, o dia em que
+  alguma coisa graduasse seria o dia em que a exportação deixava de levar a tinta fina.*

@@ -540,7 +540,34 @@ modelo diz ONDE procurar, não o que uma cura vale.*
 4. ✅ **a régua do gate** — **FECHADA**: `QUADROS_MEDIDOS = 3`, o mínimo, com a 1.ª chamada a ficar
    na tabela ao lado (ela é um preço real e uma régua que a apaga faz uma cura desaparecer com ela).
 
-### ⛔⛔⛔ A `W9` COMEÇA COM UM VERMELHO JÁ MEDIDO — e ele é a primeira coisa a resolver
+### ✅✅✅ O VERMELHO ESTÁ RESOLVIDO (2026-09-22) — `14 de 22`, quatro corridas, VERDE
+
+O dono mandou fundir o vermelho nesta wave e tratá-lo aqui (*«2»*, 20/09). Está fechado:
+
+| régua · máquina | leitura | veredito |
+|---|---:|---|
+| UMA chamada por cena · máquina contendida | `8`–`10 de 22` | ⛔ vermelho |
+| **mínimo de 3** · `44 %` de CPU ociosa | `11 de 22` | ⛔ vermelho |
+| **mínimo de 3** · **`99`–`100 %` ociosa** | **`14 de 22`**, quatro corridas seguidas | ✅ **VERDE** |
+
+⭐⭐⭐ **E a atribuição, que é o que impede isto de ser lido como sorte:**
+
+1. **A RÉGUA** é a maior parte. O gate cronometrava **uma** chamada por cena e chamava-lhe *«o
+   quadro de movimento»* — e a 1.ª chamada de uma cena nova pagava `1,4`–`4,4 s` de compilação do
+   driver mais o que o escalonador desse. *A régua que a própria página prescreve — «mínimo de N» —
+   não estava implementada.*
+2. **A MÁQUINA** vale três cenas (`11` a `44 %` ociosa contra `14` a `99 %`). ⚠️ Isto mantém o gate
+   na família das flakes de carga do `CLAUDE.md` §5.0, e a tabela acima é o que impede alguém de
+   ler um `11` como regressão.
+3. **E UMA CENA é da cura**: a `4` lia `51,26 ms` (`D=2`) e lê **`14,74`** (`D=1`) — a fita inerte
+   tirou-a do penhasco de ocupação, medido `3,03×` e `3,57×` em duas corridas independentes.
+
+⏳ **O que fica ABERTO, e é honesto dizê-lo com o gate verde:** as `8` cenas que sobram estão
+quase todas entre `17` e `31 ms` contra o orçamento de `16,7` — perto —, e **uma** está longe: a
+`28`, a `63,69 ms`, com `724` instruções, `28` transcendentes, `44` raízes e `95` valores vivos. *Ela
+é a única cena do corpus que nenhuma destas waves aproximou.*
+
+### ⛔⛔⛔ A `W9` COMEÇOU COM UM VERMELHO JÁ MEDIDO — e ele era a primeira coisa a resolver
 
 **Ordem do dono, 2026-09-20:** a `line/3DModeling` fechou com o
 `preview::device_tests::com_o_dispositivo_a_maioria_das_cenas_e_nitida_em_movimento` **VERMELHO**, e

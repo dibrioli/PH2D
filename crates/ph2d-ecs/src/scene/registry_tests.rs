@@ -214,7 +214,11 @@ fn register_ecs_components_populates_registry() {
     //   nao um campo do `ScrollFactor`**, e a razao e' a POPULACAO: quase todo objecto com
     //   paralaxe nao repete, e um campo ali seria um knob morto em todos eles. Quem integrar
     //   conta o DELTA, nunca o literal.
-    assert_eq!(reg.len(), 105);
+    // ⚠️ **2026-09-22: `105` -> `106`, delta +1** -- o `ScrollLimits` (o CONFINAMENTO, plano 24
+    //   W3): a borda do fundo nunca entra em cena. ⛔ **A terceira da familia e a terceira
+    //   POPULACAO**: um fundo que repete nao tem borda para esconder. Quem integrar conta o DELTA.
+    assert_eq!(reg.len(), 106);
+    assert!(reg.get_by_name("ph2d::ecs::ScrollLimits").is_some());
     assert!(reg.get_by_name("ph2d::ecs::ScrollRepeat").is_some());
     assert!(reg.get_by_name("ph2d::ecs::ScrollFactor").is_some());
     assert!(reg.get_by_name("ph2d::ecs::WeaponFire").is_some());

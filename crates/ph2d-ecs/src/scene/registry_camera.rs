@@ -50,4 +50,8 @@ pub(super) fn register_camera(reg: &mut ComponentRegistry) {
     // repete (um primeiro plano, uma nuvem solta), e um campo a mais ali seria um knob morto em
     // todos eles — a mesma lei que separa o `CameraFollow` do `GameCamera`, três linhas acima.
     reg.register_default::<crate::ScrollRepeat>("ph2d::ecs::ScrollRepeat");
+    // ⭐⭐ **O CONFINAMENTO** (plano 24, W3) — a terceira da família, e separada pela mesma razão
+    // das outras duas: um fundo que repete não tem borda para esconder, e um primeiro plano não é
+    // confinado por nada. *Três componentes porque são três populações.*
+    reg.register_default::<crate::ScrollLimits>("ph2d::ecs::ScrollLimits");
 }

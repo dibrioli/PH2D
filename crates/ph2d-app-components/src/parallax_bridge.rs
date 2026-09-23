@@ -42,7 +42,9 @@
 //! implementa é aquela ponte.*
 
 use ph2d_core::Vec2;
-use ph2d_ecs::{Entity, ScrollFactor, ScrollRepeat, SimWorld, Transform, UiCanvas};
+use ph2d_ecs::{
+    Entity, ScrollFactor, ScrollLimits, ScrollRepeat, SimWorld, Transform, UiCanvas,
+};
 use ph2d_preview_drive::{Driven, Driver, PreviewDrive};
 
 /// **Quantos objectos da cena têm paralaxe** — o número que o painel mostra.
@@ -54,28 +56,47 @@ pub fn parallax_count(sim: &mut SimWorld) -> usize {
 
 /// ⭐ **Um quadro da paralaxe.** Devolve quantos objectos foram conduzidos.
 ///
-/// `centro` é o centro da vista da câmera do jogo, em metros — o que a `fase_game_camera`
-/// devolveu, ou `None` quando não há câmera de jogo na cena.
+/// `vista` é o rectângulo da câmera do JOGO (centro e meia-janela em metros) — o que a
+/// `fase_game_camera` devolveu, ou `None` quando não há câmera de jogo na cena.
+///
+/// # ⚠️⚠️ A meia-janela atravessa, e a premissa da W1 MORREU aqui
+///
+/// A W1 passava **só o centro**, e o gate dela afirmava que o rectângulo não chegava à lei — com a
+/// razão certa: *o deslocamento não depende do zoom* (medido no alvo: declive `0,5000` com zoom
+/// `1,0`, `2,0` e `0,5`). ⛔ **Isso continua verdade e deixou de descrever esta fronteira:** o
+/// CONFINAMENTO da W3 tem o joelho em `(região − ecrã)/2`, logo ele precisa de saber quanto a vista
+/// mede.
+///
+/// ⇒ *o zoom não entra no DESLOCAMENTO; ele entra no CONFINAMENTO*, e são duas perguntas. A
+/// primeira continua gateada pela **ASSINATURA** ([`ScrollFactor::deslocamento`] recebe um centro e
+/// mais nada); a segunda tem gate próprio.
 pub fn drive_parallax(
     sim: &mut SimWorld,
-    centro: Option<[f32; 2]>,
+    vista: Option<([f32; 2], [f32; 2])>,
     drive: &mut PreviewDrive,
 ) -> usize {
-    let antes: Vec<(Entity, Transform, ScrollFactor, Option<ScrollRepeat>)> = {
+    type Linha = (
+        Entity,
+        Transform,
+        ScrollFactor,
+        Option<ScrollRepeat>,
+        Option<ScrollLimits>,
+    );
+    let antes: Vec<Linha> = {
         let world = sim.world_mut();
         world
-            .query_filtered::<(Entity, &Transform, &ScrollFactor, Option<&ScrollRepeat>), bevy_ecs::prelude::Without<UiCanvas>>()
+            .query_filtered::<(Entity, &Transform, &ScrollFactor, Option<&ScrollRepeat>, Option<&ScrollLimits>), bevy_ecs::prelude::Without<UiCanvas>>()
             .iter(world)
-            .map(|(e, t, k, r)| (e, *t, *k, r.copied()))
+            .map(|(e, t, k, r, l)| (e, *t, *k, r.copied(), l.copied()))
             .collect()
     };
-    let Some(centro) = centro else {
+    let Some((centro, meia)) = vista else {
         // ⚠️ Não declarar É a resposta: o `settle` esquece quem não foi declarado, e o valor vivo
         // volta a ser o do documento.
         return 0;
     };
     let mut n = 0;
-    for (entity, era, cfg, rep) in antes {
+    for (entity, era, cfg, rep, lim) in antes {
         if cfg.e_neutro() {
             // ⛔ `k = 1` é o objecto do mundo: não se escreve um bit e **não se declara**, senão
             // toda cena com o componente anexado passaria a ter uma entrada viva no ledger.
@@ -89,7 +110,13 @@ pub fn drive_parallax(
         //
         // ⚠️ **Sem o componente a composição é a IDENTIDADE**, e não um caso à parte: a ausência é
         // «não repete», que é o que quase todo objecto com paralaxe faz.
-        let d = cfg.deslocamento(centro);
+        // ⭐⭐ **A ORDEM é CONFINAR e depois ENVOLVER, e ela é principiada:** o confinamento decide
+        // QUAL deslocamento fazer (escolhe o valor), e a repetição REDUZ o valor final por um
+        // inteiro de ladrilhos. ⚠️ Os dois juntos são uma cena que se contradiz — um fundo que
+        // repete não tem borda para esconder —, e o que fica DECLARADO é o que ela dá: a repetição
+        // vem por último, logo ela ganha.
+        let conf = lim.map_or(centro, |l| l.confina(centro, meia));
+        let d = cfg.deslocamento_confinado(centro, conf);
         let d = rep.map_or(d, |r| r.envolve(d));
         let agora = Transform {
             translation: Vec2::new(autorada.translation.x + d[0], autorada.translation.y + d[1]),

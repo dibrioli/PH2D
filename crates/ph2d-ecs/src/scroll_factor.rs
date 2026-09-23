@@ -106,4 +106,26 @@ impl ScrollFactor {
             centro[1] * (1.0 - self.k[1]),
         ]
     }
+
+    /// ⭐⭐⭐ **O deslocamento com a vista CONFINADA** (plano 24, W3) — o congelamento no ecrã.
+    ///
+    /// ```text
+    /// d = centro·(1 − k)  +  k·(centro − confinado)
+    /// ```
+    ///
+    /// ⚠️ **A forma importa e é MEDIDA:** com `confinado == centro` o segundo termo é `k · 0` e a
+    /// soma devolve o primeiro **ao bit** ⇒ toda cena sem limites fica byte-idêntica. ⛔ A forma
+    /// equivalente `centro − k·confinado` **não** o seria — `c − k·c` e `c·(1 − k)` diferem por um
+    /// ULP em `f32`, e isso mudava o que a W1 e a W2 já shipam.
+    ///
+    /// ⭐ E o declive de FORA sai sozinho: `(1 − k) + k = 1`, sem um segundo ramo a escrevê-lo.
+    /// *Um `if` ali seria a segunda resposta a «a camada congelou?», e ela divergiria no joelho.*
+    #[must_use]
+    pub fn deslocamento_confinado(&self, centro: [f32; 2], confinado: [f32; 2]) -> [f32; 2] {
+        let d = self.deslocamento(centro);
+        [
+            d[0] + self.k[0] * (centro[0] - confinado[0]),
+            d[1] + self.k[1] * (centro[1] - confinado[1]),
+        ]
+    }
 }

@@ -102,8 +102,8 @@ bloco "os dois eixos partilham o k do x" ph2d-app-components os_dois_eixos \
 # mutacao mora.
 bloco "a referencia vira a propria peca (a forma do Flip)" ph2d-app-components o_deslocamento_nao_depende \
   "$PONTE" 1 \
-  '        let d = cfg.deslocamento(centro);' \
-  '        let d = cfg.deslocamento([centro[0] - autorada.translation.x, centro[1] - autorada.translation.y]);'
+  '        let d = cfg.deslocamento_confinado(centro, conf);' \
+  '        let d = cfg.deslocamento_confinado([centro[0] - autorada.translation.x, centro[1] - autorada.translation.y], conf);'
 
 bloco "o neutro deixa de ser 1" ph2d-app-components o_neutro \
   "$LEI" 1 \
@@ -123,15 +123,15 @@ bloco "o neutro passa a ser declarado" ph2d-app-components o_neutro_nao_escreve 
 # rolou o ecra' seria outra corrida em cada maquina.
 bloco "sem camera a vista vira a origem" ph2d-app-components sem_camera_de_jogo \
   "$PONTE" 1 \
-  '    let Some(centro) = centro else {' \
-  '    let Some(centro) = centro.or(Some([0.0, 0.0])) else {'
+  '    let Some((centro, meia)) = vista else {' \
+  '    let Some((centro, meia)) = vista.or(Some(([0.0, 0.0], [0.0, 0.0]))) else {'
 
 # ⛔ A populacao: um HUD ja' e' conduzido pela ponte dele, e dois motores sobre o mesmo `Transform`
 # escrevem um por cima do outro.
 bloco "o HUD entra na populacao" ph2d-app-components um_hud_nao_e_tocado \
   "$PONTE" 1 \
-  '            .query_filtered::<(Entity, &Transform, &ScrollFactor, Option<&ScrollRepeat>), bevy_ecs::prelude::Without<UiCanvas>>()' \
-  '            .query::<(Entity, &Transform, &ScrollFactor, Option<&ScrollRepeat>)>()'
+  '            .query_filtered::<(Entity, &Transform, &ScrollFactor, Option<&ScrollRepeat>, Option<&ScrollLimits>), bevy_ecs::prelude::Without<UiCanvas>>()' \
+  '            .query::<(Entity, &Transform, &ScrollFactor, Option<&ScrollRepeat>, Option<&ScrollLimits>)>()'
 
 # ⛔ Esta ponte so' escreve a TRANSLACAO: roubar o resto ao autorado apagaria o que outro motor
 # tivesse escrito no mesmo quadro.
@@ -224,15 +224,77 @@ bloco "a repeticao envolve a POSE somada" ph2d-app-components a_repeticao_nao_en
 # numa crate de BIBLIOTECA e' API, e API sem chamador e' divida ⇒ foi apagada. *A delegacao deixou
 # de poder divergir porque um dos dois lados deixou de existir*, que e' mais forte que a mutacao.
 
+echo "=== O CONFINAMENTO (W3) ==="
+
+LIM=crates/ph2d-ecs/src/scroll_limits.rs
+
+# ⛔⛔ O JOELHO deixa de descontar a meia-vista ⇒ ele poe-se na borda da REGIAO em vez de onde a
+# borda da VISTA a alcanca, e o fundo mostra meia tela de borda antes de congelar.
+bloco "o joelho ignora a meia-vista" ph2d-app-components o_joelho_esta_onde \
+  "$LIM" 1 \
+  '    let (lo, hi) = (min + meia, max - meia);' \
+  '    let (lo, hi) = (min, max);'
+
+# ⛔ O congelamento morre: o segundo termo da lei some e a camada faz a paralaxe autorada para
+# sempre — a borda do fundo entra em cena, que e' o que a wave existe para impedir.
+bloco "o congelamento some" ph2d-app-components a_curva_do_confinamento \
+  crates/ph2d-ecs/src/scroll_factor.rs 1 \
+  '            d[0] + self.k[0] * (centro[0] - confinado[0]),' \
+  '            d[0],'
+
+# ⛔⛔ A FORMA da composicao: `centro − k·confinado` da' a MESMA curva e perde a identidade ao bit
+# com a W1/W2 (`c − k·c` e `c·(1 − k)` diferem por um ULP em `f32`).
+bloco "a forma deixa de ser byte-identica a lei da W1" ph2d-app-components a_composicao_do_confinamento \
+  crates/ph2d-ecs/src/scroll_factor.rs 1 \
+  '        let d = self.deslocamento(centro);
+        [
+            d[0] + self.k[0] * (centro[0] - confinado[0]),
+            d[1] + self.k[1] * (centro[1] - confinado[1]),
+        ]' \
+  '        [
+            centro[0] - self.k[0] * confinado[0],
+            centro[1] - self.k[1] * confinado[1],
+        ]'
+
+# ⛔ A regiao VAZIA deixa de ser a omissao ⇒ um componente anexado e nao tocado passa a fixar a
+# vista na origem, e a cena deixa de ser byte-identica.
+bloco "a regiao vazia passa a confinar" ph2d-app-components sem_limites_a_saida \
+  "$LIM" 1 \
+  '    if !(max > min) || !min.is_finite() || !max.is_finite() || !c.is_finite() {' \
+  '    if false {'
+
+# ⛔⛔ A guarda da regiao ESTREITA: sem ela o `f32::clamp` do Rust entra em PANICO com o limite de
+# baixo acima do de cima — o mesmo caso que a camera do jogo ja' pagou.
+bloco "a regiao estreita entra em panico" ph2d-app-components uma_regiao_mais_estreita \
+  "$LIM" 1 \
+  '    if lo > hi {' \
+  '    if false {'
+
+# ⛔ A ORDEM declarada: envolver antes de confinar deixa o deslocamento fora do ladrilho.
+bloco "a repeticao deixa de ser a ultima" ph2d-app-components com_limites_e_repeticao \
+  "$PONTE" 1 \
+  '        let conf = lim.map_or(centro, |l| l.confina(centro, meia));
+        let d = cfg.deslocamento_confinado(centro, conf);
+        let d = rep.map_or(d, |r| r.envolve(d));' \
+  '        let conf = lim.map_or(centro, |l| l.confina(centro, meia));
+        let d = cfg.deslocamento(centro);
+        let d = rep.map_or(d, |r| r.envolve(d));
+        let d = [
+            d[0] + cfg.k[0] * (centro[0] - conf[0]),
+            d[1] + cfg.k[1] * (centro[1] - conf[1]),
+        ];'
+
 echo "=== A ORDEM no quadro, e o que ATRAVESSA ==="
 
-# ⛔ A meia-janela atravessa para a lei ⇒ e' por ai' que a invariancia ao zoom se perde em silencio.
-bloco "o rectangulo inteiro atravessa a chamada" ph2d-host-desktop a_paralaxe_corre_depois \
+# ⛔⛔ **A MUTACAO DO ZOOM INVERTEU-SE COM A PREMISSA (W3).** Ate' a` W2 o defeito era a meia-janela
+# ATRAVESSAR (a paralaxe e' um deslocamento e o zoom nao entra nela); desde o CONFINAMENTO o defeito
+# e' o contrario — sem a meia-janela o joelho `(regiao − ecra)/2` deixa de ser calculavel e o fundo
+# passa a mostrar a borda. ⭐ A metade antiga NAO ficou sem guarda: ela passou a ser a ASSINATURA
+# (`deslocamento(centro)` nao ve' zoom nenhum), que e' mais forte que um gate.
+bloco "so' o centro atravessa (o joelho deixa de ser calculavel)" ph2d-host-desktop a_paralaxe_corre_depois \
   "$FASE" 1 \
-  '            sim,
-            centro,' \
-  '            sim,
-            camera_rect.map(|(center, _half)| center),' \
+  '            camera_rect,' \
+  '            camera_rect.map(|(c, _h)| (c, [0.0, 0.0])),' \
   '--test it'
 
 # ⛔ A paralaxe antes da camera desloca contra o enquadramento do quadro ANTERIOR.

@@ -356,3 +356,16 @@ muda de assunto a seguir. *Um arnês que restaura no caminho feliz não restaura
 nada corre mal.* **How to apply:** `trap ao_sair EXIT INT TERM PIPE` com a última mutação guardada
 numa variável, e a saída do arnês vai para um FICHEIRO (`> mut.txt`) em vez de um pipe. Ver
 [[reference_topic_ship_ci_integration_lessons]].
+
+## ⛔⛔ Um CRASE dentro de `"..."` no bash abre substituição de comando, e o erro sai 50 linhas abaixo (2026-09-22, `line/components`)
+
+Renomear uma prova para `bloco "a forma deixa de ser byte-identica a` lei da W1"` — o `` a` `` é o
+«à» que este repo escreve sem acento em shell — **desfez a citação de todo o resto do ficheiro**: o
+crase abre `` `…` `` mesmo dentro de aspas duplas, engole tudo até ao crase seguinte, e o que o bash
+acusou foi `erro de sintaxe próximo ao token inesperado '('` **numa linha 50 abaixo**, num bloco que
+eu não tinha tocado. **Why:** a mensagem aponta para onde a gramática por fim quebra, nunca para
+onde a citação abriu; e num ficheiro cheio de português sem acentos o `` a` `` parece inofensivo.
+⚠️ E o arnês **não estava partido**: ele nem chegou a correr, logo a corrida anterior — que reportou
+sobreviventes reais — continuava a ser a verdade. **How to apply:** `bash -n <script>` antes de o
+correr (custa nada e diz a linha), e nada de crases em prosa dentro de um script shell — nem em
+comentários, porque uma linha de continuação (`\`) leva o comentário para dentro do comando.

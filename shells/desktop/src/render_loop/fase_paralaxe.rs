@@ -26,20 +26,23 @@ impl crate::App {
             return;
         };
         let FrameGfx { sim, .. } = FrameGfx::of(gfx);
-        // ⚠️ Só o CENTRO atravessa: a paralaxe é um deslocamento, e o tamanho da vista não entra na
-        // lei. *Passar a meia-janela seria oferecer à ponte um dado que ela não pode usar.*
-        let centro = camera_rect.map(|(center, _half)| center);
+        // ⚠️⚠️ **O rectângulo INTEIRO atravessa desde a W3, e a premissa da W1 morreu:** ela
+        // passava só o centro, com a razão certa (*o deslocamento não depende do zoom*), e o
+        // CONFINAMENTO tem o joelho em `(região − ecrã)/2` — ele precisa de saber quanto a vista
+        // mede. ⇒ *o zoom não entra no DESLOCAMENTO; ele entra no CONFINAMENTO*, e quem guarda a
+        // primeira metade é a ASSINATURA da `ScrollFactor::deslocamento`, que recebe um centro e
+        // mais nada.
         let n = ph2d_app_components::parallax_bridge::drive_parallax(
             sim,
-            centro,
+            camera_rect,
             &mut self.preview_drive,
         );
         // ⭐ **O diagnóstico é a única forma de ver um deslocamento** — ele não deixa rasto na tela.
         // `PH2D_PARALLAX_LOG=1` imprime o centro e quantos foram conduzidos, uma vez por mudança.
         if n > 0 && std::env::var_os("PH2D_PARALLAX_LOG").is_some() {
-            let agora = format!("{centro:?}");
+            let agora = format!("{camera_rect:?}");
             if self.components.parallax_log.as_deref() != Some(agora.as_str()) {
-                eprintln!("[parallax] centro={agora} objectos conduzidos={n}");
+                eprintln!("[parallax] vista={agora} objectos conduzidos={n}");
                 self.components.parallax_log = Some(agora);
             }
         }

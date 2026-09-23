@@ -505,4 +505,16 @@
 /// em X, que é o caso de quase todo fundo.
 ///
 /// ⛔ **Sem degrau de migração**, pela mesma decisão — um v164 é recusado em voz alta.
-pub(crate) const PROJECT_SCHEMA: u32 = 165;
+///
+/// # ⭐ 165 → 166 (2026-09-22) — o CONFINAMENTO (plano 24, W3)
+///
+/// `ScrollLimits { min, max }` — a região em que a vista pode passear. Enquanto ela couber lá
+/// dentro o fundo faz a paralaxe autorada; quando a borda da VISTA toca a da REGIÃO a camada
+/// **congela no ecrã**, e é por isso que a borda do fundo nunca aparece. O joelho é
+/// `(região − ecrã)/2`, **medido no alvo**.
+///
+/// ⚠️ **Um eixo é limitado quando `max > min`**, logo o valor de fábrica (`[0,0]`/`[0,0]`) não
+/// confina nada e a cena fica byte-idêntica — a mesma convenção do ladrilho zero da W2.
+///
+/// ⛔ **Sem degrau de migração**, pela mesma decisão — um v165 é recusado em voz alta.
+pub(crate) const PROJECT_SCHEMA: u32 = 166;

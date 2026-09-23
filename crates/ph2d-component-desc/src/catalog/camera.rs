@@ -153,9 +153,21 @@ pub const DESCS: &[ComponentDesc] = &[
         O::ANY,
         SCROLL_FIELDS,
     ),
-    // ⭐⭐ **A REPETIÇÃO** (plano 24, W2) — *quanto mede um ladrilho deste fundo*. ⛔ Irmã e não um
-    // campo da de cima: quase todo objecto com paralaxe não repete, e um campo ali seria um knob
-    // morto em todos eles.
+    // ⭐⭐ **O CONFINAMENTO** (plano 24, W3) — *a borda do fundo nunca entra em cena*. ⚠️ Ele
+    // reaproveita os `LIMITS_FIELDS` do `CameraLimits`, e isso é a decisão certa: são a MESMA
+    // grandeza (uma região `min`/`max` em metros), e uma segunda tabela com os mesmos dois campos
+    // daria dois rótulos para um conceito. ⛔ E não é `largura`/`altura`: o joelho da lei mede a
+    // borda da VISTA contra a borda da REGIÃO, e uma largura sem origem não a nomeia.
+    D::authored(
+        "ph2d::ecs::ScrollLimits",
+        "component.scroll_limits.name",
+        C::Camera,
+        O::ANY,
+        LIMITS_FIELDS,
+    ),
+    // ⭐⭐ **A REPETIÇÃO** (plano 24, W2) — *quanto mede um ladrilho deste fundo*. ⛔ Irmã das duas
+    // de cima e não um campo delas: quase todo objecto com paralaxe não repete, e um campo ali
+    // seria um knob morto em todos eles. *Três componentes porque são três populações.*
     D::authored(
         "ph2d::ecs::ScrollRepeat",
         "component.scroll_repeat.name",

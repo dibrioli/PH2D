@@ -717,10 +717,10 @@ mod fatias_tests {
         let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
         println!("\n  ONDE O BORRÃO GASTA   (load {})", carga.trim());
         println!(
-            "\n   bw × bh |   k | avental |     3×H |     3×V |  desfaz |  soma | porta | erro"
+            "\n   bw × bh |   k | avental | 3×H sep | 1×H fund |  ganho |     3×V | páginas |  desfaz | BLUR sep | BLUR fund | ganho | porta1 | porta2 | erro"
         );
         println!(
-            "  ---------+-----+---------+---------+---------+---------+-------+-------+------"
+            "  ---------+-----+---------+---------+----------+--------+---------+---------+---------+----------+-----------+-------+--------+--------+------"
         );
 
         for &(bw, bh, k) in &[
@@ -793,6 +793,13 @@ mod fatias_tests {
                 h = ap_h;
             });
 
+            // (2-bis) **O A/B DA FUSÃO, na MESMA corrida** — a única forma honesta de o medir com
+            //         esta máquina, que está partilhada com outra linha: as duas rotas veem o mesmo
+            //         estado de cache, o mesmo escalonador e a mesma contenção.
+            let t_h3 = ms(&mut || {
+                let _ = super::super::caixa_h3(&apron, ap_w, ap_h, raios, paralelo);
+            });
+
             // (3) as três VERTICAIS.
             let entrada_v = std::mem::take(&mut cur);
             let mut saida = Vec::new();
@@ -823,10 +830,48 @@ mod fatias_tests {
                 }
             });
 
-            let soma = t_ap + t_h + t_v + t_d;
-            let erro = (soma - t_porta) / t_porta * 100.0;
+            // (4-bis) **QUANTO DAS TRÊS VERTICAIS É SÓ MEMÓRIA NOVA?** Cada `caixa_v` devolve um
+            //     `Vec` FRESCO (`vec![[0f32; 4]; …]` = `alloc_zeroed`), logo as páginas chegam
+            //     preguiçosas e a PRIMEIRA escrita de cada uma é uma falha de página. Isto mede
+            //     exactamente esse chão: alocar os mesmos três tamanhos e TOCAR cada página.
+            //     *Se ele for a maior parte do `3×V`, a cura é reaproveitar o buffer e não fundir
+            //     o laço — e fundir seria construir a coisa cara para não pagar a barata.*
+            let t_paginas = ms(&mut || {
+                let mut hh = ap_h;
+                let mut toque = 0.0f32;
+                for r in raios {
+                    let oh = hh - 2 * r;
+                    let mut v = vec![[0f32; 4]; w * oh];
+                    // uma escrita por página de 4 KiB (= 256 pixels de 16 B)
+                    for i in (0..v.len()).step_by(256) {
+                        v[i][0] = 1.0;
+                        toque += v[i][0];
+                    }
+                    hh = oh;
+                }
+                std::hint::black_box(toque);
+            });
+
+            // (5) **A PORTA OUTRA VEZ, no FIM** — o controlo do CONTROLO. A 1.ª leitura dela é a
+            //     primeira coisa que toca os 16 MiB do `buf`; as partes correm todas depois, com
+            //     ele já quente. *Se esta 2.ª leitura cair para perto da soma, o desvio é da ORDEM
+            //     e não de trabalho em falta na decomposição.*
+            let t_porta2 = ms(&mut || {
+                let v =
+                    super::super::blur_region_caixa(&buf, fw, fh, 0, 0, bw, bh, k, [false, false]);
+                porta = v.len() as f64;
+            });
+
+            // ⚠️ O controlo soma o que a PORTA de facto corre, que desde a fusão é a `caixa_h3`.
+            //    Somar o `t_h` separado aqui seria comparar a decomposição de um programa com o
+            //    relógio de OUTRO — e a 1.ª redacção desta linha fazia exactamente isso.
+            let soma = t_ap + t_h3 + t_v + t_d;
+            let erro = (soma - t_porta2) / t_porta2 * 100.0;
+            let separado = t_ap + t_h + t_v + t_d;
             println!(
-                "  {bw:4}×{bh:4} | {k:3} | {t_ap:7.2} | {t_h:7.2} | {t_v:7.2} | {t_d:7.2} | {soma:5.1} | {t_porta:5.1} | {erro:+5.1}%"
+                "  {bw:4}×{bh:4} | {k:3} | {t_ap:7.2} | {t_h:7.2} | {t_h3:7.2} | {:5.2}× | {t_v:7.2} | {t_paginas:7.2} | {t_d:7.2} | {separado:5.1} | {soma:5.1} | {:5.2}× | {t_porta:5.1} | {t_porta2:5.1} | {erro:+5.1}%",
+                t_h / t_h3.max(f64::MIN_POSITIVE),
+                separado / soma.max(f64::MIN_POSITIVE)
             );
         }
         println!(

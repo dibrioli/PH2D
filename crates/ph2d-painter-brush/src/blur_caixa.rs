@@ -66,6 +66,17 @@ pub(crate) fn box_radii(k: usize) -> [usize; 3] {
 }
 
 /// Uma passagem de caixa HORIZONTAL por soma corrente: a saída perde `r` de cada lado.
+///
+/// ⚠️ **`#[cfg(test)]` de propósito: desde a FUSÃO (2026-09-22) ela não tem chamador de produto** —
+/// quem o produto corre é a [`caixa_h3`], que faz as três numa passagem sobre a memória. Ela FICA
+/// porque é o **ORÁCULO** do gate `as_tres_horizontais_fundidas_dao_o_mesmo_f32`: a fusão prova-se
+/// contra as três chamadas separadas, e apagá-la levaria a régua junto.
+///
+/// ⛔ Sem o `cfg`, ela é **código morto numa crate de biblioteca** e o CI reprova
+/// (`build.warnings = "deny"`), que é a armadilha que o §5.0 do roteador já regista para os
+/// `#[cfg(target_os)]`: *o `cargo check` local com `--all-targets` vê o uso do teste; o passe do CI
+/// não corre com `cfg(test)` e vê um `fn` sem chamadores.*
+#[cfg(test)]
 fn caixa_h(
     src: &[[f32; 4]],
     w: usize,
@@ -481,8 +492,9 @@ pub(crate) fn blur_region_caixa_com(
     );
     // Separável: as três caixas na horizontal — FUNDIDAS numa passagem (2026-09-22) —, depois as
     // três na vertical. ⚠️ O `caixa_h` fica: ele é o oráculo do gate da fusão.
-    let (cur, w) = caixa_h3(&apron, ap_w, ap_h, raios, paralelo);
-    let (mut cur, mut w, mut h) = (cur, w, ap_h);
+    // ⚠️ A largura NÃO muda nas verticais (só a altura), logo `w` não é `mut`.
+    let (mut cur, w) = caixa_h3(&apron, ap_w, ap_h, raios, paralelo);
+    let mut h = ap_h;
     for r in raios {
         let (n, nh) = caixa_v(
             &cur,

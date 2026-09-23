@@ -15,10 +15,13 @@
 //!
 //! # E sem a biblioteca matemática no laço
 //!
-//! ⛔ Este repo compila para o `x86-64` BASE (sem SSE4.1), onde `f32::round` **não** é uma instrução:
-//! é uma chamada ao `roundf` de software do `compiler_builtins`. Medido na mesma amostragem: o
-//! arredondamento era a maior folha do laço da tinta. [`redondo_u8`] dá o MESMO byte com um
-//! truncamento (`cvttss2si`) e uma comparação — gate de equivalência ao bit ao lado.
+//! ⛔ Quando isto foi escrito o repo compilava para o `x86-64` BASE (sem SSE4.1), onde `f32::round`
+//! **não** é uma instrução: é uma chamada ao `roundf` de software do `compiler_builtins`. Medido na
+//! mesma amostragem: o arredondamento era a maior folha do laço da tinta. [`redondo_u8`] dá o MESMO
+//! byte com um truncamento (`cvttss2si`) e uma comparação — gate de equivalência ao bit ao lado.
+//! ⚠️ Desde o ADR-0174 o produto compila para `x86-64-v2`, que TEM `roundss`: a vantagem desta
+//! função encolheu para a do `clamp` evitado, e ela FICA porque continua exacta e porque um build
+//! com `RUSTFLAGS` definido à mão perde o nível (os `RUSTFLAGS` substituem o `.cargo/config.toml`).
 
 use super::Region;
 use rayon::prelude::*;

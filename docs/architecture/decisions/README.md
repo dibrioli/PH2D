@@ -186,10 +186,11 @@
 | [0170](0170-o-corte-e-uma-booleana-de-malha-e-o-motor-permissivo-ENTRA-em-vez-de-ficar-oraculo.md) | Aceito (2026-09-15) | O corte é uma **booleana de malha**, e desta vez a biblioteca **ENTRA** em vez de ficar oráculo |
 | [0171](0171-o-borrao-de-caixa-da-pilha-parte-se-em-fatias-e-a-largura-da-banda-e-medida.md) | Accepted | O borrão de CAIXA da pilha parte-se em fatias, e a largura da banda é MEDIDA |
 | [0172](0172-as-passagens-por-pixel-da-pilha-correm-em-linhas-disjuntas-e-a-banda-do-deposito-fica-como-esta.md) | Accepted | As passagens POR PIXEL da pilha correm em linhas disjuntas; a banda do depósito fica como está |
+| [0174](0174-o-produto-compila-para-x86-64-v2.md) | Accepted | O produto compila para `x86-64-v2` |
 
 ---
 
-**177 ADRs** · **59** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
+**178 ADRs** · **59** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
 
 ⚠️ **⛔ diz «o ADR NNNN alega supersedê-lo»**, e a alegação pode ser PARCIAL: o ADR-0085
 supersede uma *regra* dentro do ADR-0049, não o ADR inteiro. O índice reporta a alegação

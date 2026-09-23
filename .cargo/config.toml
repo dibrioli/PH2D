@@ -1,12 +1,27 @@
-# Project-scoped Cargo config. Currently used only to swap the
-# linker for Windows MSVC targets, where the default `link.exe`
+# Project-scoped Cargo config. Two things live here: the processor level of every x86-64 build
+# (bottom of the file, ADR-0174), and the linker for Windows MSVC targets, where the default `link.exe`
 # is dramatically slower than `rust-lld.exe` (the LLD that ships
 # with the standard Rust toolchain since 1.70+).
 #
-# Target-gated so Linux/macOS see no change. Earlier attempt to
+# The linker entry is target-gated so Linux/macOS see no change. Earlier attempt to
 # pin a Homebrew lld path here broke macOS CI (path didn't exist
 # on the runner) — keeping the config gated by target prevents
 # that class of regression.
 
 [target.x86_64-pc-windows-msvc]
 linker = "rust-lld.exe"
+
+# O NÍVEL DE PROCESSADOR do produto em x86-64 (ADR-0174, decisão do dono 2026-09-23): `x86-64-v2`
+# (SSE3 · SSSE3 · SSE4.1 · SSE4.2 · POPCNT — todo x86-64 desde ~2009). Sem isto o repo compilava
+# para o x86-64 BASE de 2003, onde `f32::round`/`floor`/`ceil`/`trunc` são CHAMADAS de software ao
+# `compiler_builtins` (~20 instruções com ramos) em vez de uma instrução `roundss`: medido na
+# aquarela com uma thread, `v2` corta 20-23 % do traço e captura 77-86 % do ganho do `v3` (AVX2,
+# 2013+), que NÃO foi escolhido por excluir máquinas de 2009-2013.
+# ⚠️ O resultado numérico é o MESMO byte: `v2` não traz FMA (a contracção `a*b+c` que mudaria bits é
+# do `v3`), e `roundss` arredonda exactamente como a rotina de software.
+# ⚠️ Os `rustflags` de configs diferentes SOMAM-SE (o `mold` global do Linux continua), mas a
+# variável de ambiente `RUSTFLAGS` SUBSTITUI todos — quem a definir perde este nível em silêncio.
+# ⚠️ É por `cfg(target_arch)` e não por triplo: vale para Linux e Windows, e o macOS aarch64 do CI
+# fica fora (lá `floor` já é a instrução `frintm`).
+[target.'cfg(target_arch = "x86_64")']
+rustflags = ["-C", "target-cpu=x86-64-v2"]

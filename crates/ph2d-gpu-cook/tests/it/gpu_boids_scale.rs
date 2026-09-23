@@ -80,7 +80,17 @@ fn registry() -> NodeRegistry {
 
 /// Warm up (compile pipelines + seed + settle a few steps), then time `TIMED`
 /// step-ticks with a full device sync after each submit. Returns ms/tick.
-fn time_step_ms(gpu: &GpuContext, g: &Graph, reg: &NodeRegistry, out: NodeId) -> f64 {
+/// ⭐⭐⭐ **Devolve `(ms, linhas COZIDAS)`, e a segunda metade nasceu de um defeito real.**
+///
+/// ⛔⛔⛔ Este ficheiro varre `count` de `4 096` a `8 388 608`, e desde 2026-09-21 o
+/// `motion.boids` clampa o `count` em `MAX_INSTANCIAS_POR_NO` — logo **a maior parte dos pontos
+/// coze exactamente a MESMA população**. A tabela continuava a imprimir o número PEDIDO, e a
+/// coluna `ns/agent` dividia por ele: *um instrumento que varre um param clampado mede um ponto
+/// N vezes e imprime algo com a forma de uma varredura*, com o erro por linha a chegar a `256×`.
+///
+/// ⇒ o `cook` já devolvia a contagem e o antigo fecho deitava-a fora. Agora ela sai, e quem varre
+/// é obrigado a olhar para o que aconteceu em vez do que pediu.
+fn time_step_ms(gpu: &GpuContext, g: &Graph, reg: &NodeRegistry, out: NodeId) -> (f64, u32) {
     const WARM: u64 = 3;
     const TIMED: u64 = 8;
     let plan = plan(g, reg, reg, out);
@@ -102,17 +112,36 @@ fn time_step_ms(gpu: &GpuContext, g: &Graph, reg: &NodeRegistry, out: NodeId) ->
             DEFAULT_SIZE,
             SinkStyle::PLAIN,
         )
-        .expect("gpu cook");
-        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+        .expect("gpu cook")
     };
+    let mut linhas = 0u32;
     for t in 0..WARM {
-        cook(&mut gc, t);
+        linhas = cook(&mut gc, t);
+        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
     }
     let start = Instant::now();
     for t in WARM..WARM + TIMED {
-        cook(&mut gc, t);
+        linhas = cook(&mut gc, t);
+        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
     }
-    start.elapsed().as_secs_f64() * 1e3 / TIMED as f64
+    (start.elapsed().as_secs_f64() * 1e3 / TIMED as f64, linhas)
+}
+
+/// **Uma varredura cujos pontos COLAPSARAM não é uma varredura.**
+///
+/// ⚠️ A guarda que faltava a este ficheiro: se dois pedidos diferentes cozerem a mesma população,
+/// o que a tabela mostra é um ponto repetido com rótulos diferentes. Ela acusa alto em vez de
+/// imprimir — *um instrumento que mente é pior do que nenhum, porque ninguém desconfia dele*.
+fn a_varredura_nao_colapsou(rotulo: &str, realizados: &[u32]) {
+    for par in realizados.windows(2) {
+        assert!(
+            par[1] > par[0],
+            "{rotulo}: a varredura colapsou ({} depois de {}) -- algum clamp a montante esta a \
+             cortar os pontos, e a tabela acima descreve UMA populacao com N rotulos",
+            par[1],
+            par[0]
+        );
+    }
 }
 
 /// **Where does the SHIPPED DEFAULT leave a 60 fps frame?** — the number a
@@ -140,28 +169,35 @@ fn where_the_flock_leaves_the_frame_budget() {
     };
     let reg = registry();
     const FRAME_MS: f64 = 1000.0 / 60.0;
+    // ⚠️ **Os pontos param no TECTO DO PRODUTO** (`MAX_INSTANCIAS_POR_NO`): acima dele o
+    // `motion.boids` clampa o `count`, e pedir `1 048 576` media a mesma população que pedir o
+    // tecto — a varredura colapsava e a tabela imprimia o número PEDIDO.
+    let tecto = ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO as u32;
     for (label, spread, counts) in [
         (
             "packed (spread OFF — the DEFAULT)",
             false,
-            &[2_000u32, 8_000, 16_384, 32_768, 65_536][..],
+            &[2_000u32, 8_000, 16_384, tecto][..],
         ),
         (
             "spread (spread ON — the demo's regime)",
             true,
-            &[65_536u32, 262_144, 1_048_576][..],
+            &[tecto / 8, tecto / 2, tecto][..],
         ),
     ] {
         eprintln!("\nboids on the GPU — {label}:");
         eprintln!("  {:>10}  {:>10}  {:>12}", "agents", "ms/tick", "% of 16.7");
+        let mut realizados = Vec::new();
         for &count in counts {
             let (g, out) = boids_graph(count as f32, spread);
-            let ms = time_step_ms(&gpu, &g, &reg, out);
+            let (ms, linhas) = time_step_ms(&gpu, &g, &reg, out);
             eprintln!(
-                "  {count:>10}  {ms:>10.3}  {:>11.0}%",
+                "  {linhas:>10}  {ms:>10.3}  {:>11.0}%",
                 ms / FRAME_MS * 100.0
             );
+            realizados.push(linhas);
         }
+        a_varredura_nao_colapsou(label, &realizados);
     }
     eprintln!(
         "\n(the CPU reference path is O(N²) all-pairs and measures 0,475 / 10,392 /\n\
@@ -183,15 +219,22 @@ fn how_far_does_the_flock_scale() {
         "  {:>10}  {:>10}  {:>14}",
         "agents", "ms/tick", "~neighbours"
     );
-    for &count in &[4096u32, 16384, 65536, 262_144, 1_048_576] {
+    // ⚠️ **O topo é o TECTO DO PRODUTO, não um número escolhido:** desde 2026-09-21 o
+    // `motion.boids` clampa o `count` em `MAX_INSTANCIAS_POR_NO`, logo pedir mais mede o mesmo.
+    let tecto = ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO as u32;
+    let mut realizados = Vec::new();
+    for &count in &[tecto / 8, tecto / 4, tecto / 2, tecto] {
         let (g, out) = boids_graph(count as f32, false);
-        let ms = time_step_ms(&gpu, &g, &reg, out);
+        let (ms, linhas) = time_step_ms(&gpu, &g, &reg, out);
         // Packed density: count/(2·SEED_SPREAD)² over a disc of the perception
         // radius (r=2) → an honest read of how many the 3×3 sweep touches.
-        let density = count as f64 / (6.0 * 6.0);
+        // ⚠️ Derivada das linhas COZIDAS, não do pedido.
+        let density = f64::from(linhas) / (6.0 * 6.0);
         let neigh = density * std::f64::consts::PI * 2.0 * 2.0;
-        eprintln!("  {count:>10}  {ms:>10.3}  {neigh:>14.0}");
+        eprintln!("  {linhas:>10}  {ms:>10.3}  {neigh:>14.0}");
+        realizados.push(linhas);
     }
+    a_varredura_nao_colapsou("packed", &realizados);
     eprintln!(
         "\n(packed is O(N²): the whole swarm sits in a few cells, so the grid\n\
          cannot help. Spread ON keeps the density bounded — the grid stays O(N).)"
@@ -215,47 +258,49 @@ fn how_far_does_the_flock_scale() {
         gpu.device.limits().max_buffer_size,
         gpu.device.limits().max_compute_workgroups_per_dimension,
     );
-    for &count in &[
-        65536u32, 262_144, 1_048_576, 2_097_152, 4_194_304, 8_388_608,
-    ] {
+    let mut realizados = Vec::new();
+    for &count in &[tecto / 8, tecto / 4, tecto / 2, tecto] {
         let (g, out) = boids_graph(count as f32, true);
-        let ms = time_step_ms(&gpu, &g, &reg, out);
-        let ns_each = ms * 1e6 / count as f64;
-        eprintln!("  {count:>10}  {ms:>10.3}  {ns_each:>10.2}");
+        let (ms, linhas) = time_step_ms(&gpu, &g, &reg, out);
+        // ⚠️ **Por linha COZIDA.** Dividir pelo pedido era o defeito: com o clamp a morder, esta
+        // coluna lia até `256×` menos do que o custo real por agente.
+        let ns_each = ms * 1e6 / f64::from(linhas);
+        eprintln!("  {linhas:>10}  {ms:>10.3}  {ns_each:>10.2}");
+        realizados.push(linhas);
     }
+    a_varredura_nao_colapsou("spread", &realizados);
     // Past the instance-binding wall the cook must REFUSE, never panic: the
     // RTX adapter advertises max_storage_buffer_binding_size = 2 GiB − 4 (the
     // context already requests the adapter's max — this is the driver's own
     // cap, MEASURED, not a wgpu default), and 12,58 M × 184 B = 2,87 GiB. The
     // un-guarded version died in `create_bind_group` validation — a production
     // panic in the sweep's own first run.
+    // ⛔⛔⛔ **E ESTE CASO MORREU COM O TECTO DE INSTÂNCIAS DO DONO, e a morte é o achado.**
+    // Ele pedia `12 582 912` agentes para provar que a descida RECUSA em vez de estourar. Desde
+    // 2026-09-21 o `motion.boids` clampa o `count`, logo o pedido coze `MAX_INSTANCIAS_POR_NO` e
+    // o muro nunca arma: o gate lia *«tem de recusar: 32768»* e reprovava sobre produto correcto.
+    //
+    // ⚠️ **A guarda FICA no produto** (`GpuCookError::BindingTooLarge`) — ela é o que separa uma
+    // recusa de um `panic` dentro da validação do wgpu, e um dia em que o tecto suba ela volta a
+    // ser a única coisa entre o artista e uma janela que morre.
+    //
+    // ⇒ o que se afirma é a distância: quanto o tecto do dono está ABAIXO do muro do adaptador.
+    // É o número que o ciclo 12 pede, e ele é derivado dos dois lados.
     {
-        let count = 12_582_912u32;
-        let (g, out) = boids_graph(count as f32, true);
-        let p = plan(&g, &reg, &reg, out);
-        let mut gc = GpuCook::new();
-        let err = gc
-            .cook(
-                &gpu,
-                &g,
-                &reg,
-                &reg,
-                &p,
-                &[],
-                CookClock {
-                    playhead: 0.0,
-                    tick: Some(0),
-                },
-                DEFAULT_UV,
-                DEFAULT_SIZE,
-                SinkStyle::PLAIN,
-            )
-            .expect_err("12,58 M instances must refuse, not panic");
+        let inst = std::mem::size_of::<ph2d_render::RenderInstance>() as u64;
+        let muro = gpu.device.limits().max_storage_buffer_binding_size / inst;
+        let tecto64 = u64::from(tecto);
         assert!(
-            matches!(err, ph2d_gpu_cook::GpuCookError::BindingTooLarge { .. }),
-            "the named wall, not some other failure: {err:?}"
+            tecto64 < muro,
+            "o tecto de instancias ({tecto64}) alcancou o muro do adaptador ({muro} linhas) -- \
+             reponha o caso da recusa, que e' o que impede um panic dentro do wgpu"
         );
-        eprintln!("  {count:>10}  REFUSED (BindingTooLarge — the adapter's 2 GiB−4 binding cap)");
+        eprintln!(
+            "\n  o muro do adaptador esta em {muro} linhas ({} B por instancia); o tecto do dono\n\
+             \x20 esta em {tecto}, ou seja {:.0}x abaixo dele.",
+            inst,
+            muro as f64 / tecto64 as f64
+        );
     }
     eprintln!(
         "\n(the grid delivers millions; ns/agent grows memory-bound at scale.\n\

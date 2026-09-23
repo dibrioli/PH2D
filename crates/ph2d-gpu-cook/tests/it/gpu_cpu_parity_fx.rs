@@ -311,18 +311,47 @@ fn the_rgb_split_forwards_the_input_where_the_cpu_does() {
     );
     compare("opacidade apagada", &cpu, &dev);
 
-    // Acima do tecto (`n × 3 > MAX_INSTANCES`): o lado mínimo é `⌈√(MAX/3)⌉ + 1`.
-    let over = ((ph2d_node_fx_rgb_split::MAX_INSTANCES / 3) as f32)
-        .sqrt()
-        .ceil()
-        + 1.0;
-    let (g, out) = chain(&reg, over, false, Split::OFF.node());
+    // ⛔⛔⛔ **A METADE «ACIMA DO TECTO» MORREU COM O TECTO DE INSTÂNCIAS DO DONO, e a morte é o
+    // achado.** Ela pedia `⌈√(MAX/3)⌉ + 1 = 1025` de lado ao `motion.grid`; desde 2026-09-21 a
+    // grelha clampa cada LADO em `LADO_MAX_DE_GRELHA`, logo o máximo que um GERADOR deste
+    // catálogo entrega é [`CELULAS_DE_UMA_GRELHA_CHEIA`] e este nó vê `× 3` disso.
+    //
+    // ⚠️⚠️ **Ela não reprovava por defeito de produto**: ela pedia uma população que o catálogo já
+    // não sabe construir, e lia `98 283` onde esperava `1 050 625`. *Um gate cujo caso deixou de
+    // ser construível não afirma nada — ele acusa o produto de não fazer o impossível.*
+    //
+    // ⚠️ **E ela esteve vermelha e INVISÍVEL desde 21/09**, porque este ficheiro é todo `#[ignore]`
+    // e nem o CI nem a varredura impactada correm gates de dispositivo.
+    //
+    // ⇒ o que fica afirmado é a verdade NOVA, que é a que decide o ciclo 12: **nenhum gerador
+    // alcança o tecto deste nó**. No dia em que o tecto de instâncias subir o bastante — ou em que
+    // alguém encadeie um dos cinco multiplicadores não-clampados — este gate reprova, e a metade
+    // de cima volta com ele.
+    let maior_de_um_gerador = ph2d_nodegraph::node::CELULAS_DE_UMA_GRELHA_CHEIA;
+    assert!(
+        maior_de_um_gerador * 3 < ph2d_node_fx_rgb_split::MAX_INSTANCES,
+        "o tecto deste fx voltou a ser alcançável por um gerador só ({maior_de_um_gerador} × 3 \
+         >= {}) -- reponha a metade «acima do tecto», que mede o que o no' faz quando a entrada \
+         o passa",
+        ph2d_node_fx_rgb_split::MAX_INSTANCES
+    );
+    // E a paridade continua a ser medida no MAIOR caso CONSTRUÍVEL — que é o que o produto pode
+    // de facto pôr neste nó, e que antes desta cura já era o que corria (a grelha clampava o
+    // `1025` em silêncio).
+    let lado = ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32;
+    let (g, out) = chain(&reg, lado, false, Split::OFF.node());
     let cpu = cook_cpu(&reg, &g, out);
     let dev = cook_gpu(&gpu, &reg, &g, out);
-    let n = (over * over) as usize;
-    assert!(n * 3 > ph2d_node_fx_rgb_split::MAX_INSTANCES);
-    assert_eq!(cpu.len(), n, "acima do tecto: a CPU devolve n");
-    compare("acima do tecto", &cpu, &dev);
+    // ⭐ E o que ela afirma é o RAMO QUE SOBROU: abaixo do tecto o nó **multiplica** (`× 3`). O
+    // ramo que ENCAMINHA a entrada sem multiplicar — o que dá o nome a este gate — só arma acima
+    // do `MAX_INSTANCES`, e é ele que a asserção acima declara inalcançável.
+    assert_eq!(
+        cpu.len(),
+        maior_de_um_gerador * 3,
+        "abaixo do tecto o no' MULTIPLICA; ler a contagem da entrada aqui seria o ramo de \
+         encaminhamento a armar onde ele nao devia"
+    );
+    compare("o maior caso construivel", &cpu, &dev);
 }
 
 /// Os params do `fx.drop_shadow` num caso.
@@ -442,26 +471,43 @@ fn the_drop_shadow_forwards_the_input_where_the_cpu_does() {
         rgba: [0.2, 0.2, 0.2, 0.0],
         ..Shadow::DEFAULT
     };
-    let hard_over = ((max / 2) as f32).sqrt().ceil() + 1.0;
-    let soft_over = ((max / 17) as f32).sqrt().ceil() + 1.0;
     let soft = Shadow {
         softness: 0.3,
         ..Shadow::DEFAULT
     };
-    for (label, side, shadow, copies) in [
+    // ⛔⛔⛔ **AS DUAS METADES «ACIMA DO TECTO» MORRERAM COM O TECTO DE INSTÂNCIAS DO DONO** — ver
+    // a irmã em [`the_rgb_split_forwards_the_input_where_the_cpu_does`], que conta o mecanismo.
+    // Aqui o multiplicador é `17` (a sombra macia), logo o maior caso construível vê
+    // `CELULAS_DE_UMA_GRELHA_CHEIA × 17` — e mesmo esse fica abaixo do `MAX_INSTANCES` deste nó.
+    let maior_de_um_gerador = ph2d_nodegraph::node::CELULAS_DE_UMA_GRELHA_CHEIA;
+    assert!(
+        maior_de_um_gerador * 17 < max,
+        "o tecto deste fx voltou a ser alcançável por um gerador só ({maior_de_um_gerador} × 17 \
+         >= {max}) -- reponha as duas metades «acima do tecto»"
+    );
+    // O que fica é a paridade nos TRÊS casos que o produto sabe construir: o alfa apagado (a
+    // metade que nunca dependeu do tecto) e os dois multiplicadores, no MAIOR lado que uma grelha
+    // dá. ⚠️ Antes desta cura os dois últimos já corriam a este lado — a grelha clampava-os em
+    // silêncio, e só a asserção da contagem via a diferença.
+    let lado = ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32;
+    // ⭐ `copias` é o que o nó MULTIPLICA abaixo do tecto: `1` com o alfa apagado (não há sombra
+    // a somar), `2` na dura (a peça e a sombra) e `17` na macia (o leque do desfoque). O ramo que
+    // ENCAMINHA a entrada sem multiplicar — o que dá o nome a este gate — só arma acima do
+    // `MAX_INSTANCES`, e é ele que a asserção acima declara inalcançável.
+    for (label, side, shadow, copias) in [
         ("alfa apagado", SIDE, dead, 1),
-        ("acima do tecto (dura)", hard_over, Shadow::DEFAULT, 2),
-        ("acima do tecto (macia)", soft_over, soft, 17),
+        ("o maior construivel (dura)", lado, Shadow::DEFAULT, 2),
+        ("o maior construivel (macia)", lado, soft, 17),
     ] {
         let (g, out) = chain(&reg, side, true, shadow.node());
         let cpu = cook_cpu(&reg, &g, out);
         let dev = cook_gpu(&gpu, &reg, &g, out);
         let n = (side * side) as usize;
-        assert!(
-            copies == 1 || n * copies > max,
-            "{label}: o caso tem de passar o tecto"
+        assert_eq!(
+            cpu.len(),
+            n * copias,
+            "{label}: abaixo do tecto o no' multiplica por {copias}"
         );
-        assert_eq!(cpu.len(), n, "{label}: a CPU devolve n");
         compare(label, &cpu, &dev);
     }
 }
@@ -501,8 +547,22 @@ fn fx_row_ceiling_probe() {
     eprintln!(
         "  nó             │   n (fonte) │     linhas │ disp ms │  CPU ms │ memória da descida"
     );
+    // ⛔⛔⛔ **OS LADOS ERAM `[256, 512, 1024, 1448, 2048]` E OS CINCO CLAMPAM NO MESMO NÚMERO**
+    // desde 2026-09-21: a grelha limita cada LADO em `LADO_MAX_DE_GRELHA`. A sonda imprimia
+    // CINCO linhas com o `n (fonte)` pedido e a coluna `linhas` igual em todas — *uma varredura
+    // cujos pontos colapsaram, com a forma de uma varredura.*
+    //
+    // ⇒ os pontos passam a sair do tecto e a dizer o que o produto pode de facto construir, e a
+    // guarda logo abaixo recusa imprimir uma tabela colapsada.
+    let lado_max = ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32;
     for node in ["fx.rgb_split", "fx.drop_shadow"] {
-        for side in [256.0f32, 512.0, 1024.0, 1448.0, 2048.0] {
+        let mut realizadas = Vec::new();
+        for side in [
+            (lado_max / 8.0).ceil(),
+            (lado_max / 4.0).ceil(),
+            (lado_max / 2.0).ceil(),
+            lado_max,
+        ] {
             let mut g = Graph::new();
             let seed = g.add_node("motion.grid");
             g.set_param(seed, "rows", side);
@@ -591,6 +651,19 @@ fn fx_row_ceiling_probe() {
                 median(dev_ms),
                 median(cpu_ms),
                 (rows * inst) >> 20
+            );
+            realizadas.push(rows);
+        }
+        // ⚠️ **A guarda que faltava:** dois lados diferentes que cozam a MESMA população deixam
+        // esta tabela a descrever um ponto com N rótulos — foi exactamente o que aconteceu entre
+        // 21/09 e hoje, em silêncio, porque uma sonda imprime e ninguém a lê.
+        for par in realizadas.windows(2) {
+            assert!(
+                par[1] > par[0],
+                "{node}: a varredura colapsou ({} depois de {}) -- um clamp a montante esta a \
+                 cortar os pontos",
+                par[1],
+                par[0]
             );
         }
     }

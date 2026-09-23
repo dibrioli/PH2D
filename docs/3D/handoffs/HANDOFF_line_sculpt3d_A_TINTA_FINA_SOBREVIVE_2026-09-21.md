@@ -2394,3 +2394,148 @@ errado é pior que nenhum — ele CONFIRMA* (a lição que a `line/components` p
   corrida da MESMA árvore leu `18 607` de `18 607`**. ⚠️ *Um defeito de lógica reprova o mesmo
   caso sempre; só um recurso partilhado troca de vítima entre corridas* — e é por isso que a
   re-corrida sozinha vem ANTES de olhar para o próprio commit.
+
+### §24.7 — ⚠️ *«importa se arrastar, não importa pelo diálogo»* — as DUAS portas do alvo, medidas
+
+> Report do dono, 23/09, a fechar o §24.
+
+⭐ **O alvo foi corrido pelas DUAS portas sobre o MESMO ficheiro nosso** — porque o diálogo *File ▸
+Import* e o ARRASTO chamam o mesmo operador com argumentos **diferentes**: o arrasto passa só o
+`filepath`, e o navegador de ficheiros passa `directory` + a colecção `files`, que é como ele
+importa vários de uma vez.
+
+| porta | como o alvo é chamado | resultado |
+|---|---|---|
+| arrasto | `filepath` | `FINISHED` — `1` objecto, `738` v, `768` f, UV, material |
+| diálogo | `filepath` + `directory` + `files` | **idem** |
+| só `directory` + `files` | sem `filepath` | **idem** |
+| diálogo + `filter_glob` | como o navegador o passa | **idem** |
+
+⇒ **as quatro leem o mesmo**, logo *a diferença que o dono vê não está no ficheiro nem no operador*.
+⛔ E a hipótese de ambiente mais forte fica **fechada com medição**: o Blender desta máquina é
+pacote nativo (`pacman -Qo` ⇒ `blender 17:5.2.2-1`), **não** Flatpak nem Snap — logo não há caixa de
+areia a deixar passar um ficheiro largado e a esconder o mesmo ficheiro ao navegador de dentro.
+
+⚠️⚠️ **O que sobra é do lado do alvo e eu não o posso medir daqui:** o navegador de ficheiros do
+Blender **lembra as opções do operador entre invocações** e o arrasto não as lê. *Uma opção de
+importação trocada numa tentativa anterior sobrevive no diálogo e é invisível no arrasto* — e é
+exactamente essa a forma do report. ⇒ o passo que o desempata é **um**: abrir o diálogo e carregar
+em *Restore Operator Defaults* (ou conferir a barra lateral dele) antes de importar.
+
+⛔ **Nada disto muda uma linha do produto**, e é por isso que fica aqui e não numa cura: *uma cura
+que não explica o report continua a ser uma cura; o que não se pode é inventar uma que não tem
+mecanismo medido*.
+
+---
+
+## §25 — ⭐⭐⭐⭐ A P2: a retícula deixa de ter UM lado — o nível é da FACE
+
+> Ordem do dono, 23/09: *«pode seguir implementando»*. O item aberto que a §23.11 nomeia.
+
+⚠️ **Conte o DELTA: tudo a 0** — `PROJECT_SCHEMA`, os três registos, `SCULPT_DOC_VERSION`; zero
+contrato, zero ADR, zero pacote externo. **E zero mudança de produto:** nada no app produz hoje um
+plano graduado, e um plano uniforme sai **byte a byte** o de antes.
+
+### §25.1 — ⭐⭐⭐ A medição veio ANTES da primeira linha, e REFUTOU o número do handoff
+
+O [`examples/mede_o_r_por_face.rs`](../../../crates/ph2d-mesh-colors/examples/mede_o_r_por_face.rs)
+corre sobre o corpus do dono e mede a **densidade linear de amostras** (`lado / √área`) face a face:
+
+| peça | faces | hoje (uniforme) | com o `R` por face | amostras |
+|---|---:|---:|---:|---|
+| `nossa_com_calota` | 21 914 | `3,12×` | **`1,90×`** | `1,40 M → 1,22 M` (**−13 %**) |
+| `Sculpt_Blender` | 8 291 | `4,88×` | **`1,97×`** | `0,53 M → 0,55 M` (`+4 %`) |
+| `_base_sculpt` | 18 432 | `6,74×` | **`1,95×`** | `1,08 M → 1,43 M` (`+32 %`) |
+| `sculpt_antes` | 13 824 | **`18,26×`** | **`1,92×`** | `0,88 M → 1,03 M` (`+18 %`) |
+
+⛔⛔ **E a §23.11 escreveu o chão errado.** Ela diz *«com o `R` por face quantizado a potências de
+dois o pior caso é `√2 = 1,41×`»* — **as duas afirmações não são a mesma grandeza**: o `√2` é o
+desvio ao alvo de **UMA** face (meia escada) e a dispersão é uma razão entre **DUAS**, logo
+`√2 × √2 = 2`. *A sonda lê `1,90`–`1,97`, e o `2,37` da `sculpt_antes` a `k` baixo é o **CHÃO DA
+ESCADA** a morder* — uma face menor que `1/alvo` pede um nível NEGATIVO e o corte em `0` deixa-a
+mais fina do que o alvo. Isso é o fim da escada, não um defeito da lei, e está escrito no doc da
+[`niveis_por_area`].
+
+### §25.2 — ⭐⭐⭐⭐ A lei: a aresta leva o MÁXIMO, e a face grossa lê um SUBCONJUNTO EXACTO
+
+A fronteira é **partilhada** (é a diferença de espécie para o Ptex), logo ela só pode ter UMA
+resolução ⇒ `nivel_da_aresta = max(vizinhos)`. A face grossa conta `t` na retícula DELA e a aresta
+guarda as amostras na DELA, e o passo `le / lf` é **inteiro** porque as duas são potências de dois
+⇒ a amostra da face cai **em cima** de uma da aresta, sem arredondar e com as duas pontas
+preservadas.
+
+⛔ **Tomar o MÍNIMO apagaria detalhe que o artista pintou do lado fino**, e a média não é potência
+de dois. ⭐ **A multiplicação vive no [`enderecos::indice`] e em mais lado nenhum** — *uma segunda
+cópia dela é como metade de uma peça fica com a tinta da vizinha*.
+
+### §25.3 — ⚠️ O que NÃO muda, e é a metade que dá direito ao resto
+
+Com um nível uniforme os dois prefixos voltam a ser **produtos** — `off_aresta[id] = id·(L−1)` e
+`off_interior[f] = f·interior(L)` —, que é **exactamente** a aritmética que o shader ainda faz.
+⇒ *o caminho da placa fica correcto sem uma linha de WGSL nova*, e a suíte da crate passou de
+`36/36` para `42/42` **sem um gate antigo se mexer**. O gate que o afirma leva as duas metades
+(o uniforme é um produto · `Topologia::nova(k)` dá a MESMA topologia que `regraduada(&[k; n])`).
+
+### §25.4 — ⛔⛔ Quem ainda assume um lado só RECUSA, e não adivinha
+
+| consumidor | com um plano graduado | porquê |
+|---|---|---|
+| o **assado** | `Recusa::Graduado { niveis }` | a grelha dele é de ladrilhos **iguais**; assar ao nível da face `0` daria UV certas e perderia amostras **sem nada no ecrã a acusar** |
+| o **device** | **desarma** (`armado = 0`) | entrega a cor por VÉRTICE, que é o caso base desta família e está certo |
+| o **pincel** | **não recusa** | ele passou a ler `lado_da_face(fi)` DENTRO do laço, e fica correcto de graça |
+
+⭐ *A resposta errada com a confiança da certa é exactamente o que estas duas guardas existem para
+não entregar*, e a exaustividade do `match` no gate da recusa é o censo: **uma recusa nova não
+compila** até alguém dizer o que ela significa.
+
+### §25.5 — ⛔⛔ O portão apanhou DUAS coisas minhas, e a segunda estava debaixo da primeira
+
+**(a) O clippy acusou uma asserção VÁCUA:** `com[5] >= NIVEL_MAX - 5` num `u8` é
+`com[5] >= 0` — **sempre verdade**. *Uma asserção que não pode falhar é comentário com sintaxe de
+código.*
+
+**(b) E por trás dela a fixtura NÃO era uma corrente:** ela emitia um triângulo por coluna, e dois
+deles partilham só um **VÉRTICE**. A cerca do salto corre por **ARESTA** ⇒ ela não propagava nada, e
+o gate ficava verde sobre uma corrente que não existia. Hoje é uma tira a sério (`A_i`/`B_i`
+alternados) e a escada é afirmada **EXACTA**: `5 · 4 · 3 · 2 · 1 · 0`.
+
+⚠️ *Sem o lint eu tinha shipado um gate que mede o nada sobre uma fixtura que não contém o
+fenómeno* — as duas metades da mesma família, uma a esconder a outra.
+
+### §25.6 — ⭐⭐ E o PRÉ-VOO apanhou QUATRO âncoras que ESTA wave matou
+
+O `muta_a_lei_da_reticula.sh` leu **`12` de `16`** em segundos e **sem correr um teste**: o
+`indice` perdeu o argumento `lado` (ele é propriedade da FACE) e o `total` deixou de ser um produto,
+logo as âncoras `M3`, `M5`, `M7` e `M8` casavam **zero** vezes. ⚠️ E a re-ancoragem do `M5` falhou à
+primeira porque o `cargo fmt` colapsou o `total` numa linha só — *a armadilha que o pré-voo existe
+para apanhar, apanhada pelo pré-voo*. Depois de re-ancorado: **`16` de `16` sangram**.
+
+⚠️⚠️ *É a lei do §20.7 a cobrar-se de quem a escreveu: mover ou reescrever código parte arneses em
+duas espécies, e a que fica MUDA é a que se leva para o `main`.*
+
+### §25.7 — O placar
+
+* **Mutação: `11 de 12` sangram** ([`muta_o_r_por_face.sh`](../ferramentas/muta_o_r_por_face.sh); o
+  `P12` é o CONTROLO e não pode), com a população a ser as **três** crates que OBSERVAM
+  (`ph2d-mesh-colors` · `ph2d-mesh-render` · `ph2d-app-sculpt3d`).
+* O `muta_a_lei_da_reticula.sh` re-ancorado: **`16 de 16`**.
+* Pré-voo dos **onze** arneses: **`143` âncoras**, todas a casar uma vez.
+* `nextest-impacted` **`18 613` de `18 613`** · clippy `-D warnings` **zero** · `fmt` limpo ·
+  censos da árvore COMBINADA **`127/127`** (controlo do filtro `12 de 12`).
+* Censo da fiação da tinta fina: **`23` → `25` elos** (o pincel a ler o lado da FACE · o device a
+  desarmar) — *as duas leis não têm prova de comportamento alcançável, porque nenhum gesto produz
+  hoje um plano graduado e a do device vive atrás de um adaptador*.
+
+### §25.8 — ⏳ O que fica ABERTO, com o mecanismo
+
+* **O EMPACOTADOR do assado.** A cura da recusa `Graduado` é ladrilhos de tamanhos diferentes numa
+  textura só — e aí a P2 chega ao FICHEIRO, que é onde o dono a vê.
+* **O device.** O registo do shader descreve a retícula com um `lado` e o bloco das arestas com
+  `id × (lado − 1)`; com níveis por face as duas contas pedem um **offset por aresta**, que é buffer
+  novo no bind group.
+* **Quem ESCOLHE os níveis no produto.** A lei existe (`niveis_por_area`) e precisa das ÁREAS, que
+  esta crate não conhece — o chamador é a família, e a pista `Paint Detail` passa a pedir uma
+  densidade em vez de um degrau.
+* **A PERSISTÊNCIA de um plano graduado.** O formato guarda um `nivel` só; ou ele passa a guardar a
+  lista, ou a graduação é **re-derivada** no load a partir das áreas — e aí uma mudança na lei
+  relayouta ficheiros gravados **em silêncio**, o que pede um degrau.

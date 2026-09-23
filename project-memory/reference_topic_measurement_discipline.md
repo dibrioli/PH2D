@@ -1586,3 +1586,17 @@ mede o depurador.* ⇒ o `gdb` localiza; quem DECIDE é o A/B alternado de dois 
 ronda de carga. ⭐ Achado de caminho: o repo compila para `x86-64` BASE (sem SSE4.1), onde
 `f32::round`/`floor`/`trunc` são chamadas ao `compiler_builtins` — `target-cpu=x86-64-v3` mediu
 20–40 % a menos no Composite Brush sem código (decisão do dono, ADR-0172).
+
+## ⛔⛔ Uma régua MÓDULO a unidade não distingue «fechou» de «fugiu uma unidade inteira» (2026-09-22, `line/components`)
+
+A repetição de um fundo de paralaxe corrige o deslocamento por um número **INTEIRO** de ladrilhos, e
+o gate varria vinte ladrilhos exigindo *«a mesma fase»* — comparada `envolve(p − p₀, ladrilho)`,
+porque `+128` e `−128` são o mesmo ponto de uma imagem que se repete a cada `256`. ⛔ Ela estava
+certa **e era cega ao defeito inteiro**: a varredura anda exactamente um ladrilho por passo, logo
+apagar a repetição da ponte deixava a diferença a ser um múltiplo exacto e a envolver para **zero**
+— a mutação SOBREVIVEU com o gate verde. **Why:** a régua modular mede a *costura* e o que a
+repetição existe para impedir é a *fuga*; e o controlo que eu tinha ao lado media **outra cena**
+(sem o componente), logo provava que a varredura mexe e nunca que é o componente que a segura.
+**How to apply:** ao medir uma grandeza módulo alguma coisa, escreva **também** a metade absoluta
+(`|p − autorada| ≤ unidade/2`) — e quando o controlo precisar de trocar de cena para existir,
+desconfie: ele deixou de medir o mesmo programa. Ver [[reference_topic_gate_discipline]].

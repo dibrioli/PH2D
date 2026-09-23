@@ -343,3 +343,16 @@ media a marca. **Why:** três casos que parecem cobrir a lei podem estar todos a
 e é vácuo*. **How to apply:** para cada cerca, construa a fixtura que **só** ela recusa — aqui um
 registo com `x` e `y` **e sem marca** —, e a prova de mutação é quem diz se ela existe. Ver
 [[reference_topic_gate_discipline]] e [[reference_topic_measurement_discipline]].
+
+## ⛔⛔ Um `| head` mata o arnês de mutação por SIGPIPE e deixa o PRODUTO MUTADO na árvore (2026-09-22, `line/components`)
+
+O arnês guarda o ficheiro, muta, corre o filtro e **restaura**. Canalizado por `head` para ler só o
+princípio da saída, ele morre com **SIGPIPE entre o `muta` e o `restaura`** — e a mutação fica no
+código. A corrida seguinte leu `⛔ ANCORA: … aparece 0 vezes`, que é o arnês a ser honesto; mas uma
+que não tocasse naquela âncora teria corrido a suíte **sobre código mutado** e chamado ao resultado
+verde. **Why:** o repo já tem escrito que um `| head` destrói o *exit code*; isto é pior — ele
+destrói o **estado da árvore**, e a janela em que o defeito é invisível é exactamente a de quem
+muda de assunto a seguir. *Um arnês que restaura no caminho feliz não restaura; ele restaura quando
+nada corre mal.* **How to apply:** `trap ao_sair EXIT INT TERM PIPE` com a última mutação guardada
+numa variável, e a saída do arnês vai para um FICHEIRO (`> mut.txt`) em vez de um pipe. Ver
+[[reference_topic_ship_ci_integration_lessons]].

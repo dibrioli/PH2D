@@ -342,7 +342,7 @@ fn a_porta_do_plano_pergunta_pelo_dono_e_nao_pelo_indice() {
     ];
     for i in [0usize, 1] {
         let crate::objects::SceneObject { stack, tinta, .. } = &mut pecas[i];
-        garante(stack.mesh(), tinta, Some(1));
+        garante(stack.mesh(), tinta, &mut None, Some(1));
     }
     // A peça 0 empresta o plano dela ao traço.
     let emprestado = empresta(&mut pecas[0].tinta, ObjectId(7)).expect("a peça tinha plano");
@@ -397,7 +397,7 @@ fn o_primeiro_quadro_nao_deita_fora_o_plano_que_o_documento_trouxe() {
     let quadro = |knob: Option<u8>| {
         let mut tinta = Some(plano.clone());
         if let Rota::DaPeca { pedir } = rota(true, false, tinta.is_some(), knob) {
-            garante(&m, &mut tinta, pedir);
+            garante(&m, &mut tinta, &mut None, pedir);
         }
         tinta.map(|t| t.nivel())
     };
@@ -434,7 +434,7 @@ fn o_degrau_do_documento_sai_da_peca_activa_e_recorre_as_outras() {
     // Só a peça 2 tem plano: a fileira TEM de armar, senão o quadro deita-o fora.
     {
         let SceneObject { stack, tinta, .. } = &mut pecas[2];
-        garante(stack.mesh(), tinta, Some(2));
+        garante(stack.mesh(), tinta, &mut None, Some(2));
     }
     assert_eq!(
         degrau_do_documento(&pecas, 0),
@@ -446,7 +446,7 @@ fn o_degrau_do_documento_sai_da_peca_activa_e_recorre_as_outras() {
     // E com a activa a ter o seu, é o DELA que manda.
     {
         let SceneObject { stack, tinta, .. } = &mut pecas[0];
-        garante(stack.mesh(), tinta, Some(1));
+        garante(stack.mesh(), tinta, &mut None, Some(1));
     }
     assert_eq!(
         degrau_do_documento(&pecas, 0),
@@ -483,7 +483,7 @@ fn a_saida_pergunta_pela_porta_e_ve_a_tinta_emprestada_ao_traco() {
 
     {
         let SceneObject { stack, tinta, .. } = &mut pecas[0];
-        garante(stack.mesh(), tinta, Some(3));
+        garante(stack.mesh(), tinta, &mut None, Some(3));
     }
     assert!(
         alguma_peca_tem_plano(&pecas, None),

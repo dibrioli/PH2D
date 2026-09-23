@@ -194,3 +194,73 @@ fn uma_janela_cujos_indices_nao_cabem_e_recusada_e_nao_estoura() {
         "e a recusa não pode ter escrito um único bit"
     );
 }
+
+/// ⭐⭐⭐⭐ **GATE — LARGAR O DEGRAU E RE-ARMAR O MESMO NÃO TIRA O `Ctrl+Z` AO
+/// TRAÇO; DOIS degraus pelo meio tiram.**
+///
+/// ⚠️⚠️ **Ele mede a COMPOSIÇÃO, que é onde o produto vive e onde nenhum dos
+/// irmãos olha:** o [`crate::tinta_da_peca::garante`] tem gates do lado do
+/// parque, a [`JanelaFina::troca`] tem-nos do lado da identidade, e *uma lei
+/// verificada nas duas pontas ainda pode ser contrariada no meio*.
+///
+/// ⛔⛔ **A 1.ª asserção é o DISCRIMINADOR e sem ela o gate mede o nada:** sem
+/// parque, re-armar constrói um plano **BRANCO**, logo `pintadas == 0` já
+/// **antes** do desfazer — e a metade *«o desfazer devolveu o plano de antes»*
+/// passaria com a cura apagada. O que separa as duas árvores é o plano voltar
+/// **PINTADO**.
+///
+/// ⚠️ **E a FRONTEIRA é `dois` e não `um`:** a ranhura é uma, logo ir e voltar
+/// **directamente** devolve (o degrau de saída ocupa a ranhura que o de volta
+/// acabou de esvaziar), e **dois** degraus pelo meio despejam-na. *Era isto
+/// que o roteiro da `=52` dizia ao contrário.*
+#[test]
+fn largar_o_degrau_e_re_armar_o_mesmo_nao_tira_o_desfazer() {
+    let mut m = shapes::uv_sphere(16, 24, 1.0);
+    let fina = traco(&mut m, Verb::Paint, 2);
+    let janela = JanelaFina::do_traco(&fina).expect("o traço escreveu amostras");
+    let mut tinta = Some(fina.entregar());
+    let depois = tinta.as_ref().expect("armado").amostras().to_vec();
+    assert!(
+        pintadas(tinta.as_ref().expect("armado")) > 0,
+        "a fixtura não contém o fenómeno"
+    );
+
+    // (1) Largar a fileira para `Mesh` e voltar ao MESMO degrau.
+    let mut parque = None;
+    crate::tinta_da_peca::garante(&m, &mut tinta, &mut parque, None);
+    assert!(
+        tinta.is_none() && parque.is_some(),
+        "o CONTROLO: ele foi mesmo parqueado"
+    );
+    crate::tinta_da_peca::garante(&m, &mut tinta, &mut parque, Some(2));
+
+    let t = tinta.as_mut().expect("re-armado");
+    assert!(
+        pintadas(t) > 0,
+        "o DISCRIMINADOR: o plano tem de voltar PINTADO — se ele volta branco \
+         este gate mede o nada e a cura do parque não está lá"
+    );
+    let inversa = janela
+        .troca(Some(t))
+        .expect("é o MESMO plano, logo a janela aplica-se");
+    assert_eq!(pintadas(t), 0, "o desfazer não devolveu o plano de antes");
+    assert!(
+        inversa.troca(Some(t)).is_some() && t.amostras() == depois.as_slice(),
+        "e o refazer tem de o devolver ao bit"
+    );
+
+    // (2) A FRONTEIRA: DOIS degraus pelo meio despejam a ranhura.
+    let mut m2 = shapes::uv_sphere(16, 24, 1.0);
+    let fina2 = traco(&mut m2, Verb::Paint, 2);
+    let mut tinta2 = Some(fina2.entregar());
+    let mut parque2 = None;
+    for k in [Some(1), Some(3), Some(2)] {
+        crate::tinta_da_peca::garante(&m2, &mut tinta2, &mut parque2, k);
+    }
+    assert_eq!(
+        pintadas(tinta2.as_ref().expect("re-armado")),
+        0,
+        "com dois degraus pelo meio a ranhura já foi ocupada — se isto passar, \
+         alguém pôs lá mais do que um plano sem o dizer"
+    );
+}

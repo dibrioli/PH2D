@@ -2952,14 +2952,14 @@ mecanismo que refutou a leitura do TECTO, visto do outro lado da escada.
 
 ---
 
-## §25 — ⛔⛔⛔⛔ O SMOKE REPROVOU O `Even Detail`, e a ÂNCORA que eu shipei estava errada
+## §30 — ⛔⛔⛔⛔ O SMOKE REPROVOU O `Even Detail`, e a ÂNCORA que eu shipei estava errada
 
 > **Report do dono (2026-09-23), com duas fotos:** *«com even detail o resultado é pior em todas as
 > áreas e em todas as resoluções inclusive a 16x. A resolução fica bem baixa. Veja imagens sem e com
 > even detail.»* — a foto sem a caixa mostra uma marca vermelha de borda macia; a com ela mostra a
 > mesma marca **facetada**, a seguir as cunhas da malha, pintada perto do PÓLO.
 
-### §25.1 — Ele tem razão, e a lei fazia **exactamente** o que ele descreve
+### §30.1 — Ele tem razão, e a lei fazia **exactamente** o que ele descreve
 
 A âncora da §29 punha a face **TÍPICA** ao degrau pedido e igualava as outras a ela — *nos dois
 sentidos*. Medido pela porta do produto na peça da cena (`uv_sphere(24, 32)`, `768` faces):
@@ -2980,7 +2980,7 @@ faces recebiam `4x`. *A foto é o único resultado possível.*
 **SOBE** (`+4 %` a `+33 %` de amostras) — e a peça que o dono smoka é uma PRIMITIVA. *Uma lei medida
 só numa família de peças afirma sobre essa família.*
 
-### §25.2 — ⭐⭐⭐ A causa é uma propriedade da FORMA, e ela explica os dois lados
+### §30.2 — ⭐⭐⭐ A causa é uma propriedade da FORMA, e ela explica os dois lados
 
 Numa esfera UV a área de uma face é `∝ sin θ`: a maioria das faces vive perto do **equador**, que é
 onde elas são **maiores** ⇒ **a mediana senta-se no TOPO da distribuição**, e igualar por ela é
@@ -3002,7 +3002,7 @@ Medido em `k = 3`, com a coluna que decide (`acima` = faces que sobem):
 são quadriláteros finos. A `uv_sphere(24,32)` tem `15,3×` de dispersão e **nada** para uma lei de um
 sentido só fazer — *é isso que torna a tabela necessária, e não a dispersão sozinha*.
 
-### §25.3 — A cura: o `k` é um **PISO**
+### §30.3 — A cura: o `k` é um **PISO**
 
 `niveis_igualados` mantém a mediana como alvo e acrescenta `.map(|x| x.max(k))`.
 
@@ -3024,7 +3024,7 @@ promete. ⛔ **E a do MAIOR continua refutada** (§28.3).
 
 ⚠️ **Ela nunca pode piorar, e é isso que a torna shipável:** o pior caso dela é não fazer nada.
 
-### §25.4 — ⛔⛔⛔ E o piso EXPÔS um segundo defeito, que a esfera escondia
+### §30.4 — ⛔⛔⛔ E o piso EXPÔS um segundo defeito, que a esfera escondia
 
 O CONTROLO do no-op (*«um plano graduado tem de ser um no-op à segunda»*) **passava** na esfera e
 **reprovou** no cilindro. A causa estava escrita, por extenso, no doc do campo:
@@ -3045,7 +3045,7 @@ me deixou escrever o controlo e lê-lo como verde.*
 outra vez, por qualquer regra, seria a segunda resposta a «o que é que o artista pediu?» — e a
 primeira é a fileira do painel.* Quem construir um plano graduado sem o dizer **não compila**.
 
-### §25.5 — ⛔⛔ O passo do roteiro SAI, e o gate da cena INVERTE-SE
+### §30.5 — ⛔⛔ O passo do roteiro SAI, e o gate da cena INVERTE-SE
 
 O passo `(4-ter)` mandava o dono carregar na caixa e prometia que *«o grão fica o MESMO em toda a
 peça»*. Com o piso ela é **inerte** ali ⇒ ele ensinaria a cura a não fazer nada, que é a espécie que
@@ -3063,7 +3063,7 @@ Mais o irmão `o_roteiro_da_cena_nao_nomeia_a_caixa_da_tinta_igualada`, e o anti
 reduzido ao que continua verdade (`a_caixa_da_tinta_igualada_e_um_interruptor_vivo`): **a caixa fica
 no painel**, porque com o piso ela nunca pode tirar resolução.
 
-### §25.6 — Três gates com a premissa MORTA, escrita no diff
+### §30.6 — Três gates com a premissa MORTA, escrita no diff
 
 | gate | premissa que morreu | porquê |
 |---|---|---|
@@ -3072,10 +3072,10 @@ no painel**, porque com o piso ela nunca pode tirar resolução.
 | `a_igualacao_chega_ao_plano_e_desliga_se` | a fixtura era uma ESFERA, *«densidade load-bearing»* | verdade sobre a dispersão e insuficiente desde o piso ⇒ **cilindro** |
 | `um_plano_graduado_atravessa_o_ficheiro_com_os_niveis_dele` | idem | idem |
 
-### §25.7 — Portão
+### §30.7 — Portão
 
 * mutação **`24` de `25`** (o `P12` é o CONTROLO), com **duas** âncoras novas: o piso (`P25`) e o
-  pedido guardado (`P26`, que é o defeito da §25.4 à letra);
+  pedido guardado (`P26`, que é o defeito da §30.4 à letra);
 * pré-voo dos **onze** arneses **`150/150`** antes e **`152/152`** depois (e outra vez depois do
   `cargo fmt`);
 * `nextest-impacted` **`18 625/18 625`** · censos da árvore COMBINADA **`127/127`** (controlo do
@@ -3090,7 +3090,7 @@ no painel**, porque com o piso ela nunca pode tirar resolução.
   eu li como limpo. *Foi o controlo positivo do próprio instrumento que o disse* (ele discrimina o
   uso errado do achado, e o `exit` é o veredito, nunca a contagem de linhas).
 
-### §25.8 — ⏳ ABERTO, e é **decisão do dono**
+### §30.8 — ⏳ ABERTO, e é **decisão do dono**
 
 Com a cura, na peça que ele smoka o `Even Detail` **não faz nada** — e isso é honesto, não um
 defeito. O que ele compra vive em peças de faces mistas (`2×` de dispersão por `+9 %`–`+36 %` de
@@ -3100,12 +3100,12 @@ onde ela seja inerte.
 
 ---
 
-## §26 — ⛔⛔⛔⛔ O `Even Detail` SAIU, por ordem do dono
+## §31 — ⛔⛔⛔⛔ O `Even Detail` SAIU, por ordem do dono
 
-> **2026-09-23, a seguir ao report da §25 e à cura do piso:** *«Even Detail derruba muito a
+> **2026-09-23, a seguir ao report da §30 e à cura do piso:** *«Even Detail derruba muito a
 > resolução. retiro!»* — e, confirmado, *«retire!»*.
 
-### §26.1 — O que a medição da §25 tinha deixado na mesa
+### §31.1 — O que a medição da §30 tinha deixado na mesa
 
 Com o `k` virado **PISO** a caixa já não podia tirar resolução a ninguém. O que ela passou a comprar
 está medido: `6,74× → 3,49×` de dispersão em `_base_sculpt` (por `+9 %` de memória) e
@@ -3113,7 +3113,7 @@ está medido: `6,74× → 3,49×` de dispersão em `_base_sculpt` (por `+9 %` de
 numa esfera UV a mediana senta-se no topo da distribuição de área. *Uma caixa que não faz nada na
 peça em que ele trabalha é uma caixa que ele retira.*
 
-### §26.2 — ⭐⭐⭐ A fronteira: o que sai é **quem CRIA**, nunca **quem LÊ**
+### §31.2 — ⭐⭐⭐ A fronteira: o que sai é **quem CRIA**, nunca **quem LÊ**
 
 A medição antes do primeiro corte deu a cascata exacta:
 
@@ -3136,7 +3136,7 @@ degrau pedido **E** é do tipo que a caixa pede?»*; hoje pergunta só a primeir
 plano graduado vindo de um ficheiro seria **reconstruído uniforme no primeiro quadro** — e a tinta
 fina que ele carrega ia com ele.
 
-### §26.3 — ⛔ O que foi APAGADO, e porquê não ficou «vivo e desligado»
+### §31.3 — ⛔ O que foi APAGADO, e porquê não ficou «vivo e desligado»
 
 | saiu | porquê |
 |---|---|
@@ -3149,9 +3149,9 @@ fina que ele carrega ia com ele.
 ⚠️ **A alternativa — deixá-las vivas e desligadas — foi considerada e recusada com a lei da casa:**
 *nenhuma sonda deste repo pergunta se uma PORTA tem chamador*, logo elas ficariam a ser medidas só
 pelos gates delas próprias. **O endereço da medição é o handoff, nunca código sem chamador**, e a
-§25 tem a tabela inteira para quem quiser reconstruir.
+§30 tem a tabela inteira para quem quiser reconstruir.
 
-### §26.4 — ⚠️ Quatro coisas que a retirada obrigou, e nenhuma é arrumação
+### §31.4 — ⚠️ Quatro coisas que a retirada obrigou, e nenhuma é arrumação
 
 * ⛔⛔ **A minha própria prosa prometeu um gate que NÃO existe.** Ao registar a saída da
   `face_areas` escrevi *«a metade que sobrevive é o gate da `surface_area` abaixo»* — e não existe
@@ -3184,7 +3184,7 @@ pelos gates delas próprias. **O endereço da medição é o handoff, nunca cód
   igualdade não vê um erro que os dois lados cometem* — o CONTROLO do gate novo é justamente exigir
   que a fixtura tenha uma face ACIMA do pedido, senão as duas leituras coincidem e ele afirma nada.
 
-### §26.5 — Portão
+### §31.5 — Portão
 
 * mutação do R por face **`17` de `18`** (o `P12` é o CONTROLO) — ⚠️ a 1.ª corrida deu `16`, com a
   `P26` a sobreviver, e o gate que faltava está acima; da metade visível **`42` de `43`**, com as
@@ -3198,9 +3198,195 @@ pelos gates delas próprias. **O endereço da medição é o handoff, nunca cód
   `git diff --stat` sobre os acusados, e a linha acusada já existe no commit anterior);
 * ⭐ e o **`885/885`** da família com o corte inteiro dentro.
 
-### §26.6 — ⏳ O que fica NOMEADO
+### §31.6 — ⏳ O que fica NOMEADO
 
 **O registo do device continua a pagar `9` palavras por face** (`PAYLOAD_STRIDE` `10 → 19`, medido
 em `7,6 MB` contra `4,0` a `100 k` faces) **para LER um plano que hoje só um ficheiro antigo traz.**
 Cortá-las é um degrau de formato (`SCULPT_DOC_VERSION`) mais uma decisão sobre os ficheiros já
 gravados — ⇒ **decisão do dono**, não da linha, e a medição está aqui.
+
+---
+
+## §32 — ⭐⭐⭐⭐ O PARQUE: largar o degrau deixou de APAGAR o detalhe fino
+
+> **Ordem do dono, 2026-09-23:** *«siga sua recomendação e implemente»* — a
+> recomendação era esta, e ela é o **último sítio onde a tinta fina ainda
+> morria** depois de a §19 curar o traço abandonado e a §30/§31 fecharem o
+> `Even Detail`.
+
+### §32.1 — O defeito, em duas linhas
+
+A fileira `Paint Detail` tem quatro posições e a primeira é **`Mesh`**. Voltar a
+ela chamava `garante(.., None)`, que fazia `*tinta = None` — e **o plano ia-se**.
+
+⛔⛔ **E não havia como o recuperar**, porque o que fica na peça é o canal **por
+vértice**: o `devolve` mantém `Mesh::colors` igual ao `plano_por_vertice()` a
+cada fim de traço, logo re-armar `8x` re-semeava daí e entregava **a mesma cor
+na resolução da malha**. *O que vivia ENTRE os vértices — que é exactamente o
+que o degrau compra — não tinha onde estar guardado.*
+
+⚠️ **Do lado do artista isto lê-se como o report da §10** (*«voltou para o modo
+mesh»*) e **não é o mesmo defeito**: ali o plano morria sem ninguém lhe tocar,
+aqui ele morre porque o artista carregou num botão que não diz que apaga.
+
+### §32.2 — A cura: uma RANHURA por peça, com UM escritor
+
+[`SceneObject::tinta_parqueada`] guarda o plano que saiu do ar. Ela tem **um**
+escritor — a [`tinta_da_peca::garante`] —, e é isso que torna o invariante
+*«nunca os dois ao mesmo tempo»* uma propriedade de **uma função** em vez de
+dois campos que têm de concordar.
+
+⭐⭐ **E ela NÃO precisa de impressão digital.** O `plano_por_vertice()` é uma
+**fatia** (`&self.amostras[..verts]`) — custo zero — e o `devolve` mantém a cor
+da malha igual a ela no fim de cada traço; logo a pergunta *«este plano ainda
+descreve o que a peça mostra?»* responde-se comparando **os dois planos que já
+existem**, sem guardar um hash que envelhece.
+
+### §32.3 — ⚠️⚠️ A ORDEM dentro do `garante` é LOAD-BEARING
+
+```rust
+let antigo = tinta.take();          // 1. tira-se o que está no ar
+*tinta = k.map(|k| desparqueia(..)  // 2. procura-se no parque
+    .unwrap_or_else(|| /* nasce */));
+if let Some(t) = antigo { *parque = Some(t); }  // 3. guarda-se DEPOIS
+```
+
+⛔ **Guardar antes de buscar é o defeito que a `K5` reproduz:** a ranhura é
+**uma**, logo o plano que acabou de sair sobrescreve aquele que se ia lá buscar
+— e a troca de degrau (`8x → 4x → 8x`) passa a devolver **sempre** o plano
+errado, em silêncio.
+
+### §32.4 — ⭐⭐ O `desparqueia` faz TRÊS perguntas, e cada uma tem um report por trás
+
+| pergunta | o que ela impede |
+|---|---|
+| `t.nivel() == k` | um plano `4x` devolvido como se fosse o `8x` — *a tinta com a grossura errada, que é o sintoma que o dono já reportou duas vezes* |
+| `concorda_com(t, mesh)` | um plano devolvido a uma malha que ele **já não descreve** (esculpir enquanto o plano dorme) — a lei da §14, que o dono pagou com um `panic` |
+| `mesh.colors().is_none_or(\|c\| c == t.plano_por_vertice())` | o parque devolvido **por cima de tinta pintada no nível da malha** — *pior do que a perda que a cura existe para curar* |
+
+⛔⛔ **E a terceira nasceu ERRADA, com os gates a dizê-lo:** a 1.ª redacção
+recusava quando a malha **não tem** canal de cor (`is_some_and`), que é o valor
+«conservador» escolhido sem olhar para o que ele protege. O `dois_tris()` tem
+`colors() == None`, logo ela **recusava exactamente onde recusar custa mais** —
+uma peça nunca pintada, onde a pergunta da cor é **vácua**. `is_none_or` é a
+leitura certa: *sem canal não há tinta nova para atropelar.*
+
+### §32.5 — Os gates, e o que cada um mede
+
+| gate | a metade que ninguém mais tem |
+|---|---|
+| `largar_o_degrau_nao_apaga_o_detalhe_fino` | a marca do **MIOLO** (`amostra ≥ verts`) volta **ao bit** — ⚠️ e a 1.ª asserção é o **CONTROLO da régua**: sem ela o gate mediria uma amostra de vértice, que sobrevive **sem parque nenhum** |
+| `o_parque_serve_a_troca_de_degrau_e_a_ranhura_e_uma` | a ida-e-volta `2 → 1 → 2` devolve; e a **FRONTEIRA** — um terceiro degrau pelo meio **despeja** a ranhura, *e se isso passar alguém pôs lá duas sem o dizer* |
+| `pintar_no_nivel_da_malha_descarta_o_parque` | as **duas** metades: o plano velho **não** volta, e o novo nasce **semeado da cor de AGORA** |
+| `esculpir_enquanto_o_plano_dorme_descarta_o_parque` | o plano re-armado descreve a malha de agora, com o `parque.is_some()` como CONTROLO de que ele chegou mesmo a ser parqueado |
+| `o_plano_conta_no_que_a_peca_pesa` | ganhou a **metade do parque**: um plano `8x` na peça de fábrica pesa `75,5 MB`, e *um plano que a conta não vê é memória que ninguém sabe que tem* |
+
+⚠️ **O braço `RemovedObject` da fila de desfazer guarda um `SceneObject`
+INTEIRO** — logo apagar uma peça com o plano parqueado leva os `75,5 MB` para a
+fila; é por isso que a conta do `footprint_bytes` não é arrumação.
+
+### §32.6 — ⛔⛔⛔ E a cura DESMENTIU DUAS frases do roteiro da `=52` — uma delas **já era falsa antes dela**
+
+A cena ensinava, no passo (5), *«a segunda marca ENGROSSA e fica como a
+primeira. É o preço, e não um defeito»*. Com o parque isso é **falso**, e a
+espécie tem nome nesta casa: *uma cena que ensina o CONTRÁRIO do que acontece é
+pior que uma cena ausente* (§5.0) — o passo passou a mandar **voltar ao `8x`** e
+a dizer que as marcas ficam finas outra vez.
+
+⛔⛔ **E o aviso do passo (7) era impreciso ANTES desta wave, o que só se soube
+por ir LER a cerca em vez de a supor.** Ele dizia que trocar a fileira entre o
+traço e o `Ctrl+Z` matava o desfazer daquele traço — e a identidade do plano é
+`IdDoPlano { verts, faces, nivel }`, **sem a contagem de amostras** (o doc dela
+explica porquê, e a decisão é anterior a mim). Logo um plano do **mesmo** degrau
+sobre a **mesma** malha bate a identidade e a janela **aplica-se** — o gate
+`uma_janela_de_outro_plano_e_largada_e_nao_toca_num_bit` já o afirmava na
+metade **(c)**, como CONTROLO, e ninguém tinha lido as duas coisas ao lado uma
+da outra.
+
+⚠️ **A fronteira certa é `DOIS` e não `um`, e ela é aritmética da ranhura:**
+
+| gesto | o que acontece | porquê |
+|---|---|---|
+| `8x → Mesh → 8x` | o plano **volta** | o `Mesh` não constrói nada, a ranhura fica com o `8x` |
+| `8x → 4x → 8x` | o plano **volta** | o `4x` que sai ocupa a ranhura que o `8x` acabou de esvaziar |
+| `8x → 4x → 2x → 8x` | o plano **morre** | o `2x` que entra empurra o `4x` para a ranhura, e o `8x` cai |
+
+⭐⭐ **E o gate que faltava mede a COMPOSIÇÃO**
+(`largar_o_degrau_e_re_armar_o_mesmo_nao_tira_o_desfazer`): o `garante` tem
+gates do lado do parque, a `JanelaFina::troca` tem-nos do lado da identidade, e
+*uma lei verificada nas duas pontas ainda pode ser contrariada no meio*.
+⛔ **A 1.ª asserção dele é o DISCRIMINADOR, e sem ela ele mede o nada:** sem
+parque, re-armar constrói um plano **BRANCO**, logo `pintadas == 0` já **antes**
+do desfazer e a metade *«o desfazer devolveu o plano de antes»* passaria com a
+cura apagada. *O que separa as duas árvores é o plano voltar PINTADO.*
+
+### §32.7 — O placar
+
+**Mutação — a rede da metade visível inteira, `48` de `49` a sangrar, e a `49.ª`
+é o CONTROLO** (`M15`, uma linha em branco, que **não pode** sangrar):
+
+| fatia | filtro | placar |
+|---|---|---|
+| o parque + as três re-ancoradas | `^(K[1-6]\|M[127]) ` | **9 de 9** |
+| o miolo | `^(M[3-689]\|M1[0-9]\|M14b) ` | **16 de 17** (+ o CONTROLO) |
+| a cauda + as da cena | `^(K1\|M1[23]\|M2[0-9]\|M3[0-9]\|M4[0-2]) ` | **26 de 26** |
+
+⚠️ **As três âncoras que vivem no ficheiro que a §32.6 editou** (`M12`, `M13`,
+`M23`, todas em `scenes_tinta_fina.rs`) **foram re-medidas na 3.ª fatia, sobre a
+árvore final** — *um placar herdado é um placar sobre outra árvore*, e a única
+forma de o não herdar é re-correr o que o diff tocou. O gate novo da §32.6 vive
+num ficheiro de **teste**, que não tem âncoras e só pode acrescentar sangria.
+
+⛔ **E o arnês teve de correr por FATIAS, com `PH2D_PRAZO=3600`:** `49` âncoras
+× `~50 s` batem no prazo de `30 min` da fatia, e um arnês morto a meio deixa uma
+**mutação CONGELADA** na árvore — o que esta jornada já pagou duas vezes. ⭐ O
+sumário **DIZ que é parcial** (`⚠️ SUBCONJUNTO`), porque *um placar parcial lido
+como completo é a forma mais barata de um arnês mentir*.
+
+**Pré-voo:** `49 de 49 âncoras casam exactamente uma vez (ZERO testes corridos)`
+— corrido **depois** do `cargo fmt`, que é onde uma âncora morre em silêncio.
+
+### §32.8 — Portão
+
+| passo | veredito |
+|---|---|
+| `cargo fmt --all --check` | `rc = 0` |
+| `cargo clippy --workspace --all-targets --all-features -- -D warnings` | `rc = 0`, **zero** |
+| `nextest-impacted` | **`18 621` / `18 621`** (1 lento) |
+| censos da árvore COMBINADA | **`127` / `127`**, controlo do filtro `12 de 12` |
+| gates da tinta fina **com adaptador** (`--run-ignored all`) | **`59` / `59`** — o `slots.rs` é o caminho do UPLOAD, logo a placa não é opcional aqui |
+| as **10** vassouras sobre os `10` ficheiros do diff | **zero achados NOVOS** — os `7` acusados (`tip_roundness`, `sculpt_gesture`, `smask_px`) estão **todos** no `HEAD` e nenhuma linha que esta wave acrescentou os contém (medido: `0` no `git diff | grep '^+'`) |
+| tecto de LOC | maior ficheiro tocado **`694`** de `700` |
+
+⚠️ **O `tinta_da_peca_tests.rs` fica com `6` linhas de margem** — fica NOMEADO:
+a próxima metade de gate ali obriga a **CORTE**, nunca a uma entrada no
+`FILE_OVERAGE_OK`.
+
+⛔⛔ **E o portão cobrou-me DUAS coisas de INSTRUMENTO, as duas já escritas no
+repo antes de eu as repetir:**
+
+* um `cargo clippy … | tail -25` **destrói o código de saída** (§2 escreve-o por
+  extenso), e o `rc` que eu tinha posto ao lado estava em sintaxe de **zsh**
+  dentro de um `bash -c` ⇒ o veredito passa a ser um ficheiro `.rc`;
+* e o `pkill -f 'cargo clippy'` que eu corri para o parar **apanhou o próprio
+  shell** — o padrão casa a linha de comando do `pkill`. *É a memória
+  `feedback_a_pgrep_watcher_catches_its_own_shell` a ser paga por quem a
+  escreveu.*
+
+⛔⛔⛔ **E a 1.ª corrida das vassouras mediu o NADA, com o modo de falha
+conservador:** `bash scripts/cleanroom-sweep.sh "$v" $FILES` — no **fish** uma
+variável com espaços é **UM** argumento, logo as dez devolveram `exit 2`
+(*«path não existe»*) e o log lia-se como uma corrida. ⭐ **O que a apanhou foi
+ler o `rc`**: *o veredito de uma vassoura é o EXIT CODE, nunca a contagem de
+linhas que ela imprime.*
+
+### §32.9 — ⏳ O que fica ABERTO
+
+- **O parque não viaja no `.ph2dproj`** — o `SCULPT_DOC_VERSION` guarda o plano
+  ARMADO (§18) e não a ranhura. ⚠️ *Declarado e não curado:* gravar com a
+  fileira em `Mesh` grava a peça **sem** plano nenhum, que é o que o ficheiro
+  sempre disse; o que se perde é o «voltar atrás» depois de reabrir.
+- **A ranhura é UMA por peça.** Dois degraus diferentes pelo meio despejam-na —
+  a aritmética está na §32.6 e o roteiro da `=52` di-lo. *Uma segunda ranhura
+  é decisão do dono, e o preço é `75,5 MB` por degrau guardado.*
+- **O SMOKE do dono** — é o 1.º pedido desta wave.

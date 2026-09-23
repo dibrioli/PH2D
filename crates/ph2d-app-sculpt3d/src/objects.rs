@@ -92,6 +92,22 @@ pub(crate) struct SceneObject {
     /// mais forte: o endereço de uma amostra é `(face, sítio)` da malha DESTA
     /// peça — um plano partilhado leria a tinta de uma na geometria de outra.
     pub(super) tinta: Option<ph2d_mesh_colors::Tinta>,
+    /// ⭐⭐⭐⭐ **O PLANO PARQUEADO** — o que esta peça tinha quando o artista
+    /// largou o degrau, ou trocou para outro.
+    ///
+    /// ⛔⛔ **Ele existe porque voltar a fileira para `Mesh` DESTRUÍA o detalhe
+    /// fino** (ordem do dono, 2026-09-23): o canal por vértice guarda a mesma
+    /// cor em baixa resolução, logo re-armar re-semeava daí e o que vivia
+    /// *entre* os vértices tinha-se ido.
+    ///
+    /// ⚠️ **Ele tem UM escritor** — a [`super::tinta_da_peca::garante`] —, e é
+    /// isso que torna o invariante *«nunca os dois ao mesmo tempo»* uma
+    /// propriedade de UMA função em vez de dois campos que têm de concordar.
+    ///
+    /// ⚠️ **Ele CONTA no orçamento** ([`Self::footprint_bytes`]): um plano `8x`
+    /// na peça de fábrica pesa `75,5 MB`, e *um plano que a conta não vê é
+    /// memória que ninguém sabe que tem*.
+    pub(super) tinta_parqueada: Option<ph2d_mesh_colors::Tinta>,
     /// **O device ainda não viu o plano de cima.**
     ///
     /// ⚠️⚠️ **Ela existe porque subir o plano é `O(V + F)` e o quadro é 60 Hz**
@@ -124,6 +140,13 @@ impl SceneObject {
                 .tinta
                 .as_ref()
                 .map_or(0, ph2d_mesh_colors::Tinta::footprint_bytes)
+            // ⚠️ **E o PARQUEADO conta na mesma**, pela razão exacta que o doc
+            //    acima narra sobre o armado: ele pesa o mesmo e a fila de
+            //    desfazer leva-o igual quando a peça é apagada.
+            + self
+                .tinta_parqueada
+                .as_ref()
+                .map_or(0, ph2d_mesh_colors::Tinta::footprint_bytes)
     }
 
     pub(super) fn new(id: ObjectId, mesh: Mesh, pose: Pose) -> Self {
@@ -135,6 +158,7 @@ impl SceneObject {
             dirty: Vec::new(),
             preview: super::sculpt3d_preview::PreviewState::default(),
             tinta: None,
+            tinta_parqueada: None,
             tinta_suja: false,
         }
     }
@@ -154,6 +178,7 @@ impl SceneObject {
             dirty: Vec::new(),
             preview: super::sculpt3d_preview::PreviewState::default(),
             tinta: None,
+            tinta_parqueada: None,
             tinta_suja: false,
         }
     }

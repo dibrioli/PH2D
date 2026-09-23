@@ -32,7 +32,10 @@ fn o_plano_novo_nasce_com_a_cor_que_a_peca_ja_tinha() {
         *c = [0.2, 0.7, 0.1];
     }
     let mut t = None;
-    assert!(garante(&pintada, &mut t, Some(2)), "o plano tem de nascer");
+    assert!(
+        garante(&pintada, &mut t, &mut None, Some(2)),
+        "o plano tem de nascer"
+    );
     let plano = t.expect("nasceu");
     for (i, a) in plano.amostras().iter().enumerate() {
         for k in 0..3 {
@@ -45,7 +48,7 @@ fn o_plano_novo_nasce_com_a_cor_que_a_peca_ja_tinha() {
 
     let crua = dois_tris();
     let mut t2 = None;
-    assert!(garante(&crua, &mut t2, Some(2)));
+    assert!(garante(&crua, &mut t2, &mut None, Some(2)));
     let branco = t2.expect("nasceu");
     assert!(
         branco.amostras().iter().all(|a| *a == [1.0, 1.0, 1.0]),
@@ -59,14 +62,26 @@ fn o_plano_novo_nasce_com_a_cor_que_a_peca_ja_tinha() {
 fn reconciliar_o_mesmo_nivel_nao_reconstroi_nada() {
     let m = dois_tris();
     let mut t = None;
-    assert!(garante(&m, &mut t, Some(1)), "a primeira vez constrói");
-    assert!(!garante(&m, &mut t, Some(1)), "a segunda não mexe em nada");
-    assert!(garante(&m, &mut t, Some(2)), "outro nível reconstrói");
+    assert!(
+        garante(&m, &mut t, &mut None, Some(1)),
+        "a primeira vez constrói"
+    );
+    assert!(
+        !garante(&m, &mut t, &mut None, Some(1)),
+        "a segunda não mexe em nada"
+    );
+    assert!(
+        garante(&m, &mut t, &mut None, Some(2)),
+        "outro nível reconstrói"
+    );
     assert_eq!(t.as_ref().map(ph2d_mesh_colors::Tinta::nivel), Some(2));
-    assert!(garante(&m, &mut t, None), "desarmar larga o plano");
+    assert!(
+        garante(&m, &mut t, &mut None, None),
+        "desarmar larga o plano"
+    );
     assert!(t.is_none());
     assert!(
-        !garante(&m, &mut t, None),
+        !garante(&m, &mut t, &mut None, None),
         "desarmar duas vezes não é mudança"
     );
 }
@@ -78,7 +93,7 @@ fn reconciliar_o_mesmo_nivel_nao_reconstroi_nada() {
 fn a_concordancia_ve_os_vertices_e_as_faces() {
     let m = dois_tris();
     let mut t = None;
-    garante(&m, &mut t, Some(1));
+    garante(&m, &mut t, &mut None, Some(1));
     let plano = t.expect("nasceu");
     assert!(concorda_com(&plano, &m), "ela concorda consigo mesma");
 
@@ -131,7 +146,7 @@ fn devolver_o_plano_reescreve_a_cor_por_vertice() {
         *c = [1.0, 0.0, 0.0];
     }
     let mut t = None;
-    garante(&m, &mut t, Some(1));
+    garante(&m, &mut t, &mut None, Some(1));
     // Pinta o PLANO de verde, sem tocar na malha.
     for a in t.as_mut().expect("nasceu").amostras_mut() {
         *a = [0.0, 1.0, 0.0];
@@ -183,7 +198,7 @@ fn devolver_nada_deixa_a_peca_como_estava() {
 fn um_plano_desactualizado_nao_escreve_no_canal_por_vertice() {
     let m = dois_tris();
     let mut t = None;
-    garante(&m, &mut t, Some(1));
+    garante(&m, &mut t, &mut None, Some(1));
     for a in t.as_mut().expect("nasceu").amostras_mut() {
         *a = [0.0, 0.0, 1.0];
     }
@@ -237,7 +252,7 @@ fn o_custo_do_tecto_por_vertice_e_o_que_a_constante_diz() {
         "a fixtura tem de ser de QUADS: a constante só descreve essa família"
     );
     let mut t = None;
-    garante(&m, &mut t, Some(NIVEL_MAX));
+    garante(&m, &mut t, &mut None, Some(NIVEL_MAX));
     let amostras = t.expect("nasceu").amostras().len();
     let por_vertice = amostras as f64 / m.vert_count() as f64;
     let alvo = CUSTO_POR_VERTICE_NO_TECTO as f64;
@@ -257,7 +272,7 @@ fn o_custo_do_tecto_por_vertice_e_o_que_a_constante_diz() {
 fn o_nivel_acima_do_tecto_e_cortado_no_tecto() {
     let m = dois_tris();
     let mut t = None;
-    garante(&m, &mut t, Some(NIVEL_MAX + 4));
+    garante(&m, &mut t, &mut None, Some(NIVEL_MAX + 4));
     assert_eq!(
         t.as_ref().map(ph2d_mesh_colors::Tinta::nivel),
         Some(NIVEL_MAX)
@@ -311,15 +326,21 @@ fn o_plano_conta_no_que_a_peca_pesa() {
     let mut peca = SceneObject::new(ObjectId(0), m.clone(), ph2d_mesh::Pose::default());
     let sem = peca.footprint_bytes();
 
-    // CONTROLO: reconciliar para `None` não muda um byte.
-    garante(&m, &mut peca.tinta, None);
+    // CONTROLO: reconciliar para `None` numa peça que NUNCA teve plano não
+    // muda um byte — nem há o que armar, nem o que parquear.
+    garante(&m, &mut peca.tinta, &mut peca.tinta_parqueada, None);
     assert_eq!(
         peca.footprint_bytes(),
         sem,
         "sem plano o peso da peça não pode mudar"
     );
 
-    garante(&m, &mut peca.tinta, Some(NIVEL_MAX));
+    garante(
+        &m,
+        &mut peca.tinta,
+        &mut peca.tinta_parqueada,
+        Some(NIVEL_MAX),
+    );
     let com = peca.footprint_bytes();
     let plano = peca
         .tinta
@@ -337,6 +358,23 @@ fn o_plano_conta_no_que_a_peca_pesa() {
          deixou de o somar, e uma peça apagada leva-o para a fila de desfazer \
          invisível ao tecto",
         com - sem
+    );
+
+    // ⭐⭐⭐ **E a METADE NOVA (2026-09-23): largar o degrau PARQUEIA o plano, e
+    //     o peso NÃO desce.** Esta é a contrapartida medida da cura — o artista
+    //     deixa de perder o detalhe fino e paga com a memória a ficar tomada.
+    //     ⛔ *Sem esta asserção, um `footprint_bytes` que se esquecesse do
+    //     parque punha até `75 MB` na fila de desfazer invisíveis ao tecto —
+    //     exactamente o defeito que a metade de cima narra, um campo adiante.*
+    garante(&m, &mut peca.tinta, &mut peca.tinta_parqueada, None);
+    assert!(
+        peca.tinta.is_none() && peca.tinta_parqueada.is_some(),
+        "largar o degrau tem de PARQUEAR o plano, não o largar"
+    );
+    assert_eq!(
+        peca.footprint_bytes(),
+        com,
+        "o plano foi parqueado e o peso desceu — a conta não vê o parque"
     );
 }
 
@@ -435,8 +473,13 @@ fn o_plano_volta_a_peca_que_o_emprestou_e_nao_a_activa() {
         SceneObject::new(ObjectId(9), m, ph2d_mesh::Pose::default()),
     ];
     {
-        let crate::objects::SceneObject { stack, tinta, .. } = &mut pecas[0];
-        garante(stack.mesh(), tinta, Some(1));
+        let crate::objects::SceneObject {
+            stack,
+            tinta,
+            tinta_parqueada,
+            ..
+        } = &mut pecas[0];
+        garante(stack.mesh(), tinta, tinta_parqueada, Some(1));
     }
     let emprestado = empresta(&mut pecas[0].tinta, ObjectId(7)).expect("a peça tinha plano");
     assert!(
@@ -476,8 +519,13 @@ fn um_dono_que_ja_nao_existe_leva_o_plano_consigo() {
         ph2d_mesh::Pose::default(),
     )];
     {
-        let crate::objects::SceneObject { stack, tinta, .. } = &mut pecas[0];
-        garante(stack.mesh(), tinta, Some(1));
+        let crate::objects::SceneObject {
+            stack,
+            tinta,
+            tinta_parqueada,
+            ..
+        } = &mut pecas[0];
+        garante(stack.mesh(), tinta, tinta_parqueada, Some(1));
     }
     let emprestado = empresta(&mut pecas[0].tinta, ObjectId(7)).expect("a peça tinha plano");
     pecas.clear();
@@ -504,3 +552,143 @@ fn um_dono_que_ja_nao_existe_leva_o_plano_consigo() {
 // ⚠️ **E o que ele apanhou fica registado**, porque foi o CONTROLO dele que o
 // achou: o plano graduado era reconstruído em TODO quadro, porque o campo
 // `nivel` guardava o nível mais fino e não o degrau pedido. Handoff §25.4.
+
+/// ⭐⭐⭐⭐ **GATE — LARGAR O DEGRAU DEIXOU DE APAGAR O DETALHE FINO.**
+///
+/// > Ordem do dono, 2026-09-23, à pergunta de qual seria a etapa seguinte:
+/// > *«siga sua recomendação e implemente»* — a recomendação era esta.
+///
+/// ⛔⛔ **O defeito que ele cura:** o canal por vértice guarda a MESMA cor em
+/// baixa resolução (a [`super::devolve`] escreve-o no fim de cada traço), logo
+/// re-armar o degrau re-semeava daí e **o que vivia entre os vértices tinha-se
+/// ido, sem volta**. O roteiro da `=52` avisava — *e avisar não é curar*.
+///
+/// ⚠️⚠️ **A régua tem de ser uma amostra do MIOLO, nunca uma de vértice:** as
+/// primeiras `verts` amostras de um plano SÃO a projecção por vértice dele, e
+/// essas sobrevivem na mesma sem parque nenhum (é delas que a semente parte).
+/// *Um gate que medisse uma amostra de vértice ficava verde sobre o defeito.*
+#[test]
+fn largar_o_degrau_nao_apaga_o_detalhe_fino() {
+    let m = dois_tris();
+    let (mut t, mut parque) = (None, None);
+    assert!(garante(&m, &mut t, &mut parque, Some(2)), "o plano nasceu");
+
+    // Uma marca que vive ENTRE os vértices: a última amostra do plano.
+    let alvo = t.as_ref().expect("armado").amostras().len() - 1;
+    let verts = t.as_ref().expect("armado").plano_por_vertice().len();
+    assert!(
+        alvo >= verts,
+        "o CONTROLO da régua: a amostra {alvo} tem de ser do MIOLO (há {verts} \
+         de vértice), senão este gate mede o que sobrevive sem parque"
+    );
+    t.as_mut().expect("armado").amostras_mut()[alvo] = [0.0, 0.0, 1.0];
+
+    // (1) Largar o degrau: o plano sai do ar e vai para o parque.
+    assert!(garante(&m, &mut t, &mut parque, None), "largar muda");
+    assert!(t.is_none() && parque.is_some(), "largar tem de PARQUEAR");
+
+    // (2) Re-armar o MESMO degrau: a marca do miolo volta, AO BIT.
+    assert!(garante(&m, &mut t, &mut parque, Some(2)), "re-armar muda");
+    assert_eq!(
+        t.as_ref().expect("re-armado").amostras()[alvo],
+        [0.0, 0.0, 1.0],
+        "o detalhe fino não voltou — o parque não serviu"
+    );
+    assert!(parque.is_none(), "o parque foi consumido e não duplicado");
+}
+
+/// ⭐⭐⭐ **GATE — e o parque serve a TROCA de degrau, não só o largar.**
+///
+/// ⚠️ A ranhura é UMA: `8x → 4x → 8x` devolve, e passar por um TERCEIRO degrau
+/// pelo meio despeja-a. *É a fronteira declarada da cura, e ela está aqui para
+/// que ninguém a leia como um defeito.*
+#[test]
+fn o_parque_serve_a_troca_de_degrau_e_a_ranhura_e_uma() {
+    let m = dois_tris();
+    let (mut t, mut parque) = (None, None);
+    garante(&m, &mut t, &mut parque, Some(2));
+    let alvo = t.as_ref().expect("armado").amostras().len() - 1;
+    t.as_mut().expect("armado").amostras_mut()[alvo] = [0.0, 1.0, 0.0];
+
+    garante(&m, &mut t, &mut parque, Some(1));
+    garante(&m, &mut t, &mut parque, Some(2));
+    assert_eq!(
+        t.as_ref().expect("armado").amostras()[alvo],
+        [0.0, 1.0, 0.0],
+        "trocar de degrau e voltar tem de devolver o plano"
+    );
+
+    // ⛔ E a FRONTEIRA: um terceiro degrau pelo meio despeja a ranhura.
+    t.as_mut().expect("armado").amostras_mut()[alvo] = [1.0, 0.0, 0.0];
+    garante(&m, &mut t, &mut parque, Some(1));
+    garante(&m, &mut t, &mut parque, Some(3));
+    garante(&m, &mut t, &mut parque, Some(2));
+    assert_ne!(
+        t.as_ref().expect("armado").amostras()[alvo],
+        [1.0, 0.0, 0.0],
+        "a ranhura é UMA — um terceiro degrau pelo meio tem de a despejar, e \
+         se isto passar alguém pôs lá duas sem o dizer"
+    );
+}
+
+/// ⛔⛔⛔ **GATE — PINTAR NO NÍVEL DA MALHA DESCARTA O PARQUE.**
+///
+/// ⚠️⚠️ **Esta é a metade que impede a cura de ser PIOR que a perda:** se o
+/// artista largou o degrau e pintou no nível da malha, devolver o plano
+/// **ressuscitaria tinta velha por cima da nova**. ⇒ o parque só serve se ele
+/// ainda for um REFINAMENTO do que a peça mostra, e a pergunta responde-se com
+/// os dados que já existem — `plano_por_vertice() == mesh.colors()`.
+///
+/// ⭐ **E o CONTROLO é a primeira metade deste ficheiro:** o gate acima prova
+/// que, SEM pintar, o parque volta. Sem ele, um `desparqueia` que recusasse
+/// sempre passaria aqui a afirmar nada.
+#[test]
+fn pintar_no_nivel_da_malha_descarta_o_parque() {
+    let mut m = dois_tris();
+    let (mut t, mut parque) = (None, None);
+    garante(&m, &mut t, &mut parque, Some(2));
+    let alvo = t.as_ref().expect("armado").amostras().len() - 1;
+    t.as_mut().expect("armado").amostras_mut()[alvo] = [0.0, 0.0, 1.0];
+    garante(&m, &mut t, &mut parque, None);
+
+    // O artista pinta no canal por vértice enquanto o plano dorme.
+    m.colors_mut()[0] = [1.0, 0.5, 0.25];
+
+    assert!(garante(&m, &mut t, &mut parque, Some(2)), "re-armar muda");
+    assert_ne!(
+        t.as_ref().expect("re-armado").amostras()[alvo],
+        [0.0, 0.0, 1.0],
+        "o parque foi devolvido por cima de tinta NOVA — isto é pior do que a \
+         perda que a cura existe para curar"
+    );
+    assert_eq!(
+        t.as_ref().expect("re-armado").plano_por_vertice()[0],
+        [1.0, 0.5, 0.25],
+        "e o plano novo tem de nascer semeado da cor que a peça mostra AGORA"
+    );
+}
+
+/// ⛔⛔ **GATE — e ESCULPIR enquanto o plano dorme também o descarta.**
+///
+/// ⚠️ A terceira das três perguntas do [`super::desparqueia`]: um plano
+/// instalado numa malha que já não é a dele é **tinta no sítio errado**, que é
+/// a mesma lei que o `concorda_com` defende do lado do plano armado.
+#[test]
+fn esculpir_enquanto_o_plano_dorme_descarta_o_parque() {
+    let m = dois_tris();
+    let (mut t, mut parque) = (None, None);
+    garante(&m, &mut t, &mut parque, Some(2));
+    garante(&m, &mut t, &mut parque, None);
+    assert!(parque.is_some(), "o CONTROLO: ele foi mesmo parqueado");
+
+    // Outra malha — mais faces, logo o plano já não a descreve.
+    let outra = ph2d_mesh::shapes::uv_sphere(6, 8, 1.0);
+    assert!(
+        garante(&outra, &mut t, &mut parque, Some(2)),
+        "re-armar muda"
+    );
+    assert!(
+        super::concorda_com(t.as_ref().expect("re-armado"), &outra),
+        "o plano re-armado tem de descrever a malha de AGORA"
+    );
+}

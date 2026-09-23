@@ -678,15 +678,22 @@ as duas primeiras mediam o instrumento, não o produto.*
 
 ### §16.9 — ⏳ O que fica ABERTO
 
-- **A cor não viaja no `.ph2dproj`** — herdado da wave da pintura, e o plano
-  herda a mesma dívida.
+- ~~**A cor não viaja no `.ph2dproj`**~~ — ⛔ **MEDIDO e FALSO** (21/09): o
+  `MeshData` tem `colors`, o `to_data`/`from_data` carregam-no, e uma sonda pelo
+  caminho real (`encode_doc` → `decode`) lê **`SIM, AO BIT`**. *A dívida era
+  herdada de uma nota, não do código.* E o **plano** passou a viajar no mesmo
+  dia (handoff §18).
 - **O upload é INTEIRO e por quadro durante um traço** (`O(V + F)`): a escrita
   da tinta fina é por AMOSTRA e não passa pelo `dirty`, que é uma janela de
   VÉRTICES — não há upload parcial a que recorrer. O custo por quadro **não foi
   varrido** (a máquina esteve entre `load 10` e `27` a jornada inteira, e
   nenhuma leitura de relógio vale nada acima de `~5`).
-- **Voltar a `Mesh` perde o detalhe fino**, e o roteiro da `=52` di-lo no passo
-  (5) em vez de o esconder.
+- ~~**Voltar a `Mesh` perde o detalhe fino**~~ — ⭐ **CURADO em 23/09 por ordem
+  do dono** (handoff §32): o plano que sai fica numa **ranhura por peça** e
+  volta inteiro quando o artista re-arma o mesmo degrau. ⚠️ A ranhura é **uma**,
+  logo o que o mata é passar por **DOIS** degraus diferentes pelo meio, pintar
+  no nível da malha, ou esculpir enquanto ele dorme — e o roteiro da `=52`
+  di-lo no passo (5).
 - **O passe de topologia com o plano armado** — decisão do dono (§16.4).
 
 ---

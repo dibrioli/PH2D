@@ -373,8 +373,36 @@ impl crate::Sculpt3dScene {
 /// ⭐⭐ **Garante que a peça tem o plano que o artista pediu** — e devolve
 /// `true` quando alguma coisa mudou (⇒ o device tem de o receber outra vez).
 ///
-/// `nivel = None` desarma: o plano é **largado** e a cor volta a ser a do
-/// canal por vértice, que continua a ser escrito pelo mesmo traço.
+/// `nivel = None` desarma: o plano sai do ar e a cor volta a ser a do canal por
+/// vértice, que continua a ser escrito pelo mesmo traço.
+///
+/// ⭐⭐⭐⭐ **E ele NÃO é largado — é PARQUEADO** (ordem do dono, 2026-09-23).
+/// Até aqui, voltar a fileira para `Mesh` **destruía** o detalhe fino: o canal
+/// por vértice guarda a mesma cor em BAIXA resolução (a [`devolve`] escreve-o
+/// no fim de cada traço), logo re-armar o degrau re-semeava daí e o que vivia
+/// *entre* os vértices tinha-se ido. *Um gesto de um clique não pode apagar
+/// trabalho sem o dizer* — e o roteiro dizia-o, o que não é curar.
+///
+/// ⭐⭐⭐ **A pergunta que decide se o parque serve NÃO é «alguma coisa
+/// mudou?» — é «este plano ainda é um REFINAMENTO do que a peça mostra?»**, e
+/// os dados para a responder já existem: as primeiras `verts` amostras de um
+/// plano **são** a projecção por vértice dele ([`Tinta::plano_por_vertice`], uma
+/// fatia — custo zero), e a [`devolve`] mantém `Mesh::colors` igual a ela. ⇒ o
+/// parque volta se, e só se, as duas ainda baterem **ao bit**.
+/// ⛔ *Isso é melhor do que uma impressão digital da cor:* não guarda campo
+/// nenhum, não tem colisão, e **acerta no caso em que o artista pintou no nível
+/// da malha e desfez** — ali a cor volta a bater e o plano volta a ser válido.
+///
+/// ⚠️ **O parque tem UMA ranhura por peça, e ela serve os dois gestos:** largar
+/// (`8x → Mesh → 8x`) e TROCAR de degrau (`8x → 4x → 8x`). Trocar guarda o que
+/// estava e tenta buscar o do degrau novo — logo o único caso que ainda perde é
+/// passar por um TERCEIRO degrau pelo meio, que despeja a ranhura.
+///
+/// ⛔⛔ **E o preço está medido e é memória:** um plano `8x` na peça de fábrica
+/// pesa `75,5 MB`, e parqueá-lo mantém isso vivo com a feature DESLIGADA. Ele
+/// entra no [`crate::objects::SceneObject::footprint_bytes`], que é o orçamento
+/// da fila de desfazer — *um plano que a conta não vê é memória que ninguém
+/// sabe que tem*.
 ///
 /// ⛔⛔ **O plano NOVO nasce SEMEADO da cor por vértice e nunca branco**, e
 /// este é o mesmo defeito que a [`Tinta::semeada`] existe para impedir um nível
@@ -395,23 +423,65 @@ impl crate::Sculpt3dScene {
 /// *retirar o botão tira a capacidade de CRIAR, nunca o direito de abrir o que
 /// já está gravado*. Reconstruí-lo uniforme apagaria a tinta fina que o artista
 /// já tem no disco.
-pub(crate) fn garante(mesh: &Mesh, tinta: &mut Option<Tinta>, nivel: Option<u8>) -> bool {
-    let Some(k) = nivel else {
-        return tinta.take().is_some();
-    };
-    let k = k.min(NIVEL_MAX);
-    if let Some(t) = tinta.as_ref()
+pub(crate) fn garante(
+    mesh: &Mesh,
+    tinta: &mut Option<Tinta>,
+    parque: &mut Option<Tinta>,
+    nivel: Option<u8>,
+) -> bool {
+    let k = nivel.map(|k| k.min(NIVEL_MAX));
+    if let (Some(k), Some(t)) = (k, tinta.as_ref())
         && t.nivel() == k
         && concorda_com(t, mesh)
     {
         return false;
     }
-    let faces = || mesh.faces().iter().map(ph2d_mesh::Face::verts);
-    *tinta = Some(match mesh.colors() {
-        Some(c) => Tinta::semeada(c, faces(), k),
-        None => Tinta::nova(mesh.vert_count(), faces(), k),
+
+    // ⚠️ **A ORDEM é load-bearing:** tira-se o que está no ar ANTES de olhar
+    //    para o parque, e guarda-se DEPOIS — senão o que acabou de sair
+    //    sobrescreve aquele que se ia buscar.
+    let antigo = tinta.take();
+    let mudou = antigo.is_some() || k.is_some();
+    *tinta = k.map(|k| {
+        desparqueia(parque, mesh, k).unwrap_or_else(|| {
+            let faces = || mesh.faces().iter().map(ph2d_mesh::Face::verts);
+            match mesh.colors() {
+                Some(c) => Tinta::semeada(c, faces(), k),
+                None => Tinta::nova(mesh.vert_count(), faces(), k),
+            }
+        })
     });
-    true
+    if let Some(t) = antigo {
+        *parque = Some(t);
+    }
+    mudou
+}
+
+/// ⭐⭐⭐ **O plano parqueado serve este degrau?** — e ele só sai do parque se
+/// servir, nunca «o que houver».
+///
+/// ⛔⛔ **As TRÊS perguntas, e nenhuma é dispensável:**
+/// 1. **o degrau** — um plano `4x` não é o `8x` que o artista pediu;
+/// 2. **a malha** ([`concorda_com`]) — esculpir enquanto o plano dorme muda a
+///    contagem de faces, e instalá-lo depois é tinta no sítio errado;
+/// 3. ⭐ **a COR** — se o artista pintou no nível da malha enquanto o plano
+///    dormia, devolvê-lo **ressuscitava tinta velha por cima da nova**, que é
+///    pior do que a perda que esta wave existe para curar.
+///
+/// ⛔⛔ **E sem canal por vértice a `3` é VACUAMENTE verdadeira — ela não
+/// recusa.** A 1.ª redacção recusava ali *«por conservadorismo»*, e o gate
+/// reprovou: **numa peça sem cor por vértice o plano é a ÚNICA cor que ela
+/// tem**, logo não existe tinta nova que devolvê-lo possa tapar, e recusar era
+/// destruir o detalhe exactamente onde destruí-lo custa mais. *Um valor
+/// «conservador» escolhido sem olhar o que ele protege pode ser o valor que
+/// causa o dano.*
+fn desparqueia(parque: &mut Option<Tinta>, mesh: &Mesh, k: u8) -> Option<Tinta> {
+    let serve = parque.as_ref().is_some_and(|t| {
+        t.nivel() == k
+            && concorda_com(t, mesh)
+            && mesh.colors().is_none_or(|c| c == t.plano_por_vertice())
+    });
+    serve.then(|| parque.take()).flatten()
 }
 
 /// ⭐⭐⭐ **DE ONDE O QUADRO LÊ O PLANO DESTA PEÇA, e se o reconcilia.**

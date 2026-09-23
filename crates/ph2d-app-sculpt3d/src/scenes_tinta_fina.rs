@@ -145,11 +145,15 @@ pub(crate) fn announce() {
          [sculpt3d]        -> E' o mais fino que o app oferece. Numa peca desta grossura\n\
          [sculpt3d]           a diferenca para o `8x` e' pequena de proposito: o `8x` ja'\n\
          [sculpt3d]           passa a densidade da cena =51, e o `16x` e' a folga acima.\n\
-         [sculpt3d]    (5) Volte a fileira para `Mesh`.\n\
-         [sculpt3d]        -> A segunda marca ENGROSSA e fica como a primeira. E' o preco,\n\
-         [sculpt3d]           e nao um defeito: sem o plano, a cor volta a morar nos\n\
-         [sculpt3d]           vertices. Carregue `8x` outra vez e pinte -- o detalhe novo\n\
-         [sculpt3d]           volta a sair fino.\n\
+         [sculpt3d]    (5) Volte a fileira para `Mesh` e depois carregue `8x` outra vez.\n\
+         [sculpt3d]        -> Em `Mesh` as marcas ENGROSSAM (sem plano, a cor mora nos\n\
+         [sculpt3d]           vertices) e ao voltar ao `8x` elas ficam FINAS outra vez,\n\
+         [sculpt3d]           como estavam. Ate' 23/09 nao voltavam: largar o degrau\n\
+         [sculpt3d]           APAGAVA o detalhe fino para sempre.\n\
+         [sculpt3d]        ⚠️ O que volta e' o ULTIMO plano que saiu. Se entre sair e\n\
+         [sculpt3d]           voltar voce passar por DOIS degraus diferentes, ou pintar\n\
+         [sculpt3d]           com a fileira em `Mesh`, ou esculpir, o detalhe fino daquele\n\
+         [sculpt3d]           traco deixa de poder voltar.\n\
          [sculpt3d]    (6) Com o `8x` escolhido, carregue `P` (topologia dinamica) e pinte\n\
          [sculpt3d]        VARIAS marcas, umas por cima das outras.\n\
          [sculpt3d]        -> As marcas anteriores CONTINUAM finas e o arame NAO adensa:\n\
@@ -191,9 +195,10 @@ pub(crate) fn announce() {
          [sculpt3d]           1010 amostras pintadas, 1010 depois do desfazer). O\n\
          [sculpt3d]           desfazer olhava para os VERTICES tocados, e esta tinta\n\
          [sculpt3d]           escreve AMOSTRAS.\n\
-         [sculpt3d]        ⚠️ Se entre o traco e o Ctrl+Z voce TROCAR a fileira\n\
-         [sculpt3d]           `Paint Detail`, aquele traco deixa de poder voltar: o\n\
-         [sculpt3d]           plano de amostras foi refeito e o de antes ja' nao existe.\n\
+         [sculpt3d]        ⚠️ Sair da fileira e VOLTAR ao mesmo degrau nao tira o Ctrl+Z\n\
+         [sculpt3d]           ao traco -- o plano volta inteiro (passo 5). O que o tira\n\
+         [sculpt3d]           e' passar por DOIS degraus diferentes pelo meio: ai' o plano\n\
+         [sculpt3d]           de amostras foi refeito e o de antes ja' nao existe.\n\
          [sculpt3d]\n\
          [sculpt3d]    (8) GRAVAR E REABRIR. Com a fileira em `8x` e uma marca FINA na\n\
          [sculpt3d]        peca, carregue `Ctrl+Shift+S`, escolha um nome e grave.\n\

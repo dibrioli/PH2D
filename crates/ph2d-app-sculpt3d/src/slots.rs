@@ -176,8 +176,13 @@ impl Sculpt3dScene {
             let emprestado = rota == crate::tinta_da_peca::Rota::Emprestado;
             if let crate::tinta_da_peca::Rota::DaPeca { pedir } = rota {
                 let obj = &mut self.objects[i];
-                let crate::objects::SceneObject { stack, tinta, .. } = obj;
-                if crate::tinta_da_peca::garante(stack.mesh(), tinta, pedir) {
+                let crate::objects::SceneObject {
+                    stack,
+                    tinta,
+                    tinta_parqueada,
+                    ..
+                } = obj;
+                if crate::tinta_da_peca::garante(stack.mesh(), tinta, tinta_parqueada, pedir) {
                     obj.tinta_suja = true;
                 }
             }

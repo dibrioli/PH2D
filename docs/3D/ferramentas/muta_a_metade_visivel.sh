@@ -120,6 +120,49 @@ open(p,"w").write(s.replace(a, b, 1))
   restore
 }
 
+# ── O PARQUE DO PLANO (2026-09-23) ──────────────────────────────────────
+# ⚠️ A cura do report do dono: largar o degrau deixou de APAGAR o detalhe fino.
+#    As seis ancoras sao as seis maneiras de a partir, e as tres do
+#    `desparqueia` sao as tres perguntas que decidem se o parque serve.
+muta "$APP/tinta_da_peca.rs" \
+  '    if let Some(t) = antigo {
+        *parque = Some(t);
+    }' \
+  '    drop(antigo);' \
+  'K1 largar o degrau volta a LARGAR o plano em vez de o parquear'
+
+muta "$APP/tinta_da_peca.rs" \
+  '        t.nivel() == k' \
+  '        true' \
+  'K2 o parque serve QUALQUER degrau: um plano 4x volta como se fosse o 8x'
+
+muta "$APP/tinta_da_peca.rs" \
+  '            && concorda_com(t, mesh)
+            && mesh.colors().is_none_or(|c| c == t.plano_por_vertice())' \
+  '            && mesh.colors().is_none_or(|c| c == t.plano_por_vertice())' \
+  'K3 o parque volta para uma malha que ele ja nao descreve'
+
+muta "$APP/tinta_da_peca.rs" \
+  '            && mesh.colors().is_none_or(|c| c == t.plano_por_vertice())' \
+  '' \
+  'K4 o parque volta por cima de tinta pintada no nivel da malha'
+
+muta "$APP/tinta_da_peca.rs" \
+  '    let antigo = tinta.take();' \
+  '    let antigo = tinta.take();
+    if let Some(t) = antigo.clone() {
+        *parque = Some(t);
+    }' \
+  'K5 guarda-se ANTES de buscar: o que saiu sobrescreve o que se ia buscar'
+
+muta "$APP/objects.rs" \
+  '            + self
+                .tinta_parqueada
+                .as_ref()
+                .map_or(0, ph2d_mesh_colors::Tinta::footprint_bytes)' \
+  '' \
+  'K6 o parque nao conta no orcamento da fila de desfazer'
+
 # ── A PORTA que e' dona do plano ─────────────────────────────────────────
 muta "$APP/tinta_da_peca.rs" \
   '        Some(c) => Tinta::semeada(c, faces(), k),' \
@@ -165,9 +208,11 @@ muta "$APP/tinta_da_peca.rs" \
   '    if true {' \
   'M6 devolve: um plano desactualizado escreve na mesma'
 
+# ⚠️ RE-ANCORADA em 2026-09-23: a assinatura passou a levar o parque e o `k`
+#    virou um `Option` mapeado, logo a linha mudou de forma. A LEI e' a mesma.
 muta "$APP/tinta_da_peca.rs" \
-  '    let k = k.min(NIVEL_MAX);' \
-  '    let k = k;' \
+  '    let k = nivel.map(|k| k.min(NIVEL_MAX));' \
+  '    let k = nivel;' \
   'M7 garante: o tecto deixa de cortar'
 
 # ── A ROTA: quem segura o plano ──────────────────────────────────────────

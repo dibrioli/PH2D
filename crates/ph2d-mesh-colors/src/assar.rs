@@ -63,6 +63,25 @@ pub enum Recusa {
         /// O lado que o chamador permite.
         tecto: u32,
     },
+    /// ⛔⛔⛔ **O plano não descreve esta malha.**
+    ///
+    /// ⚠️⚠️ **É a lei que esta casa pagou com um `panic` na cara do dono** (o
+    /// report de 21/09): a [`crate::Topologia`] guarda `4` entradas por face,
+    /// logo uma lista de faces **mais longa** do que a que a construiu indexa
+    /// fora de alcance — `index out of bounds` no meio de uma exportação.
+    /// ⛔ E a metade **CURTA** é a pior: com menos faces nada sai de alcance, o
+    /// laço acaba sozinho, e a textura fica com tinta **válida no sítio
+    /// errado**, em silêncio.
+    ///
+    /// ⭐ A cura é a mesma porta que o `payload` já usa
+    /// ([`crate::Topologia::descreve`]) — *um assado nasceu uma wave depois
+    /// daquela cura e sem nenhuma das duas metades dela*.
+    NaoDescreve {
+        /// Quantas faces a malha que chegou tem.
+        faces: usize,
+        /// Quantas o plano conhece.
+        plano: usize,
+    },
 }
 
 impl std::fmt::Display for Recusa {
@@ -72,6 +91,10 @@ impl std::fmt::Display for Recusa {
             Self::NaoCabe { preciso, tecto } => write!(
                 f,
                 "a textura pedia {preciso}x{preciso} texels e o tecto e' {tecto}"
+            ),
+            Self::NaoDescreve { faces, plano } => write!(
+                f,
+                "o plano de tinta fina conhece {plano} faces e a malha tem {faces}"
             ),
         }
     }
@@ -126,6 +149,28 @@ pub struct Assado {
     pub relatorio: Relatorio,
 }
 
+impl Assado {
+    /// ⭐⭐ **Os píxeis como um FICHEIRO os quer: TRÊS canais.**
+    ///
+    /// ⚠️⚠️ **O alfa do [`Self::rgba`] não é transparência — é a COBERTURA**, a
+    /// marca de quem recebeu uma amostra ou uma dilatação, e é por ela que os
+    /// gates sabem distinguir um texel preto de um texel vazio. *Escrevê-la num
+    /// `.png` entrega ao destino uma grandeza interna com cara de alfa:* medido
+    /// com o alvo a correr, o Blender 5.2.2 lê o canal, põe o material em
+    /// `blend_method: HASHED` e passa a tratar a peça como translúcida — ⛔ e
+    /// isso não é uma decisão que uma textura de albedo deva tomar por ninguém.
+    ///
+    /// ⭐ *A cobertura fica onde ela é medida; o ficheiro leva a cor.*
+    #[must_use]
+    pub fn rgb(&self) -> Vec<u8> {
+        let mut out = Vec::with_capacity(self.rgba.len() / 4 * 3);
+        for p in self.rgba.as_chunks::<4>().0 {
+            out.extend_from_slice(&p[..3]);
+        }
+        out
+    }
+}
+
 /// A cor de uma amostra em bytes — **a mesma conta que o `write_ply` faz**.
 ///
 /// ⚠️ O `clamp` vem ANTES do cast pela razão que aquele escreve: um `as u8`
@@ -156,6 +201,22 @@ pub fn assar<'a>(
     let faces: Vec<&[u32]> = faces.collect();
     if faces.is_empty() {
         return Err(Recusa::SemFaces);
+    }
+    // ⛔⛔⛔ **A GUARDA, e ela vem ANTES de qualquer indexação.** Ver
+    //    [`Recusa::NaoDescreve`]: sem ela uma malha com mais faces do que o
+    //    plano conhece estoura no meio de uma exportação, e uma com menos sai
+    //    com tinta válida no sítio errado.
+    //
+    // ⚠️ A pergunta é a do `payload` e não uma cerca nova — *uma lei escrita em
+    //    dois sítios ainda não é uma lei; só uma PORTA é.*
+    if !tinta
+        .topologia()
+        .descreve(tinta.plano_por_vertice().len(), faces.len())
+    {
+        return Err(Recusa::NaoDescreve {
+            faces: faces.len(),
+            plano: tinta.topologia().faces(),
+        });
     }
     let l = tinta.lado();
     let ladrilho = l + 1 + 2 * FOLGA_EM_TEXELS;

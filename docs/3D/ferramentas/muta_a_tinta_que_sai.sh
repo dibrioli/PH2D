@@ -30,7 +30,7 @@ restore() {
 }
 trap restore EXIT
 
-FILTRO='test(/assar_tests|canto_de_uma_face|vizinho_de_uma_amostra|ponto_de_uma_face|nivel_base|recusa_nomeia|dois_lados_de_uma_aresta|byte_a_byte_o_de_sempre|vt_dele|material_nao_escurece|fine_paint|export_assado|vinte_e_tres/)'
+FILTRO='test(/assar_tests|canto_de_uma_face|vizinho_de_uma_amostra|ponto_de_uma_face|nivel_base|recusa_nomeia|dois_lados_de_uma_aresta|byte_a_byte_o_de_sempre|vt_dele|material_nao_escurece|fine_paint|export_assado|vinte_e_tres|nao_descreve|cobertura_fica_em_casa/)'
 corrida() {
   cargo nextest run -p ph2d-mesh-colors -p ph2d-mesh -p ph2d-app-sculpt3d -E "$FILTRO" 2>&1
 }
@@ -157,12 +157,27 @@ muta "$APP/export.rs" \
   '        Some(_) => fmt.write(&pieces),' \
   'A12 o obj volta ao escritor sem uv e o material fica orfao'
 
+# ── A GUARDA da §14, que o assado nasceu SEM ────────────────────────────
+# ⚠️ Sem ela uma malha com mais faces do que o plano conhece ESTOURA no meio de
+#    uma exportacao (o report de 21/09), e uma com menos sai com tinta valida no
+#    sitio errado, em silencio.
+muta "$COL/assar.rs" \
+  '    if !tinta' \
+  '    if false && !tinta' \
+  'A14 o assado deixa de conferir se o plano descreve a malha'
+
+# ── A COBERTURA nao pode sair no ficheiro ───────────────────────────────
+muta "$COL/assar.rs" \
+  '            out.extend_from_slice(&p[..3]);' \
+  '            out.extend_from_slice(&p[..3].iter().rev().copied().collect::<Vec<_>>());' \
+  'A15 o rgb troca a ordem dos canais: a tinta sai com a cor errada'
+
 # ── O CONTROLO INERTE ───────────────────────────────────────────────────
 muta "$COL/assar.rs" \
   'pub fn assar<' \
   '
 pub fn assar<' \
-  'A13 CONTROLO: uma mutacao INERTE (uma linha em branco) nao pode sangrar'
+  'A16 CONTROLO: uma mutacao INERTE (uma linha em branco) nao pode sangrar'
 
 echo
 if [ -n "$SO_ANCORAS" ]; then
@@ -170,5 +185,5 @@ if [ -n "$SO_ANCORAS" ]; then
   [ "$sangram" -eq "$total" ]
   exit $?
 fi
-echo "PLACAR DA TINTA QUE SAI: $sangram de $total sangram (o A13 e' o CONTROLO e nao pode)"
+echo "PLACAR DA TINTA QUE SAI: $sangram de $total sangram (o A16 e' o CONTROLO e nao pode)"
 [ "$sangram" -eq $((total - 1)) ]

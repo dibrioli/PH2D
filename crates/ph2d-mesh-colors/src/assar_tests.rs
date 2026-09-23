@@ -207,7 +207,10 @@ fn a_recusa_nomeia_o_que_pediu_e_o_que_ha() {
             assert_eq!(tecto, 8);
             assert!(e.to_string().contains(&preciso.to_string()));
         }
+        // ⭐ A exaustividade é o censo: uma recusa nova **não compila** até
+        //   alguém dizer o que ela significa aqui.
         Recusa::SemFaces => panic!("a peça tem faces"),
+        Recusa::NaoDescreve { .. } => panic!("o plano descreve esta malha"),
     }
     let vazia = Tinta::nova(0, std::iter::empty(), 0);
     assert_eq!(
@@ -238,4 +241,80 @@ fn o_nivel_base_leva_a_cor_por_vertice() {
             );
         }
     }
+}
+
+/// ⛔⛔⛔ **UM PLANO QUE NÃO DESCREVE A MALHA TEM DE RECUSAR, NUNCA ESTOURAR.**
+///
+/// ⚠️⚠️ **É a lei que esta casa já pagou com um `panic` na cara do dono** (o
+/// report de 21/09, `topo.rs:239 — index out of bounds: the len is 196608 but
+/// the index is 196608`): a `Topologia` guarda `4` entradas por face, logo uma
+/// lista de faces mais longa do que a que a construiu indexa **fora de
+/// alcance**. A cura de então foi a porta [`crate::Topologia::descreve`] e o
+/// `payload` a devolver VEREDITO — e o assado nasceu, uma wave depois, **sem
+/// nenhuma das duas**.
+///
+/// ⛔ **E a metade CURTA é a pior**, como lá: com MENOS faces nada sai de
+/// alcance, o laço acaba sozinho e a textura fica com tinta **válida no sítio
+/// errado**, em silêncio.
+#[test]
+fn um_plano_que_nao_descreve_a_malha_recusa_em_vez_de_estourar() {
+    let (v, faces) = peca();
+    let mut t = Tinta::nova(v, faces.iter().map(Vec::as_slice), 2);
+    semeia(&mut t);
+
+    // O CONTROLO: com a malha que a construiu, ela assa.
+    assert!(
+        assar(&t, faces.iter().map(Vec::as_slice), 4096).is_ok(),
+        "CONTROLO: a malha certa tem de assar"
+    );
+
+    // A metade que ESTOURA: mais faces do que o plano conhece.
+    let mais: Vec<Vec<u32>> = faces.iter().cloned().chain([vec![0, 1, 2]]).collect();
+    assert_eq!(
+        assar(&t, mais.iter().map(Vec::as_slice), 4096),
+        Err(Recusa::NaoDescreve {
+            faces: mais.len(),
+            plano: faces.len(),
+        }),
+        "com MAIS faces o assado tem de recusar — o caminho de antes era um panic"
+    );
+
+    // A metade MUDA: menos faces. Nada sai de alcance e a tinta iria para o
+    // sítio errado sem uma queixa.
+    let menos: Vec<Vec<u32>> = faces[..faces.len() - 1].to_vec();
+    assert_eq!(
+        assar(&t, menos.iter().map(Vec::as_slice), 4096),
+        Err(Recusa::NaoDescreve {
+            faces: menos.len(),
+            plano: faces.len(),
+        }),
+        "com MENOS faces o assado fica truncado e ninguém acusa: tem de recusar"
+    );
+}
+
+/// ⭐ **O que sai no ficheiro são TRÊS canais, e a cobertura fica em casa.**
+///
+/// ⚠️ **A metade que importa é a segunda:** o `rgba` **mantém** o alfa, porque
+/// é dele que os gates deste ficheiro tiram *«este texel recebeu alguma
+/// coisa?»*. Sem ela alguém «simplificaria» o assado para três canais e
+/// apagaria a régua de toda a família de graça.
+#[test]
+fn o_ficheiro_leva_cor_e_a_cobertura_fica_em_casa() {
+    let (t, faces) = tinta(2);
+    let a = assar(&t, faces.iter().map(Vec::as_slice), 4096).expect("assa");
+    let rgb = a.rgb();
+    assert_eq!(rgb.len(), a.rgba.len() / 4 * 3);
+    for (i, p) in a.rgba.as_chunks::<4>().0.iter().enumerate() {
+        assert_eq!(&rgb[i * 3..i * 3 + 3], &p[..3], "o texel {i} mudou de cor");
+    }
+    // A cobertura continua a existir do lado do assado — e com as DUAS metades
+    // presentes, senão a régua deixa de discriminar.
+    assert!(
+        a.rgba.as_chunks::<4>().0.iter().any(|p| p[3] == 255),
+        "nada coberto"
+    );
+    assert!(
+        a.rgba.as_chunks::<4>().0.iter().any(|p| p[3] == 0),
+        "nada por cobrir"
+    );
 }

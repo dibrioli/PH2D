@@ -128,12 +128,15 @@ pub(crate) fn grava(
     for (i, a) in assados.por_peca.iter().enumerate() {
         let Some(a) = a else { continue };
         let alvo = dir.join(&pngs[i]);
+        // ⚠️ **TRÊS canais, e a razão está no doc da [`Assado::rgb`]:** o alfa
+        //    do assado é a COBERTURA, e entregá-lo a um `.png` faz o destino
+        //    ler a peça como translúcida (medido no Blender 5.2.2).
         if let Err(e) = image::save_buffer(
             &alvo,
-            &a.rgba,
+            &a.rgb(),
             a.lado_px,
             a.lado_px,
-            image::ColorType::Rgba8,
+            image::ColorType::Rgb8,
         ) {
             crate::import::toast(
                 toasts,
@@ -204,3 +207,38 @@ pub(crate) fn perdeu_tinta_fina(fmt: MeshFormat, tem: bool, assados: &Assados) -
 #[cfg(test)]
 #[path = "export_assado_tests.rs"]
 mod export_assado_tests;
+
+#[cfg(test)]
+#[path = "export_assado_sonda.rs"]
+mod export_assado_sonda;
+
+#[cfg(test)]
+#[path = "export_assado_relogio.rs"]
+mod export_assado_relogio;
+
+/// ⭐⭐⭐ **A SAÍDA DIZ, NO TERMINAL, o que escreveu e onde.**
+///
+/// ⚠️ **Ela nasceu de um report** (dono, 22/09: *«o Blender não consegue
+/// importar e não dá nenhuma mensagem»*), e a razão de ser TERMINAL é medida: o
+/// balão tem `48` caracteres ([§22](../../../docs/3D/handoffs/HANDOFF_line_sculpt3d_A_TINTA_FINA_SOBREVIVE_2026-09-21.md))
+/// e não cabe um caminho — *o terminal é a única superfície onde o artista e eu
+/// olhamos para os MESMOS números*.
+///
+/// ⛔ Ela corre **depois** de o `.obj` estar em disco: escrita antes, ela mede
+/// o ficheiro que lá estava de uma exportação anterior, e *um instrumento que
+/// mede o ficheiro errado é pior que nenhum — ele CONFIRMA*.
+pub(crate) fn diz_o_que_escreveu(path: &std::path::Path, assados: &Assados, bytes: usize) {
+    let lado = assados
+        .por_peca
+        .iter()
+        .flatten()
+        .map(|a| a.lado_px)
+        .max()
+        .unwrap_or(0);
+    let texturas = assados.por_peca.iter().flatten().count();
+    eprintln!(
+        "[sculpt3d] exportado: {} ({bytes} bytes) + {texturas} textura(s) de \
+         {lado}x{lado} px + material",
+        path.display()
+    );
+}

@@ -138,6 +138,9 @@ pub fn export(scene: Option<&Sculpt3dScene>, toasts: &mut ph2d_editor_core::Toas
     let size = bytes.len();
     match std::fs::write(&path, bytes) {
         Ok(()) => {
+            if mtllib.is_some() {
+                export_assado::diz_o_que_escreveu(&path, &assados, size);
+            }
             let name = path.file_name().and_then(|s| s.to_str()).unwrap_or("?");
             // ⛔⛔⛔ **DOIS balões, e a partição é MEDIDA** (report do dono, 22/09: *«as
             // mensagens estão cortadas com … não consigo ler tudo»*). O balão tem `300 px`

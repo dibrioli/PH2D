@@ -2278,3 +2278,109 @@ acontece. *A pergunta do arnês é a mesma; o que se inverteu foi o produto.*
   quadro, logo não compete com o carimbo — mas o número não existe.
 * **A modelação 3D continua a não assar** (ela passa `false` ao `lost_by`): a porta está aberta
   do lado da tabela, e quem a usar herda os três ficheiros de graça.
+
+## §24 — *«o Blender não consegue importar e não dá nenhuma mensagem»* — o ficheiro IMPORTA, e a investigação achou DOIS defeitos meus que não são esse
+
+> Report do dono, 22/09, sobre o `.obj` que a §23 produz.
+
+⚠️ **Conte o DELTA: tudo a 0** (`PROJECT_SCHEMA`, os três registos, `SCULPT_DOC_VERSION`), zero
+contrato, zero ADR.
+
+### §24.1 — ⭐⭐⭐ O ALVO foi CORRIDO sobre um ficheiro NOSSO, e ele importa
+
+O Blender **5.2.2 LTS está instalado nesta máquina**, e o §0.9 diz o que fazer com ele: *um alvo é
+um oráculo que se CORRE, nunca um fonte que se lê* — e **ler o que ele diz sobre um ficheiro
+NOSSO é livre** (a saída não é obra baseada no programa).
+
+⭐ **A sonda produz o ficheiro pelo caminho do produto** ([`export_assado_sonda`], versionada,
+`PH2D_SONDA_SAIDA=<pasta>`): as MESMAS chamadas que o `export` faz, sobre a peça da `=52` com o
+plano ao `8x`. Depois:
+
+```text
+blender --background --factory-startup --python <importa e conta>
+```
+
+**O veredito, duas vezes:**
+
+| ficheiro | resultado | objectos | vértices | polígonos | UV | material |
+|---|---|---:|---:|---:|---|---|
+| `teste.obj` | `{'FINISHED'}` | `1` | `738` | `768` | `UVMap` | `ph2d_0` |
+| o mesmo com cor por vértice (`v x y z r g b`) | `{'FINISHED'}` | `1` | `738` | `768` | — | — |
+
+⇒ ***o ficheiro que o nosso escritor produz importa***, com as coordenadas e o material. E a
+segunda linha existe porque a minha primeira hipótese era essa: o dono **pintou**, logo a malha
+dele tem cor por vértice e o `v` leva **seis** números em vez de três — *e o oráculo refutou-a*.
+
+### §24.2 — ⭐ O RELÓGIO também está ilibado, com número
+
+Esta casa já pagou uma vez o defeito *«exportar congela a janela e o KDE dá-a por morta»* (o
+modelador 3D, `8 min 17 s → 6,4 s`), e *uma janela dada por morta é indistinguível, para quem a
+usa, de um ficheiro que não saiu*. ⇒ medido ([`export_assado_relogio`], versionada, `--release`):
+
+| peça | faces | degrau | textura | assar | png | **total** |
+|---|---:|---:|---:|---:|---:|---:|
+| a cena `=52` | `768` | `8×` | `364 px` | `0,00 s` | `0,00 s` | **`0,00 s`** |
+| média | `12 288` | `8×` | `1 443 px` | `0,02` | `0,00` | **`0,03 s`** |
+| de fábrica | `65 712` | `8×` | `3 341 px` | `0,18` | `0,00` | **`0,18 s`** |
+
+⇒ *a saída não congela nada*, e o pior caso medido é `1 %` do limiar em que o KDE começa a
+duvidar da janela.
+
+### §24.3 — ⛔⛔⛔ E a investigação achou um defeito MEU, da classe que esta linha já tinha curado
+
+O [`ph2d_mesh_colors::assar`] chamava `indice_tri`/`indice_quad` **sem a guarda
+[`Topologia::descreve`]** — *a lei que a [§14](#) desta mesma linha estabeleceu depois de o dono
+levar um `panic` na cara* (`topo.rs:239 — index out of bounds: the len is 196608 but the index is
+196608`).
+
+⚠️ **A `Topologia` guarda `4` entradas por face**, logo uma lista de faces **mais longa** do que a
+que a construiu indexa fora de alcance — `index out of bounds` **no meio de uma exportação**, e o
+`.obj` nunca chega a ser escrito. ⛔ **E a metade CURTA é a pior**, como lá: com menos faces nada
+sai de alcance, o laço acaba sozinho, e a textura fica com tinta **válida no sítio errado**, em
+silêncio.
+
+⭐⭐ *Um assado nasceu uma wave depois daquela cura e sem nenhuma das duas metades dela.* ⇒
+`Recusa::NaoDescreve { faces, plano }`, com a guarda **antes de qualquer indexação** e o gate a
+exigir as **duas** metades (mais faces · menos faces) mais o CONTROLO de que a malha certa assa.
+⭐ E a exaustividade do `match` no gate da recusa **é o censo**: uma recusa nova **não compila**
+até alguém dizer o que ela significa.
+
+### §24.4 — ⭐ E um segundo, que o oráculo mediu: a COBERTURA saía no ficheiro
+
+O assado guarda `rgba`, e o alfa dele **não é transparência — é a COBERTURA** (a marca de quem
+recebeu uma amostra ou uma dilatação), que é por onde os gates distinguem *um texel preto* de *um
+texel vazio*. Eu escrevia esse canal no `.png`.
+
+⚠️ *Escrever a cobertura entrega ao destino uma grandeza interna com cara de alfa.* ⇒ a porta
+[`Assado::rgb`] deixa a cobertura em casa e o ficheiro leva **três** canais, com o gate a afirmar
+as duas metades (a cor não muda · o `rgba` **mantém** o alfa, senão alguém «simplifica» o assado
+e apaga a régua de toda a família de graça). ⭐ De graça, o `.png` pesa menos.
+
+⛔ **E o oráculo diz que esta NÃO era a causa:** o Blender põe o material em
+`blend_method: HASHED` **com e sem** o canal, e a socket `Alpha` fica por ligar nos dois casos.
+*Uma cura medida que não explica o report continua a ser uma cura; o que não se pode é dizer que
+ela fecha o assunto.*
+
+### §24.5 — ⏳ O que NÃO foi reproduzido, e é honesto dizê-lo
+
+Com o formato, a cor por vértice e o relógio **eliminados por medição**, e com o ficheiro a
+importar no alvo, **não consegui reproduzir a falha do dono nesta máquina**. O que sobra são
+causas de ambiente que um handoff não pode adivinhar — onde o diálogo do sistema pousou os três
+ficheiros, se os três ficaram lado a lado, qual Blender ele usou.
+
+⇒ **a cura para isso é um INSTRUMENTO e não uma hipótese:** a saída passa a dizer, no terminal, o
+caminho do `.obj`, o tamanho dele, quantas texturas escreveu e de que lado
+([`export_assado::diz_o_que_escreveu`]). ⚠️ **O balão não serve** — ele tem `48` caracteres
+(§22) e não cabe um caminho —, e o terminal é *a única superfície onde o artista e eu olhamos
+para os MESMOS números*. ⛔ Ela corre **depois** de o `.obj` estar em disco: escrita antes, ela
+mede o ficheiro que lá estava de uma exportação anterior, e *um instrumento que mede o ficheiro
+errado é pior que nenhum — ele CONFIRMA* (a lição que a `line/components` pagou em 19/09 com o
+`fotografa_cena.sh`).
+
+### §24.6 — O placar
+
+* **Mutação: `14 de 15` sangram** (`muta_a_tinta_que_sai.sh`; o `A16` é o CONTROLO), com as duas
+  novas a cobrir a guarda e a ordem dos canais.
+* Pré-voo dos dez arneses: **122 âncoras**, todas a casar uma vez.
+* Duas sondas **versionadas** que não se apagam: a que produz o ficheiro e a que mede o relógio.
+  *As duas leituras — a de hoje e a do dia em que isto voltar — valem uma pela outra.*

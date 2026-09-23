@@ -2876,3 +2876,9 @@ Portão: `nextest-impacted` **`18 301/18 301`** · censos da árvore **`127/127`
 - **O campo do esfregão** (`sample_window` + `walk_dab`, em série na thread principal): a 2.ª
   passagem do `accumulate_dab_smear` é por par independente, e em linhas seria byte-idêntica — pede
   o seu próprio nome na cerca do `rayon` da `ph2d-painter-brush` (ADR-0158/0171).
+
+✅ **Smoke do dono APROVADO (2026-09-23):** *«Muito bom! Mais que o dobro de desempenho! Essa é uma
+vitória definitiva!»* — e a ordem seguinte foi documentar as duas waves (§34 e §35) em detalhe no
+módulo: **[doc 43](../43_a_pilha_do_composite_brush_ficou_rapida.md)**, com o amostrador por `gdb`
+versionado em [`ferramentas/amostra_gdb.py`](../ferramentas/amostra_gdb.py) e duas linhas novas no
+placar do [doc 28](../28_otimizacoes_o_que_funcionou.md) (W, X e a recusa Y).

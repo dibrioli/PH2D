@@ -57,6 +57,9 @@
 | **V** | 🎯🎯 **O move do Wet Paint escala com a TELA** | ✅ **FECHADA** (§5.12) | o token de identidade do guard era um `Arc` FORTE ⇒ todo composite copiava o documento. **13,71 → 1,82 ms a 4096² (7,5×) e PLANO** (1,842 / 1,815 / 1,817); pen-up **17,3 → 5,05** |
 | K | **A tabela lida FORA da banda** | ✅ **fechada** (§4.6.1) | AA **2,60 → 1,43 ms/dab** · traço **110,2 → 96,9** virgem, **143,0 → 130,2** sobre tinta |
 | L | Colapsar a grade em 3 leituras | ⛔ **construído (2 formas) e REJEITADO** | **4,949** e **5,344** níveis contra **0,060** da grade. Casar mais um momento PIOROU ⇒ o erro não é dos momentos, é das QUINAS de `F` (§4.6.2) |
+| **W** | 🎯🎯 **A pilha do Composite Brush compõe UMA vez por QUADRO** | ✅ **shipou, smoke aprovado** ([doc 43](43_a_pilha_do_composite_brush_ficou_rapida.md) §2) | o custo era por PÍXEL percorrido (`~0,35 ms/px`), não por evento · `240 → 86 ms` por traço a passo `8` (`×2,8`), `×3,6` a passo `16` · *«FPS cai para 1»* → *«~40»* |
+| **X** | 🎯 **As passagens por pixel da pilha em linhas + contas que não se pagam** | ✅ **shipou, smoke aprovado** ([doc 43](43_a_pilha_do_composite_brush_ficou_rapida.md) §3, ADR-0172) | **`18,1`–`19,2 → 11,2`–`12,9 ms/quadro`** a passo `8`, `7,1`–`11,0 → 4,1`–`6,2` a passo `2`, byte-idêntico · *«mais que o dobro»* |
+| Y | A banda do depósito na equipa do `rayon` | ⛔ **construída e REVERTIDA** ([doc 43](43_a_pilha_do_composite_brush_ficou_rapida.md) §4.2) | ganho **zero** em A/B; o `49,6 %` em `pthread_create` era o `gdb` |
 
 ---
 

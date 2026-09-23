@@ -1069,3 +1069,100 @@ fn quem_le_o_campo_continua_a_leva_lo_no_shader() {
          constante dá-lhe um mundo cheio"
     );
 }
+
+/// ⏱️⭐⭐⭐⭐ **A FITA INERTE TAMBÉM PAGA NO RELÓGIO DO QUADRO? — o A/B no MESMO processo.**
+///
+/// A cura da fita inerte (`docs/Render3d/03` §W9) foi construída para o **COMPILADOR**: ela tira a
+/// peça do texto do pintor e o cache passa a acertar (`1 406 → 74 ms` ao acrescentar uma forma).
+/// ⭐ **Mas ela também encolhe o kernel que corre**, e o modelo de custo do quadro de movimento diz
+/// que o custo segue o TAMANHO da fita (`R² 0,803` com `instruções + transcendentes + raízes`, e
+/// `R² 0,165` com os passos da marcha). ⇒ *se o modelo estiver certo, a cura tem um segundo prémio
+/// que ninguém pediu.*
+///
+/// ⚠️ **O A/B corre no MESMO processo e INTERCALADO**, que é a régua que a `W9` prescreve: subtrair
+/// dois relógios de corridas separadas dá a soma dos ruídos. E cada lado tira o **MÍNIMO de
+/// [`QUADROS_MEDIDOS`]**, senão isto mede a compilação.
+///
+/// ⛔ **A ordem é `sem` → `com` dentro de cada cena**, e as duas primeiras chamadas de cada lado
+/// pagam a compilação daquele texto: é por isso que o mínimo é obrigatório aqui, e não um luxo.
+#[test]
+#[ignore = "sonda de diagnóstico: mede se a fita inerte paga no relógio do quadro"]
+fn diag_a_fita_inerte_no_relogio_do_quadro() {
+    let Some(t) = crate::gpu_frame::shared() else {
+        println!("sem adaptador — saltado");
+        return;
+    };
+    let materiais = [ph2d_material::OpenPbr::default().prepare()];
+    let olhar = ph2d_view_transform::Look::default();
+    const BG: [u8; 4] = [0, 0, 0, 0];
+    println!("\n  {}", contexto());
+    println!("  cena ·  com a fita ·  sem a fita ·  razão ·  instr · transc");
+    let (mut melhor, mut pior) = (f32::INFINITY, 0.0f32);
+    for n in 0..crate::smoke::scenes::CENAS {
+        if crate::smoke::scenes::PODADAS.contains(&n) {
+            continue;
+        }
+        let doc = crate::smoke::scene(n);
+        let reg = crate::smoke::sampled_registry();
+        let cam = ph2d_field_render::Orbit::default();
+        let luz = [crate::gpu_frame::tests_lampada(&cam)];
+        let surfaces = ph2d_field_render::Surfaces {
+            all: &materiais,
+            owners: None,
+        };
+        let minimo = |fita_inerte: bool| {
+            (0..QUADROS_MEDIDOS)
+                .map(|_| {
+                    let t0 = std::time::Instant::now();
+                    let saiu = crate::gpu_frame::paint_com(
+                        t,
+                        &doc,
+                        &reg,
+                        &cam,
+                        &luz,
+                        &surfaces,
+                        &ph2d_field_render::Presentation::of(olhar),
+                        BG,
+                        None,
+                        LW,
+                        LH,
+                        false,
+                        crate::gpu_frame::Sonda {
+                            fita_inerte,
+                            ..crate::gpu_frame::Sonda::default()
+                        },
+                    );
+                    #[allow(clippy::cast_possible_truncation)]
+                    let ms = t0.elapsed().as_secs_f32() * 1e3;
+                    saiu.map(|_| ms)
+                })
+                .collect::<Option<Vec<f32>>>()
+                .map(|v| v.into_iter().fold(f32::INFINITY, f32::min))
+        };
+        let (Some(sem), Some(com)) = (minimo(false), minimo(true)) else {
+            println!("  {n:>4} ·        na CPU");
+            continue;
+        };
+        let campo = ph2d_field_eval::device::DeviceField::new(&doc, &reg).expect("a peça");
+        let fita = campo.tape_wgsl().expect("a fita");
+        let instrs = fita.source.lines().count();
+        let transc = fita
+            .source
+            .lines()
+            .filter(|l| {
+                [
+                    "sin(", "cos(", "tan(", "asin(", "acos(", "atan", "exp(", "log(", "pow(",
+                ]
+                .iter()
+                .any(|f| l.contains(f))
+            })
+            .count();
+        let razao = sem / com;
+        melhor = melhor.min(razao);
+        pior = pior.max(razao);
+        println!(
+            "  {n:>4} · {com:8.2} ms · {sem:8.2} ms · {razao:5.2}x · {instrs:>6} · {transc:>6}"
+        );
+    }
+    println!("  ⇒ a razão sem/com vai de {melhor:.2}x a {pior:.2}x\n");
+}

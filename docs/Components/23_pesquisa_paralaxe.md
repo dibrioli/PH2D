@@ -121,34 +121,57 @@ flutuante **não acumula** porque nunca se soma um resto.
 `zoom 1.0 / 2.0 / 0.5` → declive `0.5000` nos três. O deslocamento é do mundo, e a vista trata-o
 como trata tudo o resto. *É a resposta certa, e é a que um sistema escrito em espaço de ecrã erra.*
 
-### 4.4 ⚠️ Rotação da câmara — ela IGNORA
+### 4.4 ✅ Rotação da câmara — ela ignora, e **está CERTA** (⚠️ eu escrevi o contrário)
 
-`rot 0 / 0.5 / 1.57 rad` → declive `x = 0.5`, `y = 0` nos três. A paralaxe corre nos **eixos do
-mundo**, não nos da vista. Com a câmara rodada, «para o lado» no ecrã deixa de ser o eixo em que a
-camada fica para trás. É uma **limitação declarada** do alvo, e uma porta aberta para nós.
+`rot 0 / 0.5 / 1.57 rad` → declive `x = 0.5`, `y = 0` nos três: a paralaxe corre nos **eixos do
+mundo**, não nos da vista.
 
-### 4.5 ⛔ Limites — MEDIDOS e NÃO EXPLICADOS
+⛔⛔ **A 1.ª redacção deste parágrafo chamou-lhe «limitação declarada» e «porta aberta para nós». É
+FALSO, e a física di-lo:** a paralaxe nasce da **TRANSLAÇÃO** da câmara — um *rolamento* em torno do
+próprio centro óptico **não produz paralaxe nenhuma**, porque todas as profundidades rodam por igual.
+O deslocamento certo é `Δmundo · (1 − k)`, que não depende do ângulo; e o rolamento chega à camada
+pela transformada da vista, como chega a tudo o resto. ⇒ *não há nada a superar aqui, e construir
+«paralaxe nos eixos da vista» seria construir um defeito.* **Recusa medida.**
 
-Com a região `−400..400` e `scroll_scale 0.5`:
+### 4.5 ✅ Limites — é um **CONFINADOR**, e a lei tem dois joelhos
+
+⚠️ **Duas leis minhas foram construídas e REFUTADAS antes desta**, e as duas pelo mesmo defeito de
+régua: eu media um **declive MÉDIO** sobre uma curva que tem joelhos. *Um clamp não tem um declive;
+tem pedaços* — e a média de dois pedaços não é nenhum deles. A cura foi despejar a curva inteira.
+
+Região `−600..600` (1 200 de largura), ecrã `720`, `scroll_scale 0.5`:
 
 ```
-cam.x −1200  origem.x −1360      declive 1.00 (fora da região)
-cam.x  −400  origem.x  −560
-cam.x     0  origem.x  −180      declive 0.95 (DENTRO — e não os 0.50 autorados!)
-cam.x   400  origem.x   200
-cam.x  1200  origem.x  1000      declive 1.00 (fora)
+cam.x  −1200 … −360   declive +1.0000     ← a camada CONGELA no ecrã
+cam.x   −240 …  +240   declive +0.5000     ← a paralaxe autorada
+cam.x   +360 … +1200   declive +1.0000     ← congela outra vez
 ```
 
-Fora da região a camada passa a andar 1:1 com a câmara (congela no ecrã); **dentro dela o declive
-lido é `0.95`, não o `0.5` que foi escrito.** Não tenho mecanismo para isto. ⇒ **fica NOMEADO como
-por medir**; copiar o comportamento sem o entender seria copiar um defeito.
+⭐ **O joelho está em `|cam| = 240 = (região − ecrã) / 2`** — exactamente o ponto em que a **borda da
+VISTA alcança a borda da REGIÃO**. ⇒ a lei inteira é: *enquanto a vista couber dentro da região, a
+camada faz a paralaxe escrita; quando a borda da vista toca a borda da região, a camada passa a
+andar 1:1 com a câmara* (isto é, congela no ecrã), **e é por isso que a borda do fundo nunca entra
+em cena**.
 
-### 4.6 ⛔ Autoscroll — INCONCLUSIVO, e é o controlo que o diz
+⛔ Não é uma reescala, e não é o `scroll_scale` que muda: é um **clamp da VISTA contra um
+RECTÂNGULO**. O que o artista escreve são as bordas do rectângulo.
 
-`autoscroll = 60 px/s`, câmara parada, 30 quadros: **andou `0.000`**. E o **controlo** (`autoscroll =
-0`) andou **`0.000` também** ⇒ a sonda não distingue *«não funciona»* de *«não observo»* (o efeito
-pode viver num deslocamento interno que não passa pela transformada do nó, ou não correr sem
-desenho). *Uma célula sem controlo positivo não é um resultado.*
+### 4.6 ⛔ Autoscroll — **não é observável**, e agora com os dois controlos a dizê-lo
+
+A 1.ª ronda ficou inconclusiva (o controlo a `0` leu o mesmo que o de `60 px/s`). Fechada com dois
+controlos positivos e quatro observáveis:
+
+```
+(a) os quadros correm?          10 quadros somaram 0,0667 s de delta   ⇒ SIM
+(b) o observável responde?      scroll_offset 0 → 333 moveu +333,0     ⇒ SIM
+(c) autoscroll 120 px/s, 60 quadros, quatro observáveis                ⇒ +0,000
+    (transform · scroll_offset · global · o próprio filho)
+```
+
+⇒ **o movimento próprio do alvo não passa pelo estado do nó** — ele vive no caminho de DESENHO.
+⚠️ Isto não afirma que está partido num jogo a correr; afirma uma coisa mais útil para nós: *ele não
+é observável por um teste, não compõe com o resto do estado e não pode sobreviver a um scrub.* É
+uma fronteira de desenho, e é onde se ganha (plano W4).
 
 ### 4.7 ⚠️ Os dois interruptores — 4 combinações, **3** comportamentos
 

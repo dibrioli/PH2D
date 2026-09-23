@@ -287,3 +287,50 @@ fn as_cenas_de_varias_saidas_pela_placa_dao_o_que_a_cpu_da() {
         julgadas.len()
     );
 }
+
+/// **O CENSO DE ROTA PELA PORTA DO PRODUTO** (doc 119 W5) — a sonda irmã do `motion_route_census`.
+///
+/// ⚠️ Aquela conta pelo PLANO e não conhece as recusas de aparência da ponte (a forma viva, o
+/// colisor, a mistura em grupo, a forma condicional): ela dizia `110 de 126` na placa com cenas
+/// que o quadro manda para a CPU. Esta corre o MESMO `cook_gpu` do quadro e agrupa pela razão que
+/// ele DISSE — *a régua de uma rota é a porta que a decide*.
+///
+///   cargo test -p ph2d-app-motion --lib -- --ignored --nocapture censo_de_rota_pela_ponte
+#[test]
+#[ignore = "sonda de rota pela ponte (precisa de adapter), não um gate"]
+fn censo_de_rota_pela_ponte() {
+    let gpu = GpuContext::new(GpuContext::default_instance(), None).expect("adapter");
+    let mut porques: std::collections::BTreeMap<String, Vec<u32>> = Default::default();
+    let (mut total, mut placa) = (0u32, 0u32);
+    for level in 1..=MAX_DEMO_LEVEL {
+        let mut m = MotionState::new();
+        if crate::motion_demo_legend::monta(&level.to_string(), &mut m.doc, &m.registry)
+            .0
+            .is_empty()
+        {
+            continue;
+        }
+        m.sinks = super::super::remove::output_nodes(&m.doc.graph);
+        // ⚠️ O que o quadro faz ao montar a cena (`motion_state_verbos`): a cena que ensina um modo
+        // SÓ da CPU pede-a pelo nome. Sem esta linha a `=107` lia-se «na placa» aqui e ia à CPU
+        // no app — *uma sonda que salta um passo da montagem mede outra cena*.
+        m.cpu_pedida =
+            crate::motion_state::demo_router::cena_pede_a_cpu_em(Some(&level.to_string()));
+        crate::motion_externals::publish_all(&mut m, TIQUE as f64 * DT);
+        let scopes = ph2d_node_motion_time_remap::time_scopes(&m.doc.graph, &m.registry);
+        let saida = cook_gpu(&mut m, &gpu, TIQUE, DT, &scopes);
+        total += 1;
+        placa += u32::from(matches!(saida, GpuOutcome::Handled));
+        let razao = m.route_said.unwrap_or("?").to_string();
+        porques.entry(razao).or_default().push(level);
+    }
+    eprintln!("=== CENSO DE ROTA PELA PONTE · {total} cenas ===");
+    for (razao, cenas) in &porques {
+        eprintln!("  {:>3} · {razao}", cenas.len());
+        eprintln!("        {cenas:?}");
+    }
+    eprintln!(
+        "  na placa │ {placa} de {total} ({:.1}%)",
+        f64::from(placa) * 100.0 / f64::from(total.max(1))
+    );
+}

@@ -206,3 +206,33 @@ diff na crate).
 
 ⏳ **Falta a W5:** a medição (o relógio da `=107` e o censo de rota refeito com as curas) e o smoke
 do dono.
+
+## §9 — W5, a MEDIÇÃO (2026-09-23): o censo de rota PELA PORTA DO PRODUTO
+
+⚠️ **O censo de sempre (`motion_route_census`) conta pelo PLANO** e não conhece as recusas de
+aparência da ponte (forma viva, colisor, mistura em grupo, forma condicional): ele diz `110` de
+`126` com cenas que o quadro manda para a CPU. A sonda nova, `censo_de_rota_pela_ponte`
+(`#[ignore]`, adaptador real), corre o MESMO `cook_gpu` do quadro sobre as `126` cenas e agrupa
+pela razão que ele DISSE:
+
+| rota | cenas |
+|---|---|
+| placa, o plano inteiro | `58` |
+| placa, híbrido (prefixo na CPU) | `37` |
+| CPU: forma vectorial viva (`source.shape`) | `21` |
+| CPU: fronteira sem estágio que despache | `6` |
+| CPU: a cena PEDE a CPU (`=107`) | `1` |
+| CPU: escopo de tempo | `1` |
+| CPU: mistura em grupo | `1` |
+| CPU: forma condicional (`=108`, L-System em Ramos) | `1` |
+| **na placa** | **`95` de `126` (`75,4 %`)** |
+
+As `59` cenas de várias saídas que a varredura julga iam **todas** à CPU antes deste ciclo ⇒ a
+porta do produto passa de **`~36`** para **`95`** cenas na placa (o «antes» é DERIVADO — `95 − 59`
+—, não re-medido numa árvore antiga). ⚠️ **E a sonda precisou de repetir um passo da montagem:** o
+quadro marca a `=107` com `cpu_pedida` ao montar a cena, e a 1.ª corrida da sonda, que chamava a
+montagem directa, leu-a «na placa» — *uma sonda que salta um passo da montagem mede outra cena*.
+
+⏳ **O relógio não foi medido, de propósito:** a máquina esteve a `load 51`–`85` a jornada inteira
+(outras linhas), e nenhuma leitura de relógio desta workstation vale acima de `load ~5`
+(`CLAUDE.md` §5.0). O que está medido é a ROTA — e é ela que muda o preço (`50,9×`, doc 98).

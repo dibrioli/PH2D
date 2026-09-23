@@ -114,7 +114,7 @@ inventada. Contagens do registry em 2026-09-05.
 | **8** ✅ ([doc 113](113_ciclo_8_fontes_e_dados.md)) | FONTES & DADOS | `source.shape` · `source.object` · `source.text` · `source.table` · `source.lsystem` · `motion.emitter` · **`source.camera`** (nasceu no ciclo) | «De onde vêm as coisas» — cena `=119`, [tutorial 8](tutoriais/08_de_onde_vem_as_coisas.pdf) |
 | **9** ✅ ([doc 114](114_ciclo_9_rig_e_corpos_moles.md)) | RIG & CORPOS MOLES | `rig.*` (**6**) · `soft_body` · `verlet_rope` · `wave` · `boids` — **10**, contados | «Coisas que se seguram» — cena `=120`, [tutorial 09](tutoriais/09_coisas_que_se_seguram.pdf) |
 | 10 ⏳ ([doc 116](116_ciclo_10_o_carimbo_no_dispositivo.md)) | ⚡ **O CARIMBO NO DISPOSITIVO** — `source.shape` + `motion.duplicator` | (optimização, não um grupo novo) | ⛔ **não tem tutorial** (doc 116 §1) |
-| **11** | ⚡ **A AVALIAÇÃO GERAL DE PERFORMANCE** — o módulo inteiro, cena a cena | (varredura) | — |
+| 11 ⏳ ([doc 119](119_ciclo_11_a_placa_com_varias_saidas.md)) | ⚡ **A AVALIAÇÃO GERAL DE PERFORMANCE** — o alvo medido (doc 117) era a cerca de ÂMBITO do multi-sink; ela SAIU (W1–W4) e a varredura achou **três** defeitos de produto que ela escondia, curados. Pela porta do produto, **`95` de `126`** cenas vão à placa. ⏳ smoke do dono | (varredura) | — |
 | **12** | ⚡ **OS TETOS CONFORTÁVEIS** — quantos objectos o sistema aguenta, com número | (decisão do Enio, com a tabela) | — |
 
 > ⚠️ **Estado em 2026-09-20.** O ciclo **9** FECHOU — o dono correu a cena `=120`, seguiu o

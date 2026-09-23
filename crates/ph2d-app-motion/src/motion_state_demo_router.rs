@@ -97,7 +97,7 @@ pub(super) fn cena_pede_a_cpu() -> Option<&'static str> {
 
 /// A lei de [`cena_pede_a_cpu`], sem o ambiente — chamável por um teste em paralelo.
 #[must_use]
-pub(super) fn cena_pede_a_cpu_em(level: Option<&str>) -> Option<&'static str> {
+pub(crate) fn cena_pede_a_cpu_em(level: Option<&str>) -> Option<&'static str> {
     match level {
         Some("107") => Some(lazy_switch_demo::PEDE_A_CPU),
         _ => None,

@@ -3,9 +3,10 @@
 //! ⚠️ **Ela não corre por quadro** — a aresta é a ASSINATURA do instantâneo, e o foco e o arrasto
 //! ganham-lhe: *a mão do artista ganha ao instantâneo*. É a lei que as seis irmãs já escrevem.
 //!
-//! ⚠️⚠️ **A leitura do MUNDO (`tem_camera_do_jogo`) fica FORA da assinatura, e é deliberado:** ela
-//! não semeia widget nenhum — só decide uma frase — e pô-la ali faria a secção re-semear-se no
-//! quadro em que alguém apaga uma câmera, com o valor que o artista estava a arrastar.
+//! ⚠️⚠️ **As leituras do MUNDO (`camera`, `atravessa`, `outro_motor`…) ficam FORA da assinatura, e
+//! é deliberado:** elas não semeiam widget nenhum — só decidem uma frase — e pô-las ali faria a
+//! secção re-semear-se no quadro em que alguém apaga uma câmera, com o valor que o artista estava a
+//! arrastar.
 
 use std::hash::{Hash, Hasher};
 

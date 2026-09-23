@@ -32,6 +32,18 @@ pub struct InspectorGameCamera {
     pub cull_mask: u32,
 }
 
+/// ⭐⭐ **A FAIXA do dolly, numa porta só** (auditoria 26, §2.6): ela vivia como dois literais —
+/// a pista do painel (`populate_camera`) e o clamp do applier (`camera_inspector`) —, e a mutação
+/// que subia um deles para `0,99` SOBREVIVIA à bancada inteira. Os dois lêem daqui.
+///
+/// - **`0,9` em cima é o DOMÍNIO DA LEI** — em `δ = 1` o plano do mundo tem tamanho aparente zero
+///   (e a `escala_do_dolly` recusa, auditoria 26 §3).
+/// - **`−1` em baixo é a SATURAÇÃO, medida:** o céu lê `1,79×` a `−1`, `2,42×` a `−2` e `2,94×` a
+///   `−3` — cada passo compra menos.
+pub const DOLLY_MIN: f32 = -1.0; // LITERAL-PX-OK: saturação medida do dolly
+/// Ver [`DOLLY_MIN`].
+pub const DOLLY_MAX: f32 = 0.9; // LITERAL-PX-OK: domínio da lei do dolly
+
 /// Quem ela segue, quando segue.
 #[derive(Clone, Debug, PartialEq)]
 pub struct InspectorCameraFollow {

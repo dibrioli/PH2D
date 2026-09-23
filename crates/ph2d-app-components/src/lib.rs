@@ -129,10 +129,10 @@ pub mod master_editing;
 /// ⭐⭐⭐ **A PARALAXE** (plano 24, W1) — um objecto guarda uma fracção do movimento do mundo; a
 /// lei, a referência e o caso do arrasto estão no cabeçalho.
 pub mod parallax_bridge;
-/// ⭐⭐⭐ **A PARALAXE** (plano 24, W7) — `=1` os quatro planos e as duas leis lado a lado · `=2` o
-/// dolly, que é o que nenhum outro motor deste género dá.
 /// ⭐⭐⭐ **A PARALAXE** (plano 24, W7) — o instantâneo e o dreno da secção.
 pub mod parallax_inspector;
+/// ⭐⭐⭐ **A PARALAXE** (plano 24, W7) — `=1` os quatro planos e as duas leis lado a lado · `=2` o
+/// dolly, que é o que nenhum outro motor deste género dá.
 pub mod parallax_smoke;
 /// ⭐⭐⭐ **A ponte dos emissores de partículas** (TOP-20 #18) — ver o cabeçalho do módulo.
 pub mod particles_bridge;

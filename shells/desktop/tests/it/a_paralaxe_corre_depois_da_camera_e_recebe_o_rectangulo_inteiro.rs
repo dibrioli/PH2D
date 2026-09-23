@@ -1,6 +1,7 @@
 //! ⭐⭐⭐ **A ORDEM da PARALAXE no quadro, e o que ATRAVESSA para a lei** (plano 24, W1).
 //!
-//! A lei é `saída = autorada + centro_da_vista · (1 − k)`, e ela vive na
+//! A lei é `saída = autorada + centro_da_vista · (1 − k)` (mais o confinamento, a repetição e o
+//! dolly, todos em `ph2d_ecs::scroll_factor::saida_eixo`), e a ponte vive na
 //! `ph2d_app_components::parallax_bridge`. O que esta shell decide é **quando** ela corre e **com
 //! que dado** — e as duas metades são gateadas aqui, porque nenhuma é visível de dentro da crate.
 //!
@@ -18,7 +19,7 @@
 //! nenhuma ([`docs/Components/23_pesquisa_paralaxe.md`](../../../../docs/Components/23_pesquisa_paralaxe.md)
 //! §4.4).
 //!
-//! ⛔⛔ **A 1.ª redacção deste gate exigia que o rectângulo da câmera NÃO atravessasse a fronteira**,
+//! ⛔⛔ **A 1.ª redacção deste gate (e o NOME dele, até à auditoria 26) exigia que o rectângulo da câmera NÃO atravessasse a fronteira**,
 //! e ela estava certa enquanto a paralaxe fosse só um deslocamento. A **W3** (o confinamento) tem o
 //! joelho em `(região − ecrã)/2` — *ele precisa de saber quanto a vista mede* — e a premissa morreu
 //! no dia seguinte ao de ter sido escrita.
@@ -38,11 +39,23 @@
 //! ⚠️ **A lente é o TEXTO EMENDADO do quadro** (`frame_text::render_frame`), nunca um ficheiro: a
 //! fase que corre primeiro pode morar no ficheiro que vem depois.
 
+/// ⛔ **O TEXTO LÊ-SE SEM COMENTÁRIOS** (auditoria 26, §3): o `frame_text` devolve o fonte
+/// inteiro, e uma chamada COMENTADA (`// self.fase_paralaxe(…)`) contém a mesma agulha que a viva ⇒
+/// o gate ficava verde com a fase desligada. ⚠️ Só se tiram as linhas que COMEÇAM por `//`: um corte
+/// a meio da linha apagaria o `://` de uma string e não compra nada contra o defeito medido.
+fn so_codigo(texto: &str) -> String {
+    texto
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("//"))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 /// **Mutação que deve sangrar:** mover a chamada `self.fase_paralaxe(camera_rect)` para antes do
 /// `self.fase_game_camera(...)`, ou entregar à ponte só o centro.
 #[test]
-fn a_paralaxe_corre_depois_da_camera_e_so_recebe_o_centro() {
-    let src = crate::frame_text::render_frame();
+fn a_paralaxe_corre_depois_da_camera_e_recebe_o_rectangulo_inteiro() {
+    let src = so_codigo(&crate::frame_text::render_frame());
 
     let camera = src
         .find("⟦fase fase_game_camera⟧")
@@ -54,6 +67,16 @@ fn a_paralaxe_corre_depois_da_camera_e_so_recebe_o_centro() {
         camera < paralaxe,
         "a paralaxe corre ANTES da camera: o fundo desloca-se contra o enquadramento do quadro \
          anterior, e num jogo que segue o heroi le-se como «atrasado um quadro»"
+    );
+
+    // ⭐ E DEPOIS do dreno da timeline (auditoria 26, §3): é ele que aplica o scrub ao relógio, e a
+    // deriva lê o relógio — antes dele, arrastar a régua chegava ao fundo um quadro atrasado.
+    let dreno = src
+        .find("⟦fase fase_timeline_drain⟧")
+        .expect("a `fase_timeline_drain` deixou de correr no quadro");
+    assert!(
+        dreno < paralaxe,
+        "a paralaxe corre ANTES do dreno da timeline: um scrub chega a' deriva um quadro atrasado"
     );
 
     // E a chamada à lei recebe o RECTÂNGULO INTEIRO — ver o ⛔⛔ do cabeçalho sobre a premissa que
@@ -83,10 +106,11 @@ fn a_paralaxe_corre_depois_da_camera_e_so_recebe_o_centro() {
 
     // ⚠️ O CONTROLO da segunda metade: a shell de facto TEM o rectângulo em mãos neste ponto — sem
     // esta linha o gate acima passaria numa shell onde `camera_rect` nem existe, medindo nada.
-    let fase = crate::frame_text::phases()
-        .get("fase_paralaxe")
-        .cloned()
-        .expect("a `fn fase_paralaxe` deixou de existir");
+    let fase = so_codigo(
+        crate::frame_text::phases()
+            .get("fase_paralaxe")
+            .expect("a `fn fase_paralaxe` deixou de existir"),
+    );
     assert!(
         fase.contains("camera_rect"),
         "a fase nao recebe o rectangulo da camera: o controlo do gate acima e vacuo"
@@ -117,7 +141,7 @@ fn a_paralaxe_corre_depois_da_camera_e_so_recebe_o_centro() {
 /// teste — a mesma razão do gate da fiação do `dispatch` (§5 do Motion).
 #[test]
 fn o_prologo_da_cena_da_paralaxe_toma_a_vista_fecha_a_regua_e_poe_o_relogio_a_andar() {
-    let fonte = include_str!("../../src/components_scenes_suplentes.rs");
+    let fonte = so_codigo(include_str!("../../src/components_scenes_suplentes.rs"));
     let ini = fonte
         .find("fn parallax_smoke(")
         .expect("o prologo da cena da paralaxe deixou de existir");

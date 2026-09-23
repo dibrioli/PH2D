@@ -93,10 +93,15 @@ fn a_fase_e_a_mesma_ao_decimo_milesimo_ladrilho() {
             // um número inteiro de ladrilhos»* — e fugir é precisamente o que a repetição existe
             // para impedir. ⚠️ O controlo do fim mede outra CENA (sem o componente): ele prova que
             // a varredura mexe, nunca que é o componente que a segura.
+            //
+            // ⛔⛔ **E a régua é a posição NO ECRÃ (`p − c`), nunca `p − autorada`** (auditoria 26,
+            // §1.1): a 1.ª redacção media a distância à pose autorada NO MUNDO e ficava verde sobre
+            // a lei que prendia o fundo ao mundo — com a câmera longe, a fileira saía da vista.
+            let c = fase_inicial + 512.0 * n as f32;
             assert!(
-                (p - autorada.translation.x).abs() <= tile / 2.0 + 1e-3,
-                "fase {fase_inicial}: ao ladrilho {n} a pose FUGIU para {p} — o fundo deixou de \
-                 ser infinito (autorada {}, meio ladrilho {})",
+                (p - c - autorada.translation.x).abs() <= tile / 2.0 + 1e-3,
+                "fase {fase_inicial}: ao ladrilho {n} a pose FUGIU da vista para {p} (câmera {c}) \
+                 — o fundo deixou de ser infinito (autorada {}, meio ladrilho {})",
                 autorada.translation.x,
                 tile / 2.0
             );
@@ -112,10 +117,10 @@ fn a_fase_e_a_mesma_ao_decimo_milesimo_ladrilho() {
             &mut drive,
         );
         let solto = sim.world().get::<Transform>(e).expect("pose").translation.x;
+        let c20 = fase_inicial + 512.0 * 20.0;
         assert!(
-            (solto - poses[0]).abs() > 1000.0,
-            "sem repeticao a pose devia ter fugido, e leu {solto} contra {}",
-            poses[0]
+            (solto - c20 - autorada.translation.x).abs() > 1000.0,
+            "sem repeticao a pose devia ter fugido da VISTA, e leu {solto} contra a câmera {c20}"
         );
     }
 }
@@ -131,10 +136,12 @@ fn um_ladrilho_zero_nao_corrige_e_o_eixo_livre_desloca() {
     let mut drive = PreviewDrive::default();
     drive_parallax(&mut sim, Some((centro, SEM_LIMITE)), PARADO, &mut drive);
     let t = *sim.world().get::<Transform>(e).expect("pose");
+    // ⚠️ A régua é a posição NO ECRÃ (auditoria 26, §1.1).
     assert!(
-        t.translation.x.abs() <= 128.0 + 1e-3,
-        "o eixo REPETIDO fugiu do ladrilho: x = {}",
-        t.translation.x
+        (t.translation.x - centro[0]).abs() <= 128.0 + 1e-3,
+        "o eixo REPETIDO fugiu da vista: x = {} com a câmera em {}",
+        t.translation.x,
+        centro[0]
     );
     assert!(
         (t.translation.y - 2000.0).abs() < 1e-2,
@@ -180,9 +187,10 @@ fn a_repeticao_nao_envolve_a_pose_autorada() {
         &mut drive,
     );
     let x = sim.world().get::<Transform>(e).expect("pose").translation.x;
+    // ⚠️ No ECRÃ a camada fica a meio ladrilho de onde o artista a pôs (auditoria 26, §1.1).
     assert!(
-        (x - 4000.0).abs() <= 128.0 + 1e-3,
-        "a pose fugiu do ladrilho a` volta do AUTORADO: {x} contra 4000 ± 128"
+        (x - 10_000.0 - 4000.0).abs() <= 128.0 + 1e-3,
+        "a pose fugiu da vista: {x} contra 14000 ± 128"
     );
     let Some(Driven::ParallaxPose(memo)) = drive.authored(e.to_bits(), Driver::ParallaxPose) else {
         panic!("tinha de continuar a ser conduzido");
@@ -346,7 +354,10 @@ fn uma_regiao_mais_estreita_que_a_vista_nao_entra_em_panico() {
 /// deslocamento final cai sempre dentro de meio ladrilho, mesmo com a camada congelada.
 #[test]
 fn com_limites_e_repeticao_a_repeticao_e_a_ultima() {
-    let tile = 256.0_f32;
+    // ⚠️ `64` e não `256` (auditoria 26): com a repetição presa à VISTA o que ela reduz é
+    // `k·confinado = 120`, e um ladrilho maior que o dobro disso não distingue «repetiu por último»
+    // de «não repetiu» — a mutação da ordem sobrevivia.
+    let tile = 64.0_f32;
     let mut sim = SimWorld::default();
     let e = sim
         .world_mut()
@@ -369,9 +380,10 @@ fn com_limites_e_repeticao_a_repeticao_e_a_ultima() {
         &mut drive,
     );
     let x = sim.world().get::<Transform>(e).expect("pose").translation.x;
+    // ⚠️ No ECRÃ (auditoria 26, §1.1): a câmera está em `5000`.
     assert!(
-        x.abs() <= tile / 2.0 + 1e-3,
-        "a repeticao deixou de ser a ULTIMA: x = {x}, fora de meio ladrilho"
+        (x - 5000.0).abs() <= tile / 2.0 + 1e-3,
+        "a repeticao deixou de ser a ULTIMA: x = {x}, fora de meio ladrilho da vista"
     );
 }
 

@@ -99,6 +99,8 @@ impl crate::App {
             renderer,
             window_size,
             self.game_camera_preview,
+            // ⭐ O ledger — a secção PARALLAX pergunta se OUTRO motor conduz o objecto (auditoria 26).
+            &self.preview_drive,
             self.last_pointer,
             self.frame_ms_ewma,
             self.frame_cpu_ms_ewma,

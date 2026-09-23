@@ -184,6 +184,23 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.parallax.there_is_no_game_camera" => {
             "There is no Game Camera in the scene \u{2014} no layer moves."
         }
+        "panel.inspector.parallax.the_game_camera_is_off" => {
+            "The Game Camera is switched off \u{2014} tick Active on it."
+        }
+        "panel.inspector.parallax.the_camera_passes_through_this_layer" => {
+            "The Dolly takes the camera past this layer \u{2014} it stays where you put it."
+        }
+        "panel.inspector.parallax.another_motor_moves_this_object" => {
+            "Something else moves this object too \u{2014} put the Parallax on a parent."
+        }
+        "panel.inspector.parallax.the_game_camera_preview_is_off" => {
+            "The layer follows the Game Camera \u{2014} turn on its Preview to watch it."
+        }
+        "panel.inspector.parallax.no_limit_axis_is_active" => {
+            "No limit is active \u{2014} set Limit Max above Limit Min."
+        }
+        "panel.inspector.parallax.axis_x_phrase" => "X: {f}",
+        "panel.inspector.parallax.axis_y_phrase" => "Y: {f}",
         "panel.inspector.parallax.this_layer_moves_with_the_world" => {
             "This layer moves with the world \u{2014} lower the Scroll Factor."
         }

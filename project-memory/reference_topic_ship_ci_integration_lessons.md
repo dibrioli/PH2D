@@ -34,3 +34,4 @@ metadata:
 
 - ⛔⛔ [`--bins` NÃO alcança `tests/` — e o gate pode viver na `tests/it/` de OUTRA crate: 7 vermelhos em `ph2d-editor-core` sobre painéis que a linha editou](feedback_a_bins_run_never_reaches_the_gates_that_live_in_tests.md)
 - ⛔ [`ph2d-field-render --test it`: 7-8 vermelhos são contadores GLOBAIS do próprio binário — `24/24` VERDE com `--test-threads=1` a load 75; pré-existente, confirme antes de culpar o seu diff](project_field_render_it_suite_is_green_single_threaded.md)
+- ⛔ [Um cargo MORTO pode deixar um zombie a segurar o flock do target («Blocking waiting for file lock») — ver `/proc/locks`; cura: `CARGO_TARGET_DIR` próprio na MESMA worktree](feedback_a_killed_cargo_can_leave_a_zombie_that_holds_the_build_lock.md)

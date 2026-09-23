@@ -120,7 +120,7 @@ mod inspector_anchor;
 mod inspector_anim;
 /// ⭐⭐⭐ A secção AUDIO do Inspector (TOP-20 #4, W3) — o snapshot e o commit.
 mod inspector_audio;
-/// ⭐⭐⭐ **A secção CAMERA** (TOP-20 #7) — o snapshot e o commit dos três componentes.
+/// **O commit da §2 Sprite** — irmão do `inspector_commits` por CAP de LOC.
 mod inspector_commits_sprite;
 mod inspector_factory;
 /// ⭐ **A seção COMPONENT do Inspector** (ADR-0164 / F5) — o que esta cópia tem de diferente

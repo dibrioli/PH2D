@@ -69,6 +69,21 @@ camada, que se recusa em voz alta.
 > ⭐⭐ **E o `z₀` DESAPARECEU, o que fecha o bloqueador §6.1 sem uma decisão:** `escala` depende só de
 > `k` e de `d/z₀` ⇒ o dolly exprime-se em **fracções da distância focal** e não há número para
 > medir. *Um parâmetro adimensional não tem um default para escolher.*
+>
+> ⛔⛔⛔ **CORRECÇÃO (2026-09-23, auditoria 26 §1.4): esta secção dava a ESCALA e esquecia a
+> POSIÇÃO.** A pinhole diz para onde vai cada ponto, e não só o tamanho: um ponto autorado em `P`
+> (visto em `P` com a câmera na origem e sem dolly) aparece em
+>
+> ```
+> X = c + (P − k·c) · escala(d)            ⇒ a camada escala à volta do CENTRO DA VISTA
+> ```
+>
+> A 1.ª implementação translava o pivô por `c·(1 − k·escala)` e escalava **em torno do pivô**,
+> errando por `(escala − 1)·P` — na cena `=2` os fundos encolhiam no lugar em vez de convergirem
+> para o centro (céu em `y = 3,2`, dolly `0,9`: `3,2` contra `0,359`). Gates:
+> `o_dolly_escala_a_volta_do_centro_da_vista` (contra a pinhole escrita por extenso) e
+> `o_dolly_leva_o_fundo_para_o_centro_da_vista` (pela ponte). ⚠️ E `δ ≥ 1` (a câmera no plano
+> focal) é recusa, pela mesma razão da travessia.
 
 ## §3 — Onde o número vive: **num componente de qualquer objecto**
 
@@ -116,6 +131,13 @@ por um resto — é isso que impede a costura de abrir e o erro de acumular.
   (uma sprite sabe a largura dela; uma forma sabe a caixa) e o campo é só um *override*.
 - **Gate:** varrer 10 000 unidades e exigir que a origem caia **exactamente** na mesma fase (o erro
   de `f32` não pode aparecer no décimo milésimo ladrilho).
+- ⛔⛔⛔ **CORRECÇÃO (2026-09-23, auditoria 26 §1.1): o que fica limitado é a posição NO ECRÃ.**
+  A 1.ª implementação envolvia o deslocamento `c·(1−k)` e prendia a camada a meio ladrilho da pose
+  autorada **no mundo** — a fileira saía da vista ao fim de ~30 m, e a tabela do alvo já dizia o
+  contrário (a origem RELATIVA AO ECRÃ fica numa janela de um ladrilho). Hoje envolve-se
+  `deriva − k·c`, congruente com a antiga módulo um ladrilho. ⚠️ **A régua certa é `saída − c`;**
+  a que os gates da W2 usavam (`|saída − autorada|`) era a grandeza errada e ficava verde sobre o
+  defeito.
 
 ### W3 — o confinamento (`ScrollLimits`)
 
@@ -139,7 +161,7 @@ caminho de desenho. O nosso é `offset = velocidade × playhead`:
 
 ### W5 — a multiplano: a **escala** e o **dolly** (§2)
 
-`GameCamera` ganha `focal_distance` (`z₀`) e `dolly` (`d`). A escala deriva (`k(d)/k₀`) e é
+`GameCamera` ganha `dolly` (`δ = d/z₀`, adimensional — o `focal_distance` desapareceu, §2). A escala deriva (`k(d)/k₀`) e é
 conduzida, como a pose.
 
 - ⛔ **Com `dolly = 0` a saída é byte-idêntica à W1** — e há gate a exigi-lo.

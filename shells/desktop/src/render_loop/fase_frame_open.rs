@@ -40,9 +40,6 @@ impl crate::App {
         // cima acabou de calcular. Ver o cabecalho da fase: ela tem de correr DEPOIS da camera
         // e ANTES do extract, e as duas metades sao load-bearing.
         self.fase_hud(camera_rect);
-        // ⭐⭐⭐ **A PARALAXE** (plano 24, W1) — o fundo fica para tra's da mesma vista. Ver o
-        // cabecalho da fase: depois da camera e do HUD, e ANTES do extract.
-        self.fase_paralaxe(camera_rect);
         let fase_extract_inputs::ExtractInputs {
             dt,
             preview_overrides,
@@ -58,6 +55,11 @@ impl crate::App {
         } = self.fase_timeline_view()?;
         self.fase_timeline_containers(container, keys_mode);
         self.fase_timeline_drain(container, &maos, keys_mode, selected_now);
+        // ⭐⭐⭐ **A PARALAXE** (plano 24, W1) — o fundo fica para tra's da mesma vista. Ver o
+        // cabecalho da fase: depois da camera e do HUD, DEPOIS do dreno da timeline (e' ele que
+        // aplica o scrub e o rebobinar, e a deriva le o relogio — antes dele um scrub chegava um
+        // quadro atrasado, auditoria 26 §3) e ANTES do extract.
+        self.fase_paralaxe(camera_rect);
         self.fase_physics_step(player_input);
         self.fase_signal_outbox(
             anim_signals,

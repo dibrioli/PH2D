@@ -101,7 +101,10 @@ impl ScrollFactor {
     /// mudasse deixava a repetição a corrigir um deslocamento que já não é o que o produto aplica.
     #[must_use]
     pub fn deslocamento(&self, centro: [f32; 2]) -> [f32; 2] {
-        [centro[0] * (1.0 - self.k[0]), centro[1] * (1.0 - self.k[1])]
+        [
+            deslocamento_eixo(self.k[0], centro[0]),
+            deslocamento_eixo(self.k[1], centro[1]),
+        ]
     }
 
     /// ⭐⭐⭐ **O DOLLY** (plano 24, W5 · §2) — a câmera anda em PROFUNDIDADE, e o primeiro plano
@@ -154,7 +157,15 @@ impl ScrollFactor {
         if den <= 0.0 {
             return None;
         }
-        Some((1.0 - delta) / den)
+        let e = (1.0 - delta) / den;
+        // ⛔ **`δ ≥ 1` é a câmera NO plano focal (ou além dele)** — o plano do mundo passa a ter
+        // tamanho aparente zero (ou negativo), e uma escala `≤ 0` escrita no `Transform` não tem
+        // volta: a recuperação do autorado é por RAZÃO, e dividir por zero não devolve nada.
+        // Recusa, pela mesma razão da travessia (auditoria 26, §3).
+        if !e.is_finite() || e <= 0.0 {
+            return None;
+        }
+        Some(e)
     }
 
     /// ⭐ **A escala por EIXO desta camada**, ou `None` se a câmera atravessa um dos dois.
@@ -198,10 +209,74 @@ impl ScrollFactor {
     /// *Um `if` ali seria a segunda resposta a «a camada congelou?», e ela divergiria no joelho.*
     #[must_use]
     pub fn deslocamento_confinado(&self, centro: [f32; 2], confinado: [f32; 2]) -> [f32; 2] {
-        let d = self.deslocamento(centro);
         [
-            d[0] + self.k[0] * (centro[0] - confinado[0]),
-            d[1] + self.k[1] * (centro[1] - confinado[1]),
+            deslocamento_confinado_eixo(self.k[0], centro[0], confinado[0]),
+            deslocamento_confinado_eixo(self.k[1], centro[1], confinado[1]),
         ]
     }
 }
+
+/// A lei da W1 num eixo — `c·(1 − k)`. ⚠️ Uma função por eixo e não um corpo repetido: a
+/// [`ScrollFactor::deslocamento`] e a [`saida_eixo`] leem-na as duas, e duas cópias da mesma conta
+/// divergem no dia em que uma delas é corrigida.
+#[must_use]
+pub fn deslocamento_eixo(k: f32, centro: f32) -> f32 {
+    centro * (1.0 - k)
+}
+
+/// A lei da W3 num eixo — ver o doc da [`ScrollFactor::deslocamento_confinado`] sobre a forma.
+#[must_use]
+pub fn deslocamento_confinado_eixo(k: f32, centro: f32, confinado: f32) -> f32 {
+    deslocamento_eixo(k, centro) + k * (centro - confinado)
+}
+
+/// ⭐⭐⭐ **A SAÍDA de UM EIXO de uma camada — a lei inteira numa função** (auditoria 26, §1.1 e
+/// §1.4). A ponte chama-a por eixo; os gates chamam-na sem ledger nenhum.
+///
+/// ```text
+/// saída = c + esc · (autorada + deriva − k·confinado)          (e a repetição envolve o parêntesis)
+/// ```
+///
+/// # ⛔⛔ As duas curas que a auditoria de 23/09 impôs
+///
+/// 1. **A REPETIÇÃO envolve a posição RELATIVA À VISTA, nunca o deslocamento no mundo.** A 1.ª
+///    redacção envolvia `d = c·(1−k)` ⇒ `|d| ≤ tile/2` ⇒ a camada ficava presa a meio ladrilho da
+///    pose autorada **no MUNDO**, e uma fileira finita saía do ecrã ao fim de ~30 m (medido na
+///    cena `=1`: `5/4/2/0` árvores à vista com a câmera em `0/20/30/60`). O oráculo mostra o
+///    contrário: a origem RELATIVA AO ECRÃ fica limitada (`−436 … −564` com a câmera de `0` a
+///    `768`). Envolver `deriva − k·confinado` é congruente com o antigo **módulo um ladrilho** —
+///    a imagem de um padrão repetido é a mesma — e é o relativo à vista que fica limitado.
+/// 2. **O DOLLY escala à volta do CENTRO DA VISTA, nunca do pivô.** A pinhole dá, para cada ponto
+///    autorado `P`, `X = c + (P/k − c)·k·esc = c + esc·(P − k·c)` — a antiga translava o pivô por
+///    `c·(1 − k·esc)` e escalava em torno dele, errando por `(esc − 1)·P`. Com os filhos da camada
+///    escalados pelo mesmo `esc`, o ponto `P + q` cai em `c + esc·(P + q − k·c)` exactamente.
+///
+/// ⚠️ **Sem repetição e sem dolly o braço é o de SEMPRE, ao bit** (`c·(1−k) + k·(c − conf)`), e
+/// é isso que mantém a paridade da W1 com o oráculo e as W3/W4 byte-idênticas. ⚠️ `esc` e `tile`
+/// chegam já validados pela lei deles (`escala_do_dolly` recusa o impossível; um ladrilho `≤ 0`
+/// ou não-finito é «não repete»).
+#[must_use]
+pub fn saida_eixo(
+    k: f32,
+    autorada: f32,
+    centro: f32,
+    confinado: f32,
+    deriva: f32,
+    esc: f32,
+    tile: Option<f32>,
+) -> f32 {
+    let repete = tile.is_some_and(|t| t.is_finite() && t > 0.0);
+    if esc == 1.0 && !repete {
+        return autorada + (deslocamento_confinado_eixo(k, centro, confinado) + deriva);
+    }
+    let r = deriva - k * confinado;
+    let r = match tile {
+        Some(t) if repete => crate::envolve_eixo(r, t),
+        _ => r,
+    };
+    centro + esc * (autorada + r)
+}
+
+#[cfg(test)]
+#[path = "scroll_factor_tests.rs"]
+mod tests;

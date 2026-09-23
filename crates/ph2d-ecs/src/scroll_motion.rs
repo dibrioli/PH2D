@@ -23,7 +23,7 @@
 //!
 //! # ⚠️ Ele é um SOMANDO do deslocamento, nunca um segundo condutor
 //!
-//! Medido antes da 1.ª linha ([`super::super::parallax_w4_probe_tests`] na ponte): um segundo motor
+//! Medido antes da 1.ª linha (`parallax_w4_probe_tests.rs`, na `ph2d-app-components`): um segundo motor
 //! a escrever o mesmo `Transform` — um tween de pose, por exemplo — entra no ledger com **outra
 //! chave**, e a paralaxe lê a escrita dele como se tivesse sido o artista a arrastar. ⇒ *a deriva
 //! tem de viver dentro da MESMA lei*, somada ao deslocamento antes de o ledger o ver.
@@ -55,15 +55,19 @@ impl ScrollMotion {
         if !t.is_finite() {
             return [0.0, 0.0];
         }
-        [
-            (f64::from(self.velocity[0]) * t) as f32,
-            (f64::from(self.velocity[1]) * t) as f32,
-        ]
+        // ⛔ **Uma velocidade NÃO-FINITA é inerte, eixo a eixo** — ela chega por ficheiro ou por
+        // script, nunca pelo painel, e escrita crua punha o `Transform` a `NaN` sem volta (a
+        // repetição devolve um `NaN` intocado). Auditoria 26, §3.
+        let eixo = |v: f32| {
+            let o = (f64::from(v) * t) as f32;
+            if o.is_finite() { o } else { 0.0 }
+        };
+        [eixo(self.velocity[0]), eixo(self.velocity[1])]
     }
 
     /// `true` se ele não move nada — a omissão, e o que o deixa fora do trabalho.
     #[must_use]
     pub fn e_inerte(&self) -> bool {
-        self.velocity == [0.0, 0.0]
+        !self.velocity.iter().any(|v| v.is_finite() && *v != 0.0)
     }
 }

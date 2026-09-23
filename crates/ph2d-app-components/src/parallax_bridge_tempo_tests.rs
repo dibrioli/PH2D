@@ -369,8 +369,8 @@ fn a_camera_a_atravessar_a_camada_recusa() {
     );
     assert_eq!(*sim.world().get::<Transform>(e).expect("pose"), autorada);
     assert!(ScrollFactor::escala_do_dolly(0.5, 2.5).is_none());
-    // ⭐ O CONTROLO: um dolly de `1,9` ainda está aquém dela e conduz.
-    let (mut sim2, _) = cena_dolly([0.5, 0.5], 1.9, autorada);
+    // ⭐ O CONTROLO: um dolly de `0,9` está aquém dela (e do plano focal, auditoria 26 §3) e conduz.
+    let (mut sim2, _) = cena_dolly([0.5, 0.5], 0.9, autorada);
     let mut drive2 = PreviewDrive::default();
     assert_eq!(
         drive_parallax(

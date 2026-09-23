@@ -26,7 +26,10 @@ fn camada(completa: bool) -> InspectorParallaxInfo {
         repeat: completa.then_some([7.0, 3.0]),
         motion: completa.then_some([0.35, -0.2]),
         limits: completa.then_some(([-30.0, -12.0], [30.0, 14.0])),
-        tem_camera_do_jogo: true,
+        camera: ph2d_editor_core::parallax_edits::CameraDoJogo::Activa,
+        atravessa: false,
+        pre_visualizacao: true,
+        outro_motor: false,
         e_neutra: false,
         selected_count: 1,
     }

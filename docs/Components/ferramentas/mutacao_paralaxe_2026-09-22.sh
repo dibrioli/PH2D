@@ -73,8 +73,18 @@ prova() { # nome crate filtro [alvos]
   fi
 }
 
+# ⭐⭐ **O MODO SECO** (`SECO=1`, auditoria 26 §3): confere SÓ as âncoras, sem compilar nada.
+# ⛔ A auditoria achou `4` das `60` âncoras a não casar no HEAD — o «60 de 60» do handoff não se
+# reproduzia — e só uma corrida inteira (dezenas de minutos) o dizia. *Um arnês cujas âncoras
+# envelhecem em silêncio precisa de uma corrida barata que as conte.*
 bloco() { # nome crate filtro ficheiro vezes antigo novo [alvos]
   guarda "$4" b
+  if [ "${SECO:-0}" = 1 ]; then
+    TOTAL=$((TOTAL+1))
+    muta "$4" "$5" "$6" "$7" || FALHAS=$((FALHAS+1))
+    restaura "$4" b
+    return
+  fi
   if muta "$4" "$5" "$6" "$7"; then
     prova "$1" "$2" "$3" "${8:-}"
   else
@@ -96,13 +106,15 @@ echo "=== A LEI: o declive e' 1 − k (a tabela MEDIDA no alvo) ==="
 # PARADO no mundo (o oposto de um fundo de paralaxe) e `k = 1` colava-o a` camera.
 bloco "o declive vira k e nao 1 − k" ph2d-app-components o_declive_e_um_menos_k \
   "$LEI" 1 \
-  '            centro[0] * (1.0 - self.k[0]),' \
-  '            centro[0] * self.k[0],'
+  '    centro * (1.0 - k)' \
+  '    centro * k'
 
 bloco "os dois eixos partilham o k do x" ph2d-app-components os_dois_eixos \
-  "$LEI" 1 \
-  '            centro[1] * (1.0 - self.k[1]),' \
-  '            centro[1] * (1.0 - self.k[0]),'
+  "$PONTE" 1 \
+  '            ph2d_ecs::scroll_factor::saida_eixo(
+                cfg.k[i],' \
+  '            ph2d_ecs::scroll_factor::saida_eixo(
+                cfg.k[0],'
 
 # ⛔ A referencia deixa de ser a ORIGEM DO MUNDO e passa a ser a propria peca — a forma do Flip,
 # que TELEPORTA para o centro da vista um fundo autorado num canto (ver o cabecalho da lei).
@@ -111,8 +123,10 @@ bloco "os dois eixos partilham o k do x" ph2d-app-components os_dois_eixos \
 # mutacao mora.
 bloco "a referencia vira a propria peca (a forma do Flip)" ph2d-app-components o_deslocamento_nao_depende \
   "$PONTE" 1 \
-  '        let d = cfg_d.deslocamento_confinado(centro, conf);' \
-  '        let d = cfg_d.deslocamento_confinado([centro[0] - autorada.translation.x, centro[1] - autorada.translation.y], conf);'
+  '                centro[i],
+                conf,' \
+  '                centro[i] - if i == 0 { autorada.translation.x } else { autorada.translation.y },
+                conf,'
 
 bloco "o neutro deixa de ser 1" ph2d-app-components o_neutro \
   "$LEI" 1 \
@@ -139,8 +153,8 @@ bloco "sem camera a vista vira a origem" ph2d-app-components sem_camera_de_jogo 
 # escrevem um por cima do outro.
 bloco "o HUD entra na populacao" ph2d-app-components um_hud_nao_e_tocado \
   "$PONTE" 1 \
-  '            .query_filtered::<(Entity, &Transform, &ScrollFactor, Option<&ScrollRepeat>, Option<&ScrollLimits>, Option<&ScrollMotion>), bevy_ecs::prelude::Without<UiCanvas>>()' \
-  '            .query::<(Entity, &Transform, &ScrollFactor, Option<&ScrollRepeat>, Option<&ScrollLimits>, Option<&ScrollMotion>)>()'
+  '            ), bevy_ecs::prelude::Without<UiCanvas>>()' \
+  '            ), ()>()'
 
 # ⛔ Esta ponte so' escreve a TRANSLACAO: roubar o resto ao autorado apagaria o que outro motor
 # tivesse escrito no mesmo quadro.
@@ -178,7 +192,7 @@ bloco "a recuperacao do autorado some" ph2d-app-components arrastar_o_fundo \
 # ⛔⛔ E o mesmo defeito visto do LEDGER: sem o `last_written` o deslocamento medido e' ZERO, e o
 # declive volta a ler o que a 1.ª redacção lia.
 bloco "o last_written devolve o AUTORADO" ph2d-app-components o_declive_e_um_menos_k \
-  "$LEDGER" 1 \
+  crates/ph2d-preview-drive/src/consultas.rs 1 \
   '        self.memo.get(&(entity, driver)).map(|e| e.last_written)' \
   '        self.memo.get(&(entity, driver)).map(|e| e.authored)'
 
@@ -195,13 +209,17 @@ bloco "a correccao vira um RESTO" ph2d-app-components a_correccao_e_um_numero_in
 
 # ⛔ A JANELA e' a nossa divergencia DECLARADA (centrada), e ela e' load-bearing: com `floor` o
 # valor corrigido cresce sempre para um lado e as reguas de `± t/2` deixam de descrever a lei.
-bloco "a janela deixa de ser centrada" ph2d-app-components a_repeticao_nao_envolve \
+# ⚠️ Apontava ao `a_repeticao_nao_envolve` e SOBREVIVIA (a cura da auditoria 26): aquele gate mede
+# UMA posição da câmera, e com `floor` ela cai a `120` de `128` por acaso. A varredura é a régua.
+bloco "a janela deixa de ser centrada" ph2d-ecs a_repeticao_fica_presa_a_vista \
   "$REP" 1 \
   '    d - tile * (d / tile).round()' \
   '    d - tile * (d / tile).floor()'
 
 # ⛔ O `0` e' a AUSENCIA e nao um erro — sem a guarda ele divide por zero e a pose vira `NaN`.
-bloco "o ladrilho ZERO passa a corrigir" ph2d-app-components um_ladrilho_zero \
+# ⚠️ Apontava ao gate da PONTE e SOBREVIVIA: pela `saida_eixo` um ladrilho `0` nunca chega à
+# guarda (só se envolve com `tile > 0`). A guarda mede-se na porta que a tem.
+bloco "o ladrilho ZERO passa a corrigir" ph2d-ecs um_ladrilho_zero_ou_nao_finito \
   "$REP" 1 \
   '    if !tile.is_finite() || !d.is_finite() || tile <= 0.0 {' \
   '    if false {'
@@ -209,17 +227,16 @@ bloco "o ladrilho ZERO passa a corrigir" ph2d-app-components um_ladrilho_zero \
 # ⛔ A composicao morre: o componente existe, tem lei, tem gates — e a ponte ignora-o.
 bloco "a ponte ignora o componente" ph2d-app-components a_fase_e_a_mesma \
   "$PONTE" 1 \
-  '        let d = rep.map_or(d, |r| r.envolve(d));' \
-  '        let d = { let _ = rep; d };'
+  '                rep.map(|r| r.tile[i]),' \
+  '                None,'
 
 # ⛔⛔ A repeticao envolve a SOMA e nao o DESLOCAMENTO ⇒ ela envolve tambem a pose que o artista
 # autorou, e o fundo salta para a origem assim que ele o arrasta para alem de meio ladrilho.
 bloco "a repeticao envolve a POSE somada" ph2d-app-components a_repeticao_nao_envolve \
-  "$PONTE" 1 \
-  '        let d = rep.map_or(d, |r| r.envolve(d));' \
-  '        let d = { let p = [autorada.translation.x + d[0], autorada.translation.y + d[1]];
-            let p = rep.map_or(p, |r| r.envolve(p));
-            [p[0] - autorada.translation.x, p[1] - autorada.translation.y] };'
+  "$LEI" 1 \
+  '    let r = deriva - k * confinado;' \
+  '    let r = autorada + deriva - k * confinado;
+    let autorada = 0.0;'
 
 # ⛔⛔ **A MUTACAO «a desloca deixa de delegar» MORREU com a premissa dela, e fica registada:** ela
 # defendia a delegacao entre `desloca` e `deslocamento` (duas respostas a` mesma pergunta). A W2
@@ -242,22 +259,15 @@ bloco "o joelho ignora a meia-vista" ph2d-app-components o_joelho_esta_onde \
 # sempre — a borda do fundo entra em cena, que e' o que a wave existe para impedir.
 bloco "o congelamento some" ph2d-app-components a_curva_do_confinamento \
   crates/ph2d-ecs/src/scroll_factor.rs 1 \
-  '            d[0] + self.k[0] * (centro[0] - confinado[0]),' \
-  '            d[0],'
+  '    deslocamento_eixo(k, centro) + k * (centro - confinado)' \
+  '    deslocamento_eixo(k, centro)'
 
 # ⛔⛔ A FORMA da composicao: `centro − k·confinado` da' a MESMA curva e perde a identidade ao bit
 # com a W1/W2 (`c − k·c` e `c·(1 − k)` diferem por um ULP em `f32`).
 bloco "a forma deixa de ser byte-identica a lei da W1" ph2d-app-components a_composicao_do_confinamento \
   crates/ph2d-ecs/src/scroll_factor.rs 1 \
-  '        let d = self.deslocamento(centro);
-        [
-            d[0] + self.k[0] * (centro[0] - confinado[0]),
-            d[1] + self.k[1] * (centro[1] - confinado[1]),
-        ]' \
-  '        [
-            centro[0] - self.k[0] * confinado[0],
-            centro[1] - self.k[1] * confinado[1],
-        ]'
+  '    deslocamento_eixo(k, centro) + k * (centro - confinado)' \
+  '    centro - k * confinado'
 
 # ⛔ A regiao VAZIA deixa de ser a omissao ⇒ um componente anexado e nao tocado passa a fixar a
 # vista na origem, e a cena deixa de ser byte-identica.
@@ -280,15 +290,9 @@ bloco "a regiao estreita entra em panico" ph2d-app-components uma_regiao_mais_es
 # resultado cai na mesma janela. *Um passo IDEMPOTENTE no fim de uma cadeia apaga toda mutacao de
 # ordem que nao o remova de la'.*
 bloco "a repeticao deixa de ser a ultima" ph2d-app-components com_limites_e_repeticao \
-  "$PONTE" 1 \
-  '        let d = cfg_d.deslocamento_confinado(centro, conf);' \
-  '        let d0 = cfg_d.deslocamento(centro);
-        let d0 = rep.map_or(d0, |r| r.envolve(d0));
-        let d = [
-            d0[0] + cfg_d.k[0] * (centro[0] - conf[0]),
-            d0[1] + cfg_d.k[1] * (centro[1] - conf[1]),
-        ];
-        let rep: Option<ph2d_ecs::ScrollRepeat> = None;'
+  "$LEI" 1 \
+  '        Some(t) if repete => crate::envolve_eixo(r, t),' \
+  '        Some(t) if repete && centro == confinado => crate::envolve_eixo(r, t),'
 
 echo "=== O MOVIMENTO PROPRIO (W4) ==="
 
@@ -299,24 +303,22 @@ MOV=crates/ph2d-ecs/src/scroll_motion.rs
 # diferentes. E' a propriedade inteira da wave.
 bloco "a deriva deixa de ler o playhead" ph2d-app-components um_scrub_para_tras \
   "$MOV" 1 \
-  '            (f64::from(self.velocity[0]) * t) as f32,' \
-  '            self.velocity[0],'
+  '            let o = (f64::from(v) * t) as f32;' \
+  '            let o = v;'
 
 # ⛔ O `f64` da conta: ao fim de uma hora a `1 m/s` o ULP de um `f32` e' `2,4e-4`, e arredondar o
 # PRODUTO acumula. A deriva e' a unica grandeza desta familia que cresce sem limite com o tempo.
 bloco "o produto passa a ser feito em f32" ph2d-app-components a_deriva_e_velocidade_vezes \
   "$MOV" 1 \
-  '            (f64::from(self.velocity[0]) * t) as f32,
-            (f64::from(self.velocity[1]) * t) as f32,' \
-  '            self.velocity[0] * (t as f32),
-            self.velocity[1] * (t as f32),'
+  '            let o = (f64::from(v) * t) as f32;' \
+  '            let o = v * (t as f32);'
 
 # ⛔⛔ A deriva deixa de SOMAR e passa a substituir ⇒ ela vira um segundo condutor com outro nome, e
 # o deslocamento da camera evapora.
 bloco "a deriva substitui em vez de somar" ph2d-app-components a_deriva_soma_se \
-  "$PONTE" 1 \
-  '            [d[0] + o[0], d[1] + o[1]]' \
-  '            [o[0], o[1]]'
+  "$LEI" 1 \
+  '        return autorada + (deslocamento_confinado_eixo(k, centro, confinado) + deriva);' \
+  '        return autorada + deriva;'
 
 # ⛔⛔ O salto do neutro volta a esconder a deriva ⇒ uma nuvem que anda sozinha num plano NORMAL
 # fica parada, e o painel diz que ela esta' a andar.
@@ -327,18 +329,10 @@ bloco "o neutro volta a esconder a deriva" ph2d-app-components a_deriva_acorda_u
 
 # ⛔ A ORDEM: envolver ANTES de somar a deriva deixa a nuvem a fugir.
 bloco "a deriva entra DEPOIS da repeticao" ph2d-app-components uma_nuvem_que_deriva \
-  "$PONTE" 1 \
-  '        let d = mov.map_or(d, |m| {
-            let o = m.deslocamento(playhead);
-            [d[0] + o[0], d[1] + o[1]]
-        });
-        let d = rep.map_or(d, |r| r.envolve(d));' \
-  '        let d = rep.map_or(d, |r| r.envolve(d));
-        let d = mov.map_or(d, |m| {
-            let o = m.deslocamento(playhead);
-            [d[0] + o[0], d[1] + o[1]]
-        });
-        let rep: Option<ph2d_ecs::ScrollRepeat> = rep;'
+  "$LEI" 1 \
+  '    let r = deriva - k * confinado;' \
+  '    let r = -k * confinado;
+    let autorada = autorada + deriva;'
 
 # ⛔ A fase deixa de ler o relogio ⇒ a deriva congela, e nada na tela diz porque.
 bloco "a fase crava o relogio em zero" ph2d-host-desktop a_paralaxe_corre_depois \
@@ -353,8 +347,8 @@ echo "=== O DOLLY — a multiplano (W5) ==="
 # denominador ela vira o tamanho ABSOLUTO, que e' igual para todas as camadas ⇒ um ZOOM.
 bloco "a escala vira um zoom (perde o denominador)" ph2d-app-components dois_planos_com_um_dolly \
   "$LEI" 1 \
-  '        Some((1.0 - delta) / den)' \
-  '        Some(1.0 - delta)'
+  '        let e = (1.0 - delta) / den;' \
+  '        let e = 1.0 - delta;'
 
 # ⛔ A degenerescencia que o plano publica, escrita como um RAMO: ela diverge do limite da propria
 # formula, e este e' o gate que a refuta.
@@ -366,25 +360,28 @@ bloco "o ceu volta a escala 1 que o plano prometia" ph2d-app-components o_ceu_en
 
 # ⛔⛔ A RECUSA vira um clamp ⇒ uma cena impossivel (a camera para la' do fundo) devolve um numero
 # plausivel em vez de deixar o objecto onde o artista o pos.
-bloco "a camera atravessada passa a ser clampada" ph2d-app-components a_camera_a_atravessar \
+# ⚠️ A 1.ª forma (clampar o `den` a `1e-6`) ficou INERTE com a guarda `e ≤ 0` da auditoria 26 §3:
+# o clamp dá uma escala NEGATIVA, que a guarda nova já recusa. A que ainda mede a lei é APAGAR a
+# recusa: com `k = 0,5` e `δ = 2,5` os dois sinais cancelam-se e sai `e = 6`, um número plausível.
+bloco "a camera atravessada deixa de ser recusada" ph2d-app-components a_camera_a_atravessar \
   "$LEI" 1 \
   '        if den <= 0.0 {
             return None;
         }' \
-  '        let den = if den <= 0.0 { 1e-6 } else { den };'
+  ''
 
 # ⛔⛔ A escala multiplica o VIVO ⇒ ela COMPOE a cada quadro e o fundo cresce sem limite.
 bloco "a escala multiplica o vivo" ph2d-app-components a_escala_do_dolly_nao_compoe \
   "$PONTE" 1 \
-  '                Vec2::new(autorada.scale.x * esc[0], autorada.scale.y * esc[1])' \
-  '                Vec2::new(era.scale.x * esc[0], era.scale.y * esc[1])'
+  '            scale: Vec2::new(autorada.scale.x * esc[0], autorada.scale.y * esc[1]),' \
+  '            scale: Vec2::new(era.scale.x * esc[0], era.scale.y * esc[1]),'
 
 # ⛔ O dolly deixa de mudar a FRACCAO ⇒ o objecto muda de tamanho e nao muda de velocidade, que e'
 # a metade da multiplano que um zoom tambem nao faz.
 bloco "o dolly nao muda a fraccao" ph2d-app-components o_dolly_muda_a_velocidade \
-  "$PONTE" 1 \
-  '        let d = cfg_d.deslocamento_confinado(centro, conf);' \
-  '        let d = cfg.deslocamento_confinado(centro, conf);'
+  "$LEI" 1 \
+  '    centro + esc * (autorada + r)' \
+  '    centro + (esc * autorada + r)'
 
 # ⛔ A camera activa deixa de ser a porta ⇒ o dolly de uma camera INACTIVA passa a mandar.
 bloco "o dolly sai de qualquer camera" ph2d-app-components o_dolly_sai_da_camera_activa \
@@ -437,18 +434,18 @@ bloco "o bloco do ladrilho aparece sempre" ph2d-panel-inspector os_blocos_aparec
   "$PINTOR" 1 '    if i.repeat.is_some() {' '    if true {' '--test it'
 # ⭐ O DOLLY — a semente, a ARESTA nova da camera, e o dreno.
 bloco "a semente do dolly some" ph2d-panel-inspector o_dolly_mostra_a_camera \
-  "$SYNCS" 1 '        (crate::ids::INSP_CAMERA_DOLLY, f64::from(cam.camera.dolly)),' '' '--test it'
+  crates/ph2d-panel-inspector/src/sync_sections_camera_sig.rs 1 '        (crate::ids::INSP_CAMERA_DOLLY, f64::from(cam.camera.dolly)),' '' '--test it'
 bloco "a camera volta a semear so na troca de objecto" ph2d-panel-inspector o_dolly_mostra_a_camera \
   "$SYNCS" 1 'sync_camera_fields(host, &cam, entity_changed || mudou);' 'sync_camera_fields(host, &cam, entity_changed);' '--test it'
 bloco "o dolly escreve na altura" ph2d-panel-inspector o_dolly_mostra_a_camera \
   "$EVC" 1 'crate::ids::INSP_CAMERA_DOLLY => CameraFieldEdit::Dolly(f),' 'crate::ids::INSP_CAMERA_DOLLY => CameraFieldEdit::Height(f),' '--test it'
 # ⭐ As queixas: a ORDEM da recusa, e a camera ACHADA no mundo.
 bloco "a queixa da camera some" ph2d-app-components as_queixas_seguem \
-  "$VOC" 1 '        if !self.tem_camera_do_jogo {' '        if false {'
+  "$VOC" 1 '            CameraDoJogo::Nenhuma => return Some(ParallaxQueixa::SemCamera),' '            CameraDoJogo::Nenhuma => {}'
 bloco "o construtor nunca acha a camera" ph2d-app-components as_queixas_seguem \
-  "$INSP" 1 '    let tem_camera_do_jogo = world.iter_entities().any(|x| x.contains::<GameCamera>());' '    let tem_camera_do_jogo = false;'
+  "$INSP" 1 '        Some(_) => CameraDoJogo::Activa,' '        Some(_) => CameraDoJogo::Nenhuma,'
 bloco "o dreno troca os eixos do ladrilho" ph2d-app-components o_dreno_escreve_o_par \
-  "$INSP" 1 '            c.tile = *t;' '            c.tile = [t[1], t[0]];'
+  "$INSP" 1 '            c.tile = [t[0].max(0.0), t[1].max(0.0)];' '            c.tile = [t[1].max(0.0), t[0].max(0.0)];'
 # ⭐ A CENA — cada gate e' uma frase do roteiro.
 bloco "as colinas colam-se as arvores" ph2d-app-components os_planos_vizinhos \
   "$CENA" 1 'pub const K_COLINAS: f32 = 0.35;' 'pub const K_COLINAS: f32 = 0.55;'
@@ -478,9 +475,165 @@ bloco "o prologo abre a regua" ph2d-host-desktop o_prologo_da_cena_da_paralaxe \
   "$PROL" 1 '            hero.panel_visibility.insert("timeline", false);' '            crate::components_scenes::abre_a_regua_da_corrida(hero);
             hero.panel_visibility.insert("timeline", false);' '--test it'
 
+echo "=== A AUDITORIA 26 (2026-09-23): cada achado com a mutacao que o devolve ==="
+HUDB=crates/ph2d-app-components/src/hud_bridge.rs
+MLIM=crates/ph2d-ecs/src/scroll_limits.rs
+
+# §1.1 — a repeticao volta a prender o fundo ao MUNDO (a lei antiga, escrita por extenso).
+bloco "a repeticao volta a envolver o deslocamento no mundo" ph2d-ecs a_repeticao_fica_presa_a_vista \
+  "$LEI" 1 \
+  '    centro + esc * (autorada + r)' \
+  '    autorada + crate::envolve_eixo(centro * (1.0 - k) + deriva, tile.unwrap_or(0.0)) + 0.0 * (esc + r)'
+# §1.2 — a varredura que LARGA quem deixou de ser conduzido some.
+bloco "a ponte deixa de largar quem parou de conduzir" ph2d-app-components quem_deixa_de_ser_conduzido \
+  "$PONTE" 1 \
+  '    largar_os_nao_declarados(sim, drive, &declarados);
+    n
+}' \
+  '    let _ = &declarados;
+    n
+}'
+bloco "o HUD deixa de largar o canvas" ph2d-app-components um_canvas_que_perde_a_camera \
+  "$HUDB" 1 \
+  '    largar_os_nao_declarados(sim, drive, &declarados);
+    n
+}' \
+  '    let _ = &declarados;
+    n
+}'
+# §1.3 — a escala volta a ser o VIVO com o dolly a zero.
+bloco "o dolly a zero volta a escrever a escala viva" ph2d-app-components o_dolly_de_volta_a_zero \
+  "$PONTE" 1 \
+  '            scale: Vec2::new(autorada.scale.x * esc[0], autorada.scale.y * esc[1]),' \
+  '            scale: if esc == [1.0, 1.0] { era.scale } else { Vec2::new(autorada.scale.x * esc[0], autorada.scale.y * esc[1]) },'
+# §1.4 — o dolly volta a escalar em torno do PIVO.
+bloco "o dolly volta a escalar em torno do pivo" ph2d-ecs o_dolly_escala_a_volta_do_centro \
+  "$LEI" 1 \
+  '    centro + esc * (autorada + r)' \
+  '    autorada + centro + esc * r'
+# §2.1 — o ramo exacto some e o autorado volta a derivar em f32.
+bloco "o autorado volta a ser recuperado por subtraccao" ph2d-app-components o_autorado_nao_deriva \
+  "$PONTE" 1 \
+  '    if era == escrito {
+        return memo;
+    }' \
+  ''
+# §2.3 — a cerca deixa de ver a camada atraves do dolly.
+bloco "a meia-vista da camada ignora o dolly" ph2d-ecs com_dolly_a_cerca_mostra \
+  "$MLIM" 1 \
+  '    let m = h * (1.0 / esc - 1.0 + k) / k;' \
+  '    let m = h;'
+bloco "a ponte deixa de passar a meia-vista da camada" ph2d-app-components a_cerca_com_dolly_usa_a_meia_vista \
+  "$PONTE" 1 \
+  '                    ph2d_ecs::meia_da_camada(meia[i], cfg.k[i], esc[i]),' \
+  '                    meia[i],'
+# §3 — as guardas da lei.
+bloco "a camera no plano focal volta a escrever uma escala" ph2d-ecs a_camera_no_plano_focal \
+  "$LEI" 1 \
+  '        if !e.is_finite() || e <= 0.0 {
+            return None;
+        }' \
+  ''
+bloco "a deriva nao-finita volta a escrever NaN" ph2d-ecs uma_deriva_nao_finita \
+  "$MOV" 1 \
+  '            if o.is_finite() { o } else { 0.0 }' \
+  '            o'
+bloco "um NaN volta a contar como deriva activa" ph2d-ecs uma_deriva_nao_finita \
+  "$MOV" 1 \
+  '        !self.velocity.iter().any(|v| v.is_finite() && *v != 0.0)' \
+  '        self.velocity == [0.0, 0.0]'
+# §2.4 — o painel volta a mentir ou a calar-se.
+bloco "a camera desligada volta a contar como camera" ph2d-app-components as_queixas_seguem \
+  "$INSP" 1 \
+  '        None if ph2d_ecs::camera_count(world) > 0 => CameraDoJogo::Desligada,
+' \
+  ''
+bloco "o neutro volta a ignorar a deriva" ph2d-app-components o_neutro_com_deriva \
+  "$INSP" 1 \
+  '    let e_neutra = factor.e_neutro() && motion_c.is_none_or(|m| m.e_inerte());' \
+  '    let e_neutra = factor.e_neutro();'
+bloco "a travessia do dolly deixa de se dizer" ph2d-app-components o_dolly_que_atravessa_e_o_outro \
+  "$INSP" 1 \
+  '    let atravessa = factor.escala(dolly).is_none();' \
+  '    let atravessa = false;'
+bloco "o outro motor deixa de se dizer" ph2d-app-components o_dolly_que_atravessa_e_o_outro \
+  "$VOC" 1 \
+  '        if self.outro_motor {' \
+  '        if false {'
+bloco "a nota da pre-visualizacao cala-se" ph2d-app-components as_notas_da_pre \
+  "$VOC" 1 \
+  '        self.queixa().is_none() && !self.pre_visualizacao' \
+  '        false'
+bloco "a nota da cerca inerte cala-se" ph2d-app-components as_notas_da_pre \
+  "$VOC" 1 \
+  '            .is_some_and(|(min, max)| !(0..2).any(|i| max[i] > min[i]))' \
+  '            .is_some_and(|_| false)'
+# §2.6 — o applier volta a escrever cru.
+bloco "o ladrilho negativo volta a ser gravado" ph2d-app-components o_applier_trava \
+  "$INSP" 1 \
+  '            c.tile = [t[0].max(0.0), t[1].max(0.0)];' \
+  '            c.tile = *t;'
+bloco "um factor NaN volta a ser gravado" ph2d-app-components o_applier_trava \
+  "$INSP" 1 \
+  '        ParallaxFieldEdit::Factor(k) => {
+            if !finitos(*k) {
+                return false;
+            }' \
+  '        ParallaxFieldEdit::Factor(k) => {'
+# §2.5 — a paleta volta a oferecer as irmas sem o factor.
+bloco "a repeticao deixa de requerer o factor" ph2d-component-desc as_irmas_da_paralaxe_requerem \
+  crates/ph2d-component-desc/src/catalog/camera.rs 1 \
+  '        REPEAT_FIELDS,
+        &["ph2d::ecs::ScrollFactor"],' \
+  '        REPEAT_FIELDS,
+        &[],'
+
+echo "=== A CURA da auditoria 26 — os gates que ela escreveu ==="
+
+# §1.1 — a repeticao volta a prender o fundo ao MUNDO (a lei da 1.ª redaccao).
+bloco "a repeticao volta a envolver o deslocamento no mundo" ph2d-app-components andando_muito \
+  "$LEI" 1 \
+  'Some(t) if repete => crate::envolve_eixo(r, t),' \
+  'Some(t) if repete => crate::envolve_eixo(r + centro, t) - centro,'
+# §2.9 — o passe volta a varrer o mundo (a forma do defeito da `Factory`).
+bloco "o passe volta a varrer a cena" ph2d-app-components o_passe_e_uma_consulta_filtrada \
+  "$PONTE" 1 \
+  '        let world = sim.world_mut();
+        world
+            .query_filtered::<(' \
+  '        let world = sim.world_mut();
+        let _cena = world.iter_entities().count();
+        world
+            .query_filtered::<('
+# §2.2 — um v128 com camera do jogo volta a perder o mundo.
+bloco "a camera v128 deixa de ser migrada" ph2d-host-desktop a_frozen_v128_camera_migrates \
+  shells/desktop/src/project_migrate.rs 1 \
+  '        match ph2d_ecs::camera_2d::migrate_v128_blob(&row.components[slot].data) {' \
+  '        match None::<Vec<u8>> {'
+# §3 — a deriva volta a ler o relogio ANTES do scrub.
+bloco "a paralaxe volta a correr antes do dreno da timeline" ph2d-host-desktop a_paralaxe_corre_depois \
+  "$QUADRO" 1 \
+  '        self.fase_timeline_drain(container, &maos, keys_mode, selected_now);' \
+  '        self.fase_paralaxe(camera_rect);
+        self.fase_timeline_drain(container, &maos, keys_mode, selected_now);' "--test it"
+# §3 — uma chamada COMENTADA volta a passar por viva no gate de texto.
+bloco "a chamada da fase comentada passa por viva" ph2d-host-desktop a_paralaxe_corre_depois \
+  "$QUADRO" 1 \
+  '        self.fase_paralaxe(camera_rect);
+        self.fase_physics_step(player_input);' \
+  '        // self.fase_paralaxe(camera_rect);
+        self.fase_physics_step(player_input);' "--test it"
+# §3 — a ida-e-volta pelo ficheiro perde um dos quatro.
+bloco "a deriva deixa de ser registada" ph2d-ecs gravar_e_abrir \
+  crates/ph2d-ecs/src/scene/registry_camera.rs 1 \
+  '    reg.register_default::<crate::ScrollMotion>("ph2d::ecs::ScrollMotion");' \
+  ''
+
 echo
 echo "════════════════════════════════════════"
-if [ "$FALHAS" = 0 ]; then
+if [ "${SECO:-0}" = 1 ]; then
+  echo "(modo SECO: $((TOTAL-FALHAS)) de $TOTAL ancoras casam — nada foi compilado)"
+elif [ "$FALHAS" = 0 ]; then
   echo "✅ $TOTAL de $TOTAL sangraram"
 else
   echo "⛔ $FALHAS de $TOTAL NAO sangraram"

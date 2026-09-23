@@ -39,6 +39,38 @@ fn o_canvas_cola_se_a_vista_do_jogo() {
     assert_eq!(t.scale, Vec2::new(2.0, 2.0), "64/32 = 36/18 = 2");
 }
 
+/// ⛔⛔ **Um canvas que DEIXA de ser conduzido volta à pose autorada** (auditoria 26 da paralaxe,
+/// §1.2) — o irmão abaixo parte de um ledger virgem, e o defeito estava no quadro seguinte a uma
+/// condução: o `settle` só esquece, e a pose colada à vista ficava no mundo e entrava no documento.
+#[test]
+fn um_canvas_que_perde_a_camera_volta_a_pose_autorada() {
+    let autorada = Transform {
+        translation: Vec2::new(-3.0, 7.0),
+        scale: Vec2::new(1.5, 1.5),
+        ..Transform::default()
+    };
+    let (mut sim, e) = cena(UiCanvas::default(), autorada);
+    let mut drive = PreviewDrive::default();
+    drive_canvases(&mut sim, Some(vista()), &mut drive);
+    drive.settle();
+    assert_ne!(
+        *sim.world().get::<Transform>(e).expect("pose"),
+        autorada,
+        "o controlo: com vista o canvas é conduzido"
+    );
+    drive_canvases(&mut sim, None, &mut drive);
+    drive.settle();
+    assert_eq!(*sim.world().get::<Transform>(e).expect("pose"), autorada);
+    assert!(drive.is_empty());
+    // E o componente a sair também o larga.
+    drive_canvases(&mut sim, Some(vista()), &mut drive);
+    drive.settle();
+    sim.world_mut().entity_mut(e).remove::<UiCanvas>();
+    drive_canvases(&mut sim, Some(vista()), &mut drive);
+    drive.settle();
+    assert_eq!(*sim.world().get::<Transform>(e).expect("pose"), autorada);
+}
+
 /// ⛔⛔ **Sem câmera de jogo, NADA é conduzido** — o canvas fica onde o artista o pôs.
 #[test]
 fn sem_camera_de_jogo_o_canvas_fica_onde_o_artista_o_pos() {

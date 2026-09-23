@@ -158,6 +158,52 @@ fn a_fileira_que_repete_cobre_a_vista_e_a_janela_do_embrulho() {
     }
 }
 
+/// ⛔⛔⛔ **A frase (6): andar MUITO não deixa buraco** (auditoria 26, §1.1).
+///
+/// O gate de cima mede a fileira com a câmera em `0`, onde MUNDO e ECRÃ coincidem — e foi
+/// exactamente por isso que ele ficou verde sobre a repetição presa ao mundo: as árvores visíveis
+/// iam de `5` a `0` entre `0` e `60 m`. Aqui a câmera ANDA pela porta do produto (`drive_parallax`)
+/// até `70 m`, com o relógio a correr para a deriva do céu, e a fileira tem de cobrir a vista **em
+/// cada posição**.
+///
+/// **Mutação que deve sangrar:** envolver o deslocamento no mundo (`c·(1−k)`) em vez da posição no
+/// ecrã — a lei da 1.ª redacção.
+#[test]
+fn andando_muito_a_fileira_que_repete_continua_a_cobrir_a_vista() {
+    let (mut sim, _) = montada(1);
+    let mut drive = PreviewDrive::default();
+    let mut c = 0.0_f32;
+    while c <= 70.0 {
+        let t = f64::from(c) * 0.5;
+        crate::parallax_bridge::drive_parallax(
+            &mut sim,
+            Some(([c, 0.0], [MEIA_LARGURA_MAX, MEIA_VISTA_Y])),
+            t,
+            &mut drive,
+        );
+        for nome in ["Arvores", "Ceu"] {
+            let e = por_nome(&mut sim, nome);
+            let p = pecas(&mut sim, e);
+            let esq = p
+                .iter()
+                .map(|(q, s)| q[0] - s[0] / 2.0)
+                .fold(f32::MAX, f32::min);
+            let dir = p
+                .iter()
+                .map(|(q, s)| q[0] + s[0] / 2.0)
+                .fold(f32::MIN, f32::max);
+            assert!(
+                esq <= c - MEIA_LARGURA_MAX && dir >= c + MEIA_LARGURA_MAX,
+                "câmera em {c:.1} m: {nome} cobre [{esq:.1}, {dir:.1}] e a vista é \
+                 [{:.1}, {:.1}] — o fundo ficou para trás",
+                c - MEIA_LARGURA_MAX,
+                c + MEIA_LARGURA_MAX
+            );
+        }
+        c += 0.5;
+    }
+}
+
 /// ⭐⭐⭐ **A frase (2), a outra metade: as colinas PARAM na borda** — e o contraste só ensina se
 /// elas não repetirem.
 #[test]
@@ -391,6 +437,7 @@ fn o_roteiro_nomeia_o_que_o_painel_pinta() {
     let chaves = [
         "panel.inspector.camera.camera",
         "panel.inspector.camera.dolly",
+        "panel.inspector.camera.active",
         "panel.inspector.parallax.parallax",
         "panel.inspector.parallax.scroll_factor",
         "panel.inspector.parallax.repeat_m",

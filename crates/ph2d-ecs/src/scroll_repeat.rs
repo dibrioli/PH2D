@@ -1,5 +1,5 @@
-//! **A REPETIÇÃO INFINITA de um fundo de paralaxe** (plano 24, W2) — o deslocamento é corrigido
-//! por um número **INTEIRO** de ladrilhos, e é só isso.
+//! **A REPETIÇÃO INFINITA de um fundo de paralaxe** (plano 24, W2) — a posição **NO ECRÃ** é
+//! corrigida por um número **INTEIRO** de ladrilhos, e é só isso.
 //!
 //! # ⭐⭐⭐ A lei, MEDIDA no alvo (Godot 4.7.2, MIT, corrido sem interface)
 //!
@@ -29,11 +29,15 @@
 //! viewport e é a mais estável numericamente (o valor corrigido nunca cresce). O que é PORTADO — e
 //! o que importa — é a correcção ser um inteiro de ladrilhos.
 //!
-//! # ⚠️ E ela envolve o DESLOCAMENTO, nunca a POSIÇÃO
+//! # ⛔⛔ E ela envolve a posição RELATIVA À VISTA — nunca o deslocamento no MUNDO
 //!
-//! Ver o doc da [`crate::ScrollFactor::deslocamento`]: envolver a soma envolveria também a pose que
-//! o artista autorou, e o fundo saltaria para a origem assim que ele o arrastasse para além de meio
-//! ladrilho.
+//! A 1.ª redacção envolvia o deslocamento `c·(1−k)` ⇒ a camada nunca se afastava mais de meio
+//! ladrilho da pose autorada **no mundo**, e a câmera, que anda, deixava-a para trás: na cena `=1`
+//! as árvores visíveis iam de `5` a `0` entre `0` e `60 m` (auditoria 26, §1.1). O oráculo já o
+//! mostrava — a origem dele **no ecrã** fica numa janela de um ladrilho. ⇒ o termo envolvido é
+//! `deriva − k·confinado`, o que a camada anda **em relação à vista**, e a soma com `c` devolve o
+//! mundo (a lei é [`crate::scroll_factor::saida_eixo`]). A pose autorada fica **fora** do envoltório, pela mesma
+//! razão de sempre: senão o fundo saltaria para a origem assim que o artista o arrastasse.
 //!
 //! # ⏳ O tamanho do ladrilho é AUTORADO, e a derivação está NOMEADA
 //!

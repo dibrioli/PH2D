@@ -157,37 +157,43 @@ pub const DESCS: &[ComponentDesc] = &[
         O::ANY,
         SCROLL_FIELDS,
     ),
+    // ⛔⛔ **As três irmãs REQUEREM o `ScrollFactor`** (auditoria 26, §2.5): a ponte só percorre quem
+    // o tem e a secção só existe com ele ⇒ anexadas sozinhas ficavam inertes, invisíveis e sem gesto
+    // de remoção. O `requires` faz a paleta trazer o `Parallax` com elas.
     // ⭐⭐ **O CONFINAMENTO** (plano 24, W3) — *a borda do fundo nunca entra em cena*. ⚠️ Ele
     // reaproveita os `LIMITS_FIELDS` do `CameraLimits`, e isso é a decisão certa: são a MESMA
     // grandeza (uma região `min`/`max` em metros), e uma segunda tabela com os mesmos dois campos
     // daria dois rótulos para um conceito. ⛔ E não é `largura`/`altura`: o joelho da lei mede a
     // borda da VISTA contra a borda da REGIÃO, e uma largura sem origem não a nomeia.
-    D::authored(
+    D::authored_requiring(
         "ph2d::ecs::ScrollLimits",
         "component.scroll_limits.name",
         C::Camera,
         O::ANY,
         LIMITS_FIELDS,
+        &["ph2d::ecs::ScrollFactor"],
     ),
     // ⭐⭐ **O MOVIMENTO PRÓPRIO** (plano 24, W4) — *nuvens que andam sozinhas*, e ele é uma
     // função PURA do playhead. ⚠️ Antes do `ScrollRepeat` porque a lista é ORDENADA por
     // `canonical_name` e há gate.
-    D::authored(
+    D::authored_requiring(
         "ph2d::ecs::ScrollMotion",
         "component.scroll_motion.name",
         C::Camera,
         O::ANY,
         MOTION_FIELDS,
+        &["ph2d::ecs::ScrollFactor"],
     ),
     // ⭐⭐ **A REPETIÇÃO** (plano 24, W2) — *quanto mede um ladrilho deste fundo*. ⛔ Irmã das três
     // de cima e não um campo delas: quase todo objecto com paralaxe não repete, e um campo ali
     // seria um knob morto em todos eles. *Quatro componentes porque são quatro populações.*
-    D::authored(
+    D::authored_requiring(
         "ph2d::ecs::ScrollRepeat",
         "component.scroll_repeat.name",
         C::Camera,
         O::ANY,
         REPEAT_FIELDS,
+        &["ph2d::ecs::ScrollFactor"],
     ),
     // ⭐⭐⭐ **QUEM EXPLODE** (suplente #25) — e ele mora na família da CÂMERA apesar de nunca viver
     // numa: *o assunto é o abanão*, e pô-lo na família LÓGICA separaria as duas metades de uma lei
@@ -201,3 +207,23 @@ pub const DESCS: &[ComponentDesc] = &[
         SHAKE_SOURCE_FIELDS,
     ),
 ];
+
+#[cfg(test)]
+mod tests {
+    /// ⛔⛔ **As três irmãs da paralaxe REQUEREM o `ScrollFactor`** (auditoria 26, §2.5) — sem ele a
+    /// ponte não as percorre e a secção não existe: anexadas sozinhas ficavam inertes, invisíveis e
+    /// sem gesto de remoção. O CONTROLO: o próprio factor não requer nada.
+    #[test]
+    fn as_irmas_da_paralaxe_requerem_o_factor() {
+        for nome in [
+            "ph2d::ecs::ScrollRepeat",
+            "ph2d::ecs::ScrollLimits",
+            "ph2d::ecs::ScrollMotion",
+        ] {
+            let d = super::super::desc_for(nome).expect(nome);
+            assert_eq!(d.requires, &["ph2d::ecs::ScrollFactor"], "{nome}");
+        }
+        let f = super::super::desc_for("ph2d::ecs::ScrollFactor").expect("factor");
+        assert!(f.requires.is_empty());
+    }
+}

@@ -39,7 +39,7 @@ mod event_hud;
 mod event_instance;
 mod event_joint;
 mod event_ordering;
-/// ⭐⭐⭐ O despacho da secção RAY SENSOR (suplente #21).
+/// ⭐⭐⭐ O despacho da secção PARALLAX (plano 24, W7).
 mod event_parallax;
 /// ⭐ O despacho da secção PARTICLES — irmão do `event` por CAP de função.
 mod event_particles;
@@ -48,6 +48,7 @@ mod event_physics;
 mod event_player;
 mod event_precision;
 mod event_projectile;
+/// ⭐⭐⭐ O despacho da secção RAY SENSOR (suplente #21).
 mod event_ray;
 /// ⭐ O despacho da secção SCRIPT — irmão do `event` por CAP de função.
 mod event_script;
@@ -85,7 +86,7 @@ mod paint_optional_factory;
 mod paint_optional_movers;
 /// ⭐ As molduras das DUAS secções do ABANÃO (suplente #25).
 mod paint_optional_shake;
-/// ⭐⭐⭐ O registo dos widgets da secção RAY SENSOR (suplente #21).
+/// ⭐ As molduras das duas secções dos SUPLENTES — o RAY SENSOR (#21) e a ARMA.
 mod paint_optional_suplentes;
 /// ⭐⭐ A CAUDA da cadeia de secções — as quatro da fila do TOP-20; irmã pelo tecto de FUNÇÃO.
 mod paint_optional_top20;
@@ -114,6 +115,7 @@ mod populate_path_follow;
 mod populate_physics;
 mod populate_player;
 mod populate_projectile;
+/// ⭐⭐⭐ O registo dos widgets da secção RAY SENSOR (suplente #21).
 mod populate_ray;
 /// ⭐ O registo dos widgets da secção SCRIPT — irmão por CAP de ficheiro.
 mod populate_script;
@@ -145,12 +147,13 @@ mod sync;
 mod sync_action_trigger;
 mod sync_counter_watch;
 mod sync_hud;
-/// ⭐⭐⭐ A semente da secção RAY SENSOR (suplente #21) — ver o cabeçalho dela.
+/// ⭐⭐⭐ A semente da secção PARALLAX (plano 24, W7) — ver o cabeçalho dela.
 mod sync_parallax;
 /// ⭐ A semente da secção PARTICLES — irmã do `sync_sections` por CAP de ficheiro.
 mod sync_particles;
 mod sync_path_follow;
 mod sync_physics;
+/// ⭐⭐⭐ A semente da secção RAY SENSOR (suplente #21) — ver o cabeçalho dela.
 mod sync_ray;
 /// ⭐ A semente da secção SCRIPT — irmã do `sync_sections` por CAP de ficheiro.
 mod sync_script;

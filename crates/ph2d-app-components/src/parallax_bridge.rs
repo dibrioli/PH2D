@@ -21,8 +21,14 @@
 //!
 //! A vista é a da **câmera do jogo**, nunca a do editor, pela razão que o `fase_game_camera` já
 //! escreve: uma corrida que dependesse de onde o artista rolou o ecrã seria outra corrida em cada
-//! máquina. Sem câmera na cena o fundo fica **onde o artista o pôs** — o `settle` devolve-lhe a
-//! pose autorada no mesmo quadro.
+//! máquina. Sem câmera na cena o fundo fica **onde o artista o pôs**.
+//!
+//! ⛔⛔ **E quem o devolve é esta ponte, nunca o `settle`** (auditoria 26, §1.2). A 1.ª redacção
+//! dizia *«o `settle` devolve-lhe a pose autorada»* — e ele só ESQUECE: a pose deslocada ficava
+//! no mundo, a captura seguinte gravava-a como documento, e quando a condução voltava ela era
+//! deslocada DUAS vezes (medido: `x = 200 → 400` com `k 0,5`). Hoje todo objecto que a ponte
+//! deixa de conduzir — sem câmera, `k` neutro, a câmera a atravessá-lo, o componente retirado, um
+//! `UiCanvas` anexado — é LARGADO por `release_to_authored`, numa varredura do ledger no fim.
 //!
 //! # ⚠️ O caso que decide se esta ponte está CERTA: o artista ARRASTA o fundo
 //!
@@ -114,64 +120,76 @@ pub fn drive_parallax(
             .collect()
     };
     let Some((centro, meia)) = vista else {
-        // ⚠️ Não declarar É a resposta: o `settle` esquece quem não foi declarado, e o valor vivo
-        // volta a ser o do documento.
+        // ⛔ Sem câmera não há condução — e quem já era conduzido é DEVOLVIDO (ver o cabeçalho).
+        largar_os_nao_declarados(sim, drive, &[]);
         return 0;
     };
     let mut n = 0;
+    let mut declarados: Vec<Entity> = Vec::with_capacity(antes.len());
     for (entity, era, cfg, rep, lim, mov) in antes {
         if cfg.e_neutro() && mov.is_none_or(|m| m.e_inerte()) {
             // ⛔ `k = 1` é o objecto do mundo: não se escreve um bit e **não se declara**, senão
-            // toda cena com o componente anexado passaria a ter uma entrada viva no ledger.
+            // toda cena com o componente anexado passaria a ter uma entrada viva no ledger. Quem
+            // era conduzido e voltou ao neutro é largado pela varredura do fim.
             continue;
         }
         let autorada = base_autorada(drive, entity, era);
-        // ⭐⭐ **A REPETIÇÃO envolve o DESLOCAMENTO, nunca a soma** (plano 24, W2): a correcção é um
-        // número INTEIRO de ladrilhos, e um ladrilho é uma grandeza do deslocamento. Envolver a
-        // pose somada envolveria a posição que o artista autorou, e o fundo saltaria para a origem
-        // assim que ele o arrastasse para além de meio ladrilho.
+        // ⭐⭐ **A REPETIÇÃO envolve a posição RELATIVA À VISTA** (auditoria 26, §1.1): a correcção
+        // é um número INTEIRO de ladrilhos, e o que ela mantém limitado é onde a camada aparece no
+        // ECRÃ — não a pose no mundo. ⚠️ A 1.ª redacção envolvia o deslocamento `c·(1−k)`, e isso
+        // prendia a camada a meio ladrilho da pose autorada no MUNDO: a fileira saía da vista.
         //
         // ⚠️ **Sem o componente a composição é a IDENTIDADE**, e não um caso à parte: a ausência é
         // «não repete», que é o que quase todo objecto com paralaxe faz.
-        // ⭐⭐ **A ORDEM é CONFINAR e depois ENVOLVER, e ela é principiada:** o confinamento decide
-        // QUAL deslocamento fazer (escolhe o valor), e a repetição REDUZ o valor final por um
-        // inteiro de ladrilhos. ⚠️ Os dois juntos são uma cena que se contradiz — um fundo que
-        // repete não tem borda para esconder —, e o que fica DECLARADO é o que ela dá: a repetição
-        // vem por último, logo ela ganha.
-        // ⭐⭐⭐ **O DOLLY muda a própria fracção** (W5): `k(δ) = k · escala(k, δ)`, porque a
-        // paralaxe e o tamanho aparente são a MESMA razão `z₀/z`. ⛔ Com a câmera a ATRAVESSAR a
-        // camada não há resposta, e o objecto fica onde o artista o pôs — *um clamp ali entregaria
-        // um número plausível para uma cena impossível*.
-        let Some(cfg_d) = cfg.com_dolly(dolly) else {
+        // ⭐⭐ **A ORDEM é CONFINAR e depois ENVOLVER:** o confinamento escolhe o centro que a
+        // camada vê, e a repetição reduz o resultado por um inteiro de ladrilhos. ⚠️ Os dois juntos
+        // são uma cena que se contradiz — um fundo que repete não tem borda para esconder —, e a
+        // repetição, que vem por último, ganha.
+        // ⭐⭐⭐ **O DOLLY é uma ESCALA à volta do centro da vista** (W5, corrigido na auditoria
+        // 26, §1.4). ⛔ Com a câmera a ATRAVESSAR a camada (ou no plano focal) não há resposta, e
+        // o objecto é LARGADO na pose autorada pela varredura do fim — *um clamp ali entregaria um
+        // número plausível para uma cena impossível*.
+        let Some(esc) = cfg.escala(dolly) else {
             continue;
         };
-        let conf = lim.map_or(centro, |l| l.confina(centro, meia));
-        let d = cfg_d.deslocamento_confinado(centro, conf);
         // ⭐⭐ **A DERIVA é um SOMANDO e nunca um segundo condutor** — medido no
         // [`super::w4_probe`]: dois motores sobre o mesmo `Transform` entram no ledger com chaves
         // diferentes, e esta ponte leria a escrita do outro como um arrasto do artista.
-        //
-        // ⚠️ E ela entra **ANTES** da repetição: quem deriva para sempre é precisamente quem tem
-        // de envolver, e envolver antes de somar deixaria a nuvem a fugir.
-        let d = mov.map_or(d, |m| {
-            let o = m.deslocamento(playhead);
-            [d[0] + o[0], d[1] + o[1]]
-        });
-        let d = rep.map_or(d, |r| r.envolve(d));
-        // ⚠️⚠️ **A ESCALA multiplica a AUTORADA e nunca a viva** — multiplicar a viva
-        // COMPÕE a cada quadro, e o fundo cresceria sem limite. É a mesma razão pela qual a
-        // translação parte do autorado, e a recuperação dela é por RAZÃO em vez de diferença.
-        let esc = cfg.escala(dolly).unwrap_or([1.0, 1.0]);
+        let deriva = mov.map_or([0.0, 0.0], |m| m.deslocamento(playhead));
+        // ⭐⭐⭐ **A lei inteira vive numa função por eixo** ([`ph2d_ecs::scroll_factor::saida_eixo`])
+        // — o confinamento com a meia-vista que a camada VÊ através do dolly, a repetição presa à
+        // VISTA e o dolly à volta do centro da vista (auditoria 26, §1.1, §1.4 e §2.3).
+        let eixo = |i: usize| {
+            let conf = lim.map_or(centro[i], |l| {
+                ph2d_ecs::confina_eixo(
+                    centro[i],
+                    ph2d_ecs::meia_da_camada(meia[i], cfg.k[i], esc[i]),
+                    l.min[i],
+                    l.max[i],
+                )
+            });
+            ph2d_ecs::scroll_factor::saida_eixo(
+                cfg.k[i],
+                if i == 0 {
+                    autorada.translation.x
+                } else {
+                    autorada.translation.y
+                },
+                centro[i],
+                conf,
+                deriva[i],
+                esc[i],
+                rep.map(|r| r.tile[i]),
+            )
+        };
+        let (x, y) = (eixo(0), eixo(1));
         let agora = Transform {
-            translation: Vec2::new(autorada.translation.x + d[0], autorada.translation.y + d[1]),
-            // ⭐ **Com `dolly = 0` a escala é `1,0` ao bit e o `scale` fica o do VIVO** — é isso
-            // que mantém a W1..W4 byte-idênticas e que deixa outro motor escrever a escala nas
-            // cenas que não usam dolly.
-            scale: if esc == [1.0, 1.0] {
-                era.scale
-            } else {
-                Vec2::new(autorada.scale.x * esc[0], autorada.scale.y * esc[1])
-            },
+            translation: Vec2::new(x, y),
+            // ⚠️⚠️ **A ESCALA multiplica SEMPRE a AUTORADA** (auditoria 26, §1.3). A 1.ª redacção
+            // escrevia o VIVO com `esc = 1`, e o vivo depois de um dolly ainda é a escala do
+            // dolly: voltar o dolly a `0` deixava os fundos encolhidos para sempre. Com `esc = 1`
+            // a multiplicação é a identidade ao bit, logo a W1..W4 não se mexem.
+            scale: Vec2::new(autorada.scale.x * esc[0], autorada.scale.y * esc[1]),
             // ⚠️ O resto vem do VIVO e não do autorado: esta ponte não escreve a rotação nem o
             // skew, e roubá-los ao autorado apagaria o que outro motor tivesse escrito.
             ..era
@@ -197,10 +215,25 @@ pub fn drive_parallax(
                 Driven::ParallaxPose(autorada),
                 Driven::ParallaxPose(agora),
             );
+            declarados.push(entity);
         }
         n += 1;
     }
+    largar_os_nao_declarados(sim, drive, &declarados);
     n
+}
+
+/// ⭐⭐⭐ **Devolve o autorado a quem esta ponte deixou de conduzir** (auditoria 26, §1.2).
+///
+/// ⚠️ A varredura é do LEDGER e não da consulta, e isso é a lei: um objecto a quem tiraram o
+/// `ScrollFactor` (ou que ganhou um `UiCanvas`) já não aparece na consulta — só o ledger se lembra
+/// de que ele foi deslocado.
+fn largar_os_nao_declarados(sim: &mut SimWorld, drive: &mut PreviewDrive, declarados: &[Entity]) {
+    for e in drive.driven_by(Driver::ParallaxPose) {
+        if !declarados.contains(&e) {
+            drive.release_to_authored(sim, e, Driver::ParallaxPose);
+        }
+    }
 }
 
 /// **De que pose se parte** — ver o ⚠️ do cabeçalho sobre o arrasto.
@@ -218,9 +251,12 @@ pub fn drive_parallax(
 /// Ele não depende de vista nenhuma, logo a recuperação é exacta mesmo entre duas vistas
 /// diferentes.
 ///
-/// ⚠️ **Sem ramo, e isso é a lei e não economia:** *«nada mexeu»* é o caso geral com o vivo igual
-/// ao escrito, e a subtracção devolve o memo ao bit. Um `if era == escrito` seria a segunda
-/// resposta à mesma pergunta — e a que envelhece é sempre a escrita à mão.
+/// ⛔⛔ **«Nada mexeu» é um RAMO, e a 1.ª redacção dizia o contrário** (auditoria 26, §2.1): ela
+/// argumentava que a subtracção *«devolve o memo ao bit»* — e em `f32` `x − (x − m) ≠ m` em geral.
+/// Medido pela ponte real: com a câmera a andar o autorado saía do valor original ao 5.º quadro e
+/// ficava diferente em `5 995` de `6 000` ⇒ um passo de undo espúrio por quadro com input, e a
+/// pose no ficheiro a derivar. ⇒ com o vivo IGUAL ao que a ponte escreveu, o autorado é o memo,
+/// sem aritmética nenhuma; a recuperação só corre quando outra mão mexeu.
 fn base_autorada(drive: &PreviewDrive, entity: Entity, era: Transform) -> Transform {
     let bits = entity.to_bits();
     let (Some(Driven::ParallaxPose(memo)), Some(Driven::ParallaxPose(escrito))) = (
@@ -230,6 +266,9 @@ fn base_autorada(drive: &PreviewDrive, entity: Entity, era: Transform) -> Transf
         // 1.º quadro deste objecto: o que está no mundo É o autorado.
         return era;
     };
+    if era == escrito {
+        return memo;
+    }
     Transform {
         translation: Vec2::new(
             era.translation.x - (escrito.translation.x - memo.translation.x),

@@ -23,9 +23,12 @@
 //!
 //! # A cena `=2`: **o DOLLY, que é o que nenhum outro motor deste género dá**
 //!
-//! As MESMAS camadas, ninguém anda, e a única coisa que se mexe é uma pista do painel. Aproximar a
-//! câmera **não é o zoom**: o mundo fica do mesmo tamanho e os fundos ENCOLHEM, que é o que a
-//! profundidade faz de verdade.
+//! As MESMAS camadas e ninguém anda: o único controlo que o dono mexe é uma pista do painel. ⚠️ As
+//! nuvens **continuam a derivar sozinhas** (o `cenario()` é partilhado com a `=1`), e o roteiro
+//! di-lo no passo (0) para ninguém ler a deriva como efeito do dolly. Aproximar a câmera **não é o
+//! zoom**: o mundo fica do mesmo tamanho e os fundos ENCOLHEM, que é o que a profundidade faz de
+//! verdade — **à volta do centro da vista**, e voltar a `0` devolve o tamanho de antes (auditoria
+//! 26, §1.3–§1.4, com os dois passos no roteiro).
 //!
 //! ⚠️ Se a linha `[parallax-smoke]` não aparecer, **PARE**: a cena não montou.
 
@@ -353,9 +356,10 @@ pub fn montar(world: &mut World, nivel: u32) -> Montada {
     // nome*, e um literal aqui envelhece no dia em que alguém renomear a chave — com o dono a
     // aprovar o smoke com o passo impossível dentro. Há gate.
     let t = ph2d_i18n::tr;
-    let (camera, dolly) = (
+    let (camera, dolly, active) = (
         t("panel.inspector.camera.camera"),
         t("panel.inspector.camera.dolly"),
+        t("panel.inspector.camera.active"),
     );
     let (secao, factor, repeat, drift, lmax) = (
         t("panel.inspector.parallax.parallax"),
@@ -367,15 +371,23 @@ pub fn montar(world: &mut World, nivel: u32) -> Montada {
     if nivel == 2 {
         println!(
             "[parallax-smoke] cena=2 — o DOLLY\n\
+             (0) as nuvens andam sozinhas o tempo todo — isso e' a deriva da cena 1, NAO o dolly\n\
              (1) a «Camera» ja' esta' escolhida: no painel da direita procure a seccao `{camera}` \
              e a fileira `{dolly}`, que nasce em 0\n\
              (2) arraste o numero do `{dolly}` para a DIREITA: o chao e os postes ficam do MESMO \
-             tamanho e os tres fundos ENCOLHEM — as arvores pouco, as colinas mais, o ceu muito\n\
+             tamanho e os tres fundos ENCOLHEM em direccao ao MEIO do ecra — as arvores pouco, as \
+             colinas mais, o ceu muito\n\
              (3) arraste-o para a ESQUERDA: o contrario, os fundos CRESCEM\n\
-             (4) isto NAO e' o zoom: um zoom mexia tambem no chao. E' a camera a APROXIMAR-SE do \
+             (4) ponha o `{dolly}` de volta em 0: os tres fundos voltam EXACTAMENTE ao tamanho do \
+             inicio\n\
+             (5) com o `{dolly}` longe de 0, desmarque `{active}`: a camera do jogo deixa de mandar e \
+             os fundos voltam ao sitio e ao tamanho em que foram postos. Marque-a outra vez: tudo \
+             volta a ficar como no passo (2)\n\
+             (6) isto NAO e' o zoom: um zoom mexia tambem no chao. E' a camera a APROXIMAR-SE do \
              plano do mundo, e cada fundo obedece a' distancia dele\n\
-             (5) deu errado se: o chao mudar de tamanho · algum fundo NAO mudar · ou a imagem \
-             saltar em vez de crescer devagar"
+             (7) deu errado se: o chao mudar de tamanho · algum fundo NAO mudar · um fundo encolher \
+             para um canto em vez de para o meio · ficar menor depois do passo (4) · ou ficar fora \
+             do sitio depois do passo (5)"
         );
     } else {
         println!(
@@ -395,9 +407,11 @@ pub fn montar(world: &mut World, nivel: u32) -> Montada {
              (5) escolha as «Colinas»: elas nao tem `{repeat}`, tem a cerca — e' ela que as faz \
              parar no passo (2). Suba o primeiro numero de `{lmax}` de 30 para 80 e ande outra \
              vez: a serra vai mais longe\n\
-             (6) deu errado se: todos os planos andarem a mesma velocidade · aparecer uma emenda no \
-             ceu ou nas arvores · as colinas nunca pararem · ou o fundo SALTAR quando o heroi muda \
-             de direccao"
+             (6) ande MUITO para a direita (mais de um minuto): as arvores e as nuvens continuam a \
+             encher o ecra de ponta a ponta, sem nunca ficar um buraco\n\
+             (7) deu errado se: todos os planos andarem a mesma velocidade · aparecer uma emenda no \
+             ceu ou nas arvores · as arvores ou o ceu ficarem para tras e desaparecerem · as colinas \
+             nunca pararem · ou o fundo SALTAR quando o heroi muda de direccao"
         );
     }
     Montada {

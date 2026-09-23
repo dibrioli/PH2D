@@ -216,3 +216,49 @@ fn the_preview_flag_travels_in_the_snapshot() {
     assert!(!off.preview_on);
     assert!(on.preview_on);
 }
+
+/// ⭐ **A faixa do `Dolly` é UMA porta** (auditoria 26, §2.6).
+///
+/// ⛔ A mutação que a auditoria achou SOBREVIVENTE era a ponta de cima do applier (`0,9 → 0,99`):
+/// o painel e o applier escreviam a faixa cada um com o seu literal, e divergirem não partia teste
+/// nenhum. Hoje as duas pontas são constantes do `ph2d-editor-core` e este gate afirma as duas
+/// metades: **quem as lê** (o applier e a pista do painel, sem literal nenhum) e **que a de cima
+/// fica DENTRO do domínio da lei** (`δ < 1`, e a escala existe para toda camada da cena de smoke).
+#[test]
+fn a_faixa_do_dolly_e_uma_porta_dentro_do_dominio_da_lei() {
+    use ph2d_editor_core::screens::hero::{DOLLY_MAX, DOLLY_MIN};
+    let applier = include_str!("camera_inspector.rs");
+    let pista = include_str!("../../ph2d-panel-inspector/src/populate_camera.rs");
+    for (nome, fonte) in [("o applier", applier), ("a pista", pista)] {
+        assert!(
+            fonte.contains("DOLLY_MIN") && fonte.contains("DOLLY_MAX"),
+            "{nome} deixou de ler a faixa partilhada do dolly"
+        );
+    }
+    // ⚠️ Duas constantes: o compilador dobra a asserção, logo ela vive num bloco `const` (e uma
+    // faixa que exclua a identidade, ou que chegue a `δ = 1`, passa a ser erro de COMPILAÇÃO).
+    const {
+        assert!(
+            DOLLY_MIN < 0.0 && DOLLY_MAX > 0.0,
+            "a faixa tem de conter a identidade"
+        )
+    };
+    const {
+        assert!(
+            DOLLY_MAX < 1.0,
+            "em δ = 1 o plano do mundo tem tamanho zero"
+        )
+    };
+    for k in [
+        crate::parallax_smoke::K_ARVORES,
+        crate::parallax_smoke::K_COLINAS,
+        crate::parallax_smoke::K_CEU,
+    ] {
+        for d in [DOLLY_MIN, DOLLY_MAX] {
+            assert!(
+                ph2d_ecs::ScrollFactor::escala_do_dolly(k, d).is_some(),
+                "k {k} · δ {d}: a ponta da faixa sai do dominio da lei"
+            );
+        }
+    }
+}

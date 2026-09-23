@@ -37,7 +37,14 @@ const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 16] = [
     // - **`−1` em baixo é a SATURAÇÃO, medida:** o céu lê `1,79×` a `−1`, `2,42×` a `−2` e `2,94×`
     //   a `−3` — cada passo compra menos, e o que a pista ganharia em curso perderia em resolução
     //   onde o artista de facto trabalha.
-    (ids::INSP_CAMERA_DOLLY, 0.0, -1.0, 0.9, 0.05), // LITERAL-PX-OK: fracção adimensional
+    // ⚠️ A faixa é a PORTA partilhada com o applier (auditoria 26, §2.6).
+    (
+        ids::INSP_CAMERA_DOLLY,
+        0.0,
+        ph2d_editor_core::screens::hero::DOLLY_MIN as f64,
+        ph2d_editor_core::screens::hero::DOLLY_MAX as f64,
+        0.05, // LITERAL-PX-OK: fracção adimensional
+    ),
     // Quem ela segue.
     (ids::INSP_CAMERA_DAMP_X, 5.0, 0.0, 60.0, 0.5), // LITERAL-PX-OK: 1/s
     (ids::INSP_CAMERA_DAMP_Y, 5.0, 0.0, 60.0, 0.5), // LITERAL-PX-OK: 1/s

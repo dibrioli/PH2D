@@ -1,8 +1,8 @@
 //! **Fase do quadro: A PARALAXE** (plano 24, W1) — um objecto guarda uma fracção do movimento do
 //! mundo, e o fundo fica para trás.
 //!
-//! ⚠️ **Aqui, imediatamente depois da [`super::fase_hud`] e ANTES do extract**, e as três metades
-//! são load-bearing:
+//! ⚠️ **Aqui, depois da [`super::fase_hud`] e do dreno da timeline, e ANTES do extract**, e as
+//! quatro metades são load-bearing:
 //!
 //! * **depois da câmera**, porque a vista deste quadro é a que ela acabou de calcular — um passe
 //!   antes deslocaria contra o enquadramento do quadro anterior, e o fundo leria-se como *«atrasado
@@ -10,6 +10,9 @@
 //! * **depois do HUD**, e isso é ordem entre irmãos e não necessidade: as duas populações são
 //!   disjuntas por construção (a ponte exclui quem tem `UiCanvas`), e mantê-las juntas põe as duas
 //!   leis da mesma família uma ao lado da outra;
+//! * **depois do [`super::fase_timeline_drain`]**, porque é ele que aplica o SCRUB e o rebobinar
+//!   ao relógio, e a deriva (`ScrollMotion`) lê o relógio — antes dele um scrub chegava ao fundo
+//!   UM quadro atrasado (auditoria 26, §3). ⚠️ Nenhuma das fases no meio lê a pose de um fundo;
 //! * **antes do extract**, porque é ele quem propaga as poses e desenha, e os filhos de um fundo
 //!   herdam a dele.
 //!

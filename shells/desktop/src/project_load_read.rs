@@ -103,8 +103,11 @@ impl crate::App {
                     Ok((_, old)) => {
                         let m = crate::project_migrate::migrate_v128_to_v129(old);
                         eprintln!(
-                            "[proj] migrado v128 -> v{PROJECT_SCHEMA} ({} tabela(s) de accoes reescrita(s), {} ilegivel(eis))",
-                            m.actions.tables, m.actions.unreadable
+                            "[proj] migrado v128 -> v{PROJECT_SCHEMA} ({} tabela(s) de accoes reescrita(s), {} ilegivel(eis); {} camera(s) do jogo com dolly 0, {} ilegivel(eis))",
+                            m.actions.tables,
+                            m.actions.unreadable,
+                            m.cameras.tables,
+                            m.cameras.unreadable
                         );
                         self.toast(ph2d_i18n::tr_with(
                             "shell.project_load.project_migrated_from_128",

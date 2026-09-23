@@ -9,8 +9,12 @@
 //! A vista é a da **câmera do jogo**, nunca a do editor: uma corrida que dependesse de onde o
 //! artista rolou o ecrã seria outra corrida em cada máquina (é a razão escrita no
 //! `fase_game_camera`, e o `DestroyOutside` do #12 já a herdou). Sem câmera na cena não há vista,
-//! e então o canvas fica **onde o artista o pôs** — o `settle` do ledger devolve-lhe a pose
-//! autorada no mesmo quadro, e o painel diz porquê.
+//! e então o canvas fica **onde o artista o pôs**, e o painel diz porquê.
+//!
+//! ⛔⛔ **E quem o devolve é esta ponte, nunca o `settle`** (auditoria 26 da paralaxe, §1.2, que
+//! achou a mesma frase falsa aqui): o `settle` só ESQUECE, e a pose conduzida ficava no mundo e
+//! entrava no documento na captura seguinte. Hoje quem esta ponte deixa de conduzir é LARGADO por
+//! `release_to_authored`.
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, SimWorld, Transform, UiCanvas};
@@ -45,11 +49,12 @@ pub fn drive_canvases(sim: &mut SimWorld, vista: Option<View>, drive: &mut Previ
             .collect()
     };
     let Some(vista) = vista else {
-        // ⚠️ Não declarar É a resposta: o `settle` do fim do quadro esquece quem não foi
-        // declarado, e o valor vivo volta a ser o do documento.
+        // ⛔ Sem câmera não há condução — e quem já era conduzido é DEVOLVIDO (ver o cabeçalho).
+        largar_os_nao_declarados(sim, drive, &[]);
         return 0;
     };
     let mut n = 0;
+    let mut declarados: Vec<Entity> = Vec::new();
     for (entity, era, cfg) in antes {
         let Some(caixa) = Canvas::new(cfg.ref_w, cfg.ref_h, cfg.fit) else {
             // Uma caixa impossível (lado zero ou não-finito) não conduz nada — ver o doc do
@@ -67,14 +72,27 @@ pub fn drive_canvases(sim: &mut SimWorld, vista: Option<View>, drive: &mut Previ
                 *t = agora;
             }
             drive.driven(entity, Driven::CanvasPose(era), Driven::CanvasPose(agora));
+            declarados.push(entity);
         } else if drive.still_driving(entity, Driver::CanvasPose) {
             // ⚠️ A linha do meio da tabela do ledger: o motor continua a conduzir, e o facto de a
             // pose não ter mudado neste quadro não pode fazê-la voltar a ser documento.
             drive.driven(entity, Driven::CanvasPose(agora), Driven::CanvasPose(agora));
+            declarados.push(entity);
         }
         n += 1;
     }
+    largar_os_nao_declarados(sim, drive, &declarados);
     n
+}
+
+/// ⭐⭐ **Devolve o autorado a quem esta ponte deixou de conduzir** — a varredura é do LEDGER, porque
+/// um canvas cujo componente saiu já não aparece na consulta.
+fn largar_os_nao_declarados(sim: &mut SimWorld, drive: &mut PreviewDrive, declarados: &[Entity]) {
+    for e in drive.driven_by(Driver::CanvasPose) {
+        if !declarados.contains(&e) {
+            drive.release_to_authored(sim, e, Driver::CanvasPose);
+        }
+    }
 }
 
 /// ⭐⭐⭐ **A MOLDURA que um canvas de HUD oferece às âncoras** — a caixa efectiva em unidades

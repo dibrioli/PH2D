@@ -6,7 +6,9 @@
 > estão marcados `×N`. Os dois P0 de maior alcance (§1.1 e §1.2) foram re-conferidos por leitura
 > directa da ponte depois das lentes.
 >
-> ⛔ **Nada disto está curado neste documento.** Ele é a lista; a cura é a wave seguinte.
+> ⛔ **Os §1–§3 são a LISTA como a auditoria a entregou, e ficam intactos.** A cura — ordem do dono,
+> *«vamos corrigir tudo»* — está no **§5**, item a item, com o gate que a prende e a mutação que o
+> prova.
 
 ## §1 — P0: defeitos que o artista vê
 
@@ -118,3 +120,38 @@ escala **em torno dele**, com erro `(esc − 1)·(pivô' − c)`. Medido: céu a
 - A mudança do `inspector_camera` é um rename limpo (6/6 testes); rewind e `RestartRun` voltam ao tique 0.
 - O `dolly` é o último campo da `GameCamera`; os três registos batem `107/108/108`.
 - O custo da ponte é `O(camadas)` (não percorre filhos).
+
+## §5 — A CURA (23/09, *«vamos corrigir tudo»*)
+
+⭐⭐⭐ **A lei passou a ser UMA função por eixo** ([`scroll_factor::saida_eixo`](../../crates/ph2d-ecs/src/scroll_factor.rs)):
+`saída = c + esc·(autorada + deriva − k·confinado)`, com a repetição a envolver o parêntese (a
+posição **no ecrã**) e o dolly a escalar à volta do **centro da vista**. Sem dolly e sem repetição o
+ramo é a soma de sempre **ao bit** (gate `sem_repeticao_nem_dolly_a_saida_e_a_de_sempre_ao_bit`),
+logo a paridade da W1 com o oráculo não foi re-medida — foi **preservada por construção**.
+
+| # | cura | gate (mutação que sangra) |
+|---|---|---|
+| **1.1** | a repetição envolve `deriva − k·confinado` (o relativo à VISTA) | `a_repeticao_fica_presa_a_vista_e_nao_ao_mundo` · `a_repeticao_em_y_fica_presa_a_vista` · ⭐ `andando_muito_a_fileira_que_repete_continua_a_cobrir_a_vista` (a CENA, com a câmera a andar `0 → 70 m` pela porta do produto) |
+| **1.2** | a ponte e a do HUD **largam** quem deixam de conduzir (`release_to_authored` sobre o `driven_by` do ledger), nas cinco saídas | `quem_deixa_de_ser_conduzido_volta_a_pose_autorada` · `um_canvas_que_perde_a_camera…` |
+| **1.3** | a escala escrita é `autorada × esc`, nunca a viva | `o_dolly_de_volta_a_zero_devolve_a_escala` |
+| **1.4** | escala à volta do CENTRO DA VISTA; o **plano §2/W5 corrigido** (o erro estava no modelo) | `o_dolly_escala_a_volta_do_centro_da_vista` (oráculo = a pinhole escrita por extenso) · `o_dolly_leva_o_fundo_para_o_centro_da_vista` |
+| **2.1** | ramo EXACTO «nada mudou» ⇒ o autorado sai do memo sem aritmética | `o_autorado_nao_deriva_com_a_camera_a_andar` |
+| **2.2** | `GameCameraV128` congelado + `migrate_game_camera_blobs` no `migrate_v128_to_v129`; a linha do load diz quantas | `a_frozen_v128_camera_migrates_and_the_world_restores` (com o CONTROLO: o tipo vivo não lê os cinco campos) |
+| **2.3** | a meia-vista vista pela camada é `h(1/esc − 1 + k)/k`; a repetição é no espaço anterior à escala | `com_dolly_a_cerca_mostra_a_mesma_faixa_de_conteudo` · `a_cerca_com_dolly_usa_a_meia_vista` |
+| **2.4** | `CameraDoJogo { Nenhuma · Desligada · Activa }` pela porta `active_camera_of`; queixas do dolly a atravessar, do outro condutor, do `k` não-finito; notas da pré-visualização e da cerca inerte; a deriva com `m/s` | `as_queixas_seguem…` · `o_neutro_com_deriva…` · `o_dolly_que_atravessa_e_o_outro…` · `as_notas_da_pre…` |
+| **2.5** | as três irmãs `requires: ScrollFactor` no catálogo | `as_irmas_da_paralaxe_requerem_o_factor` |
+| **2.6** | o applier trava ao domínio da lei (finitos; ladrilho `≥ 0`); a faixa do dolly é UMA porta (`DOLLY_MIN`/`DOLLY_MAX`) | `o_applier_trava…` · `a_faixa_do_dolly_e_uma_porta_dentro_do_dominio_da_lei` — ⚠️ a mutação `0,9 → 0,99` que sobrevivia deixou de ser **exprimível**: não há literal para mutar num sítio só |
+| **2.7** | o painel NOMEIA o outro condutor (`drives_other_than` no ledger) | `o_dolly_que_atravessa_e_o_outro…` |
+| **2.8** | o instantâneo lê `active_camera_of` + `camera_count` (consulta de UM componente), nunca `iter_entities` | coberto pelo gate da queixa |
+| **2.9** | o gate de custo CONTA TRABALHO: a estrutura (consulta que EXIGE `&ScrollFactor`, zero `iter_entities`) + o trabalho (`10` conduzidos com `20 000` objectos sem o componente) | `o_passe_e_uma_consulta_filtrada_e_conta_so_as_camadas`; o relógio fica no irmão `#[ignore]` |
+| §3 arnês | as âncoras refeitas; **modo SECO** (`SECO=1`) que conta as âncoras sem compilar | o próprio arnês |
+| §3 scrub | a `fase_paralaxe` passa para DEPOIS do `fase_timeline_drain` (é ele que aplica scrub e rebobinar) | o gate de ordem do quadro ganhou a metade `dreno < paralaxe` |
+| §3 `NaN`/`δ = 1`/eixo | deriva não-finita é inerte por eixo · `δ ≥ 1` é recusa (`None`), nunca escala `0` · cada eixo decide sozinho | `uma_deriva_nao_finita_e_inerte` · `a_camera_no_plano_focal_e_recusa` |
+| §3 docs | os docs colados ao item errado (três ficheiros, e dois deles **pré-existentes** na secção RAY) · o link partido · o cabeçalho do `scroll_repeat` e da cena `=2` | — |
+| §3 texto | os gates de texto da fase leem **sem linhas de comentário** · o nome `…_e_so_recebe_o_centro` → `…_e_recebe_o_rectangulo_inteiro` | mutação «a chamada comentada passa por viva» |
+| §3 ida-e-volta | gravar → abrir os quatro componentes e o dolly, pelo registo real | `gravar_e_abrir_devolve_os_quatro_componentes_e_o_dolly` |
+
+⏳ **Fica fora, com o motivo:** o `commit_number_buffer` genérico não trava a faixa do widget (é da
+casa inteira, não desta linha — aqui quem trava é o applier, que é a última porta antes do
+documento) · o `scripts/schema-recount.py` só correr dentro de um conflito (ferramenta do
+integrador) · a semente velha depois de um blur (herdada das irmãs, pré-existente).

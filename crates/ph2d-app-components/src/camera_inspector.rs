@@ -156,7 +156,15 @@ pub fn apply_camera_edit(
                 // tem tamanho aparente zero, e acima disso a `escala` inverte o sinal — uma cena
                 // com os fundos ESPELHADOS, que nenhum artista pede. A ponta de baixo é a
                 // saturação medida. Ver [`ph2d_ecs::ScrollFactor::escala_do_dolly`].
-                CameraFieldEdit::Dolly(v) => c.dolly = v.clamp(-1.0, 0.9), // CLAMP-OK: o domínio da lei
+                // ⚠️ A faixa é a PORTA partilhada com a pista do painel (auditoria 26, §2.6), e um
+                // valor não-finito não chega a escrever.
+                CameraFieldEdit::Dolly(v) if v.is_finite() => {
+                    c.dolly = v.clamp(
+                        ph2d_editor_core::screens::hero::DOLLY_MIN,
+                        ph2d_editor_core::screens::hero::DOLLY_MAX,
+                    );
+                }
+                CameraFieldEdit::Dolly(_) => {}
                 CameraFieldEdit::Active(on) => c.active = *on,
                 CameraFieldEdit::CullBit(bit, on) => {
                     let m = 1u32 << u32::from(*bit).min(31); // CLAMP-OK: 32 bits, e o painel só tem 32 caixas

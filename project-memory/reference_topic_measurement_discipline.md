@@ -1598,5 +1598,10 @@ apagar a repetição da ponte deixava a diferença a ser um múltiplo exacto e a
 repetição existe para impedir é a *fuga*; e o controlo que eu tinha ao lado media **outra cena**
 (sem o componente), logo provava que a varredura mexe e nunca que é o componente que a segura.
 **How to apply:** ao medir uma grandeza módulo alguma coisa, escreva **também** a metade absoluta
-(`|p − autorada| ≤ unidade/2`) — e quando o controlo precisar de trocar de cena para existir,
-desconfie: ele deixou de medir o mesmo programa. Ver [[reference_topic_gate_discipline]].
+— e quando o controlo precisar de trocar de cena para existir, desconfie: ele deixou de medir o
+mesmo programa. Ver [[reference_topic_gate_discipline]].
+⛔⛔ **CORRECÇÃO (2026-09-23, auditoria 26): a metade absoluta que eu gravei aqui estava no
+REFERENCIAL ERRADO** — `|p − autorada| ≤ ladrilho/2` mede a pose no MUNDO, e a repetição existe para
+limitar a posição NO ECRÃ (`|p − c − autorada| ≤ ladrilho/2`). A régua gravada aprovava a lei que
+prendia o fundo ao mundo, e a fileira saía da vista ao fim de ~30 m. *Uma metade «absoluta» também
+tem um referencial, e ele é o do FENÓMENO — o artista vê o ecrã, não as coordenadas do mundo.*

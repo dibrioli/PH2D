@@ -70,6 +70,7 @@ pub(super) fn publish(
     // ⚠️ **Estado da SHELL, e por isso viaja como argumento** — o painel não tem como o saber, e
     // derivá-lo do mundo seria impossível: ele não está no mundo.
     game_camera_preview: bool,
+    preview_drive: &ph2d_preview_drive::PreviewDrive,
     last_pointer: (f32, f32),
     frame_ms_ewma: f32,
     frame_cpu_ms_ewma: f32,
@@ -237,6 +238,7 @@ pub(super) fn publish(
         renderer,
         window_size,
         game_camera_preview,
+        preview_drive,
         clock_playing,
         bake_range,
         bake_channels_tag,

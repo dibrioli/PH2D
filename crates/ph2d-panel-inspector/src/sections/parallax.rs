@@ -28,6 +28,11 @@ use ph2d_i18n::{tr, tr_with};
 const fn chave_da_queixa(q: ParallaxQueixa) -> &'static str {
     match q {
         ParallaxQueixa::SemCamera => "panel.inspector.parallax.there_is_no_game_camera",
+        ParallaxQueixa::CameraDesligada => "panel.inspector.parallax.the_game_camera_is_off",
+        ParallaxQueixa::Atravessa => {
+            "panel.inspector.parallax.the_camera_passes_through_this_layer"
+        }
+        ParallaxQueixa::OutroMotor => "panel.inspector.parallax.another_motor_moves_this_object",
         ParallaxQueixa::Neutra => "panel.inspector.parallax.this_layer_moves_with_the_world",
     }
 }
@@ -60,10 +65,15 @@ fn frases_da_profundidade(k: [f32; 2]) -> Vec<String> {
     if k[0].to_bits() == k[1].to_bits() {
         return frase_da_profundidade(k[0]).into_iter().collect();
     }
-    [("X", k[0]), ("Y", k[1])]
-        .into_iter()
-        .filter_map(|(eixo, v)| frase_da_profundidade(v).map(|f| format!("{eixo}: {f}")))
-        .collect()
+    // ⚠️ O nome do eixo e a composição da frase vêm da TABELA (HR-15, auditoria 26 §3): um
+    // `format!("{eixo}: {f}")` aqui era o único literal de UI desta crate.
+    [
+        ("panel.inspector.parallax.axis_x_phrase", k[0]),
+        ("panel.inspector.parallax.axis_y_phrase", k[1]),
+    ]
+    .into_iter()
+    .filter_map(|(chave, v)| frase_da_profundidade(v).map(|f| tr_with(chave, &[("f", &f)])))
+    .collect()
 }
 
 /// O corpo da secção — os CONTROLOS.
@@ -97,6 +107,30 @@ fn corpo(
             ColorToken::Text3,
         );
     }
+    // ⭐ **As NOTAS** — a lei corre, e o painel diz o que o artista pode não estar a ver.
+    for (vale, chave) in [
+        (
+            i.nota_pre_visualizacao(),
+            "panel.inspector.parallax.the_game_camera_preview_is_off",
+        ),
+        (
+            i.limites_inertes(),
+            "panel.inspector.parallax.no_limit_axis_is_active",
+        ),
+    ] {
+        if vale {
+            cur_y = super::rows::aviso(
+                scene,
+                text_system,
+                theme,
+                x,
+                w,
+                cur_y,
+                tr(chave),
+                ColorToken::Text3,
+            );
+        }
+    }
 
     // ⚠️ **Cada linha carrega o PRÓPRIO passo e a PRÓPRIA unidade**, e não um partilhado: o factor
     // é adimensional e a `0,05` (um vigésimo do curso útil), o ladrilho e a cerca são METROS, e a
@@ -121,7 +155,8 @@ fn corpo(
             tr("panel.inspector.parallax.drift_m_s"),
             &[ids::INSP_PARALLAX_VEL_X, ids::INSP_PARALLAX_VEL_Y][..],
             0.05, // LITERAL-PX-OK: passo em m/s
-            None,
+            // ⚠️ A unidade existe e o doc dizia m/s — a fileira pintava sem nenhuma (auditoria 26).
+            Some(Unit::MetersPerSecond),
         ));
     }
     if i.limits.is_some() {

@@ -75,6 +75,31 @@ impl ScrollLimits {
     }
 }
 
+/// ⭐⭐ **A meia-vista que uma camada VÊ através do DOLLY** — auditoria 26, §2.3.
+///
+/// Sem dolly a camada mostra, em unidades autoradas, `P ∈ [k·conf − h, k·conf + h]`, e com o
+/// confinamento a percorrer `[min + h, max − h]` ela nunca precisa de conteúdo fora de
+/// `[k·min − (1−k)·h, k·max + (1−k)·h]` — é essa a promessa *«a borda nunca entra»*. Com o dolly a
+/// saída é `c + esc·(P − k·conf)` ⇒ a mesma vista mostra `P ∈ [k·conf − h/esc, k·conf + h/esc]`,
+/// e o confinamento que devolve **a MESMA faixa de conteúdo** é o de meia-vista
+///
+/// ```text
+/// m = h · (1/esc − 1 + k) / k
+/// ```
+///
+/// ⚠️ Com `esc = 1` ela é `h` **ao bit** (o braço de cima), e é isso que deixa a W3 byte-idêntica.
+/// ⚠️ Negativa (a camada aparece MAIOR do que a vista precisa) ⇒ `0`: o confinamento alarga até ao
+/// intervalo inteiro e nunca inverte. ⚠️ `k ≤ 0` não tem distância (a camada não segue a câmera),
+/// logo o confinamento dela não depende do dolly — devolve `h`.
+#[must_use]
+pub fn meia_da_camada(h: f32, k: f32, esc: f32) -> f32 {
+    if esc == 1.0 || !k.is_finite() || k <= 0.0 || !esc.is_finite() || esc <= 0.0 {
+        return h;
+    }
+    let m = h * (1.0 / esc - 1.0 + k) / k;
+    if m.is_finite() { m.max(0.0) } else { h }
+}
+
 /// A lei por eixo — ver a `⚠️` do [`ScrollLimits::confina`] sobre a região estreita.
 #[must_use]
 pub fn confina_eixo(c: f32, meia: f32, min: f32, max: f32) -> f32 {

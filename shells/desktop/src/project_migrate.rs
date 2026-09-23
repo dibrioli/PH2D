@@ -205,6 +205,7 @@ pub(crate) fn migrate_v128_to_v129(old: ProjectFileV128) -> MigratedV128 {
         tags: Vec::new(),
     };
     let actions = migrate_signal_action_blobs(&mut state.world);
+    let cameras = migrate_game_camera_blobs(&mut state.world);
     MigratedV128 {
         file: crate::project::ProjectFile {
             state,
@@ -224,6 +225,7 @@ pub(crate) fn migrate_v128_to_v129(old: ProjectFileV128) -> MigratedV128 {
             pattern_art: old.pattern_art,
         },
         actions,
+        cameras,
     }
 }
 
@@ -231,6 +233,9 @@ pub(crate) fn migrate_v128_to_v129(old: ProjectFileV128) -> MigratedV128 {
 pub(crate) struct MigratedV128 {
     pub(crate) file: crate::project::ProjectFile,
     pub(crate) actions: SignalActionSplit,
+    /// As `GameCamera` que ganharam o `dolly` (auditoria 26, §2.2) — a mesma contagem de duas
+    /// metades das acções, porque o modo de falha é o mesmo.
+    pub(crate) cameras: SignalActionSplit,
 }
 
 /// **Reescreve o blob do `SignalActions` de cada linha do snapshot** — o precedente exacto do
@@ -250,6 +255,31 @@ fn migrate_signal_action_blobs(world: &mut ph2d_ecs::scene::WorldSnapshot) -> Si
             Some(bytes) => {
                 // ⚠️ `make_mut` e não uma cópia: as linhas são partilhadas desde a F2, e a
                 // cópia-na-escrita acontece só na linha que de facto muda.
+                let row = std::sync::Arc::make_mut(row);
+                row.components[slot].data = bytes;
+                out.tables += 1;
+            }
+            None => out.unreadable += 1,
+        }
+    }
+    out
+}
+
+/// **Reescreve o blob da `GameCamera` de cada linha do snapshot** (auditoria 26, §2.2).
+///
+/// ⛔⛔ Sem isto um v128 com câmera do jogo **perdia o mundo inteiro**: o postcard é posicional, o
+/// `dolly` foi apendado no degrau `167 → 168`, o blob de cinco campos não decodifica com o tipo
+/// vivo, e o `snapshot_to_world` pára na primeira linha que falha. A lei do blob congelado vive no
+/// `ph2d-ecs` (`camera_2d::migrate_v128_blob`), com o dolly a nascer em `0`, que é a identidade.
+fn migrate_game_camera_blobs(world: &mut ph2d_ecs::scene::WorldSnapshot) -> SignalActionSplit {
+    let type_id = ph2d_ecs::scene::stable_type_id("ph2d::ecs::GameCamera");
+    let mut out = SignalActionSplit::default();
+    for row in &mut world.entities {
+        let Some(slot) = row.components.iter().position(|b| b.type_id == type_id) else {
+            continue;
+        };
+        match ph2d_ecs::camera_2d::migrate_v128_blob(&row.components[slot].data) {
+            Some(bytes) => {
                 let row = std::sync::Arc::make_mut(row);
                 row.components[slot].data = bytes;
                 out.tables += 1;

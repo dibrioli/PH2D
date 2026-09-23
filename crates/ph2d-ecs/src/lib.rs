@@ -200,7 +200,7 @@ pub use sampling::{
     resolve_texture_repeat,
 };
 pub use scroll_factor::ScrollFactor;
-pub use scroll_limits::{ScrollLimits, confina_eixo};
+pub use scroll_limits::{ScrollLimits, confina_eixo, meia_da_camada};
 pub use scroll_motion::ScrollMotion;
 pub use scroll_repeat::{ScrollRepeat, envolve_eixo};
 pub use sculpt_piece_ref::Sculpt3dPieceRef;

@@ -470,6 +470,8 @@ fn o_deslocamento_nao_depende_do_angulo_da_peca() {
 }
 
 // ══ As waves W2..W5 moram em dois FILHOS — ver o cabeçalho de cada um ═══════════════════════════
+#[path = "parallax_bridge_auditoria_tests.rs"]
+mod auditoria;
 #[path = "parallax_bridge_repeticao_tests.rs"]
 mod repeticao;
 #[path = "parallax_bridge_tempo_tests.rs"]

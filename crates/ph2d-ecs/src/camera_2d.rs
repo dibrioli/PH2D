@@ -422,6 +422,11 @@ pub fn camera_count(world: &mut World) -> usize {
     world.query::<&GameCamera>().iter(world).count()
 }
 
+/// A `GameCamera` como os ficheiros `128..167` a gravavam, congelada para a migração.
+#[path = "camera_2d_v128.rs"]
+mod v128;
+pub use v128::migrate_v128_blob;
+
 #[cfg(test)]
 #[path = "camera_2d_tests.rs"]
 mod tests;

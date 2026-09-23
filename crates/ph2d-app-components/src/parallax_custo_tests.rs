@@ -17,15 +17,47 @@ use super::drive_parallax;
 /// varria o mundo duas vezes por nascimento, e a porta em lote tornou-a plana.
 ///
 /// ⚠️ **Sem tecto e sem `MAX_*`, de propósito:** um fundo de paralaxe tem `3` a `8` camadas num jogo
-/// real, e o que esta medição existe para dizer é que **nenhum `MAX_*` é preciso** — o número está
-/// aqui, com a tabela ao lado, que é o que o `§0.0` pede em vez de um limite escolhido.
+/// real, e o que esta medição existe para dizer é que **nenhum `MAX_*` é preciso** — a tabela vive no
+/// [`custo_por_quadro_imprime_a_tabela`], que é o que o `§0.0` pede em vez de um limite escolhido.
 ///
-/// ⚠️ **A barra é uma RAZÃO e não um relógio de parede**, para não entrar na família de flakes de
-/// fan-out: o custo de `1 000` camadas contra o de `10` tem de ser **sub-quadrático**, e é isso que
-/// separa um laço linear de uma varredura por objecto.
+/// ⛔⛔ **Este gate CONTA TRABALHO e não mede relógio** (auditoria 26, §2.9). A 1.ª redacção
+/// comparava dois relógios de dezenas de µs e reprovou `1` de `25` a `load 26–36`, com zero linhas
+/// de diff no passe — *a família de flakes de fan-out que o §5.0 do roteador nomeia*. O custo aqui
+/// é **estrutural** (uma consulta filtrada custa `O(arquétipos + linhas que casam)`, e a cena sem o
+/// componente é UM arquétipo), logo a régua honesta tem duas metades:
+///
+/// 1. **a ESTRUTURA** — o passe lê o mundo por uma consulta que exige `&ScrollFactor` e nunca por
+///    uma varredura de entidades (`iter_entities`), que é a forma exacta do defeito da `Factory`;
+/// 2. **o TRABALHO** — com vinte mil objectos sem o componente, o passe conduz exactamente as dez
+///    camadas; com mil camadas conduz mil.
+///
+/// ⚠️ O relógio fica no irmão `#[ignore]`, que imprime e não afirma.
 #[test]
-fn o_custo_do_passe_e_linear_nas_camadas_e_cego_a_cena() {
-    fn corre(camadas: usize, resto_da_cena: usize) -> std::time::Duration {
+fn o_passe_e_uma_consulta_filtrada_e_conta_so_as_camadas() {
+    // (1) A ESTRUTURA, lida do produto. ⚠️ A agulha monta-se em runtime, senão este ficheiro — que
+    // a contém — seria a prova de si mesmo.
+    let fonte = include_str!("parallax_bridge.rs");
+    let corpo = fonte
+        .split("pub fn drive_parallax(")
+        .nth(1)
+        .expect("o passe existe com este nome");
+    let varredura = ["iter", "_entities"].concat();
+    assert!(
+        !corpo.contains(&varredura),
+        "o passe voltou a VARRER o mundo — e' o defeito que a `Factory` pagou (O(cena) por quadro)"
+    );
+    let consulta = ["query_filtered::<", "("].concat();
+    let ancora = corpo
+        .find(&consulta)
+        .expect("o passe le por uma consulta filtrada");
+    let tuplo = &corpo[ancora..ancora + 400];
+    assert!(
+        tuplo.contains("&ScrollFactor,"),
+        "a consulta do passe deixou de EXIGIR o `ScrollFactor` — um `Option<&ScrollFactor>` casaria          com toda a cena"
+    );
+
+    // (2) O TRABALHO, contado.
+    fn conduz(camadas: usize, resto_da_cena: usize) -> (usize, usize) {
         let mut sim = SimWorld::default();
         for i in 0..camadas {
             #[allow(clippy::cast_precision_loss)]
@@ -38,39 +70,24 @@ fn o_custo_do_passe_e_linear_nas_camadas_e_cego_a_cena() {
                 },
             ));
         }
-        // ⚠️ O resto da cena NÃO tem o componente — é ele que prova que o passe não a varre.
+        // ⚠️ O resto da cena NÃO tem o componente — é ele que prova que o passe não a conta.
         for _ in 0..resto_da_cena {
             sim.world_mut().spawn((Transform::default(),));
         }
         let mut drive = PreviewDrive::default();
-        // Um quadro de aquecimento: a 1.ª consulta do bevy constrói o estado dela.
-        drive_parallax(&mut sim, Some(([1.0, 0.0], [10.0, 10.0])), 0.0, &mut drive);
-        let t0 = std::time::Instant::now();
-        for i in 1..=20 {
-            #[allow(clippy::cast_precision_loss)]
-            let c = i as f32;
-            drive_parallax(&mut sim, Some(([c, 0.0], [10.0, 10.0])), 0.0, &mut drive);
-        }
-        t0.elapsed()
+        let n = drive_parallax(&mut sim, Some(([7.0, 0.0], [10.0, 10.0])), 0.0, &mut drive);
+        let conduzidos = drive
+            .driven_by(ph2d_preview_drive::Driver::ParallaxPose)
+            .len();
+        (n, conduzidos)
     }
-
-    // ⚠️ **A cena grande NÃO pode custar mais que a pequena** — é a metade que prova o `O(camadas)`.
-    let poucas_cena_pequena = corre(10, 0);
-    let poucas_cena_grande = corre(10, 20_000);
-    let muitas = corre(1_000, 0);
-
-    let razao_cena = poucas_cena_grande.as_secs_f64() / poucas_cena_pequena.as_secs_f64().max(1e-9);
-    assert!(
-        razao_cena < 8.0,
-        "vinte mil objectos SEM o componente custaram {razao_cena:.2}x: o passe deixou de ser cego \
-         a` cena (medido: a consulta e' filtrada e o laco visita so' quem tem `ScrollFactor`)"
+    assert_eq!(conduz(10, 0), (10, 10));
+    assert_eq!(
+        conduz(10, 20_000),
+        (10, 10),
+        "vinte mil objectos SEM o componente mudaram o trabalho do passe"
     );
-
-    let razao_camadas = muitas.as_secs_f64() / poucas_cena_pequena.as_secs_f64().max(1e-9);
-    assert!(
-        razao_camadas < 100.0 * 8.0,
-        "cem vezes as camadas custaram {razao_camadas:.1}x: o passe deixou de ser linear nelas"
-    );
+    assert_eq!(conduz(1_000, 0), (1_000, 1_000));
 }
 
 /// ⭐⭐⭐ **A composição com o `Transform` de um PAI** (§6.3 do plano) — e a resposta é DECLARADA.

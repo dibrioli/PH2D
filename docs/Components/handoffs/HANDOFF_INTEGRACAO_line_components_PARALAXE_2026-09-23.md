@@ -6,7 +6,8 @@
 > daquele) **e** a paralaxe (este). ⚠️ O §6 do handoff da LINHA de 20/09 continua vivo (as memórias
 > órfãs de um rebase) e não foi reescrito aqui.
 
-**36 commits** · `221` ficheiros (`+14 978` / `−588`) · merge-base `395da6a55`.
+**39 commits** (a contagem de 36 que aqui esteve estava errada por um, e a auditoria e a cura
+somaram dois) · `233` ficheiros (`+17 033` / `−661`) · merge-base `395da6a55`.
 ⭐ **O `main` NÃO andou desde o merge-base** (`git log 395da6a55..main` vazio, medido 23/09) ⇒ *a
 árvore combinada É esta*, e os censos da soma foram corridos sobre ela (§6).
 
@@ -49,11 +50,11 @@ componente, e por isso os registos sobem `+4` e não `+5`.
 
 | wave | o que muda | a lei, numa frase |
 |---|---|---|
-| **W1** | `ScrollFactor { k }` | `saída = autorada + centro·(1−k)` — portada do Godot e confirmada contra ele |
-| **W2** | `ScrollRepeat { tile }` | a correcção é um **inteiro** de ladrilhos (a costura não pode abrir), janela centrada |
+| **W1** | `ScrollFactor { k }` | `saída = autorada + centro·(1−k)` — portada do Godot e confirmada contra ele; ⭐ desde a cura da auditoria a lei inteira (W1–W5) é UMA função por eixo, [`scroll_factor::saida_eixo`](../../../crates/ph2d-ecs/src/scroll_factor.rs) |
+| **W2** | `ScrollRepeat { tile }` | a correcção é um **inteiro** de ladrilhos (a costura não pode abrir), janela centrada, ⛔ **sobre a posição NO ECRÃ** (a 1.ª redacção envolvia o deslocamento no mundo — auditoria 26 §1.1) |
 | **W3** | `ScrollLimits { min, max }` | o centro que a camada vê é **confinado** à região menos a meia-vista: a borda do fundo nunca entra |
 | **W4** | `ScrollMotion { velocity }` | deriva = `velocidade × playhead` — função do RELÓGIO, logo sobrevive ao scrub e ao rebobinar sem estado |
-| **W5** | `GameCamera::dolly` | a multiplano: `escala = (1−δ)/(1−kδ)` — **o que nenhum motor do género dá** |
+| **W5** | `GameCamera::dolly` | a multiplano: `escala = (1−δ)/(1−kδ)`, **à volta do CENTRO DA VISTA** (a 1.ª redacção escalava em torno do pivô — o erro estava no modelo do plano, corrigido lá) — **o que nenhum motor do género dá** |
 | **W6** | um GATE, zero produto | a unificação com o HUD caiu nas DUAS metades (o plano §W6 tem a refutação) |
 | **W7** | a superfície | a secção **Parallax**, a fileira **Dolly**, a distância como LEITURA e as duas cenas |
 
@@ -97,7 +98,18 @@ componente, e por isso os registos sobem `+4` e não `+5`.
    (tecto do painel `602/600`), e **as chamadas do RAIO e da ARMA** no `paint_optional_sections`
    foram dobradas numa porta com a paralaxe (`paint_ray_parallax_weapon`, tecto de FUNÇÃO
    `212/200`). Uma linha que acrescente uma secção entre o raio e a arma entra DENTRO dessa porta.
-6. **`parallax_bridge_tests.rs` partiu-se em três** por wave (o pai + dois filhos `repeticao`/`tempo`),
+6. ⭐ **A cura da auditoria (§8) acrescenta DOIS campos e UMA assinatura que outra linha pode
+   tocar:** o `InspectorParallaxInfo` ganhou `camera` (`CameraDoJogo`, no lugar do `bool`),
+   `outro_motor`, `pre_visualizacao` e `limites_inertes` (a cura é o valor neutro de cada um); o
+   `build_parallax_info` e as duas fases de publicação do Inspector (`fase_snapshots_publish` →
+   `snapshots` → `snapshots_inspector`) passaram a receber o **`PreviewDrive`**; e o
+   `ph2d-preview-drive` partiu as consultas para o irmão `consultas.rs` (tecto de LOC `728/700`),
+   com duas novas (`driven_by`, `drives_other_than`). ⚠️ E o `migrate_v128_to_v129` devolve
+   **`cameras`** ao lado de `actions` — uma linha que escreva outro braço de migração no mesmo
+   ficheiro funde por baixo dele.
+7. ⚠️ **A `fase_paralaxe` MUDOU de sítio no quadro**: para DEPOIS do `fase_timeline_drain` (§8). Uma
+   linha que insira uma fase entre a câmera e o dreno da timeline não a tem mais ao lado.
+8. **`parallax_bridge_tests.rs` partiu-se em três** por wave (o pai + dois filhos `repeticao`/`tempo`),
    com os ajudantes a ficarem UMA vez no pai. Prova de que nada evaporou: `56` passados e `1` ignorado
    antes e depois do corte.
 
@@ -121,9 +133,16 @@ componente, e por isso os registos sobem `+4` e não `+5`.
 
 ## §5 — A prova de fecho
 
-- **Mutação: `60` de `60`** no arnês versionado
-  ([`mutacao_paralaxe_2026-09-22.sh`](../ferramentas/mutacao_paralaxe_2026-09-22.sh) — W1..W7, com
-  controlo sobre o próprio filtro e a reposição por `trap`) **+ `2` de `2`** da leitura da distância.
+- **Mutação: `86` de `86`** no arnês versionado
+  ([`mutacao_paralaxe_2026-09-22.sh`](../ferramentas/mutacao_paralaxe_2026-09-22.sh) — W1..W7 + a cura
+  da auditoria 26, com controlo sobre o próprio filtro, a reposição por `trap` e o **modo SECO**, que
+  conta as âncoras sem compilar) **+ `2` de `2`** da leitura da distância. ⚠️ A corrida inteira deu
+  `83/86`: **três provas antigas tinham ficado INERTES com a cura** (duas apontavam a gates que a lei
+  nova já não atravessa, uma foi engolida pela guarda `e ≤ 0`) — reapontadas, com o teste unitário
+  da guarda do ladrilho que faltava, e as três verificadas a sangrar uma a uma.
+- ⛔ **Uma interrupção de sessão deixou UMA mutação na árvore** (o `iter_entities` na ponte): o `trap`
+  não corre sob `SIGKILL`. Quem o apanhou foi o **modo SECO** (`85 de 86` âncoras) — ⇒ *depois de
+  qualquer interrupção, `SECO=1` antes de confiar na árvore*.
 - **Fotos** das duas cenas pelo [`fotografa_cena.sh`](../ferramentas/fotografa_cena.sh) (ecrã
   virtual, nunca o do dono). ⛔ **A foto mudou a cena com os gates verdes:** a `7`/`16` m a janela
   mostrava UMA árvore e UMA nuvem, e uma peça sozinha não se lê a andar mais devagar que outra.
@@ -133,11 +152,11 @@ componente, e por isso os registos sobem `+4` e não `+5`.
 
 ## §6 — O portão da árvore combinada
 
-Corrido 1× sobre o diff acumulado, depois das curas do fecho (23/09):
+Corrido 1× sobre o diff acumulado, **de novo depois da cura da auditoria** (23/09):
 
 | portão | resultado |
 |---|---|
-| `bash scripts/nextest-impacted.sh` | **`17 784 / 17 784`** verdes (`11 048` fora do impacto) |
+| `bash scripts/nextest-impacted.sh` | **`17 810 / 17 810`** verdes (`11 048` fora do impacto) — a 1.ª corrida leu `1` vermelho, o índice da memória `22 247 > 22 000` pela entrada nova desta linha, curado pela porta que o índice prescreve (descer para o tópico da família) |
 | `cargo clippy --workspace --all-targets -- -D warnings` | **zero** |
 | `bash scripts/censos-da-arvore-combinada.sh` (§1.5.9 5-bis) | **verde** — `12 de 12` censos correram, com o controlo do filtro |
 | `cargo fmt --all --check` | limpo |
@@ -165,6 +184,30 @@ portão existir:
 ⚠️ **E a primeira leitura do censo das elisões foi sob `-p`** e reprovou pelo **âmbito** (o piso de
 `12 000` rótulos / `27` painéis só é alcançado num build de WORKSPACE) — a mensagem do próprio gate o
 diz. O veredito que conta é o do `--workspace`.
+
+---
+
+## §8 — A AUDITORIA e a CURA (23/09)
+
+⛔⛔ **O smoke aprovado escondia QUATRO P0.** O dono pediu *«auditoria completa»* e depois *«vamos
+corrigir tudo»*; a auditoria de quatro lentes está em
+[`26_auditoria_paralaxe_2026-09-23.md`](../26_auditoria_paralaxe_2026-09-23.md) e o **§5 dela** tem a
+cura item a item, com o gate e a mutação de cada um. O que o integrador precisa de saber:
+
+- **A lei mudou, e a paridade da W1 não foi re-medida — foi PRESERVADA por construção:** sem dolly e
+  sem repetição o ramo da `saida_eixo` é a soma antiga **ao bit** (gate
+  `sem_repeticao_nem_dolly_a_saida_e_a_de_sempre_ao_bit`).
+- ⛔ **A régua da repetição que a memória gravou em 22/09 (`|p − autorada| ≤ tile/2`) era a grandeza
+  ERRADA** — a memória foi corrigida na mesma edição, e os gates da W2 medem `saída − centro`.
+- **Um `.ph2dproj` v128 com câmera do jogo perdia o MUNDO** (o blob de cinco campos não lê com o
+  `dolly` apendado e o restauro pára na primeira linha que falha): `GameCameraV128` congelado no
+  `ph2d-ecs` + a travessia no `migrate_v128_to_v129`. Os degraus `129..167` continuam **recusados em
+  voz alta**, pela decisão do dono de 26/08.
+- **O gate de custo deixou de ser um relógio** (era da família de flakes de fan-out): conta TRABALHO
+  e lê a ESTRUTURA do passe.
+- ⭐ **E um achado fora da linha, curado de passagem:** os docs `///` da secção RAY SENSOR
+  (`ph2d-panel-inspector/src/lib.rs`) estavam colados a três módulos errados — um deles já no
+  merge-base.
 
 ---
 

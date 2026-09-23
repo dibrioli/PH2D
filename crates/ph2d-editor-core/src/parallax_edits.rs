@@ -25,7 +25,17 @@
 //! | aviso | o que se passa | como se cura |
 //! |---|---|---|
 //! | `there is no game camera` | ⛔ a lei não corre de todo — ela mede contra a vista do JOGO | pôr uma `Game Camera` na cena |
-//! | `this layer moves with the world` | `k = 1` nos dois eixos: o passe **salta** este objecto | baixar o `Scroll Factor` |
+//! | `the game camera is off` | há câmera, mas nenhuma ACTIVA — a fase não recebe vista | ligar `Active` na câmera |
+//! | `the camera passes through this layer` | o dolly põe a câmera para lá da camada — não há tamanho aparente | baixar o `Dolly` ou o `Scroll Factor` |
+//! | `another motor moves this object` | um segundo condutor (timeline, física, script…) no mesmo `Transform` | pôr a paralaxe num objecto PAI |
+//! | `this layer moves with the world` | `k = 1` e sem deriva: o passe **salta** este objecto | baixar o `Scroll Factor` |
+//!
+//! ⭐ E duas NOTAS que não são queixa (a lei corre): a pré-visualização da câmera do jogo desligada
+//! (a camada anda contra uma vista que o artista não está a ver) e uma cerca sem eixo nenhum activo.
+//!
+//! ⛔⛔ **Três das cinco nasceram na auditoria 26** (§2.4): com a câmera desligada, com o dolly a
+//! atravessar ou com um segundo condutor a camada ficava parada ou errada e o painel CALADO; e a
+//! queixa do neutro mentia com deriva activa (o passe conduz, e ela mandava baixar o factor).
 //!
 //! ⚠️⚠️ **Os dois são de espécies DIFERENTES e é por isso que são dois:** no primeiro nenhuma
 //! camada da cena se mexe; no segundo só esta. *Dizer «esta camada anda com o mundo» a quem não tem
@@ -50,10 +60,23 @@ pub struct InspectorParallaxInfo {
     pub motion: Option<[f32; 2]>,
     /// A região de que a vista não sai, para efeito desta camada, se houver `ScrollLimits`.
     pub limits: Option<([f32; 2], [f32; 2])>,
-    /// ⭐ **Há uma câmera do jogo na cena?** Derivado do MUNDO e não de um campo — sem ela a fase
-    /// não recebe rectângulo nenhum e **nenhuma** camada se mexe.
-    pub tem_camera_do_jogo: bool,
-    /// ⭐⭐ **Esta camada é NEUTRA?** — e ele é um campo por uma razão de CAMADA, não de gosto.
+    /// ⭐ **A câmera do jogo** — derivado do MUNDO e não de um campo. ⛔ A 1.ª redacção era um
+    /// `bool` «existe UMA», e a fase usa a ACTIVA: com só câmeras desligadas nada andava e o painel
+    /// ficava calado (auditoria 26, §2.4).
+    pub camera: CameraDoJogo,
+    /// ⛔ **O dolly da câmera activa ATRAVESSA esta camada** (ou a leva ao plano focal): a ponte
+    /// larga-a na pose autorada. Respondido pela MESMA porta da lei (`ScrollFactor::escala`).
+    pub atravessa: bool,
+    /// A pré-visualização da câmera do jogo está ligada? A lei corre contra a vista do JOGO nos dois
+    /// casos — o que muda é se o artista a está a VER.
+    pub pre_visualizacao: bool,
+    /// ⛔ **Outro motor conduz este objecto** (timeline, física, script, tween…) — a paralaxe parte
+    /// do AUTORADO, e dois condutores no mesmo `Transform` corrompem-no (auditoria 26, §2.7).
+    /// Respondido pelo LEDGER (`PreviewDrive::drives_other_than`), não por uma lista de componentes.
+    pub outro_motor: bool,
+    /// ⭐⭐ **O passe SALTA esta camada?** (`k = 1` e deriva inerte) — e ele é um campo por uma razão
+    /// de CAMADA, não de gosto. ⛔ A 1.ª redacção respondia só pelo `k`, e com deriva activa o passe
+    /// CONDUZ: a queixa mandava baixar o factor a quem tinha nuvens a andar (auditoria 26, §2.4).
     ///
     /// ⛔⛔ **Esta crate não pode perguntar ao motor:** ela vive ABAIXO do `ph2d-ecs` no DAG, e um
     /// `use ph2d_ecs::ScrollFactor` aqui é a aresta que a catraca `architecture_no_dependency_
@@ -61,12 +84,24 @@ pub struct InspectorParallaxInfo {
     /// camada é neutra?»* — ela divergiria da do passe no dia em que o neutro mudasse.
     ///
     /// ⇒ quem responde é o CONSTRUTOR do instantâneo, que vive na crate da família e chama a porta
-    /// [`ph2d_ecs::ScrollFactor::e_neutro`] — a mesma que o passe lê.
+    /// [`ph2d_ecs::ScrollFactor::e_neutro`] e a `ScrollMotion::e_inerte` — as mesmas que o passe lê.
     pub e_neutra: bool,
     pub selected_count: usize,
 }
 
-/// As duas razões para nada acontecer, **da mais geral para a mais específica**.
+/// ⭐ **A câmera do jogo, vista do painel** — três estados porque há três curas.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CameraDoJogo {
+    /// Nenhuma `GameCamera` na cena.
+    Nenhuma,
+    /// Há câmeras, mas nenhuma `active`.
+    Desligada,
+    /// A fase tem vista.
+    Activa,
+}
+
+/// As razões para a camada não fazer o que o artista espera, **da mais geral para a mais
+/// específica**.
 ///
 /// ⚠️ A ordem é a ordem em que o painel fala, e é a lei da recusa: a primeira que se aplica é a
 /// única que se diz.
@@ -74,7 +109,13 @@ pub struct InspectorParallaxInfo {
 pub enum ParallaxQueixa {
     /// Não há `GameCamera` na cena — a lei não corre para ninguém.
     SemCamera,
-    /// `k = 1` nos dois eixos: o passe salta este objecto, por construção.
+    /// Há câmera, nenhuma activa — a lei não corre para ninguém.
+    CameraDesligada,
+    /// O dolly atravessa esta camada — ela fica na pose autorada.
+    Atravessa,
+    /// Um segundo condutor no mesmo objecto.
+    OutroMotor,
+    /// `k = 1` e sem deriva: o passe salta este objecto, por construção.
     Neutra,
 }
 
@@ -84,13 +125,36 @@ impl InspectorParallaxInfo {
     /// ⚠️ **O neutro chega no campo [`Self::e_neutra`]** e nunca é comparado aqui — ver o doc dele.
     #[must_use]
     pub fn queixa(&self) -> Option<ParallaxQueixa> {
-        if !self.tem_camera_do_jogo {
-            return Some(ParallaxQueixa::SemCamera);
+        match self.camera {
+            CameraDoJogo::Nenhuma => return Some(ParallaxQueixa::SemCamera),
+            CameraDoJogo::Desligada => return Some(ParallaxQueixa::CameraDesligada),
+            CameraDoJogo::Activa => {}
         }
         if self.e_neutra {
             return Some(ParallaxQueixa::Neutra);
         }
+        if self.atravessa {
+            return Some(ParallaxQueixa::Atravessa);
+        }
+        if self.outro_motor {
+            return Some(ParallaxQueixa::OutroMotor);
+        }
         None
+    }
+
+    /// ⭐ **A NOTA da pré-visualização** — a lei corre, mas contra uma vista que o artista não vê.
+    /// Só quando não há queixa: uma camada que não anda não precisa de explicar PORQUE anda.
+    #[must_use]
+    pub fn nota_pre_visualizacao(&self) -> bool {
+        self.queixa().is_none() && !self.pre_visualizacao
+    }
+
+    /// ⭐ **A NOTA da cerca inerte** — o bloco de limites existe e nenhum eixo tem `max > min` (o valor
+    /// de fábrica é `[0,0]/[0,0]`). A lei é a mesma do `ph2d-ecs` (`max <= min` desliga o eixo).
+    #[must_use]
+    pub fn limites_inertes(&self) -> bool {
+        self.limits
+            .is_some_and(|(min, max)| !(0..2).any(|i| max[i] > min[i]))
     }
 }
 

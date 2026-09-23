@@ -18,6 +18,7 @@ pub(super) fn publish(
     renderer: &ph2d_render::SpriteRenderer,
     window_size: WindowSize,
     game_camera_preview: bool,
+    preview_drive: &ph2d_preview_drive::PreviewDrive,
     // ⭐ O relógio anda? — a secção FACTORY di-lo (TOP-20 #11).
     clock_playing: bool,
     bake_range: (f32, f32),
@@ -148,6 +149,7 @@ pub(super) fn publish(
         selected_count,
         window_size,
         game_camera_preview,
+        preview_drive,
         tags,
         clock_playing,
         projectile_over,
@@ -274,6 +276,7 @@ fn late(
     selected_count: usize,
     window_size: WindowSize,
     game_camera_preview: bool,
+    preview_drive: &ph2d_preview_drive::PreviewDrive,
     // ⭐ A árvore de tags (TOP-20 #9) — a secção SIGNAL ACTIONS mostra o CAMINHO da tag alvo.
     tags: &ph2d_tags::TagTree,
     // ⭐ O relógio anda? — a secção FACTORY di-lo, e é o que separa «avariada» de «à espera».
@@ -384,7 +387,13 @@ fn late(
     // ⚠️ Ela lê a CENA e não só o objecto: *há uma câmera do jogo?* é a razão nº 1 para nada se
     // mexer, e sem ela o painel mandaria o artista afinar um factor que a lei nem chega a ler.
     let inspector_parallax = hero.gizmo.selection.and_then(|b| {
-        ph2d_app_components::parallax_inspector::build_parallax_info(sim.world(), b, selected_count)
+        ph2d_app_components::parallax_inspector::build_parallax_info(
+            sim,
+            b,
+            selected_count,
+            game_camera_preview,
+            preview_drive.drives_other_than(b, ph2d_preview_drive::Driver::ParallaxPose),
+        )
     });
     // ⭐⭐⭐ A secção WEAPON — `None` para quem não tem o componente (ADR-0166).
     //

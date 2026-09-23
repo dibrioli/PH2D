@@ -480,8 +480,19 @@ modelo diz ONDE procurar, não o que uma cura vale.*
 1. ✅ **`1,4 s` por edição estrutural** — **FECHADO** pela fita inerte (acima): `1 406 → 74 ms`.
    ⏳ O que sobra dela: a peça com **escultura** ou com **vários materiais** volta a pôr texto
    próprio no shader do pintor (o corpo da escultura e a lei do dono), e aí o preço regressa. E o
-   `1,31 s` do kernel continua a ser pago **uma vez por sessão** — a cura disso é o cache de
-   pipelines **em DISCO**, cuja ranhura (`cache: None`) está vazia no `entry_with_layout`.
+   `1,31 s` do kernel continua a ser pago **uma vez por sessão**, e o cache de pipelines **em
+   DISCO** — a cura nomeada — **desceu na fila por VIABILIDADE medida** (sonda
+   `sonda_a_placa_oferece_cache_de_pipelines`): a placa oferece-o (`NVIDIA RTX 5060 Ti`, Vulkan,
+   chave `wgpu_pipeline_cache_vulkan_4318_11524`), **mas o `create_pipeline_cache` é `unsafe`** (o
+   blob é entrada não confiável para o driver) e a workspace declara `unsafe_code = "forbid"` ⇒
+   custa o molde do [ADR-0116](architecture/decisions/0116-audio-export-opus-isolated-unsafe-crate.md)
+   (a crate desce a `deny` e só o módulo que toca a ABI o autoriza, com gate na lista). E o
+   fornecedor diz que provavelmente não paga: *«most desktop GPU drivers will manage their own
+   caches»*. ⚠️ **A evidência desta máquina é MISTA** — o `bordas` foi de `24,70` para `0,28 ms`
+   entre corridas (o driver cacheou-o) e a 1.ª pintura leu `1 449` e `1 417 ms` em dois processos
+   (o driver **não** ajudou o pipeline grande, que é onde a nossa ranhura poderia pagar). ⛔ A
+   experiência de três vias que decidiria isto **não é escrevível nesta árvore**: precisa de
+   `unsafe`, e um `forbid` não se contorna com um `allow`.
 2. ⏳ **o quadro de movimento** — `5,0 ms` de base mais `0,039` por instrução e **`0,52` por
    transcendente** (o modelo acima). A alavanca é a FITA, não a marcha.
 3. ⏳ **`+5,50 ms` por quadro assente** — o campo do chão (`+4,98`) e as sondas (`+0,52`), a MESMA

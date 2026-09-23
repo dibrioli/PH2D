@@ -2384,3 +2384,13 @@ errado é pior que nenhum — ele CONFIRMA* (a lição que a `line/components` p
 * Pré-voo dos dez arneses: **122 âncoras**, todas a casar uma vez.
 * Duas sondas **versionadas** que não se apagam: a que produz o ficheiro e a que mede o relógio.
   *As duas leituras — a de hoje e a do dia em que isto voltar — valem uma pela outra.*
+* Portão: clippy `-D warnings` **zero** · censos da árvore COMBINADA **127/127** (controlo do
+  filtro `12 de 12`) · `nextest-impacted` **`18 606` de `18 607`** na 1.ª corrida.
+* ⭐⭐ **E o único ✗ fechou com as TRÊS assinaturas da família de flakes de fan-out** (§5.0), a
+  última delas a mais forte que esta casa conhece: o
+  `the_cost_of_a_player_is_linear_in_their_number` (`ph2d-physics-ecs`) é **membro já NOMEADO**
+  da lista · o diff desta wave tem **zero** linhas naquela crate · ele passa **`3` de `3`
+  sozinho a `load 140`–`145`**, ou seja *dez vezes* a carga em que reprovou · e **uma SEGUNDA
+  corrida da MESMA árvore leu `18 607` de `18 607`**. ⚠️ *Um defeito de lógica reprova o mesmo
+  caso sempre; só um recurso partilhado troca de vítima entre corridas* — e é por isso que a
+  re-corrida sozinha vem ANTES de olhar para o próprio commit.

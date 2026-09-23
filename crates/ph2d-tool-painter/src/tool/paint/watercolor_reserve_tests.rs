@@ -564,5 +564,8 @@ fn o_rascunho_de_um_quadro_nao_vaza_para_o_seguinte() {
     }
     // CONTROLO: a 1.ª lavagem cobre muito do que a 2.ª deixa seco (senão não havia lixo a vazar).
     let seco_agora_molhado_antes = (0..W * H).filter(|&i| p2[i] == 0 && p1[i] != 0).count();
-    assert!(seco_agora_molhado_antes > 5000, "{seco_agora_molhado_antes}");
+    assert!(
+        seco_agora_molhado_antes > 5000,
+        "{seco_agora_molhado_antes}"
+    );
 }

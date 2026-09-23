@@ -698,6 +698,27 @@ pub(crate) fn avental(
     apron
 }
 
+/// **A CONTA do borrão** — quantas vezes ele correu e sobre quantos píxeis (região **e** avental).
+///
+/// ⚠️ **Ela é sempre compilada, e a razão é que quem a lê vive noutra crate:** um contador
+/// `#[cfg(test)]` aqui é invisível aos testes da `ph2d-tool-painter`, que é onde a pilha do
+/// composite se mede. O custo são dois `fetch_add` relaxados **por CHAMADA** (nunca por pixel),
+/// contra uma chamada que custa milissegundos.
+///
+/// ⛔ Nenhum gate a lê como lei de custo — ela é INSTRUMENTO. O que ela existe para responder é
+/// *«o borrão dentro da pilha toca mais píxeis do que o borrão sozinho?»*, que é uma pergunta que
+/// nenhuma régua de VALOR consegue fazer.
+pub static BORROES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+/// Os píxeis que o borrão de facto atravessou — **a região MAIS o avental**, que é o que ele lê.
+pub static PIXEIS_BORRADOS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+/// Os píxeis que ele de facto ENTREGA — só a região. A diferença para o irmão é o AVENTAL, e é a
+/// grandeza que diz se vale a pena juntar chamadas: *um avental é trabalho que uma chamada maior
+/// paga UMA vez e `N` chamadas pequenas pagam `N` vezes.*
+pub static PIXEIS_UTEIS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+/// O maior LADO de região que o borrão recebeu — *uma média não diz se a região é uma faixa que
+/// acompanha o dab ou a caixa do traço inteiro, e essas duas têm curas opostas.*
+pub static MAIOR_LADO: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 pub(crate) fn blur_region_caixa_com(
     buf: &[u8],
     fw: i64,
@@ -710,6 +731,14 @@ pub(crate) fn blur_region_caixa_com(
     wrap: [bool; 2],
     paralelo: bool,
 ) -> Vec<[f32; 4]> {
+    {
+        use std::sync::atomic::Ordering::Relaxed;
+        let r_total: usize = box_radii(k).iter().sum();
+        BORROES.fetch_add(1, Relaxed);
+        PIXEIS_BORRADOS.fetch_add(((bw + 2 * r_total) * (bh + 2 * r_total)) as u64, Relaxed);
+        PIXEIS_UTEIS.fetch_add((bw * bh) as u64, Relaxed);
+        MAIOR_LADO.fetch_max(bw.max(bh) as u64, Relaxed);
+    }
     let raios = box_radii(k);
     let r_total: usize = raios.iter().sum();
     let ap_w = bw + 2 * r_total;

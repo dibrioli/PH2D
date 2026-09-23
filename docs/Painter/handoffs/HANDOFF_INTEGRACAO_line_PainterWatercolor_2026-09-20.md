@@ -2472,3 +2472,84 @@ reportar.
 * ⚠️ **O ganho em PARALELO não foi isolado da contenção** — todas as leituras paralelas desta jornada
   saíram com outra linha a martelar a máquina (`load 6` a `91`). O que está medido e vale é a série e
   o A/B do produto; a curva do escalonador fica por tirar numa máquina só nossa.
+
+### §33.7 — ⛔⛔⛔ O SMOKE REPROVOU-A, e a medição diz que eu ataquei `4 %` do problema
+
+> Report do dono (2026-09-22, com foto da pilha): *«ainda está lenta e engasgando com pincel grande
+> (size 0.4)»*. A pilha da foto: **Blur `2.048`** · Brush `0.574` · Brush `1.002` · Brush `1.221` ·
+> Smear · Erase.
+
+⚠️ **A primeira coisa medida foi que a minha BANCADA NÃO CONTINHA O REGIME DELE:** ela varre
+`raio 24` e `96`, e `size 0.4` no pincel é `1 + 0,4² × (512 − 1) = **82,8 px**`, com a camada de
+Blur a `Size 2.048` ⇒ **`~170 px`**. *Uma bancada cujo pior caso é metade do caso do dono não mede
+o produto dele.* A sonda `diag_preco_da_pilha` passou a trazer **a pilha dele, exacta**.
+
+**A pilha dele, e a atribuição por camada** (`SIZE 1024²`, traço de 720 px, `99 %` de CPU ociosa):
+
+| camada viva | ms | ms/evento | % de um quadro |
+|---|---|---|---|
+| **a pilha INTEIRA (6)** | **`644,8`** | `1,781` | **`170,6 %`** |
+| 1 Blur `str 1` `size 2.048` | `24,3` | `0,067` | `6,4 %` |
+| 2–4 Brush | `3,9` · `3,6` · `3,9` | `~0,011` | `1,0 %` cada |
+| 5 Smear `str 0.596` | `101,8` | `0,281` | `27,0 %` |
+| 6 Erase `str 0.104` | `5,7` | `0,016` | `1,5 %` |
+
+⛔⛔⛔ **A soma das camadas sozinhas é `143,2 ms` contra `644,8` da pilha — `4,5×`.** Logo o custo
+**não está em camada nenhuma**: está no que só corre com **duas ou mais**. E o Blur, que foi o alvo
+da wave, são `24,3` de `644,8` — **`3,8 %`**.
+
+**Os dois mecanismos possíveis, separados por medição:**
+
+| | | |
+|---|---|---|
+| **(b) é quadrático no traço?** | `180` px → `2,033 ms/ev` · `360` → `1,740` · `720` → `1,945` | ⛔ **NÃO** — plano. A cura de 20/09 aguenta. |
+| **(a) é o número de camadas?** | `1 → 26,2 ms` · `2 → 314,9` · `3 → 388,2` · `4 → 543,4` · `6 → 691,8` | ⭐ **O salto de UMA para DUAS é `12×`**; de duas para seis é quase linear |
+
+**E qual par acende o custo fixo:**
+
+| par | ms/evento |
+|---|---|
+| `Brush 1.0 + Brush 1.0` | `0,164` |
+| `Brush 2.048 + Brush` | `0,267` |
+| **`Blur 1.0` + Brush** | **`0,667`** |
+| **`Blur 2.048` + Brush (o dono)** | **`1,141`** |
+| `Smear + Brush` | `0,264` |
+
+⇒ é o **Blur dentro da recomposição**, e **não** o kernel dele (sozinho: `0,067 ms/ev`).
+
+**A CONTA, que é a única régua que podia responder** (contadores em
+[`blur_caixa::BORROES`/`PIXEIS_BORRADOS`/`PIXEIS_UTEIS`/`MAIOR_LADO`] — *as duas rotas desenham o
+mesmo, logo nenhuma régua de VALOR as distingue*):
+
+| pilha | chamadas | Mpx lidos | Mpx úteis | avental | maior lado |
+|---|---|---|---|---|---|
+| só Blur `2.048` | **`15`** | `2,0` | `1,7` | `11,8 %` | **`340 px`** |
+| Blur `2.048` + Brush | **`44`** | **`26,3`** | **`22,1`** | `15,8 %` | **`857 px`** |
+| a pilha do dono (6) | `44` | `27,0` | `22,7` | `15,7 %` | `857 px` |
+
+⛔ **O AVENTAL está ILIBADO** (`12`–`16 %`) — a hipótese óbvia, e falsa. ⭐⭐ **O que cresce é a
+região ÚTIL**, e ela cresce **legitimamente**: um dab pousado numa região `R` muda a imagem borrada
+em `R + r`, logo uma recomposição correcta **tem de PRODUZIR `R + r`** (`339 + 508 = 847 ≈ 857`
+medido), enquanto o caminho de uma camada só produz `R` (`340` medido).
+
+⭐⭐⭐ **O desperdício é a SOBREPOSIÇÃO, e o número é brutal:** `44` chamadas de `857 px` de lado,
+com os centros a `720/44 ≈ 16 px` de distância ⇒ **`98 %` de cada chamada é área que a chamada
+anterior já borrou**. Uma aplicação única sobre a união (`1 567 × 847`) mede `1,33 Mpx` contra os
+`31 Mpx` de hoje — **`~23×`**.
+
+### §33.8 — ⏳ A próxima wave, com o alvo nomeado
+
+⛔ **Ela NÃO é no borrão** — é na **recomposição** (`composite_acumulado`), e a pergunta é: *uma
+camada cuja lei ESPALHA (Blur) pode aplicar-se sobre o incremento em vez de sobre a região inteira
+do plano acumulado?*
+
+⚠️ **E há uma cerca a respeitar antes da primeira linha:** o artista vê o traço **ao vivo**, logo
+não se pode adiar o borrão para o fim do gesto. O que se pode é **borrar só o que ficou sujo desde
+a última aplicação, mais o alcance** — e isso tem de sair byte-idêntico ao que se vê hoje, ou então
+ser uma divergência declarada com a barra medida.
+
+⚠️⚠️ **E a lição de método desta jornada fica registada:** eu atribuí o custo ao Blur por ele ser o
+membro mais caro da tabela `Blur sobre Brush`, e essa tabela media **um par**, não a **pilha dele**.
+*A fatia mais cara de uma bancada não é a fatia mais cara do produto de outra pessoa — e a diferença
+entre as duas é a fixtura.* O que a wave do borrão entregou (`1,33×` a raio grande, byte-idêntico,
+com porta de bissecção) **fica e é bom**; o que ela não é, é a cura do report dele.

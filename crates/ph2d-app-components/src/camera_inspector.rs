@@ -1,5 +1,10 @@
 //! ⭐⭐⭐ **A secção CAMERA** (TOP-20 #7, W3) — o snapshot que a secção lê e o commit que ela
-//! escreve. Irmão do [`super::inspector_audio`], pela mesma razão dele.
+//! escreve. Irmão do `inspector_audio` da shell, pela mesma razão dele.
+//!
+//! ⛔⛔ **Mora na CRATE DA FAMÍLIA desde 2026-09-23 (plano 24, W7)** — a catraca
+//! `the_shell_only_shrinks` reprovou por `+130` linhas e a cura que ela prescreve por escrito é
+//! MOVER, nunca subir o número. ⭐ O candidato saiu de uma MEDIÇÃO: este módulo não tocava em
+//! `crate::` nem em `App` — só em crates —, logo a shell guardava-o por inércia.
 //!
 //! # ⚠️ O snapshot só existe para quem TEM a câmera
 //!
@@ -52,7 +57,7 @@ fn limits_smaller_than_view(l: &CameraLimits, half: [f32; 2]) -> bool {
 }
 
 /// O snapshot da secção, ou `None` quando o objecto não tem câmera.
-pub(super) fn build_camera_info(
+pub fn build_camera_info(
     world: &mut World,
     entity_bits: u64,
     selected_count: usize,
@@ -119,7 +124,7 @@ pub(super) fn build_camera_info(
 ///
 /// ⚠️ **Os três componentes são escritos SEPARADAMENTE**, e a edição diz qual: mandar os três a
 /// cada mexida faria um objecto sem `CameraLimits` ganhar uma cerca por escrever a altura.
-pub(super) fn apply_camera_edit(
+pub fn apply_camera_edit(
     sim: &SimWorld,
     entity_bits: u64,
     edit: &CameraFieldEdit,
@@ -211,5 +216,5 @@ pub(super) fn apply_camera_edit(
 }
 
 #[cfg(test)]
-#[path = "inspector_camera_tests.rs"]
+#[path = "camera_inspector_tests.rs"]
 mod tests;

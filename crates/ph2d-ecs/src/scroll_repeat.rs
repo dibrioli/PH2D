@@ -75,7 +75,7 @@ impl ScrollRepeat {
 /// cresce com a câmera — ver a divergência declarada no cabeçalho.
 #[must_use]
 pub fn envolve_eixo(d: f32, tile: f32) -> f32 {
-    if !(tile > 0.0) || !tile.is_finite() || !d.is_finite() {
+    if !tile.is_finite() || !d.is_finite() || tile <= 0.0 {
         return d;
     }
     d - tile * (d / tile).round()

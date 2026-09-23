@@ -82,6 +82,8 @@ pub mod audio_2d_smoke;
 /// ⭐⭐⭐ **A PONTE DA CÂMERA DE JOGO** (TOP-20 #7) — saiu da shell em 19/09; ver o cabeçalho.
 pub mod camera_2d;
 pub mod camera_2d_smoke;
+/// ⭐⭐ **A secção CAMERA** (TOP-20 #7) — o instantâneo e o commit; veio da shell na W7 da paralaxe.
+pub mod camera_inspector;
 pub mod component_attach;
 pub mod component_palette;
 pub mod component_seed;

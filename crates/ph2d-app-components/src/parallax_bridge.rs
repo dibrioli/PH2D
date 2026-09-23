@@ -177,10 +177,8 @@ pub fn drive_parallax(
             ..era
         };
         let escreveu = agora != era;
-        if escreveu {
-            if let Some(mut t) = sim.world_mut().get_mut::<Transform>(entity) {
-                *t = agora;
-            }
+        if escreveu && let Some(mut t) = sim.world_mut().get_mut::<Transform>(entity) {
+            *t = agora;
         }
         // ⚠️⚠️ **O `before` é o AUTORADO e nunca o vivo.** Esta é a diferença de fundo para a
         // ponte do HUD, que passa `era`: ali a pose é função PURA da vista e o autorado nunca é

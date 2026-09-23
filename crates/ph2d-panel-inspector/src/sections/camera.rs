@@ -110,9 +110,9 @@ fn camera_body(
         (
             tr("panel.inspector.camera.dolly"),
             &[ids::INSP_CAMERA_DOLLY][..],
-            0.05,
+            0.05, // LITERAL-PX-OK: passo de uma fracção adimensional
             None,
-        ), // LITERAL-PX-OK: fracção adimensional
+        ),
     ];
     // ⭐⭐ **A coluna é da SECÇÃO, medida uma vez sobre a TABELA que ela pinta** — ver
     //    [`ph2d_editor_core::property_row::Seccao`]. ⛔ A tabela deixou de ser um literal dentro do

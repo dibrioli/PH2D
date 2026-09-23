@@ -238,7 +238,13 @@ impl crate::App {
                 self.game_camera_preview = *on;
                 continue;
             }
-            inspector_camera::apply_camera_edit(sim, *bits, edit, editor_queue, component_registry);
+            ph2d_app_components::camera_inspector::apply_camera_edit(
+                sim,
+                *bits,
+                edit,
+                editor_queue,
+                component_registry,
+            );
             inspector_queue_dirty = true;
         }
         // ⭐⭐⭐ **As secções FACTORY e LIFECYCLE** (TOP-20 #11 e #12, W3) — na fase-filha.

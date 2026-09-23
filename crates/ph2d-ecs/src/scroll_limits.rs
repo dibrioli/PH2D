@@ -78,7 +78,7 @@ impl ScrollLimits {
 /// A lei por eixo — ver a `⚠️` do [`ScrollLimits::confina`] sobre a região estreita.
 #[must_use]
 pub fn confina_eixo(c: f32, meia: f32, min: f32, max: f32) -> f32 {
-    if !(max > min) || !min.is_finite() || !max.is_finite() || !c.is_finite() {
+    if !min.is_finite() || !max.is_finite() || !c.is_finite() || max <= min {
         return c;
     }
     let meia = if meia.is_finite() { meia.abs() } else { 0.0 };

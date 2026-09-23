@@ -17,7 +17,6 @@
 //! [`ph2d_editor_core::parallax_edits::InspectorParallaxInfo::queixa`] — dizer *«esta camada anda
 //! com o mundo»* a quem não tem câmera nenhuma manda-o resolver a metade errada.
 
-use super::tween::warn;
 use super::*;
 use ph2d_editor_core::parallax_edits::{InspectorParallaxInfo, ParallaxQueixa, Profundidade};
 use ph2d_editor_core::widget::SectionFold;
@@ -87,7 +86,7 @@ fn corpo(
     let mut cur_y = y;
     // ⚠️ **A QUEIXA primeiro** — quem não vê nada mexer não quer afinar um ladrilho.
     if let Some(q) = i.queixa() {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -163,7 +162,7 @@ fn corpo(
         // ⭐ A DISTÂNCIA pinta-se COLADA ao factor (a 1.ª fileira), que é o número que ela lê.
         if n == 0 {
             for frase in frases_da_profundidade(i.factor) {
-                cur_y = warn(
+                cur_y = super::rows::aviso(
                     scene,
                     text_system,
                     theme,
@@ -177,41 +176,6 @@ fn corpo(
         }
     }
     cur_y
-}
-
-#[cfg(test)]
-mod tests {
-    use super::frases_da_profundidade;
-
-    /// ⭐⭐ **As cinco espécies, e a metade dos DOIS EIXOS.** ⚠️ `0,5` e não um número qualquer: é
-    /// o único em que `1/k` e `k` coincidiriam num erro de inversão (`2,0` contra `0,5`), logo ele
-    /// separa a lei da mutação que esquecer o `1/`.
-    #[test]
-    fn a_distancia_diz_o_que_o_factor_significa() {
-        assert!(
-            frases_da_profundidade([1.0, 1.0]).is_empty(),
-            "o mundo nao tem frase"
-        );
-        let longe = frases_da_profundidade([0.5, 0.5]);
-        assert_eq!(longe.len(), 1);
-        assert!(
-            longe[0].contains("2.0"),
-            "k = 0,5 e' o DOBRO da distancia: {longe:?}"
-        );
-        let frente = frases_da_profundidade([2.0, 2.0]);
-        assert!(
-            frente[0].contains("0.5"),
-            "k = 2 esta' a METADE da distancia: {frente:?}"
-        );
-        assert_ne!(frases_da_profundidade([0.0, 0.0]), longe);
-        assert_ne!(frases_da_profundidade([-1.0, -1.0]), frente);
-        let dois = frases_da_profundidade([0.5, 1.0]);
-        assert_eq!(dois.len(), 1, "o eixo Y e' o mundo e cala-se: {dois:?}");
-        assert!(
-            dois[0].starts_with("X: "),
-            "com eixos diferentes a frase NOMEIA o eixo"
-        );
-    }
 }
 
 /// Pinta a secção. Devolve o `y` seguinte.
@@ -253,7 +217,7 @@ pub(crate) fn paint_parallax_section(
     };
     let mut cur_y = y + header_h;
     if info.selected_count > 1 {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -276,4 +240,39 @@ pub(crate) fn paint_parallax_section(
         info,
     );
     fold.finish(store, scene, hit_index, cur_y)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::frases_da_profundidade;
+
+    /// ⭐⭐ **As cinco espécies, e a metade dos DOIS EIXOS.** ⚠️ `0,5` e não um número qualquer: é
+    /// o único em que `1/k` e `k` coincidiriam num erro de inversão (`2,0` contra `0,5`), logo ele
+    /// separa a lei da mutação que esquecer o `1/`.
+    #[test]
+    fn a_distancia_diz_o_que_o_factor_significa() {
+        assert!(
+            frases_da_profundidade([1.0, 1.0]).is_empty(),
+            "o mundo nao tem frase"
+        );
+        let longe = frases_da_profundidade([0.5, 0.5]);
+        assert_eq!(longe.len(), 1);
+        assert!(
+            longe[0].contains("2.0"),
+            "k = 0,5 e' o DOBRO da distancia: {longe:?}"
+        );
+        let frente = frases_da_profundidade([2.0, 2.0]);
+        assert!(
+            frente[0].contains("0.5"),
+            "k = 2 esta' a METADE da distancia: {frente:?}"
+        );
+        assert_ne!(frases_da_profundidade([0.0, 0.0]), longe);
+        assert_ne!(frases_da_profundidade([-1.0, -1.0]), frente);
+        let dois = frases_da_profundidade([0.5, 1.0]);
+        assert_eq!(dois.len(), 1, "o eixo Y e' o mundo e cala-se: {dois:?}");
+        assert!(
+            dois[0].starts_with("X: "),
+            "com eixos diferentes a frase NOMEIA o eixo"
+        );
+    }
 }

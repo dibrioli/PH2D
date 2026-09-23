@@ -107,7 +107,7 @@ pub(crate) fn sync_new_sections(
         let sig = crate::sync_sections_camera_sig::assinatura(&cam);
         let mudou = inspector_state.last_camera_sig != Some(sig);
         inspector_state.last_camera_sig = Some(sig);
-        sync_camera_fields(host, &cam, entity_changed || mudou);
+        crate::sync_sections_camera_sig::sync_camera_fields(host, &cam, entity_changed || mudou);
     }
     // ⭐⭐⭐ **TAGS** (TOP-20 #9). ⚠️ **Ela não tem campo a semear do objecto** — os chips e a lista
     // são DERIVADOS do snapshot a cada pintura, e o único campo editável (a busca/criação) é do
@@ -139,7 +139,7 @@ fn limpa_busca_de_tags(host: &mut dyn PanelHostInternal) {
 /// ⚠️ **O campo em FOCO é do dedo**: reescrevê-lo enquanto se digita apagaria a letra. E o cursor
 /// vai para o fim, porque o texto que chega é outro — deixá-lo onde estava poria o caret a meio de
 /// uma palavra que já não existe.
-fn write_text(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId, value: &str) {
+pub(crate) fn write_text(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId, value: &str) {
     if host.store().focus_id() == Some(id) {
         return;
     }
@@ -201,93 +201,6 @@ fn sync_audio_fields(
         }
     }
     write_text(host, crate::ids::INSP_AUDIO_SOUND, &src.sound);
-}
-
-/// Semeia os campos da secção CAMERA a partir do snapshot.
-///
-/// ⚠️ **As CAIXAS espelham o mundo todo o quadro** (como as do timer): a secção decide a partir do
-/// SNAPSHOT e o store aqui só publica o estado para a árvore de acessibilidade. Deixá-las numa
-/// aresta punha-as a mentir a quem as lê por ali.
-///
-/// ⚠️ **Os NÚMEROS e o TEXTO são de ARESTA** — reescrevê-los por quadro apagaria o que o artista
-/// está a digitar antes de o commit da shell chegar.
-fn sync_camera_fields(
-    host: &mut dyn PanelHostInternal,
-    cam: &ph2d_editor_core::screens::hero::InspectorCameraInfo,
-    seed: bool,
-) {
-    for (id, on) in [
-        (crate::ids::INSP_CAMERA_ACTIVE, cam.camera.active),
-        (crate::ids::INSP_CAMERA_PREVIEW, cam.preview_on),
-    ] {
-        if let Some(InteractiveState::Checkbox { value, .. }) = host.store_mut().get_mut(id) {
-            *value = if on {
-                CheckboxValue::Checked
-            } else {
-                CheckboxValue::Unchecked
-            };
-        }
-    }
-    for (bit, &id) in crate::ids::INSP_CAMERA_CULL_BIT.iter().enumerate() {
-        let on = cam.camera.cull_mask & (1u32 << bit) != 0;
-        if let Some(InteractiveState::Checkbox { value, .. }) = host.store_mut().get_mut(id) {
-            *value = if on {
-                CheckboxValue::Checked
-            } else {
-                CheckboxValue::Unchecked
-            };
-        }
-    }
-    if !seed {
-        return;
-    }
-    let focus = host.store().focus_id();
-    let drag = host.store().number_input_drag().map(|d| d.id);
-    let mut numeros: Vec<(ph2d_a11y::NodeId, f64)> = vec![
-        (
-            crate::ids::INSP_CAMERA_HEIGHT,
-            f64::from(cam.camera.height_world),
-        ),
-        (
-            crate::ids::INSP_CAMERA_OFFSET_X,
-            f64::from(cam.camera.offset[0]),
-        ),
-        (
-            crate::ids::INSP_CAMERA_OFFSET_Y,
-            f64::from(cam.camera.offset[1]),
-        ),
-        (
-            crate::ids::INSP_CAMERA_PRIORITY,
-            f64::from(cam.camera.priority),
-        ),
-        (crate::ids::INSP_CAMERA_DOLLY, f64::from(cam.camera.dolly)),
-    ];
-    if let Some(f) = cam.follow.as_ref() {
-        numeros.extend([
-            (crate::ids::INSP_CAMERA_DAMP_X, f64::from(f.damping[0])),
-            (crate::ids::INSP_CAMERA_DAMP_Y, f64::from(f.damping[1])),
-            (crate::ids::INSP_CAMERA_DEAD_X, f64::from(f.dead_zone[0])),
-            (crate::ids::INSP_CAMERA_DEAD_Y, f64::from(f.dead_zone[1])),
-            (crate::ids::INSP_CAMERA_LOOK_X, f64::from(f.lookahead[0])),
-            (crate::ids::INSP_CAMERA_LOOK_Y, f64::from(f.lookahead[1])),
-            (crate::ids::INSP_CAMERA_FOLLOW_OFF_X, f64::from(f.offset[0])),
-            (crate::ids::INSP_CAMERA_FOLLOW_OFF_Y, f64::from(f.offset[1])),
-        ]);
-        write_text(host, crate::ids::INSP_CAMERA_TARGET, &f.target);
-    }
-    if let Some(l) = cam.limits.as_ref() {
-        numeros.extend([
-            (crate::ids::INSP_CAMERA_MIN_X, f64::from(l.min[0])),
-            (crate::ids::INSP_CAMERA_MIN_Y, f64::from(l.min[1])),
-            (crate::ids::INSP_CAMERA_MAX_X, f64::from(l.max[0])),
-            (crate::ids::INSP_CAMERA_MAX_Y, f64::from(l.max[1])),
-        ]);
-    }
-    for (id, v) in numeros {
-        if focus != Some(id) && drag != Some(id) {
-            host.store_mut().set_number_value(id, v);
-        }
-    }
 }
 
 /// Semeia os campos da secção TIMERS a partir do snapshot.

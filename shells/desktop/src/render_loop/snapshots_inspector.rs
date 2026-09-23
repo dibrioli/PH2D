@@ -314,7 +314,7 @@ fn late(
     // ⚠️ **Ela pede a PROPORÇÃO da janela**, e é a única da família: o aviso *«a cerca é mais
     // estreita que a vista»* é geometria do ECRÃ, e não dos quatro números da cerca.
     let inspector_camera = hero.gizmo.selection.and_then(|b| {
-        crate::render_loop::inspector_camera::build_camera_info(
+        ph2d_app_components::camera_inspector::build_camera_info(
             sim.world_mut(),
             b,
             selected_count,

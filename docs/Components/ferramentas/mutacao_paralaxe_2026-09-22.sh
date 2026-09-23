@@ -203,7 +203,7 @@ bloco "a janela deixa de ser centrada" ph2d-app-components a_repeticao_nao_envol
 # ⛔ O `0` e' a AUSENCIA e nao um erro — sem a guarda ele divide por zero e a pose vira `NaN`.
 bloco "o ladrilho ZERO passa a corrigir" ph2d-app-components um_ladrilho_zero \
   "$REP" 1 \
-  '    if !(tile > 0.0) || !tile.is_finite() || !d.is_finite() {' \
+  '    if !tile.is_finite() || !d.is_finite() || tile <= 0.0 {' \
   '    if false {'
 
 # ⛔ A composicao morre: o componente existe, tem lei, tem gates — e a ponte ignora-o.
@@ -263,7 +263,7 @@ bloco "a forma deixa de ser byte-identica a lei da W1" ph2d-app-components a_com
 # vista na origem, e a cena deixa de ser byte-identica.
 bloco "a regiao vazia passa a confinar" ph2d-app-components sem_limites_a_saida \
   "$LIM" 1 \
-  '    if !(max > min) || !min.is_finite() || !max.is_finite() || !c.is_finite() {' \
+  '    if !min.is_finite() || !max.is_finite() || !c.is_finite() || max <= min {' \
   '    if false {'
 
 # ⛔⛔ A guarda da regiao ESTREITA: sem ela o `f32::clamp` do Rust entra em PANICO com o limite de

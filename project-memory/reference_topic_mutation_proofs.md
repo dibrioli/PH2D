@@ -334,6 +334,8 @@ estava. Ver [[reference_topic_gate_discipline]].
 
 ## ⛔⛔ Uma fixtura recusada por DOIS motivos não afirma NENHUM dos dois (2026-09-20, `line/components`)
 
+- ⛔⛔ Uma fixtura recusada por DOIS motivos não afirma NENHUM dos dois (2026-09-20, `line/components`)
+
 A lei nova dizia *«uma tabela do Luau só é um valor se ela se DECLARAR (`__kind`)»*, e o gate tinha
 três fixturas: uma **lista** `{1,0,0}`, uma com marca **errada**, e **meia** (`__kind` certo e um
 campo a menos). A mutação que assume a marca em falta (*«se não tiver, é um `vec2`»*) **SOBREVIVEU**
@@ -344,7 +346,7 @@ e é vácuo*. **How to apply:** para cada cerca, construa a fixtura que **só** 
 registo com `x` e `y` **e sem marca** —, e a prova de mutação é quem diz se ela existe. Ver
 [[reference_topic_gate_discipline]] e [[reference_topic_measurement_discipline]].
 
-## ⛔⛔ Um `| head` mata o arnês de mutação por SIGPIPE e deixa o PRODUTO MUTADO na árvore (2026-09-22, `line/components`)
+- ⛔⛔ Um `| head` mata o arnês de mutação por SIGPIPE e deixa o PRODUTO MUTADO na árvore (2026-09-22, `line/components`)
 
 O arnês guarda o ficheiro, muta, corre o filtro e **restaura**. Canalizado por `head` para ler só o
 princípio da saída, ele morre com **SIGPIPE entre o `muta` e o `restaura`** — e a mutação fica no
@@ -357,7 +359,7 @@ nada corre mal.* **How to apply:** `trap ao_sair EXIT INT TERM PIPE` com a últi
 numa variável, e a saída do arnês vai para um FICHEIRO (`> mut.txt`) em vez de um pipe. Ver
 [[reference_topic_ship_ci_integration_lessons]].
 
-## ⛔⛔ Um CRASE dentro de `"..."` no bash abre substituição de comando, e o erro sai 50 linhas abaixo (2026-09-22, `line/components`)
+- ⛔⛔ Um CRASE dentro de `"..."` no bash abre substituição de comando, e o erro sai 50 linhas abaixo (2026-09-22, `line/components`)
 
 Renomear uma prova para `bloco "a forma deixa de ser byte-identica a` lei da W1"` — o `` a` `` é o
 «à» que este repo escreve sem acento em shell — **desfez a citação de todo o resto do ficheiro**: o
@@ -370,7 +372,7 @@ sobreviventes reais — continuava a ser a verdade. **How to apply:** `bash -n <
 correr (custa nada e diz a linha), e nada de crases em prosa dentro de um script shell — nem em
 comentários, porque uma linha de continuação (`\`) leva o comentário para dentro do comando.
 
-## ⛔⛔ Um passo IDEMPOTENTE no fim de uma cadeia apaga toda mutação de ORDEM que não o REMOVA de lá (2026-09-22, `line/components`)
+- ⛔⛔ Um passo IDEMPOTENTE no fim de uma cadeia apaga toda mutação de ORDEM que não o REMOVA de lá (2026-09-22, `line/components`)
 
 A paralaxe compõe `confinar → derivar → envolver`, e o envolvimento reduz o deslocamento módulo um
 ladrilho. Duas mutações de ordem — antecipar o envolvimento — **sobreviveram**, e não por a régua

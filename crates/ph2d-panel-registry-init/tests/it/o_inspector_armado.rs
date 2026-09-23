@@ -922,6 +922,20 @@ fn arma_o_top20() {
         clock_playing: true,
         selected_count: selecionados(),
     }));
+    // ⭐ A PARALAXE (plano 24): os QUATRO blocos armados, senão a varredura de elisões mede só o
+    // factor e fica cega às fileiras do ladrilho, da deriva e da cerca.
+    insp::set_current_inspector_parallax(Some(
+        ph2d_editor_core::parallax_edits::InspectorParallaxInfo {
+            entity_bits: BITS,
+            factor: [0.35, 0.6],
+            repeat: Some([7.0, 3.0]),
+            motion: Some([0.35, -0.2]),
+            limits: Some(([-30.0, -12.0], [30.0, 14.0])),
+            tem_camera_do_jogo: false,
+            e_neutra: false,
+            selected_count: 2,
+        },
+    ));
     insp::set_current_inspector_ray(Some(InspectorRayInfo {
         entity_bits: BITS,
         origin_x: 0.0,
@@ -999,6 +1013,7 @@ pub fn desarma_tudo() {
     insp::set_current_inspector_hud(None);
     insp::set_current_inspector_path_follow(None);
     insp::set_current_inspector_ray(None);
+    insp::set_current_inspector_parallax(None);
     insp::set_current_inspector_sequence(None);
     insp::set_current_inspector_shake(None);
     insp::set_current_inspector_tween(None);

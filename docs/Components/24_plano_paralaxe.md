@@ -198,7 +198,14 @@ outra do dolly, que é a única que mostra o que nenhum outro motor faz.
   devagar que outra.
 - ⚠️ **O prólogo FECHA a régua do transporte** — a meia-vista da câmera é da JANELA, e com a régua
   aberta o céu e o chão saem do ecrã. Gate de texto, porque o prólogo não é alcançável de um teste.
-- ⏳ **A distância como leitura derivada NÃO entrou** — ver o handoff §4.
+- ⭐ **A distância como leitura derivada ENTROU** (a nota que aqui esteve dizia o contrário e
+  envelheceu no mesmo dia): uma frase por baixo do `Scroll Factor`, com CINCO espécies
+  (`Profundidade`: mundo · colado ao ecrã · longe · à frente · contra a câmera) e **uma por eixo**
+  quando os dois discordam — nunca um segundo campo (§5). O mundo cala-se.
+- ⛔ **Os avisos da secção passam pela porta que QUEBRA a linha** (`rows::aviso`), não pela que corta:
+  na largura em que o dono trabalha, o `tween::warn` comia *«There is no Game Camera in the scene —
+  no…»* e o censo das elisões acusou-o no fecho (`105 → 107` / `88 → 90`). Encurtar a frase foi
+  medido e não chegava ao degrau estreito sem lhe tirar a explicação.
 
 ---
 

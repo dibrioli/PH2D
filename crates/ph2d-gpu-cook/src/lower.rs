@@ -84,6 +84,7 @@ pub fn lower_module(present: [bool; 8], style: SinkStyle) -> String {
     let sampling = style.sampling;
     // A ordem das LINHAS é o índice da invocação; senão a palavra cravada de sempre.
     let sub_order = if style.stream_order { "i" } else { "0u" };
+    let z_order = ph2d_render::RenderInstance::Z_ORDER_OVER_THE_WORLD;
     // O teto e o deslocamento vêm do RENDERER, nunca de literais: um `6`/`5` cravados aqui
     // continuariam a compilar no dia em que um sétimo modo nascesse.
     let top = ph2d_render::pipeline::BLEND_PIPELINE_COUNT;
@@ -224,11 +225,12 @@ pub fn lower_module(present: [bool; 8], style: SinkStyle) -> String {
         \x20   // texture_id (41): the object's tile/individual handle, from the\n\
         \x20   // stream column (absent → 0 = atlas). `u32(f32)` truncates toward\n\
         \x20   // zero, exactly like the CPU lowering's `scalar_at(..) as u32`.\n\
-        \x20   // z_order (42) · clip_group/clip_meta (44-45): the CPU's zeros.\n\
+        \x20   // z_order (42) = por cima do mundo, como a CPU (doc 118 §10) ·\n\
+        \x20   // clip_group/clip_meta (44-45): the CPU's zeros.\n\
         \x20   // sampling (43) = a chave do sink · sub_order (46) = a ordem das\n\
         \x20   // LINHAS quando o sink a pede, senão `0` (o desempate por textura).\n\
         \x20   instances[base + 41u] = u32(read_texture_id(i));\n\
-        \x20   instances[base + 42u] = 0u;\n\
+        \x20   instances[base + 42u] = {z_order}u;\n\
         \x20   instances[base + 43u] = {sampling}u;\n\
         \x20   instances[base + 44u] = 0u;\n\
         \x20   instances[base + 45u] = 0u;\n\
@@ -450,6 +452,20 @@ mod tests {
                 "mask {mask:08b}: o estilo neutro moveu a chave do cache"
             );
         }
+    }
+
+    /// ⭐⭐ **O device escreve o MESMO `z_order` que a CPU: por cima do mundo** (doc 118 §10). ⚠️ O
+    /// campo não ordena NADA nesta rota (o buffer desenha-se depois das corridas da cena), e é por
+    /// isso que ele ficava a `0` sem ninguém ver — mas é ele que o `gpu_cpu_parity` compara, e um
+    /// valor diferente nas duas rotas é a porta de uma divergência no dia em que alguém o ordenar.
+    #[test]
+    fn o_device_escreve_o_z_do_motion_por_cima_do_mundo() {
+        let src = lower_module([false; 8], SinkStyle::PLAIN);
+        let z = ph2d_render::RenderInstance::Z_ORDER_OVER_THE_WORLD;
+        assert!(
+            src.contains(&format!("instances[base + 42u] = {z}u;")),
+            "o z_order do device nao e' o do Motion"
+        );
     }
 
     /// ⭐⭐ **CADA CAMPO DO ESTILO É VISÍVEL NA FONTE, E CADA UM SEPARA A CHAVE.**

@@ -170,10 +170,7 @@ escurece a sobreposição outra vez, `Copies` deixa o cenário intacto e escurec
 - ⛔ `Subtract` não tem camada (o W3C não o tem) — o seletor `Blend With` não aparece para ele.
 - (O **tint** saiu desta lista na W6 — §7; a **amostragem** e o **ladrilhar** na W7 — §8; o **modo
   por linha** na W8 — §9.)
-- ⚠️ **Ordem entre sprites do mundo e sprites do Motion, MEDIDA e não investigada:** com o cenário por
-  baixo da coluna de controlo, as quatro imagens `Normal` (desenhadas pelo passe) ficavam TAPADAS por
-  ele, e um `ZIndexOverride(-1)` no cenário não as trouxe à frente. É anterior a esta wave; a cena põe
-  o controlo fora do cenário e o porquê está no doc da constante.
+- ✅ **Ordem entre sprites do mundo e sprites do Motion:** curada na W10 (§10).
 - ⭐ A **mistura por OBJECTO do vector** (doc 44 do módulo Vector) pode usar a mesma porta
   `pede_o_mundo_por_baixo` quando quiser misturar com sprites.
 
@@ -212,8 +209,7 @@ exacta mais de `4×` a barra. **Mutação 4 de 4** (ignorar a tinta · `SrcIn �
 - ✅ **W7 — FECHADA (§8).**
 - ✅ **W8 — FECHADA (§9).**
 - ✅ **W9 — FECHADA (§8).**
-- **W10 — a ordem entre as sprites do MUNDO e as do Motion** (medida na W5, não investigada: um
-  `ZIndexOverride(-1)` no cenário não trouxe as imagens `Normal` para a frente).
+- ✅ **W10 — FECHADA (§10).**
 
 ## §8 — W7 + W9 FECHADAS (2026-09-23): o filtro da imagem, a tile do LOD, e a terceira rota declarada
 
@@ -305,4 +301,28 @@ formas **e** em imagens sem grupo, com o pedido do mundo · um `Copies` em `Scre
 **Mutação 9 de 9:** a linha sem camada · a imagem a ignorar a linha · o lote a ignorar a linha · o
 grupo a ganhar da linha · o mundo por baixo não pedido · a partição dos objetos sem cerca · a cerca
 sem o termo da linha · o lowering sem degrau · a cerca do degrau em `0` em vez de `0,5`.
+
+## §10 — W10 FECHADA (2026-09-23): o Motion desenha por cima do mundo pelas DUAS rotas
+
+**A nota dizia «medida e não investigada»; investigada, ela era um desacordo ENTRE ROTAS.** Um sink
+não tem lugar na Hierarquia, e o lowering de CPU escrevia `z_order = 0` — o rank do objecto **mais
+ao fundo** do cenário —, logo a ordenação (`sort_render_order`) punha o sink inteiro **por baixo de
+toda sprite do mundo**, e o empate no rank `0` era o que enterrava as imagens mesmo com um
+`ZIndexOverride(-1)` no cenário. Mas a rota da PLACA, que é a de omissão, desenha o buffer dela
+**depois** das corridas da cena (`renderer_draw`), e as FORMAS do mesmo grafo vão ao Vello, que
+pousa por cima de tudo. ⇒ *o mesmo grafo mudava de profundidade conforme a rota que o cozinhava* —
+e a W5 viu-o porque um sink que mistura recusa a placa.
+
+- ✅ `RenderInstance::Z_ORDER_OVER_THE_WORLD` (`u32::MAX`) nas TRÊS escritas: o lowering de CPU, a
+  geradora de WGSL do device (que o `gpu_cpu_parity` compara campo a campo) e a tile do LOD. Entre
+  si as linhas de um sink ordenam-se como antes (todas empatam no `z`, logo decidem o `sub_order` e a
+  textura). ⚠️ As partículas dos objectos (TOP-20 #18) escrevem o rank do DONO e não mudam.
+- ⭐ **A rota de omissão não muda um pixel** — ela já desenhava por cima. Muda a de CPU, que passa a
+  concordar com ela.
+
+**Gates:** `as_imagens_do_motion_desenham_por_cima_do_mundo` (pela porta do renderer, com um objecto
+no rank `0` e outro alto, a ordem das linhas mantida, e o CONTROLO de que o `0` antigo punha o mundo
+por cima) · `o_device_escreve_o_z_do_motion_por_cima_do_mundo` · a asserção nova na tile do LOD ·
+e o `gpu_cpu_parity` (`184/185`; a vermelha é a `value_slope_kernel_matches_the_cpu_on_the_device`,
+**pré-existente e documentada no próprio teste** com o mesmo número, `1,05023384e-4`).
 

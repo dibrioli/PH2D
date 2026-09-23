@@ -423,6 +423,9 @@ fn a_tile_do_lod_leva_o_pivo_e_o_filtro_do_sink() {
         tile.sampling, vi.sampling,
         "o filtro do sink perdeu-se na tile"
     );
+    // E a profundidade: a tile é o MESMO objecto do Motion, por cima do mundo (doc 118 §10) — com o
+    // `0` antigo uma forma que passava o tecto do LOD mergulhava por baixo do cenário.
+    assert_eq!(tile.z_order, RenderInstance::Z_ORDER_OVER_THE_WORLD);
 }
 
 /// ⛔⛔ **Um objecto que MISTURA não vira tile, a contagem nenhuma** (doc 118 §9) — a partição das

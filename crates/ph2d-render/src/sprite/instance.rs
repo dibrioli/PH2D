@@ -370,6 +370,16 @@ impl RenderInstance {
         flip_uv >> Self::MESH_SHIFT
     }
 
+    /// ⭐⭐ **O `z_order` de toda sprite do MOTION: por cima do mundo** (doc 118 §10, 2026-09-23).
+    ///
+    /// ⚠️ Um sink não tem lugar na Hierarquia (ADR-0035), e o lowering de CPU escrevia `0` — o que o
+    /// punha **no rank do objecto mais ao fundo**, logo por baixo de todo o cenário. Mas a rota da
+    /// PLACA (a de omissão) desenha o buffer dela **depois** das corridas da cena, e as FORMAS do mesmo
+    /// grafo vão ao Vello, que pousa por cima de tudo: *o mesmo grafo mudava de profundidade conforme a
+    /// rota que o cozinhava*. ⇒ o máximo, e as duas rotas concordam por construção. Entre si as linhas
+    /// de um sink continuam a ordenar-se pelo `sub_order` e pela textura, como antes (todas empatam).
+    pub const Z_ORDER_OVER_THE_WORLD: u32 = u32::MAX;
+
     /// Default [`Self::sampling`] key — `Inherit/Inherit`, i.e. the
     /// renderer's project-default sampler. Used by every non-extract
     /// construction site (tests, picking, benches).

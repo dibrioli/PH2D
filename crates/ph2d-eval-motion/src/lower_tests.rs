@@ -345,3 +345,53 @@ fn a_porta_le_o_que_o_dono_escreve() {
     // ordem para desligar, é uma variável mal escrita, e a lei não se desarma por acidente.
     assert!(ordem_de(Some("")), "vazia nao e' um `0`");
 }
+
+/// ⭐⭐⭐ **As imagens do Motion desenham POR CIMA do mundo, pela rota de CPU também** (doc 118 §10).
+///
+/// ⛔ O lowering de CPU escrevia `z_order = 0`, que é o rank do objecto MAIS AO FUNDO do cenário: a
+/// ordenação punha o sink inteiro por baixo de toda sprite do mundo, enquanto a rota da PLACA (a de
+/// omissão) desenha o buffer dela **depois** da cena — o mesmo grafo mudava de profundidade conforme
+/// a rota que o cozinhava (medido na W5: um `ZIndexOverride(-1)` no cenário não trazia as imagens à
+/// frente, porque o empate no rank `0` é o que as enterrava).
+///
+/// A régua é a PORTA que o renderer usa ([`ph2d_render::sort_render_order`]), sobre uma cena com um
+/// objecto no rank `0` e outro no rank alto. ⚠️ Duas metades mais o CONTROLO: o Motion acaba DEPOIS
+/// dos dois; entre si as linhas ficam pela ordem delas (o `sub_order`, que o sink pede); e com o `0`
+/// antigo a mesma ordenação punha-as ANTES do objecto de rank alto — senão a fixtura não mediria nada.
+#[test]
+fn as_imagens_do_motion_desenham_por_cima_do_mundo() {
+    let style = SinkStyle {
+        stream_order: true,
+        ..SinkStyle::PLAIN
+    };
+    let s = Stream::new(3).with("P", Column::Vec2(vec![[0.0, 0.0]; 3]));
+    let mut motion: Vec<RenderInstance> = Vec::new();
+    lower_to_instances_onto(&s, UV, SZ, style, &mut motion);
+    let mundo = |z: u32| RenderInstance {
+        z_order: z,
+        texture_id: 99,
+        ..motion[0]
+    };
+    let mut quadro = vec![mundo(0), mundo(40)];
+    quadro.extend_from_slice(&motion);
+    ph2d_render::sort_render_order(&mut quadro);
+    assert_eq!(
+        quadro.iter().map(|i| i.texture_id).collect::<Vec<_>>()[..2],
+        [99, 99],
+        "o mundo desenha primeiro, e o Motion por cima dele"
+    );
+    assert_eq!(
+        quadro[2..].iter().map(|i| i.sub_order).collect::<Vec<_>>(),
+        [0, 1, 2],
+        "entre si as linhas do sink ficam pela ordem delas"
+    );
+    // CONTROLO: com o `z_order = 0` de antes, a mesma porta enterrava o sink.
+    let mut antes = vec![mundo(0), mundo(40)];
+    antes.extend(motion.iter().map(|i| RenderInstance { z_order: 0, ..*i }));
+    ph2d_render::sort_render_order(&mut antes);
+    assert_eq!(
+        antes.last().map(|i| i.z_order),
+        Some(40),
+        "CONTROLO: o 0 punha o mundo por cima"
+    );
+}

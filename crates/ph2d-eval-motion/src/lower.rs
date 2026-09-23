@@ -215,10 +215,9 @@ pub fn lower_to_instances_onto(
             opacity: 1.0,
             flip_uv: blend_at(blend_col, i, flip_uv),
             texture_id: scalar_at(tex, i, 0.0) as u32,
-            // Node-graph emit doesn't have a hierarchy slot — every
-            // motion node's instances share `z_order = 0`. Renderer's
-            // tiebreaker (`texture_id`) groups them into one run.
-            z_order: 0,
+            // Node-graph emit doesn't have a hierarchy slot — every motion node's instances share
+            // ONE `z_order`, and it is ABOVE the world, like the device route draws it (doc 118 §10).
+            z_order: RenderInstance::Z_ORDER_OVER_THE_WORLD,
             sampling,
             uv_xform: vec4_at(uv_cell, i, RenderInstance::IDENTITY_UV_XFORM),
             // Node-graph emit has no hierarchy → no clip silhouette.

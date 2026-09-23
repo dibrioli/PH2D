@@ -47,8 +47,10 @@ const _: () = assert!(
 /// ⚠️⚠️ **Medido nas fotos da cena:** com o cenário também por baixo do controlo, as quatro imagens
 /// em `Normal` (que vão ao passe de sprites) ficavam TAPADAS por ele — o passe desenhou as 4
 /// (contadas) e o cenário, uma sprite do mundo, ficou por cima; nem um `ZIndexOverride(-1)` no
-/// cenário as trouxe à frente. É a ordem entre as sprites do mundo e as do Motion, que esta wave
-/// não toca e não investigou (doc 118 §6). ⇒ o controlo fica no chão do canvas, onde se vê.
+/// cenário as trouxe à frente. ✅ **Curado na W10 (doc 118 §10):** a rota de CPU escrevia o
+/// `z_order = 0` do objecto mais ao fundo, e hoje escreve o de «por cima do mundo», como a placa
+/// desenha. O controlo FICA no chão do canvas porque a cena foi aprovada assim, e fora do cenário
+/// ele continua a ser a leitura mais limpa de *«sem mistura nenhuma»*.
 pub(super) const CENARIO: [f32; 2] = [9.8, 5.4];
 /// O centro do cenário em `x`: do meio da coluna `Everything` ao fim da `Scene`.
 const CENARIO_X: f32 = 1.6;

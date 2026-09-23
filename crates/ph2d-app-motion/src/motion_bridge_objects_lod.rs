@@ -118,7 +118,7 @@ pub fn vector_instance_as_tile(vi: &VectorInstance, texture_id: u32) -> RenderIn
         opacity: 1.0,
         flip_uv: 0,
         texture_id,
-        z_order: 0,
+        z_order: RenderInstance::Z_ORDER_OVER_THE_WORLD,
         sampling: vi.sampling,
         uv_xform: RenderInstance::IDENTITY_UV_XFORM,
         clip_group: RenderInstance::CLIP_GROUP_NONE,

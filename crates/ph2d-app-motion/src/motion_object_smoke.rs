@@ -56,6 +56,9 @@ pub mod holds;
 /// oito cadeias próprias e um segundo objecto, e este despachante está no teto de LOC.
 #[path = "motion_object_smoke_sink.rs"]
 pub mod sink;
+/// ⭐ O modo `=13` — A MISTURA NA PLACA: a única cena que vai à placa E desenha uma imagem.
+#[path = "motion_object_smoke_blend.rs"]
+mod blend;
 use times::{build_two_times_graph, spawn_flip_walk_named};
 
 /// O nome que o artista daria ao objeto — e que ele escolhe no campo `Object`.
@@ -123,7 +126,8 @@ static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0
 /// O modo: `0` off · `1` sprite (A1) · `2` vetor (A2) · `3` Flip (A3) · `4` grupo
 /// (A4) · `5` A WAVE (objeto vetor + oscillator GPU) · `8` a POSE do objeto · `9` o
 /// ESTILO DO SINK (doc 89 folha 17) · `11` o RITMO (os *holds* do sub-UV) · `12` a
-/// FOLHA À FRENTE dos galhos (a terceira média — ver `motion_object_smoke_leaf`).
+/// FOLHA À FRENTE dos galhos (a terceira média — ver `motion_object_smoke_leaf`) · `13` a
+/// MISTURA NA PLACA (ver `motion_object_smoke_blend`).
 ///
 /// ⚠️ **O `12` faltava nesta lista** — a cena existia e o roteador dela não a nomeava
 /// (auditoria de seis lentes, doc 96 §1.4). *Uma cena que o roteador não nomeia é encontrada
@@ -193,6 +197,7 @@ pub fn motion_object_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>)
             leaf::spawn_leaf_sprite(cx.sim);
             leaf::run(cx);
         }
+        13 if f == 3 => blend::run(cx),
         11 if f == 3 => {
             holds::spawn_art(cx.flip);
         }

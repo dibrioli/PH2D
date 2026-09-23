@@ -20,10 +20,14 @@ use ph2d_render::Sprite;
 use ph2d_vec_scene::{Paint, Rgba8, VecPath};
 
 /// Modo `=1`: um sprite direto (entidade com `Name`, não precisa do `sync`).
+/// O lado do ladrilho do `Object` — lido também pela `=13`, cuja lição depende de as cópias se
+/// sobreporem (ver `motion_object_smoke_blend`).
+pub(super) const LADO: f32 = 0.8;
+
 pub(super) fn spawn_sprite(sim: &mut ph2d_ecs::SimWorld) {
     sim.world_mut().spawn((
         Transform::from_translation(Vec2::new(0.0, 0.0)),
-        Sprite::atlas(DEMO_TILE_KEY, [0.8, 0.8], [1.0, 1.0, 1.0, 1.0]),
+        Sprite::atlas(DEMO_TILE_KEY, [LADO, LADO], [1.0, 1.0, 1.0, 1.0]),
         Name::new(OBJECT),
     ));
 }

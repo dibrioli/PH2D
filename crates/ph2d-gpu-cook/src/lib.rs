@@ -613,6 +613,7 @@ impl GpuCook {
             boundary_streams,
             count,
             style.blend,
+            style.sampling,
             &mut self.tex_runs,
         );
         // The instance buffer is the one binding that can outgrow the device's

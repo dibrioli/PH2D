@@ -220,13 +220,15 @@ fn the_device_carries_the_real_texture_id_and_the_run_partition_matches() {
                 texture_id: 7,
                 start: 0,
                 end: 3,
-                blend: 0
+                blend: 0,
+                sampling: 0,
             },
             GpuTexRun {
                 texture_id: 9,
                 start: 3,
                 end: 6,
-                blend: 0
+                blend: 0,
+                sampling: 0,
             },
         ],
         "the texture runs must partition the same ids the device wrote to word 41"

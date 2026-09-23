@@ -13,6 +13,19 @@
 use super::*;
 
 impl SpriteRenderer {
+    /// O grupo de material de UMA faixa `(textura, amostragem)` existe antes do desenho — a varredura
+    /// que os runs da cena e os do buffer da placa partilham (doc 119 §3). Uma textura COZIDA não
+    /// tem rota de amostragem (a fronteira está nomeada no `material_bg`).
+    fn ensure_run_sampler_bg(&mut self, texture_id: u32, sampling: u32) {
+        if texture_id == RenderInstance::ATLAS_TEXTURE_ID {
+            self.ensure_atlas_sampler_bg(sampling);
+        } else if !RenderInstance::is_cooked_texture_id(texture_id) {
+            let bgl = &self.pipeline.material_bgl;
+            self.individual
+                .ensure_sampler_bg(&self.gpu, bgl, texture_id, sampling);
+        }
+    }
+
     pub fn render(
         &mut self,
         target: &wgpu::TextureView,
@@ -210,15 +223,16 @@ impl SpriteRenderer {
         // `commit_edited_texture` perdia o filtro dela em silêncio. O caso que o expôs é
         // aquele para que o filtro existe: *pixel-art*, que chega por importação e
         // portanto quase nunca está no átlas partilhado.
+        //
+        // ⭐⭐ **E os runs do BUFFER DA PLACA também** (doc 119 §3): até 2026-09-23 eles ligavam a
+        // amostragem `0` e este laço nem os via — o `Filter` de uma saída cozida no dispositivo
+        // era inerte. Uma varredura só para as duas origens, porque o grupo é o mesmo recurso.
         for run in 0..self.runs.len() {
             let r = self.runs[run];
-            if r.texture_id == RenderInstance::ATLAS_TEXTURE_ID {
-                self.ensure_atlas_sampler_bg(r.sampling);
-            } else if !RenderInstance::is_cooked_texture_id(r.texture_id) {
-                let bgl = &self.pipeline.material_bgl;
-                self.individual
-                    .ensure_sampler_bg(&self.gpu, bgl, r.texture_id, r.sampling);
-            }
+            self.ensure_run_sampler_bg(r.texture_id, r.sampling);
+        }
+        for r in gpu_extra.map_or(&[][..], |(_, _, runs)| runs) {
+            self.ensure_run_sampler_bg(r.texture_id, r.sampling);
         }
         let count = self
             .instance_buffer
@@ -392,11 +406,11 @@ impl SpriteRenderer {
                     pass.set_bind_group(1, &self.material_bind_group, &[]);
                     pass.draw(0..4, 0..n);
                 } else {
-                    // Motion instances carry the default sampler (word 43 = 0);
-                    // a missing texture (id released before render saw it) skips
-                    // its run, exactly like a scene run.
+                    // ⚠️ A AMOSTRAGEM é a do RUN — a do sink (doc 119 §3); cravada em `0` o
+                    // `Filter` de uma saída cozida na placa não fazia nada. A missing texture
+                    // (id released before render saw it) skips its run, like a scene run.
                     for r in runs {
-                        let Some(bg) = material_bg(r.texture_id, 0) else {
+                        let Some(bg) = material_bg(r.texture_id, r.sampling) else {
                             continue;
                         };
                         // ⭐⭐⭐ **A PIPELINE é POR RUN, como o bind da textura.** Até

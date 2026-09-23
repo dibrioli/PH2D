@@ -226,6 +226,12 @@ pub struct GpuTexRun {
     /// O tag de mistura desta faixa — o índice em `pipeline::blend_pipeline`, que é
     /// o mesmo que [`RenderInstance::unpack_blend`] devolve.
     pub blend: u8,
+    /// ⭐⭐ **A AMOSTRAGEM desta faixa** (doc 119 §3) — a MESMA chave da [`RenderInstance::sampling`]
+    /// (`filter | repeat << 8`), pela mesma razão que a mistura mora aqui: o sampler é um BIND, feito
+    /// pela CPU por chamada de desenho. Até 2026-09-23 o desenho do buffer ligava a amostragem `0`
+    /// para toda faixa, e o `Filter` de uma saída cozida na placa não fazia nada. `0` = o sampler do
+    /// projecto, e a partição VAZIA continua a querer dizer isso.
+    pub sampling: u32,
 }
 
 impl RenderInstance {

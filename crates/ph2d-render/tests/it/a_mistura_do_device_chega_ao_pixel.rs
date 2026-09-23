@@ -194,6 +194,7 @@ fn a_mistura_de_um_sink_cozido_na_placa_chega_ao_pixel() {
             end: 1,
             // ⭐ O SUJEITO deste gate: e' por aqui que o tag chega a' pipeline.
             blend: tag,
+            sampling: 0,
         }];
         renderer.render_with_streams(
             &view,
@@ -294,12 +295,14 @@ fn dois_runs_com_misturas_diferentes_desenham_cada_um_na_sua() {
             start: 0,
             end: 1,
             blend: ADD,
+            sampling: 0,
         },
         GpuTexRun {
             texture_id: fg,
             start: 1,
             end: 2,
             blend: MULTIPLY,
+            sampling: 0,
         },
     ];
     renderer.render_with_streams(

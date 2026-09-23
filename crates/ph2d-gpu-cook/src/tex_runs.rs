@@ -45,6 +45,9 @@ pub(crate) fn texture_runs_from_boundary(
     // silêncio**, que é o defeito que esta wave mediu em pixel; logo aqui um sink que peça
     // outra mistura emite um run EXPLÍCITO mesmo quando toda a textura é o átlas.
     blend: u8,
+    // ⭐⭐ **A AMOSTRAGEM deste sink** (doc 119 §3) — a mesma regra da mistura: é um BIND da CPU, e
+    // com um valor ≠ de fábrica a partição não pode ficar vazia.
+    sampling: u32,
     out: &mut Vec<GpuTexRun>,
 ) {
     if count == 0 {
@@ -55,12 +58,13 @@ pub(crate) fn texture_runs_from_boundary(
     // tag seria uma cena a desenhar na mistura errada conforme o grafo traz ou não a
     // coluna, que é a forma que ninguém liga a uma causa.
     let tudo_num_run = |out: &mut Vec<GpuTexRun>| {
-        if blend != 0 {
+        if blend != 0 || sampling != 0 {
             out.push(GpuTexRun {
                 texture_id: 0,
                 start: 0,
                 end: count,
                 blend,
+                sampling,
             });
         }
     };
@@ -91,6 +95,7 @@ pub(crate) fn texture_runs_from_boundary(
                 start,
                 end: i as u32,
                 blend,
+                sampling,
             });
             start = i as u32;
             cur = tid;
@@ -101,6 +106,7 @@ pub(crate) fn texture_runs_from_boundary(
         start,
         end: count,
         blend,
+        sampling,
     });
 }
 
@@ -129,7 +135,7 @@ mod tests {
         let s = boundary(ids);
         let node = NodeId(0);
         let mut out = Vec::new();
-        texture_runs_from_boundary(&[(node, &s)], ids.len() as u32, blend, &mut out);
+        texture_runs_from_boundary(&[(node, &s)], ids.len() as u32, blend, 0, &mut out);
         out
     }
 
@@ -147,13 +153,15 @@ mod tests {
                     texture_id: 7,
                     start: 0,
                     end: 3,
-                    blend: 0
+                    blend: 0,
+                    sampling: 0,
                 },
                 GpuTexRun {
                     texture_id: 9,
                     start: 3,
                     end: 6,
-                    blend: 0
+                    blend: 0,
+                    sampling: 0,
                 },
             ]
         );
@@ -170,19 +178,22 @@ mod tests {
                     texture_id: 5,
                     start: 0,
                     end: 2,
-                    blend: 0
+                    blend: 0,
+                    sampling: 0,
                 },
                 GpuTexRun {
                     texture_id: 8,
                     start: 2,
                     end: 5,
-                    blend: 0
+                    blend: 0,
+                    sampling: 0,
                 },
                 GpuTexRun {
                     texture_id: 3,
                     start: 5,
                     end: 6,
-                    blend: 0
+                    blend: 0,
+                    sampling: 0,
                 },
             ]
         );
@@ -198,7 +209,8 @@ mod tests {
                 texture_id: 4,
                 start: 0,
                 end: 3,
-                blend: 0
+                blend: 0,
+                sampling: 0,
             }]
         );
     }
@@ -219,7 +231,7 @@ mod tests {
         let mut s = Stream::new(4);
         s.set("P", Column::Vec2(vec![[0.0, 0.0]; 4]));
         let mut out = Vec::new();
-        texture_runs_from_boundary(&[(NodeId(0), &s)], 4, 0, &mut out);
+        texture_runs_from_boundary(&[(NodeId(0), &s)], 4, 0, 0, &mut out);
         assert!(out.is_empty());
     }
 
@@ -231,7 +243,7 @@ mod tests {
     fn a_length_mismatch_is_ignored() {
         let s = boundary(&[7.0, 9.0, 7.0]); // 3-long column
         let mut out = Vec::new();
-        texture_runs_from_boundary(&[(NodeId(0), &s)], 5, 0, &mut out); // sink count 5
+        texture_runs_from_boundary(&[(NodeId(0), &s)], 5, 0, 0, &mut out); // sink count 5
         assert!(out.is_empty());
     }
 
@@ -262,7 +274,7 @@ mod tests {
         let mut so_p = Stream::new(3);
         so_p.set("P", Column::Vec2(vec![[0.0, 0.0]; 3]));
         let mut out = Vec::new();
-        texture_runs_from_boundary(&[(NodeId(0), &so_p)], 3, 0, &mut out);
+        texture_runs_from_boundary(&[(NodeId(0), &so_p)], 3, 0, 0, &mut out);
         assert!(out.is_empty(), "sem coluna de textura e em Mix: vazio");
 
         // E com outra mistura os DOIS emitem um run de corpo inteiro sobre o átlas.
@@ -271,6 +283,7 @@ mod tests {
             start: 0,
             end: 3,
             blend: 1,
+            sampling: 0,
         }];
         assert_eq!(
             runs_com(&[0.0, 0.0, 0.0], 1),
@@ -278,10 +291,42 @@ mod tests {
             "todo átlas + Add tem de emitir o run explícito"
         );
         let mut out = Vec::new();
-        texture_runs_from_boundary(&[(NodeId(0), &so_p)], 3, 1, &mut out);
+        texture_runs_from_boundary(&[(NodeId(0), &so_p)], 3, 1, 0, &mut out);
         assert_eq!(
             out, esperado,
             "sem coluna de textura + Add tem de emitir o run explícito"
+        );
+    }
+
+    /// ⭐⭐ **A AMOSTRAGEM do sink viaja em cada run e TAMBÉM tira o átlas do ramo vazio**
+    /// (doc 119 §3, W1) — a mesma metade subtil da mistura, com a outra chave: o ramo vazio do
+    /// desenho é *«o átlas com o sampler do PROJECTO»*, logo um `Filter = Nearest` numa cena toda
+    /// de átlas morria nele. ⚠️ O CONTROLO (`sampling = 0`) continua vazio, byte a byte.
+    #[test]
+    fn a_amostragem_do_sink_viaja_e_tira_o_atlas_do_ramo_vazio() {
+        let s = boundary(&[0.0, 0.0, 0.0]);
+        let perto = ph2d_render::RenderInstance::pack_sampling(1, 0);
+        let mut out = Vec::new();
+        texture_runs_from_boundary(&[(NodeId(0), &s)], 3, 0, 0, &mut out);
+        assert!(out.is_empty(), "CONTROLO: amostragem de fábrica, vazio");
+        texture_runs_from_boundary(&[(NodeId(0), &s)], 3, 0, perto, &mut out);
+        assert_eq!(
+            out,
+            vec![GpuTexRun {
+                texture_id: 0,
+                start: 0,
+                end: 3,
+                blend: 0,
+                sampling: perto,
+            }],
+            "todo átlas + Nearest tem de emitir o run explícito com a chave"
+        );
+        let s = boundary(&[7.0, 9.0]);
+        let mut out = Vec::new();
+        texture_runs_from_boundary(&[(NodeId(0), &s)], 2, 0, perto, &mut out);
+        assert!(
+            out.iter().all(|r| r.sampling == perto) && out.len() == 2,
+            "cada run leva a amostragem do sink: {out:?}"
         );
     }
 
@@ -296,7 +341,8 @@ mod tests {
                 texture_id: 7,
                 start: 0,
                 end: 2,
-                blend: 0
+                blend: 0,
+                sampling: 0,
             }]
         );
     }

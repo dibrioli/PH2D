@@ -22,22 +22,64 @@ use ph2d_motion_doc::MotionDoc;
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 
-/// Quantas peças por lado — **MEDIDO, e o recurso é tempo de CPU no COZIMENTO**.
+/// Quantas peças por lado — ele **SEGUE O TECTO DO DONO**, e é por isso que os dois números
+/// abaixo têm uma cerca de compilação.
 ///
-/// Sonda `measure_lazy_switch_cost` (release, `load 2,74` de 32 núcleos, mediana de 7 com
-/// aquecimento fora), `SIDE = 224` ⇒ **50 176** peças:
+/// ⛔⛔ **Ele já foi `224`, e desceu com o tecto** (2026-09-21): a grelha clampa cada LADO em
+/// [`LADO_MAX_DE_GRELHA`](ph2d_nodegraph::node::LADO_MAX_DE_GRELHA), logo um `224` escrito
+/// entregaria o tecto e a cena anunciaria um campo que ela não produz.
+#[expect(clippy::cast_precision_loss, reason = "um lado de grelha")]
+pub(super) const SIDE: f32 = ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32;
+
+/// **A POPULAÇÃO EM QUE OS DOIS NÚMEROS ABAIXO FORAM MEDIDOS** — e a cerca que os impede de
+/// envelhecer em silêncio.
+///
+/// ⛔⛔⛔ **ELA NASCEU DE UM DEFEITO REAL, E ELE ACONTECEU DUAS VEZES EM DOIS DIAS.** O [`SIDE`]
+/// segue o tecto de instâncias do dono; os `COOK_*_MS` são medições. Quando o tecto se mexe, o
+/// primeiro muda sozinho e os segundos **não** — e o anúncio, que os CITA, passa a dizer ao dono
+/// dois números medidos numa cena que já não existe:
+///
+/// | dia | tecto | `SIDE` | peças | o que o anúncio dizia | o que a sonda mede |
+/// |---|---|---|---|---|---|
+/// | até 20/09 | — | `224` | `50 176` | `4,12` / `13,81` | `4,12` / `13,81` ✅ |
+/// | 21/09 | `16 384` | `128` | `16 384` | `4,12` / `13,81` | **por medir** ⛔ |
+/// | 22/09 | `32 768` | `181` | `32 761` | `4,12` / `13,81` | **`2,44` / `8,74`** ⛔ |
+///
+/// ⚠️⚠️ **O gate que existia não podia ver isto:** o
+/// `the_announcement_cites_the_numbers_the_scene_uses` afirma que o anúncio **CITA as consts** em
+/// vez de repetir literais — ele é sobre a PROVENIÊNCIA do número, nunca sobre a VERDADE dele.
+/// *Uma const citada continua a ser um literal quando o mundo que a produziu mudou.*
+///
+/// ⇒ a cerca é de COMPILAÇÃO e o sujeito dela é a POPULAÇÃO: mover o tecto **parte a build**
+/// aqui, e quem o mover é obrigado a correr a sonda em vez de se lembrar de o fazer. É a mesma
+/// forma do `181.0` escrito à mão no WGSL do `motion.grid`, e pela mesma razão — *uma constante
+/// que atravessa uma fronteira (ali de LINGUAGEM, aqui de MEDIÇÃO) não pode depender de alguém
+/// se lembrar.*
+const MEDIDO_EM_PECAS: usize =
+    ph2d_nodegraph::node::LADO_MAX_DE_GRELHA * ph2d_nodegraph::node::LADO_MAX_DE_GRELHA;
+const _: () = assert!(
+    MEDIDO_EM_PECAS == 32_761,
+    "o tecto de instancias mudou, logo a cena =107 mudou de populacao e os COOK_*_MS descrevem \
+     outra cena: corra `cargo test -p ph2d-app-motion --release --lib measure_lazy_switch_cost \
+     -- --ignored --nocapture` com a maquina calma e traga os dois numeros para ca"
+);
+
+/// O custo do COZIMENTO nos dois modos, em ms — o que a sonda `measure_lazy_switch_cost`
+/// imprimiu (release, `load 3,48` de 32 núcleos, mediana de 7 com aquecimento fora), a
+/// [`MEDIDO_EM_PECAS`] peças:
 ///
 /// ```text
-///   modo LIGADO      4,12 ms/cook    25% de um quadro de 16,7
-///   modo DESLIGADO  13,81 ms/cook    83% de um quadro, ANTES de desenhar as 50 176 pecas
+///   modo LIGADO      2,44 ms/cook    15% de um quadro de 16,7
+///   modo DESLIGADO   8,74 ms/cook    52% de um quadro, ANTES de desenhar as 32 761 pecas
 /// ```
 ///
-/// `224` é onde o cozimento sozinho decide o quadro: ligado sobra folga para o resto do quadro,
-/// desligado ele já come 83% do orçamento antes de uma peça ser desenhada.
+/// É esta a lição da cena: **o cozimento sozinho decide o quadro**. Ligado sobra folga para o
+/// resto; desligado ele come metade do orçamento antes de uma peça ser desenhada, e a razão
+/// entre os dois é `3,6×`.
 ///
 /// ⚠️ **A tabela anterior tinha TRÊS linhas e nenhum instrumento**, e a auditoria de 2026-08-27
 /// mostrou dois defeitos nela: as duas colunas carregavam o custo fixo do 2.º sink — que era
-/// então o campo inteiro em repouso, e que esta mesma jornada reduziu a uma peça — e a coluna
+/// então o campo inteiro em repouso, e que aquela jornada reduziu a uma peça — e a coluna
 /// OFF era **super-linear sem recurso nomeado** (`224 → 256` dava `1,31×` em peças e `4,36×` em
 /// milissegundos), o que é a assinatura de leitura sob carga. ⇒ *ficam as duas linhas que a
 /// sonda produz, e quem quiser uma terceira roda a sonda.*
@@ -45,22 +87,15 @@ use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 /// ⛔ **O que está aqui é o COZIMENTO, não o quadro.** O quadro soma o desenho das peças, que
 /// esta sonda não mede — e afirmar um número de quadro sem o medir foi exactamente o que a
 /// tabela velha fez.
-/// ⛔ **Desceu de `224` com o tecto do dono** (2026-09-22): a grelha clampa cada LADO em
-/// [`LADO_MAX_DE_GRELHA`](ph2d_nodegraph::node::LADO_MAX_DE_GRELHA), logo um `224` escrito
-/// entregaria `128` e a cena anunciaria um campo que ela não produz.
-#[expect(clippy::cast_precision_loss, reason = "um lado de grelha, 2^7")]
-pub(super) const SIDE: f32 = ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32;
-/// O custo do COZIMENTO nos dois modos, em ms — o que a sonda `measure_lazy_switch_cost`
-/// imprimiu (release, máquina calma, mediana de 7).
 ///
 /// ⚠️ **Eles são `const` para que o anúncio os CITE em vez de os repetir.** A 1.ª versão deste
 /// demo passava `on = 9.59, off = 33.63` como literais inline no `motion_state_demo_announce.rs`
 /// — sozinha entre as seis cenas anunciadas, e por isso a única fora do gate
-/// `the_announcement_cites_the_numbers_the_scene_uses`. Quando esta jornada mudou a cena, os dois
-/// números do anúncio ficaram errados e **nada** podia dizê-lo.
-pub(super) const COOK_ON_MS: f32 = 4.12;
+/// `the_announcement_cites_the_numbers_the_scene_uses`. ⛔ Mas citar não é ser verdade: ver
+/// [`MEDIDO_EM_PECAS`], que é a metade que faltava.
+pub(super) const COOK_ON_MS: f32 = 2.44;
 /// Ver [`COOK_ON_MS`].
-pub(super) const COOK_OFF_MS: f32 = 13.81;
+pub(super) const COOK_OFF_MS: f32 = 8.74;
 /// Quantas oitavas tornam um ramo CARO.
 const OCTAVES: f32 = 8.0;
 /// Quantos ramos o roteador tem (o manifesto do nó).

@@ -80,5 +80,6 @@ metadata:
   à placa E desenhava uma imagem, logo a cura não tinha onde ser vista. ⇒ antes de mandar um smoke,
   **fotografe-o** (`fotografa_cena.sh`) e ponha ao lado o CONTROLO com o defeito reposto — se as
   duas fotos forem iguais, a cena não ensina nada; e se nenhuma cena servir, a cena é trabalho da
-  wave, não um passo a improvisar.
+  wave, não um passo a improvisar. ⛔ **E repeti-o à tarde (`=93` para o ciclo 11)** — promovido a
+  entrada própria no índice: [smoke do Motion = formas + simulação](feedback_a_motion_smoke_scene_needs_shapes_and_simulation.md).
 

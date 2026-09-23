@@ -36,6 +36,26 @@ princípio ao fim por quem **nunca viu** aquilo (§0.8): comando completo com o 
 com o nome que aparece **na tela**, o que tem de acontecer, e como saber que deu errado. Se um
 passo do tutorial não é possível no app, **o ciclo não acabou** — isso é a régua.
 
+⛔⛔⛔ **A CENA do smoke — a do tutorial E a de um ciclo de optimização — tem de ter o USO REAL:
+FORMAS (`source.shape` / objecto) E SIMULAÇÃO com campos** (ordem do dono, 2026-09-23, dita duas
+vezes no mesmo dia: *«você esqueceu de usar shapes novamente. Melhor atualizar os docs para não
+esquecer»* · *«e não colocou campos de simulação»*).
+
+- **Sem forma não há imagem:** desde 19/09 uma corrente só de POSIÇÕES desenha só **gizmos** (a
+  lei do dono, `SinkStyle::so_com_forma`). Um smoke numa grelha, num Voronoi ou num Poisson sem
+  forma mostra pontinhos, e o dono vê *«apenas gizmos»*.
+- **Sem simulação a cena não exercita o que o artista faz:** uma cena parada mede o desenho e
+  cala o cozimento, que é onde o custo e os defeitos moram (doc 98, doc 115 §21: o preço estava
+  na PILHA em movimento, não no campo parado).
+- ⚠️ **A tensão, dita:** hoje uma forma vectorial viva (`source.shape`) RECUSA a placa (a ponte
+  manda-a para a CPU) — logo um smoke que queira mostrar a PLACA usa **objecto** (`source.object`,
+  que a placa desenha) ou diz, no próprio roteiro, que aquela cena corre na CPU e porquê.
+- **Antes de mandar:** fotografar a cena (`docs/Components/ferramentas/fotografa_cena.sh`), com o
+  CONTROLO ao lado (o defeito reposto, ou `PH2D_GPU_COOK=0`); se as duas fotos forem iguais a cena
+  não ensina nada. **Se nenhuma cena do catálogo serve, construí-la é trabalho da wave.**
+- ⛔ **Escolher a cena pela ROTA** (*«o censo põe-na na placa»*) é o erro que isto existe para
+  impedir — a rota é uma propriedade interna e não diz se o fenómeno se VÊ.
+
 ## §2 — As quatro leis que valem em TODO ciclo
 
 1. **PERFORMANCE — somos uma game engine** (Enio, 04/09). Todo nó do grupo tem de dizer onde

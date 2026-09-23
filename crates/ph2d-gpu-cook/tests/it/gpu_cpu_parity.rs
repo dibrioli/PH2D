@@ -341,8 +341,26 @@ fn both_routes_composite_the_same_document_in_the_same_blend() {
             CookClock::at(PLAYHEAD),
             DEFAULT_UV,
             DEFAULT_SIZE,
-            // O que a shell passa: o estilo lido da porta única.
-            ph2d_eval_motion::sink_style(&g, out),
+            // O que a shell passa: o estilo lido da porta única — **menos a lei
+            // `so_com_forma`, porque este gate não é sobre ela**.
+            //
+            // ⛔⛔ **As duas rotas entram em NÍVEIS diferentes dessa lei, e isso não é
+            // curável aqui:** o lado da CPU chama `evaluate_motion_into`, que **não
+            // recebe estilo nenhum** — a lei vive uma camada acima, na
+            // `MotionCookPump::define_a_lei` —, e o lado do dispositivo chama o `cook`,
+            // que a recebe. Com ela LIGADA (o valor de fábrica desde 19/09, ver
+            // `so_com_forma_por_ordem`) esta corrente **sem ladrilho** lia `cpu 64`
+            // contra `gpu 0`, e o gate acusava a paridade de BLEND por um facto sobre a
+            // FORMA.
+            //
+            // ⚠️ E ela sai do **AMBIENTE**, logo lê-la aqui era medir a máquina — o que o
+            // doc de `so_com_forma_por_ordem` já proíbe por escrito (*«os dois lowerings
+            // recebem-na como DADO, e é isso que os torna gateáveis sem o ambiente»*).
+            // A lei tem gates próprios, em `boundary_tests.rs` e `eval_tests.rs`.
+            ph2d_render::SinkStyle {
+                so_com_forma: false,
+                ..ph2d_eval_motion::sink_style(&g, out)
+            },
         )
         .expect("gpu cook");
         let gpu_out = ph2d_gpu_cook::read_instances(&gpu, gc.instances().expect("cooked"));

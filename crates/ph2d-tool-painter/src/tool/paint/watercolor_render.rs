@@ -89,14 +89,19 @@ impl PainterTool {
 
         // Window-local coverage (`[0,1]`) + its blur (reads the true cumulative coverage, so the blur
         // feathers correctly at the real rim, including coverage from earlier frames).
+        // Row-parallel (ADR-0173): each texel is a pure function of its own coverage byte.
         let mut cov_src = vec![0.0f32; rw * rh];
-        for wy in 0..rh {
-            let sbase = (ry0 + wy) * fw + rx0;
-            let dbase = wy * rw;
-            for wx in 0..rw {
-                cov_src[dbase + wx] = f32::from(self.paint.stroke_coverage[sbase + wx]) / 255.0;
-            }
-        }
+        let coverage = &self.paint.stroke_coverage;
+        cov_src
+            .par_chunks_mut(rw.max(1))
+            .with_min_len(8)
+            .enumerate()
+            .for_each(|(wy, drow)| {
+                let sbase = (ry0 + wy) * fw + rx0;
+                for (d, &c) in drow.iter_mut().zip(&coverage[sbase..sbase + rw]) {
+                    *d = f32::from(c) / 255.0;
+                }
+            });
         // OS CAMPOS DO ARO ([`watercolor_rim::rim_fields`]): `hard`, os borrões e a régua do teto
         // nascem juntos e só o aro os lê, então a receita mora ao lado dele.
         let rim = watercolor_rim::rim_fields(

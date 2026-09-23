@@ -56,6 +56,11 @@
 
 use super::Region;
 use super::sculpt_close::distance_inside;
+use rayon::prelude::*;
+
+/// Piso das tarefas das passagens por texel deste módulo (ADR-0173): abaixo disto o custo de
+/// repartir passa o do trabalho. Não muda um bit (cada texel é função pura da vizinhança lida).
+const MIN_TEXELS: usize = 4096;
 
 /// O limiar que define a fronteira da lavagem: a meia-altura da cobertura endurecida.
 const HALF: f32 = 0.5;
@@ -84,8 +89,10 @@ pub(super) fn rim_fields(
     // the HARDENED coverage (the raw plateau shifted the interior tone with Edge). One blur
     // per DISTINCT per-owner core_r (usually one): a baked wash keeps ITS feather — the live
     // brush's radius re-blurred the neighbour's rim (doc 13 "mudanca no brush propaga").
+    // ADR-0173: por texel e em paralelo — `collect` de um iterador INDEXADO guarda a ordem.
     let hard: Vec<f32> = cov
-        .iter()
+        .par_iter()
+        .with_min_len(MIN_TEXELS)
         .map(|&c| {
             super::watercolor_field::smoothstep(
                 super::watercolor_render::SS0,
@@ -147,17 +154,15 @@ pub(super) fn signed_distance(
     if n == 0 || hard.len() < n {
         return None;
     }
-    let mut inside = vec![0u8; n];
-    let mut any_in = false;
-    let mut any_out = false;
-    for (m, &h) in inside.iter_mut().zip(hard.iter()) {
-        if h >= HALF {
-            *m = 255;
-            any_in = true;
-        } else {
-            any_out = true;
-        }
-    }
+    // ADR-0173: as quatro passagens por texel abaixo correm em paralelo, cada texel função pura da
+    // própria vizinhança LIDA; as duas perguntas `any` são só leitura (curto-circuitar é seguro).
+    let inside: Vec<u8> = hard[..n]
+        .par_iter()
+        .with_min_len(MIN_TEXELS)
+        .map(|&h| if h >= HALF { 255 } else { 0 })
+        .collect();
+    let any_in = inside.par_iter().any(|&m| m != 0);
+    let any_out = inside.par_iter().any(|&m| m == 0);
     if !any_in || !any_out {
         return None;
     }
@@ -177,20 +182,19 @@ pub(super) fn signed_distance(
     //
     // A semente é o pixel que TEM vizinho do outro lado (4-vizinhança): é a definição de fronteira
     // discreta, e é ela que faz `sd ≈ 0` na borda em vez de `±0,5` conforme o lado.
-    let mut seed = vec![255u8; n];
-    for y in 0..rh {
-        for x in 0..rw {
-            let i = y * rw + x;
+    let seed: Vec<u8> = (0..n)
+        .into_par_iter()
+        .with_min_len(MIN_TEXELS)
+        .map(|i| {
+            let (x, y) = (i % rw, i / rw);
             let me = inside[i] != 0;
             let border = (x > 0 && (inside[i - 1] != 0) != me)
                 || (x + 1 < rw && (inside[i + 1] != 0) != me)
                 || (y > 0 && (inside[i - rw] != 0) != me)
                 || (y + 1 < rh && (inside[i + rw] != 0) != me);
-            if border {
-                seed[i] = 0;
-            }
-        }
-    }
+            if border { 0 } else { 255 }
+        })
+        .collect();
     let d = distance_inside(&seed, rw, region, 128);
     if d.len() < n {
         return None;
@@ -219,6 +223,8 @@ pub(super) fn signed_distance(
     let hi = (core_r as f32 + 1.5) * 2.0;
     Some(
         (0..n)
+            .into_par_iter()
+            .with_min_len(MIN_TEXELS)
             .map(|i| {
                 let geom = if inside[i] != 0 { d[i] } else { -d[i] };
                 if geom <= lo || geom >= hi {

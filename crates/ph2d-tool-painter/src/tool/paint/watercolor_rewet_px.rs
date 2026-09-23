@@ -119,18 +119,23 @@ pub(super) fn build_wet_field(
     (rx0, ry0): (usize, usize),
     (rw, rh): (usize, usize),
 ) -> (Vec<f32>, Vec<f32>) {
+    use rayon::prelude::*;
     let mut wf = vec![0.0f32; rw * rh];
     let mut mask = vec![0.0f32; rw * rh];
-    for wy in 0..rh {
-        let gy = ry0 + wy;
-        for wx in 0..rw {
-            let o = style_owner[gy * fw + (rx0 + wx)];
-            if o != 0 {
-                wf[wy * rw + wx] = table[(o as usize - 1).min(table.len() - 1)].wet;
-                mask[wy * rw + wx] = 1.0;
+    // ADR-0173: por linha e em paralelo — cada texel lê só o próprio dono.
+    wf.par_chunks_mut(rw.max(1))
+        .zip(mask.par_chunks_mut(rw.max(1)))
+        .with_min_len(8)
+        .enumerate()
+        .for_each(|(wy, (wrow, mrow))| {
+            let base = (ry0 + wy) * fw + rx0;
+            for (wx, &o) in style_owner[base..base + rw].iter().enumerate() {
+                if o != 0 {
+                    wrow[wx] = table[(o as usize - 1).min(table.len() - 1)].wet;
+                    mrow[wx] = 1.0;
+                }
             }
-        }
-    }
+        });
     (
         box_blur(&wf, rw, rh, WET_FIELD_BLUR_PX),
         box_blur(&mask, rw, rh, WET_FIELD_BLUR_PX),
@@ -211,28 +216,46 @@ pub(super) fn build_style_field(
     let mut warp = vec![0.0f32; n];
     let mut color = [vec![0.0f32; n], vec![0.0f32; n], vec![0.0f32; n]];
     let mut mask = vec![0.0f32; n];
-    for wy in 0..rh {
-        let gy = ry0 + wy;
-        for wx in 0..rw {
-            // ONLY owned pixels (a real wash) contribute — masked by ownership like `build_wet_field`, so
-            // an unowned GAP never leaks the current brush's params into a neighbour that doesn't touch it
-            // (the non-contact guard; else two non-overlapping washes would bleed across the gap).
-            let o = style_owner[gy * fw + (rx0 + wx)];
-            if o == 0 {
-                continue;
-            }
-            let s = &table[(o as usize - 1).min(table.len() - 1)];
-            let i = wy * rw + wx;
-            fill[i] = s.fill;
-            depth[i] = s.depth;
-            edge_gain[i] = s.edge_gain;
-            opacity[i] = s.opacity;
-            warp[i] = s.warp;
-            for (plane, &c) in color.iter_mut().zip(s.color.iter()) {
-                plane[i] = f32::from(c);
-            }
-            mask[i] = 1.0;
-        }
+    {
+        // ADR-0173: por linha e em paralelo — cada texel lê só o próprio dono e escreve só em si.
+        use rayon::prelude::*;
+        let rw1 = rw.max(1);
+        let [c0, c1, c2] = &mut color;
+        fill.par_chunks_mut(rw1)
+            .zip(depth.par_chunks_mut(rw1))
+            .zip(edge_gain.par_chunks_mut(rw1))
+            .zip(opacity.par_chunks_mut(rw1))
+            .zip(warp.par_chunks_mut(rw1))
+            .zip(c0.par_chunks_mut(rw1))
+            .zip(c1.par_chunks_mut(rw1))
+            .zip(c2.par_chunks_mut(rw1))
+            .zip(mask.par_chunks_mut(rw1))
+            .with_min_len(8)
+            .enumerate()
+            .for_each(
+                |(wy, ((((((((fr, dr), er), or), wr), c0r), c1r), c2r), mr))| {
+                    let base = (ry0 + wy) * fw + rx0;
+                    for (wx, &o) in style_owner[base..base + rw].iter().enumerate() {
+                        // ONLY owned pixels (a real wash) contribute — masked by ownership like
+                        // `build_wet_field`, so an unowned GAP never leaks the current brush's params
+                        // into a neighbour that doesn't touch it (the non-contact guard; else two
+                        // non-overlapping washes would bleed across the gap).
+                        if o == 0 {
+                            continue;
+                        }
+                        let s = &table[(o as usize - 1).min(table.len() - 1)];
+                        fr[wx] = s.fill;
+                        dr[wx] = s.depth;
+                        er[wx] = s.edge_gain;
+                        or[wx] = s.opacity;
+                        wr[wx] = s.warp;
+                        c0r[wx] = f32::from(s.color[0]);
+                        c1r[wx] = f32::from(s.color[1]);
+                        c2r[wx] = f32::from(s.color[2]);
+                        mr[wx] = 1.0;
+                    }
+                },
+            );
     }
     let r = WET_FIELD_BLUR_PX;
     let [c0, c1, c2] = color;

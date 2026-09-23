@@ -160,6 +160,60 @@ fn traco(t: &mut PainterTool, size: u32, passo: f32) -> Corrida {
     }
 }
 
+/// FNV-1a de 64 bits sobre os bytes de cada quadro drenado, encadeado quadro a quadro.
+fn fnv(mut h: u64, bytes: &[u8]) -> u64 {
+    for &b in bytes {
+        h ^= u64::from(b);
+        h = h.wrapping_mul(0x0100_0000_01b3);
+    }
+    h
+}
+
+/// A impressão digital de uma sessão de DOIS traços que se cruzam — o segundo com outra cor, outro
+/// Rewet e outro tamanho, para a tabela de donos ter dois estilos —, cada quadro drenado a entrar no
+/// hash, incluindo os de secagem depois do segundo pen-up.
+fn impressao(size: u32, rewet: f32, passo: f32) -> u64 {
+    let mut t = aquarela(size, rewet);
+    let mut h = 0xcbf2_9ce4_8422_2325u64;
+    let drena = |t: &mut PainterTool, h: &mut u64| {
+        t.on_tick(DT_MS);
+        if let Some((px, w, hh)) = t.take_preview_arc() {
+            *h = fnv(*h, &px);
+            *h = fnv(*h, &[w as u8, hh as u8]);
+        }
+    };
+    let c = size as f32 / 2.0;
+    let pernas: [([f32; 2], [f32; 2]); 2] = [
+        ([c - 300.0, c], [c + 300.0, c]),
+        ([c, c - 280.0], [c + 60.0, c + 280.0]),
+    ];
+    for (k, (a, b)) in pernas.into_iter().enumerate() {
+        if k == 1 {
+            t.set_brush_color_srgb8([40, 90, 200]);
+            t.set_brush_wet_rewet((rewet * 0.5 + 0.2).min(1.0));
+            t.set_brush_size_px(140.0);
+        }
+        t.on_canvas_pointer(cp(a, PointerPhase::Down));
+        let len = ((b[0] - a[0]).powi(2) + (b[1] - a[1]).powi(2)).sqrt();
+        let n = (len / passo) as usize;
+        for i in 1..=n {
+            let f = i as f32 / n as f32;
+            t.on_canvas_pointer(cp(
+                [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f],
+                PointerPhase::Move,
+            ));
+            if i % EV_POR_QUADRO as usize == 0 {
+                drena(&mut t, &mut h);
+            }
+        }
+        t.on_canvas_pointer(cp(b, PointerPhase::Up));
+        for _ in 0..6 {
+            drena(&mut t, &mut h);
+        }
+    }
+    h
+}
+
 fn p50(v: &mut [f64]) -> f64 {
     v.sort_by(f64::total_cmp);
     v[v.len() / 2]
@@ -347,6 +401,20 @@ fn main() {
         println!("  load {}", carga());
         celula(size, 0.400, 1.0);
         println!("  load {}", carga());
+        return;
+    }
+    // `-- impressao`: a IMPRESSÃO DIGITAL de cada quadro que a ponte drena, numa sessão de dois
+    // traços que se cruzam com estilos diferentes (a tabela de donos com dois estilos, o campo de
+    // estilo, o campo molhado, a reserva, o aro, a água e a secagem). Não mede tempo: é o gate
+    // PONTA A PONTA de que uma optimização não mudou um byte do PRODUTO — dois binários (antes e
+    // depois, ou dois alvos de CPU) têm de imprimir as MESMAS linhas.
+    if args.iter().any(|a| a == "impressao") {
+        for (rewet, passo) in [(0.400f32, 1.0f32), (0.0, 3.0), (1.0, 2.0)] {
+            println!(
+                "  rewet {rewet} passo {passo}: {:016x}",
+                impressao(1024, rewet, passo)
+            );
+        }
         return;
     }
     // `-- perfil [2048|4096] [rewet0]`: a mesma célula, muitas vezes — carga para o amostrador.

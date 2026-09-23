@@ -856,6 +856,73 @@ divergência recusa. ⚠️ **E as `24` primitivas são o DESENHO**: o vaso tem 
 de quina não-nulos, e uma quina arredondada é um arco mais o que sobra das duas arestas que ela
 corta — *não há gordura na contagem*.
 
+### ⭐⭐⭐⭐ E O DONO PERGUNTOU A COISA CERTA: «não seria possível criar vasos com FÓRMULAS?»
+
+**Ordem/pergunta do dono, 2026-09-23:** *«vamos retirar a possibilidade de usar paths para criar
+formas no modelador. Não seria possível criar vasos com fórmulas para que tudo fique rápido?»*
+
+⭐ **O mecanismo que ele aponta está CERTO**, e a decomposição acima diz porquê: um contorno
+desenhado custa **`O(pedaços)`** (`26,5` linhas por recta, `50,9` por curva) e uma fórmula custa
+**`O(grau)`** — independentemente de quantas curvas a silhueta pareça ter.
+
+⚠️ **Mas «possível» tem duas metades e só uma é o relógio:** *quanto custa* e *quanto do DESENHO a
+fórmula consegue dizer*. A `diag_o_vaso_por_formula` mede as duas.
+
+**A forma da fórmula, e porque é esta:** um sólido de revolução é, no plano `(u, v)` com
+`u = √(x² + z²)`, a região entre **duas funções da altura**. O sólido é *«dentro da parede externa e
+na faixa de altura»* **menos** a cavidade *«dentro da parede interna **E** acima do fundo»*. As duas
+funções são polinómios de **Chebyshev** avaliados por **Clenshaw** (`3` operações por grau).
+⚠️⚠️ E o campo é **normalizado por um majorante global da inclinação**: `u − fora(v)` **não** é a
+distância à curva — ela é MAIOR quando a curva é inclinada, e uma esfera-marcha que acredite num
+valor maior do que a distância dá um passo **para dentro do sólido**.
+
+O vaso da cena `5` tem `24` primitivas e `931` linhas. Ajustado à silhueta que a própria peça
+produz (`512` alturas, pelo sinal do campo do perfil):
+
+| grau | erro da parede externa | erro da interna | linhas | × a desenhada | quadro previsto |
+|---:|---:|---:|---:|---:|---:|
+| `4` | `0,0699` | `0,0483` | `49` | `19,0×` | `5,8 ms` |
+| `8` | `0,0196` | `0,0066` | `73` | `12,8×` | `6,5 ms` |
+| `12` | `0,0091` | `0,0048` | `97` | `9,6×` | `7,2 ms` |
+| **`16`** | **`0,0027`** | **`0,0028`** | `121` | `7,7×` | **`7,9 ms`** |
+| `24` | `0,0016` | `0,0011` | `169` | `5,5×` | `9,4 ms` |
+
+⭐⭐⭐ **Ao grau `16` as duas paredes ficam a `0,003` — `0,9 %` do raio do vaso — e a cena aterra em
+`~7,9 ms` contra `31,96`, bem dentro do orçamento de `16,7`.** ⇒ *a resposta à pergunta dele é SIM, e
+o número é `4×`.*
+
+⭐⭐ **E o desenho NÃO tem de sair para isso:** o ajuste acima foi feito **a partir da peça
+desenhada**. O caminho é *«o artista desenha e o modelador ajusta a fórmula»*, não *«o artista deixa
+de desenhar»*.
+
+### ⛔⛔⛔ Três limites da rota da fórmula, e o terceiro é o que decide o alcance
+
+1. **Ela é APROXIMADA.** `0,9 %` do raio ao grau `16`; a paridade de `100,000 %` que esta casa
+   mantém entre os dois motores sobrevive (a fórmula é a MESMA lei nos dois), mas a peça deixa de
+   ser o desenho **ao bit**.
+2. **Um polinómio não tem QUINA.** Um lábio desenhado a esquadro fica macio; o desenho tem de dizer
+   a quina por outro termo (o `max` entre paredes já produz uma).
+3. ⛔⛔ **Ela serve o TORNO e não serve o EXTRUDE.** Um sólido de revolução é a região entre duas
+   **funções da altura**; a secção de um extrude é uma **curva fechada** em `(x, y)`, que só é uma
+   função (`r(θ)`) se a forma for **estrelada** em relação a um centro. *Um «C», uma espiral ou um
+   contorno com um braço que envolve não são.* ⭐ A família estrelada é exactamente a que o catálogo
+   já cobre por fórmula (a superfórmula de Gielis, `ops_gielis`), o que é uma confirmação
+   independente de que o corte está aí.
+
+### ⛔⛔ E o tamanho de RETIRAR os desenhos, medido
+
+| o que a rota do desenho alcança | medido |
+|---|---:|
+| formas do catálogo que nascem de um contorno | `Extrude` · `Polygon` · `Revolve` |
+| ficheiros que as nomeiam | **`73`** |
+| ficheiros que carregam o vínculo vivo ao desenho (`FieldProfileSource`) | `16` |
+| linhas de produto nos ficheiros envolvidos | **`45 053`** |
+
+⇒ retirar a rota do desenho **não** retira só o vaso: retira *«desenho uma forma e ela vira
+sólido»*, que é a costura das waves `W53`–`W58` (o fluxo do MoI, o selo `LNK` na Hierarquia, o
+`Unlink`/`Link Drawing`, a resolução do contorno) — e, pelo limite `3`, a fórmula **não** substitui o
+extrude de um contorno qualquer. *É decisão do dono, e ela está agora com o número dos dois lados.*
+
 ### ⏳ O que a fila leva daqui, com o mecanismo de cada candidato
 
 1. ⭐⭐⭐ **O PERFIL COMO TEXTURA 2D** — o candidato que nenhuma medição desta wave recusa, e é a

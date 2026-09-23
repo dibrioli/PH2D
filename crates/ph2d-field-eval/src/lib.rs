@@ -603,11 +603,14 @@ fn axis_gap(lo: f32, hi: f32) -> f32 {
     }
 }
 
-/// ⭐ Qual fórmula cada forma usa — ver [`primitive_tree`].
 #[path = "primitive_tree.rs"]
 mod primitive_tree;
 /// ⭐ As formas por FÓRMULA — ver [`primitive_tree_formula`].
 mod primitive_tree_formula;
 /// ⭐ As formas cujos VÉRTICES o artista autora — ver [`primitive_tree_vertices`].
 mod primitive_tree_vertices;
+/// ⭐ Qual fórmula cada forma usa — ver [`primitive_tree`].
+/// ⏱️⭐⭐⭐⭐ **O perfil por FÓRMULA** — ver o cabeçalho do [`profile_formula`].
+#[path = "profile_formula_probe.rs"]
+pub mod profile_formula;
 pub(crate) use primitive_tree::primitive;

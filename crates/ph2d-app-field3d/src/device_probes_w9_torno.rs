@@ -417,3 +417,7 @@ fn diag_a_poda_coerente_por_grupo() {
     }
     println!();
 }
+
+/// ⏱️⭐⭐⭐⭐ **O vaso por FÓRMULA** — ver o cabeçalho do [`formula`].
+#[path = "device_probes_w9_formula.rs"]
+mod formula;

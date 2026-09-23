@@ -49,9 +49,14 @@
 #![forbid(unsafe_code)]
 
 pub mod amostragem;
+pub mod assar;
 pub mod enderecos;
 pub mod topo;
 pub mod vizinhanca;
+
+#[cfg(test)]
+#[path = "assar_tests.rs"]
+mod assar_tests;
 
 #[cfg(test)]
 #[path = "enderecos_tests.rs"]
@@ -66,6 +71,7 @@ mod topo_tests;
 #[path = "vizinhanca_tests.rs"]
 mod vizinhanca_tests;
 
+pub use assar::{Assado, Recusa, Relatorio, assar};
 pub use enderecos::{Sitio, indice, sitio_quad, sitio_tri, total};
 pub use topo::{TRI, Topologia, cantos, interior_por_face};
 

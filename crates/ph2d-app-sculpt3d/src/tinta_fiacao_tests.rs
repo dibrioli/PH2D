@@ -341,7 +341,29 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
         (
             "export.rs",
             "S1 a saida deixa de perguntar se ha' tinta fina, e o aviso cala-se",
-            "lost_by(fmt, scene.alguma_peca_tem_tinta_fina())".to_string(),
+            [
+                "                    export_assado::perdeu_tinta_fina(",
+                "                        fmt,",
+                "                        scene.alguma_peca_tem_tinta_fina(),",
+            ]
+            .join("\n"),
+            SAIDA,
+        ),
+        // ⛔⛔⛔ **E a metade que faz a tinta SAIR (22/09).** Sem esta chamada o
+        // assado nunca corre: o `.obj` sai igualzinho ao de antes, a
+        // `keeps_fine_paint` continua a dizer que ele carrega a tinta, e o
+        // aviso **cala-se sobre uma perda que acontece**. *As duas metades
+        // falham ao CONTRÁRIO uma da outra, e é por isso que são dois elos.*
+        (
+            "export.rs",
+            "S7 a saida deixa de ASSAR e o obj sai sem textura, calado",
+            "        export_assado::assa(scene)".to_string(),
+            SAIDA,
+        ),
+        (
+            "export.rs",
+            "S8 o obj volta ao escritor sem uv e o material fica orfao",
+            "        Some(m) => ph2d_mesh::write_obj_com_uv(&pieces, &uvs, m).into_bytes(),".to_string(),
             SAIDA,
         ),
         (
@@ -371,12 +393,12 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
 /// busca falhar em voz alta — mas um que devolvesse **tudo** faria a prosa
 /// satisfazer a agulha, e é isso que o [`so_a_prosa`] recusa.
 #[test]
-fn a_cura_da_tinta_fina_esta_ligada_nos_vinte_e_um_sitios() {
+fn a_cura_da_tinta_fina_esta_ligada_nos_vinte_e_tres_sitios() {
     let elos = elos();
     assert_eq!(
         elos.len(),
-        21,
-        "a população deste censo são os vinte e um elos"
+        23,
+        "a população deste censo são os vinte e três elos"
     );
 
     for (ficheiro, mutacao, agulha, fonte) in elos {

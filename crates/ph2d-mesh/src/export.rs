@@ -121,7 +121,7 @@ impl MeshFormat {
     /// da malha, é aqui que o `true` entra — e o aviso deixa de soar **nos dois
     /// consumidores ao mesmo tempo**, sem ninguém se lembrar de ir apagá-lo.
     pub fn keeps_fine_paint(self) -> bool {
-        false
+        matches!(self, Self::Obj)
     }
 
     /// Escreve a cena inteira neste formato.
@@ -157,9 +157,47 @@ fn totals(pieces: &[ExportPiece<'_>]) -> (usize, usize) {
 /// que o import teve de fazer: lá o pool global vira peças, aqui as peças viram
 /// um pool global.
 pub fn write_obj(pieces: &[ExportPiece<'_>]) -> String {
+    write_obj_com_uv(pieces, &[], "")
+}
+
+/// ⭐⭐ **As coordenadas de textura de UMA peça**, como o escritor as recebe.
+///
+/// ⛔ **Ela é um tipo NEUTRO de propósito:** a `ph2d-mesh` declara zero
+/// dependências e o assado vive na `ph2d-mesh-colors` — importá-la aqui para
+/// escrever quatro linhas de texto poria a lei da retícula debaixo do
+/// exportador. *Quem assa entrega números; quem escreve não sabe de onde eles
+/// vieram.*
+pub struct UvDaPeca<'a> {
+    /// Um par por CANTO de cada face, na ordem do percurso das faces.
+    pub uv: &'a [[f32; 2]],
+    /// `off[f]..off[f + 1]` são os cantos da face `f`.
+    pub off: &'a [u32],
+    /// O nome do material que o `.mtl` declara para esta peça.
+    pub material: &'a str,
+}
+
+/// ⭐⭐⭐ **O OBJ com coordenadas de textura** — o irmão que leva a tinta.
+///
+/// `uvs` é paralelo a `pieces`; uma peça com `None` sai **exactamente** como
+/// saía (é isso que faz o [`write_obj`] delegar aqui sem mudar um byte).
+///
+/// ⚠️ **Os índices de `vt` são 1-based e GLOBAIS ao arquivo**, como os de `v` —
+/// e contam-se num acumulador PRÓPRIO, porque uma peça sem textura acrescenta
+/// vértices e **nenhum** `vt`. *Somar os dois no mesmo contador desloca a tinta
+/// de todas as peças a seguir à primeira sem textura.*
+pub fn write_obj_com_uv(
+    pieces: &[ExportPiece<'_>],
+    uvs: &[Option<UvDaPeca<'_>>],
+    mtllib: &str,
+) -> String {
     let mut out = String::from("# PH2D Sculpt\n");
+    if !mtllib.is_empty() {
+        out.push_str(&format!("mtllib {mtllib}\n"));
+    }
     let mut base = 0usize;
+    let mut base_uv = 0usize;
     for (i, p) in pieces.iter().enumerate() {
+        let uv = uvs.get(i).and_then(Option::as_ref);
         let name = p.name.unwrap_or("Piece");
         out.push_str(&format!("o {name}_{i}\n"));
         let coloured = p.mesh.colors().is_some();
@@ -175,14 +213,43 @@ pub fn write_obj(pieces: &[ExportPiece<'_>]) -> String {
                 out.push_str(&format!("v {} {} {}\n", w[0], w[1], w[2]));
             }
         }
-        for f in p.mesh.faces() {
+        if let Some(u) = uv {
+            for c in u.uv {
+                out.push_str(&format!("vt {} {}\n", c[0], c[1]));
+            }
+            out.push_str(&format!("usemtl {}\n", u.material));
+        }
+        for (fi, f) in p.mesh.faces().iter().enumerate() {
             out.push('f');
-            for &idx in f.verts() {
+            for (c, &idx) in f.verts().iter().enumerate() {
                 out.push_str(&format!(" {}", base + idx as usize + 1));
+                if let Some(u) = uv {
+                    let k = u.off[fi] as usize + c;
+                    out.push_str(&format!("/{}", base_uv + k + 1));
+                }
             }
             out.push('\n');
         }
         base += p.mesh.positions().len();
+        base_uv += uv.map_or(0, |u| u.uv.len());
+    }
+    out
+}
+
+/// ⭐ **A biblioteca de materiais** — uma entrada por peça assada.
+///
+/// ⚠️ **`Kd` é BRANCO de propósito:** todo visualizador multiplica a difusa
+/// pela textura, e um `Kd` que não fosse `1 1 1` escureceria a tinta que o
+/// artista pintou. ⛔ E `map_Kd` leva o nome do ficheiro **sem pasta**, porque
+/// um `.mtl` resolve-se ao lado de si mesmo e um caminho absoluto quebra no
+/// computador de quem o abrir.
+#[must_use]
+pub fn write_mtl(materiais: &[(String, String)]) -> String {
+    let mut out = String::from("# PH2D Sculpt\n");
+    for (nome, png) in materiais {
+        out.push_str(&format!(
+            "newmtl {nome}\nKd 1 1 1\nd 1\nillum 1\nmap_Kd {png}\n"
+        ));
     }
     out
 }

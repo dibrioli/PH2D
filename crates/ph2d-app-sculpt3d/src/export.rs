@@ -103,8 +103,38 @@ pub fn export(scene: Option<&Sculpt3dScene>, toasts: &mut ph2d_editor_core::Toas
         return;
     };
 
+    // ⭐⭐⭐⭐ **A TINTA FINA SAI NO FICHEIRO** — a metade que faltava desde 22/09.
+    // O mecanismo, os três ficheiros e o porquê de uma textura POR PEÇA vivem no
+    // [`export_assado`]; aqui fica só a ORDEM, que é load-bearing: as texturas e o
+    // material são gravados ANTES do `.obj`, porque é a existência deles que decide se o
+    // `.obj` pode apontar para lá. ⛔ *Um `.obj` a apontar para um material que não existe
+    // abre preto no destino e ninguém sabe porquê.*
+    let assados = if fmt.keeps_fine_paint() {
+        export_assado::assa(scene)
+    } else {
+        export_assado::Assados::default()
+    };
+    let mtllib = if assados.alguma() {
+        export_assado::grava(&path, &assados, toasts)
+    } else {
+        None
+    };
+    let materiais: Vec<String> = (0..scene.objects.len())
+        .map(export_assado::material)
+        .collect();
+    let uvs = match &mtllib {
+        Some(_) => export_assado::uvs(&assados, &materiais),
+        None => Vec::new(),
+    };
     // O empréstimo das malhas termina aqui: `write` já produziu os bytes.
-    let bytes = fmt.write(&scene.export_pieces());
+    let pieces = scene.export_pieces();
+    let bytes = match &mtllib {
+        // ⚠️ **Só o OBJ tem este ramo, e não é uma escolha de formato solta:** ele é o
+        // único dos três que a [`MeshFormat::keeps_fine_paint`] declara capaz, e o
+        // `mtllib` só existe se ele foi o formato escolhido e se alguma peça assou.
+        Some(m) => ph2d_mesh::write_obj_com_uv(&pieces, &uvs, m).into_bytes(),
+        None => fmt.write(&pieces),
+    };
     let size = bytes.len();
     match std::fs::write(&path, bytes) {
         Ok(()) => {
@@ -128,7 +158,28 @@ pub fn export(scene: Option<&Sculpt3dScene>, toasts: &mut ph2d_editor_core::Toas
                     &[("n", &n), ("size", &(size / 1024)), ("name", &name)],
                 ),
             );
-            crate::import::toast(toasts, lost_by(fmt, scene.alguma_peca_tem_tinta_fina()));
+            // ⭐ A segunda linha é UMA das duas, nunca as duas: ou a tinta assou, ou ela
+            // ficou para trás e a razão é dita com a peça. *Três balões empilhados é o
+            // defeito que a partição de 22/09 existe para não reintroduzir.*
+            if let Some(porque) = export_assado::frase_da_recusa(&assados.recusas) {
+                crate::import::toast(toasts, porque);
+            } else if mtllib.is_some() {
+                crate::import::toast(
+                    toasts,
+                    ph2d_i18n::tr("app.sculpt3d.export.fine_paint_baked_mtl_and_png").into(),
+                );
+            }
+            crate::import::toast(
+                toasts,
+                lost_by(
+                    fmt,
+                    export_assado::perdeu_tinta_fina(
+                        fmt,
+                        scene.alguma_peca_tem_tinta_fina(),
+                        &assados,
+                    ),
+                ),
+            );
         }
         Err(e) => crate::import::toast(
             toasts,
@@ -164,3 +215,6 @@ pub(crate) fn lost_by(fmt: MeshFormat, has_fine_paint: bool) -> String {
     // consumidor dela ao sair da shell. Duas cópias divergiriam no dia do quarto formato.
     ph2d_mesh::lost_by(fmt, has_fine_paint)
 }
+
+#[path = "export_assado.rs"]
+mod export_assado;

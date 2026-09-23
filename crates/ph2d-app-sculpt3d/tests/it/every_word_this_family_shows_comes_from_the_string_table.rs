@@ -23,6 +23,15 @@ const TABLE: &str = "crates/ph2d-i18n/src/app_sculpt3d.rs";
 /// Um ficheiro isento inteiro, com o mecanismo — **todos são consola**.
 const FORA: &[Isento] = &[
     (
+        "export_assado.rs",
+        "o NOME DO MATERIAL (`ph2d_<n>`) é um token DENTRO de um par de ficheiros — o `usemtl` do \
+         `.obj` e o `newmtl` do `.mtl` têm de casar letra a letra, e quem os lê é outro programa. \
+         ⛔ Traduzi-lo faria os dois ficheiros discordarem no dia em que alguém mudasse de língua, \
+         e o destino abriria a peça SEM textura sem uma queixa — a mesma razão pela qual o aviso \
+         da saída não nomeia a fileira `Paint Detail`: *um texto que atravessa a fronteira do \
+         ficheiro não é texto de ecrã*",
+    ),
+    (
         "sonda_undo.rs",
         "a SONDA do undo (`PH2D_SCULPT3D_UNDO_PROBE`): as linhas `[probe-sculpt-undo]` e os nomes \
          dos passos do roteiro (`chip Plane`, `pista Height`, `campo Depth`) saem no TERMINAL de \

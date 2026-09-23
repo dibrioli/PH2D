@@ -2092,3 +2092,189 @@ UI**, não desta.
 ⏳ **E a modelação 3D continua a meter o aviso DENTRO da frase da confirmação** (o `{fmt}` do
 template dela), logo a partição do §22.2 não a alcança. O prefixo mais curto ajudou-a; a partição
 é da família dela.
+
+## §23 — A TINTA FINA **SAI** NO FICHEIRO: um ladrilho por face, sem solver de UV
+
+> A 2.ª metade da **P5** do [doc 27 §9](../27_o_estado_da_arte_de_onde_a_tinta_mora.md).
+> A §20 ensinou a saída a **dizer** que a tinta fina não era carregada; esta ensina-a a
+> **carregá-la**. Ordem do dono, 22/09: *«garanta que vai implementar de forma mais ágil e
+> depois siga implementando»*.
+
+⚠️ **Conte o DELTA:** `PROJECT_SCHEMA` 0, os três registos 0, `SCULPT_DOC_VERSION` 0, zero
+contrato, zero ADR, zero pacote externo. ⛔ **A `ph2d-app-sculpt3d` ganha UMA dependência**
+(`image`, só com a feature `png` — ver §23.8).
+
+### §23.1 — ⭐⭐⭐⭐ Porque não há solver de UV nenhum, e isso é um TEOREMA
+
+O [doc 27 §5](../27_o_estado_da_arte_de_onde_a_tinta_mora.md) já tinha medido a razão, e ela
+decide a arquitectura inteira desta wave:
+
+| esquema | o que ele achata | distorção de área |
+|---|---|---|
+| atlas | um pedaço **CURVO** da superfície | ⛔ **inevitável** (Egregium) — só o valor muda com o solver |
+| **um ladrilho por face** | **uma face plana de cada vez** | ⭐ **ZERO**, por construção |
+
+⇒ *o parametrizador é a **disposição***: cada face recebe um ladrilho seu, e o endereço
+`(face, i, j, k)` que a [`ph2d_mesh_colors::indice`] já resolve **é** o texel.
+
+⛔⛔ **E é por isso que isto NÃO exige a retopologia.** A família do atlas
+([doc 26](../26_a_parametrizacao_como_atlas.md), cinco waves) precisa de um `GridMap`, que só
+existe depois do botão; aqui não há desenrolamento para correr, logo **uma escultura crua sai
+tão bem como um quad limpo**. *O caminho que parecia ser o pagamento das cinco waves de atlas
+acabou por não precisar de nenhuma delas* — e elas continuam a ser a resposta certa para a
+outra pergunta (uma textura com **poucas ilhas**, que um artista abre no Substance).
+
+### §23.2 — ⚠️ O que o assado PERDE, e é o formato que obriga
+
+A fronteira de uma face é **PARTILHADA** na retícula (é a diferença de espécie para o Ptex) e
+**uma textura não sabe partilhar**: cada ladrilho leva a **cópia** da borda dele. ⭐ Os dois
+lados escrevem o MESMO valor — a amostra é uma só —, logo a costura é **invisível em cor** e o
+que ela custa é **filtragem**, que é o que a `FOLGA_EM_TEXELS = 2` paga (um texel para a
+bilinear, o segundo para um nível de mip; ⛔ **não** são os `8` do `VAO_EM_TEXELS` do atlas, que
+separa ILHAS de uma peça inteira).
+
+⚠️⚠️ **E ele NÃO iguala densidades entre faces, de propósito.** O ladrilho tem o tamanho do
+`lado` da retícula, que hoje é **UM** para a peça toda ⇒ uma face grande e uma pequena recebem o
+mesmo número de texels. *Isso não é distorção do assado — é a retícula que ele copia
+fielmente*, e curá-la é a **P2** do plano (o `R` por face). **Medido agora**, sobre as peças do
+próprio dono (`p1`/`p99` da área das faces, raiz quadrada = densidade linear):
+
+| peça | faces | dispersão da densidade |
+|---|---:|---:|
+| `Sculpt_Blender` | 8 291 | **4,89×** |
+| `_base_sculpt` | 18 432 | **6,74×** |
+| `_remesh_sculpt` | 5 445 | 4,06× |
+| `nossa_com_calota` | 21 914 | 3,12× |
+| `sculpt_antes` | 13 824 | **18,26×** |
+
+⇒ *a P2 tem defeito real e medido*, e a §5 do doc 27 dá o chão dela: com o `R` por face
+quantizado a potências de dois o pior caso é **`√2 = 1,41×`**.
+
+### §23.3 — ⛔⛔ A cura não é um número: é a INVERSÃO do eixo `v` a viver num sítio só
+
+Uma textura conta as linhas **de cima para baixo** e um `.obj` conta `v` **de baixo para
+cima**. A inversão vive em [`assar::coord`] e **em mais lado nenhum** — escrevê-la no escritor
+do ficheiro poria a mesma lei em dois sítios, e *o dia em que nascesse o segundo formato ela
+viajaria para um só*. A mutação `A2` faz o gate do canto sangrar.
+
+### §23.4 — ⭐ A DILATAÇÃO não é acabamento
+
+Sem ela o assado tem um defeito **na primeira olhada**: um `uv` sobre a borda de uma face cai
+**ENTRE** dois centros de texel, logo a bilinear lê um bloco `2×2` que inclui um texel de fora —
+e a metade vazia do ladrilho de um triângulo está *dentro* desse bloco ao longo da hipotenusa.
+⇒ a borda de **toda** face sairia com uma linha escura.
+
+⚠️ **A média dos vizinhos COBERTOS, nunca o primeiro que aparece:** com o primeiro, o resultado
+depende da ordem em que os oito são visitados e dois texels simétricos da mesma borda ficam de
+cores diferentes.
+
+⛔⛔ **E o GATE dela teve de ser reescrito, porque a 1.ª redacção media a GRANDEZA ERRADA.** Ela
+exigia que todo vizinho de um texel **opaco** fosse opaco — e um texel **dilatado** também é
+opaco, logo a condição cascateava para fora do ladrilho e reprovava sobre produto correcto. A
+régua honesta entra pela **porta pública**: varre o interior e a borda de cada face **em
+coordenadas da própria face**, interpola os `uv` dos cantos (*que é o que um motor faz*) e
+confere o bloco `2×2` que a bilinear leria. *Uma régua que recalculasse o ladrilho afirmaria
+sobre a cópia dela, nunca sobre o assado.*
+
+### §23.5 — ⭐⭐ O ESCRITOR: dois acumuladores, e o segundo é a lei
+
+`write_obj` **delega** em `write_obj_com_uv(pieces, &[], "")` ⇒ o caminho sem textura é
+**byte a byte** o de sempre (gate `sem_textura_o_obj_e_byte_a_byte_o_de_sempre`, e é ele que faz
+toda a família de gates que já media o OBJ passar a medir o caminho novo).
+
+⛔⛔ **Os índices de `vt` contam-se num acumulador PRÓPRIO**, porque uma peça sem textura
+acrescenta **vértices** e **nenhum** `vt`: somar os dois no mesmo contador desloca a tinta de
+todas as peças a seguir à primeira sem textura — e *o ficheiro abre sem queixa, com a tinta no
+sítio errado*. A fixtura do gate é exactamente esse arranjo (peça 0 sem textura, peça 1 com), e
+a mutação `A6` sangra nele.
+
+⚠️ **`Kd 1 1 1` e `map_Kd` sem pasta** são as duas metades que um visualizador obriga, e as duas
+são **silenciosas** quando erradas: a primeira escurece a tinta que o artista pintou, a segunda
+não resolve no computador de quem abrir.
+
+### §23.6 — ⚠️ Ter tinta fina e PERDÊ-LA são perguntas diferentes
+
+A tabela do formato passa a dizer que o **OBJ carrega** (`keeps_fine_paint` = `Obj`), e é isso
+que cala o `fine paint` no aviso da §20. ⛔ **Mas o `keeps_fine_paint` sozinho MENTE numa
+célula:** uma peça **recusada por tamanho** tem tinta fina e ela **fica para trás** ⇒
+`perdeu_tinta_fina(fmt, tem, assados)` = `tem && (!fmt.keeps_fine_paint() || !assados.alguma())`,
+com a tabela-verdade das quatro células num gate e a mutação `A10` a sangrar na que custa.
+
+⭐⭐ **E o gate da §20 previu a própria morte por escrito.** A redacção dele acabava em
+`assert!(!fmt.keeps_fine_paint())` com a frase *«se isso é verdade, a metade de cima deste gate
+deixou de descrever o produto»* — e passou a ser verdade hoje. Ele foi reescrito com a **morte
+da premissa visível no diff**, e a população passa a partir-se **pela tabela** (quem carrega não
+avisa, quem não carrega avisa sempre) com um piso em cada metade. *Uma lista escrita à mão ali
+divergiria no dia do quarto formato, que é exactamente o que o `lost_by` existe para impedir.*
+
+### §23.7 — ⛔ Três ficheiros e não um, e uma textura POR PEÇA
+
+Um `.obj` não embute imagem: ele aponta para um `.mtl`, que aponta para o `.png`. Os três saem
+**lado a lado**, com o nome derivado do que o artista escreveu (`teste.obj` ⇒ `teste.mtl` +
+`teste_0.png`), e a metade que os nomeia é **separada de quem grava**, porque *esta metade é
+testável* — o corte que o `sheet_export` da shell já fazia pela mesma razão.
+
+⚠️ **Uma textura por PEÇA e não uma para a cena:** cada peça tem o plano dela, com a topologia
+dela, e um assado único obrigaria a re-endereçar as amostras de todas num espaço comum — *que é
+exactamente o trabalho que a família do atlas faz e que esta não precisa de fazer*.
+
+⛔ **E a ORDEM é load-bearing:** as texturas e o material são gravados **ANTES** do `.obj`,
+porque é a existência deles que decide se o `.obj` pode apontar para lá. *Um `.obj` a apontar
+para um material que não existe abre PRETO no destino e ninguém sabe porquê* — em erro a função
+devolve `None`, diz QUAL ficheiro falhou, e o `.obj` sai **sem** textura, que é um ficheiro
+coerente.
+
+### §23.8 — ⚠️ PARA O INTEGRADOR
+
+* `ph2d-mesh-colors` ganha `assar.rs` (**aditivo**, e a crate continua com **zero**
+  dependências) e re-exporta `Assado`/`Recusa`/`Relatorio`/`assar`.
+* `ph2d-mesh` ganha `UvDaPeca`, `write_obj_com_uv` e `write_mtl`, os três **aditivos**; o
+  `write_obj` **delega** e a saída dele é byte-idêntica. ⚠️ `MeshFormat::keeps_fine_paint`
+  **muda de resposta** para o `Obj` — a modelação 3D lê a mesma tabela e passa a beneficiar dela
+  no dia em que assar (hoje ela passa `false` por medição, logo nada muda lá).
+* `ph2d-app-sculpt3d/Cargo.toml` ganha **`image` com `default-features = false, features =
+  ["png"]`** — a mesma declaração que a `shells/desktop` já tem para o exportador da folha de
+  sprites. ⚠️ É a **primeira** dependência externa nova desta linha inteira.
+* `ph2d-i18n`: **três chaves novas** em `app_sculpt3d.rs`.
+* O censo da fiação vai de **21 para 23** elos (`S7` o assado corre · `S8` o obj passa pelo
+  escritor com uv), e o nome do teste muda com ele.
+* ⚠️ **Uma isenção NOMEADA no censo do HR-15** (`export_assado.rs`): o nome do material
+  (`ph2d_<n>`) é um token **dentro de um par de ficheiros** — o `usemtl` e o `newmtl` têm de
+  casar letra a letra e quem os lê é outro programa. *Traduzi-lo faria os dois discordarem no
+  dia em que alguém mudasse de língua, e o destino abriria a peça sem textura sem uma queixa* —
+  a mesma razão pela qual o aviso da §22 não nomeia a fileira `Paint Detail`.
+
+### §23.9 — ⛔ O PRÉ-VOO apanhou DUAS âncoras que esta wave matou
+
+O `muta_a_saida_da_tinta.sh` (o arnês da §20) leu **`5 de 7`**: a `S1` ancorava em
+`keeps_fine_paint` a devolver `false` e a `S5` na chamada crua do `lost_by`, e **as duas linhas
+mudaram hoje**. ⭐ *Uma âncora que casa zero lê-se, num placar, exactamente como uma mutação que
+sobreviveu* — e o pré-voo apanhou-as **em segundos e sem correr um teste**.
+
+⚠️ **A `S1` foi re-ancorada ao contrário, e isso é a lei a mudar:** a mutação de ontem era
+*«o formato mente e diz que CARREGA»*; hoje o OBJ carrega de verdade, logo o que há a mutar é
+**os três** passarem a dizer que sim — e aí o `.ply` e o `.stl` calam-se sobre uma perda que
+acontece. *A pergunta do arnês é a mesma; o que se inverteu foi o produto.*
+
+### §23.10 — O placar
+
+* **Mutação: `12 de 13` sangram** (`muta_a_tinta_que_sai.sh`; o `A13` é o CONTROLO inerte), com
+  a população a ser as **TRÊS** crates que OBSERVAM — a lei do §20.6 aplicada à primeira.
+* Pré-voo dos **dez** arneses: **120 âncoras, todas a casar uma vez**.
+* Gates novos: `5` no assado (o canto · a fronteira partilhada · a dilatação · a recusa · o
+  nível base), `3` no escritor, `3` no app.
+
+### §23.11 — ⏳ O que fica ABERTO, com o mecanismo
+
+* **A P2 — o `R` por FACE.** A dispersão está medida acima (`3,1×` a `18,3×` nas peças do dono),
+  e o chão teórico é `1,41×`. ⛔ Ela **não** é uma afinação do assado: ela muda o endereçamento
+  da retícula (as arestas são **partilhadas**, logo uma aresta entre duas faces de resolução
+  diferente precisa de uma resolução própria — o `max` das duas, que com potências de dois faz a
+  face grossa ler um **subconjunto exacto** da fina).
+* **O tecto é `8192` e o recurso é a PLACA de quem abrir** (`max_texture_dimension_2d`, o mesmo
+  que a folha de sprites já usa). ⛔ Ele **não** limita o peso do ficheiro, que é outra grandeza
+  e não foi medida.
+* **O relógio do assado não foi varrido.** Ele corre **uma vez por exportação** e não por
+  quadro, logo não compete com o carimbo — mas o número não existe.
+* **A modelação 3D continua a não assar** (ela passa `false` ao `lost_by`): a porta está aberta
+  do lado da tabela, e quem a usar herda os três ficheiros de graça.

@@ -17,6 +17,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ph2d-migrar-texto:begin
         "app.sculpt3d.export.export_failed" => "Export failed: {e}",
         "app.sculpt3d.export.exported_piece_s_kb" => "Exported {n} piece(s), {size} KB -- {name}",
+        "app.sculpt3d.export.fine_paint_baked_mtl_and_png" => {
+            "Fine paint baked -- .mtl and .png too"
+        }
+        "app.sculpt3d.export.texture_failed" => "Could not write {name}: {e}",
+        "app.sculpt3d.export.texture_too_big" => "Piece {n}: paint not baked -- {why}",
         "app.sculpt3d.export.unknown_extension_use" => "Unknown extension: use {join}",
         "app.sculpt3d.export.nothing_to_export_no_sculpture_open" => {
             "Nothing to export: no sculpture open"

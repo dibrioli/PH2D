@@ -98,14 +98,19 @@ open(p,"w").write(s.replace(a, b, 1))
 }
 
 # ── A TABELA DO FORMATO ──────────────────────────────────────────────────
+# ⚠️ **RE-ANCORADA em 22/09:** a lei mudou (o OBJ passou a CARREGAR a tinta fina
+#    num `.png` ao lado), logo a mutacao de ANTES — `false` -> `true` — deixou de
+#    casar. ⭐ A pergunta que este arnes faz continua a mesma, e ela inverte-se:
+#    hoje o que ha' a mutar e' os formatos que NAO a carregam passarem a dizer
+#    que sim, e ai' o `.ply` e o `.stl` calam-se sobre uma perda que acontece.
 muta "$MESH/export.rs" \
   '    pub fn keeps_fine_paint(self) -> bool {
-        false
+        matches!(self, Self::Obj)
     }' \
   '    pub fn keeps_fine_paint(self) -> bool {
         true
     }' \
-  'S1 o formato mente e diz que CARREGA a tinta fina'
+  'S1 os tres formatos mentem e dizem que CARREGAM a tinta fina'
 
 # ── A CLAUSULA, nas duas metades ─────────────────────────────────────────
 # ⚠️ As duas mutacoes da clausula mantem `has_fine_paint` USADO de proposito.
@@ -135,9 +140,12 @@ muta "$APP/tinta_da_peca.rs" \
   'S4 a porta volta a ler o Option da peca: a meio de um traco o aviso cala-se'
 
 # ── O ELO ────────────────────────────────────────────────────────────────
+# ⚠️ **RE-ANCORADA em 22/09:** a chamada ganhou a `perdeu_tinta_fina` pelo meio
+#    (ter tinta fina e PERDE-LA sao perguntas diferentes desde que o OBJ a
+#    carrega), e a de antes passou a casar ZERO.
 muta "$APP/export.rs" \
-  'lost_by(fmt, scene.alguma_peca_tem_tinta_fina())' \
-  'lost_by(fmt, false)' \
+  '                    export_assado::perdeu_tinta_fina(' \
+  '                    false && export_assado::perdeu_tinta_fina(' \
   'S5 a saida crava o false e o aviso nunca soa'
 
 # ── O SEGUNDO CONSUMIDOR ─────────────────────────────────────────────────

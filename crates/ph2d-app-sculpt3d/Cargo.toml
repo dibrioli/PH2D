@@ -39,6 +39,10 @@ ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-light = { path = "../ph2d-light" }
 ph2d-mesh = { path = "../ph2d-mesh" }
 ph2d-mesh-colors = { path = "../ph2d-mesh-colors" }
+# ⚠️ **SÓ o PNG**, e a razão é o tecto de dependências desta família: o assado
+# grava uma imagem e não lê nenhuma. `default-features = false` é o mesmo que a
+# shell já declara para o exportador da folha de sprites.
+image = { version = "0.25", default-features = false, features = ["png"] }
 
 # A lei do corte (o desenho vira volume) e a fronteira que corta. Ver o
 # ADR-0170 e a `SPEC_trim_gesture.md`.

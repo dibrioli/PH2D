@@ -115,7 +115,10 @@ pub use dyntopo_alvo::{
 };
 pub use dyntopo_flip::{alinha_arestas, relax_valence, relaxa_valencia_em};
 pub use edges::Edges;
-pub use export::{ExportPiece, MeshFormat, triangle_count, write_obj, write_ply, write_stl};
+pub use export::{
+    ExportPiece, MeshFormat, UvDaPeca, triangle_count, write_mtl, write_obj, write_obj_com_uv,
+    write_ply, write_stl,
+};
 pub use extract::{Extract, extract_masked};
 pub use face::{Face, TRI};
 pub use feature_dirs::{FeatureDir, FeatureOptions, FeatureReport, feature_dirs};

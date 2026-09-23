@@ -209,6 +209,20 @@ pub(crate) fn announce() {
          [sculpt3d]           da malha. O ficheiro estava certo; quem a deitava fora era\n\
          [sculpt3d]           o quadro seguinte.\n\
          [sculpt3d]\n\
+         [sculpt3d]    (9) LEVAR A TINTA PARA FORA. Com a fileira em `8x` e a marca FINA\n\
+         [sculpt3d]        na peca, carregue `Ctrl+Shift+E`, escreva teste.obj e grave.\n\
+         [sculpt3d]        -> Aparecem DUAS mensagens no topo, e a de baixo diz que a\n\
+         [sculpt3d]           tinta fina foi assada.\n\
+         [sculpt3d]        -> Na pasta onde gravou ficam TRES ficheiros: teste.obj,\n\
+         [sculpt3d]           teste.mtl e teste_0.png. Abra a imagem: e' a tinta, um\n\
+         [sculpt3d]           quadrado por face da peca.\n\
+         [sculpt3d]        -> Abra o teste.obj noutro programa (Blender, Windows 3D\n\
+         [sculpt3d]           Viewer): a peca chega COM a pintura fina, e nao com a\n\
+         [sculpt3d]           versao grossa que a malha teria.\n\
+         [sculpt3d]        ⚠️ Se gravar como .ply ou .stl a tinta fina NAO sai (os dois\n\
+         [sculpt3d]           formatos so' sabem cor por vertice), e a mensagem de baixo\n\
+         [sculpt3d]           avisa que ela ficou para tras.\n\
+         [sculpt3d]\n\
          [sculpt3d]    COMO SABER QUE DEU ERRADO: se no (4) a borda sair igual a' do (2),\n\
          [sculpt3d]    ou se o arame ADENSAR quando voce so' trocou a fileira, PARE e\n\
          [sculpt3d]    reporte. Se a peca ficar PRETA, ou aparecerem faces pretas de\n\
@@ -216,7 +230,9 @@ pub(crate) fn announce() {
          [sculpt3d]    arrasto RODAR a camara em vez de pintar, PARE e reporte. Se no\n\
          [sculpt3d]    (7) o Ctrl+Z deixar a marca onde estava, PARE e reporte. Se no\n\
          [sculpt3d]    (8) a marca voltar GROSSA, ou a fileira abrir em `Mesh` com uma\n\
-         [sculpt3d]    peca que voce gravou fina, PARE e reporte. E se o\n\
+         [sculpt3d]    peca que voce gravou fina, PARE e reporte. Se no (9) sair so'\n\
+         [sculpt3d]    UM ficheiro em vez de tres, ou se a peca chegar ao outro programa\n\
+         [sculpt3d]    sem cor nenhuma, PARE e reporte. E se o\n\
          [sculpt3d]    app FECHAR sozinho em qualquer passo, PARE e mande a linha do\n\
          [sculpt3d]    terminal que comeca por PH2D PANIC -- ela diz onde."
     );

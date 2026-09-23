@@ -5167,6 +5167,7 @@ dependencies = [
 name = "ph2d-app-sculpt3d"
 version = "0.0.0"
 dependencies = [
+ "image",
  "ph2d-app-host",
  "ph2d-core",
  "ph2d-crossfield",

@@ -275,6 +275,20 @@ fn an_empty_scene_writes_a_valid_empty_file() {
 /// regressão.*
 #[test]
 fn the_warning_names_fine_paint_only_when_the_scene_carries_some() {
+    // ⛔⛔ **A PREMISSA DESTE GATE MORREU, e ele previu-a por escrito.** A
+    // redacção de 22/09 acabava em `assert!(!fmt.keeps_fine_paint())` com a
+    // frase *«se isso é verdade, a metade de cima deste gate deixou de
+    // descrever o produto»* — e passou a ser verdade no dia em que a saída
+    // aprendeu a ASSAR a retícula numa textura. ⭐ *Um gate que nomeia a
+    // condição em que deixa de valer é o que torna a morte dele legível num
+    // diff, em vez de uma barra afrouxada em silêncio.*
+    //
+    // ⚠️ **A população parte-se pela TABELA e nunca por uma lista à mão:** quem
+    // carrega a tinta fina não avisa, quem não carrega avisa sempre. Uma lista
+    // escrita aqui divergiria no dia do quarto formato, que é exactamente o
+    // que o `lost_by` existe para impedir.
+    let mut carregam = 0;
+    let mut perdem = 0;
     for fmt in MeshFormat::ALL {
         let sem = lost_by(fmt, false);
         let com = lost_by(fmt, true);
@@ -294,21 +308,175 @@ fn the_warning_names_fine_paint_only_when_the_scene_carries_some() {
             sem, de_antes,
             "sem tinta fina o aviso do {fmt:?} tem de ser o de sempre, byte a byte"
         );
-
         assert!(
             !sem.contains("fine paint"),
             "o {fmt:?} avisou de tinta fina numa cena que não tem nenhuma: o aviso \
              passa a soar sempre e vira ruído"
         );
-        assert!(
-            com.contains("fine paint"),
-            "o {fmt:?} NÃO avisa que a tinta fina fica para trás, e nenhum dos três \
-             a carrega: é a perda silenciosa que este gate existe para fechar"
-        );
-        assert!(
-            !fmt.keeps_fine_paint(),
-            "o {fmt:?} passou a dizer que carrega tinta fina: se isso é verdade, a \
-             metade de cima deste gate deixou de descrever o produto"
-        );
+
+        if fmt.keeps_fine_paint() {
+            carregam += 1;
+            assert_eq!(
+                com, de_antes,
+                "o {fmt:?} CARREGA a tinta fina (ela sai numa textura ao lado) e \
+                 mesmo assim avisa que ela se perde: um aviso falso é pior que \
+                 nenhum, porque o artista confia nele"
+            );
+        } else {
+            perdem += 1;
+            assert!(
+                com.contains("fine paint"),
+                "o {fmt:?} NÃO avisa que a tinta fina fica para trás, e ele não a \
+                 carrega: é a perda silenciosa que este gate existe para fechar"
+            );
+        }
+    }
+    // ⚠️ **As duas metades da população têm de EXISTIR**, senão uma das pernas
+    // deste gate fica trivialmente verdadeira e ele afirma metade do que diz.
+    assert!(carregam >= 1, "nenhum formato carrega a tinta fina");
+    assert!(
+        perdem >= 1,
+        "nenhum formato a perde: o aviso ficou sem sujeito"
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  O OBJ COM COORDENADAS DE TEXTURA — ver [`write_obj_com_uv`].
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// UVs de brincar para uma peça: um par por canto, distintos.
+fn uv_falso(mesh: &Mesh) -> (Vec<[f32; 2]>, Vec<u32>) {
+    let mut uv = Vec::new();
+    let mut off = vec![0u32];
+    for f in mesh.faces() {
+        for (c, _) in f.verts().iter().enumerate() {
+            let n = uv.len() as f32;
+            uv.push([n / 1000.0, (c as f32 + 1.0) / 8.0]);
+        }
+        off.push(uv.len() as u32);
+    }
+    (uv, off)
+}
+
+/// ⭐⭐⭐ **O CONTROLO que vale mais que o resto: sem textura o arquivo é o de
+/// SEMPRE, byte a byte.**
+///
+/// ⛔ O [`write_obj`] delega no irmão, logo toda a família de gates que já
+/// media o OBJ passa a medir o caminho novo — *e se a delegação mudasse um
+/// único byte, ela estaria a medir outro formato sem ninguém notar*.
+#[test]
+fn sem_textura_o_obj_e_byte_a_byte_o_de_sempre() {
+    let a = shapes::cube(1.0);
+    let b = shapes::uv_sphere(8, 12, 0.5);
+    let ps = [
+        piece(&a, [0.0, 0.0, 0.0], 1.0),
+        piece(&b, [2.0, 0.0, 0.0], 2.0),
+    ];
+
+    let de_sempre = write_obj(&ps);
+    assert_eq!(
+        write_obj_com_uv(&ps, &[], ""),
+        de_sempre,
+        "a lista de uvs VAZIA tem de dar o arquivo de sempre"
+    );
+    assert_eq!(
+        write_obj_com_uv(&ps, &[None, None], ""),
+        de_sempre,
+        "duas peças SEM textura têm de dar o arquivo de sempre"
+    );
+    // O CONTROLO do próprio controlo: a fixtura tem de ter conteúdo.
+    assert!(de_sempre.len() > 500, "fixtura vazia: {}", de_sempre.len());
+    assert!(!de_sempre.contains("vt "), "não devia haver `vt` aqui");
+}
+
+/// ⭐⭐ **Com textura, cada canto de cada face aponta para o `vt` DELE.**
+///
+/// ⚠️ **E os dois acumuladores são INDEPENDENTES:** a 1.ª peça não tem textura
+/// e a 2.ª tem, o que é exactamente o arranjo em que um contador partilhado
+/// desloca a tinta — *somar os vértices da peça sem textura ao índice de `vt`
+/// da seguinte dá um arquivo que abre, com a tinta no sítio errado*.
+#[test]
+fn cada_canto_aponta_para_o_vt_dele() {
+    let a = shapes::cube(1.0);
+    let b = shapes::uv_sphere(6, 8, 0.5);
+    let ps = [
+        piece(&a, [0.0, 0.0, 0.0], 1.0),
+        piece(&b, [2.0, 0.0, 0.0], 1.0),
+    ];
+    let (uv, off) = uv_falso(&b);
+    let uvs = [
+        None,
+        Some(UvDaPeca {
+            uv: &uv,
+            off: &off,
+            material: "ph2d_1",
+        }),
+    ];
+
+    let obj = write_obj_com_uv(&ps, &uvs, "peca.mtl");
+    assert!(obj.starts_with("# PH2D Sculpt\nmtllib peca.mtl\n"));
+    assert_eq!(obj.matches("usemtl ph2d_1\n").count(), 1);
+
+    let vts: Vec<&str> = obj.lines().filter(|l| l.starts_with("vt ")).collect();
+    assert_eq!(vts.len(), uv.len(), "um `vt` por canto da peça com textura");
+
+    // ⚠️ A 1.ª peça NÃO pode ter `vt` nos cantos dela, e a 2.ª tem de os ter
+    //    TODOS — é a metade que um acumulador partilhado passaria na mesma.
+    let (mut sem, mut com) = (0usize, 0usize);
+    let mut vistos = std::collections::BTreeSet::new();
+    let mut base_v = 0usize;
+    for l in obj.lines().filter(|l| l.starts_with("f ")) {
+        for t in l.split_whitespace().skip(1) {
+            match t.split_once('/') {
+                None => sem += 1,
+                Some((v, vt)) => {
+                    com += 1;
+                    let vt: usize = vt.parse().expect("índice de vt");
+                    assert!(
+                        (1..=vts.len()).contains(&vt),
+                        "índice de `vt` fora de alcance: {vt} de {}",
+                        vts.len()
+                    );
+                    // O vértice tem de ser da SEGUNDA peça.
+                    let v: usize = v.parse().expect("índice de v");
+                    base_v = base_v.max(v);
+                    vistos.insert(vt);
+                }
+            }
+        }
+    }
+    // ⚠️ Os cantos CONTAM-SE (um cubo é de quads e uma esfera de triângulos):
+    //    `faces * 3` mediria outra malha e reprovaria sobre produto correcto.
+    let cantos_a: usize = a.faces().iter().map(|f| f.verts().len()).sum();
+    assert_eq!(sem, cantos_a, "a peça sem textura ficou com `vt`");
+    assert_eq!(
+        com,
+        uv.len(),
+        "a peça com textura não cobriu os cantos dela"
+    );
+    assert_eq!(
+        vistos.len(),
+        vts.len(),
+        "algum `vt` escrito nunca é referido: o acumulador deslocou-se"
+    );
+    assert!(
+        base_v > a.positions().len(),
+        "os índices de `v` não acumularam"
+    );
+}
+
+/// ⚠️ **`Kd` BRANCO e `map_Kd` SEM PASTA** — as duas metades que um visualizador
+/// obriga, e as duas silenciosas quando erradas (a tinta escurece; o material
+/// não resolve no computador de quem abrir).
+#[test]
+fn o_material_nao_escurece_a_tinta_nem_carrega_um_caminho() {
+    let mtl = write_mtl(&[
+        ("ph2d_0".into(), "sculpt_0.png".into()),
+        ("ph2d_1".into(), "sculpt_1.png".into()),
+    ]);
+    assert_eq!(mtl.matches("newmtl ").count(), 2);
+    assert_eq!(mtl.matches("Kd 1 1 1\n").count(), 2);
+    for l in mtl.lines().filter(|l| l.starts_with("map_Kd")) {
+        assert!(!l.contains('/'), "o material leva um CAMINHO: {l}");
     }
 }

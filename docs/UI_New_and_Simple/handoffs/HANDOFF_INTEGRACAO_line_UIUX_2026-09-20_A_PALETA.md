@@ -2408,6 +2408,94 @@ contada em OCORRÊNCIAS, a mutação **compila**, e a corrida teve população n
 `0` como *«este painel não corta»*.
 
 
+## §9-vicies-semel — ⭐⭐⭐ A LINHA DE COR PASSA PELA PORTA, E A RÉGUA SEPARA UMA FILEIRA DE UMA PALETA
+
+**Report do dono, 2026-09-21:** *«os seletores de cor de todo o app precisam ser padronizados»*,
+com um **desenho** ao lado — a amostra como uma **barra** na coluna do valor, e não o quadradinho
+encostado à direita.
+
+### §9-vicies-semel.1 — O que já existia, e o que faltava
+
+A porta [`property_row::paint_color_row`](../../../crates/ph2d-editor-core/src/property_row.rs)
+nasceu nesse dia, com a medição no doc dela: **`109` selectores em CINCO larguras** (`18`, `24`,
+`32`, `120`, `268 px`). Dois painéis passaram por ela (Inspector, Vector); os outros continuaram a
+montar a linha à mão.
+
+Medido agora: **`16` ficheiros** pintam uma amostra com `paint_color_swatch` / `paint_swatch_or_mixed`.
+
+### §9-vicies-semel.2 — ⛔ Nem toda amostra é uma FILEIRA, e forçá-las todas seria o erro
+
+| sítio | o que é | veredito |
+|---|---|---|
+| `flip` ×4 (Fill · Stroke · Fill-section · Colorize) | rótulo + quadrado de `SwatchSize::Md` encostado a `inner_x + inner_w − w` | ⭐ **fileira — convertida** |
+| `bgremoval` · `painter-layers/paint_mask` | **PALETA** (`flow_fixed(n, SWATCH_PX, …)`) | fica |
+| `hierarchy/row` | **ETIQUETA** de uma linha de lista (`INLINE_ICON_PX`) | fica |
+| `painter-layers/paint_ramp_widget` | linha de um **EDITOR RICO** (índice · posição · cor) | fica |
+| `painter-layers/paint_shape_layers` | linha de **LISTA** de camadas | fica |
+| `tokens/paint` · `vector/paint_stack_rows` · `model3d/paint_rows_swatch` | linha de **TABELA** com aritmética própria | ⏳ aberto |
+| `inspector/sections/color_tint` | **GRELHA 2×2** dentro da coluna do valor | fica, declarado |
+
+⭐ *Forçar uma paleta pela porta trocaria uma grelha por um campo.*
+
+### §9-vicies-semel.3 — O discriminador é DERIVADO, não uma lista de painéis
+
+⭐⭐⭐ A pergunta que separa as duas populações é ***«ele pinta um RÓTULO DE PROPRIEDADE no mesmo
+fôlego?»***: um ficheiro que chama `paint_property_label(` **e** desenha a amostra à mão está a
+escrever uma linha de propriedade com **uma segunda aritmética de colunas**. Uma paleta não chama
+rótulo nenhum.
+
+⇒ [`architecture_color_rows_use_the_door`](../../../crates/ph2d-editor-core/tests/it/architecture_color_rows_use_the_door.rs),
+com as quatro metades que esta casa cobra: a acusação · a **obsolescência** do `FORA` (cada entrada
+tem de continuar a descrever um ficheiro que a régua acusaria) · o **piso de população** (`12`, de
+`16` medidos) · e o **controlo** nos dois sentidos (ele vê a forma que existe para acusar, e não a
+inventa numa paleta).
+
+⚠️ **O `FORA` tem DUAS entradas e as duas são verificadas:** a própria porta (ela chama o
+`paint_swatch_or_mixed` por dentro — *uma excepção que não estivesse lá faria a porta reprovar o
+gate que ela existe para impor*) e o tingimento por canto, que **já** lê `row.label`/`row.control`
+do `property_row_columns`: a coluna dele é a mesma; o que ele não pode é colapsar quatro cantos
+numa barra.
+
+⚠️ **E a régua diz o que NÃO vê:** uma linha de propriedade cujo rótulo seja escrito com
+`paint_text` à mão passa-lhe ao lado. *Ela mede a DUPLICAÇÃO da aritmética, não a existência da
+linha* — as outras metades têm censos próprios.
+
+### §9-vicies-semel.4 — ⭐⭐ O que a conversão revelou de graça
+
+**(a) Um campo do contexto ficou ÓRFÃO.** O `BodyCtx::font` do Flip tinha **um** leitor no painel
+inteiro — o `y + (row_h − font) * 0.5` do rótulo escrito à mão. Com as quatro linhas pela porta ele
+deixou de ser lido, e quem o apanhou foi o `-D warnings`. *Um contexto que carrega o que já ninguém
+pergunta é a sombra de uma aritmética que se mudou.*
+
+**(b) Três chaves de i18n ficaram órfãs** (`panel.flip.tool.fill_color` · `…stroke_color` ·
+`panel.flip.colorize.colorize_color`). Elas eram o **nome acessível** da amostra, e a porta tira-o
+do **rótulo da própria linha** — ou seja, do que está na tela. ⚠️ Isto **não** é o caso do
+tingimento por canto, onde as quatro amostras partilham um rótulo visível e por isso precisam de
+nomes próprios (há gate a dizê-lo). Apanhou-as o `every_key_of_this_panel_exists_on_both_sides`.
+
+### §9-vicies-semel.5 — ⏳ O que fica ABERTO, com o mecanismo
+
+- **Três linhas de TABELA** (`tokens` · `vector/paint_stack_rows` · `model3d/paint_rows_swatch`)
+  têm aritmética de colunas própria e **não** chamam `paint_property_label`, logo a régua não as
+  acusa. A do `model3d` passa por um `rotulo_e_goteira` que é a versão dela da porta — convertê-la
+  é uma wave, não uma linha.
+- ⛔⛔ **A sonda das cores é CEGA a um id COMPUTADO, e agora DI-LO.** O `tokens_swatch_id(row)`, o
+  `vector_paint_swatch_id(i)` e o `painter_shape_layer_color_swatch_id` não são literais, logo o
+  mapa inverso não os sabe nomear e ela deixava-os cair **em silêncio**. Hoje conta-os e imprime
+  uma linha `ANONIMO` por painel — e o número é grande (`35` no `color_equalization`, `39` no
+  `grid_snap`, `32` na Hierarquia). ⚠️ **Esse total é do painel INTEIRO e não só das cores**: a
+  sonda filtra por NOME, logo um selector ali dentro é invisível para ela. *Uma varredura que
+  ignora o que não sabe nomear mede o alcance do NOME, não o do produto* — e a régua do §9-vicies-
+  semel.3, que é TEXTUAL sobre o fonte, não tem essa cegueira.
+
+### §9-vicies-semel.6 — O portão
+
+`cargo fmt --all --check` limpo · clippy `-D warnings` zero nas crates tocadas · varredura impactada
+verde · censo das elisões a `--workspace` `13/13` · **2 mutações sangram** (o Flip de volta ao par
+rótulo + amostra · uma entrada do `FORA` a apontar para um ficheiro que não existe), com os três
+controlos do arnês.
+
+
 ## §11 — O que esta linha recomenda a quem a integrar
 
 1. **Correr o `diag_onde_cai_a_pista_do_pente` da `line/sculpt3d` DEPOIS da fusão** e reescrever com

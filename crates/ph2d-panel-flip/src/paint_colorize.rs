@@ -3,11 +3,7 @@
 
 use crate::ids;
 use crate::paint_sections::BodyCtx;
-use ph2d_editor_core::paint::resolve;
-use ph2d_editor_core::widget::{ColorSwatch, SwatchSize, paint_color_swatch};
-use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_tokens::ColorToken;
 use ph2d_tool_flip::{FlipMode, FlipStyleSnapshot, TRAP_MAX_PX, px_to_slider};
 
 impl BodyCtx<'_> {
@@ -24,33 +20,22 @@ impl BodyCtx<'_> {
         y = self.section_label(tr("panel.flip.colorize.colorize"), y);
 
         // A cor do PRÓXIMO rabisco — paleta própria (o picker OKLCH é compartilhado).
-        let swatch_w = SwatchSize::Md.px();
-        ph2d_editor_core::widget::paint_property_label(
-            self.text_system,
+        // ⭐ **A PORTA das cores** — ver o irmão `paint_sections.rs`.
+        y = ph2d_editor_core::property_row::paint_color_row(
             self.scene,
-            tr("panel.flip.colorize.color"),
+            self.text_system,
+            self.theme,
+            self.hit_index,
+            self.store,
             self.inner_x,
-            y + (self.row_h - self.font) * 0.5,
-            self.font,
-            ph2d_editor_core::widget::property_label_col_w(self.inner_x, self.inner_w),
-            resolve(ColorToken::Text1, self.theme),
-        );
-        let swatch_rect = Rect::new(
-            self.inner_x + self.inner_w - swatch_w,
+            self.inner_w,
             y,
-            swatch_w,
-            self.row_h,
-        );
-        let swatch = ColorSwatch::new(
+            tr("panel.flip.colorize.color"),
             ids::FLIP_COLORIZE_SWATCH,
-            tr("panel.flip.colorize.colorize_color"),
             snap.colorize_color,
-        )
-        .size(SwatchSize::Md);
-        paint_color_swatch(&swatch, swatch_rect, self.scene, self.theme);
-        self.hit_index
-            .register(ids::FLIP_COLORIZE_SWATCH, swatch_rect);
-        y += self.row_h + self.row_gap;
+            false,
+            ph2d_editor_core::property_row::Seccao::apenas_campos(1),
+        );
 
         // **Size — o MESMO do pincel** (ids `FLIP_SIZE`/`_NUM`), pela regra do Erase/Sculpt:
         // um 2º slider para a mesma grandeza seria estado duplicado, e o artista teria de

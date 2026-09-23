@@ -37,6 +37,7 @@ mod arch_safe_clamp_only;
 mod arch_shape_slot_uses_the_shape_door;
 mod architecture_adr_numbers_are_unique;
 mod architecture_chrome_dispatch_in_sync;
+mod architecture_color_rows_use_the_door;
 mod architecture_curve_drag_asks_whose_gesture;
 mod architecture_cycle_prevention;
 mod architecture_docs_paths_and_smokes_resolve;

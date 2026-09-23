@@ -555,15 +555,42 @@ fn diag_que_forma_tem_cada_seletor_de_cor() {
 }
 
 /// ⛔ As árvores de ids que a sonda das cores lê.
+///
+/// ⚠️⚠️ **A 1.ª redacção lia OITO árvores e a sonda achava OITO selectores.** *A dívida não era o
+/// que a régua dizia; a régua é que era estreita* — a mesma lição que o censo do HR-15 pagou em
+/// 2026-09-20 (`44` de `325` crates). ⇒ ela lê hoje **todo** painel que declara ids
+/// (`grep -l hash_node_id` sobre `crates/ph2d-panel-*/src`), mais as duas folhas que pintam
+/// fileiras de cor por conta própria.
 const FONTES_DAS_CORES: &[&str] = &[
-    "../ph2d-panel-inspector/src/ids",
-    "../ph2d-panel-vector/src",
+    "../ph2d-panel-asset-browser/src",
+    "../ph2d-panel-audio-editor/src",
+    "../ph2d-panel-audio-mixer/src",
+    "../ph2d-panel-authored/src",
+    "../ph2d-panel-bgremoval/src",
+    "../ph2d-panel-color-equalization/src",
+    "../ph2d-panel-equalize-sizes/src",
     "../ph2d-panel-flip/src",
-    "../ph2d-panel-model3d/src/ids",
-    "../ph2d-panel-tokens/src",
+    "../ph2d-panel-flip-frames/src",
+    "../ph2d-panel-grid-snap/src",
+    "../ph2d-panel-hierarchy/src",
+    "../ph2d-panel-inspector/src",
+    "../ph2d-panel-model3d/src",
+    "../ph2d-panel-motion-graph/src",
+    "../ph2d-panel-padding/src",
     "../ph2d-panel-painter-layers/src",
+    "../ph2d-panel-physics/src",
+    "../ph2d-panel-sculpt3d/src",
+    "../ph2d-panel-skeleton/src",
+    "../ph2d-panel-tags/src",
+    "../ph2d-panel-timeline/src",
+    "../ph2d-panel-tokens/src",
+    "../ph2d-panel-upscale/src",
+    "../ph2d-panel-vector/src",
+    "../ph2d-panel-wet-tuning/src",
+    "../ph2d-panel-widget-lab/src",
     "../ph2d-editor-core/src/ids",
     "../ph2d-tool-vector/src",
+    "../ph2d-param-editors/src",
 ];
 
 fn colhe_cores(
@@ -574,8 +601,17 @@ fn colhe_cores(
     saida: &mut Vec<String>,
 ) {
     let _ = host.medindo_a_pintura_do_registo(painel, viewport());
+    // ⛔⛔ **O QUE A SONDA NÃO SABE NOMEAR CONTA-SE, e a 1.ª redacção deitava-o fora em SILÊNCIO.**
+    //
+    // O mapa inverso é feito de LITERAIS (`hash_node_id("…")`), logo um id **COMPUTADO** —
+    // `tokens_swatch_id(row)`, `vector_paint_swatch_id(i)`, `painter_shape_layer_color_swatch_id`
+    // — não tem slug nenhum e caía neste `continue`. *Uma varredura que ignora o que não sabe
+    // nomear mede o alcance do NOME, não o do produto*, e é por isso que ela lia `8` selectores
+    // num app que pinta mais.
+    let mut anonimos = 0usize;
     for (nid, r) in host.registos_da_ultima_pintura() {
         let Some(slug) = nomes.get(&nid) else {
+            anonimos += 1;
             continue;
         };
         let s = slug.to_ascii_lowercase();
@@ -588,12 +624,27 @@ fn colhe_cores(
         //     (um disco de 18 px na borda direita do título — `color_circle_hit_rect`).
         // Nenhum dos dois é uma linha de propriedade, e padronizá-los ao controlo seria
         // trocar um cabeçalho por um campo.
-        if s.ends_with("_section") || (s.ends_with("_color") && r.w == r.h) {
-            continue;
-        }
+        // ⭐⭐ **O que se EXCLUI imprime-se, e isso não é enfeite.** A 1.ª redacção desta sonda
+        //    deitava as duas populações fora em silêncio e lia `8` selectores; um `swatch`
+        //    QUADRADO numa linha de propriedade cai na mesma regra que um ponto de cabeçalho, e
+        //    *uma exclusão muda faz a régua parecer uma medição do produto*.
+        let balde = if s.ends_with("_section") {
+            "BANDA "
+        } else if s.ends_with("_color") && (r.w - r.h).abs() < 0.5 {
+            "PONTO "
+        } else {
+            "FILEIRA"
+        };
         saida.push(format!(
-            "{id:<16} w={:6.1} h={:5.1} x={:6.1}  {slug}",
+            "{balde} {id:<16} w={:6.1} h={:5.1} x={:6.1}  {slug}",
             r.w, r.h, r.x
+        ));
+    }
+    if anonimos > 0 {
+        saida.push(format!(
+            "ANONIMO {id:<16} {anonimos} rect(s) SEM SLUG (id computado ou arvore de ids fora \
+             das FONTES). ⚠️ E' o total do painel, NAO so' as cores: a sonda filtra por NOME, logo \
+             um selector aqui dentro e' invisivel para ela"
         ));
     }
 }

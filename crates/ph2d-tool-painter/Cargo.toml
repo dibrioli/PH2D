@@ -79,7 +79,9 @@ serde = { version = "1", features = ["derive"] }
 # ⭐ Usos NOMEADOS depois dele, cada um com ADR e gate byte-a-byte contra o laço em série: as passagens
 # POR PIXEL da pilha do Composite Brush (`composite_linhas::tinta`/`borracha`) e o re-amostrar do warp
 # (`warp::session::reamostra`) — ADR-0172, sob os MESMOS três invariantes (⚠️ o número soma entre
-# linhas: reconte-o). Todo uso novo exige ADR novo.
+# linhas: reconte-o). E os da aquarela — o despejo da água (`grow_wet_soak`), as passagens por texel
+# do aro, da cobertura e dos campos molhado/estilo, e as faixas verticais do `box_blur` — ADR-0173.
+# Todo uso novo exige ADR novo.
 rayon = "1"
 
 [dev-dependencies]

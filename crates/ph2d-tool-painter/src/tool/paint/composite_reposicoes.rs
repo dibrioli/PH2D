@@ -59,6 +59,9 @@ impl PainterTool {
     /// e a porta de cancelar. *Três canais que um re-carimbo tem de repor estavam escritos lado a
     /// lado; este era o quarto, e ninguém lhe perguntou.*
     pub(super) fn restamp_reset_pilha(&mut self) {
+        // A tela acabou de ser DESCASCADA para o `pre`: o que estava por compor descrevia a figura
+        // que saiu, logo DESCARTA-se (`composite_por_quadro`) — compô-lo reescrevê-la-ia.
+        self.descarta_o_pendente();
         // ⚠️⚠️ **O ESFREGÃO tem o acumulador DELE, e ele fica FORA da guarda abaixo.** O campo de
         // deslocamento (`paint.warp`) é por TRAÇO como os planos, e a base congelada dele é a tela
         // do pen-down — depois de um descascar ela descreve uma figura que já não está lá. Sem
@@ -129,6 +132,8 @@ impl PainterTool {
         if COMMIT_SEM_FECHAR.with(std::cell::Cell::get) {
             return; // a bissecção: o commit de ANTES da cura, para o A/B ser repetível.
         }
+        // O que ficou por compor entra na tela ANTES de ela ser fixada (`composite_por_quadro`).
+        self.compoe_o_pendente();
         // O campo de deslocamento do esfregão é por traço e a base congelada dele é a tela do
         // pen-down — depois de fixar, ela descreve uma tela que já não existe.
         self.end_smear_session();

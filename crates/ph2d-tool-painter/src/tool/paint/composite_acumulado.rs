@@ -136,6 +136,20 @@ impl PainterTool {
         }
         #[cfg(test)]
         fases::soma(fases::ACUMULAR, t_acumular);
+        // ⭐ A composição é UMA por quadro quando o hospedeiro drena por quadro — ver
+        //    [`super::composite_por_quadro`]. Os planos já têm o lote; só a tela espera.
+        if self.pilha_pode_adiar() {
+            self.adia_a_composicao(caixa_nova, camadas);
+            return;
+        }
+        self.compoe_a_regiao(caixa_nova, &camadas);
+    }
+
+    /// **Compor a caixa `caixa_nova` a partir do `pre` e dos planos** — os passos 3 e 4 da lei, e
+    /// a porta que o [`Self::compoe_o_pendente`] também chama (a união de um quadro é uma caixa
+    /// como outra qualquer: tudo o que ela lê já está nos planos).
+    pub(super) fn compoe_a_regiao(&mut self, caixa_nova: Region, camadas: &[Vec<Dab>; N_CAMADAS]) {
+        let (w, h) = self.source_size;
         // 3. A região da composição. ⚠️ O apron do Blur é o que impede a convolução de ler, na orla,
         //    bytes que a composição ainda não escreveu — e é por isso que só o miolo sobrevive.
         let pad = self.pad_do_borrao();
@@ -148,7 +162,7 @@ impl PainterTool {
         fases::soma(fases::COPIAS, t_copias);
         #[cfg(test)]
         let t_compor = std::time::Instant::now();
-        self.compoe_a_pilha(alvo, caixa_nova, &camadas);
+        self.compoe_a_pilha(alvo, caixa_nova, camadas);
         #[cfg(test)]
         fases::soma(fases::COMPOR, t_compor);
         #[cfg(test)]
@@ -161,7 +175,7 @@ impl PainterTool {
         #[cfg(test)]
         fases::conta_area(alvo, w, h);
         #[cfg(test)]
-        fases::conta_cobertura(&camadas, pad, alvo, w, h);
+        fases::conta_cobertura(camadas, pad, alvo, w, h);
         self.declare_wrote(Some(alvo));
         self.mark_dirty(alvo);
     }
@@ -607,106 +621,5 @@ pub(super) fn passagens_do_borrao(spacing: f32) -> u32 {
 /// `stamp_banded::diag`, cujo cabeçalho explica porque uma sonda com laço próprio fica cega à
 /// porta. ⚠️ Como ela ZERA ao ler, há **um leitor só por thread**.
 #[cfg(test)]
-pub(super) mod fases {
-    use super::Region;
-    use std::cell::Cell;
-
-    pub(in crate::tool::paint) const PRE: usize = 0;
-    pub(in crate::tool::paint) const ACUMULAR: usize = 1;
-    pub(in crate::tool::paint) const COMPOR: usize = 2;
-    pub(in crate::tool::paint) const COPIAS: usize = 3;
-
-    thread_local! {
-        static US: Cell<[u64; 4]> = const { Cell::new([0; 4]) };
-        static EVENTOS: Cell<u64> = const { Cell::new(0) };
-        /// A soma das áreas de `alvo`, em fracção da TELA — *o que decide se o custo segue a
-        /// FIGURA ou a TELA*.
-        static AREA: Cell<f64> = const { Cell::new(0.0) };
-        /// A área relativa de um cover por blocos de [`BLOCOS`], somada por evento.
-        static COBERTURA: Cell<[f64; 5]> = const { Cell::new([0.0; 5]) };
-    }
-
-    /// Os lados de bloco que a sonda da cobertura varre.
-    pub(in crate::tool::paint) const BLOCOS: [u32; 5] = [16, 32, 64, 128, 256];
-
-    /// A cobertura acumulada desde a última leitura — e ZERA.
-    pub(in crate::tool::paint) fn take_cobertura() -> [f64; 5] {
-        COBERTURA.with(Cell::take)
-    }
-
-    pub(in crate::tool::paint) fn soma(i: usize, t: std::time::Instant) {
-        US.with(|c| {
-            let mut v = c.get();
-            v[i] += t.elapsed().as_micros() as u64;
-            c.set(v);
-        });
-    }
-
-    pub(in crate::tool::paint) fn conta_area(alvo: Region, w: u32, h: u32) {
-        EVENTOS.with(|c| c.set(c.get() + 1));
-        let tela = f64::from(w) * f64::from(h);
-        if tela > 0.0 {
-            let a = f64::from(alvo.w) * f64::from(alvo.h) / tela;
-            AREA.with(|c| c.set(c.get() + a));
-        }
-    }
-
-    /// **A área que um cover POR BLOCOS pagaria, contra a caixa envolvente** — a medição que
-    /// decide se vale a pena compor a FIGURA em vez do RECTÂNGULO dela.
-    ///
-    /// Um anel ocupa `~5 %` da caixa dele, e a composição percorre a caixa inteira. Mas cada bloco
-    /// paga o **avental** do borrão (`pad` de cada lado), logo um bloco pequeno é quase todo
-    /// avental: *o tamanho óptimo do bloco é uma medição, não uma escolha.*
-    pub(in crate::tool::paint) fn conta_cobertura(
-        camadas: &[Vec<ph2d_painter_brush::Dab>],
-        pad: u32,
-        alvo: Region,
-        w: u32,
-        h: u32,
-    ) {
-        let bbox = f64::from(alvo.w) * f64::from(alvo.h);
-        if bbox <= 0.0 {
-            return;
-        }
-        let mut out = [0f64; BLOCOS.len()];
-        for (bi, &b) in BLOCOS.iter().enumerate() {
-            let nx = w.div_ceil(b) as usize;
-            let ny = h.div_ceil(b) as usize;
-            let mut marca = vec![false; nx * ny];
-            for lista in camadas {
-                for d in lista {
-                    let r = d.radius_px + pad as f32;
-                    let x0 = ((d.center[0] - r).max(0.0) as u32 / b) as usize;
-                    let x1 = ((d.center[0] + r).max(0.0) as u32 / b).min(nx as u32 - 1) as usize;
-                    let y0 = ((d.center[1] - r).max(0.0) as u32 / b) as usize;
-                    let y1 = ((d.center[1] + r).max(0.0) as u32 / b).min(ny as u32 - 1) as usize;
-                    for gy in y0..=y1 {
-                        for gx in x0..=x1 {
-                            marca[gy * nx + gx] = true;
-                        }
-                    }
-                }
-            }
-            let n = marca.iter().filter(|m| **m).count();
-            // Cada bloco compõe-se com o avental dele: `(b + 2·pad)²`.
-            let lado = f64::from(b + 2 * pad);
-            out[bi] = n as f64 * lado * lado / bbox;
-        }
-        COBERTURA.with(|c| {
-            let mut v = c.get();
-            for (i, o) in out.iter().enumerate() {
-                v[i] += o;
-            }
-            c.set(v);
-        });
-    }
-
-    /// O que a pilha fez desde a última leitura — e ZERA.
-    pub(in crate::tool::paint) fn take() -> ([u64; 4], u64, f64) {
-        (
-            US.with(|c| c.take()),
-            EVENTOS.with(Cell::take),
-            AREA.with(Cell::take),
-        )
-    }
-}
+#[path = "composite_acumulado_fases.rs"]
+pub(super) mod fases;

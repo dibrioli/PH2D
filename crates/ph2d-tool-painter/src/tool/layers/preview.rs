@@ -106,6 +106,9 @@ impl PainterTool {
         // Relief novo muda o relevo composto em todo texel, e o fold parcial só é sólido quando o de
         // fora da janela **não** mudou. Ver `PainterTool::reconcile_substrate`.
         self.reconcile_substrate();
+        // A pista GPU lê a tela logo a seguir: a composição adiada do quadro corre antes
+        // (`paint::composite_por_quadro`), como na drenagem da pista CPU.
+        self.compoe_o_pendente();
         let dirty = std::mem::take(&mut self.preview_dirty);
         if dirty {
             self.composited = None;

@@ -89,6 +89,8 @@ impl PainterTool {
         // passar por lá (uma troca de modo, um cancelamento). *Duas guardas que se cobrem leem-se
         // como uma sobrevivência num relatório de mutação e não são*: a do pen-up tem gate próprio
         // (`um_traco_novo_nao_recompoe_da_tela_do_anterior`, a metade da memória).
+        // O que o gesto anterior deixou por compor entra na tela ANTES de ela virar o `pre` deste.
+        self.compoe_o_pendente();
         self.paint.pilha.fecha();
         // ⚠️ Um fluxo de RNG por camada, semeado do fluxo do pincel. Sem a semente eles nasceriam
         // TODOS iguais e as camadas teriam a mesma realização de Grain/Randomize umas das outras.
@@ -451,6 +453,9 @@ impl PainterTool {
     /// entry (pre-stroke → current) so the whole stroke undoes/redoes as a unit. No-op when no stroke
     /// is open. Reuses the structural-undo stack (a full-canvas snapshot per stroke; tile delta later).
     pub(super) fn close_stroke(&mut self) {
+        // ⭐ A composição adiada do último quadro entra na tela ANTES de tudo o que se segue ler a
+        // tela (o undo, o relevo) e antes de o esfregão perder a sessão (`composite_por_quadro`).
+        self.compoe_o_pendente();
         // Impasto: fold this stroke's relief into the layer BEFORE the undo entry is recorded, so the
         // step captures the height together with the pigment that made it — one Ctrl+Z takes both.
         self.commit_stroke_height();

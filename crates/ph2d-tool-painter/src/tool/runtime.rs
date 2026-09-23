@@ -314,6 +314,9 @@ impl PainterTool {
         // sozinho — reconciliar depois do portão deixaria a tela parada até a pincelada seguinte, que é
         // literalmente o report *"o papel não é atualizado em tempo real"*.
         self.reconcile_substrate();
+        // ⭐ A composição do Composite Brush adiada neste quadro corre AQUI, antes de a tela ser
+        // lida (`paint::composite_por_quadro`) — a mesma forma do acerto do papel acima.
+        self.compoe_o_pendente();
         if !std::mem::take(&mut self.preview_dirty) || self.canvas_rgba.is_empty() {
             self.last_drain_branch = crate::tool::DrainBranch::Idle;
             return None;

@@ -2747,3 +2747,77 @@ composite; um raio só · o alcance do binomial — no impulso).
 RAZÃO de dois relógios) — reprovou na suíte das duas crates (`1,81` contra `4,70 ms`, barra `4×` do
 lado errado da razão) e passou **3 de 3 sozinho a `load 10`**, com **zero linhas do diff** em
 `mask*`. Irmã de ficheiro da `the_mask_stroke_cost_does_not_follow_the_canvas`, que já é membro.
+
+## §34 — «FPS CAI PARA 1»: a pilha compõe UMA vez por QUADRO (2026-09-23)
+
+Report do dono na cena nova `PH2D_COMPOSITE_SMOKE` (a pilha da foto dele montada, tela de `1024`,
+`Size 0,4`). **Parado o app lê `60 fps`** (medido na tela virtual com `PH2D_PAINT_PERF=1`) — a queda
+é só a pintar.
+
+### §34.1 — A atribuição, com a 1.ª hipótese REFUTADA
+
+A sonda nova [`diag_passo_do_rato`](../../../crates/ph2d-tool-painter/src/tool/paint/diag_passo_do_rato.rs)
+corre a pilha do dono no mesmo traço de `720 px` com o rato a andar `0,5`…`256 px` por evento:
+
+| passo | eventos | ms do traço |
+|---|---|---|
+| `0,5`…`16` | `1 440`…`45` | **`245`–`263`** (plano) |
+| `64` | `12` | `130` |
+| `256` | `3` | **`74`** |
+
+⛔ A hipótese *«um rato de 1 kHz manda mil composições por segundo»* **caiu na 1.ª coluna**: um
+evento sem dab novo não compõe nada, e o custo é por **PÍXEL percorrido** (`~0,35 ms/px`). O que
+cresce é que **cada evento com dabs recompõe o DISCO inteiro da camada maior** (o Blur a `2,048`:
+`~340 px` de lado). Um risco de `3 000 px/s` pede `~1 s` de CPU por segundo.
+
+### §34.2 — A cura: os planos acumulam por evento, a TELA compõe-se por quadro
+
+[`composite_por_quadro`](../../../crates/ph2d-tool-painter/src/tool/paint/composite_por_quadro.rs):
+a composição lê só o `pre` e os planos, e os planos já têm o lote no fim de cada evento ⇒ compor a
+UNIÃO das caixas de um quadro dá a imagem das composições por evento. **Nenhum dab sai do sítio.**
+As portas que compõem: as duas drenagens (`take_preview_arc` · `take_preview_dirty`, ao lado do
+`reconcile_substrate`, que já era o idioma *«acertar antes de ler»*) e os três sítios que fecham a
+pilha (pen-down, `close_stroke`, `commit_reset_pilha`); o `restamp_reset_pilha` **descarta**.
+
+⚠️ **Só adia quem ninguém lê antes da drenagem** (`pilha_pode_adiar`): fora ficam os métodos de
+re-carimbo (a shell já os entrega uma vez por quadro), o `Style: Solid`, os fios e os dois portões
+(máscara e selecção). ⚠️ **E é o HOSPEDEIRO que o liga** (`set_compor_por_quadro`, semeado pela
+ponte do app no `bind_document`): um hospedeiro que não drena por quadro — os gates desta crate —
+compõe no evento como antes, e é por isso que a suíte inteira ficou intocada.
+
+**Medido** (pilha do dono, `1024²`, drena a cada `16` eventos = rato de `1 kHz` a `60 fps`,
+ALTERNADO na mesma corrida, `load 7`):
+
+| passo px | por evento | por quadro | ganho | CPU pedida a 1 kHz |
+|---|---|---|---|---|
+| `2` | `249,1` | `176,6` | `×1,4` | `69 % → 49 %` |
+| `4` | `249,4` | `119,3` | `×2,1` | `139 % → 66 %` |
+| `8` | `240,2` | `86,1` | `×2,8` | `267 % → 96 %` |
+| `16` | `246,8` | `67,9` | **`×3,6`** | `548 % → 151 %` |
+
+**A imagem:** pior diferença **`1`** em `44`–`144` bytes de `46 150` pintados, drenando a cada
+`1`/`4`/`16`/`64` eventos ou só no pen-up. ⭐ O `1` é **só do Blur** (ablação: sem a camada Blur,
+`0` bytes mesmo a drenar a cada evento — a caixa diferente muda o arredondamento das somas
+correntes), e a drenagem sozinha não mexe num byte.
+
+**Gates** ([`composite_por_quadro_tests`](../../../crates/ph2d-tool-painter/src/tool/paint/composite_por_quadro_tests.rs)):
+a imagem (com o CONTROLO de que o traço pinta `> 40 000` bytes) · a conta (uma composição por
+drenagem, nas duas pistas, e desligar compõe o que ficou) · quem lê a tela compõe no evento.
+**Mutação 8 de 8 sangra** (nunca adiar · cada drenagem · sem união · o pen-up sem as duas portas ·
+re-carimbo e selecção a adiar · desligar sem compor), controlo do filtro nas duas pontas.
+⚠️ **Declarado:** a porta do pen-down e a do `close_stroke` cobrem-se (o pen-up à mão livre passa
+pelo `commit_reset_pilha` antes) — cada uma sozinha sobrevive; as duas juntas sangram.
+
+⏳ **O que sobra** (fases a passo `16`, por quadro): acumular `24 ms` + compor `48 ms` por
+`720 px` ⇒ `~0,1 ms/px`, e um risco acima de `~10 000 px/s` ainda pede mais que o segundo. O
+próximo degrau é a própria composição da união (`~48 ns/px` para seis camadas), não a contagem.
+
+### §34.3 — Três tectos de LOC que a auditoria deixou VERMELHOS, curados por corte
+
+O `composite_acumulado.rs` já estava em `712` desde o commit do avental estreito, e o
+`blur_caixa.rs` (`848`) e o `blur_caixa_tests.rs` (`1 320`) **nasceram** acima de `700` nesta
+linha — nenhum portão meu correu o `workspace_src_files_under_loc_cap` depois deles. Cortes:
+a sonda de fases → `composite_acumulado_fases.rs` · as passagens verticais →
+`blur_caixa_vertical.rs` · os gates do paralelo → `blur_caixa_paralelo_tests.rs` · as sondas de
+relógio → `blur_caixa_sondas.rs`. Prova de que nada evaporou: **`19` `#[test]` antes, `19` depois,
+os `19` listados**.

@@ -183,11 +183,26 @@ pub(super) struct PilhaDoTraco {
     /// ⭐ **O ACUMULADO de cada camada ao longo do traço** — a rota de omissão desde 2026-09-21.
     /// Ver [`super::composite_acumulado`]; os `lotes` acima só alimentam a rota de bissecção.
     pub(super) planos: [Arc<Vec<u8>>; N_CAMADAS],
+    /// ⭐ **A composição por QUADRO** ([`super::composite_por_quadro`]): a caixa que os eventos
+    /// deste quadro sujaram e ainda não foi composta, `None` = nada por compor.
+    pub(super) pendente: Option<Region>,
+    /// Os dabs desses eventos, por camada e em ordem — só o esfregão os lê na composição.
+    pub(super) pendente_dabs: [Vec<Dab>; N_CAMADAS],
+    /// Quem hospeda a ferramenta drena a pré-visualização uma vez por quadro? Semeado pelo
+    /// hospedeiro (`set_compor_por_quadro`); ⚠️ **NÃO é do traço** — o [`Self::fecha`] não o toca.
+    pub(super) por_quadro: bool,
 }
 
 impl PilhaDoTraco {
     /// O traço acabou (ou nunca abriu): larga tudo.
+    ///
+    /// ⚠️ O pendente vai junto, logo quem fecha um traço que pintou compõe-o ANTES
+    /// ([`PainterTool::compoe_o_pendente`]) — os três sítios que fecham a pilha fazem-no.
     pub(super) fn fecha(&mut self) {
+        self.pendente = None;
+        for d in &mut self.pendente_dabs {
+            d.clear();
+        }
         self.pre = Vec::new();
         self.lotes.clear();
         self.escudo = Arc::new(Vec::new());

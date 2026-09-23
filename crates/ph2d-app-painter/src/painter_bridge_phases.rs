@@ -213,6 +213,10 @@ pub(crate) fn bind_document(
     && ph != 0
     {
         painter.bind_document(bits, pixels, pw, ph);
+        // ⭐ Esta ponte DRENA a pré-visualização uma vez por quadro, logo o Composite Brush pode
+        // compor a tela uma vez por quadro em vez de uma por evento do rato (report do dono,
+        // 2026-09-23: *«FPS cai para 1»* — `ph2d_tool_painter` `paint::composite_por_quadro`).
+        painter.set_compor_por_quadro(true);
         // ⚠️ E COMPILA os shaders do preview GPU agora, no vão humano entre escolher o sprite e
         // levar o mouse à tela — senão os 28 ms de criação de pipeline caem no primeiro traço, que
         // é o gesto em que o artista está esperando (doc 28 §4.8, medido).

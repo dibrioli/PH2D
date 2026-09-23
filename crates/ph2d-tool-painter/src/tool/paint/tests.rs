@@ -80,6 +80,12 @@ mod composite_cerca_tests; // os gates de VALOR da cerca do borrão (auditoria d
 #[path = "diag_preco_da_pilha.rs"]
 mod diag_preco_da_pilha; // o relógio da recomposição regional
 
+#[path = "composite_por_quadro_tests.rs"]
+mod composite_por_quadro_tests; // a tela compõe-se uma vez por quadro, e dá a mesma imagem
+
+#[path = "diag_passo_do_rato.rs"]
+mod diag_passo_do_rato; // o custo é por EVENTO do rato, não por píxel
+
 #[path = "diag_composite_cinco_camadas.rs"]
 mod diag_composite_cinco_camadas;
 #[path = "diag_ordem_entre_carimbos.rs"]

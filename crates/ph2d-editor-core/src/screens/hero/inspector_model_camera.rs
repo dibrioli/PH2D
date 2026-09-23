@@ -26,6 +26,8 @@ pub struct InspectorGameCamera {
     pub height_world: f32,
     pub offset: [f32; 2],
     pub priority: i32,
+    /// ⭐⭐⭐ **O DOLLY** (plano 24, W5) — ver [`CameraFieldEdit::Dolly`].
+    pub dolly: f32,
     pub active: bool,
     pub cull_mask: u32,
 }
@@ -82,6 +84,13 @@ pub enum CameraFieldEdit {
     Height(f32),
     Offset([f32; 2]),
     Priority(i32),
+    /// ⭐⭐⭐ **O DOLLY** (plano 24, W5) — o único campo desta secção que não muda o que a câmera
+    /// enquadra: ele muda a ESCALA com que cada plano de paralaxe é desenhado.
+    ///
+    /// ⚠️ **Ele é adimensional de propósito** (uma fracção da distância focal): a lei depende só de
+    /// `k` e de `d/z₀`, logo exprimi-lo em metros obrigaria a inventar um `z₀` que esta câmera não
+    /// tem. Ver [`ph2d_ecs::ScrollFactor::escala_do_dolly`].
+    Dolly(f32),
     Active(bool),
     /// Um bit da máscara de camadas — `(bit, ligado)`.
     CullBit(u8, bool),

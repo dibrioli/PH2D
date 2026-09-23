@@ -15,6 +15,7 @@
 //!
 //! ⛔ **Nunca subir o número do cap: ele só desce.**
 
+use ph2d_editor_core::parallax_edits::InspectorParallaxInfo;
 use ph2d_editor_core::particles_edits::InspectorParticlesInfo;
 use ph2d_editor_core::path_follow_edits::InspectorPathFollowInfo;
 use ph2d_editor_core::projectile_edits::InspectorProjectileInfo;
@@ -100,6 +101,16 @@ pub fn set_current_inspector_ray(info: Option<InspectorRayInfo>) {
 
 pub(crate) fn current_inspector_ray() -> Option<InspectorRayInfo> {
     CURRENT_INSPECTOR_RAY.with(|c| c.borrow().clone())
+}
+
+/// ⭐ O snapshot da PARALAXE (plano 24) — a shell escreve-o todo o quadro, porque ele carrega uma
+/// leitura do MUNDO (*há câmera do jogo?*) e não só os campos do objecto.
+pub fn set_current_inspector_parallax(info: Option<InspectorParallaxInfo>) {
+    CURRENT_INSPECTOR_PARALLAX.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_parallax() -> Option<InspectorParallaxInfo> {
+    CURRENT_INSPECTOR_PARALLAX.with(|c| c.borrow().clone())
 }
 
 /// ⭐ O snapshot da ARMA — a shell escreve-o todo o quadro, porque ele carrega a munição VIVA e
@@ -226,6 +237,13 @@ thread_local! {
     /// quadro** — ao contrário dos campos, que só mudam quando alguém os edita.
     static CURRENT_INSPECTOR_RAY:
         std::cell::RefCell<Option<InspectorRayInfo>> = const { std::cell::RefCell::new(None) };
+
+    /// ⭐⭐⭐ **O snapshot da secção PARALLAX** (plano 24).
+    ///
+    /// ⚠️ Ele carrega uma leitura do MUNDO — *há uma câmera do jogo na cena?* —, que é a primeira
+    /// das duas razões para nada se mexer; logo a shell reescreve-o **todo o quadro**.
+    static CURRENT_INSPECTOR_PARALLAX:
+        std::cell::RefCell<Option<InspectorParallaxInfo>> = const { std::cell::RefCell::new(None) };
 
     /// ⭐⭐⭐ **O snapshot da secção WEAPON.**
     ///

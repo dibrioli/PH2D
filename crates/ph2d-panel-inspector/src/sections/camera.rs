@@ -105,6 +105,14 @@ fn camera_body(
             1.0,
             None,
         ), // LITERAL-PX-OK: uma prioridade de cada vez
+        // ⭐⭐⭐ **O DOLLY** (plano 24, W5) — ⚠️ **sem `Unit`, e a ausência é a decisão:** ele é uma
+        // FRACÇÃO da distância focal, e pintar-lhe «m» seria mentir sobre o que o número é.
+        (
+            tr("panel.inspector.camera.dolly"),
+            &[ids::INSP_CAMERA_DOLLY][..],
+            0.05,
+            None,
+        ), // LITERAL-PX-OK: fracção adimensional
     ];
     // ⭐⭐ **A coluna é da SECÇÃO, medida uma vez sobre a TABELA que ela pinta** — ver
     //    [`ph2d_editor_core::property_row::Seccao`]. ⛔ A tabela deixou de ser um literal dentro do

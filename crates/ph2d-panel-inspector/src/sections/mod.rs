@@ -85,6 +85,8 @@ mod joint_pair_rows;
 pub(crate) mod lifecycle;
 mod material_blend;
 pub(crate) mod ordering;
+/// ⭐⭐⭐ A secção RAY SENSOR (suplente #21).
+pub(crate) mod parallax;
 pub(crate) mod particles;
 /// ⭐⭐⭐ **A secção do SEGUIDOR DE CAMINHO** (suplente #23) — ver o cabeçalho.
 pub(crate) mod path_follow;
@@ -107,7 +109,6 @@ pub(crate) mod physics_rows;
 pub(crate) mod player;
 pub(crate) mod projectile;
 pub(crate) mod properties;
-/// ⭐⭐⭐ A secção RAY SENSOR (suplente #21).
 pub(crate) mod ray;
 mod render_source;
 /// O par `Format` — irmão do `render_source` pelo cap de LOC.

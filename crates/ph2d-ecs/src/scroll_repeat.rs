@@ -64,7 +64,10 @@ impl ScrollRepeat {
     /// omissão, e uma guarda que devolvesse zero apagaria a paralaxe em vez de a não repetir.
     #[must_use]
     pub fn envolve(&self, d: [f32; 2]) -> [f32; 2] {
-        [envolve_eixo(d[0], self.tile[0]), envolve_eixo(d[1], self.tile[1])]
+        [
+            envolve_eixo(d[0], self.tile[0]),
+            envolve_eixo(d[1], self.tile[1]),
+        ]
     }
 }
 

@@ -141,12 +141,13 @@ pub mod factory_edits;
 /// ⭐⭐⭐ **A secção PARTICLES do Inspector** (TOP-20 #18) — ver o cabeçalho do módulo.
 /// ⭐⭐⭐ **O vocabulário da secção HUD** (TOP-20 #20).
 pub mod hud_edits;
+/// ⭐⭐⭐ **O vocabulário do RAIO** (suplente #21) — ver o cabeçalho dele.
+pub mod parallax_edits;
 pub mod particles_edits;
 /// ⭐⭐⭐ **O vocabulário do SEGUIDOR DE CAMINHO** (suplente #23) — ver o cabeçalho dele.
 pub mod path_follow_edits;
 /// ⭐⭐⭐ **O vocabulário do MOVER DE VISTA DE CIMA** (TOP-20 #13) — ver o cabeçalho dele.
 pub mod projectile_edits;
-/// ⭐⭐⭐ **O vocabulário do RAIO** (suplente #21) — ver o cabeçalho dele.
 pub mod ray_edits;
 /// ⭐⭐⭐ **O vocabulário do SCRIPT DO ARTISTA** (TOP-20 #16) — o sexto degrau da mesma migração.
 pub mod script_edits;

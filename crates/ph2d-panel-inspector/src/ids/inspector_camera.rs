@@ -42,6 +42,10 @@ pub const INSP_CAMERA_OFFSET_Y: NodeId = hash_node_id("insp_camera_offset_y");
 /// Quem manda quando há várias — maior ganha.
 pub const INSP_CAMERA_PRIORITY: NodeId = hash_node_id("insp_camera_priority");
 
+/// ⭐⭐⭐ **O DOLLY** (plano 24, W5) — *a que distância do plano do mundo esta câmera está*, em
+/// fracções da distância focal. `0` = o de sempre, **ao bit**.
+pub const INSP_CAMERA_DOLLY: NodeId = hash_node_id("insp_camera_dolly");
+
 /// Desligada, ela não concorre a activa.
 pub const INSP_CAMERA_ACTIVE: NodeId = hash_node_id("insp_camera_active");
 

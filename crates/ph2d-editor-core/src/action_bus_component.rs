@@ -37,6 +37,8 @@ pub enum ComponentEdit {
     Projectile(crate::projectile_edits::ProjectileFieldEdit),
     /// **RAY SENSOR** (suplente #21) — os seis números do raio e os dois nomes que ele publica.
     Ray(crate::ray_edits::RayFieldEdit),
+    /// **PARALLAX** (plano 24) — o factor, o ladrilho, a deriva e a cerca desta camada.
+    Parallax(crate::parallax_edits::ParallaxFieldEdit),
     /// **STATE MACHINE** (TOP-20 #15).
     StateMachine(crate::statemachine_edits::StateMachineFieldEdit),
     /// **SCRIPT** (TOP-20 #16) — um número declarado pelo `.luau`.

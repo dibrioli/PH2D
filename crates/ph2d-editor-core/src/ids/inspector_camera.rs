@@ -47,6 +47,10 @@ pub const INSP_LIVE_WATCH_SECTION: NodeId = hash_node_id("insp_live_watch_sectio
 pub const INSP_LIVE_TRIGGER_SECTION: NodeId = hash_node_id("insp_live_trigger_section");
 /// O cabeçalho dobrável da secção RAY SENSOR — o objecto que OLHA (suplente #21).
 pub const INSP_LIVE_RAY_SECTION: NodeId = hash_node_id("insp_live_ray_section");
+/// O cabeçalho dobrável da secção PARALLAX — *quanto do movimento do mundo esta camada guarda*
+/// (plano 24, W7). ⚠️ Ela mora na família da CÂMERA e nunca vive numa: o número dela é sobre o
+/// movimento DELA, e é ali que o artista o procura.
+pub const INSP_LIVE_PARALLAX_SECTION: NodeId = hash_node_id("insp_live_parallax_section");
 /// O cabeçalho dobrável da secção TWEEN — «esta propriedade vai de A a B» (suplente #22).
 pub const INSP_LIVE_TWEEN_SECTION: NodeId = hash_node_id("insp_live_tween_section");
 /// O cabeçalho dobrável da secção PATH FOLLOW — «anda sobre a curva desenhada» (suplente #23).
@@ -102,6 +106,8 @@ pub const INSP_LIVE_SHAKE_COLOR: NodeId = hash_node_id("insp_live_shake_color");
 pub const INSP_LIVE_EMITTER_COLOR: NodeId = hash_node_id("insp_live_emitter_color");
 /// O ponto de cor da secção RAY SENSOR.
 pub const INSP_LIVE_RAY_COLOR: NodeId = hash_node_id("insp_live_ray_color");
+/// O ponto de cor da secção PARALLAX — ver [`INSP_LIVE_PARALLAX_SECTION`].
+pub const INSP_LIVE_PARALLAX_COLOR: NodeId = hash_node_id("insp_live_parallax_color");
 /// O ponto de cor da secção WEAPON.
 pub const INSP_LIVE_WEAPON_COLOR: NodeId = hash_node_id("insp_live_weapon_color");
 /// Quantas opções o segmentado do ONDE tem — a porta que o painel lê para repartir a largura.

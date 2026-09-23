@@ -113,7 +113,12 @@ fn a_pose_conduzida_e_local_e_o_pai_compoe_por_cima() {
         ))
         .id();
     let mut drive = PreviewDrive::default();
-    drive_parallax(&mut sim, Some(([400.0, 0.0], [10.0, 10.0])), 0.0, &mut drive);
+    drive_parallax(
+        &mut sim,
+        Some(([400.0, 0.0], [10.0, 10.0])),
+        0.0,
+        &mut drive,
+    );
     let t = *sim.world().get::<Transform>(filho).expect("pose");
     assert!(
         (t.translation.x - 200.0).abs() < 1e-3,
@@ -133,9 +138,17 @@ fn a_pose_conduzida_e_local_e_o_pai_compoe_por_cima() {
         ))
         .id();
     let mut drive2 = PreviewDrive::default();
-    drive_parallax(&mut sim2, Some(([400.0, 0.0], [10.0, 10.0])), 0.0, &mut drive2);
+    drive_parallax(
+        &mut sim2,
+        Some(([400.0, 0.0], [10.0, 10.0])),
+        0.0,
+        &mut drive2,
+    );
     assert_eq!(
-        sim2.world().get::<Transform>(filho2).expect("pose").translation,
+        sim2.world()
+            .get::<Transform>(filho2)
+            .expect("pose")
+            .translation,
         t.translation,
         "com o pai na identidade as duas leituras divergiram"
     );

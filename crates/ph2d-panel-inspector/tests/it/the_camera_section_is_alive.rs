@@ -52,6 +52,7 @@ fn info(
             height_world: 10.0,
             offset: [0.0, 0.0],
             priority: 0,
+            dolly: 0.0,
             active: true,
             cull_mask: u32::MAX,
         },
@@ -106,6 +107,7 @@ fn every_field_of_the_three_components_is_painted() {
         ph2d_panel_inspector::ids::INSP_CAMERA_OFFSET_X,
         ph2d_panel_inspector::ids::INSP_CAMERA_OFFSET_Y,
         ph2d_panel_inspector::ids::INSP_CAMERA_PRIORITY,
+        ph2d_panel_inspector::ids::INSP_CAMERA_DOLLY,
         ph2d_panel_inspector::ids::INSP_CAMERA_ACTIVE,
         ph2d_panel_inspector::ids::INSP_CAMERA_PREVIEW,
         // Quem ela segue.
@@ -263,5 +265,42 @@ fn the_cull_mask_grid_is_alive_once_opened() {
             "o bit {bit} da mascara nao chegou ao indice de acerto"
         );
     }
+    set_current_inspector_camera(None);
+}
+
+/// ⭐⭐⭐ **O DOLLY (plano 24, W5) mostra o que a câmera TEM e o que se escreve chega ao barramento**
+/// — a semente e o dreno, as duas metades que um gate de pintura não vê.
+///
+/// ⚠️ A fixtura usa `0,4` e não o `0` de fábrica: *um corpus no NEUTRO de um knob não testa esse
+/// knob*, e a semente esquecida mostraria exactamente o `0` do `populate`.
+///
+/// **Mutações que devem sangrar:** tirar a linha do dolly do `sync_sections` · tirar o braço do
+/// `event_camera` · mapear o id a outra variante.
+#[test]
+fn o_dolly_mostra_a_camera_e_chega_ao_barramento() {
+    use ph2d_editor_core::action_bus::EditorAction;
+    use ph2d_editor_core::interaction::WidgetEvent;
+    use ph2d_editor_core::panel::PanelHostInternal as _;
+    let id = ph2d_panel_inspector::ids::INSP_CAMERA_DOLLY;
+    let mut i = info(None, None, false);
+    i.camera.dolly = 0.4;
+    let (mut h, mut st) = host(i);
+    let _ = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    let lido = h.store().number_value(id).expect("o dolly esta' registado");
+    assert!(
+        (lido - 0.4).abs() < 1e-6,
+        "o dolly mostra {lido} e a camera tem 0,4"
+    );
+    h.store_mut().set_number_value(id, 0.25);
+    let _ = h.apply_panel_event::<InspectorPanel>(&mut st, WidgetEvent::ValueChanged(id));
+    let edits: Vec<_> = h
+        .drained_actions()
+        .into_iter()
+        .filter_map(|a| match a {
+            EditorAction::InspectorCameraEdit { edit, .. } => Some(edit),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(edits, vec![ph2d_editor_core::CameraFieldEdit::Dolly(0.25)]);
     set_current_inspector_camera(None);
 }

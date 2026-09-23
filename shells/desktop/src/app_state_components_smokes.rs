@@ -190,6 +190,10 @@ pub(crate) struct ComponentsSmokeLatches {
     pub(crate) shake: bool,
     /// Quantos quadros ainda trazem o Inspector à frente na cena do abanão — ver `trigger_raise`.
     pub(crate) shake_raise: u8,
+    /// ⭐ A PARALAXE (plano 24) — `PH2D_PARALLAX_SMOKE=1|2`.
+    pub(crate) parallax: bool,
+    /// Quantos quadros ainda trazem o Inspector à frente na cena da paralaxe — ver `shake_raise`.
+    pub(crate) parallax_raise: u8,
     /// ⭐ O SEGUIDOR DE CAMINHO (suplente #23) — `PH2D_PATHFOLLOW_SMOKE=1`.
     pub(crate) path_follow: bool,
     /// Quantos quadros ainda trazem o Inspector à frente na cena do seguidor — ver `ray_raise`.

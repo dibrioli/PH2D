@@ -76,6 +76,67 @@ pub(crate) fn paint_ray_section(
     )
 }
 
+/// **A secção PARALLAX** (plano 24) — moldura e tudo.
+///
+/// ⚠️ **Sem estado de painel:** um objecto tem UMA camada, então não há linha aberta a lembrar —
+/// os três blocos opcionais são decididos pela PRESENÇA do componente, no instantâneo.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_parallax_section(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: ph2d_tokens::Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    section_tops_y: &mut Vec<f32>,
+    inner_x: f32,
+    inner_w: f32,
+    body_top_y: f32,
+    mut y: f32,
+    header_h: f32,
+    info: Option<&ph2d_editor_core::parallax_edits::InspectorParallaxInfo>,
+) -> f32 {
+    // ⚠️ **A secção só existe se o objecto TIVER o `ScrollFactor`** — ADR-0166, e é ele que liga a
+    // lei: os outros três componentes são blocos DENTRO dela.
+    let Some(info) = info else {
+        return y;
+    };
+    y = close_section(scene, theme, inner_x, inner_w, y);
+    let y_before = y;
+    begin_section(
+        section_tops_y,
+        hit_index,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y_before,
+        ids::INSP_LIVE_PARALLAX_SECTION,
+        header_h,
+    );
+    let new_y = crate::sections::parallax::paint_parallax_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        inner_x,
+        inner_w,
+        y,
+        info,
+    );
+    finish_section(
+        scene,
+        text_system,
+        hit_index,
+        store,
+        inner_x,
+        inner_w,
+        ids::INSP_LIVE_PARALLAX_SECTION,
+        y_before,
+        new_y,
+        &[],
+    )
+}
+
 /// **A secção WEAPON** — moldura e tudo. ⚠️ Sem estado de painel: um objecto tem UMA arma, então não
 /// há linha aberta a lembrar.
 ///

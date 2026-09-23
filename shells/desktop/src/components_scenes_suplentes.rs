@@ -399,6 +399,53 @@ impl crate::App {
         self.playhead.rewind();
         self.playhead.play();
     }
+
+    /// ⭐⭐⭐ **A cena da PARALAXE** (plano 24, W7) — `PH2D_PARALLAX_SMOKE=1|2`.
+    ///
+    /// ⚠️⚠️ **Ele faz TRÊS coisas que a cena não pode fazer, e as três são obrigatórias:**
+    ///
+    /// 1. **TOMA a vista da câmera do jogo.** A paralaxe é medida contra o rectângulo que a
+    ///    [`super::render_loop::fase_game_camera`] devolve — com a pré-visualização desligada o
+    ///    ecrã mostra a câmera do EDITOR e as camadas andam contra outra coisa: *o dono vê o fundo
+    ///    a deslizar sozinho enquanto ele está parado*, que é ensinar o contrário.
+    /// 2. **FECHA a régua do transporte.** ⛔ Não *«deixa de a abrir»*: a arrumação vive em
+    ///    `~/.ph2d/layout.txt`, fora do repositório, e pode trazê-la aberta. E ela custa ~45 % da
+    ///    altura da janela, enquanto a meia-vista da câmera é da JANELA — com a régua aberta o céu
+    ///    e o chão desta cena saem do ecrã pelos dois lados.
+    /// 3. **Põe o relógio a andar.** A deriva do céu é uma função pura do playhead, e o herói só
+    ///    anda com a corrida a correr.
+    pub(crate) fn parallax_smoke(&mut self) {
+        if self.components.smokes.parallax {
+            self.components.smokes.parallax_raise =
+                self.levanta_o_inspector(self.components.smokes.parallax_raise);
+            return;
+        }
+        let Some(v) = std::env::var_os("PH2D_PARALLAX_SMOKE") else {
+            return;
+        };
+        let nivel = v.to_str().and_then(|s| s.parse().ok()).unwrap_or(1);
+        let Some(cx) = self.components_ctx() else {
+            return;
+        };
+        let montada = ph2d_app_components::parallax_smoke::montar(cx.sim.world_mut(), nivel);
+        self.components.smokes.parallax = true;
+        self.components.smokes.parallax_raise = crate::components_scenes::LEVANTA_O_INSPECTOR;
+        // ⭐⭐⭐ Ver o ponto 1 do doc — sem isto a wave inteira mede outra câmera.
+        self.game_camera_preview = true;
+        self.timeline.flags.simulate_physics = true;
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            hero.panel_visibility.insert("inspector", true);
+            // ⭐⭐ Ver o ponto 2 do doc — o orçamento vertical desta cena não cabe com a régua.
+            hero.panel_visibility.insert("timeline", false);
+            // ⛔ **Alguém nasce ESCOLHIDO** — o roteiro nomeia a secção *Parallax* no painel da
+            // direita, e com ninguém escolhido o Inspector diz *«Select an entity in the
+            // Hierarchy»*.
+            hero.gizmo.selection = Some(montada.escolhido);
+            hero.gizmo.extra_selection.clear();
+        }
+        self.playhead.rewind();
+        self.playhead.play();
+    }
 }
 
 impl crate::App {

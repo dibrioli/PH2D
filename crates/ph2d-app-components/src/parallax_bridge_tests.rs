@@ -56,7 +56,13 @@ fn com_camera(sim: &mut SimWorld, drive: &mut PreviewDrive, centro: [f32; 2]) ->
 /// *«a minha medição não a disparou»*.
 #[test]
 fn o_declive_e_um_menos_k() {
-    for (k, declive) in [(0.0_f32, 1.0_f32), (0.25, 0.75), (0.5, 0.5), (1.0, 0.0), (2.0, -1.0)] {
+    for (k, declive) in [
+        (0.0_f32, 1.0_f32),
+        (0.25, 0.75),
+        (0.5, 0.5),
+        (1.0, 0.0),
+        (2.0, -1.0),
+    ] {
         let (mut sim, _) = cena([k, k], pose_em(0.0, 0.0));
         let mut drive = PreviewDrive::default();
         let a = com_camera(&mut sim, &mut drive, [-200.0, 0.0]);
@@ -75,8 +81,16 @@ fn os_dois_eixos_sao_independentes() {
     let (mut sim, _) = cena([0.2, 0.8], pose_em(0.0, 0.0));
     let mut drive = PreviewDrive::default();
     let p = com_camera(&mut sim, &mut drive, [100.0, 100.0]);
-    assert!((p.x - 80.0).abs() < 1e-4, "x: 100 · (1 − 0,2) = 80, deu {}", p.x);
-    assert!((p.y - 20.0).abs() < 1e-4, "y: 100 · (1 − 0,8) = 20, deu {}", p.y);
+    assert!(
+        (p.x - 80.0).abs() < 1e-4,
+        "x: 100 · (1 − 0,2) = 80, deu {}",
+        p.x
+    );
+    assert!(
+        (p.y - 20.0).abs() < 1e-4,
+        "y: 100 · (1 − 0,8) = 20, deu {}",
+        p.y
+    );
 }
 
 /// ⭐⭐⭐ **`k = 1` não escreve um bit e NÃO se declara** — anexar o componente e não lhe tocar deixa
@@ -93,7 +107,15 @@ fn o_neutro_nao_escreve_nem_declara() {
     // que a cena lê). Quem afirma o valor da constante é o irmão abaixo, pelo EFEITO dela.
     let (mut sim, e) = cena([1.0, 1.0], autorada);
     let mut drive = PreviewDrive::default();
-    assert_eq!(drive_parallax(&mut sim, Some(([400.0, 300.0], SEM_LIMITE)), PARADO, &mut drive), 0);
+    assert_eq!(
+        drive_parallax(
+            &mut sim,
+            Some(([400.0, 300.0], SEM_LIMITE)),
+            PARADO,
+            &mut drive
+        ),
+        0
+    );
     assert_eq!(
         *sim.world().get::<Transform>(e).expect("pose"),
         autorada,
@@ -103,7 +125,15 @@ fn o_neutro_nao_escreve_nem_declara() {
     // O CONTROLO: a MESMA cena com `k` de fundo É conduzida.
     let (mut sim2, _) = cena([0.5, 0.5], autorada);
     let mut drive2 = PreviewDrive::default();
-    assert_eq!(drive_parallax(&mut sim2, Some(([400.0, 300.0], SEM_LIMITE)), PARADO, &mut drive2), 1);
+    assert_eq!(
+        drive_parallax(
+            &mut sim2,
+            Some(([400.0, 300.0], SEM_LIMITE)),
+            PARADO,
+            &mut drive2
+        ),
+        1
+    );
 }
 
 /// ⛔⛔ **Sem câmera de jogo, NADA é conduzido** — o fundo fica onde o artista o pôs.
@@ -116,7 +146,15 @@ fn sem_camera_de_jogo_o_fundo_fica_onde_o_artista_o_pos() {
     assert_eq!(*sim.world().get::<Transform>(e).expect("pose"), autorada);
     assert!(drive.is_empty());
     // O CONTROLO: com vista, a MESMA cena é conduzida.
-    assert_eq!(drive_parallax(&mut sim, Some(([100.0, 0.0], SEM_LIMITE)), PARADO, &mut drive), 1);
+    assert_eq!(
+        drive_parallax(
+            &mut sim,
+            Some(([100.0, 0.0], SEM_LIMITE)),
+            PARADO,
+            &mut drive
+        ),
+        1
+    );
 }
 
 /// ⛔⛔ **A pose fica no LEDGER como pré-visualização** — é isto que a mantém fora do ficheiro e do
@@ -126,7 +164,12 @@ fn a_pose_deslocada_e_previsualizacao_e_o_autorado_sobrevive() {
     let autorada = pose_em(-3.0, 7.0);
     let (mut sim, e) = cena([0.25, 0.25], autorada);
     let mut drive = PreviewDrive::default();
-    drive_parallax(&mut sim, Some(([400.0, 0.0], SEM_LIMITE)), PARADO, &mut drive);
+    drive_parallax(
+        &mut sim,
+        Some(([400.0, 0.0], SEM_LIMITE)),
+        PARADO,
+        &mut drive,
+    );
     assert_eq!(
         drive.authored(e.to_bits(), Driver::ParallaxPose),
         Some(Driven::ParallaxPose(autorada)),
@@ -151,7 +194,11 @@ fn arrastar_o_fundo_move_o_autorado_pelo_mesmo_delta() {
     // Um quadro com a câmera longe da origem: o fundo desloca-se 200.
     let vista = [400.0, 0.0];
     let p0 = com_camera(&mut sim, &mut drive, vista);
-    assert!((p0.x - 200.0).abs() < 1e-4, "400 · (1 − 0,5) = 200, deu {}", p0.x);
+    assert!(
+        (p0.x - 200.0).abs() < 1e-4,
+        "400 · (1 − 0,5) = 200, deu {}",
+        p0.x
+    );
 
     // O artista arrasta +5 na tela.
     if let Some(mut t) = sim.world_mut().get_mut::<Transform>(e) {
@@ -195,12 +242,28 @@ fn um_hud_nao_e_tocado_por_esta_ponte() {
         ))
         .id();
     let mut drive = PreviewDrive::default();
-    assert_eq!(drive_parallax(&mut sim, Some(([400.0, 0.0], SEM_LIMITE)), PARADO, &mut drive), 0);
+    assert_eq!(
+        drive_parallax(
+            &mut sim,
+            Some(([400.0, 0.0], SEM_LIMITE)),
+            PARADO,
+            &mut drive
+        ),
+        0
+    );
     assert_eq!(*sim.world().get::<Transform>(e).expect("pose"), autorada);
     // O CONTROLO: o mesmo objecto SEM o canvas é conduzido.
     let (mut sim2, _) = cena([0.5, 0.5], autorada);
     let mut drive2 = PreviewDrive::default();
-    assert_eq!(drive_parallax(&mut sim2, Some(([400.0, 0.0], SEM_LIMITE)), PARADO, &mut drive2), 1);
+    assert_eq!(
+        drive_parallax(
+            &mut sim2,
+            Some(([400.0, 0.0], SEM_LIMITE)),
+            PARADO,
+            &mut drive2
+        ),
+        1
+    );
     assert_eq!(parallax_count(&mut sim2), 1);
 }
 
@@ -216,7 +279,12 @@ fn so_a_translacao_e_derivada() {
     };
     let (mut sim, e) = cena([0.5, 0.5], autorada);
     let mut drive = PreviewDrive::default();
-    drive_parallax(&mut sim, Some(([400.0, 0.0], SEM_LIMITE)), PARADO, &mut drive);
+    drive_parallax(
+        &mut sim,
+        Some(([400.0, 0.0], SEM_LIMITE)),
+        PARADO,
+        &mut drive,
+    );
     let t = *sim.world().get::<Transform>(e).expect("pose");
     assert_eq!(t.rotation, 0.35);
     assert_eq!(t.scale, Vec2::new(2.0, 3.0));
@@ -282,7 +350,10 @@ fn o_deslocamento_nao_depende_da_pose_autorada() {
     sim.world_mut().spawn((ScrollFactor { k }, b));
     let mut drive = PreviewDrive::default();
     let centro = [400.0_f32, -250.0];
-    assert_eq!(drive_parallax(&mut sim, Some((centro, SEM_LIMITE)), PARADO, &mut drive), 2);
+    assert_eq!(
+        drive_parallax(&mut sim, Some((centro, SEM_LIMITE)), PARADO, &mut drive),
+        2
+    );
 
     let poses: Vec<(Transform, Transform)> = {
         let world = sim.world_mut();
@@ -327,7 +398,12 @@ fn o_deslocamento_nao_depende_da_pose_autorada() {
     let mut sim2 = SimWorld::default();
     sim2.world_mut().spawn((ScrollFactor { k }, a));
     let mut drive2 = PreviewDrive::default();
-    drive_parallax(&mut sim2, Some(([0.0, 0.0], SEM_LIMITE)), PARADO, &mut drive2);
+    drive_parallax(
+        &mut sim2,
+        Some(([0.0, 0.0], SEM_LIMITE)),
+        PARADO,
+        &mut drive2,
+    );
     let world = sim2.world_mut();
     let e = world
         .query_filtered::<ph2d_ecs::Entity, bevy_ecs::prelude::With<ScrollFactor>>()
@@ -412,9 +488,7 @@ fn cena_rep(k: [f32; 2], tile: [f32; 2], pose: Transform) -> (SimWorld, ph2d_ecs
 #[test]
 fn a_correccao_e_um_numero_inteiro_de_ladrilhos() {
     let tile = 256.0_f32;
-    let rep = ScrollRepeat {
-        tile: [tile, tile],
-    };
+    let rep = ScrollRepeat { tile: [tile, tile] };
     let mut corrigiu = 0;
     for i in -400_i16..=400 {
         let d = f32::from(i) * 37.0; // ⚠️ um passo que NÃO divide o ladrilho, de propósito
@@ -432,7 +506,10 @@ fn a_correccao_e_um_numero_inteiro_de_ladrilhos() {
     }
     // O CONTROLO: a varredura de facto passou por ladrilhos — sem ele as asserções acima passariam
     // sobre uma lei que nunca corrige nada.
-    assert!(corrigiu > 700, "so' {corrigiu} correccoes: a varredura nao sai do 1.o ladrilho");
+    assert!(
+        corrigiu > 700,
+        "so' {corrigiu} correccoes: a varredura nao sai do 1.o ladrilho"
+    );
 }
 
 /// ⭐⭐⭐ **A FASE é a mesma ao DÉCIMO MILÉSIMO ladrilho** — o gate que o plano encomendou.
@@ -489,7 +566,12 @@ fn a_fase_e_a_mesma_ao_decimo_milesimo_ladrilho() {
         // este gate passaria sobre uma paralaxe que nunca desloca nada.
         let (mut sim, e) = cena([0.5, 1.0], autorada);
         let mut drive = PreviewDrive::default();
-        drive_parallax(&mut sim, Some(([fase_inicial + 512.0 * 20.0, 0.0], SEM_LIMITE)), PARADO, &mut drive);
+        drive_parallax(
+            &mut sim,
+            Some(([fase_inicial + 512.0 * 20.0, 0.0], SEM_LIMITE)),
+            PARADO,
+            &mut drive,
+        );
         let solto = sim.world().get::<Transform>(e).expect("pose").translation.x;
         assert!(
             (solto - poses[0]).abs() > 1000.0,
@@ -525,7 +607,11 @@ fn um_ladrilho_zero_nao_corrige_e_o_eixo_livre_desloca() {
     let mut drive2 = PreviewDrive::default();
     drive_parallax(&mut sim2, Some((centro, SEM_LIMITE)), PARADO, &mut drive2);
     let t2 = *sim2.world().get::<Transform>(e2).expect("pose");
-    assert!((t2.translation.x - 2000.0).abs() < 1e-2, "x = {}", t2.translation.x);
+    assert!(
+        (t2.translation.x - 2000.0).abs() < 1e-2,
+        "x = {}",
+        t2.translation.x
+    );
 }
 
 /// ⭐⭐ **A repetição não toca na POSE AUTORADA** — o artista continua a poder arrastar o fundo, e o
@@ -548,7 +634,12 @@ fn a_repeticao_nao_envolve_a_pose_autorada() {
         "com a camera na origem a repeticao mexeu na pose que o artista autorou"
     );
     // E com a câmera longe, o que se vê é a autorada mais uma fase — nunca a autorada envolvida.
-    drive_parallax(&mut sim, Some(([10_000.0, 0.0], SEM_LIMITE)), PARADO, &mut drive);
+    drive_parallax(
+        &mut sim,
+        Some(([10_000.0, 0.0], SEM_LIMITE)),
+        PARADO,
+        &mut drive,
+    );
     let x = sim.world().get::<Transform>(e).expect("pose").translation.x;
     assert!(
         (x - 4000.0).abs() <= 128.0 + 1e-3,
@@ -582,7 +673,12 @@ fn cena_lim(k: f32, min: f32, max: f32) -> (SimWorld, ph2d_ecs::Entity) {
 fn pose_com_vista(k: f32, min: f32, max: f32, cam: f32, meia: f32) -> f32 {
     let (mut sim, e) = cena_lim(k, min, max);
     let mut drive = PreviewDrive::default();
-    drive_parallax(&mut sim, Some(([cam, 0.0], [meia, 0.0])), PARADO, &mut drive);
+    drive_parallax(
+        &mut sim,
+        Some(([cam, 0.0], [meia, 0.0])),
+        PARADO,
+        &mut drive,
+    );
     sim.world().get::<Transform>(e).expect("pose").translation.x
 }
 
@@ -673,11 +769,7 @@ fn sem_limites_a_saida_e_byte_identica() {
             // ⚠️ Uma região VAZIA (`max == min`) é a omissão — o componente presente e inerte.
             let eb = b
                 .world_mut()
-                .spawn((
-                    ScrollFactor { k },
-                    ScrollLimits::default(),
-                    autorada,
-                ))
+                .spawn((ScrollFactor { k }, ScrollLimits::default(), autorada))
                 .id();
             let mut db = PreviewDrive::default();
             drive_parallax(&mut b, Some((centro, [360.0, 360.0])), PARADO, &mut db);
@@ -731,7 +823,12 @@ fn com_limites_e_repeticao_a_repeticao_e_a_ultima() {
         .id();
     let mut drive = PreviewDrive::default();
     // Muito para lá do joelho: sem a repetição a camada teria fugido `~4 900`.
-    drive_parallax(&mut sim, Some(([5000.0, 0.0], [360.0, 0.0])), PARADO, &mut drive);
+    drive_parallax(
+        &mut sim,
+        Some(([5000.0, 0.0], [360.0, 0.0])),
+        PARADO,
+        &mut drive,
+    );
     let x = sim.world().get::<Transform>(e).expect("pose").translation.x;
     assert!(
         x.abs() <= tile / 2.0 + 1e-3,
@@ -833,7 +930,10 @@ fn a_deriva_e_velocidade_vezes_o_playhead() {
         (0.3, 1234.567_8, 370.370_361_328_125),
     ] {
         let p = pose_em_t(ScrollFactor::NEUTRO, [v, 0.0], [0.0, 0.0], t);
-        assert_eq!(p.x, esperado, "v = {v}, t = {t} — o produto deixou de ser feito em `f64`");
+        assert_eq!(
+            p.x, esperado,
+            "v = {v}, t = {t} — o produto deixou de ser feito em `f64`"
+        );
         #[allow(clippy::cast_possible_truncation)]
         if v * (t as f32) != esperado {
             discriminantes += 1;
@@ -868,9 +968,15 @@ fn um_scrub_para_tras_desfaz_a_deriva() {
     let repete = pose_em_instante(10.0);
     let zero = pose_em_instante(0.0);
     assert!((ida - 30.0).abs() < 1e-3, "t=10 leu {ida}");
-    assert!((volta - 6.0).abs() < 1e-3, "t=2 depois de t=10 leu {volta} — a deriva ACUMULOU");
+    assert!(
+        (volta - 6.0).abs() < 1e-3,
+        "t=2 depois de t=10 leu {volta} — a deriva ACUMULOU"
+    );
     assert!((repete - 30.0).abs() < 1e-3, "voltar a t=10 leu {repete}");
-    assert!(zero.abs() < 1e-3, "rebobinar leu {zero} — a nuvem nao voltou ao principio");
+    assert!(
+        zero.abs() < 1e-3,
+        "rebobinar leu {zero} — a nuvem nao voltou ao principio"
+    );
 }
 
 /// ⭐⭐ **A deriva SOMA-SE à paralaxe** — ela não é um segundo condutor.
@@ -885,8 +991,16 @@ fn a_deriva_soma_se_ao_deslocamento_da_camera() {
     let so_camera = pose_em_t(k, [0.0, 0.0], centro, 10.0);
     let so_deriva = pose_em_t(k, v, [0.0, 0.0], 10.0);
     let ambas = pose_em_t(k, v, centro, 10.0);
-    assert!((so_camera.x - 200.0).abs() < 1e-3, "so' camera: {}", so_camera.x);
-    assert!((so_deriva.x - 30.0).abs() < 1e-3, "so' deriva: {}", so_deriva.x);
+    assert!(
+        (so_camera.x - 200.0).abs() < 1e-3,
+        "so' camera: {}",
+        so_camera.x
+    );
+    assert!(
+        (so_deriva.x - 30.0).abs() < 1e-3,
+        "so' deriva: {}",
+        so_deriva.x
+    );
     assert!(
         (ambas.x - 230.0).abs() < 1e-3,
         "as duas juntas leem {} e nao a SOMA (230)",
@@ -914,7 +1028,12 @@ fn a_deriva_acorda_um_objecto_de_k_neutro() {
     let (mut sim2, e2) = cena_mov(ScrollFactor::NEUTRO, [0.0, 0.0], pose_em(-3.0, 7.0));
     let mut drive2 = PreviewDrive::default();
     assert_eq!(
-        drive_parallax(&mut sim2, Some(([400.0, 0.0], SEM_LIMITE)), 10.0, &mut drive2),
+        drive_parallax(
+            &mut sim2,
+            Some(([400.0, 0.0], SEM_LIMITE)),
+            10.0,
+            &mut drive2
+        ),
         0
     );
     assert_eq!(
@@ -933,8 +1052,12 @@ fn uma_nuvem_que_deriva_e_repete_nao_foge() {
     let e = sim
         .world_mut()
         .spawn((
-            ScrollFactor { k: ScrollFactor::NEUTRO },
-            ScrollMotion { velocity: [3.0, 0.0] },
+            ScrollFactor {
+                k: ScrollFactor::NEUTRO,
+            },
+            ScrollMotion {
+                velocity: [3.0, 0.0],
+            },
             ScrollRepeat { tile: [tile, 0.0] },
             pose_em(0.0, 0.0),
         ))
@@ -1054,7 +1177,10 @@ fn dois_planos_com_um_dolly_dao_a_razao_da_formula() {
     drive_parallax(&mut sim, Some(([0.0, 0.0], SEM_LIMITE)), PARADO, &mut drive);
     let sp = sim.world().get::<Transform>(perto).expect("pose").scale.x;
     let sl = sim.world().get::<Transform>(longe).expect("pose").scale.x;
-    assert!((sp - 1.0).abs() < 1e-5, "o plano focal mudou de tamanho: {sp}");
+    assert!(
+        (sp - 1.0).abs() < 1e-5,
+        "o plano focal mudou de tamanho: {sp}"
+    );
     assert!((sl - 4.0 / 7.0).abs() < 1e-5, "o fundo leu {sl} contra 4/7");
     // ⭐ **É isto que nenhum motor 2D faz:** um zoom multiplicaria os dois pelo MESMO número.
     assert!(
@@ -1102,7 +1228,12 @@ fn a_camera_a_atravessar_a_camada_recusa() {
     let (mut sim, e) = cena_dolly([0.5, 0.5], 2.5, autorada);
     let mut drive = PreviewDrive::default();
     assert_eq!(
-        drive_parallax(&mut sim, Some(([400.0, 0.0], SEM_LIMITE)), PARADO, &mut drive),
+        drive_parallax(
+            &mut sim,
+            Some(([400.0, 0.0], SEM_LIMITE)),
+            PARADO,
+            &mut drive
+        ),
         0,
         "a camada atravessada foi conduzida"
     );
@@ -1112,7 +1243,12 @@ fn a_camera_a_atravessar_a_camada_recusa() {
     let (mut sim2, _) = cena_dolly([0.5, 0.5], 1.9, autorada);
     let mut drive2 = PreviewDrive::default();
     assert_eq!(
-        drive_parallax(&mut sim2, Some(([400.0, 0.0], SEM_LIMITE)), PARADO, &mut drive2),
+        drive_parallax(
+            &mut sim2,
+            Some(([400.0, 0.0], SEM_LIMITE)),
+            PARADO,
+            &mut drive2
+        ),
         1
     );
 }
@@ -1163,7 +1299,10 @@ fn o_dolly_muda_a_velocidade_e_nao_so_o_tamanho() {
     };
     let sem = declive(0.0);
     let com = declive(delta);
-    assert!((sem - 0.75).abs() < 1e-4, "sem dolly o declive e' {sem} contra 1 − 0,25");
+    assert!(
+        (sem - 0.75).abs() < 1e-4,
+        "sem dolly o declive e' {sem} contra 1 − 0,25"
+    );
     assert!(
         (com - 6.0 / 7.0).abs() < 1e-4,
         "com dolly {delta} o declive leu {com} contra 6/7 — a fraccao deixou de mudar, e o dolly \

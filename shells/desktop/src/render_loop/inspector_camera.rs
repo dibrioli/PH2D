@@ -99,6 +99,7 @@ pub(super) fn build_camera_info(
             height_world: cam.height_world,
             offset: cam.offset,
             priority: cam.priority,
+            dolly: cam.dolly,
             active: cam.active,
             cull_mask: cam.cull_mask,
         },
@@ -132,6 +133,7 @@ pub(super) fn apply_camera_edit(
         CameraFieldEdit::Height(_)
         | CameraFieldEdit::Offset(_)
         | CameraFieldEdit::Priority(_)
+        | CameraFieldEdit::Dolly(_)
         | CameraFieldEdit::Active(_)
         | CameraFieldEdit::CullBit(_, _) => {
             let Some(mut c) = sim.world().get::<GameCamera>(entity).cloned() else {
@@ -145,6 +147,11 @@ pub(super) fn apply_camera_edit(
                 }
                 CameraFieldEdit::Offset(v) => c.offset = *v,
                 CameraFieldEdit::Priority(v) => c.priority = *v,
+                // ⛔ **A cerca é do DOMÍNIO DA LEI e não conforto:** em `δ = 1` o plano do mundo
+                // tem tamanho aparente zero, e acima disso a `escala` inverte o sinal — uma cena
+                // com os fundos ESPELHADOS, que nenhum artista pede. A ponta de baixo é a
+                // saturação medida. Ver [`ph2d_ecs::ScrollFactor::escala_do_dolly`].
+                CameraFieldEdit::Dolly(v) => c.dolly = v.clamp(-1.0, 0.9), // CLAMP-OK: o domínio da lei
                 CameraFieldEdit::Active(on) => c.active = *on,
                 CameraFieldEdit::CullBit(bit, on) => {
                     let m = 1u32 << u32::from(*bit).min(31); // CLAMP-OK: 32 bits, e o painel só tem 32 caixas

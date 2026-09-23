@@ -124,15 +124,20 @@ pub mod instance_verbs;
 pub mod instance_verbs_walk;
 pub mod instantiate;
 pub mod master_editing;
+/// ⭐⭐⭐ **A PARALAXE** (plano 24, W1) — um objecto guarda uma fracção do movimento do mundo; a
+/// lei, a referência e o caso do arrasto estão no cabeçalho.
+pub mod parallax_bridge;
+/// ⭐⭐⭐ **A PARALAXE** (plano 24, W7) — `=1` os quatro planos e as duas leis lado a lado · `=2` o
+/// dolly, que é o que nenhum outro motor deste género dá.
+/// ⭐⭐⭐ **A PARALAXE** (plano 24, W7) — o instantâneo e o dreno da secção.
+pub mod parallax_inspector;
+pub mod parallax_smoke;
 /// ⭐⭐⭐ **A ponte dos emissores de partículas** (TOP-20 #18) — ver o cabeçalho do módulo.
 pub mod particles_bridge;
 /// ⭐⭐⭐ TOP-20 #18 — a secção PARTICLES do Inspector: o instantâneo e o dreno.
 pub mod particles_inspector;
 /// ⭐⭐⭐ O smoke do EMISSOR DE PARTÍCULAS (TOP-20 #18) — ver o cabeçalho.
 pub mod particles_smoke;
-/// ⭐⭐⭐ **A PARALAXE** (plano 24, W1) — um objecto guarda uma fracção do movimento do mundo; a
-/// lei, a referência e o caso do arrasto estão no cabeçalho.
-pub mod parallax_bridge;
 /// ⭐⭐⭐ **O SEGUIDOR DE CAMINHO** (suplente #23) — onde o nome vira curva; ver o cabeçalho.
 pub mod path_follow_bridge;
 /// ⭐⭐⭐ **O SEGUIDOR DE CAMINHO** (suplente #23) — o instantâneo e o dreno da secção.
@@ -287,6 +292,9 @@ pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
         // ⭐⭐⭐ O SEGUIDOR DE CAMINHO (suplente #23): `=1` a pista desenhada, os três que a percorrem
         // e o CONTROLO que corta pelo meio.
         r("PH2D_PATHFOLLOW_SMOKE", path_follow_smoke::CENAS),
+        // ⭐⭐⭐ A PARALAXE (plano 24): `=1` o fundo de quatro planos, com a repetição e a cerca
+        // lado a lado · `=2` o dolly. ⚠️ O `max_level` é **contado** no `montar`.
+        r("PH2D_PARALLAX_SMOKE", parallax_smoke::CENAS),
     ],
 };
 

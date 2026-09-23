@@ -83,12 +83,7 @@ fn a_premissa_da_w6_esta_metade_certa_e_a_escala_nao_e_partilhavel() {
         .spawn((ScrollFactor { k: [0.0, 0.0] }, Transform::default()))
         .id();
     let mut db = PreviewDrive::default();
-    drive_parallax(
-        &mut b,
-        Some((vista.center, vista.half)),
-        PARADO,
-        &mut db,
-    );
+    drive_parallax(&mut b, Some((vista.center, vista.half)), PARADO, &mut db);
     let pb = *b.world().get::<Transform>(eb).expect("pose");
 
     assert_eq!(

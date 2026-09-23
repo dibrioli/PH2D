@@ -135,6 +135,7 @@ pub(super) fn publish(
         inspector_topdown,
         inspector_projectile,
         inspector_ray,
+        inspector_parallax,
         inspector_weapon,
         inspector_tween,
         inspector_path_follow,
@@ -188,6 +189,7 @@ pub(super) fn publish(
         ph2d_panel_inspector::set_current_inspector_topdown(inspector_topdown);
         ph2d_panel_inspector::set_current_inspector_projectile(inspector_projectile);
         ph2d_panel_inspector::set_current_inspector_ray(inspector_ray);
+        ph2d_panel_inspector::set_current_inspector_parallax(inspector_parallax);
         ph2d_panel_inspector::set_current_inspector_weapon(inspector_weapon);
         ph2d_panel_inspector::set_current_inspector_tween(inspector_tween);
         ph2d_panel_inspector::set_current_inspector_path_follow(inspector_path_follow);
@@ -242,6 +244,8 @@ struct LateSections {
     inspector_projectile: Option<ph2d_editor_core::projectile_edits::InspectorProjectileInfo>,
     /// ⭐⭐⭐ A secção RAY SENSOR (suplente #21).
     inspector_ray: Option<ph2d_editor_core::ray_edits::InspectorRayInfo>,
+    /// ⭐⭐⭐ A secção PARALLAX (plano 24).
+    inspector_parallax: Option<ph2d_editor_core::parallax_edits::InspectorParallaxInfo>,
     inspector_weapon: Option<ph2d_editor_core::weapon_edits::InspectorWeaponInfo>,
     inspector_tween: Option<ph2d_editor_core::tween_edits::InspectorTweenInfo>,
     /// ⭐⭐⭐ A secção PATH FOLLOW (suplente #23).
@@ -374,6 +378,14 @@ fn late(
             visto,
         )
     });
+
+    // ⭐⭐⭐ A secção PARALLAX (plano 24) — `None` para quem não tem `ScrollFactor` (ADR-0166).
+    //
+    // ⚠️ Ela lê a CENA e não só o objecto: *há uma câmera do jogo?* é a razão nº 1 para nada se
+    // mexer, e sem ela o painel mandaria o artista afinar um factor que a lei nem chega a ler.
+    let inspector_parallax = hero.gizmo.selection.and_then(|b| {
+        ph2d_app_components::parallax_inspector::build_parallax_info(sim.world(), b, selected_count)
+    });
     // ⭐⭐⭐ A secção WEAPON — `None` para quem não tem o componente (ADR-0166).
     //
     // ⚠️ Ela pede a MUNIÇÃO VIVA, que é o que a distingue das irmãs: sem *«4 de 6 balas»* ela
@@ -432,6 +444,7 @@ fn late(
         inspector_topdown,
         inspector_projectile,
         inspector_ray,
+        inspector_parallax,
         inspector_weapon,
         inspector_tween,
         inspector_path_follow,

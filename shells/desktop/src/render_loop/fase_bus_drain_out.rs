@@ -461,6 +461,9 @@ pub(in crate::render_loop) struct DrainOut {
         Vec<(u64, ph2d_editor_core::projectile_edits::ProjectileFieldEdit)>,
     /// ⭐⭐⭐ As edições da secção RAY SENSOR (suplente #21).
     pub(in crate::render_loop) ray_edits: Vec<(u64, ph2d_editor_core::ray_edits::RayFieldEdit)>,
+    /// ⭐⭐⭐ As edições da secção PARALLAX (plano 24).
+    pub(in crate::render_loop) parallax_edits:
+        Vec<(u64, ph2d_editor_core::parallax_edits::ParallaxFieldEdit)>,
     /// ⭐⭐⭐ As edições da secção WEAPON — a arma do jogador.
     pub(in crate::render_loop) weapon_edits:
         Vec<(u64, ph2d_editor_core::weapon_edits::WeaponFieldEdit)>,

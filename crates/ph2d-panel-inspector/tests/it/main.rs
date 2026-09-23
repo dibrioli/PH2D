@@ -12,6 +12,7 @@ mod a_lista_de_tags_cabe_no_popover;
 mod a_long_popover_scrolls;
 mod a_seccao_counter_watch_esta_viva;
 mod a_seccao_gatilho_esta_viva;
+mod a_seccao_parallax_esta_viva;
 mod a_seccao_particles_esta_viva;
 mod a_seccao_ray_sensor_esta_viva;
 mod a_seccao_script_esta_viva;

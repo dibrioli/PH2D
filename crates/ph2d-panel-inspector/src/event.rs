@@ -70,6 +70,10 @@ pub(crate) fn apply_event(
     if crate::event_weapon::apply_weapon_event(host, ev) {
         return EventOutcome::Consumed;
     }
+    // ⭐⭐⭐ A PARALAXE (plano 24) — sem estado de painel: um objecto tem UMA camada.
+    if crate::event_parallax::apply_parallax_event(host, ev) {
+        return EventOutcome::Consumed;
+    }
     // ⭐⭐⭐ O RAIO (suplente #21) — sem estado de painel: um objecto tem UM.
     if crate::event_ray::apply_ray_event(host, ev) {
         return EventOutcome::Consumed;

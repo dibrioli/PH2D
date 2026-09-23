@@ -36,7 +36,12 @@ fn a_composicao_nao_da_a_deriva_e_os_dois_motores_brigam() {
     let mut drive = PreviewDrive::default();
 
     // A paralaxe conduz.
-    drive_parallax(&mut sim, Some(([400.0, 0.0], [10.0, 10.0])), PARADO, &mut drive);
+    drive_parallax(
+        &mut sim,
+        Some(([400.0, 0.0], [10.0, 10.0])),
+        PARADO,
+        &mut drive,
+    );
     let depois_da_paralaxe = sim.world().get::<Transform>(e).expect("pose").translation;
     assert!(
         (depois_da_paralaxe.x - 200.0).abs() < 1e-3,
@@ -61,7 +66,12 @@ fn a_composicao_nao_da_a_deriva_e_os_dois_motores_brigam() {
     );
 
     // ⭐ E o quadro seguinte da paralaxe lê a escrita do outro como se fosse do ARTISTA.
-    drive_parallax(&mut sim, Some(([400.0, 0.0], [10.0, 10.0])), PARADO, &mut drive);
+    drive_parallax(
+        &mut sim,
+        Some(([400.0, 0.0], [10.0, 10.0])),
+        PARADO,
+        &mut drive,
+    );
     let Some(Driven::ParallaxPose(memo)) = drive.authored(e.to_bits(), Driver::ParallaxPose) else {
         panic!("a paralaxe tinha de continuar a conduzir");
     };

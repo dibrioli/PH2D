@@ -413,6 +413,71 @@ bloco "a paralaxe corre ANTES da camera" ph2d-host-desktop a_paralaxe_corre_depo
         let camera_rect = self.fase_game_camera(player_input, report);' \
   '--test it'
 
+echo "=== A SUPERFICIE (W7): a seccao, o dolly, a cena e o prologo ==="
+POP=crates/ph2d-panel-inspector/src/populate_parallax.rs
+SYNCS=crates/ph2d-panel-inspector/src/sync_sections.rs
+EVP=crates/ph2d-panel-inspector/src/event_parallax.rs
+EVC=crates/ph2d-panel-inspector/src/event_camera.rs
+PINTOR=crates/ph2d-panel-inspector/src/sections/parallax.rs
+VOC=crates/ph2d-editor-core/src/parallax_edits.rs
+INSP=crates/ph2d-app-components/src/parallax_inspector.rs
+CENA=crates/ph2d-app-components/src/parallax_smoke.rs
+PROL=shells/desktop/src/components_scenes_suplentes.rs
+
+# ⛔ Um id que o `populate` nao regista e' PINTADO e MORTO sob o dedo — a 8.a vez desta crate.
+bloco "o ladrilho X fica por registar" ph2d-panel-inspector todo_campo_esta_vivo_sob_o_dedo \
+  "$POP" 1 '    (ids::INSP_PARALLAX_TILE_X, 0.0,' '    (ids::INSP_PARALLAX_K_X, 0.0,' '--test it'
+bloco "a semente da seccao nao corre" ph2d-panel-inspector os_campos_mostram_o_que_o_objecto_tem \
+  "$SYNCS" 1 '    crate::sync_parallax::sync(host, inspector_state, entity_changed);' '' '--test it'
+bloco "o par do ladrilho troca de eixo" ph2d-panel-inspector escrever_num_campo_chega \
+  "$EVP" 1 'ParallaxFieldEdit::Repeat([f, rep[1]])' 'ParallaxFieldEdit::Repeat([rep[1], f])' '--test it'
+bloco "o outro eixo do factor vem de um ZERO" ph2d-panel-inspector escrever_num_campo_chega \
+  "$EVP" 1 'ParallaxFieldEdit::Factor([f, info.factor[1]])' 'ParallaxFieldEdit::Factor([f, 0.0])' '--test it'
+bloco "o bloco do ladrilho aparece sempre" ph2d-panel-inspector os_blocos_aparecem_so_com \
+  "$PINTOR" 1 '    if i.repeat.is_some() {' '    if true {' '--test it'
+# ⭐ O DOLLY — a semente, a ARESTA nova da camera, e o dreno.
+bloco "a semente do dolly some" ph2d-panel-inspector o_dolly_mostra_a_camera \
+  "$SYNCS" 1 '        (crate::ids::INSP_CAMERA_DOLLY, f64::from(cam.camera.dolly)),' '' '--test it'
+bloco "a camera volta a semear so na troca de objecto" ph2d-panel-inspector o_dolly_mostra_a_camera \
+  "$SYNCS" 1 'sync_camera_fields(host, &cam, entity_changed || mudou);' 'sync_camera_fields(host, &cam, entity_changed);' '--test it'
+bloco "o dolly escreve na altura" ph2d-panel-inspector o_dolly_mostra_a_camera \
+  "$EVC" 1 'crate::ids::INSP_CAMERA_DOLLY => CameraFieldEdit::Dolly(f),' 'crate::ids::INSP_CAMERA_DOLLY => CameraFieldEdit::Height(f),' '--test it'
+# ⭐ As queixas: a ORDEM da recusa, e a camera ACHADA no mundo.
+bloco "a queixa da camera some" ph2d-app-components as_queixas_seguem \
+  "$VOC" 1 '        if !self.tem_camera_do_jogo {' '        if false {'
+bloco "o construtor nunca acha a camera" ph2d-app-components as_queixas_seguem \
+  "$INSP" 1 '    let tem_camera_do_jogo = world.iter_entities().any(|x| x.contains::<GameCamera>());' '    let tem_camera_do_jogo = false;'
+bloco "o dreno troca os eixos do ladrilho" ph2d-app-components o_dreno_escreve_o_par \
+  "$INSP" 1 '            c.tile = *t;' '            c.tile = [t[1], t[0]];'
+# ⭐ A CENA — cada gate e' uma frase do roteiro.
+bloco "as colinas colam-se as arvores" ph2d-app-components os_planos_vizinhos \
+  "$CENA" 1 'pub const K_COLINAS: f32 = 0.35;' 'pub const K_COLINAS: f32 = 0.55;'
+bloco "as colinas passam a repetir" ph2d-app-components as_colinas_tem_cerca \
+  "$CENA" 1 '        // ⚠️ **SEM `ScrollRepeat`, de propósito** — ver o cabeçalho: é o contraste que ensina.' '        ScrollRepeat { tile: [PASSO_COLINAS, 0.0] },'
+bloco "a serra deixa de ter cerca a ALTURA certa" ph2d-app-components a_borda_da_serra \
+  "$CENA" 1 'const SERRA_MAX_X: f32 = 30.0;' 'const SERRA_MAX_X: f32 = 90.0;'
+bloco "a camera deixa de ficar presa em Y" ph2d-app-components a_camera_fica_presa \
+  "$CENA" 1 '                min: [-400.0, -MEIA_VISTA_Y],' '                min: [-400.0, -2.0 * MEIA_VISTA_Y],'
+bloco "a fileira das arvores fica curta" ph2d-app-components a_fileira_que_repete \
+  "$CENA" 1 'const PECAS_ARVORES: i32 = 15;' 'const PECAS_ARVORES: i32 = 5;'
+bloco "o ceu sai do ecra" ph2d-app-components toda_peca_cabe \
+  "$CENA" 1 'const Y_CEU: f32 = 3.2;' 'const Y_CEU: f32 = 4.8;'
+bloco "o heroi fica do solver" ph2d-app-components o_heroi_tem_corpo \
+  "$CENA" 1 '            kind: BodyKind::Kinematic,' '            kind: BodyKind::Dynamic,'
+bloco "nasce escolhida a camada errada" ph2d-app-components quem_nasce_escolhido \
+  "$CENA" 1 '    entidade_por_nome(world, "Arvores")' '    entidade_por_nome(world, "Colinas")'
+bloco "a deriva do ceu some" ph2d-app-components com_a_camera_parada \
+  "$CENA" 1 '            velocity: [DERIVA_CEU, 0.0],' '            velocity: [0.0, 0.0],'
+bloco "o roteiro escreve o nome a mao" ph2d-app-components o_roteiro_nomeia \
+  "$CENA" 1 '        t("panel.inspector.parallax.repeat_m"),' '        "Repeat",'
+# ⭐ O PROLOGO — as tres obrigacoes.
+bloco "o prologo nao toma a vista do jogo" ph2d-host-desktop o_prologo_da_cena_da_paralaxe \
+  "$PROL" 1 '        // ⭐⭐⭐ Ver o ponto 1 do doc — sem isto a wave inteira mede outra câmera.
+        self.game_camera_preview = true;' '' '--test it'
+bloco "o prologo abre a regua" ph2d-host-desktop o_prologo_da_cena_da_paralaxe \
+  "$PROL" 1 '            hero.panel_visibility.insert("timeline", false);' '            crate::components_scenes::abre_a_regua_da_corrida(hero);
+            hero.panel_visibility.insert("timeline", false);' '--test it'
+
 echo
 echo "════════════════════════════════════════"
 if [ "$FALHAS" = 0 ]; then

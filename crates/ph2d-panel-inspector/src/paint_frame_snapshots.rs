@@ -56,6 +56,7 @@ pub(crate) struct LiveSnapshots {
     pub projectile_info: Option<ph2d_editor_core::projectile_edits::InspectorProjectileInfo>,
     /// ⭐⭐⭐ A secção RAY SENSOR (suplente #21).
     pub ray_info: Option<ph2d_editor_core::ray_edits::InspectorRayInfo>,
+    pub parallax_info: Option<ph2d_editor_core::parallax_edits::InspectorParallaxInfo>,
     /// ⭐⭐⭐ A secção WEAPON — a arma do jogador.
     pub weapon_info: Option<ph2d_editor_core::weapon_edits::InspectorWeaponInfo>,
     /// ⭐ O snapshot do CÉREBRO (TOP-20 #15).
@@ -130,6 +131,7 @@ impl LiveSnapshots {
         let topdown_info = crate::state_components::current_inspector_topdown();
         let projectile_info = crate::state_components::current_inspector_projectile();
         let ray_info = crate::state_components::current_inspector_ray();
+        let parallax_info = crate::state_components::current_inspector_parallax();
         let weapon_info = crate::state_components::current_inspector_weapon();
         let statemachine_info = crate::state_components::current_inspector_statemachine();
         let script_info = crate::state_components::current_inspector_script();
@@ -163,6 +165,7 @@ impl LiveSnapshots {
             topdown_info.is_some(),
             projectile_info.is_some(),
             ray_info.is_some(),
+            parallax_info.is_some(),
             weapon_info.is_some(),
             statemachine_info.is_some(),
             script_info.is_some(),
@@ -194,6 +197,7 @@ impl LiveSnapshots {
             topdown_info,
             projectile_info,
             ray_info,
+            parallax_info,
             weapon_info,
             statemachine_info,
             script_info,

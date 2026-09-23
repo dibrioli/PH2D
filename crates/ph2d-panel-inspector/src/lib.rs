@@ -39,6 +39,8 @@ mod event_hud;
 mod event_instance;
 mod event_joint;
 mod event_ordering;
+/// ⭐⭐⭐ O despacho da secção RAY SENSOR (suplente #21).
+mod event_parallax;
 /// ⭐ O despacho da secção PARTICLES — irmão do `event` por CAP de função.
 mod event_particles;
 mod event_path_follow;
@@ -46,7 +48,6 @@ mod event_physics;
 mod event_player;
 mod event_precision;
 mod event_projectile;
-/// ⭐⭐⭐ O despacho da secção RAY SENSOR (suplente #21).
 mod event_ray;
 /// ⭐ O despacho da secção SCRIPT — irmão do `event` por CAP de função.
 mod event_script;
@@ -107,6 +108,7 @@ mod populate_factory;
 mod populate_hud;
 /// ⭐⭐ O registo do CARTÃO de instância — irmão por assunto, ver o cabeçalho de lá.
 mod populate_instance;
+mod populate_parallax;
 mod populate_particles;
 mod populate_path_follow;
 mod populate_physics;
@@ -143,15 +145,17 @@ mod sync;
 mod sync_action_trigger;
 mod sync_counter_watch;
 mod sync_hud;
+/// ⭐⭐⭐ A semente da secção RAY SENSOR (suplente #21) — ver o cabeçalho dela.
+mod sync_parallax;
 /// ⭐ A semente da secção PARTICLES — irmã do `sync_sections` por CAP de ficheiro.
 mod sync_particles;
 mod sync_path_follow;
 mod sync_physics;
-/// ⭐⭐⭐ A semente da secção RAY SENSOR (suplente #21) — ver o cabeçalho dela.
 mod sync_ray;
 /// ⭐ A semente da secção SCRIPT — irmã do `sync_sections` por CAP de ficheiro.
 mod sync_script;
 mod sync_sections;
+mod sync_sections_camera_sig;
 /// ⭐ A semente dos campos das DUAS secções do ABANÃO (suplente #25).
 mod sync_shake;
 /// Os dois sliders-com-chip da sprite (Opacidade + Emissive) — irmão do `sync`, que estava no tecto.
@@ -252,9 +256,9 @@ pub use state_components::{
     set_current_inspector_action, set_current_inspector_action_trigger,
     set_current_inspector_audio, set_current_inspector_camera, set_current_inspector_counter_watch,
     set_current_inspector_emitter, set_current_inspector_factory, set_current_inspector_hud,
-    set_current_inspector_particles, set_current_inspector_path_follow,
-    set_current_inspector_projectile, set_current_inspector_ray, set_current_inspector_script,
-    set_current_inspector_sequence, set_current_inspector_shake,
+    set_current_inspector_parallax, set_current_inspector_particles,
+    set_current_inspector_path_follow, set_current_inspector_projectile, set_current_inspector_ray,
+    set_current_inspector_script, set_current_inspector_sequence, set_current_inspector_shake,
     set_current_inspector_statemachine, set_current_inspector_timer, set_current_inspector_topdown,
     set_current_inspector_tween, set_current_inspector_weapon,
 };

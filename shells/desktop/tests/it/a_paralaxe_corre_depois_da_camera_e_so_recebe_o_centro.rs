@@ -102,3 +102,55 @@ fn a_paralaxe_corre_depois_da_camera_e_so_recebe_o_centro() {
          porque recebem o instante como argumento"
     );
 }
+
+/// ⭐⭐⭐ **O prólogo da cena da paralaxe faz as TRÊS coisas que a cena não pode fazer** (W7).
+///
+/// ⚠️ **Cada uma, esquecida, dá uma cena que ENSINA O CONTRÁRIO** e nenhum gate da família a vê,
+/// porque a família não alcança o `HeroScreen` nem o playhead:
+/// - sem **tomar a vista da câmera do jogo**, o ecrã mostra a câmera do editor e o fundo anda contra
+///   uma coisa que o dono não vê — *ele parado e o céu a deslizar*;
+/// - sem **fechar a régua do transporte**, a meia-vista da câmera é da JANELA e a banda do canvas
+///   fica com metade: o céu e o chão saem do ecrã (a armadilha que três waves desta linha pagaram);
+/// - sem **o relógio a andar**, as nuvens não derivam e o herói não anda.
+///
+/// ⚠️ É um gate de TEXTO porque o prólogo pede `HeroScreen` + `GpuContext` e não é alcançável de um
+/// teste — a mesma razão do gate da fiação do `dispatch` (§5 do Motion).
+#[test]
+fn o_prologo_da_cena_da_paralaxe_toma_a_vista_fecha_a_regua_e_poe_o_relogio_a_andar() {
+    let fonte = include_str!("../../src/components_scenes_suplentes.rs");
+    let ini = fonte
+        .find("fn parallax_smoke(")
+        .expect("o prologo da cena da paralaxe deixou de existir");
+    let resto = &fonte[ini..];
+    let corpo = &resto[..resto[1..]
+        .find("\n    pub(crate) fn ")
+        .map_or(resto.len(), |i| i + 1)];
+    for (agulha, porque) in [
+        (
+            "self.game_camera_preview = true;",
+            "sem tomar a vista, o fundo anda contra a camera do EDITOR",
+        ),
+        (
+            "panel_visibility.insert(\"timeline\", false)",
+            "com a regua aberta o ceu e o chao saem do ecra",
+        ),
+        (
+            "self.playhead.play();",
+            "sem o relogio a andar as nuvens nao derivam e o heroi nao anda",
+        ),
+        (
+            "hero.gizmo.selection = Some(montada.escolhido);",
+            "o roteiro nomeia uma seccao do Inspector",
+        ),
+    ] {
+        assert!(
+            corpo.contains(agulha),
+            "{porque} — falta `{agulha}` no prologo"
+        );
+    }
+    // ⛔ E a metade NEGATIVA: abrir a régua aqui desfaz a segunda linha, com as duas presentes.
+    assert!(
+        !corpo.contains("abre_a_regua_da_corrida"),
+        "o prologo abre a regua do transporte, e a cena foi arrumada para o ecra SEM ela"
+    );
+}

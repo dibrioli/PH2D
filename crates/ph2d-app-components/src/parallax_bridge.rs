@@ -101,7 +101,14 @@ pub fn drive_parallax(
     let antes: Vec<Linha> = {
         let world = sim.world_mut();
         world
-            .query_filtered::<(Entity, &Transform, &ScrollFactor, Option<&ScrollRepeat>, Option<&ScrollLimits>, Option<&ScrollMotion>), bevy_ecs::prelude::Without<UiCanvas>>()
+            .query_filtered::<(
+                Entity,
+                &Transform,
+                &ScrollFactor,
+                Option<&ScrollRepeat>,
+                Option<&ScrollLimits>,
+                Option<&ScrollMotion>,
+            ), bevy_ecs::prelude::Without<UiCanvas>>()
             .iter(world)
             .map(|(e, t, k, r, l, m)| (e, *t, *k, r.copied(), l.copied(), m.copied()))
             .collect()

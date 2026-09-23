@@ -101,10 +101,7 @@ impl ScrollFactor {
     /// mudasse deixava a repetição a corrigir um deslocamento que já não é o que o produto aplica.
     #[must_use]
     pub fn deslocamento(&self, centro: [f32; 2]) -> [f32; 2] {
-        [
-            centro[0] * (1.0 - self.k[0]),
-            centro[1] * (1.0 - self.k[1]),
-        ]
+        [centro[0] * (1.0 - self.k[0]), centro[1] * (1.0 - self.k[1])]
     }
 
     /// ⭐⭐⭐ **O DOLLY** (plano 24, W5 · §2) — a câmera anda em PROFUNDIDADE, e o primeiro plano

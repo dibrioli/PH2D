@@ -131,6 +131,7 @@ fn camera() -> ph2d_editor_core::screens::hero::InspectorCameraInfo {
             height_world: 10.0,
             offset: [0.0, 0.0],
             priority: 0,
+            dolly: 0.0,
             active: true,
             cull_mask: u32::MAX,
         },

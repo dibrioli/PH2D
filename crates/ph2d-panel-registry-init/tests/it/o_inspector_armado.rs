@@ -627,6 +627,7 @@ fn arma_o_top20() {
             height_world: 10.0,
             offset: [0.0, 0.0],
             priority: 0,
+            dolly: 0.0,
             active: true,
             cull_mask: u32::MAX,
         },

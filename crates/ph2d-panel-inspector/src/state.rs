@@ -121,6 +121,10 @@ pub struct InspectorState {
     /// RAY SENSOR — idem. ⛔ Esta linha FALTAVA e a secção shipou a mostrar os valores de FÁBRICA
     /// do `populate_ray`; quem a apanhou foi uma foto (ver o cabeçalho do `sync_ray`).
     pub last_ray_sig: Option<u64>,
+    /// A assinatura da secção PARALLAX — mesma lei do `last_ray_sig`.
+    pub last_parallax_sig: Option<u64>,
+    /// A assinatura da secção CAMERA — ver o `sync_sections`.
+    pub last_camera_sig: Option<u64>,
     /// A assinatura da secção WEAPON — mesma lei do `last_ray_sig`, e nascida no MESMO commit
     /// que a secção de propósito (ver o cabeçalho do `sync_weapon`).
     pub last_weapon_sig: Option<u64>,

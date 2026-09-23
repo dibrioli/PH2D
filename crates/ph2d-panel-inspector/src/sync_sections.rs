@@ -79,6 +79,7 @@ pub(crate) fn sync_new_sections(
     // ⭐⭐⭐ **O RAIO** (suplente #21) — no irmão, pelo mesmo tecto. ⛔ Esta linha FALTAVA, como a da
     // vigia do contador e a das duas de 10/09: a secção shipou a mostrar `Direction 0 / −1` e
     // `Reach 1 m` sobre um olho autorado a `(1, 0)` com alcance `6`, e quem a apanhou foi uma FOTO.
+    crate::sync_parallax::sync(host, inspector_state, entity_changed);
     crate::sync_ray::sync(host, inspector_state, entity_changed);
     crate::sync_weapon::sync(host, inspector_state, entity_changed);
     crate::sync_tween::sync(host, inspector_state, entity_changed);
@@ -98,7 +99,15 @@ pub(crate) fn sync_new_sections(
         sync_audio_fields(host, &au, entity_changed);
     }
     if let Some(cam) = crate::state_components::current_inspector_camera() {
-        sync_camera_fields(host, &cam, entity_changed);
+        // ⭐⭐ **E a câmera ganha a ASSINATURA das irmãs** (plano 24, W7). ⛔ A aresta era só a
+        // entidade, logo um valor que muda FORA do painel — um `Ctrl+Z`, uma cena de smoke que o
+        // arma, o `Dolly` que esta wave trouxe — ficava com o número velho no ecrã até alguém trocar
+        // de objecto. Quem o apanhou foi o gate do dolly: a semente nunca corria sem uma troca de
+        // selecção. ⚠️ O foco e o arrasto continuam a ganhar ao instantâneo, dentro da função.
+        let sig = crate::sync_sections_camera_sig::assinatura(&cam);
+        let mudou = inspector_state.last_camera_sig != Some(sig);
+        inspector_state.last_camera_sig = Some(sig);
+        sync_camera_fields(host, &cam, entity_changed || mudou);
     }
     // ⭐⭐⭐ **TAGS** (TOP-20 #9). ⚠️ **Ela não tem campo a semear do objecto** — os chips e a lista
     // são DERIVADOS do snapshot a cada pintura, e o único campo editável (a busca/criação) é do
@@ -251,6 +260,7 @@ fn sync_camera_fields(
             crate::ids::INSP_CAMERA_PRIORITY,
             f64::from(cam.camera.priority),
         ),
+        (crate::ids::INSP_CAMERA_DOLLY, f64::from(cam.camera.dolly)),
     ];
     if let Some(f) = cam.follow.as_ref() {
         numeros.extend([

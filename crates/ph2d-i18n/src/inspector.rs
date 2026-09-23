@@ -285,6 +285,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.camera.height_m" => "Height",
         "panel.inspector.camera.offset_m" => "Offset",
         "panel.inspector.camera.priority" => "Priority",
+        "panel.inspector.camera.dolly" => "Dolly",
         "panel.inspector.camera.active" => "Active",
         "panel.inspector.camera.look_through" => "Look Through",
         "panel.inspector.camera.object_name" => "object name\u{2026}",

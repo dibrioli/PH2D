@@ -169,11 +169,36 @@ para exprimir `centro`: **cerimónia, e não unificação**.
 o que ela ia comprar. `crates/ph2d-app-components/src/parallax_w6_tests.rs`. ⚠️ E a fixtura dele NÃO
 pode ter a vista do tamanho da referência: ali as duas escalas são `1,0` e coincidem por acidente.
 
-### W7 — a superfície
+### W7 — a superfície — ✅ **FECHADA (2026-09-23)**
 
 Fileiras no Inspector (`Scroll Factor` em X/Y, com a **distância como leitura derivada**, nunca um
 segundo campo guardado), i18n, e **duas cenas de smoke**: uma de fundo com três planos e repetição;
 outra do dolly, que é a única que mostra o que nenhum outro motor faz.
+
+**O que ficou, e as decisões que a medição tomou:**
+
+- ⭐⭐ **UMA secção `Parallax` para QUATRO componentes.** Quatro populações, um assunto: a secção
+  existe com o `ScrollFactor` e o ladrilho, a deriva e a cerca são BLOCOS dentro dela, cada um só
+  com o componente dele. Quatro secções dariam quatro cabeçalhos a dizer a mesma palavra.
+- ⭐⭐ **O painel diz porque nada se mexe, e são DUAS razões pela ordem da recusa:** *não há câmera
+  do jogo* (a lei não corre para ninguém) antes de *esta camada anda com o mundo* (`k = 1`, o valor
+  de FÁBRICA — o artista anexa a paralaxe e nada muda). ⚠️ **O neutro viaja no instantâneo** porque
+  a crate do painel vive abaixo do `ph2d-ecs` no DAG: quem responde é o construtor, pela mesma porta
+  (`ScrollFactor::e_neutro`) que o passe consulta.
+- ⭐ **A fileira `Dolly` na secção `Camera`**, com a faixa a nomear o recurso de cada ponta: `0,9`
+  em cima é o DOMÍNIO da lei (em `δ = 1` o plano do mundo tem tamanho aparente zero), `−1` em baixo
+  é a saturação medida (o céu lê `1,79×` a `−1`, `2,42×` a `−2`, `2,94×` a `−3`).
+- ⛔⛔ **E o gate do dolly apanhou um defeito PRÉ-EXISTENTE da secção Camera:** os números dela só se
+  re-semeavam ao trocar de objecto, logo um `Ctrl+Z` deixava o valor velho no ecrã. Ela ganhou a
+  ASSINATURA das irmãs (`sync_sections_camera_sig`).
+- ⭐⭐ **As duas cenas** (`PH2D_PARALLAX_SMOKE=1|2`): a `=1` contrasta de propósito as duas leis — as
+  árvores e o céu REPETEM, as colinas têm CERCA —, com os postes do chão como RÉGUA; a `=2` é o
+  dolly sozinho, sem ninguém a andar. ⛔⛔ **A FOTO escolheu os números com os gates verdes:** a `7`
+  e a `16` m a janela mostrava UMA árvore e UMA nuvem, e uma peça sozinha não se lê a andar mais
+  devagar que outra.
+- ⚠️ **O prólogo FECHA a régua do transporte** — a meia-vista da câmera é da JANELA, e com a régua
+  aberta o céu e o chão saem do ecrã. Gate de texto, porque o prólogo não é alcançável de um teste.
+- ⏳ **A distância como leitura derivada NÃO entrou** — ver o handoff §4.
 
 ---
 

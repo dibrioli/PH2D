@@ -22,6 +22,7 @@ use ph2d_editor_core::interaction::WidgetStore;
 pub(crate) fn populate_das_waves(store: &mut WidgetStore) {
     super::populate_factory::populate_factory(store);
     super::populate_projectile::populate_projectile(store);
+    super::populate_parallax::populate_parallax(store);
     super::populate_ray::populate_ray(store);
     super::populate_weapon::populate_weapon(store);
     super::populate_tween::populate_tween(store);

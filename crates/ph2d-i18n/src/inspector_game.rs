@@ -173,6 +173,33 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.projectile.face_velocity" => "Face Velocity",
         "panel.inspector.projectile.projectile_motion" => "Projectile Motion",
         // ⭐⭐⭐ O RAIO (suplente #21) — o objecto que OLHA.
+        // ⭐⭐⭐ A PARALAXE (plano 24) — ⚠️ os rótulos são os que o roteiro da cena `=1` nomeia,
+        // e há gate derivado do próprio roteiro a exigir que cada nome entre crases exista aqui.
+        "panel.inspector.parallax.parallax" => "Parallax",
+        "panel.inspector.parallax.scroll_factor" => "Scroll Factor",
+        "panel.inspector.parallax.repeat_m" => "Repeat",
+        "panel.inspector.parallax.drift_m_s" => "Drift",
+        "panel.inspector.parallax.limit_min_m" => "Limit Min",
+        "panel.inspector.parallax.limit_max_m" => "Limit Max",
+        "panel.inspector.parallax.there_is_no_game_camera" => {
+            "There is no Game Camera in the scene \u{2014} no layer moves."
+        }
+        "panel.inspector.parallax.this_layer_moves_with_the_world" => {
+            "This layer moves with the world \u{2014} lower the Scroll Factor."
+        }
+        "panel.inspector.parallax.pinned_to_the_screen" => {
+            "Pinned to the screen \u{2014} infinitely far."
+        }
+        "panel.inspector.parallax.n_times_as_far_as_the_world" => "{n}\u{d7} as far as the world.",
+        "panel.inspector.parallax.in_front_of_the_world_at_n" => {
+            "In front of the world, at {n}\u{d7} its distance."
+        }
+        "panel.inspector.parallax.moves_against_the_camera" => {
+            "Moves against the camera \u{2014} no distance."
+        }
+        "panel.inspector.parallax.editing_the_primary_selection_only" => {
+            "Editing the primary selection only."
+        }
         "panel.inspector.ray.ray_sensor" => "Ray Sensor",
         "panel.inspector.ray.origin" => "Origin",
         "panel.inspector.ray.direction" => "Direction",

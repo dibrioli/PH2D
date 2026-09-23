@@ -388,6 +388,22 @@ pub(crate) fn paint_familia_saida(
         infos.emitter,
         infos.emitter_selected,
     );
+    // ⭐⭐⭐ A PARALAXE (plano 24) — família CÂMERA pelo catálogo (`ph2d::ecs::ScrollFactor`…), logo
+    // a seguir às irmãs dela; chegou depois da ordem por família (integração de 2026-09-25).
+    y = crate::paint_optional_suplentes::paint_parallax_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        section_tops_y,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y,
+        header_h,
+        snaps.parallax_info.as_ref(),
+    );
     y = crate::paint_optional_factory::paint_script_section(
         scene,
         text_system,

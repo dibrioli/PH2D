@@ -78,6 +78,7 @@ pub(crate) fn apply_camera_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
             crate::ids::INSP_CAMERA_HEIGHT => CameraFieldEdit::Height(f),
             #[allow(clippy::cast_possible_truncation)]
             crate::ids::INSP_CAMERA_PRIORITY => CameraFieldEdit::Priority(v as i32),
+            crate::ids::INSP_CAMERA_DOLLY => CameraFieldEdit::Dolly(f),
             crate::ids::INSP_CAMERA_OFFSET_X => CameraFieldEdit::Offset([f, info.camera.offset[1]]),
             crate::ids::INSP_CAMERA_OFFSET_Y => CameraFieldEdit::Offset([info.camera.offset[0], f]),
             crate::ids::INSP_CAMERA_DAMP_X => {

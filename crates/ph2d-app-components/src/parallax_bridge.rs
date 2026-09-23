@@ -260,3 +260,7 @@ mod w4_probe;
 #[cfg(test)]
 #[path = "parallax_custo_tests.rs"]
 mod custo;
+
+#[cfg(test)]
+#[path = "parallax_w6_tests.rs"]
+mod w6;

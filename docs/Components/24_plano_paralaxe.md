@@ -147,13 +147,27 @@ conduzida, como a pose.
 - **Gate:** o teste da multiplano — dois planos a `k = 1` e `k = 0.25`, um dolly, e a razão dos
   tamanhos aparentes bate a fórmula ao `f32`; mais as duas degenerescências do §2.
 
-### W6 — a unificação com o HUD
+### W6 — a unificação com o HUD — ⛔ **as DUAS metades da premissa foram REFUTADAS (2026-09-22)**
 
-Uma porta só para *«a pose que a vista conduz»*, com **dois leitores**: o `UiCanvas` e o
-`ScrollFactor`. O `UiCanvas` mantém o que é dele (o enquadramento, as âncoras, o letterbox); o que
-passa a ser partilhado é a LEI da pose.
+> A redacção original: *«uma porta só para «a pose que a vista conduz», com dois leitores: o
+> `UiCanvas` e o `ScrollFactor`. O que passa a ser partilhado é a LEI da pose. **Gate:** `UiCanvas` e
+> um objecto com `k = 0` produzem a mesma pose, ao bit.»*
 
-- **Gate:** `UiCanvas` e um objecto com `k = 0` produzem a **mesma** pose, ao bit.
+⛔ **Metade 1 — «a POSE» não é partilhável; a TRANSLAÇÃO é.** Medido: a translação dos dois é
+**idêntica ao bit** e a escala **nunca** o é. A do canvas responde *«quantos metros de mundo cabem
+nesta janela?»* (ela existe para o HUD ser legível em qualquer resolução, e o `Fit` escolhe entre
+confinar e esticar); a da paralaxe responde *«a que PROFUNDIDADE está esta camada?»* (W5), e com
+`dolly = 0` **não existe de todo**. *Duas grandezas com o mesmo nome e perguntas diferentes.*
+
+⛔ **Metade 2 — não há LEI duplicada para unificar.** A translação do canvas é, em `ph2d_hud::place`,
+literalmente **`translate: view.center`** — uma ATRIBUIÇÃO. A da paralaxe é `autorada + centro·(1−k)`.
+Elas coincidem em `k = 0` com a pose autorada em zero, e isso é um **FACTO sobre as duas leis**, não
+uma cópia de uma delas. ⇒ chamar a lei da paralaxe de dentro do canvas acrescentaria uma dependência
+para exprimir `centro`: **cerimónia, e não unificação**.
+
+⭐ **O que a wave entrega:** o **gate que ATA as duas** — que é o que a unificação ia comprar, e tudo
+o que ela ia comprar. `crates/ph2d-app-components/src/parallax_w6_tests.rs`. ⚠️ E a fixtura dele NÃO
+pode ter a vista do tamanho da referência: ali as duas escalas são `1,0` e coincidem por acidente.
 
 ### W7 — a superfície
 

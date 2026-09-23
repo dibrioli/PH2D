@@ -14,12 +14,12 @@ use ph2d_ecs::{
 /// ⚠️ **A meia-vista de quem NÃO confina.** Ela entrou na assinatura com a W3 e é irrelevante para
 /// as leis da W1 e da W2 — escrevê-la por um nome diz isso, e um `[0.0, 0.0]` solto em vinte sítios
 /// leria-se como um número que importa.
-const SEM_LIMITE: [f32; 2] = [0.0, 0.0];
+pub(super) const SEM_LIMITE: [f32; 2] = [0.0, 0.0];
 use ph2d_preview_drive::{Driven, Driver, PreviewDrive};
 
 /// ⚠️ **O instante em que a deriva da W4 é INERTE.** Toda a bancada das W1–W3 corre aqui, e é isso
 /// que mantém aquelas leis medidas SOZINHAS — `velocidade × 0` é zero seja qual for a velocidade.
-const PARADO: f64 = 0.0;
+pub(super) const PARADO: f64 = 0.0;
 
 use super::{drive_parallax, parallax_count};
 

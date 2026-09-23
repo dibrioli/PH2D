@@ -148,7 +148,7 @@ impl PainterTool {
         fases::soma(fases::COPIAS, t_copias);
         #[cfg(test)]
         let t_compor = std::time::Instant::now();
-        self.compoe_a_pilha(alvo, &camadas);
+        self.compoe_a_pilha(alvo, caixa_nova, &camadas);
         #[cfg(test)]
         fases::soma(fases::COMPOR, t_compor);
         #[cfg(test)]
@@ -231,7 +231,34 @@ impl PainterTool {
     }
 
     /// **A composição: `pre` e depois cada camada UMA vez, de baixo para cima.**
-    fn compoe_a_pilha(&mut self, r: Region, camadas: &[Vec<Dab>; N_CAMADAS]) {
+    /// ⭐⭐⭐ **O BORRÃO só precisa de LER a orla; ESCREVÊ-LA é trabalho que se deita fora.**
+    ///
+    /// A composição corre sobre `alvo = caixa_nova + 2·pad` porque o borrão tem de ler vizinhança
+    /// já composta — e depois **só `caixa_nova` é guardada**. Medido na pilha do dono (2026-09-22,
+    /// report *«ainda está lenta e engasgando com pincel grande»*): `alvo` mede `857 px` de lado
+    /// contra `355` de `caixa_nova`, ou seja **`5,8×` da área é calculada e deitada fora**, e o
+    /// borrão é a operação que a paga mais cara (`26,3 Mpx` contra `2,0` do mesmo borrão sozinho).
+    ///
+    /// ⇒ o borrão passa a ser **APLICADO** sobre `caixa_nova`. O avental que ele precisa de ler
+    /// continua a ser lido — a [`ph2d_painter_brush::blur_region_por_peso`] lê a vizinhança dela
+    /// própria, a partir da tela, que os passos de baixo compuseram sobre `alvo`.
+    ///
+    /// ⛔⛔ **A CERCA, e sem ela isto não é byte-idêntico:** quem lê a SAÍDA do borrão fora de
+    /// `caixa_nova` é uma camada ACIMA dele que leia VIZINHANÇA — outro borrão, ou um esfregão, que
+    /// desloca píxeis. Com uma dessas acima, a orla borrada é entrada de alguém e tem de existir ⇒
+    /// ali fica o `alvo` de sempre. *Uma camada por-pixel (Brush, Erase) nunca lê o vizinho, logo
+    /// não vê a diferença.*
+    fn alguem_acima_le_vizinhanca(&self, pos: usize) -> bool {
+        (0..pos).any(|p| {
+            self.paint.composite[p].strength > 0.0
+                && matches!(
+                    self.paint.composite[p].op,
+                    CompositeOp::Blur | CompositeOp::Smear
+                )
+        })
+    }
+
+    fn compoe_a_pilha(&mut self, r: Region, caixa_nova: Region, camadas: &[Vec<Dab>; N_CAMADAS]) {
         self.escreve_do_pre(r);
         for pos in (0..N_CAMADAS).rev() {
             let layer = self.paint.composite[pos];
@@ -241,7 +268,14 @@ impl PainterTool {
             match layer.op {
                 CompositeOp::Brush => self.compoe_tinta(pos, r),
                 CompositeOp::Erase => self.compoe_borracha(pos, r, layer.erase_scope),
-                CompositeOp::Blur => self.compoe_borrao(pos, r),
+                CompositeOp::Blur => {
+                    let alvo_do_borrao = if self.alguem_acima_le_vizinhanca(pos) {
+                        r
+                    } else {
+                        caixa_nova
+                    };
+                    self.compoe_borrao(pos, alvo_do_borrao);
+                }
                 CompositeOp::Smear => self.compoe_esfregao(pos, r, &camadas[pos]),
             }
         }

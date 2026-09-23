@@ -123,6 +123,70 @@ fn o_brush_de_cima_vence_o_de_baixo_ao_longo_do_traco() {
     );
 }
 
+/// ⭐⭐⭐ **O BORRÃO NO TOPO É APLICADO SÓ NA CAIXA NOVA** — a CONTA, porque nenhuma régua de
+/// VALOR a pode ver.
+///
+/// A composição corre sobre `alvo = caixa_nova + 2·pad` para o borrão ler vizinhança já composta, e
+/// depois **só `caixa_nova` é guardada**. Medido na pilha do dono (2026-09-22): `alvo` media
+/// `857 px` de lado contra `343` da pegada, ou seja o borrão — a operação mais cara da pilha —
+/// escrevia `5,8×` a área que dele se aproveita. Ele passa a ser APLICADO na caixa nova e a LER o
+/// avental dela, que os passos de baixo compuseram.
+///
+/// ⛔⛔ **A metade do CONTROLO é a cerca:** com uma camada que lê VIZINHANÇA acima dele (outro
+/// borrão, ou um esfregão, que desloca píxeis) a orla borrada é entrada de alguém e tem de existir
+/// ⇒ ali fica o `alvo` de sempre. *Sem esta metade, a cura seria uma regressão silenciosa para quem
+/// empilha um esfregão por cima de um borrão.*
+///
+/// **Mutações que sangram:** aplicar sempre na `caixa_nova` (a cerca apagada) · aplicar sempre no
+/// `alvo` (a cura revertida) · a cerca olhar para BAIXO em vez de para cima.
+#[test]
+fn o_borrao_no_topo_e_aplicado_so_na_caixa_nova() {
+    use ph2d_painter_brush::blur_caixa::MAIOR_LADO;
+    use std::sync::atomic::Ordering::Relaxed;
+
+    let corre = |acima: Option<CompositeOp>| -> u64 {
+        MAIOR_LADO.store(0, Relaxed);
+        let mut t = tela();
+        // posição 0 = o TOPO da pilha; a composição corre de baixo para cima.
+        if let Some(op) = acima {
+            t.paint.composite[0] = CompositeLayer {
+                op,
+                strength: 1.0,
+                ..CompositeLayer::default()
+            };
+        }
+        t.paint.composite[1] = CompositeLayer {
+            op: CompositeOp::Blur,
+            strength: 1.0,
+            ..CompositeLayer::default()
+        };
+        t.paint.composite[2] = CompositeLayer {
+            op: CompositeOp::Brush,
+            strength: 1.0,
+            color: Some([0.0, 0.0, 1.0]),
+            ..CompositeLayer::default()
+        };
+        traco(&mut t, 8.0);
+        MAIOR_LADO.load(Relaxed)
+    };
+
+    // Sem nada que leia vizinhança acima: a região do borrão é a pegada, não a pegada + avental.
+    let so_pincel_acima = corre(Some(CompositeOp::Brush));
+    // ⚠️ O CONTROLO: com um ESFREGÃO acima, a orla é entrada dele e o borrão volta ao `alvo`.
+    let com_esfregao_acima = corre(Some(CompositeOp::Smear));
+    assert!(
+        com_esfregao_acima > so_pincel_acima,
+        "a cerca não armou: com um esfregão acima a região do borrão tem de CRESCER \
+         (só pincel {so_pincel_acima} px · com esfregão {com_esfregao_acima} px)"
+    );
+    // E a folga entre as duas é o avental, que é grande — não um arredondamento.
+    assert!(
+        com_esfregao_acima >= so_pincel_acima * 2,
+        "a folga entre as duas tem de ser o AVENTAL e não um pixel \
+         (só pincel {so_pincel_acima} px · com esfregão {com_esfregao_acima} px)"
+    );
+}
+
 /// ⭐⭐⭐ **A RÉGUA UNIVERSAL: o mesmo traço numa tacada ou em N lotes tem de dar a MESMA imagem.**
 ///
 /// Ela é universal porque não sabe o que cada camada faz — só que *a ordem é da PILHA e não da taxa
@@ -141,6 +205,24 @@ fn o_brush_de_cima_vence_o_de_baixo_ao_longo_do_traco() {
 /// ⚠️ **As três linhas que já liam `0,00` não eram um motor certo — era a FIXTURA a não conter o
 /// fenómeno** (apagar a força toda satura; borrar o miolo chapado de um traço é um no-op). Elas
 /// ficam porque a régua tem de reprovar no dia em que alguém as quebrar.
+///
+/// ⛔⛔⛔ **E a BARRA `pior == 0` era FALSA sobre o produto — ela era verdade sobre esta FIXTURA**
+/// (2026-09-22). A tela daqui é **chapada** (`255` em toda parte), e num campo uniforme a soma
+/// corrente da caixa dá o mesmo comece onde começar. Medido no código de ENTÃO, sem uma linha de
+/// produto mudada, com a tela a ganhar textura: semente `7` → `0`, semente `101` → `0`,
+/// **semente `999` → `pior 1`**.
+///
+/// ⭐ **O mecanismo, medido na crate do borrão** (`diag_o_borrao_de_uma_sub_regiao_e_o_miolo_do_maior`):
+/// o borrão de uma sub-região **não é** o miolo do borrão da região maior — `1` a `5` píxeis de
+/// `48 400` saem idênticos ao bit, com desvio `~6e-4` em `f32`. *A soma corrente carrega o sítio
+/// onde COMEÇOU.* Em `u8` isso só vira um byte quando o valor exacto cai a menos de `6e-4` de uma
+/// fronteira de arredondamento — `~0,06 %` dos píxeis —, e é por isso que a barra lia zero enquanto
+/// o sorteio corria a favor.
+///
+/// ⇒ a barra passa a ser **`pior ≤ 1` e `médio < 0,01`**, e ela **não é uma folga escolhida**: sai
+/// do vale entre o último byte da quantização (`1`) e o defeito que esta régua existe para apanhar
+/// (`41,59` médio, medido na linha do Brush em 2026-09-20). *Uma barra que mede a sorte da fixtura
+/// não é uma barra.*
 #[test]
 fn a_ordem_e_da_pilha_e_nao_da_taxa_do_rato() {
     for topo in [
@@ -179,9 +261,10 @@ fn a_ordem_e_da_pilha_e_nao_da_taxa_do_rato() {
                     });
             let medio = soma as f64 / um_lote.len() as f64;
             assert!(
-                pior == 0,
+                pior <= 1 && medio < 0.01,
                 "{topo:?} em passos de {passo}: a entrega em lotes MUDOU a imagem \
-                 (|Δ| médio {medio:.2}, pior {pior})"
+                 (|Δ| médio {medio:.2}, pior {pior}) — a barra é o último byte da quantização, \
+                 e o defeito que esta régua apanha mede `41,59` de médio"
             );
         }
     }

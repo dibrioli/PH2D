@@ -304,6 +304,37 @@ fn diag_preco_da_pilha() {
         );
     }
 
+    // ⭐⭐⭐ **AS FASES da pilha do dono** — depois de o borrão deixar de escrever a orla, a
+    //     pergunta seguinte é onde ficam os `425,8 ms` que sobram. As quatro fases são a fotografia
+    //     do `pre`, a acumulação dos dabs novos, as CÓPIAS (guardar a orla e devolvê-la) e a
+    //     COMPOSIÇÃO. ⚠️ *As cópias são duas passagens sobre `alvo` por evento, e `alvo` não
+    //     encolheu — só a aplicação do borrão encolheu.*
+    {
+        use super::composite_acumulado::fases;
+        let mut t = tela_de(SIZE, raio_do_dono);
+        t.paint.composite_len = dono.len();
+        for (i, &(op, st, sz)) in dono.iter().enumerate() {
+            t.paint.composite[i] = CompositeLayer {
+                op,
+                strength: st,
+                size: sz,
+                ..CompositeLayer::default()
+            };
+        }
+        let _ = fases::take();
+        let ms = traco(&mut t).as_secs_f64() * 1e3;
+        let (us, _ev, _area) = fases::take();
+        let soma: u64 = us.iter().sum();
+        println!("\n  AS FASES DA PILHA DO DONO   (traço de {ms:.1} ms)");
+        for (i, nome) in ["pre", "acumular", "compor", "cópias"].iter().enumerate() {
+            println!(
+                "    {nome:10} {:7.1} ms   {:5.1}%",
+                us[i] as f64 / 1e3,
+                us[i] as f64 / soma.max(1) as f64 * 100.0
+            );
+        }
+    }
+
     // ⭐⭐⭐ **A CONTA: quantos PÍXEIS o borrão atravessa, sozinho e dentro da pilha.** O borrão
     //     sozinho custa `0,067 ms/evento` e dentro da pilha `0,667` — `10×`. Nenhuma régua de VALOR
     //     pode ver a diferença (as duas rotas desenham o mesmo), logo mede-se a CONTA.

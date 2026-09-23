@@ -1064,6 +1064,45 @@ mod fatias_tests {
         );
     }
 
+    /// **O borrão de uma SUB-REGIÃO é igual ao miolo do borrão da região MAIOR?**
+    ///
+    /// ⚠️ É a pergunta que decide se a aplicação do borrão pode encolher: se a resposta for NÃO, a
+    /// soma corrente da caixa carrega o sítio onde COMEÇOU e o resultado passa a depender da região
+    /// pedida — que é a não-associatividade do `f32` que a cerca das bandas desta crate já nomeia.
+    #[test]
+    fn diag_o_borrao_de_uma_sub_regiao_e_o_miolo_do_maior() {
+        let (fw, fh) = (512i64, 512i64);
+        let buf: Vec<u8> = (0..(fw * fh * 4) as usize)
+            .map(|i| ((i * 37 + (i / 97) * 11) % 256) as u8)
+            .collect();
+        for k in [8usize, 24, 96] {
+            let r_total: usize = super::super::box_radii(k).iter().sum();
+            // a região GRANDE e a sub-região no meio dela
+            let (gx, gy, gw, gh) = (60i64, 60i64, 300usize, 300usize);
+            let pad = 40usize;
+            let (sx, sy, sw, sh) = (gx + pad as i64, gy + pad as i64, gw - 2 * pad, gh - 2 * pad);
+            let grande =
+                super::super::blur_region_caixa(&buf, fw, fh, gx, gy, gw, gh, k, [false, false]);
+            let pequena =
+                super::super::blur_region_caixa(&buf, fw, fh, sx, sy, sw, sh, k, [false, false]);
+            let mut pior = 0f32;
+            let mut iguais = 0usize;
+            for j in 0..sh {
+                for i in 0..sw {
+                    let a = grande[(j + pad) * gw + i + pad];
+                    let b = pequena[j * sw + i];
+                    let d = (0..4).fold(0f32, |m, c| m.max((a[c] - b[c]).abs()));
+                    pior = pior.max(d);
+                    iguais += usize::from(a == b);
+                }
+            }
+            println!(
+                "  k={k:3} r_total={r_total:3}  pior |Δ| = {pior:.3e}  ·  {iguais} de {} idênticos ao bit",
+                sw * sh
+            );
+        }
+    }
+
     /// **A LARGURA DA BANDA DA VERTICAL FUNDIDA, varrida** — o número da
     /// [`super::super::LARGURA_DA_BANDA_FUNDIDA`] sai daqui e de mais lado nenhum.
     ///

@@ -103,3 +103,34 @@ pub(in crate::tool::paint) fn take() -> ([u64; 4], u64, f64) {
         AREA.with(Cell::take),
     )
 }
+
+/// As operações da composição, uma a uma: a cópia do `pre` e as quatro leis de camada.
+pub(in crate::tool::paint) const OP_PRE: usize = 0;
+pub(in crate::tool::paint) const OP_NOMES: [&str; 5] =
+    ["pre→tela", "Brush", "Erase", "Blur", "Smear"];
+
+pub(in crate::tool::paint) fn op_de(op: super::CompositeOp) -> usize {
+    match op {
+        super::CompositeOp::Brush => 1,
+        super::CompositeOp::Erase => 2,
+        super::CompositeOp::Blur => 3,
+        super::CompositeOp::Smear => 4,
+    }
+}
+
+thread_local! {
+    static OPS: Cell<[u64; 5]> = const { Cell::new([0; 5]) };
+}
+
+pub(in crate::tool::paint) fn soma_op(i: usize, t: std::time::Instant) {
+    OPS.with(|c| {
+        let mut v = c.get();
+        v[i] += t.elapsed().as_micros() as u64;
+        c.set(v);
+    });
+}
+
+/// O tempo de cada operação desde a última leitura, em µs — e ZERA.
+pub(in crate::tool::paint) fn take_ops() -> [u64; 5] {
+    OPS.with(Cell::take)
+}

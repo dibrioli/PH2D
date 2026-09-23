@@ -257,18 +257,95 @@ impl PainterTool {
             self.source_size.0,
             None,
         );
+        reamostra(buf, &src, &disp, w, h, bbox);
+        self.warp_render_relief(bbox);
+    }
+}
+
+/// **O re-amostrar do `pre` pelo deslocamento**, sobre `bbox`: `buf[p] = pre[p − disp[p]]`.
+///
+/// ⭐ Em linhas disjuntas, na equipa de threads (ADR-0172, com os invariantes do ADR-0109): cada
+/// texel de saída é o `pre` re-amostrado no SEU deslocamento — função pura de dois planos que esta
+/// passagem só LÊ, sem soma entre texels ⇒ byte a byte o de sempre, para qualquer escalonamento.
+/// Medido no build do produto (a pilha do dono no Composite Brush, exemplo `mede_a_pilha`): este
+/// re-amostrar corria em série na thread principal, uma vez por quadro, sobre a região inteira que o
+/// esfregão já tocou.
+fn reamostra(buf: &mut [u8], src: &[u8], disp: &[[f32; 2]], w: u32, h: u32, bbox: Region) {
+    use rayon::prelude::*;
+    let stride = w as usize * 4;
+    let (y0, bh) = (bbox.y as usize, bbox.h as usize);
+    let (x0, bw) = (bbox.x as usize, bbox.w as usize);
+    buf[y0 * stride..(y0 + bh) * stride]
+        .par_chunks_mut(stride)
+        .enumerate()
+        .with_min_len(8)
+        .for_each(|(ry, linha)| {
+            let dy = y0 + ry;
+            for dx in x0..x0 + bw {
+                let d = disp[dy * w as usize + dx];
+                let px =
+                    super::apply::bilinear_clamped(src, w, h, dx as f32 - d[0], dy as f32 - d[1]);
+                linha[dx * 4..dx * 4 + 4].copy_from_slice(&px);
+            }
+        });
+}
+
+#[cfg(test)]
+mod reamostra_tests {
+    use super::*;
+
+    /// ⭐⭐ **O re-amostrar em paralelo dá o MESMO byte que o laço em série de antes** — o laço de
+    /// referência é o que o `warp_render_from_session` tinha, copiado à letra. Deslocamentos
+    /// fraccionários, negativos e para fora da tela (o `clamped` do amostrador), numa caixa que não
+    /// começa em `(0,0)` e tem linhas para muitas tarefas.
+    #[test]
+    fn o_reamostrar_em_paralelo_da_o_byte_da_serie() {
+        let (w, h) = (83u32, 57u32);
+        let n = (w * h) as usize;
+        let mut s = 99u32;
+        let mut prox = || {
+            s = s.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+            s >> 8
+        };
+        let src: Vec<u8> = (0..n * 4).map(|_| (prox() & 0xFF) as u8).collect();
+        let disp: Vec<[f32; 2]> = (0..n)
+            .map(|_| {
+                let a = (prox() % 4001) as f32 / 100.0 - 20.0;
+                let b = (prox() % 4001) as f32 / 100.0 - 20.0;
+                [a, b]
+            })
+            .collect();
+        let bbox = Region {
+            x: 4,
+            y: 2,
+            w: 70,
+            h: 49,
+        };
+        let tela: Vec<u8> = (0..n * 4).map(|_| (prox() & 0xFF) as u8).collect();
+        let mut serie = tela.clone();
         for ry in 0..bbox.h {
             let dy = bbox.y + ry;
             for rx in 0..bbox.w {
                 let dx = bbox.x + rx;
                 let gi = (dy * w + dx) as usize;
                 let d = disp[gi];
-                let px =
-                    super::apply::bilinear_clamped(&src, w, h, dx as f32 - d[0], dy as f32 - d[1]);
+                let px = super::super::apply::bilinear_clamped(
+                    &src,
+                    w,
+                    h,
+                    dx as f32 - d[0],
+                    dy as f32 - d[1],
+                );
                 let b = gi * 4;
-                buf[b..b + 4].copy_from_slice(&px);
+                serie[b..b + 4].copy_from_slice(&px);
             }
         }
-        self.warp_render_relief(bbox);
+        let mut par = tela.clone();
+        reamostra(&mut par, &src, &disp, w, h, bbox);
+        assert!(par == serie, "a rota paralela mudou bytes");
+        assert!(
+            par != tela,
+            "CONTROLO: o re-amostrar não mudou um byte — fixtura inerte"
+        );
     }
 }

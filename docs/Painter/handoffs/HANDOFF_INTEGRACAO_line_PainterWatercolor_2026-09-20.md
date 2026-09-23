@@ -2824,3 +2824,55 @@ os `19` listados**.
 
 ✅ **Smoke do dono APROVADO (2026-09-23):** *«realmente muito melhor! FPS aceitável em torno de
 40»* — na cena `PH2D_COMPOSITE_SMOKE`, a riscar depressa, contra `~1` antes da cura.
+
+## §35 — «VAMOS CHEGAR AO ESTADO DA ARTE»: as passagens por pixel em linhas, e a régua que media outro programa (2026-09-23)
+
+Ordem do dono, depois de aprovar o §34: *«vamos tentar tornar mais rápido, vamos chegar ao estado da
+arte»*. Decisão e números inteiros no [ADR-0172](../../architecture/decisions/0172-as-passagens-por-pixel-da-pilha-correm-em-linhas-disjuntas-e-a-banda-do-deposito-fica-como-esta.md)
+(⚠️ o número SOMA entre linhas — o `main` estava em `0170` e esta linha já tinha o `0171`).
+
+### §35.1 — ⛔⛔ Duas réguas mediam outro programa
+
+- **O build de TESTE não é o produto.** As sondas `diag_*` correm sob `cfg(test)`, onde o traço paga
+  o journal do undo do canvas (`capture_canvas` é `cfg(any(test, debug_assertions))`) e a espia do
+  esfregão (`8 MB` copiados por lote). ⇒ **a régua do produto é
+  [`examples/mede_a_pilha.rs`](../../../crates/ph2d-tool-painter/examples/mede_a_pilha.rs)** (a pilha
+  do dono pelas portas públicas da cena, biblioteca sem `cfg(test)`, com a partição
+  acumular/compor por DRENAGEM e a ablação camada a camada). As `diag_*` ficam para partir em fases,
+  e o cabeçalho delas diz isto.
+- **O `gdb` exagera a criação de threads.** Sem `perf` (`perf_event_paranoid = 2`) a amostragem foi
+  por `gdb`, e cada `pthread_create` sob `ptrace` é lento: a 1.ª leitura pôs `49,6 %` da thread
+  principal ali. A troca que ela pedia (a banda do depósito na equipa do `rayon`) foi construída,
+  ficou byte-idêntica e **mediu ganho ZERO** em A/B isolado ⇒ **revertida**, recusa medida no ADR.
+  *Sob `gdb`, uma sonda que cria threads mede o depurador.*
+
+### §35.2 — O que entrou (tudo byte-idêntico, com gate contra o laço de antes)
+
+| peça | onde | gate |
+|---|---|---|
+| a TINTA e a BORRACHA da composição em linhas disjuntas | [`composite_linhas.rs`](../../../crates/ph2d-tool-painter/src/tool/paint/composite_linhas.rs) (novo, cortado do `composite_acumulado`) | `a_tinta_…` / `a_borracha_em_paralelo_da_o_byte_da_serie` |
+| o RE-AMOSTRAR do esfregão em linhas (serve também a Smear e o Deform) | `warp::session::reamostra` | `o_reamostrar_em_paralelo_da_o_byte_da_serie` |
+| arredondar sem o `roundf` de software (`x86-64` base) | `composite_linhas::redondo_u8` | fronteiras `k/2 ± 4096` ulps · `NaN`/`±∞` · `65 536` valores de `v·255` |
+| a divisão por `255` numa tabela | `composite_linhas::DEC` | `a_tabela_e_a_divisao` (bit a bit) |
+| o `hypot` por texel contra um tecto INFINITO | `ph2d_painter_brush::accumulate_dab_smear` | os gates do tecto já existentes (a guarda pergunta `!= ∞`) |
+
+**Medido** (A/B alternado no build do produto, `load 34`–`51`, ms por quadro): passo `8`
+**`18,1`–`19,2` → `11,2`–`12,9`** (−35 %) · passo `2` **`7,1`–`11,0` → `4,1`–`6,2`** (−45 %).
+**Mutação 7 de 7 sangra** (o meio no arredondamento · a tabela · a linha deslocada · a borracha · o
+sinal do re-amostrar · a guarda do tecto, nas duas crates · e a FIAÇÃO da tinta, que acende `16`
+gates da pilha), com arnês TRANCADO e controlo de filtro vazio e de mutação que não compila.
+Portão: `nextest-impacted` **`18 301/18 301`** · censos da árvore **`127/127`** · clippy
+`-D warnings` e `fmt` limpos.
+
+### §35.3 — ⏳ O que sobra, com endereço
+
+- ⭐⭐ **DECISÃO DO DONO — o alvo de CPU do build.** O mesmo exemplo com `-C target-cpu=x86-64-v3`
+  mede **20–40 % a menos em todo o pincel**, sem código (é o `x86-64` de 2003 que faz de `round`,
+  `floor` e `trunc` chamadas de função — e a cura acima só os tira DESTE laço). Decide que
+  processadores o app suporta; `x86-64-v2` (2009+) já traz o arredondamento em instrução e **não foi
+  medido**.
+- **O depósito das camadas nos planos** é agora a maior fatia (~`43` de ~`57` ms por traço no passo
+  `8`, ablação no exemplo) — o carimbo em banda de sempre.
+- **O campo do esfregão** (`sample_window` + `walk_dab`, em série na thread principal): a 2.ª
+  passagem do `accumulate_dab_smear` é por par independente, e em linhas seria byte-idêntica — pede
+  o seu próprio nome na cerca do `rayon` da `ph2d-painter-brush` (ADR-0158/0171).

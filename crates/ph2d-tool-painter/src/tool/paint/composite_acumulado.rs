@@ -301,12 +301,18 @@ impl PainterTool {
 
     /// **A composição: `pre` e depois cada camada UMA vez, de baixo para cima.**
     fn compoe_a_pilha(&mut self, r: Region, caixa_nova: Region, camadas: &[Vec<Dab>; N_CAMADAS]) {
+        #[cfg(test)]
+        let t_op = std::time::Instant::now();
         self.escreve_do_pre(r);
+        #[cfg(test)]
+        fases::soma_op(fases::OP_PRE, t_op);
         for pos in (0..N_CAMADAS).rev() {
             let layer = self.paint.composite[pos];
             if !self.camada_viva(pos) {
                 continue;
             }
+            #[cfg(test)]
+            let t_op = std::time::Instant::now();
             match layer.op {
                 CompositeOp::Brush => self.compoe_tinta(pos, r),
                 CompositeOp::Erase => self.compoe_borracha(pos, r, layer.erase_scope),
@@ -320,19 +326,10 @@ impl PainterTool {
                 }
                 CompositeOp::Smear => self.compoe_esfregao(pos, r, &camadas[pos]),
             }
+            #[cfg(test)]
+            fases::soma_op(fases::op_de(layer.op), t_op);
         }
     }
-}
-
-/// `0..255` → `0..1`.
-#[inline]
-fn dec(b: u8) -> f32 {
-    f32::from(b) / 255.0
-}
-/// `0..1` → `0..255`, com o mesmo arredondamento do resto da casa.
-#[inline]
-fn enc(v: f32) -> u8 {
-    (v * 255.0).round().clamp(0.0, 255.0) as u8
 }
 
 impl PainterTool {
@@ -352,34 +349,7 @@ impl PainterTool {
                 self.source_size.0,
                 Some(r),
             );
-            for row in 0..r.h as usize {
-                let base = (r.y as usize + row) * stride + r.x as usize * 4;
-                for col in 0..r.w as usize {
-                    let i = base + col * 4;
-                    let a = dec(plano[i + 3]);
-                    if a <= 0.0 {
-                        continue;
-                    }
-                    let dst = [
-                        dec(buf[i]),
-                        dec(buf[i + 1]),
-                        dec(buf[i + 2]),
-                        dec(buf[i + 3]),
-                    ];
-                    let mut out = ph2d_painter_brush::blend_over(
-                        blend,
-                        dst,
-                        [dec(plano[i]), dec(plano[i + 1]), dec(plano[i + 2])],
-                        a,
-                    );
-                    if alpha_locked {
-                        out[3] = dst[3];
-                    }
-                    for k in 0..4 {
-                        buf[i + k] = enc(out[k]);
-                    }
-                }
-            }
+            super::composite_linhas::tinta(buf, &plano, stride, r, blend, alpha_locked);
         }
         self.paint.pilha.planos[pos] = plano;
     }
@@ -397,29 +367,7 @@ impl PainterTool {
                 self.source_size.0,
                 Some(r),
             );
-            for row in 0..r.h as usize {
-                let base = (r.y as usize + row) * stride + r.x as usize * 4;
-                for col in 0..r.w as usize {
-                    let i = base + col * 4;
-                    // O escudo nasce opaco e o depósito come-lhe o alfa ⇒ `c = 1 − α`.
-                    let c = 1.0 - dec(plano[i + 3]);
-                    if c <= 0.0 {
-                        continue;
-                    }
-                    match escopo {
-                        EscopoDaBorracha::Tudo => {
-                            buf[i + 3] = enc(dec(buf[i + 3]) * (1.0 - c));
-                        }
-                        EscopoDaBorracha::Traco => {
-                            for k in 0..4 {
-                                let d = f32::from(buf[i + k]);
-                                let p = f32::from(pre[i + k]);
-                                buf[i + k] = (d + (p - d) * c).round().clamp(0.0, 255.0) as u8;
-                            }
-                        }
-                    }
-                }
-            }
+            super::composite_linhas::borracha(buf, &plano, &pre, stride, r, escopo);
         }
         self.paint.pilha.pre = pre;
         self.paint.pilha.planos[pos] = plano;

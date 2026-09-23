@@ -13,6 +13,11 @@
 //! bash scripts/ph2d-run.sh cargo test -p ph2d-tool-painter --release --lib \
 //!     diag_passo_do_rato -- --ignored --nocapture --test-threads=1
 //! ```
+//!
+//! ⛔⛔ **Estas sondas medem o build de TESTE, e ele não é o produto** (achado de 2026-09-23): sob
+//! `cfg(test)` o traço paga o journal do undo do canvas e a espia do esfregão (`8 MB` copiados por
+//! lote), que o app nunca paga. Elas servem para PARTIR o custo em fases e operações; **o número do
+//! produto sai do exemplo `examples/mede_a_pilha.rs`**, que compila a biblioteca sem `cfg(test)`.
 
 use super::*;
 use ph2d_editor_core::tool::RasterEditTool;
@@ -177,6 +182,39 @@ fn diag_as_fases_por_quadro() {
                 us[2] as f64 / 1e3,
                 us[3] as f64 / 1e3
             );
+        }
+    }
+}
+
+/// Dentro do COMPOR por quadro: quanto custa cada operação — o que atacar a seguir.
+#[test]
+#[ignore = "sonda de relógio: corre à mão, em --release e com a máquina calma"]
+fn diag_as_operacoes_da_composicao() {
+    use super::composite_acumulado::fases;
+    let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    println!(
+        "\n  AS OPERAÇÕES DO COMPOR   (load {} · drena a cada 16 eventos)",
+        carga.trim()
+    );
+    for passo in [2.0f32, 8.0] {
+        let mut melhor = [u64::MAX; 5];
+        let mut acum = u64::MAX;
+        for _ in 0..3 {
+            let mut t = pilha_do_dono();
+            t.set_compor_por_quadro(true);
+            let _ = fases::take();
+            let _ = fases::take_ops();
+            let _ = traco(&mut t, passo, 16);
+            let (us, _, _) = fases::take();
+            let ops = fases::take_ops();
+            acum = acum.min(us[fases::ACUMULAR]);
+            for i in 0..5 {
+                melhor[i] = melhor[i].min(ops[i]);
+            }
+        }
+        println!("  passo {passo}: acumular {:.1} ms", acum as f64 / 1e3);
+        for (i, n) in fases::OP_NOMES.iter().enumerate() {
+            println!("    {n:10} {:7.1} ms", melhor[i] as f64 / 1e3);
         }
     }
 }

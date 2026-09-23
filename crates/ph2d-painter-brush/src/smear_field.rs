@@ -243,11 +243,20 @@ pub fn accumulate_dab_smear(
         // além dos dabs que tocaram o texel, e numa CURVA o traçado para trás sai do traço e o
         // re-amostrar traz o vazio. A derivação, a tabela e o que ele custa numa recta estão em
         // [`TECTO_MEDIDO_E_RECUSADO_EM_RAIOS`].
+        //
+        // ⭐ **Sem tecto não há conta** (2026-09-23): o produto corre com [`SEM_TECTO`], ou seja
+        // `tecto = ∞`, e `m > ∞` é falso para todo `m` — finito, infinito ou `NaN`. O `hypot` era
+        // pago POR TEXEL para uma comparação que nunca podia ser verdade: medido por amostragem no
+        // build do produto (a pilha do dono no Composite Brush), `4,7 %` da thread principal. A
+        // guarda é EXACTA pela mesma razão, logo a saída é byte a byte a de antes — e ela pergunta
+        // `!= ∞` e não `is_finite()` de propósito: com `−∞` ou `NaN` o ramo corre como corria.
         let tecto = spec.radius_px * tecto_em_raios;
-        let m = d[0].hypot(d[1]);
-        if m > tecto {
-            let k = tecto / m;
-            d = [d[0] * k, d[1] * k];
+        if tecto != f32::INFINITY {
+            let m = d[0].hypot(d[1]);
+            if m > tecto {
+                let k = tecto / m;
+                d = [d[0] * k, d[1] * k];
+            }
         }
         disp[i] = d;
     }

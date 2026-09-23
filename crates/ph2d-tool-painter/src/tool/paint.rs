@@ -163,6 +163,7 @@ mod composite;
 /// ⭐⭐⭐ **A ordem da pilha é do TRAÇO** — a recomposição regional que faz a camada de cima ficar
 /// por cima da de baixo ao longo do gesto inteiro, e não só dentro de um lote.
 mod composite_acumulado;
+mod composite_linhas; // as passagens POR PIXEL da composição, em linhas disjuntas (ADR-0172)
 mod composite_montagem;
 mod composite_pilha;
 mod composite_por_quadro; // a tela compõe-se UMA vez por quadro; os planos, a cada evento

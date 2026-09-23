@@ -44,6 +44,8 @@ ph2d-node-motion-clone = { path = "../ph2d-node-motion-clone" }
 ph2d-node-motion-distribute-poisson = { path = "../ph2d-node-motion-distribute-poisson" }
 ph2d-node-motion-emitter = { path = "../ph2d-node-motion-emitter" }
 ph2d-node-motion-shape = { path = "../ph2d-node-motion-shape" }
+# O `SHADOW_BLEND` da cena `=15` (doc 118 §9): o nome do param lê-se do nó, nunca se copia.
+ph2d-node-fx-drop-shadow = { path = "../ph2d-node-fx-drop-shadow" }
 # ⚠️ Só para o CENSO dos rótulos (ver `nenhuma_linha_da_forma_se_chama_como_uma_do_sink`):
 # duas linhas com o mesmo nome no mesmo grafo são um controlo a mentir, e a régua tem de ver
 # as DUAS tabelas.

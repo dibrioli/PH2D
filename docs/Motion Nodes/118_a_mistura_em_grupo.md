@@ -326,3 +326,19 @@ por cima) · `o_device_escreve_o_z_do_motion_por_cima_do_mundo` · a asserção 
 e o `gpu_cpu_parity` (`184/185`; a vermelha é a `value_slope_kernel_matches_the_cpu_on_the_device`,
 **pré-existente e documentada no próprio teste** com o mesmo número, `1,05023384e-4`).
 
+## §11 — A cena `=15`: o modo de uma linha, as duas médias, fotografada
+
+`PH2D_MOTION_OBJ_SMOKE=15` — um cenário azul-claro com uma FAIXA escura por baixo de cada sombra, e
+duas colunas (imagem em cima, forma em baixo, as duas com um `fx.drop_shadow` cinzento e opaco): à
+esquerda o controlo em `Sink`, que TAPA a faixa; à direita o `Multiply`, através do qual a faixa se
+vê. A fileira da FORMA é a W8; a fileira da IMAGEM é a W10 (sem ela a imagem, que vai à rota de CPU
+porque o `fx.drop_shadow` só tem lowering de CPU, desenhava por baixo do cenário).
+
+⚠️ **Três fotos, três correcções que nenhum gate via:** o `size` de um círculo é o RAIO (o disco
+saiu com o dobro da imagem e passou a borda do cenário) · uma sombra laranja confundia-se com o
+ladrilho laranja da imagem · e sobre um cenário LISO o `Multiply` só muda um pouco a cor da sombra,
+que ninguém lê como «ver através» — ⇒ a faixa, com uma cerca `const` que a obriga a cair dentro da
+sombra e fora da peça. Gate `a_sombra_da_forma_leva_o_modo_da_coluna_ate_ao_vello` (a publicação REAL
+da forma, o cozimento do grafo da cena e o lowering vectorial, com o controlo de que as duas colunas
+existem).
+

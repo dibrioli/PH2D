@@ -5030,6 +5030,7 @@ dependencies = [
  "ph2d-node-force-buoyancy",
  "ph2d-node-force-vortex",
  "ph2d-node-force-wind",
+ "ph2d-node-fx-drop-shadow",
  "ph2d-node-fx-glow",
  "ph2d-node-motion-bezier-warp",
  "ph2d-node-motion-clone",

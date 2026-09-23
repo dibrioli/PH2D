@@ -58,6 +58,9 @@ mod grupo;
 /// A cena do **RITMO** (`=11`) — os *holds* do `motion.sub_uv`, com o metrónomo ao lado.
 #[path = "motion_object_smoke_holds.rs"]
 pub mod holds;
+/// ⭐ O modo `=15` — O MODO DE UMA LINHA: a sombra em `Multiply`, nas duas médias (doc 118 §9–§10).
+#[path = "motion_object_smoke_linha.rs"]
+mod linha;
 /// O modo `=9` — o ESTILO DO SINK (doc 89, folha 17). Irmão pelo mesmo corte: ele traz
 /// oito cadeias próprias e um segundo objecto, e este despachante está no teto de LOC.
 #[path = "motion_object_smoke_sink.rs"]
@@ -131,7 +134,7 @@ static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0
 /// ESTILO DO SINK (doc 89 folha 17) · `11` o RITMO (os *holds* do sub-UV) · `12` a
 /// FOLHA À FRENTE dos galhos (a terceira média — ver `motion_object_smoke_leaf`) · `13` a
 /// MISTURA NA PLACA (ver `motion_object_smoke_blend`) · `14` a MISTURA EM GRUPO (ver
-/// `motion_object_smoke_grupo`).
+/// `motion_object_smoke_grupo`) · `15` O MODO DE UMA LINHA (ver `motion_object_smoke_linha`).
 ///
 /// ⚠️ **O `12` faltava nesta lista** — a cena existia e o roteador dela não a nomeava
 /// (auditoria de seis lentes, doc 96 §1.4). *Uma cena que o roteador não nomeia é encontrada
@@ -203,6 +206,7 @@ pub fn motion_object_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>)
         }
         13 if f == 3 => blend::run(cx),
         14 if f == 3 => grupo::run(cx),
+        15 if f == 3 => linha::run(cx),
         11 if f == 3 => {
             holds::spawn_art(cx.flip);
         }

@@ -2882,3 +2882,40 @@ vitória definitiva!»* — e a ordem seguinte foi documentar as duas waves (§3
 módulo: **[doc 43](../43_a_pilha_do_composite_brush_ficou_rapida.md)**, com o amostrador por `gdb`
 versionado em [`ferramentas/amostra_gdb.py`](../ferramentas/amostra_gdb.py) e duas linhas novas no
 placar do [doc 28](../28_otimizacoes_o_que_funcionou.md) (W, X e a recusa Y).
+
+## §36 — RETOMAR AQUI (2026-09-24): a aquarela com o pincel INTEIRO ligado cai para ~40 FPS
+
+**Estado em 2026-09-23 (fim do dia, créditos do dono acabaram):** a aquarela com os knobs de
+2026-08-02 (doc 32 §1) está em **~16 ms/quadro** (era ~41) — commits `fadf1b288`..`68a865d00`,
+ADR-0173 (passagens na equipa + rascunho entre quadros) e ADR-0174 (`x86-64-v2`). Backup do estado de
+antes: ramo local `backup/line-PainterWatercolor-antes-da-aquarela-rapida-2026-09-23`. Nada enviado.
+
+**Report do dono (foto do painel):** *«no geral temos bom desempenho, mas quando usamos tudo que o
+pincel pode fazer, temos significativa queda de FPS. Na configuração da foto, pincel com size 0.5,
+FPS 40.»* A configuração dele, lida da foto:
+
+| grupo | knob | valor |
+|---|---|---|
+| — | Size | 0,517 |
+| — | Solid | **On** · Type `None` |
+| — | Paint Mode | Watercolor |
+| Wash | Body · Concentration · Opacity | 0,120 · 1,200 · 0,400 |
+| Wash | Edge Darkening | 0,830 |
+| Wash | **Bleed** · **Ragged Edge** | **48** · **48** |
+| Wash | Smooth Edges | On |
+| Brush | Charge · Dilution · Pull | 0,407 · 0,130 · 0,195 |
+| Water | Rewet · Smudge | 0,288 · 0,234 |
+| Wetness | Drying Time · Preview | 10 · 0,300 |
+| Mixing | Pigment | 0 |
+
+**Por onde começar (nada disto medido ainda):**
+1. Pôr ESTA configuração no `examples/mede_a_aquarela.rs` como célula própria (`dono2`) — a régua de
+   hoje usa os knobs de 02/08, e o que o dono sente agora é outra célula. ⚠️ Confirmar como o `Size
+   0,517` do painel se traduz em px (`set_brush_size_px`) e se `Solid On` muda o caminho do carimbo.
+2. Perfil gdb (árvore da thread principal, `amostra_gdb_arvore.py` do scratchpad → promover para
+   `docs/Painter/ferramentas/`) nessa célula. Suspeitos com nome: **Bleed 48** alarga a janela (o
+   `reach` sai do spread) e decide o `ds` do rewet (`REWET_DS_SPREAD`); **Ragged Edge 48** é o warp
+   (10–11 avaliações de ruído por texel, `~35–40 %` do laço por pixel medido numa thread); **Edge
+   Darkening 0,83** arma o aro (EDT + régua da cobertura); **Charge < 1** arma a reserva.
+3. Só então escolher a alavanca. ⚠️ Byte-idêntico primeiro (a impressão `-- impressao` é o gate
+   ponta a ponta); o que mudar a pintura (o `ds` do rewet, a janela do commit) é decisão do dono.

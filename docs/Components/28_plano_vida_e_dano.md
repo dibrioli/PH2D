@@ -68,7 +68,7 @@ pedido de dano → invencível? → esquiva → armadura fixa → armadura % →
 
 | wave | entrega | abre com | smoke |
 |---|---|---|---|
-| **W0** | o ORÁCULO: o GDevelop corrido sem interface, as fixturas com cabeçalho (8 cenários) | — | — |
+| **W0** | o ORÁCULO: o GDevelop corrido sem interface, as fixturas com cabeçalho (✅ **19** cenários — ver §7) | — | — |
 | **W1** | a lei `ph2d-health`, com **paridade passo a passo** contra as fixturas | os gates das queixas (§2.2 do doc 27) escritos ANTES da lei | — |
 | **W2** | `Health` + `Damage` + a ponte no passo da física, no anel; os três sinais; a morte pela porta do `Destroy`; verbos `Damage`/`Heal` na tabela | a medição do `Began` de um corpo que nasce sobreposto | um herói, três inimigos com vida diferente, uma arma |
 | **W3** | a secção **Health** e **Damage** do Inspector | o censo de que toda secção chega a pixel | o artista monta um inimigo de 3 golpes sem tabela nenhuma |
@@ -101,3 +101,62 @@ pedido de dano → invencível? → esquiva → armadura fixa → armadura % →
   (`ph2d-runtime/src/lib.rs:61`); a quantidade viaja no componente de quem bate, que a ponte lê.
 - **Reconstruir o que existe** — o flash é o `Tween` (canal `Silhueta`), o abanão é o `CameraShake`,
   a morte remove pela porta do `Destroy`, a contagem no HUD é o `Counter`.
+
+---
+
+## §7 — ✅ W1 FECHADA (2026-09-23): a lei `ph2d-health`, e o que a paridade achou
+
+**Estado:** crate-folha [`ph2d-health`](../../crates/ph2d-health/) (**zero** dependências, sem um
+transcendental — só `+ − × min max` em `f64`, logo ao bit nos três SO). A bancada
+[`oraculo_do_gdevelop`](../../crates/ph2d-health/tests/it/oraculo_do_gdevelop.rs) corre a lei sob
+`Regras::GDEVELOP` sobre as **19** fixturas e compara **três leituras por quadro** (`antes` ·
+`depois` · `fim`) em todo campo público, nos internos e nos dois relógios, **por `to_bits`**, com os
+sorteios da esquiva gravados **todos consumidos**. ⇒ **19 de 19, todos os quadros, ao bit.**
+
+### §7.1 — O pipeline do §3 está CONFIRMADO pelo oráculo
+
+`invencível? → esquiva → armadura plana → armadura % → escudo → vida`, e o `f3_armadura_ordem`
+decide a metade que se podia trocar sem ninguém ver (`(25 − 5)·0,5 = 10` contra `25·0,5 − 5 = 7,5`).
+⚠️ **O sorteio da esquiva é UM por golpe que passa a invencibilidade, mesmo com chance `0`** —
+«optimizá-lo» desalinharia toda a sequência gravada, e há gate.
+
+### §7.2 — O que o ALVO faz e a casa COPIA (medido, com o cenário)
+
+- `ActivateShield` **SUBSTITUI** os pontos, não soma (`e1`), limitado pelo `MaxShield` se houver.
+- Um golpe que **só toca o escudo** arma a invencibilidade (`e5`).
+- A expiração do escudo zera **UMA vez** (é um `Once()`), e um escudo activado **sem renovar** com a
+  duração vencida fica à espera em vez de morrer no quadro seguinte (`e3`).
+- O relógio da duração do escudo **não existe** até alguém o repor ⇒ o `ShieldTimeRemaining` lê a
+  duração INTEIRA com o escudo por activar — leitura enganadora do alvo, reproduzida e nomeada.
+- Regenerar um escudo **a zero** é reactivá-lo com duração nova (`e4`).
+- A regeneração **corta no máximo, com e sem sobre-cura**, e a do escudo no `MaxShield` (`d3`).
+
+### §7.3 — ⛔ O que o alvo faz e a casa NÃO copia (`Regras::CASA`, divergências DECLARADAS)
+
+Cada uma tem gate com as **duas metades** — a casa faz o que o produto quer **e** o controlo
+`Regras::GDEVELOP` reproduz o que o oráculo mediu ([`lib_tests.rs`](../../crates/ph2d-health/src/lib_tests.rs)):
+
+| o alvo | a casa | cenário |
+|---|---|---|
+| a vida desce a **negativo** (`100 − 130 = −30`) | pára em `0` | `a_dano_basico` |
+| um morto **não é final**: uma cura ressuscita-o (`−30 + 50 = 20`) | só a porta `reviver` o tira da morte; a cura recusada não acende a marca; um golpe num morto não sorteia | `a_dano_basico` |
+| pedidos **negativos** passam (`Heal(−20)` tira, `Hit(−10)` grava) | pedido negativo ou não-finito não faz **nada**, nem sorteia | `a_dano_basico` |
+| ⭐ **com sobre-cura aplica a quantidade da cura ANTERIOR** (`Heal(50)` sobe `30`) — **defeito do alvo, achado pelo oráculo** | cura o que se pede | `c_cura_overheal`, passo 5 |
+
+### §7.4 — ⚠️ Duas lições de INSTRUMENTO
+
+- ⛔⛔ **O `serde_json` de omissão ERRA O ÚLTIMO BIT de um `f64`** (`0.19999999999999998` lido
+  `0.2`): a 1.ª corrida leu **dez** fixturas a divergir por um ULP, todas nos relógios, e **a lei
+  estava certa**. ⛔ A feature `float_roundtrip` **não** foi ligada — as features de dev-deps unificam
+  na workspace e mudariam o `serde_json` de toda crate compilada ao lado —, logo a bancada tem um
+  leitor exacto próprio ([`json_exacto.rs`](../../crates/ph2d-health/tests/it/json_exacto.rs)), com
+  o número que o outro lê mal como controlo.
+- ⛔⛔ **A 19.ª fixtura nasceu de uma mutação SOBREVIVENTE:** apagar o corte da regeneração passava a
+  paridade inteira, porque o `d_regeneracao` sobe **1 ponto por quadro e cai EXACTAMENTE em 100** —
+  *um corpus que nunca ultrapassa o limite não testa o limite*. O `d3_regeneracao_passa_do_maximo`
+  (`45/s` = `0,75` por quadro, `99,75 → 100`) foi **corrido** para responder, e o piso da bancada
+  subiu para `19` para que apagá-lo reprove.
+
+**Prova de mutação: 17 de 17 sangram** ([arnês](ferramentas/mutacao_vida_2026-09-23.sh), com
+controlo sobre o próprio filtro e modo `SECO=1` que confere só as âncoras).
+

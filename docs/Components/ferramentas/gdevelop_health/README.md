@@ -48,8 +48,8 @@ python3 docs/Components/ferramentas/gdevelop_health/mostra.py docs/Components/fe
 ```
 
 `oraculo.sh` = `setup.sh` (monta `vendor/` se faltar; rede na 1.ª vez) → `exporta.mjs`
-(~0,5 s) → `corre.mjs` (~1 min para os 18 cenários, cada um corrido 3×). Sai `exit 1` se
-qualquer controlo falhar. Medido: apagando `vendor/` e correndo de novo, os `passos` das 18
+(~0,5 s) → `corre.mjs` (~1 min para os 19 cenários, cada um corrido 3×). Sai `exit 1` se
+qualquer controlo falhar. Medido: apagando `vendor/` e correndo de novo, os `passos` das 18 (medido antes de o `d3` existir)
 fixtures saem **iguais** aos da corrida anterior (só o campo `data` do cabeçalho muda).
 
 **Nenhuma janela:** Chrome `headless: true` (modo novo), com `DISPLAY` e `WAYLAND_DISPLAY`
@@ -131,7 +131,7 @@ aleatório, **os controlos** e o **cenário de entrada inteiro**. Cada passo:
 - `HitAtLeastOnce` é uma condição **privada** na extensão (lida na mesma, como as outras).
 - As fixtures ainda **não** são gates Rust — são o corpus que os gates do nosso `Health` vão ler.
 
-## O que as 18 fixtures dizem (observado, não lido)
+## O que as 19 fixtures dizem (observado, não lido)
 
 Ordem do quadro no runtime: `doStepPreEvents` do comportamento (repõe as flags «just», regenera
 vida e escudo, expira o escudo) → **eventos** (as acções) → pós-eventos.
@@ -142,8 +142,8 @@ vida e escudo, expira o escudo) → **eventos** (as acções) → pós-eventos.
 | **Cooldown** | o golpe dentro da janela é **IGNORADO por inteiro** (nem reduzido, nem sorteio, `PreviousDamageTaken` fica, flags ficam) e **não** reinicia a janela; activo sse `TimeSinceLastHit < cooldown` (estrito) | `b` |
 | **Quem arma o cooldown** | só um golpe que **entra** (dano > 0 na vida **ou no escudo**): o só-escudo arma; esquivado, `Hit 0`, `Hit −10` e golpe zerado pela armadura **não** armam (nem repõem o `TimeSinceLastHit`); `TriggerDamageCooldown` arma sem dano; 2 `Hit` no mesmo quadro → o 2.º é ignorado | `b`, `e5`, `g2`, `a` |
 | **Clamp** | a vida **NÃO** pára em 0: desce a negativo (`−20`, `−30`); `IsDead` ⇔ `Health ≤ 0` (0 já é morto); golpe em morto continua a tirar; `Heal` em morto **ressuscita** (`−30 + 50 = 20`); `SetHealth` limita em cima (150 → 100) e não em baixo (−10 fica); `Hit −10` não cura (vida igual) mas grava `PreviousDamageTaken = −10` | `a` |
-| **Cura / overheal** | sem overheal pára no máximo e `PreviousHealAmount` = o **aplicado** (50 pedidos a 70 → 30); com overheal passa (100 → 130); `SetMaxHealth` abaixo da vida **corta a vida** mesmo com overheal (130 → 120); `Heal 0` acende `IsJustHealed`; `Heal −20` **tira** vida e acende a flag | `c` |
-| **Regeneração** | `rate × dt` no pre-events, quando `TimeSinceLastHit > delay` (estrito); o relógio começa no **onCreated** (sem golpe nenhum regenera 1 s depois da criação); `SetHealth` **não** repõe o atraso; um golpe só-escudo **repõe** (pausa a regen da VIDA); nunca passa do máximo mesmo com overheal; delay 0 ⇒ regenera no quadro seguinte ao golpe | `d`, `d2` |
+| **Cura / overheal** | sem overheal pára no máximo e `PreviousHealAmount` = o **aplicado** (50 pedidos a 70 → 30); com overheal passa (100 → 130) — ⭐ e **o `+30` é a cura ANTERIOR, não a pedida** (`Heal 50` sobe 30, o valor que o `Heal` de antes aplicou): com overheal ligado o alvo **não reescreve** `PreviousHealAmount` e soma o que lá estava — defeito do alvo, que a casa não copia (plano 28 §7.3); `SetMaxHealth` abaixo da vida **corta a vida** mesmo com overheal (130 → 120); `Heal 0` acende `IsJustHealed`; `Heal −20` **tira** vida e acende a flag | `c` |
+| **Regeneração** | `rate × dt` no pre-events, quando `TimeSinceLastHit > delay` (estrito); o relógio começa no **onCreated** (sem golpe nenhum regenera 1 s depois da criação); `SetHealth` **não** repõe o atraso; um golpe só-escudo **repõe** (pausa a regen da VIDA); nunca passa do máximo mesmo com overheal — ⚠️ **só MEDIDO no `d3`**: o `d` sobe 1 por quadro e cai EXACTAMENTE em 100, logo não o perguntava (uma mutação que apagava o corte sobreviveu a ele); a `0,75` por quadro o alvo leva `99,75 → 100`, com e sem overheal, e o escudo `49,75 → 50`; delay 0 ⇒ regenera no quadro seguinte ao golpe | `d`, `d2`, `d3` |
 | **Escudo — absorção** | absorve antes da vida; o excesso passa à vida com `BlockExcessDamage` OFF e **não** passa com ON (só o golpe que parte o escudo; o seguinte, já sem escudo, entra); `Hit` sem `UseShield` ignora o escudo; `ActivateShield` **SUBSTITUI** os pontos (30 → 10), limitado por `MaxShield` **só se `MaxShield > 0`** (0 de fábrica = sem tecto); `SetShieldPoints` **não** é limitado (90 com máx 50) | `e1`, `e2` |
 | **Escudo — duração** | activo sse o timer `< duração`; ao expirar os pontos vão a **0** no pre-events seguinte; `ActivateShield` sem renovar com a duração já gasta deixa pontos **inactivos** (o `Hit+Shield` vai à vida); `RenewShieldDuration` reactiva; **duração 0 = nunca expira**; antes da 1.ª activação `ShieldTimeRemaining` diz 5 com o escudo inactivo | `e3` |
 | **Escudo — regeneração** | `rate × dt` quando `TimeSinceLastHit > delay`, pára no `MaxShield`; **depois de expirar, a regen a partir de 0 REACTIVA o escudo com duração nova** (o timer volta a 0) — ciclo | `e4` |

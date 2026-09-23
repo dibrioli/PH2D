@@ -1,0 +1,29 @@
+[package]
+name = "ph2d-health"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⛔ **ZERO dependências, e isso é o desenho** — o molde das irmãs `ph2d-shake`, `ph2d-sweep` e
+# `ph2d-topdown`: esta folha é a LEI da vida e mais nada (um golpe, uma cura, os relógios, o escudo).
+# ⚠️ **Não há um transcendental aqui, e isso é a cerca (HR-5):** só `+ − × min max` em `f64`, que o
+# IEEE 754 fixa ao bit em toda máquina ⇒ a vida pode entrar no hash determinístico que o CI compara
+# nos três sistemas sem o pin de `libm`.
+
+[dependencies]
+
+# Só o ARNÊS de paridade (`tests/it/oraculo_do_gdevelop.rs`) lê as fixturas do oráculo, que são
+# JSON comprimido; a lib continua sem dependência nenhuma. `miniz_oxide` pela razão de sempre: já
+# está na árvore. ⛔ **Sem `serde_json`**: o parser de omissão dele erra o último bit de um `f64`
+# (medido: `0.19999999999999998` lido `0.2`), e ligar a feature exacta unificaria na workspace —
+# ver `tests/it/json_exacto.rs`.
+[dev-dependencies]
+miniz_oxide = "0.8"
+
+[lints]
+workspace = true

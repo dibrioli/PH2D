@@ -200,6 +200,26 @@ export const CENARIOS = [
     ],
   },
   {
+    // ⛔ Nasceu de uma mutação SOBREVIVENTE (a W1 de 2026-09-23): o `d_regeneracao` sobe 1 ponto
+    // por quadro e cai EXACTAMENTE em 100, logo nenhum cenário perguntava se a regeneração corta
+    // no máximo — apagar o corte passava a paridade inteira.
+    nome: "d3_regeneracao_passa_do_maximo",
+    descricao:
+      "Regeneração que NÃO cai no máximo: 45 pts/s = 0,75 por quadro, logo 99,75 + 0,75 passaria de 100. Corta no máximo? E com sobre-cura? E o escudo (45/s, máximo 50, parte de 40)?",
+    semente: null,
+    passos: [
+      faz([["SetHealthRegenRateOp", 45], ["SetHealthRegenDelayOp", 0], ["SetHealth", 90]], "regen 45/s, atraso 0, vida 90"),
+      ...ocioso(20, "passa por 99,75; o quadro seguinte ultrapassaria 100"),
+      faz([["AllowOverHealing:yes"], ["SetHealth", 90]], "sobre-cura ligada, vida 90 outra vez"),
+      ...ocioso(20, "com sobre-cura a regeneração ultrapassa o máximo?"),
+      faz(
+        [["SetMaxShieldOp", 50], ["SetShieldRegenRateOp", 45], ["SetShieldRegenDelayOp", 0], ["ActivateShield:renew", 40]],
+        "escudo 40, regen 45/s, atraso 0, máximo 50"
+      ),
+      ...ocioso(20, "o escudo passa por 49,75: corta em 50?"),
+    ],
+  },
+  {
     nome: "e5_escudo_e_cooldown",
     descricao:
       "Cooldown 0.5 s: um Hit+Shield que só toca o ESCUDO arma o cooldown? E um Hit que a armadura zera?",

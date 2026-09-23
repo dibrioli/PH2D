@@ -518,6 +518,20 @@ modelo diz ONDE procurar, não o que uma cura vale.*
    lâmpada é **FIXA em mundo**, e a metade do ACERTO entrou no gate — *sem ela, uma cache apagada
    passa, porque duas assaduras frescas dão a mesma imagem por construção.*
 
+   ⭐⭐⭐⭐ **E o RELÓGIO, tirado numa janela de calma REAL** (`98 %` de CPU ociosa, `--release`,
+   A/B intercalado no mesmo processo, mínimo de `3` por lado, **a orbitar** — que é o gesto que a
+   paga):
+
+   | cena | com a cache | sem a cache | razão | poupa |
+   |---:|---:|---:|---:|---:|
+   | `1` | `22,69 ms` | `28,27 ms` | `1,25×` | `5,6 ms` |
+   | `2` | `11,21 ms` | `16,35 ms` | `1,46×` | `5,1 ms` |
+   | `30` | `37,78 ms` | `55,91 ms` | **`1,48×`** | **`18,1 ms`** |
+
+   ⚠️ **A poupança é MAIOR do que os `+4,98 ms` nominais numa peça complexa** — aquele número saiu
+   de uma peça simples, e a assadura lança raios contra o CAMPO, logo ela cresce com a peça. *Um
+   preço medido numa fixtura não é o preço do produto.*
+
    ⏳ **As SONDAS (`+0,52 ms`) ficam** — elas são a MESMA cura e a mesma chave, e o que falta é
    ligá-las a esta porta.
 4. ✅ **a régua do gate** — **FECHADA**: `QUADROS_MEDIDOS = 3`, o mínimo, com a 1.ª chamada a ficar

@@ -359,10 +359,10 @@ fn campos(
     let Rascunho {
         ab,
         b,
-        mask_t,
         linhas,
-        colunas,
-        colunas_out,
+        v_pref,
+        v_lo,
+        v_out,
         s,
     } = rasc;
     // Numerador e denominador na janela, JUNTOS: `[L·q, q]` (0 fora da lavagem). O `q` é também a
@@ -384,7 +384,6 @@ fn campos(
     radii.sort_unstable();
     radii.dedup();
     let taper = taper_lut();
-    transpoe(b, rw, rh, mask_t);
     radii
         .into_iter()
         .map(|r| {
@@ -395,11 +394,8 @@ fn campos(
             for rr in [r1, r2] {
                 if rr > 0 {
                     passagem(s, b, rw, rr, linhas);
-                    // Vertical = a mesma passagem sobre o TRANSPOSTO (linhas contíguas para o
-                    // rayon), e de volta.
-                    transpoe(linhas, rw, rh, colunas);
-                    passagem(colunas, mask_t, rh, rr, colunas_out);
-                    transpoe(colunas_out, rh, rw, s);
+                    // Vertical em FAIXAS de colunas, sem transpor.
+                    vertical_em_faixas(linhas, b, (rw, rh), rr, (v_pref, v_lo, v_out), s);
                 }
             }
             // A saída nasce por `collect_into_vec` de um iterador INDEXADO: o rayon escreve cada
@@ -433,9 +429,10 @@ fn campos(
 /// ⭐ **As somas são INTEIRAS, logo a ORDEM em que se fazem não muda um bit** — é o que deixa esta
 /// casa escolher a arrumação pela memória e não pela aritmética (ao contrário do `box_blur` em
 /// `f32`, onde uma soma reordenada é outro número). O que ela guarda entre caixas:
-/// - a máscara TRANSPOSTA, calculada UMA vez por janela (era transposta de novo a cada caixa, dos
-///   dois campos: quatro vezes por raio);
-/// - o RASCUNHO inteiro — os pares, a máscara e a transposta, os três planos das passagens e o campo
+/// - a passagem vertical em FAIXAS de colunas, que lê a máscara em linha e NÃO transpõe nada (a 1.ª
+///   redacção transpunha a máscara uma vez por janela e o plano duas vezes por caixa; a de antes
+///   dela, a máscara de novo a cada caixa, dos dois campos: quatro vezes por raio);
+/// - o RASCUNHO inteiro — os pares, a máscara, o plano horizontal, os blocos das faixas e o campo
 ///   que as caixas alisam —, reusado por todas as caixas, todos os raios e todos os QUADROS (eram
 ///   cinco planos alocados e ZERADOS por caixa, mais um clone por raio: a medição do produto via o
 ///   `alloc_zeroed` como a maior fatia da thread principal). ⚠️ O rascunho de um quadro serve ao
@@ -448,27 +445,21 @@ fn campos(
 struct Rascunho {
     ab: Vec<[u64; 2]>,
     b: Vec<u64>,
-    mask_t: Vec<u64>,
     linhas: Vec<[u64; 2]>,
-    colunas: Vec<[u64; 2]>,
-    colunas_out: Vec<[u64; 2]>,
+    /// Os blocos das faixas da passagem vertical (ver [`vertical_em_faixas`]).
+    v_pref: Vec<[u64; 2]>,
+    v_lo: Vec<u32>,
+    v_out: Vec<[u64; 2]>,
     s: Vec<[u64; 2]>,
 }
 
 impl Rascunho {
     /// Todo plano com `n` texels. Só CRESCER zera (a parte nova); encolher só corta o comprimento.
     fn dimensiona(&mut self, n: usize) {
-        for v in [
-            &mut self.ab,
-            &mut self.linhas,
-            &mut self.colunas,
-            &mut self.colunas_out,
-            &mut self.s,
-        ] {
+        for v in [&mut self.ab, &mut self.linhas, &mut self.s] {
             v.resize(n, [0; 2]);
         }
         self.b.resize(n, 0);
-        self.mask_t.resize(n, 0);
     }
 }
 
@@ -510,11 +501,81 @@ fn passagem(src: &[[u64; 2]], mask: &[u64], w: usize, r: usize, out: &mut [[u64;
         );
 }
 
-/// `out[x·h + y] = src[y·w + x]`, colunas de `out` em paralelo.
-fn transpoe<T: Copy + Send + Sync>(src: &[T], w: usize, h: usize, out: &mut [T]) {
-    out.par_chunks_mut(h).enumerate().for_each(|(x, col)| {
-        for (y, c) in col.iter_mut().enumerate() {
-            *c = src[y * w + x];
+/// A largura das faixas da passagem vertical: `64` colunas por bloco contíguo.
+const FAIXA: usize = 64;
+
+/// A passagem VERTICAL por troços, em FAIXAS de colunas e sem transpor (ADR-0173). Cada faixa é um
+/// bloco contíguo percorrido linha a linha: à ida guarda o prefixo por troço (que recomeça em zero
+/// no seco, logo `P[lo] = 0` e a soma de `[a, b)` dentro do troço é `P[b] − P[a]`) e o início do
+/// troço; à volta conhece o fim do troço e escreve a caixa. Depois cada linha de `out` copia os seus
+/// pedaços das faixas.
+///
+/// ⭐ As somas são INTEIRAS, logo somar pela ordem da faixa em vez da ordem da coluna transposta não
+/// muda um bit — o gate `a_caixa_reescrita_da_o_byte_da_lei_de_antes` compara contra a lei de antes
+/// copiada à letra. ⚠️ Era a mesma passagem das linhas sobre a imagem TRANSPOSTA, e de volta: duas
+/// transposições inteiras por caixa, cada uma uma leitura com passo `w` por elemento.
+fn vertical_em_faixas(
+    src: &[[u64; 2]],
+    mask: &[u64],
+    (w, h): (usize, usize),
+    r: usize,
+    (pref, lo, blk): (&mut Vec<[u64; 2]>, &mut Vec<u32>, &mut Vec<[u64; 2]>),
+    out: &mut [[u64; 2]],
+) {
+    let nf = w.div_ceil(FAIXA);
+    let (bp, bo) = ((h + 1) * FAIXA, h * FAIXA);
+    pref.resize(nf * bp, [0; 2]);
+    lo.resize(nf * bo, 0);
+    blk.resize(nf * bo, [0; 2]);
+    pref.par_chunks_mut(bp)
+        .zip(lo.par_chunks_mut(bo))
+        .zip(blk.par_chunks_mut(bo))
+        .enumerate()
+        .for_each(|(f, ((p, l), o))| {
+            let x0 = f * FAIXA;
+            let sw = FAIXA.min(w - x0);
+            p[..sw].fill([0, 0]);
+            for y in 0..h {
+                let base = y * w + x0;
+                for j in 0..sw {
+                    let (i, k) = (y * FAIXA + j, (y + 1) * FAIXA + j);
+                    if mask[base + j] > 0 {
+                        let (a, v) = (p[i], src[base + j]);
+                        p[k] = [a[0] + v[0], a[1] + v[1]];
+                        l[i] = if y > 0 && mask[base + j - w] > 0 {
+                            l[i - FAIXA]
+                        } else {
+                            y as u32
+                        };
+                    } else {
+                        p[k] = [0, 0];
+                    }
+                }
+            }
+            let mut hi = [0usize; FAIXA];
+            for y in (0..h).rev() {
+                let base = y * w + x0;
+                for j in 0..sw {
+                    let i = y * FAIXA + j;
+                    if mask[base + j] == 0 {
+                        o[i] = [0, 0];
+                        continue;
+                    }
+                    if y + 1 == h || mask[base + j + w] == 0 {
+                        hi[j] = y + 1; // o troço acaba aqui
+                    }
+                    let a = y.saturating_sub(r).max(l[i] as usize);
+                    let b = (y + r + 1).min(hi[j]);
+                    let (pb, pa) = (p[b * FAIXA + j], p[a * FAIXA + j]);
+                    o[i] = [pb[0] - pa[0], pb[1] - pa[1]];
+                }
+            }
+        });
+    let blk = &blk[..];
+    out.par_chunks_mut(w).enumerate().for_each(|(y, row)| {
+        for (f, chunk) in row.chunks_mut(FAIXA).enumerate() {
+            let at = f * bo + y * FAIXA;
+            chunk.copy_from_slice(&blk[at..at + chunk.len()]);
         }
     });
 }

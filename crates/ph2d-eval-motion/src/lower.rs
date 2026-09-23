@@ -452,10 +452,13 @@ pub fn lower_to_vector_instances_onto(
 /// `default_uv_rect` / `default_size` são os MESMOS que o lowering de sprites recebe — uma imagem
 /// sem coluna de ladrilho é o ladrilho que a shell forneceu, venha pela rota que vier.
 ///
-/// ⛔ **O que esta rota NÃO honra de uma linha de imagem, e é DECLARADO:** a tinta (o Vello desenha
-/// a imagem tal e qual), a coluna `blend` por linha (quem decide é o grupo), o `sampling` do sink e
-/// um `uv_cell` que LADRILHA (escala > 1 — um recorte não repete). Um `uv_cell` que só escolhe um
-/// pedaço (o flipbook) é honrado: compõe-se no recorte.
+/// ⭐ **A tinta é honrada desde a W6** (doc 118 §7): o codificador desenha a cor por baixo e a imagem
+/// numa camada `Multiply`+`SrcIn`, que é a conta do `sprite.wgsl` sem resto.
+///
+/// ⛔ **O que esta rota ainda NÃO honra de uma linha de imagem, e é DECLARADO:** a coluna `blend` por
+/// linha (quem decide é o grupo), o `sampling` do sink e um `uv_cell` que LADRILHA (escala > 1 — um
+/// recorte não repete). Um `uv_cell` que só escolhe um pedaço (o flipbook) é honrado: compõe-se no
+/// recorte.
 pub fn lower_group_onto(
     stream: &Stream,
     default_uv_rect: [f32; 4],

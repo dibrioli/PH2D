@@ -183,9 +183,15 @@ fn draw_quad(
     let t = instance_pose(inst, cam)
         * Affine::scale_non_uniform(1.0 / f64::from(w), 1.0 / f64::from(h))
         * Affine::translate((-f64::from(w) / 2.0, -f64::from(h) / 2.0));
+    let tinta = Tinta::de(inst.tint);
+    if tinta == Tinta::Apagada {
+        return;
+    }
     if let Some(m) = camada {
         scene.push_object_layer(&caixa_do_quad(t, w, h), m, 1.0);
     }
+    let quad = ph2d_vector::Rect::new(0.0, 0.0, f64::from(w), f64::from(h));
+    tinta.abre(quad, t, scene);
     // ⚠️ **A alfa da FONTE decide a porta**, como no lowering de sprites: uma textura já
     // premultiplicada entra pela porta que NÃO volta a multiplicar.
     if inst.premultiplied > 0.5 {
@@ -199,8 +205,84 @@ fn draw_quad(
     } else {
         scene.draw_image_rgba_transformed(rgba, w, h, t, ph2d_vector::ImageQuality::Medium);
     }
+    tinta.fecha(scene);
     if camada.is_some() {
         scene.pop_layer();
+    }
+}
+
+/// ⭐⭐⭐ **A TINTA de um quad de imagem na cena vectorial** (doc 118 §7 W6) — a MESMA conta que o
+/// `sprite.wgsl` faz: `rgb · T.rgb` e `α · T.a`, com a saída pré-multiplicada `(rgb·α·T.rgb·T.a,
+/// α·T.a)`.
+///
+/// ⛔ **O Vello não tem «imagem × cor».** A forma ingénua — pintar a cor por cima com `Multiply` e
+/// compor `SrcAtop` — **vaza a cor da tinta nas bordas meio transparentes**: a mistura do W3C faz
+/// `cs' = (1 − αb)·cs + αb·B(cb, cs)`, e com o fundo parcial o primeiro termo é a tinta pura
+/// (erro até `¼·T` a `α = ½` sobre um texel escuro).
+///
+/// ⭐ **A ordem inversa é EXACTA:** a COR vai por baixo, opaca, recortada ao quad, e a IMAGEM entra
+/// por cima numa camada `Multiply` + `SrcIn`. Com o fundo opaco (`αb = 1`) o `cs'` é `T·cs` sem
+/// resto, e o `SrcIn` guarda `αs·αb = αs` — a cor só existe onde a imagem existe. A alfa da tinta é
+/// a alfa da camada de fora, que multiplica o vector pré-multiplicado inteiro.
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Tinta {
+    /// Branca e opaca — o desenho de sempre, **sem camada nenhuma** (byte-idêntico).
+    Neutra,
+    /// Só a alfa muda — uma camada, sem a cor por baixo.
+    SoAlfa(f32),
+    /// Cor (e alfa) — as duas camadas.
+    Cor([f32; 4]),
+    /// `α ≤ 0` — nada a desenhar (o sprite também não pinta nada).
+    Apagada,
+}
+
+impl Tinta {
+    fn de(t: [f32; 4]) -> Self {
+        if t[3] <= 0.0 {
+            Self::Apagada
+        } else if t == [1.0, 1.0, 1.0, 1.0] {
+            Self::Neutra
+        } else if t[0] == 1.0 && t[1] == 1.0 && t[2] == 1.0 {
+            Self::SoAlfa(t[3])
+        } else {
+            Self::Cor(t)
+        }
+    }
+
+    /// Abre as camadas da tinta à volta do quad `quad` (em píxeis da imagem) sob o afim `t`.
+    fn abre(self, quad: ph2d_vector::Rect, t: Affine, scene: &mut VectorScene) {
+        let normal =
+            ph2d_vector::VelloBlend::new(ph2d_vector::Mix::Normal, ph2d_vector::Compose::SrcOver);
+        match self {
+            Self::Neutra | Self::Apagada => {}
+            Self::SoAlfa(a) => scene.push_layer_shape(normal, a.min(1.0), t, &quad),
+            Self::Cor([r, g, b, a]) => {
+                scene.push_layer_shape(normal, a.min(1.0), t, &quad);
+                let cor = ph2d_vector::Color::new([r.clamp(0.0, 1.0), g.clamp(0.0, 1.0), b.clamp(0.0, 1.0), 1.0]);
+                scene.fill_path(
+                    &ph2d_vector::Shape::to_path(&quad, 0.1),
+                    &ph2d_vector::Brush::Solid(cor),
+                    t,
+                );
+                let multiplica = ph2d_vector::VelloBlend::new(
+                    ph2d_vector::Mix::Multiply,
+                    ph2d_vector::Compose::SrcIn,
+                );
+                scene.push_layer_shape(multiplica, 1.0, t, &quad);
+            }
+        }
+    }
+
+    /// Fecha o que [`Self::abre`] abriu.
+    fn fecha(self, scene: &mut VectorScene) {
+        match self {
+            Self::Neutra | Self::Apagada => {}
+            Self::SoAlfa(_) => scene.pop_layer(),
+            Self::Cor(_) => {
+                scene.pop_layer();
+                scene.pop_layer();
+            }
+        }
     }
 }
 

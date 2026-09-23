@@ -89,7 +89,14 @@ fn copia(
         world_pos: [cx, H as f32 / 2.0],
         size: [largura, H as f32],
         basis: [1.0, 0.0, 0.0, 1.0],
-        tint: [cinza, cinza, cinza, 1.0],
+        // ⚠️ **Numa IMAGEM o cinzento vem da ARTE e a tinta é branca** — desde a W6 a rota vectorial
+        // honra a tinta, e uma tinta cinzenta sobre arte cinzenta mediria `cinza²` (esta fixtura
+        // só passava porque a tinta era ignorada).
+        tint: if imagem.is_some() {
+            [1.0; 4]
+        } else {
+            [cinza, cinza, cinza, 1.0]
+        },
         texture_id: imagem.unwrap_or(0),
         atlas_uv: [0.0, 0.0, 1.0, 1.0],
         premultiplied: 0.0,
@@ -389,5 +396,105 @@ fn o_preco_da_mistura_em_grupo() {
     println!(
         "tecto do buffer: {} palavras",
         ph2d_vector::VELLO_BIN_DATA_WORDS
+    );
+}
+
+/// A arte da prova da tinta: `2×1` texels em alfa recta — à esquerda um cinzento ESCURO opaco, à
+/// direita o MESMO cinzento a meia alfa. ⚠️ O texel meio transparente é o que separa a lei exacta da
+/// ingénua (`Multiply` + `SrcAtop` vaza `(1 − α)·T` ali), e o escuro é o que a torna grande.
+const TINTA_ARTE: f32 = 0.2;
+const TINTA_ALFA_DIREITA: f32 = 0.5;
+/// A tinta: três canais diferentes (uma troca de canais não passa) e alfa `< 1`.
+const TINTA: [f32; 4] = [1.0, 0.5, 0.25, 0.8];
+/// O fundo opaco por baixo, em cinzento.
+const TINTA_FUNDO: f32 = 0.9;
+
+/// A conta do `sprite.wgsl` pousada sobre o fundo: fonte pré-multiplicada
+/// `c·T·α·Tα` com alfa `α·Tα`, `over` um fundo opaco.
+fn tinta_esperada(canal: usize, alfa: f32, tinta: [f32; 4]) -> f32 {
+    let a = alfa * tinta[3];
+    TINTA_ARTE * tinta[canal] * a + TINTA_FUNDO * (1.0 - a)
+}
+
+/// Pinta o quad de `2×1` texels, tintado, sobre o fundo, e lê o centro de cada metade (RGB).
+fn mede_tinta(pass: &mut VelloPass, gpu: &GpuContext, tinta: [f32; 4]) -> [[i32; 3]; 2] {
+    let mut store = VecPathStore::default();
+    let _ = store.push(ph2d_vec_scene::rectangle([-0.5, -0.5], [0.5, 0.5]));
+    let fundo = copia(
+        W as f32 / 2.0,
+        W as f32,
+        TINTA_FUNDO,
+        MisturaDoSink::default(),
+        None,
+    );
+    let mut quad = copia(32.0, 48.0, 1.0, MisturaDoSink::default(), Some(7));
+    quad.tint = tinta;
+    let mut art = |id: u32, _: [f32; 4]| {
+        (id == 7).then(|| {
+            let c = byte(TINTA_ARTE) as u8;
+            let a = byte(TINTA_ALFA_DIREITA) as u8;
+            (2, 1, Arc::new(vec![c, c, c, 255, c, c, c, a]))
+        })
+    };
+    let mut cena = VectorScene::new();
+    encode(&[fundo, quad], &store, &mut art, Affine::IDENTITY, None, &mut cena);
+    let px = pass
+        .render_and_readback(gpu, cena.inner(), (W, H))
+        .expect("o readback");
+    let linha = (H / 2) as usize * W as usize * 4;
+    // O quad cobre `x ∈ [8, 56]`: cada texel tem 24 px, e os centros das metades são 20 e 44.
+    [20usize, 44].map(|x| [0, 1, 2].map(|c| i32::from(px[linha + x * 4 + c])))
+}
+
+/// ⭐⭐⭐ **A TINTA de uma imagem na cena vectorial é a CONTA DA SPRITE** (doc 118 §7 W6).
+///
+/// Antes da W6 a rota vectorial desenhava a imagem tal e qual: uma cópia tintada que ia ao grupo
+/// (ou uma folha na terceira média) perdia a cor. ⚠️ Três metades: o CONTROLO (branca = o desenho de
+/// sempre, e a tinta de facto muda os píxeis), a metade OPACA (a multiplicação e a alfa) e a metade
+/// MEIO TRANSPARENTE — que é a que reprova a forma ingénua `SrcAtop`, por construção da fixtura.
+#[test]
+#[ignore = "precisa de GPU"]
+fn a_tinta_da_imagem_e_a_conta_da_sprite() {
+    let Some(gpu) = try_headless_gpu() else {
+        println!("sem adaptador — saltado");
+        return;
+    };
+    let Ok(mut pass) = VelloPass::new(&gpu, wgpu::TextureFormat::Bgra8UnormSrgb, (W, H)) else {
+        println!("sem VelloPass — saltado");
+        return;
+    };
+    let alfas = [1.0, TINTA_ALFA_DIREITA];
+    for tinta in [[1.0; 4], TINTA, [1.0, 1.0, 1.0, 0.6]] {
+        let lido = mede_tinta(&mut pass, &gpu, tinta);
+        for (metade, alfa) in alfas.iter().enumerate() {
+            let alvo = [0, 1, 2].map(|c| byte(tinta_esperada(c, *alfa, tinta)));
+            println!("  tinta {tinta:?} metade {metade}: lido {:?} · conta {alvo:?}", lido[metade]);
+            for c in 0..3 {
+                assert!(
+                    (lido[metade][c] - alvo[c]).abs() <= BARRA,
+                    "tinta {tinta:?}, metade {metade}, canal {c}: lido {} contra a conta da \
+                     sprite {}",
+                    lido[metade][c],
+                    alvo[c]
+                );
+            }
+        }
+    }
+    // O CONTROLO da fixtura: a tinta move os píxeis por muito mais do que a barra, e a lei ingénua
+    // (`SrcAtop`, que vaza `(1−α)·T` no texel meio transparente) está longe da conta nesse texel.
+    let branca = [0, 1, 2].map(|c| byte(tinta_esperada(c, 1.0, [1.0; 4])));
+    let tintada = [0, 1, 2].map(|c| byte(tinta_esperada(c, 1.0, TINTA)));
+    assert!(
+        (0..3).any(|c| (branca[c] - tintada[c]).abs() > 4 * BARRA),
+        "a tinta desta fixtura não se distingue do branco"
+    );
+    let a = TINTA_ALFA_DIREITA * TINTA[3];
+    let ingenua = TINTA[0] * ((1.0 - TINTA_ALFA_DIREITA) + TINTA_ALFA_DIREITA * TINTA_ARTE)
+        * TINTA_ALFA_DIREITA
+        * TINTA[3]
+        + TINTA_FUNDO * (1.0 - a);
+    assert!(
+        (byte(ingenua) - byte(tinta_esperada(0, TINTA_ALFA_DIREITA, TINTA))).abs() > 4 * BARRA,
+        "a fixtura não separa a lei exacta da ingénua no texel meio transparente"
     );
 }

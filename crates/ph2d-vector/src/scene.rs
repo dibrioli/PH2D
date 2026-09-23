@@ -557,6 +557,23 @@ impl VectorScene {
             .push_layer(Fill::NonZero, blend, alpha, Affine::IDENTITY, rect);
     }
 
+    /// ⭐ **Uma camada recortada a uma FORMA sob um afim** — a irmã de [`Self::push_object_layer`]
+    /// para quem precisa do recorte no espaço LOCAL de um objecto e não numa caixa de ecrã (a tinta
+    /// de um quad de imagem do Motion, doc 118 §7 W6: o recorte tem de ser o paralelogramo do
+    /// próprio quad, senão a cor da tinta pintaria o vazio à volta dele).
+    ///
+    /// Pair with [`Self::pop_layer`].
+    pub fn push_layer_shape(
+        &mut self,
+        blend: vello::peniko::BlendMode,
+        alpha: f32,
+        transform: Affine,
+        shape: &impl vello::kurbo::Shape,
+    ) {
+        self.inner
+            .push_layer(Fill::NonZero, blend, alpha, transform, shape);
+    }
+
     /// Pop the most recent layer pushed via [`Self::push_clip`].
     pub fn pop_layer(&mut self) {
         self.inner.pop_layer();

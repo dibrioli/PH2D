@@ -111,16 +111,27 @@ fn cook_once(g: &Graph, reg: &NodeRegistry, sink: NodeId) -> Stream {
 /// Captured on the dev machine (Linux). Re-pin with an explanation if a
 /// deliberate node-math change moves it. `0` is the placeholder before the first
 /// capture — the test prints the observed value on mismatch.
-// ⛔⛔⛔ **RE-PINADO EM 2026-09-22, E A MUDANÇA É DELIBERADA** (ordem do dono: *«vamos efetivar o
-// limite de 16 384»*). A fixtura pede `707 × 707` e o `motion.grid` passou a clampar cada LADO em
-// `LADO_MAX_DE_GRELHA`: ela coze `128 × 128 = 16 384` instâncias em vez de `499 849`, logo a
-// impressão do cozimento é outra. *Não é uma deriva de matemática de nó — é o produto a entregar
-// outra população.*
+// ⛔⛔⛔ **RE-PINADO DUAS VEZES EM 2026-09-22, E AS DUAS MUDANÇAS SÃO DELIBERADAS.** O golden coze
+// o [`build_graph`], que pede `160 × 160`, e o `motion.grid` passou a clampar cada LADO em
+// `LADO_MAX_DE_GRELHA` — logo a população que este gate mede depende do TECTO DO PRODUTO:
+//
+// | ordem do dono | tecto de instâncias | lado máximo | o que `160 × 160` entrega |
+// |---|---|---|---|
+// | *«vamos efetivar o limite de 16 384»* | `16 384` | `128` | `128 × 128 = 16 384` (CLAMPADO) |
+// | *«vamos dobrar o limite (16 384 x2)»* | `32 768` | `181` | **`160 × 160 = 25 600`** (passa) |
+//
+// *Não é uma deriva de matemática de nó — é o produto a entregar outra população.*
+//
+// ⚠️⚠️ **E a 1.ª redacção desta nota apontava para a fixtura ERRADA** (*«a fixtura pede 707 × 707»*,
+// que é a do [`cook_500k_timing`], `#[ignore]` e sem golden nenhum). Ela **acertava no número** por
+// acidente — sob o tecto de `128` as duas fixturas entregam `16 384` —, e foi a subida do tecto que
+// as separou. *Uma nota que acerta no número pela razão errada lê-se como verificada até o número
+// mudar.*
 //
 // ⭐ **E o golden CONTINUA a exercitar o caminho paralelo**, que é a razão de ele ser grande:
-// `16 384 > PAR_THRESHOLD` (`8 192`). Se o tecto descesse abaixo disso, a asserção logo abaixo
+// `25 600 > PAR_THRESHOLD` (`8 192`). Se o tecto descesse abaixo disso, a asserção logo abaixo
 // reprovaria e diria que o golden deixou de medir o que existe para medir.
-const EXPECTED_FINGERPRINT: u64 = 0x11f2_f434_2fc2_4f37;
+const EXPECTED_FINGERPRINT: u64 = 0x1aa7_e05c_4bdb_713f;
 
 /// Manual perf probe (not a gate — `#[ignore]`, meaningful only in `--release`).
 /// Cooks a ~500k-instance chain and prints the wall time. Run it twice to read
@@ -149,7 +160,7 @@ fn cook_500k_timing() {
         .unwrap();
     }
     g.set_param(grid, "rows", 707.0);
-    g.set_param(grid, "cols", 707.0); // pedidas 499_849; o tecto por lado entrega 16_384
+    g.set_param(grid, "cols", 707.0); // pedidas 499_849; o tecto por lado entrega 32_761
     g.set_param(osc, "amplitude", 1.3);
     g.set_param(osc, "frequency", 2.1);
     g.set_param(mv, "dx", 3.5);

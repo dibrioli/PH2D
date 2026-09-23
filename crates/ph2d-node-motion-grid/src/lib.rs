@@ -115,8 +115,8 @@ fn build_grid(rows: usize, cols: usize, gap_x: f32, gap_y: f32, max: usize) -> V
 /// [`GPU_KERNEL`]. Se o tecto de instâncias mudar, isto **não compila**, e quem o mudar é
 /// obrigado a vir aqui em vez de deixar as duas rotas a desenhar treliças diferentes.
 const _: () = assert!(
-    LADO_MAX_DE_GRELHA == 128,
-    "o WGSL do motion.grid clampa em 128.0 a' mao: actualize o texto do shader"
+    LADO_MAX_DE_GRELHA == 181,
+    "o WGSL do motion.grid clampa em 181.0 a' mao: actualize o texto do shader"
 );
 
 const GPU_KERNEL: GpuKernel = GpuKernel {
@@ -133,8 +133,8 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     // nenhum, que é o modo de falha caro. *Uma constante que atravessa uma fronteira de LINGUAGEM
     // não pode depender de alguém se lembrar.*
     wgsl: "\
-        let colsf = min(max(floor(params.cols), 0.0), 128.0);\n\
-        let rowsf = min(max(floor(params.rows), 0.0), 128.0);\n\
+        let colsf = min(max(floor(params.cols), 0.0), 181.0);\n\
+        let rowsf = min(max(floor(params.rows), 0.0), 181.0);\n\
         let cols = u32(colsf);\n\
         let cx = (colsf - 1.0) * 0.5;\n\
         let cy = (rowsf - 1.0) * 0.5;\n\

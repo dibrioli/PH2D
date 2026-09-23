@@ -84,17 +84,55 @@ pub const RECOMMENDED_MAX_ELEMENTS: usize = 1 << 24;
 /// lei: *«nenhum cap estático sobre um FATOR exprime um limite sobre o PRODUTO»* — logo cada nó
 /// desta família clampa o que EMITE, e as faixas dos params são a metade ergonómica (o artista não
 /// consegue sequer pedir mais).
-pub const MAX_INSTANCIAS_POR_NO: usize = 16_384;
-
-/// **O lado de uma grelha quadrada que enche o [`MAX_INSTANCIAS_POR_NO`]** — os `128` que o dono
-/// nomeou, DERIVADOS e não escritos.
 ///
-/// ⚠️ A cerca é de COMPILAÇÃO: um tecto que deixasse de ser um quadrado perfeito partiria a build
-/// aqui, e não numa cena três meses depois.
-pub const LADO_MAX_DE_GRELHA: usize = 128;
+/// ⭐⭐⭐ **E O DONO DOBROU-O EM 2026-09-22:** *«vamos dobrar o limite (16 384 x2)»* ⇒ `32 768`.
+///
+/// ⚠️⚠️ **O que a subida CUSTA, e o que eu posso e não posso afirmar sobre isso.** O tecto continua
+/// a ser decisão de produto — o §0.0 não me pede que eu o justifique, pede que eu diga o preço dele.
+/// O único preço que está medido no dia da subida é o da cena `=126`, a única cena de PERFORMANCE
+/// de desenho do catálogo, e ele é ARITMÉTICA sobre uma medição feita no app **a `90 000` cópias**
+/// (`motion_state::carimbo_demo::ANTES_NS`/`HOJE_NS`, `163`/`115` ns por cópia):
+///
+/// | tecto | a cena `=126` faz | rota ANTIGA | rota de HOJE | de um quadro de `16,67 ms` |
+/// |---|---|---|---|---|
+/// | `16 384` | `128 × 128 = 16 384` | `2,67 ms` | `1,88 ms` | `16 %` · `11 %` |
+/// | **`32 768`** | `181 × 181 = 32 761` | **`5,34 ms`** | **`3,77 ms`** | `32 %` · `23 %` |
+///
+/// ⭐ **A extrapolação é para BAIXO e dentro do regime medido** (`32 761 < 90 000`, e as duas rotas
+/// cabiam num quadro já a `90 000`) — é por isso que ela é honesta aqui e não seria ao contrário:
+/// *acima da fronteira do vsync a shell entra em dívida de tiques e o custo deixa de ser linear*,
+/// que é o erro que aquelas duas constantes já pagaram uma vez.
+///
+/// ⛔ **O que NÃO está medido:** o relógio de PAREDE no app a este tecto, porque no dia da subida a
+/// máquina estava a `2 %` de CPU ociosa e outra linha segurava a placa — *nenhuma leitura de
+/// relógio desta workstation vale nada acima de `load ~5`*. As duas cercas de compilação da cena
+/// `=126` (ela CABE num quadro pelas duas rotas) continuam a valer com o tecto novo.
+pub const MAX_INSTANCIAS_POR_NO: usize = 32_768;
+
+/// **O lado de uma grelha quadrada que cabe no [`MAX_INSTANCIAS_POR_NO`]** — DERIVADO e não
+/// escrito.
+///
+/// ⛔⛔⛔ **A DOBRA DE 2026-09-22 PARTIU A IGUALDADE, E ISSO É ARITMÉTICA E NÃO UMA ESCOLHA.**
+/// `128 × 128` era o tecto **exacto**; `32 768` **não é quadrado perfeito** (`√32 768 = 181,019…`),
+/// logo o maior quadrado que cabe é `181 × 181 = 32 761` — **sete** abaixo do tecto.
+///
+/// ⚠️ A cerca deixa de poder ser uma igualdade e passa a dizer a MESMA coisa em duas metades: o
+/// lado cabe, e **o lado seguinte já não cabe**. ⭐ Sem a segunda metade, qualquer número pequeno
+/// passaria — e um `LADO` demasiado baixo é exactamente o defeito que ninguém vê (a grelha
+/// simplesmente pára antes do que o dono autorizou).
+///
+/// ⚠️ **O `181` é o que o artista vê no topo dos dois sliders do `motion.grid`**, e é por isso que
+/// ele é feio de propósito: um `180` redondo deixaria `368` objectos autorizados fora do alcance
+/// de toda grelha quadrada, e nada no produto diria porquê.
+pub const LADO_MAX_DE_GRELHA: usize = 181;
 const _: () = assert!(
-    LADO_MAX_DE_GRELHA * LADO_MAX_DE_GRELHA == MAX_INSTANCIAS_POR_NO,
-    "o lado da grelha tem de encher exactamente o tecto de instancias"
+    LADO_MAX_DE_GRELHA * LADO_MAX_DE_GRELHA <= MAX_INSTANCIAS_POR_NO,
+    "o lado da grelha tem de caber no tecto de instancias"
+);
+const _: () = assert!(
+    (LADO_MAX_DE_GRELHA + 1) * (LADO_MAX_DE_GRELHA + 1) > MAX_INSTANCIAS_POR_NO,
+    "o lado da grelha e' o MAIOR que cabe: se o seguinte ainda coubesse, o tecto do dono estava a \
+     ser encolhido em silencio"
 );
 
 /// Interpret an `f32` parameter as a non-negative element count, **totally**:

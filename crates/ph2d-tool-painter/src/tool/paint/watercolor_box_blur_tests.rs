@@ -102,3 +102,46 @@ fn o_borrao_em_faixas_da_o_byte_da_versao_de_antes() {
         "o borrão tem de mudar o campo: mudou {mudou}"
     );
 }
+
+/// ⭐ O [`box_blur4`] (os quatro campos do rewet numa passagem) dá o byte de QUATRO [`box_blur`]
+/// separados — o oráculo é o próprio `box_blur`, que o gate de cima já prende à versão de antes.
+/// Canais diferentes em cada posição (senão um canal trocado com outro passaria), mais o controlo de
+/// que o borrão muda o campo.
+#[test]
+fn quatro_borroes_juntos_dao_o_byte_de_quatro_separados() {
+    let casos = [
+        (1usize, 1usize, 1usize),
+        (37, 1, 3),
+        (1, 37, 3),
+        (63, 17, 2),
+        (65, 40, 7),
+        (130, 90, 12),
+        (31, 20, 100),
+    ];
+    let mut mudou = 0usize;
+    for (i, &(w, h, r)) in casos.iter().enumerate() {
+        let c: [Vec<f32>; 4] = std::array::from_fn(|k| campo(w, h, (i * 4 + k) as u32 + 11));
+        let juntos = box_blur4([&c[0], &c[1], &c[2], &c[3]], w, h, r);
+        for k in 0..4 {
+            let so = box_blur(&c[k], w, h, r);
+            assert_eq!(juntos[k].len(), so.len());
+            for (t, (a, b)) in juntos[k].iter().zip(&so).enumerate() {
+                assert_eq!(
+                    a.to_bits(),
+                    b.to_bits(),
+                    "{w}×{h} r{r}, canal {k}, texel {t}: {a} contra {b}"
+                );
+            }
+        }
+        mudou += juntos[0]
+            .iter()
+            .zip(&c[0])
+            .filter(|(a, b)| a.to_bits() != b.to_bits())
+            .count();
+    }
+    // CONTROLO: o borrão de facto mexe no campo (um caso de 1×1 não mexe — por isso a soma).
+    assert!(
+        mudou > 5_000,
+        "o borrão tem de mudar o campo: mudou {mudou}"
+    );
+}

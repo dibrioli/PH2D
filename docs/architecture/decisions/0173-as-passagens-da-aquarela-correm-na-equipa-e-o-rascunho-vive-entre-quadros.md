@@ -73,6 +73,19 @@ tarefa que também constrói um campo; essa paga um rascunho novo em vez de entr
 
 ⇒ **~2,4×** no quadro e **~1,7×** no pen-up, com o mesmo byte em todo quadro.
 
+## Segunda ronda (ordem do dono, mesmo dia): as faixas na reserva e os quatro borrões num só
+
+7. **A passagem vertical da reserva** corre também em FAIXAS, sem transpor: à ida o prefixo por troço
+   (recomeça em zero no seco ⇒ `P[lo] = 0`) e o início do troço, à volta o fim do troço e a caixa.
+   Somas inteiras ⇒ o mesmo byte; prova de mutação: esquecer o início do troço reprova no raio 1.
+8. **`box_blur4`**: os quatro campos `near` (e os quatro `far`) do rewet numa passagem só, com os
+   canais lado a lado como `[f32; 4]` e os quatro planos a nascer num `unzip` encaixado de um
+   iterador indexado (sem `memset`). Cada canal faz as MESMAS somas pela MESMA ordem ⇒ o gate
+   `quatro_borroes_juntos_dao_o_byte_de_quatro_separados` usa o `box_blur` como oráculo.
+
+A impressão ponta a ponta continua a mesma. A/B alternado das duas contra o passo anterior, cinco
+rondas a `load 10–18`: composite por quadro `16,1–16,5 → 14,6–15,1 ms` (~9 %).
+
 ## ⛔ Recusas e premissas que caíram
 
 - **A escrita do zero fora dos troços** (a 1.ª redacção do rascunho dizia que era ela que impedia o
@@ -89,5 +102,3 @@ tarefa que também constrói um campo; essa paga um rascunho novo em vez de entr
   que sobra. Encolhê-la não é byte-idêntico (o `box_blur` soma desde a origem da janela, e o gate
   `incremental ≡ full` tolera `±1`) ⇒ decisão do dono.
 - **O `REWET_DS_SPREAD`** (doc 32 §4.1): continua decisão de produto, a julgar a olho.
-- **Fundir os quatro borrões `near` (e os quatro `far`) do rewet num só** e **as faixas também na
-  passagem vertical da reserva** (hoje ainda transpõe): medidos como próximos candidatos, não feitos.

@@ -508,12 +508,8 @@ impl BodyCtx<'_> {
         label: &str,
         y: f32,
     ) -> f32 {
-        self.colour_swatch_row(
-            id,
-            colour,
-            label,
-            tr("panel.vector.filter.filter_effect_color"),
-            y,
-        )
+        // ⚠️ O rótulo de a11y deixou de ser um argumento: a porta da casa usa o NOME da fileira
+        //    para os dois papéis, e duas frases para a mesma linha divergem.
+        self.colour_swatch_row(id, colour, label, y)
     }
 }

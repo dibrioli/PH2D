@@ -1932,102 +1932,157 @@ app já vive, e o piso delas (`NUMBER_INPUT_MIN_W_PX = 72`) continua a ser a cer
 
 ---
 
-## §9-septdecies — ⛔⛔ O SELECTOR DE COR: a medição FECHOU, a cura foi REVERTIDA, e o bloqueador é uma CATRACA
+## §9-septdecies — ⭐⭐⭐ O SELECTOR DE COR: o defeito, e a CATRACA que impedia a cura dele
 
-> Report do dono, 2026-09-22: *«os seletores de cor de todo o app precisam ser padronizados»*.
+> Report do dono, 2026-09-21 (com desenho) e 2026-09-22: *«os seletores de cor de todo o app
+> precisam ser padronizados»*.
 >
-> ⚠️ **Esta secção NÃO descreve uma cura shipada.** Ela regista uma medição que fecha, uma cura
-> construída e **revertida**, e o mecanismo que a bloqueia — para a próxima janela não recomeçar do
-> zero nem repetir o meu erro.
+> ⚠️ Esta wave levou **duas** sessões: a 1.ª mediu e **reverteu**, a 2.ª trocou a régua e shipou.
+> As duas ficam escritas, porque o que bloqueou a 1.ª é a lição.
 
-### §9-septdecies.1 — O que a medição diz (e isto FICA)
+### §9-septdecies.1 — A medição, e as TRÊS populações que o nome não separa
 
-Sonda nova `diag_que_forma_tem_cada_seletor_de_cor` (em `a_marca_tem_a_altura_da_linha.rs`), pelo
-caminho do produto e com a passagem **armada** — sem ela cinco painéis pintam zero fileiras e o
-Inspector fica invisível.
-
-A 1.ª corrida leu **45** candidatos e **35 NÃO eram selectores**:
-
-| o que | forma | porquê não entra |
-|---|---|---|
-| `insp_live_*_color` · `insp_section_*_color` (35) | `18 × 18` | é o **ponto de cor do CABEÇALHO** (`color_circle_hit_rect`) |
-| `*_section` (2) | `268 × 22` | é a **banda de DOBRA** da secção |
-| os restantes (9) | `22` de alto | **estes** são os selectores |
-
-⛔⛔ **Confundi-las era o erro, e estava a um passo:** padronizar um ponto de cabeçalho ou uma banda
-de dobra «ao controlo» troca um cabeçalho e uma dobra por um campo.
+Sonda `diag_que_forma_tem_cada_seletor_de_cor`, pelo caminho do produto e com a passagem **armada**
+(sem ela cinco painéis pintam zero fileiras e o Inspector — o painel do report — fica invisível).
+A 1.ª corrida leu **45** candidatos e **35 NÃO eram selectores**: `18 × 18` é o **ponto de cor do
+CABEÇALHO** (`color_circle_hit_rect`) e `268 × 22` é a **banda de DOBRA** da secção. ⛔ Padronizar
+qualquer uma «ao controlo» troca um cabeçalho e uma dobra por um campo.
 
 **E a ALTURA já era uniforme (`22` em todos).** O que divergia era a **largura**, e num painel só:
 
-| painel | x | largura | acaba em |
-|---|---:|---:|---:|
-| `inspector` (4 linhas de cor) | `1206` | `120` | `1326` |
-| `painter_layers` | `1214` | `120` | `1334` |
-| **`vector` (fill · stroke)** | **`1300`** | **`32`** | `1332` |
-| `widget_gallery` (a vitrina) | — | **`32`** | `809` |
+| painel | x | largura |
+|---|---:|---:|
+| `inspector` (4 linhas) · `painter_layers` | `1206`/`1214` | `120` |
+| **`vector` (fill · stroke)** | **`1300`** | **`32`** |
 
-Medido no MESMO painel de vetor, **todo** vizinho começa na coluna do controlo: os interruptores em
-`1207 + 125`, as pontas de seta em `1202 + 130`, os botões em `1080 + 252`. **Só a swatch começava
-`94 px` depois, com a largura de um quadrado** — e a largura vinha do `SwatchSize::Md`, que o doc do
-`ColorSwatch` declara ser a aresta **sugerida** de uma amostra de PALETA (*«callers may still hand
-any rect»*). *Uma sugestão de grelha usada como largura de fileira é o mesmo erro que o
-`CHECKBOX_BOX_PX` no lugar da altura da linha (§9-quindecies), uma semana antes.*
+Medido no MESMO painel: os interruptores em `1207 + 125`, as pontas de seta em `1202 + 130`, os
+botões em `1080 + 252` — **só a swatch começava `94 px` depois**. A largura vinha do
+`SwatchSize::Md`, que o doc do `ColorSwatch` declara ser a aresta **sugerida** de uma amostra de
+PALETA (*«callers may still hand any rect»*). *É o mesmo erro do `CHECKBOX_BOX_PX` no lugar da
+altura da linha (§9-quindecies): duas grandezas com nomes parecidos, e a errada cabia.*
 
-### §9-septdecies.2 — ⛔⛔⛔ O erro que eu cometi: a lei JÁ EXISTIA e eu não a li
+### §9-septdecies.2 — ⛔⛔⛔ A 1.ª sessão foi REVERTIDA, e por duas razões minhas
 
-O gate `quantas_entradas_tem_cada_painel::as_formas_de_um_selector_de_cor_so_encolhem` já media
-**109** selectores (discriminador próprio: `is_picker_swatch` + `widget_color` + os estados de
-picker — muito melhor que o meu, por slug), já trazia **o mesmo report do dono, de 21/09**, e já
-prescrevia a cura na mensagem de erro: *«um selector de cor novo passa pela porta
-`paint_color_row`»*.
+**(a) A lei já existia e eu não a li.** O gate `as_formas_de_um_selector_de_cor_so_encolhem` já
+media **109** selectores com discriminador próprio (`is_picker_swatch` + `widget_color` + os estados
+de picker), já trazia o report do dono e já prescrevia a porta na mensagem de erro. Eu escrevi um
+gate NOVO — com catraca, censo de obsolescência e 4 de 4 mutações a sangrar — que era **uma segunda
+resposta à mesma pergunta, e pior**. Apagado. *Antes de escrever uma régua, corra o portão: é ele
+que mostra a que já existe, e não um `grep`.*
 
-⇒ Eu escrevi um gate NOVO (`o_seletor_de_cor_ocupa_a_coluna.rs`, com catraca e censo de
-obsolescência, **4 de 4 mutações a sangrar**) que era **uma segunda resposta à mesma pergunta, e
-pior**. Foi **APAGADO**. *Antes de escrever uma régua, procure a que já existe — e a maneira de a
-achar é correr o portão, não `grep`.*
-
-### §9-septdecies.3 — A cura construída, e porque foi REVERTIDA
-
-Construída inteira: o painel de vetor tinha **quatro** cópias da mesma montagem; ficaram uma porta
-(`colour_swatch_row_rect`, que devolve o rect para a rachura do token) mais `caixa_do_controlo` no
-`property_row` (para não haver segunda aritmética da coluna), com os três sítios em linha a delegar
-e três blocos de imports a ficarem órfãos — o sinal de que a duplicação saiu. A vitrina
-(`widget/showcase/color.rs`) foi curada pela mesma razão (*uma vitrina que não obedece à lei da casa
-ensina a lei errada a quem a vem consultar*).
-
-⛔⛔⛔ **E a catraca de 109 selectores REPROVOU as duas tentativas:**
+**(b) A catraca bloqueou a cura que ela própria prescrevia.** Ela contava **píxeis** e chamava-lhes
+«formas». Medido nas duas tentativas de conversão do vetor:
 
 | tentativa | largura no vetor | veredito |
 |---|---:|---|
 | coluna derivada no painel | `134` | forma NOVA ⇒ reprova |
-| **pela porta `paint_color_row`** | `112` (e a vitrina `188`) | **DUAS** formas novas ⇒ reprova |
+| pela porta `paint_color_row` | `112` | forma NOVA ⇒ reprova |
 
 ⭐⭐ **O achado: a largura de um selector que «enche a coluna» NÃO É INVARIANTE — ela é função da
-largura do PAINEL.** A catraca conta **píxeis** e chama-lhes «formas», logo *converter um painel
-pela porta que ela própria prescreve faz sempre nascer uma largura nova*. O modelo dela não fecha
-com a mensagem dela: a lista `LARGURAS_DE_COR = [18, 32, 59, 120, 268]` só encolheria se todos os
-painéis tivessem a mesma largura interior, e não têm (`inspector` acaba em `1326`, `vector` em
-`1318`, a vitrina noutro sítio).
+largura do PAINEL** (`inspector` `120`, `vector` `112`). *A condição de sucesso daquela catraca —
+o conjunto encolher até um — era inalcançável por construção enquanto os painéis tivessem larguras
+diferentes.* ⇒ geometria revertida, árvore verde: *não se shipa mudança visível que luta com um
+gate aprovado, e não se afrouxa o gate para a mudança passar.*
 
-⚠️ **Por isso a geometria foi REVERTIDA e a árvore ficou verde.** *Não se shipa mudança visível que
-luta com um gate aprovado; e não se afrouxa um gate aprovado para a mudança passar.*
+### §9-septdecies.3 — A régua NOVA: a forma que o nome da antiga prometia
 
-### §9-septdecies.4 — O que a próxima janela faz (o trabalho é da RÉGUA, não do desenho)
+`um_seletor_de_cor_sozinho_na_fileira_ocupa_uma_caixa_estrutural` (substitui a de píxeis, com a
+morte da premissa escrita no lugar dela).
 
-**A catraca tem de medir a FORMA que o nome dela promete, e não o píxel.** O predicado honesto é
-*«a swatch ocupa a caixa que a [`property_row::caixa_do_controlo`] dá à fileira dela»* — uma
-comparação **por painel**, contra a porta, sem número escolhido. Com ela:
+⭐ **A partição é MEDIDA, não escolhida:** um selector que **partilha** a faixa de `y` com outros
+controlos é uma grelha de paleta, uma célula de bloco (o per-corner, `2 × 2`), um ponto de cabeçalho
+ou uma linha de lista — ali o chip é a forma certa. Um selector **sozinho** na fileira é um campo.
 
-1. a conversão do vetor e da vitrina passa a poder shipar (é o que o dono pediu);
-2. as `86` swatches a `32` continuam a **reprovar** enquanto forem grelhas de paleta — ⛔ e ELAS
-   são outra população (grelha · linha de LISTA), que a régua tem de excluir **com o mecanismo
-   escrito**, nunca com uma lista de nomes.
+Para os sozinhos, o rect tem de ser uma de **duas** caixas, ambas derivadas da caixa de dentro do
+painel e de **nenhum número escolhido**:
 
-⛔ **Duas réguas minhas foram construídas, medidas e REFUTADAS a caminho disto** — registadas para
-ninguém as reconstruir: a **borda direita** (todos os nove acabam onde os vizinhos acabam, e a
-swatch antiga TAMBÉM: *verde sobre o defeito*) e **«não mais estreito que o vizinho mais largo da
-coluna»** (reprovou os OITO, porque o vizinho mais largo é um botão de largura inteira — *uma
-estatística sobre população heterogénea mede a variedade, não o defeito*).
+| caixa | quem a usa | como se deriva |
+|---|---|---|
+| **a coluna do controlo** | `inspector` · `painter_layers` · **`vector`** | `property_row::caixa_do_controlo` |
+| **a fileira inteira** | `authored` (gerado por TABELA — a forma que o dono desenhou) | a própria caixa de dentro |
+
+⚠️ **São duas porque há dois MODELOS de linha** (o nome à esquerda · o nome na linha de cima), e não
+por tolerância. O que a régua recusa é a terceira coisa: **uma largura FIXA, que não sai de
+estrutura nenhuma**.
+
+⚠️ **A caixa de dentro deriva-se do controlo mais largo que NÃO é uma cor** — derivá-la do conjunto
+todo seria circular no `authored`, cuja swatch É a coisa mais larga que ele desenha.
+
+⛔ **Duas réguas construídas, medidas e REFUTADAS antes desta:** a **borda direita** (todos acabam
+onde os vizinhos acabam — *e a swatch com o defeito também*: verde sobre ele) e **«não mais estreito
+que o vizinho mais largo da coluna»** (reprovou os OITO, porque o vizinho mais largo de uma coluna é
+um botão de largura inteira, que é legítimo — *uma estatística sobre população heterogénea mede a
+variedade, não o defeito*).
+
+### §9-septdecies.4 — A cura: uma porta, e as quatro cópias que ela apagou
+
+O painel de vetor tinha **quatro** redacções da mesma montagem (rótulo + rect colado à direita +
+`paint_color_swatch` + `register`), duas delas a desenhar ainda a **rachura do token** por cima.
+
+- `property_row::caixa_do_controlo` — o rect que a fileira dá ao controlo, **sem pintar**, com
+  **dois** leitores: a rachura do token e a própria régua. *Uma segunda aritmética para a mesma
+  coluna diverge no dia em que a porta mudar, e então a rachura cai ao lado da swatch e a régua
+  aprova o desalinhamento que existe para proibir.*
+- `BodyCtx::colour_swatch_row_rect` — a fileira pela porta da casa, devolvendo também o rect.
+- Os três sítios em linha passaram a delegar; **três blocos de imports ficaram órfãos** — o sinal de
+  que a duplicação de facto saiu.
+
+⚠️⚠️ **O `y` que a porta devolve é DESCARTADO, de propósito:** o passo dela é `ROW_H_PX +
+control_gap_px()` (`25`) e o deste painel é `row_h + row_gap` (`26`). Misturar dois passos dentro de
+uma secção é um defeito maior do que a largura que esta wave veio corrigir — *a porta decide a
+GEOMETRIA da fileira; o painel continua dono do RITMO dele.*
+
+⭐ **Medido depois:** `vector.fill_swatch` e `stroke_swatch` de `x=1300 w=32` para **`x=1760
+w=112`** — a começar **exactamente** onde a linha de cor do Inspector começa (`x=1760`), com a
+largura que a largura DAQUELE painel dá.
+
+### §9-septdecies.5 — ⛔⛔ E o censo de ACESSIBILIDADE acusou os dois ficheiros CURADOS
+
+O `hr12_widgets_a11y::every_widget_file_wires_a11y` reprovou o `paint_contour.rs` e o
+`paint_sections_stroke.rs` — *sobre código melhor do que o de antes*. Eles deixaram de nomear
+`paint_color_swatch` porque passaram a chamar a porta **que o chama**, e a cadeia ficou com um salto
+a mais do que a lista de primitivos conhecia:
+
+```
+painel → BodyCtx::colour_swatch_row → property_row::paint_color_row
+       → widget::paint_swatch_or_mixed → widget::paint_color_swatch   ← o primitivo
+```
+
+⭐ **O mecanismo já existia e nasceu do MESMO acidente:** as `PORTAS_DE_CRATE_VERIFICADAS` foram
+criadas em 2026-09-19 quando o `ph2d-panel-audio-editor` adoptou a porta dele e três ficheiros
+ficaram vermelhos na mesma condição. ⇒ duas linhas, **as duas necessárias**:
+
+1. `paint_color_row` entra nos `WIDGET_DELEGATE_MARKERS` — *a lista dizia «keep in sync with
+   `src/widget/`» e as portas de fileira vivem no `property_row`, que é da CASA e é canónico na
+   mesma*;
+2. `("colour_swatch_row", "ph2d-panel-vector", "src/paint_rows.rs")` entra nas portas verificadas.
+
+⚠️⚠️ **E a (1) é o que torna a (2) HONESTA:** a verificação de uma porta exige que o ficheiro dela
+contenha um marcador, e o `paint_rows.rs` contém `paint_button` de **outra** função — *um casamento
+acidental*, que é exactamente o defeito que aquele ficheiro já regista sobre este mesmo painel
+(`paint_color_swatch_row` a casar por subcadeia). Com a (1) o marcador que casa é a delegação REAL.
+
+*Uma lista de primitivos que não acompanha as portas que a casa cria acusa precisamente quem as
+adopta* — e o sinal é inconfundível: o gate reprova ficheiros que o diff **melhorou**.
+
+### §9-septdecies.6 — Prova de mutação: **7 sangram + 1 NO-OP nomeada**
+
+| # | mutação | veredito |
+|---|---|---|
+| M1 | o vetor volta ao chip fixo | ✅ sangra |
+| M2 | a alternativa da FILEIRA INTEIRA desaparece | ✅ sangra (o `authored` acusa) |
+| M3 | a partição SOZINHO-NA-FILEIRA desaparece | ✅ sangra (as grelhas acusam) |
+| M4 | o censo deixa de colher (piso de população) | ✅ sangra |
+| M5 | `caixa_do_controlo` larga o `property_fields_layout` | ⛔ **NO-OP, medido** |
+| M5' | `caixa_do_controlo` devolve a FILEIRA em vez da coluna | ✅ sangra |
+| M6 | a porta registada deixa de delegar | ⛔ **não compila** — o arnês abortou |
+| M6' | a entrada nomeia uma porta que não existe | ✅ sangra (o censo de obsolescência) |
+| M7 | a entrada some ⇒ os dois ficheiros ficam sem cobertura | ✅ sangra |
+
+⚠️⚠️ **A M5 lê-se como sobrevivente e não é:** com **um** campo o `property_fields_layout` devolve a
+coluna inteira (`control.w=120 cw=120` · `control.w=112 cw=112`, medido por sonda). *Uma mutação
+no-op e uma sobrevivente dão exactamente o mesmo relatório* — a única maneira de as separar é medir
+a grandeza que a mutação devia mover.
 
 ## §11 — O que esta linha recomenda a quem a integrar
 

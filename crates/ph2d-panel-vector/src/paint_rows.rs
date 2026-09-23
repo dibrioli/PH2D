@@ -11,8 +11,8 @@
 use super::paint_sections::{BodyCtx, label_col_w};
 use ph2d_editor_core::paint::{paint_text, paint_text_block, resolve};
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, Checkbox, CheckboxValue, ColorSwatch, SwatchSize, paint_button,
-    paint_checkbox, paint_color_swatch, paint_slider_with_chip_layout_adaptive,
+    Button, ButtonKind, Checkbox, CheckboxValue, paint_button, paint_checkbox,
+    paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Spacing, TypeToken};
@@ -116,30 +116,64 @@ impl BodyCtx<'_> {
         id: ph2d_a11y::NodeId,
         colour: [u8; 4],
         label: &str,
-        a11y: &str,
         y: f32,
     ) -> f32 {
-        let swatch_w = SwatchSize::Md.px();
-        ph2d_editor_core::widget::paint_property_label(
-            self.text_system,
+        self.colour_swatch_row_rect(id, colour, label, y).0
+    }
+
+    /// ⭐⭐⭐ **A MESMA linha, devolvendo também o RECT que a swatch ocupou.**
+    ///
+    /// ⚠️ Ela existe porque duas das quatro linhas de cor deste painel desenham a **rachura do
+    /// token** por cima da swatch, e para isso precisam do rectângulo. Sem esta metade as duas
+    /// copiavam a montagem inteira — *que é exactamente o que elas faziam*, e é por isso que a lei
+    /// da largura tinha **quatro** redacções e nenhuma régua.
+    ///
+    /// ⛔⛔ **A geometria é da PORTA da casa** ([`ph2d_editor_core::property_row::paint_color_row`])
+    /// e nunca deste painel. O que havia aqui era um quadrado de `32 px` colado à direita, com a
+    /// largura vinda do `SwatchSize::Md` — a aresta que o doc do `ColorSwatch` declara ser a
+    /// **sugestão para uma amostra de PALETA** (*«callers may still hand any rect»*). Medido, todo
+    /// vizinho deste painel começa na coluna do controlo e só a swatch começava `94 px` depois.
+    ///
+    /// ⚠️⚠️ **O `y` que a porta devolve é DESCARTADO, de propósito:** o passo dela é
+    /// `ROW_H_PX + control_gap_px()` (`25`) e o deste painel é `row_h + row_gap` (`26`). Misturar
+    /// dois passos dentro de uma secção é um defeito maior do que a largura que esta wave veio
+    /// corrigir — *a porta decide a GEOMETRIA da fileira; o painel continua dono do RITMO dele.*
+    pub(crate) fn colour_swatch_row_rect(
+        &mut self,
+        id: ph2d_a11y::NodeId,
+        colour: [u8; 4],
+        label: &str,
+        y: f32,
+    ) -> (f32, Rect) {
+        ph2d_editor_core::property_row::paint_color_row(
             self.scene,
-            label,
+            self.text_system,
+            self.theme,
+            self.hit_index,
+            self.store,
             self.inner_x,
-            y + (self.row_h - self.font) * 0.5,
-            self.font,
-            label_col_w(self.inner_x, self.inner_w),
-            resolve(ColorToken::Text1, self.theme),
-        );
-        let rect = Rect::new(
-            self.inner_x + self.inner_w - swatch_w,
+            self.inner_w,
             y,
-            swatch_w,
-            self.row_h,
+            label,
+            id,
+            colour,
+            false,
+            ph2d_editor_core::property_row::Seccao::apenas_campos(1),
         );
-        let swatch = ColorSwatch::new(id, a11y, colour).size(SwatchSize::Md);
-        paint_color_swatch(&swatch, rect, self.scene, self.theme);
-        self.hit_index.register(id, rect);
-        y + self.row_h + self.row_gap
+        (y + self.row_h + self.row_gap, self.caixa_da_swatch(y))
+    }
+
+    /// ⭐⭐ **O rect que a porta deu à swatch** — para quem precisa de desenhar POR CIMA dela.
+    ///
+    /// ⛔ Ela delega na porta: *uma segunda aritmética para a mesma coluna diverge no dia em que a
+    /// porta mudar, e a rachura do token passa a cair ao lado da swatch.*
+    pub(crate) fn caixa_da_swatch(&self, y: f32) -> Rect {
+        ph2d_editor_core::property_row::caixa_do_controlo(
+            self.inner_x,
+            self.inner_w,
+            y,
+            ph2d_editor_core::property_row::Seccao::apenas_campos(1),
+        )
     }
 
     /// **Uma linha de texto e nada mais** — um readout, sem id e sem hit-rect.

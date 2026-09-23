@@ -123,41 +123,19 @@ impl BodyCtx<'_> {
             y = self.token_row(ids::VECTOR_TOKEN_WIDTH, b.width.as_deref(), y);
         }
 
-        let swatch_w = SwatchSize::Md.px();
-        // Stroke colour swatch.
-        ph2d_editor_core::widget::paint_property_label(
-            self.text_system,
-            self.scene,
-            tr("panel.vector.section.stroke"),
-            self.inner_x,
-            y + (self.row_h - self.font) * 0.5,
-            self.font,
-            label_col_w(self.inner_x, self.inner_w),
-            resolve(ColorToken::Text1, self.theme),
-        );
-        let stroke_swatch_rect = Rect::new(
-            self.inner_x + self.inner_w - swatch_w,
-            y,
-            swatch_w,
-            self.row_h,
-        );
-        let stroke_swatch = ColorSwatch::new(
+        // ⭐ Pela PORTA — ver [`BodyCtx::colour_swatch_row_rect`] para a lei da caixa.
+        let (proximo, stroke_swatch_rect) = self.colour_swatch_row_rect(
             ph2d_tool_vector::ids::VECTOR_STROKE_SWATCH,
-            tr("panel.vector.stroke.stroke_color"),
             snap.stroke,
-        )
-        .size(SwatchSize::Md);
-        paint_color_swatch(&stroke_swatch, stroke_swatch_rect, self.scene, self.theme);
-        self.hit_index.register(
-            ph2d_tool_vector::ids::VECTOR_STROKE_SWATCH,
-            stroke_swatch_rect,
+            tr("panel.vector.section.stroke"),
+            y,
         );
         // A rachura, pela mesma razão do preenchimento.
         let bindings = crate::state::token_bindings();
         if bindings.as_ref().is_some_and(|b| b.stroke.is_some()) {
             self.token_slash(stroke_swatch_rect);
         }
-        y += self.row_h + self.row_gap;
+        y = proximo;
 
         // **O TOKEN do traço** (plano UI/UX W4), logo abaixo da cor que ele cobre. Só é oferecido
         // quando a seleção TEM traço: o token colore o traço que existe e nunca inventa largura.

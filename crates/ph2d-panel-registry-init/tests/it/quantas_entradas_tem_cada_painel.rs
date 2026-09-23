@@ -2421,54 +2421,290 @@ fn larguras_dos_selectores_de_cor() -> std::collections::BTreeMap<i32, usize> {
     out
 }
 
-/// ⛔⛔ **O NÚMERO DE FORMAS DE UM SELECTOR DE COR SÓ ENCOLHE.**
-///
-/// ⛔ **Report do dono, 2026-09-21, com um DESENHO:** *«os seletores de cor de todo o app precisam
-/// ser padronizados»*. Medido no mesmo dia: **`109`** selectores em **CINCO** larguras — `18`,
-/// `24`, `32`, `120` e `268 px`.
-///
-/// ⭐ **A forma que ele desenhou já existia no app**, num painel só — o `authored`, gerado por
-/// TABELA, com a amostra a encher a coluna do valor (`268`). Ela virou a porta
-/// [`ph2d_editor_core::property_row::paint_color_row`], e as **seis** linhas de cor do Inspector
-/// (tint · self tint · as duas das partículas · as duas do tween) passaram de `24` para a coluna.
-///
-/// ⚠️ **A catraca conta FORMAS e não sítios:** o alvo é *uma* forma, e cada wave que converte um
-/// grupo tira uma linha daqui. ⛔ Uma forma NOVA reprova.
-const LARGURAS_DE_COR: &[i32] = &[18, 32, 59, 120, 268];
-// ⭐ O `59` é METADE da coluna do valor menos o vão — a célula do per-corner, que é `2 × 2` dentro
-//   de uma linha. ⚠️ Ele **substituiu** um `35`: o nome comprido do bloco comia a coluna, e
-//   encurtá-lo (ordem do dono) deu `68 %` mais alvo sem mover uma linha de disposição.
-
+/// ⛔ SONDA — a hipótese que separa um CAMPO de uma GRELHA: *quem está sozinho na fileira?*
 #[test]
-fn as_formas_de_um_selector_de_cor_so_encolhem() {
-    let medido = larguras_dos_selectores_de_cor();
-    let vistas: Vec<i32> = medido.keys().copied().collect();
-    let novas: Vec<&i32> = vistas
-        .iter()
-        .filter(|w| !LARGURAS_DE_COR.contains(w))
-        .collect();
+#[ignore]
+fn diag_quem_esta_sozinho_na_fileira() {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    ph2d_editor_core::panel::with_registry(|reg| {
+        for painel in reg.panels_mut() {
+            let id = painel.manifest.id;
+            let mut host = MockPanelHost::new();
+            let arm = super::paineis_armados::TABELA
+                .iter()
+                .find(|a| a.painel == id);
+            if let Some(a) = arm {
+                (a.arma)(host.store_mut());
+            }
+            painel.populate(host.store_mut());
+            abre_tudo(host.store_mut());
+            let (_, _g) = ph2d_editor_core::widget::composto::medindo(|| {
+                let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
+            });
+            let pintados = host.registos_da_ultima_pintura();
+            let store = host.store();
+            if let Some(a) = arm {
+                (a.desarma)();
+            }
+            // A caixa de DENTRO do painel: o rect mais largo que ele pinta e que NÃO é uma cor.
+            // ⛔ Derivá-la do conjunto todo seria circular num painel cuja swatch é a coisa mais
+            //    larga que ele desenha (o `authored`, gerado por tabela).
+            let dentro = pintados
+                .iter()
+                .filter(|(nid, r)| {
+                    r.h < 60.0
+                        && !(store.is_picker_swatch(*nid) || store.widget_color(*nid).is_some())
+                })
+                .map(|(_, r)| (r.x, r.w))
+                .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+            let mut linhas = Vec::new();
+            for (nid, r) in &pintados {
+                let e_cor = store.is_picker_swatch(*nid)
+                    || store.widget_color(*nid).is_some()
+                    || matches!(
+                        store.get(*nid),
+                        Some(ph2d_editor_core::interaction::InteractiveState::ColorPicker { .. })
+                            | Some(
+                                ph2d_editor_core::interaction::InteractiveState::BlenderPicker { .. }
+                            )
+                    );
+                if !e_cor || r.h > 60.0 {
+                    continue;
+                }
+                // Quantos OUTROS controlos partilham esta faixa de y?
+                let vizinhos = pintados
+                    .iter()
+                    .filter(|(o, q)| {
+                        *o != *nid && q.h < 60.0 && q.y < r.y + r.h - 1.0 && r.y < q.y + q.h - 1.0
+                    })
+                    .count();
+                linhas.push(format!(
+                    "  COR      x={:7.1} w={:6.1} h={:5.1}  vizinhos={vizinhos}",
+                    r.x, r.w, r.h
+                ));
+            }
+            if linhas.is_empty() {
+                continue;
+            }
+            // Os controlos NAO-cor que tambem estao SOZINHOS na fileira — a referencia.
+            let mut sozinhos: Vec<String> = Vec::new();
+            for (nid, r) in &pintados {
+                if r.h > 60.0 || r.w < 8.0 {
+                    continue;
+                }
+                let e_cor = store.is_picker_swatch(*nid) || store.widget_color(*nid).is_some();
+                if e_cor {
+                    continue;
+                }
+                let viz = pintados
+                    .iter()
+                    .filter(|(o, q)| {
+                        *o != *nid && q.h < 60.0 && q.y < r.y + r.h - 1.0 && r.y < q.y + q.h - 1.0
+                    })
+                    .count();
+                if viz == 0 {
+                    sozinhos.push(format!("  sozinho  x={:7.1} w={:6.1}", r.x, r.w));
+                }
+            }
+            sozinhos.sort();
+            sozinhos.dedup();
+            linhas.extend(sozinhos.into_iter().take(6));
+            linhas.sort();
+            linhas.dedup();
+            eprintln!("### {id}   dentro={dentro:?}");
+            for l in &linhas {
+                eprintln!("{l}");
+            }
+        }
+    });
+}
+
+/// **Um selector de cor medido pelo caminho do produto, com a caixa do painel dele ao lado.**
+#[cfg(test)]
+struct SeletorDeCor {
+    painel: &'static str,
+    rect: ph2d_editor_core::zones::Rect,
+    /// Quantos OUTROS controlos partilham a faixa de `y` desta fileira.
+    vizinhos: usize,
+    /// A caixa de DENTRO do painel — derivada do controlo mais largo que NÃO é uma cor.
+    dentro: Option<(f32, f32)>,
+}
+
+/// O censo dos selectores de cor, com a fileira e a caixa do painel de cada um.
+#[cfg(test)]
+fn selectores_de_cor() -> Vec<SeletorDeCor> {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let mut out = Vec::new();
+    ph2d_editor_core::panel::with_registry(|reg| {
+        for painel in reg.panels_mut() {
+            let id = painel.manifest.id;
+            let mut host = MockPanelHost::new();
+            let arm = super::paineis_armados::TABELA
+                .iter()
+                .find(|a| a.painel == id);
+            if let Some(a) = arm {
+                (a.arma)(host.store_mut());
+            }
+            painel.populate(host.store_mut());
+            abre_tudo(host.store_mut());
+            let (_, _g) = ph2d_editor_core::widget::composto::medindo(|| {
+                let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
+            });
+            let pintados = host.registos_da_ultima_pintura();
+            let store = host.store();
+            if let Some(a) = arm {
+                (a.desarma)();
+            }
+            let e_cor = |nid: ph2d_editor_core::NodeId| {
+                store.is_picker_swatch(nid) || store.widget_color(nid).is_some()
+            };
+            // ⛔ Derivar a caixa do painel do conjunto TODO seria circular num painel cuja swatch é
+            //    a coisa mais larga que ele desenha — o `authored`, gerado por tabela.
+            let dentro = pintados
+                .iter()
+                .filter(|(nid, r)| r.h < 60.0 && !e_cor(*nid))
+                .map(|(_, r)| (r.x, r.w))
+                .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+            for (nid, r) in &pintados {
+                if !e_cor(*nid) || r.h > 60.0 {
+                    continue;
+                }
+                let vizinhos = pintados
+                    .iter()
+                    .filter(|(o, q)| {
+                        *o != *nid && q.h < 60.0 && q.y < r.y + r.h - 1.0 && r.y < q.y + q.h - 1.0
+                    })
+                    .count();
+                out.push(SeletorDeCor {
+                    painel: id,
+                    rect: *r,
+                    vizinhos,
+                    dentro,
+                });
+            }
+        }
+    });
+    out
+}
+
+/// ⛔ Piso de população — uma varredura que lê pouco devolve zero acusações e lê-se como aprovação.
+#[cfg(test)]
+const PISO_DE_SELETORES: usize = 100;
+
+/// ⭐⭐⭐ **UM SELECTOR DE COR SOZINHO NA FILEIRA OCUPA UMA CAIXA ESTRUTURAL — nunca uma largura fixa.**
+///
+/// ⛔ **Report do dono, 2026-09-21, com um DESENHO** e repetido em 2026-09-22: *«os seletores de
+/// cor de todo o app precisam ser padronizados»*.
+///
+/// # ⛔⛔⛔ Esta régua SUBSTITUI uma catraca cuja GRANDEZA estava errada
+///
+/// A anterior (`as_formas_de_um_selector_de_cor_so_encolhem`) contava **píxeis** e chamava-lhes
+/// «formas», com a lista `[18, 32, 59, 120, 268]`. ⚠️ **Ela bloqueava a cura que a própria mensagem
+/// dela prescrevia:** a largura de um selector que «enche a coluna» **não é invariante** — ela é
+/// função da largura do PAINEL (`inspector` dá `120`, `vector` dá `112`, a vitrina outra coisa) —,
+/// logo converter um painel pela porta `paint_color_row` fazia **sempre** nascer uma largura nova e
+/// reprovava. Medido em 2026-09-22, nas duas tentativas de conversão do painel de vetor.
+///
+/// *Uma catraca que impede o trabalho que ela pede não é uma catraca: é um bloqueador com a razão
+/// certa e a régua errada.*
+///
+/// # ⭐ A grandeza que fica
+///
+/// Para cada selector **sozinho na fileira** (ver a partição abaixo), o rect dele tem de ser uma de
+/// **duas** caixas, as duas derivadas da caixa de dentro do painel e de nenhum número escolhido:
+///
+/// | caixa | quem a usa | como se deriva |
+/// |---|---|---|
+/// | **a coluna do controlo** | `inspector` · `painter_layers` | [`ph2d_editor_core::property_row::caixa_do_controlo`] |
+/// | **a fileira inteira** | `authored` (gerado por TABELA — a forma que o dono desenhou) | a própria caixa de dentro |
+///
+/// ⚠️ **São duas porque há dois MODELOS de linha**, e não por tolerância: num o nome vive à
+/// esquerda, no outro vive na linha de cima. O que a régua recusa é a terceira coisa — *uma largura
+/// FIXA, que não sai da estrutura nenhuma* —, e era exactamente de lá que vinha o defeito: o
+/// `SwatchSize::Md`, que o doc do `ColorSwatch` declara ser a aresta **sugerida** de uma amostra de
+/// PALETA (*«callers may still hand any rect»*).
+///
+/// # ⚠️ A partição: quem está SOZINHO na fileira
+///
+/// Medida, e não escolhida: um selector que **partilha** a faixa de `y` com outros controlos é uma
+/// **grelha de paleta** (`bgremoval`, a máscara do painter), uma **célula** de um bloco (o
+/// per-corner, `2 × 2`), um **ponto de cabeçalho** ou uma **linha de lista** (a pilha de aparência
+/// do vetor: a amostra ao lado de três verbos com ícone). Ali o chip é a forma certa, e
+/// padronizá-lo «ao controlo» trocaria uma grelha por um campo.
+///
+/// ⛔ **Duas réguas foram construídas, medidas e REFUTADAS antes desta** (2026-09-22): a **borda
+/// direita** — todos acabam onde os vizinhos acabam, *e a swatch com o defeito também*: verde sobre
+/// ele — e **«não mais estreito que o vizinho mais largo da coluna»**, que reprovou os OITO porque
+/// o vizinho mais largo de uma coluna é um botão de largura inteira, que é legítimo.
+#[test]
+fn um_seletor_de_cor_sozinho_na_fileira_ocupa_uma_caixa_estrutural() {
+    let tudo = selectores_de_cor();
     assert!(
-        novas.is_empty(),
-        "formas NOVAS de selector de cor: {novas:?}\n  medido: {medido:?}\n\
-         ⇒ um selector de cor novo passa pela porta `paint_color_row`, que o põe na coluna do \
-         valor. ⛔ Acrescentar a largura aqui é desfazer a padronização que o dono pediu."
+        tudo.len() >= PISO_DE_SELETORES,
+        "o censo viu {} selectores de cor (piso {PISO_DE_SELETORES}) — uma varredura que lê pouco \
+         devolve ZERO acusações e lê-se como aprovação.",
+        tudo.len()
     );
-    let mortas: Vec<&i32> = LARGURAS_DE_COR
-        .iter()
-        .filter(|w| !vistas.contains(w))
-        .collect();
+    let mut sozinhos = 0usize;
+    let mut maus: Vec<String> = Vec::new();
+    for s in &tudo {
+        if s.vizinhos != 0 {
+            continue; // grelha · célula · ponto de cabeçalho · linha de lista
+        }
+        let Some((ix, iw)) = s.dentro else {
+            continue; // o painel não pinta um controlo que não seja cor — nada contra que medir
+        };
+        sozinhos += 1;
+        let coluna = ph2d_editor_core::property_row::caixa_do_controlo(
+            ix,
+            iw,
+            s.rect.y,
+            ph2d_editor_core::property_row::Seccao::apenas_campos(1),
+        );
+        let enche_a_coluna = (s.rect.x - coluna.x).abs() < 1.0 && (s.rect.w - coluna.w).abs() < 1.0;
+        let enche_a_fileira = (s.rect.x - ix).abs() < 1.0 && (s.rect.w - iw).abs() < 1.0;
+        if !enche_a_coluna && !enche_a_fileira {
+            maus.push(format!(
+                "  {} :: x={:.0} w={:.0} — não é a coluna do controlo (x={:.0} w={:.0}) nem a \
+                 fileira inteira (x={:.0} w={:.0})",
+                s.painel, s.rect.x, s.rect.w, coluna.x, coluna.w, ix, iw
+            ));
+        }
+    }
     assert!(
-        mortas.is_empty(),
-        "estas formas já não existem — APAGUE a linha, a catraca desceu: {mortas:?}\n  medido: {medido:?}"
+        sozinhos >= 4,
+        "só {sozinhos} selectores estão sozinhos na fileira — a partição deixou de ter população, e \
+         a régua passou a afirmar sobre o vazio"
     );
-    // ⚠️ O piso: sem ele uma varredura partida lê zero selectores e as duas metades acima ficam
-    //    trivialmente verdadeiras.
-    let total: usize = medido.values().sum();
     assert!(
-        total >= 100,
-        "a varredura viu {total} selectores de cor e o app tem ~109 — ela partiu-se"
+        maus.is_empty(),
+        "selector(es) de cor com uma largura FIXA numa fileira de campos — o artista vê um quadrado \
+         onde os vizinhos são controlos:\n{}\n\n⇒ a caixa sai da ESTRUTURA: `paint_color_row` para \
+         a coluna do controlo, ou a fileira inteira no modelo de tabela. ⛔ Nunca do `SwatchSize`, \
+         que é a aresta sugerida de uma amostra de PALETA.",
+        maus.join("\n")
     );
 }
+
+// ⛔⛔⛔ **A CATRACA DE PÍXEIS MORREU — a premissa dela era que a largura é INVARIANTE.**
+//
+// Ela chamava-se `as_formas_de_um_selector_de_cor_so_encolhem`, contava as larguras distintas
+// (`LARGURAS_DE_COR = [18, 32, 59, 120, 268]`) e exigia que o conjunto só encolhesse. ⭐ **Ela
+// estava certa sobre o PROBLEMA** — trouxe o report do dono de 21/09 e prescrevia a porta
+// [`ph2d_editor_core::property_row::paint_color_row`] na mensagem de erro.
+//
+// ⛔ **E estava errada sobre a GRANDEZA.** A largura de um selector que «enche a coluna» é função
+// da largura do PAINEL: o `inspector` dá `120`, o `vector` dá `112`, a vitrina dá outra coisa.
+// ⇒ *converter um painel pela porta que ela própria prescrevia fazia SEMPRE nascer uma largura
+// nova, e ela reprovava* — medido em 2026-09-22 nas duas tentativas de conversão do vetor
+// (`134` pela coluna derivada no painel, `112` pela porta).
+//
+// ⚠️ **O conjunto nunca poderia encolher até `1` enquanto os painéis tivessem larguras
+// diferentes** — a condição de sucesso dela era inalcançável por construção.
+//
+// ⇒ substituída pelo [`um_seletor_de_cor_sozinho_na_fileira_ocupa_uma_caixa_estrutural`], que mede
+// a **forma** que o nome dela prometia. A contagem de larguras continua **impressa** pela sonda
+// `diag_os_selectores_de_cor_do_app`, porque a informação é útil — o que saiu foi a catraca.
 
 /// ⭐⭐⭐ **A LINHA DE COR ENCHE A COLUNA DO VALOR** — o desenho do dono, medido.
 #[test]

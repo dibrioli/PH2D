@@ -570,11 +570,23 @@ fn every_widget_file_wires_a11y() {
 /// uma licença*, e esta responde por si.
 ///
 /// `(nome da porta, crate dona, ficheiro que a define)`.
-const PORTAS_DE_CRATE_VERIFICADAS: &[(&str, &str, &str)] = &[(
-    "fileira_de_param",
-    "ph2d-panel-audio-editor",
-    "src/fileira_de_param.rs",
-)];
+const PORTAS_DE_CRATE_VERIFICADAS: &[(&str, &str, &str)] = &[
+    (
+        "fileira_de_param",
+        "ph2d-panel-audio-editor",
+        "src/fileira_de_param.rs",
+    ),
+    // ⭐ 2026-09-22: as quatro linhas de cor do painel de vetor deixaram de montar a fileira à mão
+    //    e passaram a chamar esta porta, que delega na `property_row::paint_color_row` da casa.
+    //    ⚠️ A verificação dela é HONESTA e não acidental: o `paint_rows.rs` contém
+    //    `paint_color_row`, que é a delegação REAL — e não uma subcadeia de outra função, que é o
+    //    acidente que este ficheiro já registou no `paint_sections.rs` do mesmo painel.
+    (
+        "colour_swatch_row",
+        "ph2d-panel-vector",
+        "src/paint_rows.rs",
+    ),
+];
 
 /// ⭐⭐ **E toda porta desta lista delega MESMO num primitivo.**
 ///
@@ -611,7 +623,21 @@ fn toda_porta_de_crate_delega_mesmo_num_primitivo() {
 /// Canonical widget primitives. Calling any of these inside a panel
 /// file means a11y is wired transitively (the primitive owns its own
 /// AccessKit emission). Keep in sync with `src/widget/` paint helpers.
+///
+/// ⭐⭐ **E com as PORTAS DE FILEIRA do [`crate::property_row`]**, que não vivem em `src/widget/`
+/// e são canónicas na mesma: elas são a forma que esta casa dá a uma linha de propriedade, e a
+/// a11y sai por delegação — `paint_color_row → widget::paint_swatch_or_mixed →
+/// widget::paint_color_swatch`, um salto a mais do que a lista conhecia.
+///
+/// ⛔⛔ **Medido 2026-09-22:** ao converter as quatro linhas de cor do painel de vetor para a
+/// porta, dois ficheiros ficaram VERMELHOS *sobre código melhor do que o de antes* — eles deixaram
+/// de nomear `paint_color_swatch` porque passaram a chamar a porta que o chama. É o **mesmo**
+/// acidente de 2026-09-19 no `ph2d-panel-audio-editor`, que deu origem às
+/// [`PORTAS_DE_CRATE_VERIFICADAS`] — ⚠️ e ali a cura foi por crate porque a porta era de uma crate;
+/// esta é da CASA, logo entra aqui. *Uma lista de primitivos que não segue as portas que a casa
+/// cria acusa quem as adopta.*
 const WIDGET_DELEGATE_MARKERS: &[&str] = &[
+    "paint_color_row",
     "paint_button",
     "paint_toggle",
     "paint_slider",

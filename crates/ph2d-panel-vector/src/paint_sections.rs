@@ -13,9 +13,7 @@ use crate::state;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::panel_chrome::paint_segmented_button;
-use ph2d_editor_core::widget::{
-    ButtonKind, ColorSwatch, SectionFold, SwatchSize, paint_color_swatch,
-};
+use ph2d_editor_core::widget::{ButtonKind, SectionFold};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
@@ -457,39 +455,20 @@ impl BodyCtx<'_> {
         if collapsed {
             return y;
         }
-        let swatch_w = SwatchSize::Md.px();
-        ph2d_editor_core::widget::paint_property_label(
-            self.text_system,
-            self.scene,
-            tr("panel.vector.section.fill"),
-            self.inner_x,
-            y + (self.row_h - self.font) * 0.5,
-            self.font,
-            label_col_w(self.inner_x, self.inner_w),
-            resolve(ColorToken::Text1, self.theme),
-        );
-        let fill_swatch_rect = Rect::new(
-            self.inner_x + self.inner_w - swatch_w,
-            y,
-            swatch_w,
-            self.row_h,
-        );
-        let fill_swatch = ColorSwatch::new(
+        // ⭐ Pela PORTA — ver [`super::paint_rows`] / `colour_swatch_row_rect`.
+        let (proximo_y, fill_swatch_rect) = self.colour_swatch_row_rect(
             ph2d_tool_vector::ids::VECTOR_FILL_SWATCH,
-            tr("panel.vector.paint.fill_color"),
             snap.fill,
-        )
-        .size(SwatchSize::Md);
-        paint_color_swatch(&fill_swatch, fill_swatch_rect, self.scene, self.theme);
-        self.hit_index
-            .register(ph2d_tool_vector::ids::VECTOR_FILL_SWATCH, fill_swatch_rect);
+            tr("panel.vector.section.fill"),
+            y,
+        );
         // ⚠️ **A RACHURA**: com um token a cobrir, a cor que a swatch mostra NÃO é a que a arte
         // desenha — e uma swatch que afirma um valor que ninguém usa é a pior UI possível.
         let bindings = crate::state::token_bindings();
         if bindings.as_ref().is_some_and(|b| b.fill.is_some()) {
             self.token_slash(fill_swatch_rect);
         }
-        y += self.row_h + self.row_gap;
+        y = proximo_y;
 
         // **O TOKEN do preenchimento** (plano UI/UX W4), logo abaixo da swatch que ele cobre.
         if let Some(b) = bindings {

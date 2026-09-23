@@ -109,6 +109,29 @@ fn row_and_layout(
     (row, por_linha, linhas, cw)
 }
 
+/// ⭐⭐⭐ **O RECT que uma linha de UMA componente dá ao controlo** — sem pintar coisa nenhuma.
+///
+/// ⚠️ **Ela existe por DOIS leitores, e nenhum deles podia derivar a coluna outra vez:**
+///
+/// 1. um chamador que desenha **por cima** do controlo (a rachura do token do painel de vetor,
+///    sobre a swatch que uma cor de token cobre);
+/// 2. a régua `um_seletor_de_cor_sozinho_na_fileira_ocupa_uma_caixa_estrutural`, que pergunta se a
+///    caixa pintada **é** esta.
+///
+/// *Uma segunda aritmética para a mesma coluna diverge no dia em que a porta mudar — e então a
+/// rachura cai ao lado da swatch e a régua aprova o desalinhamento que existe para proibir.*
+///
+/// ⛔ Ela é a **MESMA** conta que a [`paint_color_row`] faz, pelas mesmas duas funções
+/// ([`colunas_da_linha`] e [`crate::widget::property_fields_layout`]), e não uma reconstrução.
+#[must_use]
+pub fn caixa_do_controlo(x: f32, w: f32, y: f32, seccao: Seccao) -> Rect {
+    let seccao = seccao.com_pelo_menos(1);
+    let row = colunas_da_linha(x, w, y, ROW_H_PX, seccao);
+    let (_, _, cw) =
+        crate::widget::property_fields_layout(row.control.w, 1, ph2d_tokens::control_gap_px(), 0.0);
+    Rect::new(row.control.x, row.control.y, cw, ROW_H_PX)
+}
+
 /// ⭐⭐⭐ **A LINHA DE VÁRIAS COMPONENTES — o nome à ESQUERDA, as caixas na coluna do controlo.**
 ///
 /// ⛔⛔ **Report do dono, 2026-09-14** (*«Label acima do campo numérico! Muito ruim!»*) e

@@ -181,31 +181,12 @@ impl BodyCtx<'_> {
     /// uma segunda estética para a mesma pergunta *"que cor?"* é como o artista deixa de
     /// reconhecer o controle.
     fn contour_to_swatch(&mut self, y: f32) -> f32 {
-        let swatch_w = SwatchSize::Md.px();
-        ph2d_editor_core::widget::paint_property_label(
-            self.text_system,
-            self.scene,
-            tr("panel.vector.contour.to"),
-            self.inner_x,
-            y + (self.row_h - self.font) * 0.5,
-            self.font,
-            label_col_w(self.inner_x, self.inner_w),
-            resolve(ColorToken::Text1, self.theme),
-        );
-        let rect = Rect::new(
-            self.inner_x + self.inner_w - swatch_w,
-            y,
-            swatch_w,
-            self.row_h,
-        );
-        let swatch = ColorSwatch::new(
+        // ⭐ Pela PORTA — ver [`BodyCtx::colour_swatch_row_rect`] para a lei da caixa.
+        self.colour_swatch_row(
             crate::ids::VECTOR_CONTOUR_TO,
-            tr("panel.vector.contour.contour_target_color"),
             cst::to(),
+            tr("panel.vector.contour.to"),
+            y,
         )
-        .size(SwatchSize::Md);
-        paint_color_swatch(&swatch, rect, self.scene, self.theme);
-        self.hit_index.register(crate::ids::VECTOR_CONTOUR_TO, rect);
-        y + self.row_h + self.row_gap
     }
 }

@@ -597,8 +597,3 @@ fn colhe_cores(
         ));
     }
 }
-
-/// ⭐ As cores que o censo irmão mede — o mapa `NodeId → slug` das árvores de ids das cores.
-pub(crate) fn nomes_das_cores() -> std::collections::BTreeMap<ph2d_editor_core::NodeId, String> {
-    super::o_que_o_artista_nao_alcanca::nomes_de(FONTES_DAS_CORES, 400)
-}

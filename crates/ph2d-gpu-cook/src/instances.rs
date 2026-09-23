@@ -76,6 +76,22 @@ impl GpuCook {
     // The lowering seam: device + encoder + slot + stream + the three host-side
     // lowering decisions (uv rect, size, style). Bundling them into a struct would
     // buy a name and cost a second place to keep in step with `cook`'s signature.
+    /// ⭐⭐⭐ **`primeiro` é o deslocamento em INSTÂNCIAS**: esta corrente escreve em
+    /// `[primeiro, primeiro + count)` do buffer partilhado. `0` é o caminho de sempre, byte a
+    /// byte.
+    ///
+    /// ⛔⛔⛔ **CRESCER O BUFFER SUBSTITUI-O E PERDE O CONTEÚDO** — ver
+    /// [`Self::ensure_instance_capacity`], que cria um `wgpu::Buffer` NOVO. Num acrescento isso
+    /// apagaria, em silêncio, tudo o que os sinks anteriores já escreveram: *o modo de falha seria
+    /// uma cena a desenhar só o último sink, sem erro nenhum.*
+    ///
+    /// ⇒ com `primeiro > 0` este método **NUNCA cresce**: ele devolve `false` e quem chama recua.
+    /// A reserva do TOTAL é do chamador, feita **uma vez, antes da primeira escrita** — que é a
+    /// única ordem em que a soma é conhecida e nada foi ainda escrito.
+    ///
+    /// ⚠️ **Hoje o único chamador passa `0`**, logo este método é INERTE: o `primeiro` existe para
+    /// que a caminhada de N sinks (a wave da cerca do multi-sink) não tenha de reabrir o lowering,
+    /// e a inércia dele é o que os gates de paridade de GPU desta crate afirmam.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn encode_lowering(
         &mut self,
@@ -83,16 +99,24 @@ impl GpuCook {
         encoder: &mut wgpu::CommandEncoder,
         uniform_slot: usize,
         stream: &GpuStream,
+        primeiro: u32,
         default_uv_rect: [f32; 4],
         default_size: [f32; 2],
         style: ph2d_render::SinkStyle,
-    ) {
+    ) -> bool {
         let count = stream.count;
-        self.ensure_instance_capacity(gpu, count.max(1));
-        let instances = self.instances.as_mut().expect("just ensured");
-        instances.len = count;
+        let fim = primeiro.saturating_add(count);
+        if primeiro == 0 {
+            self.ensure_instance_capacity(gpu, fim.max(1));
+        } else if self.instances.as_ref().is_none_or(|gi| gi.capacity < fim) {
+            // O chamador não reservou o total. Recusar é a única saída honesta: crescer aqui
+            // apagaria os sinks já escritos, e escrever fora da capacidade é validação do wgpu.
+            return false;
+        }
+        let instances = self.instances.as_mut().expect("reservado acima ou pelo chamador");
+        instances.len = fim;
         if count == 0 {
-            return;
+            return true;
         }
 
         let present: [bool; 8] = std::array::from_fn(|i| {
@@ -127,8 +151,11 @@ impl GpuCook {
         //
         // ⛔ E o despacho não corre: a corrente não produz instância nenhuma.
         if !desenha {
-            instances.len = 0;
-            return;
+            // ⚠️ **`primeiro` e NAO zero**: a lei do dono cala ESTA corrente, e zerar o `len`
+            // apagaria do desenho os sinks que ja escreveram antes dela. Com `primeiro == 0` isto
+            // e' `0`, que e' o caminho de sempre.
+            instances.len = primeiro;
+            return true;
         }
         let sig = lower::lower_signature(present, style);
         self.lower_pipelines.entry(sig).or_insert_with(|| {
@@ -138,9 +165,10 @@ impl GpuCook {
             }
         });
 
-        // Uniform: count, pad, default_size (vec2 @ 8), default_uv (vec4 @ 16).
+        // Uniform: count, primeiro, default_size (vec2 @ 8), default_uv (vec4 @ 16).
         let mut uni = [0u8; 32];
         uni[0..4].copy_from_slice(&count.to_le_bytes());
+        uni[4..8].copy_from_slice(&primeiro.to_le_bytes());
         uni[8..12].copy_from_slice(&default_size[0].to_le_bytes());
         uni[12..16].copy_from_slice(&default_size[1].to_le_bytes());
         for (k, v) in default_uv_rect.iter().enumerate() {
@@ -189,7 +217,9 @@ impl GpuCook {
         pass.set_pipeline(pipeline);
         pass.set_bind_group(0, &bind_group, &[]);
         pass.dispatch_workgroups(count.div_ceil(codegen::WORKGROUP_SIZE), 1, 1);
+        true
     }
+
 
     /// The persistent uniform buffer for stage slot `idx` (created on demand).
     pub(crate) fn uniform_slot(&mut self, gpu: &GpuContext, idx: usize) -> &wgpu::Buffer {

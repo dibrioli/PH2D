@@ -90,9 +90,16 @@ pub fn lower_module(present: [bool; 8], style: SinkStyle) -> String {
     let shift = ph2d_render::RenderInstance::BLEND_SHIFT;
     let mut src = String::with_capacity(2048);
     src.push_str(
+        // ⭐⭐ **`primeiro` ocupa a palavra que era `_pad0`** — o deslocamento em INSTÂNCIAS a que
+        // esta corrente começa a escrever. Ele é `0` para um sink só (o caminho de sempre, byte a
+        // byte) e é o que permite a N sinks partilharem UM buffer de instâncias.
+        //
+        // ⚠️ *A reserva ficou onde estava a almofada*, e isso não é sorte: o uniform já estava
+        // alinhado a `vec2` e a palavra existia para o alinhamento. Uma posição sem dono é onde o
+        // campo seguinte aterra por engano (a lei que a `ph2d-style` pagou) — aqui ela ganhou dono.
         "struct LowerParams {\n\
          \x20   count: u32,\n\
-         \x20   _pad0: u32,\n\
+         \x20   primeiro: u32,\n\
          \x20   default_size: vec2<f32>,\n\
          \x20   default_uv: vec4<f32>,\n\
          }\n\
@@ -154,7 +161,10 @@ pub fn lower_module(present: [bool; 8], style: SinkStyle) -> String {
         fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{\n\
         \x20   let i = gid.x;\n\
         \x20   if (i >= params.count) {{ return; }}\n\
-        \x20   let base = i * {INSTANCE_WORDS}u;\n\
+        \x20   // ⚠️ A LEITURA e' `i` (o indice DENTRO desta corrente) e a ESCRITA e'\n\
+        \x20   // `primeiro + i` (a posicao dela no buffer partilhado). Somar o\n\
+        \x20   // deslocamento a um `read_*` leria a coluna do sink vizinho.\n\
+        \x20   let base = (params.primeiro + i) * {INSTANCE_WORDS}u;\n\
         \x20   // world_pos (words 0-1) · size (2-3) · atlas_uv (4-7) · tint (8-11)\n\
         \x20   let p = read_P(i);\n\
         \x20   wf(base + 0u, p.x);\n\

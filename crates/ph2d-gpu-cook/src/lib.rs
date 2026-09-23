@@ -622,14 +622,23 @@ impl GpuCook {
                 limit: binding_limit,
             });
         }
-        self.encode_lowering(
+        // ⚠️ `0` é o deslocamento: UM sink escreve desde o princípio do buffer, e este é o
+        // caminho byte-idêntico ao de sempre. O `false` só é alcançável com um deslocamento > 0
+        // (ver [`GpuCook::encode_lowering`]), logo aqui ele não pode acontecer — e o `debug_assert`
+        // diz isso em vez de o deixar implícito.
+        let escreveu = self.encode_lowering(
             gpu,
             &mut encoder,
             plan.stages.len(),
             &sink_stream,
+            0,
             default_uv_rect,
             default_size,
             style,
+        );
+        debug_assert!(
+            escreveu,
+            "um sink so' escreve no deslocamento 0, onde o lowering nunca recusa"
         );
         gpu.queue.submit(Some(encoder.finish()));
 

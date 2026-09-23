@@ -48,6 +48,18 @@ pub(super) const LW: u32 = 1920;
 pub(super) const LH: u32 = 1080;
 /// O menor lado que o laço aceita — o mesmo piso que a shell passa.
 const MIN: u32 = 16;
+
+/// ⭐⭐⭐ **QUANTOS QUADROS A RÉGUA MEDE, e fica com o MÍNIMO.**
+///
+/// A [`W9`](../../../docs/Render3d/03_o_plano.md) prescreve *«`1920×1080`, **mínimo de N**, A/B
+/// intercalado no MESMO processo»*, e até 2026-09-21 este ficheiro cronometrava **uma** chamada.
+///
+/// ⚠️ **O `3` é o joelho MEDIDO e não um número escolhido:** a 1.ª chamada de uma cena nova paga a
+/// compilação do programa da placa (`1,4`–`4,4 s` antes da cura da fita inerte) e a 2.ª já é
+/// regime; a 3.ª existe porque, numa janela de calma real, a 2.ª ainda apanhou picos isolados
+/// (cena `24` leu `176,62` e depois `9,84 ms`). *Mais do que três paga relógio sem mover a
+/// mediana.*
+const QUADROS_MEDIDOS: usize = 3;
 /// O fundo que as duas sondas usam.
 pub(super) const FUNDO: [u8; 4] = [0, 0, 0, 0];
 
@@ -169,7 +181,7 @@ fn com_o_dispositivo_a_maioria_das_cenas_e_nitida_em_movimento() {
     // que a corrida de `--release` mede de outra maneira. *Uma leitura deste gate feita em debug
     // não é uma leitura deste gate.*
     println!(
-        "\n  cena · quadro de MOVIMENTO a {LW}×{LH} · {}",
+        "\n  cena · quadro de MOVIMENTO a {LW}×{LH} · mínimo de {QUADROS_MEDIDOS} · {}",
         contexto()
     );
     let mut medidas = 0;
@@ -217,24 +229,41 @@ fn com_o_dispositivo_a_maioria_das_cenas_e_nitida_em_movimento() {
             continue;
         };
         // A segunda corrida é a que conta: a primeira compila o pipeline e sobe a grade.
-        let t0 = std::time::Instant::now();
-        let _ = crate::gpu_frame::paint(
-            t,
-            &doc,
-            &reg,
-            &cam,
-            &luz,
-            &surfaces,
-            &ph2d_field_render::Presentation::of(olhar),
-            BG,
-            None,
-            LW,
-            LH,
-            false,
-        )
-        .expect("o pintor");
-        #[allow(clippy::cast_possible_truncation)]
-        let millis = t0.elapsed().as_secs_f32() * 1e3;
+        // ⭐⭐⭐⭐ **O MÍNIMO DE `N`, que é a régua que a `W9` prescreve por escrito** (`docs/Render3d/03`:
+        // *«`1920×1080`, **mínimo de N**, A/B intercalado no MESMO processo»*). ⛔⛔ Até 2026-09-21
+        // este gate cronometrava **UMA** chamada — e uma chamada de uma cena NOVA paga a compilação
+        // do programa da placa, medida entre `1,4` e `4,4 s`, mais o que o escalonador der.
+        //
+        // ⚠️⚠️ **O custo disso está medido e é o motivo deste bloco:** numa janela de calma REAL
+        // (`99`–`100 %` de CPU ociosa) cenas individuais leram-se até **`11,7×`** diferentes entre
+        // duas corridas do MESMO binário, e o veredito do gate moveu-se de `8` para `10`–`12 de 22`
+        // conforme a régua. *O artista arrasta o quadro N-ésimo, nunca o primeiro.*
+        //
+        // ⭐ **E a 1.ª chamada fica na tabela**, não escondida: ela é um preço REAL (o dono
+        // reprovou-o em 2026-09-21) e uma régua que o apaga faz uma cura desaparecer com ele.
+        let mut tempos = Vec::with_capacity(QUADROS_MEDIDOS);
+        for _ in 0..QUADROS_MEDIDOS {
+            let t0 = std::time::Instant::now();
+            let _ = crate::gpu_frame::paint(
+                t,
+                &doc,
+                &reg,
+                &cam,
+                &luz,
+                &surfaces,
+                &ph2d_field_render::Presentation::of(olhar),
+                BG,
+                None,
+                LW,
+                LH,
+                false,
+            )
+            .expect("o pintor");
+            #[allow(clippy::cast_possible_truncation)]
+            tempos.push(t0.elapsed().as_secs_f32() * 1e3);
+        }
+        let primeiro = tempos[0];
+        let millis = tempos.iter().copied().fold(f32::INFINITY, f32::min);
         // ⭐⭐⭐ **E QUANTO DISSO É A FITA, que se compila na CPU a cada quadro.** Sem esta coluna a
         // tabela diz «a placa é lenta nesta peça» sobre um custo que a placa não paga.
         let t1 = std::time::Instant::now();
@@ -297,8 +326,9 @@ fn com_o_dispositivo_a_maioria_das_cenas_e_nitida_em_movimento() {
         // encarnavam caíram (ver a nota do módulo), e deixá-los na coluna sugeriria que explicam.
         let _ = (passo, orcamento);
         println!(
-            "  {n:>4} · {millis:7.2} ms · {instrs:>5} instr · {caras:>3} transc · \
-             {raizes:>3} sqrt · {vivos:>4} vivos · {por_acerto:6.1} passos/acerto · D={d}"
+            "  {n:>4} · {millis:7.2} ms · 1.ª {primeiro:8.2} · {instrs:>5} instr · \
+             {caras:>3} transc · {raizes:>3} sqrt · {vivos:>4} vivos · \
+             {por_acerto:6.1} passos/acerto · D={d}"
         );
         if d > 1 {
             grossas.push((n, millis, d));

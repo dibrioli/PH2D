@@ -382,14 +382,49 @@ entrava na conta. *A cura foi a fixtura e o `--test-threads=1` no arnês, nunca 
 frouxa.* Mutação **3 a sangrar + 1 NOMEADA** (trocar as constantes da fita inerte por `Vec::new()`
 é hoje inobservável: aquela porta lê só o `.source`).
 
+### ⭐⭐⭐ O QUE O QUADRO DE MOVIMENTO CUSTA — o modelo, ajustado às 22 cenas na janela calma
+
+O primeiro acto da `W9` é RE-MEDIR, e a tabela do gate já imprimia as colunas todas sem ninguém as
+ter cruzado. Ajustadas ao mínimo de três corridas (`--release`, `99`–`100 %` de CPU ociosa):
+
+| modelo | `R²` | pior erro |
+|---|---:|---:|
+| só as **instruções** da fita | `0,705` | `32,7 ms` |
+| só os **valores vivos** (registos) | `0,689` | `34,2 ms` |
+| só os **passos/acerto** | `0,165` | `50,3 ms` |
+| **instruções + transcendentes + raízes** | **`0,803`** | **`18,7 ms`** |
+
+```
+  ms ≈ 5,0  +  0,039 × instruções  +  0,52 × transcendentes  +  0,03 × raízes
+```
+
+⛔⛔ **Os PASSOS DA MARCHA não explicam o custo** — sozinhos ficam em `R² 0,165`, e no ajuste
+completo o coeficiente deles é **NEGATIVO**. *Uma cena com `410` passos por acerto (a `28`) e uma
+com `43` (a `5`) custam o mesmo, e o que as separa é o tamanho da fita.* ⇒ atacar a marcha — que é
+onde o `05` §36 e o `CLAUDE.md` §5 apontam — não é onde o dinheiro está.
+
+⭐⭐ **Uma TRANSCENDENTE custa `13×` uma instrução comum** (`0,52` contra `0,039`), e é a coluna
+mais alavancada do modelo: a cena `25`, com `180` instruções e **`40` transcendentes**, custa
+`49,9 ms` — mais do que a `11`, com `393` instruções e **zero**.
+
+⚠️ **O resíduo é grande e está nomeado** (`18,7 ms` no pior caso, `20 %` da variação): as quatro
+cenas que o modelo mais erra estão na tabela do ajuste, e duas delas erram para lados opostos. *Este
+modelo diz ONDE procurar, não o que uma cura vale.*
+
 ⏳ **A fila da `W9`, reordenada pelo preço medido:**
 
-1. **`1,31 s` de kernel por edição estrutural** — a maior de longe, e tem duas curas conhecidas: um
-   cache de pipelines **em disco** (ele é hoje por-processo) e **encolher o kernel** (o `pinta`
-   alcança `687` linhas de `1 255`; a camada de estilo são `32`, o material `354`).
-2. **`+5,50 ms` por quadro assente** — o campo do chão (`+4,98`) e as sondas (`+0,52`), a MESMA
-   cura, com a chave já medida e gateada acima.
-3. **a régua do gate** — mínimo de N, que esta página já prescreve.
+1. ✅ **`1,4 s` por edição estrutural** — **FECHADO** pela fita inerte (acima): `1 406 → 74 ms`.
+   ⏳ O que sobra dela: a peça com **escultura** ou com **vários materiais** volta a pôr texto
+   próprio no shader do pintor (o corpo da escultura e a lei do dono), e aí o preço regressa. E o
+   `1,31 s` do kernel continua a ser pago **uma vez por sessão** — a cura disso é o cache de
+   pipelines **em DISCO**, cuja ranhura (`cache: None`) está vazia no `entry_with_layout`.
+2. ⏳ **o quadro de movimento** — `5,0 ms` de base mais `0,039` por instrução e **`0,52` por
+   transcendente** (o modelo acima). A alavanca é a FITA, não a marcha.
+3. ⏳ **`+5,50 ms` por quadro assente** — o campo do chão (`+4,98`) e as sondas (`+0,52`), a MESMA
+   cura, com a chave já medida e gateada acima. ⚠️ **A construção precisa de identidade EXACTA para
+   o `Registry`**: as esculturas não são inlinadas na fita, logo duas podem dar a MESMA chave.
+4. ✅ **a régua do gate** — **FECHADA**: `QUADROS_MEDIDOS = 3`, o mínimo, com a 1.ª chamada a ficar
+   na tabela ao lado (ela é um preço real e uma régua que a apaga faz uma cura desaparecer com ela).
 
 ### ⛔⛔⛔ A `W9` COMEÇA COM UM VERMELHO JÁ MEDIDO — e ele é a primeira coisa a resolver
 

@@ -236,3 +236,37 @@ montagem directa, leu-a «na placa» — *uma sonda que salta um passo da montag
 ⏳ **O relógio não foi medido, de propósito:** a máquina esteve a `load 51`–`85` a jornada inteira
 (outras linhas), e nenhuma leitura de relógio desta workstation vale acima de `load ~5`
 (`CLAUDE.md` §5.0). O que está medido é a ROTA — e é ela que muda o preço (`50,9×`, doc 98).
+
+## §10 — A CENA DO SMOKE (2026-09-23): `PH2D_MOTION_OBJ_SMOKE=16`, O ENXAME
+
+⛔⛔ **Os smokes que eu dei primeiro (`=93`, `=108`, `=126`) foram REPROVADOS antes de corridos**
+(*«você esqueceu de usar shapes novamente»* · *«e não colocou campos de simulação»*): a `=93` só
+desenha gizmos (não tem forma), e nenhuma das três tem simulação. A regra passou para o
+`CLAUDE.md` §0.8 e para o doc 103 §1, e esta cena foi construída por ela.
+
+**O que ela tem:** um OBJECTO de imagem (`source.object`, que a placa desenha — ⚠️ uma forma
+vectorial viva recusaria a placa) partilhado por **duas saídas**, e em cada uma uma SIMULAÇÃO com
+campos de força — à esquerda um redemoinho (`force.vortex` + um íman fraco + `force.curl` +
+`force.drag`), à direita uma nuvem que respira à volta de um íman (`force.attractor` +
+`force.curl` + `force.drag`). Rota: **híbrida** (`[motion-route] device: HIBRIDO`, fotografado).
+
+**Afinada por medição, não a olho:** a 1.ª versão atirava as peças a `33 m` em 15 s (a foto era o
+ecrã inteiro salpicado); a régua (o `p95`/máximo da distância de cada peça ao centro do seu enxame,
+15 s a 60 Hz) virou o gate `os_enxames_ficam_cada_um_no_seu_lado`, com a barra DERIVADA da cena (o
+[`CENTRO`] — passar dele invade o vizinho) e a metade que exige MOVIMENTO (`MEXE = 0,6 m` de
+afastamento médio; medido `2,2` e `1,5`). ⚠️ **Essa metade nasceu de uma mutação SOBREVIVENTE:**
+com a cadeia de forças desligada as peças ficavam paradas na grelha, dentro da barra — a cena sem
+simulação, que era a queixa do dono, passava. Mais `o_enxame_vai_a_placa_com_as_duas_saidas` e
+`o_enxame_tem_forma_e_simulacao_com_campos`. **Mutação 4 de 4** (sem o íman fraco · sem o estágio
+da placa · forma vectorial no lugar do objecto · sem forças). Foto da rota da placa e do CONTROLO
+(`PH2D_GPU_COOK=0`, `[motion-route] CPU: o device esta desligado`): a mesma cena nas duas.
+
+⛔⛔⛔ **E construí-la achou uma limitação REAL, que fica ABERTA:** uma simulação DEPOIS de um
+carimbo (`duplicator → integrate`) **não vai à placa** — o carimbo corre na CPU e o planeador não
+consegue PROVAR que colunas ele entrega (a chave `id` do `motion.integrate` é uma recusa
+condicional, `ColumnAccess::GatherKey`, e o `output_shape` de um nó sem kernel é «desconhecido»).
+O carimbo não emite `id` (medido: nem o `duplicator` nem o `source.object` o escrevem), logo o
+emparelhamento seria posicional e certo — o que falta é o planeador SABER isso. Por isso a cena
+simula os PONTOS e depois veste-os (a ordem de quem faz isto noutros programas), e a simulação
+corre na CPU. ⏳ A cura é o planeador conhecer a forma da saída de um nó de CPU (uma declaração do
+nó, com a presença do `id` a seguir a dos pontos) — ou o carimbo ganhar kernel.

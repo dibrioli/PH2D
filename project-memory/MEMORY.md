@@ -36,6 +36,8 @@
 - ⭐⭐ [Chave e texto do MESMO tipo é defeito à espera — tipe a chave](feedback_a_key_and_a_text_of_the_same_type_is_a_defect_waiting.md)
 - ⭐ [**Como um CONTROLO mente** — a família (21)](reference_topic_control_design_hazards.md)
 - ⛔⛔⛔ [Smoke do Motion = FORMAS + SIMULAÇÃO com campos; sem forma só há gizmos — esquecido 2× em 23/09; fotografe antes](feedback_a_motion_smoke_scene_needs_shapes_and_simulation.md)
+- ⭐⭐ [Chave e texto do MESMO tipo é defeito à espera](feedback_a_key_and_a_text_of_the_same_type_is_a_defect_waiting.md)
+- ⛔⛔⛔ [Smoke do Motion = FORMAS + SIMULAÇÃO; fotografe antes](feedback_a_motion_smoke_scene_needs_shapes_and_simulation.md)
 - ⛔ [Smoke ao dono explica o que cada coisa na tela É; cada passo conduzido e fotografado](feedback_a_smoke_for_the_owner_explains_what_each_thing_on_screen_is.md)
 - ⛔⛔ [NUNCA `spectacle` em `kwin --virtual` (fotografa o ecrã REAL); `import -window`](feedback_spectacle_in_a_virtual_kwin_photographs_the_owners_real_screen.md)
 - ⛔⛔ [Corte que sobe por `///` e não por `#[` corta DENTRO do item: o vizinho herda doc+atributos e perde os dele (metade muda)](feedback_a_sweep_that_climbs_by_doc_comment_cuts_through_an_item.md)
@@ -44,7 +46,7 @@
 - ⛔ [Tilemap (TOP-20 #17) é do projeto `docs/Tilling`, não da line/components — o dono mandou pular (16/09)](project_tilemap_belongs_to_the_tiling_project.md)
 - ⛔ [Painel lateral de params do Motion VAI SAIR (params só no cartão) — não invista nele (19/09)](project_o_painel_lateral_dos_params_do_motion_vai_sair.md)
 - ⛔⛔ [Recusa que só o TERMINAL vê é um botão mudo — o doc dizia «a frase que o artista lê» e eram três `eprintln!`](feedback_a_refusal_only_the_terminal_sees.md)
-- ⛔⛔ [Um SELO é pintado E é a chave da própria COR (`badge_tone` casa contra o texto) — traduzi-lo apaga o tom em silêncio](feedback_a_badge_is_painted_text_and_the_key_of_its_own_colour.md)
+- ⛔⛔ [Um SELO é texto E chave da COR — traduzi-lo apaga o tom](feedback_a_badge_is_painted_text_and_the_key_of_its_own_colour.md)
 - ⛔⛔ [Nota que declara a granularidade certa para UM dos dois lados da fórmula lê-se como cumprida — junte-os num TIPO](feedback_a_note_that_names_the_right_granularity_for_one_side_reads_as_done.md)
 - ⛔ [Passo que manda clicar numa LINHA de painel afirma que ela está na lista — e o dono aprova o smoke com o passo impossível dentro](feedback_a_smoke_step_that_names_a_panel_row_must_prove_the_row_is_in_the_list.md)
 - ⛔ **Nada armengado: SILENCIAR um diagnóstico é armengo mesmo com a ferramenta defeituosa** ([§SUPRESSÃO, 29/08](feedback_perfection_no_deferrals.md)) — e meio-feito é pior que não começar

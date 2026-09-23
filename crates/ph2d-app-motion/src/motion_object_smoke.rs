@@ -52,6 +52,9 @@ pub mod times;
 /// ⭐ O modo `=13` — A MISTURA NA PLACA: a única cena que vai à placa E desenha uma imagem.
 #[path = "motion_object_smoke_blend.rs"]
 mod blend;
+/// ⭐⭐⭐ O modo `=16` — O ENXAME: formas + simulação com campos + duas saídas na placa (ciclos 10/11).
+#[path = "motion_object_smoke_enxame.rs"]
+mod enxame;
 /// ⭐ O modo `=14` — A MISTURA EM GRUPO: os três alcances do doc 118, nas duas médias.
 #[path = "motion_object_smoke_grupo.rs"]
 mod grupo;
@@ -207,6 +210,7 @@ pub fn motion_object_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>)
         13 if f == 3 => blend::run(cx),
         14 if f == 3 => grupo::run(cx),
         15 if f == 3 => linha::run(cx),
+        16 if f == 3 => enxame::run(cx),
         11 if f == 3 => {
             holds::spawn_art(cx.flip);
         }

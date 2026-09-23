@@ -168,8 +168,8 @@ escurece a sobreposição outra vez, `Copies` deixa o cenário intacto e escurec
 **Limites DECLARADOS:**
 
 - ⛔ `Subtract` não tem camada (o W3C não o tem) — o seletor `Blend With` não aparece para ele.
-- ⚠️ Uma imagem na rota vectorial ignora o **modo por linha** (W8). (O **tint** saiu desta lista na
-  W6 — §7; a **amostragem** e o **ladrilhar** saíram na W7 — §8.)
+- (O **tint** saiu desta lista na W6 — §7; a **amostragem** e o **ladrilhar** na W7 — §8; o **modo
+  por linha** na W8 — §9.)
 - ⚠️ **Ordem entre sprites do mundo e sprites do Motion, MEDIDA e não investigada:** com o cenário por
   baixo da coluna de controlo, as quatro imagens `Normal` (desenhadas pelo passe) ficavam TAPADAS por
   ele, e um `ZIndexOverride(-1)` no cenário não as trouxe à frente. É anterior a esta wave; a cena põe
@@ -210,8 +210,7 @@ exacta mais de `4×` a barra. **Mutação 4 de 4** (ignorar a tinta · `SrcIn �
 ### §7.1 — O que continua ABERTO neste doc, em ordem, cada um a MEDIR antes de construir
 
 - ✅ **W7 — FECHADA (§8).**
-- **W8 — o modo por LINHA dentro de um grupo.** A coluna `blend` (`0` = o do sink, `m+1` = o modo `m`)
-  é honrada pela rota de sprites e não pela vectorial; com grupo, quem decide é o grupo.
+- ✅ **W8 — FECHADA (§9).**
 - ✅ **W9 — FECHADA (§8).**
 - **W10 — a ordem entre as sprites do MUNDO e as do Motion** (medida na W5, não investigada: um
   `ZIndexOverride(-1)` no cenário não trouxe as imagens `Normal` para a frente).
@@ -264,4 +263,46 @@ porque todo gate dela entra pelo `encode` com o filtro que o teste escolhe) ·
 sem pivô · o lowering sem filtro · o quadro a cravar `Smooth` · a linha a ignorar o próprio
 `sampling` · a rota fora da lista · a rota a mentir sobre a amostragem · um nó novo a escrever
 `uv_cell`.
+
+## §9 — W8 FECHADA (2026-09-23): o modo de UMA linha, nas formas, e os dois LOD a respeitá-lo
+
+**A medição achou o defeito maior do que a nota dizia.** A nota falava de *«o modo por linha dentro
+de um grupo»*; medido, a coluna `blend` (`0` = o do sink, `m + 1` = o modo `m`) tem **três**
+escritores — o *Echo Operator* do `motion.trail`, o *Flash Operator* do `motion.strobe` e o modo da
+sombra do `fx.drop_shadow` — e numa FORMA os três desenhavam em `Normal`, **com ou sem grupo**: a
+`VectorInstance` não tinha onde levar o degrau (a forma de §2.1, uma ausência e não um descarte).
+
+- ✅ `VectorInstance::blend_linha` (o DEGRAU, nunca o tag cru — guardar o tag faria o `0` de uma linha
+  rebaixar o modo do sink), lido por `degrau_de_mistura`, que é agora a leitura ÚNICA da coluna:
+  o `blend_at` das sprites passou a empacotá-lo. *As duas médias de uma linha não leem a coluna de
+  duas maneiras.* (As leis de uma linha saíram para `lower_linha.rs` no tecto de LOC, e no corte a
+  doc de `lower_to_instances_into` — que um corte anterior tinha deixado colada ao `blend_at` —
+  voltou para a função dela.)
+- ✅ **A linha SUBSTITUI a camada por cópia do grupo, e não a soma** — é o que a sprite faz (a linha
+  ganha do sink). Sem grupo ela ganha a sua camada sobre o que está por baixo, e a cena **pede o
+  mundo por baixo** como o `Everything` pede; num `Copies` ela troca o modo por cópia dentro do
+  grupo isolado; num `Scene` ganha a sua camada dentro do grupo. ⚠️ O lote de formas parte-se onde
+  a camada muda — sem linha nenhuma com modo, o lote de sempre, **byte a byte**.
+- ⛔⛔ **E os DOIS LOD têm de a deixar no Vello — e o dos OBJETOS nem a cerca do GRUPO tinha.** A
+  partição das formas já recusava trocar por tile uma cópia com `mistura.tem_camada()`; a dos objetos
+  (`apply_object_lod`, acima de `LOD_COUNT`) **não**, logo um grupo que mistura com mais de 16 000
+  cópias perdia o modo no quadro em que passava o tecto. Hoje as duas perguntam a MESMA porta,
+  `precisa_do_vello` (grupo **ou** linha) — *uma cerca escrita em cada partição é como a segunda
+  ficou sem ela*.
+- ⛔ **Declarado:** um degrau sem camada Vello (`Subtract`) desenha em `Normal` na forma, como o sink
+  `Subtract` já desenhava (o W3C não o tem) — e por isso **pode** virar tile. E numa corrente SEM grupo
+  as imagens dela continuam no passe de sprites, que honra o modo por hardware em espaço LINEAR: o eco
+  de uma imagem e o de uma forma no mesmo rasto não têm o mesmo tom (a fronteira de §2.2; o dono
+  escolheu o tom das formas para os GRUPOS, e uma corrente sem grupo não passa pelo Vello).
+
+**Gates:** `o_modo_da_linha_chega_a_cena_vectorial` (GPU; o CONTROLO sem degrau · `Multiply` em
+formas **e** em imagens sem grupo, com o pedido do mundo · um `Copies` em `Screen` onde a linha
+`Multiply` ganha, com o controlo de que a fixtura separa `f(Multiply)` de `f(Screen)`) ·
+`o_degrau_da_linha_e_o_mesmo_nas_duas_medias` · `a_linha_vectorial_leva_o_proprio_modo` ·
+`uma_copia_com_modo_proprio_fica_no_vello` (com o `Subtract` a mover-se como controlo) ·
+`um_objecto_que_mistura_nao_vira_tile` (grupo, linha e o controlo na mesma lista).
+
+**Mutação 9 de 9:** a linha sem camada · a imagem a ignorar a linha · o lote a ignorar a linha · o
+grupo a ganhar da linha · o mundo por baixo não pedido · a partição dos objetos sem cerca · a cerca
+sem o termo da linha · o lowering sem degrau · a cerca do degrau em `0` em vez de `0,5`.
 

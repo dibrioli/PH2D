@@ -14,39 +14,10 @@ use ph2d_nodegraph::cook::{Cook, CookError};
 use ph2d_render::SinkStyle;
 use rayon::prelude::*;
 
-/// Lower a cooked instance stream **into `out`** (one instance per element),
-/// reusing `out`'s capacity: `out` is cleared and refilled, so a steady stream
-/// count frame-to-frame allocates nothing (M0.T11 — the per-frame bridge path;
-/// zero-alloc gated by M0.T12). Pure + headless: no GPU.
-///
-/// `default_uv_rect` / `default_size` are the `atlas_uv` / `size` for an
-/// instance whose stream lacks the matching column (the M0 case — no framing
-/// node yet). The shell passes a single opaque atlas tile plus a `size` below
-/// the grid spacing so the raw default document renders as clean, distinct
-/// quads; a headless caller passes the whole-atlas rect `[0,0,1,1]` and unit
-/// size `[1,1]`.
-/// O `flip_uv` de UMA linha: a coluna `blend` quando ela existe e diz alguma coisa, senão o
-/// do sink (`fallback`).
-///
-/// ⚠️ **`0` na coluna quer dizer *"o do sink"*, não `Normal`** — ver a nota no chamador. E o
-/// número é arredondado e limitado pelo mesmo teto que o `sink_blend_tag` usa (o array de
-/// pipelines do renderer), porque um valor fora da faixa vindo de um `value.*` qualquer não
-/// pode escolher um pipeline que não existe.
-#[must_use]
-fn blend_at(col: Option<&Column>, i: usize, fallback: u32) -> u32 {
-    let v = scalar_at(col, i, 0.0);
-    if !v.is_finite() || v < 0.5 {
-        return fallback;
-    }
-    let top = ph2d_render::pipeline::BLEND_PIPELINE_COUNT as f32;
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "clampado a 1..=BLEND_PIPELINE_COUNT antes do cast"
-    )]
-    let tag = (v.round().clamp(1.0, top) as u8) - 1;
-    RenderInstance::pack_blend_bits(tag)
-}
+#[path = "lower_linha.rs"]
+mod linha;
+pub use linha::uv_do_pedaco;
+use linha::{blend_at, degrau_de_mistura, scalar_at, vec2_at, vec4_at};
 
 /// ⭐⭐⭐ **ESTA CORRENTE CARREGA APARÊNCIA?** — a porta única da lei [`SinkStyle::so_com_forma`]
 /// (ordem do dono, 2026-09-17/19: *«nós como Grid, rope, etc, não passam de posições do espaço»*).
@@ -78,6 +49,17 @@ pub fn tem_aparencia(stream: &Stream) -> bool {
     matches!(stream.get("geometry_id"), Some(Column::Scalar(v)) if v.iter().any(|&x| x > 0.5))
 }
 
+/// Lower a cooked instance stream **into `out`** (one instance per element),
+/// reusing `out`'s capacity: `out` is cleared and refilled, so a steady stream
+/// count frame-to-frame allocates nothing (M0.T11 — the per-frame bridge path;
+/// zero-alloc gated by M0.T12). Pure + headless: no GPU.
+///
+/// `default_uv_rect` / `default_size` are the `atlas_uv` / `size` for an
+/// instance whose stream lacks the matching column (the M0 case — no framing
+/// node yet). The shell passes a single opaque atlas tile plus a `size` below
+/// the grid spacing so the raw default document renders as clean, distinct
+/// quads; a headless caller passes the whole-atlas rect `[0,0,1,1]` and unit
+/// size `[1,1]`.
 pub fn lower_to_instances_into(
     stream: &Stream,
     default_uv_rect: [f32; 4],
@@ -332,6 +314,10 @@ pub struct VectorInstance {
     /// ⭐⭐ **A AMOSTRAGEM do sink** (doc 118 §8) — a MESMA chave da [`RenderInstance::sampling`]; lida
     /// pelo quad de IMAGEM e pela tile do LOD, nunca por uma forma viva (`StyleReach::VECTOR`).
     pub sampling: u32,
+    /// ⭐⭐ **O DEGRAU de mistura desta LINHA** (doc 118 §9 W8) — a escada da coluna `blend`
+    /// (`0` = o do sink, `m + 1` = o modo `m`), a que o *Echo Operator* do `motion.trail`, o
+    /// *Flash Operator* do `motion.strobe` e o modo da sombra do `fx.drop_shadow` escrevem.
+    pub blend_linha: u8,
     /// ⭐⭐⭐ **A mistura do sink e o grupo desta cópia** (doc 118 W1) — ver
     /// [`crate::MisturaDoSink`]. O lowering deixa-a no [`Default`]; o pump carimba-a.
     pub mistura: crate::MisturaDoSink,
@@ -458,10 +444,9 @@ pub fn lower_to_vector_instances_onto(
 /// ⭐ **A tinta é honrada desde a W6** (doc 118 §7): o codificador desenha a cor por baixo e a imagem
 /// numa camada `Multiply`+`SrcIn`, que é a conta do `sprite.wgsl` sem resto.
 ///
-/// ⛔ **O que esta rota ainda NÃO honra de uma linha de imagem, e é DECLARADO:** a coluna `blend` por
-/// linha (quem decide é o grupo), o `sampling` do sink e um `uv_cell` que LADRILHA (escala > 1 — um
-/// recorte não repete). Um `uv_cell` que só escolhe um pedaço (o flipbook) é honrado: compõe-se no
-/// recorte.
+/// ⭐ **E o `sampling` do sink e o modo por LINHA desde a W7/W8** (doc 118 §8–§9). ⛔ O que fica
+/// DECLARADO: um `uv_cell` que LADRILHA (escala > 1) seria cortado e não repetido — e nenhum nó o
+/// escreve (censo `so_o_sub_uv_escreve_a_celula_de_uv`); o recorte do flipbook compõe-se exacto.
 pub fn lower_group_onto(
     stream: &Stream,
     default_uv_rect: [f32; 4],
@@ -470,25 +455,6 @@ pub fn lower_group_onto(
     out: &mut Vec<VectorInstance>,
 ) {
     lower_vector_onto(stream, style, Some((default_uv_rect, default_size)), out);
-}
-
-/// O pedaço `cell = [escala_u, escala_v, desloc_u, desloc_v]` do rectângulo `uv = [u0, v0, u1, v1]`
-/// — a MESMA conta que o `sprite.wgsl` faz por fragmento (`mix(uv.xy, uv.zw, local·escala + desloc)`),
-/// feita uma vez nos dois cantos.
-#[must_use]
-pub fn uv_do_pedaco(uv: [f32; 4], cell: [f32; 4]) -> [f32; 4] {
-    // ⚠️ A identidade devolve o rectângulo AO BIT: `u0 + (u1 − u0)` pode errar um ulp, e o recorte
-    // arredonda para píxeis com `floor`/`ceil` — um ulp pode ganhar uma coluna.
-    if cell == RenderInstance::IDENTITY_UV_XFORM {
-        return uv;
-    }
-    let (w, h) = (uv[2] - uv[0], uv[3] - uv[1]);
-    [
-        uv[0] + w * cell[2],
-        uv[1] + h * cell[3],
-        uv[0] + w * (cell[2] + cell[0]),
-        uv[1] + h * (cell[3] + cell[1]),
-    ]
 }
 
 /// O corpo dos dois lowerings vectoriais — `imagens = Some(defaults)` converte as linhas de
@@ -517,6 +483,7 @@ fn lower_vector_onto(
     let tex = stream.get("texture_id");
     let uv = stream.get("uv_rect");
     let premul = stream.get("premultiplied");
+    let blend_col = stream.get("blend");
     let uv_cell = stream.get("uv_cell");
     // ⚠️ **As duas colunas da média, hasteadas** — este laço fazia TRÊS lookups por elemento
     // (os dois do [`row_medium`] mais o `geometry_id` repetido), ao lado de sete colunas que
@@ -566,6 +533,7 @@ fn lower_vector_onto(
             // rota honra o pivô e a ordem, e NOMEIA por que não honra os outros dois.
             anchor: style.anchor_for(sz),
             sampling: style.sampling,
+            blend_linha: degrau_de_mistura(blend_col, i),
             // O lowering não conhece o grupo — o pump carimba-o depois do sink inteiro.
             mistura: crate::MisturaDoSink::default(),
         })
@@ -677,23 +645,4 @@ pub fn evaluate_motion_into(
         None => out.clear(),
     }
     Ok(())
-}
-
-fn scalar_at(c: Option<&Column>, i: usize, default: f32) -> f32 {
-    match c {
-        Some(Column::Scalar(v)) => v.get(i).copied().unwrap_or(default),
-        _ => default,
-    }
-}
-fn vec2_at(c: Option<&Column>, i: usize, default: [f32; 2]) -> [f32; 2] {
-    match c {
-        Some(Column::Vec2(v)) => v.get(i).copied().unwrap_or(default),
-        _ => default,
-    }
-}
-fn vec4_at(c: Option<&Column>, i: usize, default: [f32; 4]) -> [f32; 4] {
-    match c {
-        Some(Column::Vec4(v)) => v.get(i).copied().unwrap_or(default),
-        _ => default,
-    }
 }

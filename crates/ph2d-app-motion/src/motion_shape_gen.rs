@@ -42,7 +42,7 @@ mod store;
 // ⭐ A MISTURA EM GRUPO (doc 118) — o arranjo de camadas por corrida, irmão pelo tecto de LOC e
 // por ASSUNTO: este ficheiro diz QUE forma é desenhada, aquele diz COMO ela pousa no que já está.
 #[path = "motion_shape_mistura.rs"]
-mod mistura;
+pub(crate) mod mistura;
 pub use store::VecPathStore;
 
 /// Os dois raios de colisão de uma geometria (doc 109), no irmão que o tecto de LOC pede.

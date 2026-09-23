@@ -32,6 +32,7 @@ fn copias(gid: u32, n: usize, size: [f32; 2]) -> Vec<VectorInstance> {
             tint: [1.0; 4],
             anchor: [0.0, 0.0],
             sampling: 0,
+            blend_linha: 0,
             mistura: Default::default(),
         })
         .collect()
@@ -372,4 +373,33 @@ fn uma_copia_em_grupo_fica_no_vello_a_qualquer_zoom() {
     assert_eq!(movidas, 11, "as onze sem camada viram quads");
     assert_eq!(insts.len(), 11, "as onze em grupo ficam no Vello");
     assert!(insts.iter().all(|vi| vi.mistura.tem_camada()));
+}
+
+/// ⭐⭐ **E uma cópia com modo PRÓPRIO também fica** (doc 118 §9 W8) — a camada da LINHA (o eco de um
+/// `motion.trail`, a sombra de um `fx.drop_shadow`) só existe na cena vectorial, como a do grupo. ⚠️ O
+/// CONTROLO na mesma lista: um degrau cujo modo não tem camada (`Subtract`, degrau `3`) move-se.
+#[test]
+fn uma_copia_com_modo_proprio_fica_no_vello() {
+    let (s, gid) = store_com_quadrado();
+    let mut insts = copias(gid, 22, [1.0, 1.0]);
+    for (k, vi) in insts.iter_mut().enumerate() {
+        vi.blend_linha = if k < 11 { 4 } else { 3 };
+    }
+    let quer = geometrias_para_lod_com(&insts, &s, Affine::scale(2.0), 10, true);
+    let mut bake = ShapeBake::default();
+    bake.seed_for_test(
+        gid,
+        ShapeTile {
+            texture_id: 7,
+            world_size: [1.0, 1.0],
+            local_center: [0.0, 0.0],
+        },
+    );
+    let mut quads = Vec::new();
+    let movidas = aplica_lod_de_forma(&mut quads, &mut insts, &bake, &quer);
+    assert_eq!(movidas, 11, "as onze sem camada (Subtract) viram quads");
+    assert!(
+        insts.iter().all(|vi| vi.blend_linha == 4),
+        "as onze com Multiply ficam no Vello"
+    );
 }

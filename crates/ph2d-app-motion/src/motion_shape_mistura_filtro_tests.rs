@@ -82,6 +82,7 @@ fn quad(sampling: u32) -> VectorInstance {
         premultiplied: 0.0,
         anchor: [0.0, 0.0],
         sampling,
+        blend_linha: 0,
         mistura: MisturaDoSink::default(),
     }
 }

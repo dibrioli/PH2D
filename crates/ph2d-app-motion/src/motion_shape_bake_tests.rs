@@ -20,6 +20,7 @@ fn vi(pos: [f32; 2], basis: [f32; 4], size: [f32; 2]) -> VectorInstance {
         tint: [1.0, 1.0, 1.0, 1.0],
         anchor: [0.0, 0.0],
         sampling: 0,
+        blend_linha: 0,
         mistura: Default::default(),
     }
 }

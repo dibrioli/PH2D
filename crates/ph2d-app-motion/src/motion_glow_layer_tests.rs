@@ -17,6 +17,7 @@ fn vi(geometry_id: u32, x: f32) -> VectorInstance {
         tint: [1.0, 1.0, 1.0, 1.0],
         anchor: [0.0, 0.0],
         sampling: 0,
+        blend_linha: 0,
         mistura: Default::default(),
     }
 }

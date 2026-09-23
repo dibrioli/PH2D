@@ -428,6 +428,8 @@ fn a_vector_row_gets_the_geometric_half_of_the_style_and_declares_the_rest() {
             // ⭐ O estilo ALCANÇA-O (doc 118 §8): o `Filter` do sink vale no quad de imagem da cena
             // vectorial e na tile do LOD — afirmado acima, neste mesmo gate.
             sampling: _,
+            // ⭐ O estilo NÃO o alcança: é da LINHA (a coluna `blend`), não do sink (doc 118 §9).
+            blend_linha: _,
             // ⭐ O estilo NÃO o alcança, de propósito: a mistura em GRUPO é carimbada pela BOMBA
             // depois do lowering (doc 118) — o lowering não sabe de que sink a linha é.
             mistura: _,

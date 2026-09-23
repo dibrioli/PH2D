@@ -102,6 +102,7 @@ fn copia(
         premultiplied: 0.0,
         anchor: [0.0, 0.0],
         sampling: 0,
+        blend_linha: 0,
         mistura,
     }
 }
@@ -533,5 +534,125 @@ fn a_tinta_da_imagem_e_a_conta_da_sprite() {
     assert!(
         (byte(ingenua) - byte(tinta_esperada(0, TINTA_ALFA_DIREITA, TINTA))).abs() > 4 * BARRA,
         "a fixtura não separa a lei exacta da ingénua no texel meio transparente"
+    );
+}
+
+/// Pinta a fixtura com a cópia `B` a levar o degrau `degrau_b` na PRÓPRIA linha (doc 118 §9 W8), e
+/// o grupo `grupo` (ou nenhum). Devolve as quatro colunas e se a cena pediu o mundo por baixo.
+fn mede_linha(
+    pass: &mut VelloPass,
+    gpu: &GpuContext,
+    grupo: Option<(u8, BlendWith)>,
+    degrau_b: u8,
+    imagens: bool,
+) -> ([i32; 4], bool) {
+    let mut store = VecPathStore::default();
+    let _ = store.push(ph2d_vec_scene::rectangle([-0.5, -0.5], [0.5, 0.5]));
+    let m = grupo.map_or_else(MisturaDoSink::default, |(blend, com)| MisturaDoSink {
+        blend,
+        com,
+        sink: 1,
+    });
+    let (ia, ib) = if imagens {
+        (Some(1), Some(2))
+    } else {
+        (None, None)
+    };
+    let mut b = copia(32.0, 24.0, A2, m, ib);
+    b.blend_linha = degrau_b;
+    let insts = [
+        copia(W as f32 / 2.0, W as f32, B, MisturaDoSink::default(), None),
+        copia(16.0, 24.0, A1, m, ia),
+        b,
+    ];
+    let mut art = |id: u32, _uv: [f32; 4]| match id {
+        1 => Some(solida(A1)),
+        2 => Some(solida(A2)),
+        _ => None,
+    };
+    let mut cena = VectorScene::new();
+    encode(
+        &insts,
+        &store,
+        &mut art,
+        Affine::IDENTITY,
+        None,
+        ph2d_render::ImageFilterMode::Smooth,
+        &mut cena,
+    );
+    let pediu = cena.quer_o_mundo_por_baixo();
+    let px = pass
+        .render_and_readback(gpu, cena.inner(), (W, H))
+        .expect("o readback");
+    let linha = (H / 2) as usize * W as usize * 4;
+    (
+        COLUNAS.map(|x| i32::from(px[linha + x as usize * 4])),
+        pediu,
+    )
+}
+
+/// ⭐⭐ **O modo PRÓPRIO de uma linha chega à cena vectorial** (doc 118 §9 W8) — o eco de um
+/// `motion.trail`, o flash de um `motion.strobe` e a sombra de um `fx.drop_shadow` desenhavam em
+/// `Normal` numa forma, porque a `VectorInstance` não tinha onde o levar.
+///
+/// Três células, cada uma a separar uma mutação:
+/// - **sem grupo** (formas e imagens): `B` em `Multiply` mistura-se com o que está por baixo DELA —
+///   `A` na sobreposição, o cenário à direita — e a cena pede o mundo por baixo;
+/// - **dentro de um `Copies` em `Screen`**: a linha SUBSTITUI o modo por cópia do grupo — a
+///   sobreposição é `f(Multiply)`, não `f(Screen)`;
+/// - ⚠️ o CONTROLO vem primeiro: sem degrau a fixtura dá a tabela de sempre e não pede o mundo.
+#[test]
+#[ignore = "precisa de GPU"]
+fn o_modo_da_linha_chega_a_cena_vectorial() {
+    let Some(gpu) = try_headless_gpu() else {
+        println!("sem adaptador — saltado");
+        return;
+    };
+    let Ok(mut pass) = VelloPass::new(&gpu, wgpu::TextureFormat::Rgba8Unorm, (W, H)) else {
+        println!("sem VelloPass — saltado");
+        return;
+    };
+    let perto = |lido: [i32; 4], alvo: [f32; 4], nome: &str| {
+        let alvo = alvo.map(byte);
+        println!("  {nome:<28} lido {lido:?} · conta {alvo:?}");
+        for c in 0..4 {
+            assert!(
+                (lido[c] - alvo[c]).abs() <= BARRA,
+                "{nome}, coluna {c}: {lido:?} contra {alvo:?}"
+            );
+        }
+    };
+    let (sem, pediu_sem) = mede_linha(&mut pass, &gpu, None, 0, false);
+    perto(sem, esperado(0, None), "CONTROLO sem degrau");
+    assert!(
+        !pediu_sem,
+        "CONTROLO: sem modo nenhum a cena nao pede o mundo"
+    );
+    let multiplica = [A1, f(3, A1, A2), f(3, B, A2), B];
+    for imagens in [false, true] {
+        let (lido, pediu) = mede_linha(&mut pass, &gpu, None, 4, imagens);
+        perto(
+            lido,
+            multiplica,
+            if imagens {
+                "linha Multiply (imagens)"
+            } else {
+                "linha Multiply (formas)"
+            },
+        );
+        assert!(
+            pediu,
+            "uma linha que mistura com o cenario tem de o pedir por baixo"
+        );
+    }
+    let (grupo, _) = mede_linha(&mut pass, &gpu, Some((4, BlendWith::Copies)), 4, false);
+    perto(
+        grupo,
+        [A1, f(3, A1, A2), A2, B],
+        "Copies/Screen, linha Multiply",
+    );
+    assert!(
+        (byte(f(3, A1, A2)) - byte(f(4, A1, A2))).abs() > 4 * BARRA,
+        "CONTROLO: a fixtura separa o modo da linha do modo do grupo"
     );
 }

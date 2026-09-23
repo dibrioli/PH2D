@@ -44,6 +44,28 @@ pub(crate) fn mistura_vello(tag: u8) -> Option<ph2d_vector::VelloBlend> {
     ph2d_vec_render::blend::vello_blend(modo)
 }
 
+/// ⭐⭐ **A camada de UMA LINHA** (doc 118 §9 W8) — o modo que a coluna `blend` lhe escreveu, traduzido
+/// pela MESMA [`mistura_vello`] do sink. `None` quando a linha não tem modo próprio (degrau `0`) ou
+/// o modo dela não tem camada (`Subtract`, `Mix`): ela desenha com a camada do grupo, ou sem.
+///
+/// ⚠️ **A linha SUBSTITUI a camada por cópia do grupo, e não a soma** — é o que a sprite faz
+/// (`blend_at`: a linha ganha do sink). Dentro de um `Scene` as cópias não têm camada, e uma linha
+/// com modo ganha a dela DENTRO do grupo: mistura-se com as cópias anteriores, e o grupo com o cenário.
+#[must_use]
+pub(crate) fn camada_da_linha(inst: &VectorInstance) -> Option<ph2d_vector::VelloBlend> {
+    inst.blend_linha.checked_sub(1).and_then(mistura_vello)
+}
+
+/// ⛔ **Esta linha só existe na cena VECTORIAL** — nenhum LOD a pode trocar por uma tile de sprite
+/// (doc 118 §9). A camada dela, a do grupo ou a da própria linha, não existe no passe de sprites, e
+/// virar quad tirava-lhe o modo e o tom: *o grupo mudava de cor ao afastar a câmara*. ⚠️ É a porta
+/// ÚNICA das duas partições de LOD (as formas e os objetos) — escrita em cada uma, a dos objetos já
+/// tinha ficado sem ela.
+#[must_use]
+pub(crate) fn precisa_do_vello(inst: &VectorInstance) -> bool {
+    inst.mistura.tem_camada() || camada_da_linha(inst).is_some()
+}
+
 /// **O rectângulo de um GRUPO** — a janela, ou (sem ela) um rectângulo que cobre qualquer
 /// alvo real.
 ///
@@ -72,10 +94,19 @@ pub(super) fn desenha_corrida(
     filtro: ph2d_render::ImageFilterMode,
     scene: &mut VectorScene,
 ) {
+    // ⭐⭐ **Uma LINHA com modo próprio mistura-se com o que está por baixo dela** (doc 118 §9 W8)
+    // — sem grupo, isso é o cenário, e pede-o como o `Everything` pede.
+    let sobre_o_cenario = |scene: &mut VectorScene| {
+        if corrida.iter().any(|i| camada_da_linha(i).is_some()) {
+            scene.pede_o_mundo_por_baixo();
+        }
+    };
     let Some((tag, com, _)) = chave else {
+        sobre_o_cenario(scene);
         return desenha_linhas(corrida, None, store, art, cam, janela, filtro, scene);
     };
     let Some(m) = mistura_vello(tag) else {
+        sobre_o_cenario(scene);
         return desenha_linhas(corrida, None, store, art, cam, janela, filtro, scene);
     };
     let normal =
@@ -124,12 +155,18 @@ fn desenha_linhas(
     filtro: ph2d_render::ImageFilterMode,
     scene: &mut VectorScene,
 ) {
+    // ⚠️ **O lote leva a camada DELE** (doc 118 §9): uma linha com modo próprio troca a camada por
+    // cópia do grupo pela dela, e o lote parte-se onde a camada muda. Sem linha nenhuma com modo a
+    // camada é sempre a `por_copia` — o lote de sempre, byte a byte.
     let mut lote: Vec<(u32, Affine, [f32; 4])> = Vec::new();
-    let despeja = |lote: &mut Vec<(u32, Affine, [f32; 4])>, scene: &mut VectorScene| {
+    let mut camada_do_lote = por_copia;
+    let despeja = |lote: &mut Vec<(u32, Affine, [f32; 4])>,
+                   camada: Option<ph2d_vector::VelloBlend>,
+                   scene: &mut VectorScene| {
         if lote.is_empty() {
             return;
         }
-        match por_copia {
+        match camada {
             None => ph2d_vec_render::draw_shared_instances(
                 lote.drain(..),
                 |h| store.get(h),
@@ -146,7 +183,12 @@ fn desenha_linhas(
         }
     };
     for inst in linhas {
+        let camada = camada_da_linha(inst).or(por_copia);
         if inst.geometry_id > 0 {
+            if camada != camada_do_lote {
+                despeja(&mut lote, camada_do_lote, scene);
+                camada_do_lote = camada;
+            }
             lote.push((inst.geometry_id, instance_pose(inst, cam), inst.tint));
             continue;
         }
@@ -156,10 +198,10 @@ fn desenha_linhas(
         let Some((w, h, rgba)) = art(inst.texture_id, inst.atlas_uv) else {
             continue;
         };
-        despeja(&mut lote, scene);
-        draw_quad(inst, &rgba, w, h, cam, por_copia, filtro, scene);
+        despeja(&mut lote, camada_do_lote, scene);
+        draw_quad(inst, &rgba, w, h, cam, camada, filtro, scene);
     }
-    despeja(&mut lote, scene);
+    despeja(&mut lote, camada_do_lote, scene);
 }
 
 /// **Um quad texturado na cena vectorial** — a pose é a MESMA função das formas

@@ -75,7 +75,12 @@ pub fn apply_object_lod(
     }
     // Partition: over-threshold instances become tiles appended to `instances`; the
     // rest are retained crisp. `retain` walks once, order-preserving.
+    //
+    // ⛔ **Uma linha que MISTURA fica no Vello, a qualquer contagem** (doc 118 §9): a camada dela só
+    // existe na cena vectorial. A partição das formas já tinha esta cerca; a dos objetos não, e um
+    // grupo que mistura com mais de `LOD_COUNT` cópias perdia o modo no quadro em que passava o tecto.
     vector_instances.retain(|vi| match tile_for.get(&vi.geometry_id) {
+        Some(_) if crate::motion_shape_gen::mistura::precisa_do_vello(vi) => true,
         Some(&texture_id) => {
             instances.push(vector_instance_as_tile(vi, texture_id));
             false // moved to a tile

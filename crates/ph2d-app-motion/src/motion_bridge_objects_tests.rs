@@ -300,6 +300,7 @@ fn lod_vi(gid: u32, x: f32) -> VectorInstance {
         tint: [1.0, 1.0, 1.0, 1.0],
         anchor: [0.0, 0.0],
         sampling: 0,
+        blend_linha: 0,
         mistura: Default::default(),
     }
 }
@@ -357,6 +358,7 @@ fn the_lod_tile_lands_exactly_where_the_crisp_vector_would() {
         tint: [0.2, 0.4, 0.6, 0.8],
         anchor: [0.0, 0.0],
         sampling: 0,
+        blend_linha: 0,
         mistura: Default::default(),
     };
     let tile = vector_instance_as_tile(&vi, 42);
@@ -395,6 +397,7 @@ fn a_tile_do_lod_leva_o_pivo_e_o_filtro_do_sink() {
         tint: [1.0; 4],
         anchor: [0.75, -0.25],
         sampling: RenderInstance::pack_sampling(1, 0),
+        blend_linha: 0,
         mistura: Default::default(),
     };
     let tile = vector_instance_as_tile(&vi, 42);
@@ -420,6 +423,33 @@ fn a_tile_do_lod_leva_o_pivo_e_o_filtro_do_sink() {
         tile.sampling, vi.sampling,
         "o filtro do sink perdeu-se na tile"
     );
+}
+
+/// ⛔⛔ **Um objecto que MISTURA não vira tile, a contagem nenhuma** (doc 118 §9) — a partição das
+/// FORMAS já tinha esta cerca e a dos OBJETOS não: um grupo com mais de `LOD_COUNT` cópias perdia o
+/// modo no quadro em que passava o tecto. ⚠️ As três espécies na MESMA lista: a do grupo e a da linha
+/// ficam, a de controlo (sem camada nenhuma) vira tile — senão o gate passava com o LOD desligado.
+#[test]
+fn um_objecto_que_mistura_nao_vira_tile() {
+    let mut bake = crate::motion_object_bake::ObjectBake::default();
+    bake.seed_for_test(1, 5, 500, [1.0, 1.0]);
+    let mut grupo = lod_vi(5, 0.0);
+    grupo.mistura = ph2d_eval_motion::MisturaDoSink {
+        blend: 3,
+        ..Default::default()
+    };
+    let mut linha = lod_vi(5, 1.0);
+    linha.blend_linha = 4;
+    let mut vectors = vec![grupo, linha, lod_vi(5, 2.0), lod_vi(5, 3.0)];
+    let mut instances: Vec<RenderInstance> = Vec::new();
+    apply_object_lod(&mut instances, &mut vectors, &bake, 3);
+    assert_eq!(
+        instances.len(),
+        2,
+        "CONTROLE: as duas sem camada viram tile"
+    );
+    assert_eq!(vectors.len(), 2, "a do grupo e a da linha ficam no Vello");
+    assert!(vectors[0].mistura.tem_camada() && vectors[1].blend_linha == 4);
 }
 
 /// **Correctness before speed:** below the threshold, OR when no tile was baked, every

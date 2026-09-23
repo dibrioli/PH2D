@@ -259,7 +259,8 @@ pub fn aplica_lod_de_forma(
         // ⛔ **Uma cópia de um grupo que MISTURA fica no Vello, a qualquer zoom** (doc 118): a
         // camada dela só existe na cena vectorial, e virar quad de sprite tirava-lhe o alcance e o
         // tom — o grupo mudava de cor ao afastar a câmara.
-        if !quer.contains(&vi.geometry_id) || vi.mistura.tem_camada() {
+        if !quer.contains(&vi.geometry_id) || crate::motion_shape_gen::mistura::precisa_do_vello(vi)
+        {
             return true;
         }
         match shape_bake.tile_for_gid(vi.geometry_id) {

@@ -143,6 +143,7 @@ fn an_unpublished_handle_is_none_and_encodes_without_panic() {
         tint: [1.0, 1.0, 1.0, 1.0],
         anchor: [0.0, 0.0],
         sampling: 0,
+        blend_linha: 0,
         mistura: Default::default(),
     };
     let mut scene = ph2d_vector::VectorScene::new();
@@ -320,6 +321,7 @@ fn a_live_document_vector_renders_its_authored_fill_not_the_tint() {
         tint: [1.0, 1.0, 1.0, 1.0],  // WHITE — the object tint must NOT paint the star
         anchor: [0.0, 0.0],
         sampling: 0,
+        blend_linha: 0,
         mistura: Default::default(),
     };
     // Fit the unit-radius star into a 64² tile: world [-0.5, 0.5] → device [7, 57].
@@ -449,6 +451,7 @@ fn the_pivot_rides_before_the_basis_on_the_vector_route() {
             tint: [1.0; 4],
             anchor,
             sampling: 0,
+            blend_linha: 0,
             mistura: Default::default(),
         };
         let [b0, b1, b2, b3] = inst.basis;
@@ -560,6 +563,7 @@ fn com_rot_de_90_graus_a_junta_fica_parada_e_o_osso_aponta_para_cima() {
         tint: [1.0; 4],
         anchor: [0.0, 0.0],
         sampling: 0,
+        blend_linha: 0,
         mistura: Default::default(),
     };
     let a = super::instance_pose(&inst, ph2d_vector::Affine::IDENTITY);

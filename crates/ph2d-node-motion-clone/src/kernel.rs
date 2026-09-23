@@ -29,7 +29,7 @@
 //! não custa nem um ciclo ao dispositivo.
 //!
 //! ⛔ **E o `k` também não.** Ele passa pelo clamp de orçamento (`copies_within_budget` contra o
-//! [`RECOMMENDED_MAX_ELEMENTS`], a cerca §6.3 do doc 116): reescrito em WGSL ele seria uma segunda
+//! [`MAX_INSTANCIAS_POR_NO`], a cerca §6.3 do doc 116): reescrito em WGSL ele seria uma segunda
 //! resposta à pergunta *«quantas cópias?»*, e duas respostas que discordem não falham — **desenham
 //! um número diferente de coisas**. Derivado, a lei de contagem e o corpo leem o mesmo `f32`.
 //!
@@ -73,7 +73,7 @@ use ph2d_nodegraph::gpu::{
     ColumnAccess, ColumnBinding, CountLawCtx, DerivedUniform, GpuKernel, ROWS_COL, SourceWindow,
     StreamOp,
 };
-use ph2d_nodegraph::node::{RECOMMENDED_MAX_ELEMENTS, param_as_count};
+use ph2d_nodegraph::node::{MAX_INSTANCIAS_POR_NO, param_as_count};
 use ph2d_nodegraph::port::Dim;
 
 /// O slot do uniform que carrega as cópias **já cortadas pelo orçamento** — um nome que só a
@@ -91,8 +91,8 @@ const STEP_Y: &str = "cl_step_y";
 /// ⚠️ *Duas leis de contagem que discordam não falham: desenham um número diferente de coisas.*
 fn copias(c: &CountLawCtx<'_>) -> usize {
     let n = c.inputs.first().copied().unwrap_or(0) as usize;
-    let pedidas = param_as_count((c.param)("count"), RECOMMENDED_MAX_ELEMENTS);
-    copies_within_budget(pedidas, n, RECOMMENDED_MAX_ELEMENTS)
+    let pedidas = param_as_count((c.param)("count"), MAX_INSTANCIAS_POR_NO);
+    copies_within_budget(pedidas, n, MAX_INSTANCIAS_POR_NO)
 }
 
 /// O passo da fila, pela porta que a CPU usa.

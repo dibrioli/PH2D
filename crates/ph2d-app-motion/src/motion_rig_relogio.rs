@@ -271,10 +271,19 @@ fn as_portas_de_estado_da_sonda_sao_as_do_manifesto() {
 #[test]
 fn o_campo_chega_ao_tecto_pela_porta_do_produto() {
     use ph2d_nodegraph::graph::{Edge, Graph};
-    /// O tecto MEDIDO do `motion.wave` (doc 114 §9). ⚠️ Escrito aqui à mão de propósito: a crate do
-    /// nó não o exporta, e um gate que lesse a constante do próprio sujeito não veria o tecto
-    /// descer — *ele pediria o que o sujeito desse.*
-    const TECTO: f32 = 512.0;
+    /// O tecto do `motion.wave`. ⚠️ Escrito aqui à mão de propósito: a crate do nó não o exporta,
+    /// e um gate que lesse a constante do próprio sujeito não veria o tecto descer — *ele pediria
+    /// o que o sujeito desse.*
+    ///
+    /// ⭐⭐⭐ **E ELE DESCEU, DE `512` PARA `128`** (ordem do dono, 2026-09-22: *«vamos efetivar o
+    /// limite de 16 384»*): o `motion.wave` clampa hoje o PRODUTO em
+    /// [`MAX_INSTANCIAS_POR_NO`](ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO), e `128 × 128` é
+    /// exactamente esse tecto.
+    ///
+    /// ⚠️⚠️ **Este gate reprovou na primeira build com o tecto, e isso é ele a FUNCIONAR:** o
+    /// parágrafo acima foi escrito a prever este dia. *Um gate que lesse a constante do nó teria
+    /// ficado verde e ninguém saberia que o campo encolheu `16×`.*
+    const TECTO: f32 = 128.0;
     let m = crate::motion_state::MotionState::new();
     let mut g = Graph::default();
     let w = g.add_node("motion.wave".to_string());

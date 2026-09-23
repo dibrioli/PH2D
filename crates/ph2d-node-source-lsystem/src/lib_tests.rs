@@ -173,7 +173,21 @@ fn a_saturated_derivation_does_not_shrink_the_generation_it_did_finish() {
         whole.count(),
         "a derivacao para em 2^{last_whole} modulos (mais a raiz que a tartaruga planta)"
     );
-    assert_eq!(saturated.count(), crate::MAX_MODULES + 1);
+    // ⛔⛔ **A LINHA QUE AQUI ESTAVA ERA `== MAX_MODULES + 1`, e a premissa dela MORREU em
+    // 2026-09-21.** Ela só era verdade porque o tecto de então (`262 144`) era uma POTÊNCIA DE
+    // DOIS, e a regra `F -> FF` dobra: a última geração inteira enchia-o exactamente. Com o tecto
+    // do dono (`16 384` objectos emitidos ⇒ `MAX_MODULES = 16 383`) ela lê `8 193` contra `16 384`.
+    //
+    // ⚠️ *O que o gate afirma é que a derivação PÁRA numa geração INTEIRA e DENTRO do orçamento* —
+    // e a igualdade era um acidente da constante, não a lei. A metade que fica é a que o nome
+    // promete, mais o tecto.
+    assert_eq!(saturated.count(), 2usize.pow(last_whole) + 1);
+    assert!(
+        saturated.count() <= crate::MAX_MODULES + 1,
+        "a derivacao nunca passa o orcamento: {} contra {}",
+        saturated.count(),
+        crate::MAX_MODULES + 1
+    );
 }
 
 /// Todo param declarado tem um hint, e todo hint nomeia um param declarado **ou** um dos
@@ -591,4 +605,47 @@ fn the_derived_grammar_still_grows_continuously_with_a_fractional_generation() {
         "um passo de {worst} contra uma subida total de {rise} — isto e um salto, nao um \
          crescimento: {hs:?}"
     );
+}
+
+/// ⭐⭐⭐ **O QUE O TECTO DE `16 384` CUSTA A CADA MOLDE DO L-SYSTEM** — a medição que a ordem do
+/// dono de 2026-09-21 obriga a fazer ANTES de se dizer que o tecto está posto.
+#[test]
+#[ignore = "sonda de medicao"]
+fn quanto_cada_molde_precisa() {
+    eprintln!("\n  ═══ MÓDULOS QUE CADA MOLDE PEDE NO VALOR DE FÁBRICA ═══\n");
+    eprintln!("   molde        | gerações | módulos | cabe em 16384?");
+    eprintln!("  --------------|----------|---------|---------------");
+    for p in crate::PRESETS {
+        let s = crate::probe_build(
+            p.axiom,
+            p.rules,
+            p.generations,
+            &[(crate::param::ANGLE, p.angle)],
+        );
+        let n = s.count();
+        eprintln!(
+            "  {:<13} | {:>8.1} | {n:>7} | {}",
+            p.label,
+            p.generations,
+            if n <= 16_384 { "sim" } else { "NAO" }
+        );
+    }
+    eprintln!();
+}
+
+#[test]
+#[ignore = "sonda de medicao"]
+fn o_dragao_a_meia_geracao() {
+    let d = crate::PRESETS
+        .iter()
+        .find(|p| p.label == "Dragon")
+        .expect("existe");
+    for g in [12.0f32, 12.5, 13.0, 13.5, 14.0] {
+        let s = crate::probe_build(d.axiom, d.rules, g, &[(crate::param::ANGLE, d.angle)]);
+        eprintln!(
+            "  Dragon g={g:>5.1} -> {} modulos (tecto {})",
+            s.count(),
+            crate::MAX_MODULES + 1
+        );
+    }
 }

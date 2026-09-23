@@ -55,7 +55,12 @@ use ph2d_nodegraph::graph::NodeId;
 /// the relaxation re-cooking every frame, so it leaves the frame budget intact
 /// while the artist zooms and scrubs. (The device's own ceiling is the node's
 /// cap: 165 000 at 19,4 ms — raise `count` to see it.)
-pub(super) const DEMO_POINTS: f32 = 20_000.0;
+/// ⛔ **Desceu de `20 000` com o tecto do dono** (2026-09-22): o `motion.voronoi` clampa em
+/// [`MAX_INSTANCIAS_POR_NO`](ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO), e pedir mais faria a
+/// cena anunciar uma contagem que ela não emite — que é o que o gate irmão
+/// (`the_voronoi_demo_emits_its_full_count`) existe para impedir.
+#[expect(clippy::cast_precision_loss, reason = "um tecto de instâncias, 2^14")]
+pub(super) const DEMO_POINTS: f32 = ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO as f32;
 
 /// **The breathing honeycomb** (`PH2D_GPU_COOK_DEMO=11`) — the ready-to-smoke
 /// scene for the Lloyd/JFA algorithm on the device (ADR-0139). Returns the sink.

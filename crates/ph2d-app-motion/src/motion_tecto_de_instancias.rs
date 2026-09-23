@@ -299,3 +299,146 @@ fn o_censo_de_quem_cria_instancias_ve_a_familia() {
          mede outra coisa"
     );
 }
+
+/// Uma fonte com `linhas` linhas — a entrada que põe um nó no limite.
+fn alimenta_com(g: &mut Graph, linhas: usize) -> NodeId {
+    let f = g.add_node("motion.grid".to_string());
+    // ⛔⛔ **UM QUADRADO, e não uma linha de `n`.** A 1.ª redacção pedia `1 × linhas`, e o
+    // `motion.grid` passou a clampar **cada LADO** em `LADO_MAX_DE_GRELHA` (a ordem do dono diz
+    // *«Rows = 128 e Columns = 128»*): `1 × 16 384` entregava **`128`** linhas e o gate media um
+    // décimo do tecto — os multiplicadores ficavam todos abaixo dele e a catraca acusava
+    // obsolescência sobre nós que continuam acima.
+    //
+    // ⚠️ *A minha fixtura deixou de conter o fenómeno porque a CURA mudou o que o produto pode
+    // produzir* — e quem o disse foi a metade de obsolescência da própria catraca.
+    #[expect(clippy::cast_precision_loss, reason = "o lado que enche o tecto, 2^7")]
+    let lado = (linhas as f64).sqrt().ceil() as f32;
+    g.set_param(f, "rows", lado);
+    g.set_param(f, "cols", lado);
+    f
+}
+
+/// ⭐⭐⭐ **A ORDEM DO DONO, COMO PROPRIEDADE: nenhum nó emite mais do que o tecto** (2026-09-22:
+/// *«vamos efetivar o limite de 16 384»*).
+///
+/// ⚠️⚠️ **A metade que o censo dos params NÃO cobre.** Ele mede o que cada nó DECLARA (`rows<=128`,
+/// `count<=16384`), e isso responde por quem **cria** uma contagem. Um nó que **MULTIPLICA** — o
+/// caleidoscópio, o espelho, o rasto — cria zero e emite `factor × entrada`: com a entrada já no
+/// tecto, um factor de `2` põe a saída no dobro dele **sem que param nenhum passe do que declara**.
+/// *Um tecto sobre um FACTOR não exprime um limite sobre o PRODUTO*, e é essa a frase que o
+/// cabeçalho do `motion.grid` já escrevia antes desta ordem existir.
+///
+/// ⚠️ **A entrada é o TECTO e os params ficam no [`VALOR_DA_SONDA`]**, de propósito: o que se mede
+/// aqui é a MULTIPLICAÇÃO, e pôr os params de iteração no extremo mede o pior caso de toda
+/// grandeza — a lição que matou duas corridas do censo irmão.
+///
+/// ⛔ Um nó que ESTOURA a cozinhar não é acusado: ele é contado à parte e o número é impresso. Um
+/// censo que morre no primeiro pânico não mede os outros.
+#[test]
+fn nenhum_no_emite_mais_do_que_o_tecto() {
+    let m = crate::motion_state::MotionState::new();
+    let reg = &m.registry;
+    let tipos: Vec<(String, Vec<String>, usize)> = reg
+        .manifests()
+        .map(|man| {
+            (
+                man.name.to_string(),
+                man.params.iter().map(|p| p.name.to_string()).collect(),
+                man.inputs.len(),
+            )
+        })
+        .collect();
+    let anterior = std::panic::take_hook();
+    std::panic::set_hook(Box::new(|_| {}));
+    let (mut acima, mut estouraram, mut medidos) = (Vec::new(), 0usize, 0usize);
+    for (nome, params, n_entradas) in &tipos {
+        if *n_entradas == 0 {
+            continue; // sem entrada não há o que multiplicar
+        }
+        let mut g = Graph::new();
+        let n = g.add_node(nome.clone());
+        for p in 0..(*n_entradas as u16) {
+            let f = alimenta_com(&mut g, TECTO);
+            let _ = g.connect(Edge {
+                from: (f, 0),
+                to: (n, p),
+                delayed: false,
+            });
+        }
+        for p in params {
+            g.set_param(n, p.as_str(), VALOR_DA_SONDA);
+        }
+        let (emitidas, morreu) = linhas(&g, reg, n);
+        if morreu {
+            estouraram += 1;
+            continue;
+        }
+        medidos += 1;
+        if emitidas > TECTO {
+            acima.push(format!("{nome}: {emitidas} (tecto {TECTO})"));
+        }
+    }
+    std::panic::set_hook(anterior);
+    // ⚠️ **O PISO de população**: uma varredura que deixe de casar mede zero e fica verde — a
+    // forma muda que esta casa já pagou num censo por prefixo de ficheiro.
+    assert!(
+        medidos >= 60,
+        "só {medidos} nós com entrada foram medidos — a varredura deixou de alcançar a família"
+    );
+    // ⛔⛔⛔ **OS CINCO QUE FICAM ACIMA, E PORQUÊ ELES NÃO SÃO UM DEFEITO.**
+    //
+    // A ordem do dono é sobre quem **CRIA** instâncias (*«em todos os nós que são usados para
+    // criar instâncias»*, com o exemplo a ser o `motion.grid`), e esses `13` estão clampados — o
+    // censo irmão prova-o param a param. Estes cinco **não criam nada**: eles recebem um fluxo que
+    // já vem no tecto e TRANSFORMAM-NO, e a contagem deles é `factor × entrada`.
+    //
+    // ⚠️ **A leitura que os incluiria muda o PRODUTO de forma visível**, e por isso ela é do dono e
+    // não minha: o `fx.drop_shadow` multiplica por `17` e clampá-lo com a entrada no tecto
+    // deixa-o **sem sombra nenhuma**; o `motion.mirror` deixa de espelhar; o `motion.combine`
+    // deixa de juntar. *Um tecto que apaga a razão de ser do nó não é o mesmo pedido que um tecto
+    // sobre quantos objectos um gerador põe na cena.*
+    //
+    // ⭐ **O `motion.duplicator` NÃO está nesta lista, e a diferença é medida:** ele emitia
+    // `16 777 216` porque o orçamento dele era o `RECOMMENDED_MAX_ELEMENTS` (`1 << 24`), uma
+    // cerca de SEGURANÇA contra alocação e não um tecto de produto. Com o tecto certo ele
+    // continua a carimbar `1 forma × 16 384 pontos = 16 384` — *o uso normal não se mexe*.
+    //
+    // ⚠️⚠️ **E esta lista é uma CATRACA com censo de obsolescência**: quem clampar um deles tem de
+    // apagar a linha, e quem acrescentar um multiplicador novo vê o gate reprovar. Sem as duas
+    // metades ela vira licença (`CLAUDE.md` §5.0).
+    const NOMEADOS: &[&str] = &[
+        "motion.trail",
+        "motion.mirror",
+        "motion.combine",
+        "fx.rgb_split",
+        "fx.drop_shadow",
+    ];
+    let inesperados: Vec<&String> = acima
+        .iter()
+        .filter(|l| !NOMEADOS.iter().any(|n| l.starts_with(n)))
+        .collect();
+    assert!(
+        inesperados.is_empty(),
+        "nós NOVOS a emitir acima do tecto de {TECTO} ({}):\n  {}\n\n\
+         ⚠️ Um tecto sobre um FACTOR não exprime um limite sobre o PRODUTO: clampe o factor em \
+         `MAX_INSTANCIAS_POR_NO / entrada`, como o `motion.kaleidoscope` faz — ou traga a decisão \
+         ao dono e acrescente-o aos `NOMEADOS`, com o número.\n  \
+         (nós que estouraram a cozinhar e não foram medidos: {estouraram})",
+        inesperados.len(),
+        inesperados
+            .iter()
+            .map(|l| l.as_str())
+            .collect::<Vec<_>>()
+            .join("\n  ")
+    );
+    // A outra metade da catraca: um nome que deixou de estar acima do tecto não pode ficar aqui.
+    let obsoletos: Vec<&&str> = NOMEADOS
+        .iter()
+        .filter(|n| !acima.iter().any(|l| l.starts_with(**n)))
+        .collect();
+    assert!(
+        obsoletos.is_empty(),
+        "⛔ estes já NÃO emitem acima do tecto e a linha deles tem de sair ({}): {obsoletos:?}",
+        obsoletos.len()
+    );
+}

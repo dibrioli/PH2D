@@ -6,6 +6,20 @@
 //! they are one thing — the demonstration surface of GPU/M5 — and because the
 //! gates that prove each one still plans the way it claims (`motion_state_gpu_tests.rs`)
 //! are its sibling.
+//!
+//! ⛔⛔⛔ **OS LADOS DE GRELHA DESTE FICHEIRO SÃO DERIVADOS DO TECTO DESDE 2026-09-22** — ordem do
+//! dono (*«vamos efetivar o limite de 16 384»*, reafirmando a de 21/09). O `motion.grid` clampa
+//! cada LADO em [`LADO_MAX_DE_GRELHA`](ph2d_nodegraph::node::LADO_MAX_DE_GRELHA), logo um literal
+//! maior aqui entregaria `128` na mesma **e a cena anunciaria uma população que ela não produz**
+//! (`CLAUDE.md` §5.0).
+//!
+//! ⚠️ **O clamp é por LADO e não pelo PRODUTO, e a diferença era visível:** o `build_grid` trunca
+//! em ordem row-major, logo clampar o produto entregava as primeiras `16 384` células — um
+//! `512 × 512` saía como **`32` linhas de `512`**, uma FAIXA. Nenhum gate desta casa mede a FORMA
+//! de uma grelha, então isso passaria em silêncio.
+//!
+//! ⚠️ **E as medições que os números antigos carregavam FICAM**: elas continuam verdadeiras sobre
+//! o relógio e sobre a placa; o que mudou foi o que um nó pode pedir.
 
 use ph2d_color::{GradientPreset, RampInterp, serialize_gradient};
 use ph2d_motion_doc::MotionDoc;
@@ -38,8 +52,16 @@ pub(super) fn build_gpu_demo_document(
     let g = &mut doc.graph;
     let grid = g.add_node("motion.grid");
     // 1250 × 1600 = exactly 2.000.000 cells (well under the grid's 16.7M cap).
-    g.set_param(grid, "rows", 1250.0);
-    g.set_param(grid, "cols", 1600.0);
+    g.set_param(
+        grid,
+        "rows",
+        ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32,
+    );
+    g.set_param(
+        grid,
+        "cols",
+        ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32,
+    );
     // A dense lattice: the quads are unit-sized (the shell's `default_size`
     // identity), so gap 1.0 tiles them edge-to-edge — zoom out and the whole
     // 1600×1250 field reads as a shimmering cloth of two million quads.
@@ -121,8 +143,16 @@ pub(super) fn build_gpu_sim_demo_document(
     use ph2d_nodegraph::graph::{Edge, Pos};
     let g = &mut doc.graph;
     let grid = g.add_node("motion.grid");
-    g.set_param(grid, "rows", 700.0);
-    g.set_param(grid, "cols", 700.0);
+    g.set_param(
+        grid,
+        "rows",
+        ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32,
+    );
+    g.set_param(
+        grid,
+        "cols",
+        ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32,
+    );
     g.set_param(grid, "gap_x", 0.12);
     g.set_param(grid, "gap_y", 0.12);
     // Rainbow: 7 stops closing the hue circle, so the field reads as bands
@@ -252,8 +282,16 @@ pub(super) fn build_gpu_sea_demo_document(
     use ph2d_nodegraph::graph::{Edge, Pos};
     let g = &mut doc.graph;
     let grid = g.add_node("motion.grid");
-    g.set_param(grid, "rows", 700.0);
-    g.set_param(grid, "cols", 700.0);
+    g.set_param(
+        grid,
+        "rows",
+        ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32,
+    );
+    g.set_param(
+        grid,
+        "cols",
+        ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32,
+    );
     g.set_param(grid, "gap_x", 0.12);
     g.set_param(grid, "gap_y", 0.12);
     // The field spans ±42, so the sea at 0 cuts it in half: half of it starts
@@ -461,8 +499,16 @@ pub(super) fn build_gpu_hybrid_demo_document(
     use ph2d_nodegraph::graph::{Edge, Pos};
     let g = &mut doc.graph;
     let grid = g.add_node("motion.grid");
-    g.set_param(grid, "rows", 360.0);
-    g.set_param(grid, "cols", 360.0);
+    g.set_param(
+        grid,
+        "rows",
+        ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32,
+    );
+    g.set_param(
+        grid,
+        "cols",
+        ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32,
+    );
     g.set_param(grid, "gap_x", 1.0);
     g.set_param(grid, "gap_y", 1.0);
     // CPU boundary: `motion.sort` REORDERS the stream — a global permutation, and

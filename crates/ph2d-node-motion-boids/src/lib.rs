@@ -58,7 +58,7 @@ use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{
-    LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec, RECOMMENDED_MAX_ELEMENTS,
+    LoweringKind, MAX_INSTANCIAS_POR_NO, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec,
     param_as_count,
 };
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
@@ -597,7 +597,7 @@ impl NodeOp for MotionBoids {
     }
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
-        let count = param_as_count(ctx.param("count"), RECOMMENDED_MAX_ELEMENTS).max(1);
+        let count = param_as_count(ctx.param("count"), MAX_INSTANCIAS_POR_NO).max(1);
         let radius = ctx.param("radius").max(0.0);
         let sep_r = ctx.param("separation_radius").max(0.0);
         let p = Params {

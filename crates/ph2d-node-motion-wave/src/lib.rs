@@ -108,7 +108,11 @@ const CFL_MAX: f32 = 0.49;
 /// explícito — o caso embaraçosamente paralelo —, e na placa `262 144` células são troco. Enquanto
 /// o kernel não existe, este número é o que o caminho de referência sustenta, e está nomeado como
 /// tal (doc 114 §8).
-const MAX_SIDE: i64 = 512;
+/// ⭐⭐⭐ **O LADO MÁXIMO — o `128` que o dono ordenou em 2026-09-21** (*«nenhum deles pode gerar
+/// mais de 16384 objetos … num nó como grid o limite máximo é Rows = 128 e Columns = 128»*),
+/// DERIVADO do [`MAX_INSTANCIAS_POR_NO`](ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO) e não
+/// escrito.
+const MAX_SIDE: i64 = ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as i64;
 /// Baseline dot size (a flat field), and how much a unit of height swells it.
 const SIZE_BASE: f32 = 0.22;
 const SIZE_GAIN: f32 = 1.4;

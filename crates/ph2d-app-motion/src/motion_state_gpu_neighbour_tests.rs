@@ -228,10 +228,20 @@ fn the_boid_demo_is_a_large_spread_flock_sized_for_headroom() {
     // A genuinely large swarm, sized so the SETTLED flock fits a 60 fps frame
     // (measured to equilibrium in `gpu_boids_scale.rs::where_does_the_flock_settle`
     // — the demo's comment carries the three-round table).
+    // ⛔⛔⛔ **A FAIXA `[262 144, 1 048 576]` MORREU COM O TECTO DO DONO** (2026-09-22). Ela
+    // saiu de três rondas de medição e descrevia o regime em que o dispositivo se distingue da
+    // CPU; com o `motion.boids` clampado em `MAX_INSTANCIAS_POR_NO`, **nenhum valor dessa faixa é
+    // alcançável**. ⚠️ *A medição não ficou errada — ela passou a descrever um produto que não
+    // existe.*
+    //
+    // ⭐ O que fica é a lei que a faixa protegia, agora derivada: o bando tem de ser **o maior que
+    // o nó pode dar**, senão a cena mostra um enxame pequeno e o passe de vizinhança não tem o que
+    // demonstrar.
+    #[expect(clippy::cast_precision_loss, reason = "um tecto de instâncias, 2^14")]
+    let tecto = ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO as f32;
     assert!(
-        (262_144.0..=1_048_576.0).contains(&count),
-        "the flock must be large but its EQUILIBRIUM must fit a 60 fps frame; \
-         count = {count}"
+        (count - tecto).abs() < f32::EPSILON,
+        "o bando tem de ser o maior que o nó pode dar ({tecto}); count = {count}"
     );
     // The settled density is set by the ATTRACTOR, and the law is superlinear in
     // the count: at 262 k a seek of 0.02 settles at 5–6 ms, but at a million the

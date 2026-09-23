@@ -20,7 +20,7 @@
 use ph2d_nodegraph::gpu::{
     ColumnAccess, ColumnBinding, CountLawCtx, GpuKernel, GridSpec, SourceWindow,
 };
-use ph2d_nodegraph::node::{RECOMMENDED_MAX_ELEMENTS, param_as_count};
+use ph2d_nodegraph::node::{MAX_INSTANCIAS_POR_NO, param_as_count};
 use ph2d_nodegraph::port::Dim;
 
 /// The state `P`/`vel` (read off `pre`, written to the output) plus the two value
@@ -107,7 +107,7 @@ static BINDINGS: &[ColumnBinding] = &[
 /// length — port 0 is a value home of length 1 or 0. The SAME clamp the CPU
 /// `eval` uses, so the two dispatch the same number of agents.
 fn count_law(ctx: &CountLawCtx<'_>) -> SourceWindow {
-    let n = param_as_count((ctx.param)("count"), RECOMMENDED_MAX_ELEMENTS).max(1);
+    let n = param_as_count((ctx.param)("count"), MAX_INSTANCIAS_POR_NO).max(1);
     SourceWindow::of_count(n)
 }
 

@@ -21,8 +21,8 @@ use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, SourceWindow};
 use ph2d_nodegraph::node::{
-    LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec, RECOMMENDED_MAX_ELEMENTS,
-    param_as_count,
+    LADO_MAX_DE_GRELHA, LoweringKind, MAX_INSTANCIAS_POR_NO, NodeManifest, NodeOp, NodeTypeId,
+    ParamSpec, PortSpec, param_as_count,
 };
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 // ⚠️ **`Region`, e não `Domain`** — este arquivo já importa o `Domain` do `port`, que
@@ -96,15 +96,45 @@ fn build_grid(rows: usize, cols: usize, gap_x: f32, gap_y: f32, max: usize) -> V
 /// matches within float ULPs. Registered on the side — the frozen `MANIFEST`
 /// (and its `lowerings: Cpu`, which describes the `ph2d-expr` path, not this
 /// side channel) is untouched.
+/// ⭐⭐⭐ **O CLAMP É POR LADO, e é o que a ordem do dono diz por extenso** (2026-09-21: *«num nó
+/// como grid o limite máximo é **Rows = 128 e Columns = 128**»*).
+///
+/// ⛔⛔⛔ **A 1.ª redacção clampava o PRODUTO, e isso DEFORMAVA a grelha.** O [`build_grid`] trunca
+/// em ordem row-major (`(rows × cols).min(max)`), logo um `512 × 512` entregava as primeiras
+/// `16 384` células = **`32` linhas de `512`** — uma FAIXA, não um quadrado. Medido: **seis cenas
+/// de demo do produto** ficavam assim, e **nenhum gate o via**, porque nenhum mede a FORMA da
+/// grelha. *Um artista que escreve `512 × 512` quer um quadrado; truncar entrega-lhe outra coisa
+/// sem dizer nada.*
+///
+/// ⇒ com o clamp por lado, um `512 × 512` vira `128 × 128` e um `64 × 1024` vira `64 × 128`: a
+/// grelha **mantém a forma** e o produto fica no tecto por construção. O `.min(max)` do produto
+/// continua no [`build_grid`] como CERCA — ele deixou de poder morder, e é isso que se quer de
+/// uma cerca.
+///
+/// ⛔⛔ **A CERCA do número que o WGSL escreve à mão** — ver o comentário dentro do
+/// [`GPU_KERNEL`]. Se o tecto de instâncias mudar, isto **não compila**, e quem o mudar é
+/// obrigado a vir aqui em vez de deixar as duas rotas a desenhar treliças diferentes.
+const _: () = assert!(
+    LADO_MAX_DE_GRELHA == 128,
+    "o WGSL do motion.grid clampa em 128.0 a' mao: actualize o texto do shader"
+);
+
 const GPU_KERNEL: GpuKernel = GpuKernel {
     // Matches `build_grid`: element `i` = cell `(r = i/cols, c = i%cols)`,
     // centered via `((cols|rows) - 1) / 2`. The floor/clamp mirrors
-    // `param_as_count` (16777216 = RECOMMENDED_MAX_ELEMENTS) so a pathological
-    // param yields the same lattice the CPU builds. `cols == 0` never reaches
-    // the div/mod: `source_count` is 0, so nothing dispatches.
+    // `param_as_count` so a pathological param yields the same lattice the CPU
+    // builds. `cols == 0` never reaches the div/mod: `source_count` is 0, so
+    // nothing dispatches.
+    //
+    // ⛔⛔ **O NÚMERO ESTÁ ESCRITO À MÃO AQUI PORQUE O WGSL É UM TEXTO**, e é por isso que ele tem
+    // uma CERCA DE COMPILAÇÃO logo abaixo: a CPU clampa cada factor em
+    // `MAX_INSTANCIAS_POR_NO` (o `param_as_count` acima) e este texto tem de clampar no MESMO
+    // número, senão as duas rotas derivam `cols` diferentes e desenham **outra treliça** — sem erro
+    // nenhum, que é o modo de falha caro. *Uma constante que atravessa uma fronteira de LINGUAGEM
+    // não pode depender de alguém se lembrar.*
     wgsl: "\
-        let colsf = min(max(floor(params.cols), 0.0), 16777216.0);\n\
-        let rowsf = min(max(floor(params.rows), 0.0), 16777216.0);\n\
+        let colsf = min(max(floor(params.cols), 0.0), 128.0);\n\
+        let rowsf = min(max(floor(params.rows), 0.0), 128.0);\n\
         let cols = u32(colsf);\n\
         let cx = (colsf - 1.0) * 0.5;\n\
         let cy = (rowsf - 1.0) * 0.5;\n\
@@ -142,9 +172,9 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     // (it has none). Those fields of `CountLawCtx` exist for the stateless
     // emitter (ADR-0130) and for `value.lfo`, not for this.
     count_law: Some(|c| {
-        let rows = param_as_count((c.param)("rows"), RECOMMENDED_MAX_ELEMENTS);
-        let cols = param_as_count((c.param)("cols"), RECOMMENDED_MAX_ELEMENTS);
-        SourceWindow::of_count(rows.saturating_mul(cols).min(RECOMMENDED_MAX_ELEMENTS))
+        let rows = param_as_count((c.param)("rows"), LADO_MAX_DE_GRELHA);
+        let cols = param_as_count((c.param)("cols"), LADO_MAX_DE_GRELHA);
+        SourceWindow::of_count(rows.saturating_mul(cols).min(MAX_INSTANCIAS_POR_NO))
     }),
     variant_by_param: None,
     // ⛔ **FRONTEIRA NOMEADA: uma grade RECORTADA não tem `count_law`.**
@@ -174,10 +204,10 @@ impl NodeOp for MotionGrid {
         // `rows`/`cols` come from `f32` params; convert *totally* (a non-finite
         // or negative override yields 0, huge values clamp) and cap the product
         // so a corrupt scene value can never overflow the allocation.
-        let rows = param_as_count(ctx.param("rows"), RECOMMENDED_MAX_ELEMENTS);
-        let cols = param_as_count(ctx.param("cols"), RECOMMENDED_MAX_ELEMENTS);
+        let rows = param_as_count(ctx.param("rows"), LADO_MAX_DE_GRELHA);
+        let cols = param_as_count(ctx.param("cols"), LADO_MAX_DE_GRELHA);
         let (gap_x, gap_y) = (ctx.param("gap_x"), ctx.param("gap_y"));
-        let positions = build_grid(rows, cols, gap_x, gap_y, RECOMMENDED_MAX_ELEMENTS);
+        let positions = build_grid(rows, cols, gap_x, gap_y, MAX_INSTANCIAS_POR_NO);
         let n = positions.len();
         // Per-instance identity: `Index` (0..n) + `Count` (n) — the stable handle
         // downstream palette / ramp / normalized effects read. `clone` replicates
@@ -229,17 +259,29 @@ use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
 /// Um milhão de pontos custa **22% de um quadro de 60 fps** — 50.000× o que o slider alcança. O
 /// teto é o número que a medição deu, e não uma potência bonita acima dela.
 ///
-/// ⚠️ **Este é um freio ERGONÔMICO por eixo, não uma garantia de recurso** — o precedente exato do
-/// `rate` do emitter: as instâncias são `rows × cols`, e **nenhum cap estático sobre um FATOR
+/// ⚠️ **Este era um freio ERGONÔMICO por eixo, não uma garantia de recurso** — o precedente exato
+/// do `rate` do emitter: as instâncias são `rows × cols`, e **nenhum cap estático sobre um FATOR
 /// exprime um limite sobre o PRODUTO**. Quem quiser a garantia tem de a pôr onde o produto existe.
+///
+/// ⭐⭐⭐ **E EM 2026-09-21 ELA FOI POSTA ONDE O PRODUTO EXISTE** (ordem do dono: *«nenhum deles
+/// pode gerar mais de 16384 objetos … num nó como grid o limite máximo é Rows = 128 e Columns =
+/// 128»*): o `eval` e a lei de contagem clampam o PRODUTO em
+/// [`MAX_INSTANCIAS_POR_NO`](ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO), e estes dois números
+/// são o [`LADO_MAX_DE_GRELHA`](ph2d_nodegraph::node::LADO_MAX_DE_GRELHA), **derivado** dele por
+/// uma cerca de compilação. *O parágrafo acima nomeou o buraco durante meses; hoje ele é a
+/// legenda da cura.*
+///
+/// ⛔ O tecto de `1 000 000` que aqui esteve saiu de uma MEDIÇÃO (a tabela acima) e o de hoje sai
+/// de uma DECISÃO DE PRODUTO — as duas coisas ficam escritas, porque quem voltar aqui a querer
+/// subir o número precisa de saber que a máquina faz muito mais do que o produto oferece.
 pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[
     ParamHardMax {
         param: "rows",
-        max: 1_000_000.0,
+        max: LADO_MAX_DE_GRELHA as f32,
     },
     ParamHardMax {
         param: "cols",
-        max: 1_000_000.0,
+        max: LADO_MAX_DE_GRELHA as f32,
     },
 ];
 

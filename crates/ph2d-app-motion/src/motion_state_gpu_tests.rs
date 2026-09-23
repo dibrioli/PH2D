@@ -57,15 +57,26 @@ fn the_hybrid_demo_document_plans_as_a_cpu_boundary_with_a_gpu_suffix() {
 /// (any un-covered node would split it into a hybrid, changing what the smoke
 /// exercises). No cook, no device — just the grid params + the plan.
 #[test]
-fn the_gpu_demo_document_is_two_million_instances_claimed_fully_on_the_gpu() {
+fn the_gpu_demo_document_fills_the_cap_claimed_fully_on_the_gpu() {
     let mut registry = NodeRegistry::new();
     ph2d_node_registry_init::register_all_nodes(&mut registry).expect("registry builds");
     let mut doc = MotionDoc::new();
     let sinks = build_gpu_demo_document(&mut doc, &registry).expect("well-typed GPU demo");
     let out = *sinks.first().expect("one sink");
 
-    // The grid emits `rows × cols` cells (both are element counts, capped at
-    // 16.7M — 2M is well under). Read them off the graph and assert the product.
+    // ⛔⛔⛔ **OS DOIS MILHÕES MORRERAM EM 2026-09-22, E FOI UMA ORDEM DO DONO QUE OS MATOU**
+    // (*«vamos efetivar o limite de 16 384»*). O comentário que aqui estava dizia *«capped at
+    // 16.7M — 2M is well under»*, e esse `16,7 M` era o `RECOMMENDED_MAX_ELEMENTS`: uma cerca de
+    // SEGURANÇA contra alocação, não um tecto de produto. Hoje o `motion.grid` clampa cada LADO em
+    // `LADO_MAX_DE_GRELHA` e a cena entrega `16 384`.
+    //
+    // ⚠️⚠️ **O NOME deste teste dizia `two_million` e isso era um sítio a mais onde o número
+    // envelhecia** — ele passa a dizer a LEI (*enche o tecto*). É a segunda vez nesta rodada:
+    // o `o_passo_do_tecto_entrega_meio_milhao_de_celulas` pagou a mesma correcção.
+    //
+    // ⚠️ **E o que este gate mede de facto CONTINUA INTACTO**: que a cadeia inteira é reivindicada
+    // pela placa, sem fronteira de CPU, com três etapas a despachar. *Foi só a população que
+    // desceu — a lei do plano é a mesma.*
     let grid = doc
         .graph
         .nodes()
@@ -79,8 +90,8 @@ fn the_gpu_demo_document_is_two_million_instances_claimed_fully_on_the_gpu() {
     let (rows, cols) = (ov["rows"], ov["cols"]);
     assert_eq!(
         rows as u64 * cols as u64,
-        2_000_000,
-        "the GPU smoke document must be 2.000.000 instances ({rows} × {cols})"
+        ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO as u64,
+        "o documento do smoke de GPU tem de encher o tecto ({rows} × {cols})"
     );
 
     // Every node is kernel-covered → the plan claims the WHOLE chain (no CPU
@@ -422,10 +433,13 @@ fn the_panel_demo_is_fully_gpu() {
         let outs = cook
             .cook(&doc.graph, &registry, n, 0.25)
             .unwrap_or_else(|e| panic!("{ty} cooks: {e:?}"));
+        // ⛔ **`262 144` era o que a cena pedia; com o tecto do dono (2026-09-22) o lado clampa
+        // em `LADO_MAX_DE_GRELHA` e ela entrega `16 384`.** O número é DERIVADO para não haver um
+        // segundo sítio a envelhecer.
         assert_eq!(
             outs[0].as_stream().count(),
-            262_144,
-            "{ty} must carry 262144 — it is the number the smoke reads off the \
+            ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO,
+            "{ty} must carry the cap — it is the number the smoke reads off the \
              card, and `value.math` carrying 1 would be the count law reading \
              port 0 instead of the widest input"
         );

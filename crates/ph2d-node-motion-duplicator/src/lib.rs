@@ -63,7 +63,7 @@ use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{
-    LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec, RECOMMENDED_MAX_ELEMENTS,
+    LoweringKind, MAX_INSTANCIAS_POR_NO, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec,
 };
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -497,7 +497,14 @@ impl NodeOp for MotionDuplicator {
             mode,
             shape.count(),
             points.count(),
-            RECOMMENDED_MAX_ELEMENTS,
+            // ⭐⭐⭐ **O TECTO POR NÓ** (ordem do dono, 2026-09-22: *«vamos efetivar o limite de
+            // 16 384»*). ⛔ O `RECOMMENDED_MAX_ELEMENTS` que aqui estava é `1 << 24` — uma cerca
+            // de SEGURANÇA contra um `f32` não confiável virar uma alocação, e não um tecto de
+            // produto: medido, este nó emitia **`16 777 216`** com as duas portas no tecto.
+            //
+            // ⚠️ O [`points_within_budget`] já fazia a conta certa (`np.min(max / ns)` — a lei do
+            // PRODUTO); o que estava errado era o número que ele recebia.
+            MAX_INSTANCIAS_POR_NO,
         );
         let out = duplicate(
             shape,

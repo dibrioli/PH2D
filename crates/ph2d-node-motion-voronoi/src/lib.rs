@@ -67,7 +67,10 @@ const MAX_RES: usize = 1625;
 /// product (§0.0); on the CPU reference the top of this range is minutes per
 /// cook (extrapolated from its measured 2,4 ms at 600) — the reference computes
 /// the same answer, the device owns the ceiling.
-const MAX_POINTS: usize = 165_000;
+/// ⭐⭐⭐ **O tecto passa a ser o do PRODUTO — ordem do dono, 2026-09-21** (`16 384` objectos por
+/// nó). O `165 000` que aqui esteve saiu de uma medição de RECURSO; este sai de uma decisão de
+/// PRODUTO, e as duas coisas ficam escritas.
+const MAX_POINTS: usize = ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO;
 /// The iteration clamp — shared with the device spec below, so the two paths
 /// cut the same slider at the same number.
 const MAX_ITERATIONS: i64 = 64;

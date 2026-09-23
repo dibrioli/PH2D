@@ -40,6 +40,20 @@
 //! Under `PH2D_GPU_COOK=1` each chain is claimed with no boundary — grid build,
 //! neighbour sweep, integrate and `scale` all on the device, zero readback. Both
 //! auto-play on tool entry like every boot document; zoom out and watch.
+//!
+//! ⛔⛔⛔ **OS LADOS DE GRELHA DESTE FICHEIRO SÃO DERIVADOS DO TECTO DESDE 2026-09-22** — ordem do
+//! dono (*«vamos efetivar o limite de 16 384»*, reafirmando a de 21/09). O `motion.grid` clampa
+//! cada LADO em [`LADO_MAX_DE_GRELHA`](ph2d_nodegraph::node::LADO_MAX_DE_GRELHA), logo um literal
+//! maior aqui entregaria `128` na mesma **e a cena anunciaria uma população que ela não produz**
+//! (`CLAUDE.md` §5.0).
+//!
+//! ⚠️ **O clamp é por LADO e não pelo PRODUTO, e a diferença era visível:** o `build_grid` trunca
+//! em ordem row-major, logo clampar o produto entregava as primeiras `16 384` células — um
+//! `512 × 512` saía como **`32` linhas de `512`**, uma FAIXA. Nenhum gate desta casa mede a FORMA
+//! de uma grelha, então isso passaria em silêncio.
+//!
+//! ⚠️ **E as medições que os números antigos carregavam FICAM**: elas continuam verdadeiras sobre
+//! o relógio e sobre a placa; o que mudou foi o que um nó pode pedir.
 
 use ph2d_motion_doc::MotionDoc;
 use ph2d_node_registry::NodeRegistry;
@@ -80,7 +94,24 @@ pub(super) fn build_gpu_boids_demo_document(
     // Shipped: 1 M, seek 0, radius 1.5 — opening ≈10 ms (60 % of a frame, the
     // safe side of r 2.0's 84 % first window), falling for as long as you watch.
     // The swarm slowly disperses instead of balling up; that IS the murmuration.
-    g.set_param(boids, "count", 1_048_576.0);
+    // ⛔⛔⛔ **O MILHÃO MORREU EM 2026-09-22, E FOI UMA ORDEM DO DONO QUE O MATOU** (*«vamos
+    // efetivar o limite de 16 384»*). A tabela acima — três rondas de medição, `160 s` de
+    // observação, o ajuste do atractor a ser refeito duas vezes — descreve uma cena que o produto
+    // já não pode produzir: o `motion.boids` clampa hoje em
+    // [`MAX_INSTANCIAS_POR_NO`](ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO).
+    //
+    // ⚠️⚠️ **E o que esta cena EXISTIA para mostrar era exactamente o milhão:** que o dispositivo
+    // faz `4,19 M` objectos em `3,85 ms` contra `195,9 ms` da CPU. A `16 384` as duas rotas cabem
+    // num quadro com folga e a demonstração **deixa de ter sujeito** — a mesma perda que a cena
+    // `=126` e a do pano sofreram na mesma ordem.
+    //
+    // ⚠️ A tabela FICA porque ela é a medição do DISPOSITIVO, e ela continua verdadeira sobre a
+    // placa; o que mudou foi o que um nó pode pedir.
+    g.set_param(
+        boids,
+        "count",
+        ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO as f32,
+    );
     // Load-bearing: without it the agents SEED into a fixed box and the grid
     // cannot help (O(N²)). √N holds the seed density → the grid starts O(N);
     // `seek = 0` is what keeps it O(N) forever after.
@@ -195,8 +226,8 @@ pub(super) fn build_gpu_collide_demo_document(
     // Amplitude 1.0 spent 95 %. At 129 600 the artist can DOUBLE the Amplitude and
     // still hold 60 fps — and 129 600 is still ~100× what this node could reach
     // before the grid existed.
-    g.set_param(src, "rows", 360.0);
-    g.set_param(src, "cols", 360.0);
+    g.set_param(src, "rows", ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32);
+    g.set_param(src, "cols", ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32);
     g.set_param(src, "gap_x", 0.25);
     g.set_param(src, "gap_y", 0.25);
 
@@ -272,8 +303,8 @@ pub(super) fn build_gpu_sweep_demo_document(
     let g = &mut doc.graph;
 
     let src = g.add_node("motion.grid");
-    g.set_param(src, "rows", 360.0);
-    g.set_param(src, "cols", 360.0);
+    g.set_param(src, "rows", ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32);
+    g.set_param(src, "cols", ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32);
     g.set_param(src, "gap_x", 0.25);
     g.set_param(src, "gap_y", 0.25);
 

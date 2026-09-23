@@ -18,13 +18,24 @@
 //! `ph2d-gpu-cook/tests/it/gpu_cpu_parity_fx.rs::fx_row_ceiling_probe` (dispositivo) — e a tabela
 //! está no doc-comment de cada const.
 
-/// O teto MEDIDO no caminho de CPU (`measure_lsystem_ceiling.rs`): derivar + interpretar a
-/// ~24 ns por elemento, `38,8 %` de um quadro a `262 145` elementos.
+/// ⛔⛔⛔ **ESTE TECTO DEIXOU DE SER UM RECURSO EM 2026-09-22, E A DISTINÇÃO É O PONTO.**
+///
+/// Ele foi `262 144`, e esse número era **de um recurso**: `measure_lsystem_ceiling.rs` mediu
+/// derivar + interpretar a `~24 ns` por elemento, `38,8 %` de um quadro a `262 145`. Hoje ele é
+/// `16 383`, e o número vem de uma **ORDEM DO DONO** (*«nenhum [nó] pode gerar mais de 16384
+/// objetos»*, 2026-09-21, reafirmada em 22/09) — não de uma medição.
+///
+/// ⚠️⚠️ **Um limite legítimo diz DE QUE RECURSO ele é** (`CLAUDE.md` §0.0), e este não diz: ele é
+/// uma decisão de PRODUTO sobre quantos objectos um nó pode pôr na cena. Escrevê-lo aqui sem esta
+/// linha faria a próxima pessoa procurar a medição que o justifica — e não há nenhuma.
+///
+/// ⭐ **A medição de `262 144` NÃO foi apagada**: ela continua no `measure_lsystem_ceiling.rs` e
+/// continua verdadeira sobre o RELÓGIO. O que mudou foi que o produto deixou de poder lá chegar.
 ///
 /// ⚠️ Cada literal aqui é um sítio a mais, e é de propósito: sem eles o gate compararia as consts
 /// **umas com as outras** e ficaria verde no dia em que alguém as movesse todas juntas por
 /// engano — um oráculo que usa a coisa sob teste para computar o que espera é sempre verde.
-const MEASURED_LSYSTEM_CEILING: usize = 262_144;
+const MEASURED_LSYSTEM_CEILING: usize = ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO - 1;
 
 /// O teto MEDIDO no DISPOSITIVO para quem REÚNE (`fx_row_ceiling_probe`): ~1,8 ns por linha, e a
 /// cadeia `grid → oscillator → fx → output` ocupa `5,66–5,89 ms` (`34–35 %` de um quadro) a

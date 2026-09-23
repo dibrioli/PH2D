@@ -27,7 +27,7 @@ use ph2d_nodegraph::attr::{Column, SIZE_IDENTITY, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{
-    LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec, RECOMMENDED_MAX_ELEMENTS,
+    LoweringKind, MAX_INSTANCIAS_POR_NO, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec,
     param_as_count,
 };
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
@@ -372,9 +372,9 @@ impl NodeOp for MotionClone {
         // `count` from an `f32` param: total conversion (non-finite/negative →
         // 0) then clamped so `in_count * k` cannot overflow the allocation; at
         // least one copy (passthrough).
-        let requested = param_as_count(ctx.param("count"), RECOMMENDED_MAX_ELEMENTS);
+        let requested = param_as_count(ctx.param("count"), MAX_INSTANCIAS_POR_NO);
         let input = ctx.input(0);
-        let k = copies_within_budget(requested, input.count(), RECOMMENDED_MAX_ELEMENTS);
+        let k = copies_within_budget(requested, input.count(), MAX_INSTANCIAS_POR_NO);
         let step = radial::step_deg(arc, k);
         let place = |copy: usize| {
             radial::Placement::of(
@@ -442,7 +442,7 @@ use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
 /// ⚠️ **O custo de um multiplicador não é função só deste param:** ele é `count × entrada`, então
 /// a mesma contagem custa mil vezes mais sobre um stream mil vezes maior. O que torna um teto
 /// estático seguro aqui é o **orçamento de instâncias já existir a jusante** — `copies_within_budget`
-/// corta as cópias contra [`RECOMMENDED_MAX_ELEMENTS`], então pedir 10.000 cópias de um stream
+/// corta as cópias contra [`MAX_INSTANCIAS_POR_NO`], então pedir 10.000 cópias de um stream
 /// grande devolve menos cópias, nunca uma explosão. Medido pela porta do produto
 /// (`measure_the_count_ceiling`, fonte de 100 instâncias):
 ///
@@ -456,7 +456,7 @@ use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
 /// slider alcança.
 static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
     param: "count",
-    max: 10_000.0,
+    max: ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO as f32,
 }];
 
 /// Param UI hints (M1.P1) for the clone rows: whole-number copy count, a polar

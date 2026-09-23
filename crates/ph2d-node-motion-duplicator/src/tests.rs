@@ -402,7 +402,17 @@ fn what_the_budget_costs() {
     ] {
         let shape = stream_of(ns);
         let points = stream_of(np_pedido);
-        let np = points_within_budget(Pick::Off, ns, np_pedido, RECOMMENDED_MAX_ELEMENTS);
+        // ⛔ **O orçamento é o do PRODUTO desde 2026-09-22** (ordem do dono, o tecto de `16 384`).
+        // O `RECOMMENDED_MAX_ELEMENTS` que aqui estava é a cerca de SEGURANÇA (`1 << 24`), e a
+        // tabela media um regime que o nó já não alcança. ⚠️ *Com o tecto, as quatro linhas
+        // saturam na mesma contagem — o que esta sonda mostra hoje é o TECTO a morder, não a
+        // escada de custo que ela foi escrita para medir.*
+        let np = points_within_budget(
+            Pick::Off,
+            ns,
+            np_pedido,
+            ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO,
+        );
         let t = std::time::Instant::now();
         let out = duplicate(&shape, &points, np, Pick::Off, 0, 1.0, Transfer::of(0.0));
         let ms = t.elapsed().as_secs_f64() * 1000.0;

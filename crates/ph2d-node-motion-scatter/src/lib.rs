@@ -27,7 +27,7 @@ use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{
-    LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec, RECOMMENDED_MAX_ELEMENTS,
+    LoweringKind, MAX_INSTANCIAS_POR_NO, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec,
     param_as_count,
 };
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
@@ -312,7 +312,7 @@ impl NodeOp for MotionScatter {
     }
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
-        let count = param_as_count(ctx.param("count"), RECOMMENDED_MAX_ELEMENTS);
+        let count = param_as_count(ctx.param("count"), MAX_INSTANCIAS_POR_NO);
         let region = Region::rect(ctx.param("width"), ctx.param("height"));
         let seed = ctx.param("seed").max(0.0).round() as u32;
         let positions = scatter(count, &region, ctx.param(DENSITY_FALLOFF), seed);

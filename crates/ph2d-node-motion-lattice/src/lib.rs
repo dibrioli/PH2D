@@ -37,7 +37,11 @@ const VALUE_COL: &str = "v";
 /// `√3/2` — the equilateral row pitch (a constant, not a call; HR-5).
 const ROW_PITCH: f32 = 0.866_025_4;
 /// Grid side clamp (cost is O(rows·cols)).
-const MAX_SIDE: i64 = 400;
+/// ⭐⭐⭐ **O LADO MÁXIMO — o `128` que o dono ordenou em 2026-09-21** (*«nenhum deles pode gerar
+/// mais de 16384 objetos … num nó como grid o limite máximo é Rows = 128 e Columns = 128»*),
+/// DERIVADO do [`MAX_INSTANCIAS_POR_NO`](ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO) e não
+/// escrito.
+const MAX_SIDE: i64 = ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as i64;
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {

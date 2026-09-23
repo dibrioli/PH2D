@@ -219,6 +219,17 @@ impl NodeOp for MotionKaleidoscope {
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let segments = (ctx.param("segments").round() as i64).clamp(1, MAX_SEGMENTS) as usize;
+        // ⭐⭐⭐ **O TECTO É SOBRE O PRODUTO, e é por isso que ele não é o `MAX_SEGMENTS`** (ordem
+        // do dono, 2026-09-21: *«nenhum deles pode gerar mais de 16384 objetos»*).
+        //
+        // ⚠️ Este nó MULTIPLICA: a saída é `segments × entrada`. Um tecto sobre o factor — que é o
+        // que o `MAX_SEGMENTS` é — **não exprime um limite sobre o produto**, e a lei está escrita
+        // por extenso no cabeçalho do `motion.grid` desde antes desta wave. ⇒ com uma entrada já no
+        // tecto, `segments` cai para `1` e o nó passa a ser a identidade em contagem.
+        let entrada = ctx.input(0).count().max(1);
+        let segments = segments
+            .min(ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO / entrada)
+            .max(1);
         let reflect = ctx.param("reflect").round() as i64 != 0;
         let mode = ph2d_nodegraph::pivot::PivotMode::of(ctx.param(ph2d_nodegraph::pivot::PARAM));
         let typed = [ctx.param("pivot_x"), ctx.param("pivot_y")];

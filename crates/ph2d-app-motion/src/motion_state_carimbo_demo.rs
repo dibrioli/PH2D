@@ -161,11 +161,27 @@ pub(crate) const VAO: f32 = 2.4 * TAMANHO;
 /// **O LADO da grelha.** Ver a tabela do cabeçalho: ele não é escolhido, é o que põe as duas rotas
 /// em lados opostos de um quadro de 60 fps.
 ///
-/// ⚠️ **E ele é `300` e não os `320` do report** (`102 400`), MEDIDO e não por regra de três: a
+/// ⛔⛔⛔ **E ELE DEIXOU DE SER `300` POR ORDEM DO DONO** (2026-09-22: *«vamos efetivar o limite
+/// de 16 384»*, reafirmando a ordem de 21/09 depois de eu lhe ter dado o custo): o tecto é o
+/// [`LADO_MAX_DE_GRELHA`](ph2d_nodegraph::node::LADO_MAX_DE_GRELHA), e a cena passa de `90 000`
+/// para **`16 384`** estrelas.
+///
+/// ⚠️ **Ele tinha de mudar AQUI e não de ficar em `300`**: a grelha clampa o PRODUTO, logo um
+/// `300` escrito continuaria a entregar `16 384` — e a cena diria `90 000` em toda a prosa dela.
+/// *Uma cena que anuncia uma população que ela não produz ensina o contrário do que acontece*
+/// (§5.0). Por isso ele é hoje **derivado** do tecto, e não um número escrito ao lado dele.
+///
+/// ⚠️ **E o `300` era MEDIDO** (a tabela abaixo), o que quer dizer que a cena deixou de estar no
+/// ponto em que ela discrimina as duas rotas do carimbo: a `16 384` as duas cabem num quadro com
+/// folga. *O que ela passa a demonstrar é o TECTO e o LOD da forma, não a diferença entre as
+/// rotas* — e as duas tabelas do carimbo vivem nas sondas, que medem sem precisar de uma cena no
+/// limite do vsync.
+///
+/// ⚠️ **E ele era `300` e não os `320` do report** (`102 400`), MEDIDO e não por regra de três: a
 /// `320` a rota de hoje lê `16,77 ms` — **em cima da fronteira do vsync**, onde o app salta entre
 /// dois regimes e o número muda a cada arranque. A `300` ele lê `10,37` contra `14,67`, que é a
 /// distância que a cena existe para mostrar, **com as duas corridas estáveis**.
-pub(crate) const LADO_N: u32 = 300;
+pub(crate) const LADO_N: u32 = ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as u32;
 
 /// **O LADO com que a cena NASCE** — o [`LADO_N`], a menos que `PH2D_CARIMBO_LADO=<n>` diga outro.
 ///
@@ -266,15 +282,25 @@ const _: () = assert!(
     "a cena nao cabe num quadro pela rota ANTIGA -- ela passa a viver na fronteira do vsync, onde \
      o app salta entre dois regimes e o numero muda a cada corrida"
 );
+// ⛔⛔⛔ **AS DUAS CERCAS QUE AQUI ESTAVAM MORRERAM COM O TECTO DE `16 384`, E FOI A ORDEM DO DONO
+// QUE AS MATOU** — ficam escritas porque a morte delas é o achado.
+//
+// Elas exigiam que a cena ocupasse **`≥ 75 %`** de um quadro pela rota antiga (senão a moldura e o
+// chrome dominam e a diferença dilui-se no `raw`) e que as duas rotas diferissem **`≥ 35 %`**. Com
+// o tecto, a cena custa `16 384 × 163 ns = 2,7 ms` — `16 %` de um quadro ⇒ **ela deixou de poder
+// discriminar as duas rotas**, e o compilador disse-o em voz alta na primeira build com o tecto.
+//
+// ⚠️⚠️ *A cena não ficou errada: ela ficou SEM SUJEITO.* O que ela existia para mostrar era que a
+// `90 000` cópias a rota antiga não cabe num quadro e a nova cabe — e o produto deixou de oferecer
+// `90 000`. Manter as cercas seria exigir uma população que o app já não produz; apagá-las sem
+// dizer porquê seria a cena a prometer uma demonstração que ela já não faz.
+//
+// ⚠️ **As duas de CIMA ficam** — elas dizem que a cena CABE num quadro, e isso continua a ser uma
+// propriedade que se quer.
 const _: () = assert!(
-    ESTRELAS * ANTES_NS >= 75 * QUADRO_NS / 100,
-    "a cena e' pequena de mais -- o que sobra do quadro (a moldura, o chrome) passa a dominar e \
-     a diferenca entre as duas rotas dilui-se no `raw`"
-);
-const _: () = assert!(
-    ANTES_NS * 100 >= 135 * HOJE_NS,
-    "as duas rotas custam quase o mesmo -- a folga (o terceiro numero da barra) nao se distingue \
-     e a cena nao mostra nada"
+    ESTRELAS <= ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO as u64,
+    "a cena nao pode pedir mais objectos do que um no' pode criar -- ela entregaria menos do que \
+     anuncia, que e' a cena a ensinar o contrario do que acontece"
 );
 
 /// **O índice da estrela no `kind` do `source.shape`, derivado do PRÓPRIO enum.**

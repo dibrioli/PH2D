@@ -64,7 +64,7 @@ pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[
     },
     ParamHardMax {
         param: "count",
-        max: 50_000.0,
+        max: ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO as f32,
     },
     ParamHardMax {
         param: "iterations",

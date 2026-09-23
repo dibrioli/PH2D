@@ -25,7 +25,7 @@ use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, SourceWindow};
 use ph2d_nodegraph::node::{
-    LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec, RECOMMENDED_MAX_ELEMENTS,
+    LoweringKind, MAX_INSTANCIAS_POR_NO, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec,
     param_as_count,
 };
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
@@ -120,7 +120,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     // Uma espiral é estática: a contagem é o param, e não anda com o playhead nem com uma
     // entrada (ela não tem nenhuma).
     count_law: Some(|c| {
-        SourceWindow::of_count(param_as_count((c.param)("count"), RECOMMENDED_MAX_ELEMENTS))
+        SourceWindow::of_count(param_as_count((c.param)("count"), MAX_INSTANCIAS_POR_NO))
     }),
     variant_by_param: None,
     applicable: None,
@@ -146,7 +146,7 @@ impl NodeOp for MotionFibonacci {
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         // Total conversion (non-finite/negative → 0) + cap, like the grid.
-        let count = param_as_count(ctx.param("count"), RECOMMENDED_MAX_ELEMENTS);
+        let count = param_as_count(ctx.param("count"), MAX_INSTANCIAS_POR_NO);
         let spacing = ctx.param("spacing");
         let angle = ctx.param("angle");
         let positions = build_spiral(count, spacing, angle);
@@ -187,7 +187,7 @@ use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
 /// Um milhão de pontos custa **28% de um quadro de 60 fps**. O teto é esse número.
 pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
     param: "count",
-    max: 1_000_000.0,
+    max: ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO as f32,
 }];
 
 static PARAM_HINTS: &[ParamUiHint] = &[

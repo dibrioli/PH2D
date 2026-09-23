@@ -143,7 +143,7 @@ pub(super) static PARAM_UNITS: &[ParamUnitDecl] = &[
 pub(super) static PARAM_HARD_MAX: &[ParamHardMax] = &[
     ParamHardMax {
         param: "count",
-        max: 1_048_576.0,
+        max: ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO as f32,
     },
     ParamHardMax {
         param: "max_speed",

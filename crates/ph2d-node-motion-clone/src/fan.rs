@@ -21,7 +21,7 @@ use super::{SIZE_IDENTITY, radial, taper_t};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::TimeFans;
 use ph2d_nodegraph::graph::Graph;
-use ph2d_nodegraph::node::{NodeOp, RECOMMENDED_MAX_ELEMENTS, param_as_count};
+use ph2d_nodegraph::node::{MAX_INSTANCIAS_POR_NO, NodeOp, param_as_count};
 use ph2d_nodegraph::time::{TimeMap, TimeMode};
 
 /// O param que liga o leque, em SEGUNDOS por cópia.
@@ -65,7 +65,7 @@ pub fn time_fans(
         if offset.abs() < MIN_OFFSET {
             continue;
         }
-        let k = param_as_count(p("count"), RECOMMENDED_MAX_ELEMENTS).max(1);
+        let k = param_as_count(p("count"), MAX_INSTANCIAS_POR_NO).max(1);
         // ⚠️ **A cópia 0 é o AGORA, exactamente** (`offset = 0` no primeiro mapa), então o
         // conjunto que já existia continua ancorado onde estava e as outras cópias é que
         // recuam. Ancorá-lo no passado moveria o desenho inteiro ao ligar o knob.

@@ -27,9 +27,19 @@ use ph2d_motion_doc::MotionDoc;
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::graph::NodeId;
 
-/// O lado do pano: `320 × 320 = 102 400` peças — a mesma contagem das tabelas do doc 98, para que
+/// ⛔⛔⛔ **O lado do pano DESCEU de `320` para `128` em 2026-09-22, por ordem do dono** (*«vamos
+/// efetivar o limite de 16 384»*): a grelha clampa o PRODUTO, logo um `320` escrito continuaria a
+/// entregar `16 384` e a cena diria `102 400` em toda a prosa dela. ⚠️ *Uma cena que anuncia uma
+/// população que ela não produz ensina o contrário do que acontece* (§5.0) — por isso ele é hoje
+/// **derivado** do tecto.
+///
+/// ⚠️ **E a cena perdeu o SUJEITO que a justificava**, como a `=126` da mesma ordem: as `102 400`
+/// peças eram o ponto (*«um custo de `50×` sobre dez peças não se vê»*), e a `16 384` a margem
+/// encolhe. *Ela não ficou errada — ficou a mostrar menos do que existia para mostrar.*
+///
+/// ⚠️ O lado de `320 × 320 = 102 400` era a mesma contagem das tabelas do doc 98, para que
 /// o que se vê aqui e o que lá está medido sejam o MESMO número de objectos.
-const LADO: f32 = 320.0;
+const LADO: f32 = ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32;
 /// O vão entre peças. ⚠️ Apertado de propósito: a `320` de lado, um vão folgado põe o pano fora do
 /// alcance do zoom e a cena ensinaria *«não aparece nada»*.
 const VAO: f32 = 0.012;

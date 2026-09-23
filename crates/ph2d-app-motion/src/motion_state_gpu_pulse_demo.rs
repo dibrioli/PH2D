@@ -46,10 +46,26 @@ use ph2d_nodegraph::graph::NodeId;
 ///
 /// ⚠️ E o número de DEBUG é 11× pior (5,44 ms já a 40.000) — um lado a lado que só existe
 /// porque medi no perfil errado primeiro.
-pub(super) const SIDE: f32 = 512.0;
+/// ⛔⛔⛔ **DESCEU DE `512` PARA `128` EM 2026-09-22, POR ORDEM DO DONO** (*«vamos efetivar o
+/// limite de 16 384»*) — e aqui ela não era só uma perda de população: **a grelha deixava de ser
+/// uma grelha**.
+///
+/// ⚠️⚠️ O `build_grid` clampa o PRODUTO truncando em ordem row-major (`rows × cols).min(max)`),
+/// logo `512 × 512` entregava as primeiras `16 384` células = **`32` linhas de `512`** — uma
+/// FAIXA. O teste `build_grid_caps_pathological_product_at_max` já descrevia esse corte como
+/// *«patológico»*; com o tecto ele passou a ser o caso NORMAL de toda cena grande.
+///
+/// ⇒ `128 × 128` é o quadrado que enche exactamente o tecto
+/// ([`LADO_MAX_DE_GRELHA`](ph2d_nodegraph::node::LADO_MAX_DE_GRELHA)), e a cena volta a ser
+/// simétrica — que é o que o portão do losango mede.
+pub(super) const SIDE: f32 = ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32;
 /// Passo da grade: `SIDE × GAP ≈ 12` unidades, a mesma moldura das cenas de campo — ela
 /// ENQUADRA no zoom default em vez de ser uma parede de 200 unidades.
-const GAP: f32 = 0.024;
+///
+/// ⚠️ **E ele subiu com a descida do lado**: a moldura é `SIDE × GAP ≈ 12` unidades, e mantê-la é
+/// o que faz a cena continuar a ENQUADRAR no zoom de omissão. Com o lado a `128`, o passo é
+/// `12 / 128`.
+const GAP: f32 = 12.0 / (ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32);
 /// Tamanho do ponto em repouso (< `GAP`, então os pontos ficam distintos em vez de ladrilhar
 /// numa folha).
 pub(super) const DOT: f32 = 0.018;

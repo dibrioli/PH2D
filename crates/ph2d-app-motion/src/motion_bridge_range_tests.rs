@@ -363,11 +363,21 @@ fn the_quadratic_node_keeps_a_tight_ceiling() {
         r.hard_max
     );
     // E o CONTROLE, a metade que impede a leitura preguiçosa "então aperte todo mundo": um nó
-    // LINEAR desta mesma wave alcança MUITO mais longe, porque a medição dele disse isso.
+    // LINEAR alcança mais longe que o quadrático, porque a medição dele disse isso.
+    //
+    // ⛔⛔⛔ **A RAZÃO QUE ESTE CONTROLO EXIGIA MORREU EM 2026-09-22, E FOI UMA ORDEM DO DONO QUE A
+    // MATOU** (*«vamos efetivar o limite de 16 384»*). Ele pedia `100×` — e pedia-o com razão: o
+    // `motion.fibonacci` declarava `1 000 000` contra os `3 000` do `scatter`, uma razão de `333`.
+    // Com o tecto por nó, todo gerador LINEAR fica em `16 384` e a razão cai para **`5,46`**.
+    //
+    // ⚠️ *A lei não morreu — o NÚMERO dela é que era uma propriedade do tecto antigo.* O que
+    // continua verdade, e é o que este controlo existe para dizer, é que o quadrático fica
+    // **estritamente mais apertado** que o linear: harmonizar os dois daria ao artista uma caixa
+    // que aceita `16 384` num nó cujo quadro quebra aos `4 000`.
     let linear = row_of("motion.fibonacci", "count");
     assert!(
-        linear.hard_max > r.hard_max * 100.0,
-        "um nó linear tem de alcançar muito além do quadrático — {} contra {}",
+        linear.hard_max > r.hard_max,
+        "um nó linear tem de alcançar além do quadrático — {} contra {}",
         linear.hard_max,
         r.hard_max
     );

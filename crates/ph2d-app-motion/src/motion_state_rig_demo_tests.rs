@@ -355,20 +355,25 @@ fn o_quinhao_a_zero_devolve_a_pele_ao_repouso() {
 /// escrito no anúncio é executável. *Um tecto que subiu e que o passo do tutorial não alcança não
 /// subiu para o artista.*
 #[test]
-fn o_passo_do_tecto_entrega_meio_milhao_de_celulas() {
-    const LADO: f32 = 512.0;
+fn o_passo_do_tecto_entrega_o_que_o_no_pode_dar() {
+    // ⛔⛔ **O NOME DESTE TESTE DIZIA `meio_milhao` E ISSO MORREU EM 2026-09-22** (ordem do dono,
+    // o tecto de `16 384`): o `motion.wave` clampa cada LADO em `LADO_MAX_DE_GRELHA`, e o passo 4
+    // do anúncio entrega `16 384` células. *Um nome de gate que cita um número é um sítio a mais
+    // onde esse número envelhece* — ele passa a dizer a LEI.
+    #[expect(clippy::cast_precision_loss, reason = "um lado de grelha, 2^7")]
+    let lado = ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32;
     let s = corre(CAMPO, 0, |g| {
         let w = primeiro(g, "motion.wave");
-        g.set_param(w, "rows", LADO);
-        g.set_param(w, "cols", LADO);
+        g.set_param(w, "rows", lado);
+        g.set_param(w, "cols", lado);
         g.set_param(w, "spacing", 0.004);
     });
     let n = pontos(&s).len();
-    #[expect(clippy::cast_possible_truncation, reason = "um lado de grelha")]
-    let esperado = (LADO as usize) * (LADO as usize);
+    let esperado =
+        ph2d_nodegraph::node::LADO_MAX_DE_GRELHA * ph2d_nodegraph::node::LADO_MAX_DE_GRELHA;
     assert_eq!(
         n, esperado,
-        "o artista escreveu {LADO}x{LADO} e recebeu {n} celulas — o passo 4 do anuncio ensinaria \
+        "o artista escreveu {lado}x{lado} e recebeu {n} celulas — o passo 4 do anuncio ensinaria \
          um tecto que nao e' o que o nó tem"
     );
 }

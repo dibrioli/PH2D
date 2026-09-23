@@ -45,7 +45,11 @@ use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 /// ⛔ **O que está aqui é o COZIMENTO, não o quadro.** O quadro soma o desenho das peças, que
 /// esta sonda não mede — e afirmar um número de quadro sem o medir foi exactamente o que a
 /// tabela velha fez.
-pub(super) const SIDE: f32 = 224.0;
+/// ⛔ **Desceu de `224` com o tecto do dono** (2026-09-22): a grelha clampa cada LADO em
+/// [`LADO_MAX_DE_GRELHA`](ph2d_nodegraph::node::LADO_MAX_DE_GRELHA), logo um `224` escrito
+/// entregaria `128` e a cena anunciaria um campo que ela não produz.
+#[expect(clippy::cast_precision_loss, reason = "um lado de grelha, 2^7")]
+pub(super) const SIDE: f32 = ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32;
 /// O custo do COZIMENTO nos dois modos, em ms — o que a sonda `measure_lazy_switch_cost`
 /// imprimiu (release, máquina calma, mediana de 7).
 ///

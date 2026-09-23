@@ -108,7 +108,26 @@ fn readings(
     }
     // ⚠️ A meia geração não é um param: é o estado em que o `Generations` está a ser ANIMADO,
     // e é o único sítio onde os dois interruptores do crescimento suave têm o que interpolar.
-    let wake = ls::probe_param_prints(p.axiom, p.rules, p.generations + 0.5, &lit, param, &vals);
+    //
+    // ⛔⛔ **E ela tem de correr onde AINDA HÁ ORÇAMENTO** (2026-09-21, o tecto de instâncias do
+    // dono levou o `MAX_MODULES` a `16 383`): o `Dragon` de fábrica pede `6 145` módulos aos `12`
+    // níveis e a geração seguinte pediria `~18 000` ⇒ ele **satura**, a meia geração não deriva
+    // nada, e o `continuous_angle` lê-se INERTE. *Mas ele não é inerte por a gramática não o ler —
+    // é inerte por não haver o que interpolar*, e esta régua pergunta pela GRAMÁTICA. Correr no
+    // tecto conflacaria as duas causas e acusaria um knob vivo.
+    //
+    // ⇒ o nível da meia geração é **DERIVADO**: desce-se até um em que o `+0,5` ainda muda a
+    // figura. Se nenhum mudar, a acusação é genuína e ela volta.
+    let meia = (1..=(p.generations.round() as i32).max(1))
+        .rev()
+        .map(|g| g as f32)
+        .find(|g| {
+            let a = ls::probe_build(p.axiom, p.rules, *g, &lit).count();
+            let b = ls::probe_build(p.axiom, p.rules, *g + 0.5, &lit).count();
+            a != b
+        })
+        .unwrap_or(p.generations);
+    let wake = ls::probe_param_prints(p.axiom, p.rules, meia + 0.5, &lit, param, &vals);
     (plain == 1, plain == 1 && wake == 1)
 }
 

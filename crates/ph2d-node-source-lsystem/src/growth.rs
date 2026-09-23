@@ -287,6 +287,12 @@ pub(crate) fn raw_ratio(axiom_src: &str, rules_src: &str, p: &Params) -> f32 {
 }
 
 /// A razão medida **e** a família, das mesmas derivações — `(razão, refina?)`.
+/// O topo que a janela da razão TENTA — ela desce sozinha quando o orçamento satura antes.
+///
+/// ⚠️ **Duas gerações de distância é o que a média geométrica `√(c/a)` pede**, e `6` era o topo
+/// de sempre: ele fica como a AMBIÇÃO, e o orçamento é que decide.
+const JANELA_TOPO: u16 = 6;
+
 pub(crate) fn raw_ratio_and_family(axiom_src: &str, rules_src: &str, p: &Params) -> (f32, bool) {
     let params = |n: &str| p.by_name(n);
     let axiom = derive::axiom_modules(axiom_src, &params);
@@ -322,8 +328,21 @@ pub(crate) fn raw_ratio_and_family(axiom_src: &str, rules_src: &str, p: &Params)
     // ⚠️ **A geração 5 do meio SAIU** (auditoria de 2026-08-30): o valor dela CANCELAVA na
     // média geométrica `√(c/a)` e só alimentava uma guarda — uma derivação e uma travessia
     // inteiras por um número que ninguém lia, e a régua nova tornou-as mais caras.
-    let (a, _) = at(4);
-    let (c, six) = at(6);
+    //
+    // ⛔⛔ **E A JANELA DEIXOU DE SER `[4, 6]` CRAVADO em 2026-09-21** (o tecto de instâncias do
+    // dono levou o `MAX_MODULES` de `262 143` para `16 383`): com uma regra que multiplica por
+    // SETE, a geração `6` pede `117 649` módulos, a derivação **SATURA**, e as duas amostras passam
+    // a ser a MESMA — a razão do `Bush` lia `1,7321` (`√3`) onde a matemática diz `3`.
+    //
+    // ⭐ ⇒ o topo é **DERIVADO do orçamento**: deriva-se em `6` e lê-se quantas gerações INTEIRAS
+    // de facto saíram (`d.generations`, que é o que a saturação encurta). *Uma régua com a janela
+    // cravada mede o tecto em vez da lei, e um tecto é uma decisão que muda.*
+    let topo = {
+        let (_, d) = at(JANELA_TOPO);
+        d.generations.max(2)
+    };
+    let (a, _) = at(topo - 2);
+    let (c, six) = at(topo);
     // ⭐ A família sai da MESMA derivação, e pela porta que o [`crate::build`] usa.
     let refines = six.grows_by_refining();
     if !(a > 1e-6 && c > 1e-6) {

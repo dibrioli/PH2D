@@ -187,7 +187,7 @@ fn count_mode_is_the_call_that_always_shipped() {
     for c in [0.0, 1.0, 32.0, 7.5, -4.0, f32::NAN, 1e9] {
         assert_eq!(
             resolve_count(&S, 0.0, c, 0.25),
-            param_as_count(c, RECOMMENDED_MAX_ELEMENTS),
+            param_as_count(c, MAX_INSTANCIAS_POR_NO),
             "count {c}",
         );
     }
@@ -254,7 +254,7 @@ fn each_mode_reads_only_its_own_number() {
 /// never on a panic and never on a count the loop cannot allocate.
 #[test]
 fn a_hostile_spacing_lands_on_the_clamp() {
-    assert_eq!(resolve_count(&S, 1.0, 32.0, 0.0), RECOMMENDED_MAX_ELEMENTS);
+    assert_eq!(resolve_count(&S, 1.0, 32.0, 0.0), MAX_INSTANCIAS_POR_NO);
     assert_eq!(resolve_count(&S, 1.0, 32.0, f32::NAN), 1);
     assert_eq!(resolve_count(&S, 1.0, 32.0, -1.0), 1);
     assert_eq!(resolve_count(&S, 1.0, 32.0, 1e9), 1, "one point, not zero");
@@ -306,7 +306,7 @@ fn the_two_defaults_describe_the_same_density() {
             .expect("param")
             .default
     };
-    let by_count = param_as_count(def("count"), RECOMMENDED_MAX_ELEMENTS);
+    let by_count = param_as_count(def("count"), MAX_INSTANCIAS_POR_NO);
     let by_length = resolve_count(&S, 1.0, 0.0, def("spacing"));
     let ratio = by_length as f32 / by_count as f32;
     assert!(

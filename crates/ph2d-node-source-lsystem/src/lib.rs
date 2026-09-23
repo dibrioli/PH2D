@@ -205,7 +205,13 @@ pub const LEAF_SYMBOLS: &[u8; 3] = b"JKM";
 /// ⚠️ **E o tecto NÃO pode ser em ITERAÇÕES** — a taxa de expansão é propriedade da REGRA
 /// (`F -> FF` dobra, `F -> F[+F]F[-F]F` quintuplica). *A saturação é ao fim de uma geração
 /// INTEIRA* — ver [`derive`].
-pub const MAX_MODULES: usize = 262_144;
+/// ⭐⭐⭐ **E o tecto passa a ser o do PRODUTO — ordem do dono, 2026-09-21** (*«nenhum deles pode
+/// gerar mais de 16384 objetos»*).
+///
+/// ⚠️ **`− 1` e não o número redondo**, pela linha acima: a tartaruga planta a raiz ANTES do
+/// primeiro símbolo, logo a contagem EMITIDA é `MAX_MODULES + 1`. *O tecto do dono é sobre o que
+/// sai, não sobre o que se deriva* — e escrever o número redondo aqui entregaria `16 385`.
+pub const MAX_MODULES: usize = ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO - 1;
 
 /// **O modo GUIADO** — os sliders de forma mandam, e a gramática é derivada deles.
 pub const MODE_GUIDED: i32 = 0;

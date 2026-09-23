@@ -162,7 +162,11 @@ fn republishing_an_unchanged_plant_builds_no_geometry_and_survives_the_sweep() {
 #[test]
 fn a_big_plant_is_published_whole_and_no_second_ceiling_clips_it() {
     let (mut state, n) = plant(ls::GEOMETRY_BRANCHES);
-    // Seis gerações desta gramática dão ~15 k ramos — bem acima do tecto que foi removido.
+    // ⛔⛔ **Seis gerações desta gramática davam `~15 k` ramos, e desde 2026-09-22 dão `3 124`** —
+    // a ordem do dono (*«vamos efetivar o limite de 16 384»*) pôs o `MAX_MODULES` do nó em
+    // `16 383`, e a gramática `F -> F[+F]F[-F]F` tem **NOVE** símbolos por `F`: a seis gerações ela
+    // pede `9⁶ = 531 441` módulos e satura muito antes. *A planta continua a ser a MAIOR que o nó
+    // pode dar — o que mudou foi o que ele pode dar.*
     state.doc.graph.set_param(n, ls::param::GENERATIONS, 6.0);
     let before = super::ribbons_built();
     publish(&mut state, 0.0);
@@ -180,9 +184,19 @@ fn a_big_plant_is_published_whole_and_no_second_ceiling_clips_it() {
         0.0,
     )
     .len();
+    // ⛔⛔⛔ **A BARRA DE `4096` MORREU COM O TECTO DO DONO, e ela ERA o tecto removido.** Ela
+    // dizia *«a fixtura tem de ser maior que o tecto que foi removido»*, e o tecto novo
+    // (`MAX_MODULES = 16 383` MÓDULOS) é mais apertado do que aquele era em RAMOS: nenhuma planta
+    // deste nó volta a passar `4096` ramos.
+    //
+    // ⭐ **O que a barra existe para garantir continua a ser garantido, e agora é DERIVADO**: a
+    // fixtura tem de usar uma fracção significativa do que o nó PODE dar, senão um corte a `N`
+    // ramos passaria despercebido nela. A planta satura o tecto (`3 124` ramos de `16 383`
+    // módulos — os `[`, `]`, `+` e `-` não são ramos), e a barra é uma fracção dele.
     assert!(
-        want > 4096,
-        "a fixtura tem de ser MAIOR que o tecto removido: {want}"
+        want > ls::MAX_MODULES / 8,
+        "a fixtura tem de usar uma fracção significativa do tecto do nó ({}): {want}",
+        ls::MAX_MODULES
     );
     assert_eq!(
         built, want,

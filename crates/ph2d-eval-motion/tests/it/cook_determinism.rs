@@ -111,7 +111,16 @@ fn cook_once(g: &Graph, reg: &NodeRegistry, sink: NodeId) -> Stream {
 /// Captured on the dev machine (Linux). Re-pin with an explanation if a
 /// deliberate node-math change moves it. `0` is the placeholder before the first
 /// capture — the test prints the observed value on mismatch.
-const EXPECTED_FINGERPRINT: u64 = 0x1aa7_e05c_4bdb_713f;
+// ⛔⛔⛔ **RE-PINADO EM 2026-09-22, E A MUDANÇA É DELIBERADA** (ordem do dono: *«vamos efetivar o
+// limite de 16 384»*). A fixtura pede `707 × 707` e o `motion.grid` passou a clampar cada LADO em
+// `LADO_MAX_DE_GRELHA`: ela coze `128 × 128 = 16 384` instâncias em vez de `499 849`, logo a
+// impressão do cozimento é outra. *Não é uma deriva de matemática de nó — é o produto a entregar
+// outra população.*
+//
+// ⭐ **E o golden CONTINUA a exercitar o caminho paralelo**, que é a razão de ele ser grande:
+// `16 384 > PAR_THRESHOLD` (`8 192`). Se o tecto descesse abaixo disso, a asserção logo abaixo
+// reprovaria e diria que o golden deixou de medir o que existe para medir.
+const EXPECTED_FINGERPRINT: u64 = 0x11f2_f434_2fc2_4f37;
 
 /// Manual perf probe (not a gate — `#[ignore]`, meaningful only in `--release`).
 /// Cooks a ~500k-instance chain and prints the wall time. Run it twice to read
@@ -140,7 +149,7 @@ fn cook_500k_timing() {
         .unwrap();
     }
     g.set_param(grid, "rows", 707.0);
-    g.set_param(grid, "cols", 707.0); // 499_849 instances
+    g.set_param(grid, "cols", 707.0); // pedidas 499_849; o tecto por lado entrega 16_384
     g.set_param(osc, "amplitude", 1.3);
     g.set_param(osc, "frequency", 2.1);
     g.set_param(mv, "dx", 3.5);

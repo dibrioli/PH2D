@@ -9,6 +9,20 @@
 //!
 //! (Split at the HR-18 cap: the demos file reached 612 LOC. The seam is the
 //! question, not the line count — that is just what forced the choice.)
+//!
+//! ⛔⛔⛔ **OS LADOS DE GRELHA DESTE FICHEIRO SÃO DERIVADOS DO TECTO DESDE 2026-09-22** — ordem do
+//! dono (*«vamos efetivar o limite de 16 384»*, reafirmando a de 21/09). O `motion.grid` clampa
+//! cada LADO em [`LADO_MAX_DE_GRELHA`](ph2d_nodegraph::node::LADO_MAX_DE_GRELHA), logo um literal
+//! maior aqui entregaria `128` na mesma **e a cena anunciaria uma população que ela não produz**
+//! (`CLAUDE.md` §5.0).
+//!
+//! ⚠️ **O clamp é por LADO e não pelo PRODUTO, e a diferença era visível:** o `build_grid` trunca
+//! em ordem row-major, logo clampar o produto entregava as primeiras `16 384` células — um
+//! `512 × 512` saía como **`32` linhas de `512`**, uma FAIXA. Nenhum gate desta casa mede a FORMA
+//! de uma grelha, então isso passaria em silêncio.
+//!
+//! ⚠️ **E as medições que os números antigos carregavam FICAM**: elas continuam verdadeiras sobre
+//! o relógio e sobre a placa; o que mudou foi o que um nó pode pedir.
 
 use ph2d_motion_doc::MotionDoc;
 use ph2d_node_registry::NodeRegistry;
@@ -57,8 +71,16 @@ pub(super) fn build_gpu_panel_demo_document(
     let grid = g.add_node("motion.grid");
     // 512 × 512 = 262.144 — six figures on the card, and a size the CPU pump
     // visibly labours at, so `PH2D_GPU_COOK=0` is a real A/B rather than a flag.
-    g.set_param(grid, "rows", 512.0);
-    g.set_param(grid, "cols", 512.0);
+    g.set_param(
+        grid,
+        "rows",
+        ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32,
+    );
+    g.set_param(
+        grid,
+        "cols",
+        ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32,
+    );
     g.set_param(grid, "gap_x", 1.0);
     g.set_param(grid, "gap_y", 1.0);
 

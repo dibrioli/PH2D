@@ -77,10 +77,14 @@ fn the_cloth_is_as_big_as_the_announcement_says() {
         .cook
         .cook(&m.doc.graph, &m.registry, sink, 0.0)
         .expect("coze");
+    // ⚠️ **A contagem é DERIVADA do tecto**, e não `102 400` escrito: a cena declara o lado a
+    // partir do `LADO_MAX_DE_GRELHA` desde a ordem do dono de 2026-09-22, e um número escrito aqui
+    // discordaria dela no dia em que o tecto mudasse outra vez.
+    let lado = ph2d_nodegraph::node::LADO_MAX_DE_GRELHA;
     assert_eq!(
         saida[0].as_stream().count(),
-        102_400,
-        "320 x 320 -- a mesma contagem das tabelas do doc 98"
+        lado * lado,
+        "o pano tem de trazer o lado que a cena anuncia ({lado} x {lado})"
     );
 }
 

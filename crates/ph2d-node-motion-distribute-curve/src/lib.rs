@@ -48,12 +48,12 @@
 //! request the same way — ask for `0.5` on a `3.4` curve and get `0.57` — while rounding is off by
 //! at most half a step in either direction.
 //!
-//! ⚠️ **The two modes share ONE guard, and it is the substrate's** (`RECOMMENDED_MAX_ELEMENTS`) —
+//! ⚠️ **The two modes share ONE guard, and it is the substrate's** (`MAX_INSTANCIAS_POR_NO`) —
 //! not the ceiling in [`PARAM_HARD_MAX`]. The first draft of this wave clamped the derived count at
 //! the measured typed-ceiling, arguing *"a second door must not skip the measurement"*; reading it
 //! back against the code, the two numbers answer different questions and conflating them would have
 //! silently NARROWED `count`, which nobody asked for. `PARAM_HARD_MAX` is how far the artist's TEXT
-//! BOX reaches; `RECOMMENDED_MAX_ELEMENTS` is what the layout may allocate. `Length` has no text box
+//! BOX reaches; `MAX_INSTANCIAS_POR_NO` is what the layout may allocate. `Length` has no text box
 //! for a count at all, so there was no second door to the first number.
 //!
 //! ⚠️ And the floor is the `spacing` **slider's own min**, which costs no new number: a box with no
@@ -69,7 +69,7 @@ use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{
-    LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec, RECOMMENDED_MAX_ELEMENTS,
+    LoweringKind, MAX_INSTANCIAS_POR_NO, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec,
     param_as_count,
 };
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
@@ -194,7 +194,7 @@ fn distribute(cp: &[P2; 4], count: usize, offset: f32, align: bool) -> (Vec<P2>,
 ///
 /// `Count` reads the number; `Length` divides the curve's measured length ([`total_len`]) by the
 /// asked spacing and ROUNDS, so the actual spacing lands as close to the request as a whole number
-/// of points allows (module docs). Both end at the SAME guard, `RECOMMENDED_MAX_ELEMENTS`.
+/// of points allows (module docs). Both end at the SAME guard, `MAX_INSTANCIAS_POR_NO`.
 ///
 /// ⚠️ The `Count` arm is `param_as_count` with the argument it always had, so a graph in `Count`
 /// does not merely *behave* the same — it runs the same call.
@@ -204,10 +204,10 @@ fn distribute(cp: &[P2; 4], count: usize, offset: f32, align: bool) -> (Vec<P2>,
 /// clamp instead of on a panic.
 fn resolve_count(cp: &[P2; 4], mode: f32, count: f32, spacing: f32) -> usize {
     if mode.round() as i32 != 1 {
-        return param_as_count(count, RECOMMENDED_MAX_ELEMENTS);
+        return param_as_count(count, MAX_INSTANCIAS_POR_NO);
     }
     let n = (total_len(&arc_lut(cp)) / spacing).round() as usize;
-    n.clamp(1, RECOMMENDED_MAX_ELEMENTS)
+    n.clamp(1, MAX_INSTANCIAS_POR_NO)
 }
 
 struct MotionDistributeCurve;
@@ -281,7 +281,7 @@ use ph2d_node_registry::{ParamGroup, ParamHardMax, ParamUiHint, ParamWidget};
 /// contagem, porque cada ponto paga uma avaliação de curva.
 static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
     param: "count",
-    max: 1_000_000.0,
+    max: ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO as f32,
 }];
 
 /// As SEÇÕES deste nó (doc 88 B3). O mesmo corte do `motion.spline_wrap`, e com o mesmo nome

@@ -4,6 +4,20 @@
 //! transfer, and the A1-gpu **Curve** contour (=22), all cooked on the device.
 //!
 //! Sibling of `motion_state_gpu_demos.rs`, which is at the HR-18 cap.
+//!
+//! ⛔⛔⛔ **OS LADOS DE GRELHA DESTE FICHEIRO SÃO DERIVADOS DO TECTO DESDE 2026-09-22** — ordem do
+//! dono (*«vamos efetivar o limite de 16 384»*, reafirmando a de 21/09). O `motion.grid` clampa
+//! cada LADO em [`LADO_MAX_DE_GRELHA`](ph2d_nodegraph::node::LADO_MAX_DE_GRELHA), logo um literal
+//! maior aqui entregaria `128` na mesma **e a cena anunciaria uma população que ela não produz**
+//! (`CLAUDE.md` §5.0).
+//!
+//! ⚠️ **O clamp é por LADO e não pelo PRODUTO, e a diferença era visível:** o `build_grid` trunca
+//! em ordem row-major, logo clampar o produto entregava as primeiras `16 384` células — um
+//! `512 × 512` saía como **`32` linhas de `512`**, uma FAIXA. Nenhum gate desta casa mede a FORMA
+//! de uma grelha, então isso passaria em silêncio.
+//!
+//! ⚠️ **E as medições que os números antigos carregavam FICAM**: elas continuam verdadeiras sobre
+//! o relógio e sobre a placa; o que mudou foi o que um nó pode pedir.
 
 use ph2d_motion_doc::MotionDoc;
 use ph2d_node_registry::NodeRegistry;
@@ -30,8 +44,16 @@ pub(super) fn build_gpu_field_index_range_demo_document(
     let grid = g.add_node("motion.grid");
     // 512 × 512 = 262.144 unit quads, gap 1.0 tiling them edge-to-edge into a
     // dense field (the panel demo's scale — legibly a grid, substantial on GPU).
-    g.set_param(grid, "rows", 512.0);
-    g.set_param(grid, "cols", 512.0);
+    g.set_param(
+        grid,
+        "rows",
+        ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32,
+    );
+    g.set_param(
+        grid,
+        "cols",
+        ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32,
+    );
     // gap 0.024 makes the 512-wide field ~12 units (centred on origin), so it
     // FRAMES at the default zoom instead of being a 512-unit wall you must zoom
     // out to see. The 512-row count keeps the ordinal tilt at ~1/512 (a fine band
@@ -93,8 +115,16 @@ pub(super) fn build_gpu_field_box_demo_document(
     use ph2d_nodegraph::graph::{Edge, Pos};
     let g = &mut doc.graph;
     let grid = g.add_node("motion.grid");
-    g.set_param(grid, "rows", 512.0);
-    g.set_param(grid, "cols", 512.0);
+    g.set_param(
+        grid,
+        "rows",
+        ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32,
+    );
+    g.set_param(
+        grid,
+        "cols",
+        ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32,
+    );
     g.set_param(grid, "gap_x", 0.024);
     g.set_param(grid, "gap_y", 0.024);
     let scale = g.add_node("motion.scale");
@@ -155,8 +185,16 @@ pub(super) fn build_gpu_field_radial_sweep_demo_document(
     use ph2d_nodegraph::graph::{Edge, Pos};
     let g = &mut doc.graph;
     let grid = g.add_node("motion.grid");
-    g.set_param(grid, "rows", 512.0);
-    g.set_param(grid, "cols", 512.0);
+    g.set_param(
+        grid,
+        "rows",
+        ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32,
+    );
+    g.set_param(
+        grid,
+        "cols",
+        ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32,
+    );
     g.set_param(grid, "gap_x", 0.024);
     g.set_param(grid, "gap_y", 0.024);
     let scale = g.add_node("motion.scale");
@@ -215,8 +253,16 @@ pub(super) fn build_gpu_field_combine_demo_document(
     use ph2d_nodegraph::graph::{Edge, Pos};
     let g = &mut doc.graph;
     let grid = g.add_node("motion.grid");
-    g.set_param(grid, "rows", 512.0);
-    g.set_param(grid, "cols", 512.0);
+    g.set_param(
+        grid,
+        "rows",
+        ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32,
+    );
+    g.set_param(
+        grid,
+        "cols",
+        ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32,
+    );
     g.set_param(grid, "gap_x", 0.024);
     g.set_param(grid, "gap_y", 0.024);
     let scale = g.add_node("motion.scale");
@@ -293,8 +339,16 @@ pub(super) fn build_gpu_field_remap_demo_document(
     use ph2d_nodegraph::graph::{Edge, Pos};
     let g = &mut doc.graph;
     let grid = g.add_node("motion.grid");
-    g.set_param(grid, "rows", 512.0);
-    g.set_param(grid, "cols", 512.0);
+    g.set_param(
+        grid,
+        "rows",
+        ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32,
+    );
+    g.set_param(
+        grid,
+        "cols",
+        ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32,
+    );
     g.set_param(grid, "gap_x", 0.024);
     g.set_param(grid, "gap_y", 0.024);
     let scale = g.add_node("motion.scale");
@@ -364,8 +418,16 @@ pub(super) fn build_gpu_field_curve_demo_document(
     use ph2d_nodegraph::graph::{Edge, Pos};
     let g = &mut doc.graph;
     let grid = g.add_node("motion.grid");
-    g.set_param(grid, "rows", 512.0);
-    g.set_param(grid, "cols", 512.0);
+    g.set_param(
+        grid,
+        "rows",
+        ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32,
+    );
+    g.set_param(
+        grid,
+        "cols",
+        ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32,
+    );
     g.set_param(grid, "gap_x", 0.024);
     g.set_param(grid, "gap_y", 0.024);
     let scale = g.add_node("motion.scale");

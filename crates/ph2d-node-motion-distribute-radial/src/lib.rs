@@ -72,7 +72,7 @@ use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, SourceWindow};
 use ph2d_nodegraph::node::{
-    LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec, RECOMMENDED_MAX_ELEMENTS,
+    LoweringKind, MAX_INSTANCIAS_POR_NO, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec,
     param_as_count,
 };
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
@@ -369,7 +369,7 @@ const RADIAL_PARAMS: &[&str] = &[
 ];
 
 fn radial_count(c: &ph2d_nodegraph::gpu::CountLawCtx) -> SourceWindow {
-    SourceWindow::of_count(param_as_count((c.param)("count"), RECOMMENDED_MAX_ELEMENTS).max(1))
+    SourceWindow::of_count(param_as_count((c.param)("count"), MAX_INSTANCIAS_POR_NO).max(1))
 }
 
 static RADIAL_KERNEL: GpuKernel = GpuKernel {
@@ -451,7 +451,7 @@ impl NodeOp for MotionDistributeRadial {
     }
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
-        let count = param_as_count(ctx.param("count"), RECOMMENDED_MAX_ELEMENTS).max(1);
+        let count = param_as_count(ctx.param("count"), MAX_INSTANCIAS_POR_NO).max(1);
         let rings = (ctx.param("rings").round() as i64).clamp(1, MAX_RINGS) as usize;
         let radius = ctx.param("radius");
         let inner = ctx.param("inner");
@@ -514,7 +514,7 @@ use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
 pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[
     ParamHardMax {
         param: "count",
-        max: 1_000_000.0,
+        max: ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO as f32,
     },
     ParamHardMax {
         param: "inner",

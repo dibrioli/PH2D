@@ -88,6 +88,42 @@ pub(crate) fn traca(p: &Pedido) {
             .map_or(1.0, |b| b.radius),
         bloom: p.bloom,
     };
+    // ⏳⛔⛔⛔ **O DISPOSITIVO NÃO MARCHA NO MODO DE OMISSÃO, E ISSO É DÍVIDA NOMEADA** (report do
+    // dono, 2026-09-23: *«ao arrastar fica grosseiro ainda»*).
+    //
+    // ⚠️⚠️ **Esta condição junta DUAS perguntas:** *«a placa sabe MARCHAR esta peça?»* — que é
+    // GEOMETRIA e não tem modo — e *«a placa sabe PINTÁ-LA?»*, que pede o material, o céu e o olhar
+    // que só o `Render` monta. Como o `#[default]` do [`crate::shading::Shading`] é o **`Matcap`**
+    // (*«a omissão de um modelador»*), ao abrir uma cena o arrasto vai **todo** pela CPU.
+    //
+    // ⛔ **O preço está medido** (`diag_o_arrasto_no_modo_de_omissao`, `93 %` de CPU ociosa, a cena
+    // `5`): o traçado de CPU custa `90,17 ms` a `1920×1080` e o prévio escolhe **`D=3`**, contra
+    // `16,63 ms` e `D=1` do dispositivo. ⇒ *a `W9` inteira — o `14 de 22` nítidas, a fita inerte, a
+    // lei do dono e o torno por fórmula — foi medida num caminho que o artista não toma sem trocar
+    // de modo.*
+    //
+    // ⛔⛔⛔ **E separá-las foi CONSTRUÍDO e REVERTIDO no mesmo dia, por medição:** com a marcha
+    // aberta ao `Matcap`, três testes de `view_menu` — que **desenham** um quadro e **não** são
+    // `#[ignore]` — passaram a morrer com **`NVVM compilation failed: 3`** e `SIGSEGV` **ao sair do
+    // processo**, depois de PASSAREM (`0/0/0` estouros na árvore de base contra `9/9/6` com a
+    // separação; `--test-threads=1` não cura e o `PH2D_PIPELINE_LOG` não imprime uma linha, logo
+    // não é um shader nosso).
+    //
+    // ⭐⭐ **O mecanismo é o ALCANCE, e é ele que decide:** a cura faz testes de unidade COMUNS
+    // tomarem a placa, e nesta máquina a placa é **partilhada** — no meio desta medição outra linha
+    // segurava-a há `300 s`. ⇒ isso colide com a lei da casa (*gates de GPU são `#[ignore]` e
+    // precisam de adaptador*) e com o guarda de exclusão, que um teste comum não pede. *Abrir o
+    // caminho de omissão ao dispositivo é abrir a placa a toda a suíte, e isso é uma decisão maior
+    // do que a cura.*
+    //
+    // ⚠️ **E a 1.ª bissecção deste estouro mentiu por ser de UMA corrida** — ela deu a metade do
+    // Matcap como verde, e a corrida seguinte do MESMO estado deu vermelho. *Num sinal desta família
+    // uma corrida não bissecta nada.*
+    //
+    // ⇒ **a separação só se abre com esse estouro atribuído.** Gate:
+    // `a_marcha_no_dispositivo_ainda_pergunta_o_modo_e_isso_e_divida`, que é uma catraca **AO
+    // CONTRÁRIO** — ele reprova no dia em que alguém tirar o modo daqui, para que a cura venha
+    // acompanhada da atribuição.
     let pelo_dispositivo = matches!(p.shading, crate::shading::Shading::Render)
         && !mundos.is_empty()
         && crate::gpu_frame::takes_the_frame(p.gpu, &p.doc, &p.reg);

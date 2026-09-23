@@ -558,6 +558,61 @@ fn o_vaso_desce_por_formula_e_a_fita_cabe_numa_mao() {
     );
 }
 
+/// ⏳⛔⛔⛔ **A MARCHA NO DISPOSITIVO AINDA PERGUNTA O MODO, E ISSO É DÍVIDA** — uma catraca **ao
+/// contrário**.
+///
+/// # O report do dono, e o que ele apanhou
+///
+/// *«ao arrastar fica grosseiro ainda»* (2026-09-23), depois de a wave do torno por fórmula ter
+/// medido `32,53 → 16,63 ms` e o divisor do prévio a cair de `2` para `1`.
+///
+/// ⛔⛔⛔ **Aquelas medições são todas do dispositivo, e o dispositivo só é chamado em
+/// [`crate::shading::Shading::Render`]** — enquanto o `#[default]` é o `Matcap`, *«a omissão de um
+/// modelador»*. ⇒ ao abrir uma cena, o arrasto vai **todo** pela CPU: `90,17 ms` a `1920×1080` e
+/// `D=3`, contra `16,63` e `D=1` do dispositivo (`diag_o_arrasto_no_modo_de_omissao`, `93 %` de CPU
+/// ociosa).
+///
+/// # ⛔ Porque este gate afirma o DEFEITO em vez da cura
+///
+/// A condição junta duas perguntas — *marchar* (geometria, sem modo) e *pintar* (material, céu,
+/// olhar). Separá-las foi **construído e revertido no mesmo dia**: com a marcha aberta ao `Matcap`,
+/// três testes de `view_menu` — que **desenham** um quadro e **não** são `#[ignore]` — passaram a
+/// morrer com `NVVM compilation failed: 3` e `SIGSEGV` **ao sair do processo**, depois de passarem
+/// (`0/0/0` estouros na base contra `9/9/6`, e `--test-threads=1` não cura).
+///
+/// ⭐⭐ **O mecanismo é o ALCANCE:** a cura faz testes de unidade COMUNS tomarem a placa, e nesta
+/// máquina ela é **partilhada** (no meio desta medição outra linha segurava-a há `300 s`). Isso
+/// colide com a lei da casa — *gates de GPU são `#[ignore]`* — e com o guarda de exclusão, que um
+/// teste comum não pede.
+///
+/// ⇒ *a cura tem de vir com aquele estouro atribuído*, e este gate **reprova no dia em que alguém
+/// tirar o modo daqui** — para que a atribuição venha com ela. ⚠️ É a forma que esta casa usa para
+/// uma dívida que não pode ser esquecida nem curada às cegas.
+///
+/// ⚠️⚠️ **E a régua lê o CÓDIGO e não a prosa**: o comentário que explica a dívida nomeia o
+/// `Shading` meia dúzia de vezes, e uma varredura do ficheiro inteiro acusaria a própria nota.
+#[test]
+fn a_marcha_no_dispositivo_ainda_pergunta_o_modo_e_isso_e_divida() {
+    const FONTE: &str = include_str!("smoke_draw_thread.rs");
+    let agulha = "let pelo_dispositivo =";
+    let i = FONTE
+        .find(agulha)
+        .expect("a condição do dispositivo saiu do despacho do quadro");
+    let resto = &FONTE[i..];
+    let expressao = &resto[..resto.find(';').expect("uma atribuição acaba num `;`")];
+    assert!(
+        expressao.contains("takes_the_frame"),
+        "a condição do dispositivo deixou de passar pela porta dele: {expressao}"
+    );
+    assert!(
+        expressao.contains("Shading::Render"),
+        "⭐ A DÍVIDA FOI CURADA: a marcha no dispositivo deixou de perguntar o modo. Se o \
+         `NVVM compilation failed: 3` dos testes de `view_menu` está atribuído e curado, apague \
+         este gate e escreva no lugar dele o que prova a cura — e a medição que a acompanha é \
+         `diag_o_arrasto_no_modo_de_omissao` ({expressao})"
+    );
+}
+
 /// ⭐⭐⭐⭐ **Os gates da cache do campo do chão** — ver o cabeçalho do [`chao`].
 #[path = "preview_device_w9_chao_tests.rs"]
 mod chao;

@@ -957,6 +957,62 @@ normalização usa um majorante **global** da inclinação (`3,4` no vaso ⇒ `k
 resta vale até `2,1×` e é uma normalização mais apertada* — ⛔ e ela tem de continuar a ser um
 majorante VERDADEIRO, senão a peça fura.
 
+### ⛔⛔⛔⛔ E O SMOKE REPROVOU-A — *«ao arrastar fica grosseiro ainda»*, e o dono tem razão
+
+⭐ **O que ele apanhou não é o torno: é que o DISPOSITIVO NÃO MARCHA NO MODO DE OMISSÃO.**
+
+O despacho do quadro ([`smoke_draw_thread::traca`]) chama a placa numa condição só:
+
+```rust
+let pelo_dispositivo = matches!(p.shading, Shading::Render) && !mundos.is_empty() && takes_the_frame(..);
+```
+
+⚠️⚠️ **Ela junta DUAS perguntas** — *«a placa sabe MARCHAR esta peça?»*, que é **geometria** e não
+tem modo, e *«a placa sabe PINTÁ-LA?»*, que pede o material, o céu e o olhar. E o `#[default]` do
+[`crate::shading::Shading`] é o **`Matcap`**, que o próprio doc dele chama *«a omissão de um
+modelador»*. ⇒ **ao abrir uma cena, o arrasto vai todo pela CPU.**
+
+**Medido** (`diag_o_arrasto_no_modo_de_omissao`, a cena `5`, `93 %` de CPU ociosa, `--release`, o
+divisor pela porta do produto):
+
+| tela | contorno desenhado | por fórmula | divisor |
+|---|---:|---:|---:|
+| `1920×1080` | `90,17 ms` | `88,23` | **`D=3` nos dois** |
+| `1400×900` | `51,88` | `54,76` | `D=2` nos dois |
+| `960×540` | `27,93` | `22,93` | `D=2` nos dois |
+
+⛔⛔⛔ **Na CPU a fórmula não compra nada** (`2 %`, e a `1400×900` é `5 %` PIOR), e o divisor não se
+move. ⭐ **A razão é que a CPU já tinha a poda**: ela especializa a árvore por ladrilho
+(`RegionCompiler`) e corre a fita em JIT com SIMD, logo as `934` instruções não lhe custam `7,5×` as
+`124` — o que lhe sobra são os **passos**, e a fórmula **dobra-os**. *A cura serve o motor em que a
+contagem manda, e a CPU não é esse motor.*
+
+⇒ ⚠️⚠️ **A `W9` inteira — o `14 de 22` nítidas, a fita inerte, a lei do dono, o torno por fórmula —
+foi medida no caminho do DISPOSITIVO, que o artista não toma sem trocar de modo.** *É a classe de
+defeito que o cabeçalho daquele mesmo ficheiro avisa por escrito, três parágrafos acima da linha que
+a contém.*
+
+### ⛔⛔⛔ E a cura foi CONSTRUÍDA e REVERTIDA no mesmo dia
+
+Separar as duas perguntas é três linhas, e com a marcha aberta ao `Matcap` **três testes de
+`view_menu`** — que **desenham** um quadro e **não** são `#[ignore]` — passaram a morrer com
+`NVVM compilation failed: 3` e `SIGSEGV` **ao sair do processo**, depois de PASSAREM: `0/0/0`
+estouros na árvore de base contra **`9/9/6`** com a separação, e `--test-threads=1` não cura.
+
+⭐⭐ **O mecanismo é o ALCANCE e é ele que decide:** a cura faz **testes de unidade comuns tomarem a
+placa**, e nesta máquina ela é **partilhada** — no meio desta medição outra linha segurava-a há
+`300 s`. Isso colide com a lei da casa (*gates de GPU são `#[ignore]` e precisam de adaptador*) e com
+o guarda de exclusão, que um teste comum não pede. ⇒ *abrir o caminho de omissão ao dispositivo é
+abrir a placa a toda a suíte, e isso é uma decisão maior do que a cura.*
+
+⚠️⚠️ **E a 1.ª bissecção deste estouro MENTIU por ser de UMA corrida** — ela deu a metade do `Matcap`
+como verde, e a corrida seguinte do MESMO estado deu vermelho. *Numa família de sinais como esta, uma
+corrida não bissecta nada* (e a lei do `CLAUDE.md` §5.0 di-lo por extenso).
+
+⇒ Fica **dívida NOMEADA e gateada**: `a_marcha_no_dispositivo_ainda_pergunta_o_modo_e_isso_e_divida`
+é uma **catraca ao contrário** — ela reprova no dia em que alguém tirar o modo daquela condição, para
+que a cura venha com a atribuição do estouro.
+
 ### ⛔⛔ As três coisas que a construção achou, e nenhuma era a lei
 
 1. **A decisão escrita em UM sítio divergiu na primeira corrida.** O todo descia por fórmula e o

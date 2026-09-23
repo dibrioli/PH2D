@@ -432,3 +432,104 @@ fn diag_a_poda_coerente_por_grupo() {
 /// ⏱️⭐⭐⭐⭐ **O vaso por FÓRMULA** — ver o cabeçalho do [`formula`].
 #[path = "device_probes_w9_formula.rs"]
 mod formula;
+
+/// ⏱️⛔⛔⛔ **Sonda: O ARRASTO NO MODO DE OMISSÃO — o caminho que o artista de facto toma.**
+///
+/// # O report do dono, e o defeito que ele apanhou
+///
+/// *«ao arrastar fica grosseiro ainda»* (2026-09-23), depois de a wave do torno por fórmula ter
+/// medido `32,53 → 16,63 ms` e o divisor do prévio a cair de `2` para `1`.
+///
+/// ⛔⛔⛔ **Aquelas medições são todas do DISPOSITIVO, e o dispositivo só pinta em
+/// [`crate::shading::Shading::Render`]** — o `#[default]` é `Matcap`, que é *«a omissão de um
+/// modelador»*. ⇒ ao abrir a cena, o arrasto vai pelo traçado de **CPU**, e a cura foi medida num
+/// caminho que ele não toma. ⚠️ *O cabeçalho do [`crate::smoke_draw_thread`] avisa desta classe de
+/// defeito por escrito, três parágrafos acima da linha que a contém.*
+///
+/// Esta sonda mede o que ele vê: o traçado de CPU da cena `5`, A/B pela porta de bissecção, com o
+/// **divisor que o produto escolheria** a partir da própria medição.
+#[test]
+#[ignore = "sonda de diagnóstico: mede o arrasto no modo de omissão"]
+fn diag_o_arrasto_no_modo_de_omissao() {
+    let doc = crate::smoke::scene(5);
+    let reg = crate::smoke::sampled_registry();
+    let cam = ph2d_field_render::Orbit::default();
+    let linhas = ph2d_field_eval::Field::new(&doc)
+        .tape_shape()
+        .expect("a fita")
+        .guardados;
+    println!(
+        "\n  {}\n  a fita desta corrida: {linhas} linhas (a lei exacta são 934)",
+        super::super::contexto()
+    );
+    println!("  tela · CPU 1.ª · CPU mín · D(CPU) · PLACA mín · D(placa) · ganho");
+    for (w, h) in [(1920u32, 1080u32), (1400, 900), (960, 540)] {
+        let mut tempos = Vec::new();
+        for _ in 0..super::super::QUADROS_MEDIDOS {
+            let t0 = std::time::Instant::now();
+            let _ = ph2d_field_render::trace(&doc, &reg, &cam, w, h);
+            #[allow(clippy::cast_possible_truncation)]
+            tempos.push(t0.elapsed().as_secs_f32() * 1e3);
+        }
+        let minimo = tempos.iter().copied().fold(f32::INFINITY, f32::min);
+        // ⭐ **O divisor sai da PORTA DO PRODUTO** ([`crate::preview::preview_size`]) — reconstruí-lo
+        // aqui mediria outra lei.
+        let medida = crate::preview::Measured {
+            pixels: u64::from(w) * u64::from(h),
+            millis: minimo,
+        };
+        let (pw, _) = crate::preview::preview_size(
+            (w, h),
+            Some(medida),
+            crate::preview::PREVIEW_BUDGET_MS,
+            16,
+        );
+        // ⭐⭐⭐ **E O QUE A PLACA CUSTARIA NO MESMO MODO** — ela sabe MARCHAR esta peça (é
+        // geometria), e a condição que hoje a impede é `Shading::Render`, que é uma pergunta sobre
+        // PINTAR. *Sem esta coluna, «fica grosseiro» não tem preço.*
+        let placa = crate::gpu_frame::shared().and_then(|t| {
+            let luz = [crate::gpu_frame::tests_lampada(&cam).world];
+            let mut melhor = f32::INFINITY;
+            for _ in 0..super::super::QUADROS_MEDIDOS {
+                let t0 = std::time::Instant::now();
+                let r = crate::gpu_frame::march(
+                    t,
+                    &doc,
+                    &reg,
+                    &cam,
+                    &luz,
+                    None,
+                    w,
+                    h,
+                    crate::preview::re_amostra_a_silhueta(),
+                );
+                r?;
+                #[allow(clippy::cast_possible_truncation)]
+                let ms = t0.elapsed().as_secs_f32() * 1e3;
+                melhor = melhor.min(ms);
+            }
+            Some(melhor)
+        });
+        let dp = placa.map_or(0, |ms| {
+            let m = crate::preview::Measured {
+                pixels: u64::from(w) * u64::from(h),
+                millis: ms,
+            };
+            let (a, _) = crate::preview::preview_size(
+                (w, h),
+                Some(m),
+                crate::preview::PREVIEW_BUDGET_MS,
+                16,
+            );
+            (w / a.max(1)).max(1)
+        });
+        println!(
+            "  {w}×{h} · {:>8.2} · {minimo:>7.2} · D={} · {:>9.2} · D={dp} · {:>5.1}×",
+            tempos[0],
+            (w / pw.max(1)).max(1),
+            placa.unwrap_or(f32::NAN),
+            minimo / placa.unwrap_or(f32::NAN),
+        );
+    }
+    println!();
+}

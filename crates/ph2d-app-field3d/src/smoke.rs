@@ -94,7 +94,28 @@ fn load_matcap() -> MatcapTexels {
             rgb.push(half::f16::from_bits(bits).to_f32());
         }
     }
-    MatcapTexels { side, rgb }
+    let chave = chave_da_fotografia(side, &rgb);
+    MatcapTexels { side, rgb, chave }
+}
+
+/// ⭐ **Um resumo de conteúdo estável** — FNV-1a de 64 bits sobre os bytes dos texels, mais o lado.
+///
+/// ⚠️ **Corre UMA vez, ao carregar** — ver o doc do [`MatcapTexels::chave`].
+fn chave_da_fotografia(side: u32, rgb: &[f32]) -> u64 {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    let mut come = |b: u8| {
+        h ^= u64::from(b);
+        h = h.wrapping_mul(0x0000_0100_0000_01b3);
+    };
+    for b in side.to_le_bytes() {
+        come(b);
+    }
+    for v in rgb {
+        for b in v.to_le_bytes() {
+            come(b);
+        }
+    }
+    h
 }
 
 /// Sem o módulo de escultura compilado não há matcap — e um cinza plano seria uma forma ilegível.
@@ -104,7 +125,20 @@ fn load_matcap() -> MatcapTexels {
     MatcapTexels {
         side: 0,
         rgb: Vec::new(),
+        chave: 0,
     }
+}
+
+/// ⭐⭐ **A fotografia do matcap, para uma SONDA** — a MESMA que o módulo carrega.
+///
+/// ⚠️ **Ela existe porque uma sonda que sintetize um matcap mede outro programa:** o lado decide o
+/// tamanho do armazém que sobe à placa e a aritmética do índice, e é do `749²` do asset da casa que
+/// o número do relógio tem de sair.
+#[cfg(test)]
+#[must_use]
+pub(crate) fn matcap_para_sonda() -> (u32, Vec<f32>) {
+    let m = load_matcap();
+    (m.side, m.rgb)
 }
 
 fn boot() -> Option<Smoke> {

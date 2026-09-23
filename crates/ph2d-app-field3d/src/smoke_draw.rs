@@ -493,7 +493,12 @@ fn viewport_pass(
         // enquanto a cerca existiu ele **desaparecia** a cada gesto e voltava ao largar.
         // ⭐ E a lei da W73 sobrevive: o `assente` viaja com o pedido e o dispositivo **salta o
         // ricochete** quando ele é falso — *grosso a mexer, nítido ao assentar*.
-        let gpu = crate::gpu_frame::shared();
+        // ⭐⭐⭐⭐ **PELA PORTA DO QUADRO e não pelo [`crate::gpu_frame::shared`]** — ver o doc
+        // dela: a thread que responde nasce DESANEXADA, e a placa vista de uma thread que ninguém
+        // espera mata o processo na saída (`3` de `3`, com a reprodução nas sondas do
+        // `gpu_frame::testes`). *A placa é do PRODUTO; um teste de unidade comum não a entrega
+        // aqui.*
+        let gpu = crate::gpu_frame::para_o_quadro();
         // ⭐⭐⭐ **O PEDIDO, montado aqui e respondido noutra thread** — ver
         // [`super::thread::Pedido`]: tudo o que ele leva foi COPIADO do módulo antes de
         // a thread nascer, e nada dele se lê depois.

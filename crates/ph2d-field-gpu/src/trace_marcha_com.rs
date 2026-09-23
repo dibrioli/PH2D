@@ -20,8 +20,13 @@ pub(super) fn marcha_com(
     setup: MarchSetup,
     width: u32,
     height: u32,
-    pintor: Option<&crate::paint::PaintSetup<'_>>,
+    pintura: Pintura<'_>,
 ) -> Saida {
+    // ⭐ O pintor de MATERIAL, quando é ele — as leis do dono e a fita são só dele.
+    let pintor = match &pintura {
+        Pintura::Material(p) => Some(*p),
+        Pintura::Nenhuma | Pintura::Matcap(_) => None,
+    };
     let bgl = bgl_marcha(device);
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("campo"),
@@ -167,7 +172,9 @@ pub(super) fn marcha_com(
     // dispositivo, que é onde o passe seguinte o lê — e o que volta é a IMAGEM.
     //
     // Medido a `1920×1080`: o centro e a luz são `49,8 MB` por quadro e a imagem são `8,3`.
-    let pinta = pintor.is_some();
+    // ⚠️ **As DUAS leis de pintura deixam o G-buffer no dispositivo** — o que volta é a imagem.
+    // *É essa a propriedade que o matcap partilha com o material, e a única que este ponto lê.*
+    let pinta = !matches!(pintura, Pintura::Nenhuma);
     let (r_centro, r_luz) = if pinta {
         (None, None)
     } else {
@@ -186,7 +193,7 @@ pub(super) fn marcha_com(
 
     let d_conta = r_conta.slice(..).get_mapped_range();
     let quantas = u32::from_le_bytes([d_conta[0], d_conta[1], d_conta[2], d_conta[3]]) as u64;
-    if let Some(pintor) = pintor {
+    if pinta {
         // ⚠️ **A contagem de bordas tinha de voltar primeiro**, e é isso que este ida-e-volta
         // compra: quantos workgroups o passe da borda precisa é um número que o dispositivo
         // escreveu. *O mesmo ida-e-volta que a leitura da lista já custava, sem a lista.*
@@ -198,31 +205,39 @@ pub(super) fn marcha_com(
         drop(d_conta);
         #[allow(clippy::cast_possible_truncation)]
         let edges = usadas as usize;
-        return Saida::Imagem(Pintado {
-            edges,
-            rgba: crate::paint::pinta(
+        // ⭐⭐⭐ **OS ALVOS SÃO OS MESMOS PARA AS DUAS LEIS** — o grupo `0` que a marcha escreveu.
+        // ⚠️ O matcap lê dele só o `setup`, o `centro` e a `borda`; ligar o layout inteiro é o que
+        // faz o passe partilhar o grupo em vez de declarar um segundo (`crate::paint::Alvos`).
+        let alvos = crate::paint::Alvos {
+            leis: &leis_com_esculturas,
+            fita,
+            bgl: &bgl,
+            grades: &b_grades,
+            setup: &ub,
+            k: &kb,
+            centro: &b_centro,
+            luz: &b_luz,
+            conta: &b_conta,
+            borda: &b_borda,
+        };
+        let rgba = match pintura {
+            Pintura::Material(pintor) => crate::paint::pinta(
                 device,
                 queue,
                 cache,
                 pintor,
                 lei_do_dono.as_ref(),
-                &crate::paint::Alvos {
-                    leis: &leis_com_esculturas,
-                    fita,
-                    bgl: &bgl,
-                    grades: &b_grades,
-                    setup: &ub,
-                    k: &kb,
-                    centro: &b_centro,
-                    luz: &b_luz,
-                    conta: &b_conta,
-                    borda: &b_borda,
-                },
+                &alvos,
                 width,
                 height,
                 usadas,
             ),
-        });
+            Pintura::Matcap(mc) => {
+                crate::matcap::pinta(device, queue, cache, mc, &alvos, width, height, usadas)
+            }
+            Pintura::Nenhuma => unreachable!("o `pinta` acima já o excluiu"),
+        };
+        return Saida::Imagem(Pintado { edges, rgba });
     }
     let d_centro = r_centro.as_ref().expect("sem pintor o centro volta");
     let d_centro = d_centro.slice(..).get_mapped_range();

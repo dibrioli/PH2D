@@ -88,42 +88,27 @@ pub(crate) fn traca(p: &Pedido) {
             .map_or(1.0, |b| b.radius),
         bloom: p.bloom,
     };
-    // ⏳⛔⛔⛔ **O DISPOSITIVO NÃO MARCHA NO MODO DE OMISSÃO, E ISSO É DÍVIDA NOMEADA** (report do
-    // dono, 2026-09-23: *«ao arrastar fica grosseiro ainda»*).
+    // ⭐⭐⭐⭐ **E O MODO DE OMISSÃO JÁ VAI À PLACA** (report do dono, 2026-09-23: *«ao arrastar
+    // fica grosseiro ainda»*). O `#[default]` do [`crate::shading::Shading`] é o **matcap**, e
+    // enquanto só o `Render` era pintado no dispositivo o arrasto de uma cena recém-aberta era
+    // **todo** de CPU: `90,17 ms` e o prévio a escolher `D=3` — um **nono** dos píxeis — contra
+    // `16,63 ms` e `D=1`.
     //
-    // ⚠️⚠️ **Esta condição junta DUAS perguntas:** *«a placa sabe MARCHAR esta peça?»* — que é
-    // GEOMETRIA e não tem modo — e *«a placa sabe PINTÁ-LA?»*, que pede o material, o céu e o olhar
-    // que só o `Render` monta. Como o `#[default]` do [`crate::shading::Shading`] é o **`Matcap`**
-    // (*«a omissão de um modelador»*), ao abrir uma cena o arrasto vai **todo** pela CPU.
+    // ⚠️⚠️ **A condição junta DUAS perguntas e elas continuam separadas:** *«a placa sabe MARCHAR
+    // esta peça?»* é GEOMETRIA e não tem modo ([`crate::gpu_frame::takes_the_frame`]); *«a placa
+    // sabe PINTÁ-LA?»* depende da LEI de pintura, e há duas — o material (que precisa dos
+    // materiais, do céu, do olhar e das lâmpadas) e o **matcap**, que precisa da normal e de uma
+    // fotografia.
     //
-    // ⛔ **O preço está medido** (`diag_o_arrasto_no_modo_de_omissao`, `93 %` de CPU ociosa, a cena
-    // `5`): o traçado de CPU custa `90,17 ms` a `1920×1080` e o prévio escolhe **`D=3`**, contra
-    // `16,63 ms` e `D=1` do dispositivo. ⇒ *a `W9` inteira — o `14 de 22` nítidas, a fita inerte, a
-    // lei do dono e o torno por fórmula — foi medida num caminho que o artista não toma sem trocar
-    // de modo.*
+    // ⛔⛔⛔ **E a primeira cura que eu desenhei era ABRIR A MARCHA ao matcap — ela PIORAVA.** O
+    // [`crate::gpu_frame::march`] devolve o G-buffer pelo barramento (`49,8 MB` a `1920×1080`,
+    // `119`–`123 ms`), que é **mais lento do que a CPU inteira**. *O ganho nunca foi a marcha estar
+    // na placa; é a IMAGEM não atravessar o barramento* — e é por isso que a cura é um PASSE que
+    // pinta, e não uma condição alargada.
     //
-    // ⛔⛔⛔ **E separá-las foi CONSTRUÍDO e REVERTIDO no mesmo dia, por medição:** com a marcha
-    // aberta ao `Matcap`, três testes de `view_menu` — que **desenham** um quadro e **não** são
-    // `#[ignore]` — passaram a morrer com **`NVVM compilation failed: 3`** e `SIGSEGV` **ao sair do
-    // processo**, depois de PASSAREM (`0/0/0` estouros na árvore de base contra `9/9/6` com a
-    // separação; `--test-threads=1` não cura e o `PH2D_PIPELINE_LOG` não imprime uma linha, logo
-    // não é um shader nosso).
-    //
-    // ⭐⭐ **O mecanismo é o ALCANCE, e é ele que decide:** a cura faz testes de unidade COMUNS
-    // tomarem a placa, e nesta máquina a placa é **partilhada** — no meio desta medição outra linha
-    // segurava-a há `300 s`. ⇒ isso colide com a lei da casa (*gates de GPU são `#[ignore]` e
-    // precisam de adaptador*) e com o guarda de exclusão, que um teste comum não pede. *Abrir o
-    // caminho de omissão ao dispositivo é abrir a placa a toda a suíte, e isso é uma decisão maior
-    // do que a cura.*
-    //
-    // ⚠️ **E a 1.ª bissecção deste estouro mentiu por ser de UMA corrida** — ela deu a metade do
-    // Matcap como verde, e a corrida seguinte do MESMO estado deu vermelho. *Num sinal desta família
-    // uma corrida não bissecta nada.*
-    //
-    // ⇒ **a separação só se abre com esse estouro atribuído.** Gate:
-    // `a_marcha_no_dispositivo_ainda_pergunta_o_modo_e_isso_e_divida`, que é uma catraca **AO
-    // CONTRÁRIO** — ele reprova no dia em que alguém tirar o modo daqui, para que a cura venha
-    // acompanhada da atribuição.
+    // ⭐⭐ **O passe do matcap liga `8` armazéns contra os `9` do pintor de material**, que é o
+    // piso garantido do WebGPU ⇒ *o modo de omissão corre em toda placa conforme, e o de material
+    // só onde há folga* (ver [`ph2d_field_gpu::matcap`]).
     let pelo_dispositivo = matches!(p.shading, crate::shading::Shading::Render)
         && !mundos.is_empty()
         && crate::gpu_frame::takes_the_frame(p.gpu, &p.doc, &p.reg);
@@ -134,6 +119,55 @@ pub(crate) fn traca(p: &Pedido) {
     // ⚠️ **Só quando o refinamento de CPU está desligado**, que é o caminho de omissão: com
     // ele ligado (a porta de bissecção da [`crate::preview`]) o quadro precisa do G-buffer
     // para p.refinar sobre ele, e essa é a única razão para o trazer de volta.
+    // ⭐⭐⭐⭐ **O MATCAP, PINTADO NO DISPOSITIVO** — o caminho de omissão do modelador.
+    //
+    // ⚠️ **Sem `!p.refinar` aqui, e é MEDIDO e não esquecimento:** o refinamento é a oclusão a
+    // assentar passagem a passagem (`ph2d_field_render::refine_hemisphere`), e ele vive **dentro**
+    // do braço do `Render` — um matcap não lê oclusão nenhuma. *A cerca do material é sobre o
+    // G-buffer que aquele refinamento precisa de ter na mão; aqui não há o que refinar.*
+    //
+    // ⚠️ **E ele NÃO precisa de lâmpada**: ver o `exige_luz` do [`crate::gpu_frame::pedido`].
+    if matches!(p.shading, crate::shading::Shading::Matcap)
+        && crate::gpu_frame::takes_the_frame(p.gpu, &p.doc, &p.reg)
+        && let Some(t) = p.gpu.as_ref()
+        && let Some(pintura) = crate::gpu_frame::pinta_matcap(
+            t,
+            &p.doc,
+            &p.reg,
+            &p.cam,
+            &ph2d_field_gpu::matcap::MatcapSetup {
+                rgb_linear: &p.matcap.rgb,
+                side: p.matcap.side,
+                chave: p.matcap.chave,
+                stops: p.look.exposure_stops,
+                view: ph2d_view_transform::wgsl::view_code(p.look.view),
+                background: BACKGROUND,
+            },
+            p.tw,
+            p.th,
+        )
+    {
+        // ⚠️ **Os acertos contam-se na IMAGEM**, como no ramo do pintor de material: o G-buffer
+        // ficou no dispositivo, e o alfa do fundo é o discriminador que já vive ali.
+        let hits = pintura
+            .rgba
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .filter(|px| px[3] > BACKGROUND[3])
+            .count();
+        let _ = p.tx.try_send(Ready {
+            rgba: pintura.rgba,
+            width: p.tw,
+            height: p.th,
+            hits,
+            edges: pintura.edges,
+            millis: t0.elapsed().as_secs_f64() * 1000.0,
+            passagem: 0,
+            mais: false,
+        });
+        return;
+    }
     let padrao_gpu;
     let pintado = if pelo_dispositivo && !p.refinar {
         let surfaces = match &p.materials {

@@ -558,58 +558,79 @@ fn o_vaso_desce_por_formula_e_a_fita_cabe_numa_mao() {
     );
 }
 
-/// ⏳⛔⛔⛔ **A MARCHA NO DISPOSITIVO AINDA PERGUNTA O MODO, E ISSO É DÍVIDA** — uma catraca **ao
-/// contrário**.
+/// ⭐⭐⭐⭐ **O MODO DE OMISSÃO DO MODELADOR VAI À PLACA** — e este gate substitui a catraca que
+/// afirmava o contrário.
 ///
-/// # O report do dono, e o que ele apanhou
+/// # ⛔ A dívida que aqui vivia, e como ela morreu
 ///
-/// *«ao arrastar fica grosseiro ainda»* (2026-09-23), depois de a wave do torno por fórmula ter
-/// medido `32,53 → 16,63 ms` e o divisor do prévio a cair de `2` para `1`.
+/// Até 2026-09-23 este ficheiro tinha o
+/// `a_marcha_no_dispositivo_ainda_pergunta_o_modo_e_isso_e_divida`: uma catraca **AO CONTRÁRIO**,
+/// que exigia que a condição do dispositivo nomeasse `Shading::Render` — porque o `#[default]` é o
+/// **`Matcap`** e, sem ele na placa, o arrasto de uma cena recém-aberta era **todo** de CPU
+/// (`90,17 ms` e `D=3` contra `16,63` e `D=1`).
 ///
-/// ⛔⛔⛔ **Aquelas medições são todas do dispositivo, e o dispositivo só é chamado em
-/// [`crate::shading::Shading::Render`]** — enquanto o `#[default]` é o `Matcap`, *«a omissão de um
-/// modelador»*. ⇒ ao abrir uma cena, o arrasto vai **todo** pela CPU: `90,17 ms` a `1920×1080` e
-/// `D=3`, contra `16,63` e `D=1` do dispositivo (`diag_o_arrasto_no_modo_de_omissao`, `93 %` de CPU
-/// ociosa).
+/// ⚠️⚠️ **A cura NÃO foi tirar o modo daquela condição** — e é por isso que aquela catraca teria
+/// ficado **VERDE sobre a dívida paga**, que é o pior estado possível de um gate. A leitura dela
+/// era que havia **uma** pergunta a separar; medida, há **duas leis de pintura**:
 ///
-/// # ⛔ Porque este gate afirma o DEFEITO em vez da cura
+/// | lei | o que ela lê | armazéns |
+/// |---|---|---:|
+/// | material | materiais · céu · olhar · lâmpadas · curvatura | `9` |
+/// | **matcap** | a normal de vista e uma fotografia | **`8`** |
 ///
-/// A condição junta duas perguntas — *marchar* (geometria, sem modo) e *pintar* (material, céu,
-/// olhar). Separá-las foi **construído e revertido no mesmo dia**: com a marcha aberta ao `Matcap`,
-/// três testes de `view_menu` — que **desenham** um quadro e **não** são `#[ignore]` — passaram a
-/// morrer com `NVVM compilation failed: 3` e `SIGSEGV` **ao sair do processo**, depois de passarem
-/// (`0/0/0` estouros na base contra `9/9/6`, e `--test-threads=1` não cura).
+/// ⇒ a condição do material **continua** a nomear o `Render` (e está certa: aquela lei precisa do
+/// que só o `Render` monta), e o matcap ganhou um **ramo e um passe próprios**. ⭐ O piso garantido
+/// do WebGPU é `8`: *o modo de omissão corre em toda placa conforme, e o de material só onde há
+/// folga* ([`ph2d_field_gpu::matcap::ARMAZENS`] contra [`ph2d_field_gpu::paint::ARMAZENS`], com
+/// gate naquela crate).
 ///
-/// ⭐⭐ **O mecanismo é o ALCANCE:** a cura faz testes de unidade COMUNS tomarem a placa, e nesta
-/// máquina ela é **partilhada** (no meio desta medição outra linha segurava-a há `300 s`). Isso
-/// colide com a lei da casa — *gates de GPU são `#[ignore]`* — e com o guarda de exclusão, que um
-/// teste comum não pede.
+/// ⛔⛔ **E a leitura de que abrir a MARCHA ao matcap era a cura estava REFUTADA por medição:** o
+/// [`crate::gpu_frame::march`] devolve o G-buffer pelo barramento (`49,8 MB` a `1920×1080`,
+/// `119`–`123 ms`) — *mais lento do que a CPU inteira*. O que ganha é a IMAGEM não atravessar o
+/// barramento.
 ///
-/// ⇒ *a cura tem de vir com aquele estouro atribuído*, e este gate **reprova no dia em que alguém
-/// tirar o modo daqui** — para que a atribuição venha com ela. ⚠️ É a forma que esta casa usa para
-/// uma dívida que não pode ser esquecida nem curada às cegas.
+/// # ⚠️ A régua lê o CÓDIGO e não a prosa
 ///
-/// ⚠️⚠️ **E a régua lê o CÓDIGO e não a prosa**: o comentário que explica a dívida nomeia o
-/// `Shading` meia dúzia de vezes, e uma varredura do ficheiro inteiro acusaria a própria nota.
+/// O comentário que explica a wave nomeia o `Shading` meia dúzia de vezes, e uma varredura do
+/// ficheiro inteiro acusaria a própria nota. ⇒ cada metade recorta a **expressão** dela.
 #[test]
-fn a_marcha_no_dispositivo_ainda_pergunta_o_modo_e_isso_e_divida() {
+fn o_modo_de_omissao_e_pintado_no_dispositivo() {
     const FONTE: &str = include_str!("smoke_draw_thread.rs");
-    let agulha = "let pelo_dispositivo =";
-    let i = FONTE
-        .find(agulha)
-        .expect("a condição do dispositivo saiu do despacho do quadro");
+
+    // ⭐⭐⭐ **METADE 1 — o matcap tem ramo e ele passa pela porta do dispositivo.**
+    let agulha = "if matches!(p.shading, crate::shading::Shading::Matcap)";
+    let i = FONTE.find(agulha).expect(
+        "⛔ O RAMO DO MATCAP NO DISPOSITIVO DESAPARECEU: o modo de OMISSÃO do modelador volta a \
+         traçar inteiro na CPU (`90,17 ms` e `D=3` contra `16,63` e `D=1`), que é o report \
+         «ao arrastar fica grosseiro ainda» de 2026-09-23 a voltar",
+    );
     let resto = &FONTE[i..];
-    let expressao = &resto[..resto.find(';').expect("uma atribuição acaba num `;`")];
+    let ramo = &resto[..resto.find('{').expect("um `if` abre um bloco")];
     assert!(
-        expressao.contains("takes_the_frame"),
-        "a condição do dispositivo deixou de passar pela porta dele: {expressao}"
+        ramo.contains("takes_the_frame"),
+        "o ramo do matcap deixou de passar pela porta do dispositivo: {ramo}"
     );
     assert!(
-        expressao.contains("Shading::Render"),
-        "⭐ A DÍVIDA FOI CURADA: a marcha no dispositivo deixou de perguntar o modo. Se o \
-         `NVVM compilation failed: 3` dos testes de `view_menu` está atribuído e curado, apague \
-         este gate e escreva no lugar dele o que prova a cura — e a medição que a acompanha é \
-         `diag_o_arrasto_no_modo_de_omissao` ({expressao})"
+        resto.contains("pinta_matcap("),
+        "o ramo do matcap existe e NÃO chama o passe que pinta — um ramo que cai para a CPU em \
+         silêncio lê-se, no relógio, exactamente como não ter ramo nenhum"
+    );
+
+    // ⭐⭐ **METADE 2 — o CONTROLO: são DUAS leis, e a do material continua a pedir o modo.**
+    //
+    // ⚠️ Sem esta metade, colapsar as duas condições numa só ficaria verde — e o material seria
+    // despachado sem os materiais, o céu e o olhar que só o `Render` monta.
+    let j = FONTE
+        .find("let pelo_dispositivo =")
+        .expect("a condição do pintor de MATERIAL saiu do despacho do quadro");
+    let expressao = {
+        let r = &FONTE[j..];
+        &r[..r.find(';').expect("uma atribuição acaba num `;`")]
+    };
+    assert!(
+        expressao.contains("takes_the_frame") && expressao.contains("Shading::Render"),
+        "as duas leis de pintura colapsaram numa: o pintor de MATERIAL precisa do que só o \
+         `Render` monta, e o matcap não ({expressao})"
     );
 }
 

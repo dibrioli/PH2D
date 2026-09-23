@@ -224,7 +224,7 @@ impl Tracer {
             setup,
             width,
             height,
-            None,
+            Pintura::Nenhuma,
         ) {
             Saida::Gbuffer(g) => g,
             Saida::Imagem(_) => unreachable!("sem pintor a marcha devolve o G-buffer"),
@@ -254,10 +254,40 @@ impl Tracer {
             setup,
             width,
             height,
-            Some(pintor),
+            Pintura::Material(pintor),
         ) {
             Saida::Imagem(p) => p,
             Saida::Gbuffer(_) => unreachable!("com pintor a marcha devolve a imagem"),
+        }
+    }
+
+    /// ⭐⭐⭐ **Um quadro em MATCAP, devolvido como IMAGEM** — o modo de **omissão** do modelador.
+    ///
+    /// ⛔⛔ **E a alternativa está medida e é PIOR:** marchar aqui e sombrear o matcap na CPU pede o
+    /// G-buffer de volta (`49,8 MB` a `1920×1080`, `119`–`123 ms`) contra `90,17` da CPU inteira.
+    /// *O ganho não é a marcha estar na placa — é a IMAGEM não atravessar o barramento.*
+    pub fn matcap_frame(
+        &mut self,
+        fita: &TapeWgsl,
+        sculpts: &[ph2d_field_eval::device::DeviceSculpt],
+        setup: MarchSetup,
+        mc: &crate::matcap::MatcapSetup<'_>,
+        width: u32,
+        height: u32,
+    ) -> Pintado {
+        match marcha_com(
+            &self.device,
+            &self.queue,
+            &mut self.cache,
+            fita,
+            sculpts,
+            setup,
+            width,
+            height,
+            Pintura::Matcap(mc),
+        ) {
+            Saida::Imagem(p) => p,
+            Saida::Gbuffer(_) => unreachable!("com matcap a marcha devolve a imagem"),
         }
     }
     /// O dispositivo e a fila — para quem precisa de despachar **outro** passe sobre o MESMO
@@ -353,6 +383,22 @@ pub fn march(fita: &TapeWgsl, setup: MarchSetup, width: u32, height: u32) -> Opt
 pub(crate) enum Saida {
     Gbuffer(DeviceGbuffer),
     Imagem(Pintado),
+}
+
+/// ⭐⭐⭐ **COM QUE LEI ESTE QUADRO É PINTADO** — uma pergunta, três respostas.
+///
+/// ⚠️⚠️ **Ela é um enum e não dois `Option`** de propósito: com dois, *«material E matcap ao mesmo
+/// tempo»* seria exprimível, e o que ela significa é *«despacha os dois passes sobre a mesma
+/// saída»* — o segundo a correr ganharia, e a imagem sairia certa ou errada conforme a ordem em que
+/// alguém escreveu duas linhas. *Um estado que não se pode escrever não precisa de um gate que o
+/// proíba.*
+pub(crate) enum Pintura<'a> {
+    /// O G-buffer volta para a CPU — a porta da PARIDADE e do caminho que ainda pinta lá.
+    Nenhuma,
+    /// O material sob as lâmpadas e o céu — ver [`crate::paint`].
+    Material(&'a crate::paint::PaintSetup<'a>),
+    /// ⭐⭐⭐ **A luz do OLHO** — ver [`crate::matcap`], e é este o modo de **omissão** do modelador.
+    Matcap(&'a crate::matcap::MatcapSetup<'a>),
 }
 
 /// ⭐ **O que o pintor entrega** — a imagem, mais a contagem de bordas que o dispositivo escreveu.

@@ -633,3 +633,108 @@ fn diag_quanto_do_quadro_e_o_campo() {
     }
     println!();
 }
+
+/// ⏱️⭐⭐⭐⭐ **O QUADRO DO MODO DE OMISSÃO, NOS DOIS MOTORES** — a resposta ao report
+/// *«ao arrastar fica grosseiro ainda»*.
+///
+/// # ⚠️ Porque este probe existe ao lado do [`diag_o_arrasto_no_modo_de_omissao`]
+///
+/// Aquele mede a lei do **MATERIAL** (CPU `trace` contra `gpu_frame::paint`), e o caminho que o
+/// artista de facto toma é o **matcap** — o `#[default]` do [`crate::shading::Shading`]. ⛔ *Uma
+/// coluna de uma lei que o produto não corre no modo de omissão lê-se como o preço daquele modo.*
+///
+/// ⚠️⚠️ **A coluna da CPU tem de levar o SOMBREAMENTO:** o `trace` sozinho devolve o G-buffer, e o
+/// modo de omissão paga também o [`ph2d_field_render::shade_with`], que corre em todos os núcleos
+/// (`par_chunks_mut`). *Medir só a marcha entregaria um número que o quadro nunca teve.*
+///
+/// ⭐ **O divisor sai da PORTA DO PRODUTO** ([`crate::preview::preview_size`]) nas duas colunas —
+/// é ele que o dono vê como «grosseiro»: `D=3` são **um nono** dos píxeis.
+///
+/// ```text
+/// PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test -p ph2d-app-field3d --lib --release -- \
+///   --ignored --exact device_probes::w9::torno::diag_o_quadro_do_matcap --nocapture
+/// ```
+#[test]
+#[ignore = "sonda de relógio; precisa de adaptador e de máquina calma"]
+fn diag_o_quadro_do_matcap() {
+    let doc = crate::smoke::scene(5);
+    let reg = crate::smoke::sampled_registry();
+    let cam = ph2d_field_render::Orbit::default();
+    let olhar = ph2d_view_transform::Look::default();
+    // ⚠️ **A fotografia é a MESMA que o smoke carrega** — ver [`crate::smoke::matcap_para_sonda`].
+    // ⛔ Um matcap sintético aqui mediria outro tamanho de armazém e outra aritmética de índice.
+    let (lado, rgb) = crate::smoke::matcap_para_sonda();
+    println!(
+        "\n  {}\n  o matcap desta corrida: lado {lado} ({} texels)",
+        super::super::contexto(),
+        (lado as usize) * (lado as usize)
+    );
+    println!("  tela · CPU mín · D(CPU) · PLACA mín · D(placa) · ganho");
+    for (w, h) in [(1920u32, 1080u32), (1400, 900), (960, 540)] {
+        // ⭐ **O QUADRO INTEIRO da CPU: marchar E sombrear**, que é o que o modo de omissão custa.
+        let mut cpu = f32::INFINITY;
+        for _ in 0..super::super::QUADROS_MEDIDOS {
+            let t0 = std::time::Instant::now();
+            let g = ph2d_field_render::trace(&doc, &reg, &cam, w, h);
+            let _ = ph2d_field_render::shade_with(
+                &g,
+                &ph2d_field_render::Matcap {
+                    side: lado,
+                    rgb_linear: &rgb,
+                },
+                olhar,
+                [0, 0, 0, 0],
+            );
+            #[allow(clippy::cast_possible_truncation)]
+            let ms = t0.elapsed().as_secs_f32() * 1e3;
+            cpu = cpu.min(ms);
+        }
+        let divisor = |ms: f32| {
+            let medida = crate::preview::Measured {
+                pixels: u64::from(w) * u64::from(h),
+                millis: ms,
+            };
+            let (pw, _) = crate::preview::preview_size(
+                (w, h),
+                Some(medida),
+                crate::preview::PREVIEW_BUDGET_MS,
+                16,
+            );
+            (w / pw.max(1)).max(1)
+        };
+        let placa = crate::gpu_frame::shared().and_then(|t| {
+            let mut melhor = f32::INFINITY;
+            for _ in 0..super::super::QUADROS_MEDIDOS {
+                let t0 = std::time::Instant::now();
+                crate::gpu_frame::pinta_matcap(
+                    t,
+                    &doc,
+                    &reg,
+                    &cam,
+                    &ph2d_field_gpu::matcap::MatcapSetup {
+                        rgb_linear: &rgb,
+                        side: lado,
+                        chave: 1,
+                        stops: olhar.exposure_stops,
+                        view: ph2d_view_transform::wgsl::view_code(olhar.view),
+                        background: [0, 0, 0, 0],
+                    },
+                    w,
+                    h,
+                )?;
+                #[allow(clippy::cast_possible_truncation)]
+                let ms = t0.elapsed().as_secs_f32() * 1e3;
+                melhor = melhor.min(ms);
+            }
+            Some(melhor)
+        });
+        let p = placa.unwrap_or(f32::NAN);
+        println!(
+            "  {w}×{h} · {cpu:>8.2} · D={} · {p:>9.2} · D={} · {:>5.2}×",
+            divisor(cpu),
+            divisor(p),
+            cpu / p,
+        );
+    }
+    println!();
+}

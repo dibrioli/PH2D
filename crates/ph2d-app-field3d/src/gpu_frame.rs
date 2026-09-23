@@ -55,6 +55,49 @@ pub fn shared() -> Option<&'static SharedTracer> {
         .as_ref()
 }
 
+/// ⭐⭐⭐⭐ **O TRAÇADOR PARA A THREAD QUE DESENHA** — e é uma porta DIFERENTE do [`shared`].
+///
+/// # ⛔⛔⛔ O que isto separa, e porque tem de ser separado (medido 2026-09-23)
+///
+/// A thread que responde a um pedido de quadro nasce **DESANEXADA** (`std::thread::spawn`, sem
+/// `JoinHandle`) — de propósito: é isso que mantém a janela a 60 Hz enquanto a peça traça. ⇒
+/// *trabalho na placa pode sobreviver ao processo.*
+///
+/// Reproduzido `3` de `3` com o modo de omissão aberto ao dispositivo, num teste de unidade COMUM
+/// que desenha um quadro:
+///
+/// ```text
+/// test result: ok               ← o teste PASSA
+/// NVVM compilation failed: 3    ← o driver, DEPOIS
+/// (signal: 11, SIGSEGV)         ← o PROCESSO não consegue sair
+/// ```
+///
+/// ⚠️⚠️ **O defeito NÃO é do matcap e não é desta wave:** o discriminador é *a placa vista de uma
+/// thread que ninguém espera*. Os **77** gates de placa desta crate nunca estouraram porque chamam
+/// as portas do dispositivo **em série, na thread do teste** — elas bloqueiam no
+/// `device.poll(wait)` e devolvem antes de o teste acabar. *O que mata é o DESANEXADO, nunca a
+/// placa.* As duas sondas que o atribuem são o [`testes::diag_o_quadro_em_voo_mata_o_processo`] e o
+/// irmão que o cura por espera.
+///
+/// # ⇒ A lei
+///
+/// **A placa é do PRODUTO; um teste de unidade comum não a entrega à thread que desenha.** É a
+/// mesma lei que o `CLAUDE.md` já escreve para os gates de GPU (*são `#[ignore]` e precisam de
+/// adaptador*), aqui aplicada ao único consumidor que a pedia **sem pedir**.
+///
+/// ⏳ **E o defeito de produto fica NOMEADO, com a reprodução na mão:** ao fechar a janela com um
+/// quadro em voo o app pode morrer da mesma maneira, e isso já era verdade no `Render` antes desta
+/// wave. A cura é o processo **drenar** os quadros em voo antes de sair — uma thread de desenho que
+/// o processo POSSUI em vez de N desanexadas —, e ela é wave própria.
+#[must_use]
+pub fn para_o_quadro() -> Option<&'static SharedTracer> {
+    #[cfg(test)]
+    if !testes::a_placa_vai_ao_quadro() {
+        return None;
+    }
+    shared()
+}
+
 /// ⚠️ **A porta de bissecção.** `PH2D_FIELD_GPU=0` devolve o módulo ao traçado de CPU inteiro —
 /// e é ela que responde a *«piorou»* sem ninguém ter de adivinhar qual metade.
 #[must_use]
@@ -103,7 +146,8 @@ pub fn march(
     };
     // ⚠️ **A MARCHA não assa borda mole**, e está certo: este caminho devolve o G-buffer para a CPU
     // sombrear, e é ela que a assa com a lei inteira ([`ph2d_field_render::sss_shadow`]).
-    let (campo, fita, setup) = pedido(doc, reg, cam, lamps, ground, cabem, sonda, w, h, None)?;
+    let (campo, fita, setup) =
+        pedido(doc, reg, cam, lamps, ground, cabem, sonda, w, h, None, true)?;
     let screen = ph2d_field_render::Screen::new(w, h, cam.half_extent);
     let dev = tracer
         .lock()
@@ -155,6 +199,12 @@ pub fn paint(
         Sonda::default(),
     )
 }
+
+/// ⭐⭐⭐⭐ **A porta do MATCAP vive no irmão** — ver o cabeçalho dele. ⛔ Corte por tecto de LOC e
+/// por responsabilidade: *as duas leis de pintura são dois assuntos*.
+#[path = "gpu_frame_matcap.rs"]
+mod gpu_frame_matcap;
+pub use gpu_frame_matcap::pinta_matcap;
 
 /// ⭐⭐ **O que a SONDA de calibração pode desligar — e nada disto é um caminho de produto.**
 ///
@@ -272,7 +322,9 @@ pub fn paint_com(
         [um] => Some(ph2d_field_render::sss_shadow::raio_em_pixeis(cam, h, *um)),
         _ => return None,
     };
-    let (campo, fita, setup) = pedido(doc, reg, cam, &mundos, ground, cabem, sonda, w, h, mole)?;
+    let (campo, fita, setup) = pedido(
+        doc, reg, cam, &mundos, ground, cabem, sonda, w, h, mole, true,
+    )?;
     // ⚠️ **As duas listas nascem do MESMO `points`**, e é por isso que a ordem não pode divergir:
     // a posição da lâmpada `l` viaja no `MarchSetup` e a radiância dela aqui.
     let mut lamp_radiance = [[0.0f32; 3]; ph2d_field_gpu::trace::MAX_LAMPS];
@@ -442,7 +494,7 @@ pub fn packed(all: &[ph2d_material::Surface]) -> Vec<f32> {
 // A peça, o registo, a vista, as lâmpadas, o tecto delas, a tela e a bandeira — sete coisas
 // independentes, e uma struct só as renomearia.
 #[allow(clippy::too_many_arguments)]
-fn pedido(
+pub(super) fn pedido(
     doc: &ph2d_field::FieldDoc,
     reg: &ph2d_field_eval::hybrid::Registry,
     cam: &ph2d_field_render::Orbit,
@@ -457,6 +509,18 @@ fn pedido(
     // quem os tem é o `paint_com`. *Uma função que inventasse o raio sem os materiais mediria outro
     // programa.*
     mole: Option<[f32; 3]>,
+    // ⭐⭐⭐ **ESTA LEI DE PINTURA PRECISA DE LUZ?**
+    //
+    // ⛔⛔ **Aqui vivia um `mundos.is_empty()` SEM explicação e SEM gate** — o comentário ao lado
+    // dele explica a outra metade da condição (o tecto), e a lei que ele impunha era *«nenhum
+    // quadro do dispositivo sem uma lâmpada»*. ⚠️ Ela era **verdade por acidente**: o único
+    // chamador de produto já recusava a montante, logo a cerca nunca disparava e ninguém a media.
+    //
+    // ⭐ **E ela é FALSA para o matcap**, que é a luz do OLHO: ele lê o `centro[i].yzw` e mais
+    // nada. ⇒ a pergunta passa a ser de quem a faz — `true` no [`march`] e no [`paint_com`]
+    // (byte-idênticos ao de ontem), `false` no [`pinta_matcap`]. *Uma cerca de que só um dos
+    // caminhos precisa é do caminho, nunca da porta partilhada.*
+    exige_luz: bool,
 ) -> Option<(
     ph2d_field_eval::device::DeviceField,
     ph2d_field_eval::wgsl::TapeWgsl,
@@ -468,7 +532,7 @@ fn pedido(
     //
     // ⚠️ **O tecto é do QUADRO e não uma constante** — ver [`ph2d_field_gpu::trace::lamps_that_fit`]:
     // ele sai do tamanho de ligação que a placa oferece dividido pelos pixels desta tela.
-    if mundos.is_empty() || mundos.len() > cabem {
+    if (exige_luz && mundos.is_empty()) || mundos.len() > cabem {
         return None;
     }
     let mut lamps = [[0.0f32; 3]; ph2d_field_gpu::trace::MAX_LAMPS];
@@ -530,10 +594,22 @@ fn pedido(
 #[path = "gpu_frame_tests.rs"]
 mod tests;
 
+/// ⭐⭐⭐⭐ **A ATRIBUIÇÃO do `SIGSEGV` à saída do processo** — ver o doc do [`para_o_quadro`].
+#[cfg(test)]
+#[path = "gpu_frame_desanexado_tests.rs"]
+pub(crate) mod testes;
+
 /// ⭐⭐⭐ **O PASSE QUE PINTA, nos dois motores** — irmão por assunto do gate do G-buffer.
 #[cfg(test)]
 #[path = "paint_parity_tests.rs"]
 pub(crate) mod paint_parity_tests;
+
+/// ⭐⭐⭐⭐ **O MATCAP nos dois motores** — o modo de OMISSÃO do modelador, byte a byte contra a lei
+/// da CPU. ⛔ Irmão por assunto do [`paint_parity_tests`], e a razão de ele ser um ficheiro próprio
+/// é a mesma: *a lei que ele mede é outra*.
+#[cfg(test)]
+#[path = "matcap_parity_tests.rs"]
+mod matcap_parity_tests;
 
 /// ⭐⭐ **E os gates das duas waves que chegaram DEPOIS do pintor** — o chão que recebe a cor e a luz
 /// que atravessa a peça. ⛔ Irmão por **responsabilidade** e por tecto de LOC, nunca por isenção.

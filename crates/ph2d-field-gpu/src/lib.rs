@@ -95,6 +95,12 @@ pub fn supports(doc: &FieldDoc, reg: &ph2d_field_eval::hybrid::Registry) -> bool
 
 /// ⭐⭐⭐ **O BRILHO no dispositivo** — ver o módulo.
 pub mod brilho;
+/// ⭐ **Os bytes que o compositor lê, em WGSL** — ver o módulo.
+mod empacota_wgsl;
+/// ⭐⭐⭐ **O pintor de MATCAP no dispositivo** — ver o módulo.
+pub mod matcap;
+/// ⭐ **O corpo do shader do matcap** — irmão por responsabilidade do [`matcap`].
+mod matcap_wgsl;
 pub mod material_parity;
 pub mod owners_parity;
 pub mod paint;
@@ -138,6 +144,20 @@ pub struct FieldPipelines {
     grades: Option<GradesNaPlaca>,
     /// Quantas vezes uma grade subiu — ver [`FieldPipelines::grades_enviadas`].
     envios: usize,
+    /// ⭐⭐⭐ **A fotografia do matcap que já está na placa** — ver
+    /// [`FieldPipelines::matcap_buffer`].
+    foto: Option<FotoNaPlaca>,
+    /// Quantas vezes uma fotografia subiu — ver [`FieldPipelines::matcaps_enviados`].
+    envios_foto: usize,
+}
+
+/// ⭐⭐⭐ **A fotografia residente** — ver [`FieldPipelines::matcap_buffer`].
+struct FotoNaPlaca {
+    /// ⚠️ **Derivada do CONTEÚDO** e não de um endereço — ver o doc do
+    /// [`matcap::MatcapSetup::chave`], que diz porque esta é a única das duas caches desta struct
+    /// que não precisa de referências fortes.
+    chave: u64,
+    buffer: wgpu::Buffer,
 }
 
 /// ⭐⭐⭐ **A grade residente** — ver [`FieldPipelines::grades`].
@@ -169,6 +189,8 @@ impl FieldPipelines {
             por_texto: BTreeMap::new(),
             grades: None,
             envios: 0,
+            foto: None,
+            envios_foto: 0,
         }
     }
 
@@ -209,6 +231,49 @@ impl FieldPipelines {
             });
         }
         &self.grades.as_ref().expect("acabou de se preencher").buffer
+    }
+
+    /// ⭐⭐⭐ **O buffer da fotografia deste matcap**, subida só quando a identidade dela muda.
+    ///
+    /// ⚠️⚠️ **`749²×3` floats são `6,7 MB`** — quase o preço da imagem que o passe do matcap veio
+    /// poupar (`8,3 MB` a `1920×1080`). Subi-los por quadro seria construir a cura e pagar o
+    /// defeito.
+    ///
+    /// ⛔ **A chave vem de FORA e é do CONTEÚDO** — ver o doc do [`matcap::MatcapSetup::chave`].
+    pub fn matcap_buffer(
+        &mut self,
+        device: &wgpu::Device,
+        mc: &matcap::MatcapSetup<'_>,
+    ) -> &wgpu::Buffer {
+        use wgpu::util::DeviceExt;
+        if self.foto.as_ref().is_none_or(|f| f.chave != mc.chave) {
+            // ⚠️ Um armazém de zero bytes não é ligável — a mesma rede das grades.
+            let bytes: Vec<u8> = if mc.rgb_linear.is_empty() {
+                vec![0u8; 16]
+            } else {
+                mc.rgb_linear.iter().flat_map(|f| f.to_le_bytes()).collect()
+            };
+            self.envios_foto += 1;
+            self.foto = Some(FotoNaPlaca {
+                chave: mc.chave,
+                buffer: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("matcap"),
+                    contents: &bytes,
+                    usage: wgpu::BufferUsages::STORAGE,
+                }),
+            });
+        }
+        &self.foto.as_ref().expect("acabou de se preencher").buffer
+    }
+
+    /// ⭐⭐ **Quantas vezes uma FOTOGRAFIA subiu à placa** — o número que o gate de *«um arrasto
+    /// não reenvia o matcap»* observa.
+    ///
+    /// ⚠️ **Contagem e não presença**, pela mesma razão das grades: `is_some()` responde `1` tanto
+    /// a uma subida como a mil.
+    #[must_use]
+    pub fn matcaps_enviados(&self) -> usize {
+        self.envios_foto
     }
 
     /// ⭐⭐ **Quantas vezes as grades SUBIRAM à placa** — o número que o gate de *«um arrasto não

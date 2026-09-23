@@ -451,6 +451,55 @@ pub struct Smoke {
 }
 
 impl Smoke {
+    /// ⭐⭐⭐⭐ **ESPERA PELOS QUADROS EM VOO** — o dreno que a atribuição do `SIGSEGV` encomenda.
+    ///
+    /// # ⚠️ Porque ele mora AQUI
+    ///
+    /// O [`Viewport::inflight`] é `pub(super)`, e é isso que o põe neste ficheiro em vez de na
+    /// sonda que o chama. ⭐ E o sítio é o certo por outra razão: *quem sabe que há um quadro em voo
+    /// é quem guarda o `Receiver` dele.*
+    ///
+    /// # ⛔⛔ Porque ele é `#[cfg(test)]` — e a DÍVIDA que isso nomeia
+    ///
+    /// A thread que desenha nasce **desanexada**, logo trabalho na placa pode sobreviver ao
+    /// processo: medido `3` de `3`, um teste de unidade que desenha **passa** e o processo morre a
+    /// sair com `NVVM compilation failed: 3` + `SIGSEGV` (ver [`crate::gpu_frame::para_o_quadro`]).
+    /// Esta função é a metade que **cura** naquela atribuição.
+    ///
+    /// ⏳ **O consumidor de PRODUTO dela não existe:** ele seria o caminho de saída do app a drenar
+    /// antes de fechar, e esse caminho é do `winit` na shell — não deste módulo. ⚠️ *Uma lei viva e
+    /// órfã é o que esta casa caça*, e é por isso que ela fica sob `cfg(test)` com a dívida escrita:
+    /// no dia em que a shell tiver o gancho de saída, ela sai do `cfg` e ganha o segundo leitor.
+    ///
+    /// ⚠️ **Receber o quadro PROVA que a thread passou o `try_send`**, que vem depois de todo o
+    /// trabalho de placa. ⛔ Um `cancel` não serve: a bandeira é lida ENTRE passos, e uma thread
+    /// dentro do `tracer.lock().frame()` não a vê. ⇒ *esperar é a única prova.*
+    ///
+    /// ⚠️ O prazo existe porque um traçado **cancelado** devolve sem enviar — e aí o que se espera
+    /// nunca chega. Devolve quantos quadros de facto chegaram.
+    #[cfg(test)]
+    pub(crate) fn espera_pelos_quadros_em_voo(&mut self, prazo: std::time::Duration) -> usize {
+        let mut chegaram = 0;
+        for vp in &mut self.vps {
+            if let Some(job) = vp.inflight.take() {
+                while job.rx.recv_timeout(prazo).is_ok() {
+                    chegaram += 1;
+                }
+            }
+        }
+        chegaram
+    }
+
+    /// ⭐ **Quantos quadros estão EM VOO** — o CONTROLO do dreno.
+    ///
+    /// ⚠️⚠️ **Sem ele a sonda da atribuição era VÁCUO:** a 1.ª redacção drenava *depois* de o
+    /// `armed_with` desarmar o módulo, leu **`esperei por 0 quadro(s)`** e estourou na mesma — e
+    /// eu quase li isso como *«esperar não cura»*. *Uma espera por zero não afirma nada.*
+    #[cfg(test)]
+    pub(crate) fn quantos_em_voo(&self) -> usize {
+        self.vps.iter().filter(|v| v.inflight.is_some()).count()
+    }
+
     /// ⭐ **O viewport que o gesto comanda.**
     ///
     /// ⚠️ **Infalível por invariante, não por sorte:** [`Smoke::vps`] nunca é vazio, e o índice é
@@ -616,6 +665,16 @@ pub struct Ready {
 pub(super) struct MatcapTexels {
     pub(super) side: u32,
     pub(super) rgb: Vec<f32>,
+    /// ⭐⭐⭐ **A IDENTIDADE DA FOTOGRAFIA, derivada do CONTEÚDO e calculada UMA vez** — o que diz
+    /// ao cache da placa se ela precisa de subir ([`ph2d_field_gpu::matcap::MatcapSetup::chave`]).
+    ///
+    /// ⚠️⚠️ **Ela é um CAMPO e não uma função** porque `749²×3` floats são `6,7 MB`: resumi-los por
+    /// quadro para decidir se se enviam `6,7 MB` é pagar o preço duas vezes, que é a lei que o doc
+    /// da [`ph2d_field_gpu::FieldPipelines::grades`] já escreve.
+    ///
+    /// ⛔ **E é conteúdo, nunca um endereço:** um `Arc` que morre e outro que nasce no mesmo sítio
+    /// serviriam a fotografia errada **sem erro nenhum**.
+    pub(super) chave: u64,
 }
 
 thread_local! {

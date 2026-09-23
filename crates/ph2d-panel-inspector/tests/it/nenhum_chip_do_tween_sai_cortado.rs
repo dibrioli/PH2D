@@ -21,120 +21,42 @@
 //! ⇒ *quem pergunta «este rótulo cabe?» lê a fonte da PORTA DO BOTÃO*, e a porta nasceu com esta
 //! medição para que ninguém volte a adivinhá-la.
 //!
-//! # ⭐ E a cura é DERIVAR, não encurtar
+//! # ⭐ E a cura é DERIVAR, não encurtar — e em 2026-09-23 a derivação MUDOU DE DONO
 //!
-//! O `4` por fileira era uma constante. Hoje quantos cabem é medido no rótulo mais largo da
-//! família ([`ph2d_panel_inspector::chips_por_fileira`]) — ⛔ **e o gate lê essa porta em vez de a
-//! reimplementar**: *um gate que reescreve a régua mede o gate, não o painel.*
+//! O `4` por fileira era uma constante; a 1.ª cura mediu quantos cabiam no rótulo mais largo da
+//! família (`chips_por_fileira`, uma régua LOCAL ao Tween). ⛔ **Essa régua MORREU** quando toda
+//! escolha do Inspector passou pela porta [`ph2d_editor_core::property_row::paint_choice_row`]: o
+//! grupo segmentado adaptativo dá a cada chip a largura NATURAL do rótulo e reflui por fileiras,
+//! logo *«quantos cabem»* deixou de ser um número da secção. ⇒ a metade que comparava a contagem
+//! pintada com a da régua **morreu com ela** (a premissa fica à vista aqui), e a que fica é a que
+//! nunca dependeu dela: **o rectângulo PINTADO cabe o rótulo PINTADO**.
+//!
+//! ⚠️ A escada de larguras que media a régua sozinha também saiu: sem régua local não há o que
+//! medir fora da rota, e o corte de um rótulo em qualquer largura do dock é a pergunta da varredura
+//! das elisões do app inteiro (`ph2d-panel-registry-init`), que corre sobre a escada dela.
 
 use ph2d_text::TextSystem;
 use ph2d_tokens::{Spacing, TypeToken};
 
-/// A escada de larguras de painel — a mesma disciplina do
-/// [`super::every_label_this_panel_paints_fits_its_column`]: *a largura do artista é um ESTADO, e
-/// pregá-la é escolher um ponto que envelhece em horas.*
-const LARGURAS: &[(f32, &str)] = &[
-    (220.0, "o MÍNIMO do dock"),
-    (273.3, "amostra datada da largura do dono (14/09)"),
-    (304.0, "a largura de OMISSÃO (`inspector-w`)"),
-    (348.2, "amostra datada do `layout.txt` do dono (19/09)"),
-    (720.0, "o MÁXIMO do dock"),
-];
-
-/// A largura de uma linha de card, dada a largura do painel.
-fn linha(painel: f32) -> f32 {
-    painel - 2.0 * ph2d_tokens::PANEL_HEAD_PAD_PX - 2.0 * Spacing::Sm.px()
-}
-
-/// As seis famílias de chip da secção, com os rótulos que o motor declara.
-fn familias() -> Vec<(&'static str, Vec<&'static str>)> {
-    vec![
-        (
-            "canal",
-            ph2d_tween::Canal::ALL
-                .iter()
-                .map(|c| ph2d_i18n::tr(c.label_key()))
-                .collect(),
-        ),
-        (
-            "curva",
-            ph2d_anim::EasingFamily::ALL
-                .iter()
-                .map(|f| ph2d_i18n::tr(f.label_key()))
-                .collect(),
-        ),
-        (
-            "ease",
-            ph2d_anim::EasingMode::ALL
-                .iter()
-                .map(|m| ph2d_i18n::tr(m.label_key()))
-                .collect(),
-        ),
-        (
-            "fim",
-            ph2d_tween::AoAcabar::ALL
-                .iter()
-                .map(|a| ph2d_i18n::tr(a.label_key()))
-                .collect(),
-        ),
-        (
-            "ciclo",
-            ph2d_tween::Ciclo::ALL
-                .iter()
-                .map(|c| ph2d_i18n::tr(c.label_key()))
-                .collect(),
-        ),
-        (
-            "preset",
-            ph2d_tween::Preset::ALL
-                .iter()
-                .map(|p| ph2d_i18n::tr(p.label_key()))
-                .collect(),
-        ),
-    ]
-}
-
 /// ⭐⭐⭐ **O CHIP QUE O PAINEL DE FACTO PINTA cabe o rótulo que ele de facto mostra.**
 ///
-/// ⛔⛔ **Esta é a metade que percorre a ROTA, e ela nasceu de uma mutação SOBREVIVENTE:** a 1.ª
-/// redacção deste ficheiro chamava a régua ([`ph2d_panel_inspector::chips_por_fileira`])
-/// **directamente**, logo repor a constante `4` dentro do pintor deixava-a **verde** — *um gate que
-/// chama a função em vez de percorrer a rota afirma que a peça certa existe, nunca que o painel a
-/// usa*. A régua sozinha fica no gate irmão, sobre a escada de larguras.
+/// ⚠️ A largura medida é a do **rectângulo pintado**, que é exactamente o que o botão recebe — pela
+/// rota do produto, com a secção pintada inteira.
 ///
-/// ⚠️ A largura medida é a do **rectângulo pintado**, que é exactamente o que o botão recebe.
+/// ⛔⛔ **A metade da CONTAGEM morreu (2026-09-23), com a premissa à vista:** ela afirmava que o
+/// pintor punha na fileira o número que a régua local `chips_por_fileira` mandava. A régua saiu —
+/// a escolha passou pela porta da ESCOLHA, que reflui por larguras naturais — e comparar com ela
+/// seria medir um número que ninguém lê.
 ///
-/// **Mutação que deve sangrar:** o `por_fileira` do pintor voltar a ser a constante.
+/// **Mutação que deve sangrar:** a porta voltar a partes IGUAIS (o `4` de antes, ou qualquer
+/// divisão da fileira que não pergunte ao rótulo).
 #[test]
 fn o_chip_pintado_cabe_o_rotulo_pintado() {
-    let (pintados, largura_da_fileira, rects) = fileira_de_canais();
+    let rects = seccao_pintada();
     let fonte = ph2d_editor_core::widget::Button::label_font_px();
     let mut ts = TextSystem::new();
-
-    // ⛔⛔⛔ **A METADE QUE PERCORRE A ROTA é a CONTAGEM, e não a largura** — e ela nasceu de uma
-    // mutação SOBREVIVENTE, duas vezes.
-    //
-    // A 1.ª redacção chamava a régua directamente: repor a constante `4` dentro do pintor deixava-a
-    // verde. A 2.ª pintava sobre uma escada de larguras de painel — e **o arnês não as honra**: o
-    // Inspector tira a largura dele do dock, não do viewport, e os chips saem a `88` px de `220` a
-    // `348`. *Variar um número que não chega ao sujeito é medir outro programa.*
-    //
-    // ⇒ o que se afirma é que **o pintor pôs na fileira o número que a PORTA manda** para a largura
-    // que ele de facto usou. Com a constante de volta ele põe `4` onde a porta diz `3`, e isto
-    // sangra em qualquer largura.
-    let rotulos: Vec<&str> = ph2d_tween::Canal::ALL
-        .iter()
-        .map(|c| ph2d_i18n::tr(c.label_key()))
-        .collect();
-    let esperado = ph2d_panel_inspector::chips_por_fileira(&mut ts, largura_da_fileira, &rotulos);
-    assert_eq!(
-        pintados, esperado,
-        "o pintor pos {pintados} chips na fileira e a porta manda {esperado} (fileira de \
-         {largura_da_fileira:.1} px) — ele deixou de a consultar"
-    );
-
-    // E a lei que a porta serve: o rótulo cabe no rectângulo que o painel lhe deu.
     let mut cortados = Vec::new();
+    let mut medidos = 0usize;
     for (i, id) in ph2d_panel_inspector::ids::INSP_TWEEN_CANAL
         .iter()
         .enumerate()
@@ -142,6 +64,7 @@ fn o_chip_pintado_cabe_o_rotulo_pintado() {
         let Some(r) = rects.iter().find(|(n, _)| n == id).map(|(_, r)| *r) else {
             continue;
         };
+        medidos += 1;
         let rotulo = ph2d_i18n::tr(ph2d_tween::Canal::ALL[i].label_key());
         let m = ts.prefix_width(rotulo, fonte);
         if m > r.w {
@@ -151,6 +74,12 @@ fn o_chip_pintado_cabe_o_rotulo_pintado() {
             ));
         }
     }
+    // ⛔ Piso de população: sem chips pintados tudo acima é trivialmente verde.
+    assert_eq!(
+        medidos,
+        ph2d_tween::Canal::ALL.len(),
+        "a familia dos canais nao foi pintada inteira"
+    );
     assert!(
         cortados.is_empty(),
         "chips CORTADOS no painel REAL — e dois que cortem no mesmo prefixo sao indistinguiveis \
@@ -159,19 +88,11 @@ fn o_chip_pintado_cabe_o_rotulo_pintado() {
     );
 }
 
-/// Pinta a secção e devolve **(quantos chips de canal partilham a 1.ª fileira, a largura dessa
-/// fileira, todos os rectângulos)**.
-///
-/// ⚠️ A largura sai dos próprios rectângulos (do bordo esquerdo do primeiro ao direito do último),
-/// e não de um token: *o que se mede é o que o pintor usou.*
-fn fileira_de_canais() -> (
-    usize,
-    f32,
-    Vec<(ph2d_a11y::NodeId, ph2d_editor_core::zones::Rect)>,
-) {
+/// Pinta a secção Tween pela rota do painel e devolve todos os rectângulos registados.
+fn seccao_pintada() -> Vec<(ph2d_a11y::NodeId, ph2d_editor_core::zones::Rect)> {
     use ph2d_editor_core::tween_edits::{InspectorTweenInfo, InspectorTweenRow};
     use ph2d_editor_core::zones::Rect;
-    use ph2d_panel_inspector::{InspectorPanel, InspectorState, ids, set_current_inspector_tween};
+    use ph2d_panel_inspector::{InspectorPanel, InspectorState, set_current_inspector_tween};
     use ph2d_ui_testkit::MockPanelHost;
 
     let mut host = MockPanelHost::with_panel::<InspectorPanel>();
@@ -203,67 +124,11 @@ fn fileira_de_canais() -> (
         },
     );
     set_current_inspector_tween(None);
-
-    let mut da_familia: Vec<Rect> = ids::INSP_TWEEN_CANAL
-        .iter()
-        .filter_map(|id| rects.iter().find(|(n, _)| n == id).map(|(_, r)| *r))
-        .collect();
-    // ⛔ Piso de população: sem chips pintados tudo abaixo é trivialmente verde.
-    assert_eq!(
-        da_familia.len(),
-        ph2d_tween::Canal::ALL.len(),
-        "a familia dos canais nao foi pintada inteira"
-    );
-    let topo = da_familia[0].y;
-    da_familia.retain(|r| (r.y - topo).abs() < 0.5);
-    let esquerda = da_familia.iter().map(|r| r.x).fold(f32::INFINITY, f32::min);
-    let direita = da_familia
-        .iter()
-        .map(|r| r.x + r.w)
-        .fold(f32::NEG_INFINITY, f32::max);
-    (da_familia.len(), direita - esquerda, rects)
+    rects
 }
 
-/// ⭐⭐ **A RÉGUA, sobre a escada de larguras do dock** — a outra metade.
-///
-/// ⚠️ Esta chama a porta de propósito: ela mede a *régua*, e quem mede a *rota* é o gate acima.
-///
-/// **Mutação que deve sangrar:** um rótulo novo mais comprido do que a fileira aguenta.
-#[test]
-fn nenhum_chip_da_seccao_tween_sai_cortado() {
-    let fonte = ph2d_editor_core::widget::Button::label_font_px();
-    let gap = Spacing::Xs.px();
-    let mut ts = TextSystem::new();
-    let mut cortados = Vec::new();
-    for (painel, porque) in LARGURAS {
-        let w = linha(*painel);
-        for (nome, rotulos) in familias() {
-            // ⛔ Piso de população: uma família vazia satisfaz o laço em silêncio.
-            assert!(!rotulos.is_empty(), "a familia «{nome}» esta' vazia");
-            let n = ph2d_panel_inspector::chips_por_fileira(&mut ts, w, &rotulos);
-            assert!(n >= 1, "a regua devolveu ZERO chips para «{nome}»");
-            #[allow(clippy::cast_precision_loss)]
-            let nf = n as f32;
-            let cw = (w - gap * (nf - 1.0)) / nf;
-            for t in &rotulos {
-                let m = ts.prefix_width(t, fonte);
-                if m > cw {
-                    cortados.push(format!(
-                        "painel {painel} ({porque}): «{nome}» / {t:?} mede {m:.1} px num chip de \
-                         {cw:.1} ({n} por fileira)"
-                    ));
-                }
-            }
-        }
-    }
-    assert!(
-        cortados.is_empty(),
-        "chips CORTADOS — e dois que cortem no mesmo prefixo sao indistinguiveis sob o dedo:\n  {}",
-        cortados.join("\n  ")
-    );
-}
-
-/// ⭐⭐ **O CONTROLO da régua: com o `4` fixo ela ACUSA** — senão o gate acima passaria por vácuo.
+/// ⭐⭐ **O CONTROLO do fenómeno: com o `4` fixo a foto do dono REAPARECE** — senão o gate da
+/// rota passaria por vácuo (uma família cujos rótulos cabem sempre não prova que se mede o corte).
 ///
 /// ⚠️ *Um gate sem controlo positivo do próprio fenómeno mede o nada e fica verde* — a lei que o
 /// gate da guarda do pincel de pose pagou duas vezes.
@@ -272,7 +137,8 @@ fn a_regua_dos_chips_acusa_a_configuracao_que_o_dono_fotografou() {
     let fonte = ph2d_editor_core::widget::Button::label_font_px();
     let gap = Spacing::Xs.px();
     let mut ts = TextSystem::new();
-    let w = linha(304.0); // a largura de omissão, onde a foto foi tirada
+    // A largura de uma linha de card no painel de omissão (304 px), onde a foto foi tirada.
+    let w = 304.0 - 2.0 * ph2d_tokens::PANEL_HEAD_PAD_PX - 2.0 * Spacing::Sm.px();
     let cw = (w - gap * 3.0) / 4.0; // o `4` fixo de antes da cura
     let canais: Vec<&str> = ph2d_tween::Canal::ALL
         .iter()

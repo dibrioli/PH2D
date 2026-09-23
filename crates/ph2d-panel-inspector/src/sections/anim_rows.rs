@@ -362,6 +362,20 @@ pub(super) fn seccao_da_animacao(
     // ⚠️ As duas linhas que vivem no `anim.rs` — ver o doc acima.
     nomes.push(tr("panel.inspector.animation.speed_x"));
     nomes.push(tr("panel.inspector.animation.this_frame_ms_0_use"));
+    // ⛔⛔ **E as de TEXTO e as de ESCOLHA também (2026-09-23).** O editor media uma SEGUNDA coluna
+    //    (`sec_texto`, só com os três nomes de texto) — duas colunas dentro da mesma secção, e o
+    //    campo de texto começava num `x` e o numérico noutro. *Uma coluna por espécie de linha é uma
+    //    coluna por linha com outro nome.*
+    for chave in [
+        "panel.inspector.animation.name_label",
+        "panel.inspector.animation.on_finish_label",
+        "panel.inspector.animation.on_loop_label",
+        "panel.inspector.animation.direction",
+        "panel.inspector.animation.direction_override",
+        "panel.inspector.animation.loop_override",
+    ] {
+        nomes.push(tr(chave));
+    }
     ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &nomes)
 }
 
@@ -380,15 +394,7 @@ fn editor(
 ) -> f32 {
     // ⚠️ **A coluna do nome é da SECÇÃO** — desde 2026-09-22 as linhas de TEXTO também têm nome
     //    (report do dono), logo ela mede-se sobre eles.
-    let sec_texto = ph2d_editor_core::property_row::Seccao::medida(
-        text_system,
-        1,
-        &[
-            tr("panel.inspector.animation.name_label"),
-            tr("panel.inspector.animation.on_finish_label"),
-            tr("panel.inspector.animation.on_loop_label"),
-        ],
-    );
+    let sec_texto = seccao_da_animacao(text_system);
     let mut cur_y = y;
     cur_y = text_row(
         scene,
@@ -418,55 +424,35 @@ fn editor(
         row,
     );
 
-    // A direção, como quatro botões. ⚠️ A seleção vem do SNAPSHOT, e não do store.
-    let font = TypeToken::Sm.px();
-    paint_text(
-        text_system,
-        scene,
-        tr("panel.inspector.animation.direction"),
-        x,
-        cur_y,
-        font,
-        w,
-        resolve(ColorToken::Text2, theme),
-    );
-    cur_y += font + ph2d_tokens::control_gap_px();
-    let gap = Spacing::Xs.px();
-    // ⭐ Uma ESCOLHA, não quatro comandos — ver [`ph2d_editor_core::widget::composto`].
-    ph2d_editor_core::widget::composto::grupo(ids::INSP_ANIM_DIR.iter().copied());
-    let n = ids::INSP_ANIM_DIR.len() as f32;
-    let cw = ((w - gap * (n - 1.0)) / n).max(0.0);
-    for (i, (&id, label)) in ids::INSP_ANIM_DIR
+    // ⭐⭐ **A direção é UMA escolha com NOME, pela porta** (2026-09-23). ⛔ Ela era quatro
+    //    `Button` em partes IGUAIS com o nome POR CIMA — a quarta forma de «escolha com nome» deste
+    //    painel —, e o `PP` era um literal ao lado de três chaves. ⚠️ A selecção vem do SNAPSHOT.
+    let rotulos = [
+        tr("panel.inspector.animation.fwd"),
+        tr("panel.inspector.animation.rev"),
+        tr("panel.inspector.animation.pp"),
+        tr("panel.inspector.animation.pp_rev"),
+    ];
+    let segmentos: Vec<(&str, bool, NodeId)> = ids::INSP_ANIM_DIR
         .iter()
-        .zip(
-            [
-                tr("panel.inspector.animation.fwd"),
-                tr("panel.inspector.animation.rev"),
-                "PP",
-                tr("panel.inspector.animation.pp_rev"),
-            ]
-            .iter(),
-        )
+        .zip(rotulos)
         .enumerate()
-    {
-        let rect = Rect::new(x + (cw + gap) * i as f32, cur_y, cw, ROW_H_PX);
-        hit_index.register(id, rect);
-        let kind = if usize::from(row.direction_tag) == i {
-            ButtonKind::Accent
-        } else {
-            ButtonKind::Default
-        };
-        paint_button(
-            &Button::new(id, *label)
-                .kind(kind)
-                .visual(store.button_visual(id)),
-            rect,
-            scene,
-            text_system,
-            theme,
-        );
-    }
-    cur_y += ph2d_tokens::row_pitch_px();
+        .map(|(i, (&id, l))| (l, usize::from(row.direction_tag) == i, id))
+        .collect();
+    cur_y = ph2d_editor_core::property_row::paint_choice_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        tr("panel.inspector.animation.direction"),
+        &segmentos,
+        sec_texto,
+    );
+    let font = TypeToken::Sm.px();
 
     // **OS SINAIS** (spec §8.10) — no FIM, e depois da direção, porque eles são o que a animação
     // diz para FORA. Tudo acima descreve o que ela faz; isto descreve o que ela anuncia.

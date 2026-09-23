@@ -52,6 +52,27 @@ const fn chave_da_queixa(q: PathFollowQueixa) -> &'static str {
 ///
 /// ⚠️ **A legenda NOMEIA o timer** porque ele não é privado deste seguidor: ele pode estar a
 /// arrancar uma cutscene, a alimentar uma fábrica ou a publicar um sinal.
+/// ⭐⭐ **A coluna do nome desta secção — UMA.** Ela era medida em dois sítios (o relógio só com
+/// `Duration`, o corpo sem as quatro escolhas); ver o irmão [`super::tween_editor::seccao_do_tween`].
+fn seccao_do_percurso(text_system: &mut TextSystem) -> ph2d_editor_core::property_row::Seccao {
+    let nomes: Vec<&str> = [
+        "panel.inspector.path_follow.duration_seconds",
+        "panel.inspector.path_follow.timer_slot",
+        "panel.inspector.path_follow.start_at",
+        "panel.inspector.path_follow.angle",
+        "panel.inspector.path_follow.side_offset",
+        "panel.inspector.path_follow.shape_label",
+        "panel.inspector.path_follow.curve",
+        "panel.inspector.path_follow.ease",
+        "panel.inspector.path_follow.when_done",
+        "panel.inspector.path_follow.cycle",
+    ]
+    .into_iter()
+    .map(tr)
+    .collect();
+    ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &nomes)
+}
+
 #[allow(clippy::too_many_arguments)]
 fn relogio(
     scene: &mut VectorScene,
@@ -77,11 +98,7 @@ fn relogio(
         ),
         ColorToken::Text3,
     );
-    let sec = ph2d_editor_core::property_row::Seccao::medida(
-        text_system,
-        1,
-        &[tr("panel.inspector.path_follow.duration_seconds")],
-    );
+    let sec = seccao_do_percurso(text_system);
     cur_y = super::rows::fields_row(
         scene,
         text_system,
@@ -151,18 +168,7 @@ fn corpo(
             ColorToken::Text3,
         );
     }
-    let seccao = ph2d_editor_core::property_row::Seccao::medida(
-        text_system,
-        1,
-        &[
-            tr("panel.inspector.path_follow.timer_slot"),
-            tr("panel.inspector.path_follow.start_at"),
-            tr("panel.inspector.path_follow.angle"),
-            tr("panel.inspector.path_follow.side_offset"),
-            // ⭐ O nome da LINHA DE TEXTO entra na medição da coluna, como os irmãos.
-            tr("panel.inspector.path_follow.shape_label"),
-        ],
-    );
+    let seccao = seccao_do_percurso(text_system);
     // ⭐ **O NOME da forma** — a referência durável desta casa.
     cur_y = super::anim_rows::text_row(
         scene,
@@ -218,6 +224,7 @@ fn corpo(
         &crate::ids::INSP_PF_CICLO,
         &ciclos,
         i.ciclo as usize,
+        seccao,
     );
     let familias: Vec<&str> = ph2d_anim::EasingFamily::ALL
         .iter()
@@ -236,6 +243,7 @@ fn corpo(
         &crate::ids::INSP_PF_FAMILIA,
         &familias,
         i.familia as usize,
+        seccao,
     );
     let modos: Vec<&str> = ph2d_anim::EasingMode::ALL
         .iter()
@@ -254,6 +262,7 @@ fn corpo(
         &crate::ids::INSP_PF_MODO,
         &modos,
         i.modo as usize,
+        seccao,
     );
     let fins: Vec<&str> = ph2d_tween::AoAcabar::ALL
         .iter()
@@ -272,6 +281,7 @@ fn corpo(
         &crate::ids::INSP_PF_AO_ACABAR,
         &fins,
         i.ao_acabar as usize,
+        seccao,
     );
 
     // ⚠️ **A UNIDADE é um CHIP do campo, nunca texto no rótulo** — há gate a prová-lo, e a razão é

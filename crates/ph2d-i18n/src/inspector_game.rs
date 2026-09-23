@@ -9,6 +9,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.inspector.actions.from_anyone" => "From Anyone",
         "panel.inspector.actions.from_myself" => "From Myself",
+        "panel.inspector.actions.target_by" => "Target By",
+        "panel.inspector.actions.source" => "Source",
+        "panel.inspector.actions.do_label" => "Do",
         "panel.inspector.actions.no_tag_chosen_u_this_action_reaches_nobody" => {
             "No tag chosen \u{b7} this action reaches nobody."
         }

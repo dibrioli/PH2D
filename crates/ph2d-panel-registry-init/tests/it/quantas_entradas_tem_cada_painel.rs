@@ -1285,7 +1285,11 @@ fn diag_compostos_por_declarar() {
 const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
     // ⭐ `314 → 150` (os pintores canónicos) `→ 88` (o helper de 16 sítios + as abas). Todos os
     //    `88` são ids NOMEADOS: aqui o bruto e o distinto coincidem, e a dívida é real.
-    ("inspector", 88),
+    // ⬇️ `88 → 81` em 2026-09-23: as escolhas que eram BOTÕES soltos ou abas (o `Where` da Fábrica,
+    //    o `Sort Point`) passaram pela porta da ESCOLHA e são peças de um grupo DECLARADO — um
+    //    composto conta uma vez. ⚠️ O `7` é o que a catraca mediu; a partição por secção não foi
+    //    atribuída uma a uma.
+    ("inspector", 81),
     // ⛔⛔ `110` botões, **`4`** comandos: fechar · importar · exportar · e o *elo*, que é pintado
     //    uma vez por linha por decisão escrita no pintor. O painel é uma LISTA, não uma dívida.
     ("tokens", 4),

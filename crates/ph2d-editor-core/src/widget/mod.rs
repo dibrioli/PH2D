@@ -107,6 +107,10 @@ pub use dropdown::{
     paint_dropdown_popover_in_viewport, paint_dropdown_popover_scrolled,
 };
 pub use segmented_layout::{segment_rects_for, wrapped_cells_for};
+// ⭐ A MESMA conta que o grupo adaptativo faz, para a porta da escolha medir sem pintar
+// (`property_row::escolha::fileiras_ao_lado`). `pub(crate)` por re-export porque o bloco `mod` acima
+// é gerado e só conhece `mod`/`pub mod`.
+pub(crate) use segmented_layout::{segmented_natural_widths, segmented_row_counts};
 // ⚠️ A lei da borda de um campo, já com o eixo do hover — `pub(crate)` porque os seus
 // consumidores são os três pintores da família e os gates, nunca um painel.
 pub use icon_button::{IconButtonStyle, IconGlyph, icon_glyph, paint_icon_button};

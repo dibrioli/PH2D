@@ -229,9 +229,20 @@ fn verb_row(
     y: f32,
     labels: &[String],
     sel: u8,
+    seccao: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
-    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, ROW_H_PX);
-    let rect = Rect::new(x, y, control_w, ROW_H_PX);
+    let linha = ph2d_editor_core::property_row::paint_label_row(
+        scene,
+        text_system,
+        theme,
+        x,
+        w,
+        y,
+        ROW_H_PX,
+        tr("panel.inspector.actions.do_label"),
+        seccao,
+    );
+    let (rect, dot) = (linha.control, linha.dot);
     hit_index.register(ids::INSP_ACTION_VERB_PICK, rect);
     let open = matches!(
         store.get(ids::INSP_ACTION_VERB_PICK),
@@ -280,18 +291,21 @@ fn target_rows(
     w: f32,
     y: f32,
     row: &InspectorActionRow,
+    seccao: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
-    // ⚠️ **A coluna do nome é da SECÇÃO** — desde 2026-09-22 as linhas de TEXTO também têm nome
-    //    (report do dono), logo ela mede-se sobre eles.
-    let seccao = ph2d_editor_core::property_row::Seccao::medida(
-        text_system,
-        1,
-        &[tr("panel.inspector.actions.target_label")],
-    );
     let por_tag = row.target_is_tag();
-    let (seg_w, seg_dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, ROW_H);
-    let seg_h = paint_segmented_group_adaptive(
-        Rect::new(x, y, seg_w, ROW_H),
+    // ⚠️ **Pela PORTA da escolha, com o NOME ao lado** (2026-09-23) — ele era o único segmentado
+    //    desta secção sem nome nenhum, a arrancar na borda do conteúdo.
+    let mut cur_y = ph2d_editor_core::property_row::paint_choice_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        tr("panel.inspector.actions.target_by"),
         &[
             (
                 tr("panel.inspector.actions.name"),
@@ -310,17 +324,8 @@ fn target_rows(
                 ids::INSP_ACTION_BY_OTHER,
             ),
         ],
-        scene,
-        text_system,
-        theme,
-        store,
-        hit_index,
+        seccao,
     );
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, seg_dot);
-    // ⚠️ **Pela PORTA, como a cauda do irmão `from_row`** — ver o comentário de lá. Este sítio era
-    // invisível ao censo por ser uma INSTRUÇÃO e não uma cauda (*um censo que conhece uma forma da
-    // mesma pergunta é cego às outras*, que é o que aquele ficheiro narra sobre si mesmo).
-    let mut cur_y = y + seg_h + ph2d_tokens::control_gap_px();
 
     // ⭐⭐ **O modo «quem bateu» NÃO tem controlo por baixo, e isso é a lei do modo**: o alvo sai do
     // sinal e não de nada que o artista escreva. *Um campo aqui seria um controlo morto.*
@@ -367,6 +372,7 @@ fn target_rows(
         w,
         cur_y,
         row,
+        seccao,
     );
     let font = TypeToken::Sm.px();
     let (aviso, cor) = if row.target_tag_unset() {
@@ -411,9 +417,20 @@ fn tag_pick_row(
     w: f32,
     y: f32,
     row: &InspectorActionRow,
+    seccao: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
-    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, ROW_H);
-    let rect = Rect::new(x, y, control_w, ROW_H);
+    let linha = ph2d_editor_core::property_row::paint_label_row(
+        scene,
+        text_system,
+        theme,
+        x,
+        w,
+        y,
+        ROW_H,
+        tr("panel.inspector.actions.tag"),
+        seccao,
+    );
+    let (rect, dot) = (linha.control, linha.dot);
     hit_index.register(ids::INSP_ACTION_TAG_PICK, rect);
     let open = matches!(
         store.get(ids::INSP_ACTION_TAG_PICK),

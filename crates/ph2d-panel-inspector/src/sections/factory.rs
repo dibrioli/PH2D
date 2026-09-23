@@ -32,7 +32,12 @@ use ph2d_editor_core::screens::hero::{
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_i18n::{tr, tr_with};
 
-/// O segmentado do ONDE. ⚠️ A selecção vem do SNAPSHOT, nunca do store.
+/// O segmentado do ONDE — **pela porta da ESCOLHA**, com o nome ao LADO.
+///
+/// ⛔⛔ Até 2026-09-23 ele era três `Button` em partes IGUAIS com o nome POR CIMA, montados à mão
+/// ao lado da porta [`ph2d_editor_core::property_row::paint_choice_row`] — a varredura geométrica
+/// `nenhum_nome_por_cima_do_controlo` acusava-o como grupo à largura inteira que não vinha dela.
+/// ⚠️ A selecção vem do SNAPSHOT, nunca do store.
 #[allow(clippy::too_many_arguments)]
 fn where_row(
     scene: &mut VectorScene,
@@ -44,43 +49,26 @@ fn where_row(
     w: f32,
     y: f32,
     sel: InspectorSpawnWhere,
+    seccao: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
-    let font = TypeToken::Sm.px();
-    paint_text(
-        text_system,
+    let segmentos: Vec<(&str, bool, ph2d_a11y::NodeId)> = crate::ids::INSP_FACTORY_WHERE
+        .iter()
+        .zip(InspectorSpawnWhere::ALL)
+        .map(|(&id, onde)| (onde.label(), onde == sel, id))
+        .collect();
+    ph2d_editor_core::property_row::paint_choice_row(
         scene,
-        tr("panel.inspector.factory.where"),
+        text_system,
+        theme,
+        hit_index,
+        store,
         x,
-        y,
-        font,
         w,
-        resolve(ColorToken::Text2, theme),
-    );
-    let row_y = y + font + Spacing::Xs.px();
-    let gap = Spacing::Xs.px();
-    // ⭐ Uma ESCOLHA, não três comandos — ver [`ph2d_editor_core::widget::composto`].
-    ph2d_editor_core::widget::composto::grupo(crate::ids::INSP_FACTORY_WHERE.iter().copied());
-    let n = ph2d_editor_core::ids::INSP_FACTORY_WHERE_LEN as f32;
-    let cw = ((w - gap * (n - 1.0)) / n).max(0.0);
-    for (i, &id) in crate::ids::INSP_FACTORY_WHERE.iter().enumerate() {
-        let rect = Rect::new(x + (cw + gap) * i as f32, row_y, cw, ph2d_tokens::ROW_H_PX);
-        hit_index.register(id, rect);
-        let kind = if InspectorSpawnWhere::ALL[i] == sel {
-            ButtonKind::Accent
-        } else {
-            ButtonKind::Default
-        };
-        paint_button(
-            &Button::new(id, InspectorSpawnWhere::ALL[i].label())
-                .kind(kind)
-                .visual(store.button_visual(id)),
-            rect,
-            scene,
-            text_system,
-            theme,
-        );
-    }
-    row_y + ph2d_tokens::row_pitch_px()
+        y,
+        tr("panel.inspector.factory.where"),
+        &segmentos,
+        seccao,
+    )
 }
 
 /// ⭐⭐ **ONDE a cópia nasce** — as três formas de uma pergunta só. Devolve o `y` seguinte.
@@ -117,6 +105,7 @@ fn onde_rows(
         w,
         cur_y,
         f.spawn_where,
+        seccao,
     );
     // ⚠️ **Só o que o MODO lê é pintado** — a lei do `SignalVerb::uses_arg`: um campo que o modo não
     // lê é um controlo morto; escondê-lo onde ele lê é uma feature inalcançável.
@@ -202,6 +191,7 @@ fn factory_body(
         text_system,
         2,
         &[
+            tr("panel.inspector.factory.where"),
             tr("panel.inspector.factory.area_m"),
             tr("panel.inspector.factory.burst"),
             tr("panel.inspector.factory.max_alive_0_no_limit"),

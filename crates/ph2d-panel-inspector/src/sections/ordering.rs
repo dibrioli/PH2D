@@ -69,6 +69,7 @@ fn seccao(text_system: &mut TextSystem) -> ph2d_editor_core::property_row::Secca
             field_label("ph2d::ecs::OrderInLayer", 1),
             tr("panel.inspector.ordering.sorting_layer"),
             field_label("ph2d::ecs::YSort", 1),
+            tr("panel.inspector.ordering.sort_point"),
             tr("panel.inspector.ordering.axis_x"),
             tr("panel.inspector.ordering.axis_y"),
             marker_label("ph2d::ecs::SortingGroup"),
@@ -243,33 +244,40 @@ fn ysort_point_rows(
     info: &InspectorOrderingInfo,
     sec: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
-    let h = ROW_H_PX;
-    let rect = Rect::new(x, y, w, h);
-    let tabs = Tabs::new(
-        NodeId(0),
-        "",
-        vec![
-            TabItem::new(
-                ids::INSP_ORDER_SP_CENTER,
-                tr("panel.inspector.ordering.center"),
-            ),
-            TabItem::new(
-                ids::INSP_ORDER_SP_PIVOT,
-                tr("panel.inspector.ordering.pivot"),
-            ),
-            TabItem::new(
-                ids::INSP_ORDER_SP_CUSTOM,
-                tr("panel.inspector.ordering.custom"),
-            ),
-        ],
-    )
-    .variant(TabsVariant::Segmented)
-    .selected(info.y_sort_point as usize);
-    paint_tabs(&tabs, rect, scene, text_system, theme);
-    for (i, item) in tabs.items.iter().enumerate() {
-        hit_index.register(item.id, tabs.tab_rect(rect, i));
-    }
-    let mut cur_y = y + h + Spacing::Sm.px();
+    // ⛔⛔ **Ela não tinha NOME** — três botões (`Center · Pivot · Custom`) a toda a largura por baixo
+    //    da caixa do `Y Sort`, e o artista tinha de adivinhar a que pergunta respondiam. Hoje é uma
+    //    linha de escolha com o nome `Sort Point`, pela porta, na coluna da secção.
+    let sel = info.y_sort_point as usize;
+    let segmentos = [
+        (
+            tr("panel.inspector.ordering.center"),
+            sel == 0,
+            ids::INSP_ORDER_SP_CENTER,
+        ),
+        (
+            tr("panel.inspector.ordering.pivot"),
+            sel == 1,
+            ids::INSP_ORDER_SP_PIVOT,
+        ),
+        (
+            tr("panel.inspector.ordering.custom"),
+            sel == 2,
+            ids::INSP_ORDER_SP_CUSTOM,
+        ),
+    ];
+    let mut cur_y = ph2d_editor_core::property_row::paint_choice_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        tr("panel.inspector.ordering.sort_point"),
+        &segmentos,
+        sec,
+    );
     // Custom Axis — only when Sort Point = Custom (tag 2).
     if info.y_sort_point == 2 {
         cur_y = number_row(

@@ -6,6 +6,31 @@
 
 use super::*;
 
+/// ⭐⭐ **A coluna do nome do editor de uma acção — UMA, para as SETE linhas.**
+///
+/// ⛔⛔ Até 2026-09-23 havia duas medidas (o editor com `On`/`Argument`, o alvo só com `Target`) e
+/// quatro linhas SEM NOME nenhum — os dois segmentados (*a quem* · *de quem*) e as duas caixas
+/// (*o verbo* · *a tag*) pintavam o controlo desde a borda do conteúdo. Com o nome ao lado (a porta
+/// [`ph2d_editor_core::property_row::paint_choice_row`]) todas entram na mesma coluna, senão cada
+/// uma arranca num `x` diferente.
+pub(super) fn seccao_da_acao(
+    text_system: &mut TextSystem,
+) -> ph2d_editor_core::property_row::Seccao {
+    ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &[
+            tr("panel.inspector.actions.on_label"),
+            tr("panel.inspector.actions.target_by"),
+            tr("panel.inspector.actions.target_label"),
+            tr("panel.inspector.actions.tag"),
+            tr("panel.inspector.actions.source"),
+            tr("panel.inspector.actions.do_label"),
+            tr("panel.inspector.actions.arg_label"),
+        ],
+    )
+}
+
 /// O editor da acção aberta. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn editor(
@@ -20,16 +45,7 @@ pub(super) fn editor(
     row: &InspectorActionRow,
     labels: &[String],
 ) -> f32 {
-    // ⚠️ **A coluna do nome é da SECÇÃO** — desde 2026-09-22 as linhas de TEXTO também têm nome
-    //    (report do dono), logo ela mede-se sobre eles.
-    let seccao = ph2d_editor_core::property_row::Seccao::medida(
-        text_system,
-        1,
-        &[
-            tr("panel.inspector.actions.on_label"),
-            tr("panel.inspector.actions.arg_label"),
-        ],
-    );
+    let seccao = seccao_da_acao(text_system);
     let mut cur_y = super::anim_rows::text_row(
         scene,
         text_system,
@@ -59,6 +75,7 @@ pub(super) fn editor(
             w,
             cur_y,
             row,
+            seccao,
         )
     } else {
         cur_y
@@ -73,6 +90,7 @@ pub(super) fn editor(
         w,
         cur_y,
         row,
+        seccao,
     );
     cur_y = verb_row(
         scene,
@@ -85,6 +103,7 @@ pub(super) fn editor(
         cur_y,
         labels,
         row.verb_tag,
+        seccao,
     );
     // ⚠️ **O campo do parâmetro só existe onde o verbo o LÊ.** Mostrá-lo sempre seria um controlo
     // morto em três dos cinco verbos — a família que a caça de 30/08 mediu.
@@ -144,11 +163,19 @@ fn from_row(
     w: f32,
     y: f32,
     row: &InspectorActionRow,
+    seccao: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
     let so_meu = row.from_is_myself();
-    let (seg_w, seg_dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, ROW_H_PX);
-    let seg_h = paint_segmented_group_adaptive(
-        Rect::new(x, y, seg_w, ROW_H_PX),
+    ph2d_editor_core::property_row::paint_choice_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        tr("panel.inspector.actions.source"),
         &[
             (
                 tr("panel.inspector.actions.from_anyone"),
@@ -161,19 +188,14 @@ fn from_row(
                 crate::ids::INSP_ACTION_FROM_MYSELF,
             ),
         ],
-        scene,
-        text_system,
-        theme,
-        store,
-        hit_index,
-    );
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, seg_dot);
+        seccao,
+    )
     // ⚠️ **A cauda sai da PORTA** (`control_gap_px`), e não de um degrau escrito aqui: *o que fica
     // depois de um bloco é UMA resposta*, e o gate `the_tail_of_a_block_is_one_answer` apanhou esta
     // linha na primeira corrida. ⭐ O irmão `target_rows` escrevia `Spacing::Xs` a meio de uma
     // instrução — invisível àquele censo — e passou a ler a mesma porta: os dois segmentados vivem
     // na MESMA coluna, a vinte pixels um do outro, e dois vãos diferentes ali leem-se como defeito.
-    y + seg_h + ph2d_tokens::control_gap_px()
+    // ⭐ Desde 2026-09-23 a cauda é da porta da ESCOLHA, que é a mesma resposta.
 }
 
 /// A secção inteira — cabeçalho, dobra e corpo. Devolve o `y` seguinte.

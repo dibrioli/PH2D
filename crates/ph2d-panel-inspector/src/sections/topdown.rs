@@ -28,6 +28,11 @@ use ph2d_i18n::tr;
 
 /// Um segmentado. ⚠️ **A selecção vem do SNAPSHOT, nunca do store** — ler o store faria o primeiro
 /// clique depois de trocar de objecto mandar o valor do objecto anterior.
+///
+/// ⛔⛔ **O nome estava POR CIMA** (`row_y = y + font + Xs`, e o grupo a toda a largura) — a forma
+/// que o dono reprovou duas vezes, escrita com a variável `font`, que é o TERCEIRO nome do mesmo
+/// idioma a que o gate textual ficou cego. ⇒ a porta
+/// [`ph2d_editor_core::property_row::paint_choice_row`], com a coluna da SECÇÃO.
 #[allow(clippy::too_many_arguments)]
 fn seg_row(
     scene: &mut VectorScene,
@@ -42,37 +47,26 @@ fn seg_row(
     ids: &[ph2d_a11y::NodeId],
     rotulos: &[&'static str],
     escolhido: usize,
+    seccao: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
-    let font = TypeToken::Sm.px();
-    paint_text(
-        text_system,
-        scene,
-        titulo,
-        x,
-        y,
-        font,
-        w,
-        resolve(ColorToken::Text2, theme),
-    );
-    let row_y = y + font + Spacing::Xs.px();
-    // ⭐⭐ **A disposição é a PORTA da casa** — ver o irmão em `sections/anim.rs` (2026-09-19): as
-    //    quatro linhas que repartiam a coluna em partes IGUAIS cortavam `Top-Down` · `Custom` ·
-    //    `Don't Turn` · `Face Move` a `48 px` cada, com as palavras a caberem de sobra na coluna.
     let segments: Vec<(&str, bool, ph2d_a11y::NodeId)> = ids
         .iter()
         .enumerate()
         .map(|(i, &id)| (rotulos.get(i).copied().unwrap_or(""), i == escolhido, id))
         .collect();
-    let seg_h = ph2d_editor_core::widget::panel_chrome::paint_segmented_group_adaptive(
-        Rect::new(x, row_y, w, ph2d_tokens::ROW_H_PX),
-        &segments,
+    ph2d_editor_core::property_row::paint_choice_row(
         scene,
         text_system,
         theme,
-        store,
         hit_index,
-    );
-    row_y + seg_h + ph2d_tokens::control_gap_px()
+        store,
+        x,
+        w,
+        y,
+        titulo,
+        &segments,
+        seccao,
+    )
 }
 
 /// **Os AVISOS** — a metade que responde a *«pus o componente e ele não anda»*.
@@ -173,6 +167,9 @@ fn corpo(
             tr("panel.inspector.topdown.turn_speed_deg_s_0_instant"),
             tr("panel.inspector.topdown.min_slide_angle_deg"),
             tr("panel.inspector.topdown.max_slides"),
+            tr("panel.inspector.topdown.directions"),
+            tr("panel.inspector.topdown.viewpoint"),
+            tr("panel.inspector.topdown.facing"),
         ],
     );
     for (label, id, step, unidade) in [
@@ -229,6 +226,7 @@ fn corpo(
         &crate::ids::INSP_TD_DIRECTIONS,
         &rotulos,
         usize::from(i.directions.tag()),
+        seccao,
     );
 
     let rotulos: Vec<&'static str> = InspectorViewpoint::ALL.iter().map(|m| m.label()).collect();
@@ -245,6 +243,7 @@ fn corpo(
         &crate::ids::INSP_TD_VIEWPOINT,
         &rotulos,
         usize::from(i.viewpoint.tag()),
+        seccao,
     );
     // ⭐ **Só em `Custom`** — ver o cabeçalho.
     if i.viewpoint.uses_angle() {
@@ -279,6 +278,7 @@ fn corpo(
         &crate::ids::INSP_TD_FACING,
         &rotulos,
         usize::from(i.facing.tag()),
+        seccao,
     );
     // ⭐ **Só quando ele roda.**
     if i.facing.uses_turn_speed() {

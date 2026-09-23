@@ -315,11 +315,9 @@ const A_PASSAGEM_ARMADA_AINDA_CORTA: &[(&str, &str, &str)] = &[
     //    `paint_text` (que CORTA) em vez do `paint_text_block` (que QUEBRA). Com a porta única
     //    ela quebra em duas linhas e **deixa de ser um corte**.
     // ⛔ *A dívida não foi silenciada — ela foi PAGA*, e o censo de obsolescência foi quem o disse.
-    (
-        "inspector",
-        "Authored",
-        "opção de um segmentado de 3 numa fileira de 268 px ⇒ 48 px por peça, e a palavra pede ~62.          A porta que mede as PALAVRAS (`segment_rects_for`) reparte o que há, e aqui não há.",
-    ),
+    // ⭐⭐ **O `Authored`/`Counter` do HUD SAÍRAM em 2026-09-23** — o segmentado passou pela porta da
+    //    ESCOLHA, que o mediu a não caber numa fileira ao lado do nome e o pôs em PALETA, onde cada
+    //    peça leva a largura NATURAL da palavra. Quem os apagou daqui foi o censo de obsolescência.
     // ⭐⭐⭐ **A PROVENIÊNCIA, cortada desde 2026-09-22 — e é o PREÇO de a secção alinhar.**
     //
     // ⛔ A `RENDER SOURCE` punha o nome POR CIMA do valor, logo a ranhura tinha a largura do painel
@@ -332,11 +330,6 @@ const A_PASSAGEM_ARMADA_AINDA_CORTA: &[(&str, &str, &str)] = &[
         "inspector",
         "Hand-packed \u{b7} hero \u{b7} idle_0",
         "ranhura de proveniencia \u{b7} 112,0 px \u{b7} nome de folha que o artista deu (tem balao)",
-    ),
-    (
-        "inspector",
-        "Counter",
-        "a irmã da de cima, no mesmo segmentado — a mais larga das três é que decide.",
     ),
     // ⭐ **E a irmã do TIMER saiu pela MESMA cura, no mesmo commit** (*«mesma cura que o irmão do
     //    HUD — quebrar»*). As duas eram avisos DERIVADOS de números, sem versão curta possível; o
@@ -582,7 +575,11 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    dizia que o corte tinha saído por a ORDEM das secções ter mudado de família — *um
     //    palpite com cara de medição*, e falso (reordenar não muda a largura de coluna de
     //    ninguém). Repondo o texto longo a catraca lê `86` e nomeia-o na lista; com o curto, `85`.
-    ("inspector", 85),
+    // ⬇️ `85 → 79` em 2026-09-23: as escolhas do Inspector passaram pela porta da ESCOLHA
+    //    (`property_row::paint_choice_row`), e as que não cabem ao lado do nome viram PALETA com
+    //    larguras naturais — os seis segmentados que repartiam a fileira em partes deixaram de
+    //    cortar. Medido no âmbito do app (`--workspace`), a catraca a pedir o número.
+    ("inspector", 79),
     // ⭐ Era `6`: o `Mute` do Master deixou de ler `…` quando a coluna aperta (report do dono,
     //    19/09). *Uma catraca que desce é a metade justa dela a funcionar.*
     ("audio_mixer", 5),
@@ -656,7 +653,8 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    que encolhe tira um corte* — a catraca a DESCER é a lei a funcionar.
     // ⭐ `85 → 84` em 2026-09-21, pela mesma passagem pela porta — ver a irmã acima.
     // ⬇️ `84 → 81` em 2026-09-22, pela mesma cura — as letras deixaram de se perder.
-    ("inspector", 81),
+    // ⬇️ `81 → 75` em 2026-09-23, pela mesma passagem pela porta da escolha — ver a irmã acima.
+    ("inspector", 75),
     ("audio_mixer", 5),
     ("sculpt3d", 6),
     ("hierarchy", 5),

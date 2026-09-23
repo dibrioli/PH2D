@@ -16,6 +16,7 @@ mod a_slot_with_two_panels_shows_tabs;
 mod a_tab_dragged_to_another_dock_moves_the_panel;
 mod global_palette_catalog;
 mod nenhum_nome_carrega_uma_regra;
+mod nenhum_nome_por_cima_do_controlo;
 mod nenhum_rotulo_do_app_pinta_nada;
 mod o_inspector_armado;
 mod o_model3d_armado;

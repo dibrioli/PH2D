@@ -35,7 +35,11 @@ use ph2d_i18n::tr_with;
 /// barra que se agarra tem de **parecer** que se agarra.
 const BAR_H: f32 = 10.0; // LITERAL-PX-OK: altura de trilha de slider, é o alvo do ponteiro
 
-/// Um segmentado de N botões numa linha, com o índice `sel` aceso. Devolve o `y` seguinte.
+/// Um segmentado de N botões com o índice `sel` aceso. Devolve o `y` seguinte.
+///
+/// ⛔⛔ **O nome estava POR CIMA e o grupo a toda a largura** (`row_y = y + font + Xs`) — a forma
+/// que o dono reprovou duas vezes. ⇒ a porta [`ph2d_editor_core::property_row::paint_choice_row`],
+/// com a coluna da secção (`anim_rows::seccao_da_animacao`, que já conta estes dois nomes).
 #[allow(clippy::too_many_arguments)]
 fn segmented_row(
     scene: &mut VectorScene,
@@ -51,46 +55,28 @@ fn segmented_row(
     labels: &[&str],
     sel: usize,
 ) -> f32 {
-    let font = TypeToken::Sm.px();
-    paint_text(
-        text_system,
-        scene,
-        label,
-        x,
-        y,
-        font,
-        w,
-        resolve(ColorToken::Text2, theme),
-    );
-    let row_y = y + font + Spacing::Xs.px();
-    // ⭐⭐⭐ **A disposição é a PORTA da casa, não uma cópia local** (2026-09-19).
-    //
-    // ⛔⛔ Aqui viviam quatro linhas que repartiam a coluna em `n` partes **iguais** — a terceira
-    //    cópia dessa lei no Inspector, e a que a varredura de elisões apanhou com o documento na
-    //    mão: `Inherit · Fwd · Rev · PP · PP Rev` dava `34,4 px` a cada uma e pintava `Inh…` e
-    //    `PP…`. *Uma lei escrita em quatro sítios não é uma lei.*
-    //
-    // ⭐ O que a porta traz de graça: a peça leva o que a PALAVRA pede, a fileira QUEBRA quando não
-    //    cabe, e as peças encostam como um grupo (a lei do Blender que o resto do painel já segue).
-    //
-    // ⚠️ **A selecção vem do SNAPSHOT**, não do store: o store guarda o visual do botão, e ler dali
-    //    qual está aceso faria o realce sobreviver à troca de sprite.
+    // ⚠️ **A selecção vem do SNAPSHOT**, não do store: ler dali qual está aceso faria o realce
+    //    sobreviver à troca de sprite.
     let segments: Vec<(&str, bool, NodeId)> = ids_
         .iter()
         .zip(labels.iter())
         .enumerate()
         .map(|(i, (&id, &text))| (text, i == sel, id))
         .collect();
-    let seg_h = ph2d_editor_core::widget::panel_chrome::paint_segmented_group_adaptive(
-        Rect::new(x, row_y, w, ROW_H_PX),
-        &segments,
+    let sec = super::anim_rows::seccao_da_animacao(text_system);
+    ph2d_editor_core::property_row::paint_choice_row(
         scene,
         text_system,
         theme,
-        store,
         hit_index,
-    );
-    row_y + seg_h + ph2d_tokens::control_gap_px()
+        store,
+        x,
+        w,
+        y,
+        label,
+        &segments,
+        sec,
+    )
 }
 
 /// **As duas SUBSTITUIÇÕES do tocador** — a direcção e o laço que esta reprodução impõe por cima

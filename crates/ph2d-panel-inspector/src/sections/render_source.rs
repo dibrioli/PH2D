@@ -208,17 +208,6 @@ fn paint_strategy_row(
     mut cur_y: f32,
     label_font: f32,
 ) -> f32 {
-    paint_text(
-        text_system,
-        scene,
-        tr("panel.inspector.render_source.strategy"),
-        x,
-        cur_y,
-        label_font,
-        w,
-        resolve(ColorToken::Text2, theme),
-    );
-    cur_y += label_font + SECTION_LABEL_TO_CONTROL_PX;
     // ⚠️ **Uma textura cozida não tem estratégia autorável — e por isso não pinta botões.**
     //
     // Antes de 2026-08-21 os três botões saíam **igualmente acesos e com nada selecionado** (os
@@ -232,6 +221,19 @@ fn paint_strategy_row(
     // a despachar (o `strategy_click` roteia o cozido de propósito, para o toast sair) seria a
     // pior das três hipóteses: *dimmed que despacha mente*.
     if matches!(info.source_kind, InspectorSpriteSource::CookedTexture) {
+        // ⚠️ Aqui o nome fica POR CIMA de propósito: o que vem por baixo não é um controlo, é uma
+        //    FRASE que explica porque não há controlo, e ela precisa da largura inteira.
+        paint_text(
+            text_system,
+            scene,
+            tr("panel.inspector.render_source.strategy"),
+            x,
+            cur_y,
+            label_font,
+            w,
+            resolve(ColorToken::Text2, theme),
+        );
+        cur_y += label_font + SECTION_LABEL_TO_CONTROL_PX;
         paint_text(
             text_system,
             scene,
@@ -246,13 +248,20 @@ fn paint_strategy_row(
             + label_font
             + ph2d_editor_core::widget::panel_chrome::SECTION_INNER_ROW_GAP_PX;
     }
-    // Adaptive segmented GROUP — when the panel is narrow, drops
-    // "Hand-packed" (the longest) to its own row instead of wrapping
-    // the label. Returns the actual height used.
-    let (strategy_w, strategy_dot) =
-        ph2d_editor_core::widget::form_row_columns(x, w, cur_y, ROW_H_PX);
-    let strategy_h = paint_segmented_group_adaptive(
-        Rect::new(x, cur_y, strategy_w, ROW_H_PX),
+    // ⭐⭐ **Pela porta da ESCOLHA, com o nome ao LADO** (2026-09-23) — o nome ia POR CIMA e o
+    //    grupo arrancava na borda do conteúdo. A porta escolhe a forma pela medida (ao lado quando
+    //    cabe numa fileira, paleta quando não) e a coluna é a da secção.
+    let seccao = seccao_do_render(text_system);
+    ph2d_editor_core::property_row::paint_choice_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        tr("panel.inspector.render_source.strategy"),
         &[
             (
                 tr("panel.inspector.render_source.atlas"),
@@ -270,16 +279,27 @@ fn paint_strategy_row(
                 crate::ids::INSP_RENDER_STRATEGY_HANDPACKED,
             ),
         ],
-        scene,
+        seccao,
+    )
+}
+
+/// ⭐⭐ **A coluna do nome da secção Render Source — UMA para as linhas de nome ao lado.**
+///
+/// ⚠️ Antes de 2026-09-23 a `Storage`/`Source size` mediam-se entre si e a `Strategy`/`Format`
+/// pintavam o nome POR CIMA; com as duas escolhas ao lado, as quatro caem no mesmo `x`.
+pub(super) fn seccao_do_render(
+    text_system: &mut TextSystem,
+) -> ph2d_editor_core::property_row::Seccao {
+    ph2d_editor_core::property_row::Seccao::medida(
         text_system,
-        theme,
-        store,
-        hit_index,
-    );
-    // Inter-row gap inside Render Source — matches Transform's row_gap
-    // (SECTION_INNER_ROW_GAP_PX) so Render Source feels like Transform.
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, strategy_dot);
-    cur_y + strategy_h + ph2d_editor_core::widget::panel_chrome::SECTION_INNER_ROW_GAP_PX
+        1,
+        &[
+            tr("panel.inspector.render_source.strategy"),
+            STORAGE_LABEL.tr(),
+            SOURCE_SIZE_LABEL.tr(),
+            tr("panel.inspector.render_source.format"),
+        ],
+    )
 }
 
 /// ⭐⭐⭐ **A PROVENIÊNCIA** — a ranhura de *de onde os pixels vêm* (e onde se largam outros),
@@ -355,11 +375,7 @@ fn paint_provenance(
     //
     // ⚠️ **A coluna sai dos DOIS nomes do bloco**, senão a `Storage` e a `Source size` caem em `x`
     //    diferentes — a outra metade do mesmo report.
-    let sec = ph2d_editor_core::property_row::Seccao::medida(
-        text_system,
-        1,
-        &[STORAGE_LABEL.tr(), SOURCE_SIZE_LABEL.tr()],
-    );
+    let sec = seccao_do_render(text_system);
     let linha = ph2d_editor_core::property_row::paint_label_row(
         scene,
         text_system,

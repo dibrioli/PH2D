@@ -25,18 +25,20 @@ pub(super) fn paint_precision_row(
     mut cur_y: f32,
     label_font: f32,
 ) -> f32 {
-    paint_text(
-        text_system,
-        scene,
-        tr("panel.inspector.render_source.format"),
-        x,
-        cur_y,
-        label_font,
-        w,
-        resolve(ColorToken::Text2, theme),
-    );
-    cur_y += label_font + SECTION_LABEL_TO_CONTROL_PX;
     if matches!(info.source_kind, InspectorSpriteSource::CookedTexture) {
+        // ⚠️ Uma textura cozida não tem escolha: o nome fica por cima de um FACTO, não de um
+        //    controlo (a irmã `Strategy` faz o mesmo).
+        paint_text(
+            text_system,
+            scene,
+            tr("panel.inspector.render_source.format"),
+            x,
+            cur_y,
+            label_font,
+            w,
+            resolve(ColorToken::Text2, theme),
+        );
+        cur_y += label_font + SECTION_LABEL_TO_CONTROL_PX;
         paint_text(
             text_system,
             scene,
@@ -51,8 +53,18 @@ pub(super) fn paint_precision_row(
             + label_font
             + ph2d_editor_core::widget::panel_chrome::SECTION_INNER_ROW_GAP_PX;
     }
-    let h = paint_segmented_group_adaptive(
-        Rect::new(x, cur_y, w, ROW_H_PX),
+    // ⭐⭐ **Pela porta da ESCOLHA, com o nome ao LADO** (2026-09-23) — ver a irmã `Strategy`.
+    let seccao = super::render_source::seccao_do_render(text_system);
+    cur_y = ph2d_editor_core::property_row::paint_choice_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        tr("panel.inspector.render_source.format"),
         &[
             (
                 tr("panel.inspector.render_source.rgba8"),
@@ -65,13 +77,8 @@ pub(super) fn paint_precision_row(
                 ids::INSP_RENDER_FORMAT_RGBA16,
             ),
         ],
-        scene,
-        text_system,
-        theme,
-        store,
-        hit_index,
+        seccao,
     );
-    cur_y += h + SECTION_LABEL_TO_CONTROL_PX;
     // A consequência, escrita ANTES do clique. Só aparece quando há algo a avisar — um sprite que
     // já é de 16 bits não precisa de ler o preço outra vez.
     if info.source_precision == Some(ph2d_editor_core::Precision::Rgba8) {

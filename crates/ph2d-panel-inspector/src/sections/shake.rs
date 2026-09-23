@@ -53,6 +53,8 @@ fn corpo(
             tr("panel.inspector.shake.frequency"),
             tr("panel.inspector.shake.decay"),
             tr("panel.inspector.shake.seed"),
+            // ⭐ A ESCOLHA também — com o nome ao lado (2026-09-23) ela entra na coluna.
+            tr("panel.inspector.shake.punch"),
         ],
     );
     let mut cur_y = y;
@@ -126,6 +128,7 @@ fn corpo(
         &crate::ids::INSP_SHAKE_EXPOENTE,
         &refs,
         usize::from(i.expoente.saturating_sub(ph2d_shake::EXPOENTE_MIN)),
+        seccao,
     );
     super::rows::fields_row(
         scene,

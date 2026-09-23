@@ -2496,6 +2496,91 @@ rótulo + amostra · uma entrada do `FORA` a apontar para um ficheiro que não e
 controlos do arnês.
 
 
+## §9-vicies-bis — ⭐⭐⭐ A ESCOLHA COM NOME TEM UMA PORTA, E A FORMA DELA SAI DE UMA MEDIDA
+
+**Ordens do dono (2026-09-21):** *«várias seções muito confusas e desorganizadas»* · *«quanto ao
+alinhamento precisamos melhorar em todos os lugares»* — e, na mesma mensagem, as dicas vão para o
+rato e os nomes encolhem.
+
+### §9-vicies-bis.1 — O que havia: OITO implementações de «uma escolha com nome»
+
+Medido pela porta do produto (a varredura geométrica nova, `nenhum_nome_por_cima_do_controlo`):
+o Inspector tinha `rows::seg_row` (nome ao lado), `anim::segmented_row`, `topdown::seg_row`,
+`particles::seg_row`, `hud::seg_row`, `tween_editor::grupo` (nome POR CIMA) e quatro inline
+(`Strategy`, `Format`, os dois segmentados das Acções — **sem nome nenhum**), mais o `Sort Point`
+(um `Tabs` sem nome) e o `Where` da Fábrica (três `Button` em partes iguais). ⛔⛔ O gate TEXTUAL
+`no_row_paints_its_name_above_its_control` era cego a esta família **três** vezes pelo NOME da
+variável (`label_h` · `label_font` · `font`) — *uma régua que depende de como o autor chamou a
+variável mede o autor, não o painel*. ⇒ a régua nova pergunta ao PRODUTO: pinta o painel pela porta
+do registo e acusa todo grupo segmentado declarado (`widget::composto`) que COMEÇA na borda
+esquerda do conteúdo — onde devia estar um nome.
+
+### §9-vicies-bis.2 — A porta: [`property_row::paint_choice_row`](../../../crates/ph2d-editor-core/src/property_row/escolha.rs)
+
+⭐⭐ **A forma sai de uma MEDIÇÃO e vive só ali:** ao lado do nome, na coluna do valor (~`128 px`
+no dock de omissão), **só `4` das `22` escolhas cabem numa fileira**; `9` ocupam duas, `4` três,
+`2` quatro, e as famílias de easing e os canais do Tween ocupariam **seis e sete**. ⛔ *«Sempre ao
+lado»* faria torres. ⇒ **cabe numa fileira → ao lado, alinhada com os campos da secção; não cabe →
+PALETA** (o nome é o cabeçalho, o grupo a toda a largura). ⚠️ **Nenhum chamador escolhe a forma** —
+se o dono preferir um menu suspenso ao lado do nome para as paletas, a troca é nessa função e
+nenhuma secção muda (é a pergunta de produto que vai com o smoke).
+
+⭐ **Cada secção convertida passou a ter UMA coluna do nome** — as escolhas entram na `Seccao::medida`
+da secção (`seccao_da_animacao`, `seccao_do_tween`, `seccao_do_percurso`, `seccao_da_acao`,
+`seccao_do_render`, e as de `hud`/`particles`/`shake`/`shake_emitter`/`ordering`/`factory`). As
+Acções ganharam **quatro nomes** que não tinham (`Target By` · `Source` · `Do` · `Tag`), a ordenação
+ganhou `Sort Point`, e a `Strategy`/`Format` do Render deixaram de pintar o nome por cima — ⚠️ com a
+**excepção declarada** da textura cozida, onde o que vem por baixo não é um controlo e sim a FRASE
+que explica porque não há controlo.
+
+### §9-vicies-bis.3 — O que morreu, com a premissa à vista
+
+- ⛔ `tween_editor::cabem_por_fileira` (exportada como `chips_por_fileira`) e a `CHIPS_POR_FILEIRA`:
+  a régua LOCAL de quantos chips cabiam. A porta usa as larguras NATURAIS do grupo adaptativo, logo
+  *«quantos cabem»* deixou de ser um número da secção. O teste `nenhum_chip_do_tween_sai_cortado`
+  perdeu a metade da CONTAGEM e a escada de larguras (as duas mediam a régua morta) e ficou com a
+  que nunca dependeu dela — **o rectângulo PINTADO cabe o rótulo PINTADO** — mais o controlo da
+  foto do dono (o `4` fixo reproduz os três cortes).
+- ⛔ `paint_segmented_group_adaptive` saiu do `use` do Inspector: **nenhuma secção o chama
+  directamente**; o único segmentado com nome que fica fora da porta é o `rows::seg_row`, que é
+  OUTRO widget (`SegmentedAdaptive`, com id de grupo e estado «misto»), sempre ao lado, e foi
+  aprovado assim pelo dono em 15/09.
+
+### §9-vicies-bis.4 — Os gates
+
+| gate | afirma |
+|---|---|
+| `nenhuma_escolha_do_inspector_e_montada_a_mao` | todo grupo a toda a largura do Inspector vem da porta; exceção NOMEADA com censo de obsolescência (`insp_vis_layer_bit_0` — a grelha de 32 bits é um MAPA de bits, não um-entre-N); piso de `20` pela porta |
+| `os_outros_paineis_so_encolhem_nas_escolhas_a_mao` | catraca por painel, nos dois sentidos: `model3d 7 · physics 3 · sculpt3d 11 · skeleton 1 · upscale 1 · vector 9` |
+| `a_forma_da_escolha_sai_da_medida` | `ao_lado ⇔ fileiras ≤ 1` sobre o Inspector armado, com piso nas DUAS formas |
+| `o_chip_pintado_cabe_o_rotulo_pintado` | pela rota, os canais do Tween não saem cortados |
+
+**Mutações (arnês com os três controlos):** sempre ao lado **sangra** (2) · sempre paleta **sangra**
+(a lei) · limiar `≤ 2` **sangra** (2) · a porta sem registo no censo **sangra** (2) · a paleta em
+partes IGUAIS **sangra** (o do Tween). ⚠️ **Uma sobrevive e é NOMEADA:** espremer o rectângulo da
+paleta a `30 %` não corta rótulo nenhum — o grupo adaptativo dá a cada peça a largura NATURAL e
+TRANSBORDA o rectângulo em vez de cortar. *Um transbordo é outra pergunta* (o controlo sai da
+coluna), e nenhuma régua desta wave a faz.
+
+**Catracas que DESCERAM com a porta** (medidas no âmbito do app, `--workspace`): cortes do
+Inspector `85 → 79` · letras perdidas `81 → 75` · carga de comandos `88 → 81` · e **duas linhas da
+dívida armada APAGADAS pelo censo de obsolescência** (`Authored`/`Counter` do HUD, que em paleta
+levam a largura natural). ⛔⛔ **E a minha catraca nasceu calibrada no âmbito POBRE** (`-p`): o
+portão impactado apanhou `painter_layers` (só registado com a unificação de features do app) —
+*a mesma forma que a varredura das elisões pagou em 20/09*. Hoje ela conta `painter_layers 1` e
+**reprova alto** numa corrida `-p`, com o comando certo na mensagem. ⚠️ E o `widget/mod.rs` é
+gerado (`ph2d-widget-sync` só conhece `mod`/`pub mod`): a conta das larguras naturais chega à porta
+por **re-export** `pub(crate)`, nunca por um `pub(crate) mod` escrito à mão.
+
+### §9-vicies-bis.5 — ⏳ ABERTO
+
+- **Os outros painéis** (`32` grupos na catraca): o `sculpt3d` e o `model3d` são os maiores, e o
+  `model3d` tem a lei própria da caixa única (§9-vicies-semel). Cada um é uma wave.
+- **A pergunta do dono:** paleta com o nome por cima, ou menu suspenso ao lado do nome.
+- ⚠️ **Este handoff passou do joelho** (`~150 KB`, contra `80`–`110` do §5.0): quem o integrar lê
+  pelos `§` endereçáveis; cortá-lo com `scripts/doc-split.py` é trabalho de fecho da linha.
+
+
 ## §11 — O que esta linha recomenda a quem a integrar
 
 1. **Correr o `diag_onde_cai_a_pista_do_pente` da `line/sculpt3d` DEPOIS da fusão** e reescrever com

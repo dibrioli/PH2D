@@ -230,13 +230,6 @@ pub fn player_row_labels() -> Vec<&'static str> {
         .collect()
 }
 
-/// ⭐⭐⭐ **Quantos chips da secção TWEEN cabem numa fileira desta largura** — exposta para o gate a
-/// poder LER a resposta do produto, e não uma cópia dela.
-///
-/// ⚠️ *Um gate que reimplementa a régua mede o gate, não o painel* — e esta régua já se enganou uma
-/// vez (mediu à `Sm` o que o botão pinta à `Base`).
-pub use sections::tween_editor::cabem_por_fileira as chips_por_fileira;
-
 /// **A grelha 3×3 da §5 9-Slice**, exposta para o gate da shell a poder LER (e não copiar).
 pub use sections::slice_grid::{
     CORNER_LETTERS, MIXED_LETTER, REGION_CELLS, REGION_LETTERS, is_corner_cell,

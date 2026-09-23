@@ -390,6 +390,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.ordering.center" => "Center",
         "panel.inspector.ordering.pivot" => "Pivot",
         "panel.inspector.ordering.custom" => "Custom",
+        "panel.inspector.ordering.sort_point" => "Sort Point",
         "panel.inspector.ordering.axis_x" => "Axis X",
         "panel.inspector.ordering.axis_y" => "Axis Y",
         "panel.inspector.ordering.ordering" => "Ordering",

@@ -39,52 +39,10 @@
 //! um chip que o artista não lê. *O corte não é do modelo — as `33` curvas do motor continuam todas
 //! alcançáveis —, é da LARGURA.*
 
-use super::tween::ROW_H;
 use super::*;
 use ph2d_editor_core::tween_edits::{InspectorTweenRow, TweenQueixa};
 use ph2d_i18n::{tr, tr_with};
 use ph2d_tween::{AoAcabar, Canal};
-
-/// O **tecto** de chips numa fileira — quantos de facto cabem é [`cabem_por_fileira`], que os MEDE.
-///
-/// ⚠️ Ele existe para a fileira não ficar com chips de largura ridícula numa família de dois
-/// rótulos curtos; o corte real é sempre o do texto.
-const CHIPS_POR_FILEIRA: usize = 4;
-
-/// ⭐⭐⭐ **Quantos chips cabem nesta fileira — MEDIDO, nunca escolhido.**
-///
-/// ⛔⛔ **Report do dono, 2026-09-19 (com foto):** com o `4` fixo, o grupo dos CANAIS saía com
-/// `Silhouette`, `Position X` e `Position Y` **cortados** — e os dois de posição liam-se
-/// «Positio...» **os dois**, que é uma escolha que o artista não consegue fazer. *Duas opções que
-/// se leem igual são indistinguíveis sob o dedo* — a lei que o chip da vigia do contador já
-/// escreve.
-///
-/// ⚠️⚠️ **A fonte vem da PORTA DO BOTÃO** ([`ph2d_editor_core::widget::Button::label_font_px`]) e
-/// não de um token escolhido aqui: a 1.ª régua desta medição usou a `Sm` — a fonte da *legenda* —
-/// e leu **«nenhum cortado»** sobre a foto do dono. *Uma régua que adivinha a fonte do widget mede
-/// outro programa.*
-///
-/// ⭐ A folga de cada lado é a porta do espaçamento, e não um número: sem ela o texto encosta às
-/// duas bordas do chip.
-pub fn cabem_por_fileira(text_system: &mut TextSystem, w: f32, labels: &[&str]) -> usize {
-    let fonte = ph2d_editor_core::widget::Button::label_font_px();
-    let mais_largo = labels
-        .iter()
-        .map(|t| text_system.prefix_width(t, fonte))
-        .fold(0.0_f32, f32::max);
-    let folga = 2.0 * Spacing::Sm.px();
-    let gap = Spacing::Xs.px();
-    for n in (1..=CHIPS_POR_FILEIRA.min(labels.len().max(1))).rev() {
-        #[allow(clippy::cast_precision_loss)]
-        let nf = n as f32;
-        if (w - gap * (nf - 1.0)) / nf >= mais_largo + folga {
-            return n;
-        }
-    }
-    // ⚠️ **Nunca zero**: um rótulo que não cabe nem sozinho corta — e cortar é correcto —, mas uma
-    // fileira de zero chips deixaria a família **inalcançável**.
-    1
-}
 
 /// **A CHAVE de cada queixa — a PORTA, e não um `match` dentro do pintor.**
 ///
@@ -101,57 +59,41 @@ const fn chave_da_queixa(q: TweenQueixa) -> &'static str {
     }
 }
 
-/// **Uma fileira de chips**, de `ids[de..ate]`. Devolve o `y` seguinte.
-#[allow(clippy::too_many_arguments)]
-pub(super) fn fileira(
-    scene: &mut VectorScene,
+/// ⭐⭐⭐ **A COLUNA DO NOME desta secção — UMA, para a duração, o De/Para e as SEIS escolhas.**
+///
+/// ⛔⛔ Ela era medida em DOIS sítios com listas diferentes (o relógio só com `Duration`, o De/Para
+/// só com `From`/`To`) e as escolhas não entravam em nenhuma — duas colunas dentro de uma secção.
+/// *Uma coluna por espécie de linha é uma coluna por linha com outro nome.*
+pub(super) fn seccao_do_tween(
     text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    x: f32,
-    w: f32,
-    y: f32,
-    ids_: &[NodeId],
-    labels: &[&str],
-    sel: usize,
-    base: usize,
-) -> f32 {
-    let gap = Spacing::Xs.px();
-    #[allow(clippy::cast_precision_loss)]
-    let n = ids_.len().max(1) as f32;
-    let cw = ((w - gap * (n - 1.0)) / n).max(0.0);
-    for (i, (&id, text)) in ids_.iter().zip(labels.iter()).enumerate() {
-        #[allow(clippy::cast_precision_loss)]
-        let rect = Rect::new(x + (cw + gap) * i as f32, y, cw, ROW_H);
-        hit_index.register(id, rect);
-        // ⚠️ **A selecção vem do SNAPSHOT**, nunca do store: o store guarda o visual do botão, e
-        // ler dali qual está aceso faria o realce sobreviver à troca de objecto.
-        let kind = if base + i == sel {
-            ButtonKind::Accent
-        } else {
-            ButtonKind::Default
-        };
-        paint_button(
-            &Button::new(id, *text)
-                .kind(kind)
-                .visual(store.button_visual(id)),
-            rect,
-            scene,
-            text_system,
-            theme,
-        );
-    }
-    // ⚠️ **O passo de uma linha vem da PORTA** — há gate contra a segunda resposta.
-    y + ph2d_tokens::row_pitch_px()
+    campos: usize,
+) -> ph2d_editor_core::property_row::Seccao {
+    let nomes: Vec<&str> = [
+        "panel.inspector.tween.duration_seconds",
+        "panel.inspector.tween.from",
+        "panel.inspector.tween.to",
+        "panel.inspector.tween.preset",
+        "panel.inspector.tween.channel",
+        "panel.inspector.tween.curve",
+        "panel.inspector.tween.ease",
+        "panel.inspector.tween.when_done",
+        "panel.inspector.tween.cycle",
+    ]
+    .into_iter()
+    .map(tr)
+    .collect();
+    ph2d_editor_core::property_row::Seccao::medida(text_system, campos, &nomes)
 }
 
-/// **Um grupo de chips com rótulo**, partido em fileiras de [`CHIPS_POR_FILEIRA`].
+/// **Uma escolha com nome** — pela porta [`ph2d_editor_core::property_row::paint_choice_row`].
 ///
-/// ⭐⭐ **`pub(super)` desde o suplente #23**: a secção PATH FOLLOW faz a MESMA pergunta (quatro
-/// grupos de chips, com a selecção vinda do snapshot) e uma segunda cópia divergiria no dia em que
-/// uma das duas ganhasse um cuidado — a medida da largura, a saturação, o realce. *Uma lei escrita
-/// em dois sítios ainda não é uma lei.*
+/// ⭐⭐ **`pub(super)` desde o suplente #23**: PATH FOLLOW, SHAKE e o EMISSOR fazem a mesma pergunta.
+///
+/// ⛔⛔ **Ela partia os chips em blocos de largura IGUAL** (`cabem_por_fileira`, medida no rótulo
+/// mais largo) e pintava o nome POR CIMA. Hoje a forma é da porta, que MEDE: uma escolha que cabe
+/// numa fileira ao lado do nome vai ao lado; uma que não cabe é uma PALETA a toda a largura, e cada
+/// peça leva o que a PALAVRA dela pede — que é o que a foto de 2026-09-19 (os `Positio…` cortados)
+/// pedia, sem a medida escrita à parte.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn grupo(
     scene: &mut VectorScene,
@@ -166,50 +108,29 @@ pub(super) fn grupo(
     ids_: &[NodeId],
     labels: &[&str],
     sel: usize,
+    seccao: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
-    // ⭐⭐⭐ **Isto é UM controlo, não `N` comandos** — ver
-    //    [`ph2d_editor_core::widget::composto`]. ⛔ Esta fileira é uma ESCOLHA (ela recebe o
-    //    `sel`), e sem esta linha o censo das entradas por painel conta cada opção como um
-    //    comando: era assim que o `tween` lia `32` e o `path_follow` `18`, quando os comandos a
-    //    sério deles são o `Add` e o `Remove`.
-    //
-    // ⚠️ O grupo é o `ids_` INTEIRO e não cada fileira: o refluxo em blocos é disposição, e uma
-    //    família partida em três linhas continua a ser uma pergunta só.
-    ph2d_editor_core::widget::composto::grupo(ids_.iter().copied());
-    let font = TypeToken::Sm.px();
-    paint_text(
-        text_system,
+    // ⚠️ **A selecção vem do SNAPSHOT**, nunca do store: o store guarda o visual do botão, e ler
+    //    dali qual está aceso faria o realce sobreviver à troca de objecto.
+    let segmentos: Vec<(&str, bool, NodeId)> = ids_
+        .iter()
+        .zip(labels.iter())
+        .enumerate()
+        .map(|(i, (&id, &t))| (t, i == sel, id))
+        .collect();
+    ph2d_editor_core::property_row::paint_choice_row(
         scene,
-        label,
+        text_system,
+        theme,
+        hit_index,
+        store,
         x,
-        y,
-        font,
         w,
-        resolve(ColorToken::Text2, theme),
-    );
-    let mut cur_y = y + font + Spacing::Xs.px();
-    // ⭐ **A largura da fileira é a MESMA para todos os blocos da família** — medida no rótulo mais
-    // largo dela. Medi-la por bloco daria chips de tamanhos diferentes na mesma pergunta.
-    let por_fileira = cabem_por_fileira(text_system, w, labels);
-    for (bloco, chunk) in ids_.chunks(por_fileira).enumerate() {
-        let base = bloco * por_fileira;
-        cur_y = fileira(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            cur_y,
-            chunk,
-            &labels[base..base + chunk.len()],
-            sel,
-            base,
-        );
-    }
-    // ⚠️ **A cauda de um bloco vem da PORTA**, e a última fileira já trouxe o passo dela.
-    cur_y + ph2d_tokens::control_gap_px()
+        y,
+        label,
+        &segmentos,
+        seccao,
+    )
 }
 
 /// ⭐⭐⭐ **O bloco do RELÓGIO** — a duração e os dois interruptores, dentro da secção do tween.
@@ -249,11 +170,7 @@ fn relogio(
         ),
         ColorToken::Text3,
     );
-    let sec = ph2d_editor_core::property_row::Seccao::medida(
-        text_system,
-        1,
-        &[tr("panel.inspector.tween.duration_seconds")],
-    );
+    let sec = seccao_do_tween(text_system, 1);
     cur_y = super::rows::fields_row(
         scene,
         text_system,
@@ -314,14 +231,7 @@ fn campos_de_para(
 ) -> f32 {
     let mut cur_y = y;
     let n = canal.aridade();
-    let seccao = ph2d_editor_core::property_row::Seccao::medida(
-        text_system,
-        n,
-        &[
-            tr("panel.inspector.tween.from"),
-            tr("panel.inspector.tween.to"),
-        ],
-    );
+    let seccao = seccao_do_tween(text_system, n);
     for (label, ids_) in [
         (tr("panel.inspector.tween.from"), &crate::ids::INSP_TWEEN_DE),
         (tr("panel.inspector.tween.to"), &crate::ids::INSP_TWEEN_PARA),
@@ -378,6 +288,63 @@ impl Rotulos {
     }
 }
 
+/// ⭐ **A FORMA do movimento — a família e o ease**, as duas escolhas que respondem à mesma
+/// pergunta (*como o valor viaja de um ponto ao outro*). Saiu do [`editor`] por tecto de função
+/// (`201/200` quando a escolha passou pela porta com o nome ao lado).
+#[allow(clippy::too_many_arguments)]
+fn curva_e_ease(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    mut y: f32,
+    row: &InspectorTweenRow,
+    sec_escolhas: ph2d_editor_core::property_row::Seccao,
+) -> f32 {
+    let familias: Vec<&str> = ph2d_anim::EasingFamily::ALL
+        .iter()
+        .map(|f| ph2d_i18n::tr(f.label_key()))
+        .collect();
+    y = grupo(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        tr("panel.inspector.tween.curve"),
+        &crate::ids::INSP_TWEEN_FAMILIA,
+        &familias,
+        row.familia as usize,
+        sec_escolhas,
+    );
+    let modos: Vec<&str> = ph2d_anim::EasingMode::ALL
+        .iter()
+        .map(|m| ph2d_i18n::tr(m.label_key()))
+        .collect();
+    y = grupo(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        tr("panel.inspector.tween.ease"),
+        &crate::ids::INSP_TWEEN_MODO,
+        &modos,
+        row.modo as usize,
+        sec_escolhas,
+    );
+    y
+}
+
 /// O editor do tween aberto. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn editor(
@@ -393,6 +360,8 @@ pub(super) fn editor(
     tem_sprite: bool,
     slot: usize,
 ) -> f32 {
+    // ⭐ A coluna da secção, UMA vez — ver [`seccao_do_tween`].
+    let sec_escolhas = seccao_do_tween(text_system, 1);
     let mut cur_y = y;
     // ⚠️ **A QUEIXA primeiro** — quem não vê nada mexer não quer afinar uma curva.
     //
@@ -431,6 +400,7 @@ pub(super) fn editor(
         // desaparece e sobram os cinco campos. Acender um deles prometeria um estado que o
         // componente não guarda, e ele mentiria no instante em que o artista afinasse um número.
         usize::MAX,
+        sec_escolhas,
     );
     // ⭐⭐⭐ **O RELÓGIO, AQUI** — ver o cabeçalho deste ficheiro.
     //
@@ -467,6 +437,7 @@ pub(super) fn editor(
         &crate::ids::INSP_TWEEN_CANAL,
         &canais,
         canal.tag() as usize,
+        sec_escolhas,
     );
 
     // ⭐ **Uma componente ou quatro — DERIVADO do canal**, nunca uma segunda lista.
@@ -513,11 +484,7 @@ pub(super) fn editor(
         );
     }
 
-    let familias: Vec<&str> = ph2d_anim::EasingFamily::ALL
-        .iter()
-        .map(|f| ph2d_i18n::tr(f.label_key()))
-        .collect();
-    cur_y = grupo(
+    cur_y = curva_e_ease(
         scene,
         text_system,
         theme,
@@ -526,28 +493,8 @@ pub(super) fn editor(
         x,
         w,
         cur_y,
-        tr("panel.inspector.tween.curve"),
-        &crate::ids::INSP_TWEEN_FAMILIA,
-        &familias,
-        row.familia as usize,
-    );
-    let modos: Vec<&str> = ph2d_anim::EasingMode::ALL
-        .iter()
-        .map(|m| ph2d_i18n::tr(m.label_key()))
-        .collect();
-    cur_y = grupo(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        tr("panel.inspector.tween.ease"),
-        &crate::ids::INSP_TWEEN_MODO,
-        &modos,
-        row.modo as usize,
+        row,
+        sec_escolhas,
     );
     let fins = Rotulos::fins();
     cur_y = grupo(
@@ -563,6 +510,7 @@ pub(super) fn editor(
         &crate::ids::INSP_TWEEN_AO_ACABAR,
         &fins,
         row.ao_acabar as usize,
+        sec_escolhas,
     );
     // ⭐⭐⭐ **O CICLO — o *ping-pong* que o dono pediu em 2026-09-19.**
     //
@@ -583,5 +531,6 @@ pub(super) fn editor(
         &crate::ids::INSP_TWEEN_CICLO,
         &ciclos,
         row.ciclo as usize,
+        sec_escolhas,
     )
 }

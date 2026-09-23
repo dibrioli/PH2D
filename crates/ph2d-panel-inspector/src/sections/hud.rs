@@ -46,29 +46,15 @@ const ROTULOS: [(TextKey, f64, Option<ph2d_editor_core::widget::Unit>); 3] = [
     ),
 ];
 
-/// Um título de bloco.
-fn titulo(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    x: f32,
-    w: f32,
-    y: f32,
-    texto: &str,
-) -> f32 {
-    let font = TypeToken::Sm.px();
-    paint_text(
-        text_system,
-        scene,
-        texto,
-        x,
-        y,
-        font,
-        w,
-        resolve(ColorToken::Text3, theme),
-    );
-    // ⚠️ A cauda de um bloco tem UMA porta — o mesmo degrau de sempre.
-    y + font + ph2d_tokens::control_gap_px()
+/// ⭐⭐ **A coluna do nome desta secção — UMA, para os números, as caixas e as ESCOLHAS.**
+///
+/// ⚠️ As duas escolhas (`Fit` · `Source`) pintavam o nome POR CIMA e por isso nunca entraram na
+/// medida; com o nome ao lado (2026-09-23) têm de entrar.
+fn seccao(text_system: &mut TextSystem) -> ph2d_editor_core::property_row::Seccao {
+    let mut nomes: Vec<&str> = ROTULOS.iter().map(|(chave, _, _)| chave.tr()).collect();
+    nomes.push(tr("panel.inspector.hud.fit"));
+    nomes.push(tr("panel.inspector.hud.source"));
+    ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &nomes)
 }
 
 /// Um segmentado. ⚠️ **A selecção vem do SNAPSHOT, nunca do store**: ler o store faria o primeiro
@@ -88,29 +74,28 @@ fn seg_row(
     rotulos: &[&'static str],
     escolhido: usize,
 ) -> f32 {
-    let row_y = titulo(scene, text_system, theme, x, w, y, titulo_txt);
-    let gap = Spacing::Xs.px();
-    let n = ids.len() as f32;
-    let cw = ((w - gap * (n - 1.0)) / n).max(0.0);
-    for (i, &id) in ids.iter().enumerate() {
-        let rect = Rect::new(x + (cw + gap) * i as f32, row_y, cw, ph2d_tokens::ROW_H_PX);
-        hit_index.register(id, rect);
-        let kind = if i == escolhido {
-            ButtonKind::Accent
-        } else {
-            ButtonKind::Default
-        };
-        paint_button(
-            &Button::new(id, rotulos.get(i).copied().unwrap_or(""))
-                .kind(kind)
-                .visual(store.button_visual(id)),
-            rect,
-            scene,
-            text_system,
-            theme,
-        );
-    }
-    row_y + ph2d_tokens::row_pitch_px()
+    // ⛔⛔ **Ele era N `Button` em partes IGUAIS com o nome POR CIMA** — e nem declarava o grupo ao
+    //    censo dos compostos, logo a varredura geométrica não o via. ⇒ a porta: o grupo segmentado
+    //    declara-se sozinho, e a peça leva o que a palavra pede.
+    let segments: Vec<(&str, bool, ph2d_a11y::NodeId)> = ids
+        .iter()
+        .enumerate()
+        .map(|(i, &id)| (rotulos.get(i).copied().unwrap_or(""), i == escolhido, id))
+        .collect();
+    let sec = seccao(text_system);
+    ph2d_editor_core::property_row::paint_choice_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        titulo_txt,
+        &segments,
+        sec,
+    )
 }
 
 /// Uma caixa — **pela porta**, com a coluna do nome da SECÇÃO.
@@ -134,11 +119,7 @@ fn check_row(
 ) -> f32 {
     // ⚠️ A MESMA coluna que a [`num_row`] desta secção mede, e pela mesma tabela — senão o nome
     //    de uma linha de marcar cai num `x` e o da linha de número acima dela noutro.
-    let seccao = ph2d_editor_core::property_row::Seccao::medida(
-        text_system,
-        1,
-        &ROTULOS.map(|(chave, _, _)| chave.tr()),
-    );
+    let seccao = seccao(text_system);
     ph2d_editor_core::property_row::paint_check_row(
         scene,
         text_system,
@@ -172,11 +153,7 @@ fn num_row(
     let (chave, step, unidade) = ROTULOS[i];
     // ⭐⭐ A coluna do nome é da SECÇÃO: mede-se da tabela inteira, senão ela salta de linha
     // para linha.
-    let seccao = ph2d_editor_core::property_row::Seccao::medida(
-        text_system,
-        1,
-        &ROTULOS.map(|(chave, _, _)| chave.tr()),
-    );
+    let seccao = seccao(text_system);
     super::rows::fields_row(
         scene,
         text_system,

@@ -233,6 +233,8 @@ fn editor(
             tr("panel.inspector.emitter.full_within"),
             tr("panel.inspector.emitter.nothing_beyond"),
             tr("panel.inspector.emitter.on_label"),
+            // ⭐ A ESCOLHA também — com o nome ao lado (2026-09-23) ela entra na coluna.
+            tr("panel.inspector.emitter.from"),
         ],
     );
     let mut cur_y = super::anim_rows::text_row(
@@ -267,6 +269,7 @@ fn editor(
         &crate::ids::INSP_EMITTER_DE,
         &cercas,
         usize::from(row.de),
+        seccao,
     );
     for (id, label, step, unidade) in [
         (

@@ -144,6 +144,18 @@ fn titulo(
     y + font + ph2d_tokens::control_gap_px()
 }
 
+/// ⭐⭐ **A coluna do nome desta secção — UMA, para as três espécies de linha.**
+///
+/// ⚠️ Ela era medida em cada pintor sobre a tabela `ROTULOS` (os números), e as duas ESCOLHAS
+/// (`Emission Shape` · `Simulation Space`) nem entravam nela porque pintavam o nome POR CIMA. Com o
+/// nome ao lado (2026-09-23) elas têm de estar na medida — senão a coluna salta na linha delas.
+fn seccao(text_system: &mut TextSystem) -> ph2d_editor_core::property_row::Seccao {
+    let mut nomes: Vec<&str> = ROTULOS.iter().map(|(chave, _, _)| chave.tr()).collect();
+    nomes.push(tr("panel.inspector.particles.emission_shape"));
+    nomes.push(tr("panel.inspector.particles.simulation_space"));
+    ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &nomes)
+}
+
 /// Um segmentado. ⚠️ **A selecção vem do SNAPSHOT, nunca do store** (a lei do irmão de vista de
 /// cima): ler o store faria o primeiro clique depois de trocar de objecto mandar o valor anterior.
 #[allow(clippy::too_many_arguments)]
@@ -161,26 +173,27 @@ fn seg_row(
     rotulos: &[&'static str],
     escolhido: usize,
 ) -> f32 {
-    let row_y = titulo(scene, text_system, theme, x, w, y, titulo_txt);
-    // ⭐⭐ **A disposição é a PORTA da casa** — ver o irmão em `sections/anim.rs` (2026-09-19). Esta
-    //    cópia não chegou a cortar nada porque os rótulos dela são curtos (`Point · Sphere · Box`,
-    //    `Local · World`); ⚠️ *o que a fazia passar era o CORPUS, não a lei* — e uma cópia que hoje
-    //    cabe é a que corta no dia em que alguém traduzir.
+    // ⛔⛔ **O nome estava POR CIMA** (o `titulo` e o grupo a toda a largura) — a forma que o dono
+    //    reprovou duas vezes. ⇒ a porta, com a coluna da SECÇÃO.
     let segments: Vec<(&str, bool, ph2d_a11y::NodeId)> = ids
         .iter()
         .enumerate()
         .map(|(i, &id)| (rotulos.get(i).copied().unwrap_or(""), i == escolhido, id))
         .collect();
-    let seg_h = ph2d_editor_core::widget::panel_chrome::paint_segmented_group_adaptive(
-        Rect::new(x, row_y, w, ph2d_tokens::ROW_H_PX),
-        &segments,
+    let sec = seccao(text_system);
+    ph2d_editor_core::property_row::paint_choice_row(
         scene,
         text_system,
         theme,
-        store,
         hit_index,
-    );
-    row_y + seg_h + ph2d_tokens::control_gap_px()
+        store,
+        x,
+        w,
+        y,
+        titulo_txt,
+        &segments,
+        sec,
+    )
 }
 
 /// Uma caixa.
@@ -205,11 +218,7 @@ fn check_row(
 ) -> f32 {
     // ⚠️ A MESMA coluna que a [`num_row`] desta secção mede, e pela mesma tabela — senão o nome
     //    de uma linha de marcar cai num `x` e o da linha de número acima dela noutro.
-    let seccao = ph2d_editor_core::property_row::Seccao::medida(
-        text_system,
-        1,
-        &ROTULOS.map(|(chave, _, _)| chave.tr()),
-    );
+    let seccao = seccao(text_system);
     ph2d_editor_core::property_row::paint_check_row(
         scene,
         text_system,
@@ -245,11 +254,7 @@ fn num_row(
     // ⭐⭐ **A coluna do nome é da SECÇÃO** (`line/UIUX`, 2026-09-15): aqui ela mede-se da
     //    própria tabela, que É a lista de nomes desta secção — as 19 linhas partilham-na, e
     //    medir só a desta faria a coluna saltar de linha para linha.
-    let seccao = ph2d_editor_core::property_row::Seccao::medida(
-        text_system,
-        1,
-        &ROTULOS.map(|(chave, _, _)| chave.tr()),
-    );
+    let seccao = seccao(text_system);
     super::rows::fields_row(
         scene,
         text_system,

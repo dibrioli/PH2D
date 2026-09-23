@@ -96,29 +96,41 @@ pub(super) fn entradas_do_layout() -> [wgpu::BindGroupLayoutEntry; N] {
     ]
 }
 
-/// A configuração: `lado`, `verts`, `arestas`, `armado`.
+/// A configuração: `verts`, `arestas_amostras`, `armado`, e uma RESERVA a zero.
 ///
-/// ⛔⛔ **Um plano GRADUADO (um nível por face — a P2) desarma-se aqui, e isso
-/// é deliberado.** O registo que o shader lê descreve a retícula com UM `lado`,
-/// e o bloco das arestas com `id × (lado − 1)`; com níveis por face as duas
-/// contas passam a precisar de um **offset por aresta**, que é buffer novo.
+/// ⭐⭐⭐⭐ **Um plano GRADUADO (um nível por face — a P2) JÁ SOBE, e até
+/// 2026-09-23 ele desarmava aqui.** A nota que ocupava este lugar dizia que o
+/// registo descreve a retícula com UM `lado` e o bloco das arestas com
+/// `id × (lado − 1)` — verdade enquanto o [`PAYLOAD_STRIDE`] era `10`; hoje ele
+/// é `19` e carrega o lado da face e o par `(início, lado)` de cada aresta, que
+/// é exactamente o que o passo do subconjunto pede. *Quem move o número que
+/// tornava algo inalcançável tem de reconferir a nota* (§0.0).
 ///
-/// ⭐ **Desarmar entrega a cor por VÉRTICE, que é o caso base desta família e
-/// está certo** — e a alternativa (assumir o lado da face `0`) desenharia a
-/// tinta de umas faces no sítio das outras **sem nada no ecrã a acusar**.
-/// *A resposta errada com a confiança da certa é o que esta guarda recusa.*
-fn cfg_de(t: Option<&Tinta>) -> [u32; 4] {
-    // ⚠️ O `lado` mínimo é `1` mesmo desarmado: um `lado = 0` faria o shader
-    //    dividir a retícula por zero se alguém o lesse por engano.
-    let Some(t) = t else { return [1, 0, 0, 0] };
-    let Some(lado) = t.lado_uniforme() else {
-        return [1, 0, 0, 0];
-    };
+/// ⚠️ **O `armado` continua a ser a única guarda**, e ele vale `0` quando não
+/// há plano: sem essa palavra uma peça sem tinta leria um buffer de um elemento
+/// e pintaria a peça inteira com ele.
+///
+/// ⚠️ **A 4.ª palavra é RESERVA e fica a `0`** — um `uniform` alinha a `16`
+/// bytes, logo ela existe quer alguém a queira quer não, e há gate a exigir o
+/// zero: *uma posição sem dono e sem régua é onde o campo seguinte aterra por
+/// engano*.
+///
+/// [`PAYLOAD_STRIDE`]: ph2d_mesh_colors::topo::PAYLOAD_STRIDE
+///
+/// ⭐⭐⭐⭐ **ELA É PÚBLICA PORQUE O GATE DE PARIDADE A TEM DE LER.** Até
+/// 2026-09-23 o arnês daquele gate montava as quatro palavras À MÃO, com a
+/// ordem de então (`lado, verts, arestas, armado`) — e no dia em que esta
+/// função mudou de arrumação, o gate continuou a alimentar o shader com a
+/// arrumação ANTIGA e reprovou sobre a lei CERTA. *Um arnês que constrói o
+/// uniforme em vez de o pedir mede outro programa*, e é a mesma família que
+/// esta crate já pagou com o `device()` do piso do WebGPU.
+pub fn cfg_de(t: Option<&Tinta>) -> [u32; 4] {
+    let Some(t) = t else { return [0, 0, 0, 0] };
     [
-        lado,
         t.topologia().verts() as u32,
-        t.topologia().arestas() as u32,
+        t.topologia().arestas_amostras(),
         1,
+        0,
     ]
 }
 

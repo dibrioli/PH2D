@@ -211,7 +211,7 @@ pub(crate) fn matcap_texture(device: &wgpu::Device, side: u32) -> wgpu::Texture 
 /// ⭐⭐ **A tinta fina no device.** Irmã do [`upload`] e pelo mesmo motivo:
 /// ela toca os `slots`, que são privados a este módulo.
 #[path = "tinta_gpu.rs"]
-pub(super) mod tinta_gpu;
+pub mod tinta_gpu;
 
 #[path = "pipeline_upload.rs"]
 mod marshal;

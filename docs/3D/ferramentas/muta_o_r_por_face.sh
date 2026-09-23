@@ -26,11 +26,13 @@ restore() {
   rm -rf "$REN"; cp -r "$BK/ren" "$REN"
   rm -rf "$SCU"; cp -r "$BK/scu" "$SCU"
   # ⚠️ `cp -r` devolve o mtime ANTIGO e o cargo guarda o build DA MUTACAO.
-  find "$COL" "$REN" "$SCU" -name '*.rs' -exec touch {} +
+  # ⚠️ `-name '*.rs'` deixava o `.wgsl` com o mtime ANTIGO — e desde 23/09 ha'
+  #    mutacoes no gemeo. O `include_str!` do censo depende do mtime dele.
+  find "$COL" "$REN" "$SCU" \( -name '*.rs' -o -name '*.wgsl' \) -exec touch {} +
 }
 trap restore EXIT
 
-FILTRO='test(/p2_tests|assar_tests|vinte_e_cinco|nivel_base|canto_de_uma_face|dois_lados_de_uma_aresta|ponto_de_uma_face|recusa_nomeia|graduado/)'
+FILTRO='test(/p2_tests|assar_tests|vinte_e_sete|nivel_base|canto_de_uma_face|dois_lados_de_uma_aresta|ponto_de_uma_face|recusa_nomeia|graduado|payload/)'
 corrida() {
   cargo nextest run -p ph2d-mesh-colors -p ph2d-mesh-render -p ph2d-app-sculpt3d -E "$FILTRO" 2>&1
 }
@@ -168,11 +170,53 @@ muta "$SCU/tinta_fina.rs" \
   'self.tinta.lado_da_face(0)' \
   'P10 o pincel volta a ler UM lado para a peca inteira'
 
-# ── O DEVICE desarma um plano graduado ──────────────────────────────────
+# ── O DEVICE entrega a SOMA das amostras das arestas, nao a CONTAGEM ─────
+# ⚠️ Ate' 23/09 o P11 mutava a guarda `lado_uniforme` que DESARMAVA o device.
+#    Ela morreu quando o registo achatado passou a carregar o lado por face, e
+#    o PRE-VOO apanhou a ancora morta em segundos, sem correr um teste.
 muta "$REN/tinta_gpu.rs" \
-  '    let Some(lado) = t.lado_uniforme() else {' \
-  '    let Some(lado) = Some(t.lado_da_face(0)) else {' \
-  'P11 o device assume o lado da face 0 e desenha tinta no sitio errado'
+  '        t.topologia().arestas_amostras(),' \
+  '        t.topologia().arestas() as u32,' \
+  'P11 o uniforme volta a carregar a CONTAGEM de arestas: o bloco de interior sai do sitio'
+
+# ── O REGISTO ACHATADO carrega o lado da FACE ───────────────────────────
+muta "$COL/topo.rs" \
+  '            out.push(self.lado_de(f));' \
+  '            out.push(1);' \
+  'P16 o registo diz que toda face tem lado 1: a reticula lida e outra'
+
+# ── E o INICIO do bloco de cada aresta ──────────────────────────────────
+muta "$COL/topo.rs" \
+  '                    self.aresta_off(self.lado_da_face[4 * f + s] >> 1)' \
+  '                    self.aresta_off(0)' \
+  'P17 toda aresta comeca no bloco da aresta 0'
+
+# ── E o LADO de cada aresta, que e' o passo do subconjunto ──────────────
+muta "$COL/topo.rs" \
+  '                    self.aresta_lado(self.lado_da_face[4 * f + s] >> 1)' \
+  '                    self.lado_de(f)' \
+  'P18 a aresta leva o lado da FACE em vez do maximo dos vizinhos'
+
+# ── O GEMEO EM WGSL: o passo do subconjunto ─────────────────────────────
+# ⚠️ Estas duas sangram pelo CENSO DE TEXTO e nao por comportamento: a unica
+#    regua de comportamento do gemeo e' o `tinta_paridade`, que e' `#[ignore]`
+#    e pede adaptador. *Uma lei cuja regua so' corre com placa nao e' medida
+#    por este arnes nem pelo CI* — e e' por isso que o elo existe.
+muta "$REN/shaders/tinta.wgsl" \
+  '        var tt = t * (la / lf);' \
+  '        var tt = t;' \
+  'P19 o gemeo deixa de escalar t pelo passo do subconjunto'
+
+# ⚠️ A ancora leva a ASSINATURA junto porque `let l = tinta_topo[base + 10u];`
+#    aparece DUAS vezes (tri e quad) — *uma ancora que casa duas vezes lê-se,
+#    num placar, exactamente como uma mutacao que nao entrou*, e o pre-voo
+#    apanhou-a antes de qualquer teste correr.
+muta "$REN/shaders/tinta.wgsl" \
+  'fn tinta_cor_quad(base: u32, uv: vec2<f32>) -> vec3<f32> {
+    let l = tinta_topo[base + 10u];' \
+  'fn tinta_cor_quad(base: u32, uv: vec2<f32>) -> vec3<f32> {
+    let l = 4u;' \
+  'P20 o gemeo crava a reticula de um QUAD num lado so'
 
 # ── O CONTROLO INERTE ───────────────────────────────────────────────────
 muta "$COL/enderecos.rs" \

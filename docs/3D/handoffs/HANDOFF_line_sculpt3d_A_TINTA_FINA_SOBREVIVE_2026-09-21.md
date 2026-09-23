@@ -2604,6 +2604,13 @@ grelha e não um empacotador*.
 
 * **Mutação: `13 de 14` sangram** (o `P12` é o CONTROLO), com as três novas do empacotador.
 * Pré-voo dos **onze** arneses: **`142`** âncoras, todas a casar uma vez.
+  ⛔⛔ **CORRIGIDO em 23/09, e a correcção é o achado:** esta linha era FALSA. Medido contra
+  o `HEAD` desta wave, o `muta_a_tinta_que_sai.sh` tinha **DUAS** âncoras mortas (`A4` e `A5`,
+  as duas apontadas ao `assar.rs` que o empacotador reescreveu **nesta mesma wave**) e ele
+  **tem** pré-voo. ⇒ *o pré-voo só vale o CONJUNTO em que foi corrido*, e um sumário que diz
+  «os onze» depois de correr menos que onze é o instrumento a mentir sobre si mesmo — a mesma
+  forma que este ficheiro já registou quando o pré-voo imprimia «ZERO testes corridos» depois
+  de ter corrido a suíte inteira.
 * `nextest-impacted` **`18 615` de `18 615`** · clippy `-D warnings` **zero** · `fmt` limpo ·
   censos da árvore COMBINADA **`127/127`**.
 * A suíte da crate: `36` → **`44`** testes, e **nenhum gate antigo se mexeu**.
@@ -2622,3 +2629,165 @@ grelha e não um empacotador*.
 * ⚠️ **E a ordem entre os três é load-bearing:** sem o device o artista não VÊ a P2, e sem quem
   escolhe os níveis nada a produz. *O empacotador veio primeiro porque, sem ele, o dia em que
   alguma coisa graduasse seria o dia em que a exportação deixava de levar a tinta fina.*
+
+---
+
+## §27 — ⭐⭐⭐⭐ O DEVICE: a placa desenha um plano GRADUADO
+
+> **Ordem do dono:** *«Pode seguir implementando»* (21/09). O §26.6 deixou três itens abertos e
+> disse por escrito qual vinha primeiro: *«sem o device o artista não VÊ a P2»*.
+
+### §27.1 — O que mudou, numa frase
+
+O registo achatado que o shader lê passou de **`10` para `19`** palavras por face, e com as nove
+palavras novas o gémeo em WGSL resolve um endereço sem nunca perguntar por um `lado` global.
+⇒ o `cfg_de` **deixou de desarmar** um plano graduado.
+
+| palavra | o quê | quem a lê |
+|---|---|---|
+| `0..4` | os cantos (sentinela no `3` de um triângulo) | canto |
+| `4..8` | `id << 1 \| virada` de cada lado | aresta |
+| `8` | o início do bloco de interior desta face | interior |
+| `9` | quantos cantos | o despacho tri/quad |
+| **`10`** | **o LADO desta face (`2^k`)** | **tudo** |
+| **`11..15`** | **o início do bloco de cada aresta** | **aresta** |
+| **`15..19`** | **o LADO de cada aresta (o MÁXIMO dos vizinhos)** | **aresta** |
+
+A conta da aresta era `verts + id × (lado − 1) + (t − 1)` e passou a ser
+`verts + off[s] + (t × (le / lf) − 1)`, com a **virada a contar contra `le`** e **depois** do passo.
+A do interior era `verts + arestas × (lado − 1) + …` e passou a `verts + arestas_amostras + …`.
+
+### §27.2 — ⛔⛔ Porque não foi um buffer por aresta no bind group
+
+A leitura natural seria um `storage` novo com o par `(início, lado)` de cada aresta. Ele fica de
+fora **com o número**: o grupo 1 já tem **cinco** `storage` mais um `uniform`, e o doc daquele bloco
+já escreve porque não há um `@group(4)` (o `max_bind_groups` de omissão é `4`).
+
+⇒ o par viaja **no registo da face**, duplicado nas duas faces que tocam cada aresta. Custo MEDIDO:
+`19 × 4` bytes por face contra `10 × 4` — a `100 k` faces, **`7,6 MB` contra `4,0`**, ao lado de um
+plano que a `8x` mede **dezenas de MB** na mesma peça. *A duplicação é barata porque a unidade com
+que ela compete não é o registo, é o plano.*
+
+### §27.3 — ⛔⛔⛔ O GATE DE PARIDADE MONTAVA O UNIFORME À MÃO, e por isso reprovou sobre a lei CERTA
+
+Assim que a `TintaCfg` perdeu o `lado` global, o `tinta_paridade` reprovou na **primeira** fixtura,
+a UNIFORME, com `7,02e-1` de divergência — e a lei estava certa. O arnês dele construía as quatro
+palavras do uniforme ele próprio:
+
+```rust
+let cfg: [u32; 4] = [ t.lado_uniforme()…, verts, arestas, 1 ];   // a arrumação de ONTEM
+```
+
+⇒ ele alimentava o shader novo com a arrumação antiga. *Um arnês que CONSTRÓI o uniforme em vez de o
+PEDIR mede outro programa* — e é a **mesma família** que esta crate já pagou em 20/09, quando quatro
+cópias do `device()` pediam o piso do WebGPU enquanto o produto pedia o do adaptador.
+
+⭐ A cura é a porta: `cfg_de` passou a ser **pública** (`ph2d_mesh_render::tinta_cfg`) e o arnês
+chama-a. Depois disso, **`4` de `4`** verdes, as seis fixturas incluídas.
+
+### §27.4 — ⭐⭐⭐ As fixturas GRADUADAS, e porque um plano uniforme não mede nada disto
+
+O `tinta_paridade` corria quatro fixturas e as quatro eram uniformes. Com um nível só:
+
+* a palavra `10` é **constante** em toda a peça;
+* `le / lf` vale **`1`** em toda aresta, logo o passo do subconjunto é invisível;
+* o prefixo `off[s]` volta a ser **`id × (lado − 1)`** por acidente aritmético.
+
+⇒ *uma fixtura uniforme não distingue a lei nova da antiga.* As duas fixturas novas são graduadas
+com saltos de **três degraus** entre faces vizinhas (`le / lf = 8`) — de propósito: com um degrau só
+a razão é `2`, e ali uma multiplicação trocada por uma soma daria o mesmo número.
+
+O mesmo vale para o gate **puro** que é a implementação de referência do gémeo
+(`o_payload_resolve_o_mesmo_endereco_que_a_lei`): ele resolve os endereços **só** com o registo
+achatado e os dois globais, e passou a correr dois planos graduados por fixtura.
+
+### §27.5 — ⛔⛔ DUAS premissas mortas, as duas em prosa que se lia como cerca a funcionar
+
+O cabeçalho da `ph2d-mesh-colors` dizia: *«quem ainda assume um lado só **recusa** um plano graduado
+em voz alta: o assado por `assar::Recusa::Graduado`, o device por `Tinta::lado_uniforme`»*.
+
+* O `Recusa::Graduado` **já não existia** — ele morreu na §26, quando o empacotador passou a dispor
+  um ladrilho por face.
+* O device **deixou de recusar** nesta wave.
+
+⇒ as duas recusas que aquele parágrafo nomeava estão mortas, e *uma nota que nomeia uma recusa por
+um endereço que já não existe lê-se como uma cerca a funcionar*. O `lado_uniforme` **fica** e o doc
+dele foi reescrito: ele hoje é uma **PERGUNTA** (*«esta peça tem um lado só?»*) que só as fixturas
+fazem — **nenhum consumidor de produto o chama**.
+
+### §27.6 — O censo da fiação vai a `27` elos
+
+As duas leis novas do gémeo não têm prova de comportamento alcançável sem placa: a única régua delas
+é o `tinta_paridade`, que é `#[ignore]` **e** pede adaptador — logo nem o CI nem o arnês de mutação
+(`--lib`) lhe chegam. ⇒ o censo de TEXTO ganhou o `tinta.wgsl` como fonte (`sem_prosa` corta por
+`//`, que é comentário nas duas linguagens) e dois elos: o **passo do subconjunto** e a **leitura do
+lado da face**.
+
+⚠️ E a agulha do segundo leva a **assinatura da função** junto, porque `let l = tinta_topo[base +
+10u];` aparece nas duas leituras (tri e quad) — *uma agulha que casa duas vezes sobrevive a uma
+mutação numa delas*.
+
+### §27.7 — ⭐ E o PRÉ-VOO fez exactamente o trabalho dele
+
+A âncora `P11` do arnês da P2 citava `let Some(lado) = t.lado_uniforme() else {`, que esta wave
+apagou. O pré-voo (`MUTA_SO_ANCORAS=1`) leu **`13` de `14`** em segundos e **sem correr um teste** —
+e um arnês com uma âncora morta imprime um placar que se lê, num log, como uma corrida.
+
+⚠️ Ele apanhou ainda uma âncora **ambígua** (a do `let l = …`, que casava duas vezes) e um erro de
+aspa meu numa mensagem. *As três teriam sido lidas como «a mutação sobreviveu».*
+
+⚠️ E o `restore` do arnês tocava `-name '*.rs'`: com mutações no `.wgsl`, o ficheiro voltava com o
+mtime ANTIGO e o `include_str!` do censo ficava com o conteúdo mutado no build seguinte.
+
+### §27.8 — ⛔⛔ E o PRÉ-VOO achou MAIS TRÊS âncoras mortas, duas delas mortas há um dia
+
+Corrido sobre **os onze** arneses (e não sobre os que a wave tocou), ele acusou:
+
+| arnês | âncora | quem a matou |
+|---|---|---|
+| `muta_o_r_por_face.sh` | `P11` (a guarda `lado_uniforme` do device) | **esta** wave |
+| `muta_a_cerca_do_plano.sh` | `N8` (o CONTROLO inerte, `PAYLOAD_STRIDE = 10`) | **esta** wave |
+| `muta_a_tinta_que_sai.sh` | `A4` e `A5` (o ladrilho e o tecto, no `assar.rs`) | a wave do **EMPACOTADOR** (§26) |
+
+⛔⛔⛔ **As duas últimas estavam mortas quando a §26 fechou, e aquele §26.5 dizia por escrito
+*«pré-voo dos onze arneses: `142` âncoras, todas a casar uma vez»*.** Medido contra o `HEAD` dela,
+as duas agulhas **não existem** no `assar.rs` — e aquele arnês **tem** pré-voo.
+
+⇒ *o pré-voo só vale o CONJUNTO em que foi corrido.* Um sumário que diz «os onze» depois de correr
+menos que onze é o instrumento a mentir sobre si mesmo, e é exactamente a mesma forma que este
+ficheiro já registou na §14 (o pré-voo a imprimir *«ZERO testes corridos»* depois de ter corrido a
+suíte inteira). ⭐ A correcção ficou escrita **no §26.5**, com a morte à vista.
+
+⚠️ E o `N8` é o mais instrutivo dos três: ele é o **CONTROLO** do arnês dele — a mutação inerte que
+NÃO pode sangrar. *Um controlo cuja âncora casa zero também não sangra*, logo ele continuava a
+somar `1` ao placar por não fazer nada, que é precisamente o que ele finge medir.
+
+### §27.9 — ⚠️ E uma etiqueta REPETIDA num placar
+
+As três mutações novas do gémeo nasceram `W5`–`W7`, e o `W5` já era o nome da mutação **nomeada**
+daquele arnês. O placar imprimiu **dois `W5`**, um a sangrar e outro a sobreviver de propósito.
+⛔ Nada no arnês o acusa: *o pré-voo mede a ÂNCORA e nunca o NOME*. Renumeradas para `W6`–`W8`.
+
+### §27.10 — O placar
+
+* **Mutação da P2 (`muta_o_r_por_face.sh`): `18 de 19` sangram** — o `P12` é o CONTROLO inerte.
+  As quatro novas cobrem o uniforme (`P11`), as três palavras novas do registo (`P16`–`P18`) e as
+  duas leis do gémeo pelo censo de texto (`P19`, `P20`).
+* **Mutação do gémeo (`muta_o_gemeo_em_wgsl.sh`, COM A PLACA): `7 de 8` sangram** — o `W5` é a
+  sobrevivente NOMEADA (o corte do piso do quad, que nenhuma régua de COR pode matar).
+* **Pré-voo dos ONZE arneses: `146` âncoras, todas a casar uma vez.**
+* `nextest-impacted` **`18 615` de `18 615`**.
+* `tinta_paridade` na placa: **`4 de 4`**, com as duas fixturas graduadas novas.
+* `clippy -D warnings` **zero** · `fmt` limpo.
+
+### §27.11 — ⏳ O que fica ABERTO (a §26.6 menos o device)
+
+* **Quem ESCOLHE os níveis no produto.** A lei existe (`niveis_por_area`) e precisa das ÁREAS, que a
+  crate não conhece ⇒ o chamador é a família, e a pista `Paint Detail` passa a pedir uma
+  **densidade** em vez de um degrau. ⚠️ **Enquanto isto não existir, nenhum gesto produz um plano
+  graduado** — todo o caminho que esta wave abriu é, no produto, inalcançável.
+* **A PERSISTÊNCIA de um plano graduado.** O formato guarda um `nivel` só (`SCULPT_DOC_VERSION`);
+  ou passa a guardar a lista, ou a graduação é **re-derivada** no load a partir das áreas — e aí uma
+  mudança na lei relayouta ficheiros gravados **em silêncio**, o que pede um degrau.
+* ⚠️ **E a ORDEM entre os dois continua a ser load-bearing**, agora ao contrário: *quem escolhe*
+  vem primeiro porque é ele que torna a P2 alcançável; a persistência só tem sujeito depois disso.

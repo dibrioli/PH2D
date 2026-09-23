@@ -103,15 +103,22 @@ muta "$COL/assar.rs" \
   'A3 a dilatacao nao corre: a borda de toda face sai com uma linha escura'
 
 # ── A FOLGA some do ladrilho ────────────────────────────────────────────
+# ⚠️ A ancora era `let ladrilho = l + 1 + 2 * FOLGA_EM_TEXELS;` e MORREU com
+#    o empacotador (22/09), que passou a medir um ladrilho POR FACE. Apanhada
+#    pelo pre-voo em 23/09 — a segunda deste ficheiro no mesmo dia.
 muta "$COL/assar.rs" \
-  '    let ladrilho = l + 1 + 2 * FOLGA_EM_TEXELS;' \
-  '    let ladrilho = l + 1;' \
+  '        .map(|f| tinta.lado_da_face(f) + 1 + 2 * FOLGA_EM_TEXELS)' \
+  '        .map(|f| tinta.lado_da_face(f) + 1)' \
   'A4 os ladrilhos encostam: a bilinear apanha o vizinho'
 
 # ── A RECUSA deixa de armar ─────────────────────────────────────────────
+# ⚠️ A ancora era `    if lado_px > tecto_px {` e MORREU no dia em que o
+#    empacotador nasceu (22/09) — a busca do lado passou a viver no `empacota`.
+#    O pre-voo apanhou-a em 23/09, em segundos e sem correr um teste; ate' la'
+#    esta mutacao contava para o placar e nao entrava em ficheiro nenhum.
 muta "$COL/assar.rs" \
-  '    if lado_px > tecto_px {' \
-  '    if false {' \
+  '        if w > tecto_px {' \
+  '        if false {' \
   'A5 a textura deixa de ter tecto e o destino recusa o ficheiro'
 
 # ── O ESCRITOR: o acumulador de `vt` passa a ser o dos vertices ─────────

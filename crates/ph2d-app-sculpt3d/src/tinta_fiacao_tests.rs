@@ -73,6 +73,15 @@ const UNDO: &str = include_str!("undo.rs");
 /// mesmo caminho relativo dos dois do motor, e pela mesma razão: *a cura mora
 /// onde a lei corre; a régua mora onde há cena para a exercitar.*
 const DEVICE: &str = include_str!("../../ph2d-mesh-render/src/tinta_gpu.rs");
+/// ⭐⭐⭐⭐ **E O GÉMEO EM WGSL, que é um `.wgsl` e não um `.rs`.** O
+/// [`sem_prosa`] corta por `//`, que é comentário nas duas linguagens, logo a
+/// mesma régua serve.
+///
+/// ⛔⛔ **A prova de COMPORTAMENTO dele existe e o CI nunca a corre:** o
+/// `tinta_paridade` é `#[ignore]` e pede adaptador, e o arnês de mutação
+/// (`--lib`) também não lhe chega. *Uma lei cuja única régua vive atrás de um
+/// adaptador é, para toda a gente que não tem placa, uma lei sem régua.*
+const GEMEO: &str = include_str!("../../ph2d-mesh-render/src/shaders/tinta.wgsl");
 const VOZ: &str = include_str!("recusa.rs");
 /// ⭐⭐⭐ **E o DOCUMENTO** — a wave de 21/09 que faz o plano atravessar o
 /// `.ph2dproj`. As duas metades dele (escrever e instalar) vivem no mesmo
@@ -398,9 +407,33 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
         ),
         (
             "tinta_gpu.rs",
-            "P2 o device volta a assumir um lado e desenha tinta no sítio errado",
-            "    let Some(lado) = t.lado_uniforme() else {".to_string(),
+            "P2 o uniforme volta a carregar a CONTAGEM de arestas em vez da soma \
+             das amostras delas, e o bloco de interior é lido no sítio errado",
+            "        t.topologia().arestas_amostras(),".to_string(),
             DEVICE,
+        ),
+        // ⭐⭐⭐ **E os DOIS do gémeo, que são a P2 no lado que desenha.** Sem o
+        // passo, a amostra `t = 1` de uma face de lado `2` cai na célula `1` de
+        // uma aresta de lado `8` — um OITAVO do caminho em vez de metade, e a
+        // fronteira partilhada parte-se. Sem o lado da FACE lido do registo, a
+        // retícula volta a ser uma só e a tinta de umas faces desenha-se no
+        // sítio das outras.
+        (
+            "tinta.wgsl",
+            "P3 o gémeo deixa de escalar `t` pelo passo do subconjunto",
+            "        var tt = t * (la / lf);".to_string(),
+            GEMEO,
+        ),
+        (
+            "tinta.wgsl",
+            "P4 o gémeo deixa de ler o lado da FACE no registo dela",
+            // ⚠️ A assinatura vai junto: `let l = tinta_topo[base + 10u];`
+            //    aparece nas DUAS leituras (tri e quad), e uma agulha que casa
+            //    duas vezes sobrevive a uma mutação numa delas.
+            "fn tinta_cor_quad(base: u32, uv: vec2<f32>) -> vec3<f32> {\n    \
+             let l = tinta_topo[base + 10u];"
+                .to_string(),
+            GEMEO,
         ),
     ]
 }
@@ -412,12 +445,12 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
 /// busca falhar em voz alta — mas um que devolvesse **tudo** faria a prosa
 /// satisfazer a agulha, e é isso que o [`so_a_prosa`] recusa.
 #[test]
-fn a_cura_da_tinta_fina_esta_ligada_nos_vinte_e_cinco_sitios() {
+fn a_cura_da_tinta_fina_esta_ligada_nos_vinte_e_sete_sitios() {
     let elos = elos();
     assert_eq!(
         elos.len(),
-        25,
-        "a população deste censo são os vinte e cinco elos"
+        27,
+        "a população deste censo são os vinte e sete elos"
     );
 
     for (ficheiro, mutacao, agulha, fonte) in elos {

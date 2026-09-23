@@ -14,17 +14,29 @@
 // `fonte::mesh_wgsl`.
 
 struct TintaCfg {
-    // `2^k` intervalos por aresta. `1` é a cor por-vértice — e aí este caminho
-    // devolve, ao bit, o que o plano por-vértice já devolvia.
-    lado: u32,
+    // ⛔⛔ **O `lado` GLOBAL SAIU daqui em 2026-09-23, e a ausência é a P2.**
+    // Enquanto a retícula era uniforme ele descrevia a peça inteira; hoje o
+    // lado é da FACE e mora no registo dela (palavra `10`). *Repô-lo aqui é
+    // pintar a tinta de umas faces no sítio das outras.*
+    //
     // Onde cada bloco começa. Eles são da MALHA e não da face, logo não cabem
     // no registo por face.
     verts: u32,
-    arestas: u32,
+    // ⭐⭐ **Quantas amostras o bloco das ARESTAS tem ao todo** — e não quantas
+    // arestas a malha tem. Com um nível POR FACE (a P2) elas deixaram de ter o
+    // mesmo comprimento, logo `arestas × (lado − 1)` não descreve nada: o
+    // início do bloco de cada aresta é um PREFIXO, e ele viaja no registo da
+    // face (`11 + s`). *O que sobra de global é a SOMA, que é isto.*
+    arestas_amostras: u32,
     // ⚠️ `0` quer dizer *nenhum plano ligado* — e aí o `fs_main_tinta` devolve
     // o `in.vcolor` de sempre. Sem esta palavra, uma peça sem plano leria um
     // buffer de um elemento e pintaria a peça inteira com ele.
     armado: u32,
+    // ⚠️ **RESERVA declarada, e o `cfg_de` deixa-a a ZERO com gate.** Um
+    // `uniform` alinha a `16` bytes, logo a 4.ª palavra existe quer alguém a
+    // queira quer não — *uma posição sem dono e sem régua é onde o campo
+    // seguinte aterra por engano*.
+    reserva: u32,
 };
 
 // ⚠️⚠️ **GRUPO 1 e não um grupo próprio, e a razão é a FREQUÊNCIA** — a mesma
@@ -40,7 +52,7 @@ struct TintaCfg {
 @group(1) @binding(5) var<storage, read> tinta_pos: array<f32>;
 @group(1) @binding(6) var<uniform> tinta_cfg: TintaCfg;
 
-const TINTA_STRIDE: u32 = 10u;
+const TINTA_STRIDE: u32 = 19u;
 // O sentinela do 4.º índice de um triângulo — o MESMO valor das duas crates,
 // e isso é gateado (`o_sentinela_do_triangulo_e_o_mesmo_nas_duas_crates`).
 const TINTA_TRI: u32 = 0xffffffffu;
@@ -60,26 +72,32 @@ fn tinta_vert(v: u32) -> vec3<f32> {
 // `sitio` é `0` canto, `1` aresta, `2` interior; `a` é o canto/lado/índice e
 // `t` o passo ao longo do lado.
 fn tinta_indice(base: u32, sitio: u32, a: u32, t: u32) -> u32 {
-    let l = tinta_cfg.lado;
     if (sitio == 0u) {
         return tinta_topo[base + a];
     }
     if (sitio == 1u) {
         let w = tinta_topo[base + 4u + a];
-        let id = w >> 1u;
+        // ⭐⭐⭐ **O PASSO DO SUBCONJUNTO, que é a P2 inteira num produto.** A
+        // aresta leva o MÁXIMO dos dois vizinhos, logo a face GROSSA lê um
+        // subconjunto EXACTO das amostras da fina: a amostra `t` dela mora na
+        // `t × (le / lf)` da aresta, e a divisão é inteira porque os dois
+        // lados são potências de dois. *Sem esta multiplicação a fronteira
+        // parte-se: `t = 1` de um lado cai num oitavo do caminho do outro.*
+        let lf = tinta_topo[base + 10u];
+        let la = tinta_topo[base + 15u + a];
+        var tt = t * (la / lf);
         // ⚠️ **A VIRADA**: a face que percorre a aresta do vértice MAIOR para o
         // menor conta `t` ao contrário. Sem esta linha a tinta fica ESPELHADA
         // ao longo de metade das arestas da peça, e nenhuma contagem o vê.
-        var tt = t;
-        if ((w & 1u) == 1u) { tt = l - t; }
-        return tinta_cfg.verts + id * (l - 1u) + (tt - 1u);
+        // ⛔ E ela vem DEPOIS do passo e conta contra o lado da ARESTA.
+        if ((w & 1u) == 1u) { tt = la - tt; }
+        return tinta_cfg.verts + tinta_topo[base + 11u + a] + (tt - 1u);
     }
-    return tinta_cfg.verts + tinta_cfg.arestas * (l - 1u) + tinta_topo[base + 8u] + a;
+    return tinta_cfg.verts + tinta_cfg.arestas_amostras + tinta_topo[base + 8u] + a;
 }
 
 // O gémeo do `enderecos::sitio_tri`, devolvido como `(sitio, a, t)`.
-fn tinta_sitio_tri(i: u32, j: u32, k: u32) -> vec3<u32> {
-    let l = tinta_cfg.lado;
+fn tinta_sitio_tri(l: u32, i: u32, j: u32, k: u32) -> vec3<u32> {
     let i0 = i == 0u; let j0 = j == 0u; let k0 = k == 0u;
     if (!i0 && j0 && k0) { return vec3<u32>(0u, 0u, 0u); }
     if (i0 && !j0 && k0) { return vec3<u32>(0u, 1u, 0u); }
@@ -96,8 +114,7 @@ fn tinta_sitio_tri(i: u32, j: u32, k: u32) -> vec3<u32> {
 }
 
 // O gémeo do `enderecos::sitio_quad`.
-fn tinta_sitio_quad(i: u32, j: u32) -> vec3<u32> {
-    let l = tinta_cfg.lado;
+fn tinta_sitio_quad(l: u32, i: u32, j: u32) -> vec3<u32> {
     let i0 = i == 0u; let im = i == l; let j0 = j == 0u; let jm = j == l;
     if (i0 && j0) { return vec3<u32>(0u, 0u, 0u); }
     if (im && j0) { return vec3<u32>(0u, 1u, 0u); }
@@ -115,7 +132,7 @@ fn tinta_sitio_quad(i: u32, j: u32) -> vec3<u32> {
 // ⭐⭐ **A leitura de um TRIÂNGULO** — o gémeo do `amostragem::leitura_tri`,
 // com os dois sub-triângulos (o direito e o INVERTIDO).
 fn tinta_cor_tri(base: u32, bar: vec3<f32>) -> vec3<f32> {
-    let l = tinta_cfg.lado;
+    let l = tinta_topo[base + 10u];
     let lf = f32(l);
     let b0 = max(bar, vec3<f32>(0.0));
     let s = b0.x + b0.y + b0.z;
@@ -143,11 +160,11 @@ fn tinta_cor_tri(base: u32, bar: vec3<f32>) -> vec3<f32> {
         w = vec3<f32>(1.0) - f;
     }
     var out = vec3<f32>(0.0);
-    let s0 = tinta_sitio_tri(ijk0.x, ijk0.y, ijk0.z);
+    let s0 = tinta_sitio_tri(l, ijk0.x, ijk0.y, ijk0.z);
     out += tinta_amostra(tinta_indice(base, s0.x, s0.y, s0.z)) * w.x;
-    let s1 = tinta_sitio_tri(ijk1.x, ijk1.y, ijk1.z);
+    let s1 = tinta_sitio_tri(l, ijk1.x, ijk1.y, ijk1.z);
     out += tinta_amostra(tinta_indice(base, s1.x, s1.y, s1.z)) * w.y;
-    let s2 = tinta_sitio_tri(ijk2.x, ijk2.y, ijk2.z);
+    let s2 = tinta_sitio_tri(l, ijk2.x, ijk2.y, ijk2.z);
     out += tinta_amostra(tinta_indice(base, s2.x, s2.y, s2.z)) * w.z;
     return out;
 }
@@ -156,7 +173,7 @@ fn tinta_cor_tri(base: u32, bar: vec3<f32>) -> vec3<f32> {
 // não há sub-triângulos invertidos: uma célula tem sempre quatro cantos, e a
 // leitura é a BILINEAR deles.
 fn tinta_cor_quad(base: u32, uv: vec2<f32>) -> vec3<f32> {
-    let l = tinta_cfg.lado;
+    let l = tinta_topo[base + 10u];
     let lf = f32(l);
     let c = clamp(uv, vec2<f32>(0.0), vec2<f32>(1.0)) * lf;
     // ⚠️⚠️ **O corte do piso em `L−1` guarda o ENDEREÇO e não a COR, e isso
@@ -176,13 +193,13 @@ fn tinta_cor_quad(base: u32, uv: vec2<f32>) -> vec3<f32> {
     let fu = c.x - f32(i);
     let fv = c.y - f32(j);
     var out = vec3<f32>(0.0);
-    let a = tinta_sitio_quad(i, j);
+    let a = tinta_sitio_quad(l, i, j);
     out += tinta_amostra(tinta_indice(base, a.x, a.y, a.z)) * ((1.0 - fu) * (1.0 - fv));
-    let b = tinta_sitio_quad(i + 1u, j);
+    let b = tinta_sitio_quad(l, i + 1u, j);
     out += tinta_amostra(tinta_indice(base, b.x, b.y, b.z)) * (fu * (1.0 - fv));
-    let d = tinta_sitio_quad(i + 1u, j + 1u);
+    let d = tinta_sitio_quad(l, i + 1u, j + 1u);
     out += tinta_amostra(tinta_indice(base, d.x, d.y, d.z)) * (fu * fv);
-    let e = tinta_sitio_quad(i, j + 1u);
+    let e = tinta_sitio_quad(l, i, j + 1u);
     out += tinta_amostra(tinta_indice(base, e.x, e.y, e.z)) * ((1.0 - fu) * fv);
     return out;
 }

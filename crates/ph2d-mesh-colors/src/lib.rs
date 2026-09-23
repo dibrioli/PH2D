@@ -34,11 +34,20 @@
 //! amostras da aresta fina, sem arredondar e com as duas pontas preservadas.
 //!
 //! ⚠️ **Um plano UNIFORME é o mesmo de antes, ao bit** — os dois prefixos
-//! voltam a ser produtos (`id × (lado − 1)`, `f × interior(lado)`), que é a
-//! aritmética que o shader ainda faz; é isso que deixa o caminho da placa
-//! correcto sem uma linha de WGSL nova. ⛔ E quem ainda assume um lado só
-//! **recusa** um plano graduado em voz alta em vez de adivinhar: o assado por
-//! [`assar::Recusa::Graduado`], o device por [`Tinta::lado_uniforme`].
+//! voltam a ser produtos (`id × (lado − 1)`, `f × interior(lado)`), e o passo
+//! do subconjunto vale `1` em toda aresta.
+//!
+//! ⛔⛔ **E JÁ NÃO HÁ NINGUÉM A RECUSAR UM PLANO GRADUADO — as duas recusas que
+//! este parágrafo nomeava MORRERAM, cada uma na wave que lhes tirou a razão.**
+//! O assado perdeu a dele quando o empacotador passou a dispor um ladrilho por
+//! face (2026-09-22), e o device perdeu a dele quando o registo achatado
+//! passou a carregar o lado da face e o bloco de cada aresta (2026-09-23,
+//! [`topo::PAYLOAD_STRIDE`] `10 → 19`). *Uma nota que nomeia uma recusa por um
+//! endereço que já não existe lê-se como uma cerca a funcionar.*
+//!
+//! ⚠️ O [`Tinta::lado_uniforme`] FICA, e hoje é uma PERGUNTA e não uma cerca —
+//! o que ele responde é *«esta peça tem um lado só?»*, que é o que as fixturas
+//! das réguas precisam de saber para escrever uma expectativa.
 //!
 //! ⚠️ **A escada é de potências de dois porque METADE tem de ser exacta:** as
 //! amostras estão em `i/L`, e ficar com as de `i` par dá exactamente `i/(L/2)`,
@@ -368,9 +377,16 @@ impl Tinta {
 
     /// ⭐ **O lado da peça inteira, se ele for um só.**
     ///
-    /// ⛔ Ela existe para os consumidores que **ainda** assumem um lado — o
-    /// caminho da placa é o principal — poderem RECUSAR um plano graduado em
-    /// vez de desenharem tinta no sítio errado.
+    /// ⛔⛔ **A razão de ser dela MORREU em 2026-09-23 e ela fica com outra.**
+    /// O doc que aqui estava dizia *«ela existe para os consumidores que ainda
+    /// assumem um lado — o caminho da placa é o principal — poderem RECUSAR um
+    /// plano graduado»*: hoje o caminho da placa lê o lado da FACE no registo
+    /// achatado e **nenhum consumidor de produto a chama**.
+    ///
+    /// ⭐ O que ela é hoje é uma PERGUNTA sobre a peça (*«há um lado só?»*),
+    /// e quem a faz são as réguas: uma fixtura uniforme escreve a expectativa
+    /// dela com este número. ⚠️ *Ela não é uma cerca — quem a usar como cerca
+    /// está a recusar um plano que o produto já sabe desenhar.*
     #[must_use]
     pub fn lado_uniforme(&self) -> Option<u32> {
         self.topo.nivel_uniforme().map(|k| 1u32 << k)

@@ -165,6 +165,12 @@ fn sondas_da_esfera(m: &Mesh, t: &Tinta, origem: &[u32]) -> Vec<Sonda> {
     out
 }
 
+/// Como a fixtura escolhe a retícula: um nível para a peça, ou um por FACE.
+enum Niveis<'a> {
+    Uniforme(u8),
+    PorFace(&'a [u8]),
+}
+
 #[test]
 #[ignore = "precisa de adaptador"]
 fn a_lei_da_reticula_le_o_mesmo_na_placa_e_na_cpu() {
@@ -176,15 +182,53 @@ fn a_lei_da_reticula_le_o_mesmo_na_placa_e_na_cpu() {
     let esfera = shapes::uv_sphere(6, 8, 1.0);
     let faces_esfera: Vec<Vec<u32>> = esfera.faces().iter().map(|f| f.verts().to_vec()).collect();
 
+    // ⭐⭐⭐⭐ **As DUAS últimas fixturas são GRADUADAS (a P2), e sem elas este
+    //   gate não distingue a lei nova da antiga:** com um nível só, o lado da
+    //   face é constante em toda a peça e o bloco de cada aresta volta a ser
+    //   `id × (lado − 1)` por acidente aritmético. *Uma fixtura uniforme não
+    //   mede um passo de subconjunto que vale sempre `1`.*
+    //   ⚠️ E os saltos são GRANDES de propósito (`0` a `3`, `8×` de razão entre
+    //   faces vizinhas): a lei é exacta para qualquer razão potência de dois, e
+    //   um salto de um degrau deixa `le/lf = 2` — onde uma multiplicação
+    //   trocada por uma soma passaria despercebida.
+    let grad_grade: Vec<u8> = (0..faces_grade.len()).map(|i| (i % 4) as u8).collect();
+    let grad_esfera: Vec<u8> = (0..faces_esfera.len()).map(|i| (3 - i % 4) as u8).collect();
+
     let mut total_sondas = 0usize;
     for (nome, m, faces, nivel) in [
-        ("grelha plana", &grade, &faces_grade, 2u8),
-        ("esfera", &esfera, &faces_esfera, 2),
-        ("grelha plana, nível 0", &grade, &faces_grade, 0),
-        ("esfera, nível 3", &esfera, &faces_esfera, 3),
+        ("grelha plana", &grade, &faces_grade, Niveis::Uniforme(2)),
+        ("esfera", &esfera, &faces_esfera, Niveis::Uniforme(2)),
+        (
+            "grelha plana, nível 0",
+            &grade,
+            &faces_grade,
+            Niveis::Uniforme(0),
+        ),
+        (
+            "esfera, nível 3",
+            &esfera,
+            &faces_esfera,
+            Niveis::Uniforme(3),
+        ),
+        (
+            "grelha plana, GRADUADA",
+            &grade,
+            &faces_grade,
+            Niveis::PorFace(&grad_grade),
+        ),
+        (
+            "esfera, GRADUADA",
+            &esfera,
+            &faces_esfera,
+            Niveis::PorFace(&grad_esfera),
+        ),
     ] {
         let it = || faces.iter().map(|f| &f[..]);
-        let mut t = Tinta::nova(m.vert_count(), it(), nivel);
+        let mut t = match nivel {
+            Niveis::Uniforme(k) => Tinta::nova(m.vert_count(), it(), k),
+            Niveis::PorFace(ks) => Tinta::graduada(m.vert_count(), it(), ks)
+                .expect("a lista de níveis descreve esta malha"),
+        };
         for i in 0..t.amostras().len() {
             t.amostras_mut()[i] = cor_embaralhada(i);
         }
@@ -248,12 +292,14 @@ fn corre_na_placa(
     let amostras: Vec<f32> = t.amostras().iter().flat_map(|c| *c).collect();
     let idx: Vec<u32> = tris.iter().flat_map(|t| *t).collect();
     let posicoes: Vec<f32> = m.positions().iter().flat_map(|p| *p).collect();
-    let cfg: [u32; 4] = [
-        t.lado_uniforme().expect("a fixtura e' uniforme"),
-        t.topologia().verts() as u32,
-        t.topologia().arestas() as u32,
-        1,
-    ];
+    // ⛔⛔ **A CONFIGURAÇÃO VEM DA PORTA DO PRODUTO, e isto foi pago:** até
+    //   2026-09-23 estas quatro palavras eram montadas aqui à mão, com a
+    //   arrumação de então. Quando a P2 tirou o `lado` global do uniforme, o
+    //   arnês continuou a escrever a arrumação ANTIGA e este gate reprovou
+    //   sobre uma lei CERTA — *um arnês que constrói o uniforme em vez de o
+    //   pedir mede outro programa*, a mesma família do `device()` que pedia o
+    //   piso do WebGPU enquanto o produto pedia o do adaptador.
+    let cfg: [u32; 4] = ph2d_mesh_render::tinta_cfg(Some(t));
     let entrada: Vec<f32> = sondas
         .iter()
         .flat_map(|s| {

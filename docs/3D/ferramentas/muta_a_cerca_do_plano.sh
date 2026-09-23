@@ -180,8 +180,8 @@ muta "$REN/tinta_gpu.rs" \
 # ⚠️ Uma mutacao INERTE nao pode sangrar. Sem ela um arnes partido — um filtro
 # que casa zero testes, uma arvore ja' vermelha — devolve um placar PERFEITO.
 muta "$COL/topo.rs" \
-  'pub const PAYLOAD_STRIDE: usize = 10;' \
-  'pub const PAYLOAD_STRIDE: usize = 10;
+  'pub const PAYLOAD_STRIDE: usize = 19;' \
+  'pub const PAYLOAD_STRIDE: usize = 19;
 ' \
   'N8 CONTROLO: uma mutacao INERTE (uma linha em branco) nao pode sangrar'
 

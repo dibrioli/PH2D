@@ -200,7 +200,6 @@ impl BodyCtx<'_> {
     /// (chip com chevron, não botão segmentado) — é essa diferença que separa "categoria"
     /// de "tipo" sem gastar altura nenhuma.
     fn category_row(&mut self, group: ShapeGroup, y: f32) -> f32 {
-        let gap = Spacing::Xs.px();
         paint_text(
             self.text_system,
             self.scene,
@@ -211,12 +210,7 @@ impl BodyCtx<'_> {
             crate::paint_sections::label_col_w(self.inner_x, self.inner_w),
             resolve(ColorToken::Text2, self.theme),
         );
-        let chip_x =
-            self.inner_x + crate::paint_sections::label_col_w(self.inner_x, self.inner_w) + gap;
-        let chip_w =
-            (self.inner_w - crate::paint_sections::label_col_w(self.inner_x, self.inner_w) - gap)
-                .max(1.0);
-        let chip = Rect::new(chip_x, y, chip_w, self.row_h);
+        let chip = ph2d_editor_core::panel::value_col(self.inner_x, self.inner_w, y, self.row_h);
         let open = matches!(
             self.store.get(ph2d_tool_vector::ids::VECTOR_SHAPE_GROUP_DD),
             Some(InteractiveState::Dropdown { open: true, .. })

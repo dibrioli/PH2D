@@ -26,7 +26,7 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_tokens::{ColorToken, Spacing, Theme};
+use ph2d_tokens::{ColorToken, Theme};
 
 /// ⭐⭐⭐ **A LINHA** — o rótulo, e um chip que diz **quem manda agora**.
 ///
@@ -40,7 +40,6 @@ pub(crate) fn tip_row(r: &mut RowCtx, y: f32) -> f32 {
     let Some(rotulo) = v.rotulos.get(v.ligado).cloned() else {
         return y;
     };
-    let gap = Spacing::Xs.px();
     let id = crate::ids::VECTOR_BONE_TIP;
     // ⚠️ **Os filhos que não couberam no pool aparecem no RÓTULO** — uma lista truncada em silêncio
     // é um painel a esconder o que existe, e o pool é fixo porque o chrome não cunha ids em tempo
@@ -60,12 +59,7 @@ pub(crate) fn tip_row(r: &mut RowCtx, y: f32) -> f32 {
         label_col_w(r.inner_x, r.inner_w),
         resolve(ColorToken::Text1, r.theme),
     );
-    let chip = Rect::new(
-        r.inner_x + label_col_w(r.inner_x, r.inner_w) + gap,
-        y,
-        (r.inner_w - label_col_w(r.inner_x, r.inner_w) - gap).max(1.0),
-        r.row_h,
-    );
+    let chip = ph2d_editor_core::panel::value_col(r.inner_x, r.inner_w, y, r.row_h);
     let open = matches!(
         r.store.get(id),
         Some(InteractiveState::Dropdown { open: true, .. })

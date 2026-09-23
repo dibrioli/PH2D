@@ -61,10 +61,13 @@ const AINDA_A_MAO: &[&str] = &[
     // piorou** — ela passou a ler a grafia `label_w` nos painéis, e estes seis estavam invisíveis
     // desde sempre. *Uma lista que cresce ao afiar o instrumento é dívida REVELADA, não contraída.*
     //
-    // ⏳ **Os DOIS da timeline são a mesma pergunta do `tracks.rs`**: a coluna de nome de uma FAIXA
-    // e o cromo do transporte, que não são linhas de propriedade.
+    // ⏳ **O da timeline é a mesma pergunta do `tracks.rs`**: a coluna de nome de uma FAIXA, que não
+    // é uma linha de propriedade.
+    // ✅ **O do TRANSPORTE saiu em 2026-09-23** — os chips numéricos escolhiam `CHIP_LABEL_W = 48`
+    // ao lado da coluna MEDIDA dos toggles, e numa barra estreita o valor de um chip arrancava
+    // `17,5 px` à esquerda do interruptor da fileira de baixo (varredura `onde_comeca_o_valor`).
+    // Hoje os dois partilham a mesma célula, e esta linha saiu por o censo de obsolescência a acusar.
     "crates/ph2d-panel-timeline/src/geom.rs",
-    "crates/ph2d-panel-timeline/src/transport.rs",
     // ✅ **O do mixer SAIU em 2026-09-18** — ele escolhia a coluna com um literal de `32,0 px` que
     // já cortava `Depth` e `Return` **em inglês**, e hoje ela DERIVA dos nomes que a fileira pinta
     // (`coluna_dos_nomes`). ⭐ Esta linha foi apagada porque o CENSO DE OBSOLESCÊNCIA deste gate a

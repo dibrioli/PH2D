@@ -281,12 +281,7 @@ impl BodyCtx<'_> {
             row.when.as_str()
         };
         let id = ids::morph_shape_key_button_id(i);
-        let r = Rect::new(
-            self.inner_x + label_col_w(self.inner_x, self.inner_w) + gap,
-            y,
-            (self.inner_w - label_col_w(self.inner_x, self.inner_w) - gap).max(1.0),
-            self.row_h,
-        );
+        let r = ph2d_editor_core::panel::value_col(self.inner_x, self.inner_w, y, self.row_h);
         // ⚠️ **Registado como DROPDOWN, pintado como BOTÃO** — e a assimetria é o desenho.
         //
         // O que o Enio pediu foi *"um botão que abre um modal com os eventos"*: o **gesto** é um

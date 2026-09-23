@@ -14,7 +14,7 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_tokens::{ColorToken, Spacing, Theme};
+use ph2d_tokens::{ColorToken, Theme};
 
 use crate::ids;
 use crate::paint_sections::{BodyCtx, label_col_w};
@@ -92,7 +92,6 @@ impl BodyCtx<'_> {
         let Some(slot) = ids::token_slot_of(id) else {
             return y;
         };
-        let gap = Spacing::Xs.px();
         ph2d_editor_core::paint::paint_text(
             self.text_system,
             self.scene,
@@ -103,12 +102,7 @@ impl BodyCtx<'_> {
             label_col_w(self.inner_x, self.inner_w),
             ph2d_editor_core::paint::resolve(ColorToken::Text1, self.theme),
         );
-        let chip = Rect::new(
-            self.inner_x + label_col_w(self.inner_x, self.inner_w) + gap,
-            y,
-            (self.inner_w - label_col_w(self.inner_x, self.inner_w) - gap).max(1.0),
-            self.row_h,
-        );
+        let chip = ph2d_editor_core::panel::value_col(self.inner_x, self.inner_w, y, self.row_h);
         let open = matches!(
             self.store.get(id),
             Some(InteractiveState::Dropdown { open: true, .. })

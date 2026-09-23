@@ -63,6 +63,24 @@ pub fn label_col_w(inner_x: f32, inner_w: f32) -> f32 {
     crate::widget::property_label_col_w(inner_x, inner_w)
 }
 
+/// ⭐⭐⭐ **A COLUNA DO VALOR** de uma linha rotulada — o rect onde o controlo começa e acaba.
+///
+/// ⛔⛔ **Ordem do dono (2026-09-21): *«quanto ao alinhamento precisamos melhorar em todos os
+/// lugares»*.** Medido pela varredura `onde_comeca_o_valor` à largura dele (`300 px`): o painel de
+/// vetor punha os marcadores a `124` e as fileiras vizinhas a `128`, **4 px de degrau dentro do
+/// mesmo painel** — e a causa era uma só, repetida à mão: `inner_x + label_col_w + Spacing::Xs`.
+/// A porta da linha ([`crate::widget::property_row_columns`]) usa o vão `Spacing::Md` **e**
+/// desconta a coluna de animação à direita; cada cópia acertava a metade de uma coisa e nenhuma
+/// das duas.
+///
+/// ⇒ **o valor começa onde a porta diz, e acaba onde a porta diz.** Esta função é essa porta com
+/// o vertical que a linha já tem à mão — *uma coluna escrita em N sítios não é uma coluna, é N
+/// palpites que coincidem enquanto ninguém mexe num vão*.
+#[must_use]
+pub fn value_col(inner_x: f32, inner_w: f32, y: f32, row_h: f32) -> Rect {
+    crate::widget::property_row_columns(inner_x, inner_w, y, row_h).control
+}
+
 /// **O contexto de uma linha** — os alvos mutáveis do quadro mais as métricas partilhadas.
 ///
 /// ⚠️ **A `store` é `&` e não `&mut`, de propósito:** o passe de pintura de um painel **não escreve
@@ -156,12 +174,8 @@ impl RowCtx<'_> {
         on: bool,
         y: f32,
     ) -> f32 {
-        let gap = Spacing::Xs.px();
         self.label_cell(label, y);
-        let lc = label_col_w(self.inner_x, self.inner_w);
-        let x = self.inner_x + lc + gap;
-        let w = (self.inner_w - lc - gap).max(1.0);
-        let rect = Rect::new(x, y, w, self.row_h);
+        let rect = value_col(self.inner_x, self.inner_w, y, self.row_h);
         let st = self.store.button_visual(id);
         let btn = Button::new(id, texto)
             .kind(if on {
@@ -180,12 +194,8 @@ impl RowCtx<'_> {
 
     /// **Um campo numérico ROTULADO** (`<rótulo> [ 12,0 ]`).
     pub fn labeled_number_field(&mut self, label: &str, id: NodeId, step: f64, y: f32) -> f32 {
-        let gap = Spacing::Xs.px();
         self.label_cell(label, y);
-        let lc = label_col_w(self.inner_x, self.inner_w);
-        let x = self.inner_x + lc + gap;
-        let w = (self.inner_w - lc - gap).max(1.0);
-        let rect = Rect::new(x, y, w, self.row_h);
+        let rect = value_col(self.inner_x, self.inner_w, y, self.row_h);
         self.hit_index.register(id, rect);
         let (st, value, buffer, caret, anchor) = read_number_input(self.store, id);
         let input = NumberInput::new(id, "", value)

@@ -48,13 +48,26 @@ pub(crate) fn segmented_natural_widths(labels: &[&str], text_system: &mut TextSy
 /// A label wider than the whole row still gets a row — never an empty one, or the walk would not
 /// terminate.
 pub(crate) fn segmented_row_counts(rect_w: f32, widths: &[f32]) -> Vec<usize> {
+    segmented_row_counts_ate(rect_w, widths, usize::MAX)
+}
+
+/// ⭐⭐ **A mesma quebra, com um TECTO de peças por fileira** — que entra DENTRO do laço guloso.
+///
+/// ⛔⛔ **Ela existe por um defeito medido em 2026-09-23:** a [`wrapped_cells_for`] quebrava pelas
+/// palavras SEM tecto e só DEPOIS partia cada fileira pelo tecto — uma fileira gulosa de quatro sob
+/// um tecto de três virava `3 + 1`, e a grelha de ferramentas do vetor (15 peças) ficava com
+/// peças SOZINHAS a meio (`46 px` a mais de altura de abertura, apanhados pela catraca
+/// `a_altura_de_abertura_de_um_painel_so_encolhe`). *Aplicar um tecto a uma disposição já feita não
+/// é o mesmo que dispor com o tecto.*
+pub(crate) fn segmented_row_counts_ate(rect_w: f32, widths: &[f32], max_cols: usize) -> Vec<usize> {
     let gap = segmented_gap();
+    let tecto = max_cols.max(1);
     let mut rows = Vec::new();
     let mut i = 0;
     while i < widths.len() {
         let mut n = 0usize;
         let mut used = 0.0f32;
-        while i + n < widths.len() {
+        while i + n < widths.len() && n < tecto {
             let extra = widths[i + n] + if n > 0 { gap } else { 0.0 };
             if n > 0 && used + extra > rect_w {
                 break;
@@ -208,16 +221,7 @@ pub fn wrapped_cells_for(
         .collect();
     // ⚠️ O tecto de colunas é do PRODUTO (uma grelha de opções não passa de `max_cols` de largura),
     //    e a quebra por largura só o pode APERTAR — nunca alargar.
-    let contagens: Vec<usize> = segmented_row_counts(origin.w, &naturais)
-        .into_iter()
-        .flat_map(|n| {
-            let cheias = n / max_cols.max(1);
-            let resto = n % max_cols.max(1);
-            (0..cheias)
-                .map(move |_| max_cols.max(1))
-                .chain((resto > 0).then_some(resto))
-        })
-        .collect();
+    let contagens = segmented_row_counts_ate(origin.w, &naturais, max_cols);
     let mut por_fileira: Vec<Vec<f32>> = Vec::with_capacity(contagens.len());
     let mut j = 0usize;
     for n in &contagens {
@@ -289,5 +293,29 @@ mod tests {
             (razao[0] - razao[1]).abs() < 0.05 && (razao[1] - razao[2]).abs() < 0.05,
             "as razões divergem: {razao:?} — alguém está a pagar pelos outros"
         );
+    }
+
+    /// ⭐⭐⭐ **O TECTO entra NA quebra, e nenhuma fileira fica com uma peça a sobrar a meio.**
+    ///
+    /// ⛔ Medido 2026-09-23 na grelha de ferramentas do vetor: quinze peças que cabiam QUATRO por
+    /// fileira sob um tecto de TRÊS saíam `3 + 1 · 3 + 1 · …` — o tecto era aplicado DEPOIS da
+    /// quebra. A régua tem as duas metades: nenhuma fileira passa do tecto, e só a ÚLTIMA pode ter
+    /// menos peças do que ele (a contagem certa é `⌈15 / 3⌉ = 5` fileiras, nunca `7`).
+    #[test]
+    fn o_tecto_entra_na_quebra_e_nao_deixa_pecas_sozinhas() {
+        let naturais = [50.0_f32; 15];
+        // Cabem quatro por fileira (4·50 + 3 costuras < 210): o tecto é que manda.
+        let linhas = super::segmented_row_counts_ate(210.0, &naturais, 3);
+        assert!(
+            linhas.iter().all(|&n| n <= 3),
+            "uma fileira passou do tecto: {linhas:?}"
+        );
+        assert_eq!(
+            linhas,
+            vec![3; 5],
+            "o tecto partiu fileiras já feitas em vez de entrar na quebra — sobram peças sozinhas"
+        );
+        // CONTROLO: sem tecto a mesma lista faz fileiras de quatro — a fixtura contém o fenómeno.
+        assert_eq!(super::segmented_row_counts(210.0, &naturais)[0], 4);
     }
 }

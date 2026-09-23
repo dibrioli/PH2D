@@ -173,37 +173,7 @@ fn follow_body(
     w: f32,
     y: f32,
     f: &InspectorCameraFollow,
-    seccao: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
-    let mut cur_y = super::anim_rows::text_row(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        y,
-        tr("panel.inspector.camera.target_label"),
-        ids::INSP_CAMERA_TARGET,
-        TextInput::new(ids::INSP_CAMERA_TARGET, "")
-            .placeholder(tr("panel.inspector.camera.object_name")),
-        seccao,
-    );
-
-    if !f.target.trim().is_empty() && !f.target_found {
-        cur_y = super::rows::aviso(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            cur_y,
-            tr("panel.inspector.camera.nothing_in_the_scene_has"),
-            ColorToken::Danger,
-        );
-    }
-
     let linhas = [
         (
             tr("panel.inspector.camera.damping_1_s"),
@@ -233,11 +203,44 @@ fn follow_body(
     // ⭐⭐ **A coluna é da SECÇÃO, medida uma vez sobre a TABELA que ela pinta** — ver
     //    [`ph2d_editor_core::property_row::Seccao`]. ⛔ A tabela deixou de ser um literal dentro do
     //    `for` porque ela é lida DUAS vezes: para medir o nome mais largo e para pintar.
-    let seccao = ph2d_editor_core::property_row::Seccao::medida(
+    //
+    // ⛔⛔ **E o nome do ALVO entra na MESMA medição** (2026-09-23, varredura `onde_comeca_o_valor`):
+    //    até aqui ele vinha numa declaração PRÓPRIA do chamador (`campos = 1`, só o nome dele), e a
+    //    caixa do alvo arrancava a `136` enquanto as seis linhas de baixo arrancavam a `111` — duas
+    //    colunas dentro de UMA secção. *Duas declarações para o mesmo corpo são duas colunas.*
+    let nomes: Vec<&str> = std::iter::once(tr("panel.inspector.camera.target_label"))
+        .chain(linhas.iter().map(|t| t.0))
+        .collect();
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(text_system, 2, &nomes);
+    let mut cur_y = super::anim_rows::text_row(
+        scene,
         text_system,
-        2,
-        &linhas.iter().map(|t| t.0).collect::<Vec<_>>(),
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        tr("panel.inspector.camera.target_label"),
+        ids::INSP_CAMERA_TARGET,
+        TextInput::new(ids::INSP_CAMERA_TARGET, "")
+            .placeholder(tr("panel.inspector.camera.object_name")),
+        seccao,
     );
+
+    if !f.target.trim().is_empty() && !f.target_found {
+        cur_y = super::rows::aviso(
+            scene,
+            text_system,
+            theme,
+            x,
+            w,
+            cur_y,
+            tr("panel.inspector.camera.nothing_in_the_scene_has"),
+            ColorToken::Danger,
+        );
+    }
+
     for (label, ids2, step, unit) in linhas {
         cur_y = super::rows::fields_row(
             scene,
@@ -436,23 +439,7 @@ pub(crate) fn paint_camera_section(
         info,
     );
     if let Some(f) = info.follow.as_ref() {
-        let sec_seguir = ph2d_editor_core::property_row::Seccao::medida(
-            text_system,
-            1,
-            &[tr("panel.inspector.camera.target_label")],
-        );
-        cur_y = follow_body(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            cur_y,
-            f,
-            sec_seguir,
-        );
+        cur_y = follow_body(scene, text_system, theme, hit_index, store, x, w, cur_y, f);
     }
     if let Some(l) = info.limits.as_ref() {
         cur_y = limits_body(scene, text_system, theme, hit_index, store, x, w, cur_y, l);

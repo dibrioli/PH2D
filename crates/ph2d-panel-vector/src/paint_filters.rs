@@ -459,7 +459,6 @@ impl BodyCtx<'_> {
     /// resto) — a mesma estética para a mesma pergunta *"qual destes?"*. A lista em si é pintada
     /// no passe DIFERIDO: são vinte leis, e o card mora dentro do scroll da seção.
     fn filter_blend_row(&mut self, row: usize, fx: &fst::FilterRowView, y: f32) -> f32 {
-        let gap = Spacing::Xs.px();
         let id = ids::filter_blend_id(row);
         ph2d_editor_core::widget::paint_property_label(
             self.text_system,
@@ -471,12 +470,7 @@ impl BodyCtx<'_> {
             label_col_w(self.inner_x, self.inner_w),
             resolve(ColorToken::Text1, self.theme),
         );
-        let chip = Rect::new(
-            self.inner_x + label_col_w(self.inner_x, self.inner_w) + gap,
-            y,
-            (self.inner_w - label_col_w(self.inner_x, self.inner_w) - gap).max(1.0),
-            self.row_h,
-        );
+        let chip = ph2d_editor_core::panel::value_col(self.inner_x, self.inner_w, y, self.row_h);
         let open = matches!(
             self.store.get(id),
             Some(InteractiveState::Dropdown { open: true, .. })

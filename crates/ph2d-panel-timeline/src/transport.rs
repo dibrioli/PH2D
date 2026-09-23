@@ -33,13 +33,6 @@ use crate::tab::Tab;
 pub(crate) const BTN_W: f32 = 30.0; // LITERAL-PX-OK: square transport icon-button
 const ADD_MARKER_W: f32 = 40.0; // LITERAL-PX-OK: "+M" add-marker button width
 const CHIP_W: f32 = 72.0; // LITERAL-PX-OK: seconds/frame number chip width
-const CHIP_LABEL_W: f32 = 48.0; // LITERAL-PX-OK: "Time(s)"/"Frames" chip-label column
-/// The Dur(s) chip's stepper increment — **0.2 s per click** (Enio, 2026-07-23:
-/// *"faça cada clique subir ou descer o valor em 0.2 seg"*). The Time/Frame chips
-/// step by a frame (`1/fps`); a DURATION is coarser, so `1/fps` (≈0.04 s) produced
-/// the fiddly, "wrong-looking" values the report named (4.04, 4.08, …). A round
-/// 0.2 s keeps the authored duration on clean tenths.
-const DUR_STEP_SECONDS: f64 = 0.2; // LITERAL-PX-OK: 0.2 s stepper increment (a time value), not a UI px metric
 /// Buttons in the transport cluster: go-start, step-back, play, step-forward, go-end.
 const TRANSPORT_BTNS: usize = 5;
 
@@ -237,7 +230,7 @@ fn width(item: Item, snap: &TimelineViewSnapshot, view: BarView, label_col: f32)
         }
         Item::ReverseKeys | Item::OnionSettings => BTN_W,
         Item::AddMarker => ADD_MARKER_W,
-        Item::TimeChip | Item::FrameChip | Item::LengthChip => CHIP_LABEL_W + half + CHIP_W,
+        Item::TimeChip | Item::FrameChip | Item::LengthChip => chip_w(label_col),
         Item::Loop
         | Item::PingPong
         | Item::Physics
@@ -299,68 +292,6 @@ pub(crate) fn length_scope(container_open: Option<usize>, keys_mode: bool) -> Le
     } else {
         LengthScope::Scene
     }
-}
-
-/// The Dur(s) chip: **the view's own duration** (`view_length_seconds` is
-/// stamped per view — clip in Keys, scene in Arrange, the open container
-/// inside one). The router writes the same scope (`length_scope`).
-///
-/// **No authored duration reads ∞** (Enio, 2026-07-28): a composition with no
-/// `length_override` is UNBOUNDED (`0` = infinite), so the box shows the infinity glyph
-/// rather than a derived number — the same `!view_length_explicit` that removes the veil
-/// (`ruler_veil`). This is why it is the ONLY chip that can be `unbounded`; Time/Frame
-/// always show a finite number. Typing/dragging a positive value authors a finite end;
-/// typing `0` clears back to infinite.
-fn paint_length_chip(
-    ctx: &mut PaintCtx,
-    theme: Theme,
-    x: f32,
-    y: f32,
-    snap: &TimelineViewSnapshot,
-) {
-    labeled_chip(
-        ctx,
-        theme,
-        x,
-        y,
-        "panel.timeline.length",
-        ids::TIMELINE_LENGTH_NUM,
-        snap.view_length_seconds,
-        DUR_STEP_SECONDS,
-        2,
-        !snap.view_length_explicit,
-    );
-}
-
-/// One labeled numeric chip — the label at `x`, the chip a half-gap after it.
-/// The three transport chips (Time / Frame / Dur) are this one drawing, and the
-/// measure arm (`CHIP_LABEL_W + half + CHIP_W`) describes exactly this layout.
-#[allow(clippy::too_many_arguments)]
-fn labeled_chip(
-    ctx: &mut PaintCtx,
-    theme: Theme,
-    x: f32,
-    y: f32,
-    key: &str,
-    id: ph2d_a11y::NodeId,
-    value: f64,
-    step: f64,
-    decimals: usize,
-    unbounded: bool,
-) {
-    let half = Spacing::Sm.px() * 0.5;
-    label(ctx, theme, ph2d_i18n::tr(key), x, y, CHIP_LABEL_W);
-    chip(
-        ctx,
-        theme,
-        x + CHIP_LABEL_W + half,
-        y,
-        id,
-        value,
-        step,
-        decimals,
-        unbounded,
-    );
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -435,26 +366,28 @@ fn paint_item(
             theme,
             x,
             y,
-            "panel.timeline.time_seconds",
+            chip_rotulo(Item::TimeChip),
             TIMELINE_TIME_NUM,
             snap.time_seconds,
             1.0 / fps,
             2,
             false,
+            label_col,
         ),
         Item::FrameChip => labeled_chip(
             ctx,
             theme,
             x,
             y,
-            "panel.timeline.frame",
+            chip_rotulo(Item::FrameChip),
             TIMELINE_FRAME_NUM,
             snap.frame as f64,
             1.0,
             0,
             false,
+            label_col,
         ),
-        Item::LengthChip => paint_length_chip(ctx, theme, x, y, snap),
+        Item::LengthChip => paint_length_chip(ctx, theme, x, y, snap, label_col),
         // Loop and PingPong are the SAME loop seen two ways, so exactly one can
         // read as on — the snapshot carries a range plus a mode, and there is no
         // value that is both.
@@ -587,7 +520,12 @@ pub(crate) use widgets::{chip, icon_button, label, mirror_number, toggle};
 /// responde *que palavra* e *quanto espaço ela pede*.
 #[path = "transport_labels.rs"]
 mod labels;
-use labels::{rotulo, toggle_label_w};
+use labels::{chip_rotulo, rotulo, toggle_label_w};
+
+/// Os CHIPS numéricos (`Time` · `Frame` · `Length`): a célula e a régua dela, juntas.
+#[path = "transport_chips.rs"]
+mod chips;
+use chips::{chip_w, labeled_chip, paint_length_chip};
 
 /// Os toggles de VISTA da barra (Speed · Onion · Onion Keys) — separados do `paint_item`
 /// (cap de LOC de fn/arquivo) por serem um grupo coeso: nenhum é comando de documento.

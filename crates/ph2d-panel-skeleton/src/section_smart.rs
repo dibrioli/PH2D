@@ -16,7 +16,7 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_tokens::{ColorToken, Spacing, Theme};
+use ph2d_tokens::{ColorToken, Theme};
 
 use crate::section_campos::ANGLE_STEP;
 
@@ -100,7 +100,6 @@ fn smart_object_row(r: &mut RowCtx, sb: &SmartBoneView, y: f32) -> f32 {
 }
 
 fn smart_action_row(r: &mut RowCtx, sb: &SmartBoneView, y: f32) -> f32 {
-    let gap = Spacing::Xs.px();
     let id = crate::ids::VECTOR_BONE_SMART_CLIP;
     paint_text(
         r.text_system,
@@ -117,12 +116,7 @@ fn smart_action_row(r: &mut RowCtx, sb: &SmartBoneView, y: f32) -> f32 {
     } else {
         sb.clip.as_str()
     };
-    let chip = Rect::new(
-        r.inner_x + label_col_w(r.inner_x, r.inner_w) + gap,
-        y,
-        (r.inner_w - label_col_w(r.inner_x, r.inner_w) - gap).max(1.0),
-        r.row_h,
-    );
+    let chip = ph2d_editor_core::panel::value_col(r.inner_x, r.inner_w, y, r.row_h);
     let open = matches!(
         r.store.get(id),
         Some(InteractiveState::Dropdown { open: true, .. })

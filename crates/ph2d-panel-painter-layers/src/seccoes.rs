@@ -390,13 +390,40 @@ pub(crate) const WETPAINT_CARTAO: &[&str] = &[
 
 /// ⭐⭐ **A [`Seccao`] de uma declaração** — medida sobre os rótulos dela, no sistema de texto real.
 pub(crate) fn seccao(text_system: &mut TextSystem, d: &Declaracao) -> Seccao {
+    let padroes = COM_PADROES.contains(&d.nome);
     let rotulos: Vec<&'static str> = d
         .chaves
         .iter()
         .chain(d.cartao)
         .map(|k| ph2d_i18n::tr(k))
+        .chain(padroes.then(rotulos_dos_padroes).into_iter().flatten())
         .collect();
     Seccao::medida(text_system, d.campos, &rotulos)
+}
+
+/// ⭐⭐ **As secções que pintam as fileiras de um PADRÃO** ([`crate::number_field::paint_num_params`]).
+///
+/// ⛔⛔ Até 2026-09-23 aquelas fileiras mediam uma coluna PRÓPRIA sobre os nomes delas, e a
+/// varredura `onde_comeca_o_valor` mediu-as à largura do dono: o `Paper` e o `Grain` punham o
+/// valor a `123` e os parâmetros do padrão logo por baixo a `148` — duas colunas dentro de UM
+/// cartão. *Duas declarações para o mesmo corpo são duas colunas.* Hoje as fileiras recebem a
+/// coluna da secção, e a secção mede também os nomes delas.
+///
+/// ⚠️ **Mede os nomes de TODOS os padrões, e não os do padrão escolhido** — senão trocar o padrão
+/// mudava a coluna do cartão inteiro, e *uma coluna que muda quando uma linha aparece é uma coluna
+/// que salta debaixo do olho do artista* (o doc da [`Seccao::medida`]).
+const COM_PADROES: &[&str] = &["grain", "paper", "shape"];
+
+/// Os nomes de parâmetro de todos os padrões — a união que [`COM_PADROES`] mede.
+fn rotulos_dos_padroes() -> Vec<&'static str> {
+    let mut v: Vec<&'static str> = (0..ph2d_tool_painter::TextureKind::COUNT)
+        .map(ph2d_tool_painter::TextureKind::from_u8)
+        .flat_map(ph2d_tool_painter::param_specs)
+        .map(|s| ph2d_i18n::tr(s.label))
+        .collect();
+    v.sort_unstable();
+    v.dedup();
+    v
 }
 
 /// O nome da secção de uma chave — *tudo entre o prefixo do painel e o último componente*.

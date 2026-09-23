@@ -141,8 +141,63 @@ fn source_body(
     y: f32,
     src: &InspectorAudioSource,
     info: &InspectorAudioInfo,
-    seccao: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
+    let linhas = [
+        (
+            tr("panel.inspector.audio.volume_db"),
+            ids::INSP_AUDIO_VOLUME,
+            1.0,
+            None,
+        ), // LITERAL-PX-OK: passo em decibéis
+        (
+            tr("panel.inspector.audio.pitch"),
+            ids::INSP_AUDIO_PITCH,
+            0.05, // LITERAL-PX-OK: passo do factor de tom
+            None,
+        ),
+        (
+            tr("panel.inspector.audio.max_distance_m"),
+            ids::INSP_AUDIO_MAX_DIST,
+            0.5,
+            Some(ph2d_editor_core::widget::Unit::Meters),
+        ), // LITERAL-PX-OK: passo em metros
+        (
+            tr("panel.inspector.audio.attenuation"),
+            ids::INSP_AUDIO_ATTENUATION,
+            0.1, // LITERAL-PX-OK: passo do expoente
+            None,
+        ),
+        (
+            tr("panel.inspector.audio.non_spatialized_radius_m"),
+            ids::INSP_AUDIO_RADIUS,
+            0.1, // LITERAL-PX-OK: metros
+            Some(ph2d_editor_core::widget::Unit::Meters),
+        ),
+        (
+            tr("panel.inspector.audio.panning_strength"),
+            ids::INSP_AUDIO_PANNING,
+            0.05, // LITERAL-PX-OK: passo da fracção
+            None,
+        ),
+        (
+            tr("panel.inspector.audio.max_polyphony"),
+            ids::INSP_AUDIO_POLYPHONY,
+            1.0,
+            None,
+        ), // LITERAL-PX-OK: uma voz de cada vez
+    ];
+    // ⭐⭐ **A coluna é da SECÇÃO, medida uma vez sobre a TABELA que ela pinta** — ver
+    //    [`ph2d_editor_core::property_row::Seccao`]. ⛔ A tabela deixou de ser um literal dentro
+    //    do `for` porque ela é lida DUAS vezes: para medir o nome mais largo e para pintar.
+    //
+    // ⛔⛔ **E o nome do SOM entra na MESMA medição** (2026-09-23, varredura `onde_comeca_o_valor`):
+    //    ele vinha numa declaração própria do chamador, só com o nome dele, e a caixa do som
+    //    arrancava `6 px` à esquerda das sete linhas de número por baixo dela. *Duas declarações
+    //    para o mesmo corpo são duas colunas.*
+    let nomes: Vec<&str> = std::iter::once(tr("panel.inspector.audio.sound_label"))
+        .chain(linhas.iter().map(|t| t.0))
+        .collect();
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &nomes);
     let mut cur_y = super::anim_rows::text_row(
         scene,
         text_system,
@@ -210,58 +265,6 @@ fn source_body(
         );
     }
 
-    let linhas = [
-        (
-            tr("panel.inspector.audio.volume_db"),
-            ids::INSP_AUDIO_VOLUME,
-            1.0,
-            None,
-        ), // LITERAL-PX-OK: passo em decibéis
-        (
-            tr("panel.inspector.audio.pitch"),
-            ids::INSP_AUDIO_PITCH,
-            0.05, // LITERAL-PX-OK: passo do factor de tom
-            None,
-        ),
-        (
-            tr("panel.inspector.audio.max_distance_m"),
-            ids::INSP_AUDIO_MAX_DIST,
-            0.5,
-            Some(ph2d_editor_core::widget::Unit::Meters),
-        ), // LITERAL-PX-OK: passo em metros
-        (
-            tr("panel.inspector.audio.attenuation"),
-            ids::INSP_AUDIO_ATTENUATION,
-            0.1, // LITERAL-PX-OK: passo do expoente
-            None,
-        ),
-        (
-            tr("panel.inspector.audio.non_spatialized_radius_m"),
-            ids::INSP_AUDIO_RADIUS,
-            0.1, // LITERAL-PX-OK: metros
-            Some(ph2d_editor_core::widget::Unit::Meters),
-        ),
-        (
-            tr("panel.inspector.audio.panning_strength"),
-            ids::INSP_AUDIO_PANNING,
-            0.05, // LITERAL-PX-OK: passo da fracção
-            None,
-        ),
-        (
-            tr("panel.inspector.audio.max_polyphony"),
-            ids::INSP_AUDIO_POLYPHONY,
-            1.0,
-            None,
-        ), // LITERAL-PX-OK: uma voz de cada vez
-    ];
-    // ⭐⭐ **A coluna é da SECÇÃO, medida uma vez sobre a TABELA que ela pinta** — ver
-    //    [`ph2d_editor_core::property_row::Seccao`]. ⛔ A tabela deixou de ser um literal dentro
-    //    do `for` porque ela é lida DUAS vezes: para medir o nome mais largo e para pintar.
-    let seccao = ph2d_editor_core::property_row::Seccao::medida(
-        text_system,
-        1,
-        &linhas.iter().map(|t| t.0).collect::<Vec<_>>(),
-    );
     for (label, id, step, unit) in linhas {
         cur_y = super::rows::fields_row(
             scene,
@@ -407,11 +410,6 @@ pub(crate) fn paint_audio_section(
     }
 
     if let Some(src) = &info.source {
-        let sec_fonte = ph2d_editor_core::property_row::Seccao::medida(
-            text_system,
-            1,
-            &[tr("panel.inspector.audio.sound_label")],
-        );
         cur_y = source_body(
             scene,
             text_system,
@@ -423,7 +421,6 @@ pub(crate) fn paint_audio_section(
             cur_y,
             src,
             info,
-            sec_fonte,
         );
     }
 

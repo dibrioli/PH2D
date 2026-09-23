@@ -299,8 +299,8 @@ impl BodyCtx<'_> {
             return y + self.row_h + Spacing::Xs.px();
         }
 
-        let x0 = self.inner_x + label_col_w(self.inner_x, self.inner_w);
-        let w = (self.inner_x + self.inner_w - x0).max(0.0);
+        let valor = ph2d_editor_core::panel::value_col(self.inner_x, self.inner_w, y, self.row_h);
+        let (x0, w) = (valor.x, valor.w);
         let gap = Spacing::Xs.px();
         // Um papel vazio tem UM verbo; um gravado tem três. A largura segue a contagem em vez de
         // reservar espaço para botões que não estão lá.

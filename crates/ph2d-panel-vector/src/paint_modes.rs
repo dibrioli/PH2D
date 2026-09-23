@@ -291,7 +291,6 @@ impl BodyCtx<'_> {
         current: &str,
         y: f32,
     ) -> f32 {
-        let gap = Spacing::Xs.px();
         ph2d_editor_core::widget::paint_property_label(
             self.text_system,
             self.scene,
@@ -302,9 +301,7 @@ impl BodyCtx<'_> {
             label_col_w(self.inner_x, self.inner_w),
             resolve(ColorToken::Text2, self.theme),
         );
-        let field_x = self.inner_x + label_col_w(self.inner_x, self.inner_w) + gap;
-        let field_w = (self.inner_w - label_col_w(self.inner_x, self.inner_w) - gap).max(1.0);
-        let rect = Rect::new(field_x, y, field_w, self.row_h);
+        let rect = ph2d_editor_core::panel::value_col(self.inner_x, self.inner_w, y, self.row_h);
         self.hit_index.register(id, rect);
         paint_segmented_button(
             rect,
@@ -333,19 +330,26 @@ impl BodyCtx<'_> {
         }
         // ⭐⭐ **A grelha é UM corpo** — a lei do Blender que o dono apontou (foto do `TOOL` do
         //    Vector, 2026-09-06): as peças encostam e só os quatro cantos do BLOCO arredondam.
-        //    ⚠️ A última fileira pode estar incompleta, e é por isso que a contagem por linha vai
-        //    numa lista: uma grelha rectangular daria peças fantasma no fim.
-        let rows: Vec<usize> = (0..n.div_ceil(cols))
-            .map(|r| cols.min(n - r * cols))
-            .collect();
-        let block = ph2d_editor_core::widget::block_cells(
+        //
+        // ⛔⛔ **E a QUEBRA sai das PALAVRAS, com `cols` a ser só o TECTO** (2026-09-23). A grelha
+        //    repartia sempre em `cols` partes iguais, e no degrau estreito (o dock no mínimo, onde o
+        //    dono trabalha) `Bucket`, `Chamfer` e `Connect` saíam `Buc…`/`Cha…`/`Con…` numa célula de
+        //    `55 px` com a fileira de dois a caber. A porta que o resto da casa já usa para isto é a
+        //    `wrapped_cells_for` — a mesma lei, com o `max_cols` como tecto de PRODUTO — e a doc
+        //    dela descreve à letra a 1.ª redacção desta: *«um `cols` literal … repartir bem uma
+        //    fileira mal formada troca de vítima»*.
+        let items: Vec<_> = (0..n).map(&item).collect();
+        let labels: Vec<&str> = items.iter().map(|t| t.1).collect();
+        let block = ph2d_editor_core::widget::wrapped_cells_for(
             Rect::new(self.inner_x, y, self.inner_w, 0.0),
-            &rows,
+            &labels,
             self.row_h,
+            cols,
+            self.text_system,
         );
-        for i in 0..n {
-            let (id, label, active) = item(i);
-            let (rect, cell) = block[i / cols][i % cols];
+        let cells: Vec<_> = block.iter().flatten().copied().collect();
+        for (i, &(id, label, active)) in items.iter().enumerate() {
+            let (rect, cell) = cells[i];
             let st = self.store.button_visual(id);
             paint_segmented_button_in_group(
                 rect,
@@ -362,7 +366,7 @@ impl BodyCtx<'_> {
         // ⚠️ **A altura sai da MESMA porta que dispôs as peças** — a conta à mão que estava aqui
         // somava o vão antigo, e um contentor medido por uma regra e preenchido por outra escreve
         // a fileira seguinte por cima desta.
-        y + ph2d_editor_core::widget::grid_height(rows.len(), self.row_h) + self.row_gap
+        y + ph2d_editor_core::widget::grid_height(block.len(), self.row_h) + self.row_gap
     }
 
     /// Um campo numérico rotulado (`<rótulo> [ valor ]`), largura cheia — os parâmetros

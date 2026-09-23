@@ -2714,6 +2714,93 @@ uma cor). Mutação **2 de 2** (`false` · «qualquer selector aberto»).
 censo das elisões a `--workspace` verde · mutações **9 a sangrar + 1 nomeada**, com o arnês de três
 controlos.
 
+## §9-vicies-quinquies — ⭐⭐⭐ O ALINHAMENTO: onde começa o valor, medido no produto
+
+Ordem do dono (2026-09-21): *«quanto ao alinhamento precisamos melhorar em todos os lugares»* — e
+depois do smoke das cores, *«smoke ok. siga»*.
+
+### §9-vicies-quinquies.1 — A régua: `onde_comeca_o_valor`
+
+[`onde_comeca_o_valor.rs`](../../../crates/ph2d-panel-registry-init/tests/it/onde_comeca_o_valor.rs)
+pinta cada painel pela porta do registo (de fábrica e armado), colhe o que o índice de acerto
+registou e, por fileira com nome à esquerda, o `x` onde o controlo começa. ⭐ **A unidade é o TROÇO**
+(o que fica entre duas peças de largura inteira): *a coluna é uma resposta da SECÇÃO* (`Seccao`,
+§6-ter), logo duas secções com colunas diferentes estão certas e duas fileiras do mesmo troço não.
+
+O gate `dentro_de_um_troco_o_valor_arranca_numa_coluna_so` tem **duas metades**:
+
+1. **colunas A MAIS dentro de um troço**, por painel, contra `COLUNAS_A_MAIS_DECLARADAS` em
+   IGUALDADE (grid snap `1` — os títulos de secção dela são texto e não fecham troço; timeline `1` —
+   as abas). ⚠️ **A unidade é a COLUNA e não o troço:** a 1.ª redacção contava troços e a prova de
+   mutação **sobreviveu** (os chips da timeline puseram uma TERCEIRA coluna no troço já declarado);
+2. **`UMA_COLUNA`** — os painéis que arrancam o valor numa coluna só de ponta a ponta (vetor,
+   flip_frames, …) ficam assim. ⚠️ Ela existe porque o troço é cego a um degrau ENTRE troços: os
+   marcadores do vetor vivem num troço deles, e a mutação que lhes devolvia o vão escrito à mão
+   sobreviveu à 1.ª metade.
+
+⛔⛔ **O ÂMBITO primeiro, e isto mordeu-me à letra da nota do §5 de 20/09:** calibrei a régua com
+`-p` (24 painéis) e no `nextest-impacted` ela reprovou — `flip`, `flip_frames`, `painter_layers` e
+`wet_tuning` só registam num build de WORKSPACE, e o Painter trazia um degrau que o `-p` não via.
+Hoje o piso é o de workspace (`27` painéis, `455` fileiras, medido) e a corrida pobre reprova alto
+com a causa na mensagem.
+
+⚠️ **Três filtros da régua, cada um nascido de um falso positivo medido:** a fileira que arranca a
+`< 24 px` da borda (botão, lista, paleta), a que só tem um botão ENCOSTADO à direita (`> 0,66` da
+largura: escolher, fechar, remover) e a que arranca numa ALÇA de curva (`< 16 px`). E o separador de
+troço aceita peças que arrancam **junto** da borda (`< 24 px`) — com `< 1 px` os cabeçalhos dos
+cartões do Painter, que recuam, não fechavam nada e o painel inteiro lia-se como UM troço.
+
+### §9-vicies-quinquies.2 — Os CINCO degraus, e a cura de cada um
+
+| onde | degrau | mecanismo | cura |
+|---|---:|---|---|
+| Vetor · marcadores, catálogo, tokens, filtros, estados, conector | `4 px` | `inner_x + label_col_w + Spacing::Xs`, escrito à mão em **9** sítios (e no `RowCtx` partilhado com o Esqueleto); a porta usa `Spacing::Md` **e** desconta a coluna de animação | porta nova [`panel::value_col`](../../../crates/ph2d-editor-core/src/panel/rows.rs) = `property_row_columns(..).control` |
+| Inspector · Câmera ▸ Alvo | `25 px` | uma **segunda** `Seccao` só com o nome do alvo, ao lado da da secção | uma `Seccao` para o corpo, com o nome dentro |
+| Inspector · Áudio ▸ Som | `6 px` | o mesmo | o mesmo |
+| Timeline · chips `Time`/`Frame`/`Length` | `17,5 px` | `CHIP_LABEL_W = 48` à mão ao lado da coluna MEDIDA dos toggles — e o pintor usava `Sm/2` onde a régua do fluxo usava `Xs/2`, com o doc a jurar que eram iguais | a célula do chip é a do toggle (`pad · nome · pad · valor`), medida sobre a mesma lista; [`transport_chips.rs`](../../../crates/ph2d-panel-timeline/src/transport_chips.rs) pelo tecto de 600 |
+| Painter · parâmetros de PADRÃO (Paper, Grain) | `25 px` | `paint_num_params` media uma coluna própria sobre os nomes dela | recebe a `Seccao` do cartão, e `seccoes::COM_PADROES` mede os nomes de **todos** os padrões (senão trocar de padrão movia a coluna do cartão) |
+
+⛔ **Ficam DECLARADOS e não curados:** os degraus ENTRE secções (Grid Snap `110`/`122`/`112,5`,
+Inspector `111`/`136`/`141,8`) — a coluna de cada secção é medida sobre os nomes dela e cede quando a
+secção tem duas componentes. ⏳ **Uniformizar isso é decisão do DONO** (uma coluna por PAINEL daria
+alinhamento total e custaria largura de nome às secções de uma componente).
+
+### §9-vicies-quinquies.3 — ⛔⛔ O preço do vetor, e a cura que o pagou
+
+A coluna do valor passou a acabar onde as vizinhas acabam (a coluna de animação à direita) — os
+marcadores passavam `18 px` para lá dela. No degrau estreito (o dock no mínimo) o chip das pontas
+fica no piso de `72 px`, dos quais `46` são cromo, e o `None` passou a sair `N…`. ⛔ **Duas curas
+construídas e REVERTIDAS:** encolher o recuo da seta do chip (o `None` continuou cortado — a medição
+com a fonte do censo mostrou `26 px` de orçamento, não os `38` da minha conta) e subir a catraca
+(proibido). ⭐ **A cura foi a grelha de ferramentas do vetor:** repartia sempre em **três** partes
+iguais e cortava `Bucket`/`Chamfer`/`Connect` na mesma largura — passou à porta que a casa já tinha
+(`wrapped_cells_for`, o `3` como TECTO). ⇒ o vetor desce de **3 → 1** corte nas duas catracas.
+
+⛔⛔ **E essa porta tinha um defeito PRÓPRIO, apanhado pela catraca da altura de abertura** (`+46 px`
+no vetor): ela quebrava pelas palavras SEM tecto e só DEPOIS partia pelo tecto — uma fileira gulosa
+de quatro sob tecto de três virava `3 + 1`. Hoje o tecto entra NA quebra
+(`segmented_row_counts_ate`), com gate próprio (`o_tecto_entra_na_quebra_e_nao_deixa_pecas_sozinhas`,
+com o controlo de que sem tecto a mesma lista faz fileiras de quatro). Os outros chamadores (o mixer,
+as propriedades do Inspector) passam pela mesma cura.
+
+### §9-vicies-quinquies.4 — O portão
+
+`nextest-impacted` **17 678/17 678** · clippy `-D warnings` zero nas 7 crates tocadas · `cargo fmt` ·
+`censos-da-arvore-combinada.sh` **127/127** · a régua nova a `--workspace` verde.
+
+**Mutações: 10 a sangrar + 1 nomeada** (arnês com controlo de filtro vazio e de não-compila):
+o vão à mão no `value_col` · a 2.ª `Seccao` do alvo · a do som · o chip a `48` · a lista declarada
+desactualizada · uma entrada órfã em `UMA_COLUNA` · os parâmetros de padrão com coluna própria · o
+separador estrito (a régua a medir-se a si mesma) · o tecto fora da quebra · a grelha do vetor de
+volta às partes iguais. ⚠️ **Nomeada:** tirar o `paper` de `COM_PADROES` **sobrevive** a esta régua —
+é LEGIBILIDADE (os nomes do padrão cabem na coluna), não alinhamento; à largura medida a coluna do
+Paper já é a mais larga, e quem a guarda é o censo das elisões.
+
+⚠️ **Flake do fan-out, para promover:** `the_cost_of_a_gated_stroke_follows_the_footprint_not_the_canvas`
+(`ph2d-tool-painter`, gate de RAZÃO) reprovou numa corrida de `17 677` a `load ~37` e passou sozinho
+ao lado do irmão já listado `the_mask_stroke_cost_does_not_follow_the_canvas` — zero linhas de diff
+naquela crate.
+
 
 ## §11 — O que esta linha recomenda a quem a integrar
 

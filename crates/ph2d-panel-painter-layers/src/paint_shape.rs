@@ -166,7 +166,8 @@ pub(crate) fn paint_shape_section(
                 &ph2d_tool_painter::ids::PAINTER_SHAPE_PARAMS,
                 &brush.shape_params,
             );
-            y = crate::number_field::paint_num_params(ctx, theme, x, content_w, y, &pp);
+            let sec = seccao_da_forma(ctx);
+            y = crate::number_field::paint_num_params(ctx, theme, x, content_w, y, &pp, sec);
         }
     }
     // O DEPÓSITO — sempre, inclusive em `None`: o relevo é da tinta que a silhueta deixa, e o falloff

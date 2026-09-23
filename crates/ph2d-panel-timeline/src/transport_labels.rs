@@ -41,15 +41,37 @@ use ph2d_tokens::TypeToken;
 /// ⭐ É a mesma lei que o chip de escolha já declara um nível acima
 /// (`ph2d_editor_core::widget::dropdown_label_budget`): *quem dimensiona uma superfície
 /// PARTILHADA por uma família mede a família, nunca o membro que calhou estar à mão.*
+///
+/// ⭐⭐ **E os CHIPS numéricos (`Time` · `Frame` · `Length`) entram na MESMA medição** (2026-09-23,
+/// ordem do dono *«alinhamento em todos os lugares»*). Eles tinham uma coluna própria de `48 px`
+/// escrita à mão — a doença desta mesma nota, um nível ao lado —, e numa barra estreita, que
+/// empilha um item por fileira, o valor de um chip arrancava a `69` e o interruptor da fileira de
+/// baixo a `86,5` (varredura `onde_comeca_o_valor`, à largura do dono). Hoje os dois são a mesma
+/// célula: `[pad | nome | pad | valor]`, e o valor cai no mesmo `x` sempre que empilham.
 pub(super) fn toggle_label_w(ctx: &mut PaintCtx) -> f32 {
     ph2d_editor_core::paint::label_column_width(
         ctx.text_system,
         TypeToken::Sm.px(),
         super::ITEMS
             .iter()
-            .filter_map(|&i| toggle_key(i))
+            .filter_map(|&i| toggle_key(i).or_else(|| chip_key(i)))
             .map(ph2d_i18n::tr),
     )
+}
+
+/// **O rótulo que um chip numérico PINTA** — a mesma lista que [`toggle_label_w`] mede.
+pub(super) fn chip_rotulo(item: Item) -> &'static str {
+    chip_key(item).map(ph2d_i18n::tr).unwrap_or_default()
+}
+
+/// A chave crua de cada chip numérico da barra.
+fn chip_key(item: Item) -> Option<&'static str> {
+    Some(match item {
+        Item::TimeChip => "panel.timeline.time_seconds",
+        Item::FrameChip => "panel.timeline.frame",
+        Item::LengthChip => "panel.timeline.length",
+        _ => return None,
+    })
 }
 
 /// **O rótulo que um toggle PINTA — a mesma lista de que [`toggle_label_w`] se mede.**

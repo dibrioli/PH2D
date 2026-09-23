@@ -219,7 +219,8 @@ fn paint_texture_params_and_ramp(
         &ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_PARAMS,
         &brush.texture_params,
     );
-    y = crate::number_field::paint_num_params(ctx, theme, x, content_w, y, &pp);
+    let sec = crate::paint_texture_tiling::seccao_do_grao(ctx);
+    y = crate::number_field::paint_num_params(ctx, theme, x, content_w, y, &pp, sec);
 
     if !show_ramp {
         return y;

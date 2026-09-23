@@ -288,7 +288,7 @@ pub(crate) fn paint_paper_section(
         &ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_PARAMS,
         &brush.paper_params,
     );
-    let out = number_field::paint_num_params(ctx, theme, x, content_w, y, &pp);
+    let out = number_field::paint_num_params(ctx, theme, x, content_w, y, &pp, sec);
     crate::paint_brush_top::end_fold(ctx, fold, out)
 }
 

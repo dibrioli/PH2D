@@ -589,7 +589,13 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    `48 px` que saía do nome de toda linha autorada) e a amostra passou ao quadrado da altura
     //    de uma linha (`22`, era o `SwatchSize::Md` de `32`) — o nome ganhou `10 px` em toda linha.
     ("tokens", 2),
-    ("vector", 3),
+    // ⬇️ `3 → 1` em 2026-09-23: a grelha de ferramentas do vetor deixou de repartir em TRÊS partes
+    //    iguais e passou a quebrar pelas palavras (`wrapped_cells_for`, com o `3` como tecto) —
+    //    `Bucket`/`Chamfer`/`Connect` deixaram de sair cortados. ⚠️ E ENTROU um: o `None` das pontas
+    //    (`N…`), porque a fileira dos marcadores passou a acabar onde as vizinhas acabam (a coluna
+    //    do valor da porta, com a de animação à direita) — ela passava `18 px` para lá da coluna, e
+    //    no degrau estreito o chip fica no piso de `72 px`, dos quais `46` são cromo.
+    ("vector", 1),
     ("color_equalization", 2),
     ("tags", 2),
     ("audio_editor", 1),
@@ -665,7 +671,13 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    `48 px` que saía do nome de toda linha autorada) e a amostra passou ao quadrado da altura
     //    de uma linha (`22`, era o `SwatchSize::Md` de `32`) — o nome ganhou `10 px` em toda linha.
     ("tokens", 2),
-    ("vector", 3),
+    // ⬇️ `3 → 1` em 2026-09-23: a grelha de ferramentas do vetor deixou de repartir em TRÊS partes
+    //    iguais e passou a quebrar pelas palavras (`wrapped_cells_for`, com o `3` como tecto) —
+    //    `Bucket`/`Chamfer`/`Connect` deixaram de sair cortados. ⚠️ E ENTROU um: o `None` das pontas
+    //    (`N…`), porque a fileira dos marcadores passou a acabar onde as vizinhas acabam (a coluna
+    //    do valor da porta, com a de animação à direita) — ela passava `18 px` para lá da coluna, e
+    //    no degrau estreito o chip fica no piso de `72 px`, dos quais `46` são cromo.
+    ("vector", 1),
     ("color_equalization", 2),
     ("tags", 2),
     ("audio_editor", 1),

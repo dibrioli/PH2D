@@ -277,15 +277,11 @@ pub(crate) fn paint_num_params(
     content_w: f32,
     mut y: f32,
     params: &[(&str, NodeId, f32)],
+    // ⛔⛔ **A coluna é a da SECÇÃO que chama** (2026-09-23). Ela saía desta tabela, e as fileiras
+    //    do padrão arrancavam `25 px` à direita das linhas do mesmo cartão (varredura
+    //    `onde_comeca_o_valor`); a secção passou a medir estes nomes — ver `seccoes::COM_PADROES`.
+    sec: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
-    // ⭐⭐⭐ **A coluna sai da PRÓPRIA tabela** — esta é a única família do painel que não precisa de
-    //    uma lista de nomes escrita ao lado: ela já recebe os que vai pintar. *Uma lista à mão
-    //    envelheceria no primeiro param novo.*
-    let sec = ph2d_editor_core::property_row::Seccao::medida(
-        ctx.text_system,
-        1,
-        &params.iter().map(|p| p.0).collect::<Vec<_>>(),
-    );
     let font = ph2d_tokens::TypeToken::Sm.px();
     let gap = Spacing::Xs.px();
     let half = ((content_w - gap) * 0.5).max(0.0);

@@ -19,14 +19,10 @@
 
 use super::*;
 use ph2d_editor_core::script_edits::{
-    InspectorScriptInfo, InspectorScriptProp, InspectorScriptStatus, InspectorScriptValue,
+    InspectorScriptInfo, InspectorScriptProp, InspectorScriptValue,
 };
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_i18n::{tr, tr_with};
-
-const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector, igual à das irmãs
-/// A altura do controlo de uma linha — a do campo de número das irmãs.
-const FIELD_H: f32 = 22.0; // LITERAL-PX-OK: altura do NumberInput, a das secções irmãs
 
 /// **A largura de um botão que DIZ o rótulo inteiro** — o texto medido no tamanho do botão e o recuo
 /// dos dois lados.
@@ -53,7 +49,7 @@ fn legivel(v: &InspectorScriptValue) -> String {
 
 /// Uma nota de uma linha. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
-fn nota(
+pub(super) fn nota(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -126,7 +122,7 @@ fn linha(
         x,
         w,
         y,
-        FIELD_H,
+        ALTURA_DE_CAMPO,
         &p.name,
         seccao,
     );
@@ -179,7 +175,7 @@ fn linha(
     }
     .max(0.0);
     let reset_w = reset_w.min(control_w);
-    let ctrl = Rect::new(row.control.x, row_y, ctrl_w, FIELD_H);
+    let ctrl = Rect::new(row.control.x, row_y, ctrl_w, ALTURA_DE_CAMPO);
     match &p.value {
         InspectorScriptValue::Number(_) => {
             let id = ids::INSP_SCRIPT_NUM[i];
@@ -242,9 +238,19 @@ fn linha(
     }
     if p.own {
         let rect = if reset_desce {
-            Rect::new(row.control.x, row_y + FIELD_H + gap, reset_w, FIELD_H)
+            Rect::new(
+                row.control.x,
+                row_y + ALTURA_DE_CAMPO + gap,
+                reset_w,
+                ALTURA_DE_CAMPO,
+            )
         } else {
-            Rect::new(row.control.x + ctrl_w + gap, row_y, reset_w, FIELD_H)
+            Rect::new(
+                row.control.x + ctrl_w + gap,
+                row_y,
+                reset_w,
+                ALTURA_DE_CAMPO,
+            )
         };
         botao(
             scene,
@@ -262,163 +268,11 @@ fn linha(
     }
     // ⚠️ A altura conta a fileira que o refluxo de facto produziu — ver o bloco do `reset_desce`.
     let alturas = if reset_desce {
-        FIELD_H * 2.0 + gap
+        ALTURA_DE_CAMPO * 2.0 + gap
     } else {
-        FIELD_H
+        ALTURA_DE_CAMPO
     };
     row_y + alturas + Spacing::Sm.px()
-}
-
-/// Os avisos do ficheiro e da corrida. Devolve o `y` seguinte.
-#[allow(clippy::too_many_arguments)]
-fn avisos(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    x: f32,
-    w: f32,
-    y: f32,
-    info: &InspectorScriptInfo,
-) -> f32 {
-    let mut y = y;
-    // ⚠️ **Os avisos vêm ANTES dos números**, pela razão da secção do som: quem não vê nada a mexer
-    // não quer afinar um número — quer saber porquê.
-    match &info.status {
-        InspectorScriptStatus::NoFile => {
-            y = nota(
-                scene,
-                text_system,
-                theme,
-                x,
-                w,
-                y,
-                tr("panel.inspector.script.no_script_file_yet_u_use_browse_to_pick_a_luau_file"),
-                ColorToken::Text3,
-            );
-        }
-        InspectorScriptStatus::Unavailable => {
-            y = nota(
-                scene,
-                text_system,
-                theme,
-                x,
-                w,
-                y,
-                tr("panel.inspector.script.scripting_is_not_available_in_this_session"),
-                ColorToken::Danger,
-            );
-        }
-        InspectorScriptStatus::Loading => {
-            y = nota(
-                scene,
-                text_system,
-                theme,
-                x,
-                w,
-                y,
-                tr("panel.inspector.script.reading_the_file_u"),
-                ColorToken::Text3,
-            );
-        }
-        InspectorScriptStatus::Missing => {
-            y = nota(
-                scene,
-                text_system,
-                theme,
-                x,
-                w,
-                y,
-                tr("panel.inspector.script.that_file_is_gone_u_pick_it_again"),
-                ColorToken::Danger,
-            );
-        }
-        InspectorScriptStatus::Broken(msg) => {
-            y = nota(
-                scene,
-                text_system,
-                theme,
-                x,
-                w,
-                y,
-                &tr_with(
-                    "panel.inspector.script.the_script_has_an_error",
-                    &[("msg", &msg)],
-                ),
-                ColorToken::Danger,
-            );
-        }
-        InspectorScriptStatus::Ready => {
-            if info.props.is_empty() {
-                y = nota(
-                    scene,
-                    text_system,
-                    theme,
-                    x,
-                    w,
-                    y,
-                    tr("panel.inspector.script.this_script_offers_no_properties"),
-                    ColorToken::Text3,
-                );
-            }
-        }
-    }
-    if let Some(msg) = &info.failure {
-        y = nota(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            y,
-            &tr_with(
-                "panel.inspector.script.stopped_fix_and_save",
-                &[("msg", &msg)],
-            ),
-            ColorToken::Danger,
-        );
-    }
-    if info.kept > 0 {
-        y = nota(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            y,
-            &tr_with(
-                "panel.inspector.script.values_kept_until_reload",
-                &[("n", &info.kept)],
-            ),
-            ColorToken::Text3,
-        );
-    }
-    if info.also_physics {
-        y = nota(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            y,
-            tr("panel.inspector.script.this_object_is_also_moved_by_physics_u_the_two_fight"),
-            ColorToken::Warn,
-        );
-    }
-    if !info.clock_playing {
-        y = nota(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            y,
-            tr(
-                "panel.inspector.script.the_clock_is_stopped_u_scripts_only_run_while_the_scene_plays",
-            ),
-            ColorToken::Text3,
-        );
-    }
-    y
 }
 
 /// A secção inteira — cabeçalho, dobra e corpo. Devolve o `y` seguinte.
@@ -502,12 +356,12 @@ pub(crate) fn paint_script_section(
         theme,
         hit_index,
         store,
-        Rect::new(x, cur_y, w, BTN_H),
+        Rect::new(x, cur_y, w, ALTURA_DE_BOTAO),
         ids::INSP_SCRIPT_BROWSE,
         tr("panel.inspector.script.browse"),
     );
-    cur_y += BTN_H + ph2d_tokens::control_gap_px();
-    cur_y = avisos(scene, text_system, theme, x, w, cur_y, info);
+    cur_y += ALTURA_DE_BOTAO + ph2d_tokens::control_gap_px();
+    cur_y = super::script_avisos::avisos(scene, text_system, theme, x, w, cur_y, info);
 
     // ── OS NÚMEROS ───────────────────────────────────────────────────────────
     // ⭐⭐ **A coluna do nome é da SECÇÃO, e aqui os nomes são do SCRIPT DO ARTISTA** — mede-se a
@@ -574,7 +428,7 @@ pub(crate) fn paint_script_section(
             scene,
             &texto,
             x,
-            cur_y + (BTN_H - TypeToken::Sm.px()) * 0.5,
+            cur_y + (ALTURA_DE_BOTAO - TypeToken::Sm.px()) * 0.5,
             TypeToken::Sm.px(),
             (w - reset_w - gap).max(0.0),
             resolve(ColorToken::Text2, theme),
@@ -585,11 +439,11 @@ pub(crate) fn paint_script_section(
             theme,
             hit_index,
             store,
-            Rect::new(x + w - reset_w, cur_y, reset_w, BTN_H),
+            Rect::new(x + w - reset_w, cur_y, reset_w, ALTURA_DE_BOTAO),
             id,
             tr("panel.inspector.script.remove"),
         );
-        cur_y += BTN_H + ph2d_tokens::control_gap_px();
+        cur_y += ALTURA_DE_BOTAO + ph2d_tokens::control_gap_px();
     }
     fold.finish(store, scene, hit_index, cur_y + SECTION_BOTTOM_PAD_PX)
 }

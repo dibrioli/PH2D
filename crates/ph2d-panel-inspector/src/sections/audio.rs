@@ -34,8 +34,6 @@ use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
 use ph2d_i18n::tr;
 use ph2d_i18n::tr_with;
 
-const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector, igual à das irmãs
-
 /// **As opções do seletor de barramento** — uma por `AudioBus::ALL`, na ordem dele.
 ///
 /// ⚠️ **A posição é a tag**, e `zip` com os ids: uma lista de rótulos mais curta perde as
@@ -71,7 +69,7 @@ fn buttons(
     // ⭐ A fileira mede as PALAVRAS — ver `segment_rects_for`.
     let rotulos: Vec<&str> = fila.iter().map(|(_, l)| *l).collect();
     let seg = ph2d_editor_core::widget::segment_rects_for(
-        Rect::new(x, y, w, BTN_H),
+        Rect::new(x, y, w, ALTURA_DE_BOTAO),
         &rotulos,
         ph2d_editor_core::widget::button_label_font(),
         text_system,
@@ -92,7 +90,7 @@ fn buttons(
             theme,
         );
     }
-    y + BTN_H + ph2d_tokens::control_gap_px()
+    y + ALTURA_DE_BOTAO + ph2d_tokens::control_gap_px()
 }
 
 /// O seletor de barramento — um chip, como o do verbo. Devolve o `y` seguinte.

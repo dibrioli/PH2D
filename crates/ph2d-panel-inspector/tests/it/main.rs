@@ -29,6 +29,7 @@ mod inspector_regression_anchors;
 mod inspector_regression_sections;
 mod inspector_regression_slice;
 mod nenhum_chip_do_tween_sai_cortado;
+mod nenhuma_seccao_declara_a_propria_altura;
 mod no_row_paints_its_name_above_its_control;
 mod o_chip_da_vigia_mostra_um_sinal;
 mod o_chip_de_uma_tag_cabe_na_pilula;

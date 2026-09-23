@@ -3069,3 +3069,81 @@ fn diag_que_linhas_o_nome_espreme() {
         }
     });
 }
+
+/// ⛔ SONDA — o RITMO de cada secção do Inspector: que alturas de linha ela pinta.
+///
+/// Report do dono (21/09): *«várias seções muito confusas e desorganizadas»* + *«quanto ao
+/// alinhamento precisamos melhorar em todos os lugares»*, com foto de `RENDER SOURCE`.
+#[test]
+#[ignore]
+fn diag_o_ritmo_de_cada_seccao_do_inspector() {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let padrao = ph2d_tokens::ROW_H_PX;
+    let mapa = super::o_que_o_artista_nao_alcanca::nomes_de(
+        &[
+            "../ph2d-panel-inspector/src/ids",
+            "../ph2d-editor-core/src/ids",
+        ],
+        400,
+    );
+    eprintln!("=== altura de linha por secção (padrão da casa = {padrao}) ===");
+    for (nome, _) in super::o_inspector_armado::PORTAS {
+        let mut alturas: std::collections::BTreeMap<i32, usize> = Default::default();
+        let mut nomes_fora: Vec<(String, f32)> = Vec::new();
+        ph2d_editor_core::panel::with_registry(|reg| {
+            let painel = reg
+                .panels_mut()
+                .iter_mut()
+                .find(|p| p.manifest.id == "inspector")
+                .expect("inspector");
+            super::o_inspector_armado::arma_tudo();
+            for (n, desarma) in super::o_inspector_armado::PORTAS {
+                if n != nome {
+                    desarma();
+                }
+            }
+            let mut host = MockPanelHost::new();
+            painel.populate(host.store_mut());
+            abre_tudo(host.store_mut());
+            let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
+            for (nid, r) in host.registos_da_ultima_pintura() {
+                if r.h > 0.5 && r.h < 60.0 {
+                    *alturas.entry(r.h.round() as i32).or_default() += 1;
+                    if (r.h - padrao).abs() > 0.5 && (r.h - 24.0).abs() > 0.5 {
+                        let slug = mapa
+                            .get(&nid)
+                            .cloned()
+                            .unwrap_or_else(|| format!("(id {})", nid.0));
+                        nomes_fora.push((slug, r.h));
+                    }
+                }
+            }
+            super::o_inspector_armado::desarma_tudo();
+        });
+        if alturas.is_empty() {
+            continue;
+        }
+        let fora: Vec<String> = alturas
+            .iter()
+            .filter(|(h, _)| (**h as f32 - padrao).abs() > 0.5)
+            .map(|(h, n)| format!("{h}px×{n}"))
+            .collect();
+        let marca = if fora.is_empty() { "   " } else { "⛔ " };
+        eprintln!(
+            "{marca}{nome:26} {:?}",
+            alturas
+                .iter()
+                .map(|(h, n)| format!("{h}×{n}"))
+                .collect::<Vec<_>>()
+        );
+        let mut vistos: Vec<String> = nomes_fora
+            .iter()
+            .map(|(s, h)| format!("      {h:5.1}  {s}"))
+            .collect();
+        vistos.sort();
+        vistos.dedup();
+        for l in vistos.iter().take(5) {
+            eprintln!("{l}");
+        }
+    }
+}

@@ -22,7 +22,6 @@ use ph2d_editor_core::shake_edits::{InspectorEmitterInfo, InspectorEmitterRow};
 use ph2d_editor_core::widget::{SectionFold, Unit};
 use ph2d_i18n::{tr, tr_with};
 
-const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector, igual à das irmãs
 const ROW_H: f32 = ph2d_tokens::ROW_H_PX;
 
 /// **A CHAVE de cada cerca — a PORTA, lida pelo chip E por quem resumir a linha.**
@@ -168,7 +167,7 @@ fn botoes(
         rotulos.push(tr("panel.inspector.emitter.x_remove_source"));
     }
     let seg = ph2d_editor_core::widget::segment_rects_for(
-        Rect::new(x, y, w, BTN_H),
+        Rect::new(x, y, w, ALTURA_DE_BOTAO),
         &rotulos,
         ph2d_editor_core::widget::button_label_font(),
         text_system,
@@ -209,7 +208,7 @@ fn botoes(
             theme,
         );
     }
-    y + BTN_H + ph2d_tokens::control_gap_px()
+    y + ALTURA_DE_BOTAO + ph2d_tokens::control_gap_px()
 }
 
 /// O editor da fonte aberta. Devolve o `y` seguinte.

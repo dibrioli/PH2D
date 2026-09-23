@@ -16,7 +16,6 @@ use ph2d_editor_core::widget::SectionFold;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_tween::Canal;
 
-const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector, igual à da irmã
 /// A linha de uma lista é a linha do app — pela porta, nunca por um literal que coincide.
 pub(super) const ROW_H: f32 = ph2d_tokens::ROW_H_PX;
 
@@ -154,7 +153,7 @@ fn buttons(
         rotulos.push(tr("panel.inspector.tween.x_remove_tween"));
     }
     let seg = ph2d_editor_core::widget::segment_rects_for(
-        Rect::new(x, y, w, BTN_H),
+        Rect::new(x, y, w, ALTURA_DE_BOTAO),
         &rotulos,
         ph2d_editor_core::widget::button_label_font(),
         text_system,
@@ -195,7 +194,7 @@ fn buttons(
             theme,
         );
     }
-    y + BTN_H + ph2d_tokens::control_gap_px()
+    y + ALTURA_DE_BOTAO + ph2d_tokens::control_gap_px()
 }
 
 /// Pinta a secção. Devolve o `y` seguinte.

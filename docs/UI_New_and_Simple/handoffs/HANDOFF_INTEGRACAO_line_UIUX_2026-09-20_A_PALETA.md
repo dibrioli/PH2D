@@ -2084,6 +2084,107 @@ coluna inteira (`control.w=120 cw=120` · `control.w=112 cw=112`, medido por son
 no-op e uma sobrevivente dão exactamente o mesmo relatório* — a única maneira de as separar é medir
 a grandeza que a mutação devia mover.
 
+## §9-octodecies — ⭐⭐⭐ DEZOITO DECLARAÇÕES DE «A ALTURA», EM TRÊS VALORES, TODAS A DIZER QUE CONCORDAM
+
+> Report do dono, 2026-09-21: *«várias seções muito confusas e desorganizadas»* + *«quanto ao
+> alinhamento precisamos melhorar em todos os lugares»*.
+
+### §9-octodecies.1 — A sonda que devia ter existido há três waves
+
+`diag_o_ritmo_de_cada_seccao_do_inspector` arma **uma** secção de cada vez (as `PORTAS` do
+`o_inspector_armado`) e imprime o histograma de alturas de linha que ela pinta, com os ids fora do
+padrão nomeados. **38 secções medidas.**
+
+Ela separa de uma vez o que é legítimo do que não é:
+
+| altura | quem | veredito |
+|---:|---|---|
+| `22` | a esmagadora maioria | o padrão da casa (`ROW_H_PX`) |
+| `24 × 2` | **toda** secção | a banda do cabeçalho + o chevron — não é fileira |
+| `18 × 1` | 18 secções | o **ponto de cor** do cabeçalho — não é fileira |
+| **`30`** | 12 secções | os **BOTÕES de acção** (`insp_*_add`, `_remove`, `insp_add_component`…) |
+| **`24`** em campos | `emissive_row` · `slice_nine` | **o defeito** |
+| `26 × 11` | `slice` | o lado de uma célula da **grelha 3×3** — outra população, fica |
+
+### §9-octodecies.2 — ⛔⛔⛔ O que o fonte tinha por baixo
+
+| grandeza | declarações | valores | o que o comentário de cada uma afirmava |
+|---|---:|---|---|
+| altura de BOTÃO (`BTN_H`) | **15** | `30` em todas | *«igual à das irmãs»* |
+| altura de CAMPO (`FIELD_H`) | **3** | **`24` · `24` · `22`** | *«a altura de campo do Inspector»* |
+
+⚠️⚠️ **A segunda linha é o defeito a sério:** três ficheiros diziam a MESMA frase sobre três números
+que não eram o mesmo, e *a resposta que o artista via era a do ficheiro em que ele calhava de estar
+a olhar*.
+
+⭐ **E a primeira é COMO a segunda nasce.** Quinze cópias de `30.0` com um comentário a afirmar que
+concordam é exactamente a forma que o `CHECKBOX_BOX_PX = 18` pagou em 21/09 (cinco cópias, **uma**
+curada, e a frase das outras quatro ficou falsa sem nada deixar de compilar) e que o `SwatchSize::Md`
+pagou em 22/09. *Uma frase de comentário não é uma lei: só uma PORTA é* — e esta é a **terceira**
+ocorrência da mesma família em três dias.
+
+### §9-octodecies.3 — A cura: duas portas, dezoito declarações a menos
+
+Em `sections/mod.rs`:
+
+- **`ALTURA_DE_BOTAO`** (`30`) — a ÚNICA declaração. ⚠️ Ela é declaradamente **maior** que uma
+  fileira: *um botão de acção não é um campo*, e isso agora está escrito onde só havia um literal
+  repetido.
+- **`ALTURA_DE_CAMPO`** — **delega** em `ph2d_tokens::ROW_H_PX`, para não haver uma terceira
+  resposta. Os dois `24` passaram a `22`.
+
+**Medido pela sonda, antes → depois:** `sprite` `24×4 → 24×2` (com `22×27 → 22×29`) e `slice`
+`24×4 → 24×2` (com `22×9 → 22×11`) — **quatro campos alinhados**, e o `24` que resta em toda secção
+é a banda do cabeçalho.
+
+### §9-octodecies.4 — A régua, e a 1.ª redacção que acusou código CERTO
+
+`nenhuma_seccao_declara_a_propria_altura_de_linha` (no `ph2d-panel-inspector`, com piso de
+população e controlo).
+
+⛔⛔ **A 1.ª redacção proibia a DECLARAÇÃO e reprovou nove secções sobre código correcto:** elas
+escrevem `const ROW_H: f32 = ph2d_tokens::ROW_H_PX;` — um **alias que DELEGA**, e um alias não pode
+divergir, ele muda com a porta. ⇒ a régua passou a medir **o LITERAL**: `const <NOME>: f32 =
+<dígito>`.
+
+*Uma régua que mede a FORMA da linha em vez do que ela pode PARTIR acusa quem já está certo* — foi a
+terceira vez hoje que eu paguei esta (a borda direita · o vizinho mais largo · esta).
+
+⭐ **E o controlo tem DUAS metades**, porque as duas podem falhar: a régua reconhece a cópia
+(`const BTN_H: f32 = 30.0`) **e** não acusa o alias que delega. Sem a segunda ela voltaria a
+reprovar as nove.
+
+⚠️ **A régua é TEXTUAL de propósito:** o censo do produto mede o que é PINTADO e não vê uma
+constante que ainda não tem consumidor — *e uma cópia nasce sempre sem consumidor, no commit antes
+daquele em que ela diverge*.
+
+### §9-octodecies.5 — Prova de mutação: **4 de 4 sangram**
+
+| # | mutação | veredito |
+|---|---|---|
+| M1 | uma secção volta a declarar a altura de botão | ✅ sangra |
+| M2 | uma secção volta a fixar a altura de campo em `24` | ✅ sangra |
+| M3 | a varredura deixa de ler ficheiros (piso de população) | ✅ sangra |
+| M4 | a régua passa a acusar um alias que delega | ✅ sangra (o controlo) |
+
+### §9-octodecies.5-bis — ⛔ E o tecto de LOC mordeu, com a causa a ser o NOME
+
+O `script.rs` passou o tecto de `600` por **UMA** linha: os nomes das portas
+(`ALTURA_DE_CAMPO`/`ALTURA_DE_BOTAO`) são mais longos que os literais que substituíram, e o
+`rustfmt` quebrou duas chamadas `Rect::new` em cinco linhas cada.
+
+⇒ **corte por RESPONSABILIDADE**, com precedente na própria crate: `script_avisos.rs`, irmão do
+`particles_avisos.rs`, cortado pela mesma razão. `script.rs` `601 → 449`, o irmão `169`.
+⛔ **Nunca uma entrada no `FILE_OVERAGE_OK`**, e nunca um alias local — este último re-introduziria
+exactamente a forma que a wave veio apagar.
+
+### §9-octodecies.6 — ⏳ O que fica ABERTO, com o número
+
+**Os botões de acção medem `30` e os campos medem `22`.** A porta tornou o número único e
+declarado; **se os dois devem ser iguais é decisão de PRODUTO**, e o dono tem agora a pergunta com o
+número ao lado. ⛔ Eu não a decidi sozinho: mudar a altura de um botão é visível em 12 secções.
+
+
 ## §11 — O que esta linha recomenda a quem a integrar
 
 1. **Correr o `diag_onde_cai_a_pista_do_pente` da `line/sculpt3d` DEPOIS da fusão** e reescrever com

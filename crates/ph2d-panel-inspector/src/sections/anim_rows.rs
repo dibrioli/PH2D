@@ -10,7 +10,6 @@ use super::*;
 use ph2d_editor_core::screens::hero::InspectorAnimInfo;
 use ph2d_i18n::tr;
 
-const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector
 // ⭐ **A linha de uma LISTA e a linha do app** (wave 17): o `22.0` a mao coincidia com o
 // token, e uma coincidencia nao segue quem mexe no token.
 const ROW_H: f32 = ph2d_tokens::ROW_H_PX;
@@ -156,7 +155,7 @@ pub(crate) fn paint_library(
         }
     }
 
-    let add = Rect::new(x, cur_y, w, BTN_H);
+    let add = Rect::new(x, cur_y, w, ALTURA_DE_BOTAO);
     hit_index.register(ids::INSP_ANIM_ADD, add);
     paint_button(
         &Button::new(
@@ -170,9 +169,9 @@ pub(crate) fn paint_library(
         text_system,
         theme,
     );
-    cur_y += BTN_H + ph2d_tokens::control_gap_px();
+    cur_y += ALTURA_DE_BOTAO + ph2d_tokens::control_gap_px();
     if !info.rows.is_empty() {
-        let rm = Rect::new(x, cur_y, w, BTN_H);
+        let rm = Rect::new(x, cur_y, w, ALTURA_DE_BOTAO);
         hit_index.register(ids::INSP_ANIM_REMOVE, rm);
         paint_button(
             &Button::new(
@@ -186,7 +185,7 @@ pub(crate) fn paint_library(
             text_system,
             theme,
         );
-        cur_y += BTN_H;
+        cur_y += ALTURA_DE_BOTAO;
     }
     cur_y + ph2d_tokens::control_gap_px()
 }

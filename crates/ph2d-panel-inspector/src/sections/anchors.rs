@@ -21,7 +21,6 @@ use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_i18n::tr;
 use ph2d_i18n::tr_with;
 
-const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector
 // ⭐ **A linha de uma LISTA e a linha do app** (wave 17): o `22.0` a mao coincidia com o
 // token, e uma coincidencia nao segue quem mexe no token.
 const ROW_H: f32 = ph2d_tokens::ROW_H_PX;
@@ -312,7 +311,7 @@ fn anchor_editor(
             );
         }
     }
-    let rm = Rect::new(x, cur_y, w, BTN_H);
+    let rm = Rect::new(x, cur_y, w, ALTURA_DE_BOTAO);
     hit_index.register(ids::INSP_ANCHOR_REMOVE, rm);
     paint_button(
         &Button::new(
@@ -326,7 +325,7 @@ fn anchor_editor(
         text_system,
         theme,
     );
-    cur_y + BTN_H
+    cur_y + ALTURA_DE_BOTAO
 }
 
 /// Pinta a §12 e devolve o `y` a seguir a ela.
@@ -446,7 +445,7 @@ pub(crate) fn paint_anchors_section(
         info,
     );
 
-    let add = Rect::new(x, cur_y, w, BTN_H);
+    let add = Rect::new(x, cur_y, w, ALTURA_DE_BOTAO);
     hit_index.register(ids::INSP_ANCHOR_ADD, add);
     paint_button(
         &Button::new(
@@ -460,7 +459,7 @@ pub(crate) fn paint_anchors_section(
         text_system,
         theme,
     );
-    cur_y += BTN_H + ph2d_tokens::control_gap_px();
+    cur_y += ALTURA_DE_BOTAO + ph2d_tokens::control_gap_px();
 
     if let Some(row) = info.rows.get(selected) {
         cur_y = close_section(scene, theme, x, w, cur_y);

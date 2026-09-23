@@ -55,7 +55,6 @@ const WHOLE_HINT: TextKey = TextKey::new("panel.inspector.slice.whole_entire_til
 /// **Nenhum segmento aceso** — a afordância de divergência numa seleção múltipla.
 const NOTHING_LIT: usize = usize::MAX;
 
-const FIELD_H: f32 = 24.0; // LITERAL-PX-OK: altura de campo do Inspector
 /// Passo de scrub do tamanho alvo, em metros. Uma medida do MUNDO, não do desenho: um passo de
 /// um token de espaçamento não teria significado num campo em metros.
 const SIZE_STEP: f64 = 0.1; // LITERAL-PX-OK: passo de scrub em metros
@@ -89,7 +88,7 @@ fn tiled_rows(
         x,
         w,
         cur_y,
-        FIELD_H,
+        ALTURA_DE_CAMPO,
         tr("panel.inspector.slice.tile_mode"),
         sec,
     );
@@ -116,7 +115,7 @@ fn tiled_rows(
         store,
         hit_index,
     )
-    .max(FIELD_H)
+    .max(ALTURA_DE_CAMPO)
         + Spacing::Sm.px();
     ph2d_editor_core::widget::paint_decorator_dot(scene, theme, tm_row.dot);
     // ⚠️ **A emenda rente ao canto tem NOME aqui** (smoke do Enio, 2026-08-22). Ela não é um

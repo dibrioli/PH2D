@@ -29,8 +29,6 @@ use ph2d_editor_core::sequence_edits::InspectorSequenceInfo;
 use ph2d_editor_core::widget::{Dropdown, DropdownOption, SectionFold, paint_dropdown_chip};
 use ph2d_i18n::{tr, tr_with};
 
-const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector, igual à das irmãs
-
 /// **As opções do selector** — uma por container do documento, pela ordem dele.
 ///
 /// ⚠️ **O valor da opção é o ÍNDICE, e o índice é a posição** — a mesma lei que o array de ids
@@ -157,7 +155,7 @@ fn botao_largar(
     if info.nome().is_none() {
         return y;
     }
-    let rect = Rect::new(x, y, w, BTN_H);
+    let rect = Rect::new(x, y, w, ALTURA_DE_BOTAO);
     hit_index.register(crate::ids::INSP_SEQ_CLEAR, rect);
     paint_button(
         &Button::new(
@@ -171,7 +169,7 @@ fn botao_largar(
         text_system,
         theme,
     );
-    y + BTN_H + ph2d_tokens::control_gap_px()
+    y + ALTURA_DE_BOTAO + ph2d_tokens::control_gap_px()
 }
 
 /// **Os avisos, da razão mais ESPECÍFICA para a mais geral.** Devolve o `y` seguinte.

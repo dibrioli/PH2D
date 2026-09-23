@@ -7,6 +7,28 @@
 //! submodule opens with a single `use super::*;`. No logic moved — every
 //! section painter is verbatim from the pre-split `sections.rs`.
 
+/// ⭐⭐⭐ **A ALTURA DE UM BOTÃO DE ACÇÃO DO INSPECTOR — uma, e só uma.**
+///
+/// ⛔⛔ **Ela estava declarada QUINZE vezes**, cada cópia com um comentário a afirmar *«igual à das
+/// irmãs»* — e **nada** que o verificasse. É a MESMA forma que o `CHECKBOX_BOX_PX = 18` pagou em
+/// 2026-09-21 (cinco cópias, uma curada, quatro com a frase a ficar falsa em silêncio), e a que o
+/// `SwatchSize::Md` pagou em 22/09. *Uma frase de comentário não é uma lei: só uma PORTA é.*
+///
+/// ⚠️ **Ela é MAIOR que a altura de uma fileira** (`ROW_H_PX = 22`), e isso é declarado e não um
+/// acidente: um botão de acção não é um campo. ⛔ O que NÃO é declarado é a divergência que estava
+/// ao lado — ver o [`ALTURA_DE_CAMPO`].
+pub(crate) const ALTURA_DE_BOTAO: f32 = 30.0; // LITERAL-PX-OK: a ÚNICA declaração desta grandeza
+
+/// ⭐⭐⭐ **A ALTURA DE UM CAMPO DO INSPECTOR — que é a da FILEIRA, e não um número próprio.**
+///
+/// ⛔⛔⛔ **Medido 2026-09-22: ela estava declarada em DUAS versões que se contradiziam**, as duas
+/// com um comentário a chamar-se *«a altura de campo do Inspector»* — `24` no `emissive_row.rs` e
+/// no `slice_nine.rs`, `22` no `script.rs`. *Duas respostas à mesma pergunta, e a que o artista vê
+/// é a do ficheiro em que ele calhou de estar a olhar.*
+///
+/// ⇒ a resposta é a da CASA, e esta porta delega nela para não haver uma terceira.
+pub(crate) const ALTURA_DE_CAMPO: f32 = ph2d_tokens::ROW_H_PX;
+
 pub(crate) use crate::ids;
 pub(crate) use crate::state::{current_display_angle, current_display_unit};
 pub(crate) use ph2d_a11y::NodeId;
@@ -102,6 +124,7 @@ pub(crate) mod rows;
 mod sampling;
 /// ⭐⭐⭐ A secção SCRIPT (TOP-20 #16) — ver o cabeçalho.
 pub(crate) mod script;
+mod script_avisos;
 /// ⭐⭐⭐ A secção SEQUENCE (TOP-20 #19) — a cutscene de um objecto. Ver o cabeçalho.
 pub(crate) mod sequence;
 /// ⭐⭐⭐ **O ABANÃO DA CÂMERA** (suplente #25) — *como* ela treme; ver o cabeçalho.

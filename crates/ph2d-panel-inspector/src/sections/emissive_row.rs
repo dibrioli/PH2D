@@ -21,9 +21,6 @@ use super::*;
 use ph2d_editor_core::widget::{SliderState, paint_slider_with_chip};
 use ph2d_i18n::tr;
 
-/// Altura do campo, igual à das outras linhas com chip.
-const FIELD_H: f32 = 24.0; // LITERAL-PX-OK: mesma altura de campo do resto do Inspector
-
 /// Pinta a linha e devolve o `cur_y` a seguir a ela.
 ///
 /// ⚠️ **O slider guarda `0..1` normalizado e a chip mostra a intensidade real.** É o mesmo par que
@@ -45,7 +42,7 @@ pub(crate) fn paint_emissive_row(
         .slider(ids::INSP_SPRITE_EMISSIVE)
         .unwrap_or((SliderState::Normal, 0.0));
     let h = paint_slider_with_chip(
-        Rect::new(x, cur_y, w, FIELD_H),
+        Rect::new(x, cur_y, w, ALTURA_DE_CAMPO),
         tr("panel.inspector.render_source.emissive"),
         value,
         ids::INSP_SPRITE_EMISSIVE,

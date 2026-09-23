@@ -29,7 +29,6 @@ use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
 use ph2d_i18n::tr;
 use ph2d_i18n::tr_with;
 
-const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector, igual à das irmãs
 /// A linha de uma lista é a linha do app — pela porta, nunca por um literal que coincide.
 const ROW_H: f32 = ph2d_tokens::ROW_H_PX;
 
@@ -148,7 +147,7 @@ fn buttons(
     .filter_map(|(ativo, l)| ativo.then_some(l))
     .collect();
     let seg = ph2d_editor_core::widget::segment_rects_for(
-        Rect::new(x, y, w, BTN_H),
+        Rect::new(x, y, w, ALTURA_DE_BOTAO),
         &rotulos,
         ph2d_editor_core::widget::button_label_font(),
         text_system,
@@ -189,7 +188,7 @@ fn buttons(
             theme,
         );
     }
-    y + BTN_H + ph2d_tokens::control_gap_px()
+    y + ALTURA_DE_BOTAO + ph2d_tokens::control_gap_px()
 }
 
 /// **As opções do seletor do verbo** — uma por entrada de `SignalVerb::ALL`, na ordem dele.

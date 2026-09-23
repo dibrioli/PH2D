@@ -37,7 +37,6 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_i18n::{tr, tr_with};
 
-const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector, igual à das irmãs
 /// A linha de uma lista é a linha do app — pela porta, nunca por um literal que coincide.
 const ROW_H: f32 = ph2d_tokens::ROW_H_PX;
 
@@ -373,7 +372,7 @@ pub(crate) fn paint_tags_section(
             .iter()
             .any(|r| ph2d_label_fold::fold(&r.path) == filtro);
     if !escrito.trim().is_empty() && !ja_existe {
-        let rect = Rect::new(x, cur_y, w, BTN_H);
+        let rect = Rect::new(x, cur_y, w, ALTURA_DE_BOTAO);
         hit_index.register(crate::ids::INSP_TAGS_CREATE, rect);
         paint_button(
             &Button::new(
@@ -390,7 +389,7 @@ pub(crate) fn paint_tags_section(
             text_system,
             theme,
         );
-        cur_y += BTN_H + ph2d_tokens::control_gap_px();
+        cur_y += ALTURA_DE_BOTAO + ph2d_tokens::control_gap_px();
     }
 
     fold.finish(store, scene, hit_index, cur_y + SECTION_BOTTOM_PAD_PX)

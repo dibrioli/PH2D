@@ -38,7 +38,6 @@ use ph2d_i18n::tr_with;
 pub(crate) const MOUNT_NONE_LABEL: &str = "\u{2014}";
 
 /// Altura de botão do Inspector, igual à de [`super::anchors`].
-const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector
 /// Altura visual de uma checkbox, igual à de [`super::anchors`].
 const CHECK_H: f32 = ph2d_tokens::ROW_H_PX; // ⛔ era `18.0`, o MESMO literal em TREZE sitios: a linha de marcar e' uma linha de propriedade, e a altura dela e' a do app (report do dono 2026-09-15: a marca enchia a caixa toda)
 
@@ -191,7 +190,7 @@ pub(crate) fn paint_mount_row(
             resolve(ColorToken::Text3, theme),
         );
         cur_y += font + ph2d_tokens::control_gap_px();
-        let btn = Rect::new(x, cur_y, w, BTN_H);
+        let btn = Rect::new(x, cur_y, w, ALTURA_DE_BOTAO);
         hit_index.register(ids::INSP_MOUNT_SNAP, btn);
         paint_button(
             &Button::new(
@@ -205,7 +204,7 @@ pub(crate) fn paint_mount_row(
             text_system,
             theme,
         );
-        cur_y += BTN_H;
+        cur_y += ALTURA_DE_BOTAO;
     }
     cur_y + ph2d_tokens::control_gap_px()
 }

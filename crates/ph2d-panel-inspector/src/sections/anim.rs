@@ -27,7 +27,6 @@ use ph2d_editor_core::widget::SectionFold;
 use ph2d_i18n::tr;
 use ph2d_i18n::tr_with;
 
-const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector
 /// Espessura da barra de frames.
 ///
 /// ⚠️ **Subiu de 6 para 10 px quando ela passou a arrastar-se**, e o número não é gosto: o
@@ -315,7 +314,7 @@ fn player_block(
         cur_y += font + ph2d_tokens::control_gap_px();
     }
 
-    let rw = Rect::new(x, cur_y, w, BTN_H);
+    let rw = Rect::new(x, cur_y, w, ALTURA_DE_BOTAO);
     hit_index.register(ids::INSP_ANIM_REWIND, rw);
     paint_button(
         &Button::new(
@@ -329,7 +328,7 @@ fn player_block(
         text_system,
         theme,
     );
-    cur_y + BTN_H + ph2d_tokens::control_gap_px()
+    cur_y + ALTURA_DE_BOTAO + ph2d_tokens::control_gap_px()
 }
 
 /// Pinta a §11 e devolve o `y` a seguir a ela.
@@ -415,7 +414,7 @@ pub(crate) fn paint_anim_section(
             resolve(ColorToken::Text3, theme),
         );
         cur_y += font + ph2d_tokens::control_gap_px();
-        let add = Rect::new(x, cur_y, w, BTN_H);
+        let add = Rect::new(x, cur_y, w, ALTURA_DE_BOTAO);
         hit_index.register(ids::INSP_ANIM_ADD_PLAYER, add);
         paint_button(
             &Button::new(
@@ -433,7 +432,7 @@ pub(crate) fn paint_anim_section(
             store,
             scene,
             hit_index,
-            cur_y + BTN_H + SECTION_BOTTOM_PAD_PX,
+            cur_y + ALTURA_DE_BOTAO + SECTION_BOTTOM_PAD_PX,
         );
     }
 

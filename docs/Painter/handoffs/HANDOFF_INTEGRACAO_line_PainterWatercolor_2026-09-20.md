@@ -2553,3 +2553,79 @@ membro mais caro da tabela `Blur sobre Brush`, e essa tabela media **um par**, n
 *A fatia mais cara de uma bancada não é a fatia mais cara do produto de outra pessoa — e a diferença
 entre as duas é a fixtura.* O que a wave do borrão entregou (`1,33×` a raio grande, byte-idêntico,
 com porta de bissecção) **fica e é bom**; o que ela não é, é a cura do report dele.
+
+### §33.9 — A CURA do report: o borrão LÊ a orla, e deixa de a ESCREVER
+
+⭐⭐⭐ **A pilha do dono: `644,8 → 425,8 ms`** (`1,51×`; `170,6 %` → **`112,7 %`** de um quadro).
+
+**O mecanismo, que estava escrito no próprio código:** a composição corre sobre
+`alvo = caixa_nova + 2·pad` *«porque o avental do Blur é o que impede a convolução de ler, na orla,
+bytes que a composição ainda não escreveu»* — e depois **só `caixa_nova` é guardada**. Medido:
+`alvo` mede `857 px` de lado contra `343` da pegada ⇒ **a operação mais cara da pilha escrevia
+`5,8×` a área que dela se aproveita**.
+
+⇒ o borrão passa a ser **APLICADO** na `caixa_nova` e a **LER** o avental dela, que os passos de
+baixo compuseram sobre `alvo`. A conta:
+
+| | chamadas | Mpx tocados | maior região |
+|---|---|---|---|
+| antes | `44` | `26,3` | `857 px` |
+| **depois** | `44` | **`4,1`** | **`343 px`** (= a pegada) |
+
+⛔⛔ **A CERCA é o que o mantém correcto:** quem lê a SAÍDA do borrão fora da `caixa_nova` é uma
+camada **ACIMA** dele que leia **VIZINHANÇA** — outro borrão, ou um esfregão, que desloca píxeis.
+Com uma dessas acima fica o `alvo` de sempre. *Uma camada por-pixel (Brush, Erase) nunca lê o
+vizinho, logo não vê a diferença.* Gate com o **CONTROLO dentro** (com um esfregão acima a região
+tem de CRESCER, e crescer o avental e não um pixel); **4 de 4 mutações sangram**.
+
+### §33.10 — ⛔⛔⛔ E a barra de um gate era FALSA sobre o produto
+
+O `a_ordem_e_da_pilha_e_nao_da_taxa_do_rato` exige `pior == 0`, e **a cura reprovou-o com `pior 1`**.
+Antes de lhe tocar, a pergunta certa: *a barra é uma lei, ou é a sorte desta fixtura?*
+
+**Medido no código de ENTÃO, sem uma linha de produto mudada**, só dando TEXTURA à tela (a fixtura é
+`255` em toda parte, e num campo uniforme a soma corrente da caixa dá o mesmo comece onde começar):
+
+| semente | pior |
+|---|---|
+| `7` | `0` |
+| `101` | `0` |
+| **`999`** | **`1`** |
+
+⇒ **o produto de ontem já violava a barra de ontem**; ela lia zero porque a tela era chapada.
+
+⭐ **O mecanismo está medido na crate do borrão** (`diag_o_borrao_de_uma_sub_regiao_e_o_miolo_do_maior`):
+o borrão de uma sub-região **não é** o miolo do borrão da região maior — `1` a `5` píxeis de
+`48 400` saem idênticos ao bit, com desvio `~6e-4` em `f32`. *A soma corrente carrega o sítio onde
+COMEÇOU.* Em `u8` isso só vira um byte quando o valor exacto cai a menos de `6e-4` de uma fronteira
+de arredondamento — `~0,06 %` dos píxeis.
+
+⇒ a barra passa a **`pior ≤ 1` e `médio < 0,01`**, e ⚠️ **não é uma folga escolhida:** sai do vale
+entre o último byte da quantização (`1`) e o defeito que a régua existe para apanhar (`41,59` de
+médio, medido em 2026-09-20). *Uma barra que mede a sorte da fixtura não é uma barra.*
+
+⚠️⚠️ **E a minha PRIMEIRA hipótese sobre isto estava errada:** eu li o `pior 1` como sendo a
+não-associatividade a entrar pela minha cura, e a experiência que a testou — dar textura à fixtura —
+**passou** nas duas primeiras sementes, o que quase me fez reverter a cura por uma lei que não
+existia. *Foi a terceira semente que disse a verdade; uma refutação em duas amostras não é uma
+refutação.*
+
+### §33.11 — ⏳ O que sobra, com as fases medidas
+
+| fase | ms | % |
+|---|---|---|
+| **compor** | `429,8` | **`91,1 %`** |
+| acumular | `29,0` | `6,2 %` |
+| cópias (guardar a orla e devolvê-la) | `12,8` | `2,7 %` |
+| `pre` | `0,1` | `0,0 %` |
+
+⛔ **As cópias estão ILIBADAS** (`2,7 %`) — a nota de 20/09 que as dava por `< 1 %` continua
+essencialmente certa, e a hipótese de que elas tinham crescido é **refutada**.
+
+⏳ **A composição sobre `alvo` é inerente enquanto houver um borrão de raio grande na pilha:** as
+camadas de BAIXO têm de ser válidas onde o borrão LÊ. O que sobra como alavanca é a **frequência**:
+`44` recomposições para `361` eventos, num traço que ocupa `~22` quadros ⇒ **cerca de duas por
+quadro, quando uma bastaria**. Baixar isso é decisão de PRODUTO (latência do traço ao vivo contra
+custo), e é a wave seguinte.
+
+⏳ E o **Smear** passou a ser a camada mais cara sozinha (`119,2 ms`), agora que o borrão desceu.

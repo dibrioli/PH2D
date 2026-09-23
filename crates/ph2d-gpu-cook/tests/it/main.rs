@@ -43,5 +43,6 @@ mod ligacoes_de_porta_template;
 mod measure_static_orbit;
 mod node_key_uniform;
 mod plan_analysis;
+mod plan_da_uniao;
 mod plan_simulation;
 mod sim_invalidation;

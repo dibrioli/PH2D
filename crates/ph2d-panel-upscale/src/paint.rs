@@ -25,7 +25,6 @@ use ph2d_editor_core::paint::{paint_text, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_surface, paint_panel_title,
-    paint_segmented_group_adaptive,
 };
 use ph2d_editor_core::widget::{
     Button, ButtonKind, UPSCALE_SCROLLBAR_ID, paint_button, paint_scrollbar,
@@ -172,17 +171,24 @@ fn paint_body_sections(
             ph2d_tool_upscale::tool::ids::UPS_ALGO_EPX,
         ),
     ];
-    let seg_rect = Rect::new(inner_x, y, inner_w, row_h);
-    let alg_h = paint_segmented_group_adaptive(
-        seg_rect,
-        &segs,
+    // ⭐⭐ **Pela porta da ESCOLHA, com um NOME** (2026-09-23) — a fileira não tinha nome nenhum e
+    //    arrancava na borda do conteúdo. A coluna é a de omissão, a MESMA `property_label_col_w`
+    //    que a linha `Scale` logo abaixo passa ao slider, e o ritmo do painel mantém-se (a porta
+    //    fecha com o vão da casa; este painel separa por `row_gap`).
+    y = ph2d_editor_core::property_row::paint_choice_row(
         scene,
         text_system,
         theme,
-        store,
         hit_index,
-    );
-    y += alg_h + row_gap;
+        store,
+        inner_x,
+        inner_w,
+        y,
+        tr("panel.upscale.scale.algorithm"),
+        &segs,
+        ph2d_editor_core::widget::Seccao::apenas_campos(1),
+    ) - ph2d_tokens::control_gap_px()
+        + row_gap;
     y += row_gap;
 
     // ── Scale slider + chip row ────────────────────────────────────

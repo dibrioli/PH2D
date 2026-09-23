@@ -4,7 +4,6 @@
 use ph2d_editor_core::ids;
 use ph2d_editor_core::paint::{paint_text_block, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
-use ph2d_editor_core::widget::panel_chrome::paint_segmented_group_adaptive;
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
     paint_panel_surface, paint_panel_title,
@@ -263,9 +262,10 @@ fn paint_chip_rows(ctx: &mut PaintCtx, snapshot: &ModelSnapshot, x: f32, w: f32,
     // qualificam um GESTO do canvas, e não a forma escolhida. ⚠️ A nota vem antes porque «Add» e
     // «Subtract» sozinhos não dizem *a quê*: um chip sem sujeito lê-se ao contrário.
     if !snapshot.selects.is_empty() {
-        y = paint_note(ctx, tr("panel.model3d.select.title"), x, w, y);
+        // ⭐ A nota que dizia «Lasso» POR CIMA passou a ser o NOME da linha (2026-09-23).
         y = paint_chips(
             ctx,
+            tr("panel.model3d.select.title"),
             &snapshot.selects,
             crate::ids::model3d_select_button,
             x,
@@ -274,8 +274,24 @@ fn paint_chip_rows(ctx: &mut PaintCtx, snapshot: &ModelSnapshot, x: f32, w: f32,
         );
     }
     // ⭐ **Criar e combinar** — sem estes dois, o módulo edita a cena que veio pronta e mais nada.
-    y = paint_chips(ctx, &snapshot.adds, crate::ids::model3d_add_button, x, w, y);
-    y = paint_chips(ctx, &snapshot.ops, crate::ids::model3d_op_button, x, w, y);
+    y = paint_chips(
+        ctx,
+        tr("panel.model3d.row.create"),
+        &snapshot.adds,
+        crate::ids::model3d_add_button,
+        x,
+        w,
+        y,
+    );
+    y = paint_chips(
+        ctx,
+        tr("panel.model3d.row.combine"),
+        &snapshot.ops,
+        crate::ids::model3d_op_button,
+        x,
+        w,
+        y,
+    );
     // ⭐⭐⭐ **O VERBO DESTA FORMA**, logo abaixo da operação do grupo — porque é ela que ele
     // qualifica: *o grupo diz o padrão, a forma diz se o segue*.
     //
@@ -293,6 +309,7 @@ fn paint_chip_rows(ctx: &mut PaintCtx, snapshot: &ModelSnapshot, x: f32, w: f32,
         );
         y = paint_chips(
             ctx,
+            tr("panel.model3d.row.verb"),
             &snapshot.verbs,
             crate::ids::model3d_verb_button,
             x,
@@ -305,6 +322,7 @@ fn paint_chip_rows(ctx: &mut PaintCtx, snapshot: &ModelSnapshot, x: f32, w: f32,
     // carácter e não tem verbo, então a fileira aparece ali sozinha.
     y = paint_chips(
         ctx,
+        tr("panel.model3d.row.blend"),
         &snapshot.characters,
         crate::ids::model3d_character_button,
         x,
@@ -313,8 +331,24 @@ fn paint_chip_rows(ctx: &mut PaintCtx, snapshot: &ModelSnapshot, x: f32, w: f32,
     );
     // ⭐ **O que se faz À forma depois de ela existir** — a casca e o afastamento, os dois verbos em
     // que a tese do módulo mais aparece (ver `ph2d_field::mods`).
-    y = paint_chips(ctx, &snapshot.mods, crate::ids::model3d_mod_button, x, w, y);
-    y = paint_chips(ctx, &snapshot.acts, crate::ids::model3d_act_button, x, w, y);
+    y = paint_chips(
+        ctx,
+        tr("panel.model3d.row.modifiers"),
+        &snapshot.mods,
+        crate::ids::model3d_mod_button,
+        x,
+        w,
+        y,
+    );
+    y = paint_chips(
+        ctx,
+        tr("panel.model3d.row.actions"),
+        &snapshot.acts,
+        crate::ids::model3d_act_button,
+        x,
+        w,
+        y,
+    );
     y
 }
 
@@ -389,14 +423,20 @@ fn paint_scroll_chrome(
     }
 }
 
-/// ⭐ **Um seletor segmentado** — os verbos do gizmo, ou o referencial dos eixos. Devolve o **y
-/// seguinte**.
+/// ⭐ **Uma fileira de chips com NOME** — pela porta da ESCOLHA
+/// ([`ph2d_editor_core::property_row::paint_choice_row`]). Devolve o **y seguinte**.
 ///
-/// ⚠️ **Grupo ADAPTATIVO**, e não três botões de largura fixa: num painel estreito ou num idioma
-/// mais comprido, três rótulos lado a lado deixam de caber, e a versão fixa quebraria o texto
-/// DENTRO do botão — o artefato que a casa já registou e curou com este widget.
+/// ⛔⛔ Até 2026-09-23 as sete fileiras do corpo (o laço, criar, combinar, o verbo, o carácter, os
+/// modificadores e as acções) pintavam os chips desde a borda do conteúdo **sem nome nenhum** — a
+/// varredura geométrica `nenhum_nome_por_cima_do_controlo` acusava-as todas. Hoje cada uma tem o
+/// seu nome na coluna, e a porta decide a forma: ao lado quando cabe numa fileira, PALETA quando
+/// não (os dez modificadores, as sete misturas).
+///
+/// ⚠️ A coluna é a de omissão (`Seccao::apenas_campos(1)`), a MESMA `property_label_col_w` da
+/// goteira das linhas de escolha deste painel ([`crate::paint_rows`]).
 fn paint_chips(
     ctx: &mut PaintCtx,
+    nome: &str,
     chips: &[state::ModeChip],
     id_of: fn(u32) -> ph2d_a11y::NodeId,
     x: f32,
@@ -414,16 +454,19 @@ fn paint_chips(
         .map(|(i, m)| (tr(m.key), m.active, id_of(i as u32)))
         .collect();
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-    let used = paint_segmented_group_adaptive(
-        Rect::new(x, y, w, ROW_H_PX),
-        &labels,
+    ph2d_editor_core::property_row::paint_choice_row(
         ctx.scene,
         ctx.text_system,
         theme,
-        store,
         hit_index,
-    );
-    y + used + ph2d_tokens::control_gap_px()
+        store,
+        x,
+        w,
+        y,
+        nome,
+        &labels,
+        ph2d_editor_core::widget::Seccao::apenas_campos(1),
+    )
 }
 
 /// Texto puro — um fato, não um controle. Sem hit-index: uma affordance que ele não pode honrar

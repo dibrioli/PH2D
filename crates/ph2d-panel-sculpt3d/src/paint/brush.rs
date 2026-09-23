@@ -54,7 +54,6 @@ pub(super) fn paint_level_row(
     labelled_seg(
         ctx,
         tr("panel.sculpt3d.ui_level"),
-        crate::ids::SCULPT3D_SEC_BRUSH,
         &crate::ids::SCULPT3D_UI_LEVEL,
         &labels,
         selected,
@@ -141,7 +140,6 @@ pub(super) fn paint_brush_tail(
     let mut y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.alpha"),
-        crate::ids::SCULPT3D_SEC_BRUSH,
         &crate::ids::SCULPT3D_ALPHA,
         &labels,
         selected,
@@ -432,7 +430,6 @@ fn paint_a_curva(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y:
     let y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.falloff"),
-        crate::ids::SCULPT3D_SEC_BRUSH,
         &crate::ids::SCULPT3D_FALLOFF,
         &labels,
         selected,

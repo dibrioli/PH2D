@@ -178,6 +178,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // faria as duas lerem-se como a mesma pergunta feita duas vezes. As escolhidas são as do
         // *Shape Mode* do Illustrator, que é o padrão-ouro deste desenho.
         "panel.model3d.verb_of" => "This shape",
+        "panel.model3d.row.create" => "Create",
+        "panel.model3d.row.combine" => "Combine",
+        "panel.model3d.row.verb" => "Verb",
+        "panel.model3d.row.blend" => "Blend",
+        "panel.model3d.row.modifiers" => "Modifiers",
+        "panel.model3d.row.actions" => "Actions",
         // ⚠️ **`Inherit` é o primeiro**, e é o que torna a escolha reversível: sem ele, pedir um
         // verbo uma vez tirava a forma do padrão do grupo para sempre.
         "panel.model3d.verb.inherit" => "Inherit",

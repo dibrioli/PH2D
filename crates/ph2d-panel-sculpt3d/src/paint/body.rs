@@ -179,7 +179,6 @@ fn paint_shading_tail(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f3
     let mut y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.matcap"),
-        crate::ids::SCULPT3D_SEC_SHADING,
         options,
         &labels,
         selected.min(n + FIXOS - 1),
@@ -369,7 +368,6 @@ fn paint_topology(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
         y = widgets::labelled_seg(
             ctx,
             tr("panel.sculpt3d.retopo_mode"),
-            crate::ids::SCULPT3D_SEC_TOPOLOGY,
             &crate::ids::SCULPT3D_RETOPO_MODE,
             &labels,
             selected,
@@ -417,7 +415,6 @@ fn paint_scene(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f
     y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.add"),
-        crate::ids::SCULPT3D_SEC_SCENE,
         &crate::ids::SCULPT3D_ADD,
         &add,
         usize::MAX, // gestos, não um modo

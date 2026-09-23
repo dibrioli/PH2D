@@ -54,7 +54,6 @@ pub(super) fn paint_boundary_rows(
     let y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.boundary_mode"),
-        crate::ids::SCULPT3D_SEC_BRUSH,
         &crate::ids::SCULPT3D_BOUNDARY_MODE,
         &labels,
         selected,
@@ -71,7 +70,6 @@ pub(super) fn paint_boundary_rows(
     labelled_seg(
         ctx,
         tr("panel.sculpt3d.boundary_falloff"),
-        crate::ids::SCULPT3D_SEC_BRUSH,
         &crate::ids::SCULPT3D_BOUNDARY_FALLOFF,
         &labels,
         selected,
@@ -110,7 +108,6 @@ pub(super) fn paint_pose_rows(
     let y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.pose_mode"),
-        crate::ids::SCULPT3D_SEC_BRUSH,
         &crate::ids::SCULPT3D_POSE_MODE,
         &labels,
         selected,
@@ -180,7 +177,6 @@ pub(super) fn paint_smear_rows(
     labelled_seg(
         ctx,
         tr("panel.sculpt3d.smear_mode"),
-        crate::ids::SCULPT3D_SEC_BRUSH,
         &crate::ids::SCULPT3D_SMEAR_MODE,
         &labels,
         selected,
@@ -217,7 +213,6 @@ pub(super) fn paint_trim_rows(
     labelled_seg(
         ctx,
         tr("panel.sculpt3d.trim_forma"),
-        crate::ids::SCULPT3D_SEC_BRUSH,
         &crate::ids::SCULPT3D_TRIM_FORMA,
         &labels,
         selected,
@@ -253,7 +248,6 @@ pub(super) fn paint_plano_rows(
     labelled_seg(
         ctx,
         tr("panel.sculpt3d.plano_inversao"),
-        crate::ids::SCULPT3D_SEC_BRUSH,
         &crate::ids::SCULPT3D_PLANO_INVERSAO,
         &labels,
         selected,
@@ -292,7 +286,6 @@ pub(super) fn paint_project_rows(
     let y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.project_mode"),
-        crate::ids::SCULPT3D_SEC_BRUSH,
         &crate::ids::SCULPT3D_PROJECT_MODE,
         &labels,
         selected,
@@ -343,7 +336,6 @@ pub(super) fn paint_cloth_rows(
     let y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.cloth_mode"),
-        crate::ids::SCULPT3D_SEC_BRUSH,
         &crate::ids::SCULPT3D_CLOTH_MODE,
         &labels,
         selected,
@@ -359,7 +351,6 @@ pub(super) fn paint_cloth_rows(
     let y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.cloth_area"),
-        crate::ids::SCULPT3D_SEC_BRUSH,
         &crate::ids::SCULPT3D_CLOTH_AREA,
         &labels,
         selected,
@@ -378,7 +369,6 @@ pub(super) fn paint_cloth_rows(
     let y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.cloth_force_falloff"),
-        crate::ids::SCULPT3D_SEC_BRUSH,
         &crate::ids::SCULPT3D_CLOTH_FORCE_FALLOFF,
         &labels,
         selected,

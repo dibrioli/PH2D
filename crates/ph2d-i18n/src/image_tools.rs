@@ -110,6 +110,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.upscale.scale.nearest" => "Nearest",
         "panel.upscale.scale.epx" => "EPX",
         "panel.upscale.scale.scale" => "Scale",
+        "panel.upscale.scale.algorithm" => "Algorithm",
         "panel.upscale.scale.output_select_a_sprite" => "Output: select a sprite",
         "panel.upscale.scale.output_size" => {
             "Output: {ow} \u{00d7} {oh} px  \u{00b7}  from {iw} \u{00d7} {ih}"

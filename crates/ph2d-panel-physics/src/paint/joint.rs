@@ -33,7 +33,6 @@ pub(super) fn paint_joint(
         w,
         y_in,
         tr("panel.physics.joint_tool"),
-        crate::ids::PHYSICS_JOINT_TOOL,
         &crate::ids::PHYSICS_JOINT_TOOL_OPT,
         &JointTool::ALL.map(label),
         JointTool::ALL
@@ -51,7 +50,6 @@ pub(super) fn paint_joint(
             w,
             y,
             tr("panel.physics.ik_angle"),
-            crate::ids::PHYSICS_IK_ANGLE,
             &crate::ids::PHYSICS_IK_ANGLE_OPT,
             &[
                 tr("panel.physics.ik_angle.free"),

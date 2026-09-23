@@ -37,7 +37,6 @@ pub(super) fn paint_mask_tools(
     let mut y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.mask"),
-        crate::ids::SCULPT3D_SEC_BRUSH,
         &crate::ids::SCULPT3D_MASK_OP,
         &mask,
         // ⚠️ Nenhum fica aceso, e `usize::MAX` é como se diz isso: as quatro são
@@ -86,7 +85,6 @@ pub(super) fn paint_mask_tools(
     y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.transform"),
-        crate::ids::SCULPT3D_SEC_BRUSH,
         &ids::SCULPT3D_TRANSFORM,
         &labels,
         armed,

@@ -145,78 +145,42 @@ pub(crate) fn a_toda_a_largura() -> Vec<Grupo> {
     out
 }
 
-/// ⛔ **As exceções NOMEADAS do Inspector** — grupos a toda a largura que NÃO são uma escolha.
+/// ⛔ **As exceções NOMEADAS do app** — grupos a toda a largura que NÃO são uma escolha com nome.
 ///
 /// Cada uma diz porque não passa pela porta da ESCOLHA; e o gate exige que ela CONTINUE a existir
 /// (censo de obsolescência), senão a lista vira licença.
-const INSPECTOR_FORA: &[(&str, &str)] = &[(
-    "insp_vis_layer_bit_0",
-    "grelha de 32 bits das camadas: um MAPA de bits, não um-entre-N — cada célula liga e desliga \
-     sozinha, e o nome dela (`Layers`) já vive na coluna",
-)];
-
-/// ⛔ **A catraca dos OUTROS painéis** — grupos a toda a largura montados À MÃO, por painel.
-///
-/// ⚠️ **Só encolhe.** Medido 2026-09-23 pela varredura acima: estes painéis ainda montam segmentados
-/// sem nome ao lado (a ordem do dono sobre o alinhamento chega a eles numa wave própria). Um painel
-/// que desce reprova até alguém baixar o número aqui; um que sobe reprova sempre.
-const A_MAO_POR_PAINEL: &[(&str, usize)] = &[
-    ("model3d", 7),
-    // ⚠️ O `painter_layers` só é registado no âmbito do APP (`--workspace`) — ver a guarda abaixo.
-    ("painter_layers", 1),
-    ("physics", 3),
-    ("sculpt3d", 11),
-    ("skeleton", 1),
-    ("upscale", 1),
-    ("vector", 9),
+const FORA: &[(&str, &str, &str)] = &[
+    (
+        "inspector",
+        "insp_vis_layer_bit_0",
+        "grelha de 32 bits das camadas: um MAPA de bits, não um-entre-N — cada célula liga e \
+         desliga sozinha, e o nome dela (`Layers`) já vive na coluna",
+    ),
+    (
+        "painter_layers",
+        "painter_sidebar.toggle_dock",
+        "as ABAS do painel (Brush · Layers): uma navegação entre vistas, pedida assim pelo dono \
+         (2026-09-09), e não uma propriedade — um nome ao lado dela não diria nada",
+    ),
 ];
 
-/// ⭐⭐⭐ **NENHUMA ESCOLHA DO INSPECTOR É MONTADA À MÃO** — toda escolha a toda a largura vem da
-/// porta [`ph2d_editor_core::property_row::paint_choice_row`] (que só a põe a toda a largura quando
-/// a MEDIDA diz que ao lado dela o grupo refluiria em duas fileiras ou mais).
+/// ⭐⭐⭐ **NENHUMA ESCOLHA DO APP É MONTADA À MÃO** — todo grupo segmentado a toda a largura, em
+/// todo painel, vem da porta [`ph2d_editor_core::property_row::paint_choice_row`] (que só o põe a
+/// toda a largura quando a MEDIDA diz que ao lado do nome ele refluiria em duas fileiras ou mais).
 ///
-/// **Mutações que devem sangrar:** uma secção voltar ao `paint_segmented_group_adaptive` com o nome
-/// por cima · a exceção deixar de existir no painel.
+/// ⭐ Nasceu em 2026-09-23 como gate do Inspector mais uma catraca de `33` nos outros painéis; a
+/// catraca chegou a ZERO no ciclo seguinte (Vector e Esqueleto pelo `RowCtx::segmented`, a Física,
+/// a Escultura, o Upscale e as sete fileiras do Modelo 3D, que não tinham nome nenhum) e morreu.
+///
+/// **Mutações que devem sangrar:** um painel voltar ao `paint_segmented_group_adaptive` com o nome
+/// por cima · uma exceção deixar de existir no painel.
 #[test]
-fn nenhuma_escolha_do_inspector_e_montada_a_mao() {
-    let v = a_toda_a_largura();
-    let do_inspector: Vec<&Grupo> = v.iter().filter(|g| g.painel == "inspector").collect();
-    // ⛔ Piso de população: medido 24 grupos pela porta a toda a largura (2026-09-23). Sem ele,
-    //    um arnês que deixasse de armar o Inspector passaria por vácuo.
-    let pela_porta = do_inspector.iter().filter(|g| g.da_porta).count();
-    assert!(
-        pela_porta >= 20,
-        "so' {pela_porta} escolhas do Inspector pela porta a toda a largura — o arnes deixou de \
-         armar as secções?"
-    );
-    let a_mao: Vec<String> = do_inspector
-        .iter()
-        .filter(|g| !g.da_porta && !INSPECTOR_FORA.iter().any(|(s, _)| *s == g.slug))
-        .map(|g| format!("{} ({} pecas, y={:.0})", g.slug, g.pecas, g.y))
-        .collect();
-    assert!(
-        a_mao.is_empty(),
-        "escolhas do Inspector montadas A MAO a toda a largura (sem nome ao lado) — passe-as pela \
-         porta `paint_choice_row`:\n  {}",
-        a_mao.join("\n  ")
-    );
-    // ⛔ Censo de obsolescência: uma exceção que já não aparece é uma licença esquecida.
-    for (slug, porque) in INSPECTOR_FORA {
-        assert!(
-            do_inspector.iter().any(|g| !g.da_porta && g.slug == *slug),
-            "a excecao «{slug}» ({porque}) ja' nao aparece — apague-a de INSPECTOR_FORA"
-        );
-    }
-}
-
-/// ⭐⭐ **Os outros painéis só ENCOLHEM** — a catraca [`A_MAO_POR_PAINEL`], nos dois sentidos.
-#[test]
-fn os_outros_paineis_so_encolhem_nas_escolhas_a_mao() {
-    let v = a_toda_a_largura();
+fn nenhuma_escolha_do_app_e_montada_a_mao() {
     // ⛔⛔ **A guarda de âmbito** — a lição que a varredura das elisões pagou em 20/09: `flip`,
     //    `flip_frames`, `painter_layers` e `wet_tuning` não estão no `default` desta crate e só a
-    //    unificação de features de um build de WORKSPACE os regista. Nesse âmbito pobre a catraca
-    //    leria `painter_layers = 0` como «curado». ⇒ reprovar ALTO com a causa.
+    //    unificação de features de um build de WORKSPACE os regista. Nesse âmbito pobre a exceção
+    //    do Painter leria-se «obsoleta». ⇒ reprovar ALTO com a causa.
+    let _ = ph2d_panel_registry_init::register_all_panels();
     let mut registados = std::collections::BTreeSet::new();
     ph2d_editor_core::panel::with_registry(|reg| {
         for p in reg.panels_mut() {
@@ -226,44 +190,41 @@ fn os_outros_paineis_so_encolhem_nas_escolhas_a_mao() {
     assert!(
         registados.contains("painter_layers"),
         "o painel `painter_layers` nao esta' registado: esta corrida e' do ambito POBRE \
-         (`-p ph2d-panel-registry-init`). A catraca e' medida no ambito do APP ⇒ corra \
-         `cargo nextest run --workspace -E 'test(os_outros_paineis_so_encolhem)'`."
+         (`-p ph2d-panel-registry-init`). O gate e' medido no ambito do APP ⇒ corra \
+         `cargo nextest run --workspace -E 'test(nenhuma_escolha_do_app_e_montada_a_mao)'`."
     );
-    let mut medido: std::collections::BTreeMap<&str, usize> = std::collections::BTreeMap::new();
-    for g in v.iter().filter(|g| g.painel != "inspector" && !g.da_porta) {
-        *medido.entry(g.painel).or_default() += 1;
-    }
-    // ⛔ Piso de população: medido 32 (2026-09-23); uma varredura partida devolve zero e lê-se
-    //    como «curado».
-    let total: usize = medido.values().sum();
-    let declarado: usize = A_MAO_POR_PAINEL.iter().map(|(_, n)| n).sum();
+    let v = a_toda_a_largura();
+    // ⛔ Piso de população: medido 48 grupos pela porta a toda a largura (2026-09-23). Sem ele,
+    //    um arnês que deixasse de armar os painéis passaria por vácuo.
+    let pela_porta = v.iter().filter(|g| g.da_porta).count();
     assert!(
-        total > 0 || declarado == 0,
-        "a varredura nao achou NENHUM grupo a mao fora do Inspector e a catraca declara \
-         {declarado} — ou foram todos curados (esvazie a catraca) ou a varredura partiu"
+        pela_porta >= 35,
+        "so' {pela_porta} escolhas pela porta a toda a largura — o arnes deixou de armar paineis?"
     );
-    let mut erros = Vec::new();
-    for (painel, &n) in &medido {
-        let tecto = A_MAO_POR_PAINEL
-            .iter()
-            .find(|(p, _)| p == painel)
-            .map_or(0, |(_, t)| *t);
-        if n > tecto {
-            erros.push(format!("«{painel}» SUBIU: {n} contra o tecto {tecto}"));
-        } else if n < tecto {
-            erros.push(format!(
-                "«{painel}» DESCEU para {n} (tecto {tecto}) — baixe a catraca"
-            ));
-        }
+    let a_mao: Vec<String> = v
+        .iter()
+        .filter(|g| !g.da_porta && !FORA.iter().any(|(p, s, _)| *p == g.painel && *s == g.slug))
+        .map(|g| {
+            format!(
+                "{} · {} ({} pecas, y={:.0})",
+                g.painel, g.slug, g.pecas, g.y
+            )
+        })
+        .collect();
+    assert!(
+        a_mao.is_empty(),
+        "escolhas montadas A MAO a toda a largura (sem nome ao lado) — passe-as pela porta \
+         `paint_choice_row`:\n  {}",
+        a_mao.join("\n  ")
+    );
+    // ⛔ Censo de obsolescência: uma exceção que já não aparece é uma licença esquecida.
+    for (painel, slug, porque) in FORA {
+        assert!(
+            v.iter()
+                .any(|g| !g.da_porta && g.painel == *painel && g.slug == *slug),
+            "a excecao «{painel} · {slug}» ({porque}) ja' nao aparece — apague-a de FORA"
+        );
     }
-    for (painel, tecto) in A_MAO_POR_PAINEL {
-        if !medido.contains_key(painel) {
-            erros.push(format!(
-                "«{painel}» chegou a ZERO (tecto {tecto}) — apague a entrada"
-            ));
-        }
-    }
-    assert!(erros.is_empty(), "{}", erros.join("\n"));
 }
 
 /// ⭐⭐⭐ **A LEI DA FORMA da porta da escolha, pelo painel armado:** uma escolha que cabe numa

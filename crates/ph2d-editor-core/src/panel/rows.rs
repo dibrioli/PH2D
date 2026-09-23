@@ -27,8 +27,8 @@
 //! sítios a mudar de nome no mesmo commit é uma extracção que colide com toda linha viva.*
 
 use crate::interaction::{HitIndex, WidgetStore};
-use crate::paint::{paint_text, resolve};
-use crate::widget::panel_chrome::{SECTION_LABEL_TO_CONTROL_PX, paint_segmented_group_adaptive};
+use crate::paint::resolve;
+use crate::widget::panel_chrome::SECTION_LABEL_TO_CONTROL_PX;
 use crate::widget::section_cards::close_section;
 use crate::widget::showcase::read_number_input;
 use crate::widget::{
@@ -204,32 +204,38 @@ impl RowCtx<'_> {
         y + self.row_h + self.row_gap
     }
 
-    /// **Uma fileira de segmentos com rótulo por cima** — uma escolha entre MODOS nomeados.
-    pub fn segmented(&mut self, label: &str, opts: &[(NodeId, &str, bool)], mut y: f32) -> f32 {
-        let font = TypeToken::Sm.px();
-        paint_text(
-            self.text_system,
-            self.scene,
-            label,
-            self.inner_x,
-            y,
-            font,
-            self.inner_w,
-            resolve(ColorToken::Text2, self.theme),
-        );
-        y += font + ph2d_tokens::control_gap_px();
+    /// **Uma escolha entre MODOS nomeados — pela porta da ESCOLHA.**
+    ///
+    /// ⛔⛔ Até 2026-09-23 esta fileira pintava o nome POR CIMA e o grupo a toda a largura, em
+    /// todos os painéis que a usam (Vector e o Esqueleto) — a varredura geométrica
+    /// `nenhum_nome_por_cima_do_controlo` acusava `9 + 1` grupos a começar na borda. Hoje ela
+    /// delega em [`crate::property_row::paint_choice_row`], que põe o nome AO LADO quando o grupo
+    /// cabe numa fileira da coluna do valor e só faz PALETA quando não cabe.
+    ///
+    /// ⚠️ **A coluna é a de omissão** (`Seccao::apenas_campos(1)`), que é exactamente a
+    /// [`label_col_w`] das outras linhas deste contexto — senão o nome de uma escolha e o de um
+    /// campo vizinho cairiam em `x` diferentes.
+    ///
+    /// ⚠️ **O ritmo é o do PAINEL:** a porta acaba com o vão da casa (`control_gap_px`) e este
+    /// contexto separa as linhas pelo `row_gap` dele; troca-se um pelo outro para que uma escolha
+    /// não mude a distância à linha seguinte.
+    pub fn segmented(&mut self, label: &str, opts: &[(NodeId, &str, bool)], y: f32) -> f32 {
         let segs: Vec<(&str, bool, NodeId)> =
             opts.iter().map(|(id, lbl, on)| (*lbl, *on, *id)).collect();
-        let used = paint_segmented_group_adaptive(
-            Rect::new(self.inner_x, y, self.inner_w, self.row_h),
-            &segs,
+        let fim = crate::property_row::paint_choice_row(
             self.scene,
             self.text_system,
             self.theme,
-            self.store,
             self.hit_index,
+            self.store,
+            self.inner_x,
+            self.inner_w,
+            y,
+            label,
+            &segs,
+            crate::widget::Seccao::apenas_campos(1),
         );
-        y + used + self.row_gap
+        fim - ph2d_tokens::control_gap_px() + self.row_gap
     }
 
     /// A célula de rótulo das duas linhas rotuladas — uma porta, para as duas nunca desalinharem.

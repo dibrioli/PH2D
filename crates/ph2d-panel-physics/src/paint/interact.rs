@@ -5,13 +5,10 @@
 //! partes crescem por motivos diferentes, e esta tem uma forma que as outras não
 //! têm (dois rádios + knobs que aparecem por ferramenta).
 
-use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segmented_adaptive};
-use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_physics_ecs::{HoldMode, InteractionSettings, InteractionTool};
-use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
+use ph2d_tokens::Spacing;
 
 use crate::interact::{IROWS, ISection};
 
@@ -34,7 +31,6 @@ pub(super) fn paint_interact(
         w,
         y,
         tr("panel.physics.tool"),
-        crate::ids::PHYSICS_INTERACT_TOOL,
         &crate::ids::PHYSICS_INTERACT_TOOL_OPT,
         &InteractionTool::ALL.map(tool_label),
         InteractionTool::ALL
@@ -53,7 +49,6 @@ pub(super) fn paint_interact(
             w,
             y,
             tr("panel.physics.hold"),
-            crate::ids::PHYSICS_HOLD_MODE,
             &crate::ids::PHYSICS_HOLD_MODE_OPT,
             &HoldMode::ALL.map(hold_label),
             HoldMode::ALL
@@ -104,9 +99,16 @@ fn hold_label(m: HoldMode) -> &'static str {
     }
 }
 
-/// A labelled segmented control. Same shape as the Inspector's `seg_row` —
-/// deliberately, so the two physics surfaces look like one thing — but a local
-/// copy because that one is private to its crate and the shape is six lines.
+/// Uma escolha com nome — **pela porta da ESCOLHA** ([`ph2d_editor_core::property_row::paint_choice_row`]).
+///
+/// ⛔⛔ Até 2026-09-23 ela pintava o nome POR CIMA (numa faixa `Sm + Md`, do smoke de 27/07) e o
+/// grupo a toda a largura; a varredura geométrica `nenhum_nome_por_cima_do_controlo` acusava as
+/// três escolhas deste painel. Hoje o nome fica AO LADO quando o grupo cabe numa fileira da coluna
+/// do valor, e só vira PALETA quando não cabe — a lei vive na porta e não aqui.
+///
+/// ⚠️ A coluna é a de omissão (`Seccao::apenas_campos(1)`), a MESMA `property_label_col_w` das
+/// linhas numéricas desta secção. ⚠️ O id do GRUPO saiu da assinatura: ele é da acessibilidade (o
+/// `populate` regista-o) e nunca entrou na pintura.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn seg_row(
     ctx: &mut PaintCtx,
@@ -114,50 +116,32 @@ pub(super) fn seg_row(
     w: f32,
     y: f32,
     label: &str,
-    group: ph2d_a11y::NodeId,
     options: &[ph2d_a11y::NodeId],
     labels: &[&str],
     selected: usize,
 ) -> f32 {
     let theme = ctx.host.theme();
-    let label_font = TypeToken::Sm.px();
-    // ⚠️ **`Md` e não `Xs`, e o número saiu de um smoke** (Enio, 2026-07-27:
-    // *"ajuste apenas os espaçamentos das labels que ficaram muito apertados"*).
-    // O texto é pintado CENTRADO nesta faixa, então o respiro que sobra abaixo
-    // dele é metade da folga: com `Xs` (4 px) o rótulo encostava nos chips com
-    // 2 px, e o olho lia a palavra como parte do primeiro botão.
-    let label_h = label_font + Spacing::Md.px();
-    paint_text(
-        ctx.text_system,
-        ctx.scene,
-        label,
-        x,
-        y + (label_h - label_font) * 0.5,
-        label_font,
-        w,
-        resolve(ColorToken::Text2, theme),
-    );
-    let seg = SegmentedAdaptive::new(
-        group,
-        label,
-        options
-            .iter()
-            .zip(labels)
-            .map(|(&id, &l)| SegmentedOption::new(id, l))
-            .collect(),
-    )
-    .selected(selected.min(labels.len().saturating_sub(1)));
+    let selected = selected.min(labels.len().saturating_sub(1));
+    let segs: Vec<(&str, bool, ph2d_a11y::NodeId)> = options
+        .iter()
+        .zip(labels)
+        .enumerate()
+        .map(|(i, (&id, &l))| (l, i == selected, id))
+        .collect();
     let scene = &mut *ctx.scene;
     let text_system = &mut *ctx.text_system;
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-    let seg_h = paint_segmented_adaptive(
-        &seg,
-        Rect::new(x, y + label_h, w, ROW_H_PX),
+    ph2d_editor_core::property_row::paint_choice_row(
         scene,
         text_system,
         theme,
-        store,
         hit_index,
-    );
-    y + label_h + seg_h + ph2d_tokens::control_gap_px()
+        store,
+        x,
+        w,
+        y,
+        label,
+        &segs,
+        ph2d_editor_core::widget::Seccao::apenas_campos(1),
+    )
 }

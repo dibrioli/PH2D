@@ -2277,10 +2277,13 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    recolhidas. ⛔ Ele não cabe, e o que falta é DECISÃO: o `Texture` (`450`) e o `Stroke`
     //    (`368`) são dele, e com tudo recolhido o painel mediria `736`.
     ("painter_layers", 1529.0),
-    ("sculpt3d", 2097.0),
+    // ⬇️ `2 097 → 2 021`, `1 349 → 1 262` e `1 293 → 1 281` em 2026-09-23: as escolhas destes três
+    //    painéis passaram pela porta da ESCOLHA, e as que cabem numa fileira deixaram de gastar uma
+    //    linha só para o nome POR CIMA — a altura desceu sem uma secção a menos.
+    ("sculpt3d", 2021.0),
     ("tokens", 2866.0),
-    ("vector", 1349.0),
-    ("physics", 1293.0),
+    ("vector", 1262.0),
+    ("physics", 1281.0),
     ("audio_mixer", 1209.0),
 ];
 

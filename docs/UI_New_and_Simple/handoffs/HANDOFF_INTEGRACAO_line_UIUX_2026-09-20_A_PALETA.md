@@ -2581,6 +2581,57 @@ por **re-export** `pub(crate)`, nunca por um `pub(crate) mod` escrito à mão.
   pelos `§` endereçáveis; cortá-lo com `scripts/doc-split.py` é trabalho de fecho da linha.
 
 
+## §9-vicies-ter — ⭐⭐⭐ A CATRACA DOS OUTROS PAINÉIS FOI A ZERO: toda escolha do app tem nome ao lado ou é PALETA
+
+**Ordem do dono (2026-09-23):** *«Smoke OK. siga em ciclos de implementação maiores»* — depois do
+Inspector, os outros painéis.
+
+### §9-vicies-ter.1 — Onde as `33` moravam, e as QUATRO portas que as serviam
+
+Medido no âmbito do APP (`--workspace`, a guarda do §9-vicies-bis): as escolhas sem nome ao lado
+vinham de **quatro** pintores partilhados, e cada um passou a delegar na porta da ESCOLHA:
+
+| pintor | painéis | antes | cura |
+|---|---|---|---|
+| `ph2d_editor_core::panel::RowCtx::segmented` | Vector (9) · Esqueleto (1) | nome POR CIMA | delega na porta; coluna de omissão = a `label_col_w` do próprio `RowCtx`; troca o vão da porta pelo `row_gap` do painel |
+| `ph2d-panel-sculpt3d` `widgets::labelled_seg` | Escultura (11, 23 chamadas) | nome POR CIMA numa faixa `Sm + Md` | idem, ritmo `Sm` do painel |
+| `ph2d-panel-physics` `interact::seg_row` | Física (3) | nome POR CIMA | idem |
+| `ph2d-panel-model3d` `paint_chips` | Modelo 3D (7) | **sem nome nenhum** | cada fileira ganhou um: `Lasso` (a nota por cima virou o nome) · `Create` · `Combine` · `Verb` · `Blend` · `Modifiers` · `Actions` |
+
+Mais o `Algorithm` do Upscale (fileira sem nome). ⚠️ O id de GRUPO do `SegmentedAdaptive` saiu da
+assinatura da Física e da Escultura (`4 + 23` chamadas, removido por contagem de parênteses com
+`assert`): ele é da ACESSIBILIDADE, o `populate` regista-o, e nunca entrou na pintura — o
+`paint_segmented_adaptive` pinta pela MESMA função que o grupo simples. O `widgets::seg` da Escultura
+ficou sem chamador e **saiu**.
+
+⚠️ O Modelo 3D tem ids CALCULADOS (`model3d_*_button(slot)`), logo a sonda imprime `#hash`: o mapa
+foi medido com um teste temporário (apagado) — `select #1bb3…` · `add #fa9b…` · `op #97c1…` ·
+`verb #f466…` · `character #59be…` · `mod #9c0e…` · `act #555d…`. *Quem voltar a esta sonda num
+painel de ids calculados precisa do mesmo mapa.*
+
+### §9-vicies-ter.2 — O gate
+
+A catraca `os_outros_paineis_so_encolhem_nas_escolhas_a_mao` **chegou a zero e morreu**, e o gate do
+Inspector virou `nenhuma_escolha_do_app_e_montada_a_mao`: todo grupo a toda a largura em todo painel
+vem da porta, com **duas exceções NOMEADAS** e censo de obsolescência — a grelha de 32 bits do
+Inspector (um mapa de bits) e as ABAS `Brush · Layers` do Painter (navegação entre vistas, pedida
+pelo dono em 09/09). ⛔ **Guarda de âmbito:** numa corrida `-p` ele reprova ALTO a dizer o comando
+certo, porque ali o `painter_layers` nem existe e a exceção leria-se obsoleta. Mutações **no âmbito
+do app** (o arnês ganhou o modo `WS`): o Upscale de volta a um grupo sem nome **sangra** · a
+exceção a apontar a um id inexistente **sangra**.
+
+**Catraca que desceu:** altura de abertura `sculpt3d 2 097 → 2 021` · `vector 1 349 → 1 262` ·
+`physics 1 293 → 1 281` — os nomes deixaram de gastar uma linha própria. Portão: nextest-impacted
+**17 670/17 670** · clippy `-D warnings` nas 10 crates tocadas · fmt.
+
+### §9-vicies-ter.3 — ⏳ ABERTO
+
+- A pergunta do dono (paleta ou menu suspenso ao lado do nome) continua a valer para o app inteiro,
+  e a troca continua a ser UMA função.
+- `rows::seg_row` do Inspector segue fora da porta de propósito (widget com estado «misto»,
+  aprovado em 15/09) — hoje é o único segmentado com nome que não passa por ela.
+
+
 ## §11 — O que esta linha recomenda a quem a integrar
 
 1. **Correr o `diag_onde_cai_a_pista_do_pente` da `line/sculpt3d` DEPOIS da fusão** e reescrever com

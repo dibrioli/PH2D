@@ -10,8 +10,7 @@
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, SectionFold, SectionHeader, SegmentedAdaptive,
-    SegmentedOption, paint_button, paint_section_header, paint_segmented_adaptive,
+    Button, ButtonKind, ButtonState, SectionFold, SectionHeader, paint_button, paint_section_header,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
@@ -59,50 +58,21 @@ pub(super) fn end_fold(ctx: &mut PaintCtx, fold: SectionFold, y: f32) -> f32 {
     fold.finish(store, scene, hit_index, y)
 }
 
-/// Um grupo segmentado sem rótulo (a lista de ferramentas).
-#[allow(clippy::too_many_arguments)]
-pub(super) fn seg(
-    ctx: &mut PaintCtx,
-    group: ph2d_a11y::NodeId,
-    options: &[ph2d_a11y::NodeId],
-    labels: &[&str],
-    selected: usize,
-    x: f32,
-    w: f32,
-    y: f32,
-) -> f32 {
-    let theme = ctx.host.theme();
-    let widget = SegmentedAdaptive::new(
-        group,
-        "",
-        options
-            .iter()
-            .zip(labels)
-            .map(|(&id, &l)| SegmentedOption::new(id, l))
-            .collect(),
-    )
-    .selected(selected);
-    let scene = &mut *ctx.scene;
-    let text_system = &mut *ctx.text_system;
-    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-    let h = paint_segmented_adaptive(
-        &widget,
-        Rect::new(x, y, w, ROW_H_PX),
-        scene,
-        text_system,
-        theme,
-        store,
-        hit_index,
-    );
-    y + h
-}
-
-/// Um grupo segmentado com rótulo em cima.
+/// Uma escolha com nome — **pela porta da ESCOLHA** ([`ph2d_editor_core::property_row::paint_choice_row`]).
+///
+/// ⛔⛔ Até 2026-09-23 ela pintava o nome POR CIMA numa faixa `Sm + Md` e o grupo a toda a
+/// largura: a varredura geométrica `nenhum_nome_por_cima_do_controlo` acusava onze escolhas deste
+/// painel. Hoje o nome fica AO LADO quando o grupo cabe numa fileira da coluna do valor, e só vira
+/// PALETA quando não cabe (a curva, o matcap, o alpha, a lista de filtros — dez a doze opções).
+///
+/// ⚠️ A coluna é a de omissão (`Seccao::apenas_campos(1)`), a MESMA `property_label_col_w` das
+/// linhas deste painel. ⚠️ O ritmo é o do painel: a porta fecha com o vão da casa e esta família
+/// separava a escolha da linha seguinte por um `Sm` — troca-se um pelo outro. ⚠️ O id do GRUPO é
+/// da acessibilidade (o `populate` regista-o) e nunca entrou na pintura.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn labelled_seg(
     ctx: &mut PaintCtx,
     label: &str,
-    group: ph2d_a11y::NodeId,
     options: &[ph2d_a11y::NodeId],
     labels: &[&str],
     selected: usize,
@@ -111,23 +81,29 @@ pub(super) fn labelled_seg(
     y: f32,
 ) -> f32 {
     let theme = ctx.host.theme();
-    let font = TypeToken::Sm.px();
-    // `Md` e não `Xs`: o texto é pintado CENTRADO nesta faixa, então o respiro
-    // que sobra abaixo dele é metade da folga — com `Xs` o rótulo encosta nos
-    // chips e o olho lê a palavra como parte do primeiro botão (o número saiu do
-    // smoke do painel de física).
-    let label_h = font + Spacing::Md.px();
-    paint_text(
-        ctx.text_system,
-        ctx.scene,
-        label,
+    let segs: Vec<(&str, bool, ph2d_a11y::NodeId)> = options
+        .iter()
+        .zip(labels)
+        .enumerate()
+        .map(|(i, (&id, &l))| (l, i == selected, id))
+        .collect();
+    let scene = &mut *ctx.scene;
+    let text_system = &mut *ctx.text_system;
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    let fim = ph2d_editor_core::property_row::paint_choice_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
         x,
-        y + (label_h - font) * 0.5,
-        font,
         w,
-        resolve(ColorToken::Text2, theme),
+        y,
+        label,
+        &segs,
+        ph2d_editor_core::widget::Seccao::apenas_campos(1),
     );
-    seg(ctx, group, options, labels, selected, x, w, y + label_h) + Spacing::Sm.px()
+    fim - ph2d_tokens::control_gap_px() + Spacing::Sm.px()
 }
 
 /// Dois botões lado a lado.

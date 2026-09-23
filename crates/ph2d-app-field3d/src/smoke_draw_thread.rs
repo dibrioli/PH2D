@@ -312,10 +312,7 @@ pub(crate) fn traca(p: &Pedido) {
             // ⚠️ **Cada uma só corre se o consumidor DELA estiver vivo**, e é isso que faz o preço
             // ser zero no caminho de omissão e na cena de quem tinge sem jade: a segunda assadura
             // custa `5` avaliações de campo por pixel acertado, e só quando os dois lêem.
-            let material_le = surfaces
-                .all
-                .iter()
-                .any(ph2d_material::Surface::reads_curvature);
+            let material_le = ph2d_field_render::curvatura::material_le(&surfaces);
             // ⚠️ **A bola é a MESMA que a apresentação já derivou** — ver o `piece_radius` lá em
             // cima. ⛔ Derivá-la outra vez aqui seria a segunda resposta à mesma pergunta.
             //
@@ -323,7 +320,10 @@ pub(crate) fn traca(p: &Pedido) {
             // quem lê o quê, com que passo, e se vale a pena pagar. Escrita em linha aqui, ela
             // divergiu do arnês dos gates no dia em que nasceu — e um arnês que monta o estado à mão
             // mede outro programa.
-            if material_le || apresentacao.reads_curvature() {
+            // ⚠️ **A UNIÃO é uma PORTA e não uma expressão** (auditoria de 2026-09-23): ela tem
+            // dois leitores — este e o `gpu_frame`, que decide com ela se a fita da peça entra no
+            // shader do pintor —, e escrita duas vezes ela divergia no dia do terceiro consumidor.
+            if ph2d_field_render::curvatura::alguem_le(&surfaces, &apresentacao) {
                 let mut eval = ph2d_field_eval::hybrid::Hybrid::new(&p.doc, &p.reg);
                 ph2d_field_render::curvatura::assar_canais(
                     &mut eval,

@@ -441,3 +441,86 @@ fn diag_a_fita_inerte_com_a_lei_do_dono() {
 /// ⏱️ **As sondas que medem uma CENA** — ver o cabeçalho do [`cenas`].
 #[path = "device_probes_w9_cenas.rs"]
 mod cenas;
+
+/// ⏱️⭐⭐⭐⭐ **QUANTOS QUADROS A RÉGUA PRECISA? — a tabela que o [`super::QUADROS_MEDIDOS`] devia ter.**
+///
+/// ⛔⛔ **Esta sonda nasceu de uma auditoria (2026-09-23).** O doc daquela constante diz que o `3` é
+/// *«o joelho MEDIDO»* e o que existia era uma OBSERVAÇÃO (uma cena leu `176,62` e depois
+/// `9,84 ms`) — ela justifica *«mais do que um»* e não diz nada sobre `4`. *O `CLAUDE.md` §0.0 manda
+/// escrever o número que a medição deu, com a tabela ao lado; um número sem tabela é um palpite.*
+///
+/// ⚠️ **A régua corre no MESMO processo e por cena**, com os `N` intercalados: o que se quer saber é
+/// se o VEREDITO do gate se move com `N`, e uma corrida por `N` mediria a deriva da máquina.
+#[test]
+#[ignore = "sonda de diagnóstico: mede o joelho do QUADROS_MEDIDOS"]
+fn diag_quantos_quadros_a_regua_precisa() {
+    let Some(t) = crate::gpu_frame::shared() else {
+        println!("sem adaptador — saltado");
+        return;
+    };
+    const N_MAX: usize = 5;
+    let materiais = [ph2d_material::OpenPbr::default().prepare()];
+    let olhar = ph2d_view_transform::Look::default();
+    const BG: [u8; 4] = [0, 0, 0, 0];
+    println!("\n  {}", contexto());
+    // Por cena, os `N_MAX` relógios seguidos; o mínimo dos primeiros `n` dá a leitura daquele `n`.
+    let mut por_cena: Vec<Vec<f32>> = Vec::new();
+    for n in 0..crate::smoke::scenes::CENAS {
+        if crate::smoke::scenes::PODADAS.contains(&n) {
+            continue;
+        }
+        let doc = crate::smoke::scene(n);
+        let reg = crate::smoke::sampled_registry();
+        let cam = ph2d_field_render::Orbit::default();
+        let luz = [crate::gpu_frame::tests_lampada(&cam)];
+        let surfaces = ph2d_field_render::Surfaces {
+            all: &materiais,
+            owners: None,
+        };
+        let mut ts = Vec::with_capacity(N_MAX);
+        for _ in 0..N_MAX {
+            let t0 = std::time::Instant::now();
+            let saiu = crate::gpu_frame::paint(
+                t,
+                &doc,
+                &reg,
+                &cam,
+                &luz,
+                &surfaces,
+                &ph2d_field_render::Presentation::of(olhar),
+                BG,
+                None,
+                LW,
+                LH,
+                false,
+            );
+            if saiu.is_none() {
+                break;
+            }
+            #[allow(clippy::cast_possible_truncation)]
+            ts.push(t0.elapsed().as_secs_f32() * 1e3);
+        }
+        if ts.len() == N_MAX {
+            por_cena.push(ts);
+        }
+    }
+    println!(
+        "     N ·  nítidas de {} ·  pior cena ·  mediana",
+        por_cena.len()
+    );
+    for n in 1..=N_MAX {
+        let mins: Vec<f32> = por_cena
+            .iter()
+            .map(|ts| ts[..n].iter().copied().fold(f32::INFINITY, f32::min))
+            .collect();
+        let nitidas = mins.iter().filter(|m| **m <= PREVIEW_BUDGET_MS).count();
+        let pior = mins.iter().copied().fold(0.0f32, f32::max);
+        let mut ord = mins.clone();
+        ord.sort_by(f32::total_cmp);
+        println!(
+            "  {n:>4} · {nitidas:>14} · {pior:>8.2} ms · {:>7.2} ms",
+            ord[ord.len() / 2]
+        );
+    }
+    println!();
+}

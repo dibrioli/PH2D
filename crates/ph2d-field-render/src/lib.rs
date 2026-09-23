@@ -89,7 +89,7 @@ pub const NORMAL_STENCIL_WIDTH: usize = NORMAL_STENCIL.offsets().len();
 /// ⚠️ São **tetos**, e no enquadramento normal nada muda: a 480 px de altura com `half_extent = 0,8`
 /// o pixel mede 0,0033 e o teto de 2·10⁻⁴ continua a mandar. A adaptação só morde a partir de ~4×
 /// de aproximação, que é exatamente onde o problema começava.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Sharpness {
     pub hit: f32,
     pub normal: f32,

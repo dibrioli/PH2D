@@ -358,6 +358,16 @@ pub const SETTLED_NORMAL_ERR_DEG: f32 = 0.5;
 /// Ver [`crate::gpu_frame::campo_do_chao`] e a `ChaveDoChao`. A assadura custa `+4,98 ms` por
 /// quadro assente e o campo não depende de para onde a câmera olha — que é o gesto que a paga.
 /// `PH2D_FIELD_CHAO_CACHE=0` devolve a assadura por quadro.
+///
+/// ⚠️ **Ela nasce LIGADA, ao contrário da lei da casa** (*«tudo o que é novo shipa desligado»*), e a
+/// razão é a mesma da irmã [`a_fita_sai_do_pintor`]: **ela não é uma feature.** O campo devolvido é
+/// o MESMO objecto que a assadura daquele quadro produziria — há gate de PIXEL a afirmá-lo
+/// (`o_campo_do_chao_reaproveitado_nao_muda_um_byte`, `0` de `2 073 600` píxeis) e a chave leva tudo
+/// o que a assadura lê. *Uma porta cuja saída é byte-idêntica não tem lado para o artista escolher;
+/// o que ela tem é um lado para BISSECTAR.*
+///
+/// ⛔ **A auditoria de 2026-09-23 apanhou esta justificação a FALTAR** enquanto a da irmã estava
+/// escrita — *duas portas com a mesma razão e só uma a dizê-la é como a razão se perde.*
 #[must_use]
 pub fn o_campo_do_chao_e_reaproveitado() -> bool {
     static LIGADO: std::sync::OnceLock<bool> = std::sync::OnceLock::new();

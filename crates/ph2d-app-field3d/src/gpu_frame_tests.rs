@@ -51,3 +51,115 @@ fn o_dispositivo_so_toma_uma_peca_que_ele_sabe_desenhar() {
          a nada"
     );
 }
+
+/// ⭐⭐⭐⭐ **A PERGUNTA «ALGUÉM LÊ A CURVATURA?» TEM UMA PORTA, E SÓ UMA.**
+///
+/// ⛔⛔ **Este censo nasceu de uma auditoria (2026-09-23) que achou a união escrita DUAS vezes** —
+/// uma no caminho de referência ([`crate::smoke_draw_thread`]) e outra no do dispositivo
+/// ([`super`]), com o comentário do segundo a afirmar que era *«o MESMO predicado»*. *Era o mesmo
+/// como EXPRESSÃO e não como mecanismo.*
+///
+/// ⚠️ **O modo de falha que ele impede é MUDO:** no dia em que nascer um terceiro leitor da
+/// curvatura, se o lado do dispositivo ficar atrás, a fita inerte entra, o `curvatura_em` do shader
+/// lê uma constante, e a imagem sai plausível e errada.
+///
+/// ⛔ **E nenhum gate de VALOR o pode apanhar:** o
+/// `quem_le_o_campo_continua_a_leva_lo_no_shader` entra por **um** dos dois sítios, e a fixtura
+/// dele usa a única propriedade que os dois já conheciam. *Um gate que entra por um dos dois nunca
+/// os vê a discordar.*
+///
+/// ⚠️ **A agulha é MONTADA em runtime** e não escrita como literal: sem isso, um censo que um dia
+/// passe a ler o próprio ficheiro acha sempre o que procura.
+#[test]
+fn a_pergunta_da_curvatura_tem_uma_porta_e_so_uma() {
+    let agulha = format!(".any({}::Surface::reads_curvature)", "ph2d_material");
+    let porta = "curvatura::alguem_le(";
+    const FONTES: [(&str, &str); 2] = [
+        ("gpu_frame.rs", include_str!("gpu_frame.rs")),
+        ("smoke_draw_thread.rs", include_str!("smoke_draw_thread.rs")),
+    ];
+    for (nome, fonte) in FONTES {
+        // ⭐ O PISO: sem ele um `include_str!` que apontasse para um ficheiro vazio deixava as duas
+        // metades trivialmente verdadeiras.
+        assert!(
+            fonte.len() > 10_000,
+            "o piso: {nome} tem {} bytes — este censo varreria quase nada",
+            fonte.len()
+        );
+        assert!(
+            fonte.contains(porta),
+            "{nome} não lê a porta `{porta}` — ou ele deixou de perguntar pela curvatura, ou \
+             escreveu a terceira resposta"
+        );
+        assert!(
+            !fonte.contains(&agulha),
+            "{nome} calcula a união da curvatura à mão — ela é uma PORTA \
+             (`ph2d_field_render::curvatura::alguem_le`), e escrita duas vezes ela diverge no dia \
+             do terceiro consumidor, com a imagem a sair plausível e errada"
+        );
+    }
+}
+
+/// ⭐⭐⭐⭐ **A CHAVE DA CACHE DO CHÃO LEVA A PRECISÃO INTEIRA, NÃO METADE DELA.**
+///
+/// ⛔⛔ **Este gate nasceu de uma auditoria (2026-09-23).** A chave levava `hit: f32` e a assadura
+/// lê `sharp.hit` **e** `sharp.normal` (o estêncil, no `ph2d_field_render::march::normals_into`).
+///
+/// ⚠️⚠️ **E era seguro por uma relação NÃO ESCRITA entre duas constantes de outra crate:** o
+/// `normal` só se solta do clamp com `lado_px > 10 000 × half_extent` e o `hit` com `> 2 500 ×`,
+/// logo o `normal` nunca se movia sem o `hit` se mover. *Subir o `NORMAL_EPS` de `1e-4` para `1e-3`
+/// inverte a ordem, e a cache devolve um campo assado com outro `ε` — em silêncio.*
+///
+/// ⛔ **Nenhum gate de produto o podia apanhar:** o `a_cache_do_chao_falta_quando_a_luz_muda` varre
+/// o zoom num regime onde as duas se movem JUNTAS. *A fixtura não contém o regime em que elas se
+/// separam, e hoje esse regime não é alcançável — o que é exactamente porque a cura tem de ser
+/// ESTRUTURAL e não uma barra.*
+///
+/// ⭐ Com a struct inteira na chave, um campo novo na [`ph2d_field_render::Sharpness`] entra nela
+/// por construção — e é isso que este gate afirma, variando **cada metade de cada vez**.
+#[test]
+fn a_chave_do_chao_leva_a_precisao_inteira() {
+    use ph2d_field_render::Sharpness;
+    let base = Sharpness::for_frame(1.6, 1080);
+    let chave = |sharp: Sharpness| super::gpu_frame_chao::ChaveDoChao {
+        fita: "fn field(p: vec3<f32>) -> f32 { return 1.0; }".to_string(),
+        consts: vec![1.0, 2.0],
+        altura: -1.0,
+        lampadas: Vec::new(),
+        materiais: Vec::new(),
+        sharp,
+        grelha: 32,
+        direccoes: 128,
+    };
+    assert!(
+        chave(base) == chave(base),
+        "a mesma precisão tem de dar a mesma chave"
+    );
+    // ⭐ **Cada metade, de cada vez** — é isso que impede a chave de levar só uma delas.
+    for (nome, outra) in [
+        (
+            "hit",
+            Sharpness {
+                hit: base.hit * 0.5,
+                ..base
+            },
+        ),
+        (
+            "normal",
+            Sharpness {
+                normal: base.normal * 0.5,
+                ..base
+            },
+        ),
+    ] {
+        assert!(
+            base != outra,
+            "CONTROLO: a fixtura do `{nome}` não move a precisão — a metade abaixo mediria o nada"
+        );
+        assert!(
+            chave(base) != chave(outra),
+            "mudar só o `{nome}` da precisão deu a MESMA chave — a assadura lê as duas metades, e \
+             uma chave que leve uma só devolve um campo assado com outro ε, em silêncio"
+        );
+    }
+}

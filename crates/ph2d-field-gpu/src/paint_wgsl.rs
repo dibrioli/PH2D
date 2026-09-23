@@ -322,3 +322,88 @@ mod extraccao_tests {
         );
     }
 }
+
+/// ⭐⭐⭐⭐ **QUEM TOCA A FITA DA PEÇA DENTRO DO PINTOR — o censo que força a RE-MEDIÇÃO.**
+///
+/// A cura da fita inerte ([`super::paint::PaintSetup::le_o_campo`]) assenta numa propriedade do
+/// GRAFO DE CHAMADAS: *das seis entradas deste passe, o `pinta` e o `pinta_bordas` alcançam a fita
+/// por UM caminho só — a curvatura.* ⛔⛔ **Ela foi medida por um script, uma vez, e não estava
+/// gateada** (auditoria de 2026-09-23): um consumidor novo de `field()` dentro do grafo do `pinta`
+/// fá-lo-ia ler uma constante, e o gate de imagem só o apanha se a fixtura exercitar esse caminho.
+///
+/// ⚠️⚠️ **Este censo NÃO prova alcançabilidade — ele prova que a POPULAÇÃO não mudou em silêncio.**
+/// É a forma honesta: um `field(` novo aqui reprova, e a cura é *re-medir de que entradas ele é
+/// alcançável* e só então pôr o nome na lista. *Uma lista que alguém tem de se lembrar de estender
+/// não protege nada; uma que reprova ao crescer, sim.*
+#[cfg(test)]
+mod censo_de_quem_toca_a_fita {
+    /// Os ficheiros que compõem o texto do pintor, na ordem em que o [`super::super::paint_fonte`]
+    /// os junta. ⚠️ O `trace_wgsl` entra porque as leis da marcha vão para o mesmo shader.
+    const FONTES: [(&str, &str); 4] = [
+        ("trace_wgsl.rs", include_str!("trace_wgsl.rs")),
+        ("paint_wgsl.rs", include_str!("paint_wgsl.rs")),
+        ("paint_wgsl_sondas.rs", include_str!("paint_wgsl_sondas.rs")),
+        ("paint_wgsl_mole.rs", include_str!("paint_wgsl_mole.rs")),
+    ];
+
+    /// ⭐ **As funções WGSL que chamam `field(`, medidas em 2026-09-22.** Cada uma com a entrada de
+    /// que ela é alcançável — que é o que a cura da fita inerte precisa de saber.
+    ///
+    /// | função | alcançável de | a fita entra? |
+    /// |---|---|---|
+    /// | `{NOME}` (o molde da curvatura) | `pinta`, `pinta_bordas` | só quando alguém lê a curvatura |
+    /// | `marcha_ate`, `visivel` | `assa_sondas` | só com `ao_rays > 0` |
+    /// | `ceu_do_chao` | `centro_e_luz` (a MARCHA, outro shader) | sempre — e ele leva a fita |
+    /// | `assa_sondas` | ele próprio | só com `ao_rays > 0` |
+    const SABIDAS: [&str; 5] = ["{NOME}", "marcha_ate", "visivel", "ceu_do_chao", "assa_sondas"];
+
+    #[test]
+    fn so_as_funcoes_medidas_tocam_a_fita_da_peca() {
+        let mut achadas: Vec<String> = Vec::new();
+        for (nome, fonte) in FONTES {
+            let mut actual: Option<String> = None;
+            for linha in fonte.lines() {
+                let t = linha.trim_start();
+                if t.starts_with("//") {
+                    continue;
+                }
+                if let Some(resto) = t.strip_prefix("fn ") {
+                    actual = resto.split('(').next().map(str::to_string);
+                }
+                // ⚠️ **`field(` e não `field`**: o segundo casa `field_shrink`, `FIELD_SLOT` e a
+                // prosa. E a chamada tem de estar numa linha de CÓDIGO, não num comentário.
+                if t.contains("field(") && !t.contains("fn field(") {
+                    if let Some(f) = &actual {
+                        if !achadas.contains(f) {
+                            achadas.push(f.clone());
+                        }
+                    } else {
+                        achadas.push(format!("{nome}: fora de qualquer função"));
+                    }
+                }
+            }
+        }
+        // ⭐ **O PISO**: se o censo varrer zero, ele é verde a medir nada — a falha muda que este
+        // repo nomeia para todo censo que varre por nome.
+        assert!(
+            achadas.len() >= SABIDAS.len(),
+            "o censo achou só {} funções a tocar a fita ({achadas:?}) — esperava ao menos {}; \
+             ou o texto mudou de ficheiro, ou a agulha deixou de casar",
+            achadas.len(),
+            SABIDAS.len()
+        );
+        let novas: Vec<&String> = achadas
+            .iter()
+            .filter(|f| !SABIDAS.contains(&f.as_str()))
+            .collect();
+        assert!(
+            novas.is_empty(),
+            "funções NOVAS a tocar a fita da peça: {novas:?}\n\n\
+             A cura da fita inerte assenta em SABER de que entradas cada uma é alcançável. ⇒ \
+             re-meça o grafo de chamadas a partir do `pinta` e do `pinta_bordas`, e só então \
+             acrescente o nome à `SABIDAS` — com a entrada ao lado, na tabela do doc. Se alguma \
+             delas for alcançável do `pinta` fora da curvatura, a fita inerte passa a entregar \
+             uma CONSTANTE a quem lê o campo, e a imagem sai plausível e errada."
+        );
+    }
+}

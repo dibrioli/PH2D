@@ -185,6 +185,37 @@ pub fn do_gbuffer(eval: &mut Hybrid, g: &crate::Gbuffer, eps: f32) -> Vec<f32> {
     out
 }
 
+/// ⭐⭐⭐⭐ **ALGUM MATERIAL DESTA CENA LÊ A CURVATURA?**
+///
+/// ⚠️ Ela é a metade que o [`assar_canais`] recebe por argumento, e existe como PORTA porque tem
+/// **dois** leitores: o caminho de referência, que a passa a ele, e o do dispositivo, que decide
+/// com ela se a fita da peça entra no shader do pintor
+/// ([`ph2d_field_gpu::paint::PaintSetup::le_o_campo`]).
+#[must_use]
+pub fn material_le(surfaces: &crate::Surfaces<'_>) -> bool {
+    surfaces
+        .all
+        .iter()
+        .any(ph2d_material::Surface::reads_curvature)
+}
+
+/// ⭐⭐⭐⭐ **ALGUÉM NESTE QUADRO LÊ A CURVATURA? — a união, e ela é UMA porta.**
+///
+/// ⛔⛔ **Ela nasceu de uma AUDITORIA (2026-09-23) que achou a união escrita DUAS vezes** — uma no
+/// caminho de referência (`smoke_draw_thread`) e outra no do dispositivo (`gpu_frame`) — com o
+/// comentário do segundo a afirmar que era *«o MESMO predicado»*. Era o mesmo como EXPRESSÃO e não
+/// como mecanismo: *uma lei escrita em dois sítios ainda não é uma lei — só uma porta é.*
+///
+/// ⚠️ **O modo de falha que isto impede é MUDO:** no dia em que nascer um terceiro leitor da
+/// curvatura, se o lado do dispositivo ficar atrás, a fita inerte entra, o `curvatura_em` do shader
+/// lê uma constante, e a imagem sai plausível e errada. O gate que existia
+/// (`quem_le_o_campo_continua_a_leva_lo_no_shader`) entra por **um** dos dois sítios e a fixtura
+/// dele usa a única propriedade que os dois já conheciam.
+#[must_use]
+pub fn alguem_le(surfaces: &crate::Surfaces<'_>, pres: &crate::Presentation) -> bool {
+    material_le(surfaces) || pres.reads_curvature()
+}
+
 /// ⭐⭐⭐ **A PORTA QUE ASSA OS DOIS CANAIS DE CURVATURA** — a decisão inteira, num sítio só.
 ///
 /// # ⛔⛔ Porque ela existe, e porque ela é uma PORTA e não uma conveniência

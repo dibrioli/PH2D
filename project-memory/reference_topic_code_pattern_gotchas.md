@@ -46,3 +46,28 @@ metadata:
 - ⛔⛔ [Um painel pode ter UMA coluna de nome por FAMÍLIA de linha (caixa · chip · número), as três no mesmo cartão — «este painel já foi convertido?» é a pergunta errada](feedback_a_panel_can_hold_one_name_column_per_family_of_row.md)
 - ⛔ [Medir um texto num peso e pintá-lo noutro faz o pintor CORTÁ-LO (`0....`, e ao afastar some) — a porta é `title_elided_width`, ao lado do pintor](feedback_measuring_a_text_at_one_weight_and_painting_it_at_another_elides_the_text.md)
 - ⛔⛔ [`try_query` com um `Option<&T>` devolve NONE se o MUNDO não conhece o tipo — a porta responde «ninguém» e nada o diz (um sinal por tag não alcançava nada)](feedback_a_try_query_with_an_optional_component_answers_nobody.md)
+
+---
+
+## «Vazio quer dizer o valor de omissão» perde em silêncio todo valor que não seja ele
+
+⛔⛔ **Medido 2026-09-22 (`ph2d-gpu-cook::tex_runs`).** A partição de texturas do cozimento deixa a
+lista VAZIA quando não há nada a dizer, e o desenho lê isso como *«o átlas, no modo de sempre»* —
+uma convenção honesta e byte-idêntica enquanto o único eixo era a textura. No dia em que o run
+passou a carregar também a **mistura**, o ramo vazio ficou sem onde a levar: *uma cena de Motion
+comum é toda átlas*, logo o caso em que a lista fica vazia é exactamente o caso NORMAL de um
+artista que escolhe outro modo.
+
+⭐ **A cura não é encher a lista sempre** (isso mudaria o desenho de toda cena que hoje lá cai): é
+o produtor emitir um item EXPLÍCITO só quando o valor não é o de omissão, por uma **saída única**
+que os dois ramos de «não há nada a dizer» partilham. Escrita duas vezes, um deles a esquecer o
+campo novo seria a saída a mudar conforme um detalhe do grafo — a forma que ninguém liga a uma
+causa.
+
+**Why:** uma lista vazia codifica um TUPLO de omissões, e acrescentar um eixo ao item aumenta esse
+tuplo sem que nada no código o diga.
+
+**How to apply:** ao acrescentar um campo a um item de uma lista cujo VAZIO tem significado,
+pergunte o que o vazio passa a afirmar sobre o campo novo. Se ele afirma o valor de omissão, o
+produtor tem de deixar de poder ficar vazio quando o valor não é esse — e o gate leva o CONTROLO
+(no valor de omissão a lista continua vazia, byte a byte).

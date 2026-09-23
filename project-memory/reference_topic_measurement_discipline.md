@@ -1262,3 +1262,31 @@ vê enquanto a população não muda.
 **How to apply:** quando um número por-item vier de `total / n`, escreva no doc que o fixo foi
 absorvido. A partir daí só **diferenças** (e não somas nem quocientes) são transportáveis para
 outro `n` — e um roteiro de smoke que precise de um absoluto tem de o MEDIR, nunca derivá-lo.
+
+---
+
+## Um gate que prova que o valor chega ao BUFFER está uma camada aquém do PIXEL
+
+⛔⛔ **Medido 2026-09-22 (`ph2d-render` / `ph2d-gpu-cook`).** O `motion.output` declara um param
+`blend` com rótulos de artista; a `sink_style` lê-o, o lowering do dispositivo embala-o em
+`flip_uv` bits 5-7, e um gate afirmava — com prova de mutação — que o tag chega ao buffer de
+instâncias. O desenho então fazia `set_pipeline(blend_pipeline(0))`, **cravado, fora do laço dos
+runs**, e descartava-o. Os cinco modos de mistura desenhavam todos em `Mix`.
+
+⚠️ **O sinal que o denuncia está escrito no próprio tipo:** o atributo da instância diz
+`bits5-7=blend[CPU-only]`. *Um campo que o shader não lê tem um consumidor na CPU, e a pergunta é
+sempre «QUEM, e ele decide ou descarta?»* — a família que o `CLAUDE.md` §5.0 chama de **o
+consumidor que PROJECTA o valor fora**: nenhuma sonda de «quem lê este campo?» o vê, porque ele
+**é** lido.
+
+⭐ A régua que o apanhou desenha a MESMA cena que o gate da CPU já tinha e compara o **pixel**, com
+a tabela do irmão em vez de uma barra própria — *duas rotas que desenham a mesma cena têm de
+aterrar no mesmo byte, e uma barra própria seria a segunda resposta à mesma pergunta*.
+
+**Why:** um gate de paridade que lê o artefacto intermédio (o buffer, a corrente, a struct) prova a
+metade de cima da corrente e fica verde sobre toda perda que aconteça abaixo dele.
+
+**How to apply:** quando um valor viaja por N camadas até ao ecrã, pergunte em qual delas o gate
+entra. Se ele entra acima da última, escreva o irmão que mede a ÚLTIMA — e se a saída final for uma
+imagem, meça o pixel. O custo é baixo quando já existe um gate de pixel do outro lado: copie a
+fixtura e troque a rota.

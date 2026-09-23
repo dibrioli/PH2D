@@ -1166,3 +1166,252 @@ fn diag_a_fita_inerte_no_relogio_do_quadro() {
     }
     println!("  ⇒ a razão sem/com vai de {melhor:.2}x a {pior:.2}x\n");
 }
+
+/// ⏱️⭐⭐⭐⭐ **A CURA DA FITA INERTE SOBREVIVE AO CAMINHO REAL? — a peça com LEI DO DONO.**
+///
+/// ⛔⛔ **A medição que decidiu a cura correu com `owners: None`, e o produto põe lei do dono em
+/// TODA peça com mais de uma folha** ([`crate::materials::Table::build`]:
+/// `(placed.len() > 1).then(...)`). E a lei do dono emite **uma FITA INTEIRA por folha**
+/// (`dono_folha_0`, `dono_folha_1`, …, em [`ph2d_field_eval::owners_wgsl`]) ⇒ *o texto do shader do
+/// pintor volta a levar a geometria da peça, N vezes, e a cura pode não alcançar o caso do artista.*
+///
+/// ⇒ esta sonda mede o MESMO gesto — acrescentar uma forma — com a lei do dono montada como o
+/// produto a monta, e põe as quatro células a par.
+///
+/// ⚠️ **A 1.ª pintura de cada peça é a que interessa aqui** (é ela que o artista espera), logo não
+/// há mínimo de N: o que se quer medir **é** a compilação.
+#[test]
+#[ignore = "sonda de diagnóstico: mede a cura da fita inerte no caminho com lei do dono"]
+fn diag_a_fita_inerte_com_a_lei_do_dono() {
+    use ph2d_field::{FieldDoc, NodeId, Primitive, Xform};
+    let Some(t) = crate::gpu_frame::shared() else {
+        println!("sem adaptador — saltado");
+        return;
+    };
+    let olhar = ph2d_view_transform::Look::default();
+    const BG: [u8; 4] = [0, 0, 0, 0];
+    let reg = crate::smoke::sampled_registry();
+    let cam = ph2d_field_render::Orbit::default();
+    let luz = [crate::gpu_frame::tests_lampada(&cam)];
+
+    // Uma peça de `n` bolas unidas — e as folhas POSTAS, que é o que a lei do dono recebe.
+    let peca = |n: usize| -> (FieldDoc, Vec<FieldDoc>) {
+        #[allow(clippy::cast_precision_loss)]
+        let folhas: Vec<ph2d_field::Node> = (0..n)
+            .map(|i| {
+                ph2d_field_eval::leaf(
+                    Primitive::Sphere { radius: 0.35 },
+                    Xform::at(i as f32 * 0.4 - 0.4, 0.0, 0.0),
+                )
+            })
+            .collect();
+        let mut nos = folhas.clone();
+        let mut raiz = NodeId(0);
+        for i in 1..n {
+            nos.push(ph2d_field::Node {
+                xform: Xform::IDENTITY,
+                kind: ph2d_field::NodeKind::Combine {
+                    op: ph2d_field::Op::Union(ph2d_field::Blend::Sharp),
+                    children: vec![raiz, NodeId(i as u32)],
+                },
+                mods: Vec::new(),
+                verb: None,
+            });
+            raiz = NodeId((nos.len() - 1) as u32);
+        }
+        let postas = folhas
+            .into_iter()
+            .map(|f| FieldDoc::new(vec![f], NodeId(0)).expect("a folha"))
+            .collect();
+        (FieldDoc::new(nos, raiz).expect("a peça"), postas)
+    };
+
+    println!("\n  {}", contexto());
+    println!("  folhas · lei do dono ·  fita inerte ·   1.ª pintura");
+    println!("  ───────·─────────────·──────────────·───────────────");
+    for com_dono in [false, true] {
+        for fita_inerte in [false, true] {
+            for n in [2usize, 3] {
+                let (doc, postas) = peca(n);
+                let owners = com_dono.then(|| {
+                    ph2d_field_eval::owners::Owners::new(
+                        &postas,
+                        &reg,
+                        ph2d_field_render::hit_tolerance(
+                            cam.half_extent,
+                            f32::from(u16::try_from(LH).unwrap_or(u16::MAX)),
+                        ),
+                    )
+                });
+                let mats: Vec<ph2d_material::Surface> = (0..n)
+                    .map(|_| ph2d_material::OpenPbr::default().prepare())
+                    .collect();
+                let surfaces = ph2d_field_render::Surfaces {
+                    all: &mats,
+                    owners: owners.as_ref(),
+                };
+                let t0 = std::time::Instant::now();
+                let saiu = crate::gpu_frame::paint_com(
+                    t,
+                    &doc,
+                    &reg,
+                    &cam,
+                    &luz,
+                    &surfaces,
+                    &ph2d_field_render::Presentation::of(olhar),
+                    BG,
+                    None,
+                    LW,
+                    LH,
+                    false,
+                    crate::gpu_frame::Sonda {
+                        fita_inerte,
+                        ..crate::gpu_frame::Sonda::default()
+                    },
+                );
+                #[allow(clippy::cast_possible_truncation)]
+                let ms = t0.elapsed().as_secs_f32() * 1e3;
+                println!(
+                    "  {n:>6} · {:>11} · {:>12} · {}",
+                    if com_dono { "SIM" } else { "não" },
+                    if fita_inerte { "SIM" } else { "não" },
+                    if saiu.is_some() {
+                        format!("{ms:10.2} ms")
+                    } else {
+                        "     na CPU".to_string()
+                    }
+                );
+            }
+        }
+    }
+    println!();
+}
+
+/// ⭐⭐⭐⭐ **RETIRAR A LEI DO DONO A UMA PEÇA DE MATERIAL ÚNICO NÃO MUDA UM BYTE.**
+///
+/// A decisão vive no [`crate::materials::Table::build`] e o gate dela é o
+/// `n_folhas_com_o_mesmo_material_nao_pedem_lei_do_dono`, que afirma a ESCOLHA. Este afirma o
+/// **PIXEL**, que é o que a escolha promete: *com todos os materiais iguais o `dono_mix` devolve um
+/// par cujos `ler_mat` dão o MESMO `Mat`, logo a lei calcula `ca + (ca − ca) · t` — que é `ca`
+/// exactamente, porque o termo é `0,0 · t`.*
+///
+/// ⛔⛔ **Sem esta metade a cura seria uma promessa de álgebra.** Ela vale `300×` no caminho do
+/// artista (acrescentar uma forma: `2 310 → 7,85 ms`), e uma cura desse tamanho sobre uma conta que
+/// ninguém correu é onde um defeito mudo se instala.
+///
+/// ⭐ **E o CONTROLO é a segunda metade:** com materiais DISTINTOS a lei do dono TEM de mudar a
+/// imagem. Sem ele, um `dono_mix` que devolvesse sempre a folha `0` passava a primeira metade e
+/// pintava a peça inteira com o material da primeira folha.
+#[test]
+#[ignore = "precisa de GPU"]
+fn a_lei_do_dono_e_inerte_numa_peca_de_material_unico() {
+    use ph2d_field::{FieldDoc, NodeId, Primitive, Xform};
+    let Some(t) = crate::gpu_frame::shared() else {
+        println!("sem adaptador — saltado");
+        return;
+    };
+    let olhar = ph2d_view_transform::Look::default();
+    const BG: [u8; 4] = [0, 0, 0, 0];
+    let reg = crate::smoke::sampled_registry();
+    let cam = ph2d_field_render::Orbit::default();
+    let luz = [crate::gpu_frame::tests_lampada(&cam)];
+
+    let folha =
+        |x: f32| ph2d_field_eval::leaf(Primitive::Sphere { radius: 0.35 }, Xform::at(x, 0.0, 0.0));
+    let doc = FieldDoc::new(
+        vec![
+            folha(-0.3),
+            folha(0.3),
+            ph2d_field::Node {
+                xform: Xform::IDENTITY,
+                kind: ph2d_field::NodeKind::Combine {
+                    op: ph2d_field::Op::Union(ph2d_field::Blend::Sharp),
+                    children: vec![NodeId(0), NodeId(1)],
+                },
+                mods: Vec::new(),
+                verb: None,
+            },
+        ],
+        NodeId(2),
+    )
+    .expect("as duas");
+    let postas: Vec<FieldDoc> = [-0.3f32, 0.3]
+        .into_iter()
+        .map(|x| FieldDoc::new(vec![folha(x)], NodeId(0)).expect("a folha"))
+        .collect();
+    let owners = ph2d_field_eval::owners::Owners::new(
+        &postas,
+        &reg,
+        ph2d_field_render::hit_tolerance(
+            cam.half_extent,
+            f32::from(u16::try_from(LH).unwrap_or(u16::MAX)),
+        ),
+    );
+    let pinta = |mats: &[ph2d_material::Surface], com_dono: bool| {
+        let surfaces = ph2d_field_render::Surfaces {
+            all: mats,
+            owners: com_dono.then_some(&owners),
+        };
+        crate::gpu_frame::paint(
+            t,
+            &doc,
+            &reg,
+            &cam,
+            &luz,
+            &surfaces,
+            &ph2d_field_render::Presentation::of(olhar),
+            BG,
+            None,
+            LW,
+            LH,
+            false,
+        )
+        .expect("o pintor")
+    };
+
+    // ── 1. MATERIAL ÚNICO: a lei do dono é inerte ao bit ──────────────────────────────────────
+    let iguais = [
+        ph2d_material::OpenPbr::default().prepare(),
+        ph2d_material::OpenPbr::default().prepare(),
+    ];
+    let com = pinta(&iguais, true);
+    let sem = pinta(&iguais, false);
+    let do_fundo = sem
+        .rgba
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .filter(|p| **p == BG)
+        .count();
+    let total = sem.rgba.len() / 4;
+    assert!(
+        do_fundo * 10 < total * 9 && do_fundo * 10 > total,
+        "CONTROLO: {do_fundo} de {total} píxeis são o fundo — uma imagem quase vazia é \
+         trivialmente igual a outra"
+    );
+    assert_eq!(
+        com.rgba, sem.rgba,
+        "retirar a lei do dono a uma peça de material ÚNICO mudou a imagem — a conta \
+         `ca + (ca − ca) · t` não está a dar `ca`, e a decisão do `Table::build` é insegura"
+    );
+
+    // ── 2. O CONTROLO: com materiais DISTINTOS ela TEM de mudar a imagem ──────────────────────
+    let distintos = [
+        ph2d_material::OpenPbr {
+            base_color: [0.9, 0.1, 0.1],
+            ..ph2d_material::OpenPbr::default()
+        }
+        .prepare(),
+        ph2d_material::OpenPbr {
+            base_color: [0.1, 0.1, 0.9],
+            ..ph2d_material::OpenPbr::default()
+        }
+        .prepare(),
+    ];
+    assert_ne!(
+        pinta(&distintos, true).rgba,
+        pinta(&distintos, false).rgba,
+        "CONTROLO: com materiais DISTINTOS a lei do dono não mudou a imagem — então a metade de \
+         cima não afirma nada, e um `dono_mix` que devolvesse sempre a folha 0 passaria"
+    );
+}

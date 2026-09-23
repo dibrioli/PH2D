@@ -37,6 +37,29 @@ fn a_world() -> (ph2d_ecs::SimWorld, bevy_ecs::entity::Entity) {
     (sim, root)
 }
 
+/// ⭐⭐⭐ **A MESMA peça, com os materiais DISTINTOS** — que é a condição da lei do dono desde
+/// 2026-09-22.
+///
+/// ⛔⛔ **Ela existe porque uma premissa MORREU:** até esse dia o `Table::build` dava lei do dono a
+/// **toda** peça com mais de uma folha, e dois gates deste ficheiro liam `t.owners` sobre a
+/// [`a_world`], cujos materiais são os de omissão. Com a lei do dono a passar a pedir materiais
+/// **distintos** (ela emite uma fita por folha no TEXTO do shader, e acrescentar uma forma passava
+/// a custar `2 310 ms` em vez de `7,85`), aqueles dois gates ficaram a afirmar sobre uma peça que
+/// já não a tem. *A cura é a fixtura mudar-se para onde o sujeito vive, nunca o gate afrouxar.*
+fn a_world_de_dois_materiais() -> (ph2d_ecs::SimWorld, bevy_ecs::entity::Entity) {
+    let (mut sim, root) = a_world();
+    let folhas = leaves_of(sim.world(), root);
+    // A da esquerda ganha um azul; a da direita fica no material de omissão.
+    ph2d_field_ecs::set_param(
+        sim.world_mut(),
+        folhas[0],
+        ph2d_field::Param::Material(3),
+        0.0,
+    )
+    .expect("o azul");
+    (sim, root)
+}
+
 fn leaves_of(
     world: &bevy_ecs::world::World,
     root: bevy_ecs::entity::Entity,
@@ -120,7 +143,9 @@ fn each_leaf_wears_its_own_material() {
 /// deixa de ter efeito), ou `true` sempre (o quadro re-traça para sempre).
 #[test]
 fn changing_a_number_refreshes_the_surfaces_and_not_the_geometry() {
-    let (mut sim, root) = a_world();
+    // ⚠️ A fixtura leva materiais DISTINTOS porque a metade de baixo lê `t.owners` para observar
+    // que a geometria não foi tocada — ver [`a_world_de_dois_materiais`].
+    let (mut sim, root) = a_world_de_dois_materiais();
     let folhas = leaves_of(sim.world(), root);
     let mut t = Table::build(sim.world(), root, 0.8, 480.0);
     let antes = t.surfaces[0].direct([0.0, 0.0, 1.0], [0.0, 0.0, 1.0], [0.3, 0.6, 0.74], [3.0; 3]);
@@ -206,7 +231,12 @@ fn a_single_leaf_asks_nobody_who_it_belongs_to() {
 #[test]
 fn dragging_a_colour_compiles_no_tape_at_all() {
     use std::sync::atomic::Ordering;
-    let (mut sim, root) = a_world();
+    // ⚠️⚠️ **A fixtura leva materiais DISTINTOS, e foi o PISO deste gate que o exigiu.** Ele
+    // reprovou no dia em que a lei do dono passou a pedir materiais distintos, com a mensagem que
+    // o próprio doc dele prevê por escrito (*«um `Table::build` que deixasse de compilar leria `0`
+    // nos dois lados e o gate ficaria verde a medir nada»*). *Um piso que apanha a sua própria
+    // premissa a morrer é a melhor prova de que ele tinha de existir.*
+    let (mut sim, root) = a_world_de_dois_materiais();
     let folhas = leaves_of(sim.world(), root);
 
     // ── O lado CARO: construir a tabela compila uma fita por folha ──
@@ -497,4 +527,53 @@ fn no_material_a_gesture_can_produce_returns_negative_light() {
              {m:?}"
         );
     }
+}
+
+/// ⭐⭐⭐⭐ **N FOLHAS COM O MESMO MATERIAL NÃO PEDEM LEI DO DONO — e isso vale `300×`.**
+///
+/// A lei do dono emite **uma fita inteira por folha** ([`ph2d_field_eval::owners_wgsl`]:
+/// `dono_folha_0`, `dono_folha_1`, …) e essas fitas entram no **TEXTO** do shader do pintor, cujo
+/// cache tem por chave o texto ⇒ *toda forma acrescentada é um texto novo e uma compilação inteira
+/// do driver*. Medido 2026-09-22 (`docs/Render3d/03` §W9): com lei do dono, acrescentar uma forma
+/// custa **`2 310 ms`**; sem ela, **`7,85 ms`**.
+///
+/// ⚠️⚠️ **A saída é byte-idêntica por CONSTRUÇÃO:** com todos os materiais iguais o `dono_mix`
+/// devolve `(a, b, t)` cujos `ler_mat(a)` e `ler_mat(b)` dão o MESMO `Mat`, logo a lei calcula
+/// `ca + (ca − ca) · t` — que é `ca` **exactamente**, porque o termo é `0,0 · t`. O gate de PIXEL
+/// que o afirma vive no [`crate::preview::device_tests`]; este afirma a DECISÃO.
+///
+/// ⛔ **E isto não é o caso raro, é o caso NORMAL de quem modela:** uma peça a ser construída tem o
+/// material de omissão em toda folha. O caso com materiais distintos é o do gate irmão
+/// [`each_leaf_wears_its_own_material`], que continua a pedir a lei.
+///
+/// ⭐ **O CONTROLO está dentro**, e é ele que impede a cura de virar *«nunca há lei do dono»*:
+/// autorar um material diferente numa folha traz a lei de volta na mesma fixtura.
+#[test]
+fn n_folhas_com_o_mesmo_material_nao_pedem_lei_do_dono() {
+    let (mut sim, root) = a_world();
+    let folhas = leaves_of(sim.world(), root);
+    assert_eq!(folhas.len(), 2, "a fixtura tem de ter DUAS folhas");
+
+    let t = Table::build(sim.world(), root, 0.8, 480.0);
+    assert_eq!(t.surfaces.len(), 2, "uma superfície por folha");
+    assert!(
+        t.owners.is_none(),
+        "duas folhas com o MESMO material pediram lei do dono — ela é inerte aqui e põe uma fita \
+         por folha no texto do shader, o que faz toda forma acrescentada recompilar o pintor"
+    );
+
+    // ⭐ **O CONTROLO**: um material autorado diferente traz a lei de volta.
+    ph2d_field_ecs::set_param(
+        sim.world_mut(),
+        folhas[0],
+        ph2d_field::Param::Material(3),
+        0.0,
+    )
+    .expect("o azul");
+    let t = Table::build(sim.world(), root, 0.8, 480.0);
+    assert!(
+        t.owners.is_some(),
+        "CONTROLO: com materiais DISTINTOS a lei do dono tem de existir — sem esta metade a cura \
+         lê-se como «nunca há lei do dono» e cada folha passaria a usar o material da primeira"
+    );
 }

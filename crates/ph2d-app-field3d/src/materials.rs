@@ -270,7 +270,25 @@ impl Table {
         let (authored, placed) = leaves(world, root);
         // ⭐ **Uma folha só não precisa de dono**, e não perguntar é exactamente o custo zero — é
         // isto que faz o quadro de uma peça simples continuar a ser o de sempre.
-        let owners = (placed.len() > 1).then(|| {
+        //
+        // ⭐⭐⭐⭐ **E N folhas com o MESMO material também não precisam, e isso vale `300×`**
+        // (`docs/Render3d/03` §W9, 2026-09-22). A lei do dono emite **uma fita inteira por folha**
+        // ([`ph2d_field_eval::owners_wgsl`]: `dono_folha_0`, `dono_folha_1`, …), e essas fitas
+        // entram no TEXTO do shader do pintor ⇒ *toda forma acrescentada é um texto novo e uma
+        // compilação inteira do driver*. Medido: com lei do dono, acrescentar uma forma custa
+        // `2 310 ms`; sem ela, **`7,85 ms`**.
+        //
+        // ⚠️⚠️ **A saída é byte-idêntica por CONSTRUÇÃO, e não por promessa:** com todos os
+        // materiais iguais, o `dono_mix` devolve `(a, b, t)` cujos `ler_mat(a)` e `ler_mat(b)` dão
+        // o MESMO `Mat`, logo a lei calcula `ca + (ca − ca) · t`, que é `ca` **exactamente** (o
+        // termo é `0,0 · t`). Sem a lei ela calcula `ca` directamente. *As duas rotas são a mesma
+        // conta.*
+        //
+        // ⛔ **E isto NÃO é uma optimização do caso raro: é o caso NORMAL de quem modela** — uma
+        // peça a ser construída tem o material de omissão em toda folha, e só ganha materiais
+        // distintos quando o artista os autora.
+        let so_um_material = authored.windows(2).all(|w| w[0] == w[1]);
+        let owners = (placed.len() > 1 && !so_um_material).then(|| {
             ph2d_field_eval::owners::Owners::new(
                 &placed,
                 &crate::smoke::sampled_registry(),

@@ -382,6 +382,45 @@ entrava na conta. *A cura foi a fixtura e o `--test-threads=1` no arnês, nunca 
 frouxa.* Mutação **3 a sangrar + 1 NOMEADA** (trocar as constantes da fita inerte por `Vec::new()`
 é hoje inobservável: aquela porta lê só o `.source`).
 
+### ⛔⛔⛔ E A CURA DA FITA INERTE NÃO ALCANÇAVA A PEÇA DO ARTISTA — a lei do dono repunha o preço
+
+⚠️⚠️ **A medição que decidiu a fita inerte correu com `owners: None`, e o produto põe lei do dono em
+TODA peça com mais de uma folha** (`materials::Table::build`: `(placed.len() > 1).then(...)`). E ela
+emite **uma FITA INTEIRA POR FOLHA** (`dono_folha_0`, `dono_folha_1`, … em
+[`ph2d_field_eval::owners_wgsl`]) ⇒ *o texto do shader do pintor volta a levar a geometria da peça, N
+vezes*. Medido pelo caminho do produto (sonda `diag_a_fita_inerte_com_a_lei_do_dono`):
+
+| folhas | lei do dono | fita inerte | 1.ª pintura |
+|---:|---|---|---:|
+| 3 | não | **SIM** | **`7,85 ms`** |
+| 3 | não | não | `2 122 ms` |
+| 3 | **SIM** | **SIM** | `2 311 ms` |
+| 3 | **SIM** | não | `2 316 ms` |
+
+⇒ **com lei do dono a cura era INERTE.** *Eu tinha medido um caso que o produto só alcança numa peça
+de UMA forma, e reportei `19×` ao dono sobre ele.*
+
+⭐⭐⭐⭐ **A cura da cura é UMA LINHA, e ela não é uma optimização do caso raro — é o caso NORMAL de
+quem modela:** a lei do dono passa a pedir materiais **DISTINTOS** e não apenas duas folhas. Uma
+peça a ser construída tem o material de omissão em toda folha, e só ganha materiais distintos quando
+o artista os autora.
+
+⚠️ **E é byte-idêntica por CONSTRUÇÃO:** com todos os materiais iguais o `dono_mix` devolve `(a, b,
+t)` cujos `ler_mat(a)` e `ler_mat(b)` dão o MESMO `Mat`, logo a lei calcula `ca + (ca − ca) · t`, que
+é `ca` **exactamente** (o termo é `0,0 · t`). Dois gates: o
+`n_folhas_com_o_mesmo_material_nao_pedem_lei_do_dono` afirma a ESCOLHA e o
+`a_lei_do_dono_e_inerte_numa_peca_de_material_unico` afirma o **PIXEL** — *uma cura de `300×` sobre
+uma conta que ninguém correu é onde um defeito mudo se instala.* Os dois levam o CONTROLO dos
+materiais distintos, senão a cura lê-se como *«nunca há lei do dono»* e a peça inteira passa a usar
+o material da primeira folha.
+
+⭐⭐ **E o PISO de um gate pré-existente apanhou a mudança, com a mensagem que o doc dele prevê por
+escrito** (*«um `Table::build` que deixasse de compilar leria `0` nos dois lados e o gate ficaria
+verde a medir nada»*): dois gates liam `t.owners` sobre a fixtura de materiais iguais e a premissa
+deles morreu. A cura foi mudá-los para uma fixtura de materiais **distintos** — *onde o sujeito
+vive* —, nunca afrouxá-los. Mutação **3 de 3**, e a que nunca constrói a lei sangra em **três**
+gates.
+
 ### ⛔⛔ E O «SEGUNDO PRÉMIO» DA FITA INERTE NÃO EXISTE — refutado pelo A/B, menos numa cena
 
 Eu tinha escrito que a cura da fita inerte também parecia acelerar o quadro (cenas de fita grande a

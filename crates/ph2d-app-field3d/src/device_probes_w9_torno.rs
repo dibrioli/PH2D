@@ -82,7 +82,7 @@ fn diag_o_tecto_da_wave_do_torno() {
     let reg = crate::smoke::sampled_registry();
 
     println!(
-        "\n  {}\n  peça · primitivas · guardados · vivos · quadro ms · 1.ª ms",
+        "\n  {}\n  peça · primitivas · guardados · vivos · quadro ms · 1.ª ms · passos/acerto",
         super::super::contexto()
     );
 
@@ -152,8 +152,19 @@ fn diag_o_tecto_da_wave_do_torno() {
             _ => 0,
         };
         let minimo = tempos.iter().copied().fold(f32::INFINITY, f32::min);
+        // ⭐⭐⭐ **QUANTAS VEZES CADA RAIO AVALIA O CAMPO** — sem esta coluna o relógio não se
+        // atribui: um campo que é um mau minorante de distância faz TODO raio rastejar, e isso não
+        // aparece em contagem de linhas nenhuma. ⚠️ Medida na CPU (o contador é dela) sobre uma tela
+        // pequena — o que se quer é a RAZÃO, que não depende do tamanho.
+        use std::sync::atomic::Ordering;
+        ph2d_field_render::STEP_SAMPLES.store(0, Ordering::Relaxed);
+        let g = ph2d_field_render::trace(doc, &reg, &cam, 96, 54);
+        let acertos = g.hit.iter().filter(|h| **h).count().max(1);
+        #[allow(clippy::cast_precision_loss)]
+        let por_acerto =
+            ph2d_field_render::STEP_SAMPLES.load(Ordering::Relaxed) as f32 / acertos as f32;
         println!(
-            "  {nome:>20} · {prim:>10} · {:>9} · {:>5} · {minimo:>9.2} · {:>7.2}",
+            "  {nome:>20} · {prim:>10} · {:>9} · {:>5} · {minimo:>9.2} · {:>7.2} · {por_acerto:>8.1}",
             forma.guardados, forma.vivos, tempos[0]
         );
     }

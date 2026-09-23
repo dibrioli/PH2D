@@ -497,85 +497,64 @@ fn a_lei_do_dono_e_inerte_numa_peca_de_material_unico() {
     );
 }
 
-/// ⛔⛔⛔ **NENHUMA REGIÃO DO VASO PAGA A ÁRVORE INTEIRA** — o gate da costura do eixo, na peça do
-/// PRODUTO.
+/// ⛔⛔⛔ **O VASO DESCE POR FÓRMULA, E A FITA DELE CABE NUMA MÃO** — e este gate SUBSTITUI um cuja
+/// premissa morreu no mesmo dia.
 ///
-/// # O defeito, medido
+/// # A premissa que morreu, e ela era minha
 ///
-/// O [`ph2d_field_eval::profile::sd_profile_in_region`] tirava as arestas do eixo com um `continue`
-/// **depois** do corte, e o corte não sabia disso: quando ele devolvia exactamente a costura, o
-/// filtro a jusante esvaziava a conta e a região recaía na árvore **INTEIRA**. Medido no vaso da
-/// cena `5` numa grelha `32×32` em `(u, v)`: **`5` de `1 024`** células pagavam `931` linhas de
-/// WGSL em vez de `~50` (**`18×`**), e eram as células **sobre o eixo à altura da costura** —
-/// dentro do sólido, por onde a marcha passa.
+/// De manhã este sítio tinha o `nenhuma_regiao_do_vaso_paga_a_arvore_inteira`: ele varria uma
+/// grelha `32×32` em `(u, v)`, compilava a região de cada célula e exigia que o pior caso cortasse
+/// pelo menos `2×` — a cura da costura do eixo. ⚠️ **À tarde o dono mandou o torno descer por
+/// FÓRMULA**, e uma fórmula **não tem arestas para cortar**: a região dela é a identidade, o pior
+/// caso é `1,0×`, e o gate reprovou sobre produto correcto.
 ///
-/// # ⚠️ Porque este gate existe ao lado do unitário
+/// ⭐ A LEI da costura do eixo continua gateada, no sítio onde ela vive e sobre uma fixtura que a
+/// contém — `ph2d-field-eval`,
+/// `profile_index::eixo_tests::uma_regiao_sobre_a_costura_nao_paga_a_arvore_inteira`. O que se
+/// perdeu foi a metade *«na peça do dono»*, porque a peça do dono **deixou de tomar aquele
+/// caminho**. ⇒ *o que fica aqui é a afirmação NOVA que o produto passou a fazer.*
 ///
-/// O irmão de `ph2d-field-eval`
-/// (`profile_index::eixo_tests::uma_regiao_sobre_a_costura_nao_paga_a_arvore_inteira`) prova a
-/// **LEI** sobre a fixtura mínima. Este prova a mesma coisa sobre **o desenho do dono**, que é
-/// quem tem arcos, `24` primitivas e a costura onde ela de facto está. *Uma lei verificada numa
-/// fixtura ainda pode ser contrariada pela peça que ship.*
+/// # O que ele afirma
 ///
-/// ⭐ **E o CONTROLO é o piso de população:** sem ele, um dia em que a cena `5` deixe de ser um
-/// `Revolve` — ou em que o `RegionCompiler` deixe de especializar — este gate varre **zero**
-/// células e fica verde a afirmar nada.
+/// Que a peça da cena `5` — `24` primitivas desenhadas, `931` linhas pela lei exacta — desce em
+/// **`124`** linhas, e que a fita dela é pequena o bastante para o prévio não ter de baixar a
+/// resolução (medido: o divisor foi de `2` para `1`, `32,53 → 16,63 ms`).
+///
+/// ⭐ **E o CONTROLO é a lei exacta ao lado**: sem ele, uma fórmula que devolvesse uma constante
+/// passaria a primeira metade.
 #[test]
-fn nenhuma_regiao_do_vaso_paga_a_arvore_inteira() {
-    const LADO: usize = 32;
+fn o_vaso_desce_por_formula_e_a_fita_cabe_numa_mao() {
+    // ⚠️ Medido: `124` linhas pela fórmula contra `931` pela lei exacta. A barra é `200` — folga de
+    // `60 %` sobre o medido e `4,6×` abaixo da lei exacta —, ⛔ não um número redondo: ela é o degrau
+    // em que a fita deixa de caber no orçamento do prévio com divisor `1` (`4,32 + 0,030 × 200 ≈
+    // 10,3 ms` contra os `16,7`).
+    const TECTO: usize = 200;
     let doc = crate::smoke::scenes::vaso(ph2d_field::DEFAULT_PROFILE_RESOLUTION);
     let ph2d_field::NodeKind::Leaf(ph2d_field::Primitive::Revolve { profile }) =
         &doc.nodes()[0].kind
     else {
         panic!("a cena 5 é um Revolve — se deixou de ser, este gate mede outra peça");
     };
-    let rc = ph2d_field_eval::RegionCompiler::new(&doc);
-    assert!(rc.is_worth_it(), "o torno é uma forma de perfil");
-    let inteira = ph2d_field_eval::Field::new(&doc)
+    let pela_formula = ph2d_field_eval::Field::new(&doc)
         .tape_shape()
         .expect("a fita do torno")
         .guardados;
-    let (plo, phi) = profile.bounds();
-    // ⚠️ A caixa de mundo é **degenerada em `z`**, que é o que faz a região em `(u, v)` ser
-    // exactamente o rectângulo pedido (o `u` do torno é `√(x² + z²)`).
-    #[allow(clippy::cast_precision_loss)]
-    let (pu, pv) = (phi[0] / LADO as f32, (phi[1] - plo[1]) / LADO as f32);
-    let (mut medidas, mut degeneradas, mut pior) = (0usize, 0usize, 0usize);
-    for iv in 0..LADO {
-        for iu in 0..LADO {
-            #[allow(clippy::cast_precision_loss)]
-            let (a, b) = (iu as f32 * pu, plo[1] + iv as f32 * pv);
-            let t = rc.compile(&doc, [a, b, 0.0], [a + pu, b + pv, 0.0]);
-            let linhas = ph2d_field_eval::Field::from_tree(&t)
-                .tape_shape()
-                .map_or(0, |s| s.guardados);
-            medidas += 1;
-            pior = pior.max(linhas);
-            if linhas >= inteira {
-                degeneradas += 1;
-            }
-        }
-    }
-    assert_eq!(
-        medidas,
-        LADO * LADO,
-        "CONTROLO: o gate varreu {medidas} células de {} — ele está a medir o nada",
-        LADO * LADO
-    );
-    // ⭐⭐⭐ **UMA asserção, e ela diz as duas coisas.**
-    //
-    // ⚠️⚠️ **A 1.ª redacção tinha DUAS metades e a de cima era IMPLICADA pela de baixo** — uma
-    // mutação que apagasse a contagem de degeneradas ficou verde, e com razão: um degenerado paga
-    // a fita **inteira**, logo `pior × 2 > inteira` já reprova. *Uma linha que a mutação não
-    // consegue matar não é lei, é comentário com sintaxe de código* ⇒ a contagem fica na
-    // MENSAGEM, onde diz o mecanismo, e a lei é o pior caso.
-    //
-    // ⭐ A barra sai da medição desta grelha (`243` de `931`, `3,8×`) — ⛔ não de um número
-    // redondo: `2×` é o degrau abaixo do medido, e um degenerado lê `1,0×`.
+    let exacta = ph2d_field_eval::Field::from_tree(
+        &ph2d_field_eval::profile::probe_sd_revolve_exacto(profile),
+    )
+    .tape_shape()
+    .expect("a fita do contorno desenhado")
+    .guardados;
     assert!(
-        pior * 2 <= inteira,
-        "o pior caso da grelha paga {pior} linhas contra {inteira} da peça inteira ({degeneradas} \
-         de {medidas} células caíram no degenerado) — o corte deixou de cortar"
+        pela_formula <= TECTO,
+        "a peça da cena 5 desce em {pela_formula} linhas contra o tecto de {TECTO} — ou a cerca da \
+         fidelidade passou a recusá-la (e ela voltou ao contorno desenhado), ou o grau subiu"
+    );
+    // ⭐ **O CONTROLO**: a lei exacta tem de ser MUITO maior, senão este gate não mede cura nenhuma.
+    assert!(
+        exacta >= 4 * pela_formula,
+        "CONTROLO: a lei exacta desce em {exacta} linhas contra {pela_formula} da fórmula — sem uma \
+         ordem de grandeza entre as duas, a metade de cima não afirma nada"
     );
 }
 

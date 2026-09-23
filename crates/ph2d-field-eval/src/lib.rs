@@ -565,6 +565,12 @@ fn specialised_profile(
             ))
         }
         Primitive::Revolve { profile } => {
+            // ⭐⭐⭐⭐ **Um torno por FÓRMULA não tem arestas para cortar** — a região dele é a
+            // mesma árvore. ⛔ Sem esta linha o todo desce por fórmula e a região corta o contorno
+            // DESENHADO: duas leis, e três gates a dizê-lo. Ver [`profile::torno_por_formula`].
+            if let Some(t) = profile::torno_por_formula(profile) {
+                return Some(t);
+            }
             // ⚠️ `u = √(x² + z²)`: a caixa local vira um **anel** em `u`, e o mínimo é a distância do
             // eixo à caixa no plano `xz` — zero quando ela o contém.
             let du = axis_gap(lo[0], hi[0]);
@@ -613,4 +619,9 @@ mod primitive_tree_vertices;
 /// ⏱️⭐⭐⭐⭐ **O perfil por FÓRMULA** — ver o cabeçalho do [`profile_formula`].
 #[path = "profile_formula_probe.rs"]
 pub mod profile_formula;
+
+/// ⭐⭐⭐⭐ **Os gates do torno por fórmula** — ver o cabeçalho do [`profile_formula_tests`].
+#[cfg(test)]
+#[path = "profile_formula_tests.rs"]
+mod profile_formula_tests;
 pub(crate) use primitive_tree::primitive;

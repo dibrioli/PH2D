@@ -17,11 +17,17 @@ fn diag_o_vaso_por_formula() {
     else {
         panic!("a cena 5 é um Revolve");
     };
-    let desenhada = ph2d_field_eval::Field::new(&doc)
-        .tape_shape()
-        .expect("a fita do torno")
-        .guardados;
-    let s = ph2d_field_eval::profile_formula::probe_silhueta_do_perfil(profile);
+    // ⚠️ **A linha de base é a lei EXACTA, pela porta que não passa pela bissecção.** A 1.ª
+    // redacção usava `Field::new(&doc)`, que desde esta wave desce pela FÓRMULA ⇒ a tabela comparava
+    // a fórmula consigo própria e lia `1,0×` de ganho.
+    let desenhada = ph2d_field_eval::Field::from_tree(
+        &ph2d_field_eval::profile::probe_sd_revolve_exacto(profile),
+    )
+    .tape_shape()
+    .expect("a fita do contorno desenhado")
+    .guardados;
+    let s = ph2d_field_eval::profile_formula::probe_silhueta_do_perfil(profile)
+        .expect("a silhueta do vaso é a região entre duas funções da altura");
     let tabela =
         ph2d_field_eval::profile_formula::probe_formula_do_perfil(profile, &[4, 6, 8, 12, 16, 24])
             .expect("a régua acha a peça do vaso");
@@ -38,21 +44,22 @@ fn diag_o_vaso_por_formula() {
     // ⚠️ A silhueta CRUA, a cada 24 alturas — sem ela, um erro de ajuste que não converge lê-se
     // como uma propriedade do desenho quando pode ser da régua.
     println!("  v · dentro · fora");
-    for (v, d, f) in s.iter().step_by(24) {
+    for (v, d, f) in s.iter().step_by(6) {
         println!("  {v:>7.3} · {d:>7.3} · {f:>7.3}");
     }
-    println!("  grau · erro fora · erro dentro · em v · linhas · × desenhada · quadro previsto");
+    println!(
+        "  grau · erro fora · erro dentro · linhas · × desenhada · inclin. amostrada · MAJORANTE"
+    );
     for l in tabela {
-        #[allow(clippy::cast_precision_loss)]
-        let prev = 4.32 + 0.030 * l.linhas as f32;
         println!(
-            "  {:>4} · {:>9.4} · {:>11.4} · {:>6.3} · {:>6} · {:>10.1}× · {prev:>7.1} ms",
+            "  {:>4} · {:>9.4} · {:>11.4} · {:>6} · {:>10.1}× · {:>17.1} · {:>9.1}",
             l.grau,
             l.erro_fora,
             l.erro_dentro,
-            l.onde_dentro,
             l.linhas,
             desenhada as f32 / l.linhas as f32,
+            l.inclinacao,
+            l.majorante,
         );
     }
     println!();

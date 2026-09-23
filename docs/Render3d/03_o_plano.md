@@ -923,6 +923,84 @@ sólido»*, que é a costura das waves `W53`–`W58` (o fluxo do MoI, o selo `LN
 `Unlink`/`Link Drawing`, a resolução do contorno) — e, pelo limite `3`, a fórmula **não** substitui o
 extrude de um contorno qualquer. *É decisão do dono, e ela está agora com o número dos dois lados.*
 
+### ✅ E ELA FOI CONSTRUÍDA — decisão do dono: **«manter o lápis e ajustar a fórmula»**
+
+Posto o número dos dois lados, ele escolheu a rota que mantém a caneta. ⇒ o `Primitive::Revolve`
+**desce por fórmula quando a silhueta o permite**, e o artista não muda de gesto nenhum.
+
+**O que ship, e o que NÃO ship:**
+
+| | |
+|---|---|
+| decide | a **SILHUETA**, não um knob: `None` ⇒ o contorno desenhado, que sabe desenhar qualquer coisa |
+| schema | **intocado** — nenhuma primitiva nova, nenhum campo novo |
+| paridade CPU↔placa | **intacta por construção** — a árvore é UMA e os dois motores saem dela |
+| bissecção | `PH2D_FIELD_TORNO_EXACTO=1` |
+
+**A cena `5` do produto, medida** (`1920×1080`, mínimo de `3`, `--release`, A/B no mesmo binário):
+
+| | linhas de WGSL | passos/acerto | quadro | divisor do prévio |
+|---|---:|---:|---:|---:|
+| contorno desenhado | `934` | `43,5` | `32,53 ms` | **`2`** |
+| **por fórmula** | **`124`** | `92,7` | **`16,63 ms`** | **`1`** |
+
+⭐⭐ **`1,96×`, e o divisor cai de `2` para `1`** — *é isso que o artista vê: o prévio do vaso deixa de
+desenhar a meia resolução enquanto ele arrasta*. O corpus vai de `14` para **`15` de `22`**. ⚠️ E a
+corrida da fórmula foi tirada a `66 %` de CPU ociosa contra `84 %` da exacta, logo o `16,63` é
+**pessimista**.
+
+⭐ Na silhueta densa (o mesmo vaso como polilinha, `2 639` linhas) o A/B a `93 %` ociosa dá
+**`92,15 → 16,08 ms`, `5,7×`**.
+
+⚠️ **E o que sobra tem endereço: os passos por acerto DOBRAM** (`43,5 → 92,7`), porque a
+normalização usa um majorante **global** da inclinação (`3,4` no vaso ⇒ `k ≈ 0,28`). *A lever que
+resta vale até `2,1×` e é uma normalização mais apertada* — ⛔ e ela tem de continuar a ser um
+majorante VERDADEIRO, senão a peça fura.
+
+### ⛔⛔ As três coisas que a construção achou, e nenhuma era a lei
+
+1. **A decisão escrita em UM sítio divergiu na primeira corrida.** O todo descia por fórmula e o
+   `RegionCompiler::specialised_profile` continuava a cortar as arestas do contorno **desenhado** —
+   duas leis —, e três gates disseram-no juntos (`the_specialised_document_agrees_inside_its_region`,
+   `the_tiled_march_draws_the_same_image_as_the_row_march` e o oráculo do toro). ⇒ a decisão é uma
+   **porta com dois leitores** (`profile::torno_por_formula`), e a resposta da região é a MESMA
+   árvore: *uma fórmula não tem arestas para cortar*.
+2. ⛔⛔⛔ **Eu escrevi a guarda da marcha e não a gateei — uma mutação sobrevivente disse-o.** Apagar
+   a normalização (`k = 1`) passou as **oito** paridades de imagem do `ph2d-field-render` e os três
+   gates da família. ⚠️ E é a direcção **insegura**: um campo que promete mais do que a distância faz
+   a esfera-marcha dar um passo para **dentro** do sólido. ⇒ `a_formula_nao_atravessa_a_peca` mede
+   `‖∇f‖ ≤ 1` num domínio de `25³` pontos, **com o controlo por baixo** (`‖∇f‖ ≥ 0,2`), senão uma
+   normalização grosseira passaria e faria toda marcha rastejar.
+3. ⚠️ **Dois gates de exactidão passaram a medir a lei EXACTA pela porta que não decide**
+   (`profile::probe_sd_revolve_exacto`), e um deles acusava o mecanismo errado: o
+   `the_seam_of_a_lathe_lies_on_the_axis_and_is_not_a_wall` leu `−0,0171` contra `−0,0200` e disse
+   *«a costura está a ser tratada como parede»* — ⛔ **a costura não existe na fórmula**; o que ele
+   viu foi o minorante conservador. *Um gate cuja mensagem diagnostica uma causa tem de medir a lei
+   em que essa causa vive.*
+
+### ⭐ A cerca da fidelidade, e o que ela devolve ao contorno desenhado
+
+`FIDELIDADE = 0,01` do raio da peça, medida contra a silhueta que a própria peça produz, nas duas
+paredes. ⚠️ **É um limite de PRODUTO e o recurso dele é o OLHO** — o dono aprovou-o nesses termos com
+o número ao lado (`0,8 %` no vaso). ⛔ **Ela não pode ser a `Profile::tolerance`**: a do vaso é `1e-4`
+e o ajuste ao grau `16` erra `2,6e-3` — `26×` mais, *e com aquela barra a peça do dono seria
+recusada*.
+
+⭐ **E é a cerca que devolve o perfil DEGRAU ao contorno desenhado:** uma roldana com escalões tem
+paredes verticais, que não são funções da altura — o erro do ajuste diz isso em números, e a recusa
+sai de uma medição e não de uma lista de formas (gate
+`a_cerca_da_fidelidade_recusa_um_perfil_de_escaloes`, com o copo como CONTROLO).
+
+⚠️ **E a fixtura da fidelidade é uma parede ONDULADA, não um copo** — por uma mutação sobrevivente:
+baixar o `GRAU` de `16` para `4` passava sobre um copo, cujas paredes são rectas. *Uma fixtura lisa
+não testa o grau.*
+
+**`6` mutações, `6` sangram.** Gates: `o_torno_por_formula_fica_dentro_da_fidelidade` (a POSIÇÃO da
+superfície por bissecção contra a lei exacta — ⚠️ e o piso de população apanhou a 1.ª régua, que
+exigia o eixo DENTRO do sólido e media `17` de `64` alturas) ·
+`a_cerca_da_fidelidade_recusa_um_perfil_de_escaloes` · `na_formula_o_eixo_tambem_nao_e_uma_parede` ·
+`a_formula_nao_atravessa_a_peca` · `o_vaso_desce_por_formula_e_a_fita_cabe_numa_mao`.
+
 ### ⏳ O que a fila leva daqui, com o mecanismo de cada candidato
 
 1. ⭐⭐⭐ **O PERFIL COMO TEXTURA 2D** — o candidato que nenhuma medição desta wave recusa, e é a

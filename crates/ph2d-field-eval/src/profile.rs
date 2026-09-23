@@ -270,6 +270,59 @@ pub fn extrude_from(flat: &Tree, half_height: f64, round: f64, chamfer: f64) -> 
 /// da distância (e só dela) — ver [`sd_profile_inner`].
 #[must_use]
 pub fn sd_revolve(profile: &Profile) -> Tree {
+    // ⭐⭐⭐⭐ **O TORNO DESCE POR FÓRMULA quando a silhueta o permite** (2026-09-23, ordem do dono).
+    //
+    // Um contorno desenhado custa `O(pedaços)` na fita (`26,5` linhas por recta, `50,9` por curva,
+    // medido) e a fórmula custa `O(grau)`. Medido no vaso da cena `5`: **`931` → `121` linhas**, e
+    // as duas paredes ficam a `0,003` da peça — `0,9 %` do raio.
+    //
+    // ⚠️ **A decisão é da SILHUETA e não de um knob**: um perfil que não seja a região entre duas
+    // funções da altura (um sobressaliente) devolve `None` e fica com a árvore desenhada, que sabe
+    // desenhar qualquer coisa. Ver [`crate::profile_formula::sd_revolve_por_formula`].
+    //
+    // ⭐ **E a mesma árvore serve os dois motores** — o traçado de CPU e a fita do dispositivo saem
+    // de aqui —, logo a paridade entre eles fica intacta **por construção**.
+    //
+    // ⚠️ `PH2D_FIELD_TORNO_EXACTO=1` volta ao contorno desenhado, para bissecar. ⛔ **Os gates não
+    // passam por esta porta**: eles chamam as duas leis directamente, senão mediriam o ambiente.
+    if let Some(t) = torno_por_formula(profile) {
+        return t;
+    }
+    probe_sd_revolve_exacto(profile)
+}
+
+/// ⭐⭐⭐⭐ **A DECISÃO do torno, numa porta com DOIS leitores** — a [`sd_revolve`] e a
+/// [`crate::specialised_profile`].
+///
+/// ⛔⛔ **Ela existe porque a 1.ª redacção a escreveu em UM sítio e a especialização por região
+/// continuou a cortar o contorno DESENHADO.** Com o todo a descer por fórmula e a região a cortar
+/// arestas, as duas eram **leis diferentes** — e três gates disseram-no na mesma corrida
+/// (`the_specialised_document_agrees_inside_its_region`,
+/// `the_tiled_march_draws_the_same_image_as_the_row_march` e o irmão do polígono). *Uma decisão
+/// escrita em dois sítios divergiu na primeira corrida, e a porta de bissecção fá-la-ia divergir
+/// também.*
+///
+/// ⭐ **E a resposta da região é a MESMA árvore**: uma fórmula não tem arestas para cortar, logo
+/// especializá-la é a identidade — e ela já é `~121` linhas contra `934`.
+pub(crate) fn torno_por_formula(profile: &Profile) -> Option<Tree> {
+    if *TORNO_EXACTO.get_or_init(|| std::env::var_os("PH2D_FIELD_TORNO_EXACTO").is_some()) {
+        return None;
+    }
+    crate::profile_formula::sd_revolve_por_formula(profile)
+}
+
+/// ⚠️ A porta de bissecção do torno — lida **uma vez**, como o resto desta casa.
+static TORNO_EXACTO: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+
+/// ⭐⭐⭐ **O torno pelo CONTORNO DESENHADO — a lei exacta, sem passar pela porta.**
+///
+/// ⚠️ **É por aqui que os gates e as sondas comparam as duas leis.** A [`sd_revolve`] lê o ambiente
+/// (a porta de bissecção), logo qualquer régua que passe por ela mede a MÁQUINA e não a lei — e uma
+/// linha de base que passe por ela compara a fórmula **consigo própria**. *Isso já aconteceu: a 1.ª
+/// tabela desta wave leu `1,0×` de ganho porque a base ia pela fórmula.*
+#[doc(hidden)]
+#[must_use]
+pub fn probe_sd_revolve_exacto(profile: &Profile) -> Tree {
     let r = crate::ops::safe_sqrt(Tree::x().square() + Tree::z().square());
     sd_profile_inner(profile, &r, &Tree::y(), true)
 }

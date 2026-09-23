@@ -497,12 +497,20 @@ fn an_extruded_polygon_is_the_cylinder_it_approximates() {
 /// ⭐ **O oráculo independente da revolução**, e ele prova mais do que o da extrusão: a
 /// substituição `x → √(x²+z²)` tem de dar a distância EXATA, não uma aproximação — e o toro
 /// analítico é quem diz.
+///
+/// ⚠️⚠️ **Ele mede a lei EXACTA pela porta que não decide** ([`crate::profile::probe_sd_revolve_exacto`]),
+/// e não o `Field::new` do documento. Desde 2026-09-23 o produto desce um torno por **FÓRMULA**
+/// quando a silhueta o permite (`931 → 124` linhas, `2×` no quadro, ordem do dono), e a fórmula é
+/// **aproximada por construção** ⇒ passar por ela aqui mediria a aproximação contra um oráculo de
+/// exactidão. *A frase deste gate — «tem de dar a distância EXATA» — continua verdadeira sobre a lei
+/// que ele nomeia; quem mede a rota da fórmula é o
+/// [`o_torno_por_formula_fica_dentro_da_fidelidade`].*
 #[test]
 fn a_revolved_polygon_is_the_torus_it_traces() {
     let (major, minor) = (0.6_f64, 0.2_f64);
     for n in [16_usize, 32, 64] {
         let prof = profile_of(vec![ngon(n, minor, [major, 0.0])], FillRule::NonZero);
-        let f = Field::new(&doc_of(Primitive::Revolve { profile: prof }));
+        let f = Field::from_tree(&crate::profile::probe_sd_revolve_exacto(&prof));
         // ⚠️ **Os dois eixos NÃO são o mesmo, e é de propósito.** O `Torus` da casa tem o anel no
         // plano XY (eixo de revolução = Z), como o `Cylinder`; o `Revolve` gira em torno de **Y**,
         // porque o plano de desenho do perfil é o XY e o eixo tem de estar DENTRO dele (ver a nota
@@ -1416,6 +1424,14 @@ fn the_taper_narrows_one_way_and_widens_the_other() {
 ///
 /// O gate mede as duas metades que separam "curado" de "mascarado": o valor **e** o gradiente. Um
 /// campo que devolvesse a distância certa com `‖∇f‖ = 0` continuaria a não ser uma distância.
+///
+/// ⚠️⚠️ **E ele mede a lei EXACTA, com uma TERCEIRA metade para a rota da FÓRMULA.** Desde
+/// 2026-09-23 o produto desce um torno por fórmula, cujo campo é um **minorante conservador** da
+/// distância (a normalização pela inclinação) ⇒ ali `f` é mais raso e `‖∇f‖ < 1` **de propósito**.
+/// A 1.ª corrida depois daquela wave leu `−0,0171` contra `−0,0200` e acusou *«a costura está a ser
+/// tratada como parede»* — ⛔ **a mensagem nomeava o mecanismo errado**: a costura não existe na
+/// fórmula. *Um gate cuja mensagem diagnostica uma causa tem de medir a lei em que essa causa
+/// vive.*
 #[test]
 fn the_seam_of_a_lathe_lies_on_the_axis_and_is_not_a_wall() {
     // Um copo: fundo em y = −0,45, parede até y = 0,3, interior a descer até y = −0,25, e a costura
@@ -1431,7 +1447,7 @@ fn the_seam_of_a_lathe_lies_on_the_axis_and_is_not_a_wall() {
         ]],
         FillRule::NonZero,
     );
-    let f = Field::new(&doc_of(Primitive::Revolve { profile: cup }));
+    let f = Field::from_tree(&crate::profile::probe_sd_revolve_exacto(&cup));
 
     // ⚠️ **`y = −0,35` está de fora de propósito**: ali o fundo (−0,45) e o chão interno (−0,25)
     // ficam à MESMA distância, que é a superfície medial — onde a distância não é diferenciável e

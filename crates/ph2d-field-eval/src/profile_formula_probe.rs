@@ -36,64 +36,81 @@ use fidget::context::Tree;
 use ph2d_field::Profile;
 
 /// Quantas alturas a silhueta é amostrada.
-const ALTURAS: usize = 512;
-/// Quantos passos em `u` para achar a fronteira em cada altura.
-const PASSOS_U: usize = 4096;
+///
+/// ⚠️ **Número de estrutura, não de gosto**: é a densidade com que o ajuste vê as paredes, e
+/// `24` primitivas com `128` alturas dão `~5` amostras por primitiva. Movê-lo pede re-correr a
+/// [`crate::profile_formula::probe_formula_do_perfil`].
+const ALTURAS: usize = 128;
 
-/// A silhueta do vaso como **duas funções da altura** — `(v, dentro, fora)`, só onde há peça.
+/// ⭐⭐⭐ **A SILHUETA DE UM TORNO — as duas paredes como funções da altura.**
 ///
-/// ⚠️⚠️ **`dentro` é `NaN` onde a parede interna NÃO EXISTE, e isso é a correcção de uma régua que
-/// fabricava a resposta.** A 1.ª redacção registava `0` na base do vaso (onde `u = 0` está DENTRO
-/// do sólido), o que faz a função ter um **DEGRAU** de `0` para `0,19` à altura em que a parede
-/// interna começa — e um polinómio a seguir um degrau erra metade dele. Medido: o erro máximo lia
-/// `0,0885` ao grau `4` e `0,0754` ao grau `24`, *sem melhorar*, que é exactamente a assinatura de
-/// uma descontinuidade. ⭐ No CAMPO não há degrau nenhum: ali a base é sólida porque `dentro(v)` é
-/// **negativo**, e é isso que o ajuste tem de poder fazer.
+/// Devolve, por altura, `(v, dentro, fora)`, com `dentro` a ser **`NaN` onde a parede interna não
+/// existe** (a base sólida do vaso).
 ///
-/// ⚠️ **A régua é o SINAL do campo do perfil** ([`ph2d_field_eval::profile_index::ProfileIndex::sd`]),
-/// que é a mesma lei que a peça usa. *Ler os vértices do desenho daria a silhueta do polígono e não
-/// a da peça, que tem arcos.*
-fn silhueta(profile: &Profile) -> Vec<(f64, f64, f64)> {
-    let idx = crate::profile_index::ProfileIndex::build(profile);
+/// # ⭐ Como ela é achada: pelas TRAVESSIAS, não por varredura
+///
+/// Uma recta horizontal a atravessar um contorno fechado cruza-o um número **par** de vezes, e o
+/// sólido é o intervalo entre a 1.ª e a 2.ª travessia. ⇒ a silhueta sai de `O(primitivas)` contas
+/// por altura, exactas. ⛔ A 1.ª redacção varria `u` em `4 096` passos e perguntava o sinal do
+/// campo: `2` milhões de avaliações, e — pior — **um limiar mais pequeno que o próprio passo**, que
+/// fabricou um degrau na parede interna e um erro de ajuste que não convergia em grau nenhum.
+///
+/// # ⚠️ A régua de «isto é o eixo» é a do PERFIL, e é uma porta só
+///
+/// A 1.ª travessia pode ser a **costura do eixo** (o segmento que fecha o contorno sobre `u = 0`),
+/// e aí não há parede interna nenhuma. A régua é a `Profile::tolerance`, que é a MESMA com que o
+/// [`crate::profile::sd_profile`] decide o que assenta no eixo. *Um número próprio aqui seria uma
+/// segunda resposta a «o que encosta no eixo».*
+///
+/// # ⛔ A CERCA: mais de duas travessias ⇒ RECUSA
+///
+/// Três ou mais travessias querem dizer que o perfil tem um **sobressaliente** (a secção àquela
+/// altura é mais de um anel), e aí ele **não** é a região entre duas funções da altura. `None` é a
+/// resposta certa, e o chamador fica com o contorno desenhado — que sabe desenhar qualquer coisa.
+pub(crate) fn silhueta(profile: &Profile) -> Option<Vec<(f64, f64, f64)>> {
+    // ⛔ Um torno tem UM contorno. Dois são outra topologia, e a lei das duas funções não a diz.
+    let [contorno] = profile.contours() else {
+        return None;
+    };
+    let tol = f64::from(profile.tolerance());
     let (plo, phi) = profile.bounds();
-    let u_max = phi[0].max(plo[0].abs()) * 1.05;
+    let (vb, vt) = (f64::from(plo[1]), f64::from(phi[1]));
+    if !(vt - vb).is_finite() || vt - vb <= tol {
+        return None;
+    }
+    let pts: Vec<[f64; 2]> = contorno
+        .iter()
+        .map(|p| [f64::from(p[0]), f64::from(p[1])])
+        .collect();
     let mut out = Vec::with_capacity(ALTURAS);
     for i in 0..ALTURAS {
         #[allow(clippy::cast_precision_loss)]
-        let v = f64::from(plo[1])
-            + (f64::from(phi[1]) - f64::from(plo[1])) * (i as f64 + 0.5) / ALTURAS as f64;
-        let mut dentro: Option<f64> = None;
-        let mut fora: Option<f64> = None;
-        let mut estava = false;
-        for j in 0..=PASSOS_U {
-            #[allow(clippy::cast_precision_loss)]
-            let u = f64::from(u_max) * j as f64 / PASSOS_U as f64;
-            #[allow(clippy::cast_possible_truncation)]
-            let esta = idx.sd(u as f32, v as f32) < 0.0;
-            if esta && !estava {
-                dentro = Some(u);
+        let v = vb + (vt - vb) * (i as f64 + 0.5) / ALTURAS as f64;
+        let mut cruzes: Vec<f64> = Vec::with_capacity(4);
+        for j in 0..pts.len() {
+            let (a, b) = (pts[j], pts[(j + 1) % pts.len()]);
+            // ⚠️ **A regra semi-aberta** (`[a.y, b.y)`) é a do enrolamento desta casa: ela conta
+            // cada travessia UMA vez quando a recta passa exactamente por um vértice.
+            let sobe = a[1] <= v && b[1] > v;
+            let desce = b[1] <= v && a[1] > v;
+            if sobe || desce {
+                let t = (v - a[1]) / (b[1] - a[1]);
+                cruzes.push(a[0] + t * (b[0] - a[0]));
             }
-            if !esta && estava {
-                fora = Some(u);
+        }
+        if cruzes.len() != 2 {
+            // ⛔ Zero é uma altura fora da peça (acontece nas pontas); mais de duas é o
+            // sobressaliente que esta lei não diz.
+            if cruzes.len() > 2 {
+                return None;
             }
-            estava = esta;
+            continue;
         }
-        if let Some(b) = fora {
-            // ⭐⭐⭐ **`dentro` só existe quando a fronteira de entrada NÃO é o próprio eixo — e o
-            // limiar tem de ser maior que o PASSO da varredura.**
-            //
-            // ⛔⛔ Medido: com um limiar de `1e-6` (menor que o passo de `8,4e-5`) o fundo do vaso
-            // registava parede interna em `~1e-4`, porque o ponto `u = 0` está **em cima** da
-            // costura do eixo e lê `sd = 0`, que não é `< 0` ⇒ o passo seguinte é o primeiro
-            // «dentro». ⇒ `dentro(v)` ganhava um **DEGRAU** de `~0` para `0,153` à altura da base, e
-            // o ajuste polinomial lia `0,09` de erro *em todos os graus* — a assinatura de uma
-            // descontinuidade. *Uma régua cujo limiar é menor que o próprio passo de amostragem não
-            // distingue «em zero» de «perto de zero».*
-            let piso = 4.0 * f64::from(u_max) / PASSOS_U as f64;
-            out.push((v, dentro.filter(|d| *d > piso).unwrap_or(f64::NAN), b));
-        }
+        cruzes.sort_by(f64::total_cmp);
+        let (d, f) = (cruzes[0], cruzes[1]);
+        out.push((v, if d > tol { d } else { f64::NAN }, f));
     }
-    out
+    (out.len() > ALTURAS / 2).then_some(out)
 }
 
 /// Um ajuste de mínimos quadrados na base de **Chebyshev**, no intervalo `[lo, hi]` de `x`.
@@ -148,6 +165,32 @@ fn ajusta(xs: &[f64], ys: &[f64], lo: f64, hi: f64, grau: usize) -> Vec<f64> {
     c
 }
 
+/// Os coeficientes de Chebyshev da DERIVADA, exactos — a recorrência clássica.
+fn derivada(c: &[f64]) -> Vec<f64> {
+    let n = c.len();
+    let mut d = vec![0.0f64; n];
+    for k in (1..n).rev() {
+        #[allow(clippy::cast_precision_loss)]
+        let dois_k = 2.0 * k as f64;
+        d[k - 1] = if k + 1 < n { d[k + 1] } else { 0.0 } + dois_k * c[k];
+    }
+    if n > 0 {
+        d[0] *= 0.5;
+    }
+    d
+}
+
+/// ⭐⭐⭐ **UM MAJORANTE VERDADEIRO da inclinação da parede** — `Σ|d_k|`, porque `|T_k| ≤ 1`.
+///
+/// ⛔⛔ **E ele não pode ser um máximo AMOSTRADO.** Um máximo amostrado erra sempre **para baixo**,
+/// e aqui um majorante pequeno demais faz o factor de normalização ficar **grande** demais ⇒ o campo
+/// devolve um valor **maior** do que a distância e a esfera-marcha dá um passo **para dentro do
+/// sólido**. *Este é o número que decide se a peça fura.*
+fn majorante_da_inclinacao(c: &[f64], lo: f64, hi: f64) -> f64 {
+    // A regra da cadeia do mapa `v ↦ t = 2(v − lo)/(hi − lo) − 1`.
+    derivada(c).iter().map(|x| x.abs()).sum::<f64>() * 2.0 / (hi - lo)
+}
+
 /// Clenshaw em números — para medir o erro do ajuste.
 fn clenshaw(c: &[f64], x: f64, lo: f64, hi: f64) -> f64 {
     let t = (2.0 * (x - lo) / (hi - lo) - 1.0).clamp(-1.0, 1.0);
@@ -189,22 +232,147 @@ fn clenshaw_tree(c: &[f64], v: &Tree, lo: f64, hi: f64) -> Tree {
 /// do arranque o raio interno fica **preso ao valor da ponta**, que é a resposta sensata e não uma
 /// extrapolação.
 fn campo(dentro: &[f64], fora: &[f64], dom_d: (f64, f64), dom_f: (f64, f64), lip: f64) -> Tree {
+    campo_com(fora, dom_f, Some((dentro, dom_d)), lip)
+}
+
+/// O campo, com a cavidade OPCIONAL — um torno sólido não a tem.
+fn campo_com(
+    fora: &[f64],
+    dom_f: (f64, f64),
+    cavidade: Option<(&[f64], (f64, f64))>,
+    lip: f64,
+) -> Tree {
     let (x, y, z) = (Tree::x(), Tree::y(), Tree::z());
     let u = crate::ops::safe_sqrt(x.square() + z.square());
-    // ⚠️ O majorante global da inclinação — conservador em todo ponto, uma multiplicação.
+    // ⚠️ O majorante da inclinação — conservador em todo ponto, uma multiplicação.
     let k = Tree::constant(1.0 / (1.0 + lip * lip).sqrt());
     let solido = ((u.clone() - clenshaw_tree(fora, &y, dom_f.0, dom_f.1)) * k.clone())
         .max(y.clone() - Tree::constant(dom_f.1))
         .max(Tree::constant(dom_f.0) - y.clone());
-    let cavidade =
-        ((u - clenshaw_tree(dentro, &y, dom_d.0, dom_d.1)) * k).max(Tree::constant(dom_d.0) - y);
-    solido.max(-cavidade)
+    match cavidade {
+        None => solido,
+        Some((cd, dom_d)) => {
+            let c = ((u - clenshaw_tree(cd, &y, dom_d.0, dom_d.1)) * k)
+                .max(Tree::constant(dom_d.0) - y);
+            solido.max(-c)
+        }
+    }
 }
 
 fn linhas(t: &Tree) -> usize {
     crate::Field::from_tree(t)
         .tape_shape()
         .map_or(0, |s| s.guardados)
+}
+
+/// ⭐⭐⭐⭐ **O GRAU dos dois polinómios que dizem as paredes.**
+///
+/// ⚠️ **Medido, não escolhido** (`probe_formula_do_perfil` no vaso da cena `5`, `24` primitivas):
+///
+/// | grau | erro da parede externa | da interna | linhas de WGSL | quadro previsto |
+/// |---:|---:|---:|---:|---:|
+/// | `8` | `0,0128` | `0,0062` | `73` | `6,5 ms` |
+/// | `12` | `0,0072` | `0,0036` | `97` | `7,2 ms` |
+/// | **`16`** | **`0,0026`** | **`0,0025`** | `121` | **`7,9 ms`** |
+/// | `24` | `0,0014` | `0,0011` | `169` | `9,4 ms` |
+///
+/// ⭐ `16` é o joelho: de `12` para `16` o erro cai `2,8×` por `+25 %` de linhas; de `16` para `24`
+/// cai `1,8×` por `+40 %`. A `16` as duas paredes ficam a `0,003` da peça, que é `0,9 %` do raio do
+/// vaso — abaixo de um pixel no uso normal.
+pub const GRAU: usize = 16;
+
+/// ⭐⭐⭐⭐ **A FIDELIDADE que a fórmula tem de alcançar para ser usada** — fracção do raio da peça.
+///
+/// ⚠️⚠️ **Este é um limite de PRODUTO e o recurso dele é o OLHO, e é honesto dizê-lo.** A rota da
+/// fórmula é aproximada por construção, e o dono aprovou-a nesses termos (2026-09-23) com o número
+/// ao lado: no vaso da cena `5` as duas paredes ficam a `0,0026` de um raio de `0,326`, que é
+/// **`0,8 %`** — abaixo de um pixel no uso normal.
+///
+/// ⛔ **Ela NÃO pode ser a `Profile::tolerance`**, e isso está medido: a tolerância do vaso é `1e-4`
+/// e o ajuste ao grau `16` erra `2,6e-3` — `26×` mais. *Com aquela barra a peça do dono seria
+/// recusada e a wave não compraria nada.*
+///
+/// ⭐ **E é esta cerca que devolve o perfil DEGRAU ao contorno desenhado:** uma parede quase
+/// vertical (uma roldana com escalões) não é dizível por um polinómio da altura, e o erro do ajuste
+/// diz isso em números — *a recusa sai de uma medição e não de uma lista de formas*.
+pub const FIDELIDADE: f64 = 0.01;
+
+/// ⭐⭐⭐⭐ **O TORNO POR FÓRMULA** — as duas paredes como polinómios da altura.
+///
+/// `None` quando a silhueta não é a região entre duas funções da altura (ver [`silhueta`]), e aí o
+/// chamador fica com o contorno desenhado, que sabe desenhar qualquer coisa.
+///
+/// # A forma, e porque cada termo existe
+///
+/// ```text
+/// sólido   = max( (u − fora(v))·k , v − v_topo , v_base − v )
+/// cavidade = max( (u − dentro(v))·k , v_fundo − v )
+/// campo    = max( sólido , −cavidade )
+/// ```
+///
+/// ⭐ **A cavidade é uma INTERSECÇÃO** (*«dentro do raio interno **E** acima do fundo»*), e é isso
+/// que faz a base sólida do vaso sair sem pedir ao ajuste que extrapole para baixo do arranque da
+/// parede — uma extrapolação que numa base de Chebyshev **sobe** (Runge) e abriria um buraco.
+///
+/// ⚠️⚠️ **E o `k` é o que impede a peça de furar:** `u − fora(v)` **não** é a distância à curva
+/// `u = fora(v)` — ela é MAIOR quando a curva é inclinada, e uma esfera-marcha que acredite num
+/// valor maior do que a distância dá um passo para dentro do sólido.
+#[must_use]
+pub fn sd_revolve_por_formula(profile: &Profile) -> Option<Tree> {
+    let s = silhueta(profile)?;
+    let vs: Vec<f64> = s.iter().map(|(v, _, _)| *v).collect();
+    let ds: Vec<f64> = s.iter().map(|(_, d, _)| *d).collect();
+    let fs: Vec<f64> = s.iter().map(|(_, _, f)| *f).collect();
+    let dom_f = (vs[0], vs[vs.len() - 1]);
+    let cf = ajusta(&vs, &fs, dom_f.0, dom_f.1, GRAU);
+    let dentro_vs: Vec<f64> = vs
+        .iter()
+        .zip(&ds)
+        .filter(|(_, d)| d.is_finite())
+        .map(|(v, _)| *v)
+        .collect();
+    // ⚠️ **Menos de `GRAU + 2` amostras é um ajuste sem sujeito** — ali não há parede interna que
+    // valha, e a peça é um torno SÓLIDO.
+    let cavidade = (dentro_vs.len() >= GRAU + 2).then(|| {
+        let dom_d = (dentro_vs[0], dentro_vs[dentro_vs.len() - 1]);
+        (ajusta(&vs, &ds, dom_d.0, dom_d.1, GRAU), dom_d)
+    });
+    // ⭐⭐⭐⭐ **A CERCA DA FIDELIDADE** — ver [`FIDELIDADE`]. Ela mede o ajuste contra a silhueta que
+    // a própria peça produziu, nas duas paredes, e RECUSA quando o desenho diz algo que um polinómio
+    // da altura não diz (um escalão, uma parede vertical).
+    let barra = {
+        let (plo, phi) = profile.bounds();
+        FIDELIDADE * f64::from(phi[0].max(plo[0].abs())).max(f64::EPSILON)
+    };
+    let pior = |c: &[f64], ys: &[f64], d: (f64, f64)| {
+        vs.iter()
+            .zip(ys)
+            .filter(|(_, y)| y.is_finite())
+            .map(|(v, y)| (clenshaw(c, *v, d.0, d.1) - y).abs())
+            .fold(0.0f64, f64::max)
+    };
+    if pior(&cf, &fs, dom_f) > barra {
+        return None;
+    }
+    if let Some((cd, dom_d)) = cavidade.as_ref()
+        && pior(cd, &ds, *dom_d) > barra
+    {
+        return None;
+    }
+    let lip = majorante_da_inclinacao(&cf, dom_f.0, dom_f.1).max(
+        cavidade
+            .as_ref()
+            .map_or(0.0, |(cd, d)| majorante_da_inclinacao(cd, d.0, d.1)),
+    );
+    if !lip.is_finite() {
+        return None;
+    }
+    Some(campo_com(
+        &cf,
+        dom_f,
+        cavidade.as_ref().map(|(c, d)| (&c[..], *d)),
+        lip,
+    ))
 }
 
 /// Uma linha da tabela: o grau, o pior erro do ajuste, a inclinação máxima e as linhas de WGSL.
@@ -217,7 +385,11 @@ pub struct LinhaDaFormula {
     pub erro_dentro: f64,
     /// A altura em que o pior erro da parede interna está.
     pub onde_dentro: f64,
+    /// A inclinação máxima AMOSTRADA — ⚠️ ela erra sempre para BAIXO e não serve de majorante.
     pub inclinacao: f64,
+    /// ⭐ O MAJORANTE verdadeiro (`Σ|d_k|`) — é este que o campo usa, e é ele que decide quantos
+    /// passos a marcha dá.
+    pub majorante: f64,
     pub linhas: usize,
 }
 
@@ -228,10 +400,7 @@ pub struct LinhaDaFormula {
 #[doc(hidden)]
 #[must_use]
 pub fn probe_formula_do_perfil(profile: &Profile, graus: &[usize]) -> Option<Vec<LinhaDaFormula>> {
-    let s = silhueta(profile);
-    if s.len() <= ALTURAS / 2 {
-        return None;
-    }
+    let s = silhueta(profile)?;
     let (lo, hi) = (s[0].0, s[s.len() - 1].0);
     let vs: Vec<f64> = s.iter().map(|(v, _, _)| *v).collect();
     let ds: Vec<f64> = s.iter().map(|(_, d, _)| *d).collect();
@@ -293,8 +462,11 @@ pub fn probe_formula_do_perfil(profile: &Profile, graus: &[usize]) -> Option<Vec
                         g(&cd, dom_d).abs().max(g(&cf, dom_f).abs())
                     })
                     .fold(0.0f64, f64::max);
+                let majorante = majorante_da_inclinacao(&cf, dom_f.0, dom_f.1)
+                    .max(majorante_da_inclinacao(&cd, dom_d.0, dom_d.1));
                 LinhaDaFormula {
                     grau,
+                    majorante,
                     erro_fora,
                     erro_dentro,
                     onde_dentro,
@@ -309,6 +481,6 @@ pub fn probe_formula_do_perfil(profile: &Profile, graus: &[usize]) -> Option<Vec
 /// ⚠️ Só para a sonda: a faixa de alturas e a parede externa, para o cabeçalho da tabela.
 #[doc(hidden)]
 #[must_use]
-pub fn probe_silhueta_do_perfil(profile: &Profile) -> Vec<(f64, f64, f64)> {
+pub fn probe_silhueta_do_perfil(profile: &Profile) -> Option<Vec<(f64, f64, f64)>> {
     silhueta(profile)
 }

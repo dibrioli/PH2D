@@ -776,7 +776,9 @@ mod fatias_tests {
     /// as bandas de outra corrida), e em série todas as bandas passam por esta.
     ///
     /// **Mutações que sangram:** `nb = 1` · ignorar o `largura_da_banda` · arredondar para baixo
-    /// em vez de `div_ceil` (a última coluna ficaria fora de toda banda).
+    /// em vez de `div_ceil` — ⚠️ esta sangra pela CONTAGEM (`912/128` dá `7` bandas contra `8`) e
+    /// NÃO por deixar uma coluna de fora, que esta nota dizia até 2026-09-23 e é falso: a
+    /// [`super::super::caixa_v3`] reparte `base + resto` e cobre sempre as `w` colunas.
     #[test]
     fn a_vertical_fundida_parte_em_bandas_de_cache() {
         use super::super::{BANDAS_PERCORRIDAS, LARGURA_DA_BANDA_FUNDIDA, caixa_v3};
@@ -819,6 +821,80 @@ mod fatias_tests {
             "a constante do produto tem de partir uma região de 1024 px em bandas de cache: {n}"
         );
         assert!(casos >= 5, "o corpus encolheu: {casos} casos");
+    }
+
+    /// **A ROTA do motor dá o MESMO `f32` fundida e separada** — o gate que a auditoria de
+    /// 2026-09-23 achou em falta.
+    ///
+    /// Os dois gates acima provam as funções COMPONENTES (`caixa_h3` contra `caixa_h`, `caixa_v3`
+    /// contra `caixa_v`), e a rota que a porta [`super::super::sem_fusao`] escolhe é código de
+    /// PRODUTO por cima delas: ela ENCADEIA as larguras e as alturas entre as seis caixas. Esta
+    /// cola não tinha gate — os irmãos reconstroem-na à mão —, e é ela que o A/B da porta mede.
+    ///
+    /// ⚠️ **O corpus inclui a largura em que o produto de facto parte** (`w = 300`, três bandas de
+    /// `100` sob o máximo de `128`; `w = 1030`, nove): os gates componentes só vêem larguras até
+    /// `11`.
+    ///
+    /// **Mutações que sangram:** esquecer o `w = nw` na rota separada · passar `ap_w` em vez de `w`
+    /// às verticais fundidas · uma caixa a menos num dos laços.
+    ///
+    /// ⛔ **O que ele NÃO vê, e é declarado:** a escolha `bandas_da_vertical(w)` contra `1` no
+    /// caminho paralelo da rota separada é ORDEM DE LAÇO (a identidade ao bit vale para toda
+    /// partição, gate `as_bandas_de_colunas_dao_o_mesmo_que_uma_banda_so`), logo é CUSTO e não
+    /// valor — e uma contagem por thread não a vê, porque as bandas correm nos trabalhadores do
+    /// rayon. Quem a mede é o relógio da porta.
+    #[test]
+    fn as_duas_rotas_do_motor_dao_o_mesmo_f32() {
+        let mut casos = 0usize;
+        for k in [1usize, 3, 24, 96] {
+            let raios = box_radii(k);
+            let r_total: usize = raios.iter().sum();
+            for (bw, bh) in [(1usize, 1usize), (7, 3), (300, 17), (1030, 9)] {
+                let (ap_w, ap_h) = (bw + 2 * r_total, bh + 2 * r_total);
+                let apron: Vec<[f32; 4]> = (0..ap_w * ap_h)
+                    .map(|i| {
+                        #[allow(clippy::cast_precision_loss)]
+                        let f = ((i * 2_654_435_761) % 1_000_003) as f32;
+                        [f * 1e-4, (f % 97.0) * 2.5, (f % 13.0) * 19.0, f % 256.0]
+                    })
+                    .collect();
+                for paralelo in [false, true] {
+                    let (a, aw, ah) = super::super::as_seis_caixas(
+                        apron.clone(),
+                        ap_w,
+                        ap_h,
+                        raios,
+                        paralelo,
+                        true,
+                    );
+                    let (b, bw2, bh2) = super::super::as_seis_caixas(
+                        apron.clone(),
+                        ap_w,
+                        ap_h,
+                        raios,
+                        paralelo,
+                        false,
+                    );
+                    assert_eq!(
+                        (aw, ah),
+                        (bw, bh),
+                        "a rota fundida tem de entregar a região"
+                    );
+                    assert_eq!(
+                        (bw2, bh2),
+                        (bw, bh),
+                        "a rota separada tem de entregar a região"
+                    );
+                    assert!(
+                        a == b,
+                        "as duas rotas têm de ser BYTE-IDÊNTICAS (k={k}, {bw}×{bh}, \
+                         paralelo={paralelo})"
+                    );
+                    casos += 1;
+                }
+            }
+        }
+        assert!(casos >= 32, "o corpus encolheu: {casos} casos");
     }
 
     /// **ONDE O BORRÃO GASTA** — a sonda que a ordem do dono de 2026-09-22 (*«atacar o Blur»*) pede

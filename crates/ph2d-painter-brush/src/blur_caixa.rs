@@ -226,7 +226,9 @@ thread_local! {
 /// `PH2D_RETOPO_LEGACY`, do `PH2D_CONTACT_UMA_CAMADA` e do `PH2D_SKIN_GPU=0`.
 ///
 /// ⛔ **Nenhum gate a lê:** uma lei que só é alcançável pelo ambiente não é gateável, e um gate que
-/// lê o ambiente mede a máquina. Os gates chamam as duas rotas **pelo nome**.
+/// lê o ambiente mede a máquina. O que os gates chamam é a ROTA inteira, [`as_seis_caixas`], com a
+/// escolha como argumento — ⚠️ até 2026-09-23 esta frase dizia «as duas rotas pelo nome» e era
+/// verdade só sobre as funções componentes: a cola da rota separada não tinha gate nenhum.
 fn sem_fusao() -> bool {
     static V: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *V.get_or_init(|| std::env::var("PH2D_BLUR_SEM_FUSAO").is_ok_and(|v| v != "0"))
@@ -640,12 +642,6 @@ pub(crate) fn vale_a_pena_partir(bw: usize, bh: usize) -> bool {
 /// ⇒ `256²` é o primeiro tamanho em que ele **deixa de perder**, e é esse o valor.
 pub(crate) const PIXEIS_PARA_PARALELIZAR: usize = 256 * 256;
 
-/// O gémeo com a rota ESCOLHIDA, que é o que torna a paridade gateável.
-///
-/// ⛔ A escolha é um ARGUMENTO e não uma variável de ambiente — *um gate que lê o ambiente mede a
-/// máquina*, e a lei aqui é sobre os bytes de saída.
-#[allow(clippy::too_many_arguments)]
-#[must_use]
 /// **O AVENTAL**: a região mais a margem que as três caixas vão consumir, lida do canvas e já
 /// PREMULTIPLICADA. ⭐ Ele é por-pixel puro — *uma linha dele não lê nenhuma outra* —, logo parti-lo
 /// em fatias é byte-idêntico (ADR-0171).
@@ -710,9 +706,10 @@ pub(crate) fn avental(
 /// ⚠️ Sempre compilado (não `#[cfg(test)]`): o consumidor vive na `ph2d-tool-painter`, e um
 /// `cfg(test)` aqui é invisível de lá. O custo é um `Cell::set` **por CHAMADA**, nunca por pixel.
 ///
-/// ⛔ Nenhum gate os lê como lei de CUSTO — eles são INSTRUMENTO, e o que respondem é *«o borrão
-/// dentro da pilha toca mais píxeis do que o borrão sozinho?»*, que nenhuma régua de VALOR pode
-/// perguntar.
+/// ⚠️ Eles são INSTRUMENTO e nunca RELÓGIO: o que respondem é *«o borrão dentro da pilha toca
+/// mais píxeis do que o borrão sozinho?»*, que nenhuma régua de VALOR pode perguntar. Um gate lê-os
+/// — o `o_borrao_no_topo_e_aplicado_so_na_caixa_nova`, sobre o [`conta::MAIOR_LADO`] — e o que ele
+/// afirma é uma CONTA (o tamanho da região), nunca um tempo.
 pub mod conta {
     use std::cell::Cell;
     thread_local! {
@@ -735,6 +732,16 @@ pub mod conta {
     }
 }
 
+/// O gémeo com a rota ESCOLHIDA, que é o que torna a paridade gateável.
+///
+/// ⛔ A escolha é um ARGUMENTO e não uma variável de ambiente — *um gate que lê o ambiente mede a
+/// máquina*, e a lei aqui é sobre os bytes de saída.
+///
+/// ⚠️ Esta doc e os dois atributos viveram colados na [`avental`] desde o corte que a criou (a
+/// auditoria de 2026-09-23 achou-os pelo clippy: *duplicated attribute* + `too_many_arguments`
+/// aqui) — um corte que sobe por `///` e não por `#[` leva a doc do vizinho.
+#[allow(clippy::too_many_arguments)]
+#[must_use]
 pub(crate) fn blur_region_caixa_com(
     buf: &[u8],
     fw: i64,
@@ -747,53 +754,20 @@ pub(crate) fn blur_region_caixa_com(
     wrap: [bool; 2],
     paralelo: bool,
 ) -> Vec<[f32; 4]> {
-    {
-        let r_total: usize = box_radii(k).iter().sum();
-        conta::BORROES.set(conta::BORROES.get() + 1);
-        conta::PIXEIS_BORRADOS
-            .set(conta::PIXEIS_BORRADOS.get() + ((bw + 2 * r_total) * (bh + 2 * r_total)) as u64);
-        conta::PIXEIS_UTEIS.set(conta::PIXEIS_UTEIS.get() + (bw * bh) as u64);
-        conta::MAIOR_LADO.set(conta::MAIOR_LADO.get().max(bw.max(bh) as u64));
-    }
     let raios = box_radii(k);
     let r_total: usize = raios.iter().sum();
     let ap_w = bw + 2 * r_total;
     let ap_h = bh + 2 * r_total;
+    // ⚠️ A conta lê o MESMO `r_total` que o caminho real (era calculado duas vezes: dois sítios
+    //    que têm de concordar sobre o avental).
+    conta::BORROES.set(conta::BORROES.get() + 1);
+    conta::PIXEIS_BORRADOS.set(conta::PIXEIS_BORRADOS.get() + (ap_w * ap_h) as u64);
+    conta::PIXEIS_UTEIS.set(conta::PIXEIS_UTEIS.get() + (bw * bh) as u64);
+    conta::MAIOR_LADO.set(conta::MAIOR_LADO.get().max(bw.max(bh) as u64));
     let apron = avental(
         buf, fw, fh, min_x, min_y, ap_w, ap_h, r_total, wrap, paralelo,
     );
-    // Separável: as três caixas na horizontal — FUNDIDAS numa passagem (2026-09-22) —, depois as
-    // três na vertical. ⚠️ O `caixa_h` fica: ele é o oráculo do gate da fusão.
-    // ⚠️ A largura NÃO muda nas verticais (só a altura), logo `w` não é `mut`.
-    let (mut cur, w) = if sem_fusao() {
-        let (mut c, mut ww) = (apron.clone(), ap_w);
-        for r in raios {
-            let (n, nw) = caixa_h(&c, ww, ap_h, r, paralelo);
-            c = n;
-            ww = nw;
-        }
-        (c, ww)
-    } else {
-        caixa_h3(&apron, ap_w, ap_h, raios, paralelo)
-    };
-    let (n, h) = if sem_fusao() {
-        let (mut c, mut hh) = (std::mem::take(&mut cur), ap_h);
-        for r in raios {
-            let (n, nh) = caixa_v(
-                &c,
-                w,
-                hh,
-                r,
-                if paralelo { bandas_da_vertical(w) } else { 1 },
-            );
-            c = n;
-            hh = nh;
-        }
-        (c, hh)
-    } else {
-        caixa_v3(&cur, w, ap_h, raios, LARGURA_DA_BANDA_FUNDIDA, paralelo)
-    };
-    cur = n;
+    let (mut cur, w, h) = as_seis_caixas(apron, ap_w, ap_h, raios, paralelo, !sem_fusao());
     debug_assert_eq!((w, h), (bw, bh));
     let desfaz = |p: &mut [f32; 4]| {
         let a = p[3];
@@ -807,6 +781,54 @@ pub(crate) fn blur_region_caixa_com(
         cur.iter_mut().for_each(desfaz);
     }
     cur
+}
+
+/// **As seis caixas** sobre o avental — a ROTA, com a escolha fundida/separada como ARGUMENTO.
+///
+/// ⭐ Porta própria desde a auditoria de 2026-09-23: a rota da bissecção ([`sem_fusao`]) é código
+/// de PRODUTO (ela encadeia as larguras e escolhe as bandas do caminho paralelo) e **nenhum gate a
+/// alcançava** — o `OnceLock` fecha o ambiente e os gates reconstruíam a cola à mão. Medido pela
+/// auditoria: cravar `if paralelo { bandas_da_vertical(w) } else { 1 }` em `1` sobrevivia à suíte
+/// inteira. Hoje o gate `as_duas_rotas_do_motor_dao_o_mesmo_f32` chama ESTA função com os dois
+/// valores.
+///
+/// ⛔ **O avental é MOVIDO e não clonado:** a rota separada fazia `apron.clone()` e o motor de
+/// antes da fusão movia-o. A cópia custava `6`–`20 %` da diferença medida entre as rotas — o A/B
+/// da porta favorecia a fusão pelo preço de uma cópia que o produto antigo nunca pagou.
+fn as_seis_caixas(
+    apron: Vec<[f32; 4]>,
+    ap_w: usize,
+    ap_h: usize,
+    raios: [usize; 3],
+    paralelo: bool,
+    fundido: bool,
+) -> (Vec<[f32; 4]>, usize, usize) {
+    // Separável: as três caixas na horizontal — FUNDIDAS numa passagem (2026-09-22) —, depois as
+    // três na vertical. ⚠️ A largura NÃO muda nas verticais (só a altura).
+    if fundido {
+        let (cur, w) = caixa_h3(&apron, ap_w, ap_h, raios, paralelo);
+        let (out, h) = caixa_v3(&cur, w, ap_h, raios, LARGURA_DA_BANDA_FUNDIDA, paralelo);
+        return (out, w, h);
+    }
+    let (mut c, mut w) = (apron, ap_w);
+    for r in raios {
+        let (n, nw) = caixa_h(&c, w, ap_h, r, paralelo);
+        c = n;
+        w = nw;
+    }
+    let mut h = ap_h;
+    for r in raios {
+        let (n, nh) = caixa_v(
+            &c,
+            w,
+            h,
+            r,
+            if paralelo { bandas_da_vertical(w) } else { 1 },
+        );
+        c = n;
+        h = nh;
+    }
+    (c, w, h)
 }
 
 #[cfg(test)]

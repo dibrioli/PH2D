@@ -84,7 +84,8 @@ pub fn medindo<R>(f: impl FnOnce() -> R) -> (R, Vec<Aviso>) {
 /// `#[track_caller]` não atravessa a fronteira dele — a lição que o censo da elisão pagou.
 #[track_caller]
 pub(crate) fn regista(texto: &str) {
-    if !ARMADO.get() || texto.is_empty() {
+    // ⚠️ Um quadro de AQUECIMENTO do arnês não conta — o mesmo aviso sairia `3×` (medido).
+    if !ARMADO.get() || texto.is_empty() || ph2d_editor_core::aquecimento::aquecendo() {
         return;
     }
     let onde = core::panic::Location::caller();

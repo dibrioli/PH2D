@@ -303,8 +303,28 @@ impl MockPanelHost {
             ph2d_editor_core::screens::layout::CenterSplit::None,
             ph2d_editor_core::screens::layout::DockSides::BOTH,
         );
-        let mut scene = VectorScene::new();
         let mut text_system = TextSystem::without_system_fonts();
+        // ⭐⭐ **DOIS QUADROS DE AQUECIMENTO, sem medir** (2026-09-23). A coluna do valor é UMA por
+        //    painel ([`ph2d_editor_core::widget::ColunaDoPainel`]): o 1.º quadro aprende a BASE, o
+        //    2.º os pedidos de todas as secções, e o artista vê o 3.º em diante — é esse que as
+        //    réguas medem. ⚠️ Com UM só, o Inspector armado media `12` linhas no `x` errado (o 1.º
+        //    quadro abre num cartão recuado e deixava `1` pedido de `51`). E os dois correm como
+        //    AQUECIMENTO ([`ph2d_editor_core::aquecimento`]): os censos que acumulam através
+        //    da pintura (o balão, os avisos) não os contam.
+        for _ in 0..2 {
+            let mut scene = VectorScene::new();
+            let mut ctx = PaintCtx {
+                host: self,
+                layout: &layout,
+                slot: layout.slot_rects(SlotSet::of(slot)).get(slot),
+                viewport,
+                scene: &mut scene,
+                text_system: &mut text_system,
+            };
+            ph2d_editor_core::aquecimento::aquecendo_durante(|| painel.paint(&mut ctx));
+            self.hit_index.clear_for_frame();
+        }
+        let mut scene = VectorScene::new();
         elisao::medindo(|| {
             let mut ctx = PaintCtx {
                 host: self,

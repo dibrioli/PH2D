@@ -147,7 +147,7 @@ pub use property_box::{
 // ⭐⭐ **A DECLARAÇÃO de uma secção** — ver `property_box::seccao`. Ela vive do lado do `widget`
 //    porque é a ENTRADA da repartição de uma linha, e pô-la no `property_row` faria o `widget`
 //    depender dele (um ciclo que o gate do DAG recusa).
-pub use property_box::{Seccao, colunas_da_linha};
+pub use property_box::{ColunaDoPainel, Seccao, colunas_da_linha};
 pub use radial_menu::{
     MAX_SECTORS as RADIAL_MAX_SECTORS, RadialItem, RadialOpen, dead_zone_px as radial_dead_zone_px,
     item_offset as radial_item_offset, paint_radial_menu, sector_at as radial_sector_at,

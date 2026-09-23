@@ -219,6 +219,12 @@ pub fn property_label_col_w(x: f32, w: f32) -> f32 {
 ///
 /// ⚠️ **`None` = o piso do campo**, que é o comportamento de quem não sabe o que vai pintar: sem
 /// cedência nenhuma.
+///
+/// # ⭐⭐⭐ E DENTRO DE UM PAINEL a coluna é UMA — ver [`super::ColunaDoPainel`]
+///
+/// Ordem do dono (2026-09-23): *«quero tudo alinhado e padronizado»*. A resposta desta função é a
+/// de UMA secção; quando um painel está a pintar, ela devolve a MENOR das respostas de todos os
+/// pedidos que esse painel já fez, e o pedido desta linha entra na conta.
 #[must_use]
 pub fn property_label_col_w_for(
     x: f32,
@@ -226,6 +232,26 @@ pub fn property_label_col_w_for(
     desired: Option<f32>,
     control_need: Option<f32>,
 ) -> f32 {
+    super::coluna_do_painel::no_painel(x, w, desired, control_need, limites_da_seccao)
+}
+
+/// ⭐ **A lei de UMA secção, partida nas DUAS perguntas que ela junta** — `(prefere, tecto)`.
+///
+/// - `prefere`: a coluna que o NOME pede — a metade, ou o empréstimo de um nome mais largo, sem
+///   passar do tecto do campo mínimo.
+/// - `tecto`: a coluna MAIS LARGA com que o CONTROLO desta linha ainda cabe — a cedência, quando
+///   ela resolve; senão só o tecto do campo mínimo.
+///
+/// ⭐⭐ **A coluna da secção é `prefere.min(tecto)`, ao bit** (`min` de `f32` é exacto, e as duas
+/// metades são as mesmas contas da redacção antiga, só lidas separadas). Separadas, elas deixam o
+/// PAINEL escolher uma coluna: a mais larga que os nomes pedem, sem apertar controlo nenhum abaixo
+/// do que ele declara ([`super::coluna_do_painel`]).
+pub(super) fn limites_da_seccao(
+    x: f32,
+    w: f32,
+    desired: Option<f32>,
+    control_need: Option<f32>,
+) -> (f32, f32) {
     // ⚠️ O vertical entra a zero **e é deitado fora**: o único uso que a [`form_row_columns`] lhe dá
     // é montar o rect do ponto, e aqui só queremos a largura utilizável (que já desconta a coluna
     // de animação, ou não desconta nada na aparência clássica — a guarda mora lá, uma vez).
@@ -266,8 +292,9 @@ pub fn property_label_col_w_for(
     // ⚠️⚠️ **Só se cede quando a cedência RESOLVE.** Se nem com o rótulo no mínimo o controlo
     // coubesse (`cede < quer`), encolher a coluna **troca uma linha quebrada por um nome cortado** —
     // e a linha continua quebrada. Aí não se cede nada e a coluna fica onde o dono a pôs.
-    let coluna = if cede >= quer { base.min(cede) } else { base };
-    coluna.min(tecto).max(0.0)
+    let prefere = base.min(tecto).max(0.0);
+    let tecto_do_controlo = if cede >= quer { cede.min(tecto) } else { tecto };
+    (prefere, tecto_do_controlo.max(0.0))
 }
 
 /// ⭐⭐⭐ **A porta de uma linha de propriedade** — ver [`PropertyRow`].

@@ -86,6 +86,12 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
         "property_box/seccao.rs",
         "a declaracao da seccao: aritmetica de colunas, zero pintura e zero controlo",
     ),
+    // ⭐ A COLUNA DO PAINEL (2026-09-23): uma lei de LARGURA — onde o valor arranca — com memória
+    //    por painel. Não pinta nem regista nada; quem emite o nó é o controlo que ela posiciona.
+    (
+        "property_box/coluna_do_painel.rs",
+        "lei da coluna do valor por painel: devolve uma largura, sem superficie propria",
+    ),
     // ⚠️ **O NOME de uma linha de marcar** (2026-09-15, quando o tecto de LOC partiu o `mark.rs`):
     //    o `label.rs` compõe a marca com o texto do nome. O nó de acessibilidade da caixa é
     //    construído pelo `Checkbox::build_a11y`, no `mod.rs` — *um nó aqui leria a mesma caixa duas

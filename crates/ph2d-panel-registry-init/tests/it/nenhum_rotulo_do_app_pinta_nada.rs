@@ -265,6 +265,54 @@ const CORTADOS_HOJE: &[(&str, &str)] = &[
     //    cima do risco do cabeçalho e da fileira seguinte da bancada.
 ];
 
+/// ⭐⭐⭐ **O PREÇO DA COLUNA ÚNICA — ordem do dono de 2026-09-23, com a troca dita antes.**
+///
+/// *«quero tudo alinhado e padronizado»* — a resposta à pergunta que lhe foi devolvida: *uma coluna
+/// de valor por painel, mesmo que alguns nomes de secção percam espaço e saiam cortados com balão?*
+/// Até aí cada secção media os nomes DELA e emprestava para além da metade, e o valor do Inspector
+/// arrancava em `111` / `136` / `141,8` conforme a secção. Hoje ele arranca num `x` só
+/// ([`ph2d_editor_core::widget::ColunaDoPainel`]), e esse `x` é o mais largo que os nomes pedem
+/// **sem apertar controlo nenhum abaixo do que ele declara** — no Inspector são as fileiras de DOIS
+/// campos (`147 px`) que o prendem, e a `300 px` o nome fica com `99` (`93` dentro de um cartão).
+///
+/// ⚠️ **Não é uma tolerância: é a troca que o dono escolheu, e cada linha é a mesma troca.** Os
+/// nomes daqui cabiam antes porque a secção deles empurrava o valor para a direita — que era
+/// exactamente o degrau que ele mandou tirar. Todos têm BALÃO (o gate
+/// [`toda_palavra_cortada_tem_balao`] prova-o pela mesma varredura), e os compostos perdem a
+/// EXPLICAÇÃO antes das letras (`Mask Source (Mask2D)` → `Mask Source`).
+///
+/// ⛔ **A cura que NÃO é esta lista crescer:** encurtar um destes nomes é decisão de VOCABULÁRIO do
+/// dono (a casa já mediu e reverteu renomes à mão, ver [`CORTES_NO_DEGRAU_ESTREITO`]). O censo de
+/// obsolescência apaga a linha de quem deixar de ser cortado.
+const O_PRECO_DA_COLUNA_UNICA: &[(&str, &str)] = &[
+    ("inspector", "Aim from spawner"),
+    ("inspector", "Always show anchors"),
+    ("inspector", "Bounds X / Y / W / H"),
+    ("inspector", "Center X / Y / W / H"),
+    ("inspector", "Corner Look-ahead"),
+    ("inspector", "Foot Ray Spread"),
+    ("inspector", "Lifetime Randomness"),
+    ("inspector", "Mask Alpha Cutoff"),
+    ("inspector", "Mask Source (Mask2D)"),
+    ("inspector", "Non-Spatialized Radius"),
+    ("inspector", "Off-screen margin"),
+    ("inspector", "On-Screen Enabler"),
+    ("inspector", "Panning Strength"),
+    ("inspector", "Reference Height"),
+    ("inspector", "Rides Parent Anchor"),
+    ("inspector", "Shape Width / Radius"),
+    ("inspector", "Show Behind Parent"),
+    ("inspector", "Show anchors at runtime"),
+    ("inspector", "Show sheet on canvas"),
+    ("inspector", "Simulation Space"),
+    ("inspector", "Size Randomness"),
+    ("inspector", "Speed Randomness"),
+    ("inspector", "Swim Line (weights)"),
+    ("inspector", "Weight on Ground"),
+    ("painter_layers", "Composite Brush"),
+    ("painter_layers", "Sync with other tools"),
+];
+
 /// ⭐⭐⭐ **O QUE O PONTO CEGO ESCONDIA — a dívida do Inspector com um DOCUMENTO na mão.**
 ///
 /// Esta lista nasceu em 2026-09-19, no dia em que a varredura passou a pintar o Inspector armado
@@ -349,17 +397,10 @@ const A_PASSAGEM_ARMADA_AINDA_CORTA: &[(&str, &str, &str)] = &[
     //
     // ── O que fica: texto que o ARTISTA escreveu, numa caixa que a lei da linha dá ────────────
     //
-    // O chip que escolhe em que âncora do PAI este objecto se monta. A coluna do nome desta secção
-    // é medida sobre as TRÊS palavras dela (`Rides Parent Anchor` · `Always show anchors` ·
-    // `Show anchors at runtime`) e o chip fica com o resto, menos o recuo e o chevron dele.
-    // ⚠️ **Alargar o chip aqui ESTREITA a coluna das duas caixas de marcar**, que o dono acabou de
-    //    mandar encurtar — é uma troca entre um rótulo do programa e um nome do artista, e a lei da
-    //    casa manda cortar o segundo.
-    (
-        "inspector",
-        "hand_right",
-        "chip de escolha · 57,1 px · nome que o artista deu a' ancora",
-    ),
+    // ✅ **O `hand_right` (o chip da âncora do PAI) SAIU em 2026-09-23** — a coluna desta secção
+    //    era medida sobre as TRÊS palavras dela e empurrava o chip para `57,1 px`; com a coluna
+    //    ÚNICA do painel ([`O_PRECO_DA_COLUNA_UNICA`]) o nome passa a ser o que corta e o chip do
+    //    artista cabe. *É a troca que esta nota já descrevia, feita ao contrário por ordem do dono.*
     // O resumo de um timer, na coluna da DIREITA da lista. ⭐ Desde 19/09 essa coluna sai da LISTA
     // dos resumos e não de `w/2` (o nome deixou de poder pintar por cima dela), com tecto de
     // `0,55 × w` — e o tecto é sobre o NOME, que é por onde o artista acha a linha.
@@ -579,7 +620,15 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    (`property_row::paint_choice_row`), e as que não cabem ao lado do nome viram PALETA com
     //    larguras naturais — os seis segmentados que repartiam a fileira em partes deixaram de
     //    cortar. Medido no âmbito do app (`--workspace`), a catraca a pedir o número.
-    ("inspector", 79),
+    // ⬆️ `79 → 83` em 2026-09-23, e é a ÚNICA subida desta lista — **por ordem do dono, com a troca
+    //    dita antes** (*«quero tudo alinhado e padronizado»*, ver [`O_PRECO_DA_COLUNA_UNICA`]). A
+    //    coluna do valor passou a ser UMA por painel: no degrau estreito ela é a mais larga que os
+    //    nomes pedem sem apertar o controlo das linhas de largura inteira (`90` de `184 px`), e as
+    //    secções que emprestavam para lá dela perderam a folga. ⛔ **A 1.ª lei da coluna única lia
+    //    `211`** (o `min` das secções fazia a METADE de uma linha sem nome largo mandar no painel
+    //    inteiro, e o nome caía a `48 px`) — o `83` é o que sobra depois de a METADE passar a
+    //    piso e o CONTROLO a tecto (`coluna_do_painel`).
+    ("inspector", 83),
     // ⭐ Era `6`: o `Mute` do Master deixou de ler `…` quando a coluna aperta (report do dono,
     //    19/09). *Uma catraca que desce é a metade justa dela a funcionar.*
     ("audio_mixer", 5),
@@ -663,7 +712,8 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⭐ `85 → 84` em 2026-09-21, pela mesma passagem pela porta — ver a irmã acima.
     // ⬇️ `84 → 81` em 2026-09-22, pela mesma cura — as letras deixaram de se perder.
     // ⬇️ `81 → 75` em 2026-09-23, pela mesma passagem pela porta da escolha — ver a irmã acima.
-    ("inspector", 75),
+    // ⬆️ `75 → 79` em 2026-09-23, pela coluna ÚNICA do painel (ordem do dono) — ver a irmã acima.
+    ("inspector", 79),
     ("audio_mixer", 5),
     ("sculpt3d", 6),
     ("hierarchy", 5),
@@ -1066,6 +1116,7 @@ fn nenhum_corte_novo_entra_sem_ser_nomeado() {
         // ficam os cortes na largura de FABRICA, que sao poucos e cada um com a causa dele.
         .filter(|a| a.degrau != DEGRAU_ESTREITO)
         .filter(|a| !CORTADOS_HOJE.contains(&(a.painel, a.m.texto.as_str())))
+        .filter(|a| !O_PRECO_DA_COLUNA_UNICA.contains(&(a.painel, a.m.texto.as_str())))
         // ⭐ E a dívida que o PONTO CEGO escondia — por PAINEL e por TEXTO, como a irmã de cima:
         //    o mesmo rótulo pode caber num painel e não caber noutro.
         .filter(|a| {
@@ -1297,6 +1348,7 @@ fn nenhuma_linha_da_divida_ficou_obsoleta() {
     );
     let obsoletas: Vec<String> = CORTADOS_HOJE
         .iter()
+        .chain(O_PRECO_DA_COLUNA_UNICA)
         .filter(|(painel, _)| presentes.contains(painel))
         .filter(|(painel, texto)| {
             !tudo

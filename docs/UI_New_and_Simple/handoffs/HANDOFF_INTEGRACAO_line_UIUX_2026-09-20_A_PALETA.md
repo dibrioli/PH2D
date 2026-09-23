@@ -2802,6 +2802,100 @@ ao lado do irmão já listado `the_mask_stroke_cost_does_not_follow_the_canvas` 
 naquela crate.
 
 
+## §9-vicies-sexies — ⭐⭐⭐ A COLUNA DO PAINEL: o valor arranca num `x` SÓ, por ordem do dono
+
+**Enio, 2026-09-23:** *«quero tudo alinhado e padronizado»* — a resposta à pergunta que o §9-vicies-quinquies
+lhe devolveu com o preço ao lado (*uma coluna por painel, mesmo que alguns nomes de secção percam espaço e saiam
+cortados com balão?*). Até aqui a coluna era uma resposta da SECÇÃO (`Seccao::medida`) e o valor do Inspector
+arrancava em `111` / `136` / `141,8` conforme a secção; o Grid Snap em `110` / `112,5`; o Painter em `117` / `123`.
+
+### §9-vicies-sexies.1 — A lei ([`ColunaDoPainel`](../../../crates/ph2d-editor-core/src/widget/property_box/coluna_do_painel.rs))
+
+- **Mora no `ErasedPanel`**, um por painel, e é armada pelo `paint` dele (`thread_local`, reentrante). Toda chamada
+  a `property_label_col_w_for` dentro da pintura deixa um PEDIDO `(nome mais largo, o que o controlo precisa, recuo)`
+  e recebe a coluna do PAINEL. ⚠️ **Fora de um painel nada muda, ao bit** — gate com a lei antiga escrita como
+  oráculo sobre `>30 000` combinações (`fora_de_um_painel_a_coluna_e_a_da_seccao_ao_bit`).
+- **A lei da secção partiu-se nas duas perguntas que ela juntava** (`row::limites_da_seccao` → `(prefere, tecto)`,
+  e a coluna da secção é `prefere.min(tecto)` ao bit). O painel escolhe
+  `min( max(recuo + prefere), min(tecto das linhas SEM recuo) )`: o mais largo que os NOMES pedem, sem apertar o
+  CONTROLO de nenhuma linha de largura inteira abaixo do que ele declara.
+- ⛔⛔ **A 1.ª redacção era o `min` das colunas das secções e foi REPROVADA pela régua das elisões:** no degrau
+  estreito o Inspector armado passava de `79` para **`211`** nomes cortados, com a coluna do nome a `48 px` —
+  *a METADE de uma linha sem nome largo não é uma necessidade, é o que ela ACEITA*, e o `min` punha-a a mandar no
+  painel. Separadas, a metade passa a PISO e a cedência ao controlo a TECTO.
+- ⚠️⚠️ **O tecto de um CARTÃO não manda no painel** — duas ordens do dono colidem ali (tudo alinhado · nenhum campo
+  abaixo de `72 px`, 24/05): o recuo encurta o controlo do cartão, e deixá-lo mandar punha o Inspector estreito a
+  `197` cortes. Um cartão alinha-se sempre que o campo dele caiba; quando não cabe, só ELE recua o recuo dele — e só
+  no fim estreito do dock (a `300 px` o tecto do cartão está `63 px` acima da coluna).
+- **Guardam-se os PEDIDOS e não a coluna** — um pedido não depende da largura, logo arrastar o dock acerta no MESMO
+  quadro. A memória **só cresce** (fechar uma secção não mexe a coluna das outras).
+- **A BASE** (o rectângulo das linhas de largura inteira) sai da PRIMEIRA linha do quadro mais o recuo que ela tinha
+  no anterior — ⚠️ não da faixa do painel (`PaintCtx::slot` é a posição de NASCIMENTO de um flutuante, e o Grid Snap
+  flutua). ⛔ **Nem o envelope** (uma célula de par na borda arrastava-o `67 px` e punha `392` de `392` linhas como
+  assimétricas) **nem a moda** (no degrau estreito há mais linhas DENTRO de cartões que fora): é a geometria **mais
+  larga que se repete**. Se a primeira linha mudar de ESPÉCIE (outra largura), ela é lida como recuada por igual
+  dentro da largura lembrada.
+- ⚠️ **Um painel converge no 3.º quadro**: o 1.º aprende a base, o 2.º os pedidos (medido no Inspector: `1` pedido
+  depois do 1.º quadro, `51` depois do 2.º). No app são `33 ms` ao abrir um painel.
+
+### §9-vicies-sexies.2 — O que mudou fora da lei
+
+- **O arnês** (`ph2d-ui-testkit::medindo_a_pintura_do_registo_com_bandas`) pinta **dois** quadros de aquecimento
+  dentro de uma porta nova, [`aquecimento`](../../../crates/ph2d-editor-core/src/aquecimento.rs) (módulo FOLHA: no `panel::` ele fechava um ciclo no DAG da fundação) — e
+  os censos que acumulam através da pintura inteira perguntam-lhe e não os contam: o balão (sem isso acusava `26`
+  rótulos que no quadro visto CABEM) e os avisos do Inspector (liam cada facto do painel escrito `3×`). No app a
+  porta nunca arma. ⛔ A 1.ª cura era um «descartar» só do balão; *uma porta, N leitores* — duas maneiras de ignorar
+  o mesmo quadro divergem no dia em que uma não for chamada.
+- **A altura de abertura do Inspector DESCEU** (`918 → 822`): com a coluna do nome igual em todas as secções,
+  escolhas que viravam PALETA por não caberem ao lado de um nome largo passam a caber na fileira.
+- **Três gates recalculavam a coluna FORA da pintura** (as duas réguas dos selectores de cor e a da secção *Inspect*
+  do Grid Snap) e passaram a ler a coluna do PAINEL — da pintura dele, ou da porta com o desejo certo. *Um oráculo
+  que recalcula a lei fora do contexto dela mede outra lei.*
+- **Duas secções passaram a PEDIR a coluna em vez de a escrever:** o cartão de instância do Inspector (a fracção
+  `0,28` com tecto de `72 px`, `79,7` contra `111`) e a secção *Inspect* do Grid Snap (a lista medida mais o vão à
+  mão, `112,5` contra `110`).
+- **A régua do alinhamento virou LEI do painel inteiro** (`onde_comeca_o_valor`): `UMA_COLUNA` (a lista de quem JÁ
+  estava numa coluna, que só crescia) deu lugar a `COLUNAS_DECLARADAS_POR_PAINEL` — as EXCEPÇÕES, numa igualdade
+  com censo de obsolescência: a Timeline (`2`, as abas são um segmentado na faixa do título) e a galeria de widgets
+  (`3`, um catálogo). Um painel novo nasce obrigado à coluna única. Piso de `11` painéis numa coluna.
+
+### §9-vicies-sexies.3 — O PREÇO, medido e aceite pelo dono
+
+| degrau | antes | depois |
+|---|---|---|
+| Inspector armado, `300 px` | valor em `111`/`136`/`141,8` | **`111`, 312 linhas** |
+| Grid Snap | `110`/`112,5` | **`122`, 9 linhas** |
+| Painter | `117`/`123` | **`123`** |
+| cortes a `1366`/`1920`/`1280` | — | **`+24`** no Inspector, **`+2`** no Painter (todos com balão) |
+| cortes no degrau estreito, Inspector | `79` / `75` letras | **`83` / `79`** |
+
+Os `26` nomes vivem em `O_PRECO_DA_COLUNA_UNICA` (uma lista, UM mecanismo, com obsolescência); o `hand_right` SAIU
+da dívida armada — com a coluna única o chip do artista cabe e é o nome que corta, a troca que aquela nota já
+descrevia, feita ao contrário.
+
+### §9-vicies-sexies.4 — O portão
+
+`nextest-impacted` **17 690/17 690** · clippy `-D warnings` zero nas 4 crates tocadas · `cargo fmt` ·
+`censos-da-arvore-combinada.sh` verde · a régua do alinhamento e as das elisões a `--workspace`.
+
+**Mutações: 13 de 13 a sangrar** (o arnês com controlo de filtro vazio e de não-compila): o tecto de um cartão a
+mandar no painel · sem o tecto do controlo · esquecer o recuo · a base pela MODA · sem a folga simétrica · a
+memória que não fica · sem o teste de simetria · a cedência sempre · o `min` das secções (a 1.ª lei) · um só quadro
+de aquecimento · o balão do aquecimento a ficar · a sonda do Grid Snap `+2,5 px` · o eixo da instância à mão.
+⚠️⚠️ **Três SOBREVIVERAM à 1.ª ronda e a causa era UMA:** as fixturas não pediam empréstimo — e a METADE põe
+toda linha SIMÉTRICA no mesmo `x` por construção (é o centro menos o vão), logo a base pela moda, a folga simétrica
+e o teste de simetria eram invisíveis a elas. *Uma fixtura no ponto neutro de uma lei não testa essa lei* — as três
+passaram a nomes acima da metade (e o par a `200 px`, onde o tecto dele deixa de dar a resposta por acaso).
+
+⛔ **Três gates vizinhos recalculavam a coluna FORA da pintura** e reprovaram sobre produto certo — curados a ler a
+do painel (ver §9-vicies-sexies.2). E a 1.ª versão do oráculo dos selectores de cor contava TODO controlo que
+acaba na borda: a metade direita de um PAR também acaba lá, e no vetor a moda caía nela (`1792` contra os `1760`
+dos campos sozinhos).
+
+⚠️ **Flake do fan-out, já na lista do §5.0:** `an_abandoned_march_returns_nothing_and_returns_fast`
+(`ph2d-field-render`) reprovou numa corrida de `17 690` e passou na seguinte — zero linhas de diff naquela crate.
+
+
 ## §11 — O que esta linha recomenda a quem a integrar
 
 1. **Correr o `diag_onde_cai_a_pista_do_pente` da `line/sculpt3d` DEPOIS da fusão** e reescrever com

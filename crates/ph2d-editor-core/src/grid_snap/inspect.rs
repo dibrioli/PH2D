@@ -334,7 +334,6 @@ pub fn paint(
 
     let snap = snapshot(state);
     let mut y = rect.y + SECTION_HEADER_H + list_row_gap_px();
-    let x = rect.x + Spacing::Sm.px();
     let label_color = resolve(ColorToken::Text2, theme);
 
     let rows: [(String, String); 5] = [
@@ -379,25 +378,28 @@ pub fn paint(
         LABEL_FONT_SIZE,
         rows.iter().map(|(l, _)| l.as_str()),
     );
-    let gap = Spacing::Md.px();
-    let value_x = x + label_w + gap;
-    // ⚠️ A margem direita é a que esta secção já tinha (`rect.w − 100` a partir de `+90` deixava
-    //    `Spacing::Xs`), agora escrita como o token que ela é.
-    let value_w = (rect.x + rect.w - Spacing::Xs.px() - value_x).max(0.0);
+    // ⭐⭐⭐ **As colunas são as do PAINEL** (ordem do dono, 2026-09-23: *«quero tudo alinhado e
+    //    padronizado»*). Esta secção media a lista dela e somava o vão à mão — o valor arrancava a
+    //    `+2,5 px` do resto da janela (a varredura `onde_comeca_o_valor` via `110` contra `112,5`).
+    //    Hoje ela PEDE a coluna com o rótulo mais largo dela, e a lei do painel responde.
+    let colunas = |y: f32| {
+        crate::widget::property_row_columns_for(rect.x, rect.w, y, ROW_H, Some(label_w), None)
+    };
     for (label, value) in &rows {
         if label.is_empty() && value.is_empty() {
             continue;
         }
         let row_y = y + (ROW_H - LABEL_FONT_SIZE) * 0.5;
+        let c = colunas(y);
         if !label.is_empty() {
             paint_text(
                 text_system,
                 scene,
                 label,
-                x,
+                c.label.x,
                 row_y,
                 LABEL_FONT_SIZE,
-                label_w,
+                c.label.w,
                 resolve(ColorToken::Text1, theme),
             );
         }
@@ -408,10 +410,10 @@ pub fn paint(
                 text_system,
                 scene,
                 value,
-                value_x,
+                c.control.x,
                 row_y,
                 LABEL_FONT_SIZE,
-                value_w,
+                c.control.w,
                 label_color,
             );
         }
@@ -422,12 +424,10 @@ pub fn paint(
     y += list_row_gap_px();
     paint_probe_pair_row(
         ph2d_i18n::tr("chrome.grid_snap.probe_a"),
-        label_w,
+        colunas(y),
         super::ids::GS_PROBE_A_X,
         super::ids::GS_PROBE_A_Y,
         state.probe_a,
-        rect.x,
-        rect.w,
         y,
         scene,
         text_system,
@@ -440,12 +440,10 @@ pub fn paint(
     y += ROW_H + list_row_gap_px();
     paint_probe_pair_row(
         ph2d_i18n::tr("chrome.grid_snap.probe_b"),
-        label_w,
+        colunas(y),
         super::ids::GS_PROBE_B_X,
         super::ids::GS_PROBE_B_Y,
         state.probe_b,
-        rect.x,
-        rect.w,
         y,
         scene,
         text_system,
@@ -461,12 +459,10 @@ pub fn paint(
 #[allow(clippy::too_many_arguments)]
 fn paint_probe_pair_row(
     label: &str,
-    label_w: f32,
+    colunas: crate::widget::PropertyRow,
     x_id: crate::NodeId,
     y_id: crate::NodeId,
     value: Vec2,
-    x: f32,
-    w: f32,
     y: f32,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
@@ -485,15 +481,15 @@ fn paint_probe_pair_row(
     //    `Probe A` com orçamento `70` ao lado do irmão com `94,48` e disse que a secção tinha
     //    DUAS colunas.
     let gap = Spacing::Xs.px();
-    let input_w = (w - label_w - gap - Spacing::Sm.px() * 2.0) / 2.0;
+    let input_w = ((colunas.control.w - gap) / 2.0).max(0.0);
     paint_text(
         text_system,
         scene,
         label,
-        x + Spacing::Sm.px(),
+        colunas.label.x,
         y + (ROW_H - LABEL_FONT_SIZE) * 0.5,
         LABEL_FONT_SIZE,
-        label_w,
+        colunas.label.w,
         resolve(ColorToken::Text1, theme),
     );
     // Probe values are world meters; convert through the active
@@ -501,7 +497,7 @@ fn paint_probe_pair_row(
     for (i, (id, v_m)) in [(x_id, value[0]), (y_id, value[1])].iter().enumerate() {
         let v_disp = display_unit.from_meters(*v_m, pixels_per_meter) as f64;
         let r = Rect::new(
-            x + Spacing::Sm.px() + label_w + i as f32 * (input_w + gap),
+            colunas.control.x + i as f32 * (input_w + gap),
             y,
             input_w,
             ROW_H,

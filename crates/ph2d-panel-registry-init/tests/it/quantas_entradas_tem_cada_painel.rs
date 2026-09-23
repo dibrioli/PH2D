@@ -2272,7 +2272,10 @@ fn altura_de_abertura(id_painel: &str) -> f32 {
 /// metade — *ela não é folga, é o sítio onde se escreve o número novo*.
 const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     // ⭐ `14 987 → 918` (o objecto impossível da fixtura) quando a política de dobra nasceu.
-    ("inspector", 918.0),
+    // ⬇️ `918 → 822` em 2026-09-23 pela coluna ÚNICA do painel (ordem do dono): com a coluna do nome
+    //    a mesma em todas as secções, escolhas que antes viravam PALETA por não caberem ao lado de
+    //    um nome largo passam a caber na fileira dele. *Menos altura sem uma linha a menos.*
+    ("inspector", 822.0),
     // ⭐ `2 709 → 1 529`: as quatro secções que chegaram DEPOIS da decisão do dono nascem
     //    recolhidas. ⛔ Ele não cabe, e o que falta é DECISÃO: o `Texture` (`450`) e o `Stroke`
     //    (`368`) são dele, e com tudo recolhido o painel mediria `736`.
@@ -2535,6 +2538,15 @@ struct SeletorDeCor {
     vizinhos: usize,
     /// A caixa de DENTRO do painel — derivada do controlo mais largo que NÃO é uma cor.
     dentro: Option<(f32, f32)>,
+    /// ⭐ **A coluna do valor DESTE painel, lida da pintura dele:** o `x` mais comum dos controlos
+    /// que acabam na borda do controlo (a coluna de animação à direita).
+    ///
+    /// ⚠️ Desde 2026-09-23 a coluna é UMA por painel ([`ph2d_editor_core::widget::ColunaDoPainel`]),
+    /// e não há resposta fora do painel que a reproduza — a 1.ª redacção destes gates recalculava-a
+    /// com a lei de SECÇÃO fora da pintura (`120 px`) e reprovou os seis selectores do Inspector que
+    /// estavam CERTOS na coluna do painel (`147`). *Um oráculo que recalcula a lei fora do contexto
+    /// dela mede outra lei.*
+    coluna: Option<f32>,
 }
 
 /// O censo dos selectores de cor, com a fileira e a caixa do painel de cada um.
@@ -2582,11 +2594,37 @@ fn selectores_de_cor() -> Vec<SeletorDeCor> {
                         *o != *nid && q.h < 60.0 && q.y < r.y + r.h - 1.0 && r.y < q.y + q.h - 1.0
                     })
                     .count();
+                let coluna = dentro.and_then(|(ix, iw)| {
+                    let direita = caixa_direita(ix, iw);
+                    let mut xs: std::collections::BTreeMap<i32, usize> =
+                        std::collections::BTreeMap::new();
+                    // ⚠️ SÓ os controlos SOZINHOS na fileira — a mesma partição do gate. A 1.ª
+                    //    redacção contava todos os que acabam na borda, e a metade direita de um PAR
+                    //    também acaba lá: no vetor a moda caía nela (`1792`) e acusava a swatch, que
+                    //    estava no `x` dos campos sozinhos (`1760`).
+                    for (o, q) in &pintados {
+                        let sozinho = !pintados.iter().any(|(p, t)| {
+                            *p != *o && t.h < 60.0 && t.y < q.y + q.h - 1.0 && q.y < t.y + t.h - 1.0
+                        });
+                        if !e_cor(*o)
+                            && sozinho
+                            && q.h < 60.0
+                            && q.x > ix + 24.0
+                            && (q.x + q.w - direita).abs() < 1.0
+                        {
+                            *xs.entry((q.x * 2.0).round() as i32).or_default() += 1;
+                        }
+                    }
+                    xs.into_iter()
+                        .max_by_key(|(_, n)| *n)
+                        .map(|(x, _)| x as f32 / 2.0)
+                });
                 out.push(SeletorDeCor {
                     painel: id,
                     rect: *r,
                     vizinhos,
                     dentro,
+                    coluna,
                 });
             }
         }
@@ -2597,6 +2635,30 @@ fn selectores_de_cor() -> Vec<SeletorDeCor> {
 /// ⛔ Piso de população — uma varredura que lê pouco devolve zero acusações e lê-se como aprovação.
 #[cfg(test)]
 const PISO_DE_SELETORES: usize = 100;
+
+/// A borda DIREITA da coluna do controlo — ela não depende da coluna do nome (é a fileira menos a
+/// coluna de animação), logo a lei de secção fora da pintura responde-a certo.
+#[cfg(test)]
+fn caixa_direita(ix: f32, iw: f32) -> f32 {
+    let c = ph2d_editor_core::property_row::caixa_do_controlo(
+        ix,
+        iw,
+        0.0,
+        ph2d_editor_core::property_row::Seccao::apenas_campos(1),
+    );
+    c.x + c.w
+}
+
+/// O selector ENCHE a coluna do valor do painel dele — começa no `x` dela e acaba na borda dela.
+#[cfg(test)]
+fn enche_a_coluna(s: &SeletorDeCor) -> bool {
+    match (s.dentro, s.coluna) {
+        (Some((ix, iw)), Some(x)) => {
+            (s.rect.x - x).abs() < 1.0 && (s.rect.x + s.rect.w - caixa_direita(ix, iw)).abs() < 1.0
+        }
+        _ => false,
+    }
+}
 
 /// ⭐⭐⭐ **UM SELECTOR DE COR SOZINHO NA FILEIRA OCUPA UMA CAIXA ESTRUTURAL — nunca uma largura fixa.**
 ///
@@ -2662,19 +2724,18 @@ fn um_seletor_de_cor_sozinho_na_fileira_ocupa_uma_caixa_estrutural() {
             continue; // o painel não pinta um controlo que não seja cor — nada contra que medir
         };
         sozinhos += 1;
-        let coluna = ph2d_editor_core::property_row::caixa_do_controlo(
-            ix,
-            iw,
-            s.rect.y,
-            ph2d_editor_core::property_row::Seccao::apenas_campos(1),
-        );
-        let enche_a_coluna = (s.rect.x - coluna.x).abs() < 1.0 && (s.rect.w - coluna.w).abs() < 1.0;
         let enche_a_fileira = (s.rect.x - ix).abs() < 1.0 && (s.rect.w - iw).abs() < 1.0;
-        if !enche_a_coluna && !enche_a_fileira {
+        if !enche_a_coluna(s) && !enche_a_fileira {
             maus.push(format!(
-                "  {} :: x={:.0} w={:.0} — não é a coluna do controlo (x={:.0} w={:.0}) nem a \
-                 fileira inteira (x={:.0} w={:.0})",
-                s.painel, s.rect.x, s.rect.w, coluna.x, coluna.w, ix, iw
+                "  {} :: x={:.0} w={:.0} — não é a coluna do valor do painel (x={:?}, borda {:.0}) \
+                 nem a fileira inteira (x={:.0} w={:.0})",
+                s.painel,
+                s.rect.x,
+                s.rect.w,
+                s.coluna,
+                caixa_direita(ix, iw),
+                ix,
+                iw
             ));
         }
     }
@@ -2717,22 +2778,17 @@ fn um_seletor_de_cor_sozinho_na_fileira_ocupa_uma_caixa_estrutural() {
 #[test]
 fn a_linha_de_cor_enche_a_coluna_do_valor() {
     let medido = larguras_dos_selectores_de_cor();
-    // A coluna do valor nesta viewport, pela MESMA porta que desenha — nunca uma segunda conta.
-    let interior = 268.0_f32;
-    let row = ph2d_editor_core::widget::property_row_columns_for(
-        0.0,
-        interior,
-        0.0,
-        ph2d_tokens::ROW_H_PX,
-        None,
-        None,
-    );
-    let coluna = row.control.w.round() as i32;
-    let n = medido.get(&coluna).copied().unwrap_or(0);
+    // ⭐ A coluna do valor é a do PAINEL, lida da pintura dele (`SeletorDeCor::coluna`) — a
+    //    1.ª redacção recalculava-a fora da pintura com a lei de SECÇÃO e deixou de a reproduzir no
+    //    dia em que a coluna passou a ser UMA por painel (2026-09-23).
+    let n = selectores_de_cor()
+        .iter()
+        .filter(|s| s.painel == "inspector" && enche_a_coluna(s))
+        .count();
     assert!(
         n >= 6,
-        "só {n} selectores de cor medem a coluna do valor ({coluna} px) — as seis linhas do \
-         Inspector passam pela `paint_color_row`.\n  medido: {medido:?}"
+        "só {n} selectores de cor do Inspector enchem a coluna do valor do painel — as seis linhas \
+         dele passam pela `paint_color_row`.\n  larguras medidas: {medido:?}"
     );
     // ⛔ **O CONTROLO**: a forma ANTIGA (o quadrado `SwatchSize::Sm`, `24 px`) não pode voltar.
     //    Sem ele este gate ficaria verde num app onde alguém acrescentasse seis barras E deixasse

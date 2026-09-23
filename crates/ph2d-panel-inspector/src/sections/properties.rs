@@ -19,15 +19,16 @@ use ph2d_editor_core::screens::hero::InspectorPropertiesInfo;
 use ph2d_i18n::TextKey;
 use ph2d_i18n::tr_with;
 
-/// Que fatia da largura o NOME da propriedade leva.
+/// ⭐⭐⭐ **As colunas de cada eixo são as do PAINEL** (ordem do dono, 2026-09-23: *«quero tudo
+/// alinhado e padronizado»*).
 ///
-/// ⚠️ **Uma fracção com tecto, e não um número fixo**: num painel estreito um rótulo fixo comeria a
-/// fileira toda e os chips ficariam ilegíveis; num painel largo um rótulo proporcional afastaria a
-/// pergunta das respostas. ⇒ ele cresce até caber `Size`/`State` e pára.
-const AXIS_LABEL_FRACTION: f32 = 0.28; // LITERAL-PX-OK: proporção do rótulo, domínio do cartão
-
-/// O tecto do rótulo, em px.
-const AXIS_LABEL_MAX_PX: f32 = 72.0; // LITERAL-PX-OK: tecto do rótulo, domínio do cartão
+/// ⛔ Elas eram uma fracção com tecto escrita aqui (`0,28` da largura, até `72 px`), e o valor do
+/// cartão arrancava a `79,7` com o resto do Inspector a `111` (varredura `onde_comeca_o_valor`).
+/// Hoje o cartão PEDE a coluna com o recuo dele, e a lei do painel põe os chips no mesmo `x` das
+/// outras linhas — o recuo do cartão sai da coluna do nome, nunca do valor.
+fn colunas_do_eixo(tx: f32, tw: f32, ty: f32, line: f32) -> ph2d_editor_core::widget::PropertyRow {
+    ph2d_editor_core::widget::property_row_columns(tx, tw, ty, line)
+}
 
 /// A margem de dentro do cartão — irmã da do cartão de instância.
 const CARD_PAD: f32 = 8.0; // LITERAL-PX-OK: inset do cartão, irmão do BODY_PAD do corpo
@@ -98,8 +99,8 @@ pub(crate) fn paint_properties_card(
     );
     // ⛔⛔⛔ **A `220 px` de coluna estes chips colapsavam a ZERO e pintavam NADA.**
     //
-    // A aritmetica antiga era `cw = (chips_w - vaos) / n`, sem piso: o rotulo do eixo leva
-    // `AXIS_LABEL_MAX_PX` e o que sobra e repartido em partes IGUAIS. Medido pela escada da
+    // A aritmetica antiga era `cw = (chips_w - vaos) / n`, sem piso: o rotulo do eixo levava
+    // `72 px` (a fraccao com tecto que aqui vivia) e o que sobrava era repartido em partes IGUAIS. Medido pela escada da
     // varredura de elisoes em 2026-09-19, com a coluna no minimo o `cw` dava **`0,0 px`** e um chip
     // de valor (`"2"`) saia VAZIO — nem a reticencia cabia. O doc tres blocos abaixo ja
     // media o caso a `304` (`~21 px` por chip) e parava ai, porque **nenhuma regua desta casa olhava
@@ -112,8 +113,7 @@ pub(crate) fn paint_properties_card(
     // eixo passaria a ser pintado por cima pelas fileiras que quebraram, que e o defeito que o
     // cartao irmao ja pagou («uma moldura que nao cabe no que ela emoldura»).
     let tw_medido = (w - CARD_PAD * 2.0).max(0.0);
-    let label_w_medido = (tw_medido * AXIS_LABEL_FRACTION).min(AXIS_LABEL_MAX_PX);
-    let chips_w_medido = (tw_medido - label_w_medido).max(0.0);
+    let chips_w_medido = colunas_do_eixo(x + CARD_PAD, tw_medido, y, line).control.w;
     let fileiras_por_eixo: Vec<usize> = info
         .rows
         .iter()
@@ -157,7 +157,7 @@ pub(crate) fn paint_properties_card(
         let Some(row_ids) = ids::INSP_INSTANCE_AXIS_OPTION.get(a) else {
             break;
         };
-        let label_w = (tw * AXIS_LABEL_FRACTION).min(AXIS_LABEL_MAX_PX);
+        let colunas = colunas_do_eixo(tx, tw, ty, line);
         let axis_label = if ax.name.is_empty() {
             FLAT_AXIS_LABEL.tr()
         } else {
@@ -167,14 +167,13 @@ pub(crate) fn paint_properties_card(
             text_system,
             scene,
             axis_label,
-            tx,
+            colunas.label.x,
             ty + (line - small) * 0.5,
             small,
-            label_w,
+            colunas.label.w,
             resolve(ColorToken::Text2, theme),
         );
-        let chips_x = tx + label_w;
-        let chips_w = (tw - label_w).max(0.0);
+        let (chips_x, chips_w) = (colunas.control.x, colunas.control.w);
         // ⛔ **UM valor é TEXTO, não um botão** — ver o cabeçalho deste ficheiro.
         if ax.options.len() < 2 {
             if let Some(only) = ax.options.first() {

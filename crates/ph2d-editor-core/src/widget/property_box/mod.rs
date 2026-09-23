@@ -25,11 +25,14 @@
 mod paint;
 pub use paint::paint_property_box;
 
+/// ⭐⭐⭐ A coluna do PAINEL — a união dos pedidos das secções dele (ver o topo dele).
+mod coluna_do_painel;
 /// ⭐ A geometria de uma LINHA de formulário — irmã por responsabilidade (ver o topo dela).
 mod label;
 mod row;
 /// ⭐ O que a SECÇÃO declara — irmão por responsabilidade (ver o topo dele).
 mod seccao;
+pub use coluna_do_painel::ColunaDoPainel;
 pub use label::{paint_property_label, property_label_origin};
 pub use row::{
     FORM_ROWS_SHOW_DECORATOR, PropertyRow, form_row_columns, paint_decorator_dot,

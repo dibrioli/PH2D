@@ -250,36 +250,36 @@ fn diag_tropecos() {
 /// ⚠️ **A unidade é a COLUNA e não o troço** — a 1.ª redacção contava troços, e a prova de mutação
 /// SOBREVIVEU: devolver os chips da timeline à coluna escrita à mão punha uma TERCEIRA coluna no
 /// troço que já estava declarado por causa das abas, e o total de troços continuava `1`.
-const COLUNAS_A_MAIS_DECLARADAS: &[(&str, usize, &str)] = &[
-    (
-        "grid_snap",
-        1,
-        "os títulos de secção desta janela são TEXTO (`paint_section_label`) e não se registam, \
-         logo o troço atravessa a fronteira `Snap` → `Display`; a coluna é da secção \
-         (`Seccao::medida`, §6-ter)",
-    ),
+const COLUNAS_A_MAIS_DECLARADAS: &[(&str, usize, &str)] = &[(
+    "timeline",
+    1,
+    "as abas (`tab_keys`) são um segmentado na faixa do título, não um par nome/valor",
+)];
+
+/// ⭐⭐⭐ **Os painéis que arrancam o valor em MAIS de uma coluna, e porquê** — todo painel que não
+/// está aqui arranca numa coluna SÓ, de ponta a ponta (ordem do dono, 2026-09-23: *«quero tudo
+/// alinhado e padronizado»*, com a troca dita: nomes de secção de uma componente perdem espaço e o
+/// que não couber sai cortado com balão). A lei é a [`ph2d_editor_core::widget::ColunaDoPainel`].
+///
+/// ⚠️ **Ela era uma lista de quem JÁ estava numa coluna** (`UMA_COLUNA`, que só crescia) e virou a
+/// lista das EXCEPÇÕES: um painel novo nasce obrigado à coluna única, sem ninguém se lembrar de o
+/// inscrever. A lista é uma IGUALDADE — uma excepção que deixou de descrever o que mede reprova.
+///
+/// ⚠️ **E a espécie que motivou a lista antiga continua coberta:** os marcadores do vetor vivem num
+/// troço deles, e a prova de mutação que lhes devolvia o vão escrito à mão SOBREVIVIA à régua de
+/// troço — ela reprova aqui, porque a coluna é do PAINEL.
+const COLUNAS_DECLARADAS_POR_PAINEL: &[(&str, usize, &str)] = &[
     (
         "timeline",
-        1,
+        2,
         "as abas (`tab_keys`) são um segmentado na faixa do título, não um par nome/valor",
     ),
-];
-
-/// ⭐ **Os painéis que arrancam o valor numa coluna SÓ, de ponta a ponta** — medido 2026-09-23.
-///
-/// ⚠️ **Ele existe porque o troço sozinho é cego a uma espécie:** os marcadores do vetor vivem num
-/// troço deles (uma fileira de largura inteira separa-os do traço), e a prova de mutação que lhes
-/// devolvia o vão escrito à mão SOBREVIVEU à régua de troço — o degrau de `4 px` estava ENTRE dois
-/// troços. Num painel sem `Seccao` medida a coluna é UMA para o painel inteiro, e é isso que esta
-/// lista guarda. ⚠️ **A lista só CRESCE**: um painel que passe a uma coluna entra aqui.
-const UMA_COLUNA: &[&str] = &[
-    "audio_editor",
-    "flip_frames",
-    "hierarchy (armado)",
-    "model3d (armado)",
-    "physics",
-    "sculpt3d (armado)",
-    "vector",
+    (
+        "widget_gallery",
+        3,
+        "a galeria é um CATÁLOGO: cada amostra mostra o widget na largura dele, e alinhá-las \
+         apagaria o que ela existe para mostrar",
+    ),
 ];
 
 /// O piso de painéis — o do âmbito de WORKSPACE (a régua das elisões mede o mesmo registo).
@@ -360,19 +360,48 @@ fn dentro_de_um_troco_o_valor_arranca_numa_coluna_so() {
             ),
         }
     }
-    for painel in UMA_COLUNA {
-        let a = censo
-            .iter()
-            .find(|(p, _)| p == painel)
-            .map(|(_, a)| a.as_slice())
-            .unwrap_or_default();
+    let mut vistos = std::collections::BTreeSet::new();
+    for (painel, a) in &censo {
         let c = colunas(a);
-        assert_eq!(
-            c.len(),
-            1,
-            "`{painel}` arrancava o valor numa coluna só, de ponta a ponta, e hoje arranca em {} \
-             (zero = o painel deixou de pintar linhas com nome, e a entrada tem de sair): {c:?}",
-            c.len()
+        let base = painel.trim_end_matches(" (armado)");
+        match COLUNAS_DECLARADAS_POR_PAINEL
+            .iter()
+            .find(|(p, _, _)| *p == base)
+        {
+            None => assert!(
+                c.len() <= 1,
+                "`{painel}` arranca o valor em {} colunas — todo painel arranca numa SÓ \
+                 (`ColunaDoPainel`). Cure pela PORTA: a linha tem de pedir a coluna \
+                 (`property_row_columns_for` / `value_col`), nunca somar um vão à mão: {c:?}",
+                c.len()
+            ),
+            Some((_, k, porque)) => {
+                vistos.insert(base);
+                assert_eq!(
+                    c.len(),
+                    *k,
+                    "`COLUNAS_DECLARADAS_POR_PAINEL` diz {k} em `{painel}` ({porque}) e a \
+                     varredura mede {}. A MAIS é um degrau novo; a MENOS é uma excepção que deixou \
+                     de descrever o que mede: {c:?}",
+                    c.len()
+                );
+            }
+        }
+    }
+    for (p, _, _) in COLUNAS_DECLARADAS_POR_PAINEL {
+        assert!(
+            vistos.contains(p),
+            "`{p}` está em `COLUNAS_DECLARADAS_POR_PAINEL` e a varredura não o viu — a excepção \
+             já não descreve nada e tem de sair"
         );
     }
+    // ⚠️ O piso da coluna ÚNICA — sem ele uma lei que devolvesse zero linhas a todos passava.
+    let unicos = censo.iter().filter(|(_, a)| colunas(a).len() == 1).count();
+    assert!(
+        unicos >= COLUNA_UNICA_PISO,
+        "só {unicos} painéis arrancam numa coluna (piso {COLUNA_UNICA_PISO}, medido 2026-09-23)"
+    );
 }
+
+/// Quantos painéis (armados contados à parte) arrancam numa coluna só — medido `11` em 2026-09-23.
+const COLUNA_UNICA_PISO: usize = 11;

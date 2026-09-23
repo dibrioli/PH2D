@@ -33,6 +33,7 @@
 #![forbid(unsafe_code)]
 
 pub mod action_bus;
+pub mod aquecimento;
 /// A âmbar do REALCE do editor — uma cor, uma porta, fora do tema de propósito.
 pub mod editor_highlight;
 pub mod floating_panel;

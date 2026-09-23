@@ -131,7 +131,8 @@ pub fn medindo<R>(f: impl FnOnce() -> R) -> (R, Vec<(Rect, String)>) {
 /// ⚠️ **O texto inteiro e não o que saiu:** o balão existe para mostrar o que o corte levou. E um
 /// texto vazio fica de fora pela mesma razão que fica no censo — um espaçador não é um rótulo.
 pub(super) fn corte(texto: &str) {
-    if texto.is_empty() {
+    // ⚠️ Um quadro de AQUECIMENTO não é visto por ninguém — ver [`crate::aquecimento`].
+    if texto.is_empty() || crate::aquecimento::aquecendo() {
         return;
     }
     let Some(area) = AREA.get() else {

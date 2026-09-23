@@ -98,10 +98,16 @@ fn nenhum_rotulo_da_seccao_de_inspeccao_e_cortado() {
     }
 }
 
-/// ⛔ **E a coluna é TIGHT — ela é o rótulo mais largo, não um número com folga.**
+/// ⛔ **E a coluna é a da LEI, pedida com o rótulo mais largo — não um número com folga.**
 ///
 /// Sem esta metade, repor um literal generoso passaria o gate acima: nada seria cortado e a coluna
 /// do VALOR pagaria a folga em silêncio.
+///
+/// ⚠️ **Até 2026-09-23 a coluna ERA o rótulo mais largo** (`label_column_width` da lista, com o vão
+/// somado à mão), e o valor desta secção arrancava a `+2,5 px` do resto da janela. Por ordem do dono
+/// (*«quero tudo alinhado e padronizado»*) ela passou a PEDIR a coluna à porta com esse rótulo como
+/// desejo — fora de um painel a porta responde a lei de secção, dentro do Grid Snap a coluna ÚNICA
+/// dele. ⇒ o gate afirma a porta, e que o rótulo mais largo cabe nela.
 #[test]
 fn a_coluna_da_seccao_de_inspeccao_e_a_do_rotulo_mais_largo() {
     let medidos = inspect_pintado();
@@ -116,9 +122,24 @@ fn a_coluna_da_seccao_de_inspeccao_e_a_do_rotulo_mais_largo() {
         FONTE_DO_INSPECT,
         ROTULOS_DO_INSPECT.iter().copied(),
     );
+    let da_porta = ph2d_editor_core::widget::property_row_columns_for(
+        0.0,
+        252.0,
+        0.0,
+        ph2d_tokens::ROW_H_PX,
+        Some(mais_largo),
+        None,
+    )
+    .label
+    .w;
     assert!(
-        (col - mais_largo).abs() < 0.01,
-        "a secção reservou {col} px e o rótulo mais largo mede {mais_largo}"
+        (col - da_porta).abs() < 0.01,
+        "a secção reservou {col} px e a porta, pedida com o rótulo mais largo ({mais_largo}), dá \
+         {da_porta}"
+    );
+    assert!(
+        col >= mais_largo,
+        "o rótulo mais largo ({mais_largo}) não cabe em {col}"
     );
 }
 

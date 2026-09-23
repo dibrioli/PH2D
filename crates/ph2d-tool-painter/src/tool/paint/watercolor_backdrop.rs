@@ -247,8 +247,7 @@ impl PainterTool {
                     // Full pour inside the core, fading to the rim (the water pools under the nib).
                     let w = (1.0 - dn).min(0.6) / 0.6;
                     let cur = row[x];
-                    let next =
-                        (u16::from(cur) + (f32::from(add) * w * keep) as u16).min(255) as u8;
+                    let next = (u16::from(cur) + (f32::from(add) * w * keep) as u16).min(255) as u8;
                     if next != cur {
                         row[x] = next;
                         grew = true;

@@ -326,6 +326,142 @@ fn the_field_is_a_function_of_the_map_not_of_the_window() {
     assert!(seen > 1500, "piso de população: {seen}");
 }
 
+/// A lei de ANTES da reescrita das caixas (2026-09-23), copiada À LETRA: um campo de cada vez,
+/// cinco planos novos e zerados por caixa, a máscara transposta de novo a cada caixa. É o oráculo
+/// do gate de baixo — a reescrita só muda a ARRUMAÇÃO, e isso prova-se contra ela e não contra um
+/// valor escrito à mão.
+fn run_box_de_antes(src: &[u64], mask: &[u64], w: usize, h: usize, r: usize) -> Vec<u64> {
+    let pass = |src: &[u64], mask: &[u64], w: usize, h: usize| -> Vec<u64> {
+        let mut out = vec![0u64; w * h];
+        for ((orow, srow), mrow) in out.chunks_mut(w).zip(src.chunks(w)).zip(mask.chunks(w)) {
+            let mut pref = vec![0u64; w + 1];
+            let mut x = 0;
+            while x < w {
+                if mrow[x] == 0 {
+                    x += 1;
+                    continue;
+                }
+                let lo = x;
+                while x < w && mrow[x] > 0 {
+                    x += 1;
+                }
+                let hi = x;
+                pref[lo] = 0;
+                for i in lo..hi {
+                    pref[i + 1] = pref[i] + srow[i];
+                }
+                for (i, o) in orow.iter_mut().enumerate().take(hi).skip(lo) {
+                    let a = i.saturating_sub(r).max(lo);
+                    let b = (i + r + 1).min(hi);
+                    *o = pref[b] - pref[a];
+                }
+            }
+        }
+        out
+    };
+    let tr = |v: &[u64], w: usize, h: usize| -> Vec<u64> {
+        let mut t = vec![0u64; w * h];
+        for (x, col) in t.chunks_mut(h).enumerate() {
+            for (y, c) in col.iter_mut().enumerate() {
+                *c = v[y * w + x];
+            }
+        }
+        t
+    };
+    let horiz = pass(src, mask, w, h);
+    let vert_t = pass(&tr(&horiz, w, h), &tr(mask, w, h), h, w);
+    let mut out = vec![0u64; w * h];
+    for (y, orow) in out.chunks_mut(w).enumerate() {
+        for (x, o) in orow.iter_mut().enumerate() {
+            *o = vert_t[x * h + y];
+        }
+    }
+    out
+}
+
+fn campo_de_antes(
+    (level, prox): (&[u8], &[u8]),
+    ((rx0, ry0), (rw, rh)): ((usize, usize), (usize, usize)),
+    r: u16,
+) -> Vec<f32> {
+    let lut = claim_lut();
+    let mut a = vec![0u64; rw * rh];
+    let mut b = vec![0u64; rw * rh];
+    for wy in 0..rh {
+        let s = (ry0 + wy) * W + rx0;
+        for wx in 0..rw {
+            let q = u64::from(lut[prox[s + wx] as usize]);
+            a[wy * rw + wx] = u64::from(level[s + wx]) * q;
+            b[wy * rw + wx] = q;
+        }
+    }
+    let (r1, r2) = ((r / 2) as usize, (r - r / 2) as usize);
+    let (mut sa, mut sb) = (a.clone(), b.clone());
+    for rr in [r1, r2] {
+        if rr > 0 {
+            sa = run_box_de_antes(&sa, &b, rw, rh, rr);
+            sb = run_box_de_antes(&sb, &b, rw, rh, rr);
+        }
+    }
+    let taper = taper_lut();
+    let mut out = vec![0.0f32; rw * rh];
+    for wy in 0..rh {
+        let s = (ry0 + wy) * W + rx0;
+        for wx in 0..rw {
+            let i = wy * rw + wx;
+            if sb[i] > 0 {
+                let lvl = (sa[i] as f64 / (sb[i] as f64 * 255.0)) as f32;
+                out[i] = taper[prox[s + wx] as usize] * lvl.min(1.0);
+            }
+        }
+    }
+    out
+}
+
+/// ⭐ **A reescrita das caixas (as duas somas numa passagem, a máscara transposta uma vez, o
+/// rascunho reusado) dá o MESMO BYTE que a lei de antes**, em todos os raios que a sessão tem ao
+/// mesmo tempo e numa janela que não começa na origem. As somas são inteiras, logo a ordem nova não
+/// pode mudar nada — e isto é o gate que o prova, não o argumento.
+///
+/// A fixtura CONTÉM o fenómeno, e há CONTROLO de cada metade: papel seco DENTRO da janela (senão
+/// os troços seriam uma linha inteira e o corte nas pontas não seria exercido) e um campo que o
+/// alisamento de facto MUDA (senão a comparação seria entre duas cópias do mapa cru).
+#[test]
+fn a_caixa_reescrita_da_o_byte_da_lei_de_antes() {
+    let (mut l, mut p) = (vec![0u8; W * H], vec![0u8; W * H]);
+    // Duas pernas que se cruzam, uma ilha solta e uma perna pálida por cima da escura.
+    dab(&mut l, &mut p, (40.0, 40.0), 26.0, 0.9);
+    dab(&mut l, &mut p, (70.0, 52.0), 22.0, 0.25);
+    dab(&mut l, &mut p, (118.0, 30.0), 14.0, 0.6);
+    dab(&mut l, &mut p, (130.0, 70.0), 18.0, 0.45);
+    dab(&mut l, &mut p, (55.0, 80.0), 9.0, 1.0);
+    let win = ((7usize, 5usize), (W - 7 - 3, H - 5 - 4));
+    let raios = [1u16, 2, 5, 12, 33];
+    let table: Vec<WetStrokeStyle> = raios.iter().map(|&r| style(r)).collect();
+    let novo =
+        ReserveFields::build((&l, &p), (W, W * H, win.0, win.1), &table, &style(raios[0])).unwrap();
+    assert_eq!(novo.by_r.len(), raios.len(), "um campo por raio distinto");
+
+    let (seco, mut mudou) = (
+        (win.0.1..win.0.1 + win.1.1)
+            .flat_map(|y| (win.0.0..win.0.0 + win.1.0).map(move |x| (x, y)))
+            .filter(|&(x, y)| p[y * W + x] == 0)
+            .count(),
+        0usize,
+    );
+    assert!(seco > 1000, "CONTROLO: a janela tem de ter papel seco, tem {seco}");
+    for (r, campo) in &novo.by_r {
+        let antes = campo_de_antes((&l, &p), win, *r);
+        assert_eq!(campo.len(), antes.len());
+        for (i, (a, b)) in campo.iter().zip(&antes).enumerate() {
+            assert_eq!(a.to_bits(), b.to_bits(), "raio {r}, texel {i}: {a} contra {b}");
+        }
+        let cru = campo_de_antes((&l, &p), win, 0);
+        mudou += campo.iter().zip(&cru).filter(|(a, b)| a.to_bits() != b.to_bits()).count();
+    }
+    assert!(mudou > 1000, "CONTROLO: o alisamento tem de mudar o campo, mudou {mudou}");
+}
+
 /// Re-carimbar o mesmo dab não mexe um bit (o traço passa ~20 dabs por pixel), e sem mixer o
 /// campo nem existe — Charge = 1 fica byte-idêntico por AUSÊNCIA.
 #[test]

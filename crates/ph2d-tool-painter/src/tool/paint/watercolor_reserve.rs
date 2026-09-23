@@ -304,17 +304,20 @@ impl ReserveFields {
             });
         }
         let lut = claim_lut();
-        // Numerador e denominador na janela: `a = L·q`, `b = q` (0 fora da lavagem = a máscara).
-        let mut a = vec![0u64; rw * rh];
-        let mut b = vec![0u64; rw * rh];
-        a.par_chunks_mut(rw)
+        let n = rw * rh;
+        // Numerador e denominador na janela, JUNTOS: `[L·q, q]` (0 fora da lavagem). O `q` é também a
+        // MÁSCARA das duas caixas — os dois campos correm os mesmos troços, logo uma passagem soma os
+        // dois. ⚠️ Era um campo de cada vez, com a máscara transposta de novo a cada caixa.
+        let mut ab = vec![[0u64; 2]; n];
+        let mut b = vec![0u64; n];
+        ab.par_chunks_mut(rw)
             .zip(b.par_chunks_mut(rw))
             .enumerate()
-            .for_each(|(wy, (ar, br))| {
+            .for_each(|(wy, (abr, br))| {
                 let s = (ry0 + wy) * fw + rx0;
                 for wx in 0..rw {
                     let q = u64::from(lut[prox[s + wx] as usize]);
-                    ar[wx] = u64::from(level[s + wx]) * q;
+                    abr[wx] = [u64::from(level[s + wx]) * q, q];
                     br[wx] = q;
                 }
             });
@@ -323,27 +326,27 @@ impl ReserveFields {
         radii.sort_unstable();
         radii.dedup();
         let taper = taper_lut();
+        let mut caixa = Caixa::nova(&b, rw, rh);
         let by_r = radii
             .into_iter()
             .map(|r| {
                 // Duas caixas (`r₁ + r₂ = R`) ⇒ núcleo triangular: a transição sai C¹ e o suporte
                 // total continua a ser `R`, que é o que a janela garante.
                 let (r1, r2) = ((r / 2) as usize, (r - r / 2) as usize);
-                let (mut sa, mut sb) = (a.clone(), b.clone());
+                let mut s = ab.clone();
                 for rr in [r1, r2] {
                     if rr > 0 {
-                        sa = run_box(&sa, &b, rw, rh, rr);
-                        sb = run_box(&sb, &b, rw, rh, rr);
+                        caixa.aplica(&mut s, rr);
                     }
                 }
-                let mut out = vec![0.0f32; rw * rh];
+                let mut out = vec![0.0f32; n];
                 out.par_chunks_mut(rw).enumerate().for_each(|(wy, orow)| {
-                    let s = (ry0 + wy) * fw + rx0;
+                    let base = (ry0 + wy) * fw + rx0;
                     for (wx, o) in orow.iter_mut().enumerate() {
-                        let i = wy * rw + wx;
-                        if sb[i] > 0 {
-                            let lvl = (sa[i] as f64 / (sb[i] as f64 * 255.0)) as f32;
-                            *o = taper[prox[s + wx] as usize] * lvl.min(1.0);
+                        let [sa, sb] = s[wy * rw + wx];
+                        if sb > 0 {
+                            let lvl = (sa as f64 / (sb as f64 * 255.0)) as f32;
+                            *o = taper[prox[base + wx] as usize] * lvl.min(1.0);
                         }
                     }
                 });
@@ -374,62 +377,98 @@ impl ReserveFields {
     }
 }
 
-/// Soma em caixa separável de raio `r` **restrita aos TROÇOS contíguos da máscara** (`mask > 0`):
-/// a caixa de cada pixel é cortada nas pontas do troço a que ele pertence, na horizontal e depois
-/// na vertical. Nenhuma soma atravessa um pixel seco ⇒ difusão sem fluxo na silhueta. `O(n)` por
-/// somas de prefixo por troço; inteiros ⇒ exacta e independente da origem da janela.
-fn run_box(src: &[u64], mask: &[u64], w: usize, h: usize, r: usize) -> Vec<u64> {
-    let pass = |src: &[u64], mask: &[u64], w: usize, h: usize| -> Vec<u64> {
-        let mut out = vec![0u64; w * h];
-        out.par_chunks_mut(w)
-            .zip(src.par_chunks(w).zip(mask.par_chunks(w)))
-            .for_each_init(
-                || vec![0u64; w + 1],
-                |pref, (orow, (srow, mrow))| {
-                    let mut x = 0;
-                    while x < w {
-                        if mrow[x] == 0 {
-                            x += 1;
-                            continue;
-                        }
-                        let lo = x;
-                        while x < w && mrow[x] > 0 {
-                            x += 1;
-                        }
-                        let hi = x; // troço [lo, hi)
-                        pref[lo] = 0;
-                        for i in lo..hi {
-                            pref[i + 1] = pref[i] + srow[i];
-                        }
-                        for (i, o) in orow.iter_mut().enumerate().take(hi).skip(lo) {
-                            let a = i.saturating_sub(r).max(lo);
-                            let b = (i + r + 1).min(hi);
-                            *o = pref[b] - pref[a];
-                        }
+/// Soma em caixa separável **restrita aos TROÇOS contíguos da máscara** (`mask > 0`): a caixa de
+/// cada pixel é cortada nas pontas do troço a que ele pertence, na horizontal e depois na vertical.
+/// Nenhuma soma atravessa um pixel seco ⇒ difusão sem fluxo na silhueta. `O(n)` por somas de
+/// prefixo por troço; inteiros ⇒ exacta e independente da origem da janela.
+///
+/// ⭐ **As somas são INTEIRAS, logo a ORDEM em que se fazem não muda um bit** — é o que deixa esta
+/// casa escolher a arrumação pela memória e não pela aritmética (ao contrário do `box_blur` em
+/// `f32`, onde uma soma reordenada é outro número). O que ela guarda entre caixas:
+/// - a máscara TRANSPOSTA, calculada UMA vez por janela (era transposta de novo a cada caixa, dos
+///   dois campos: quatro vezes por raio);
+/// - três planos de rascunho reusados por todas as caixas e todos os raios (eram cinco planos
+///   alocados e ZERADOS por caixa — a medição do produto via `alloc_zeroed` como a maior fatia da
+///   thread principal). Cada passagem escreve TODOS os píxeis, os de fora da lavagem a zero, logo o
+///   rascunho nunca precisa de nascer limpo.
+struct Caixa<'m> {
+    mask: &'m [u64],
+    mask_t: Vec<u64>,
+    w: usize,
+    h: usize,
+    linhas: Vec<[u64; 2]>,
+    colunas: Vec<[u64; 2]>,
+    colunas_out: Vec<[u64; 2]>,
+}
+
+impl<'m> Caixa<'m> {
+    fn nova(mask: &'m [u64], w: usize, h: usize) -> Self {
+        let mut mask_t = vec![0u64; w * h];
+        transpoe(mask, w, h, &mut mask_t);
+        let n = w * h;
+        Self {
+            mask,
+            mask_t,
+            w,
+            h,
+            linhas: vec![[0; 2]; n],
+            colunas: vec![[0; 2]; n],
+            colunas_out: vec![[0; 2]; n],
+        }
+    }
+
+    /// Uma caixa de raio `r` sobre os dois campos de `s`, no lugar.
+    fn aplica(&mut self, s: &mut [[u64; 2]], r: usize) {
+        let (w, h) = (self.w, self.h);
+        passagem(s, self.mask, w, r, &mut self.linhas);
+        // Vertical = a mesma passagem sobre o TRANSPOSTO (linhas contíguas para o rayon), e de volta.
+        transpoe(&self.linhas, w, h, &mut self.colunas);
+        passagem(&self.colunas, &self.mask_t, h, r, &mut self.colunas_out);
+        transpoe(&self.colunas_out, h, w, s);
+    }
+}
+
+/// Uma passagem por LINHAS: cada linha de `out` é a soma em caixa de raio `r` da linha de `src`,
+/// cortada nos troços da máscara. Escreve a linha inteira (zero fora dos troços).
+fn passagem(src: &[[u64; 2]], mask: &[u64], w: usize, r: usize, out: &mut [[u64; 2]]) {
+    out.par_chunks_mut(w)
+        .zip(src.par_chunks(w).zip(mask.par_chunks(w)))
+        .for_each_init(
+            || vec![[0u64; 2]; w + 1],
+            |pref, (orow, (srow, mrow))| {
+                let mut x = 0;
+                while x < w {
+                    if mrow[x] == 0 {
+                        orow[x] = [0, 0];
+                        x += 1;
+                        continue;
                     }
-                },
-            );
-        out
-    };
-    let horiz = pass(src, mask, w, h);
-    // Vertical = a mesma passagem sobre o TRANSPOSTO (linhas contíguas para o rayon), e de volta.
-    let tr = |v: &[u64], w: usize, h: usize| -> Vec<u64> {
-        let mut t = vec![0u64; w * h]; // t[x * h + y]
-        t.par_chunks_mut(h).enumerate().for_each(|(x, col)| {
-            for (y, c) in col.iter_mut().enumerate() {
-                *c = v[y * w + x];
-            }
-        });
-        t
-    };
-    let vert_t = pass(&tr(&horiz, w, h), &tr(mask, w, h), h, w);
-    let mut out = vec![0u64; w * h];
-    out.par_chunks_mut(w).enumerate().for_each(|(y, orow)| {
-        for (x, o) in orow.iter_mut().enumerate() {
-            *o = vert_t[x * h + y];
+                    let lo = x;
+                    while x < w && mrow[x] > 0 {
+                        x += 1;
+                    }
+                    let hi = x; // troço [lo, hi)
+                    pref[lo] = [0, 0];
+                    for i in lo..hi {
+                        pref[i + 1] = [pref[i][0] + srow[i][0], pref[i][1] + srow[i][1]];
+                    }
+                    for (i, o) in orow.iter_mut().enumerate().take(hi).skip(lo) {
+                        let a = i.saturating_sub(r).max(lo);
+                        let b = (i + r + 1).min(hi);
+                        *o = [pref[b][0] - pref[a][0], pref[b][1] - pref[a][1]];
+                    }
+                }
+            },
+        );
+}
+
+/// `out[x·h + y] = src[y·w + x]`, colunas de `out` em paralelo.
+fn transpoe<T: Copy + Send + Sync>(src: &[T], w: usize, h: usize, out: &mut [T]) {
+    out.par_chunks_mut(h).enumerate().for_each(|(x, col)| {
+        for (y, c) in col.iter_mut().enumerate() {
+            *c = src[y * w + x];
         }
     });
-    out
 }
 
 #[cfg(test)]

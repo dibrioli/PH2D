@@ -336,6 +336,19 @@ fn main() {
         ablacao(size, 3.0);
         return;
     }
+    // `-- dono [2048|4096]`: SÓ a célula do dono (Rewet 0,4, passo 1 px) — a régua curta do A/B
+    // alternado entre dois binários, onde o que vale é a diferença dentro da mesma ronda.
+    if args.iter().any(|a| a == "dono") {
+        let size = if args.iter().any(|a| a == "2048") {
+            2048
+        } else {
+            4096
+        };
+        println!("  load {}", carga());
+        celula(size, 0.400, 1.0);
+        println!("  load {}", carga());
+        return;
+    }
     // `-- perfil [2048|4096] [rewet0]`: a mesma célula, muitas vezes — carga para o amostrador.
     if args.iter().any(|a| a == "perfil") {
         let size = if args.iter().any(|a| a == "2048") {

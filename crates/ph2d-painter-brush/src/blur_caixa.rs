@@ -698,26 +698,42 @@ pub(crate) fn avental(
     apron
 }
 
-/// **A CONTA do borrão** — quantas vezes ele correu e sobre quantos píxeis (região **e** avental).
+/// **A CONTA do borrão** — quantas vezes ele correu, sobre quantos píxeis, e a maior região.
 ///
-/// ⚠️ **Ela é sempre compilada, e a razão é que quem a lê vive noutra crate:** um contador
-/// `#[cfg(test)]` aqui é invisível aos testes da `ph2d-tool-painter`, que é onde a pilha do
-/// composite se mede. O custo são dois `fetch_add` relaxados **por CHAMADA** (nunca por pixel),
-/// contra uma chamada que custa milissegundos.
+/// ⛔⛔ **Por THREAD e NUNCA um átomo global, e isto foi pago duas vezes no mesmo dia:** a 1.ª
+/// redacção usava `AtomicU64` porque quem os lê vive noutra crate, e o gate novo
+/// `o_borrao_no_topo_e_aplicado_so_na_caixa_nova` passou **sozinho** e reprovou **na suíte** — sob
+/// o fan-out ele lia os borrões de outra corrida. *É a mesma lei que a [`BANDAS_PERCORRIDAS`], seis
+/// funções acima, já trazia escrita.* Um `thread_local!` público atravessa a fronteira de crate na
+/// mesma, e quem incrementa é o chamador, que corre na thread do teste.
 ///
-/// ⛔ Nenhum gate a lê como lei de custo — ela é INSTRUMENTO. O que ela existe para responder é
-/// *«o borrão dentro da pilha toca mais píxeis do que o borrão sozinho?»*, que é uma pergunta que
-/// nenhuma régua de VALOR consegue fazer.
-pub static BORROES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-/// Os píxeis que o borrão de facto atravessou — **a região MAIS o avental**, que é o que ele lê.
-pub static PIXEIS_BORRADOS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-/// Os píxeis que ele de facto ENTREGA — só a região. A diferença para o irmão é o AVENTAL, e é a
-/// grandeza que diz se vale a pena juntar chamadas: *um avental é trabalho que uma chamada maior
-/// paga UMA vez e `N` chamadas pequenas pagam `N` vezes.*
-pub static PIXEIS_UTEIS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-/// O maior LADO de região que o borrão recebeu — *uma média não diz se a região é uma faixa que
-/// acompanha o dab ou a caixa do traço inteiro, e essas duas têm curas opostas.*
-pub static MAIOR_LADO: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+/// ⚠️ Sempre compilado (não `#[cfg(test)]`): o consumidor vive na `ph2d-tool-painter`, e um
+/// `cfg(test)` aqui é invisível de lá. O custo é um `Cell::set` **por CHAMADA**, nunca por pixel.
+///
+/// ⛔ Nenhum gate os lê como lei de CUSTO — eles são INSTRUMENTO, e o que respondem é *«o borrão
+/// dentro da pilha toca mais píxeis do que o borrão sozinho?»*, que nenhuma régua de VALOR pode
+/// perguntar.
+pub mod conta {
+    use std::cell::Cell;
+    thread_local! {
+        /// Quantas vezes o borrão correu nesta thread.
+        pub static BORROES: Cell<u64> = const { Cell::new(0) };
+        /// Os píxeis que ele atravessou — a região MAIS o avental, que é o que ele lê.
+        pub static PIXEIS_BORRADOS: Cell<u64> = const { Cell::new(0) };
+        /// Os que ele ENTREGA — só a região. A diferença para o irmão é o AVENTAL.
+        pub static PIXEIS_UTEIS: Cell<u64> = const { Cell::new(0) };
+        /// O maior LADO de região que ele recebeu — *uma média não separa uma FAIXA que acompanha
+        /// o dab da CAIXA do traço inteiro, e essas duas têm curas opostas.*
+        pub static MAIOR_LADO: Cell<u64> = const { Cell::new(0) };
+    }
+    /// Zera as quatro — a porta que todo leitor usa antes de medir.
+    pub fn zera() {
+        BORROES.set(0);
+        PIXEIS_BORRADOS.set(0);
+        PIXEIS_UTEIS.set(0);
+        MAIOR_LADO.set(0);
+    }
+}
 
 pub(crate) fn blur_region_caixa_com(
     buf: &[u8],
@@ -732,12 +748,12 @@ pub(crate) fn blur_region_caixa_com(
     paralelo: bool,
 ) -> Vec<[f32; 4]> {
     {
-        use std::sync::atomic::Ordering::Relaxed;
         let r_total: usize = box_radii(k).iter().sum();
-        BORROES.fetch_add(1, Relaxed);
-        PIXEIS_BORRADOS.fetch_add(((bw + 2 * r_total) * (bh + 2 * r_total)) as u64, Relaxed);
-        PIXEIS_UTEIS.fetch_add((bw * bh) as u64, Relaxed);
-        MAIOR_LADO.fetch_max(bw.max(bh) as u64, Relaxed);
+        conta::BORROES.set(conta::BORROES.get() + 1);
+        conta::PIXEIS_BORRADOS
+            .set(conta::PIXEIS_BORRADOS.get() + ((bw + 2 * r_total) * (bh + 2 * r_total)) as u64);
+        conta::PIXEIS_UTEIS.set(conta::PIXEIS_UTEIS.get() + (bw * bh) as u64);
+        conta::MAIOR_LADO.set(conta::MAIOR_LADO.get().max(bw.max(bh) as u64));
     }
     let raios = box_radii(k);
     let r_total: usize = raios.iter().sum();

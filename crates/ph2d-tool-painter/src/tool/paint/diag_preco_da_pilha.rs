@@ -339,8 +339,9 @@ fn diag_preco_da_pilha() {
     //     sozinho custa `0,067 ms/evento` e dentro da pilha `0,667` — `10×`. Nenhuma régua de VALOR
     //     pode ver a diferença (as duas rotas desenham o mesmo), logo mede-se a CONTA.
     {
-        use ph2d_painter_brush::blur_caixa::{BORROES, MAIOR_LADO, PIXEIS_BORRADOS, PIXEIS_UTEIS};
-        use std::sync::atomic::Ordering::Relaxed;
+        use ph2d_painter_brush::blur_caixa::conta::{
+            self, BORROES, MAIOR_LADO, PIXEIS_BORRADOS, PIXEIS_UTEIS,
+        };
         println!("\n  A CONTA DO BORRÃO   (raio {raio_do_dono:.1} px · traço de 720 px)");
         println!(
             "  pilha                          | chamadas | Mpx lidos | Mpx úteis | avental | px/chamada"
@@ -359,10 +360,7 @@ fn diag_preco_da_pilha() {
             ),
             ("a pilha do dono (6)", dono.to_vec()),
         ] {
-            BORROES.store(0, Relaxed);
-            PIXEIS_BORRADOS.store(0, Relaxed);
-            PIXEIS_UTEIS.store(0, Relaxed);
-            MAIOR_LADO.store(0, Relaxed);
+            conta::zera();
             let mut t = tela_de(SIZE, raio_do_dono);
             t.paint.composite_len = ops.len();
             for (i, &(op, st, sz)) in ops.iter().enumerate() {
@@ -374,9 +372,9 @@ fn diag_preco_da_pilha() {
                 };
             }
             let _ = traco(&mut t);
-            let n = BORROES.load(Relaxed);
-            let px = PIXEIS_BORRADOS.load(Relaxed);
-            let uteis = PIXEIS_UTEIS.load(Relaxed);
+            let n = BORROES.get();
+            let px = PIXEIS_BORRADOS.get();
+            let uteis = PIXEIS_UTEIS.get();
             println!(
                 "  {nome:30} | {n:8} | {:9.1} | {:9.1} | {:6.1}% | {:10.0}",
                 px as f64 / 1e6,
@@ -388,7 +386,7 @@ fn diag_preco_da_pilha() {
             //   dab (lado ~= pegada) contra a CAIXA DO TRAÇO INTEIRO (lado ~= comprimento).
             println!(
                 "     └─ maior lado de região: {} px   (a pegada da camada mede {:.0} px)",
-                MAIOR_LADO.load(Relaxed),
+                MAIOR_LADO.get(),
                 2.0 * raio_do_dono * ops.first().map_or(1.0, |o| o.2)
             );
         }

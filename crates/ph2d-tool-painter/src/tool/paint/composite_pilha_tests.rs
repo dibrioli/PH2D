@@ -141,11 +141,10 @@ fn o_brush_de_cima_vence_o_de_baixo_ao_longo_do_traco() {
 /// `alvo` (a cura revertida) · a cerca olhar para BAIXO em vez de para cima.
 #[test]
 fn o_borrao_no_topo_e_aplicado_so_na_caixa_nova() {
-    use ph2d_painter_brush::blur_caixa::MAIOR_LADO;
-    use std::sync::atomic::Ordering::Relaxed;
+    use ph2d_painter_brush::blur_caixa::conta;
 
     let corre = |acima: Option<CompositeOp>| -> u64 {
-        MAIOR_LADO.store(0, Relaxed);
+        conta::zera();
         let mut t = tela();
         // posição 0 = o TOPO da pilha; a composição corre de baixo para cima.
         if let Some(op) = acima {
@@ -167,7 +166,7 @@ fn o_borrao_no_topo_e_aplicado_so_na_caixa_nova() {
             ..CompositeLayer::default()
         };
         traco(&mut t, 8.0);
-        MAIOR_LADO.load(Relaxed)
+        conta::MAIOR_LADO.get()
     };
 
     // Sem nada que leia vizinhança acima: a região do borrão é a pegada, não a pegada + avental.

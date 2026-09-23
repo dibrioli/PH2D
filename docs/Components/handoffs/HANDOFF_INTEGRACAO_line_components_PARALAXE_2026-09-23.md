@@ -6,7 +6,7 @@
 > daquele) **e** a paralaxe (este). ⚠️ O §6 do handoff da LINHA de 20/09 continua vivo (as memórias
 > órfãs de um rebase) e não foi reescrito aqui.
 
-**35 commits** · `219` ficheiros · merge-base `395da6a55`.
+**36 commits** · `221` ficheiros (`+14 978` / `−588`) · merge-base `395da6a55`.
 ⭐ **O `main` NÃO andou desde o merge-base** (`git log 395da6a55..main` vazio, medido 23/09) ⇒ *a
 árvore combinada É esta*, e os censos da soma foram corridos sobre ela (§6).
 

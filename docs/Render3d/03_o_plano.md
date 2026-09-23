@@ -495,9 +495,31 @@ modelo diz ONDE procurar, não o que uma cura vale.*
    `unsafe`, e um `forbid` não se contorna com um `allow`.
 2. ⏳ **o quadro de movimento** — `5,0 ms` de base mais `0,039` por instrução e **`0,52` por
    transcendente** (o modelo acima). A alavanca é a FITA, não a marcha.
-3. ⏳ **`+5,50 ms` por quadro assente** — o campo do chão (`+4,98`) e as sondas (`+0,52`), a MESMA
-   cura, com a chave já medida e gateada acima. ⚠️ **A construção precisa de identidade EXACTA para
-   o `Registry`**: as esculturas não são inlinadas na fita, logo duas podem dar a MESMA chave.
+3. ✅ **`+4,98 ms` por quadro assente — o campo do chão está CACHEADO** (2026-09-22). A chave é a
+   `ChaveDoChao` do `gpu_frame`: a **fita** da peça (texto + constantes), a altura do chão, as
+   **lâmpadas**, os **materiais**, a **tolerância de acerto** e a grelha. ⛔ **Fora da chave: a
+   ORIENTAÇÃO da câmera** — que é o gesto que paga a assadura, e é por isso que ela é a cura.
+   Porta: `PH2D_FIELD_CHAO_CACHE=0`.
+
+   ⛔⛔ **DUAS cercas conservadoras, as duas nomeadas:** uma peça com **escultura** não é cacheada
+   (a fita não a inlina, logo duas esculturas dão a MESMA chave) e uma peça com **lei do dono**
+   também não (a lei é função das FOLHAS e a chave só conhece a fita COMBINADA). ⭐ Desde a cura dos
+   materiais a lei do dono só existe com materiais **distintos**, logo a segunda cerca quase nunca
+   morde em quem está a modelar.
+
+   **Quatro gates e quatro metades**, com a economia medida pela **CONTA** (`ACERTOS_DO_CHAO`)
+   porque as duas rotas dão o MESMO campo: orbitar acerta · trocar a **luz** falta · um zoom
+   **abaixo do clamp** da tolerância falta · uma peça com lei do dono não é cacheada. Mais o gate de
+   **PIXEL** (`0 de 2 073 600` píxeis diferentes). Mutação **4 de 4**.
+
+   ⚠️⚠️ **E a 1.ª redacção do gate de pixel era um VÁCUO**, com o furo escrito no comentário da
+   minha própria sonda: o `tests_lampada` faz a luz **seguir a câmera**, logo orbitar trocava a LUZ,
+   a chave faltava de qualquer maneira e as duas colunas comparavam **duas assaduras frescas**. ⇒ a
+   lâmpada é **FIXA em mundo**, e a metade do ACERTO entrou no gate — *sem ela, uma cache apagada
+   passa, porque duas assaduras frescas dão a mesma imagem por construção.*
+
+   ⏳ **As SONDAS (`+0,52 ms`) ficam** — elas são a MESMA cura e a mesma chave, e o que falta é
+   ligá-las a esta porta.
 4. ✅ **a régua do gate** — **FECHADA**: `QUADROS_MEDIDOS = 3`, o mínimo, com a 1.ª chamada a ficar
    na tabela ao lado (ela é um preço real e uma régua que a apaga faz uma cura desaparecer com ela).
 

@@ -353,6 +353,17 @@ pub const MOVING_NORMAL_ERR_DEG: f32 = 1.0;
 /// arquivo, que é onde ele não é desperdício — ver o gate
 /// `the_export_never_goes_through_the_preview_coarsening`.
 pub const SETTLED_NORMAL_ERR_DEG: f32 = 0.5;
+/// ⭐⭐⭐⭐ **O CAMPO DO CHÃO É REAPROVEITADO ENTRE QUADROS** — a porta que bisecta.
+///
+/// Ver [`crate::gpu_frame::campo_do_chao`] e a `ChaveDoChao`. A assadura custa `+4,98 ms` por
+/// quadro assente e o campo não depende de para onde a câmera olha — que é o gesto que a paga.
+/// `PH2D_FIELD_CHAO_CACHE=0` devolve a assadura por quadro.
+#[must_use]
+pub fn o_campo_do_chao_e_reaproveitado() -> bool {
+    static LIGADO: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *LIGADO.get_or_init(|| std::env::var("PH2D_FIELD_CHAO_CACHE").as_deref() != Ok("0"))
+}
+
 /// ⭐⭐⭐⭐ **A FITA DA PEÇA SAI DO SHADER DO PINTOR QUANDO NINGUÉM A LÊ** — a porta que bisecta.
 ///
 /// Ver [`ph2d_field_gpu::paint::PaintSetup::le_o_campo`] para o mecanismo e o grafo de chamadas que

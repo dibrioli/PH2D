@@ -2791,3 +2791,68 @@ daquele arnês. O placar imprimiu **dois `W5`**, um a sangrar e outro a sobreviv
   mudança na lei relayouta ficheiros gravados **em silêncio**, o que pede um degrau.
 * ⚠️ **E a ORDEM entre os dois continua a ser load-bearing**, agora ao contrário: *quem escolhe*
   vem primeiro porque é ele que torna a P2 alcançável; a persistência só tem sujeito depois disso.
+
+---
+
+## §28 — ⭐⭐⭐⭐ A MEDIÇÃO QUE ESCOLHE A ÂNCORA — e ela REFUTOU metade do desenho
+
+> §5.0: *«antes de construir um item de lista aberta, MEÇA»*. Eu ia pôr **duas** leituras do knob ao
+> dono, com o preço de cada uma. A medição eliminou uma delas, e a pergunta deixou de existir.
+
+### §28.1 — As duas leituras, e porque elas não são a mesma pergunta
+
+Um artista que carrega em `8x` pode querer dizer duas coisas:
+
+* **MEDIANA** — *«a face típica fica a `8x` e as outras igualam-se a ela»*. O alvo de densidade sai
+  da mediana da peça ao `k` uniforme ⇒ a comparação é a **orçamento parecido**.
+* **TECTO** — *«nenhuma face passa de `8x`»*. O alvo é escalado para que o nível MÁXIMO seja `k`
+  ⇒ ela só **engrossa** as faces grandes.
+
+⭐ A escala da segunda é **exacta e não uma busca**: a quantização é `round(log2(alvo·√a))`, logo
+multiplicar o alvo por `2^d` desloca **todos** os níveis por exactamente `d`.
+
+### §28.2 — Medido nas três peças do dono (`mede_o_r_por_face`, `--release`)
+
+| peça / `k` | uniforme | MEDIANA (salto ≤ 1) | TECTO (salto ≤ 1) |
+|---|---|---|---|
+| `_base_sculpt` `k=2` | `6,74×` · `270 k` · `1224 px` `28,7 %` | **`1,95×`** · `360 k` · `1264 px` `32,6 %` | `5,81×` · `17 k` · `820 px` **`10,6 %`** |
+| `_base_sculpt` `k=3` | `6,74×` · `1,08 M` · `1768 px` `44,2 %` | **`1,95×`** · `1,43 M` · `1854 px` `50,2 %` | `1,96×` · `91 k` · `969 px` **`19,2 %`** |
+| `sculpt_antes` `k=2` | `18,26×` · `219 k` · `1062 px` `30,4 %` | **`2,37×`** · `260 k` · `1071 px` `33,0 %` | **`9,26×`** · `19 k` · `725 px` `11,9 %` |
+| `sculpt_antes` `k=3` | `18,26×` · `876 k` · `1534 px` `47,1 %` | **`1,92×`** · `1,03 M` · `1578 px` `50,5 %` | **`4,74×`** · `66 k` · `832 px` `19,2 %` |
+| `Sculpt_Blender` `k=2` | `4,88×` · `133 k` · `828 px` `30,2 %` | **`1,97×`** · `138 k` · `819 px` `31,2 %` | `2,07×` · `35 k` · `637 px` `18,4 %` |
+| `Sculpt_Blender` `k=3` | `4,88×` · `531 k` · `1196 px` `46,9 %` | **`1,97×`** · `551 k` · `1196 px` `47,9 %` | `1,97×` · `138 k` · `819 px` `31,2 %` |
+
+### §28.3 — ⛔⛔⛔ O TECTO está REFUTADO, e por TRÊS colunas ao mesmo tempo
+
+1. **Ele não cumpre a própria promessa.** A cerca do salto **SOBE** o vizinho grosso, logo o nível
+   máximo depois dela passa de `k` (medido: `nivel 0..4` para `k = 3`).
+2. **Ele não baixa a dispersão.** Na peça mais dispersa ela fica em **`9,26×`** (`k = 2`) e `4,74×`
+   (`k = 3`), *pior do que a mediana e sem estar longe do uniforme*.
+3. **Ele engrossa a peça inteira.** `1,08 M → 91 k` amostras é `12×` menos detalhe em toda parte —
+   não é *«ninguém passa de `8x`»*, é *«quase toda gente cai para `0`»*.
+
+⭐⭐ **A causa é a ESCADA ter chão:** o nível vive em `0..=NIVEL_MAX` e o `0` é *cor por vértice*.
+Uma peça com `18×` de dispersão precisa de `log2(18) ≈ 4,2` degraus só para se igualar, e deslocar
+tudo dois degraus para baixo põe essa amplitude contra um piso — **a saturação é aritmética, não
+afinação**. É a mesma forma que a fase zero da retopologia já pagou quando o piso emprestado do
+motor local apagava a graduação.
+
+⇒ *isto não é uma decisão do dono: é uma resposta errada.* Fica **uma** leitura, a MEDIANA.
+
+### §28.4 — ⚠️ E o preço da leitura que fica é POSITIVO, ao contrário do que eu tinha escrito
+
+A graduação **SOBE** a contagem de amostras em `+4 %` (`Sculpt_Blender`) a `+33 %`
+(`_base_sculpt`) — ela iguala subindo as faces pequenas, não descendo as grandes.
+⛔ *Uma nota que dissesse «a graduação poupa memória» seria falsa*, e a promessa honesta do knob é
+**«a mesma finura, distribuída por igual»**.
+
+⭐ A textura, essa, fica **igual** (`−1 %` a `+4,9 %` de lado) com aproveitamento **melhor**
+(`+1` a `+4` pontos): um empacotador de prateleiras encaixa ladrilhos de tamanhos variados melhor
+do que uma grelha uniforme encaixa um tamanho só.
+
+### §28.5 — ⚠️ E a CERCA DO SALTO é um guarda, não uma alavanca
+
+Sem cerca o salto máximo entre vizinhas é **`2`** e ela toca `1` a `6` arestas de `16 k`–`35 k`;
+com ela, o custo é `+44` a `+360` amostras (**`~0,03 %`**). *No corpus do produto ela é
+indistinguível de não existir* — e fica pela mesma razão que a cerca do pente: sem ela um salto
+grande é detalhe que o lado grosso não consegue mostrar, e o caso que ela recusa é construível.

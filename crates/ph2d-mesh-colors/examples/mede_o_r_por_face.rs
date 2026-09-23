@@ -239,21 +239,51 @@ fn main() {
                 amostras(&m, &uniforme, &ars),
             );
 
-            // ---- a P2: o nível POR FACE ----
+            // ---- a P2: o nível POR FACE, nas DUAS leituras do knob ----
             //
-            // ⭐ O alvo sai da MEDIANA da peça ao `k` uniforme, para a comparação
-            //   ser a ORÇAMENTO parecido e não a «mais amostras ganha».
+            // ⭐⭐⭐ **As duas leituras não são a mesma pergunta, e o preço é
+            //   OPOSTO.** Um artista que carrega em `8x` pode querer dizer:
+            //
+            //   * **MEDIANA** — *«a face típica fica a `8x` e as outras
+            //     igualam-se a ela»*. O alvo sai da mediana da peça ao `k`
+            //     uniforme ⇒ comparação a orçamento parecido; ela baixa a
+            //     dispersão e SOBE a contagem de amostras.
+            //   * **TECTO** — *«nenhuma face passa de `8x`»*. O alvo é escalado
+            //     para que o nível MÁXIMO seja exactamente `k` ⇒ ela só
+            //     engrossa as faces grandes e DESCE a contagem.
+            //
+            //   ⚠️ A escala é EXACTA e não uma busca: a quantização é
+            //   `round(log2(alvo·√a))`, logo multiplicar o alvo por `2^d`
+            //   desloca **todos** os níveis por exactamente `d`.
             let alvo = quantil(&d0, 0.5);
             for tecto in [None, Some(1u8)] {
                 let k = niveis(&m, alvo, tecto);
                 let rot = match tecto {
-                    None => format!("por face k={k_ref}, sem cerca"),
-                    Some(t) => format!("por face k={k_ref}, salto<={t}"),
+                    None => format!("mediana k={k_ref}, sem cerca"),
+                    Some(t) => format!("mediana k={k_ref}, salto<={t}"),
                 };
                 linha(&rot, &densidades(&m, &k), amostras(&m, &k, &ars));
                 let (pior, hist) = salto(&m, &k);
                 println!("      salto entre vizinhos: max={pior}  {hist:?}");
             }
+            let maior = niveis(&m, alvo, None)
+                .iter()
+                .copied()
+                .max()
+                .unwrap_or(k_ref);
+            let alvo_tecto = alvo * 2f64.powi(i32::from(k_ref) - i32::from(maior));
+            let k_tecto = niveis(&m, alvo_tecto, Some(1));
+            linha(
+                &format!("TECTO  k={k_ref}, salto<=1"),
+                &densidades(&m, &k_tecto),
+                amostras(&m, &k_tecto, &ars),
+            );
+            let (pior, hist) = salto(&m, &k_tecto);
+            println!(
+                "      salto entre vizinhos: max={pior}  {hist:?}  nivel {}..{}",
+                k_tecto.iter().copied().min().unwrap_or(0),
+                k_tecto.iter().copied().max().unwrap_or(0)
+            );
 
             // ---- e o que o EMPACOTADOR faz com os dois, no FICHEIRO ----
             //
@@ -273,8 +303,10 @@ fn main() {
                 };
             let uni = ph2d_mesh_colors::Tinta::nova(m.pos.len(), faces_it(), k_ref);
             println!("      textura uniforme : {}", assa(&uni));
-            if let Some(g) = ph2d_mesh_colors::Tinta::graduada(m.pos.len(), faces_it(), &k) {
-                println!("      textura por face : {}", assa(&g));
+            for (rot, ks) in [("mediana", &k), ("TECTO  ", &k_tecto)] {
+                if let Some(g) = ph2d_mesh_colors::Tinta::graduada(m.pos.len(), faces_it(), ks) {
+                    println!("      textura {rot} : {}", assa(&g));
+                }
             }
         }
     }

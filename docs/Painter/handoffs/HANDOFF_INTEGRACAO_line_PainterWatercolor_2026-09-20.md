@@ -2821,3 +2821,6 @@ a sonda de fases → `composite_acumulado_fases.rs` · as passagens verticais �
 `blur_caixa_vertical.rs` · os gates do paralelo → `blur_caixa_paralelo_tests.rs` · as sondas de
 relógio → `blur_caixa_sondas.rs`. Prova de que nada evaporou: **`19` `#[test]` antes, `19` depois,
 os `19` listados**.
+
+✅ **Smoke do dono APROVADO (2026-09-23):** *«realmente muito melhor! FPS aceitável em torno de
+40»* — na cena `PH2D_COMPOSITE_SMOKE`, a riscar depressa, contra `~1` antes da cura.

@@ -562,6 +562,43 @@ O dono mandou fundir o vermelho nesta wave e tratá-lo aqui (*«2»*, 20/09). Es
 3. **E UMA CENA é da cura**: a `4` lia `51,26 ms` (`D=2`) e lê **`14,74`** (`D=1`) — a fita inerte
    tirou-a do penhasco de ocupação, medido `3,03×` e `3,57×` em duas corridas independentes.
 
+### ⛔ E AS `8` CENAS QUE SOBRAM: a minha hipótese da VITRINA está REFUTADA
+
+Com o gate verde, a leitura óbvia das acusadas era *«são cenas de smoke que põem quatro a seis
+variantes lado a lado, e quem modela trabalha UMA peça»*. ⭐ **Ela vale para a pior de todas** — a
+`28` são quatro nós de toro, e medido cada um **sozinho** cabe no orçamento:
+
+| peça | relógio | instruções | passos/acerto |
+|---|---:|---:|---:|
+| o nó `(2,3)` sozinho | `7,67 ms` | `128` | `552,9` |
+| o nó `(3,2)` sozinho | `8,03 ms` | `183` | `396,9` |
+| o nó `(2,5)` sozinho | `12,31 ms` | `128` | `786,0` |
+| o nó `(5,2)` sozinho | `10,53 ms` | `293` | `257,7` |
+| **a cena `28` inteira** | **`64,17 ms`** | `724` | `410,2` |
+
+⭐⭐ **E os passos vão ao CONTRÁRIO:** um nó sozinho dá `786` passos por acerto e custa `12 ms`; os
+quatro juntos dão `410` e custam `64`. *É a terceira medição independente a dizer que o custo é a
+FITA e não a marcha* — e esta é a mais limpa, porque as duas grandezas se movem em sentidos opostos.
+
+⛔⛔ **Mas a hipótese NÃO generaliza, e o censo derruba-a:** as `8` acusadas têm em média **`4,0`
+folhas** e as `14` nítidas **`3,6`** — a contagem de peças não as separa. E duas acusadas são de
+**UMA peça só**:
+
+* a **`5` — o TORNO** (`934` instruções, `31,96 ms`): um contorno DESENHADO revolvido, e a
+  resolução dele já está no **mínimo** (`DEFAULT_PROFILE_RESOLUTION = 1`) — as `934` instruções são
+  os arcos do desenho, **desenrolados** numa cadeia de `min`. *Este é o caso de produto a sério: o
+  artista desenha um perfil e roda-o.*
+* a **`6` — A PONTE** (`39` instruções, `16,95 ms`): uma **escultura** virada campo. As `39`
+  instruções escondem uma consulta a uma grelha (oito amostras por avaliação), e ela dá `143,7`
+  passos por acerto.
+
+⭐⭐⭐ **A cura do TORNO já existe — para a CPU:** a [`ph2d_field_eval::profile_index::ProfileIndex`]
+troca a cadeia desenrolada por uma **consulta**, e o doc dela diz que ela existe *«por uma
+medição»*. ⇒ *a obra que sobra é levá-la ao DISPOSITIVO*, o que muda a geração da fita (um buffer em
+vez de texto) e pede paridade nos dois motores. Pelo modelo de custo (`0,039 ms` por instrução), tirar
+`~880` instruções vale **mais do que os `31,96 ms` da cena inteira** — *é a única obra desta fila cujo
+tecto de ganho é maior do que o custo que ela ataca.*
+
 ⏳ **O que fica ABERTO, e é honesto dizê-lo com o gate verde:** as `8` cenas que sobram estão
 quase todas entre `17` e `31 ms` contra o orçamento de `16,7` — perto —, e **uma** está longe: a
 `28`, a `63,69 ms`, com `724` instruções, `28` transcendentes, `44` raízes e `95` valores vivos. *Ela

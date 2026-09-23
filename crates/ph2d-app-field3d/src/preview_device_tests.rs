@@ -1804,3 +1804,148 @@ fn diag_o_relogio_da_cache_do_chao() {
     }
     println!();
 }
+
+/// ⏱️⭐⭐⭐⭐ **A CENA `28` É A PIOR DO CORPUS — mas ela são QUATRO peças. Uma sozinha custa quanto?**
+///
+/// Com o vermelho resolvido (`14 de 22`), a `28` é a única cena longe do orçamento: `63,69 ms`
+/// contra `16,7`, com `724` instruções, `28` transcendentes, `44` raízes, `95` valores vivos e
+/// **`410` passos por acerto** — o dobro da segunda pior.
+///
+/// ⛔⛔ **Antes de atacar a lei do nó, a pergunta é se o artista alcança este caso:** a cena põe
+/// **quatro** nós de toro lado a lado para mostrar que `(p,q)` e `(q,p)` são peças diferentes, e
+/// quem modela trabalha **uma** peça. *Uma cena de vitrina não é um caso de produto, e curar a lei
+/// pela vitrina é optimizar o que ninguém faz.*
+///
+/// ⇒ esta sonda mede cada um dos quatro nós **sozinho**, e a cena inteira ao lado.
+#[test]
+#[ignore = "sonda de diagnóstico: mede um nó de toro sozinho contra a cena de quatro"]
+fn diag_um_no_de_toro_sozinho() {
+    use ph2d_field::{FieldDoc, NodeId, Primitive, Xform};
+    let Some(t) = crate::gpu_frame::shared() else {
+        println!("sem adaptador — saltado");
+        return;
+    };
+    let materiais = [ph2d_material::OpenPbr::default().prepare()];
+    let olhar = ph2d_view_transform::Look::default();
+    const BG: [u8; 4] = [0, 0, 0, 0];
+    let reg = crate::smoke::sampled_registry();
+    let surfaces = ph2d_field_render::Surfaces {
+        all: &materiais,
+        owners: None,
+    };
+    let um = |winds: u32, loops: u32| {
+        let (radius, tube) = (0.20_f32, 0.085_f32);
+        FieldDoc::new(
+            vec![ph2d_field_eval::leaf(
+                Primitive::TorusKnot {
+                    radius,
+                    tube,
+                    cord: ph2d_field::knot_cord_ceiling(radius, tube, winds, loops) * 0.85,
+                    winds,
+                    loops,
+                },
+                Xform::IDENTITY,
+            )],
+            NodeId(0),
+        )
+        .expect("o nó")
+    };
+    let mede = |doc: &FieldDoc, nome: &str| {
+        let cam = ph2d_field_render::Orbit::default();
+        let luz = [crate::gpu_frame::tests_lampada(&cam)];
+        let minimo = (0..QUADROS_MEDIDOS)
+            .map(|_| {
+                let t0 = std::time::Instant::now();
+                let saiu = crate::gpu_frame::paint(
+                    t,
+                    doc,
+                    &reg,
+                    &cam,
+                    &luz,
+                    &surfaces,
+                    &ph2d_field_render::Presentation::of(olhar),
+                    BG,
+                    None,
+                    LW,
+                    LH,
+                    false,
+                );
+                assert!(saiu.is_some(), "o pintor recusou {nome}");
+                #[allow(clippy::cast_possible_truncation)]
+                let ms = t0.elapsed().as_secs_f32() * 1e3;
+                ms
+            })
+            .fold(f32::INFINITY, f32::min);
+        // ⭐ Os passos por acerto vêm da CPU, que é quem tem o contador — a mesma régua do gate.
+        use std::sync::atomic::Ordering;
+        ph2d_field_render::STEP_SAMPLES.store(0, Ordering::Relaxed);
+        let g = ph2d_field_render::trace(doc, &reg, &cam, 96, 54);
+        let acertos = g.hit.iter().filter(|h| **h).count().max(1);
+        #[allow(clippy::cast_precision_loss)]
+        let por_acerto =
+            ph2d_field_render::STEP_SAMPLES.load(Ordering::Relaxed) as f32 / acertos as f32;
+        let campo = ph2d_field_eval::device::DeviceField::new(doc, &reg).expect("a peça");
+        let fita = campo.tape_wgsl().expect("a fita");
+        println!(
+            "  {nome:<22} {minimo:8.2} ms · {:>5} instr · {por_acerto:7.1} passos/acerto",
+            fita.source.lines().count()
+        );
+    };
+    println!("\n  {}", contexto());
+    for (p, q) in [(2u32, 3u32), (3, 2), (2, 5), (5, 2)] {
+        mede(&um(p, q), &format!("o nó ({p},{q}) sozinho"));
+    }
+    mede(&crate::smoke::scene(28), "a cena 28 inteira");
+    println!();
+}
+
+/// ⏱️⭐⭐⭐⭐ **QUANTAS PEÇAS TEM CADA CENA? — a pergunta que reenquadra o vermelho inteiro.**
+///
+/// Com o vermelho verde a `14 de 22`, as `8` cenas que sobram são as de fita grande. ⛔⛔ **E uma
+/// cena de smoke deste módulo mostra QUATRO a SEIS variantes lado a lado de propósito** — é assim
+/// que ela prova que `(p,q)` e `(q,p)` são peças diferentes. *Quem modela trabalha UMA peça.*
+///
+/// ⇒ esta sonda conta as FOLHAS de cada cena ao lado da fita dela, e marca as que o gate acusa.
+/// Ela é de CPU e não lê relógio: o que ela mede é a POPULAÇÃO.
+#[test]
+#[ignore = "sonda de diagnóstico: conta as peças de cada cena"]
+fn diag_quantas_pecas_tem_cada_cena() {
+    let reg = crate::smoke::sampled_registry();
+    // As cenas que o gate acusou na leitura calma de 2026-09-22.
+    const ACUSADAS: &[u32] = &[5, 6, 11, 14, 27, 28, 30, 32];
+    println!("\n  cena · folhas ·  instr · acusada");
+    let (mut folhas_ok, mut folhas_ma, mut n_ok, mut n_ma) = (0usize, 0usize, 0usize, 0usize);
+    for n in 0..crate::smoke::scenes::CENAS {
+        if crate::smoke::scenes::PODADAS.contains(&n) {
+            continue;
+        }
+        let doc = crate::smoke::scene(n);
+        let folhas = doc
+            .nodes()
+            .iter()
+            .filter(|no| matches!(no.kind, ph2d_field::NodeKind::Leaf(_)))
+            .count();
+        let instr = ph2d_field_eval::device::DeviceField::new(&doc, &reg)
+            .and_then(|c| c.tape_wgsl())
+            .map_or(0, |f| f.source.lines().count());
+        let acusada = ACUSADAS.contains(&n);
+        if acusada {
+            folhas_ma += folhas;
+            n_ma += 1;
+        } else {
+            folhas_ok += folhas;
+            n_ok += 1;
+        }
+        println!(
+            "  {n:>4} · {folhas:>6} · {instr:>6} · {}",
+            if acusada { "⛔" } else { "" }
+        );
+    }
+    #[allow(clippy::cast_precision_loss)]
+    let media = |soma: usize, n: usize| soma as f32 / n.max(1) as f32;
+    println!(
+        "\n  ⇒ as {n_ma} ACUSADAS têm em média {:.1} folhas · as {n_ok} nítidas têm {:.1}\n",
+        media(folhas_ma, n_ma),
+        media(folhas_ok, n_ok)
+    );
+}

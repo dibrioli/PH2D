@@ -1692,7 +1692,7 @@ usa.
 
 ### §25.7 — O que fica ABERTO
 
-* ⏳ **O Blur continua a governar o preço de todas as camadas** (§5.1 da auditoria: `+29 ms` por
+* ✅ **FECHADO em 2026-09-22 — ver §33.** ⏳ **O Blur continua a governar o preço de todas as camadas** (§5.1 da auditoria: `+29 ms` por
   camada sem Blur, `+115` com um). Com sete posições isso importa mais, e a alavanca é o avental.
 * ⏳ **Sete camadas nunca foram medidas no produto real** — a tabela de `+1 Brush`/`+1 Erase` foi
   tirada com a pilha levada a sete à mão, antes desta wave existir.
@@ -2363,3 +2363,112 @@ que o artista vê)
 
 * **A flake `the_pen_down_is_still_a_canvas_copy_and_this_is_its_number`** (§31.3) — pedido de
   promoção à lista do `CLAUDE.md` §5.0. É acto do **integrador**, não desta linha.
+
+---
+
+## §33 — O BLUR (ordem do dono, 2026-09-22: *«Atacar o Blur»*)
+
+> **Item 12 da fila do §32.** O borrão governava o preço de toda camada da pilha, e o que a jornada
+> entrega são **duas fusões byte-idênticas** mais a medição que diz **onde** elas compram — que não é
+> onde eu previa.
+
+### §33.1 — O que mudou no motor
+
+| | antes | depois |
+|---|---|---|
+| horizontal | três `caixa_h` encadeadas, cada uma com buffer próprio | **`caixa_h3`**: as três por LINHA, num rascunho por thread |
+| vertical | três `caixa_v` sobre a imagem inteira | **`caixa_v3`**: as três **DENTRO de uma banda que cabe na cache** |
+| bissectar | — | **`PH2D_BLUR_SEM_FUSAO=1`** devolve o motor de antes |
+
+⭐⭐ **As duas são BYTE-IDÊNTICAS, e não «iguais a menos de um epsilon»:** as somas são as mesmas, na
+mesma ordem, com os mesmos `inv` — *o que muda é onde os intermédios vivem, nunca a aritmética*. Na
+vertical o argumento é o que a `caixa_v` **já escrevia** para o paralelo: o acumulador `acc[i]` só
+toca a coluna `c0 + i`, logo a largura da banda é **ordem de laço** e nunca aritmética ⇒ a identidade
+vale para **toda** partição, e o gate varre larguras `1`, `2`, `3` e a cheia de propósito.
+
+### §33.2 — A largura da banda é de CACHE e tem um PENHASCO
+
+Varrida sobre a entrada de `1024×1312` (série, `--release`):
+
+| largura | ganho | KiB por intermédio |
+|---|---|---|
+| `16` … `256` | `1,1×`–`1,6×` (planalto) | `262` … `4 192` |
+| `512` | **`0,82×`** | `8 384` |
+| cheia | **`0,57×`** | `16 768` |
+
+⛔⛔ **À largura cheia a fusão é PIOR que as três passagens separadas:** ali os intermédios voltam a
+ter o tamanho da imagem, o tráfego é o de antes e ainda se paga a cópia final para a banda. *O ganho
+não é a fusão — é a fusão numa banda que cabe na cache.* Shipa `LARGURA_DA_BANDA_FUNDIDA = 128`.
+
+### §33.3 — O A/B do PRODUTO, e ele diz que isto é uma lei do RAIO GRANDE
+
+⚠️ **Comparar relógios entre sessões não vale nada nesta máquina** — medido: a MESMA porta lida duas
+vezes na MESMA corrida deu `10,2` e `14,2 ms` a `load 14`. Por isso a porta de bissecção existe, e o
+A/B é o **mesmo binário, na mesma janela, a `96 %` de CPU ociosa**:
+
+| pilha | raio | sem fusão | com fusão | ganho |
+|---|---|---|---|---|
+| Blur sobre Brush | **24** | `89,72 ms` | `89,63` | **`1,00×`** |
+| Blur sobre Brush | **96** | `432,60` | `387,07` | `1,12×` |
+| quota de 7 · `1024²` | 96 | `714,02` — `189,0 %` de um quadro | `558,62` — **`147,8 %`** | **`1,28×`** |
+| quota de 7 · `2048²` | 96 | `734,08` — `194,3 %` | `550,80` — **`145,8 %`** | **`1,33×`** |
+| quota de 7 | 24 | `265,89` | `264,43` | `1,00×` |
+
+⛔⛔ **No raio de FÁBRICA ela não compra nada**, e o mecanismo é o mesmo do penhasco: ali o avental e
+os intermédios cabem na cache e não há travessia de DRAM para cortar. *Uma fusão que poupa
+travessias de memória só se paga quando as travessias vão à DRAM.*
+
+⚠️ **O piso de ruído desta bancada está medido e é grande:** a linha `6 (sem Blur)` a `1024²`/raio
+`24` — que esta cura **não pode** tocar — leu `117,67` e `80,36 ms` nas duas corridas. As linhas de
+`2048²` são estáveis a `~2 %`, e é nelas que o veredito se lê.
+
+### §33.4 — As cinco coisas que a medição derrubou
+
+1. ⛔ **«o ganho é `4×`»** — era o ESCALONADOR. Em paralelo, com a máquina ocupada, três passagens
+   pagam três junções de `rayon` e a fundida paga uma: lê-se `3,5×`–`5,6×`. **Em série, que é imune à
+   contenção, a horizontal compra `1,77×`–`2,04×`.**
+2. ⛔ **«a vertical é a grande alavanca porque é `74 %` do relógio»** — ela compra `1,02×`–`1,08×` de
+   ponta a ponta, contra `1,3×`–`2,0×` da horizontal, que é um terço do custo. *Ter a maior fatia do
+   RELÓGIO não é ter a maior fatia do TRÁFEGO.*
+3. ⛔ **«são as falhas de página das três alocações»** — medido, `0,10`/`0,17`/`0,54 ms` contra
+   `0,93`/`1,73`/`7,34` das verticais: **`7`–`11 %`**. Reaproveitar o buffer não compraria nada, e
+   construí-lo teria sido pagar a coisa cara para não pagar a barata.
+4. ⛔ **«a premissa do `uma_banda_nunca_fica_abaixo_do_piso` morreu»** — declarei-a morta de manhã e
+   ela **renasceu à tarde**, quando a porta de bissecção devolveu a `bandas_da_vertical` ao produto.
+   *Uma premissa só morre quando o código que a realiza deixa de ser ALCANÇÁVEL, e «o caminho de
+   omissão mudou» não é isso.* Está escrito no gate.
+5. ⛔ **o controlo da sonda de decomposição** acusou `+250,7 %` numa corrida a `load 91` — ou seja,
+   somou `10,8 ms` de partes contra uma porta de `1,8`. *É o instrumento a dizer que a máquina não
+   está a dar relógio nenhum*, e foi ele que mandou medir em série.
+
+### §33.5 — Gates e prova
+
+* `as_tres_horizontais_fundidas_dao_o_mesmo_f32` — `48` casos (6 raios × 4 formas × série/paralelo).
+* `as_tres_verticais_fundidas_dao_o_mesmo_f32` — `192` casos, com a largura da banda a varrer
+  `1`, `2`, `3` e a cheia: *uma propriedade que vale para toda partição prova-se em mais do que a
+  partição que o produto usa*.
+* ⭐⭐ **`a_vertical_fundida_parte_em_bandas_de_cache` — nasceu de uma MUTAÇÃO SOBREVIVENTE**, e é a
+  lição da wave: cravar `nb = 1` deixa o gate da identidade **VERDE** (a igualdade vale para toda
+  partição) e o borrão passa a `0,57×`, **pior do que antes da wave**. *A lei da identidade não pode
+  gatear a lei do custo; quem a gateia é a CONTA* — um contador `#[cfg(test)]` **por THREAD** (um
+  átomo global contaria as bandas de outra corrida sob o fan-out) lido por um gate que corre em série.
+
+**Mutação 9 de 9 a sangrar** (ordem das passagens · acumulador partilhado pela banda · a altura
+devolvida · a janela deslizante · a partição a perder o resto · a cópia final desalinhada · `nb = 1` ·
+`div_ceil` → divisão · o contador a não contar).
+
+⚠️ E o arnês mentiu **duas** vezes antes de dizer a verdade, as duas apanhadas pelos controlos dele:
+uma mutação minha era **NO-OP** (`let _ = h;` — lê-se exactamente como sobrevivência) e outra tinha
+âncora que casava **2×** (a mesma partição existe nas duas funções), e aí ele **aborta** em vez de
+reportar.
+
+### §33.6 — ⏳ O que fica ABERTO
+
+* **O borrão a raio grande ainda é mais de um quadro** (`145,8 %` da quota de 7). A fusão tirou
+  `1,33×` e o que sobra é a **aritmética**, não o tráfego.
+* ⏳ **Item 13 da fila (`u16` premultiplicado):** metade dos bytes por intermédio. ⛔ **NÃO é
+  byte-idêntico** ⇒ pede a barra de qualidade que a caixa já tem contra o binomial, e essa barra tem
+  de sair de um vale medido, nunca de um epsilon escolhido.
+* ⚠️ **O ganho em PARALELO não foi isolado da contenção** — todas as leituras paralelas desta jornada
+  saíram com outra linha a martelar a máquina (`load 6` a `91`). O que está medido e vale é a série e
+  o A/B do produto; a curva do escalonador fica por tirar numa máquina só nossa.

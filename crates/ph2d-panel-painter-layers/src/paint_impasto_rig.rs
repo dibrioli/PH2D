@@ -5,7 +5,7 @@
 //! Krita's Phong Bumpmap paints all four of its lights at once and ends up with **24 controls**;
 //! `docs/Painter/17_impasto_deposito_pesquisa2.md` §2.4 files that under *"o conto-moral do excesso"*.
 //! So the card edits the **selected** lamp — a four-chip selector, then that lamp's knobs — and its row
-//! count does not grow with the rig. Four lamps, five rows.
+//! count does not grow with the rig. Four lamps, six rows.
 //!
 //! Lamps 2-4 are **off** by default, which is what keeps a canvas nobody has opened the rig on
 //! byte-identical to the single-light build.
@@ -19,10 +19,7 @@ use crate::paint::register_button;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::tool::PanelEvent;
-use ph2d_editor_core::widget::{ColorSwatch, SwatchSize, SwatchState, paint_color_swatch};
-use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_tokens::{ROW_H_PX, Spacing};
 use ph2d_tool_painter::BrushSettings;
 
 /// The four lamp chips, in order. Their ids are flat constants (not a `light_id(i)` helper) because the
@@ -34,16 +31,8 @@ const LAMP_IDS: [ph2d_a11y::NodeId; 4] = [
     ph2d_tool_painter::ids::PAINTER_IMPASTO_LIGHT_4,
 ];
 
-/// Width of the colour swatch at the end of the Intensity row.
-///
-/// ⚠️ **É a altura da LINHA, e por isso vem do token** — o doc já dizia *«sized to the row
-/// height»* e o número era uma cópia (`28.0`), que ficou para trás quando o dono pediu linhas
-/// mais compactas (`28 → 24`, 2026-09-06). *Um comentário que descreve uma derivação que o código
-/// não faz é a próxima divergência.*
-const SWATCH_W: f32 = ph2d_tokens::ROW_H_PX;
-
-/// Rows 2..5 of the Lighting card: the lamp selector, then the SELECTED lamp's Angle / Elevation /
-/// Intensity + colour. Returns the next `y`.
+/// Rows 2..6 of the Lighting card: the lamp selector, then the SELECTED lamp's Angle / Elevation /
+/// Intensity / Color. Returns the next `y`.
 pub(crate) fn paint_light_rows(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -106,7 +95,7 @@ pub(crate) fn paint_light_rows(
         x,
         w,
         ry,
-        tr("panel.painter_layers.impasto.angle"),
+        "panel.painter_layers.impasto.angle",
         ph2d_tool_painter::ids::PAINTER_IMPASTO_LIGHT_ANGLE,
         f32::from(lamp.angle_deg),
         0.0,
@@ -120,7 +109,7 @@ pub(crate) fn paint_light_rows(
         x,
         w,
         ry,
-        tr("panel.painter_layers.impasto.elevation"),
+        "panel.painter_layers.impasto.elevation",
         ph2d_tool_painter::ids::PAINTER_IMPASTO_LIGHT_ELEV,
         f32::from(lamp.elev_deg),
         crate::paint_impasto::ELEV_MIN_DEG,
@@ -129,16 +118,19 @@ pub(crate) fn paint_light_rows(
         0,
     );
 
-    // ── Row: Intensity + the lamp's COLOUR swatch, side by side. The two are one thought ("how much of
-    //    what light"), and the swatch is small — a row of its own would be a row spent on a square.
-    let box_w = w - SWATCH_W - Spacing::Xs.px();
-    let after = card_row(
+    // ── Row: Intensity, then the lamp's COLOUR on a row of its own.
+    //
+    //    ⛔ Until 2026-09-23 the colour was a 22 px square at the end of the Intensity row ("one thought:
+    //    how much of what light — a row of its own would be a row spent on a square"). The owner's
+    //    2026-09-21 report struck that very shape: every colour in the app is a BAR in the value column,
+    //    named on the left. With a bar the row is no longer spent on a square — see `paint_brush_rows::color_row`.
+    ry = card_row(
         ctx,
         theme,
         x,
-        box_w,
+        w,
         ry,
-        tr("panel.painter_layers.impasto.intensity"),
+        "panel.painter_layers.impasto.intensity",
         ph2d_tool_painter::ids::PAINTER_IMPASTO_LIGHT_POWER,
         lamp.intensity,
         0.0,
@@ -147,32 +139,19 @@ pub(crate) fn paint_light_rows(
         2,
     );
     let sw_id = ph2d_tool_painter::ids::PAINTER_IMPASTO_LIGHT_COLOR;
-    let sr = Rect::new(x + box_w + Spacing::Xs.px(), ry, SWATCH_W, ROW_H_PX);
     let open = ctx.host.store().picker_target() == Some(sw_id);
     let enc = |v: f32| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8; // LITERAL-PX-OK: sRGB 8-bit normalize
-    paint_color_swatch(
-        &ColorSwatch {
-            id: sw_id,
-            label: String::new(),
-            rgba: [
-                enc(lamp.color[0]),
-                enc(lamp.color[1]),
-                enc(lamp.color[2]),
-                255,
-            ],
-            state: if open {
-                SwatchState::Focused
-            } else {
-                SwatchState::Normal
-            },
-            size: SwatchSize::Sm,
-        },
-        sr,
-        ctx.scene,
-        theme,
-    );
     register_button(ctx.host.store_mut(), sw_id);
-    ctx.host.hit_index_mut().register(sw_id, sr);
+    let after = crate::paint_brush_rows::color_row(
+        ctx,
+        theme,
+        x,
+        w,
+        ry,
+        "panel.painter_layers.impasto.light_color",
+        sw_id,
+        [enc(lamp.color[0]), enc(lamp.color[1]), enc(lamp.color[2])],
+    );
     // Read-back: the shared picker writes the pick onto the swatch's widget colour; forward it to the
     // tool ONLY when it actually differs, or every frame with the picker open would be an undo step.
     if open

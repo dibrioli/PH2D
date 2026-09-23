@@ -47,7 +47,12 @@ use ph2d_tokens::{Spacing, TypeToken};
 /// nunca como cerca (a lição que o gate irmão do Inspector pagou duas vezes).
 const ELIDEM_POR_LARGURA: &[(f32, usize)] = &[
     // O MÍNIMO do dock: aqui a coluna e o tecto do campo colidem.
-    (220.0, 7),
+    // ⚠️ `7 → 11` em 2026-09-23, e NÃO por regressão de régua: as linhas dos três cartões de técnica
+    //    ENTRARAM na população (até aí tinham coluna própria, `CARD_LABEL_W = 96`, e nenhuma chave
+    //    declarada). Os quatro são nomes de cartão a `220`, onde a coluna bate no piso da caixa (ordem
+    //    do dono de 2026-05-24) — o cartão antigo dava-lhes `96 px` e apertava a caixa abaixo desse
+    //    piso. ⭐ Acima do mínimo nenhum deles corta — as linhas de `245` para cima ficaram iguais.
+    (220.0, 11),
     (245.0, 1),
     // Amostra DATADA da largura do dono (lida em 2026-09-14).
     (273.3, 0),
@@ -60,6 +65,11 @@ const ELIDEM_POR_LARGURA: &[(f32, usize)] = &[
 /// ⚠️ **As secções que vivem num CARTÃO com recuo próprio** — o *Composite Brush* e o *Line*
 /// desenham o fundo delas e recuam [`Spacing::Sm`] de cada lado antes de pintar as linhas. Uma
 /// régua que lhes desse a linha inteira mediria uma coluna que elas não têm.
+///
+/// ⭐ **As linhas dos cartões de TÉCNICA (Impasto · Aquarela · Wet Paint) medem-se pela lista
+/// `cartao` da declaração, e não por secção** (2026-09-23): a Impasto tem `Adjust Last Stroke` FORA
+/// de todo cartão, e medir a secção inteira à largura do cartão acusava-o de um corte que o artista
+/// não vê — ele leu `2` a `245` onde o produto corta `1`.
 const EM_CARTAO: &[&str] = &["composite", "line"];
 
 /// A largura de uma linha deste painel, por secção.
@@ -81,10 +91,16 @@ fn elidem_com(ts: &mut TextSystem, painel: f32, declarada: bool) -> Vec<String> 
     let mut out = Vec::new();
     for d in seccoes::TODAS {
         let linha = largura_da_linha(painel, d.nome);
-        let rotulos: Vec<&str> = d.chaves.iter().map(|k| ph2d_i18n::tr(k)).collect();
+        // ⭐ A linha dentro de um cartão de técnica recua `Sm` de cada lado — a mesma conta do
+        //    `card::card_frame`, que é quem a pinta.
+        let linha_do_cartao = linha - 2.0 * Spacing::Sm.px();
+        let soltos: Vec<&str> = d.chaves.iter().map(|k| ph2d_i18n::tr(k)).collect();
+        let no_cartao: Vec<&str> = d.cartao.iter().map(|k| ph2d_i18n::tr(k)).collect();
+        // ⚠️ A coluna é UMA para as duas listas — o produto mede-a sobre as duas.
         let mais_largo = declarada.then(|| {
-            rotulos
+            soltos
                 .iter()
+                .chain(&no_cartao)
                 .map(|t| ts.prefix_width(t, fonte))
                 .fold(0.0_f32, f32::max)
         });
@@ -94,15 +110,17 @@ fn elidem_com(ts: &mut TextSystem, painel: f32, declarada: bool) -> Vec<String> 
         let n = d.campos as f32;
         let precisa = n * ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX
             + (n - 1.0) * ph2d_tokens::control_gap_px();
-        let col = ph2d_editor_core::widget::property_label_col_w_for(
-            0.0,
-            linha,
-            mais_largo,
-            Some(precisa),
-        );
-        for t in &rotulos {
-            if ts.prefix_width(t, fonte) > col {
-                out.push(format!("[{}] {t}", d.nome));
+        for (rotulos, largura) in [(&soltos, linha), (&no_cartao, linha_do_cartao)] {
+            let col = ph2d_editor_core::widget::property_label_col_w_for(
+                0.0,
+                largura,
+                mais_largo,
+                Some(precisa),
+            );
+            for t in rotulos {
+                if ts.prefix_width(t, fonte) > col {
+                    out.push(format!("[{}] {t}", d.nome));
+                }
             }
         }
     }
@@ -195,7 +213,7 @@ fn a_declaracao_das_seccoes_e_o_painel_dizem_o_mesmo() {
     let ficheiros = fontes();
     let declaradas: Vec<&str> = seccoes::TODAS
         .iter()
-        .flat_map(|d| d.chaves.iter().copied())
+        .flat_map(|d| d.chaves.iter().chain(d.cartao).copied())
         .collect();
     assert!(
         declaradas.len() >= 55,
@@ -215,7 +233,13 @@ fn a_declaracao_das_seccoes_e_o_painel_dizem_o_mesmo() {
     for src in &ficheiros {
         let linhas: Vec<&str> = src.lines().collect();
         for (i, l) in linhas.iter().enumerate() {
-            let porta = l.contains("paint_checkbox_row(") || l.contains("paint_dropdown_row(");
+            // ⚠️ As linhas de CARTÃO entraram em 2026-09-23 — até aí tinham coluna própria e nenhuma
+            //    chave. ⛔ A chamada da TABELA do Wet Paint passa a chave por variável e escapa à
+            //    janela; a metade de cima (toda chave declarada existe no fonte) continua a vê-la.
+            let porta = l.contains("paint_checkbox_row(")
+                || l.contains("paint_dropdown_row(")
+                || l.contains("card_row(")
+                || l.contains("paint_brush_rows::color_row(");
             if !porta || l.contains("fn paint_") {
                 continue;
             }
@@ -298,6 +322,10 @@ fn toda_caixa_deste_painel_declara_a_seccao_dela() {
 /// ⭐ **E o `paint_adjust.rs` saiu logo a seguir** — o `ADJ_LABEL_W = 44` cortava **17 de 44** nomes
 /// em toda largura; a pilha passou pela porta e tem gate próprio, que pinta o painel
 /// (`a_pilha_de_ajustes_fala_a_tabela_e_mostra_o_numero`), e as barras dela viraram caixa única.
+/// ⭐ **E o `card.rs` saiu em 2026-09-23** — o `CARD_LABEL_W = 96` governava as linhas de TODO cartão
+/// de técnica (Impasto, Aquarela, Wet Paint) enquanto as caixas e as escolhas do mesmo cartão já
+/// viviam na coluna da secção: duas colunas de nome dentro de um cartão. Hoje o `card_row` delega na
+/// linha numérica do painel e as cores dele na porta da cor (`paint_brush_rows::color_row`), as duas com a secção da chave.
 const COLUNAS_A_MAO: &[(&str, &str)] = &[
     (
         "paint_composite.rs",
@@ -308,10 +336,6 @@ const COLUNAS_A_MAO: &[(&str, &str)] = &[
         "paint_shape_layers.rs",
         "o `BLEND_LABEL_W` é o rótulo de uma fileira de CLUSTER (chip + caixa + opacidade), não uma \
          linha de propriedade — decidir se ela é uma é trabalho de produto",
-    ),
-    (
-        "card.rs",
-        "o `CARD_LABEL_W` governa as rows de um CARTÃO de técnica, que têm layout próprio",
     ),
 ];
 
@@ -393,9 +417,20 @@ fn e_o_controlo_nunca_fica_abaixo_do_piso_do_dono() {
     let mut pior = f32::INFINITY;
     for d in seccoes::TODAS {
         for (painel, _) in ELIDEM_POR_LARGURA {
-            let linha = largura_da_linha(*painel, d.nome);
+            // ⭐ A linha MAIS ESTREITA da secção: a do cartão, quando ela tem linhas lá dentro.
+            let linha = largura_da_linha(*painel, d.nome)
+                - if d.cartao.is_empty() {
+                    0.0
+                } else {
+                    2.0 * Spacing::Sm.px()
+                };
             let sec = {
-                let rotulos: Vec<&str> = d.chaves.iter().map(|k| ph2d_i18n::tr(k)).collect();
+                let rotulos: Vec<&str> = d
+                    .chaves
+                    .iter()
+                    .chain(d.cartao)
+                    .map(|k| ph2d_i18n::tr(k))
+                    .collect();
                 ph2d_editor_core::widget::Seccao::medida(&mut ts, d.campos, &rotulos)
             };
             let row = ph2d_editor_core::widget::colunas_da_linha(0.0, linha, 0.0, 22.0, sec);

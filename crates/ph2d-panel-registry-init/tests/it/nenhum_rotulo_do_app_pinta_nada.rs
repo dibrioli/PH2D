@@ -585,7 +585,10 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     ("audio_mixer", 5),
     ("sculpt3d", 6),
     ("hierarchy", 5),
-    ("tokens", 5),
+    // ⬇️ `5 → 2` em 2026-09-23: o *Reset* de cada linha virou ÍCONE (era um botão de texto de
+    //    `48 px` que saía do nome de toda linha autorada) e a amostra passou ao quadrado da altura
+    //    de uma linha (`22`, era o `SwatchSize::Md` de `32`) — o nome ganhou `10 px` em toda linha.
+    ("tokens", 2),
     ("vector", 3),
     ("color_equalization", 2),
     ("tags", 2),
@@ -658,7 +661,10 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     ("audio_mixer", 5),
     ("sculpt3d", 6),
     ("hierarchy", 5),
-    ("tokens", 5),
+    // ⬇️ `5 → 2` em 2026-09-23: o *Reset* de cada linha virou ÍCONE (era um botão de texto de
+    //    `48 px` que saía do nome de toda linha autorada) e a amostra passou ao quadrado da altura
+    //    de uma linha (`22`, era o `SwatchSize::Md` de `32`) — o nome ganhou `10 px` em toda linha.
+    ("tokens", 2),
     ("vector", 3),
     ("color_equalization", 2),
     ("tags", 2),

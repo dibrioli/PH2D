@@ -27,13 +27,8 @@ use crate::paint_seg_row::seg_row;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::tool::PanelEvent;
-use ph2d_editor_core::widget::{ColorSwatch, SwatchSize, SwatchState, paint_color_swatch};
-use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_tokens::{ROW_H_PX, Spacing};
 
-/// Width of the Wax-colour swatch — the same square the lamp's colour uses.
-const SWATCH_W: f32 = 28.0; // LITERAL-PX-OK: swatch box, sized to the row height
 use ph2d_tool_painter::BrushSettings;
 
 // Domain ranges, not design values — these are the physical bounds of the controls (degrees of arc, a
@@ -207,7 +202,7 @@ fn paint_material_card(
         content_w,
         y,
         tr("panel.painter_layers.impasto.material"),
-        4,
+        5,
     );
     ry = card_row(
         ctx,
@@ -215,7 +210,7 @@ fn paint_material_card(
         ix,
         iw,
         ry,
-        tr("panel.painter_layers.impasto.shine"),
+        "panel.painter_layers.impasto.shine",
         ph2d_tool_painter::ids::PAINTER_IMPASTO_SHINE,
         brush.impasto_shine,
         0.0,
@@ -232,7 +227,7 @@ fn paint_material_card(
         ix,
         iw,
         ry,
-        tr("panel.painter_layers.impasto.roughness"),
+        "panel.painter_layers.impasto.roughness",
         ph2d_tool_painter::ids::PAINTER_IMPASTO_ROUGHNESS,
         brush.impasto_roughness,
         0.0,
@@ -246,7 +241,7 @@ fn paint_material_card(
         ix,
         iw,
         ry,
-        tr("panel.painter_layers.impasto.metallic"),
+        "panel.painter_layers.impasto.metallic",
         ph2d_tool_painter::ids::PAINTER_IMPASTO_METALLIC,
         brush.impasto_metallic,
         0.0,
@@ -254,21 +249,21 @@ fn paint_material_card(
         number_field::FINE_STEP,
         2,
     );
-    // ── Row: Wax + its COLOUR swatch, side by side — the same shape the lamp's Intensity row has, and
-    //    for the same reason: the two are one thought ("how much of what light"). Here it reads "how
-    //    deep the light goes, and what it picks up on the way" (Enio, 2026-07-13).
+    // ── Row: Wax, then its COLOUR on a row of its own — the same shape the lamp's Intensity + Color
+    //    pair has, and for the same reason it is a pair: "how deep the light goes, and what it picks up
+    //    on the way" (Enio, 2026-07-13). ⛔ Until 2026-09-23 the colour was a square at the end of the
+    //    Wax row; the owner's 2026-09-21 report made every colour in the app a named BAR (`paint_brush_rows::color_row`).
     //
     //    The swatch is a FILTER, and its neutral is WHITE. That is not a UI convenience — it is the only
-    //    honest way to put this control in a square: a *replacement* tint would have "the paint's own
-    //    colour" as its neutral, and that is a value which differs per pixel and cannot be shown.
-    let box_w = iw - SWATCH_W - Spacing::Xs.px();
-    let after = card_row(
+    //    honest way to show this control: a *replacement* tint would have "the paint's own colour" as
+    //    its neutral, and that is a value which differs per pixel and cannot be shown.
+    ry = card_row(
         ctx,
         theme,
         ix,
-        box_w,
+        iw,
         ry,
-        tr("panel.painter_layers.impasto.wax"),
+        "panel.painter_layers.impasto.wax",
         ph2d_tool_painter::ids::PAINTER_IMPASTO_WAX,
         brush.impasto_wax,
         0.0,
@@ -277,28 +272,20 @@ fn paint_material_card(
         2,
     );
     let sw_id = ph2d_tool_painter::ids::PAINTER_IMPASTO_WAX_COLOR;
-    let sr = Rect::new(ix + box_w + Spacing::Xs.px(), ry, SWATCH_W, ROW_H_PX);
     let open = ctx.host.store().picker_target() == Some(sw_id);
     let enc = |v: f32| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8; // LITERAL-PX-OK: sRGB 8-bit normalize
     let wc = brush.impasto_wax_color;
-    paint_color_swatch(
-        &ColorSwatch {
-            id: sw_id,
-            label: String::new(),
-            rgba: [enc(wc[0]), enc(wc[1]), enc(wc[2]), 255],
-            state: if open {
-                SwatchState::Focused
-            } else {
-                SwatchState::Normal
-            },
-            size: SwatchSize::Sm,
-        },
-        sr,
-        ctx.scene,
-        theme,
-    );
     crate::paint::register_button(ctx.host.store_mut(), sw_id);
-    ctx.host.hit_index_mut().register(sw_id, sr);
+    let after = crate::paint_brush_rows::color_row(
+        ctx,
+        theme,
+        ix,
+        iw,
+        ry,
+        "panel.painter_layers.impasto.wax_color",
+        sw_id,
+        [enc(wc[0]), enc(wc[1]), enc(wc[2])],
+    );
     // Read-back: the shared picker writes the pick onto the swatch's widget colour; forward it to the
     // tool ONLY when it actually differs, or every frame with the picker open would be an undo step.
     if open
@@ -340,7 +327,7 @@ pub(crate) fn paint_body_card(
         ix,
         iw,
         ry,
-        tr("panel.painter_layers.impasto.depth"),
+        "panel.painter_layers.impasto.depth",
         ph2d_tool_painter::ids::PAINTER_IMPASTO_DEPTH,
         brush.impasto_depth,
         DEPTH_MIN,
@@ -356,7 +343,7 @@ pub(crate) fn paint_body_card(
         ix,
         iw,
         ry,
-        tr("panel.painter_layers.impasto.body"),
+        "panel.painter_layers.impasto.body",
         ph2d_tool_painter::ids::PAINTER_IMPASTO_BODY,
         brush.impasto_body,
         0.0,
@@ -373,7 +360,7 @@ pub(crate) fn paint_body_card(
         ix,
         iw,
         ry,
-        tr("panel.painter_layers.impasto.push"),
+        "panel.painter_layers.impasto.push",
         ph2d_tool_painter::ids::PAINTER_IMPASTO_PUSH,
         brush.impasto_push,
         0.0,
@@ -387,7 +374,7 @@ pub(crate) fn paint_body_card(
         ix,
         iw,
         ry,
-        tr("panel.painter_layers.impasto.smoothing"),
+        "panel.painter_layers.impasto.smoothing",
         ph2d_tool_painter::ids::PAINTER_IMPASTO_SMOOTHING,
         brush.impasto_smoothing,
         0.0,
@@ -465,9 +452,9 @@ fn paint_lighting_card(
 ) -> f32 {
     // No "Amount" row: it was a second gain over the same percept as the brush's Depth (the pair that
     // made the section read as "hard to adjust"). The slope is geometry now — see the light pass.
-    // Rows: Show · Light (1 2 3 4) · [Enable] · Angle · Elevation · Intensity+colour. (Shine LEFT: it
+    // Rows: Show · Light (1 2 3 4) · [Enable] · Angle · Elevation · Intensity · Color. (Shine LEFT: it
     // is the paint's, not the room's — it lives in the Material card now.)
-    let rows = if brush.impasto_rig.selected > 0 { 6 } else { 5 };
+    let rows = if brush.impasto_rig.selected > 0 { 7 } else { 6 };
     let (ix, iw, mut ry, next_y) = card_frame(
         ctx,
         theme,
@@ -524,7 +511,7 @@ pub(crate) fn paint_knife_card(
         ix,
         iw,
         ry,
-        tr("panel.painter_layers.impasto.plow"),
+        "panel.painter_layers.impasto.plow",
         ph2d_tool_painter::ids::PAINTER_IMPASTO_PLOW,
         brush.impasto_plow,
         0.0,

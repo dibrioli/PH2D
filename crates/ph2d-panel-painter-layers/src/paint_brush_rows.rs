@@ -64,6 +64,63 @@ pub(crate) fn label(
     );
 }
 
+/// ⭐⭐⭐ **A LINHA DE COR deste painel — pela PORTA da linha de cor**
+/// ([`ph2d_editor_core::property_row::paint_color_row`]): o nome à esquerda e a amostra a ENCHER a
+/// coluna do valor, com a coluna da SECÇÃO da chave.
+///
+/// ⛔⛔ **Até 2026-09-23 este painel pintava as suas QUATRO cores de três maneiras:** o Pincel e o
+/// Papel com um `fill_rounded_rect` + moldura à mão (já na coluna da secção, e cada uma com a sua
+/// cópia do mesmo desenho — o doc da do Papel dizia-se *«Mirror of the Brush section's»*), e a LUZ
+/// e a CERA da Impasto como um quadrado de `22 px` encostado a um campo numérico, sem nome nenhum
+/// (nem visível, nem acessível). O report do dono de 2026-09-21 — *«os seletores de cor de todo o
+/// app precisam ser padronizados»*, com a amostra desenhada como uma BARRA — é esta porta. ⇒ numa
+/// Impasto cada cor ganha a SUA linha, e o cartão uma linha a mais (o chamador soma-a no
+/// `card_frame`).
+///
+/// ⚠️ **O clique continua a ser do `event.rs`** (a amostra é um BOTÃO que alterna o selector
+/// partilhado, e o chamador regista-o); aqui só se pinta e se põe o hit, que é o que a porta faz.
+/// ⚠️ **E a porta lê a cor do `widget_color`**, que o `hero` escreve enquanto o selector está aberto
+/// nesta amostra — e deixa lá quando fecha. ⇒ fora desse caso semeia-se a cor do documento, senão
+/// um *undo* depois de uma escolha mostraria a cor escolhida sobre um valor que já não é o dela.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn color_row(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    chave: &str,
+    id: ph2d_a11y::NodeId,
+    rgb: [u8; 3],
+) -> f32 {
+    let seccao = crate::seccoes::seccao_da_chave(ctx.text_system, chave);
+    let rgba = [rgb[0], rgb[1], rgb[2], u8::MAX];
+    {
+        let store = ctx.host.store_mut();
+        if store.picker_target() != Some(id) {
+            store.set_widget_color(id, rgba);
+        }
+    }
+    let scene = &mut *ctx.scene;
+    let text_system = &mut *ctx.text_system;
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    ph2d_editor_core::property_row::paint_color_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        content_w,
+        y,
+        tr(chave),
+        id,
+        rgba,
+        false,
+        seccao,
+    )
+}
+
 /// Paint a "label + dropdown chip" row. Returns `(next_y, Some(chip_rect))` when
 /// the chip is open (the caller stashes the rect into the matching pending slot).
 /// `pub(crate)` so the Stroke section reuses it for Method + Jitter Unit.

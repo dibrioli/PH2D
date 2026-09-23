@@ -67,6 +67,12 @@ pub struct Declaracao {
     pub campos: usize,
     /// As chaves dos rótulos que esta secção pinta como LINHA DE PROPRIEDADE.
     pub chaves: &'static [&'static str],
+    /// ⭐ **As que ela pinta DENTRO de um cartão de técnica** (2026-09-23) — mesma coluna de nome, e
+    /// ela mede-se sobre as duas listas; mas a LINHA delas é mais estreita (o cartão recua de cada
+    /// lado), e o censo das elisões tem de as medir à largura onde são pintadas. ⚠️ Duas listas e não
+    /// uma: uma secção pode ter linhas dos dois lados (a Impasto tem `Adjust Last Stroke` fora de
+    /// todo cartão, porque ele governa todos).
+    pub cartao: &'static [&'static str],
 }
 
 /// O par `X`/`Y` de um *Size* / *Offset* — a linha que uma secção de geometria não quer ver quebrar.
@@ -83,101 +89,121 @@ pub const TODAS: &[Declaracao] = &[
         nome: "brush",
         campos: 1,
         chaves: BRUSH,
+        cartao: &[],
     },
     Declaracao {
         nome: "clone",
         campos: 1,
         chaves: CLONE,
+        cartao: &[],
     },
     Declaracao {
         nome: "composite",
         campos: 1,
         chaves: COMPOSITE,
+        cartao: &[],
     },
     Declaracao {
         nome: "deform",
         campos: 1,
         chaves: DEFORM,
+        cartao: &[],
     },
     Declaracao {
         nome: "grain",
         campos: PAR,
         chaves: GRAIN,
+        cartao: &[],
     },
     Declaracao {
         nome: "impasto",
         campos: 1,
         chaves: IMPASTO,
+        cartao: IMPASTO_CARTAO,
     },
     Declaracao {
         nome: "line",
         campos: 1,
         chaves: LINE,
+        cartao: &[],
     },
     Declaracao {
         nome: "paper",
         campos: PAR,
         chaves: PAPER,
+        cartao: &[],
     },
     Declaracao {
         nome: "ramp",
         campos: 1,
         chaves: RAMP,
+        cartao: &[],
     },
     Declaracao {
         nome: "sculpt",
         campos: 1,
         chaves: SCULPT,
+        cartao: &[],
     },
     Declaracao {
         nome: "selection",
         campos: 1,
         chaves: SELECTION,
+        cartao: &[],
     },
     Declaracao {
         nome: "shape",
         campos: PAR,
         chaves: SHAPE,
+        cartao: &[],
     },
     Declaracao {
         nome: "stencil",
         campos: PAR,
         chaves: STENCIL,
+        cartao: &[],
     },
     Declaracao {
         nome: "stroke",
         campos: 1,
         chaves: STROKE,
+        cartao: &[],
     },
     Declaracao {
         nome: "stroke.grid",
         campos: 1,
         chaves: STROKE_GRID,
+        cartao: &[],
     },
     Declaracao {
         nome: "stroke.jitter",
         campos: 1,
         chaves: STROKE_JITTER,
+        cartao: &[],
     },
     Declaracao {
         nome: "symmetry",
         campos: 1,
         chaves: SYMMETRY,
+        cartao: &[],
     },
     Declaracao {
         nome: "taper",
         campos: 1,
         chaves: TAPER,
+        cartao: &[],
     },
     Declaracao {
         nome: "watercolor",
         campos: 1,
         chaves: WATERCOLOR,
+        cartao: WATERCOLOR_CARTAO,
     },
     Declaracao {
         nome: "wetpaint",
         campos: 1,
         chaves: WETPAINT,
+        cartao: WETPAINT_CARTAO,
     },
 ];
 
@@ -213,6 +239,24 @@ pub(crate) const IMPASTO: &[&str] = &[
     "panel.painter_layers.impasto.smooth_edges",
     "panel.painter_layers.impasto.show_impasto",
     "panel.painter_layers.impasto.enable",
+];
+/// ⭐ *Impasto*, as linhas dos CARTÕES (2026-09-23): até aí o cartão tinha a coluna dele
+/// (`CARD_LABEL_W`), e os nomes dos números e das cores dele não entravam na medida da secção.
+pub(crate) const IMPASTO_CARTAO: &[&str] = &[
+    "panel.painter_layers.impasto.angle",
+    "panel.painter_layers.impasto.elevation",
+    "panel.painter_layers.impasto.intensity",
+    "panel.painter_layers.impasto.shine",
+    "panel.painter_layers.impasto.roughness",
+    "panel.painter_layers.impasto.metallic",
+    "panel.painter_layers.impasto.wax",
+    "panel.painter_layers.impasto.depth",
+    "panel.painter_layers.impasto.body",
+    "panel.painter_layers.impasto.push",
+    "panel.painter_layers.impasto.smoothing",
+    "panel.painter_layers.impasto.plow",
+    "panel.painter_layers.impasto.light_color",
+    "panel.painter_layers.impasto.wax_color",
 ];
 /// *Line* — o cartão do traço procedural, com recuo próprio como o *Composite*.
 pub(crate) const LINE: &[&str] = &[
@@ -307,6 +351,23 @@ pub(crate) const TAPER: &[&str] = &[
 ];
 /// *Watercolor*.
 pub(crate) const WATERCOLOR: &[&str] = &["panel.painter_layers.watercolor.smooth_edges"];
+/// ⭐ *Watercolor*, as linhas dos CARTÕES (Wash · Brush · Water), desde 2026-09-23 na coluna da secção.
+pub(crate) const WATERCOLOR_CARTAO: &[&str] = &[
+    "panel.painter_layers.watercolor.drying_time",
+    "panel.painter_layers.watercolor.preview",
+    "panel.painter_layers.watercolor.body",
+    "panel.painter_layers.watercolor.concentration",
+    "panel.painter_layers.watercolor.opacity",
+    "panel.painter_layers.watercolor.edge_darkening",
+    "panel.painter_layers.watercolor.bleed",
+    "panel.painter_layers.watercolor.ragged_edge",
+    "panel.painter_layers.watercolor.charge",
+    "panel.painter_layers.watercolor.dilution",
+    "panel.painter_layers.watercolor.pull",
+    "panel.painter_layers.watercolor.rewet",
+    "panel.painter_layers.watercolor.smudge",
+    "panel.painter_layers.watercolor.pigment",
+];
 /// *Wet Paint* — inclui a caixa do cartão de inclinação.
 pub(crate) const WETPAINT: &[&str] = &[
     "panel.painter_layers.wetpaint.show_wet",
@@ -314,10 +375,27 @@ pub(crate) const WETPAINT: &[&str] = &[
     "panel.painter_layers.wetpaint.tuning",
     "panel.painter_layers.wetpaint.tilt",
 ];
+/// ⭐ *Wet Paint*, as linhas numéricas do cartão, desde 2026-09-23 na coluna da secção.
+pub(crate) const WETPAINT_CARTAO: &[&str] = &[
+    "panel.painter_layers.wetpaint.grid_size_px",
+    "panel.painter_layers.wetpaint.flow_grid_x",
+    "panel.painter_layers.wetpaint.water",
+    "panel.painter_layers.wetpaint.pigment",
+    "panel.painter_layers.wetpaint.pickup",
+    "panel.painter_layers.wetpaint.dry_speed",
+    "panel.painter_layers.wetpaint.edge_darkening",
+    "panel.painter_layers.wetpaint.gravity",
+    "panel.painter_layers.wetpaint.erase_strength",
+];
 
 /// ⭐⭐ **A [`Seccao`] de uma declaração** — medida sobre os rótulos dela, no sistema de texto real.
 pub(crate) fn seccao(text_system: &mut TextSystem, d: &Declaracao) -> Seccao {
-    let rotulos: Vec<&'static str> = d.chaves.iter().map(|k| ph2d_i18n::tr(k)).collect();
+    let rotulos: Vec<&'static str> = d
+        .chaves
+        .iter()
+        .chain(d.cartao)
+        .map(|k| ph2d_i18n::tr(k))
+        .collect();
     Seccao::medida(text_system, d.campos, &rotulos)
 }
 

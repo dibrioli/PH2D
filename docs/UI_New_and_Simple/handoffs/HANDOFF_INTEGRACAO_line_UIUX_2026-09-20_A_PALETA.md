@@ -2632,6 +2632,89 @@ exceção a apontar a um id inexistente **sangra**.
   aprovado em 15/09) — hoje é o único segmentado com nome que não passa por ela.
 
 
+## §9-vicies-quater — ⭐⭐⭐ AS CORES QUE SOBRAVAM: duas FORMAS e não uma, e a barra aberta traça o anel
+
+Ordem do dono de 2026-09-21 (*«os seletores de cor de todo o app precisam ser padronizados»*), os três
+itens que o §9-vicies-semel.5 deixou abertos. ⚠️ **Zero contador partilhado, zero contrato, zero ADR.**
+
+### §9-vicies-quater.1 — ⛔⛔ A barra no TOKENS foi construída, MEDIDA e RECUSADA — duas vezes
+
+O Tokens era a maior população de selectores do app (`86` quadrados de `32 px` ANTES do nome). A 1.ª
+redacção passou-o pela porta `paint_color_row` (nome · barra · cauda de verbos fixa) e o censo das
+elisões na ESCADA leu **`108`** nomes comidos no dock mínimo contra os `5` de antes: a coluna do valor
+tem o piso da caixa (`90 px`, ordem do dono de 2026-05-24) e numa lista cujo CONTEÚDO são os nomes isso
+deixa `~20 px` ao nome a `220`. A 2.ª (etiqueta quadrada à DIREITA do nome, a forma da pilha do vetor)
+leu **`29`** — *qualquer* valor à direita come o nome, porque a cauda de verbos também está lá.
+⇒ ⭐ **há DUAS formas legítimas, e a régua que as separa é o que a linha É:**
+
+| a linha é… | a cor é… | onde |
+|---|---|---|
+| uma PROPRIEDADE (nome → valor) | a **barra** na coluna do valor (`paint_color_row`) | Inspector · Flip · Vetor · Painter |
+| uma entrada de LISTA (o nome é o conteúdo) | a **etiqueta quadrada** da altura de uma linha (`ROW_H_PX`) | Tokens · pilha de aparência do vetor · camadas de forma do Painter |
+
+⚠️ Numa BIBLIOTECA de cores (o Tokens) a etiqueta vem ANTES do nome — a vista de lista de estilos do
+Figma e das amostras do Photoshop. Nas listas de CAMADAS vem depois (o nome é de um objecto; a cor é um
+atributo dele). O Tokens ficou no desenho dele com três padronizações: etiqueta `32 → 22` (o quadrado de
+lista), *Reset* de botão de texto de `48 px` para **ícone** (`IconId::Reset`, com a palavra no balão —
+*«as dicas devem ser passadas para o mouse Hover»*), e o anel de foco. Catraca das elisões no degrau
+estreito **`5 → 2`**. Gate `a_linha_de_token_e_uma_linha_de_lista` (etiqueta = quadrado, mesmo `x` em
+toda linha — com uma autorada e uma que segue outra no CONTROLO —, chips alinhados, *Reset* ≤ uma
+linha de largura); mutação **3 de 3**.
+
+### §9-vicies-quater.2 — A porta traça o ANEL quando o selector a está a editar
+
+`paint_swatch_or_mixed` ganhou `aberto: bool` (três chamadores: a porta, o per-corner, o teste) e a
+`paint_color_row` passa `store.picker_target() == Some(id)`. ⚠️ **Cada conversão para a porta tirava ao
+artista o anel** que as linhas à mão tinham (a borda `Accent` do Pincel/Papel, o `Focused` do modelador)
+— a única resposta a *«o que é que esta roda está a mudar?»*. Gate
+`a_barra_aberta_no_seletor_tem_o_anel` com o CONTROLO do selector aberto NOUTRA amostra; ⚠️ corre num
+tema MODERNO de propósito (no clássico repouso e foco têm os dois anel, e a contagem de caminhos não vê
+uma cor). Mutação **2 de 2** (`false` · «qualquer selector aberto»).
+
+### §9-vicies-quater.3 — O PAINTER: as quatro cores por uma porta, e o CARTÃO na coluna da secção
+
+- As cores do **Pincel** e do **Papel** eram `fill_rounded_rect` + moldura à mão (o doc da do Papel
+  dizia-se *«Mirror of the Brush section's»*); a **luz** e a **cera** da Impasto eram um quadrado de
+  `22 px` ANÓNIMO (nem nome visível nem acessível) encostado ao número. Hoje as quatro passam por
+  `paint_brush_rows::color_row` → `paint_color_row`, com a coluna da secção da chave; luz e cera ganham
+  LINHA própria (`impasto.light_color` «Color», `impasto.wax_color` «Wax Color») e os dois cartões uma
+  linha a mais no `card_frame`.
+- ⭐⭐ **O `CARD_LABEL_W = 96` MORREU** — a última entrada da catraca `COLUNAS_A_MAO` que era uma linha
+  de propriedade. O `card_row` passa a receber a CHAVE (29 chamadas reescritas) e delega na linha
+  numérica do painel (`number_field::paint_num_row`, que passa pela porta). Saiu também da tolerância
+  de `the_label_column_is_one_answer` (o censo de obsolescência acusou-a na 1.ª corrida).
+- ⚠️ **A declaração das secções ganhou a lista `cartao`**: as linhas DENTRO de um cartão de técnica
+  medem-se à largura do cartão (`− 2·Sm`), as soltas à da linha. ⛔ Medir a secção inteira à largura do
+  cartão acusava `Adjust Last Stroke` (fora de todo cartão) de um corte que o artista não vê.
+- ⛔ **O tecto a `220` sobe `7 → 11`, e está escrito porquê:** as linhas dos cartões ENTRARAM na
+  população (antes tinham `96 px` fixos e apertavam a caixa abaixo do piso do dono). Os quatro novos
+  (`Concentration`, `Edge Darkening` ×2, `Erase Strength`) cortam só no mínimo, com balão; de `245` para
+  cima nada mudou.
+- Gate `as_cores_da_impasto_sao_barras_na_caixa_do_numero` (a barra ocupa exactamente a caixa do número
+  de cima, numa linha própria, mais larga que duas alturas de linha). Mutação **2 de 2** + ⛔ **UMA
+  NOMEADA:** trocar a coluna da secção pela cega é **inobservável em toda largura** para a Impasto — a
+  coluna é `max(nome, metade)` apertada pelo tecto da caixa, e nenhum nome dela passa da metade da
+  linha do cartão antes de o tecto apertar (medido a `1600`, `304` e `220`).
+- `hr12`: porta de crate verificada nova (`color_row`), porque o `paint_impasto.rs` ficou sem
+  primitivo nenhum no texto e reprovou sobre código melhor.
+
+### §9-vicies-quater.4 — O VETOR e o MODELO 3D
+
+- A etiqueta da pilha de aparência do vetor passa de `24 × row_h` (em pé) ao **quadrado** `ROW_H_PX`,
+  a forma de lista das camadas do Painter. ⏳ Sem gate próprio: o censo geométrico corre o painel sem
+  camadas na pilha.
+- ⛔ **O Modelo 3D fica, e não é dívida de cor:** a amostra dele JÁ é barra na coluna do valor; o que
+  difere é a lei de colunas do PAINEL inteiro (`colunas_da_fileira`, coluna de valor FIXA, medida e
+  escrita no doc dele — a do formulário cresce com a largura). Convergir é uma wave de alinhamento do
+  painel, não do selector.
+
+### §9-vicies-quater.5 — O portão
+
+`nextest-impacted` **17 673/17 673** · clippy `-D warnings` zero nas 7 crates tocadas · `cargo fmt` ·
+censo das elisões a `--workspace` verde · mutações **9 a sangrar + 1 nomeada**, com o arnês de três
+controlos.
+
+
 ## §11 — O que esta linha recomenda a quem a integrar
 
 1. **Correr o `diag_onde_cai_a_pista_do_pente` da `line/sculpt3d` DEPOIS da fusão** e reescrever com

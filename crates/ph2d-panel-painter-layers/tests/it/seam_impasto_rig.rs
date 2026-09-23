@@ -396,3 +396,75 @@ fn the_wax_colour_swatch_opens_the_picker() {
          painted, hit-registered and stone dead under the mouse"
     );
 }
+
+/// ⭐⭐⭐ **As cores da Impasto são BARRAS com nome, na caixa do número da linha de cima.**
+///
+/// ⛔⛔ Até 2026-09-23 a cor da luz e a da cera eram um quadrado de `22 px` encostado à direita do
+/// campo `Intensity` / `Wax`, sem nome nenhum — a forma que o report do dono de 2026-09-21 risca
+/// (*«os seletores de cor de todo o app precisam ser padronizados»*, com a amostra desenhada como
+/// uma BARRA na coluna do valor). Hoje cada cor tem a sua linha, pela porta da linha de cor, e o
+/// cartão inteiro usa a coluna da secção.
+///
+/// ⚠️ A régua é a caixa do NÚMERO vizinho: os dois passam pela mesma repartição, logo a barra tem de
+/// começar no mesmo `x` e ter a mesma largura. **Mutações que devem sangrar:** a cor voltar a ser uma
+/// caixa na metade direita da linha (a forma do quadrado ao lado do número) · o número do cartão
+/// voltar a uma largura própria.
+#[test]
+fn as_cores_da_impasto_sao_barras_na_caixa_do_numero() {
+    let tool = tool_with_impasto_on();
+    let _ = &tool;
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+    // ⚠️ O MÍNIMO do encaixe (`220`), que é onde o dono trabalha. Alto de propósito, para os
+    //    cartões de baixo caberem.
+    //
+    // ⛔ **NOMEADO: trocar a coluna da SECÇÃO pela coluna cega (`Seccao::apenas_campos`) é INOBSERVÁVEL
+    //    aqui, em qualquer largura** — medido, a mutação sobrevive a `1600`, a `304` e a `220`. O
+    //    porquê é a lei da coluna (`max(nome, metade)`, apertada pelo tecto da caixa): nenhum nome da
+    //    Impasto passa da METADE da linha do cartão antes de o tecto a apertar, logo as duas dão o
+    //    mesmo `x`. Quem guarda a coluna da secção é o censo `cada_nome_deste_painel_cabe_na_coluna_da_seccao`.
+    let painted = host.paint::<PainterLayersPanel>(&mut st, Rect::new(0.0, 0.0, 220.0, 4000.0));
+    let rect = |id| {
+        painted
+            .iter()
+            .find(|(w, r)| *w == id && r.w > 0.0 && r.h > 0.0)
+            .map(|(_, r)| *r)
+            .unwrap_or_else(|| panic!("{id:?} não foi pintado com área clicável"))
+    };
+    use ph2d_tool_painter::ids as p;
+    for (cor, numero, nome) in [
+        (
+            p::PAINTER_IMPASTO_LIGHT_COLOR,
+            p::PAINTER_IMPASTO_LIGHT_POWER,
+            "a cor da luz",
+        ),
+        (
+            p::PAINTER_IMPASTO_WAX_COLOR,
+            p::PAINTER_IMPASTO_WAX,
+            "a cor da cera",
+        ),
+    ] {
+        let (c, n) = (rect(cor), rect(numero));
+        assert!(
+            c.y > n.y,
+            "{nome} não está na linha a seguir à do número (y {:.1} contra {:.1}) — voltou a ser um \
+             quadrado ao lado dele",
+            c.y,
+            n.y
+        );
+        assert!(
+            (c.x - n.x).abs() < 0.5 && (c.w - n.w).abs() < 0.5,
+            "{nome} não ocupa a caixa do número de cima (x {:.1} w {:.1} contra x {:.1} w {:.1}) — \
+             a coluna do cartão deixou de ser uma",
+            c.x,
+            c.w,
+            n.x,
+            n.w
+        );
+        assert!(
+            c.w > ph2d_tokens::ROW_H_PX * 2.0,
+            "{nome} mede {:.1} px — é um quadrado, não uma barra",
+            c.w
+        );
+    }
+}

@@ -7,12 +7,10 @@ use crate::paint_brush_rows::paint_dropdown_row;
 use crate::paint_brush_top::paint_checkbox_row;
 use crate::{number_field, state};
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::widget::DropdownOption;
 use ph2d_i18n::tr;
-use ph2d_tokens::{ColorToken, Radius, StrokeToken, TypeToken};
 use ph2d_tool_painter::{
     BrushSettings, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TextureKind, TextureMapping,
 };
@@ -325,9 +323,12 @@ fn paper_color_readback(ctx: &mut PaintCtx, brush: BrushSettings) {
         )));
 }
 
-/// Paint the paper-colour preview swatch row (label + full-width colour bar). Registered as a
-/// button; clicking it toggles the shared Blender picker (see `event.rs`). Mirror of the Brush
-/// section's `paint_color_swatch_row`.
+/// Paint the paper-colour row — **pela porta da cor do painel**
+/// ([`crate::paint_brush_rows::color_row`]), a mesma da cor do Pincel. Registered as a button;
+/// clicking it toggles the shared Blender picker (see `event.rs`).
+///
+/// ⚠️ Esta linha carregava a SEGUNDA cópia do desenho da do Pincel (*«Mirror of the Brush
+/// section's»*), e antes disso a segunda cópia do literal da coluna. Hoje as duas chamam a porta.
 fn paint_paper_color_row(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -337,40 +338,17 @@ fn paint_paper_color_row(
     brush: BrushSettings,
 ) -> f32 {
     let id = ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB;
-    // ⚠️ Esta linha carregava a SEGUNDA cópia do literal, com o comentário *«mirrors
-    //    paint_brush::LABEL_W»* escrito ao lado — a segunda resposta à mesma pergunta, declarada.
-    //    Hoje as duas perguntam à porta da secção.
-    const CHAVE: &str = "panel.painter_layers.paper.color";
-    let row = crate::paint_brush_rows::linha_da_chave(ctx, x, content_w, y, CHAVE);
-    crate::paint_brush_rows::label(ctx, theme, tr(CHAVE), &row, TypeToken::Sm.px());
-    let rect = row.control;
     register_button(ctx.host.store_mut(), id);
-    let [r, g, b] = encode_rgb3(brush.paper_color);
-    let col = ph2d_vector::Color::from_rgba8(r, g, b, 255); // LITERAL-COLOR-OK: paper colour (data)
-    let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
-    fill_rounded_rect(ctx.scene, rect, radius, col);
-    let open = ctx.host.store().picker_target() == Some(id);
-    let border = if open {
-        ColorToken::Accent
-    } else {
-        ColorToken::Border
-    };
-    // ⭐ Pela porta do TEMA: a amostra é plana num tema moderno; com o picker aberto, é ele que o diz.
-    ph2d_editor_core::paint::stroke_frame(
-        ctx.scene,
-        rect,
-        radius,
+    crate::paint_brush_rows::color_row(
+        ctx,
         theme,
-        if open {
-            ph2d_tokens::visuals::Feel::Active
-        } else {
-            ph2d_tokens::visuals::Feel::Rest
-        },
-        StrokeToken::Default.px(),
-        resolve(border, theme),
-    );
-    ctx.host.hit_index_mut().register(id, rect);
-    y + ph2d_tokens::row_pitch_px()
+        x,
+        content_w,
+        y,
+        "panel.painter_layers.paper.color",
+        id,
+        encode_rgb3(brush.paper_color),
+    )
 }
 
 /// The **Grain**-section watercolor extras — shown at the top of the Grain section in watercolor mode,

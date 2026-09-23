@@ -586,6 +586,18 @@ const PORTAS_DE_CRATE_VERIFICADAS: &[(&str, &str, &str)] = &[
         "ph2d-panel-vector",
         "src/paint_rows.rs",
     ),
+    // ⭐ 2026-09-23: as QUATRO cores do Painter (Pincel · Papel · a luz e a cera da Impasto)
+    //    deixaram de se desenhar à mão — duas com um `fill_rounded_rect`, duas com um
+    //    `paint_color_swatch` anónimo — e passaram por esta porta, que delega na
+    //    `property_row::paint_color_row` da casa. O `paint_impasto.rs` ficou sem primitivo nenhum no
+    //    texto dele e reprovou sobre código melhor, que é o caso que esta lista existe para servir.
+    //    ⚠️ O nome é o da FUNÇÃO (a verificação procura `fn <porta>`), e os consumidores chamam-na
+    //    `paint_brush_rows::color_row(` — que o contém.
+    (
+        "color_row",
+        "ph2d-panel-painter-layers",
+        "src/paint_brush_rows.rs",
+    ),
 ];
 
 /// ⭐⭐ **E toda porta desta lista delega MESMO num primitivo.**

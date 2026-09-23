@@ -9,11 +9,8 @@ use crate::number_field;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
-
-/// Label column of a card row — wider than the shared `paint_num_row`, so descriptive technique names
-/// fit without truncation.
-pub(crate) const CARD_LABEL_W: f32 = 96.0; // LITERAL-PX-OK: card label column (descriptive names)
+use ph2d_i18n::tr;
+use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, TypeToken};
 
 /// Draw a titled bordered **card** (the Composite/Clone-card idiom) sized for `n_rows` number rows, and
 /// return `(inner_x, inner_w, first_row_y, y_after_card)` — the caller paints the rows into
@@ -84,9 +81,18 @@ pub(crate) fn card_frame(
     )
 }
 
-/// One `label · number-box` row inside a card — the app-standard drag-scrub [`number_field::chip`] with a
-/// WIDER label column ([`CARD_LABEL_W`]) than the shared `paint_num_row`, so the descriptive technique
-/// names fit. Returns the next `y`.
+/// One `label · number-box` row inside a card — **pela linha numérica deste painel**
+/// ([`number_field::paint_num_row`], que passa pela porta da casa) e com a coluna da SECÇÃO da chave.
+///
+/// ⛔⛔ **Até 2026-09-23 o cartão tinha a coluna dele: `CARD_LABEL_W = 96`**, escrita aqui, com o
+/// rótulo encostado à esquerda — e as caixas de marcar e as escolhas do MESMO cartão já viviam na
+/// coluna da secção. *Duas colunas de nome dentro de um cartão*, que é o defeito que a
+/// `seccoes.rs` existe para matar, e a última entrada da catraca `COLUNAS_A_MAO` que era uma linha
+/// de propriedade. ⚠️ A razão escrita para ela (*«descriptive technique names fit»*) é a razão da
+/// secção declarada: a coluna mede o nome mais largo do cartão, e nenhum literal cresce com o dock.
+///
+/// ⭐ **Recebe a CHAVE e não o texto**, pela lei do [`crate::seccoes::seccao_da_chave`]: *quem só
+/// tem o texto traduzido não sabe a que secção pertence*.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn card_row(
     ctx: &mut PaintCtx,
@@ -94,7 +100,7 @@ pub(crate) fn card_row(
     x: f32,
     content_w: f32,
     y: f32,
-    label: &str,
+    chave: &str,
     id: ph2d_a11y::NodeId,
     value: f32,
     min: f32,
@@ -102,30 +108,20 @@ pub(crate) fn card_row(
     step: f64,
     decimals: usize,
 ) -> f32 {
-    let gap = Spacing::Xs.px();
-    let font = TypeToken::Sm.px();
-    paint_text(
-        ctx.text_system,
-        ctx.scene,
-        label,
-        x,
-        y + (ROW_H_PX - font) * 0.5,
-        font,
-        CARD_LABEL_W,
-        resolve(ColorToken::Text2, theme),
-    );
-    let cx = x + CARD_LABEL_W + gap;
-    let cw = (x + content_w - cx).max(0.0);
-    number_field::chip(
+    let seccao = crate::seccoes::seccao_da_chave(ctx.text_system, chave);
+    number_field::paint_num_row(
         ctx,
         theme,
-        Rect::new(cx, y, cw, ROW_H_PX),
+        x,
+        content_w,
+        y,
+        tr(chave),
         id,
         value,
         min,
         max,
         step,
         decimals,
-    );
-    y + ph2d_tokens::row_pitch_px()
+        seccao,
+    )
 }

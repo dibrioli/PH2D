@@ -55,7 +55,13 @@ impl BodyCtx<'_> {
     /// Uma linha da pilha.
     fn layer_row(&mut self, i: usize, row: &PaintRow, y: f32) -> f32 {
         let gap = Spacing::Xs.px();
-        let sw = SwatchSize::Sm.px();
+        // ⭐ **A etiqueta de cor de uma LINHA DE LISTA é um quadrado da altura de uma linha** — a
+        // forma que o dono escolheu para as camadas de forma do Painter (2026-06-29) e que as duas
+        // listas de camadas do app passam a partilhar (2026-09-23, *«os seletores de cor de todo o
+        // app precisam ser padronizados»*). Até aí esta era `24 × row_h`, um rectângulo em pé.
+        // ⚠️ Não é a BARRA da linha de propriedade, e a diferença é a forma da linha: aqui a coluna
+        // do valor é dos três verbos, e a cor é uma etiqueta ao lado do nome.
+        let sw = ph2d_tokens::ROW_H_PX;
         // Da direita para a esquerda: os três verbos, depois a swatch. O que sobra é o rótulo.
         let mut x = self.inner_x + self.inner_w;
         for (id, icon) in [
@@ -77,7 +83,7 @@ impl BodyCtx<'_> {
             x -= gap;
         }
         x -= sw;
-        let sr = Rect::new(x, y, sw, self.row_h);
+        let sr = Rect::new(x, y + (self.row_h - sw) * 0.5, sw, sw);
         let sid = ids::vector_paint_swatch_id(i);
         paint_color_swatch(
             &ColorSwatch::new(sid, tr("panel.vector.appearance.layer_color"), row.color)

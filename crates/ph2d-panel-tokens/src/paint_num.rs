@@ -39,7 +39,7 @@ use ph2d_tokens::num_expr::math_available;
 use ph2d_tokens::num_overrides::{NumValue, num_override};
 use ph2d_tokens::{ColorToken, NumToken, ROW_H_PX, Spacing, Theme, TypeToken};
 
-use crate::paint::{LINK_W, RESET_W, command};
+use crate::paint::{LINK_W, paint_reset_icon};
 
 /// Largura do chip de px. Larga o suficiente para `999` mais as setas do stepper.
 const CHIP_W: f32 = 56.0; // LITERAL-PX-OK: panel grid metric (numeric chip width)
@@ -140,7 +140,7 @@ fn paint_num_row(
     }
 
     let label_x = x + CHIP_W + Spacing::Sm.px();
-    let tail = if authored { RESET_W } else { 0.0 }
+    let tail = if authored { LINK_W } else { 0.0 }
         + LINK_W
         + if show_fx { LINK_W } else { 0.0 }
         + Spacing::Xs.px();
@@ -167,7 +167,7 @@ fn paint_num_row(
         resolve(label_token, theme),
     );
 
-    let link_x = x + w - LINK_W - if authored { RESET_W } else { 0.0 };
+    let link_x = x + w - LINK_W - if authored { LINK_W } else { 0.0 };
     paint_icon_row_button(
         ctx,
         theme,
@@ -195,12 +195,11 @@ fn paint_num_row(
     }
 
     if authored {
-        command(
+        paint_reset_icon(
             ctx,
+            theme,
             crate::ids::tokens_num_reset_id(row),
-            tr("panel.tokens.reset"),
-            x + w - RESET_W,
-            RESET_W,
+            x + w - LINK_W,
             y,
         );
     }

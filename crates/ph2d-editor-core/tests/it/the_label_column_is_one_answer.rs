@@ -77,8 +77,9 @@ const AINDA_A_MAO: &[&str] = &[
     // na crate do painel): o do cartão de técnica tem layout próprio, o do pincel composto é uma
     // linha de LISTA (spec §1) e o das camadas de forma é uma fileira de cluster. ⭐ O
     // `paint_adjust.rs` SAIU em 2026-09-16 (a pilha passou pela porta, com gate que pinta o
-    // painel). ⛔ Quem apagar uma entrada aqui apaga a de lá também.
-    "crates/ph2d-panel-painter-layers/src/card.rs",
+    // painel). ⭐ E o `card.rs` SAIU em 2026-09-23 (a linha do cartão passou a delegar na linha
+    // numérica do painel, com a coluna da secção). ⛔ Quem apagar uma entrada aqui apaga a de lá
+    // também.
     "crates/ph2d-panel-painter-layers/src/paint_composite.rs",
     "crates/ph2d-panel-painter-layers/src/paint_shape_layers.rs",
 ];

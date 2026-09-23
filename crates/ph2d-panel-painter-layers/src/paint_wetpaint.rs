@@ -108,7 +108,7 @@ pub(crate) fn paint_wetpaint_section(
         let k = brush.wet_knobs;
         let rows: [(&str, ph2d_a11y::NodeId, f32, f32, f32, f64, usize); 7] = [
             (
-                tr("panel.painter_layers.wetpaint.water"),
+                "panel.painter_layers.wetpaint.water",
                 ph2d_tool_painter::ids::PAINTER_WETPAINT_WATER,
                 k.water as f32,
                 0.0,
@@ -117,7 +117,7 @@ pub(crate) fn paint_wetpaint_section(
                 2,
             ),
             (
-                tr("panel.painter_layers.wetpaint.pigment"),
+                "panel.painter_layers.wetpaint.pigment",
                 ph2d_tool_painter::ids::PAINTER_WETPAINT_PIGMENT,
                 k.pigment() as f32,
                 0.0,
@@ -126,7 +126,7 @@ pub(crate) fn paint_wetpaint_section(
                 0,
             ),
             (
-                tr("panel.painter_layers.wetpaint.pickup"),
+                "panel.painter_layers.wetpaint.pickup",
                 ph2d_tool_painter::ids::PAINTER_WETPAINT_PICKUP,
                 k.pickup() as f32,
                 0.0,
@@ -135,7 +135,7 @@ pub(crate) fn paint_wetpaint_section(
                 3,
             ),
             (
-                tr("panel.painter_layers.wetpaint.dry_speed"),
+                "panel.painter_layers.wetpaint.dry_speed",
                 ph2d_tool_painter::ids::PAINTER_WETPAINT_DRY_SPEED,
                 k.dry_speed() as f32,
                 0.0,
@@ -144,7 +144,7 @@ pub(crate) fn paint_wetpaint_section(
                 2,
             ),
             (
-                tr("panel.painter_layers.wetpaint.edge_darkening"),
+                "panel.painter_layers.wetpaint.edge_darkening",
                 ph2d_tool_painter::ids::PAINTER_WETPAINT_EDGE,
                 k.edge_darkening() as f32,
                 0.0,
@@ -153,7 +153,7 @@ pub(crate) fn paint_wetpaint_section(
                 0,
             ),
             (
-                tr("panel.painter_layers.wetpaint.gravity"),
+                "panel.painter_layers.wetpaint.gravity",
                 ph2d_tool_painter::ids::PAINTER_WETPAINT_GRAVITY,
                 k.gravity() as f32,
                 0.0,
@@ -162,7 +162,7 @@ pub(crate) fn paint_wetpaint_section(
                 4,
             ),
             (
-                tr("panel.painter_layers.wetpaint.erase_strength"),
+                "panel.painter_layers.wetpaint.erase_strength",
                 ph2d_tool_painter::ids::PAINTER_WETPAINT_ERASE,
                 k.erase as f32,
                 0.0,
@@ -268,7 +268,7 @@ fn paint_resolution_group(
         x,
         content_w,
         y,
-        tr("panel.painter_layers.wetpaint.grid_size_px"),
+        "panel.painter_layers.wetpaint.grid_size_px",
         ph2d_tool_painter::ids::PAINTER_WETPAINT_GRID,
         f32::from(brush.wet_grid_ratio),
         GRID_MIN,
@@ -287,7 +287,7 @@ fn paint_resolution_group(
         x,
         content_w,
         y,
-        tr("panel.painter_layers.wetpaint.flow_grid_x"),
+        "panel.painter_layers.wetpaint.flow_grid_x",
         ph2d_tool_painter::ids::PAINTER_WETPAINT_FLOW,
         f32::from(brush.wet_flow_ratio),
         FLOW_MIN,

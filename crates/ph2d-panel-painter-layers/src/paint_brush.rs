@@ -13,7 +13,6 @@ use crate::paint::register_button;
 use crate::state;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids as core_ids;
-use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::widget::DropdownOption;
@@ -21,7 +20,6 @@ use ph2d_editor_core::widget::panel_chrome::PANEL_HEAD_PAD;
 use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_tokens::{ColorToken, Radius, StrokeToken, TypeToken};
 use ph2d_tool_painter::ids::{
     painter_brush_blend_option_id, painter_brush_falloff_option_id, painter_brush_preset_option_id,
 };
@@ -396,9 +394,9 @@ fn brush_color_readback(ctx: &mut PaintCtx, brush: BrushSettings) {
         )));
 }
 
-/// Paint the colour preview swatch (a full-width bar). Registered as a button:
-/// clicking it toggles the shared Blender picker (see `event.rs`). The accent
-/// border shows when the picker is currently editing it.
+/// Paint the colour row — **pela porta da cor do painel** ([`crate::paint_brush_rows::color_row`]).
+/// Registered as a button: clicking it toggles the shared Blender picker (see `event.rs`); the ring
+/// shows while the picker is editing it.
 fn paint_color_swatch_row(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -407,43 +405,17 @@ fn paint_color_swatch_row(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
-    let font = TypeToken::Sm.px();
-    // ⚠️ A amostra de cor é uma linha de propriedade como as vizinhas — o nome dela vai à coluna da
-    //    secção (spec §4), e a barra ocupa a coluna do controlo.
-    const CHAVE: &str = "panel.painter_layers.brush.color";
-    let row = crate::paint_brush_rows::linha_da_chave(ctx, x, content_w, y, CHAVE);
-    crate::paint_brush_rows::label(ctx, theme, tr(CHAVE), &row, font);
-    let rect = row.control;
     register_button(ctx.host.store_mut(), core_ids::PAINTER_COLOR_THUMB);
-
-    let [r, g, b] = encode_rgb(brush.color);
-    let col = ph2d_vector::Color::from_rgba8(r, g, b, 255); // LITERAL-COLOR-OK: brush colour (data)
-    let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
-    fill_rounded_rect(ctx.scene, rect, radius, col);
-    let open = ctx.host.store().picker_target() == Some(core_ids::PAINTER_COLOR_THUMB);
-    let border = if open {
-        ColorToken::Accent
-    } else {
-        ColorToken::Border
-    };
-    // ⭐ Pela porta do TEMA: a amostra é plana num tema moderno; com o picker aberto, é ele que o diz.
-    ph2d_editor_core::paint::stroke_frame(
-        ctx.scene,
-        rect,
-        radius,
+    crate::paint_brush_rows::color_row(
+        ctx,
         theme,
-        if open {
-            ph2d_tokens::visuals::Feel::Active
-        } else {
-            ph2d_tokens::visuals::Feel::Rest
-        },
-        StrokeToken::Default.px(),
-        resolve(border, theme),
-    );
-    ctx.host
-        .hit_index_mut()
-        .register(core_ids::PAINTER_COLOR_THUMB, rect);
-    y + ph2d_tokens::row_pitch_px()
+        x,
+        content_w,
+        y,
+        "panel.painter_layers.brush.color",
+        core_ids::PAINTER_COLOR_THUMB,
+        encode_rgb(brush.color),
+    )
 }
 
 /// The shared scrollable dropdown-popover renderer (moved to its own module for the LOC cap).

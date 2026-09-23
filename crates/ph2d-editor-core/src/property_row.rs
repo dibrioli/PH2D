@@ -614,7 +614,8 @@ pub fn paint_color_row(
     let rect = Rect::new(row.control.x, row.control.y, cw, ROW_H_PX);
     // ⚠️ Quem resolve o valor é ESTE lado — ver o doc do `paint_swatch_or_mixed`.
     let rgba = (!mixed).then(|| store.widget_color(id).unwrap_or(fallback_rgba));
-    crate::widget::paint_swatch_or_mixed(rect, id, label, rgba, scene, theme);
+    let aberto = store.picker_target() == Some(id);
+    crate::widget::paint_swatch_or_mixed(rect, id, label, rgba, aberto, scene, theme);
     hit_index.register(id, rect);
     crate::widget::paint_decorator_dot(scene, theme, row.dot);
     y + ph2d_tokens::row_pitch_px()

@@ -320,11 +320,18 @@ mod tests {
 /// `""` e os QUATRO cantos do per-corner perderam o nome acessível ao entrar por ela — o censo de
 /// chaves acusou-os como *«na tabela e ninguém as usa»*. *Uma porta que engole o nome de quem a
 /// atravessa transforma quatro controlos em quatro quadrados anónimos.*
+///
+/// ⭐ **`aberto` = o selector partilhado está a editar ESTA amostra** — e ela traça o anel de foco
+/// (2026-09-23). Com o selector a flutuar sobre o canvas, é o anel que diz QUAL amostra ele está a
+/// editar; as linhas de cor escritas à mão que a porta substituiu mostravam-no (a borda `Accent` do
+/// Pincel e do Papel do Painter, o `Focused` da cor do modelador), e sem ele a conversão tirava ao
+/// artista a única resposta a *«o que é que esta roda está a mudar?»*.
 pub fn paint_swatch_or_mixed(
     rect: Rect,
     swatch_id: NodeId,
     a11y: &str,
     rgba: Option<[u8; 4]>,
+    aberto: bool,
     scene: &mut VectorScene,
     theme: Theme,
 ) {
@@ -332,7 +339,13 @@ pub fn paint_swatch_or_mixed(
         paint_mixed_swatch(rect, scene, theme);
         return;
     };
-    let swatch = ColorSwatch::new(swatch_id, a11y, rgba).size(SwatchSize::Sm);
+    let swatch = ColorSwatch::new(swatch_id, a11y, rgba)
+        .size(SwatchSize::Sm)
+        .state(if aberto {
+            SwatchState::Focused
+        } else {
+            SwatchState::Normal
+        });
     paint_color_swatch(&swatch, rect, scene, theme);
 }
 
@@ -374,6 +387,7 @@ mod swatch_ou_misto_tests {
             NodeId(1),
             "vermelho",
             (!mixed).then_some([0xff, 0x00, 0x00, 0xff]),
+            false,
             &mut scene,
             Theme::default(),
         );

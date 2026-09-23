@@ -372,6 +372,7 @@ fn paint_per_corner_tab(
             corner_ids[i],
             a11y[i],
             rgba,
+            store.picker_target() == Some(corner_ids[i]),
             scene,
             theme,
         );

@@ -13,7 +13,7 @@ use ph2d_editor_core::widget::panel_chrome::{
     paint_panel_surface, paint_panel_title,
 };
 use ph2d_editor_core::widget::{
-    Button, ButtonState, ColorSwatch, IconButtonStyle, IconGlyph, SwatchSize, TOKENS_SCROLLBAR_ID,
+    Button, ButtonState, ColorSwatch, IconButtonStyle, IconGlyph, SwatchState, TOKENS_SCROLLBAR_ID,
     paint_button, paint_color_swatch, paint_icon_button, paint_scrollbar, scrollbar_is_needed,
     scrollbar_thumb_rect, scrollbar_track_rect,
 };
@@ -27,13 +27,17 @@ use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, StrokeToken, Theme, TypeToken};
 use crate::TokensPanel;
 use crate::state::{TokensPanelState, set_last_content_h, set_last_visible_h};
 
-/// Largura do botão *Reset* de uma linha. Estreito de propósito: ele é a exceção, não a coluna.
+/// Lado de um botão de ÍCONE da linha (o elo, o `f(x)`, o *Reset*) — quadrado, como todo botão de
+/// ícone compacto do app.
+///
+/// ⭐ **O *Reset* passou a ser um ÍCONE em 2026-09-23** (era um botão de TEXTO de `48 px`): numa
+/// lista cujo CONTEÚDO são os nomes, esses `48 px` saíam todos do nome de toda linha autorada. O
+/// glifo é o `IconId::Reset` que o cabeçalho de secção do app já usa, e a palavra passa para o
+/// BALÃO (`set_tooltip`) — *«as dicas devem ser passadas para o mouse Hover»* (dono, 2026-09-21).
 ///
 /// ⚠️ `pub(crate)` porque a família numérica ([`crate::paint_num`]) desenha a MESMA coluna: as duas
 /// listas partilham a régua, e dois números iguais escritos em dois sítios são dois números que
 /// divergem no dia em que um deles muda.
-pub(crate) const RESET_W: f32 = 48.0; // LITERAL-PX-OK: panel grid metric (per-row reset button width)
-/// Lado do botão de ELO — quadrado, como todo botão de ícone compacto do app.
 pub(crate) const LINK_W: f32 = 20.0; // LITERAL-PX-OK: panel grid metric (compact icon button side)
 /// Lado da marca de AVISO da linha. Menor que o botão de elo de propósito: ela é um **glifo**,
 /// não um alvo — não há gesto para lhe dar, então não carrega a caixa de toque de um botão.
@@ -241,7 +245,21 @@ fn paint_contrast(ctx: &mut PaintCtx, theme: Theme, x: f32, w: f32, mut y: f32) 
     y + ph2d_tokens::control_gap_px()
 }
 
-/// `[swatch]  chave-do-token  [→ alvo]      [⚠] [elo] [Reset]`
+/// `■  chave-do-token  [→ alvo]      [⚠] [elo] [↺]`
+///
+/// ⭐⭐⭐ **A amostra é uma ETIQUETA quadrada da altura de uma linha** — a forma das outras LISTAS
+/// com cor do app (a pilha de aparência do vetor, as camadas de forma do Painter), e não a aresta
+/// sugerida de uma PALETA (`SwatchSize::Md`, os `32 px` que ela tinha até 2026-09-23).
+///
+/// ⛔⛔ **A barra na coluna do valor (a linha de PROPRIEDADE que o dono desenhou no report de
+/// 2026-09-21) foi construída AQUI, medida e RECUSADA no mesmo dia:** a coluna do valor tem o piso
+/// da caixa (`90 px`, ordem do dono de 2026-05-24), e numa lista cujo conteúdo são os NOMES o censo
+/// das elisões leu **`108`** nomes comidos no dock mínimo contra os `5` de antes. A 2.ª tentativa —
+/// a etiqueta encostada à cauda, como a pilha do vetor — leu **`29`**: *qualquer* valor à direita
+/// come o nome, porque a cauda de verbos também está lá. ⇒ numa BIBLIOTECA de cores a amostra vem
+/// ANTES do nome, que é a forma que as ferramentas de design usam para uma lista de estilos (o
+/// Figma, a vista de lista das amostras do Photoshop). *Uma barra é a forma de um VALOR ao lado de
+/// um nome; aqui o nome é o que se procura, e a cor é o que o identifica.*
 fn paint_token_row(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -255,7 +273,7 @@ fn paint_token_row(
     let (x, w, y) = (box_.x, box_.w, box_.y);
     let slot = color_override(theme, token);
     let authored = slot.is_some();
-    let swatch_w = SwatchSize::Md.px();
+    let swatch_w = ROW_H_PX;
     let font = TypeToken::Sm.px();
 
     let swatch_rect = Rect::new(x, y, swatch_w, ROW_H_PX);
@@ -263,12 +281,20 @@ fn paint_token_row(
     // autorado: uma swatch que afirmasse um valor que o desenho não usa é a rachura que a row de
     // Token do vetor já documenta.
     let colour = token.resolve(theme);
+    let id = crate::ids::tokens_swatch_id(row);
+    // ⭐ Com o selector a flutuar sobre o canvas, é o anel que diz QUAL linha ele está a editar — a
+    //    mesma regra da porta da linha de cor (`property_row::paint_color_row`).
+    let aberto = ctx.host.store().picker_target() == Some(id);
     let sw = ColorSwatch::new(
-        crate::ids::tokens_swatch_id(row),
+        id,
         tr("panel.tokens.swatch"),
         [colour.r, colour.g, colour.b, colour.a],
     )
-    .size(SwatchSize::Md);
+    .state(if aberto {
+        SwatchState::Focused
+    } else {
+        SwatchState::Normal
+    });
     paint_color_swatch(&sw, swatch_rect, ctx.scene, theme);
     ctx.host
         .hit_index_mut()
@@ -286,7 +312,7 @@ fn paint_token_row(
     let label_x = x + swatch_w + Spacing::Sm.px();
     // ⚠️ A marca reserva a PRÓPRIA coluna em vez de flutuar sobre o rótulo: o elo e o Reset ficam
     // onde estavam (colunas estáveis entre linhas) e quem cede largura é o texto, que já é curto.
-    let tail = if authored { RESET_W } else { 0.0 } + LINK_W + mark_tail + Spacing::Xs.px();
+    let tail = if authored { LINK_W } else { 0.0 } + LINK_W + mark_tail + Spacing::Xs.px();
     let label_w = (w - swatch_w - Spacing::Sm.px() - tail).max(1.0);
     // A cor do rótulo DIZ se a linha está autorada — sem isso, "este está diferente da fábrica"
     // só se descobre carregando em Reset e vendo o que muda.
@@ -315,7 +341,7 @@ fn paint_token_row(
 
     // O elo é oferecido em TODA linha — qualquer token pode seguir qualquer outro, e esconder o
     // botão em linhas não-autoradas tornaria o gesto alcançável só onde ele já foi feito.
-    let link_x = x + w - LINK_W - if authored { RESET_W } else { 0.0 };
+    let link_x = x + w - LINK_W - if authored { LINK_W } else { 0.0 };
     paint_link_button(ctx, theme, row, link_x, y, armed);
 
     if flagged {
@@ -337,16 +363,42 @@ fn paint_token_row(
     }
 
     if authored {
-        command(
+        paint_reset_icon(
             ctx,
+            theme,
             crate::ids::tokens_reset_id(row),
-            tr("panel.tokens.reset"),
-            x + w - RESET_W,
-            RESET_W,
+            x + w - LINK_W,
             y,
         );
     }
     y + ph2d_tokens::row_pitch_px()
+}
+
+/// O *Reset* de uma linha AUTORADA — um ícone, com a palavra no balão (ver [`LINK_W`]).
+///
+/// ⚠️ Uma função para as DUAS listas: o mesmo glifo, o mesmo sítio e a mesma dica, e duas cópias
+/// divergiriam no dia em que uma delas ganhasse um realce.
+pub(crate) fn paint_reset_icon(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    id: ph2d_a11y::NodeId,
+    x: f32,
+    y: f32,
+) {
+    let rect = Rect::new(x, y + (ROW_H_PX - LINK_W) * 0.5, LINK_W, LINK_W);
+    let state = ctx.host.store().button_visual(id);
+    paint_icon_button(
+        rect,
+        IconGlyph::Builtin(IconId::Reset),
+        IconButtonStyle::Compact,
+        state,
+        ctx.scene,
+        theme,
+    );
+    ctx.host
+        .store_mut()
+        .set_tooltip(id, tr("panel.tokens.reset"));
+    ctx.host.hit_index_mut().register(id, rect);
 }
 
 /// O botão de elo da linha — **Pressed enquanto armado**, para o artista ver de onde o gesto saiu.

@@ -225,6 +225,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.impasto.roughness" => "Roughness",
         "panel.painter_layers.impasto.metallic" => "Metallic",
         "panel.painter_layers.impasto.wax" => "Wax",
+        // ⭐ A cor da cera ganhou LINHA própria (2026-09-23) — era um quadrado anónimo no fim da
+        //    linha `Wax`, e toda cor do app passou a ser uma barra com nome.
+        "panel.painter_layers.impasto.wax_color" => "Wax Color",
         "panel.painter_layers.impasto.body" => "Body",
         "panel.painter_layers.impasto.depth" => "Depth",
         "panel.painter_layers.impasto.push" => "Push",
@@ -245,6 +248,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.impasto.angle" => "Angle",
         "panel.painter_layers.impasto.elevation" => "Elevation",
         "panel.painter_layers.impasto.intensity" => "Intensity",
+        // ⭐ A cor da lâmpada, na linha dela (2026-09-23) — o cartão já diz «Lighting», logo o nome
+        //    curto basta.
+        "panel.painter_layers.impasto.light_color" => "Color",
         "panel.painter_layers.impasto.deposit" => "Deposit",
         "panel.painter_layers.impasto.smooth" => "Smooth",
         "panel.painter_layers.impasto.sharpen" => "Sharpen",

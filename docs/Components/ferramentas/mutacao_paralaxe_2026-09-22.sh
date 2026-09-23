@@ -31,6 +31,15 @@ ao_sair() {
 }
 trap ao_sair EXIT INT TERM PIPE
 
+# ⛔⛔ **O GUARDA CONTRA O CRASE, e ele nasceu de o mesmo defeito morder DUAS vezes nesta sessao:**
+# um `` ` `` dentro de `"..."` abre substituicao de comando, engole ate' ao crase seguinte e desfaz
+# a citacao do RESTO do ficheiro — e o `bash` acusa `erro de sintaxe` cinquenta linhas abaixo, num
+# bloco intocado. ⚠️ Escrever «a`» por «à» e' o habito que o produz.
+if grep -n '^bloco "[^"]*`' "$0" >&2; then
+  echo "⛔ CRASE no nome de uma prova (ver as linhas acima): ele desfaz a citacao do ficheiro." >&2
+  exit 2
+fi
+
 muta() { # ficheiro vezes antigo novo
   python3 - "$1" "$2" "$3" "$4" <<'PY'
 import sys
@@ -102,8 +111,8 @@ bloco "os dois eixos partilham o k do x" ph2d-app-components os_dois_eixos \
 # mutacao mora.
 bloco "a referencia vira a propria peca (a forma do Flip)" ph2d-app-components o_deslocamento_nao_depende \
   "$PONTE" 1 \
-  '        let d = cfg.deslocamento_confinado(centro, conf);' \
-  '        let d = cfg.deslocamento_confinado([centro[0] - autorada.translation.x, centro[1] - autorada.translation.y], conf);'
+  '        let d = cfg_d.deslocamento_confinado(centro, conf);' \
+  '        let d = cfg_d.deslocamento_confinado([centro[0] - autorada.translation.x, centro[1] - autorada.translation.y], conf);'
 
 bloco "o neutro deixa de ser 1" ph2d-app-components o_neutro \
   "$LEI" 1 \
@@ -137,12 +146,11 @@ bloco "o HUD entra na populacao" ph2d-app-components um_hud_nao_e_tocado \
 # tivesse escrito no mesmo quadro.
 bloco "a rotacao autorada e' apagada" ph2d-app-components so_a_translacao \
   "$PONTE" 1 \
-  '            ..era
-        };
-        let escreveu' \
+  '            // skew, e roubá-los ao autorado apagaria o que outro motor tivesse escrito.
+            ..era
+        };' \
   '            ..Transform::default()
-        };
-        let escreveu'
+        };'
 
 echo "=== O LEDGER: o autorado, e o deslocamento MEDIDO ==="
 
@@ -208,15 +216,10 @@ bloco "a ponte ignora o componente" ph2d-app-components a_fase_e_a_mesma \
 # autorou, e o fundo salta para a origem assim que ele o arrasta para alem de meio ladrilho.
 bloco "a repeticao envolve a POSE somada" ph2d-app-components a_repeticao_nao_envolve \
   "$PONTE" 1 \
-  '        let d = rep.map_or(d, |r| r.envolve(d));
-        let agora = Transform {
-            translation: Vec2::new(autorada.translation.x + d[0], autorada.translation.y + d[1]),' \
-  '        let agora = Transform {
-            translation: {
-                let p = [autorada.translation.x + d[0], autorada.translation.y + d[1]];
-                let p = rep.map_or(p, |r| r.envolve(p));
-                Vec2::new(p[0], p[1])
-            },'
+  '        let d = rep.map_or(d, |r| r.envolve(d));' \
+  '        let d = { let p = [autorada.translation.x + d[0], autorada.translation.y + d[1]];
+            let p = rep.map_or(p, |r| r.envolve(p));
+            [p[0] - autorada.translation.x, p[1] - autorada.translation.y] };'
 
 # ⛔⛔ **A MUTACAO «a desloca deixa de delegar» MORREU com a premissa dela, e fica registada:** ela
 # defendia a delegacao entre `desloca` e `deslocamento` (duas respostas a` mesma pergunta). A W2
@@ -278,28 +281,14 @@ bloco "a regiao estreita entra em panico" ph2d-app-components uma_regiao_mais_es
 # ordem que nao o remova de la'.*
 bloco "a repeticao deixa de ser a ultima" ph2d-app-components com_limites_e_repeticao \
   "$PONTE" 1 \
-  '        let d = cfg.deslocamento_confinado(centro, conf);
-        // ⭐⭐ **A DERIVA é um SOMANDO e nunca um segundo condutor** — medido no
-        // [`super::w4_probe`]: dois motores sobre o mesmo `Transform` entram no ledger com chaves
-        // diferentes, e esta ponte leria a escrita do outro como um arrasto do artista.
-        //
-        // ⚠️ E ela entra **ANTES** da repetição: quem deriva para sempre é precisamente quem tem
-        // de envolver, e envolver antes de somar deixaria a nuvem a fugir.
-        let d = mov.map_or(d, |m| {
-            let o = m.deslocamento(playhead);
-            [d[0] + o[0], d[1] + o[1]]
-        });
-        let d = rep.map_or(d, |r| r.envolve(d));' \
-  '        let d0 = cfg.deslocamento(centro);
+  '        let d = cfg_d.deslocamento_confinado(centro, conf);' \
+  '        let d0 = cfg_d.deslocamento(centro);
         let d0 = rep.map_or(d0, |r| r.envolve(d0));
         let d = [
-            d0[0] + cfg.k[0] * (centro[0] - conf[0]),
-            d0[1] + cfg.k[1] * (centro[1] - conf[1]),
+            d0[0] + cfg_d.k[0] * (centro[0] - conf[0]),
+            d0[1] + cfg_d.k[1] * (centro[1] - conf[1]),
         ];
-        let d = mov.map_or(d, |m| {
-            let o = m.deslocamento(playhead);
-            [d[0] + o[0], d[1] + o[1]]
-        });'
+        let rep: Option<ph2d_ecs::ScrollRepeat> = None;'
 
 echo "=== O MOVIMENTO PROPRIO (W4) ==="
 
@@ -349,7 +338,7 @@ bloco "a deriva entra DEPOIS da repeticao" ph2d-app-components uma_nuvem_que_der
             let o = m.deslocamento(playhead);
             [d[0] + o[0], d[1] + o[1]]
         });
-        let _ = &rep;'
+        let rep: Option<ph2d_ecs::ScrollRepeat> = rep;'
 
 # ⛔ A fase deixa de ler o relogio ⇒ a deriva congela, e nada na tela diz porque.
 bloco "a fase crava o relogio em zero" ph2d-host-desktop a_paralaxe_corre_depois \
@@ -357,6 +346,51 @@ bloco "a fase crava o relogio em zero" ph2d-host-desktop a_paralaxe_corre_depois
   '        let playhead = self.playhead.time();' \
   '        let playhead = 0.0;' \
   '--test it'
+
+echo "=== O DOLLY — a multiplano (W5) ==="
+
+# ⛔⛔ A lei inteira. `(1−δ)/(1−k·δ)` e' o tamanho aparente RELATIVO ao plano focal; sem o
+# denominador ela vira o tamanho ABSOLUTO, que e' igual para todas as camadas ⇒ um ZOOM.
+bloco "a escala vira um zoom (perde o denominador)" ph2d-app-components dois_planos_com_um_dolly \
+  "$LEI" 1 \
+  '        Some((1.0 - delta) / den)' \
+  '        Some(1.0 - delta)'
+
+# ⛔ A degenerescencia que o plano publica, escrita como um RAMO: ela diverge do limite da propria
+# formula, e este e' o gate que a refuta.
+bloco "o ceu volta a escala 1 que o plano prometia" ph2d-app-components o_ceu_encolhe \
+  "$LEI" 1 \
+  '        let den = 1.0 - k * delta;' \
+  '        if k == 0.0 { return Some(1.0); }
+        let den = 1.0 - k * delta;'
+
+# ⛔⛔ A RECUSA vira um clamp ⇒ uma cena impossivel (a camera para la' do fundo) devolve um numero
+# plausivel em vez de deixar o objecto onde o artista o pos.
+bloco "a camera atravessada passa a ser clampada" ph2d-app-components a_camera_a_atravessar \
+  "$LEI" 1 \
+  '        if den <= 0.0 {
+            return None;
+        }' \
+  '        let den = if den <= 0.0 { 1e-6 } else { den };'
+
+# ⛔⛔ A escala multiplica o VIVO ⇒ ela COMPOE a cada quadro e o fundo cresce sem limite.
+bloco "a escala multiplica o vivo" ph2d-app-components a_escala_do_dolly_nao_compoe \
+  "$PONTE" 1 \
+  '                Vec2::new(autorada.scale.x * esc[0], autorada.scale.y * esc[1])' \
+  '                Vec2::new(era.scale.x * esc[0], era.scale.y * esc[1])'
+
+# ⛔ O dolly deixa de mudar a FRACCAO ⇒ o objecto muda de tamanho e nao muda de velocidade, que e'
+# a metade da multiplano que um zoom tambem nao faz.
+bloco "o dolly nao muda a fraccao" ph2d-app-components o_dolly_muda_a_velocidade \
+  "$PONTE" 1 \
+  '        let d = cfg_d.deslocamento_confinado(centro, conf);' \
+  '        let d = cfg.deslocamento_confinado(centro, conf);'
+
+# ⛔ A camera activa deixa de ser a porta ⇒ o dolly de uma camera INACTIVA passa a mandar.
+bloco "o dolly sai de qualquer camera" ph2d-app-components o_dolly_sai_da_camera_activa \
+  "$PONTE" 1 \
+  '    let dolly = ph2d_ecs::active_camera_of(sim.world_mut())' \
+  '    let dolly = sim.world_mut().query::<(ph2d_ecs::Entity, &ph2d_ecs::GameCamera)>().iter(sim.world()).map(|(e, _)| e).next()'
 
 echo "=== A ORDEM no quadro, e o que ATRAVESSA ==="
 

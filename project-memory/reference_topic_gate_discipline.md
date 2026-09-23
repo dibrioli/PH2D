@@ -716,3 +716,16 @@ escrever uma agulha com `(`, enumere os **irmãos morfológicos** (singular/plur
 ⚠️⚠️ **A ausência de um irmão na lista costuma ser a ausência da PORTA correspondente:** ali não
 havia `modal::pick_files`, e *uma porta que cobre metade dos verbos empurra a outra metade para
 fora dela*. Ver [[reference_topic_mutation_proofs]].
+
+## ⛔⛔ Uma fixtura em que DUAS respostas coincidem não distingue as DUAS perguntas (2026-09-22, `line/components`)
+
+O dolly da paralaxe sai da câmera **ACTIVA**, e a porta que a escolhe tem uma lei (prioridade, com
+desempate pelo `StableId`). A mutação que trocava a porta por uma consulta crua — *«a primeira que
+aparecer»* — **SOBREVIVEU** a todos os gates da wave, porque **todas as cenas tinham UMA câmera**;
+e sobreviveu outra vez à fixtura que eu escrevi de propósito com duas, porque nela a activa era a
+que eu tinha spawnado **primeiro**. **Why:** um gate sobre uma ESCOLHA precisa de um corpus em que
+os candidatos estejam **ordenados ao contrário** do critério — senão ele mede a ordem de iteração e
+lê-se como se medisse a lei. É a mesma forma da fixtura no ponto neutro de um knob, aplicada a uma
+selecção em vez de a um número. **How to apply:** na fixtura de uma escolha, ponha o candidato
+**errado em primeiro**; e se a mutação continuar a sobreviver, o corpus ainda tem só um candidato
+real. Ver [[reference_topic_mutation_proofs]].

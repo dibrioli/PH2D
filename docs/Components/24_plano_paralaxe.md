@@ -54,9 +54,21 @@ escala(d) = k(d) / k₀                      ⭐ e a escala é a MESMA razão
 bit de diferença. É a propriedade que esta casa exige de toda lei nova: *a omissão é byte-idêntica*.
 
 ⛔ **Degenerescências que têm de ser nomeadas, não descobertas:** `k₀ = 0` é `z = ∞` ⇒ `k(d) = 0` e
-`escala ≡ 1` para todo `d` (o que está infinitamente longe nunca muda de tamanho — e a conta é
-`0/0`, logo é **lei escrita**, não aritmética); e `z − d ≤ 0` é a câmara a **atravessar** a camada,
-que se recusa em voz alta.
+a conta é `0/0`, logo é **lei escrita**, não aritmética; e `z − d ≤ 0` é a câmara a **atravessar** a
+camada, que se recusa em voz alta.
+
+> ⛔⛔ **CORRECÇÃO (2026-09-22, a W5 a implementar): a 1.ª redacção deste parágrafo dizia `escala ≡ 1`
+> e está REFUTADA pela fórmula acima.** ⚠️ Duas grandezas partilhavam o nome: o tamanho **ABSOLUTO**
+> de uma camada infinitamente longe de facto não muda (era esse o parêntesis, e ele é verdade), e a
+> `escala` desta lei é **RELATIVA ao plano focal** — que CRESCEU. Medido em aritmética exacta, o
+> limite é **`1 − δ`** (`k = 1/10` → `0,5263`; `1/10⁴` → `0,50003`), e a forma fechada
+> `escala = (1 − δ)/(1 − k·δ)` **já o contém** — não há um braço `if k == 0`, e é por isso que ela
+> não pode divergir do limite. Gate:
+> `o_ceu_encolhe_relativamente_ao_plano_focal_e_o_plano_dizia_o_contrario`.
+>
+> ⭐⭐ **E o `z₀` DESAPARECEU, o que fecha o bloqueador §6.1 sem uma decisão:** `escala` depende só de
+> `k` e de `d/z₀` ⇒ o dolly exprime-se em **fracções da distância focal** e não há número para
+> medir. *Um parâmetro adimensional não tem um default para escolher.*
 
 ## §3 — Onde o número vive: **num componente de qualquer objecto**
 
@@ -161,10 +173,29 @@ outra do dolly, que é a única que mostra o que nenhum outro motor faz.
 | **Uma reescala nos limites** | não existe — era artefacto da minha régua (declive médio sobre uma curva com joelhos). Duas leis minhas caíram aqui |
 | **Guardar a DISTÂNCIA ao lado da fracção** | são o mesmo número (§1). Dois campos que têm de concordar é o defeito que esta casa já pagou; a distância é uma leitura |
 
-## §6 — O que fica por medir antes de a W5 abrir
+## §6 — O que ficava por medir antes de a W5 abrir — **as três FECHARAM (2026-09-22)**
 
-1. **O valor de `z₀`** — hoje a nossa câmara tem `height_world` (um zoom), não uma distância focal.
-   O default tem de sair de uma medição de enquadramento, não de um número escolhido (§0.0).
-2. **O custo por quadro** com N camadas — o passe é `O(objectos com o componente)` e não foi medido.
-3. **A composição com o `Transform` de um PAI** — uma camada de paralaxe filha de outro objecto: a
-   ordem em que a pose conduzida e a hierarquia se aplicam tem de ser decidida com um gate.
+1. ~~**O valor de `z₀`**~~ — ⭐⭐ **não existe número para medir.** A lei depende só de `k` e de
+   `d/z₀`, logo o dolly é uma **fracção da distância focal** e o `z₀` desaparece do produto. *Um
+   parâmetro adimensional não tem um default para escolher* (§2, com a correcção).
+2. ~~**O custo por quadro**~~ — **MEDIDO** (`parallax_custo_tests.rs`, `--release`, tabela impressa
+   por `custo_por_quadro_imprime_a_tabela`):
+
+   | camadas | resto da cena | por quadro |
+   |---:|---:|---:|
+   | `1` | `0` | `0,59 µs` |
+   | **`8`** | **`0`** | **`0,52 µs`** |
+   | **`8`** | **`20 000`** | **`0,51 µs`** |
+   | `100` | `0` | `3,59 µs` |
+   | `1 000` | `0` | `41,0 µs` |
+   | `10 000` | `0` | `758 µs` |
+
+   ⭐ **O caso real (`3`–`8` camadas) custa `0,5 µs`** — `0,003 %` de um quadro de `16,7 ms` —, e
+   `20 000` objectos SEM o componente não movem o número: o passe é `O(camadas)` e **cego à cena**.
+   ⇒ **nenhum `MAX_*` é preciso**, e é a medição que o diz, não um palpite (§0.0).
+3. ~~**A composição com o `Transform` de um PAI**~~ — **DECLARADA com gate**
+   (`a_pose_conduzida_e_local_e_o_pai_compoe_por_cima`): a pose escrita é **LOCAL**, logo um pai
+   rodado roda o deslocamento. ⛔ Desfazer o pai pediria a transformada de MUNDO, que é
+   `O(profundidade)` por objecto e por quadro **e** só existe depois da propagação, que corre a
+   seguir a esta fase. ⚠️ **No caso do artista (pai identidade) as duas saídas coincidem ao bit**, e
+   é isso que torna a decisão barata.

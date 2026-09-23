@@ -93,6 +93,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.field.camera_fields.2" => "Priority",
         "component.field.camera_fields.3" => "Active",
         "component.field.camera_fields.4" => "Cull Mask",
+        "component.field.camera_fields.5" => "Dolly",
         "component.field.canvas_fields.1" => "Reference Width",
         "component.field.canvas_fields.2" => "Reference Height",
         "component.field.canvas_fields.3" => "Fit",

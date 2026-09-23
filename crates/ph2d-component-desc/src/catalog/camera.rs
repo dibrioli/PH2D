@@ -55,6 +55,8 @@ const CAMERA_FIELDS: &[FieldDesc] = &[
     f(2, "component.field.camera_fields.2", K::Int),
     f(3, "component.field.camera_fields.3", K::Toggle),
     f(4, "component.field.camera_fields.4", K::Int),
+    // ⭐⭐⭐ **O DOLLY** (plano 24, W5) — a profundidade, em fracções da distância focal.
+    f(5, "component.field.camera_fields.5", K::Scalar),
 ];
 
 /// Os limites da fase — a caixa de que a JANELA não sai.

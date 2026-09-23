@@ -107,6 +107,85 @@ impl ScrollFactor {
         ]
     }
 
+    /// ⭐⭐⭐ **O DOLLY** (plano 24, W5 · §2) — a câmera anda em PROFUNDIDADE, e o primeiro plano
+    /// cresce mais que o fundo. **Nenhum motor 2D tem isto**, e é a razão pela qual a Disney
+    /// construiu a câmera multiplano em 1937.
+    ///
+    /// `delta` é o dolly em **fracções da distância focal** (`δ = d/z₀`), e a saída é o tamanho
+    /// aparente desta camada **relativo ao plano focal**:
+    ///
+    /// ```text
+    /// escala(k, δ) = (1 − δ) / (1 − k·δ)
+    /// ```
+    ///
+    /// # ⭐⭐⭐ O `z₀` DESAPARECEU, e isso fecha o bloqueador §6.1 do plano
+    ///
+    /// O plano exigia medir `z₀` antes de a wave abrir (*«a nossa câmera tem `height_world`, um
+    /// zoom, e não uma distância focal»*), e a medição diz que **não há número para escolher**:
+    /// `escala` depende só de `k` e de `d/z₀`, logo exprimir o dolly como **fracção** elimina a
+    /// grandeza. *Um parâmetro adimensional não tem um default para medir.*
+    ///
+    /// # ⛔⛔ E a degenerescência que o plano publica está REFUTADA pela fórmula dele
+    ///
+    /// O §2 diz *«`k = 0` é `z = ∞` ⇒ escala ≡ 1 para todo `d` (o que está infinitamente longe
+    /// nunca muda de tamanho)»*. **O parêntesis é verdade e a conclusão não**, e as duas grandezas
+    /// partilham o nome: o tamanho **ABSOLUTO** de uma camada infinitamente longe de facto não
+    /// muda; a `escala` desta lei é **RELATIVA ao plano focal**, e o plano focal CRESCEU. Medido em
+    /// aritmética exacta (`k = 1/10` → `0,5263`, `1/10⁴` → `0,50003`, limite **`1 − δ`**):
+    ///
+    /// | `k` | `δ = ½` | o que é |
+    /// |---|---|---|
+    /// | `1` | `1,0000` | a camada do plano focal — ela é a referência, e nunca muda |
+    /// | `½` | `0,6667` | um fundo: encolhe relativamente ao plano focal |
+    /// | `0` | **`0,5000`** | o céu — absoluto intocado, relativo `1 − δ` |
+    ///
+    /// ⇒ a lei é escrita e a fórmula fechada **já a contém** (`(1−δ)/(1−0·δ) = 1−δ`): não há um
+    /// braço `if k == 0`, e é por isso que ela não pode divergir do limite.
+    ///
+    /// ⚠️ **Com `δ = 0` a saída é `1,0` ao bit** (`(1−0)/(1−0) = 1/1`), e é isso que faz a omissão
+    /// desta wave não mexer num pixel do que a W1 já ship.
+    ///
+    /// ⛔ **A câmera a ATRAVESSAR a camada devolve `None`**, e é recusa e não clamp: `1 − k·δ ≤ 0`
+    /// é `d ≥ z`, a câmera passou para lá do fundo, e não há tamanho aparente nenhum. *Um clamp ali
+    /// entregaria um número plausível para uma cena impossível.*
+    #[must_use]
+    pub fn escala_do_dolly(k: f32, delta: f32) -> Option<f32> {
+        if !delta.is_finite() || !k.is_finite() {
+            return None;
+        }
+        let den = 1.0 - k * delta;
+        if den <= 0.0 {
+            return None;
+        }
+        Some((1.0 - delta) / den)
+    }
+
+    /// ⭐ **A escala por EIXO desta camada**, ou `None` se a câmera atravessa um dos dois.
+    ///
+    /// ⚠️ **Os dois eixos podem ter `k` diferentes**, logo podem ter escalas diferentes — e isso é
+    /// a lei e não um acidente: uma camada de nuvens que corre em X e mal sobe em Y está, em
+    /// profundidade, em dois sítios ao mesmo tempo. *O componente é `[f32; 2]` desde a W1, e a W5
+    /// não é o sítio para o estreitar.*
+    #[must_use]
+    pub fn escala(&self, delta: f32) -> Option<[f32; 2]> {
+        Some([
+            Self::escala_do_dolly(self.k[0], delta)?,
+            Self::escala_do_dolly(self.k[1], delta)?,
+        ])
+    }
+
+    /// ⭐ **A fracção de paralaxe DEPOIS do dolly** — `k(δ) = k · escala(k, δ)`.
+    ///
+    /// ⚠️ Ela é derivada da escala e não escrita à parte, porque é a **mesma** razão `z₀/z` do
+    /// cabeçalho: escrever as duas deixaria o dia em que uma mudasse com a outra a discordar.
+    #[must_use]
+    pub fn com_dolly(&self, delta: f32) -> Option<Self> {
+        let e = self.escala(delta)?;
+        Some(Self {
+            k: [self.k[0] * e[0], self.k[1] * e[1]],
+        })
+    }
+
     /// ⭐⭐⭐ **O deslocamento com a vista CONFINADA** (plano 24, W3) — o congelamento no ecrã.
     ///
     /// ```text

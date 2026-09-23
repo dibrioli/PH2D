@@ -81,6 +81,15 @@ pub fn drive_parallax(
     playhead: f64,
     drive: &mut PreviewDrive,
 ) -> usize {
+    // ⭐⭐⭐ **O DOLLY sai da câmera ACTIVA, e a escolha dela NÃO é reimplementada aqui** — a lei da
+    // prioridade com desempate pelo `StableId` vive numa porta (`active_camera_of`), e escrevê-la
+    // outra vez seria a segunda resposta a *«qual câmera manda?»*.
+    //
+    // ⚠️ **Sem câmera activa o dolly é `0`, que é a identidade** — e não uma recusa: a `vista` já
+    // respondeu a essa pergunta uma linha abaixo, e duas recusas para o mesmo facto divergem.
+    let dolly = ph2d_ecs::active_camera_of(sim.world_mut())
+        .and_then(|c| sim.world().get::<ph2d_ecs::GameCamera>(c).map(|g| g.dolly))
+        .unwrap_or(0.0);
     type Linha = (
         Entity,
         Transform,
@@ -122,8 +131,15 @@ pub fn drive_parallax(
         // inteiro de ladrilhos. ⚠️ Os dois juntos são uma cena que se contradiz — um fundo que
         // repete não tem borda para esconder —, e o que fica DECLARADO é o que ela dá: a repetição
         // vem por último, logo ela ganha.
+        // ⭐⭐⭐ **O DOLLY muda a própria fracção** (W5): `k(δ) = k · escala(k, δ)`, porque a
+        // paralaxe e o tamanho aparente são a MESMA razão `z₀/z`. ⛔ Com a câmera a ATRAVESSAR a
+        // camada não há resposta, e o objecto fica onde o artista o pôs — *um clamp ali entregaria
+        // um número plausível para uma cena impossível*.
+        let Some(cfg_d) = cfg.com_dolly(dolly) else {
+            continue;
+        };
         let conf = lim.map_or(centro, |l| l.confina(centro, meia));
-        let d = cfg.deslocamento_confinado(centro, conf);
+        let d = cfg_d.deslocamento_confinado(centro, conf);
         // ⭐⭐ **A DERIVA é um SOMANDO e nunca um segundo condutor** — medido no
         // [`super::w4_probe`]: dois motores sobre o mesmo `Transform` entram no ledger com chaves
         // diferentes, e esta ponte leria a escrita do outro como um arrasto do artista.
@@ -135,10 +151,22 @@ pub fn drive_parallax(
             [d[0] + o[0], d[1] + o[1]]
         });
         let d = rep.map_or(d, |r| r.envolve(d));
+        // ⚠️⚠️ **A ESCALA multiplica a AUTORADA e nunca a viva** — multiplicar a viva
+        // COMPÕE a cada quadro, e o fundo cresceria sem limite. É a mesma razão pela qual a
+        // translação parte do autorado, e a recuperação dela é por RAZÃO em vez de diferença.
+        let esc = cfg.escala(dolly).unwrap_or([1.0, 1.0]);
         let agora = Transform {
             translation: Vec2::new(autorada.translation.x + d[0], autorada.translation.y + d[1]),
-            // ⚠️ O resto vem do VIVO e não do autorado: esta ponte só escreve a translação, e
-            // roubar a rotação ao autorado apagaria o que outro motor tivesse escrito.
+            // ⭐ **Com `dolly = 0` a escala é `1,0` ao bit e o `scale` fica o do VIVO** — é isso
+            // que mantém a W1..W4 byte-idênticas e que deixa outro motor escrever a escala nas
+            // cenas que não usam dolly.
+            scale: if esc == [1.0, 1.0] {
+                era.scale
+            } else {
+                Vec2::new(autorada.scale.x * esc[0], autorada.scale.y * esc[1])
+            },
+            // ⚠️ O resto vem do VIVO e não do autorado: esta ponte não escreve a rotação nem o
+            // skew, e roubá-los ao autorado apagaria o que outro motor tivesse escrito.
             ..era
         };
         let escreveu = agora != era;
@@ -202,8 +230,23 @@ fn base_autorada(drive: &PreviewDrive, entity: Entity, era: Transform) -> Transf
             era.translation.x - (escrito.translation.x - memo.translation.x),
             era.translation.y - (escrito.translation.y - memo.translation.y),
         ),
+        // ⚠️ **A escala recupera-se por RAZÃO e não por diferença**, porque a lei do dolly a
+        // MULTIPLICA. ⛔ Uma escala escrita a zero não tem volta — ali o autorado é o vivo, que é o
+        // valor conservador: *dividir por zero devolveria um infinito com cara de pose*.
+        scale: Vec2::new(
+            razao(era.scale.x, escrito.scale.x, memo.scale.x),
+            razao(era.scale.y, escrito.scale.y, memo.scale.y),
+        ),
         ..era
     }
+}
+
+/// O inverso multiplicativo do «subtrair o deslocamento» — ver o ⚠️ acima.
+fn razao(vivo: f32, escrito: f32, memo: f32) -> f32 {
+    if escrito == 0.0 || !escrito.is_finite() {
+        return vivo;
+    }
+    vivo * (memo / escrito)
 }
 
 #[cfg(test)]
@@ -213,3 +256,7 @@ mod tests;
 #[cfg(test)]
 #[path = "parallax_w4_probe_tests.rs"]
 mod w4_probe;
+
+#[cfg(test)]
+#[path = "parallax_custo_tests.rs"]
+mod custo;

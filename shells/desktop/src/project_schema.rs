@@ -531,4 +531,20 @@
 /// como se fosse um arrasto do artista.
 ///
 /// ⛔ **Sem degrau de migração**, pela mesma decisão — um v166 é recusado em voz alta.
-pub(crate) const PROJECT_SCHEMA: u32 = 167;
+///
+/// # ⭐ 167 → 168 (2026-09-22) — o DOLLY (plano 24, W5 · §2)
+///
+/// `GameCamera::dolly` — a câmera anda em **PROFUNDIDADE**, e o primeiro plano cresce mais que o
+/// fundo. ⭐ **Nenhum motor 2D tem isto**: é a câmera multiplano que a Disney construiu em 1937, e
+/// ela cai de graça porque o `k` da W1 **já é** `z₀/z`.
+///
+/// ⚠️ **ZERO componentes registados novos** ⇒ os três contadores do registo **não se mexem**: é um
+/// CAMPO no `GameCamera`, e o postcard é posicional — o degrau existe porque sem ele um ficheiro do
+/// v167 seria lido errado **em silêncio**.
+///
+/// ⭐⭐ **E o bloqueador §6.1 do plano fechou por medição, não por decisão:** ele exigia medir `z₀`
+/// antes de a wave abrir, e a lei depende só de `k` e de `d/z₀` ⇒ o dolly é uma **fracção** e o
+/// `z₀` **desaparece**. *Um parâmetro adimensional não tem um default para escolher.*
+///
+/// ⛔ **Sem degrau de migração**, pela mesma decisão — um v167 é recusado em voz alta.
+pub(crate) const PROJECT_SCHEMA: u32 = 168;

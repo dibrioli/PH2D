@@ -98,6 +98,18 @@ pub struct GameCamera {
     pub active: bool,
     /// Máscara de camadas de visibilidade (`VisibilityLayer`). `u32::MAX` = mostra tudo.
     pub cull_mask: u32,
+    /// ⭐⭐⭐ **O DOLLY** (plano 24, W5) — a câmera anda em PROFUNDIDADE, em fracções da distância
+    /// focal. **Nenhum motor 2D tem isto**; é a câmera multiplano da Disney, de 1937.
+    ///
+    /// ⚠️ **Adimensional de propósito, e é isso que fecha o bloqueador §6.1 do plano:** a lei
+    /// depende só de `k` e de `d/z₀`, logo não há um `z₀` para medir nem um default para escolher.
+    ///
+    /// ⚠️ **O campo é o ÚLTIMO da struct** — o postcard é posicional, e acrescentar no fim é a
+    /// única forma aditiva (e mesmo assim o `PROJECT_SCHEMA` sobe: sem ele um ficheiro velho seria
+    /// lido errado **em silêncio**).
+    ///
+    /// ⛔ **`0` é a omissão e a saída é byte-idêntica** — ver [`crate::ScrollFactor::escala_do_dolly`].
+    pub dolly: f32,
 }
 
 impl Default for GameCamera {
@@ -108,6 +120,7 @@ impl Default for GameCamera {
             priority: 0,
             active: true,
             cull_mask: u32::MAX,
+            dolly: 0.0,
         }
     }
 }

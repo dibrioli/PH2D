@@ -610,12 +610,39 @@ fn diag_quanto_do_quadro_e_o_campo() {
         // corpus usa, e ela é a única que torna dois relógios comparáveis entre peças.
         #[allow(clippy::cast_precision_loss)]
         let amostras = (f64::from(W) * f64::from(H) * f64::from(por_acerto)).max(1.0);
+        // ⭐⭐⭐ **A COLUNA DA PLACA É A ROTA DO PRODUTO — o passe que devolve a IMAGEM.**
+        //
+        // ⛔⛔ **A 1.ª redacção media o [`crate::gpu_frame::march`], e era a SEGUNDA vez que esta
+        // família o fazia** (a sonda irmã `diag_o_arrasto_no_modo_de_omissao` já carrega a mesma
+        // correcção escrita ao lado dela). Ele traz o G-BUFFER de volta pelo barramento (`~50 MB` a
+        // `1920×1080`) e o produto só o pede quando REFINA: medido, ele lia `90`–`177 ms` onde o
+        // passe que pinta lê `13`. ⇒ *uma coluna de uma rota que o produto não toma lê-se como o
+        // preço da placa, e neste probe ela decidiria uma WAVE.*
+        //
+        // ⭐ **E a rota certa aqui é o MATCAP**, porque a pergunta é sobre o quadro que o artista vê
+        // no modo de omissão — ver [`crate::gpu_frame::pinta_matcap`].
+        let (lado, foto) = crate::smoke::matcap_para_sonda();
+        let olhar = ph2d_view_transform::Look::default();
         let placa = crate::gpu_frame::shared().and_then(|t| {
-            let luz = [crate::gpu_frame::tests_lampada(&cam).world];
             let mut melhor = f32::INFINITY;
             for _ in 0..super::super::QUADROS_MEDIDOS {
                 let t0 = std::time::Instant::now();
-                crate::gpu_frame::march(t, doc, &reg, &cam, &luz, None, W, H, false)?;
+                crate::gpu_frame::pinta_matcap(
+                    t,
+                    doc,
+                    &reg,
+                    &cam,
+                    &ph2d_field_gpu::matcap::MatcapSetup {
+                        rgb_linear: &foto,
+                        side: lado,
+                        chave: 1,
+                        stops: olhar.exposure_stops,
+                        view: ph2d_view_transform::wgsl::view_code(olhar.view),
+                        background: [0, 0, 0, 0],
+                    },
+                    W,
+                    H,
+                )?;
                 #[allow(clippy::cast_possible_truncation)]
                 let ms = t0.elapsed().as_secs_f32() * 1e3;
                 melhor = melhor.min(ms);

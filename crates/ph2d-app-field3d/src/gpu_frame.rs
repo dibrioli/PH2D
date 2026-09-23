@@ -296,11 +296,12 @@ pub fn paint_com(
 ) -> Option<ph2d_field_gpu::trace::Pintado> {
     let mundos: Vec<[f32; 3]> = points.iter().map(|l| l.world).collect();
     // ⛔ **A placa tem de ter armazéns para o passe que pinta** — ver
-    // [`ph2d_field_gpu::paint::ARMAZENS`]. Sem eles o quadro cai na CPU, em vez de a `wgpu` recusar
+    // [`ph2d_field_gpu::paint::armazens`] — CONTADO das listas de ligação, e não um literal (ele
+    // esteve `3` abaixo do real). Sem eles o quadro cai na CPU, em vez de a `wgpu` recusar
     // o layout a meio.
     if tracer
         .lock()
-        .is_ok_and(|t| t.storage_slots() < ph2d_field_gpu::paint::ARMAZENS)
+        .is_ok_and(|t| t.storage_slots() < ph2d_field_gpu::paint::armazens())
     {
         return None;
     }

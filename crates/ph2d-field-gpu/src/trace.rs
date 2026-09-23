@@ -454,16 +454,55 @@ pub(crate) fn armazem(b: u32, so_leitura: bool) -> wgpu::BindGroupLayoutEntry {
 pub(crate) fn bgl_marcha(device: &wgpu::Device) -> wgpu::BindGroupLayout {
     device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some("campo"),
-        entries: &[
-            uniforme(0),
-            armazem(1, true),
-            armazem(2, false),
-            armazem(3, false),
-            armazem(4, false),
-            armazem(5, false),
-            armazem(6, true),
-        ],
+        entries: &entradas_da_marcha(),
     })
+}
+
+/// ⭐⭐⭐ **AS SETE ENTRADAS DO GRUPO `0`, numa lista NOMEADA** — para que a contagem de armazéns
+/// deste repo possa ser **CONTADA** em vez de escrita à mão.
+///
+/// ⛔⛔ **A razão é um defeito medido (2026-09-23):** o [`crate::paint::ARMAZENS`] era um literal
+/// `9` com o doc a dizer *«seis do grupo 0 e três do grupo 1»* — e o grupo `1` tem **SEIS**. A
+/// contagem envelheceu quando o passe ganhou as sondas, o campo do chão e a cena do brilho, e o
+/// guarda que ela alimenta (*«a placa liga tantos armazéns?»*) passou a aceitar placas que anunciam
+/// `9`, `10` ou `11` ranhuras — onde a `wgpu` recusa o layout **a meio de um quadro**, que é
+/// exactamente o que aquele número existe para impedir.
+///
+/// ⇒ *«Número que soma se CONTA, nunca se escolhe»* (`CLAUDE.md` §5.0), aqui aplicado a uma soma
+/// entre dois grupos de ligação.
+#[must_use]
+pub(crate) fn entradas_da_marcha() -> [wgpu::BindGroupLayoutEntry; 7] {
+    [
+        uniforme(0),
+        armazem(1, true),
+        armazem(2, false),
+        armazem(3, false),
+        armazem(4, false),
+        armazem(5, false),
+        armazem(6, true),
+    ]
+}
+
+/// ⭐ **Quantos ARMAZÉNS uma lista de entradas liga** — a régua que faz o número ser contado.
+///
+/// ⚠️ Ela conta `Buffer { ty: Storage, .. }` e mais nada: um uniforme e uma textura não gastam a
+/// ranhura que o `max_storage_buffers_per_shader_stage` limita.
+#[must_use]
+pub(crate) fn conta_armazens(entradas: &[wgpu::BindGroupLayoutEntry]) -> u32 {
+    #[allow(clippy::cast_possible_truncation)]
+    let n = entradas
+        .iter()
+        .filter(|e| {
+            matches!(
+                e.ty,
+                wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { .. },
+                    ..
+                }
+            )
+        })
+        .count() as u32;
+    n
 }
 
 /// ⭐ **O fluxo de um quadro vive no irmão** — ver o cabeçalho do [`super::trace_marcha_com`].

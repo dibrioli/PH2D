@@ -83,11 +83,50 @@ fn o_matcap_empacota_com_o_mesmo_texto_do_pintor() {
     );
 }
 
-// ⭐⭐⭐ **A LEI DOS ARMAZÉNS NÃO É UM TESTE — é erro de compilação**, e vive colada aos números
-// no [`super::matcap`]. ⚠️ Aqui viveu um `#[test]` sobre ela, e o clippy apanhou-o: *um `assert!`
-// sobre duas constantes é dobrado pelo compilador antes de correr*, logo o teste nunca podia
-// reprovar numa árvore que compila. *Uma asserção que não pode falhar num teste é comentário com
-// sintaxe de código.*
+/// ⭐⭐⭐⭐ **OS ARMAZÉNS SÃO CONTADOS, E ESTE PASSE CABE NO PISO DO WEBGPU.**
+///
+/// # ⛔⛔⛔ A história deste gate em três formas, e porque a terceira é a certa
+///
+/// 1. **um `#[test]` sobre dois literais** — o clippy apanhou-o (`assertions_on_constants`): *um
+///    `assert!` sobre duas constantes é dobrado pelo compilador*, logo ele nunca podia reprovar
+///    numa árvore que compila;
+/// 2. **um `const _: () = assert!(…)`** — melhor, porque falha a compilar… e ainda media o
+///    **literal**;
+/// 3. ⭐ **este**, que mede as **LISTAS DE LIGAÇÃO** que os passes de facto ligam.
+///
+/// ⚠️⚠️ **A forma 2 nunca teria apanhado o defeito real:** o [`crate::paint::armazens`] era o
+/// literal `9` e o passe liga **`12`** — o doc dele contava *«três do grupo 1»* quando o grupo `1`
+/// tem **seis**, e a contagem envelheceu ao ganhar as sondas, o campo do chão e a cena do brilho.
+/// *Uma asserção sobre um número escrito à mão confirma o que alguém escreveu, nunca o que o
+/// código faz.*
+///
+/// ⚠️ **As duas metades são a wave inteira:** sem a primeira o modo de omissão cairia na CPU nas
+/// placas mínimas (o defeito que o report do dono nomeia); sem a segunda alguém leria *«cabe»* como
+/// propriedade de toda a casa e o `8` deixaria de significar nada.
+#[test]
+fn os_armazens_sao_contados_e_cabem_no_piso() {
+    let meu = super::armazens();
+    let material = crate::paint::armazens();
+    let piso = super::PISO_DO_WEBGPU;
+    assert!(
+        meu <= piso,
+        "o passe do matcap liga {meu} armazéns contra o piso de {piso}: o modo de OMISSÃO do \
+         modelador deixa de correr na placa em toda placa conforme"
+    );
+    assert!(
+        material > piso,
+        "o pintor de material passou a ligar {material} armazéns, dentro do piso de {piso}: esta é \
+         uma BOA notícia, e a tabela do cabeçalho do `matcap` (que separa os dois passes por este \
+         número) deixa de descrever o produto — reescreva-a com a medição nova ao lado"
+    );
+    // ⚠️ **O CONTROLO da própria régua:** uma contagem que devolvesse `0` passaria a 1.ª metade.
+    assert_eq!(
+        crate::trace::conta_armazens(&crate::trace::entradas_da_marcha()),
+        6,
+        "o grupo `0` da marcha liga seis armazéns — se esse número mudar, os DOIS passes mudam"
+    );
+    eprintln!("[armazéns] matcap {meu} · material {material} · piso {piso}");
+}
 
 /// ⭐⭐ **A ARRUMAÇÃO DO UNIFORME É A ORDEM QUE O SHADER LÊ** — `48` bytes, três `vec4`.
 ///

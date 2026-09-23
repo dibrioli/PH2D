@@ -179,11 +179,47 @@ pub struct PaintSetup<'a> {
     pub matte: &'a [f32],
 }
 
-/// ⭐⭐⭐ **QUANTOS ARMAZÉNS O PASSE QUE PINTA LIGA** — seis do grupo `0` e três do grupo `1`.
+/// ⭐⭐⭐ **AS OITO ENTRADAS DO GRUPO `1` DO PINTOR, numa lista NOMEADA** — para o
+/// [`armazens`] as poder CONTAR.
+#[must_use]
+pub(crate) fn entradas_do_pintor() -> [wgpu::BindGroupLayoutEntry; 8] {
+    use crate::trace::{armazem, uniforme};
+    [
+        uniforme(0),
+        uniforme(1),
+        armazem(2, true),
+        armazem(3, true),
+        armazem(4, false),
+        armazem(5, false),
+        armazem(6, true),
+        armazem(7, false),
+    ]
+}
+
+/// ⭐⭐⭐⭐ **QUANTOS ARMAZÉNS O PASSE QUE PINTA LIGA — CONTADOS, nunca escritos.**
 ///
-/// ⚠️ **O piso garantido da `wgpu` é `8`**, e é por isso que este número é público: quem não o
-/// tiver cai na CPU em vez de ver a `wgpu` recusar o layout a meio de um quadro.
-pub const ARMAZENS: u32 = 9;
+/// # ⛔⛔⛔ O defeito que isto cura (medido 2026-09-23)
+///
+/// Aqui vivia `pub const ARMAZENS: u32 = 9;` com o doc a dizer *«seis do grupo `0` e três do grupo
+/// `1`»*. **O grupo `1` liga SEIS**, não três: a contagem envelheceu quando o passe ganhou as
+/// sondas, o campo do chão e a cena do brilho, e ninguém a recontou. O número real é **`12`**.
+///
+/// ⚠️⚠️ **A consequência é exactamente o que este número existe para impedir.** O guarda que ele
+/// alimenta é *«a placa liga tantos armazéns?»*, e com `9` ele **aceita** uma placa que anuncie
+/// `9`, `10` ou `11` ranhuras — onde a `wgpu` recusa o layout **a meio de um quadro**, em vez de o
+/// quadro cair na CPU em voz alta.
+///
+/// ⭐ ⇒ *«Número que soma se CONTA, nunca se escolhe»* (`CLAUDE.md` §5.0). Ele é uma FUNÇÃO e não
+/// um `const` porque é **derivado das listas que o passe de facto liga** — e uma asserção de
+/// compilação sobre ele mediria o literal, não o layout.
+///
+/// ⚠️ **O piso garantido da `wgpu` é `8`** ⇒ este caminho **não corre** numa placa mínima
+/// conforme, e é isso que separa o pintor de material do [`crate::matcap`], que liga `8`.
+#[must_use]
+pub fn armazens() -> u32 {
+    crate::trace::conta_armazens(&crate::trace::entradas_da_marcha())
+        + crate::trace::conta_armazens(&entradas_do_pintor())
+}
 
 /// Os buffers do grupo `0`, que a marcha já criou e escreveu.
 pub(crate) struct Alvos<'a> {
@@ -234,21 +270,13 @@ pub(crate) fn pinta(
 ) -> Vec<u8> {
     let leis = alvos.leis;
     let fita = alvos.fita;
-    use crate::trace::{armazem, uniforme};
+    // ⭐ As entradas saem da lista nomeada ([`entradas_do_pintor`]), que é o que torna o número de
+    // armazéns CONTÁVEL.
     use wgpu::util::DeviceExt;
 
     let bgl1 = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some("pintor"),
-        entries: &[
-            uniforme(0),
-            uniforme(1),
-            armazem(2, true),
-            armazem(3, true),
-            armazem(4, false),
-            armazem(5, false),
-            armazem(6, true),
-            armazem(7, false),
-        ],
+        entries: &entradas_do_pintor(),
     });
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("pintor"),

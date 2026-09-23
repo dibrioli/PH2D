@@ -51,7 +51,7 @@ pub fn pinta_matcap(
     // com o número DESTE passe: sem ela a `wgpu` recusaria o layout a meio de um quadro.
     if tracer
         .lock()
-        .is_ok_and(|t| t.storage_slots() < ph2d_field_gpu::matcap::ARMAZENS)
+        .is_ok_and(|t| t.storage_slots() < ph2d_field_gpu::matcap::armazens())
     {
         return None;
     }

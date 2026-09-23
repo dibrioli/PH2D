@@ -50,38 +50,35 @@ pub struct MatcapSetup<'a> {
     pub background: [u8; 4],
 }
 
-/// ⭐⭐⭐ **QUANTOS ARMAZÉNS ESTE PASSE LIGA** — seis do grupo `0`, a saída e a fotografia.
+/// ⭐⭐⭐ **AS TRÊS ENTRADAS DO GRUPO `1` DESTE PASSE, numa lista NOMEADA** — o uniforme, a saída e
+/// a fotografia.
+#[must_use]
+pub(crate) fn entradas() -> [wgpu::BindGroupLayoutEntry; 3] {
+    use crate::trace::{armazem, uniforme};
+    [uniforme(0), armazem(1, false), armazem(2, true)]
+}
+
+/// ⭐⭐⭐⭐ **QUANTOS ARMAZÉNS ESTE PASSE LIGA — CONTADOS** dos grupos que ele de facto liga: os do
+/// grupo `0` da marcha mais os deste.
 ///
-/// ⚠️ **O piso garantido da `wgpu` é `8`, logo ele CABE** — ao contrário do
-/// [`crate::paint::ARMAZENS`], que pede `9`. *É por isso que o modo de omissão do modelador corre
-/// na placa em toda placa conforme, e o modo de material só onde há folga.*
-pub const ARMAZENS: u32 = 8;
+/// ⛔⛔ **Ele é uma FUNÇÃO e não um `const`, e a razão é um defeito medido:** o irmão
+/// ([`crate::paint::armazens`]) era um literal que esteve **`3` abaixo** do real por três waves, e
+/// o guarda que ele alimenta passou a aceitar placas onde a `wgpu` recusa o layout a meio de um
+/// quadro. ⇒ *«número que soma se CONTA, nunca se escolhe»*.
+///
+/// ⚠️⚠️ **E é por isso que a lei dele é um GATE e não um `const _: () = assert!`:** uma asserção de
+/// compilação sobre um número derivado é impossível (ele lê listas em tempo de execução), e sobre um
+/// número ESCRITO ela mediria o literal em vez do layout. *A cerca mais forte é a que julga o que o
+/// passe liga, não o que alguém escreveu que ele liga* — ver
+/// [`matcap_tests::os_armazens_sao_contados_e_cabem_no_piso`].
+#[must_use]
+pub fn armazens() -> u32 {
+    crate::trace::conta_armazens(&crate::trace::entradas_da_marcha())
+        + crate::trace::conta_armazens(&entradas())
+}
 
 /// O piso que a `wgpu` garante em `max_storage_buffers_per_shader_stage`.
-const PISO_DO_WEBGPU: u32 = 8;
-
-// ⭐⭐⭐ **A LEI DOS ARMAZÉNS É ERRO DE COMPILAÇÃO, e não um teste.**
-//
-// ⚠️ Um `assert!` sobre duas constantes é **dobrado pelo compilador** antes de correr — o clippy
-// di-lo em voz alta (`assertions_on_constants`), e esta casa já paga a mesma lição no espaçamento
-// do pincel afiado. ⇒ ele mora aqui, colado aos números, e não num `#[test]` que alguém tem de
-// correr.
-//
-// ⛔ **As duas metades são a wave inteira:** sem a primeira o modo de omissão cairia na CPU nas
-// placas mínimas (o defeito que o report do dono nomeia); sem a segunda alguém leria *«cabe»* como
-// propriedade de toda a casa e o `8` deixaria de significar nada.
-const _: () = assert!(
-    ARMAZENS <= PISO_DO_WEBGPU,
-    "o passe do matcap passou o piso do WebGPU: o modo de OMISSÃO do modelador deixa de correr na \
-     placa em toda placa conforme"
-);
-// ⭐ **E se esta linha reprovar é uma BOA notícia** — o pintor de material passou a caber no piso.
-// ⇒ a cura NÃO é apagar a asserção: é reescrever a tabela do cabeçalho deste módulo (que separa os
-// dois passes por este número) com a medição nova ao lado.
-const _: () = assert!(
-    crate::paint::ARMAZENS > PISO_DO_WEBGPU,
-    "o pintor de material passou a caber no piso: reescreva a tabela do cabeçalho deste módulo"
-);
+pub const PISO_DO_WEBGPU: u32 = 8;
 
 /// ⭐ **O texto do pintor de matcap** — as declarações do grupo `0`, o olhar, o empacotamento e o
 /// corpo.
@@ -148,12 +145,13 @@ pub(crate) fn pinta(
     height: u32,
     bordas: u64,
 ) -> Vec<u8> {
-    use crate::trace::{armazem, uniforme};
+    // ⭐ As entradas saem das listas nomeadas (`entradas` / `crate::trace::entradas_da_marcha`) —
+    // e é por isso que os construtores de ligação já não são importados aqui.
     use wgpu::util::DeviceExt;
 
     let bgl1 = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some("matcap"),
-        entries: &[uniforme(0), armazem(1, false), armazem(2, true)],
+        entries: &entradas(),
     });
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("matcap"),

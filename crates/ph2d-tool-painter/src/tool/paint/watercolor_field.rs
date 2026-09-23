@@ -53,7 +53,7 @@ pub(super) fn sample_bilinear(src: &[f32], w: usize, h: usize, fx: f32, fy: f32)
 /// Separable box blur, O(n) via prefix sums (window count clamped at the borders — no darkening
 /// bias); deterministic. **Parallel (ADR-0109 exception):** each pass distributes over its
 /// INDEPENDENT axis with the serial prefix origin ⇒ bit-identical at any thread count; the
-/// vertical pass writes transposed (contiguous, no `unsafe`) then a row-parallel transpose.
+/// vertical pass runs in column STRIPS (contiguous, no `unsafe`, no transpose — ADR-0173).
 pub(super) fn box_blur(src: &[f32], w: usize, h: usize, radius: usize) -> Vec<f32> {
     if radius == 0 || w == 0 || h == 0 {
         return src.to_vec();
@@ -79,31 +79,49 @@ pub(super) fn box_blur(src: &[f32], w: usize, h: usize, radius: usize) -> Vec<f3
                 }
             },
         );
-    // Vertical pass (tmp column `x` → `out_t` row `x`): the per-column prefix from `y = 0` is exactly the
-    // serial `prefc`. Writing the TRANSPOSED layout keeps each task's output contiguous (a safe chunk).
-    let mut out_t = vec![0.0f32; w * h]; // out_t[x * h + y]
-    out_t.par_chunks_mut(h).enumerate().for_each_init(
-        || vec![0.0f32; h + 1],
-        |pref, (x, ocol)| {
-            for y in 0..h {
-                pref[y + 1] = pref[y] + tmp[y * w + x];
+    // Vertical pass, in two halves and NO transpose (ADR-0173). The per-column prefix from `y = 0` is
+    // exactly the serial `prefc` — the SAME additions in the SAME order per column, only laid out in
+    // STRIPS of `FAIXA` columns: strip `s` owns one contiguous block `(h + 1) × FAIXA`, row-major, so
+    // each task walks `tmp` row by row (a cache line per 16 columns) instead of down one column (a
+    // cache line per element). Then each output row reads its two prefix rows strip by strip. ⚠️ It
+    // was a column walk into a TRANSPOSED buffer plus a transpose back: a strided read of every
+    // element and one extra full pass (doc 32 §4 measured the blur at ~2,1 ns/texel).
+    let nf = w.div_ceil(FAIXA);
+    let bloco = (h + 1) * FAIXA;
+    let mut pref = vec![0.0f32; nf * bloco];
+    pref.par_chunks_mut(bloco).enumerate().for_each(|(s, blk)| {
+        let x0 = s * FAIXA;
+        let sw = FAIXA.min(w - x0);
+        for y in 0..h {
+            let (prev, next) = blk.split_at_mut((y + 1) * FAIXA);
+            let prev = &prev[y * FAIXA..y * FAIXA + sw];
+            let trow = &tmp[y * w + x0..y * w + x0 + sw];
+            for ((n, p), t) in next[..sw].iter_mut().zip(prev).zip(trow) {
+                *n = *p + *t;
             }
-            for (y, o) in ocol.iter_mut().enumerate() {
-                let lo = y.saturating_sub(radius);
-                let hi = (y + radius).min(h - 1);
-                *o = (pref[hi + 1] - pref[lo]) / (hi - lo + 1) as f32;
-            }
-        },
-    );
-    // Transpose out_t (x*h + y) → out (y*w + x), row-parallel (each output row is contiguous).
+        }
+    });
     let mut out = vec![0.0f32; w * h];
     out.par_chunks_mut(w).enumerate().for_each(|(y, orow)| {
-        for (x, o) in orow.iter_mut().enumerate() {
-            *o = out_t[x * h + y];
+        let lo = y.saturating_sub(radius);
+        let hi = (y + radius).min(h - 1);
+        let cnt = (hi - lo + 1) as f32;
+        for (s, ochunk) in orow.chunks_mut(FAIXA).enumerate() {
+            let blk = &pref[s * bloco..(s + 1) * bloco];
+            let a = &blk[lo * FAIXA..lo * FAIXA + ochunk.len()];
+            let b = &blk[(hi + 1) * FAIXA..(hi + 1) * FAIXA + ochunk.len()];
+            for ((o, pb), pa) in ochunk.iter_mut().zip(b).zip(a) {
+                *o = (*pb - *pa) / cnt;
+            }
         }
     });
     out
 }
+
+/// A largura das faixas da passagem vertical do [`box_blur`]: `64` floats = `256` bytes = quatro
+/// linhas de cache por linha de faixa. Não muda um bit do resultado (as somas por coluna são as
+/// mesmas em qualquer largura) — só a arrumação da memória.
+const FAIXA: usize = 64;
 
 // ── Rewet composite fields (moved from `watercolor_render` for the file-LOC cap) ────────────────────
 
@@ -547,3 +565,7 @@ pub(crate) struct WashCadence {
 #[cfg(test)]
 #[path = "watercolor_cadence_tests.rs"]
 mod watercolor_cadence_tests; // os gates de [`WashCadence`], ao lado da struct que eles exercitam
+
+#[cfg(test)]
+#[path = "watercolor_box_blur_tests.rs"]
+mod box_blur_tests;

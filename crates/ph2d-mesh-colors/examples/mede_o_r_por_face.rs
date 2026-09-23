@@ -285,6 +285,45 @@ fn main() {
                 k_tecto.iter().copied().max().unwrap_or(0)
             );
 
+            // ⭐⭐⭐⭐ **A QUARTA leitura, e é a que o report de 23/09 obriga a
+            //   medir: o `k` como PISO.** O dono reprovou a MEDIANA com a frase
+            //   *«a resolução fica bem baixa»* — e medida na peça que ele smoka
+            //   ela só sabe DESCER (`0,83×` das amostras, e nenhuma face acima
+            //   de `k`). ⇒ aqui o alvo sai da face MAIS PEQUENA, logo
+            //   `ideal = k + ½·log2(a/a_min) ≥ k` para toda face: *ninguém fica
+            //   mais grosso do que o degrau que o artista pediu*.
+            //
+            //   ⚠️ E a variante BARATA dela: a mediana com um PISO em `k`, que
+            //   nunca desce mas só sobe quem está acima da mediana.
+            let a_min = m
+                .faces
+                .iter()
+                .map(|f| area(&m, f))
+                .filter(|a| *a > 0.0)
+                .fold(f64::MAX, f64::min);
+            let alvo_piso = f64::from(1u32 << k_ref) / a_min.sqrt();
+            for (nome, ks) in [
+                ("PISO   ", niveis(&m, alvo_piso, Some(1))),
+                (
+                    "MED+PISO",
+                    niveis(&m, alvo, Some(1))
+                        .iter()
+                        .map(|x| (*x).max(k_ref))
+                        .collect::<Vec<u8>>(),
+                ),
+            ] {
+                linha(
+                    &format!("{nome} k={k_ref}, salto<=1"),
+                    &densidades(&m, &ks),
+                    amostras(&m, &ks, &ars),
+                );
+                println!(
+                    "      nivel {}..{}",
+                    ks.iter().copied().min().unwrap_or(0),
+                    ks.iter().copied().max().unwrap_or(0)
+                );
+            }
+
             // ---- e o que o EMPACOTADOR faz com os dois, no FICHEIRO ----
             //
             // ⚠️ É esta a coluna que o artista vê: o lado da textura e a
@@ -304,7 +343,12 @@ fn main() {
             let uni = ph2d_mesh_colors::Tinta::nova(m.pos.len(), faces_it(), k_ref);
             println!("      textura uniforme : {}", assa(&uni));
             for (rot, ks) in [("mediana", &k), ("TECTO  ", &k_tecto)] {
-                if let Some(g) = ph2d_mesh_colors::Tinta::graduada(m.pos.len(), faces_it(), ks) {
+                if let Some(g) = ph2d_mesh_colors::Tinta::graduada(
+                    m.pos.len(),
+                    faces_it(),
+                    ks,
+                    ks.iter().copied().min().unwrap_or(0),
+                ) {
                     println!("      textura {rot} : {}", assa(&g));
                 }
             }

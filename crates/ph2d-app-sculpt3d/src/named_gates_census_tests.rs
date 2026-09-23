@@ -69,7 +69,22 @@ const PREFIXOS: [&str; 21] = [
 ];
 
 /// `(nome, onde a memória vive, porque é prosa e não endereço)`.
-const MEMORIAS: [(&str, &str, &str); 11] = [
+const MEMORIAS: [(&str, &str, &str); 12] = [
+    (
+        "a_peca_da_cena_tem_de_que_igualar",
+        "crates/ph2d-app-sculpt3d/src/scenes_tinta_fina_tests.rs",
+        "o gate que o REPORT DO DONO de 2026-09-23 INVERTEU. Ele exigia que o \
+         `Even Detail` fizesse algo na peça da `=52`, e fazia: a lei ancorava \
+         na MEDIANA e as faces do pólo — mais pequenas — DESCIAM para se \
+         igualarem às do equador. O dono viu isso como o que era («com even \
+         detail o resultado é pior em todas as áreas e em todas as resoluções \
+         inclusive a 16x»), e a cura foi o `k` passar a ser um PISO. Com ela, \
+         numa esfera UV a mediana senta-se no TOPO da distribuição de área e \
+         ninguém sobe ⇒ a lei é INERTE aqui, e quem o afirma hoje é o \
+         `a_peca_da_cena_nao_tem_de_que_igualar_e_o_roteiro_cala_se`, com um \
+         CILINDRO como controlo. A prosa fica porque ela é a única coisa no \
+         repo que diz que a inversão foi MEDIDA e não uma barra afrouxada.",
+    ),
     (
         "o_sentinela_do_triangulo_e_o_mesmo",
         "crates/ph2d-mesh-colors/src/topo.rs",

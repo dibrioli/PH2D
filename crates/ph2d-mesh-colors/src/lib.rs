@@ -179,36 +179,60 @@ pub struct Tinta {
 /// ⭐⭐⭐⭐ **O NÍVEL DE CADA FACE PARA UM `k` PEDIDO — a porta do PRODUTO.**
 ///
 /// A [`niveis_por_area`] pede um **alvo de densidade**, que é a grandeza da
-/// lei; um artista carrega num chip que diz `8x`. Esta porta é a ponte, e a
-/// âncora dela é a que a MEDIÇÃO deixou de pé (handoff §28):
+/// lei; um artista carrega num chip que diz `8x`. Esta porta é a ponte, e ela
+/// tem **duas** metades:
 ///
-/// > **a face TÍPICA fica ao `k` pedido, e as outras igualam-se a ela.**
+/// 1. **a face TÍPICA fica ao `k` pedido** ⇒ `alvo = mediana(2^k / √área)`, que
+///    é a densidade linear que um plano UNIFORME de nível `k` entrega à face
+///    mediana;
+/// 2. ⭐⭐⭐⭐ **e NINGUÉM desce abaixo de `k`** — o degrau que o artista
+///    carregou é um **PISO**, nunca uma média que se possa pagar tirando
+///    resolução a uma parte da peça.
 ///
-/// ⇒ `alvo = mediana(2^k / √área)`, que é exactamente a densidade linear que um
-/// plano UNIFORME de nível `k` entrega à face mediana. A comparação com o
-/// uniforme é, por construção, a **orçamento parecido**.
+/// ⛔⛔⛔ **A metade `2` nasceu de um REPORT do dono (23/09) e ela derruba a
+/// nota que este doc-comment tinha ontem.** Com só a metade `1`, na peça que a
+/// cena `=52` usa — uma esfera UV — a lei **só sabe DESCER**: medido pela porta
+/// do produto, o máximo é exactamente `k` em todos os degraus e `192` das `768`
+/// faces saem em `k−1` ou `k−2`, com as amostras a cair para `0,83×`. *O que o
+/// dono viu foi a frase dele: «a resolução fica bem baixa, inclusive a 16x».*
 ///
-/// ⛔⛔ **A outra leitura — *«nenhuma face passa de `k`»* — foi CONSTRUÍDA,
-/// MEDIDA e REFUTADA, e não é uma decisão de produto por tomar.** Ela falha por
-/// três colunas ao mesmo tempo (handoff §28.3): não cumpre a própria promessa
-/// (a cerca do salto SOBE o vizinho e o máximo passa de `k`), **não baixa a
-/// dispersão** (`9,26×` na peça mais dispersa do dono, contra `1,92`–`2,37×`
-/// desta) e engrossa a peça inteira (`1,08 M → 91 k` amostras). ⭐ A causa é a
-/// escada ter CHÃO: o nível vive em `0..=NIVEL_MAX` e o `0` é cor por vértice,
-/// logo uma peça com `18×` de dispersão satura contra o piso. *É aritmética,
-/// não afinação.*
+/// ⭐⭐⭐ **E a causa é uma propriedade da FORMA, não um defeito:** numa esfera
+/// UV a área de uma face é `∝ sin θ`, logo a maioria das faces está perto do
+/// equador e **a mediana vive no topo da distribuição** — igualar por ela é
+/// igualar para baixo. Nas peças ESCULPIDAS do dono acontece o contrário (a
+/// mediana está no meio de uma cauda longa) e a mesma lei SOBE.
 ///
-/// ⚠️ **O preço desta é POSITIVO e está medido:** ela SOBE a contagem de
-/// amostras em `+4 %` (`Sculpt_Blender`) a `+33 %` (`_base_sculpt`), porque
-/// iguala **subindo** as faces pequenas. ⛔ *Uma nota que dissesse «a graduação
-/// poupa memória» seria falsa* — o que ela compra é `1,92`–`2,37×` de dispersão
-/// onde o uniforme lê `4,88`–`18,26×`.
+/// ⚠️⚠️ **O corpus da §28 não continha o fenómeno:** ele eram três peças
+/// esculpidas, e a peça que o dono smoka é uma primitiva. *Uma lei medida só
+/// numa família de peças afirma sobre essa família.*
+///
+/// ⛔ **A âncora no MAIS PEQUENO (o piso puro) foi medida e RECUSADA:** ela
+/// custa `14×`–`48×` as amostras nas peças esculpidas e **satura na escada**
+/// (`nivel 2..5` de um `k = 2`), logo nem chega a entregar o que promete.
+///
+/// ⛔ **E a âncora no MAIOR — *«nenhuma face passa de `k`»* — continua refutada**
+/// (handoff §28.3): não baixa a dispersão (`9,26×`) e engrossa a peça inteira.
+///
+/// **O que a lei com o piso entrega, medido:**
+///
+/// | peça | `k` | uniforme | com o piso | amostras |
+/// |---|---:|---:|---:|---:|
+/// | `_base_sculpt` | `2` | `6,74×` | **`3,49×`** | `+9 %` |
+/// | `sculpt_antes` | `2` | `18,26×` | **`9,26×`** | `+36 %` |
+/// | a esfera da `=52` | qualquer | — | **no-op** | `1,00×` |
+///
+/// ⚠️ **Ela nunca pode piorar**, e é isso que a torna shipável: o pior caso é
+/// não fazer nada.
+///
+/// ⭐ **E o piso não parte a cerca do salto:** ele levanta o MÍNIMO e deixa o
+/// máximo onde está, logo toda diferença entre vizinhas encolhe ou fica igual.
 ///
 /// ⚠️ **Uma lista de áreas do tamanho errado devolve a lista CRUA**, como a
 /// irmã: quem recusa é a [`Topologia::regraduada`], que compara comprimentos.
 #[must_use]
 pub fn niveis_igualados(topo: &Topologia, areas: &[f32], k: u8, tecto_de_salto: u8) -> Vec<u8> {
-    let lado = f32::from(1u16 << k.min(NIVEL_MAX));
+    let k = k.min(NIVEL_MAX);
+    let lado = f32::from(1u16 << k);
     let mut d: Vec<f32> = areas
         .iter()
         .filter(|a| **a > 0.0)
@@ -218,11 +242,18 @@ pub fn niveis_igualados(topo: &Topologia, areas: &[f32], k: u8, tecto_de_salto: 
     if d.is_empty() {
         // ⚠️ Uma peça sem uma única face de área positiva não tem mediana, e o
         //    valor conservador é o plano UNIFORME que o artista pediu.
-        return vec![k.min(NIVEL_MAX); areas.len()];
+        return vec![k; areas.len()];
     }
     d.sort_by(|a, b| a.partial_cmp(b).unwrap_or(core::cmp::Ordering::Equal));
     let alvo = d[(d.len() - 1) / 2];
+    // ⭐⭐⭐⭐ **O PISO, e ele vem DEPOIS da cerca de propósito.** Levantar um
+    //   valor só pode encolher a diferença para um vizinho mais alto, e o
+    //   máximo não se mexe ⇒ a cerca que a `niveis_por_area` acabou de impor
+    //   continua de pé. *Aplicá-lo ANTES obrigaria a correr a cerca outra vez.*
     niveis_por_area(topo, areas, alvo, tecto_de_salto)
+        .into_iter()
+        .map(|x| x.max(k))
+        .collect()
 }
 
 #[must_use]
@@ -311,21 +342,39 @@ impl Tinta {
     /// mesma razão da [`Topologia::regraduada`]: *um plano com o tamanho errado
     /// instalado numa malha é tinta no sítio errado*.
     ///
-    /// ⚠️ **O `nivel` que ela guarda é o MAIS FINO do plano**, e isso é uma
-    /// definição e não um acidente: o campo é *o degrau que o artista pediu*, e
-    /// num plano graduado o pedido é o tecto — as faces mais pequenas recebem
-    /// menos porque a ÁREA delas não justifica mais, nunca porque alguém baixou
-    /// o pedido.
+    /// ⛔⛔⛔ **O `pedido` é um ARGUMENTO e não se deriva da lista, e a premissa
+    /// que morreu para ele existir está escrita aqui porque a morte dela custou
+    /// um report do dono (23/09).**
+    ///
+    /// Este campo dizia-se *«o MAIS FINO do plano»*, com a justificação ao lado:
+    /// *«num plano graduado o pedido é o TECTO»*. Isso era verdade da âncora na
+    /// MEDIANA, onde ninguém passava de `k`. Desde que o `k` é um **PISO**
+    /// ([`niveis_igualados`]) há faces ACIMA dele, logo `nivel_mais_fino()`
+    /// deixou de ser o pedido — e o consumidor que compara os dois (*«este
+    /// plano ainda é o que a fileira pede?»*) passava a responder **NÃO em todo
+    /// quadro**, reconstruindo o plano e **re-semeando-o da cor por vértice**:
+    /// a tinta fina do artista desaparecia a `60 Hz`.
+    ///
+    /// ⚠️ **Ele é um argumento OBRIGATÓRIO de propósito:** derivá-lo outra vez,
+    /// por qualquer regra, seria a segunda resposta à pergunta *«o que é que o
+    /// artista pediu?»* — e a primeira é a fileira do painel. Assim, quem
+    /// construir um plano graduado sem dizer de que degrau ele é **não
+    /// compila**.
+    ///
+    /// ⛔ Ela **RECUSA** (`None`) uma lista que não descreve esta malha, pela
+    /// mesma razão da [`Topologia::regraduada`]: *um plano com o tamanho errado
+    /// instalado numa malha é tinta no sítio errado*.
     #[must_use]
     pub fn graduada<'a>(
         verts: usize,
         faces: impl Iterator<Item = &'a [u32]>,
         niveis: &[u8],
+        pedido: u8,
     ) -> Option<Self> {
         let topo = Topologia::nova(verts, faces, 0).regraduada(niveis)?;
         let n = total(&topo);
         Some(Self {
-            nivel: topo.nivel_mais_fino(),
+            nivel: pedido,
             topo,
             amostras: vec![BRANCO; n],
         })
@@ -385,8 +434,9 @@ impl Tinta {
         cores: &[[f32; 3]],
         faces: impl Iterator<Item = &'a [u32]> + Clone,
         niveis: &[u8],
+        pedido: u8,
     ) -> Option<Self> {
-        let mut t = Self::graduada(cores.len(), faces.clone(), niveis)?;
+        let mut t = Self::graduada(cores.len(), faces.clone(), niveis, pedido)?;
         t.semeia(cores, faces);
         Some(t)
     }
@@ -434,7 +484,11 @@ impl Tinta {
         self.amostras.capacity() * size_of::<[f32; 3]>() + self.topo.footprint_bytes()
     }
 
-    /// O nível efectivo (`k`).
+    /// ⭐ **O degrau que o artista PEDIU** — nunca o mais fino nem o mais
+    /// grosso do plano.
+    ///
+    /// ⚠️ Num plano graduado as duas coisas separam-se (ver [`Self::graduada`]),
+    /// e quem comparar isto com a fileira do painel tem a resposta certa.
     #[must_use]
     pub fn nivel(&self) -> u8 {
         self.nivel

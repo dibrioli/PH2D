@@ -273,79 +273,115 @@ fn todo_nome_entre_crases_do_roteiro_existe_na_tela() {
     );
 }
 
-/// ⭐⭐⭐⭐ **A PEÇA DESTA CENA TEM DE QUE IGUALAR — senão o passo do roteiro
-/// ensina o contrário do que acontece.**
+/// ⭐⭐⭐⭐ **A PEÇA DESTA CENA NÃO TEM DE QUE IGUALAR, E O ROTEIRO CALA-SE —
+/// as duas metades, porque cada uma sozinha mente.**
 ///
-/// ⛔⛔ O `Even Detail` gradua o plano pela ÁREA de cada face. Numa peça cujas
-/// faces têm todas a mesma área ele é um **no-op**, e um passo que mandasse o
-/// dono carregar nele mostraria a cura a não fazer nada — a espécie que o §5.0
-/// chama de *pior que uma cena ausente*. ⚠️ **E isto já mordeu na mesma
-/// jornada:** a fixtura do gate do documento era um OCTAEDRO (oito faces
-/// iguais) e o controlo dela leu `[2]`.
+/// ⛔⛔⛔ **Este gate chamava-se `a_peca_da_cena_tem_de_que_igualar` e o report
+/// do dono de 23/09 inverteu-o.** Ele exigia que o `Even Detail` fizesse algo
+/// nesta peça, e fazia: a lei ancorava na MEDIANA e as faces do pólo — mais
+/// pequenas — **desciam** para se igualarem às do equador. *O dono viu isso
+/// como o que era* (**«com even detail o resultado é pior em todas as áreas e
+/// em todas as resoluções inclusive a 16x; a resolução fica bem baixa»**), e a
+/// cura foi o `k` passar a ser um **PISO** ([`niveis_igualados`]).
 ///
-/// ⭐ A esfera UV desta cena tem as faces do pólo bem mais pequenas que as do
-/// equador, e é essa dispersão que a lei consome.
+/// ⭐⭐⭐ **Com o piso, ela é INERTE nesta peça, e isso é uma propriedade da
+/// FORMA e não um defeito:** numa esfera UV a área de uma face é `∝ sin θ`,
+/// logo a maioria vive perto do equador, que é onde elas são MAIORES ⇒ **a
+/// mediana senta-se no topo da distribuição** e ninguém está acima dela.
+/// Medido: `768` faces, dispersão de área `15,3×` (`1,97` degraus da escada) e
+/// **`0`** faces a subir.
+///
+/// ⚠️⚠️ **A dispersão NÃO é a pergunta, e é por isso que este gate a mede e não
+/// a acusa:** o que decide é de que LADO da mediana ela está. Uma peça pode ter
+/// `15×` de dispersão e nada para uma lei de um sentido só fazer.
+///
+/// ⭐ **E o CONTROLO é um CILINDRO**, sem o qual isto passaria com a lei
+/// APAGADA: as duas tampas são leques de triângulos gordos e os lados são
+/// quadriláteros finos ⇒ `24` das `72` faces sobem um degrau. *A lei está viva;
+/// é esta peça que não é sujeito dela.*
 #[test]
-fn a_peca_da_cena_tem_de_que_igualar() {
-    let m = super::peca();
-    let faces = || m.faces().iter().map(ph2d_mesh::Face::verts);
-    let areas = m.face_areas();
-    let topo = ph2d_mesh_colors::Topologia::nova(m.vert_count(), faces(), 0);
-
+fn a_peca_da_cena_nao_tem_de_que_igualar_e_o_roteiro_cala_se() {
     let k = super::DEGRAU_DA_LICAO
         .nivel()
         .expect("o degrau da lição arma um plano");
-    let niveis = ph2d_mesh_colors::niveis_igualados(&topo, &areas, k, 1);
 
-    let mut d = niveis.clone();
-    d.sort_unstable();
-    d.dedup();
-    assert!(
-        d.len() >= 3,
-        "a peça da =52 não tem de que igualar: níveis {d:?} — o passo do \
-         roteiro mandaria carregar num interruptor inerte"
-    );
-
-    // E a dispersão da densidade cai contra o uniforme do MESMO degrau.
-    let disp = |ks: &[u8]| -> f32 {
-        let mut v: Vec<f32> = ks
-            .iter()
-            .zip(&areas)
-            .filter(|(_, a)| **a > 0.0)
-            .map(|(k, a)| f32::from(1u16 << k) / a.sqrt())
-            .collect();
-        v.sort_by(|a, b| a.partial_cmp(b).expect("sem NaN"));
-        v[v.len() - 1] / v[0]
+    let niveis_de = |m: &ph2d_mesh::Mesh| -> Vec<u8> {
+        let faces = || m.faces().iter().map(ph2d_mesh::Face::verts);
+        let topo = ph2d_mesh_colors::Topologia::nova(m.vert_count(), faces(), 0);
+        ph2d_mesh_colors::niveis_igualados(&topo, &m.face_areas(), k, 1)
     };
-    let uni = disp(&vec![k; areas.len()]);
-    let igual = disp(&niveis);
+    let distintos = |ns: &[u8]| {
+        let mut d = ns.to_vec();
+        d.sort_unstable();
+        d.dedup();
+        d
+    };
+
+    // (1) A peça da cena: a lei corre e não tem o que subir.
+    let m = super::peca();
+    let ns = niveis_de(&m);
+    assert_eq!(
+        distintos(&ns),
+        vec![k],
+        "a peça da =52 passou a ter de que igualar — se isto acontecer, o \
+         passo do roteiro pode VOLTAR, e ele foi retirado por ser inerte"
+    );
+
+    // (2) ⭐ E o CONTROLO: a lei NÃO está morta.
+    let cil = ph2d_mesh::shapes::cylinder(24, 1.0, 2.0);
+    let nc = niveis_de(&cil);
     assert!(
-        uni > 2.0,
-        "o CONTROLO: a peça tem de CONTER a dispersão — uniforme {uni:.2}×"
+        distintos(&nc).len() >= 2,
+        "o CONTROLO: num cilindro a igualação tem de subir alguma face, e saiu \
+         {:?} — sem isto a metade (1) passa com a lei apagada",
+        distintos(&nc)
     );
     assert!(
-        igual < uni / 1.5,
-        "igualar tem de COMPRAR alguma coisa nesta peça: {uni:.2}× → {igual:.2}×"
+        nc.iter().all(|n| *n >= k),
+        "e NINGUÉM desce abaixo do degrau pedido: {:?}",
+        distintos(&nc)
     );
 }
 
-/// ⭐⭐⭐ **O roteiro nomeia a caixa `Even Detail`, e ela é um interruptor VIVO.**
+/// ⭐⭐⭐ **E O ROTEIRO NÃO NOMEIA A CAIXA `Even Detail`, porque nesta peça ela
+/// é inerte** — a outra metade do gate acima.
 ///
-/// ⚠️ **As duas metades, e cada uma sozinha mente:** só a do rótulo deixaria
-/// passar uma caixa que o painel nunca oferece, e só a da tabela deixaria
-/// passar um interruptor vivo com outro nome no ecrã.
+/// ⚠️ *Um passo que manda carregar num interruptor que não faz nada é a espécie
+/// que o §5.0 chama de **pior que uma cena ausente***, e ele existiu aqui entre
+/// 22 e 23/09, com a lei que o dono reprovou por baixo.
+///
+/// ⛔ **A caixa FICA no painel**, e isso é deliberado: com o piso ela nunca
+/// pode tirar resolução, logo o pior caso dela é não fazer nada. Quem quiser
+/// repor o passo tem de trazer uma peça que seja sujeito dele — e a metade (1)
+/// do gate acima reprova no dia em que esta passar a ser.
+#[test]
+fn o_roteiro_da_cena_nao_nomeia_a_caixa_da_tinta_igualada() {
+    // ⚠️ O roteiro vive DENTRO do `eprintln!` (ele sai por terminal, que é a
+    //    isenção do HR-15 — uma `const` solta perde-a), logo lê-se pelo
+    //    ficheiro, como o gate irmão já fazia.
+    let rotulo = ph2d_i18n::tr("panel.sculpt3d.tinta_igualada");
+    let roteiro = include_str!("scenes_tinta_fina.rs");
+    assert!(
+        !roteiro.contains(&format!("`{rotulo}`")),
+        "o roteiro voltou a nomear a caixa `{rotulo}` numa peça em que ela é \
+         INERTE — reponha o passo só com uma peça que seja sujeito dele"
+    );
+}
+
+/// ⭐⭐⭐ **A CAIXA `Even Detail` É UM INTERRUPTOR VIVO, e ela só é oferecida com
+/// um plano armado.**
+///
+/// ⛔⛔ **A metade do ROTEIRO saiu daqui em 23/09 e a premissa dela está no
+/// gate irmão acima:** ele exigia que a cena NOMEASSE a caixa, e desde que o
+/// `k` é um piso ela é inerte nesta peça — *um passo que manda carregar num
+/// interruptor que não faz nada é pior que uma cena ausente*. O que fica é o
+/// que continua a ser verdade: **a caixa existe, é alcançável, e o painel
+/// oferece-a exactamente onde ela tem sujeito.**
 ///
 /// ⛔ E a metade NEGATIVA é a que a torna honesta: sem um plano armado não há
 /// retícula para igualar, e oferecê-la seria um controlo morto sob o dedo.
 #[test]
-fn o_roteiro_da_cena_nomeia_a_caixa_da_tinta_igualada() {
-    let rotulo = ph2d_i18n::tr("panel.sculpt3d.tinta_igualada");
-    let roteiro = include_str!("scenes_tinta_fina.rs");
-    assert!(
-        roteiro.contains(&format!("`{rotulo}`")),
-        "o roteiro da =52 não nomeia a caixa `{rotulo}`"
-    );
-
+fn a_caixa_da_tinta_igualada_e_um_interruptor_vivo() {
     let mut ui = ph2d_panel_sculpt3d::Sculpt3dUi {
         tinta_detalhe: super::DEGRAU_DA_LICAO,
         ..Default::default()
@@ -366,4 +402,116 @@ fn o_roteiro_da_cena_nomeia_a_caixa_da_tinta_igualada() {
         ),
         "a caixa é oferecida SEM plano — sem retícula não há o que igualar"
     );
+}
+/// ⛔⛔⛔ **A SONDA DO REPORT DE 23/09** (*«com Even Detail o resultado é pior
+/// em todas as áreas e em todas as resoluções, inclusive a 16x — a resolução
+/// fica bem baixa»*, com duas fotos).
+///
+/// Ela imprime, para a peça DESTA cena e para cada degrau da fileira, o que
+/// cada uma das **três** âncoras possíveis entrega: o histograma de níveis, o
+/// máximo, e a contagem de amostras contra o plano uniforme.
+///
+/// ⚠️ É um INSTRUMENTO e não uma lei — ela fica versionada porque a leitura de
+/// hoje e a do dia em que isto voltar valem uma pela outra.
+#[test]
+fn diag_as_tres_ancoras_na_peca_da_cena() {
+    use std::collections::BTreeMap;
+    let m = super::peca();
+    let faces = || m.faces().iter().map(ph2d_mesh::Face::verts);
+    let areas = m.face_areas();
+    let topo = ph2d_mesh_colors::Topologia::nova(m.vert_count(), faces(), 0);
+
+    let (mut lo, mut hi) = (f32::MAX, 0.0f32);
+    for a in areas.iter().filter(|a| **a > 0.0) {
+        lo = lo.min(*a);
+        hi = hi.max(*a);
+    }
+    eprintln!(
+        "peca: {} faces, area {lo:.3e}..{hi:.3e} (razao {:.1}x, {:.2} degraus)",
+        areas.len(),
+        hi / lo,
+        0.5 * (hi / lo).log2()
+    );
+
+    // As tres ancoras: o alvo de densidade sai da face MEDIANA, da MAIOR
+    // (o piso: ninguem fica mais grosso do que o `k` daria) ou da MENOR.
+    let mut d: Vec<f32> = areas
+        .iter()
+        .filter(|a| **a > 0.0)
+        .map(|a| a.sqrt())
+        .collect();
+    d.sort_by(|a, b| a.partial_cmp(b).expect("sem NaN"));
+    let raiz_med = d[(d.len() - 1) / 2];
+    let raiz_min = d[0];
+    let raiz_max = d[d.len() - 1];
+
+    for k in 1..=4u8 {
+        let lado = f32::from(1u16 << k);
+        for (nome, raiz) in [
+            ("MEDIANA", raiz_med),
+            ("PISO   ", raiz_min),
+            ("TECTO  ", raiz_max),
+        ] {
+            let ks = ph2d_mesh_colors::niveis_por_area(&topo, &areas, lado / raiz, 1);
+            let mut h: BTreeMap<u8, usize> = BTreeMap::new();
+            for x in &ks {
+                *h.entry(*x).or_default() += 1;
+            }
+            let uni = ph2d_mesh_colors::Tinta::nova(m.vert_count(), faces(), k);
+            let gra = ph2d_mesh_colors::Tinta::graduada(
+                m.vert_count(),
+                faces(),
+                &ks,
+                ks.iter().copied().min().unwrap_or(0),
+            )
+            .expect("a lista descreve a malha");
+            let (u, g) = (uni.amostras().len(), gra.amostras().len());
+            #[allow(clippy::cast_precision_loss)]
+            let razao = g as f32 / u as f32;
+            eprintln!("k={k} {nome}: hist {h:?}  amostras {u} -> {g} ({razao:.2}x)");
+        }
+    }
+}
+
+#[test]
+fn diag_o_histograma_da_igualacao_na_peca_da_cena() {
+    use std::collections::BTreeMap;
+    let m = crate::scenes::tinta_fina::peca();
+    let faces = || m.faces().iter().map(ph2d_mesh::Face::verts);
+    let areas = m.face_areas();
+    let topo = ph2d_mesh_colors::Topologia::nova(m.vert_count(), faces(), 0);
+    let mut lo = f32::MAX;
+    let mut hi = 0.0f32;
+    for a in &areas {
+        if *a > 0.0 {
+            lo = lo.min(*a);
+            hi = hi.max(*a);
+        }
+    }
+    eprintln!(
+        "peca: {} faces, area {lo:.3e}..{hi:.3e} (razao {:.1}x)",
+        areas.len(),
+        hi / lo
+    );
+    for k in 1..=4u8 {
+        let ks = ph2d_mesh_colors::niveis_igualados(&topo, &areas, k, 1);
+        let mut h: BTreeMap<u8, usize> = BTreeMap::new();
+        for x in &ks {
+            *h.entry(*x).or_default() += 1;
+        }
+        let uni = ph2d_mesh_colors::Tinta::nova(m.vert_count(), faces(), k);
+        let gra = ph2d_mesh_colors::Tinta::graduada(
+            m.vert_count(),
+            faces(),
+            &ks,
+            ks.iter().copied().min().unwrap_or(0),
+        )
+        .unwrap();
+        eprintln!(
+            "k={k}: hist {h:?}  max={}  amostras {} -> {}",
+            ks.iter().copied().max().unwrap_or(0),
+            uni.amostras().len(),
+            gra.amostras().len()
+        );
+    }
 }

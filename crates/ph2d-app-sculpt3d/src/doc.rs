@@ -309,10 +309,12 @@ fn tinta_de(stack: &Multires, doc: &TintaDoc, peca: usize) -> Result<Tinta, Scul
     let mut t = if doc.niveis.is_empty() {
         Tinta::nova(mesh.vert_count(), faces(), doc.nivel)
     } else {
-        Tinta::graduada(mesh.vert_count(), faces(), &doc.niveis).ok_or(SculptDocError::Tinta {
-            peca,
-            esperadas: doc.niveis.len(),
-        })?
+        Tinta::graduada(mesh.vert_count(), faces(), &doc.niveis, doc.nivel).ok_or(
+            SculptDocError::Tinta {
+                peca,
+                esperadas: doc.niveis.len(),
+            },
+        )?
     };
     let esperadas = t.amostras().len();
     let amostras = doc

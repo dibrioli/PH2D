@@ -2949,3 +2949,151 @@ mecanismo que refutou a leitura do TECTO, visto do outro lado da escada.
 * ⚠️ **E o pré-voo dos ONZE arneses apanhou mais TRÊS âncoras mortas por esta wave** (`M1` e `M2` na
   assinatura do `garante`, `P22` no ficheiro que o corte moveu no MESMO dia). `146 → 150` âncoras,
   todas a casar uma vez.
+
+---
+
+## §25 — ⛔⛔⛔⛔ O SMOKE REPROVOU O `Even Detail`, e a ÂNCORA que eu shipei estava errada
+
+> **Report do dono (2026-09-23), com duas fotos:** *«com even detail o resultado é pior em todas as
+> áreas e em todas as resoluções inclusive a 16x. A resolução fica bem baixa. Veja imagens sem e com
+> even detail.»* — a foto sem a caixa mostra uma marca vermelha de borda macia; a com ela mostra a
+> mesma marca **facetada**, a seguir as cunhas da malha, pintada perto do PÓLO.
+
+### §25.1 — Ele tem razão, e a lei fazia **exactamente** o que ele descreve
+
+A âncora da §29 punha a face **TÍPICA** ao degrau pedido e igualava as outras a ela — *nos dois
+sentidos*. Medido pela porta do produto na peça da cena (`uv_sphere(24, 32)`, `768` faces):
+
+| `k` pedido | nível MÁXIMO da saída | faces em `k−1`/`k−2` | amostras contra o uniforme |
+|---:|---:|---:|---:|
+| `1` | `1` | `192` de `768` | `0,83×` |
+| `2` | `2` | `192` | `0,84×` |
+| `3` | `3` | `192` | `0,85×` |
+| `4` | `4` | `192` | `0,85×` |
+
+⛔⛔ **Em todo degrau o máximo é EXACTAMENTE `k` e um quarto da peça sai mais grosso.** A lei **só
+sabia descer** ali, e `Even Detail` era, naquela peça, **uma poupança de `0,83×` de memória paga em
+resolução**. O dono pintou perto do pólo, que é onde o nível cai **dois** degraus — a `16x` aquelas
+faces recebiam `4x`. *A foto é o único resultado possível.*
+
+⚠️⚠️ **E o corpus da §28 não continha o fenómeno:** eram três peças ESCULPIDAS, onde a mesma lei
+**SOBE** (`+4 %` a `+33 %` de amostras) — e a peça que o dono smoka é uma PRIMITIVA. *Uma lei medida
+só numa família de peças afirma sobre essa família.*
+
+### §25.2 — ⭐⭐⭐ A causa é uma propriedade da FORMA, e ela explica os dois lados
+
+Numa esfera UV a área de uma face é `∝ sin θ`: a maioria das faces vive perto do **equador**, que é
+onde elas são **maiores** ⇒ **a mediana senta-se no TOPO da distribuição**, e igualar por ela é
+igualar **para baixo**. Numa peça esculpida a mediana está no meio de uma cauda longa e a mesma lei
+sobe. *A dispersão de área não é a pergunta — a pergunta é de que LADO da mediana ela está.*
+
+Medido em `k = 3`, com a coluna que decide (`acima` = faces que sobem):
+
+| peça | faces | área `p1/p99` | degraus | **acima** | níveis |
+|---|---:|---:|---:|---:|---|
+| `uv_sphere(24,32)` (a da cena) | `768` | `15,33×` | `1,97` | **`0`** | `[3]` |
+| `sculpt_sphere` | `98 304` | `2,98×` | `0,79` | `0` | `[3]` |
+| `torus(24,12)` | `288` | `1,97×` | `0,49` | `0` | `[3]` |
+| `cube` · `octahedron` | `6` · `8` | `1,00×` | `0,00` | `0` | `[3]` |
+| **`cylinder(24)`** | `72` | `4,03×` | `1,01` | **`24`** | `[3, 4]` |
+| `uv_sphere_noisy(24,32,.3)` | `768` | `25,43×` | `2,33` | **`23`** | `[3, 4]` |
+
+⭐ **O cilindro é a peça canónica desta lei:** as tampas são leques de triângulos gordos e os lados
+são quadriláteros finos. A `uv_sphere(24,32)` tem `15,3×` de dispersão e **nada** para uma lei de um
+sentido só fazer — *é isso que torna a tabela necessária, e não a dispersão sozinha*.
+
+### §25.3 — A cura: o `k` é um **PISO**
+
+`niveis_igualados` mantém a mediana como alvo e acrescenta `.map(|x| x.max(k))`.
+
+⭐ **Ele vem DEPOIS da cerca do salto de propósito:** levantar um valor só pode encolher a diferença
+para um vizinho mais alto e o máximo não se mexe ⇒ a cerca que a `niveis_por_area` acabou de impor
+continua de pé, sem a correr outra vez.
+
+⛔ **A âncora no MAIS PEQUENO (o piso puro) foi medida e RECUSADA:** `14×`–`48×` as amostras nas
+peças esculpidas, e **satura na escada** (`nivel 2..5` de um `k = 2`) ⇒ nem chega a entregar o que
+promete. ⛔ **E a do MAIOR continua refutada** (§28.3).
+
+**O que a lei com o piso entrega:**
+
+| peça | `k` | dispersão uniforme | com o piso | amostras |
+|---|---:|---:|---:|---:|
+| `_base_sculpt` | `2` | `6,74×` | **`3,49×`** | `+9 %` |
+| `sculpt_antes` | `2` | `18,26×` | **`9,26×`** | `+36 %` |
+| a esfera da `=52` | qualquer | — | **no-op** | `1,00×` |
+
+⚠️ **Ela nunca pode piorar, e é isso que a torna shipável:** o pior caso dela é não fazer nada.
+
+### §25.4 — ⛔⛔⛔ E o piso EXPÔS um segundo defeito, que a esfera escondia
+
+O CONTROLO do no-op (*«um plano graduado tem de ser um no-op à segunda»*) **passava** na esfera e
+**reprovou** no cilindro. A causa estava escrita, por extenso, no doc do campo:
+
+> *«O `nivel` que ela guarda é o MAIS FINO do plano, e isso é uma definição e não um acidente: o
+> campo é o degrau que o artista pediu, e num plano graduado o pedido é o TECTO.»*
+
+Isso era verdade da âncora na MEDIANA, onde ninguém passava de `k`. Com o piso há faces **acima**,
+logo `nivel_mais_fino()` deixou de ser o pedido — e o `garante`, que compara `t.nivel() == k`,
+passava a responder **NÃO em todo quadro**, reconstruindo o plano e **re-semeando-o da cor por
+vértice**: ⛔⛔ *a tinta fina do artista desaparecia a `60 Hz`.*
+
+⚠️⚠️ **E isto não é novo: com a âncora da mediana ele já mordia em toda peça ESCULPIDA** (onde a lei
+sobe, logo `max > k`), que são as do dono. *A esfera passava por acidente, e foi esse acidente que
+me deixou escrever o controlo e lê-lo como verde.*
+
+⇒ o `pedido` passa a ser **argumento obrigatório** de `Tinta::graduada`/`semeada_graduada`. *Derivá-lo
+outra vez, por qualquer regra, seria a segunda resposta a «o que é que o artista pediu?» — e a
+primeira é a fileira do painel.* Quem construir um plano graduado sem o dizer **não compila**.
+
+### §25.5 — ⛔⛔ O passo do roteiro SAI, e o gate da cena INVERTE-SE
+
+O passo `(4-ter)` mandava o dono carregar na caixa e prometia que *«o grão fica o MESMO em toda a
+peça»*. Com o piso ela é **inerte** ali ⇒ ele ensinaria a cura a não fazer nada, que é a espécie que
+o §5.0 chama de **pior que uma cena ausente**. Retirado.
+
+O gate `a_peca_da_cena_tem_de_que_igualar` **exigia o contrário** e está em `MEMORIAS` com o motivo
+— *ele é a única coisa no repo que prova que a inversão foi MEDIDA e não uma barra afrouxada*. O que
+o substitui afirma as duas metades:
+
+* a peça da `=52` **não tem de que igualar** (`[k]` exacto — e no dia em que passar a ter, ele
+  reprova e o passo pode VOLTAR);
+* ⭐ e o **CONTROLO é um CILINDRO**, sem o qual a primeira metade passaria com a lei APAGADA.
+
+Mais o irmão `o_roteiro_da_cena_nao_nomeia_a_caixa_da_tinta_igualada`, e o antigo gate de fiação
+reduzido ao que continua verdade (`a_caixa_da_tinta_igualada_e_um_interruptor_vivo`): **a caixa fica
+no painel**, porque com o piso ela nunca pode tirar resolução.
+
+### §25.6 — Três gates com a premissa MORTA, escrita no diff
+
+| gate | premissa que morreu | porquê |
+|---|---|---|
+| `a_porta_do_produto_poe_a_face_mediana_no_k_pedido` | *«os níveis são DISTINTOS, `≥ 3`»* | com um sentido só, uma peça cuja dispersão cabe num degrau dá `{k, k+1}`. ⇒ **«há faces ACIMA de `k`»**, que é o que ela queria dizer |
+| a mesma | *«a dispersão cai para menos de METADE»* | ela caía por descer **e** subir; exigir metade era exigir de volta o que o dono reprovou. ⇒ **descer estritamente** |
+| `a_igualacao_chega_ao_plano_e_desliga_se` | a fixtura era uma ESFERA, *«densidade load-bearing»* | verdade sobre a dispersão e insuficiente desde o piso ⇒ **cilindro** |
+| `um_plano_graduado_atravessa_o_ficheiro_com_os_niveis_dele` | idem | idem |
+
+### §25.7 — Portão
+
+* mutação **`24` de `25`** (o `P12` é o CONTROLO), com **duas** âncoras novas: o piso (`P25`) e o
+  pedido guardado (`P26`, que é o defeito da §25.4 à letra);
+* pré-voo dos **onze** arneses **`150/150`** antes e **`152/152`** depois (e outra vez depois do
+  `cargo fmt`);
+* `nextest-impacted` **`18 625/18 625`** · censos da árvore COMBINADA **`127/127`** (controlo do
+  filtro `12 de 12`) · clippy `-D warnings` zero · maior ficheiro tocado `663` de `700`;
+* as **dez** vassouras: `6` limpas e `4` acusam **`0` linhas desta wave** (medido por
+  `git diff --stat` sobre os ficheiros acusados — o dump de RNA do oráculo, que é API pública, e um
+  `smask_px` que contém `mask_px`).
+* ⚠️⚠️ **E o censo dos gates NOMEADOS apanhou-me**: o meu próprio doc-comment citava o gate que eu
+  acabara de matar. A cura é a **terceira** que ele oferece (`MEMORIAS`), nunca apagar a frase.
+* ⛔ **E a 1.ª leitura das vassouras mediu NADA:** passei os cinco caminhos numa variável **sem
+  aspas**, o fish entregou-os como UM argumento, e as dez saíram `exit 2` (*«path não existe»*) — que
+  eu li como limpo. *Foi o controlo positivo do próprio instrumento que o disse* (ele discrimina o
+  uso errado do achado, e o `exit` é o veredito, nunca a contagem de linhas).
+
+### §25.8 — ⏳ ABERTO, e é **decisão do dono**
+
+Com a cura, na peça que ele smoka o `Even Detail` **não faz nada** — e isso é honesto, não um
+defeito. O que ele compra vive em peças de faces mistas (`2×` de dispersão por `+9 %`–`+36 %` de
+memória). ⇒ **manter a caixa ou retirá-la é decisão de produto**, com os números acima. ⛔ Enquanto
+ela ficar, nenhuma cena a nomeia, e o gate de cima reprova no dia em que alguém a puser num roteiro
+onde ela seja inerte.

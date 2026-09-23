@@ -407,11 +407,10 @@ pub(crate) fn garante(
         ph2d_mesh_colors::niveis_igualados(&topo, &mesh.face_areas(), k, TECTO_DE_SALTO)
     });
     *tinta = Some(match (mesh.colors(), niveis.as_deref()) {
-        (Some(c), Some(ks)) => {
-            Tinta::semeada_graduada(c, faces(), ks).unwrap_or_else(|| Tinta::semeada(c, faces(), k))
-        }
+        (Some(c), Some(ks)) => Tinta::semeada_graduada(c, faces(), ks, k)
+            .unwrap_or_else(|| Tinta::semeada(c, faces(), k)),
         (Some(c), None) => Tinta::semeada(c, faces(), k),
-        (None, Some(ks)) => Tinta::graduada(mesh.vert_count(), faces(), ks)
+        (None, Some(ks)) => Tinta::graduada(mesh.vert_count(), faces(), ks, k)
             .unwrap_or_else(|| Tinta::nova(mesh.vert_count(), faces(), k)),
         (None, None) => Tinta::nova(mesh.vert_count(), faces(), k),
     });

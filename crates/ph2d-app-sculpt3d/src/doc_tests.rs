@@ -473,9 +473,14 @@ fn um_plano_graduado_atravessa_o_ficheiro_com_os_niveis_dele() {
     // ⛔⛔ **O octaedro da `peca_com_plano` NÃO SERVE, e foi o CONTROLO que o
     //   disse** (`saiu [2]`): as oito faces dele têm a MESMA área, logo a
     //   graduação devolve um plano uniforme — *a fixtura não contém o
-    //   fenómeno*. Uma esfera UV tem as faces do pólo bem mais pequenas que as
-    //   do equador, que é exactamente a dispersão que esta lei consome.
-    let mut stack = Multires::new(shapes::uv_sphere(8, 10, 1.0));
+    //   fenómeno*.
+    // ⛔⛔⛔ **E a ESFERA que a substituiu deixou de servir em 23/09**, quando o
+    //   `k` passou a ser um PISO: numa esfera UV a mediana senta-se no TOPO da
+    //   distribuição de área (a maioria das faces vive no equador, onde elas
+    //   são maiores), logo ninguém está acima dela e a lei — que agora só SOBE
+    //   — devolve o uniforme. O cilindro tem TAMPAS bem maiores que os lados,
+    //   que é a forma exacta que esta lei consome.
+    let mut stack = Multires::new(shapes::cylinder(16, 1.0, 2.0));
     for i in 0..stack.mesh().vert_count() {
         stack.mesh_mut().colors_mut()[i] = [0.2, 0.4, 0.6];
     }
@@ -494,7 +499,7 @@ fn um_plano_graduado_atravessa_o_ficheiro_com_os_niveis_dele() {
         "o CONTROLO: a fixtura tem de ser GRADUADA, e saiu {distintos:?}"
     );
 
-    let mut t = ph2d_mesh_colors::Tinta::semeada_graduada(m.colors().unwrap(), faces(), &niveis)
+    let mut t = ph2d_mesh_colors::Tinta::semeada_graduada(m.colors().unwrap(), faces(), &niveis, 2)
         .expect("a lista descreve esta malha");
     let n = t.amostras().len();
     for i in (n / 4)..(n / 3) {

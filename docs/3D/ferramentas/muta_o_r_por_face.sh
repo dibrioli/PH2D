@@ -222,13 +222,28 @@ muta "$REN/shaders/tinta.wgsl" \
     let l = 4u;' \
   'P20 o gemeo crava a reticula de um QUAD num lado so'
 
-# ── QUEM ESCOLHE OS NIVEIS: a ancora e' a MEDIANA ───────────────────────
+# ── QUEM ESCOLHE OS NIVEIS: a ancora e' a MEDIANA e o `k` e' um PISO ────
 # ⚠️ A outra leitura (o TECTO) foi construida, medida e REFUTADA — §28.3. O que
 #    se muta aqui e' a ancora ficar na ponta em vez da mediana.
 muta "$COL/lib.rs" \
   '    let alvo = d[(d.len() - 1) / 2];' \
   '    let alvo = d[0];' \
   'P21 a ancora sai da face mais PEQUENA em vez da tipica'
+
+# ⛔⛔ E o PISO, que e' a cura do report do dono de 23/09: sem ele a lei DESCE
+#    faces abaixo do degrau pedido, que foi exactamente o que ele reprovou.
+muta "$COL/lib.rs" \
+  '        .map(|x| x.max(k))' \
+  '        .map(|x| x)' \
+  'P25 o `k` deixa de ser um PISO: faces saem mais grossas do que o pedido'
+
+# ⛔⛔ E o que o plano GUARDA como pedido: com o piso, o nivel mais fino deixou
+#    de ser o pedido, e confundi-los reconstroi o plano em TODO quadro — a
+#    tinta fina do artista some-se a 60 Hz, sem uma linha vermelha.
+muta "$COL/lib.rs" \
+  '            nivel: pedido,' \
+  '            nivel: topo.nivel_mais_fino(),' \
+  'P26 o plano guarda o nivel MAIS FINO em vez do que foi PEDIDO'
 
 # ── A AREA POR FACE e' por FACE ─────────────────────────────────────────
 # ⚠️ O ficheiro mudou de nome no MESMO dia: o tecto de LOC cortou as duas

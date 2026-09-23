@@ -236,7 +236,7 @@ fn um_plano_graduado_assa_e_cada_face_leva_o_ladrilho_dela() {
     let faces: Vec<Vec<u32>> = vec![vec![0, 1, 2], vec![1, 3, 2]];
     let it = || faces.iter().map(Vec::as_slice);
 
-    let graduado = Tinta::graduada(4, it(), &[1, 3]).expect("dois níveis");
+    let graduado = Tinta::graduada(4, it(), &[1, 3], 1).expect("dois níveis");
     let a = assar(&graduado, it(), 4096).expect("um plano graduado ASSA");
 
     // A largura do ladrilho de cada face, lida dos `uv` que saem.
@@ -282,7 +282,7 @@ fn nenhum_ladrilho_pisa_outro() {
     }
     let niveis = [0u8, 3, 1, 3, 2, 0];
     let it = || faces.iter().map(Vec::as_slice);
-    let t = Tinta::graduada(pos, it(), &niveis).expect("seis níveis");
+    let t = Tinta::graduada(pos, it(), &niveis, 1).expect("seis níveis");
     let a = assar(&t, it(), 4096).expect("assa");
 
     let folga = crate::assar::FOLGA_EM_TEXELS as f32;

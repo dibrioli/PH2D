@@ -226,8 +226,13 @@ fn a_lei_da_reticula_le_o_mesmo_na_placa_e_na_cpu() {
         let it = || faces.iter().map(|f| &f[..]);
         let mut t = match nivel {
             Niveis::Uniforme(k) => Tinta::nova(m.vert_count(), it(), k),
-            Niveis::PorFace(ks) => Tinta::graduada(m.vert_count(), it(), ks)
-                .expect("a lista de níveis descreve esta malha"),
+            Niveis::PorFace(ks) => Tinta::graduada(
+                m.vert_count(),
+                it(),
+                ks,
+                ks.iter().copied().min().unwrap_or(0),
+            )
+            .expect("a lista de níveis descreve esta malha"),
         };
         for i in 0..t.amostras().len() {
             t.amostras_mut()[i] = cor_embaralhada(i);

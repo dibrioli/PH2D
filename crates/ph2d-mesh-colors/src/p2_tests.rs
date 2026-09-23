@@ -72,7 +72,8 @@ fn amostras_da_face(
 fn as_duas_faces_concordam_na_fronteira_com_niveis_diferentes() {
     let (pos, faces) = duas_faces();
     for (ka, kb) in [(1u8, 3u8), (3, 1), (0, 2), (2, 2)] {
-        let t = Tinta::graduada(pos.len(), it(&faces), &[ka, kb]).expect("dois níveis, duas faces");
+        let t = Tinta::graduada(pos.len(), it(&faces), &[ka, kb], ka.max(kb))
+            .expect("dois níveis, duas faces");
 
         let a = amostras_da_face(&t, &pos, &faces, 0);
         let b = amostras_da_face(&t, &pos, &faces, 1);
@@ -346,18 +347,33 @@ fn a_cerca_do_salto_sobe_a_vizinha_e_chega_ao_ponto_fixo() {
     }
 }
 
-/// ⭐⭐⭐⭐ **A PORTA DO PRODUTO ANCORA NA MEDIANA — e a `k` a face típica fica
-/// exactamente ao nível que o artista pediu.**
+/// ⭐⭐⭐⭐ **A PORTA DO PRODUTO ANCORA NA MEDIANA E O `k` É UM PISO — a face
+/// típica fica ao nível que o artista pediu, e NINGUÉM desce abaixo dele.**
 ///
-/// ⛔⛔ **A segunda metade é a que separa esta lei de um plano uniforme:** sem
-/// ela, uma implementação que devolvesse `vec![k; n]` satisfaz *«a mediana é
-/// `k`»* trivialmente, e a P2 inteira evapora-se em silêncio. ⇒ o gate exige
-/// **três** coisas: a mediana ser `k`, os níveis serem DISTINTOS, e a dispersão
-/// cair.
+/// ⛔⛔⛔ **A metade do PISO nasceu de um REPORT do dono (23/09) e ela MATOU
+/// duas premissas deste gate, que ficam aqui escritas porque a morte delas é a
+/// wave:**
 ///
-/// ⚠️ E a `k = 0` ela é obrigada a devolver zeros: o `0` é o CHÃO da escada
-/// (cor por vértice), logo não há como igualar por baixo — é a mesma saturação
-/// que refutou a leitura do TECTO (handoff §28.3).
+/// 1. ***«os níveis são DISTINTOS, `≥ 3` deles»*** — com o piso, tudo o que
+///    ficava abaixo de `k` sobe para `k`, logo numa peça cuja dispersão cabe
+///    num degrau da escada saem **dois** níveis e não três. Medido nesta
+///    fixtura: `[k, k+1]` em todo `k` de `0` a `4`, com `7` das `32` faces
+///    acima. ⇒ a metade honesta é **«há faces ACIMA de `k`»**, que é o que
+///    aquela queria dizer (*isto não é um plano uniforme*) sem exigir a metade
+///    de baixo que a ordem do dono proíbe.
+/// 2. ***«a dispersão cai para menos de METADE»*** — ela caía porque a lei
+///    descia as faces pequenas **e** subia as grandes. Com só uma direcção ela
+///    cai de `8,75×` para `7,00×` aqui, e exigir metade seria exigir de volta
+///    exactamente o que o dono reprovou. ⇒ a barra é **descer estritamente**, e
+///    a lei que a torna forte é a monotonia: subir uma face nunca sobe o
+///    MÁXIMO (ele pertence à face mais pequena, que já está em `k`).
+///
+/// ⚠️ **A `k = NIVEL_MAX` a metade `2` é inexprimível** — no topo da escada não
+/// há para onde subir —, e a população do gate di-lo em vez de a contornar.
+///
+/// ⚠️ E a `k = 0` ela **não** é obrigada a devolver zeros: a densidade é
+/// `lado/√área`, logo quem satura contra o chão são as faces PEQUENAS, e as
+/// grandes sobem na mesma (medido: `7` acima em `k = 0`).
 #[test]
 fn a_porta_do_produto_poe_a_face_mediana_no_k_pedido() {
     // A mesma tira do gate da dispersão: áreas que crescem de ponta a ponta.
@@ -400,15 +416,25 @@ fn a_porta_do_produto_poe_a_face_mediana_no_k_pedido() {
             "k={k}: a face típica saiu em {mediana} e o artista pediu {k} ({ord:?})"
         );
 
-        // (2) ⭐ CONTROLO: eles são DISTINTOS — senão isto é um plano uniforme.
-        let mut d = ord.clone();
-        d.dedup();
+        // (2) ⭐⭐⭐ **O PISO: ninguém abaixo do que o artista pediu.** Esta é a
+        //     metade que o report de 23/09 comprou, e a única cuja violação o
+        //     dono VÊ (*«a resolução fica bem baixa, inclusive a 16x»*).
         assert!(
-            d.len() >= 3,
-            "k={k}: níveis {d:?} — a porta devolveu (quase) um plano uniforme"
+            niveis.iter().all(|n| *n >= k),
+            "k={k}: {niveis:?} — alguma face saiu MAIS GROSSA do que o degrau pedido"
         );
 
-        // (3) E a dispersão cai contra o uniforme do MESMO `k`.
+        // (3) ⭐ CONTROLO: há faces ACIMA — senão isto é um plano uniforme.
+        //     ⚠️ Inexprimível no topo da escada, e a população di-lo.
+        if k < NIVEL_MAX {
+            assert!(
+                niveis.iter().any(|n| *n > k),
+                "k={k}: {niveis:?} — a porta devolveu um plano uniforme"
+            );
+        }
+
+        // (4) E a dispersão cai contra o uniforme do MESMO `k` — ESTRITAMENTE,
+        //     que é tudo o que uma lei de um sentido só pode prometer.
         let disp = |ks: &[u8]| -> f32 {
             let mut v: Vec<f32> = ks
                 .iter()
@@ -419,10 +445,12 @@ fn a_porta_do_produto_poe_a_face_mediana_no_k_pedido() {
             v[v.len() - 1] / v[0]
         };
         let (uni, por_face) = (disp(&vec![k; faces.len()]), disp(&niveis));
-        assert!(
-            por_face < uni / 2.0,
-            "k={k}: a porta tem de COMPRAR alguma coisa — {uni:.2}× → {por_face:.2}×"
-        );
+        if k < NIVEL_MAX {
+            assert!(
+                por_face < uni,
+                "k={k}: a porta tem de COMPRAR alguma coisa — {uni:.2}× → {por_face:.2}×"
+            );
+        }
     }
 
     // ⭐⭐⭐ **O CHÃO, e a PREMISSA QUE ESTE GATE DERRUBOU.** Eu escrevi aqui

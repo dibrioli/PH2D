@@ -452,7 +452,8 @@ fn o_payload_resolve_o_mesmo_endereco_que_a_lei() {
         for (n, ks) in graduados.iter().enumerate() {
             planos.push((
                 format!("graduado {n} {ks:?}"),
-                Tinta::graduada(verts_n, it(), ks).expect("a lista descreve a malha"),
+                Tinta::graduada(verts_n, it(), ks, ks.iter().copied().min().unwrap_or(0))
+                    .expect("a lista descreve a malha"),
             ));
         }
         for (nivel, t) in planos {

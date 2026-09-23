@@ -213,8 +213,155 @@ fn caixa_h3(
     (out, ow)
 }
 
+/// **As TRÊS passagens verticais, uma BANDA de colunas de cada vez** (2026-09-22).
+///
+/// ⭐⭐ **A fusão da vertical NÃO é «uma coluna de cada vez»** — isso leria a memória com passo `w`
+/// e pagaria a cache, que é precisamente a razão por que a [`caixa_v`] usa um acumulador de LINHA.
+/// O que ela faz é correr as três passagens **dentro da banda**, com os dois intermédios do tamanho
+/// da banda em vez do tamanho da imagem: o acesso continua contíguo e o buffer que é atravessado
+/// três vezes passa a caber na cache.
+///
+/// ⭐⭐⭐ **E é BYTE-IDÊNTICA para QUALQUER partição, pelo argumento que a [`caixa_v`] já escreve:**
+/// o acumulador `acc[i]` só toca a coluna `c0 + i`, logo a largura da banda é ordem de laço e nunca
+/// aritmética. Cada coluna recebe exactamente a mesma sequência de adições, na mesma ordem, com os
+/// mesmos `inv`. O gate `as_tres_verticais_fundidas_dao_o_mesmo_f32` prova-o contra as três
+/// chamadas separadas sobre um corpus de tamanhos e raios.
+///
+/// ⚠️ **A largura da banda é MEDIDA e é de CACHE, não de threads** (ver [`LARGURA_DA_BANDA_FUNDIDA`]):
+/// com a banda larga os intermédios voltam a ser lidos da DRAM e a fusão não compra nada; com ela
+/// estreita de mais o laço interno fica curto de mais para amortizar o percurso por linha.
+fn caixa_v3(
+    src: &[[f32; 4]],
+    w: usize,
+    h: usize,
+    raios: [usize; 3],
+    largura_da_banda: usize,
+    paralelo: bool,
+) -> (Vec<[f32; 4]>, usize) {
+    let r_total: usize = raios.iter().sum();
+    if r_total == 0 {
+        return (src.to_vec(), h);
+    }
+    let oh = h - 2 * r_total;
+    let mut out = vec![[0f32; 4]; w * oh];
+
+    // UMA passagem vertical sobre uma banda: lê `largura` colunas a partir de `c0` numa grelha de
+    // passo `stride`, e escreve COMPACTO com largura `largura`. É o laço da `caixa_v` com a origem
+    // parametrizada — o que permite encadeá-la sobre os próprios intermédios, que são compactos.
+    let passo = |ent: &[[f32; 4]],
+                 stride: usize,
+                 c0: usize,
+                 largura: usize,
+                 hh: usize,
+                 r: usize,
+                 acc: &mut Vec<[f32; 4]>,
+                 dest: &mut [[f32; 4]]| {
+        if r == 0 {
+            for j in 0..hh {
+                dest[j * largura..][..largura].copy_from_slice(&ent[j * stride + c0..][..largura]);
+            }
+            return;
+        }
+        let lado = 2 * r + 1;
+        #[allow(clippy::cast_precision_loss)]
+        let inv = 1.0 / lado as f32;
+        acc.clear();
+        acc.resize(largura, [0f32; 4]);
+        for j in 0..lado {
+            for i in 0..largura {
+                let sv = ent[j * stride + c0 + i];
+                for c in 0..4 {
+                    acc[i][c] += sv[c];
+                }
+            }
+        }
+        let oh_l = hh - 2 * r;
+        for j in 0..oh_l {
+            for i in 0..largura {
+                for c in 0..4 {
+                    dest[j * largura + i][c] = acc[i][c] * inv;
+                }
+            }
+            if j + 1 < oh_l {
+                for i in 0..largura {
+                    let sai = ent[j * stride + c0 + i];
+                    let entra = ent[(j + lado) * stride + c0 + i];
+                    for c in 0..4 {
+                        acc[i][c] += entra[c] - sai[c];
+                    }
+                }
+            }
+        }
+    };
+
+    let h1 = h - 2 * raios[0];
+    let h2 = h1 - 2 * raios[1];
+    // ⚠️ Os rascunhos são por TRABALHADOR e nunca por banda — a mesma lei que a `caixa_h3` pagou.
+    type Rascunho = (Vec<[f32; 4]>, Vec<[f32; 4]>, Vec<[f32; 4]>, Vec<[f32; 4]>);
+    let banda = |r: &mut Rascunho, c0: usize, largura: usize, dest: &mut [&mut [[f32; 4]]]| {
+        let (t1, t2, t3, acc) = r;
+        t1.clear();
+        t1.resize(largura * h1, [0f32; 4]);
+        t2.clear();
+        t2.resize(largura * h2, [0f32; 4]);
+        t3.clear();
+        t3.resize(largura * oh, [0f32; 4]);
+        passo(src, w, c0, largura, h, raios[0], acc, t1);
+        passo(t1, largura, 0, largura, h1, raios[1], acc, t2);
+        passo(t2, largura, 0, largura, h2, raios[2], acc, t3);
+        for (j, linha) in dest.iter_mut().enumerate() {
+            linha.copy_from_slice(&t3[j * largura..][..largura]);
+        }
+    };
+
+    // As bandas são de CACHE: `w / largura_da_banda`, arredondado para cima, e nunca zero.
+    let nb = w.div_ceil(largura_da_banda.max(1)).max(1).min(w.max(1));
+    let base = w / nb;
+    let resto_col = w % nb;
+    let larguras: Vec<usize> = (0..nb).map(|b| base + usize::from(b < resto_col)).collect();
+    let mut bandas: Vec<Vec<&mut [[f32; 4]]>> =
+        larguras.iter().map(|_| Vec::with_capacity(oh)).collect();
+    for linha in out.chunks_mut(w) {
+        let mut resto = linha;
+        for (b, &lw) in larguras.iter().enumerate() {
+            let (esq, dir) = resto.split_at_mut(lw);
+            bandas[b].push(esq);
+            resto = dir;
+        }
+    }
+    let mut c = 0usize;
+    let inicios: Vec<usize> = larguras
+        .iter()
+        .map(|lw| {
+            let v = c;
+            c += lw;
+            v
+        })
+        .collect();
+    let vazio = || -> Rascunho { (Vec::new(), Vec::new(), Vec::new(), Vec::new()) };
+    if paralelo {
+        use rayon::prelude::*;
+        bandas
+            .par_iter_mut()
+            .zip(inicios)
+            .zip(larguras)
+            .for_each_init(vazio, |r, ((dest, c0), lw)| banda(r, c0, lw, dest));
+    } else {
+        let mut r = vazio();
+        for ((dest, c0), lw) in bandas.iter_mut().zip(inicios).zip(larguras) {
+            banda(&mut r, c0, lw, dest);
+        }
+    }
+    (out, oh)
+}
+
 /// Uma passagem de caixa VERTICAL por soma corrente. ⚠️ O acumulador é uma LINHA inteira e desliza
 /// para baixo — uma coluna de cada vez leria a memória com passo `w` e pagaria a cache.
+///
+/// ⚠️ **`#[cfg(test)]` desde a fusão da vertical:** quem o produto corre é a [`caixa_v3`], e esta
+/// fica como ORÁCULO do gate dela — a mesma razão, e a mesma armadilha de código morto numa crate
+/// de biblioteca, que a [`caixa_h`] já traz escrita.
+#[cfg(test)]
 fn caixa_v(
     src: &[[f32; 4]],
     w: usize,
@@ -345,6 +492,35 @@ fn fatias_do_soquete() -> usize {
 /// ⚠️ A passagem HORIZONTAL não tem este piso — ali uma linha de saída já é contígua, e ela escala
 /// `3,6×` com uma fatia por thread (contra o tecto do soquete, que é `4,05×`).
 pub(crate) const LARGURA_MINIMA_DA_BANDA: usize = 384;
+
+/// A largura da banda da [`caixa_v3`], e ela é de **CACHE** e não de threads.
+///
+/// ⚠️ **O recurso é a cache e não o escalonador:** a banda carrega DOIS intermédios de
+/// `largura × altura × 16 B` que são atravessados três vezes; com a banda larga eles voltam à DRAM
+/// e a fusão não compra nada, com ela estreita de mais o laço interno fica curto para amortizar o
+/// percurso por linha. O número sai da varredura `diag_a_largura_da_banda_fundida`.
+///
+/// **Medido** (série, `--release`, entrada `1024×1312` depois das horizontais):
+///
+/// | largura | fundida | ganho | KiB por intermédio |
+/// |---|---|---|---|
+/// | `16` | `9,72 ms` | `1,23×` | `262` |
+/// | `32` | `9,02` | `1,33×` | `524` |
+/// | `64` | `9,32` | `1,29×` | `1 048` |
+/// | **`128`** | **`7,52`** | **`1,59×`** | `2 096` |
+/// | `256` | `7,84` | `1,53×` | `4 192` |
+/// | `512` | `11,21` | `1,07×` | `8 384` |
+/// | `1024` (cheia) | `14,86` | **`0,81×`** | `16 768` |
+///
+/// ⛔⛔ **À largura CHEIA a fusão é PIOR que as três passagens separadas** (`0,81×` aqui, `0,49×`
+/// na região mais pequena): ali os intermédios voltam a ter o tamanho da imagem, o tráfego é o
+/// mesmo de antes e ainda se paga a cópia final para a banda. *O ganho desta wave não é a fusão em
+/// si — é a fusão NUMA BANDA QUE CABE NA CACHE.*
+///
+/// ⚠️ **E ele depende da FORMA:** numa região de `912×688` o ganho é `~1,05×` em toda a coluna,
+/// porque aqueles `10 MB` já cabiam na cache e as três passagens já não iam à DRAM. Quem paga o
+/// borrão caro é a região grande, que é onde ele compra.
+pub(crate) const LARGURA_DA_BANDA_FUNDIDA: usize = 128;
 
 /// Quantas bandas de colunas a passagem vertical usa numa região de largura `w`.
 fn bandas_da_vertical(w: usize) -> usize {
@@ -494,18 +670,8 @@ pub(crate) fn blur_region_caixa_com(
     // três na vertical. ⚠️ O `caixa_h` fica: ele é o oráculo do gate da fusão.
     // ⚠️ A largura NÃO muda nas verticais (só a altura), logo `w` não é `mut`.
     let (mut cur, w) = caixa_h3(&apron, ap_w, ap_h, raios, paralelo);
-    let mut h = ap_h;
-    for r in raios {
-        let (n, nh) = caixa_v(
-            &cur,
-            w,
-            h,
-            r,
-            if paralelo { bandas_da_vertical(w) } else { 1 },
-        );
-        cur = n;
-        h = nh;
-    }
+    let (n, h) = caixa_v3(&cur, w, ap_h, raios, LARGURA_DA_BANDA_FUNDIDA, paralelo);
+    cur = n;
     debug_assert_eq!((w, h), (bw, bh));
     let desfaz = |p: &mut [f32; 4]| {
         let a = p[3];

@@ -694,6 +694,65 @@ mod fatias_tests {
         assert!(casos >= 48, "o corpus encolheu: {casos} casos");
     }
 
+    /// **A vertical fundida numa banda dá o MESMO `f32` que as três passagens separadas** — e para
+    /// TODA largura de banda, que é a metade que a torna uma lei e não um acidente do número que se
+    /// escolheu.
+    ///
+    /// ⭐ **O argumento é o que a [`super::super::caixa_v`] já escreve para o paralelo:** o
+    /// acumulador `acc[i]` só toca a coluna `c0 + i`, logo a largura da banda é ORDEM DE LAÇO e
+    /// nunca aritmética — cada coluna recebe a mesma sequência de adições, na mesma ordem.
+    ///
+    /// ⚠️ **A largura varre `1`, `2`, `3` e a largura CHEIA de propósito:** a
+    /// [`super::super::LARGURA_DA_BANDA_FUNDIDA`] shipa `128`, e se o gate só a medisse ali a lei
+    /// ficava afirmada num ponto só — *uma propriedade que vale para toda partição prova-se em mais
+    /// do que a partição que o produto usa*.
+    ///
+    /// **Mutações que sangram:** semear o acumulador com a banda inteira em vez de por coluna ·
+    /// trocar a ordem das três passagens · devolver `h` em vez de `h − 2·Σr`.
+    #[test]
+    fn as_tres_verticais_fundidas_dao_o_mesmo_f32() {
+        let mut casos = 0usize;
+        for k in [1usize, 2, 3, 8, 24, 96] {
+            let raios = super::super::box_radii(k);
+            let r_total: usize = raios.iter().sum();
+            for (w, h_extra) in [(1usize, 3usize), (7, 0), (11, 5), (5, 32)] {
+                let h = 2 * r_total + 1 + h_extra;
+                let src: Vec<[f32; 4]> = (0..w * h)
+                    .map(|i| {
+                        #[allow(clippy::cast_precision_loss)]
+                        let f = i as f32;
+                        [f * 0.37, f * 0.11 + 1.0, (f % 13.0) * 7.5, (f % 251.0)]
+                    })
+                    .collect();
+                // O ORÁCULO: as três passagens separadas, que é o que o produto fazia até hoje.
+                let (mut c, mut hh) = (src.clone(), h);
+                for r in raios {
+                    let (n, nh) = super::super::caixa_v(&c, w, hh, r, 1);
+                    c = n;
+                    hh = nh;
+                }
+                for largura in [1usize, 2, 3, w] {
+                    for paralelo in [false, true] {
+                        let (fundido, fh) =
+                            super::super::caixa_v3(&src, w, h, raios, largura, paralelo);
+                        assert_eq!(
+                            fh, hh,
+                            "a altura de saída tem de ser a mesma (k={k}, h={h}, largura={largura})"
+                        );
+                        assert_eq!(
+                            fundido, c,
+                            "a fusão tem de ser BYTE-IDÊNTICA às três passagens (k={k}, w={w}, \
+                             h={h}, largura={largura}, paralelo={paralelo})"
+                        );
+                        casos += 1;
+                    }
+                }
+            }
+        }
+        // PISO DE POPULAÇÃO: sem ele, um corpus que encolhesse para zero passaria em silêncio.
+        assert!(casos >= 160, "o corpus encolheu: {casos} casos");
+    }
+
     /// **ONDE O BORRÃO GASTA** — a sonda que a ordem do dono de 2026-09-22 (*«atacar o Blur»*) pede
     /// antes da 1.ª linha de cura.
     ///
@@ -717,10 +776,10 @@ mod fatias_tests {
         let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
         println!("\n  ONDE O BORRÃO GASTA   (load {})", carga.trim());
         println!(
-            "\n   bw × bh |   k | avental | 3×H sep | 1×H fund |  ganho |     3×V | páginas |  desfaz | BLUR sep | BLUR fund | ganho | porta1 | porta2 | erro"
+            "\n   bw × bh |   k | avental | 3×H sep | 1×H fund |  ganho | 3H serie | 1H serie | ganho |     3×V | páginas |  desfaz | BLUR sep | BLUR fund | ganho | porta1 | porta2 | erro"
         );
         println!(
-            "  ---------+-----+---------+---------+----------+--------+---------+---------+---------+----------+-----------+-------+--------+--------+------"
+            "  ---------+-----+---------+---------+----------+--------+---------+---------+--------+---------+---------+---------+----------+-----------+-------+--------+--------+------"
         );
 
         for &(bw, bh, k) in &[
@@ -800,6 +859,27 @@ mod fatias_tests {
                 let _ = super::super::caixa_h3(&apron, ap_w, ap_h, raios, paralelo);
             });
 
+            // (2-ter) **O MESMO PAR, EM SÉRIE** — e é este que decide. O par paralelo mede o
+            //     ESCALONADOR tanto como o código: com outra linha a martelar a máquina, a mesma
+            //     porta lida duas vezes na mesma corrida deu `10,2` e `14,2 ms`. Em série o que
+            //     sobra é o TRÁFEGO DE MEMÓRIA, que é exactamente o que a fusão corta, e a razão
+            //     sobrevive à contenção porque as duas leituras a sofrem por igual.
+            let t_h_serie = ms(&mut || {
+                let (mut c, mut ww) = (Vec::new(), ap_w);
+                let mut ent: &[[f32; 4]] = &apron;
+                for r in raios {
+                    let (n, nw) = super::super::caixa_h(ent, ww, ap_h, r, false);
+                    c = n;
+                    ww = nw;
+                    ent = &c;
+                }
+                std::hint::black_box(c.len());
+            });
+            let t_h3_serie = ms(&mut || {
+                let v = super::super::caixa_h3(&apron, ap_w, ap_h, raios, false);
+                std::hint::black_box(v.0.len());
+            });
+
             // (3) as três VERTICAIS.
             let entrada_v = std::mem::take(&mut cur);
             let mut saida = Vec::new();
@@ -869,8 +949,9 @@ mod fatias_tests {
             let erro = (soma - t_porta2) / t_porta2 * 100.0;
             let separado = t_ap + t_h + t_v + t_d;
             println!(
-                "  {bw:4}×{bh:4} | {k:3} | {t_ap:7.2} | {t_h:7.2} | {t_h3:7.2} | {:5.2}× | {t_v:7.2} | {t_paginas:7.2} | {t_d:7.2} | {separado:5.1} | {soma:5.1} | {:5.2}× | {t_porta:5.1} | {t_porta2:5.1} | {erro:+5.1}%",
+                "  {bw:4}×{bh:4} | {k:3} | {t_ap:7.2} | {t_h:7.2} | {t_h3:7.2} | {:5.2}× | {t_h_serie:7.2} | {t_h3_serie:7.2} | {:5.2}× | {t_v:7.2} | {t_paginas:7.2} | {t_d:7.2} | {separado:5.1} | {soma:5.1} | {:5.2}× | {t_porta:5.1} | {t_porta2:5.1} | {erro:+5.1}%",
                 t_h / t_h3.max(f64::MIN_POSITIVE),
+                t_h_serie / t_h3_serie.max(f64::MIN_POSITIVE),
                 separado / soma.max(f64::MIN_POSITIVE)
             );
         }
@@ -878,5 +959,90 @@ mod fatias_tests {
             "\n  (o ERRO é o controlo: se a soma das partes não bater a porta do produto,\n   \
              a decomposição está a medir outro programa)\n"
         );
+    }
+
+    /// **A LARGURA DA BANDA DA VERTICAL FUNDIDA, varrida** — o número da
+    /// [`super::super::LARGURA_DA_BANDA_FUNDIDA`] sai daqui e de mais lado nenhum.
+    ///
+    /// ⚠️ **A coluna que decide é a de SÉRIE.** Em paralelo o relógio mede o escalonador tanto como
+    /// o código — medido nesta máquina, a MESMA porta lida duas vezes na mesma corrida deu `10,2` e
+    /// `14,2 ms` a `load 14`. Em série o que sobra é o TRÁFEGO DE MEMÓRIA, que é exactamente o que a
+    /// fusão corta, e a razão contra a linha de base sofre a contenção por igual dos dois lados.
+    ///
+    /// `cargo test -p ph2d-painter-brush --release --lib diag_a_largura_da_banda -- --ignored --nocapture`
+    #[test]
+    #[ignore = "sonda de relógio: corre à mão numa máquina calma"]
+    fn diag_a_largura_da_banda_fundida() {
+        let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+        println!(
+            "\n  A LARGURA DA BANDA DA VERTICAL   (load {})",
+            carga.trim()
+        );
+
+        for &(bw, bh, k) in &[(912usize, 400usize, 96usize), (1024, 1024, 96)] {
+            let raios = super::super::box_radii(k);
+            let r_total: usize = raios.iter().sum();
+            let (ap_w, ap_h) = (bw + 2 * r_total, bh + 2 * r_total);
+            let (fw, fh) = (2048i64, 2048i64);
+            let buf: Vec<u8> = (0..(fw * fh * 4) as usize)
+                .map(|i| ((i * 37) % 256) as u8)
+                .collect();
+            let apron = super::super::avental(
+                &buf,
+                fw,
+                fh,
+                0,
+                0,
+                ap_w,
+                ap_h,
+                r_total,
+                [false, false],
+                false,
+            );
+            // A entrada da vertical é a saída das horizontais.
+            let (ent, w) = super::super::caixa_h3(&apron, ap_w, ap_h, raios, false);
+
+            let ms = |f: &mut dyn FnMut()| -> f64 {
+                let mut melhor = f64::MAX;
+                for _ in 0..3 {
+                    let t0 = std::time::Instant::now();
+                    f();
+                    melhor = melhor.min(t0.elapsed().as_secs_f64() * 1e3);
+                }
+                melhor
+            };
+
+            // A linha de BASE: as três passagens separadas, como o produto corria até hoje.
+            let base_serie = ms(&mut || {
+                let (mut c, mut hh) = (Vec::new(), ap_h);
+                let mut e: &[[f32; 4]] = &ent;
+                for r in raios {
+                    let (n, nh) = super::super::caixa_v(e, w, hh, r, 1);
+                    c = n;
+                    hh = nh;
+                    e = &c;
+                }
+                std::hint::black_box(c.len());
+            });
+
+            println!("\n  {bw}×{bh}  k={k}   (3×V separadas, série: {base_serie:.2} ms)");
+            println!("   largura | fundida | ganho | KiB/intermédio");
+            println!("  ---------+---------+-------+----------------");
+            for largura in [16usize, 32, 64, 128, 256, 512, w] {
+                if largura > w {
+                    continue;
+                }
+                let t = ms(&mut || {
+                    let v = super::super::caixa_v3(&ent, w, ap_h, raios, largura, false);
+                    std::hint::black_box(v.0.len());
+                });
+                let kib = largura * (ap_h - 2 * raios[0]) * 16 / 1024;
+                println!(
+                    "  {largura:8} | {t:7.2} | {:5.2}× | {kib:14}",
+                    base_serie / t.max(f64::MIN_POSITIVE)
+                );
+            }
+        }
+        println!();
     }
 }

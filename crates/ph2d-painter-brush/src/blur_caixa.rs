@@ -213,6 +213,17 @@ fn caixa_h3(
     (out, ow)
 }
 
+#[cfg(test)]
+thread_local! {
+    /// Quantas BANDAS a última [`caixa_v3`] percorreu **nesta thread**.
+    ///
+    /// ⚠️ **Por THREAD e nunca um átomo global:** sob o fan-out da suíte um contador global conta
+    /// as bandas de outra corrida em paralelo — a flake que este repo já registou para o contador
+    /// do colisor. O gate que o lê corre em SÉRIE, onde todas as bandas passam por esta thread.
+    pub(crate) static BANDAS_PERCORRIDAS: std::cell::Cell<usize> =
+        const { std::cell::Cell::new(0) };
+}
+
 /// **As TRÊS passagens verticais, uma BANDA de colunas de cada vez** (2026-09-22).
 ///
 /// ⭐⭐ **A fusão da vertical NÃO é «uma coluna de cada vez»** — isso leria a memória com passo `w`
@@ -299,6 +310,11 @@ fn caixa_v3(
     // ⚠️ Os rascunhos são por TRABALHADOR e nunca por banda — a mesma lei que a `caixa_h3` pagou.
     type Rascunho = (Vec<[f32; 4]>, Vec<[f32; 4]>, Vec<[f32; 4]>, Vec<[f32; 4]>);
     let banda = |r: &mut Rascunho, c0: usize, largura: usize, dest: &mut [&mut [[f32; 4]]]| {
+        // ⚠️ A CONTA, e não o valor: a identidade ao bit vale para toda partição, logo nenhuma
+        //    régua de VALOR consegue ver alguém cravar uma banda só — e uma banda só mede `0,57×`,
+        //    ou seja PIOR do que as três passagens separadas.
+        #[cfg(test)]
+        BANDAS_PERCORRIDAS.with(|c| c.set(c.get() + 1));
         let (t1, t2, t3, acc) = r;
         t1.clear();
         t1.resize(largura * h1, [0f32; 4]);
@@ -460,6 +476,12 @@ fn caixa_v(
 /// ⚠️ Ele NÃO é fixado num literal: *fixar o número de pedaços não se nota com a máquina ocupada e
 /// mata-a parada* (a lei que a `line/motion-value` pagou com o app do dono a piorar `18,6 → 30,4
 /// ms`). Aqui ele é o que a pool de facto tem.
+///
+/// ⚠️ **`#[cfg(test)]` desde a fusão da VERTICAL (2026-09-22):** o único consumidor destes três era
+/// o caminho paralelo da [`caixa_v`], que passou a ser o ORÁCULO do gate da fusão. Eles ficam por
+/// isso — apagá-los levava a régua junto —, e o `cfg` é o que impede que sejam **código morto numa
+/// crate de biblioteca**, que o CI reprova (`build.warnings = "deny"`).
+#[cfg(test)]
 fn fatias_do_soquete() -> usize {
     rayon::current_num_threads().max(1)
 }
@@ -491,6 +513,12 @@ fn fatias_do_soquete() -> usize {
 ///
 /// ⚠️ A passagem HORIZONTAL não tem este piso — ali uma linha de saída já é contígua, e ela escala
 /// `3,6×` com uma fatia por thread (contra o tecto do soquete, que é `4,05×`).
+///
+/// ⚠️ **`#[cfg(test)]` desde a fusão da VERTICAL (2026-09-22):** o único consumidor destes três era
+/// o caminho paralelo da [`caixa_v`], que passou a ser o ORÁCULO do gate da fusão. Eles ficam por
+/// isso — apagá-los levava a régua junto —, e o `cfg` é o que impede que sejam **código morto numa
+/// crate de biblioteca**, que o CI reprova (`build.warnings = "deny"`).
+#[cfg(test)]
 pub(crate) const LARGURA_MINIMA_DA_BANDA: usize = 384;
 
 /// A largura da banda da [`caixa_v3`], e ela é de **CACHE** e não de threads.
@@ -523,6 +551,12 @@ pub(crate) const LARGURA_MINIMA_DA_BANDA: usize = 384;
 pub(crate) const LARGURA_DA_BANDA_FUNDIDA: usize = 128;
 
 /// Quantas bandas de colunas a passagem vertical usa numa região de largura `w`.
+///
+/// ⚠️ **`#[cfg(test)]` desde a fusão da VERTICAL (2026-09-22):** o único consumidor destes três era
+/// o caminho paralelo da [`caixa_v`], que passou a ser o ORÁCULO do gate da fusão. Eles ficam por
+/// isso — apagá-los levava a régua junto —, e o `cfg` é o que impede que sejam **código morto numa
+/// crate de biblioteca**, que o CI reprova (`build.warnings = "deny"`).
+#[cfg(test)]
 fn bandas_da_vertical(w: usize) -> usize {
     (w / LARGURA_MINIMA_DA_BANDA).clamp(1, fatias_do_soquete())
 }

@@ -445,6 +445,14 @@ mod paralelo_tests {
     /// ⭐ **UMA BANDA NUNCA É MAIS ESTREITA DO QUE O PISO MEDIDO** — a lei que a tabela de
     /// [`super::super::LARGURA_MINIMA_DA_BANDA`] comprou, afirmada sem um relógio.
     ///
+    /// ⛔⛔ **A PREMISSA DELE MORREU em 2026-09-22 e ele fica a dizer outra coisa:** quando a
+    /// vertical fundiu, o produto deixou de chamar a `bandas_da_vertical` — quem parte hoje é a
+    /// [`super::super::caixa_v3`], pela [`super::super::LARGURA_DA_BANDA_FUNDIDA`], e a lei dela é
+    /// gateada por `a_vertical_fundida_parte_em_bandas_de_cache`, que mede a CONTA. ⇒ **o sujeito
+    /// deste gate passou a ser o ORÁCULO** (a `caixa_v` paralela, contra a qual a fusão se prova),
+    /// e ele fica por isso: *apagá-lo deixaria o oráculo sem régua nenhuma, e o oráculo é o que dá
+    /// direito a acreditar na fusão*.
+    ///
     /// ⚠️ **Ela não pode ser «`bandas_da_vertical(1484) == 4`»:** a contagem é limitada pela pool,
     /// logo esse número é da MÁQUINA e o gate mediria o escalonador. O que é da LEI é a relação —
     /// *a banda que sai tem pelo menos a largura do piso* —, e ela vale em qualquer máquina.
@@ -753,6 +761,63 @@ mod fatias_tests {
         assert!(casos >= 160, "o corpus encolheu: {casos} casos");
     }
 
+    /// **A vertical fundida PARTE em bandas de cache — e isto mede a CONTA, não o valor.**
+    ///
+    /// ⭐⭐ **Ele existe porque uma MUTAÇÃO SOBREVIVEU:** cravar `nb = 1` na
+    /// [`super::super::caixa_v3`] deixa o gate da identidade ao bit **VERDE**, porque a igualdade
+    /// vale para toda partição — e o borrão passa a medir `0,57×`, ou seja **pior do que as três
+    /// passagens separadas que a fusão veio substituir**. *A lei da identidade não pode gatear a
+    /// lei do custo; quem a gateia é a contagem.*
+    ///
+    /// ⚠️ **Corre em SÉRIE de propósito:** o contador é por THREAD (senão o fan-out da suíte conta
+    /// as bandas de outra corrida), e em série todas as bandas passam por esta.
+    ///
+    /// **Mutações que sangram:** `nb = 1` · ignorar o `largura_da_banda` · arredondar para baixo
+    /// em vez de `div_ceil` (a última coluna ficaria fora de toda banda).
+    #[test]
+    fn a_vertical_fundida_parte_em_bandas_de_cache() {
+        use super::super::{BANDAS_PERCORRIDAS, LARGURA_DA_BANDA_FUNDIDA, caixa_v3};
+        let raios = super::super::box_radii(8);
+        let r_total: usize = raios.iter().sum();
+        let h = 2 * r_total + 9;
+        let mut casos = 0usize;
+        for (w, largura) in [
+            (1024usize, 128usize),
+            (912, 128),
+            (300, 64),
+            (100, 128),
+            (7, 2),
+        ] {
+            let src: Vec<[f32; 4]> = (0..w * h)
+                .map(|i| {
+                    #[allow(clippy::cast_precision_loss)]
+                    let f = i as f32;
+                    [f * 0.37, f * 0.11, f % 13.0, f % 251.0]
+                })
+                .collect();
+            BANDAS_PERCORRIDAS.with(|c| c.set(0));
+            let _ = caixa_v3(&src, w, h, raios, largura, false);
+            let n = BANDAS_PERCORRIDAS.with(std::cell::Cell::get);
+            assert_eq!(
+                n,
+                w.div_ceil(largura).max(1).min(w),
+                "a partição tem de seguir a largura pedida (w={w}, largura={largura})"
+            );
+            casos += 1;
+        }
+        // A metade que nomeia o PRODUTO: na região grande, a constante que ship de facto PARTE.
+        BANDAS_PERCORRIDAS.with(|c| c.set(0));
+        let w = 1024usize;
+        let src = vec![[1f32; 4]; w * h];
+        let _ = caixa_v3(&src, w, h, raios, LARGURA_DA_BANDA_FUNDIDA, false);
+        let n = BANDAS_PERCORRIDAS.with(std::cell::Cell::get);
+        assert!(
+            n >= 8,
+            "a constante do produto tem de partir uma região de 1024 px em bandas de cache: {n}"
+        );
+        assert!(casos >= 5, "o corpus encolheu: {casos} casos");
+    }
+
     /// **ONDE O BORRÃO GASTA** — a sonda que a ordem do dono de 2026-09-22 (*«atacar o Blur»*) pede
     /// antes da 1.ª linha de cura.
     ///
@@ -910,6 +975,30 @@ mod fatias_tests {
                 }
             });
 
+            // (3-bis) **A VERTICAL, os dois lados, EM SÉRIE** — a mesma lei do par horizontal.
+            let t_v_serie = ms(&mut || {
+                let (mut c, mut hh) = (Vec::new(), h);
+                let mut ent: &[[f32; 4]] = &entrada_v;
+                for r in raios {
+                    let (n, nh) = super::super::caixa_v(ent, w, hh, r, 1);
+                    c = n;
+                    hh = nh;
+                    ent = &c;
+                }
+                std::hint::black_box(c.len());
+            });
+            let t_v3_serie = ms(&mut || {
+                let v = super::super::caixa_v3(
+                    &entrada_v,
+                    w,
+                    h,
+                    raios,
+                    super::super::LARGURA_DA_BANDA_FUNDIDA,
+                    false,
+                );
+                std::hint::black_box(v.0.len());
+            });
+
             // (4-bis) **QUANTO DAS TRÊS VERTICAIS É SÓ MEMÓRIA NOVA?** Cada `caixa_v` devolve um
             //     `Vec` FRESCO (`vec![[0f32; 4]; …]` = `alloc_zeroed`), logo as páginas chegam
             //     preguiçosas e a PRIMEIRA escrita de cada uma é uma falha de página. Isto mede
@@ -948,6 +1037,17 @@ mod fatias_tests {
             let soma = t_ap + t_h3 + t_v + t_d;
             let erro = (soma - t_porta2) / t_porta2 * 100.0;
             let separado = t_ap + t_h + t_v + t_d;
+            // ⭐ **O VEREDITO DA JORNADA, em SÉRIE** — o borrão inteiro antes e depois das duas
+            //   fusões, com as duas leituras a sofrer a contenção por igual.
+            let antes = t_ap + t_h_serie + t_v_serie + t_d;
+            let depois = t_ap + t_h3_serie + t_v3_serie + t_d;
+            println!(
+                "  >> {bw}×{bh} k={k}  BORRÃO EM SÉRIE  antes {antes:6.2} ms  depois {depois:6.2} ms   {:.2}×  \
+                 (H {:.2}× · V {:.2}×)",
+                antes / depois.max(f64::MIN_POSITIVE),
+                t_h_serie / t_h3_serie.max(f64::MIN_POSITIVE),
+                t_v_serie / t_v3_serie.max(f64::MIN_POSITIVE)
+            );
             println!(
                 "  {bw:4}×{bh:4} | {k:3} | {t_ap:7.2} | {t_h:7.2} | {t_h3:7.2} | {:5.2}× | {t_h_serie:7.2} | {t_h3_serie:7.2} | {:5.2}× | {t_v:7.2} | {t_paginas:7.2} | {t_d:7.2} | {separado:5.1} | {soma:5.1} | {:5.2}× | {t_porta:5.1} | {t_porta2:5.1} | {erro:+5.1}%",
                 t_h / t_h3.max(f64::MIN_POSITIVE),

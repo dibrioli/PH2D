@@ -9,6 +9,7 @@
 mod a_column_gives_back_exactly_what_it_took;
 mod a_docked_panel_never_reaches_the_drawing_area;
 mod a_marca_tem_a_altura_da_linha;
+mod a_ordem_das_seccoes_e_a_da_paleta;
 mod a_paleta_de_pinceis_fecha_ao_escolher;
 mod a_panel_paints_where_its_tab_says;
 mod a_slot_with_two_panels_shows_tabs;

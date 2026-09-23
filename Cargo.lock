@@ -8100,6 +8100,7 @@ name = "ph2d-panel-registry-init"
 version = "0.0.0"
 dependencies = [
  "bumpalo",
+ "ph2d-component-desc",
  "ph2d-editor-core",
  "ph2d-field",
  "ph2d-host",

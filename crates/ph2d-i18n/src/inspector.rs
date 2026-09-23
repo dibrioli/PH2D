@@ -220,6 +220,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.animation.off" => "Off",
         "panel.inspector.animation.this_frame_ms_0_use" => "This frame",
         "panel.inspector.animation.this_frame_hint" => "0 = use the Frame value.",
+        "panel.inspector.animation.repeat_hint" => "0 = repeat forever.",
         "panel.inspector.animation.this_sprite_has_no_animation" => {
             "This sprite has no animation with that name, or the grid shrank under it."
         }
@@ -602,7 +603,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.animation.from_cell" => "From (cell)",
         "panel.inspector.animation.to_cell" => "To (cell)",
         "panel.inspector.animation.frame" => "Frame",
-        "panel.inspector.animation.repeat_forever" => "Repeat (0 = forever)",
+        // ⭐ O nome ficou CURTO e a regra foi para o BALÃO (ordem do dono, 2026-09-21:
+        //    *«os nomes grandes precisam reduzir, as dicas devem ir para o mouse Hover»*).
+        //    ⚠️ A chave mantém o nome antigo de propósito: renomeá-la custa a prosa que a cita.
+        "panel.inspector.animation.repeat_forever" => "Repeat",
         "panel.inspector.animation.hold" => "Hold",
         "panel.inspector.animation.repeat_delay" => "Repeat delay",
         "panel.inspector.camera.damping_1_s" => "Damping",

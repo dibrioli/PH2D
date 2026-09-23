@@ -2296,6 +2296,118 @@ verdes · **6 de 6 mutações sangram** (com os três controlos do arnês: a agu
 contada em OCORRÊNCIAS, a mutação **compila**, e a corrida teve população não-nula).
 
 
+## §9-vicies — ⭐⭐⭐ AS SECÇÕES DO INSPECTOR SAEM POR FAMÍLIA, E A ORDEM É **DERIVADA** DA PALETA
+
+**Report do dono, 2026-09-21:** *«várias seções muito confusas e desorganizadas»*.
+
+### §9-vicies.1 — A medição, antes da primeira linha
+
+O Inspector pinta **37 secções** em `14 857 px`. Medido pelo `y` **PINTADO** (sonda
+`diag_em_que_ordem_as_seccoes_aparecem`, nova e versionada), a sequência de índices de família das
+**24 opcionais** lia:
+
+```
+11, 11, 12, 13, 11, 11, 9, 9, 11, 9, 11, 11, 14, 3, 11, 11, 11, 11, 11, 13, 13, 0, …
+```
+
+— ou seja, **a ordem em que elas foram CONSTRUÍDAS**, wave a wave, ao longo de quatro meses. A
+`Tags`, que **todo** objecto pode ter, era a **última**, a `14 785 px` do topo.
+
+⚠️ **A ordem lê-se do `y` e nunca de uma tabela:** o painel tem quatro orquestradores
+(`paint_core_sections` · `paint_sprite_sections` · `paint_shared_sections` · as opcionais), e uma
+tabela de declaração não diz em que ordem eles correm.
+
+### §9-vicies.2 — A ordem não é escolhida: ela já existia no catálogo
+
+O [`ph2d_component_desc::ComponentCategory::ALL`] declara **16 famílias, por ordem**, e é por elas
+que a paleta do *Add Component* **já agrupa**. ⇒ *uma tabela com dois consumidores e só um a lê-la*.
+
+⛔⛔ **E a `ids::LIVE_SECTIONS` NÃO podia ser a fonte:** ela é um **ÍNDICE DE ARMAZENAMENTO** — as
+notas por secção indexam-na por POSIÇÃO, e o cabeçalho dela di-lo por escrito (*«mover uma entrada
+renumera-as»*). *A ordem de ARMAZENAMENTO e a de LEITURA são duas coisas, e o nome não as separa.*
+
+⇒ [`crate::paint_familias`](../../../crates/ph2d-panel-inspector/src/paint_familias.rs), com quatro
+orquestradores por família (FÍSICA · LÓGICA · LÓGICA-2 · SAÍDA) e as quatro primeiras chamadas
+(IDENTIDADE · RENDERING · ANIMAÇÃO · ÂNCORAS) no `paint_optional.rs`. A partição
+`…_logica` / `…_logica_cont` é **só o tecto de LOC por função**, e está dito no ficheiro.
+
+**A ordem depois:** `Tags` sobe de `14 785` para **`6 708 px`**, e a sequência passa a ser monótona
+nas famílias.
+
+### §9-vicies.3 — O gate, e o que ele deliberadamente NÃO afirma
+
+[`a_ordem_das_seccoes_e_a_da_paleta`](../../../crates/ph2d-panel-registry-init/tests/it/a_ordem_das_seccoes_e_a_da_paleta.rs)
+lê as bandas pintadas pela porta do produto, mapeia cada secção ao componente que ela edita
+(⛔ a 2.ª coluna é **verificada contra o catálogo**: um nome que ele não conheça reprova) e exige
+que os índices de família saiam **não-decrescentes**, com `PISO = 20`.
+
+⚠️ **MUTAÇÃO NOMEADA, com a medição:** trocar o `paint_projectile_section` com o
+`paint_topdown_section` — dois blocos completos, **da mesma família** — deixa-o **VERDE**. É o
+desenho: a ordem intra-família é a de construção, e a única fonte de que ela poderia ser derivada é
+a própria cadeia de chamadas — *afirmá-la seria copiar o código sob teste para dentro do teste*.
+O que os gates defendem é o **AGRUPAMENTO**, que é o que o report nomeia.
+
+### §9-vicies.4 — ⛔⛔ O `y` que se deita fora, outra vez — e desta vez fui eu
+
+A chamada da `Tags` era a **última** do bloco antigo, logo uma **expressão de cauda sem
+atribuição**. Ao movê-la para o meio da cadeia, o `;` que lhe acrescentei apagou o avanço: a `Tags`
+e os `Timers` passaram a desenhar-se **na mesma banda** (`y 280,0..302,0`).
+
+⭐ **Quem o apanhou foi o gate que existe exactamente para isso** — o
+`two_live_sections_never_share_a_band`, escrito em 2026-09-09 sobre o mesmo defeito na wave do
+`SignalActions`. *É a quarta ocorrência da forma nesta crate, e a primeira em que o instrumento já
+lá estava.*
+
+### §9-vicies.5 — ⛔⛔⛔ E o gate IRMÃO ficou a medir a ordem de ONTEM
+
+O `each_section_starts_below_the_one_before_it` compara as bandas **na ordem de uma lista escrita à
+mão**, e essa lista era `Transform · Timers · Signal Actions · Camera · Tags`. Com a ordem por
+famílias ela deixou de descrever o painel.
+
+⚠️⚠️ **E a fixtura perdeu poder sem reprovar:** o doc da `camera()` dizia *«sem ela a TAGS não tem
+nada por cima»* — a `Tags` é hoje a **primeira**, logo a mutação *«deitar fora o `y` da câmera»*
+passou a ser um **no-op**, porque nada armado era pintado depois dela. ⇒ a fixtura ganhou a secção
+**SHAKE** (a primeira armável abaixo da câmera na família SAÍDA), e a mutação volta a **SANGRAR**.
+
+⭐ *Uma reordenação não parte só a lista de um gate: ela troca QUEM está abaixo de quem, e uma
+fixtura calibrada na cadeia antiga fica verde a afirmar menos do que prometia.*
+
+⚠️ A lista fica **escrita à mão de propósito** e isso **não** é a segunda resposta à mesma pergunta:
+a ordem é DERIVADA pelo gate do registo sobre as 24 opcionais, e esta é o **CONTROLO** dele na
+crate do próprio painel, sem o arnês do registo. Se as duas discordarem, uma fica vermelha em voz
+alta. *O que esta cobre e aquela não é o bloco FIXO contra o opcional.*
+
+### §9-vicies.6 — ⛔⛔ Os OUTROS três vermelhos do portão, e um deles foi um palpite meu
+
+| vermelho | causa | cura |
+|---|---|---|
+| `staleness::cargo_deps_in_sync_with_folder` | pus o `ph2d-component-desc` **DENTRO** dos marcadores `# <ph2d-panel-sync:deps:begin/end>`, que são **gerados** | a linha subiu para fora do bloco |
+| `hr12_widgets_a11y` | o `paint_familias.rs` é painel e não fia a11y | entrada no `PANEL_A11Y_DELEGATE_OK` — **verificada**: `0` ocorrências de `NodeId` / `hit_index.` / `register(` |
+| `nenhum_rotulo_do_app_pinta_nada::a_divida_do_degrau_estreito_so_encolhe` | `declarado 86, mede 85` | catraca a `85` |
+
+⛔⛔ **E a 1.ª redacção da nota da catraca era um PALPITE com cara de medição:** eu escrevi que o
+corte saíra por a ordem das secções ter mudado de família (*«uma secção que sobe fica debaixo de um
+cabeçalho com outro recuo»*) — **falso**: reordenar não muda a largura de coluna de ninguém.
+
+⭐ **Atribuído por A/B:** repondo o texto longo `"Repeat (0 = forever)"` a catraca lê **`86`** e
+**nomeia-o na lista impressa**; com o curto `"Repeat"` lê `85`. O corte que saiu é a §11 Animation a
+perder a regra de dentro do nome — a lei *«um nome perde a EXPLICAÇÃO antes de perder LETRAS»*
+aplicada ao último rótulo que ainda a carregava.
+
+⚠️ *Uma catraca que desce sem a atribuição medida é uma licença com um comentário bonito ao lado.*
+
+### §9-vicies.7 — O portão
+
+`cargo fmt --all` limpo · clippy `-D warnings` zero · a varredura impactada verde ·
+**4 mutações sangram + 1 NOMEADA** (com os três controlos do arnês: a agulha casa **uma** vez
+contada em OCORRÊNCIAS, a mutação **compila**, e a corrida teve população não-nula —
+`passed + failed`, nunca o `running N` que conta os `#[ignore]`).
+
+⚠️ **E a corrida das elisões vai a `--workspace`**, nunca `-p`: o `flip`, o `painter_layers` e o
+`wet_tuning` não estão no `default` do `ph2d-panel-registry-init`, e num âmbito pobre a catraca lê
+`0` como *«este painel não corta»*.
+
+
 ## §11 — O que esta linha recomenda a quem a integrar
 
 1. **Correr o `diag_onde_cai_a_pista_do_pente` da `line/sculpt3d` DEPOIS da fusão** e reescrever com

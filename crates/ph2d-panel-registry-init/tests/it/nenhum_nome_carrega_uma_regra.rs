@@ -79,20 +79,52 @@ fn rotulos_do_inspector() -> Vec<(String, String, String)> {
 
 /// ⛔ **Os rótulos que AINDA carregam uma regra** — a catraca só encolhe.
 ///
-/// ⚠️ Os `8` que ficam não são teimosia: a forma de chamada deles **não põe o id do controlo ao
-/// lado do rótulo** (são entradas de texto e linhas de lista), logo o par `(controlo, dica)` não
-/// se lê do sítio da chamada. ⛔ E adivinhá-lo por proximidade foi tentado e recusado: ele mapeou
-/// o `Homing` para o `INSP_PJ_SPEED`, e *um balão no controlo errado é pior do que balão nenhum.*
-const AINDA_COM_REGRA: &[&str] = &[
-    "actions.target_empty_this_object",
-    "actions.timer_name_empty_all",
-    "animation.repeat_forever",
-    "animation.signals_empty_silent",
-    "counter_watch.signal_name_empty_mute",
-    "emitter.signal_name_empty_mute",
-    "timers.signal_name_empty_mute",
-    "trigger.signal_name_empty_mute",
-];
+/// ⛔⛔⛔ **A redacção anterior desta nota estava ERRADA em duas frentes, e a medição de 2026-09-22
+/// derrubou-a** (ela dizia: *«os `8` que ficam não são teimosia: a forma de chamada deles não põe
+/// o id do controlo ao lado do rótulo»*):
+///
+/// 1. ⭐⭐⭐ **SEIS dos oito NÃO SÃO NOMES — são `placeholder`**, o texto cinzento **DENTRO** da
+///    caixa vazia. Um placeholder não ocupa a coluna do nome, não empurra vizinho nenhum, e é
+///    exactamente o sítio certo para dizer *«vazio = calado»*: ele está na caixa onde se escreve.
+///    *A régua media a população errada*, que é a forma que esta linha já pagou meia dúzia de
+///    vezes.
+/// 2. ⚠️ E o `animation.repeat_forever` **tinha o id do controlo ao lado** — literalmente o campo
+///    seguinte da mesma tupla (`ids::INSP_ANIM_REPEAT`). A nota afirmava um bloqueio que o
+///    ficheiro desmentia.
+///
+/// ⇒ sobra **UM**, e ele é de outra espécie: um TÍTULO de bloco pintado por `paint_text`, sem
+/// controlo nenhum a que pendurar um balão.
+const AINDA_COM_REGRA: &[&str] = &["animation.signals_empty_silent"];
+
+/// ⭐⭐⭐ **Um PLACEHOLDER não é um NOME** — e a distinção lê-se do SÍTIO DA CHAMADA, não daqui.
+///
+/// ⚠️ A régua varre o fonte do painel à procura de `.placeholder(tr("<chave>"))`. ⛔ Uma lista de
+/// chaves escrita à mão seria a segunda resposta à mesma pergunta, e envelheceria no dia em que um
+/// rótulo virasse placeholder (ou o contrário).
+fn placeholders_do_painel() -> BTreeSet<String> {
+    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../ph2d-panel-inspector/src");
+    let mut out = BTreeSet::new();
+    let mut pilha = vec![dir];
+    while let Some(d) = pilha.pop() {
+        for e in std::fs::read_dir(&d).expect("o src do painel").flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                pilha.push(p);
+                continue;
+            }
+            if p.extension().is_none_or(|x| x != "rs") {
+                continue;
+            }
+            let src = std::fs::read_to_string(&p).expect("ficheiro");
+            for pedaco in src.split(".placeholder(tr(\"").skip(1) {
+                if let Some(k) = pedaco.split('"').next() {
+                    out.insert(k.trim_start_matches("panel.inspector.").to_string());
+                }
+            }
+        }
+    }
+    out
+}
 
 /// A regra entre parêntesis: um `=` DENTRO de um par de parêntesis.
 fn carrega_uma_regra(texto: &str) -> bool {
@@ -128,8 +160,19 @@ fn nenhum_rotulo_do_inspector_carrega_uma_regra() {
     let tolerado: BTreeSet<&str> = AINDA_COM_REGRA.iter().copied().collect();
     let mut novos = Vec::new();
     let mut vistos = BTreeSet::new();
+    let placeholders = placeholders_do_painel();
+    assert!(
+        placeholders.len() >= 6,
+        "a varredura achou {} placeholders e eles são pelo menos 6 — ela partiu-se, e uma régua \
+         que lê poucos volta a acusar o texto DENTRO da caixa como se fosse um nome",
+        placeholders.len()
+    );
     for (chave, valor, f) in &rotulos {
         if !carrega_uma_regra(valor) {
+            continue;
+        }
+        // ⭐ Um placeholder mora DENTRO da caixa: ele não é o nome de coisa nenhuma.
+        if placeholders.contains(chave.as_str()) {
             continue;
         }
         vistos.insert(chave.as_str().to_string());

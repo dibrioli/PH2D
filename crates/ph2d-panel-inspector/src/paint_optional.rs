@@ -253,6 +253,51 @@ pub(crate) fn paint_optional_sections(
     snaps: &crate::paint_frame::LiveSnapshots,
     notes: &[Vec<(usize, NoteData)>],
 ) -> f32 {
+    // ⭐⭐⭐ **A ORDEM É A DA PALETA** — ver o cabeçalho de [`crate::paint_familias`]. As famílias
+    //    vêm pela ordem que o catálogo declara (`ComponentCategory::ALL`), e **não** pela ordem em
+    //    que as secções foram construídas, que é como elas estavam.
+    let infos = crate::paint_optional_top20::Top20::de(
+        snaps,
+        crate::paint_optional_top20::Selecoes {
+            watch: *watch_selected,
+            trigger: *trigger_selected,
+            emitter: *emitter_selected,
+            tween: *tween_selected,
+            sm_state: *sm_state_selected,
+            sm_trans: *sm_trans_selected,
+        },
+    );
+    // ── IDENTIDADE (família 1 de 16) ──────────────────────────────────────────────────────────
+    y = crate::paint_optional_factory::paint_tags_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        section_tops_y,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y,
+        header_h,
+        infos.tags,
+    );
+    // ── RENDERING (4) ─────────────────────────────────────────────────────────────────────────
+    y = crate::paint_optional_top20::paint_particles_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        section_tops_y,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y,
+        header_h,
+        infos.particles,
+    );
+    // ── ANIMAÇÃO (6) ──────────────────────────────────────────────────────────────────────────
     y = paint_anim_section(
         scene,
         text_system,
@@ -268,6 +313,7 @@ pub(crate) fn paint_optional_sections(
         snaps.anim_info.as_ref(),
         anim_selected,
     );
+    // ── ÂNCORAS (7) ───────────────────────────────────────────────────────────────────────────
     y = paint_anchor_section(
         scene,
         text_system,
@@ -284,99 +330,8 @@ pub(crate) fn paint_optional_sections(
         anchor_selected,
         notes,
     );
-    y = paint_timer_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        snaps.timer_info.as_ref(),
-        timer_selected,
-    );
-    y = paint_action_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        snaps.action_info.as_ref(),
-        action_selected,
-    );
-    y = crate::paint_optional_factory::paint_audio_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        snaps.audio_info.as_ref(),
-    );
-    y = crate::paint_optional_factory::paint_camera_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        snaps.camera_info.as_ref(),
-    );
-    // ⚠️ **`y = ` na irmã de cima, e não uma chamada solta**: a CAMERA deixou de ser a última desta
-    // cadeia, e uma chamada cujo `y` se deita fora empilha a secção seguinte por cima dela — o
-    // defeito exacto que o gate `two_sections_never_stack` existe para apanhar.
-    y = crate::paint_optional_factory::paint_factory_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        snaps.factory_info.as_ref(),
-    );
-    y = crate::paint_optional_factory::paint_lifecycle_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        snaps.factory_info.as_ref(),
-    );
-    // ⭐⭐⭐ **AS TRÊS DA FAMÍLIA MOVIMENTO, numa porta só** — o mover de vista de cima, o
-    // projéctil e o seguidor de caminho. ⚠️ **`y = `**: uma chamada cujo `y` se deita fora empilha
-    // a secção seguinte por cima dela.
-    y = crate::paint_optional_movers::paint_movers(
+    // ── FÍSICA (10) ───────────────────────────────────────────────────────────────────────────
+    y = crate::paint_familias::paint_familia_fisica(
         scene,
         text_system,
         theme,
@@ -390,8 +345,8 @@ pub(crate) fn paint_optional_sections(
         header_h,
         snaps,
     );
-    // ⭐⭐⭐ E o RAIO (suplente #21) — `y = ` outra vez, pela nota acima.
-    y = crate::paint_optional_suplentes::paint_ray_section(
+    // ── LÓGICA (12) ───────────────────────────────────────────────────────────────────────────
+    y = crate::paint_familias::paint_familia_logica(
         scene,
         text_system,
         theme,
@@ -403,10 +358,11 @@ pub(crate) fn paint_optional_sections(
         body_top_y,
         y,
         header_h,
-        snaps.ray_info.as_ref(),
+        snaps,
+        timer_selected,
+        action_selected,
     );
-    // ⭐⭐⭐ E a ARMA — `y = ` outra vez, pela nota acima.
-    y = crate::paint_optional_suplentes::paint_weapon_section(
+    y = crate::paint_familias::paint_familia_logica_cont(
         scene,
         text_system,
         theme,
@@ -418,13 +374,10 @@ pub(crate) fn paint_optional_sections(
         body_top_y,
         y,
         header_h,
-        snaps.weapon_info.as_ref(),
+        &infos,
     );
-    // ⭐⭐ **A CAUDA da cadeia mora num irmão** — as quatro secções da fila do TOP-20 (o cérebro, o
-    // script, o emissor e as tags). ⚠️ **O corte foi imposto pelo tecto de FUNÇÃO** (esta chegou a
-    // `214` contra `200` ao ganhar o emissor) **e é o certo por responsabilidade**: elas são as que
-    // chegam por wave, e a próxima entra num sítio só.
-    crate::paint_optional_top20::paint_top20_sections(
+    // ── ÁUDIO (13) · CÂMERA (14) · SCRIPT (15) ────────────────────────────────────────────────
+    crate::paint_familias::paint_familia_saida(
         scene,
         text_system,
         theme,
@@ -436,16 +389,7 @@ pub(crate) fn paint_optional_sections(
         body_top_y,
         y,
         header_h,
-        crate::paint_optional_top20::Top20::de(
-            snaps,
-            crate::paint_optional_top20::Selecoes {
-                watch: *watch_selected,
-                trigger: *trigger_selected,
-                emitter: *emitter_selected,
-                tween: *tween_selected,
-                sm_state: *sm_state_selected,
-                sm_trans: *sm_trans_selected,
-            },
-        ),
+        snaps,
+        &infos,
     )
 }

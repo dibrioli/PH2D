@@ -30,6 +30,13 @@ const DICAS: &[(ph2d_a11y::NodeId, &str)] = &[
         crate::ids::INSP_ANIM_FRAME_MS_THIS,
         "panel.inspector.animation.this_frame_hint",
     ),
+    // ⭐ A última REGRA que ainda vivia num nome do Inspector (2026-09-22). ⚠️ A nota da catraca
+    //    dizia que este não tinha o id do controlo ao lado do rótulo — e ele tem: é o campo
+    //    seguinte da mesma tupla da tabela que pinta a fileira.
+    (
+        crate::ids::INSP_ANIM_REPEAT,
+        "panel.inspector.animation.repeat_hint",
+    ),
     (
         crate::ids::INSP_LIFE_SECONDS,
         "panel.inspector.factory.lifetime_hint",

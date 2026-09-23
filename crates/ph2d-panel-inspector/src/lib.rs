@@ -73,6 +73,8 @@ mod paint;
 /// ⭐ A MOLDURA do corpo — irmã do `paint_frame` pelo tecto de 600 LOC.
 mod paint_body;
 mod paint_cards;
+/// ⭐⭐⭐ **A ORDEM das secções, por FAMÍLIA** — ver o cabeçalho do módulo.
+mod paint_familias;
 mod paint_frame;
 mod paint_frame_shared;
 mod paint_head;

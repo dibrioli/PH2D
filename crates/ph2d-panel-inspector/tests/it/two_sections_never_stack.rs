@@ -37,7 +37,8 @@ use ph2d_editor_core::screens::hero::{
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_inspector::{
     InspectorPanel, InspectorState, set_current_inspector_action, set_current_inspector_camera,
-    set_current_inspector_tags, set_current_inspector_timer, set_current_inspector_transform,
+    set_current_inspector_shake, set_current_inspector_tags, set_current_inspector_timer,
+    set_current_inspector_transform,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -112,10 +113,17 @@ fn actions() -> InspectorActionInfo {
     }
 }
 
-/// ⭐⭐ A secção CAMERA na fixtura — ⛔ **sem ela a TAGS não tem nada por cima**, e a mutação que
-/// deita fora o `y` da câmera fica VERDE: um `paint_camera_section` sobre um snapshot `None` devolve
-/// o `y` que recebeu, logo trocar `y = f(…)` por `let _ = f(…)` é um no-op. *A fixtura tem de conter
-/// a secção que a cadeia empilha, não só a que se acrescentou.*
+/// ⭐⭐ A secção CAMERA na fixtura — ela está aqui porque a mutação que deita fora o `y` dela só é
+/// observável se **alguma secção for pintada DEPOIS**: um `paint_<x>_section` sobre um snapshot
+/// `None` devolve o `y` que recebeu, logo trocar `y = f(…)` por `let _ = f(…)` num vizinho mudo é
+/// um no-op. *A fixtura tem de conter a secção que a cadeia empilha, não só a que se acrescentou.*
+///
+/// ⛔⛔ **E QUEM está depois dela MUDOU em 2026-09-22.** O doc desta função dizia *«sem ela a TAGS
+/// não tem nada por cima»* — verdade enquanto a ordem das opcionais era a ordem em que foram
+/// construídas, e **falsa** desde que ela passou a ser a das FAMÍLIAS do catálogo: a TAGS é hoje a
+/// **primeira** (família IDENTIDADE) e a CAMERA está na última (SAÍDA), seguida de `shake`,
+/// `shake_emitter` e `script`. ⇒ o consumidor do `y` da câmera nesta fixtura é o [`shake`], e é por
+/// isso que ele entrou aqui no mesmo dia.
 fn camera() -> ph2d_editor_core::screens::hero::InspectorCameraInfo {
     ph2d_editor_core::screens::hero::InspectorCameraInfo {
         entity_bits: 1,
@@ -135,9 +143,34 @@ fn camera() -> ph2d_editor_core::screens::hero::InspectorCameraInfo {
     }
 }
 
-/// ⭐ A secção TAGS na fixtura — ela é a ÚLTIMA da cadeia desde a W3a, e é por isso que entra aqui:
-/// a que fecha a lista é a única cujo `y` ninguém consome, logo a única em que trocar o `y = ` por
-/// uma chamada solta não se nota até a secção SEGUINTE nascer.
+/// ⭐⭐ A secção SHAKE na fixtura — **o consumidor do `y` da CAMERA desde a ordem por famílias**.
+///
+/// ⚠️ Ela não está aqui por ser interessante: está porque é a primeira secção armável **abaixo** da
+/// câmera na família SAÍDA (`audio → camera → shake → shake_emitter → script`). *Sem ela, a mutação
+/// que deita fora o `y` da câmera volta a ser um no-op, e este gate deixava de defender a metade
+/// mais funda da cadeia.*
+fn shake() -> ph2d_editor_core::shake_edits::InspectorShakeInfo {
+    ph2d_editor_core::shake_edits::InspectorShakeInfo {
+        entity_bits: 1,
+        amplitude: 0.25,
+        frequencia: 24.0,
+        decaimento: 1.5,
+        expoente: 2,
+        semente: 7,
+        trauma: 0.0,
+        activa: true,
+        clock_playing: false,
+        selected_count: 1,
+    }
+}
+
+/// ⭐ A secção TAGS na fixtura.
+///
+/// ⛔ **A premissa que a trouxe MORREU em 2026-09-22.** Ela dizia *«ela é a ÚLTIMA da cadeia desde
+/// a W3a, e é por isso que entra aqui: a que fecha a lista é a única cujo `y` ninguém consome»* —
+/// com a ordem por FAMÍLIAS a TAGS passou a ser a **PRIMEIRA** das opcionais, logo o `y` dela é
+/// consumido por todas as outras. Ela fica: *o papel trocou-se de «a que ninguém consome» para «a
+/// que alimenta todas», e nos dois casos ela é a fronteira que o gate precisa de ver.*
 fn tags() -> ph2d_editor_core::screens::hero::InspectorTagsInfo {
     let linha = |id: u64, path: &str, label: &str, depth: usize| {
         ph2d_editor_core::screens::hero::InspectorTagRow {
@@ -167,20 +200,36 @@ fn section_bands() -> Vec<(&'static str, Rect)> {
     set_current_inspector_timer(Some(timers()));
     set_current_inspector_action(Some(actions()));
     set_current_inspector_camera(Some(camera()));
+    set_current_inspector_shake(Some(shake()));
     set_current_inspector_tags(Some(tags()));
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     set_current_inspector_transform(None);
     set_current_inspector_timer(None);
     set_current_inspector_action(None);
     set_current_inspector_camera(None);
+    set_current_inspector_shake(None);
     set_current_inspector_tags(None);
 
-    let nomes: [(&str, ph2d_a11y::NodeId); 5] = [
+    // ⭐⭐⭐ **A ORDEM DESTA LISTA É A ORDEM DE LEITURA DO PAINEL, e ela mudou em 2026-09-22.**
+    //
+    // Até aí era `Transform · Timers · Signal Actions · Camera · Tags` — a ordem em que as secções
+    // foram CONSTRUÍDAS. Hoje é a das **famílias do catálogo** (a mesma tabela por que a paleta
+    // *Add Component* agrupa): o bloco FIXO primeiro, depois IDENTIDADE (Tags), LÓGICA (Timers,
+    // Signal Actions) e SAÍDA (Camera, Shake).
+    //
+    // ⚠️ **Ela é escrita à mão de propósito, e isso NÃO é a segunda resposta à mesma pergunta:** a
+    // ordem é DERIVADA de `ComponentCategory::ALL` pelo
+    // `a_ordem_das_seccoes_e_a_da_paleta::as_seccoes_opcionais_saem_por_familia_na_ordem_da_paleta`
+    // (`ph2d-panel-registry-init`, sobre as 24 secções opcionais). Esta lista é o **CONTROLO** dele,
+    // na crate do próprio painel e sem o arnês do registo — se as duas discordarem, uma fica
+    // vermelha em voz alta. *O que este gate cobre e aquele não é o bloco FIXO contra o opcional.*
+    let nomes: [(&str, ph2d_a11y::NodeId); 6] = [
         ("Transform", ids::INSP_LIVE_TRANSFORM_SECTION),
+        ("Tags", ids::INSP_LIVE_TAGS_SECTION),
         ("Timers", ids::INSP_LIVE_TIMER_SECTION),
         ("Signal Actions", ids::INSP_LIVE_ACTION_SECTION),
         ("Camera", ids::INSP_LIVE_CAMERA_SECTION),
-        ("Tags", ids::INSP_LIVE_TAGS_SECTION),
+        ("Shake", ids::INSP_LIVE_SHAKE_SECTION),
     ];
     let mut out = Vec::new();
     for (nome, id) in nomes {
@@ -199,8 +248,8 @@ fn section_bands() -> Vec<(&'static str, Rect)> {
 fn two_live_sections_never_share_a_band() {
     let bandas = section_bands();
     assert!(
-        bandas.len() >= 5,
-        "a fixtura nao produziu as cinco seccoes: {:?}",
+        bandas.len() >= 6,
+        "a fixtura nao produziu as seis seccoes: {:?}",
         bandas.iter().map(|(n, _)| *n).collect::<Vec<_>>()
     );
     for i in 0..bandas.len() {
@@ -225,6 +274,10 @@ fn two_live_sections_never_share_a_band() {
 ///
 /// ⚠️ A metade que a anterior não cobre: duas bandas podem não se cruzar e ainda assim estar
 /// trocadas, o que faria a lista de uma secção aparecer debaixo do cabeçalho da outra.
+///
+/// ⛔ **A ordem que ele afirma MUDOU em 2026-09-22** (ver o comentário sobre `nomes`): ela deixou
+/// de ser a de construção e passou a ser a das famílias do catálogo. *A propriedade é a mesma; o
+/// que envelheceu foi a lista.*
 #[test]
 fn each_section_starts_below_the_one_before_it() {
     let bandas = section_bands();

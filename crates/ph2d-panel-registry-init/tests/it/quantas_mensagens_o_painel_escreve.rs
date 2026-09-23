@@ -221,3 +221,56 @@ fn a_frase_da_seleccao_e_pintada_uma_vez_pelo_cartao() {
         da_seleccao[0].texto
     );
 }
+
+/// ⛔ SONDA — **em que ORDEM as secções do Inspector aparecem**, e quanto cada uma ocupa.
+///
+/// Report do dono (2026-09-21): *«várias seções muito confusas e desorganizadas»*.
+///
+/// ⚠️ A ordem lê-se do **`y` PINTADO** e nunca de uma tabela: o painel tem quatro orquestradores
+/// (`paint_core_sections` · `paint_sprite_sections` · `paint_shared_sections` · as opcionais), e
+/// uma tabela de declaração não diz em que ordem eles correm.
+#[test]
+#[ignore = "sonda de diagnóstico — corre à mão com --ignored --nocapture"]
+fn diag_em_que_ordem_as_seccoes_aparecem() {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let mapa = super::o_que_o_artista_nao_alcanca::nomes_de(
+        &[
+            "../ph2d-panel-inspector/src/ids",
+            "../ph2d-editor-core/src/ids",
+        ],
+        400,
+    );
+    ph2d_editor_core::panel::with_registry(|reg| {
+        let painel = reg
+            .panels_mut()
+            .iter_mut()
+            .find(|p| p.manifest.id == "inspector")
+            .expect("inspector");
+        super::o_inspector_armado::arma_tudo();
+        let mut host = MockPanelHost::new();
+        painel.populate(host.store_mut());
+        abre_tudo(host.store_mut());
+        let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
+        let mut cabecalhos: Vec<(f32, String)> = Vec::new();
+        for (nid, r) in host.registos_da_ultima_pintura() {
+            let slug = mapa.get(&nid).cloned().unwrap_or_default();
+            if slug.contains("_section") && !slug.contains("color") {
+                cabecalhos.push((r.y, slug));
+            }
+        }
+        cabecalhos.sort_by(|a, b| a.0.total_cmp(&b.0));
+        cabecalhos.dedup_by(|a, b| a.1 == b.1);
+        eprintln!(
+            "=== {} secções, na ordem em que o artista as lê ===",
+            cabecalhos.len()
+        );
+        let mut anterior = 0.0f32;
+        for (i, (y, nome)) in cabecalhos.iter().enumerate() {
+            let alta = y - anterior;
+            anterior = *y;
+            eprintln!("{:3}. y={y:7.0}  (+{alta:5.0})  {nome}", i + 1);
+        }
+        eprintln!("  chão do painel: {anterior:.0} px");
+        super::o_inspector_armado::desarma_tudo();
+    });
+}

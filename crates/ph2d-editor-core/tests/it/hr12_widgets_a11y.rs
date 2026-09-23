@@ -761,6 +761,14 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-inspector/src/paint_optional.rs",
         "orquestrador das CINCO seccoes OPCIONAIS (§11 Animation, §12 Sockets, TIMERS, SIGNAL ACTIONS, AUDIO); nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — e cada widget e' pintado pela seccao que ele chama, a moldura pelo paint_frame. ⚠️ Chamava-se `paint_stateful.rs` ate' 2026-09-09: a AUDIO nao tem lista e por isso nao tem linha aberta, e a propriedade que dava nome ao ficheiro deixou de o descrever",
     ),
+    // ⭐ **Nasceu em 2026-09-22, quando a ORDEM das seccoes opcionais deixou de ser a ordem em que
+    //    elas foram construidas e passou a ser a das FAMILIAS do catalogo** (a mesma tabela por que
+    //    a paleta *Add Component* agrupa). Ele so' CHAMA, por familia, os pintores que ja' estao
+    //    nesta lista.
+    (
+        "ph2d-panel-inspector/src/paint_familias.rs",
+        "orquestrador por FAMILIA (fisica, logica, saida): nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — e cada widget e' pintado pela seccao que ele chama, a moldura pelo paint_frame",
+    ),
     // ⛔⛔ **Este ficheiro passava por SUBCADEIA, e a remoção de uma fileira revelou-o.**
     // Ele nunca nomeou um primitivo canónico: o que casava era `paint_color_swatch_row` — o
     // helper LOCAL — contendo `paint_color_swatch` como substring. Quando a fileira «Color» do

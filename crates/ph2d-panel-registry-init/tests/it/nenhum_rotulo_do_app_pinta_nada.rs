@@ -575,7 +575,14 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    SECÇÃO em vez da de omissão. ⚠️ **Ela desceu porque a coluna ficou mais CERTA**, não
     //    porque alguém encurtou um nome — e o censo de obsolescência foi quem o exigiu.
     // ⬇️ `89 → 86` em 2026-09-22: as três frases que os avisos deixaram de CORTAR (elas quebram).
-    ("inspector", 86),
+    // ⬇️ `86 → 85` em 2026-09-22: o `"Repeat (0 = forever)"` da §11 Animation virou **`"Repeat"`**
+    //    com a explicação a descer para o balão — a lei *«um nome perde a EXPLICAÇÃO antes de
+    //    perder LETRAS»* aplicada ao último rótulo que ainda carregava uma regra dentro do nome.
+    //    ⚠️⚠️ **O número foi ATRIBUÍDO por A/B e não inferido:** a minha 1.ª redacção desta linha
+    //    dizia que o corte tinha saído por a ORDEM das secções ter mudado de família — *um
+    //    palpite com cara de medição*, e falso (reordenar não muda a largura de coluna de
+    //    ninguém). Repondo o texto longo a catraca lê `86` e nomeia-o na lista; com o curto, `85`.
+    ("inspector", 85),
     // ⭐ Era `6`: o `Mute` do Master deixou de ler `…` quando a coluna aperta (report do dono,
     //    19/09). *Uma catraca que desce é a metade justa dela a funcionar.*
     ("audio_mixer", 5),

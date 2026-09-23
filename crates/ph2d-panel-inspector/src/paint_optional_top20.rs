@@ -20,191 +20,10 @@ use ph2d_vector::VectorScene;
 // ⭐ Os instantâneos vivem no irmão, pelo tecto de LOC — ver o cabeçalho dele.
 pub(crate) use super::paint_optional_top20_infos::{Selecoes, Top20};
 
-/// Pinta as quatro, pela ordem. ⚠️ **Cada chamada leva o `y` da anterior**: uma cujo `y` se deita
-/// fora empilha a secção seguinte por cima dela.
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn paint_top20_sections(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: ph2d_tokens::Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
-    inner_x: f32,
-    inner_w: f32,
-    body_top_y: f32,
-    mut y: f32,
-    header_h: f32,
-    infos: Top20,
-) -> f32 {
-    y = crate::paint_optional_factory::paint_statemachine_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        infos.statemachine,
-        infos.sm_state_selected,
-        infos.sm_trans_selected,
-    );
-    y = crate::paint_optional_factory::paint_script_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        infos.script,
-    );
-    y = paint_particles_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        infos.particles,
-    );
-    y = paint_hud_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        infos.hud,
-    );
-    y = paint_sequence_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        infos.sequence,
-    );
-    y = paint_counter_watch_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        infos.watch,
-        infos.watch_selected,
-    );
-    y = paint_action_trigger_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        infos.trigger,
-        infos.trigger_selected,
-    );
-    y = crate::paint_optional_top20_tail::paint_tween_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        infos.tween,
-        infos.tween_selected,
-    );
-    // ⭐⭐⭐ **O ABANÃO** (suplente #25) — as molduras moram num irmão pelo tecto de LOC deste
-    // ficheiro, e o corte é por responsabilidade: as duas nunca aparecem juntas na tela.
-    y = crate::paint_optional_shake::paint_shake_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        infos.shake,
-    );
-    y = crate::paint_optional_shake::paint_shake_emitter_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        infos.emitter,
-        infos.emitter_selected,
-    );
-    crate::paint_optional_factory::paint_tags_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        infos.tags,
-    )
-}
-
 /// **A secção HUD** — moldura e tudo (TOP-20 #20). ⚠️ Sem estado de painel: um objecto tem UM de
 /// cada componente do HUD, então não há linha aberta a lembrar.
 #[allow(clippy::too_many_arguments)]
-fn paint_hud_section(
+pub(crate) fn paint_hud_section(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: ph2d_tokens::Theme,
@@ -263,7 +82,7 @@ fn paint_hud_section(
 /// toca UMA cutscene, então não há linha aberta a lembrar.
 /// A VIGIA DO CONTADOR — moldura e tudo. Irmã da [`paint_sequence_section`].
 #[allow(clippy::too_many_arguments)]
-fn paint_counter_watch_section(
+pub(crate) fn paint_counter_watch_section(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: ph2d_tokens::Theme,
@@ -323,7 +142,7 @@ fn paint_counter_watch_section(
 /// O GATILHO — moldura e tudo. Irmão da [`paint_counter_watch_section`], e vizinho dela na ordem
 /// de propósito: as duas fazem um SINAL nascer, uma de um número e a outra de uma tecla.
 #[allow(clippy::too_many_arguments)]
-fn paint_action_trigger_section(
+pub(crate) fn paint_action_trigger_section(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: ph2d_tokens::Theme,
@@ -381,7 +200,7 @@ fn paint_action_trigger_section(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn paint_sequence_section(
+pub(crate) fn paint_sequence_section(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: ph2d_tokens::Theme,
@@ -439,7 +258,7 @@ fn paint_sequence_section(
 /// **A secção PARTICLES** — moldura e tudo (TOP-20 #18, W3). ⚠️ Sem estado de painel: um objecto
 /// tem UM emissor, então não há linha aberta a lembrar (a lei da câmera e da fábrica).
 #[allow(clippy::too_many_arguments)]
-fn paint_particles_section(
+pub(crate) fn paint_particles_section(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: ph2d_tokens::Theme,

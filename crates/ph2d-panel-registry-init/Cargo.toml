@@ -11,6 +11,7 @@ authors.workspace = true
 
 [dependencies]
 ph2d-editor-core               = { path = "../ph2d-editor-core" }
+ph2d-component-desc = { path = "../ph2d-component-desc" }
 # <ph2d-panel-sync:deps:begin>
 ph2d-panel-asset-browser = { path = "../ph2d-panel-asset-browser", optional = true }
 ph2d-panel-audio-editor = { path = "../ph2d-panel-audio-editor", optional = true }

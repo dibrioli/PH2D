@@ -116,7 +116,7 @@ echo "=== A PONTE: quem e' conduzido, e a partir de QUE pose ==="
 # ledger — a captura paga uma varredura por nada, e o `n` que o painel mostra mente.
 bloco "o neutro passa a ser declarado" ph2d-app-components o_neutro_nao_escreve \
   "$PONTE" 1 \
-  '        if cfg.e_neutro() {' \
+  '        if cfg.e_neutro() && mov.is_none_or(|m| m.e_inerte()) {' \
   '        if false {'
 
 # ⛔ Sem camera de jogo a resposta e' NAO DECLARAR: uma corrida que dependesse de onde o artista
@@ -130,8 +130,8 @@ bloco "sem camera a vista vira a origem" ph2d-app-components sem_camera_de_jogo 
 # escrevem um por cima do outro.
 bloco "o HUD entra na populacao" ph2d-app-components um_hud_nao_e_tocado \
   "$PONTE" 1 \
-  '            .query_filtered::<(Entity, &Transform, &ScrollFactor, Option<&ScrollRepeat>, Option<&ScrollLimits>), bevy_ecs::prelude::Without<UiCanvas>>()' \
-  '            .query::<(Entity, &Transform, &ScrollFactor, Option<&ScrollRepeat>, Option<&ScrollLimits>)>()'
+  '            .query_filtered::<(Entity, &Transform, &ScrollFactor, Option<&ScrollRepeat>, Option<&ScrollLimits>, Option<&ScrollMotion>), bevy_ecs::prelude::Without<UiCanvas>>()' \
+  '            .query::<(Entity, &Transform, &ScrollFactor, Option<&ScrollRepeat>, Option<&ScrollLimits>, Option<&ScrollMotion>)>()'
 
 # ⛔ Esta ponte so' escreve a TRANSLACAO: roubar o resto ao autorado apagaria o que outro motor
 # tivesse escrito no mesmo quadro.
@@ -270,19 +270,93 @@ bloco "a regiao estreita entra em panico" ph2d-app-components uma_regiao_mais_es
   '    if lo > hi {' \
   '    if false {'
 
-# ⛔ A ORDEM declarada: envolver antes de confinar deixa o deslocamento fora do ladrilho.
+# ⛔ A ORDEM declarada: envolver ANTES de confinar deixa o deslocamento fora do ladrilho.
+#
+# ⚠️⚠️ **A mutacao tem de MOVER o envolvimento e nunca o antecipar:** com ele a ficar em ULTIMO no
+# produto, qualquer envolvimento posto mais cedo e' **invisivel** — o do fim re-envolve e o
+# resultado cai na mesma janela. *Um passo IDEMPOTENTE no fim de uma cadeia apaga toda mutacao de
+# ordem que nao o remova de la'.*
 bloco "a repeticao deixa de ser a ultima" ph2d-app-components com_limites_e_repeticao \
   "$PONTE" 1 \
-  '        let conf = lim.map_or(centro, |l| l.confina(centro, meia));
-        let d = cfg.deslocamento_confinado(centro, conf);
+  '        let d = cfg.deslocamento_confinado(centro, conf);
+        // ⭐⭐ **A DERIVA é um SOMANDO e nunca um segundo condutor** — medido no
+        // [`super::w4_probe`]: dois motores sobre o mesmo `Transform` entram no ledger com chaves
+        // diferentes, e esta ponte leria a escrita do outro como um arrasto do artista.
+        //
+        // ⚠️ E ela entra **ANTES** da repetição: quem deriva para sempre é precisamente quem tem
+        // de envolver, e envolver antes de somar deixaria a nuvem a fugir.
+        let d = mov.map_or(d, |m| {
+            let o = m.deslocamento(playhead);
+            [d[0] + o[0], d[1] + o[1]]
+        });
         let d = rep.map_or(d, |r| r.envolve(d));' \
-  '        let conf = lim.map_or(centro, |l| l.confina(centro, meia));
-        let d = cfg.deslocamento(centro);
-        let d = rep.map_or(d, |r| r.envolve(d));
+  '        let d0 = cfg.deslocamento(centro);
+        let d0 = rep.map_or(d0, |r| r.envolve(d0));
         let d = [
-            d[0] + cfg.k[0] * (centro[0] - conf[0]),
-            d[1] + cfg.k[1] * (centro[1] - conf[1]),
-        ];'
+            d0[0] + cfg.k[0] * (centro[0] - conf[0]),
+            d0[1] + cfg.k[1] * (centro[1] - conf[1]),
+        ];
+        let d = mov.map_or(d, |m| {
+            let o = m.deslocamento(playhead);
+            [d[0] + o[0], d[1] + o[1]]
+        });'
+
+echo "=== O MOVIMENTO PROPRIO (W4) ==="
+
+MOV=crates/ph2d-ecs/src/scroll_motion.rs
+
+# ⛔⛔ A lei deixa de ser funcao do RELOGIO e passa a ser um passo fixo ⇒ um acumulador com outro
+# nome: um scrub para tras deixa de a desfazer, e duas maquinas com quadros diferentes veem nuvens
+# diferentes. E' a propriedade inteira da wave.
+bloco "a deriva deixa de ler o playhead" ph2d-app-components um_scrub_para_tras \
+  "$MOV" 1 \
+  '            (f64::from(self.velocity[0]) * t) as f32,' \
+  '            self.velocity[0],'
+
+# ⛔ O `f64` da conta: ao fim de uma hora a `1 m/s` o ULP de um `f32` e' `2,4e-4`, e arredondar o
+# PRODUTO acumula. A deriva e' a unica grandeza desta familia que cresce sem limite com o tempo.
+bloco "o produto passa a ser feito em f32" ph2d-app-components a_deriva_e_velocidade_vezes \
+  "$MOV" 1 \
+  '            (f64::from(self.velocity[0]) * t) as f32,
+            (f64::from(self.velocity[1]) * t) as f32,' \
+  '            self.velocity[0] * (t as f32),
+            self.velocity[1] * (t as f32),'
+
+# ⛔⛔ A deriva deixa de SOMAR e passa a substituir ⇒ ela vira um segundo condutor com outro nome, e
+# o deslocamento da camera evapora.
+bloco "a deriva substitui em vez de somar" ph2d-app-components a_deriva_soma_se \
+  "$PONTE" 1 \
+  '            [d[0] + o[0], d[1] + o[1]]' \
+  '            [o[0], o[1]]'
+
+# ⛔⛔ O salto do neutro volta a esconder a deriva ⇒ uma nuvem que anda sozinha num plano NORMAL
+# fica parada, e o painel diz que ela esta' a andar.
+bloco "o neutro volta a esconder a deriva" ph2d-app-components a_deriva_acorda_um_objecto \
+  "$PONTE" 1 \
+  '        if cfg.e_neutro() && mov.is_none_or(|m| m.e_inerte()) {' \
+  '        if cfg.e_neutro() {'
+
+# ⛔ A ORDEM: envolver ANTES de somar a deriva deixa a nuvem a fugir.
+bloco "a deriva entra DEPOIS da repeticao" ph2d-app-components uma_nuvem_que_deriva \
+  "$PONTE" 1 \
+  '        let d = mov.map_or(d, |m| {
+            let o = m.deslocamento(playhead);
+            [d[0] + o[0], d[1] + o[1]]
+        });
+        let d = rep.map_or(d, |r| r.envolve(d));' \
+  '        let d = rep.map_or(d, |r| r.envolve(d));
+        let d = mov.map_or(d, |m| {
+            let o = m.deslocamento(playhead);
+            [d[0] + o[0], d[1] + o[1]]
+        });
+        let _ = &rep;'
+
+# ⛔ A fase deixa de ler o relogio ⇒ a deriva congela, e nada na tela diz porque.
+bloco "a fase crava o relogio em zero" ph2d-host-desktop a_paralaxe_corre_depois \
+  "$FASE" 1 \
+  '        let playhead = self.playhead.time();' \
+  '        let playhead = 0.0;' \
+  '--test it'
 
 echo "=== A ORDEM no quadro, e o que ATRAVESSA ==="
 

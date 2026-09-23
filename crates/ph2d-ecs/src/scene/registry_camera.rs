@@ -54,4 +54,9 @@ pub(super) fn register_camera(reg: &mut ComponentRegistry) {
     // das outras duas: um fundo que repete não tem borda para esconder, e um primeiro plano não é
     // confinado por nada. *Três componentes porque são três populações.*
     reg.register_default::<crate::ScrollLimits>("ph2d::ecs::ScrollLimits");
+    // ⭐⭐ **O MOVIMENTO PRÓPRIO** (plano 24, W4) — nuvens que andam sozinhas. ⛔ Sem runtime pela
+    // razão do `ScrollFactor`: ele é `velocidade × playhead`, uma função PURA do relógio, logo um
+    // scrub e um rebobinar reconstroem-na — e um acumulador daria uma nuvem a andar ao contrário
+    // quando o artista puxasse a régua para trás.
+    reg.register_default::<crate::ScrollMotion>("ph2d::ecs::ScrollMotion");
 }

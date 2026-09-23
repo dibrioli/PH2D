@@ -111,7 +111,9 @@ mod tests {
         //   dele — ver a nota do registo. Quem integrar conta o DELTA, nunca o literal.
         // ⚠️ **2026-09-22: `106` -> `107`, delta +1** -- o `ScrollLimits` (o CONFINAMENTO, plano
         //   24 W3), registado no ECS. ⛔ **UM so'**. Quem integrar conta o DELTA, nunca o literal.
-        assert_eq!(reg.len(), 107);
+        // ⚠️ **2026-09-22: `107` -> `108`, delta +1** -- o `ScrollMotion` (o MOVIMENTO PROPRIO,
+        //   plano 24 W4), registado no ECS. ⛔ **UM so'**. Quem integrar conta o DELTA.
+        assert_eq!(reg.len(), 108);
         assert!(reg.get_by_name("ph2d::script::LuauScript").is_some());
     }
 }

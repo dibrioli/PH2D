@@ -97,6 +97,8 @@ const SCROLL_FIELDS: &[FieldDesc] = &[f(0, "component.field.scroll_fields.0", K:
 /// ⚠️ Em METROS e não em pixels: o `Transform` desta casa já é métrico, e a única px→m é a do
 /// projecto (`pixels_per_meter`).
 const REPEAT_FIELDS: &[FieldDesc] = &[f(0, "component.field.repeat_fields.0", K::Vec2)];
+/// ⚠️ Metros por SEGUNDO — o eixo do tempo é o playhead, e é isso que a faz sobreviver a um scrub.
+const MOTION_FIELDS: &[FieldDesc] = &[f(0, "component.field.motion_fields.0", K::Vec2)];
 
 /// Os descritores da família.
 pub const DESCS: &[ComponentDesc] = &[
@@ -165,9 +167,19 @@ pub const DESCS: &[ComponentDesc] = &[
         O::ANY,
         LIMITS_FIELDS,
     ),
-    // ⭐⭐ **A REPETIÇÃO** (plano 24, W2) — *quanto mede um ladrilho deste fundo*. ⛔ Irmã das duas
+    // ⭐⭐ **O MOVIMENTO PRÓPRIO** (plano 24, W4) — *nuvens que andam sozinhas*, e ele é uma
+    // função PURA do playhead. ⚠️ Antes do `ScrollRepeat` porque a lista é ORDENADA por
+    // `canonical_name` e há gate.
+    D::authored(
+        "ph2d::ecs::ScrollMotion",
+        "component.scroll_motion.name",
+        C::Camera,
+        O::ANY,
+        MOTION_FIELDS,
+    ),
+    // ⭐⭐ **A REPETIÇÃO** (plano 24, W2) — *quanto mede um ladrilho deste fundo*. ⛔ Irmã das três
     // de cima e não um campo delas: quase todo objecto com paralaxe não repete, e um campo ali
-    // seria um knob morto em todos eles. *Três componentes porque são três populações.*
+    // seria um knob morto em todos eles. *Quatro componentes porque são quatro populações.*
     D::authored(
         "ph2d::ecs::ScrollRepeat",
         "component.scroll_repeat.name",

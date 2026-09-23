@@ -247,7 +247,10 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // ⭐ **PROJECT 165→166** (2026-09-22): o CONFINAMENTO (plano 24, W3) — ⭐ **UM
         // componente registado novo** (`ScrollLimits`), logo os três contadores SOBEM `+1`.
         // ⚠️ **A tripla NÃO vê este degrau** — a VIGÉSIMA SEGUNDA vez.
-        (166, 13, 22),
+        // ⭐ **PROJECT 166→167** (2026-09-22): o MOVIMENTO PRÓPRIO (plano 24, W4) — ⭐ **UM
+        // componente registado novo** (`ScrollMotion`), logo os três contadores SOBEM `+1`.
+        // ⚠️ **A tripla NÃO vê este degrau** — a VIGÉSIMA TERCEIRA vez.
+        (167, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

@@ -369,3 +369,15 @@ onde a citação abriu; e num ficheiro cheio de português sem acentos o `` a` `
 sobreviventes reais — continuava a ser a verdade. **How to apply:** `bash -n <script>` antes de o
 correr (custa nada e diz a linha), e nada de crases em prosa dentro de um script shell — nem em
 comentários, porque uma linha de continuação (`\`) leva o comentário para dentro do comando.
+
+## ⛔⛔ Um passo IDEMPOTENTE no fim de uma cadeia apaga toda mutação de ORDEM que não o REMOVA de lá (2026-09-22, `line/components`)
+
+A paralaxe compõe `confinar → derivar → envolver`, e o envolvimento reduz o deslocamento módulo um
+ladrilho. Duas mutações de ordem — antecipar o envolvimento — **sobreviveram**, e não por a régua
+ser fraca: o envolvimento do fim **re-envolve**, e o resultado cai na mesma janela. *A mutação
+duplicava o passo em vez de o mover.* **Why:** um passo idempotente (um clamp, um `normalize`, um
+`fract`, um `dedup`) no fim de uma cadeia torna invisível toda reordenação a montante dele — e a
+mutação parece certa a quem a lê, porque o código mutado *é* diferente. **How to apply:** quando o
+passo final for idempotente, o `old` da mutação tem de **conter esse passo** para que o `new` o
+possa tirar de lá; e a suspeita levanta-se sozinha ao ver a lista da cadeia acabar num redutor. Ver
+[[reference_topic_measurement_discipline]].

@@ -88,6 +88,7 @@ pub mod scene;
 /// pura e mora no próprio tipo, e quem a corre é a ponte do `ph2d-app-components`.
 pub mod scroll_factor;
 pub mod scroll_limits;
+pub mod scroll_motion;
 pub mod scroll_repeat;
 /// ⭐⭐⭐ **A PEÇA DA ESCULTURA na árvore do editor** — ver [`sculpt_piece_ref`].
 pub mod sculpt_piece_ref;
@@ -200,6 +201,7 @@ pub use sampling::{
 };
 pub use scroll_factor::ScrollFactor;
 pub use scroll_limits::{ScrollLimits, confina_eixo};
+pub use scroll_motion::ScrollMotion;
 pub use scroll_repeat::{ScrollRepeat, envolve_eixo};
 pub use sculpt_piece_ref::Sculpt3dPieceRef;
 pub use sequence::SequencePlayer;

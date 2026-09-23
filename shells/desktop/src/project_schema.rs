@@ -517,4 +517,18 @@
 /// confina nada e a cena fica byte-idêntica — a mesma convenção do ladrilho zero da W2.
 ///
 /// ⛔ **Sem degrau de migração**, pela mesma decisão — um v165 é recusado em voz alta.
-pub(crate) const PROJECT_SCHEMA: u32 = 166;
+///
+/// # ⭐ 166 → 167 (2026-09-22) — o MOVIMENTO PRÓPRIO (plano 24, W4)
+///
+/// `ScrollMotion { velocity }` — nuvens que andam sozinhas, `offset = velocidade × playhead`.
+/// ⭐ **É uma função PURA do relógio**, e é aí que se ganha por desenho: o *autoscroll* do alvo não
+/// é observável por nenhum dos quatro observáveis nem por um teste (medido), porque vive no caminho
+/// de DESENHO; o nosso sobrevive ao scrub e ao rebobinar **sem uma linha de estado**, tem gate, e
+/// entra no replay.
+///
+/// ⚠️ Ele é um **SOMANDO do deslocamento** e nunca um segundo condutor — medido: dois motores sobre
+/// o mesmo `Transform` entram no ledger com chaves diferentes, e a paralaxe lê a escrita do outro
+/// como se fosse um arrasto do artista.
+///
+/// ⛔ **Sem degrau de migração**, pela mesma decisão — um v166 é recusado em voz alta.
+pub(crate) const PROJECT_SCHEMA: u32 = 167;

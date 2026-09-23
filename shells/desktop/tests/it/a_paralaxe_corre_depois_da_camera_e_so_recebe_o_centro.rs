@@ -91,4 +91,14 @@ fn a_paralaxe_corre_depois_da_camera_e_so_recebe_o_centro() {
         fase.contains("camera_rect"),
         "a fase nao recebe o rectangulo da camera: o controlo do gate acima e vacuo"
     );
+
+    // ⭐⭐⭐ **Metade 3 — o RELÓGIO chega à lei** (W4). A deriva é `velocidade × playhead`, e é por
+    // ele ser LIDO a cada quadro (nunca acumulado) que uma nuvem sobrevive a um scrub. ⛔ Cravá-lo
+    // congela a deriva **em silêncio**: nada na tela diz porquê, e a lei continua verde nos gates
+    // dela — eles recebem o instante como argumento.
+    assert!(
+        fase.contains("self.playhead.time()"),
+        "a fase deixou de ler o relogio: a deriva da W4 congela, e os gates da lei nao o veem \
+         porque recebem o instante como argumento"
+    );
 }

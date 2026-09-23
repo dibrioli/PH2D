@@ -32,9 +32,13 @@ impl crate::App {
         // mede. ⇒ *o zoom não entra no DESLOCAMENTO; ele entra no CONFINAMENTO*, e quem guarda a
         // primeira metade é a ASSINATURA da `ScrollFactor::deslocamento`, que recebe um centro e
         // mais nada.
+        // ⭐ **O RELÓGIO é a única entrada da deriva** (W4) — `velocidade × playhead`. É por ele
+        // ser lido aqui, e não acumulado, que uma nuvem sobrevive a um scrub e ao rebobinar.
+        let playhead = self.playhead.time();
         let n = ph2d_app_components::parallax_bridge::drive_parallax(
             sim,
             camera_rect,
+            playhead,
             &mut self.preview_drive,
         );
         // ⭐ **O diagnóstico é a única forma de ver um deslocamento** — ele não deixa rasto na tela.

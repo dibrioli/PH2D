@@ -43,7 +43,7 @@
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{
-    Entity, ScrollFactor, ScrollLimits, ScrollRepeat, SimWorld, Transform, UiCanvas,
+    Entity, ScrollFactor, ScrollLimits, ScrollMotion, ScrollRepeat, SimWorld, Transform, UiCanvas,
 };
 use ph2d_preview_drive::{Driven, Driver, PreviewDrive};
 
@@ -57,7 +57,12 @@ pub fn parallax_count(sim: &mut SimWorld) -> usize {
 /// ⭐ **Um quadro da paralaxe.** Devolve quantos objectos foram conduzidos.
 ///
 /// `vista` é o rectângulo da câmera do JOGO (centro e meia-janela em metros) — o que a
-/// `fase_game_camera` devolveu, ou `None` quando não há câmera de jogo na cena.
+/// `fase_game_camera` devolveu, ou `None` quando não há câmera de jogo na cena. `playhead` é o
+/// tempo da régua em segundos, e ele é a ÚNICA entrada da deriva da W4.
+///
+/// ⚠️ **Um objecto com deriva é conduzido mesmo com `k` neutro**, e isso é a lei: `k = 1` diz *«não
+/// guardo nada do movimento da câmera»*, e a deriva não é movimento da câmera. ⛔ Sem essa metade
+/// uma nuvem que anda sozinha num plano normal ficaria parada, e o salto do neutro esconderia-a.
 ///
 /// # ⚠️⚠️ A meia-janela atravessa, e a premissa da W1 MORREU aqui
 ///
@@ -73,6 +78,7 @@ pub fn parallax_count(sim: &mut SimWorld) -> usize {
 pub fn drive_parallax(
     sim: &mut SimWorld,
     vista: Option<([f32; 2], [f32; 2])>,
+    playhead: f64,
     drive: &mut PreviewDrive,
 ) -> usize {
     type Linha = (
@@ -81,13 +87,14 @@ pub fn drive_parallax(
         ScrollFactor,
         Option<ScrollRepeat>,
         Option<ScrollLimits>,
+        Option<ScrollMotion>,
     );
     let antes: Vec<Linha> = {
         let world = sim.world_mut();
         world
-            .query_filtered::<(Entity, &Transform, &ScrollFactor, Option<&ScrollRepeat>, Option<&ScrollLimits>), bevy_ecs::prelude::Without<UiCanvas>>()
+            .query_filtered::<(Entity, &Transform, &ScrollFactor, Option<&ScrollRepeat>, Option<&ScrollLimits>, Option<&ScrollMotion>), bevy_ecs::prelude::Without<UiCanvas>>()
             .iter(world)
-            .map(|(e, t, k, r, l)| (e, *t, *k, r.copied(), l.copied()))
+            .map(|(e, t, k, r, l, m)| (e, *t, *k, r.copied(), l.copied(), m.copied()))
             .collect()
     };
     let Some((centro, meia)) = vista else {
@@ -96,8 +103,8 @@ pub fn drive_parallax(
         return 0;
     };
     let mut n = 0;
-    for (entity, era, cfg, rep, lim) in antes {
-        if cfg.e_neutro() {
+    for (entity, era, cfg, rep, lim, mov) in antes {
+        if cfg.e_neutro() && mov.is_none_or(|m| m.e_inerte()) {
             // ⛔ `k = 1` é o objecto do mundo: não se escreve um bit e **não se declara**, senão
             // toda cena com o componente anexado passaria a ter uma entrada viva no ledger.
             continue;
@@ -117,6 +124,16 @@ pub fn drive_parallax(
         // vem por último, logo ela ganha.
         let conf = lim.map_or(centro, |l| l.confina(centro, meia));
         let d = cfg.deslocamento_confinado(centro, conf);
+        // ⭐⭐ **A DERIVA é um SOMANDO e nunca um segundo condutor** — medido no
+        // [`super::w4_probe`]: dois motores sobre o mesmo `Transform` entram no ledger com chaves
+        // diferentes, e esta ponte leria a escrita do outro como um arrasto do artista.
+        //
+        // ⚠️ E ela entra **ANTES** da repetição: quem deriva para sempre é precisamente quem tem
+        // de envolver, e envolver antes de somar deixaria a nuvem a fugir.
+        let d = mov.map_or(d, |m| {
+            let o = m.deslocamento(playhead);
+            [d[0] + o[0], d[1] + o[1]]
+        });
         let d = rep.map_or(d, |r| r.envolve(d));
         let agora = Transform {
             translation: Vec2::new(autorada.translation.x + d[0], autorada.translation.y + d[1]),
@@ -192,3 +209,7 @@ fn base_autorada(drive: &PreviewDrive, entity: Entity, era: Transform) -> Transf
 #[cfg(test)]
 #[path = "parallax_bridge_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "parallax_w4_probe_tests.rs"]
+mod w4_probe;

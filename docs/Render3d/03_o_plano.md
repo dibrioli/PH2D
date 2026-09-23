@@ -532,8 +532,11 @@ modelo diz ONDE procurar, não o que uma cura vale.*
    de uma peça simples, e a assadura lança raios contra o CAMPO, logo ela cresce com a peça. *Um
    preço medido numa fixtura não é o preço do produto.*
 
-   ⏳ **As SONDAS (`+0,52 ms`) ficam** — elas são a MESMA cura e a mesma chave, e o que falta é
-   ligá-las a esta porta.
+   ⛔ **As SONDAS NÃO seguem, e o veredito é o número delas:** `+0,52 ms` ([`08` §14.7](08_a_luz_indirecta.md))
+   de um quadro assente que custa `11`–`56 ms` é **`1 %` a `5 %`**, e a cura ali **não é a mesma**:
+   o campo do chão é dado de CPU e as sondas vivem num **buffer de GPU** criado por chamada — não
+   re-despachar exige persistir buffers através de quadros, que é bem mais do que uma chave. *A
+   mesma frase — «uma cache por cena e luz» — descreve duas obras de tamanhos muito diferentes.*
 4. ✅ **a régua do gate** — **FECHADA**: `QUADROS_MEDIDOS = 3`, o mínimo, com a 1.ª chamada a ficar
    na tabela ao lado (ela é um preço real e uma régua que a apaga faz uma cura desaparecer com ela).
 

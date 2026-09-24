@@ -127,7 +127,7 @@ fn buttons(
         rotulos.push(tr("panel.inspector.tween.x_remove_tween"));
     }
     let seg = ph2d_editor_core::widget::segment_rects_for(
-        Rect::new(x, y, w, ALTURA_DE_BOTAO),
+        Rect::new(x, y, w, ALTURA_DE_CAMPO),
         &rotulos,
         ph2d_editor_core::widget::button_label_font(),
         text_system,
@@ -168,7 +168,7 @@ fn buttons(
             theme,
         );
     }
-    y + ALTURA_DE_BOTAO + ph2d_tokens::control_gap_px()
+    y + ALTURA_DE_CAMPO + ph2d_tokens::control_gap_px()
 }
 
 /// Pinta a secção. Devolve o `y` seguinte.

@@ -134,7 +134,6 @@ fn botao_largar(
         x,
         w,
         y,
-        ALTURA_DE_BOTAO,
         tr("panel.inspector.sequence.clear"),
     );
     hit_index.register(crate::ids::INSP_SEQ_CLEAR, rect);

@@ -14,9 +14,14 @@ use ph2d_tokens::ROW_H_PX;
 ///
 /// ⚠️ **A coluna pede-se como a linha de escolha a pede** (`property_row_columns`, sem nome
 /// desejado e sem necessidade declarada): numa lista que já tem uma linha dessas o pedido é o
-/// MESMO e não mexe na coluna do painel. ⚠️ **A altura é do chamador, de propósito:** os botões
-/// desta casa medem `30` e os campos `22`, e se devem ser iguais é decisão do dono ainda aberta
-/// (§9-octodecies.6 do handoff da `line/UIUX`) — esta porta decide ONDE, não QUÃO ALTO.
+/// MESMO e não mexe na coluna do painel.
+///
+/// ⭐⭐ **E a altura é a de um CAMPO** ([`ROW_H_PX`]) — decisão do dono, 2026-09-24: *«igualar à
+/// altura dos campos»*, com a pergunta posta com o número ao lado (os botões do Inspector mediam
+/// `30`, os campos `22`; os outros painéis já pintavam `22`). ⛔ **Por isso a porta NÃO recebe
+/// altura:** enquanto a recebia, a mesma lista tinha botões a `30` e a `22` conforme a secção
+/// (o Inspector passava a sua constante de botão, a física o `ROW_H_PX`), e a lei do dono passaria
+/// a depender de cada chamador se lembrar dela.
 ///
 /// ⛔⛔ **Só vai para a coluna se o RÓTULO lá couber; senão atravessa a linha, como antes** — a
 /// lei que a [`super::escolha::paint_choice_row`] já tem (ao lado se cabe, PALETA se não). Medido
@@ -30,14 +35,7 @@ use ph2d_tokens::ROW_H_PX;
 /// `text_elide::coube`, que regista no censo das elisões: uma pergunta de disposição lida como
 /// uma pintura poria no censo um rótulo que não foi pintado ali.
 #[must_use]
-pub fn caixa_do_botao(
-    text_system: &mut TextSystem,
-    x: f32,
-    w: f32,
-    y: f32,
-    h: f32,
-    rotulo: &str,
-) -> Rect {
+pub fn caixa_do_botao(text_system: &mut TextSystem, x: f32, w: f32, y: f32, rotulo: &str) -> Rect {
     let row = crate::widget::property_row_columns(x, w, y, ROW_H_PX);
     let largura = text_system.prefix_width_weighted(
         rotulo,
@@ -45,9 +43,9 @@ pub fn caixa_do_botao(
         ph2d_text::FontWeight::MEDIUM,
     );
     if largura <= crate::paint::label_budget(row.control.w) {
-        Rect::new(row.control.x, y, row.control.w, h)
+        Rect::new(row.control.x, y, row.control.w, ROW_H_PX)
     } else {
-        Rect::new(x, y, w, h)
+        Rect::new(x, y, w, ROW_H_PX)
     }
 }
 
@@ -74,22 +72,20 @@ mod tests {
     use ph2d_text::TextSystem;
     use ph2d_tokens::ROW_H_PX;
 
-    const ALTURA: f32 = 30.0; // LITERAL-PX-OK: a altura de um botao desta casa (a porta nao a decide)
-
     /// ⭐ **Um rótulo curto vai para a coluna do VALOR** — o `x` é o do controlo da linha, e a
-    /// largura a dele; a altura é a que o chamador pediu.
+    /// largura a dele; a altura é a de um CAMPO (decisão do dono de 2026-09-24).
     #[test]
     fn um_rotulo_curto_vai_para_a_coluna_do_valor() {
         let mut ts = TextSystem::without_system_fonts();
         let (x, w) = (10.0, 300.0);
         let coluna = crate::widget::property_row_columns(x, w, 0.0, ROW_H_PX).control;
-        let r = caixa_do_botao(&mut ts, x, w, 40.0, ALTURA, "Swap");
+        let r = caixa_do_botao(&mut ts, x, w, 40.0, "Swap");
         assert!(
             coluna.x > x + 1.0,
             "a fixtura não tem coluna de nome: {coluna:?}"
         );
         assert_eq!((r.x, r.w), (coluna.x, coluna.w));
-        assert_eq!((r.y, r.h), (40.0, ALTURA));
+        assert_eq!((r.y, r.h), (40.0, ROW_H_PX));
     }
 
     /// ⛔ **Um rótulo que não cabe na coluna ATRAVESSA a linha** — cortá-lo seria pior do que o
@@ -99,7 +95,7 @@ mod tests {
         let mut ts = TextSystem::without_system_fonts();
         let (x, w) = (10.0, 300.0);
         let longo = "Reimport at current px/m, with every option this button could ever need";
-        let r = caixa_do_botao(&mut ts, x, w, 0.0, ALTURA, longo);
+        let r = caixa_do_botao(&mut ts, x, w, 0.0, longo);
         assert_eq!((r.x, r.w), (x, w));
     }
 
@@ -125,7 +121,7 @@ mod tests {
             let w = 100.0 + k as f32 * 0.25;
             let coluna = crate::widget::property_row_columns(0.0, w, 0.0, ROW_H_PX).control;
             let cabe = largura <= crate::paint::label_budget(coluna.w);
-            let r = caixa_do_botao(&mut ts, 0.0, w, 0.0, ALTURA, rotulo);
+            let r = caixa_do_botao(&mut ts, 0.0, w, 0.0, rotulo);
             assert_eq!(
                 r.x == coluna.x && coluna.x > 0.0,
                 cabe,
@@ -148,10 +144,10 @@ mod tests {
     /// e não zero (a foto do dono, 2026-09-24: *«sem espaçamento nenhum»*).
     #[test]
     fn depois_do_botao_vem_o_vao_de_toda_linha() {
-        let caixa = crate::zones::Rect::new(0.0, 40.0, 100.0, ALTURA);
+        let caixa = crate::zones::Rect::new(0.0, 40.0, 100.0, ROW_H_PX);
         let gap = ph2d_tokens::control_gap_px();
         assert!(gap > 0.0, "o vão da casa é zero — a régua não mede nada");
-        assert_eq!(super::abaixo_do_botao(caixa), 40.0 + ALTURA + gap);
+        assert_eq!(super::abaixo_do_botao(caixa), 40.0 + ROW_H_PX + gap);
     }
 
     /// ⛔ **Perguntar «cabe?» NÃO é pintar** — o censo das elisões não pode ver este rótulo.
@@ -159,8 +155,8 @@ mod tests {
     fn a_pergunta_nao_entra_no_censo_das_elisoes() {
         let mut ts = TextSystem::without_system_fonts();
         let ((), medidos) = crate::text_elide::elisao::medindo(|| {
-            let _ = caixa_do_botao(&mut ts, 0.0, 300.0, 0.0, ALTURA, "Swap");
-            let _ = caixa_do_botao(&mut ts, 0.0, 300.0, 0.0, ALTURA, &"M".repeat(80));
+            let _ = caixa_do_botao(&mut ts, 0.0, 300.0, 0.0, "Swap");
+            let _ = caixa_do_botao(&mut ts, 0.0, 300.0, 0.0, &"M".repeat(80));
         });
         assert!(medidos.is_empty(), "a porta registou: {medidos:?}");
     }

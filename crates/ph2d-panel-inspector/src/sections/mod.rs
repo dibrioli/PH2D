@@ -7,18 +7,6 @@
 //! submodule opens with a single `use super::*;`. No logic moved — every
 //! section painter is verbatim from the pre-split `sections.rs`.
 
-/// ⭐⭐⭐ **A ALTURA DE UM BOTÃO DE ACÇÃO DO INSPECTOR — uma, e só uma.**
-///
-/// ⛔⛔ **Ela estava declarada QUINZE vezes**, cada cópia com um comentário a afirmar *«igual à das
-/// irmãs»* — e **nada** que o verificasse. É a MESMA forma que o `CHECKBOX_BOX_PX = 18` pagou em
-/// 2026-09-21 (cinco cópias, uma curada, quatro com a frase a ficar falsa em silêncio), e a que o
-/// `SwatchSize::Md` pagou em 22/09. *Uma frase de comentário não é uma lei: só uma PORTA é.*
-///
-/// ⚠️ **Ela é MAIOR que a altura de uma fileira** (`ROW_H_PX = 22`), e isso é declarado e não um
-/// acidente: um botão de acção não é um campo. ⛔ O que NÃO é declarado é a divergência que estava
-/// ao lado — ver o [`ALTURA_DE_CAMPO`].
-pub(crate) const ALTURA_DE_BOTAO: f32 = 30.0; // LITERAL-PX-OK: a ÚNICA declaração desta grandeza
-
 /// ⭐⭐⭐ **A ALTURA DE UM CAMPO DO INSPECTOR — que é a da FILEIRA, e não um número próprio.**
 ///
 /// ⛔⛔⛔ **Medido 2026-09-22: ela estava declarada em DUAS versões que se contradiziam**, as duas
@@ -27,6 +15,12 @@ pub(crate) const ALTURA_DE_BOTAO: f32 = 30.0; // LITERAL-PX-OK: a ÚNICA declara
 /// é a do ficheiro em que ele calhou de estar a olhar.*
 ///
 /// ⇒ a resposta é a da CASA, e esta porta delega nela para não haver uma terceira.
+///
+/// ⭐⭐ **E é também a altura de um BOTÃO DE ACÇÃO** — decisão do dono, 2026-09-24: *«igualar à
+/// altura dos campos»*. Até esse dia havia uma `ALTURA_DE_BOTAO` própria, declaradamente maior
+/// (`30`), e com os botões na coluna do valor eles eram as únicas peças da coluna mais altas que as
+/// vizinhas. ⛔ Ela foi APAGADA e não posta a `22`: dois nomes para o mesmo número são duas
+/// respostas à espera de divergir.
 pub(crate) const ALTURA_DE_CAMPO: f32 = ph2d_tokens::ROW_H_PX;
 
 pub(crate) use crate::ids;

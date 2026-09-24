@@ -94,7 +94,6 @@ pub(crate) fn paint_join_gesture(
         x,
         w,
         yy,
-        ROW_H_PX,
         draw_button_label(draw_armed),
     );
     let btn = Button::new(ids::INSP_PHYS_JOIN_DRAW, draw_button_label(draw_armed))
@@ -110,8 +109,7 @@ pub(crate) fn paint_join_gesture(
 
     if join_count >= 2 {
         let label = join_button_label(join_count);
-        let rect =
-            ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, yy, ROW_H_PX, &label);
+        let rect = ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, yy, &label);
         let btn = Button::new(ids::INSP_PHYS_JOIN, &label)
             .kind(ButtonKind::Default)
             .visual(store.button_visual(ids::INSP_PHYS_JOIN));
@@ -124,8 +122,7 @@ pub(crate) fn paint_join_gesture(
     // botão que não faria nada é pior que botão nenhum.
     if rig_parts > 0 {
         let label = rig_button_label(rig_parts);
-        let rect =
-            ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, yy, ROW_H_PX, &label);
+        let rect = ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, yy, &label);
         let btn = Button::new(ids::INSP_PHYS_RIG, &label)
             .kind(ButtonKind::Default)
             .visual(store.button_visual(ids::INSP_PHYS_RIG));

@@ -318,11 +318,11 @@ pub(crate) fn paint_script_section(
         theme,
         hit_index,
         store,
-        Rect::new(x, cur_y, w, ALTURA_DE_BOTAO),
+        Rect::new(x, cur_y, w, ALTURA_DE_CAMPO),
         ids::INSP_SCRIPT_BROWSE,
         tr("panel.inspector.script.browse"),
     );
-    cur_y += ALTURA_DE_BOTAO + ph2d_tokens::control_gap_px();
+    cur_y += ALTURA_DE_CAMPO + ph2d_tokens::control_gap_px();
     cur_y = super::script_avisos::avisos(scene, text_system, theme, x, w, cur_y, info);
 
     // ── OS NÚMEROS ───────────────────────────────────────────────────────────
@@ -390,7 +390,7 @@ pub(crate) fn paint_script_section(
             scene,
             &texto,
             x,
-            cur_y + (ALTURA_DE_BOTAO - TypeToken::Sm.px()) * 0.5,
+            cur_y + (ALTURA_DE_CAMPO - TypeToken::Sm.px()) * 0.5,
             TypeToken::Sm.px(),
             (w - reset_w - gap).max(0.0),
             resolve(ColorToken::Text2, theme),
@@ -401,11 +401,11 @@ pub(crate) fn paint_script_section(
             theme,
             hit_index,
             store,
-            Rect::new(x + w - reset_w, cur_y, reset_w, ALTURA_DE_BOTAO),
+            Rect::new(x + w - reset_w, cur_y, reset_w, ALTURA_DE_CAMPO),
             id,
             tr("panel.inspector.script.remove"),
         );
-        cur_y += ALTURA_DE_BOTAO + ph2d_tokens::control_gap_px();
+        cur_y += ALTURA_DE_CAMPO + ph2d_tokens::control_gap_px();
     }
     fold.finish(store, scene, hit_index, cur_y + SECTION_BOTTOM_PAD_PX)
 }

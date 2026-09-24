@@ -23,9 +23,9 @@
 //! # ⭐ A régua
 //!
 //! Um ficheiro de secção não declara uma constante de ALTURA. As duas grandezas vivem no
-//! `sections/mod.rs` — `ALTURA_DE_BOTAO` (declaradamente maior que uma fileira: um botão de acção
-//! não é um campo) e `ALTURA_DE_CAMPO` (que **delega** no `ph2d_tokens::ROW_H_PX` da casa, para não
-//! haver uma terceira resposta).
+//! `sections/mod.rs` — `ALTURA_DE_CAMPO`, que **delega** no `ph2d_tokens::ROW_H_PX` da casa, para
+//! não haver uma segunda resposta. ⭐ Desde 2026-09-24 ela é também a altura de um BOTÃO (decisão do
+//! dono: *«igualar à altura dos campos»*); a `ALTURA_DE_BOTAO` (`30`) que aqui vivia foi apagada.
 //!
 //! ⚠️ **A régua é TEXTUAL de propósito.** O censo do produto mede o que é PINTADO e não vê uma
 //! constante que ainda não tem consumidor — e uma cópia nasce sempre sem consumidor, no commit
@@ -40,7 +40,7 @@
 /// nove sobre código correcto** — *uma régua que mede a FORMA da linha em vez do que ela pode
 /// PARTIR acusa quem já está certo.*
 const PROIBIDAS: &[(&str, &str)] = &[
-    ("BTN_H", "sections::ALTURA_DE_BOTAO"),
+    ("BTN_H", "sections::ALTURA_DE_CAMPO"),
     ("FIELD_H", "sections::ALTURA_DE_CAMPO"),
     ("ROW_H", "ph2d_tokens::ROW_H_PX"),
 ];

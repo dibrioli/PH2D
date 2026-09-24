@@ -357,7 +357,6 @@ pub(crate) fn paint_tags_section(
             x,
             w,
             cur_y,
-            ALTURA_DE_BOTAO,
             &tr_with(
                 "panel.inspector.tags.create_named",
                 &[("nome", &escrito.trim())],

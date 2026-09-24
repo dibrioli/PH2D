@@ -247,7 +247,6 @@ fn paint_body_sections(
         inner_x,
         inner_w,
         y,
-        row_h,
         pivot_label,
     );
     let pivot = Button::new(ph2d_tool_padding::ids::PAD_PIVOT_RECENTER, pivot_label)

@@ -346,7 +346,6 @@ fn paint_body_actions(
     y: f32,
     info: &InspectorPhysicsInfo,
 ) -> f32 {
-    let h = ROW_H_PX;
     let mut yy = y;
 
     // Gravity Scale + the Bake channel selector — both Dynamic-only (rapier
@@ -488,7 +487,7 @@ fn paint_body_actions(
     }
 
     let mut paint_at = |id, label: &str, yy: &mut f32| -> Rect {
-        let rect = ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, *yy, h, label);
+        let rect = ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, *yy, label);
         let btn = Button::new(id, label)
             .kind(ButtonKind::Default)
             .visual(store.button_visual(id));

@@ -70,7 +70,6 @@ impl BodyCtx<'_> {
                 self.inner_x,
                 self.inner_w,
                 y,
-                self.row_h,
                 label,
             );
             let st = self.store.button_visual(ids::VECTOR_STATE_SIGNAL_ADD);

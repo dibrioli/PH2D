@@ -329,8 +329,7 @@ fn toggle(
     y: f32,
 ) -> f32 {
     let theme = ctx.host.theme();
-    let rect =
-        ph2d_editor_core::property_row::caixa_do_botao(ctx.text_system, x, w, y, ROW_H_PX, label);
+    let rect = ph2d_editor_core::property_row::caixa_do_botao(ctx.text_system, x, w, y, label);
     let state = if on {
         (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
     } else {
@@ -358,8 +357,7 @@ fn toggle(
 /// A plain action button.
 fn command(ctx: &mut PaintCtx, id: ph2d_a11y::NodeId, label: &str, x: f32, w: f32, y: f32) -> f32 {
     let theme = ctx.host.theme();
-    let rect =
-        ph2d_editor_core::property_row::caixa_do_botao(ctx.text_system, x, w, y, ROW_H_PX, label);
+    let rect = ph2d_editor_core::property_row::caixa_do_botao(ctx.text_system, x, w, y, label);
     let state = ctx.host.store().button_visual(id);
     let scene = &mut *ctx.scene;
     let text_system = &mut *ctx.text_system;

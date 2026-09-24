@@ -10,7 +10,6 @@
 //! ⛔ *Um ficheiro que cresce até ao tecto cura-se pelo assunto que já estava lá dentro, nunca por
 //! uma entrada nova na lista de folgas* (`CLAUDE.md` §5.0).
 
-use crate::layout::ROW_H;
 use crate::paint_helpers::button_state;
 use crate::paint_rows::{paint_aabb_rows, paint_number_row, paint_number_row_from_state};
 use ph2d_editor_core::grid_snap::GridSnapState;
@@ -215,7 +214,7 @@ pub(crate) fn paint_voronoi_cfg(
     // Reseed button.
     let reseed_label = tr("panel.grid_snap.bounded.reseed_next_rng");
     let reseed_rect =
-        ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, y, ROW_H, reseed_label);
+        ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, y, reseed_label);
     let btn = Button {
         id: ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_RESEED,
         label: reseed_label.to_string(),

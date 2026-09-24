@@ -97,7 +97,7 @@ fn nenhum_botao_atravessa_a_linha_a_mao() {
         acusados.is_empty(),
         "estes botões atravessam a linha por um `Rect::new(x, …, w, …)` escrito à mão (report do \
          dono de 2026-09-24): {acusados:?}\n\
-         cura: `ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, y, h, rótulo)` — \
+         cura: `ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, y, rótulo)` — \
          a coluna do valor quando o rótulo cabe, a linha inteira quando não cabe."
     );
 }

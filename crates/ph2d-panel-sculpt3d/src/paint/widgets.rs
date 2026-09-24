@@ -142,8 +142,7 @@ pub(super) fn toggle(
     w: f32,
     y: f32,
 ) -> f32 {
-    let rect =
-        ph2d_editor_core::property_row::caixa_do_botao(ctx.text_system, x, w, y, ROW_H_PX, label);
+    let rect = ph2d_editor_core::property_row::caixa_do_botao(ctx.text_system, x, w, y, label);
     toggle_em(ctx, id, label, on, rect);
     ph2d_editor_core::property_row::abaixo_do_botao(rect)
 }
@@ -200,8 +199,7 @@ pub(super) fn command(
     w: f32,
     y: f32,
 ) -> f32 {
-    let rect =
-        ph2d_editor_core::property_row::caixa_do_botao(ctx.text_system, x, w, y, ROW_H_PX, label);
+    let rect = ph2d_editor_core::property_row::caixa_do_botao(ctx.text_system, x, w, y, label);
     command_em(ctx, id, label, rect);
     ph2d_editor_core::property_row::abaixo_do_botao(rect)
 }

@@ -314,8 +314,6 @@ pub(crate) fn paint_joint_section(
     };
 
     let mut yy = y + header_h;
-    let h = ROW_H_PX;
-
     // **Active comes FIRST** (W-J8) — it qualifies everything below it. The rows
     // stay painted and stay editable while it is off: an inactive joint is one
     // you are still authoring, which is the whole difference from a deleted one.
@@ -403,7 +401,6 @@ pub(crate) fn paint_joint_section(
         x,
         w,
         yy,
-        h,
         tr("panel.inspector.joint.copy_properties"),
     );
     let copy = Button::new(
@@ -424,7 +421,7 @@ pub(crate) fn paint_joint_section(
     if info.paste_targets > 0 {
         let label = paste_label(info.paste_targets);
         let paste_rect =
-            ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, yy, h, &label);
+            ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, yy, &label);
         let paste = Button::new(ids::INSP_JOINT_PASTE, label)
             .kind(ButtonKind::Default)
             .visual(store.button_visual(ids::INSP_JOINT_PASTE));
@@ -438,7 +435,6 @@ pub(crate) fn paint_joint_section(
         x,
         w,
         yy,
-        h,
         tr("panel.inspector.joint.delete_joint"),
     );
     let btn = Button::new(

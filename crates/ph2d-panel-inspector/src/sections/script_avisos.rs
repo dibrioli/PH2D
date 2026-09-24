@@ -7,7 +7,7 @@
 //! o [`super::particles_avisos`], cortado da irmã pela mesma razão.
 //!
 //! ⛔ O corte foi forçado pela wave das alturas (2026-09-22): ao passar `FIELD_H`/`BTN_H` para as
-//! portas `ALTURA_DE_CAMPO`/`ALTURA_DE_BOTAO`, os nomes mais longos fizeram o `rustfmt` quebrar
+//! portas `ALTURA_DE_CAMPO`/`ALTURA_DE_CAMPO`, os nomes mais longos fizeram o `rustfmt` quebrar
 //! duas chamadas e o ficheiro passou o tecto por **uma** linha. *A cura de um tecto é sempre o
 //! corte, nunca uma entrada no `FILE_OVERAGE_OK`.*
 

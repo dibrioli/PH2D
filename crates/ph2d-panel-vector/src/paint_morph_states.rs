@@ -156,7 +156,6 @@ impl BodyCtx<'_> {
             self.inner_x,
             self.inner_w,
             y,
-            self.row_h,
             label,
         );
         // ⚠️ O *ligado* é o **KIND**, não o `ButtonState`: aquele descreve o rato (hover, press) e

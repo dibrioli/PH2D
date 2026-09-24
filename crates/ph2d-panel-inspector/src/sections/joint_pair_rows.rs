@@ -55,13 +55,11 @@ pub(super) fn paint_pair_rows(
         &ANCHOR_B_LABELS.map(TextKey::tr),
         u8::from(info.world_anchored),
     );
-    let h = ROW_H_PX;
     let btn_rect = ph2d_editor_core::property_row::caixa_do_botao(
         text_system,
         x,
         w,
         yy,
-        h,
         tr("panel.inspector.joint.swap_a_b"),
     );
     // ⚠️ Always offered, on every kind and whether or not the names resolve: a

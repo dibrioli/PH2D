@@ -183,7 +183,6 @@ pub(super) fn paint_kind_params(
             x,
             w,
             yy,
-            ROW_H_PX,
             &tr_with(
                 "panel.inspector.joint.add_wheel",
                 &[("n", &info.wheel_count)],

@@ -54,7 +54,6 @@ pub(super) fn paint_empty_face(
         x,
         w,
         yy,
-        h,
         tr("panel.inspector.physics.add_physics_body"),
     );
     let btn = Button::new(
@@ -77,7 +76,6 @@ pub(super) fn paint_empty_face(
             x,
             w,
             yy,
-            h,
             &tr_with(
                 "panel.inspector.physics.add_shape_to",
                 &[("owner", &info.part_owner)],
@@ -111,7 +109,6 @@ pub(super) fn paint_empty_face(
             x,
             w,
             yy,
-            h,
             &super::physics_join_rows::rig_button_label(info.rig_parts),
         );
         let btn = Button::new(
@@ -154,7 +151,6 @@ pub(super) fn paint_part_doors(
     y: f32,
 ) -> f32 {
     let mut yy = y;
-    let h = ROW_H_PX;
     for (id, label) in [
         (
             ids::INSP_PHYS_ADD,
@@ -165,7 +161,7 @@ pub(super) fn paint_part_doors(
             tr("panel.inspector.physics.remove_shape"),
         ),
     ] {
-        let rect = ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, yy, h, label);
+        let rect = ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, yy, label);
         let btn = Button::new(id, label)
             .kind(ButtonKind::Default)
             .visual(store.button_visual(id));

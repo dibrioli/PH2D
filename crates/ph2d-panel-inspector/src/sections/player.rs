@@ -88,7 +88,6 @@ pub(crate) fn paint_player_section(
     info: &InspectorPlayerInfo,
 ) -> f32 {
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
-    let h = TypeToken::Md.px() + Spacing::Sm.px(); // LITERAL-PX-OK: control row height
     let color_id = core_ids::INSP_LIVE_PLAYER_COLOR;
     let rgba = store
         .widget_color(color_id)
@@ -126,7 +125,7 @@ pub(crate) fn paint_player_section(
     // false` pintaria a secção inteira de knobs sobre um player que não existe — foi o que
     // aconteceu quando a face saiu, e os dois gates do `seam_player` foram quem o disse.
     if !info.has_player {
-        let fim = door::paint_empty_face(scene, text_system, theme, hit_index, store, x, w, yy, h);
+        let fim = door::paint_empty_face(scene, text_system, theme, hit_index, store, x, w, yy);
         return fold.finish(store, scene, hit_index, fim);
     }
 
@@ -258,18 +257,7 @@ pub(crate) fn paint_player_section(
     // **OS VERBOS da seção** — extraídos do `paint` por TETO DE LOC (o `Brake`
     // da W-Brake foi a row que o cruzou), e o corte é por responsabilidade: o pai
     // decide o que a seção MOSTRA, o filho pinta o que ela FAZ.
-    let out = paint_verbs(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        yy,
-        h,
-        info,
-    );
+    let out = paint_verbs(scene, text_system, theme, hit_index, store, x, w, yy, info);
     fold.finish(store, scene, hit_index, out)
 }
 
@@ -290,7 +278,6 @@ fn paint_verbs(
     x: f32,
     w: f32,
     y: f32,
-    h: f32,
     info: &InspectorPlayerInfo,
 ) -> f32 {
     let mut yy = y;
@@ -320,7 +307,7 @@ fn paint_verbs(
         } else {
             tr("panel.inspector.player.fit_to_collider").to_string()
         };
-        let rect = ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, yy, h, &label);
+        let rect = ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, yy, &label);
         let btn = Button::new(ids::INSP_PLAYER_FIT, &label)
             .kind(ButtonKind::Default)
             .visual(store.button_visual(ids::INSP_PLAYER_FIT));
@@ -352,7 +339,7 @@ fn paint_verbs(
         } else {
             tr("panel.inspector.player.fit_crouch_to_collider").to_string()
         };
-        let rect = ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, yy, h, &label);
+        let rect = ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, yy, &label);
         let btn = Button::new(ids::INSP_PLAYER_FIT_CROUCH, &label)
             .kind(ButtonKind::Default)
             .visual(store.button_visual(ids::INSP_PLAYER_FIT_CROUCH));
@@ -394,7 +381,7 @@ fn paint_verbs(
         None
     };
     if let Some((id, label)) = run_button {
-        let rect = ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, yy, h, &label);
+        let rect = ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, yy, &label);
         let btn = Button::new(id, &label)
             .kind(ButtonKind::Default)
             .visual(store.button_visual(id));
@@ -408,7 +395,6 @@ fn paint_verbs(
         x,
         w,
         yy,
-        h,
         tr("panel.inspector.player.remove_platform_player"),
     );
     let btn = Button::new(

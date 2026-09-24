@@ -316,7 +316,6 @@ fn anchor_editor(
         x,
         w,
         cur_y,
-        ALTURA_DE_BOTAO,
         tr("panel.inspector.anchors.x_remove_anchor"),
     );
     hit_index.register(ids::INSP_ANCHOR_REMOVE, rm);
@@ -457,7 +456,6 @@ pub(crate) fn paint_anchors_section(
         x,
         w,
         cur_y,
-        ALTURA_DE_BOTAO,
         tr("panel.inspector.anchors.plus_add_anchor"),
     );
     hit_index.register(ids::INSP_ANCHOR_ADD, add);

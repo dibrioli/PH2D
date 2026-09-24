@@ -39,14 +39,8 @@ pub(crate) fn paint_clone_card(
         ButtonKind::Default
     };
     let btn = Button::new(id, label).kind(kind).visual(state);
-    let rect = ph2d_editor_core::property_row::caixa_do_botao(
-        ctx.text_system,
-        x,
-        content_w,
-        y,
-        ROW_H_PX,
-        label,
-    );
+    let rect =
+        ph2d_editor_core::property_row::caixa_do_botao(ctx.text_system, x, content_w, y, label);
     paint_button(&btn, rect, ctx.scene, ctx.text_system, theme);
     register_button(ctx.host.store_mut(), id);
     ctx.host.hit_index_mut().register(id, rect);

@@ -30,14 +30,12 @@ pub(super) fn paint_empty_face(
     x: f32,
     w: f32,
     y: f32,
-    h: f32,
 ) -> f32 {
     let rect = ph2d_editor_core::property_row::caixa_do_botao(
         text_system,
         x,
         w,
         y,
-        h,
         tr("panel.inspector.player.make_platform_player"),
     );
     let btn = Button::new(

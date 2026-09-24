@@ -195,7 +195,6 @@ pub(crate) fn paint_mount_row(
             x,
             w,
             cur_y,
-            ALTURA_DE_BOTAO,
             tr("panel.inspector.anchors.reset_to_anchor"),
         );
         hit_index.register(ids::INSP_MOUNT_SNAP, btn);

@@ -736,6 +736,35 @@ combinada **127/127**. A prova de que a declaração é necessária é a corrida
 `dentro_de_um_troco_o_valor_arranca_numa_coluna_so` reprova com `[(26.0, 8, "physics.layer_0_0"),
 (136.0, 3, "physics.sleep_spin")]`.
 
+## §9-tritricies — ⭐⭐ O BOTÃO TEM A ALTURA DE UM CAMPO — e a porta deixa de receber altura
+
+Decisão do dono (2026-09-24), à pergunta aberta desde o §9-octodecies.6 (arquivado), posta com o número:
+*«Igualar à altura dos campos»*. Os botões do Inspector mediam `30` (`ALTURA_DE_BOTAO`) e os campos `22`
+(`ROW_H_PX`); os dos outros painéis **já** eram `22`.
+
+**A cura é estrutural, não um número trocado:**
+
+- [`caixa_do_botao`](../../../crates/ph2d-editor-core/src/property_row/botao.rs) **perde o parâmetro
+  `h`** e devolve sempre `ROW_H_PX`. ⛔ Enquanto a porta recebia a altura, a mesma lista tinha botões a
+  `30` e a `22` conforme a secção, e a lei do dono dependeria de cada chamador se lembrar dela.
+  `52` chamadas em `30` ficheiros reescritas por parser com contagem (as `5` ocorrências dentro de
+  strings e comentários — os censos que procuram a porta — ficaram intactas).
+- A `ALTURA_DE_BOTAO` foi **APAGADA**, não posta a `22`: dois nomes para o mesmo número são duas respostas
+  à espera de divergir. As `22` utilizações restantes (pares `+ Add | x Remove`, avanços) passaram à
+  `ALTURA_DE_CAMPO`, e o censo `nenhuma_seccao_declara_a_propria_altura` aponta o `BTN_H` para ela.
+- ⛔ **Um `30` escapava ao censo**: `let reimport_h = 30.0_f32` no `render_source.rs` (um `let`, não um
+  `const` — a régua só lê `const`). Morreu com o parâmetro.
+- Sete ligações de altura ficaram sem uso e saíram (entre elas o `h` de dois pintores do jogador, que só
+  o passavam à porta).
+
+**Medido pela sonda `diag_o_ritmo_de_cada_seccao_do_inspector`:** nenhuma linha de `30` nas secções; o
+único `30` que resta é o `+` do cabeçalho (`insp_add_component`), que é CROMO do painel e não linha da
+lista. As alturas de abertura não se movem (as secções com botões nascem dobradas).
+
+**Prova:** mutação — `ROW_H_PX + 8` na porta reprova `um_rotulo_curto_vai_para_a_coluna_do_valor`
+(`(r.y, r.h) == (40, ROW_H_PX)`). Portão: `nextest-impacted` **17 703/17 703** · clippy `-D warnings`
+zero nas `11` crates tocadas · `fmt` · censos da árvore combinada **127/127**.
+
 ## §11 — O que esta linha recomenda a quem a integrar
 
 1. **Correr o `diag_onde_cai_a_pista_do_pente` da `line/sculpt3d` DEPOIS da fusão** e reescrever com

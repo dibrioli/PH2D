@@ -160,7 +160,6 @@ pub(crate) fn paint_library(
         x,
         w,
         cur_y,
-        ALTURA_DE_BOTAO,
         tr("panel.inspector.animation.plus_add_animation"),
     );
     hit_index.register(ids::INSP_ANIM_ADD, add);
@@ -183,7 +182,6 @@ pub(crate) fn paint_library(
             x,
             w,
             cur_y,
-            ALTURA_DE_BOTAO,
             tr("panel.inspector.animation.x_remove_animation"),
         );
         hit_index.register(ids::INSP_ANIM_REMOVE, rm);

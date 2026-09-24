@@ -383,13 +383,11 @@ fn paint_per_corner_tab(
     let mut cur_y = y + grid_h + Spacing::Sm.px();
 
     // Equalize Corners — copies TL → the other three (spec §3.6).
-    let btn_h = ROW_H_PX;
     let eq_rect = ph2d_editor_core::property_row::caixa_do_botao(
         text_system,
         x,
         w,
         cur_y,
-        btn_h,
         tr("panel.inspector.color_tint.equalize_corners"),
     );
     let eq_state = store.button_visual(ids::INSP_SPRITE_CORNER_EQUALIZE);

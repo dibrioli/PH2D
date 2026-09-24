@@ -254,7 +254,7 @@ fn an_action_button_asks_the_door_where_it_goes() {
         novos.is_empty(),
         "estes botões atravessam a linha por um rect escrito à mão (report do dono de \
          2026-09-24): {novos:?}\n\
-         cura: `ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, y, h, rótulo)` — \
+         cura: `ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, y, rótulo)` — \
          a coluna do valor quando o rótulo cabe, a linha inteira quando não cabe. Se o botão é de \
          RODAPÉ ou CTA, nomeie-o em `LINHA_INTEIRA_OK` com o porquê."
     );

@@ -166,7 +166,7 @@ pub(crate) fn paint_islands(
         ButtonKind::Default
     };
     let islands_btn_label = tr("panel.bg_removal.mask.separate_islands");
-    let islands_rect = caixa_do_botao(text_system, inner_x, inner_w, y, row_h, islands_btn_label);
+    let islands_rect = caixa_do_botao(text_system, inner_x, inner_w, y, islands_btn_label);
     let islands_btn = Button::new(
         ph2d_tool_bgremoval::ids::BGR_SEPARATE_ISLANDS,
         islands_btn_label,
@@ -242,7 +242,7 @@ pub(crate) fn paint_eyedropper_swatches(
             ButtonKind::Default
         };
         let add_area_label = tr("panel.bg_removal.mask.add_area");
-        let add_area_rect = caixa_do_botao(text_system, inner_x, inner_w, y, row_h, add_area_label);
+        let add_area_rect = caixa_do_botao(text_system, inner_x, inner_w, y, add_area_label);
         let add_area = Button::new(ph2d_tool_bgremoval::ids::BGR_ADD_AREA, add_area_label)
             .kind(add_area_kind)
             .visual(add_area_state);
@@ -255,7 +255,7 @@ pub(crate) fn paint_eyedropper_swatches(
         if snapshot.has_force_remove_mask {
             let clear_state = store.button_visual(ph2d_tool_bgremoval::ids::BGR_ADD_AREA_CLEAR);
             let clear_label = tr("panel.bg_removal.mask.clear_added_areas");
-            let clear_rect = caixa_do_botao(text_system, inner_x, inner_w, y, row_h, clear_label);
+            let clear_rect = caixa_do_botao(text_system, inner_x, inner_w, y, clear_label);
             let clear = Button::new(ph2d_tool_bgremoval::ids::BGR_ADD_AREA_CLEAR, clear_label)
                 .kind(ButtonKind::Default)
                 .visual(clear_state);
@@ -277,7 +277,7 @@ pub(crate) fn paint_eyedropper_swatches(
         ButtonKind::Default
     };
     let eyedropper_label = tr("panel.bg_removal.mask.pick_colors");
-    let eyedropper_rect = caixa_do_botao(text_system, inner_x, inner_w, y, row_h, eyedropper_label);
+    let eyedropper_rect = caixa_do_botao(text_system, inner_x, inner_w, y, eyedropper_label);
     let eyedropper = Button::new(ph2d_tool_bgremoval::ids::BGR_EYEDROPPER, eyedropper_label)
         .kind(eyedropper_kind)
         .visual(eyedropper_state);
@@ -349,7 +349,7 @@ pub(crate) fn paint_auto_protect_subject(
         ButtonKind::Default
     };
     let btn_label = tr("panel.bg_removal.mask.detect_subject");
-    let rect = caixa_do_botao(text_system, inner_x, inner_w, y, row_h, btn_label);
+    let rect = caixa_do_botao(text_system, inner_x, inner_w, y, btn_label);
     let btn = Button::new(
         ph2d_tool_bgremoval::ids::BGR_AUTO_PROTECT_SUBJECT,
         btn_label,
@@ -390,7 +390,7 @@ pub(crate) fn paint_protect_brush(
         ButtonKind::Default
     };
     let protect_label = tr("panel.bg_removal.mask.protect");
-    let protect_rect = caixa_do_botao(text_system, inner_x, inner_w, y, row_h, protect_label);
+    let protect_rect = caixa_do_botao(text_system, inner_x, inner_w, y, protect_label);
     let protect = Button::new(ph2d_tool_bgremoval::ids::BGR_PROTECT, protect_label)
         .kind(protect_kind)
         .visual(protect_state);
@@ -474,7 +474,7 @@ pub(crate) fn paint_protect_brush(
             ButtonKind::Default
         };
         let show_label = tr("panel.bg_removal.mask.show_mask");
-        let show_rect = caixa_do_botao(text_system, inner_x, inner_w, y, row_h, show_label);
+        let show_rect = caixa_do_botao(text_system, inner_x, inner_w, y, show_label);
         let show = Button::new(ph2d_tool_bgremoval::ids::BGR_SHOW_MASK, show_label)
             .kind(show_kind)
             .visual(show_state);
@@ -485,7 +485,7 @@ pub(crate) fn paint_protect_brush(
 
     if snapshot.has_protect_mask {
         let clear_label = tr("panel.bg_removal.mask.clear_protection");
-        let clear_rect = caixa_do_botao(text_system, inner_x, inner_w, y, row_h, clear_label);
+        let clear_rect = caixa_do_botao(text_system, inner_x, inner_w, y, clear_label);
         let clear_state = store.button_visual(ph2d_tool_bgremoval::ids::BGR_PROTECT_CLEAR);
         let clear = Button::new(ph2d_tool_bgremoval::ids::BGR_PROTECT_CLEAR, clear_label)
             .kind(ButtonKind::Default)

@@ -305,7 +305,6 @@ fn player_block(
         x,
         w,
         cur_y,
-        ALTURA_DE_BOTAO,
         tr("panel.inspector.animation.rewind"),
     );
     hit_index.register(ids::INSP_ANIM_REWIND, rw);
@@ -398,7 +397,6 @@ pub(crate) fn paint_anim_section(
             x,
             w,
             cur_y,
-            ALTURA_DE_BOTAO,
             tr("panel.inspector.animation.plus_add_animator"),
         );
         hit_index.register(ids::INSP_ANIM_ADD_PLAYER, add);

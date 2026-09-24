@@ -517,14 +517,8 @@ fn paint_toggle_button(
     };
     // ⭐ Os três chamadores passam a linha inteira; a porta põe o botão na coluna do valor quando
     //    o rótulo lá cabe (report do dono de 2026-09-24, o mesmo idioma do Inspector).
-    let rect = ph2d_editor_core::property_row::caixa_do_botao(
-        text_system,
-        rect.x,
-        rect.w,
-        rect.y,
-        rect.h,
-        label,
-    );
+    let rect =
+        ph2d_editor_core::property_row::caixa_do_botao(text_system, rect.x, rect.w, rect.y, label);
     let b = Button::new(id, label).kind(kind).visual(btn_state);
     paint_button(&b, rect, scene, text_system, theme);
     hit_index.register(id, rect);

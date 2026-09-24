@@ -488,7 +488,7 @@ fn paint_body_actions(
     }
 
     let mut paint_at = |id, label: &str, yy: &mut f32| -> Rect {
-        let rect = Rect::new(x, *yy, w, h);
+        let rect = ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, *yy, h, label);
         let btn = Button::new(id, label)
             .kind(ButtonKind::Default)
             .visual(store.button_visual(id));

@@ -2995,6 +2995,53 @@ textos antes dele) é que o nomeou.
 **3 de 3 verdes sozinhos a `load 60`** · clippy `-D warnings` zero · `fmt --check` · censos `12/12`.
 
 
+## §9-vicies-novies — ⭐⭐ O BOTÃO DE ACÇÃO vai para a coluna do VALOR — quando o rótulo lá cabe
+
+⛔⛔ **Report do dono, 2026-09-24, foto do cartão da junta com uma seta** (depois de aprovar a
+§9-vicies-octies): *«esses botões que atravessam de lado a lado talvez fiquem melhor na coluna do lado
+direito»*. O `Swap A / B`, o `Copy Properties` e o `Delete Joint` eram `Rect::new(x, y, w, h)`; o censo
+achou a mesma forma em **`29`** botões do Inspector (e `~25` noutros painéis — §9-vicies-novies.3).
+
+### .1 — A porta ([`property_row/botao.rs`](../../../crates/ph2d-editor-core/src/property_row/botao.rs))
+
+`caixa_do_botao(ts, x, w, y, h, rótulo) -> Rect`: a coluna do valor (`property_row_columns`, o MESMO
+pedido que a linha de escolha faz ⇒ não mexe na coluna do painel) **se o rótulo lá cabe**; senão a linha
+inteira, como antes — a lei da `paint_choice_row` (ao lado se cabe, paleta se não).
+
+⛔⛔ **Porque a condição, medido antes de a escrever:** com TODOS os botões na coluna, à largura de
+fábrica `5` passavam a sair cortados (`Reimport at current px/m` · `Draw Joint on Canvas` · `Rig 2 Parts
+from Hierarchy` · `Remove Physics Body` · `Fit Crouch to Collider`), e no degrau estreito **`18`** — o
+`Swap A / B` e o `Delete Joint` da própria foto incluídos. *Um botão cortado lê-se pior do que um nome
+cortado: o nome tem o controlo ao lado a explicá-lo; o botão É a explicação.* Com a condição: **zero**
+cortes novos, as catracas das elisões intocadas.
+
+⚠️ **A pergunta «cabe?» é a do pintor** (largura em `MEDIUM` na `Button::label_font_px`, contra o
+`label_budget` da caixa) e mede-se SEM o `text_elide::coube`, que REGISTA no censo das elisões — uma
+pergunta de disposição lida como pintura poria lá um rótulo que ali não foi pintado. ⚠️ **A altura é do
+chamador**: `30` contra `22` continua a decisão aberta da §9-octodecies.6; a porta decide ONDE.
+
+### .2 — Gates e mutações
+
+Quatro unitários na porta (curto vai · longo atravessa · a fronteira por VARREDURA fina da largura, com o
+controlo de que a varredura a atravessa · a pergunta não entra no censo) + o censo
+[`nenhum_botao_atravessa_a_linha_a_mao`](../../../crates/ph2d-panel-inspector/tests/it/nenhum_botao_atravessa_a_linha_a_mao.rs)
+(piso: `29` pela porta, `70` ficheiros). **Mutações 5 de 5** — ⚠️ a da fronteira (`< orçamento − 1`)
+**sobreviveu à 1.ª redacção**, que media UM rótulo com vários píxeis de folga: *uma fronteira mede-se onde
+a folga passa por zero*.
+
+### .3 — ⏳ O que fica
+
+- **Os pares `+ Add … | x Remove …`** (`8` secções: gatilhos, acções, estados, temporizadores, tweens…)
+  repartem a linha pelo `segment_rects_for` e ficam à largura inteira: dois rótulos desses nunca cabem na
+  coluna (já cortam à largura inteira no degrau estreito) — a porta mandá-los-ia atravessar na mesma.
+- **Os outros painéis** (`bgremoval` `9`, `padding` `2`, `physics` `2`, `sculpt3d` `2`, `painter_layers`
+  `4`, `grid_snap` `2`, `upscale`, `equalize_sizes`, `vector` `2`) têm a mesma forma, e são sobretudo o
+  botão de APLICAR de uma ferramenta — **pergunta devolvida ao dono** antes de os mexer.
+
+**Portão:** `nextest-impacted` **`17 699/17 699`** · clippy `-D warnings` zero (os `24` `&tr(…)` de
+empréstimo inútil que a conversão escreveu, curados) · `fmt --check` · censos `12/12`.
+
+
 ## §11 — O que esta linha recomenda a quem a integrar
 
 1. **Correr o `diag_onde_cai_a_pista_do_pente` da `line/sculpt3d` DEPOIS da fusão** e reescrever com

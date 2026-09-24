@@ -56,7 +56,14 @@ pub(super) fn paint_pair_rows(
         u8::from(info.world_anchored),
     );
     let h = ROW_H_PX;
-    let btn_rect = Rect::new(x, yy, w, h);
+    let btn_rect = ph2d_editor_core::property_row::caixa_do_botao(
+        text_system,
+        x,
+        w,
+        yy,
+        h,
+        tr("panel.inspector.joint.swap_a_b"),
+    );
     // ⚠️ Always offered, on every kind and whether or not the names resolve: a
     // joint whose Body A was deleted is *exactly* when an artist wants to swap so
     // the surviving end becomes A. Gating it on `bound` would remove the button

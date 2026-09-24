@@ -153,7 +153,14 @@ pub(crate) fn paint_render_source_section(
     );
 
     let reimport_h = 30.0_f32; // LITERAL-PX-OK: Reimport button height
-    let btn_rect = Rect::new(x, cur_y, w, reimport_h);
+    let btn_rect = ph2d_editor_core::property_row::caixa_do_botao(
+        text_system,
+        x,
+        w,
+        cur_y,
+        reimport_h,
+        tr("panel.inspector.render_source.reimport_at_current_px_m"),
+    );
     let id = ids::INSP_RENDER_SOURCE_REIMPORT;
     let state = if !info.can_reimport {
         (ButtonState::Disabled, ph2d_editor_core::motion::SETTLED)

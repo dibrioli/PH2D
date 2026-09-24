@@ -28,6 +28,7 @@ mod inspector_regression;
 mod inspector_regression_anchors;
 mod inspector_regression_sections;
 mod inspector_regression_slice;
+mod nenhum_botao_atravessa_a_linha_a_mao;
 mod nenhum_chip_do_tween_sai_cortado;
 mod nenhuma_linha_pinta_o_nome_numa_coluna_propria;
 mod nenhuma_seccao_declara_a_propria_altura;

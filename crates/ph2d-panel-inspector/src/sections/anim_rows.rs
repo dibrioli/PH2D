@@ -155,7 +155,14 @@ pub(crate) fn paint_library(
         }
     }
 
-    let add = Rect::new(x, cur_y, w, ALTURA_DE_BOTAO);
+    let add = ph2d_editor_core::property_row::caixa_do_botao(
+        text_system,
+        x,
+        w,
+        cur_y,
+        ALTURA_DE_BOTAO,
+        tr("panel.inspector.animation.plus_add_animation"),
+    );
     hit_index.register(ids::INSP_ANIM_ADD, add);
     paint_button(
         &Button::new(
@@ -171,7 +178,14 @@ pub(crate) fn paint_library(
     );
     cur_y += ALTURA_DE_BOTAO + ph2d_tokens::control_gap_px();
     if !info.rows.is_empty() {
-        let rm = Rect::new(x, cur_y, w, ALTURA_DE_BOTAO);
+        let rm = ph2d_editor_core::property_row::caixa_do_botao(
+            text_system,
+            x,
+            w,
+            cur_y,
+            ALTURA_DE_BOTAO,
+            tr("panel.inspector.animation.x_remove_animation"),
+        );
         hit_index.register(ids::INSP_ANIM_REMOVE, rm);
         paint_button(
             &Button::new(

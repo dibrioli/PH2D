@@ -49,7 +49,14 @@ pub(super) fn paint_empty_face(
         resolve(ColorToken::Text3, theme),
     );
     yy += h;
-    let btn_rect = Rect::new(x, yy, w, h);
+    let btn_rect = ph2d_editor_core::property_row::caixa_do_botao(
+        text_system,
+        x,
+        w,
+        yy,
+        h,
+        tr("panel.inspector.physics.add_physics_body"),
+    );
     let btn = Button::new(
         ids::INSP_PHYS_ADD,
         tr("panel.inspector.physics.add_physics_body"),
@@ -65,7 +72,17 @@ pub(super) fn paint_empty_face(
     // rótulo NOMEIA o dono porque um collider é invisível e a hierarquia pode
     // ter um grupo no meio.
     if !info.part_owner.is_empty() {
-        let rect = Rect::new(x, yy, w, h);
+        let rect = ph2d_editor_core::property_row::caixa_do_botao(
+            text_system,
+            x,
+            w,
+            yy,
+            h,
+            &tr_with(
+                "panel.inspector.physics.add_shape_to",
+                &[("owner", &info.part_owner)],
+            ),
+        );
         let btn = Button::new(
             ids::INSP_PHYS_ADD_SHAPE,
             tr_with(
@@ -89,7 +106,14 @@ pub(super) fn paint_empty_face(
     // ele existe para remover (é por isso que as rotas de LIGAR não aparecem
     // aqui e esta aparece: elas precisam de corpos, esta os cria).
     if info.rig_parts > 0 {
-        let rect = Rect::new(x, yy, w, h);
+        let rect = ph2d_editor_core::property_row::caixa_do_botao(
+            text_system,
+            x,
+            w,
+            yy,
+            h,
+            &super::physics_join_rows::rig_button_label(info.rig_parts),
+        );
         let btn = Button::new(
             ids::INSP_PHYS_RIG,
             super::physics_join_rows::rig_button_label(info.rig_parts),
@@ -141,7 +165,7 @@ pub(super) fn paint_part_doors(
             tr("panel.inspector.physics.remove_shape"),
         ),
     ] {
-        let rect = Rect::new(x, yy, w, h);
+        let rect = ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, yy, h, label);
         let btn = Button::new(id, label)
             .kind(ButtonKind::Default)
             .visual(store.button_visual(id));

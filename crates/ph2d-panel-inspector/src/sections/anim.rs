@@ -300,7 +300,14 @@ fn player_block(
         cur_y += font + ph2d_tokens::control_gap_px();
     }
 
-    let rw = Rect::new(x, cur_y, w, ALTURA_DE_BOTAO);
+    let rw = ph2d_editor_core::property_row::caixa_do_botao(
+        text_system,
+        x,
+        w,
+        cur_y,
+        ALTURA_DE_BOTAO,
+        tr("panel.inspector.animation.rewind"),
+    );
     hit_index.register(ids::INSP_ANIM_REWIND, rw);
     paint_button(
         &Button::new(
@@ -386,7 +393,14 @@ pub(crate) fn paint_anim_section(
             resolve(ColorToken::Text3, theme),
         );
         cur_y += font + ph2d_tokens::control_gap_px();
-        let add = Rect::new(x, cur_y, w, ALTURA_DE_BOTAO);
+        let add = ph2d_editor_core::property_row::caixa_do_botao(
+            text_system,
+            x,
+            w,
+            cur_y,
+            ALTURA_DE_BOTAO,
+            tr("panel.inspector.animation.plus_add_animator"),
+        );
         hit_index.register(ids::INSP_ANIM_ADD_PLAYER, add);
         paint_button(
             &Button::new(

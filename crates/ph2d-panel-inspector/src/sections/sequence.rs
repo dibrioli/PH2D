@@ -129,7 +129,14 @@ fn botao_largar(
     if info.nome().is_none() {
         return y;
     }
-    let rect = Rect::new(x, y, w, ALTURA_DE_BOTAO);
+    let rect = ph2d_editor_core::property_row::caixa_do_botao(
+        text_system,
+        x,
+        w,
+        y,
+        ALTURA_DE_BOTAO,
+        tr("panel.inspector.sequence.clear"),
+    );
     hit_index.register(crate::ids::INSP_SEQ_CLEAR, rect);
     paint_button(
         &Button::new(

@@ -25,9 +25,12 @@ use crate::widget::showcase::read_number_input;
 use crate::widget::{NumberInput, PropertyRow, Unit, paint_number_input_with_buffer};
 pub use crate::widget::{Seccao, colunas_da_linha};
 
+/// ⭐ O BOTÃO de acção numa lista de propriedades — ver [`botao::caixa_do_botao`].
+mod botao;
 /// ⭐ A linha de ESCOLHA — ver [`escolha`].
 pub mod escolha;
 use crate::zones::Rect;
+pub use botao::caixa_do_botao;
 pub use escolha::paint_choice_row;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;

@@ -311,7 +311,14 @@ fn anchor_editor(
             );
         }
     }
-    let rm = Rect::new(x, cur_y, w, ALTURA_DE_BOTAO);
+    let rm = ph2d_editor_core::property_row::caixa_do_botao(
+        text_system,
+        x,
+        w,
+        cur_y,
+        ALTURA_DE_BOTAO,
+        tr("panel.inspector.anchors.x_remove_anchor"),
+    );
     hit_index.register(ids::INSP_ANCHOR_REMOVE, rm);
     paint_button(
         &Button::new(
@@ -445,7 +452,14 @@ pub(crate) fn paint_anchors_section(
         info,
     );
 
-    let add = Rect::new(x, cur_y, w, ALTURA_DE_BOTAO);
+    let add = ph2d_editor_core::property_row::caixa_do_botao(
+        text_system,
+        x,
+        w,
+        cur_y,
+        ALTURA_DE_BOTAO,
+        tr("panel.inspector.anchors.plus_add_anchor"),
+    );
     hit_index.register(ids::INSP_ANCHOR_ADD, add);
     paint_button(
         &Button::new(

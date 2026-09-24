@@ -398,7 +398,14 @@ pub(crate) fn paint_joint_section(
     // porque são verbos sobre o objeto inteiro, como ele, e não afinação de um
     // parâmetro. O Copy é sempre oferecido: a §12 só existe com um joint
     // selecionado, e todo joint tem propriedades a copiar.
-    let copy_rect = Rect::new(x, yy, w, h);
+    let copy_rect = ph2d_editor_core::property_row::caixa_do_botao(
+        text_system,
+        x,
+        w,
+        yy,
+        h,
+        tr("panel.inspector.joint.copy_properties"),
+    );
     let copy = Button::new(
         ids::INSP_JOINT_COPY,
         tr("panel.inspector.joint.copy_properties"),
@@ -416,7 +423,8 @@ pub(crate) fn paint_joint_section(
     // evita.
     if info.paste_targets > 0 {
         let label = paste_label(info.paste_targets);
-        let paste_rect = Rect::new(x, yy, w, h);
+        let paste_rect =
+            ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, yy, h, &label);
         let paste = Button::new(ids::INSP_JOINT_PASTE, label)
             .kind(ButtonKind::Default)
             .visual(store.button_visual(ids::INSP_JOINT_PASTE));
@@ -425,7 +433,14 @@ pub(crate) fn paint_joint_section(
         yy += h;
     }
 
-    let btn_rect = Rect::new(x, yy, w, h);
+    let btn_rect = ph2d_editor_core::property_row::caixa_do_botao(
+        text_system,
+        x,
+        w,
+        yy,
+        h,
+        tr("panel.inspector.joint.delete_joint"),
+    );
     let btn = Button::new(
         ids::INSP_JOINT_REMOVE,
         tr("panel.inspector.joint.delete_joint"),

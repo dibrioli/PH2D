@@ -320,7 +320,7 @@ fn paint_verbs(
         } else {
             tr("panel.inspector.player.fit_to_collider").to_string()
         };
-        let rect = Rect::new(x, yy, w, h);
+        let rect = ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, yy, h, &label);
         let btn = Button::new(ids::INSP_PLAYER_FIT, &label)
             .kind(ButtonKind::Default)
             .visual(store.button_visual(ids::INSP_PLAYER_FIT));
@@ -352,7 +352,7 @@ fn paint_verbs(
         } else {
             tr("panel.inspector.player.fit_crouch_to_collider").to_string()
         };
-        let rect = Rect::new(x, yy, w, h);
+        let rect = ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, yy, h, &label);
         let btn = Button::new(ids::INSP_PLAYER_FIT_CROUCH, &label)
             .kind(ButtonKind::Default)
             .visual(store.button_visual(ids::INSP_PLAYER_FIT_CROUCH));
@@ -394,7 +394,7 @@ fn paint_verbs(
         None
     };
     if let Some((id, label)) = run_button {
-        let rect = Rect::new(x, yy, w, h);
+        let rect = ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, yy, h, &label);
         let btn = Button::new(id, &label)
             .kind(ButtonKind::Default)
             .visual(store.button_visual(id));
@@ -403,7 +403,14 @@ fn paint_verbs(
         yy += h + ph2d_tokens::control_gap_px();
     }
 
-    let rect = Rect::new(x, yy, w, h);
+    let rect = ph2d_editor_core::property_row::caixa_do_botao(
+        text_system,
+        x,
+        w,
+        yy,
+        h,
+        tr("panel.inspector.player.remove_platform_player"),
+    );
     let btn = Button::new(
         ids::INSP_PLAYER_REMOVE,
         tr("panel.inspector.player.remove_platform_player"),

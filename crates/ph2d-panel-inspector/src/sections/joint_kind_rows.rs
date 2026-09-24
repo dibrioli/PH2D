@@ -178,7 +178,17 @@ pub(super) fn paint_kind_params(
         // está quando pensa *"esta corda precisa de mais uma"*. A contagem no
         // rótulo é o que torna o clique VISÍVEL: a roldana nova nasce SOBRE a
         // corda, para não dar um puxão, e ali o desenho quase não muda.
-        let rect = Rect::new(x, yy, w, ROW_H_PX);
+        let rect = ph2d_editor_core::property_row::caixa_do_botao(
+            text_system,
+            x,
+            w,
+            yy,
+            ROW_H_PX,
+            &tr_with(
+                "panel.inspector.joint.add_wheel",
+                &[("n", &info.wheel_count)],
+            ),
+        );
         let btn = Button::new(
             ids::INSP_JOINT_ADD_WHEEL,
             tr_with(

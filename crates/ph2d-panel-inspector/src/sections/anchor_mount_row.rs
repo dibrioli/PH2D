@@ -190,7 +190,14 @@ pub(crate) fn paint_mount_row(
             resolve(ColorToken::Text3, theme),
         );
         cur_y += font + ph2d_tokens::control_gap_px();
-        let btn = Rect::new(x, cur_y, w, ALTURA_DE_BOTAO);
+        let btn = ph2d_editor_core::property_row::caixa_do_botao(
+            text_system,
+            x,
+            w,
+            cur_y,
+            ALTURA_DE_BOTAO,
+            tr("panel.inspector.anchors.reset_to_anchor"),
+        );
         hit_index.register(ids::INSP_MOUNT_SNAP, btn);
         paint_button(
             &Button::new(

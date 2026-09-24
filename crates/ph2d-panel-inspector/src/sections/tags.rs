@@ -352,7 +352,17 @@ pub(crate) fn paint_tags_section(
             .iter()
             .any(|r| ph2d_label_fold::fold(&r.path) == filtro);
     if !escrito.trim().is_empty() && !ja_existe {
-        let rect = Rect::new(x, cur_y, w, ALTURA_DE_BOTAO);
+        let rect = ph2d_editor_core::property_row::caixa_do_botao(
+            text_system,
+            x,
+            w,
+            cur_y,
+            ALTURA_DE_BOTAO,
+            &tr_with(
+                "panel.inspector.tags.create_named",
+                &[("nome", &escrito.trim())],
+            ),
+        );
         hit_index.register(crate::ids::INSP_TAGS_CREATE, rect);
         paint_button(
             &Button::new(

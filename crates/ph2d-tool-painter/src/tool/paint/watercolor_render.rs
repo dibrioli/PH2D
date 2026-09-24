@@ -47,6 +47,7 @@ impl PainterTool {
             if commit {
                 self.paint.watercolor_base = None;
             }
+            self.paint.wet_reserve_cache = None; // um sujo consumido sem composite: não confiar
             return None;
         };
         // Counted AFTER the window resolves, so it counts composites that did WORK — a call that
@@ -79,6 +80,7 @@ impl PainterTool {
             bw,
             bh,
             region,
+            changed,
             rx0,
             ry0,
             rx1,
@@ -247,7 +249,8 @@ impl PainterTool {
 
         // Wet Mix pigment reserve (MIX-1, [`watercolor_reserve`]): scales the BRUSH density term
         // AFTER the rim derives from the intact coverage. Mixer never on ⇒ `None` ⇒ byte-identical.
-        let reserve = self.reserve_fields((fw, n, (rx0, ry0), (rw, rh)), &cur_style);
+        let rc = self.paint.wet_reserve_cache.take();
+        let reserve = self.reserve_fields((fw, n, (rx0, ry0), (rw, rh)), &cur_style, changed, rc);
         let color_buf = &self.paint.stroke_color;
         // Substrate memoisation (perf, byte-identical): `paper_h` is canvas-anchored, so compute
         // once per canvas pixel ([`paper_h_px`], the loop's exact former expression) and reuse
@@ -681,6 +684,7 @@ impl PainterTool {
                     row[gx * 4 + 3] = px[3];
                 }
             });
+        self.paint.wet_reserve_cache = reserve.and_then(watercolor_reserve::ReserveFields::devolve);
         self.mark_dirty(region);
         if commit {
             self.paint.watercolor_base = None;

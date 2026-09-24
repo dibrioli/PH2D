@@ -425,6 +425,7 @@ impl PainterTool {
         self.paint.stroke_density = Vec::new();
         self.paint.stroke_deplete = Vec::new();
         self.paint.stroke_deplete_prox = Vec::new();
+        self.paint.wet_reserve_cache = None;
         self.paint.wet_styles.clear();
         self.paint.stroke_water = Vec::new();
         self.paint.wet_soak = Vec::new();
@@ -526,6 +527,7 @@ impl PainterTool {
         self.paint.stroke_density = Vec::new();
         self.paint.stroke_deplete = Vec::new();
         self.paint.stroke_deplete_prox = Vec::new();
+        self.paint.wet_reserve_cache = None;
         self.paint.stroke_water = Vec::new();
         self.paint.wet_styles.clear();
         self.paint.wet_cum_dirty = None;

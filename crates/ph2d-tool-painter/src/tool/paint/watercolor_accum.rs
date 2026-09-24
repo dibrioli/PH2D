@@ -277,6 +277,7 @@ impl PainterTool {
             .stroke_deplete_prox
             .iter_mut()
             .for_each(|c| *c = 0);
+        self.paint.wet_reserve_cache = None; // escrita em MASSA: o campo guardado envelheceu
         self.paint.wet_level_smear_pos = None;
         // ⭐ **O RESERVATÓRIO DO MIXER RENASCE COM A COBERTURA** (auditoria 2026-09-22, doc 42): a
         // carga do pincel ESGOTA-SE com o depósito, e os dois chamadores desta porta reconstroem o
@@ -376,6 +377,7 @@ impl PainterTool {
         // flat opaque slab, Enio smoke 2026-07-08). Water footprint intact; pigment fades.
         let depletion = self.wet_mix_depletion(dabs);
         if depletion.is_some() && self.paint.stroke_deplete.len() != fw * fh {
+            self.paint.wet_reserve_cache = None; // os planos NASCEM (com backfill): tudo recalcula
             self.paint.stroke_deplete = vec![0u8; fw * fh];
             // A proximidade nasce e morre com o nível; o backfill é o mesmo (nível e peso cheios).
             self.paint.stroke_deplete_prox = self

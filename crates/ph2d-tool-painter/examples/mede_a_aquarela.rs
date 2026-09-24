@@ -68,6 +68,28 @@ fn aquarela(size: u32, rewet: f32) -> PainterTool {
     t
 }
 
+/// **A aquarela da FOTO do dono** (2026-09-22: *«quando usamos tudo que o pincel pode fazer, temos
+/// significativa queda de FPS — pincel com size 0.5, FPS 40»*), os valores lidos do painel dele,
+/// aplicados DEPOIS da [`aquarela`] pelas mesmas portas. Difere do padrão de fábrica em três botões
+/// do Wash — `Bleed 48` (fábrica `7`), `Ragged Edge 48` (fábrica `6`), `Edge Darkening 0,83` (fábrica
+/// `1,5`) — e no tamanho (`0,517` ⇒ raio `~137 px`). ⚠️ O `Solid On` da foto NÃO entra: o
+/// `solid_owns_the_gesture` recusa-o sob a aquarela, logo ele é inerte ali (medido no código).
+fn foto(t: &mut PainterTool) {
+    t.set_brush_size_norm(0.517);
+    t.set_brush_fill(0.120);
+    t.set_brush_depth(1.200);
+    t.set_brush_opacity(0.400);
+    t.set_brush_edge_gain(0.830);
+    t.set_brush_edge_spread(48.0);
+    t.set_brush_warp(48.0);
+    t.set_brush_wet_charge(0.407);
+    t.set_brush_wet_dilution(0.130);
+    t.set_brush_wet_pull(0.195);
+    t.set_brush_wet_rewet(0.288);
+    t.set_brush_wet_smudge(0.234);
+    t.set_brush_pigment_mixing(0.0);
+}
+
 fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
     CanvasPointer {
         pos,
@@ -173,7 +195,14 @@ fn fnv(mut h: u64, bytes: &[u8]) -> u64 {
 /// Rewet e outro tamanho, para a tabela de donos ter dois estilos —, cada quadro drenado a entrar no
 /// hash, incluindo os de secagem depois do segundo pen-up.
 fn impressao(size: u32, rewet: f32, passo: f32) -> u64 {
+    impressao_com(size, rewet, passo, |_| {})
+}
+
+/// A mesma impressão com um toque nos knobs depois da aquarela — a 4.ª linha é a da FOTO do dono
+/// (`Bleed 48` · `Ragged Edge 48`), a janela mais larga que o painel produz.
+fn impressao_com(size: u32, rewet: f32, passo: f32, toque: fn(&mut PainterTool)) -> u64 {
     let mut t = aquarela(size, rewet);
+    toque(&mut t);
     let mut h = 0xcbf2_9ce4_8422_2325u64;
     let drena = |t: &mut PainterTool, h: &mut u64| {
         t.on_tick(DT_MS);
@@ -254,9 +283,14 @@ fn diag(nome: &str, d: &wash_diag::WashRead) {
 }
 
 fn celula(size: u32, rewet: f32, passo: f32) {
+    celula_com(size, rewet, passo, |_| {});
+}
+
+fn celula_com(size: u32, rewet: f32, passo: f32, toque: fn(&mut PainterTool)) {
     let mut corridas: Vec<Corrida> = (0..CORRIDAS)
         .map(|_| {
             let mut t = aquarela(size, rewet);
+            toque(&mut t);
             traco(&mut t, size, passo)
         })
         .collect();
@@ -335,11 +369,41 @@ fn ablacao(size: u32, passo: f32) {
             t.set_brush_wet_rewet(0.0);
         }),
     ];
+    ablacao_de("ABLAÇÃO", size, passo, 0.400, |_| {}, &TOQUES);
+}
+
+/// **A ablação da FOTO**: a mesma régua, com a [`foto`] como base e cada botão que ela move a voltar
+/// ao valor de FÁBRICA — o que o quadro perde é o que aquele botão da foto custava.
+fn ablacao_foto(size: u32, passo: f32) {
+    const TOQUES: [Toque; 7] = [
+        ("foto", |_| {}),
+        ("Bleed 7 (fábrica)", |t| t.set_brush_edge_spread(7.0)),
+        ("Ragged 6 (fábrica)", |t| t.set_brush_warp(6.0)),
+        ("Edge 1,5 (fábrica)", |t| t.set_brush_edge_gain(1.5)),
+        ("Rewet 0", |t| t.set_brush_wet_rewet(0.0)),
+        ("Charge 1 (mixer off)", |t| t.set_brush_wet_charge(1.0)),
+        ("Bleed 7 + Ragged 6", |t| {
+            t.set_brush_edge_spread(7.0);
+            t.set_brush_warp(6.0);
+        }),
+    ];
+    ablacao_de("ABLAÇÃO DA FOTO", size, passo, 0.288, foto, &TOQUES);
+}
+
+fn ablacao_de(
+    titulo: &str,
+    size: u32,
+    passo: f32,
+    rewet: f32,
+    base: fn(&mut PainterTool),
+    toques: &[Toque],
+) {
     // [variante] -> (q50, q90, comp_gesto, ns/tx, janela, pen-down, comp_up, pen-up)
-    let mut melhor = [[f64::INFINITY; 8]; TOQUES.len()];
+    let mut melhor = vec![[f64::INFINITY; 8]; toques.len()];
     for _ in 0..CORRIDAS {
-        for (i, (_, toque)) in TOQUES.iter().enumerate() {
-            let mut t = aquarela(size, 0.400);
+        for (i, (_, toque)) in toques.iter().enumerate() {
+            let mut t = aquarela(size, rewet);
+            base(&mut t);
             toque(&mut t);
             let c = traco(&mut t, size, passo);
             let mut tot: Vec<f64> = c.quadros.iter().map(|q| q.0 + q.1 + q.2).collect();
@@ -361,14 +425,14 @@ fn ablacao(size: u32, passo: f32) {
         }
     }
     println!(
-        "\n  ABLAÇÃO {size}² passo {passo} (load {}) — min de {CORRIDAS} rondas alternadas (ms)",
+        "\n  {titulo} {size}² passo {passo} (load {}) — min de {CORRIDAS} rondas alternadas (ms)",
         carga()
     );
     println!(
         "  {:<22} | quadro p50 |   p90 | composite/quadro | ns/tx | Mtx/comp | pen-down | commit comp | pen-up",
         "variante"
     );
-    for ((nome, _), m) in TOQUES.iter().zip(melhor) {
+    for ((nome, _), m) in toques.iter().zip(melhor) {
         println!(
             "  {nome:<22} | {:10.2} | {:5.2} | {:16.2} | {:5.1} | {:8.2} | {:8.2} | {:11.2} | {:6.2}",
             m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7]
@@ -379,6 +443,26 @@ fn ablacao(size: u32, passo: f32) {
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+    // `-- foto [2048|4096]`: a célula da FOTO do dono (a aquarela com tudo ligado, 22/09).
+    // `-- ablacao-foto [2048|4096]`: cada botão da foto de volta ao de fábrica, alternados.
+    // ⚠️ `perfil foto` é o amostrador sobre a foto, e cai no ramo do `perfil` mais abaixo.
+    if !args.iter().any(|a| a == "perfil")
+        && args.iter().any(|a| a == "foto" || a == "ablacao-foto")
+    {
+        let size = if args.iter().any(|a| a == "2048") {
+            2048
+        } else {
+            4096
+        };
+        println!("  load {}", carga());
+        if args.iter().any(|a| a == "ablacao-foto") {
+            ablacao_foto(size, 1.0);
+        } else {
+            celula_com(size, 0.288, 1.0, foto);
+        }
+        println!("  load {}", carga());
+        return;
+    }
     // `-- ablacao [2048|4096]`: um knob de cada vez ao neutro, variantes alternadas por ronda.
     if args.iter().any(|a| a == "ablacao") {
         let size = if args.iter().any(|a| a == "2048") {
@@ -415,6 +499,10 @@ fn main() {
                 impressao(1024, rewet, passo)
             );
         }
+        println!(
+            "  foto passo 1: {:016x}",
+            impressao_com(1024, 0.288, 1.0, foto)
+        );
         return;
     }
     // `-- perfil [2048|4096] [rewet0]`: a mesma célula, muitas vezes — carga para o amostrador.
@@ -429,8 +517,12 @@ fn main() {
         } else {
             0.400
         };
+        let com_foto = args.iter().any(|a| a == "foto");
         for _ in 0..12 {
             let mut t = aquarela(size, rewet);
+            if com_foto {
+                foto(&mut t);
+            }
             let _ = traco(&mut t, size, 1.0);
         }
         return;

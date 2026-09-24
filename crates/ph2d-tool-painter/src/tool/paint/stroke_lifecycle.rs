@@ -114,6 +114,7 @@ impl PainterTool {
             self.paint.stroke_density.clear();
             self.paint.stroke_deplete.clear();
             self.paint.stroke_deplete_prox.clear();
+            self.paint.wet_reserve_cache = None;
             self.paint.wet_styles.clear();
             self.paint.stroke_water = Vec::new();
             self.paint.wet_cum_dirty = None;

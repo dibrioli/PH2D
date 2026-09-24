@@ -169,6 +169,7 @@ mod stroke_and_session;
 mod texture_and_tiling;
 mod watercolor_look;
 mod watercolor_parity;
+mod watercolor_reserve_cache; // o campo da reserva GUARDADO entre quadros (ADR-0173, 3.a ronda)
 mod watercolor_seams;
 mod watercolor_selfseam; // a costura do retorno sobre o PROPRIO traco (doc 40): a regua e os gates
 mod watercolor_session;

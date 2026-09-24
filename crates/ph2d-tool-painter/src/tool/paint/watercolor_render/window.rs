@@ -31,6 +31,9 @@ pub(super) struct WashWindow {
     pub bw: usize,
     pub bh: usize,
     pub region: Region,
+    /// O sujo DESTE quadro (antes da união com o cumulativo do commit): onde os planos mudaram desde
+    /// o composite anterior — o campo guardado da reserva recalcula-se ali.
+    pub changed: Option<Region>,
     pub rx0: usize,
     pub ry0: usize,
     pub rx1: usize,
@@ -79,6 +82,7 @@ impl PainterTool {
         // Pick the recomposite rect and CONSUME the frame one (wet_edges `resetFrame`): live =
         // this frame's dabs; commit = the whole stroke (`paint_end`'s finish dabs folded in).
         let frame = self.paint.wet_frame_dirty.take();
+        let changed = frame;
         let dirty = if commit {
             match (self.paint.wet_cum_dirty, frame) {
                 (Some(c), Some(f)) => Some(union_region(c, f)),
@@ -173,6 +177,7 @@ impl PainterTool {
             bw,
             bh,
             region,
+            changed,
             rx0,
             ry0,
             rx1,

@@ -45,6 +45,10 @@ use rayon::prelude::*;
 
 use super::watercolor_field::{WetStrokeStyle, sample_bilinear};
 
+/// O campo guardado entre quadros (ADR-0173, 3.ª ronda).
+mod cache;
+pub(super) use cache::ReserveCache;
+
 /// A casca externa do dab em que a reserva afila até zero (`dn ∈ [1−RAMP, 1]`) — a anatomia da borda
 /// de um traço com Charge < 1 (MIX-1, 2026-07-08). Era aplicada DENTRO do `max`; hoje é o factor `T`.
 pub(super) const RESERVE_RIM_RAMP: f32 = 0.15;
@@ -60,6 +64,15 @@ pub(super) const RESERVE_ROUND_FRAC: f32 = 0.10;
 #[cfg(test)]
 thread_local! {
     pub(in crate::tool::paint) static LEI_ANTIGA: std::cell::Cell<bool> =
+        const { std::cell::Cell::new(false) };
+}
+
+// O CONTROLO do campo GUARDADO (ADR-0173, 3.ª ronda): com ele ligado o composite refaz o campo na
+// janela de leitura a cada quadro, como antes do plano guardado — o gate
+// `o_campo_guardado_da_o_byte_do_campo_refeito` corre a mesma sessão pelos dois caminhos.
+#[cfg(test)]
+thread_local! {
+    pub(in crate::tool::paint) static SEM_CACHE: std::cell::Cell<bool> =
         const { std::cell::Cell::new(false) };
 }
 
@@ -253,23 +266,42 @@ pub(super) const RESERVE_R_MAX: usize = 256;
 pub(super) type ReserveWindow = (usize, usize, (usize, usize), (usize, usize));
 
 impl super::PainterTool {
-    /// A porta do composite: os dois planos do traço + a tabela de estilos da sessão.
+    /// A porta do composite: os dois planos do traço + a tabela de estilos da sessão, lidos do campo
+    /// GUARDADO (`cache`, tirado do estado pelo chamador e devolvido por [`ReserveFields::devolve`])
+    /// e recalculado só onde a janela é nova ou onde o sujo do quadro (`changed`) o mexeu.
     pub(super) fn reserve_fields(
         &self,
         win: ReserveWindow,
         cur: &WetStrokeStyle,
+        changed: Option<crate::compositor::Region>,
+        cache: Option<ReserveCache>,
     ) -> Option<ReserveFields> {
         let planes = (
             &self.paint.stroke_deplete[..],
             &self.paint.stroke_deplete_prox[..],
         );
-        ReserveFields::build(planes, win, &self.paint.wet_styles.table, cur)
+        #[cfg(test)]
+        if SEM_CACHE.with(std::cell::Cell::get) {
+            return ReserveFields::build(planes, win, &self.paint.wet_styles.table, cur);
+        }
+        ReserveFields::build_cached(
+            planes,
+            win,
+            &self.paint.wet_styles.table,
+            cur,
+            changed,
+            cache,
+        )
     }
 }
 
 /// O campo `T·S` na janela de leitura, um por raio distinto entre os donos da sessão.
 pub(super) struct ReserveFields {
     by_r: Vec<(u16, Vec<f32>)>,
+    /// O campo do canvas inteiro ([`cache`]); `None` no caminho refeito por janela (`build`).
+    cache: Option<ReserveCache>,
+    /// A origem da janela de leitura no canvas — só o endereço do texel a soma, e em inteiros.
+    org: (usize, usize),
     rw: usize,
     rh: usize,
     /// Só o CONTROLO de teste o liga: leitura por vizinho-mais-próximo, como era.
@@ -298,6 +330,8 @@ impl ReserveFields {
             let by_r = vec![(cur.reserve_r, raw)];
             return Some(Self {
                 by_r,
+                cache: None,
+                org: (rx0, ry0),
                 rw,
                 rh,
                 nearest: true,
@@ -323,6 +357,8 @@ impl ReserveFields {
         });
         Some(Self {
             by_r,
+            cache: None,
+            org: (rx0, ry0),
             rw,
             rh,
             nearest: false,
@@ -332,6 +368,9 @@ impl ReserveFields {
     /// A reserva em `(sx, sy)` (coordenadas da janela, já deformadas) para um dono de raio `r`.
     #[inline]
     pub(super) fn sample(&self, r: u16, sx: f32, sy: f32) -> f32 {
+        if let Some(c) = &self.cache {
+            return self.sample_cached(c, r, sx, sy);
+        }
         let f = self
             .by_r
             .iter()

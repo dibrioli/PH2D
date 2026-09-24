@@ -253,6 +253,7 @@ impl Default for PaintState {
             stroke_density: Vec::new(),
             stroke_deplete: Vec::new(),
             stroke_deplete_prox: Vec::new(),
+            wet_reserve_cache: None,
             canvas_wet: Vec::new(),
             canvas_wet_rect: None,
             canvas_wet_snapshot: Vec::new(),

@@ -230,7 +230,7 @@ impl PainterTool {
                 let dy = (y as f32 + 0.5) - cy;
                 let base = y * fw;
                 let mut grew = false;
-                for x in x0..x1 {
+                for (x, cell) in row.iter_mut().enumerate().take(x1).skip(x0) {
                     let dx = (x as f32 + 0.5) - cx;
                     let dn = (dx * dx + dy * dy).sqrt() * inv_r;
                     if dn >= 1.0 {
@@ -246,10 +246,10 @@ impl PainterTool {
                     }
                     // Full pour inside the core, fading to the rim (the water pools under the nib).
                     let w = (1.0 - dn).min(0.6) / 0.6;
-                    let cur = row[x];
+                    let cur = *cell;
                     let next = (u16::from(cur) + (f32::from(add) * w * keep) as u16).min(255) as u8;
                     if next != cur {
-                        row[x] = next;
+                        *cell = next;
                         grew = true;
                     }
                 }

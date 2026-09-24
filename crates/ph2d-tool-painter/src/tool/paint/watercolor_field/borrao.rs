@@ -18,13 +18,18 @@ use rayon::prelude::*;
 
 use super::FAIXA;
 
+/// Os dois planos de rascunho de um borrão de `N` canais (o transposto e o prefixo).
+type Rascunho<const N: usize> = std::cell::RefCell<(Vec<[f32; N]>, Vec<[f32; N]>)>;
+/// Os quatro planos de um borrão de quatro canais, em pares (é a forma do `unzip` encaixado).
+type QuatroPlanos = ((Vec<f32>, Vec<f32>), (Vec<f32>, Vec<f32>));
+
 thread_local! {
     /// O rascunho do [`box_blur4`] — o irmão de quatro canais do rascunho do `box_blur`, pelas mesmas
     /// razões (reusado entre borrões e quadros, sem o `memset` de um plano novo).
-    static RASCUNHO4: std::cell::RefCell<(Vec<[f32; 4]>, Vec<[f32; 4]>)> =
+    static RASCUNHO4: Rascunho<4> =
         const { std::cell::RefCell::new((Vec::new(), Vec::new())) };
     /// O rascunho do [`box_blur2`].
-    static RASCUNHO2: std::cell::RefCell<(Vec<[f32; 2]>, Vec<[f32; 2]>)> =
+    static RASCUNHO2: Rascunho<2> =
         const { std::cell::RefCell::new((Vec::new(), Vec::new())) };
 }
 
@@ -79,7 +84,7 @@ fn box_blur4_com(
     // Os quatro planos nascem num `collect` só de um iterador INDEXADO (o `unzip` encaixado): cada
     // texel é escrito directamente na memória por iniciar dos quatro, sem `memset`.
     let pref = &pref[..];
-    let ((c0, c1), (c2, c3)): ((Vec<f32>, Vec<f32>), (Vec<f32>, Vec<f32>)) = (0..w * h)
+    let ((c0, c1), (c2, c3)): QuatroPlanos = (0..w * h)
         .into_par_iter()
         .with_min_len(4096)
         .map(|i| {

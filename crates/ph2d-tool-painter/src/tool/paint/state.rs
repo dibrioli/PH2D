@@ -522,10 +522,9 @@ pub(crate) struct PaintState {
     /// dabs e o afilamento da beira derivam desta grandeza por tabela
     /// ([`super::watercolor_reserve`], doc 41).
     pub(super) stroke_deplete_prox: Vec<u8>,
-    /// O CAMPO da reserva guardado entre quadros ([`super::watercolor_reserve::ReserveCache`],
-    /// ADR-0173 3.ª ronda): só o composite o lê e o escreve. ⚠️ Toda escrita EM MASSA nos dois
-    /// planos acima tem de o invalidar (`None`) — as escritas dos dabs caem no sujo do quadro, que o
-    /// composite já recalcula; uma em massa não cai em sujo nenhum.
+    /// O CAMPO da reserva guardado entre quadros ([`super::watercolor_reserve::ReserveCache`]; só o
+    /// composite o lê e escreve). ⚠️ Escrita EM MASSA nos dois planos acima ⇒ `None`: a lei e o porquê
+    /// vivem no cabeçalho de `watercolor_reserve/cache.rs`, escritos UMA vez.
     pub(super) wet_reserve_cache: Option<super::watercolor_reserve::ReserveCache>,
     /// EDGE-1 (doc 12): canvas-wide MOISTURE map (`w*h`) surviving pen-up — dries on the heartbeat
     /// (~8.5 s, DiVerdi/Adobe; Curtis wet-area mask); the bake pours the HARDENED coverage

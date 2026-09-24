@@ -937,6 +937,8 @@ absolutos) deixou **sobreviver** o ímã velho, que com o núcleo colapsa DEVAGA
 câmara nessa altura — o zoom é um gesto de roda que nenhuma corrida sem interface alcança. Ausente
 ⇒ o arranque de sempre, ao bit.
 
+✅ **Smoke do dono (2026-09-24), na máquina dele: `raw 132` com cantos a `0` contra `128` com cantos a `1`** — `3 %`, com a galáxia já estável. ⇒ o que ele reportou era o COLAPSO; os cantos, sozinhos e com o recorte por câmara a funcionar, quase não custam.
+
 ⚠️ **O relógio desta resposta NÃO está medido:** a máquina esteve a `load 21`–`65` e a mesma cena leu
 `43` e `113` de `raw` em duas corridas. O que está medido é a CONTAGEM de estrelas desenhadas, que
 não depende da carga. ⏳ Fica **aberta, e é decisão do dono**, a outra alavanca: a barra do LOD da

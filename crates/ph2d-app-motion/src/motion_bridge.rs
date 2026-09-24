@@ -193,6 +193,9 @@ mod test_mods;
 #[cfg(feature = "panel-motion-graph")]
 use intents::apply_graph_intents;
 #[cfg(test)]
+#[path = "motion_bridge_gizmo_tap_tests.rs"]
+mod gizmo_tap_tests;
+#[cfg(test)]
 #[path = "motion_bridge_visibility_tests.rs"]
 mod visibility_tests;
 
@@ -373,16 +376,18 @@ pub fn dispatch(
     for n in super::warp_gizmo::taps_for(motion)
         .into_iter()
         .chain(super::collider_gizmo::taps_for(motion))
-        // ⭐ E o gizmo de uma corrente de POSIÇÕES (ordem do dono, 2026-09-19): ele pede TODOS
-        // os sinks, porque *«esta corrente tem aparência?»* é pergunta do cozido — ver o
-        // `ponto_gizmo::taps_for`, que também explica por que isto não custa um 2.º cozimento.
+        // ⭐ E o gizmo de uma corrente de POSIÇÕES (ordem do dono, 2026-09-19): ele pede os sinks
+        // cujo desenho a PLACA ainda não resolveu — *«esta corrente tem aparência?»* é pergunta
+        // do cozido, e quando o dispositivo desenhou o quadro anterior a resposta já está no
+        // registo dele (ver o `ponto_gizmo::taps_for`: sem isto a tomada recozinhava a simulação
+        // inteira na CPU, ciclo 12).
         .chain(super::ponto_gizmo::taps_for(
             motion,
             ph2d_eval_motion::so_com_forma_por_ordem(),
         ))
         // ⭐ E o gizmo do PIVÔ (ordem do dono, 2026-09-19): a saída da forma cujo `Pivot X`/`Y`
-        // está a ser arrastado AGORA — uma tomada, e só durante o gesto. ⚠️ Ele não pede o sink
-        // porque o irmão acima já pede TODOS.
+        // está a ser arrastado AGORA — a forma e o sink dela, e só durante o gesto. ⚠️ Ele pede o
+        // sink ELE PRÓPRIO: o irmão acima deixou de pedir os que a placa já desenhou.
         .chain(super::pivot_gizmo::taps_for(motion))
     {
         if !taps.contains(&n) {

@@ -293,3 +293,72 @@ afirma que a única fronteira é a FONTE (`source.object` / `source.shape`).
 **Mutação: 10 de 10 sangram** — o gather na forma errada · o ponto lido em `i / np` · o `Index` por
 renumerar · o `np` cru sem orçamento · a `rot` da forma perdida · as duas recusas apagadas · o kernel
 por registar · a pergunta de conteúdo sempre verdadeira · a cerca a deixar de a chamar.
+
+### §8.5 — ✅ W1(b).3: o carimbo foi para a placa e o Motion NÃO ficou mais barato — até se acharem DUAS contas escondidas (2026-09-24)
+
+Com o carimbo na placa (§8.4), a escada no app media o **mesmo** Motion de antes (RTX `32 768`:
+`~5,2 ms`). A leitura por relógios de medição **locais** (nunca commitados) partiu o quadro em dois
+cozimentos na CPU que ninguém tinha pedido:
+
+| conta | o quê | na RTX a `32 768` |
+|---|---|---:|
+| **1. a marcha do prefixo** | na rota HÍBRIDA a bomba da CPU avançava **toda** fonte de `pre` do grafo — o `motion.integrate` que a placa já tinha reclamado era simulado aqui também, e deitado fora | `4,0 ms` |
+| **2. a tomada do gizmo das posições** | o `ponto_gizmo::taps_for` pedia **todos** os sinks, e numa rota de dispositivo uma tomada recozinha a cadeia inteira na CPU — para um gizmo que **não se desenha** (o sink tem aparência) | `2,4 ms` |
+
+**As curas:**
+
+1. **A marcha restrita ao CONE** ([`cook_advance_within.rs`](../../crates/ph2d-nodegraph/src/cook_advance_within.rs),
+   aditiva em `ph2d-nodegraph`): `Cook::advance_tick_fanned_within` avança só as fontes de `pre` no cone
+   a montante das FRONTEIRAS (seguindo também as arestas de `pre` — ⚠️ ao contrário do
+   `cook_substep::upstream_cone`, que responde a outra pergunta). A bomba usa-a no braço
+   `CookTarget::Boundaries`; o braço `Sinks` (a rota da CPU) fica **byte-idêntico**.
+2. **A tomada pergunta à PLACA** ([`ponto_gizmo::taps_for`](../../crates/ph2d-app-motion/src/ponto_gizmo.rs)):
+   quando o dispositivo desenhou o quadro anterior, o registo dele (`GpuCook::shape()`) diz que colunas
+   cada sink levou, e o **mesmo** `veredito_do_dispositivo` que decidiu desenhar decide que o gizmo se
+   cala ⇒ a tomada não se pede. ⚠️ Um quadro de atraso, nomeado. ⛔⛔ **E o gizmo do PIVÔ lia essa
+   tomada de boleia** (a nota dele dizia *«o irmão já pede TODOS os sinks»*): hoje ele pede o sink ele
+   próprio, só durante o arrasto — sem isso o alvo do pivô sumia **em silêncio**.
+
+**A/B na mesma sessão** (RTX, `32 768`, imagens): Motion **`3,19 → 1,12 ms`** · o cozimento na placa
+`2,32 → 0,23` · o prefixo `2,08 → 0,006`.
+
+**A escada outra vez** (release, `1930 × 1040`, a média das três últimas janelas, `load 1,8`–`3,7` por
+célula — ⚠️ com o app de smoke de OUTRA linha aberto a `~35 %` de um núcleo durante toda a corrida,
+que não é meu e não se fecha):
+
+| placa | objectos | Motion antes (§3) | **Motion agora** | CPU antes | **CPU agora** | placa |
+|---|---:|---:|---:|---:|---:|---:|
+| RTX | 4 096 | 1,95 | **1,17** | 4,41 | **3,55** | 0,70 |
+| RTX | 16 384 | 3,42 | **1,15** | 6,03 | **3,42** | 0,67 |
+| RTX | 32 768 | 4,56 | **1,18** | 7,12 | **3,59** | 0,69 |
+| iGPU | 4 096 | 4,28 | **3,34** | 6,68 | **5,98** | 4,50 |
+| iGPU | 16 384 | 5,54 | **3,48** | 7,92 | **6,84** | 4,78 |
+| iGPU | 32 768 | 7,30 | **3,98** | 10,14 | **6,62** | 5,05 |
+
+⭐⭐⭐ **O custo das IMAGENS deixou de crescer com o número**: de `4 096` a `32 768` o Motion na RTX
+fica em `~1,2 ms` e no proxy de telemóvel em `3,3`–`4,0` — a simulação e o carimbo vivem na placa, e
+o que a CPU paga já não é por objecto. ⇒ **a tabela de decisão do §7.1 ficou CONSERVADORA para
+imagens**; a medição acima do tecto (compilação local) fica por refazer, e o tecto continua a
+`32 768` porque é a decisão do dono.
+
+⚠️ **A estrela não mudou de caminho** (ela é recusada à CPU **antes** de planear, pela forma
+vectorial viva — ADR-0154) e leu `~0,7 ms` acima do §3 nesta sessão; o código dela é o mesmo, logo a
+diferença é do ambiente (o app aberto acima).
+
+⏳ **ABERTO, e é a próxima alavanca:** a leitura dos números nos cartões do grafo
+(`readout::take_tap`) espera a placa terminar (`poll` síncrono) — **`0,68 ms` por quadro**, `60 %` do
+Motion que sobra. Ela mediu-se a `+0,075 ms` num arnês sem janela, onde não há quadro anterior a
+esperar; no app ela serializa a CPU com a placa. A cura é a leitura **assíncrona, um quadro atrás**
+(o cartão já é um quadro atrás hoje — ver o `stamp`).
+
+⛔ **Dois vermelhos PRÉ-EXISTENTES que a corrida de fecho apanhou** (os dois `#[ignore]`, logo o CI
+nunca os corre): `write_the_rig_figures` (a cena `=120` tem hoje `19` pontos na corda contra os `20`
+que o gerador de figuras afirma) e `measure_the_source_group` (é anterior à lei do dono *«só com
+forma»*: um emissor sem forma não desenha, e a sonda conta instâncias — passa com
+`PH2D_MOTION_SO_COM_FORMA=0`). Nenhum dos dois toca no que esta wave mudou.
+
+**Gates:** a marcha restrita conta AVALIAÇÕES (`a_marcha_restrita_so_avanca_o_laco_que_a_fronteira_le`,
+com o CONTROLO da marcha completa) · a bomba usa-a na rota de fronteiras e não na de sinks
+(`a_rota_de_fronteiras_nao_simula_o_laco_que_elas_nao_leem`) · a lei do veredito e a filtragem, puras ·
+e a costura inteira **na placa real** (`a_placa_que_desenhou_o_sink_nao_pede_a_tomada`, com o CONTROLO
+de uma grelha sem aparência, que continua a pedir) · o pivô pede o sink dele. **Mutação 6 de 6.**

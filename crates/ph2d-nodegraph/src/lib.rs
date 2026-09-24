@@ -37,6 +37,9 @@ pub mod algorithm_meta;
 pub mod attr;
 pub mod column;
 pub mod cook;
+/// A marcha do `pre` restrita ao cone de uma fronteira (ciclo 12, doc 120 §8.5).
+mod cook_advance_within;
+pub use cook_advance_within::cone_a_montante;
 pub mod effect;
 pub mod external;
 pub mod format;

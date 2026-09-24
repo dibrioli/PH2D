@@ -103,5 +103,19 @@ fn o_alvo_so_acende_no_arrasto_de_um_pivot() {
         // E a tomada que ele pede é exactamente essa forma.
         assert_eq!(super::taps_for(&m), vec![forma]);
     }
+    // ⛔⛔ **E com a forma a chegar a um SINK, ele pede o sink TAMBÉM** (ciclo 12): o
+    // `ponto_gizmo::taps_for` deixou de pedir o sink que a placa já desenhou, e uma forma com
+    // pivô é exactamente esse sink — sem esta metade o alvo do pivô sumia em silêncio.
+    let out = m.doc.graph.add_node("motion.output".to_string());
+    m.doc
+        .graph
+        .connect(ph2d_nodegraph::graph::Edge {
+            from: (forma, 0),
+            to: (out, 0),
+            delayed: false,
+        })
+        .expect("forma -> output");
+    ph(Some((forma.0, ph2d_node_motion_shape::param::PIVOT_X)));
+    assert_eq!(super::taps_for(&m), vec![forma, out]);
     ph(None);
 }

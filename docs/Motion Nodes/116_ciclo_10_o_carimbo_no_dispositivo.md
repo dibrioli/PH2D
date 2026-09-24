@@ -261,7 +261,7 @@ uma cena assada que continua a recusar.*
 |---|---|---|
 | **W0** ✅ | A **auditoria** (§2–§4), com as três sondas versionadas | A frase da fila nomeava **um** nó e a cadeia tem **três** cercas (§2) |
 | **W1(a)** ✅ | **A CONTAGEM** no `motion.clone` — o verbo estrutural, os uniformes derivados e a paridade (§5.5) | É a metade que a [auditoria 98](98_auditoria_de_performance_2026-09-01.md) mede em `50,9×`, e o `clone` é o caso **puro** dela — mede-se sem forma nenhuma no caminho |
-| **W1(b)** ⏸️ | O mesmo verbo no `motion.duplicator`, **mais** a partição por textura a sobreviver a ele (§2.1) | ⛔⛔ **A §5.2 disse *«é o ENTREGÁVEL (34), e as duas metades fecham juntas»* e a §5.6 REFUTOU-O com o número que ela encomendou:** `36` de `36` cartões trazem um vector VIVO, logo a ponte recusa-os uma camada acima e o kernel move **zero**. *Ela volta a ser obrigatória no dia em que a W2 aterrar* |
+| **W1(b)** ✅ (ciclo 12) | O mesmo verbo no `motion.duplicator`, **mais** a partição por textura a sobreviver a ele (§2.1) | ⭐ **FECHADA no ciclo 12 ([doc 120 §8](120_ciclo_12_os_tectos_confortaveis.md)), e quem a reabriu foi o RUNTIME e não o catálogo:** num jogo o que se carimba são IMAGENS do átlas, e para essas a partição é vazia por construção. ⛔⛔ **A §5.2 disse *«é o ENTREGÁVEL (34), e as duas metades fecham juntas»* e a §5.6 REFUTOU-O com o número que ela encomendou:** `36` de `36` cartões trazem um vector VIVO, logo a ponte recusa-os uma camada acima e o kernel move **zero**. *Ela volta a ser obrigatória no dia em que a W2 aterrar* |
 | **W2** ⛔ **RETIRADA** | **A FORMA DESENHÁVEL:** o *bake fallback* do ADR-0154 Fase 3. ⛔ O dono **RECUSOU-O** em 2026-09-20 (*«manter a nitidez»*), e a §4.3 tirou-lhe o motivo: o encode a `102 400` passou de `34 %` de um quadro para **`11 %`** sem assar nada e com os bytes idênticos | O que a justificava era o relógio, e ele mudou. ⇒ o que fica é a **cerca** que ela ia atravessar, e essa é uma pergunta de PONTE (de *tipo* para *documento*), não de bake |
 | **W3** | A **MEDIÇÃO** do ciclo (passo 5) — a mesma bancada, depois das curas | §0.0 |
 | **W4** | O **smoke do dono** (passo 7) | **Enio** |
@@ -639,7 +639,7 @@ assada **é** uma textura —, e a §2.1 fica de pé como preço da W2, não da 
 | wave | estado | porquê |
 |---|---|---|
 | **W1(a)** `motion.clone` | ✅ **fechada** | a BANCADA da lei de contagem — `2` cartões, e prova-se sem forma no caminho |
-| **W1(b)** `motion.duplicator` | ⏸️ **ADIADA, com o número** | inerte até a W2: `36/36` recusados uma camada acima. Construí-la agora seria a **segunda** bancada seguida |
+| **W1(b)** `motion.duplicator` | ✅ **FECHADA no ciclo 12** ([doc 120 §8](120_ciclo_12_os_tectos_confortaveis.md)) — a nota que segue é a de 2026-09, e a premissa dela era sobre o CATÁLOGO | inerte até a W2: `36/36` recusados uma camada acima. Construí-la agora seria a **segunda** bancada seguida |
 | **W2** o *bake fallback* (ADR-0154 Fase 3) | ⭐ **a seguinte** | é ela que dissolve a cerca que gateia **100 %** dos cartões |
 
 ⚠️ **E a W1(b) volta a ser obrigatória no dia em que a W2 aterrar:** com a forma assada, a cadeia

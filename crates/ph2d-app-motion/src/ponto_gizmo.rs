@@ -281,12 +281,65 @@ fn escalares(s: &Stream, nome: &str, am: &Amostra) -> Option<Vec<f32>> {
 /// ⇒ **a cerca fica pela lei e não pelo relógio** (zero custo na configuração de fábrica é a mesma
 /// lei do interruptor único), e o gizmo é utilizável mesmo nas cenas grandes. *Invocar um número
 /// medido noutro regime para justificar uma decisão é o que o §0.0 proíbe, e eu fi-lo aqui.*
+///
+/// ⛔⛔⛔ **E a tabela acima media OUTRO regime também (ciclo 12, [doc 120 §8.5]):** nas três
+/// cenas o sink é barato de recozinhar; na escada dos tectos (`emissor → integrador → carimbo`)
+/// recozinhá-lo é **refazer a SIMULAÇÃO inteira na CPU** — medido na RTX a `32 768` partículas,
+/// `2,4 ms` por quadro, *com o dispositivo a cozinhar a mesma cadeia em `0,25 ms`*. Com o carimbo
+/// na placa o custo do Motion no app **não descia**, e a causa era esta tomada.
+///
+/// ⭐⭐ **A saída é a pergunta que o próprio DISPOSITIVO já respondeu:** quando ele desenhou o
+/// quadro anterior, o registo do cozimento dele diz que colunas cada sink levou, e o
+/// [`ph2d_gpu_cook::instances::veredito_do_dispositivo`] — **a mesma porta** que decidiu se ele
+/// desenhava — diz se aquelas colunas desenham. Se desenham, o gizmo não aparece (*ou se vêem as
+/// peças, ou se vê o gizmo*) e a tomada seria cozimento para NADA ⇒ não se pede.
+///
+/// ⚠️ **Um quadro de atraso, NOMEADO:** o registo é do cozimento ANTERIOR (as tomadas armam-se
+/// antes do cozimento deste quadro), logo o 1.º quadro na placa ainda paga a tomada e uma corrente
+/// que PERDE a aparência mostra o gizmo um quadro depois. ⚠️ **E o veredito é o do DISPOSITIVO,
+/// não o da CPU:** a placa lê a geometria pela EXISTÊNCIA da coluna e a CPU pelo VALOR (a
+/// divergência nomeada no cabeçalho do `veredito_do_dispositivo`); segui-la aqui é o que mantém o
+/// gizmo e os píxeis da placa a dizer a mesma coisa.
+///
+/// [doc 120 §8.5]: ../../../docs/Motion%20Nodes/120_ciclo_12_os_tectos_confortaveis.md
 #[must_use]
 pub fn taps_for(motion: &MotionState, so_com_forma: bool) -> Vec<NodeId> {
+    let ultimo_da_placa = motion.gpu_live.then(|| motion.gpu_cook.shape());
+    taps_filtrados(&motion.sinks, so_com_forma, |sink| {
+        ultimo_da_placa.is_some_and(|forma| a_placa_desenhou(forma.columns(sink)))
+    })
+}
+
+/// **A lei de [`taps_for`], pura** — os sinks cujo desenho a placa ainda não resolveu.
+#[must_use]
+pub fn taps_filtrados(
+    sinks: &[NodeId],
+    so_com_forma: bool,
+    desenhado_pela_placa: impl Fn(NodeId) -> bool,
+) -> Vec<NodeId> {
     if !so_com_forma {
         return Vec::new();
     }
-    motion.sinks.clone()
+    sinks
+        .iter()
+        .copied()
+        .filter(|&s| !desenhado_pela_placa(s))
+        .collect()
+}
+
+/// **A placa desenhou este sink?** — `None` (o sink não foi encenado na placa) responde NÃO, e a
+/// tomada é pedida como sempre.
+#[must_use]
+pub fn a_placa_desenhou(colunas: Option<&[String]>) -> bool {
+    let Some(colunas) = colunas else {
+        return false;
+    };
+    let tem = |nome: &str| colunas.iter().any(|c| c == nome);
+    let lei = ph2d_render::SinkStyle {
+        so_com_forma: true,
+        ..ph2d_render::SinkStyle::PLAIN
+    };
+    ph2d_gpu_cook::instances::veredito_do_dispositivo(lei, tem("geometry_id"), tem("uv_rect")).0
 }
 
 /// A corrente que um nó entregou neste cozimento.

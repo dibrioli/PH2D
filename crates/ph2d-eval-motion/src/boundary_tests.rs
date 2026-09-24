@@ -410,3 +410,63 @@ fn a_backwards_scrub_rewinds_every_boundary() {
         );
     }
 }
+
+/// ⭐⭐⭐ **A marcha de uma rota de FRONTEIRAS só avança o `pre` que as fronteiras leem** (ciclo
+/// 12, doc 120 §8.5). Na rota híbrida um laço que o dispositivo reclamou era simulado aqui
+/// também, e deitado fora — `4,0 ms` por quadro na escada dos tectos a `32 768`.
+///
+/// A fixture: uma fronteira `a` que não lê nada, e ao lado um laço `src --pre--> b` que ela não
+/// alcança. ⚠️ **O CONTROLO é a rota de SINKS sobre o mesmo grafo** — ali a marcha tem de avançar
+/// toda fonte de `pre` (é a lei certa quando a CPU coze o grafo inteiro), e sem ele um `src` que
+/// nunca avança por outro motivo passaria por esta lei. E a régua CONTA AVALIAÇÕES: um laço
+/// simulado a mais dá a mesma resposta e só custa relógio.
+#[test]
+fn a_rota_de_fronteiras_nao_simula_o_laco_que_elas_nao_leem() {
+    let mut g = Graph::new();
+    let a = g.add_node("motion.test.btap");
+    let src = g.add_node("motion.test.bsrc");
+    let b = g.add_node("motion.test.btap");
+    g.connect(ph2d_nodegraph::graph::Edge {
+        from: (src, 0),
+        to: (b, 0),
+        delayed: true,
+    })
+    .unwrap();
+
+    let mut pump = MotionCookPump::new();
+    pump.define_a_lei(false);
+    SRC_EVALS.with(|c| c.set(0));
+    pump.advance_or_scrub_to_nodes_scoped(
+        &g,
+        &Ops,
+        &[a],
+        0,
+        |t| t as f64 * 0.016,
+        &TimeScopes::default(),
+    );
+    assert_eq!(
+        SRC_EVALS.with(Cell::get),
+        0,
+        "a fronteira `a` nao le o laco `src -> b`: ele e' do dispositivo, e simula-lo aqui e' \
+         cozimento para nada"
+    );
+
+    // O CONTROLO: a rota de sinks marcha toda fonte de `pre`.
+    let mut pump = MotionCookPump::new();
+    pump.define_a_lei(false);
+    SRC_EVALS.with(|c| c.set(0));
+    pump.advance_or_scrub_scoped(
+        &g,
+        &Ops,
+        &[a],
+        0,
+        |t| t as f64 * 0.016,
+        [0.0, 0.0, 1.0, 1.0],
+        [1.0, 1.0],
+        &TimeScopes::default(),
+    );
+    assert!(
+        SRC_EVALS.with(Cell::get) >= 1,
+        "CONTROLO: a rota de sinks avanca toda fonte de `pre`, lida ou nao"
+    );
+}

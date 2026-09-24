@@ -70,13 +70,24 @@ pub fn forma_com_pivot_em_arrasto(motion: &MotionState) -> Option<NodeId> {
 }
 
 /// **As TOMADAS que este gizmo precisa** — a saída da própria forma, de onde sai o `geometry_id`
-/// que identifica as peças dela.
+/// que identifica as peças dela, **e o sink dela**, de onde saem as posições.
 ///
-/// ⚠️ **O sink não entra aqui de propósito:** o `ponto_gizmo::taps_for` já pede TODOS os sinks, e
-/// pedir o mesmo nó duas vezes só alargaria a união. *Uma tomada é um pedido, não uma posse.*
+/// ⛔⛔ **O sink ENTRA aqui desde o ciclo 12, e a nota que o deixava de fora tinha a premissa
+/// morta:** ela dizia que o `ponto_gizmo::taps_for` *«já pede TODOS os sinks»* — e ele deixou de
+/// o fazer quando a placa já desenhou o sink (a tomada recozinhava a simulação inteira na CPU,
+/// [doc 120 §8.5]). Uma forma com pivô é exactamente o sink que a placa desenha, logo sem esta
+/// linha o gizmo do pivô deixaria de aparecer **em silêncio**. *Uma tomada é um pedido, não uma
+/// posse: quem a lê é quem a pede.* E só durante o gesto — fora dele a lista é vazia.
+///
+/// [doc 120 §8.5]: ../../../docs/Motion%20Nodes/120_ciclo_12_os_tectos_confortaveis.md
 #[must_use]
 pub fn taps_for(motion: &MotionState) -> Vec<NodeId> {
-    forma_com_pivot_em_arrasto(motion).into_iter().collect()
+    let Some(node) = forma_com_pivot_em_arrasto(motion) else {
+        return Vec::new();
+    };
+    std::iter::once(node)
+        .chain(super::collider_gizmo::sink_of(&motion.doc.graph, node))
+        .collect()
 }
 
 fn tap(motion: &MotionState, node: NodeId) -> Option<&Stream> {

@@ -266,7 +266,7 @@ impl Cook {
         scopes: &TimeScopes,
         fans: &TimeFans,
     ) -> Result<(), CookError> {
-        self.advance_tick_inner(graph, ops, playhead, scopes, fans)
+        self.advance_tick_inner(graph, ops, playhead, scopes, fans, None)
     }
 
     /// [`Self::advance_tick`] under time scopes: a `pre` source whose upstream
@@ -280,21 +280,22 @@ impl Cook {
         playhead: f64,
         scopes: &TimeScopes,
     ) -> Result<(), CookError> {
-        self.advance_tick_inner(graph, ops, playhead, scopes, &TimeFans::new())
+        self.advance_tick_inner(graph, ops, playhead, scopes, &TimeFans::new(), None)
     }
 
-    fn advance_tick_inner(
+    pub(crate) fn advance_tick_inner(
         &mut self,
         graph: &Graph,
         ops: &dyn OpResolver,
         playhead: f64,
         scopes: &TimeScopes,
         fans: &TimeFans,
+        so: Option<&std::collections::BTreeSet<NodeId>>,
     ) -> Result<(), CookError> {
         let pre_sources: std::collections::BTreeSet<NodeId> = graph
             .edges()
             .iter()
-            .filter(|e| e.delayed)
+            .filter(|e| e.delayed && so.is_none_or(|k| k.contains(&e.from.0)))
             .map(|e| e.from.0)
             .collect();
         for &src in &pre_sources {

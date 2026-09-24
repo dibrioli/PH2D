@@ -888,3 +888,18 @@ e a diferença dilui-se) · *e a distância entre as duas é grande o bastante p
 4. ⚠️ **O `pick` do duplicador tem três modos** (`Off` · `Cycle` · `Random`) e só o `Off` é o
    produto cartesiano — os outros dois emitem exactamente `np` linhas. *Uma lei de contagem que
    ignore o modo entrega a contagem errada em dois dos três.*
+
+
+## ⭐ A cena `=126` ganhou SIMULAÇÃO com campos (2026-09-23)
+
+Pela regra do dono de 23/09 (doc 103 §1: *toda cena de smoke do Motion tem FORMAS e SIMULAÇÃO com
+campos*), as `32 761` estrelas passam a girar como uma galáxia — `grid → integrate ← (vortex →
+attractor → curl → drag)`, e só depois o carimbo da estrela. ⚠️ **O gate que o proibia teve a
+premissa MORTA à vista** (`a_cena_e_a_cadeia_do_report_mais_a_simulacao_e_nada_mais`): ele dizia
+que uma simulação a mais faria a cena *«medir outra coisa»*, e o roteiro compara uma DIFERENÇA de
+`raw` entre duas corridas, onde um custo igual nas duas se cancela. Medido: a simulação custa
+**`2,02 ms`** p50 por tique em `--release` (a `load 29,6`; a leitura calma fica por fazer, como o
+resto dos relógios desta linha). O roteiro deixou de prometer *«os fps ficam nos 60»* (não
+medido) e manda olhar só o `raw`. Gates: `a_galaxia_gira_e_fica_do_tamanho_do_campo` (mexe
+`> 0,3 m` e o extremo fica abaixo de `1,25 ×` o meio-lado do campo de partida — medido `13,74`
+contra `14,6 m`, senão o passo de AFASTAR até caber tudo deixava de ser possível). Mutação 3 de 3.

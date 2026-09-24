@@ -409,6 +409,11 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         "motion.duplicator",
         "source.shape",
         "motion.output",
+        "motion.integrate",
+        "force.vortex",
+        "force.attractor",
+        "force.curl",
+        "force.drag",
     ] {
         reg.manifests()
             .find(|m| m.id == ph2d_nodegraph::node::NodeTypeId::of(tipo))?;
@@ -446,10 +451,18 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         corner_semeado(),
     );
 
+    // ── A SIMULAÇÃO COM CAMPOS (regra do dono, 2026-09-23: toda cena de smoke do Motion tem
+    // FORMAS e SIMULAÇÃO com campos — doc 103 §1). ⚠️ Ela NÃO estraga a medição desta cena: o que
+    // o roteiro compara é a DIFERENÇA de `raw` entre duas corridas (com e sem a cura do carimbo), e
+    // o custo da simulação é o MESMO nas duas — cancela-se. A galáxia gira devagar e fica do
+    // tamanho do campo de partida (gate `a_galaxia_gira_e_fica_do_tamanho_do_campo`), senão o
+    // passo de AFASTAR até caber tudo deixava de ser possível.
+    let ig = simulacao(g, grade)?;
+
     // ── O CARIMBO. ⚠️ A forma na porta `0`, os pontos na `1` — a ordem que o manifesto do
     // duplicador declara, e que um censo do roteador confere em toda cena.
     let dup = no(g, "motion.duplicator", 240.0, 110.0);
-    for (de, porta) in [(forma, 0u16), (grade, 1)] {
+    for (de, porta) in [(forma, 0u16), (ig, 1)] {
         g.connect(Edge {
             from: (de, 0),
             to: (dup, porta),
@@ -467,6 +480,65 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
     Some(vec![saida])
 }
 
+/// As intensidades dos campos da galáxia — afinadas pela régua que virou o gate
+/// `a_galaxia_gira_e_fica_do_tamanho_do_campo`. O raio é LARGO (maior que o campo inteiro), senão
+/// as estrelas de fora ficam sem puxão e o ruído leva-as (a lição da cena `=16`).
+pub(crate) struct Galaxia {
+    pub(crate) vortex: f32,
+    pub(crate) iman: f32,
+    pub(crate) ruido: f32,
+    pub(crate) arrasto: f32,
+    pub(crate) alcance: f32,
+}
+pub(crate) const GALAXIA: Galaxia = Galaxia {
+    vortex: 1.0,
+    iman: 0.6,
+    ruido: 0.6,
+    arrasto: 1.0,
+    alcance: 40.0,
+};
+
+/// `grade → integrate ← (vortex → attractor → curl → drag) ← pre(integrate)`. Devolve o integrador.
+fn simulacao(g: &mut ph2d_nodegraph::graph::Graph, grade: NodeId) -> Option<NodeId> {
+    let ig = g.add_node("motion.integrate");
+    g.set_pos(ig, Pos { x: 120.0, y: -60.0 });
+    let vortex = g.add_node("force.vortex");
+    g.set_param(vortex, "strength", GALAXIA.vortex);
+    g.set_param(vortex, "radius", GALAXIA.alcance);
+    let im = g.add_node("force.attractor");
+    g.set_param(im, "strength", GALAXIA.iman);
+    g.set_param(im, "radius", GALAXIA.alcance);
+    let curl = g.add_node("force.curl");
+    g.set_param(curl, "strength", GALAXIA.ruido);
+    g.set_param(curl, "scale", 0.15);
+    g.set_param(curl, "speed", 0.4);
+    let drag = g.add_node("force.drag");
+    g.set_param(drag, "coefficient", GALAXIA.arrasto);
+    let cadeia = [vortex, im, curl, drag];
+    for (i, n) in cadeia.iter().enumerate() {
+        #[expect(clippy::cast_precision_loss, reason = "quatro nós")]
+        let x = i as f32 * 160.0;
+        g.set_pos(*n, Pos { x, y: -220.0 });
+    }
+    let liga =
+        |g: &mut ph2d_nodegraph::graph::Graph, a: NodeId, b: NodeId, porta: u16, laco: bool| {
+            g.connect(Edge {
+                from: (a, 0),
+                to: (b, porta),
+                delayed: laco,
+            })
+            .ok()
+        };
+    liga(g, grade, ig, 0, false)?;
+    // O laço que o artista nunca desenha: o estado do tique anterior entra na cadeia de forças.
+    liga(g, ig, vortex, 0, true)?;
+    for par in cadeia.windows(2) {
+        liga(g, par[0], par[1], 0, false)?;
+    }
+    liga(g, drag, ig, 1, false)?;
+    Some(ig)
+}
+
 /// **O roteiro que o dono segue.** ⚠️ Cada passo nomeia o que aparece NA TELA (`CLAUDE.md` §0.8),
 /// e o *«deu errado se»* é a metade que só cabe aqui.
 ///
@@ -478,7 +550,9 @@ pub(super) fn announce() {
     eprintln!(
         "\n[estrelas] UM CAMPO DE {n} ESTRELAS ({LADO_N} x {LADO_N}) — a cena do seu report\n\
          («usando shape star fps cai»). O `Grid` poe as posicoes e o `Duplicator` veste cada\n\
-         uma com a MESMA estrela.\n\
+         uma com a MESMA estrela. As estrelas GIRAM devagar, como uma galaxia: e' uma\n\
+         SIMULACAO com campos de forca (redemoinho, iman, ruido, arrasto) -- a mesma nas duas\n\
+         corridas do passo (4), por isso a comparacao continua justa.\n\
          \n\
          (1) Olhe a BARRA DE BAIXO do ecra. Ela diz `fps`, os milissegundos do quadro,\n    \
          e um TERCEIRO numero: o `raw`. E' o `raw` que interessa aqui — os `60 fps`\n    \
@@ -488,11 +562,11 @@ pub(super) fn announce() {
          O ecra mostra um pedaco do campo — as {n} existem e sao TODAS desenhadas.\n\
          (3) Arraste o fundo com o botao do meio: tem de passear LISO.\n\
          (4) Feche o app e corra o MESMO comando com `PH2D_CARIMBO_PREPARADO=0` a' frente:\n    \
-         e' o caminho ANTIGO. Os `fps` ficam nos mesmos `60` (e' o tecto do ecra) e o\n    \
-         `raw` CAI — o quadro passa a gastar cerca de {DIFERENCA_MS:.1} ms a mais de\n    \
+         e' o caminho ANTIGO. Olhe o `raw` (os `fps` param no tecto do ecra e nao\n    \
+         dizem a diferenca): o `raw` CAI — o quadro passa a gastar cerca de {DIFERENCA_MS:.1} ms a mais de\n    \
          CPU, so' para desenhar as MESMAS {n} estrelas.\n\
-         (5) Compare os dois `raw` que anotou. A imagem e' a MESMA, ponto por ponto —\n    \
-         so' a folga muda.\n\
+         (5) Compare os dois `raw` que anotou. A galaxia e' a MESMA nas duas corridas (as\n    \
+         estrelas giram igual) — so' a folga muda.\n\
          \n\
          (6) AFASTE com a roda ate' o campo INTEIRO caber no ecra. As estrelas ficam\n    \
          com 3 pixeis ou menos, e a esse tamanho o app troca cada desenho pela\n    \
@@ -503,8 +577,9 @@ pub(super) fn announce() {
          (8) Corra o mesmo comando com `PH2D_LOD_DA_FORMA=0` a' frente e repita o (6):\n    \
          e' o caminho de antes desta cura, sem a troca.\n\
          \n\
-         DEU ERRADO se: o campo nao aparecer; se o `raw` for IGUAL nas duas corridas;\n\
-         se a imagem for DIFERENTE entre as duas; ou se ao AFASTAR as estrelas\n\
+         DEU ERRADO se: o campo nao aparecer; se as estrelas ficarem PARADAS; se o `raw`\n\
+         for IGUAL nas duas corridas;\n\
+         se a galaxia girar DIFERENTE entre as duas; ou se ao AFASTAR as estrelas\n\
          DESAPARECEREM, ficarem BRANCAS ou PISCAREM — isso e' a troca a falhar,\n\
          e `PH2D_LOD_DA_FORMA=0` confirma-o num comando.\n"
     );

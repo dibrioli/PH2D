@@ -31,40 +31,62 @@ fn dos(doc: &MotionDoc, tipo: &str) -> Vec<NodeId> {
         .collect()
 }
 
-/// ⭐⭐⭐ **A CADEIA É A DO REPORT, E NADA MAIS.**
+/// ⭐⭐⭐ **A CADEIA É A DO REPORT, MAIS A SIMULAÇÃO QUE O DONO MANDA — E NADA MAIS.**
 ///
-/// ⚠️ **A metade que interessa é o «e nada mais»:** um oscilador, um campo ou uma simulação a mais
-/// entram na conta do quadro, e a cena passaria a medir uma coisa e a dizer que mede outra. *Uma
-/// cena de performance com um passageiro é uma medição de outro programa.*
+/// ⚠️ **A premissa deste gate MORREU em 2026-09-23 e está aqui à vista:** ele dizia *«um
+/// oscilador, um campo ou uma simulação a mais entram na conta do quadro, e a cena passaria a medir
+/// uma coisa e a dizer que mede outra»*. O dono ordenou que toda cena de smoke tenha SIMULAÇÃO com
+/// campos (doc 103 §1), e o argumento era mais fraco do que dizia: o roteiro compara a DIFERENÇA de
+/// `raw` entre duas corridas (com e sem a cura do carimbo), e um custo igual nas duas cancela-se.
+///
+/// O «e nada mais» continua a valer para o resto: um passageiro que só existisse numa das duas
+/// corridas mediria outro programa. A simulação entra nas DUAS por construção (é o mesmo grafo).
 #[test]
-fn a_cena_e_a_cadeia_do_report_e_nada_mais() {
+fn a_cena_e_a_cadeia_do_report_mais_a_simulacao_e_nada_mais() {
     let (doc, _reg, sinks) = cena();
     assert_eq!(sinks.len(), 1, "uma saida so'");
     assert_eq!(
         doc.graph.nodes().len(),
-        4,
-        "quatro nos: grid, shape, dup, output"
+        9,
+        "nove nos: grid, shape, dup, output + integrate e os quatro campos"
     );
     let grade = *dos(&doc, "motion.grid").first().expect("ha' uma grelha");
     let forma = *dos(&doc, "source.shape").first().expect("ha' uma forma");
+    let ig = *dos(&doc, "motion.integrate")
+        .first()
+        .expect("ha' uma simulacao");
     let dup = *dos(&doc, "motion.duplicator")
         .first()
         .expect("ha' um duplicador");
-    let entradas: Vec<(u16, NodeId)> = doc
+    let entradas = |alvo: NodeId| -> Vec<(u16, NodeId)> {
+        doc.graph
+            .edges()
+            .iter()
+            .filter(|e| e.to.0 == alvo)
+            .map(|e| (e.to.1, e.from.0))
+            .collect()
+    };
+    assert!(
+        entradas(dup).contains(&(0, forma)),
+        "a FORMA entra na porta 0 do carimbo, e as entradas sao {:?}",
+        entradas(dup)
+    );
+    assert!(
+        entradas(dup).contains(&(1, ig)),
+        "as posicoes SIMULADAS entram na porta 1, e as entradas sao {:?}",
+        entradas(dup)
+    );
+    assert!(
+        entradas(ig).contains(&(0, grade)),
+        "a grelha e' o repouso da simulacao"
+    );
+    let campos = doc
         .graph
-        .edges()
+        .nodes()
         .iter()
-        .filter(|e| e.to.0 == dup)
-        .map(|e| (e.to.1, e.from.0))
-        .collect();
-    assert!(
-        entradas.contains(&(0, forma)),
-        "a FORMA entra na porta 0 do carimbo, e as entradas sao {entradas:?}"
-    );
-    assert!(
-        entradas.contains(&(1, grade)),
-        "as POSICOES entram na porta 1, e as entradas sao {entradas:?}"
-    );
+        .filter(|n| n.type_name.starts_with("force."))
+        .count();
+    assert_eq!(campos, 4, "a galaxia tem quatro campos de forca");
     assert!(
         doc.graph
             .edges()
@@ -309,5 +331,99 @@ fn os_instrumentos_de_bisseccao_nao_mudam_a_cena_de_omissao() {
         super::lado_por(Some("400")),
         400,
         "com a variavel armada o lado tem de chegar"
+    );
+}
+
+/// ⭐⭐ **A GALÁXIA GIRA E FICA DO TAMANHO DO CAMPO** — a régua que afinou os campos, virada gate.
+///
+/// Duas metades, porque cada uma sozinha mente:
+/// - **mexe** (`> 0,3 m` de afastamento médio da grelha de partida): sem ela uma cena com a
+///   simulação desligada passava — a queixa do dono de 2026-09-23;
+/// - **cabe** (nenhuma estrela a mais de `1,25 ×` o meio-lado do campo de partida): sem ela os
+///   campos atiravam as estrelas para fora, e o passo do roteiro *«afaste até o campo INTEIRO caber
+///   no ecrã»* deixava de ser possível.
+///
+/// 10 s a 60 Hz pelo `Cook` da CPU (o extremo assenta aos `~4 s`) (a cena vai à CPU de qualquer modo: a estrela é uma forma viva).
+#[test]
+fn a_galaxia_gira_e_fica_do_tamanho_do_campo() {
+    let (doc, reg, _) = cena();
+    let ig = *dos(&doc, "motion.integrate")
+        .first()
+        .expect("ha' um integrador");
+    let meio_lado = (LADO - 1.0) * VAO / 2.0;
+    let mut cook = ph2d_nodegraph::cook::Cook::new();
+    let dt = 1.0 / 60.0;
+    let (mut inicio, mut pior, mut andou, mut medidas) = (None, 0.0f32, 0.0f32, 0usize);
+    for tick in 0..=600u32 {
+        let t = f64::from(tick) * dt;
+        cook.advance_tick(&doc.graph, &reg, t).expect("avanca");
+        let s = cook.cook(&doc.graph, &reg, ig, t).expect("coze");
+        if tick % 60 != 0 {
+            continue;
+        }
+        let Some(ph2d_nodegraph::attr::Column::Vec2(p)) = s[0].as_stream().get("P") else {
+            panic!("o integrador entrega `P`")
+        };
+        let base: &Vec<[f32; 2]> = inicio.get_or_insert_with(|| p.clone());
+        let media = p
+            .iter()
+            .zip(base)
+            .map(|(a, b)| (a[0] - b[0]).hypot(a[1] - b[1]))
+            .sum::<f32>()
+            / p.len().max(1) as f32;
+        andou = andou.max(media);
+        pior = p
+            .iter()
+            .map(|q| q[0].abs().max(q[1].abs()))
+            .fold(pior, f32::max);
+        medidas += p.len();
+        eprintln!(
+            "t={t:>4.1}s afastamento medio {media:.3} m · extremo {pior:.2} m (meio-lado {meio_lado:.2})"
+        );
+    }
+    assert!(
+        medidas as u64 > ESTRELAS,
+        "a régua não viu as estrelas ({medidas})"
+    );
+    assert!(
+        andou > 0.3,
+        "a galaxia quase nao se mexeu ({andou:.3} m) -- a simulacao nao corre"
+    );
+    assert!(
+        pior < 1.25 * meio_lado,
+        "uma estrela chegou a {pior:.2} m do centro, e o campo de partida tem {meio_lado:.2} m de \
+         meio-lado -- o passo de AFASTAR ate' caber tudo deixa de ser possivel"
+    );
+}
+
+/// **SONDA: quanto a galáxia custa por tique** (a simulação, sem o carimbo — o carimbo tem a sua
+/// sonda no `motion_carimbo_relogio_probe`). `--release`, com o `loadavg` ao lado.
+#[test]
+#[ignore = "sonda de relogio, nao um gate"]
+fn sonda_custo_da_galaxia() {
+    let (doc, reg, _) = cena();
+    let ig = *dos(&doc, "motion.integrate")
+        .first()
+        .expect("ha' um integrador");
+    let mut cook = ph2d_nodegraph::cook::Cook::new();
+    let dt = 1.0 / 60.0;
+    let mut tempos = Vec::new();
+    for tick in 0..240u32 {
+        let t = f64::from(tick) * dt;
+        let t0 = std::time::Instant::now();
+        cook.advance_tick(&doc.graph, &reg, t).expect("avanca");
+        let _ = cook.cook(&doc.graph, &reg, ig, t).expect("coze");
+        if tick >= 60 {
+            tempos.push(t0.elapsed().as_secs_f64() * 1e3);
+        }
+    }
+    tempos.sort_by(f64::total_cmp);
+    let load = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    eprintln!(
+        "galaxia: {} estrelas · por tique p50 {:.2} ms · p90 {:.2} ms · loadavg {}",
+        ESTRELAS,
+        tempos[tempos.len() / 2],
+        tempos[tempos.len() * 9 / 10],
+        load.split_whitespace().next().unwrap_or("?")
     );
 }

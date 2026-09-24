@@ -270,3 +270,13 @@ emparelhamento seria posicional e certo — o que falta é o planeador SABER iss
 simula os PONTOS e depois veste-os (a ordem de quem faz isto noutros programas), e a simulação
 corre na CPU. ⏳ A cura é o planeador conhecer a forma da saída de um nó de CPU (uma declaração do
 nó, com a presença do `id` a seguir a dos pontos) — ou o carimbo ganhar kernel.
+
+## §11 — ✅ CICLO FECHADO (2026-09-23): smoke do dono aprovado
+
+O dono correu a `=16` e aprovou (*«Smoke OK»*). A pergunta dele a seguir — *como há um rectângulo
+desenhado sem `Shape`, se a regra diz que uma grelha só desenha gizmos?* — tem a resposta que a
+cena agora diz por escrito: a forma que o `duplicator` pendura pode ser um `source.shape` (vector,
+que hoje vai à CPU) **ou** um `source.object` (um objecto da cena, aqui uma imagem, que a placa
+desenha). A lei do dono continua inteira: posições sozinhas são gizmos.
+
+⏳ **Fica aberto do ciclo:** a simulação DEPOIS de um carimbo na placa (§10) e o relógio (§9).

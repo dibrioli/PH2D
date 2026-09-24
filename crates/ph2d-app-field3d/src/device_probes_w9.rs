@@ -532,3 +532,7 @@ mod torno;
 /// ⏱️⭐⭐⭐⭐ **A grade assada contra a árvore** — ver o cabeçalho do [`grade`].
 #[path = "device_probes_w9_grade.rs"]
 mod grade;
+
+/// ⏱️⭐⭐⭐⭐ **Onde os passos da marcha acontecem** — ver o cabeçalho do [`perto`].
+#[path = "device_probes_w9_perto.rs"]
+mod perto;

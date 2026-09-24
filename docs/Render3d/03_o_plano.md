@@ -1435,6 +1435,50 @@ Mutação **4 de 5** a sangrar (caixa crua · sem recorte de omissão · cabeça
 a célula no índice errado); a 5.ª — o laço perguntar à grade sem ver a célula — **sobrevive de
 propósito**: é só relógio, e o relógio está na tabela.
 
+### ⭐⭐⭐ ONDE OS PASSOS ACONTECEM — e QUANTO A PODA POR REGIÃO COMPRARIA (2026-09-24)
+
+A recusa acima deixou a frase *«o custo mora perto da superfície»*; as duas sondas de
+[`device_probes_w9_perto.rs`](../../crates/ph2d-app-field3d/src/device_probes_w9_perto.rs) medem-na
+refazendo a marcha raio a raio com a lei do produto (recorte `march_clip`, `safe_march_step`,
+orçamento, `Sharpness::for_frame`) a `1920×1080`.
+
+**Onde** (`diag_onde_os_passos_acontecem`): `29`–`67 %` dos passos são de raios que FALHAM (roçam a
+silhueta e seguem); no nó (`=28`) `72 %` acontecem a menos de `4` px da superfície; a normal pesa
+`4`–`23 %`. ⭐ **E a divergência da placa pesa pouco:** em blocos de `32` (`8×4`, a largura desta
+placa) a eficiência é `73`–`87 %` ⇒ no máximo `~1,3×` a ganhar por reordenar raios.
+
+⚠️ **O número que muda a pergunta:** o nó faz `~21 M` avaliações de uma fita de `721` linhas em
+`~59 ms` ⇒ `~45` instruções da placa por linha da fita. *O tecto não é o número de passos, é o
+custo de CADA avaliação* — e ele cresce com o comprimento da fita.
+
+**Quanto a poda compraria** (`diag_quanto_a_poda_por_regiao_compraria`, [`ph2d_field_eval::poda`],
+a poda por intervalos da própria `fidget` — Keeter 2020): cada avaliação cai num pedaço
+`(quadrado de ecrã, fatia de profundidade)`, a caixa exacta do que ali se avaliou vai à poda, e as
+instruções que sobram pesam-se pelas avaliações do pedaço. *Razão = instruções médias por avaliação
+÷ fita inteira*; `0` numa caixa que o intervalo prova vazia (coluna à parte):
+
+| cena | fita | `64 px`×1 | `16 px`×1 | `32 px`×16 | **`16 px`×16** | vazias (`16×16`) | poda na CPU (`16×16`) |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `=5` vaso | `125` | `0,965` | `0,950` | `0,864` | **`0,821`** | `6,0 %` | `12 ms` |
+| `=28` nó | `725` | `0,577` | `0,474` | `0,325` | **`0,279`** | `6,3 %` | `50 ms` |
+| `=1` cilindros | `94` | `0,900` | `0,877` | `0,273` | **`0,247`** | `48,0 %` | `21 ms` |
+| `=11` lote | `394` | `0,769` | `0,723` | `0,423` | **`0,363`** | `17,8 %` | `31 ms` |
+| `=26` triângulo | `129` | `0,505` | `0,384` | `0,221` | **`0,183`** | `28,5 %` | `3 ms` |
+| `=27` polígono | `752` | `0,846` | `0,762` | `0,596` | **`0,517`** | `5,1 %` | `41 ms` |
+| `=29` rosca | `164` | `0,906` | `0,843` | `0,492` | **`0,400`** | `2,1 %` | `9 ms` |
+| `=30` curvas | `309` | `0,756` | `0,601` | `0,442` | **`0,366`** | `11,8 %` | `15 ms` |
+
+⭐⭐ **As FATIAS DE PROFUNDIDADE são metade da poda** (`16 px` sem fatias fica em `0,38`–`0,95`) —
+a mesma lição que a W56e mediu na CPU. ⇒ a poda leva o nó a **`~3,6×` menos instruções** por
+avaliação, e seis das oito cenas a um terço ou menos. ⛔ O vaso é a excepção honesta (`0,82`).
+
+⚠️ **O que falta saber antes de construir, e é a medição seguinte:** (1) a poda na CPU custa até
+`50 ms` por quadro — ela tem de correr **na placa** (intervalos em paralelo, como no artigo); (2) uma
+fita por pedaço não se compila por pedaço, logo o dispositivo precisa de um **INTERPRETADOR** de
+fita — exactamente a recusa do `ph2d_field_eval::wgsl` que ficou *«por medir»*. ⇒ *o ganho é
+`razão × (custo por instrução interpretada ÷ custo por instrução compilada)`*, e é esse segundo
+factor que decide a wave.
+
 ## W10 — ✅ O GÉMEO DO AMACIAMENTO NO DISPOSITIVO — **FECHADA em 2026-09-19**
 
 > Ele adiou-a de manhã (*«coloque a possibilidade de melhoramento na fila mais no fim»*) e **trouxe-a

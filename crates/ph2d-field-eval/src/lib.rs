@@ -299,6 +299,9 @@ mod affine;
 /// ⭐⭐⭐ O documento avaliado ponto a ponto — ver [`field`].
 pub mod field;
 pub use field::Field;
+/// ⏱️ A poda por região (Keeter 2020) — instrumento; ver o módulo.
+#[doc(hidden)]
+pub mod poda;
 pub mod point_tape;
 /// ⭐⭐⭐ A ordem da fita — ver [`tape_schedule`].
 ///

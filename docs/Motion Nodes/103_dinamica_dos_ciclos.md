@@ -135,7 +135,7 @@ inventada. Contagens do registry em 2026-09-05.
 | **9** ✅ ([doc 114](114_ciclo_9_rig_e_corpos_moles.md)) | RIG & CORPOS MOLES | `rig.*` (**6**) · `soft_body` · `verlet_rope` · `wave` · `boids` — **10**, contados | «Coisas que se seguram» — cena `=120`, [tutorial 09](tutoriais/09_coisas_que_se_seguram.pdf) |
 | 10 ⏳ ([doc 116](116_ciclo_10_o_carimbo_no_dispositivo.md)) | ⚡ **O CARIMBO NO DISPOSITIVO** — `source.shape` + `motion.duplicator` | (optimização, não um grupo novo) | ⛔ **não tem tutorial** (doc 116 §1) |
 | 11 ✅ ([doc 119](119_ciclo_11_a_placa_com_varias_saidas.md)) | ⚡ **A AVALIAÇÃO GERAL DE PERFORMANCE** — o alvo medido (doc 117) era a cerca de ÂMBITO do multi-sink; ela SAIU (W1–W4) e a varredura achou **três** defeitos de produto que ela escondia, curados. Pela porta do produto, **`95` de `126`** cenas vão à placa. ✅ smoke do dono aprovado na cena `PH2D_MOTION_OBJ_SMOKE=16` (2026-09-23) | (varredura) | — |
-| **12** | ⚡ **OS TETOS CONFORTÁVEIS** — quantos objectos o sistema aguenta, com número | (decisão do Enio, com a tabela) | — |
+| **12** ([doc 120](120_ciclo_12_os_tectos_confortaveis.md)) | ⚡ **OS TETOS CONFORTÁVEIS** — medido com FORMA e SIMULAÇÃO, nas duas placas (a integrada é o proxy de telemóvel), cena `PH2D_MOTION_OBJ_SMOKE=17`: confortável ≥`65 536` imagens / `32 768` estrelas no desktop, ~`49 152` / ~`16 384` no proxy; acima do limite há um **penhasco** (dívida de tiques). Recomendação técnica: **ficar em `32 768`** até o carimbo ir à placa | ⏳ **decisão do Enio**, com a tabela (§7) | — |
 
 > ⚠️ **Estado em 2026-09-20.** O ciclo **9** FECHOU — o dono correu a cena `=120`, seguiu o
 > [tutorial 09](tutoriais/09_coisas_que_se_seguram.pdf) e aprovou (*«smoke OK»*); os **oito** pedidos

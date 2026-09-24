@@ -9,7 +9,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**128 arquivos** · **13** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
+**131 arquivos** · **13** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
 
 | # | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -132,6 +132,9 @@
 | 115 | ◆ | [115_o_colisor_sai_do_grafo.md](115_o_colisor_sai_do_grafo.md) | — | 115 — O COLISOR SAI DO GRAFO: a forma é do OBJECTO, e o app separa sozinho |
 | 116 |   | [116_ciclo_10_o_carimbo_no_dispositivo.md](116_ciclo_10_o_carimbo_no_dispositivo.md) | — | 116 — CICLO 10 · O CARIMBO NO DISPOSITIVO |
 | 117 |   | [117_o_que_falta_2026-09-22.md](117_o_que_falta_2026-09-22.md) | — | 117 — O QUE FALTA no módulo, medido (2026-09-22) |
+| 118 |   | [118_a_mistura_em_grupo.md](118_a_mistura_em_grupo.md) | — | 118 — A MISTURA EM GRUPO: três alcances, imagens e formas, no tom das formas (2026-09-23) |
+| 119 |   | [119_ciclo_11_a_placa_com_varias_saidas.md](119_ciclo_11_a_placa_com_varias_saidas.md) | — | 119 — CICLO 11: a placa com VÁRIAS saídas (2026-09-23) |
+| 120 |   | [120_ciclo_12_os_tectos_confortaveis.md](120_ciclo_12_os_tectos_confortaveis.md) | — | 120 — CICLO 12: os tectos confortáveis (2026-09-24) |
 | — | ◆ | [BUGS_motion_nodes.md](BUGS_motion_nodes.md) | bugs | Bugs do módulo Motion Nodes — registro + soluções |
 | — |   | [referencia_catalogo_nodes_minicavalry.md](referencia_catalogo_nodes_minicavalry.md) | referência | Mini Cavalry — Referência de Nós (autor) |
 | — |   | [referencia_design_node_graph_ph2d_v1.md](referencia_design_node_graph_ph2d_v1.md) | referência | PH2D — Sistema de Nós — Design Canônico |

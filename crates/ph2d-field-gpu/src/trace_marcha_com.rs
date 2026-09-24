@@ -61,7 +61,6 @@ pub(super) fn marcha_com(
     });
 
     use wgpu::util::DeviceExt;
-    let ub = uniforme_do_pedido(device, setup, width, height);
     // ⭐⭐⭐ **UM vector de constantes para os DOIS passes.** A fita da peça ocupa o princípio; a lei
     // do dono escreve a seguir, e a origem dela é **exactamente** `fita.consts.len()`.
     //
@@ -72,6 +71,28 @@ pub(super) fn marcha_com(
     if let Some(e) = &escultura {
         consts.extend_from_slice(&e.consts);
     }
+    // ⭐⭐⭐⭐ **O CABEÇALHO DA GRADE DE LONGE** — ver [`crate::longe`]. Ele cai a seguir às
+    // esculturas, e a grade dele mora no armazém a seguir às grades delas: as duas origens saem
+    // DESTA aritmética. ⚠️ `longe_k` é o índice MAIS UM, porque `0` quer dizer *«sem grade»*.
+    let regiao_das_esculturas = crate::sculpt::grid_len(sculpts).unwrap_or(0);
+    let longe = setup
+        .longe
+        .filter(|_| regiao_das_esculturas <= u32::MAX as usize);
+    let longe_k = match &longe {
+        Some(l) => {
+            let indice = consts.len();
+            #[allow(clippy::cast_possible_truncation)]
+            consts.extend_from_slice(&crate::longe::cabecalho(l, regiao_das_esculturas as u32));
+            #[allow(clippy::cast_possible_truncation)]
+            {
+                indice as u32 + 1
+            }
+        }
+        None => 0,
+    };
+    let folga = longe.as_ref().map_or(0, crate::longe::Longe::valores);
+    let assa = longe.as_ref().and_then(crate::longe::Longe::grade);
+    let ub = uniforme_do_pedido(device, setup, width, height, longe_k);
     let lei_do_dono = pintor.and_then(|p| p.owners?.to_wgsl(consts.len()));
     if let Some(l) = &lei_do_dono {
         consts.extend_from_slice(&l.consts);
@@ -103,7 +124,7 @@ pub(super) fn marcha_com(
     //
     // ⚠️ **Clonado e não emprestado:** um `wgpu::Buffer` é um punho com contagem, e segurar o
     // empréstimo do cache impediria a compilação do pipeline mais abaixo de lhe tocar.
-    let b_grades = cache.grades(device, sculpts).clone();
+    let b_grades = cache.grades(device, sculpts, folga).clone();
     let b_centro = cria("centro", n * 16);
     // ⭐ O passo é `1 + n_lamps + 6`: o céu, uma visibilidade por lâmpada e o RICOCHETE
     // (`docs/Render3d/08`) — mais **SEIS por lâmpada** quando há BORDA MOLE (o intermediário da
@@ -141,6 +162,58 @@ pub(super) fn marcha_com(
     let bg_bordas = p_bordas.as_ref().map(&bind);
 
     let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+    // ⭐⭐⭐⭐ **A GRADE ASSA-SE ANTES DA MARCHA, no mesmo encoder** — ver [`crate::longe`]. ⚠️ Dois
+    // passes de computação no mesmo encoder correm em ordem, com a escrita do primeiro visível ao
+    // segundo; é isso que dispensa um `submit` a mais por quadro.
+    if let Some(g) = assa {
+        let entradas = crate::longe::entradas();
+        let bgl_assa = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("assa-longe"),
+            entries: &entradas,
+        });
+        let layout_assa = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("assa-longe"),
+            bind_group_layouts: &[Some(&bgl_assa)],
+            immediate_size: 0,
+        });
+        let molde_assa = format!(
+            "{}{leis_com_esculturas}{}",
+            crate::longe::comum_para_assar(),
+            crate::longe::ASSA
+        );
+        let p_assa = cache
+            .entry_with_layout(device, &molde_assa, fita, "assa_longe", Some(&layout_assa))
+            .clone();
+        let bg_assa = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("assa-longe"),
+            layout: &bgl_assa,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: ub.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: kb.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: b_grades.as_entire_binding(),
+                },
+            ],
+        });
+        let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+            label: Some("assa-longe"),
+            timestamp_writes: None,
+        });
+        cp.set_pipeline(&p_assa);
+        cp.set_bind_group(0, &bg_assa, &[]);
+        cp.dispatch_workgroups(
+            g.dims[0].div_ceil(4),
+            g.dims[1].div_ceil(4),
+            g.dims[2].div_ceil(4),
+        );
+    }
     // ⚠️ **DOIS despachos, e a ordem é a lei**: a borda pergunta pelos VIZINHOS, logo o centro tem
     // de estar escrito para toda a imagem antes de ela correr.
     let despachos: Vec<(&wgpu::ComputePipeline, &wgpu::BindGroup)> =

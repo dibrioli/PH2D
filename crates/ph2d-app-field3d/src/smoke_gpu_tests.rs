@@ -219,6 +219,13 @@ mod gpu_gbuffer_parity {
                 antialias: true,
                 edge_cos: ph2d_field_render::EDGE_COS,
                 mole: None,
+                // ⭐⭐⭐⭐ **O recorte do PRODUTO, pela porta do produto** — até 2026-09-24 este gate
+                // corria com `None` e comparava um dispositivo SEM recorte contra uma CPU COM ele:
+                // mediu a divergência do ponto de partida (`8` pixels de silhueta na cena `=29`), e
+                // não a do produto (`0`).
+                longe: ph2d_field_eval::bounds::bounding_ball(&doc, &reg).and_then(|b| {
+                    crate::gpu_frame::a_caixa_da_marcha(b, crate::gpu_frame::Sonda::default().longe)
+                }),
                 step: passo,
                 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
                 budget: ((ph2d_field_render::MAX_STEPS as f32) * shrink.max(1.0)
@@ -406,9 +413,15 @@ mod gpu_gbuffer_parity {
             "{pct:.3} % dos pixels discordam sobre haver peça — na borda um `epsilon` decide, mas \
              1 % é a peça a mudar de TAMANHO, e isso é a câmera escrita duas vezes a divergir"
         );
+        // ⭐⭐⭐ **A barra do Δt desceu de `1e-3` para `1e-5` em 2026-09-24, e sai de um VALE
+        // medido:** com o recorte pela caixa da marcha (o produto) o pior `p99` das cenas é
+        // `5,96e-7`; sem recorte nenhum era `1,8e-4`, e com a caixa CRUA `3,7e-4` — os dois
+        // motores a partir de sítios diferentes. ⇒ `1e-5` fica `17×` acima do produto e `18×`
+        // abaixo da regressão mais pequena. ⛔ A de `1e-3` deixava passar as duas.
         assert!(
-            piores.1 < 1e-3,
-            "o Δt do p99 é {:.3e} — a marcha do dispositivo está a parar noutro sítio",
+            piores.1 < 1e-5,
+            "o Δt do p99 é {:.3e} — a marcha do dispositivo está a parar noutro sítio (o recorte \
+             é o da `march_clip`, a mesma caixa da CPU?)",
             piores.1
         );
         // ⭐ **A sombra e a oclusão são AO BIT comparáveis** — os dois motores correm a mesma
@@ -533,6 +546,7 @@ mod gpu_frame_clock {
                 antialias: true,
                 edge_cos: ph2d_field_render::EDGE_COS,
                 mole: None,
+                longe: None,
             };
             // ⛔⛔ **O TRAÇADOR VIVE ENTRE QUADROS, e a 1.ª redacção desta sonda usava a porta que
             // abre o dispositivo a cada chamada** — ela leu `130 ms` a `640×360`, *mais lento que a

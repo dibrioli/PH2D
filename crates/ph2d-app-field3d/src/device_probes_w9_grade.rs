@@ -270,7 +270,8 @@ fn quantil(v: &mut [f32], q: f32) -> f32 {
 /// ⏱️⭐⭐⭐⭐ **Sonda: a grade assada contra a árvore, nas peças do corpus da `W9`.**
 ///
 /// Colunas: a resolução (`árvore` = o traço de hoje) · a aresta da célula em fracção do lado maior
-/// da peça · o passo da marcha (`1/√L²` do documento) · os passos por acerto · o quadro da placa a
+/// da peça · o passo da marcha (o `safe_march_step` do documento — ⚠️ até 2026-09-24 a coluna
+/// imprimia `1/√L²`, que dava `0,841` onde a marcha anda `0,707`) · os passos por acerto · o quadro da placa a
 /// `1920×1080` · o assar · e a QUALIDADE contra a árvore — píxeis de silhueta trocados, o desvio
 /// do ponto de paragem (`p99`, em células) e o ângulo da normal (`p50`/`p99`), que é o que a luz
 /// mostra como faceta.
@@ -290,7 +291,7 @@ fn diag_a_grade_contra_a_arvore() {
     );
     for (nome, cena) in [("vaso (5)", 5u32), ("nó de toro (28)", 28u32)] {
         let doc = crate::smoke::scene(cena);
-        let passo_arvore = 1.0 / ph2d_field_eval::gradient_bound(&doc).sqrt();
+        let passo_arvore = ph2d_field_eval::safe_march_step(&doc);
         let (pa, ref_g) = passos_e_buffer(&doc, &reg, &cam, QW, QH);
         let p = placa(&doc, &reg, &cam, W, H);
         println!(
@@ -302,7 +303,7 @@ fn diag_a_grade_contra_a_arvore() {
             "—"
         );
         let doc_g = doc_da_grade();
-        let passo_grade = 1.0 / ph2d_field_eval::gradient_bound(&doc_g).sqrt();
+        let passo_grade = ph2d_field_eval::safe_march_step(&doc_g);
         for res in [32usize, 64, 128] {
             let (grade, assar) = assa(&doc, &reg, res);
             let lado = grade.step * res as f32;
@@ -342,3 +343,6 @@ fn diag_a_grade_contra_a_arvore() {
     }
     println!();
 }
+
+#[path = "device_probes_w9_longe.rs"]
+mod longe;

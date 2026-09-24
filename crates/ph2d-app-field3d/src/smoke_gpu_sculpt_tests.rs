@@ -104,6 +104,7 @@ mod escultura_posta {
                 antialias: false,
                 edge_cos: ph2d_field_render::EDGE_COS,
                 mole: None,
+                longe: None,
                 step: passo,
                 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
                 budget: ((ph2d_field_render::MAX_STEPS as f32) * shrink.max(1.0)

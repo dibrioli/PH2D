@@ -1336,16 +1336,18 @@ relógio da placa pela rota do produto (`pinta_matcap`, `1920×1080`, mínimo de
 | peça | fonte | passo | passos/acerto | **placa** | assar | MB | silhueta trocada | desvio p99 | normal p50/p99 |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|
 | vaso (`5`, 121 l.) | árvore | `1,000` | `59,6` | **`12,96`** | — | — | — | — | — |
-| | grade `32` | `0,841` | `234,4` | `14,28` | `0,5 ms` | `0,3` | `500` px | `2,08` cél. | `2,5°`/`60,2°` |
-| | grade `64` | `0,841` | `179,7` | `14,16` | `1,6` | `1,1` | `184` | `1,00` | `1,1°`/`42,0°` |
-| | grade `128` | `0,841` | `155,6` | `14,19` | `7,4` | `5,6` | `72` | `0,57` | `0,5°`/`36,3°` |
+| | grade `32` | `0,707` | `234,4` | `14,28` | `0,5 ms` | `0,3` | `500` px | `2,08` cél. | `2,5°`/`60,2°` |
+| | grade `64` | `0,707` | `179,7` | `14,16` | `1,6` | `1,1` | `184` | `1,00` | `1,1°`/`42,0°` |
+| | grade `128` | `0,707` | `155,6` | `14,19` | `7,4` | `5,6` | `72` | `0,57` | `0,5°`/`36,3°` |
 | nó de toro (`28`, 721 l.) | árvore | `1,000` | `224,3` | **`59,46`** | — | — | — | — | — |
-| | grade `32` | `0,841` | `2 302` | `6,42` | `8,0` | `0,1` | `12 093` | `3,04` | `40,8°`/`118°` |
-| | grade `64` | `0,841` | `795` | `17,98` | `19,6` | `0,3` | `5 116` | `5,56` | `28,3°`/`109°` |
-| | grade `128` | `0,841` | `532` | **`20,09`** | `66,2` | `1,0` | `650` | `1,70` | `10,3°`/`52,3°` |
+| | grade `32` | `0,707` | `2 302` | `6,42` | `8,0` | `0,1` | `12 093` | `3,04` | `40,8°`/`118°` |
+| | grade `64` | `0,707` | `795` | `17,98` | `19,6` | `0,3` | `5 116` | `5,56` | `28,3°`/`109°` |
+| | grade `128` | `0,707` | `532` | **`20,09`** | `66,2` | `1,0` | `650` | `1,70` | `10,3°`/`52,3°` |
 
-⭐⭐⭐ **Os PASSOS sobem, como a nota acima previa** (`2,4×`–`4×`: o passo cai a `0,841` porque uma
-escultura vale `L² = 2`, e a trilinear alisa o campo junto da superfície) — ⛔⛔ **e mesmo assim o nó
+⭐⭐⭐ **Os PASSOS sobem, como a nota acima previa** (`2,4×`–`4×`: o passo cai a `0,707` porque a
+interpolação de uma escultura vale `L = √2`, e a trilinear alisa o campo junto da superfície —
+⚠️ **corrigido em 2026-09-24:** a coluna dizia `0,841` porque a sonda imprimia `1/√L` em vez do
+`safe_march_step`; a marcha sempre andou `0,707`, e os relógios da tabela são os dela) — ⛔⛔ **e mesmo assim o nó
 fica `3×` mais barato**: `532` passos a `20,09 ms` contra `224` a `59,46` ⇒ *o passo na grade custa
 `~7×` menos que na árvore de `721` linhas*. ⇒ **a leitura «a avaliação do campo é METADE do quadro»
 estava errada para a peça complexa**: o factor `2,06` da tabela acima é constante porque o
@@ -1374,6 +1376,62 @@ pergunta do parágrafo anterior (*quanto do orçamento de passos é gasto LONGE 
 respondida pela construção em vez de por uma sonda. ⚠️ **Ele só vale para peças complexas** — o
 vaso diz que numa peça de `~100` linhas não há o que ganhar —, logo o gatilho de assar tem de ser
 **medido** (linhas da fita, ou relógio) e não um interruptor.
+
+### ⛔⛔⛔ E O SALTO DE ESPAÇO VAZIO FOI CONSTRUÍDO, MEDIDO e RECUSADO — o que ficou foi o RECORTE
+
+Ordem do dono (2026-09-24, *«se esse é o padrão ouro, então siga»*). Construído inteiro:
+[`ph2d_field_gpu::longe`](../../crates/ph2d-field-gpu/src/longe.rs) — a grade é **assada na PLACA**
+pelo mesmo `field()` da marcha (um despacho no mesmo encoder, antes dela), mora no armazém das
+esculturas depois delas, e o raio salta pelo **limite inferior provado**
+`s·f(p) ≥ s·f̃(p) − (√3/2)·h` enquanto ele passa de `h`, e avalia a árvore exacta perto da
+superfície (a silhueta, o ponto de paragem e a normal continuam os da árvore).
+
+⭐ **A desigualdade está MEDIDA dos dois lados, e segura:** `0` violações em `65 536` pontos por
+cena nas oito cenas, com a grade assada na CPU (`Hybrid::eval`) **e** com a grade e o campo lidos
+da PLACA (`parity::compare`, desvio placa-CPU nos nós `≤ 2,4e-7`), e `s·‖∇f‖ ≤ 1,000`. A caixa da
+peça **contém** a peça (`0` pontos dentro dela em `131 072` amostras fora da caixa).
+
+⛔⛔ **E ela não compra nada** — duas corridas a `1920×1080` (matcap, a `92 %` e `70 %` ociosa; a
+placa partilhada com outra janela do app, logo `±10 %`), com a coluna que a separa do RECORTE:
+
+| cena | árvore ms | só recorte | recorte + grade `64` |
+|---|---|---|---|
+| `=5`  | `16,4` / `16,0` | `1,31×` / `1,12×` | `1,05×` / `1,07×` |
+| `=28` | `103,6` / `103,1` | `1,19×` / `1,16×` | `1,19×` / `1,18×` |
+| `=1`  | `10,4` / `9,9` | `1,15×` / `0,95×` | `0,99×` / `0,94×` |
+| `=11` | `18,9` / `17,9` | `1,21×` / `1,17×` | `1,07×` / `1,09×` |
+| `=26` | `5,5` / `4,9` | `1,26×` / `1,10×` | `1,18×` / `1,05×` |
+| `=27` | `14,8` / `15,0` | `1,19×` / `1,13×` | `1,21×` / `1,21×` |
+| `=29` | `10,0` / `10,2` | `1,10×` / `1,11×` | `1,03×` / `1,08×` |
+| `=30` | `15,5` / `15,2` | `1,04×` / `1,09×` | `1,04×` / `1,02×` |
+
+⇒ **o que o salto poupa, o recorte já tinha poupado.** O custo que sobra mora PERTO da superfície —
+os passos finais, a normal, as bordas re-amostradas —, e a sonda da grade SOZINHA (a secção acima,
+`3×` no nó) só ganhava porque ali TODO passo ficava barato, a qualidade incluída; com a árvore
+exacta perto da superfície, o `~7×` por passo aplica-se a uma minoria dos passos. ⛔ Também não é
+afinação: `32`, `64` e `128` células dão o mesmo.
+
+⭐⭐⭐ **E a construção achou um defeito de PARIDADE que não era dela.** A 1.ª medição contra a CPU
+dava Δt máximo de `4,0e-1` e `12` pixels de silhueta trocados na cena `=29`, e parecia o salto a
+passar da superfície; a coluna que o decidiu foi **«só o recorte»**, que lia **exactamente** os
+mesmos números que «recorte + grade» ⇒ a grade estava ILIBADA e o culpado era o PONTO DE PARTIDA do
+raio. A CPU recorta pela [`march_clip`](../../crates/ph2d-field-eval/src/bounds_clip.rs) — a caixa
+**com `1 %` de margem**, e o doc dela já diz que quem lê o `aabb` cru mede outra região — e o
+dispositivo recortava pela crua. Com a mesma porta (`gpu_frame::a_caixa_da_marcha`), o
+`o_gbuffer_do_dispositivo_e_o_da_cpu` lê **`0` pixels de silhueta e Δt `p99 ≤ 5,96e-7` em TODAS as
+cenas** — contra `8` pixels e `1,8e-4` SEM recorte nenhum. ⚠️ Esse gate corria com `longe: None`,
+logo comparava um dispositivo sem recorte com uma CPU com ele; hoje mede a porta do produto, e a
+barra do Δt desceu de `1e-3` para **`1e-5`** (um vale: `17×` acima do produto, `18×` abaixo da
+regressão mais pequena, que é a caixa crua a `3,7e-4`).
+
+⇒ **SHIPA O RECORTE, e a grade fica RECUSADA** (`LONGE_RES = Some(0)`: a caixa da marcha, sem grade
+assada, sem buffer a mais, e o laço decide UMA vez por raio que não há grade — a pergunta por passo
+custava `9,47 → 10,96 ms` na cena `=1`). `PH2D_FIELD_LONGE=off` volta ao raio sem recorte e
+`PH2D_FIELD_LONGE=<n>` liga a grade para a voltar a medir; as sondas da recusa vivem em
+[`device_probes_w9_longe.rs`](../../crates/ph2d-app-field3d/src/device_probes_w9_longe.rs).
+Mutação **4 de 5** a sangrar (caixa crua · sem recorte de omissão · cabeçalho trocado · a LEI a ler
+a célula no índice errado); a 5.ª — o laço perguntar à grade sem ver a célula — **sobrevive de
+propósito**: é só relógio, e o relógio está na tabela.
 
 ## W10 — ✅ O GÉMEO DO AMACIAMENTO NO DISPOSITIVO — **FECHADA em 2026-09-19**
 

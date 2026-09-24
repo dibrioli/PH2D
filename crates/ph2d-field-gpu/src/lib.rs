@@ -97,6 +97,7 @@ pub fn supports(doc: &FieldDoc, reg: &ph2d_field_eval::hybrid::Registry) -> bool
 pub mod brilho;
 /// ⭐ **Os bytes que o compositor lê, em WGSL** — ver o módulo.
 mod empacota_wgsl;
+pub mod longe;
 /// ⭐⭐⭐ **O pintor de MATCAP no dispositivo** — ver o módulo.
 pub mod matcap;
 /// ⭐ **O corpo do shader do matcap** — irmão por responsabilidade do [`matcap`].
@@ -164,6 +165,8 @@ struct FotoNaPlaca {
 struct GradesNaPlaca {
     /// Os ponteiros das esculturas que produziram este buffer, na ordem delas.
     chave: Vec<usize>,
+    /// A região da grade de longe, em `f32` — ver o argumento do [`FieldPipelines::grades`].
+    folga: u64,
     /// ⛔⛔ **As referências FORTES, e elas não são lastro:** sem elas a escultura podia morrer, o
     /// alocador devolver o mesmo endereço a outra, e o cache servir a grade errada **sem erro
     /// nenhum**. *Um cache que compara endereços tem de impedir que eles sejam reciclados.*
@@ -206,11 +209,21 @@ impl FieldPipelines {
         &mut self,
         device: &wgpu::Device,
         sculpts: &[ph2d_field_eval::device::DeviceSculpt],
+        // ⭐⭐⭐ **Quantos `f32` a mais o armazém leva DEPOIS das esculturas** — a região da grade
+        // de longe ([`crate::longe`]), que a placa assa ela própria. Ela entra na chave: a mesma
+        // escultura com outra grade é outro armazém.
+        folga: u64,
     ) -> &wgpu::Buffer {
         use wgpu::util::DeviceExt;
         let chave = crate::sculpt::identity(sculpts);
-        if self.grades.as_ref().is_none_or(|g| g.chave != chave) {
-            let valores = crate::sculpt::grid_values(sculpts).unwrap_or_default();
+        if self
+            .grades
+            .as_ref()
+            .is_none_or(|g| g.chave != chave || g.folga != folga)
+        {
+            let mut valores = crate::sculpt::grid_values(sculpts).unwrap_or_default();
+            #[allow(clippy::cast_possible_truncation)]
+            valores.resize(valores.len() + folga as usize, 0.0);
             let bytes: Vec<u8> = if valores.is_empty() {
                 vec![0u8; 16]
             } else {
@@ -219,6 +232,7 @@ impl FieldPipelines {
             self.envios += 1;
             self.grades = Some(GradesNaPlaca {
                 chave,
+                folga,
                 vivas: sculpts
                     .iter()
                     .map(|s| std::sync::Arc::clone(&s.field))

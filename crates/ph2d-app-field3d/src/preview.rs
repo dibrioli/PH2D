@@ -374,6 +374,51 @@ pub fn o_campo_do_chao_e_reaproveitado() -> bool {
     *LIGADO.get_or_init(|| std::env::var("PH2D_FIELD_CHAO_CACHE").as_deref() != Ok("0"))
 }
 
+/// ⭐⭐⭐⭐ **A GRADE DE LONGE: a resolução dela, e a porta que a bisecta** — ver
+/// [`ph2d_field_gpu::longe`].
+///
+/// `PH2D_FIELD_LONGE=off` devolve a marcha de sempre; `=0` só recorta o raio pela caixa da peça;
+/// `=<n>` recorta e salta pela grade de `n` células no lado maior. ⚠️ O valor de omissão é o
+/// [`LONGE_RES`], e a tabela que o escolhe vive no doc dele.
+#[must_use]
+pub fn a_grade_de_longe() -> Option<u32> {
+    static RES: std::sync::OnceLock<Option<u32>> = std::sync::OnceLock::new();
+    *RES.get_or_init(|| match std::env::var("PH2D_FIELD_LONGE").as_deref() {
+        Ok("off") => None,
+        Ok(v) => v.parse().ok().or(LONGE_RES),
+        Err(_) => LONGE_RES,
+    })
+}
+
+/// ⭐⭐⭐⭐ **O recorte e a grade de longe de omissão: SÓ O RECORTE** — ver [`a_grade_de_longe`].
+///
+/// ⛔⛔ **A grade de longe foi construída, medida e RECUSADA (2026-09-24).** Ela salta o vazio por um
+/// limite inferior provado (`s·f ≥ s·f̃ − (√3/2)·h`, zero violações na CPU **e** na placa, nas oito
+/// cenas) e não compra nada: o custo mora PERTO da superfície (os passos finais, a normal, as bordas
+/// re-amostradas), e o vazio já o corta o RECORTE sozinho. Duas corridas a `1920×1080`, matcap, a
+/// `92 %` e `70 %` de CPU ociosa, a placa partilhada com outra janela do app (logo `±10 %`):
+///
+/// | cena | árvore ms | só recorte | recorte + grade `64` |
+/// |---|---|---|---|
+/// | `=5`  | `16,4` / `16,0` | `1,31×` / `1,12×` | `1,05×` / `1,07×` |
+/// | `=28` | `103,6` / `103,1` | `1,19×` / `1,16×` | `1,19×` / `1,18×` |
+/// | `=1`  | `10,4` / `9,9` | `1,15×` / `0,95×` | `0,99×` / `0,94×` |
+/// | `=11` | `18,9` / `17,9` | `1,21×` / `1,17×` | `1,07×` / `1,09×` |
+/// | `=26` | `5,5` / `4,9` | `1,26×` / `1,10×` | `1,18×` / `1,05×` |
+/// | `=27` | `14,8` / `15,0` | `1,19×` / `1,13×` | `1,21×` / `1,21×` |
+/// | `=29` | `10,0` / `10,2` | `1,10×` / `1,11×` | `1,03×` / `1,08×` |
+/// | `=30` | `15,5` / `15,2` | `1,04×` / `1,09×` | `1,04×` / `1,02×` |
+///
+/// ⭐ **E o recorte é também a PARIDADE:** é o que a CPU faz, e com ele a silhueta do dispositivo
+/// discorda da dela em `0` pixels nas oito cenas (sem ele, `8` na `=29`). ⚠️ A grade continua
+/// alcançável por `PH2D_FIELD_LONGE=<n>`, e as sondas da recusa vivem em
+/// `device_probes_w9_longe.rs`.
+pub const LONGE_RES: Option<u32> = Some(0);
+
+/// ⭐⭐⭐⭐ **Abaixo de quantas células da superfície o raio deixa a grade** — ver
+/// [`ph2d_field_gpu::longe::Longe::perto`].
+pub const LONGE_PERTO: f32 = 1.0;
+
 /// ⭐⭐⭐⭐ **A FITA DA PEÇA SAI DO SHADER DO PINTOR QUANDO NINGUÉM A LÊ** — a porta que bisecta.
 ///
 /// Ver [`ph2d_field_gpu::paint::PaintSetup::le_o_campo`] para o mecanismo e o grafo de chamadas que

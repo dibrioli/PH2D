@@ -16,6 +16,10 @@ pub(super) fn uniforme_do_pedido(
     setup: MarchSetup,
     width: u32,
     height: u32,
+    // ⭐⭐⭐ O índice do cabeçalho da grade de longe no `k`, MAIS UM — `0` = sem grade. Ver
+    // [`crate::longe`]. ⚠️ Ele vem de fora porque é o `marcha_com` que decide onde o cabeçalho
+    // cai no `k`, e essa aritmética vive num sítio só.
+    longe: u32,
 ) -> wgpu::Buffer {
     use wgpu::util::DeviceExt;
     // O uniforme, campo a campo — a mesma ordem da `struct Setup`. ⚠️ Um `vec3` alinha a 16 B.
@@ -30,7 +34,7 @@ pub(super) fn uniforme_do_pedido(
         u32::from(setup.ground.is_some()),
         // ⭐ **Há borda mole?** — o raio dela vai no `vec3` do grupo de baixo. Ver `MarchSetup::mole`.
         u32::from(setup.mole.is_some()),
-        0,
+        longe,
     ] {
         u.extend_from_slice(&v.to_le_bytes());
     }

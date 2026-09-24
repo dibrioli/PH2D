@@ -41,6 +41,26 @@ pub fn pinta_matcap(
     w: u32,
     h: u32,
 ) -> Option<ph2d_field_gpu::trace::Pintado> {
+    // ⚠️ **A SONDA é a de omissão** — o matcap não tem chão, ricochete nem borda mole, logo os
+    // passageiros daquela bandeira não o alcançam; o que dela importa aqui é o `bordas` (a segunda
+    // passagem da silhueta, que **todo** quadro re-amostra desde a `W7c`) e a grade de longe.
+    pinta_matcap_com(tracer, doc, reg, cam, mc, w, h, Sonda::default())
+}
+
+/// ⭐ **O mesmo, com o que a [`Sonda`] decide por ARGUMENTO** — a porta pela qual um gate mede os
+/// dois lados da grade de longe na mesma corrida (a de omissão é um `OnceLock`).
+#[must_use]
+#[allow(clippy::too_many_arguments)]
+pub fn pinta_matcap_com(
+    tracer: &SharedTracer,
+    doc: &ph2d_field::FieldDoc,
+    reg: &ph2d_field_eval::hybrid::Registry,
+    cam: &ph2d_field_render::Orbit,
+    mc: &ph2d_field_gpu::matcap::MatcapSetup<'_>,
+    w: u32,
+    h: u32,
+    sonda: Sonda,
+) -> Option<ph2d_field_gpu::trace::Pintado> {
     // ⛔ **Sem fotografia não há matcap**, e a CPU trata esse caso pintando o fundo (ver o
     // `m.side == 0` do [`ph2d_field_render::shade_with`]). *Recusar aqui é mais honesto do que
     // pintar um quadro que a referência não pinta.*
@@ -56,10 +76,6 @@ pub fn pinta_matcap(
         return None;
     }
     let cabem = lamps_that_fit(tracer, w, h);
-    // ⚠️ **A SONDA é a de omissão** — o matcap não tem chão, ricochete nem borda mole, logo os
-    // passageiros daquela bandeira não o alcançam; o que dela importa aqui é o `bordas`, e ele é a
-    // segunda passagem da silhueta, que **todo** quadro re-amostra desde a `W7c`.
-    let sonda = Sonda::default();
     let (campo, fita, setup) = pedido(doc, reg, cam, &[], None, cabem, sonda, w, h, None, false)?;
     let mut guarda = tracer.lock().ok()?;
     Some(guarda.matcap_frame(&fita, campo.sculpts(), setup, mc, w, h))

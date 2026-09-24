@@ -143,6 +143,9 @@ pub struct MarchSetup {
     /// tabela de donos para um passe que só precisa da normal. *Com dois raios o chamador cai na
     /// CPU, que tem a lei inteira: nenhuma imagem errada, em sítio nenhum.*
     pub mole: Option<[f32; 3]>,
+    /// ⭐⭐⭐⭐ **A GRADE DE LONGE** — ver [`crate::longe`]: o raio atravessa o vazio por uma grade
+    /// assada na placa e toca a peça pela árvore exacta. `None` é a marcha de sempre, **ao bit**.
+    pub longe: Option<crate::longe::Longe>,
 }
 
 /// ⭐⭐⭐ **O TRAÇADOR: o dispositivo, o cache de pipelines e o layout, vivos entre quadros.**

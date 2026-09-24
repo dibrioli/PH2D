@@ -163,3 +163,52 @@ fn a_chave_do_chao_leva_a_precisao_inteira() {
         );
     }
 }
+
+/// ⭐⭐⭐⭐ **O pedido do produto recorta o raio pela caixa da MARCHA DA CPU — e não assa grade.**
+///
+/// ⛔ A caixa crua (`Ball::aabb`) parecia a mesma coisa e não é: sem a margem da
+/// [`ph2d_field_eval::bounds_clip::march_clip`] o dispositivo começava o raio noutro `t` que a CPU,
+/// e a silhueta discordava em `12` pixels na cena `=29` (com ela, `0`). ⇒ as três metades: o pedido
+/// traz o recorte · é a caixa DA MARCHA · e o CONTROLO de que a crua é mesmo outra (sem ele, um
+/// `march_clip` sem margem deixaria este gate verde a comparar duas coisas iguais por acidente).
+#[test]
+fn o_pedido_recorta_pela_caixa_da_marcha_da_cpu() {
+    let doc = crate::smoke::scene(29);
+    let reg = crate::smoke::sampled_registry();
+    let cam = ph2d_field_render::Orbit::default();
+    let bola = ph2d_field_eval::bounds::bounding_ball(&doc, &reg).expect("a cena tem bola");
+    let (_, _, setup) = super::pedido(
+        &doc,
+        &reg,
+        &cam,
+        &[],
+        None,
+        ph2d_field_gpu::trace::MAX_LAMPS,
+        super::Sonda::default(),
+        192,
+        108,
+        None,
+        false,
+    )
+    .expect("o pedido");
+    let l = setup
+        .longe
+        .expect("o produto recorta o raio pela caixa da peça");
+    let (lo, hi) = ph2d_field_eval::bounds_clip::march_clip(bola);
+    assert_eq!(
+        (l.lo, l.hi),
+        (lo, hi),
+        "a caixa do dispositivo não é a da marcha da CPU"
+    );
+    assert_eq!(
+        l.res, 0,
+        "a grade de longe está RECUSADA por medição — só o recorte shipa"
+    );
+    assert!(l.grade().is_none());
+    let (alo, ahi) = bola.aabb();
+    assert_ne!(
+        (alo, ahi),
+        (lo, hi),
+        "CONTROLO: a caixa da marcha tem de ter margem sobre a crua"
+    );
+}

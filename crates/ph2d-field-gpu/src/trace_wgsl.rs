@@ -18,7 +18,9 @@ struct Setup {
     // ⭐ `chao`: `1` quando o quadro tem CHÃO (`docs/Render3d/07`), e a altura dele é o `chao_y`.
     // ⭐⭐⭐ `mole`: `1` quando este quadro tem o canal da BORDA MOLE (`docs/Render3d/10` §12) — o
     // raio dele, por canal e em PÍXEIS, vive no `mole_raio`. `0` é o passo de sempre, ao bit.
-    n_lamps: u32, chao: u32, mole: u32, _p2: u32,
+    // ⭐⭐⭐ `longe`: o índice do cabeçalho da GRADE DE LONGE no `k`, MAIS UM — `0` é a marcha de
+    // sempre, ao bit (`crate::longe`).
+    n_lamps: u32, chao: u32, mole: u32, longe: u32,
     half_extent: f32, half_px: f32, ortho_start: f32, eye_distance: f32,
     hit_eps: f32, normal_eps: f32, step: f32, t_max: f32,
     ball_radius: f32, ao_reach: f32, edge_cos: f32, chao_y: f32,
@@ -116,6 +118,8 @@ fn ray_at_plane(uv: vec2<f32>) -> Raio {
 
 /// O que só a marcha tem: a fita da peça, a marcha, a visibilidade e as duas passagens.
 pub(crate) const LEIS: &str = r"
+{TRILINEAR}
+{LONGE}
 {ESCULTURAS}
 {FIELD}
 
@@ -131,12 +135,41 @@ fn marcha(r: Raio) -> vec4<f32> {
 
 fn marcha_ate(r: Raio, t_max: f32) -> vec4<f32> {
     var t = 0.0;
+    var fim = t_max;
     var acertou = false;
-    for (var n: u32 = 0u; n < s.budget; n = n + 1u) {
-        let d = field(r.o + r.d * t);
+    // ⭐⭐⭐ **A GRADE DE LONGE** (`crate::longe`) — com `s.longe = 0` nada disto corre e a marcha
+    // é a de sempre, ao bit.
+    //
+    // ⚠️ **O recorte primeiro:** um raio que não toca a caixa da peça não tem superfície a achar.
+    if (s.longe != 0u) {
+        let c = longe_caixa(r);
+        if (c.x > c.y || c.y <= 0.0) { return vec4<f32>(-1.0, 0.0, 0.0, 0.0); }
+        t = max(c.x, 0.0);
+        fim = min(t_max, c.y);
+    }
+    // ⚠️ **O orçamento conta só as avaliações da ÁRVORE** — é ela que o `budget` foi medido a
+    // pagar. Os saltos têm tecto próprio, e cada um anda pelo menos `longe_perto()`.
+    var n: u32 = 0u;
+    var saltos: u32 = 0u;
+    // ⚠️ **Decidido UMA vez por raio, fora do laço:** com o recorte sem grade (`res = 0`) a
+    // pergunta à grade devolve sempre `0`, e fazê-la em todo passo custava uma leitura do `k` e um
+    // ramo por passo — medido na cena `=1` (campo barato), `9,47 → 10,96 ms` só por isso.
+    let com_grade = s.longe != 0u && longe_tem_grade();
+    loop {
+        if (n >= s.budget || saltos >= {SALTOS_MAX}u || t >= fim) { break; }
+        let p = r.o + r.d * t;
+        if (com_grade) {
+            let lb = longe_limite(p);
+            if (lb > longe_perto()) {
+                t = t + lb;
+                saltos = saltos + 1u;
+                continue;
+            }
+        }
+        let d = field(p);
+        n = n + 1u;
         if (d < s.hit_eps) { acertou = true; break; }
         t = t + d * s.step;
-        if (t >= t_max) { break; }
     }
     if (!acertou) { return vec4<f32>(-1.0, 0.0, 0.0, 0.0); }
     let p = r.o + r.d * t;
@@ -376,22 +409,25 @@ pub(crate) fn molde() -> String {
 pub(crate) fn leis() -> String {
     // ⚠️ **As constantes do chão são LIDAS do ficheiro que as declara** — transcritas aqui, elas
     // divergiriam no dia em que a varredura que as ajustou fosse refeita.
-    LEIS.replace(
-        "{CHAO_N}",
-        &ph2d_field_render::GROUND_SKY_SAMPLES.to_string(),
-    )
-    .replace(
-        "{CHAO_ESPALHA}",
-        &numero(ph2d_field_render::GROUND_SKY_SPREAD),
-    )
-    .replace(
-        "{CHAO_QUEDA}",
-        &numero(ph2d_field_render::GROUND_SKY_FALLOFF),
-    )
-    .replace(
-        "{CHAO_FORCA}",
-        &numero(ph2d_field_render::GROUND_SKY_STRENGTH),
-    )
+    LEIS.replace("{TRILINEAR}", crate::sculpt::TRILINEAR)
+        .replace("{LONGE}", crate::longe::LEI)
+        .replace("{SALTOS_MAX}", &crate::longe::SALTOS_MAX.to_string())
+        .replace(
+            "{CHAO_N}",
+            &ph2d_field_render::GROUND_SKY_SAMPLES.to_string(),
+        )
+        .replace(
+            "{CHAO_ESPALHA}",
+            &numero(ph2d_field_render::GROUND_SKY_SPREAD),
+        )
+        .replace(
+            "{CHAO_QUEDA}",
+            &numero(ph2d_field_render::GROUND_SKY_FALLOFF),
+        )
+        .replace(
+            "{CHAO_FORCA}",
+            &numero(ph2d_field_render::GROUND_SKY_STRENGTH),
+        )
 }
 
 /// Um `f32` que o WGSL leia como `f32` — o irmão do `paint::formata`, e pela mesma razão.

@@ -104,6 +104,19 @@ pub fn grid_values(sculpts: &[DeviceSculpt]) -> Option<Vec<f32>> {
     Some(v)
 }
 
+/// Quantos `f32` as grades desta peça ocupam no armazém — sem as copiar.
+///
+/// ⚠️ **É a origem da região da grade de longe** ([`crate::longe`]), que vem logo a seguir; uma
+/// peça sem escultura dá `0`. Uma escultura sem grade dá `None`, e aí a peça não vai à placa.
+#[must_use]
+pub fn grid_len(sculpts: &[DeviceSculpt]) -> Option<usize> {
+    let mut n = 0usize;
+    for s in sculpts {
+        n += s.grid()?.values.len();
+    }
+    Some(n)
+}
+
 /// ⭐ **A identidade das grades desta peça** — o que um cache compara para saber se elas mudaram.
 ///
 /// ⚠️ **É o ponteiro do `Arc`, e quem o guarda guarda também o `Arc`**: sem a referência forte, a
@@ -149,7 +162,16 @@ fn escultura_amostra(h: u32, p: vec3<f32>) -> f32 {
     }
     return escultura_trilinear(dims, origem, step, off, l) * sc;
 }
+";
 
+/// ⭐⭐⭐ **A INTERPOLAÇÃO TRILINEAR de uma grade no armazém `grades`** — partilhada pela escultura
+/// e pela grade de LONGE ([`crate::longe`]).
+///
+/// ⚠️ **Ela vive fora da [`LEI`] porque a grade de longe existe sem escultura nenhuma** — e uma
+/// segunda cópia dela seria a segunda resposta a *«que valor tem a grade neste ponto?»*, com o
+/// `fma` a divergir no último bit da primeira. É o [`crate::trace_wgsl::leis`] que a põe no texto,
+/// **sempre**.
+pub(crate) const TRILINEAR: &str = r"
 // ⚠️ **O índice é GRAMPEADO porque o ponto está na caixa por contrato** — ver a nota da CPU: a
 // guarda que ali havia devolvia zero NA PAREDE, que é a definição de uma superfície.
 fn escultura_eixo(v: f32, origem: f32, inv: f32, n: u32) -> vec2<f32> {

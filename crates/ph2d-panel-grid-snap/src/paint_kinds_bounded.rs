@@ -16,7 +16,6 @@ use crate::paint_rows::{paint_aabb_rows, paint_number_row, paint_number_row_from
 use ph2d_editor_core::grid_snap::GridSnapState;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::widget::{Button, ButtonKind, paint_button};
-use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
@@ -214,10 +213,12 @@ pub(crate) fn paint_voronoi_cfg(
         sec,
     );
     // Reseed button.
-    let reseed_rect = Rect::new(x, y, w, ROW_H);
+    let reseed_label = tr("panel.grid_snap.bounded.reseed_next_rng");
+    let reseed_rect =
+        ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, y, ROW_H, reseed_label);
     let btn = Button {
         id: ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_RESEED,
-        label: tr("panel.grid_snap.bounded.reseed_next_rng").to_string(),
+        label: reseed_label.to_string(),
         state: button_state(
             store,
             ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_RESEED,

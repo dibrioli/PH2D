@@ -150,20 +150,25 @@ impl BodyCtx<'_> {
     /// então o artista que não soubesse sair tentaria carregar em teclas — que é exactamente o que
     /// o modo consome. Um modo que come a própria tentativa de sair lê-se como travado.
     fn morph_preview_row(&mut self, on: bool, y: f32) -> f32 {
-        let rect = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
+        let label = tr("panel.vector.morph.preview");
+        let rect = ph2d_editor_core::property_row::caixa_do_botao(
+            self.text_system,
+            self.inner_x,
+            self.inner_w,
+            y,
+            self.row_h,
+            label,
+        );
         // ⚠️ O *ligado* é o **KIND**, não o `ButtonState`: aquele descreve o rato (hover, press) e
         // o kind descreve o que o botão É. Escrever *ligado* no `ButtonState` faria o aceso
         // desaparecer no instante em que o cursor passasse por cima dele.
-        let btn = Button::new(
-            crate::ids::VECTOR_MORPH_PREVIEW,
-            tr("panel.vector.morph.preview"),
-        )
-        .kind(if on {
-            ButtonKind::Accent
-        } else {
-            ButtonKind::Default
-        })
-        .visual(self.store.button_visual(crate::ids::VECTOR_MORPH_PREVIEW));
+        let btn = Button::new(crate::ids::VECTOR_MORPH_PREVIEW, label)
+            .kind(if on {
+                ButtonKind::Accent
+            } else {
+                ButtonKind::Default
+            })
+            .visual(self.store.button_visual(crate::ids::VECTOR_MORPH_PREVIEW));
         paint_button(&btn, rect, self.scene, self.text_system, self.theme);
         self.hit_index
             .register(crate::ids::VECTOR_MORPH_PREVIEW, rect);

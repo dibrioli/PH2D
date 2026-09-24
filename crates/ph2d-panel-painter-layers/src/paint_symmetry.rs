@@ -210,7 +210,14 @@ fn paint_pick_button(
     label: &str,
     armed: bool,
 ) -> f32 {
-    let rect = Rect::new(x, y, content_w, ROW_H_PX);
+    let rect = ph2d_editor_core::property_row::caixa_do_botao(
+        ctx.text_system,
+        x,
+        content_w,
+        y,
+        ROW_H_PX,
+        label,
+    );
     let state = ctx.host.store().button_visual(id);
     let kind = if armed {
         ButtonKind::Accent

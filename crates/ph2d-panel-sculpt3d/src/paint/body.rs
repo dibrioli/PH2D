@@ -16,7 +16,10 @@ use ph2d_tokens::{ROW_H_PX, Spacing};
 
 use super::brush::{paint_brush_tail, paint_level_row};
 use super::tool::paint_tool;
-use super::widgets::{self, command, header, labelled_seg, readout, row_of_two, toggle};
+use super::widgets::{
+    self, command, command_na_celula, header, labelled_seg, readout, row_of_two, toggle,
+    toggle_na_celula,
+};
 
 use crate::rows;
 use crate::state::Sculpt3dSnapshot;
@@ -121,7 +124,7 @@ fn paint_symmetry(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
     .enumerate()
     {
         let bx = (third + gap).mul_add(i as f32, x);
-        toggle(ctx, id, tr(key), on, bx, third, y);
+        toggle_na_celula(ctx, id, tr(key), on, bx, third, y);
     }
     widgets::end_fold(ctx, fold, y + ROW_H_PX + Spacing::Md.px())
 }
@@ -235,7 +238,7 @@ fn paint_topology(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
         x,
         w,
         y,
-    ) + gap;
+    );
     // ⭐⭐ **O ALVO DE DENSIDADE, colado ao interruptor que o arma** — foi aqui
     // que viveram três chips com nome (*grosso · médio · fino*) até 2026-09-14,
     // e o report do dono foi *«porque não temos um slider neste pincel para
@@ -333,7 +336,7 @@ fn paint_topology(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
             x,
             w,
             y,
-        ) + gap;
+        );
     }
     y = row_of_two(
         ctx,
@@ -383,7 +386,7 @@ fn paint_topology(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
         x,
         w,
         y,
-    ) + gap;
+    );
     // ⚠️ **A pista fica LOGO ABAIXO do botão que a lê**, e não no alto da seção:
     // ela é argumento do Remesh, e separá-los faria dela um número que aparece
     // do nada e não se liga ao gesto que o artista acabou de dar — a mesma
@@ -437,7 +440,7 @@ fn paint_scene(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f
     // cena está reduzida a uma peça, senão o artista perde quatro objetos e não
     // tem na tela nada que explique por quê.
     let half = (w - gap) * 0.5;
-    toggle(
+    toggle_na_celula(
         ctx,
         crate::ids::SCULPT3D_ISOLATE,
         tr("panel.sculpt3d.isolate"),
@@ -446,7 +449,7 @@ fn paint_scene(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f
         half,
         y,
     );
-    y = command(
+    y = command_na_celula(
         ctx,
         crate::ids::SCULPT3D_MERGE,
         tr("panel.sculpt3d.merge"),

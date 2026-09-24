@@ -242,7 +242,14 @@ fn paint_body_sections(
     } else {
         tr("panel.padding.padding.pivot_keep")
     };
-    let pivot_rect = Rect::new(inner_x, y, inner_w, row_h);
+    let pivot_rect = ph2d_editor_core::property_row::caixa_do_botao(
+        text_system,
+        inner_x,
+        inner_w,
+        y,
+        row_h,
+        pivot_label,
+    );
     let pivot = Button::new(ph2d_tool_padding::ids::PAD_PIVOT_RECENTER, pivot_label)
         .kind(pivot_kind)
         .visual(pivot_state);

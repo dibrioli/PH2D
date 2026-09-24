@@ -64,14 +64,19 @@ impl BodyCtx<'_> {
         // ⚠️ **No teto o botão SOME, e não fica cinzento:** um botão que não faz nada é pior que
         // um botão que falta, e o teto já é visível — as seis linhas estão na tela.
         if shown < ids::MAX_SIGNAL_BINDINGS {
-            let rect = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
+            let label = tr("panel.vector.states.signals.add");
+            let rect = ph2d_editor_core::property_row::caixa_do_botao(
+                self.text_system,
+                self.inner_x,
+                self.inner_w,
+                y,
+                self.row_h,
+                label,
+            );
             let st = self.store.button_visual(ids::VECTOR_STATE_SIGNAL_ADD);
-            let btn = Button::new(
-                ids::VECTOR_STATE_SIGNAL_ADD,
-                tr("panel.vector.states.signals.add"),
-            )
-            .kind(ButtonKind::Default)
-            .visual(st);
+            let btn = Button::new(ids::VECTOR_STATE_SIGNAL_ADD, label)
+                .kind(ButtonKind::Default)
+                .visual(st);
             paint_button(&btn, rect, self.scene, self.text_system, self.theme);
             self.hit_index.register(ids::VECTOR_STATE_SIGNAL_ADD, rect);
             y = y + self.row_h + Spacing::Xs.px();

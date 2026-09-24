@@ -2283,7 +2283,12 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     // ⬇️ `2 097 → 2 021`, `1 349 → 1 262` e `1 293 → 1 281` em 2026-09-23: as escolhas destes três
     //    painéis passaram pela porta da ESCOLHA, e as que cabem numa fileira deixaram de gastar uma
     //    linha só para o nome POR CIMA — a altura desceu sem uma secção a menos.
-    ("sculpt3d", 2021.0),
+    // ⬆️ `2 021 → 2 051` em 2026-09-24, por ORDEM do dono e com a conta fechada: depois de um botão
+    //    vem o vão de toda linha (*«sem espaçamento nenhum. corrija»*, e *«siga»* para os outros
+    //    painéis). `11` botões de linha inteira deste painel avançavam só a altura (`+3` cada, o
+    //    `control_gap_px`) e `3` somavam o `Spacing::Xs` à mão (`4 → 3`, `−1` cada): `33 − 3 = 30`.
+    //    ⛔ Nenhuma secção nasceu aberta — é o mesmo número de linhas com o vão que as outras têm.
+    ("sculpt3d", 2051.0),
     ("tokens", 2866.0),
     ("vector", 1262.0),
     ("physics", 1281.0),

@@ -117,8 +117,8 @@ pub(super) fn row_of_two(
 ) -> f32 {
     let gap = Spacing::Xs.px();
     let half = (w - gap) * 0.5;
-    command(ctx, left.0, left.1, x, half, y);
-    command(ctx, right.0, right.1, x + half + gap, half, y)
+    command_na_celula(ctx, left.0, left.1, x, half, y);
+    command_na_celula(ctx, right.0, right.1, x + half + gap, half, y)
 }
 
 /// Um `Button` usado como toggle.
@@ -126,6 +126,13 @@ pub(super) fn row_of_two(
 /// **Não é um `Checkbox`**: `Checkbox` emite `Toggled`, que o `event.rs` deste
 /// painel não encaminha, então ele nasceria registrado e morto no clique — o
 /// mesmo aviso que o `ph2d-panel-painter-layers` carrega pelo mesmo motivo.
+///
+/// ⭐⭐ **Uma LINHA inteira `(x, w)` é pedida à porta de onde fica um botão**
+/// ([`ph2d_editor_core::property_row::caixa_do_botao`]) — a coluna do valor quando o rótulo lá
+/// cabe, a linha inteira quando não cabe — e o que vem depois começa no vão de toda linha
+/// ([`ph2d_editor_core::property_row::abaixo_do_botao`]). Report do dono de 2026-09-24 sobre o
+/// Inspector, alargado aos outros painéis na mesma jornada. ⚠️ Quem reparte a linha em METADES ou
+/// TERÇOS chama [`toggle_na_celula`]: ali a caixa é do chamador e a porta mediria a fatia.
 pub(super) fn toggle(
     ctx: &mut PaintCtx,
     id: ph2d_a11y::NodeId,
@@ -135,8 +142,29 @@ pub(super) fn toggle(
     w: f32,
     y: f32,
 ) -> f32 {
+    let rect =
+        ph2d_editor_core::property_row::caixa_do_botao(ctx.text_system, x, w, y, ROW_H_PX, label);
+    toggle_em(ctx, id, label, on, rect);
+    ph2d_editor_core::property_row::abaixo_do_botao(rect)
+}
+
+/// Um toggle numa CÉLULA que o chamador já repartiu (metade, terço) — a caixa é a dele.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn toggle_na_celula(
+    ctx: &mut PaintCtx,
+    id: ph2d_a11y::NodeId,
+    label: &str,
+    on: bool,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    toggle_em(ctx, id, label, on, Rect::new(x, y, w, ROW_H_PX));
+    y + ROW_H_PX
+}
+
+fn toggle_em(ctx: &mut PaintCtx, id: ph2d_a11y::NodeId, label: &str, on: bool, rect: Rect) {
     let theme = ctx.host.theme();
-    let rect = Rect::new(x, y, w, ROW_H_PX);
     let state = if on {
         (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
     } else {
@@ -158,10 +186,12 @@ pub(super) fn toggle(
         theme,
     );
     hit_index.register(id, rect);
-    y + ROW_H_PX
 }
 
 /// Um botão de ação.
+///
+/// ⭐⭐ A mesma lei do [`toggle`]: a linha inteira pede a caixa à porta, e uma célula repartida
+/// chama [`command_na_celula`].
 pub(super) fn command(
     ctx: &mut PaintCtx,
     id: ph2d_a11y::NodeId,
@@ -170,8 +200,27 @@ pub(super) fn command(
     w: f32,
     y: f32,
 ) -> f32 {
+    let rect =
+        ph2d_editor_core::property_row::caixa_do_botao(ctx.text_system, x, w, y, ROW_H_PX, label);
+    command_em(ctx, id, label, rect);
+    ph2d_editor_core::property_row::abaixo_do_botao(rect)
+}
+
+/// Um botão de acção numa CÉLULA que o chamador já repartiu — a caixa é a dele.
+pub(super) fn command_na_celula(
+    ctx: &mut PaintCtx,
+    id: ph2d_a11y::NodeId,
+    label: &str,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    command_em(ctx, id, label, Rect::new(x, y, w, ROW_H_PX));
+    y + ROW_H_PX
+}
+
+fn command_em(ctx: &mut PaintCtx, id: ph2d_a11y::NodeId, label: &str, rect: Rect) {
     let theme = ctx.host.theme();
-    let rect = Rect::new(x, y, w, ROW_H_PX);
     let state = ctx.host.store().button_visual(id);
     let scene = &mut *ctx.scene;
     let text_system = &mut *ctx.text_system;
@@ -184,7 +233,6 @@ pub(super) fn command(
         theme,
     );
     hit_index.register(id, rect);
-    y + ROW_H_PX
 }
 
 /// Uma linha de texto. Hit-indexada por ninguém de propósito — é um FATO, não um

@@ -3072,6 +3072,62 @@ censo da coluna: **por ficheiro**, cada `caixa_do_botao` tem de ter um `abaixo_d
 da árvore combinada `12/12`.
 
 
+## §9-untricies — ⭐⭐ A MESMA PORTA NOS OUTROS PAINÉIS, e o censo que a mantém
+
+Ordem do dono (2026-09-24, depois do smoke do §9-tricies): *«smoke ok. siga»* — a resposta à pergunta
+de alargar a regra do botão (coluna do valor quando o rótulo cabe, linha inteira quando não) aos outros
+painéis.
+
+**O que passou pela porta** ([`caixa_do_botao`](../../../crates/ph2d-editor-core/src/property_row/botao.rs)),
+`19` botões em `11` ficheiros: remover-fundo (`8` — ilhas, acrescentar/limpar área, conta-gotas,
+detectar sujeito, proteger, mostrar/limpar máscara) · igualar-tamanhos (o `paint_toggle_button`, os
+três chamadores) · padding (o pivô) · camadas do pintor (fonte do clone, camadas do documento, os dois
+de escolher no canvas da simetria) · vector (pré-visualização do morph, dos estados, *+ Add* dos sinais)
+· grelha (o *Reseed*) · escultura (os helpers `toggle`/`command`, ~35 chamadores).
+
+**⭐ Na escultura os helpers partiram-se em duas espécies**: `toggle`/`command` recebem a LINHA e pedem
+a caixa à porta (e devolvem `abaixo_do_botao`); `toggle_na_celula`/`command_na_celula` recebem uma
+célula que o chamador já repartiu (os três eixos da simetria, o *Isolate/Merge*, o `row_of_two`). ⛔ Uma
+porta só com um modo decidido por comparação de larguras mediria a FATIA como se fosse a linha. Os três
+`+ gap` (`Spacing::Xs`) escritos à mão depois de um botão saíram — o vão passou a ser o da porta.
+
+**⛔ O que NÃO passou, cada um nomeado na lista do censo com o porquê:**
+
+| sítio | porquê |
+|---|---|
+| os `5` Reset das ferramentas de imagem | RODAPÉ: ficam em cima do par `Cancel \| Apply`, que atravessa a linha; na coluna o destrutivo ficaria por cima do Apply |
+| *Apply Mask* do pintor | CTA de fecho da secção (accent) |
+| *Snap* da grelha | CTA-herói, altura própria |
+| menu de propriedades da timeline | é um MENU flutuante, não linhas de propriedade |
+| `arrow_button` do vector | CÉLULA: o quadrado `<`/`>`, os parâmetros só se chamam `x`/`w` |
+| `toggle`/`command` da física | OUTRA COLUNA — ver abaixo |
+
+**⛔⛔ A física foi convertida e REVERTIDA pela medição.** O `dentro_de_um_troco_o_valor_arranca_numa_coluna_so`
+reprovou: a coluna que o painel de física arranca é a da grelha das camadas (`x = 26`), e o `Enabled` do
+sono na coluna da porta (`x = 136`) abria uma segunda. ⚠️ Os sliders dele usam o `property_label_col_w`,
+mas registam o acerto na LINHA inteira, logo o censo das colunas não os vê — alinhar a física pede o
+painel inteiro a registar na coluna do valor, que é outra wave. Os botões dela já tinham o vão
+(`+ row_gap`, que é o `control_gap_px`).
+
+**⬆️ A altura de abertura da escultura subiu `2 021 → 2 051`, com a conta fechada** (catraca
+`a_altura_de_abertura_de_um_painel_so_encolhe`): `11` botões de linha inteira avançavam só a altura e
+passam a ter o vão (`+3` cada), `3` somavam o `Xs` à mão (`4 → 3`, `−1` cada) ⇒ `33 − 3 = 30`. ⛔ Nenhuma
+secção nasceu aberta; a subida é a ordem do dono do §9-tricies, e o comentário na catraca di-lo.
+
+**O censo novo** — `an_action_button_asks_the_door_where_it_goes` (`ph2d-editor-core/tests/it/`):
+procura `let v = Rect::new(<início>, _, <largura>, _)` seguido de `paint_button` com `v`, para os pares
+que os painéis usam para a linha inteira (`inner_x`/`inner_w`, `layout.inner_x`, `self.inner_x`,
+`x`/`w`, `x`/`content_w`, `list.x`/`list.w`), em todos os `ph2d-panel-*` menos o Inspector (que tem o
+dele). Três metades: nenhum sítio novo · nenhuma excepção obsoleta · pisos de população (`≥ 250`
+ficheiros, `≥ 16` chamadas à porta; medido `19`). ⚠️ A 1.ª redacção lia uma vírgula final de chamada
+partida como um 5.º argumento e o controlo do extractor apanhou-a; e contava só o caminho longo
+(`property_row::caixa_do_botao(`), que o remover-fundo deixou de escrever quando o `import` curou o
+tecto de LOC dele (`617 → 562`).
+
+**Prova:** mutação — repor o `Rect::new(inner_x, y, inner_w, row_h)` no *Separate Islands* reprova o
+censo pelo nome, e a árvore restaurada volta a verde. Portão: `nextest-impacted` **17 703/17 703** ·
+clippy `-D warnings` zero nas `9` crates tocadas · `fmt` · censos da árvore combinada **127/127**.
+
 ## §11 — O que esta linha recomenda a quem a integrar
 
 1. **Correr o `diag_onde_cai_a_pista_do_pente` da `line/sculpt3d` DEPOIS da fusão** e reescrever com

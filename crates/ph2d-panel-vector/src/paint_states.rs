@@ -235,21 +235,26 @@ impl BodyCtx<'_> {
     /// e *"Exit"* obriga o artista a ler para saber onde está, enquanto um aceso se lê de relance.
     /// É a mesma escolha dos toggles do rail.
     fn preview_row(&mut self, on: bool, y: f32) -> f32 {
-        let rect = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
+        let label = tr("panel.vector.states.preview");
+        let rect = ph2d_editor_core::property_row::caixa_do_botao(
+            self.text_system,
+            self.inner_x,
+            self.inner_w,
+            y,
+            self.row_h,
+            label,
+        );
         let st = self.store.button_visual(crate::ids::VECTOR_STATE_PREVIEW);
         // ⚠️ O *ligado* é o **KIND**, não o `ButtonState`: o `ButtonState` descreve o rato (hover,
         // press) e o kind descreve o que o botão É. Escrever *ligado* no `ButtonState` faria o
         // aceso desaparecer no instante em que o cursor passasse por cima dele.
-        let btn = Button::new(
-            crate::ids::VECTOR_STATE_PREVIEW,
-            tr("panel.vector.states.preview"),
-        )
-        .kind(if on {
-            ButtonKind::Accent
-        } else {
-            ButtonKind::Default
-        })
-        .visual(st);
+        let btn = Button::new(crate::ids::VECTOR_STATE_PREVIEW, label)
+            .kind(if on {
+                ButtonKind::Accent
+            } else {
+                ButtonKind::Default
+            })
+            .visual(st);
         paint_button(&btn, rect, self.scene, self.text_system, self.theme);
         self.hit_index
             .register(crate::ids::VECTOR_STATE_PREVIEW, rect);

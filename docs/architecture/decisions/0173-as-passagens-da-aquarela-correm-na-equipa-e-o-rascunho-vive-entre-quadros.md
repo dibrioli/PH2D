@@ -86,6 +86,54 @@ tarefa que também constrói um campo; essa paga um rascunho novo em vez de entr
 A impressão ponta a ponta continua a mesma. A/B alternado das duas contra o passo anterior, cinco
 rondas a `load 10–18`: composite por quadro `16,1–16,5 → 14,6–15,1 ms` (~9 %).
 
+## Terceira ronda (2026-09-23/24): a configuração da FOTO do dono
+
+Report do dono com foto do painel (22/09): *«quando usamos tudo que o pincel pode fazer, temos
+significativa queda de FPS … size 0.5, FPS 40»*. A célula nova da régua é `foto` (Bleed 48 · Ragged
+Edge 48 · Edge 0,83 · Charge 0,407 · Rewet 0,288 · Smudge 0,234 — tabela completa no handoff da linha
+§36), com a ablação botão a botão em `mede_a_aquarela -- ablacao-foto`. O que o perfil (`-- perfil foto`) mostrou: com
+Bleed e Ragged a 48 o `pad` da janela do composite é `2·48 + 48 + 2 = 146 px`, e o **campo da
+reserva** era refeito sobre a janela de LEITURA inteira (`~875²`, `0,76 Mtx`) a cada quadro para um
+traço que avançou `~16 px` — `30 %` do quadro no amostrador da thread principal.
+
+9. **O campo da reserva vive entre quadros** (`watercolor_reserve/cache.rs`, `b1979ae65`). As somas
+   do campo são INTEIRAS ⇒ o valor num texel é função só dos planos a Chebyshev `≤ R` dele, e os
+   planos só mudam no sujo do quadro ⇒ o campo guarda-se num plano do tamanho do canvas e cada quadro
+   recalcula só o sujo `⊕ R`. A amostragem é o `sample_bilinear` à letra em coordenadas LOCAIS (somar
+   a origem em `f32` comia bits da fracção). ⚠️ Toda escrita EM MASSA nos planos invalida o plano
+   (criação com backfill, `clear_wet_coverage`, fim de sessão, os dois resets do fundo). A/B
+   alternado a 4096², `load ~25`: quadro p50 `14,2 → 11,9 ms`, composite `12,7 → 10,7`, pen-up
+   `32 → 29`.
+10. **O plano guarda LADRILHOS calculados, não um rectângulo** (`f9e2e9935`): a janela TREME uns
+    pixels entre quadros e cada tremor recalculava uma faixa de 1–3 px nos quatro lados, com o avental
+    `⊕ R` inteiro. A invariante certa é *calculado uma vez, certo até uma escrita em massa* ⇒ ladrilhos
+    de `64²` marcados, e a janela paga só os que nunca foram calculados. Contado: `~137 k` texels por
+    quadro contra `~200 k` do rectângulo e `790 k` antes do plano; o pen-up recalcula ZERO (A/B a
+    `load 27`: `27,6/27,2 → 23,4/20,5 ms`).
+11. **Os borrões do campo molhado e do campo de estilo numa passagem** (`e10b4a334`): o `box_blur4`
+    virou uma função genérica em `N` (`watercolor_field/borrao.rs`), com o `box_blur2` ao lado — o
+    `build_wet_field` fazia dois borrões do mesmo raio sobre a mesma janela e o `build_style_field`
+    nove. Isolado: dois borrões `0,93 → 0,72 ms`, nove `4,2 → 3,2 ms`. Na célula da foto a poupança
+    (`~0,2 ms`) é real e pequena.
+12. **O centro do AA e o serrilhado do backrun deixam de refazer o ruído** (`497a38863`): a amostra
+    central do Smooth Edges já é o `(sx, sy)` que o pixel calculou (2 de 11 avaliações de ruído por
+    pixel com AA), e o serrilhado do backrun pedia DUAS vezes a mesma célula com dois seeds ⇒
+    `value_noise_pair`. ⚠️ Relógio NÃO medido nesta ronda (a máquina estava a `load 41–61`).
+
+Tudo **byte-idêntico**, cada passo com gate contra o caminho de antes
+(`o_campo_guardado_da_o_byte_do_campo_refeito` com prova de mutação `5/5` e depois `4/4` ·
+`dois_borroes_juntos_dao_o_byte_de_dois_separados` · `o_par_do_serrilhado_da_o_byte_de_dois_ruidos`),
+e a impressão ponta-a-ponta dá as MESMAS quatro linhas (`c41521940ebed4ce` · `8e2d0e531daaabfa` ·
+`ba6011ecf6df0b1c` · a da foto, nova, `11c93149efe6fd3e`).
+
+✅ **Smoke do dono APROVADO (2026-09-24):** *«FPS acima de 40»* na configuração da foto (era 40).
+
+⛔ **Premissas que caíram nesta ronda:** a 1.ª redacção do plano guardava UM rectângulo e
+recalculava a diferença — a janela treme, e isso custava o avental inteiro a cada tremor (item 10);
+uma 1.ª leitura deu o borrão `4+4+1` MAIS LENTO (`6,2` contra `4,7 ms`) — era a carga, e não se
+repetiu em três corridas; e o mesmo commit deixou `state.rs` a `701` linhas e três avisos de clippy
+que só o portão seguinte viu (pagos em `ceb862b8b`, por remoção de duplicado, nunca por isenção).
+
 ## ⛔ Recusas e premissas que caíram
 
 - **A escrita do zero fora dos troços** (a 1.ª redacção do rascunho dizia que era ela que impedia o
@@ -102,3 +150,5 @@ rondas a `load 10–18`: composite por quadro `16,1–16,5 → 14,6–15,1 ms` (
   que sobra. Encolhê-la não é byte-idêntico (o `box_blur` soma desde a origem da janela, e o gate
   `incremental ≡ full` tolera `±1`) ⇒ decisão do dono.
 - **O `REWET_DS_SPREAD`** (doc 32 §4.1): continua decisão de produto, a julgar a olho.
+- **O que sobra na célula da foto muda a pintura** (a janela do commit, o `ds` do rewet): os passos
+  byte-idênticos que o perfil nomeava foram dados na terceira ronda; os seguintes são decisão do dono.

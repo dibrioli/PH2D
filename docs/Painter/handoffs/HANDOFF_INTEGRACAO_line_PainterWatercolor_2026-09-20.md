@@ -2885,6 +2885,8 @@ placar do [doc 28](../28_otimizacoes_o_que_funcionou.md) (W, X e a recusa Y).
 
 ## §36 — RETOMAR AQUI (2026-09-24): a aquarela com o pincel INTEIRO ligado cai para ~40 FPS
 
+> ✅ **FECHADO em 2026-09-24 — ver §37.** O que está abaixo é o ponto de partida, mantido como estava.
+
 **Estado em 2026-09-23 (fim do dia, créditos do dono acabaram):** a aquarela com os knobs de
 2026-08-02 (doc 32 §1) está em **~16 ms/quadro** (era ~41) — commits `fadf1b288`..`68a865d00`,
 ADR-0173 (passagens na equipa + rascunho entre quadros) e ADR-0174 (`x86-64-v2`). Backup do estado de
@@ -2919,3 +2921,65 @@ FPS 40.»* A configuração dele, lida da foto:
    Darkening 0,83** arma o aro (EDT + régua da cobertura); **Charge < 1** arma a reserva.
 3. Só então escolher a alavanca. ⚠️ Byte-idêntico primeiro (a impressão `-- impressao` é o gate
    ponta a ponta); o que mudar a pintura (o `ds` do rewet, a janela do commit) é decisão do dono.
+
+## §37 — A FOTO do dono passa de 40 FPS, e o Smudge deixa de abrir transparência na borda (2026-09-24)
+
+### §37.1 — A aquarela da foto: quatro passos, todos AO BYTE
+
+O §36 pedia a célula `foto` na régua e o perfil antes de qualquer alavanca — feito
+(`mede_a_aquarela -- foto | ablacao-foto | perfil foto`). O perfil nomeou o **campo da reserva**:
+com Bleed e Ragged Edge a 48 a janela de leitura tem `~875²` e o campo era refeito inteiro a cada
+quadro para um traço que avançou `~16 px` (`30 %` do quadro). Os quatro commits, o mecanismo de cada
+um e os números estão no **ADR-0173, «Terceira ronda»** (itens 9–12) — resumo:
+
+| commit | o quê | medido |
+|---|---|---|
+| `b1979ae65` | o campo da reserva vive entre quadros (só o sujo `⊕ R` é recalculado) | quadro p50 `14,2 → 11,9 ms`, pen-up `32 → 29` |
+| `f9e2e9935` | o plano guarda LADRILHOS calculados, não um rectângulo | `~200 k → ~137 k` texels/quadro; pen-up `27,6 → 23,4` |
+| `e10b4a334` | os borrões do campo molhado e de estilo numa passagem (`box_blur<N>`) | isolado `−23 %`/`−25 %`; `~0,2 ms` na foto |
+| `497a38863` | o centro do AA e o serrilhado do backrun deixam de refazer o ruído | relógio NÃO medido (`load 41–61`) |
+
+A impressão ponta-a-ponta dá as mesmas quatro linhas antes e depois (`c41521940ebed4ce` ·
+`8e2d0e531daaabfa` · `ba6011ecf6df0b1c` · foto `11c93149efe6fd3e`). ✅ **Smoke do dono aprovado:**
+*«FPS acima de 40»*.
+
+⚠️ **O que sobra de velocidade MUDA A PINTURA** (a janela do commit do pen-up, o `ds` do rewet) ⇒
+decisão do dono, nada começado.
+
+### §37.2 — O Smudge da aquarela abria TRANSPARÊNCIA na borda da tela (Bug #26)
+
+Report com foto: *«o smear de todos os modos empurra pixel das bordas e provoca transparência»*.
+Medido pela porta do produto em três rotas (xadrez opaco 128², traços da borda para dentro, de fora,
+ao longo e no meio): o **Smear digital** e a **camada Smear da pilha** leem ZERO texels transparentes;
+o **Smudge da aquarela** leu até `6 068` (alfa mínimo `176`). ⇒ *«todos os modos»* era UMA rota.
+
+- **Mecanismo:** o arrasto da BASE (`ph2d_painter_brush::smear_dab`) lia transparente-zero onde a
+  origem `destino − passo` caía fora da tela, com o comentário *«é só a orla, falloff ~0 — efeito
+  nulo»* — falso com o CENTRO do dab na borda. Os outros dois arrastos já liam preso à borda
+  (`bilinear_clamped`).
+- **Cura** (`fbbb02f43`): o eixo sem Tiling faz `clamp`; o com Tiling continua toroidal.
+  ⚠️ **Crate partilhada** (`ph2d-painter-brush`), mas o único chamador de produto do `smear_dab` é o
+  Smudge da aquarela.
+- ⛔ **O gate que existia AFIRMAVA o defeito** (`wrapping_smear_…` exigia o alfa a cair sem Tiling,
+  com *«(the bug)»* ao lado): reescrito para separar as duas leis pela **COR** e medir os dois eixos
+  (uma mutação só no `y` sobrevivia à metade horizontal). Gate do produto red-first
+  `o_smudge_da_aquarela_nao_abre_transparencia_na_borda` (`4 845` → `0`, com controlo positivo).
+  Mutação `2 de 2` por eixo nos dois gates.
+- ⏳ **Irmão NÃO curado, de propósito:** o `smear_level` (o arrasto dos NÍVEIS do traço vivo)
+  **SALTA** a origem fora da tela em vez de a prender — não abre transparência (um nível que não é
+  arrastado fica como está), logo não é este defeito; mas as duas metades do Smudge têm leis
+  diferentes na borda. Unificá-las pode mudar bytes de gates da reserva ⇒ não medido.
+- ✅ **Smoke do dono aprovado.**
+
+### §37.3 — Dívida paga no caminho (`ceb862b8b`)
+
+O portão do fix apanhou o que os commits de perf de 23/09 deixaram vermelho: `state.rs` a `701` contra
+`700` (curado por remover um DUPLICADO — o doc do campo repetia a lei do cabeçalho de
+`watercolor_reserve/cache.rs`), e três avisos `clippy -D warnings` (`borrao.rs` com aliases de tipo,
+o laço do encharcar a iterar em vez de indexar). `nextest-impacted` `16 723/16 723`.
+
+### §37.4 — Aberto
+
+- **Wet Paint:** a avaliação de performance (a 2.ª metade da ordem de 23/09) **não começou**.
+- A velocidade da aquarela que muda a pintura (§37.1) — decisão do dono.
+- O `smear_level` na borda (§37.2).

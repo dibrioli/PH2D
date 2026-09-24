@@ -1317,6 +1317,64 @@ diferença entre a wave que paga e a que empata.
 superfície (o único que um salto de tijolos pode devolver). Sem esse número, o `2×` de tecto acima é
 a única fronteira honesta.
 
+### ⛔⛔⛔ E A GRELHA FOI CONSTRUÍDA COMO SONDA E MEDIDA — o «tecto de `~2×`» acima está REFUTADO na peça complexa
+
+Estudo do MagicaCSG (2026-09-23, app corrido sob Wine, formato `.mcsg` lido como texto): ele assa
+cada **grupo** de peças numa grade de `20³`–`64³` (o campo `res` de cada `object`) e marcha a
+grade; a árvore fica como fonte, e um segundo motor (`F2`, *path tracing* + denoise) desenha o
+exacto. ⇒ o que a sonda pergunta é *a mesma composição no NOSSO motor*.
+
+⭐ **Zero motor novo:** a sonda ([`device_probes_w9_grade.rs`](../../crates/ph2d-app-field3d/src/device_probes_w9_grade.rs),
+`diag_a_grade_contra_a_arvore`) assa o documento em lote (`Hybrid::eval`, o avaliador da exportação)
+sobre a caixa da peça com `8` células de folga, e entrega a grade por um nó
+`NodeKind::Sampled` — ⇒ na placa ela entra pela lei que a escultura já shipa
+(`ph2d_field_gpu::sculpt`), com a cache por `Arc`. *O que muda entre as duas colunas é o
+DOCUMENTO, nunca a marcha.* Qualidade medida contra o traço exacto a `480×270` (CPU, mesma lei);
+relógio da placa pela rota do produto (`pinta_matcap`, `1920×1080`, mínimo de 4), `release`,
+**`87 %` ociosa**:
+
+| peça | fonte | passo | passos/acerto | **placa** | assar | MB | silhueta trocada | desvio p99 | normal p50/p99 |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| vaso (`5`, 121 l.) | árvore | `1,000` | `59,6` | **`12,96`** | — | — | — | — | — |
+| | grade `32` | `0,841` | `234,4` | `14,28` | `0,5 ms` | `0,3` | `500` px | `2,08` cél. | `2,5°`/`60,2°` |
+| | grade `64` | `0,841` | `179,7` | `14,16` | `1,6` | `1,1` | `184` | `1,00` | `1,1°`/`42,0°` |
+| | grade `128` | `0,841` | `155,6` | `14,19` | `7,4` | `5,6` | `72` | `0,57` | `0,5°`/`36,3°` |
+| nó de toro (`28`, 721 l.) | árvore | `1,000` | `224,3` | **`59,46`** | — | — | — | — | — |
+| | grade `32` | `0,841` | `2 302` | `6,42` | `8,0` | `0,1` | `12 093` | `3,04` | `40,8°`/`118°` |
+| | grade `64` | `0,841` | `795` | `17,98` | `19,6` | `0,3` | `5 116` | `5,56` | `28,3°`/`109°` |
+| | grade `128` | `0,841` | `532` | **`20,09`** | `66,2` | `1,0` | `650` | `1,70` | `10,3°`/`52,3°` |
+
+⭐⭐⭐ **Os PASSOS sobem, como a nota acima previa** (`2,4×`–`4×`: o passo cai a `0,841` porque uma
+escultura vale `L² = 2`, e a trilinear alisa o campo junto da superfície) — ⛔⛔ **e mesmo assim o nó
+fica `3×` mais barato**: `532` passos a `20,09 ms` contra `224` a `59,46` ⇒ *o passo na grade custa
+`~7×` menos que na árvore de `721` linhas*. ⇒ **a leitura «a avaliação do campo é METADE do quadro»
+estava errada para a peça complexa**: o factor `2,06` da tabela acima é constante porque o
+`ns/amostra` foi DERIVADO do próprio relógio da placa — *uma decomposição que divide o relógio pelos
+passos e volta a multiplicá-los não pode dizer quanto do relógio é o campo*. Quem o diz é tirar o
+campo, e tirá-lo deu `~85 %`.
+
+⛔⛔ **Mas no vaso a grade NÃO PAGA** (`12,96 → 14,2`, em todas as resoluções): com `121` linhas o
+passo na árvore já é barato, e os passos a mais comem o ganho. ⇒ *a grade é alavanca da
+COMPLEXIDADE da cena, não da cena típica* — que é exactamente o que o MagicaCSG explora (100 formas
+num `object`) e nunca a peça solta.
+
+⛔⛔⛔ **E o preço é a QUALIDADE, e ele é o report do dono sobre o MagicaCSG à letra** (*«algumas peças
+parecem de baixa resolução»*): no nó a `128³` a normal erra `10°` na mediana e `52°` no p99 — facetas
+que a luz mostra —, e a `64³` (o `res` máximo nos cinco exemplos do autor) o nó está **desfeito**
+(`5 116` píxeis de silhueta trocados, normal `28°` na mediana). A causa é geométrica: o tubo do nó
+tem poucas células de largura, e *a unidade de resolução é o CONJUNTO, nunca a peça* — o `car.mcsg`
+do autor parte-se em **15** objects de `res` diferentes exactamente por isto, e o `robot.mcsg` (1
+object) tem peças de `1,3` célula.
+
+⏳ **O que a medição NOMEIA como próximo passo, e não constrói:** a grade como **salto de espaço
+vazio** e o traço **exacto junto da superfície** — marchar a grade enquanto o valor é grande,
+trocar para a árvore nas últimas amostras e para a normal. Isso ataca as duas colunas de uma vez
+(os passos longe ficam `~7×` mais baratos; a silhueta e a normal voltam a ser as exactas), e é a
+pergunta do parágrafo anterior (*quanto do orçamento de passos é gasto LONGE da superfície*)
+respondida pela construção em vez de por uma sonda. ⚠️ **Ele só vale para peças complexas** — o
+vaso diz que numa peça de `~100` linhas não há o que ganhar —, logo o gatilho de assar tem de ser
+**medido** (linhas da fita, ou relógio) e não um interruptor.
+
 ## W10 — ✅ O GÉMEO DO AMACIAMENTO NO DISPOSITIVO — **FECHADA em 2026-09-19**
 
 > Ele adiou-a de manhã (*«coloque a possibilidade de melhoramento na fila mais no fim»*) e **trouxe-a

@@ -1479,6 +1479,73 @@ fita — exactamente a recusa do `ph2d_field_eval::wgsl` que ficou *«por medir�
 `razão × (custo por instrução interpretada ÷ custo por instrução compilada)`*, e é esse segundo
 factor que decide a wave.
 
+### ⛔⛔⛔ E A MEDIÇÃO SEGUINTE DECIDIU — CONTRA A PODA, e achou onde o tempo morava (2026-09-24)
+
+As sondas de dispositivo vivem em
+[`device_probes_w9_placa.rs`](../../crates/ph2d-app-field3d/src/device_probes_w9_placa.rs); a
+pergunta andou por cinco degraus, e cada um fechou uma porta.
+
+**(1) O ORÁCULO do estado da arte, CORRIDO** (§0.9): o renderizador de voxels do próprio Keeter
+(`fidget-wgpu` 0.5, MPL-2.0 ⇒ corrido FORA da árvore, ligado e nunca copiado; as cenas saem pela
+`diag_exporta_as_cenas_para_o_oraculo`), `1920×1080×1080`, tempo de GPU por carimbo:
+
+| cena | nosso quadro | `fidget-wgpu` |
+|---|---:|---:|
+| `=28` nó | `59` ms | **`9 414`** |
+| `=5` vaso | `13` | `566` |
+| `=29` rosca | `9` | `472` |
+| `=11` lote | `15` | `163` |
+| `=30` curvas | `15` | `124` |
+| `=27` polígono | `13` | `50` |
+| `=1` cilindros | `9` | `6,7` |
+| `=26` triângulo | `4,5` | `4,4` |
+
+⛔⛔ **O método dele só empata nas uniões simples**; nas nossas formas por fórmula os intervalos saem
+largos e ele avalia quase todos os voxels. ⇒ **portar o renderizador do estado da arte está
+RECUSADO por medição** — a marcha por esferas é a certa para o nosso catálogo.
+
+**(2) Quantas fitas podadas um quadro pede:** o nó **`4 218`** (`2 494` fazem `90 %`) a
+`16 px × 16` fatias, e `136` mesmo a `64 px` sem fatias ⇒ compilar uma a uma está fora (`6`–`49 ms`
+cada). ⇒ só com INTERPRETADOR.
+
+**(3) O interpretador, MEDIDO** ([`ph2d_field_eval::interp`] +
+[`ph2d_field_gpu::interp_bench`]; os casos do `switch` saem do MESMO emissor, e a resposta bate a da
+compilada a `≤ 5e-4`): **`15×`–`35×` por instrução**. A poda compra no máximo `3,6×` ⇒ ⛔⛔ **a poda por
+região está RECUSADA** — o interpretador come o ganho dez vezes.
+
+**(4) E o número que mudou a pergunta:** a fita INTEIRA do nó, compilada, avalia `2 M` pontos em
+**`0,22 ms`**; um laço de `10` passos mais a normal, `2,7 ms`. ⇒ *a avaliação é quase de graça.* Não
+é a estrutura do kernel (a normal escrita à parte ou num laço custa o mesmo, logo NÃO é o tamanho
+do código), nem a CPU do pedido (`≤ 0,4 ms`), nem recompilação (`0` durante a medida).
+
+**(5) A MESMA marcha num kernel MAGRO** (`diag_a_marcha_magra_contra_o_produto`: os raios do produto,
+o recorte, o passo, o orçamento, os limiares e a normal, e nada mais) custava **`18×`–`31×` MENOS**
+do que o quadro que a hospedava. ⭐⭐⭐⭐ **O matcap marchava dentro do `centro_e_luz`** — a entrada do
+RENDER, com o chão, as lâmpadas, a visibilidade e o ricochete, que o matcap nunca lê e que o
+compilador da placa paga em registos. ⇒ entrada própria **`centro_so`** (a mesma `marcha`, só o
+centro) e o buffer de luz no mínimo:
+
+| cena | antes | **depois** | ganho |
+|---|---:|---:|---:|
+| `=28` nó | `86,3` ms | **`10,0`** | `8,6×` |
+| `=5` vaso | `11,8` | **`2,2`** | `5,3×` |
+| `=11` lote | `16,9` | **`3,2`** | `5,4×` |
+| `=30` curvas | `14,0` | **`3,3`** | `4,3×` |
+| `=27` polígono | `11,8` | **`3,0`** | `4,0×` |
+| `=1` cilindros | `8,7` | **`2,0`** | `4,5×` |
+| `=29` rosca | `8,3` | **`2,1`** | `4,0×` |
+| `=26` triângulo | `3,9` | **`1,5`** | `2,6×` |
+
+⚠️ **A imagem é a mesma ao bit** — o `o_matcap_e_o_mesmo_nos_dois_motores` compara o matcap da
+placa (agora pela entrada magra) com a lei da CPU sobre o G-buffer da entrada pesada, e passa. ⭐ E
+como nenhuma paridade pode ver a escolha, ela tem gate próprio (`o_matcap_marcha_no_kernel_magro`,
+com o CONTROLO de que o G-buffer do Render continua a compilar o `centro_e_luz`); mutação **2 de 2**.
+
+⏳ **O que fica, com endereço:** o quadro magro ainda custa `3,6×`–`6,7×` a marcha magra — a
+passagem das BORDAS, a pintura e a leitura de `8 MB`, mais os buffers criados de novo em cada
+quadro. ⏳ E o modo RENDER (`centro_e_luz`) tem a mesma forma de defeito: ali o chão e as lâmpadas
+são LIDOS, logo a cura é partir o kernel por responsabilidade, não apagá-los.
+
 ## W10 — ✅ O GÉMEO DO AMACIAMENTO NO DISPOSITIVO — **FECHADA em 2026-09-19**
 
 > Ele adiou-a de manhã (*«coloque a possibilidade de melhoramento na fila mais no fim»*) e **trouxe-a

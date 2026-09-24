@@ -15,13 +15,17 @@ use fidget::types::Interval;
 use fidget::vm::VmShape;
 
 /// O que a poda diz de uma caixa.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Poda {
     /// O intervalo prova que a caixa NÃO toca a superfície: o campo fica acima de `min` em todo o
     /// lado dela (ou abaixo de `−min`, dentro da peça). Um raio atravessa-a sem avaliar a árvore.
     Vazia { min: f32 },
     /// A caixa pode tocar a superfície, e dentro dela bastam estas instruções.
-    Fita { instrucoes: usize },
+    ///
+    /// `rasto` é a escolha de cada `min`/`max` (um byte por escolha): **duas caixas com o mesmo
+    /// rasto têm a MESMA fita podada** — é a impressão digital que conta quantas fitas diferentes um
+    /// quadro pede.
+    Fita { instrucoes: usize, rasto: Vec<u8> },
 }
 
 /// ⏱️ A peça pronta a ser podada — construída UMA vez, perguntada por caixa.
@@ -71,14 +75,17 @@ impl Podador {
         let Some(rasto) = rasto else {
             return Poda::Fita {
                 instrucoes: self.tamanho(),
+                rasto: Vec::new(),
             };
         };
+        let assinatura: Vec<u8> = rasto.as_slice().iter().map(|c| *c as u8).collect();
         let podada = self
             .forma
             .simplify(rasto, Default::default(), &mut Default::default())
             .expect("o rasto é desta fita");
         Poda::Fita {
             instrucoes: podada.size(),
+            rasto: assinatura,
         }
     }
 }
@@ -99,14 +106,19 @@ mod tests {
         let duas = esfera(-2.0).min(esfera(2.0));
         let mut p = Podador::new(&duas);
         let inteira = p.tamanho();
-        let Poda::Fita { instrucoes: uma } = p.na_caixa([1.2, -0.6, -0.6], [2.8, 0.6, 0.6]) else {
+        let Poda::Fita {
+            instrucoes: uma, ..
+        } = p.na_caixa([1.2, -0.6, -0.6], [2.8, 0.6, 0.6])
+        else {
             panic!("a caixa à volta de uma esfera toca a superfície");
         };
         assert!(
             uma < inteira,
             "a poda não deitou nada fora ({uma} contra {inteira})"
         );
-        let Poda::Fita { instrucoes: ambas } = p.na_caixa([-3.0, -1.0, -1.0], [3.0, 1.0, 1.0])
+        let Poda::Fita {
+            instrucoes: ambas, ..
+        } = p.na_caixa([-3.0, -1.0, -1.0], [3.0, 1.0, 1.0])
         else {
             panic!("a caixa das duas toca a superfície");
         };

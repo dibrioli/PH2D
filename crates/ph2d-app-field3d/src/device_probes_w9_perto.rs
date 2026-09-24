@@ -378,6 +378,10 @@ fn diag_quanto_a_poda_por_regiao_compraria() {
             }
             let t0 = std::time::Instant::now();
             let (mut pesado, mut em_vazia) = (0u128, 0u64);
+            // ⭐ Quantas fitas podadas DIFERENTES o quadro pede — se forem poucas, compilam-se
+            // todas e o dispositivo não precisa de interpretador.
+            let mut distintas: std::collections::BTreeMap<Vec<u8>, u64> =
+                std::collections::BTreeMap::new();
             for (chave, &cnt) in &conta[c] {
                 let Some(&(clo, chi)) = caixas.get(chave) else {
                     pesado += u128::from(cnt) * inteira as u128;
@@ -385,8 +389,9 @@ fn diag_quanto_a_poda_por_regiao_compraria() {
                 };
                 match podador.na_caixa(clo, chi) {
                     ph2d_field_eval::poda::Poda::Vazia { .. } => em_vazia += cnt,
-                    ph2d_field_eval::poda::Poda::Fita { instrucoes } => {
+                    ph2d_field_eval::poda::Poda::Fita { instrucoes, rasto } => {
                         pesado += u128::from(cnt) * instrucoes as u128;
+                        *distintas.entry(rasto).or_default() += cnt;
                     }
                 }
             }
@@ -395,12 +400,29 @@ fn diag_quanto_a_poda_por_regiao_compraria() {
             let razao = pesado as f64 / (total.max(1) as f64 * inteira as f64);
             #[allow(clippy::cast_precision_loss)]
             let vazia = 100.0 * em_vazia as f64 / total.max(1) as f64;
+            // Quantas das fitas distintas cobrem 90 % das avaliações não-vazias.
+            let mut pesos: Vec<u64> = distintas.values().copied().collect();
+            pesos.sort_unstable_by(|a, b| b.cmp(a));
+            let soma: u64 = pesos.iter().sum();
+            let (mut acc, mut n90) = (0u64, 0usize);
+            for p in &pesos {
+                if acc * 10 >= soma * 9 {
+                    break;
+                }
+                acc += p;
+                n90 += 1;
+            }
             linha += &format!(
-                " · [{lado}×{fatias}: {razao:.3} · {vazia:.1} % · {} · {ms:.0}]",
-                conta[c].len()
+                " · [{lado}×{fatias}: {razao:.3} · {vazia:.1} % · {} pedaços · {} fitas ({n90} fazem 90 %) · {ms:.0} ms]",
+                conta[c].len(),
+                distintas.len()
             );
         }
         println!("{linha}");
     }
     println!();
 }
+
+/// ⏱️ As sondas de DISPOSITIVO desta pergunta — ver o cabeçalho do [`placa`].
+#[path = "device_probes_w9_placa.rs"]
+mod placa;

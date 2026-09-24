@@ -179,3 +179,64 @@ fn o_matcap_e_o_mesmo_nos_dois_motores() {
         W * H
     );
 }
+
+/// ⭐⭐⭐⭐ **O MATCAP MARCHA NO KERNEL MAGRO — e nunca no do Render.**
+///
+/// Medido (`docs/Render3d/03` §W9, «o kernel que hospeda a marcha»): o `centro_e_luz` traz o chão,
+/// as lâmpadas e o ricochete, que o matcap nunca lê, e hospedar a marcha nele custava `4×`–`9×` o
+/// quadro (o nó, `86` contra `10 ms` a `1920×1080`). ⚠️ **Nenhuma paridade o vê** — as duas
+/// entradas dão o MESMO centro ao bit —, logo o gate afirma a ESCOLHA: um traçador novo que só
+/// pintou matcap compilou a entrada magra e não a pesada. ⭐ E o CONTROLO: a marcha do G-buffer
+/// (o modo Render) compila a pesada no mesmo traçador, senão o nome procurado podia simplesmente
+/// não existir e a segunda metade ficaria verde por vácuo.
+#[test]
+#[ignore = "precisa de adaptador de GPU"]
+fn o_matcap_marcha_no_kernel_magro() {
+    let Some(mut t) = ph2d_field_gpu::trace::Tracer::new() else {
+        eprintln!("[matcap-magro] sem adaptador — skip");
+        return;
+    };
+    let (doc, _folhas, _sup) = fixtura();
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let cam = ph2d_field_render::Orbit::default();
+    let (lado, rgb) = fotografia();
+    let look = ph2d_view_transform::Look::default();
+    let mc = ph2d_field_gpu::matcap::MatcapSetup {
+        rgb_linear: &rgb,
+        side: lado,
+        chave: chave(lado, &rgb),
+        stops: look.exposure_stops,
+        view: ph2d_view_transform::wgsl::view_code(look.view),
+        background: FUNDO,
+    };
+    let (c, f, setup) = super::pedido(
+        &doc,
+        &reg,
+        &cam,
+        &[],
+        None,
+        ph2d_field_gpu::trace::MAX_LAMPS,
+        super::Sonda::default(),
+        W,
+        H,
+        None,
+        false,
+    )
+    .expect("o pedido");
+    let _ = t.matcap_frame(&f, c.sculpts(), setup, &mc, W, H);
+    let depois_do_matcap = t.entradas_compiladas();
+    assert!(
+        depois_do_matcap.iter().any(|e| e == "centro_so"),
+        "o matcap não compilou a entrada magra: {depois_do_matcap:?}"
+    );
+    assert!(
+        !depois_do_matcap.iter().any(|e| e == "centro_e_luz"),
+        "o matcap compilou a entrada do RENDER — a marcha voltou ao kernel pesado: {depois_do_matcap:?}"
+    );
+    // CONTROLO: o G-buffer (o modo Render) usa a pesada, no mesmo traçador.
+    let _ = t.frame(&f, c.sculpts(), setup, W, H);
+    assert!(
+        t.entradas_compiladas().iter().any(|e| e == "centro_e_luz"),
+        "CONTROLO: a marcha do G-buffer tem de compilar o `centro_e_luz`"
+    );
+}

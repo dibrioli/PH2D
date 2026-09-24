@@ -133,7 +133,7 @@ impl PointTape {
 
 /// ⚠️ **`a` já vem ESCRITO** (`v12`, `p.x` ou `k[7]`) e é sempre ATÓMICO — uma expressão composta
 /// ganha sempre um `let`, logo nenhuma destas formas precisa de parênteses à volta do operando.
-fn unary(op: UnaryOpcode, a: &str) -> String {
+pub(crate) fn unary(op: UnaryOpcode, a: &str) -> String {
     match op {
         UnaryOpcode::Neg => format!("-{a}"),
         UnaryOpcode::Abs => format!("abs({a})"),
@@ -157,7 +157,7 @@ fn unary(op: UnaryOpcode, a: &str) -> String {
 }
 
 /// ⚠️ Ver [`unary`]: os dois operandos vêm escritos e são atómicos.
-fn binary(op: BinaryOpcode, a: &str, b: &str) -> String {
+pub(crate) fn binary(op: BinaryOpcode, a: &str, b: &str) -> String {
     match op {
         BinaryOpcode::Add => format!("{a} + {b}"),
         BinaryOpcode::Sub => format!("{a} - {b}"),

@@ -259,6 +259,16 @@ fn ceu_do_chao(q: vec3<f32>) -> f32 {
 /// no `centro`, na `luz` e na lista de bordas. *Um segundo ponto de entrada num módulo que ninguém
 /// despacha é código que não se apaga porque compila.*
 pub(crate) const KERNELS: &str = r"
+// ⭐⭐⭐⭐ **SÓ O CENTRO** — a marcha e a normal, e nada mais. É a entrada do MATCAP, que não lê a
+// luz: ver a nota do `marcha_com`. ⚠️ Ela escreve o `centro` pela MESMA `marcha` que o
+// `centro_e_luz`, logo os dois dão o mesmo G-buffer ao bit — só a luz fica por escrever.
+@compute @workgroup_size(8, 8, 1)
+fn centro_so(@builtin(global_invocation_id) g: vec3<u32>) {
+    if (g.x >= s.w || g.y >= s.h) { return; }
+    let i = g.y * s.w + g.x;
+    centro[i] = marcha(ray_at_plane(raio(f32(g.x) + 0.5, f32(g.y) + 0.5)));
+}
+
 @compute @workgroup_size(8, 8, 1)
 fn centro_e_luz(@builtin(global_invocation_id) g: vec3<u32>) {
     if (g.x >= s.w || g.y >= s.h) { return; }

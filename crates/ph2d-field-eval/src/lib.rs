@@ -299,6 +299,9 @@ mod affine;
 /// ⭐⭐⭐ O documento avaliado ponto a ponto — ver [`field`].
 pub mod field;
 pub use field::Field;
+/// ⏱️ A fita em bytecode e o interpretador dela — instrumento; ver o módulo.
+#[doc(hidden)]
+pub mod interp;
 /// ⏱️ A poda por região (Keeter 2020) — instrumento; ver o módulo.
 #[doc(hidden)]
 pub mod poda;

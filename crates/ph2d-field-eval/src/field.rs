@@ -65,6 +65,16 @@ impl Field {
         self.tape.to_wgsl()
     }
 
+    /// ⏱️ A fita em bytecode para o interpretador — ver [`crate::interp`]. A última palavra é o
+    /// registo da raiz (o interpretador lê-a no fim).
+    #[doc(hidden)]
+    #[must_use]
+    pub fn tape_bytecode(&self) -> Option<crate::interp::Bytecode> {
+        let mut b = crate::interp::codifica(self.tape.code()?, self.tape.root())?;
+        b.palavras.push(b.raiz);
+        Some(b)
+    }
+
     /// ⭐⭐⭐ **O retrato da fita deste documento** — ver [`point_tape::TapeShape`]. É ele que diz se
     /// um interpretador de GPU cabe: o `vivos` é o scratch **por thread**.
     #[must_use]

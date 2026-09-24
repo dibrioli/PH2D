@@ -44,12 +44,22 @@ pub(super) fn marcha_com(
     // marchar é isto. ⚠️ Elas saem da MESMA substituição: uma segunda chamada ao
     // `crate::sculpt::emit` daria outra aritmética de origens para o mesmo `k`.
     let leis_com_esculturas = crate::trace_wgsl::leis().replace("{ESCULTURAS}", esculturas);
+    // ⭐⭐⭐⭐ **O MATCAP MARCHA NUM KERNEL MAGRO** (`docs/Render3d/03` §W9, «o kernel que hospeda a
+    // marcha»). Ele só lê a NORMAL, e o `centro_e_luz` traz o chão, as lâmpadas, a visibilidade e o
+    // ricochete — código que o matcap nunca corre e que o compilador da placa paga em REGISTOS, logo
+    // em raios a correr ao mesmo tempo. Medido a `1920×1080`: a mesma marcha num kernel que só marcha
+    // custa `18×`–`31×` menos do que o quadro que a hospedava (o nó, `2,76` contra `86,34 ms`).
+    let so_o_centro = matches!(pintura, Pintura::Matcap(_));
     let p_centro = cache
         .entry_with_layout(
             device,
             &molde_com_esculturas,
             fita,
-            "centro_e_luz",
+            if so_o_centro {
+                "centro_so"
+            } else {
+                "centro_e_luz"
+            },
             Some(&layout),
         )
         .clone();
@@ -132,7 +142,8 @@ pub(super) fn marcha_com(
     // `passo_da_luz()` do WGSL, e as duas têm de andar juntas: um buffer curto faz o shader
     // escrever fora e a `wgpu` recusa o despacho.
     let passo_luz = u64::from(setup.n_lamps) * (1 + 6 * u64::from(setup.mole.is_some())) + 1 + 6;
-    let b_luz = cria("luz", n * passo_luz * 4);
+    // ⚠️ O `centro_so` não escreve a luz — o buffer fica no mínimo que o layout aceita.
+    let b_luz = cria("luz", if so_o_centro { 16 } else { n * passo_luz * 4 });
     // ⛔⛔ **O TECTO da lista de bordas era `6 %` e ESTOUROU** — o gate da paridade apanhou-o: na
     // ROSCA a GPU devolveu exactamente `1 296` bordas, que **é** o tecto, contra `1 745` da CPU, e
     // a sobreposição das listas caiu para `72,6 %`.

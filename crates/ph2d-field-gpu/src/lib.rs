@@ -97,6 +97,9 @@ pub fn supports(doc: &FieldDoc, reg: &ph2d_field_eval::hybrid::Registry) -> bool
 pub mod brilho;
 /// ⭐ **Os bytes que o compositor lê, em WGSL** — ver o módulo.
 mod empacota_wgsl;
+/// ⏱️ O banco compilada contra interpretada — instrumento; ver o módulo.
+#[doc(hidden)]
+pub mod interp_bench;
 pub mod longe;
 /// ⭐⭐⭐ **O pintor de MATCAP no dispositivo** — ver o módulo.
 pub mod matcap;
@@ -305,6 +308,16 @@ impl FieldPipelines {
     #[must_use]
     pub fn compiled(&self) -> usize {
         self.por_texto.len()
+    }
+
+    /// As ENTRADAS dos pipelines compilados (`centro_so`, `bordas`, …), uma por pipeline — o que um
+    /// gate de *«este passe marcha no kernel magro»* observa. A chave é `entrada\0texto`.
+    #[must_use]
+    pub fn entradas_compiladas(&self) -> Vec<String> {
+        self.por_texto
+            .keys()
+            .map(|k| k.split('\u{0}').next().unwrap_or("").to_string())
+            .collect()
     }
 
     /// ⭐ **O pipeline desta estrutura**, compilando-o na primeira vez que ela aparece.

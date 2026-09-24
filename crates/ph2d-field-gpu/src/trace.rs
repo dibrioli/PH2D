@@ -206,6 +206,12 @@ impl Tracer {
         self.cache.compiled()
     }
 
+    /// Ver [`crate::FieldPipelines::entradas_compiladas`].
+    #[must_use]
+    pub fn entradas_compiladas(&self) -> Vec<String> {
+        self.cache.entradas_compiladas()
+    }
+
     /// ⭐ **Um quadro, devolvido como G-BUFFER.** O shader compila-se na primeira estrutura e fica.
     ///
     /// ⚠️ É a porta da PARIDADE e do caminho que ainda pinta na CPU. Quem quer a imagem chama o

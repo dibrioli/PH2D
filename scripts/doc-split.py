@@ -39,6 +39,7 @@ O script preserva as faixas mantidas; o cabeçalho vem por `Edit` depois.
 """
 
 import argparse
+import datetime
 import hashlib
 import os
 import re
@@ -167,7 +168,7 @@ def main() -> None:
     cab = (
         f"# ARQUIVO — {os.path.basename(args.arquivo)} (história, {len(arquivo)} linhas)\n\n"
         f"> ⚠️ **Isto NÃO é o estado atual de nada.** É a história recortada de\n"
-        f"> [`{os.path.basename(args.arquivo)}`]({rel_vivo}) em 2026-08-18, **verbatim** — nenhuma\n"
+        f"> [`{os.path.basename(args.arquivo)}`]({rel_vivo}) em {datetime.date.today().isoformat()}, **verbatim** — nenhuma\n"
         f"> linha foi editada, e a remontagem das duas metades bate sha256 com o original.\n"
         f">\n"
         f"> Use para responder *\"por que isto ficou assim?\"* — **nunca** para decidir a próxima\n"

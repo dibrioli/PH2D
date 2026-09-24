@@ -24,12 +24,17 @@
 //! nenhuma a escrever. *Uma família nova cujo caso base é o produto actual
 //! entra sem um degrau de formato.*
 //!
-//! # ⭐⭐⭐⭐ E desde 23/09 o nível é POR FACE (a P2)
+//! # ⭐⭐⭐⭐ O nível POR FACE (a P2) — o SUBSTRATO fica, o produto é uniforme
 //!
 //! Com um nível só para a peça, uma face grande e uma pequena recebem o mesmo
 //! número de amostras ⇒ a densidade por área dispersa `3,1×` a `18,3×` nas
-//! peças do dono (medido — ver [`niveis_por_area`]). Hoje cada face tem o
-//! nível dela e **cada aresta leva o MÁXIMO dos dois vizinhos**, o que mantém
+//! peças do dono (medido pelo `examples/mede_o_r_por_face.rs`). ⚠️ **Entre
+//! 23/09 e 24/09 o produto CRIOU planos graduados** (o `Even Detail`, com a lei
+//! `niveis_por_area` por baixo) e o device desenhava-os; os dois saíram por
+//! ordem do dono (handoff §31 e §33). **O que fica é o substrato**, porque há
+//! ficheiros desse dia no disco: um plano graduado ainda se constrói, lê,
+//! assa e converte — e o carregador converte-o ao abrir. Num plano graduado
+//! cada face tem o nível dela e **cada aresta leva o MÁXIMO dos dois vizinhos**, o que mantém
 //! a fronteira partilhada: a face grossa lê um **subconjunto EXACTO** das
 //! amostras da aresta fina, sem arredondar e com as duas pontas preservadas.
 //!
@@ -37,17 +42,22 @@
 //! voltam a ser produtos (`id × (lado − 1)`, `f × interior(lado)`), e o passo
 //! do subconjunto vale `1` em toda aresta.
 //!
-//! ⛔⛔ **E JÁ NÃO HÁ NINGUÉM A RECUSAR UM PLANO GRADUADO — as duas recusas que
-//! este parágrafo nomeava MORRERAM, cada uma na wave que lhes tirou a razão.**
-//! O assado perdeu a dele quando o empacotador passou a dispor um ladrilho por
-//! face (2026-09-22), e o device perdeu a dele quando o registo achatado
-//! passou a carregar o lado da face e o bloco de cada aresta (2026-09-23,
-//! [`topo::PAYLOAD_STRIDE`] `10 → 19`). *Uma nota que nomeia uma recusa por um
-//! endereço que já não existe lê-se como uma cerca a funcionar.*
+//! ⛔⛔ **Quem recusa um plano graduado, e a história tem TRÊS datas.** O assado
+//! deixou de o recusar quando o empacotador passou a dispor um ladrilho por
+//! face (2026-09-22), e continua a saber dispô-lo. O device deixou de o recusar
+//! quando o registo achatado passou a carregar o lado da face e o bloco de cada
+//! aresta (2026-09-23, [`topo::PAYLOAD_STRIDE`] `10 → 19`) — ⛔ e **voltou a
+//! recusá-lo em 2026-09-24**, quando o registo regressou a `10` palavras por
+//! ordem do dono: o `Even Detail`, o único que CRIAVA planos graduados, tinha
+//! saído, e as nove palavras ficavam a ser pagas em toda peça para nada.
 //!
-//! ⚠️ O [`Tinta::lado_uniforme`] FICA, e hoje é uma PERGUNTA e não uma cerca —
-//! o que ele responde é *«esta peça tem um lado só?»*, que é o que as fixturas
-//! das réguas precisam de saber para escrever uma expectativa.
+//! ⭐ **Pelo produto nenhum plano graduado chega à placa:** o carregador
+//! converte-o ao abrir ([`Tinta::uniformizada`]), lendo cada amostra do plano
+//! gravado. A recusa do device fica para o caso em que um chegue por outro
+//! caminho — *a resposta certa se ele chegar, e nenhuma se não chegar*.
+//!
+//! ⚠️ O [`Tinta::lado_uniforme`] é, outra vez, as duas coisas: a PERGUNTA que
+//! as fixturas das réguas fazem e a CERCA que o device usa.
 //!
 //! ⚠️ **A escada é de potências de dois porque METADE tem de ser exacta:** as
 //! amostras estão em `i/L`, e ficar com as de `i` par dá exactamente `i/(L/2)`,
@@ -77,6 +87,7 @@ pub mod amostragem;
 pub mod assar;
 pub mod enderecos;
 pub mod topo;
+mod uniformiza;
 pub mod vizinhanca;
 
 #[cfg(test)]
@@ -95,6 +106,9 @@ mod p2_tests;
 #[cfg(test)]
 #[path = "topo_tests.rs"]
 mod topo_tests;
+#[cfg(test)]
+#[path = "uniformiza_tests.rs"]
+mod uniformiza_tests;
 #[cfg(test)]
 #[path = "vizinhanca_tests.rs"]
 mod vizinhanca_tests;
@@ -193,7 +207,8 @@ impl Tinta {
     /// Este campo dizia-se *«o MAIS FINO do plano»*, com a justificação ao lado:
     /// *«num plano graduado o pedido é o TECTO»*. Isso era verdade da âncora na
     /// MEDIANA, onde ninguém passava de `k`. Desde que o `k` é um **PISO**
-    /// ([`niveis_igualados`]) há faces ACIMA dele, logo `nivel_mais_fino()`
+    /// (a lei `niveis_igualados`, que saiu com o `Even Detail`) há faces ACIMA
+    /// dele, logo `nivel_mais_fino()`
     /// deixou de ser o pedido — e o consumidor que compara os dois (*«este
     /// plano ainda é o que a fileira pede?»*) passava a responder **NÃO em todo
     /// quadro**, reconstruindo o plano e **re-semeando-o da cor por vértice**:
@@ -350,16 +365,16 @@ impl Tinta {
 
     /// ⭐ **O lado da peça inteira, se ele for um só.**
     ///
-    /// ⛔⛔ **A razão de ser dela MORREU em 2026-09-23 e ela fica com outra.**
-    /// O doc que aqui estava dizia *«ela existe para os consumidores que ainda
-    /// assumem um lado — o caminho da placa é o principal — poderem RECUSAR um
-    /// plano graduado»*: hoje o caminho da placa lê o lado da FACE no registo
-    /// achatado e **nenhum consumidor de produto a chama**.
+    /// ⭐⭐ **Ela é CERCA outra vez desde 2026-09-24, e é por isso que a razão de
+    /// ser dela é a de sempre:** os consumidores que assumem um lado — o device
+    /// é o principal — perguntam aqui antes de desenhar, e um plano graduado
+    /// desarma em vez de pôr tinta no sítio errado. Entre 23/09 e 24/09 o
+    /// device lia o lado da FACE e ela era só uma pergunta; o registo que o
+    /// permitia saiu por ordem do dono.
     ///
-    /// ⭐ O que ela é hoje é uma PERGUNTA sobre a peça (*«há um lado só?»*),
-    /// e quem a faz são as réguas: uma fixtura uniforme escreve a expectativa
-    /// dela com este número. ⚠️ *Ela não é uma cerca — quem a usar como cerca
-    /// está a recusar um plano que o produto já sabe desenhar.*
+    /// ⭐ E é também a PERGUNTA do carregador (*«este plano precisa de ser
+    /// convertido?»*) e das réguas, que escrevem a expectativa de uma fixtura
+    /// uniforme com este número.
     #[must_use]
     pub fn lado_uniforme(&self) -> Option<u32> {
         self.topo.nivel_uniforme().map(|k| 1u32 << k)

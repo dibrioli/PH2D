@@ -179,9 +179,12 @@ muta "$REN/tinta_gpu.rs" \
 # ── O CONTROLO ───────────────────────────────────────────────────────────
 # ⚠️ Uma mutacao INERTE nao pode sangrar. Sem ela um arnes partido — um filtro
 # que casa zero testes, uma arvore ja' vermelha — devolve um placar PERFEITO.
+# ⚠️ RE-ANCORADO em 2026-09-24: o registo voltou a `10` palavras e a ancora
+#    de `19` morreu. Um CONTROLO e' inerte em qualquer linha — o sitio nao e'
+#    a lei, e por isso ele muda de sitio sem mudar de sentido.
 muta "$COL/topo.rs" \
-  'pub const PAYLOAD_STRIDE: usize = 19;' \
-  'pub const PAYLOAD_STRIDE: usize = 19;
+  'pub const PAYLOAD_STRIDE: usize = 10;' \
+  'pub const PAYLOAD_STRIDE: usize = 10;
 ' \
   'N8 CONTROLO: uma mutacao INERTE (uma linha em branco) nao pode sangrar'
 

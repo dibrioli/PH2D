@@ -400,7 +400,7 @@ pub fn interior_por_face(cantos: usize, lado: u32) -> u32 {
 }
 
 /// Quantos `u32` um registo de face ocupa no [`Topologia::payload`].
-pub const PAYLOAD_STRIDE: usize = 19;
+pub const PAYLOAD_STRIDE: usize = 10;
 
 impl Topologia {
     /// ⭐⭐⭐ **A TOPOLOGIA ACHATADA para quem não tem `Vec`** — o registo por
@@ -414,21 +414,6 @@ impl Topologia {
     /// | `4..8` | `id << 1 \| virada` de cada lado, e [`TRI`] no slot `7` de um triângulo |
     /// | `8` | o início do bloco de interior desta face |
     /// | `9` | quantos cantos (`3` ou `4`) |
-    /// | `10` | o LADO desta face (`2^k`) — a P2 |
-    /// | `11..15` | o início do bloco de cada aresta, e [`TRI`] no slot `14` de um triângulo |
-    /// | `15..19` | o LADO de cada aresta (o MÁXIMO dos vizinhos), e [`TRI`] no slot `18` de um triângulo |
-    ///
-    /// ⭐⭐⭐⭐ **As nove palavras de `10..19` são a P2, e elas existem porque
-    /// um shader não tem `Vec`.** Com um nível por face o bloco de uma aresta
-    /// deixa de ser `id × (lado − 1)` — ele é um PREFIXO de comprimentos
-    /// desiguais —, e o passo do subconjunto (`t × le/lf`) precisa do lado da
-    /// ARESTA, que é o máximo dos dois vizinhos e que a face não sabe sozinha.
-    ///
-    /// ⚠️ **Isto duplica o bloco de cada aresta nas DUAS faces que a tocam, e
-    /// é deliberado:** a alternativa é um buffer por aresta no bind group, e o
-    /// grupo 1 já tem cinco `storage` mais um `uniform`. Custo MEDIDO: `19 × 4`
-    /// bytes por face contra `10 × 4` — a `100 k` faces, `7,6 MB` contra `4,0`,
-    /// ao lado de um plano que a `8x` mede dezenas de MB.
     ///
     /// ⚠️ **Nenhuma posição fica sem dono**, e as duas que um triângulo não usa
     /// levam o sentinela em vez de lixo — *uma posição sem dono e sem régua é
@@ -487,21 +472,6 @@ impl Topologia {
             }
             out.push(self.off_interior[f]);
             out.push(n as u32);
-            out.push(self.lado_de(f));
-            for s in 0..4 {
-                out.push(if s < n {
-                    self.aresta_off(self.lado_da_face[4 * f + s] >> 1)
-                } else {
-                    TRI
-                });
-            }
-            for s in 0..4 {
-                out.push(if s < n {
-                    self.aresta_lado(self.lado_da_face[4 * f + s] >> 1)
-                } else {
-                    TRI
-                });
-            }
         }
         // ⚠️ **A metade CURTA é a que não estoura, e é a pior.** Com menos
         // faces do que esta topologia o laço acaba sozinho e o registo fica

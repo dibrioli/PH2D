@@ -165,12 +165,6 @@ fn sondas_da_esfera(m: &Mesh, t: &Tinta, origem: &[u32]) -> Vec<Sonda> {
     out
 }
 
-/// Como a fixtura escolhe a retícula: um nível para a peça, ou um por FACE.
-enum Niveis<'a> {
-    Uniforme(u8),
-    PorFace(&'a [u8]),
-}
-
 #[test]
 #[ignore = "precisa de adaptador"]
 fn a_lei_da_reticula_le_o_mesmo_na_placa_e_na_cpu() {
@@ -182,58 +176,19 @@ fn a_lei_da_reticula_le_o_mesmo_na_placa_e_na_cpu() {
     let esfera = shapes::uv_sphere(6, 8, 1.0);
     let faces_esfera: Vec<Vec<u32>> = esfera.faces().iter().map(|f| f.verts().to_vec()).collect();
 
-    // ⭐⭐⭐⭐ **As DUAS últimas fixturas são GRADUADAS (a P2), e sem elas este
-    //   gate não distingue a lei nova da antiga:** com um nível só, o lado da
-    //   face é constante em toda a peça e o bloco de cada aresta volta a ser
-    //   `id × (lado − 1)` por acidente aritmético. *Uma fixtura uniforme não
-    //   mede um passo de subconjunto que vale sempre `1`.*
-    //   ⚠️ E os saltos são GRANDES de propósito (`0` a `3`, `8×` de razão entre
-    //   faces vizinhas): a lei é exacta para qualquer razão potência de dois, e
-    //   um salto de um degrau deixa `le/lf = 2` — onde uma multiplicação
-    //   trocada por uma soma passaria despercebida.
-    let grad_grade: Vec<u8> = (0..faces_grade.len()).map(|i| (i % 4) as u8).collect();
-    let grad_esfera: Vec<u8> = (0..faces_esfera.len()).map(|i| (3 - i % 4) as u8).collect();
-
+    // ⛔ **As duas fixturas GRADUADAS SAÍRAM em 2026-09-24**, com o registo de
+    //   `19` palavras que as lia (ordem do dono: liberar a memória que o
+    //   `Even Detail` deixou reservada). Um plano graduado DESARMA na placa, e
+    //   essa lei tem gate próprio, sem adaptador: `um_plano_graduado_desarma`.
     let mut total_sondas = 0usize;
     for (nome, m, faces, nivel) in [
-        ("grelha plana", &grade, &faces_grade, Niveis::Uniforme(2)),
-        ("esfera", &esfera, &faces_esfera, Niveis::Uniforme(2)),
-        (
-            "grelha plana, nível 0",
-            &grade,
-            &faces_grade,
-            Niveis::Uniforme(0),
-        ),
-        (
-            "esfera, nível 3",
-            &esfera,
-            &faces_esfera,
-            Niveis::Uniforme(3),
-        ),
-        (
-            "grelha plana, GRADUADA",
-            &grade,
-            &faces_grade,
-            Niveis::PorFace(&grad_grade),
-        ),
-        (
-            "esfera, GRADUADA",
-            &esfera,
-            &faces_esfera,
-            Niveis::PorFace(&grad_esfera),
-        ),
+        ("grelha plana", &grade, &faces_grade, 2u8),
+        ("esfera", &esfera, &faces_esfera, 2),
+        ("grelha plana, nível 0", &grade, &faces_grade, 0),
+        ("esfera, nível 3", &esfera, &faces_esfera, 3),
     ] {
         let it = || faces.iter().map(|f| &f[..]);
-        let mut t = match nivel {
-            Niveis::Uniforme(k) => Tinta::nova(m.vert_count(), it(), k),
-            Niveis::PorFace(ks) => Tinta::graduada(
-                m.vert_count(),
-                it(),
-                ks,
-                ks.iter().copied().min().unwrap_or(0),
-            )
-            .expect("a lista de níveis descreve esta malha"),
-        };
+        let mut t = Tinta::nova(m.vert_count(), it(), nivel);
         for i in 0..t.amostras().len() {
             t.amostras_mut()[i] = cor_embaralhada(i);
         }
@@ -494,4 +449,49 @@ fn layout(device: &wgpu::Device, quais: &[(u32, bool)]) -> wgpu::BindGroupLayout
         label: None,
         entries: &entries,
     })
+}
+
+/// ⭐⭐⭐⭐ **GATE — UM PLANO GRADUADO DESARMA NA PLACA, e um uniforme arma.**
+///
+/// ⛔⛔ **É a guarda que a volta do registo de `19` para `10` palavras deixou**
+/// (2026-09-24, ordem do dono): o shader lê a retícula com UM `lado`, e um plano
+/// com um nível por face desenhado assim põe a tinta de umas faces no sítio das
+/// outras **sem nada no ecrã a acusar**. Desarmado, ele mostra a cor por
+/// vértice, que é o caso base e está certo.
+///
+/// ⚠️ **Corre SEM adaptador, e isso é a razão de a guarda ser uma função pura:**
+/// o irmão de paridade é `#[ignore]` e nem o CI nem um arnês de mutação lhe
+/// chegam.
+///
+/// ⚠️ **O CONTROLO vem primeiro e é a metade que torna isto uma medição:** um
+/// `tinta_cfg` que devolvesse `armado = 0` sempre passaria na metade graduada —
+/// e apagaria a tinta fina de toda peça.
+#[test]
+fn um_plano_graduado_desarma() {
+    let esfera = shapes::uv_sphere(6, 8, 1.0);
+    let faces: Vec<Vec<u32>> = esfera.faces().iter().map(|f| f.verts().to_vec()).collect();
+    let it = || faces.iter().map(|f| &f[..]);
+
+    // (1) CONTROLO: o plano UNIFORME arma, com o lado dele.
+    let uniforme = Tinta::nova(esfera.vert_count(), it(), 3);
+    let cfg = ph2d_mesh_render::tinta_cfg(Some(&uniforme));
+    assert_eq!(cfg[3], 1, "CONTROLO: um plano uniforme tem de ARMAR");
+    assert_eq!(cfg[0], 8, "e com o lado dele (`2^3`)");
+
+    // (2) O GRADUADO desarma, com o `lado` mínimo de `1` (nunca zero).
+    let niveis: Vec<u8> = (0..faces.len()).map(|i| (i % 4) as u8).collect();
+    let graduado = Tinta::graduada(esfera.vert_count(), it(), &niveis, 0)
+        .expect("a lista de níveis descreve esta malha");
+    assert!(
+        graduado.lado_uniforme().is_none(),
+        "a fixtura não contém o fenómeno: os níveis têm de ser DIFERENTES"
+    );
+    assert_eq!(
+        ph2d_mesh_render::tinta_cfg(Some(&graduado)),
+        [1, 0, 0, 0],
+        "um plano graduado tem de DESARMAR — o registo de `10` palavras não o descreve"
+    );
+
+    // (3) E sem plano nenhum, também desarmado.
+    assert_eq!(ph2d_mesh_render::tinta_cfg(None), [1, 0, 0, 0]);
 }

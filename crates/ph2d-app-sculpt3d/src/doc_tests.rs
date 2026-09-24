@@ -457,19 +457,26 @@ fn as_duas_formas_das_amostras_fazem_o_que_prometem() {
     );
 }
 
-/// ⭐⭐⭐⭐ **GATE — UM PLANO GRADUADO ATRAVESSA O FICHEIRO COM OS NÍVEIS DELE.**
+/// ⭐⭐⭐⭐ **GATE — UM PLANO GRADUADO DE UM FICHEIRO ANTIGO ABRE UNIFORME, COM A
+/// TINTA DELE.**
 ///
-/// ⛔⛔ **A metade que decide é a dos NÍVEIS, e não a das amostras:** a
-/// topologia é DERIVADA das faces, logo um `decode` que ignorasse a lista
-/// voltaria com um plano UNIFORME — a contagem de amostras não bateria e o
-/// load recusaria **em voz alta**, que é bom; mas o dia em que ela batesse por
-/// acaso, a tinta aterrava no sítio errado **em silêncio**. ⇒ afirma-se a
-/// lista, face a face.
+/// ⛔⛔ **Até 2026-09-24 este gate afirmava o contrário** —
+/// *«um plano graduado atravessa o ficheiro com os níveis dele»* —, e a
+/// premissa morreu por ordem do dono: o registo de `19` palavras que deixava a
+/// placa desenhar um plano graduado SAIU (*liberar a memória que o `Even
+/// Detail` deixou reservada*), e o carregador passou a CONVERTER.
 ///
-/// ⚠️ **E o CONTROLO é a primeira asserção:** a fixtura tem de ter níveis
-/// DISTINTOS, senão isto mede um plano uniforme com outro nome.
+/// ⭐⭐ **A metade que decide é a do MIOLO:** a conversão tem de LER o plano
+/// gravado, e não re-semear da cor por vértice — que devolveria a tinta à
+/// resolução da malha, o report que o dono já fez três vezes. A fixtura pinta
+/// um troço de amostras do MIOLO das faces (longe de todo vértice), e só uma
+/// conversão que LÊ o traz de volta.
+///
+/// ⚠️ **E a ligação mede-se contra a porta:** o que abre tem de ser, ao bit, a
+/// [`ph2d_mesh_colors::Tinta::uniformizada`] do plano gravado. A exactidão
+/// dessa porta tem gate próprio na crate dela, contra as amostras guardadas.
 #[test]
-fn um_plano_graduado_atravessa_o_ficheiro_com_os_niveis_dele() {
+fn um_plano_graduado_de_um_ficheiro_antigo_abre_uniforme_com_a_tinta_dele() {
     // ⛔⛔ **O octaedro da `peca_com_plano` NÃO SERVE, e foi o CONTROLO que o
     //   disse** (`saiu [2]`): as oito faces dele têm a MESMA área, logo a
     //   graduação devolve um plano uniforme — *a fixtura não contém o
@@ -518,23 +525,32 @@ fn um_plano_graduado_atravessa_o_ficheiro_com_os_niveis_dele() {
     );
 
     let bytes = encode(&[(stack.to_data(), pose.to_data(), Some(&t))], 0);
-    let (lidas, _) = decode(&bytes).expect("ida e volta");
+    let (lidas, _) = decode(&bytes).expect("um ficheiro antigo continua a abrir");
     let volta = lidas[0].tinta.as_ref().expect("a peça tinha plano");
 
-    assert_eq!(
-        volta.topologia().niveis(),
-        t.topologia().niveis(),
-        "os níveis por face não voltaram"
-    );
+    // (1) Ele abre UNIFORME, no degrau que o artista tinha pedido.
+    assert_eq!(volta.lado_uniforme(), Some(4), "o plano não abriu uniforme");
+    assert_eq!(volta.nivel(), 2, "nem no degrau pedido");
+
+    // (2) E é exactamente a conversão que LÊ o plano gravado.
     let bits = |a: &[[f32; 3]]| -> Vec<[u32; 3]> {
         a.iter()
             .map(|c| [c[0].to_bits(), c[1].to_bits(), c[2].to_bits()])
             .collect()
     };
+    let esperado = t.uniformizada(faces()).expect("as faces descrevem o plano");
     assert_eq!(
         bits(volta.amostras()),
-        bits(t.amostras()),
-        "as amostras não voltaram AO BIT"
+        bits(esperado.amostras()),
+        "o que abriu não é a conversão do plano gravado"
+    );
+
+    // (3) O DISCRIMINADOR: a tinta do MIOLO voltou. Re-semear da cor por
+    //     vértice não a traria — ali só há o azul-acinzentado da base.
+    let verts = volta.topologia().verts();
+    assert!(
+        volta.amostras()[verts..].contains(&[0.9, 0.1, 0.05]),
+        "a tinta pintada no MIOLO das faces não voltou — a conversão re-semeou"
     );
 }
 

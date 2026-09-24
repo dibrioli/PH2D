@@ -3390,3 +3390,146 @@ linhas que ela imprime.*
   a aritmética está na §32.6 e o roteiro da `=52` di-lo. *Uma segunda ranhura
   é decisão do dono, e o preço é `75,5 MB` por degrau guardado.*
 - **O SMOKE do dono** — é o 1.º pedido desta wave.
+
+---
+
+## §33 — ⭐⭐⭐⭐ A MEMÓRIA QUE O `Even Detail` DEIXOU: o registo volta a `10` palavras
+
+> **Ordem do dono, 2026-09-24:** *«1 e 2 no mesmo ciclo»* — o `Fill` (§34) e
+> *liberar a memória que o `Even Detail` deixou reservada*. A pergunta que o
+> item 2 trazia (*um ficheiro gravado com ele ligado passa a abrir com a tinta
+> fina refeita por igual?*) ficou respondida pela escolha.
+
+### §33.1 — O que se pagava, e por nada
+
+O registo por face que a placa lê tinha `19` palavras desde 23/09 (§27): as
+nove de `10..19` eram o lado da face e o par `(início, lado)` de cada aresta,
+que é o que um plano GRADUADO pede. Quando o `Even Detail` — **o único que
+criava planos graduados** — saiu (§31), elas ficaram a ser pagas em toda peça,
+para ler um plano que só um ficheiro desse dia traz: `36` bytes por face, `3,6
+MB` a `100 k` faces.
+
+### §33.2 — ⭐⭐⭐ O que a medição mudou ANTES da primeira linha
+
+**(a) A volta da placa é EXACTA.** Os quatro ficheiros de código do device
+(`tinta.wgsl`, `tinta_gpu.rs`, `pipeline.rs`, o `lib.rs` da crate) só foram
+tocados por **um** commit depois da P2 — o `3af28588b` —, logo o estado de antes
+dele é um ponto de volta sem costura. ⚠️ **Mas uma volta às cegas
+REINTRODUZIA um defeito de INSTRUMENTO** que aquele mesmo commit curara: o
+arnês de paridade montava o uniforme à mão em vez de o pedir ao produto (*um
+arnês que CONSTRÓI o uniforme em vez de o PEDIR mede outro programa*). ⇒ a
+lei voltou e a cura do instrumento FICOU: o `cfg_de` continua público
+(`ph2d_mesh_render::tinta_cfg`), com um doc que diz porquê.
+
+**(b) ⛔⛔ O ficheiro NÃO precisa de degrau de formato, e a nota do §31.6 dizia
+o contrário.** A lista `niveis` do documento já quer dizer «uniforme» quando
+vem vazia, e o leitor continua a saber ler a cheia. O que muda é o que ele FAZ
+com ela: converte. *A nota que precificava isto em «um degrau de formato mais
+uma decisão sobre os ficheiros gravados» tinha a metade do formato errada, e
+quem a ia pagar era a próxima wave.*
+
+**(c) Há UM criador de planos graduados no produto, e é o carregador**
+(`doc.rs`, medido por `grep` sobre toda a árvore, testes e exemplos de fora).
+É ele que passa a converter, e daí em diante nenhum plano graduado existe em
+tempo de corrida.
+
+### §33.3 — ⭐⭐⭐ A conversão LÊ, e não re-semeia
+
+[`Tinta::uniformizada`] (ficheiro novo `uniformiza.rs`) constrói o plano no
+degrau PEDIDO e lê cada amostra nova do plano gravado pela
+[`Tinta::cor_tri`]/[`Tinta::cor_quad`] — a lei que a placa e o oráculo já
+partilham. ⛔ Re-semear da cor por vértice seria devolver a tinta à resolução
+da malha, que é o report que o dono já fez três vezes por outras portas.
+
+⭐⭐ **Ela é EXACTA onde a face está no degrau pedido ou acima**, que é todo
+plano gravado depois da cura do PISO (§30): os lados são potências de dois, o
+ponto `i/L` do plano novo cai num NÓ da retícula da face, e as duas leituras
+dão ali peso `1` num canto e `0` nos outros (conferido na aritmética das duas:
+a soma dos pisos devolve o caso exacto, e `0 + c·1 + 0·x` é `c` ao bit).
+
+⚠️⚠️ **A ORDEM das faces é load-bearing:** uma amostra de ARESTA é escrita
+pelas duas faces que a partilham, e só a mais fina tem as amostras verdadeiras
+(a grossa lê um subconjunto e INTERPOLA entre os nós dele). ⇒ da mais grossa
+para a mais fina, e a última escrita ganha. **Medido à mão antes de ser
+gateado:** com a ordem invertida o gate reprova.
+
+⛔ **E o ORÁCULO do gate NÃO é a leitura** — ela é a função sob teste. A régua
+é a AMOSTRA GUARDADA no nó correspondente da retícula da face (`i · 2^(kf−p)`),
+só endereços e nenhuma interpolação, sobre uma grelha com as DUAS formas de
+face e faces dos DOIS lados do pedido (a 1.ª asserção é esse CONTROLO).
+
+### §33.4 — A guarda que voltou, e o gate que ela não tinha
+
+Um plano graduado **DESARMA** na placa (`cfg_de` → `[1, 0, 0, 0]`) e mostra a
+cor por vértice — a resposta certa se algum chegar lá, em vez de pôr a tinta de
+umas faces no sítio das outras. ⚠️ **Antes de 23/09 esta guarda existia e NÃO
+tinha gate** (o `cfg_de` era privado, e o arnês de paridade construía o
+uniforme sozinho). ⇒ `um_plano_graduado_desarma`, **puro e sem adaptador** —
+com o CONTROLO primeiro (um plano uniforme ARMA, com o lado dele), porque um
+`cfg_de` que desarmasse sempre passaria na metade graduada e apagaria a tinta
+fina de toda peça.
+
+### §33.5 — ⛔⛔ Três premissas mortas, cada uma escrita no diff
+
+* `um_plano_graduado_atravessa_o_ficheiro_com_os_niveis_dele` →
+  **`um_plano_graduado_de_um_ficheiro_antigo_abre_uniforme_com_a_tinta_dele`**,
+  com a metade que separa LER de RE-SEMEAR: a fixtura pinta um troço do MIOLO
+  das faces, e só uma conversão que lê o traz de volta.
+* O censo da fiação vai de **`27` para `24`** elos: o `P2` (o `tinta_gpu.rs`) e o
+  `P3`/`P4` (o `.wgsl`) saíram **com** a lei que mediam, e o `GEMEO` com eles.
+  ⚠️ O `P1` **fica** — o pincel lê o lado da FACE, e isso continua certo para um
+  plano uniforme: *o que sai é quem CRIA, nunca quem LÊ* (§31.2).
+* O cabeçalho da `ph2d-mesh-colors` dizia *«já não há ninguém a recusar um
+  plano graduado»* e o doc do `lado_uniforme` dizia *«nenhum consumidor de
+  produto a chama»* — os dois ficaram FALSOS no dia em que a guarda voltou, e
+  foram reescritos com as TRÊS datas. ⚠️ E a nota do `nivel_uniforme` no
+  `topo.rs` (*«existe para o caminho da placa poder dizer: este plano não é
+  para mim»*) **voltou a ser verdade tal como estava** — fica.
+* E dois **links para nada** que eram MEUS (`[niveis_por_area]` e
+  `[niveis_igualados]`, deixados pela retirada do §31 quando apaguei as duas
+  funções) passaram a texto que diz onde elas viviam — o `cargo doc` acusava-os
+  e nenhum portão corre o `cargo doc`.
+
+### §33.6 — ⭐⭐ O pré-voo e as DUAS espécies de âncora morta
+
+A volta matou **onze** âncoras em três arneses, e a classificação é a lição que
+esta linha já pagou uma vez (§25.6): *tratar uma âncora que só mudou de FORMA
+como uma que morreu COM a lei apaga uma lei viva do placar sem linha vermelha.*
+
+| arnês | morreram COM a lei (saem) | só mudaram de FORMA (re-ancoradas) |
+|---|---|---|
+| `muta_o_r_por_face.sh` | `P16` `P17` `P18` `P19` `P20` | `P11` — ⭐ ver abaixo |
+| `muta_o_gemeo_em_wgsl.sh` | `W6` `W7` | `W1` (a virada) · `W8` (cada aresta lê o registo dela) |
+| `muta_a_cerca_do_plano.sh` | — | `N8`, o CONTROLO inerte, ancorado no `= 19;` |
+
+⭐⭐ **A `P11` mudou de espécie DUAS vezes:** até 23/09 ela mutava a guarda
+`lado_uniforme` que desarmava o device; de 23/09 a 24/09 a guarda não existia e
+ela mediu a soma das amostras das arestas; hoje a guarda voltou e ela voltou à
+âncora onde nasceu, medida pelo gate novo do desarme. *O comentário que ela
+trazia dizia isto por escrito — e foi lê-lo que evitou apagá-la.*
+
+E cinco âncoras NOVAS para a conversão (`U1`–`U5`): o carregador deixa de
+converter · re-semeia em vez de ler · a face grossa escreve por último · uma
+lista com faces a menos · um quad lido como triângulo.
+
+### §33.7 — O placar
+
+| arnês | placar | a que sobrevive |
+|---|---|---|
+| `muta_o_r_por_face.sh` | **17 de 18** | `P12`, o CONTROLO inerte |
+| `muta_o_gemeo_em_wgsl.sh` | **5 de 6** | `W5`, NOMEADA desde §27 (o piso do quad não é observável na fixtura) |
+| `muta_a_cerca_do_plano.sh` | **8 de 9** | `N8`, o CONTROLO inerte |
+
+As cinco `U` da conversão sangram todas — ⭐ e a `U3` é a que prova que a ORDEM
+das faces (grossa antes, fina depois) é load-bearing: com a grossa a escrever por
+último, a amostra partilhada de uma aresta sai interpolada em vez de lida.
+
+### §33.8 — Portão
+
+| régua | resultado |
+|---|---|
+| `nextest-impacted` | **18 625 / 18 625** |
+| clippy `-D warnings` (as três crates, `--all-targets`) | zero — ⚠️ depois de um `manual_contains` no gate novo do carregador |
+| censos da árvore COMBINADA | **127 / 127**, controlo do filtro `12 de 12` |
+| as 10 vassouras sobre os `16` ficheiros do diff | **zero achados NOVOS** — os acusados são as linhas `523`–`3358` do handoff, todas anteriores a este §33 (que começa na `3396`) |
+| `fmt` | limpo |

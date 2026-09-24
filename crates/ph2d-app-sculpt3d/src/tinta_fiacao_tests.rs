@@ -73,15 +73,9 @@ const UNDO: &str = include_str!("undo.rs");
 /// mesmo caminho relativo dos dois do motor, e pela mesma razão: *a cura mora
 /// onde a lei corre; a régua mora onde há cena para a exercitar.*
 const DEVICE: &str = include_str!("../../ph2d-mesh-render/src/tinta_gpu.rs");
-/// ⭐⭐⭐⭐ **E O GÉMEO EM WGSL, que é um `.wgsl` e não um `.rs`.** O
-/// [`sem_prosa`] corta por `//`, que é comentário nas duas linguagens, logo a
-/// mesma régua serve.
-///
-/// ⛔⛔ **A prova de COMPORTAMENTO dele existe e o CI nunca a corre:** o
-/// `tinta_paridade` é `#[ignore]` e pede adaptador, e o arnês de mutação
-/// (`--lib`) também não lhe chega. *Uma lei cuja única régua vive atrás de um
-/// adaptador é, para toda a gente que não tem placa, uma lei sem régua.*
-const GEMEO: &str = include_str!("../../ph2d-mesh-render/src/shaders/tinta.wgsl");
+// ⛔ **AQUI VIVIA O `GEMEO`** (o `.wgsl` lido como texto), e ele saiu em
+// 2026-09-24 com os dois elos que o usavam: o registo de `19` palavras voltou
+// a `10` por ordem do dono, e o gémeo voltou a ler UM `lado` para a peça.
 const VOZ: &str = include_str!("recusa.rs");
 /// ⭐⭐⭐ **E o DOCUMENTO** — a wave de 21/09 que faz o plano atravessar o
 /// `.ph2dproj`. As duas metades dele (escrever e instalar) vivem no mesmo
@@ -405,43 +399,16 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
                 .to_string(),
             TINTA_FINA,
         ),
-        (
-            "tinta_gpu.rs",
-            "P2 o uniforme volta a carregar a CONTAGEM de arestas em vez da soma \
-             das amostras delas, e o bloco de interior é lido no sítio errado",
-            "        t.topologia().arestas_amostras(),".to_string(),
-            DEVICE,
-        ),
-        // ⭐⭐⭐ **E os DOIS do gémeo, que são a P2 no lado que desenha.** Sem o
-        // passo, a amostra `t = 1` de uma face de lado `2` cai na célula `1` de
-        // uma aresta de lado `8` — um OITAVO do caminho em vez de metade, e a
-        // fronteira partilhada parte-se. Sem o lado da FACE lido do registo, a
-        // retícula volta a ser uma só e a tinta de umas faces desenha-se no
-        // sítio das outras.
-        // ⛔⛔ **AQUI VIVIA O ELO DA IGUALAÇÃO, e ele saiu com o interruptor**
-        // (ordem do dono, 2026-09-23). Ele media que o quadro LIA a caixa, o
-        // que era necessário porque o laço pede um `wgpu::Device` e um
-        // `igualar: false` cravado ali deixaria a caixa pintada, viva no clique
-        // e sem efeito. *Sem a caixa não há fio para medir* — e o que a
-        // substitui é o `garante` já não ter por onde construir um plano
-        // graduado, que é erro de compilação e não um censo.
-        (
-            "tinta.wgsl",
-            "P3 o gémeo deixa de escalar `t` pelo passo do subconjunto",
-            "        var tt = t * (la / lf);".to_string(),
-            GEMEO,
-        ),
-        (
-            "tinta.wgsl",
-            "P4 o gémeo deixa de ler o lado da FACE no registo dela",
-            // ⚠️ A assinatura vai junto: `let l = tinta_topo[base + 10u];`
-            //    aparece nas DUAS leituras (tri e quad), e uma agulha que casa
-            //    duas vezes sobrevive a uma mutação numa delas.
-            "fn tinta_cor_quad(base: u32, uv: vec2<f32>) -> vec3<f32> {\n    \
-             let l = tinta_topo[base + 10u];"
-                .to_string(),
-            GEMEO,
-        ),
+        // ⛔⛔ **AQUI VIVIAM TRÊS ELOS DA P2 NA PLACA** (`P2` no `tinta_gpu.rs`,
+        // `P3` e `P4` no `.wgsl`), e eles saíram em 2026-09-24 COM a lei que
+        // mediam: o registo por face voltou de `19` para `10` palavras por
+        // ordem do dono (*liberar a memória que o `Even Detail` deixou
+        // reservada*). ⭐ O que os substitui não é um censo: um plano graduado
+        // DESARMA na placa, e isso tem gate puro, sem adaptador
+        // (`um_plano_graduado_desarma`, no `ph2d-mesh-render`).
+        // ⚠️ **O `P1` FICA:** o pincel lê o lado da FACE, e isso continua certo
+        // para um plano uniforme — é um leitor, e *o que sai é quem CRIA,
+        // nunca quem LÊ* (handoff §31.2).
     ]
 }
 
@@ -452,12 +419,12 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
 /// busca falhar em voz alta — mas um que devolvesse **tudo** faria a prosa
 /// satisfazer a agulha, e é isso que o [`so_a_prosa`] recusa.
 #[test]
-fn a_cura_da_tinta_fina_esta_ligada_nos_vinte_e_sete_sitios() {
+fn a_cura_da_tinta_fina_esta_ligada_nos_vinte_e_quatro_sitios() {
     let elos = elos();
     assert_eq!(
         elos.len(),
-        27,
-        "a população deste censo são os vinte e sete elos"
+        24,
+        "a população deste censo são os vinte e quatro elos"
     );
 
     for (ficheiro, mutacao, agulha, fonte) in elos {

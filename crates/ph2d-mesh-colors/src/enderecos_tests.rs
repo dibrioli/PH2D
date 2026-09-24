@@ -410,27 +410,17 @@ fn um_ponto_fora_do_quad_e_cortado_e_nao_da_a_volta() {
 fn o_payload_resolve_o_mesmo_endereco_que_a_lei() {
     use super::topo::{PAYLOAD_STRIDE, TRI};
 
-    /// O que um shader faz: do registo da face e dos DOIS globais, ao índice.
-    ///
-    /// ⭐⭐ **Nenhum `lado` global entra aqui, e é essa a P2**: o lado da face
-    /// sai da palavra `10` e o da aresta da `15 + s` — *o registo é o único
-    /// sítio onde o shader sabe que a retícula não é uniforme*.
-    fn le(reg: &[u32], verts: u32, arestas_amostras: u32, sitio: Sitio) -> u32 {
-        let lf = reg[10];
+    /// O que um shader faz: do registo da face e dos três globais, ao índice.
+    fn le(reg: &[u32], lado: u32, verts: u32, arestas: u32, sitio: Sitio) -> u32 {
         match sitio {
             Sitio::Canto(c) => reg[c],
             Sitio::Aresta { lado_da_face, t } => {
                 let w = reg[4 + lado_da_face];
-                let virada = w & 1 == 1;
-                let la = reg[15 + lado_da_face];
-                // ⚠️ O passo PRIMEIRO e a virada DEPOIS, contra o lado da
-                //    ARESTA — trocar a ordem espelha a tinta em metade das
-                //    arestas da peça, e nenhuma contagem o vê.
-                let t = t * (la / lf);
-                let t = if virada { la - t } else { t };
-                verts + reg[11 + lado_da_face] + (t - 1)
+                let (id, virada) = (w >> 1, w & 1 == 1);
+                let t = if virada { lado - t } else { t };
+                verts + id * (lado - 1) + (t - 1)
             }
-            Sitio::Interior(n) => verts + arestas_amostras + reg[8] + n,
+            Sitio::Interior(n) => verts + arestas * (lado - 1) + reg[8] + n,
         }
     }
 
@@ -438,25 +428,9 @@ fn o_payload_resolve_o_mesmo_endereco_que_a_lei() {
     let tetra: Vec<Vec<u32>> = vec![vec![0, 2, 1], vec![0, 1, 3], vec![0, 3, 2], vec![1, 2, 3]];
     for (nome, verts_n, faces) in [("grelha de quads", 9usize, quads), ("tetraedro", 4, tetra)] {
         let it = || faces.iter().map(|f| &f[..]);
-        // ⭐ Os quatro níveis UNIFORMES mais dois planos GRADUADOS — e os
-        //   graduados são a razão de ser desta régua depois da P2: com um
-        //   nível só, a palavra `10` é constante e a `15 + s` também, logo
-        //   *uma fixtura uniforme não distingue a lei nova da antiga*.
-        let graduados: [Vec<u8>; 2] = [
-            (0..faces.len()).map(|i| (i % 4) as u8).collect(),
-            (0..faces.len()).map(|i| (3 - i % 4) as u8).collect(),
-        ];
-        let mut planos: Vec<(String, Tinta)> = (0..=3u8)
-            .map(|k| (format!("nivel {k}"), Tinta::nova(verts_n, it(), k)))
-            .collect();
-        for (n, ks) in graduados.iter().enumerate() {
-            planos.push((
-                format!("graduado {n} {ks:?}"),
-                Tinta::graduada(verts_n, it(), ks, ks.iter().copied().min().unwrap_or(0))
-                    .expect("a lista descreve a malha"),
-            ));
-        }
-        for (nivel, t) in planos {
+        for nivel in 0..=3u8 {
+            let t = Tinta::nova(verts_n, it(), nivel);
+            let l = t.lado_uniforme().expect("a fixtura e' uniforme");
             let topo = t.topologia();
             let mut pay = Vec::new();
             assert!(
@@ -468,7 +442,7 @@ fn o_payload_resolve_o_mesmo_endereco_que_a_lei() {
                 faces.len() * PAYLOAD_STRIDE,
                 "{nome}: o payload não tem um registo por face"
             );
-            let (verts, arestas_amostras) = (topo.verts() as u32, topo.arestas_amostras());
+            let (verts, arestas) = (topo.verts() as u32, topo.arestas() as u32);
 
             let mut conferidas = 0usize;
             for (fi, f) in faces.iter().enumerate() {
@@ -487,13 +461,12 @@ fn o_payload_resolve_o_mesmo_endereco_que_a_lei() {
                     "{nome}, face {fi}: contagem de cantos"
                 );
 
-                let l = t.lado_da_face(fi);
                 let mut ver = |sitio: Sitio| {
                     let esperado = t.indice_de(fi, f, sitio);
-                    let lido = le(reg, verts, arestas_amostras, sitio);
+                    let lido = le(reg, l, verts, arestas, sitio);
                     assert_eq!(
                         lido, esperado,
-                        "{nome}, {nivel}, face {fi}, {sitio:?}: o payload \
+                        "{nome}, nível {nivel}, face {fi}, {sitio:?}: o payload \
                          resolve {lido} e a lei resolve {esperado}"
                     );
                     conferidas += 1;
@@ -514,8 +487,8 @@ fn o_payload_resolve_o_mesmo_endereco_que_a_lei() {
             }
             // ⭐ CONTROLO: uma régua que não visita nada passa por vácuo.
             assert!(
-                conferidas >= faces.len(),
-                "{nome}, {nivel}: só {conferidas} amostras conferidas"
+                conferidas >= faces.len() * (l as usize + 1),
+                "{nome}, nível {nivel}: só {conferidas} amostras conferidas"
             );
         }
     }

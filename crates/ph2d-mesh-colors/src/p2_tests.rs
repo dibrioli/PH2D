@@ -253,7 +253,7 @@ fn uma_lista_de_niveis_do_tamanho_errado_e_recusada() {
 // pelo piso —, e o que fica disso é a lição e não o código: *uma premissa que
 // morre e renasce num dia é a melhor prova de que tinha de estar num gate*.
 //
-// ⛔ O que ele mediu NÃO se perdeu: a [`niveis_por_area`] — a lei por baixo,
+// ⛔ O que ele mediu NÃO se perdeu: a `niveis_por_area` — a lei por baixo,
 // que responde «que nível uma face desta área quer» — continua com os gates
 // dela nesta mesma varredura. O que saiu foi quem escolhia o ALVO a partir de
 // um chip do painel. Medição inteira: handoff §25–§26.

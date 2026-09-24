@@ -72,40 +72,22 @@ PY
   restore
 }
 
+# ⚠️ RE-ANCORADAS em 2026-09-24: o registo voltou de `19` para `10` palavras
+#    (ordem do dono), e as DUAS leis que estas medem continuam vivas — so' a
+#    linha mudou de forma. *Tratar uma ancora que mudou de FORMA como uma que
+#    morreu COM a lei apagaria uma lei viva do placar sem linha vermelha.*
 muta shaders/tinta.wgsl \
-  'if ((w & 1u) == 1u) { tt = la - tt; }' \
-  'if (false) { tt = la - tt; }' \
+  'if ((w & 1u) == 1u) { tt = l - t; }' \
+  'if (false) { tt = l - t; }' \
   'W1 a VIRADA da aresta nao viaja no shader'
-
-# ⚠⚠ **As tres nasceram como `W5`–`W7` e o placar imprimiu DOIS `W5`** — o
-#    rotulo `W5` ja' era da mutacao NOMEADA la' em baixo. *Duas linhas com o
-#    mesmo nome num placar leem-se como uma corrida repetida*, e nada no
-#    arnes o acusa: o pre-voo mede a ANCORA, nunca o nome.
-#
-# ⭐⭐⭐ **AS TRES DA P2 (23/09), e elas sangram por COMPORTAMENTO.** O censo de
-#   texto da `ph2d-app-sculpt3d` mede as mesmas leis no FONTE, porque a unica
-#   regua de comportamento delas e' este gate — `#[ignore]` e com adaptador,
-#   logo fora do CI e fora de todo arnes que corra `--lib`. *Duas reguas do
-#   mesmo facto, uma que corre em toda a parte e outra que so' corre com placa.*
 muta shaders/tinta.wgsl \
-  '        var tt = t * (la / lf);' \
-  '        var tt = t;' \
-  'W6 o gemeo deixa de escalar t pelo passo do subconjunto'
-
-# ⚠️ A ancora leva a ASSINATURA junto: `let l = tinta_topo[base + 10u];` aparece
-#    nas DUAS leituras (tri e quad), e casar duas vezes le-se como sobreviver.
-muta shaders/tinta.wgsl \
-  'fn tinta_cor_quad(base: u32, uv: vec2<f32>) -> vec3<f32> {
-    let l = tinta_topo[base + 10u];' \
-  'fn tinta_cor_quad(base: u32, uv: vec2<f32>) -> vec3<f32> {
-    let l = 4u;' \
-  'W7 o gemeo crava a reticula de um QUAD num lado so'
-
-muta shaders/tinta.wgsl \
-  '        return tinta_cfg.verts + tinta_topo[base + 11u + a] + (tt - 1u);' \
-  '        return tinta_cfg.verts + tinta_topo[base + 11u] + (tt - 1u);' \
-  'W8 toda aresta de uma face le o bloco do lado 0'
-
+  '        let w = tinta_topo[base + 4u + a];' \
+  '        let w = tinta_topo[base + 4u];' \
+  'W8 toda aresta de uma face le o registo do lado 0'
+# ⛔⛔ AQUI VIVIAM A W6 E A W7 (o passo do subconjunto e o lado da FACE lido
+#    do registo), e elas sairam em 2026-09-24 COM a lei: o gemeo voltou a ler
+#    UM `lado` para a peca. Um plano graduado DESARMA na placa, e essa guarda
+#    tem gate puro (`um_plano_graduado_desarma`) e ancora no arnes da P2 (`P11`).
 muta shaders/tinta.wgsl \
   'if (sub == 1u) { uv = vec2<f32>(bar.y, bar.y + bar.z); }' \
   'if (false) { uv = vec2<f32>(bar.y, bar.y + bar.z); }' \

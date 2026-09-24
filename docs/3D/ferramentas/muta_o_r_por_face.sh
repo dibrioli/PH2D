@@ -36,7 +36,7 @@ restore() {
 }
 trap restore EXIT
 
-FILTRO='test(/p2_tests|assar_tests|vinte_e_sete|nivel_base|canto_de_uma_face|dois_lados_de_uma_aresta|ponto_de_uma_face|recusa_nomeia|graduado|payload|igualac|igualada|igualar|niveis_dele|v2_abre|area_por_face/)'
+FILTRO='test(/p2_tests|assar_tests|vinte_e_quatro|nivel_base|canto_de_uma_face|dois_lados_de_uma_aresta|ponto_de_uma_face|recusa_nomeia|graduado|payload|igualac|igualada|igualar|abre_uniforme|desarma|uniformiz|v2_abre|area_por_face/)'
 corrida() {
   cargo nextest run -p ph2d-mesh -p ph2d-mesh-colors -p ph2d-mesh-render -p ph2d-app-sculpt3d -E "$FILTRO" 2>&1
 }
@@ -162,53 +162,58 @@ muta "$SCU/tinta_fina.rs" \
   'self.tinta.lado_da_face(0)' \
   'P10 o pincel volta a ler UM lado para a peca inteira'
 
-# ── O DEVICE entrega a SOMA das amostras das arestas, nao a CONTAGEM ─────
-# ⚠️ Ate' 23/09 o P11 mutava a guarda `lado_uniforme` que DESARMAVA o device.
-#    Ela morreu quando o registo achatado passou a carregar o lado por face, e
-#    o PRE-VOO apanhou a ancora morta em segundos, sem correr um teste.
+# ── O DEVICE DESARMA um plano graduado ──────────────────────────────────
+# ⭐⭐ A `P11` VOLTOU a' ancora onde nasceu. Ate' 23/09 ela mutava a guarda
+#    `lado_uniforme` que desarmava o device; de 23/09 a 24/09 o registo tinha
+#    `19` palavras, a guarda nao existia e ela mediu a soma das amostras das
+#    arestas; em 24/09 o registo voltou a `10` por ordem do dono e a guarda
+#    VOLTOU. *Uma ancora pode mudar de especie duas vezes, e o pre-voo e' que
+#    diz quando.* A mutacao desenha um plano graduado com o lado da face `0` —
+#    a tinta de umas faces no sitio das outras, sem nada no ecra a acusar.
 muta "$REN/tinta_gpu.rs" \
-  '        t.topologia().arestas_amostras(),' \
-  '        t.topologia().arestas() as u32,' \
-  'P11 o uniforme volta a carregar a CONTAGEM de arestas: o bloco de interior sai do sitio'
+  '    let Some(lado) = t.lado_uniforme() else {' \
+  '    let Some(lado) = Some(t.lado_da_face(0)) else {' \
+  'P11 a placa desenha um plano GRADUADO com o lado da face 0 em vez de desarmar'
 
-# ── O REGISTO ACHATADO carrega o lado da FACE ───────────────────────────
-muta "$COL/topo.rs" \
-  '            out.push(self.lado_de(f));' \
-  '            out.push(1);' \
-  'P16 o registo diz que toda face tem lado 1: a reticula lida e outra'
+# ⛔⛔ AQUI VIVIAM A P16, A P17, A P18, A P19 E A P20 — as nove palavras do
+#    registo por face (o lado da face, o inicio e o lado de cada aresta) e o
+#    passo do subconjunto no gemeo. Sairam em 2026-09-24 COM a lei, por ordem do
+#    dono: *liberar a memoria que o `Even Detail` deixou reservada*.
 
-# ── E o INICIO do bloco de cada aresta ──────────────────────────────────
-muta "$COL/topo.rs" \
-  '                    self.aresta_off(self.lado_da_face[4 * f + s] >> 1)' \
-  '                    self.aresta_off(0)' \
-  'P17 toda aresta comeca no bloco da aresta 0'
+# ── A CONVERSAO de um plano graduado de um ficheiro antigo ──────────────
+# ⭐⭐⭐ O que as substitui: nenhum plano graduado chega a' placa pelo produto,
+#    porque o carregador o CONVERTE ao abrir. As cinco maneiras de a partir.
+muta "$APP/doc.rs" \
+  '    if t.lado_uniforme().is_none() {
+        t = t
+            .uniformizada(faces())
+            .ok_or(SculptDocError::Tinta { peca, esperadas })?;
+    }' \
+  '' \
+  'U1 o carregador deixa de converter: o plano abre graduado e a placa desarma-o'
 
-# ── E o LADO de cada aresta, que e' o passo do subconjunto ──────────────
-muta "$COL/topo.rs" \
-  '                    self.aresta_lado(self.lado_da_face[4 * f + s] >> 1)' \
-  '                    self.lado_de(f)' \
-  'P18 a aresta leva o lado da FACE em vez do maximo dos vizinhos'
+muta "$APP/doc.rs" \
+  '            .uniformizada(faces())' \
+  '            .uniformizada(faces())
+            .map(|_| ph2d_mesh_colors::Tinta::semeada(t.plano_por_vertice(), faces(), t.nivel()))' \
+  'U2 o carregador RE-SEMEIA da cor por vertice em vez de LER o plano gravado'
 
-# ── O GEMEO EM WGSL: o passo do subconjunto ─────────────────────────────
-# ⚠️ Estas duas sangram pelo CENSO DE TEXTO e nao por comportamento: a unica
-#    regua de comportamento do gemeo e' o `tinta_paridade`, que e' `#[ignore]`
-#    e pede adaptador. *Uma lei cuja regua so' corre com placa nao e' medida
-#    por este arnes nem pelo CI* — e e' por isso que o elo existe.
-muta "$REN/shaders/tinta.wgsl" \
-  '        var tt = t * (la / lf);' \
-  '        var tt = t;' \
-  'P19 o gemeo deixa de escalar t pelo passo do subconjunto'
+muta "$COL/uniformiza.rs" \
+  '        ordem.sort_by_key(|&f| (topo.nivel_de(f), f));' \
+  '        ordem.sort_by_key(|&f| (std::cmp::Reverse(topo.nivel_de(f)), f));' \
+  'U3 a face GROSSA escreve por ultimo e interpola por cima da amostra verdadeira da aresta'
 
-# ⚠️ A ancora leva a ASSINATURA junto porque `let l = tinta_topo[base + 10u];`
-#    aparece DUAS vezes (tri e quad) — *uma ancora que casa duas vezes lê-se,
-#    num placar, exactamente como uma mutacao que nao entrou*, e o pre-voo
-#    apanhou-a antes de qualquer teste correr.
-muta "$REN/shaders/tinta.wgsl" \
-  'fn tinta_cor_quad(base: u32, uv: vec2<f32>) -> vec3<f32> {
-    let l = tinta_topo[base + 10u];' \
-  'fn tinta_cor_quad(base: u32, uv: vec2<f32>) -> vec3<f32> {
-    let l = 4u;' \
-  'P20 o gemeo crava a reticula de um QUAD num lado so'
+muta "$COL/uniformiza.rs" \
+  '        if lista.len() != topo.faces() {
+            return None;
+        }' \
+  '' \
+  'U4 uma lista com faces a menos passa a ser convertida'
+
+muta "$COL/uniformiza.rs" \
+  '            .any(|(f, c)| crate::cantos(c) != topo.cantos_de(f))' \
+  '            .any(|(f, c)| false && crate::cantos(c) != topo.cantos_de(f))' \
+  'U5 um quad lido como triangulo passa a ser convertido'
 
 # ⛔⛔ AQUI VIVIAM AS TRES ANCORAS DO ESCOLHEDOR (a mediana · o piso · o
 #    interruptor lido pelo `garante`), e elas sairam com ele por ordem do dono

@@ -322,6 +322,21 @@ fn tinta_de(stack: &Multires, doc: &TintaDoc, peca: usize) -> Result<Tinta, Scul
         .amostras(esperadas)
         .ok_or(SculptDocError::Tinta { peca, esperadas })?;
     t.amostras_mut().copy_from_slice(&amostras);
+    // ⭐⭐⭐⭐ **Um plano GRADUADO sai daqui UNIFORME** (2026-09-24, ordem do
+    //   dono): o `Even Detail` que os criava foi retirado, e com ele o registo
+    //   de `19` palavras que deixava a placa desenhá-los. A conversão LÊ cada
+    //   amostra nova do plano gravado — é exacta onde a face estava no degrau
+    //   pedido ou acima —, e ⛔ nunca re-semeia da cor por vértice, que era
+    //   devolver a tinta à resolução da malha.
+    //
+    //   ⚠️ **Sem esta linha o ficheiro abria e a placa DESARMAVA** (a guarda
+    //   do `tinta_cfg`): a tinta aparecia grossa, que é o report que o dono já
+    //   fez três vezes por outras portas.
+    if t.lado_uniforme().is_none() {
+        t = t
+            .uniformizada(faces())
+            .ok_or(SculptDocError::Tinta { peca, esperadas })?;
+    }
     Ok(t)
 }
 

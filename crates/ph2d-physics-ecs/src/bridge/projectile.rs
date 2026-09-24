@@ -145,6 +145,10 @@ impl PhysicsBridge {
                 let got = self
                     .world
                     .move_character_from(handle, andado, pedido, params, None, layer, &mut hits);
+                // ⭐ E o que ele BATEU vira toque para a VIDA (plano 28 §8.1) — o mover pára rente
+                // ao obstáculo, logo o solver nunca verá este par.
+                self.toques_do_mover
+                    .extend(hits.iter().filter_map(|h| h.body.map(|b| (entity, b))));
                 andado = [
                     andado[0] + got.translation[0],
                     andado[1] + got.translation[1],

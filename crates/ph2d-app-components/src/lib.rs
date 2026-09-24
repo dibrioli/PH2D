@@ -192,6 +192,8 @@ pub mod tween_inspector;
 /// ⭐⭐⭐ **O TWEEN** (suplente #22) — a galeria dos canais e a cópia que nasce a meio da
 /// corrida; ver o cabeçalho.
 pub mod tween_smoke;
+/// ⭐⭐⭐ **O smoke da VIDA** (plano 28, W2) — três alvos, três vidas, e o aliado que não morre.
+pub mod vida_smoke;
 /// ⭐⭐⭐ **A ARMA** — a ponte que lê o pente, escreve a munição e publica o tiro; ver o cabeçalho.
 pub mod weapon_bridge;
 /// ⭐⭐⭐ **A ARMA** — o instantâneo e o dreno da secção dela; ver o cabeçalho.
@@ -297,6 +299,9 @@ pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
         // ⭐⭐⭐ A PARALAXE (plano 24): `=1` o fundo de quatro planos, com a repetição e a cerca
         // lado a lado · `=2` o dolly. ⚠️ O `max_level` é **contado** no `montar`.
         r("PH2D_PARALLAX_SMOKE", parallax_smoke::CENAS),
+        // ⭐⭐⭐ A VIDA (plano 28, W2): `=1` três alvos que morrem ao 1.º, 2.º e 3.º tiro, e o
+        // aliado que as balas não ferem (o CONTROLO).
+        r("PH2D_VIDA_SMOKE", vida_smoke::CENAS),
     ],
 };
 

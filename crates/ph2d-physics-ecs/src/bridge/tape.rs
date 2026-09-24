@@ -258,6 +258,7 @@ impl PhysicsBridge {
                 platform: self.player_state.clone(),
                 topdown: self.topdown_state.clone(),
                 projectile: self.projectile_state.clone(),
+                health: self.health_state.clone(),
             },
         );
         // A janela do ring é limitada; a nossa segue a dele pela borda de baixo
@@ -279,6 +280,7 @@ impl PhysicsBridge {
             self.player_state = m.platform.clone();
             self.topdown_state = m.topdown.clone();
             self.projectile_state = m.projectile.clone();
+            self.health_state = m.health.clone();
         }
     }
 
@@ -319,6 +321,9 @@ pub(super) struct ControllerMemory {
     /// O PROJÉCTIL (TOP-20 #14) — e ele é a **prova** de que o tipo funciona: acrescentá-lo
     /// obrigou a passar por aqui, pelo `record` e pelo `seed`, sem ninguém se lembrar de o fazer.
     pub(super) projectile: BTreeMap<Entity, ph2d_projectile::ProjectileState>,
+    /// ⭐⭐⭐ As VIDAS (plano 28, W2) — o quarto assunto, e ele não precisou de ninguém se lembrar:
+    /// o tipo obrigou o `record` e o `seed` a recebê-lo.
+    pub(super) health: BTreeMap<Entity, super::health::HealthState>,
 }
 
 /// O tipo da tabela — uma memória por tique âncora.

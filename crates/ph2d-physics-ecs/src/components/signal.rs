@@ -137,7 +137,7 @@ impl SimComponent for SignalOnLeave {}
 /// Aparada, e nunca vazia. Não é um detalhe de implementação partilhado por
 /// conveniência: é a resposta a uma pergunta que os dois lados TÊM de responder
 /// igual, e é por isso que ela não é escrita duas vezes.
-fn signal_name(raw: &str) -> Option<&str> {
+pub(super) fn signal_name(raw: &str) -> Option<&str> {
     let t = raw.trim();
     (!t.is_empty()).then_some(t)
 }

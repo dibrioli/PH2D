@@ -72,7 +72,7 @@ restaura "$BRIDGE/rewind.rs"
 # ── 4. …e a do mover de vista de cima, pela mesma linha ──────────────────────
 guarda "$BRIDGE/rewind.rs"
 sed -i 's|^        self.topdown_state.clear();$|        // MUTADO|' "$BRIDGE/rewind.rs"
-prova "o censo ve a memoria por esquecer" "reconstruir_do_repouso_esquece_as_tres_memorias_de_controlador"
+prova "o censo ve a memoria por esquecer" "reconstruir_do_repouso_esquece_as_memorias_de_controlador"
 restaura "$BRIDGE/rewind.rs"
 
 # ── 5. O laço de replay volta a chamar UM controlador em vez da porta ───────

@@ -45,6 +45,12 @@ ph2d-topdown = { path = "../ph2d-topdown" }
 
 # ⭐ A lei do PROJÉCTIL (TOP-20 #14) — folha pura, como as duas irmãs de controlador.
 ph2d-projectile = { path = "../ph2d-projectile" }
+# ⭐ A lei da VIDA (plano 28, W1) — folha pura, sem transcendental, ao bit contra o GDevelop.
+# A ponte a corre DEPOIS do passo, pelos dois laços (plano 28 §8.2).
+ph2d-health = { path = "../ph2d-health" }
+# ⭐ O splitmix64 da casa (`ph2d_shake::baralha`), para o sorteio da ESQUIVA: a lei pede UM
+# sorteio por golpe, e o gerador tem de ser determinista e ir no anel com a vida.
+ph2d-shake = { path = "../ph2d-shake" }
 # glam Vec2 (re-exported by ph2d-core) for writing rapier poses back
 # into Transform.translation.
 ph2d-core = { path = "../ph2d-core" }

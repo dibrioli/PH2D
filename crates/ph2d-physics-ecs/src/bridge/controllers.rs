@@ -38,6 +38,9 @@ impl PhysicsBridge {
     /// ⚠️ Chamada pelos **dois** laços que andam o relógio, e é esse o ponto: um deles sozinho não
     /// é o produto.
     pub(super) fn drive_controllers(&mut self, sim: &SimWorld) {
+        // ⭐ O canal dos toques de mover é deste TIQUE: os três movers abaixo enchem-no, e a vida
+        // lê-o depois do passo (plano 28 §8.1).
+        self.toques_do_mover.clear();
         // Os PLAYERS (W2): o sensor pergunta ao BVH que o step ANTERIOR deixou e a mola escreve o
         // motor deste tique.
         self.drive_players(sim);
@@ -46,5 +49,14 @@ impl PhysicsBridge {
         self.drive_topdown(sim);
         // E os PROJÉCTEIS (TOP-20 #14), pela mesma razão.
         self.drive_projectiles(sim);
+    }
+
+    /// ⭐⭐⭐ **O que responde AO passo** (plano 28 §8.2) — a porta irmã desta, chamada pelos DOIS
+    /// laços **depois** do `step`, pela mesma razão que a de cima existe antes dele: um assunto
+    /// ensinado a um laço só é um scrub que devolve outra corrida.
+    ///
+    /// Hoje é a VIDA. `publicar = false` no replay: o estado anda, os factos não saem.
+    pub(super) fn depois_do_passo(&mut self, sim: &SimWorld, publicar: bool) {
+        self.drive_health(sim, publicar);
     }
 }

@@ -167,6 +167,8 @@ pub(crate) struct ComponentsSmokeLatches {
     pub(crate) weapon: bool,
     /// ⭐ O GOLPE (suplente #24) — `PH2D_DANO_SMOKE=1`.
     pub(crate) dano: bool,
+    /// ⭐ A VIDA (plano 28) — `PH2D_VIDA_SMOKE=1`.
+    pub(crate) vida: bool,
     /// ⛔⛔ **Quantos quadros falta ainda trazer o Inspector à frente nas duas cenas do #24.**
     ///
     /// ⚠️ **Elas shiparam SEM isto e a FOTO é que o disse** (2026-09-19): as duas mandam olhar

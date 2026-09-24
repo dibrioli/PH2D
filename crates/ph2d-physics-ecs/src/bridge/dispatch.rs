@@ -131,6 +131,8 @@ impl PhysicsBridge {
         // primeiro era apagada pelo segundo e a bala nunca saía da cena. É o irmão exacto do
         // `accumulate_joint_breaks`, que o laço abaixo documenta pelo mesmo motivo.
         self.discard_projectile_deaths();
+        // ⭐ E os factos da VIDA (plano 28, W2), que são do dispatch pela mesma razão.
+        self.discard_health_events();
         // ⭐ E as ARESTAS dos raios (suplente #21), que são **do dispatch** como as do contacto —
         // ⛔ e o `ray_hits` NÃO é limpo aqui: ele é a memória entre tiques, e um dispatch não é uma
         // descontinuidade. Quem o limpa é o `rebuild_from_rest`, que é uma.
@@ -195,6 +197,10 @@ impl PhysicsBridge {
                     self.drive_controllers(sim);
                     self.world.step();
                     self.steps_taken += 1;
+                    // ⭐⭐⭐ E as VIDAS deste tique (plano 28 §8.2) — DEPOIS do passo, porque um golpe
+                    // lê o contacto que o passo acabou de produzir, e pela porta que o laço de
+                    // replay também chama.
+                    self.depois_do_passo(sim, true);
                     // Diff this tick's touching union against the standing set — the
                     // only place the clock stepped through the transitions, and the one
                     // that catches a touch shorter than a whole tick (W-TickContacts).

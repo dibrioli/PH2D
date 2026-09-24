@@ -60,6 +60,25 @@ pub(crate) fn abre_a_regua_da_corrida(hero: &mut ph2d_editor_core::HeroScreen) {
     ph2d_panel_timeline::state::request_arrange_tab();
 }
 
+/// ⭐ **Cria a acção `nome` no Input Map e liga-lhe a `tecla`** — o prólogo de toda cena com
+/// gatilho.
+///
+/// ⚠️ **Existe porque o mesmo bloco estava escrito QUATRO vezes** (o gatilho · o abanão · o golpe ·
+/// a arma), e a cena da VIDA seria a quinta. ⭐ É idempotente nas duas metades: o `create` devolve
+/// a acção que já existe se o nome repetir, e a tecla não entra duas vezes.
+///
+/// ⛔ **A tecla vem da CENA** (`trigger_smoke::TECLA` e irmãs), onde foi medida — escrever o código
+/// dela aqui daria a segunda resposta a *«qual é a tecla?»*.
+pub(crate) fn liga_a_accao(hero: &mut ph2d_editor_core::HeroScreen, nome: &str, tecla: u32) {
+    let id = hero.input_map.create(nome);
+    if let Some(a) = hero.input_map.get_mut(id) {
+        let b = ph2d_input::Binding::Key(ph2d_input::Key(tecla));
+        if !a.bindings.contains(&b) {
+            a.bindings.push(b);
+        }
+    }
+}
+
 impl crate::App {
     /// ⭐⭐⭐ **Traz o Inspector à FRENTE no encaixe, e conta o quadro** — devolve quantos faltam.
     ///

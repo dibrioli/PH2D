@@ -160,3 +160,103 @@ Cada uma tem gate com as **duas metades** — a casa faz o que o produto quer **
 **Prova de mutação: 17 de 17 sangram** ([arnês](ferramentas/mutacao_vida_2026-09-23.sh), com
 controlo sobre o próprio filtro e modo `SECO=1` que confere só as âncoras).
 
+
+---
+
+## §8 — W2: o desenho, depois da sonda que a abre
+
+A sonda [`mede_o_golpe_que_chega`](../../crates/ph2d-physics-ecs/tests/it/mede_o_golpe_que_chega.rs)
+correu ANTES da primeira linha, e mudou o desenho em duas metades:
+
+| caso | medido | consequência |
+|---|---|---|
+| A–C · dois corpos que **nascem** sobrepostos (sólido · sensor sobre cinemático · sensor cinemático sobre estático) | o toque chega no **1.º tique** | ✅ o *«golpe perdido quando o hitbox nasce sobreposto»* do Godot **não** existe nos nossos canais |
+| D · um corpo que nasce **a meio** da corrida dentro de um sensor | visto no **dispatch em que nasce** | ✅ idem para as cópias de uma fábrica |
+| E · **projéctil** (mover cinemático, sólido) contra um dinâmico, `6`–`120 m/s` | **zero** toques; o voo acaba (`Bounces`) e o alvo **não se mexe** (`0,0000`) | ⛔⛔ **a bala nunca ENCOSTA** — o mover pára rente ao obstáculo, logo o solver não tem o que reportar. Dano só por contacto **nunca** chegaria a uma bala |
+| F · projéctil contra um estático | zero toques | idem |
+| G · bala **só-sensor** | fica **parada onde nasceu** em todas as velocidades | ⛔ **defeito do #14:** o `move_character_from` devolve `none` quando o corpo não tem forma SÓLIDA — a bala-sensor, que é o padrão *hitbox que perfura*, é inexprimível hoje |
+
+### §8.1 — ⭐⭐⭐ A fonte de um golpe são TRÊS canais, e a vida guarda a SUA memória
+
+Um par `(quem bate, quem leva)` está a **tocar** num tique se aparecer em qualquer um de:
+
+1. o **contacto sólido** do solver nesse tique (`tick_contacts`, a união dos sub-passos — quando há
+   um dinâmico no par);
+2. a **sobreposição de um sensor** depois do passo (`intersecting_collider_pairs`);
+3. ⭐ **o que o próprio MOVER bateu** nesse tique — plataforma, vista de cima e projéctil (o
+   `CharacterHit` do controlador), que é a metade que a sonda E obrigou.
+
+⛔ **A vida NÃO lê o `contact_events` nem o `trigger_events`:** esses são canais de ECRÃ, e
+re-baseiam em silêncio depois de um scrub (*«um scrub não é cem colisões»*). A vida tem de
+reproduzir, num replay, **exactamente** os golpes da corrida — logo ela guarda a sua própria memória
+de *«quem estava a tocar quem no tique anterior»* **dentro do estado que vai para o anel**. Um
+`Began` é *«está a tocar agora e não estava no tique anterior»*, contra ESSA memória.
+
+- ⭐ De graça: no tique 0 a memória está vazia, logo quem **nasce** sobreposto leva o golpe no
+  1.º tique — a propriedade da sonda A–D passa a ser da VIDA e não de um acaso do canal de ecrã.
+- ⚠️ Um mover encostado que **pára de empurrar** deixa de bater (o `CharacterHit` só existe quando
+  ele se move contra o obstáculo): o toque «acaba», e o seguinte empurrão é outro golpe. A
+  invencibilidade é o que impede isso de virar dano a dobrar — a mesma leitura do
+  `get_slide_collision` do Godot.
+
+### §8.2 — A ordem dentro do tique
+
+`controladores (movem, e ANOTAM o que bateram) → passo do solver → A VIDA (lê os três canais) → anel`
+
+A vida corre **depois** do passo e pela **porta dos dois laços** (a frente e o replay do
+`rewind_to`), a lição do `bridge::controllers`: um tique de vida que só um dos laços chamasse seria
+um scrub a devolver outra vida.
+
+### §8.3 — Morte, sinais e o que a ponte NÃO faz
+
+- A ponte **anuncia** e nunca apaga (o molde do `projectile_done`): a morte entra no dreno único da
+  shell como `DeathCause::Killed`, e só quem `is_transient` sai da cena. ⚠️ Um inimigo de
+  DOCUMENTO morre (deixa de levar golpes, grita o sinal) e **fica** — a mesma fronteira do `Destroy`.
+- Os três sinais (levou dano · curado · morreu) saem pelo `signal_events` da física, com
+  `source` = **quem tem a vida** e `other` = **quem bateu** — é isso que põe o `From Myself` do
+  suplente #24 a funcionar sem uma linha nova.
+- ⛔ **Num replay os sinais NÃO saem** (seria uma tempestade de cem golpes num scrub); o ESTADO anda.
+
+### §8.4 — ⏳ O que fica para a W2b (fronteiras nomeadas)
+
+- os verbos **`Damage`/`Heal`** da tabela de acções: eles chegam FORA do tique (a tabela corre no
+  quadro), e para um scrub devolver a vida exacta o pedido tem de ser gravado **por tique** e
+  re-aplicado no replay — o desenho de uma fita, não de uma fila;
+- a bala **só-sensor** (defeito G), que pede que o mover deixe andar um corpo sem forma sólida.
+
+### §8.5 — ✅ W2 FECHADA (2026-09-23): a ponte, a porta das mortes e a cena
+
+- **A ponte** (`bridge::health`): a lei corre UMA vez por tique, depois do passo, pela porta
+  `depois_do_passo` — chamada pelo laço da FRENTE (`publicar = true`) e pelo do REPLAY
+  (`publicar = false`). O estado (`HealthState` = vida · gerador · memória do toque) vai no anel
+  dentro do `ControllerMemory`, que é uma struct: esquecê-lo no `record`/`seed` não compila.
+- **As três fontes, cada uma com gate próprio** (`tests/it/health.rs`): o contacto sólido (uma
+  pedra que cai) · o sensor (um espinho, e quem nasce sobreposto leva o golpe no 1.º tique) · o
+  canal do MOVER nas **três** pontes (a bala · a vista de cima · a plataforma cinemática).
+  ⚠️⚠️ **Os gates das duas últimas nasceram da LEITURA do arnês de mutação:** o `extend` vive em
+  três pontes e só a do projéctil tinha régua — *um canal ligado em um dos três ramos lê-se como
+  ligado*. E o do contacto sólido pela mesma leitura: nenhum gate usava um corpo DINÂMICO.
+- **A porta das mortes** (`bridge::mortes::mortes_anunciadas`) junta o voo acabado (`Spent`), a
+  vida a zero (`Killed`) e a bala `Vanish` que bateu (`Spent`), filtradas por `is_transient` e sem
+  repetidos. ⭐ Ela nasceu de um CORTE da shell (o bloco do projéctil saiu do
+  `fase_fabrica_e_morte`, que encolheu `18` linhas), e ⛔ **não tinha gate nenhum** — a fase que a
+  chama pede a `App`. Hoje: `so_sai_da_cena_quem_nasceu_numa_corrida`, com os dois CONTROLOS de
+  documento (o inimigo morre e FICA; a bala pára).
+- ⛔⛔ **O registo, o degrau de `PROJECT_SCHEMA` e o catálogo ESPERAM a W3**, e a razão é um gate
+  que o portão apanhou: `every_registered_physics_component_has_a_ui_writer` e
+  `every_registered_component_has_a_descriptor` reprovam um componente registado sem escritor de
+  UI nem descritor — a saída que o RAIO (#21) já tomou. Consequência declarada: hoje uma `Health`
+  **não viaja no `.ph2dproj`** e a paleta não a oferece; a cena monta-a por código. A W3 faz as
+  quatro coisas no MESMO commit (registo +2 · degrau · catálogo · secção).
+- **A cena** `PH2D_VIDA_SMOKE=1` (`ph2d-app-components::vida_smoke`): quatro alvos numa coluna com
+  vidas `10`/`20`/`30` e o CONTROLO (um aliado da mesma equipa), e **zero** linhas de tabela — a
+  morte é da vida. Os três gates dela correm a lei **com os números da cena** (lidos do mundo que o
+  `montar` deixou), e o prólogo da shell passou a chamar a porta `liga_a_accao`, que apagou quatro
+  cópias do bloco *«cria a acção e liga-lhe a tecla»*.
+- **Prova de mutação: 23 de 23 sangram** (`ferramentas/mutacao_vida_w2_2026-09-23.sh`) —
+  ⚠️ **22 de 23 na 1.ª corrida:** apagar o ramo do `damage_spent` na porta das mortes deixava o gate
+  verde, porque a bala dele também acaba o VOO ao bater e o `projectile_done` anunciava-a pelo outro
+  ramo. *Uma fixtura em que dois caminhos chegam ao mesmo resultado não testa nenhum deles* — o
+  gate ganhou a pedra que cai (um `Vanish` que não voa), com o `Stay` como CONTROLO.
+- **Portão:** `nextest-impacted` **17 835 / 17 835** · clippy `-D warnings` a zero · censos da
+  árvore combinada **127 / 127**.

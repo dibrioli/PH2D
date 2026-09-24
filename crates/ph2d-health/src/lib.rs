@@ -7,7 +7,7 @@
 //! É o **porte** da extensão *Health* do GDevelop 5 (versão `0.4.0`, @4ian, **MIT** — a triagem da
 //! pesquisa [27](../../../docs/Components/27_pesquisa_vida_e_dano.md) §2 parou na primeira porta
 //! aberta), e a régua não é a leitura: é o **ORÁCULO CORRIDO** — o código que o próprio gerador do
-//! GDevelop produz, a correr no runtime dele sem interface, gravado quadro a quadro em 18 cenários
+//! GDevelop produz, a correr no runtime dele sem interface, gravado quadro a quadro em 19 cenários
 //! ([`ferramentas/gdevelop_health`](../../../docs/Components/ferramentas/gdevelop_health/README.md)).
 //! O arnês `tests/it/oraculo_do_gdevelop.rs` corre esta lei sobre os mesmos pedidos e exige os
 //! mesmos números **ao bit**, em três momentos de cada quadro.

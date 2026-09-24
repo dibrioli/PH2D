@@ -60,6 +60,10 @@ impl PhysicsBridge {
             let got = self
                 .world
                 .move_character(m.handle, m.wanted, m.params, m.passing, m.layer, &mut hits);
+            // ⭐ E o que ele BATEU vira toque para a VIDA (plano 28 §8.1) — um corpo cinemático
+            // pára rente ao obstáculo, logo o solver nunca verá este par.
+            self.toques_do_mover
+                .extend(hits.iter().filter_map(|h| h.body.map(|b| (m.entity, b))));
             // ── O EMPURRÃO (W-KinPush) ───────────────────────────────────────
             //
             // ⚠️ **Um corpo cinemático tem massa INFINITA para o solver**, então

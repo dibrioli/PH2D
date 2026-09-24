@@ -26,6 +26,8 @@ mod damping;
 mod diagnostics;
 pub mod fk;
 mod grab;
+/// ⭐⭐⭐ **A VIDA** (plano 28, W2) — ver o cabeçalho dele.
+pub mod health;
 mod hold;
 pub mod ik;
 mod ik_lead;
@@ -36,6 +38,8 @@ mod joint_drive;
 mod joint_respawn;
 pub mod joints;
 mod kinematic;
+/// ⭐ **As mortes anunciadas** — a porta que o dreno da shell lê (plano 28, W2).
+mod mortes;
 /// A TRADUÇÃO `PhysicsJoint` → `JointDesc` — irmão do `joints` pelo cap de 700
 /// LOC, cortado por responsabilidade (docs dele).
 /// A metade PEÇA do reconcile — os colliders extra de um corpo composto.
@@ -525,6 +529,22 @@ pub struct PhysicsBridge {
     /// ⚠️ Quem apaga uma entidade é a shell, no sítio onde o `Lifetime` do #12 já o faz: dois
     /// despachantes de morte seriam duas respostas à pergunta *«quando é que isto sai da cena?»*.
     projectile_done: Vec<(Entity, ph2d_projectile::Ended)>,
+    /// ⭐⭐⭐ **O estado VIVO de cada vida** (plano 28, W2) — a vida da lei, o gerador da esquiva e
+    /// *«quem tocava quem no tique anterior»*.
+    ///
+    /// ⚠️ Entra no anel pelo MESMO [`tape::ControllerMemory`] — é um TIPO, logo esquecer o `record`
+    /// ou o `seed` não compila (a lição que o doc do `player_state` escreveu antes de ela custar).
+    health_state: BTreeMap<Entity, health::HealthState>,
+    /// ⭐ **Os factos de vida deste dispatch** — a ponte ANUNCIA, nunca despacha.
+    health_events: Vec<health::HealthEvent>,
+    /// ⭐ **Quem bateu e deve sair da cena** neste dispatch ([`crate::OnHit::Vanish`]).
+    damage_spent: Vec<Entity>,
+    /// ⭐⭐ **O que cada MOVER bateu neste tique** — a 3.ª fonte de um golpe (plano 28 §8.1).
+    ///
+    /// ⚠️ **Por TIQUE**, e limpo no topo dos controladores: é lido pela vida DEPOIS do passo do
+    /// mesmo tique. A sonda `mede_o_golpe_que_chega` mediu porque existe: uma bala nunca encosta no
+    /// alvo, logo sem este canal o dano de uma bala nunca chegaria.
+    toques_do_mover: Vec<health::ToqueDoMover>,
     /// **A plataforma que cada player está ATRAVESSANDO agora** (W12).
     ///
     /// ⚠️ **Uma forma, não um relógio, e não "todas as one-way":** a descida

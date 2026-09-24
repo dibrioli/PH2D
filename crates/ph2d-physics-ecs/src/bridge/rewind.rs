@@ -118,6 +118,10 @@ impl PhysicsBridge {
             self.drive_controllers(sim);
             self.world.step();
             self.steps_taken += 1;
+            // ⭐⭐⭐ E as VIDAS deste tique replayado (plano 28 §8.2) — pela MESMA porta que o laço da
+            // frente chama, e é isso que faz um scrub devolver a vida exacta. ⚠️ `false`: o estado
+            // anda, os factos não saem (um scrub não é uma tempestade de golpes).
+            self.depois_do_passo(sim, false);
         }
         // ⚠️ **Um seed que replaya ZERO ticks deixa o memo mentindo.** O ring
         // acerta o alvo em cheio (o `STRIDE` divide o tick pedido), o laço acima
@@ -183,6 +187,11 @@ impl PhysicsBridge {
         // `launched` é o que converte `initial_speed` + o ângulo do corpo numa velocidade, **uma
         // vez só**, e nada a jusante o re-deriva de uma amostra do mundo.
         self.projectile_state.clear();
+        // ⭐⭐⭐ E as VIDAS (plano 28, W2), no mesmo commit em que nascem — os três mapas acima foram
+        // esquecidos aqui um de cada vez. No tique 0 toda vida está no `start` e ninguém tocou em
+        // ninguém: sem esta linha a 2.ª corrida começaria com os inimigos já feridos, e com a memória
+        // do toque cheia (o golpe de quem nasce sobreposto deixaria de chegar).
+        self.health_state.clear();
         // ⭐⭐⭐ E o que cada RAIO via (suplente #21) — o QUARTO mapa desta família, e ele entra no
         // mesmo commit em que nasce, de propósito: os três acima foram esquecidos aqui **um de cada
         // vez**, e o último custou um report do dono (*«o Rewind não está funcionando com os

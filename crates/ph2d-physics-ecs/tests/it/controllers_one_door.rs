@@ -28,6 +28,10 @@ use std::fs;
 /// replay chama-os por outra razão (a pose autorada daquele tique).
 const CONTROLADORES: &[&str] = &["drive_players", "drive_topdown", "drive_projectiles"];
 
+/// ⭐⭐⭐ **O que responde AO passo** (plano 28 §8.2) — a porta irmã, depois do `step`. Hoje é a VIDA,
+/// e ela nasceu já dentro da porta: o quarto assunto não repetiu o defeito dos três primeiros.
+const DEPOIS_DO_PASSO: &[&str] = &["drive_health"];
+
 /// O ficheiro da ponte, sem comentários.
 ///
 /// ⚠️⚠️ **Tirar os comentários não é higiene, é a diferença entre medir e não medir:** este
@@ -79,7 +83,7 @@ fn os_dois_lacos_dirigem_os_controladores_pela_mesma_porta() {
             continue;
         }
         let src = codigo(&f);
-        for c in CONTROLADORES {
+        for c in CONTROLADORES.iter().chain(DEPOIS_DO_PASSO) {
             if src.contains(&format!("self.{c}(")) {
                 acusados.push(format!("{f} chama self.{c}(…)"));
             }
@@ -94,7 +98,7 @@ fn os_dois_lacos_dirigem_os_controladores_pela_mesma_porta() {
 
     // E a outra metade, sem a qual a de cima passa com a porta VAZIA: ela chama os três.
     let porta = codigo("controllers.rs");
-    for c in CONTROLADORES {
+    for c in CONTROLADORES.iter().chain(DEPOIS_DO_PASSO) {
         assert!(
             porta.contains(&format!("self.{c}(")),
             "a porta única não chama `{c}` — os {} controladores são o assunto dela",
@@ -118,21 +122,35 @@ fn a_porta_unica_e_chamada_pelos_dois_lacos_que_andam_o_relogio() {
             "o laço de `{laco}` não chama a porta dos controladores — um scrub e um play \
              deixariam de ser a mesma simulação"
         );
+        // ⭐ E a porta de DEPOIS do passo (a VIDA, plano 28 §8.2). **Mutação que deve sangrar:**
+        // apagar `self.depois_do_passo(sim, false);` do `rewind.rs` — um scrub devolveria a vida da
+        // corrida anterior.
+        assert!(
+            codigo(laco).contains("self.depois_do_passo("),
+            "o laço de `{laco}` não chama a porta de depois do passo — a vida deixaria de ser a \
+             mesma num scrub e num play"
+        );
     }
 }
 
 /// ⭐⭐ **A memória de voo é ESQUECIDA ao reconstruir do repouso** — a metade do report do dono que
 /// não é sobre o laço.
 ///
-/// ⚠️ Ela vive aqui, ao lado das irmãs, porque o `rebuild_from_rest` limpa **três** memórias e
+/// ⚠️ Ela vive aqui, ao lado das irmãs, porque o `rebuild_from_rest` limpa **quatro** memórias e
 /// esquecer uma é mudo: o mundo volta ao repouso e o controlador continua a corrida anterior.
 /// A do projéctil era a que faltava (`launched` ⇒ a bala nunca re-nasce a ler o ângulo autorado).
 ///
 /// **Mutação que deve sangrar:** apagar `self.projectile_state.clear();` do `rebuild_from_rest`.
 #[test]
-fn reconstruir_do_repouso_esquece_as_tres_memorias_de_controlador() {
+fn reconstruir_do_repouso_esquece_as_memorias_de_controlador() {
     let src = codigo("rewind.rs");
-    for memoria in ["player_state", "topdown_state", "projectile_state"] {
+    for memoria in [
+        "player_state",
+        "topdown_state",
+        "projectile_state",
+        // ⭐ A VIDA (plano 28, W2): sem ela a 2.ª corrida começa com os inimigos já feridos.
+        "health_state",
+    ] {
         assert!(
             src.contains(&format!("self.{memoria}.clear()")),
             "o `rebuild_from_rest` não esquece a `{memoria}` — reconstruir do repouso É o tique 0, \

@@ -244,6 +244,8 @@ impl SimComponent for Collider {}
 /// damping, one-way, the force zone). Re-exported so `components::GravityScale` and
 /// friends keep working: this is a LOC split, not a new address for the types.
 mod area;
+/// ⭐⭐⭐ **VIDA e DANO** (plano 28, W2) — ver o cabeçalho dele.
+mod health;
 mod overrides;
 /// O componente do player de plataforma (docs dele).
 mod player;
@@ -262,6 +264,7 @@ mod topdown;
 pub use area::{
     AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaForceWorldAxes, AreaFormDrag, AreaTorque,
 };
+pub use health::{Damage, Health, OnHit};
 pub use overrides::{
     Ccd, CombineRule, DampMode, DampingOverride, Dominance, GravityScale, InitialVelocity,
     LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine, OneWayPlatform,

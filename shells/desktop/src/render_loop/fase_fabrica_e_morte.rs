@@ -276,29 +276,11 @@ impl crate::App {
         if let Some((centro, meia)) = camera_rect {
             deaths.extend(ph2d_ecs::reap_outside(sim.world_mut(), centro, meia));
         }
-        // ⭐⭐⭐ **QUEM MORRE por o VOO ter acabado** (TOP-20 #14) — ao lado do de cima, e pelo mesmo
-        // desenho: a ponte do projéctil **anuncia**, e quem remove é este dreno. *Dois despachantes
-        // de morte seriam duas respostas à pergunta «quando é que isto sai da cena?».*
-        //
-        // ⚠️⚠️ **E o filtro é a lei que protege o trabalho do artista:** um projéctil que ele pôs
-        // na cena à mão é **documento**, e apagá-lo por ter percorrido o alcance destruiria autoria.
-        // A porta é a [`ph2d_ecs::is_transient`] — *o que nasce numa corrida não é documento* —, e
-        // ela já tem dois leitores nesta casa. Um projéctil de documento cujo voo acabou **pára** e
-        // fica na cena.
-        deaths.extend(
-            physics
-                .projectile_done()
-                .iter()
-                .map(|(e, _)| *e)
-                .filter(|&e| ph2d_ecs::is_transient(sim.world(), e))
-                .map(|entity| ph2d_ecs::Death {
-                    entity,
-                    // ⚠️ **Calada**: o sinal de morte de um projéctil é assunto do `Lifetime`, que
-                    // já o autora. Inventar um aqui seria um segundo campo para a mesma coisa.
-                    signal: String::new(),
-                    why: ph2d_ecs::DeathCause::Spent,
-                }),
-        );
+        // ⭐⭐⭐ **QUEM MORRE por causa da FÍSICA** — o voo acabou (TOP-20 #14), a vida chegou a zero
+        // ou quem bateu some (plano 28, W2). A ponte **anuncia** e já filtra por `is_transient`
+        // (uma peça posta à mão é documento, e fica); este dreno é quem remove. Ver
+        // `ph2d_physics_ecs::PhysicsBridge::mortes_anunciadas`.
+        deaths.extend(physics.mortes_anunciadas(sim.world()));
         // Os sinais de morte saem ANTES do dreno: depois dele a entidade já não existe, e o nome
         // dela viajaria vazio.
         let mortes: Vec<(u64, String)> = deaths

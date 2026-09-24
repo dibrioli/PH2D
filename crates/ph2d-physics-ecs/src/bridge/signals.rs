@@ -24,10 +24,11 @@ use ph2d_ecs::{Entity, SimWorld};
 
 use ph2d_platformer::{JumpKind, PlayerEvent};
 
-use crate::{PlayerSignals, RaySignals, SignalOnHit, SignalOnLeave, SignalTagFilter};
+use crate::{Health, PlayerSignals, RaySignals, SignalOnHit, SignalOnLeave, SignalTagFilter};
 
 use super::PhysicsBridge;
 use super::contacts::ContactPhase;
+use super::health::HealthEventKind;
 
 /// **Um sinal que a física emitiu neste dispatch.**
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -177,6 +178,34 @@ impl PhysicsBridge {
                     });
                 }
             }
+        }
+        // ── E A VIDA (plano 28, W2) ──────────────────────────────────────────
+        // ⚠️ **A QUINTA fonte da MESMA porta.** `source` é quem TEM a vida e `other` é quem bateu —
+        // é isso que põe o `From Myself` da tabela (suplente #24) a funcionar sem uma linha nova:
+        // um inimigo que morre grita, e só ele reage.
+        //
+        // ⚠️ **Os nomes são os que o artista escreveu na [`Health`]**, e um nome vazio é silêncio
+        // (o molde do `SignalOnHit`). A esquiva e o escudo NÃO têm nome: são factos para o painel e
+        // para a W5 (o piscar), não contratos — um consumidor que os quisesse casaria em três
+        // strings para saber uma coisa.
+        for ev in self.health_events() {
+            let Some(vida) = sim.world().get::<Health>(ev.target) else {
+                continue;
+            };
+            let nome = match ev.kind {
+                HealthEventKind::Damaged { .. } => &vida.on_damage,
+                HealthEventKind::Died => &vida.on_death,
+                HealthEventKind::Shielded { .. } | HealthEventKind::Dodged => continue,
+            };
+            let nome = nome.trim();
+            if nome.is_empty() || !passa(ev.target, ev.source) {
+                continue;
+            }
+            out.push(SignalEvent {
+                name: nome.to_owned(),
+                source: ev.target,
+                other: ev.source,
+            });
         }
         // ── E O PLAYER (`W-PlayerOut`, A3) ───────────────────────────────────
         // ⚠️ **A TERCEIRA fonte da MESMA porta, e não uma segunda porta.** Este

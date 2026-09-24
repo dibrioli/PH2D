@@ -56,20 +56,16 @@ impl crate::App {
         self.timeline.flags.simulate_physics = true;
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
             // ⚠️ **A acção nasce AQUI e não na cena** — o mapa vive no `HeroScreen`, que é do
-            // editor, e a cena só vê o mundo. ⭐ O `create` devolve a que já existe se o nome
-            // repetir, logo isto é idempotente por construção.
-            let id = hero
-                .input_map
-                .create(ph2d_app_components::trigger_smoke::ACCAO);
-            if let Some(a) = hero.input_map.get_mut(id) {
-                // ⛔⛔ **A tecla é MEDIDA e vive na cena** — ver [`trigger_smoke::TECLA`]. A 1.ª
-                // redacção usava o ESPAÇO, e o dono devolveu-a: *«espaço é o atalho do play da
-                // timeline e há conflito»*. Ele é o **Play/Pause do transporte**, logo um toque
-                // parava a corrida E disparava.
-                a.bindings.push(ph2d_input::Binding::Key(ph2d_input::Key(
-                    ph2d_app_components::trigger_smoke::TECLA,
-                )));
-            }
+            // editor, e a cena só vê o mundo.
+            // ⛔⛔ **A tecla é MEDIDA e vive na cena** — ver [`trigger_smoke::TECLA`]. A 1.ª
+            // redacção usava o ESPAÇO, e o dono devolveu-a: *«espaço é o atalho do play da
+            // timeline e há conflito»*. Ele é o **Play/Pause do transporte**, logo um toque parava
+            // a corrida E disparava.
+            crate::components_scenes::liga_a_accao(
+                hero,
+                ph2d_app_components::trigger_smoke::ACCAO,
+                ph2d_app_components::trigger_smoke::TECLA,
+            );
             // ⭐⭐⭐ **E uma acção SEM TECLA, de propósito** — o sujeito do passo (6) do roteiro.
             //
             // ⛔⛔ **Ela tem de ser criada aqui, e isso foi MEDIDO:** as sete acções do
@@ -187,15 +183,12 @@ impl crate::App {
         self.timeline.flags.simulate_physics = true;
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
             // ⚠️ **A acção nasce AQUI e não na cena** — o mapa vive no `HeroScreen`, que é do
-            // editor. ⭐ O `create` devolve a que já existe se o nome repetir.
-            let id = hero
-                .input_map
-                .create(ph2d_app_components::shake_smoke::ACCAO);
-            if let Some(a) = hero.input_map.get_mut(id) {
-                a.bindings.push(ph2d_input::Binding::Key(ph2d_input::Key(
-                    ph2d_app_components::shake_smoke::TECLA,
-                )));
-            }
+            // editor.
+            crate::components_scenes::liga_a_accao(
+                hero,
+                ph2d_app_components::shake_smoke::ACCAO,
+                ph2d_app_components::shake_smoke::TECLA,
+            );
             hero.panel_visibility.insert("inspector", true);
             // ⚠️ **A RÉGUA DO TRANSPORTE abre junto** — o passo (6) manda parar a corrida, e uma
             // instrução sobre o transporte num ecrã sem ele devolve *«que régua?»*.
@@ -235,14 +228,11 @@ impl crate::App {
             // ⚠️ **A acção nasce AQUI e a TECLA vem da cena do gatilho**, que é a fonte: ela foi
             // MEDIDA (o espaço é o Play/Pause do transporte, e o dono devolveu a 1.ª redacção por
             // isso). Escrever o código da tecla aqui daria a segunda resposta a *«qual é a tecla?»*.
-            let id = hero
-                .input_map
-                .create(ph2d_app_components::dano_smoke::ACCAO);
-            if let Some(a) = hero.input_map.get_mut(id) {
-                a.bindings.push(ph2d_input::Binding::Key(ph2d_input::Key(
-                    ph2d_app_components::trigger_smoke::TECLA,
-                )));
-            }
+            crate::components_scenes::liga_a_accao(
+                hero,
+                ph2d_app_components::dano_smoke::ACCAO,
+                ph2d_app_components::trigger_smoke::TECLA,
+            );
             hero.panel_visibility.insert("inspector", true);
             // ⚠️ **A RÉGUA abre junto** — esta cena inteira depende do relógio A ANDAR (os alvos
             // nascem de um `Timer`), e sem a timeline o dono não VÊ que a corrida anda. *Uma
@@ -481,16 +471,41 @@ impl crate::App {
         self.components.smokes.weapon_raise = crate::components_scenes::LEVANTA_O_INSPECTOR;
         self.timeline.flags.simulate_physics = true;
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            // ⭐ O `create` devolve a que já existe se o nome repetir, logo isto é idempotente.
-            let id = hero
-                .input_map
-                .create(ph2d_app_components::weapon_smoke::ACCAO);
-            if let Some(a) = hero.input_map.get_mut(id) {
-                a.bindings.push(ph2d_input::Binding::Key(ph2d_input::Key(
-                    ph2d_app_components::weapon_smoke::TECLA,
-                )));
-            }
+            crate::components_scenes::liga_a_accao(
+                hero,
+                ph2d_app_components::weapon_smoke::ACCAO,
+                ph2d_app_components::weapon_smoke::TECLA,
+            );
             hero.panel_visibility.insert("inspector", true);
+            crate::components_scenes::abre_a_regua_da_corrida(hero);
+            hero.gizmo.selection = Some(montada.escolhido);
+            hero.gizmo.extra_selection.clear();
+        }
+        self.playhead.rewind();
+        self.playhead.play();
+    }
+
+    /// ⭐⭐⭐ **A cena da VIDA** (plano 28, W2) — `PH2D_VIDA_SMOKE=1`. Ver
+    /// [`ph2d_app_components::vida_smoke`].
+    ///
+    /// ⚠️ **Sem Inspector à frente, de propósito:** a secção da vida é a W3, e trazer o painel ao
+    /// topo mostraria uma entidade sem o que o roteiro nomeia. O que a cena ensina vê-se no CANVAS.
+    pub(crate) fn vida_smoke(&mut self) {
+        if self.components.smokes.vida || std::env::var_os("PH2D_VIDA_SMOKE").is_none() {
+            return;
+        }
+        let Some(cx) = self.components_ctx() else {
+            return;
+        };
+        let montada = ph2d_app_components::vida_smoke::montar(cx.sim.world_mut(), 1);
+        self.components.smokes.vida = true;
+        self.timeline.flags.simulate_physics = true;
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            crate::components_scenes::liga_a_accao(
+                hero,
+                ph2d_app_components::vida_smoke::ACCAO,
+                ph2d_app_components::trigger_smoke::TECLA,
+            );
             crate::components_scenes::abre_a_regua_da_corrida(hero);
             hero.gizmo.selection = Some(montada.escolhido);
             hero.gizmo.extra_selection.clear();

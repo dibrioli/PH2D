@@ -66,8 +66,8 @@ impl PhysicsBridge {
     /// is every frame of a scene with no triggers.
     pub(super) fn rebuild_triggers(&mut self) {
         self.triggers.clear();
-        let pairs = self.world.intersecting_collider_pairs();
-        if pairs.is_empty() {
+        let sobrepostos = self.sobreposicoes_de_sensor();
+        if sobrepostos.is_empty() {
             // ⚠️ **O diff roda mesmo com o grafo VAZIO**, e a primeira versão não
             // rodava. O early-out existe para não construir os dois mapas numa
             // cena sem triggers — mas pular o diff junto significa que
@@ -80,6 +80,35 @@ impl PhysicsBridge {
             // *Um early-out que pula uma limpeza não é um atalho, é um vazamento.*
             self.diff_trigger_entries();
             return;
+        }
+        let hits: Vec<(Entity, Entity)> = sobrepostos
+            .into_iter()
+            .map(|(forma, _, dentro)| (forma, dentro))
+            .collect();
+        for (sensor, inside) in hits {
+            self.triggers.entry(sensor).or_default().push(inside);
+        }
+        for inside in self.triggers.values_mut() {
+            inside.sort_unstable_by_key(|e| e.to_bits());
+            inside.dedup();
+        }
+        self.diff_trigger_entries();
+    }
+
+    /// ⭐ **Quem está dentro de que sensor, AGORA** — a porta que o `rebuild_triggers` e a VIDA
+    /// (plano 28 §8.1) leem.
+    ///
+    /// Cada entrada é `(forma do sensor, corpo dela, corpo que está dentro)`. Vazia (e sem mapa
+    /// construído) quando nada sobrepõe um sensor, que é todo quadro de uma cena sem triggers.
+    ///
+    /// ⚠️ **Ela nasceu de um CORTE e não de uma cópia:** a vida precisa da mesma resolução (o
+    /// collider de uma PEÇA pelo handle directo, o de um corpo pelo `collider_body`), e escrevê-la
+    /// duas vezes seria duas respostas a *«de quem é este collider?»* — que divergiriam no dia da
+    /// próxima W-Compound, exactamente como a W-PartSensor documenta acima.
+    pub(super) fn sobreposicoes_de_sensor(&self) -> Vec<(Entity, Entity, Entity)> {
+        let pairs = self.world.intersecting_collider_pairs();
+        if pairs.is_empty() {
+            return Vec::new();
         }
         // handle → (forma, corpo, sensor?), construído aqui uma vez (só quando um
         // sensor de fato sobrepõe alguma coisa) em vez de mantido todo frame.
@@ -105,7 +134,7 @@ impl PhysicsBridge {
             let e = *by_body.get(&body.into_raw_parts())?;
             Some((e, e, self.bodies.get(&e)?.rest.is_sensor))
         };
-        let mut hits: Vec<(Entity, Entity)> = Vec::new();
+        let mut out = Vec::new();
         for (c1, c2) in pairs {
             let (Some((shape1, body1, sensor1)), Some((shape2, body2, sensor2))) =
                 (resolve(c1), resolve(c2))
@@ -115,20 +144,13 @@ impl PhysicsBridge {
             // Pelo menos um lado é sensor (um par sólido nunca se intersecta),
             // mas os dois podem ser — cada sensor lista o CORPO do outro lado.
             if sensor1 {
-                hits.push((shape1, body2));
+                out.push((shape1, body1, body2));
             }
             if sensor2 {
-                hits.push((shape2, body1));
+                out.push((shape2, body2, body1));
             }
         }
-        for (sensor, inside) in hits {
-            self.triggers.entry(sensor).or_default().push(inside);
-        }
-        for inside in self.triggers.values_mut() {
-            inside.sort_unstable_by_key(|e| e.to_bits());
-            inside.dedup();
-        }
-        self.diff_trigger_entries();
+        out
     }
 
     /// Diff the standing set against the previous one to fill

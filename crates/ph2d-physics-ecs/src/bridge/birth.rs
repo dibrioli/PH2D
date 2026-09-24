@@ -90,6 +90,10 @@ impl PhysicsBridge {
             topdown_state: BTreeMap::new(),
             projectile_state: BTreeMap::new(),
             projectile_done: Vec::new(),
+            health_state: BTreeMap::new(),
+            health_events: Vec::new(),
+            damage_spent: Vec::new(),
+            toques_do_mover: Vec::new(),
             player_drop: BTreeMap::new(),
         }
     }
@@ -110,6 +114,9 @@ impl PhysicsBridge {
         self.joint_query = None;
         self.wheel_query = None;
         self.ring.clear(); // cached states belong to the document being left
+        // ⭐ E as VIDAS (plano 28, W2): elas são estado da corrida do documento que se deixa, e o
+        // `last_stepped = 0` acima recomeça-a do repouso — onde toda vida está no `start`.
+        self.health_state.clear();
         // Entity bits are recycled here, so a held input would start driving
         // SOMEONE ELSE — the same trap that made joint anchors travel by NAME.
         self.clear_player_input();

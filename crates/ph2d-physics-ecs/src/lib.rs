@@ -65,6 +65,8 @@ pub use bridge::pose_owner::PlayerLiveness;
 // SEMENTE de anexar um corpo faz a mesma pergunta (report do dono, 19/09). Ver o doc dela.
 pub use bridge::pose_owner::controlador_cinematico;
 pub use bridge::rope::pulley_rig;
+// ⭐⭐⭐ A VIDA na ponte (plano 28, W2): os factos, o estado e a leitura.
+pub use bridge::health;
 // A geometria da corda de uma polia. Re-exportada porque a shell **não depende
 // de `ph2d-physics`** — a mesma contenção que mantém o rapier confinado — e o
 // desenho tem de rodar a MESMA rota que o solver roda.
@@ -74,12 +76,13 @@ pub use bridge::{
 };
 pub use components::{
     AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaForceWorldAxes, AreaFormDrag,
-    AreaTorque, BodyKind, Ccd, Collider, ColliderShape, CombineRule, DampMode, DampingOverride,
-    Dominance, GravityScale, InitialVelocity, LockPositionX, LockPositionY, LockRotation,
-    MassOverride, MaterialCombine, NoWallCling, OneWayPlatform, PlatformLift, PlatformPlayer,
-    PlayerMode, PlayerSignals, ProjectileMotion, PulleyWheel, RayHit, RaySensor, RaySignals,
-    RigidBody, RopeStops, SignalOnHit, SignalOnLeave, SignalTagFilter, TopDownPlayer, WalkSurface,
-    WestonAxle, WrapSide, reseat_mounted_axle, reseat_wheel_geometry, rope_joint_of,
+    AreaTorque, BodyKind, Ccd, Collider, ColliderShape, CombineRule, Damage, DampMode,
+    DampingOverride, Dominance, GravityScale, Health, InitialVelocity, LockPositionX,
+    LockPositionY, LockRotation, MassOverride, MaterialCombine, NoWallCling, OnHit, OneWayPlatform,
+    PlatformLift, PlatformPlayer, PlayerMode, PlayerSignals, ProjectileMotion, PulleyWheel, RayHit,
+    RaySensor, RaySignals, RigidBody, RopeStops, SignalOnHit, SignalOnLeave, SignalTagFilter,
+    TopDownPlayer, WalkSurface, WestonAxle, WrapSide, reseat_mounted_axle, reseat_wheel_geometry,
+    rope_joint_of,
 };
 pub use interaction::{
     HoldMode, InteractionSettings, InteractionTool, MAX_ATTRACT_FORCE, MAX_BLAST_IMPULSE,
@@ -215,6 +218,12 @@ pub fn register_physics_components(reg: &mut ComponentRegistry) {
     // ⭐ O PROJÉCTIL de arcade (TOP-20 #14). ⚠️ Sem o registo, o artista afina uma bala e o
     // ficheiro guarda um objecto sem voo nenhum.
     reg.register_default::<ProjectileMotion>("ph2d::physics::ProjectileMotion");
+    // ⛔ **A VIDA e o DANO (plano 28) NÃO estão registados ainda, e é de propósito** — o gate
+    // `every_registered_physics_component_has_a_ui_writer` reprovou no instante em que entraram, e a
+    // saída que ele oferece (*«ou não o registe ainda»*) é a que o RAIO (suplente #21) já tomou: o
+    // registo, o degrau de `PROJECT_SCHEMA` e as entradas do catálogo esperam a wave da SECÇÃO do
+    // Inspector (W3). Registados sem painel, seriam números gravados no ficheiro do artista que
+    // nenhuma linha deixa mexer. A lei deles já corre na ponte (W2) em cenas montadas por código.
     reg.register_default::<PlayerMode>("ph2d::physics::PlayerMode");
     reg.register_default::<WalkSurface>("ph2d::physics::WalkSurface");
     reg.register_default::<NoWallCling>("ph2d::physics::NoWallCling");

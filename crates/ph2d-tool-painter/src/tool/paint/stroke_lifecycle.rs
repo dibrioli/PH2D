@@ -120,6 +120,7 @@ impl PainterTool {
             self.paint.wet_cum_dirty = None;
         }
         self.paint.wet_frame_dirty = None;
+        self.paint.wet_mistura.novo_traco(); // o `proprio` da mistura molhada é deste traço só
         // THIS-stroke footprint restarts every stroke (even continuing a wet session): only what THIS
         // stroke paints re-wets the moisture map, so earlier washes keep their own drying clocks (#4).
         self.paint.wet_stroke_dirty = None;

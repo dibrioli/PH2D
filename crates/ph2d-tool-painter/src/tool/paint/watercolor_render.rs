@@ -569,7 +569,14 @@ impl PainterTool {
                     // own to blend (its tint is the dissolve), and `water = 1` pushed the mix to
                     // full-replace — territory where `ryb_mix` degenerates (OPT-2's documented
                     // defect; the smoke's navy-blue ring). Wet keeps driving it as before.
-                    let mix_amt = st.pigment_mix.max(st_wet_px * wet_paint);
+                    // ⚠️ O `Pigment` só mistura com TINTA: sobre papel a presença é 0 e o botão
+                    // ligado não desbota a lavagem ([`super::watercolor_mistura`], medido 2026-09-24).
+                    let tinta = if st.pigment_mix > 0.0 {
+                        super::watercolor_mistura::presenca_de_tinta(base, ground, gi).0
+                    } else {
+                        0.0
+                    };
+                    let mix_amt = (st.pigment_mix * tinta).max(st_wet_px * wet_paint);
                     if mix_amt > 0.0 {
                         // The (possibly lifted) base APPEARANCE over the ground — for an opaque base with
                         // no lift this is the raw base bytes exactly (`l2s(s2l(b)) == b`); for a
@@ -580,24 +587,13 @@ impl PainterTool {
                             f32::from(lut.l2s_byte(sb[1])) / 255.0,
                             f32::from(lut.l2s_byte(sb[2])) / 255.0,
                         ];
-                        // ⛔⛔ **A LEI AQUI CONTINUA RYB, e a troca para o Kubelka–Munk foi
-                        // CONSTRUÍDA, MEDIDA e REVERTIDA** (ordem do dono 2026-09-20: *«trocar as
-                        // duas para a lei do Wet Paint»*; o Digital JÁ trocou, em
-                        // [`ph2d_painter_brush::blend::blend_over_pigment`]).
-                        //
-                        // ⚠️ **O que ela quebra não é a cor, é a FAIXA DINÂMICA:** aqui o parceiro
-                        // da mistura é a BASE — papel quase branco, `K/S ≈ 0` —, e um lerp em `K/S`
-                        // contra o zero é violentamente não-linear: um pigmento saturado escurece
-                        // até ao chão mesmo com `film_a` modesto. Medido pelo produto, o
-                        // `watercolor_soak_deepens_and_widens_the_dissolve_while_parked` passou a
-                        // ler **o MESMO pixel** (`228,23,23`) para 2 s de demora e para a passagem
-                        // rápida: os dois lados saturam e o knob deixa de modular.
-                        //
-                        // ⭐ **E a pista da 2.ª tentativa está NOMEADA:** o K–M para *«uma camada de
-                        // pigmento SOBRE um fundo»* não é o `mix` — é o **glaze**
-                        // ([`ph2d_wet_paint::colorops::km_glaze_channel_linear`], que já existe e é
-                        // energia-limitado). *Misturar com o papel trata o papel como pigmento;
-                        // envernizar sobre ele é a operação que este sítio de facto faz.*
+                        // ⛔⛔ **A LEI AQUI CONTINUA RYB:** a troca para o Kubelka–Munk foi CONSTRUÍDA,
+                        // MEDIDA e REVERTIDA (handoff §17.3) — o parceiro é a BASE, e um lerp em `K/S`
+                        // contra papel (`K/S ≈ 0`) satura: o `watercolor_soak_…` leu o MESMO pixel
+                        // para as duas demoras. A pista da 2.ª tentativa é o **glaze**
+                        // ([`ph2d_wet_paint::colorops::km_glaze_channel_linear`]). ⚠️ Tinta molhada
+                        // sobre tinta molhada NÃO passa aqui: mistura-se no depósito, com o K–M
+                        // ([`super::watercolor_mistura`] — ali os dois parceiros são pigmento).
                         let mixed = ryb_mix(
                             mix_base,
                             [

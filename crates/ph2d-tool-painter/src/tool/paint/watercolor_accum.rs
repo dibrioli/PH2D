@@ -295,6 +295,7 @@ impl PainterTool {
     /// Zero the per-stroke deposited-colour buffer (retain capacity); twin of [`Self::clear_wet_coverage`].
     pub(super) fn clear_wet_color(&mut self) {
         self.paint.stroke_color.iter_mut().for_each(|c| *c = 0);
+        self.paint.wet_mistura.novo_traco();
     }
 
     /// Splat each dab's soft disc into the per-stroke coverage (max-blend = the wet "one pass" union,
@@ -591,6 +592,12 @@ impl PainterTool {
         let mut rng = super::tiling::DabRng::new(self.paint.tex_rng);
         let shape_img_owned = self.paint.shape_image.as_ref().map(|i| i.as_mask());
         let canvas = [fw as f32, fh as f32];
+        // O `Pigment` mistura a cor nova com a tinta que a SESSÃO já tinha ([`super::watercolor_mistura`]).
+        let mistura = self.paint.brush.effective_pigment_mix();
+        let planos = &mut self.paint.wet_mistura;
+        if mistura > 0.0 {
+            planos.garante(fw * fh);
+        }
         let buf = &mut self.paint.stroke_color;
         for (di, (d, (dcol, prio, depl))) in dabs.iter().zip(&mixed).enumerate() {
             // Frame draw BEFORE any skip — mirror of the coverage pass (stream sync; see there).
@@ -659,6 +666,10 @@ impl PainterTool {
                         continue;
                     }
                     let idx = (base + x) * 4;
+                    if mistura > 0.0 {
+                        super::watercolor_mistura::deposita(buf, planos, idx, col, a, mistura);
+                        continue;
+                    }
                     let da = f32::from(buf[idx + 3]) / 255.0;
                     let na = a + da * (1.0 - a); // straight-alpha over
                     if na <= 0.0 {

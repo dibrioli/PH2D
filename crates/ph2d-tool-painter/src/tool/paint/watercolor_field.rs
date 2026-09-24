@@ -286,25 +286,11 @@ pub(super) fn build_rewet_fields(
             for li in 0..lw {
                 let gx = (((lox0 + li) * ds) + half).min(fw - 1);
                 let bi = (gy * fw + gx) * 4;
-                let ab = f32::from(base[bi + 3]) / 255.0;
-                let (gr, gg, gb) = (
-                    f32::from(ground[bi]),
-                    f32::from(ground[bi + 1]),
-                    f32::from(ground[bi + 2]),
-                );
-                // The base over the real ground, straight sRGB bytes (the paint as seen).
-                let r = f32::from(base[bi]) * ab + gr * (1.0 - ab);
-                let g = f32::from(base[bi + 1]) * ab + gg * (1.0 - ab);
-                let b = f32::from(base[bi + 2]) * ab + gb * (1.0 - ab);
-                // Presence = how far this pixel departs from the LOCAL ground — only the active
-                // layer's own paint differs from it (an unpainted pixel composites to the ground
-                // exactly), so the reference is per-pixel true, light pigments included. The old
-                // global-cream reference read a white canvas as 0.8 presence everywhere (flooded
-                // the pool, "matou o efeito dinâmico do spread"), and paint LIGHTER than cream
-                // as none. Dead-zoned so anti-aliasing crumbs don't count as paint (wet_edges
-                // `PAINT_LO`/`PAINT_HI`).
-                let d = (gr - r).abs().max((gg - g).abs()).max((gb - b).abs());
-                let p = smoothstep(14.0, 50.0, d); // LITERAL-PX-OK: wet_edges PAINT_LO/PAINT_HI
+                // Presence = how far this pixel departs from the LOCAL ground (the rule and why it
+                // is per-pixel: [`super::watercolor_mistura::presenca_de_tinta`], one door with two
+                // readers). The old global-cream reference read a white canvas as 0.8 presence
+                // everywhere (flooded the pool, "matou o efeito dinâmico do spread").
+                let (p, [r, g, b]) = super::watercolor_mistura::presenca_de_tinta(base, ground, bi);
                 prow[li] = p;
                 rrow[li] = r * p; // presence-premultiplied: the blur averages PAINT colour only
                 grow[li] = g * p;

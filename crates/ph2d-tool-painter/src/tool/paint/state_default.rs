@@ -240,6 +240,7 @@ impl Default for PaintState {
             impasto_rig: Default::default(),
             stroke_coverage: Vec::new(),
             stroke_color: Vec::new(),
+            wet_mistura: Default::default(),
             watercolor_base: None,
             wet_backdrop: None,
             // WHITE ground: a plain canvas is white paper unless the artist picks otherwise (the

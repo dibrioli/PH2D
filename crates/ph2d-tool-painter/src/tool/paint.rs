@@ -92,6 +92,7 @@ mod watercolor_dry;
 pub(crate) mod watercolor_field;
 /// Watercolor optical LUTs (`s2l`/`ln`/`exp`) + pigment-body helpers; split for the LOC cap (HR-5).
 mod watercolor_lut;
+mod watercolor_mistura; // o Pigment mistura tinta com tinta: nunca com o papel, e molhado sobre molhado
 /// Watercolor Wet Mix mixer-brush state (Charge/Dilution/Pull) — per-dab colour pickup + carry.
 mod watercolor_mixer;
 /// Watercolor canvas-anchored value noise + [`NoiseTile`] sprite-wrap (seamless tiling, doc 13 #2).

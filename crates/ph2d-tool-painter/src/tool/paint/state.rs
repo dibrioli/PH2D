@@ -409,10 +409,10 @@ pub(crate) struct PaintState {
     /// reconstructs the wash from ([`super::watercolor_render`]). Empty unless the Watercolor section is
     /// active; sized lazily by the first dab, cleared on down.
     pub(super) stroke_coverage: Vec<u8>,
-    /// **Watercolor render-path** per-stroke deposited colour (RGBA, `w*h*4` = wet_edges `colC`): each
-    /// dab's colour splatted source-over (recent dab wins), so the composite pigment can vary along the
-    /// stroke (RYB pickup when Pigment is on). Empty / cleared with [`Self::stroke_coverage`].
+    /// **Watercolor render-path** deposited colour of the wet SESSION (RGBA, `w*h*4` = wet_edges `colC`):
+    /// each dab source-over, or MIXED with the session's earlier paint when Pigment is on (`wet_mistura`).
     pub(super) stroke_color: Vec<u8>,
+    pub(super) wet_mistura: super::watercolor_mistura::PlanosDaMistura,
     /// **Watercolor render-path** frozen base — the pre-stroke `canvas_rgba` (shared `Arc`, so holding it
     /// is O(1); the first composite `make_mut` forks the live buffer, leaving this pristine). The optical
     /// composite reads the "paper + prior paint" from here every frame instead of over-painting in place,
@@ -522,9 +522,8 @@ pub(crate) struct PaintState {
     /// dabs e o afilamento da beira derivam desta grandeza por tabela
     /// ([`super::watercolor_reserve`], doc 41).
     pub(super) stroke_deplete_prox: Vec<u8>,
-    /// O CAMPO da reserva guardado entre quadros ([`super::watercolor_reserve::ReserveCache`]; só o
-    /// composite o lê e escreve). ⚠️ Escrita EM MASSA nos dois planos acima ⇒ `None`: a lei e o porquê
-    /// vivem no cabeçalho de `watercolor_reserve/cache.rs`, escritos UMA vez.
+    /// O CAMPO da reserva guardado entre quadros ([`super::watercolor_reserve::ReserveCache`]). ⚠️ Escrita
+    /// EM MASSA nos dois planos acima ⇒ `None` (a lei: cabeçalho de `watercolor_reserve/cache.rs`).
     pub(super) wet_reserve_cache: Option<super::watercolor_reserve::ReserveCache>,
     /// EDGE-1 (doc 12): canvas-wide MOISTURE map (`w*h`) surviving pen-up — dries on the heartbeat
     /// (~8.5 s, DiVerdi/Adobe; Curtis wet-area mask); the bake pours the HARDENED coverage

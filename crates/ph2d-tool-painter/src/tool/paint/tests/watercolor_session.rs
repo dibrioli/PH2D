@@ -1634,12 +1634,13 @@ fn watercolor_color_change_junction_is_soft() {
 ///    `210,223,65` e pára aí — *~20 dabs amarelos passam pelo mesmo texel e cada um volta a
 ///    misturar*, lavando o azul embora geometricamente.
 ///
-/// ⭐ **A cura que SOBRA está desenhada e é estrutural:** a cobertura é **max-blended** porque uma
-/// lavagem é UMA passagem, e a cor tem de obedecer à mesma lei — o peso do depósito não é o alfa do
-/// dab, é o **INCREMENTO da cobertura** (`max(0, depois − antes)`), que é zero quando o mesmo traço
-/// repassa e positivo quando um traço NOVO chega. O incremento só é visível dentro do passe de
-/// COBERTURA (o de cor corre depois, sobre o envelope já fechado), logo a cura junta os dois passes
-/// — o que de graça apaga a duplicação do replay de rng que eles hoje mantêm em lock-step.
+/// ✅ **CURADO em 2026-09-24** ([`super::super::watercolor_mistura`], gates em
+/// `watercolor_mistura_molhada`) — e NÃO pela cura desenhada aqui antes (o incremento da cobertura,
+/// que juntava os dois passes): o plano da sessão guarda a cor de ANTES do traço e a que o traço
+/// depositou SOZINHO, e a fracção da mistura sai do alfa do próprio traço, que satura — sem tocar no
+/// passe de cobertura. Descobriu-se também a outra metade: o termo do composite misturava com o
+/// PAPEL (o amarelo sozinho desbotava). Depois da cura esta tabela lê, com o botão ligado e molhado,
+/// o meio `159,198,159` (verde) e o amarelo sozinho `253,245,140` (igual a desligado).
 #[test]
 #[ignore = "measurement, not a gate — o instrumento da recusa acima"]
 fn diag_pigment_molhado_sobre_molhado() {

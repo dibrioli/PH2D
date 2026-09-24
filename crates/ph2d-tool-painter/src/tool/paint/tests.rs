@@ -168,6 +168,7 @@ mod shape_silhouette;
 mod stroke_and_session;
 mod texture_and_tiling;
 mod watercolor_look;
+mod watercolor_mistura_molhada; // o Pigment mistura molhado sobre molhado, e nunca com o papel (2026-09-24)
 mod watercolor_parity;
 mod watercolor_reserve_cache; // o campo da reserva GUARDADO entre quadros (ADR-0173, 3.a ronda)
 mod watercolor_seams;

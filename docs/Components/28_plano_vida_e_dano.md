@@ -260,3 +260,47 @@ um scrub a devolver outra vida.
   gate ganhou a pedra que cai (um `Vanish` que não voa), com o `Stay` como CONTROLO.
 - **Portão:** `nextest-impacted` **17 835 / 17 835** · clippy `-D warnings` a zero · censos da
   árvore combinada **127 / 127**.
+
+## §9 — ✅ W3 FECHADA (2026-09-24): as secções HEALTH e DAMAGE, e a CURA do smoke da W2
+
+### §9.1 — ⛔⛔⛔ O smoke da W2 reprovou: *«ninguém sumiu ao levar muitos tiros»*
+
+A causa não estava na lei nem na ponte: **a cópia profunda da fábrica leva só os componentes
+REGISTADOS**, e a `Health`/`Damage` não eram. Os alvos nasciam SEM VIDA e as balas SEM DANO, em
+silêncio. ⛔ **O gate da W2 `cada_alvo_morre_ao_tiro_que_a_vida_dele_diz` era cego a isto por
+construção:** lia a RECEITA do mundo e montava o alvo À MÃO, sem passar pela fábrica. *Uma fixtura
+que monta à mão o que o produto COPIA mede outro programa.*
+
+- **A cura:** os dois componentes entram no registo da física (`39` registados) — e com isso o
+  `PROJECT_SCHEMA` sobe **`168 → 169`** (a escada e a tripla), porque passam a viajar no ficheiro.
+- **O gate que faltava:** `o_que_o_molde_tem_a_copia_tem` (a porta de cópia DO PRODUTO sobre todo
+  `MasterRoot` da cena), e os helpers `receita`/`bala` dos gates da cena passaram a ler a CÓPIA
+  (`copia()`), não a receita. Prova: sem o registo da vida **ou** do dano, `2` gates reprovam.
+
+### §9.2 — As secções
+
+- **`HealthNow`** é DERIVADO e NÃO registado: a ponte publica-o no fim de cada `dispatch`
+  (`publica_vidas`, só quando muda) e o Inspector lê-o para `Now: X of Y`. *A vida de AGORA não é
+  documento.*
+- **Um vocabulário para as duas secções** (`ph2d_editor_core::vida_edits`, 26 edições): um inimigo
+  que magoa ao toque mostra as duas, e duas listas pediriam à shell dois drenos para a mesma
+  entidade.
+- **A queixa vem antes dos números**, numa porta (`InspectorVidaInfo::queixa`): sem corpo · morto ·
+  não fere, da mais específica para a mais geral.
+- **Linhas que SOMEM:** o atraso da regeneração, as quatro do escudo, a semente e o *Overheal* só
+  aparecem com o interruptor deles. O gate tem as duas metades (tudo ligado ⇒ tudo pintado; tudo
+  desligado ⇒ nenhum condicional, com o CONTROLO de que a secção não sumiu inteira).
+- **Os rótulos das seis caixas foram ENCURTADOS** (`Overheal` · `Absorb Rest` · `Per Second` ·
+  `Pierce Shield` · `Pierce Armor` · `Vanish on Hit`): a varredura das elisões, com o Inspector
+  armado com a vida, acusou os seis a `126 px` — *um nome perde a explicação antes de perder
+  letras*, sem isenção nova na dívida.
+- **A cena:** o Inspector vem à frente e o roteiro ganhou o passo (7) — clicar no roxo e ver
+  `Now: 30 of 30` descer a cada tiro.
+
+### §9.3 — Portão
+
+`nextest-impacted` **17 854 / 17 854** · clippy `-D warnings` a zero · fmt · censos da árvore
+combinada **127 / 127** · mutação **7 de 7** ([arnês](ferramentas/mutacao_vida_w3_2026-09-24.sh)) ·
+a foto da cena monta os quatro alvos com o Inspector à frente. ⚠️ **O tiro real não se fotografa**
+(o XTest é ignorado na Xwayland virtual): a corrente molde → cópia → golpe → morte está coberta
+pelos gates da cena, que agora passam pela porta de cópia do produto.

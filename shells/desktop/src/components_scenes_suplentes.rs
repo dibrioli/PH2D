@@ -488,10 +488,16 @@ impl crate::App {
     /// ⭐⭐⭐ **A cena da VIDA** (plano 28, W2) — `PH2D_VIDA_SMOKE=1`. Ver
     /// [`ph2d_app_components::vida_smoke`].
     ///
-    /// ⚠️ **Sem Inspector à frente, de propósito:** a secção da vida é a W3, e trazer o painel ao
-    /// topo mostraria uma entidade sem o que o roteiro nomeia. O que a cena ensina vê-se no CANVAS.
+    /// ⭐ **O Inspector vem à FRENTE desde a W3** — a secção `Health` é o passo (7) do roteiro: um
+    /// alvo escolhido mostra a vida a DESCER a cada tiro. (Na W2 ela ainda não existia, e trazer o
+    /// painel ao topo mostrava uma entidade sem o que o roteiro nomeia.)
     pub(crate) fn vida_smoke(&mut self) {
-        if self.components.smokes.vida || std::env::var_os("PH2D_VIDA_SMOKE").is_none() {
+        if self.components.smokes.vida {
+            self.components.smokes.vida_raise =
+                self.levanta_o_inspector(self.components.smokes.vida_raise);
+            return;
+        }
+        if std::env::var_os("PH2D_VIDA_SMOKE").is_none() {
             return;
         }
         let Some(cx) = self.components_ctx() else {
@@ -499,6 +505,7 @@ impl crate::App {
         };
         let montada = ph2d_app_components::vida_smoke::montar(cx.sim.world_mut(), 1);
         self.components.smokes.vida = true;
+        self.components.smokes.vida_raise = crate::components_scenes::LEVANTA_O_INSPECTOR;
         self.timeline.flags.simulate_physics = true;
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
             crate::components_scenes::liga_a_accao(
@@ -506,6 +513,7 @@ impl crate::App {
                 ph2d_app_components::vida_smoke::ACCAO,
                 ph2d_app_components::trigger_smoke::TECLA,
             );
+            hero.panel_visibility.insert("inspector", true);
             crate::components_scenes::abre_a_regua_da_corrida(hero);
             hero.gizmo.selection = Some(montada.escolhido);
             hero.gizmo.extra_selection.clear();

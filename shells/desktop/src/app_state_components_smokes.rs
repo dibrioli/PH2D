@@ -180,6 +180,8 @@ pub(crate) struct ComponentsSmokeLatches {
     pub(crate) weapon_raise: u8,
     /// Idem para a cena do golpe — ver `trigger_raise`.
     pub(crate) dano_raise: u8,
+    /// Idem para a cena da VIDA — ver `trigger_raise`.
+    pub(crate) vida_raise: u8,
     /// ⭐ O TWEEN (suplente #22) — `PH2D_TWEEN_SMOKE=1|2`.
     pub(crate) tween: bool,
     /// Quantos quadros ainda trazem o Inspector à frente na cena do tween — ver `ray_raise`.

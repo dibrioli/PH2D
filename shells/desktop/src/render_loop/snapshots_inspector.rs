@@ -138,6 +138,7 @@ pub(super) fn publish(
         inspector_ray,
         inspector_parallax,
         inspector_weapon,
+        inspector_vida,
         inspector_tween,
         inspector_path_follow,
         inspector_statemachine,
@@ -193,6 +194,7 @@ pub(super) fn publish(
         ph2d_panel_inspector::set_current_inspector_ray(inspector_ray);
         ph2d_panel_inspector::set_current_inspector_parallax(inspector_parallax);
         ph2d_panel_inspector::set_current_inspector_weapon(inspector_weapon);
+        ph2d_panel_inspector::set_current_inspector_vida(inspector_vida);
         ph2d_panel_inspector::set_current_inspector_tween(inspector_tween);
         ph2d_panel_inspector::set_current_inspector_path_follow(inspector_path_follow);
         ph2d_panel_inspector::set_current_inspector_statemachine(inspector_statemachine);
@@ -249,6 +251,8 @@ struct LateSections {
     /// ⭐⭐⭐ A secção PARALLAX (plano 24).
     inspector_parallax: Option<ph2d_editor_core::parallax_edits::InspectorParallaxInfo>,
     inspector_weapon: Option<ph2d_editor_core::weapon_edits::InspectorWeaponInfo>,
+    /// ⭐⭐⭐ As secções HEALTH e DAMAGE (plano 28, W3).
+    inspector_vida: Option<ph2d_editor_core::vida_edits::InspectorVidaInfo>,
     inspector_tween: Option<ph2d_editor_core::tween_edits::InspectorTweenInfo>,
     /// ⭐⭐⭐ A secção PATH FOLLOW (suplente #23).
     inspector_path_follow: Option<ph2d_editor_core::path_follow_edits::InspectorPathFollowInfo>,
@@ -402,6 +406,16 @@ fn late(
     let inspector_weapon = hero.gizmo.selection.and_then(|b| {
         ph2d_app_components::weapon_inspector::build_info(sim, b, clock_playing, selected_count)
     });
+    // ⭐⭐⭐ As secções HEALTH e DAMAGE (plano 28, W3) — a vida AGORA vem do `HealthNow` que a
+    // ponte publica no mundo, logo o Inspector não precisa de alcançar a ponte.
+    let inspector_vida = hero.gizmo.selection.and_then(|b| {
+        ph2d_app_components::vida_inspector::build_vida_info(
+            sim.world(),
+            b,
+            selected_count,
+            clock_playing,
+        )
+    });
     // ⭐⭐⭐ A secção TWEEN (suplente #22) — `None` para quem não tem o componente (ADR-0166).
     //
     // ⚠️ Ela pede DUAS colunas que não vêm do componente — *há timer neste índice?* e *há sprite?*
@@ -455,6 +469,7 @@ fn late(
         inspector_ray,
         inspector_parallax,
         inspector_weapon,
+        inspector_vida,
         inspector_tween,
         inspector_path_follow,
         inspector_statemachine,

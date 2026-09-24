@@ -59,6 +59,8 @@ pub(crate) struct LiveSnapshots {
     pub parallax_info: Option<ph2d_editor_core::parallax_edits::InspectorParallaxInfo>,
     /// ⭐⭐⭐ A secção WEAPON — a arma do jogador.
     pub weapon_info: Option<ph2d_editor_core::weapon_edits::InspectorWeaponInfo>,
+    /// ⭐⭐⭐ As secções HEALTH e DAMAGE (plano 28, W3).
+    pub vida_info: Option<ph2d_editor_core::vida_edits::InspectorVidaInfo>,
     /// ⭐ O snapshot do CÉREBRO (TOP-20 #15).
     pub statemachine_info: Option<ph2d_editor_core::statemachine_edits::InspectorStateMachineInfo>,
     /// ⭐ O snapshot do SCRIPT (TOP-20 #16).
@@ -133,6 +135,7 @@ impl LiveSnapshots {
         let ray_info = crate::state_components::current_inspector_ray();
         let parallax_info = crate::state_components::current_inspector_parallax();
         let weapon_info = crate::state_components::current_inspector_weapon();
+        let vida_info = crate::state_components::current_inspector_vida();
         let statemachine_info = crate::state_components::current_inspector_statemachine();
         let script_info = crate::state_components::current_inspector_script();
         let particles_info = crate::state_components::current_inspector_particles();
@@ -167,6 +170,7 @@ impl LiveSnapshots {
             ray_info.is_some(),
             parallax_info.is_some(),
             weapon_info.is_some(),
+            vida_info.is_some(),
             statemachine_info.is_some(),
             script_info.is_some(),
             particles_info.is_some(),
@@ -199,6 +203,7 @@ impl LiveSnapshots {
             ray_info,
             parallax_info,
             weapon_info,
+            vida_info,
             statemachine_info,
             script_info,
             particles_info,

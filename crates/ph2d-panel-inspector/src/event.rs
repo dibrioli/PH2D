@@ -66,6 +66,10 @@ pub(crate) fn apply_event(
     if crate::event_projectile::apply_projectile_event(host, ev) {
         return EventOutcome::Consumed;
     }
+    // ⭐⭐⭐ A VIDA e o DANO (plano 28, W3) — sem estado de painel.
+    if crate::event_vida::apply_vida_event(host, ev) {
+        return EventOutcome::Consumed;
+    }
     // ⭐⭐⭐ A ARMA — sem estado de painel: um objecto tem UMA.
     if crate::event_weapon::apply_weapon_event(host, ev) {
         return EventOutcome::Consumed;

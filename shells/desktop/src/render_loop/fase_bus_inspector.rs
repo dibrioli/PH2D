@@ -220,6 +220,7 @@ impl crate::App {
                 ComponentEdit::Ray(e) => pd.ray_edits.push((entity_bits, e)),
                 ComponentEdit::Parallax(e) => pd.parallax_edits.push((entity_bits, e)),
                 ComponentEdit::Weapon(e) => pd.weapon_edits.push((entity_bits, e)),
+                ComponentEdit::Vida(e) => pd.vida_edits.push((entity_bits, e)),
                 ComponentEdit::Tween(e) => pd.tween_edits.push((entity_bits, e)),
                 ComponentEdit::PathFollow(e) => pd.path_follow_edits.push((entity_bits, e)),
                 ComponentEdit::StateMachine(e) => pd.statemachine_edits.push((entity_bits, e)),

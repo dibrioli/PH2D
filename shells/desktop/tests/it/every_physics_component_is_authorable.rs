@@ -24,7 +24,7 @@ use std::fs;
 /// rows de ZONA (*o que esta ÁREA faz a outros corpos*) do resto (*o que ESTE corpo é*),
 /// e o gate nasceu VERMELHO nomeando os seis componentes de área — o corte moveu os
 /// escritores para fora da lista. Foi a falha ALTA que a lista existe para produzir.
-const WRITERS: [&str; 12] = [
+const WRITERS: [&str; 13] = [
     "../../crates/ph2d-app-physics/src/physics_apply.rs",
     "../../crates/ph2d-app-physics/src/physics_area.rs",
     // ⚠️ **O nono chegou pelo mesmo caminho do quarto** (W-Surface): o cap de
@@ -76,6 +76,8 @@ const WRITERS: [&str; 12] = [
     // as entradas do catálogo **esperaram uma wave inteira** pela secção. *É a falha alta a
     // funcionar pela terceira vez nesta lista, e a segunda em que ela ANTECIPOU a wave de autoria.*
     "../../crates/ph2d-app-components/src/ray_inspector.rs",
+    // ⭐ A VIDA e o DANO (plano 28, W3): o dreno das duas secções do Inspector.
+    "../../crates/ph2d-app-components/src/vida_inspector.rs",
 ];
 
 #[test]

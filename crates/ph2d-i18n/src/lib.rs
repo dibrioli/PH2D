@@ -97,6 +97,7 @@ mod inspector;
 /// e um corte por ASSUNTO é o que esse tecto pede.
 mod inspector_game;
 mod inspector_player;
+mod inspector_vida;
 mod model3d;
 /// ⭐⭐⭐ **O vocabulário do BRILHO da cena 3D** (`docs/Render3d/12`, a `W7`) — irmão do
 /// [`model3d_render`] por RESPONSABILIDADE e para o não deixar chegar ao tecto de LOC.
@@ -506,6 +507,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| painter_layers::tr(k))
             .or_else(|| inspector::tr(k))
             .or_else(|| inspector_game::tr(k))
+            .or_else(|| inspector_vida::tr(k))
             .or_else(|| inspector_player::tr(k))
             .or_else(|| audio::tr(k))
             .or_else(|| grid_snap::tr(k))

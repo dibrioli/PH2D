@@ -66,4 +66,7 @@ pub enum ComponentEdit {
     ShakeEmitter(crate::shake_edits::EmitterFieldEdit),
     /// **WEAPON** — a arma do jogador: o ritmo, o pente e a recarga.
     Weapon(crate::weapon_edits::WeaponFieldEdit),
+    /// **HEALTH e DAMAGE** (plano 28) — as duas secções partilham UM vocabulário (ver o cabeçalho
+    /// do [`crate::vida_edits`]).
+    Vida(crate::vida_edits::VidaFieldEdit),
 }

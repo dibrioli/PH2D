@@ -110,5 +110,13 @@ pub const INSP_LIVE_RAY_COLOR: NodeId = hash_node_id("insp_live_ray_color");
 pub const INSP_LIVE_PARALLAX_COLOR: NodeId = hash_node_id("insp_live_parallax_color");
 /// O ponto de cor da secção WEAPON.
 pub const INSP_LIVE_WEAPON_COLOR: NodeId = hash_node_id("insp_live_weapon_color");
+/// O cabeçalho dobrável da secção HEALTH — quem LEVA (plano 28, W3).
+pub const INSP_LIVE_HEALTH_SECTION: NodeId = hash_node_id("insp_live_health_section");
+/// O ponto de cor da secção HEALTH.
+pub const INSP_LIVE_HEALTH_COLOR: NodeId = hash_node_id("insp_live_health_color");
+/// O cabeçalho dobrável da secção DAMAGE — quem BATE (plano 28, W3).
+pub const INSP_LIVE_DAMAGE_SECTION: NodeId = hash_node_id("insp_live_damage_section");
+/// O ponto de cor da secção DAMAGE.
+pub const INSP_LIVE_DAMAGE_COLOR: NodeId = hash_node_id("insp_live_damage_color");
 /// Quantas opções o segmentado do ONDE tem — a porta que o painel lê para repartir a largura.
 pub const INSP_FACTORY_WHERE_LEN: usize = 3;

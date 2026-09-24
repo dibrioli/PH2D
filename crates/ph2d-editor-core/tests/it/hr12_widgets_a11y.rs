@@ -814,6 +814,13 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-inspector/src/paint_optional_suplentes.rs",
         "as DUAS MOLDURAS das seccoes dos SUPLENTES (o raio que olha e a arma que dispara); nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — e cada widget e' pintado pela seccao que ele chama, a moldura pelo paint_frame",
     ),
+    // ⭐ **Nasceu em 2026-09-23 com as secções HEALTH e DAMAGE** (plano 28, W3) — o molde do
+    // irmão dos SUPLENTES, e pela mesma razão: ele só chama os dois pintores e a moldura.
+    // ⚠️ **A isenção é MEDIDA**: zero ocorrências de `NodeId`, `hit_index.` ou `register(`.
+    (
+        "ph2d-panel-inspector/src/paint_optional_vida.rs",
+        "as DUAS MOLDURAS das seccoes da VIDA e do DANO; nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — e cada widget e' pintado pela seccao que ele chama, a moldura pelo paint_frame",
+    ),
     (
         "ph2d-panel-inspector/src/paint_optional_top20_tail.rs",
         "a cauda da CAUDA — a moldura da seccao TWEEN, cortada do irmao pelo teto de ficheiro de painel; nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — e cada widget e' pintado pela seccao que ele chama, a moldura pelo paint_frame",

@@ -30,9 +30,8 @@ use super::signal::signal_name;
 /// diferença declarada: o [`Self::shield_duration_s`] do alvo é `5` e só significa algo com um
 /// escudo — que de fábrica é `0`.
 ///
-/// ⛔ **Ainda NÃO registado** (plano 28): o registo, o degrau de `PROJECT_SCHEMA` e o catálogo
-/// esperam a secção do Inspector (W3) — o gate `every_registered_physics_component_has_a_ui_writer`
-/// reprova um componente registado sem escritor de UI, e a saída dele é a que o RAIO já tomou.
+/// ⚠️ **Registado desde a W3**, no mesmo commit que a secção do Inspector — ver a nota no
+/// `register_physics_components`: sem o registo, a cópia de um molde nascia SEM vida.
 #[derive(Component, Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[allow(clippy::struct_excessive_bools)] // três perguntas independentes, cada uma um campo do alvo
 pub struct Health {
@@ -203,4 +202,23 @@ impl Damage {
             _ => true,
         }
     }
+}
+
+/// ⭐⭐ **A vida AGORA** — o que a ponte publica no mundo no fim de cada `dispatch`, para quem não
+/// alcança a ponte: o Inspector (o readout *«Now: 70 / 100»*) e a barra de vida (W4).
+///
+/// ⛔⛔ **Ela é DERIVADA e NÃO é registada, e a ausência é a lei:** a fonte é o estado da ponte, que
+/// vai no anel de checkpoints; registada, ela entraria no `.ph2dproj` e no `Ctrl+Z` como uma
+/// segunda resposta a *«quanta vida ele tem?»*, e um undo devolveria o número de um instante com a
+/// ponte noutro — o precedente é o `CounterRuntime`, que também não deriva `Serialize`.
+///
+/// ⚠️ Ausente antes do 1.º tique (a vida ainda não nasceu) — quem lê cai no `start` da config.
+#[derive(Component, Clone, Copy, Debug, PartialEq)]
+pub struct HealthNow {
+    /// Os pontos de vida agora.
+    pub pontos: f64,
+    /// O escudo agora.
+    pub escudo: f64,
+    /// Morreu (um morto é final na casa).
+    pub morta: bool,
 }

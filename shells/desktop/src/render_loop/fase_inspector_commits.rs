@@ -67,6 +67,8 @@ pub(super) struct InspectorIntents {
     pub(super) parallax_edits: Vec<(u64, ph2d_editor_core::parallax_edits::ParallaxFieldEdit)>,
     /// ⭐⭐⭐ As edições da secção WEAPON — a arma do jogador.
     pub(super) weapon_edits: Vec<(u64, ph2d_editor_core::weapon_edits::WeaponFieldEdit)>,
+    /// ⭐⭐⭐ As edições das secções HEALTH e DAMAGE (plano 28, W3).
+    pub(super) vida_edits: Vec<(u64, ph2d_editor_core::vida_edits::VidaFieldEdit)>,
     /// ⭐⭐⭐ As edições da secção TWEEN (suplente #22).
     pub(super) tween_edits: Vec<(u64, ph2d_editor_core::tween_edits::TweenFieldEdit)>,
     /// ⭐⭐⭐ O SEGUIDOR DE CAMINHO (suplente #23).
@@ -159,6 +161,7 @@ impl crate::App {
             ray_edits,
             parallax_edits,
             weapon_edits,
+            vida_edits,
             tween_edits,
             path_follow_edits,
             statemachine_edits,
@@ -265,6 +268,7 @@ impl crate::App {
             &ray_edits,
             &parallax_edits,
             &weapon_edits,
+            &vida_edits,
             &tween_edits,
             &path_follow_edits,
             &statemachine_edits,

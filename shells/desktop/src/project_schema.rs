@@ -547,4 +547,14 @@
 /// `z₀` **desaparece**. *Um parâmetro adimensional não tem um default para escolher.*
 ///
 /// ⛔ **Sem degrau de migração**, pela mesma decisão — um v167 é recusado em voz alta.
-pub(crate) const PROJECT_SCHEMA: u32 = 168;
+///
+/// # ⭐ 168 → 169 (2026-09-23) — a VIDA e o DANO (plano 28, W3)
+///
+/// `Health` e `Damage` passam a REGISTADOS — dois tipos e UM degrau, como o raio. ⚠️ O registo
+/// esperou uma wave e isso foi MEDIDO como defeito: a cópia de um molde leva só o que está
+/// registado, logo toda cópia de uma fábrica nascia SEM vida (report do dono: *«ninguém sumiu ao
+/// levar muitos tiros»*). ⚠️ **São componentes da FÍSICA** ⇒ sobe o registo dela (`+2`) e os dois
+/// espelhos (`ph2d-render`, `ph2d-script`) NÃO se mexem.
+///
+/// ⛔ **Sem degrau de migração**, pela mesma decisão — um v168 é recusado em voz alta.
+pub(crate) const PROJECT_SCHEMA: u32 = 169;

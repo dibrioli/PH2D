@@ -264,7 +264,7 @@ mod topdown;
 pub use area::{
     AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaForceWorldAxes, AreaFormDrag, AreaTorque,
 };
-pub use health::{Damage, Health, OnHit};
+pub use health::{Damage, Health, HealthNow, OnHit};
 pub use overrides::{
     Ccd, CombineRule, DampMode, DampingOverride, Dominance, GravityScale, InitialVelocity,
     LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine, OneWayPlatform,

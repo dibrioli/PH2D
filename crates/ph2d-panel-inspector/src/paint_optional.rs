@@ -374,6 +374,7 @@ pub(crate) fn paint_optional_sections(
         body_top_y,
         y,
         header_h,
+        snaps,
         &infos,
     );
     // ── ÁUDIO (13) · CÂMERA (14) · SCRIPT (15) ────────────────────────────────────────────────

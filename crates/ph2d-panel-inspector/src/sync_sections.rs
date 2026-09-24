@@ -82,6 +82,8 @@ pub(crate) fn sync_new_sections(
     crate::sync_parallax::sync(host, inspector_state, entity_changed);
     crate::sync_ray::sync(host, inspector_state, entity_changed);
     crate::sync_weapon::sync(host, inspector_state, entity_changed);
+    // ⭐⭐⭐ A VIDA e o DANO (plano 28, W3) — no MESMO commit que as secções.
+    crate::sync_vida::sync(host, inspector_state, entity_changed);
     crate::sync_tween::sync(host, inspector_state, entity_changed);
     crate::sync_path_follow::sync(host, inspector_state, entity_changed);
     // ⭐⭐⭐ **A VIGIA DO CONTADOR** — no irmão, pelo mesmo tecto. ⛔ Esta linha FALTAVA: a secção

@@ -192,6 +192,8 @@ pub mod tween_inspector;
 /// ⭐⭐⭐ **O TWEEN** (suplente #22) — a galeria dos canais e a cópia que nasce a meio da
 /// corrida; ver o cabeçalho.
 pub mod tween_smoke;
+/// ⭐⭐⭐ O instantâneo e o dreno das secções HEALTH e DAMAGE (plano 28, W3).
+pub mod vida_inspector;
 /// ⭐⭐⭐ **O smoke da VIDA** (plano 28, W2) — três alvos, três vidas, e o aliado que não morre.
 pub mod vida_smoke;
 /// ⭐⭐⭐ **A ARMA** — a ponte que lê o pente, escreve a munição e publica o tiro; ver o cabeçalho.

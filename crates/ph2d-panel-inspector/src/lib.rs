@@ -68,6 +68,7 @@ mod event_topdown;
 mod event_transform;
 mod event_tween;
 mod event_value;
+mod event_vida;
 mod event_weapon;
 mod event_wheel;
 pub mod ids;
@@ -93,6 +94,7 @@ mod paint_optional_top20;
 /// ⭐ Os INSTANTÂNEOS das secções da cauda — irmão por CAP de LOC; ver o cabeçalho.
 mod paint_optional_top20_infos;
 mod paint_optional_top20_tail;
+mod paint_optional_vida;
 mod popovers;
 mod populate;
 /// ⭐ O registo dos widgets da secção SIGNAL ACTIONS — irmão por CAP de ficheiro.
@@ -130,6 +132,7 @@ mod populate_tags;
 mod populate_timer;
 mod populate_topdown;
 mod populate_tween;
+mod populate_vida;
 /// ⭐⭐⭐ O registo dos widgets das secções que chegam por WAVE — ver o cabeçalho.
 mod populate_waves;
 mod populate_weapon;
@@ -170,6 +173,7 @@ mod sync_text_field;
 /// ⭐ As SEIS amostras de cor da sprite — irmão do `sync`, que voltou ao tecto em 2026-09-20.
 mod sync_tint_swatches;
 mod sync_tween;
+mod sync_vida;
 mod sync_weapon;
 
 /// The §11 Bake button's label — exported so a gate can hold the claim that
@@ -263,7 +267,7 @@ pub use state_components::{
     set_current_inspector_path_follow, set_current_inspector_projectile, set_current_inspector_ray,
     set_current_inspector_script, set_current_inspector_sequence, set_current_inspector_shake,
     set_current_inspector_statemachine, set_current_inspector_timer, set_current_inspector_topdown,
-    set_current_inspector_tween, set_current_inspector_weapon,
+    set_current_inspector_tween, set_current_inspector_vida, set_current_inspector_weapon,
 };
 
 /// ⭐ **As opções que a caixa de escolha da secção TAGS oferece**, para o gate as poder LER.

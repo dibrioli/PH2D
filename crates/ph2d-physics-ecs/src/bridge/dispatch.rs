@@ -312,5 +312,8 @@ impl PhysicsBridge {
             // que o desenho lê, então escrever aqui seria trabalho sem leitor.
             self.sync_mounted_wheels(sim);
         }
+        // ⭐ E a VIDA AGORA (plano 28, W3), pela mesma razão do eixo das roldanas: este é o único
+        // ponto por onde as quatro saídas passam, logo o readout descreve o tique que o artista vê.
+        self.publica_vidas(sim);
     }
 }

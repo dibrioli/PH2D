@@ -306,8 +306,11 @@ pub fn montar(world: &mut World, _nivel: u32) -> Montada {
          e somem sem o ferir. Nunca aparece `{AI}`\n\
          (6) na barra de CIMA carregue em `Reset` e depois em `Play`: os quatro voltam, cada um \
          com a vida inteira\n\
-         (7) deu errado se: o laranja ou o roxo morrem ao 1.o tiro · o cinzento some · a bala \
-         atravessa um quadrado · ou carregar no {TECLA_NOME} nao faz nada"
+         (7) clique no ROXO: no painel da direita (Inspector) aparece a seccao `Health` com \
+         `Now: 30 of 30`. Atire nele e o numero desce 10 por tiro. A bala tem a seccao `Damage`\n\
+         (8) deu errado se: o laranja ou o roxo morrem ao 1.o tiro · o cinzento some · a bala \
+         atravessa um quadrado · carregar no {TECLA_NOME} nao faz nada · ou nenhum quadrado some \
+         depois de muitos tiros"
     );
     Montada {
         nivel: 1,

@@ -128,6 +128,8 @@ pub struct InspectorState {
     /// A assinatura da secção WEAPON — mesma lei do `last_ray_sig`, e nascida no MESMO commit
     /// que a secção de propósito (ver o cabeçalho do `sync_weapon`).
     pub last_weapon_sig: Option<u64>,
+    /// A assinatura das secções HEALTH e DAMAGE — mesma lei, nascida no MESMO commit que elas.
+    pub last_vida_sig: Option<u64>,
     /// A assinatura do último instantâneo do TWEEN semeado (suplente #22).
     pub last_tween_sig: Option<u64>,
     /// A assinatura do último instantâneo do SEGUIDOR DE CAMINHO semeado (suplente #23).

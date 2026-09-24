@@ -215,6 +215,7 @@ pub(crate) fn paint_familia_logica_cont(
     body_top_y: f32,
     mut y: f32,
     header_h: f32,
+    snaps: &crate::paint_frame::LiveSnapshots,
     infos: &Top20,
 ) -> f32 {
     y = crate::paint_optional_factory::paint_statemachine_section(
@@ -305,6 +306,23 @@ pub(crate) fn paint_familia_logica_cont(
         header_h,
         infos.tween,
         infos.tween_selected,
+    );
+    // ⭐⭐⭐ A VIDA e o DANO (plano 28, W3) — família LÓGICA pelo catálogo
+    // (`ph2d::physics::Health` · `ph2d::physics::Damage`), as últimas a chegar a ela; entraram
+    // depois da ordem por família (integração de 2026-09-25).
+    y = crate::paint_optional_vida::paint_vida_sections(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        section_tops_y,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y,
+        header_h,
+        snaps.vida_info.as_ref(),
     );
     y
 }

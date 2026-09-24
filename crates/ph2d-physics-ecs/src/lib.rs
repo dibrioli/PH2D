@@ -77,7 +77,7 @@ pub use bridge::{
 pub use components::{
     AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaForceWorldAxes, AreaFormDrag,
     AreaTorque, BodyKind, Ccd, Collider, ColliderShape, CombineRule, Damage, DampMode,
-    DampingOverride, Dominance, GravityScale, Health, InitialVelocity, LockPositionX,
+    DampingOverride, Dominance, GravityScale, Health, HealthNow, InitialVelocity, LockPositionX,
     LockPositionY, LockRotation, MassOverride, MaterialCombine, NoWallCling, OnHit, OneWayPlatform,
     PlatformLift, PlatformPlayer, PlayerMode, PlayerSignals, ProjectileMotion, PulleyWheel, RayHit,
     RaySensor, RaySignals, RigidBody, RopeStops, SignalOnHit, SignalOnLeave, SignalTagFilter,
@@ -218,12 +218,15 @@ pub fn register_physics_components(reg: &mut ComponentRegistry) {
     // ⭐ O PROJÉCTIL de arcade (TOP-20 #14). ⚠️ Sem o registo, o artista afina uma bala e o
     // ficheiro guarda um objecto sem voo nenhum.
     reg.register_default::<ProjectileMotion>("ph2d::physics::ProjectileMotion");
-    // ⛔ **A VIDA e o DANO (plano 28) NÃO estão registados ainda, e é de propósito** — o gate
-    // `every_registered_physics_component_has_a_ui_writer` reprovou no instante em que entraram, e a
-    // saída que ele oferece (*«ou não o registe ainda»*) é a que o RAIO (suplente #21) já tomou: o
-    // registo, o degrau de `PROJECT_SCHEMA` e as entradas do catálogo esperam a wave da SECÇÃO do
-    // Inspector (W3). Registados sem painel, seriam números gravados no ficheiro do artista que
-    // nenhuma linha deixa mexer. A lei deles já corre na ponte (W2) em cenas montadas por código.
+    // ⭐⭐⭐ **A VIDA e o DANO (plano 28, W3)** — registados no MESMO commit que a secção do
+    // Inspector, e o atraso de uma wave foi MEDIDO como defeito: na W2 eles esperaram pela secção (a
+    // saída que o gate `every_registered_physics_component_has_a_ui_writer` oferece), e o smoke do
+    // dono devolveu *«ninguém sumiu ao levar muitos tiros»* — a cópia de um molde leva **só o que
+    // está REGISTADO**, logo todo alvo que uma fábrica punha na cena nascia SEM vida e toda bala SEM
+    // dano. ⛔ *Um componente não registado não é «ainda não gravável»: é invisível à cópia, ao
+    // `Ctrl+Z` e ao ficheiro de uma vez.* Gate: `o_que_o_molde_tem_a_copia_tem`.
+    reg.register_default::<Health>("ph2d::physics::Health");
+    reg.register_default::<Damage>("ph2d::physics::Damage");
     reg.register_default::<PlayerMode>("ph2d::physics::PlayerMode");
     reg.register_default::<WalkSurface>("ph2d::physics::WalkSurface");
     reg.register_default::<NoWallCling>("ph2d::physics::NoWallCling");
@@ -250,7 +253,11 @@ mod tests {
         // contra o `main` passa a **+5**. ⚠️ **Dois tipos e UM degrau de `PROJECT_SCHEMA`** — os
         // dois números medem coisas diferentes: este conta TIPOS registados, aquele conta o que o
         // FICHEIRO passa a poder conter.
-        assert_eq!(reg.len(), 37);
+        // ⭐ **+2 (plano 28, W3: `Health` e `Damage`)** ⇒ `37 -> 39`, e o delta contra o `main`
+        // passa a **+7**. Dois tipos e UM degrau de `PROJECT_SCHEMA`, como o raio.
+        assert_eq!(reg.len(), 39);
+        assert!(reg.get_by_name("ph2d::physics::Health").is_some());
+        assert!(reg.get_by_name("ph2d::physics::Damage").is_some());
         assert!(reg.get_by_name("ph2d::physics::RaySensor").is_some());
         assert!(reg.get_by_name("ph2d::physics::RaySignals").is_some());
         assert!(reg.get_by_name("ph2d::physics::SignalTagFilter").is_some());

@@ -42,6 +42,7 @@ mod inspector_sequence;
 /// ⭐ Os ids da secção STATE MACHINE (TOP-20 #15) — ver o cabeçalho.
 mod inspector_statemachine;
 mod inspector_topdown;
+mod inspector_vida;
 mod inspector_weapon;
 pub use inspector_camera::*;
 pub use inspector_factory::*;
@@ -54,6 +55,7 @@ pub use inspector_script::*;
 pub use inspector_sequence::*;
 pub use inspector_statemachine::*;
 pub use inspector_topdown::*;
+pub use inspector_vida::*;
 pub use inspector_weapon::*;
 mod inspector_instance;
 pub use inspector_instance::*;

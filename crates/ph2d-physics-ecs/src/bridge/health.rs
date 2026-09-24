@@ -235,6 +235,47 @@ impl PhysicsBridge {
     }
 }
 
+impl PhysicsBridge {
+    /// **Publica a vida AGORA no mundo** ([`crate::HealthNow`]) — no fim de todo `dispatch`, pelas
+    /// quatro saídas dele (tique, replay, pausa, quadro sem tique).
+    ///
+    /// ⚠️ **Só escreve quando MUDA** (o `get_mut` é comparado antes): a maioria dos quadros não mexe
+    /// numa vida, e um `insert` por quadro seria trabalho sem leitor. E quem perdeu o estado (antes
+    /// do 1.º tique, ou sem `Health`) perde também o readout — *um número de outra corrida lido
+    /// como o de agora é pior do que nenhum*.
+    pub(super) fn publica_vidas(&self, sim: &mut SimWorld) {
+        let w = sim.world_mut();
+        let mut velhos: Vec<Entity> = Vec::new();
+        if let Some(mut q) = w.try_query::<(Entity, &crate::HealthNow)>() {
+            velhos.extend(
+                q.iter(w)
+                    .filter(|(e, _)| !self.health_state.contains_key(e))
+                    .map(|(e, _)| e),
+            );
+        }
+        for e in velhos {
+            w.entity_mut(e).remove::<crate::HealthNow>();
+        }
+        for (&e, st) in &self.health_state {
+            let agora = crate::HealthNow {
+                pontos: st.vida.pontos,
+                escudo: st.vida.escudo,
+                morta: st.vida.morta(),
+            };
+            let Ok(mut em) = w.get_entity_mut(e) else {
+                continue;
+            };
+            match em.get_mut::<crate::HealthNow>() {
+                Some(h) if *h == agora => {}
+                Some(mut h) => *h = agora,
+                None => {
+                    em.insert(agora);
+                }
+            }
+        }
+    }
+}
+
 /// **Nascer** — a vida do tique 0: o valor inicial, o escudo inicial, e o gerador semeado.
 ///
 /// ⚠️ A semente mistura a do componente com a IDENTIDADE durável (`StableId`), que sobrevive a um

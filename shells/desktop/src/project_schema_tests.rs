@@ -253,7 +253,10 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // ⭐ **PROJECT 167→168** (2026-09-22): o DOLLY (plano 24, W5) — ⛔ **ZERO componentes
         // registados novos**, logo os três contadores NÃO se mexem: é um CAMPO no `GameCamera`.
         // ⚠️ **A tripla NÃO vê este degrau** — a VIGÉSIMA QUARTA vez.
-        (168, 13, 22),
+        // ⭐ **PROJECT 168→169** (2026-09-23): a VIDA e o DANO (plano 28, W3) — ⭐ **DOIS componentes
+        // da FÍSICA registados** (`Health`, `Damage`): o registo dela sobe `+2`, os espelhos não.
+        // ⚠️ **A tripla NÃO vê este degrau** — a VIGÉSIMA QUINTA vez.
+        (169, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

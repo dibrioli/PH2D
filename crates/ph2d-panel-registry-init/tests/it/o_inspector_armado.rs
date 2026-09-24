@@ -4,7 +4,7 @@
 //!
 //! A varredura irmã ([`super::nenhum_rotulo_do_app_pinta_nada`]) pinta **todo painel do registo no
 //! estado de FÁBRICA**, e o estado de fábrica do Inspector é o **vazio**: sem selecção ele mede
-//! **um** rótulo. As **28 portas condicionais** dele (`set_current_inspector_*`) ficavam, por
+//! **um** rótulo. As **29 portas condicionais** dele (`set_current_inspector_*`) ficavam, por
 //! construção, fora de toda régua de largura deste repo — e o cabeçalho daquela varredura já o
 //! declarava por escrito em 19/09:
 //!
@@ -22,7 +22,7 @@
 //! pretende ser um objecto que exista — pretende ser a UNIÃO das populações de rótulos, que é o que
 //! uma régua de largura precisa. As secções não partilham colunas (cada fileira deriva a coluna do
 //! próprio rótulo, `widget::property_row_columns`), logo armá-las juntas mede o mesmo que armá-las
-//! uma a uma e custa **um** repintar em vez de 28.
+//! uma a uma e custa **um** repintar em vez de 29.
 //!
 //! ⛔ **E as fileiras de LISTA trazem texto a sério** (tags, acções, animações, temporizadores,
 //! âncoras, estados, propriedades de script): uma linha construída por `Default` tem a `String`
@@ -74,6 +74,9 @@ use ph2d_editor_core::topdown_edits::{
     InspectorFacing, InspectorMoveDirections, InspectorTopDownInfo, InspectorViewpoint,
 };
 use ph2d_editor_core::tween_edits::{InspectorTweenInfo, InspectorTweenRow};
+use ph2d_editor_core::vida_edits::{
+    InspectorDamageInfo, InspectorHealthInfo, InspectorVidaInfo, VidaAgora,
+};
 use ph2d_editor_core::weapon_edits::InspectorWeaponInfo;
 use ph2d_panel_inspector as insp;
 
@@ -105,7 +108,7 @@ pub fn com_seleccao_de(n: usize) {
     SELECIONADOS.set(n);
 }
 
-/// **Arma as 28 portas condicionais do Inspector.**
+/// **Arma as 29 portas condicionais do Inspector.**
 ///
 /// ⚠️ Elas são `thread_local`, logo isto vale para a thread que chamar — que é a mesma que pinta.
 #[allow(clippy::too_many_lines)]
@@ -1004,9 +1007,53 @@ fn arma_o_top20() {
         clock_playing: true,
         selected_count: selecionados(),
     }));
+    // ⭐ A VIDA e o DANO no MESMO objecto (um inimigo que magoa ao toque), e com o escudo, a
+    // regeneração e a esquiva ligados — é isso que faz TODAS as linhas condicionais aparecerem,
+    // e a varredura medir a secção inteira em vez da metade que aparece de fábrica.
+    insp::set_current_inspector_vida(Some(InspectorVidaInfo {
+        entity_bits: BITS,
+        health: Some(InspectorHealthInfo {
+            max: 100.0,
+            start: 100.0,
+            invincible_s: 0.5,
+            overheal: false,
+            regen: 2.0,
+            regen_delay_s: 1.5,
+            shield_start: 25.0,
+            shield_max: 50.0,
+            shield_duration_s: 5.0,
+            shield_regen: 3.0,
+            shield_regen_delay_s: 2.0,
+            shield_blocks_excess: true,
+            armor_flat: 2.0,
+            armor_percent: 0.25,
+            dodge: 0.1,
+            team: "enemies".to_string(),
+            on_damage: "ouch".to_string(),
+            on_heal: "healed".to_string(),
+            on_death: "died".to_string(),
+            seed: 7,
+            agora: Some(VidaAgora {
+                pontos: 70.0,
+                escudo: 12.0,
+                morta: false,
+            }),
+        }),
+        damage: Some(InspectorDamageInfo {
+            amount: 10.0,
+            team: "enemies".to_string(),
+            per_second: false,
+            ignores_shield: false,
+            ignores_armor: false,
+            vanish: false,
+        }),
+        has_body: true,
+        clock_playing: true,
+        selected_count: 1,
+    }));
 }
 
-/// **Desarma as 28 portas.** ⚠️ Sem isto a varredura de fábrica passaria a medir um Inspector
+/// **Desarma as 29 portas.** ⚠️ Sem isto a varredura de fábrica passaria a medir um Inspector
 /// armado — *o estado que uma fixtura deixa para trás é o estado que a régua seguinte mede*.
 pub fn desarma_tudo() {
     insp::set_current_inspector_selecionados(0);
@@ -1021,6 +1068,7 @@ pub fn desarma_tudo() {
     insp::set_current_inspector_shake(None);
     insp::set_current_inspector_tween(None);
     insp::set_current_inspector_weapon(None);
+    insp::set_current_inspector_vida(None);
     insp::set_current_inspector_name(None);
     insp::set_current_inspector_transform(None);
     insp::set_current_inspector_visibility(None);
@@ -1174,7 +1222,7 @@ fn portas_do_inspector() -> Vec<String> {
 
 /// ⛔ **Piso de população.** *Uma varredura que lesse zero portas aprovaria uma fixtura vazia* —
 /// a forma exacta que este repo já pagou com o censo por prefixo de nome.
-const PISO_DE_PORTAS: usize = 28;
+const PISO_DE_PORTAS: usize = 29;
 
 /// ⭐⭐⭐ **TODA PORTA CONDICIONAL DO INSPECTOR É ARMADA POR ESTA FIXTURA.**
 ///

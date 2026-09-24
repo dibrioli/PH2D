@@ -43,6 +43,7 @@ pub(super) fn aplicar(
     ray: &[(u64, ph2d_editor_core::ray_edits::RayFieldEdit)],
     parallax: &[(u64, ph2d_editor_core::parallax_edits::ParallaxFieldEdit)],
     weapon: &[(u64, ph2d_editor_core::weapon_edits::WeaponFieldEdit)],
+    vida: &[(u64, ph2d_editor_core::vida_edits::VidaFieldEdit)],
     tween: &[(u64, ph2d_editor_core::tween_edits::TweenFieldEdit)],
     path_follow: &[(
         u64,
@@ -59,6 +60,7 @@ pub(super) fn aplicar(
         | ph2d_app_components::ray_inspector::apply_all(sim, ray)
         | ph2d_app_components::parallax_inspector::apply_all(sim, parallax)
         | ph2d_app_components::weapon_inspector::apply_all(sim, weapon)
+        | ph2d_app_components::vida_inspector::apply_all(sim, vida)
         | ph2d_app_components::tween_inspector::apply_all(sim, tween)
         | ph2d_app_components::path_follow_inspector::apply_all(sim, path_follow)
         | super::statemachine_commits::aplicar(sim, statemachine)

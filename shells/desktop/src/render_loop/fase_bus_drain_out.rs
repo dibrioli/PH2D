@@ -467,6 +467,8 @@ pub(in crate::render_loop) struct DrainOut {
     /// ⭐⭐⭐ As edições da secção WEAPON — a arma do jogador.
     pub(in crate::render_loop) weapon_edits:
         Vec<(u64, ph2d_editor_core::weapon_edits::WeaponFieldEdit)>,
+    /// ⭐⭐⭐ As edições das secções HEALTH e DAMAGE (plano 28, W3).
+    pub(in crate::render_loop) vida_edits: Vec<(u64, ph2d_editor_core::vida_edits::VidaFieldEdit)>,
     /// ⭐⭐⭐ As edições da secção TWEEN (suplente #22).
     pub(in crate::render_loop) tween_edits:
         Vec<(u64, ph2d_editor_core::tween_edits::TweenFieldEdit)>,

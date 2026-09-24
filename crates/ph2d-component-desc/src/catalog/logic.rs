@@ -177,6 +177,45 @@ const WEAPON_FIELDS: &[FieldDesc] = &[
     f(8, "component.field.weapon_fields.8", K::Text),
 ];
 
+/// ⭐⭐⭐ **A VIDA** (plano 28) — os vinte campos do `Health`, na ordem do componente.
+///
+/// ⚠️ **A vida AGORA não é campo** (`HealthNow` é derivado e não registado): o descritor descreve o
+/// que o artista AUTORA, e o que a corrida produz não entra no ficheiro nem no `Ctrl+Z`.
+const HEALTH_FIELDS: &[FieldDesc] = &[
+    f(1, "component.field.health_fields.1", K::Scalar),
+    f(2, "component.field.health_fields.2", K::Scalar),
+    f(3, "component.field.health_fields.3", K::Scalar),
+    f(4, "component.field.health_fields.4", K::Toggle),
+    f(5, "component.field.health_fields.5", K::Scalar),
+    f(6, "component.field.health_fields.6", K::Scalar),
+    f(7, "component.field.health_fields.7", K::Scalar),
+    f(8, "component.field.health_fields.8", K::Scalar),
+    f(9, "component.field.health_fields.9", K::Scalar),
+    f(10, "component.field.health_fields.10", K::Scalar),
+    f(11, "component.field.health_fields.11", K::Scalar),
+    f(12, "component.field.health_fields.12", K::Toggle),
+    f(13, "component.field.health_fields.13", K::Scalar),
+    f(14, "component.field.health_fields.14", K::Scalar),
+    f(15, "component.field.health_fields.15", K::Scalar),
+    // ⚠️ **A EQUIPA é texto** — o fogo amigo desligado entre quem partilha o nome.
+    f(16, "component.field.health_fields.16", K::Text),
+    // ⚠️ **Vazio = calado**, a lei do consumidor de sinal desta casa.
+    f(17, "component.field.health_fields.17", K::Text),
+    f(18, "component.field.health_fields.18", K::Text),
+    f(19, "component.field.health_fields.19", K::Text),
+    f(20, "component.field.health_fields.20", K::Seed),
+];
+
+/// ⭐⭐⭐ **O DANO** (plano 28) — os seis campos do `Damage`.
+const DAMAGE_FIELDS: &[FieldDesc] = &[
+    f(1, "component.field.damage_fields.1", K::Scalar),
+    f(2, "component.field.damage_fields.2", K::Text),
+    f(3, "component.field.damage_fields.3", K::Toggle),
+    f(4, "component.field.damage_fields.4", K::Toggle),
+    f(5, "component.field.damage_fields.5", K::Toggle),
+    f(6, "component.field.damage_fields.6", K::Enum),
+];
+
 const TWEEN_FIELDS: &[FieldDesc] = &[
     f(1, "component.field.tween_fields.1", K::Enum),
     f(2, "component.field.tween_fields.2", K::Vec4),
@@ -385,5 +424,30 @@ pub const DESCS: &[ComponentDesc] = &[
         O::ANY,
         WEAPON_FIELDS,
         &["ph2d::ecs::Counter"],
+    ),
+    // ⭐⭐⭐ **O DANO e a VIDA** (plano 28, W3). ⚠️ **Depois da arma, e isso NÃO é estilo**: a lista é
+    // procurada por busca binária e `ph2d::physics::*` ordena depois de `ph2d::ecs::*`.
+    //
+    // ⭐ **Família LÓGICA e não FÍSICA**, embora vivam na crate da física: elas são o que um objecto
+    // FAZ (ferir, morrer), e um artista que procure a vida na secção de corpos rígidos não a acha.
+    //
+    // ⭐⭐ **As duas REQUEREM o `RigidBody`** — a ponte só vê quem tem corpo, e sem ele a vida nunca
+    // leva um golpe nem o dano o dá. ⛔ Sem o `requires`, a paleta entregaria um componente INERTE e
+    // o artista descobria-o a atirar (a lei dos dois movers irmãos).
+    D::authored_requiring(
+        "ph2d::physics::Damage",
+        "component.damage.name",
+        C::Logic,
+        O::ANY,
+        DAMAGE_FIELDS,
+        &["ph2d::physics::RigidBody"],
+    ),
+    D::authored_requiring(
+        "ph2d::physics::Health",
+        "component.health.name",
+        C::Logic,
+        O::ANY,
+        HEALTH_FIELDS,
+        &["ph2d::physics::RigidBody"],
     ),
 ];

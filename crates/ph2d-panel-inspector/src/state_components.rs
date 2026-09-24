@@ -28,6 +28,7 @@ use ph2d_editor_core::script_edits::InspectorScriptInfo;
 use ph2d_editor_core::statemachine_edits::InspectorStateMachineInfo;
 use ph2d_editor_core::topdown_edits::InspectorTopDownInfo;
 use ph2d_editor_core::tween_edits::InspectorTweenInfo;
+use ph2d_editor_core::vida_edits::InspectorVidaInfo;
 use ph2d_editor_core::weapon_edits::InspectorWeaponInfo;
 
 pub fn set_current_inspector_timer(info: Option<InspectorTimerInfo>) {
@@ -121,6 +122,15 @@ pub fn set_current_inspector_weapon(info: Option<InspectorWeaponInfo>) {
 
 pub(crate) fn current_inspector_weapon() -> Option<InspectorWeaponInfo> {
     CURRENT_INSPECTOR_WEAPON.with(|c| c.borrow().clone())
+}
+
+/// Publica o instantâneo das secções HEALTH e DAMAGE (plano 28, W3).
+pub fn set_current_inspector_vida(info: Option<InspectorVidaInfo>) {
+    CURRENT_INSPECTOR_VIDA.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_vida() -> Option<InspectorVidaInfo> {
+    CURRENT_INSPECTOR_VIDA.with(|c| c.borrow().clone())
 }
 
 /// ⭐ O snapshot do CÉREBRO (TOP-20 #15) — a shell escreve-o todo o quadro.
@@ -252,6 +262,9 @@ thread_local! {
     /// edita.
     static CURRENT_INSPECTOR_WEAPON:
         std::cell::RefCell<Option<InspectorWeaponInfo>> = const { std::cell::RefCell::new(None) };
+    /// ⭐⭐⭐ **O snapshot das secções HEALTH e DAMAGE** (plano 28, W3).
+    static CURRENT_INSPECTOR_VIDA:
+        std::cell::RefCell<Option<InspectorVidaInfo>> = const { std::cell::RefCell::new(None) };
 
     /// ⭐⭐⭐ **O snapshot da secção STATE MACHINE** (TOP-20 #15).
     static CURRENT_INSPECTOR_STATEMACHINE:

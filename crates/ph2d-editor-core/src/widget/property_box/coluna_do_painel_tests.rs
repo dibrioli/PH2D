@@ -288,17 +288,35 @@ fn arrastar_o_dock_acerta_no_mesmo_quadro() {
             linha(x + 8.0, w - 16.0, Some(50.0), Some(72.0)),
         ]
     };
-    let mut mem = ColunaDoPainel::default();
-    let antes = convergido(&mut mem, &em(0.0, 300.0));
-    let durante = quadro(&mut mem, &em(-40.0, 340.0));
-    assert!(
-        todos_iguais(&durante),
-        "o quadro do arrasto desalinhou: {durante:?}"
-    );
-    assert!(
-        (durante[0] - antes[0]).abs() > 1.0,
-        "a fixtura não moveu a coluna"
-    );
+    // ⛔ **E no sítio CERTO, não só alinhadas entre si** — a 1.ª redacção deste gate afirmava só o
+    //    alinhamento, e uma base errada (todas as linhas lidas como cartões recuados) alinha-as
+    //    igual, no `x` errado. A régua é o painel CONVERGIDO na geometria nova, noutra memória.
+    for (x, w) in [(-40.0, 340.0), (0.0, 216.0), (0.0, 380.0)] {
+        let mut mem = ColunaDoPainel::default();
+        let antes = convergido(&mut mem, &em(0.0, 300.0));
+        let durante = quadro(&mut mem, &em(x, w));
+        let certo = convergido(&mut ColunaDoPainel::default(), &em(x, w));
+        // ⚠️ A `216` o cartão recua o recuo dele (o campo dele não caberia — a lei do gate
+        //    `o_cartao_recua_so_quando_o_campo_dele_nao_caberia`), logo ali o convergido NÃO é todo
+        //    igual: a régua é o convergido linha a linha, e o alinhamento só onde ele alinha.
+        assert!(
+            durante
+                .iter()
+                .zip(&certo)
+                .all(|(a, b)| (a - b).abs() < 1e-3),
+            "o quadro do arrasto ({x}, {w}) pôs o valor em {durante:?} e o painel converge em \
+             {certo:?}"
+        );
+        assert_eq!(
+            todos_iguais(&durante),
+            todos_iguais(&certo),
+            "({x}, {w}): {durante:?} contra {certo:?}"
+        );
+        assert!(
+            (durante[0] - antes[0]).abs() > 1.0,
+            "a fixtura ({x}, {w}) não moveu a coluna"
+        );
+    }
 }
 
 /// ⭐ **A memória só CRESCE** — fechar uma secção não mexe a coluna das outras.

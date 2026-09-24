@@ -2896,11 +2896,76 @@ dos campos sozinhos).
 (`ph2d-field-render`) reprovou numa corrida de `17 690` e passou na seguinte — zero linhas de diff naquela crate.
 
 
+## §9-vicies-septies — ⭐⭐⭐ A SECÇÃO *INSPECT* DO GRID SNAP PASSA PELAS PORTAS, e o ARRASTO de um painel deixa de pôr a coluna no sítio errado
+
+⛔⛔ **Report do dono, 2026-09-23, foto com duas setas (o nome `Probe B` e a caixa da sonda):** *«painel grid fora
+do padrão»*. A secção pintava o nome À ESQUERDA por `paint_text`, o valor por `paint_text` com a cor de rótulo, e
+as duas linhas das sondas montavam `NumberInput` à mão com a metade da coluna calculada ali — três respostas
+próprias a perguntas que a `property_row` responde para o app inteiro.
+
+### .1 — A cura ([`inspect.rs`](../../../crates/ph2d-editor-core/src/grid_snap/inspect.rs))
+
+- **UMA `Seccao::medida(ts, 2, nomes)`** para as linhas de leitura E as das sondas (`campos = 2` porque a sonda
+  tem X e Y). Os nomes pela `paint_label_row` (à direita, `TypeToken::Sm`, `Text2`); o valor de leitura na coluna
+  do controlo; a continuação hexagonal (sem nome) usa a MESMA geometria por `colunas_da_linha`.
+- **As sondas pela `paint_fields_row`** — o valor sai da LOJA, que o painel já re-semeia do estado na unidade
+  activa antes de pintar (`sync_meter_inputs_to_display_unit_impl`, que já cobria os quatro ids). ⇒ a secção
+  deixou de precisar da unidade: `display_unit`/`pixels_per_meter` saíram da assinatura do `inspect::paint`, do
+  `paint_inspect_section` e do `paint_body`. ⚠️ A porta passa sempre o `buffer` ao pintor (a mão só o passava com
+  foco) — é o comportamento de toda caixa do app.
+- `LABEL_FONT_SIZE = 12.0` privado **morreu**; `FONTE_DO_INSPECT` do gate passou a `TypeToken::Sm.px()`.
+
+### .2 — A régua e as mutações ([`um_orcamento_de_texto_e_a_largura_de_um_espaco.rs`](../../../crates/ph2d-editor-core/tests/it/um_orcamento_de_texto_e_a_largura_de_um_espaco.rs))
+
+⚠️ **A porta do nome pergunta DUAS vezes** (a coluna, para o balão; e a largura MEDIDA do que coube, porque o
+nome encosta à direita) ⇒ a coluna de um rótulo é a MAIOR largura em que ele foi perguntado, e o gate afirma que
+ela é uma só em toda a secção, que as duas sondas passam DUAS vezes pela porta (leitura + campos), e que todo nome
+que coube foi perguntado também abaixo da coluna (= encostado à direita).
+
+⛔⛔ **A 1.ª redacção media a `252` só, e DUAS mutações sobreviveram** — `252` é ponto NEUTRO: ali a secção medida
+com um campo, com dois, e a que só declara os campos dão TODAS `118`. Medido pela porta:
+
+| largura | medida, 1 campo | medida, 2 campos | só os campos (2) |
+|---|---|---|---|
+| `180` | `86` | `86` | **`82`** |
+| `252` | `118` | `118` | `118` |
+| `300` | **`142`** | `131` | **`142`** |
+
+⇒ o gate corre `[180, 252, 300]`. **Mutações 3 de 3:** sondas com `Seccao::apenas_campos(2)` · nome à esquerda
+por `paint_text` · secção medida com `1` campo. (`150`/`400` NÃO separam nada — foram medidos e trocados.)
+
+### .3 — ⛔⛔⛔ O defeito que o gate do Grid Snap achou era MEU, da §9-vicies-sexies
+
+O `a_seccao_poe_todas_as_caixas_na_mesma_coluna` (grid-snap) reprovou no **CONTROLO** depois da cura: estreitado o
+painel em `84 px`, o quadro do redimensionamento punha a caixa em `620` e o painel convergia em `653` no quadro
+seguinte. **A causa era a `base_a_partir_de`:** ela lia TODA largura nova da primeira linha como *mudança de
+espécie* (um cartão a vir primeiro) e presumia a linha recuada POR IGUAL dentro da base antiga — estreitado o
+painel, a primeira linha lia-se «recuada `42` de cada lado», todas as linhas passavam a cartões e o tecto do
+controlo deixava de contar. ⚠️ **Num ARRASTO cada quadro tem largura nova ⇒ a coluna ficava errada durante o gesto
+INTEIRO e só acertava ao largar.** Ele só apareceu agora porque a secção *Inspect* passou a declarar uma linha de
+DUAS caixas, cujo tecto é o que a leitura errada deitava fora.
+
+**A cura** ([`coluna_do_painel.rs`](../../../crates/ph2d-editor-core/src/widget/property_box/coluna_do_painel.rs)):
+a `Base` guarda também o rect ABSOLUTO; largura nova com a primeira linha **simétrica dentro** da base antiga ⇒
+mudança de espécie (base antiga); largura nova e NÃO simétrica ⇒ o painel mudou de largura (uma borda fica, a outra
+anda) e a primeira linha leva o recuo que tinha. ⛔ **E o gate irmão `arrastar_o_dock_acerta_no_mesmo_quadro`
+afirmava só que as linhas ALINHAVAM entre si** — alinhadas no sítio errado passavam. Hoje ele compara o quadro do
+arrasto, linha a linha, com o painel CONVERGIDO na geometria nova, em três gestos (dock pela esquerda, estreitar e
+alargar pela direita). **Mutações 3 de 3:** toda largura nova como espécie (o defeito) · nunca espécie · sem o teste
+de simetria.
+
+**Portão:** `nextest-impacted` `17 689/17 690` — o único ✗ é
+`the_cost_of_a_gated_stroke_follows_the_footprint_not_the_canvas` (`ph2d-tool-painter`), gate de RAZÃO de custo,
+**3 de 3 verde sozinho a `load 23`**, zero linhas de diff naquela crate ⇒ família de flakes de fan-out (§11.2).
+clippy `-D warnings` zero · `cargo fmt --all --check` · `censos-da-arvore-combinada.sh` `127/127`.
+
+
 ## §11 — O que esta linha recomenda a quem a integrar
 
 1. **Correr o `diag_onde_cai_a_pista_do_pente` da `line/sculpt3d` DEPOIS da fusão** e reescrever com
    a saída dele as **duas** tabelas vivas do §5 (o `CLAUDE.md` §5 e o doc-comment do
    `scenes_pente.rs`). ⛔ A do handoff `…_sculpt3d_2026-09-17.md` §94 **fica como está**.
-2. **Promover nada à lista de flakes do §5.0** — esta rodada não produziu nenhuma (`15 470` verdes
-   à primeira).
+2. **Promover à lista de flakes do §5.0:** `the_cost_of_a_gated_stroke_follows_the_footprint_not_the_canvas`
+   (`ph2d-tool-painter`) — único ✗ de `17 690`, gate de RAZÃO de custo, 3/3 verde sozinho a `load 23`, zero
+   linhas de diff na crate (§9-vicies-septies).
 3. A linha do §5 está no §9, pronta a colar.

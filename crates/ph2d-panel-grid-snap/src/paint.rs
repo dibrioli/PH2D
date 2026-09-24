@@ -103,7 +103,7 @@ pub(crate) fn paint(_state: &mut GridSnapPanelState, ctx: &mut PaintCtx) {
         sync_meter_inputs_to_display_unit_impl(&snap_state, store);
     }
 
-    paint_body(ctx, gs_rect, &snap_state, display_unit, ppm);
+    paint_body(ctx, gs_rect, &snap_state);
 }
 
 /// Compute the panel rect to use this frame. If editor-core's
@@ -124,14 +124,7 @@ fn current_or_default_rect(ctx: &mut PaintCtx<'_>, viewport: Rect) -> Rect {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-fn paint_body(
-    ctx: &mut PaintCtx<'_>,
-    rect: Rect,
-    state: &GridSnapState,
-    display_unit: ph2d_editor_core::project::DisplayUnit,
-    ppm: f32,
-) {
+fn paint_body(ctx: &mut PaintCtx<'_>, rect: Rect, state: &GridSnapState) {
     let theme = ctx.host.theme();
     paint_panel_surface_floating(rect, ctx.scene, theme);
     let drag_handle_rect = panel_drag_handle_rect(
@@ -218,15 +211,7 @@ fn paint_body(
     y = crate::paint_body_sections::paint_grid_kind_section(ctx, state, inner_x, inner_w, y);
     y = crate::paint_body_sections::paint_target_section(ctx, state, inner_x, inner_w, y);
     y = crate::paint_body_sections::paint_display_section(ctx, state, inner_x, inner_w, y);
-    y = crate::paint_body_sections::paint_inspect_section(
-        ctx,
-        state,
-        display_unit,
-        ppm,
-        inner_x,
-        inner_w,
-        y,
-    );
+    y = crate::paint_body_sections::paint_inspect_section(ctx, state, inner_x, inner_w, y);
 
     ctx.scene.pop_layer();
 

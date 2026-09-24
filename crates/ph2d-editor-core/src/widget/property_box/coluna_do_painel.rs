@@ -75,9 +75,11 @@ struct Base {
     /// `base.x − primeira.x` e `primeira.direita − base.direita`, com sinal trocado: o quanto a
     /// primeira linha está RECUADA de cada lado.
     recuo: (f32, f32),
-    /// A largura da primeira linha — se a deste quadro for outra, a primeira linha mudou de
-    /// ESPÉCIE (outra selecção no Inspector) e o recuo antigo não a descreve.
+    /// A largura da primeira linha — se a deste quadro for outra, ou o PAINEL mudou de largura ou
+    /// a primeira linha mudou de ESPÉCIE; o [`base_a_partir_de`] separa as duas.
     primeira_w: f32,
+    /// `(x, direita)` ABSOLUTOS da base — a geometria de largura inteira do quadro anterior.
+    rect: (f32, f32),
 }
 
 /// O estado de um quadro em pintura.
@@ -121,6 +123,7 @@ impl ColunaDoPainel {
                 self.base = Some(Base {
                     recuo: (px - ex, er - pr),
                     primeira_w: pr - px,
+                    rect: (ex, er),
                 });
             }
         }
@@ -223,18 +226,36 @@ fn coluna_do_painel(pedidos: &[Pedido], bx: f32, largura: f32, limites: Limites)
 /// - Sem memória (o 1.º quadro de um painel): a primeira linha É a base — errado se ela for um
 ///   cartão recuado, e é por isso que o painel converge no 3.º quadro (o 2.º já tem a base e
 ///   aprende os pedidos das linhas que o 1.º julgou assimétricas).
-/// - A primeira linha com a MESMA largura da do quadro anterior: o recuo lembrado.
-/// - Outra largura (a primeira linha mudou de espécie): ela é lida como RECUADA POR IGUAL dentro da
-///   largura de base lembrada — que é a forma de toda linha de cartão desta casa — em vez de
-///   desalinhar o painel inteiro durante um quadro.
+/// - A primeira linha com a MESMA largura da do quadro anterior: o recuo lembrado (o painel pode
+///   ter-se MOVIDO — flutuar, rolar — sem mudar nada do que a coluna responde).
+/// - Outra largura, e a primeira linha cabe na base antiga RECUADA POR IGUAL dos dois lados: ela
+///   mudou de ESPÉCIE (outra selecção no Inspector — um cartão passou a vir primeiro) e a base é a
+///   antiga, que é a forma de toda linha de cartão desta casa.
+/// - Outra largura e NÃO simétrica dentro da base antiga: o PAINEL mudou de largura (o dock ou a
+///   borda de um painel flutuante arrastados — uma borda fica, a outra anda). A primeira linha é
+///   da mesma espécie de antes e leva o recuo dela.
+///
+/// ⛔⛔ **A 1.ª redacção lia TODA largura nova como mudança de espécie** e o `a_seccao_poe_todas_as
+/// _caixas_na_mesma_coluna` do Grid Snap apanhou-o (2026-09-23): estreitado o painel em `84 px`, a
+/// primeira linha lia-se «recuada `42` de cada lado dentro da base de `304`», TODAS as linhas
+/// passavam a cartões, e o quadro do redimensionamento punha o valor em `620` contra os `653` a que
+/// o painel convergia no quadro seguinte. Num ARRASTO cada quadro tem largura nova — logo a coluna
+/// ficava errada durante o gesto inteiro e só acertava ao largar. O gate irmão
+/// `arrastar_o_dock_acerta_no_mesmo_quadro` afirmava só que as linhas ALINHAVAM entre si, e
+/// alinhadas no sítio errado passavam.
 fn base_a_partir_de(antes: Option<Base>, x: f32, direita: f32) -> (f32, f32) {
     let w = direita - x;
     match antes {
         None => (x, direita),
         Some(b) if (w - b.primeira_w).abs() <= SIMETRIA => (x - b.recuo.0, direita + b.recuo.1),
         Some(b) => {
-            let folga = (b.primeira_w + b.recuo.0 + b.recuo.1 - w) * 0.5;
-            (x - folga, direita + folga)
+            let (l, r) = (x - b.rect.0, b.rect.1 - direita);
+            let dentro = l > -SIMETRIA / 2.0 && r > -SIMETRIA / 2.0;
+            if dentro && (l - r).abs() <= SIMETRIA {
+                b.rect
+            } else {
+                (x - b.recuo.0, direita + b.recuo.1)
+            }
         }
     }
 }

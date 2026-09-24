@@ -1,16 +1,14 @@
-//! Read-only inspect subsection — shows the coord-system label,
-//! cell IDs for probe A / B, and computed graph distance + line
-//! length + neighbor count for the currently-active grid kind.
+//! Inspect subsection — shows the coord-system label, cell IDs for
+//! probe A / B, and computed graph distance + line length + neighbor
+//! count for the currently-active grid kind, followed by the two probe
+//! rows ([`super::ids::GS_PROBE_A_X`] etc.) where the probes are edited.
 //!
-//! v1 surfaces all values as labels (no interactive NumberInputs
-//! for the probe coords yet). The probes default to
-//! `[0, 0]` / `[3, 2]`; tweaking them in v1 requires editing
-//! `GridSnapState::probe_a` / `probe_b` directly — a v2 release
-//! adds NumberInput widgets at [`super::ids::GS_PROBE_A_X`] etc.
+//! Every row goes through the house property-row doors
+//! ([`crate::property_row`]): the name right-aligned against the panel's
+//! value column, the fields the standard number boxes.
 
 use super::state::{GridKind, GridSnapState};
 use crate::paint::{paint_text, resolve};
-use crate::project::DisplayUnit;
 use crate::widget::{SectionHeader, paint_section_header};
 use crate::zones::Rect;
 use ph2d_grid::GridMath;
@@ -18,7 +16,7 @@ use ph2d_grid::Vec2;
 use ph2d_grid::hex::{HexCell, axial_to_cube, axial_to_offset};
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, list_row_gap_px};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Theme, TypeToken, list_row_gap_px};
 use ph2d_vector::VectorScene;
 
 /// Shift the probe pair into the active grid's local space by
@@ -36,7 +34,6 @@ const SECTION_HEADER_H: f32 = 22.0;
 // ⭐ **A linha de uma LISTA e a linha do app** (wave 17): o `22.0` a mao coincidia com o
 // token, e uma coincidencia nao segue quem mexe no token.
 const ROW_H: f32 = ROW_H_PX;
-const LABEL_FONT_SIZE: f32 = 12.0;
 
 /// Snapshot of computed values for the current probe pair.
 #[derive(Clone, Debug)]
@@ -301,9 +298,9 @@ pub fn height() -> f32 {
 /// Paint the inspect section at `rect`. The caller is responsible
 /// for positioning `rect` after the Display section.
 ///
-/// `display_unit` + `pixels_per_meter` come from the live project
-/// settings (`PanelHostInternal::project()`) — used to convert the
-/// meter-domain probe NumberInputs to the active DisplayUnit.
+/// The probe fields read the store, which the panel reseeds from the
+/// state in the active DisplayUnit before painting — so this section no
+/// longer needs the unit.
 #[allow(clippy::too_many_arguments)]
 pub fn paint(
     rect: Rect,
@@ -313,8 +310,6 @@ pub fn paint(
     hit_index: &mut crate::interaction::HitIndex,
     store: &crate::interaction::WidgetStore,
     state: &GridSnapState,
-    display_unit: DisplayUnit,
-    pixels_per_meter: f32,
 ) {
     let header = SectionHeader {
         id: crate::NodeId(0),
@@ -334,7 +329,6 @@ pub fn paint(
 
     let snap = snapshot(state);
     let mut y = rect.y + SECTION_HEADER_H + list_row_gap_px();
-    let label_color = resolve(ColorToken::Text2, theme);
 
     let rows: [(String, String); 5] = [
         (
@@ -363,170 +357,93 @@ pub fn paint(
         ),
     ];
 
-    // ⭐⭐⭐ **A coluna do rótulo MEDE A LISTA, e o orçamento É a coluna.**
+    // ⭐⭐⭐ **Esta secção pinta pelas PORTAS da casa — o nome, a coluna e a caixa são os de toda
+    //    linha de propriedade** (ordem do dono, 2026-09-23, com uma foto e duas setas: *«painel grid
+    //    fora do padrão»*). Até aí ela pintava o nome À ESQUERDA por `paint_text` e montava as caixas
+    //    das sondas à mão, com a metade da coluna calculada aqui — três respostas próprias a
+    //    perguntas que a [`crate::property_row`] já responde para o app inteiro, e a do nome era a
+    //    ERRADA: o padrão é o nome encostado À DIREITA, contra a coluna do valor.
     //
-    // Ela era o literal `80,0` com o valor a `+90` e o orçamento dele a `rect.w − 100`. Medido em
-    // 2026-09-19, os quatro rótulos desta secção dão `Probe A 45,53` · `Probe B 44,91` ·
-    // `Distance 50,30` · **`Line / Neighbors 94,48`** ⇒ o último saía `Line / Neigh…` **em inglês**.
-    //
-    // ⛔⛔ E o gate `the_label_column_is_one_answer` **não o via**: a régua dele procura uma
-    // ATRIBUIÇÃO cujo nome contenha `label_col`/`label_w`, e aqui o número era passado **inline,
-    // como argumento, sem nome nenhum**. *Um censo que enumera por NOME é cego a quem não tem nome*
-    // — a metade nova daquele gate fecha essa porta.
-    let label_w = crate::paint::label_column_width(
-        text_system,
-        LABEL_FONT_SIZE,
-        rows.iter().map(|(l, _)| l.as_str()),
-    );
-    // ⭐⭐⭐ **As colunas são as do PAINEL** (ordem do dono, 2026-09-23: *«quero tudo alinhado e
-    //    padronizado»*). Esta secção media a lista dela e somava o vão à mão — o valor arrancava a
-    //    `+2,5 px` do resto da janela (a varredura `onde_comeca_o_valor` via `110` contra `112,5`).
-    //    Hoje ela PEDE a coluna com o rótulo mais largo dela, e a lei do painel responde.
-    let colunas = |y: f32| {
-        crate::widget::property_row_columns_for(rect.x, rect.w, y, ROW_H, Some(label_w), None)
-    };
+    // ⚠️ **UMA secção, medida UMA vez, sobre TODOS os nomes que ela pinta** — os das linhas de
+    //    leitura e os das sondas, que são os mesmos dois (`Probe A`/`Probe B`). Duas medidas dariam
+    //    duas colunas na mesma secção, que é o defeito de 2026-09-19 que o gate desta secção existe
+    //    para impedir. `campos = 2` porque a linha mais exigente é a da sonda (X e Y lado a lado).
+    let nomes: Vec<&str> = rows
+        .iter()
+        .map(|(l, _)| l.as_str())
+        .filter(|l| !l.is_empty())
+        .collect();
+    let seccao = crate::property_row::Seccao::medida(text_system, 2, &nomes);
+    let fonte = TypeToken::Sm.px();
+    let valor_cor = resolve(ColorToken::Text1, theme);
     for (label, value) in &rows {
         if label.is_empty() && value.is_empty() {
             continue;
         }
-        let row_y = y + (ROW_H - LABEL_FONT_SIZE) * 0.5;
-        let c = colunas(y);
-        if !label.is_empty() {
-            paint_text(
-                text_system,
+        // Uma linha sem nome (a continuação hexagonal da sonda A) usa a MESMA geometria e não pinta
+        // nome nenhum — o valor fica alinhado com os irmãos.
+        let row = if label.is_empty() {
+            crate::property_row::colunas_da_linha(rect.x, rect.w, y, ROW_H, seccao)
+        } else {
+            crate::property_row::paint_label_row(
                 scene,
+                text_system,
+                theme,
+                rect.x,
+                rect.w,
+                y,
+                ROW_H,
                 label,
-                c.label.x,
-                row_y,
-                LABEL_FONT_SIZE,
-                c.label.w,
-                resolve(ColorToken::Text1, theme),
-            );
-        }
-        // O valor à direita do rótulo, na coluna que sobra — as duas alinham em todas as linhas
-        // porque saem do MESMO par de números, medido uma vez acima.
+                seccao,
+            )
+        };
         if !value.is_empty() {
             paint_text(
                 text_system,
                 scene,
                 value,
-                c.control.x,
-                row_y,
-                LABEL_FONT_SIZE,
-                c.control.w,
-                label_color,
+                row.control.x,
+                row.control.y + (row.control.h - fonte) * 0.5,
+                fonte,
+                row.control.w,
+                valor_cor,
             );
         }
         y += ROW_H + list_row_gap_px();
     }
 
-    // Probe-input rows — 2 small NumberInputs per probe, side by side.
+    // As sondas: X e Y lado a lado, pela porta de linha de VÁRIAS componentes. O valor sai da
+    // loja, que o painel re-semeia do estado na unidade activa antes de pintar
+    // (`sync_meter_inputs_to_display_unit_impl`) — é por isso que esta secção já não precisa de
+    // saber a unidade.
     y += list_row_gap_px();
-    paint_probe_pair_row(
-        ph2d_i18n::tr("chrome.grid_snap.probe_a"),
-        colunas(y),
-        super::ids::GS_PROBE_A_X,
-        super::ids::GS_PROBE_A_Y,
-        state.probe_a,
-        y,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        display_unit,
-        pixels_per_meter,
-    );
-    y += ROW_H + list_row_gap_px();
-    paint_probe_pair_row(
-        ph2d_i18n::tr("chrome.grid_snap.probe_b"),
-        colunas(y),
-        super::ids::GS_PROBE_B_X,
-        super::ids::GS_PROBE_B_Y,
-        state.probe_b,
-        y,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        display_unit,
-        pixels_per_meter,
-    );
-}
-
-/// One probe row: label + X NumberInput + Y NumberInput side by side.
-#[allow(clippy::too_many_arguments)]
-fn paint_probe_pair_row(
-    label: &str,
-    colunas: crate::widget::PropertyRow,
-    x_id: crate::NodeId,
-    y_id: crate::NodeId,
-    value: Vec2,
-    y: f32,
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut crate::interaction::HitIndex,
-    store: &crate::interaction::WidgetStore,
-    display_unit: DisplayUnit,
-    pixels_per_meter: f32,
-) {
-    // ⭐⭐ **A coluna chega de fora — é a MESMA que as linhas de diagnóstico usam**, medida uma vez
-    //    da lista inteira. Ela era o literal `70,0` aqui dentro, e a ARMADILHA é que ele passava
-    //    por baixo das duas réguas textuais desta casa ao mesmo tempo: o
-    //    `the_label_column_is_one_answer` só aceita a grafia `label_w` dentro de `ph2d-panel-*`
-    //    (aqui é `ph2d-editor-core`), e a régua dos orçamentos LITERAIS procura um número sem
-    //    nome, e este tinha um. *Quem o apanhou foi o gate que PINTA* — o censo de elisões viu
-    //    `Probe A` com orçamento `70` ao lado do irmão com `94,48` e disse que a secção tinha
-    //    DUAS colunas.
-    let gap = Spacing::Xs.px();
-    let input_w = ((colunas.control.w - gap) / 2.0).max(0.0);
-    paint_text(
-        text_system,
-        scene,
-        label,
-        colunas.label.x,
-        y + (ROW_H - LABEL_FONT_SIZE) * 0.5,
-        LABEL_FONT_SIZE,
-        colunas.label.w,
-        resolve(ColorToken::Text1, theme),
-    );
-    // Probe values are world meters; convert through the active
-    // DisplayUnit so the NumberInputs read the right magnitude.
-    for (i, (id, v_m)) in [(x_id, value[0]), (y_id, value[1])].iter().enumerate() {
-        let v_disp = display_unit.from_meters(*v_m, pixels_per_meter) as f64;
-        let r = Rect::new(
-            colunas.control.x + i as f32 * (input_w + gap),
-            y,
-            input_w,
-            ROW_H,
-        );
-        let (ti_state, _, buffer, caret, anchor) = store.number_input(*id).unwrap_or((
-            crate::widget::TextInputState::Normal,
-            v_disp,
-            "",
-            0,
-            None,
-        ));
-        let buffer_arg = if ti_state == crate::widget::TextInputState::Focused {
-            Some(buffer)
-        } else {
-            None
-        };
-        let input = crate::widget::NumberInput::new(*id, "", v_disp)
-            .visual((ti_state, store.hover_live(*id)));
-        crate::widget::paint_number_input_with_buffer(
-            &input,
-            buffer_arg,
-            caret,
-            anchor,
-            r,
+    for (label, x_id, y_id) in [
+        (
+            ph2d_i18n::tr("chrome.grid_snap.probe_a"),
+            super::ids::GS_PROBE_A_X,
+            super::ids::GS_PROBE_A_Y,
+        ),
+        (
+            ph2d_i18n::tr("chrome.grid_snap.probe_b"),
+            super::ids::GS_PROBE_B_X,
+            super::ids::GS_PROBE_B_Y,
+        ),
+    ] {
+        y = crate::property_row::paint_fields_row(
             scene,
             text_system,
             theme,
+            hit_index,
+            store,
+            rect.x,
+            rect.w,
+            y,
+            label,
+            &[x_id, y_id],
+            1.0,
+            None,
+            seccao,
         );
-        hit_index.register(*id, r);
     }
 }
 

@@ -250,8 +250,6 @@ pub(crate) fn paint_display_section(
 pub(crate) fn paint_inspect_section(
     ctx: &mut PaintCtx<'_>,
     state: &GridSnapState,
-    display_unit: ph2d_editor_core::project::DisplayUnit,
-    ppm: f32,
     inner_x: f32,
     inner_w: f32,
     mut y: f32,
@@ -268,8 +266,6 @@ pub(crate) fn paint_inspect_section(
             hit_index,
             store,
             state,
-            display_unit,
-            ppm,
         );
     }
     y += inspect_h;

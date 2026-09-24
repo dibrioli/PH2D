@@ -3100,7 +3100,6 @@ porta só com um modo decidido por comparação de larguras mediria a FATIA como
 | *Snap* da grelha | CTA-herói, altura própria |
 | menu de propriedades da timeline | é um MENU flutuante, não linhas de propriedade |
 | `arrow_button` do vector | CÉLULA: o quadrado `<`/`>`, os parâmetros só se chamam `x`/`w` |
-| `toggle`/`command` da física | OUTRA COLUNA — ver abaixo |
 
 **⛔⛔ A física foi convertida e REVERTIDA pela medição.** O `dentro_de_um_troco_o_valor_arranca_numa_coluna_so`
 reprovou: a coluna que o painel de física arranca é a da grelha das camadas (`x = 26`), e o `Enabled` do
@@ -3127,6 +3126,27 @@ tecto de LOC dele (`617 → 562`).
 **Prova:** mutação — repor o `Rect::new(inner_x, y, inner_w, row_h)` no *Separate Islands* reprova o
 censo pelo nome, e a árvore restaurada volta a verde. Portão: `nextest-impacted` **17 703/17 703** ·
 clippy `-D warnings` zero nas `9` crates tocadas · `fmt` · censos da árvore combinada **127/127**.
+
+## §9-duotricies — ⭐⭐ A FÍSICA TAMBÉM: a matriz das camadas é declarada, não o botão
+
+Ordem do dono (2026-09-24, *«smoke OK. Siga»*, depois da oferta de alinhar a física). ⛔ **O §9-untricies
+revertia a física e a leitura dele estava pela metade:** o segundo arranque do painel não era o botão, era
+a **matriz das camadas de colisão** (a 1.ª célula de cada fileira em `x = 26`). Os sliders da física já
+usavam a coluna da porta (`property_label_col_w` → `coluna_do_painel::no_painel`, a MESMA função da
+`property_row_columns`); só não apareciam no censo das colunas porque registam o acerto na LINHA inteira.
+⇒ o botão na coluna da porta está alinhado com os pares do painel, e o que é de outra espécie é a matriz
+— uma MATRIZ, não um par nome/valor, que a `300 px` não cabe na coluna do valor (8 células).
+
+**A cura:** os `toggle`/`command` da física pedem a caixa à porta (2 chamadas, `21` no censo fora do
+Inspector), a excepção sai da `LINHA_INTEIRA_OK`, e a física entra em `COLUNAS_DECLARADAS_POR_PAINEL`
+com `2` e o porquê — o mesmo lugar e a mesma forma das abas da timeline. ⚠️ A lista é uma IGUALDADE:
+se a matriz um dia entrar na coluna, a entrada reprova e tem de sair. A altura de abertura da física
+**não mexe** (os botões dela já tinham o vão, `+ row_gap` = `control_gap_px`).
+
+**Portão:** `nextest-impacted` **17 703/17 703** · clippy `-D warnings` zero · `fmt` · censos da árvore
+combinada **127/127**. A prova de que a declaração é necessária é a corrida do §9-untricies: sem ela o
+`dentro_de_um_troco_o_valor_arranca_numa_coluna_so` reprova com `[(26.0, 8, "physics.layer_0_0"),
+(136.0, 3, "physics.sleep_spin")]`.
 
 ## §11 — O que esta linha recomenda a quem a integrar
 

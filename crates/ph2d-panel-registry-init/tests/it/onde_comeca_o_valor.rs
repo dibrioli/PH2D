@@ -275,6 +275,14 @@ const COLUNAS_DECLARADAS_POR_PAINEL: &[(&str, usize, &str)] = &[
         "as abas (`tab_keys`) são um segmentado na faixa do título, não um par nome/valor",
     ),
     (
+        "physics",
+        2,
+        "a grelha das CAMADAS de colisão é uma MATRIZ (a 1.ª célula de cada fileira em `x = 26`), \
+         não um par nome/valor, e numa coluna docada não cabe na coluna do valor; os pares do \
+         painel — sliders e botões — arrancam na coluna da porta (medido 2026-09-24, quando os \
+         botões passaram pela `caixa_do_botao`)",
+    ),
+    (
         "widget_gallery",
         3,
         "a galeria é um CATÁLOGO: cada amostra mostra o widget na largura dele, e alinhá-las \

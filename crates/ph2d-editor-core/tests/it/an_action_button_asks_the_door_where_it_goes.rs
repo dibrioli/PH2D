@@ -75,15 +75,6 @@ const LINHA_INTEIRA_OK: &[(&str, &str, &str)] = &[
         "CTA-heroi: o botao Snap e' a accao do painel inteiro e tem altura propria (44 px)",
     ),
     (
-        "crates/ph2d-panel-physics/src/paint/body.rs",
-        "rect",
-        "OUTRA COLUNA: o `toggle`/`command` deste painel. Medido em 2026-09-24 pelo \
-         `dentro_de_um_troco_o_valor_arranca_numa_coluna_so`: a coluna que o painel de fisica \
-         arranca e' a da grelha das camadas (`x = 26`), e o `Enabled` do sono na coluna da porta \
-         (`x = 136`) abria uma SEGUNDA; alinha-lo pede o painel inteiro na coluna do valor, que e' \
-         outra wave",
-    ),
-    (
         "crates/ph2d-panel-timeline/src/tracks.rs",
         "r",
         "MENU: a lista de propriedades a acrescentar e' um menu flutuante, cada botao e' uma linha \

@@ -292,6 +292,8 @@ pub fn montar(world: &mut World, _nivel: u32) -> Montada {
     resolver_receitas(world);
     println!(
         "[vida-smoke] cena=1  tecla={TECLA_NOME}  dano de uma bala={DANO}\n\
+         (0) o quadrado de contorno verde no MEIO do ecra' sao os MOLDES (o do alvo e o da bala): \
+         e' deles que cada alvo e cada bala nascem. Nao levam tiros e nao se mexem\n\
          (1) espere um instante: nascem QUATRO quadrados numa coluna a' direita — vermelho, \
          laranja, roxo e, em baixo, cinzento\n\
          (2) carregue no {TECLA_NOME}: o heroi azul ja' nasce a' altura do VERMELHO. Ele some ao \

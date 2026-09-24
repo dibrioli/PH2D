@@ -13,8 +13,8 @@ use crate::SculptStroke;
 use crate::tela_na_malha::{Tela, TelaNaMalha, Vista};
 use crate::tinta_fina::TintaDoTraco;
 
-const ANTES: [f32; 3] = [0.2, 0.4, 0.6];
-const LADO: u32 = 100;
+pub(crate) const ANTES: [f32; 3] = [0.2, 0.4, 0.6];
+pub(crate) const LADO: u32 = 100;
 const OLHO: [f32; 3] = [0.0, 0.0, 10.0];
 
 const IDENTIDADE: [f32; 16] = [
@@ -24,13 +24,13 @@ const IDENTIDADE: [f32; 16] = [
     0.0, 0.0, 0.0, 1.0,
 ];
 
-fn vista() -> Vista {
+pub(crate) fn vista() -> Vista {
     Vista::nova(IDENTIDADE, (LADO, LADO), OLHO)
 }
 
 /// Uma grelha `n × n` de quads no plano `z`, de `-1` a `1`, virada para `+z`
 /// (ou para `-z` com `costas`).
-fn grelha(n: u32, z: f32, costas: bool) -> (Vec<[f32; 3]>, Vec<Face>) {
+pub(crate) fn grelha(n: u32, z: f32, costas: bool) -> (Vec<[f32; 3]>, Vec<Face>) {
     let mut pos = Vec::new();
     for j in 0..=n {
         for i in 0..=n {
@@ -59,7 +59,7 @@ fn grelha(n: u32, z: f32, costas: bool) -> (Vec<[f32; 3]>, Vec<Face>) {
     (pos, faces)
 }
 
-fn malha(n: u32) -> Mesh {
+pub(crate) fn malha(n: u32) -> Mesh {
     let (p, f) = grelha(n, 0.0, false);
     let mut m = Mesh::from_parts(p, f).expect("grelha válida");
     m.colors_mut().fill(ANTES);
@@ -80,7 +80,7 @@ fn tela(cor: [u8; 3], a: u8, dentro: impl Fn(u32, u32) -> bool) -> Vec<u8> {
     rgba
 }
 
-fn tudo() -> [u32; 4] {
+pub(crate) fn tudo() -> [u32; 4] {
     [0, 0, LADO, LADO]
 }
 

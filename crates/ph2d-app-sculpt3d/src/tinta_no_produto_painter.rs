@@ -138,6 +138,61 @@ fn sem_cena_a_tela_solta_se() {
     assert!(!p.on_screen_canvas());
 }
 
+/// Um traço por uma lista de pontos de janela, pelo caminho da shell.
+fn traco_por(s: &mut crate::Sculpt3dScene, p: &mut PainterTool, pontos: &[(f32, f32)]) -> bool {
+    quadro(Some(&mut *s), Some(&mut *p));
+    let (x0, y0) = pontos[0];
+    let ok = entrega(s, p, x0, y0, 1.0, PointerPhase::Down);
+    for &(x, y) in &pontos[1..] {
+        entrega(s, p, x, y, 1.0, PointerPhase::Move);
+        quadro(Some(&mut *s), Some(&mut *p));
+    }
+    let &(x1, y1) = pontos.last().expect("um ponto");
+    entrega(s, p, x1, y1, 1.0, PointerPhase::Up);
+    ok
+}
+
+/// ⭐⭐⭐ **GATE — UM BORRÃO DO PAINTER ARRASTA A TINTA QUE A PEÇA JÁ TEM, e um
+/// `Ctrl+Z` desfaz SÓ o borrão, ao bit** (etapa 2). ⚠️ Na etapa 1 a tela
+/// começava transparente e um borrão borrava o NADA: este gate reprovaria ali
+/// com zero amostras mudadas, que é o CONTROLO de que ele mede o retrato.
+#[test]
+#[ignore = "precisa de adaptador"]
+fn um_borrao_do_painter_arrasta_a_tinta_da_peca_e_o_ctrl_z_devolve() {
+    let gpu = gpu_or_skip!();
+    let mut s = cena_52(&gpu.device);
+    s.sync_mesh(&gpu.device, &gpu.queue);
+    let mut p = painter_vermelho();
+    assert!(traco(&mut s, &mut p, 420.0), "o traço vermelho");
+    s.sync_mesh(&gpu.device, &gpu.queue);
+    let depois_do_vermelho = amostras(&s);
+    p.set_paint_tool_mode("smear");
+    assert!(p.screen_canvas_reads_the_piece());
+    let descer: Vec<(f32, f32)> = (0..=20).map(|k| (447.0, 350.0 + 3.0 * k as f32)).collect();
+    assert!(traco_por(&mut s, &mut p, &descer), "o pen-down do borrão");
+    s.sync_mesh(&gpu.device, &gpu.queue);
+    let depois_do_borrao = amostras(&s);
+    let avermelharam = depois_do_borrao
+        .iter()
+        .zip(&depois_do_vermelho)
+        // ⚠️ A peça é BRANCA (`DEFAULT_COLOR`): sobre o branco o vermelho não
+        // sobe — avermelhar é o VERDE e o AZUL descerem. A 1.ª redacção pedia o
+        // vermelho a subir e reprovava sobre um borrão certo.
+        .filter(|(d, a)| !vermelha(a) && d[1] < a[1] - 0.05 && d[2] < a[2] - 0.05)
+        .count();
+    assert!(
+        avermelharam > 0,
+        "o borrão não levou o vermelho a amostra nenhuma que não o tinha"
+    );
+    assert!(tecla(&mut s, false), "o Ctrl+Z tem de ser consumido");
+    s.sync_mesh(&gpu.device, &gpu.queue);
+    assert_eq!(
+        amostras(&s),
+        depois_do_vermelho,
+        "o Ctrl+Z não devolveu a peça ao estado de antes do borrão, ao bit"
+    );
+}
+
 /// 🔎 **SONDA (não é gate)** — desenha a cena depois de uma pincelada do Painter
 /// e grava um PNG em `$PH2D_SONDA_PNG`, para se VER a tinta na peça. Sem a
 /// variável não grava nada.
@@ -163,6 +218,14 @@ fn diag_fotografa_a_pincelada_do_painter() {
             quadro(Some(&mut s), Some(&mut p));
         }
         entrega(&mut s, &mut p, x0 + 240.0, y, 1.0, PointerPhase::Up);
+    }
+    // E um BORRÃO a descer pelas três ondas (etapa 2): o vermelho tem de ser
+    // arrastado para baixo, e não borrado sobre o vazio.
+    p.set_paint_tool_mode("smear");
+    p.set_brush_size_px(24.0);
+    for x in [420.0f32, 470.0, 520.0] {
+        let descer: Vec<(f32, f32)> = (0..=30).map(|k| (x, 290.0 + 4.0 * k as f32)).collect();
+        traco_por(&mut s, &mut p, &descer);
     }
     let (w, h) = (900u32, 700u32);
     let tex = gpu.device.create_texture(&wgpu::TextureDescriptor {

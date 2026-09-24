@@ -23,6 +23,17 @@
 //! uma camada: o traço inteiro do Painter compõe-se sobre a peça como a camada
 //! dele se compõe sobre a sprite.
 //!
+//! # ⭐⭐ A tela SEMEADA: a lei passa a ser a DIFERENÇA (etapa 2)
+//!
+//! Os modos que lêem a cor debaixo do pincel (borrar, esfumar, clonar, o balde,
+//! a aquarela…) começam com o RETRATO da peça na tela ([`crate::tela_semente`]),
+//! e aí cada amostra recebe `nova = base + k·(c − s)` — `c` a cor que a tela
+//! ficou, `s` a do retrato, as duas DIRECTAS. ⚠️ O que o pincel não tocou tem
+//! `c − s = 0` exactamente (os mesmos bytes dos dois lados) e sai ANTES do raio
+//! de oclusão; e a diferença SOMA-se à base, logo o detalhe fino debaixo fica.
+//! A pintura simples continua no «over»: com uma tinta opaca a diferença
+//! deixaria passar o detalhe mais fino do que um píxel.
+//!
 //! # ⚠️ Só pinta o que se VÊ — o preço declarado
 //!
 //! Uma amostra entra quando (1) a face dela está de FRENTE para o olho, (2) cai
@@ -169,6 +180,24 @@ impl Vista {
     pub fn olho(&self) -> [f32; 3] {
         self.olho
     }
+
+    /// O tamanho da tela, em píxeis.
+    #[must_use]
+    pub fn tamanho(&self) -> (u32, u32) {
+        (self.largura as u32, self.altura as u32)
+    }
+
+    /// O ponto na tela e `1/w` — o inverso da profundidade de clip, que é
+    /// LINEAR no ecrã e por isso o que um rasterizador interpola (maior = mais
+    /// perto). `None` atrás do olho.
+    pub(crate) fn ecra_e_inverso(&self, p: [f32; 3]) -> Option<([f32; 2], f32)> {
+        let m = &self.local_para_clip;
+        let w = m[3] * p[0] + m[7] * p[1] + m[11] * p[2] + m[15];
+        if w <= 0.0 {
+            return None;
+        }
+        Some((self.ecra(p)?, 1.0 / w))
+    }
 }
 
 /// Um rectângulo da tela, `[x, y, largura, altura]` em píxeis.
@@ -189,6 +218,10 @@ pub struct TelaNaMalha {
     carimbo_amostra: Vec<u32>,
     epoca: u32,
     raios: usize,
+    /// ⭐⭐ **O retrato da peça com que a tela do Painter COMEÇOU** — só nos
+    /// modos que lêem a cor debaixo do pincel ([`crate::tela_semente`]). Com
+    /// ele a lei deixa de ser o «over» e passa a ser a DIFERENÇA.
+    semente: Option<Vec<u8>>,
 }
 
 impl TelaNaMalha {
@@ -237,7 +270,53 @@ impl TelaNaMalha {
             carimbo_amostra: vec![0; amostras],
             epoca: 0,
             raios: 0,
+            semente: None,
         }
+    }
+
+    /// A vista em que o traço foi congelado.
+    #[must_use]
+    pub fn vista(&self) -> &Vista {
+        &self.vista
+    }
+
+    /// ⭐⭐ **A tela começou com este retrato da peça** — daqui em diante cada
+    /// amostra recebe a DIFERENÇA entre o que a tela ficou e o que ela era
+    /// (ver o cabeçalho). ⚠️ Tem de ser os MESMOS bytes com que a tela do
+    /// Painter foi semeada, senão o que o pincel não tocou deixa de se anular.
+    pub fn com_semente(&mut self, rgba: Vec<u8>) {
+        self.semente = Some(rgba);
+    }
+
+    /// Há retrato? — o modo em que a lei é a diferença.
+    #[must_use]
+    pub fn tem_semente(&self) -> bool {
+        self.semente.is_some()
+    }
+
+    /// ⭐ **O que a tela pede a um ponto** — e se isso é «nada a fazer».
+    fn leitura(&self, tela: &Tela<'_>, s: [f32; 2]) -> (Mistura, bool) {
+        let (pm, a) = tela.amostra(s[0], s[1]);
+        let Some(sem) = self.semente.as_deref() else {
+            return (Mistura::Sobre { pm, a }, a <= 0.0);
+        };
+        let retrato = Tela {
+            rgba: sem,
+            largura: tela.largura,
+            altura: tela.altura,
+        };
+        let (spm, sa) = retrato.amostra(s[0], s[1]);
+        // ⚠️ Sem cobertura de um dos lados não há cor a comparar: um píxel
+        // APAGADO (a borracha) e o fundo fora da silhueta não mexem na peça.
+        if a <= COBERTURA_MINIMA || sa <= COBERTURA_MINIMA {
+            return (Mistura::Diferenca([0.0; 3]), true);
+        }
+        let d = [
+            pm[0] / a - spm[0] / sa,
+            pm[1] / a - spm[1] / sa,
+            pm[2] / a - spm[2] / sa,
+        ];
+        (Mistura::Diferenca(d), d == [0.0; 3])
     }
 
     /// Quantos raios de oclusão este traço já lançou — sonda de custo.
@@ -299,7 +378,7 @@ impl TelaNaMalha {
     }
 }
 
-fn de_frente(pos: &[[f32; 3]], cantos: &[u32], olho: [f32; 3]) -> bool {
+pub(crate) fn de_frente(pos: &[[f32; 3]], cantos: &[u32], olho: [f32; 3]) -> bool {
     let p = |k: usize| pos[cantos[k] as usize];
     let n = if cantos.len() == 3 {
         cruz(sub(p(1), p(0)), sub(p(2), p(0)))
@@ -366,14 +445,36 @@ fn combina(pos: &[[f32; 3]], cantos: &[u32], w: &[f32]) -> [f32; 3] {
     o
 }
 
+/// Abaixo desta cobertura um lado não tem cor que se leia (`1/255` é um
+/// byte de alfa, e um byte de alfa não carrega uma cor de 8 bits).
+const COBERTURA_MINIMA: f32 = 0.5 / 255.0;
+
+/// O que uma amostra recebe da tela.
+#[derive(Clone, Copy)]
+enum Mistura {
+    /// A tela TRANSPARENTE: a camada do traço por cima da base.
+    Sobre { pm: [f32; 3], a: f32 },
+    /// A tela SEMEADA: a diferença entre o que ela ficou e o retrato.
+    Diferenca([f32; 3]),
+}
+
 /// A mistura de uma amostra — ver o cabeçalho.
-fn pousa(base: [f32; 3], pm: [f32; 3], a: f32, k: f32) -> [f32; 3] {
-    let fica = 1.0 - a * k;
-    [
-        base[0] * fica + pm[0] * k,
-        base[1] * fica + pm[1] * k,
-        base[2] * fica + pm[2] * k,
-    ]
+fn pousa(base: [f32; 3], mistura: Mistura, k: f32) -> [f32; 3] {
+    match mistura {
+        Mistura::Sobre { pm, a } => {
+            let fica = 1.0 - a * k;
+            [
+                base[0] * fica + pm[0] * k,
+                base[1] * fica + pm[1] * k,
+                base[2] * fica + pm[2] * k,
+            ]
+        }
+        Mistura::Diferenca(d) => [
+            (base[0] + d[0] * k).clamp(0.0, 1.0),
+            (base[1] + d[1] * k).clamp(0.0, 1.0),
+            (base[2] + d[2] * k).clamp(0.0, 1.0),
+        ],
+    }
 }
 
 impl SculptStroke {
@@ -448,15 +549,15 @@ impl SculptStroke {
                     if !dentro(s) {
                         continue;
                     }
-                    let (pm, a) = tela.amostra(s[0], s[1]);
-                    if a <= 0.0 && !fina.tocou(idx) {
+                    let (mistura, vazia) = sessao.leitura(tela, s);
+                    if vazia && !fina.tocou(idx) {
                         continue;
                     }
                     if !sessao.ve_se(mesh, idx, p) {
                         continue;
                     }
                     let k = keep_da_amostra(w, &m[..n]);
-                    if fina.repinta(idx, |base| pousa(base, pm, a, k)) {
+                    if fina.repinta(idx, |base| pousa(base, mistura, k)) {
                         mudaram += 1;
                     }
                 }
@@ -471,8 +572,8 @@ impl SculptStroke {
                     if !dentro(s) {
                         continue;
                     }
-                    let (pm, a) = tela.amostra(s[0], s[1]);
-                    if a <= 0.0 && !self.tocou_vertice(v) {
+                    let (mistura, vazia) = sessao.leitura(tela, s);
+                    if vazia && !self.tocou_vertice(v) {
                         continue;
                     }
                     let p = mesh.positions()[v as usize];
@@ -480,7 +581,7 @@ impl SculptStroke {
                         continue;
                     }
                     let k = keep_da_amostra(&[1.0], &m[c..=c]);
-                    if self.repinta_vertice(mesh, v, |base| pousa(base, pm, a, k)) {
+                    if self.repinta_vertice(mesh, v, |base| pousa(base, mistura, k)) {
                         mudaram += 1;
                         vertices.push(v);
                     }

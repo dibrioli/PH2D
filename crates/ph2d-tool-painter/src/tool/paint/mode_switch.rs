@@ -243,4 +243,22 @@ impl PainterTool {
     pub fn is_deform_mode(&self) -> bool {
         matches!(self.paint.paint_mode, super::PaintMode::Deform)
     }
+
+    /// ⭐⭐ **O traço lê a cor que já está DEBAIXO do pincel?** — a pergunta que
+    /// decide se a tela da vista 3D começa com o retrato da peça
+    /// (`ph2d_sculpt3d::tela_semente`) ou transparente.
+    ///
+    /// Só a pintura simples não lê: o modo `Paint` do meio `Digital`, com a
+    /// mistura `Mix` (o «over»), e a borracha (que sobre a peça não arranca
+    /// cor nenhuma, com retrato ou sem ele). ⚠️ **Tudo o resto lê**, e a lista
+    /// é pela NEGATIVA de propósito: um modo novo que chegue ao enum nasce a
+    /// ler a peça — que é o lado seguro (custa um retrato no pen-down) —, em
+    /// vez de nascer a borrar o vazio.
+    #[must_use]
+    pub fn screen_canvas_reads_the_piece(&self) -> bool {
+        let simples = matches!(self.paint.paint_mode, super::PaintMode::Paint)
+            && self.paint_media() == super::PaintMedia::Digital
+            && (self.paint.eraser || self.paint.brush.blend == ph2d_painter_brush::BrushBlend::Mix);
+        !simples
+    }
 }

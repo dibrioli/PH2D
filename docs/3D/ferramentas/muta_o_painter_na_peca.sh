@@ -27,6 +27,8 @@ cd "$ROOT" || exit 2
 BK=$(mktemp -d)
 FICHEIROS=(
   crates/ph2d-sculpt3d/src/tela_na_malha.rs
+  crates/ph2d-sculpt3d/src/tela_semente.rs
+  crates/ph2d-tool-painter/src/tool/paint/mode_switch.rs
   crates/ph2d-sculpt3d/src/tinta_fina.rs
   crates/ph2d-sculpt3d/src/stroke_freeze.rs
   crates/ph2d-tool-painter/src/tool/runtime.rs
@@ -51,7 +53,7 @@ restore() {
 }
 trap restore EXIT
 
-LEI=(cargo test -p ph2d-sculpt3d --lib tela_na_malha)
+LEI=(cargo test -p ph2d-sculpt3d --lib tela_)
 PINTOR=(cargo test -p ph2d-tool-painter --lib screen_canvas)
 COSTURA=(cargo test -p ph2d-app-sculpt3d --lib painter_fiacao)
 
@@ -115,8 +117,8 @@ muta LEI crates/ph2d-sculpt3d/src/tela_na_malha.rs \
   '    ponto(n, sub(olho, p(0))) > 0.0 || true' \
   'L2 a face de costas também é pintada'
 muta LEI crates/ph2d-sculpt3d/src/tela_na_malha.rs \
-  '    let fica = 1.0 - a * k;' \
-  '    let fica = 0.0 * a * k;' \
+  '            let fica = 1.0 - a * k;' \
+  '            let fica = 0.0 * a * k;' \
   'L3 a tinta substitui a base em vez de a cobrir'
 muta LEI crates/ph2d-sculpt3d/src/tela_na_malha.rs \
   '                    let k = keep_da_amostra(w, &m[..n]);' \
@@ -144,6 +146,42 @@ muta LEI crates/ph2d-sculpt3d/src/tela_na_malha.rs \
   '            s[0] >= caixa[0] && s[0] <= caixa[2] && s[1] >= caixa[1] && s[1] <= caixa[3]' \
   '            s[0] >= caixa[0] && s[1] >= caixa[1]' \
   'L9 o rectângulo sujo deixa de limitar a pousada'
+
+# ── ETAPA 2: o retrato e a lei da DIFERENÇA ──────────────────────────────
+muta LEI crates/ph2d-sculpt3d/src/tela_na_malha.rs \
+  '            (base[0] + d[0] * k).clamp(0.0, 1.0),' \
+  '            base[0].clamp(0.0, 1.0),' \
+  'L10 a diferença deixa de chegar ao canal vermelho'
+muta LEI crates/ph2d-sculpt3d/src/tela_na_malha.rs \
+  '        (Mistura::Diferenca(d), d == [0.0; 3])' \
+  '        (Mistura::Diferenca(d), false)' \
+  'L11 o intacto deixa de sair cedo: um raio por amostra da peça'
+muta LEI crates/ph2d-sculpt3d/src/tela_na_malha.rs \
+  '        if a <= COBERTURA_MINIMA || sa <= COBERTURA_MINIMA {' \
+  '        if false {' \
+  'L12 um píxel apagado divide por zero'
+muta LEI crates/ph2d-sculpt3d/src/tela_semente.rs \
+  '            if inv <= perto[o] {' \
+  '            if false {' \
+  'S1 o retrato mostra a última face desenhada e não a mais perto'
+muta LEI crates/ph2d-sculpt3d/src/tela_semente.rs \
+  '        if !de_frente(pos, cantos, vista.olho()) {' \
+  '        if false {' \
+  'S2 as costas entram no retrato'
+muta LEI crates/ph2d-sculpt3d/src/tela_semente.rs \
+  '                l[0] * ps[0].1 / inv,' \
+  '                l[0],' \
+  'S3 o retrato interpola no ecrã e não com perspectiva'
+muta PINTOR crates/ph2d-tool-painter/src/tool/paint/mode_switch.rs \
+  '        !simples' \
+  '        false' \
+  'T7 nenhum modo lê a peça: o borrão borra o vazio'
+muta PINTOR crates/ph2d-tool-painter/src/tool/screen_canvas.rs \
+  '        self.set_source(rgba, w, h);
+        true' \
+  '        let _ = rgba;
+        true' \
+  'T8 semear diz que semeou e a tela fica como estava'
 
 # ── AS GUARDAS DO PAINTER ─────────────────────────────────────────────────
 muta PINTOR crates/ph2d-tool-painter/src/tool/runtime.rs \
@@ -217,6 +255,24 @@ muta COSTURA crates/ph2d-app-sculpt3d/src/cursor.rs \
   '        if let Some(raio) = self.painter_raio_px {' \
   '        if let Some(raio) = None::<f32> {' \
   'P8 o anel do Painter volta a ser o do pincel de escultura'
+
+muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
+  '        if painter.screen_canvas_reads_the_piece() {' \
+  '        if false {' \
+  'P9 a costura nunca semeia a tela'
+muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
+  '            sessao.com_semente(retrato);' \
+  '            let _ = retrato;' \
+  'P10 a sessão não recebe o retrato: a lei continua o «over»'
+muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
+  '            let _ = painter.take_screen_canvas();' \
+  '' \
+  'P11 o retrato é pousado como mudança'
+muta COSTURA shells/desktop/src/input_dispatch/painter_canvas_input.rs \
+  '            super::painter_canvas_mods::forward(painter, shift, ctrl, alt);
+            return ph2d_app_sculpt3d' \
+  '            return ph2d_app_sculpt3d' \
+  'P12 os modificadores não chegam ao Painter sobre a peça'
 
 # ── O CONTROLO — tem de SOBREVIVER ──────────────────────────────────────────
 muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \

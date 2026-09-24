@@ -340,6 +340,7 @@ impl App {
                 .and_then(|t| t.as_any_mut().downcast_mut::<PainterTool>()),
         ) && painter.on_screen_canvas()
         {
+            super::painter_canvas_mods::forward(painter, shift, ctrl, alt);
             return ph2d_app_sculpt3d::painter_na_malha::entrega(
                 scene, painter, px, py, pressure, phase,
             );

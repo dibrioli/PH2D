@@ -76,6 +76,24 @@ impl PainterTool {
         }
     }
 
+    /// ⭐⭐ **A tela começa com o RETRATO da peça** — o pen-down dos modos que
+    /// lêem a cor debaixo do pincel ([`Self::screen_canvas_reads_the_piece`]).
+    /// `rgba` tem de ter o tamanho da tela presa; devolve se a semeou.
+    ///
+    /// ⚠️ Pelo `set_source` e não pelo `bind_document`: o documento já é a
+    /// tela da vista, e o que muda é só o conteúdo dela.
+    pub fn seed_screen_canvas(
+        &mut self,
+        rgba: Vec<u8>, // COLOR-RAW-OK: the portrait's bytes forwarded verbatim to the `set_source` trait contract (also `Vec<u8>`), like `bind_document`
+    ) -> bool {
+        let (w, h) = self.source_size;
+        if !self.on_screen_canvas() || rgba.len() != (w as usize) * (h as usize) * 4 {
+            return false;
+        }
+        self.set_source(rgba, w, h);
+        true
+    }
+
     /// **Solta a tela** — a escultura saiu do ecrã, e a ponte volta a poder
     /// ligar a sprite escolhida no quadro seguinte.
     pub fn release_screen_canvas(&mut self) {

@@ -113,6 +113,35 @@ fn elos() -> Vec<(
             1,
             "P8 o anel deitado na peça mente sobre o pincel do Painter",
         ),
+        // ── ETAPA 2: a tela semeada ──
+        (
+            "painter_na_malha.rs",
+            COSTURA,
+            "painter.screen_canvas_reads_the_piece()",
+            1,
+            "P9 os modos que lêem a cor debaixo do pincel borram o VAZIO",
+        ),
+        (
+            "painter_na_malha.rs",
+            COSTURA,
+            "sessao.com_semente(retrato);",
+            1,
+            "P10 a tela semeada é pousada como «over»: a peça inteira vira o retrato",
+        ),
+        (
+            "painter_na_malha.rs",
+            COSTURA,
+            "let _ = painter.take_screen_canvas();",
+            1,
+            "P11 o retrato é pousado como mudança: o quadro seguinte varre a peça inteira",
+        ),
+        (
+            "painter_canvas_input.rs",
+            ENTREGA,
+            "super::painter_canvas_mods::forward(painter, shift, ctrl, alt);",
+            2,
+            "P12 Shift/Ctrl/Alt não chegam ao Painter sobre a peça",
+        ),
     ]
 }
 
@@ -120,7 +149,7 @@ fn elos() -> Vec<(
 #[test]
 fn a_costura_do_painter_esta_ligada_nas_duas_pontas() {
     let elos = elos();
-    assert!(elos.len() >= 8, "o piso de população: {} elos", elos.len());
+    assert!(elos.len() >= 12, "o piso de população: {} elos", elos.len());
     for (ficheiro, texto, agulha, esperado, parte) in elos {
         let n = sem_prosa(texto).matches(agulha).count();
         assert_eq!(

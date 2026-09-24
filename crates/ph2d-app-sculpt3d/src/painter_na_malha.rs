@@ -90,6 +90,11 @@ pub fn entrega(
         if !scene.painter_abre(x, y) {
             return false;
         }
+        // ⭐⭐ Os modos que lêem a cor debaixo do pincel começam com o RETRATO
+        // da peça na tela, e a lei passa a ser a diferença (etapa 2).
+        if painter.screen_canvas_reads_the_piece() {
+            scene.painter_semeia(painter);
+        }
     }
     let consumed = painter.on_canvas_pointer(CanvasPointer {
         pos: [vx, vy],
@@ -163,6 +168,26 @@ impl Sculpt3dScene {
             .map_or(mesh.vert_count(), |t| t.tinta().amostras().len());
         self.painter_tela = Some(TelaNaMalha::nova(mesh, vista, destino));
         true
+    }
+
+    /// ⭐⭐ **A tela começa com o retrato da peça** — os MESMOS bytes vão para
+    /// o Painter e para a sessão, senão o que o pincel não tocou deixa de se
+    /// anular na diferença.
+    ///
+    /// ⚠️ **E a drenagem do retrato deita-se FORA:** semear a tela marca-a
+    /// inteira como mudada, e o retrato não é uma mudança — pousá-lo varreria a
+    /// peça inteira no quadro seguinte para concluir que nada mudou.
+    pub(crate) fn painter_semeia(&mut self, painter: &mut PainterTool) {
+        let Some(sessao) = self.painter_tela.as_mut() else {
+            return;
+        };
+        let tinta = self.stroke.tinta_fina.as_ref().map(|t| t.tinta());
+        let mesh = self.objects[self.active].stack.mesh();
+        let retrato = ph2d_sculpt3d::tela_semente::semente(mesh, tinta, sessao.vista());
+        if painter.seed_screen_canvas(retrato.clone()) {
+            let _ = painter.take_screen_canvas();
+            sessao.com_semente(retrato);
+        }
     }
 
     /// **Pousa na peça o que a tela mudou.**

@@ -181,6 +181,12 @@ pub mod tela_na_malha;
 #[cfg(test)]
 #[path = "tela_na_malha_tests.rs"]
 mod tela_na_malha_tests;
+/// ⭐⭐ **O RETRATO DA PEÇA** — a imagem com que a tela do Painter começa nos
+/// modos que lêem a cor debaixo do pincel; ver o cabeçalho dele.
+pub mod tela_semente;
+#[cfg(test)]
+#[path = "tela_semente_tests.rs"]
+mod tela_semente_tests;
 pub mod tinta_fina;
 #[cfg(test)]
 #[path = "tinta_fina_tests.rs"]

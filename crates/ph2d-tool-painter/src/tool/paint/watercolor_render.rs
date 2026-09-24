@@ -337,7 +337,10 @@ impl PainterTool {
                             rw,
                             rh,
                             |ox, oy| {
-                                if st_warp > 0.0 {
+                                // O centro JÁ é `(sx, sy)` — exacto (`lx + 0.0 == lx`, lx ≥ 0).
+                                if ox == 0.0 && oy == 0.0 {
+                                    (sx, sy)
+                                } else if st_warp > 0.0 {
                                     let (wx, wy) =
                                         warp_offset(gx as f32 + ox, gy as f32 + oy, noise_tile);
                                     (lx + ox + wx * st_warp, ly + oy + wy * st_warp)

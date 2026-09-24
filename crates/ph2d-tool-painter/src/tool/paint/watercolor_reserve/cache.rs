@@ -70,11 +70,6 @@ pub(in crate::tool::paint) struct ReserveCache {
     feito: Vec<bool>,
 }
 
-fn inter(a: Rect, b: Rect) -> Option<Rect> {
-    let r = (a.0.max(b.0), a.1.max(b.1), a.2.min(b.2), a.3.min(b.3));
-    (r.0 < r.2 && r.1 < r.3).then_some(r)
-}
-
 impl ReserveFields {
     /// O campo da janela de leitura `win`, lido do plano guardado e recalculado só onde a janela é
     /// nova ou onde os planos mudaram desde o último composite (`changed`, o sujo do quadro).

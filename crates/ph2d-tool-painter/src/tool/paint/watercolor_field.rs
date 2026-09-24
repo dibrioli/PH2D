@@ -504,8 +504,8 @@ pub(super) fn paper_h_px(
 /// EDGE-4: how much per-pixel DWELL (soak) boosts the rim gain — the rim strengthens where the
 /// water pooled/lingered and stays plain elsewhere (the rim tells the gesture's story). Knob.
 pub(super) const EDGE_SOAK_BOOST: f32 = 0.5;
-const SEED_JAG_X: u32 = 0x4A47_5801;
-const SEED_JAG_Y: u32 = 0x4A47_5902;
+pub(super) const SEED_JAG_X: u32 = 0x4A47_5801;
+pub(super) const SEED_JAG_Y: u32 = 0x4A47_5902;
 
 /// Sample the WATER channel (the session soak) at a SERRATED coordinate: canvas-anchored value
 /// noise (cell [`BACKRUN_JAG_CELL`]) displaces the read up to ±[`BACKRUN_JAG_PX`], so the pool's
@@ -521,12 +521,18 @@ pub(super) fn water_at(
     gy: usize,
     tile: NoiseTile,
 ) -> (f32, f32, f32) {
-    let jx = (value_noise_tiled(gx as f32, gy as f32, BACKRUN_JAG_CELL, SEED_JAG_X, tile) * 2.0
-        - 1.0)
-        * BACKRUN_JAG_PX;
-    let jy = (value_noise_tiled(gx as f32, gy as f32, BACKRUN_JAG_CELL, SEED_JAG_Y, tile) * 2.0
-        - 1.0)
-        * BACKRUN_JAG_PX;
+    // A mesma célula, dois seeds: a aritmética de grade uma vez ([`value_noise_pair`] — a fatoração
+    // do warp, byte-exacta; gate `o_par_do_serrilhado_da_o_byte_de_dois_ruidos`).
+    let (nx, ny) = value_noise_pair(
+        gx as f32,
+        gy as f32,
+        BACKRUN_JAG_CELL,
+        SEED_JAG_X,
+        SEED_JAG_Y,
+        tile,
+    );
+    let jx = (nx * 2.0 - 1.0) * BACKRUN_JAG_PX;
+    let jy = (ny * 2.0 - 1.0) * BACKRUN_JAG_PX;
     let wx = (gx as f32 + jx).clamp(0.0, (fw - 1) as f32);
     let wy = (gy as f32 + jy).clamp(0.0, (fh - 1) as f32);
     // BILINEAR read of the u8 pool: a nearest read left 1-px stairs on the ring's inner edge,

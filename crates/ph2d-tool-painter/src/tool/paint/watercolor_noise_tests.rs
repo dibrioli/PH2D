@@ -505,3 +505,27 @@ fn slot_paper_preset_tiles_seamlessly_under_tiling() {
     );
     assert_eq!(snap_slot_size(raw, NoiseTile::NONE).size, raw.size);
 }
+
+/// **O par da célula do SERRILHADO do backrun dá o byte de dois [`value_noise_tiled`]** — o
+/// `water_at` passou a pedir os dois seeds numa chamada ([`value_noise_pair`]); o oráculo é a
+/// formulação de antes, uma chamada por seed. Fronteiras de célula e sub-pixels, com e sem Tiling.
+#[test]
+fn o_par_do_serrilhado_da_o_byte_de_dois_ruidos() {
+    use super::super::watercolor_field::{BACKRUN_JAG_CELL, SEED_JAG_X, SEED_JAG_Y};
+    let mut n = 0usize;
+    for tile in [NoiseTile::NONE, NoiseTile::new((500, 500), [true, true])] {
+        for i in 0..200 {
+            for j in 0..60 {
+                let (x, y) = (i as f32 * 1.37 - 3.0, j as f32 * 4.11 + 0.5);
+                let par = value_noise_pair(x, y, BACKRUN_JAG_CELL, SEED_JAG_X, SEED_JAG_Y, tile);
+                let dois = (
+                    value_noise_tiled(x, y, BACKRUN_JAG_CELL, SEED_JAG_X, tile),
+                    value_noise_tiled(x, y, BACKRUN_JAG_CELL, SEED_JAG_Y, tile),
+                );
+                assert_eq!(par, dois, "o par diverge em ({x}, {y})");
+                n += 1;
+            }
+        }
+    }
+    assert!(n >= 20_000, "controlo: só {n} posições");
+}

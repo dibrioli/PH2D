@@ -156,7 +156,7 @@ pub(super) fn warp_axis(x: f32, y: f32, sa: u32, sb: u32, tile: NoiseTile) -> f3
 /// (o centro + os 9 taps do supersample 3×3, cada um roteado pelo warp de propósito: foi isso que curou
 /// a borda serrilhada, e por isso cortar taps está FORA de discussão).
 #[inline]
-fn value_noise_pair(
+pub(super) fn value_noise_pair(
     x: f32,
     y: f32,
     cell: f32,

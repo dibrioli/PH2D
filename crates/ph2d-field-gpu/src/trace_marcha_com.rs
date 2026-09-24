@@ -50,12 +50,13 @@ pub(super) fn marcha_com(
     // em raios a correr ao mesmo tempo. Medido a `1920×1080`: a mesma marcha num kernel que só marcha
     // custa `18×`–`31×` menos do que o quadro que a hospedava (o nó, `2,76` contra `86,34 ms`).
     let so_o_centro = matches!(pintura, Pintura::Matcap(_));
+    let luz_a_parte = !so_o_centro && crate::luz_separada();
     let p_centro = cache
         .entry_with_layout(
             device,
             &molde_com_esculturas,
             fita,
-            if so_o_centro {
+            if so_o_centro || luz_a_parte {
                 "centro_so"
             } else {
                 "centro_e_luz"
@@ -63,11 +64,19 @@ pub(super) fn marcha_com(
             Some(&layout),
         )
         .clone();
+    let p_luz = luz_a_parte.then(|| {
+        cache
+            .entry_with_layout(device, &molde_com_esculturas, fita, "luz_so", Some(&layout))
+            .clone()
+    });
     // ⚠️ **Compilar é o caro** — o pipeline da borda só nasce quando ela vai de facto correr.
     let p_bordas = setup.antialias.then(|| {
-        cache
-            .entry_with_layout(device, &molde_com_esculturas, fita, "bordas", Some(&layout))
-            .clone()
+        let mut e = |nome| {
+            cache
+                .entry_with_layout(device, &molde_com_esculturas, fita, nome, Some(&layout))
+                .clone()
+        };
+        (e("bordas"), e("bordas_marcha"))
     });
 
     use wgpu::util::DeviceExt;
@@ -170,7 +179,7 @@ pub(super) fn marcha_com(
         )
     };
     let bg_centro = bind(&p_centro);
-    let bg_bordas = p_bordas.as_ref().map(&bind);
+    let bg_bordas = p_bordas.as_ref().map(|(p, _)| bind(p));
 
     let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
     // ⭐⭐⭐⭐ **A GRADE ASSA-SE ANTES DA MARCHA, no mesmo encoder** — ver [`crate::longe`]. ⚠️ Dois
@@ -227,11 +236,16 @@ pub(super) fn marcha_com(
     }
     // ⚠️ **DOIS despachos, e a ordem é a lei**: a borda pergunta pelos VIZINHOS, logo o centro tem
     // de estar escrito para toda a imagem antes de ela correr.
-    let despachos: Vec<(&wgpu::ComputePipeline, &wgpu::BindGroup)> =
-        match (p_bordas.as_ref(), bg_bordas.as_ref()) {
-            (Some(p), Some(bg)) => vec![(&p_centro, &bg_centro), (p, bg)],
-            _ => vec![(&p_centro, &bg_centro)],
-        };
+    // ⭐ E a re-amostragem é um TERCEIRO, depois de a lista estar escrita — ver o `bordas_marcha`.
+    let mut despachos: Vec<(&wgpu::ComputePipeline, &wgpu::BindGroup)> =
+        vec![(&p_centro, &bg_centro)];
+    if let Some(p) = &p_luz {
+        despachos.push((p, &bg_centro));
+    }
+    if let (Some((p, pm)), Some(bg)) = (p_bordas.as_ref(), bg_bordas.as_ref()) {
+        despachos.push((p, bg));
+        despachos.push((pm, bg));
+    }
     for (p, bg) in despachos {
         let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: None,

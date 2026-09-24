@@ -465,3 +465,135 @@ fn diag_a_marcha_magra_contra_o_produto() {
         );
     }
 }
+
+/// ⏱️⭐⭐⭐ **Sonda: as PEÇAS do quadro do matcap depois do kernel magro** (GPU).
+///
+/// O quadro magro ainda custa `3,6`–`6,7×` a marcha magra. Esta sonda parte o que sobra: o quadro
+/// inteiro · o mesmo sem a segunda passagem da silhueta (`Sonda::bordas = false`) · e a leitura de
+/// uma imagem RGBA8 do mesmo tamanho pelo barramento (`Tracer::mede_leitura`).
+#[test]
+#[ignore = "sonda de GPU"]
+fn diag_as_pecas_do_quadro_magro() {
+    const W: u32 = 1920;
+    const H: u32 = 1080;
+    let cam = ph2d_field_render::Orbit::default();
+    let (lado, foto) = crate::smoke::matcap_para_sonda();
+    let olhar = ph2d_view_transform::Look::default();
+    let mc = ph2d_field_gpu::matcap::MatcapSetup {
+        rgb_linear: &foto,
+        side: lado,
+        chave: 1,
+        stops: olhar.exposure_stops,
+        view: ph2d_view_transform::wgsl::view_code(olhar.view),
+        background: [0, 0, 0, 0],
+    };
+    let Some(t) = crate::gpu_frame::shared() else {
+        println!("sem adaptador");
+        return;
+    };
+    let leitura = t
+        .lock()
+        .expect("o traçador")
+        .mede_leitura(u64::from(W) * u64::from(H) * 4, 8);
+    println!(
+        "\n  {}\n  leitura de uma imagem RGBA8 {W}×{H}: {leitura:.2} ms\n  cena · quadro ms · sem a \
+         borda ms · a borda ms [mínimo de 5]",
+        super::super::super::contexto()
+    );
+    let min_de = |f: &mut dyn FnMut()| {
+        f();
+        let mut m = f64::INFINITY;
+        for _ in 0..5 {
+            let t0 = std::time::Instant::now();
+            f();
+            m = m.min(t0.elapsed().as_secs_f64() * 1e3);
+        }
+        m
+    };
+    for cena in [5u32, 28, 1, 11, 26, 27, 29, 30] {
+        let doc = crate::smoke::scene(cena);
+        let reg = crate::smoke::sampled_registry();
+        let com = min_de(&mut || {
+            let _ = crate::gpu_frame::pinta_matcap(t, &doc, &reg, &cam, &mc, W, H);
+        });
+        let sonda = crate::gpu_frame::Sonda {
+            bordas: false,
+            ..crate::gpu_frame::Sonda::default()
+        };
+        let sem = min_de(&mut || {
+            let _ = crate::gpu_frame::pinta_matcap_com(t, &doc, &reg, &cam, &mc, W, H, sonda);
+        });
+        println!(
+            "  {cena:4} · {com:>7.2} · {sem:>7.2} · {:>6.2}",
+            com - sem
+        );
+    }
+}
+
+/// ⏱️⭐⭐⭐ **Sonda: o quadro do RENDER contra o do MATCAP, cena a cena** (GPU) — a pergunta *«o
+/// modo Render paga o mesmo kernel pesado que o matcap pagava?»*. Uma lâmpada, o material de
+/// omissão, sem chão; o quadro de movimento (`assente = false`) e o assente.
+#[test]
+#[ignore = "sonda de GPU"]
+fn diag_o_render_contra_o_matcap() {
+    const W: u32 = 1920;
+    const H: u32 = 1080;
+    let cam = ph2d_field_render::Orbit::default();
+    let (lado, foto) = crate::smoke::matcap_para_sonda();
+    let olhar = ph2d_view_transform::Look::default();
+    let mc = ph2d_field_gpu::matcap::MatcapSetup {
+        rgb_linear: &foto,
+        side: lado,
+        chave: 1,
+        stops: olhar.exposure_stops,
+        view: ph2d_view_transform::wgsl::view_code(olhar.view),
+        background: [0, 0, 0, 0],
+    };
+    let Some(t) = crate::gpu_frame::shared() else {
+        println!("sem adaptador");
+        return;
+    };
+    let materiais = [ph2d_material::OpenPbr::default().prepare()];
+    let surfaces = ph2d_field_render::Surfaces {
+        all: &materiais,
+        owners: None,
+    };
+    let pres = ph2d_field_render::Presentation::of(olhar);
+    let luz = [crate::gpu_frame::tests_lampada(&cam)];
+    println!(
+        "\n  {}\n  cena · matcap ms · render em movimento ms · render assente ms [mínimo de 5]",
+        super::super::super::contexto()
+    );
+    let min_de = |f: &mut dyn FnMut()| {
+        f();
+        let mut m = f64::INFINITY;
+        for _ in 0..5 {
+            let t0 = std::time::Instant::now();
+            f();
+            m = m.min(t0.elapsed().as_secs_f64() * 1e3);
+        }
+        m
+    };
+    for cena in [5u32, 28, 1, 11, 26, 27, 29, 30] {
+        let doc = crate::smoke::scene(cena);
+        let reg = crate::smoke::sampled_registry();
+        let matcap = min_de(&mut || {
+            let _ = crate::gpu_frame::pinta_matcap(t, &doc, &reg, &cam, &mc, W, H);
+        });
+        let render = |assente| {
+            min_de(&mut || {
+                let _ = crate::gpu_frame::paint(
+                    t, &doc, &reg, &cam, &luz, &surfaces, &pres, [0, 0, 0, 0], None, W, H,
+                    assente,
+                );
+            })
+        };
+        let movimento = render(false);
+        let assente = render(true);
+        println!("  {cena:4} · {matcap:>7.2} · {movimento:>7.2} · {assente:>7.2}");
+    }
+}
+
+/// ⏱️⭐⭐⭐⭐ **A oclusão do céu marchada numa GRADE** — ver o cabeçalho do [`ceu`].
+#[path = "device_probes_w9_ceu.rs"]
+mod ceu;

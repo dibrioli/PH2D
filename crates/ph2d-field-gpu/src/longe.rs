@@ -73,6 +73,19 @@ pub struct Longe {
     /// ⚠️ É em CÉLULAS porque o erro da grade é em células: um limite em unidades de mundo seria
     /// grosso numa peça pequena e fino numa grande.
     pub perto: f32,
+    /// ⭐⭐⭐⭐ **Quem LÊ a grade: `false` = a marcha primária (o salto de espaço vazio), `true` = SÓ
+    /// os cones da oclusão do céu** (`docs/Render3d/03` §W9, «a oclusão na grade»). Com `true` o raio
+    /// primário só recorta pela caixa e continua exacto; os `48` cones marcham o campo assado.
+    pub so_ceu: bool,
+    /// ⭐⭐⭐⭐ **A caixa da GRADE, quando não é a do recorte** — `None` = a mesma `lo`/`hi`.
+    ///
+    /// ⛔⛔ **Os cones do céu andam até à ESFERA da peça, não até à caixa justa dela**, e a 1.ª
+    /// redacção assou a grade na caixa justa: fora dela o cone lia um valor aproximado e a oclusão
+    /// não convergia com a resolução (p99 `0,18` no triângulo, a `512³` como a `128³`). Assada na
+    /// caixa da esfera, ela converge (`0,013`). ⚠️ E **alargar o RECORTE** junto com ela mudava a
+    /// silhueta do raio primário — a razão escrita no `a_caixa_da_marcha` —, logo as duas caixas
+    /// são dois campos.
+    pub grade_caixa: Option<([f32; 3], [f32; 3])>,
 }
 
 /// A geometria da grade que a [`Longe`] pede — derivada, nunca guardada.
@@ -93,11 +106,8 @@ impl Longe {
         if self.res == 0 {
             return None;
         }
-        let ext = [
-            self.hi[0] - self.lo[0],
-            self.hi[1] - self.lo[1],
-            self.hi[2] - self.lo[2],
-        ];
+        let (lo, hi) = self.grade_caixa.unwrap_or((self.lo, self.hi));
+        let ext = [hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]];
         let maior = ext[0].max(ext[1]).max(ext[2]);
         if maior.partial_cmp(&0.0) != Some(std::cmp::Ordering::Greater) || !maior.is_finite() {
             return None;
@@ -112,7 +122,7 @@ impl Longe {
             #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
             let n = (ext[a] / celula).ceil() as u32 + 1;
             dims[a] = n + 2 * FOLGA;
-            origem[a] = self.lo[a] - folga;
+            origem[a] = lo[a] - folga;
         }
         Some(Grade {
             dims,
@@ -141,6 +151,7 @@ impl Longe {
 /// | `8..11` | nós por eixo |
 /// | `11` | o limite de perto, em unidades de mundo |
 /// | `12..15` | o nó `(0,0,0)` |
+/// | `15` | `1` = só a oclusão do céu lê a grade — ver [`Longe::so_ceu`] |
 ///
 /// ⚠️ **O deslocamento viaja nos bits e não no valor** — a razão escrita no
 /// [`crate::sculpt::emit`]: acima de `2²⁴` um `f32` deixa de representar um inteiro.
@@ -160,6 +171,7 @@ pub fn cabecalho(l: &Longe, deslocamento: u32) -> [f32; CABECALHO] {
         }
         h[11] = l.perto * g.celula;
         h[12..15].copy_from_slice(&g.origem);
+        h[15] = if l.so_ceu { 1.0 } else { 0.0 };
     }
     h
 }
@@ -209,6 +221,34 @@ fn longe_limite(p: vec3<f32>) -> f32 {
 
 // Há grade, ou só o recorte da caixa? (`res = 0` escreve a célula a `0`.)
 fn longe_tem_grade() -> bool { return k[s.longe - 1u + 3u] > 0.0; }
+
+// Só a oclusão do céu lê a grade? — ver `Longe::so_ceu`.
+fn longe_so_ceu() -> bool { return k[s.longe - 1u + 15u] > 0.5; }
+
+// ⭐⭐⭐⭐ **O campo que os CONES do céu marcham** — a grade assada quando ela é deles, a árvore
+// quando não.
+//
+// ⛔⛔ **Fora da caixa NÃO é a distância à caixa**, e a 1.ª redacção mediu-o: aquela é um LIMITE
+// INFERIOR, certo para o salto da marcha e errado para a penumbra, que lê `d/t` como o quão perto
+// passa a superfície — cada cone que saía da caixa lia «rente a uma parede» e a oclusão ia a PRETO
+// (média `−0,59` no triângulo, e a piorar com a grade mais fina). ⇒ o valor na parede da caixa (a
+// trilinear GRAMPEIA o índice) mais a distância a ela, que é o que um campo `1`-Lipschitz daria por
+// cima.
+fn campo_do_ceu(p: vec3<f32>) -> f32 {
+    if (s.longe == 0u || !longe_tem_grade() || !longe_so_ceu()) { return field(p); }
+    let h = s.longe - 1u;
+    let cel = k[h + 3u];
+    let dims = vec3<u32>(u32(k[h + 8u]), u32(k[h + 9u]), u32(k[h + 10u]));
+    let origem = vec3<f32>(k[h + 12u], k[h + 13u], k[h + 14u]);
+    let topo = origem + vec3<f32>(f32(dims.x - 1u), f32(dims.y - 1u), f32(dims.z - 1u)) * cel;
+    let fora = length(max(max(origem - p, p - topo), vec3<f32>(0.0)));
+    let off = bitcast<u32>(k[h + 7u]);
+    // ⛔⛔ **O HÍBRIDO (a árvore perto da superfície, a grade longe) foi MEDIDO e RECUSADO**
+    // (`docs/Render3d/03` §W9): exacto na imagem (máx `≤ 3 B`) e **mais LENTO que a árvore
+    // sozinha** a `1`, `2` e `4` células — os cones passam quase todos os passos RENTE à superfície,
+    // que é exactamente onde a grade erra e onde ela poupava. *O ganho e o erro moram no mesmo sítio.*
+    return escultura_trilinear(dims, origem, cel, off, p) + fora;
+}
 
 // O limite abaixo do qual o raio deixa a grade — ver `Longe::perto`.
 fn longe_perto() -> f32 { return k[s.longe - 1u + 11u]; }

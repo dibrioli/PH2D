@@ -1546,6 +1546,83 @@ passagem das BORDAS, a pintura e a leitura de `8 MB`, mais os buffers criados de
 quadro. ⏳ E o modo RENDER (`centro_e_luz`) tem a mesma forma de defeito: ali o chão e as lâmpadas
 são LIDOS, logo a cura é partir o kernel por responsabilidade, não apagá-los.
 
+### ⭐⭐⭐⭐ A BORDA QUE ESPERAVA PELAS VIZINHAS, a LUZ num kernel próprio, e a OCLUSÃO que o Render paga a mexer (2026-09-24)
+
+As sondas vivem em [`device_probes_w9_placa.rs`](../../crates/ph2d-app-field3d/src/device_probes_w9_placa.rs)
+e [`device_probes_w9_ceu.rs`](../../crates/ph2d-app-field3d/src/device_probes_w9_ceu.rs). Todas as
+tabelas são `1920×1080`, mínimo de 5, pela porta do produto.
+
+**(1) Partido o quadro magro do matcap (`diag_as_pecas_do_quadro_magro`)**, a segunda passagem da
+silhueta era a peça grande: no nó `7,38` dos `11,86 ms`. ⭐ **A causa era DIVERGÊNCIA, não trabalho:**
+o `bordas` corria na imagem inteira e marchava as quatro sub-amostras DENTRO da thread do pixel de
+borda, logo um punhado de bordas por warp marchava quatro vezes em série com o resto parado. ⇒ o
+`bordas` só DETECTA e escreve a lista, e o `bordas_marcha` re-amostra com **uma thread por
+(borda, sub-amostra)**, lendo a contagem no dispositivo (laço em passos do tamanho da imagem, logo
+cobre também uma lista maior que `w·h/4`). Zero ida-e-volta nova.
+
+| cena | quadro antes | **depois** | a borda antes | **depois** |
+|---|---:|---:|---:|---:|
+| `=28` nó | `11,86` | **`6,45`** | `7,38` | **`1,94`** |
+| `=5` vaso | `2,50` | **`2,02`** | `0,93` | `0,40` |
+| `=11` lote | `3,69` | **`2,68`** | `1,77` | `0,69` |
+| `=30` curvas | `3,51` | **`2,68`** | `1,61` | `0,77` |
+| `=27` polígono | `3,36` | **`2,70`** | `1,34` | `0,62` |
+
+⚠️ O que sobra numa cena simples é um custo FIXO de `~1 ms` (a marcha magra do triângulo são
+`0,22 ms`, o quadro sem borda `1,24`): buffers criados por quadro, duas travessias, a imagem de
+`8 MB` (`0,34 ms` medidos). ⏳ Nomeado, não atacado.
+
+**(2) A LUZ do Render num kernel PRÓPRIO** — `centro_so` e depois `luz_so` em vez do
+`centro_e_luz` (a mesma lei que curou o matcap). `PH2D_FIELD_LUZ_SEPARADA=0` bissecta. Ganho
+**modesto e medido** (máquina a `load 30`, logo a forma e não o absoluto): nó `69,3 → 54,9`, curvas
+`27,8 → 16,5`, as outras `0`–`20 %`. O G-buffer é o mesmo ao bit (a paridade de materiais e as do
+chão passam).
+
+**(3) ⛔⛔ A NOTA DA OCLUSÃO ESTAVA ERRADA — o Render a MEXER paga os `48` cones.** O doc do
+`OCCLUSION_PASSES` dizia *«o quadro de movimento não paga nada disto: o dispositivo só toma o quadro
+assente»*; o `takes_the_frame` deixou de o exigir e o `ao_rays` do `MarchSetup` não lê a bandeira
+`assente` (só o ricochete a lê). Medido (`diag_o_render_contra_o_matcap` + a oclusão desligada à
+mão): o quadro de movimento do nó vai de `54,9` a `11,6 ms` e as outras de `12`–`17` a `5`–`7` ⇒
+**a oclusão é `60`–`80 %` do Render a mexer**, que é o que põe o Render `5`–`10×` acima do matcap.
+Nota corrigida no sítio (§0.0).
+
+**(4) A OCLUSÃO NUMA GRADE ASSADA — o *Distance Field AO* dos motores de jogo — construída como
+SONDA** (`Sonda::ceu_na_grade`, `Longe::so_ceu`: o raio primário continua exacto, só os cones marcham
+a grade). ⛔⛔ **A 1.ª medição saiu PRETA** (média `−0,59` no triângulo, a PIORAR com a grade mais
+fina), e a causa eram DUAS coisas minhas: fora da caixa o cone lia a *distância à caixa*, que é um
+limite inferior (certo para saltar, errado para a penumbra, que lê `d/t` como «passa rente»), e a
+grade era assada na caixa JUSTA da peça enquanto os cones andam até à ESFERA dela. Com a grade na
+caixa da esfera o canal do céu CONVERGE (`p99` `0,020 → 0,013` de `128` a `512` no triângulo, `0,020`
+no nó a `512`) — a ordem do erro que a própria lei de `48` cones tem contra `1 024`.
+
+| cena | exacta | grade `256` (assada por quadro) | px `> 8 B` | máx `B` |
+|---|---:|---:|---:|---:|
+| `=28` nó | `51,77` | **`18,10`** | `357` | `38` |
+| `=30` curvas | `14,65` | **`9,08`** | `10 988` | `43` |
+| `=5` vaso | `15,00` | `11,61` | `3` | `9` |
+| `=11` lote | `14,84` | `8,97` | `67` | `73` |
+| `=29` rosca | `9,46` | `7,26` | `3 499` | `110` |
+| `=1` cilindros | `9,99` | ⛔ `13,01` | `0` | `3` |
+| `=26` triângulo | `4,86` | ⛔ `5,00` | `0` | `8` |
+
+⚠️ Assada **em todo quadro**: numa cena simples assar custa mais do que poupa, e a grade é
+independente da câmara — quem a torna ganho em toda cena é **guardá-la entre quadros do mesmo
+documento** (o orbitar), que ainda não existe. ⚠️ E ela **perde paredes mais finas que uma célula**
+(a gaiola, a rosca, as curvas não convergem no máximo): a luz passa por elas.
+
+⛔⛔ **O HÍBRIDO — a árvore perto da superfície, a grade longe — foi construído, MEDIDO e RECUSADO:**
+exacto na imagem (máx `≤ 3 B` com `1` célula) e **mais LENTO que a árvore sozinha** a `1`, `2` e `4`
+células (nó `51,5 → 52,8`, cilindros `10,2 → 17,4`). *Os cones passam quase todos os passos RENTE à
+superfície, que é exactamente onde a grade erra e onde ela poupava — o ganho e o erro moram no mesmo
+sítio.*
+
+⏳ **O que fica por decidir, com o preço de cada saída:** a grade pura com cache por documento
+(`2,9×` no nó, erro localizado em paredes finas, e a CPU de referência teria de assar a mesma grade
+para a paridade) · a oclusão a MEIA resolução com reconstrução guiada pela normal (a alavanca que o
+doc do `OCCLUSION_PASSES` já nomeia, `4×` em toda cena, com halo na descontinuidade) · ou a oclusão
+fora do quadro de MOVIMENTO (a lei W73 *grosso a mexer, nítido ao assentar*: nó `→ 11,6 ms`, com o
+céu a «acender» ao largar).
+
 ## W10 — ✅ O GÉMEO DO AMACIAMENTO NO DISPOSITIVO — **FECHADA em 2026-09-19**
 
 > Ele adiou-a de manhã (*«coloque a possibilidade de melhoramento na fila mais no fim»*) e **trouxe-a

@@ -255,6 +255,10 @@ pub struct Sonda {
     /// `Some(0)` só recorta o raio pela caixa, `Some(n)` recorta e salta pela grade de `n` células.
     /// Ver [`crate::preview::a_grade_de_longe`].
     pub longe: Option<u32>,
+    /// ⭐⭐⭐⭐ **A oclusão do céu marcha numa GRADE assada de `n` células** e o raio primário
+    /// continua exacto — `None` é a oclusão sobre a árvore, a de sempre. Ver
+    /// [`ph2d_field_gpu::longe::Longe::so_ceu`] e `docs/Render3d/03` §W9, «a oclusão na grade».
+    pub ceu_na_grade: Option<u32>,
 }
 
 impl Default for Sonda {
@@ -269,6 +273,7 @@ impl Default for Sonda {
             fita_inerte: crate::preview::a_fita_sai_do_pintor(),
             chao_em_cache: crate::preview::o_campo_do_chao_e_reaproveitado(),
             longe: crate::preview::a_grade_de_longe(),
+            ceu_na_grade: None,
         }
     }
 }
@@ -592,38 +597,16 @@ pub(super) fn pedido(
         ground: ground.map(|g| g.height),
         edge_cos: ph2d_field_render::EDGE_COS,
         mole,
-        longe: a_caixa_da_marcha(bola, sonda.longe),
+        longe: a_caixa_do_pedido(bola, sonda),
     };
     Some((campo, fita, setup))
 }
 
-/// ⭐⭐⭐⭐ **O RECORTE DO RAIO PELA CAIXA DA PEÇA** — a porta que o produto e os gates perguntam.
-///
-/// O raio entra na caixa e sai dela, em vez de percorrer o vazio até ao `t_max`: é o recorte que a
-/// marcha da CPU já faz, e é por isso que ele existe aqui — sem ele os dois motores começavam o raio
-/// em `t` diferentes, e numa quina viva o ponto de paragem salta.
-///
-/// ⛔⛔ **A caixa é a [`ph2d_field_eval::bounds_clip::march_clip`], NUNCA o `aabb` cru**, e a razão
-/// está medida (`diag_a_grade_de_longe_contra_a_referencia`): com a caixa crua o Δt máximo contra
-/// a CPU ia a `4,0e-1` e a silhueta discordava em `12` pixels na cena `=29`; com a da marcha, `0`
-/// pixels e o `p99` de `4,8e-7` **em todas as cenas** — melhor do que SEM recorte nenhum (`8`
-/// pixels na mesma cena), porque sem ele os dois motores partem de sítios diferentes.
-///
-/// ⚠️ `res = 0` é **só o recorte**, e é o valor de omissão; `res > 0` acrescenta a grade de longe,
-/// que está RECUSADA por medição (ver o doc do [`crate::preview::LONGE_RES`]).
-#[must_use]
-pub fn a_caixa_da_marcha(
-    bola: ph2d_field_eval::bounds::Ball,
-    longe: Option<u32>,
-) -> Option<ph2d_field_gpu::longe::Longe> {
-    let (lo, hi) = ph2d_field_eval::bounds_clip::march_clip(bola);
-    longe.map(|res| ph2d_field_gpu::longe::Longe {
-        lo,
-        hi,
-        res,
-        perto: crate::preview::LONGE_PERTO,
-    })
-}
+/// ⭐⭐⭐⭐ **As CAIXAS do pedido vivem no irmão** — o recorte e a grade. ⛔ Corte por tecto de LOC e
+/// por responsabilidade: *qual caixa* é um assunto, *o que o quadro pede* é outro.
+#[path = "gpu_frame_caixa.rs"]
+mod gpu_frame_caixa;
+pub use gpu_frame_caixa::{a_caixa_da_marcha, a_caixa_do_pedido};
 
 #[cfg(test)]
 #[path = "gpu_frame_tests.rs"]

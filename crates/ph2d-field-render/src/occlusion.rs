@@ -76,8 +76,13 @@ pub const OCCLUSION_REACH: f32 = 1.0;
 /// ficam abaixo do horizonte têm peso `0`. É esse o preço de não ter referencial tangente, e a razão
 /// está em [`cone_dir`].
 ///
-/// ⛔ **O quadro de MOVIMENTO não paga nada disto:** o dispositivo só toma o quadro **assente**
-/// (`ph2d_app_field3d::gpu_frame::takes_the_frame`) e a oclusão de CPU está desligada por omissão.
+/// ⛔⛔ **O quadro de MOVIMENTO PAGA isto — a nota que aqui dizia o contrário ENVELHECEU** (medido
+/// 2026-09-24, `docs/Render3d/03` §W9): o `takes_the_frame` deixou de exigir o quadro assente, o
+/// modo Render vai ao dispositivo a mexer e a marcha dele corre os `48` cones em TODO quadro (o
+/// `ao_rays` do `MarchSetup` não lê a bandeira `assente`; só o ricochete a lê). Medido a `1920×1080`
+/// pela porta do produto, desligar a oclusão leva o quadro de movimento do nó de `54,9` a `11,6 ms`
+/// e o das outras cenas de `7`–`17` a `5`–`7 ms` ⇒ *a oclusão é `60`–`80 %` do Render a mexer.*
+/// *Quem move o número que tornava algo barato tem de reconferir a nota* (`CLAUDE.md` §0.0).
 ///
 /// ⏳ **A alavanca que fica, medida e NÃO construída:** a oclusão é de baixa frequência (é a mesma
 /// premissa que legitima o [`blur_occlusion`]), logo cabe em **meia resolução** com reconstrução

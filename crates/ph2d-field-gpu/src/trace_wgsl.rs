@@ -154,7 +154,7 @@ fn marcha_ate(r: Raio, t_max: f32) -> vec4<f32> {
     // ⚠️ **Decidido UMA vez por raio, fora do laço:** com o recorte sem grade (`res = 0`) a
     // pergunta à grade devolve sempre `0`, e fazê-la em todo passo custava uma leitura do `k` e um
     // ramo por passo — medido na cena `=1` (campo barato), `9,47 → 10,96 ms` só por isso.
-    let com_grade = s.longe != 0u && longe_tem_grade();
+    let com_grade = s.longe != 0u && longe_tem_grade() && !longe_so_ceu();
     loop {
         if (n >= s.budget || saltos >= {SALTOS_MAX}u || t >= fim) { break; }
         let p = r.o + r.d * t;
@@ -193,6 +193,22 @@ fn visivel(origem: vec3<f32>, dir: vec3<f32>, t_max: f32, dureza: f32) -> f32 {
     var t = s.hit_eps * 4.0;
     for (var n: u32 = 0u; n < s.budget; n = n + 1u) {
         let d = field(origem + dir * t);
+        if (d < s.hit_eps) { return 0.0; }
+        vis = min(vis, dureza * d / t);
+        t = t + d * s.step;
+        if (t >= t_max) { break; }
+    }
+    return vis;
+}
+
+// ⭐⭐⭐⭐ **A MESMA visibilidade, sobre o campo dos CONES** — ver `campo_do_ceu` na lei da grade de
+// longe. ⚠️ Uma função irmã e não um argumento: o WGSL não passa funções, e um `if` dentro do laço
+// da `visivel` pagaria a pergunta em todo passo de toda sombra.
+fn visivel_ceu(origem: vec3<f32>, dir: vec3<f32>, t_max: f32, dureza: f32) -> f32 {
+    var vis = 1.0;
+    var t = s.hit_eps * 4.0;
+    for (var n: u32 = 0u; n < s.budget; n = n + 1u) {
+        let d = campo_do_ceu(origem + dir * t);
         if (d < s.hit_eps) { return 0.0; }
         vis = min(vis, dureza * d / t);
         t = t + d * s.step;
@@ -276,6 +292,20 @@ fn centro_e_luz(@builtin(global_invocation_id) g: vec3<u32>) {
     let r = ray_at_plane(raio(f32(g.x) + 0.5, f32(g.y) + 0.5));
     let c = marcha(r);
     centro[i] = c;
+    escreve_a_luz(i, r, c);
+}
+
+// ⭐⭐⭐⭐ **SÓ A LUZ** — a metade do `centro_e_luz` que vem DEPOIS da marcha, sobre o `centro` que o
+// `centro_so` já escreveu (`docs/Render3d/03` §W9). ⚠️ O raio é recalculado pela MESMA aritmética,
+// logo o ponto e a normal que a luz lê são os mesmos ao bit.
+@compute @workgroup_size(8, 8, 1)
+fn luz_so(@builtin(global_invocation_id) g: vec3<u32>) {
+    if (g.x >= s.w || g.y >= s.h) { return; }
+    let i = g.y * s.w + g.x;
+    escreve_a_luz(i, ray_at_plane(raio(f32(g.x) + 0.5, f32(g.y) + 0.5)), centro[i]);
+}
+
+fn escreve_a_luz(i: u32, r: Raio, c: vec4<f32>) {
     let base = i * passo_da_luz();
     if (c.x < 0.0) {
         // ⚠️ Um pixel que não acerta recebe **luz inteira** nos canais de SOMBRA — é o que a CPU
@@ -355,7 +385,7 @@ fn centro_e_luz(@builtin(global_invocation_id) g: vec3<u32>) {
             if (c <= 0.0) { continue; }
             peso = peso + c;
             let ate = min(s.ao_reach, cerca_da_bola(erguido, dd, s.ao_reach));
-            soma = soma + c * visivel(erguido, dd, ate, 1.0 / c);
+            soma = soma + c * visivel_ceu(erguido, dd, ate, 1.0 / c);
         }
         if (peso > 0.0) { ceu = soma / peso; }
     }
@@ -381,13 +411,34 @@ fn bordas(@builtin(global_invocation_id) g: vec3<u32>) {
     // ⚠️ Um lote cheio **descarta** em vez de escrever fora — a borda perde-se, o quadro não.
     if (slot * 5u + 4u >= arrayLength(&borda)) { return; }
     borda[slot * 5u] = vec4<f32>(bitcast<f32>(i), 0.0, 0.0, 0.0);
+}
+
+// ⭐⭐⭐⭐ **A RE-AMOSTRAGEM COMPACTA: uma thread por (borda, sub-amostra)** (`docs/Render3d/03`
+// §W9, «a borda que esperava pelas vizinhas»). ⚠️ Marchar as quatro sub-amostras DENTRO do
+// `bordas` punha um punhado de pixels de borda a marchar quatro vezes em série enquanto o resto
+// do warp esperava — medido no nó a `1920×1080`, a passagem custava `7,38` dos `11,86 ms` do
+// quadro. Aqui a lista já está escrita, e threads vizinhas marcham a MESMA borda.
+//
+// ⚠️ O despacho é a IMAGEM inteira e o laço anda em passos do tamanho dela: a contagem mora no
+// dispositivo, e uma lista maior do que `w × h / 4` (imagens minúsculas) continua coberta.
+@compute @workgroup_size(8, 8, 1)
+fn bordas_marcha(@builtin(global_invocation_id) g: vec3<u32>) {
+    if (g.x >= s.w || g.y >= s.h) { return; }
+    let cabem = arrayLength(&borda) / 5u;
+    let total = min(atomicLoad(&conta), cabem) * 4u;
+    let passo = s.w * s.h;
     // O padrão 4-rook (RGSS), o mesmo da CPU.
     let rook = array<vec2<f32>, 4>(
         vec2<f32>(0.125, 0.625), vec2<f32>(0.375, 0.125),
         vec2<f32>(0.625, 0.875), vec2<f32>(0.875, 0.375));
-    for (var j = 0u; j < 4u; j = j + 1u) {
+    for (var k = g.y * s.w + g.x; k < total; k = k + passo) {
+        let slot = k / 4u;
+        let j = k % 4u;
+        let i = bitcast<u32>(borda[slot * 5u].x);
+        let px = f32(i % s.w);
+        let py = f32(i / s.w);
         let o = rook[j];
-        borda[slot * 5u + 1u + j] = marcha(ray_at_plane(raio(f32(g.x) + o.x, f32(g.y) + o.y)));
+        borda[slot * 5u + 1u + j] = marcha(ray_at_plane(raio(px + o.x, py + o.y)));
     }
 }
 

@@ -230,6 +230,8 @@ fn diag_a_desigualdade_do_salto_na_cpu() {
             hi,
             res: 64,
             perto: crate::preview::LONGE_PERTO,
+            so_ceu: false,
+            grade_caixa: None,
         };
         let g = l.grade().expect("a grade");
         let [dx, dy, dz] = g.dims.map(|d| d as usize);
@@ -383,6 +385,8 @@ fn diag_a_desigualdade_do_salto_no_dispositivo() {
             hi,
             res: 64,
             perto: crate::preview::LONGE_PERTO,
+            so_ceu: false,
+            grade_caixa: None,
         };
         let g = l.grade().expect("a grade");
         let [dx, dy, dz] = g.dims.map(|d| d as usize);

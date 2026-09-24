@@ -230,13 +230,30 @@ fn o_matcap_marcha_no_kernel_magro() {
         "o matcap não compilou a entrada magra: {depois_do_matcap:?}"
     );
     assert!(
-        !depois_do_matcap.iter().any(|e| e == "centro_e_luz"),
-        "o matcap compilou a entrada do RENDER — a marcha voltou ao kernel pesado: {depois_do_matcap:?}"
+        !depois_do_matcap
+            .iter()
+            .any(|e| e == "centro_e_luz" || e == "luz_so"),
+        "o matcap compilou uma entrada de LUZ — a marcha voltou a pagar o que ele não lê: \
+         {depois_do_matcap:?}"
     );
-    // CONTROLO: o G-buffer (o modo Render) usa a pesada, no mesmo traçador.
-    let _ = t.frame(&f, c.sculpts(), setup, W, H);
+    // ⭐⭐⭐ **A borda re-amostra-se COMPACTA** (`docs/Render3d/03` §W9, «a borda que esperava pelas
+    // vizinhas»): a detecção e a re-amostragem são dois despachos, e o segundo é uma thread por
+    // sub-amostra. ⚠️ O `setup` é o de omissão, que re-amostra a silhueta em todo quadro.
     assert!(
-        t.entradas_compiladas().iter().any(|e| e == "centro_e_luz"),
-        "CONTROLO: a marcha do G-buffer tem de compilar o `centro_e_luz`"
+        setup.antialias && depois_do_matcap.iter().any(|e| e == "bordas_marcha"),
+        "a borda não foi re-amostrada pelo despacho compacto: {depois_do_matcap:?}"
+    );
+    // CONTROLO: o G-buffer (o modo Render) escreve a luz — hoje num kernel PRÓPRIO, a seguir ao
+    // magro (`ph2d_field_gpu::luz_separada`), e o pesado só volta pela porta de bissecção.
+    let _ = t.frame(&f, c.sculpts(), setup, W, H);
+    let depois_do_render = t.entradas_compiladas();
+    let luz = if ph2d_field_gpu::luz_separada() {
+        "luz_so"
+    } else {
+        "centro_e_luz"
+    };
+    assert!(
+        depois_do_render.iter().any(|e| e == luz),
+        "CONTROLO: a marcha do G-buffer tem de compilar o `{luz}`: {depois_do_render:?}"
     );
 }

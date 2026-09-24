@@ -56,6 +56,15 @@ pub fn supports(doc: &FieldDoc, reg: &ph2d_field_eval::hybrid::Registry) -> bool
     })
 }
 
+/// ⭐⭐⭐⭐ **A LUZ MARCHA NUM KERNEL PRÓPRIO** — o `centro_so` e depois o `luz_so`, em vez do
+/// `centro_e_luz` (`docs/Render3d/03` §W9). `PH2D_FIELD_LUZ_SEPARADA=0` volta ao kernel único, para
+/// bissectar.
+#[must_use]
+pub fn luz_separada() -> bool {
+    static V: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *V.get_or_init(|| std::env::var("PH2D_FIELD_LUZ_SEPARADA").map_or(true, |v| v.trim() != "0"))
+}
+
 // ⛔⛔⛔ **AQUI VIVIA UM TECTO, E ELE SAIU PORQUE A GRANDEZA DELE NÃO ORDENA OS RESULTADOS**
 // (2026-09-15). `MAX_VIVOS = 743` → `358` → `MAX_GUARDADOS = 3 463` → `13 789` → **nada**.
 //

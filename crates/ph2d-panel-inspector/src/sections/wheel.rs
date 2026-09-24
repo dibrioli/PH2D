@@ -273,31 +273,29 @@ fn paint_break_rows(
     )
 }
 
-/// ⭐⭐⭐ **A COLUNA DOS NOMES desta secção — medida sobre as TRÊS palavras que ela pinta.**
+/// ⭐⭐⭐ **A SECÇÃO dos três nomes que esta secção pinta à mão** — `Mounted On`, `Gear`, `Rope`.
 ///
-/// ⛔⛔ **Ela era `font * 5.0` — *cinco alturas de letra* — escrita em TRÊS sítios** (o mount, o
-/// `Gear` e o `Rope`), e o comentário de um deles já dizia *«same label column as the Rope row»*:
-/// uma coluna partilhada respondida três vezes. Medido em 2026-09-19 pela varredura de elisões com
-/// o Inspector armado, aqueles `60 px` cortavam **`Mounted On`** (`Mounte…`).
+/// ⛔⛔ **Ela era `font * 5.0` — *cinco alturas de letra* — escrita em TRÊS sítios**, depois (19/09)
+/// uma coluna medida sobre estas três palavras com tecto de `0,42` da linha: as duas pintavam o
+/// nome À ESQUERDA por `paint_text` e o valor a arrancar numa coluna só desta secção, ao lado de um
+/// Inspector em que todo o resto encosta o nome à direita da coluna do PAINEL. Ordem do dono
+/// (2026-09-23, *«quero tudo alinhado e padronizado»*, e o report irmão do Grid Snap, *«fora do
+/// padrão»*) ⇒ as três linhas passam pela porta do nome
+/// ([`ph2d_editor_core::property_row::paint_label_row`]), e a coluna é a do painel.
 ///
-/// ⚠️ **A régua é a LISTA e não a linha em mãos** — `Gear` e `Rope` cabiam, e uma coluna por linha
-/// sairia esfarrapada; é a mesma lei da [`ph2d_editor_core::property_row::Seccao`] um nível acima e
-/// a mesma porta que a coluna dos dez toggles da timeline usa.
-///
-/// ⚠️ **O tecto de `0,42` da linha FICA**, e não é sobre a palavra: é sobre o que tem de sobrar
-/// para o NOME do corpo e para os dois ícones à direita.
-fn coluna_dos_nomes(text_system: &mut TextSystem, w: f32) -> f32 {
-    let font = TypeToken::Sm.px();
-    (ph2d_editor_core::paint::label_column_width(
+/// ⚠️ **A régua continua a ser a LISTA e não a linha em mãos** — é a [`Seccao::medida`] sobre as
+/// três palavras. O tecto de `0,42` MORREU: o que tem de sobrar para o nome do corpo e para os dois
+/// ícones é o piso do CONTROLO que a porta já garante (`NUMBER_INPUT_MIN_W_PX`).
+fn seccao_dos_nomes(text_system: &mut TextSystem) -> ph2d_editor_core::property_row::Seccao {
+    ph2d_editor_core::property_row::Seccao::medida(
         text_system,
-        font,
-        [
+        1,
+        &[
             tr("panel.inspector.wheel.mounted_on"),
             tr("panel.inspector.wheel.gear"),
             tr("panel.inspector.wheel.rope"),
         ],
-    ) + Spacing::Xs.px())
-    .min(w * 0.42) // LITERAL-PX-OK: o tecto da linha — o que sobra e' do nome do corpo e dos icones
+    )
 }
 
 /// **Em que CORPO esta roldana se monta** (W3) — o nome vigente, o eyedropper que
@@ -330,21 +328,23 @@ fn paint_mount_row(
     let h = ROW_H_PX;
     let font = TypeToken::Sm.px();
     let icon_w = (h * 0.82).min(w); // LITERAL-PX-OK: icon inset ratio (compact square in the row)
-    let label_w = coluna_dos_nomes(text_system, w);
+    let sec = seccao_dos_nomes(text_system);
     let gap = Spacing::Xs.px();
     let mounted = !info.mount_name.is_empty();
     let icons = if mounted { 2.0 } else { 1.0 };
     let text_y = y + (h - font) * 0.5;
-    paint_text(
-        text_system,
+    let linha = super::rows::property_label_row(
         scene,
-        tr("panel.inspector.wheel.mounted_on"),
+        text_system,
+        theme,
         x,
-        text_y,
-        font,
-        label_w,
-        resolve(ColorToken::Text2, theme),
+        w,
+        y,
+        h,
+        tr("panel.inspector.wheel.mounted_on"),
+        sec,
     );
+    let (vx, vw) = (linha.control.x, linha.control.w);
     // "(scenery)" e não um vazio: *pregada no cenário* é uma resposta, e uma
     // lacuna onde devia haver um nome não é.
     paint_text(
@@ -355,10 +355,10 @@ fn paint_mount_row(
         } else {
             tr("panel.inspector.wheel.scenery")
         },
-        x + label_w,
+        vx,
         text_y,
         font,
-        (w - label_w - icons * (icon_w + gap)).max(0.0),
+        (vw - icons * (icon_w + gap)).max(0.0),
         resolve(
             if mounted {
                 ColorToken::Text1
@@ -368,7 +368,7 @@ fn paint_mount_row(
             theme,
         ),
     );
-    let mut bx = x + w - icon_w;
+    let mut bx = vx + vw - icon_w;
     if mounted {
         let brect = Rect::new(bx, y + (h - icon_w) * 0.5, icon_w, icon_w);
         paint_icon_button(
@@ -431,18 +431,20 @@ fn paint_gear_readout(
 ) -> f32 {
     let h = ROW_H_PX;
     let font = TypeToken::Sm.px();
-    let label_w = coluna_dos_nomes(text_system, w);
+    let sec = seccao_dos_nomes(text_system);
     let text_y = y + (h - font) * 0.5;
-    paint_text(
-        text_system,
+    let linha = super::rows::property_label_row(
         scene,
-        tr("panel.inspector.wheel.gear"),
+        text_system,
+        theme,
         x,
-        text_y,
-        font,
-        label_w,
-        resolve(ColorToken::Text2, theme),
+        w,
+        y,
+        h,
+        tr("panel.inspector.wheel.gear"),
+        sec,
     );
+    let (vx, vw) = (linha.control.x, linha.control.w);
     // ⚠️ **O número vem da shell, que o tira da porta do MOTOR.** Uma conta aqui
     // seria a segunda resposta a *"o que estes dois raios compram?"*.
     let text = format!("{:.2} : 1", info.gear);
@@ -450,10 +452,10 @@ fn paint_gear_readout(
         text_system,
         scene,
         &text,
-        x + label_w,
+        vx,
         text_y,
         font,
-        (w - label_w).max(0.0),
+        vw,
         resolve(ColorToken::Text1, theme),
     );
     y + h
@@ -474,19 +476,21 @@ fn paint_rope_row(
     let h = ROW_H_PX;
     let font = TypeToken::Sm.px();
     let icon_w = (h * 0.82).min(w); // LITERAL-PX-OK: icon inset ratio (compact square in the row)
-    let label_w = coluna_dos_nomes(text_system, w);
+    let sec = seccao_dos_nomes(text_system);
     let gap = Spacing::Xs.px();
     let text_y = y + (h - font) * 0.5;
-    paint_text(
-        text_system,
+    let linha = super::rows::property_label_row(
         scene,
-        tr("panel.inspector.wheel.rope"),
+        text_system,
+        theme,
         x,
-        text_y,
-        font,
-        label_w,
-        resolve(ColorToken::Text2, theme),
+        w,
+        y,
+        h,
+        tr("panel.inspector.wheel.rope"),
+        sec,
     );
+    let (vx, vw) = (linha.control.x, linha.control.w);
     paint_text(
         text_system,
         scene,
@@ -495,10 +499,10 @@ fn paint_rope_row(
         } else {
             tr("panel.inspector.wheel.no_rope")
         },
-        x + label_w,
+        vx,
         text_y,
         font,
-        (w - label_w - (icon_w + gap)).max(0.0),
+        (vw - (icon_w + gap)).max(0.0),
         resolve(
             if info.bound {
                 ColorToken::Text1
@@ -508,7 +512,7 @@ fn paint_rope_row(
             theme,
         ),
     );
-    let brect = Rect::new(x + w - icon_w, y + (h - icon_w) * 0.5, icon_w, icon_w);
+    let brect = Rect::new(vx + vw - icon_w, y + (h - icon_w) * 0.5, icon_w, icon_w);
     paint_icon_button(
         brect,
         IconGlyph::Builtin(IconId::Eyedropper),

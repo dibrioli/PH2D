@@ -114,8 +114,18 @@ fn paint_body_rows(
     let h = ROW_H_PX;
     let label_font = TypeToken::Sm.px();
     let icon_w = (h * 0.82).min(w); // LITERAL-PX-OK: icon inset ratio (compact square in the row)
-    // "Body A" / "Body B" column, wide enough for the label at this font.
-    let label_w = (label_font * 3.6).min(w * 0.4); // LITERAL-PX-OK: label = 3.6 char-heights, capped at 0.4 of the row
+    // ⭐⭐⭐ **Os dois nomes passam pela PORTA do nome, e a coluna é a do painel** (ordem do dono,
+    //    2026-09-23, *«quero tudo alinhado e padronizado»*). A coluna era `3,6` alturas de letra com
+    //    tecto de `0,4` da linha e o nome pintado À ESQUERDA por `paint_text` — a única linha do
+    //    cartão da junta cujo valor não arrancava no `x` dos irmãos.
+    let sec = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &[
+            tr("panel.inspector.joint.body_a"),
+            tr("panel.inspector.joint.body_b"),
+        ],
+    );
     let gap = Spacing::Xs.px();
     for (slot_label, name, id, armed) in [
         (
@@ -132,16 +142,18 @@ fn paint_body_rows(
         ),
     ] {
         let text_y = yy + (h - label_font) * 0.5;
-        paint_text(
-            text_system,
+        let linha = super::rows::property_label_row(
             scene,
-            slot_label,
+            text_system,
+            theme,
             x,
-            text_y,
-            label_font,
-            label_w,
-            resolve(ColorToken::Text2, theme),
+            w,
+            yy,
+            h,
+            slot_label,
+            sec,
         );
+        let (vx, vw) = (linha.control.x, linha.control.w);
         // ⚠️ **Num pino de MUNDO o lado B não é um nome que faltou** — ele é o
         // cenário, e dizer "(missing)" ali chamaria de quebrado um joint que
         // está segurando (W-JointWorld).
@@ -151,8 +163,8 @@ fn paint_body_rows(
         } else {
             display_name(name)
         };
-        let name_x = x + label_w;
-        let name_w = (w - label_w - icon_w - gap).max(0.0);
+        let name_x = vx;
+        let name_w = (vw - icon_w - gap).max(0.0);
         paint_text(
             text_system,
             scene,
@@ -180,7 +192,7 @@ fn paint_body_rows(
         }
         // The eyedropper, right-aligned. Pressed (accent) while its pick is
         // ARMED, so the artist sees which end is waiting for a body click.
-        let brect = Rect::new(x + w - icon_w, yy + (h - icon_w) * 0.5, icon_w, icon_w);
+        let brect = Rect::new(vx + vw - icon_w, yy + (h - icon_w) * 0.5, icon_w, icon_w);
         let state = if armed {
             (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
         } else {

@@ -2960,6 +2960,41 @@ de simetria.
 clippy `-D warnings` zero · `cargo fmt --all --check` · `censos-da-arvore-combinada.sh` `127/127`.
 
 
+## §9-vicies-octies — ⭐⭐ AS TRÊS SECÇÕES DO INSPECTOR QUE PINTAVAM O NOME À MÃO
+
+Depois do smoke aprovado da §9-vicies-septies (*«smoke OK. Siga»*), a mesma pergunta — *quem ainda
+pinta o nome por `paint_text` numa coluna própria?* — foi feita ao Inspector por censo textual. Três
+secções, todas com uma coluna `N alturas de letra` e tecto em fracção da linha, o nome À ESQUERDA:
+
+| secção | linhas | a coluna que tinha |
+|---|---|---|
+| [`wheel.rs`](../../../crates/ph2d-panel-inspector/src/sections/wheel.rs) | `Mounted On` · `Gear` · `Rope` | a lista das três, tecto `0,42` |
+| [`joint_pair_rows.rs`](../../../crates/ph2d-panel-inspector/src/sections/joint_pair_rows.rs) | `Body A` · `Body B` | `3,6 × fonte`, tecto `0,4` |
+| [`player_live.rs`](../../../crates/ph2d-panel-inspector/src/sections/player_live.rs) (era `player.rs`) | a leitura ao vivo | `5 × fonte`, tecto `0,42` — com o comentário *«a mesma coluna das rows»*, falso |
+
+⇒ as três pela `rows::property_label_row` com uma `Seccao::medida` sobre os nomes que a secção PODE
+pintar (a do jogador mede os quatro, senão a coluna mudava no quadro em que a corrida começa), o valor
+e os ícones dentro da `linha.control`. ⚠️ O `player.rs` foi a `607` contra o tecto de `600` e partiu-se
+por responsabilidade: a leitura ao vivo, a única parte que não se edita, é o irmão `player_live.rs`.
+
+**O gate novo** — [`nenhuma_linha_pinta_o_nome_numa_coluna_propria`](../../../crates/ph2d-panel-inspector/tests/it/nenhuma_linha_pinta_o_nome_numa_coluna_propria.rs):
+um `paint_text` cujo bloco nomeia uma coluna de nome (`label_w` · `label_col` · `nome_w` · …), com
+pisos medidos (`70` ficheiros, `68` chamadas), obsolescência, e a única excepção nomeada (`timers.rs`
+é uma LISTA). ⚠️ **Porque é textual:** a régua do alinhamento só vê quem passa pela porta — uma linha
+pintada à mão é invisível a ela por construção, que é o defeito. **Mutações 3 de 3.**
+
+**O preço, atribuído por A/B ficheiro a ficheiro** — a catraca do degrau estreito `83 → 85` / `79 → 81`,
+e são VALORES, não nomes: o nome do corpo em que a roldana monta (`Pivot` na fixtura, `28 px` ao lado
+de dois ícones) e a velocidade ao vivo do jogador (`1.00, 0.00 m/s`). A junta não custa nenhum. A
+primeira leitura foi que o `Pivot` era o segmento da linha `Sort Point` — instrumentada a decisão
+«ao lado / por baixo», ela deu o MESMO resultado nos dois estados; o contexto da varredura (os oito
+textos antes dele) é que o nomeou.
+
+**Portão:** `nextest-impacted` `17 691/17 693` — os dois ✗ são gates de RAZÃO de relógio sob `load 108`
+(`the_cost_of_sampling_a_path_is_flat_in_its_anchors`, já na lista, e o do painter da §9-vicies-septies),
+**3 de 3 verdes sozinhos a `load 60`** · clippy `-D warnings` zero · `fmt --check` · censos `12/12`.
+
+
 ## §11 — O que esta linha recomenda a quem a integrar
 
 1. **Correr o `diag_onde_cai_a_pista_do_pente` da `line/sculpt3d` DEPOIS da fusão** e reescrever com

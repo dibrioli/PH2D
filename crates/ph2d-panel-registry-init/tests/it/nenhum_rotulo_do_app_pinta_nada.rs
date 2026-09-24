@@ -628,7 +628,15 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    `211`** (o `min` das secções fazia a METADE de uma linha sem nome largo mandar no painel
     //    inteiro, e o nome caía a `48 px`) — o `83` é o que sobra depois de a METADE passar a
     //    piso e o CONTROLO a tecto (`coluna_do_painel`).
-    ("inspector", 83),
+    // ⬆️ `83 → 85` em 2026-09-23, **a mesma troca, e são VALORES e não nomes.** Três secções do
+    //    Inspector pintavam o nome à mão numa coluna delas (a roldana, os corpos de uma junta, a
+    //    leitura ao vivo do jogador — o report irmão do Grid Snap, *«fora do padrão»*) e passaram
+    //    pela porta do nome, logo pela coluna do painel. No degrau estreito o VALOR ficou com a
+    //    coluna do controlo (`94 px`) em vez de tudo à direita de uma coluna de `75`, e dois cortam
+    //    com balão, atribuídos por A/B ficheiro a ficheiro: o NOME DO CORPO em que a roldana monta
+    //    (`Pivot` na fixtura — ao lado de DOIS ícones sobram `28 px`) e a VELOCIDADE ao vivo do
+    //    jogador (`1.00, 0.00 m/s`). ⚠️ A junta não custa nenhum (A/B: com ela revertida, `85`).
+    ("inspector", 85),
     // ⭐ Era `6`: o `Mute` do Master deixou de ler `…` quando a coluna aperta (report do dono,
     //    19/09). *Uma catraca que desce é a metade justa dela a funcionar.*
     ("audio_mixer", 5),
@@ -713,7 +721,8 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⬇️ `84 → 81` em 2026-09-22, pela mesma cura — as letras deixaram de se perder.
     // ⬇️ `81 → 75` em 2026-09-23, pela mesma passagem pela porta da escolha — ver a irmã acima.
     // ⬆️ `75 → 79` em 2026-09-23, pela coluna ÚNICA do painel (ordem do dono) — ver a irmã acima.
-    ("inspector", 79),
+    // ⬆️ `79 → 81` em 2026-09-23, os mesmos dois VALORES da irmã acima (`83 → 85`).
+    ("inspector", 81),
     ("audio_mixer", 5),
     ("sculpt3d", 6),
     ("hierarchy", 5),

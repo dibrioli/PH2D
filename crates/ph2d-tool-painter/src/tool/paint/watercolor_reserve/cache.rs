@@ -19,9 +19,20 @@
 //! 2. entre dois quadros, os planos mudam SÓ dentro do rectângulo sujo do quadro (os dabs — o
 //!    `smear_level` escreve no disco do dab ACTUAL, e o `splat` idem); o campo muda só no sujo `⊕ R`.
 //!
-//! ⇒ o campo vive num plano do tamanho do CANVAS, e cada quadro recalcula só **o que a janela nova
-//! descobre** (a faixa da frente) **e o sujo `⊕ R`**. O resto lê-se do quadro anterior, e é o MESMO
+//! ⇒ o campo vive num plano do tamanho do CANVAS, e cada quadro recalcula só **o sujo `⊕ R`** e os
+//! LADRILHOS da janela que nunca foram calculados. O resto lê-se do quadro anterior, e é o MESMO
 //! `f32`: nenhuma soma mudou de ordem, porque nenhuma soma é de vírgula flutuante.
+//!
+//! ## A invariante: calculado uma vez, certo para sempre
+//!
+//! Toda mudança dos planos cai num sujo `D` que o composite desse quadro recalcula (`D ⊕ R`), e
+//! `D ⊕ R` cabe sempre na janela (o `pad` dela já é `≥ R`). Logo um texel que alguma vez foi
+//! calculado continua CERTO até uma escrita em massa invalidar o plano — e o que falta a uma janela
+//! nova é só o que NUNCA foi calculado. ⚠️ **A 1.ª redacção guardava UM rectângulo** (a janela do
+//! quadro anterior) e recalculava a diferença; a janela TREME uns pixels de quadro para quadro (o
+//! sujo de cada quadro tem outro tamanho), e cada tremor era uma faixa de 1–3 px nos QUATRO lados
+//! que custava o avental `⊕ R` inteiro: medido, `~0,2 Mtx` por quadro contra `~0,11` do sujo. Os
+//! ladrilhos ([`LADO`]) só entram quando a janela os descobre pela primeira vez.
 //!
 //! ⚠️ **A amostragem é a do `sample_bilinear` à letra, na janela de LEITURA** — o `clamp`, o `floor` e
 //! a fracção em coordenadas LOCAIS; só o endereço do texel soma a origem, e em INTEIROS. Somar a
@@ -42,41 +53,26 @@ use crate::tool::paint::watercolor_field::WetStrokeStyle;
 /// Um rectângulo do canvas, meio-aberto: `[x0, x1) × [y0, y1)`.
 type Rect = (usize, usize, usize, usize);
 
-/// O campo da reserva do canvas inteiro, um plano por raio distinto, mais o rectângulo onde ele é
-/// a VERDADE (a janela de leitura do último composite).
+/// O lado de um ladrilho da invariante (px). Um ladrilho custa o avental `⊕ R` à volta dele quando é
+/// calculado sozinho, logo um lado MAIOR que o `R` típico (`14` na foto do dono, `≤ 256`) e pequeno o
+/// bastante para a janela não arrastar meio canvas a cada ladrilho novo.
+const LADO: usize = 64;
+
+/// O campo da reserva do canvas inteiro, um plano por raio distinto, e QUE ladrilhos dele já foram
+/// calculados (ver a invariante no cabeçalho).
 pub(in crate::tool::paint) struct ReserveCache {
     fw: usize,
     fh: usize,
     /// Os raios da sessão, ordenados e sem repetição — a MESMA ordem que o [`campos`] devolve.
     radii: Vec<u16>,
     fields: Vec<Vec<f32>>,
-    valid: Option<Rect>,
+    /// Um por ladrilho de [`LADO`]², linha a linha.
+    feito: Vec<bool>,
 }
 
 fn inter(a: Rect, b: Rect) -> Option<Rect> {
     let r = (a.0.max(b.0), a.1.max(b.1), a.2.min(b.2), a.3.min(b.3));
     (r.0 < r.2 && r.1 < r.3).then_some(r)
-}
-
-/// `a ∖ b` em até quatro rectângulos (faixa de cima, de baixo, e as duas laterais do meio).
-fn diff(a: Rect, b: Rect) -> Vec<Rect> {
-    let Some(i) = inter(a, b) else {
-        return vec![a];
-    };
-    let mut v = Vec::with_capacity(4);
-    if a.1 < i.1 {
-        v.push((a.0, a.1, a.2, i.1));
-    }
-    if i.3 < a.3 {
-        v.push((a.0, i.3, a.2, a.3));
-    }
-    if a.0 < i.0 {
-        v.push((a.0, i.1, i.0, i.3));
-    }
-    if i.2 < a.2 {
-        v.push((i.2, i.1, a.2, i.3));
-    }
-    v
 }
 
 impl ReserveFields {
@@ -111,15 +107,12 @@ impl ReserveFields {
                 fh,
                 fields: radii.iter().map(|_| vec![0.0; n]).collect(),
                 radii,
-                valid: None,
+                feito: vec![false; fw.div_ceil(LADO) * fh.div_ceil(LADO)],
             },
         };
-        let need = (rx0, ry0, rx0 + rw, ry0 + rh);
-        let mut todo = match c.valid {
-            None => vec![need],
-            Some(v) => diff(need, v),
-        };
-        if let (Some(_), Some(d)) = (c.valid, changed) {
+        // 1. O sujo do quadro `⊕ R`: onde os planos mudaram, o campo mudou (num plano acabado de
+        //    nascer não há nada calculado que envelheça — os ladrilhos em falta cobrem-no).
+        if let Some(d) = changed.filter(|_| c.feito.iter().any(|&f| f)) {
             let (dx, dy) = (d.x as usize, d.y as usize);
             let grown = (
                 dx.saturating_sub(rmax),
@@ -127,12 +120,47 @@ impl ReserveFields {
                 (dx + d.w as usize + rmax).min(fw),
                 (dy + d.h as usize + rmax).min(fh),
             );
-            todo.extend(inter(grown, need));
+            if grown.0 < grown.2 && grown.1 < grown.3 {
+                recompute(&mut c, planes, table, cur, grown, rmax);
+            }
         }
-        for u in todo {
+        // 2. Os ladrilhos da janela que nunca foram calculados: troços de cada fila, e troços IGUAIS
+        //    de filas seguidas juntam-se num rectângulo (o 1.º quadro é a janela inteira, e fila a
+        //    fila pagaria o avental `⊕ R` uma vez por fila).
+        let tw = fw.div_ceil(LADO);
+        let (tx0, tx1) = (rx0 / LADO, (rx0 + rw).div_ceil(LADO));
+        let (ty0, ty1) = (ry0 / LADO, (ry0 + rh).div_ceil(LADO));
+        let mut trocos: Vec<(usize, usize, usize, usize)> = Vec::new(); // (x0, x1, y0, y1) em ladrilhos
+        for ty in ty0..ty1 {
+            let mut tx = tx0;
+            while tx < tx1 {
+                if c.feito[ty * tw + tx] {
+                    tx += 1;
+                    continue;
+                }
+                let t0 = tx;
+                while tx < tx1 && !c.feito[ty * tw + tx] {
+                    c.feito[ty * tw + tx] = true;
+                    tx += 1;
+                }
+                match trocos
+                    .iter_mut()
+                    .find(|t| t.0 == t0 && t.1 == tx && t.3 == ty)
+                {
+                    Some(t) => t.3 = ty + 1,
+                    None => trocos.push((t0, tx, ty, ty + 1)),
+                }
+            }
+        }
+        for (x0, x1, y0, y1) in trocos {
+            let u = (
+                x0 * LADO,
+                y0 * LADO,
+                (x1 * LADO).min(fw),
+                (y1 * LADO).min(fh),
+            );
             recompute(&mut c, planes, table, cur, u, rmax);
         }
-        c.valid = Some(need);
         Some(Self {
             by_r: Vec::new(),
             cache: Some(c),

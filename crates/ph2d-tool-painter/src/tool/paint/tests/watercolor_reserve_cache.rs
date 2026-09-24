@@ -5,15 +5,31 @@
 //! molhada, cada um com outro raio (o plano renasce) e a cruzar tinta anterior numa das quatro
 //! direcções (cada faixa nova é o único caminho por onde essa tinta entra no plano).
 //!
-//! Prova de mutação (2026-09-23), cada uma a sangrar: apagar a faixa de CIMA (`16 320` bytes), a de
-//! BAIXO (`21 098`), a da ESQUERDA (`13 078`), a da DIREITA (`24 825`) e o recálculo do SUJO do
-//! quadro (`67 189`).
+//! Prova de mutação (2026-09-23), cada uma a sangrar — primeiro sobre o plano de UM rectângulo
+//! (apagar a faixa de cima `16 320` bytes · a de baixo `21 098` · a da esquerda `13 078` · a da direita
+//! `24 825` · o recálculo do sujo `67 189`), depois sobre os LADRILHOS: o sujo (`67 144`), o último
+//! ladrilho parcial da fila (`6 876`) e da coluna (`5 061`), e juntar as filas (`9 883`). ⚠️ As duas
+//! do ladrilho parcial SOBREVIVERAM primeiro, por duas razões que o gate agora cobre: o texel velho é
+//! lido UM quadro antes de ser recomposto (daí a impressão POR QUADRO, e não só a fotografia no fim),
+//! e numa tela de `512` a borda do canvas cai num ladrilho INTEIRO (daí a de `500`).
 
 use super::*;
 use crate::tool::paint::watercolor_reserve::SEM_CACHE;
 
-/// Um traço recto de `a` a `b`, fechando um quadro a cada dois eventos, SEM pen-up.
-fn traco(t: &mut PainterTool, a: [f32; 2], b: [f32; 2]) {
+/// Uma impressão (FNV-1a) da tela — uma por QUADRO, porque um texel velho só é lido um quadro antes
+/// de ser recomposto, e uma fotografia no fim do traço já não o vê (ver a prova de mutação).
+fn impressao(t: &PainterTool) -> u64 {
+    t.canvas_rgba
+        .iter()
+        .fold(0xcbf2_9ce4_8422_2325u64, |h, &b| {
+            (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3)
+        })
+}
+
+/// Um traço recto de `a` a `b`, fechando um quadro a cada dois eventos, SEM pen-up; devolve a
+/// impressão da tela depois de cada quadro.
+fn traco(t: &mut PainterTool, a: [f32; 2], b: [f32; 2]) -> Vec<u64> {
+    let mut quadros = Vec::new();
     assert!(t.on_canvas_pointer(cp(a, PointerPhase::Down)));
     let passos = 80;
     for i in 1..=passos {
@@ -24,8 +40,10 @@ fn traco(t: &mut PainterTool, a: [f32; 2], b: [f32; 2]) {
         ));
         if i % 2 == 0 {
             frame(t);
+            quadros.push(impressao(t));
         }
     }
+    quadros
 }
 
 fn fecha(t: &mut PainterTool, b: [f32; 2]) {
@@ -58,8 +76,11 @@ const TRACOS: [Traco; 5] = [
 
 /// Uma fotografia da tela a meio de cada traço e depois de cada pen-up, e se o plano guardado
 /// existia a meio do 1.º.
-fn sessao() -> (Vec<Vec<u8>>, bool) {
-    let size = 512u32;
+fn sessao() -> (Vec<Vec<u8>>, Vec<u64>, bool) {
+    // ⚠️ `500` e não `512`: com a tela múltipla do ladrilho (`64`) a janela que bate na borda do
+    // canvas acaba num ladrilho INTEIRO, e a mutação que perdia o último ladrilho parcial de baixo
+    // sobreviveu (o `floor` e o `ceil` coincidiam ali).
+    let size = 500u32;
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
     t.paint.brush.color = [0.85, 0.12, 0.10];
@@ -69,13 +90,14 @@ fn sessao() -> (Vec<Vec<u8>>, bool) {
     t.paint.brush.edge_spread = 24.0;
     t.paint.brush.warp = 24.0;
     let mut fotos = Vec::new();
+    let mut quadros = Vec::new();
     let mut guardado = false;
     for (k, (a, b, r, rewet)) in TRACOS.into_iter().enumerate() {
         t.paint.brush.radius_px = r;
         t.paint.brush.wet_rewet = rewet;
         let seed = t.paint.brush;
         t.paint.brush_by_mode.fill(seed);
-        traco(&mut t, a, b);
+        quadros.extend(traco(&mut t, a, b));
         if k == 0 {
             guardado = t.paint.wet_reserve_cache.is_some();
         }
@@ -83,14 +105,14 @@ fn sessao() -> (Vec<Vec<u8>>, bool) {
         fecha(&mut t, b);
         fotos.push(t.canvas_rgba.to_vec());
     }
-    (fotos, guardado)
+    (fotos, quadros, guardado)
 }
 
 #[test]
 fn o_campo_guardado_da_o_byte_do_campo_refeito() {
-    let (fotos, guardado) = sessao();
+    let (fotos, quadros, guardado) = sessao();
     SEM_CACHE.with(|c| c.set(true));
-    let (fotos0, guardado0) = sessao();
+    let (fotos0, quadros0, guardado0) = sessao();
     SEM_CACHE.with(|c| c.set(false));
     // CONTROLO: os dois caminhos são de facto dois — senão o gate compara o controlo consigo mesmo.
     assert!(
@@ -120,4 +142,12 @@ fn o_campo_guardado_da_o_byte_do_campo_refeito() {
             i / 2 + 1
         );
     }
+    assert_eq!(quadros.len(), quadros0.len());
+    let primeiro = quadros.iter().zip(&quadros0).position(|(a, b)| a != b);
+    assert_eq!(
+        primeiro,
+        None,
+        "quadro {primeiro:?} de {}: a tela diverge",
+        quadros.len()
+    );
 }

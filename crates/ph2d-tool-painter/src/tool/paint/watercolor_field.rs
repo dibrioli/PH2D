@@ -153,109 +153,15 @@ fn box_blur_com(
     out
 }
 
-/// **QUATRO [`box_blur`] do MESMO raio numa só passagem** (ADR-0173) — os quatro campos `near` (e os
-/// quatro `far`) do rewet: presença e as três cores pesadas por ela. Por dentro os quatro canais
-/// viajam juntos como `[f32; 4]` (uma soma vectorial por texel em vez de quatro passagens), por fora
-/// saem os mesmos quatro planos que os consumidores já leem.
-///
-/// ⭐ **Byte-idêntico a quatro `box_blur`** — cada canal faz as MESMAS somas `f32` pela MESMA ordem
-/// (linha a linha a partir de `x = 0`, coluna a coluna a partir de `y = 0`), só que lado a lado. O
-/// gate `quatro_borroes_juntos_dao_o_byte_de_quatro_separados` usa o [`box_blur`] como oráculo.
-pub(super) fn box_blur4(src: [&[f32]; 4], w: usize, h: usize, radius: usize) -> [Vec<f32>; 4] {
-    if radius == 0 || w == 0 || h == 0 {
-        return src.map(<[f32]>::to_vec);
-    }
-    RASCUNHO4.with(|r| match r.try_borrow_mut() {
-        Ok(mut g) => {
-            let (tmp, pref) = &mut *g;
-            box_blur4_com(src, w, h, radius, tmp, pref)
-        }
-        Err(_) => box_blur4_com(src, w, h, radius, &mut Vec::new(), &mut Vec::new()),
-    })
-}
-
-thread_local! {
-    /// O rascunho do [`box_blur4`] — o irmão de quatro canais do [`RASCUNHO`], pelas mesmas razões.
-    static RASCUNHO4: std::cell::RefCell<(Vec<[f32; 4]>, Vec<[f32; 4]>)> =
-        const { std::cell::RefCell::new((Vec::new(), Vec::new())) };
-}
-
-fn box_blur4_com(
-    src: [&[f32]; 4],
-    w: usize,
-    h: usize,
-    radius: usize,
-    tmp: &mut Vec<[f32; 4]>,
-    pref: &mut Vec<[f32; 4]>,
-) -> [Vec<f32>; 4] {
-    let soma = |a: [f32; 4], b: [f32; 4]| [a[0] + b[0], a[1] + b[1], a[2] + b[2], a[3] + b[3]];
-    tmp.resize(w * h, [0.0; 4]);
-    tmp.par_chunks_mut(w).enumerate().for_each_init(
-        || vec![[0.0f32; 4]; w + 1],
-        |p, (y, trow)| {
-            let base = y * w;
-            for x in 0..w {
-                let i = base + x;
-                p[x + 1] = soma(p[x], [src[0][i], src[1][i], src[2][i], src[3][i]]);
-            }
-            for (x, t) in trow.iter_mut().enumerate() {
-                let lo = x.saturating_sub(radius);
-                let hi = (x + radius).min(w - 1);
-                let cnt = (hi - lo + 1) as f32;
-                let (b, a) = (p[hi + 1], p[lo]);
-                *t = [
-                    (b[0] - a[0]) / cnt,
-                    (b[1] - a[1]) / cnt,
-                    (b[2] - a[2]) / cnt,
-                    (b[3] - a[3]) / cnt,
-                ];
-            }
-        },
-    );
-    let nf = w.div_ceil(FAIXA);
-    let bloco = (h + 1) * FAIXA;
-    pref.resize(nf * bloco, [0.0; 4]);
-    let tmp = &tmp[..];
-    pref.par_chunks_mut(bloco).enumerate().for_each(|(s, blk)| {
-        let x0 = s * FAIXA;
-        let sw = FAIXA.min(w - x0);
-        blk[..sw].fill([0.0; 4]);
-        for y in 0..h {
-            let (prev, next) = blk.split_at_mut((y + 1) * FAIXA);
-            let prev = &prev[y * FAIXA..y * FAIXA + sw];
-            let trow = &tmp[y * w + x0..y * w + x0 + sw];
-            for ((n, p), t) in next[..sw].iter_mut().zip(prev).zip(trow) {
-                *n = soma(*p, *t);
-            }
-        }
-    });
-    // Os quatro planos nascem num `collect` só de um iterador INDEXADO (o `unzip` encaixado): cada
-    // texel é escrito directamente na memória por iniciar dos quatro, sem `memset`.
-    let pref = &pref[..];
-    let ((c0, c1), (c2, c3)): ((Vec<f32>, Vec<f32>), (Vec<f32>, Vec<f32>)) = (0..w * h)
-        .into_par_iter()
-        .with_min_len(4096)
-        .map(|i| {
-            let (y, x) = (i / w, i % w);
-            let lo = y.saturating_sub(radius);
-            let hi = (y + radius).min(h - 1);
-            let cnt = (hi - lo + 1) as f32;
-            let blk = &pref[(x / FAIXA) * bloco..];
-            let j = x % FAIXA;
-            let (b, a) = (blk[(hi + 1) * FAIXA + j], blk[lo * FAIXA + j]);
-            (
-                ((b[0] - a[0]) / cnt, (b[1] - a[1]) / cnt),
-                ((b[2] - a[2]) / cnt, (b[3] - a[3]) / cnt),
-            )
-        })
-        .unzip();
-    [c0, c1, c2, c3]
-}
+// Os borrões de VÁRIOS canais do mesmo raio numa só passagem (`box_blur4` · `box_blur2`) moram no
+// filho [`borrao`] (teto de LOC, corte por assunto); re-exportados para o caminho plano de sempre.
+mod borrao;
+pub(super) use borrao::{box_blur2, box_blur4};
 
 /// A largura das faixas da passagem vertical do [`box_blur`]: `64` floats = `256` bytes = quatro
 /// linhas de cache por linha de faixa. Não muda um bit do resultado (as somas por coluna são as
 /// mesmas em qualquer largura) — só a arrumação da memória.
-const FAIXA: usize = 64;
+pub(super) const FAIXA: usize = 64;
 
 // ── Rewet composite fields (moved from `watercolor_render` for the file-LOC cap) ────────────────────
 

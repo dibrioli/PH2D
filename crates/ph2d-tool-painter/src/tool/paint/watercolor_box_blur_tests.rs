@@ -145,3 +145,44 @@ fn quatro_borroes_juntos_dao_o_byte_de_quatro_separados() {
         "o borrão tem de mudar o campo: mudou {mudou}"
     );
 }
+
+/// ⭐ O [`box_blur2`] (o campo molhado e a massa dele numa passagem) dá o byte de DOIS [`box_blur`]
+/// separados — o mesmo oráculo e os mesmos casos do irmão de quatro canais.
+#[test]
+fn dois_borroes_juntos_dao_o_byte_de_dois_separados() {
+    let casos = [
+        (1usize, 1usize, 1usize),
+        (37, 1, 3),
+        (1, 37, 3),
+        (63, 17, 2),
+        (65, 40, 7),
+        (130, 90, 12),
+        (31, 20, 100),
+    ];
+    let mut mudou = 0usize;
+    for (i, &(w, h, r)) in casos.iter().enumerate() {
+        let c: [Vec<f32>; 2] = std::array::from_fn(|k| campo(w, h, (i * 2 + k) as u32 + 29));
+        let juntos = box_blur2([&c[0], &c[1]], w, h, r);
+        for k in 0..2 {
+            let so = box_blur(&c[k], w, h, r);
+            assert_eq!(juntos[k].len(), so.len());
+            for (t, (a, b)) in juntos[k].iter().zip(&so).enumerate() {
+                assert_eq!(
+                    a.to_bits(),
+                    b.to_bits(),
+                    "{w}×{h} r{r}, canal {k}, texel {t}: {a} contra {b}"
+                );
+            }
+        }
+        mudou += juntos[1]
+            .iter()
+            .zip(&c[1])
+            .filter(|(a, b)| a.to_bits() != b.to_bits())
+            .count();
+    }
+    // CONTROLO: o borrão de facto mexe no campo (um caso de 1×1 não mexe — por isso a soma).
+    assert!(
+        mudou > 5_000,
+        "o borrão tem de mudar o campo: mudou {mudou}"
+    );
+}

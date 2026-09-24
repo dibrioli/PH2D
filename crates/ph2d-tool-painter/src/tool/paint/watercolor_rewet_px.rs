@@ -8,7 +8,7 @@
 
 use super::watercolor_field::{
     BACKRUN_POOL, LIFT_MAX, Luts, NoiseTile, REWET_LIFT, REWET_POOL, RewetFields, SOAK_DISSOLVE,
-    SOAK_LIFT, WetStrokeStyle, box_blur, paper_h_px, sample_bilinear,
+    SOAK_LIFT, WetStrokeStyle, box_blur, box_blur2, box_blur4, paper_h_px, sample_bilinear,
 };
 use super::{PaintMode, PainterTool};
 use ph2d_painter_brush::TextureSettings;
@@ -136,10 +136,9 @@ pub(super) fn build_wet_field(
                 }
             }
         });
-    (
-        box_blur(&wf, rw, rh, WET_FIELD_BLUR_PX),
-        box_blur(&mask, rw, rh, WET_FIELD_BLUR_PX),
-    )
+    // Os dois borrões numa passagem ([`box_blur2`], ADR-0173): o MESMO byte de dois `box_blur`.
+    let [wf, mask] = box_blur2([&wf, &mask], rw, rh, WET_FIELD_BLUR_PX);
+    (wf, mask)
 }
 
 /// O Rewet efetivo no pixel: campo mascarado ÷ massa; sem massa na vizinhança (ou sem campo) ⇒
@@ -259,17 +258,18 @@ pub(super) fn build_style_field(
     }
     let r = WET_FIELD_BLUR_PX;
     let [c0, c1, c2] = color;
+    // Os nove borrões do MESMO raio em três passagens (ADR-0173): dois [`box_blur4`] e um
+    // `box_blur` — cada canal faz as mesmas somas pela mesma ordem, logo o MESMO byte de nove.
+    let [fill, depth, edge_gain, opacity] =
+        box_blur4([&fill, &depth, &edge_gain, &opacity], rw, rh, r);
+    let [warp, c0, c1, c2] = box_blur4([&warp, &c0, &c1, &c2], rw, rh, r);
     StyleField {
-        fill: box_blur(&fill, rw, rh, r),
-        depth: box_blur(&depth, rw, rh, r),
-        edge_gain: box_blur(&edge_gain, rw, rh, r),
-        opacity: box_blur(&opacity, rw, rh, r),
-        warp: box_blur(&warp, rw, rh, r),
-        color: [
-            box_blur(&c0, rw, rh, r),
-            box_blur(&c1, rw, rh, r),
-            box_blur(&c2, rw, rh, r),
-        ],
+        fill,
+        depth,
+        edge_gain,
+        opacity,
+        warp,
+        color: [c0, c1, c2],
         mask: box_blur(&mask, rw, rh, r),
         rw,
         rh,

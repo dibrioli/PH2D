@@ -16,12 +16,18 @@
 #   (b) a mutação COMPILA — um erro de compilação lê-se como sangrar;
 #   (c) a corrida corre N > 0 testes, `passed + failed` do `test result:`
 #       (o `running N tests` CONTA os `#[ignore]`);
-#   (d) as TRÊS corridas LIMPAS estão verdes antes da primeira mutação.
+#   (d) as corridas LIMPAS estão verdes antes da primeira mutação;
+#   (e) a população de PRODUTO (a aquarela molhada, 24/09) é um gate de PLACA:
+#       sem adaptador o `gpu_or_skip!` devolve cedo e o teste PASSA — lido como
+#       «a mutação sobreviveu». Ela só corre com `MUTA_PRODUTO=1` (e com
+#       `PH2D_GPU=1` na porta), e o arnês ABORTA se a saída disser que não há
+#       placa.
 set -u
 SO_ANCORAS="${MUTA_SO_ANCORAS:-}"
 # `MUTA_FILTRO=<regex>` corre só as mutações cujo NOME casa — e o sumário DIZ que é parcial:
 # *um placar parcial lido como completo é a forma mais barata de um arnês mentir.*
 FILTRO="${MUTA_FILTRO:-}"
+COM_PRODUTO="${MUTA_PRODUTO:-}"
 ROOT=$(git rev-parse --show-toplevel)
 cd "$ROOT" || exit 2
 BK=$(mktemp -d)
@@ -56,13 +62,19 @@ trap restore EXIT
 LEI=(cargo test -p ph2d-sculpt3d --lib tela_)
 PINTOR=(cargo test -p ph2d-tool-painter --lib screen_canvas)
 COSTURA=(cargo test -p ph2d-app-sculpt3d --lib painter_fiacao)
+PRODUTO=(cargo test -p ph2d-app-sculpt3d --lib
+  tinta_no_produto_tests::painter::a_aquarela -- --ignored --nocapture)
+SEM_PLACA='no GPU adapter'
 
 corridos() { grep -oP 'test result: \w+\. \K[0-9]+(?= passed)|[0-9]+(?= failed)' | awk '{s+=$1}END{print s+0}'; }
 
 if [ -z "$SO_ANCORAS" ]; then
-  for pop in LEI PINTOR COSTURA; do
+  pops=(LEI PINTOR COSTURA)
+  [ -n "$COM_PRODUTO" ] && pops+=(PRODUTO)
+  for pop in "${pops[@]}"; do
     declare -n cmd="$pop"
     out=$("${cmd[@]}" 2>&1); rc=$?
+    if echo "$out" | grep -q "$SEM_PLACA"; then echo "ABORTO: [$pop] correu sem placa"; exit 2; fi
     n=$(echo "$out" | corridos)
     echo "VERDE antes [$pop]: rc=$rc, $n testes correram"
     [ "$rc" -eq 0 ] && [ "$n" -gt 0 ] || { echo "ABORTO: a corrida limpa [$pop] não está verde"; exit 2; }
@@ -73,6 +85,7 @@ sangram=0; total=0; controlos=0; ncontrolos=0
 muta() { # populacao  ficheiro  agulha  substituto  nome  [controlo]
   local pop="$1" f="$2" agulha="$3" subst="$4" nome="$5" controlo="${6:-}"
   if [ -n "$FILTRO" ] && ! [[ "$nome" =~ $FILTRO ]]; then return; fi
+  if [ "$pop" = PRODUTO ] && [ -z "$COM_PRODUTO" ] && [ -z "$SO_ANCORAS" ]; then return; fi
   total=$((total+1))
   [ -n "$controlo" ] && ncontrolos=$((ncontrolos+1))
   local n; n=$(python3 -c 'import sys;print(open(sys.argv[1]).read().count(sys.argv[2]))' "$f" "$agulha")
@@ -92,7 +105,9 @@ PY
   declare -n cmd="$pop"
   local out rc corr
   out=$("${cmd[@]}" 2>&1); rc=$?
-  if echo "$out" | grep -q '^error\[\|^error: could not compile'; then
+  if echo "$out" | grep -q "$SEM_PLACA"; then
+    echo "  ABORTO [$nome]: correu sem placa — um gate que salta lê-se como sobreviver"
+  elif echo "$out" | grep -q '^error\[\|^error: could not compile'; then
     echo "  ABORTO [$nome]: a mutação não compila"
     echo "$out" | grep -m3 '^error' | sed 's/^/      /'
   else
@@ -244,8 +259,10 @@ muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
   '' \
   'P5 o traço nunca fecha'
 muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
-  '        painter.clear_screen_canvas();' \
-  '' \
+  '            _ => {
+                painter.clear_screen_canvas();
+            }' \
+  '            _ => {}' \
   'P6 a tela não se limpa depois do traço'
 muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
   '        None => painter.release_screen_canvas(),' \
@@ -261,18 +278,76 @@ muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
   '        if false {' \
   'P9 a costura nunca semeia a tela'
 muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
-  '            sessao.com_semente(retrato);' \
-  '            let _ = retrato;' \
+  '            sessao.com_semente(retrato.clone());' \
+  '            let _ = retrato.clone();' \
   'P10 a sessão não recebe o retrato: a lei continua o «over»'
 muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
-  '            let _ = painter.take_screen_canvas();' \
-  '' \
+  '            let _ = painter.take_screen_canvas();
+            sessao.com_semente(retrato.clone());' \
+  '            sessao.com_semente(retrato.clone());' \
   'P11 o retrato é pousado como mudança'
 muta COSTURA shells/desktop/src/input_dispatch/painter_canvas_input.rs \
   '            super::painter_canvas_mods::forward(painter, shift, ctrl, alt);
             return ph2d_app_sculpt3d' \
   '            return ph2d_app_sculpt3d' \
   'P12 os modificadores não chegam ao Painter sobre a peça'
+
+# ── O ANEL DO LIQUIFY E A AQUARELA MOLHADA (report do dono, 24/09) ─────────
+muta PINTOR crates/ph2d-tool-painter/src/tool/screen_canvas.rs \
+  '        if self.is_deform_mode() {' \
+  '        if false {' \
+  'T9 o anel do Liquify fica no tamanho do pincel de pintura'
+muta PINTOR crates/ph2d-tool-painter/src/tool/screen_canvas.rs \
+  'self.on_screen_canvas() && self.wet_session_continues()' \
+  'self.on_screen_canvas()' \
+  'T10 o papel diz-se molhado depois de um traço Digital'
+muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
+  's.painter_raio_px = Some(painter.screen_canvas_ring_px());' \
+  's.painter_raio_px = Some(painter.dab_footprint_px());' \
+  'P13 a costura lê o raio do pincel de pintura para o anel'
+muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
+  'if semeado && painter.screen_canvas_is_wet()' \
+  'if semeado' \
+  'P14 a tela fica depois de TODO traço semeado, molhado ou não'
+muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
+  '                scene.painter_guarda(vista, retrato);' \
+  '                let _ = (vista, retrato);' \
+  'P15 a tela molhada nunca é guardada'
+muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
+  '        self.painter_ultima = Some(Arc::clone(&f.rgba));' \
+  '' \
+  'P16 a semente guardada não é o que a peça recebeu'
+muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
+  '                s.painter_molhada = None;' \
+  '' \
+  'P17 uma tela que renasce fica tomada pela molhada'
+muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
+  '            s.painter_molhada = None;
+            painter.release_screen_canvas();' \
+  '            painter.release_screen_canvas();' \
+  'P18 uma tela solta fica tomada pela molhada'
+muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
+  '            painter.clear_screen_canvas();
+            let _ = painter.take_screen_canvas();
+        }' \
+  '        }' \
+  'P19 a pintura simples começa por cima da tela molhada'
+muta PRODUTO crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
+  'if semeado && painter.screen_canvas_is_wet()' \
+  'if false && semeado && painter.screen_canvas_is_wet()' \
+  'W1 a tela limpa-se sempre: a aquarela seca a cada traço'
+muta PRODUTO crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
+  '&& g.serve(sessao.vista(), objeto, edits)' \
+  '&& true' \
+  'W2 a tela molhada é reaproveitada sem conferir a chave'
+muta PRODUTO crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
+  'self.vista == *vista && self.objeto == objeto && self.edits == edits' \
+  'self.vista == *vista && self.objeto == objeto' \
+  'W3 a chave não vê a peça mudar (Ctrl+Z, outro pincel)'
+muta PRODUTO crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
+  'self.vista == *vista && self.objeto == objeto && self.edits == edits' \
+  'self.objeto == objeto && self.edits == edits' \
+  'W4 a chave não vê a vista rodar'
 
 # ── O CONTROLO — tem de SOBREVIVER ──────────────────────────────────────────
 muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \

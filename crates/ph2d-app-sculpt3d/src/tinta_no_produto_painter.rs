@@ -193,6 +193,104 @@ fn um_borrao_do_painter_arrasta_a_tinta_da_peca_e_o_ctrl_z_devolve() {
     );
 }
 
+/// ⭐⭐⭐ **GATE — a aquarela fica MOLHADA de um traço para o seguinte na peça,
+/// e um `Ctrl+Z` seca-a** (report do dono, 24/09: *«Watercolor não fica
+/// molhado»*).
+///
+/// A costura limpava a tela no fim de cada traço, e limpar SECA o papel do
+/// Painter: cada traço nascia sobre papel seco. Hoje, com o papel molhado, a
+/// tela fica — e o traço seguinte reaproveita-a se ela ainda descreve a peça.
+///
+/// ⚠️ **O segundo pen-down é aberto à mão** (`painter_abre` + `painter_semeia`),
+/// porque a escolha que se mede é o valor de volta do `painter_semeia`, que a
+/// [`entrega`] deita fora; o `painter_abre` é o MESMO do produto, e é depois
+/// dele que a chave é comparada.
+///
+/// ⛔ **O CONTROLO é o desfazer:** depois de um `Ctrl+Z` a peça já não tem o
+/// traço que a tela mostra, e o traço seguinte TEM de voltar ao retrato fresco —
+/// senão pousaria outra vez a tinta desfeita.
+#[test]
+#[ignore = "precisa de adaptador"]
+fn a_aquarela_fica_molhada_entre_dois_tracos_e_o_ctrl_z_a_seca() {
+    let gpu = gpu_or_skip!();
+    let mut s = cena_52(&gpu.device);
+    s.sync_mesh(&gpu.device, &gpu.queue);
+    let mut p = painter_vermelho();
+    p.set_paint_media(ph2d_tool_painter::PaintMedia::Watercolor);
+    assert!(p.screen_canvas_reads_the_piece());
+
+    assert!(traco(&mut s, &mut p, 420.0), "o 1.º traço de aquarela");
+    assert!(
+        p.screen_canvas_is_wet() && s.painter_molhada.is_some(),
+        "o 1.º traço não deixou a tela molhada guardada"
+    );
+    quadro(Some(&mut s), Some(&mut p));
+    assert!(s.painter_abre(440.0, 350.0));
+    assert!(
+        s.painter_semeia(&mut p),
+        "o 2.º traço não reaproveitou a tela molhada: nasceu em papel seco"
+    );
+    assert!(p.screen_canvas_is_wet(), "reaproveitar a tela secou-a");
+    s.painter_fecha();
+
+    // ── O CONTROLO: o desfazer tira à peça o que a tela mostra ──
+    let mut s = cena_52(&gpu.device);
+    s.sync_mesh(&gpu.device, &gpu.queue);
+    let mut p = painter_vermelho();
+    p.set_paint_media(ph2d_tool_painter::PaintMedia::Watercolor);
+    assert!(traco(&mut s, &mut p, 420.0));
+    assert!(s.painter_molhada.is_some());
+    assert!(tecla(&mut s, false), "o Ctrl+Z tem de ser consumido");
+    quadro(Some(&mut s), Some(&mut p));
+    assert!(s.painter_abre(440.0, 350.0));
+    assert!(
+        !s.painter_semeia(&mut p),
+        "depois do Ctrl+Z a tela molhada foi reaproveitada: a tinta desfeita voltaria"
+    );
+    assert!(
+        !p.screen_canvas_is_wet(),
+        "o retrato fresco não secou o papel"
+    );
+    s.painter_fecha();
+
+    // ── E um traço de OUTRO pincel na tinta fina entre os dois ──
+    // ⚠️ O caminho do plano não move um vértice, e mesmo assim sobe o `edits`:
+    // o fecho do traço devolve a cor grossa. Um contador do histórico ao lado
+    // dele foi construído para esta metade e RETIRADO por mutação (ver o doc do
+    // `TelaMolhada`).
+    let mut s = cena_52(&gpu.device);
+    s.sync_mesh(&gpu.device, &gpu.queue);
+    let mut p = painter_vermelho();
+    p.set_paint_media(ph2d_tool_painter::PaintMedia::Watercolor);
+    assert!(traco(&mut s, &mut p, 420.0));
+    assert!(s.painter_molhada.is_some());
+    quadro(Some(&mut s), None);
+    assert!(super::traco(&mut s, 430.0), "o traço do pincel de pintura");
+    quadro(Some(&mut s), Some(&mut p));
+    assert!(s.painter_abre(440.0, 350.0));
+    assert!(
+        !s.painter_semeia(&mut p),
+        "a tela molhada foi reaproveitada por cima de um traço de outro pincel"
+    );
+    s.painter_fecha();
+
+    // ── E rodar a vista entre os dois: a humidade vive nos píxeis do ECRÃ ──
+    let mut s = cena_52(&gpu.device);
+    s.sync_mesh(&gpu.device, &gpu.queue);
+    let mut p = painter_vermelho();
+    p.set_paint_media(ph2d_tool_painter::PaintMedia::Watercolor);
+    assert!(traco(&mut s, &mut p, 420.0));
+    assert!(s.painter_molhada.is_some());
+    s.camera.orbit(0.3, 0.0);
+    quadro(Some(&mut s), Some(&mut p));
+    assert!(s.painter_abre(440.0, 350.0));
+    assert!(
+        !s.painter_semeia(&mut p),
+        "a tela molhada foi reaproveitada depois de a vista rodar: a tinta aterra no sítio errado"
+    );
+    s.painter_fecha();
+}
+
 /// 🔎 **SONDA (não é gate)** — desenha a cena depois de uma pincelada do Painter
 /// e grava um PNG em `$PH2D_SONDA_PNG`, para se VER a tinta na peça. Sem a
 /// variável não grava nada.

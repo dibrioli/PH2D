@@ -94,6 +94,38 @@ impl PainterTool {
         true
     }
 
+    /// ⭐ **O raio do anel do cursor sobre a peça**, em píxeis da tela — o que
+    /// o gesto vai de facto mexer.
+    ///
+    /// ⚠️ O `Deform` (o Liquify) tem um tamanho PRÓPRIO (`deform_size_px`),
+    /// independente do pincel de pintura; lido do [`Self::dab_footprint_px`] o
+    /// anel ficava parado no tamanho do pincel enquanto o slider do Liquify
+    /// mudava o que o gesto deforma (report do dono, 24/09). É a mesma escolha
+    /// que o anel da vista 2D faz (`painter_bridge_brush_ring`).
+    #[must_use]
+    pub fn screen_canvas_ring_px(&self) -> f32 {
+        if self.is_deform_mode() {
+            self.brush_settings().deform_size_px
+        } else {
+            self.dab_footprint_px()
+        }
+    }
+
+    /// ⭐⭐ **O papel da aquarela ainda está MOLHADO?** — o traço que começar
+    /// agora continua a sessão molhada e funde com o anterior
+    /// ([`Self::wet_session_continues`], a MESMA pergunta que o pen-down faz).
+    /// O papel seca sozinho no batimento (`dry_canvas_wet`).
+    ///
+    /// ⚠️ Ele só sobrevive enquanto ninguém chamar o `set_source`: limpar ou
+    /// semear a tela SECA o papel (`reset_transient_edit_state` →
+    /// `dry_session_now`). É por isso que a escultura pergunta isto no fim de
+    /// um traço antes de decidir se limpa a tela, e no pen-down antes de a
+    /// semear.
+    #[must_use]
+    pub fn screen_canvas_is_wet(&self) -> bool {
+        self.on_screen_canvas() && self.wet_session_continues()
+    }
+
     /// **Solta a tela** — a escultura saiu do ecrã, e a ponte volta a poder
     /// ligar a sprite escolhida no quadro seguinte.
     pub fn release_screen_canvas(&mut self) {

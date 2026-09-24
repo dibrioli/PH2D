@@ -135,7 +135,7 @@ impl Tela<'_> {
 }
 
 /// A vista em que a tela foi pintada: de espaço LOCAL da peça para píxeis.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Vista {
     /// Local → clip, coluna a coluna (a pose já dentro).
     local_para_clip: [f32; 16],

@@ -96,7 +96,7 @@ fn elos() -> Vec<(
             "painter_na_malha.rs",
             COSTURA,
             "painter.clear_screen_canvas();",
-            1,
+            2,
             "P6 a tela não se limpa: o traço seguinte recompõe o anterior",
         ),
         (
@@ -124,7 +124,7 @@ fn elos() -> Vec<(
         (
             "painter_na_malha.rs",
             COSTURA,
-            "sessao.com_semente(retrato);",
+            "sessao.com_semente(retrato.clone());",
             1,
             "P10 a tela semeada é pousada como «over»: a peça inteira vira o retrato",
         ),
@@ -132,8 +132,9 @@ fn elos() -> Vec<(
             "painter_na_malha.rs",
             COSTURA,
             "let _ = painter.take_screen_canvas();",
-            1,
-            "P11 o retrato é pousado como mudança: o quadro seguinte varre a peça inteira",
+            2,
+            "P11 o retrato (ou a limpeza de uma tela molhada) é pousado como mudança: \
+             o quadro seguinte varre a peça inteira",
         ),
         (
             "painter_canvas_input.rs",
@@ -142,6 +143,42 @@ fn elos() -> Vec<(
             2,
             "P12 Shift/Ctrl/Alt não chegam ao Painter sobre a peça",
         ),
+        // ── o anel do Liquify e a aquarela molhada (report de 24/09) ──
+        (
+            "painter_na_malha.rs",
+            COSTURA,
+            "s.painter_raio_px = Some(painter.screen_canvas_ring_px());",
+            1,
+            "P13 o anel do Liquify fica no tamanho do pincel de pintura",
+        ),
+        (
+            "painter_na_malha.rs",
+            COSTURA,
+            "painter.screen_canvas_is_wet()",
+            2,
+            "P14 a aquarela seca a cada traço: limpar ou semear a tela seca o papel",
+        ),
+        (
+            "painter_na_malha.rs",
+            COSTURA,
+            "scene.painter_guarda(vista, retrato);",
+            1,
+            "P15 a tela molhada nunca é guardada: o traço seguinte nasce em papel seco",
+        ),
+        (
+            "painter_na_malha.rs",
+            COSTURA,
+            "self.painter_ultima = Some(Arc::clone(&f.rgba));",
+            1,
+            "P16 a semente reaproveitada não é o que a peça recebeu: o traço anterior soma duas vezes",
+        ),
+        (
+            "painter_na_malha.rs",
+            COSTURA,
+            "s.painter_molhada = None;",
+            2,
+            "P17 uma tela renascida ou solta é tomada pela molhada guardada",
+        ),
     ]
 }
 
@@ -149,7 +186,7 @@ fn elos() -> Vec<(
 #[test]
 fn a_costura_do_painter_esta_ligada_nas_duas_pontas() {
     let elos = elos();
-    assert!(elos.len() >= 12, "o piso de população: {} elos", elos.len());
+    assert!(elos.len() >= 17, "o piso de população: {} elos", elos.len());
     for (ficheiro, texto, agulha, esperado, parte) in elos {
         let n = sem_prosa(texto).matches(agulha).count();
         assert_eq!(

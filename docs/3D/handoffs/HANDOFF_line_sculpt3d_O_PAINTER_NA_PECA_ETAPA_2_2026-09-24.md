@@ -154,3 +154,95 @@ ao longo da superfície.
   traço fecha no pen-up; o ajuste com o botão PRESO chega.
 * **Etapa 3:** o relevo do impasto e o que a tinta molhada ainda faça depois do
   pen-up no app · **etapa 4:** camadas e efeitos.
+
+## §7 — O smoke da etapa 2 devolveu dois reports, e os dois eram da COSTURA
+
+> *«Liquify: o gizmo do pincel tem o tamanho fixo apenas na aparência, mas
+> funciona corretamente. Watercolor não fica molhado, corrija.»*
+
+**Contadores:** `PROJECT_SCHEMA` 0 · os três registos 0 · `SCULPT_DOC_VERSION` 0 ·
+zero contrato · zero ADR. ⚠️ Toca **uma** visibilidade na `ph2d-tool-painter`
+(`wet_session_continues`: `pub(super)` → `pub(crate)`) e deriva `PartialEq` na
+`Vista` da `ph2d-sculpt3d`.
+
+### §7.1 — O anel do Liquify
+
+O `Deform` tem um tamanho PRÓPRIO (`deform_size_px`), independente do pincel de
+pintura, e a costura dava ao anel o `dab_footprint_px` — o raio do pincel de
+PINTURA. O gesto usava o tamanho certo e o anel mentia. ⭐ A escolha já estava
+escrita no anel da vista 2D (`painter_bridge_brush_ring`: *«Deform uses its OWN
+(round) brush footprint»*) e a costura 3D não a herdou ⇒ porta
+`PainterTool::screen_canvas_ring_px`, com o CONTROLO de que no pincel de pintura
+o anel continua o do pincel e não se mexe com o tamanho do Liquify.
+
+### §7.2 — ⭐⭐⭐ A aquarela: limpar a tela SECA o papel
+
+O motor da aquarela guarda o papel molhado (`canvas_wet` + a sessão do wash) de
+um traço para o seguinte; é isso que faz o segundo traço FUNDIR com o primeiro. A
+costura limpava a tela no fim de cada traço, e limpar passa pelo `set_source`, que
+chama `reset_transient_edit_state` → `dry_session_now`. O semear da etapa 2 tem a
+MESMA consequência. ⇒ **cada traço nascia sobre papel seco**, e o dono via-o
+exactamente como descreve.
+
+A cura: **com o papel molhado no pen-up a tela FICA** (a pergunta é
+`PainterTool::screen_canvas_is_wet`, que é a MESMA que o pen-down do Painter faz —
+`wet_session_continues`, incluindo a guarda de que a tela é o `Arc` que o último
+bake produziu), e o traço seguinte **reaproveita-a em vez de semear** se ela ainda
+descreve a peça. ⭐ A semente do traço seguinte passa a ser **o que a peça
+RECEBEU** (a última drenagem pousada, `painter_ultima`) — a lei da diferença pede
+`c − s` com `s` = o que a peça já tem, e com o retrato antigo o traço anterior
+somaria duas vezes.
+
+A chave (`TelaMolhada`) é **a vista inteira** (câmera, tamanho, pose), **a peça**
+e o **`edits`**. Qualquer diferença volta ao retrato fresco, que seca o papel:
+⚠️ **rodar a vista seca a aquarela** — a humidade vive nos píxeis do ECRÃ, e
+depois de rodar os píxeis são de outra parte da superfície. É um limite
+DECLARADO, não um defeito.
+
+⚠️ **A pintura simples começa numa tela TRANSPARENTE**, logo quando a tela ficou
+molhada o pen-down dela limpa-a (e deita a drenagem fora, como a do retrato).
+
+### §7.3 — ⛔ Um contador do HISTÓRICO foi construído e RETIRADO por mutação
+
+A 1.ª redacção da chave levava um `historia: u64` subido em `record_for` e no
+`step` do desfazer, «porque um traço de tinta fina não mexe num vértice». As duas
+mutações que o apagavam **SOBREVIVERAM** ao gate de produto — e o gate tem as duas
+metades para que ele existia (um `Ctrl+Z` entre os traços; um traço do pincel de
+pintura da escultura na tinta fina entre os traços). Medido: todo braço do
+desfazer que mexe na peça já sobe o `edits`, e o fecho de um traço de tinta fina
+também (ele devolve a cor grossa). ⇒ **retirado**; *uma linha que a mutação não
+consegue matar não é lei, é comentário com sintaxe de código.* A recusa está
+escrita no doc do `TelaMolhada`.
+
+⚠️ A cerca do `objeto` na chave **não tem fixtura** (seria uma cena de duas peças
+com a mesma pose); fica como guarda declarada.
+
+### §7.4 — Gates e prova
+
+| onde | novos | o que afirmam |
+|---|---|---|
+| `screen_canvas_tests.rs` | 2 | o anel do Liquify segue o tamanho dele (com o controlo do pincel) · a aquarela fica molhada até a tela ser limpa ou semeada (com o controlo Digital) |
+| `tinta_no_produto_painter.rs` | 1 `#[ignore]` + placa | o 2.º traço reaproveita a tela molhada · e NÃO a reaproveita depois de um `Ctrl+Z`, de um traço de outro pincel na tinta fina, nem de a vista rodar |
+| `painter_fiacao_tests.rs` | +5 elos (17) | o anel · a pergunta «molhado?» duas vezes · guardar · a última drenagem · largar a molhada quando a tela renasce ou se solta; P6 e P11 passam a `2` (a limpeza da pintura simples) |
+
+⭐ **O arnês versionado ganhou uma população de PRODUTO** (`MUTA_PRODUTO=1`, com
+`PH2D_GPU=1` na porta) — e ABORTA se a saída disser que não há placa, porque o
+`gpu_or_skip!` devolve cedo e o teste PASSA, o que se leria como «a mutação
+sobreviveu». ⚠️ **E o pré-voo fez o trabalho dele:** P6, P10 e P11 casavam `2`, `0`
+e `2` vezes depois desta mudança — apanhados em segundos, sem correr um teste.
+
+**Mutação: 48 de 48 sangram, controlo a sobreviver** (duas fatias: 17 novas e
+re-ancoradas com a placa, 32 das antigas re-corridas porque o diff toca nos
+ficheiros que elas medem). Portão: `nextest-impacted` **18 677/18 677** · censos
+da árvore COMBINADA **127/127** (controlo do filtro 12 de 12) · clippy
+`-D warnings` zero · gates de produto do Painter na peça com placa **5/5**.
+
+### §7.5 — ⏳ O que fica, dito
+
+* O Wet Paint tem uma simulação que ANDA depois do pen-up (40 Hz); o que ela mudar
+  com a sessão fechada é drenado e deitado fora, e entra na peça no traço
+  seguinte (a semente é o que a peça recebeu). O dono não reportou isto; é a
+  etapa 3.
+* O ajuste do balde DEPOIS de largar continua sem chegar à peça na hora — com a
+  tela molhada guardada ele passaria a chegar no traço seguinte; só com a
+  aquarela, e o dono não o vai encontrar por acaso.

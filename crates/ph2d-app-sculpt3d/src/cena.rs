@@ -494,6 +494,14 @@ pub struct Sculpt3dScene {
     /// O raio do pincel do Painter em píxeis de ecrã enquanto ele pinta a peça —
     /// o anel do cursor passa a ser o DELE (`None` = o do pincel da escultura).
     pub(crate) painter_raio_px: Option<f32>,
+    /// ⭐⭐ **A tela da aquarela ainda molhada** entre dois traços do Painter —
+    /// o que a peça recebeu e a chave que diz se a tela ainda a descreve; ver
+    /// [`crate::painter_na_malha::TelaMolhada`].
+    pub(crate) painter_molhada: Option<crate::painter_na_malha::TelaMolhada>,
+    /// O último retrato da tela que a peça RECEBEU no traço em voo (a semente, e
+    /// depois cada drenagem pousada) — o que a [`Self::painter_molhada`] guarda
+    /// no pen-up.
+    pub(crate) painter_ultima: Option<std::sync::Arc<Vec<u8>>>,
 }
 
 impl Sculpt3dScene {

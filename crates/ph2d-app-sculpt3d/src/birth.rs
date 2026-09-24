@@ -146,6 +146,8 @@ impl Sculpt3dScene {
             avisos: Vec::new(),
             painter_tela: None,
             painter_raio_px: None,
+            painter_molhada: None,
+            painter_ultima: None,
         }
     }
 }

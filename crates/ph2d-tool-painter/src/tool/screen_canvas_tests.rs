@@ -396,3 +396,85 @@ fn diag_o_que_muda_depois_do_pen_up() {
         println!("  {meio:?}: {mudou} píxeis mudam depois do pen-up");
     }
 }
+
+/// ⭐⭐ **O anel do Liquify sobre a peça tem o tamanho do LIQUIFY** (report do
+/// dono, 24/09: *«o gizmo do pincel tem o tamanho fixo apenas na aparência»*).
+/// O `Deform` tem um tamanho próprio, e lido do pincel de pintura o anel ficava
+/// parado enquanto o slider mudava o que o gesto deforma.
+///
+/// ⚠️ **O CONTROLO é o pincel de pintura:** nele o anel é o do pincel e não se
+/// mexe quando o tamanho do Liquify muda — sem esta metade uma porta que
+/// devolvesse sempre o tamanho do Liquify passaria.
+#[test]
+fn o_anel_do_liquify_segue_o_tamanho_do_liquify() {
+    let mut t = pintor();
+    t.set_paint_tool_mode("liquify");
+    t.set_deform_size_norm(0.1);
+    let pequeno = t.screen_canvas_ring_px();
+    t.set_deform_size_norm(0.9);
+    let grande = t.screen_canvas_ring_px();
+    assert!(
+        grande > 2.0 * pequeno,
+        "o anel do Liquify não seguiu o tamanho dele: {pequeno} → {grande}"
+    );
+    assert!(
+        (grande - t.brush_settings().deform_size_px).abs() < 1e-3,
+        "o anel do Liquify não é o raio que o gesto deforma"
+    );
+    t.set_paint_tool_mode("brush");
+    let pincel = t.screen_canvas_ring_px();
+    assert!(
+        (pincel - t.dab_footprint_px()).abs() < 1e-3,
+        "o CONTROLO: no pincel de pintura o anel é o do pincel"
+    );
+    t.set_deform_size_norm(0.1);
+    assert!(
+        (t.screen_canvas_ring_px() - pincel).abs() < 1e-3,
+        "o CONTROLO: o tamanho do Liquify não mexe no anel do pincel"
+    );
+}
+
+/// ⭐⭐⭐ **A aquarela fica MOLHADA depois do traço — até alguém limpar a tela**
+/// (report do dono, 24/09: *«Watercolor não fica molhado»*). A escultura limpa
+/// a tela no fim de cada traço, e limpar passa pelo `set_source`, que SECA o
+/// papel: é esta pergunta que ela faz antes de decidir.
+///
+/// ⚠️ Três metades: o traço de aquarela deixa o papel molhado · limpar a tela
+/// seca-o · semear um retrato novo também. E o CONTROLO: um traço `Digital`
+/// não molha nada.
+#[test]
+fn a_aquarela_fica_molhada_ate_a_tela_ser_limpa() {
+    let branco: Vec<u8> = (0..W * H).flat_map(|_| [255u8, 255, 255, 255]).collect();
+
+    let mut t = pintor();
+    t.bind_screen_canvas(W, H);
+    assert!(t.seed_screen_canvas(branco.clone()));
+    traco(&mut t);
+    assert!(
+        !t.screen_canvas_is_wet(),
+        "o CONTROLO: um traço Digital não molha o papel"
+    );
+
+    t.set_paint_media(crate::PaintMedia::Watercolor);
+    assert!(t.seed_screen_canvas(branco.clone()));
+    traco(&mut t);
+    assert!(
+        t.screen_canvas_is_wet(),
+        "o traço de aquarela não deixou o papel molhado"
+    );
+    traco(&mut t);
+    assert!(
+        t.screen_canvas_is_wet(),
+        "o 2.º traço sobre o papel molhado secou-o"
+    );
+    t.clear_screen_canvas();
+    assert!(!t.screen_canvas_is_wet(), "limpar a tela não secou o papel");
+
+    traco(&mut t);
+    assert!(t.screen_canvas_is_wet());
+    assert!(t.seed_screen_canvas(branco));
+    assert!(
+        !t.screen_canvas_is_wet(),
+        "semear um retrato novo não secou o papel"
+    );
+}

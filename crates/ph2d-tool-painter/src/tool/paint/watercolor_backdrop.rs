@@ -293,7 +293,7 @@ impl PainterTool {
     /// and — the load-bearing guard — `canvas_rgba` is EXACTLY the Arc our last bake produced
     /// (`Arc::ptr_eq`). Every foreign mutation path (undo restore, layer switch/bind, fill,
     /// resize, document switch) assigns a fresh Arc, so no per-site invalidation is needed.
-    pub(super) fn wet_session_continues(&self) -> bool {
+    pub(crate) fn wet_session_continues(&self) -> bool {
         let (fw, fh) = self.source_size;
         let n = (fw as usize) * (fh as usize);
         self.watercolor_render_active()

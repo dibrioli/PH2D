@@ -49,6 +49,22 @@ impl ActionTargetMode {
     }
 }
 
+/// ⭐⭐ **O que o campo do parâmetro de uma linha É** (plano 28, W2b) — é o que escolhe a dica dele.
+///
+/// ⚠️ **Traduzido na shell** a partir de `SignalVerb::arg_kind`, como o [`ActionTargetMode`]: o
+/// painel é chrome e não vê o `ph2d-ecs` (ADR-0029). ⛔ Nasceu de uma FOTO: a linha `Damage`
+/// pintava *«timer name»* no campo da quantidade.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ActionArgHint {
+    /// O nome de um relógio (vazio = todos).
+    #[default]
+    TimerName,
+    /// Quanto somar a um contador (vazio = 1).
+    Count,
+    /// Quanta vida tirar ou dar.
+    Amount,
+}
+
 /// Uma linha da tabela, como o Inspector a lê.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InspectorActionRow {
@@ -66,6 +82,8 @@ pub struct InspectorActionRow {
     /// não conhece o enum, e re-derivá-lo seria uma segunda resposta a *«este campo serve para
     /// alguma coisa?»* — a que o artista vê seria a que envelhece.
     pub uses_arg: bool,
+    /// ⭐ **O que o campo é**, quando o verbo o lê — ver [`ActionArgHint`].
+    pub arg_hint: ActionArgHint,
     /// ⭐⭐⭐ **Este verbo tem ALVO?** — `false` só no `Restart Run`, que age sobre a CORRIDA e não
     /// sobre uma entidade.
     ///

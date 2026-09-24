@@ -171,6 +171,19 @@ pub enum SignalVerb {
     Heal,
 }
 
+/// ⭐⭐ **O que o `arg` de um verbo significa** — ver [`SignalVerb::arg_kind`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ArgKind {
+    /// O verbo não lê o argumento.
+    None,
+    /// O NOME do relógio — vazio = todos.
+    TimerName,
+    /// Quanto SOMAR ao contador — vazio vale `1`.
+    Count,
+    /// Quanta VIDA tirar ou dar — obrigatório e `> 0`.
+    Amount,
+}
+
 impl SignalVerb {
     /// Todos, em ordem — **a fonte da iteração**. ⛔ Nunca escreva a lista uma segunda vez.
     /// ⚠️ **APPEND-ONLY**: a posição é a tag e ela viaja no ficheiro. Um verbo novo entra no FIM.
@@ -219,18 +232,34 @@ impl SignalVerb {
 
     /// **Este verbo LÊ o `arg`?** — é o que decide se o painel pinta o campo.
     ///
-    /// ⚠️ **Derivado do verbo, nunca uma segunda lista.** Um painel que mostra um campo que o verbo
+    /// ⚠️ **Derivado do verbo, nunca uma segunda lista** — e desde a W2b do plano 28 derivado de
+    /// [`Self::arg_kind`], que diz também O QUE o campo é. Um painel que mostra um campo que o verbo
     /// não lê é um controlo morto; um que o esconde onde o verbo o lê é uma feature inalcançável.
     #[must_use]
     pub const fn uses_arg(self) -> bool {
-        matches!(
-            self,
-            SignalVerb::StartTimer
-                | SignalVerb::StopTimer
-                | SignalVerb::AddToCounter
-                | SignalVerb::Damage
-                | SignalVerb::Heal
-        )
+        !matches!(self.arg_kind(), ArgKind::None)
+    }
+
+    /// ⭐⭐ **O que o `arg` deste verbo SIGNIFICA** (plano 28, W2b) — é o que escolhe a dica do campo.
+    ///
+    /// ⛔⛔ **Nasceu de uma FOTO:** a linha `Damage` pintava *«timer name (empty = all)»* no campo
+    /// da quantidade, porque o painel só sabia SE o verbo lia o argumento e não O QUÊ — e o contador
+    /// (#20) tinha a mesma dica errada desde que existe. ⚠️ **Sem `_`, de propósito:** um verbo
+    /// novo é erro de compilação aqui até alguém dizer o que o campo dele é.
+    #[must_use]
+    pub const fn arg_kind(self) -> ArgKind {
+        match self {
+            SignalVerb::StartTimer | SignalVerb::StopTimer => ArgKind::TimerName,
+            SignalVerb::AddToCounter => ArgKind::Count,
+            SignalVerb::Damage | SignalVerb::Heal => ArgKind::Amount,
+            SignalVerb::Show
+            | SignalVerb::Hide
+            | SignalVerb::ToggleVisibility
+            | SignalVerb::PlaySound
+            | SignalVerb::StopSound
+            | SignalVerb::Destroy
+            | SignalVerb::RestartRun => ArgKind::None,
+        }
     }
 
     /// **Este verbo tem ALVO?** — é o que decide se o painel pinta a coluna de quem sofre.

@@ -413,3 +413,27 @@ ligação da shell e pelo da tecla.
   herdada da §8.4, ainda aberta;
 - um verbo de vida com alvo por TAG fere cada membro, e cada um grava o seu pedido — **não medido**
   a N inimigos.
+
+### §10.8 — O smoke da W2b: *«Now não desce 5»* — NÃO reproduzido, e o que a caça achou
+
+⚠️ **O report não reproduz**, e a medição é pelo caminho INTEIRO: uma sonda temporária (retirada)
+escolheu a CÓPIA do roxo como o dono faz e chamou `App::key_input` com `KeyCode::KeyJ` — o despacho
+de teclado real, o mesmo que o `WindowEvent::KeyboardInput` chama sem guarda nenhuma. Com
+`PH2D_SIGNAL_LOG=1`: `veneno <- a MAO do artista` → `4 efeito(s)` aplicados → `ai` → o `HealthNow`
+da cópia `30 → 25` no tique seguinte → um segundo depois `cura-lenta` → `curou` → `30`. E a foto
+numa tela de `3200` px de altura leu **`Now: 20 of 30`** no Inspector depois de três toques e uma
+cura. ⇒ o motor, a tabela, a shell e o painel fazem o que o roteiro diz; a hipótese do ambiente do
+dono fica aberta, com o diagnóstico nomeado (`PH2D_SIGNAL_LOG=1` diz se o `veneno` sai).
+
+⚠️ **Nota de legibilidade, não de defeito:** a secção `Health` é a **última** do Inspector com um
+alvo escolhido (a `2 900` px de altura numa tela alta) — na janela de `1 040` px ela exige rolar.
+
+⭐ **E a foto achou um defeito REAL, pré-existente desde o #20:** o campo do parâmetro pintava
+**sempre** *«timer name (empty = all)»* — na linha `Damage`, na `Heal` e no contador. O painel só
+sabia SE o verbo lia o argumento e não O QUÊ. ⇒ `SignalVerb::arg_kind` (`TimerName` · `Count` ·
+`Amount` · `None`, **sem `_`**: um verbo novo não compila sem dizer o que o campo dele é), o
+`uses_arg` passa a derivar dele, a shell traduz para `ActionArgHint` (o painel não vê o
+`ph2d-ecs`, ADR-0029) e a dica sai de `dica_do_parametro`. Três gates — o mapa à mão no motor, a
+tradução na shell, as três dicas distintas e presentes na tabela de textos — e as duas mutações
+das pontas novas sangram. Portão: `nextest-impacted` **17 821 / 17 821** · clippy · censos
+**127 / 127**.

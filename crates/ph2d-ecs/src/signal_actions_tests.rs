@@ -257,6 +257,23 @@ fn so_estes_verbos_leem_o_argumento() {
     }
 }
 
+/// ⭐⭐ **O que o `arg` de cada verbo SIGNIFICA** (plano 28, W2b) — a lista à mão é o CONTROLO,
+/// pela razão do gate de cima. ⛔ Nasceu de uma FOTO: a linha `Damage` pintava a dica do relógio no
+/// campo da quantidade, porque o painel só sabia SE o verbo lia o argumento e não O QUÊ.
+#[test]
+fn cada_verbo_diz_o_que_o_argumento_e() {
+    use super::ArgKind;
+    for v in SignalVerb::ALL {
+        let esperado = match v {
+            SignalVerb::StartTimer | SignalVerb::StopTimer => ArgKind::TimerName,
+            SignalVerb::AddToCounter => ArgKind::Count,
+            SignalVerb::Damage | SignalVerb::Heal => ArgKind::Amount,
+            _ => ArgKind::None,
+        };
+        assert_eq!(v.arg_kind(), esperado, "{}", v.label());
+    }
+}
+
 /// **A POSIÇÃO no array É a tag** — a ida-e-volta que o painel usa nos segmentados.
 ///
 /// ⚠️ Reordenar [`SignalVerb::ALL`] faria um clique escrever outro verbo, **e compila**. Este gate

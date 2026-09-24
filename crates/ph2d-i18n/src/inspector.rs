@@ -173,6 +173,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.actions.on_signal" => "on signal\u{2026}",
         "panel.inspector.actions.target_empty_this_object" => "target (empty = this object)",
         "panel.inspector.actions.timer_name_empty_all" => "timer name (empty = all)",
+        "panel.inspector.actions.count_empty_one" => "amount to add (empty = 1)",
+        "panel.inspector.actions.amount_of_life" => "amount (e.g. 10)",
         "panel.inspector.actions.this_action_never_runs_it" => {
             "This action never runs: it has no signal name."
         }

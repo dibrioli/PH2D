@@ -120,7 +120,7 @@ pub(super) fn editor(
             tr("panel.inspector.actions.arg_label"),
             ids::INSP_ACTION_ARG,
             TextInput::new(ids::INSP_ACTION_ARG, "")
-                .placeholder(tr("panel.inspector.actions.timer_name_empty_all")),
+                .placeholder(tr(dica_do_parametro(row.arg_hint))),
             seccao,
         );
     }
@@ -298,4 +298,45 @@ pub(crate) fn paint_action_section(
         );
     }
     fold.finish(store, scene, hit_index, cur_y + SECTION_BOTTOM_PAD_PX)
+}
+
+/// ⭐⭐ **A dica do campo do parâmetro, pelo que ele É** (plano 28, W2b).
+///
+/// ⛔ Nasceu de uma FOTO: a linha `Damage` pintava *«timer name (empty = all)»* no campo da
+/// quantidade — e a do contador tinha a mesma dica errada desde o #20.
+pub(crate) const fn dica_do_parametro(
+    hint: ph2d_editor_core::screens::hero::ActionArgHint,
+) -> &'static str {
+    use ph2d_editor_core::screens::hero::ActionArgHint;
+    match hint {
+        ActionArgHint::TimerName => "panel.inspector.actions.timer_name_empty_all",
+        ActionArgHint::Count => "panel.inspector.actions.count_empty_one",
+        ActionArgHint::Amount => "panel.inspector.actions.amount_of_life",
+    }
+}
+
+#[cfg(test)]
+mod dica_tests {
+    use super::dica_do_parametro;
+    use ph2d_editor_core::screens::hero::ActionArgHint;
+
+    /// ⭐ **Cada espécie de parâmetro tem a SUA dica, e ela existe na tabela de textos.**
+    #[test]
+    fn cada_parametro_tem_a_sua_dica() {
+        let chaves = [
+            dica_do_parametro(ActionArgHint::TimerName),
+            dica_do_parametro(ActionArgHint::Count),
+            dica_do_parametro(ActionArgHint::Amount),
+        ];
+        for (i, a) in chaves.iter().enumerate() {
+            assert_ne!(
+                ph2d_i18n::tr(a),
+                *a,
+                "a dica «{a}» não existe na tabela de textos"
+            );
+            for b in &chaves[i + 1..] {
+                assert_ne!(a, b, "duas espécies de parâmetro com a mesma dica");
+            }
+        }
+    }
 }

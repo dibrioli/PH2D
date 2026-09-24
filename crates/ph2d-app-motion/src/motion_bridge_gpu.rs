@@ -225,6 +225,23 @@ fn cook_publishes_live_geometry(cook: &ph2d_nodegraph::cook::Cook) -> bool {
     })
 }
 
+/// **Todo objecto publicado vive no ÁTLAS partilhado?** (`texture_id` todo `0`, ou nenhum publicado)
+/// — a metade de CONTEÚDO da cerca da contagem (doc 120 §8.2).
+///
+/// ⚠️ A comparação é **`v as u32 == 0`, à letra do `texture_runs_from_boundary`** (e do
+/// `scalar_at(..) as u32` da CPU): é essa a pergunta que decide se a partição é vazia, e uma
+/// segunda redacção dela (um `v < 0.5`, por exemplo) discordaria num `0,7` que as duas lêem
+/// diferente. Sem nenhum objecto publicado não há textura a partir — `true`.
+pub(super) fn cook_publishes_only_atlas_objects(cook: &ph2d_nodegraph::cook::Cook) -> bool {
+    use ph2d_nodegraph::attr::Column;
+    cook.externals()
+        .values()
+        .all(|e| match e.value.get("texture_id") {
+            Some(Column::Scalar(v)) => v.iter().all(|&t| t as u32 == 0),
+            _ => true,
+        })
+}
+
 /// The GPU-resident cook for this frame (GPU/M5 Fase 1 + F1.2, ADR-0126).
 ///
 /// Unless `PH2D_GPU_COOK=0`, an unscoped document cooks on the GPU — ONE sink or
@@ -451,7 +468,14 @@ pub(super) fn cook_gpu(
     // boundary `texture_id` column aligns with the sink ONLY when the suffix is
     // per-element. Recuse it to the CPU render (which draws it correctly). A
     // non-object graph is unaffected: no `texture_id`, no partition to mis-bind.
+    //
+    // ⭐⭐ **Ciclo 12 (doc 120 §8.2): a cerca pergunta pelo CONTEÚDO, como a irmã de cima.** A
+    // partição por textura só pode desalinhar quando HÁ textura própria a partir: um objecto todo
+    // no átlas partilhado (`texture_id = 0`, o sprite de átlas) dá a partição VAZIA por construção
+    // (`texture_runs_from_boundary` — o ramo *«all-atlas»*), qualquer que seja a contagem. Recusá-lo
+    // mandava para a CPU a cadeia inteira de uma escada de partículas por uma partição que não existe.
     if graph_has_object_source(&motion.doc.graph, &motion.registry)
+        && !cook_publishes_only_atlas_objects(&motion.pump.cook)
         && plan.suffix_changes_count(&motion.registry)
     {
         return fell(

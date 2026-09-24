@@ -78,6 +78,9 @@ ph2d-node-motion-kaleidoscope = { path = "../ph2d-node-motion-kaleidoscope" }
 # Ciclo 10 W1a: o MULTIPLICADOR (StreamOp SourceRows) que RENUMERA — a bancada da cruza
 # `SourceReadWriteExisting` e da escrita-sem-leitura `SourceWriteExisting`.
 ph2d-node-motion-clone = { path = "../ph2d-node-motion-clone" }
+# Ciclo 12 (doc 120 §8): o CARIMBO no dispositivo — a W1(b) do ciclo 10, com DUAS portas lidas
+# na fonte (`shape` em `i / np`, `points` em `i % np`).
+ph2d-node-motion-duplicator = { path = "../ph2d-node-motion-duplicator" }
 # Ciclo 7 (doc 112): os nós de aparência que MULTIPLICAM as linhas, cozidos nos dois caminhos.
 ph2d-node-fx-rgb-split = { path = "../ph2d-node-fx-rgb-split" }
 ph2d-node-fx-drop-shadow = { path = "../ph2d-node-fx-drop-shadow" }

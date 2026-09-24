@@ -2,9 +2,10 @@
 //! MEDE quantos objectos o sistema aguenta, com o USO REAL do dono dentro:
 //!
 //! - **uma FORMA** — o objecto de imagem `Particle` (`source.object`), ou, com
-//!   `PH2D_TECTO_FORMA=1`, uma ESTRELA vectorial viva (`source.shape`). ⚠️ As duas vão pela MESMA
-//!   rota híbrida (o `motion.duplicator` é a fronteira do planeador); o que a estrela muda é o
-//!   **desenho** — geometria vectorial por instância contra um quad do atlas;
+//!   `PH2D_TECTO_FORMA=1`, uma ESTRELA vectorial viva (`source.shape`). ⚠️ Desde o ciclo 12 (doc 120
+//!   §8) o carimbo corre na placa e a única fronteira do planeador é a FONTE; o que a estrela muda é
+//!   o **desenho** — geometria vectorial por instância contra um quad do atlas —, e ela ainda é
+//!   recusada pela ponte (o vector vivo, ADR-0154);
 //! - **SIMULAÇÃO com campos** — um emissor que enche a população e um integrador com redemoinho,
 //!   ruído e arrasto (o laço de sempre: `integrate --pre--> forças → integrate`);
 //! - **a população é um NÚMERO na linha de comando** (`PH2D_TECTO_N=<n>`, por omissão `16 384`),
@@ -102,7 +103,10 @@ fn wire(g: &mut Graph, a: NodeId, ap: u16, b: NodeId, bp: u16, delayed: bool) {
 /// `emitter → integrate ← (vortex → curl → drag) ← pre(integrate)`, e o `duplicator` veste cada
 /// partícula com a forma; o `move` é o estágio que a placa corre (o molde do enxame, `=16`).
 pub(super) fn build(g: &mut Graph, nome: &str, n: u32, estrela: bool) -> NodeId {
-    #[expect(clippy::cast_precision_loss, reason = "uma populacao, muito abaixo de 2^24")]
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "uma populacao, muito abaixo de 2^24"
+    )]
     let nf = n as f32;
     let forma = if estrela {
         let f = g.add_node("source.shape");

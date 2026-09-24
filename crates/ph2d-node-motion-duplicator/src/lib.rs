@@ -117,8 +117,10 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         },
     ],
     // Changes the element count (shapes → shapes·points), which is structural,
-    // not a per-element `ph2d-expr` map an `eval_column` could lower; and no
-    // Instances-domain WGSL runtime exists. CPU-only, like `motion.clone`.
+    // not a per-element `ph2d-expr` map an `eval_column` could lower. ⚠️ Isto NÃO quer dizer
+    // «só CPU»: desde o ciclo 12 (doc 120 §8) o modo de fábrica corre no dispositivo por um
+    // [`kernel`] registado ao lado (`StreamOp::SourceRows`, ADR-0136), que é outro canal — o
+    // mesmo do `motion.clone`. *Um `LoweringKind` fala de expressões; um `GpuKernel` fala do device.*
     lowerings: &[LoweringKind::Cpu],
 };
 
@@ -555,6 +557,8 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     // no nó, porque nenhuma leitura do manifesto o distingue do `field.shape`: os dois exigem uma
     // porta `shape` e os dois emitem `Instances/Vec2` (medido).
     reg.register_veste_as_posicoes(MANIFEST.id);
+    // Ciclo 10 W1(b), reaberta pelo ciclo 12 (doc 120 §8): o caminho do dispositivo — ver [`kernel`].
+    kernel::regista(reg);
     Ok(())
 }
 
@@ -621,6 +625,9 @@ static PARAM_GATES: &[ParamGate] = &[ParamGate {
 
 #[path = "transfer.rs"]
 pub mod transfer;
+
+/// ⭐ O kernel do DISPOSITIVO (ciclo 10 W1b, reaberta pelo ciclo 12 — doc 120 §8).
+mod kernel;
 
 #[cfg(test)]
 #[path = "tests.rs"]

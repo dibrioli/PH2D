@@ -323,3 +323,62 @@ fn the_route_is_recorded_on_the_edge_and_recorded_even_when_silent() {
          rotas ficaria mudo depois da primeira volta"
     );
 }
+
+/// ⭐⭐ **A cerca da contagem pergunta pelo CONTEÚDO** (ciclo 12, doc 120 §8.2): um objecto todo no
+/// átlas partilhado não tem partição a desalinhar, logo o carimbo na placa não o recusa; um objecto
+/// com textura PRÓPRIA continua recusado.
+///
+/// ⚠️ As três metades porque são três respostas: nenhum objecto publicado (nada a partir) · só
+/// átlas (a partição é vazia por construção) · uma textura própria (a partição lê a fronteira
+/// posição a posição, e um carimbo desalinha-a). E a comparação é a do `texture_runs_from_boundary`
+/// (`as u32`): um `0,7` é átlas para as duas.
+#[test]
+fn a_cerca_da_contagem_so_recusa_textura_propria() {
+    use ph2d_nodegraph::attr::{Column, Stream};
+    let m = MotionState::new();
+    assert!(
+        cook_publishes_only_atlas_objects(&m.pump.cook),
+        "sem objectos publicados nao ha textura a partir"
+    );
+    let mut m = MotionState::new();
+    m.pump.cook.set_external(
+        "Particle",
+        Stream::new(2).with("texture_id", Column::Scalar(vec![0.0, 0.7])),
+    );
+    m.pump.cook.set_external(
+        "Caminho",
+        Stream::new(1).with("P", Column::Vec2(vec![[1.0, 2.0]])),
+    );
+    assert!(
+        cook_publishes_only_atlas_objects(&m.pump.cook),
+        "um objecto no atlas (e um external sem texture_id) nao recusa"
+    );
+    m.pump.cook.set_external(
+        "Bola",
+        Stream::new(1).with("texture_id", Column::Scalar(vec![7.0])),
+    );
+    assert!(
+        !cook_publishes_only_atlas_objects(&m.pump.cook),
+        "CONTROLO: um objecto com textura PROPRIA continua sob a cerca"
+    );
+}
+
+/// ⚠️ **A FIAÇÃO da cerca de conteúdo** — o `cook_gpu` pede um `GpuContext` e não é alcançável de
+/// um teste, logo o gate de cima prova a PERGUNTA e este prova que a cerca da contagem a FAZ (a
+/// forma que a casa usa para uma costura que só a placa percorre). Sem ela a escada de imagens
+/// voltava à CPU inteira, com a função certa e ninguém a chamá-la.
+#[test]
+fn a_cerca_da_contagem_chama_a_pergunta_de_conteudo() {
+    let fonte = include_str!("motion_bridge_gpu.rs");
+    let cerca = fonte
+        .find("&& plan.suffix_changes_count(&motion.registry)")
+        .expect("a cerca da contagem existe");
+    let antes = &fonte[..cerca];
+    let inicio = antes
+        .rfind("if graph_has_object_source")
+        .expect("a cerca abre no objecto");
+    assert!(
+        antes[inicio..].contains("!cook_publishes_only_atlas_objects(&motion.pump.cook)"),
+        "a cerca da contagem tem de perguntar se o objecto e' todo do atlas"
+    );
+}

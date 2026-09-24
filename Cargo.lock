@@ -5855,6 +5855,7 @@ dependencies = [
  "ph2d-node-motion-combine",
  "ph2d-node-motion-cull",
  "ph2d-node-motion-drive",
+ "ph2d-node-motion-duplicator",
  "ph2d-node-motion-emitter",
  "ph2d-node-motion-falloff",
  "ph2d-node-motion-four-point-warp",

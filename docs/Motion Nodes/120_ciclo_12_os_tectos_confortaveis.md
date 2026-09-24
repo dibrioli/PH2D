@@ -201,3 +201,95 @@ reconferir a nota*).
 
 ⏳ **A decisão é do dono.** A medição que falta — a CPU real de um telemóvel — ele pode fazê-la
 correndo a cena `=17` no Mac/iPad dele.
+
+> **2026-09-24, resposta do dono: *«continue»*** — sem escolher uma das três. ⇒ o tecto **fica em
+> `32 768`** (é o estado de hoje e a saída A), e a jornada segue para a alavanca que a §7.2 nomeia.
+
+## §8 — O que a escada REABRE: a W1(b) do ciclo 10, com a população que faltava
+
+O [doc 116 §5.6](116_ciclo_10_o_carimbo_no_dispositivo.md) pôs a W1(b) (o carimbo na placa) em ⏸️
+com um número: *`36` de `36` cartões do catálogo trazem uma estrela VIVA*, logo a ponte recusava-os
+uma camada acima e um kernel no carimbo **mudava zero cartões**. ⚠️ **Era verdade sobre o CATÁLOGO e
+é falso sobre o RUNTIME** — o dono disse *«o runtime irá rodar em mobile»*, e num jogo o que se
+carimba são **imagens** (`source.object`), que a escada mede aqui.
+
+### §8.1 — ⭐⭐⭐ Onde a escada gasta: o carimbo custa pouco; o que ele custa é ARRASTAR a simulação
+
+Sonda `sonda_onde_a_escada_gasta` (pump da CPU, população cheia, `--release`, ⚠️ `load 6`–`8` ⇒ leia
+as **proporções**, não os milissegundos), com o CONTROLO a ser a MESMA simulação sem o carimbo:
+
+| pedidos | variante | melhor tique | fronteira do planeador |
+|---:|---|---:|---|
+| 16 384 | só a simulação | 1,318 ms | **—** (a cadeia inteira na placa) |
+| 16 384 | sim + carimbo | 1,715 ms | `motion.duplicator` |
+| 32 768 | só a simulação | 2,523 ms | **—** |
+| 32 768 | sim + carimbo | 3,109 ms | `motion.duplicator` |
+| 65 536 | só a simulação | 6,340 ms | **—** |
+| 65 536 | sim + carimbo | 7,804 ms | `motion.duplicator` (carimba `32 768`, o tecto) |
+
+⇒ **o carimbo é ~20 % do cozimento; a simulação é ~80 %** — e ela só corre na CPU **porque o carimbo
+é a fronteira**. Sem ele o planeador põe a cadeia inteira na placa, onde a mesma simulação faz
+**`1 M` em `15,6 ms` no proxy de telemóvel** (§5). *Um nó CPU-only no meio de uma cadeia não custa o
+que ele custa: custa o dispositivo inteiro* — a frase do doc 103 §5.1, agora com o número da cadeia
+que o runtime usa.
+
+### §8.2 — As DUAS cercas, e porque a segunda cai para a escada
+
+1. **O carimbo não tem kernel** (`lowerings: &[Cpu]`). O molde existe — o `motion.clone` da W1(a) —, e
+   o desenho do doc 116 §5.3 já o escreve: `SourceRows` na porta `shape` com `cp_rows = i / np`, o `P`
+   e o `rot` somados das DUAS portas (o codegen já nomeia `read_<porta>_<coluna>` quando uma coluna é
+   lida de duas — o `motion.integrate` faz `read_rest_vel`/`read_forces_vel`), e `Index`/`Count`
+   renumerados **sempre** (a lei da CPU escreve-os incondicionalmente, ao contrário do clone).
+2. **A ponte recusa um grafo de objecto cujo sufixo na placa mude a contagem**
+   (`graph_has_object_source && suffix_changes_count`), porque a partição por textura
+   (`texture_runs_from_boundary`) lê o `texture_id` da FRONTEIRA e alinha-o posição a posição com o
+   sink. ⭐ **Mas a partição tem um caso em que a posição não importa:** quando **toda** textura do
+   objecto é `0` (o átlas partilhado — o `Particle` da escada, e todo sprite do átlas), ela já é
+   **vazia por construção** (*«all-atlas object graph → the legacy path already draws it»*), qualquer
+   que seja a contagem. ⇒ a cerca pode passar a perguntar pelo CONTEÚDO, como a irmã de cima já faz
+   com a geometria viva (`cook_publishes_live_geometry`).
+
+### §8.3 — As waves
+
+| wave | o quê | prova |
+|---|---|---|
+| **W1(b).1** | o kernel do carimbo, modo `Off` + `Shape Wins` + `point_scale = 0` (o de fábrica); os outros modos são `applicable = false` com a população ao lado | paridade CPU × placa ao bit na POSIÇÃO e na renumeração, com o controlo `np = 1` |
+| **W1(b).2** | a cerca da ponte passa a perguntar pelo CONTEÚDO: um objecto todo no átlas não se recusa | gate de rota: a escada vai `FullyGpu`; o CONTROLO (um objecto com textura própria) continua recusado |
+| **W1(b).3** | a escada outra vez, com a máquina calma | a tabela do §3/§4 com a cadeia inteira na placa |
+
+### §8.4 — ✅ W1(b).1 e W1(b).2 FECHADAS (2026-09-24)
+
+**O kernel** ([`ph2d-node-motion-duplicator/src/kernel.rs`](../../crates/ph2d-node-motion-duplicator/src/kernel.rs)):
+o molde do `motion.clone` com as duas portas — `cp_rows = i / np` na forma, `read_points_P(i % np)`
+no ponto, o `np` do ORÇAMENTO por `DerivedUniform` (a mesma chamada do `eval`), `Index`/`Count`
+escritos sempre (a CPU cunha-os). A `rot` é a peça que não tinha verbo: a CPU escreve-a se
+QUALQUER lado a traz, e nenhum `ColumnAccess` diz «escreve se uma das duas portas a tem» ⇒ a da
+forma é `SourceReadWriteExisting` e a dos pontos é `RefuseIfPresent` (vai à CPU **só** nesse caso).
+
+**A bancada** ([`gpu_cpu_parity_duplicator.rs`](../../crates/ph2d-gpu-cook/tests/it/gpu_cpu_parity_duplicator.rs)),
+na placa, com a cadeia inteira reclamada:
+
+| caso | instâncias | pior \|Δpos\| | pior \|Δtint\| |
+|---|---:|---:|---:|
+| 3 formas × 24² · a forma certa | 1 728 | **`0`** | `0` |
+| 3 formas × 24² · a renumeração | 1 728 | **`0`** | `5,88e-3` |
+| 4 formas rodadas × 17² · a forma certa | 1 156 | **`0`** | `5,88e-3` |
+| 3 formas × 150² · **o orçamento** | 32 766 | **`0`** | `5,88e-3` |
+
+⭐ **A posição é exacta AO BIT nos quatro**, e o `5,88e-3` é o piso da LUT da rampa (`1,5/255`) que
+a bancada do `motion.clone` já mediu com o controlo em passagem — não é do carimbo. ⛔ A 1.ª
+redacção comparava a BASE ao bit e reprovou por **um ULP** do `cos` (`0,92050487` contra
+`0,9205048`): a trigonometria é do DESENHO de cada rota, a jusante do kernel, e a barra passou a ser
+a da casa (`1e-4`), com o controlo de que a fixtura roda de facto.
+
+**A cerca** (`cook_publishes_only_atlas_objects`, na ponte): a da contagem só recusa um objecto com
+textura PRÓPRIA; um todo no átlas passa. Gate da pergunta + gate da fiação (a rota da ponte pede um
+`GpuContext`, logo a chamada prova-se por texto, que é o que a casa faz para essa costura).
+
+**O gate da cena mudou de premissa, à vista:** `a_escada_mede_a_rota_hibrida_com_as_duas_formas`
+afirmava o carimbo como fronteira; hoje `a_escada_poe_a_simulacao_na_placa_e_so_a_fonte_fica_na_cpu`
+afirma que a única fronteira é a FONTE (`source.object` / `source.shape`).
+
+**Mutação: 10 de 10 sangram** — o gather na forma errada · o ponto lido em `i / np` · o `Index` por
+renumerar · o `np` cru sem orçamento · a `rot` da forma perdida · as duas recusas apagadas · o kernel
+por registar · a pergunta de conteúdo sempre verdadeira · a cerca a deixar de a chamar.

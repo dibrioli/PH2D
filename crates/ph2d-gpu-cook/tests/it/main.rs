@@ -20,6 +20,7 @@ mod gpu_cpu_parity_clone;
 mod gpu_cpu_parity_curve;
 mod gpu_cpu_parity_deform;
 mod gpu_cpu_parity_driven;
+mod gpu_cpu_parity_duplicator;
 mod gpu_cpu_parity_fx;
 mod gpu_cpu_parity_holds;
 mod gpu_cpu_parity_pulse;

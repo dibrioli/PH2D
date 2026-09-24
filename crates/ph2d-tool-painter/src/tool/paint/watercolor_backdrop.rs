@@ -10,6 +10,7 @@
 
 use super::*;
 use crate::compositor::composite_below;
+use rayon::prelude::*;
 
 /// How fast the parked brush pours dwell into [`PaintState::wet_soak`]: a held nib saturates its
 /// disc in ~2 s (`255 / 2 s`). Moving strokes soak too (each tick pours at the current dab), but the
@@ -102,14 +103,16 @@ impl PainterTool {
         // full reset at pen-down is the only invalidation needed — no in-stroke staleness). Filled
         // lazily by the composite ([`Self::apply_watercolor`]); `NaN` marks an untouched pixel.
         let n = (self.source_size.0 as usize) * (self.source_size.1 as usize);
-        if self.paint.wet_substrate.len() == n {
-            self.paint
-                .wet_substrate
-                .iter_mut()
-                .for_each(|v| *v = f32::NAN);
-        } else {
-            self.paint.wet_substrate = vec![f32::NAN; n];
+        // ⚠️ Across the cores: serial this fill was `~9,4 ms` of the pen-down at 4096² (measured
+        // 2026-09-24, 67 MB of `NaN` on one thread, every stroke). Byte-identical — every element
+        // gets the same value.
+        if self.paint.wet_substrate.len() != n {
+            self.paint.wet_substrate = vec![0.0; n];
         }
+        self.paint
+            .wet_substrate
+            .par_chunks_mut(WET_PAR_MIN) // rayon, like the soak pour below (ADR-0173)
+            .for_each(|c| c.fill(f32::NAN));
     }
 
     /// Composite the layers strictly BELOW the anchor over the document paper colour → the opaque

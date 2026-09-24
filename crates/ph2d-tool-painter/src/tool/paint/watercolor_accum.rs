@@ -379,27 +379,17 @@ impl PainterTool {
         let depletion = self.wet_mix_depletion(dabs);
         if depletion.is_some() && self.paint.stroke_deplete.len() != fw * fh {
             self.paint.wet_reserve_cache = None; // os planos NASCEM (com backfill): tudo recalcula
-            self.paint.stroke_deplete = vec![0u8; fw * fh];
-            // A proximidade nasce e morre com o nível; o backfill é o mesmo (nível e peso cheios).
-            self.paint.stroke_deplete_prox = self
-                .paint
-                .stroke_coverage
-                .iter()
-                .map(|&c| if c > 0 { 255 } else { 0 })
-                .collect();
             // EDGE-1 wet session: the union buffers may already hold PRIOR strokes of this wet
             // session (painted mixer-off ⇒ full reserve, no map). Backfill their footprint with
             // 255, or the union re-bake would multiply their density by 0 — the pools vanished.
-            for (d, &c) in self
-                .paint
-                .stroke_deplete
-                .iter_mut()
-                .zip(self.paint.stroke_coverage.iter())
-            {
-                if c > 0 {
-                    *d = 255;
-                }
-            }
+            // A proximidade nasce e morre com o nível; o backfill é o mesmo (nível e peso cheios).
+            // ⚠️ Nas cores: em série as duas varreduras do canvas eram `~4–5 ms` do 1.º carimbo a
+            // 4096² (medido 2026-09-24); cada byte é função só do seu — o mesmo byte.
+            use rayon::prelude::*;
+            let cheio = |c: &u8| if *c > 0 { 255u8 } else { 0 };
+            self.paint.stroke_deplete = self.paint.stroke_coverage.par_iter().map(cheio).collect();
+            self.paint.stroke_deplete_prox =
+                crate::plane_copy::par_clone(&self.paint.stroke_deplete);
         }
         let map_live = depletion.is_some() || !self.paint.stroke_deplete.is_empty();
         // Smudge sobre o traço VIVO: arrasta os níveis por DAB, antes do depósito desse dab.

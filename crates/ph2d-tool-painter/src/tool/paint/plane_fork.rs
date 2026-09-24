@@ -231,6 +231,16 @@ impl crate::tool::PainterTool {
     }
 }
 
+/// **A porta de um plano que NÃO é documento** — a base congelada da aquarela, que o Smudge arrasta e o
+/// commit do pen-up re-assa inteira (o desfazer nunca a descreve, logo não há o que declarar).
+///
+/// ⚠️ Medido 2026-09-24 (4096², a config da foto do dono): o `Arc::make_mut` do 1.º Smudge de cada traço
+/// copiava 67 MB numa thread — `~11–12 ms` do pen-down. ⛔ Um plano do DOCUMENTO não entra aqui: ele passa
+/// pelas portas nomeadas acima, que abrem a declaração.
+pub(super) fn fork_plano_de_trabalho(arc: &mut Arc<Vec<u8>>) -> &mut Vec<u8> {
+    fork_par_raw(arc)
+}
+
 /// O fork cru — a metade de POSSE, sem a de declaração. Privado: quem escreve passa pelo guard.
 fn fork_par_raw<T>(arc: &mut Arc<Vec<T>>) -> &mut Vec<T>
 where

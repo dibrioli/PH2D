@@ -156,11 +156,7 @@ pub fn composite_below(
     // non-empty slice of layers that all happen to be invisible still takes the long path, because
     // *"empty"* is a fact about the list and *"invisible"* is a fact about each layer.
     if !found || slices.iter().all(|s| s.is_empty()) {
-        let mut ground_only = vec![0u8; (width as usize) * (height as usize) * 4];
-        for px in ground_only.as_chunks_mut::<4>().0 {
-            px.copy_from_slice(&[ground[0], ground[1], ground[2], 255]);
-        }
-        return ground_only;
+        return flat_fill(width, height, [ground[0], ground[1], ground[2], 255]);
     }
     // Seed the accumulator with the opaque ground (decoded to linear once).
     let g = [
@@ -176,6 +172,38 @@ pub fn composite_below(
         );
     }
     encode(&acc)
+}
+
+/// A canvas-sized plane of ONE pixel value, filled across the cores (the split of [`encode`]).
+///
+/// ⚠️ **Serial, this was the watercolor pen-down's biggest single cost** (measured 2026-09-24,
+/// 4096², the owner's photo config): `~15 ms` to write the flat paper ground of a one-layer
+/// document — 16,7 M pixel copies on one thread, on EVERY stroke. Byte-identical by construction:
+/// every pixel gets the same four bytes, and disjoint chunks cannot see each other.
+fn flat_fill(width: u32, height: u32, px: [u8; 4]) -> Vec<u8> {
+    let n = (width as usize) * (height as usize);
+    let mut out = vec![0u8; n * 4];
+    let fill = |chunk: &mut [u8]| {
+        for p in chunk.as_chunks_mut::<4>().0 {
+            *p = px;
+        }
+    };
+    let threads = parallel_threads(n, height as usize);
+    if threads <= 1 {
+        fill(&mut out);
+        return out;
+    }
+    let cpb = n.div_ceil(threads) * 4;
+    std::thread::scope(|s| {
+        let handles: Vec<_> = out
+            .chunks_mut(cpb)
+            .map(|c| s.spawn(move || fill(c)))
+            .collect();
+        for h in handles {
+            h.join().expect("flat fill chunk panicked");
+        }
+    });
+    out
 }
 
 pub(super) fn encode(acc: &[[f32; 4]]) -> Vec<u8> {
@@ -581,5 +609,27 @@ fn blend_window(
             let i = (ly * rw + lx) as usize;
             acc[i] = apply_blend(mode, acc[i], s);
         }
+    }
+}
+
+#[cfg(test)]
+mod flat_fill_tests {
+    /// O preenchimento repartido pelas cores é o laço em série, AO BYTE — incluindo tamanhos
+    /// abaixo e acima do piso do paralelo e larguras ímpares (o último pedaço é mais curto).
+    #[test]
+    fn o_preenchimento_paralelo_e_o_serial() {
+        let px = [201u8, 33, 7, 255];
+        for (w, h) in [(1u32, 1u32), (7, 3), (513, 300), (1025, 257), (2048, 64)] {
+            let mut serial = vec![0u8; (w * h * 4) as usize];
+            for p in serial.as_chunks_mut::<4>().0 {
+                *p = px;
+            }
+            assert_eq!(super::flat_fill(w, h, px), serial, "{w}×{h}");
+        }
+        // CONTROLO: os tamanhos grandes acima atravessam de facto o ramo paralelo.
+        assert!(
+            super::parallel_threads(513 * 300, 300) > 1
+                || std::thread::available_parallelism().map_or(1, usize::from) == 1
+        );
     }
 }

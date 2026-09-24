@@ -90,7 +90,7 @@ impl PainterTool {
         let spec = self.paint.brush;
         // Conta o que a cura existe para impedir: mais de um dono forte aqui é uma cópia do documento.
         let forked = Arc::strong_count(base_arc) > 1;
-        let buf = Arc::make_mut(base_arc);
+        let buf = super::plane_fork::fork_plano_de_trabalho(base_arc); // o 1.º fork em paralelo
         // Pre-smear snapshot of the gated footprint (base bytes, row-major within the region).
         let before: Option<Vec<u8>> = gate_region.map(|r| {
             let mut out = Vec::with_capacity((r.w * r.h * 4) as usize);

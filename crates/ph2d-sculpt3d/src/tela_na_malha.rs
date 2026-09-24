@@ -1,0 +1,492 @@
+//! ⭐⭐⭐ **A TELA DO PAINTER POUSADA NA PEÇA** — a metade de LEI da integração
+//! do Painter na malha (ordem do dono, 2026-09-24: *«a integração total do
+//! módulo Painter já existente para que consiga pintar com os mesmos features
+//! na malha 3d»*).
+//!
+//! # O desenho, e porque é este
+//!
+//! O Painter pinta numa **imagem do tamanho da vista** — a mesma imagem sobre
+//! que ele pinta numa sprite, só que transparente e alinhada ao ecrã. Esta
+//! crate não sabe o que é o Painter: ela recebe a imagem e pousa-a na peça.
+//! ⇒ *todo o motor do Painter (pincéis, textura, forma, pressão, espaçamento)
+//! corre sem uma linha nova*, porque a superfície onde ele pinta É uma imagem
+//! verdadeira. É a via do `docs/3D/25` §11.
+//!
+//! # ⭐⭐ Cada amostra RE-DERIVA-SE da cor de antes do traço
+//!
+//! `nova = base·(1 − a·k) + c·a·k`, com `(c·a, a)` lidos da tela em
+//! PRÉ-MULTIPLICADO e `k` a liberdade da máscara ([`crate::preenche::keep_da_amostra`],
+//! a mesma lei do pincel e do `Fill`). ⚠️ **A partida é a `base` e nunca a cor
+//! viva**, e é isso que deixa esta função ser chamada a cada quadro sobre o
+//! mesmo rectângulo sem a tinta engrossar: pousar duas vezes a mesma tela dá
+//! EXACTAMENTE o que pousar uma — há gate. É também o que a torna o «over» de
+//! uma camada: o traço inteiro do Painter compõe-se sobre a peça como a camada
+//! dele se compõe sobre a sprite.
+//!
+//! # ⚠️ Só pinta o que se VÊ — o preço declarado
+//!
+//! Uma amostra entra quando (1) a face dela está de FRENTE para o olho, (2) cai
+//! dentro do rectângulo que o Painter mudou, e (3) o raio do olho até ela não
+//! bate noutra superfície antes ([`FOLGA_DA_OCLUSAO`]). ⇒ o lado de trás fica
+//! por pintar até o artista rodar a peça, como na pintura por projecção de
+//! todo programa de referência.
+//!
+//! # ⚠️ A visibilidade decide-se UMA vez por traço
+//!
+//! Um raio custa `~0,44 µs` (medido na wave do `Scene Project`), e a câmera e a
+//! forma não mudam durante uma pincelada de cor ⇒ a resposta de cada amostra é
+//! guardada na primeira vez que ela é pedida, e o traço paga um raio por
+//! amostra que TOCA, nunca por quadro.
+
+use ph2d_mesh::{Mesh, Ray};
+
+use crate::SculptStroke;
+use crate::preenche::keep_da_amostra;
+
+/// Lado de uma célula da grelha de faces, em píxeis da tela.
+const CELULA: f32 = 32.0;
+
+/// ⚠️ **Quanto mais perto do olho um obstáculo tem de estar para ESCONDER a
+/// amostra**, em fracção da distância olho→amostra. O raio que acerta a própria
+/// face devolve `t ≈ dist` a menos do erro de `f32` da interseção; `1e-3` é
+/// folga para esse erro e ainda separa uma dobra da peça a `0,1 %` da distância
+/// da câmera.
+pub const FOLGA_DA_OCLUSAO: f32 = 1e-3;
+
+/// A imagem que o Painter pintou: RGBA8 **não** pré-multiplicado, bytes sRGB —
+/// o formato do canvas dele.
+#[derive(Clone, Copy)]
+pub struct Tela<'a> {
+    /// Os píxeis, `largura·altura·4`.
+    pub rgba: &'a [u8],
+    /// Largura em píxeis.
+    pub largura: u32,
+    /// Altura em píxeis.
+    pub altura: u32,
+}
+
+impl Tela<'_> {
+    /// ⚠️ **Fora da tela repete-se a BORDA** e não o transparente: um ponto
+    /// exactamente na borda da vista está na superfície que o artista vê, e
+    /// ler meio píxel de «nada» ali pintava a orla da vista a meia força.
+    fn texel(&self, i: i64, j: i64) -> ([f32; 3], f32) {
+        if self.largura == 0 || self.altura == 0 {
+            return ([0.0; 3], 0.0);
+        }
+        let i = i.clamp(0, i64::from(self.largura) - 1);
+        let j = j.clamp(0, i64::from(self.altura) - 1);
+        let o = ((j as usize) * self.largura as usize + i as usize) * 4;
+        let Some(px) = self.rgba.get(o..o + 4) else {
+            return ([0.0; 3], 0.0);
+        };
+        let a = f32::from(px[3]) / 255.0;
+        (
+            [
+                f32::from(px[0]) / 255.0 * a,
+                f32::from(px[1]) / 255.0 * a,
+                f32::from(px[2]) / 255.0 * a,
+            ],
+            a,
+        )
+    }
+
+    /// ⭐ **A cor PRÉ-MULTIPLICADA e a cobertura** num ponto contínuo da tela.
+    ///
+    /// ⚠️ **Bilinear em pré-multiplicado**, e não em cor crua: interpolar a cor
+    /// de um píxel pintado com a de um transparente (cujo RGB é lixo) tingiria a
+    /// borda do traço. ⚠️ O centro do píxel `i` é `i + 0,5` — a convenção do
+    /// ponteiro do Painter, que recebe a mesma coordenada.
+    #[must_use]
+    pub fn amostra(&self, x: f32, y: f32) -> ([f32; 3], f32) {
+        let (fx, fy) = (x - 0.5, y - 0.5);
+        let (x0, y0) = (fx.floor(), fy.floor());
+        let (tx, ty) = (fx - x0, fy - y0);
+        let (i, j) = (x0 as i64, y0 as i64);
+        let mut c = [0.0f32; 3];
+        let mut a = 0.0f32;
+        for (di, dj, w) in [
+            (0, 0, (1.0 - tx) * (1.0 - ty)),
+            (1, 0, tx * (1.0 - ty)),
+            (0, 1, (1.0 - tx) * ty),
+            (1, 1, tx * ty),
+        ] {
+            if w == 0.0 {
+                continue;
+            }
+            let (pc, pa) = self.texel(i + di, j + dj);
+            for k in 0..3 {
+                c[k] += pc[k] * w;
+            }
+            a += pa * w;
+        }
+        (c, a)
+    }
+}
+
+/// A vista em que a tela foi pintada: de espaço LOCAL da peça para píxeis.
+#[derive(Clone, Copy, Debug)]
+pub struct Vista {
+    /// Local → clip, coluna a coluna (a pose já dentro).
+    local_para_clip: [f32; 16],
+    largura: f32,
+    altura: f32,
+    /// O olho, em espaço LOCAL da peça.
+    olho: [f32; 3],
+}
+
+impl Vista {
+    /// `local_para_clip` em colunas (a ordem do `glam::Mat4::to_cols_array`),
+    /// o tamanho da tela e o olho em espaço local.
+    #[must_use]
+    pub fn nova(local_para_clip: [f32; 16], tamanho: (u32, u32), olho: [f32; 3]) -> Self {
+        Self {
+            local_para_clip,
+            largura: tamanho.0.max(1) as f32,
+            altura: tamanho.1.max(1) as f32,
+            olho,
+        }
+    }
+
+    /// Onde um ponto local cai na tela — a conversão do `Camera3d::project`
+    /// (`x` para a direita, `y` para BAIXO). `None` atrás do olho.
+    #[must_use]
+    pub fn ecra(&self, p: [f32; 3]) -> Option<[f32; 2]> {
+        let m = &self.local_para_clip;
+        let lin = |r: usize| m[r] * p[0] + m[4 + r] * p[1] + m[8 + r] * p[2] + m[12 + r];
+        let w = lin(3);
+        if w <= 0.0 {
+            return None;
+        }
+        let (nx, ny) = (lin(0) / w, lin(1) / w);
+        Some([
+            (nx + 1.0) * 0.5 * self.largura,
+            (1.0 - ny) * 0.5 * self.altura,
+        ])
+    }
+
+    /// O olho, em espaço local.
+    #[must_use]
+    pub fn olho(&self) -> [f32; 3] {
+        self.olho
+    }
+}
+
+/// Um rectângulo da tela, `[x, y, largura, altura]` em píxeis.
+pub type Rectangulo = [u32; 4];
+
+/// ⭐⭐ **O estado de UMA pincelada do Painter sobre a peça** — construído no
+/// pen-down, sobre a forma e a câmera desse instante.
+pub struct TelaNaMalha {
+    vista: Vista,
+    ecra: Vec<Option<[f32; 2]>>,
+    colunas: usize,
+    linhas: usize,
+    celulas: Vec<Vec<u32>>,
+    /// Por amostra (ou por vértice, sem plano): `0` por decidir · `1` vê-se ·
+    /// `2` escondida.
+    visivel: Vec<u8>,
+    carimbo_face: Vec<u32>,
+    carimbo_amostra: Vec<u32>,
+    epoca: u32,
+    raios: usize,
+}
+
+impl TelaNaMalha {
+    /// Congela a vista sobre `mesh`. `amostras` é o tamanho do destino — as
+    /// amostras do plano de tinta fina, ou os vértices sem ele.
+    #[must_use]
+    pub fn nova(mesh: &Mesh, vista: Vista, amostras: usize) -> Self {
+        let ecra: Vec<Option<[f32; 2]>> = mesh.positions().iter().map(|&p| vista.ecra(p)).collect();
+        let colunas = (vista.largura / CELULA).ceil().max(1.0) as usize;
+        let linhas = (vista.altura / CELULA).ceil().max(1.0) as usize;
+        let mut celulas = vec![Vec::new(); colunas * linhas];
+        let pos = mesh.positions();
+        for (fi, face) in mesh.faces().iter().enumerate() {
+            let cantos = face.verts();
+            if !de_frente(pos, cantos, vista.olho) {
+                continue;
+            }
+            let Some(caixa) = caixa(&ecra, cantos) else {
+                continue;
+            };
+            if caixa[2] < 0.0
+                || caixa[3] < 0.0
+                || caixa[0] > vista.largura
+                || caixa[1] > vista.altura
+            {
+                continue;
+            }
+            let c0 = (caixa[0].max(0.0) / CELULA) as usize;
+            let l0 = (caixa[1].max(0.0) / CELULA) as usize;
+            let c1 = ((caixa[2] / CELULA) as usize).min(colunas - 1);
+            let l1 = ((caixa[3] / CELULA) as usize).min(linhas - 1);
+            for l in l0..=l1 {
+                for c in c0..=c1 {
+                    celulas[l * colunas + c].push(fi as u32);
+                }
+            }
+        }
+        Self {
+            vista,
+            ecra,
+            colunas,
+            linhas,
+            celulas,
+            visivel: vec![0; amostras],
+            carimbo_face: vec![0; mesh.faces().len()],
+            carimbo_amostra: vec![0; amostras],
+            epoca: 0,
+            raios: 0,
+        }
+    }
+
+    /// Quantos raios de oclusão este traço já lançou — sonda de custo.
+    #[must_use]
+    pub fn raios(&self) -> usize {
+        self.raios
+    }
+
+    fn proxima_epoca(&mut self) {
+        self.epoca = self.epoca.wrapping_add(1);
+        if self.epoca == 0 {
+            self.epoca = 1;
+            self.carimbo_face.fill(0);
+            self.carimbo_amostra.fill(0);
+        }
+    }
+
+    /// As faces de frente cujas células tocam `r`, cada uma uma vez.
+    fn faces_em(&mut self, r: [f32; 4]) -> Vec<u32> {
+        let c0 = (r[0].max(0.0) / CELULA) as usize;
+        let l0 = (r[1].max(0.0) / CELULA) as usize;
+        let c1 = ((r[2].max(0.0) / CELULA) as usize).min(self.colunas - 1);
+        let l1 = ((r[3].max(0.0) / CELULA) as usize).min(self.linhas - 1);
+        let mut out = Vec::new();
+        for l in l0..=l1 {
+            for c in c0..=c1 {
+                for &f in &self.celulas[l * self.colunas + c] {
+                    if self.carimbo_face[f as usize] != self.epoca {
+                        self.carimbo_face[f as usize] = self.epoca;
+                        out.push(f);
+                    }
+                }
+            }
+        }
+        out
+    }
+
+    /// A amostra já foi vista NESTA pousada? (marca-a).
+    fn repetida(&mut self, idx: u32) -> bool {
+        let c = &mut self.carimbo_amostra[idx as usize];
+        if *c == self.epoca {
+            return true;
+        }
+        *c = self.epoca;
+        false
+    }
+
+    fn ve_se(&mut self, mesh: &Mesh, idx: u32, p: [f32; 3]) -> bool {
+        let v = &mut self.visivel[idx as usize];
+        if *v == 0 {
+            self.raios += 1;
+            *v = if desimpedida(mesh, self.vista.olho, p) {
+                1
+            } else {
+                2
+            };
+        }
+        *v == 1
+    }
+}
+
+fn de_frente(pos: &[[f32; 3]], cantos: &[u32], olho: [f32; 3]) -> bool {
+    let p = |k: usize| pos[cantos[k] as usize];
+    let n = if cantos.len() == 3 {
+        cruz(sub(p(1), p(0)), sub(p(2), p(0)))
+    } else {
+        cruz(sub(p(2), p(0)), sub(p(3), p(1)))
+    };
+    ponto(n, sub(olho, p(0))) > 0.0
+}
+
+fn caixa(ecra: &[Option<[f32; 2]>], cantos: &[u32]) -> Option<[f32; 4]> {
+    let mut b = [
+        f32::INFINITY,
+        f32::INFINITY,
+        f32::NEG_INFINITY,
+        f32::NEG_INFINITY,
+    ];
+    for &v in cantos {
+        let s = ecra[v as usize]?;
+        b = [
+            b[0].min(s[0]),
+            b[1].min(s[1]),
+            b[2].max(s[0]),
+            b[3].max(s[1]),
+        ];
+    }
+    Some(b)
+}
+
+/// O raio do olho até `p` chega a `p` antes de bater noutra superfície?
+fn desimpedida(mesh: &Mesh, olho: [f32; 3], p: [f32; 3]) -> bool {
+    let d = sub(p, olho);
+    let dist = ponto(d, d).sqrt();
+    if dist <= 0.0 {
+        return true;
+    }
+    mesh.raycast(&Ray::new(olho, d))
+        .is_none_or(|h| h.t >= dist * (1.0 - FOLGA_DA_OCLUSAO))
+}
+
+fn sub(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
+    [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
+}
+
+fn cruz(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
+    [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+    ]
+}
+
+fn ponto(a: [f32; 3], b: [f32; 3]) -> f32 {
+    a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+}
+
+fn combina(pos: &[[f32; 3]], cantos: &[u32], w: &[f32]) -> [f32; 3] {
+    let mut o = [0.0f32; 3];
+    for (&v, &k) in cantos.iter().zip(w) {
+        let q = pos[v as usize];
+        for e in 0..3 {
+            o[e] += q[e] * k;
+        }
+    }
+    o
+}
+
+/// A mistura de uma amostra — ver o cabeçalho.
+fn pousa(base: [f32; 3], pm: [f32; 3], a: f32, k: f32) -> [f32; 3] {
+    let fica = 1.0 - a * k;
+    [
+        base[0] * fica + pm[0] * k,
+        base[1] * fica + pm[1] * k,
+        base[2] * fica + pm[2] * k,
+    ]
+}
+
+impl SculptStroke {
+    /// ⭐⭐⭐ **POUSA A TELA NA PEÇA** dentro do rectângulo `r` — no plano de
+    /// tinta fina quando o traço o tem emprestado, senão na cor por vértice.
+    ///
+    /// Devolve os VÉRTICES cuja cor mudou (para o upload incremental; vazio no
+    /// caminho do plano, que sobe pelas amostras sujas do próprio empréstimo) e
+    /// quantas amostras mudaram.
+    ///
+    /// ⚠️ O traço tem de ter sido aberto (`begin`) sobre esta malha.
+    pub fn pousa_a_tela(
+        &mut self,
+        mesh: &mut Mesh,
+        sessao: &mut TelaNaMalha,
+        tela: &Tela<'_>,
+        r: Rectangulo,
+    ) -> (Vec<u32>, usize) {
+        // ⚠️ **Um píxel de folga à volta**: a amostragem é bilinear, logo uma
+        // amostra até um píxel fora do rectângulo mudado lê um píxel de dentro.
+        let caixa = [
+            r[0] as f32 - 1.0,
+            r[1] as f32 - 1.0,
+            r[0].saturating_add(r[2]) as f32 + 1.0,
+            r[1].saturating_add(r[3]) as f32 + 1.0,
+        ];
+        let dentro = |s: [f32; 2]| {
+            s[0] >= caixa[0] && s[0] <= caixa[2] && s[1] >= caixa[1] && s[1] <= caixa[3]
+        };
+        sessao.proxima_epoca();
+        let faces = sessao.faces_em(caixa);
+        let mut mudaram = 0usize;
+        let mut vertices = Vec::new();
+        for fi in faces {
+            let face = mesh.faces()[fi as usize];
+            let cantos = face.verts();
+            let n = cantos.len();
+            let mut m = [0.0f32; 4];
+            for (mk, &v) in m.iter_mut().zip(cantos) {
+                *mk = mesh
+                    .masks()
+                    .map_or(ph2d_mesh::DEFAULT_MASK, |k| k[v as usize]);
+            }
+            if let Some(fina) = self.tinta_fina.as_mut() {
+                let lado = fina.tinta().lado_da_face(fi as usize) as f32;
+                let mut pedidas: Vec<(u32, [f32; 4])> = Vec::new();
+                let t = fina.tinta();
+                if n == 3 {
+                    t.para_cada_amostra_tri(fi as usize, cantos, |idx, (i, j, k)| {
+                        pedidas.push((
+                            idx,
+                            [i as f32 / lado, j as f32 / lado, k as f32 / lado, 0.0],
+                        ));
+                    });
+                } else {
+                    t.para_cada_amostra_quad(fi as usize, cantos, |idx, (i, j)| {
+                        pedidas.push((
+                            idx,
+                            crate::tinta_fina::bilinear(i as f32 / lado, j as f32 / lado),
+                        ));
+                    });
+                }
+                for (idx, w4) in pedidas {
+                    let w = &w4[..n];
+                    if sessao.repetida(idx) {
+                        continue;
+                    }
+                    let p = combina(mesh.positions(), cantos, w);
+                    let Some(s) = sessao.vista.ecra(p) else {
+                        continue;
+                    };
+                    if !dentro(s) {
+                        continue;
+                    }
+                    let (pm, a) = tela.amostra(s[0], s[1]);
+                    if a <= 0.0 && !fina.tocou(idx) {
+                        continue;
+                    }
+                    if !sessao.ve_se(mesh, idx, p) {
+                        continue;
+                    }
+                    let k = keep_da_amostra(w, &m[..n]);
+                    if fina.repinta(idx, |base| pousa(base, pm, a, k)) {
+                        mudaram += 1;
+                    }
+                }
+            } else {
+                for (c, &v) in cantos.iter().enumerate() {
+                    if sessao.repetida(v) {
+                        continue;
+                    }
+                    let Some(s) = sessao.ecra[v as usize] else {
+                        continue;
+                    };
+                    if !dentro(s) {
+                        continue;
+                    }
+                    let (pm, a) = tela.amostra(s[0], s[1]);
+                    if a <= 0.0 && !self.tocou_vertice(v) {
+                        continue;
+                    }
+                    let p = mesh.positions()[v as usize];
+                    if !sessao.ve_se(mesh, v, p) {
+                        continue;
+                    }
+                    let k = keep_da_amostra(&[1.0], &m[c..=c]);
+                    if self.repinta_vertice(mesh, v, |base| pousa(base, pm, a, k)) {
+                        mudaram += 1;
+                        vertices.push(v);
+                    }
+                }
+            }
+        }
+        (vertices, mudaram)
+    }
+}

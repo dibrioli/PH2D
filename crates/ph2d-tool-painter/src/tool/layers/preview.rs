@@ -99,7 +99,8 @@ impl PainterTool {
     /// pixels everywhere else (display gate `the_screen_survives_the_gpu_to_cpu_producer_handoff`).
     #[must_use]
     pub fn take_preview_dirty(&mut self) -> bool {
-        if self.canvas_rgba.is_empty() {
+        // A tela da vista 3D é drenada pela escultura, nunca pela pista GPU da sprite.
+        if self.canvas_rgba.is_empty() || self.on_screen_canvas() {
             return false;
         }
         // A pista GPU é a que o documento normal atravessa, então é ELA que mostrava os retângulos: um

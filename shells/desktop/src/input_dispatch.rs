@@ -90,6 +90,7 @@ mod keyboard_hierarchy; // Delete/Ctrl+D sobre a linha da Hierarquia -- ver o do
 mod keyboard_painter; // a cadeia do Delete do Painter: ancora -> figura -> falloff
 mod keyboard_timeline;
 pub(crate) mod painter_canvas_input;
+mod painter_canvas_keys;
 mod painter_canvas_mods;
 /// ⭐ O menu de alça de um ponto da CURVA no canvas — irmão do `painter_canvas_input` pelo teto
 /// de LOC, cortado por assunto.

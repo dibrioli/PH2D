@@ -50,6 +50,9 @@ ph2d-trim = { path = "../ph2d-trim" }
 ph2d-mesh-bool = { path = "../ph2d-mesh-bool" }
 ph2d-mesh-render = { path = "../ph2d-mesh-render" }
 ph2d-painter-brush = { path = "../ph2d-painter-brush" }
+# ⭐ O Painter pinta a peça (`painter_na_malha`): família → ferramenta é a
+# família a compor a UI do módulo dela, que a lei das camadas permite.
+ph2d-tool-painter = { path = "../ph2d-tool-painter" }
 ph2d-panel-sculpt3d = { path = "../ph2d-panel-sculpt3d" }
 ph2d-quadchain = { path = "../ph2d-quadchain" }
 ph2d-quadextract = { path = "../ph2d-quadextract" }

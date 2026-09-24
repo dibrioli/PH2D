@@ -40,6 +40,32 @@ impl SculptStroke {
         self.target.push(mesh.positions()[vi]);
     }
 
+    /// ⭐ **Este traço já tocou este vértice?** — sem o capturar.
+    #[must_use]
+    pub fn tocou_vertice(&self, v: u32) -> bool {
+        self.stamp.get(v as usize) == Some(&self.epoch)
+    }
+
+    /// ⭐⭐ **Escreve a cor de `v` a partir da cor de ANTES do traço** — a porta
+    /// do Painter sobre a peça ([`crate::tela_na_malha`]) quando ela não tem
+    /// plano de tinta fina. Captura primeiro, logo o desfazer é o do pincel de
+    /// pintura. Devolve se a cor mudou.
+    pub fn repinta_vertice(
+        &mut self,
+        mesh: &mut Mesh,
+        v: u32,
+        cor: impl FnOnce([f32; 3]) -> [f32; 3],
+    ) -> bool {
+        self.capture(mesh, v);
+        let nova = cor(self.base_color[self.slot[v as usize] as usize]);
+        let viva = &mut mesh.colors_mut()[v as usize];
+        if *viva == nova {
+            return false;
+        }
+        *viva = nova;
+        true
+    }
+
     /// A posição de `v` ANTES do traço.
     ///
     /// Um vértice não capturado nunca foi escrito por este traço, logo a posição

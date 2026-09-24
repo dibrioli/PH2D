@@ -654,3 +654,7 @@ mod sondas;
 /// ⭐⭐ **O `Fill` pelo caminho do produto** — ver [`fill`].
 #[path = "tinta_no_produto_fill.rs"]
 mod fill;
+
+/// ⭐⭐⭐ **O Painter pinta a peça pelo caminho do produto** — ver [`painter`].
+#[path = "tinta_no_produto_painter.rs"]
+mod painter;

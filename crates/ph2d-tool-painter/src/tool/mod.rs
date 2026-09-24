@@ -442,6 +442,8 @@ pub use paint::{
     WetTool, brush_falloff_weight_at,
 };
 mod runtime;
+mod screen_canvas;
+pub use screen_canvas::{SCREEN_CANVAS_DOC, ScreenCanvasFrame};
 mod trait_impls;
 mod trait_impls_raster;
 mod undo_audit; // a rede de verificação do S3 (doc 28 §7) — irmã do runtime, por assunto // `impl RasterEditTool` split from `trait_impls` (workspace file-LOC cap)

@@ -176,6 +176,11 @@ mod ref_mode;
 mod ref_profiles;
 mod spacing;
 mod stroke;
+/// ⭐ **A TELA DO PAINTER POUSADA NA PEÇA** — ver o cabeçalho dele.
+pub mod tela_na_malha;
+#[cfg(test)]
+#[path = "tela_na_malha_tests.rs"]
+mod tela_na_malha_tests;
 pub mod tinta_fina;
 #[cfg(test)]
 #[path = "tinta_fina_tests.rs"]

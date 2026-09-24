@@ -144,6 +144,8 @@ impl Sculpt3dScene {
             rig_was: ph2d_form_donation::baked_form::rig_stamp(&rig),
             donated: None,
             avisos: Vec::new(),
+            painter_tela: None,
+            painter_raio_px: None,
         }
     }
 }

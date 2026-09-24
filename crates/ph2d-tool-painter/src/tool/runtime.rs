@@ -307,8 +307,19 @@ impl PainterTool {
     /// `preview_dirty` and returns the SAME underlying `Arc<Vec<u8>>` for a
     /// trivial stack, or a freshly-composited cache for a multi-layer stack. The
     /// bridge stashes this Arc in its `painter_preview` cache.
+    ///
+    /// ⚠️ **Com a tela da vista 3D presa, devolve `None`**: quem a drena é a
+    /// escultura, por [`Self::take_screen_canvas`] — ver `screen_canvas`.
     #[must_use]
     pub fn take_preview_arc(&mut self) -> Option<(Arc<Vec<u8>>, u32, u32)> {
+        if self.on_screen_canvas() {
+            return None;
+        }
+        self.drain_preview_arc()
+    }
+
+    /// O corpo da drenagem, partilhado pela ponte da sprite e pela tela da vista.
+    pub(crate) fn drain_preview_arc(&mut self) -> Option<(Arc<Vec<u8>>, u32, u32)> {
         // ⚠️ **ANTES do portão do `preview_dirty`, e a ordem é a metade que o artista vê.** O dente do
         // papel é canvas-inteiro, e nenhum dos nove knobs que o produzem levanta o `preview_dirty`
         // sozinho — reconciliar depois do portão deixaria a tela parada até a pincelada seguinte, que é

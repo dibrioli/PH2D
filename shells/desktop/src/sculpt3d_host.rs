@@ -80,6 +80,15 @@ impl App {
 
     /// O botão apertou. **Empresta a cena** — ver o cabeçalho.
     pub(crate) fn sculpt3d_pointer_down(&mut self, button: winit::event::MouseButton) -> bool {
+        // ⭐ Com o Painter a pintar a peça, o botão ESQUERDO é dele (`painter_na_malha`);
+        // os outros continuam a navegar a vista.
+        if button == winit::event::MouseButton::Left
+            && self
+                .painter_tool_mut()
+                .is_some_and(|p| p.on_screen_canvas())
+        {
+            return false;
+        }
         let tomou = self.com_a_cena_emprestada(|host, scene| {
             ph2d_app_sculpt3d::input_down::pointer_down(host, scene, button)
         });

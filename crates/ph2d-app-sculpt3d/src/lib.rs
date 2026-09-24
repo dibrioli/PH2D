@@ -261,6 +261,14 @@ use mask::MaskOp;
 /// corte é o CANAL: lá a máscara, aqui a cor.
 mod preenche;
 
+/// O censo de TEXTO dos elos da costura — os gates de produto são `#[ignore]` +
+/// placa e não alcançam a shell; ver o cabeçalho dele.
+#[cfg(test)]
+mod painter_fiacao_tests;
+/// ⭐⭐⭐ **O PAINTER PINTA A PEÇA** — a costura entre o módulo Painter e a
+/// escultura; ver o cabeçalho dele.
+pub mod painter_na_malha;
+
 /// **OS VERBOS DA LISTA** — acrescentar, duplicar, apagar. Filho
 /// pelo motivo dos outros: o corte é de responsabilidade.
 mod objects;

@@ -356,6 +356,28 @@ impl TintaDoTraco {
         novo
     }
 
+    /// ⭐ **Este traço já tocou esta amostra?** — sem a capturar.
+    #[must_use]
+    pub fn tocou(&self, idx: u32) -> bool {
+        self.slot[idx as usize] != 0
+    }
+
+    /// ⭐⭐ **Escreve a amostra a partir da cor de ANTES do traço** — a porta do
+    /// Painter sobre a peça ([`crate::tela_na_malha`]). Capturar e escrever são
+    /// um acto só, logo a janela do desfazer e a do upload enchem-se como as
+    /// do pincel de pintura. Devolve se a amostra mudou.
+    pub fn repinta(&mut self, idx: u32, cor: impl FnOnce([f32; 3]) -> [f32; 3]) -> bool {
+        let s = self.slot_de(idx);
+        let nova = cor(self.base[s]);
+        let viva = &mut self.tinta.amostras_mut()[idx as usize];
+        if *viva == nova {
+            return false;
+        }
+        *viva = nova;
+        self.suja[s] = true;
+        true
+    }
+
     /// ⭐⭐⭐⭐ **As amostras escritas desde a última vez que isto foi chamado**
     /// — a janela que o upload do device consome, e a razão de ele deixar de
     /// ser `O(plano)`.

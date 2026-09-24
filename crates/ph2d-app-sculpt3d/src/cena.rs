@@ -488,6 +488,12 @@ pub struct Sculpt3dScene {
     /// shell drena-a uma vez por quadro, no mesmo sítio onde já drena os pedidos do painel. É isso
     /// que deixa as DUAS entradas (a tecla e o botão do painel) falarem pela mesma porta.
     pub(crate) avisos: Vec<String>,
+    /// ⭐ **A pincelada do Painter em voo sobre a peça** — a vista congelada no
+    /// pen-down e a visibilidade de cada amostra; ver [`crate::painter_na_malha`].
+    pub(crate) painter_tela: Option<ph2d_sculpt3d::tela_na_malha::TelaNaMalha>,
+    /// O raio do pincel do Painter em píxeis de ecrã enquanto ele pinta a peça —
+    /// o anel do cursor passa a ser o DELE (`None` = o do pincel da escultura).
+    pub(crate) painter_raio_px: Option<f32>,
 }
 
 impl Sculpt3dScene {

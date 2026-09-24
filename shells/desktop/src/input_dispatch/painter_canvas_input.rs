@@ -92,40 +92,6 @@ thread_local! {
 }
 
 impl App {
-    /// Nudge the active Painter brush radius — `[` (`dir < 0`) shrinks, `]`
-    /// (`dir >= 0`) grows (Blender/Photoshop convention). Returns `true` when
-    /// consumed (the active tool IS the Painter), so the bracket key doesn't fall
-    /// through to other handlers.
-    pub(crate) fn painter_nudge_brush_size(&mut self, dir: i32) -> bool {
-        let Some(gfx) = self.gfx.as_mut() else {
-            return false;
-        };
-        let Some(tool) = gfx.tools.active_mut() else {
-            return false;
-        };
-        let Some(painter) = tool.as_any_mut().downcast_mut::<PainterTool>() else {
-            return false;
-        };
-        painter.nudge_brush_size(dir);
-        true
-    }
-
-    /// Toggle the active Painter brush's eraser mode (`E`). Returns `true` when
-    /// consumed (the active tool IS the Painter), so `E` falls through otherwise.
-    pub(crate) fn painter_toggle_eraser(&mut self) -> bool {
-        let Some(gfx) = self.gfx.as_mut() else {
-            return false;
-        };
-        let Some(tool) = gfx.tools.active_mut() else {
-            return false;
-        };
-        let Some(painter) = tool.as_any_mut().downcast_mut::<PainterTool>() else {
-            return false;
-        };
-        painter.toggle_brush_eraser();
-        true
-    }
-
     /// Borrow the active tool as the concrete [`PainterTool`] (the ADR-0040 §3
     /// downcast exception, allowlisted to the painter-input modules — this file +
     /// `painter_falloff_input`). `None` when the Painter is not the active tool.
@@ -364,6 +330,19 @@ impl App {
             .unwrap_or(false);
         if !painter_active {
             return false;
+        }
+        // ⭐ O Painter sobre a PEÇA 3D: a tela é a vista, não uma sprite (`painter_na_malha`).
+        #[cfg(feature = "sculpt3d")]
+        if let (Some(scene), Some(painter)) = (
+            gfx.sculpt3d.as_mut(),
+            gfx.tools
+                .active_mut()
+                .and_then(|t| t.as_any_mut().downcast_mut::<PainterTool>()),
+        ) && painter.on_screen_canvas()
+        {
+            return ph2d_app_sculpt3d::painter_na_malha::entrega(
+                scene, painter, px, py, pressure, phase,
+            );
         }
         let Some(hero) = gfx.hero_screen.as_ref() else {
             return false;

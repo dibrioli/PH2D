@@ -12,6 +12,16 @@ impl crate::App {
     ) -> Option<bool> {
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let gfx = self.gfx.as_mut()?;
+        // ⭐ O Painter sobre a peça 3D prende a tela da vista e pousa-a ANTES da ponte da sprite,
+        // que enquanto ela está presa não a toca (`ph2d_tool_painter::SCREEN_CANVAS_DOC`).
+        #[cfg(feature = "sculpt3d")]
+        ph2d_app_sculpt3d::painter_na_malha::quadro(
+            gfx.sculpt3d.as_mut(),
+            gfx.tools.active_mut().and_then(|t| {
+                t.as_any_mut()
+                    .downcast_mut::<ph2d_tool_painter::PainterTool>()
+            }),
+        );
         let FrameGfx {
             renderer,
             sim,

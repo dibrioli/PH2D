@@ -8,7 +8,7 @@
 > um handoff descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**53 handoffs** (= ficheiros na pasta, **re-derivado** em 2026-09-24 — a contagem dizia `48` com `51` na pasta, e TRÊS linhas faltavam à tabela abaixo: *um índice escrito à mão envelhece no dia em que alguém acrescenta um ficheiro e não o lê*) · **20** marcados **◆** — mas
+**54 handoffs** (= ficheiros na pasta, **re-derivado** em 2026-09-24 — a contagem dizia `48` com `51` na pasta, e TRÊS linhas faltavam à tabela abaixo: *um índice escrito à mão envelhece no dia em que alguém acrescenta um ficheiro e não o lê*) · **20** marcados **◆** — mas
 ⚠️ **só `25` são de facto citados pelo `CLAUDE.md`**, re-derivado em 2026-09-20
 (ele dizia `37 · 18 · 14`, medido em 2026-09-07: *sete* handoffs entraram entre as
 duas datas e ninguém reconciliou a conta — ⛔ **é exactamente o que o parágrafo
@@ -80,6 +80,7 @@ linhas marcadas, não desta).
 | 2026-09-20 | ★ | [HANDOFF_line_sculpt3d_A_TINTA_FINA_VISIVEL_2026-09-20.md](HANDOFF_line_sculpt3d_A_TINTA_FINA_VISIVEL_2026-09-20.md) | linha | ⭐⭐⭐⭐ **A TINTA DEIXA DE TER A RESOLUÇÃO DA MALHA** — a fileira `Paint Detail`, o plano na placa e a cena `=52`. ⛔ E os DOIS defeitos que eu introduzi e que nenhum teste viu (`cap_idx` derivado ⇒ escrita fora do buffer · o plano sem peso na fila de desfazer), porque *a rota que o produto toma não tinha régua nenhuma* |
 | 2026-09-21 | ★ | [HANDOFF_line_sculpt3d_A_TINTA_FINA_SOBREVIVE_2026-09-21.md](HANDOFF_line_sculpt3d_A_TINTA_FINA_SOBREVIVE_2026-09-21.md) | linha | ⭐⭐⭐⭐ **A TINTA FINA SOBREVIVE AO TRAÇO SEGUINTE — e o `16x`**. ⛔ *«Volta ao modo Mesh» era LITERAL, e a causa é uma PREMISSA e não um defeito: a ordem de 19/09 foi justificada com *«a resolução da tinta é a da malha»*, que o plano tornou FALSA. ⛔⛔ E a prova de mutação achou as **quatro** metades escritas nesse dia SEM RÉGUA ALCANÇÁVEL — a única prova delas vive em gates `#[ignore]` de GPU, que nem o arnês nem o CI correm
 | 2026-09-24 |  | [HANDOFF_line_sculpt3d_O_FILL_2026-09-24.md](HANDOFF_line_sculpt3d_O_FILL_2026-09-24.md) | linha | ⭐⭐ **O `Fill Piece`**: a peça inteira com a cor do pincel, com a MESMA conta de máscara do carimbo (uma porta, dois chamadores), nos dois canais, desfeita por UM `Ctrl+Z` ao bit. ⛔ E dois achados pelo caminho: o tecto da história não contava a janela fina de um traço (um `..` num `match` que se diz exaustivo), e dois arneses filtravam o gate da fiação pelo NÚMERO no nome, um deles a casar zero |
+| 2026-09-24 |  | [HANDOFF_line_sculpt3d_O_PAINTER_NA_PECA_2026-09-24.md](HANDOFF_line_sculpt3d_O_PAINTER_NA_PECA_2026-09-24.md) | linha | ⭐⭐⭐ **O Painter pinta a peça (etapa 1)**: ele pinta uma tela TRANSPARENTE do tamanho da vista e a escultura pousa-a onde a superfície se vê, cada amostra recalculada da BASE do traço (idempotente ⇒ re-projecta-se por quadro), com as quatro portas da ponte da sprite guardadas na FERRAMENTA. ⛔ E o censo de texto dos elos da shell escrito ANTES de uma mutação o pedir: os gates de produto chamam a costura directamente e nunca a alcançam |
 
 ---
 

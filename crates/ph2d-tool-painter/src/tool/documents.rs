@@ -152,6 +152,11 @@ impl PainterTool {
     /// pixels at all.
     #[must_use]
     pub fn needs_document_bind(&self, entity: u64) -> bool {
+        // ⚠️ Com a tela da vista 3D presa, nenhuma sprite a desloca a meio de um traço:
+        // quem a solta é a escultura, quando sai do ecrã (`screen_canvas`).
+        if self.on_screen_canvas() {
+            return false;
+        }
         self.bound_doc != Some(entity) || self.canvas_rgba.is_empty()
     }
 

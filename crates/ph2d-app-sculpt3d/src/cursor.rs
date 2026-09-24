@@ -102,6 +102,19 @@ impl Sculpt3dScene {
             return None;
         }
         let r = f64::from(self.radius_px());
+        // ⚠️ UM pick só, lido pelos dois ramos: o gate
+        // `a_stroke_belongs_to_the_piece_it_started_on` conta quem consulta a
+        // lista, e um segundo pick aqui seria um consumidor a mais sem razão.
+        let acerto = self.pick(x, y);
+        // ⭐ Com o Painter na mão o pincel é um círculo no ECRÃ, com o raio DELE
+        // (`painter_na_malha`): o anel deitado na superfície descreveria o
+        // pincel da escultura.
+        if let Some(raio) = self.painter_raio_px {
+            return Some(CursorMark {
+                path: ring(f64::from(x), f64::from(y), f64::from(raio)),
+                on_surface: acerto.is_some(),
+            });
+        }
         // ⚠️ **O centro é o ACERTO REPROJETADO, não o pixel do mouse** — e é essa
         // escolha que faz do anel um instrumento em vez de um enfeite. Os dois
         // coincidem quando a fiação está certa (é a definição de `project` ser a
@@ -110,7 +123,7 @@ impl Sculpt3dScene {
         //
         // No vazio não há acerto a reprojetar e o anel fica no pixel cru — que é
         // onde a órbita vai começar, então ele continua descrevendo o gesto.
-        let landed = self.pick(x, y).and_then(|(i, hit)| {
+        let landed = acerto.and_then(|(i, hit)| {
             let pose = self.objects.get(i)?.pose;
             let at = pose.point_to_world(hit.point);
             let (cx, cy) = self.project_window(at)?;

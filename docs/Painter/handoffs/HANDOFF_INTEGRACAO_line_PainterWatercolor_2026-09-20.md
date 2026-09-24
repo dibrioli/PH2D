@@ -2983,3 +2983,54 @@ o laço do encharcar a iterar em vez de indexar). `nextest-impacted` `16 723/16 
 - **Wet Paint:** a avaliação de performance (a 2.ª metade da ordem de 23/09) **não começou**.
 - A velocidade da aquarela que muda a pintura (§37.1) — decisão do dono.
 - O `smear_level` na borda (§37.2).
+
+## §38 — O Pigment molhado sobre molhado, e o início do traço da foto 60 → 32 ms (2026-09-24)
+
+Ordem do dono: *«Mais velocidade na aquarela + a capacidade de mixing pigment no modo aquarela
+molhado (seco já funciona)»*. Backup antes de começar: ramo local
+`backup/line-PainterWatercolor-antes-do-pigmento-molhado-2026-09-24`.
+
+### §38.1 — O Pigment mistura molhado sobre molhado (`23fad8998`)
+
+O instrumento `diag_pigment_molhado_sobre_molhado` (§17.4) separou **duas** metades, e a primeira não
+estava nomeada: o termo do composite misturava com o **PAPEL** — com o botão ligado, um amarelo
+SOZINHO sobre papel lia `254,252,235` (quase branco) contra `253,245,140` desligado. A cura das duas
+vive em [`watercolor_mistura.rs`](../../../crates/ph2d-tool-painter/src/tool/paint/watercolor_mistura.rs):
+
+- o peso do `Pigment` no composite é `pigment_mix × presenca_de_tinta(base)` — a mesma régua do rewet,
+  agora UMA porta com dois leitores; sobre papel é `0` e a tela sai **igual AO BYTE** à de botão desligado;
+- no depósito, com o botão ligado, o plano da sessão guarda a cor de ANTES do traço e a que o traço
+  depositou SOZINHO, e mistura-as pelo K–M (`ph2d_pigment::mix_unit`) com fracção `aₚ/(aₚ+aₐ)`. Como a
+  fracção sai do alfa do próprio traço, que satura, **repassar não lava o vizinho** — o que matou as
+  duas curas de 20/09. ⚠️ Não é a cura desenhada no §17.4 (o incremento da cobertura, que juntava os
+  dois passes): esta não toca no passe de cobertura.
+
+Medido (botão ligado, molhado): o meio da sobreposição `254,252,235 → 159,198,159` (verde). Quatro gates
+em `tests/watercolor_mistura_molhada.rs`, mutação **4 de 4**. ⚠️ `ph2d-pigment` volta ao `Cargo.toml` da
+crate, agora com leitor. A impressão muda nas três células com `Pigment 0,195` (e19a723844c2f18f ·
+2266e4cd59d06f97 · 4415110c7456a119) e fica igual na da foto (`Pigment 0`, 11c93149efe6fd3e).
+
+⏳ **Aberto e é do dono:** sobre tinta SECA a mistura continua a ser a RYB do composite (o dono aprova-a),
+e molhado agora é K–M — os dois tons de «azul + amarelo» não são iguais. Unificá-los é a pista do
+**glaze** (§17.3).
+
+### §38.2 — O início do traço da foto 60 → 32 ms, ao byte (`b49a471ef`)
+
+Cronometrado por dentro, o pen-down eram escritas do CANVAS INTEIRO numa thread: o fundo liso de um
+documento de uma camada (`15 → 2,4 ms`, `flat_fill`), o cache de substrato cheio de NaN (`9,4 → 2,4`),
+a cópia da base congelada no 1.º Smudge (`11,5 → 3,5`, porta nova `fork_plano_de_trabalho` — a base não
+é documento) e as duas varreduras do backfill da reserva (`7 → 5`). As quatro impressões iguais.
+
+### §38.3 — ⛔ Recusas MEDIDAS deste dia (não as reconstrua)
+
+- **Saltar as 9 sub-amostras do AA onde a cobertura ao alcance está saturada** (mapa de blocos
+  min/máx dilatado pelo alcance da borda irregular, `~16 px` a Ragged 48): **byte-idêntico e SEM
+  GANHO**. O salto disparou em `~70 %` dos pontos, mas quase todos já saíam cedo (`grad == 0`); as
+  sub-amostras caras vivem na FAIXA da borda, que a Ragged 48 alarga, e ali não há nada a saltar.
+- **Linearizar a borda irregular para as sub-amostras do AA** (3 avaliações do ruído em vez de 9):
+  muda a imagem (as quatro impressões) e ganha `~0,2–0,5 ms`, dentro do ruído.
+- **Recompor só o sujo no pen-up**: impossível sem mudar o que se vê — o commit é onde a lavagem
+  ASSENTA (`settled = commit || …`), e isso é o traço inteiro.
+
+⇒ Na célula da foto o quadro fica em **~10,3 ms** (composite ~8,8 ms, espalhado por amostragem e ruído,
+sem ponto dominante — perfil `amostra_gdb.py` sobre `perfil foto`). O que sobraria mudaria o aspecto.

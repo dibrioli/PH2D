@@ -1379,6 +1379,8 @@ vaso diz que numa peça de `~100` linhas não há o que ganhar —, logo o gatil
 
 ### ⛔⛔⛔ E O SALTO DE ESPAÇO VAZIO FOI CONSTRUÍDO, MEDIDO e RECUSADO — o que ficou foi o RECORTE
 
+✅ **Smoke do dono APROVADO (2026-09-24)** — cena `=28`, o recorte pela caixa da marcha.
+
 Ordem do dono (2026-09-24, *«se esse é o padrão ouro, então siga»*). Construído inteiro:
 [`ph2d_field_gpu::longe`](../../crates/ph2d-field-gpu/src/longe.rs) — a grade é **assada na PLACA**
 pelo mesmo `field()` da marcha (um despacho no mesmo encoder, antes dela), mora no armazém das

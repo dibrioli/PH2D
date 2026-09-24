@@ -260,6 +260,41 @@ pub fn take_cells() -> u64 {
     sum.checked_div(n).unwrap_or(0)
 }
 
+// ---------------------------------------------------------------------------
+// A metade do GESTO — o que o carimbo custa enquanto a caneta está em baixo
+// ---------------------------------------------------------------------------
+//
+// ⚠️ **Com a caneta em baixo a sim está PARADA** (`sim_should_run` é `false` sob o gesto), logo os
+// três baldes acima leem zero durante o traço — e é exactamente onde o artista sente o Wet Paint
+// pesar (medido 2026-09-24, `mede_o_wet_paint`: raio 250 ⇒ `~31 ms` por quadro, todos nos eventos
+// do ponteiro). Sem esta metade o log do produto não sabia dizer se um quadro lento de pintar é o
+// DEPÓSITO dos dabs ou o COMPOSITE que o carimbo faz a seguir.
+
+static STAMP_DABS: AtomicU64 = AtomicU64::new(0);
+static STAMP_DEP_US: AtomicU64 = AtomicU64::new(0);
+static STAMP_COMP_US: AtomicU64 = AtomicU64::new(0);
+static STAMP_N: AtomicU64 = AtomicU64::new(0);
+
+/// Uma entrega de dabs ao motor: quantos, o depósito deles e o composite que se lhe seguiu.
+pub fn note_stamp(dabs: usize, deposit_ms: f32, composite_ms: f32) {
+    STAMP_DABS.fetch_add(dabs as u64, Ordering::Relaxed);
+    STAMP_DEP_US.fetch_add((f64::from(deposit_ms) * 1000.0) as u64, Ordering::Relaxed);
+    STAMP_COMP_US.fetch_add((f64::from(composite_ms) * 1000.0) as u64, Ordering::Relaxed);
+    STAMP_N.fetch_add(1, Ordering::Relaxed);
+}
+
+/// `(dabs, depósito ms, composite ms, entregas)` desde a última leitura, ZERANDO.
+#[must_use]
+pub fn take_stamp() -> (u64, f64, f64, u64) {
+    let ms = |c: &AtomicU64| c.swap(0, Ordering::Relaxed) as f64 / 1000.0;
+    (
+        STAMP_DABS.swap(0, Ordering::Relaxed),
+        ms(&STAMP_DEP_US),
+        ms(&STAMP_COMP_US),
+        STAMP_N.swap(0, Ordering::Relaxed),
+    )
+}
+
 /// Uma metade do tick, na janela: `(soma ms, pico ms, n)`.
 pub type Half = (f64, f64, u64);
 

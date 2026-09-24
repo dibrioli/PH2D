@@ -180,6 +180,81 @@ impl BrushShape {
 /// two textures multiplying would double-darken, and the artist's Grain is
 /// THE texture everywhere else in the app. The engine's own paths never call
 /// this — the port's behaviour is pinned by the session fingerprint.
+/// A silhueta ou o grão do HOSPEDEIRO, avaliados numa célula (coordenadas absolutas).
+///
+/// ⚠️ **`Fn + Sync` e não `FnMut`, de propósito** (ADR-0175): o depósito de um dab do produto caminha
+/// as linhas em paralelo, logo a silhueta é lida por várias threads ao mesmo tempo. Ela SEMPRE foi
+/// uma função pura da célula (a forma do pincel não muda enquanto o dab pousa) — o `FnMut` antigo
+/// só não o dizia, e um hospedeiro que guardasse estado nela passaria a ser erro de compilação em
+/// vez de uma corrida.
+pub type CellFn<'a> = &'a (dyn Fn(i32, i32) -> f64 + Sync);
+
+/// A caixa de células `[x0, x1] × [y0, y1]` de um dab do caminho com forma, recortada à área
+/// pincelável `[2..W-1] × [2..H-1]`; `None` quando o dab cai inteiro fora dela.
+///
+/// Uma porta só para os dois caminhantes ([`for_each_stamp_pixel_shaped`] em série e o depósito
+/// por linhas do [`crate::trail::Trail`]) — a caixa escrita duas vezes seria o sítio onde as duas
+/// rotas deixariam de pousar a mesma tinta.
+pub(crate) fn shaped_bounds(
+    grid_w: usize,
+    grid_h: usize,
+    cx: f64,
+    cy: f64,
+    r: f64,
+) -> Option<(i32, i32, i32, i32)> {
+    let x0 = ((cx - r).ceil() as i32).max(2);
+    let x1 = ((cx + r).floor() as i32).min(grid_w as i32 - 1);
+    let y0 = ((cy - r).ceil() as i32).max(2);
+    let y1 = ((cy + r).floor() as i32).min(grid_h as i32 - 1);
+    (x0 <= x1 && y0 <= y1).then_some((x0, y0, x1, y1))
+}
+
+/// UMA linha `y` do caminho com forma, de `x0` a `x1`: chama `cb(x, falloff, textura)` em cada
+/// célula que a silhueta e a textura deixam pousar.
+///
+/// ⭐ **É a lei da célula, escrita UMA vez** — [`for_each_stamp_pixel_shaped`] é esta função num
+/// laço de linhas, e o depósito paralelo é esta função em várias threads. Não existe «versão
+/// paralela» da amostragem para divergir da serial (a garantia do [`crate::par`]).
+#[allow(clippy::too_many_arguments)]
+#[inline]
+pub(crate) fn stamp_row_shaped(
+    y: i32,
+    x0: i32,
+    x1: i32,
+    tex: &[f32],
+    cx: f64,
+    cy: f64,
+    sil: CellFn<'_>,
+    grain: Option<CellFn<'_>>,
+    mut cb: impl FnMut(i32, f64, f64),
+) {
+    for x in x0..=x1 {
+        let fall = sil(x, y);
+        if fall > 0.0 {
+            let texv = match grain {
+                Some(gr) => gr(x, y),
+                None => sample_bristle(tex, x as f64 - cx, y as f64 - cy),
+            };
+            if texv > 0.0 {
+                cb(x, fall, texv);
+            }
+        }
+    }
+}
+
+/// The PRODUCT's shaped variant of [`for_each_stamp_pixel`]: the host owns
+/// the dab's whole silhouette — falloff curve, Shape image, flatten/rotate
+/// footprint — so `sil(x, y)` (absolute cell coords) REPLACES both the
+/// internal radial falloff and the elliptical footprint test (`0` = outside).
+/// The bristle `tex` is the engine's DEFAULT texture factor, sampled in RAW
+/// offsets exactly as the Round shape samples it; when the host has a grain
+/// system of its own, `grain(x, y)` REPLACES the bristle sample outright —
+/// two textures multiplying would double-darken, and the artist's Grain is
+/// THE texture everywhere else in the app. The engine's own paths never call
+/// this — the port's behaviour is pinned by the session fingerprint.
+///
+/// Serial by construction: [`stamp_row_shaped`] walked over [`shaped_bounds`]. The paint deposit
+/// walks the SAME row function in parallel (ADR-0175); the eraser keeps this serial walker.
 #[allow(clippy::too_many_arguments)]
 pub fn for_each_stamp_pixel_shaped(
     s: usize,
@@ -189,32 +264,18 @@ pub fn for_each_stamp_pixel_shaped(
     cx: f64,
     cy: f64,
     r: f64,
-    sil: &mut dyn FnMut(i32, i32) -> f64,
-    mut grain: Option<&mut dyn FnMut(i32, i32) -> f64>,
+    sil: CellFn<'_>,
+    grain: Option<CellFn<'_>>,
     mut cb: impl FnMut(usize, i32, i32, f64, f64),
 ) {
-    let x0 = ((cx - r).ceil() as i32).max(2);
-    let x1 = ((cx + r).floor() as i32).min(grid_w as i32 - 1);
-    let y0 = ((cy - r).ceil() as i32).max(2);
-    let y1 = ((cy + r).floor() as i32).min(grid_h as i32 - 1);
-    if x1 < x0 || y1 < y0 {
+    let Some((x0, y0, x1, y1)) = shaped_bounds(grid_w, grid_h, cx, cy, r) else {
         return;
-    }
+    };
     for y in y0..=y1 {
-        let mut i = x0 as usize + y as usize * s;
-        for x in x0..=x1 {
-            let fall = sil(x, y);
-            if fall > 0.0 {
-                let texv = match grain.as_deref_mut() {
-                    Some(gr) => gr(x, y),
-                    None => sample_bristle(tex, x as f64 - cx, y as f64 - cy),
-                };
-                if texv > 0.0 {
-                    cb(i, x, y, fall, texv);
-                }
-            }
-            i += 1;
-        }
+        let row = y as usize * s;
+        stamp_row_shaped(y, x0, x1, tex, cx, cy, sil, grain, |x, fall, texv| {
+            cb(x as usize + row, x, y, fall, texv);
+        });
     }
 }
 

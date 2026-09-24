@@ -118,7 +118,7 @@ fn measure_what_a_wet_dab_is_made_of() {
 }
 
 /// **O PREÇO DA FRONTEIRA** — o produto NÃO usa o falloff do motor: ele passa a
-/// silhueta do Painter por um `&mut dyn FnMut(i32,i32) -> f64`, chamado uma vez
+/// silhueta do Painter por um `&(dyn Fn(i32,i32) -> f64 + Sync)`, chamado uma vez
 /// por pixel da caixa do dab (`for_each_stamp_pixel_shaped`).
 ///
 /// ⚠️ **A ablação é entre duas PORTAS reais** (`accumulate_paint` ×
@@ -163,7 +163,7 @@ fn measure_what_the_hosts_silhouette_costs_over_the_engines_own() {
                 let t0 = Instant::now();
                 let full = if shaped {
                     // A MESMA aritmética do ramo interno, atravessando o `dyn`.
-                    let mut sil = |px: i32, py: i32| -> f64 {
+                    let sil = |px: i32, py: i32| -> f64 {
                         let dx = (f64::from(px) - d.x) * inv_r;
                         let dy = (f64::from(py) - d.y) * inv_r;
                         let dist = (dx * dx + dy * dy).sqrt();
@@ -173,7 +173,7 @@ fn measure_what_the_hosts_silhouette_costs_over_the_engines_own() {
                             ph2d_wet_paint::brush::radial_falloff(dist, d.hardness)
                         }
                     };
-                    t.accumulate_paint_shaped(g, &p, &tex, &d, false, &mut sil, None)
+                    t.accumulate_paint_shaped(g, &p, &tex, &d, false, &sil, None)
                 } else {
                     t.accumulate_paint(g, &p, &tex, &d, false)
                 };

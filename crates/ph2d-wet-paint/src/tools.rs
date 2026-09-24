@@ -59,8 +59,8 @@ pub fn apply_erase_shaped(
     tex: &[f32],
     dab: &Dab,
     erase_slider: f64,
-    sil: &mut dyn FnMut(i32, i32) -> f64,
-    grain: Option<&mut dyn FnMut(i32, i32) -> f64>,
+    sil: crate::brush::CellFn<'_>,
+    grain: Option<crate::brush::CellFn<'_>>,
 ) -> Option<TouchedRect> {
     apply_erase_impl(g, p, tex, dab, erase_slider, Some(sil), grain)
 }
@@ -71,8 +71,8 @@ fn apply_erase_impl(
     tex: &[f32],
     dab: &Dab,
     erase_slider: f64,
-    sil: Option<&mut dyn FnMut(i32, i32) -> f64>,
-    grain: Option<&mut dyn FnMut(i32, i32) -> f64>,
+    sil: Option<crate::brush::CellFn<'_>>,
+    grain: Option<crate::brush::CellFn<'_>>,
 ) -> Option<TouchedRect> {
     let gate = p.k(Knob::PaperGate);
     let pig_cap = p.k(Knob::GateSaturation);

@@ -209,8 +209,8 @@ fn the_hosts_grain_replaces_the_bristle() {
         for k in 1..=30 {
             let x = 40.0 + 4.0 * k as f64;
             e.direct_segment(0, x - prev);
-            let mut sil = |_: i32, _: i32| 1.0f64;
-            let mut gr = |cx: i32, _: i32| if cx % 2 == 0 { 1.0 } else { 0.0 };
+            let sil = |_: i32, _: i32| 1.0f64;
+            let gr = |cx: i32, _: i32| if cx % 2 == 0 { 1.0 } else { 0.0 };
             e.dispatch_pressure_dab_lane(
                 0,
                 x,
@@ -219,8 +219,8 @@ fn the_hosts_grain_replaces_the_bristle() {
                 1.0,
                 0.0,
                 9.0,
-                Some(&mut sil),
-                grained.then_some(&mut gr as &mut dyn FnMut(i32, i32) -> f64),
+                Some(&sil),
+                grained.then_some(&gr as ph2d_wet_paint::brush::CellFn<'_>),
             );
             prev = x;
         }

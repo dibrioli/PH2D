@@ -7,47 +7,81 @@ use super::*;
 impl Trail {
     /// Land the paint window on the canvas (SPEC §10 "transfer"), then roll
     /// it. Returns the touched canvas rect or None.
+    ///
+    /// Steps 1–2 (the tip) walk the window's rows serially or in parallel by
+    /// the measured floor ([`crate::par::MIN_CELLS_TIP`], ADR-0175);
+    /// [`Self::transfer_paint_rows`] forces the route for the identity gates.
     pub fn transfer_paint(&mut self, g: &mut Grid, p: &Params) -> Option<TouchedRect> {
-        let mut out = [0.0f64; 3];
-        let mix = p.mix;
-        // 1. Tip self-cleaning: every texel eases back toward the stroke color.
-        //
-        // ⚠️ **O laço mede a janela VIVA, nunca a do PISO.** Ele ia `0..N` (a
-        // área de `TRAIL_SIZE²`), o que era o mesmo número enquanto a janela
-        // era fixa e virou um bug mudo no dia em que ela passou a seguir o
-        // pincel: os 15129 primeiros índices LINEARES não são uma região, são
-        // as ~18 primeiras LINHAS de uma janela de 845 de largura, e o corpo do
-        // pincel nunca mais limpava. Num pincel dentro do teto do modelo os
-        // dois números coincidem ⇒ o fingerprint segue byte-idêntico POR
-        // CONSTRUÇÃO. Gate: `the_tip_cleaning_covers_the_live_window_…`.
-        let clean = p.k(Knob::TipClean);
-        if clean > 0.0 {
-            for l in 0..self.tip_r.len() {
-                self.tip_r[l] =
-                    (self.tip_r[l] as f64 + (self.base_r - self.tip_r[l] as f64) * clean) as f32;
-                self.tip_g[l] =
-                    (self.tip_g[l] as f64 + (self.base_g - self.tip_g[l] as f64) * clean) as f32;
-                self.tip_b[l] =
-                    (self.tip_b[l] as f64 + (self.base_b - self.tip_b[l] as f64) * clean) as f32;
-            }
-        }
-        if self.lx1 < self.lx0 {
-            self.roll_window();
-            return None;
-        }
-        let s = g.s;
-        let w = g.w as i32;
-        let h = g.h as i32;
-        let tip_retain = 1.0 - p.k(Knob::Pickup);
+        self.transfer_paint_impl(g, p, None)
+    }
 
-        // 2. Tip pickup (the dirty brush) — reads the PRE-deposit canvas.
-        for ly in self.ly0..=self.ly1 {
-            let cy = self.anchor_y + (ly - self.half);
-            if cy < 2 || cy > h - 1 {
-                continue;
+    /// [`Self::transfer_paint`] with the tip's row route FORCED.
+    pub fn transfer_paint_rows(
+        &mut self,
+        g: &mut Grid,
+        p: &Params,
+        mode: crate::par::Rows,
+    ) -> Option<TouchedRect> {
+        self.transfer_paint_impl(g, p, Some(mode))
+    }
+
+    /// Steps 1–2 of the transfer — **o BICO**: a auto-limpeza (toda a janela) e a recolha da cor
+    /// do canvas (as linhas tocadas), numa passada por linha.
+    ///
+    /// ⚠️ **Byte-idêntico em qualquer rota, e é estrutural** (as três condições do
+    /// [`crate::par`], ADR-0175): cada texel do bico é escrito só na própria linha; o que a recolha
+    /// LÊ é o grid (`sett`, `susp` e as duas cores), que este passo não escreve; e não há redução.
+    /// A ordem por texel é a de sempre — primeiro limpa, depois recolhe —, porque as duas vivem no
+    /// MESMO corpo de linha em vez de dois laços sobre a janela.
+    ///
+    /// ⛔ **Os passos 3 e 4 ficam em série, e não por gosto:** o 3 é uma SOMA em `f64` (a ordem
+    /// muda os bits), e o arrasto do 4 lê `susp[si]`/`sett[si]`/`film[si]` de uma célula que o
+    /// mesmo laço pode já ter escrito — é Gauss-Seidel, e trocá-lo por Jacobi mudaria a tinta.
+    fn tip_rows(&mut self, g: &Grid, p: &Params, mode: Option<crate::par::Rows>) {
+        let clean = p.k(Knob::TipClean);
+        let pickup = (self.lx1 >= self.lx0).then_some((self.lx0, self.ly0, self.lx1, self.ly1));
+        if clean <= 0.0 && pickup.is_none() {
+            return;
+        }
+        let size = self.size as usize;
+        let (base_r, base_g, base_b) = (self.base_r, self.base_g, self.base_b);
+        let (half, ax, ay) = (self.half, self.anchor_x, self.anchor_y);
+        let (s, w, h) = (g.s, g.w as i32, g.h as i32);
+        let tip_retain = 1.0 - p.k(Knob::Pickup);
+        let mode =
+            mode.unwrap_or_else(|| crate::par::Rows::pick(size, size, crate::par::MIN_CELLS_TIP));
+        let linha = |ly: usize, tr: &mut [f32], tg: &mut [f32], tb: &mut [f32]| {
+            // 1. Tip self-cleaning: every texel eases back toward the stroke color.
+            //
+            // ⚠️ **O laço mede a janela VIVA, nunca a do PISO.** Ele ia `0..N` (a
+            // área de `TRAIL_SIZE²`), o que era o mesmo número enquanto a janela
+            // era fixa e virou um bug mudo no dia em que ela passou a seguir o
+            // pincel: os 15129 primeiros índices LINEARES não são uma região, são
+            // as ~18 primeiras LINHAS de uma janela de 845 de largura, e o corpo do
+            // pincel nunca mais limpava. Num pincel dentro do teto do modelo os
+            // dois números coincidem ⇒ o fingerprint segue byte-idêntico POR
+            // CONSTRUÇÃO. Gate: `the_tip_cleaning_covers_the_live_window_…`.
+            if clean > 0.0 {
+                for l in 0..tr.len() {
+                    tr[l] = (tr[l] as f64 + (base_r - tr[l] as f64) * clean) as f32;
+                    tg[l] = (tg[l] as f64 + (base_g - tg[l] as f64) * clean) as f32;
+                    tb[l] = (tb[l] as f64 + (base_b - tb[l] as f64) * clean) as f32;
+                }
             }
-            for lx in self.lx0..=self.lx1 {
-                let cx = self.anchor_x + (lx - self.half);
+            // 2. Tip pickup (the dirty brush) — reads the PRE-deposit canvas.
+            let Some((lx0, ly0, lx1, ly1)) = pickup else {
+                return;
+            };
+            let ly = ly as i32;
+            if ly < ly0 || ly > ly1 {
+                return;
+            }
+            let cy = ay + (ly - half);
+            if cy < 2 || cy > h - 1 {
+                return;
+            }
+            for lx in lx0..=lx1 {
+                let cx = ax + (lx - half);
                 if cx < 2 || cx > w - 1 {
                     continue;
                 }
@@ -65,12 +99,38 @@ impl Trail {
                 let cg = (sc[1] as f64 * w_s + uc[1] as f64 * w_f) * inv;
                 let cb = (sc[2] as f64 * w_s + uc[2] as f64 * w_f) * inv;
                 let k = tip_retain + (1.0 - tip_retain) * (1.0 - fe.min(1.0));
-                let l = (lx + ly * self.size) as usize;
-                self.tip_r[l] = (self.tip_r[l] as f64 * k + cr * (1.0 - k)) as f32;
-                self.tip_g[l] = (self.tip_g[l] as f64 * k + cg * (1.0 - k)) as f32;
-                self.tip_b[l] = (self.tip_b[l] as f64 * k + cb * (1.0 - k)) as f32;
+                let l = lx as usize;
+                tr[l] = (tr[l] as f64 * k + cr * (1.0 - k)) as f32;
+                tg[l] = (tg[l] as f64 * k + cg * (1.0 - k)) as f32;
+                tb[l] = (tb[l] as f64 * k + cb * (1.0 - k)) as f32;
             }
+        };
+        crate::par::walk_rows3(
+            mode,
+            &mut self.tip_r,
+            &mut self.tip_g,
+            &mut self.tip_b,
+            size,
+            linha,
+        );
+    }
+
+    fn transfer_paint_impl(
+        &mut self,
+        g: &mut Grid,
+        p: &Params,
+        mode: Option<crate::par::Rows>,
+    ) -> Option<TouchedRect> {
+        let mut out = [0.0f64; 3];
+        let mix = p.mix;
+        self.tip_rows(g, p, mode);
+        if self.lx1 < self.lx0 {
+            self.roll_window();
+            return None;
         }
+        let s = g.s;
+        let w = g.w as i32;
+        let h = g.h as i32;
 
         // 3. Soft-cap shedding means over cells holding trail pigment.
         let mut sum_pig = 0.0f64;

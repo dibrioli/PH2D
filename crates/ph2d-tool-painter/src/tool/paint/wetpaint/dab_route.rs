@@ -166,6 +166,7 @@ impl PainterTool {
             }
         }
         let strength = brush.strength.clamp(1e-3, 1.0);
+        let t_dep = std::time::Instant::now();
         for (didx, d) in dabs.iter().enumerate() {
             let [x, y] = d.center;
             // LANE matching, geometric: the dab belongs to the lane whose
@@ -287,7 +288,7 @@ impl PainterTool {
             // sempre, ao bit.
             let (aa_n, aa_step) = grid_map::cell_subsamples(ratio);
             let aa_inv = 1.0 / f32::from(u16::from(aa_n) * u16::from(aa_n));
-            let mut sil = |cx: i32, cy: i32| -> f64 {
+            let sil = |cx: i32, cy: i32| -> f64 {
                 let mut acc = 0.0f32;
                 for j in 0..aa_n {
                     let sy = grid_map::cell_subsample_px(cy, ratio, j, aa_step);
@@ -312,7 +313,7 @@ impl PainterTool {
             // sample inside the shaped stamp, cell − 1 = px like `sil`.
             let spec_ref = &spec;
             let gimg = grain_image.as_ref();
-            let mut grain = grain_basis.as_ref().map(|gb| {
+            let grain = grain_basis.as_ref().map(|gb| {
                 move |cx: i32, cy: i32| -> f64 {
                     let px = grid_map::cell_center_texel(cx, ratio);
                     let py = grid_map::cell_center_texel(cy, ratio);
@@ -327,7 +328,9 @@ impl PainterTool {
                     ))
                 }
             });
-            let grain_arg = grain.as_mut().map(|g| g as &mut dyn FnMut(i32, i32) -> f64);
+            let grain_arg = grain
+                .as_ref()
+                .map(|g| g as ph2d_wet_paint::brush::CellFn<'_>);
             // O ponto e o raio, em CÉLULAS — as duas coisas que o motor mede
             // na sua própria grade. O `d.radius_px` continua sendo o raio da
             // silhueta (em pixels), e é assim que o pincel não muda de tamanho
@@ -346,7 +349,7 @@ impl PainterTool {
                     f64::from(d.dir[0]),
                     f64::from(d.dir[1]),
                     cell_r,
-                    Some(&mut sil),
+                    Some(&sil),
                     grain_arg,
                 );
                 continue;
@@ -360,7 +363,7 @@ impl PainterTool {
                     f64::from(d.dir[0]),
                     f64::from(d.dir[1]),
                     cell_r,
-                    Some(&mut sil),
+                    Some(&sil),
                     grain_arg,
                 ),
                 // Blend keeps the engine's own fixed-hardness stamp (the
@@ -396,7 +399,10 @@ impl PainterTool {
             }
             sess.lanes[li].pos = d.center;
         }
+        let deposit_ms = t_dep.elapsed().as_secs_f32() * 1e3;
         self.paint.wetpaint.session = Some(taken);
+        let t_comp = std::time::Instant::now();
         self.wetpaint_composite();
+        crate::wet_diag::note_stamp(dabs.len(), deposit_ms, t_comp.elapsed().as_secs_f32() * 1e3);
     }
 }

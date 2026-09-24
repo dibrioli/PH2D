@@ -216,6 +216,58 @@ where
     }
 }
 
+/// Piso do DEPÓSITO de um dab do produto (ADR-0175) — **medido** pela
+/// `tests/it/measure_deposit_rows.rs` (release, `load 1,55`, as duas rotas ALTERNADAS na
+/// mesma ronda, mínimo de 15):
+///
+/// ```text
+///     celulas   serie ms  paralelo ms  razao
+///       2_401     0,015      0,026     0,56x   <- prejuizo
+///       6_561     0,048      0,035     1,38x
+///      16_641     0,159      0,039     4,05x
+///     251_001     2,444      0,312     7,84x   (raio 250)
+///     641_601     6,294      0,614    10,25x   (raio 400)
+/// ```
+///
+/// ⚠️ **Muito mais baixo que os do solver**, e a razão é a célula: aqui cada uma avalia a
+/// silhueta do hospedeiro (a curva de queda, a pegada, a Shape) e a lei do depósito — `~10 ns`,
+/// contra os `~2 ns` de um passo de Jacobi —, logo o pool paga-se com menos delas. O piso fica
+/// entre a última linha em prejuízo e a primeira em ganho.
+pub const MIN_CELLS_DEPOSIT: usize = 6 << 10;
+
+/// Piso do BICO do transfer (a auto-limpeza e a recolha, ADR-0175) — **medido** pela mesma sonda,
+/// em células da JANELA (`size²`): prejuízo a `8 649` (a janela do raio 40), ganho a `19 881` (a do
+/// raio 64). O bico é mais barato por célula que o depósito — a limpeza são três lerps, e a recolha
+/// salta o papel em branco —, e por isso o piso dele é mais alto.
+pub const MIN_CELLS_TIP: usize = 16 << 10;
+
+/// [`walk_rows_reduce`] sobre **ITENS já fatiados** em vez de uma faixa com passo.
+///
+/// O consumidor é o depósito de um dab (ADR-0175): cada linha dele escreve em DOIS buffers de
+/// geometria diferente — a linha do grid (passo `s`) e a linha da janela do rasto (passo `size`,
+/// com outra âncora) —, logo não há um passo único para `chunks_mut`. Quem chama monta um item por
+/// linha com as fatias disjuntas dela; aqui só se escolhe o caminhante.
+///
+/// ⚠️ A mesma regra do irmão: `red` associativa **e comutativa**.
+pub(crate) fn walk_items_reduce<T, R, F, Red>(
+    mode: Rows,
+    items: &mut [T],
+    ident: R,
+    f: F,
+    red: Red,
+) -> R
+where
+    T: Send,
+    R: Send + Sync + Copy,
+    F: Fn(&mut T) -> R + Send + Sync,
+    Red: Fn(R, R) -> R + Send + Sync,
+{
+    match mode {
+        Rows::Serial => items.iter_mut().map(&f).fold(ident, &red),
+        Rows::Parallel => items.par_iter_mut().map(&f).reduce(|| ident, &red),
+    }
+}
+
 /// [`walk_rows`] para um par de escalares POR LINHA (não uma fatia de canvas):
 /// o rascunho `live_lo`/`live_hi` do rebuild, um `i32` por linha.
 pub(crate) fn walk_row_scalars2<T, F>(mode: Rows, a: &mut [T], b: &mut [T], f: F)

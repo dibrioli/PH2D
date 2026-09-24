@@ -11,12 +11,14 @@ mod util;
 
 mod acceptance;
 mod acceptance_budget;
+mod deposit_rows;
 mod fingerprint;
 mod flow_grid;
 mod flow_symmetry;
 mod live_span;
 mod measure_dab_halves;
 mod measure_density;
+mod measure_deposit_rows;
 mod measure_experimental;
 mod measure_flow_ratio;
 mod measure_flow_reduction;

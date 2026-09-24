@@ -14,10 +14,11 @@
 //! Blend mode reuses the window plumbing with a saturating mask and re-mixes
 //! both pigment layers toward the window averages (dry paint included).
 
-use crate::brush::{BrushShape, for_each_stamp_pixel, for_each_stamp_pixel_shaped};
+use crate::brush::{BrushShape, CellFn, for_each_stamp_pixel};
 
+mod deposit; // o que um dab POUSA — a lei da célula e o caminho por linhas (ADR-0175)
 mod transfer; // the window-landing half of §10 (LOC-cap split)
-use crate::grid::{Grid, wet_byte_from_paper};
+use crate::grid::Grid;
 use crate::jsmath::js_round;
 use crate::opacity::alpha_of_mass;
 use crate::sim::Params;
@@ -281,6 +282,29 @@ impl Trail {
         self.half
     }
 
+    /// Os planos de pigmento e de água da janela, inteiros — o oráculo do gate
+    /// de identidade das duas rotas do depósito (ADR-0175). Só para MEDIÇÃO:
+    /// o produto só os lê pelo transfer.
+    #[must_use]
+    pub fn planes_for_measure(&self) -> (&[f32], &[f32]) {
+        (&self.pig, &self.water)
+    }
+
+    /// A âncora da janela em células de canvas — com a meia-largura e a
+    /// extensão, é o que um oráculo precisa para saber que célula cada texel
+    /// da janela cobre (ADR-0175). Só para MEDIÇÃO.
+    #[must_use]
+    pub fn anchor_for_measure(&self) -> (i32, i32) {
+        (self.anchor_x, self.anchor_y)
+    }
+
+    /// Os três planos do BICO, inteiros — o oráculo do gate de identidade das
+    /// duas rotas do transfer (ADR-0175). Só para MEDIÇÃO.
+    #[must_use]
+    pub fn tip_planes_for_measure(&self) -> (&[f32], &[f32], &[f32]) {
+        (&self.tip_r, &self.tip_g, &self.tip_b)
+    }
+
     /// O retângulo LOCAL que a janela de fato tocou (`None` se nada tocou) — o
     /// oráculo do gate do cap, e ele não conhece constante nenhuma.
     #[must_use]
@@ -334,15 +358,20 @@ impl Trail {
         dab: &Dab,
         ext_bypass: bool,
     ) -> Accumulated {
-        self.accumulate_paint_impl(g, p, tex, dab, ext_bypass, None, None)
+        self.accumulate_paint_impl(g, p, tex, dab, ext_bypass)
     }
 
     /// [`Self::accumulate_paint`] with the HOST's silhouette (the shaped
     /// product door): `sil(x, y)` replaces the engine's falloff + footprint;
     /// `grain(x, y)`, when the host's Grain slot is armed, replaces the
-    /// bristle as the texture factor (`None` = the bristle stays). ONE pixel
-    /// body serves both faces (`accumulate_paint` delegates with `None` —
-    /// the fingerprint pins that the port's own path did not move a bit).
+    /// bristle as the texture factor (`None` = the bristle stays). ONE cell
+    /// law serves both faces ([`deposit::DepositLaw::cell`]) — the fingerprint
+    /// pins that the port's own path did not move a bit.
+    ///
+    /// The product door walks the dab's rows serially or in parallel by the
+    /// measured floor ([`crate::par::MIN_CELLS_DEPOSIT`], ADR-0175);
+    /// [`Self::accumulate_paint_shaped_rows`] forces the route for the
+    /// identity gates.
     #[allow(clippy::too_many_arguments)]
     pub fn accumulate_paint_shaped(
         &mut self,
@@ -351,25 +380,50 @@ impl Trail {
         tex: &[f32],
         dab: &Dab,
         ext_bypass: bool,
-        sil: &mut dyn FnMut(i32, i32) -> f64,
-        grain: Option<&mut dyn FnMut(i32, i32) -> f64>,
+        sil: CellFn<'_>,
+        grain: Option<CellFn<'_>>,
     ) -> Accumulated {
-        self.accumulate_paint_impl(g, p, tex, dab, ext_bypass, Some(sil), grain)
+        self.shaped_impl(g, p, tex, dab, ext_bypass, sil, grain, None)
     }
 
+    /// [`Self::accumulate_paint_shaped`] with the row route FORCED — the door
+    /// the identity gates use to run both walkers over the same state.
     #[allow(clippy::too_many_arguments)]
-    fn accumulate_paint_impl(
+    pub fn accumulate_paint_shaped_rows(
         &mut self,
         g: &mut Grid,
         p: &Params,
         tex: &[f32],
         dab: &Dab,
         ext_bypass: bool,
-        sil: Option<&mut dyn FnMut(i32, i32) -> f64>,
-        grain: Option<&mut dyn FnMut(i32, i32) -> f64>,
+        sil: CellFn<'_>,
+        grain: Option<CellFn<'_>>,
+        mode: crate::par::Rows,
     ) -> Accumulated {
+        self.shaped_impl(g, p, tex, dab, ext_bypass, sil, grain, Some(mode))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn shaped_impl(
+        &mut self,
+        g: &mut Grid,
+        p: &Params,
+        tex: &[f32],
+        dab: &Dab,
+        ext_bypass: bool,
+        sil: CellFn<'_>,
+        grain: Option<CellFn<'_>>,
+        mode: Option<crate::par::Rows>,
+    ) -> Accumulated {
+        self.anchor_first_dab(dab);
+        let law = deposit::DepositLaw::new(p, dab, ext_bypass);
+        let wrote = self.deposit_shaped(g, tex, dab, law, sil, grain, mode);
+        self.accumulated(wrote)
+    }
+
+    /// The window's first dab anchors it.
+    fn anchor_first_dab(&mut self, dab: &Dab) {
         if self.dab_count == 0 {
-            // the window's first dab anchors it
             self.anchor_x = js_round(dab.x) as i32;
             self.anchor_y = js_round(dab.y) as i32;
             // ⚠️ **A janela é função do PINCEL, e cresce só AQUI.** Com
@@ -379,11 +433,22 @@ impl Trail {
             // coordenadas locais do que já está lá.
             self.fit_to(dab.r);
         }
-        let gain = p.k(Knob::PigmentPerDab);
-        let gate = p.k(Knob::PaperGate);
-        let pig_cap = p.k(Knob::GateSaturation);
-        let ext_dry_brush = p.k(Knob::ExtDryBrush);
-        let ext_wet_soften = p.k(Knob::ExtWetSoften);
+    }
+
+    /// The engine's OWN deposit (its internal falloff and footprint), walked
+    /// serially — the path the session fingerprint pins. The cell law is the
+    /// product's ([`deposit::DepositLaw::cell`]), so the two cannot drift.
+    fn accumulate_paint_impl(
+        &mut self,
+        g: &mut Grid,
+        p: &Params,
+        tex: &[f32],
+        dab: &Dab,
+        ext_bypass: bool,
+    ) -> Accumulated {
+        self.anchor_first_dab(dab);
+        let law = deposit::DepositLaw::new(p, dab, ext_bypass);
+        let gain = law.gain();
         let anchor_x = self.anchor_x;
         let anchor_y = self.anchor_y;
         let pig = &mut self.pig;
@@ -407,43 +472,16 @@ impl Trail {
             ..
         } = g;
         let body = |i: usize, x: i32, y: i32, fall: f64, texv: f64| {
-            let mut stamp = fall * texv * dab.intensity;
-            if stamp > 1.0 {
-                stamp = 1.0;
-            }
-            if stamp <= 0.0 {
+            let Some((deposit, wb)) = law.cell(susp[i], sett[i], paper[i], film[i], fall, texv)
+            else {
                 return;
-            }
-            // Paper gate: tooth peaks always take pigment, valleys reject
-            // it — that per-pixel pass/reject IS the granulation. Heavily
-            // loaded cells read a flat 0.45 tooth (the grain is buried).
-            let tooth = if (susp[i] as f64 + sett[i] as f64) < pig_cap {
-                paper[i] as f64
-            } else {
-                0.45
             };
-            let mut deposit = stamp - (1.0 - tooth) * gate;
-            if !ext_bypass {
-                // Dry-brush extension: raise the gate subtraction.
-                deposit -= dab.dry_gate * ext_dry_brush * 0.6;
-            }
-            if deposit <= 0.0 {
-                return;
-            }
-            if !ext_bypass {
-                // Wet-edge softening extension: thin the rim on wet paper.
-                let softness = (film[i] as f64 / 3.0).min(1.0) * ext_wet_soften;
-                deposit *= 1.0 - softness * (1.0 - fall);
-            }
-            // Wetness seed: OVERWRITE (not max) — repainting can dry the
-            // byte back down.
-            //
             // ⚠️ **Esta é uma escrita no DOCUMENTO, e é declarada aqui.** Ela
             // acontece mesmo quando nada de pigmento vai pousar (Pigment 0, ou
             // um texel fora da janela do trail), e é dela que o véu do Show Wet
             // se alimenta — só o `transfer` declarava sujo, e o retângulo dele
             // é onde o PIGMENTO caiu, um conjunto diferente deste.
-            wet[i] = wet_byte_from_paper(tooth);
+            wet[i] = wb;
             touch_ext(&mut wrote, x, y);
             let lx = x - anchor_x + self.half;
             let ly = y - anchor_y + self.half;
@@ -452,46 +490,25 @@ impl Trail {
             }
             let l = (lx + ly * self.size) as usize;
             pig[l] = (pig[l] as f64 + deposit * gain) as f32;
-            water[l] = (water[l] as f64 + deposit * dab.water_amount) as f32;
+            water[l] = (water[l] as f64 + deposit * law.water_amount) as f32;
             touch_ext(&mut ext, lx, ly);
         };
-        match sil {
-            Some(sil) => {
-                for_each_stamp_pixel_shaped(*s, *w, *h, tex, dab.x, dab.y, dab.r, sil, grain, body);
-            }
-            None => {
-                // A grain override without a silhouette cannot happen — the
-                // only Some-grain caller is the shaped door, which requires
-                // `sil`. Assert it so a future caller cannot pass a grain
-                // that would be silently discarded.
-                debug_assert!(grain.is_none(), "grain override requires the shaped path");
-                for_each_stamp_pixel(
-                    *s,
-                    *w,
-                    *h,
-                    tex,
-                    dab.x,
-                    dab.y,
-                    dab.r,
-                    dab.hardness,
-                    dab.shape,
-                    dab.dir_x,
-                    dab.dir_y,
-                    body,
-                );
-            }
-        }
+        for_each_stamp_pixel(
+            *s,
+            *w,
+            *h,
+            tex,
+            dab.x,
+            dab.y,
+            dab.r,
+            dab.hardness,
+            dab.shape,
+            dab.dir_x,
+            dab.dir_y,
+            body,
+        );
         (self.lx0, self.ly0, self.lx1, self.ly1) = ext;
-        self.dab_count += 1;
-        Accumulated {
-            window_full: self.dab_count > self.window_size,
-            wrote: (wrote.2 >= wrote.0).then_some(TouchedRect {
-                x0: wrote.0,
-                y0: wrote.1,
-                x1: wrote.2,
-                y1: wrote.3,
-            }),
-        }
+        self.accumulated(wrote)
     }
 
     /// Accumulate one blend dab: a saturating mask, no water/tip/wetness

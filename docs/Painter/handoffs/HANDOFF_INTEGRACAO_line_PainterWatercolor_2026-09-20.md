@@ -3034,3 +3034,49 @@ a cópia da base congelada no 1.º Smudge (`11,5 → 3,5`, porta nova `fork_plan
 
 ⇒ Na célula da foto o quadro fica em **~10,3 ms** (composite ~8,8 ms, espalhado por amostragem e ruído,
 sem ponto dominante — perfil `amostra_gdb.py` sobre `perfil foto`). O que sobraria mudaria o aspecto.
+
+## §39 — O Wet Paint: pintar com raio 250 passa de ~31 para ~8 ms por quadro, ao bit (2026-09-24)
+
+Ordem do dono: *«smoke OK. Siga»* — a 2.ª metade da ordem de 23/09 (*«avaliar seriamente os modos
+watercolor e wet paint»*). Mecanismo, tabela dos pisos e consequências:
+[ADR-0175](../../architecture/decisions/0175-o-deposito-do-dab-do-wet-paint-corre-em-linhas-disjuntas.md).
+
+### §39.1 — A régua do PRODUTO não existia
+
+Todas as sondas `measure_wetpaint_*` correm sob `cfg(test)`, onde o composite do Wet Paint (`area:
+None`) fotografa a tela inteira para o undo — o app não. ⇒ `examples/mede_o_wet_paint.rs` (portas do
+app, 16 eventos por quadro, vsync a sério porque a sim persegue o relógio de parede) e a metade do
+GESTO no `wet_diag` (`note_stamp`/`take_stamp`): com a caneta em baixo a sim está parada e o log lia
+zero onde o artista sentia o peso. Medido: depois de largar o pincel a água já corre aos `40` passos/s
+com `~2 ms` por quadro; **pintar** é que pesa — raio 250 `~31 ms` (5 dabs × `5,7 ms`), raio 400 `~45`.
+
+### §39.2 — A cura: o depósito e o bico por linhas (`ph2d-wet-paint`)
+
+`trail/deposit.rs` (a lei da célula numa função, `DepositLaw::cell`, e a caminhada por linhas) +
+`brush::stamp_row_shaped`/`shaped_bounds` + `Trail::tip_rows` (a limpeza e a recolha do bico, os passos
+1–2 do transfer). A silhueta e o grão do hospedeiro passam a `brush::CellFn = &(dyn Fn + Sync)`. Pisos
+MEDIDOS: `MIN_CELLS_DEPOSIT = 6 k`, `MIN_CELLS_TIP = 16 k` (`tests/it/measure_deposit_rows.rs`).
+
+| raio | antes | depois |
+|---|---|---|
+| 100 | `~12,5 ms` | `~3,8 ms` |
+| 250 | `~31 ms` | `~8 ms` |
+| 400 | `~45 ms` | `~10,5 ms` |
+
+Gates (`tests/it/deposit_rows.rs`): as duas rotas forçadas byte a byte (cerda e grão) · o **oráculo
+independente** — o caminho do próprio motor, com uma silhueta que reproduz a queda dele, pousa o mesmo
+traço — · o bico de cada transfer contra os laços de ANTES, **congelados no teste** · e as premissas.
+**12 de 12 mutações sangram**; três sobreviveram à 1.ª redacção e cada uma escreveu uma premissa
+(a caixa só recortada à direita; a recolha sobre papel sem tinta assente; uma só transferência, com o
+bico ainda limpo). ⚠️ A mutação «saltar a coluna 0 da limpeza» é **equivalente**: a coluna 0 da janela
+nunca fica suja (o dab cabe dentro da meia-largura), e foi trocada por «saltar meia linha».
+`nextest-impacted` `15 707/15 707`, clippy `-D warnings` limpo, a impressão digital da sessão do motor
+inalterada.
+
+### §39.3 — Aberto
+
+- **Os passos 3–4 do transfer** (`~1,9 ms` cada, `~2` por quadro a raio 250) ficam em série: o 3 é uma
+  soma `f64` de ordem fixa e o arrasto do 4 é Gauss-Seidel. Mudá-los muda a tinta ⇒ decisão do dono.
+- **O pen-down** custa `~28–48 ms` no início de cada traço (o 1.º da sessão cria o grid de `~944 MB`);
+  não medido por dentro ainda.
+- A M7 original fica registada como mutante equivalente, não como gate em falta.

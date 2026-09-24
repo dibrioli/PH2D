@@ -120,8 +120,8 @@ impl Engine {
         dir_x: f64,
         dir_y: f64,
         r: f64,
-        sil: Option<&mut dyn FnMut(i32, i32) -> f64>,
-        grain: Option<&mut dyn FnMut(i32, i32) -> f64>,
+        sil: Option<crate::brush::CellFn<'_>>,
+        grain: Option<crate::brush::CellFn<'_>>,
     ) {
         let p = self.sim.gather_params(&self.tuning);
         let (dab, _water_unit) = self.pressure_dab(&p, x, y, b, dir_x, dir_y, r);
@@ -176,8 +176,8 @@ impl Engine {
         dir_x: f64,
         dir_y: f64,
         r: f64,
-        sil: Option<&mut dyn FnMut(i32, i32) -> f64>,
-        grain: Option<&mut dyn FnMut(i32, i32) -> f64>,
+        sil: Option<crate::brush::CellFn<'_>>,
+        grain: Option<crate::brush::CellFn<'_>>,
     ) {
         let p = self.sim.gather_params(&self.tuning);
         let (dab, _water_unit) = self.pressure_dab(&p, x, y, b, dir_x, dir_y, r);

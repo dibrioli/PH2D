@@ -29,9 +29,9 @@ use crate::spec::BrushSpec;
 /// exact, and it drags alpha too.
 ///
 /// `wrap` (Tiling) makes the LIFT toroidal per axis: a source pixel past a wrapped edge reads from the
-/// opposite edge (the image is one seamless tile) instead of transparent — without it, smearing across
-/// a tiled seam drags the edge toward alpha (a visible transparent rim). The wrapped WRITE is the
-/// caller's job (it stamps the dab at the wrapped positions).
+/// opposite edge (the image is one seamless tile). Without it the source is CLAMPED to the canvas —
+/// a pixel past the edge reads the edge pixel — so an off-canvas lift never drags transparency in.
+/// The wrapped WRITE is the caller's job (it stamps the dab at the wrapped positions).
 #[allow(clippy::too_many_arguments)]
 #[must_use]
 pub fn smear_dab(
@@ -71,25 +71,28 @@ pub fn smear_dab(
 
     // Lift: snapshot the source pixel (canvas at `dest - step`) for every dest cell. A `wrap` axis
     // reads toroidally (`rem_euclid` → opposite edge) so a tiled seam is seamless; a non-wrap axis
-    // whose source is off-canvas stays transparent-zero (dab rim, falloff ~0 — nil effect).
+    // whose source is off-canvas reads the EDGE pixel (`clamp` — "extend, never a hole", the law the
+    // warp-field Smear already follows in `bilinear_clamped`).
+    //
+    // ⚠️ It used to stay transparent-zero, on the premise *«that is only the dab rim, falloff ~0 —
+    // nil effect»*. True mid-canvas, **false whenever the dab CENTRE sits on the edge**, where the
+    // weight is full: dragging from the edge inward painted transparency into an opaque canvas
+    // (report 2026-09-24 — measured through the watercolor Smudge at `r = 24`: `4 845` texels with
+    // alpha `< 255`, min `178`).
     let mut lifted = vec![[0u8; 4]; bw * bh];
     for j in 0..bh {
         let sy = min_y + j as i64 - step_y;
         let sy = if wrap[1] {
             sy.rem_euclid(fh)
-        } else if sy < 0 || sy >= fh {
-            continue;
         } else {
-            sy
+            sy.clamp(0, fh - 1)
         };
         for i in 0..bw {
             let sx = min_x + i as i64 - step_x;
             let sx = if wrap[0] {
                 sx.rem_euclid(fw)
-            } else if sx < 0 || sx >= fw {
-                continue;
             } else {
-                sx
+                sx.clamp(0, fw - 1)
             };
             let si = ((sy * fw + sx) * 4) as usize;
             lifted[j * bw + i] = [buf[si], buf[si + 1], buf[si + 2], buf[si + 3]];
@@ -275,19 +278,29 @@ mod tests {
     }
 
     #[test]
-    fn wrapping_smear_reads_across_the_seam_not_transparent() {
-        // Tiling bug fix: a source pixel past a wrapped edge must read from the OPPOSITE edge, not
-        // transparent — else smearing across a seam drags it toward alpha (the reported artifact).
-        // Fully-opaque canvas; a dab at the left edge moving right lifts source from x<0, which wraps
-        // to the right edge. With wrap the seam stays opaque; without it, alpha would drop.
+    fn an_off_canvas_lift_reads_the_edge_and_a_wrapped_one_reads_the_opposite_edge() {
+        // Report 2026-09-24: a dab CENTRED on the edge, dragging inward, lifts from past the edge. The
+        // lift used to stay transparent-zero there («only the rim, nil effect» — false at the
+        // centre, where the weight is full), and painted alpha holes into an opaque canvas.
+        //
+        // Now the two axes answer different questions, and the fixture tells them apart by COLOUR
+        // (alpha alone cannot: both keep the canvas opaque): the left half is A, the right half B.
+        // * wrap  ⇒ the source past the LEFT edge is the RIGHT edge ⇒ the seam pixel becomes B;
+        // * clamp ⇒ the source past the left edge is the left EDGE pixel ⇒ the seam stays A, opaque.
+        const A: [u8; 4] = [200, 20, 20, 255];
+        const B: [u8; 4] = [20, 20, 200, 255];
         let (w, h) = (16u32, 8u32);
-        let mut buf = vec![255u8; (w * h * 4) as usize];
+        let mut buf = canvas(w, h);
+        for y in 0..h {
+            for x in 0..w {
+                set(&mut buf, w, x, y, if x < 8 { A } else { B });
+            }
+        }
         let spec = BrushSpec {
             radius_px: 3.0,
             hardness: 1.0,
             ..Default::default()
         };
-        // With wrap: the left seam stays fully opaque.
         let mut wrapped = buf.clone();
         let _ = smear_dab(
             &mut wrapped,
@@ -300,11 +313,10 @@ mod tests {
             [true, false],
         );
         assert_eq!(
-            px(&wrapped, w, 0, 4)[3],
-            255,
-            "wrapped smear keeps the seam opaque"
+            px(&wrapped, w, 0, 4),
+            B,
+            "wrapped smear lifts from the OPPOSITE edge"
         );
-        // Without wrap: the same stroke drags the seam toward transparent (the bug).
         let _ = smear_dab(
             &mut buf,
             w,
@@ -315,9 +327,30 @@ mod tests {
             1.0,
             [false, false],
         );
+        assert_eq!(
+            px(&buf, w, 0, 4),
+            A,
+            "an un-wrapped lift past the edge reads the EDGE pixel, not the far side"
+        );
         assert!(
-            px(&buf, w, 0, 4)[3] < 255,
-            "un-wrapped smear alpha-holes the seam"
+            buf.as_chunks::<4>().0.iter().all(|p| p[3] == 255),
+            "an off-canvas lift never drags transparency into an opaque canvas"
+        );
+        // The same law on the OTHER axis: a dab centred on the TOP edge dragging down. (A mutation
+        // that put the old skip back on `y` alone survived the horizontal half above.)
+        let _ = smear_dab(
+            &mut buf,
+            w,
+            h,
+            [4.0, -1.0],
+            [4.0, 1.0],
+            &spec,
+            1.0,
+            [false, false],
+        );
+        assert!(
+            buf.as_chunks::<4>().0.iter().all(|p| p[3] == 255),
+            "a lift past the TOP edge reads the edge row, never transparent"
         );
     }
 }

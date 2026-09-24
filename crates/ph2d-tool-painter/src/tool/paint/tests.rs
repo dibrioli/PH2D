@@ -173,6 +173,7 @@ mod watercolor_reserve_cache; // o campo da reserva GUARDADO entre quadros (ADR-
 mod watercolor_seams;
 mod watercolor_selfseam; // a costura do retorno sobre o PROPRIO traco (doc 40): a regua e os gates
 mod watercolor_session;
+mod watercolor_smudge_borda; // o Smudge na borda da tela nao abre transparencia (report 2026-09-24)
 mod watercolor_water;
 
 use super::*;

@@ -539,6 +539,14 @@ pub struct PhysicsBridge {
     health_events: Vec<health::HealthEvent>,
     /// ⭐ **Quem bateu e deve sair da cena** neste dispatch ([`crate::OnHit::Vanish`]).
     damage_spent: Vec<Entity>,
+    /// ⭐⭐ **Os pedidos de vida da tabela de acções À ESPERA do próximo tique** (plano 28, W2b) —
+    /// os verbos `Damage`/`Heal` correm por QUADRO e a vida anda por TIQUE.
+    pedidos_de_vida: Vec<(Entity, health::PedidoDeVida)>,
+    /// ⭐⭐⭐ **A FITA dos pedidos de vida, por TIQUE** — o que faz um scrub devolver a vida exacta.
+    ///
+    /// ⚠️ **Não entra no anel de checkpoints:** ela não é o estado de um tique, é a HISTÓRIA da
+    /// corrida (a irmã da fita de entrada). Um tique VIVO sobrescreve o dele — a regra da irmã.
+    fita_da_vida: BTreeMap<u64, Vec<(Entity, health::PedidoDeVida)>>,
     /// ⭐⭐ **O que cada MOVER bateu neste tique** — a 3.ª fonte de um golpe (plano 28 §8.1).
     ///
     /// ⚠️ **Por TIQUE**, e limpo no topo dos controladores: é lido pela vida DEPOIS do passo do

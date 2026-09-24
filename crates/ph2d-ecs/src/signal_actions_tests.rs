@@ -244,6 +244,9 @@ fn so_estes_verbos_leem_o_argumento() {
             SignalVerb::StartTimer | SignalVerb::StopTimer
             // …e aqui é QUANTO somar (TOP-20 #20).
             | SignalVerb::AddToCounter
+            // …e QUANTO ferir ou curar (plano 28, W2b).
+            | SignalVerb::Damage
+            | SignalVerb::Heal
         );
         assert_eq!(
             v.uses_arg(),

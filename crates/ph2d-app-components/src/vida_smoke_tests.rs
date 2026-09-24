@@ -156,23 +156,35 @@ fn cada_alvo_morre_ao_tiro_que_a_vida_dele_diz() {
 
 /// ⭐⭐ **A morte é da VIDA, e não de uma tabela** — a diferença que a W2 compra sobre a cena do
 /// golpe (#24), onde cada alvo tinha duas linhas `Destroy`.
+///
+/// ⚠️ **Desde a W2b o roxo TEM tabela** (o veneno e a cura) — o que se afirma é que **nenhuma** linha
+/// de alvo nenhum é um `Destroy`, e que só o roxo tem tabela, com exactamente as duas linhas dele.
 #[test]
 fn nenhum_alvo_precisa_de_tabela_para_morrer() {
     let mut sim = mundo();
     let w = sim.world_mut();
     let mut q = w.query::<(&Name, &Health, Option<&ph2d_ecs::SignalActions>)>();
-    let alvos: Vec<(String, bool)> = q
+    let alvos: Vec<(String, Option<ph2d_ecs::SignalActions>)> = q
         .iter(w)
-        .map(|(n, _, t)| (n.as_str().to_owned(), t.is_some()))
+        .map(|(n, _, t)| (n.as_str().to_owned(), t.cloned()))
         .collect();
     assert_eq!(
         alvos.len(),
         ALVOS.len(),
         "a cena tem de ter as quatro receitas: {alvos:?}"
     );
+    for (nome, tabela) in &alvos {
+        let Some(t) = tabela else { continue };
+        assert!(
+            t.0.iter().all(|l| l.verb != ph2d_ecs::SignalVerb::Destroy),
+            "«{nome}» ganhou um `Destroy` — a morte deixou de ser da vida"
+        );
+        assert_eq!(nome, ALVOS[ROXO].0, "só o roxo tem tabela: {nome}");
+        assert_eq!(t, &tabela_do_roxo(), "a tabela do roxo mudou");
+    }
     assert!(
-        alvos.iter().all(|(_, t)| !t),
-        "um alvo ganhou tabela: {alvos:?}"
+        alvos.iter().any(|(_, t)| t.is_some()),
+        "o roxo perdeu a tabela do veneno e da cura"
     );
 }
 
@@ -244,4 +256,125 @@ fn o_que_o_molde_tem_a_copia_tem() {
             "«{nome}»: o molde não tem nem vida nem dano — o gate não mede nada"
         );
     }
+}
+
+/// ⭐⭐⭐ **O veneno fere o roxo e só o relógio DELE o cura** (plano 28, W2b) — o passo (8) do
+/// roteiro, pela CÓPIA que a fábrica faz, pela tabela ([`ph2d_ecs::signal_actions::resolve`]), pela
+/// ponte da tabela ([`crate::signal_actions_bridge::apply`]) e pela da vida.
+///
+/// ⚠️ **Três metades:** o `J` (de outro objecto) tira [`VENENO`] · o sinal da cura vindo de OUTRO
+/// objecto não cura (`From Myself`) · vindo do próprio roxo devolve [`CURA`] e acende o
+/// [`CUROU`], e **com a vida cheia não acende nada** (o roteiro promete-o no passo (9)).
+///
+/// **Mutações que devem sangrar:** a cura em `From Anyone` · o `on_heal` apagado da receita ·
+/// o relógio fora da receita do roxo.
+#[test]
+fn o_veneno_fere_o_roxo_e_so_o_relogio_dele_o_cura() {
+    use ph2d_ecs::signal_actions::{Disparo, resolve};
+    use ph2d_preview_drive::PreviewDrive;
+
+    let mut cena = mundo();
+    let c = copia(&mut cena, ALVOS[ROXO].0);
+    let w = cena.world();
+    let tabela = w
+        .get::<ph2d_ecs::SignalActions>(c)
+        .expect("a cópia do roxo nasceu SEM a tabela — a fábrica não a copia")
+        .clone();
+    let relogio = w
+        .get::<Timers>(c)
+        .expect("a cópia do roxo nasceu SEM o relógio da cura")
+        .clone();
+    // ⛔ **Nem `autostart` nem `repeat`** — a 1.ª redacção tinha os dois e a FOTO mostrou cinco
+    // avisos `cura-lenta` a tapar o topo do canvas aos `3 s` (ver [`SINAL_CURA`]).
+    assert!(
+        relogio.0.iter().any(|t| t.name == RELOGIO_CURA
+            && t.signal == SINAL_CURA
+            && t.duration_us == CURA_US
+            && !t.autostart
+            && !t.repeat),
+        "o relógio da cura não é o do roteiro: {relogio:?}"
+    );
+    let (corpo, forma, vida) = receita(&mut cena, ALVOS[ROXO].0);
+    assert_eq!(vida.on_heal, CUROU, "o roxo não grita ao ser curado");
+
+    let mut sim = SimWorld::new();
+    let alvo = sim
+        .world_mut()
+        .spawn((
+            corpo,
+            forma,
+            vida.clone(),
+            tabela,
+            Transform::from_translation(Vec2::new(X_ALVOS, 0.0)),
+        ))
+        .id();
+    let outro = sim
+        .world_mut()
+        .spawn((Name::new("Heroi"), Transform::from_translation(Vec2::ZERO)))
+        .id();
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    let arvore = ph2d_tags::TagTree::new();
+    let mut ponte = PhysicsBridge::new();
+    let mut drive = PreviewDrive::default();
+    let mut t = 0_u64;
+    ponte.dispatch(&mut sim, true, t);
+
+    let arrancou = std::cell::Cell::new(0_usize);
+    let mut soa = |sim: &mut SimWorld, ponte: &mut PhysicsBridge, nome: &str, quem| {
+        let efeitos = resolve(
+            sim.world_mut(),
+            &arvore,
+            &[Disparo {
+                nome,
+                quem: Some(quem),
+                outro: None,
+            }],
+        );
+        arrancou.set(
+            arrancou.get()
+                + efeitos
+                    .iter()
+                    .filter(|e| e.verb == ph2d_ecs::SignalVerb::StartTimer && e.target == alvo)
+                    .count(),
+        );
+        let r =
+            crate::signal_actions_bridge::apply(sim, &efeitos, &mut drive, &mut |_, _, _| false);
+        for (e, p) in r.pedidos_de_vida {
+            ponte.pede_vida(e, p);
+        }
+        t += 1;
+        ponte.dispatch(sim, true, t);
+        ponte.health_of(alvo).map_or(f64::NAN, |s| s.vida().pontos)
+    };
+    let cheia = f64::from(vida.max);
+
+    assert_eq!(
+        soa(&mut sim, &mut ponte, SINAL_VENENO, outro),
+        cheia - VENENO,
+        "o J não tirou o veneno"
+    );
+    assert_eq!(arrancou.get(), 1, "o veneno não arrancou o relógio da cura");
+    assert_eq!(
+        soa(&mut sim, &mut ponte, SINAL_CURA, outro),
+        cheia - VENENO,
+        "a cura de OUTRO objecto curou o roxo — a linha deixou de ser `From Myself`"
+    );
+    assert_eq!(
+        soa(&mut sim, &mut ponte, SINAL_CURA, alvo),
+        cheia,
+        "o relógio do próprio roxo não o curou"
+    );
+    let sinais = ponte.signal_events(&sim, &arvore);
+    assert!(
+        sinais.iter().any(|s| s.name == CUROU && s.source == alvo),
+        "o `{CUROU}` não se acendeu: {:?}",
+        sinais.iter().map(|s| &s.name).collect::<Vec<_>>()
+    );
+    // ⚠️ A vida está cheia: a cura seguinte não pode gritar.
+    let _ = soa(&mut sim, &mut ponte, SINAL_CURA, alvo);
+    assert!(
+        ponte.health_events().is_empty(),
+        "com a vida cheia a cura produziu factos: {:?}",
+        ponte.health_events()
+    );
 }

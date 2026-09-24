@@ -56,7 +56,10 @@ impl PhysicsBridge {
     /// ensinado a um laço só é um scrub que devolve outra corrida.
     ///
     /// Hoje é a VIDA. `publicar = false` no replay: o estado anda, os factos não saem.
-    pub(super) fn depois_do_passo(&mut self, sim: &SimWorld, publicar: bool) {
-        self.drive_health(sim, publicar);
+    ///
+    /// ⚠️ **O `tick` entra na assinatura** desde a W2b: os pedidos de vida da tabela gravam-se na
+    /// fita por tique, e o replay tem de saber QUAL tique está a refazer.
+    pub(super) fn depois_do_passo(&mut self, sim: &SimWorld, publicar: bool, tick: u64) {
+        self.drive_health(sim, publicar, tick);
     }
 }

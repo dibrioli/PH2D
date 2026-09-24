@@ -77,6 +77,37 @@ fn a_tecla_do_gatilho_nao_e_reclamada_pelo_editor() {
     );
 }
 
+/// ⭐⭐⭐ **E a tecla do VENENO da cena da vida (plano 28, W2b) também não é** — o `J`, a segunda das
+/// três letras sem braço (`H` · `J` · `Q`). ⚠️ A mesma varredura, com o MESMO controlo (o `P`):
+/// sem ele, um `include_str!` para o sítio errado deixava as duas metades verdes a medir nada.
+#[test]
+fn a_tecla_do_veneno_nao_e_reclamada_pelo_editor() {
+    let tecla = ph2d_app_components::vida_smoke::TECLA_VENENO;
+    assert_ne!(
+        tecla,
+        ph2d_app_components::trigger_smoke::TECLA,
+        "o veneno não pode partilhar a tecla do tiro — os dois vivem na MESMA cena"
+    );
+    let letra = char::from(u8::try_from(tecla).expect("keycode ASCII"));
+    assert_eq!(
+        letra.to_string(),
+        ph2d_app_components::vida_smoke::TECLA_VENENO_NOME,
+        "o roteiro nomeia uma tecla e a cena liga outra"
+    );
+    assert!(
+        !DISPATCH.contains(&format!("KEY_KEY_{letra}")),
+        "o `{letra}` passou a ser um verbo do grafo/transporte — re-meça a tecla do veneno"
+    );
+    assert!(
+        !HANDLERS.contains(&format!("KeyCode::Key{letra}")),
+        "o `{letra}` passou a ser um atalho do canvas — idem"
+    );
+    assert!(
+        DISPATCH.contains("KEY_KEY_P") && HANDLERS.contains("KeyCode::KeyP"),
+        "controlo: o `P` deixou de ser reclamado — esta varredura mede outro ficheiro"
+    );
+}
+
 /// ⭐⭐⭐ **O prólogo cria as DUAS acções, e elas estão em estados OPOSTOS** — é isso que faz o
 /// passo (6) do roteiro existir.
 ///

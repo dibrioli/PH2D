@@ -166,7 +166,7 @@ pub const INSP_ACTION_ROW: [NodeId; 16] = [
 /// até 2026-09-09 (*«as actions deveriam ficar num dropdown e não em muitos botões»*, report do
 /// dono): passaram a ser as linhas do popover **sem mudar de significado**, que é o que manteve o
 /// despacho — `position(|&o| o == id)` — intacto.
-pub const INSP_ACTION_VERB: [NodeId; 10] = [
+pub const INSP_ACTION_VERB: [NodeId; 12] = [
     hash_node_id("insp_action_verb_start"),
     hash_node_id("insp_action_verb_stop"),
     hash_node_id("insp_action_verb_show"),
@@ -185,6 +185,9 @@ pub const INSP_ACTION_VERB: [NodeId; 10] = [
     // ⭐⭐⭐ **O `Restart Run`** (o FIM DE JOGO, 2026-09-19), APENDADO pela mesma lei — e escrito no
     // mesmo commit da variante, que é a lição que o `Destroy` deixou uma wave antes.
     hash_node_id("insp_action_verb_restart_run"),
+    // ⭐ **O `Damage` e o `Heal`** (plano 28, W2b), APENDADOS pela mesma lei e no mesmo commit.
+    hash_node_id("insp_action_verb_damage"),
+    hash_node_id("insp_action_verb_heal"),
 ];
 
 /// **As opções do filtro por tag da §11 Physics** (TOP-20 #9, W3c).

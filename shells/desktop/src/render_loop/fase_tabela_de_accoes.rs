@@ -40,7 +40,9 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        let FrameGfx { sim, tags, .. } = FrameGfx::of(gfx);
+        let FrameGfx {
+            sim, tags, physics, ..
+        } = FrameGfx::of(gfx);
         // ⭐⭐⭐ **A ORIGEM VIAJA COM O NOME** (suplente #24, 2026-09-19) — até aqui esta leitura era
         // `.map(|s| s.name)`, e a origem MORRIA no `.map`.
         //
@@ -116,5 +118,10 @@ impl crate::App {
         // uma pergunta só, e quem a responde é o dreno da `fase_fabrica_e_morte`, que corre por
         // último.
         *recomecar |= r.recomecar;
+        // ⭐⭐⭐ **E os pedidos de VIDA vão à PONTE** (plano 28, W2b), que os aplica no próximo tique
+        // e os grava na fita por tique — a única forma de um scrub os refazer.
+        for (alvo, pedido) in r.pedidos_de_vida {
+            physics.pede_vida(alvo, pedido);
+        }
     }
 }

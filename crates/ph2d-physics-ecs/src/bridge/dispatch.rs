@@ -200,7 +200,7 @@ impl PhysicsBridge {
                     // ⭐⭐⭐ E as VIDAS deste tique (plano 28 §8.2) — DEPOIS do passo, porque um golpe
                     // lê o contacto que o passo acabou de produzir, e pela porta que o laço de
                     // replay também chama.
-                    self.depois_do_passo(sim, true);
+                    self.depois_do_passo(sim, true, self.last_stepped + i + 1);
                     // Diff this tick's touching union against the standing set — the
                     // only place the clock stepped through the transitions, and the one
                     // that catches a touch shorter than a whole tick (W-TickContacts).

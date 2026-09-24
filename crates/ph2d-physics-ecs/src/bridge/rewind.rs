@@ -121,7 +121,7 @@ impl PhysicsBridge {
             // ⭐⭐⭐ E as VIDAS deste tique replayado (plano 28 §8.2) — pela MESMA porta que o laço da
             // frente chama, e é isso que faz um scrub devolver a vida exacta. ⚠️ `false`: o estado
             // anda, os factos não saem (um scrub não é uma tempestade de golpes).
-            self.depois_do_passo(sim, false);
+            self.depois_do_passo(sim, false, from + i + 1);
         }
         // ⚠️ **Um seed que replaya ZERO ticks deixa o memo mentindo.** O ring
         // acerta o alvo em cheio (o `STRIDE` divide o tick pedido), o laço acima

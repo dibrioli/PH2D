@@ -304,3 +304,112 @@ combinada **127 / 127** · mutação **7 de 7** ([arnês](ferramentas/mutacao_vi
 a foto da cena monta os quatro alvos com o Inspector à frente. ⚠️ **O tiro real não se fotografa**
 (o XTest é ignorado na Xwayland virtual): a corrente molde → cópia → golpe → morte está coberta
 pelos gates da cena, que agora passam pela porta de cópia do produto.
+
+---
+
+## §10 — ✅ W2b FECHADA (2026-09-24): os verbos `Damage`/`Heal` da tabela, e a fita da vida
+
+### §10.1 — O que se constrói
+
+- **Dois verbos APENDADOS** ao `SignalVerb` (`Damage`, `Heal` — a posição é a tag do postcard ⇒
+  **`PROJECT_SCHEMA` intocado**, e os três registos também). O argumento é **quanto**, e os dois
+  entram no `uses_arg`. `ALL`, o array de ids do seletor (`INSP_ACTION_VERB`, `10 → 12`) e as
+  chaves de i18n seguem-nos; os gates escritos à mão que os listam (`GRAVADAS`, os rótulos do
+  dropdown) foram estendidos, e é isso que os torna **alcançáveis** pelo artista.
+- **O verbo ANUNCIA, nunca aplica** (o idioma do `Destroy` e do `RestartRun`): o
+  `ActionReport::pedidos_de_vida` leva `(alvo, PedidoDeVida)` e a shell entrega cada um à ponte por
+  `PhysicsBridge::pede_vida`. ⚠️ O `ActionReport` perdeu o `Eq` — ele carrega um `f64`.
+- **Inerte, contado e nunca inventado:** um argumento vazio, ilegível, `≤ 0` ou não finito, ou um
+  alvo sem `Health`, não produz pedido. ⛔ Ler `"abc"` como `0` ou `"-3"` como uma cura seria o
+  «aceita e mente». A recusa está nas DUAS portas (a da tabela e a da ponte), cada uma com gate.
+
+### §10.2 — ⭐⭐⭐ A fita: o pedido é aplicado no PRÓXIMO tique e gravado POR TIQUE
+
+A tabela corre por QUADRO e a vida anda por TIQUE dentro do anel. Um pedido aplicado «agora» seria
+esquecido por um scrub (o replay não o sabia) ou re-aplicado por outro. ⇒ `fita_da_vida:
+BTreeMap<tick, Vec<pedido>>`: o tique VIVO drena a fila e **grava por cima da própria entrada**
+(remove-a se a fila está vazia); o tique de REPLAY lê a fita e **não publica**.
+
+- ⭐⭐ **A regra é a da fita do dedo** (`InputTape::record`): *o artista que volta atrás e toca de
+  novo está a autorar por cima*. Com a regra oposta — a fita a guardar a corrida velha — um tique vivo
+  sem pedidos voltaria a ferir com o dano de uma corrida que já não existe (gate
+  `um_tique_vivo_depois_do_scrub_grava_por_cima`).
+- ⛔ **E nunca trunca o futuro**: a 1.ª redacção apagava a cauda da fita a cada tique vivo, e um
+  salto para a FRENTE (que anda os tiques como um play) destruía os pedidos que o scrub seguinte
+  devia refazer.
+- ⚠️⚠️ **O gate do scrub reprovou primeiro sobre produto CERTO:** ele saltava `5 → 59` para a
+  frente, e um salto para a frente é VIVO ⇒ grava por cima, que é a regra. O scrub que se compara à
+  corrida é **só para trás, em ordem decrescente**, e atravessa os três pedidos dos dois lados
+  (`41`/`40`, `21`/`20`, `11`/`10`).
+- Um relógio **parado** guarda o pedido para o próximo tique: *um golpe da tabela não acontece fora
+  do tempo da corrida*.
+
+### §10.3 — O `On Heal` ganhou o primeiro produtor
+
+`HealthEventKind::Healed { amount }` (o que a vida **ganhou**, nunca o que se pediu) e o braço
+`Healed => on_heal` nos sinais. ⚠️ **A fonte de um facto de verbo é o PRÓPRIO alvo** — um verbo
+não tem quem bata. ⛔ Um morto não é curado, e uma cura com a vida cheia **não produz facto nenhum**
+(`depois > antes`), logo não grita.
+
+### §10.4 — A cena: o `J` do veneno e a cura do roxo — e o que a FOTO apanhou
+
+O roteiro ganhou o passo (8): com o roxo escolhido, o `J` publica `veneno` e ele responde com
+`Damage 5` e arranca um relógio **dele próprio**, que um segundo depois publica `cura-lenta` — e ele
+responde com `Heal 5` e grita `curou`. ⚠️ **O `J` foi medido** (uma das três letras sem braço no
+teclado do editor; gate `a_tecla_do_veneno_nao_e_reclamada_pelo_editor`, com o `P` como controlo), e
+a shell percorre uma lista (`vida_smoke::ACCOES`) em vez de duas chamadas soltas — a catraca da
+shell desce.
+
+- ⛔⛔ **A 1.ª redacção curava a cada segundo, sempre** (`autostart` + `repeat`), e a FOTO mostrou
+  **cinco** avisos `cura-lenta` empilhados no topo do canvas aos `3 s`, a tapar `ai`/`morreu`/`curou`.
+  A causa tem duas metades: o relógio vive no molde **e** na cópia, e **um molde reage a sinais e
+  corre relógios** — lei desta casa que esta cena não muda. ⇒ o relógio passa a ser *one-shot* e
+  **arrancado pelo veneno** (`StartTimer`); ele só fala depois de um toque, e arrancar um relógio
+  que já anda recomeça-o (`timer::start`), logo vários toques seguidos dão uma cura só.
+- ⚠️ **A cura ouve `From Myself`**: com `From Anyone` o relógio do molde curaria a cópia, e o de
+  uma cópia curaria a outra.
+- Gate `o_veneno_fere_o_roxo_e_so_o_relogio_dele_o_cura`, pela CÓPIA da fábrica, pela tabela
+  (`resolve`), pela ponte da tabela (`apply`) e pela da vida: o veneno de outro objecto tira `5` e
+  arranca o relógio · o sinal da cura vindo de OUTRO objecto não cura · vindo do roxo devolve `5` e
+  acende `curou` · com a vida cheia nada. E `nenhum_alvo_precisa_de_tabela_para_morrer` foi
+  reescrito com a premissa nova à vista: **nenhuma linha de alvo nenhum é um `Destroy`**, e só o
+  roxo tem tabela, com exactamente as três linhas dele.
+
+### §10.5 — ⛔⛔ A prova de mutação apanhou TRÊS gates meus a medir nada
+
+A 1.ª corrida do [arnês](ferramentas/mutacao_vida_w2b_2026-09-24.sh) deixou **três VIVAS**:
+
+- **O replay sem a fita e a fita sem gravar — os dois VERDES.** O anel guarda um retrato a cada
+  `STRIDE = 10` tiques e um scrub semeia do mais novo e só REPLAYA o resto; o gate pedia nos tiques
+  `10`/`20`/`40`, **exactamente sobre o passo**, logo cada scrub semeava de um retrato que já tinha o
+  pedido aplicado e **nenhum replay atravessava um pedido**. *A fixtura não continha o fenómeno.*
+  Hoje os pedidos caem em `13`/`27`/`45`, o gate **afirma antes de medir** que nenhum cai no passo,
+  e os alvos ficam dos dois lados de cada um. O gate da regra de gravar por cima tinha a mesma
+  cegueira (pedido no `10`) e ganhou a mutação que a mede (`F7`).
+- **A porta da ponte a aceitar `≤ 0` — VERDE,** porque a lei já recusa o não finito e o negativo e
+  o gate só olhava os PONTOS. ⛔ **Mas a recusa NÃO é redundante:** um golpe de **zero** passa a lei,
+  **sorteia a esquiva** e, com ela certa, anuncia um `Dodged` — um toque da tabela que não feriu a
+  gritar «esquivou». A régua passou a ser a ausência de FACTO sobre um alvo que esquiva sempre, com
+  o CONTROLO de que o mesmo alvo esquiva um golpe válido.
+
+E a ligação da shell (`fase_tabela_de_accoes` → `pede_vida`) **não tinha régua nenhuma** — a fase
+pede a `App` —, e ganhou uma de TEXTO (`os_pedidos_de_vida_chegam_a_ponte`, por `include_str!`).
+
+**Resultado final: 19 de 19 sangram**, com o controlo do filtro e o `RESTAURADO` verde nos cinco
+grupos.
+
+### §10.6 — Portão
+
+`nextest-impacted` **17 818 / 17 818** (corrido sobre a W2b antes das três curas de régua acima; os
+cinco grupos do arnês correram depois, verdes no `RESTAURADO`) · clippy `-D warnings` a zero nas
+seis crates tocadas · fmt · censos da árvore combinada **127 / 127** · a foto da cena monta os
+quatro alvos com o topo LIMPO. ⚠️ **O `J` real não se fotografa** (o XTest é ignorado na Xwayland
+virtual): a corrente tecla → sinal → tabela → ponte → vida está coberta pelo gate da cena, pelo da
+ligação da shell e pelo da tecla.
+
+### §10.7 — ⏳ O que fica (fronteiras nomeadas)
+
+- a bala **só-sensor** (defeito G), que pede que o mover deixe andar um corpo sem forma sólida —
+  herdada da §8.4, ainda aberta;
+- um verbo de vida com alvo por TAG fere cada membro, e cada um grava o seu pedido — **não medido**
+  a N inimigos.

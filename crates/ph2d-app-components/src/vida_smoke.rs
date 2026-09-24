@@ -12,9 +12,17 @@
 //! | roxo | `30` | morre ao **3.º** |
 //! | cinzento (o CONTROLO) | `10`, **mesma equipa do herói** | **nunca** morre — as balas dele não o ferem |
 //!
-//! ⚠️ **Nenhum alvo tem tabela de acções**: a morte é da VIDA, e quem os tira da cena é o dreno da
-//! shell (`mortes_anunciadas`). Na cena do golpe (#24) era uma linha `Destroy` por alvo; aqui é
-//! `0` linhas — *é essa a diferença que a W2 compra*.
+//! ⚠️ **Nenhum alvo precisa de tabela para MORRER**: a morte é da VIDA, e quem os tira da cena é o
+//! dreno da shell (`mortes_anunciadas`). Na cena do golpe (#24) era uma linha `Destroy` por alvo;
+//! aqui é **zero** — *é essa a diferença que a W2 compra*.
+//!
+//! # ⭐⭐ E o roxo tem uma tabela de TRÊS linhas, que é a W2b
+//!
+//! O `J` publica `veneno` e o roxo responde com `Damage 5` e arranca um relógio dele próprio, que um
+//! segundo depois publica `cura-lenta` — e ele responde com `Heal 5`, o primeiro produtor do
+//! `On Heal`.
+//! ⛔ **Nenhuma das duas linhas é um `Destroy`**, e o gate afirma-o: a tabela passou a FERIR e a
+//! CURAR, nunca a matar.
 //!
 //! # ⛔ Os alvos são SÓLIDOS, e a razão foi MEDIDA
 //!
@@ -33,8 +41,8 @@
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{
-    Entity, Factory, Lifetime, MasterRoot, Name, SignalOnAction, Timer, Timers, Transform,
-    Visibility, World,
+    Entity, Factory, Lifetime, MasterRoot, Name, SignalAction, SignalActions, SignalFrom,
+    SignalOnAction, SignalTarget, SignalVerb, Timer, Timers, Transform, Visibility, World,
 };
 use ph2d_physics_ecs::{
     BodyKind, Collider, ColliderShape, Damage, Health, OnHit, ProjectileMotion, RigidBody,
@@ -64,6 +72,48 @@ pub const HEROIS: &str = "herois";
 pub const MONSTROS: &str = "monstros";
 /// O dano de uma bala.
 pub const DANO: f32 = 10.0;
+
+/// ⭐⭐ **O VENENO — a acção, a tecla e o sinal** (plano 28, W2b): o verbo `Damage` da tabela.
+///
+/// ⚠️ **O `J` foi MEDIDO e não escolhido** — é uma das três letras sem braço no teclado do editor
+/// (`H` · `J` · `Q`, ver [`crate::trigger_smoke::TECLA`]); o `Q` já é o tiro, e o `H` é o *Bypass*
+/// do grafo do Motion. Gate `a_tecla_do_veneno_nao_e_reclamada_pelo_editor`, com controlo.
+pub const ACCAO_VENENO: &str = "veneno";
+/// O keycode do `J`.
+pub const TECLA_VENENO: u32 = 0x4A;
+/// ⭐ **As acções que o prólogo cria, com a tecla de cada uma** — o tiro e o veneno. ⚠️ Uma lista
+/// e não duas chamadas soltas: a shell percorre-a, logo uma terceira acção entra por aqui e não por
+/// uma linha nova de composição.
+pub const ACCOES: [(&str, u32); 2] = [
+    (ACCAO, crate::trigger_smoke::TECLA),
+    (ACCAO_VENENO, TECLA_VENENO),
+];
+/// O nome que o `J` tem na tela, para o roteiro.
+pub const TECLA_VENENO_NOME: &str = "J";
+/// O sinal do veneno — o herói publica-o, a tabela do roxo ouve-o.
+pub const SINAL_VENENO: &str = "veneno";
+/// Quanto tira um toque de veneno — **metade** de uma bala, para a descida ler-se diferente do tiro.
+pub const VENENO: f64 = 5.0;
+/// ⭐⭐ **A CURA** — um relógio do próprio roxo que o veneno ARRANCA e que o cura um segundo depois
+/// (o verbo `Heal`).
+///
+/// ⛔⛔ **Ele NÃO é um relógio a repetir, e a razão foi uma FOTO** (2026-09-24): a 1.ª redacção curava
+/// a cada segundo, sempre — e cada disparo é um aviso de sinal no topo do canvas. O molde **e** a
+/// cópia correm o relógio (um molde reage a sinais, lei que esta cena não muda), logo aos `3 s` havia
+/// **cinco** avisos `cura-lenta` empilhados a tapar os que o roteiro nomeia (`ai`, `morreu`,
+/// `curou`). Arrancado pelo veneno, o relógio só fala depois de um toque.
+pub const SINAL_CURA: &str = "cura-lenta";
+/// O nome do relógio — o `StartTimer` da tabela aponta-o por aqui.
+pub const RELOGIO_CURA: &str = "cura";
+/// O atraso da cura, em µs.
+pub const CURA_US: u64 = 1_000_000;
+/// Quanto cura cada tique — igual ao veneno, para um toque ser desfeito por um segundo.
+pub const CURA: f64 = 5.0;
+/// O que o roxo grita ao ser curado — o `On Heal`, cujo primeiro produtor é esta wave.
+pub const CUROU: &str = "curou";
+/// O índice do alvo que leva o veneno e a cura — o ROXO, o de vida `30`, que é o que o passo (7)
+/// manda escolher no Inspector: a vida a subir e a descer vê-se num sítio só.
+pub const ROXO: usize = 2;
 
 const CHAO_RGBA: [f32; 4] = [0.16, 0.18, 0.22, 1.0];
 const HEROI_RGBA: [f32; 4] = [0.35, 0.62, 0.95, 1.0];
@@ -115,12 +165,51 @@ pub const LADO: f32 = 1.0;
 #[derive(bevy_ecs::component::Component, Clone, Copy)]
 struct Pendente(Entity);
 
-/// **A RECEITA de um alvo** — um corpo SÓLIDO com uma VIDA, e nada mais.
+/// **As três linhas do roxo** — o veneno FERE e ARRANCA o relógio; o relógio, um segundo depois,
+/// CURA.
+///
+/// ⚠️ **A cura ouve `From Myself`, e é isso que a torna robusta:** o relógio vive no molde E em
+/// cada cópia, e com `From Anyone` o relógio de um curaria o outro. O veneno ouve `From Anyone`
+/// porque quem o publica é o herói. ⚠️ Arrancar um relógio que já anda **recomeça-o**
+/// (`timer::start`), logo a cura chega um segundo depois do ÚLTIMO toque.
+pub fn tabela_do_roxo() -> SignalActions {
+    let linha = |on: &str, verb, arg: String, from| SignalAction {
+        on: on.to_owned(),
+        target: String::new(),
+        verb,
+        arg,
+        target_by: SignalTarget::Named,
+        from,
+    };
+    SignalActions(vec![
+        linha(
+            SINAL_VENENO,
+            SignalVerb::Damage,
+            VENENO.to_string(),
+            SignalFrom::Anyone,
+        ),
+        linha(
+            SINAL_VENENO,
+            SignalVerb::StartTimer,
+            RELOGIO_CURA.into(),
+            SignalFrom::Anyone,
+        ),
+        linha(
+            SINAL_CURA,
+            SignalVerb::Heal,
+            CURA.to_string(),
+            SignalFrom::Myself,
+        ),
+    ])
+}
+
+/// **A RECEITA de um alvo** — um corpo SÓLIDO com uma VIDA; o ROXO leva também a tabela e o relógio
+/// da cura ([`tabela_do_roxo`]).
 fn receita_do_alvo(
     world: &mut World,
     (nome, vida, equipa, cor, _): (&str, f32, &str, [f32; 4], f32),
 ) -> Entity {
-    world
+    let e = world
         .spawn((
             Name::new(nome),
             MasterRoot,
@@ -143,10 +232,24 @@ fn receita_do_alvo(
                 team: equipa.to_owned(),
                 on_damage: AI.to_owned(),
                 on_death: MORREU.to_owned(),
+                on_heal: CUROU.to_owned(),
                 ..Health::default()
             },
         ))
-        .id()
+        .id();
+    if nome == ALVOS[ROXO].0 {
+        world.entity_mut(e).insert((
+            tabela_do_roxo(),
+            Timers(vec![Timer {
+                name: RELOGIO_CURA.to_owned(),
+                duration_us: CURA_US,
+                signal: SINAL_CURA.to_owned(),
+                autostart: false,
+                repeat: false,
+            }]),
+        ));
+    }
+    e
 }
 
 /// **A RECEITA da bala** — o projéctil da cena do golpe, com um DANO em vez de uma tag.
@@ -246,11 +349,18 @@ fn cena_um(world: &mut World) -> Entity {
                 rotation: ph2d_topdown::rotation::RotationMode::ToMovement,
                 ..TopDownLaw::default()
             }),
-            SignalOnAction(vec![ph2d_ecs::ActionTriggerRow {
-                action: ACCAO.to_owned(),
-                edge: ph2d_ecs::ActionEdge::Press,
-                signal: SINAL.to_owned(),
-            }]),
+            SignalOnAction(vec![
+                ph2d_ecs::ActionTriggerRow {
+                    action: ACCAO.to_owned(),
+                    edge: ph2d_ecs::ActionEdge::Press,
+                    signal: SINAL.to_owned(),
+                },
+                ph2d_ecs::ActionTriggerRow {
+                    action: ACCAO_VENENO.to_owned(),
+                    edge: ph2d_ecs::ActionEdge::Press,
+                    signal: SINAL_VENENO.to_owned(),
+                },
+            ]),
             Factory {
                 master: 0,
                 on_signal: SINAL.to_owned(),
@@ -308,9 +418,14 @@ pub fn montar(world: &mut World, _nivel: u32) -> Montada {
          com a vida inteira\n\
          (7) clique no ROXO: no painel da direita (Inspector) aparece a seccao `Health` com \
          `Now: 30 of 30`. Atire nele e o numero desce 10 por tiro. A bala tem a seccao `Damage`\n\
-         (8) deu errado se: o laranja ou o roxo morrem ao 1.o tiro · o cinzento some · a bala \
-         atravessa um quadrado · carregar no {TECLA_NOME} nao faz nada · ou nenhum quadrado some \
-         depois de muitos tiros"
+         (8) com o ROXO escolhido carregue no {TECLA_VENENO_NOME} (o veneno): `Now` desce {VENENO} \
+         e aparece `{AI}`. Um segundo depois do ULTIMO toque ele sobe {CURA} e aparece `{CUROU}` — \
+         a cura do proprio roxo. Toque varias vezes seguidas: desce a cada toque e sobe so' uma \
+         vez\n\
+         (9) deu errado se: o laranja ou o roxo morrem ao 1.o tiro · o cinzento some · a bala \
+         atravessa um quadrado · carregar no {TECLA_NOME} nao faz nada · nenhum quadrado some \
+         depois de muitos tiros · o {TECLA_VENENO_NOME} nao mexe no `Now` · ou o roxo nunca \
+         volta a subir"
     );
     Montada {
         nivel: 1,

@@ -218,7 +218,7 @@ fn os_outros_verbos_nao_pedem_recomeco() {
             source: autorado,
         })
         .collect();
-    assert_eq!(outros.len(), 9, "piso de populacao: os outros nove");
+    assert_eq!(outros.len(), 11, "piso de populacao: os outros onze");
     let r = apply(&mut sim, &outros, &mut drive, &mut mudo());
     assert!(
         !r.recomecar,
@@ -229,4 +229,79 @@ fn os_outros_verbos_nao_pedem_recomeco() {
         1,
         "controlo positivo: o `Destroy` continua a anunciar a morte da copia"
     );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⭐⭐⭐ **OS VERBOS DA VIDA** (plano 28, W2b, 2026-09-24)
+// ─────────────────────────────────────────────────────────────────────────────
+
+fn vida(verb: SignalVerb, arg: &str, target: Entity, source: Entity) -> SignalEffect {
+    SignalEffect {
+        target,
+        verb,
+        arg: arg.into(),
+        source,
+    }
+}
+
+/// Uma cena com um objecto que TEM vida e outro que não tem.
+fn cena_com_vida() -> (SimWorld, Entity, Entity) {
+    let (mut sim, autorado, nascido) = cena();
+    sim.world_mut()
+        .entity_mut(autorado)
+        .insert(ph2d_physics_ecs::Health::default());
+    (sim, autorado, nascido)
+}
+
+/// ⭐⭐⭐ **O `Damage` e o `Heal` ANUNCIAM um pedido e nunca tocam na vida** — o idioma do `Destroy`
+/// e do `Restart Run`, a terceira vez que ele se usa. A vida anda por TIQUE dentro do anel de
+/// checkpoints; um verbo que a escrevesse aqui seria esquecido pelo primeiro scrub.
+///
+/// **Mutações que devem sangrar:** tirar o braço do `match` · trocar `Cura` por `Dano`.
+#[test]
+fn os_verbos_da_vida_anunciam_um_pedido() {
+    use ph2d_physics_ecs::PedidoDeVida;
+    let (mut sim, alvo, _) = cena_com_vida();
+    let mut drive = PreviewDrive::default();
+    let r = apply(
+        &mut sim,
+        &[
+            vida(SignalVerb::Damage, "12", alvo, alvo),
+            vida(SignalVerb::Heal, " 4.5 ", alvo, alvo),
+        ],
+        &mut drive,
+        &mut mudo(),
+    );
+    assert_eq!(
+        r.pedidos_de_vida,
+        vec![
+            (alvo, PedidoDeVida::Dano(12.0)),
+            (alvo, PedidoDeVida::Cura(4.5))
+        ]
+    );
+    assert_eq!((r.applied, r.inert), (2, 0));
+}
+
+/// ⚠️ **Um número ilegível, nulo, negativo ou não finito é INERTE, e um alvo sem vida também** — o
+/// painel conta-os; a ponte não inventa um valor. ⛔ Ler `"abc"` como `0` ou `"-3"` como uma cura
+/// seria o «aceita e mente».
+///
+/// **Mutações que devem sangrar:** aceitar `≤ 0` · aceitar alvo sem `Health`.
+#[test]
+fn um_argumento_ilegivel_ou_um_alvo_sem_vida_e_inerte() {
+    let (mut sim, alvo, sem_vida) = cena_com_vida();
+    let mut drive = PreviewDrive::default();
+    let mut efeitos: Vec<SignalEffect> = ["", "abc", "-3", "0", "NaN", "inf"]
+        .iter()
+        .map(|a| vida(SignalVerb::Damage, a, alvo, alvo))
+        .collect();
+    efeitos.push(vida(SignalVerb::Heal, "-1", alvo, alvo));
+    efeitos.push(vida(SignalVerb::Damage, "5", sem_vida, sem_vida));
+    let r = apply(&mut sim, &efeitos, &mut drive, &mut mudo());
+    assert!(
+        r.pedidos_de_vida.is_empty(),
+        "passou um pedido inválido: {:?}",
+        r.pedidos_de_vida
+    );
+    assert_eq!((r.applied, r.inert), (0, 8));
 }

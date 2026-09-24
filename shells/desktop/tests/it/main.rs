@@ -177,6 +177,7 @@ mod the_hovered_area_owns_the_clipboard_chord;
 // ficheiros que ele vigia — `asset_texture_door_census_tests.rs`.
 mod o_bind_pergunta_antes_de_prender;
 mod o_reset_de_um_osso_vai_ao_repouso;
+mod os_pedidos_de_vida_chegam_a_ponte;
 mod os_verbos_do_osso_chegam_do_botao_ate_a_lei;
 mod the_input_map_window_can_be_moved;
 mod the_joint_edit_loop_flushes_the_command_queue;

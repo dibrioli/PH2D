@@ -72,7 +72,9 @@ pub enum Som {
 }
 
 /// O que uma aplicação fez — para o log de diagnóstico, e para os gates.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+///
+/// ⚠️ **`PartialEq` e não `Eq`** desde a W2b: o pedido de vida carrega um número real.
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct ActionReport {
     /// Quantos efeitos chegaram a mexer em alguma coisa.
     pub applied: usize,
@@ -98,6 +100,12 @@ pub struct ActionReport {
     /// ⚠️ Como as [`Self::mortes`], ele sai daqui em vez de a ponte agir: *«quando é que a corrida
     /// volta ao princípio?»* é uma pergunta só, e quem responde é a shell.
     pub recomecar: bool,
+    /// ⭐⭐⭐ **O que os verbos `Damage`/`Heal` pediram à VIDA** (plano 28, W2b), pela ordem da tabela.
+    ///
+    /// ⚠️ **Sai daqui em vez de a tabela mexer na vida**, pelo mesmo idioma do [`Self::mortes`]: a
+    /// vida vive na ponte da física e anda por TIQUE, e é a ponte que grava o pedido na fita — a
+    /// única forma de um scrub o refazer. A shell entrega-os ([`ph2d_physics_ecs::PhysicsBridge::pede_vida`]).
+    pub pedidos_de_vida: Vec<(ph2d_ecs::Entity, ph2d_physics_ecs::PedidoDeVida)>,
 }
 
 /// ⭐⭐ **Aplica os efeitos deste quadro.**
@@ -152,12 +160,20 @@ pub fn apply(
             // vez por quadro, DEPOIS de todos os produtores.
             //
             // ⚠️ **Ele não pode ser inerte, e é a única linha deste `match` que devolve `true`
-            // incondicionalmente:** os outros nove podem não ter onde pegar (um alvo sem relógio,
-            // sem som, sem contador), e este não tem alvo nenhum — a corrida existe sempre.
+            // incondicionalmente:** os outros onze podem não ter onde pegar (um alvo sem relógio,
+            // sem som, sem contador, sem vida), e este não tem alvo nenhum — a corrida existe sempre.
             SignalVerb::RestartRun => {
                 report.recomecar = true;
                 true
             }
+            // ⭐⭐⭐ **A VIDA** (plano 28, W2b) — anunciada, como a morte e o recomeço.
+            SignalVerb::Damage | SignalVerb::Heal => match pedido_de_vida(sim, fx) {
+                Some(p) => {
+                    report.pedidos_de_vida.push((fx.target, p));
+                    true
+                }
+                None => false,
+            },
         };
         if ok {
             report.applied += 1;
@@ -166,6 +182,23 @@ pub fn apply(
         }
     }
     report
+}
+
+/// ⭐⭐⭐ **O pedido que um `Damage`/`Heal` faz** — ou `None`, e aí é INERTE.
+///
+/// ⛔ **Inerte, nunca adivinhado:** um `arg` vazio, ilegível, não finito ou `≤ 0` não pede nada
+/// (ao contrário do `AddToCounter`, *«tira vida»* não tem número natural), e um alvo sem
+/// [`ph2d_physics_ecs::Health`] também não — a lei do alvo que não tem o que o verbo escreve.
+fn pedido_de_vida(sim: &SimWorld, fx: &SignalEffect) -> Option<ph2d_physics_ecs::PedidoDeVida> {
+    sim.world().get::<ph2d_physics_ecs::Health>(fx.target)?;
+    let quanto: f64 = fx.arg.trim().parse().ok()?;
+    if !(quanto.is_finite() && quanto > 0.0) {
+        return None;
+    }
+    Some(match fx.verb {
+        SignalVerb::Heal => ph2d_physics_ecs::PedidoDeVida::Cura(quanto),
+        _ => ph2d_physics_ecs::PedidoDeVida::Dano(quanto),
+    })
 }
 
 /// ⭐⭐⭐ **O facto de morte que o [`SignalVerb::Destroy`] produz** — ou `None`, e aí é inerte.

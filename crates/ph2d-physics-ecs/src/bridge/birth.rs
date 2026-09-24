@@ -93,6 +93,8 @@ impl PhysicsBridge {
             health_state: BTreeMap::new(),
             health_events: Vec::new(),
             damage_spent: Vec::new(),
+            pedidos_de_vida: Vec::new(),
+            fita_da_vida: BTreeMap::new(),
             toques_do_mover: Vec::new(),
             player_drop: BTreeMap::new(),
         }
@@ -117,6 +119,10 @@ impl PhysicsBridge {
         // ⭐ E as VIDAS (plano 28, W2): elas são estado da corrida do documento que se deixa, e o
         // `last_stepped = 0` acima recomeça-a do repouso — onde toda vida está no `start`.
         self.health_state.clear();
+        // ⚠️ E os PEDIDOS de vida e a fita deles (W2b): chaveados por `Entity`, e os bits são
+        // reciclados aqui — um pedido de ontem cairia noutra vida.
+        self.pedidos_de_vida.clear();
+        self.fita_da_vida.clear();
         // Entity bits are recycled here, so a held input would start driving
         // SOMEONE ELSE — the same trap that made joint anchors travel by NAME.
         self.clear_player_input();

@@ -72,6 +72,24 @@ pub enum HealthEventKind {
     Dodged,
     /// Morreu neste golpe (uma vez só: um morto não morre outra vez).
     Died,
+    /// ⭐ **Foi curada** (plano 28, W2b) — `amount` é o que a vida GANHOU (depois do tecto).
+    ///
+    /// ⚠️ **APENDADO** e o primeiro produtor do sinal `On Heal`: até aqui aquele campo da [`Health`]
+    /// não tinha quem o acendesse.
+    Healed { amount: f64 },
+}
+
+/// ⭐⭐ **Um pedido de vida da tabela de acções** (plano 28, W2b) — os verbos `Damage`/`Heal`.
+///
+/// ⚠️ **Só números finitos `> 0` chegam aqui** — a porta que o constrói (a tabela) recusa o resto
+/// como INERTE; a ponte volta a conferir, porque a fita pode vir de outro caminho.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum PedidoDeVida {
+    /// Tira `f64` pontos, pelo pipeline inteiro da lei (invencibilidade · esquiva · armadura ·
+    /// escudo), como o `Hit` do oráculo com os dois interruptores ligados.
+    Dano(f64),
+    /// Devolve `f64` pontos (um morto não é curado — a regra da casa).
+    Cura(f64),
 }
 
 /// **Um facto de vida** — quem o sofreu, quem o causou, e o quê.
@@ -111,6 +129,21 @@ impl PhysicsBridge {
         self.health_state.get(&entity)
     }
 
+    /// ⭐⭐ **Um pedido de vida para o PRÓXIMO tique** (plano 28, W2b) — a porta pela qual a tabela
+    /// de acções chega à vida.
+    ///
+    /// ⚠️ **Ele não age agora:** fica à espera do próximo tique VIVO, que o grava na fita por tique
+    /// e o aplica. Num relógio parado ele espera — *um golpe da tabela não pode acontecer fora do
+    /// tempo da corrida*, senão um scrub não o saberia refazer.
+    pub fn pede_vida(&mut self, alvo: Entity, pedido: PedidoDeVida) {
+        let valido = match pedido {
+            PedidoDeVida::Dano(x) | PedidoDeVida::Cura(x) => x.is_finite() && x > 0.0,
+        };
+        if valido {
+            self.pedidos_de_vida.push((alvo, pedido));
+        }
+    }
+
     /// Esquece os factos anunciados — o canal é do DISPATCH (o irmão do
     /// `discard_projectile_deaths`, e pela mesma razão: uma morte no 1.º tique de uma moldura que
     /// deve três não pode ser apagada pelo 2.º).
@@ -123,7 +156,26 @@ impl PhysicsBridge {
     ///
     /// `publicar = false` no laço de REPLAY: o estado anda (é isso que faz um scrub devolver a vida
     /// exacta do tique), os factos não saem.
-    pub(super) fn drive_health(&mut self, sim: &SimWorld, publicar: bool) {
+    ///
+    /// ⭐⭐ **Os pedidos da tabela** (W2b) saem da fila num tique VIVO — que os grava no tique dele,
+    /// **sobrescrevendo** o que lá estava — e da FITA num replay.
+    ///
+    /// ⚠️ **Sobrescreve tique a tique e não corta o futuro**, e é a regra da irmã
+    /// ([`super::tape::InputTape::record`]): *o artista que scrubba para trás e toca de novo está a
+    /// autorar por cima*. Com duas regras diferentes, a fita do dedo e a da vida descreveriam duas
+    /// corridas depois do mesmo gesto.
+    pub(super) fn drive_health(&mut self, sim: &SimWorld, publicar: bool, tick: u64) {
+        let pedidos: Vec<(Entity, PedidoDeVida)> = if publicar {
+            let fila = std::mem::take(&mut self.pedidos_de_vida);
+            if fila.is_empty() {
+                self.fita_da_vida.remove(&tick);
+            } else {
+                self.fita_da_vida.insert(tick, fila.clone());
+            }
+            fila
+        } else {
+            self.fita_da_vida.get(&tick).cloned().unwrap_or_default()
+        };
         let world = sim.world();
         // Quem tem vida — pela ordem determinística do `BTreeMap` de corpos.
         let alvos: Vec<(Entity, Health)> = self
@@ -186,6 +238,34 @@ impl PhysicsBridge {
             });
             st.vida.anda(dt_ms);
             st.vida.pre_quadro(&cfg, Regras::CASA, dt);
+            // ⭐⭐ Os pedidos da TABELA (W2b), pela ordem em que foram feitos — depois do início do
+            // quadro da lei (a regeneração e as marcas) e antes dos golpes do contacto.
+            for &(quem, pedido) in &pedidos {
+                if quem != alvo {
+                    continue;
+                }
+                let antes = st.vida;
+                match pedido {
+                    PedidoDeVida::Dano(quanto) => {
+                        let rng = &mut st.rng;
+                        st.vida
+                            .golpe(&cfg, Regras::CASA, quanto, true, true, &mut || sorteio(rng));
+                    }
+                    PedidoDeVida::Cura(quanto) => st.vida.cura(&cfg, Regras::CASA, quanto),
+                }
+                if publicar {
+                    // ⚠️ **A fonte é o PRÓPRIO alvo** — um verbo não tem quem bata. É o idioma que
+                    // os eventos de player já usam (o `other` deles é ele próprio), e é o que faz
+                    // o `From Myself` da tabela continuar a funcionar.
+                    for kind in factos(&antes, &st.vida) {
+                        self.health_events.push(HealthEvent {
+                            target: alvo,
+                            source: alvo,
+                            kind,
+                        });
+                    }
+                }
+            }
             let fontes = agora.remove(&alvo).unwrap_or_default();
             for &fonte in &fontes {
                 let Some(dano) = world.get::<Damage>(fonte) else {
@@ -324,6 +404,11 @@ fn factos(antes: &Vida, depois: &Vida) -> Vec<HealthEventKind> {
     }
     if !antes.morta() && depois.morta() {
         out.push(HealthEventKind::Died);
+    }
+    if depois.pontos > antes.pontos {
+        out.push(HealthEventKind::Healed {
+            amount: depois.pontos - antes.pontos,
+        });
     }
     out
 }

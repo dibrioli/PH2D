@@ -146,12 +146,35 @@ pub enum SignalVerb {
     ///
     /// ⛔ **Ele NÃO lê o `arg`** — *«recomeça»* não tem parâmetro.
     RestartRun,
+    /// ⭐⭐⭐ **Tira VIDA ao alvo** (plano 28, W2b) — o `arg` é quanto (um número `> 0`).
+    ///
+    /// # ⚠️ Ele ANUNCIA, pela terceira vez este idioma
+    ///
+    /// A vida vive na PONTE da física (o `HealthState`, no anel de checkpoints) e anda por TIQUE; a
+    /// tabela corre por QUADRO. ⇒ o verbo põe um pedido no relatório, a shell entrega-o à ponte, e
+    /// a ponte aplica-o no tique seguinte **e grava-o por tique** — é isso que faz um scrub devolver
+    /// a vida exacta (um pedido aplicado por quadro seria re-aplicado ou esquecido num replay).
+    ///
+    /// ⚠️ **Passa pelo pipeline inteiro da lei** (invencibilidade · esquiva · armadura · escudo),
+    /// como o `Hit` do oráculo com os dois interruptores de fábrica ligados. ⛔ **Não tem equipa**:
+    /// a equipa é uma cerca do CONTACTO (quem bate em quem), e um verbo autorado já escolheu o alvo.
+    ///
+    /// ⛔ **Um `arg` vazio, ilegível ou `≤ 0` é INERTE** — ao contrário do `AddToCounter`, não há um
+    /// valor natural a adivinhar (*«apanhei uma moeda»* é `1`; *«queimei-me»* não tem número).
+    Damage,
+    /// ⭐⭐⭐ **Devolve VIDA ao alvo** (plano 28, W2b) — o irmão do [`Self::Damage`], pelo mesmo
+    /// caminho, e a primeira porta que acende o sinal `On Heal` da vida (antes dele, esse campo não
+    /// tinha produtor nenhum).
+    ///
+    /// ⚠️ **Um morto não é curado** — a regra da casa (`morto_nao_e_final`): tirar alguém da morte
+    /// é o *reviver*, que é outra porta.
+    Heal,
 }
 
 impl SignalVerb {
     /// Todos, em ordem — **a fonte da iteração**. ⛔ Nunca escreva a lista uma segunda vez.
     /// ⚠️ **APPEND-ONLY**: a posição é a tag e ela viaja no ficheiro. Um verbo novo entra no FIM.
-    pub const ALL: [SignalVerb; 10] = [
+    pub const ALL: [SignalVerb; 12] = [
         SignalVerb::StartTimer,
         SignalVerb::StopTimer,
         SignalVerb::Show,
@@ -162,6 +185,8 @@ impl SignalVerb {
         SignalVerb::AddToCounter,
         SignalVerb::Destroy,
         SignalVerb::RestartRun,
+        SignalVerb::Damage,
+        SignalVerb::Heal,
     ];
 
     /// O rótulo que o artista lê, em INGLÊS — um ACESSÓRIO derivado da tabela desde 2026-09-19
@@ -187,6 +212,8 @@ impl SignalVerb {
             SignalVerb::AddToCounter => "ecs.signal_verb.add_to_counter",
             SignalVerb::Destroy => "ecs.signal_verb.destroy",
             SignalVerb::RestartRun => "ecs.signal_verb.restart_run",
+            SignalVerb::Damage => "ecs.signal_verb.damage",
+            SignalVerb::Heal => "ecs.signal_verb.heal",
         }
     }
 
@@ -198,7 +225,11 @@ impl SignalVerb {
     pub const fn uses_arg(self) -> bool {
         matches!(
             self,
-            SignalVerb::StartTimer | SignalVerb::StopTimer | SignalVerb::AddToCounter
+            SignalVerb::StartTimer
+                | SignalVerb::StopTimer
+                | SignalVerb::AddToCounter
+                | SignalVerb::Damage
+                | SignalVerb::Heal
         )
     }
 

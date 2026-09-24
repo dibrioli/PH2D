@@ -86,6 +86,8 @@ fn actions() -> InspectorActionInfo {
             "Add to Counter".into(),
             "Destroy".into(),
             "Restart Run".into(),
+            "Damage".into(),
+            "Heal".into(),
         ],
         selected_count: 1,
     }

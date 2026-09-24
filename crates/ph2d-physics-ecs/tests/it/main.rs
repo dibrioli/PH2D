@@ -191,6 +191,7 @@ mod the_law_asks_footing_not_the_controller;
 mod the_push_is_our_law;
 mod topdown_slide;
 mod transport;
+mod vida_pedida;
 mod walk_surface;
 mod wall_material;
 mod weld;

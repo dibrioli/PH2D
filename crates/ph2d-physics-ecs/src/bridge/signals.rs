@@ -195,6 +195,7 @@ impl PhysicsBridge {
             let nome = match ev.kind {
                 HealthEventKind::Damaged { .. } => &vida.on_damage,
                 HealthEventKind::Died => &vida.on_death,
+                HealthEventKind::Healed { .. } => &vida.on_heal,
                 HealthEventKind::Shielded { .. } | HealthEventKind::Dodged => continue,
             };
             let nome = nome.trim();

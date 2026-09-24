@@ -508,11 +508,9 @@ impl crate::App {
         self.components.smokes.vida_raise = crate::components_scenes::LEVANTA_O_INSPECTOR;
         self.timeline.flags.simulate_physics = true;
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            crate::components_scenes::liga_a_accao(
-                hero,
-                ph2d_app_components::vida_smoke::ACCAO,
-                ph2d_app_components::trigger_smoke::TECLA,
-            );
+            for (nome, tecla) in ph2d_app_components::vida_smoke::ACCOES {
+                crate::components_scenes::liga_a_accao(hero, nome, tecla);
+            }
             hero.panel_visibility.insert("inspector", true);
             crate::components_scenes::abre_a_regua_da_corrida(hero);
             hero.gizmo.selection = Some(montada.escolhido);

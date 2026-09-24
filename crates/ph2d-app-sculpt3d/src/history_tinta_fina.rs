@@ -141,6 +141,60 @@ impl JanelaFina {
     }
 }
 
+/// ⭐⭐ **O PLANO INTEIRO de antes de um `Fill`** — o irmão de peça inteira da
+/// [`JanelaFina`], como a [`super::StrokeUndo::Mask`] é da janela de máscara.
+///
+/// ⚠️ **Sem índices, e é o que o separa da janela:** o `Fill` escreve toda
+/// amostra, e uma janela de `0..n` pagaria `4 B` por amostra só para dizer
+/// *«todas»*. A cerca é a mesma [`IdDoPlano`] — a régua do produto, nem mais
+/// apertada nem mais frouxa — e mais a CONTAGEM, que aqui não é redundante: a
+/// troca é de fatias inteiras, e fatias de tamanhos diferentes não se trocam.
+pub(crate) struct PlanoInteiro {
+    plano: IdDoPlano,
+    cores: Vec<[f32; 3]>,
+}
+
+impl PlanoInteiro {
+    /// O plano inteiro, tal como está.
+    pub(crate) fn de(t: &Tinta) -> Self {
+        Self {
+            plano: IdDoPlano::de(t),
+            cores: t.amostras().to_vec(),
+        }
+    }
+
+    /// ⭐ **A TROCA**, com a mesma lei da [`JanelaFina::troca`]: devolve a
+    /// inversa, ou `None` = largada (o plano já não existe, ou é outro).
+    ///
+    /// ⚠️ **Troca as fatias no sítio** (`swap_with_slice`) em vez de copiar:
+    /// a `16x` isto são ~`300 MB`, e uma cópia pediria outro tanto de pico.
+    pub(crate) fn troca(mut self, tinta: Option<&mut Tinta>) -> Option<Self> {
+        let t = tinta?;
+        if IdDoPlano::de(t) != self.plano || t.amostras().len() != self.cores.len() {
+            return None;
+        }
+        t.amostras_mut().swap_with_slice(&mut self.cores);
+        Some(self)
+    }
+
+    /// Quanto ela segura — a régua do tecto da história.
+    pub(crate) fn bytes(&self) -> usize {
+        self.cores.capacity() * size_of::<[f32; 3]>()
+    }
+}
+
+impl JanelaFina {
+    /// Quanto ela segura — a régua do tecto da história.
+    ///
+    /// ⛔ **Ela não existia, e o tecto não a contava:** o braço do traço no
+    /// [`super::StrokeUndo::footprint_bytes`] terminava num `..`, que engolia o
+    /// campo `finas` em silêncio — um traço fino punha na fila `16 B` por
+    /// amostra tocada que a poda não via.
+    pub(crate) fn bytes(&self) -> usize {
+        self.amostras.capacity() * size_of::<u32>() + self.cores.capacity() * size_of::<[f32; 3]>()
+    }
+}
+
 #[cfg(test)]
 #[path = "history_tinta_fina_tests.rs"]
 mod tests;

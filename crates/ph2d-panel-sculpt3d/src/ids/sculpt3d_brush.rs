@@ -79,6 +79,11 @@ pub const SCULPT3D_STRENGTH_NUM: NodeId = hash_node_id("sculpt3d.strength_num");
 /// categoria do censo dos soltos.
 pub const SCULPT3D_COLOR_SWATCH: NodeId = hash_node_id("sculpt3d.color_swatch");
 
+/// ⭐⭐ **O `Fill`** — o botão logo abaixo da caixa de cor, só com um pincel que
+/// DEPOSITA a cor dele. Entra pela tabela [`crate::event::COMMANDS`], que é quem
+/// o regista e quem o despacha.
+pub const SCULPT3D_COLOR_FILL: NodeId = hash_node_id("sculpt3d.color_fill");
+
 /// Deslocamento do plano, em fração do raio (só os verbos de plano o leem).
 pub const SCULPT3D_PLANE_OFFSET: NodeId = hash_node_id("sculpt3d.plane_offset");
 

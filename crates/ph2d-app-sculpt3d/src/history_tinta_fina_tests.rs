@@ -6,7 +6,7 @@
 //! a população que nem o arnês de mutação nem o CI correm. *O que ESTES
 //! afirmam é a lei; o que aquele afirma é o elo até à tecla.*
 
-use super::{IdDoPlano, JanelaFina};
+use super::{IdDoPlano, JanelaFina, PlanoInteiro};
 use ph2d_mesh::{Mesh, shapes};
 use ph2d_mesh_colors::Tinta;
 use ph2d_sculpt3d::tinta_fina::TintaDoTraco;
@@ -263,4 +263,94 @@ fn largar_o_degrau_e_re_armar_o_mesmo_nao_tira_o_desfazer() {
         "com dois degraus pelo meio a ranhura já foi ocupada — se isto passar, \
          alguém pôs lá mais do que um plano sem o dizer"
     );
+}
+
+/// ⭐⭐ **GATE — A TROCA DO PLANO INTEIRO É INVOLUTIVA, e a primeira volta
+/// devolve o plano de antes AO BIT.** A entrada do `Fill` carrega o plano de
+/// ANTES; aplicá-la instala-o e devolve o de DEPOIS, que é o que o refazer
+/// instala.
+///
+/// ⚠️ O CONTROLO é o preenchimento ter mudado alguma coisa — sem ele, uma
+/// troca que não fizesse nada passaria sobre dois planos iguais.
+#[test]
+fn a_troca_do_plano_inteiro_e_involutiva() {
+    let mesh = shapes::uv_sphere(8, 12, 1.0);
+    let mut t = plano(&mesh, 2);
+    let antes = t.amostras().to_vec();
+    let entrada = PlanoInteiro::de(&t);
+    assert!(ph2d_sculpt3d::preenche::preenche_plano(&mut t, &mesh, COR).expect("descreve"));
+    let depois = t.amostras().to_vec();
+    assert_ne!(antes, depois, "o controlo: o Fill mudou o plano");
+    let inversa = entrada.troca(Some(&mut t)).expect("o mesmo plano");
+    assert_eq!(
+        t.amostras(),
+        &antes[..],
+        "desfazer devolve o plano de antes, ao bit"
+    );
+    let _ = inversa.troca(Some(&mut t)).expect("o mesmo plano");
+    assert_eq!(
+        t.amostras(),
+        &depois[..],
+        "refazer devolve o preenchido, ao bit"
+    );
+}
+
+/// ⛔⛔ **Um plano inteiro de OUTRO plano é LARGADO e não toca num bit** — a
+/// mesma cerca da janela, pela mesma razão: escrever as cores de antes num
+/// plano de outro degrau é tinta válida no sítio errado.
+#[test]
+fn um_plano_inteiro_de_outro_degrau_e_largado() {
+    let mesh = shapes::uv_sphere(8, 12, 1.0);
+    let entrada = PlanoInteiro::de(&plano(&mesh, 2));
+    let mut outro = plano(&mesh, 3);
+    let antes = outro.amostras().to_vec();
+    assert!(entrada.troca(Some(&mut outro)).is_none());
+    assert_eq!(outro.amostras(), &antes[..]);
+    // E sem plano nenhum (o artista voltou a `Mesh`) também é largada.
+    let entrada = PlanoInteiro::de(&plano(&mesh, 2));
+    assert!(entrada.troca(None).is_none());
+}
+
+/// ⛔⛔ **GATE — O TECTO DA HISTÓRIA CONTA A JANELA FINA de um traço.**
+///
+/// O braço do traço no `footprint_bytes` terminava num `..`, que engolia o
+/// campo `finas`: um traço fino punha na fila `16 B` por amostra tocada que a
+/// poda não via. ⇒ a diferença entre a mesma entrada com e sem a janela é
+/// **exactamente** o peso da janela.
+#[test]
+fn o_tecto_da_historia_conta_a_janela_fina() {
+    let mut mesh = shapes::uv_sphere(12, 16, 1.0);
+    let j = JanelaFina::do_traco(&traco(&mut mesh, Verb::Paint, 2)).expect("pintou amostras");
+    let peso = j.bytes();
+    assert!(peso > 0, "o controlo: a janela pesa");
+    let entrada = |finas| crate::StrokeUndo::Stroke {
+        level: 0,
+        verts: Vec::new(),
+        positions: Vec::new(),
+        masks: None,
+        colors: None,
+        finas,
+    };
+    let com = entrada(Some(j)).footprint_bytes();
+    let sem = entrada(None).footprint_bytes();
+    assert_eq!(com - sem, peso);
+}
+
+/// ⭐ **E a entrada do `Fill` pesa os DOIS planos que carrega** — a `16x` o de
+/// amostras são ~`300 MB`, e é o tecto em bytes que o poda.
+#[test]
+fn a_entrada_do_fill_pesa_os_dois_planos() {
+    let mesh = shapes::uv_sphere(8, 12, 1.0);
+    let t = plano(&mesh, 2);
+    let finas = PlanoInteiro::de(&t);
+    let peso_finas = finas.bytes();
+    assert_eq!(peso_finas, std::mem::size_of_val(t.amostras()));
+    let cores = vec![COR; mesh.vert_count()];
+    let peso_cores = cores.capacity() * size_of::<[f32; 3]>();
+    let e = crate::StrokeUndo::Fill {
+        level: 0,
+        colors: Some(cores),
+        finas: Some(finas),
+    };
+    assert_eq!(e.footprint_bytes(), peso_cores + peso_finas);
 }

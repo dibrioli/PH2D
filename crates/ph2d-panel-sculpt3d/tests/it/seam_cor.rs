@@ -17,6 +17,7 @@
 //! ela nunca produz `Click` e nunca é focável no store. O que prova que ela está
 //! viva é **o selector abrir**, e é isso que estes gates afirmam.
 
+use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_sculpt3d::{
     Sculpt3dIntent, Sculpt3dPanel, Sculpt3dPanelState, Sculpt3dSnapshot, Sculpt3dUi, drain_intents,
@@ -343,6 +344,81 @@ fn um_pincel_que_puxa_a_cor_do_anel_nao_mostra_a_caixa() {
             .any(|(id, _)| *id == ids::SCULPT3D_COLOR_SWATCH),
         "a caixa de cor e' pintada com um pincel que NAO a le' — o artista \
          escolhe uma cor e o barro sai com outra"
+    );
+}
+
+/// ⭐⭐⭐ **GATE — o `Fill` é pintado logo abaixo da caixa, é dono dos
+/// pixels dele, e o dedo no centro chega à shell como UM `ColorFill`.**
+///
+/// ⚠️ **As três metades, e cada uma sozinha é um defeito diferente:** pintado
+/// e não hit-indexado é um botão morto sob o dedo; hit-indexado e sem braço no
+/// `event.rs` é um clique que se consome sem fazer nada; e colado a OUTRO sítio
+/// que não a caixa seria um botão cuja cor o artista não vê ao carregar.
+#[test]
+fn o_fill_esta_colado_a_caixa_e_o_dedo_chega_a_shell() {
+    let (mut host, mut state) = arrange(pintando());
+    let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+    let rect = |alvo| {
+        painted
+            .iter()
+            .rev()
+            .find(|(id, _)| *id == alvo)
+            .map(|(_, r)| *r)
+    };
+    let caixa = rect(ids::SCULPT3D_COLOR_SWATCH).expect("a caixa e' pintada");
+    let fill = rect(ids::SCULPT3D_COLOR_FILL)
+        .expect("o `Fill` nao foi pintado com o pincel de pintura em maos");
+    // Colado: começa abaixo da caixa e a menos de uma fileira dela.
+    let vao = fill.y - (caixa.y + caixa.h);
+    assert!(
+        (0.0..ph2d_tokens::ROW_H_PX).contains(&vao),
+        "o `Fill` nao esta' colado a caixa de cor (vao de {vao} px)"
+    );
+    let (cx, cy) = (fill.x + fill.w * 0.5, fill.y + fill.h * 0.5);
+    assert_eq!(
+        host.hit_at(cx, cy),
+        Some(ids::SCULPT3D_COLOR_FILL),
+        "outra coisa e' dona dos pixels no centro do `Fill`"
+    );
+    let _ = drain_intents();
+    // ⚠️ O arnês devolve o que o `pointer_down` PRODUZIU; entregá-lo ao painel
+    // é o passo seguinte da corrente, e é por isso que ele se faz aqui.
+    let events = host.click_at(cx, cy);
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, WidgetEvent::Click(c) if *c == ids::SCULPT3D_COLOR_FILL)),
+        "o dedo no centro do `Fill` nao produziu Click — ele esta' no indice de \
+         hit mas nao e' focavel no store"
+    );
+    for e in events {
+        let _ = host.apply_panel_event::<Sculpt3dPanel>(&mut state, e);
+    }
+    let intents = drain_intents();
+    assert_eq!(
+        intents
+            .iter()
+            .filter(|i| matches!(i, Sculpt3dIntent::ColorFill))
+            .count(),
+        1,
+        "o dedo no centro do `Fill` nao produziu exactamente um `ColorFill`: {intents:?}"
+    );
+}
+
+/// ⭐ **E um pincel que puxa a cor do ANEL não mostra o `Fill`** — a mesma
+/// cerca da caixa: ele não tem «a cor do pincel» para pôr na peça.
+#[test]
+fn um_pincel_que_puxa_a_cor_do_anel_nao_mostra_o_fill() {
+    let mut ui = Sculpt3dUi::default();
+    ph2d_panel_sculpt3d::state::switch_verb(&mut ui, Verb::Blur);
+    assert!(!ui.brush.verb.deposita_a_cor_do_pincel(), "ANTI-VACUO");
+    let (mut host, mut state) = arrange(ui);
+    let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+    assert!(
+        !painted
+            .iter()
+            .any(|(id, _)| *id == ids::SCULPT3D_COLOR_FILL),
+        "o `Fill` e' pintado com um pincel que nao tem cor propria"
     );
 }
 

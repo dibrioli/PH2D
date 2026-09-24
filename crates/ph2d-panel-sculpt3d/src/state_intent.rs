@@ -120,6 +120,10 @@ pub enum Sculpt3dIntent {
     MaskInvert,
     MaskBlur,
     MaskSharpen,
+    /// ⭐⭐ **O `Fill`: a peça inteira com a cor do pincel**, respeitando a
+    /// máscara. Um comando e não um knob, pela razão do [`Self::BakeAo`]: é um
+    /// gesto que o artista PEDE, e desfaz-se com um `Ctrl+Z` inteiro.
+    ColorFill,
     /// **Recorta a região mascarada numa peça nova** — ver
     /// [`ph2d_mesh::extract_masked`].
     ///

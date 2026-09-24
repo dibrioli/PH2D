@@ -68,6 +68,10 @@ const TINTA_FINA: &str = include_str!("../../ph2d-sculpt3d/src/tinta_fina.rs");
 /// logo ele não se importa com isso.
 const HISTORY: &str = include_str!("history.rs");
 const UNDO: &str = include_str!("undo.rs");
+/// ⭐⭐ O `Fill` (2026-09-24): a cena preenche os DOIS canais e grava o plano
+/// de antes. A prova de comportamento é `#[ignore]` + placa
+/// (`tinta_no_produto_fill.rs`) — a população que nem o arnês nem o CI correm.
+const PREENCHE: &str = include_str!("preenche.rs");
 /// ⭐⭐⭐⭐ **E a CERCA DO DEVICE vive noutra crate ainda** — a
 /// `ph2d-mesh-render`, que é quem fala com a placa. O censo alcança-a pelo
 /// mesmo caminho relativo dos dois do motor, e pela mesma razão: *a cura mora
@@ -399,6 +403,39 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
                 .to_string(),
             TINTA_FINA,
         ),
+        // ⭐⭐ **OS QUATRO DO `Fill`.** Os dois primeiros falham ao contrário um
+        // do outro: sem o F1 o plano fica por pintar e a peça mostra a tinta
+        // velha por cima da nova; sem o F2 o plano é pintado e o `Ctrl+Z` não
+        // o devolve. O F4 é a rede contra o plano emprestado a um traço.
+        (
+            "preenche.rs",
+            "F1 o Fill deixa de preencher o PLANO de tinta fina",
+            "            Some(t) => match ph2d_sculpt3d::preenche::preenche_plano(t, obj.stack.mesh(), cor) {"
+                .to_string(),
+            PREENCHE,
+        ),
+        (
+            "preenche.rs",
+            "F2 o Fill grava a entrada sem o plano de antes",
+            "            finas: if mudou_plano { finas_antes } else { None },".to_string(),
+            PREENCHE,
+        ),
+        (
+            "undo.rs",
+            "F3 o desfazer do Fill deixa de trocar o plano",
+            "                    let inversa = p.troca(obj.tinta.as_mut())?;".to_string(),
+            UNDO,
+        ),
+        (
+            "preenche.rs",
+            "F4 o Fill preenche por baixo de um traco aberto",
+            [
+                "        if self.stroke.tinta_fina.is_some() {",
+                "            return Preenchido::TracoAberto;",
+            ]
+            .join("\n"),
+            PREENCHE,
+        ),
         // ⛔⛔ **AQUI VIVIAM TRÊS ELOS DA P2 NA PLACA** (`P2` no `tinta_gpu.rs`,
         // `P3` e `P4` no `.wgsl`), e eles saíram em 2026-09-24 COM a lei que
         // mediam: o registo por face voltou de `19` para `10` palavras por
@@ -419,12 +456,17 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
 /// busca falhar em voz alta — mas um que devolvesse **tudo** faria a prosa
 /// satisfazer a agulha, e é isso que o [`so_a_prosa`] recusa.
 #[test]
-fn a_cura_da_tinta_fina_esta_ligada_nos_vinte_e_quatro_sitios() {
+fn a_cura_da_tinta_fina_esta_ligada_nos_sitios_todos() {
+    // ⚠️ **O nome deixou de levar a CONTAGEM (2026-09-24):** dois arneses de
+    // mutação filtravam este gate pelo número no nome, e um deles
+    // (`vinte_e_tres`) já não casava nada desde uma renomeação anterior —
+    // *um filtro que casa zero lê-se, num placar, como uma mutação que
+    // sobreviveu*. O piso vive aqui dentro, onde uma renomeação não o apaga.
     let elos = elos();
     assert_eq!(
         elos.len(),
-        24,
-        "a população deste censo são os vinte e quatro elos"
+        28,
+        "a população deste censo são os vinte e oito elos"
     );
 
     for (ficheiro, mutacao, agulha, fonte) in elos {

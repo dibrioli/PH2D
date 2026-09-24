@@ -162,7 +162,7 @@ mod view;
 /// que a mão faz* (aqui) contra *o que ela guarda para poder voltar* (lá).
 mod history;
 
-use history::{Entry, StrokeUndo, legacy_requested, retopo_line};
+use history::{Entry, PlanoInteiro, StrokeUndo, legacy_requested, retopo_line};
 
 use donation::FormRole;
 use donation::FormStamp;
@@ -256,6 +256,10 @@ use drag_kinds::{Drag, TwistSweep};
 mod mask;
 
 use mask::MaskOp;
+
+/// **O `Fill`** — a peça inteira com a cor do pincel. Irmão da [`mask`], e o
+/// corte é o CANAL: lá a máscara, aqui a cor.
+mod preenche;
 
 /// **OS VERBOS DA LISTA** — acrescentar, duplicar, apagar. Filho
 /// pelo motivo dos outros: o corte é de responsabilidade.

@@ -36,7 +36,7 @@ restore() {
 }
 trap restore EXIT
 
-FILTRO='test(/p2_tests|assar_tests|vinte_e_quatro|nivel_base|canto_de_uma_face|dois_lados_de_uma_aresta|ponto_de_uma_face|recusa_nomeia|graduado|payload|igualac|igualada|igualar|abre_uniforme|desarma|uniformiz|v2_abre|area_por_face/)'
+FILTRO='test(/p2_tests|assar_tests|esta_ligada_nos|nivel_base|canto_de_uma_face|dois_lados_de_uma_aresta|ponto_de_uma_face|recusa_nomeia|graduado|payload|igualac|igualada|igualar|abre_uniforme|desarma|uniformiz|v2_abre|area_por_face/)'
 corrida() {
   cargo nextest run -p ph2d-mesh -p ph2d-mesh-colors -p ph2d-mesh-render -p ph2d-app-sculpt3d -E "$FILTRO" 2>&1
 }

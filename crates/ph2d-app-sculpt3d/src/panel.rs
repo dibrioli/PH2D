@@ -558,6 +558,7 @@ impl Sculpt3dScene {
             Sculpt3dIntent::MaskInvert => self.mask_from_panel(MaskOp::Invert),
             Sculpt3dIntent::MaskBlur => self.mask_from_panel(MaskOp::Blur),
             Sculpt3dIntent::MaskSharpen => self.mask_from_panel(MaskOp::Sharpen),
+            Sculpt3dIntent::ColorFill => self.fill_from_panel(),
         }
         None
     }
@@ -569,6 +570,23 @@ impl Sculpt3dScene {
             kind.label(),
             self.objects.len()
         );
+    }
+
+    fn fill_from_panel(&mut self) {
+        use super::preenche::Preenchido;
+        match self.fill_color() {
+            Preenchido::Feito { fina } => eprintln!(
+                "[sculpt3d] fill: a peca inteira com a cor do pincel{} -- Ctrl+Z desfaz",
+                if fina { " (e a tinta fina)" } else { "" }
+            ),
+            Preenchido::NadaMudou => eprintln!(
+                "[sculpt3d] fill: nada a pintar -- a peca esta' toda mascarada ou ja' tem esta cor"
+            ),
+            Preenchido::SemPeca => eprintln!("[sculpt3d] fill: a cena esta' VAZIA"),
+            Preenchido::TracoAberto => {
+                eprintln!("[sculpt3d] fill: recusado a meio de um traco (solte o pincel primeiro)")
+            }
+        }
     }
 
     fn mask_from_panel(&mut self, op: MaskOp) {

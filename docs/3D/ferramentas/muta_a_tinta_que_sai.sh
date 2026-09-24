@@ -30,7 +30,7 @@ restore() {
 }
 trap restore EXIT
 
-FILTRO='test(/assar_tests|canto_de_uma_face|vizinho_de_uma_amostra|ponto_de_uma_face|nivel_base|recusa_nomeia|dois_lados_de_uma_aresta|byte_a_byte_o_de_sempre|vt_dele|material_nao_escurece|fine_paint|export_assado|vinte_e_tres|nao_descreve|cobertura_fica_em_casa/)'
+FILTRO='test(/assar_tests|canto_de_uma_face|vizinho_de_uma_amostra|ponto_de_uma_face|nivel_base|recusa_nomeia|dois_lados_de_uma_aresta|byte_a_byte_o_de_sempre|vt_dele|material_nao_escurece|fine_paint|export_assado|esta_ligada_nos|nao_descreve|cobertura_fica_em_casa/)'
 corrida() {
   cargo nextest run -p ph2d-mesh-colors -p ph2d-mesh -p ph2d-app-sculpt3d -E "$FILTRO" 2>&1
 }

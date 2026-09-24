@@ -76,6 +76,7 @@ pub(crate) const COMMANDS: &[(ph2d_a11y::NodeId, Sculpt3dIntent)] = &[
         crate::ids::SCULPT3D_CLOTH_SET_BASE,
         Sculpt3dIntent::SetClothPersistentBase,
     ),
+    (crate::ids::SCULPT3D_COLOR_FILL, Sculpt3dIntent::ColorFill),
 ];
 
 /// As quatro primitivas e as quatro operações de máscara, na ordem em que o

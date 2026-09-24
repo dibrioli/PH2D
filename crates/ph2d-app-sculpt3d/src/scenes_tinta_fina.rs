@@ -228,6 +228,12 @@ pub(crate) fn announce() {
          [sculpt3d]           formatos so' sabem cor por vertice), e a mensagem de baixo\n\
          [sculpt3d]           avisa que ela ficou para tras.\n\
          [sculpt3d]\n\
+         [sculpt3d]    (10) PINTAR TUDO DE UMA VEZ. Com a marca FINA na peca, escolha outra\n\
+         [sculpt3d]        cor na caixa e carregue `Fill Piece`, logo abaixo dela.\n\
+         [sculpt3d]        -> A peca INTEIRA fica com a cor nova.\n\
+         [sculpt3d]        Carregue `Ctrl+Z` UMA vez.\n\
+         [sculpt3d]        -> A marca volta, e volta FINA -- nao na resolucao da malha.\n\
+         [sculpt3d]\n\
          [sculpt3d]    COMO SABER QUE DEU ERRADO: se no (4) a borda sair igual a' do (2),\n\
          [sculpt3d]    ou se o arame ADENSAR quando voce so' trocou a fileira, PARE e\n\
          [sculpt3d]    reporte. Se a peca ficar PRETA, ou aparecerem faces pretas de\n\
@@ -237,7 +243,8 @@ pub(crate) fn announce() {
          [sculpt3d]    (8) a marca voltar GROSSA, ou a fileira abrir em `Mesh` com uma\n\
          [sculpt3d]    peca que voce gravou fina, PARE e reporte. Se no (9) sair so'\n\
          [sculpt3d]    UM ficheiro em vez de tres, ou se a peca chegar ao outro programa\n\
-         [sculpt3d]    sem cor nenhuma, PARE e reporte. E se o\n\
+         [sculpt3d]    sem cor nenhuma, PARE e reporte. Se no (10) o `Ctrl+Z` trouxer a\n\
+         [sculpt3d]    marca GROSSA, PARE e reporte. E se o\n\
          [sculpt3d]    app FECHAR sozinho em qualquer passo, PARE e mande a linha do\n\
          [sculpt3d]    terminal que comeca por PH2D PANIC -- ela diz onde."
     );

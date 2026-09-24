@@ -650,3 +650,7 @@ fn um_traco_de_cor_sem_vertice_debaixo_do_pincel_deixa_desfazer() {
 /// sonda MEDE*, e as que medem imprimem tabelas sem barra nenhuma.
 #[path = "tinta_no_produto_sondas.rs"]
 mod sondas;
+
+/// ⭐⭐ **O `Fill` pelo caminho do produto** — ver [`fill`].
+#[path = "tinta_no_produto_fill.rs"]
+mod fill;

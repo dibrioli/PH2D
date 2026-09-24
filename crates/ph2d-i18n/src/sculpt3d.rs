@@ -41,6 +41,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // que a amostra diz de si ao leitor de ecrã, e o que o roteiro da cena
         // `=51` nomeia.
         "panel.sculpt3d.color" => "Color",
+        // ⭐⭐ O botão que pinta a peça inteira com a cor do pincel (o `Fill`,
+        // 2026-09-24). O roteiro das cenas `=51` e `=52` nomeia-o.
+        // ⚠️ **`Fill Piece` e não `Fill`:** o PINCEL que enche covas já se
+        // chama `Fill` (`sculpt3d.verb.fill`) e vive na fileira de ferramentas
+        // do MESMO painel — dois controlos com o mesmo nome e gestos
+        // diferentes mandariam o artista ao errado.
+        "panel.sculpt3d.color_fill" => "Fill Piece",
         "panel.sculpt3d.falloff" => "Falloff",
         // ⭐⭐⭐ **A RAZÃO À VISTA** — a fileira da curva é a única que o painel do
         // sculpt pinta SEMPRE (cerca de produto medida e gateada), e três

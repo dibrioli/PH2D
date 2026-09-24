@@ -31,7 +31,12 @@ impl StrokeUndo {
                 positions,
                 masks,
                 colors,
-                ..
+                finas,
+                // ⚠️ O `level` é o ÚNICO campo que não pesa, e é por isso que
+                // ele é nomeado e não engolido por um `..`: um `..` aqui foi
+                // como o canal `finas` ficou fora do tecto (ver
+                // [`super::JanelaFina::bytes`]).
+                level: _,
             } => {
                 verts.capacity() * size_of::<u32>()
                     + positions.capacity() * size_of::<[f32; 3]>()
@@ -44,8 +49,19 @@ impl StrokeUndo {
                     + colors
                         .as_ref()
                         .map_or(0, |x| x.capacity() * size_of::<[f32; 3]>())
+                    + finas.as_ref().map_or(0, super::JanelaFina::bytes)
             }
             Self::Mask { before, .. } => plane(before),
+            Self::Fill {
+                colors,
+                finas,
+                level: _,
+            } => {
+                colors
+                    .as_ref()
+                    .map_or(0, |x| x.capacity() * size_of::<[f32; 3]>())
+                    + finas.as_ref().map_or(0, super::PlanoInteiro::bytes)
+            }
             Self::DroppedLevel(level) => level.bytes(),
             Self::Descended { stamped, .. } => stamped.bytes(),
             Self::ReversedLevel(r) => r.bytes(),

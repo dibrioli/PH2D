@@ -158,6 +158,11 @@ pub use pose_previa::Osso as PoseOsso;
 pub mod kelvinlet;
 pub mod mask_ops;
 mod peso_do_ponto;
+/// ⭐ **O PREENCHIMENTO** (`Fill`) — ver o cabeçalho dele.
+pub mod preenche;
+#[cfg(test)]
+#[path = "preenche_tests.rs"]
+mod preenche_tests;
 mod preview;
 /// **OS KERNELS DA REFERÊNCIA** — o porte 1:1 do SculptGL, `f64` na aritmética
 /// e `f32` no armazenamento, gateado bit a bit contra o JS EXECUTANDO

@@ -286,12 +286,12 @@ impl TintaDoTraco {
                 carimbo[idx as usize] = epoca;
                 local[idx as usize] = u32::try_from(amostras.len()).unwrap_or(u32::MAX);
                 let d = [pos[0] - centro[0], pos[1] - centro[1], pos[2] - centro[2]];
-                let k: f32 = w.iter().zip(m).map(|(a, b)| a * b).sum();
                 amostras.push(Apanhada {
                     idx,
                     pos,
                     nrm: unitario(nrm),
-                    keep: crate::mask_ops::free_weight(k),
+                    // ⭐ A lei partilhada com o `Fill` — ver [`crate::preenche`].
+                    keep: crate::preenche::keep_da_amostra(w, m),
                     dentro: d[0] * d[0] + d[1] * d[1] + d[2] * d[2] <= r2,
                 });
             };
@@ -382,7 +382,7 @@ impl TintaDoTraco {
 }
 
 /// Os pesos bilineares dos quatro cantos, na ordem `a, b, c, d` do percurso.
-fn bilinear(u: f32, v: f32) -> [f32; 4] {
+pub(crate) fn bilinear(u: f32, v: f32) -> [f32; 4] {
     [(1.0 - u) * (1.0 - v), u * (1.0 - v), u * v, (1.0 - u) * v]
 }
 

@@ -423,7 +423,7 @@ fn every_command_reaches_the_shell() {
 }
 
 fn corpo_de_every_command_reaches_the_shell() {
-    let casos: [(ph2d_a11y::NodeId, fn() -> Sculpt3dIntent); 24] = [
+    let casos: [(ph2d_a11y::NodeId, fn() -> Sculpt3dIntent); 25] = [
         (ids::SCULPT3D_DYNTOPO, || Sculpt3dIntent::ToggleDyntopo),
         (ids::SCULPT3D_LEVEL_DOWN, || {
             Sculpt3dIntent::ChangeLevel(false)
@@ -452,10 +452,11 @@ fn corpo_de_every_command_reaches_the_shell() {
         (ids::SCULPT3D_MASK_OP[1], || Sculpt3dIntent::MaskInvert),
         (ids::SCULPT3D_MASK_OP[2], || Sculpt3dIntent::MaskBlur),
         (ids::SCULPT3D_MASK_OP[3], || Sculpt3dIntent::MaskSharpen),
+        (ids::SCULPT3D_COLOR_FILL, || Sculpt3dIntent::ColorFill),
     ];
     assert_eq!(
         casos.len(),
-        24,
+        25,
         "o piso de população: a lista dos comandos de um toque encolheu"
     );
     for (id, faz) in casos {

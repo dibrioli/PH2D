@@ -200,7 +200,24 @@ pub(super) fn paint_cor_do_pincel(
     // número fixo aqui faria a amostra sobrepor-se ao que vem depois exactamente
     // na largura em que o dono trabalha.
     let usado = (goteira.y + goteira.h - y).max(ROW_H_PX);
-    y + usado + ph2d_tokens::control_gap_px()
+    let y = y + usado + ph2d_tokens::control_gap_px();
+    // ⭐⭐ **O `Fill`, colado à cor que ele usa** — a peça inteira com ESTA
+    // cor, respeitando a máscara. ⚠️ Ele vive debaixo da mesma cerca da caixa
+    // (`deposita_a_cor_do_pincel`): um pincel que puxa a cor do anel não tem
+    // «a cor do pincel» para pôr na peça, e um botão ali seria a promessa de
+    // um gesto que não existe.
+    //
+    // ⚠️ O LITERAL da chave pela razão escrita acima para a da caixa: o censo
+    // do roteiro colhe os rótulos por `tr("…")`.
+    let y = super::widgets::command(
+        ctx,
+        crate::ids::SCULPT3D_COLOR_FILL,
+        tr("panel.sculpt3d.color_fill"),
+        x,
+        w,
+        y,
+    );
+    y + ph2d_tokens::control_gap_px()
 }
 
 /// ⭐⭐⭐ **A repartição da linha — os MESMOS dois números que o

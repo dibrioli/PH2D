@@ -84,6 +84,21 @@ pub(super) enum StrokeUndo {
         level: usize,
         before: Option<Vec<f32>>,
     },
+    /// ⭐⭐ **O `Fill` pintou a peça inteira**: o estado anterior é o plano de
+    /// cor INTEIRO e, com a tinta fina armada, o plano de amostras INTEIRO.
+    ///
+    /// ⚠️ **É irmã da [`Self::Mask`] e não uma janela de traço**, pela razão
+    /// que o doc do `mask_op` já escreve: o gesto age na peça toda por
+    /// definição, e uma janela seria uma mentira sobre o que mudou. O `None`
+    /// da cor quer dizer *não havia cor* — desfazer tira o plano, como a
+    /// máscara. ⚠️ E o preço está contado ([`super::history_budget`]): a
+    /// `16x` o plano de amostras pesa ~`300 MB`, e é o tecto em bytes que o
+    /// poda, nunca uma contagem.
+    Fill {
+        level: usize,
+        colors: Option<Vec<[f32; 3]>>,
+        finas: Option<PlanoInteiro>,
+    },
     /// **Um NÍVEL foi acrescentado** — aplicá-la é tirá-lo.
     ///
     /// ⚠️ **E ela deixou de guardar a malha inteira, que é o que a pilha
@@ -252,6 +267,7 @@ mod undo;
 mod history_tinta_fina;
 
 use history_tinta_fina::JanelaFina;
+pub(super) use history_tinta_fina::PlanoInteiro;
 
 /// **OS DOIS REMESHES** — ver [`remesh`]. Irmão (`#[path]`) pelo motivo dos
 /// outros: o corte é de responsabilidade.

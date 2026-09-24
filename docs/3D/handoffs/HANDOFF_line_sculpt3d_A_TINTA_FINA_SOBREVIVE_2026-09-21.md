@@ -3533,3 +3533,8 @@ das faces (grossa antes, fina depois) é load-bearing: com a grossa a escrever p
 | censos da árvore COMBINADA | **127 / 127**, controlo do filtro `12 de 12` |
 | as 10 vassouras sobre os `16` ficheiros do diff | **zero achados NOVOS** — os acusados são as linhas `523`–`3358` do handoff, todas anteriores a este §33 (que começa na `3396`) |
 | `fmt` | limpo |
+
+## §34 — ⭐⭐ O `Fill Piece` → [handoff próprio](HANDOFF_line_sculpt3d_O_FILL_2026-09-24.md)
+
+A metade **1** da ordem *«1 e 2 no mesmo ciclo»*. Handoff próprio porque este já
+tem `205 KB`, o dobro do joelho em que um `Read` deixa de o alcançar.

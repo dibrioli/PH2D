@@ -96,7 +96,9 @@ impl Sculpt3dScene {
         // nível escreve posições certas nos vértices errados sem levantar erro
         // nenhum.
         match entry {
-            StrokeUndo::Stroke { level, .. } | StrokeUndo::Mask { level, .. } => {
+            StrokeUndo::Stroke { level, .. }
+            | StrokeUndo::Mask { level, .. }
+            | StrokeUndo::Fill { level, .. } => {
                 if self.level() != level {
                     self.select_level(level);
                     self.mesh_rebuilt();
@@ -181,6 +183,38 @@ impl Sculpt3dScene {
                 self.piece_mut().uploaded = false;
                 self.edits += 1;
                 StrokeUndo::Mask { level, before: now }
+            }
+            // ⭐⭐ **O `Fill`: dois canais de peça inteira, cada um por si** — a
+            // lei do braço do traço, com a forma da máscara. A cor troca o plano
+            // inteiro (`None` = não havia cor, e desfazer TIRA o plano); as
+            // amostras finas trocam-se no sítio, e uma largada (o plano já não
+            // é aquele) não viaja para a fila oposta — o porquê está na
+            // [`super::history::PlanoInteiro::troca`].
+            StrokeUndo::Fill {
+                level,
+                colors,
+                finas,
+            } => {
+                let obj = self.piece_mut();
+                let colors_now = obj.stack.mesh().colors().map(<[[f32; 3]]>::to_vec);
+                match colors {
+                    Some(c) => obj.stack.mesh_mut().put_colors(c),
+                    None => {
+                        obj.stack.mesh_mut().take_colors();
+                    }
+                }
+                obj.uploaded = false;
+                let finas_now = finas.and_then(|p| {
+                    let inversa = p.troca(obj.tinta.as_mut())?;
+                    obj.tinta_suja = true;
+                    Some(inversa)
+                });
+                self.edits += 1;
+                StrokeUndo::Fill {
+                    level,
+                    colors: colors_now,
+                    finas: finas_now,
+                }
             }
             // Tirar o topo — o nível de baixo nunca foi tocado. O que sai vira a
             // inversa, inteiro.

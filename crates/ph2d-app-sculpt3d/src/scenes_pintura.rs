@@ -149,12 +149,24 @@ pub(crate) fn announce() {
          [sculpt3d]    (7) `Ctrl+Z` algumas vezes.\n\
          [sculpt3d]        -> A tinta volta atras, passo a passo.\n\
          [sculpt3d]\n\
+         [sculpt3d]    (8) PINTAR A PECA INTEIRA. Escolha `Paint` outra vez, escolha uma\n\
+         [sculpt3d]        cor nova na caixa e carregue no botao `Fill Piece`, logo abaixo\n\
+         [sculpt3d]        dela.\n\
+         [sculpt3d]        -> A peca INTEIRA fica com a cor nova, de uma vez.\n\
+         [sculpt3d]    (9) Escolha `Mask` e pinte uma mancha. Volte a `Paint`, escolha\n\
+         [sculpt3d]        OUTRA cor e carregue `Fill Piece` outra vez.\n\
+         [sculpt3d]        -> Tudo muda de cor MENOS a mancha mascarada.\n\
+         [sculpt3d]    (10) `Ctrl+Z` UMA vez.\n\
+         [sculpt3d]        -> A peca inteira volta a cor de antes do (9), de uma so' vez.\n\
+         [sculpt3d]\n\
          [sculpt3d]    COMO SABER QUE DEU ERRADO: se no (2) a peca nao mudar de cor\n\
          [sculpt3d]    nenhuma, confirme que as pistas de cor nao estao todas em 1 (branco\n\
          [sculpt3d]    sobre barro claro nao se ve). Se o `Ctrl+Z` do (7) nao devolver a\n\
          [sculpt3d]    tinta, ou se o (4) nao mudar nada na borda, PARE e reporte.\n\
          [sculpt3d]    Se a cor SUMIR ao trocar de luz no (4-bis), PARE: ate' 20/09 o\n\
-         [sculpt3d]    material de matcap descartava a tinta, e era esse o defeito."
+         [sculpt3d]    material de matcap descartava a tinta, e era esse o defeito.\n\
+         [sculpt3d]    Se no (9) a mancha mascarada mudar de cor, ou se no (10) o\n\
+         [sculpt3d]    `Ctrl+Z` devolver so' um pedaco da peca, PARE e reporte."
     );
 }
 

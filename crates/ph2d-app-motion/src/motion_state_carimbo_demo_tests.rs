@@ -48,7 +48,18 @@ fn a_cena_e_a_cadeia_do_report_mais_a_simulacao_e_nada_mais() {
     assert_eq!(
         doc.graph.nodes().len(),
         9,
-        "nove nos: grid, shape, dup, output + integrate e os quatro campos"
+        "nove nos: grid, shape, dup, output + integrate, o NUCLEO e os tres campos"
+    );
+    // ⭐ O NÚCLEO (o `motion.falloff` invertido) tem de vir ANTES das forças: é ele que faz a
+    // rotação crescer com a distância e o disco não colapsar (ver o doc da `GALAXIA`). Um núcleo
+    // depois delas não pesaria nenhuma, e a galáxia voltava a encolher até um anel.
+    let nucleo = *dos(&doc, "motion.falloff").first().expect("ha' um nucleo");
+    let vortex = *dos(&doc, "force.vortex")
+        .first()
+        .expect("ha' um redemoinho");
+    assert!(
+        entradas_de(&doc, vortex).contains(&(0, nucleo)),
+        "o redemoinho le' o NUCLEO na porta 0"
     );
     let grade = *dos(&doc, "motion.grid").first().expect("ha' uma grelha");
     let forma = *dos(&doc, "source.shape").first().expect("ha' uma forma");
@@ -86,7 +97,7 @@ fn a_cena_e_a_cadeia_do_report_mais_a_simulacao_e_nada_mais() {
         .iter()
         .filter(|n| n.type_name.starts_with("force."))
         .count();
-    assert_eq!(campos, 4, "a galaxia tem quatro campos de forca");
+    assert_eq!(campos, 3, "a galaxia tem tres campos de forca");
     assert!(
         doc.graph
             .edges()
@@ -334,26 +345,52 @@ fn os_instrumentos_de_bisseccao_nao_mudam_a_cena_de_omissao() {
     );
 }
 
-/// ⭐⭐ **A GALÁXIA GIRA E FICA DO TAMANHO DO CAMPO** — a régua que afinou os campos, virada gate.
+/// ⭐⭐ **A GALÁXIA GIRA E NÃO COLAPSA** — a régua que afinou os campos, virada gate.
 ///
-/// Duas metades, porque cada uma sozinha mente:
+/// Três metades, porque cada uma sozinha mente:
 /// - **mexe** (`> 0,3 m` de afastamento médio da grelha de partida): sem ela uma cena com a
 ///   simulação desligada passava — a queixa do dono de 2026-09-23;
-/// - **cabe** (nenhuma estrela a mais de `1,25 ×` o meio-lado do campo de partida): sem ela os
-///   campos atiravam as estrelas para fora, e o passo do roteiro *«afaste até o campo INTEIRO caber
-///   no ecrã»* deixava de ser possível.
+/// - **cabe** (nenhuma estrela a mais de `1,25 ×` o RAIO do canto do campo de partida): sem ela os
+///   campos atiravam as estrelas para fora, e o passo *«afaste até o campo INTEIRO caber»* deixava
+///   de ser possível. ⚠️ É o RAIO e não o meio-lado: um quadrado que GIRA põe o canto em cima do
+///   eixo, e uma régua de Chebyshev acusava a rotação de fuga;
+/// - ⛔⛔ **não COLAPSA** (a INCLINAÇÃO: as estrelas dentro da janela de arranque não mudam mais de
+///   `1 %` entre os 2 s e os 10 s).
+///   **Esta metade não existia e foi o report do dono** (*«estrelas com corner radius de 1 provoca
+///   queda de raw»*, 2026-09-23): a 1.ª galáxia (vortex + ímã + arrasto em aceleração) tinha UMA
+///   órbita de equilíbrio, `r* = (v/k)²/a ≈ 1,7 m`, e o campo inteiro encolhia até ela — `8 957`
+///   estrelas na janela ao arranque, `19 712` aos 10 s, **as `32 761` aos 40 s** (sonda
+///   `sonda_a_galaxia_a_longo_prazo`). O recorte por câmara deixava de ter o que cortar, e cada
+///   estrela de cantos redondos custa `2,5×` os segmentos: o `raw` caía com o TEMPO, e caía mais
+///   com os cantos. *A metade «cabe» ficava verde por cima, porque um colapso é o contrário de uma
+///   fuga.* Aos 10 s a galáxia velha já lia `+120 %`.
 ///
-/// 10 s a 60 Hz pelo `Cook` da CPU (o extremo assenta aos `~4 s`) (a cena vai à CPU de qualquer modo: a estrela é uma forma viva).
+/// ⚠️ **A barra é uma INCLINAÇÃO, e sai do requisito e não de um palpite:** com o núcleo o colapso
+/// passa a ser LENTO (o ímã velho, `0,6`, desvia `+7 %` em 10 s e a 1.ª redacção deste gate, a
+/// `10 %` absolutos, deixou-o passar — mutação SOBREVIVENTE). O requisito é *«a população não
+/// muda mais de `±10 %` numa sessão de smoke de 2 minutos»*, e a deriva medida é recta depois do
+/// arranque ⇒ entre os 2 s e os 10 s ela pode andar no máximo `10 % × 8/120 ≈ 0,7 %`. A barra é
+/// `1 %`, no vale MEDIDO: a galáxia que shipa lê `+0,3 %`; ímã `0,30` → `+1,7 %`; `0,12` →
+/// `−2,0 %`. ⛔ O primeiro segundo fica de fora: ali a janela perde `~1,5 %` em TODAS as variantes
+/// (o arranque, antes de o redemoinho assentar a velocidade), e contá-lo mediria o arranque.
+///
+/// 10 s a 60 Hz pelo `Cook` da CPU (a cena vai à CPU de qualquer modo: a estrela é uma forma viva).
 #[test]
-fn a_galaxia_gira_e_fica_do_tamanho_do_campo() {
+fn a_galaxia_gira_e_nao_colapsa() {
     let (doc, reg, _) = cena();
     let ig = *dos(&doc, "motion.integrate")
         .first()
         .expect("ha' um integrador");
-    let meio_lado = (LADO - 1.0) * VAO / 2.0;
+    let canto = (LADO - 1.0) * VAO / 2.0 * std::f32::consts::SQRT_2;
+    let na_janela = |p: &[[f32; 2]]| {
+        p.iter()
+            .filter(|q| q[0].abs() < JANELA_DE_ARRANQUE[0] && q[1].abs() < JANELA_DE_ARRANQUE[1])
+            .count()
+    };
     let mut cook = ph2d_nodegraph::cook::Cook::new();
     let dt = 1.0 / 60.0;
     let (mut inicio, mut pior, mut andou, mut medidas) = (None, 0.0f32, 0.0f32, 0usize);
+    let (mut janela2, mut janela10) = (0usize, 0usize);
     for tick in 0..=600u32 {
         let t = f64::from(tick) * dt;
         cook.advance_tick(&doc.graph, &reg, t).expect("avanca");
@@ -372,29 +409,44 @@ fn a_galaxia_gira_e_fica_do_tamanho_do_campo() {
             .sum::<f32>()
             / p.len().max(1) as f32;
         andou = andou.max(media);
-        pior = p
-            .iter()
-            .map(|q| q[0].abs().max(q[1].abs()))
-            .fold(pior, f32::max);
+        pior = p.iter().map(|q| q[0].hypot(q[1])).fold(pior, f32::max);
+        let janela = na_janela(p);
+        match tick {
+            120 => janela2 = janela,
+            600 => janela10 = janela,
+            _ => {}
+        }
         medidas += p.len();
         eprintln!(
-            "t={t:>4.1}s afastamento medio {media:.3} m · extremo {pior:.2} m (meio-lado {meio_lado:.2})"
+            "t={t:>4.1}s afastamento medio {media:.3} m · raio max {pior:.2} m (canto {canto:.2}) \
+             · na janela {janela}"
         );
     }
     assert!(
-        medidas as u64 > ESTRELAS,
-        "a régua não viu as estrelas ({medidas})"
+        medidas as u64 > ESTRELAS && janela2 > 1000,
+        "a régua não viu as estrelas ({medidas}, {janela2} na janela)"
     );
     assert!(
         andou > 0.3,
         "a galaxia quase nao se mexeu ({andou:.3} m) -- a simulacao nao corre"
     );
     assert!(
-        pior < 1.25 * meio_lado,
-        "uma estrela chegou a {pior:.2} m do centro, e o campo de partida tem {meio_lado:.2} m de \
-         meio-lado -- o passo de AFASTAR ate' caber tudo deixa de ser possivel"
+        pior < 1.25 * canto,
+        "uma estrela chegou a {pior:.2} m do centro, e o canto do campo de partida esta' a \
+         {canto:.2} m -- o passo de AFASTAR ate' caber tudo deixa de ser possivel"
+    );
+    #[expect(clippy::cast_precision_loss, reason = "contagens de estrelas")]
+    let deriva = janela10 as f32 / janela2 as f32 - 1.0;
+    assert!(
+        deriva.abs() < 0.01,
+        "as estrelas na janela de arranque andaram {:+.1} % entre os 2 s e os 10 s -- a galaxia \
+         colapsa (ou foge), e o `raw` que o dono le' passa a depender de QUANDO ele olha",
+        deriva * 100.0
     );
 }
+
+/// A janela de câmara de arranque, em meios-lados de mundo — a do cabeçalho da cena (`21,8 × 6,8`).
+const JANELA_DE_ARRANQUE: [f32; 2] = [10.9, 3.4];
 
 /// **SONDA: quanto a galáxia custa por tique** (a simulação, sem o carimbo — o carimbo tem a sua
 /// sonda no `motion_carimbo_relogio_probe`). `--release`, com o `loadavg` ao lado.
@@ -426,4 +478,53 @@ fn sonda_custo_da_galaxia() {
         tempos[tempos.len() * 9 / 10],
         load.split_whitespace().next().unwrap_or("?")
     );
+}
+
+/// **SONDA: a galáxia a LONGO prazo** — o gate acima olha 10 s e a foto da app aos `35 s` mostrou
+/// o campo COLAPSADO num fio espiral. Imprime, de 5 em 5 s até 60 s: o raio p50/p90, o extremo, e
+/// quantas estrelas caem dentro da janela de arranque (`21,8 × 6,8`, a do cabeçalho da cena) — que
+/// é o que o recorte por câmara NÃO consegue tirar da placa.
+#[test]
+#[ignore = "sonda, nao um gate"]
+fn sonda_a_galaxia_a_longo_prazo() {
+    let (doc, reg, _) = cena();
+    let ig = *dos(&doc, "motion.integrate")
+        .first()
+        .expect("ha' um integrador");
+    let mut cook = ph2d_nodegraph::cook::Cook::new();
+    let dt = 1.0 / 60.0;
+    for tick in 0..=3600u32 {
+        let t = f64::from(tick) * dt;
+        cook.advance_tick(&doc.graph, &reg, t).expect("avanca");
+        let s = cook.cook(&doc.graph, &reg, ig, t).expect("coze");
+        if tick % 300 != 0 {
+            continue;
+        }
+        let Some(ph2d_nodegraph::attr::Column::Vec2(p)) = s[0].as_stream().get("P") else {
+            panic!("o integrador entrega `P`")
+        };
+        let mut r: Vec<f32> = p.iter().map(|q| q[0].hypot(q[1])).collect();
+        r.sort_by(f32::total_cmp);
+        let dentro = p
+            .iter()
+            .filter(|q| q[0].abs() < JANELA_DE_ARRANQUE[0] && q[1].abs() < JANELA_DE_ARRANQUE[1])
+            .count();
+        eprintln!(
+            "t={t:>4.0}s  raio p50 {:.2}  p90 {:.2}  max {:.2}  dentro da janela {dentro}/{}",
+            r[r.len() / 2],
+            r[r.len() * 9 / 10],
+            r[r.len() - 1],
+            p.len()
+        );
+    }
+}
+
+/// As entradas de um nó, como `(porta, de quem)`.
+fn entradas_de(doc: &MotionDoc, alvo: NodeId) -> Vec<(u16, NodeId)> {
+    doc.graph
+        .edges()
+        .iter()
+        .filter(|e| e.to.0 == alvo)
+        .map(|e| (e.to.1, e.from.0))
+        .collect()
 }

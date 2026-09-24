@@ -413,7 +413,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         "force.vortex",
         "force.attractor",
         "force.curl",
-        "force.drag",
+        "motion.falloff",
     ] {
         reg.manifests()
             .find(|m| m.id == ph2d_nodegraph::node::NodeTypeId::of(tipo))?;
@@ -455,7 +455,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
     // FORMAS e SIMULAÇÃO com campos — doc 103 §1). ⚠️ Ela NÃO estraga a medição desta cena: o que
     // o roteiro compara é a DIFERENÇA de `raw` entre duas corridas (com e sem a cura do carimbo), e
     // o custo da simulação é o MESMO nas duas — cancela-se. A galáxia gira devagar e fica do
-    // tamanho do campo de partida (gate `a_galaxia_gira_e_fica_do_tamanho_do_campo`), senão o
+    // tamanho do campo de partida (gate `a_galaxia_gira_e_nao_colapsa`), senão o
     // passo de AFASTAR até caber tudo deixava de ser possível.
     let ig = simulacao(g, grade)?;
 
@@ -480,31 +480,68 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
     Some(vec![saida])
 }
 
-/// As intensidades dos campos da galáxia — afinadas pela régua que virou o gate
-/// `a_galaxia_gira_e_fica_do_tamanho_do_campo`. O raio é LARGO (maior que o campo inteiro), senão
-/// as estrelas de fora ficam sem puxão e o ruído leva-as (a lição da cena `=16`).
+/// As intensidades dos campos da galáxia — e a LEI que as liga, porque a 1.ª galáxia COLAPSAVA.
+///
+/// ⛔⛔ **A 1.ª redacção (vortex + ímã + arrasto, em aceleração) tinha UMA órbita de equilíbrio**:
+/// com velocidade terminal `v = s_v/k` quase constante e o ímã quase constante, a órbita circular
+/// `v²/r = a` só existe em `r* = (s_v/k)²/s_a ≈ 1,7 m`, e o arrasto leva o campo inteiro até ela.
+/// Medido (sonda `sonda_a_galaxia_a_longo_prazo`): `8 957` estrelas na janela de arranque ao
+/// início, **as `32 761` aos 40 s**, num círculo de `~2 m`. O recorte por câmara deixava de ter o
+/// que cortar, e o `raw` caía com o tempo — e muito mais com cantos redondos (report do dono,
+/// 2026-09-23: *«estrelas com corner radius de 1 provoca queda de raw»*).
+///
+/// ⭐ **A cura é um disco em que TODO raio é equilíbrio** — rotação RÍGIDA:
+/// - o **NÚCLEO** (`motion.falloff` circular, linear, invertido, raio `nucleo`) escreve
+///   `f = d/nucleo`, e as forças a seguir multiplicam-se por ele;
+/// - o **redemoinho** em modo VELOCIDADE-ALVO (`air_resist`) leva cada estrela a
+///   `v = s_v·f = s_v·d/nucleo` (com `alcance ≫ campo`, o `1 − d/alcance` fica `≈ 1`), e o modo
+///   alvo também amortece a velocidade RADIAL — ele é o arrasto;
+/// - o **ímã** dá `a = s_a·d/nucleo`, e a órbita circular pede `v²/d = s_v²·d/nucleo²` ⇒
+///   **`s_a = s_v²/nucleo`**, independente de `d`. O `(1 − d/alcance)` que sobra (`4 %` no canto)
+///   é a única assimetria, e o gate mede-a: as estrelas na janela variam `~1 %` em 120 s.
+///
+/// Uma volta a cada `2π·nucleo/s_v ≈ 53 s`; o ruído (`curl`) dá o mexido fino por cima.
+/// ⚠️ O núcleo cobre o campo (`17 m` contra o canto de `16,5`): fora dele `f = 1`, o ímã passa a
+/// ganhar à órbita e a estrela volta — nunca foge.
 pub(crate) struct Galaxia {
     pub(crate) vortex: f32,
+    pub(crate) resistencia: f32,
     pub(crate) iman: f32,
     pub(crate) ruido: f32,
-    pub(crate) arrasto: f32,
     pub(crate) alcance: f32,
+    pub(crate) nucleo: f32,
 }
 pub(crate) const GALAXIA: Galaxia = Galaxia {
-    vortex: 1.0,
-    iman: 0.6,
+    vortex: 2.0,
+    resistencia: 5.0,
+    // `s_v²/nucleo × (1 − 8/alcance)`, o equilíbrio a meio raio — ver o doc acima.
+    iman: 0.22,
     ruido: 0.6,
-    arrasto: 1.0,
-    alcance: 40.0,
+    alcance: 200.0,
+    nucleo: 17.0,
 };
 
-/// `grade → integrate ← (vortex → attractor → curl → drag) ← pre(integrate)`. Devolve o integrador.
+/// `grade → integrate ← (nucleo → vortex → attractor → curl) ← pre(integrate)`. Devolve o integrador.
+///
+/// ⛔ **Sem `force.drag`, de propósito:** o redemoinho em modo alvo JÁ amortece (é a lei dele,
+/// `a = resistência · (alvo − v)`), e um arrasto a zero seria um nó morto na cena do dono.
 fn simulacao(g: &mut ph2d_nodegraph::graph::Graph, grade: NodeId) -> Option<NodeId> {
     let ig = g.add_node("motion.integrate");
     g.set_pos(ig, Pos { x: 120.0, y: -60.0 });
+    let nucleo = g.add_node("motion.falloff");
+    g.set_param(nucleo, "shape", 0.0);
+    g.set_param(nucleo, "curve", 0.0);
+    g.set_param(nucleo, "radius", GALAXIA.nucleo);
+    g.set_param(nucleo, "invert", 1.0);
     let vortex = g.add_node("force.vortex");
     g.set_param(vortex, "strength", GALAXIA.vortex);
     g.set_param(vortex, "radius", GALAXIA.alcance);
+    g.set_param(vortex, ph2d_node_force_vortex::MODE, 1.0);
+    g.set_param(
+        vortex,
+        ph2d_node_force_vortex::AIR_RESIST,
+        GALAXIA.resistencia,
+    );
     let im = g.add_node("force.attractor");
     g.set_param(im, "strength", GALAXIA.iman);
     g.set_param(im, "radius", GALAXIA.alcance);
@@ -512,11 +549,9 @@ fn simulacao(g: &mut ph2d_nodegraph::graph::Graph, grade: NodeId) -> Option<Node
     g.set_param(curl, "strength", GALAXIA.ruido);
     g.set_param(curl, "scale", 0.15);
     g.set_param(curl, "speed", 0.4);
-    let drag = g.add_node("force.drag");
-    g.set_param(drag, "coefficient", GALAXIA.arrasto);
-    let cadeia = [vortex, im, curl, drag];
+    let cadeia = [nucleo, vortex, im, curl];
     for (i, n) in cadeia.iter().enumerate() {
-        #[expect(clippy::cast_precision_loss, reason = "quatro nós")]
+        #[expect(clippy::cast_precision_loss, reason = "cinco nós")]
         let x = i as f32 * 160.0;
         g.set_pos(*n, Pos { x, y: -220.0 });
     }
@@ -531,11 +566,11 @@ fn simulacao(g: &mut ph2d_nodegraph::graph::Graph, grade: NodeId) -> Option<Node
         };
     liga(g, grade, ig, 0, false)?;
     // O laço que o artista nunca desenha: o estado do tique anterior entra na cadeia de forças.
-    liga(g, ig, vortex, 0, true)?;
+    liga(g, ig, nucleo, 0, true)?;
     for par in cadeia.windows(2) {
         liga(g, par[0], par[1], 0, false)?;
     }
-    liga(g, drag, ig, 1, false)?;
+    liga(g, curl, ig, 1, false)?;
     Some(ig)
 }
 
@@ -551,7 +586,7 @@ pub(super) fn announce() {
         "\n[estrelas] UM CAMPO DE {n} ESTRELAS ({LADO_N} x {LADO_N}) — a cena do seu report\n\
          («usando shape star fps cai»). O `Grid` poe as posicoes e o `Duplicator` veste cada\n\
          uma com a MESMA estrela. As estrelas GIRAM devagar, como uma galaxia: e' uma\n\
-         SIMULACAO com campos de forca (redemoinho, iman, ruido, arrasto) -- a mesma nas duas\n\
+         SIMULACAO com campos de forca (redemoinho, iman, ruido) -- a mesma nas duas\n\
          corridas do passo (4), por isso a comparacao continua justa.\n\
          \n\
          (1) Olhe a BARRA DE BAIXO do ecra. Ela diz `fps`, os milissegundos do quadro,\n    \

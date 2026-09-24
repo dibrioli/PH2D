@@ -108,6 +108,7 @@ pub mod motion_deformadores_probe;
 pub mod motion_delay_smoke;
 /// **A legenda de uma cena de smoke, no canvas** (Enio 2026-08-23) — o rótulo pousa
 /// em cima do caso que ele explica, em vez de num terminal atrás da janela.
+pub mod motion_demo_altura;
 pub mod motion_demo_legend;
 pub mod motion_flip_bake;
 /// A auditoria do grupo do ciclo 8 (as FONTES) — `#[cfg(test)]`, não entra no bin.

@@ -900,6 +900,46 @@ que uma simulação a mais faria a cena *«medir outra coisa»*, e o roteiro com
 `raw` entre duas corridas, onde um custo igual nas duas se cancela. Medido: a simulação custa
 **`2,02 ms`** p50 por tique em `--release` (a `load 29,6`; a leitura calma fica por fazer, como o
 resto dos relógios desta linha). O roteiro deixou de prometer *«os fps ficam nos 60»* (não
-medido) e manda olhar só o `raw`. Gates: `a_galaxia_gira_e_fica_do_tamanho_do_campo` (mexe
+medido) e manda olhar só o `raw`. Gates: `a_galaxia_gira_e_fica_do_tamanho_do_campo` (hoje `a_galaxia_gira_e_nao_colapsa`, ver abaixo) (mexe
 `> 0,3 m` e o extremo fica abaixo de `1,25 ×` o meio-lado do campo de partida — medido `13,74`
 contra `14,6 m`, senão o passo de AFASTAR até caber tudo deixava de ser possível). Mutação 3 de 3.
+
+### ⛔⛔ E ESSA GALÁXIA COLAPSAVA — o report do `Corner Radius` (2026-09-23, no mesmo dia)
+
+O dono devolveu *«estrelas com corner radius de 1 provoca queda de raw»*. O custo dos cantos é o
+que a §5.9.1 já mediu (a estrela passa de `12` para `30` vértices, e o quadro segue os segmentos das
+estrelas **desenhadas**). ⛔ **O que era novo era a população desenhada, e o defeito era meu:** a
+galáxia tinha UMA órbita de equilíbrio (`r* = (s_v/k)²/s_a ≈ 1,7 m`, vortex + ímã + arrasto em
+aceleração) e o arrasto levava o campo inteiro até ela. Medido pela sonda
+`sonda_a_galaxia_a_longo_prazo` (janela de arranque `21,8 × 6,8`):
+
+| t | 0 s | 10 s | 20 s | 40 s | 60 s |
+|---|---:|---:|---:|---:|---:|
+| estrelas na janela (antes) | `8 957` | `19 712` | `28 180` | **`32 757`** | `32 761` |
+| estrelas na janela (hoje) | `8 957` | `8 849` | `8 931` | `8 959` | `9 048` |
+
+⇒ aos 40 s o recorte por câmara já não tinha o que cortar (`3,7×` as estrelas desenhadas), e os
+cantos redondos multiplicavam isso por `2,5×`: o `raw` caía com o TEMPO, e mais com os cantos.
+⚠️ **O gate da galáxia olhava 10 s e media a FUGA** (o extremo), e um colapso é o contrário de uma
+fuga — ficava verde por cima.
+
+⭐ **A cura é um disco em que todo raio é equilíbrio** (rotação rígida): um `motion.falloff`
+circular, linear e invertido (o NÚCLEO, `f = d/17`) à frente das forças; o redemoinho em modo
+VELOCIDADE-ALVO (`v = s_v·f`, e o modo alvo também amortece a velocidade radial — o arrasto saiu,
+seria um nó morto); e o ímã em `s_a = s_v²/núcleo`, que é a condição de órbita circular a TODO raio.
+Uma volta a cada `~53 s`. O gate passou a `a_galaxia_gira_e_nao_colapsa`, com a metade nova a ser uma
+**INCLINAÇÃO** (a população na janela não muda mais de `1 %` entre os 2 s e os 10 s — o requisito de
+`±10 %` numa sessão de 2 min, com a deriva medida recta). ⚠️ A 1.ª redacção dessa metade (`10 %`
+absolutos) deixou **sobreviver** o ímã velho, que com o núcleo colapsa DEVAGAR; o vale medido é
+`+0,3 %` (o que shipa) contra `+1,7 %` / `−2,0 %` / `+7,5 %` dos vizinhos. Mutação **4 de 4**.
+
+⭐ **Instrumento novo: `PH2D_DEMO_ALTURA=<metros>`** abre uma cena do `PH2D_GPU_COOK_DEMO` com a
+câmara nessa altura — o zoom é um gesto de roda que nenhuma corrida sem interface alcança. Ausente
+⇒ o arranque de sempre, ao bit.
+
+⚠️ **O relógio desta resposta NÃO está medido:** a máquina esteve a `load 21`–`65` e a mesma cena leu
+`43` e `113` de `raw` em duas corridas. O que está medido é a CONTAGEM de estrelas desenhadas, que
+não depende da carga. ⏳ Fica **aberta, e é decisão do dono**, a outra alavanca: a barra do LOD da
+forma (`LADO_MAXIMO_PX = 4`) — a tile da estrela erra `≤ 1,1` tons até `32 px`, logo subir a barra
+faria as estrelas do arranque (`~6 px`) irem a tile e os cantos deixarem de custar; o preço é o que
+o doc da constante já escreve (uma tile desce no z para trás dos sprites).

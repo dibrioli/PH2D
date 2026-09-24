@@ -25,6 +25,7 @@ impl crate::App {
             next_import_cell,
             atlas_asset_map,
             motion,
+            camera,
             ..
         } = FrameGfx::of(gfx);
 
@@ -167,6 +168,10 @@ impl crate::App {
             let ok = tools.set_active(&ph2d_editor_core::ToolId::new("motion"));
             if ok {
                 self.title_dirty = true;
+                // A porta de bissecção do zoom (`PH2D_DEMO_ALTURA`) — ver o doc dela.
+                if let Some(h) = ph2d_app_motion::motion_demo_altura::altura_semeada() {
+                    camera.height_world = h;
+                }
             } else {
                 self.demo_tool_forced = false;
                 eprintln!(

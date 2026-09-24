@@ -51,6 +51,23 @@ pub fn caixa_do_botao(
     }
 }
 
+/// ⭐⭐⭐ **Onde começa o que vem DEPOIS de um botão** — a caixa dele mais o vão entre duas linhas.
+///
+/// ⛔⛔ **Report do dono, 2026-09-24, foto com duas setas:** *«sem espaçamento nenhum. corrija»*.
+/// Com os botões na coluna do valor, o `Swap A / B` encostava ao `Collide` e o `Copy Properties`
+/// ao `Delete Joint`: dos `29` sítios, **`11`** avançavam só a altura do botão (`yy += h`), `3`
+/// pela altura de LINHA, `1` por um `Spacing::Sm` escrito à mão e os outros pelo vão da casa. À
+/// largura inteira a falta de vão lia-se como uma barra de botões; na coluna, ao lado de linhas
+/// que têm vão, lê-se como peças coladas.
+///
+/// ⇒ o vão é o mesmo de toda linha ([`ph2d_tokens::control_gap_px`]) e esta porta é a única que o
+/// soma — *a mesma lei da porta de onde o botão fica: decidir no sítio da pintura é como as sete
+/// respostas ao vão entre linhas nasceram* (`the_gap_between_two_rows_is_one_answer`).
+#[must_use]
+pub fn abaixo_do_botao(caixa: Rect) -> f32 {
+    caixa.y + caixa.h + ph2d_tokens::control_gap_px()
+}
+
 #[cfg(test)]
 mod tests {
     use super::caixa_do_botao;
@@ -125,6 +142,16 @@ mod tests {
             na_coluna > 0 && inteiro > 0,
             "a varredura não atravessou a fronteira"
         );
+    }
+
+    /// ⭐ **Depois de um botão vem o vão de TODA linha** — o de `ph2d_tokens::control_gap_px`,
+    /// e não zero (a foto do dono, 2026-09-24: *«sem espaçamento nenhum»*).
+    #[test]
+    fn depois_do_botao_vem_o_vao_de_toda_linha() {
+        let caixa = crate::zones::Rect::new(0.0, 40.0, 100.0, ALTURA);
+        let gap = ph2d_tokens::control_gap_px();
+        assert!(gap > 0.0, "o vão da casa é zero — a régua não mede nada");
+        assert_eq!(super::abaixo_do_botao(caixa), 40.0 + ALTURA + gap);
     }
 
     /// ⛔ **Perguntar «cabe?» NÃO é pintar** — o censo das elisões não pode ver este rótulo.

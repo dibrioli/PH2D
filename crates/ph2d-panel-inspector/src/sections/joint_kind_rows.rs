@@ -200,7 +200,7 @@ pub(super) fn paint_kind_params(
         .visual(store.button_visual(ids::INSP_JOINT_ADD_WHEEL));
         paint_button(&btn, rect, scene, text_system, theme);
         hit_index.register(ids::INSP_JOINT_ADD_WHEEL, rect);
-        yy += ROW_H_PX;
+        yy = ph2d_editor_core::property_row::abaixo_do_botao(rect);
     }
     yy
 }

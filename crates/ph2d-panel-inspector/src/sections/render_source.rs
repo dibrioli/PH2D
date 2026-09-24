@@ -179,7 +179,7 @@ pub(crate) fn paint_render_source_section(
         store,
         scene,
         hit_index,
-        cur_y + reimport_h + SECTION_BOTTOM_PAD_PX,
+        ph2d_editor_core::property_row::abaixo_do_botao(btn_rect) + SECTION_BOTTOM_PAD_PX,
     )
 }
 

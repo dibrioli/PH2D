@@ -102,6 +102,46 @@ fn nenhum_botao_atravessa_a_linha_a_mao() {
     );
 }
 
+/// ⭐⭐ **E o que vem DEPOIS de um botão começa pela porta do vão** — report do dono,
+/// 2026-09-24, foto com duas setas: *«sem espaçamento nenhum. corrija»*. `11` dos `29` sítios
+/// avançavam só a altura do botão e encostavam à linha seguinte; o vão da casa mora hoje na
+/// [`ph2d_editor_core::property_row::abaixo_do_botao`].
+///
+/// ⚠️ A régua é por FICHEIRO e por contagem: cada `caixa_do_botao` tem de ter um
+/// `abaixo_do_botao` — o avanço à mão (`yy += h`) é exactamente o que não o conta.
+#[test]
+fn depois_de_um_botao_o_vao_e_o_da_porta() {
+    let mut maus = Vec::new();
+    let mut total = 0;
+    for entry in fs::read_dir(sections_dir()).expect("sections/ existe") {
+        let path = entry.expect("entrada legível").path();
+        if path.extension().and_then(|e| e.to_str()) != Some("rs") {
+            continue;
+        }
+        let src = fs::read_to_string(&path).expect("ficheiro legível");
+        let caixas = src.matches("property_row::caixa_do_botao(").count();
+        let vaos = src.matches("property_row::abaixo_do_botao(").count();
+        total += vaos;
+        if vaos < caixas {
+            maus.push((
+                path.file_name().unwrap().to_string_lossy().into_owned(),
+                caixas,
+                vaos,
+            ));
+        }
+    }
+    // Piso MEDIDO em 2026-09-24: `29`.
+    assert!(
+        total >= 25,
+        "só {total} avanço(s) pela porta do vão — a porta mudou de nome?"
+    );
+    assert!(
+        maus.is_empty(),
+        "estes ficheiros pintam botões pela porta e avançam à mão (ficheiro, botões, avanços): \
+         {maus:?}\ncura: `ph2d_editor_core::property_row::abaixo_do_botao(caixa)`"
+    );
+}
+
 /// O extractor apanha o idioma e não apanha o que só se parece com ele.
 #[test]
 fn o_extractor_separa_o_idioma() {

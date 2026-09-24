@@ -414,7 +414,7 @@ pub(crate) fn paint_joint_section(
     .visual(store.button_visual(ids::INSP_JOINT_COPY));
     paint_button(&copy, copy_rect, scene, text_system, theme);
     hit_index.register(ids::INSP_JOINT_COPY, copy_rect);
-    yy += h;
+    yy = ph2d_editor_core::property_row::abaixo_do_botao(copy_rect);
     // ⚠️ **O Paste só existe com algo copiado**, e a contagem entra no RÓTULO
     // quando ele vai tocar mais de um: o fan-out é o que o gesto tem de valioso,
     // e um clique que muda dez objetos tem de dizer isso antes de ser clicado
@@ -430,7 +430,7 @@ pub(crate) fn paint_joint_section(
             .visual(store.button_visual(ids::INSP_JOINT_PASTE));
         paint_button(&paste, paste_rect, scene, text_system, theme);
         hit_index.register(ids::INSP_JOINT_PASTE, paste_rect);
-        yy += h;
+        yy = ph2d_editor_core::property_row::abaixo_do_botao(paste_rect);
     }
 
     let btn_rect = ph2d_editor_core::property_row::caixa_do_botao(
@@ -449,7 +449,12 @@ pub(crate) fn paint_joint_section(
     .visual(store.button_visual(ids::INSP_JOINT_REMOVE));
     paint_button(&btn, btn_rect, scene, text_system, theme);
     hit_index.register(ids::INSP_JOINT_REMOVE, btn_rect);
-    fold.finish(store, scene, hit_index, yy + h + SECTION_BOTTOM_PAD_PX)
+    fold.finish(
+        store,
+        scene,
+        hit_index,
+        ph2d_editor_core::property_row::abaixo_do_botao(btn_rect) + SECTION_BOTTOM_PAD_PX,
+    )
 }
 
 #[cfg(test)]

@@ -30,7 +30,7 @@ mod botao;
 /// ⭐ A linha de ESCOLHA — ver [`escolha`].
 pub mod escolha;
 use crate::zones::Rect;
-pub use botao::caixa_do_botao;
+pub use botao::{abaixo_do_botao, caixa_do_botao};
 pub use escolha::paint_choice_row;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;

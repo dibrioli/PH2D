@@ -211,7 +211,7 @@ pub(crate) fn paint_mount_row(
             text_system,
             theme,
         );
-        cur_y += ALTURA_DE_BOTAO;
+        cur_y = ph2d_editor_core::property_row::abaixo_do_botao(btn);
     }
     cur_y + ph2d_tokens::control_gap_px()
 }

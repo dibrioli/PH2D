@@ -379,7 +379,7 @@ pub(crate) fn paint_tags_section(
             text_system,
             theme,
         );
-        cur_y += ALTURA_DE_BOTAO + ph2d_tokens::control_gap_px();
+        cur_y = ph2d_editor_core::property_row::abaixo_do_botao(rect);
     }
 
     fold.finish(store, scene, hit_index, cur_y + SECTION_BOTTOM_PAD_PX)

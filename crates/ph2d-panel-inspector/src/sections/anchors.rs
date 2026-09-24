@@ -332,7 +332,7 @@ fn anchor_editor(
         text_system,
         theme,
     );
-    cur_y + ALTURA_DE_BOTAO
+    ph2d_editor_core::property_row::abaixo_do_botao(rm)
 }
 
 /// Pinta a §12 e devolve o `y` a seguir a ela.
@@ -473,7 +473,7 @@ pub(crate) fn paint_anchors_section(
         text_system,
         theme,
     );
-    cur_y += ALTURA_DE_BOTAO + ph2d_tokens::control_gap_px();
+    cur_y = ph2d_editor_core::property_row::abaixo_do_botao(add);
 
     if let Some(row) = info.rows.get(selected) {
         cur_y = close_section(scene, theme, x, w, cur_y);

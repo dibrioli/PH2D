@@ -493,7 +493,7 @@ fn paint_body_actions(
             .kind(ButtonKind::Default)
             .visual(store.button_visual(id));
         paint_button(&btn, rect, scene, text_system, theme);
-        *yy += h + Spacing::Sm.px();
+        *yy = ph2d_editor_core::property_row::abaixo_do_botao(rect);
         rect
     };
 

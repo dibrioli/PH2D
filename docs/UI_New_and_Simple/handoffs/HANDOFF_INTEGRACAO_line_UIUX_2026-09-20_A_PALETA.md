@@ -3041,6 +3041,36 @@ a folga passa por zero*.
 **Portão:** `nextest-impacted` **`17 699/17 699`** · clippy `-D warnings` zero (os `24` `&tr(…)` de
 empréstimo inútil que a conversão escreveu, curados) · `fmt --check` · censos `12/12`.
 
+## §9-tricies — ⭐⭐ DEPOIS DE UM BOTÃO VEM O VÃO DE TODA LINHA
+
+⛔⛔ **Report do dono, 2026-09-24, foto com duas setas** (o cartão da junta, depois da §9-vicies-novies):
+*«sem espaçamento nenhum. corrija»* — o `Swap A / B` encostado ao `Collide`, e o `Copy Properties`
+encostado ao `Delete Joint`.
+
+⭐ **A causa não era a porta da coluna, era o AVANÇO:** `11` dos `29` sítios que pintam um botão faziam
+`yy += h` (a altura do botão e mais nada) enquanto as linhas de propriedade avançam
+`h + control_gap_px()`. Enquanto o botão atravessava a linha inteira o encosto lia-se como «um bloco de
+botões»; com o botão na coluna do valor, ao lado de um NOME, ele lê-se como o que é — duas linhas sem vão.
+⚠️ *A mudança anterior não criou o defeito: tornou-o legível.*
+
+⇒ porta irmã [`abaixo_do_botao(caixa)`](../../../crates/ph2d-editor-core/src/property_row/botao.rs)
+`= caixa.y + caixa.h + control_gap_px()`, **nos `29` sítios** (não só nos `11`). ⚠️ **O diff contou
+SEIS formas escritas à mão para o mesmo avanço** (`yy += h` ×7 · `h + control_gap_px()` ×11 ·
+`row_pitch_px()` ×3 · `ALTURA_DE_BOTAO` sem vão ×3 · `ROW_H_PX` ×1 · `h + Spacing::Sm` ×1) e **três**
+fins de secção que somavam a almofada directamente à base do botão — *seis maneiras de escrever um
+avanço divergem no dia em que o token mudar, e já divergiam*. O fim de secção passa a
+`fold.finish(…, abaixo_do_botao(btn) + SECTION_BOTTOM_PAD_PX)`, igual às secções que acabam numa linha
+de propriedade (cujo `yy` já traz o vão).
+
+**Gates:** o unitário `depois_do_botao_vem_o_vao_de_toda_linha` (com a guarda de que o token não é zero —
+senão a igualdade seria trivial) e o censo `depois_de_um_botao_o_vao_e_o_da_porta` no mesmo ficheiro do
+censo da coluna: **por ficheiro**, cada `caixa_do_botao` tem de ter um `abaixo_do_botao`, piso `25`
+(medido `29`). **Mutações 2 de 2:** repor `yy += h` num sítio (sangra o censo) · tirar o vão da porta
+(sangra o unitário).
+
+**Portão:** `nextest-impacted` **`17 701/17 701`** · clippy `-D warnings` zero · `fmt --check` · censos
+da árvore combinada `12/12`.
+
 
 ## §11 — O que esta linha recomenda a quem a integrar
 

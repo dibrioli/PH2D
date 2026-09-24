@@ -150,7 +150,7 @@ fn botao_largar(
         text_system,
         theme,
     );
-    y + ALTURA_DE_BOTAO + ph2d_tokens::control_gap_px()
+    ph2d_editor_core::property_row::abaixo_do_botao(rect)
 }
 
 /// **Os avisos, da razão mais ESPECÍFICA para a mais geral.** Devolve o `y` seguinte.

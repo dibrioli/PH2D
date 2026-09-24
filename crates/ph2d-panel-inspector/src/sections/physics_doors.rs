@@ -65,7 +65,7 @@ pub(super) fn paint_empty_face(
     .visual(store.button_visual(ids::INSP_PHYS_ADD));
     paint_button(&btn, btn_rect, scene, text_system, theme);
     hit_index.register(ids::INSP_PHYS_ADD, btn_rect);
-    yy += h;
+    yy = ph2d_editor_core::property_row::abaixo_do_botao(btn_rect);
     // **A TERCEIRA porta** (W-Compound): as duas acima fazem um CORPO; esta faz
     // desta forma mais uma peça do corpo que já existe acima na árvore. Só é
     // oferecida quando há um — uma peça pendurada em nada não é nada, e o
@@ -94,7 +94,7 @@ pub(super) fn paint_empty_face(
         .visual(store.button_visual(ids::INSP_PHYS_ADD_SHAPE));
         paint_button(&btn, rect, scene, text_system, theme);
         hit_index.register(ids::INSP_PHYS_ADD_SHAPE, rect);
-        yy += h;
+        yy = ph2d_editor_core::property_row::abaixo_do_botao(rect);
     }
     // **E a segunda resposta à mesma pergunta** (W-Rig): a porta acima torna
     // ESTE objeto físico; o rig torna o personagem INTEIRO físico e o monta,
@@ -122,7 +122,7 @@ pub(super) fn paint_empty_face(
         .visual(store.button_visual(ids::INSP_PHYS_RIG));
         paint_button(&btn, rect, scene, text_system, theme);
         hit_index.register(ids::INSP_PHYS_RIG, rect);
-        yy += h;
+        yy = ph2d_editor_core::property_row::abaixo_do_botao(rect);
     }
     yy + SECTION_BOTTOM_PAD_PX
 }
@@ -171,7 +171,7 @@ pub(super) fn paint_part_doors(
             .visual(store.button_visual(id));
         paint_button(&btn, rect, scene, text_system, theme);
         hit_index.register(id, rect);
-        yy += h;
+        yy = ph2d_editor_core::property_row::abaixo_do_botao(rect);
     }
     yy + SECTION_BOTTOM_PAD_PX
 }

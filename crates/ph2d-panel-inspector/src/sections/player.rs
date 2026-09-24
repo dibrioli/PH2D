@@ -326,7 +326,7 @@ fn paint_verbs(
             .visual(store.button_visual(ids::INSP_PLAYER_FIT));
         paint_button(&btn, rect, scene, text_system, theme);
         hit_index.register(ids::INSP_PLAYER_FIT, rect);
-        yy += h + ph2d_tokens::control_gap_px();
+        yy = ph2d_editor_core::property_row::abaixo_do_botao(rect);
     }
 
     // **O MESMO piso, uma perna abaixo** (W18) — o espelho exato do botão acima,
@@ -358,7 +358,7 @@ fn paint_verbs(
             .visual(store.button_visual(ids::INSP_PLAYER_FIT_CROUCH));
         paint_button(&btn, rect, scene, text_system, theme);
         hit_index.register(ids::INSP_PLAYER_FIT_CROUCH, rect);
-        yy += h + ph2d_tokens::control_gap_px();
+        yy = ph2d_editor_core::property_row::abaixo_do_botao(rect);
     }
 
     // **A CORRIDA GRAVADA** (W17) — o mesmo desenho do botão acima: *o aviso mora
@@ -400,7 +400,7 @@ fn paint_verbs(
             .visual(store.button_visual(id));
         paint_button(&btn, rect, scene, text_system, theme);
         hit_index.register(id, rect);
-        yy += h + ph2d_tokens::control_gap_px();
+        yy = ph2d_editor_core::property_row::abaixo_do_botao(rect);
     }
 
     let rect = ph2d_editor_core::property_row::caixa_do_botao(
@@ -419,7 +419,7 @@ fn paint_verbs(
     .visual(store.button_visual(ids::INSP_PLAYER_REMOVE));
     paint_button(&btn, rect, scene, text_system, theme);
     hit_index.register(ids::INSP_PLAYER_REMOVE, rect);
-    yy + h + ph2d_tokens::control_gap_px()
+    ph2d_editor_core::property_row::abaixo_do_botao(rect)
 }
 
 /// **Os oito cards de números**, na ordem da tabela — extraído do `paint` por

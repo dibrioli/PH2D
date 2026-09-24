@@ -58,5 +58,5 @@ pub(super) fn paint_empty_face(
     // de espaçamento de 3 px»*), e que esta face vazia nunca chegou a usar porque ela morreu na F3
     // **antes** daquela wave e voltou depois dela. ⛔ Não é regressão: é a face a entrar na escada
     // que os outros 78 sítios já entraram (`1 / 3 / 8`, os três degraus do `spacing.rs`).
-    y + h + ph2d_tokens::control_gap_px()
+    ph2d_editor_core::property_row::abaixo_do_botao(rect)
 }

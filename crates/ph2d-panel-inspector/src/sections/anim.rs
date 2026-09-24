@@ -321,7 +321,7 @@ fn player_block(
         text_system,
         theme,
     );
-    cur_y + ALTURA_DE_BOTAO + ph2d_tokens::control_gap_px()
+    ph2d_editor_core::property_row::abaixo_do_botao(rw)
 }
 
 /// Pinta a §11 e devolve o `y` a seguir a ela.
@@ -418,7 +418,7 @@ pub(crate) fn paint_anim_section(
             store,
             scene,
             hit_index,
-            cur_y + ALTURA_DE_BOTAO + SECTION_BOTTOM_PAD_PX,
+            ph2d_editor_core::property_row::abaixo_do_botao(add) + SECTION_BOTTOM_PAD_PX,
         );
     }
 

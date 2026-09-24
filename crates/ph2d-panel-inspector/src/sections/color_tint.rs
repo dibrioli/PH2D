@@ -401,6 +401,6 @@ fn paint_per_corner_tab(
     .kind(ButtonKind::Default)
     .visual(eq_state);
     paint_button(&eq, eq_rect, scene, text_system, theme);
-    cur_y += btn_h + ph2d_tokens::control_gap_px();
+    cur_y = ph2d_editor_core::property_row::abaixo_do_botao(eq_rect);
     cur_y
 }

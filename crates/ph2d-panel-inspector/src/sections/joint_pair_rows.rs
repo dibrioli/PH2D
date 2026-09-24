@@ -73,7 +73,7 @@ pub(super) fn paint_pair_rows(
         .visual(store.button_visual(ids::INSP_JOINT_SWAP));
     paint_button(&btn, btn_rect, scene, text_system, theme);
     hit_index.register(ids::INSP_JOINT_SWAP, btn_rect);
-    yy += h;
+    yy = ph2d_editor_core::property_row::abaixo_do_botao(btn_rect);
     seg_row(
         scene,
         text_system,

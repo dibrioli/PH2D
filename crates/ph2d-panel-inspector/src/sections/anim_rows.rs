@@ -176,7 +176,7 @@ pub(crate) fn paint_library(
         text_system,
         theme,
     );
-    cur_y += ALTURA_DE_BOTAO + ph2d_tokens::control_gap_px();
+    cur_y = ph2d_editor_core::property_row::abaixo_do_botao(add);
     if !info.rows.is_empty() {
         let rm = ph2d_editor_core::property_row::caixa_do_botao(
             text_system,
@@ -199,7 +199,7 @@ pub(crate) fn paint_library(
             text_system,
             theme,
         );
-        cur_y += ALTURA_DE_BOTAO;
+        cur_y = ph2d_editor_core::property_row::abaixo_do_botao(rm);
     }
     cur_y + ph2d_tokens::control_gap_px()
 }

@@ -263,8 +263,13 @@ uma cena assada que continua a recusar.*
 | **W1(a)** ✅ | **A CONTAGEM** no `motion.clone` — o verbo estrutural, os uniformes derivados e a paridade (§5.5) | É a metade que a [auditoria 98](98_auditoria_de_performance_2026-09-01.md) mede em `50,9×`, e o `clone` é o caso **puro** dela — mede-se sem forma nenhuma no caminho |
 | **W1(b)** ✅ (ciclo 12) | O mesmo verbo no `motion.duplicator`, **mais** a partição por textura a sobreviver a ele (§2.1) | ⭐ **FECHADA no ciclo 12 ([doc 120 §8](120_ciclo_12_os_tectos_confortaveis.md)), e quem a reabriu foi o RUNTIME e não o catálogo:** num jogo o que se carimba são IMAGENS do átlas, e para essas a partição é vazia por construção. ⛔⛔ **A §5.2 disse *«é o ENTREGÁVEL (34), e as duas metades fecham juntas»* e a §5.6 REFUTOU-O com o número que ela encomendou:** `36` de `36` cartões trazem um vector VIVO, logo a ponte recusa-os uma camada acima e o kernel move **zero**. *Ela volta a ser obrigatória no dia em que a W2 aterrar* |
 | **W2** ⛔ **RETIRADA** | **A FORMA DESENHÁVEL:** o *bake fallback* do ADR-0154 Fase 3. ⛔ O dono **RECUSOU-O** em 2026-09-20 (*«manter a nitidez»*), e a §4.3 tirou-lhe o motivo: o encode a `102 400` passou de `34 %` de um quadro para **`11 %`** sem assar nada e com os bytes idênticos | O que a justificava era o relógio, e ele mudou. ⇒ o que fica é a **cerca** que ela ia atravessar, e essa é uma pergunta de PONTE (de *tipo* para *documento*), não de bake |
-| **W3** | A **MEDIÇÃO** do ciclo (passo 5) — a mesma bancada, depois das curas | §0.0 |
-| **W4** | O **smoke do dono** (passo 7) | **Enio** |
+| **W3** ✅ (ciclo 12) | A **MEDIÇÃO** do ciclo (passo 5) — a mesma bancada, depois das curas | §0.0 — feita no [doc 120 §8.5–§8.6](120_ciclo_12_os_tectos_confortaveis.md): com o carimbo na placa o Motion das IMAGENS deixou de crescer com o número (proxy de telemóvel a `32 768`: `7,30 → 0,72 ms`), depois de curadas as duas contas escondidas que o anulavam e a leitura dos cartões que esperava pela placa |
+| **W4** ✅ (2026-09-24) | O **smoke do dono** (passo 7) | **Enio** — aprovado nas duas rondas (as imagens e as marcas das posições; os cartões a `0,56 ms` de Motion na máquina dele) |
+
+⭐ **O CICLO FECHA assim:** a cadeia das IMAGENS vai inteira à placa (fonte na CPU, o resto no
+dispositivo); a da ESTRELA fica na CPU **por decisão do dono** (*«manter a nitidez»*, a W2 retirada),
+e o que a destravaria é a pergunta da ponte sobre o vector vivo — decisão de desenho, fora deste
+ciclo.
 
 ⛔ **A ORDEM ERA W1 ANTES DE W2, e a razão era medida:** a W1 é a única que se pode provar **sem**
 tocar no desenho (o `motion.clone` fecha a cadeia inteira na placa sem uma forma no caminho), e a W2

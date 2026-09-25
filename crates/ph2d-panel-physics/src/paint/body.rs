@@ -6,7 +6,7 @@
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, SectionFold, SectionHeader, paint_button, paint_section_header,
+    Button, SectionFold, SectionHeader, paint_button, paint_section_header,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
@@ -54,15 +54,15 @@ fn table_sections(
             // rotação nenhuma, fala de dormir. (A chave nasceu em 2026-08-30, no mesmo dia que
             // este interruptor; a linha anterior aqui dizia que ela não existia.)
             if section.id == crate::ids::PHYSICS_SEC_SLEEP {
-                inner = toggle(
+                inner = check(
                     ctx,
                     crate::ids::PHYSICS_SLEEP_SPIN,
                     tr("panel.physics.sleep_enabled"),
                     snapshot.settings.sleep_enabled(),
-                    x,
-                    w,
-                    inner,
-                ) + row_gap;
+                    (x, w, inner),
+                    // A coluna das linhas de número desta secção — o *Enabled* alinha com elas.
+                    ph2d_editor_core::widget::Seccao::apenas_campos(1),
+                );
             }
             for row in section.rows {
                 let value = (row.get)(&snapshot.settings);
@@ -162,16 +162,21 @@ pub(super) fn paint_sections(
     // "Show Colliders" mirrors the shell's flag — the same one the `B` key
     // owns. The pressed state comes from the SNAPSHOT, never from a local
     // toggle, so the key and this control can never disagree.
-    y = toggle(
+    //
+    // ⚠️ A coluna do nome é MEDIDA sobre o próprio rótulo (`Seccao::medida`) e não a de omissão:
+    //    ele é a ÚNICA linha da secção *Debug*, logo não há vizinho com quem alinhar, e a caixa
+    //    precisa de pouco — com a coluna de omissão (metade da linha) o `Show Colliders` era
+    //    CORTADO no degrau estreito da escada (medido 2026-09-24 pelas duas catracas de elisão).
+    let colliders = tr("panel.physics.show_colliders");
+    let seccao = ph2d_editor_core::widget::Seccao::medida(ctx.text_system, 1, &[colliders]);
+    y = check(
         ctx,
         crate::ids::PHYSICS_SHOW_COLLIDERS,
-        tr("panel.physics.show_colliders"),
+        colliders,
         snapshot.show_colliders,
-        x,
-        w,
-        y,
+        (x, w, y),
+        seccao,
     );
-    y += row_gap;
 
     // Read-only facts, drawn as plain text and hit-indexed by nobody.
     //
@@ -314,44 +319,36 @@ fn end_fold(ctx: &mut PaintCtx, fold: SectionFold, y: f32) -> f32 {
     fold.finish(store, scene, hit_index, y)
 }
 
-/// A Button used as a toggle.
-///
-/// **Not a `Checkbox`**: `Checkbox` emits `Toggled`, which this panel's
-/// `event.rs` does not forward, so it would be registered and dead on click —
-/// the warning `ph2d-panel-painter-layers` carries for the same reason.
-fn toggle(
+/// ⭐⭐ **Uma linha de MARCAR, pela porta da casa** ([`ph2d_editor_core::property_row::paint_check_row`])
+/// — o nome na coluna que o CHAMADOR declara (a das linhas de número da secção, quando há; medida
+/// sobre o próprio rótulo, quando a caixa está sozinha) e a caixa na do valor. Ordem do dono (2026-09-24): *«Caixas de marcar na
+/// Física»* — eram botões acesos. ⚠️ O valor é o `bool` do MODELO (o *snapshot*), e ela avança a
+/// linha e o vão de toda linha (`row_pitch_px`), que é o que o chamador somava à mão.
+#[allow(clippy::too_many_arguments)]
+fn check(
     ctx: &mut PaintCtx,
     id: ph2d_a11y::NodeId,
     label: &str,
     on: bool,
-    x: f32,
-    w: f32,
-    y: f32,
+    (x, w, y): (f32, f32, f32),
+    seccao: ph2d_editor_core::widget::Seccao,
 ) -> f32 {
     let theme = ctx.host.theme();
-    let rect = ph2d_editor_core::property_row::caixa_do_botao(ctx.text_system, x, w, y, label);
-    let state = if on {
-        (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
-    } else {
-        ctx.host.store().button_visual(id)
-    };
-    let kind = if on {
-        ButtonKind::Accent
-    } else {
-        ButtonKind::Default
-    };
     let scene = &mut *ctx.scene;
     let text_system = &mut *ctx.text_system;
-    let (_, hit_index) = ctx.host.store_and_hit_index_mut();
-    paint_button(
-        &Button::new(id, label).kind(kind).visual(state),
-        rect,
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    ph2d_editor_core::property_row::paint_check_row(
         scene,
         text_system,
         theme,
-    );
-    hit_index.register(id, rect);
-    y + ROW_H_PX
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        (id, label, on),
+        seccao,
+    )
 }
 
 /// A plain action button.

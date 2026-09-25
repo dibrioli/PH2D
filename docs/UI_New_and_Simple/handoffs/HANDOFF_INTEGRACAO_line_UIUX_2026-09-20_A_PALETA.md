@@ -841,6 +841,32 @@ combinada **127/127**.
 propriedade ligada/desligada é a CAIXA DE MARCAR (Inspector, e o próprio Vector o escreve no
 `checkbox_row`). Trocá-los muda o que o artista vê — é do dono.
 
+## §9-sexiestricies — ⭐ FÍSICA: os dois interruptores viram CAIXAS DE MARCAR (`4 → 2` comandos)
+
+Ordem do dono (2026-09-24): *«Caixas de marcar na Física»*. O *Enabled* do sono e o *Show Colliders*
+eram botões acesos; hoje passam pela porta da casa (`property_row::paint_check_row`).
+
+- **Registo:** `populate.rs` regista os dois como `InteractiveState::Checkbox`; o despacho vira-os e
+  emite `WidgetEvent::Toggled(id)`. O `event.rs` casa `Toggled` (e deixou de chamar o
+  `seam_reset_button`, que era do botão). ⚠️ **O valor NOVO sai do MODELO** (`!settings.sleep_enabled()`
+  / `ToggleColliders`), nunca do store — a lei da caixa *Playing* do Inspector.
+- **Catraca `CARGA_DE_COMANDOS`:** `physics` **`4 → 2`**, medido; ficam fechar e *Reset to Defaults*.
+- ⛔⛔ **As duas catracas de elisão do degrau ESTREITO apanharam um corte** que a suíte do painel
+  não via: `physics: 1 cortes (declarado 0) — ["Show Colliders"]`. Com `Seccao::apenas_campos(1)` a
+  coluna do nome é a METADE da linha e o rótulo não cabe no degrau estreito. ⇒ o `check()` recebe a
+  `Seccao` do chamador: o *Enabled* fica em `apenas_campos(1)` (alinha com as linhas de número da
+  secção *Sleep*), e o *Show Colliders*, que é a **única** linha da secção *Debug*, usa
+  `Seccao::medida` sobre o próprio rótulo (a caixa precisa de pouco; não há vizinho com quem alinhar).
+  **A catraca não subiu** — o corte foi curado.
+- **Gates:** `the_collider_toggle_asks_the_shell_to_flip_its_flag` e o censo
+  `every_painted_control_is_clickable_where_it_is_drawn` passam a esperar `Toggled` para a caixa e
+  `Click` para o *Reset*; `the_sleep_switch_writes_the_sign_the_solver_reads` corre o evento que o
+  despacho devolve.
+- **Mutação 2 de 2:** devolver cada braço do `event.rs` a `Click` reprova exactamente o gate da
+  caixa respectiva (`1 failed` em `25`).
+- **Portão:** `nextest-impacted` **17 703 / 17 703** · clippy `-D warnings` zero nas duas crates ·
+  `cargo fmt --check` limpo · censos da árvore combinada **127 / 127** (12 de 12 correram).
+
 ## §11 — O que esta linha recomenda a quem a integrar
 
 1. **Correr o `diag_onde_cai_a_pista_do_pente` da `line/sculpt3d` DEPOIS da fusão** e reescrever com

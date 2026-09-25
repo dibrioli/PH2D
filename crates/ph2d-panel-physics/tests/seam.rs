@@ -252,7 +252,7 @@ fn the_collider_toggle_asks_the_shell_to_flip_its_flag() {
     let (mut host, mut state) = arrange(PhysicsSettings::default());
     let outcome = host.apply_panel_event::<PhysicsPanel>(
         &mut state,
-        WidgetEvent::Click(ids::PHYSICS_SHOW_COLLIDERS),
+        WidgetEvent::Toggled(ids::PHYSICS_SHOW_COLLIDERS),
     );
     assert_eq!(outcome, EventOutcome::Consumed);
     assert_eq!(
@@ -484,10 +484,12 @@ fn every_painted_control_is_clickable_where_it_is_drawn() {
         );
     }
 
-    // And the two commands actually answer a pointer at their own centre.
-    for (name, id) in [
-        ("Show Colliders", ids::PHYSICS_SHOW_COLLIDERS),
-        ("Reset to Defaults", ids::PHYSICS_RESET_DEFAULTS),
+    // And the two controls actually answer a pointer at their own centre. ⚠️ «Show Colliders» é
+    // uma CAIXA DE MARCAR desde 2026-09-24 (ordem do dono): o despacho vira-a e emite `Toggled`,
+    // e não `Click` — é esse o evento que o `event.rs` encaminha.
+    for (name, id, caixa) in [
+        ("Show Colliders", ids::PHYSICS_SHOW_COLLIDERS, true),
+        ("Reset to Defaults", ids::PHYSICS_RESET_DEFAULTS, false),
     ] {
         let rect = painted
             .iter()
@@ -503,10 +505,12 @@ fn every_painted_control_is_clickable_where_it_is_drawn() {
         );
         let events = host.click_at(cx, cy);
         assert!(
-            events
-                .iter()
-                .any(|e| matches!(e, WidgetEvent::Click(c) if *c == id)),
-            "clicking `{name}` at its painted centre produced no Click — it is \
+            events.iter().any(|e| match e {
+                WidgetEvent::Toggled(c) => caixa && *c == id,
+                WidgetEvent::Click(c) => !caixa && *c == id,
+                _ => false,
+            }),
+            "clicking `{name}` at its painted centre produced no event of its kind — it is \
              registered in the hit index but not focusable in the store"
         );
     }

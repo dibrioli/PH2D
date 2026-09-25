@@ -1299,9 +1299,12 @@ const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
     // ⬇️ `49 → 4` em 2026-09-24 (*«Arrumar»* os painéis, depois do Vector): `36` eram as células da
     //    matriz de camadas (um VALOR, hoje declarado composto como a grelha de bits do Inspector) e
     //    `8` os cabeçalhos de secção, registados como `Button` em vez de secções dobráveis da casa.
-    //    Os `4` que ficam: fechar, *Reset*, e os dois interruptores pintados como botão (*Enabled*
+    //    Os `4` que ficaram: fechar, *Reset*, e os dois interruptores pintados como botão (*Enabled*
     //    do sono, *Show Colliders*).
-    ("physics", 4),
+    // ⬇️ `4 → 2` no mesmo dia (ordem do dono: *«Caixas de marcar na Física»*): os dois interruptores
+    //    passaram a CAIXAS DE MARCAR da casa (`paint_check_row`, `Toggled`) — um liga/desliga é um
+    //    VALOR, não um comando. Os `2` que ficam são comandos a sério: fechar e *Reset to Defaults*.
+    ("physics", 2),
     ("sculpt3d", 36),
     // ⬇️ `24 → 8` em 2026-09-24 (ordem do dono: *«Arrumar o painel Vector»*): os `16` que saíram
     //    são as peças da grelha `button_grid` — os `15` modos da ferramenta e o *Pick Shapes* —,

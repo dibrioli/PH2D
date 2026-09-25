@@ -141,15 +141,15 @@ pub(crate) fn apply_event(
         // `sleep_angular_threshold`, e a `rapier2d` 0.35 lê desse campo só o SINAL — o slider
         // mentia em todo o seu curso. A escrita vai pela porta `with_sleep_enabled`, nunca por uma
         // comparação com zero aqui: a lei do sinal mora num sítio (`ph2d-physics-ecs`).
-        WidgetEvent::Click(id) if id == crate::ids::PHYSICS_SLEEP_SPIN => {
-            seam_reset_button(host, id);
+        // ⭐ Caixa de marcar desde 2026-09-24: o despacho vira-a e emite `Toggled`. O valor NOVO
+        //    sai do MODELO (`!on`), nunca do store — a lei da `paint_check_row`.
+        WidgetEvent::Toggled(id) if id == crate::ids::PHYSICS_SLEEP_SPIN => {
             let settings = state::current().settings;
             let on = settings.sleep_enabled();
             state::push_intent(PhysicsIntent::SetSettings(settings.with_sleep_enabled(!on)));
             true
         }
-        WidgetEvent::Click(id) if id == crate::ids::PHYSICS_SHOW_COLLIDERS => {
-            seam_reset_button(host, id);
+        WidgetEvent::Toggled(id) if id == crate::ids::PHYSICS_SHOW_COLLIDERS => {
             state::push_intent(PhysicsIntent::ToggleColliders);
             true
         }

@@ -9,7 +9,9 @@
 //! forget.
 
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
-use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
+use ph2d_editor_core::widget::{
+    ButtonState, CheckboxState, CheckboxValue, SliderOrientation, SliderState, TextInputState,
+};
 
 use crate::{interact, rows};
 
@@ -120,16 +122,23 @@ pub fn populate(store: &mut WidgetStore) {
         button(store, cell);
     }
 
-    // Commands. Registered as Buttons — including "Show Colliders", which LOOKS
-    // like a checkbox and is not one: a `Checkbox` emits `Toggled`, which this
-    // panel's `event.rs` does not forward, so it would be registered and dead
-    // (the painter-layers sculpt segments carry the same warning).
-    button(store, crate::ids::PHYSICS_SHOW_COLLIDERS);
-    // ⭐ **O interruptor de adormecer** (2026-08-30) — registado como Button, e não pelo laço das
-    // `rows`, porque ele deixou de ser um slider: a `rapier2d` 0.35 lê do
-    // `sleep_angular_threshold` apenas o SINAL. Mesma família do «Show Colliders» acima, e ⛔ pela
-    // mesma razão não é um `Checkbox`: este painel não encaminha `Toggled`.
-    button(store, crate::ids::PHYSICS_SLEEP_SPIN);
+    // ⭐⭐ **«Show Colliders» e o «Enabled» do sono são CAIXAS DE MARCAR** (ordem do dono,
+    // 2026-09-24: *«Caixas de marcar na Física»*). Eram botões acesos — e o doc que aqui estava
+    // dizia porquê: um `Checkbox` emite `Toggled` e o `event.rs` deste painel não o encaminhava.
+    // ⇒ o `event.rs` passou a encaminhá-lo, e as duas são a propriedade ligada/desligada que o
+    // resto da casa (Inspector, Vector, Painter) já desenha como caixa.
+    for id in [
+        crate::ids::PHYSICS_SHOW_COLLIDERS,
+        crate::ids::PHYSICS_SLEEP_SPIN,
+    ] {
+        store.register(
+            id,
+            InteractiveState::Checkbox {
+                state: CheckboxState::Normal,
+                value: CheckboxValue::Unchecked,
+            },
+        );
+    }
     // Os dois verbos de FITA (W25). Registrados sempre, pintados só quando há o
     // que descartar ou o que devolver: registrar é barato e a alternativa —
     // registrar condicionalmente — faria o botão nascer morto sob o mouse no

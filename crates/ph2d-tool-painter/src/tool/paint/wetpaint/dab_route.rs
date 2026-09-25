@@ -40,6 +40,7 @@ impl PainterTool {
         // eraser — this early-out only covers the guard killing the session
         // between the route decision and here (the batch then does nothing).
         let erasing = self.paint.eraser;
+        let nasceu_agora = self.paint.wetpaint.session.is_none();
         if self.paint.wetpaint.session.is_none() {
             if erasing {
                 return;
@@ -106,6 +107,18 @@ impl PainterTool {
         }
         // ── The authored facts — same reconcile law as the paper. ──────────
         sess.reconcile_facts(self.wet_facts());
+        // ⚠️ **Uma sessão nascida NESTE lote chega aqui com a folha inteira suja, e ela não tem o que
+        // mostrar.** O construtor do motor marca `Full` (o `rebake_paper`: um papel novo muda a
+        // granulação de tinta que JÁ exista), e o `reconcile_facts` acima re-coze o papel outra vez
+        // quando os knobs autorados diferem dos de fábrica. Numa grade sem tinta nem água o composite
+        // dessa folha escreve em cada pixel o que ele já tem — premissa gateada (`birth_tests`) — e
+        // custava `~20 ms` a 4096² no 1.º traço da sessão; pior, desde que o composite DECLARA onde
+        // escreve (`crate::undo::window`), a janela declarada do 1.º traço era a tela inteira e o commit
+        // dele guardava o plano `Whole` (dois planos de 67 MB) em vez do traço. ⚠️ É AQUI e não no
+        // nascimento porque o re-cozido do `reconcile_facts` vem DEPOIS dele (e há gate para os dois).
+        if nasceu_agora {
+            let _ = sess.engine.take_dirty();
+        }
         // The engine-side TOOL (doc 22): gives the lane doors their
         // `TrailMode` (begin picks Blend by it) and the sim its pause law
         // (`sim_should_run` keeps running under a Blow stroke, the model's

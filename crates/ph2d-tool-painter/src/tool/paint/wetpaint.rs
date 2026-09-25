@@ -358,6 +358,10 @@ mod tests; // the W1/W2 gates — child file (workspace file-LOC cap)
 mod tests_doc22; // the doc-22 gates (tuning/tilt/tools/actions/flags)
 
 #[cfg(test)]
+#[path = "wetpaint/birth_tests.rs"]
+mod birth_tests; // o nascimento da sessao nao pinta a tela inteira
+
+#[cfg(test)]
 #[path = "wetpaint/undo_drip_tests.rs"]
 mod undo_drip_tests; // o escorrido que sobrou do Undo (smoke do Enio, 2026-07-26)
 

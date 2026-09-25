@@ -3206,3 +3206,44 @@ sozinhas a `load ~7`. Clippy `-D warnings` limpo.
   segura o `Arc`, logo a 1.ª escrita depois de um commit copia os 67 MB. É o preço do undo por snapshot
   com canvas inteiro; curá-lo pede canvas em ladrilhos — arquitectura, não wave.
 - **O 1.º traço da sessão** (`~40 ms`) cria o grid da simulação.
+
+## §42 — O 1.º traço da sessão: a folha inteira deixa de ser recomposta, e o §41 deixa de guardar dois planos (2026-09-24)
+
+Ordem do dono: *«smoke ok. siga»* (o §41 aprovado).
+
+### §42.1 — O que a sonda mostrou, e o defeito que o §41 tinha trazido
+
+Sonda temporária no 1.º traço (4096², raio 100): `ensure_wet_session` `27 ms` = **tile do papel `12 ms`
++ bake do papel na grade `18 ms`** (o `Grid` nasce em `0,06 ms`: páginas preguiçosas, o toque é no
+bake) — e depois **um composite de `4096 × 4096` em `20 ms`**, contra `0,1–0,2 ms` dos seguintes. O motor
+nasce com `Dirty::Full` (o `rebake_paper` do construtor, e o `reconcile_facts` re-coze outra vez quando
+os knobs autorados do papel diferem dos de fábrica), e numa grade sem tinta nem água esse composite
+escreve em cada pixel o que ele já tinha.
+
+⛔ **E o §41 tinha piorado isto em MEMÓRIA:** com o composite a declarar a região, a janela declarada do
+1.º traço era a tela inteira e o commit guardava o canvas `Whole` — **`524 288` bytes contra um plano de
+`262 144`** numa tela de 256² (gate vermelho). A rede de debug não o apanha, e com razão: a janela
+declarada era VERDADEIRA (um superconjunto), só era larga — *uma declaração honesta e larga não falha,
+custa memória, e custo de memória ninguém vê sem medir*.
+
+### §42.2 — A cura
+
+No `stamp_dabs_wetpaint`, uma sessão nascida NESTE lote descarta o sujo depois do papel e do
+`reconcile_facts` (`take_dirty`). ⚠️ **É ali e não no nascimento:** a 1.ª redacção pôs o descarte também
+no `ensure_wet_session`, e a mutação que o apagava SOBREVIVEU — o descarte do lote já o cobre, e o
+`reconcile_facts` vem depois do nascimento. Ficou uma porta só.
+
+Gates (`wetpaint/birth_tests.rs`): o 1.º traço guarda menos de ¼ de plano, com o papel de fábrica e com
+um papel AUTORADO (`PaperContrast` no máximo — o re-cozido do `reconcile_facts`); e a premissa — o
+composite da folha inteira no nascimento não muda um byte, com e sem o véu do Show Wet. A mutação que
+apaga o descarte reprova no caso do papel autorado.
+
+**Medido:** 1.º traço da sessão `~40 → ~30 ms` (`30,5 / 32,4 / 29,8`, `load ~5`).
+
+### §42.3 — Aberto
+
+- **O papel no nascimento (`~30 ms`):** o tile de 512² (`12 ms`, com a caminhada das fibras e as somas
+  em `f64` em série — a ordem é a impressão digital do motor) e o bake na grade (`18 ms`, uma cópia por
+  linha, paralelizável ao bit — pede o `rayon` no `ph2d-wet-paint`, que exige ADR).
+- **Com um papel do ARTISTA** o `seed_paper_with` amostra a textura do painter célula a célula em série
+  (16,7 M chamadas a 4096²) — não medido.

@@ -808,6 +808,39 @@ toda a largura no ajudante reprova o censo dos botões. Portão: `nextest-impact
 família `…precisao::orcamento` da lista de flakes do §5.0): **3/3 verde sozinha a `load 38–42`**, zero
 linhas de diff na crate · clippy `-D warnings` zero · `fmt` · censos da árvore combinada **127/127**.
 
+## §9-quinquetricies — ⭐⭐ O PAINEL FÍSICA: `49 → 4` comandos, e NENHUM era dívida de produto
+
+Ordem do dono (2026-09-24, *«siga»* depois do smoke do Vector). A sonda do §9-quatertricies passou a
+servir qualquer painel (`PH2D_PAINEL=<id>`, nomes colhidos de TODAS as crates, porque o id de um
+painel pode ser fabricado noutra) e, sobre a Física, partiu os `49` em três:
+
+| espécie | quantos | o que era | cura |
+|---|---:|---|---|
+| células da matriz de camadas | `36` | um VALOR (o mapa de colisão; cada célula liga um par) | `composto::grupo` no `matrix::paint`, como a `bitmask_grid32` do Inspector |
+| cabeçalhos de secção | `8` | registados como `Button` no `populate` | secções dobráveis da casa (`mark_collapsible_section`) |
+| comandos | `4` | fechar · *Reset* · e dois interruptores pintados como botão (*Enabled* do sono, *Show Colliders*) | ficam |
+
+⭐⭐ **Os cabeçalhos eram mais do que contagem: o painel tinha a SUA cópia da dobra.** O cânone da UI
+é o cabeçalho sem estado de botão, marcado dobrável, e o `apply_click` do despacho dobra-o ANTES de
+emitir o `Click`. ⇒ o braço do `event.rs` fica só a CONSUMIR o clique — ⛔ dobrar lá outra vez
+desfaria o gesto (é a 1.ª mutação abaixo).
+
+⛔⛔ **E o gate da dobra media a metade que o despacho salta:** o
+`folding_a_section_never_touches_the_world` empurrava um `Click` à mão para o painel, o que só provava
+a cópia local. Reescrito para pintar e clicar no centro do cabeçalho pelo despacho real
+(`click_at`) — a mesma forma do vizinho `every_painted_control_is_clickable_where_it_is_drawn`.
+
+**Nada muda na tela.** A catraca `physics` `49 → 4`.
+
+**Prova:** mutações — o braço a dobrar outra vez (desfaz o clique) e o cabeçalho de volta a `Button`
+(não dobra) reprovam o gate da dobra; sem o grupo da matriz a catraca volta a acusar as `36` células.
+Portão: `nextest-impacted` **17 703/17 703** · clippy `-D warnings` zero · `fmt` · censos da árvore
+combinada **127/127**.
+
+⏳ **Pergunta de produto que fica:** os dois interruptores são BOTÕES acesos; o idioma da casa para uma
+propriedade ligada/desligada é a CAIXA DE MARCAR (Inspector, e o próprio Vector o escreve no
+`checkbox_row`). Trocá-los muda o que o artista vê — é do dono.
+
 ## §11 — O que esta linha recomenda a quem a integrar
 
 1. **Correr o `diag_onde_cai_a_pista_do_pente` da `line/sculpt3d` DEPOIS da fusão** e reescrever com

@@ -1296,7 +1296,12 @@ const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
     // ⛔ `58` botões, **`17`** comandos: a fábrica derivada dele vive noutra crate
     //    (`ph2d_tool_painter::ids::wet_tuning_reset_id`) — um *Reset* por botão de afinação.
     ("wet_tuning", 17),
-    ("physics", 49),
+    // ⬇️ `49 → 4` em 2026-09-24 (*«Arrumar»* os painéis, depois do Vector): `36` eram as células da
+    //    matriz de camadas (um VALOR, hoje declarado composto como a grelha de bits do Inspector) e
+    //    `8` os cabeçalhos de secção, registados como `Button` em vez de secções dobráveis da casa.
+    //    Os `4` que ficam: fechar, *Reset*, e os dois interruptores pintados como botão (*Enabled*
+    //    do sono, *Show Colliders*).
+    ("physics", 4),
     ("sculpt3d", 36),
     // ⬇️ `24 → 8` em 2026-09-24 (ordem do dono: *«Arrumar o painel Vector»*): os `16` que saíram
     //    são as peças da grelha `button_grid` — os `15` modos da ferramenta e o *Pick Shapes* —,

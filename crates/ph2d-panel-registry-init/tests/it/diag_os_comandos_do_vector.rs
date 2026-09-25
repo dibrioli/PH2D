@@ -36,12 +36,10 @@ fn junta(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
 fn nomes() -> BTreeMap<u64, String> {
     let raiz = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
     let mut fontes = Vec::new();
-    for c in [
-        "ph2d-panel-vector/src",
-        "ph2d-tool-vector/src",
-        "ph2d-editor-core/src",
-    ] {
-        junta(&raiz.join(c), &mut fontes);
+    // ⭐ `PH2D_PAINEL=<id>` mede outro painel com a MESMA sonda (o molde do Vector, 2026-09-24):
+    //    os nomes colhem-se de todas as crates, porque o id de um painel pode ser fabricado noutra.
+    for e in std::fs::read_dir(&raiz).expect("crates/").flatten() {
+        junta(&e.path().join("src"), &mut fontes);
     }
     let mut out = BTreeMap::new();
     for f in fontes {
@@ -73,18 +71,18 @@ fn nomes() -> BTreeMap<u64, String> {
     out
 }
 
-#[cfg(feature = "panel-vector")]
 #[test]
 #[ignore]
 fn diag_os_comandos_do_vector() {
     let nomes = nomes();
+    let alvo = std::env::var("PH2D_PAINEL").unwrap_or_else(|_| "vector".to_string());
     let _ = ph2d_panel_registry_init::register_all_panels();
     ph2d_editor_core::panel::with_registry(|reg| {
         let painel = reg
             .panels_mut()
             .iter_mut()
-            .find(|p| p.manifest.id == "vector")
-            .expect("o painel vector tem de estar no registo");
+            .find(|p| p.manifest.id == alvo.as_str())
+            .expect("o painel pedido tem de estar no registo (âmbito de workspace?)");
         let mut host = MockPanelHost::new();
         painel.populate(host.store_mut());
         super::quantas_entradas_tem_cada_painel::abre_tudo(host.store_mut());

@@ -96,5 +96,10 @@ pub(super) fn paint(ctx: &mut PaintCtx, matrix: LayerMatrix, x: f32, y_in: f32) 
         }
         y += step;
     }
+    // ⭐ **A matriz é UM controlo** — o mapa de colisão entre camadas, um VALOR (cada célula liga ou
+    //    desliga um par), como a grelha de `32` bits do Inspector (`bitmask_grid32`), que já se
+    //    declara assim. Sem isto o censo das entradas lia as `36` células como `36` comandos
+    //    (medido 2026-09-24: `36` dos `49` do painel).
+    ph2d_editor_core::widget::composto::grupo(crate::ids::PHYSICS_LAYER_CELL.iter().copied());
     y
 }

@@ -101,12 +101,16 @@ pub fn populate(store: &mut WidgetStore) {
     }
 
     // Section headers are interactive (the chevron folds them), so they are
-    // registered like any other control — a painted chevron that nobody
-    // registered is an affordance that does nothing.
+    // registered — a painted chevron that nobody registered is an affordance that does nothing.
     // ⚠️ A UMA lista (`rows::section_header_ids`), e não os quatro nomes soltos que aqui estavam:
     // eles eram a 1.ª de três cópias da mesma enumeração, e a 3.ª (o `event.rs`) tinha três.
+    // ⭐⭐ **Pela porta da CASA** (2026-09-24, *«Arrumar»* os painéis): um cabeçalho é uma secção
+    //    DOBRÁVEL (`mark_collapsible_section`), sem estado de botão — o cânone da UI que o Inspector,
+    //    o Vector e o áudio seguem, e cujo despacho dobra e AINDA emite o `Click`. Registado como
+    //    `Button`, este painel tinha a sua própria cópia da dobra e o censo das entradas lia os oito
+    //    cabeçalhos como oito COMANDOS.
     for id in rows::section_header_ids() {
-        button(store, id);
+        store.mark_collapsible_section(id);
     }
 
     // The 36 matrix cells. Registered in a loop, which is exactly why the seam

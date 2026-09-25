@@ -114,15 +114,11 @@ pub(crate) fn apply_event(
         // ⛔ Este braço listava TRÊS nomes à mão + a tabela, e o quarto cabeçalho pintado
         //    (`PHYSICS_SEC_LAYERS`) caía no `_ => false`: pintado, registado, e mudo ao clique.
         //    Hoje pergunta à MESMA lista que `populate` regista.
-        WidgetEvent::Click(id) if rows::is_section_header(id) => {
-            seam_reset_button(host, id);
-            // ⚠️ A PORTA ÚNICA — este bloco era `set_collapsed(id, !is_collapsed(id))` escrito à
-            //    mão, que é literalmente o corpo do `toggle_collapsed`. Três cópias privadas da
-            //    mesma pergunta, e a que sabe que uma dobra tem PARTIDA (o `t` de onde ela vem)
-            //    é a porta — pela cópia, a estreia de cada secção destes painéis saltaria.
-            host.store_mut().toggle_collapsed(id);
-            true
-        }
+        // ⭐⭐ **A dobra já foi feita pelo DESPACHO** (2026-09-24): o cabeçalho é uma secção
+        //    dobrável (`mark_collapsible_section`, no `populate`), e o `apply_click` da casa dobra-a
+        //    ANTES de emitir este `Click`. ⛔ Dobrar outra vez aqui desfazia o clique — o braço fica
+        //    só para CONSUMIR o evento, que senão cairia no `_ => false`.
+        WidgetEvent::Click(id) if rows::is_section_header(id) => true,
         // A matrix cell toggles ONE pair. `LayerMatrix::set` writes both halves,
         // so the asymmetric state the panel could otherwise author does not exist.
         WidgetEvent::Click(id) if crate::ids::PHYSICS_LAYER_CELL.contains(&id) => {

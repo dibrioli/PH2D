@@ -411,14 +411,34 @@ fn the_world_panel_owns_the_recorded_run_and_offers_one_verb_at_a_time() {
 /// every body in the scene because the artist collapsed a header.
 #[test]
 fn folding_a_section_never_touches_the_world() {
+    // ⭐⭐ **O clique vai pelo DESPACHO REAL, no centro do cabeçalho pintado** (2026-09-24): o
+    //    cabeçalho passou a ser uma secção dobrável da casa (`mark_collapsible_section`), e quem
+    //    dobra é o `apply_click` do despacho, ANTES de emitir o `Click`. Um `Click` empurrado à mão
+    //    para o painel salta essa metade — era exactamente o que esta régua fazia, e ela passaria a
+    //    medir o painel a NÃO dobrar.
     for section in rows::SECTIONS {
         let (mut host, mut state) = arrange(PhysicsSettings::default());
-        let outcome =
-            host.apply_panel_event::<PhysicsPanel>(&mut state, WidgetEvent::Click(section.id));
-        assert_eq!(
-            outcome,
-            EventOutcome::Consumed,
+        let painted = host.paint::<PhysicsPanel>(&mut state, VIEWPORT);
+        let rect = painted
+            .iter()
+            .rev()
+            .find(|(pid, _)| *pid == section.id)
+            .map(|(_, r)| *r)
+            .unwrap_or_else(|| panic!("section `{}` header is not painted", section.title));
+        let events = host.click_at(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+        assert!(
+            events
+                .iter()
+                .any(|e| matches!(e, WidgetEvent::Click(c) if *c == section.id)),
             "section `{}` header is not clickable, but its chevron is painted",
+            section.title
+        );
+        // Só o `Click` do cabeçalho é do painel; o despacho emite outros (foco, ponteiro) que ele
+        // ignora de propósito.
+        assert_eq!(
+            host.apply_panel_event::<PhysicsPanel>(&mut state, WidgetEvent::Click(section.id)),
+            EventOutcome::Consumed,
+            "section `{}`: the panel did not consume the click",
             section.title
         );
         assert!(

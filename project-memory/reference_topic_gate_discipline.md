@@ -698,3 +698,21 @@ cobertura da segunda.
 ao lado a população/regime em que foi medida, **amarrada por `const _: () = assert!`**. Se a
 derivação for de facto a verdade (o número é calculado da população actual), aí sim a proveniência
 basta — e a diferença entre os dois casos escreve-se no doc.
+
+
+---
+
+## Uma AGULHA que fecha o parêntesis mede o verbo EXACTO e é cega ao irmão dele
+
+Um censo textual com a agulha `".pick_file()"` **não** apanha `.pick_files()` — o parêntesis fecha
+antes do `s`. **Medido** em 2026-09-22: o `every_field3d_modal_goes_through_the_door` proíbe abrir
+um diálogo modal sem declarar o congelamento, com a lista `[".save_file()", ".pick_file()"]`, e a
+importação de malha da escultura usa `pick_files` — ela teria passado **mesmo que a população do
+gate a alcançasse**. ⚠️ Fechar o parêntesis é deliberado e certo (sem ele, construir o
+`FileDialog` seria acusado); o defeito é a lista ter UM dos dois verbos. **How to apply:** ao
+escrever uma agulha com `(`, enumere os **irmãos morfológicos** (singular/plural, `_at`, `_mut`,
+`_with`) e ponha-os todos; e escreva o CONTROLO que prova que a lista mais curta não bastava
+(`assert!(!".pick_files()".contains(".pick_file()"))`), senão quem voltar a ela não reprova.
+⚠️⚠️ **A ausência de um irmão na lista costuma ser a ausência da PORTA correspondente:** ali não
+havia `modal::pick_files`, e *uma porta que cobre metade dos verbos empurra a outra metade para
+fora dela*. Ver [[reference_topic_mutation_proofs]].

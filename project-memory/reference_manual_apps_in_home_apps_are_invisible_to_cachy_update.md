@@ -28,5 +28,5 @@ têm pacote no AUR ou em `extra`. **Cascadeur** (13/09, 2026.2.2) também mora e
 e é o único SEM pacote no AUR: tgz em `https://cascadeur.com/rest/download/build?platform=linux&buildId=<n>`
 (sem login; o `buildId` é o `data-build-id` do botão em /download), lançador `~/.local/bin/cascadeur`
 com `QT_QPA_PLATFORM=xcb` (o pacote só traz o backend X11) + `FONTCONFIG_PATH=/etc/fonts`. Atualizar
-= baixar de novo e trocar a pasta. ⚠️ Instalar pelo pacman exige senha (sudo) — prepare o
+= baixar de novo e trocar a pasta. **GDevelop** (23/09) entrou do jeito certo desde o início: `gdevelop-bin` do AUR (AppImage oficial do GitHub, arrastando `electron32-bin` do AUR + `asar` de `extra`), construído com `makepkg` e instalado por `pacman -U` ⇒ visível ao cachy-update. ⚠️ Instalar pelo pacman exige senha (sudo) — prepare o
 pacote e entregue UM comando, por [[feedback_a_red_checksum_is_acted_on_by_the_agent_not_escalated]].

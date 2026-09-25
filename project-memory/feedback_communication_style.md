@@ -3,6 +3,7 @@ name: Communication style — perguntas e formato
 description: Como apresentar opções e respostas para o Enio em decisões pontuais.
 type: feedback
 originSessionId: 3810fc76-ee39-499c-932e-822ab7813c1b
+modified: 2026-09-25T01:28:45.622Z
 ---
 Ao pedir decisão ao Enio, apresentar **2-3 opções concretas** com trade-offs explícitos, **recomendação primeiro** (com sufixo "(Recomendado)"), pedir sim/não — não open-ended "o que você acha?".
 
@@ -11,6 +12,17 @@ Ao pedir decisão ao Enio, apresentar **2-3 opções concretas** com trade-offs 
 **How to apply:** usar `AskUserQuestion` com 2-4 opções; primeira opção é a recomendada com label terminando em "(Recomendado)" quando for de fato a melhor escolha técnica; descrição concisa do trade-off em cada opção. Evitar perguntas vagas. Para decisões dentro de Hard Rules + tiebreakers do SKILL, decidir solo sem perguntar.
 
 **Formato de resposta** (não pergunta): pt-BR direto sem floreio; código em blocos com linguagem.
+
+⛔ **A LÍNGUA é pt-BR SEMPRE ao falar com ele** — reforçado pelo Enio em 2026-09-24 (*«Ao falar
+comigo, fale em PT-BR»*) depois de uma resposta minha sair em inglês. Vale também para os passos
+do smoke; o que fica em inglês são só os rótulos que aparecem na tela.
+
+⛔⛔ **A CONVERSA é SEMPRE em pt-BR — o que é em inglês é só a UI do APP.** Em 2026-09-24 (line/3DModeling,
+depois de uma compactação) respondi ao dono em inglês várias mensagens seguidas, e ele corrigiu: *«próxima
+vez fale comigo em PT-BR»*. A causa provável foi misturar a regra *«nada de PT-BR no app»* com a língua da
+conversa. ⇒ texto para o Enio (respostas, relatos de smoke, notas entre ferramentas) = pt-BR; strings do
+app = inglês; docs/handoffs/commits = a língua que o repo já usa (pt-BR). Vale também logo a seguir a uma
+compactação: o resumo não carrega o idioma, a regra carrega.
 
 ⚠️ **Esta linha dizia também "headers, tabelas" e "links markdown para arquivos", e isso ficou
 para trás da correção de 2026-08-18 abaixo** — sobreviveu na mesma frase, a prescrever o

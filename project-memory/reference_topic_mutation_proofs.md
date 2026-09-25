@@ -313,3 +313,21 @@ a placa a meio de uma mutacao e construir a arvore mutada).
 - ⭐⭐ (mesma volta) **UMA MUTAÇÃO QUE SOBREVIVE POR FALTA DE CORPUS É PARA CONSTRUIR, NÃO PARA NOMEAR.** A metade dos VÉRTICES da cerca do device sobreviveu porque o veredito face-a-face já recusava toda a fixtura do gate; nomeá-la seria honesto e mais fraco. O corpus que faltava é uma malha com as MESMAS faces e um vértice **ÓRFÃO** a mais (`Mesh::from_parts` aceita-o), que é a única forma de pôr as duas réguas a discordar — com ele, `8 de 9` sangram. **How to apply:** antes de escrever «NOMEADA», pergunte que ENTRADA separaria as duas réguas; se ela for construtível, o nome é a saída cara.
 - ⛔⛔⛔ (tinta fina, 21/09) **UMA AGULHA QUE É UM FRAGMENTO MEDE O FRAGMENTO, NÃO A CHAMADA.** O censo de elo do atalho do upload perguntava por `matches!(line.job, SlotJob::Full)` e esse texto aparece **duas vezes** no mesmo ficheiro (a outra é a condição que decide se vale a pena subir o plano) ⇒ a mutação que troca o ARGUMENTO por `false` deixava a outra ocorrência a satisfazer o censo, e **SOBREVIVEU** com o gate verde. **Why:** é a mesma lei que este repo já escreve para as âncoras de mutação (*«âncora = expressão inteira»*), do lado do CENSO — e ali ela morde mais, porque um censo é escrito precisamente onde não há comportamento para medir. **How to apply:** `grep -c` a agulha no ficheiro antes de a aceitar; se não for `1`, a agulha é a chamada INTEIRA (todas as linhas dos argumentos), e o gate imprime-a na mensagem de falha.
 - ⭐⭐⭐ (mesma volta) **DEPOIS DE `cargo fmt`, AS ÂNCORAS TÊM DE SER RECONFERIDAS — e o instrumento tem de ser BARATO, senão ninguém o corre.** O `fmt` reescreve a indentação de uma âncora, ela passa a casar ZERO, e **isso lê-se exactamente como uma mutação que sobreviveu** — ao preço de uma corrida inteira para descobrir. ⇒ `MUTA_SO_ANCORAS=1` nos dois arneses desta família: salta a corrida limpa e o `corrida()`, conta cada âncora e sai `1` se alguma não casar exactamente uma vez (`43 de 43` e `9 de 9` em segundos). ⚠️ **E o sumário dele DIZ que zero testes correram** — *um pré-voo que imprimisse «N de N sangram» seria um instrumento a descrever-se mal, que é o defeito que o arnês inteiro existe para não ter.*
+
+
+---
+
+## A POPULAÇÃO DE UM ARNÊS é de quem OBSERVA a mutação, nunca de quem a CONTÉM
+
+Um arnês que muta a crate `A` e corre `nextest -p B -p C` devolve **SOBREVIVEU** para toda mutação
+em `A`: a crate mutada nem chega a ser compilada, e o placar é fabricado sem um único sinal.
+**Medido** em 2026-09-22 (`line/sculpt3d`, o aviso da saída da tinta fina): a `S6` mutava
+`ph2d-app-field3d` com a população em `-p ph2d-mesh -p ph2d-app-sculpt3d` ⇒ `5 de 7` com um
+sobrevivente que não podia sangrar. ⚠️ **O cabeçalho do próprio arnês já escrevia a lei que ele
+violava** (*«uma corrida só de uma delas leria VERDE sobre a mutação da outra»*), escrita para DUAS
+crates por quem depois mutou uma TERCEIRA. **How to apply:** a pergunta não é *«que crate eu
+mutei?»*, é ***«que TESTE vê isto?»***. ⭐ A cura barata quase nunca é acrescentar a crate à
+população (isso paga uma suíte inteira em **cada** mutação): é pôr o **elo de texto** no censo que
+já corre — um `include_str!` relativo alcança uma crate irmã sem dependência nenhuma. ⚠️ E o
+sobrevivente fabricado **esconde a pergunta real**: *aquele lado está gateado de todo?* Ali não
+estava. Ver [[reference_topic_gate_discipline]].

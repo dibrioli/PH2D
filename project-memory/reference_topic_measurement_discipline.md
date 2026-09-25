@@ -1351,3 +1351,238 @@ que um utilizador ou uma cadeia de contas alimenta, pergunte `is_nan()`
 `NaN.max(0.0)` devolve `0.0`; as duas leem-se iguais no código e têm consequências
 opostas. Ver [[feedback_a_promise_of_sameness_beside_a_copy_is_the_shape_that_diverges]] para a
 outra metade do mesmo defeito: a guarda existia numa das duas cópias da lei.
+
+## ⛔⛔⛔ Uma REDE a jusante apaga o defeito a montante — e a régua escrita ANTES dela não sabe que passou a medir a rede (2026-09-20)
+A lei do sprite acendia com `NaN` quando uma lâmpada era anti-paralela à vista, e o gate
+(`is_nan` + magnitude, sobre UMA lâmpada) sangrava. Depois a lei ganhou a transformação de vista,
+cujo `to_display` **sanitiza** (*«luz sem sentido → luz nenhuma»*) ⇒ o `NaN` passou a sair **preto**,
+que é também o que a cerca produz. A mutação que apaga a cerca passou a **SOBREVIVER**, com o gate
+verde e o produto certo por acidente. **Why:** toda camada nova a jusante — um `sanitize`, um
+`clamp`, um `unwrap_or`, um `saturating_*` — é uma rede, e ela colapsa estados distintos num só.
+Uma régua que compara *«o defeito»* com *«o valor de fábrica»* deixa de discriminar no dia em que a
+rede os torna iguais, e **nada avisa**: ela continua verde. **How to apply:** meça a
+**CONTAMINAÇÃO** e não o sintoma — ponha ao lado do caso degenerado uma entrada BOA e afirme que ela
+**sobrevive** (com a cerca, a lâmpada boa acende; sem ela, o `NaN` envenena a soma inteira e a peça
+fica preta). E quando acrescentar uma rede a uma lei já gateada, **re-corra a prova de mutação da
+lei inteira**, não só os gates novos: o que ela apaga não é o caso que você acabou de escrever, é um
+que já estava provado. Ver [[reference_topic_mutation_proofs]] e
+[[every-guard-written-with-lt-or-gt-is-blind-to-nan]].
+
+## ⛔⛔⛔ Um extremo LOCAL não diz o TAMANHO do que se vê — e a imagem é quem o desmente (2026-09-20)
+
+Construí uma lei nova de mistura de ossos, medi a **aresta de dentro do cotovelo** (o `min` do
+esticão sobre o contorno) e li **`0,0496 → 0,2524`, `5,1×`**. Reportei ao dono como *«a cura
+multiplica por cinco o espaço que sobra»*. Depois **desenhei as duas leis lado a lado** e elas
+ficam **quase uma em cima da outra**: o desenho move-se `4,3 %` da espessura a `90°`, e o `p50` do
+deslocamento é **`0,0000`** — metade do contorno não mexe um fio. Na cena do dono, fotografada com
+e sem o interruptor: **59 píxeis de ~2 milhões**.
+
+**As duas medições são verdade ao mesmo tempo.** Um mínimo sobre `~500` segmentos é um extremo
+**LOCAL**: um segmento pode multiplicar-se por cinco sem a forma mudar de aspecto.
+
+⚠️ É a **imagem espelhada** do `edge_max` cego ao quad fino, e por isso é fácil de não ver: aquela
+régua global **subestimava** um defeito local, esta régua local **sobrestima** um ganho local. A
+pergunta que separa as duas é sempre a mesma — ***de que TAMANHO é a coisa que eu estou a medir,
+comparada com a feição que o artista olha?*** — e ela responde-se dividindo pela **espessura** da
+peça, nunca pelo comprimento dela e nunca por nada.
+
+⭐ **A regra que fica: quem publica um `N×` publica ao lado o deslocamento do DESENHO**, e quem
+decide uma wave de forma **desenha-a antes de escrever o relatório**. Neste dia a tabela e a
+imagem discordaram duas vezes e a imagem tinha razão as duas. Ver
+[[feedback_a_ruler_that_stops_at_world_space_approves_a_broken_click]] e
+[[reference_topic_gate_discipline]].
+
+## ⛔⛔⛔ Duas curvas sobrepostas respondem «são a mesma FORMA?», nunca «qual tem o canto mais duro?» (2026-09-20)
+
+Na mesma jornada em que uma IMAGEM me corrigiu duas tabelas, uma TABELA corrigiu-me a imagem — e
+vale a pena guardar as duas juntas, porque a conclusão não é *«desenhe sempre»*.
+
+Report do dono: *«a deformação de vetores deixa tudo irregular»*. Desenhei o caminho vectorial, a
+lei da outra mídia e o caminho com o campo **desligado** uns sobre os outros, vi três traços
+coincidentes e escrevi um gate a afirmar que o campo estava **ilibado**. Ele reprovou na primeira
+corrida: a pior quina lê **`111,8°` sem o campo e `155,3°` com ele**, `+43,5°`.
+
+⚠️ **A espessura do traço do meu desenho era maior que a diferença.** Sobrepor duas curvas é uma
+régua de POSIÇÃO — ela responde *«coincidem?»* — e a dureza de um canto é uma régua de CURVATURA.
+*As duas curvas coincidiam e uma delas tinha um bico.*
+
+⭐ **A regra que fica: escolha o instrumento pela PERGUNTA, e escreva o gate mesmo quando o desenho
+já «respondeu».** Eu só não publiquei a conclusão errada porque tinha posto no gate a metade que
+tentava PROVAR a inocência do campo — e foi ela que me travou. *Um gate escrito para confirmar o
+que já se acredita é o único que pode desmenti-lo.*
+
+⚠️ E na mesma família, quatro vezes no mesmo dia: **um extremo sobre AMOSTRAS CONSECUTIVAS é ruído**
+quando a amostragem é uniforme no parâmetro e não no arco (duas amostras a `1e-6` dão uma direcção
+aleatória; o máximo lia `145,8°` numa figura lisa). A cura é medir sobre uma **janela FÍSICA**
+(curvatura de Menger com um `h` em unidades do mundo), e ela já existia nesta casa — *reusar o
+instrumento vetado em vez de inventar um* teria poupado três redacções.
+
+## ⭐⭐⭐ Um interpolante `C¹` prova-se pela COLUNA e nunca pela célula (2026-09-20)
+
+Portei um interpolante `C¹` (side–vertex de Nielson) para curar um campo linear-por-triângulo, e
+**escrevi-o errado duas vezes**. O que o apanhou não foi o valor do salto da derivada — foi como
+ele se comporta quando a **sonda estreita**:
+
+| | `δ = 1e−2` | `δ = 1e−4` | veredito |
+|---|---:|---:|---|
+| a lei linear (`C⁰`) | `1,1468e−1` | `1,1468e−1` | **constante ⇒ é um degrau** |
+| a 1.ª redacção minha | — | `2,4e−2` | **estabiliza ⇒ `C⁰` na mesma** |
+| a 2.ª (sinal trocado) | — | `4,8e−1` | pior que a lei que vinha curar |
+| a boa | `8,9e−3` | `6,9e−5` | **desaparece com `δ` ⇒ `C¹`** |
+
+⛔ A 1.ª lia **cinco vezes menos que a lei linear** e passava por *«bem melhor»*. *Um limiar
+absoluto não separa `C¹` de «mais liso», e «mais liso» é exactamente o que não resolve o problema.*
+
+⭐ **E há um par de leis que vale para qualquer porte de método numérico:**
+1. **valide por PROPRIEDADE, não por valor** — a biblioteca de referência (SciPy) estima os
+   gradientes por minimização global e eu por mínimos quadrados no anel; comparar número a número
+   mediria o estimador. O que tem de bater são as leis: exactidão nos dados · partição da unidade ·
+   a derivada a desaparecer com a sonda · precisão linear. Cada uma é um gate e cada uma apanhou
+   uma coisa diferente (a dos gradientes só morre pela **precisão linear**, não pela `C¹`).
+2. **escreva a base polinomial em CLARO.** Eu comprimi-a em `mul_add` encadeados «para o clippy» e
+   troquei um sinal; o erro não foi pequeno — foi quatro vezes pior que não ter feito nada.
+
+⚠️ E a cura curou **a grandeza errada**: o campo foi de `68` para `22` ondulações e o desenho ficou
+em `12`, porque o ajuste de curvas a jusante já alisava abaixo disso. *Meça a cura na grandeza que
+o utilizador vê, não naquela onde o defeito nasceu* — ver
+[[reference_topic_control_design_hazards]].
+
+## ⭐⭐⭐ Uma régua que CONTA mede a AMOSTRAGEM; o olho lê a AMPLITUDE (2026-09-20)
+
+Construí uma régua de ondulação que conta **quantas vezes a curvatura troca de sinal**, e reportei
+ao dono o mecanismo que ela deu. Estava confundida em **duas** camadas independentes:
+
+**1. A população seguia a variável sob teste.** A contagem é por AMOSTRA e o caminho era amostrado
+por SEGMENTO (`32` pontos por cúbica) ⇒ a mesma peça com `8` e com `34` nós dá `256` e `1 088`
+amostras, e a régua fica `4,25×` mais fina de um lado. Eu li *«o defeito escala com o número de
+segmentos ⇒ é o ajuste por segmento»* e **a mesma tabela tinha o controlo que o desmente na coluna
+ao lado**: a lei ideal, que não sabe quantos nós o caminho tem, escalou na mesma proporção.
+
+> ⚠️ *Antes de ler uma tendência numa varredura, pergunte se a POPULAÇÃO da régua é constante ao
+> longo dela.* O estimador pode estar certo (aqui a curvatura usa uma janela FÍSICA) e a população
+> errada.
+
+**2. Curada a população, a contagem respondia à pergunta errada.** A `90°`: o desenho tinha `12`
+ondas e o padrão-ouro `68` — *o desenho parecia cinco vezes melhor*. Medida a **flecha**:
+
+| | ondas | flecha p50 | arco p50 |
+|---|---:|---:|---:|
+| padrão-ouro | `68` | `0,0017` (0,17 % da peça) | `0,083` |
+| o desenho | `12` | `0,0505` (**5,0 %**) | `1,39` |
+
+As `68` são facetas invisíveis; as `12` são o que o dono fotografou. ⛔ **E a flecha SOZINHA também
+mente**: entre duas inflexões pode estar a curva que o artista PEDIU, cuja flecha é grande por
+construção — a régua tem de devolver o **ARCO** ao lado, e o corte entre «onda» e «dobra» sai de um
+vale medido (`0,083` contra `1,39`), não de um número escolhido.
+
+⭐⭐ **E o mesmo defeito estava na CALIBRAÇÃO de uma constante que já shipava.** O passo da
+subdivisão fora escolhido como *«o menor valor em que a lei barata concorda com a lei cara»*, e
+lia `0,0000`. **As duas concordam e as duas ondulam.** *Um zero de «as duas dão o mesmo» e um zero
+de «está liso» são o mesmo byte* — e a cura (`K: 3 → 5`) corta o defeito `28×` por `1,0 %` de um
+quadro.
+
+⛔⛔ **Três efeitos colaterais, e cada um é a mesma família noutro sítio:**
+- um gate cujo `p50` era sobre amostragem por segmento ficou vermelho **sobre produto correcto**
+  (a frase que ele afirma é *«metade do CONTORNO»*, e um contorno mede-se em comprimento);
+- um gate que comparava duas CONTAGENS de populações diferentes virou `32 < 30`;
+- e um gate morreu porque a régua dele **SATURA**: o ângulo de quina é limitado a `180°`, os dois
+  lados do controlo chegaram lá, e a diferença colapsou — *não porque a lei mudasse, mas porque o
+  lado de controlo deixou de estar sub-resolvido*. ⇒ **uma régua com tecto deixa de discriminar
+  exactamente quando os dois lados a atingem, e isso lê-se como «a lei mudou»**; a cura foi
+  re-ancorar no mecanismo que não satura (a largura da transição), que a própria prosa já citava.
+
+⚠️ **E o `cargo check -p` do laço interno é cego ao `#[cfg(test)]` da própria crate** (sem
+`--all-targets`) — numa sessão cujo diff é todo código de teste ele deixou passar um erro de tipos
+e imprimiu `Finished`. Ver [[reference_topic_gate_discipline]] e
+[[feedback_the_inner_loop_check_script_is_blind_to_its_own_integration_tests]].
+
+## ⭐⭐⭐ A ABLAÇÃO QUE «não fez nada» era a SHELL a não separar palavras (2026-09-20)
+
+Um laço de medição construía a configuração numa string e passava-a sem aspas —
+`for cfg in "as_duas:ABL_A=0 ABL_B=64"; do env=${cfg#*:}; env $env <corrida>; done`.
+
+⛔ **A shell desta sessão NÃO faz word-splitting de uma variável não citada.** O resultado é
+`ABL_A="0 ABL_B=64"` e `ABL_B` **vazio** — ou seja, a corrida combinada mediu a BASE. E uma base
+disfarçada de ablação lê-se exactamente como ***«esta ablação não faz efeito»***, que foi a
+conclusão errada que eu quase escrevi: as duas ablações **sozinhas** funcionavam e só a combinação
+mentia, que é o pior arranjo possível. Medido em isolamento: `env $env bash -c 'echo $ABL_A'`
+imprime `0 ABL_B=64`.
+
+⚠️ **A mesma armadilha mordeu uma SEGUNDA vez no mesmo dia**, noutra forma: `<instrumento>
+$LISTA_DE_PATHS` passou catorze caminhos como **um** path, e ele respondeu
+`✗ path não existe: <a string inteira>`. *Ali a falha foi barulhenta; na primeira foi muda.*
+
+⇒ **duas regras:** uma ablação com mais de uma variável corre-se **uma linha de cada vez**, com
+cada `VAR=valor` escrito à mão na invocação; e uma lista de ficheiros passa-se por
+`xargs -a <ficheiro>` ou por um laço, **nunca** por `$VAR` nua.
+
+⭐ **E o que a apanhou foi a re-corrida directa**: a leitura combinada contradizia as duas
+individuais, e eu refiz a medição em vez de acreditar nela. *Duas medições que não podem ser ambas
+verdadeiras são um achado sobre o INSTRUMENTO.*
+
+## ⛔⛔ Uma régua de «EXCESSO» que sobrevive a perder o lado contra que compara (2026-09-20)
+
+A `b_excesso_de_curvatura` (`ph2d-skeleton-live`) mede `|κ_desenho − κ_ouro|` sobre os troços que em
+repouso eram rectos. A mutação que troca `κ_ouro` por **zeros** — ou seja, que a faz medir curvatura
+ABSOLUTA — **sobreviveu** ao gate inteiro: numa barra dobrada os três candidatos ordenam-se igual
+nas duas leituras, e a palavra «excesso» deixou de descrever o que era medido sem nada ficar
+vermelho.
+
+⇒ **toda régua de DIFERENÇA leva o controlo dela própria: ela tem de ler ZERO contra si mesma.**
+Uma linha (`excesso(ouro, ouro) < 1e-9`) e a mutação passa a sangrar.
+
+## ⛔⛔⛔ A régua da AMPLITUDE é cega a um BICO, e a da amostragem era cega às duas (2026-09-20)
+
+Três réguas sobre o mesmo report do dono (*«muito curvado»*), em ordem de descoberta:
+
+| régua | o que responde | a que defeito é CEGA |
+|---|---|---|
+| contar ondulações | quantas vezes a curvatura troca de sinal | à AMPLITUDE (68 facetas de `0,17 %` leem-se pior que 12 de `5 %`) |
+| a serpentina (flecha entre inflexões) | quão FUNDA é cada onda | a um BICO — um nó onde a tangente parte **não cria inflexão** |
+| o **excesso de curvatura** contra o padrão-ouro | quanto a linha curva a mais do que devia | (é a que decidiu) |
+
+⭐⭐⭐ **E a terceira inverteu o veredito das duas primeiras sobre um dos candidatos**: a lei sem
+ajuste nenhum (a do Rive) lê **melhor** na serpentina (`0,0056` contra `0,0160`) e **`6,7×` PIOR**
+no excesso de curvatura (`21,05°` contra `3,16°`). *Uma linha que não ondula pode estar simplesmente
+no sítio errado.*
+
+---
+
+⛔⛔⛔ **UMA ESPERA FIXA NUM ROTEIRO DE FOTOGRAFIA É UM PARÂMETRO QUE PODE ATERRAR DEPOIS DE O
+SUJEITO TER ACABADO — e o quadro vazio lê-se como um defeito de RENDERIZAÇÃO** (medido 2026-09-21,
+a instalar o Bevy Solari como oráculo; a instalação foi apagada a pedido do dono no mesmo dia, e a lição fica). O jogo de demonstração joga-se
+sozinho e **termina** (~15 s: cada bolo que expira tira 3 pontos, fim aos `−5`), e o fim de jogo
+**despeja a cena** ⇒ as fotos a `25 s` saíram com o tabuleiro vazio e eu li isso como *«o
+raytracing não desenha nada»*.
+
+⚠️⚠️ **O CONTROLO NÃO DESFEZ O ENGANO, e é isso que vale registar:** a versão sem raytracing vinha
+vazia *pela mesma razão*, logo os dois lados **concordavam sobre uma coisa errada** — *um controlo
+que partilha a causa do defeito confirma-o em vez de o isolar*, que é a mesma forma do espelho que
+não acusa.
+
+⭐⭐ **O que desfez foi CONTAR, por duas réguas independentes:** um censo dentro do produto
+(`Mesh3d=648 · RaytracingMesh3d=648 · cake=1 aceso=1` — *a cena existe inteira*) tirou a caça do
+raytracing de uma vez; e o **peso do ficheiro** separou os dois casos antes de alguém abrir a
+imagem — `241` cores e `6 KB` (ecrã vazio) contra `34 397` cores e `1,5 MB` (a cena lá). *Um PNG
+chapado e um PNG cheio não pesam o mesmo.*
+
+⇒ **Cura para o [`fotografa_cena.sh`](../docs/Components/ferramentas/fotografa_cena.sh) deste repo:**
+uma cena cujo conteúdo tem PRAZO (um relógio, uma corrida, uma fábrica com tecto) precisa de um
+sinal de que estava VIVA no instante da foto — nunca só de uma espera bem escolhida, que envelhece
+no dia em que a cena mudar de ritmo.
+
+## ⛔⛔⛔ Perfilar SEM `perf` nesta máquina: o build de TESTE e o `gdb` mentem, cada um num sentido (2026-09-23)
+
+`perf_event_paranoid = 2` recusa `perf`/`samply` sem root. O que funciona: **amostrar por `gdb`**
+(script Python que interrompe a cada ~8 ms e conta pilhas) sobre um binário com
+`CARGO_PROFILE_RELEASE_STRIP=none CARGO_PROFILE_RELEASE_DEBUG=line-tables-only` (o release do repo
+faz `strip = "symbols"` — sem isto os frames saem `?`). ⛔ **Duas mentiras medidas:**
+(1) **o build de `cfg(test)` não é o produto** — no Painter ele paga o journal do undo do canvas
+(`capture_canvas` só existe em `test`/`debug_assertions`) e uma espia que copia `8 MB` por lote; a
+régua do produto é um `examples/` que compila a lib SEM `cfg(test)` (`ph2d-tool-painter/examples/mede_a_pilha.rs`);
+(2) **sob `ptrace`, criar uma thread é caríssimo** — o `gdb` pôs `49,6 %` em `pthread_create`, e a
+cura que isso pedia mediu **ganho zero** em A/B no build real. *Uma sonda que cria threads sob `gdb`
+mede o depurador.* ⇒ o `gdb` localiza; quem DECIDE é o A/B alternado de dois binários na mesma
+ronda de carga. ⭐ Achado de caminho: o repo compila para `x86-64` BASE (sem SSE4.1), onde
+`f32::round`/`floor`/`trunc` são chamadas ao `compiler_builtins` — `target-cpu=x86-64-v3` mediu
+20–40 % a menos no Composite Brush sem código (decisão do dono, ADR-0172).

@@ -208,3 +208,28 @@ coordenada do pintor, e resolvê-la do outro lado seria a segunda cópia do `ban
   mutação que troca a `Seccao` pela de omissão sobrevive, e essa segunda frase pede a sua própria
   régua.
 - [[feedback_a_ratchet_over_a_non_invariant_quantity_blocks_its_own_cure]] — ⛔⛔⛔ **DEZOITO declarações de «a altura», em TRÊS valores, todas com um comentário a afirmar que concordam.** Medido 22/09 no Inspector: `BTN_H = 30.0` em **15** ficheiros (*«igual à das irmãs»*) e `FIELD_H` em **3**, com **`24` · `24` · `22`**, os três a chamar-se *«a altura de campo do Inspector»* — *a resposta que o artista via era a do ficheiro em que ele calhava de estar a olhar*. ⭐ **A 1.ª linha é COMO a segunda nasce**, e é a 3.ª ocorrência em três dias (o `CHECKBOX_BOX_PX = 18` em 5 cópias · o `SwatchSize::Md` como largura de fileira · esta): *uma frase de comentário não é uma lei — só uma PORTA é*. ⇒ duas portas (`ALTURA_DE_BOTAO`, e `ALTURA_DE_CAMPO` a **delegar** no `ROW_H_PX` da casa) e uma régua TEXTUAL, porque o censo do produto não vê uma constante sem consumidor *e uma cópia nasce sempre sem consumidor, no commit antes daquele em que ela diverge*. ⚠️⚠️ **E a 1.ª redacção da régua acusou código CERTO:** ela proibia a DECLARAÇÃO e reprovou nove secções que escrevem `const ROW_H: f32 = ph2d_tokens::ROW_H_PX;` — um **alias que DELEGA não pode divergir** ⇒ proíbe-se o **LITERAL** (`const <N>: f32 = <dígito>`), com controlo nas duas metades (reconhece a cópia · não acusa o alias)
+
+## ⛔⛔⛔ O knob que FAZ alguma coisa escondido atrás de um knob que não faz NADA (2026-09-20)
+
+Espécie nova, e ela passa por baixo de toda sonda de *knob morto* desta casa — porque **nenhum dos
+dois knobs está morto**.
+
+O painel de ossos tem `Segments` (sempre visível) e *Curve Handles* (só pintada com
+`Segments > 1`). A cerca da segunda é **boa** e está escrita: com um segmento a curvatura é
+provadamente inerte, e um segmentado que grava sem mudar um pixel é o painel a mentir. ⛔ **Só que
+`Segments` sozinho também não muda um pixel** — com as alças em `Manual` e a curvatura no valor de
+nascimento, o osso é o rígido de sempre **ao bit**, seja qual for o número.
+
+⇒ o artista escreve `4`, **não vê nada acontecer**, e não tem razão nenhuma para reparar que nasceu
+uma fileira por baixo. O dono mandou duas fotos: *«não existe Curve Handles em lugar nenhum»*.
+
+⚠️ **A pergunta que a sonda tem de fazer não é «este knob chega a um consumidor?»** — os dois
+chegam. É ***«o que este knob faz, SOZINHO, no estado em que o painel nasce?»***. Um knob cujo
+efeito é `0` até um segundo knob ser mexido precisa de os apresentar JUNTOS, ou de o primeiro já
+nascer no valor que torna o segundo visível.
+
+⭐ **E há uma armadilha do lado de quem MEDE:** a minha bancada mexia nas duas metades na mesma
+função (`reparte(segments)` escrevia `segments` **e** as alças). Sem as separar eu teria medido
+`155° → 62°`, escrito *«suba o Segments»*, e prometido ao dono um resultado que só a outra metade
+produz. *Uma porta de bancada que junta dois knobs do produto num só argumento fabrica um passo de
+smoke que não funciona.* Ver [[reference_topic_measurement_discipline]].

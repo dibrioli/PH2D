@@ -29,3 +29,21 @@ erradas sobre o estado da máquina, seguidas.
   um vigia**: antes de o armar, pergunte *«se isto já tivesse acabado, ele emitia?»*
 
 Irmã: [[a-tail-is-a-window-not-a-verdict]] · [[a-mutation-proof-needs-a-control-on-its-own-filter]]
+
+⛔⛔ **RECORRÊNCIA (2026-09-21, a instalar o Bevy Solari): armei CINCO destes na mesma sessão, com
+esta nota já escrita.** Os cinco ficaram a girar, e a limpeza teve de ser feita **DUAS** vezes: à primeira procurei
+pelo nome de um deles (`fotografa_bevy`) e matei **três**, dando o assunto por fechado; os
+outros dois — vigias de COMPILAÇÃO, com outro padrão — só apareceram quando procurei pela
+**FORMA** (`until ! pgrep`) e já giravam havia 18 minutos.
+⇒ *uma limpeza que procura pelo NOME de um caso limpa esse caso; a varredura tem de procurar
+pela FORMA do defeito, senão o número que se reporta ao dono está errado — e eu reportei «três».* *Uma nota que
+descreve a armadilha não impede a armadilha: o que a impede é não escrever o padrão duas vezes.*
+⇒ **a forma segura é o `Bash` com `run_in_background`**, que notifica pelo PID do próprio comando e
+não precisa de padrão nenhum; o `Monitor` com `until` fica para condições que NÃO são «este
+processo acabou» (um ficheiro aparecer, uma linha num log).
+
+⛔ **E a VERIFICAÇÃO tem a mesma doença**, que é como eu quase me convenci de que sobrava um vivo: o
+`pgrep`/`ps | grep` da conferência também se auto-apanha. ⚠️ **Nesta máquina o `grep` é o `ugrep`**,
+e ele aparece no `ps` como `ugrep -G --ignore-files … -F <padrão>` ⇒ o idioma clássico
+`| grep -v grep` **não casa** (o cmdline não contém a cadeia que se está a excluir). Conte pelo
+`/proc/*/exe`, ou olhe para a lista e leia-a.

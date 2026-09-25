@@ -10,6 +10,11 @@ metadata:
 > Cada linha é uma memória com o gancho ORIGINAL do índice; abra o ficheiro para o mecanismo.
 > Dobradas aqui porque o `MEMORY.md` passou o teto suportado (32 KB > 24 KB): ficam a dois saltos.
 
+- ⛔⛔ [Corte que sobe por `///` e não por `#[` corta DENTRO do item: o vizinho herda doc+atributos e perde os dele (metade muda)](feedback_a_sweep_that_climbs_by_doc_comment_cuts_through_an_item.md)
+- ⛔⛔ [Nota que declara a granularidade certa para UM dos dois lados da fórmula lê-se como cumprida — junte-os num TIPO](feedback_a_note_that_names_the_right_granularity_for_one_side_reads_as_done.md)
+- ⛔ [Passo que manda clicar numa LINHA de painel afirma que ela está na lista — e o dono aprova o smoke com o passo impossível dentro](feedback_a_smoke_step_that_names_a_panel_row_must_prove_the_row_is_in_the_list.md)
+- ⭐⭐ [A CARA de um app é a tabela de tokens, não os widgets — redesenhar 44 pintores com a mesma pele deixa «a mesma cara»; comece pelos 5 números](feedback_the_face_of_an_app_is_its_token_table_not_its_widgets.md)
+- ⛔ [Gesto escrito em DUAS metades aceita a variante nova em SÓ UMA — silêncio absoluto, e a fixtura que chama a porta interna fica verde](feedback_a_gesture_written_in_two_halves_accepts_a_new_variant_in_only_one.md)
 - ⭐ [E o «há N» onde se pede «quais N» é um DADO que falta, não um widget — a janela para o guardar é de um passe](feedback_a_surface_that_only_counts_is_usually_missing_a_datum_not_a_widget.md)
 - [Decida, não pergunte](feedback_decide_dont_ask_gold_standard.md) · [os PRINCÍPIOS decidem, não o Enio](feedback_the_principles_decide_not_the_enio.md)
 - [Uma feature = UMA linha, janelas ao mínimo; a nova assume a MESMA linha (25/08)](feedback_one_feature_one_line_minimum_windows.md)

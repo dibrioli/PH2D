@@ -85,6 +85,27 @@ pub fn imagem(lado: u32) -> Vec<u8> {
     px
 }
 
+/// A cena prepara a mão do artista: escolhe a tela que o [`spawn_if_enabled`] montou, enquadra-a
+/// e pega no Painter.
+///
+/// ⚠️ Esta cena abre com o Painter NA MÃO (ordem do dono: «pronto para testarmos») — o mesmo
+/// pedido que o botão faz, e é ele que faz o bind armar a pilha. O botão só existe com as Image
+/// Tools LIGADAS (a `activation_gate` recusa sem elas), logo a cena liga-as primeiro, que é o que o
+/// artista faz à mão.
+///
+/// ⚠️ Mora aqui e não na shell por ordem da catraca `the_shell_only_shrinks` (integração de
+/// 2026-09-25): a shell só chama; a cena é da família.
+pub fn arm_hero(hero: &mut ph2d_editor_core::HeroScreen, bits: u64) {
+    use ph2d_editor_core::action_bus::EditorAction;
+    hero.gizmo.replace_selection(Some(bits));
+    hero.bus.push(EditorAction::SetViewFocus {
+        kind: ph2d_editor_core::ViewFocusKind::Selected,
+    });
+    hero.image_edit.mode_on = true;
+    hero.bus
+        .push(EditorAction::ActivateTool { tool_id: "painter" });
+}
+
 /// Montar a tela quando `PH2D_COMPOSITE_SMOKE=1`, UMA vez, devolvendo os bits da entidade para
 /// quem chama pôr a selecção nela. Imprime O QUE montou e o roteiro.
 ///

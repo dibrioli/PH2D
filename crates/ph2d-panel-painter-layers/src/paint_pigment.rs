@@ -61,7 +61,7 @@ pub(crate) fn paint_pigment_row(
         ix,
         iw,
         ry,
-        tr("panel.painter_layers.watercolor.pigment"),
+        "panel.painter_layers.watercolor.pigment",
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_MIX,
         pigment_amount(brush),
         0.0,

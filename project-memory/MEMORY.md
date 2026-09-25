@@ -48,7 +48,6 @@
 - ⛔ [Passo que manda clicar numa LINHA de painel afirma que ela está na lista — e o dono aprova o smoke com o passo impossível dentro](feedback_a_smoke_step_that_names_a_panel_row_must_prove_the_row_is_in_the_list.md)
 - ⛔ **Nada armengado: SILENCIAR um diagnóstico é armengo mesmo com a ferramenta defeituosa** ([§SUPRESSÃO, 29/08](feedback_perfection_no_deferrals.md)) — e meio-feito é pior que não começar
 - ⛔ [Restaurar uma mutação com `mv` devolve mtime ANTIGO e o cargo guarda o build DA MUTAÇÃO — `touch` no fim](feedback_a_mutation_restore_by_mv_leaves_cargo_with_the_mutated_build.md)
-- ⛔⛔ [E restaurar com `git checkout --` APAGA o gate novo ainda não commitado — a corrida seguinte fica verde por não haver régua](feedback_a_mutation_restore_by_git_checkout_deletes_the_new_gate.md)
 - ⭐⭐ [Constante cara DENTRO do construtor de uma árvore corre onde a ÁRVORE é construída — 6 → 3 852 por quadro, com a imagem perfeita](feedback_a_constant_folded_into_a_tree_is_recomputed_wherever_the_tree_is.md)
 - ⭐⭐ [A CARA de um app é a tabela de tokens, não os widgets — redesenhar 44 pintores com a mesma pele deixa «a mesma cara»; comece pelos 5 números](feedback_the_face_of_an_app_is_its_token_table_not_its_widgets.md)
 - ⛔ [Gesto escrito em DUAS metades aceita a variante nova em SÓ UMA — silêncio absoluto, e a fixtura que chama a porta interna fica verde](feedback_a_gesture_written_in_two_halves_accepts_a_new_variant_in_only_one.md)
@@ -158,5 +157,5 @@
 - [HISTÓRICO: Painter no teto — premissa dissolvida](project_painter_core_files_at_loc_cap.md) · [8GB = full-gate ~10min](project_solo_coord_backlog_ship_2026_05_29.md)
 - 📚 [Arquitetura / norte / perf: mais (18) lições](reference_topic_architecture_north_perf_lessons.md)
 - [fixture (17)](reference_topic_fixture_discipline.md)
-- [Provas de mutação (29) — 3 controles no arnês · ⛔ corpus onde a desigualdade nunca aperta não a testa (2 de 8 sobreviveram)](reference_topic_mutation_proofs.md)
+- [Provas de mutação (30) — 3 controles no arnês · ⛔ corpus onde a desigualdade nunca aperta não a testa (2 de 8 sobreviveram)](reference_topic_mutation_proofs.md)
 - ⛔⛔ [Atribuição VELHA de um vermelho não cobre o suspeito de HOJE — abla o teu e confirma o número AO BIT](feedback_an_old_attribution_is_worth_more_after_ablating_todays_suspect.md)

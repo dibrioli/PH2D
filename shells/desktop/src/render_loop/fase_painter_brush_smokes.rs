@@ -63,20 +63,7 @@ impl crate::App {
                 atlas_asset_map,
             ) {
                 *next_import_cell = next_import_cell.saturating_add(1);
-                hero.gizmo.replace_selection(Some(bits));
-                hero.bus
-                    .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
-                        kind: ph2d_editor_core::ViewFocusKind::Selected,
-                    });
-                // ⚠️ Esta cena abre com o Painter NA MÃO (ordem do dono: «pronto para testarmos»)
-                // — o mesmo pedido que o botão faz, e é ele que faz o bind armar a pilha. O botão
-                // só existe com as Image Tools LIGADAS (a `activation_gate` recusa sem elas), logo
-                // a cena liga-as primeiro, que é o que o artista faz à mão.
-                hero.image_edit.mode_on = true;
-                hero.bus
-                    .push(ph2d_editor_core::action_bus::EditorAction::ActivateTool {
-                        tool_id: "painter",
-                    });
+                ph2d_app_painter::composite_smoke::arm_hero(hero, bits);
             }
         }
 

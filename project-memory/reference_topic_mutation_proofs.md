@@ -69,6 +69,7 @@ e escrever-lhe torna a suíte mais um membro da família de flakes de fan-out.
 ⇒ **o instrumento tem de ser TEXTUAL** (quem CHAMA o acessório), e o teste vácuo foi **apagado**:
 *um teste vácuo é pior do que nenhum — ele lê-se como cobertura.*
 - ⛔⛔ [Restaurar com `git checkout` numa árvore SUJA apaga a FATIA, não a mutação](feedback_a_mutation_restore_by_git_checkout_deletes_the_wave.md) — 3 ficheiros perdidos; quem o disse foi o controlo do filtro.
+- ⛔⛔ [E restaurar com `git checkout --` APAGA o gate novo ainda não commitado — a corrida seguinte fica verde por não haver régua](feedback_a_mutation_restore_by_git_checkout_deletes_the_new_gate.md)
 - ⛔⛔⛔ **O arnês tem de perguntar se o teste está VERDE antes de mutar — senão ele certifica
   qualquer coisa.** Medido 2026-09-19 (`line/Vector`): um gate meu estava vermelho (a régua esperava
   a fracção ao longo da CORDA e o código devolve o parâmetro da CURVA — numa quina os pontos de

@@ -70,6 +70,7 @@ pub(super) fn corpo_impacto(
         ids::INSP_VIDA_NUMBERS,
         tr("panel.inspector.vida.numbers"),
         h.numbers,
+        seccao,
     );
     if !h.numbers {
         return cur_y;

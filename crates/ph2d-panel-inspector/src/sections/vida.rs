@@ -24,8 +24,6 @@ use ph2d_editor_core::vida_edits::{InspectorHealthInfo, InspectorVidaInfo, VidaQ
 use ph2d_editor_core::widget::{SectionFold, Unit};
 use ph2d_i18n::{tr, tr_with};
 
-const CHECK_H: f32 = 18.0; // LITERAL-PX-OK: altura visual do Checkbox, igual à das irmãs
-
 /// **A CHAVE de cada queixa** — a porta entre o enum da lei e a língua.
 #[must_use]
 pub(super) const fn chave_da_queixa(q: VidaQueixa) -> &'static str {
@@ -37,6 +35,10 @@ pub(super) const fn chave_da_queixa(q: VidaQueixa) -> &'static str {
 }
 
 /// Uma caixa da secção. Devolve o `y` seguinte.
+///
+/// ⛔ **Pela porta da linha de propriedade** (`property_row::paint_check_row`, integração de
+/// 2026-09-25): a marca tem a altura de uma LINHA (`ROW_H_PX`), e a coluna do nome é da SECÇÃO.
+/// A redacção anterior pintava a moldura com a aresta da MARCA (`18 px`) e encolhia as duas.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn caixa(
     scene: &mut VectorScene,
@@ -50,23 +52,20 @@ pub(super) fn caixa(
     id: NodeId,
     rotulo: &str,
     ligada: bool,
+    seccao: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
-    let rect = Rect::new(x, y, w, CHECK_H);
-    hit_index.register(id, rect);
-    paint_checkbox(
-        &Checkbox::new(id, rotulo)
-            .visual(store.checkbox_visual(id))
-            .value(if ligada {
-                CheckboxValue::Checked
-            } else {
-                CheckboxValue::Unchecked
-            }),
-        rect,
+    ph2d_editor_core::property_row::paint_check_row(
         scene,
         text_system,
         theme,
-    );
-    y + CHECK_H + ph2d_tokens::control_gap_px()
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        (id, rotulo, ligada),
+        seccao,
+    )
 }
 
 /// Um campo de texto (uma equipa ou um sinal). ⛔ Pela porta que já existe (`anim_rows::text_row`).
@@ -313,6 +312,7 @@ fn corpo_vida(
             ids::INSP_VIDA_OVERHEAL,
             tr("panel.inspector.vida.overheal"),
             h.overheal,
+            seccao,
         );
     }
     if h.tem_escudo() {
@@ -328,6 +328,7 @@ fn corpo_vida(
             ids::INSP_VIDA_SHIELD_BLOCKS,
             tr("panel.inspector.vida.shield_blocks_excess"),
             h.shield_blocks_excess,
+            seccao,
         );
     }
     // ⭐ O IMPACTO (plano 28, W5) — o bloco irmão, antes dos nomes.

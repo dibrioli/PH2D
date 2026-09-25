@@ -11,7 +11,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
         "panel.inspector.vida.health" => "Health",
         "panel.inspector.vida.damage" => "Damage",
-        "panel.inspector.vida.max_0_no_max" => "Max (0 = none)",
+        "panel.inspector.vida.max_0_no_max" => "Max",
+        // ⚠️ A regra saiu do nome para o balão (a ordem do dono de 2026-09-22, cobrada na integração).
+        "panel.inspector.vida.max_hint" => "0 = none.",
         "panel.inspector.vida.start" => "Start",
         "panel.inspector.vida.invincible" => "Invincible",
         "panel.inspector.vida.regen" => "Regen / s",

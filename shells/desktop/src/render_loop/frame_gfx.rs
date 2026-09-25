@@ -209,13 +209,10 @@ impl<'a> FrameGfx<'a> {
             name_type_id,
             sprite_type_id,
             image_edit_undo,
-            // ADR-0054 W0.T6: registries held but not yet consumed
-            // inside the render loop — W1 wires Open/Save user paths
-            // through `imageio_importers.find_for(...)`.
+            // ADR-0054: os importadores servem o Open/Save do utilizador, não o quadro.
             imageio_importers: _,
             imageio_exporters,
-            // Motion Nodes: cooked per frame by `motion_bridge` (M0.T10) into its
-            // reused instance buffer while the `motion` tool is active.
+            // Motion Nodes: cozido por quadro pelo `motion_bridge` (M0.T10) com a ferramenta activa.
             motion,
             // Global rigid physics: stepped per frame by `physics_bridge`
             // (ADR-0131 W1) — reads RigidBody/Collider, writes Transform.

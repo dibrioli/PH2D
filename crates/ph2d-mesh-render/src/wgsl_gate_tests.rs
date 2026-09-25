@@ -48,10 +48,23 @@ fn o_mesh_wgsl_parsa_e_valida_no_naga() {
 /// compila a errada* — a mesma forma que esta casa já paga com os censos de fiação.
 #[test]
 fn o_produto_compila_a_fonte_composta_e_nao_o_ficheiro_cru() {
+    // ⚠️ **Duas metades desde a integração de 2026-09-25** (`line/sculpt3d` + `line/3DModeling`):
+    // o produto entrega a PORTA da fonte (`fonte::mesh_wgsl`, que embrulha a tinta fina), e é a
+    // porta que compõe a lei (`pbr::fonte`). Cada metade sozinha mente — o produto a chamar a porta
+    // com a porta a devolver o ficheiro cru passaria na primeira.
     let build = include_str!("pipeline_build.rs");
     assert!(
-        build.contains("crate::pbr::fonte()"),
-        "o `create_shader_module` da malha tem de receber a fonte COMPOSTA"
+        build.contains("crate::fonte::mesh_wgsl("),
+        "o `create_shader_module` da malha tem de receber a fonte pela PORTA `fonte::mesh_wgsl`"
+    );
+    let porta = include_str!("fonte.rs");
+    assert!(
+        porta.contains("let base = crate::pbr::fonte();"),
+        "a porta `fonte::mesh_wgsl` tem de compor a fonte COMPOSTA (`pbr::fonte`)"
+    );
+    assert!(
+        !porta.contains("Cow::Borrowed(MESH_WGSL)"),
+        "controlo: a porta não pode voltar a devolver o ficheiro cru"
     );
     // ⭐ **O CONTROLO da régua:** ela tem de saber dizer NÃO — o nome cru não pode sobrar num
     // `ShaderSource`, que é como a recaída aconteceria.

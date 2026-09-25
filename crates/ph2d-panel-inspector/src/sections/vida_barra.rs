@@ -153,6 +153,7 @@ fn corpo_barra(
         ids::INSP_BARRA_HIDE_FULL,
         tr("panel.inspector.vida.bar_hide_when_full"),
         b.hide_when_full,
+        seccao,
     )
 }
 

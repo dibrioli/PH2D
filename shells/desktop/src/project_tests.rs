@@ -66,8 +66,7 @@ fn animation_of_hero() -> Vec<u8> {
         ph2d_timeline::AnimValue::Float(42.0),
         ph2d_timeline::Interp::Linear,
     );
-    ph2d_timeline_persist::serialize(&mut timeline, sim.world_mut())
-        .expect("serializa a timeline")
+    ph2d_timeline_persist::serialize(&mut timeline, sim.world_mut()).expect("serializa a timeline")
 }
 
 /// Um caminho temporário por gate (os testes correm em paralelo, no mesmo processo —

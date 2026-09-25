@@ -127,6 +127,7 @@ fn corpo_dano(
             id,
             tr(chave),
             ligada,
+            seccao,
         );
     }
     nome(

@@ -87,6 +87,7 @@ const DICAS: &[(ph2d_a11y::NodeId, &str)] = &[
         crate::ids::INSP_TD_DECEL,
         "panel.inspector.topdown.deceleration_hint",
     ),
+    (crate::ids::INSP_VIDA_MAX, "panel.inspector.vida.max_hint"),
     (
         crate::ids::INSP_TD_TURN_SPEED,
         "panel.inspector.topdown.turn_speed_hint",

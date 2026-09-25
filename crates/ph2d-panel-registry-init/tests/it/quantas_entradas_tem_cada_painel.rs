@@ -2322,7 +2322,15 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    painéis). `11` botões de linha inteira deste painel avançavam só a altura (`+3` cada, o
     //    `control_gap_px`) e `3` somavam o `Spacing::Xs` à mão (`4 → 3`, `−1` cada): `33 − 3 = 30`.
     //    ⛔ Nenhuma secção nasceu aberta — é o mesmo número de linhas com o vão que as outras têm.
-    ("sculpt3d", 2051.0),
+    // ⬆️ `2 051 → 2 186` na integração de 2026-09-25 (rodada 03, `line/3DModeling` sobre a
+    //    `line/sculpt3d`), com a conta fechada fileira a fileira pela porta deste gate: `+41` a lei
+    //    que acende o sprite assado (a fileira `Bake Law`, que a fixtura arma com `lei_do_alvo`) ·
+    //    `+44` o `Lens` do sombreamento (report do dono de 21/09) · `+50` as duas pistas de LÂMPADA
+    //    que passaram de `under_the_rig` a `always` (report do dono de 20/09: *«não encontrei no
+    //    painel de Sculpt os parâmetros de iluminação»* — eram dois controlos VIVOS inalcançáveis),
+    //    `2 × 25`. `41 + 44 + 50 = 135`. ⛔ Nenhuma secção nasceu aberta: são fileiras em secções
+    //    que já existiam, e recolhê-las esconderia o que o dono pediu para ver.
+    ("sculpt3d", 2186.0),
     ("tokens", 2866.0),
     ("vector", 1262.0),
     ("physics", 1281.0),

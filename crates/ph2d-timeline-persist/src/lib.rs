@@ -286,10 +286,7 @@ pub fn publish_object_names(view: &mut ph2d_timeline::TimelineViewSnapshot, worl
 /// atribui: um objeto criado no mesmo frame do Ctrl+S seria gravado com `wire_id` NULL, e a
 /// track dele nunca mais reencontraria ninguém. Pedir `&mut` é o que torna isso impossível
 /// em vez de improvável.
-pub fn serialize(
-    timeline: &mut TimelineState,
-    world: &mut World,
-) -> Result<Vec<u8>, String> {
+pub fn serialize(timeline: &mut TimelineState, world: &mut World) -> Result<Vec<u8>, String> {
     ph2d_ecs::assign_missing_stable_ids(world);
     let world = &*world;
     stamp_wire_ids(&mut timeline.doc, |bits| wire_of(world, bits));

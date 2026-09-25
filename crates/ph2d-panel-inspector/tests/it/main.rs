@@ -13,6 +13,7 @@ mod a_long_popover_scrolls;
 mod a_seccao_barra_de_vida_esta_viva;
 mod a_seccao_counter_watch_esta_viva;
 mod a_seccao_gatilho_esta_viva;
+mod a_seccao_live_mesh_esta_viva;
 mod a_seccao_parallax_esta_viva;
 mod a_seccao_particles_esta_viva;
 mod a_seccao_ray_sensor_esta_viva;

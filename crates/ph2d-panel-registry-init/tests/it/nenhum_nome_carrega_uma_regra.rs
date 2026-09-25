@@ -121,6 +121,29 @@ fn placeholders_do_painel() -> BTreeSet<String> {
                     out.insert(k.trim_start_matches("panel.inspector.").to_string());
                 }
             }
+            // ⭐ **A SEGUNDA porta de placeholder** (integração de 2026-09-25): a tabela de acções
+            //    escolhe a dica do campo do parâmetro pelo que ele É (`dica_do_parametro`, plano
+            //    28 W2b), logo o sítio da chamada lê `.placeholder(tr(dica_do_parametro(..)))` e a
+            //    chave vive nos braços da função. ⚠️ Só conta se a função ALIMENTA de facto um
+            //    `.placeholder(` — senão ela seria uma lista de nomes com outro nome.
+            if src.contains(".placeholder(tr(dica_do_parametro(") {
+                let corpo = src
+                    .split("fn dica_do_parametro(")
+                    .nth(1)
+                    .and_then(|r| r.split("\n}\n").next())
+                    .expect("a porta `dica_do_parametro` é chamada e tem de estar definida aqui");
+                let mut n = 0;
+                for pedaco in corpo.split("=> \"").skip(1) {
+                    if let Some(k) = pedaco.split('"').next() {
+                        out.insert(k.trim_start_matches("panel.inspector.").to_string());
+                        n += 1;
+                    }
+                }
+                assert!(
+                    n >= 3,
+                    "a porta `dica_do_parametro` deu {n} chaves e tem 3 — a extracção partiu-se"
+                );
+            }
         }
     }
     out

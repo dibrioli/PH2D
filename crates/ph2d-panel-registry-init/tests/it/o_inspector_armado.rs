@@ -1213,6 +1213,11 @@ pub const PORTAS: &[(&str, fn())] = &[
     }),
     ("particles", || insp::set_current_inspector_particles(None)),
     ("script", || insp::set_current_inspector_script(None)),
+    // ⭐ As três da rodada 03 (integração de 2026-09-25): a PARALAXE e a VIDA (`line/components`) e
+    // o CATAVENTO (`line/3DModeling`). Sem elas a régua de ALTURA não as desarma.
+    ("parallax", || insp::set_current_inspector_parallax(None)),
+    ("vida", || insp::set_current_inspector_vida(None)),
+    ("mesh3d", || insp::set_current_inspector_mesh3d(None)),
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────

@@ -1298,7 +1298,12 @@ const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
     ("wet_tuning", 17),
     ("physics", 49),
     ("sculpt3d", 36),
-    ("vector", 24),
+    // ⬇️ `24 → 8` em 2026-09-24 (ordem do dono: *«Arrumar o painel Vector»*): os `16` que saíram
+    //    são as peças da grelha `button_grid` — os `15` modos da ferramenta e o *Pick Shapes* —,
+    //    uma ESCOLHA que não se declarava composto. Os `8` que ficam são comandos a sério (fechar,
+    //    as quatro acções do Blend, o *Morph*, o *Both* dos marcadores) e passaram à coluna do
+    //    valor pela `caixa_do_botao`, via `RowCtx::action_button_kind`.
+    ("vector", 8),
     ("model3d", 1),
 ];
 

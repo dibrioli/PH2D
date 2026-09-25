@@ -150,13 +150,34 @@ impl RowCtx<'_> {
     }
 
     /// O mesmo, com um `kind` escolhido — um **Accent** é como uma acção de *commit* se destaca.
+    ///
+    /// ⭐⭐ **Onde ele fica é a porta [`crate::property_row::caixa_do_botao`]** (ordem do dono,
+    /// 2026-09-24: *«Arrumar o painel Vector»*, depois de aprovada a regra no Inspector e nos outros
+    /// painéis): a coluna do valor quando o rótulo lá cabe, a linha inteira quando não cabe, e a
+    /// altura de um campo. Este ajudante pintava os `52` botões de acção do painel Vector e os do
+    /// esqueleto a atravessar a linha, e o censo `an_action_button_asks_the_door_where_it_goes` não
+    /// o via — ele vive no núcleo e não num painel.
+    ///
+    /// ⛔ **Um `Accent` ATRAVESSA a linha, de propósito:** é o *commit* (o *Apply* da pilha de efeitos,
+    /// o da simetria) — o mesmo lugar que o *Apply Mask* do Painter e o par `Cancel | Apply` das
+    /// ferramentas de imagem têm, e a razão por que eles se destacam das edições à volta.
     pub fn action_button_kind(&mut self, id: NodeId, label: &str, kind: ButtonKind, y: f32) -> f32 {
-        let rect = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
+        let rect = if kind == ButtonKind::Accent {
+            Rect::new(self.inner_x, y, self.inner_w, ph2d_tokens::ROW_H_PX)
+        } else {
+            crate::property_row::caixa_do_botao(
+                self.text_system,
+                self.inner_x,
+                self.inner_w,
+                y,
+                label,
+            )
+        };
         let st = self.store.button_visual(id);
         let btn = Button::new(id, label).kind(kind).visual(st);
         paint_button(&btn, rect, self.scene, self.text_system, self.theme);
         self.hit_index.register(id, rect);
-        y + self.row_h + ph2d_tokens::control_gap_px()
+        crate::property_row::abaixo_do_botao(rect)
     }
 
     /// **Um botão ROTULADO** (`<rótulo> [ botão ]`) — a geometria do [`Self::labeled_number_field`]

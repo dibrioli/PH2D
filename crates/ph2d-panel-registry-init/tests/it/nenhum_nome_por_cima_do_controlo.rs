@@ -157,6 +157,14 @@ const FORA: &[(&str, &str, &str)] = &[
          desliga sozinha, e o nome dela (`Layers`) já vive na coluna",
     ),
     (
+        "vector",
+        "vector.mode.select",
+        "a grelha das FERRAMENTAS do Vector (Select · Node · Pen · …): escolhe a ferramenta na mão, \
+         não uma propriedade do objecto, e o título da secção (`TOOL`) já a nomeia. Declarada \
+         composto em 2026-09-24 (o censo lia `15` comandos soltos); a FORMA dela espera a decisão \
+         do dono de partir o `DrawMode` nos dois eixos",
+    ),
+    (
         "painter_layers",
         "painter_sidebar.toggle_dock",
         "as ABAS do painel (Brush · Layers): uma navegação entre vistas, pedida assim pelo dono \

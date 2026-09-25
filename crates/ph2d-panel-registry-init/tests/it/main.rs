@@ -14,6 +14,7 @@ mod a_paleta_de_pinceis_fecha_ao_escolher;
 mod a_panel_paints_where_its_tab_says;
 mod a_slot_with_two_panels_shows_tabs;
 mod a_tab_dragged_to_another_dock_moves_the_panel;
+mod diag_os_comandos_do_vector;
 mod global_palette_catalog;
 mod nenhum_nome_carrega_uma_regra;
 mod nenhum_nome_por_cima_do_controlo;

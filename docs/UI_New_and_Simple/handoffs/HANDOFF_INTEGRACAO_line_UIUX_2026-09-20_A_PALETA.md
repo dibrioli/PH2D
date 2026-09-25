@@ -765,6 +765,49 @@ lista. As alturas de abertura não se movem (as secções com botões nascem dob
 (`(r.y, r.h) == (40, ROW_H_PX)`). Portão: `nextest-impacted` **17 703/17 703** · clippy `-D warnings`
 zero nas `11` crates tocadas · `fmt` · censos da árvore combinada **127/127**.
 
+## §9-quatertricies — ⭐⭐ O PAINEL VECTOR: `24 → 8` comandos, e a maior parte da dívida era do INSTRUMENTO
+
+Ordem do dono (2026-09-24), escolhida entre três: *«Arrumar o painel Vector»*.
+
+**Passo zero: a lista, não o número.** A sonda nova `diag_os_comandos_do_vector` (`#[ignore]`, no
+`ph2d-panel-registry-init`) pinta o painel à largura do dono e lista cada botão com o NOME (colhido dos
+literais com forma de id no `ph2d-panel-vector`, `ph2d-tool-vector` e `ph2d-editor-core`, porque o id é
+um hash) e se ele está num grupo declarado. ⚠️ O `45` da tabela do §7.3 era de 20/09; a catraca
+`a_carga_de_comandos_de_um_painel_so_encolhe` lia `24` distintos hoje, e a lista partiu-os em DUAS
+espécies:
+
+| espécie | quantos | o que era | cura |
+|---|---:|---|---|
+| peças da `button_grid` (os `15` modos da ferramenta + o *Pick Shapes*) | `16` | uma ESCOLHA (*uma de N*, com a acesa a dizer qual) que **não se declarava composto** | `composto::grupo` dentro da `button_grid` — os três chamadores dela são escolhas |
+| acções (Blend ×4, Morph, *Both* dos marcadores, fechar) | `8` | comandos a sério, a ATRAVESSAR a linha | a coluna do valor, pela porta |
+
+**⛔ A causa da segunda: o ajudante partilhado vive no NÚCLEO.** O `RowCtx::action_button_kind`
+(`ph2d-editor-core/src/panel/rows.rs`) pinta os `52` botões de acção do Vector e os do Esqueleto, e o
+censo `an_action_button_asks_the_door_where_it_goes` varria só `ph2d-panel-*` — logo a regra aprovada
+no Inspector e alargada no §9-untricies nunca lhes chegou. ⇒ o ajudante pede a caixa à porta e avança
+pela `abaixo_do_botao`; o censo passa a varrer aquele ficheiro também (mutação: repor o `Rect::new` a
+toda a largura no ajudante reprova-o).
+
+**⛔ O `Accent` ATRAVESSA a linha, de propósito:** é o *commit* (o *Apply* da pilha de efeitos, o da
+simetria) — o mesmo lugar do *Apply Mask* do Painter e do par `Cancel | Apply` das ferramentas de
+imagem.
+
+**⚠️ Declarar a grelha acordou o `nenhuma_escolha_do_app_e_montada_a_mao`:** uma escolha a toda a
+largura sem nome ao lado. ⇒ **excepção NOMEADA** em `FORA` (`vector.mode.select`): a grelha escolhe a
+FERRAMENTA na mão, não uma propriedade do objecto, e o título da secção (`TOOL`) já a nomeia; a FORMA
+dela espera a decisão do dono de partir o `DrawMode` nos dois eixos (§5 do `CLAUDE.md`). A lista tem
+censo de obsolescência, logo a excepção sai sozinha quando a grelha mudar.
+
+**Números:** catraca `vector` `24 → 8` (a metade *«desceu — escreva o número»*). ⚠️ O `tokens` do §7.3
+**não é dívida**: `110` botões, `4` comandos distintos — a própria catraca o diz; a escolha do dono
+pelo Vector estava certa.
+
+**Prova:** mutação — tirar o `composto::grupo` da grelha põe a catraca em `24 contra 8`; repor o rect a
+toda a largura no ajudante reprova o censo dos botões. Portão: `nextest-impacted` **17 702/17 703**, a
+única ✗ a ser `a_long_stroke_is_bounded_by_the_redundancy_floor_not_by_a_budget` (`ph2d-app-flip`,
+família `…precisao::orcamento` da lista de flakes do §5.0): **3/3 verde sozinha a `load 38–42`**, zero
+linhas de diff na crate · clippy `-D warnings` zero · `fmt` · censos da árvore combinada **127/127**.
+
 ## §11 — O que esta linha recomenda a quem a integrar
 
 1. **Correr o `diag_onde_cai_a_pista_do_pente` da `line/sculpt3d` DEPOIS da fusão** e reescrever com

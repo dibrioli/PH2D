@@ -363,6 +363,12 @@ impl BodyCtx<'_> {
             );
             self.hit_index.register(id, rect);
         }
+        // ⭐ **A grelha é UMA escolha** (*uma de N*, com a acesa a dizer qual) — os três
+        //    chamadores (os modos da ferramenta, o *Pick Shapes* do blend, os tamanhos da moldura)
+        //    passam todos a bandeira `active`. Declará-la é o que faz o censo das entradas ler UM
+        //    controlo e não `15` comandos soltos (medido 2026-09-24: o `vector` lia `45` comandos, e
+        //    `15` eram estas peças).
+        ph2d_editor_core::widget::composto::grupo(items.iter().map(|t| t.0));
         // ⚠️ **A altura sai da MESMA porta que dispôs as peças** — a conta à mão que estava aqui
         // somava o vão antigo, e um contentor medido por uma regra e preenchido por outra escreve
         // a fileira seguinte por cima desta.

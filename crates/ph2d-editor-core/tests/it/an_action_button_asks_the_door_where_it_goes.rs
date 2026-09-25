@@ -108,7 +108,8 @@ fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
-/// As fontes de PRODUTO dos painéis, fora o Inspector (que tem o censo dele).
+/// As fontes de PRODUTO dos painéis, fora o Inspector (que tem o censo dele), mais o ajudante
+/// de linhas do núcleo que eles chamam.
 fn panel_sources() -> Vec<PathBuf> {
     let root = repo_root();
     let mut out = Vec::new();
@@ -121,6 +122,10 @@ fn panel_sources() -> Vec<PathBuf> {
             }
         }
     }
+    // ⭐ **E o ajudante partilhado das linhas** (`RowCtx::action_button_kind`), que vive no NÚCLEO e
+    //    pinta os botões de acção do Vector e do esqueleto: medido 2026-09-24, ele atravessava a
+    //    linha em `52` sítios do Vector e este censo não o via, por varrer só `ph2d-panel-*`.
+    out.push(root.join("crates/ph2d-editor-core/src/panel/rows.rs"));
     out.retain(|p| {
         let n = p.file_name().and_then(|n| n.to_str()).unwrap_or_default();
         !n.ends_with("_tests.rs") && !n.starts_with("seam_")

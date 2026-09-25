@@ -27,6 +27,7 @@ fn caixa(id: ph2d_a11y::NodeId, i: &InspectorVidaInfo) -> Option<E> {
         ids::INSP_DANO_IGNORES_ARMOR => E::IgnoresArmor(!d?.ignores_armor),
         ids::INSP_DANO_VANISH => E::Vanish(!d?.vanish),
         ids::INSP_BARRA_HIDE_FULL => E::BarHideWhenFull(!b?.hide_when_full),
+        ids::INSP_VIDA_NUMBERS => E::Numbers(!h?.numbers),
         _ => return None,
     })
 }
@@ -55,6 +56,13 @@ fn numero(id: ph2d_a11y::NodeId, v: f64) -> Option<E> {
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         ids::INSP_VIDA_SEED => E::Seed(v.max(0.0).round() as u64),
         ids::INSP_DANO_AMOUNT => E::DamageAmount(f),
+        ids::INSP_VIDA_DEATH_HITSTOP => E::DeathHitstopS(f),
+        ids::INSP_VIDA_BLINK => E::BlinkS(f),
+        ids::INSP_VIDA_KNOCKBACK_TAKEN => E::KnockbackTaken(f),
+        ids::INSP_VIDA_NUMBERS_SIZE => E::NumbersSize(f),
+        ids::INSP_DANO_HITSTOP => E::HitstopS(f),
+        ids::INSP_DANO_KNOCKBACK => E::Knockback(f),
+        ids::INSP_DANO_KNOCKBACK_LIFT => E::KnockbackLift(f),
         ids::INSP_BARRA_WIDTH => E::BarWidth(f),
         ids::INSP_BARRA_HEIGHT => E::BarHeight(f),
         ids::INSP_BARRA_OFFSET_X => E::BarOffsetX(f),

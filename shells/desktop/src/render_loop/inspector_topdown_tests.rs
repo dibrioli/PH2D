@@ -136,3 +136,44 @@ fn um_dreno_sobre_quem_nao_tem_o_componente_nao_toca_em_nada() {
         &TopDownFieldEdit::Speed(3.0)
     ));
 }
+
+/// ⭐ **O EMPURRÃO do mover (plano 28, W5) vai e volta pela shell** — o instantâneo mostra o que a
+/// lei tem, o dreno escreve-o, e a cerca não deixa a recuperação ficar negativa (uma taxa negativa
+/// faria o empurrão CRESCER em vez de se gastar).
+///
+/// **Mutações que devem sangrar:** o instantâneo mostrar o valor de fábrica · o dreno não escrever
+/// · a cerca `max(0)` apagada.
+#[test]
+fn o_empurrao_do_mover_vai_e_volta() {
+    let (mut sim, bits) = cena(BodyKind::Kinematic, false);
+    let w = sim.world_mut();
+    assert!(apply_topdown_edit(
+        w,
+        bits,
+        &TopDownFieldEdit::KnockbackRecovery(7.5)
+    ));
+    let lei = w
+        .get::<TopDownPlayer>(Entity::from_bits(bits))
+        .unwrap()
+        .law();
+    assert_eq!(lei.knockback_recovery, 7.5, "o dreno escreve a recuperação");
+    let i = build_topdown_info(sim.world(), bits, 1, true).unwrap();
+    assert_eq!(
+        i.knockback_recovery, 7.5,
+        "o instantâneo mostra o que o objecto tem, não o de fábrica"
+    );
+    let w = sim.world_mut();
+    assert!(apply_topdown_edit(
+        w,
+        bits,
+        &TopDownFieldEdit::KnockbackRecovery(-3.0)
+    ));
+    let lei = w
+        .get::<TopDownPlayer>(Entity::from_bits(bits))
+        .unwrap()
+        .law();
+    assert_eq!(
+        lei.knockback_recovery, 0.0,
+        "a recuperação não fica negativa"
+    );
+}

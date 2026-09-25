@@ -105,6 +105,8 @@ pub mod hud_anchors;
 pub mod hud_bridge;
 pub mod hud_inspector;
 pub mod hud_smoke_anchors;
+/// ⭐ O IMPACTO (plano 28, W5): a pausa no golpe e os números de dano a subir.
+pub mod impacto;
 pub mod instance_added;
 pub mod instance_added_smoke;
 pub mod instance_apply_deep;
@@ -198,6 +200,8 @@ pub mod tween_inspector;
 /// ⭐⭐⭐ **O TWEEN** (suplente #22) — a galeria dos canais e a cópia que nasce a meio da
 /// corrida; ver o cabeçalho.
 pub mod tween_smoke;
+/// ⭐ A cena do IMPACTO (plano 28, W5) — `PH2D_VIDA_SMOKE=2`.
+pub mod vida_impacto_smoke;
 /// ⭐⭐⭐ O instantâneo e o dreno das secções HEALTH e DAMAGE (plano 28, W3).
 pub mod vida_inspector;
 /// ⭐⭐⭐ **O smoke da VIDA** (plano 28, W2) — três alvos, três vidas, e o aliado que não morre.
@@ -214,6 +218,9 @@ pub mod weapon_smoke;
 /// costuras que ficaram lá precisam deste arnês.
 #[cfg(any(test, feature = "test-support"))]
 pub mod component_registry_for_tests;
+/// ⛔⛔ A cópia que a fábrica faria de um molde — o arnês partilhado pelos gates das cenas da vida.
+#[cfg(test)]
+mod smoke_copia;
 
 /// ⛔ **O arnês que ATRAVESSA a fronteira, e nada mais** — as duas costuras de teste que ficaram
 /// na shell porque o sujeito delas é meio chrome. Ver o cabeçalho dele.

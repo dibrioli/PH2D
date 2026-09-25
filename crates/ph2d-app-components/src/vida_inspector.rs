@@ -39,6 +39,12 @@ fn health_info(h: &Health, agora: Option<&HealthNow>) -> InspectorHealthInfo {
         on_heal: h.on_heal.clone(),
         on_death: h.on_death.clone(),
         seed: h.seed,
+        death_hitstop_s: h.death_hitstop_s,
+        blink_s: h.blink_s,
+        knockback_taken: h.knockback_taken,
+        numbers: h.numbers,
+        numbers_color: h.numbers_color,
+        numbers_size: h.numbers_size,
         agora: agora.map(|a| VidaAgora {
             pontos: a.pontos,
             escudo: a.escudo,
@@ -55,6 +61,9 @@ fn damage_info(d: &Damage) -> InspectorDamageInfo {
         ignores_shield: d.ignores_shield,
         ignores_armor: d.ignores_armor,
         vanish: d.on_hit == OnHit::Vanish,
+        hitstop_s: d.hitstop_s,
+        knockback: d.knockback,
+        knockback_lift: d.knockback_lift,
     }
 }
 
@@ -153,6 +162,12 @@ fn apply_health(h: &mut Health, edit: &E) -> bool {
         E::OnHeal(t) => h.on_heal = t.trim().to_string(),
         E::OnDeath(t) => h.on_death = t.trim().to_string(),
         E::Seed(n) => h.seed = *n,
+        E::DeathHitstopS(v) => h.death_hitstop_s = positivo(*v),
+        E::BlinkS(v) => h.blink_s = positivo(*v),
+        E::KnockbackTaken(v) => h.knockback_taken = positivo(*v),
+        E::Numbers(b) => h.numbers = *b,
+        E::NumbersColor(c) => h.numbers_color = cor(*c),
+        E::NumbersSize(v) => h.numbers_size = positivo(*v),
         _ => return false,
     }
     true
@@ -167,6 +182,11 @@ fn apply_damage(d: &mut Damage, edit: &E) -> bool {
         E::IgnoresShield(b) => d.ignores_shield = *b,
         E::IgnoresArmor(b) => d.ignores_armor = *b,
         E::Vanish(b) => d.on_hit = if *b { OnHit::Vanish } else { OnHit::Stay },
+        E::HitstopS(v) => d.hitstop_s = positivo(*v),
+        // ⚠️ **O empurrão é LIVRE**: negativo PUXA para quem bate (um íman, um gancho) — a lei do
+        // empurrão aceita o sinal, e só o não-finito cai a zero.
+        E::Knockback(v) => d.knockback = if v.is_finite() { *v } else { 0.0 },
+        E::KnockbackLift(v) => d.knockback_lift = if v.is_finite() { *v } else { 0.0 },
         _ => return false,
     }
     true

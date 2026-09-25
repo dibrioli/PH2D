@@ -16,6 +16,8 @@ pub const INSP_TD_SPEED: NodeId = hash_node_id("insp_td_speed");
 pub const INSP_TD_ACCEL: NodeId = hash_node_id("insp_td_accel");
 /// Rampa de travagem, m/s². ⚠️ `0` é instantâneo.
 pub const INSP_TD_DECEL: NodeId = hash_node_id("insp_td_decel");
+/// Quão depressa ele recupera de um empurrão, m/s² (plano 28, W5).
+pub const INSP_TD_KNOCKBACK_RECOVERY: NodeId = hash_node_id("insp_td_knockback_recovery");
 /// O segmentado das DIRECÇÕES — **um id por opção**.
 ///
 /// ⚠️ **A POSIÇÃO no array é a tag do clique**, como em todo segmentado desta casa: reordenar faria

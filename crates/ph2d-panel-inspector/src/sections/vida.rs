@@ -321,6 +321,18 @@ fn corpo_vida(
             h.shield_blocks_excess,
         );
     }
+    // ⭐ O IMPACTO (plano 28, W5) — o bloco irmão, antes dos nomes.
+    cur_y = super::vida_impacto::corpo_impacto(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        h,
+    );
     for (id, dica) in [
         (ids::INSP_VIDA_TEAM, tr("panel.inspector.vida.team_hint")),
         (

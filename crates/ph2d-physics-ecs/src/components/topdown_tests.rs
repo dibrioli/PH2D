@@ -20,6 +20,7 @@ fn a_ida_e_volta_lei_componente_e_exacta() {
             min_slide_angle_deg: 22.5,
             max_slides: 7,
             default_controls: false,
+            knockback_recovery: 9.5,
         },
     ] {
         assert_eq!(TopDownPlayer::from_law(l).law(), l);

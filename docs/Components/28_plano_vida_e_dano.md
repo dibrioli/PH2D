@@ -528,3 +528,122 @@ clippy `-D warnings` a zero nas nove crates tocadas · fmt · censos da árvore 
   cena é um objecto de mundo, e **nenhum gate** mede a barra dentro de um canvas;
 - a barra lê a vida de UM objecto; *«a vida de todos os inimigos»* seria outra grandeza;
 - a bala **só-sensor** (defeito G) continua aberta.
+
+---
+
+## §12 — ✅ W5 FECHADA (2026-09-24): o IMPACTO — o golpe que PESA
+
+### §12.1 — O que se constrói, e onde mora cada peça (a ESPÉCIE decide)
+
+| peça | é | mora |
+|---|---|---|
+| **empurrão** | estado de SIMULAÇÃO (o replay tem de o refazer) | a ponte da vida, no passo da física, em **live E replay** |
+| **piscar** | função do relógio da LEI (exacto num scrub) | a ponte da vida escreve a marca; a **porta única** de desenho lê-a |
+| **pausa no golpe** | RELÓGIO DE PAREDE retido antes do acumulador | [`ph2d_health::Pausa`](../../crates/ph2d-health/src/impacto.rs) + a shell a consome |
+| **números de dano** | apresentação que nasce de um facto e envelhece | [`ph2d_app_components::impacto`](../../crates/ph2d-app-components/src/impacto.rs) |
+
+- **A pausa congela o JOGO INTEIRO e não um corpo:** o `ImpactoState::retem` corre **antes** do
+  `fixed_step.advance(wall_dt)`, só com o relógio **a andar** (parado não há jogo a congelar, e reter
+  ali comeria o tempo de um passo manual). ⭐ Ela **não entra no anel nem na fita**: *o jogo não anda*
+  é a AUSÊNCIA de tiques, e um replay que refaça os mesmos tiques dá o mesmo mundo. O pedido é o
+  **MAIOR** dos golpes do dispatch, nunca a soma, e cada peso vem de **quem o autorou**: o golpe pelo
+  `Damage::hitstop_s` de QUEM BATE, a morte pelo `Health::death_hitstop_s` de QUEM MORRE (o chefe
+  pesa mais que o morcego). Esquiva e cura não pesam.
+- **O piscar é derivado e não registado** (`ph2d_ecs::BlinkOff`): `publica_vidas` escreve-o de
+  `pisca_visivel(desde_golpe_s, invencível, blink_s)` — o relógio que a vida JÁ guardava, logo o
+  tique que se vê num scrub é o da vida, **nenhum relógio novo** —, e a **porta única**
+  `draws_this_frame` lê-o. ⭐ **Começa VISÍVEL** (a 1.ª metade mostra o objecto, que é onde o clarão
+  branco da casa se vê). ⚠️ E tem a **metade de higiene**: quem perde a `Health` perde a marca, senão
+  um objecto cuja vida saiu a meio de uma metade escondida ficava invisível para sempre.
+- **O empurrão sai da NORMAL REAL do contacto** (a do solver, `corpo1 → corpo2`), e do
+  centro-ao-centro só quando o toque não a traz (sensor, mover). Nasce **só no tique em que o toque
+  COMEÇA** e **só se algo ENTROU** (dano, escudo ou morte — ⛔ uma esquiva não empurra). ⭐ **Quem
+  LEVA decide quanto voa** (`Health::knockback_taken`, `0` = inabalável), e o `Damage` diz
+  `knockback` (ao longo da normal) e `knockback_lift` (para cima, a direito).
+- **Dois canais de entrega, e o segundo existe por MEDIÇÃO:** num corpo dinâmico o empurrão é uma
+  **mudança de velocidade** (`PhysicsWorld::push_velocity`, independente da massa, acorda o corpo); ⛔
+  um mover de vista de cima **não** podia recebê-lo assim — somado ao comando, era comido pela
+  travagem no tique seguinte, e a travagem de fábrica é **instantânea**: o herói de fábrica **nunca**
+  voava (medido **`0,0000 m`**). ⇒ `TopDownState::knockback`, um canal PRÓPRIO somado ao movimento e
+  recuperado a `TopDownLaw::knockback_recovery` (fábrica `24 m/s²`, `0` = instantâneo, a convenção
+  das outras rampas). ⚠️ `PROJECT_SCHEMA` **170 → 171** — o campo novo do `TopDownPlayer`
+  (registado, postcard posicional); **zero** componentes registados novos.
+- **Os números** nascem de um golpe que ENTRA, **uma altura do número ACIMA** do alvo, sobem
+  `1,6` alturas e desvanecem no último `40 %` de `0,8 s` — as três faixas de **produto**, ditas como tal
+  (um valor de dois algarismos lê-se em `~0,3 s` e tem de sair antes do golpe seguinte de uma
+  rajada). ⚠️ **Envelhecem com o relógio do JOGO**: durante a pausa o número que acabou de nascer
+  fica pendurado, que é o que o faz ler-se como parte do golpe. O texto é o dano **arredondado e
+  nunca `0`**. Vivem dentro do `HealthBarsState` (renascem juntos), e são pintados na banda da cena.
+
+### §12.2 — ⭐⭐⭐ A medição que abria a wave: os três números da pesquisa no NOSSO relógio
+
+`~0,05 s` (golpe comum), `~0,1 s` (clarão), `~0,15 s` (golpe final) ⇒ **3 / 6 / 9 tiques** do passo
+fixo de 60 Hz, **a 30, a 60 e a 144 fps** (gate `a_pausa_come_o_mesmo_tempo_de_jogo_a_qualquer_cadencia`)
+— porque a pausa é tempo de parede retido antes do acumulador, e não um número de quadros. ⚠️ **A
+régua mentiu primeiro:** a `30 fps` cada quadro é EXACTAMENTE dois tiques, as contagens caíam em
+fronteiras e o erro de `f64` comia um a mais (`4` onde a lei dá `3`) ⇒ a corrida acaba **meio tique
+depois** de dois segundos, com um último quadro dessa duração.
+
+### §12.3 — ⛔ Um defeito PRÉ-EXISTENTE que esta wave achou: a secção do mover não era semeada
+
+A linha nova do empurrão na secção **Top-Down Player** revelou que a secção **inteira** mostrava os
+números de **partida** do `populate` sobre um mover autorado — **desde o TOP-20 #13** faltava o
+`sync_topdown`. Curado ([`sync_topdown.rs`](../../crates/ph2d-panel-inspector/src/sync_topdown.rs), com a
+assinatura `last_topdown_sig`), com dois gates novos (`a_seccao_topdown_mostra_o_objecto`: os campos
+mostram o objecto, e a linha do empurrão está viva sob o dedo). ⚠️ E o **instantâneo e o dreno da
+shell** para o campo novo não tinham gate nenhum — escrito (`o_empurrao_do_mover_vai_e_volta`).
+
+### §12.4 — A cena `PH2D_VIDA_SMOKE=2` — o golpe que PESA
+
+Três inimigos **dinâmicos sem gravidade e com arrasto** (um estático não sai do sítio com golpe
+nenhum; sem arrasto um empurrão levava-o para fora do ecrã) numa coluna: o **leve** voa, pisca e
+mostra o número; o **pesado** aceita `¼` do empurrão e a morte dele pausa `0,15 s`; o **CONTROLO**
+tem a mesma vida sem nada disto. E um **espinho** sensor que empurra o herói (pelo canal do mover)
+e o faz piscar durante a invencibilidade. A tabela dos inimigos é uma **struct com nomes**
+(`Inimigo`) — a tupla de oito campos que a precedeu era ilegível e o clippy acusou-a.
+
+⛔ **A FOTO apanhou o herói e o espinho CORTADOS pela borda esquerda**, com os quatro gates da cena
+verdes: eles nasciam em `x = −6` e a borda da banda visível é **`−6,26`**, medida na própria foto
+(`1930×1040`, régua `−600` no px `358`, `−500` no `459`, canvas a começar no `332`). O gate
+`a_cena_cabe_na_banda_visivel` media **só o `y`** — *uma altura não diz onde, e um `y` não diz o
+`x`*. ⇒ os dois a `x = −4,5`, e a cerca do `x` é **erro de compilação** ao lado da `BORDA_ESQUERDA`
+(`const _: () = assert!(…)` — o clippy recusou-a como teste, e com o herói de volta a `−6` o build
+lê `E0080`).
+
+### §12.5 — ⛔⛔ A prova de mutação: 51 / 51 sangram, e TRÊS réguas faltavam
+
+[`mutacao_vida_w5_2026-09-24.sh`](ferramentas/mutacao_vida_w5_2026-09-24.sh). A 1.ª corrida deixou
+**três vivas** e uma que não compilava (a T2, mutação minha com o tipo errado — lê-se no braço
+«ARNÊS», nunca como «sangrou»):
+
+- **F8 — o empurrão só no tique em que o toque COMEÇA.** Com dano por golpe o dano só ENTRA no
+  tique do começo, logo a cerca `comecou` e a cerca *«algo entrou»* coincidiam em toda fixtura. O
+  caso que as separa é o **dano contínuo**, que entra em todo tique: sem a cerca, a lava empurraria
+  como uma mangueira ⇒ `um_dano_continuo_empurra_so_ao_entrar` (o contínuo empurra o MESMO que um
+  golpe, a `5 %`).
+- **F12 — o empurrão do mover GASTA-SE.** O gate do mover media só que ele voa; nenhum media que ele
+  PÁRA ⇒ `o_empurrao_do_mover_gasta_se_e_ele_para` (a pose aos `60` e aos `120` tiques iguais a
+  `1e-3`).
+- **N2 — a linha do empurrão escreve no CAMPO DELA.** O gate provava a linha *viva sob o dedo*, e um
+  braço que mandasse o valor para a travagem deixava-a focável ⇒ `o_numero_do_empurrao_pede_a_edicao_dele`.
+
+Com os três gates e a T2 corrigida as quatro sangram (`F8 10/1 · F12 10/1 · N2 94/1 · T2 7/1`) e os
+controlos restaurados voltam verdes.
+
+### §12.6 — Portão
+
+`nextest-impacted` **18 273 / 18 275**, as duas reprovadas **membros já nomeados da família de flakes
+de fan-out** (`the_cost_of_depth_is_linear_not_explosive` · `the_cost_of_a_player_is_linear_in_their_number`)
+— **3 de 3 verdes sozinhas até a `load 117`**, zero linhas do diff nas crates delas · clippy
+`-D warnings --all-targets` a zero nas treze crates tocadas (duas curas: um alias de tipo para as
+amostras de cor e a tabela dos inimigos como `struct`) · fmt · censos da árvore combinada
+**127 / 127** · catraca da shell verde · os gates novos desta secção verdes depois do portão.
+
+### §12.7 — ⏳ O que fica (fronteiras nomeadas)
+
+- a pausa **não congela a interface** (o cursor, os painéis) — é do JOGO, de propósito;
+- um projéctil e um cinemático **sem** mover **não** são empurrados: a pose deles é de quem os
+  conduz, e o golpe não a disputa;
+- os números não têm **acumulação** (dez golpes de uma rajada são dez números, não um que soma) —
+  decisão de produto por tomar;
+- a bala **só-sensor** (defeito G) continua aberta.

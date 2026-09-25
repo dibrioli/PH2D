@@ -42,6 +42,16 @@ pub fn advance(v: Vec2, dir_mundo: Vec2, speed: f32, accel: f32, decel: f32, dt:
     aproximar(v, alvo, accel, dt)
 }
 
+/// ⭐ **Recupera de um empurrão** (plano 28, W5) — o canal do golpe desce a zero a `taxa` m/s², pela
+/// MESMA rampa das outras (⚠️ `taxa <= 0` é chegar já: sem deslize nenhum).
+#[must_use]
+pub fn recover(empurrao: Vec2, taxa: f32, dt: f32) -> Vec2 {
+    if !dt.is_finite() || dt <= 0.0 {
+        return empurrao;
+    }
+    aproximar(empurrao, [0.0, 0.0], taxa, dt)
+}
+
 /// Anda de `de` para `ate`, no máximo `taxa · dt`. ⚠️ `taxa <= 0` é **chegar já**.
 fn aproximar(de: Vec2, ate: Vec2, taxa: f32, dt: f32) -> Vec2 {
     if !(taxa.is_finite() && taxa > 0.0) {

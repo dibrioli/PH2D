@@ -564,4 +564,14 @@
 /// os espelhos não se mexem). Registado no mesmo commit que a secção do Inspector e o descritor.
 ///
 /// ⛔ **Sem degrau de migração**, pela mesma decisão — um v169 é recusado em voz alta.
-pub(crate) const PROJECT_SCHEMA: u32 = 170;
+///
+/// # ⭐ 170 → 171 (2026-09-24) — o IMPACTO (plano 28, W5)
+///
+/// SEIS campos no `Health` (a pausa da morte · o piscar · o empurrão aceite · os números, a cor e a
+/// altura deles) e TRÊS no `Damage` (a pausa no golpe · o empurrão · o empurrão para cima). ⛔ **ZERO
+/// componentes registados novos** ⇒ os três contadores do registo **não se mexem** — o degrau
+/// existe porque o postcard é posicional e um v170 seria lido errado **em silêncio**. ⚠️ O
+/// `BlinkOff` é DERIVADO e NÃO registado, de propósito (o molde do `MasterPiece`).
+///
+/// ⛔ **Sem degrau de migração**, pela mesma decisão — um v170 é recusado em voz alta.
+pub(crate) const PROJECT_SCHEMA: u32 = 171;

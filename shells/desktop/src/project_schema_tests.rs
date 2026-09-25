@@ -259,7 +259,10 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // ⭐ **PROJECT 169→170** (2026-09-24): a BARRA DE VIDA (plano 28, W4) — um componente da
         // FÍSICA registado (`HealthBar`): o registo dela sobe `+1`, os espelhos não.
         // ⚠️ **A tripla NÃO vê este degrau** — a VIGÉSIMA SEXTA vez.
-        (170, 13, 22),
+        // ⭐ **PROJECT 170→171** (2026-09-24): o IMPACTO (plano 28, W5) — ⛔ **ZERO componentes
+        // registados novos** (nove CAMPOS em dois que já existiam): os três contadores NÃO se mexem.
+        // ⚠️ **A tripla NÃO vê este degrau** — a VIGÉSIMA SÉTIMA vez.
+        (171, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

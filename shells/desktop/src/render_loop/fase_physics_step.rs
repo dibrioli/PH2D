@@ -18,6 +18,7 @@ impl crate::App {
             sim,
             toasts,
             physics,
+            health_bars,
             ..
         } = FrameGfx::of(gfx);
 
@@ -46,6 +47,9 @@ impl crate::App {
             // documento (a folha `ph2d-preview-drive`, Enio 2026-08-23: *«corrigir o CtrlZ para ambas»*).
             &mut self.preview_drive,
         );
+        // ⭐ **O IMPACTO ouve os golpes deste dispatch** (plano 28, W5): a pausa pedida e os números
+        // que nascem. Depois do dispatch, que é quem os produz.
+        health_bars.impacto.ouve(sim, physics.health_events());
         // ⭐⭐ **Os projécteis cujo voo ACABOU** (TOP-20 #14) — o readout que o Inspector lê para
         // dizer *«o voo acabou»*. ⚠️ **Reescrito**, nunca acumulado.
         //

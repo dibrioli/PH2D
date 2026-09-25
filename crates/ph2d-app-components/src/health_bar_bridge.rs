@@ -37,6 +37,13 @@ pub struct HealthBarsState {
     pub instances: Vec<RenderInstance>,
     /// O recorte do átlas que uma faixa desenha — o ladrilho BRANCO (a cor vem do `tint`).
     pub uv: [f32; 4],
+    /// ⭐ **O IMPACTO** (plano 28, W5) — a pausa no golpe e os números de dano.
+    ///
+    /// ⚠️ **Mora AQUI e não ao lado, de propósito:** este estado é *o que a família da vida
+    /// apresenta por cima do jogo* — a barra, a pausa, os números —, e os três RENASCEM juntos.
+    /// Um terceiro campo solto na shell seria um terceiro sítio a lembrar no rebobinar, que é
+    /// exactamente a porta onde as irmãs desta família esqueceram metades (§5 do roteador).
+    pub impacto: crate::impacto::ImpactoState,
 }
 
 /// **A vida de quem a barra mostra**, como `(agora, máximo)` — `None` se não há vida a ler.
@@ -164,6 +171,7 @@ impl HealthBarsState {
 
     /// **O quadro.** `dt_s` é o tempo de JOGO do quadro (zero com o relógio parado).
     pub fn frame(&mut self, sim: &mut SimWorld, dt_s: f32) {
+        self.impacto.anda(dt_s);
         self.instances.clear();
         let barras: Vec<(Entity, HealthBar)> = {
             let w = sim.world_mut();
@@ -240,7 +248,7 @@ impl HealthBarsState {
     /// **Rebobinar é renascer** — todo rasto volta a nascer colado à vida no próximo quadro.
     /// Devolve quantos havia.
     pub fn rewind(&mut self) -> usize {
-        let n = self.rastos.len();
+        let n = self.rastos.len() + self.impacto.rewind();
         self.rastos.clear();
         self.instances.clear();
         n

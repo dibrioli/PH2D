@@ -4886,6 +4886,7 @@ dependencies = [
  "ph2d-editor-core",
  "ph2d-entity-visibility",
  "ph2d-field-ecs",
+ "ph2d-health",
  "ph2d-host",
  "ph2d-hud",
  "ph2d-i18n",
@@ -4914,6 +4915,7 @@ dependencies = [
  "ph2d-unique-name",
  "ph2d-vec-entities",
  "ph2d-vec-scene",
+ "ph2d-vector",
  "postcard",
  "serde",
 ]

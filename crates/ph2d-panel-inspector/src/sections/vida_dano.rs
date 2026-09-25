@@ -53,8 +53,12 @@ fn corpo_dano(
         &[
             tr("panel.inspector.vida.amount"),
             tr("panel.inspector.vida.amount_per_second"),
+            tr("panel.inspector.vida.hitstop"),
+            tr("panel.inspector.vida.knockback"),
+            tr("panel.inspector.vida.knockback_lift"),
         ],
     );
+    let v = Some(ph2d_editor_core::widget::Unit::MetersPerSecond);
     cur_y = numeros(
         scene,
         text_system,
@@ -64,7 +68,28 @@ fn corpo_dano(
         x,
         w,
         cur_y,
-        &[(rotulo, ids::INSP_DANO_AMOUNT, 1.0, None)], // LITERAL-PX-OK: pontos
+        &[
+            (rotulo, ids::INSP_DANO_AMOUNT, 1.0, None), // LITERAL-PX-OK: pontos
+            // ⭐ O IMPACTO de quem bate (plano 28, W5).
+            (
+                tr("panel.inspector.vida.hitstop"),
+                ids::INSP_DANO_HITSTOP,
+                0.01, // LITERAL-PX-OK: segundos
+                Some(ph2d_editor_core::widget::Unit::Seconds),
+            ),
+            (
+                tr("panel.inspector.vida.knockback"),
+                ids::INSP_DANO_KNOCKBACK,
+                0.5, // LITERAL-PX-OK: m/s
+                v,
+            ),
+            (
+                tr("panel.inspector.vida.knockback_lift"),
+                ids::INSP_DANO_KNOCKBACK_LIFT,
+                0.5, // LITERAL-PX-OK: m/s
+                v,
+            ),
+        ],
         seccao,
     );
     for (id, chave, ligada) in [

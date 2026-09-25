@@ -75,6 +75,7 @@ pub(crate) fn apply_topdown_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
             crate::ids::INSP_TD_SPEED => TopDownFieldEdit::Speed(f),
             crate::ids::INSP_TD_ACCEL => TopDownFieldEdit::Acceleration(f),
             crate::ids::INSP_TD_DECEL => TopDownFieldEdit::Deceleration(f),
+            crate::ids::INSP_TD_KNOCKBACK_RECOVERY => TopDownFieldEdit::KnockbackRecovery(f),
             crate::ids::INSP_TD_VIEW_ANGLE => TopDownFieldEdit::ViewpointAngle(f),
             crate::ids::INSP_TD_TURN_SPEED => TopDownFieldEdit::TurnSpeed(f),
             crate::ids::INSP_TD_MIN_SLIDE => TopDownFieldEdit::MinSlideAngle(f),

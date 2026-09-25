@@ -325,6 +325,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.topdown.acceleration_hint" => "0 = instant.",
         "panel.inspector.topdown.deceleration_0_instant" => "Deceleration",
         "panel.inspector.topdown.deceleration_hint" => "0 = instant.",
+        "panel.inspector.topdown.knockback_recovery" => "Push Recovery",
         "panel.inspector.topdown.board_angle_deg" => "Board Angle",
         "panel.inspector.topdown.turn_speed_deg_s_0_instant" => "Turn Speed",
         "panel.inspector.topdown.turn_speed_hint" => "0 = instant.",

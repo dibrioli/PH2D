@@ -51,6 +51,14 @@ fn vida() -> InspectorHealthInfo {
         on_heal: "cura".into(),
         on_death: "morreu".into(),
         seed: 42,
+        // ⭐ O IMPACTO (plano 28, W5) — fora do neutro, e com os NÚMEROS ligados (é isso que pinta
+        // a cor e a altura) e a invencibilidade > 0 acima (é isso que pinta o piscar).
+        death_hitstop_s: 0.15,
+        blink_s: 0.08,
+        knockback_taken: 0.5,
+        numbers: true,
+        numbers_color: [1.0, 0.86, 0.3, 1.0],
+        numbers_size: 0.6,
         agora: Some(VidaAgora {
             pontos: 70.0,
             escudo: 12.0,
@@ -67,6 +75,9 @@ fn dano() -> InspectorDamageInfo {
         ignores_shield: false,
         ignores_armor: false,
         vanish: false,
+        hitstop_s: 0.05,
+        knockback: 6.0,
+        knockback_lift: 2.5,
     }
 }
 
@@ -92,7 +103,7 @@ fn host(i: InspectorVidaInfo) -> (MockPanelHost, InspectorState) {
 }
 
 /// Os QUINZE números das duas secções, com o valor que a fixtura tem.
-const NUMEROS: [(ph2d_a11y::NodeId, f64); 15] = [
+const NUMEROS: [(ph2d_a11y::NodeId, f64); 22] = [
     (ids::INSP_VIDA_MAX, 120.0),
     (ids::INSP_VIDA_START, 90.0),
     (ids::INSP_VIDA_INVINCIBLE, 0.75),
@@ -108,6 +119,13 @@ const NUMEROS: [(ph2d_a11y::NodeId, f64); 15] = [
     (ids::INSP_VIDA_DODGE, 0.15),
     (ids::INSP_VIDA_SEED, 42.0),
     (ids::INSP_DANO_AMOUNT, 15.0),
+    (ids::INSP_VIDA_DEATH_HITSTOP, 0.15),
+    (ids::INSP_VIDA_BLINK, 0.08),
+    (ids::INSP_VIDA_KNOCKBACK_TAKEN, 0.5),
+    (ids::INSP_VIDA_NUMBERS_SIZE, 0.6),
+    (ids::INSP_DANO_HITSTOP, 0.05),
+    (ids::INSP_DANO_KNOCKBACK, 6.0),
+    (ids::INSP_DANO_KNOCKBACK_LIFT, 2.5),
 ];
 
 /// Os CINCO nomes, com o texto que a fixtura tem.
@@ -119,18 +137,19 @@ const NOMES: [(ph2d_a11y::NodeId, &str); 5] = [
     (ids::INSP_DANO_TEAM, "player"),
 ];
 
-/// As SEIS caixas.
-const CAIXAS: [ph2d_a11y::NodeId; 6] = [
+/// As SETE caixas.
+const CAIXAS: [ph2d_a11y::NodeId; 7] = [
     ids::INSP_VIDA_OVERHEAL,
     ids::INSP_VIDA_SHIELD_BLOCKS,
     ids::INSP_DANO_PER_SECOND,
     ids::INSP_DANO_IGNORES_SHIELD,
     ids::INSP_DANO_IGNORES_ARMOR,
     ids::INSP_DANO_VANISH,
+    ids::INSP_VIDA_NUMBERS,
 ];
 
 /// As linhas que SÓ aparecem com o interruptor delas ligado.
-const CONDICIONAIS: [ph2d_a11y::NodeId; 7] = [
+const CONDICIONAIS: [ph2d_a11y::NodeId; 10] = [
     ids::INSP_VIDA_REGEN_DELAY,
     ids::INSP_VIDA_SEED,
     ids::INSP_VIDA_SHIELD_DURATION,
@@ -138,6 +157,10 @@ const CONDICIONAIS: [ph2d_a11y::NodeId; 7] = [
     ids::INSP_VIDA_SHIELD_REGEN_DELAY,
     ids::INSP_VIDA_SHIELD_BLOCKS,
     ids::INSP_VIDA_OVERHEAL,
+    // ⭐ O IMPACTO (plano 28, W5): o piscar sem invencibilidade, a cor e a altura sem números.
+    ids::INSP_VIDA_BLINK,
+    ids::INSP_VIDA_NUMBERS_COLOR,
+    ids::INSP_VIDA_NUMBERS_SIZE,
 ];
 
 /// ⭐⭐ **TODO campo das duas secções é pintado com área clicável.**
@@ -176,6 +199,8 @@ fn as_linhas_condicionais_somem_sem_o_interruptor() {
     v.shield_start = 0.0;
     v.shield_max = 0.0;
     v.max = 0.0;
+    v.invincible_s = 0.0;
+    v.numbers = false;
     let (mut h, mut st) = host(info(Some(v), Some(dano())));
     let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
     for id in CONDICIONAIS {
@@ -345,6 +370,7 @@ fn uma_caixa_pede_o_contrario_do_que_o_objecto_tem() {
         (ids::INSP_DANO_IGNORES_SHIELD, E::IgnoresShield(true)),
         (ids::INSP_DANO_IGNORES_ARMOR, E::IgnoresArmor(true)),
         (ids::INSP_DANO_VANISH, E::Vanish(false)),
+        (ids::INSP_VIDA_NUMBERS, E::Numbers(false)),
     ];
     for (id, e) in esperado {
         let (mut h, mut st) = host(info(Some(v.clone()), Some(d.clone())));
@@ -363,5 +389,43 @@ fn uma_caixa_pede_o_contrario_do_que_o_objecto_tem() {
             .collect();
         set_current_inspector_vida(None);
         assert_eq!(edits, vec![e], "a caixa {id:?} pediu a edição errada");
+    }
+}
+
+/// ⭐⭐⭐ **Os números do IMPACTO chegam ao barramento com a variante DELES** (plano 28, W5).
+///
+/// **Mutação que deve sangrar:** trocar dois braços novos do `numero` do `event_vida`.
+#[test]
+fn os_numeros_do_impacto_chegam_ao_barramento_com_a_variante_deles() {
+    use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
+    use ph2d_editor_core::interaction::WidgetEvent;
+    use ph2d_editor_core::vida_edits::VidaFieldEdit as E;
+    let esperado = [
+        (ids::INSP_VIDA_DEATH_HITSTOP, E::DeathHitstopS(0.5)),
+        (ids::INSP_VIDA_BLINK, E::BlinkS(0.5)),
+        (ids::INSP_VIDA_KNOCKBACK_TAKEN, E::KnockbackTaken(0.5)),
+        (ids::INSP_VIDA_NUMBERS_SIZE, E::NumbersSize(0.5)),
+        (ids::INSP_DANO_HITSTOP, E::HitstopS(0.5)),
+        (ids::INSP_DANO_KNOCKBACK, E::Knockback(0.5)),
+        (ids::INSP_DANO_KNOCKBACK_LIFT, E::KnockbackLift(0.5)),
+    ];
+    for (id, e) in esperado {
+        let (mut h, mut st) = host(info(Some(vida()), Some(dano())));
+        let _ = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+        h.set_number_value(id, 0.5);
+        let _ = h.apply_panel_event::<InspectorPanel>(&mut st, WidgetEvent::ValueChanged(id));
+        let edits: Vec<_> = h
+            .drained_actions()
+            .into_iter()
+            .filter_map(|a| match a {
+                EditorAction::InspectorComponentEdit {
+                    edit: ComponentEdit::Vida(e),
+                    ..
+                } => Some(e),
+                _ => None,
+            })
+            .collect();
+        set_current_inspector_vida(None);
+        assert_eq!(edits, vec![e], "o número {id:?} pediu a edição errada");
     }
 }

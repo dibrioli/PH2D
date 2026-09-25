@@ -698,6 +698,7 @@ fn arma_o_top20() {
         min_slide_angle_deg: 5.0,
         max_slides: 4,
         default_controls: true,
+        knockback_recovery: 24.0,
         body_is_kinematic: true,
         has_body: true,
         conflicts_with_platformer: false,
@@ -1035,6 +1036,14 @@ fn arma_o_top20() {
             on_heal: "healed".to_string(),
             on_death: "died".to_string(),
             seed: 7,
+            // ⭐ O IMPACTO (plano 28, W5) com os números LIGADOS — é isso que faz a cor e a altura
+            // aparecerem, e o piscar aparece porque a invencibilidade acima é > 0.
+            death_hitstop_s: 0.15,
+            blink_s: 0.08,
+            knockback_taken: 1.0,
+            numbers: true,
+            numbers_color: [1.0, 0.86, 0.3, 1.0],
+            numbers_size: 0.45,
             agora: Some(VidaAgora {
                 pontos: 70.0,
                 escudo: 12.0,
@@ -1048,6 +1057,9 @@ fn arma_o_top20() {
             ignores_shield: false,
             ignores_armor: false,
             vanish: false,
+            hitstop_s: 0.05,
+            knockback: 6.0,
+            knockback_lift: 2.0,
         }),
         // ⭐ A barra (plano 28, W4) — armada com um ALVO que ela encontra, para a frase mais longa
         // que ela pinta (`Shows … of …`) entrar na varredura das elisões.

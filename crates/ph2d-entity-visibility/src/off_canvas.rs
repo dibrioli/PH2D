@@ -35,6 +35,9 @@ pub fn draws_this_frame(sim: &World, entity: Entity, cull_mask: u32, world_pos: 
     !is_off_canvas(sim, entity)
         && layer_visible(sim, entity, cull_mask)
         && !crate::on_screen_gate::hides(sim, entity, world_pos)
+        // ⭐ E o PISCAR da invencibilidade (plano 28, W5) — uma marca derivada que a ponte da vida
+        // põe e tira; entrar AQUI é o que o faz valer para imagens e formas vectoriais de uma vez.
+        && sim.get::<ph2d_ecs::BlinkOff>(entity).is_none()
 }
 
 /// ⭐ **A metade das CAMADAS** (W3.T3.12) — *«a máscara desta entidade cruza a da câmara?»*.
@@ -119,6 +122,26 @@ mod off_canvas_tests {
         ChildOf, EnableMode, MasterRoot, Name, OnScreenEnabler, SimWorld, Transform, Visibility,
         VisibilityLayer,
     };
+
+    /// ⭐⭐ **O PISCAR da invencibilidade passa pela MESMA porta** (plano 28, W5) — com a marca
+    /// derivada o objecto não se desenha, sem ela desenha-se. ⚠️ A metade que desenha vem primeiro,
+    /// senão uma porta que recusasse sempre passaria.
+    ///
+    /// **Mutação:** apagar o termo `BlinkOff` de [`super::draws_this_frame`] ⇒ RED.
+    #[test]
+    fn the_blink_mark_hides_through_the_one_door() {
+        let mut sim = SimWorld::new();
+        let e = sim
+            .world_mut()
+            .spawn((Transform::IDENTITY, Name::new("Hero")))
+            .id();
+        assert!(draws_this_frame(sim.world(), e, u32::MAX, [0.0, 0.0]));
+        sim.world_mut().entity_mut(e).insert(ph2d_ecs::BlinkOff);
+        assert!(
+            !draws_this_frame(sim.world(), e, u32::MAX, [0.0, 0.0]),
+            "na metade escondida do piscar o objecto continuou a desenhar-se"
+        );
+    }
 
     /// ⭐⭐⭐ **O gate que o `cull_mask` nunca teve: DUAS máscaras, DUAS cenas.**
     ///

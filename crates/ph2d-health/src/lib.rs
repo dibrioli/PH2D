@@ -447,6 +447,9 @@ impl Vida {
     }
 }
 
+pub mod impacto;
+pub use impacto::{Pausa, pisca_visivel};
+
 #[cfg(test)]
 #[path = "lib_tests.rs"]
 mod tests;

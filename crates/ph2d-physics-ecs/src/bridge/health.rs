@@ -196,33 +196,47 @@ impl PhysicsBridge {
         // ── 1. Quem está a TOCAR quem, neste tique (as três fontes) ─────────────
         let tem_dano = |e: Entity| world.get::<Damage>(e).is_some();
         let tem_vida = |e: Entity| world.get::<Health>(e).is_some();
-        let mut toques: Vec<(Lado, Lado)> = Vec::new();
+        // ⭐ O 3.º membro de cada toque é a NORMAL do contacto (plano 28, W5), a apontar do 1.º lado
+        // para o 2.º — só o solver a tem; um sensor e um mover chegam sem ela.
+        let mut toques: Vec<(Lado, Lado, Option<[f32; 2]>)> = Vec::new();
         let by_handle = self.handle_map();
-        for key in self.world.tick_contacts().keys() {
+        for (key, amostra) in self.world.tick_contacts() {
             if let (Some(&a), Some(&b)) = (by_handle.get(&key.0), by_handle.get(&key.1)) {
-                toques.push(((a, a), (b, b)));
+                // ⚠️ A chave é o par com o handle MENOR primeiro, e a normal aponta do `body1` para o
+                // `body2` — a mesma ordem (`PeakSample::normal`), logo ela aponta de `a` para `b`.
+                toques.push(((a, a), (b, b), Some(amostra.normal)));
             }
         }
         for (forma, corpo, dentro) in self.sobreposicoes_de_sensor() {
-            toques.push(((forma, corpo), (dentro, dentro)));
+            toques.push(((forma, corpo), (dentro, dentro), None));
         }
         for &(mover, bateu) in &self.toques_do_mover {
             if let Some(&b) = by_handle.get(&bateu.into_raw_parts()) {
-                toques.push(((mover, mover), (b, b)));
+                toques.push(((mover, mover), (b, b), None));
             }
         }
         // `(fonte, alvo)` — cada lado é perguntado nos DOIS papéis: um contacto é simétrico, e um
         // inimigo que também magoa leva e dá no mesmo toque.
-        let mut agora: BTreeMap<Entity, BTreeSet<Entity>> = BTreeMap::new();
-        for (x, y) in toques {
-            for (f, a) in [(x, y), (y, x)] {
+        let mut agora: BTreeMap<Entity, BTreeMap<Entity, Toque>> = BTreeMap::new();
+        for (x, y, normal) in toques {
+            for (f, a, n) in [(x, y, normal), (y, x, normal.map(|[nx, ny]| [-nx, -ny]))] {
                 // A forma que o artista marcou primeiro (a peça-espada), e o corpo dela a seguir.
                 let fonte = [f.0, f.1].into_iter().find(|&e| tem_dano(e));
                 let alvo = [a.1, a.0].into_iter().find(|&e| tem_vida(e));
                 if let (Some(fonte), Some(alvo)) = (fonte, alvo)
                     && fonte != alvo
                 {
-                    agora.entry(alvo).or_default().insert(fonte);
+                    // ⚠️ O PRIMEIRO toque do par dá a direcção — o solver vem à frente (é o único
+                    // com normal), e a ordem de tudo aqui é a do `BTreeMap`: determinística.
+                    let direccao = n.or_else(|| self.do_centro_ao_centro(f.1, a.1));
+                    agora
+                        .entry(alvo)
+                        .or_default()
+                        .entry(fonte)
+                        .or_insert(Toque {
+                            direccao: direccao.and_then(unitario),
+                            corpo: a.1,
+                        });
                 }
             }
         }
@@ -231,6 +245,9 @@ impl PhysicsBridge {
         let dt_ms = dt * 1000.0;
         let mut vivos: BTreeMap<Entity, HealthState> = BTreeMap::new();
         let mut gastos: BTreeSet<Entity> = BTreeSet::new();
+        // Os EMPURRÕES deste tique — aplicados DEPOIS de todas as vidas andarem, para que uma vida
+        // não leia um corpo que outra já empurrou (a ordem do laço deixaria de ser irrelevante).
+        let mut empurroes: Vec<(Entity, [f32; 2])> = Vec::new();
         for (alvo, h) in alvos {
             let cfg = h.config();
             let mut st = self.health_state.remove(&alvo).unwrap_or_else(|| {
@@ -267,7 +284,7 @@ impl PhysicsBridge {
                 }
             }
             let fontes = agora.remove(&alvo).unwrap_or_default();
-            for &fonte in &fontes {
+            for (&fonte, toque) in &fontes {
                 let Some(dano) = world.get::<Damage>(fonte) else {
                     continue;
                 };
@@ -295,8 +312,14 @@ impl PhysicsBridge {
                     !dano.ignores_armor,
                     &mut || sorteio(rng),
                 );
+                // ⚠️ Os factos saem SEMPRE, e só a publicação depende do laço: o empurrão é estado
+                // da simulação e o replay tem de o refazer igual.
+                let fs = factos(&antes, &st.vida);
+                if comecou && let Some(dv) = empurrao(dano, &h, toque.direccao, &fs) {
+                    empurroes.push((toque.corpo, dv));
+                }
                 if publicar {
-                    for kind in factos(&antes, &st.vida) {
+                    for kind in fs {
                         self.health_events.push(HealthEvent {
                             target: alvo,
                             source: fonte,
@@ -305,14 +328,101 @@ impl PhysicsBridge {
                     }
                 }
             }
-            st.tocando = fontes;
+            st.tocando = fontes.into_keys().collect();
             vivos.insert(alvo, st);
         }
         self.health_state = vivos;
+        for (corpo, dv) in empurroes {
+            self.empurra(corpo, dv);
+        }
         if publicar {
             self.damage_spent.extend(gastos);
         }
     }
+
+    /// **Aplica UM empurrão** a um corpo — pelo CANAL do empurrão do mover de vista de cima (que a
+    /// lei dele recupera a uma taxa própria) ou pela velocidade do solver num dinâmico.
+    ///
+    /// ⚠️ **O mover primeiro**: o corpo dele é CINEMÁTICO (a semente da casa), e o solver recusaria
+    /// o empurrão — ele tem de entrar pelo estado que a lei do mover integra. ⛔ Um projéctil e um
+    /// cinemático sem mover **não** são empurrados: a pose deles é de quem os conduz.
+    fn empurra(&mut self, corpo: Entity, dv: [f32; 2]) {
+        if let Some(st) = self.topdown_state.get_mut(&corpo) {
+            st.knockback[0] += dv[0];
+            st.knockback[1] += dv[1];
+            return;
+        }
+        if let Some(b) = self.bodies.get(&corpo) {
+            self.world.push_velocity(b.handle, dv);
+        }
+    }
+
+    /// A direcção do centro de um corpo ao de outro — a do empurrão quando o toque não traz normal
+    /// (um sensor, um mover). `None` se um deles não tem corpo.
+    fn do_centro_ao_centro(&self, de: Entity, para: Entity) -> Option<[f32; 2]> {
+        let centro = |e: Entity| {
+            let h = self.bodies.get(&e)?.handle;
+            let p = self.world.body_pose(h)?.translation;
+            Some([p.x, p.y])
+        };
+        let (a, b) = (centro(de)?, centro(para)?);
+        Some([b[0] - a[0], b[1] - a[1]])
+    }
+}
+
+/// Um toque de uma fonte numa vida, neste tique: a direcção do empurrão e o CORPO que o leva.
+#[derive(Clone, Copy, Debug)]
+struct Toque {
+    direccao: Option<[f32; 2]>,
+    corpo: Entity,
+}
+
+/// Normaliza, ou `None` para um vector nulo ou não finito — ⛔ nunca `normalize_or_zero`: um corpo
+/// exactamente em cima de outro não tem para onde ser empurrado, e inventar um eixo seria mentir (a
+/// lição do estouro).
+fn unitario(v: [f32; 2]) -> Option<[f32; 2]> {
+    let n = (v[0] * v[0] + v[1] * v[1]).sqrt();
+    (n.is_finite() && n > f32::EPSILON).then(|| [v[0] / n, v[1] / n])
+}
+
+/// ⭐ **O empurrão de UM golpe** — a lei, pura (plano 28, W5). `None` = não empurra.
+///
+/// ⚠️ **Só um golpe que ENTROU empurra** (na vida, no escudo, ou a morte): uma esquiva e um golpe
+/// na invencibilidade não produzem facto de dano, logo não empurram — senão o herói invencível
+/// seria arrastado por um inimigo que o não fere.
+///
+/// O vector é `direcção · knockback + (0, lift)`, tudo escalado pelo `knockback_taken` da VIDA.
+/// Sem direcção (corpos sobrepostos) sobra o `lift`, que não precisa de uma.
+#[must_use]
+pub(crate) fn empurrao(
+    dano: &Damage,
+    vida: &Health,
+    direccao: Option<[f32; 2]>,
+    fs: &[HealthEventKind],
+) -> Option<[f32; 2]> {
+    let entrou = fs.iter().any(|k| {
+        matches!(
+            k,
+            HealthEventKind::Damaged { .. }
+                | HealthEventKind::Shielded { .. }
+                | HealthEventKind::Died
+        )
+    });
+    if !entrou {
+        return None;
+    }
+    let aceita = if vida.knockback_taken.is_finite() {
+        vida.knockback_taken.max(0.0)
+    } else {
+        0.0
+    };
+    let d = direccao.unwrap_or([0.0, 0.0]);
+    let dv = [
+        d[0] * dano.knockback * aceita,
+        (d[1] * dano.knockback + dano.knockback_lift) * aceita,
+    ];
+    let vale = dv[0].is_finite() && dv[1].is_finite() && (dv[0] != 0.0 || dv[1] != 0.0);
+    vale.then_some(dv)
 }
 
 impl PhysicsBridge {
@@ -333,8 +443,22 @@ impl PhysicsBridge {
                     .map(|(e, _)| e),
             );
         }
+        // ⚠️ O PISCAR (plano 28, W5) tem a MESMA metade de higiene: quem perdeu a vida perde a
+        // marca, senão um objecto cuja `Health` saiu a meio de uma metade escondida ficava INVISÍVEL
+        // para sempre — e ninguém a voltaria a tirar, porque o laço de baixo só visita quem tem vida.
+        let mut apagados: Vec<Entity> = Vec::new();
+        if let Some(mut q) = w.try_query::<(Entity, &ph2d_ecs::BlinkOff)>() {
+            apagados.extend(
+                q.iter(w)
+                    .filter(|(e, _)| !self.health_state.contains_key(e))
+                    .map(|(e, _)| e),
+            );
+        }
         for e in velhos {
             w.entity_mut(e).remove::<crate::HealthNow>();
+        }
+        for e in apagados {
+            w.entity_mut(e).remove::<ph2d_ecs::BlinkOff>();
         }
         for (&e, st) in &self.health_state {
             let agora = crate::HealthNow {
@@ -351,6 +475,24 @@ impl PhysicsBridge {
                 None => {
                     em.insert(agora);
                 }
+            }
+            // ⭐ O piscar é função do relógio da LEI (o `desde_golpe_s` que a vida já guarda), logo
+            // o tique que se vê num scrub é o tique que a vida tem — nenhum relógio novo.
+            let escondido = em.get::<Health>().is_some_and(|h| {
+                !ph2d_health::pisca_visivel(
+                    st.vida.desde_golpe_s(),
+                    st.vida.invencivel(&h.config()),
+                    f64::from(h.blink_s),
+                )
+            });
+            match (escondido, em.contains::<ph2d_ecs::BlinkOff>()) {
+                (true, false) => {
+                    em.insert(ph2d_ecs::BlinkOff);
+                }
+                (false, true) => {
+                    em.remove::<ph2d_ecs::BlinkOff>();
+                }
+                _ => {}
             }
         }
     }

@@ -191,6 +191,8 @@ pub struct InspectorTopDownInfo {
     pub min_slide_angle_deg: f32,
     pub max_slides: u32,
     pub default_controls: bool,
+    /// ⭐ Quão depressa ele recupera de um empurrão, m/s² (plano 28, W5).
+    pub knockback_recovery: f32,
     /// ⭐ O corpo é **cinemático**? `false` ⇒ o aviso `the body must be Kinematic`.
     pub body_is_kinematic: bool,
     /// ⭐ O objecto tem `RigidBody`? `false` ⇒ o aviso `no body`.
@@ -216,6 +218,7 @@ pub enum TopDownFieldEdit {
     MinSlideAngle(f32),
     MaxSlides(u32),
     DefaultControls(bool),
+    KnockbackRecovery(f32),
 }
 
 #[cfg(test)]

@@ -172,6 +172,7 @@ mod sync_statemachine;
 mod sync_text_field;
 /// ⭐ As SEIS amostras de cor da sprite — irmão do `sync`, que voltou ao tecto em 2026-09-20.
 mod sync_tint_swatches;
+mod sync_topdown;
 mod sync_tween;
 mod sync_vida;
 mod sync_weapon;

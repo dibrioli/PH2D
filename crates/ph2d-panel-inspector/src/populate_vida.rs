@@ -22,7 +22,7 @@ use ph2d_editor_core::widget::{CheckboxState, CheckboxValue, TextInputState};
 ///
 /// ⚠️ **Os valores de partida são os do `Health::default()`/`Damage::default()`**, e não zeros: uma
 /// vida que nasce a `0` lê-se como um campo partido.
-pub(crate) const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 21] = [
+pub(crate) const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 28] = [
     (ids::INSP_VIDA_MAX, 100.0, 0.0, 100_000.0, 1.0), // LITERAL-PX-OK: pontos
     (ids::INSP_VIDA_START, 100.0, 0.0, 100_000.0, 1.0), // LITERAL-PX-OK: pontos
     (ids::INSP_VIDA_INVINCIBLE, 0.0, 0.0, 600.0, 0.05), // LITERAL-PX-OK: segundos
@@ -38,6 +38,18 @@ pub(crate) const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 21] = [
     (ids::INSP_VIDA_DODGE, 0.0, 0.0, 1.0, 0.05),      // LITERAL-PX-OK: fracção
     (ids::INSP_VIDA_SEED, 0.0, 0.0, 4_294_967_295.0, 1.0), // LITERAL-PX-OK: semente
     (ids::INSP_DANO_AMOUNT, 10.0, 0.0, 100_000.0, 1.0), // LITERAL-PX-OK: pontos
+    // ⭐ O IMPACTO (plano 28, W5). ⚠️ As PAUSAS vão a `2 s` e não a `600`: uma pausa é o jogo
+    // CONGELADO, e dois segundos parados por um golpe já é uma cinemática — o tecto é o de um olho
+    // que ainda lê aquilo como impacto, e a lei aceita qualquer número finito ≥ 0.
+    (ids::INSP_VIDA_DEATH_HITSTOP, 0.0, 0.0, 2.0, 0.01), // LITERAL-PX-OK: segundos
+    (ids::INSP_DANO_HITSTOP, 0.0, 0.0, 2.0, 0.01),       // LITERAL-PX-OK: segundos
+    (ids::INSP_VIDA_BLINK, 0.0, 0.0, 600.0, 0.01),       // LITERAL-PX-OK: segundos
+    // ⚠️ `Push Taken` passa de `1`: um alvo pode levar MAIS do que o golpe dá (uma bola de praia).
+    (ids::INSP_VIDA_KNOCKBACK_TAKEN, 1.0, 0.0, 100.0, 0.05), // LITERAL-PX-OK: fracção
+    (ids::INSP_VIDA_NUMBERS_SIZE, 0.45, 0.0, 1_000.0, 0.05), // LITERAL-PX-OK: metros
+    // ⚠️ O empurrão DESCE abaixo de zero: negativo PUXA (um íman, um gancho).
+    (ids::INSP_DANO_KNOCKBACK, 0.0, -1_000.0, 1_000.0, 0.5), // LITERAL-PX-OK: m/s
+    (ids::INSP_DANO_KNOCKBACK_LIFT, 0.0, -1_000.0, 1_000.0, 0.5), // LITERAL-PX-OK: m/s
     // ⭐ A BARRA (plano 28, W4) — metros e segundos. ⚠️ Os deslocamentos descem abaixo de zero: uma
     // barra por baixo dos pés é uma escolha legítima. Os tectos são a escala de um campo que o
     // artista lê, como os da vida — a lei aceita qualquer número finito.
@@ -50,7 +62,7 @@ pub(crate) const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 21] = [
 ];
 
 /// As caixas, com o valor de partida de cada uma.
-const CAIXAS: [(ph2d_a11y::NodeId, bool); 7] = [
+const CAIXAS: [(ph2d_a11y::NodeId, bool); 8] = [
     (ids::INSP_VIDA_OVERHEAL, false),
     (ids::INSP_VIDA_SHIELD_BLOCKS, false),
     (ids::INSP_DANO_PER_SECOND, false),
@@ -58,6 +70,7 @@ const CAIXAS: [(ph2d_a11y::NodeId, bool); 7] = [
     (ids::INSP_DANO_IGNORES_ARMOR, false),
     (ids::INSP_DANO_VANISH, false),
     (ids::INSP_BARRA_HIDE_FULL, false),
+    (ids::INSP_VIDA_NUMBERS, false),
 ];
 
 /// Os campos de texto — a equipa e os três sinais da vida, e a equipa do dano.
@@ -102,7 +115,10 @@ pub(crate) fn populate_vida(store: &mut WidgetStore) {
     // abre o selector ele próprio e NÃO emite evento nenhum (a lei das amostras das propriedades de
     // script), logo não há braço de clique a escrever no `event_vida`. ⚠️ Sem o `Plain` o clique
     // morre no `is_focusable`; sem o `register_picker_swatch` ele chega e o selector não abre.
-    for id in ids::INSP_BARRA_CORES {
+    for id in ids::INSP_BARRA_CORES
+        .into_iter()
+        .chain([ids::INSP_VIDA_NUMBERS_COLOR])
+    {
         store.register(id, InteractiveState::Plain);
         store.register_picker_swatch(id);
     }

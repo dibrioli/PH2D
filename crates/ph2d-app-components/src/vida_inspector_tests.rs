@@ -297,3 +297,60 @@ fn o_painel_diz_o_que_a_barra_encontrou() {
         }
     );
 }
+
+/// ⭐⭐⭐ **As nove edições do IMPACTO vão e voltam** (plano 28, W5) — e as cercas: o empurrão é
+/// LIVRE (negativo puxa), o que a vida aceita não desce de zero, e a cor fica em `0..=1`.
+///
+/// **Mutações que devem sangrar:** tirar qualquer braço novo do `apply_health`/`apply_damage` ·
+/// prender o empurrão a `≥ 0`.
+#[test]
+fn as_edicoes_do_impacto_vao_e_voltam() {
+    let (mut sim, b) = mundo(true, true, true);
+    for e in [
+        E::DeathHitstopS(0.15),
+        E::BlinkS(0.07),
+        E::KnockbackTaken(0.5),
+        E::Numbers(true),
+        E::NumbersColor([0.1, 0.2, 0.3, 1.0]),
+        E::NumbersSize(0.6),
+        E::HitstopS(0.05),
+        E::Knockback(-3.0),
+        E::KnockbackLift(2.0),
+    ] {
+        assert!(apply(&mut sim, b, &e), "{e:?} não tocou no mundo");
+    }
+    let i = build_vida_info(sim.world(), b, 1, true).expect("tem os dois");
+    let h = i.health.expect("vida");
+    let d = i.damage.expect("dano");
+    assert_eq!(
+        (
+            h.death_hitstop_s,
+            h.blink_s,
+            h.knockback_taken,
+            h.numbers,
+            h.numbers_size
+        ),
+        (0.15, 0.07, 0.5, true, 0.6)
+    );
+    assert_eq!(h.numbers_color, [0.1, 0.2, 0.3, 1.0]);
+    assert_eq!(
+        (d.hitstop_s, d.knockback, d.knockback_lift),
+        (0.05, -3.0, 2.0)
+    );
+    // As cercas.
+    for e in [
+        E::KnockbackTaken(-2.0),
+        E::NumbersColor([2.0, -1.0, 0.5, 1.0]),
+        E::Knockback(f32::NAN),
+    ] {
+        assert!(apply(&mut sim, b, &e));
+    }
+    let i = build_vida_info(sim.world(), b, 1, true).expect("tem os dois");
+    let (h, d) = (i.health.unwrap(), i.damage.unwrap());
+    assert_eq!(
+        h.knockback_taken, 0.0,
+        "a vida não aceita um empurrão NEGATIVO"
+    );
+    assert_eq!(h.numbers_color, [1.0, 0.0, 0.5, 1.0], "a cor fica em 0..=1");
+    assert_eq!(d.knockback, 0.0, "um empurrão não finito cai a zero");
+}

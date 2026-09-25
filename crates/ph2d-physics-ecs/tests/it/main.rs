@@ -40,6 +40,7 @@ mod hot_path_no_alloc;
 mod ik_gesture_loop;
 mod ik_lead;
 mod ik_plan;
+mod impacto;
 mod initial_velocity;
 mod interaction;
 mod joint_anchor_authoring;

@@ -27,14 +27,16 @@ use ph2d_editor_core::widget::{CheckboxState, CheckboxValue, TextInputState};
 /// ⚠️ **Os valores de partida são os do `TopDownLaw::default()`**, e não zeros: uma velocidade que
 /// nasce a `0` lê-se como um campo partido — o mesmo argumento que pôs a duração do timer a um
 /// segundo.
-const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 7] = [
+pub(crate) const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 8] = [
     (ids::INSP_TD_SPEED, 4.0, 0.0, 200.0, 0.1), // LITERAL-PX-OK: m/s
     (ids::INSP_TD_ACCEL, 0.0, 0.0, 1000.0, 0.5), // LITERAL-PX-OK: m/s²
     (ids::INSP_TD_DECEL, 0.0, 0.0, 1000.0, 0.5), // LITERAL-PX-OK: m/s²
-    (ids::INSP_TD_VIEW_ANGLE, 26.565, 1.0, 89.0, 0.5), // LITERAL-PX-OK: graus
-    (ids::INSP_TD_TURN_SPEED, 720.0, 0.0, 3600.0, 10.0), // LITERAL-PX-OK: graus/s
-    (ids::INSP_TD_MIN_SLIDE, 15.0, 0.0, 89.0, 1.0), // LITERAL-PX-OK: graus
-    (ids::INSP_TD_MAX_SLIDES, 4.0, 1.0, 8.0, 1.0), // LITERAL-PX-OK: contagem
+    // ⭐ O EMPURRÃO (plano 28, W5) — o default é o da LEI (`24`), e o tecto é o das outras rampas.
+    (ids::INSP_TD_KNOCKBACK_RECOVERY, 24.0, 0.0, 1000.0, 0.5), // LITERAL-PX-OK: m/s²
+    (ids::INSP_TD_VIEW_ANGLE, 26.565, 1.0, 89.0, 0.5),         // LITERAL-PX-OK: graus
+    (ids::INSP_TD_TURN_SPEED, 720.0, 0.0, 3600.0, 10.0),       // LITERAL-PX-OK: graus/s
+    (ids::INSP_TD_MIN_SLIDE, 15.0, 0.0, 89.0, 1.0),            // LITERAL-PX-OK: graus
+    (ids::INSP_TD_MAX_SLIDES, 4.0, 1.0, 8.0, 1.0),             // LITERAL-PX-OK: contagem
 ];
 
 pub(crate) fn populate_topdown(store: &mut WidgetStore) {

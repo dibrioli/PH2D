@@ -58,8 +58,9 @@ use ph2d_projectile::ProjectileLaw;
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 use ph2d_topdown::{TopDownLaw, direction::DirectionMode};
 
-/// ⭐⭐ **Quantas cenas este roteador serve** — CONTADO do `match` do [`montar`].
-pub const CENAS: u32 = 1;
+/// ⭐⭐ **Quantas cenas este roteador serve** — CONTADO do `match` do [`montar`]: a `=1` (a vida) e
+/// a `=2` (o impacto, [`crate::vida_impacto_smoke`]).
+pub const CENAS: u32 = 2;
 
 /// A acção e a tecla — as MESMAS da cena do golpe, que é a fonte (a tecla foi medida lá).
 pub const ACCAO: &str = crate::dano_smoke::ACCAO;
@@ -194,7 +195,7 @@ const _: () = assert!(PLACAR_XY[1] + PLACAR_WH[1] / 2.0 <= 4.09);
 /// **A receita que esta fábrica ainda vai apontar** — o marcador de MONTAGEM (o molde da cena do
 /// golpe): a identidade só é atribuída depois.
 #[derive(bevy_ecs::component::Component, Clone, Copy)]
-struct Pendente(Entity);
+pub(crate) struct Pendente(pub(crate) Entity);
 
 /// **As três linhas do roxo** — o veneno FERE e ARRANCA o relógio; o relógio, um segundo depois,
 /// CURA.
@@ -289,8 +290,9 @@ fn receita_do_alvo(
     e
 }
 
-/// **A RECEITA da bala** — o projéctil da cena do golpe, com um DANO em vez de uma tag.
-fn receita_da_bala(world: &mut World) -> Entity {
+/// **A RECEITA da bala** — o projéctil da cena do golpe, com um DANO em vez de uma tag. ⭐ A cena do
+/// impacto (`=2`) usa-a e acrescenta o empurrão e a pausa.
+pub(crate) fn receita_da_bala(world: &mut World) -> Entity {
     world
         .spawn((
             Name::new("Bala"),
@@ -378,8 +380,13 @@ fn cena_um(world: &mut World) -> Entity {
         },
     ));
 
-    // ⭐ O HERÓI: anda com as setas, roda para onde anda, e a arma aponta para onde ele aponta.
     // ⚠️ Nasce À ALTURA do alvo de cima — o 1.º tiro não pede pontaria.
+    heroi(world, [-6.0, ALVOS[0].4], HEROI_RGBA, bala)
+}
+
+/// ⭐ **O HERÓI**: anda com as setas, roda para onde anda, e a arma aponta para onde ele aponta —
+/// o `Q` atira a `bala`, o `J` publica o veneno. As duas cenas partilham-no (a `=2` dá-lhe uma vida).
+pub(crate) fn heroi(world: &mut World, xy: [f32; 2], rgba: [f32; 4], bala: Entity) -> Entity {
     let heroi = world
         .spawn((
             Name::new("Heroi"),
@@ -390,8 +397,8 @@ fn cena_um(world: &mut World) -> Entity {
                 shape: ColliderShape::Ball { radius: 0.3 },
                 ..Collider::default()
             },
-            Sprite::atlas(WHITE_TILE_KEY, [0.9, 0.4], HEROI_RGBA),
-            Transform::from_translation(Vec2::new(-6.0, ALVOS[0].4)),
+            Sprite::atlas(WHITE_TILE_KEY, [0.9, 0.4], rgba),
+            Transform::from_translation(Vec2::new(xy[0], xy[1])),
             ph2d_physics_ecs::TopDownPlayer::from_law(TopDownLaw {
                 speed: 4.0,
                 direction: DirectionMode::Free,
@@ -424,7 +431,7 @@ fn cena_um(world: &mut World) -> Entity {
 }
 
 /// Troca cada [`Pendente`] pelo `StableId` do mestre. ⚠️ Corre DEPOIS de a identidade existir.
-fn resolver_receitas(world: &mut World) {
+pub(crate) fn resolver_receitas(world: &mut World) {
     ph2d_ecs::assign_missing_stable_ids(world);
     let mut q = world.query::<(Entity, &Pendente)>();
     let pares: Vec<(Entity, Entity)> = q.iter(world).map(|(e, p)| (e, p.0)).collect();
@@ -446,7 +453,16 @@ pub struct Montada {
 }
 
 /// **Monta a cena que `nivel` pede, e devolve QUAL montou.**
-pub fn montar(world: &mut World, _nivel: u32) -> Montada {
+pub fn montar(world: &mut World, nivel: u32) -> Montada {
+    if nivel == 2 {
+        let escolhido = crate::vida_impacto_smoke::cena_dois(world);
+        resolver_receitas(world);
+        crate::vida_impacto_smoke::roteiro();
+        return Montada {
+            nivel: 2,
+            escolhido: escolhido.to_bits(),
+        };
+    }
     let escolhido = cena_um(world);
     resolver_receitas(world);
     println!(

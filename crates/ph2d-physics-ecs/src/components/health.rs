@@ -79,6 +79,32 @@ pub struct Health {
     pub on_death: String,
     /// A semente do sorteio da ESQUIVA — dois inimigos com a mesma semente esquivam igual.
     pub seed: u64,
+    /// ⭐ **A pausa do golpe FINAL, em segundos** (plano 28, W5) — o jogo congela este tempo quando
+    /// esta vida morre (a pesquisa: `~0,15 s`). `0` = sem pausa, o de fábrica.
+    ///
+    /// ⚠️ **É da vida e não de quem bate**: a morte de um chefe pesa mais do que a de um morcego,
+    /// com a MESMA espada. O golpe comum pesa pela [`Damage::hitstop_s`] de quem bate.
+    pub death_hitstop_s: f32,
+    /// ⭐ **O PISCAR da invencibilidade** — quanto dura cada metade, em segundos (`0` = não pisca,
+    /// o de fábrica). Ele dura sozinho a janela da invencibilidade: nenhum segundo número a manter
+    /// igual ao `invincible_s`.
+    pub blink_s: f32,
+    /// ⭐ **Quanto do EMPURRÃO esta vida aceita** (plano 28, W5) — `1` = todo (o de fábrica), `0` =
+    /// imóvel, `0,5` = metade. É a pesquisa a mandar: *o alvo decide* — o chefe pesado e o morcego
+    /// levam a MESMA espada e voam distâncias diferentes porque a VIDA deles diz, não a massa do
+    /// collider, que ninguém autorou como resistência.
+    pub knockback_taken: f32,
+    /// ⭐ **Os NÚMEROS de dano** (plano 28, W5) — cada golpe que ENTRA nesta vida faz nascer o
+    /// número dele por cima, a subir e a desvanecer. Desligado (o de fábrica) = calado.
+    ///
+    /// ⚠️ **É da vida e não de quem bate** — pela mesma razão do empurrão: o artista quer os números
+    /// sobre os inimigos e não sobre o herói, com a MESMA espada a bater nos dois.
+    pub numbers: bool,
+    /// A cor dos números, RGBA linear.
+    pub numbers_color: [f32; 4],
+    /// A altura dos números, em metros do mundo (eles crescem e encolhem com a câmera, como tudo o
+    /// que vive na cena).
+    pub numbers_size: f32,
 }
 
 impl Default for Health {
@@ -109,6 +135,12 @@ impl Default for Health {
             on_heal: String::new(),
             on_death: String::new(),
             seed: 0,
+            death_hitstop_s: 0.0,
+            blink_s: 0.0,
+            knockback_taken: 1.0,
+            numbers: false,
+            numbers_color: [1.0, 0.86, 0.3, 1.0],
+            numbers_size: 0.45,
         }
     }
 }
@@ -170,6 +202,17 @@ pub struct Damage {
     pub ignores_armor: bool,
     /// O que acontece a quem bate, depois de bater.
     pub on_hit: OnHit,
+    /// ⭐ **A PAUSA NO GOLPE, em segundos** (plano 28, W5; *hitstop*) — o jogo inteiro congela este
+    /// tempo quando o golpe ENTRA (na vida ou no escudo; uma esquiva não pesa). A pesquisa mede
+    /// `~0,05 s` para um golpe comum. `0` = sem pausa, o de fábrica.
+    pub hitstop_s: f32,
+    /// ⭐ **O EMPURRÃO, em m/s** (plano 28, W5) — a mudança de velocidade que o golpe dá a quem o
+    /// leva, na DIRECÇÃO REAL do contacto (a normal que o solver achou; num sensor, do centro de
+    /// quem bate ao de quem leva). `0` = não empurra, o de fábrica.
+    pub knockback: f32,
+    /// ⭐ **E para CIMA, em m/s** — somado ao empurrão, a direito. É o que faz um golpe num chão
+    /// plano levantar o herói: ali a normal do contacto é horizontal e o empurrão sozinho arrasta-o.
+    pub knockback_lift: f32,
 }
 
 impl Default for Damage {
@@ -181,6 +224,9 @@ impl Default for Damage {
             ignores_shield: false,
             ignores_armor: false,
             on_hit: OnHit::Stay,
+            hitstop_s: 0.0,
+            knockback: 0.0,
+            knockback_lift: 0.0,
         }
     }
 }

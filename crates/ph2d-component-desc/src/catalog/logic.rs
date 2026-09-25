@@ -177,7 +177,7 @@ const WEAPON_FIELDS: &[FieldDesc] = &[
     f(8, "component.field.weapon_fields.8", K::Text),
 ];
 
-/// ⭐⭐⭐ **A VIDA** (plano 28) — os vinte campos do `Health`, na ordem do componente.
+/// ⭐⭐⭐ **A VIDA** (plano 28) — os vinte e seis campos do `Health`, na ordem do componente.
 ///
 /// ⚠️ **A vida AGORA não é campo** (`HealthNow` é derivado e não registado): o descritor descreve o
 /// que o artista AUTORA, e o que a corrida produz não entra no ficheiro nem no `Ctrl+Z`.
@@ -204,9 +204,16 @@ const HEALTH_FIELDS: &[FieldDesc] = &[
     f(18, "component.field.health_fields.18", K::Text),
     f(19, "component.field.health_fields.19", K::Text),
     f(20, "component.field.health_fields.20", K::Seed),
+    // ⭐ O IMPACTO (plano 28, W5): a pausa da morte · o piscar · o empurrão aceite · os números.
+    f(21, "component.field.health_fields.21", K::Scalar),
+    f(22, "component.field.health_fields.22", K::Scalar),
+    f(23, "component.field.health_fields.23", K::Scalar),
+    f(24, "component.field.health_fields.24", K::Toggle),
+    f(25, "component.field.health_fields.25", K::Color),
+    f(26, "component.field.health_fields.26", K::Scalar),
 ];
 
-/// ⭐⭐⭐ **O DANO** (plano 28) — os seis campos do `Damage`.
+/// ⭐⭐⭐ **O DANO** (plano 28) — os nove campos do `Damage`.
 const DAMAGE_FIELDS: &[FieldDesc] = &[
     f(1, "component.field.damage_fields.1", K::Scalar),
     f(2, "component.field.damage_fields.2", K::Text),
@@ -214,6 +221,10 @@ const DAMAGE_FIELDS: &[FieldDesc] = &[
     f(4, "component.field.damage_fields.4", K::Toggle),
     f(5, "component.field.damage_fields.5", K::Toggle),
     f(6, "component.field.damage_fields.6", K::Enum),
+    // ⭐ O IMPACTO de quem bate (plano 28, W5): a pausa no golpe e o empurrão.
+    f(7, "component.field.damage_fields.7", K::Scalar),
+    f(8, "component.field.damage_fields.8", K::Scalar),
+    f(9, "component.field.damage_fields.9", K::Scalar),
 ];
 
 /// ⭐⭐⭐ **A BARRA DE VIDA** (plano 28, W4) — os onze campos do `HealthBar`, na ordem da struct.

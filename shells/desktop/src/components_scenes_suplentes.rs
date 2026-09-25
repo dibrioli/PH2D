@@ -497,13 +497,14 @@ impl crate::App {
                 self.levanta_o_inspector(self.components.smokes.vida_raise);
             return;
         }
-        if std::env::var_os("PH2D_VIDA_SMOKE").is_none() {
+        let Some(v) = std::env::var_os("PH2D_VIDA_SMOKE") else {
             return;
-        }
+        };
+        let nivel = v.to_str().and_then(|s| s.parse().ok()).unwrap_or(1);
         let Some(cx) = self.components_ctx() else {
             return;
         };
-        let montada = ph2d_app_components::vida_smoke::montar(cx.sim.world_mut(), 1);
+        let montada = ph2d_app_components::vida_smoke::montar(cx.sim.world_mut(), nivel);
         self.components.smokes.vida = true;
         self.components.smokes.vida_raise = crate::components_scenes::LEVANTA_O_INSPECTOR;
         self.timeline.flags.simulate_physics = true;

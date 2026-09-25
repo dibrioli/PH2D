@@ -100,6 +100,7 @@ pub(crate) fn build_topdown_info(
         min_slide_angle_deg: law.min_slide_angle_deg,
         max_slides: u32::from(law.max_slides),
         default_controls: law.default_controls,
+        knockback_recovery: law.knockback_recovery,
         has_body: corpo.is_some(),
         // ⚠️ **A pergunta é `== Kinematic` e não `!= Dynamic`**: um corpo estático também não serve,
         // e a forma negativa deixaria-o passar como se estivesse bem.
@@ -138,6 +139,7 @@ pub(crate) fn apply_topdown_edit(world: &mut World, bits: u64, edit: &TopDownFie
             law.max_slides = u8::try_from((*n).clamp(1, 8)).unwrap_or(4);
         }
         TopDownFieldEdit::DefaultControls(b) => law.default_controls = *b,
+        TopDownFieldEdit::KnockbackRecovery(v) => law.knockback_recovery = v.max(0.0),
     }
     *c = TopDownPlayer::from_law(law);
     true

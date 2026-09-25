@@ -48,6 +48,11 @@ ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-inspector-ordering = { path = "../ph2d-inspector-ordering" }
 ph2d-entity-visibility = { path = "../ph2d-entity-visibility" }
 ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+# ⭐ A lei do IMPACTO (plano 28, W5) — a pausa no golpe e o piscar, lidos pela ponte do impacto.
+ph2d-health = { path = "../ph2d-health" }
+# ⭐ E o texto dos NÚMEROS de dano (W5): a cena vectorial e a cor em que o pintor de texto da casa
+# escreve — a mesma porta do readout das juntas da física.
+ph2d-vector = { path = "../ph2d-vector" }
 ph2d-render = { path = "../ph2d-render" }
 ph2d-text = { path = "../ph2d-text" }
 ph2d-tokens = { path = "../ph2d-tokens" }

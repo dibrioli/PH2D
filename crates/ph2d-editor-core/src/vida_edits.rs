@@ -34,7 +34,7 @@ pub struct VidaAgora {
     pub morta: bool,
 }
 
-/// A metade VIDA do instantâneo — os vinte campos do `Health`.
+/// A metade VIDA do instantâneo — os vinte e seis campos do `Health`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct InspectorHealthInfo {
     pub max: f32,
@@ -57,6 +57,14 @@ pub struct InspectorHealthInfo {
     pub on_heal: String,
     pub on_death: String,
     pub seed: u64,
+    /// ⭐ O IMPACTO (plano 28, W5) — a pausa da morte, o piscar, quanto do empurrão ela aceita e os
+    /// números de dano.
+    pub death_hitstop_s: f32,
+    pub blink_s: f32,
+    pub knockback_taken: f32,
+    pub numbers: bool,
+    pub numbers_color: [f32; 4],
+    pub numbers_size: f32,
     /// ⭐ A vida AGORA — `None` antes do 1.º tique (a vida ainda não nasceu).
     pub agora: Option<VidaAgora>,
 }
@@ -72,7 +80,7 @@ impl InspectorHealthInfo {
     }
 }
 
-/// A metade DANO do instantâneo — os seis campos do `Damage`.
+/// A metade DANO do instantâneo — os nove campos do `Damage`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct InspectorDamageInfo {
     pub amount: f32,
@@ -82,6 +90,10 @@ pub struct InspectorDamageInfo {
     pub ignores_armor: bool,
     /// `true` = `OnHit::Vanish` (uma bala); `false` = `OnHit::Stay` (uma espada, um espinho).
     pub vanish: bool,
+    /// ⭐ O IMPACTO de quem bate (plano 28, W5) — a pausa no golpe e o empurrão.
+    pub hitstop_s: f32,
+    pub knockback: f32,
+    pub knockback_lift: f32,
 }
 
 /// **De quem a barra mostra a vida, e o que ela encontrou** (plano 28, W4) — resolvido pela MESMA
@@ -191,12 +203,21 @@ pub enum VidaFieldEdit {
     OnHeal(String),
     OnDeath(String),
     Seed(u64),
+    DeathHitstopS(f32),
+    BlinkS(f32),
+    KnockbackTaken(f32),
+    Numbers(bool),
+    NumbersColor([f32; 4]),
+    NumbersSize(f32),
     DamageAmount(f32),
     DamageTeam(String),
     PerSecond(bool),
     IgnoresShield(bool),
     IgnoresArmor(bool),
     Vanish(bool),
+    HitstopS(f32),
+    Knockback(f32),
+    KnockbackLift(f32),
     BarTarget(String),
     BarWidth(f32),
     BarHeight(f32),
@@ -236,6 +257,12 @@ mod tests {
             on_heal: String::new(),
             on_death: String::new(),
             seed: 0,
+            death_hitstop_s: 0.0,
+            blink_s: 0.0,
+            knockback_taken: 1.0,
+            numbers: false,
+            numbers_color: [1.0; 4],
+            numbers_size: 0.45,
             agora: None,
         }
     }
@@ -248,6 +275,9 @@ mod tests {
             ignores_shield: false,
             ignores_armor: false,
             vanish: false,
+            hitstop_s: 0.0,
+            knockback: 0.0,
+            knockback_lift: 0.0,
         }
     }
 
@@ -289,12 +319,21 @@ mod tests {
             VidaFieldEdit::OnHeal(String::new()),
             VidaFieldEdit::OnDeath(String::new()),
             VidaFieldEdit::Seed(0),
+            VidaFieldEdit::DeathHitstopS(0.0),
+            VidaFieldEdit::BlinkS(0.0),
+            VidaFieldEdit::KnockbackTaken(0.0),
+            VidaFieldEdit::Numbers(false),
+            VidaFieldEdit::NumbersColor([0.0; 4]),
+            VidaFieldEdit::NumbersSize(0.0),
             VidaFieldEdit::DamageAmount(0.0),
             VidaFieldEdit::DamageTeam(String::new()),
             VidaFieldEdit::PerSecond(false),
             VidaFieldEdit::IgnoresShield(false),
             VidaFieldEdit::IgnoresArmor(false),
             VidaFieldEdit::Vanish(false),
+            VidaFieldEdit::HitstopS(0.0),
+            VidaFieldEdit::Knockback(0.0),
+            VidaFieldEdit::KnockbackLift(0.0),
             VidaFieldEdit::BarTarget(String::new()),
             VidaFieldEdit::BarWidth(0.0),
             VidaFieldEdit::BarHeight(0.0),
@@ -309,8 +348,8 @@ mod tests {
         ];
         assert_eq!(
             variantes.len(),
-            20 + 6 + 11,
-            "o `Health` tem VINTE campos, o `Damage` SEIS e o `HealthBar` ONZE — se um nasceu, ele \
+            26 + 9 + 11,
+            "o `Health` tem VINTE E SEIS campos, o `Damage` NOVE e o `HealthBar` ONZE — se um nasceu, ele \
              precisa de uma variante aqui e de uma row no painel"
         );
     }

@@ -56,6 +56,20 @@ pub const INSP_VIDA_ON_HEAL: NodeId = hash_node_id("insp_vida_on_heal");
 /// O sinal ao morrer.
 pub const INSP_VIDA_ON_DEATH: NodeId = hash_node_id("insp_vida_on_death");
 
+// ── HEALTH — o IMPACTO (plano 28, W5) ───────────────────────────────────────
+/// A pausa do golpe final, em segundos.
+pub const INSP_VIDA_DEATH_HITSTOP: NodeId = hash_node_id("insp_vida_death_hitstop");
+/// Quanto dura cada metade do piscar. ⚠️ Só pintado com invencibilidade.
+pub const INSP_VIDA_BLINK: NodeId = hash_node_id("insp_vida_blink");
+/// Quanto do empurrão esta vida aceita (`1` = todo).
+pub const INSP_VIDA_KNOCKBACK_TAKEN: NodeId = hash_node_id("insp_vida_knockback_taken");
+/// Os números de dano a subir.
+pub const INSP_VIDA_NUMBERS: NodeId = hash_node_id("insp_vida_numbers");
+/// A amostra da cor dos números. ⚠️ Só pintada com os números ligados.
+pub const INSP_VIDA_NUMBERS_COLOR: NodeId = hash_node_id("insp_vida_numbers_color");
+/// A altura dos números, em metros. ⚠️ Só pintada com os números ligados.
+pub const INSP_VIDA_NUMBERS_SIZE: NodeId = hash_node_id("insp_vida_numbers_size");
+
 // ── DAMAGE ──────────────────────────────────────────────────────────────────
 /// Quanto tira por golpe (ou por segundo, com *Per Second*).
 pub const INSP_DANO_AMOUNT: NodeId = hash_node_id("insp_dano_amount");
@@ -69,6 +83,12 @@ pub const INSP_DANO_IGNORES_SHIELD: NodeId = hash_node_id("insp_dano_ignores_shi
 pub const INSP_DANO_IGNORES_ARMOR: NodeId = hash_node_id("insp_dano_ignores_armor");
 /// Sai da cena ao bater (uma bala).
 pub const INSP_DANO_VANISH: NodeId = hash_node_id("insp_dano_vanish");
+/// A pausa no golpe, em segundos (plano 28, W5).
+pub const INSP_DANO_HITSTOP: NodeId = hash_node_id("insp_dano_hitstop");
+/// O empurrão, em m/s.
+pub const INSP_DANO_KNOCKBACK: NodeId = hash_node_id("insp_dano_knockback");
+/// O empurrão para cima, em m/s.
+pub const INSP_DANO_KNOCKBACK_LIFT: NodeId = hash_node_id("insp_dano_knockback_lift");
 
 // ── HEALTH BAR (plano 28, W4) ───────────────────────────────────────────────
 /// O NOME do objecto cuja vida a barra mostra — vazio = este.

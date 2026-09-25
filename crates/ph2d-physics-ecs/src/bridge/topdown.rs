@@ -107,6 +107,10 @@ impl PhysicsBridge {
                 dt,
             );
             st.velocity = v;
+            // ⭐ O EMPURRÃO de um golpe (plano 28, W5) anda POR CIMA do comando e recupera a taxa
+            // própria — somado à velocidade dele, a travagem comia-o no tique seguinte.
+            let movimento = [v[0] + st.knockback[0], v[1] + st.knockback[1]];
+            st.knockback = intent::recover(st.knockback, law.knockback_recovery, dt);
 
             let params = CharacterParams {
                 // Ver o cabeçalho: numa vista de cima não há chão.
@@ -116,7 +120,7 @@ impl PhysicsBridge {
                 step_height: 0.0,
             };
             let mut andado = [0.0_f32, 0.0];
-            let mut passo = slide::first_step(v, dt, law.max_slides);
+            let mut passo = slide::first_step(movimento, dt, law.max_slides);
             while let Some(s) = passo {
                 let pedido = [s.dir[0] * s.budget, s.dir[1] * s.budget];
                 let got = self

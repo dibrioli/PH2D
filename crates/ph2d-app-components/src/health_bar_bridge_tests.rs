@@ -401,3 +401,46 @@ fn mede_o_custo_de_n_barras() {
         assert_eq!(s.instances.len(), 3 * n);
     }
 }
+
+/// ⭐⭐ **O quadro das barras envelhece o IMPACTO, e o rebobinar esquece-o** (plano 28, W5) — o
+/// impacto mora aqui para renascer junto com os rastos, e é esta a prova de que o faz.
+///
+/// **Mutações que devem sangrar:** apagar o `impacto.anda` do `frame` · o `impacto.rewind` do
+/// `rewind`.
+#[test]
+fn o_quadro_envelhece_o_impacto_e_o_rebobinar_esquece_o() {
+    use ph2d_physics_ecs::{HealthEvent, HealthEventKind};
+    let mut sim = SimWorld::new();
+    let e = sim
+        .world_mut()
+        .spawn((
+            Transform::from_translation(Vec2::new(0.0, 0.0)),
+            Health {
+                numbers: true,
+                ..Health::default()
+            },
+        ))
+        .id();
+    let mut st = estado();
+    let golpe = HealthEvent {
+        target: e,
+        source: e,
+        kind: HealthEventKind::Damaged { amount: 5.0 },
+    };
+    st.impacto.ouve(&sim, &[golpe]);
+    assert_eq!(st.impacto.numeros().len(), 1);
+    st.frame(&mut sim, 1.0);
+    assert!(
+        st.impacto.numeros().is_empty(),
+        "o quadro não envelheceu o número"
+    );
+    st.impacto.ouve(&sim, &[golpe]);
+    st.impacto.pausa.pede(0.1);
+    let _ = st.rewind();
+    assert!(st.impacto.numeros().is_empty());
+    assert_eq!(
+        st.impacto.pausa.resta_s(),
+        0.0,
+        "o rebobinar não esqueceu a pausa"
+    );
+}

@@ -176,6 +176,7 @@ fn as_quatro_seccoes_que_estreavam_a_catraca_chegam_a_pixel() {
         min_slide_angle_deg: 5.0,
         max_slides: 4,
         default_controls: true,
+        knockback_recovery: 24.0,
         body_is_kinematic: true,
         has_body: true,
         conflicts_with_platformer: false,

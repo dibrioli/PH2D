@@ -84,6 +84,9 @@ pub(crate) fn sync_new_sections(
     crate::sync_weapon::sync(host, inspector_state, entity_changed);
     // ⭐⭐⭐ A VIDA e o DANO (plano 28, W3) — no MESMO commit que as secções.
     crate::sync_vida::sync(host, inspector_state, entity_changed);
+    // ⭐⭐⭐ **O MOVER DE VISTA DE CIMA** — ⛔ esta linha FALTAVA desde o TOP-20 #13 (ver o cabeçalho
+    // do irmão): a secção mostrava os números de PARTIDA do `populate` sobre um mover autorado.
+    crate::sync_topdown::sync(host, inspector_state, entity_changed);
     crate::sync_tween::sync(host, inspector_state, entity_changed);
     crate::sync_path_follow::sync(host, inspector_state, entity_changed);
     // ⭐⭐⭐ **A VIGIA DO CONTADOR** — no irmão, pelo mesmo tecto. ⛔ Esta linha FALTAVA: a secção

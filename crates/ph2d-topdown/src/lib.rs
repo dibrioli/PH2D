@@ -99,6 +99,17 @@ pub struct TopDownLaw {
     /// componente é **motor puro** e obedece a quem lhe escrever a intenção
     /// (sinal, timeline, script) — a lei transversal 3 da síntese.
     pub default_controls: bool,
+    /// ⭐ **Quão depressa ele RECUPERA de um empurrão**, m/s² (plano 28, W5) — o
+    /// empurrão de um golpe é um canal PRÓPRIO ([`TopDownState::knockback`]),
+    /// separado do comando, e desce a zero a esta taxa. ⚠️ **Zero é instantâneo**
+    /// (a convenção das outras rampas): um mover a `0` não desliza com golpe
+    /// nenhum.
+    ///
+    /// ⚠️ **O canal é próprio por MEDIÇÃO**: somado à velocidade do comando, o
+    /// empurrão era comido pela travagem no tique seguinte — e a travagem de
+    /// fábrica é INSTANTÂNEA, logo o herói de fábrica **nunca** voava (gate
+    /// `o_mover_de_vista_de_cima_e_empurrado_pelo_estado_dele`, medido `0,0000 m`).
+    pub knockback_recovery: f32,
 }
 
 impl Default for TopDownLaw {
@@ -119,6 +130,11 @@ impl Default for TopDownLaw {
             min_slide_angle_deg: 15.0,
             max_slides: 4,
             default_controls: true,
+            // ⚠️ **Faixa de PRODUTO, com o que ela compra à vista** (§0.0 do
+            // roteador): a `24 m/s²` um empurrão de `6 m/s` desliza `v²/2a = 0,75 m`
+            // em `0,25 s` — um passo atrás, lido como golpe, que não tira o herói do
+            // ecrã. Não há recurso a medir aqui: há um olho.
+            knockback_recovery: 24.0,
         }
     }
 }
@@ -169,4 +185,9 @@ pub struct TopDownState {
     /// lado: é este struct que entra no anel de checkpoints, e é isso que faz um
     /// scrub devolver o mundo **e** o comando do mesmo tique.
     pub dominance: direction::Dominance,
+    /// ⭐ **O EMPURRÃO que ainda falta gastar**, m/s (plano 28, W5) — somado ao
+    /// comando no movimento e recuperado à [`TopDownLaw::knockback_recovery`].
+    /// ⚠️ Vive AQUI pela mesma razão da dominância: é este struct que entra no
+    /// anel, e um scrub tem de devolver o golpe a meio do voo.
+    pub knockback: Vec2,
 }

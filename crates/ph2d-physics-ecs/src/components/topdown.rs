@@ -69,6 +69,9 @@ pub struct TopDownPlayer {
     /// Se a ponte lê as acções nomeadas do Input Map. Desligado, o componente é
     /// **motor puro** e obedece a quem lhe escrever a intenção.
     pub default_controls: bool,
+    /// ⭐ Quão depressa ele recupera de um empurrão, m/s² (plano 28, W5). ⚠️ Zero
+    /// é instantâneo — não desliza com golpe nenhum.
+    pub knockback_recovery: f32,
 }
 
 impl Default for TopDownPlayer {
@@ -97,6 +100,7 @@ impl TopDownPlayer {
             min_slide_angle_deg: self.min_slide_angle_deg,
             max_slides: self.max_slides,
             default_controls: self.default_controls,
+            knockback_recovery: self.knockback_recovery,
         }
     }
 
@@ -115,6 +119,7 @@ impl TopDownPlayer {
             min_slide_angle_deg: l.min_slide_angle_deg,
             max_slides: l.max_slides,
             default_controls: l.default_controls,
+            knockback_recovery: l.knockback_recovery,
         }
     }
 

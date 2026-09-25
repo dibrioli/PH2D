@@ -312,6 +312,12 @@ fn a_barra_do_inimigo_mora_ao_lado_da_vida_dele() {
         on_heal: String::new(),
         on_death: String::new(),
         seed: 0,
+        death_hitstop_s: 0.0,
+        blink_s: 0.0,
+        knockback_taken: 1.0,
+        numbers: false,
+        numbers_color: [1.0; 4],
+        numbers_size: 0.45,
         agora: None,
     };
     let mut i = info(barra());
@@ -324,5 +330,80 @@ fn a_barra_do_inimigo_mora_ao_lado_da_vida_dele() {
         .expect("a barra sumiu")
         .y;
     assert!(barra_y > vida_y, "a barra pinta-se DEPOIS da vida");
+    set_current_inspector_vida(None);
+}
+
+/// Uma vida com os NÚMEROS de dano ligados (plano 28, W5) — é isso que pinta a amostra da cor.
+fn vida_com_numeros() -> InspectorHealthInfo {
+    InspectorHealthInfo {
+        max: 30.0,
+        start: 30.0,
+        invincible_s: 0.0,
+        overheal: false,
+        regen: 0.0,
+        regen_delay_s: 0.0,
+        shield_start: 0.0,
+        shield_max: 0.0,
+        shield_duration_s: 5.0,
+        shield_regen: 0.0,
+        shield_regen_delay_s: 0.0,
+        shield_blocks_excess: false,
+        armor_flat: 0.0,
+        armor_percent: 0.0,
+        dodge: 0.0,
+        team: String::new(),
+        on_damage: String::new(),
+        on_heal: String::new(),
+        on_death: String::new(),
+        seed: 0,
+        death_hitstop_s: 0.0,
+        blink_s: 0.0,
+        knockback_taken: 1.0,
+        numbers: true,
+        numbers_color: [0.2, 0.4, 0.6, 1.0],
+        numbers_size: 0.45,
+        agora: None,
+    }
+}
+
+/// ⭐⭐⭐ **A amostra da cor dos NÚMEROS** (plano 28, W5) — a quarta amostra da família: ela mostra
+/// o que o objecto tem, abre o selector sem escrever, e a cor ESCOLHIDA chega ao documento na
+/// variante dela.
+///
+/// **Mutações que devem sangrar:** tirar o `INSP_VIDA_NUMBERS_COLOR` do registo das amostras ·
+/// tirar a vida da lista de amostras do `cores`.
+#[test]
+fn a_amostra_da_cor_dos_numeros_esta_viva_ponta_a_ponta() {
+    let id = ids::INSP_VIDA_NUMBERS_COLOR;
+    let armado = || {
+        let mut i = info(barra());
+        i.health = Some(vida_com_numeros());
+        i.has_body = true;
+        i
+    };
+    let (mut h, mut st) = host(armado());
+    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    assert_eq!(
+        h.store().widget_color(id),
+        Some([51, 102, 153, 255]),
+        "a amostra não mostra a cor que o objecto tem"
+    );
+    let r = rect_de(&rects, id).expect("a amostra da cor dos números não foi pintada");
+    let _ = h.drained_actions();
+    let _ = h.dispatch_pointer_event(pointer(
+        PointerKind::Down,
+        r.x + r.w * 0.5,
+        r.y + r.h * 0.5,
+        SEC,
+    ));
+    assert_eq!(h.store().picker_target(), Some(id), "o selector não abriu");
+    assert_eq!(edicoes(h.drained_actions()), Vec::<E>::new());
+    h.pick_colour_in_the_open_picker([0, 255, 0, 255]);
+    let _ = h.drained_actions();
+    let _ = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    assert_eq!(
+        edicoes(h.drained_actions()),
+        vec![E::NumbersColor([0.0, 1.0, 0.0, 1.0])]
+    );
     set_current_inspector_vida(None);
 }

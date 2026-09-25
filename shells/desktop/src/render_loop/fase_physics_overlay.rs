@@ -26,6 +26,7 @@ impl crate::App {
             text_system,
             hero_screen,
             physics,
+            health_bars,
             ..
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
@@ -179,5 +180,10 @@ impl crate::App {
             // chamada, que é exatamente o tempo de vida que o rótulo precisa.
             paint_ctx.text,
         );
+        // ⭐ **Os NÚMEROS de dano** (plano 28, W5) por cima da cena, pela MESMA banda e pelo mesmo
+        // pintor de texto — depois do contorno, que é o último uso do `vector_scene` para traço.
+        health_bars
+            .impacto
+            .pinta(camera, janela_da_cena, vector_scene, paint_ctx.text);
     }
 }

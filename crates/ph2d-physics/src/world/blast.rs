@@ -44,7 +44,7 @@
 //! impulso. Os `center` autorados são `[f32; 2]`, então o compilador nunca os viu como vetores.
 
 use crate::rmath::Vector;
-use rapier2d::dynamics::{RigidBodySet, RigidBodyType};
+use rapier2d::dynamics::{RigidBodyHandle, RigidBodySet, RigidBodyType};
 
 use super::PhysicsWorld;
 
@@ -170,6 +170,33 @@ impl PhysicsWorld {
             hit += 1;
         }
         hit
+    }
+
+    /// ⭐ **O EMPURRÃO de um golpe** (plano 28, W5) — soma `dv` (m/s) à velocidade linear de UM corpo
+    /// dinâmico, e acorda-o. Devolve se o corpo foi empurrado.
+    ///
+    /// ⚠️ **Uma MUDANÇA DE VELOCIDADE e não um impulso**, e é a diferença para o [`Self::explode`]:
+    /// lá a massa resiste (a folha voa, o caixote não), aqui o artista escreveu *«empurra 6 m/s»* no
+    /// dano e a resistência mora na VIDA (`knockback_taken`), que é quem decide — o princípio da
+    /// pesquisa (*o alvo decide*). Um impulso faria um chefe pesado e um morcego leve voarem
+    /// distâncias diferentes pela MASSA do collider, que ninguém autorou como resistência.
+    ///
+    /// ⛔ **Só dinâmicos**: um cinemático não integra velocidade (a pose é de quem o conduz — o mover
+    /// recebe o empurrão pelo estado dele, na ponte) e um fixo não se move. Um `dv` não finito é
+    /// recusado — um `NaN` na velocidade envenena a pose e o hash determinista (a lição do estouro).
+    pub fn push_velocity(&mut self, handle: RigidBodyHandle, dv: [f32; 2]) -> bool {
+        if !(dv[0].is_finite() && dv[1].is_finite()) {
+            return false;
+        }
+        let Some(body) = self.bodies.get_mut(handle) else {
+            return false;
+        };
+        if body.body_type() != RigidBodyType::Dynamic {
+            return false;
+        }
+        let v = body.linvel() + Vector::new(dv[0], dv[1]);
+        body.set_linvel(v, true);
+        true
     }
 
     /// Arma (ou desarma) o campo de atração. `None` é o release.

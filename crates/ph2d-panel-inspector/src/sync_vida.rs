@@ -49,10 +49,19 @@ fn numeros(i: &InspectorVidaInfo) -> Vec<(ph2d_a11y::NodeId, f64)> {
             (ids::INSP_VIDA_ARMOR_PCT, f64::from(h.armor_percent)),
             (ids::INSP_VIDA_DODGE, f64::from(h.dodge)),
             (ids::INSP_VIDA_SEED, seed),
+            (ids::INSP_VIDA_DEATH_HITSTOP, f64::from(h.death_hitstop_s)),
+            (ids::INSP_VIDA_BLINK, f64::from(h.blink_s)),
+            (ids::INSP_VIDA_KNOCKBACK_TAKEN, f64::from(h.knockback_taken)),
+            (ids::INSP_VIDA_NUMBERS_SIZE, f64::from(h.numbers_size)),
         ]);
     }
     if let Some(d) = &i.damage {
-        out.push((ids::INSP_DANO_AMOUNT, f64::from(d.amount)));
+        out.extend([
+            (ids::INSP_DANO_AMOUNT, f64::from(d.amount)),
+            (ids::INSP_DANO_HITSTOP, f64::from(d.hitstop_s)),
+            (ids::INSP_DANO_KNOCKBACK, f64::from(d.knockback)),
+            (ids::INSP_DANO_KNOCKBACK_LIFT, f64::from(d.knockback_lift)),
+        ]);
     }
     if let Some(b) = &i.bar {
         out.extend([
@@ -87,7 +96,14 @@ fn textos(i: &InspectorVidaInfo) -> Vec<(ph2d_a11y::NodeId, &str)> {
     out
 }
 
-/// ⭐⭐ **As três amostras da barra têm DOIS regimes** — a lei das amostras de tinta do Sprite e
+/// Uma amostra de cor da secção: o id pintado, a cor gravada e a edição que a escreve.
+type Amostra = (
+    ph2d_a11y::NodeId,
+    [f32; 4],
+    fn([f32; 4]) -> ph2d_editor_core::vida_edits::VidaFieldEdit,
+);
+
+/// ⭐⭐ **As amostras de cor da secção (as três da barra e a dos números) têm DOIS regimes** — a lei das amostras de tinta do Sprite e
 /// das cores de script:
 /// - o selector aponta para ESTA amostra ⇒ o artista está a escolher, e a diferença contra o
 ///   documento vai ao barramento, comparada em **`u8`** (a ida-e-volta é exacta, logo o fluxo PÁRA
@@ -99,16 +115,26 @@ fn textos(i: &InspectorVidaInfo) -> Vec<(ph2d_a11y::NodeId, &str)> {
 fn cores(host: &mut dyn PanelHostInternal, i: &InspectorVidaInfo) {
     use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
     use ph2d_editor_core::vida_edits::VidaFieldEdit as E;
-    let Some(b) = &i.bar else {
-        return;
-    };
     let alvo = host.store().picker_target();
-    let [fill, trail, back] = ids::INSP_BARRA_CORES;
-    for (id, c, edita) in [
-        (fill, b.fill, E::BarFill as fn([f32; 4]) -> E),
-        (trail, b.trail, E::BarTrail),
-        (back, b.back, E::BarBack),
-    ] {
+    let mut amostras: Vec<Amostra> = Vec::new();
+    if let Some(b) = &i.bar {
+        let [fill, trail, back] = ids::INSP_BARRA_CORES;
+        amostras.extend([
+            (fill, b.fill, E::BarFill as fn([f32; 4]) -> E),
+            (trail, b.trail, E::BarTrail),
+            (back, b.back, E::BarBack),
+        ]);
+    }
+    // ⭐ E a cor dos NÚMEROS de dano (plano 28, W5) — a quarta amostra da família, pelos MESMOS
+    // dois regimes.
+    if let Some(h) = &i.health {
+        amostras.push((
+            ids::INSP_VIDA_NUMBERS_COLOR,
+            h.numbers_color,
+            E::NumbersColor,
+        ));
+    }
+    for (id, c, edita) in amostras {
         let gravada = crate::state_tint::tint_f32_to_u8(c);
         if alvo == Some(id) {
             if let Some(escolhida) = host.store().widget_color(id)

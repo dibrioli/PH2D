@@ -163,6 +163,7 @@ fn corpo(
             tr("panel.inspector.topdown.speed_m_s"),
             tr("panel.inspector.topdown.acceleration_0_instant"),
             tr("panel.inspector.topdown.deceleration_0_instant"),
+            tr("panel.inspector.topdown.knockback_recovery"),
             tr("panel.inspector.topdown.board_angle_deg"),
             tr("panel.inspector.topdown.turn_speed_deg_s_0_instant"),
             tr("panel.inspector.topdown.min_slide_angle_deg"),
@@ -188,6 +189,14 @@ fn corpo(
         (
             tr("panel.inspector.topdown.deceleration_0_instant"),
             crate::ids::INSP_TD_DECEL,
+            0.5,
+            None,
+        ), // LITERAL-PX-OK: m/s²
+        // ⭐ O EMPURRÃO (plano 28, W5): um golpe de uma `Damage` com `Push` fá-lo deslizar, e isto
+        // diz quão depressa ele pára de deslizar.
+        (
+            tr("panel.inspector.topdown.knockback_recovery"),
+            crate::ids::INSP_TD_KNOCKBACK_RECOVERY,
             0.5,
             None,
         ), // LITERAL-PX-OK: m/s²

@@ -48,6 +48,9 @@ pub mod anchor_mount;
 pub mod audio_2d;
 pub mod baked_form;
 pub mod blend;
+/// ⭐ **O MESTRE de um componente de objeto** (ADR-0164 / F4) — e o que o torna INERTE para a
+/// ponte de física. A refutação 1 mediu o preço de não o excluir: *a receita não cai*.
+pub mod blink;
 /// ⭐⭐⭐ **A CÂMERA DE JOGO** (TOP-20 #7) — a lei portada do Godot 4.7.2 (MIT), medida como
 /// oráculo. Módulo irmão de [`audio_2d`], append-only.
 pub mod camera_2d;
@@ -67,8 +70,6 @@ pub mod instantiate;
 /// [`lifetime::Spawned`], que é a lei *«o que nasce numa corrida não é documento»*.
 pub mod lifetime;
 pub mod masking;
-/// ⭐ **O MESTRE de um componente de objeto** (ADR-0164 / F4) — e o que o torna INERTE para a
-/// ponte de física. A refutação 1 mediu o preço de não o excluir: *a receita não cai*.
 pub mod master;
 pub mod name;
 /// **Named Anchors** (ADR-0072) — socket · slice · região 9-slice, num tipo só.
@@ -163,6 +164,7 @@ pub use anchor_mount::{
 };
 pub use baked_form::BakedForm;
 pub use blend::BlendMode;
+pub use blink::BlinkOff;
 pub use counter_watch::{
     Compare, CounterScope, CounterWatch, CounterWatchRow, CounterWatchRuntime, WATCHES_MAX,
     WatchState,

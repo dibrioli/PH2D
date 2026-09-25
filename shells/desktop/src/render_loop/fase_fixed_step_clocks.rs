@@ -32,7 +32,12 @@ impl crate::App {
     pub(super) fn fase_fixed_step_clocks(&mut self, wall_dt: f64) -> Option<FrameClocks> {
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let gfx = self.gfx.as_mut()?;
-        let FrameGfx { tools, sim, .. } = FrameGfx::of(gfx);
+        let FrameGfx {
+            tools,
+            sim,
+            health_bars,
+            ..
+        } = FrameGfx::of(gfx);
 
         // Drive fixed-step accumulator.
         // M14.4g: feed EWMA frame-time using the same `wall_dt` —
@@ -76,6 +81,11 @@ impl crate::App {
             // (see `input_dispatch::fill_drag`). `last_pointer` is disjoint from `self.gfx.tools`.
             crate::input_dispatch::fill_drag::fill_drag_tick(t, self.last_pointer, frame_ms_now);
         }
+        // ⭐ **A PAUSA NO GOLPE** (plano 28, W5): o tempo de parede retido ANTES do acumulador — o
+        // jogo inteiro congela (física, relógios, vida) e nada disto entra no anel. Ver
+        // `ph2d_app_components::impacto`.
+        let a_correr = self.playhead.is_playing();
+        let wall_dt = health_bars.impacto.retem(wall_dt, a_correr);
         let report = self.fixed_step.advance(wall_dt);
         if report.dropped_secs > 0.0 {
             // ⚠️⚠️ **UMA vez por corrida** (ordem do dono, 2026-09-19: *«podemos tirar os logs»*).

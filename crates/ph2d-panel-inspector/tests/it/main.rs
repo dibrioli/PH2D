@@ -19,6 +19,7 @@ mod a_seccao_ray_sensor_esta_viva;
 mod a_seccao_script_esta_viva;
 mod a_seccao_sequence_esta_viva;
 mod a_seccao_tags_esta_viva;
+mod a_seccao_topdown_mostra_o_objecto;
 mod a_seccao_tween_diz_onde_mora_o_tempo;
 mod a_seccao_vida_esta_viva;
 mod a_seccao_weapon_esta_viva;

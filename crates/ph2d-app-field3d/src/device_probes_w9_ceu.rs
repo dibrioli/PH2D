@@ -149,3 +149,199 @@ fn diag_o_canal_do_ceu_na_grade() {
         }
     }
 }
+
+/// ⏱️ **Sonda: o quadro ASSENTE partido** — com e sem o ricochete (o passageiro caro da bandeira
+/// `assente`). É ele que fica no caminho quando a mão HESITA um quadro a meio de uma órbita: o
+/// trabalho da placa não se cancela, e o quadro de movimento seguinte espera por ele.
+#[test]
+#[ignore = "sonda de GPU"]
+fn diag_o_quadro_assente_partido() {
+    const W: u32 = 1920;
+    const H: u32 = 1080;
+    let cam = ph2d_field_render::Orbit::default();
+    let Some(t) = crate::gpu_frame::shared() else {
+        println!("sem adaptador");
+        return;
+    };
+    let materiais = [ph2d_material::OpenPbr::default().prepare()];
+    let surfaces = ph2d_field_render::Surfaces {
+        all: &materiais,
+        owners: None,
+    };
+    let pres = ph2d_field_render::Presentation::of(ph2d_view_transform::Look::default());
+    let luz = [crate::gpu_frame::tests_lampada(&cam)];
+    println!(
+        "\n  {}\n  cena · a mexer ms · assente ms · assente SEM ricochete ms [mín 3]",
+        super::super::super::super::contexto()
+    );
+    for cena in [5u32, 28, 1, 11, 26, 27, 29, 30] {
+        let doc = crate::smoke::scene(cena);
+        let reg = crate::smoke::sampled_registry();
+        let mede = |assente: bool, ricochete: bool| {
+            let sonda = crate::gpu_frame::Sonda {
+                ricochete,
+                ..crate::gpu_frame::Sonda::default()
+            };
+            let mut m = f64::INFINITY;
+            for i in 0..4 {
+                let t0 = std::time::Instant::now();
+                let _ = crate::gpu_frame::paint_com(
+                    t, &doc, &reg, &cam, &luz, &surfaces, &pres, [0, 0, 0, 0], None, W, H,
+                    assente, sonda,
+                );
+                if i > 0 {
+                    m = m.min(t0.elapsed().as_secs_f64() * 1e3);
+                }
+            }
+            m
+        };
+        println!(
+            "  {cena:4} · {:>7.2} · {:>7.2} · {:>7.2}",
+            mede(false, true),
+            mede(true, true),
+            mede(true, false)
+        );
+    }
+}
+
+/// ⏱️📷 **Sonda: a LUZ ENCOSTADA à peça, com CHÃO** — o report *«ao aproximar a luz do objeto
+/// resultados muito ruins de render»* (2026-09-24, foto da cena `=28` com a lâmpada dentro de um nó).
+/// Grava o quadro assente do dispositivo em `PH2D_SONDA_DIR` (PPM), para várias posições da luz.
+#[test]
+#[ignore = "sonda de GPU que grava imagens"]
+fn diag_a_luz_encostada_com_chao() {
+    const W: u32 = 1280;
+    const H: u32 = 720;
+    let Ok(dir) = std::env::var("PH2D_SONDA_DIR") else {
+        println!("sem PH2D_SONDA_DIR");
+        return;
+    };
+    let Some(t) = crate::gpu_frame::shared() else {
+        println!("sem adaptador");
+        return;
+    };
+    let cam = ph2d_field_render::Orbit::default();
+    let materiais = [ph2d_material::OpenPbr::default().prepare()];
+    let surfaces = ph2d_field_render::Surfaces {
+        all: &materiais,
+        owners: None,
+    };
+    let pres = ph2d_field_render::Presentation::of(ph2d_view_transform::Look::default());
+    let doc = crate::smoke::scene(28);
+    let reg = crate::smoke::sampled_registry();
+    let bola = ph2d_field_eval::bounds::bounding_ball(&doc, &reg).expect("a bola");
+    let chao = ph2d_field_render::lowest_point(&doc, &reg)
+        .map(|height| ph2d_field_render::Ground { height });
+    println!("bola {:?} r {} chão {:?}", bola.center, bola.radius, chao);
+    let c = bola.center;
+    let r = bola.radius;
+    for (nome, fx, fy) in [("dentro", 0.75, 0.0)] {
+        let _ = (fx, fy);
+        let luz = [ph2d_field_render::PointLamp {
+            world: luz_no_vazio_do_no(&doc, c, r),
+            radiance_at_one: [7.0, 7.0, 7.0],
+        }];
+        for (variante, assente, ricochete, chao_cor) in [
+            ("mexer", false, true, true),
+            ("assente", true, true, true),
+            ("assente_sem_ricochete", true, false, true),
+            ("assente_sem_cor_no_chao", true, true, false),
+        ] {
+            let sonda = crate::gpu_frame::Sonda {
+                ricochete,
+                chao_recebe_cor: chao_cor,
+                ..crate::gpu_frame::Sonda::default()
+            };
+            let p = crate::gpu_frame::paint_com(
+                t, &doc, &reg, &cam, &luz, &surfaces, &pres, [40, 40, 40, 255], chao, W, H,
+                assente, sonda,
+            )
+            .expect("o pintor");
+            let mut ppm = format!("P6\n{W} {H}\n255\n").into_bytes();
+            for px in p.rgba.as_chunks::<4>().0 {
+                ppm.extend_from_slice(&px[..3]);
+            }
+            let caminho = format!("{dir}/luz_{nome}_{variante}.ppm");
+            std::fs::write(&caminho, ppm).expect("grava");
+            println!("gravado {caminho}");
+        }
+    }
+}
+
+/// 📷 **Sonda: os CANAIS do chão com a luz encostada** — o céu e a sombra da lâmpada, do G-buffer
+/// (`frame`), gravados como imagens cinzentas em `PH2D_SONDA_DIR`. Separa qual das duas leis desenha
+/// as riscas em leque do report.
+#[test]
+#[ignore = "sonda de GPU que grava imagens"]
+fn diag_os_canais_do_chao_com_a_luz_encostada() {
+    const W: u32 = 1280;
+    const H: u32 = 720;
+    let Ok(dir) = std::env::var("PH2D_SONDA_DIR") else {
+        return;
+    };
+    let Some(t) = crate::gpu_frame::shared() else {
+        return;
+    };
+    let cam = ph2d_field_render::Orbit::default();
+    let doc = crate::smoke::scene(28);
+    let reg = crate::smoke::sampled_registry();
+    let bola = ph2d_field_eval::bounds::bounding_ball(&doc, &reg).expect("a bola");
+    let chao = ph2d_field_render::lowest_point(&doc, &reg)
+        .map(|height| ph2d_field_render::Ground { height });
+    let c = bola.center;
+    let r = bola.radius;
+    let luz = [luz_no_vazio_do_no(&doc, c, r)];
+    let (campo, fita, setup) = crate::gpu_frame::pedido(
+        &doc,
+        &reg,
+        &cam,
+        &luz,
+        chao,
+        ph2d_field_gpu::trace::MAX_LAMPS,
+        crate::gpu_frame::Sonda::default(),
+        W,
+        H,
+        None,
+        true,
+    )
+    .expect("o pedido");
+    let gb = t
+        .lock()
+        .expect("o traçador")
+        .frame(&fita, campo.sculpts(), setup, W, H);
+    let grava = |nome: &str, v: &dyn Fn(usize) -> f32| {
+        let mut ppm = format!("P5\n{W} {H}\n255\n").into_bytes();
+        for i in 0..(W * H) as usize {
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            ppm.push((v(i).clamp(0.0, 1.0) * 255.0) as u8);
+        }
+        std::fs::write(format!("{dir}/canal_{nome}.pgm"), ppm).expect("grava");
+    };
+    grava("ceu", &|i| gb.ambient[i]);
+    grava("sombra", &|i| gb.shadow[i * gb.lamps]);
+}
+
+/// A luz no VAZIO do nó da direita: o ponto de maior distância à peça numa grelha em volta de
+/// `centro + 0,75·r·x̂` — o sítio onde o dono a pôs na foto (dentro do anel, fora do tubo).
+fn luz_no_vazio_do_no(doc: &ph2d_field::FieldDoc, c: [f32; 3], r: f32) -> [f32; 3] {
+    let campo = ph2d_field_eval::Field::new(doc);
+    let mut melhor = ([c[0] + 0.75 * r, c[1], c[2]], f64::NEG_INFINITY);
+    for i in -8..=8 {
+        for j in -8..=8 {
+            for k in -8..=8 {
+                #[allow(clippy::cast_precision_loss)]
+                let p = [
+                    c[0] + 0.75 * r + i as f32 * 0.02 * r,
+                    c[1] + j as f32 * 0.02 * r,
+                    c[2] + k as f32 * 0.02 * r,
+                ];
+                let d = campo.at(f64::from(p[0]), f64::from(p[1]), f64::from(p[2]));
+                if d > melhor.1 {
+                    melhor = (p, d);
+                }
+            }
+        }
+    }
+    println!("luz no vazio: {:?} a {:.4} da peça", melhor.0, melhor.1);
+    melhor.0
+}

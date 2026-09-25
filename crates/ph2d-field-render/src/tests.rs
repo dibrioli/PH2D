@@ -13,6 +13,7 @@ mod ground_gates;
 mod hull_cache_probe;
 mod shade_render_gates;
 mod shadow_gates;
+mod luz_encostada_gates;
 
 fn sphere(radius: f32) -> FieldDoc {
     FieldDoc::new(

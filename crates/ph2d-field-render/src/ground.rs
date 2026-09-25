@@ -263,6 +263,14 @@ pub const GROUND_SKY_STRENGTH: f32 = 0.80;
 ///
 /// Uma amostra só é avaliada quando o ponto dela está a menos de `α·h` da bola da peça — fora disso
 /// o termo é `0` num campo de distância exacto (a distância à peça é pelo menos a distância à bola).
+///
+/// ⛔⛔ **E o campo NÃO é exacto em toda peça** (report do dono, 2026-09-24, foto da cena `=28` com a
+/// luz encostada): num campo que SUBESTIMA a distância (as formas por fórmula) o termo valia `> 0`
+/// logo dentro da cerca e `0` logo fora — um degrau por amostra, e o chão desenhava **seis anéis
+/// duros** à volta da peça. ⇒ a distância do termo é `max(campo, distância à bola)`: os dois são
+/// limites inferiores da distância à peça, o maior também o é, e ele vale `α·h` exactamente na cerca
+/// — o termo chega a ela a ZERO e a cerca volta a ser contínua. Num campo exacto nada muda (lá o
+/// campo já é o maior dos dois).
 /// ⇒ longe da peça nenhuma amostra corre e o céu é **exactamente** `1`, que é o que deixa o fundo com
 /// os bytes de sempre. O dispositivo usa a MESMA cerca, amostra a amostra.
 #[must_use]
@@ -289,8 +297,8 @@ pub fn ground_sky(
         .par_chunks(4096)
         .flat_map_iter(|lote| {
             let mut ev = shape.fork();
-            // `(pixel do lote, amostra k)` de cada ponto a avaliar, na ordem do laço.
-            let mut quem: Vec<(usize, u32)> = Vec::new();
+            // `(pixel do lote, amostra k, distância à bola)` de cada ponto a avaliar, na ordem do laço.
+            let mut quem: Vec<(usize, u32, f32)> = Vec::new();
             let (mut xs, mut ys, mut zs) = (Vec::new(), Vec::new(), Vec::new());
             for (j, q) in lote.iter().enumerate() {
                 let Some(q) = q else { continue };
@@ -298,10 +306,11 @@ pub fn ground_sky(
                     #[allow(clippy::cast_precision_loss)]
                     let h = alcance * k as f32 / n as f32;
                     let p = [q[0], q[1] + h, q[2]];
-                    if !perto_da_bola(&bola, p, GROUND_SKY_SPREAD * h) {
+                    let fora = fora_da_bola(&bola, p);
+                    if fora >= GROUND_SKY_SPREAD * h {
                         continue;
                     }
-                    quem.push((j, k));
+                    quem.push((j, k, fora));
                     xs.push(p[0]);
                     ys.push(p[1]);
                     zs.push(p[2]);
@@ -320,11 +329,13 @@ pub fn ground_sky(
             for k in 2..=n as usize {
                 peso_de[k] = peso_de[k - 1] * GROUND_SKY_FALLOFF;
             }
-            for (m, &(j, k)) in quem.iter().enumerate() {
+            for (m, &(j, k, fora)) in quem.iter().enumerate() {
                 let Some(&dk) = d.get(m) else { break };
                 #[allow(clippy::cast_precision_loss)]
                 let h = alcance * k as f32 / n as f32;
-                let t = (1.0 - dk / (GROUND_SKY_SPREAD * h)).clamp(0.0, 1.0);
+                // ⭐⭐⭐ **O MAIOR DOS DOIS LIMITES INFERIORES** — o campo e a distância à bola. Ver
+                // a secção da cerca no doc desta função.
+                let t = (1.0 - dk.max(fora) / (GROUND_SKY_SPREAD * h)).clamp(0.0, 1.0);
                 termos[j] += peso_de[k as usize] * t;
             }
             lote.iter()
@@ -341,11 +352,13 @@ pub fn ground_sky(
 }
 
 /// O ponto `p` está a menos de `alcance` da bola? — a cerca da [`ground_sky`], amostra a amostra.
-fn perto_da_bola(bola: &ph2d_field_eval::bounds::Ball, p: [f32; 3], alcance: f32) -> bool {
+/// A distância de `p` à superfície da bola (negativa dentro) — um limite inferior da distância à
+/// peça, que a bola contém.
+fn fora_da_bola(bola: &ph2d_field_eval::bounds::Ball, p: [f32; 3]) -> f32 {
     let d = [
         p[0] - bola.center[0],
         p[1] - bola.center[1],
         p[2] - bola.center[2],
     ];
-    (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt() - bola.radius < alcance
+    (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt() - bola.radius
 }

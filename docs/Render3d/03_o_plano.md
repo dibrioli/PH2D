@@ -1623,6 +1623,43 @@ doc do `OCCLUSION_PASSES` já nomeia, `4×` em toda cena, com halo na descontinu
 fora do quadro de MOVIMENTO (a lei W73 *grosso a mexer, nítido ao assentar*: nó `→ 11,6 ms`, com o
 céu a «acender» ao largar).
 
+### ⛔⛔⛔ A LUZ ENCOSTADA À PEÇA DESENHAVA ANÉIS NO CHÃO — dois defeitos de LEI, curados nos dois motores (2026-09-24)
+
+Report do dono, com foto da cena `=28` e a lâmpada dentro de um nó: *«ao aproximar a luz do objeto
+resultados muito ruins de render»* — riscas em leque, curvas duras e blocos claros no chão. A sonda
+[`diag_os_canais_do_chao_com_a_luz_encostada`](../../crates/ph2d-app-field3d/src/device_probes_w9_ceu.rs)
+grava os canais do G-buffer como imagens, e partiu-o em TRÊS coisas diferentes:
+
+1. **Os anéis do CÉU do chão** (as curvas duras). A lei do `ground_sky` corta cada amostra na
+   cerca da bola, o que só é contínuo num campo EXACTO — e o nó de toro (fórmula) SUBESTIMA a
+   distância: o termo valia `> 0` logo dentro e `0` logo fora, um degrau por amostra, **seis anéis**.
+   ⇒ a distância do termo é `max(campo, distância à bola)` (os dois são limites inferiores, o maior
+   também, e vale `α·h` exactamente na cerca). Num campo exacto nada muda.
+2. **Os anéis da SOMBRA da luz** (as riscas). A marcha parava no primeiro passo que passava a luz,
+   logo a última amostra ficava num sítio que depende da FASE dos passos — e com a luz a `~0,025` de
+   um tubo é ali que o raio passa rente: um anel por salto de fase. ⇒ o último passo encurta-se até
+   à cerca e é amostrado lá (`march_visibility::ate_a_cerca`, gémea da `visivel` do WGSL). ⛔ **O
+   estimador melhorado de Quilez (a aproximação mais rente entre duas amostras) foi construído e NÃO
+   cura** — medido na mesma fixtura, as riscas ficam. ⚠️ O CONE da oclusão não muda: a lei dele foi
+   calibrada contra `1 024` direcções com a paragem de sempre.
+3. ⏳ **Os BLOCOS claros do quadro assente são a luz que a peça devolve ao chão** (`docs/Render3d/09`),
+   e ficam ABERTOS: a grelha `32²` sobre `6` raios tem células de `~0,38` — maiores do que a altura
+   da luz ao chão —, e foi calibrada com a luz LONGE (pico `33/255`). Com a luz encostada o campo tem
+   um pico estreito que ela não resolve. A cura nomeada no `09` §6 (o kernel no dispositivo) é a que
+   compra a resolução.
+
+Gates novos em [`luz_encostada_gates.rs`](../../crates/ph2d-field-render/src/tests/luz_encostada_gates.rs),
+os dois medindo a **continuidade** (o maior salto entre vizinhos numa linha de `3 000` pontos do chão)
+— *nenhum gate media continuidade, só valores num ponto, e é por isso que nenhum via os anéis*. A
+sombra leva o CONTROLO dentro (a mesma marcha pela porta do cone, que ainda pára no passo: `0,4335`
+contra `0,0052` da lei nova) — ⚠️ com a luz no CENTRO do buraco as duas leis saltam `0,004` e a
+fixtura não conteria o fenómeno. Mutação **2 de 2**, cada uma a sangrar só o seu gate. As paridades
+de sombra, chão e luz na placa passam (`44/44`).
+
+⏳ **E os travões ao girar no Render têm mecanismo medido e ficam por curar:** quando a mão hesita um
+quadro, o app pede o quadro ASSENTE, que a placa não cancela — no nó são `240 ms` (o ricochete sozinho
+`158`), nas outras `16`–`38` — e o quadro de movimento seguinte espera por ele.
+
 ## W10 — ✅ O GÉMEO DO AMACIAMENTO NO DISPOSITIVO — **FECHADA em 2026-09-19**
 
 > Ele adiou-a de manhã (*«coloque a possibilidade de melhoramento na fila mais no fim»*) e **trouxe-a

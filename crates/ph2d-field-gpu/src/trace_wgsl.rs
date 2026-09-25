@@ -188,15 +188,26 @@ fn marcha_ate(r: Raio, t_max: f32) -> vec4<f32> {
 
 // ⭐ **A MARCHA DE VISIBILIDADE** — a da sombra e a da oclusão são a mesma, e diferem só na cerca
 // e na dureza. `INFINITY` para a oclusão (a pergunta é binária); `8` para a sombra (penumbra).
+// ⭐⭐⭐⭐ **O raio da SOMBRA acaba NA CERCA, e não no passo que a ultrapassa** (report do dono,
+// 2026-09-24: a luz encostada à peça desenhava ANÉIS duros no chão). Parar no primeiro passo que
+// passa a cerca deixa a última amostra num sítio que depende da FASE dos passos, e perto da luz é
+// ali que o raio passa rente aos tubos — cada salto de fase é um anel. ⇒ o último passo é encurtado
+// até à cerca e amostrado lá, que é o mesmo sítio para todos os raios. A lei gémea da CPU é a
+// `march::march_visibility` com `ate_a_cerca`.
 fn visivel(origem: vec3<f32>, dir: vec3<f32>, t_max: f32, dureza: f32) -> f32 {
     var vis = 1.0;
     var t = s.hit_eps * 4.0;
+    var ultimo = false;
     for (var n: u32 = 0u; n < s.budget; n = n + 1u) {
         let d = field(origem + dir * t);
         if (d < s.hit_eps) { return 0.0; }
         vis = min(vis, dureza * d / t);
+        if (ultimo) { break; }
         t = t + d * s.step;
-        if (t >= t_max) { break; }
+        if (t >= t_max) {
+            t = t_max;
+            ultimo = true;
+        }
     }
     return vis;
 }
@@ -257,8 +268,11 @@ fn ceu_do_chao(q: vec3<f32>) -> f32 {
         let p = vec3<f32>(q.x, q.y + h, q.z);
         soma_w = soma_w + w;
         // A cerca: fora dela o termo é zero num campo de distância exacto.
-        if (length(p - s.ball_center) - s.ball_radius < {CHAO_ESPALHA} * h) {
-            let t = clamp(1.0 - field(p) / ({CHAO_ESPALHA} * h), 0.0, 1.0);
+        // ⭐⭐⭐ E a distância é o MAIOR dos dois limites inferiores — o campo e a distância à bola —,
+        // que é o que torna a cerca CONTÍNUA num campo que não é exacto (ver `ground::ground_sky`).
+        let fora_da_bola = length(p - s.ball_center) - s.ball_radius;
+        if (fora_da_bola < {CHAO_ESPALHA} * h) {
+            let t = clamp(1.0 - max(field(p), fora_da_bola) / ({CHAO_ESPALHA} * h), 0.0, 1.0);
             soma = soma + w * t;
         }
         w = w * {CHAO_QUEDA};

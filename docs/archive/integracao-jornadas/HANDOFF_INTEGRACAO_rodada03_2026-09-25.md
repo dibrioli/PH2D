@@ -79,6 +79,16 @@ Use `git bisect skip` nessa faixa.
   rebase) lê os MESMOS dois números. A causa: a sonda tirava a luz do `Shade::default()`, e a
   linha trocou a luz de fábrica de `Matcap(0)` para `Pbr` (`c185de0a3`). Com a luz escrita por
   nome volta a `9 / 9` — cura no commit do portão, com o porquê no fonte.
+- As baterias de GPU das outras crates de desenho que a rodada tocou (`field-gpu` · `field-render` ·
+  `form-donation` · `light` · `render` · `app-vec` · `app-sculpt3d` · `app-field3d`, sem as sondas
+  `mede_`/`measure`/`diag_`): `421 / 432`. ⚠️ **Os 11 que sobram são IDÊNTICOS no `main`**
+  (corridos lá, um a um): os quatro *goldens* `smoke_fixture_renderable::w2..w5` do `ph2d-render`
+  (`unimplemented!()` por desenho, §5), as duas sondas de preço da W135 no `field-render` (a
+  fixtura é recusada pela validação do documento: `NonPositive { what: "starts" }`), e cinco da
+  retopologia na `ph2d-app-sculpt3d` (`global_retopo` ×2 · `simplest_case` · `quad_shape` · o
+  prazo do `how_fine_can_the_global_chain_go`). ⇒ **nenhum é desta rodada**, e ficam como dívida
+  PRÉ-EXISTENTE das linhas donas (o CI não os corre).
+- `ph2d-host-desktop` · `ph2d-editor-core` · `ph2d-physics` (ignorados, sem sondas): `35 / 35`.
 
 ## §6 — Resíduo de processo
 

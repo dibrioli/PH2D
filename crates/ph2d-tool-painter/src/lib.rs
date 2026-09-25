@@ -131,7 +131,11 @@ pub use tool::{
     BrushSettings, CurveOverlay, DEFORM_TEMPERAMENT_NONE, DEFORM_TEMPERAMENT_RESHAPE,
     DEFORM_TEMPERAMENT_TRANSFORM, DrainBranch, EllipseOverlay, FilterScope, GridAxis, ImpastoLamp,
     ImpastoLight, ImpastoPlanes, LightRig, LineCornerGizmo, LineDimensions, LineOverlay,
-    MAX_COMPOSITE_LAYER_SIZE, MAX_IMPASTO_LIGHTS, MAX_SHAPE_LAYERS, MIN_ELEV_DEG, N_COMPOSITE_ERASE_SCOPES, N_COMPOSITE_LAYERS, N_COMPOSITE_OPS, PANEL_RAMP_STOPS, PaintMedia, PainterTool, PolygonOverlay, SCREEN_CANVAS_DOC, ScreenCanvasFrame, SelectionGizmoView, StencilOverlay, StencilPreview, StrokeOpBadge, TangentHandles, TransformGizmo, WetKnobs, WetTool, brush_falloff_weight_at, set_pending_select_mods,
+    MAX_COMPOSITE_LAYER_SIZE, MAX_IMPASTO_LIGHTS, MAX_SHAPE_LAYERS, MIN_ELEV_DEG,
+    N_COMPOSITE_ERASE_SCOPES, N_COMPOSITE_LAYERS, N_COMPOSITE_OPS, PANEL_RAMP_STOPS, PaintMedia,
+    PainterTool, PolygonOverlay, SCREEN_CANVAS_DOC, ScreenCanvasFrame, SelectionGizmoView,
+    StencilOverlay, StencilPreview, StrokeOpBadge, TangentHandles, TransformGizmo, WetKnobs,
+    WetTool, brush_falloff_weight_at, set_pending_select_mods,
 };
 pub use undo::{DEFAULT_MAX_BYTES, MAX_HISTORY_STEPS, UndoController, history_budget_bytes};
 

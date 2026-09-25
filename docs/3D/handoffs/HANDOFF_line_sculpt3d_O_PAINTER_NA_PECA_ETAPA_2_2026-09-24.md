@@ -447,3 +447,26 @@ DUAS caixas de cor a meio do escorrido, a água a continuar a chegar à peça, e
 CONTROLO de que limpar a máscara ainda fecha) — **red-first**: com o `SetUi` a
 `true` ele reprova com a frase do report. Censo da fiação **24 → 25** elos.
 Mutação **E12, E14, E15: 3 de 3 sangram**; pré-voo `68/68`.
+
+### §9.6 — ⛔ E o smoke seguinte: *«ao usar a segunda cor, a primeira cor ainda seca e para»*
+
+**A §9.5 curou a TROCA de cor; o defeito que sobrava era o TRAÇO seguinte.** O
+pen-down chamava o `painter_abre`, que fecha a pincelada que escorre pelo
+`painter_fecha` **sem guardar a tela molhada** (`painter_molhada` fica `None`) ⇒
+o `painter_semeia` do traço novo re-semeava a tela com o retrato ⇒ o
+`seed_screen_canvas` passa pelo `set_source`, que troca o `canvas_rgba` ⇒ o
+guarda da sessão da água MATA-a. A água do 1.º traço parava no instante em que o
+2.º começava — com qualquer cor; a cor só tornou o traço seguinte provável.
+
+⭐ **A cura é a MESMA porta de quando a água pára:** no pen-down, se a pincelada
+anterior ainda escorre, pousa-se o que falta e ela acaba por `termina`, que
+guarda a tela molhada; o traço novo reaproveita-a (`TelaMolhada::serve`: mesma
+vista, mesma peça, mesmo `edits`) e a sessão da água sobrevive. ⚠️ **Atribuição
+declarada:** o que a água do 1.º escorre DEPOIS do pen-down do 2.º é pousado no
+traço do 2.º — é ele que está aberto —, logo um `Ctrl+Z` do 2.º leva também
+esse escorrido. (Rodar a vista entre os dois continua a secar: a chave não serve.)
+
+Gate `um_segundo_traco_nao_seca_a_agua_do_primeiro` (placa): ⚠️ **a régua é a
+REGIÃO do 1.º traço** e não o «a água corre?» — o 2.º deposita água nova, e uma
+sessão recém-nascida responderia «corre» sobre o defeito. Censo da fiação
+**25 → 26** (P26); mutação **E16** na população `ESCORRE`; pré-voo `69/69`.

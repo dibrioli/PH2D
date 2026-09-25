@@ -242,6 +242,13 @@ fn elos() -> Vec<(
             1,
             "P25 um AJUSTE do painel (a cor do pincel) fecha a pincelada que escorre",
         ),
+        (
+            "painter_na_malha.rs",
+            COSTURA,
+            "if scene.painter_escorre.is_some() {",
+            1,
+            "P26 o 2.º traço fecha a pincelada que escorre SEM guardar a tela: a água morre",
+        ),
     ]
 }
 
@@ -249,7 +256,7 @@ fn elos() -> Vec<(
 #[test]
 fn a_costura_do_painter_esta_ligada_nas_duas_pontas() {
     let elos = elos();
-    assert!(elos.len() >= 25, "o piso de população: {} elos", elos.len());
+    assert!(elos.len() >= 26, "o piso de população: {} elos", elos.len());
     for (ficheiro, texto, agulha, esperado, parte) in elos {
         let n = sem_prosa(texto).matches(agulha).count();
         assert_eq!(

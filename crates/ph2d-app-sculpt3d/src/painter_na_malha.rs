@@ -143,6 +143,19 @@ pub fn entrega(
         if vx < 0.0 || vy < 0.0 || vx >= w as f32 || vy >= h as f32 {
             return false;
         }
+        // ⭐⭐ **A pincelada anterior ainda ESCORRE:** ela acaba pela MESMA porta
+        // de quando a água pára — pousa o que falta e guarda a tela molhada —,
+        // e o traço novo reaproveita-a. Report do dono (24/09): *«ao usar a
+        // segunda cor, a primeira cor ainda seca e para»* — o `painter_abre`
+        // fechava sem guardar, o traço novo re-semeava a tela, e semear a tela
+        // MATA a sessão da água (o `set_source` troca o `canvas_rgba`). Daqui em
+        // diante o que a água da 1.ª escorre é pousado no traço novo.
+        if scene.painter_escorre.is_some() {
+            if let Some(f) = painter.take_screen_canvas() {
+                scene.painter_pousa(&f);
+            }
+            termina(scene, painter);
+        }
         if !scene.painter_abre(x, y) {
             return false;
         }

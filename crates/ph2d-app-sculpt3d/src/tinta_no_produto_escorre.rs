@@ -294,3 +294,61 @@ fn trocar_a_cor_com_a_agua_a_correr_nao_fecha_a_pincelada() {
         "um gesto do painel (limpar a máscara) deixou de fechar a pincelada"
     );
 }
+
+/// ⭐⭐⭐ **GATE — um SEGUNDO traço (com outra cor) não seca a água do primeiro.**
+///
+/// Report do dono (24/09): *«ao usar a segunda cor, a primeira cor ainda seca e
+/// para»*. O pen-down do traço novo fechava a pincelada que escorria SEM guardar a
+/// tela molhada, e o traço novo re-semeava a tela — o que MATA a sessão da água.
+/// ⚠️ **A régua é a REGIÃO do 1.º traço**, e não o «a água corre?»: o 2.º traço
+/// deposita água nova, logo uma sessão recém-nascida responderia «corre» sobre o
+/// defeito. O que se mede é que as amostras que o 1.º traço pintou continuam a
+/// mudar DEPOIS de o 2.º começar — longe dele (`120 px`).
+#[test]
+#[ignore = "precisa de adaptador e corre em tempo real"]
+fn um_segundo_traco_nao_seca_a_agua_do_primeiro() {
+    use ph2d_editor_core::tool::PanelEvent;
+    let gpu = gpu_or_skip!();
+    let mut s = cena_52(&gpu.device);
+    s.sync_mesh(&gpu.device, &gpu.queue);
+    let antes = amostras(&s);
+    let mut p = molhado();
+    assert!(traco(&mut s, &mut p, 420.0), "o 1.º traço molhado");
+    for _ in 0..10 {
+        um_quadro(&mut s, &mut p);
+    }
+    assert!(
+        s.painter_escorre.is_some(),
+        "o CONTROLO: a água do 1.º corre"
+    );
+    // As amostras que o 1.º traço (e o que ele já escorreu) pintou.
+    let primeiro: Vec<usize> = vivas(&s)
+        .iter()
+        .zip(&antes)
+        .enumerate()
+        .filter(|(_, (a, b))| a != b)
+        .map(|(i, _)| i)
+        .collect();
+    assert!(!primeiro.is_empty(), "o 1.º traço não chegou à peça");
+
+    p.handle_panel_event(PanelEvent::SelectOption(
+        ph2d_editor_core::ids::PAINTER_COLOR_THUMB,
+        "0,0,255".to_string(),
+    ));
+    assert!(traco(&mut s, &mut p, 300.0), "o 2.º traço, com a 2.ª cor");
+    let no_pen_up = vivas(&s);
+    for _ in 0..40 {
+        um_quadro(&mut s, &mut p);
+    }
+    let depois = vivas(&s);
+    let mexeram = primeiro
+        .iter()
+        .filter(|&&i| depois[i] != no_pen_up[i])
+        .count();
+    assert!(
+        mexeram > 0,
+        "a água do 1.º traço parou quando o 2.º começou (o report do dono): \
+         0 de {} amostras dele mudaram",
+        primeiro.len()
+    );
+}

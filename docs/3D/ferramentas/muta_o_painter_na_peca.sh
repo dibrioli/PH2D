@@ -448,6 +448,10 @@ muta COSTURA crates/ph2d-app-sculpt3d/src/panel.rs \
   '        if crate::painter_na_malha::o_painel_mexe_na_peca(&intent) {' \
   '        if true {' \
   'E15 o painel ignora a pergunta e fecha em todo intent'
+muta ESCORRE crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
+  '        if scene.painter_escorre.is_some() {' \
+  '        if false {' \
+  'E16 o 2.º traço re-semeia a tela e a água do 1.º seca (o report do dono)'
 muta COSTURA crates/ph2d-app-sculpt3d/src/input_down.rs \
   '    scene.painter_fecha_o_que_escorre();' \
   '' \

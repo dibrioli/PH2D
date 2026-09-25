@@ -375,6 +375,8 @@ mod project_schema;
 mod project_schema_history;
 mod project_schema_history_v112;
 mod project_schema_history_v128;
+/// A escada arquivada de `v144` a `v160` — a sexta faixa (integração de 2026-09-25).
+mod project_schema_history_v144;
 /// A escada arquivada de `v83` a `v98` — o corte por idade, a 2.ª vez (ver o cabeçalho dela).
 mod project_schema_history_v83;
 mod project_schema_history_v99;

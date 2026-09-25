@@ -384,9 +384,15 @@ hoje é **um** buffer persistente escrito de uma vez, com uma fatia alinhada por
 |---|---:|---:|---:|---:|---|
 | **iGPU** (proxy de telemóvel) | 3,98 | **0,72–0,75** | 6,62 | **3,65** | `4,3 → 4,1` |
 | RTX | 1,18 | ~1,1–1,3 | 3,59 | — | ⚠️ `4,5 → 5,8`, 48 processos de outras linhas |
+| **RTX — o smoke do DONO** (máquina dele, calma) | 1,18 | **0,56** | 3,59 | **2,65** | — |
 
 ⭐⭐ **No proxy de telemóvel o Motion caiu `5×`** — o custo era esperar por uma placa LENTA, que é
-exactamente o regime do telemóvel. ⚠️ **Na RTX quase não mexe, e a medição mostra porquê:** ali o
+exactamente o regime do telemóvel. ⚠️⚠️ **E a minha linha da RTX estava ERRADA por metade, e quem a corrigiu foi o smoke do dono:**
+com a máquina calma ela lê **`0,56 ms`** de Motion e `2,65` de CPU, contra os `~1,1` que eu medi a
+`load 4,5`–`5,8` com 48 processos de outras linhas vivos — *a lei do `load ~5` outra vez, e uma
+medição de relógio numa máquina partilhada não conclui nada que o dono não possa reproduzir*. ⚠️ A
+frase seguinte fica pela metade que continua verdade (o empacotamento não moveu a encomenda na
+NVIDIA), e a conclusão *«quase não mexe»* **caiu**: ali o
 que custa é a ENCOMENDA (`0,34`–`0,42 ms`, relógios locais), e o empacotamento dos parâmetros **não
 a moveu** — o custo na NVIDIA está na submissão em si. ⏳ **Nomeado e não perseguido:** a cura seria
 encomendar a leitura no MESMO submit do cozimento; no computador de secretária já é 60 fps com folga,

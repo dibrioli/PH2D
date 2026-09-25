@@ -114,7 +114,7 @@
 - ⛔⛔ [Empate resolvido por `round` é artefacto do QUADRANTE, não decisão — passa em todo gate até o dono o encontrar](feedback_a_tie_broken_by_rounding_is_a_quadrant_artefact_not_a_law.md)
 - ⛔⛔⛔ [Régua que pára no MUNDO aprova um clique partido no ECRÃ (340 px: o chrome desenha numa BANDA)](feedback_a_ruler_that_stops_at_world_space_approves_a_broken_click.md)
 - [Costura de UI (24)](reference_topic_ui_seam_discipline.md) — ⭐ [o hit rect é também o DENOMINADOR](feedback_a_hit_rect_is_also_the_denominator_not_only_the_target.md)
-- [**Ofício de gate** — a família (122)](reference_topic_gate_discipline.md)
+- [**Ofício de gate** — a família (123)](reference_topic_gate_discipline.md)
 - ⛔ [Mutação que apaga um TECTO aloca o que o tecto impedia — 27 GB de RSS, morto à mão](feedback_a_mutation_that_deletes_a_cap_allocates_what_the_cap_prevented.md)
 - [escrevo a guarda certa e não a gateio (3×)](feedback_i_write_the_right_guard_and_do_not_gate_it.md)
 - [Protocolo de auditoria (8) — ⛔ num artefacto ATESTADO toda linha nova é população nova; herdar o veredito anterior não é 2.ª lente](reference_topic_audit_protocol.md)

@@ -218,6 +218,7 @@ pub(crate) fn paint_display_section(
     let layer_idx = if state.grid_in_front { 0 } else { 1 };
     {
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+        let sec = crate::paint_rows::seccao_display(ctx.text_system);
         y = paint_labeled_segmented_row(
             tr("panel.grid_snap.sections.layer"),
             &[
@@ -239,6 +240,7 @@ pub(crate) fn paint_display_section(
             theme,
             hit_index,
             store,
+            sec,
         );
     }
     y += row_gap();

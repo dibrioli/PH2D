@@ -7,7 +7,7 @@
 use ph2d_editor_core::NodeId;
 use ph2d_editor_core::grid_snap::{GridKind, GridSnapState};
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
+use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
 use ph2d_editor_core::widget::{
     Button, ButtonKind, ButtonState, GroupCell, block_cells, grid_height, paint_button,
 };
@@ -222,6 +222,10 @@ pub(crate) fn paint_kind_button_grid(
             );
         }
     }
+    // ⭐ **A grelha é UMA escolha** (*«uma de nove»*) e declara-o: sem isto o censo de comandos lia
+    //    cada peça como um botão solto (2026-09-24). A FORMA fica — um bloco `3 × 3` sob o título da
+    //    secção, que é o nome dela.
+    ph2d_editor_core::widget::composto::grupo(entries.iter().map(|e| e.2));
     y + grid_height(rows.len(), h) + row_gap()
 }
 
@@ -289,13 +293,19 @@ pub(crate) fn paint_target_button_stack(
             store,
         );
     }
+    // ⭐ **A coluna é UMA escolha** (*«um de cinco alvos»*) e declara-o — ver a grelha do *Kind*.
+    ph2d_editor_core::widget::composto::grupo(entries.iter().map(|e| e.2));
     y + grid_height(rows.len(), h) + row_gap()
 }
 
-/// 2-button row for the Square-family Neighborhood (Von4 / Moore8)
-/// or the Tri Neighborhood (Edge3 / Vertex12). Active option painted
-/// with `ButtonState::Pressed`. The active kind decides which family
-/// the caller invokes via.
+/// The Neighborhood choice for the Square family (Von4 / Moore8) or the Tri family (Edge3 /
+/// Vertex12), through the house choice door. The active kind decides which family the caller
+/// invokes.
+///
+/// ⛔⛔ **O nome estava POR CIMA** (um `paint_text` e o par a toda a largura) até 2026-09-24 — a
+/// forma que o dono reprovou duas vezes no Inspector (*«Label acima do campo numérico! Muito
+/// ruim!»*). Hoje é a [`ph2d_editor_core::property_row::paint_choice_row`], com a coluna da SECÇÃO
+/// (`sec`) — a mesma dos campos de número do bloco — e o grupo DECLARADO pela porta.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_neighborhood_button_row(
     x: f32,
@@ -308,26 +318,8 @@ pub(crate) fn paint_neighborhood_button_row(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
     state: &GridSnapState,
+    sec: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
-    // Label above the row — without it the two buttons read as
-    // anonymous (Von4 / Moore8 don't self-explain). Uses the same
-    // small Text2 label style as Inspector property labels.
-    let label_font = ph2d_tokens::TypeToken::Sm.px();
-    paint_text(
-        text_system,
-        scene,
-        tr("panel.grid_snap.options.neighborhood"),
-        x,
-        y,
-        label_font,
-        w,
-        resolve(ColorToken::Text2, theme),
-    );
-    let y = y + label_font + Spacing::Xs.px();
-
-    let h = ROW_H_PX;
-    let gap = Spacing::Xs.px();
-    let _half_w = (w - gap) * 0.5;
     let (label_l, id_l, label_r, id_r, active_idx) = match family {
         NeighborhoodFamily::Square => {
             let n = neighborhood_for_active_kind(state);
@@ -355,46 +347,31 @@ pub(crate) fn paint_neighborhood_button_row(
             },
         ),
     };
-    // ⭐ **Um par ENCOSTA** — a lei do Blender — e cada peça leva o que a PALAVRA dela pede.
-    let seg = ph2d_editor_core::widget::segment_rects_for(
-        Rect::new(x, y, w, h),
-        &[label_l, label_r],
-        ph2d_editor_core::widget::panel_chrome::segmented_label_font(),
-        text_system,
-    );
-    let (rect_l, cell_l) = seg[0];
-    let (rect_r, cell_r) = seg[1];
-    paint_segmented_button_in_group(
-        rect_l,
-        label_l,
-        active_idx == 0,
-        id_l,
-        cell_l,
+    paint_labeled_segmented_row(
+        tr("panel.grid_snap.options.neighborhood"),
+        &[(label_l, id_l), (label_r, id_r)],
+        active_idx,
+        x,
+        w,
+        y,
         scene,
         text_system,
         theme,
         hit_index,
         store,
-    );
-    paint_segmented_button_in_group(
-        rect_r,
-        label_r,
-        active_idx == 1,
-        id_r,
-        cell_r,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-    );
-    y + h + row_gap()
+        sec,
+    )
 }
 
-/// Generic labeled segmented-button row — renders a small Text2 label
-/// above a horizontal stack of equal-width buttons. The button at
-/// `active_idx` is painted with `ButtonState::Pressed`. Used for Hex
-/// Orientation (2 opts), Hex Offset (4 opts) and Stagger Parity (2 opts).
+/// ⭐ **Uma escolha com nome, pela porta da casa**
+/// ([`ph2d_editor_core::property_row::paint_choice_row`]): o nome na coluna da SECÇÃO (`sec`) e o
+/// grupo na do valor — ou, quando as peças não cabem ao lado do nome, a PALETA (nome por cima, grupo
+/// a toda a largura): a forma sai da medição da porta, nunca daqui. Used for Hex Orientation · Hex
+/// Offset · Stagger Parity · Neighborhood · Layer.
+///
+/// ⛔⛔ Até 2026-09-24 esta função pintava o nome SEMPRE por cima (`paint_text` + `Spacing::Xs`) e
+/// montava o grupo à mão — a forma que o dono reprovou no Inspector, e o censo de comandos contava
+/// cada peça como um botão solto porque o grupo não se declarava.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_labeled_segmented_row(
     label: &str,
@@ -408,48 +385,26 @@ pub(crate) fn paint_labeled_segmented_row(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
+    sec: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
-    let label_font = ph2d_tokens::TypeToken::Sm.px();
-    paint_text(
-        text_system,
+    let segmentos: Vec<(&str, bool, NodeId)> = options
+        .iter()
+        .enumerate()
+        .map(|(i, (l, id))| (*l, i == active_idx, *id))
+        .collect();
+    ph2d_editor_core::property_row::paint_choice_row(
         scene,
-        label,
-        x,
-        y,
-        label_font,
-        w,
-        resolve(ColorToken::Text2, theme),
-    );
-    let y = y + label_font + Spacing::Xs.px();
-
-    let h = ROW_H_PX;
-    let gap = Spacing::Xs.px();
-    let n = options.len() as f32;
-    let _cell_w = ((w - gap * (n - 1.0)) / n).max(40.0); // LITERAL-PX-OK: minimum cell width for segmented row (panel-specific design floor)
-    // ⭐ **A fileira ENCOSTA** — a lei do Blender — e cada peça leva o que a PALAVRA dela pede.
-    let rotulos: Vec<&str> = options.iter().map(|(l, _)| *l).collect();
-    let seg = ph2d_editor_core::widget::segment_rects_for(
-        Rect::new(x, y, w, h),
-        &rotulos,
-        ph2d_editor_core::widget::panel_chrome::segmented_label_font(),
         text_system,
-    );
-    for (i, (lbl, oid)) in options.iter().enumerate() {
-        let (rect, cell) = seg[i];
-        paint_segmented_button_in_group(
-            rect,
-            lbl,
-            i == active_idx,
-            *oid,
-            cell,
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-        );
-    }
-    y + h + row_gap()
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        label,
+        &segmentos,
+        sec,
+    )
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

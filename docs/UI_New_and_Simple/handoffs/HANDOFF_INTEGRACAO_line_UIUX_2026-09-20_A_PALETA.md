@@ -904,6 +904,32 @@ botões ACESOS a toda a largura (`paint_toggle` em `Rect::new(x, y, w, MUTE_H)`)
 - **Portão:** `nextest-impacted` **17 704 / 17 704** · clippy `-D warnings` zero (`audio-mixer`,
   `i18n`, `registry-init`) · `fmt` limpo · censos da árvore combinada 12 de 12.
 
+## §9-octiestricies — ⭐ GRID & SNAP: seis escolhas montadas à mão, `20 → 2` comandos
+
+*«siga»* depois do mixer (2026-09-24). Os `20` «comandos» do `grid_snap` eram **18 peças de SEIS
+escolhas** pintadas com o pintor de peça da casa (`paint_segmented_button_in_group`) e **nenhum
+grupo declarado** — mais o fechar.
+
+- **As quatro escolhas com nome próprio** (*Neighborhood* nas cinco famílias que o têm ·
+  *Orientation* e *Offset* do hex · *Parity* do escalonado · *Layer* do *Display*) passam pela porta
+  `paint_choice_row`: `paint_labeled_segmented_row` e `paint_neighborhood_button_row` delegam-lhe, e
+  **deixaram de pintar o nome SEMPRE por cima** (`paint_text` + `Spacing::Xs`). ⚠️ **A forma é da
+  porta:** no dock de omissão as peças não cabem ao lado do nome e sai PALETA (o nome continua em
+  cima, agora com o degrau da casa); com o painel mais largo elas vão para a coluna do valor.
+- **A coluna da secção passou a contar os nomes das escolhas** que cada bloco pinta (cada
+  `paint_*_cfg` acrescenta o *Neighborhood*/*Orientation*/*Offset*/*Parity* à `seccao`), e o
+  *Display* ganhou `paint_rows::seccao_display` — UMA função lida pela caixa *Show Grid* e pela
+  escolha *Layer*, para as duas não medirem sobre listas diferentes.
+- **O *Kind* (`3 × 3`) e o *Target* (coluna de cinco) mantêm a FORMA** — o nome deles é o título da
+  secção — e passam a declarar o grupo (`composto::grupo`).
+- **Catraca:** `CARGA_DE_COMANDOS` ganha `("grid_snap", 2)`, medido.
+- **Gate novo** `as_escolhas_passam_pela_porta` (duas metades: a porta vê o *Neighborhood* e o
+  *Layer*; o clique REAL no centro de `Moore8` e de `Behind` chega ao `GridSnapState`, com o CONTROLO
+  de que os valores de omissão são os opostos).
+- **Mutação 4 de 4:** grelha do *Kind* sem grupo · coluna do *Target* sem grupo (as duas apanhadas
+  pela catraca de comandos) · a escolha pintada FORA da porta · a 2.ª peça com id errado.
+- **Portão:** `nextest-impacted` **17 706 / 17 706** · clippy zero · `fmt` limpo · censos 12 de 12.
+
 ## §11 — O que esta linha recomenda a quem a integrar
 
 1. **Correr o `diag_onde_cai_a_pista_do_pente` da `line/sculpt3d` DEPOIS da fusão** e reescrever com

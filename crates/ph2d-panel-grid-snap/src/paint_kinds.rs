@@ -86,7 +86,16 @@ pub(crate) fn paint_square_cfg(
     let cell = tr("panel.grid_snap.kinds.cell_size");
     let major = tr("panel.grid_snap.kinds.major_every");
     let origem = crate::paint_rows::origin_labels();
-    let sec = crate::paint_rows::seccao(text_system, &[cell, major, origem[0], origem[1]]);
+    let sec = crate::paint_rows::seccao(
+        text_system,
+        &[
+            cell,
+            major,
+            origem[0],
+            origem[1],
+            tr("panel.grid_snap.options.neighborhood"),
+        ],
+    );
     y = paint_number_row(
         cell,
         ph2d_editor_core::grid_snap::ids::GS_CFG_CELL_SIZE,
@@ -139,6 +148,7 @@ pub(crate) fn paint_square_cfg(
         hit_index,
         store,
         state,
+        sec,
     )
 }
 
@@ -157,7 +167,16 @@ pub(crate) fn paint_hex_cfg(
     // ⭐⭐ **A coluna é da SECÇÃO** — ver `paint_rows::seccao` e o report do dono de 2026-09-15.
     let cell = tr("panel.grid_snap.kinds.cell_size");
     let origem = crate::paint_rows::origin_labels();
-    let sec = crate::paint_rows::seccao(text_system, &[cell, origem[0], origem[1]]);
+    let sec = crate::paint_rows::seccao(
+        text_system,
+        &[
+            cell,
+            origem[0],
+            origem[1],
+            tr("panel.grid_snap.kinds.orientation"),
+            tr("panel.grid_snap.kinds.offset"),
+        ],
+    );
     y = paint_number_row(
         cell,
         ph2d_editor_core::grid_snap::ids::GS_CFG_CELL_SIZE,
@@ -214,6 +233,7 @@ pub(crate) fn paint_hex_cfg(
         theme,
         hit_index,
         store,
+        sec,
     );
     let offset_idx = match hex.offset_variant {
         HexOffset::OddR => 0,
@@ -250,6 +270,7 @@ pub(crate) fn paint_hex_cfg(
         theme,
         hit_index,
         store,
+        sec,
     )
 }
 
@@ -269,7 +290,16 @@ pub(crate) fn paint_iso_cfg(
     let tw = tr("panel.grid_snap.kinds.tile_width");
     let th = tr("panel.grid_snap.kinds.tile_height");
     let origem = crate::paint_rows::origin_labels();
-    let sec = crate::paint_rows::seccao(text_system, &[tw, th, origem[0], origem[1]]);
+    let sec = crate::paint_rows::seccao(
+        text_system,
+        &[
+            tw,
+            th,
+            origem[0],
+            origem[1],
+            tr("panel.grid_snap.options.neighborhood"),
+        ],
+    );
     y = paint_number_row(
         tw,
         ph2d_editor_core::grid_snap::ids::GS_CFG_ISO_TILE_W,
@@ -321,6 +351,7 @@ pub(crate) fn paint_iso_cfg(
         hit_index,
         store,
         state,
+        sec,
     )
 }
 
@@ -339,7 +370,16 @@ pub(crate) fn paint_staggered_sq_cfg(
     // ⭐⭐ **A coluna é da SECÇÃO** — ver `paint_rows::seccao` e o report do dono de 2026-09-15.
     let cell = tr("panel.grid_snap.kinds.cell_size");
     let origem = crate::paint_rows::origin_labels();
-    let sec = crate::paint_rows::seccao(text_system, &[cell, origem[0], origem[1]]);
+    let sec = crate::paint_rows::seccao(
+        text_system,
+        &[
+            cell,
+            origem[0],
+            origem[1],
+            tr("panel.grid_snap.kinds.parity"),
+            tr("panel.grid_snap.options.neighborhood"),
+        ],
+    );
     y = paint_number_row(
         cell,
         ph2d_editor_core::grid_snap::ids::GS_CFG_CELL_SIZE,
@@ -391,6 +431,7 @@ pub(crate) fn paint_staggered_sq_cfg(
         theme,
         hit_index,
         store,
+        sec,
     );
     paint_neighborhood_button_row(
         x,
@@ -403,6 +444,7 @@ pub(crate) fn paint_staggered_sq_cfg(
         hit_index,
         store,
         state,
+        sec,
     )
 }
 
@@ -421,7 +463,15 @@ pub(crate) fn paint_tri_cfg(
     // ⭐⭐ **A coluna é da SECÇÃO** — ver `paint_rows::seccao` e o report do dono de 2026-09-15.
     let edge = tr("panel.grid_snap.kinds.edge_length");
     let origem = crate::paint_rows::origin_labels();
-    let sec = crate::paint_rows::seccao(text_system, &[edge, origem[0], origem[1]]);
+    let sec = crate::paint_rows::seccao(
+        text_system,
+        &[
+            edge,
+            origem[0],
+            origem[1],
+            tr("panel.grid_snap.options.neighborhood"),
+        ],
+    );
     y = paint_number_row(
         edge,
         ph2d_editor_core::grid_snap::ids::GS_CFG_CELL_SIZE,
@@ -459,6 +509,7 @@ pub(crate) fn paint_tri_cfg(
         hit_index,
         store,
         state,
+        sec,
     )
 }
 
@@ -484,6 +535,7 @@ pub(crate) fn paint_chunks_cfg(
             tr("panel.grid_snap.kinds.chunk_size_cells"),
             origem[0],
             origem[1],
+            tr("panel.grid_snap.options.neighborhood"),
         ],
     );
     y = paint_number_row(
@@ -537,5 +589,6 @@ pub(crate) fn paint_chunks_cfg(
         hit_index,
         store,
         state,
+        sec,
     )
 }

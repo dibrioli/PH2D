@@ -338,6 +338,22 @@ pub(crate) fn paint_aabb_rows(
     )
 }
 
+/// ⭐ **A coluna da secção *Display*** — medida sobre os nomes das DUAS linhas com nome à esquerda
+/// que ela pinta (*Show Grid* e *Layer*). Uma função só, com dois leitores (a caixa e a escolha):
+/// *uma coluna medida em dois sítios sobre listas diferentes desalinha no dia em que uma delas
+/// ganha um nome* (2026-09-24, quando a *Layer* deixou de ter o nome por cima).
+pub(crate) fn seccao_display(
+    text_system: &mut TextSystem,
+) -> ph2d_editor_core::property_row::Seccao {
+    seccao(
+        text_system,
+        &[
+            tr("panel.grid_snap.rows.show_grid"),
+            tr("panel.grid_snap.sections.layer"),
+        ],
+    )
+}
+
 pub(crate) fn paint_show_overlay_row(
     row: Rect,
     scene: &mut VectorScene,
@@ -347,7 +363,7 @@ pub(crate) fn paint_show_overlay_row(
     store: &WidgetStore,
     state: &GridSnapState,
 ) {
-    let sec = seccao(text_system, &[tr("panel.grid_snap.rows.show_grid")]);
+    let sec = seccao_display(text_system);
     paint_labeled_toggle(
         tr("panel.grid_snap.rows.show_grid"),
         ph2d_editor_core::grid_snap::ids::GS_SHOW_OVERLAY,

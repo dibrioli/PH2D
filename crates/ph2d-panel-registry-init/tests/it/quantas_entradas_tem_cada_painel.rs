@@ -1319,6 +1319,12 @@ const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
     //    sério da mesa: fechar, os *Mute*/*Solo* das faixas, limpar o clip de cada medidor e o
     //    *Play Test*.
     ("audio_mixer", 17),
+    // ⭐ Entra na catraca em 2026-09-24 com `20 → 2`: os `18` eram as peças de SEIS escolhas
+    //    (*Kind* `3 × 3` · *Target* · *Neighborhood* · *Orientation*/*Offset* do hex · *Parity* ·
+    //    *Layer*), pintadas com o pintor de peça da casa e sem se declararem grupo. As quatro com nome
+    //    próprio passaram pela porta da ESCOLHA (`paint_choice_row`, com a coluna da secção); o
+    //    *Kind* e o *Target*, cujo nome é o título da secção, declaram o grupo e mantêm a forma.
+    ("grid_snap", 2),
 ];
 
 #[test]

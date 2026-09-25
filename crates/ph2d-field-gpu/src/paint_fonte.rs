@@ -20,6 +20,7 @@ fn dono_mix(p: vec3<f32>, width: f32) -> Dono { return Dono(0u, 0u, 0.0); }
 
 /// ⭐ **O corpo do shader vive no irmão** ([`super::paint_wgsl`]) — ver o cabeçalho dele.
 use crate::paint_wgsl::PINTOR;
+use crate::paint_wgsl_chao::PINTOR_CHAO;
 use crate::paint_wgsl_mole::PINTOR_MOLE;
 use crate::paint_wgsl_sondas::PINTOR_SONDAS;
 
@@ -35,12 +36,12 @@ pub(crate) fn fonte(
     let dono = lei_do_dono.map_or(DONO_DE_UMA_FOLHA, |l| l.source.as_str());
     let material = ph2d_material::wgsl::SOURCE
         .replace(ph2d_material::wgsl::ENV_SLOT, &ambiente(pintor.env_source));
-    // ⚠️ **As TRÊS metades são UM shader** — o corte é o tecto de LOC, e a concatenação é onde ele
+    // ⚠️ **As QUATRO metades são UM shader** (o chão saiu das sondas em 2026-09-24, `paint_wgsl_chao`) — o corte é o tecto de LOC, e a concatenação é onde ele
     // deixa de se ver. Ver o cabeçalho do [`crate::paint_wgsl`] e o do [`crate::paint_wgsl_mole`].
     // ⛔ Eram duas até 2026-09-19; a `W10` trouxe a terceira, e há gate a exigir que ela seja
     // JUNTA (`o_gemeo_da_borda_mole_esta_ligado_no_dispositivo`): *um fragmento declarado que o
     // `format!` não junta compila e não chega ao shader.*
-    let corpo = format!("{PINTOR}{PINTOR_SONDAS}{PINTOR_MOLE}")
+    let corpo = format!("{PINTOR}{PINTOR_SONDAS}{PINTOR_CHAO}{PINTOR_MOLE}")
         .replace(
             "{BLUR_COS}",
             &formata(ph2d_field_render::OCCLUSION_BLUR_COS),

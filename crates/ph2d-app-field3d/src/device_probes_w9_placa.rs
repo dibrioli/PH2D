@@ -523,10 +523,7 @@ fn diag_as_pecas_do_quadro_magro() {
         let sem = min_de(&mut || {
             let _ = crate::gpu_frame::pinta_matcap_com(t, &doc, &reg, &cam, &mc, W, H, sonda);
         });
-        println!(
-            "  {cena:4} · {com:>7.2} · {sem:>7.2} · {:>6.2}",
-            com - sem
-        );
+        println!("  {cena:4} · {com:>7.2} · {sem:>7.2} · {:>6.2}", com - sem);
     }
 }
 
@@ -583,7 +580,17 @@ fn diag_o_render_contra_o_matcap() {
         let render = |assente| {
             min_de(&mut || {
                 let _ = crate::gpu_frame::paint(
-                    t, &doc, &reg, &cam, &luz, &surfaces, &pres, [0, 0, 0, 0], None, W, H,
+                    t,
+                    &doc,
+                    &reg,
+                    &cam,
+                    &luz,
+                    &surfaces,
+                    &pres,
+                    [0, 0, 0, 0],
+                    None,
+                    W,
+                    H,
                     assente,
                 );
             })

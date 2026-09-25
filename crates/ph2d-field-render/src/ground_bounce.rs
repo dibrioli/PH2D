@@ -70,6 +70,10 @@ use rayon::prelude::*;
 /// | `48²` | `0,000492` | `2` | `12,00 ms` |
 /// | `64²` | `0,000401` | `1` | `20,65 ms` |
 ///
+/// ⚠️ **Esta tabela foi medida com a lâmpada LONGE e o nó a ler um PONTO** (antes do pré-filtro de
+/// 2026-09-24). Com a lâmpada encostada a verdade tem riscas mais finas que qualquer célula e a
+/// resolução deixa de ser a alavanca (`128²` erra o mesmo que `32²` — `docs/Render3d/09` §10).
+///
 /// ⇒ **`32²` é o JOELHO: ele lê os mesmos `2` bytes que `48²` por `44 %` do relógio**, e descer ao
 /// byte seguinte custa `4×`. ⛔⛔ **E esta constante esteve em `48` sem uma medição por baixo** — o
 /// §0.0 manda medir ANTES de escrever um limite, e o número não medido estava caro no lado errado:
@@ -126,7 +130,8 @@ pub struct GroundBounce {
     pub n: usize,
     /// A altura do plano.
     pub height: f32,
-    /// `n²` irradiâncias, em ordem `z * n + x`.
+    /// `n²` irradiâncias, em ordem `z * n + x` — a MÉDIA de cada célula (ver o pré-filtro em
+    /// [`bake_ground_bounce`]).
     pub value: Vec<[f32; 3]>,
 }
 
@@ -137,18 +142,29 @@ impl GroundBounce {
         Self::default()
     }
 
-    /// ⭐⭐ **A consulta** — bilinear sobre as quatro células, vezes o esmorecimento da orla.
+    /// ⭐⭐ **A consulta** — a **B-spline cúbica uniforme** sobre os `4×4` nós à volta de `q`, vezes o
+    /// esmorecimento da orla.
+    ///
+    /// ⛔⛔ **Até 2026-09-24 era BILINEAR, e a foto do dono mostrou o preço** (*«áreas retangulares
+    /// ruins»*, a luz encostada ao nó da cena `=28`): a bilinear é contínua e a DERIVADA dela salta
+    /// em cada linha da grelha, logo um campo com contraste desenha os VINCOS das células — losangos
+    /// do tamanho de uma célula no chão. A B-spline é `C²` (sem vincos), tem pesos **não negativos**
+    /// que somam `1` (um campo não negativo continua não negativo e um campo constante continua o
+    /// mesmo) e é a reconstrução que acompanha a assadura PRÉ-FILTRADA de [`bake_ground_bounce`]: as
+    /// duas metades juntas são o *prefiltro + reconstrução suave* das grelhas de irradiância.
+    ///
+    /// ⚠️ Ela **aproxima** e não interpola — num nó ela devolve `(v₋ + 4v + v₊)/6` e não `v`. Para
+    /// um campo de irradiância é o sítio certo de errar (ela nunca inventa um máximo), e o gate
+    /// `o_campo_do_chao_concorda_com_a_convergida` mede o custo no miolo.
     ///
     /// ⚠️ **Fora do campo devolve ZERO**, e isso é a metade conservadora de uma aproximação
     /// DECLARADA: a verdade continua a decair (`~1/r²`) e nós cortamo-la. *O erro escurece o chão
     /// longe da peça e nunca desenha uma aresta* — ver [`GROUND_BOUNCE_FADE`].
     ///
     /// ⚠️⚠️ **A saída antecipada de fora-do-campo é uma GUARDA DE ÍNDICE, e não a lei** — a lei é a
-    /// [`GroundBounce::orla`], que chega a zero exactamente na borda. Medido por mutação: trocar
-    /// esta saída por um `clamp` às células da borda **não muda um único byte**, porque a orla já lá
-    /// pôs zero. *Ela lê-se como sobrevivência num relatório de mutação e não é: é uma segunda
-    /// guarda a neutralizar a primeira*, e quem a apagar não parte nada — quem apagar a ORLA parte
-    /// o `a_orla_do_campo_esmorece_em_vez_de_cortar`.
+    /// [`GroundBounce::orla`], que chega a zero exactamente na borda; e os índices do estêncil
+    /// prendem-se à borda pela mesma razão (ali a orla já pôs zero). *Quem apagar a ORLA parte o
+    /// `a_orla_do_campo_esmorece_em_vez_de_cortar`.*
     #[must_use]
     pub fn sample(&self, q: [f32; 3]) -> [f32; 3] {
         if self.n < 2 || self.value.is_empty() || self.step.is_nan() || self.step <= 0.0 {
@@ -173,12 +189,16 @@ impl GroundBounce {
             (u[0] - c0[0] as f32).clamp(0.0, 1.0),
             (u[1] - c0[1] as f32).clamp(0.0, 1.0),
         ];
+        let (wx, wz) = (bspline_pesos(f[0]), bspline_pesos(f[1]));
+        let ultimo = self.n - 1;
         let mut soma = [0.0f32; 3];
-        for dz in 0..2 {
-            for dx in 0..2 {
-                let w = (if dx == 1 { f[0] } else { 1.0 - f[0] })
-                    * (if dz == 1 { f[1] } else { 1.0 - f[1] });
-                let v = self.value[(c0[1] + dz) * self.n + c0[0] + dx];
+        for (dz, pz) in wz.iter().enumerate() {
+            // O nó `c0 - 1 + dz`, preso à borda.
+            let iz = (c0[1] + dz).saturating_sub(1).min(ultimo);
+            for (dx, px) in wx.iter().enumerate() {
+                let ix = (c0[0] + dx).saturating_sub(1).min(ultimo);
+                let w = pz * px;
+                let v = self.value[iz * self.n + ix];
                 soma = [soma[0] + w * v[0], soma[1] + w * v[1], soma[2] + w * v[2]];
             }
         }
@@ -203,6 +223,34 @@ impl GroundBounce {
     }
 }
 
+/// Os quatro pesos da **B-spline cúbica uniforme** na fracção `t ∈ [0, 1]` da célula — para os nós
+/// `−1, 0, +1, +2`. Não negativos, somam `1`, e a curva é `C²`.
+#[must_use]
+pub fn bspline_pesos(t: f32) -> [f32; 4] {
+    let s = 1.0 - t;
+    let (t2, t3) = (t * t, t * t * t);
+    [
+        s * s * s / 6.0,
+        (3.0 * t3 - 6.0 * t2 + 4.0) / 6.0,
+        (-3.0 * t3 + 3.0 * t2 + 3.0 * t + 1.0) / 6.0,
+        t3 / 6.0,
+    ]
+}
+
+/// ⭐⭐ **Onde o raio `j` de um nó nasce DENTRO da célula** — a sequência `R2` (o número plástico),
+/// em fracções de célula em `[−½, ½)²`. Determinística: o mesmo campo sai sempre dos mesmos bits.
+#[must_use]
+pub fn desvio_na_celula(j: u32) -> [f32; 2] {
+    const A1: f64 = 0.754_877_666_246_692_8;
+    const A2: f64 = 0.569_840_290_998_053_3;
+    let j = f64::from(j);
+    #[allow(clippy::cast_possible_truncation)]
+    let a = ((0.5 + j * A1).fract() - 0.5) as f32;
+    #[allow(clippy::cast_possible_truncation)]
+    let b = ((0.5 + j * A2).fract() - 0.5) as f32;
+    [a, b]
+}
+
 /// ⭐⭐⭐ **ASSAR o campo do chão** — a MESMA lei que uma sonda da peça assa
 /// ([`crate::bounce::radiancia_devolvida`]), com as direcções dentro do cone.
 #[must_use]
@@ -217,6 +265,45 @@ pub fn bake_ground_bounce(
     n: usize,
     dirs: u32,
     lado_px: usize,
+) -> GroundBounce {
+    assa(
+        doc, reg, cam, ground, surfaces, lampadas, n, dirs, lado_px, true,
+    )
+}
+
+/// ⚠️ **A lei ANTIGA — o nó a ler um PONTO** —, viva só para o CONTROLO do gate
+/// `cada_no_da_grelha_do_chao_vale_a_media_da_celula`: sem ela a barra dele podia estar a medir uma
+/// fixtura onde a amostragem pontual não dobra nada.
+#[cfg(test)]
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn bake_ground_bounce_pontual(
+    doc: &FieldDoc,
+    reg: &Registry,
+    cam: &Orbit,
+    ground: Ground,
+    surfaces: &Surfaces<'_>,
+    lampadas: &[PointLamp],
+    n: usize,
+    dirs: u32,
+    lado_px: usize,
+) -> GroundBounce {
+    assa(
+        doc, reg, cam, ground, surfaces, lampadas, n, dirs, lado_px, false,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn assa(
+    doc: &FieldDoc,
+    reg: &Registry,
+    cam: &Orbit,
+    ground: Ground,
+    surfaces: &Surfaces<'_>,
+    lampadas: &[PointLamp],
+    n: usize,
+    dirs: u32,
+    lado_px: usize,
+    pre_filtra: bool,
 ) -> GroundBounce {
     let Some(bola) = ph2d_field_eval::bounds::bounding_ball(doc, reg) else {
         return GroundBounce::vazio();
@@ -248,22 +335,35 @@ pub fn bake_ground_bounce(
     let mut origens: Vec<[f32; 3]> = Vec::new();
     let mut raios: Vec<[f32; 3]> = Vec::new();
     let mut quais: Vec<usize> = Vec::new();
-    let mut omega: Vec<f32> = vec![0.0; n * n];
+    // O ângulo sólido do cone de CADA raio: com a origem espalhada pela célula, o cone muda de raio
+    // para raio, e o integral pesa cada um pelo seu.
+    let mut omega: Vec<f32> = Vec::new();
     for iz in 0..n {
         for ix in 0..n {
-            #[allow(clippy::cast_precision_loss)]
-            let q = [
-                origin[0] + ix as f32 * step,
-                ground.height,
-                origin[1] + iz as f32 * step,
-            ];
             let k = iz * n + ix;
-            let Some((eixo, cos_alfa)) = cone_para(&bola, q, raio) else {
-                continue;
-            };
-            omega[k] = core::f32::consts::TAU * (1.0 - cos_alfa);
-            let (t, b) = base_do_cone(eixo);
             for j in 0..dirs {
+                // ⭐⭐⭐ **O PRÉ-FILTRO: o raio `j` nasce num ponto DIFERENTE da célula.** O nó passa a
+                // valer a MÉDIA da irradiância sobre a célula dele, e não a irradiância no ponto do
+                // nó — é o que uma grelha precisa para não DOBRAR (*alias*) uma feição mais fina que
+                // ela. Medido na cena `=28` com a lâmpada encostada: a verdade tem riscas de sombra
+                // finas (a mancha acesa da peça age como uma segunda lâmpada), e a amostragem
+                // pontual apanhava uma risca ou um vão ao acaso em cada nó — era esse o losango.
+                // ⚠️ **Custo ZERO:** os mesmos `dirs` raios por nó, só com origens diferentes.
+                let dv = if pre_filtra {
+                    desvio_na_celula(j)
+                } else {
+                    [0.0; 2]
+                };
+                #[allow(clippy::cast_precision_loss)]
+                let q = [
+                    origin[0] + (ix as f32 + dv[0]) * step,
+                    ground.height,
+                    origin[1] + (iz as f32 + dv[1]) * step,
+                ];
+                let Some((eixo, cos_alfa)) = cone_para(&bola, q, raio) else {
+                    continue;
+                };
+                let (t, b) = base_do_cone(eixo);
                 let d = dir_no_cone(j, dirs, cos_alfa, eixo, t, b);
                 // ⚠️ Abaixo do horizonte não conta: o integral é do HEMISFÉRIO do chão.
                 if d[1] <= 0.0 {
@@ -272,6 +372,7 @@ pub fn bake_ground_bounce(
                 origens.push(q);
                 raios.push(d);
                 quais.push(k);
+                omega.push(core::f32::consts::TAU * (1.0 - cos_alfa));
             }
         }
     }
@@ -296,19 +397,18 @@ pub fn bake_ground_bounce(
         })
         .collect();
 
-    // ── 3. o integral: `E = Ω/(π·N) · Σ L·cos` ────────────────────────────────────────────────
+    // ── 3. o integral: `E = 1/(π·N) · Σ Ω_j·L·cos` — cada raio com o ângulo sólido do SEU cone ──
     let mut soma = vec![[0.0f32; 3]; n * n];
     for (m, k) in quais.iter().enumerate() {
-        let c = raios[m][1];
+        let c = raios[m][1] * omega[m];
         let l = sai[m];
         let s = &mut soma[*k];
         *s = [s[0] + c * l[0], s[1] + c * l[1], s[2] + c * l[2]];
     }
     #[allow(clippy::cast_precision_loss)]
-    let inv_n = 1.0 / dirs as f32;
-    for k in 0..n * n {
-        let a = omega[k] * inv_n / core::f32::consts::PI;
-        campo.value[k] = [soma[k][0] * a, soma[k][1] * a, soma[k][2] * a];
+    let a = 1.0 / (dirs as f32 * core::f32::consts::PI);
+    for (v, s) in campo.value.iter_mut().zip(&soma) {
+        *v = [s[0] * a, s[1] * a, s[2] * a];
     }
     campo
 }

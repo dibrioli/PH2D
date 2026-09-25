@@ -5,15 +5,16 @@ use ph2d_field::{NodeId, Primitive, Xform};
 use ph2d_field_eval::hybrid::Registry;
 
 mod banda;
+mod chao_grelha_gates;
 mod chao_ricochete;
 mod chao_sem_reflexo;
 mod cornell;
 mod curvatura_gates;
 mod ground_gates;
 mod hull_cache_probe;
+mod luz_encostada_gates;
 mod shade_render_gates;
 mod shadow_gates;
-mod luz_encostada_gates;
 
 fn sphere(radius: f32) -> FieldDoc {
     FieldDoc::new(

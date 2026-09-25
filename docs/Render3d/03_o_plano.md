@@ -1642,11 +1642,17 @@ grava os canais do G-buffer como imagens, e partiu-o em TRÊS coisas diferentes:
    estimador melhorado de Quilez (a aproximação mais rente entre duas amostras) foi construído e NÃO
    cura** — medido na mesma fixtura, as riscas ficam. ⚠️ O CONE da oclusão não muda: a lei dele foi
    calibrada contra `1 024` direcções com a paragem de sempre.
-3. ⏳ **Os BLOCOS claros do quadro assente são a luz que a peça devolve ao chão** (`docs/Render3d/09`),
-   e ficam ABERTOS: a grelha `32²` sobre `6` raios tem células de `~0,38` — maiores do que a altura
-   da luz ao chão —, e foi calibrada com a luz LONGE (pico `33/255`). Com a luz encostada o campo tem
-   um pico estreito que ela não resolve. A cura nomeada no `09` §6 (o kernel no dispositivo) é a que
-   compra a resolução.
+3. ✅ **Os BLOCOS claros do quadro assente eram a luz que a peça devolve ao chão** (`docs/Render3d/09`
+   §10) — ⛔⛔ **e a minha premissa aqui estava ERRADA: não era RESOLUÇÃO.** Medido contra uma assadura
+   `192²`: subir a grelha de `32²` para `128²` leva o pior erro de `61 %` para `57 %` do pico — nada.
+   A referência fina mostra porquê: com a lâmpada encostada, a mancha acesa da peça age como uma
+   SEGUNDA lâmpada e projecta no chão **riscas de sombra muito mais finas que qualquer célula**, e a
+   grelha lia um PONTO por nó — cada nó apanhava uma risca ou um vão ao acaso (*alias*), e a bilinear
+   desenhava os vincos das células por cima. ⇒ **pré-filtro** (os `128` raios de cada nó nascem
+   espalhados pela célula, custo zero) **+ B-spline cúbica** na leitura, nos dois motores. Foto: os
+   retângulos somem e o chão fica um brilho liso. ⛔ A quase-interpolação cúbica (sem o borrão da
+   B-spline) foi construída, medida e **recusada**: o lóbulo negativo erra `21 %` no contacto da bola
+   contra os `11 %` da B-spline no flanco.
 
 Gates novos em [`luz_encostada_gates.rs`](../../crates/ph2d-field-render/src/tests/luz_encostada_gates.rs),
 os dois medindo a **continuidade** (o maior salto entre vizinhos numa linha de `3 000` pontos do chão)

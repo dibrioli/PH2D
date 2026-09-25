@@ -128,6 +128,8 @@ pub mod paint;
 /// ⭐ **Os bytes do uniforme do pintor** — ver o módulo.
 mod paint_uniforme;
 pub mod paint_wgsl;
+/// ⭐ **O chão que só recebe, em WGSL** — o factor da sombra e a luz que a peça lhe devolve.
+mod paint_wgsl_chao;
 /// ⭐ **A segunda metade do shader do pintor** — o hemisfério que ele integra.
 mod paint_wgsl_mole;
 mod paint_wgsl_sondas;

@@ -339,10 +339,11 @@ mod extraccao_tests {
 mod censo_de_quem_toca_a_fita {
     /// Os ficheiros que compõem o texto do pintor, na ordem em que o [`super::super::paint_fonte`]
     /// os junta. ⚠️ O `trace_wgsl` entra porque as leis da marcha vão para o mesmo shader.
-    const FONTES: [(&str, &str); 4] = [
+    const FONTES: [(&str, &str); 5] = [
         ("trace_wgsl.rs", include_str!("trace_wgsl.rs")),
         ("paint_wgsl.rs", include_str!("paint_wgsl.rs")),
         ("paint_wgsl_sondas.rs", include_str!("paint_wgsl_sondas.rs")),
+        ("paint_wgsl_chao.rs", include_str!("paint_wgsl_chao.rs")),
         ("paint_wgsl_mole.rs", include_str!("paint_wgsl_mole.rs")),
     ];
 

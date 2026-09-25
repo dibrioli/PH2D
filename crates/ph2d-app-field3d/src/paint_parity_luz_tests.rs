@@ -128,7 +128,7 @@ fn a_cor_que_a_peca_devolve_ao_chao_e_a_mesma_nos_dois_motores() {
         println!("sem adaptador — saltado");
         return;
     }
-    let doc = FieldDoc::new(
+    let bola = FieldDoc::new(
         vec![ph2d_field_eval::leaf(
             ph2d_field::Primitive::Sphere { radius: 0.3 },
             ph2d_field::Xform::at(0.0, 0.3, 0.0),
@@ -136,6 +136,42 @@ fn a_cor_que_a_peca_devolve_ao_chao_e_a_mesma_nos_dois_motores() {
         NodeId(0),
     )
     .expect("a bola pousada");
+    let cam = ph2d_field_render::Orbit::default();
+    paridade_do_campo_do_chao("bola", &bola, &[lampada(&cam)], 2_000);
+
+    // ⭐⭐ **E o regime do report de 2026-09-24** — o nó de toro com a lâmpada ENCOSTADA. ⚠️ A bola
+    // de cima tem um campo LISO (luz longe), e ali a leitura bilinear e a B-spline diferem menos de
+    // um nível: medido por mutação, trocar os pesos do shader pelos bilineares **sobrevivia** a esta
+    // paridade. *Uma paridade num campo liso não afirma nada sobre a reconstrução.*
+    let (radius, tube, winds, loops) = (0.20f32, 0.085f32, 2u32, 3u32);
+    let no = FieldDoc::new(
+        vec![ph2d_field_eval::leaf(
+            ph2d_field::Primitive::TorusKnot {
+                radius,
+                tube,
+                cord: ph2d_field::knot_cord_ceiling(radius, tube, winds, loops) * 0.85,
+                winds,
+                loops,
+            },
+            ph2d_field::Xform::IDENTITY,
+        )],
+        NodeId(0),
+    )
+    .expect("o nó");
+    let encostada = [ph2d_field_render::PointLamp {
+        world: [0.0, 0.0, -0.15],
+        radiance_at_one: [7.0, 7.0, 7.0],
+    }];
+    paridade_do_campo_do_chao("nó, luz encostada", &no, &encostada, 2_000);
+}
+
+/// A paridade do campo do chão sobre uma fixtura — a POPULAÇÃO primeiro, depois os dois motores.
+fn paridade_do_campo_do_chao(
+    nome: &str,
+    doc: &FieldDoc,
+    luz: &[ph2d_field_render::PointLamp],
+    populacao_minima: usize,
+) {
     let reg = ph2d_field_eval::hybrid::Registry::new();
     let materiais = [ph2d_material::OpenPbr {
         base_color: [0.75, 0.06, 0.06],
@@ -148,15 +184,14 @@ fn a_cor_que_a_peca_devolve_ao_chao_e_a_mesma_nos_dois_motores() {
         owners: None,
     };
     let cam = ph2d_field_render::Orbit::default();
-    let luz = [lampada(&cam)];
-    let chao = ph2d_field_render::lowest_point(&doc, &reg)
+    let chao = ph2d_field_render::lowest_point(doc, &reg)
         .map(|height| ph2d_field_render::Ground { height });
     assert!(chao.is_some(), "a peça tem chão");
 
     // ── a população: quantos bytes o CAMPO move, no caminho de CPU ────────────────────────────
     let mundos: Vec<[f32; 3]> = luz.iter().map(|l| l.world).collect();
-    let g = ph2d_field_render::trace(&doc, &reg, &cam, W, H);
-    let mut sh = ph2d_field_render::shadow_pass_on(&doc, &reg, &cam, &g, &mundos, chao);
+    let g = ph2d_field_render::trace(doc, &reg, &cam, W, H);
+    let mut sh = ph2d_field_render::shadow_pass_on(doc, &reg, &cam, &g, &mundos, chao);
     let sem_ecra: [ph2d_field_render::Lamp; 0] = [];
     let pinta = |sh: &ph2d_field_render::Shadows| {
         ph2d_field_render::shade_render(
@@ -165,7 +200,7 @@ fn a_cor_que_a_peca_devolve_ao_chao_e_a_mesma_nos_dois_motores() {
             &surfaces,
             &ph2d_field_render::Lighting {
                 lamps: &sem_ecra,
-                points: &luz,
+                points: luz,
                 sky: &crate::render_light::StudioSky,
                 shadows: Some(sh),
             },
@@ -175,12 +210,12 @@ fn a_cor_que_a_peca_devolve_ao_chao_e_a_mesma_nos_dois_motores() {
     };
     let sem_campo = pinta(&sh);
     sh.set_ground_bounce(ph2d_field_render::ground_bounce::bake_ground_bounce(
-        &doc,
+        doc,
         &reg,
         &cam,
         chao.expect("o chão"),
         &surfaces,
-        &luz,
+        luz,
         ph2d_field_render::ground_bounce::GROUND_BOUNCE_GRID,
         ph2d_field_render::ground_bounce::GROUND_BOUNCE_DIRS,
         W.min(H) as usize,
@@ -192,16 +227,16 @@ fn a_cor_que_a_peca_devolve_ao_chao_e_a_mesma_nos_dois_motores() {
         .filter(|(a, b)| a != b)
         .count();
     assert!(
-        movidos > 2_000,
-        "o campo só moveu {movidos} bytes — a fixtura não o mostra, e o gate não afirma nada"
+        movidos > populacao_minima,
+        "{nome}: o campo só moveu {movidos} bytes — a fixtura não o mostra, e o gate não afirma nada"
     );
 
     // ── e os dois motores concordam ───────────────────────────────────────────────────────────
     let (cpu, gpu, bordas) =
-        dois_caminhos_com(&surfaces, &doc, &luz, chao).expect("o dispositivo toma a peça");
+        dois_caminhos_com(&surfaces, doc, luz, chao).expect("o dispositivo toma a peça");
     assert!(
         bordas > 50,
-        "só {bordas} bordas — a metade da borda ficou por exercitar"
+        "{nome}: só {bordas} bordas — a metade da borda ficou por exercitar"
     );
     let mut hist = [0usize; 256];
     let mut pior = (0u8, 0usize, 0usize);
@@ -217,7 +252,7 @@ fn a_cor_que_a_peca_devolve_ao_chao_e_a_mesma_nos_dois_motores() {
     #[allow(clippy::cast_precision_loss)]
     let fraccao = hist[..2].iter().sum::<usize>() as f64 / total;
     println!(
-        "campo do chão · {movidos} bytes movidos · ≤1 nivel em {:.3} % · pior {} em ({}, {})",
+        "campo do chão ({nome}) · {movidos} bytes movidos · ≤1 nivel em {:.3} % · pior {} em ({}, {})",
         fraccao * 100.0,
         pior.0,
         pior.1,
@@ -225,7 +260,7 @@ fn a_cor_que_a_peca_devolve_ao_chao_e_a_mesma_nos_dois_motores() {
     );
     assert!(
         fraccao >= 0.995,
-        "só {:.3} % dos canais estão a ≤1 nível — a lei do campo divergiu entre os motores",
+        "{nome}: só {:.3} % dos canais estão a ≤1 nível — a lei do campo divergiu entre os motores",
         fraccao * 100.0
     );
 }

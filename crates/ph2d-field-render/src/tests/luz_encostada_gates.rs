@@ -17,7 +17,9 @@ fn peca(p: Primitive) -> FieldDoc {
 
 /// O maior salto entre dois vizinhos de uma linha de amostras.
 fn maior_salto(v: &[f32]) -> f32 {
-    v.windows(2).map(|w| (w[1] - w[0]).abs()).fold(0.0, f32::max)
+    v.windows(2)
+        .map(|w| (w[1] - w[0]).abs())
+        .fold(0.0, f32::max)
 }
 
 /// ⭐⭐⭐⭐ **A SOMBRA DE UMA LUZ NO BURACO DE UM TORO é CONTÍNUA no chão** — ver a

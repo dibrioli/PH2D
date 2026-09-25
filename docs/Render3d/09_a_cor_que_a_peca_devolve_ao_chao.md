@@ -194,6 +194,61 @@ da W73, agora com o quarto passageiro): o quadro de MOVIMENTO fica **byte-idênt
 7. *«as arestas da silhueta vêem o sangramento»* — elas leem campo `0,000003`, e levantar a peça
    PIORA (`112` arestas com campo a `0` de folga, `29` a `0,5`).
 
+## §10 — ⛔⛔⛔ A LUZ ENCOSTADA desenhava RETÂNGULOS — e a grelha não era grossa, lia um PONTO (2026-09-24)
+
+Report do dono, com foto da cena `=28` e a lâmpada encostada a um nó: *«qualidade do render melhor mas
+ainda com áreas retangulares ruins»*. A sonda irmã (`diag_a_luz_encostada_com_chao`, as quatro
+variantes do quadro assente) isolou o culpado: **com a cor devolvida ao chão ligada** aparecem
+losangos do tamanho de uma célula; sem ela, não.
+
+⛔ **A premissa óbvia — «a grelha é grossa demais» — caiu na primeira medição**
+([`diag_a_grelha_da_luz_do_chao`](../../crates/ph2d-app-field3d/src/device_probes_w9_chao_grelha.rs),
+contra uma assadura `192²`, no miolo que a câmera vê):
+
+| grelha | pior / pico (bilinear) | p99 / pico |
+|---:|---:|---:|
+| `32²` | `61,1 %` | `9,4 %` |
+| `64²` | `50,9 %` | `9,7 %` |
+| `128²` | `57,1 %` | `8,3 %` |
+
+⇒ **o erro não cai com a resolução**. A imagem da referência vista de cima
+(`diag_o_campo_do_chao_visto_de_cima`) diz porquê: com a lâmpada a `~0,09` da peça, a mancha acesa é
+pequena e age como uma **segunda lâmpada**, e os tubos projectam dela no chão **riscas de sombra**
+muito mais finas que uma célula. A grelha lia a irradiância **num ponto** por nó: cada nó apanhava uma
+risca ou um vão ao acaso — a grelha *dobrava* (alias) a feição fina em manchas do tamanho da célula —,
+e a leitura bilinear desenhava os **vincos** das células por cima. Dois defeitos, duas curas:
+
+1. ⭐⭐⭐ **O PRÉ-FILTRO** — os `128` raios de cada nó nascem **espalhados pela célula** (a sequência
+   `R2`, determinística), com o ângulo sólido do cone de CADA raio. O nó passa a valer a **média da
+   célula**, que é o que uma grelha precisa para não dobrar o que não consegue representar. **Custo
+   zero**: os mesmos raios, com outras origens.
+2. ⭐⭐⭐ **A B-SPLINE CÚBICA** na leitura (CPU e shader, os mesmos pesos) — `C²`, pesos não negativos
+   que somam `1`. É a reconstrução que acompanha o pré-filtro nas grelhas de irradiância.
+
+⛔ **A quase-interpolação cúbica** (coeficientes `(−v₋ + 8v − v₊)/6`, que tira o borrão próprio da
+B-spline) foi construída e medida, e **perde**: o lóbulo negativo erra `21 %` junto ao contacto da bola
+contra os `11 %` da B-spline no flanco (`o_campo_do_chao_concorda_com_a_convergida`), e na peça do
+report empata no p99.
+
+⚠️ **O preço, declarado:** as duas metades somam um borrão de `~0,65` célula. A barra da concordância
+com a convergida subiu de `0,10` para `0,15` (medido `0,111`, no flanco que sobe para o pico) — a troca
+de um desvio liso por um chão sem losangos. E o gate da tolerância na chave da cache passou a medir
+**pela consulta** (o que o pixel lê: `0,72` byte), porque o nó colado ao contacto move `1,19` — os raios
+pré-filtrados nascem também ali, onde a tolerância decide.
+
+**Gates** ([`chao_grelha_gates.rs`](../../crates/ph2d-field-render/src/tests/chao_grelha_gates.rs)), os
+dois com o CONTROLO da lei antiga dentro:
+- `a_luz_do_chao_nao_desenha_as_celulas_da_grelha` — o salto de inclinação ao atravessar uma linha da
+  grelha, num xadrez: B-spline `0,005`, bilinear `2,0`;
+- `cada_no_da_grelha_do_chao_vale_a_media_da_celula` — no nó de toro com a lâmpada encostada, cada nó
+  contra a média da célula de uma assadura `4×` mais fina: pré-filtrado pior `0,157` do pico, pontual
+  `0,612`. ⚠️ O p95 **não** separa as duas (é o ruído das `128` direcções, igual nas duas).
+- e a paridade `a_cor_que_a_peca_devolve_ao_chao_e_a_mesma_nos_dois_motores` ganhou o caso do nó: ⛔
+  na bola (luz longe, campo liso) trocar os pesos do shader pelos bilineares **sobrevivia** — *uma
+  paridade num campo liso não afirma nada sobre a reconstrução*.
+
+Mutação **3 de 3** (a leitura bilinear na CPU · o nó pontual · a leitura bilinear no shader).
+
 ## §9 — ⏳ O que fica
 
 - **a cache e o kernel** do §6, com os preços;

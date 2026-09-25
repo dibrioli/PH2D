@@ -443,6 +443,24 @@ fn a_peca_tinge_o_chao_a_volta_dela_e_so_a_volta_dela() {
 /// ponto a ponto: um estimador completamente diferente do que o produto usa (que manda as direcções
 /// para dentro do cone). ⚠️ **A faixa medida pára antes da orla**, que é uma aproximação declarada e
 /// tem gate próprio.
+/// ⭐⭐ **A lei barata bate a CONVERGIDA no miolo** — a grelha de fábrica contra `8 192` direcções
+/// sobre o hemisfério, ponto a ponto de `1` a `4,5` raios.
+///
+/// ⛔⛔ **A barra subiu de `0,10` para `0,15` em 2026-09-24, e a razão é uma troca DECLARADA:** a
+/// grelha passou a ser PRÉ-FILTRADA (cada nó é a média da sua célula) e lida pela B-spline cúbica,
+/// para deixar de desenhar losangos quando a peça devolve luz com contraste (o report *«áreas
+/// retangulares ruins»*, a lâmpada encostada ao nó da cena `=28`). As duas metades juntas são um
+/// borrão de `~0,65` célula, e o custo mede-se aqui, no flanco mais a pique do campo:
+///
+/// | lei | pior desvio | onde |
+/// |---|---:|---|
+/// | nó pontual + bilinear (até 2026-09-23) | `0,061` | — |
+/// | **célula + B-spline (a de hoje)** | **`0,111`** | `1,25`–`1,5` raios, o flanco que sobe para o pico |
+/// | célula + quase-interpolação cúbica | `0,216` | `1,0` raio, o contacto — o lóbulo negativo |
+///
+/// ⚠️ **A régua do lado de cá tem ruído próprio**: a «verdade» de `8 192` direcções oscila `±5 %`
+/// entre pontos vizinhos (`3,25` raios lê `+8 %` nas três leis), logo a barra não pode estar colada
+/// ao valor medido.
 #[test]
 fn o_campo_do_chao_concorda_com_a_convergida() {
     let lado = 128usize;
@@ -505,8 +523,8 @@ fn o_campo_do_chao_concorda_com_a_convergida() {
     }
     assert_eq!(conta, 15, "a faixa medida tem de ter os 15 pontos");
     assert!(
-        pior <= 0.10,
-        "a lei barata tem de bater a convergida no miolo: pior desvio {pior:.4} (medido 0,061)"
+        pior <= 0.15,
+        "a lei barata tem de bater a convergida no miolo: pior desvio {pior:.4} (medido 0,111)"
     );
 }
 
@@ -1184,12 +1202,25 @@ fn a_tolerancia_de_acerto_entra_na_chave_da_cache_do_chao() {
             1080,
         )
     };
+    // ⚠️ **Pela CONSULTA e não pelos nós** — um nó é a média da célula dele e o pixel lê a B-spline
+    // de `4×4` nós; o que um byte VÊ é o que a consulta devolve. Medido (2026-09-24): o nó colado ao
+    // contacto da bola move `1,19` byte (os raios pré-filtrados passam a nascer também ali, onde a
+    // tolerância decide) e a consulta move `0,72`.
     let pior = |a: &crate::ground_bounce::GroundBounce, b: &crate::ground_bounce::GroundBounce| {
-        a.value
-            .iter()
-            .zip(&b.value)
-            .flat_map(|(x, y)| (0..3).map(move |k| (x[k] - y[k]).abs()))
-            .fold(0.0f32, f32::max)
+        let meia = a.step * (a.n - 1) as f32 * 0.5;
+        let mut m = 0.0f32;
+        for i in 0..400 {
+            for j in 0..400 {
+                let q = [
+                    a.origin[0] + 2.0 * meia * i as f32 / 399.0,
+                    CHAO.height,
+                    a.origin[1] + 2.0 * meia * j as f32 / 399.0,
+                ];
+                let (x, y) = (a.sample(q), b.sample(q));
+                m = (0..3).map(|k| (x[k] - y[k]).abs()).fold(m, f32::max);
+            }
+        }
+        m
     };
     let de_fabrica = assa(1.6);
 

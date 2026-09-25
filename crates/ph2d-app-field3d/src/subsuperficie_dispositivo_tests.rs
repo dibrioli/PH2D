@@ -92,6 +92,7 @@ fn o_gemeo_da_borda_mole_esta_ligado_no_dispositivo() {
     // compila. ⛔ Ler só um deles fazia o gate ficar verde sobre um fragmento que ninguém junta.
     let corpo = concat!(
         include_str!("../../ph2d-field-gpu/src/paint_wgsl_sondas.rs"),
+        include_str!("../../ph2d-field-gpu/src/paint_wgsl_chao.rs"),
         include_str!("../../ph2d-field-gpu/src/paint_wgsl_mole.rs"),
     );
     // ⚠️⚠️ **E o DESPACHO também são dois ficheiros desde 2026-09-23** (o mesmo tecto de LOC, agora
@@ -104,11 +105,12 @@ fn o_gemeo_da_borda_mole_esta_ligado_no_dispositivo() {
         include_str!("../../ph2d-field-gpu/src/paint_fonte.rs"),
     );
 
-    // (0) ⛔⛔ **E as TRÊS metades são de facto CONCATENADAS.** *Um fragmento declarado que o
+    // (0) ⛔⛔ **E as metades são de facto CONCATENADAS** — QUATRO desde 2026-09-24 (o chão saiu do
+    // ficheiro das sondas pelo mesmo tecto, `docs/Render3d/09` §10). *Um fragmento declarado que o
     // `format!` não junta compila, passa em todo gate de texto, e não chega ao shader.*
     assert!(
-        despacho.contains("{PINTOR}{PINTOR_SONDAS}{PINTOR_MOLE}"),
-        "o corpo do pintor deixou de juntar as três metades — o fragmento da borda mole existe e \
+        despacho.contains("{PINTOR}{PINTOR_SONDAS}{PINTOR_CHAO}{PINTOR_MOLE}"),
+        "o corpo do pintor deixou de juntar as quatro metades — o fragmento da borda mole existe e \
          não entra no shader"
     );
 

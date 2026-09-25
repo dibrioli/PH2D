@@ -40,7 +40,18 @@ fn diag_a_oclusao_na_grade() {
                 ..crate::gpu_frame::Sonda::default()
             };
             crate::gpu_frame::paint_com(
-                t, &doc, &reg, &cam, &luz, &surfaces, &pres, [0, 0, 0, 0], None, W, H, false,
+                t,
+                &doc,
+                &reg,
+                &cam,
+                &luz,
+                &surfaces,
+                &pres,
+                [0, 0, 0, 0],
+                None,
+                W,
+                H,
+                false,
                 sonda,
             )
             .expect("o pintor")
@@ -94,7 +105,9 @@ fn diag_o_canal_do_ceu_na_grade() {
         return;
     };
     let luz = [crate::gpu_frame::tests_lampada(&cam).world];
-    println!("\n  cena · grade · acertos · média(grade−exacta) · fracção mais escura · p99 |Δ| · máx |Δ|");
+    println!(
+        "\n  cena · grade · acertos · média(grade−exacta) · fracção mais escura · p99 |Δ| · máx |Δ|"
+    );
     for cena in [26u32, 5, 28] {
         let doc = crate::smoke::scene(cena);
         let reg = crate::smoke::sampled_registry();
@@ -117,7 +130,10 @@ fn diag_o_canal_do_ceu_na_grade() {
                 true,
             )
             .expect("o pedido");
-            let gb = t.lock().expect("o traçador").frame(&f, c.sculpts(), setup, W, H);
+            let gb = t
+                .lock()
+                .expect("o traçador")
+                .frame(&f, c.sculpts(), setup, W, H);
             (gb.t, gb.ambient)
         };
         let (tt, exacta) = ceu(None);
@@ -186,8 +202,19 @@ fn diag_o_quadro_assente_partido() {
             for i in 0..4 {
                 let t0 = std::time::Instant::now();
                 let _ = crate::gpu_frame::paint_com(
-                    t, &doc, &reg, &cam, &luz, &surfaces, &pres, [0, 0, 0, 0], None, W, H,
-                    assente, sonda,
+                    t,
+                    &doc,
+                    &reg,
+                    &cam,
+                    &luz,
+                    &surfaces,
+                    &pres,
+                    [0, 0, 0, 0],
+                    None,
+                    W,
+                    H,
+                    assente,
+                    sonda,
                 );
                 if i > 0 {
                     m = m.min(t0.elapsed().as_secs_f64() * 1e3);
@@ -253,8 +280,19 @@ fn diag_a_luz_encostada_com_chao() {
                 ..crate::gpu_frame::Sonda::default()
             };
             let p = crate::gpu_frame::paint_com(
-                t, &doc, &reg, &cam, &luz, &surfaces, &pres, [40, 40, 40, 255], chao, W, H,
-                assente, sonda,
+                t,
+                &doc,
+                &reg,
+                &cam,
+                &luz,
+                &surfaces,
+                &pres,
+                [40, 40, 40, 255],
+                chao,
+                W,
+                H,
+                assente,
+                sonda,
             )
             .expect("o pintor");
             let mut ppm = format!("P6\n{W} {H}\n255\n").into_bytes();
@@ -345,3 +383,7 @@ fn luz_no_vazio_do_no(doc: &ph2d_field::FieldDoc, c: [f32; 3], r: f32) -> [f32; 
     println!("luz no vazio: {:?} a {:.4} da peça", melhor.0, melhor.1);
     melhor.0
 }
+
+/// 📏 **A grelha da luz devolvida ao chão contra uma referência fina** — ver o cabeçalho do [`grelha`].
+#[path = "device_probes_w9_chao_grelha.rs"]
+mod grelha;

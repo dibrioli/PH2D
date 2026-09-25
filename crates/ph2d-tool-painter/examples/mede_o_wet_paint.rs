@@ -19,6 +19,7 @@
 //! ```text
 //! bash scripts/ph2d-run.sh cargo run -p ph2d-tool-painter --release --example mede_o_wet_paint
 //! bash scripts/ph2d-run.sh cargo run -p ph2d-tool-painter --release --example mede_o_wet_paint -- [tela] [raio]
+//! bash scripts/ph2d-run.sh cargo run -p ph2d-tool-painter --release --example mede_o_wet_paint -- [tela] [raio] pousos [n]
 //! ```
 //!
 //! Imprime `/proc/loadavg` ao lado: acima de `load ~5` nenhum relógio desta máquina vale nada em
@@ -215,10 +216,56 @@ fn carga() -> String {
         .to_string()
 }
 
+/// **O POUSAR** — traços curtos em sequência, com a água a correr entre eles (meio segundo de
+/// quadros), como quem pinta pinceladas soltas. Imprime o pen-down de cada um; é também o modo que
+/// o amostrador de pilhas usa para ver o pousar sem o gesto por cima.
+fn pousos(size: u32, raio: f32, n: usize) {
+    let mut t = wet(size, raio);
+    let c = size as f32 / 2.0;
+    let mut pd = Vec::new();
+    for k in 0..n {
+        let x = c - 600.0 + (k % 12) as f32 * 100.0;
+        let y = c - 400.0 + (k / 12) as f32 * 160.0;
+        let t0 = Instant::now();
+        t.on_canvas_pointer(cp([x, y], PointerPhase::Down));
+        pd.push(ms(t0));
+        vsync(t0);
+        for j in 1..=3 {
+            let tq = Instant::now();
+            t.on_canvas_pointer(cp([x + 20.0 * j as f32, y], PointerPhase::Move));
+            t.on_tick(DT_MS);
+            let _ = t.take_preview_arc();
+            vsync(tq);
+        }
+        t.on_canvas_pointer(cp([x + 60.0, y], PointerPhase::Up));
+        for _ in 0..30 {
+            let tq = Instant::now();
+            t.on_tick(DT_MS);
+            let _ = t.take_preview_arc();
+            vsync(tq);
+        }
+    }
+    let primeiro = pd[0];
+    let mut resto = pd[1..].to_vec();
+    resto.sort_by(f64::total_cmp);
+    println!(
+        "POUSOS {n} (raio {raio}) — 1.º {primeiro:.2} ms | seguintes p50 {:.2} p90 {:.2} max {:.2} ms",
+        resto[resto.len() / 2],
+        resto[resto.len() * 9 / 10],
+        resto[resto.len() - 1]
+    );
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let size: u32 = args.first().and_then(|s| s.parse().ok()).unwrap_or(4096);
     let raio: f32 = args.get(1).and_then(|s| s.parse().ok()).unwrap_or(100.0);
+    if args.get(2).is_some_and(|s| s == "pousos") {
+        let n = args.get(3).and_then(|s| s.parse().ok()).unwrap_or(24);
+        println!("load {}", carga());
+        pousos(size, raio, n);
+        return;
+    }
     // `perfil`: só os gestos, e mais traços — para o amostrador de pilhas ver o que o pincel custa.
     let perfil = args.get(2).is_some_and(|s| s == "perfil");
     let corridas = if perfil { 6 } else { CORRIDAS };

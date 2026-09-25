@@ -5,6 +5,7 @@
 //! o escorrido do Wet Paint, que o smoke do Enio achou em 2026-07-26.
 
 use super::{ModelSnapshot, UndoController, UndoEntry};
+use std::sync::Arc;
 
 #[cfg(test)]
 thread_local! {
@@ -16,6 +17,14 @@ thread_local! {
     /// SOBREVIVEU à mutação. A pergunta é *"ela disparou?"*, e a forma honesta de a fazer é contar
     /// (o idioma do `RELIEF_FROM_JOURNAL`).
     pub(crate) static ABSORB_FIRED: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+
+    /// **Força o caminho CARO** — a metade de controlo do gate que afirma que o barato guarda a MESMA
+    /// entrada (`undo_absorb_tests`). Sem ela, o gate compararia o caminho barato consigo mesmo.
+    pub(crate) static ONLY_THE_FULL_PATH: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+
+    /// **Quantas absorções re-partiram o canvas pelo caminho BARATO** — sem ele, o gate de igualdade
+    /// ficaria verde com o caminho barato nunca a correr (os dois lados seriam o caro).
+    pub(crate) static CHEAP_FIRED: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
 }
 
 impl UndoController {
@@ -71,7 +80,8 @@ impl UndoController {
             m.mats.clear();
             m.relief_elided = crate::undo::elide::ElidedRelief::default();
         }
-        if crate::undo_planes::PlaneDeltas::split(&mut a, &mut b, None, None).heap_bytes() == 0 {
+        let detected = crate::undo_planes::PlaneDeltas::split(&mut a, &mut b, None, None);
+        if detected.heap_bytes() == 0 {
             return; // o topo já termina onde este passo começa: o caso comum, e ele não custa nada
         }
         // ⚠️ **A base do RELEVO vem da porta única** ([`Self::base_for_top`]): o cursor elide os planos
@@ -84,19 +94,55 @@ impl UndoController {
         let Some(cursor) = self.cursor.as_deref() else {
             return;
         };
-        let Some(top) = self.undo.last() else {
+        let Some(mut top) = self.undo.pop() else {
             return;
         };
-        let (kind, Some(first_before)) = (top.kind, top.materialize(cursor, &base, true)) else {
+        let (kind, old_bytes) = (top.kind, top.heap_bytes());
+        // ⭐ **O CANVAS vai pelo caminho barato quando ele dá a MESMA resposta** (medido 2026-09-24:
+        // a materialização era uma cópia de 67 MB e o re-split voltava a varrer os 67 MB para achar
+        // uma janela que o topo e o detector já conheciam — `~9–11 ms` de um pen-down de `~25`). A
+        // prova de que é a mesma entrada está no cabeçalho de `undo_delta_absorb.rs`, e o gate a
+        // compara com o caminho caro campo a campo. Os OUTROS planos seguem pela porta de sempre: o
+        // escorrido só escreve canvas, e um segundo caminho para dezanove planos seria a segunda
+        // lista que nasce incompleta.
+        let stride = crate::undo_delta::Strides::of(top.before.canvas_size.0).rgba;
+        let cheap = top.planes.canvas().absorbed(
+            &cursor.canvas_rgba,
+            &before.canvas_rgba,
+            detected.canvas(),
+            stride,
+        );
+        #[cfg(test)]
+        let cheap = cheap.filter(|_| !ONLY_THE_FULL_PATH.with(std::cell::Cell::get));
+        // Com o canvas já calculado, o topo materializa-se SEM ele (é essa a cópia que se poupa) —
+        // e depois é devolvido intacto se a materialização recusar.
+        let taken = cheap
+            .is_some()
+            .then(|| std::mem::take(top.planes.canvas_mut()));
+        let Some(mut first_before) = top.materialize(cursor, &base, true) else {
             // O cursor não descreve mais o delta do topo. Não há como esticá-lo honestamente, e mentir
             // aqui seria pior que a divergência: sai calado, exatamente como o `undo` faz.
+            if let Some(canvas) = taken {
+                *top.planes.canvas_mut() = canvas;
+            }
+            self.undo.push(top);
             return;
         };
+        if cheap.is_some() {
+            // O mesmo `Arc` dos dois lados: o `split` vê-os idênticos e não varre o canvas.
+            first_before.canvas_rgba = Arc::clone(&before.canvas_rgba);
+        }
         #[cfg(test)]
         ABSORB_FIRED.with(|c| c.set(c.get() + 1));
-        let old = self.undo.pop().expect("o topo que acabamos de ler");
-        self.bytes -= old.heap_bytes();
-        let entry = UndoEntry::split(*first_before, before.clone(), kind, None, None);
+        #[cfg(test)]
+        if cheap.is_some() {
+            CHEAP_FIRED.with(|c| c.set(c.get() + 1));
+        }
+        self.bytes -= old_bytes;
+        let mut entry = UndoEntry::split(*first_before, before.clone(), kind, None, None);
+        if let Some(canvas) = cheap {
+            *entry.planes.canvas_mut() = canvas;
+        }
         self.bytes += entry.heap_bytes();
         self.undo.push(entry);
         // O cursor anda junto: o topo agora termina no estado que este passo encontrou.

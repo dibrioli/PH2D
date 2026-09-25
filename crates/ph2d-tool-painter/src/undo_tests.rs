@@ -629,3 +629,7 @@ fn a_coalesced_run_recomposes_the_delta_instead_of_stacking_two() {
     let fwd = c.redo_here().expect("de volta");
     assert_same_planes(&fwd, &s2, "redo de um run coalescido");
 }
+
+/// Os gates do caminho barato da absorção — filho deste, para usar o [`model`] daqui.
+#[path = "undo_absorb_tests.rs"]
+mod absorb_cheap;

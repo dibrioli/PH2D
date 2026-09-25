@@ -61,7 +61,8 @@
 //! escrita **pertence ao passo anterior, porque foi ele que a causou**. A entrada do topo
 //! é re-partida para terminar ali. Custa **zero** quando ninguém escreveu, porque a
 //! pergunta é feita pelo mesmo `PlaneDeltas::split` do commit, que começa por
-//! `Arc::ptr_eq`. Gates: `undo_tests` (os três de absorção) e
+//! `Arc::ptr_eq`. Gates: `undo_tests` (os três de absorção), `undo_tests::absorb_cheap` (o
+//! canvas re-partido só dentro da caixa guarda a MESMA entrada que o caminho caro) e
 //! `wetpaint::undo_drip_tests` (o repro do produto, com a água de verdade).
 
 use std::collections::{BTreeMap, BTreeSet};

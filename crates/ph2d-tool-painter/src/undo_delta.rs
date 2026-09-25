@@ -690,6 +690,10 @@ mod journal_route;
 #[path = "undo_delta_confine.rs"]
 pub(crate) mod confine;
 
+/// **Re-partir um plano do topo sem materializar a tela** — filho pelo mesmo motivo (a janela).
+#[path = "undo_delta_absorb.rs"]
+mod absorb_route;
+
 #[cfg(test)]
 #[path = "undo_delta_tests.rs"]
 mod tests;

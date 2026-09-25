@@ -3080,3 +3080,68 @@ inalterada.
 - **O pen-down** custa `~28–48 ms` no início de cada traço (o 1.º da sessão cria o grid de `~944 MB`);
   não medido por dentro ainda.
 - A M7 original fica registada como mutante equivalente, não como gate em falta.
+
+## §40 — O pen-down do Wet Paint: a absorção do escorrido deixa de copiar a tela (2026-09-24)
+
+Ordem do dono (*«smoke ok. siga»*, depois do §39). O item aberto era o **pen-down** (`~25 ms` em cada
+traço que começa com a água ainda a correr).
+
+### §40.1 — A régua e a atribuição
+
+`examples/mede_o_wet_paint.rs` ganhou o modo **`pousos [n]`**: traços curtos em sequência com meio
+segundo de água a correr entre eles, e o pen-down de cada um impresso (o 1.º à parte — ele cria o grid).
+Instrumentado por dentro (marcadores temporários, retirados antes do commit), a 4096² o pen-down era:
+
+| parte | ms (load ~24) |
+|---|---|
+| detector da absorção (`PlaneDeltas::split` cursor × before, tela inteira, paralelo) | `3,4–7,9` |
+| **materialização** do `before` do topo (cópia de 67 MB + blit) | `3,7–4,6` |
+| **re-split** (varre os 67 MB outra vez para achar a janela) | `4,9–6,8` |
+| 1.º carimbo (espera do `bring_home` + depósito + composite com o fork do canvas) | `7–10` |
+
+A absorção existe desde 26/07 (o escorrido do Wet Paint fica sem dono no undo sem ela) e é
+**correcta**; o preço é que ela redescobria, com dois passes de tela inteira, uma janela que o topo e o
+detector **já conheciam**.
+
+### §40.2 — A cura: o canvas do topo re-parte-se só dentro da caixa `U` (`undo_delta_absorb.rs`)
+
+`StoredPlane::absorbed(cursor, after, drip, stride)`: com `W` a janela do topo e `D` a janela EXACTA do
+detector, fora de `U = W ∪ D` os dois lados do re-split são iguais byte a byte (fora de `W` o `before`
+materializado é o cursor; fora de `D` o cursor é o `after`), logo a janela exacta está dentro de `U` e
+o **mesmo `diff_window`** sobre o recorte dá a mesma caixa. A absorção materializa o topo **sem** o
+canvas, dá ao `split` o mesmo `Arc` dos dois lados (ele não varre) e escreve o plano calculado.
+**Os outros 18 planos seguem pela porta de sempre.** Recusa (e corre o caminho caro inteiro) onde a
+igualdade não é demonstrável barato: um lado `Whole`, tamanhos ou stride diferentes, ou `U` com meio
+plano ou mais — aí o caro pode guardar `Whole`.
+
+Medido A/B alternado (binário com o caminho barato desligado contra o que shipa, mesma carga,
+`pousos 24`, raio 100, tela 4096²; ⚠️ a máquina esteve a `load 5–23` — outras linhas a correr suítes —
+e não houve janela calma):
+
+| corrida | antes p50 / p90 | depois p50 / p90 |
+|---|---|---|
+| 1 | `26,6 / 46,7 ms` | `21,1 / 35,3 ms` |
+| 2 | `29,5 / 38,3 ms` | `16,6 / 22,6 ms` |
+| 3 | `34,6 / 51,9 ms` | `15,6 / 18,2 ms` |
+
+Gates (`undo_absorb_tests.rs`, filho de `undo_tests`): cada cenário corre **duas vezes** — uma com
+`ONLY_THE_FULL_PATH` — e compara a pilha de undo INTEIRA (Debug), o cursor e o livro de bytes; e afirma
+que o caminho barato **correu** (`CHEAP_FIRED`), senão a igualdade seria entre dois caros. Cenários: o
+escorrido longe / a encostar / dentro do traço · o que devolve parte do traço ao fundo (a janela
+exacta encolhe) · o que apaga o traço inteiro · o topo que não mexeu no canvas · o topo gravado com
+janela DECLARADA maior que a exacta · o run coalescido · a caixa de meio plano (o barato tem de
+recusar) · e desfazer/refazer através de uma absorção barata. **6 de 6 mutações de lei sangram**; a 7.ª
+(não igualar o `Arc` antes do `split`) **sobrevive de propósito e está NOMEADA**: ela só devolve o
+custo (o `split` volta a varrer e a entrada é sobrescrita na linha seguinte), que é o que a tabela
+acima mede. Suíte do Painter `1347` + `it` verdes em debug, clippy `-D warnings` limpo.
+
+### §40.3 — Aberto
+
+- **O detector** continua a varrer a tela inteira (`3–8 ms`): é ele que responde *«alguém escreveu fora
+  da história?»*, e a resposta só é segura sem janela informada (o cabeçalho do `undo_absorb` explica
+  porquê). Dar-lhe a região suja da simulação seria um atalho que não falha alto — não feito.
+- **O 1.º carimbo** (`7–10 ms`) inclui o fork do canvas (o undo segura o `Arc`) — não atacado.
+- **O 1.º traço da sessão** (`~40–60 ms`) cria o grid da simulação; é uma vez por sessão.
+- Flake de carga vista uma vez nesta corrida e verde na seguinte:
+  `mask_gate_tests::the_cost_of_a_gated_stroke_follows_the_footprint_not_the_canvas` (gate de razão,
+  `load ~22`, zero linhas deste diff no módulo dele).

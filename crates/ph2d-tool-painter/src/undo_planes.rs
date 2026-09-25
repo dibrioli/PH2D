@@ -661,6 +661,17 @@ impl PlaneDeltas {
         d
     }
 
+    /// O plano do CANVAS, para a absorção re-parti-lo sem materializar a tela
+    /// (`crate::undo::absorb`). Os outros planos continuam a ter uma porta só: o `split`/`side`.
+    pub(crate) fn canvas(&self) -> &StoredPlane<u8> {
+        &self.canvas_rgba
+    }
+
+    /// A mesma porta, para escrever o plano que a absorção calculou.
+    pub(crate) fn canvas_mut(&mut self) -> &mut StoredPlane<u8> {
+        &mut self.canvas_rgba
+    }
+
     /// O que esta entrada retém — o número que o cap em BYTES conta.
     pub(crate) fn heap_bytes(&self) -> usize {
         self.canvas_rgba.heap_bytes()

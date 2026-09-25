@@ -24,6 +24,9 @@ impl Sculpt3dScene {
     /// ⚠️ As duas direções são esta função com as filas trocadas — não há um
     /// caminho de refazer para divergir do de desfazer.
     fn step(&mut self, undoing: bool) -> bool {
+        // ⭐ Uma pincelada do Painter que ainda escorre fecha PRIMEIRO: ela é o
+        // passo que este `Ctrl+Z` desfaz, e aberta ela escreveria depois dele.
+        self.painter_fecha_o_que_escorre();
         let entry = if undoing {
             self.undo.pop()
         } else {

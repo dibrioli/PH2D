@@ -67,6 +67,11 @@ pub fn key(
     use winit::keyboard::KeyCode as K;
     let KeyPress { code, ctrl, shift } = press;
     let keys_live = morta.is_empty();
+    // ⭐ Uma tecla viva da escultura pode mexer na peça: a pincelada do Painter
+    // que ainda escorre fecha antes (`painter_na_malha`).
+    if keys_live {
+        scene.painter_fecha_o_que_escorre();
+    }
     if let Some(queixa) = keys_delete::queixa_do_desfazer(press, factos.clay_on_screen, morta) {
         eprintln!("{queixa}");
     }

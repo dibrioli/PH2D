@@ -46,6 +46,12 @@ const ENTREGA: &str =
     include_str!("../../../shells/desktop/src/input_dispatch/painter_canvas_input.rs");
 const QUADRO: &str =
     include_str!("../../../shells/desktop/src/render_loop/fase_painter_dispatch.rs");
+/// As quatro portas que mexem na peça e têm de fechar a pincelada que escorre
+/// (etapa 3) — cada uma é um ficheiro da família.
+const UNDO: &str = include_str!("undo.rs");
+const KEYS: &str = include_str!("keys.rs");
+const PANEL: &str = include_str!("panel.rs");
+const INPUT_DOWN: &str = include_str!("input_down.rs");
 
 /// Cada elo: o ficheiro, a agulha, quantas vezes o código a tem, e o que parte
 /// quando ela some.
@@ -81,7 +87,7 @@ fn elos() -> Vec<(
         (
             "painter_na_malha.rs",
             COSTURA,
-            "s.painter_pousa(&f);",
+            "s.painter_pousa(&f)",
             1,
             "P4 o traço só aparece na peça quando o dedo se levanta",
         ),
@@ -179,6 +185,56 @@ fn elos() -> Vec<(
             2,
             "P17 uma tela renascida ou solta é tomada pela molhada guardada",
         ),
+        // ── ETAPA 3: a tinta molhada que escorre depois de largar ──
+        (
+            "painter_na_malha.rs",
+            COSTURA,
+            "painter.screen_canvas_is_flowing()",
+            2,
+            "P18 o traço fecha no pen-up com a água a correr (ou nunca fecha quando ela pára)",
+        ),
+        (
+            "painter_na_malha.rs",
+            COSTURA,
+            "s.painter_escorre_se_a_peca_mudou();",
+            1,
+            "P19 outra mão mexe na peça e a água continua a escrever por cima",
+        ),
+        (
+            "painter_na_malha.rs",
+            COSTURA,
+            "self.painter_escorre = Some(self.edits);",
+            1,
+            "P20 o pouso da própria água lê-se como outra mão: o traço fecha no 1.º pouso",
+        ),
+        (
+            "undo.rs",
+            UNDO,
+            "self.painter_fecha_o_que_escorre();",
+            1,
+            "P21 o Ctrl+Z desfaz o passo ANTERIOR com a pincelada ainda aberta",
+        ),
+        (
+            "keys.rs",
+            KEYS,
+            "scene.painter_fecha_o_que_escorre();",
+            1,
+            "P22 uma tecla da escultura mexe na peça com a pincelada ainda aberta",
+        ),
+        (
+            "panel.rs",
+            PANEL,
+            "self.painter_fecha_o_que_escorre();",
+            1,
+            "P23 o painel muda a peça (e a topologia) com o plano ainda emprestado",
+        ),
+        (
+            "input_down.rs",
+            INPUT_DOWN,
+            "scene.painter_fecha_o_que_escorre();",
+            1,
+            "P24 um clique da escultura abre um traço por cima da pincelada aberta",
+        ),
     ]
 }
 
@@ -186,7 +242,7 @@ fn elos() -> Vec<(
 #[test]
 fn a_costura_do_painter_esta_ligada_nas_duas_pontas() {
     let elos = elos();
-    assert!(elos.len() >= 17, "o piso de população: {} elos", elos.len());
+    assert!(elos.len() >= 24, "o piso de população: {} elos", elos.len());
     for (ficheiro, texto, agulha, esperado, parte) in elos {
         let n = sem_prosa(texto).matches(agulha).count();
         assert_eq!(

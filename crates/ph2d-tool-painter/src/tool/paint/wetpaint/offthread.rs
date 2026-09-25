@@ -111,6 +111,18 @@ pub(in crate::tool::paint) struct SimWorker {
     /// isto, o tick traria o engine de volta a cada frame e o worker perderia ~30% do núcleo
     /// esperando.
     steps: Arc<AtomicU64>,
+    /// ⭐ **A água ainda CORRE?** — o `has_fluid` da grelha activa, publicado na
+    /// ENTREGA do motor ao worker ([`super::WetSession::hand_off_sim`]). É o que a
+    /// escultura pergunta depois do pen-up ([`super::WetSession::still_flowing`])
+    /// para saber quando a pincelada acabou de mexer: medido, um traço assenta em
+    /// `~19 s` e a partir daí o Painter deixa de drenar a tela.
+    ///
+    /// ⛔ **Uma segunda publicação DENTRO do worker, a cada passo fechado, foi
+    /// escrita e RETIRADA por prova de mutação** (`E4` do
+    /// `muta_o_painter_na_peca.sh`): o tick traz o motor para casa e volta a
+    /// entregá-lo a cada quadro, logo a entrega já publica o valor verdadeiro com
+    /// um quadro de atraso no máximo — a publicação do worker nunca decidia nada.
+    fluid: Arc<AtomicBool>,
 }
 
 impl EngineSlot {
@@ -188,6 +200,7 @@ impl SimWorker {
         let (to_ui, back) = channel::<Box<Engine>>();
         let want = Arc::new(AtomicBool::new(false));
         let steps = Arc::new(AtomicU64::new(0));
+        let fluid = Arc::new(AtomicBool::new(true));
         let (w, st) = (Arc::clone(&want), Arc::clone(&steps));
         std::thread::Builder::new()
             .name("ph2d-wet-sim".into())
@@ -198,6 +211,7 @@ impl SimWorker {
             back,
             want,
             steps,
+            fluid,
         }
     }
 }
@@ -333,6 +347,18 @@ impl super::WetSession {
         }
     }
 
+    /// ⭐ **A água ainda CORRE?** — com o motor em casa lê a grelha; com ele no
+    /// worker lê o que o worker publicou no último passo fechado.
+    pub(in crate::tool::paint) fn still_flowing(&self) -> bool {
+        match &self.engine {
+            EngineSlot::Here(e) => e.active_grid().has_fluid,
+            EngineSlot::Away => self
+                .worker
+                .as_ref()
+                .is_some_and(|w| w.fluid.load(Ordering::Acquire)),
+        }
+    }
+
     /// **Quantos passos a sim completou** — `0` quando nunca houve worker.
     pub(in crate::tool::paint) fn sim_steps(&self) -> u64 {
         self.worker
@@ -366,6 +392,10 @@ impl super::WetSession {
         let EngineSlot::Here(engine) = std::mem::replace(&mut self.engine, EngineSlot::Away) else {
             unreachable!("checado acima")
         };
+        // ⚠️ O que o worker publicaria só no fim do PRIMEIRO passo fechado: sem
+        // isto a água secada em casa (`fast_dry`) leria-se «a correr» até lá.
+        w.fluid
+            .store(engine.active_grid().has_fluid, Ordering::Release);
         assert!(
             w.to_worker.send(engine).is_ok(),
             "o worker morreu com o canal de ida vivo"

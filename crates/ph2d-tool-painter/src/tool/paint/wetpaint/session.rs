@@ -178,3 +178,19 @@ pub(super) struct Lane {
     pub(super) pos: [f32; 2],
     pub(super) ink: [f32; 3],
 }
+
+impl PainterTool {
+    /// Há uma sessão de água viva? — a tela não se pode semear sem a matar.
+    pub(crate) fn wet_paint_session_alive(&self) -> bool {
+        self.paint.wetpaint.session.is_some()
+    }
+
+    /// A água dessa sessão ainda corre? ([`WetSession::still_flowing`]).
+    pub(crate) fn wet_paint_flowing(&self) -> bool {
+        self.paint
+            .wetpaint
+            .session
+            .as_ref()
+            .is_some_and(WetSession::still_flowing)
+    }
+}

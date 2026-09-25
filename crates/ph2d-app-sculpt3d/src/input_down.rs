@@ -33,6 +33,9 @@ pub fn pointer_down(
     if host.pointer_over_chrome(pos.0, pos.1) {
         return false;
     }
+    // ⭐ Um clique da escultura na peça fecha a pincelada do Painter que ainda
+    // escorre — os dois escreveriam no mesmo traço.
+    scene.painter_fecha_o_que_escorre();
     let mods = host.mods();
     let (ctrl, shift) = (mods.control, mods.shift);
     // ⚠️ **Com o barro fora da tela, o ponteiro NÃO é da cena.** Sem esta

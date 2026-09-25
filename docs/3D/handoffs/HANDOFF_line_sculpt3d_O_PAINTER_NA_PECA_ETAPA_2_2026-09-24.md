@@ -355,3 +355,73 @@ fina e do Painter na peça com placa **84/84** · pré-voo dos três arneses ver
   triângulos for pintada a `256x`, o custo volta a ser por face inteira.
 * A oclusão por píxel pode errar uma amostra cuja borda de oclusor caia DENTRO de
   um píxel — abaixo do que a tela do Painter distingue, por construção.
+
+## §9 — ⭐⭐⭐⭐ ETAPA 3a: a tinta molhada ESCORRE na peça depois de largar
+
+Ordem do dono (24/09, depois do smoke da §8): *«smoke OK. Siga»* — a etapa 3 é o
+relevo do impasto e a tinta molhada que ainda mexe depois do pen-up. Esta metade é
+a da água.
+
+### §9.1 — O defeito, medido
+
+O traço fechava no pen-up e a tela era LIMPA — e limpar a tela (`set_source`) é o
+que **mata a sessão da água** do Painter (o guarda dela vê o `canvas_rgba`
+trocado). ⇒ a peça recebia só o depósito, nunca o escorrido. Sonda versionada
+`diag_a_tinta_molhada_depois_do_pen_up` (`ph2d-tool-painter`, tempo real, a água
+corre na thread dela): um traço de Wet Paint continua a mudar a tela **`~19 s`**
+depois de largar (`69 k` bytes no 1.º segundo, maior salto `59`; `3` bytes no
+19.º), e a partir daí o Painter **deixa de drenar** — a paragem é exacta, não um
+limiar.
+
+### §9.2 — O desenho
+
+* **A pincelada FICA ABERTA enquanto a água corre** (`Sculpt3dScene::painter_escorre`,
+  `Some(edits)`): cada quadro continua a pousar o que a água muda, pela lei de
+  sempre, e **o traço e o escorrido são UM passo de desfazer**.
+* **O Painter diz se a água ainda corre** — `PainterTool::screen_canvas_is_flowing`,
+  o `has_fluid` da grelha: lido em casa quando o motor está na thread do quadro, e
+  publicado num atómico na ENTREGA ao worker quando não está. ⛔ Uma segunda
+  publicação dentro do worker foi **retirada por mutação** (E4 sobrevivia: a
+  entrega de cada tick já publica o valor verdadeiro).
+* **O fecho** é quando a água parou **e** o quadro não trouxe drenagem (a última
+  composição já pousada). Ele guarda a tela como molhada: `screen_canvas_is_wet`
+  passa a incluir a **sessão da água viva**, e o traço seguinte mistura-se com o
+  que ainda está no papel (mesma chave da `TelaMolhada` da aquarela).
+* **Toda outra porta que mexe na peça fecha primeiro** (`painter_fecha_o_que_escorre`):
+  o desfazer, uma tecla viva da escultura, o painel (que pode mudar a TOPOLOGIA com
+  o plano emprestado), um clique da escultura — e **a tela renascer** (a vista mudou
+  de tamanho). ⭐ **E a rede por baixo delas:** se o `edits` mudar desde o último
+  pouso DESTE traço, ele fecha antes do pouso seguinte (sem o pouso actualizar a
+  marca, o caminho dos vértices — onde cada pouso sobe o `edits` — fecharia no 1.º).
+* ⚠️ **A água continua a correr na TELA** depois de um fecho forçado; a peça é que
+  deixa de a receber, e o traço seguinte volta ao retrato fresco.
+
+### §9.3 — Gates e prova
+
+| onde | novos | o que afirmam |
+|---|---|---|
+| `screen_canvas_tests.rs` | 1 (+ sonda) | a água acabada de pousar corre, com o motor em casa e no worker; secada, pára nos dois; o Digital nunca escorre |
+| `tinta_no_produto_escorre.rs` (novo, placa) | 5 | a água chega à peça depois de largar, a pincelada fica aberta, fecha quando pára num passo só que o `Ctrl+Z` desfaz ao bit, e a tela fica molhada · `Ctrl+Z` com a água a correr desfaz o traço inteiro e a água deixa de chegar · sem tinta fina o traço fica aberto (o pouso não se lê como outra mão) · outra mão, o desfazer directo e a vista a mudar de tamanho fecham · o Digital fecha no pen-up |
+| `painter_fiacao_tests.rs` | +7 elos (24) | as quatro portas que fecham, a rede, a marca do pouso, as duas perguntas «corre?» |
+
+⚠️ **O gate sem tinta fina usa um pincel LARGO de propósito:** a água deixa uma
+linha de poucos píxeis que na peça grossa cai ENTRE as fileiras de vértices —
+medido, os três vértices sob o traço lêem o retrato ao bit. A linha fina é o que a
+tinta fina existe para receber.
+
+**Mutação versionada** (`muta_o_painter_na_peca.sh`, população nova `ESCORRE` —
+placa + `~20 s` em tempo real, só com `MUTA_PRODUTO=1`): **E1–E3, E5–E13**, mais
+**P4/P5/P6/P14/P15/T10** re-ancoradas (o fim do traço passou a uma função
+`termina`, partilhada pelo pen-up e pelo fecho da água). Corridas: **18 de 20** na
+1.ª, com **E4** (retirada, ver acima) e **E9** a sobreviver — a E9 porque o gate do
+`Ctrl+Z` entra pelo teclado, que já fecha antes; o gate ganhou o desfazer chamado
+DIRECTAMENTE, e a re-corrida dá **2 de 2**. Pré-voo `66/66`.
+
+### §9.4 — ⏳ O que fica, dito
+
+* A água que corre com a vista a ORBITAR continua a aterrar na peça pela vista
+  congelada no pen-down — certo como geometria, porque a tela está nessa vista.
+* Um fecho forçado deixa a água a correr numa tela que já não chega à peça.
+* **A outra metade da etapa 3 — o relevo do impasto — é a seguinte:** decisão do
+  dono (24/09): *relevo de LUZ, com a luz do cenário 3D* (a tinta ganha espessura
+  que pega a luz da cena; a forma da peça não muda).

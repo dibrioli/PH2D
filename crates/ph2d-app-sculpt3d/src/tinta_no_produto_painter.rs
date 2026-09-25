@@ -612,3 +612,7 @@ fn diag_de_que_e_feito_o_pen_down() {
     }
     entrega(&mut s, &mut p, 620.0, 450.0, 1.0, PointerPhase::Up);
 }
+
+// A tinta molhada que ESCORRE depois do pen-up (etapa 3) — filho pelo tecto de LOC.
+#[path = "tinta_no_produto_escorre.rs"]
+mod escorre;

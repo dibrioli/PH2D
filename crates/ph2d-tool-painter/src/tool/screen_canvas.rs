@@ -121,9 +121,23 @@ impl PainterTool {
     /// `dry_session_now`). É por isso que a escultura pergunta isto no fim de
     /// um traço antes de decidir se limpa a tela, e no pen-down antes de a
     /// semear.
+    ///
+    /// ⭐ **E a tinta molhada (`Wet Paint`) também:** com a sessão da água viva a
+    /// tela FICA pela mesma razão — semeá-la mataria a sessão (o guarda dela vê
+    /// o `canvas_rgba` trocado), e o traço seguinte deixaria de se misturar com o
+    /// que ainda está molhado.
     #[must_use]
     pub fn screen_canvas_is_wet(&self) -> bool {
-        self.on_screen_canvas() && self.wet_session_continues()
+        self.on_screen_canvas() && (self.wet_session_continues() || self.wet_paint_session_alive())
+    }
+
+    /// ⭐⭐ **A tinta molhada ainda ESCORRE na tela?** — a pincelada acabou de
+    /// mexer só quando isto fica falso (report do dono, etapa 3: *«a tinta
+    /// molhada escorre depois de largar»*). Enquanto for verdade, a escultura
+    /// mantém o traço aberto e continua a pousar o que a água muda.
+    #[must_use]
+    pub fn screen_canvas_is_flowing(&self) -> bool {
+        self.on_screen_canvas() && self.wet_paint_flowing()
     }
 
     /// **Solta a tela** — a escultura saiu do ecrã, e a ponte volta a poder

@@ -45,6 +45,12 @@ FICHEIROS=(
   crates/ph2d-tool-painter/src/tool/screen_canvas.rs
   crates/ph2d-app-sculpt3d/src/painter_na_malha.rs
   crates/ph2d-app-sculpt3d/src/cursor.rs
+  crates/ph2d-app-sculpt3d/src/undo.rs
+  crates/ph2d-app-sculpt3d/src/keys.rs
+  crates/ph2d-app-sculpt3d/src/panel.rs
+  crates/ph2d-app-sculpt3d/src/input_down.rs
+  crates/ph2d-tool-painter/src/tool/paint/wetpaint/offthread.rs
+  crates/ph2d-tool-painter/src/tool/paint/wetpaint/session.rs
   shells/desktop/src/sculpt3d_host.rs
   shells/desktop/src/input_dispatch/painter_canvas_input.rs
   shells/desktop/src/render_loop/fase_painter_dispatch.rs
@@ -65,13 +71,17 @@ PINTOR=(cargo test -p ph2d-tool-painter --lib screen_canvas)
 COSTURA=(cargo test -p ph2d-app-sculpt3d --lib painter_fiacao)
 PRODUTO=(cargo test -p ph2d-app-sculpt3d --lib
   tinta_no_produto_tests::painter::a_aquarela -- --ignored --nocapture)
+# A tinta molhada que ESCORRE depois de largar (etapa 3): placa + ~20 s em
+# tempo real (a água corre na thread dela), logo também só com `MUTA_PRODUTO=1`.
+ESCORRE=(cargo test -p ph2d-app-sculpt3d --lib
+  tinta_no_produto_tests::painter::escorre -- --ignored --nocapture)
 SEM_PLACA='no GPU adapter'
 
 corridos() { grep -oP 'test result: \w+\. \K[0-9]+(?= passed)|[0-9]+(?= failed)' | awk '{s+=$1}END{print s+0}'; }
 
 if [ -z "$SO_ANCORAS" ]; then
   pops=(LEI PINTOR COSTURA)
-  [ -n "$COM_PRODUTO" ] && pops+=(PRODUTO)
+  [ -n "$COM_PRODUTO" ] && pops+=(PRODUTO ESCORRE)
   for pop in "${pops[@]}"; do
     declare -n cmd="$pop"
     out=$("${cmd[@]}" 2>&1); rc=$?
@@ -86,7 +96,7 @@ sangram=0; total=0; controlos=0; ncontrolos=0
 muta() { # populacao  ficheiro  agulha  substituto  nome  [controlo]
   local pop="$1" f="$2" agulha="$3" subst="$4" nome="$5" controlo="${6:-}"
   if [ -n "$FILTRO" ] && ! [[ "$nome" =~ $FILTRO ]]; then return; fi
-  if [ "$pop" = PRODUTO ] && [ -z "$COM_PRODUTO" ] && [ -z "$SO_ANCORAS" ]; then return; fi
+  if { [ "$pop" = PRODUTO ] || [ "$pop" = ESCORRE ]; } && [ -z "$COM_PRODUTO" ] && [ -z "$SO_ANCORAS" ]; then return; fi
   total=$((total+1))
   [ -n "$controlo" ] && ncontrolos=$((ncontrolos+1))
   local n; n=$(python3 -c 'import sys;print(open(sys.argv[1]).read().count(sys.argv[2]))' "$f" "$agulha")
@@ -276,18 +286,21 @@ muta COSTURA shells/desktop/src/render_loop/fase_painter_dispatch.rs \
   'ph2d_app_sculpt3d::painter_na_malha::quadro_morto(' \
   'P3 a tela nunca é presa (mutação de TEXTO)'
 muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
-  '                s.painter_pousa(&f);' \
-  '                let _ = &f;' \
+  'let drenou = painter.take_screen_canvas().map(|f| s.painter_pousa(&f));' \
+  'let drenou = painter.take_screen_canvas().map(|f| {
+                let _ = &f;
+            });' \
   'P4 o traço só aparece quando o dedo sobe'
 muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
-  '        scene.painter_fecha();' \
-  '' \
+  '    scene.painter_fecha();
+    let ultima' \
+  '    let ultima' \
   'P5 o traço nunca fecha'
 muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
-  '            _ => {
-                painter.clear_screen_canvas();
-            }' \
-  '            _ => {}' \
+  '        _ => {
+            painter.clear_screen_canvas();
+        }' \
+  '        _ => {}' \
   'P6 a tela não se limpa depois do traço'
 muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
   '        None => painter.release_screen_canvas(),' \
@@ -323,7 +336,7 @@ muta PINTOR crates/ph2d-tool-painter/src/tool/screen_canvas.rs \
   '        if false {' \
   'T9 o anel do Liquify fica no tamanho do pincel de pintura'
 muta PINTOR crates/ph2d-tool-painter/src/tool/screen_canvas.rs \
-  'self.on_screen_canvas() && self.wet_session_continues()' \
+  'self.on_screen_canvas() && (self.wet_session_continues() || self.wet_paint_session_alive())' \
   'self.on_screen_canvas()' \
   'T10 o papel diz-se molhado depois de um traço Digital'
 muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
@@ -335,8 +348,8 @@ muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
   'if semeado' \
   'P14 a tela fica depois de TODO traço semeado, molhado ou não'
 muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
-  '                scene.painter_guarda(vista, retrato);' \
-  '                let _ = (vista, retrato);' \
+  '            scene.painter_guarda(vista, retrato);' \
+  '            let _ = (vista, retrato);' \
   'P15 a tela molhada nunca é guardada'
 muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
   '        self.painter_ultima = Some(Arc::clone(&f.rgba));' \
@@ -373,6 +386,64 @@ muta PRODUTO crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
   'self.vista == *vista && self.objeto == objeto && self.edits == edits' \
   'self.objeto == objeto && self.edits == edits' \
   'W4 a chave não vê a vista rodar'
+
+# ── ETAPA 3: a tinta molhada que ESCORRE depois de largar ─────────────────
+muta PINTOR crates/ph2d-tool-painter/src/tool/paint/wetpaint/offthread.rs \
+  '            EngineSlot::Here(e) => e.active_grid().has_fluid,' \
+  '            EngineSlot::Here(_e) => true,' \
+  'E1 com o motor em casa a água corre sempre'
+muta PINTOR crates/ph2d-tool-painter/src/tool/paint/wetpaint/offthread.rs \
+  '        w.fluid
+            .store(engine.active_grid().has_fluid, Ordering::Release);' \
+  '        let _ = &w.fluid;' \
+  'E2 a entrega não publica: a água secada em casa lê-se a correr'
+muta PINTOR crates/ph2d-tool-painter/src/tool/screen_canvas.rs \
+  '(self.wet_session_continues() || self.wet_paint_session_alive())' \
+  'self.wet_session_continues()' \
+  'E3 a sessão da água não segura a tela: o fecho mata-a'
+# (E4 — a publicação DENTRO do worker — foi retirada por esta prova: sobreviveu,
+#  porque a entrega de cada tick já publica o valor verdadeiro. Ver o doc do
+#  campo `fluid` no `offthread.rs`.)
+muta ESCORRE crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
+  'if scene.painter_tela.is_some() && painter.screen_canvas_is_flowing() {' \
+  'if false && scene.painter_tela.is_some() {' \
+  'E5 o traço fecha no pen-up com a água a correr'
+muta ESCORRE crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
+  '&& drenou.is_none()
+                && !painter.screen_canvas_is_flowing()' \
+  '&& drenou.is_none()' \
+  'E6 a pincelada fecha no 1.º quadro sem drenagem, com a água a correr'
+muta ESCORRE crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
+  '        if self.painter_escorre.is_some() {
+            self.painter_escorre = Some(self.edits);
+        }' \
+  '' \
+  'E7 o pouso da própria água lê-se como outra mão'
+muta ESCORRE crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
+  '            s.painter_escorre_se_a_peca_mudou();' \
+  '' \
+  'E8 outra mão mexe na peça e a água escreve por cima'
+muta ESCORRE crates/ph2d-app-sculpt3d/src/undo.rs \
+  '        self.painter_fecha_o_que_escorre();' \
+  '' \
+  'E9 o Ctrl+Z desfaz o passo anterior com a pincelada aberta'
+muta ESCORRE crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
+  '                s.painter_molhada = None;
+                s.painter_fecha();' \
+  '                s.painter_molhada = None;' \
+  'E10 a tela renasce e a pincelada continua aberta sobre ela'
+muta COSTURA crates/ph2d-app-sculpt3d/src/keys.rs \
+  '        scene.painter_fecha_o_que_escorre();' \
+  '' \
+  'E11 uma tecla da escultura mexe na peça com a pincelada aberta'
+muta COSTURA crates/ph2d-app-sculpt3d/src/panel.rs \
+  '        self.painter_fecha_o_que_escorre();' \
+  '' \
+  'E12 o painel muda a peça com o plano emprestado'
+muta COSTURA crates/ph2d-app-sculpt3d/src/input_down.rs \
+  '    scene.painter_fecha_o_que_escorre();' \
+  '' \
+  'E13 um clique da escultura abre um traço por cima da pincelada aberta'
 
 # ── O CONTROLO — tem de SOBREVIVER ──────────────────────────────────────────
 muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \

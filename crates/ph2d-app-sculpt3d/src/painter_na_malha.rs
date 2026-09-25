@@ -89,9 +89,17 @@ pub fn quadro(scene: Option<&mut Sculpt3dScene>, painter: Option<&mut PainterToo
     };
     match scene {
         Some(s) if s.tela_do_painter().is_some() => {
+            // ⭐ Outra mão mexeu na peça com a tinta a escorrer: o traço fecha
+            // ANTES de pousar, senão a água escreveria sobre a mudança dela.
+            s.painter_escorre_se_a_peca_mudou();
             // Pousa ANTES de redimensionar: a tinta em voo é da tela de antes.
-            if let Some(f) = painter.take_screen_canvas() {
-                s.painter_pousa(&f);
+            let drenou = painter.take_screen_canvas().map(|f| s.painter_pousa(&f));
+            // ⭐⭐ A água parou E a última drenagem já chegou: a pincelada acaba.
+            if s.painter_escorre.is_some()
+                && drenou.is_none()
+                && !painter.screen_canvas_is_flowing()
+            {
+                termina(s, painter);
             }
             // Uma tela que nasce (ou muda de tamanho) é transparente: a molhada
             // que estava guardada deixou de estar nela.
@@ -99,6 +107,7 @@ pub fn quadro(scene: Option<&mut Sculpt3dScene>, painter: Option<&mut PainterToo
                 && painter.bind_screen_canvas(w, h)
             {
                 s.painter_molhada = None;
+                s.painter_fecha();
             }
             s.painter_raio_px = Some(painter.screen_canvas_ring_px());
         }
@@ -155,22 +164,36 @@ pub fn entrega(
         if let Some(f) = painter.take_screen_canvas() {
             scene.painter_pousa(&f);
         }
-        // A vista ANTES do fecho: é ele que larga a sessão.
-        let vista = scene.painter_tela.as_ref().map(|s| *s.vista());
-        let semeado = scene.painter_tela.as_ref().is_some_and(|s| s.tem_semente());
-        scene.painter_fecha();
-        let ultima = scene.painter_ultima.take();
-        // ⭐⭐ Papel molhado ⇒ a tela FICA: limpá-la secava-o.
-        match (vista, ultima) {
-            (Some(vista), Some(retrato)) if semeado && painter.screen_canvas_is_wet() => {
-                scene.painter_guarda(vista, retrato);
-            }
-            _ => {
-                painter.clear_screen_canvas();
-            }
+        // ⭐⭐ **A tinta molhada ainda escorre:** o traço FICA aberto, e cada
+        // quadro continua a pousar o que a água muda ([`quadro`]). Um só passo
+        // de desfazer para o traço e para o que ele escorreu.
+        if scene.painter_tela.is_some() && painter.screen_canvas_is_flowing() {
+            scene.painter_escorre = Some(scene.edits);
+        } else {
+            termina(scene, painter);
         }
     }
     consumed
+}
+
+/// ⭐ **O fim de uma pincelada do Painter** — no pen-up, ou quando a água que ela
+/// deixou a escorrer parou. Fecha o traço, e decide se a tela FICA (papel
+/// molhado) ou se limpa.
+fn termina(scene: &mut Sculpt3dScene, painter: &mut PainterTool) {
+    // A vista ANTES do fecho: é ele que larga a sessão.
+    let vista = scene.painter_tela.as_ref().map(|s| *s.vista());
+    let semeado = scene.painter_tela.as_ref().is_some_and(|s| s.tem_semente());
+    scene.painter_fecha();
+    let ultima = scene.painter_ultima.take();
+    // ⭐⭐ Papel molhado ⇒ a tela FICA: limpá-la secava-o.
+    match (vista, ultima) {
+        (Some(vista), Some(retrato)) if semeado && painter.screen_canvas_is_wet() => {
+            scene.painter_guarda(vista, retrato);
+        }
+        _ => {
+            painter.clear_screen_canvas();
+        }
+    }
 }
 
 impl Sculpt3dScene {
@@ -311,12 +334,39 @@ impl Sculpt3dScene {
         if !vertices.is_empty() {
             Self::mesh_changed(&mut o.dirty, &mut self.edits, &vertices);
         }
+        // O pouso é DESTE traço: a mudança do `edits` não é de outra mão.
+        if self.painter_escorre.is_some() {
+            self.painter_escorre = Some(self.edits);
+        }
     }
 
     /// **Fecha a pincelada** — o desfazer é gravado pela porta de todo traço.
     pub(crate) fn painter_fecha(&mut self) {
+        self.painter_escorre = None;
         if self.painter_tela.take().is_some() {
             self.close_stroke();
+        }
+    }
+
+    /// ⭐⭐ **Fecha a pincelada que ESCORRE** — e só essa: um traço com o dedo
+    /// em baixo continua do gesto que o abriu. Chamada por toda porta que mexe
+    /// na peça (o desfazer, as teclas, o painel, um clique da escultura), porque
+    /// a pincelada que escorre pode durar `~20 s` e o artista não espera por ela.
+    ///
+    /// ⚠️ A tela do Painter fica como está e a água continua a correr NELA; a
+    /// peça é que deixa de a receber. O traço seguinte volta ao retrato fresco.
+    pub(crate) fn painter_fecha_o_que_escorre(&mut self) {
+        if self.painter_escorre.is_some() {
+            self.painter_fecha();
+            self.painter_molhada = None;
+        }
+    }
+
+    /// A rede de segurança das portas acima: o `edits` mudou desde o último
+    /// pouso DESTE traço ⇒ outra mão mexeu na peça, e o traço fecha.
+    fn painter_escorre_se_a_peca_mudou(&mut self) {
+        if self.painter_escorre.is_some_and(|e| e != self.edits) {
+            self.painter_fecha_o_que_escorre();
         }
     }
 }

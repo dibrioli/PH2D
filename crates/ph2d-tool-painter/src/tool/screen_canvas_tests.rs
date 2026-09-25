@@ -478,3 +478,95 @@ fn a_aquarela_fica_molhada_ate_a_tela_ser_limpa() {
         "semear um retrato novo não secou o papel"
     );
 }
+
+/// ⭐⭐ **A tinta molhada diz se ainda ESCORRE** (etapa 3) — é a pergunta de
+/// que a escultura depende para manter a pincelada aberta depois do pen-up e
+/// para a fechar quando a água pára. Com o motor em casa lê a grelha; com ele
+/// no worker, o que o worker publicou (e a entrega publica-o também, senão a
+/// água secada em casa leria-se «a correr» até ao primeiro passo). O CONTROLO é
+/// o pincel `Digital`, que nunca escorre.
+#[test]
+fn a_tinta_molhada_diz_se_ainda_escorre() {
+    let cinza = || [128u8, 128, 128, 255].repeat((W * H) as usize);
+    let mut d = pintor();
+    assert!(d.bind_screen_canvas(W, H));
+    traco(&mut d);
+    assert!(
+        !d.screen_canvas_is_flowing(),
+        "o CONTROLO: o Digital não escorre"
+    );
+
+    let mut t = pintor();
+    t.set_paint_media(PaintMedia::WetPaint);
+    assert!(t.bind_screen_canvas(W, H));
+    assert!(t.seed_screen_canvas(cinza()));
+    traco(&mut t);
+    assert!(
+        t.screen_canvas_is_flowing(),
+        "a água acabada de pousar corre"
+    );
+    assert!(t.screen_canvas_is_wet(), "a sessão viva segura a tela");
+    t.on_tick(16.7); // entrega o motor ao worker
+    assert!(
+        t.screen_canvas_is_flowing(),
+        "com o motor no worker ainda corre"
+    );
+    t.wetpaint_fast_dry();
+    assert!(
+        !t.screen_canvas_is_flowing(),
+        "secada, a água parou (motor em casa)"
+    );
+    t.on_tick(16.7);
+    assert!(
+        !t.screen_canvas_is_flowing(),
+        "secada, a água parou (motor no worker, antes de um passo fechar)"
+    );
+}
+
+/// 🔎 **SONDA (não é gate) — a tinta molhada DEPOIS do pen-up, na tela da vista.**
+/// Um traço de Wet Paint sobre uma tela semeada de cinzento; depois do `Up`, o
+/// relógio corre em tempo REAL (a simulação vive noutra thread) e cada quadro
+/// drena a tela: imprime quantos píxeis mudaram e o rectângulo, até a água parar.
+#[test]
+#[ignore = "sonda: imprime a tabela e corre em tempo real"]
+fn diag_a_tinta_molhada_depois_do_pen_up() {
+    let (w, h) = (200u32, 150u32);
+    let mut t = pintor();
+    t.set_brush_size_px(18.0);
+    t.set_paint_media(PaintMedia::WetPaint);
+    assert!(t.bind_screen_canvas(w, h));
+    assert!(t.seed_screen_canvas([128u8, 128, 128, 255].repeat((w * h) as usize)));
+    t.on_canvas_pointer(cp([40.0, 75.0], PointerPhase::Down));
+    for k in 1..=30 {
+        t.on_canvas_pointer(cp([40.0 + 4.0 * k as f32, 75.0], PointerPhase::Move));
+        t.on_tick(16.7);
+    }
+    t.on_canvas_pointer(cp([160.0, 75.0], PointerPhase::Up));
+    let mut antes = t.take_screen_canvas().map(|f| f.rgba.as_ref().clone());
+    let t0 = std::time::Instant::now();
+    let (mut soma, mut pior, mut quadros) = (0usize, 0u8, 0u32);
+    for q in 1..=1800u32 {
+        std::thread::sleep(std::time::Duration::from_millis(16));
+        t.on_tick(16.7);
+        if let Some(f) = t.take_screen_canvas() {
+            if let Some(a) = &antes {
+                for (x, y) in f.rgba.iter().zip(a) {
+                    if x != y {
+                        soma += 1;
+                        pior = pior.max(x.abs_diff(*y));
+                    }
+                }
+                quadros += 1;
+            }
+            antes = Some(f.rgba.as_ref().clone());
+        }
+        if q % 60 == 0 {
+            eprintln!(
+                "t={:5.1}s: {quadros:2} drenagens · {soma:6} bytes mudaram · maior salto {pior} · escorre {}",
+                t0.elapsed().as_secs_f32(),
+                t.screen_canvas_is_flowing()
+            );
+            (soma, pior, quadros) = (0, 0, 0);
+        }
+    }
+}

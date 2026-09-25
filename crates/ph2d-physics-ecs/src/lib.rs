@@ -78,12 +78,12 @@ pub use bridge::{
 pub use components::{
     AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaForceWorldAxes, AreaFormDrag,
     AreaTorque, BodyKind, Ccd, Collider, ColliderShape, CombineRule, Damage, DampMode,
-    DampingOverride, Dominance, GravityScale, Health, HealthNow, InitialVelocity, LockPositionX,
-    LockPositionY, LockRotation, MassOverride, MaterialCombine, NoWallCling, OnHit, OneWayPlatform,
-    PlatformLift, PlatformPlayer, PlayerMode, PlayerSignals, ProjectileMotion, PulleyWheel, RayHit,
-    RaySensor, RaySignals, RigidBody, RopeStops, SignalOnHit, SignalOnLeave, SignalTagFilter,
-    TopDownPlayer, WalkSurface, WestonAxle, WrapSide, reseat_mounted_axle, reseat_wheel_geometry,
-    rope_joint_of,
+    DampingOverride, Dominance, GravityScale, Health, HealthBar, HealthNow, InitialVelocity,
+    LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine, NoWallCling, OnHit,
+    OneWayPlatform, PlatformLift, PlatformPlayer, PlayerMode, PlayerSignals, ProjectileMotion,
+    PulleyWheel, RayHit, RaySensor, RaySignals, RigidBody, RopeStops, SignalOnHit, SignalOnLeave,
+    SignalTagFilter, TopDownPlayer, WalkSurface, WestonAxle, WrapSide, reseat_mounted_axle,
+    reseat_wheel_geometry, rope_joint_of,
 };
 pub use interaction::{
     HoldMode, InteractionSettings, InteractionTool, MAX_ATTRACT_FORCE, MAX_BLAST_IMPULSE,
@@ -228,6 +228,9 @@ pub fn register_physics_components(reg: &mut ComponentRegistry) {
     // `Ctrl+Z` e ao ficheiro de uma vez.* Gate: `o_que_o_molde_tem_a_copia_tem`.
     reg.register_default::<Health>("ph2d::physics::Health");
     reg.register_default::<Damage>("ph2d::physics::Damage");
+    // ⭐ **A BARRA DE VIDA** (plano 28, W4) — registada no MESMO commit que a secção e o descritor,
+    // pela lição da W3: sem o registo a cópia de um molde nascia SEM barra.
+    reg.register_default::<HealthBar>("ph2d::physics::HealthBar");
     reg.register_default::<PlayerMode>("ph2d::physics::PlayerMode");
     reg.register_default::<WalkSurface>("ph2d::physics::WalkSurface");
     reg.register_default::<NoWallCling>("ph2d::physics::NoWallCling");
@@ -256,7 +259,10 @@ mod tests {
         // FICHEIRO passa a poder conter.
         // ⭐ **+2 (plano 28, W3: `Health` e `Damage`)** ⇒ `37 -> 39`, e o delta contra o `main`
         // passa a **+7**. Dois tipos e UM degrau de `PROJECT_SCHEMA`, como o raio.
-        assert_eq!(reg.len(), 39);
+        // ⭐ **+1 (plano 28, W4: `HealthBar`)** ⇒ `39 -> 40`, e o delta contra o `main` passa a
+        // **+8**.
+        assert_eq!(reg.len(), 40);
+        assert!(reg.get_by_name("ph2d::physics::HealthBar").is_some());
         assert!(reg.get_by_name("ph2d::physics::Health").is_some());
         assert!(reg.get_by_name("ph2d::physics::Damage").is_some());
         assert!(reg.get_by_name("ph2d::physics::RaySensor").is_some());

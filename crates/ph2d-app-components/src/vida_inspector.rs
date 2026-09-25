@@ -12,9 +12,10 @@
 
 use ph2d_ecs::{Entity, SimWorld, World};
 use ph2d_editor_core::vida_edits::{
-    InspectorDamageInfo, InspectorHealthInfo, InspectorVidaInfo, VidaAgora, VidaFieldEdit as E,
+    BarraAlvo, InspectorBarInfo, InspectorDamageInfo, InspectorHealthInfo, InspectorVidaInfo,
+    VidaAgora, VidaFieldEdit as E,
 };
-use ph2d_physics_ecs::{Damage, Health, HealthNow, OnHit, RigidBody};
+use ph2d_physics_ecs::{Damage, Health, HealthBar, HealthNow, OnHit, RigidBody};
 
 fn health_info(h: &Health, agora: Option<&HealthNow>) -> InspectorHealthInfo {
     InspectorHealthInfo {
@@ -57,7 +58,34 @@ fn damage_info(d: &Damage) -> InspectorDamageInfo {
     }
 }
 
-/// **O instantâneo.** `None` para quem não tem nem vida nem dano (ADR-0166).
+/// **A barra e o que ela encontrou** (plano 28, W4) — o alvo e a vida saem das MESMAS portas que a
+/// ponte usa ao desenhar ([`crate::health_bar_bridge::alvo_da_barra`] e
+/// [`crate::health_bar_bridge::vida_da_barra`]).
+fn bar_info(world: &World, dono: Entity, b: &HealthBar) -> InspectorBarInfo {
+    use crate::health_bar_bridge::{alvo_da_barra, vida_da_barra};
+    let alvo = match alvo_da_barra(world, dono, &b.target) {
+        None => BarraAlvo::SemAlvo,
+        Some(a) => vida_da_barra(world, a).map_or(BarraAlvo::SemVida, |(pontos, max)| {
+            BarraAlvo::Mostra { pontos, max }
+        }),
+    };
+    InspectorBarInfo {
+        target: b.target.clone(),
+        width: b.width,
+        height: b.height,
+        offset_x: b.offset_x,
+        offset_y: b.offset_y,
+        fill: b.fill,
+        trail: b.trail,
+        back: b.back,
+        trail_delay_s: b.trail_delay_s,
+        trail_speed: b.trail_speed,
+        hide_when_full: b.hide_when_full,
+        alvo,
+    }
+}
+
+/// **O instantâneo.** `None` para quem não tem vida, nem dano, nem barra (ADR-0166).
 #[must_use]
 pub fn build_vida_info(
     world: &World,
@@ -70,13 +98,15 @@ pub fn build_vida_info(
         .get::<Health>(e)
         .map(|h| health_info(h, world.get::<HealthNow>(e)));
     let damage = world.get::<Damage>(e).map(damage_info);
-    if health.is_none() && damage.is_none() {
+    let bar = world.get::<HealthBar>(e).map(|b| bar_info(world, e, b));
+    if health.is_none() && damage.is_none() && bar.is_none() {
         return None;
     }
     Some(InspectorVidaInfo {
         entity_bits: bits,
         health,
         damage,
+        bar,
         has_body: world.get::<RigidBody>(e).is_some(),
         clock_playing,
         selected_count,
@@ -142,6 +172,35 @@ fn apply_damage(d: &mut Damage, edit: &E) -> bool {
     true
 }
 
+/// Uma cor com os quatro canais em `0..=1` — a amostra só produz isso, e outra rota (um script, um
+/// ficheiro) não pode pôr um `NaN` no tinte de uma faixa.
+fn cor(c: [f32; 4]) -> [f32; 4] {
+    c.map(fraccao)
+}
+
+/// **Uma edição da BARRA.** `true` = tocou no mundo.
+///
+/// ⚠️ **Os deslocamentos são LIVRES** (uma barra pode ir abaixo ou ao lado) — só o não-finito cai
+/// a zero; o tamanho, o atraso e a velocidade são `≥ 0`.
+fn apply_bar(b: &mut HealthBar, edit: &E) -> bool {
+    let livre = |v: f32| if v.is_finite() { v } else { 0.0 };
+    match edit {
+        E::BarTarget(t) => b.target = t.trim().to_string(),
+        E::BarWidth(v) => b.width = positivo(*v),
+        E::BarHeight(v) => b.height = positivo(*v),
+        E::BarOffsetX(v) => b.offset_x = livre(*v),
+        E::BarOffsetY(v) => b.offset_y = livre(*v),
+        E::BarFill(c) => b.fill = cor(*c),
+        E::BarTrail(c) => b.trail = cor(*c),
+        E::BarBack(c) => b.back = cor(*c),
+        E::BarTrailDelayS(v) => b.trail_delay_s = positivo(*v),
+        E::BarTrailSpeed(v) => b.trail_speed = positivo(*v),
+        E::BarHideWhenFull(on) => b.hide_when_full = *on,
+        _ => return false,
+    }
+    true
+}
+
 /// **O dreno de UMA edição.** `true` = tocou no mundo.
 ///
 /// ⚠️ Cada edição só tem sujeito num dos dois componentes: a do dano sobre um objecto sem `Damage`
@@ -157,8 +216,13 @@ pub fn apply(sim: &mut SimWorld, bits: u64, edit: &E) -> bool {
     {
         return true;
     }
-    w.get_mut::<Damage>(e)
-        .is_some_and(|mut d| apply_damage(&mut d, edit))
+    if let Some(mut d) = w.get_mut::<Damage>(e)
+        && apply_damage(&mut d, edit)
+    {
+        return true;
+    }
+    w.get_mut::<HealthBar>(e)
+        .is_some_and(|mut b| apply_bar(&mut b, edit))
 }
 
 /// **O dreno do quadro.** `true` = alguma tocou no mundo.

@@ -47,6 +47,8 @@ pub(super) struct FrameGfx<'a> {
     pub(super) script: &'a mut Option<ScriptHost>,
     /// ⭐ Os emissores de partículas a correr (TOP-20 #18).
     pub(super) particles: &'a mut ph2d_app_components::particles_bridge::ParticlesState,
+    /// ⭐ As barras de vida a correr (plano 28, W4).
+    pub(super) health_bars: &'a mut ph2d_app_components::health_bar_bridge::HealthBarsState,
     pub(super) theme: &'a mut Theme,
     pub(super) zen: &'a mut ZenMode,
     pub(super) toasts: &'a mut ToastQueue,
@@ -132,6 +134,7 @@ impl<'a> FrameGfx<'a> {
             atlas_is_real: _,
             script,
             particles,
+            health_bars,
             theme,
             zen,
             toasts,
@@ -250,6 +253,7 @@ impl<'a> FrameGfx<'a> {
             asset_db,
             script,
             particles,
+            health_bars,
             theme,
             zen,
             toasts,

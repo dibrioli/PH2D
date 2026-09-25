@@ -52,6 +52,9 @@ pub(crate) struct AppGfx {
     /// componente, FORA do mundo: o que uma corrida de partículas guarda não é documento (a lei do
     /// `Spawned`), e registá-lo poria cada tique na pilha de `Ctrl+Z`.
     pub(crate) particles: ph2d_app_components::particles_bridge::ParticlesState,
+    /// ⭐ **As BARRAS DE VIDA a correr** (plano 28, W4) — o rasto de cada barra, FORA do mundo pela
+    /// mesma razão das partículas: o que escorre numa corrida não é documento.
+    pub(crate) health_bars: ph2d_app_components::health_bar_bridge::HealthBarsState,
     /// M12 editor data layer + M11 widget paint pass.
     pub(crate) theme: Theme,
     pub(crate) zen: ZenMode,

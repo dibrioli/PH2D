@@ -60,6 +60,7 @@ fn renascer_a_corrida(
     sim: &mut ph2d_ecs::SimWorld,
     script: &mut Option<ph2d_script::ScriptHost>,
     particles: &mut ph2d_app_components::particles_bridge::ParticlesState,
+    health_bars: &mut ph2d_app_components::health_bar_bridge::HealthBarsState,
     drive: &mut ph2d_preview_drive::PreviewDrive,
     motivo: ph2d_ecs::rewind_runtime::Renascimento,
 ) -> usize {
@@ -74,6 +75,9 @@ fn renascer_a_corrida(
     // ⭐ **E os EMISSORES DE PARTÍCULAS** (TOP-20 #18): uma corrida de partículas não é um
     // componente (não está no mundo), então a porta da família `Logic` também não a alcança.
     repostos += particles.rewind();
+    // ⭐ **E os RASTOS das barras de vida** (plano 28, W4): sem isto uma vida que curou acima do
+    // `start` e volta a ele ao rebobinar deixava um rasto a escorrer — um golpe que ninguém deu.
+    repostos += health_bars.rewind();
     varridas + repostos
 }
 
@@ -124,6 +128,7 @@ fn servir_o_recomeco(
     sim: &mut ph2d_ecs::SimWorld,
     script: &mut Option<ph2d_script::ScriptHost>,
     particles: &mut ph2d_app_components::particles_bridge::ParticlesState,
+    health_bars: &mut ph2d_app_components::health_bar_bridge::HealthBarsState,
     drive: &mut ph2d_preview_drive::PreviewDrive,
 ) {
     if !recomecar || !playhead.is_playing() {
@@ -163,6 +168,7 @@ fn servir_o_recomeco(
         sim,
         script,
         particles,
+        health_bars,
         drive,
         ph2d_ecs::rewind_runtime::Renascimento::Recomecar,
     );
@@ -213,6 +219,7 @@ impl crate::App {
             physics,
             script,
             particles,
+            health_bars,
             ..
         } = FrameGfx::of(gfx);
         let registry: &ph2d_ecs::scene::ComponentRegistry = component_registry;
@@ -320,6 +327,7 @@ impl crate::App {
                 sim,
                 script,
                 particles,
+                health_bars,
                 &mut self.preview_drive,
                 ph2d_ecs::rewind_runtime::Renascimento::Rebobinar,
             );
@@ -352,6 +360,7 @@ impl crate::App {
             sim,
             script,
             particles,
+            health_bars,
             &mut self.preview_drive,
         );
     }

@@ -557,4 +557,11 @@
 /// espelhos (`ph2d-render`, `ph2d-script`) NÃO se mexem.
 ///
 /// ⛔ **Sem degrau de migração**, pela mesma decisão — um v168 é recusado em voz alta.
-pub(crate) const PROJECT_SCHEMA: u32 = 169;
+///
+/// # ⭐ 169 → 170 (2026-09-24) — a BARRA DE VIDA (plano 28, W4)
+///
+/// `HealthBar` passa a REGISTADO — um tipo e um degrau, componente da FÍSICA (o registo dela `+1`,
+/// os espelhos não se mexem). Registado no mesmo commit que a secção do Inspector e o descritor.
+///
+/// ⛔ **Sem degrau de migração**, pela mesma decisão — um v169 é recusado em voz alta.
+pub(crate) const PROJECT_SCHEMA: u32 = 170;

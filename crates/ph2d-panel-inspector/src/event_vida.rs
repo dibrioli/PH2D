@@ -18,6 +18,7 @@ use crate::ids;
 fn caixa(id: ph2d_a11y::NodeId, i: &InspectorVidaInfo) -> Option<E> {
     let h = i.health.as_ref();
     let d = i.damage.as_ref();
+    let b = i.bar.as_ref();
     Some(match id {
         ids::INSP_VIDA_OVERHEAL => E::Overheal(!h?.overheal),
         ids::INSP_VIDA_SHIELD_BLOCKS => E::ShieldBlocksExcess(!h?.shield_blocks_excess),
@@ -25,6 +26,7 @@ fn caixa(id: ph2d_a11y::NodeId, i: &InspectorVidaInfo) -> Option<E> {
         ids::INSP_DANO_IGNORES_SHIELD => E::IgnoresShield(!d?.ignores_shield),
         ids::INSP_DANO_IGNORES_ARMOR => E::IgnoresArmor(!d?.ignores_armor),
         ids::INSP_DANO_VANISH => E::Vanish(!d?.vanish),
+        ids::INSP_BARRA_HIDE_FULL => E::BarHideWhenFull(!b?.hide_when_full),
         _ => return None,
     })
 }
@@ -53,6 +55,12 @@ fn numero(id: ph2d_a11y::NodeId, v: f64) -> Option<E> {
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         ids::INSP_VIDA_SEED => E::Seed(v.max(0.0).round() as u64),
         ids::INSP_DANO_AMOUNT => E::DamageAmount(f),
+        ids::INSP_BARRA_WIDTH => E::BarWidth(f),
+        ids::INSP_BARRA_HEIGHT => E::BarHeight(f),
+        ids::INSP_BARRA_OFFSET_X => E::BarOffsetX(f),
+        ids::INSP_BARRA_OFFSET_Y => E::BarOffsetY(f),
+        ids::INSP_BARRA_TRAIL_DELAY => E::BarTrailDelayS(f),
+        ids::INSP_BARRA_TRAIL_SPEED => E::BarTrailSpeed(f),
         _ => return None,
     })
 }
@@ -65,6 +73,7 @@ fn texto(id: ph2d_a11y::NodeId, t: String) -> Option<E> {
         ids::INSP_VIDA_ON_HEAL => E::OnHeal(t),
         ids::INSP_VIDA_ON_DEATH => E::OnDeath(t),
         ids::INSP_DANO_TEAM => E::DamageTeam(t),
+        ids::INSP_BARRA_TARGET => E::BarTarget(t),
         _ => return None,
     })
 }

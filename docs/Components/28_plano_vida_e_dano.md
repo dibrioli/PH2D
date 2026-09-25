@@ -437,3 +437,94 @@ sabia SE o verbo lia o argumento e não O QUÊ. ⇒ `SignalVerb::arg_kind` (`Tim
 tradução na shell, as três dicas distintas e presentes na tabela de textos — e as duas mutações
 das pontas novas sangram. Portão: `nextest-impacted` **17 821 / 17 821** · clippy · censos
 **127 / 127**.
+
+## §11 — ✅ W4 FECHADA (2026-09-24): a BARRA DE VIDA — sobre a cabeça, no placar, com rasto
+
+### §11.1 — O que se constrói
+
+- **A lei do rasto** ([`ph2d_hud::barra`](../../crates/ph2d-hud/src/barra.rs), pura): `Rasto
+  { valor, ultimo, espera_s }` e `avanca` — um golpe recomeça a espera, depois da espera o rasto
+  escorre a velocidade constante, uma cura puxa-o para cima, ele nunca fica abaixo da vida, e um
+  `dt` inválido não o anda. `faixas` devolve **fundo → rasto → vida**, a crescer da esquerda.
+- **O componente** `HealthBar` (`ph2d-physics-ecs`, **registado**): `target` (o NOME de outro
+  objecto, **vazio = este**), tamanho, deslocamento, três cores, atraso e velocidade do rasto,
+  `hide_when_full`. ⚠️ `PROJECT_SCHEMA` **169 → 170** e o registo da física **+1** (o gate da contagem
+  foi a `40`, delta **+8** contra o `main`); ⛔ os espelhos não se mexem.
+- **A ponte** ([`health_bar_bridge`](../../crates/ph2d-app-components/src/health_bar_bridge.rs)): o
+  rasto de cada barra vive FORA do mundo (a lei das partículas: o que escorre numa corrida não é
+  documento), e cada quadro produz três `RenderInstance` no ladrilho branco com `z_order = u32::MAX`,
+  entregues no slot `extra` do passe de sprites (o **quinto** produtor). **Rebobinar é renascer**
+  (`renascer_a_corrida`). A barra segue a **posição e a escala** de quem a carrega e **nunca a
+  rotação** — uma barra torta não se lê.
+- **Duas portas públicas com dois leitores cada:** `alvo_da_barra` e `vida_da_barra` — a ponte ao
+  desenhar e o Inspector ao dizer o que a barra encontrou. *Escritas duas vezes, o painel diria
+  «30 de 30» sobre uma barra que a tela desenha vazia.*
+- **A secção `Health Bar`** do Inspector, **terceira da família** Health/Damage (o mesmo
+  instantâneo, as mesmas edições, o mesmo dreno — ⇒ **zero** fiação nova na shell para o painel): a
+  primeira linha diz **de quem** é a vida (`Shows 25 of 30` · *ninguém com esse nome* · *sem vida*),
+  depois o alvo, os seis números, **três amostras de cor** (`register_picker_swatch`, sem braço de
+  clique — a lei das amostras de script) e a caixa `Hide If Full`. ⚠️ Uma barra SOZINHA (o placar)
+  **não se queixa de corpo**: só a vida e o dano precisam dele.
+
+### §11.2 — ⭐⭐⭐ A medição que abria a wave: quanto custa uma barra por inimigo
+
+A sonda `mede_o_custo_de_n_barras` (`--release`, `#[ignore]`, à mão) leu à **primeira** um custo
+**super-linear** — `100 → 0,013 ms`, `1 000 → 0,387`, `10 000 → 22,9 ms` (`137 %` de um quadro): dez
+vezes as barras custavam `59×` o tempo. ⛔ **Era meu, e eram DOIS:** a limpeza dos rastos fazia um
+`any` linear dentro de um `retain` (`O(n²)`), e uma barra com `target` nomeado varria o mundo **por
+barra**. Com o conjunto vivo num `BTreeSet` e um memo de nome **por quadro**:
+
+| barras | ms / quadro | % de 16,67 ms |
+|---|---|---|
+| 100 | 0,009 | 0,1 % |
+| 1 000 | 0,098 | 0,6 % |
+| 10 000 | 1,956 | 11,7 % |
+
+(`loadavg 14,87`, logo a coluna é tecto e não média.) ⇒ **nenhum `MAX_*`**: o número que a sonda dá
+é o que diz se um tecto é preciso, e a `10 000` inimigos na tela a barra custa um oitavo de um quadro.
+
+### §11.3 — A cena: uma barra por alvo e o PLACAR — e o que a FOTO apanhou
+
+A cena da vida ganhou uma barra em cada receita de alvo (a cópia leva-a com o resto) e um **placar**
+no alto: um objecto **sem vida** cuja barra mostra a do roxo **pelo nome** — a forma do HUD, pela
+mesma porta. ⚠️ **O placar nomeia a CÓPIA** (`Alvo de 3 tiros (1)`): a porta de cópia dá a cada
+cópia um nome livre e o molde já tem o nome sem sufixo — um gate prova que a cópia que a fábrica faz
+é essa, senão o placar diria *«ninguém com esse nome»* com todos os outros gates verdes.
+
+⛔ **A foto apanhou a barra do alvo de cima CORTADA pela borda da banda visível** (`0,62` com a altura
+de fábrica acabava exactamente em `+4,09`) ⇒ `BARRA_Y = 0,57` e `BARRA_H = 0,1`, com gate nas três
+cercas (o próprio alvo · o de cima · a borda). ⭐ E uma **variante temporária, nunca commitada**, da
+cena (o relógio de arranque também envenena o roxo, e o rasto dele segura dez minutos) fotografou o
+rasto: `25 de 30` a verde com o pedaço perdido a **branco**, e no placar o mesmo rasto já escorrido
+até ao fundo. ⚠️ Os moldes do meio do ecrã **não** têm barra — e a ponte exclui-os pelas **duas**
+marcas (`MasterPiece` e `MasterRoot`), porque o `MasterPiece` é derivado por um passe e antes dele
+só a raiz existe.
+
+### §11.4 — ⛔⛔ A prova de mutação apanhou TRÊS réguas minhas — e matou uma linha de produto
+
+[`mutacao_vida_w4_2026-09-24.sh`](ferramentas/mutacao_vida_w4_2026-09-24.sh), **36 / 36 sangram**
+depois das curas (a 1.ª corrida deixou três vivas e duas abortadas por agulhas que o `fmt` mudou):
+
+- **L2 sobreviveu e o RAMO foi APAGADO:** o retorno cedo *«a cura cola o rasto»* não mudava um bit
+  observável — o `max(agora)` do fim já o fazia. *Uma linha que a mutação não consegue matar não é
+  lei, é comentário com sintaxe de código.*
+- **B4 sobreviveu por FIXTURA:** o molde homónimo nascia DEPOIS do herói, logo nunca ganhava o
+  empate da identidade e a cerca dele era invisível. ⚠️ E a 1.ª cura ainda falhava: sem `Transform`
+  o molde nem recebe identidade.
+- **I2 sobreviveu por fixtura no NEUTRO:** o dreno só via um deslocamento vertical positivo, e a
+  mutação que o prende a `≥ 0` passava.
+
+### §11.5 — Portão
+
+`nextest-impacted` **17 910 / 17 912** com as duas reprovadas a serem a varredura das elisões no
+degrau estreito — o rótulo novo `Hide When Full` era cortado; a cura é `Hide If Full` (*um nome perde
+a explicação antes de perder letras*), e a varredura em âmbito de workspace fecha **12 / 12** ·
+clippy `-D warnings` a zero nas nove crates tocadas · fmt · censos da árvore combinada **127 / 127**
+· catraca da shell verde · gate de TEXTO novo na shell (as barras correm · são desenhadas · renascem).
+
+### §11.6 — ⏳ O que fica (fronteiras nomeadas)
+
+- uma barra filha de um `UiCanvas` segue a raiz conduzida pela propagação das poses — o placar da
+  cena é um objecto de mundo, e **nenhum gate** mede a barra dentro de um canvas;
+- a barra lê a vida de UM objecto; *«a vida de todos os inimigos»* seria outra grandeza;
+- a bala **só-sensor** (defeito G) continua aberta.

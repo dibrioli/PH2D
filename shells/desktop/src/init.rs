@@ -215,6 +215,13 @@ pub(crate) fn build_initial_state(
             p.uv = motion_default_uv;
             p
         },
+        // ⭐ As barras de vida (plano 28, W4) — o mesmo ladrilho branco: uma faixa é um quad opaco
+        // tingido.
+        health_bars: {
+            let mut b = ph2d_app_components::health_bar_bridge::HealthBarsState::new();
+            b.uv = motion_default_uv;
+            b
+        },
         physics: ph2d_physics_ecs::PhysicsBridge::new(),
         text_system,
         hero_screen,

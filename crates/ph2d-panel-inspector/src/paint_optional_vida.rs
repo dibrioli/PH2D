@@ -110,5 +110,45 @@ pub(crate) fn paint_vida_sections(
             &[],
         );
     }
+    // ⭐ A terceira — HEALTH BAR (plano 28, W4): a barra do inimigo mora com a vida dele, e a do
+    // placar mora num objecto que só tem a barra.
+    if let Some(b) = &info.bar {
+        y = close_section(scene, theme, inner_x, inner_w, y);
+        let y_before = y;
+        begin_section(
+            section_tops_y,
+            hit_index,
+            inner_x,
+            inner_w,
+            body_top_y,
+            y_before,
+            ids::INSP_LIVE_HEALTH_BAR_SECTION,
+            header_h,
+        );
+        let new_y = crate::sections::vida_barra::paint_health_bar_section(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            inner_x,
+            inner_w,
+            y,
+            info,
+            b,
+        );
+        y = finish_section(
+            scene,
+            text_system,
+            hit_index,
+            store,
+            inner_x,
+            inner_w,
+            ids::INSP_LIVE_HEALTH_BAR_SECTION,
+            y_before,
+            new_y,
+            &[],
+        );
+    }
     y
 }

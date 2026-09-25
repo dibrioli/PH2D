@@ -216,6 +216,24 @@ const DAMAGE_FIELDS: &[FieldDesc] = &[
     f(6, "component.field.damage_fields.6", K::Enum),
 ];
 
+/// ⭐⭐⭐ **A BARRA DE VIDA** (plano 28, W4) — os onze campos do `HealthBar`, na ordem da struct.
+///
+/// ⚠️ **`Target` é o NOME de outro objecto, vazio = este** — é ele que põe a vida do herói no placar
+/// sem que o placar tenha vida.
+const HEALTH_BAR_FIELDS: &[FieldDesc] = &[
+    f(1, "component.field.health_bar_fields.1", K::Text),
+    f(2, "component.field.health_bar_fields.2", K::Scalar),
+    f(3, "component.field.health_bar_fields.3", K::Scalar),
+    f(4, "component.field.health_bar_fields.4", K::Scalar),
+    f(5, "component.field.health_bar_fields.5", K::Scalar),
+    f(6, "component.field.health_bar_fields.6", K::Color),
+    f(7, "component.field.health_bar_fields.7", K::Color),
+    f(8, "component.field.health_bar_fields.8", K::Color),
+    f(9, "component.field.health_bar_fields.9", K::Scalar),
+    f(10, "component.field.health_bar_fields.10", K::Scalar),
+    f(11, "component.field.health_bar_fields.11", K::Toggle),
+];
+
 const TWEEN_FIELDS: &[FieldDesc] = &[
     f(1, "component.field.tween_fields.1", K::Enum),
     f(2, "component.field.tween_fields.2", K::Vec4),
@@ -449,5 +467,18 @@ pub const DESCS: &[ComponentDesc] = &[
         O::ANY,
         HEALTH_FIELDS,
         &["ph2d::physics::RigidBody"],
+    ),
+    // ⭐⭐⭐ **A BARRA DE VIDA** (plano 28, W4). ⚠️ **Depois da vida, e é a busca binária:**
+    // `Health` < `HealthBar` na ordem dos bytes.
+    //
+    // ⛔ **Ela NÃO requer nada** — nem corpo nem vida: a barra do placar mostra a vida de OUTRO
+    // objecto pelo nome, e pedir-lhe um `Health` poria uma segunda vida no placar. Quem não tem de
+    // quem mostrar a vida diz porquê no painel.
+    D::authored(
+        "ph2d::physics::HealthBar",
+        "component.health_bar.name",
+        C::Logic,
+        O::ANY,
+        HEALTH_BAR_FIELDS,
     ),
 ];

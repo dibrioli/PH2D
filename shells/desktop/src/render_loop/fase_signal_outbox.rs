@@ -55,6 +55,7 @@ impl crate::App {
             tags,
             script,
             particles,
+            health_bars,
             sort_scratch,
             ..
         } = FrameGfx::of(gfx);
@@ -178,6 +179,7 @@ impl crate::App {
             sim,
             script,
             particles,
+            health_bars,
             sort_scratch,
             &mut self.preview_drive,
             &mut self.signals,

@@ -54,6 +54,16 @@ fn numeros(i: &InspectorVidaInfo) -> Vec<(ph2d_a11y::NodeId, f64)> {
     if let Some(d) = &i.damage {
         out.push((ids::INSP_DANO_AMOUNT, f64::from(d.amount)));
     }
+    if let Some(b) = &i.bar {
+        out.extend([
+            (ids::INSP_BARRA_WIDTH, f64::from(b.width)),
+            (ids::INSP_BARRA_HEIGHT, f64::from(b.height)),
+            (ids::INSP_BARRA_OFFSET_X, f64::from(b.offset_x)),
+            (ids::INSP_BARRA_OFFSET_Y, f64::from(b.offset_y)),
+            (ids::INSP_BARRA_TRAIL_DELAY, f64::from(b.trail_delay_s)),
+            (ids::INSP_BARRA_TRAIL_SPEED, f64::from(b.trail_speed)),
+        ]);
+    }
     out
 }
 
@@ -71,7 +81,48 @@ fn textos(i: &InspectorVidaInfo) -> Vec<(ph2d_a11y::NodeId, &str)> {
     if let Some(d) = &i.damage {
         out.push((ids::INSP_DANO_TEAM, d.team.as_str()));
     }
+    if let Some(b) = &i.bar {
+        out.push((ids::INSP_BARRA_TARGET, b.target.as_str()));
+    }
     out
+}
+
+/// ⭐⭐ **As três amostras da barra têm DOIS regimes** — a lei das amostras de tinta do Sprite e
+/// das cores de script:
+/// - o selector aponta para ESTA amostra ⇒ o artista está a escolher, e a diferença contra o
+///   documento vai ao barramento, comparada em **`u8`** (a ida-e-volta é exacta, logo o fluxo PÁRA
+///   no quadro em que o commit aterra);
+/// - caso contrário ⇒ a amostra é re-semeada do documento, e é assim que um `Ctrl+Z` se vê nela.
+///
+/// ⛔ **Corre por QUADRO e fora da aresta da assinatura**: sem este braço a cor escolhida chegava ao
+/// `widget_color` e morria ali — o fio completo até ao painel e acabado nele.
+fn cores(host: &mut dyn PanelHostInternal, i: &InspectorVidaInfo) {
+    use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
+    use ph2d_editor_core::vida_edits::VidaFieldEdit as E;
+    let Some(b) = &i.bar else {
+        return;
+    };
+    let alvo = host.store().picker_target();
+    let [fill, trail, back] = ids::INSP_BARRA_CORES;
+    for (id, c, edita) in [
+        (fill, b.fill, E::BarFill as fn([f32; 4]) -> E),
+        (trail, b.trail, E::BarTrail),
+        (back, b.back, E::BarBack),
+    ] {
+        let gravada = crate::state_tint::tint_f32_to_u8(c);
+        if alvo == Some(id) {
+            if let Some(escolhida) = host.store().widget_color(id)
+                && escolhida != gravada
+            {
+                host.bus_mut().push(EditorAction::InspectorComponentEdit {
+                    entity_bits: i.entity_bits,
+                    edit: ComponentEdit::Vida(edita(crate::state_tint::tint_u8_to_f32(escolhida))),
+                });
+            }
+        } else {
+            host.store_mut().set_widget_color(id, gravada);
+        }
+    }
 }
 
 /// ⚠️ **Só o que SEMEIA um widget entra** — ver o cabeçalho sobre a vida agora.
@@ -99,6 +150,7 @@ pub(crate) fn sync(
         inspector_state.last_vida_sig = None;
         return;
     };
+    cores(host, &info);
     let sig = assinatura(&info);
     if !entity_changed && inspector_state.last_vida_sig == Some(sig) {
         return;

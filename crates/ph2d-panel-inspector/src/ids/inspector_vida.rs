@@ -69,3 +69,30 @@ pub const INSP_DANO_IGNORES_SHIELD: NodeId = hash_node_id("insp_dano_ignores_shi
 pub const INSP_DANO_IGNORES_ARMOR: NodeId = hash_node_id("insp_dano_ignores_armor");
 /// Sai da cena ao bater (uma bala).
 pub const INSP_DANO_VANISH: NodeId = hash_node_id("insp_dano_vanish");
+
+// ── HEALTH BAR (plano 28, W4) ───────────────────────────────────────────────
+/// O NOME do objecto cuja vida a barra mostra — vazio = este.
+pub const INSP_BARRA_TARGET: NodeId = hash_node_id("insp_barra_target");
+/// A largura, em metros.
+pub const INSP_BARRA_WIDTH: NodeId = hash_node_id("insp_barra_width");
+/// A altura, em metros.
+pub const INSP_BARRA_HEIGHT: NodeId = hash_node_id("insp_barra_height");
+/// O deslocamento `x` do centro da barra.
+pub const INSP_BARRA_OFFSET_X: NodeId = hash_node_id("insp_barra_offset_x");
+/// O deslocamento `y` do centro da barra.
+pub const INSP_BARRA_OFFSET_Y: NodeId = hash_node_id("insp_barra_offset_y");
+/// Quanto o rasto segura depois de um golpe.
+pub const INSP_BARRA_TRAIL_DELAY: NodeId = hash_node_id("insp_barra_trail_delay");
+/// Quantas barras o rasto escorre por segundo.
+pub const INSP_BARRA_TRAIL_SPEED: NodeId = hash_node_id("insp_barra_trail_speed");
+/// Esconde a barra com a vida cheia.
+pub const INSP_BARRA_HIDE_FULL: NodeId = hash_node_id("insp_barra_hide_full");
+/// A amostra da cor da VIDA — abre o selector da casa (`register_picker_swatch`).
+pub const INSP_BARRA_FILL: NodeId = hash_node_id("insp_barra_fill");
+/// A amostra da cor do RASTO.
+pub const INSP_BARRA_TRAIL: NodeId = hash_node_id("insp_barra_trail");
+/// A amostra da cor do FUNDO.
+pub const INSP_BARRA_BACK: NodeId = hash_node_id("insp_barra_back");
+/// As três amostras, pela ordem em que a secção as pinta — a lista que o registo, a semente e a
+/// cerca do selector lêem (⛔ três listas escritas à mão divergiriam na quarta cor).
+pub const INSP_BARRA_CORES: [NodeId; 3] = [INSP_BARRA_FILL, INSP_BARRA_TRAIL, INSP_BARRA_BACK];

@@ -12,6 +12,7 @@
 
 use std::collections::BTreeMap;
 
+use ph2d_app_components::health_bar_bridge::HealthBarsState;
 use ph2d_app_components::particles_bridge::ParticlesState;
 use ph2d_ecs::SimWorld;
 use ph2d_ecs::sort_key::SortScratch;
@@ -53,6 +54,7 @@ pub(super) fn correm(
     sim: &mut SimWorld,
     script: &mut Option<ScriptHost>,
     particles: &mut ParticlesState,
+    health_bars: &mut HealthBarsState,
     scratch: &SortScratch,
     drive: &mut ph2d_preview_drive::PreviewDrive,
     signals: &mut SignalOutbox,
@@ -75,6 +77,25 @@ pub(super) fn correm(
     // de publicar, logo carregar na tecla e a bala nascer acontecem no MESMO quadro. Correndo
     // antes, cada tiro chegava um quadro atrasado — a lei que o cabeçalho do outbox já escreve.
     armas(sim, signals, &mut leitores.weapon, relogio);
+    barras(sim, health_bars, relogio);
+}
+
+/// ⭐ **AS BARRAS DE VIDA** (plano 28, W4) — elas só LÊEM (a vida, a pose) e não falam no
+/// barramento, logo a posição delas nesta lista não é lei de ordem.
+///
+/// ⚠️ **Elas correm DEPOIS do passo da física**, que é quem escreve o `HealthNow`: a barra mostra a
+/// vida deste quadro e não a do anterior.
+///
+/// ⚠️ **O tempo do rasto é o de JOGO** (passos devidos × passo fixo): com o relógio parado o rasto
+/// espera, que é o que faz um scrub parado não o escorrer.
+fn barras(sim: &mut SimWorld, health_bars: &mut HealthBarsState, relogio: &Relogio) {
+    #[allow(clippy::cast_possible_truncation)]
+    let dt = if relogio.playing {
+        (f64::from(relogio.ticks) * relogio.dt) as f32
+    } else {
+        0.0
+    };
+    health_bars.frame(sim, dt);
 }
 
 /// ⭐⭐⭐ **OS SCRIPTS DO ARTISTA** (TOP-20 #16) — o que um script emite chega à tabela de acções

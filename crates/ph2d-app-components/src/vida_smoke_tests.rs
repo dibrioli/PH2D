@@ -251,6 +251,11 @@ fn o_que_o_molde_tem_a_copia_tem() {
             w.get::<Damage>(molde),
             "«{nome}»: o DANO não chegou à cópia"
         );
+        assert_eq!(
+            w.get::<ph2d_physics_ecs::HealthBar>(copia),
+            w.get::<ph2d_physics_ecs::HealthBar>(molde),
+            "«{nome}»: a BARRA não chegou à cópia (W4)"
+        );
         assert!(
             w.get::<Health>(molde).is_some() || w.get::<Damage>(molde).is_some(),
             "«{nome}»: o molde não tem nem vida nem dano — o gate não mede nada"
@@ -376,5 +381,91 @@ fn o_veneno_fere_o_roxo_e_so_o_relogio_dele_o_cura() {
         ponte.health_events().is_empty(),
         "com a vida cheia a cura produziu factos: {:?}",
         ponte.health_events()
+    );
+}
+
+/// ⭐ **A barra de cada alvo cabe entre ele e o de cima** (plano 28, W4) — senão a coluna vira uma
+/// fita de verde em que não se sabe de quem é cada barra.
+///
+/// **Mutações que devem sangrar:** voltar o `BARRA_Y` ao de fábrica (`0,75`) · a `0,62` com a altura de fábrica (a borda).
+#[test]
+fn a_barra_de_cada_alvo_nao_toca_o_de_cima() {
+    let altura = BARRA_H;
+    let passo = ALVOS[0].4 - ALVOS[1].4;
+    let (baixo, cima) = (BARRA_Y - altura / 2.0, BARRA_Y + altura / 2.0);
+    assert!(baixo > LADO / 2.0, "a barra entra no PRÓPRIO alvo: {baixo}");
+    assert!(
+        cima < passo - LADO / 2.0,
+        "a barra toca o alvo de CIMA: topo {cima} contra {}",
+        passo - LADO / 2.0
+    );
+    for par in ALVOS.windows(2) {
+        assert!(
+            (par[0].4 - par[1].4 - passo).abs() < 1e-6,
+            "a coluna deixou de ter passo constante — este gate mede a fila errada"
+        );
+    }
+    // ⚠️ E cada RECEITA leva a barra, com a altura desta coluna — sem isto o gate media constantes
+    // que nenhum alvo usa (a cópia compara-se com o molde, e dois `None` são iguais).
+    let mut sim = mundo();
+    let w = sim.world_mut();
+    let mut q = w.query_filtered::<(&Name, Option<&ph2d_physics_ecs::HealthBar>), (
+        bevy_ecs::query::With<MasterRoot>,
+        bevy_ecs::query::With<Health>,
+    )>();
+    let receitas: Vec<(String, Option<ph2d_physics_ecs::HealthBar>)> = q
+        .iter(w)
+        .map(|(n, b)| (n.as_str().to_owned(), b.cloned()))
+        .collect();
+    assert_eq!(receitas.len(), ALVOS.len());
+    for (nome, b) in receitas {
+        let b = b.unwrap_or_else(|| panic!("a receita «{nome}» não tem barra"));
+        assert_eq!((b.offset_y, b.height), (BARRA_Y, BARRA_H), "«{nome}»");
+    }
+    // ⚠️ E a do alvo de CIMA cabe na banda visível — a foto apanhou-a cortada pela borda.
+    assert!(
+        ALVOS[0].4 + cima <= 4.09,
+        "a barra do alvo de cima sai da banda: topo {}",
+        ALVOS[0].4 + cima
+    );
+}
+
+/// ⭐⭐⭐ **O PLACAR mostra o ROXO** — pelo nome da CÓPIA que a porta de cópia do produto faz, pela
+/// mesma porta com que a ponte desenha. ⚠️ Sem isto um sufixo diferente deixava o placar a dizer
+/// «ninguém com esse nome» e a desenhar NADA, com todos os outros gates verdes.
+///
+/// **Mutação que deve sangrar:** mudar o `ALVO_DO_PLACAR` · o placar perder a barra.
+#[test]
+fn o_placar_mostra_a_vida_do_roxo() {
+    use crate::health_bar_bridge::{alvo_da_barra, vida_da_barra};
+    let mut sim = mundo();
+    let roxo = copia(&mut sim, ALVOS[ROXO].0);
+    let w = sim.world();
+    assert_eq!(
+        w.get::<Name>(roxo).map(Name::as_str),
+        Some(ALVO_DO_PLACAR),
+        "a cópia do roxo não tem o nome que o placar nomeia"
+    );
+    let placar = {
+        let w = sim.world_mut();
+        let mut q = w.query::<(ph2d_ecs::Entity, &Name)>();
+        q.iter(w)
+            .find(|(_, n)| n.as_str() == PLACAR)
+            .map(|(e, _)| e)
+            .expect("o placar não está na cena")
+    };
+    let w = sim.world();
+    let barra = w
+        .get::<ph2d_physics_ecs::HealthBar>(placar)
+        .expect("o placar sem barra");
+    assert_eq!(alvo_da_barra(w, placar, &barra.target), Some(roxo));
+    assert_eq!(
+        vida_da_barra(w, roxo),
+        Some((ALVOS[ROXO].1, ALVOS[ROXO].1)),
+        "o placar tem de ler os 30 de 30 do roxo antes do 1.º tique"
+    );
+    assert!(
+        w.get::<Health>(placar).is_none(),
+        "o CONTROLO: o placar não tem vida própria — é a forma do HUD"
     );
 }

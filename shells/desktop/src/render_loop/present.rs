@@ -184,6 +184,8 @@ impl crate::App {
             present,
             // ⭐ As partículas dos objectos (TOP-20 #18) — ver o bloco do `extra`, abaixo.
             particles,
+            // ⭐ As barras de vida (plano 28, W4) — o QUINTO produtor do `extra`.
+            health_bars,
             camera,
             game_rt,
             tonemap,
@@ -255,8 +257,11 @@ impl crate::App {
         // ⚠️ **O caso comum não copia nada:** com só os fantasmas vivos, o `extra` é a lista deles,
         // já montada pela fase de overlay. É por isso que o atalho é testado contra os outros TRÊS.
         let particulas: &[ph2d_render::RenderInstance] = &particles.instances;
-        let so_fantasmas =
-            motion_slice.is_empty() && bgremoval_tint.is_empty() && particulas.is_empty();
+        let barras: &[ph2d_render::RenderInstance] = &health_bars.instances;
+        let so_fantasmas = motion_slice.is_empty()
+            && bgremoval_tint.is_empty()
+            && particulas.is_empty()
+            && barras.is_empty();
         let sprite_extra: ph2d_render::LiftedInstances = if so_fantasmas {
             ph2d_render::LiftedInstances::default()
         } else {
@@ -271,6 +276,11 @@ impl crate::App {
                 e.push(*i, None);
             }
             for i in particulas {
+                e.push(*i, None);
+            }
+            // ⚠️ **Por último e com `z_order = u32::MAX`**: uma barra por trás do inimigo que ela
+            // descreve não se lê.
+            for i in barras {
                 e.push(*i, None);
             }
             e

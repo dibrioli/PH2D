@@ -57,6 +57,32 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.vida.damage_team_hint" => {
             "Team \u{2014} it does not hurt its own team\u{2026}"
         }
+        "panel.inspector.vida.health_bar" => "Health Bar",
+        "panel.inspector.vida.bar_width" => "Width",
+        "panel.inspector.vida.bar_height" => "Height",
+        "panel.inspector.vida.bar_offset_x" => "Offset X",
+        "panel.inspector.vida.bar_offset_y" => "Offset Y",
+        "panel.inspector.vida.bar_trail_delay" => "Trail Delay",
+        "panel.inspector.vida.bar_trail_speed" => "Trail / s",
+        "panel.inspector.vida.bar_fill" => "Fill",
+        "panel.inspector.vida.bar_trail" => "Trail",
+        "panel.inspector.vida.bar_back" => "Back",
+        // ⚠️ **`If` e não `When`**: a varredura das elisões mediu `Hide When Full` cortado no degrau
+        // estreito, e a regra da casa é *um nome perde a explicação antes de perder letras*.
+        "panel.inspector.vida.bar_hide_when_full" => "Hide If Full",
+        "panel.inspector.vida.bar_target_hint" => {
+            "Target \u{2014} empty shows this object\u{2019}s own health\u{2026}"
+        }
+        "panel.inspector.vida.bar_shows" => "Shows {now} of {max}",
+        "panel.inspector.vida.bar_no_target" => {
+            "No object is named \u{201c}{name}\u{201d} \u{b7} the bar draws nothing."
+        }
+        "panel.inspector.vida.bar_target_no_health" => {
+            "\u{201c}{name}\u{201d} has no Health \u{b7} the bar draws nothing."
+        }
+        "panel.inspector.vida.bar_own_no_health" => {
+            "This object has no Health \u{b7} add Health, or name another object in Target."
+        }
         _ => return None,
     })
 }

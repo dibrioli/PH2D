@@ -37,6 +37,12 @@
 //! (deixa de levar tiros, grita o sinal) e **fica**. ⇒ cada alvo sai da sua **fábrica** (TOP-20
 //! #11), que um **relógio** (#2) arranca ao entrar a corrida — a lição da cena do golpe.
 //!
+//! # ⭐⭐ E cada alvo tem a sua BARRA DE VIDA, e um PLACAR mostra a do roxo de longe (W4)
+//!
+//! A barra verde de cada alvo encolhe na hora do tiro, e o pedaço perdido fica BRANCO um instante
+//! antes de escorrer — o rasto. O placar no alto é uma barra larga num objecto SEM vida que mostra a
+//! do roxo **pelo nome** (`Target`), a forma do HUD: a mesma porta serve as duas.
+//!
 //! ⚠️ Se a linha `[vida-smoke]` não aparecer, **PARE**: a cena não montou.
 
 use ph2d_core::Vec2;
@@ -45,7 +51,8 @@ use ph2d_ecs::{
     SignalOnAction, SignalTarget, SignalVerb, Timer, Timers, Transform, Visibility, World,
 };
 use ph2d_physics_ecs::{
-    BodyKind, Collider, ColliderShape, Damage, Health, OnHit, ProjectileMotion, RigidBody,
+    BodyKind, Collider, ColliderShape, Damage, Health, HealthBar, OnHit, ProjectileMotion,
+    RigidBody,
 };
 use ph2d_projectile::ProjectileLaw;
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
@@ -159,6 +166,30 @@ pub const X_ALVOS: f32 = 4.0;
 /// O lado de um alvo. ⚠️ Com `1,3` m entre filas, a janela de mira do herói é `LADO/2 + 0,1` =
 /// `0,6` m para cada lado — o dobro do raio do herói.
 pub const LADO: f32 = 1.0;
+/// ⭐ **Onde a barra de cada alvo mora** (plano 28, W4) — o centro dela acima do centro do alvo.
+///
+/// ⚠️ **Não é o de fábrica (`0,75`), e a razão é a coluna:** com `1,3` m entre filas o quadrado de
+/// cima começa `0,8` m acima deste centro, e a barra de fábrica (até `0,82`) tocaria-o.
+///
+/// ⚠️⚠️ **E a FOTO corrigiu a 1.ª redacção** (`0,62` com a altura de fábrica): a barra do alvo de
+/// cima acabava EXACTAMENTE no topo da banda visível (`+4,09`), cortada pela borda. A `0,57` com
+/// [`BARRA_H`] ela ocupa `0,52..0,62` — livre do próprio alvo, do de cima e da borda, com gate.
+pub const BARRA_Y: f32 = 0.57;
+/// A altura da barra de cada alvo — mais fina que a de fábrica, para caber na coluna.
+pub const BARRA_H: f32 = 0.1;
+/// O nome do objecto do PLACAR — uma barra larga no alto, sem vida própria.
+pub const PLACAR: &str = "Placar";
+/// ⚠️ **O nome que a CÓPIA do roxo recebe** — a porta de cópia dá a cada cópia um nome livre
+/// (`ph2d_unique_name`), e o molde já tem o nome sem sufixo. ⇒ o placar nomeia a CÓPIA, e um gate
+/// prova que a cópia que a fábrica faz é esta (senão o placar diria «ninguém com esse nome»).
+pub const ALVO_DO_PLACAR: &str = "Alvo de 3 tiros (1)";
+/// Onde o placar mora — dentro da banda que a régua deixa visível (topo `+4,09`), longe da coluna.
+pub const PLACAR_XY: [f32; 2] = [0.0, 3.8];
+/// O tamanho do placar — a barra de um HUD é larga e grossa, de propósito.
+pub const PLACAR_WH: [f32; 2] = [4.0, 0.3];
+// ⚠️ **O placar cabe na banda visível** (topo `+4,09`, medido na foto da cena da arma) — ERRO DE
+// COMPILAÇÃO e não um gate: um `assert!` sobre constantes é dobrado pelo compilador.
+const _: () = assert!(PLACAR_XY[1] + PLACAR_WH[1] / 2.0 <= 4.09);
 
 /// **A receita que esta fábrica ainda vai apontar** — o marcador de MONTAGEM (o molde da cena do
 /// golpe): a identidade só é atribuída depois.
@@ -234,6 +265,12 @@ fn receita_do_alvo(
                 on_death: MORREU.to_owned(),
                 on_heal: CUROU.to_owned(),
                 ..Health::default()
+            },
+            // ⭐ A barra do PRÓPRIO alvo (`Target` vazio) — a cópia leva-a com o resto.
+            HealthBar {
+                offset_y: BARRA_Y,
+                height: BARRA_H,
+                ..HealthBar::default()
             },
         ))
         .id();
@@ -328,6 +365,18 @@ fn cena_um(world: &mut World) -> Entity {
         ));
     }
     let bala = receita_da_bala(world);
+    // ⭐ O PLACAR (plano 28, W4) — um objecto SEM vida cuja barra mostra a do roxo pelo nome.
+    world.spawn((
+        Name::new(PLACAR),
+        Transform::from_translation(Vec2::new(PLACAR_XY[0], PLACAR_XY[1])),
+        HealthBar {
+            target: ALVO_DO_PLACAR.to_owned(),
+            width: PLACAR_WH[0],
+            height: PLACAR_WH[1],
+            offset_y: 0.0,
+            ..HealthBar::default()
+        },
+    ));
 
     // ⭐ O HERÓI: anda com as setas, roda para onde anda, e a arma aponta para onde ele aponta.
     // ⚠️ Nasce À ALTURA do alvo de cima — o 1.º tiro não pede pontaria.
@@ -405,13 +454,16 @@ pub fn montar(world: &mut World, _nivel: u32) -> Montada {
          (0) o quadrado de contorno verde no MEIO do ecra' sao os MOLDES (o do alvo e o da bala): \
          e' deles que cada alvo e cada bala nascem. Nao levam tiros e nao se mexem\n\
          (1) espere um instante: nascem QUATRO quadrados numa coluna a' direita — vermelho, \
-         laranja, roxo e, em baixo, cinzento\n\
+         laranja, roxo e, em baixo, cinzento — cada um com uma BARRA verde por cima. No alto, a \
+         barra larga e' o PLACAR: mostra a vida do ROXO de longe\n\
          (2) carregue no {TECLA_NOME}: o heroi azul ja' nasce a' altura do VERMELHO. Ele some ao \
          1.o tiro, e aparece o aviso `{AI}` e depois `{MORREU}`\n\
          (3) segure a seta para BAIXO ate' ficar a' altura do LARANJA, depois a seta para a \
-         DIREITA (o heroi vira-se para onde anda) e atire: o 1.o tiro so' mostra `{AI}`, o 2.o \
-         mata-o\n\
-         (4) faca o mesmo no ROXO: precisa de TRES tiros\n\
+         DIREITA (o heroi vira-se para onde anda) e atire: o 1.o tiro so' mostra `{AI}`, e a barra \
+         dele encolhe para metade NA HORA — o pedaco perdido fica BRANCO um instante e depois \
+         escorre (o rasto). O 2.o tiro mata-o\n\
+         (4) faca o mesmo no ROXO: precisa de TRES tiros. O PLACAR no alto desce junto com a \
+         barra dele\n\
          (5) o CONTROLO: atire no CINZENTO — ele e' da mesma equipa do heroi, e as balas batem nele \
          e somem sem o ferir. Nunca aparece `{AI}`\n\
          (6) na barra de CIMA carregue em `Reset` e depois em `Play`: os quatro voltam, cada um \
@@ -421,11 +473,12 @@ pub fn montar(world: &mut World, _nivel: u32) -> Montada {
          (8) com o ROXO escolhido carregue no {TECLA_VENENO_NOME} (o veneno): `Now` desce {VENENO} \
          e aparece `{AI}`. Um segundo depois do ULTIMO toque ele sobe {CURA} e aparece `{CUROU}` — \
          a cura do proprio roxo. Toque varias vezes seguidas: desce a cada toque e sobe so' uma \
-         vez\n\
+         vez. Na CURA a barra sobe de uma vez, sem rasto\n\
          (9) deu errado se: o laranja ou o roxo morrem ao 1.o tiro · o cinzento some · a bala \
          atravessa um quadrado · carregar no {TECLA_NOME} nao faz nada · nenhum quadrado some \
-         depois de muitos tiros · o {TECLA_VENENO_NOME} nao mexe no `Now` · ou o roxo nunca \
-         volta a subir"
+         depois de muitos tiros · o {TECLA_VENENO_NOME} nao mexe no `Now` · o roxo nunca \
+         volta a subir · uma barra fica cheia depois de um tiro · o pedaco branco nunca escorre · \
+         ou o PLACAR fica vazio ou parado"
     );
     Montada {
         nivel: 1,

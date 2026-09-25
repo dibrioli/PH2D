@@ -37,6 +37,9 @@
 
 #![forbid(unsafe_code)]
 
+/// ⭐ A barra de vida com rasto atrasado (plano 28, W4) — ver o módulo.
+pub mod barra;
+
 /// **Como a caixa de referência se acomoda numa vista de outro tamanho.**
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub enum Fit {

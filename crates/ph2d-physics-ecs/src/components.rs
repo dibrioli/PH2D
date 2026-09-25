@@ -246,6 +246,7 @@ impl SimComponent for Collider {}
 mod area;
 /// ⭐⭐⭐ **VIDA e DANO** (plano 28, W2) — ver o cabeçalho dele.
 mod health;
+mod health_bar;
 mod overrides;
 /// O componente do player de plataforma (docs dele).
 mod player;
@@ -265,6 +266,7 @@ pub use area::{
     AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaForceWorldAxes, AreaFormDrag, AreaTorque,
 };
 pub use health::{Damage, Health, HealthNow, OnHit};
+pub use health_bar::HealthBar;
 pub use overrides::{
     Ccd, CombineRule, DampMode, DampingOverride, Dominance, GravityScale, InitialVelocity,
     LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine, OneWayPlatform,

@@ -84,12 +84,44 @@ pub struct InspectorDamageInfo {
     pub vanish: bool,
 }
 
-/// Snapshot das secções HEALTH e DAMAGE da entidade selecionada.
+/// **De quem a barra mostra a vida, e o que ela encontrou** (plano 28, W4) — resolvido pela MESMA
+/// porta que a ponte da barra usa ao desenhar, para o painel nunca dizer uma coisa e a tela outra.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum BarraAlvo {
+    /// Nenhum objecto (que não seja um molde) tem o nome escrito em `Target`.
+    SemAlvo,
+    /// O alvo existe e não tem `Health` (ou tem uma vida sem máximo nem início).
+    SemVida,
+    /// A vida que a barra mostra agora, e o máximo contra o qual ela mede.
+    Mostra { pontos: f32, max: f32 },
+}
+
+/// A metade BARRA do instantâneo — os onze campos do `HealthBar` (plano 28, W4).
+#[derive(Clone, Debug, PartialEq)]
+pub struct InspectorBarInfo {
+    pub target: String,
+    pub width: f32,
+    pub height: f32,
+    pub offset_x: f32,
+    pub offset_y: f32,
+    pub fill: [f32; 4],
+    pub trail: [f32; 4],
+    pub back: [f32; 4],
+    pub trail_delay_s: f32,
+    pub trail_speed: f32,
+    pub hide_when_full: bool,
+    /// ⭐ O que a barra encontrou — é isto que a secção diz ANTES dos números.
+    pub alvo: BarraAlvo,
+}
+
+/// Snapshot das secções HEALTH, DAMAGE e HEALTH BAR da entidade selecionada.
 #[derive(Clone, Debug, PartialEq)]
 pub struct InspectorVidaInfo {
     pub entity_bits: u64,
     pub health: Option<InspectorHealthInfo>,
     pub damage: Option<InspectorDamageInfo>,
+    /// ⭐ A barra de vida (plano 28, W4) — a terceira metade da família.
+    pub bar: Option<InspectorBarInfo>,
     /// O objecto tem `RigidBody`?
     pub has_body: bool,
     /// O relógio está a andar?
@@ -113,9 +145,12 @@ impl InspectorVidaInfo {
     ///
     /// ⚠️ **Sem corpo vem primeiro**: com ele a faltar, nenhuma das outras chega a acontecer, e
     /// dizer «ele morreu» a quem não tem corpo é mandá-lo resolver a metade errada.
+    ///
+    /// ⚠️ **Só a VIDA e o DANO precisam de corpo**: uma barra sozinha (a do placar) não tem de onde
+    /// o tirar, e acusá-la de «sem corpo» mandaria o artista pôr um corpo num placar.
     #[must_use]
     pub fn queixa(&self) -> Option<VidaQueixa> {
-        if !self.has_body {
+        if !self.has_body && (self.health.is_some() || self.damage.is_some()) {
             return Some(VidaQueixa::SemCorpo);
         }
         if self
@@ -162,6 +197,17 @@ pub enum VidaFieldEdit {
     IgnoresShield(bool),
     IgnoresArmor(bool),
     Vanish(bool),
+    BarTarget(String),
+    BarWidth(f32),
+    BarHeight(f32),
+    BarOffsetX(f32),
+    BarOffsetY(f32),
+    BarFill([f32; 4]),
+    BarTrail([f32; 4]),
+    BarBack([f32; 4]),
+    BarTrailDelayS(f32),
+    BarTrailSpeed(f32),
+    BarHideWhenFull(bool),
 }
 
 #[cfg(test)]
@@ -210,6 +256,7 @@ mod tests {
             entity_bits: 1,
             health: Some(vida()),
             damage: None,
+            bar: None,
             has_body: true,
             clock_playing: true,
             selected_count: 1,
@@ -248,12 +295,23 @@ mod tests {
             VidaFieldEdit::IgnoresShield(false),
             VidaFieldEdit::IgnoresArmor(false),
             VidaFieldEdit::Vanish(false),
+            VidaFieldEdit::BarTarget(String::new()),
+            VidaFieldEdit::BarWidth(0.0),
+            VidaFieldEdit::BarHeight(0.0),
+            VidaFieldEdit::BarOffsetX(0.0),
+            VidaFieldEdit::BarOffsetY(0.0),
+            VidaFieldEdit::BarFill([0.0; 4]),
+            VidaFieldEdit::BarTrail([0.0; 4]),
+            VidaFieldEdit::BarBack([0.0; 4]),
+            VidaFieldEdit::BarTrailDelayS(0.0),
+            VidaFieldEdit::BarTrailSpeed(0.0),
+            VidaFieldEdit::BarHideWhenFull(false),
         ];
         assert_eq!(
             variantes.len(),
-            20 + 6,
-            "o `Health` tem VINTE campos e o `Damage` SEIS — se um nasceu, ele precisa de uma \
-             variante aqui e de uma row no painel"
+            20 + 6 + 11,
+            "o `Health` tem VINTE campos, o `Damage` SEIS e o `HealthBar` ONZE — se um nasceu, ele \
+             precisa de uma variante aqui e de uma row no painel"
         );
     }
 
@@ -284,6 +342,19 @@ mod tests {
         assert_eq!(inofensivo.queixa(), Some(VidaQueixa::NaoFere));
         inofensivo.damage = Some(dano(10.0));
         assert_eq!(inofensivo.queixa(), None, "o CONTROLO: um dano de 10 fere");
+    }
+
+    /// ⭐ **Uma barra SOZINHA não precisa de corpo** — a do placar mostra a vida de outro objecto, e
+    /// acusá-la de «sem corpo» mandaria o artista pôr um corpo num placar. ⚠️ Com o CONTROLO: a
+    /// mesma falta de corpo com uma vida ao lado continua a queixar-se.
+    #[test]
+    fn uma_barra_sozinha_nao_se_queixa_de_corpo() {
+        let mut so_barra = info();
+        so_barra.health = None;
+        so_barra.has_body = false;
+        assert_eq!(so_barra.queixa(), None);
+        so_barra.health = Some(vida());
+        assert_eq!(so_barra.queixa(), Some(VidaQueixa::SemCorpo));
     }
 
     /// ⚠️ **O escudo aparece por UMA de duas portas** — o máximo ou o inicial.

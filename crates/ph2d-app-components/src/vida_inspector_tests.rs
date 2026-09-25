@@ -174,3 +174,126 @@ fn o_readout_le_a_vida_agora() {
     let a = i.health.expect("vida").agora.expect("agora");
     assert_eq!((a.pontos, a.escudo, a.morta), (70.0, 5.0, false));
 }
+
+/// ⭐⭐⭐ **A BARRA vai e volta, os onze campos** (plano 28, W4) — e um placar SÓ com barra tem
+/// secção sem ter vida nem corpo.
+///
+/// **Mutações que devem sangrar:** tirar qualquer braço do `apply_bar` · o `build_vida_info` voltar
+/// a exigir vida ou dano.
+#[test]
+fn a_barra_vai_e_volta_e_um_placar_so_com_barra_tem_seccao() {
+    let mut sim = SimWorld::new();
+    let placar = sim.world_mut().spawn(HealthBar::default()).id();
+    let b = placar.to_bits();
+    let i = build_vida_info(sim.world(), b, 1, true).expect("um placar SÓ com barra tem secção");
+    assert!(i.health.is_none() && i.damage.is_none() && i.bar.is_some());
+    assert_eq!(
+        i.queixa(),
+        None,
+        "uma barra sozinha não se queixa de corpo — ela não o precisa"
+    );
+    let edicoes = [
+        E::BarTarget("  Heroi ".into()),
+        E::BarWidth(2.0),
+        E::BarHeight(0.3),
+        E::BarOffsetX(-0.5),
+        E::BarOffsetY(-1.5),
+        E::BarFill([0.1, 0.2, 0.3, 1.0]),
+        E::BarTrail([0.9, 0.8, 0.7, 1.0]),
+        E::BarBack([0.0, 0.0, 0.0, 0.5]),
+        E::BarTrailDelayS(0.9),
+        E::BarTrailSpeed(3.0),
+        E::BarHideWhenFull(true),
+    ];
+    for e in &edicoes {
+        assert!(apply(&mut sim, b, e), "a edição {e:?} não tocou na barra");
+    }
+    let lida = build_vida_info(sim.world(), b, 1, true)
+        .unwrap()
+        .bar
+        .unwrap();
+    assert_eq!(lida.target, "Heroi", "o nome é aparado");
+    assert_eq!(
+        (lida.width, lida.height, lida.offset_x, lida.offset_y),
+        (2.0, 0.3, -0.5, -1.5),
+        "⚠️ os deslocamentos NEGATIVOS ficam — uma barra pode ir abaixo e à esquerda"
+    );
+    assert_eq!(lida.fill, [0.1, 0.2, 0.3, 1.0]);
+    assert_eq!(lida.trail, [0.9, 0.8, 0.7, 1.0]);
+    assert_eq!(lida.back, [0.0, 0.0, 0.0, 0.5]);
+    assert_eq!((lida.trail_delay_s, lida.trail_speed), (0.9, 3.0));
+    assert!(lida.hide_when_full);
+}
+
+/// ⚠️ **As cercas da barra** — um `NaN` num deslocamento cai a zero, um tamanho negativo a zero, e
+/// um canal fora de `0..1` é preso (outra rota que não o painel não pode pôr lixo no tinte).
+#[test]
+fn as_cercas_da_barra() {
+    let mut sim = SimWorld::new();
+    let b = sim.world_mut().spawn(HealthBar::default()).id().to_bits();
+    apply(&mut sim, b, &E::BarOffsetY(f32::NAN));
+    apply(&mut sim, b, &E::BarWidth(-3.0));
+    apply(&mut sim, b, &E::BarFill([2.0, -1.0, f32::NAN, 0.5]));
+    let lida = build_vida_info(sim.world(), b, 1, true)
+        .unwrap()
+        .bar
+        .unwrap();
+    assert_eq!(lida.offset_y, 0.0);
+    assert_eq!(lida.width, 0.0);
+    assert_eq!(lida.fill, [1.0, 0.0, 0.0, 0.5]);
+}
+
+/// ⭐⭐⭐ **O que a barra ENCONTROU sai das MESMAS portas que a ponte usa ao desenhar** — as três
+/// respostas, e o molde homónimo que não conta.
+///
+/// **Mutação que deve sangrar:** o `bar_info` resolver o alvo por outra via (ex.: aceitar moldes).
+#[test]
+fn o_painel_diz_o_que_a_barra_encontrou() {
+    use ph2d_ecs::MasterPiece;
+    let mut sim = SimWorld::new();
+    let placar = sim
+        .world_mut()
+        .spawn(HealthBar {
+            target: "Heroi".into(),
+            ..HealthBar::default()
+        })
+        .id();
+    let b = placar.to_bits();
+    let alvo = |sim: &SimWorld| {
+        build_vida_info(sim.world(), b, 1, true)
+            .unwrap()
+            .bar
+            .unwrap()
+            .alvo
+    };
+    assert_eq!(alvo(&sim), BarraAlvo::SemAlvo, "ninguém com esse nome");
+    // Um MOLDE com o nome e com vida não conta — a ponte também não o desenharia.
+    sim.world_mut()
+        .spawn((Name::new("Heroi"), Health::default(), MasterPiece));
+    assert_eq!(alvo(&sim), BarraAlvo::SemAlvo, "um molde não é o alvo");
+    let heroi = sim.world_mut().spawn(Name::new("Heroi")).id();
+    assert_eq!(
+        alvo(&sim),
+        BarraAlvo::SemVida,
+        "o herói existe e não tem vida"
+    );
+    sim.world_mut().entity_mut(heroi).insert((
+        Health {
+            max: 40.0,
+            start: 40.0,
+            ..Health::default()
+        },
+        HealthNow {
+            pontos: 10.0,
+            escudo: 0.0,
+            morta: false,
+        },
+    ));
+    assert_eq!(
+        alvo(&sim),
+        BarraAlvo::Mostra {
+            pontos: 10.0,
+            max: 40.0
+        }
+    );
+}

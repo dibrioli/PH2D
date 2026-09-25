@@ -118,5 +118,9 @@ pub const INSP_LIVE_HEALTH_COLOR: NodeId = hash_node_id("insp_live_health_color"
 pub const INSP_LIVE_DAMAGE_SECTION: NodeId = hash_node_id("insp_live_damage_section");
 /// O ponto de cor da secção DAMAGE.
 pub const INSP_LIVE_DAMAGE_COLOR: NodeId = hash_node_id("insp_live_damage_color");
+/// O cabeçalho dobrável da secção HEALTH BAR — quem MOSTRA a vida (plano 28, W4).
+pub const INSP_LIVE_HEALTH_BAR_SECTION: NodeId = hash_node_id("insp_live_health_bar_section");
+/// O ponto de cor da secção HEALTH BAR.
+pub const INSP_LIVE_HEALTH_BAR_COLOR: NodeId = hash_node_id("insp_live_health_bar_color");
 /// Quantas opções o segmentado do ONDE tem — a porta que o painel lê para repartir a largura.
 pub const INSP_FACTORY_WHERE_LEN: usize = 3;

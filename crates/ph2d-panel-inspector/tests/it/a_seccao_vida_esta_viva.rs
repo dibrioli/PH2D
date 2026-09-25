@@ -78,6 +78,7 @@ fn info(
         entity_bits: 0x00AB_1234,
         health,
         damage,
+        bar: None,
         has_body: true,
         clock_playing: true,
         selected_count: 1,

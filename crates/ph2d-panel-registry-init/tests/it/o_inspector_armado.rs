@@ -75,7 +75,8 @@ use ph2d_editor_core::topdown_edits::{
 };
 use ph2d_editor_core::tween_edits::{InspectorTweenInfo, InspectorTweenRow};
 use ph2d_editor_core::vida_edits::{
-    InspectorDamageInfo, InspectorHealthInfo, InspectorVidaInfo, VidaAgora,
+    BarraAlvo, InspectorBarInfo, InspectorDamageInfo, InspectorHealthInfo, InspectorVidaInfo,
+    VidaAgora,
 };
 use ph2d_editor_core::weapon_edits::InspectorWeaponInfo;
 use ph2d_panel_inspector as insp;
@@ -1047,6 +1048,25 @@ fn arma_o_top20() {
             ignores_shield: false,
             ignores_armor: false,
             vanish: false,
+        }),
+        // ⭐ A barra (plano 28, W4) — armada com um ALVO que ela encontra, para a frase mais longa
+        // que ela pinta (`Shows … of …`) entrar na varredura das elisões.
+        bar: Some(InspectorBarInfo {
+            target: "Hero".to_string(),
+            width: 1.0,
+            height: 0.14,
+            offset_x: 0.0,
+            offset_y: 0.75,
+            fill: [0.36, 0.84, 0.42, 1.0],
+            trail: [1.0, 1.0, 1.0, 1.0],
+            back: [0.08, 0.08, 0.1, 0.8],
+            trail_delay_s: 0.4,
+            trail_speed: 1.0,
+            hide_when_full: false,
+            alvo: BarraAlvo::Mostra {
+                pontos: 70.0,
+                max: 100.0,
+            },
         }),
         has_body: true,
         clock_playing: true,

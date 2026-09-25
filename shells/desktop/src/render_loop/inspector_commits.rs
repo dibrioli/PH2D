@@ -370,7 +370,7 @@ fn drain_section_edits(
     }
     // ⭐ **A secção SIGNAL ACTIONS** (TOP-20 #5, W3). Recusa com aviso, como as irmãs.
     for (entity_bits, edit) in action_edits {
-        if let Some(t) = super::inspector_action::apply_action_edit(
+        if let Some(t) = ph2d_app_components::signal_actions_inspector::apply_action_edit(
             sim,
             *entity_bits,
             edit,

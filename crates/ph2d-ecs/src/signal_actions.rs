@@ -210,7 +210,7 @@ impl SignalVerb {
     }
 
     /// ⭐⭐ **A CHAVE do rótulo** — `ecs.signal_verb.<variante>`. A shell resolve-a ao montar o
-    /// `verb_labels` do snapshot (`render_loop/inspector_action.rs`), que é o único sítio onde
+    /// `verb_labels` do snapshot (`ph2d-app-components/src/signal_actions_inspector.rs`), que é o único sítio onde
     /// estas sete palavras chegam a um pixel.
     #[must_use]
     pub const fn label_key(self) -> &'static str {

@@ -24,7 +24,7 @@
 //! # As onze que ficam
 //!
 //! Os **4 barramentos de áudio** e os **7 verbos de sinal**, os dois pintados pela shell ao montar
-//! o snapshot do Inspector (`render_loop/inspector_audio.rs` · `render_loop/inspector_action.rs`).
+//! o snapshot do Inspector (`render_loop/inspector_audio.rs` · `ph2d-app-components::signal_actions_inspector`).
 //!
 //! ⚠️ **A chave deriva da VARIANTE, nunca da palavra inglesa** — a forma forte. Uma ponte que casa
 //! por palavra daria ao `Master` do barramento a palavra de qualquer outro *Master* do app, que é

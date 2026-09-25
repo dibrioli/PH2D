@@ -112,9 +112,6 @@ use ph2d_app_components::signal_actions_bridge as signal_actions;
 /// ⭐⭐⭐ **A CÂMERA DE JOGO** (TOP-20 #7) — a costura entre a lei pura e a vista da shell.
 /// O anel de um objeto VAZIO selecionado — ver o módulo.
 mod empty_object_overlay;
-/// ⭐ A secção TIMERS (TOP-20 #2, W3) — o snapshot e o commit dela.
-/// ⭐ A secção SIGNAL ACTIONS (TOP-20 #5, W3) — o snapshot e o commit dela.
-mod inspector_action;
 /// **§12 Sockets / Named Anchors** (ADR-0072) — snapshot e commit.
 mod inspector_anchor;
 mod inspector_anim;

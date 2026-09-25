@@ -175,6 +175,10 @@ pub mod signal_action_smoke;
 /// jogo. ⚠️ Desceu da shell em 2026-09-19: ela era a **única** das oito pontes desta família que
 /// ainda lá vivia, e a catraca `the_shell_only_shrinks` foi quem o disse.
 pub mod signal_actions_bridge;
+/// ⭐ **A secção SIGNAL ACTIONS do Inspector** (TOP-20 #5, W3) — o snapshot e o commit dela.
+/// ⚠️ Desceu da shell em 2026-09-24 (plano 28, W4): é pura sobre o mundo e a árvore de tags, e a
+/// catraca `the_shell_only_shrinks` estava a `16` linhas do tecto.
+pub mod signal_actions_inspector;
 /// ⭐⭐⭐ O smoke do CÉREBRO AUTORÁVEL (TOP-20 #15) — ver o cabeçalho.
 pub mod statemachine_smoke;
 pub mod tags_doc;

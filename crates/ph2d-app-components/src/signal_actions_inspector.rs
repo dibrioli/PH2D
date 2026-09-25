@@ -1,5 +1,5 @@
 //! ⭐⭐⭐ **A secção SIGNAL ACTIONS** (TOP-20 #5, W3) — o snapshot que a secção lê e o commit que ela
-//! escreve. Irmão do [`super::inspector_timer`], pela mesma razão dele.
+//! escreve. Irmão do `render_loop::inspector_timer` da shell, pela mesma razão dele.
 //!
 //! # ⚠️ O VERBO atravessa a fronteira como TAG, e o RÓTULO viaja com ele
 //!
@@ -31,7 +31,7 @@ use ph2d_inspector_ordering::queue_set;
 const ACTIONS: &str = "ph2d::ecs::SignalActions";
 
 /// O snapshot da secção, ou `None` quando o objecto não tem a tabela.
-pub(super) fn build_action_info(
+pub fn build_action_info(
     world: &World,
     // ⭐ A árvore de tags (TOP-20 #9, W3b) — para a linha mostrar o CAMINHO da tag alvo, e não o
     // número dela. ⚠️ O painel não conhece a árvore, e um id cru na tela não diz nada a ninguém.
@@ -50,7 +50,7 @@ pub(super) fn build_action_info(
             verb_tag: a.verb.tag(),
             arg: a.arg.clone(),
             uses_arg: a.verb.uses_arg(),
-            arg_hint: ph2d_app_components::signal_actions_bridge::dica_do_argumento(a.verb),
+            arg_hint: crate::signal_actions_bridge::dica_do_argumento(a.verb),
             uses_target: a.verb.uses_target(),
             // ⭐⭐⭐ **Os dois campos do suplente #24** — o modo do alvo e a cerca. ⚠️ **A tradução
             // mora AQUI e nos dois sentidos** (ver o dreno abaixo): o painel é chrome e não vê o
@@ -91,7 +91,7 @@ pub(super) fn build_action_info(
 /// Aplica uma [`ActionFieldEdit`]. Devolve um aviso quando a edição foi **recusada**.
 ///
 /// ⚠️ **Ler-modificar-escrever sobre o componente inteiro**, como as irmãs.
-pub(super) fn apply_action_edit(
+pub fn apply_action_edit(
     sim: &SimWorld,
     entity_bits: u64,
     edit: &ActionFieldEdit,
@@ -177,5 +177,5 @@ pub(super) fn apply_action_edit(
 
 /// Os gates desta secção — módulo irmão, pelo teto de 600 LOC da shell.
 #[cfg(test)]
-#[path = "inspector_action_tests.rs"]
+#[path = "signal_actions_inspector_tests.rs"]
 mod tests;

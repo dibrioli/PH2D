@@ -133,6 +133,10 @@ image = { version = "0.25", default-features = false, features = ["png"] }
 ph2d-preview-drive = { path = "../ph2d-preview-drive", features = ["test-support"] }
 # A régua lexical do HR-15, para o gate por crate (`tests/it/`).
 ph2d-label-census = { path = "../ph2d-label-census" }
+# ⭐ Os ids do painel da tabela de acções — dois gates da secção SIGNAL ACTIONS medem que o painel
+# tem um id por verbo e por linha do modelo (desceram da shell em 2026-09-24, plano 28 W4). ⚠️ Só
+# nos TESTES: é família → painel, aresta permitida pela lei das camadas, e o produto não a pede.
+ph2d-panel-inspector = { path = "../ph2d-panel-inspector" }
 
 [features]
 # ⚠️⚠️ **Um `#[cfg(test)]` da família é INVISÍVEL do outro lado da fronteira**

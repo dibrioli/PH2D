@@ -300,7 +300,7 @@ fn late(
     });
     // ⭐ A secção SIGNAL ACTIONS — `None` para quem não tem o componente (ADR-0166).
     let inspector_action = hero.gizmo.selection.and_then(|b| {
-        crate::render_loop::inspector_action::build_action_info(
+        ph2d_app_components::signal_actions_inspector::build_action_info(
             sim.world(),
             tags,
             b,

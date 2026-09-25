@@ -111,6 +111,14 @@ pub fn medir(motion: &MotionState) -> Medidas {
         ph2d_editor_core::ProjectSettings::default(),
         &mut snap,
     );
+    // ⛔ **E a fileira do NÚMERO reserva-se sempre** (auditoria do fecho, 2026-09-24): o retrato
+    // acima nasce SEM readout — ele é carimbado pelo quadro, depois de cozinhar —, e quase todo
+    // cartão cozido mostra um. Medido sem ele, cada cartão sai uma fileira mais baixo do que o
+    // que se pinta, e a arrumação encostava-os. Reservá-la é o lado CONSERVADOR que o cartão de
+    // grupo já escolhe abaixo: sobra espaço num nó que o cozimento não puxa, nunca falta.
+    for n in &mut snap.nodes {
+        n.readout.get_or_insert_with(String::new);
+    }
 
     // ⚠️ **Um cartão de GRUPO não passa por aquele retrato** — ele é derivado pela shell (o
     // título do subgrafo, os pinos que atravessam a fronteira, e o «N nós» que ele mostra em vez

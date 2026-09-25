@@ -228,3 +228,37 @@ fn arrumar_uma_segunda_vez_nao_mexe_um_bit() {
         .collect();
     assert_eq!(antes, depois, "a arrumacao chegou a um ponto fixo");
 }
+
+/// ⭐ **A MEDIDA cobre o cartão que se PINTA com o número por baixo** (auditoria do fecho,
+/// 2026-09-24). O gate irmão mede sobreposição com a MESMA medida que arruma, logo não podia ver
+/// uma medida curta: os dois lados encolhiam juntos. ⇒ esta régua mede contra o retrato do
+/// PAINEL com um readout carimbado, que é o que o quadro desenha depois de cozinhar.
+/// FALSIFICADO por apagar a reserva no `medir` (cada cartão sai uma fileira mais baixo).
+#[test]
+fn a_medida_reserva_a_fileira_do_numero() {
+    let mut m = MotionState::new();
+    let _ = build(&mut m.doc, &m.registry).expect("a cena monta");
+    let medidas = crate::motion_bridge::medida::medir(&m);
+    let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
+    crate::motion_bridge::params::card::stamp_card_params(
+        &m,
+        ph2d_editor_core::ProjectSettings::default(),
+        &mut snap,
+    );
+    let mut vistos = 0;
+    for n in &mut snap.nodes {
+        n.readout = Some("0".to_string());
+        let pintado = ph2d_panel_motion_graph::extensao_desenhada(n, false);
+        let medido = medidas.extensao(ph2d_motion_doc::layout::Carta::No(NodeId(n.id)));
+        // A ALTURA e nunca a borda: o retrato do cartão sai em cima OU em baixo conforme o
+        // corredor (`lados_dos_retratos`), e a altura total é a mesma dos dois lados.
+        let (h_medido, h_pintado) = (medido.bottom - medido.top, pintado.bottom - pintado.top);
+        assert!(
+            h_medido >= h_pintado - 1e-3,
+            "no' {}: a medida tem {h_medido} de altura e o cartao com o numero pinta {h_pintado}",
+            n.id,
+        );
+        vistos += 1;
+    }
+    assert!(vistos > 30, "a cena tem cartoes que cheguem ({vistos})");
+}

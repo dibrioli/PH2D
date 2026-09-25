@@ -330,6 +330,13 @@ pub struct MotionState {
     /// whose digest MOVED has data running down its wires, and the panel marches them
     /// (TouchDesigner's animated wire). UI-only — the cook never reads it.
     pub flow_digest: std::collections::BTreeMap<u32, u64>,
+    /// Os nós cujos fios MARCHAVAM no último quadro — o que um quadro com a leitura da placa
+    /// REPETIDA mantém, em vez de declarar os fios parados (ver `readout::stamp`).
+    pub flow_quente: std::collections::BTreeSet<u32>,
+    /// A leitura da placa DESTE quadro é nova? (`GpuCook::tap_fresca`, copiado pelo `take_tap`.)
+    /// Com a leitura sem espera, um quadro em que a placa ainda não respondeu devolve a leitura
+    /// anterior — e os fios e a sonda comparam leituras entre quadros.
+    pub tap_fresco: bool,
     /// **The subgraph the editor is standing IN** (doc 57): `None` = the root canvas.
     /// Navigation, so it is not in the document (not serialized, not undoable) — but
     /// it is not in the PANEL either: an undo that unmakes the group you are inside

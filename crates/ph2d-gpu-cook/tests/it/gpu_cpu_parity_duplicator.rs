@@ -46,6 +46,8 @@ fn registry() -> NodeRegistry {
     ph2d_node_value_attribute::register(&mut reg).unwrap();
     ph2d_node_value_math::register(&mut reg).unwrap();
     ph2d_node_motion_color_ramp::register(&mut reg).unwrap();
+    // Para juntar duas grelhas cheias e passar o tecto de formas (o caso sem orçamento).
+    ph2d_node_motion_combine::register(&mut reg).unwrap();
     reg
 }
 
@@ -292,6 +294,51 @@ fn o_carimbo_concorda_com_a_cpu_dentro_do_epsilon() {
         let dev = cozer_gpu(&gpu, &reg, &g, out);
         comparar(&rot, &cpu, &dev);
     }
+}
+
+/// ⛔⛔ **Sem orçamento para pontos, o carimbo devolve a FORMA intacta — nas duas rotas** (auditoria
+/// do fecho, 2026-09-24). Com mais formas do que o tecto o `np` do orçamento é `0` com a porta de
+/// pontos CHEIA; a CPU devolve a forma, e o kernel lia `read_points_P(0)` (a presença da coluna é
+/// julgada pela contagem da PORTA) e somava o 1.º ponto a toda forma.
+///
+/// A fixtura: duas grelhas de `181²` juntas (`65 522` formas, acima dos `32 768`) sobre uma grelha de
+/// pontos `3×3` cujo 1.º ponto NÃO é a origem.
+#[test]
+#[ignore = "requires a GPU adapter"]
+fn sem_orcamento_para_pontos_o_carimbo_devolve_a_forma() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("sem adaptador de GPU — a saltar");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let lado = ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32;
+    let f1 = grelha(&mut g, lado, lado, 0.01, 0.01);
+    let f2 = grelha(&mut g, lado, lado, 0.013, 0.013);
+    let juntas = g.add_node("motion.combine");
+    liga(&mut g, f1, juntas, 0);
+    liga(&mut g, f2, juntas, 1);
+    let pontos = grelha(&mut g, 3.0, 3.0, 0.5, 0.3);
+    let dup = g.add_node("motion.duplicator");
+    liga(&mut g, juntas, dup, 0);
+    liga(&mut g, pontos, dup, 1);
+    let out = g.add_node("motion.output");
+    liga(&mut g, dup, out, 0);
+    g.validate(&reg).expect("bem tipada");
+
+    let cpu = cozer_cpu(&reg, &g, out);
+    let ns = 2 * ph2d_nodegraph::node::CELULAS_DE_UMA_GRELHA_CHEIA;
+    assert!(
+        ns > ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO,
+        "a fixtura tem de passar o tecto de formas"
+    );
+    assert_eq!(
+        cpu.len(),
+        ns,
+        "sem orcamento, a CPU devolve as formas tal qual (nao `ns · np`)"
+    );
+    let dev = cozer_gpu(&gpu, &reg, &g, out);
+    comparar("carimbo sem orcamento para pontos", &cpu, &dev);
 }
 
 /// ⭐⭐ **AS RECUSAS entregam o nó à CPU** — as três do `applicable` e a da ROTAÇÃO dos pontos (uma

@@ -37,8 +37,11 @@ o uso real do dono dentro, por regra (`CLAUDE.md` §0.8): uma **FORMA** e uma **
 - `PH2D_TECTO_N=<n>` escolhe a população (omissão `16 384`); ela **enche em `4 s`** e depois fica.
 
 ⭐ **As DUAS formas vão pela MESMA rota — a HÍBRIDA** (gate
-`a_escada_mede_a_rota_hibrida_com_as_duas_formas`): a simulação e o carimbo correm na CPU e só o
-`move` vai à placa. ⚠️ A 1.ª redacção deste gate afirmava que a estrela caía inteira na CPU e
+`a_escada_poe_a_simulacao_na_placa_e_so_a_fonte_fica_na_cpu`): desde o §8 só a FONTE fica na CPU
+(`source.object` ou `source.shape`) e a simulação, o carimbo e o `move` vão à placa. ⚠️ Esta frase
+dizia *«a simulação e o carimbo correm na CPU»* e o gate chamava-se
+`a_escada_mede_a_rota_hibrida_com_as_duas_formas` — os dois envelheceram no §8 e a auditoria do
+fecho (2026-09-24) apanhou-os aqui. ⚠️ A 1.ª redacção deste gate afirmava que a estrela caía inteira na CPU e
 **reprovou** — o que a estrela muda é o **desenho**, não a rota do cozimento. *Sem o gate a tabela
 podia estar a medir uma rota que a cena já não toma.*
 
@@ -370,7 +373,7 @@ ficava parada à espera de TUDO: `0,68 ms` por quadro na RTX, `60 %` do Motion q
 
 **A cura** ([`tap_voo.rs`](../../crates/ph2d-gpu-cook/src/tap_voo.rs)): `GpuCook::tap_sem_espera`
 encomenda a leitura num quadro e recolhe-a no seguinte (`poll(Poll)`, que não bloqueia), com **um**
-pedido em voo de cada vez. Os cartões ficam um quadro mais atrás (já eram um). ⚠️ **Um quadro que
+pedido em voo de cada vez. Os cartões ficam um quadro mais atrás (já eram um ⇒ **dois no total**). ⚠️ **Um quadro que
 não é da placa DESCARTA a leitura** — sem isso, voltar à placa mostraria números de há minutos. O
 `tap` síncrono **fica** para os gates e as sondas, e as duas rotas partilham o gather e a leitura
 (`encomenda_tap` · `le_tap`), logo leem as **mesmas** amostras — e há gate a afirmá-lo ao bit.

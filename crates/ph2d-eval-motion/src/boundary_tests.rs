@@ -470,3 +470,76 @@ fn a_rota_de_fronteiras_nao_simula_o_laco_que_elas_nao_leem() {
         "CONTROLO: a rota de sinks avanca toda fonte de `pre`, lida ou nao"
     );
 }
+
+/// O grafo do gate acima: a fronteira `a` isolada, e o laço `src --pre--> b` ao lado.
+fn fronteira_e_laco_ao_lado() -> (Graph, NodeId, NodeId) {
+    let mut g = Graph::new();
+    let a = g.add_node("motion.test.btap");
+    let src = g.add_node("motion.test.bsrc");
+    let b = g.add_node("motion.test.btap");
+    g.connect(ph2d_nodegraph::graph::Edge {
+        from: (src, 0),
+        to: (b, 0),
+        delayed: true,
+    })
+    .unwrap();
+    (g, a, b)
+}
+
+/// ⛔⛔ **Uma TOMADA armada põe o laço dentro do cone** (auditoria do fecho, 2026-09-24): a bomba coze
+/// as tomadas no mesmo instante que as fronteiras, e um gizmo ou um `pulse.signal` a jusante de um
+/// laço fora do cone lia um laço re-semeado a cada tique. O CONTROLO é o gate de cima: sem a tomada
+/// o mesmo laço fica de fora.
+#[test]
+fn uma_tomada_armada_poe_o_laco_que_ela_le_no_cone() {
+    let (g, a, b) = fronteira_e_laco_ao_lado();
+    let mut pump = MotionCookPump::new();
+    pump.define_a_lei(false);
+    pump.set_taps(&[b]);
+    SRC_EVALS.with(|c| c.set(0));
+    pump.advance_or_scrub_to_nodes_scoped(
+        &g,
+        &Ops,
+        &[a],
+        0,
+        |t| t as f64 * 0.016,
+        &TimeScopes::default(),
+    );
+    assert!(
+        SRC_EVALS.with(Cell::get) >= 1,
+        "a tomada le o laco `src -> b`, logo ele avanca com a fronteira"
+    );
+}
+
+/// ⛔ **O SCRUB marcha o MESMO cone que a reprodução** — eram duas respostas (o scrub marchava tudo),
+/// e as tomadas viam estados diferentes conforme se tocava ou se arrastava a régua.
+#[test]
+fn o_scrub_de_fronteiras_marcha_o_mesmo_cone() {
+    let (g, a, _b) = fronteira_e_laco_ao_lado();
+    let mut pump = MotionCookPump::new();
+    pump.define_a_lei(false);
+    let relogio = |t: u64| t as f64 * 0.016;
+    for tick in 0..4 {
+        pump.advance_or_scrub_to_nodes_scoped(
+            &g,
+            &Ops,
+            &[a],
+            tick,
+            relogio,
+            &TimeScopes::default(),
+        );
+    }
+    SRC_EVALS.with(|c| c.set(0));
+    // Para trás: o scrub restaura um checkpoint e re-coze para a frente.
+    pump.advance_or_scrub_to_nodes_scoped(&g, &Ops, &[a], 1, relogio, &TimeScopes::default());
+    assert_eq!(
+        pump.last_cooked_tick(),
+        Some(1),
+        "o scrub aterrou no tique pedido"
+    );
+    assert_eq!(
+        SRC_EVALS.with(Cell::get),
+        0,
+        "o scrub de fronteiras nao simula o laco que elas nao leem"
+    );
+}

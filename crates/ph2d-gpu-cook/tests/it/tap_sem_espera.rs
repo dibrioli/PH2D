@@ -128,3 +128,69 @@ fn a_leitura_encomenda_num_quadro_e_recolhe_no_seguinte() {
         "e esquece a ultima leitura — senao voltar a' placa mostraria numeros velhos"
     );
 }
+
+/// ⛔ **Sem nada a amostrar, a leitura antiga é ESQUECIDA** (auditoria do fecho, 2026-09-24): um
+/// emissor rebobinado ao zero esvazia todo stream, o `tap` síncrono devolve nada, e a leitura sem
+/// espera devolvia a de antes para sempre — um cartão com os números de antes do rebobinar.
+#[test]
+#[ignore = "precisa de adapter de GPU"]
+fn sem_nada_a_amostrar_a_leitura_antiga_e_esquecida() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    g.set_param(grid, "rows", 12.0);
+    g.set_param(grid, "cols", 12.0);
+    let out = g.add_node("motion.output");
+    connect(&mut g, grid, out);
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    let coze = |gc: &mut ph2d_gpu_cook::GpuCook, g: &Graph| {
+        let plan = ph2d_gpu_cook::plan(g, &reg, &reg, out);
+        assert!(plan.is_fully_gpu());
+        gc.cook(
+            &gpu,
+            g,
+            &reg,
+            &reg,
+            &plan,
+            &[],
+            CookClock::at(0.5),
+            [0.0, 0.0, 1.0, 1.0],
+            [0.1, 0.1],
+            SinkStyle::PLAIN,
+        )
+        .expect("cozimento na placa");
+    };
+    let s = ph2d_gpu_cook::tap::TAP_SAMPLES;
+    coze(&mut gc, &g);
+    let _ = gc.tap_sem_espera(&gpu, s);
+    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+    assert!(
+        gc.tap_sem_espera(&gpu, s).is_some(),
+        "CONTROLO: com a grelha cheia ha' leitura"
+    );
+    assert!(gc.tap_fresca(), "e ela e' nova");
+
+    g.set_param(grid, "rows", 0.0);
+    coze(&mut gc, &g);
+    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+    assert!(
+        gc.tap_sem_espera(&gpu, s).is_none(),
+        "todo stream vazio: a leitura de antes NAO pode ficar nos cartoes"
+    );
+
+    // ⚠️⚠️ **A metade que a 1.ª redacção não tinha, e uma mutação SOBREVIVENTE nomeou-a:** a
+    // chamada sem nada a amostrar devolve vazio com a cura E sem ela — a leitura velha só volta a
+    // aparecer na chamada SEGUINTE, quando há outra vez o que ler e a nova ainda está em voo. É ali
+    // que o cartão mostraria os números de antes do rebobinar.
+    g.set_param(grid, "rows", 12.0);
+    coze(&mut gc, &g);
+    assert!(
+        gc.tap_sem_espera(&gpu, s).is_none(),
+        "a 1.a leitura depois do vazio ainda esta' em voo — devolver algo aqui e' devolver a de \
+         ANTES do rebobinar"
+    );
+}

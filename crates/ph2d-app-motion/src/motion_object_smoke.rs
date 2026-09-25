@@ -140,8 +140,12 @@ static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0
 /// ESTILO DO SINK (doc 89 folha 17) · `11` o RITMO (os *holds* do sub-UV) · `12` a
 /// FOLHA À FRENTE dos galhos (a terceira média — ver `motion_object_smoke_leaf`) · `13` a
 /// MISTURA NA PLACA (ver `motion_object_smoke_blend`) · `14` a MISTURA EM GRUPO (ver
-/// `motion_object_smoke_grupo`) · `15` O MODO DE UMA LINHA (ver `motion_object_smoke_linha`).
+/// `motion_object_smoke_grupo`) · `15` O MODO DE UMA LINHA (ver `motion_object_smoke_linha`) ·
+/// `16` o ENXAME (ver `motion_object_smoke_enxame`) · `17` A ESCADA DOS TECTOS (ciclo 12 — ver
+/// `motion_object_smoke_escada`).
 ///
+/// ⚠️ **O `16` e o `17` também faltavam** (auditoria do fecho, 2026-09-24) — a mesma forma do `12`
+/// abaixo, duas vezes mais.
 /// ⚠️ **O `12` faltava nesta lista** — a cena existia e o roteador dela não a nomeava
 /// (auditoria de seis lentes, doc 96 §1.4). *Uma cena que o roteador não nomeia é encontrada
 /// por `grep`, não alcançada por leitura.*

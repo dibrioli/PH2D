@@ -214,7 +214,13 @@ fn o_roteador_monta_esta_cena_no_126() {
 /// este gate reprova em vez de o roteiro passar a apontar para um número que não está lá.
 #[test]
 fn o_roteiro_nomeia_o_que_o_dono_vai_ver() {
-    let texto = include_str!("motion_state_carimbo_demo.rs");
+    // ⛔ Só o ROTEIRO, nunca o ficheiro inteiro (auditoria do fecho, 2026-09-24): `Grid` e
+    // `Duplicator` aparecem no código que MONTA a cena, logo contra o ficheiro este gate ficava
+    // verde com o roteiro a não os nomear — a régua que o irmão de baixo já usava.
+    let texto = include_str!("motion_state_carimbo_demo.rs")
+        .split_once("pub(super) fn announce()")
+        .expect("a cena tem um roteiro")
+        .1;
     for nome in ["Grid", "Duplicator", "PH2D_CARIMBO_PREPARADO"] {
         assert!(
             texto.contains(nome),

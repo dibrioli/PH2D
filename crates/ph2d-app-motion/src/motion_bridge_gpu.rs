@@ -8,10 +8,8 @@
 //! route and drives the pump / `GpuCook` accordingly.
 
 use crate::motion_state::MotionState;
-use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::cook::TimeScopes;
 use ph2d_nodegraph::graph::{Graph, NodeId};
-use ph2d_nodegraph::node::NodeTypeId;
 
 /// Whether the GPU produced this frame (the caller skips the CPU pump) or the
 /// frame fell through to it (GPU off / no useful GPU work / a fully-GPU cook that
@@ -107,26 +105,13 @@ pub fn gpu_route(
     }
 }
 
-/// Does this document bring in a live vector SHAPE (`source.shape`)? (ADR-0154)
-///
-/// A live vector is drawn by the vector pass (`geometry_id`), which the
-/// GPU-resident cook has NO route for — so a document carrying one draws as
-/// blank atlas quads the moment a GPU stage runs (`source → duplicator → … `
-/// is Hybrid). Recuse it to the CPU render (which draws it) at PLAN time, so the
-/// CPU pump owns the tick from scratch and no sequential prefix is marched
-/// twice. The signal is a registry flag `source.shape` sets
-/// (`is_live_vector_source`), not a node-name match.
-///
-/// ⚠️ An OBJECT source (`source.object`, `texture_id`) is NOT here: the GPU cook
-/// now draws it (the lowering carries the id, the renderer binds the texture per
-/// run). It recuses only when its GPU suffix reorders / changes count — see
-/// [`graph_has_object_source`] + [`ph2d_gpu_cook::GpuPlan::suffix_changes_count`].
-pub(super) fn graph_has_live_vector_source(graph: &Graph, reg: &NodeRegistry) -> bool {
-    graph
-        .nodes()
-        .iter()
-        .any(|n| reg.is_live_vector_source(NodeTypeId::of(n.type_name.as_str())))
-}
+/// ⭐ **As CERCAS DE FONTE** (o vector vivo e o objecto) vivem num irmão — ver o cabeçalho dele.
+#[path = "motion_bridge_gpu_objecto.rs"]
+mod objecto;
+pub(super) use objecto::{
+    cook_publishes_live_geometry, cook_publishes_only_atlas_objects, graph_has_live_vector_source,
+    graph_has_object_source,
+};
 
 /// ⭐⭐⭐ **As três CERCAS DO COLISOR** vivem num irmão (docs 109 W2 · 115 W1/W4) — ver o cabeçalho
 /// dele. O que fica AQUI é o despacho, que é o que decide a ordem do cozimento.
@@ -196,68 +181,6 @@ fn substep_clocks(
         .collect()
 }
 
-/// Does this document bring in an engine OBJECT (`source.object`, `texture_id`)?
-/// Read together with [`ph2d_gpu_cook::GpuPlan::suffix_changes_count`] for the
-/// count-changing cerca: an object graph whose GPU suffix reorders / changes
-/// count would mis-bind the texture-run partition (the boundary `texture_id`
-/// column no longer aligns with the device buffer), so it recuses to the CPU
-/// render. The signal is the registry flag `source.object` sets.
-pub(super) fn graph_has_object_source(graph: &Graph, reg: &NodeRegistry) -> bool {
-    graph
-        .nodes()
-        .iter()
-        .any(|n| reg.is_object_source(NodeTypeId::of(n.type_name.as_str())))
-}
-
-/// Does the cook's external table carry a LIVE VECTOR (`geometry_id > 0`)? — the
-/// CONTENT-aware half of the object recusal (ADR-0154 reused for objects).
-///
-/// Whether a `source.object` resolves to a vector depends on what the artist NAMED
-/// (a sprite → `texture_id`, a vector → `geometry_id`), which the node-type registry
-/// cannot see. The membrane publishes the externals BEFORE the cook runs (post-drain,
-/// pre-cook), so this per-frame scan answers the real question and lets a pure-sprite
-/// object graph stay on the GPU stamp while a vector-bearing one recuses. Cheap: a
-/// handful of externals, one scalar-column probe each.
-fn cook_publishes_live_geometry(cook: &ph2d_nodegraph::cook::Cook) -> bool {
-    use ph2d_nodegraph::attr::Column;
-    cook.externals().values().any(|e| {
-        matches!(e.value.get("geometry_id"), Some(Column::Scalar(v)) if v.iter().any(|&g| g > 0.5))
-    })
-}
-
-/// **Todo objecto publicado vive no ÁTLAS partilhado?** (`texture_id` todo `0`, ou nenhum publicado)
-/// — a metade de CONTEÚDO da cerca da contagem (doc 120 §8.2).
-///
-/// ⚠️ A comparação é **`v as u32 == 0`, à letra do `texture_runs_from_boundary`** (e do
-/// `scalar_at(..) as u32` da CPU): é essa a pergunta que decide se a partição é vazia, e uma
-/// segunda redacção dela (um `v < 0.5`, por exemplo) discordaria num `0,7` que as duas lêem
-/// diferente. Sem nenhum objecto publicado não há textura a partir — `true`.
-pub(super) fn cook_publishes_only_atlas_objects(cook: &ph2d_nodegraph::cook::Cook) -> bool {
-    use ph2d_nodegraph::attr::Column;
-    cook.externals()
-        .values()
-        .all(|e| match e.value.get("texture_id") {
-            Some(Column::Scalar(v)) => v.iter().all(|&t| t as u32 == 0),
-            _ => true,
-        })
-}
-
-/// The GPU-resident cook for this frame (GPU/M5 Fase 1 + F1.2, ADR-0126).
-///
-/// Unless `PH2D_GPU_COOK=0`, an unscoped document cooks on the GPU — ONE sink or
-/// several, planned as their UNION and lowered one after another (doc 119 W2–W4):
-/// compute passes in one submit, the lowering writes the renderer's instance
-/// buffer directly, zero readback. **Fully-GPU** when the plan claims the whole
-/// chain; **hybrid** when a node has no kernel — the CPU prefix cooks up to that
-/// boundary on the persistent pump (memo + `pre` feedback + the tick march, so a
-/// sequential prefix sims correctly and a scrub is bit-exact), and only its
-/// output stream crosses to the GPU, which runs the covered suffix. Anything the
-/// plan can't usefully claim returns [`GpuOutcome::FellThrough`] to the CPU pump.
-///
-/// The graph panel reads a GPU frame through the bounded **tap** (Fase 4,
-/// `readout::take_tap` — readouts, digest, probe), so a fully-GPU document is
-/// no longer blind in the editor; the tap is one frame behind the cook it
-/// samples (the documented ordering asymmetry vs the CPU memo).
 /// Um nó e os fios que chegam aos params dele: `(nó, [(param, (condutor, porta))])`.
 type FioDeParam = (
     ph2d_nodegraph::graph::NodeId,
@@ -328,6 +251,22 @@ pub(crate) fn valores_dirigidos(
     fora
 }
 
+/// The GPU-resident cook for this frame (GPU/M5 Fase 1 + F1.2, ADR-0126).
+///
+/// Unless `PH2D_GPU_COOK=0`, an unscoped document cooks on the GPU — ONE sink or
+/// several, planned as their UNION and lowered one after another (doc 119 W2–W4):
+/// compute passes in one submit, the lowering writes the renderer's instance
+/// buffer directly, zero readback. **Fully-GPU** when the plan claims the whole
+/// chain; **hybrid** when a node has no kernel — the CPU prefix cooks up to that
+/// boundary on the persistent pump (memo + `pre` feedback + the tick march, so a
+/// sequential prefix sims correctly and a scrub is bit-exact), and only its
+/// output stream crosses to the GPU, which runs the covered suffix. Anything the
+/// plan can't usefully claim returns [`GpuOutcome::FellThrough`] to the CPU pump.
+///
+/// The graph panel reads a GPU frame through the bounded **tap** (Fase 4,
+/// `readout::take_tap` — readouts, digest, probe), so a fully-GPU document is
+/// no longer blind in the editor; the tap is one frame behind the cook it
+/// samples (the documented ordering asymmetry vs the CPU memo).
 pub(super) fn cook_gpu(
     motion: &mut MotionState,
     gpu: &ph2d_gpu::GpuContext,

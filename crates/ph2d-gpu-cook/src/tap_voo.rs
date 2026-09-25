@@ -19,7 +19,7 @@
 //! 2. **encomenda** o seguinte sobre os streams DESTE cozimento;
 //! 3. devolve a **última leitura completa**.
 //!
-//! ⇒ os cartões ficam **um quadro mais atrás** (já eram um — ver o `stamp` da ponte). ⚠️ E a
+//! ⇒ os cartões ficam **um quadro mais atrás** (já eram um — ver o `stamp` da ponte ⇒ **dois no total**). ⚠️ E a
 //! leitura é DESTE caminho: quem deixa de conduzir pela placa tem de chamar
 //! [`GpuCook::descarta_tap_em_voo`], senão um regresso à placa mostraria números de há minutos.
 //!
@@ -41,6 +41,8 @@ use std::sync::mpsc::{Receiver, TryRecvError};
 pub(crate) struct TapVoo {
     em_voo: Option<EmVoo>,
     ultimo: Option<BTreeMap<NodeId, Stream>>,
+    /// A última chamada RECOLHEU uma leitura nova? — ver [`GpuCook::tap_fresca`].
+    fresca: bool,
 }
 
 struct EmVoo {
@@ -61,11 +63,13 @@ impl GpuCook {
     ) -> Option<BTreeMap<NodeId, Stream>> {
         // ⛔ `Poll` e NUNCA `wait`: esperar aqui é o defeito que este módulo existe para curar.
         let _ = gpu.device.poll(wgpu::PollType::Poll);
+        self.tap_voo.fresca = false;
         if let Some(voo) = &self.tap_voo.em_voo {
             match voo.pronto.try_recv() {
                 Ok(Ok(())) => {
                     let voo = self.tap_voo.em_voo.take().expect("acabou de ser lido");
                     self.tap_voo.ultimo = Some(le_tap(&voo.staging, &voo.slots));
+                    self.tap_voo.fresca = true;
                 }
                 // A placa recusou o mapeamento (ou o pedido morreu): esquece-o e encomenda outro.
                 Ok(Err(_)) | Err(TryRecvError::Disconnected) => self.tap_voo.em_voo = None,
@@ -73,9 +77,14 @@ impl GpuCook {
                 Err(TryRecvError::Empty) => {}
             }
         }
-        if self.tap_voo.em_voo.is_none()
-            && let Some((staging, slots)) = self.encomenda_tap(gpu, samples)
-        {
+        if self.tap_voo.em_voo.is_none() {
+            let Some((staging, slots)) = self.encomenda_tap(gpu, samples) else {
+                // ⛔ Nada a amostrar (todo stream vazio — um emissor rebobinado ao zero): a leitura
+                // antiga NÃO fica — o `tap` síncrono também devolve nada aqui, e um cartão com os
+                // números de antes do rebobinar mente (auditoria do fecho, 2026-09-24).
+                self.tap_voo.ultimo = None;
+                return None;
+            };
             let (tx, rx) = std::sync::mpsc::channel();
             staging.slice(..).map_async(wgpu::MapMode::Read, move |r| {
                 let _ = tx.send(r);
@@ -92,6 +101,15 @@ impl GpuCook {
     /// **Esquece o pedido em voo e a última leitura** — para quem deixa de conduzir pela placa.
     pub fn descarta_tap_em_voo(&mut self) {
         self.tap_voo = TapVoo::default();
+    }
+
+    /// **A última chamada de [`Self::tap_sem_espera`] trouxe uma leitura NOVA?** Quando a placa
+    /// ainda não acabou, a chamada devolve a leitura anterior — e quem compara leituras entre
+    /// quadros (os fios que «marcham» quando o valor MUDA; a sonda que junta uma amostra por
+    /// leitura) tem de saber que aquela é a MESMA (auditoria do fecho, 2026-09-24).
+    #[must_use]
+    pub fn tap_fresca(&self) -> bool {
+        self.tap_voo.fresca
     }
 
     /// Há um pedido na placa por recolher? — para o gate afirmar «um de cada vez».

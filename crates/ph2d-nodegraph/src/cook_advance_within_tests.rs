@@ -140,3 +140,24 @@ fn o_cone_segue_as_arestas_de_pre() {
         "a fonte do pre esta no cone de quem a le"
     );
 }
+
+/// ⛔⛔ **Um laço que só CONDUZ UM PARAM da fronteira está no cone dela** (auditoria do fecho,
+/// 2026-09-24): o fio de param não vive nas `edges()`, e a 1.ª redacção do cone esquecia-o — o laço
+/// ficava de fora, era re-semeado a cada tique e o param lia sempre o 1.º valor. ⚠️ O CONTROLO é o
+/// mesmo grafo sem o fio: aí o laço está FORA, que é o que prova que é o fio que o põe dentro.
+#[test]
+fn o_cone_segue_os_fios_que_conduzem_um_param() {
+    let (mut g, a, b, c) = grafo();
+    assert!(
+        !cone_a_montante(&g, &[c]).contains(&b),
+        "CONTROLO: sem o fio, o laco B nao alimenta a fronteira C"
+    );
+    g.drive_param(c, "mark", (b, 0))
+        .expect("B conduz um param de C");
+    let cone = cone_a_montante(&g, &[c]);
+    assert!(
+        cone.contains(&b),
+        "o laco que conduz um param da fronteira tem de avancar com ela"
+    );
+    assert!(cone.contains(&a), "e a aresta directa continua la");
+}

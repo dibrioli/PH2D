@@ -539,7 +539,11 @@ pub(super) fn sample_probe(
                 });
             }
         };
-        push_probe_sample(motion, value);
+        // ⛔ Uma leitura da placa REPETIDA (a placa ainda não respondeu) não é uma amostra nova:
+        // juntá-la duplicaria o valor no anel da sonda (auditoria do fecho, 2026-09-24).
+        if sampled.is_none() || motion.tap_fresco {
+            push_probe_sample(motion, value);
+        }
         return Some(ph2d_panel_motion_graph::ProbeView {
             node: node.0,
             label,

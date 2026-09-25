@@ -49,6 +49,8 @@ impl MotionState {
             probe: None,
             probe_ring: Vec::new(),
             flow_digest: std::collections::BTreeMap::new(),
+            flow_quente: std::collections::BTreeSet::new(),
+            tap_fresco: false,
             level: None,
             gpu_cook: ph2d_gpu_cook::GpuCook::new(),
             gpu_live: false,
@@ -163,6 +165,7 @@ impl MotionState {
         self.probe = None;
         self.probe_ring.clear();
         self.flow_digest.clear();
+        self.flow_quente.clear();
         self.level = None;
         // The GPU path re-plans against the new graph next frame; until then
         // its instance buffer describes the OLD document, so it must not draw.
@@ -176,6 +179,12 @@ impl MotionState {
         // the pump above was replaced (ADR-0130 D7: a document change invalidates
         // the sim); the sim re-bakes from the seed under the new graph next frame.
         self.gpu_cook.forget_state();
+        // ⛔ E a leitura dos cartões em VOO é do documento velho (auditoria do fecho, 2026-09-24):
+        // ela seria recolhida no quadro seguinte com os ids de lá. Pela mesma razão o pedido de
+        // CPU sai — ele é da CENA de demonstração, e um ficheiro aberto é um documento de artista.
+        self.gpu_cook.descarta_tap_em_voo();
+        self.tap_fresco = false;
+        self.cpu_pedida = None;
         #[cfg(feature = "panel-motion-graph")]
         ph2d_panel_motion_graph::set_graph_selection(Vec::new());
     }

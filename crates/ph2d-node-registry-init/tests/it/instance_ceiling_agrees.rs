@@ -22,8 +22,8 @@
 ///
 /// Ele foi `262 144`, e esse número era **de um recurso**: `measure_lsystem_ceiling.rs` mediu
 /// derivar + interpretar a `~24 ns` por elemento, `38,8 %` de um quadro a `262 145`. Hoje ele é
-/// `16 383`, e o número vem de uma **ORDEM DO DONO** (*«nenhum [nó] pode gerar mais de 16384
-/// objetos»*, 2026-09-21, reafirmada em 22/09) — não de uma medição.
+/// `32 767`, e o número vem de uma **ORDEM DO DONO** (*«nenhum [nó] pode gerar mais de 16384
+/// objetos»*, 2026-09-21, e o limite DOBRADO para `32 768` no ciclo 12) — não de uma medição.
 ///
 /// ⚠️⚠️ **Um limite legítimo diz DE QUE RECURSO ele é** (`CLAUDE.md` §0.0), e este não diz: ele é
 /// uma decisão de PRODUTO sobre quantos objectos um nó pode pôr na cena. Escrevê-lo aqui sem esta
@@ -35,7 +35,11 @@
 /// ⚠️ Cada literal aqui é um sítio a mais, e é de propósito: sem eles o gate compararia as consts
 /// **umas com as outras** e ficaria verde no dia em que alguém as movesse todas juntas por
 /// engano — um oráculo que usa a coisa sob teste para computar o que espera é sempre verde.
-const MEASURED_LSYSTEM_CEILING: usize = ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO - 1;
+///
+/// ⛔⛔ **E é um LITERAL, e a 1.ª redacção desta linha violava o parágrafo de cima** (auditoria do
+/// fecho, 2026-09-24): ela escrevia `MAX_INSTANCIAS_POR_NO - 1`, a MESMA expressão do
+/// `MAX_MODULES` — a linha comparava um valor consigo mesmo e não podia reprovar.
+const MEASURED_LSYSTEM_CEILING: usize = 32_767;
 
 /// O teto MEDIDO no DISPOSITIVO para quem REÚNE (`fx_row_ceiling_probe`): ~1,8 ns por linha, e a
 /// cadeia `grid → oscillator → fx → output` ocupa `5,66–5,89 ms` (`34–35 %` de um quadro) a

@@ -267,7 +267,7 @@ fn draw_arrows(ctx: &mut PaintCtx, track: Rect, seta: f32, z: f32, theme: Theme)
 }
 
 /// Desenha a faixa de params de um cartão. **Nada acontece abaixo do LOD**
-/// ([`geom::params_are_drawn`]) — nem o desenho nem, do lado do hit-test, o registo: uma row
+/// ([`geom::param_text_is_drawn`]) — nem o desenho nem, do lado do hit-test, o registo: uma row
 /// pintada onde não se clica é um controlo morto, e uma registada onde não se vê é um alvo
 /// invisível.
 pub(super) fn draw_card_params(ctx: &mut PaintCtx, n: &GraphNodeView, view: &View, theme: Theme) {

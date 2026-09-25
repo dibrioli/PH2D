@@ -23,7 +23,13 @@ use crate::graph::{Graph, NodeId};
 use std::collections::BTreeSet;
 
 /// **O cone a montante** de `alvo`, inclusivo: todo nó de que algum deles depende, por aresta
-/// directa OU de `pre`.
+/// directa, de `pre` **ou por um fio que conduz um PARAM** (doc 58).
+///
+/// ⛔⛔ **O fio de param é dependência, e a 1.ª redacção esquecia-o** (auditoria do fecho,
+/// 2026-09-24): ele não vive nas `edges()` mas o cozimento segue-o como uma entrada
+/// (`Cook::cook_node`, 1b), e um param conduzido é precisamente o que torna um nó FRONTEIRA. Sem
+/// este braço, um laço de `pre` que só conduz o param da fronteira ficava fora do cone e era
+/// re-semeado a cada tique — o param lia sempre o 1.º valor.
 ///
 /// ⚠️ **NÃO é o `cook_substep::upstream_cone`, e a diferença é de propósito:** aquele salta as
 /// arestas de `pre` porque responde *«o que se re-avalia DENTRO de um tique»*; este responde *«que
@@ -34,9 +40,18 @@ pub fn cone_a_montante(graph: &Graph, alvo: &[NodeId]) -> BTreeSet<NodeId> {
     let mut cone: BTreeSet<NodeId> = alvo.iter().copied().collect();
     let mut fila: Vec<NodeId> = alvo.to_vec();
     while let Some(n) = fila.pop() {
-        for e in graph.edges().iter().filter(|e| e.to.0 == n) {
-            if cone.insert(e.from.0) {
-                fila.push(e.from.0);
+        let por_aresta = graph
+            .edges()
+            .iter()
+            .filter(|e| e.to.0 == n)
+            .map(|e| e.from.0);
+        let por_param = graph
+            .param_sources(n)
+            .into_iter()
+            .flat_map(|fontes| fontes.values().map(|&(no, _)| no));
+        for de in por_aresta.chain(por_param).collect::<Vec<_>>() {
+            if cone.insert(de) {
+                fila.push(de);
             }
         }
     }

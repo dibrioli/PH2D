@@ -40,6 +40,12 @@
 //! | o resto da forma | `spread` em `si` | o gather do sequenciador em `cp_rows = si` |
 //! | o resto dos pontos | deitado fora (`Shape Wins`) | não viaja |
 //!
+//! ⛔⛔ **Sem pontos o ponto NÃO se lê** (auditoria do fecho, 2026-09-24): o `np` que chega é o do
+//! ORÇAMENTO, e com mais formas do que o tecto ele é `0` com a porta de pontos CHEIA — a CPU devolve
+//! a forma intacta e a presença da coluna na placa é julgada pela contagem da PORTA, não pelo `np`,
+//! logo ler `read_points_P(0)` somava o 1.º ponto a toda forma. Gate:
+//! `sem_orcamento_para_pontos_o_carimbo_devolve_a_forma` na bancada de paridade.
+//!
 //! ⚠️ **O desvio DECLARADO, e o único:** com a porta de pontos VAZIA a CPU devolve a forma **tal
 //! qual** (`shape.clone()`), e aqui o `Index`/`Count` são escritos na mesma (`0..ns`, `ns`). O
 //! desenho é o mesmo — a posição, a textura, o tamanho —, e a diferença é só a presença de duas
@@ -126,7 +132,10 @@ pub(crate) const GPU_KERNEL: GpuKernel = GpuKernel {
         }\n\
         write_cp_rows(i, f32(dp_s));\n\
         let dp_sp = read_shape_P(dp_s);\n\
-        let dp_pp = read_points_P(dp_p);\n\
+        var dp_pp = vec2<f32>(0.0, 0.0);\n\
+        if (dp_np > 0u) {\n\
+        \x20   dp_pp = read_points_P(dp_p);\n\
+        }\n\
         write_P(i, vec2<f32>(dp_sp.x + dp_pp.x, dp_sp.y + dp_pp.y));\n\
         write_rot(i, read_shape_rot(dp_s));\n\
         write_Index(i, f32(i));\n\

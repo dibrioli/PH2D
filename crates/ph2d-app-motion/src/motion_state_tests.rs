@@ -451,10 +451,21 @@ fn loading_forgets_every_id_that_named_the_previous_document() {
     state.probe = Some(victim);
     state.probe_ring.push(1.0);
     state.flow_digest.insert(victim.0, 7);
+    state.flow_quente.insert(victim.0);
+    state.cpu_pedida = Some("a cena de demonstracao pediu a CPU");
     state.history.begin(&state.doc);
 
     let text = state.doc.to_text();
     state.load_text(&text).expect("round-trips");
+
+    assert!(
+        state.flow_quente.is_empty(),
+        "os fios quentes eram chaveados por id"
+    );
+    assert_eq!(
+        state.cpu_pedida, None,
+        "o pedido de CPU e' da CENA de demo; um ficheiro aberto e' um documento de artista"
+    );
 
     assert_eq!(state.probe, None, "the probe named a node in the old graph");
     assert!(state.probe_ring.is_empty());

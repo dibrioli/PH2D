@@ -79,9 +79,8 @@ impl MotionCookPump {
             // Advance the `pre` feedback exactly as the forward pump does — so
             // after rendering the target the cook is left ready for `target+1`,
             // and resumed playback continues bit-exact (no off-by-one).
-            let _ = self
-                .cook
-                .advance_tick_fanned(graph, ops, playhead, scopes, &self.fans);
+            // A MESMA porta da reprodução (`marcha`): as duas rotas marcham o mesmo cone.
+            self.avanca_o_pre(graph, ops, playhead, scopes, target);
             if t == target_tick {
                 break;
             }

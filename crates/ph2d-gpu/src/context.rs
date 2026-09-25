@@ -289,7 +289,14 @@ mod voz_do_dispositivo_tests {
     /// noutro módulo, mas a regra vale na mesma — o `concat!` garante-o para quem os juntar.
     #[test]
     fn quem_cria_o_dispositivo_liga_a_voz_dele() {
-        let fonte = include_str!("context.rs");
+        // ⛔ Sem os comentários (auditoria do fecho, 2026-09-24): o doc do relator cita o
+        // `on_uncaptured_error` pelo nome, logo contra o ficheiro inteiro a 2.ª metade ficava
+        // verde com o registo APAGADO.
+        let fonte: String = include_str!("context.rs")
+            .lines()
+            .filter(|l| !l.trim_start().starts_with("//"))
+            .collect::<Vec<_>>()
+            .join("\n");
         let chamada = concat!("relata_erros_do_", "dispositivo(&device);");
         assert!(
             fonte.contains(chamada),

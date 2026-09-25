@@ -183,6 +183,7 @@ pub struct MotionCookPump {
 }
 
 mod cook_target;
+mod marcha;
 mod scrub;
 /// A caixa de saída dos TAPS — o readout inline do doc 43, num irmão.
 mod taps;
@@ -370,21 +371,9 @@ impl MotionCookPump {
         self.cook_target_into(graph, ops, target, playhead, scopes);
         if target.has_work() {
             // Advance the 1-tick `pre` feedback once per cooked frame — ONCE for
-            // the whole graph, not per sink (each sink's `pre` sources are
-            // snapshotted by the same call).
-            //
-            // ⭐⭐⭐ **Para FRONTEIRAS, só o cone delas** (ciclo 12, doc 120 §8.5): na rota híbrida um
-            // laço que o dispositivo reclamou era simulado AQUI também, e deitado fora — `4,0 ms`
-            // por quadro na escada a `32 768`. O que a fronteira não lê é do dispositivo, como na
-            // rota totalmente-na-placa, onde o pump não marcha.
-            let _ = match target {
-                CookTarget::Boundaries(nodes) => self
-                    .cook
-                    .advance_tick_fanned_within(graph, ops, playhead, scopes, &self.fans, nodes),
-                CookTarget::Sinks { .. } => self
-                    .cook
-                    .advance_tick_fanned(graph, ops, playhead, scopes, &self.fans),
-            };
+            // the whole graph, not per sink. Para FRONTEIRAS só o cone delas e das tomadas:
+            // a porta é a MESMA do scrub (ver `marcha`).
+            self.avanca_o_pre(graph, ops, playhead, scopes, target);
         }
         self.record_tap_fires(tick);
         self.last_cooked_tick = Some(tick);

@@ -332,7 +332,7 @@ Antes de pôr um param dentro de um cartão (§0.0: medir antes de limitar). Dua
 
 | sonda | comando | resultado |
 |---|---|---|
-| `measure_row_cost` (params) | `cargo test -p ph2d-panel-motion-params --release -- --ignored --nocapture measure_row_cost` | **13,5 µs por row** (marginal: 13,46 · 13,32 · 12,89 · 13,72 · 14,18 de 4 a 33 rows) |
+| `measure_row_cost` (params — ⚠️ a crate foi **APAGADA** em 20/09 e a sonda com ela; o número fica como histórico) | `cargo test -p ph2d-panel-motion-params --release -- --ignored --nocapture measure_row_cost` | **13,5 µs por row** (marginal: 13,46 · 13,32 · 12,89 · 13,72 · 14,18 de 4 a 33 rows) |
 | `measure_card_cost` (grafo) | `cargo test -p ph2d-panel-motion-graph --release -- --ignored --nocapture measure_card_cost` | **11,3 µs por cartão** nu (10,63 · 10,63 · 11,23 · 11,18 · 11,33 · 11,88 de 5 a 120) |
 
 ⛔⛔ **E a extrapolação dos 13,5 µs para o cartão estava ERRADA — a construção mediu-a e
@@ -356,7 +356,7 @@ refutou-a.** Depois de as rows existirem no cartão, a mesma sonda
 | 20 cartões × 24 rows (o pior nó do catálogo) | 1,58 ms | 9 % |
 
 ⇒ ⭐ **Nenhum cenário do catálogo estoura o quadro** — a decisão do Enio é ainda melhor do que
-a defesa que eu lhe tinha escrito. O **LOD fica** (`params_are_drawn`), mas pela razão certa: ele
+a defesa que eu lhe tinha escrito. O **LOD fica** (`param_text_is_drawn`, em `geom_card.rs`), mas pela razão certa: ele
 é a **LEGIBILIDADE** (`11 px × zoom ≥ 9 px` ⇒ `zoom ≥ 0,818`) e o que poupa num grafo afastado
 é bónus, não o que torna a feature possível.
 

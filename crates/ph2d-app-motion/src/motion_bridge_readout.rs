@@ -277,7 +277,7 @@ fn uniform_gid(stream: &Stream) -> Option<u32> {
 /// `poll(wait_indefinitely)`, e no app a fila tem o quadro anterior inteiro — `0,68 ms` por quadro
 /// de CPU parada na escada dos tectos, `60 %` do Motion que sobrava. Hoje a leitura encomenda-se
 /// neste quadro e recolhe-se no seguinte ([`ph2d_gpu_cook::GpuCook::tap_sem_espera`]), logo os
-/// cartões ficam um quadro mais atrás. ⚠️ **Um quadro que não é da placa DESCARTA a leitura**: sem
+/// cartões ficam um quadro mais atrás — **dois no total**, porque já eram um. ⚠️ **Um quadro que não é da placa DESCARTA a leitura**: sem
 /// isso, voltar à placa mostraria os números de quando ela conduziu pela última vez.
 pub(super) fn take_tap(
     motion: &mut MotionState,
@@ -285,11 +285,14 @@ pub(super) fn take_tap(
 ) -> Option<BTreeMap<NodeId, Stream>> {
     if !motion.gpu_live {
         motion.gpu_cook.descarta_tap_em_voo();
+        motion.tap_fresco = false;
         return None;
     }
-    motion
+    let leitura = motion
         .gpu_cook
-        .tap_sem_espera(gpu, ph2d_gpu_cook::tap::TAP_SAMPLES)
+        .tap_sem_espera(gpu, ph2d_gpu_cook::tap::TAP_SAMPLES);
+    motion.tap_fresco = motion.gpu_cook.tap_fresca();
+    leitura
 }
 
 /// `tapped` is [`take_tap`]'s result — `None` on a CPU-driven frame.
@@ -374,24 +377,45 @@ pub(super) fn stamp(
             }
             (None, None) => None,
         };
-        node.hot = match now {
-            Some(now) => {
-                let before = motion.flow_digest.insert(node.id, now);
-                before.is_some_and(|b| b != now)
-            }
-            None => {
-                motion.flow_digest.remove(&node.id);
-                false
+        // ⛔ **Uma leitura da placa REPETIDA não diz que o fio parou** (auditoria do fecho,
+        // 2026-09-24): com a leitura sem espera, o quadro em que a placa ainda não respondeu recebe
+        // a leitura anterior, e comparar o digest com ela leria «nada mudou» — os fios piscavam
+        // exactamente nas cenas pesadas. ⇒ nesse quadro o fio fica como estava.
+        let repetida = cooked.is_none() && sampled.is_some() && !motion.tap_fresco;
+        node.hot = if repetida {
+            motion.flow_quente.contains(&node.id)
+        } else {
+            match now {
+                Some(now) => {
+                    let before = motion.flow_digest.insert(node.id, now);
+                    before.is_some_and(|b| b != now)
+                }
+                None => {
+                    motion.flow_digest.remove(&node.id);
+                    false
+                }
             }
         };
+        if node.hot {
+            motion.flow_quente.insert(node.id);
+        } else {
+            motion.flow_quente.remove(&node.id);
+        }
     }
     // A DELETED node's digest would otherwise sit in the map for the rest of the session.
     // Zero-alloc (a linear scan of a document-sized list, once a frame).
     motion
         .flow_digest
         .retain(|id, _| snap.nodes.iter().any(|n| n.id == *id));
+    motion
+        .flow_quente
+        .retain(|id| snap.nodes.iter().any(|n| n.id == *id));
 }
 
 #[cfg(test)]
 #[path = "motion_bridge_readout_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "motion_bridge_readout_fresca_tests.rs"]
+mod fresca_tests;

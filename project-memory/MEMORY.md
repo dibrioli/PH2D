@@ -27,7 +27,6 @@
 - [Projetos num disco DEDICADO de 2TB](project_projects_live_on_a_dedicated_2tb_disk.md) · [target em tmpfs: «File exists» pós-boot](feedback_a_tmpfs_backed_target_reports_file_exists_not_broken_link.md)
 - [Disco cheio → mold SIGBUS](project_disk_full_corrupts_objects_mold_sigbus.md) · [«cheio» = metadata btrfs](project_btrfs_metadata_starved_not_disk_full_2026_08_22.md)
 - ⭐ [MotionBricks (Apache-2.0) instalado e a correr, headless](reference_motionbricks_oracle_installed.md)
-- ⚠️ [A shell é **zsh**, não `fish`: `$VAR` não se parte](reference_shell_is_zsh_not_fish_and_does_not_word_split.md)
 - [Prompt Deck](reference_prompt_deck_app.md) · [~/Apps invisíveis ao cachy-update](reference_manual_apps_in_home_apps_are_invisible_to_cachy_update.md) · [atalho global Plasma 6](reference_kde_plasma6_global_shortcut.md)
 - [HISTÓRICO: aquarela/wash (19)](reference_topic_watercolor_historical.md)
 
@@ -107,7 +106,7 @@
 - [Teste Cascadeur (ossos 2D fora do repo); a rede neural só pelo rato simulado](project_teste_cascadeur_2d_bones_testbed.md)
 - [onde os objetos NASCEM](feedback_where_new_objects_are_born_is_the_fixture_your_gates_are_missing.md)
 - [Física do impasto/sculpt (10)](reference_topic_impasto_physics.md)
-- ⭐ [**Como uma RÉGUA mente** — a família (165)](reference_topic_measurement_discipline.md)
+- ⭐ [**Como uma RÉGUA mente** — a família (167)](reference_topic_measurement_discipline.md)
 - ⛔⛔⛔ [Uma régua enviesada manda a wave seguinte para onde ela própria está errada](feedback_a_biased_ruler_sends_work_to_where_it_is_itself_wrong.md)
 - ⛔ [Régua de vazamento cuja máscara usa o predicado DO PRODUTO lê 0,00 % sobre o defeito](feedback_a_leak_ruler_masked_by_the_products_own_predicate_hides_the_leak.md)
 - ⛔⛔ [Sweep da parede VERDE sobre espec que TRADUZIA o alvo](feedback_a_sweep_in_one_language_does_not_prove_filtering_in_another.md)
@@ -141,7 +140,7 @@
 - ⛔⛔ [O que o undo NÃO fotografa o undo também não REPÕE — um relógio corrido, uma fábrica esgotada e uma SEMENTE sobreviviam ao Reset](feedback_what_the_undo_does_not_photograph_the_undo_does_not_restore.md)
 - ⛔ [O oráculo ensina a PERGUNTA; a resposta depende da natureza da SUA entrada — um NÍVEL e um EVENTO pedem paragens opostas](feedback_an_oracle_teaches_the_question_the_answer_depends_on_your_input_kind.md)
 - ⛔ [Um EVENTO lido como ESTADO acerta pelo tempo que ninguém o apagar — a etiqueta dependia de o relógio estar a andar](feedback_an_event_read_as_state_is_right_for_as_long_as_nobody_clears_it.md)
-- 📚 [Padrões de código (gotchas silenciosos): mais (15) lições, uma linha cada, verbatim](reference_topic_code_pattern_gotchas.md)
+- 📚 [Padrões de código (gotchas silenciosos): mais (16) lições, uma linha cada, verbatim](reference_topic_code_pattern_gotchas.md)
 
 ## Arquitetura / norte / perf
 - ⛔ [REGRA DO DONO: editar pixels ou tamanho/margem = imagem SEM a dobra (exceto Liquify, cor, filtros); tamanho/margem SOLTA dos ossos](project_pixel_tools_flatten_bone_bound_art.md)
@@ -159,6 +158,5 @@
 - [HISTÓRICO: Painter no teto — premissa dissolvida](project_painter_core_files_at_loc_cap.md) · [8GB = full-gate ~10min](project_solo_coord_backlog_ship_2026_05_29.md)
 - 📚 [Arquitetura / norte / perf: mais (18) lições](reference_topic_architecture_north_perf_lessons.md)
 - [fixture (17)](reference_topic_fixture_discipline.md)
-- [Provas de mutação (30) — 3 controles no arnês · ⛔ corpus onde a desigualdade nunca aperta não a testa (2 de 8 sobreviveram)](reference_topic_mutation_proofs.md)
-- [Provas de mutação (35) — **4** controles + **pré-voo** de âncoras (`MUTA_SO_ANCORAS=1`, o `fmt` move-as) · ⛔ duas cercas em SEQUÊNCIA: a fixtura que dispara a 1.ª mede UMA · ⛔ agulha que é FRAGMENTO mede o fragmento](reference_topic_mutation_proofs.md)
+- [Provas de mutação (36) — 4 controles + pré-voo de âncoras · ⛔ duas cercas em SEQUÊNCIA · ⛔ agulha-FRAGMENTO mede o fragmento](reference_topic_mutation_proofs.md)
 - ⛔⛔ [Atribuição VELHA de um vermelho não cobre o suspeito de HOJE — abla o teu e confirma o número AO BIT](feedback_an_old_attribution_is_worth_more_after_ablating_todays_suspect.md)

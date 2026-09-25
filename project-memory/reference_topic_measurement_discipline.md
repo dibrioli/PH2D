@@ -1301,6 +1301,7 @@ limitar, e um tecto acompanhado de uma tabela escrita de cabeça lê-se exactame
 medido — a tabela é o que faz a nota parecer honesta. **How to apply:** quando escrever um número ao
 lado de um `MAX_*`, escreva no mesmo commit o gate que o deriva do produto; se a conta é fechada,
 ponha-a numa constante e faça o gate compará-la com o que o alocador de facto pede.
+Ver [[reference_topic_gate_discipline]].
 
 ## ⛔ Uma fixtura tem de conter o REGIME que a constante descreve, e «a forma mais óbvia» costuma não o conter (2026-09-20)
 O gate acima nasceu numa esfera UV e reprovou na primeira corrida: os **pólos** dela são leques de

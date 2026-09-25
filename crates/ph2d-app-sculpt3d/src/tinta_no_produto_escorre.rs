@@ -232,3 +232,65 @@ fn outra_mao_na_peca_fecha_a_pincelada_que_escorre() {
         "a tela renasceu com a vista e a pincelada continuou aberta sobre ela"
     );
 }
+
+/// ⭐⭐⭐ **GATE — trocar a COR do pincel com a água a escorrer NÃO fecha a
+/// pincelada**, pelas DUAS caixas de cor que o artista tem à mão: a do painel da
+/// escultura (um `SetUi`) e a do Painter (o evento do selector partilhado).
+///
+/// Report do dono (24/09): *«a simulação seca (para) ao trocar a cor do
+/// pincel»*. A 1.ª redacção fechava a pincelada em TODO intent do painel, e um
+/// `SetUi` é um AJUSTE — não escreve um vértice. ⚠️ **O CONTROLO vem no fim:** um
+/// GESTO do painel (limpar a máscara) continua a fechar, senão este gate ficaria
+/// verde sobre uma porta que deixou de fechar tudo.
+#[test]
+#[ignore = "precisa de adaptador e corre em tempo real"]
+fn trocar_a_cor_com_a_agua_a_correr_nao_fecha_a_pincelada() {
+    use ph2d_editor_core::tool::PanelEvent;
+    use ph2d_panel_sculpt3d::Sculpt3dIntent;
+    let gpu = gpu_or_skip!();
+    let mut s = cena_52(&gpu.device);
+    s.sync_mesh(&gpu.device, &gpu.queue);
+    let mut p = molhado();
+    assert!(traco(&mut s, &mut p, 420.0), "o traço molhado");
+    for _ in 0..5 {
+        um_quadro(&mut s, &mut p);
+    }
+    assert!(
+        s.painter_escorre.is_some(),
+        "o CONTROLO: a água ainda corre"
+    );
+
+    // (1) A caixa de cor do painel da ESCULTURA — um `SetUi`.
+    let mut ui = s.panel_snapshot(false).ui.clone();
+    ui.brush.color = [0.0, 1.0, 0.0];
+    let _ = s.apply_panel_intent(Sculpt3dIntent::SetUi(ui));
+    assert!(
+        s.painter_escorre.is_some(),
+        "trocar a cor no painel da escultura fechou a pincelada (o report do dono)"
+    );
+    // (2) A caixa de cor do PAINTER — o evento que o selector partilhado emite.
+    p.handle_panel_event(PanelEvent::SelectOption(
+        ph2d_editor_core::ids::PAINTER_COLOR_THUMB,
+        "0,0,255".to_string(),
+    ));
+    let depois_das_cores = vivas(&s);
+    for _ in 0..30 {
+        um_quadro(&mut s, &mut p);
+    }
+    assert!(
+        s.painter_escorre.is_some(),
+        "trocar a cor do Painter fechou a pincelada"
+    );
+    assert_ne!(
+        vivas(&s),
+        depois_das_cores,
+        "a água deixou de chegar à peça depois de trocar a cor"
+    );
+
+    // O CONTROLO: um GESTO do painel continua a fechar.
+    let _ = s.apply_panel_intent(Sculpt3dIntent::MaskClear);
+    assert!(
+        s.painter_escorre.is_none(),
+        "um gesto do painel (limpar a máscara) deixou de fechar a pincelada"
+    );
+}

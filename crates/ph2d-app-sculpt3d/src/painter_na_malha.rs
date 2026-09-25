@@ -370,3 +370,56 @@ impl Sculpt3dScene {
         }
     }
 }
+
+/// ⭐⭐ **Este gesto do painel pode mexer na PEÇA?** — a pergunta que decide se
+/// a pincelada do Painter que ainda escorre fecha antes dele.
+///
+/// Report do dono (24/09, sobre a etapa 3a): *«a simulação seca (para) ao trocar
+/// a cor do pincel»*. Trocar a cor na caixa do painel é um `SetUi`, e a 1.ª
+/// redacção fechava a pincelada em TODO intent. ⇒ o `SetUi` é um AJUSTE: o
+/// `apply_ui` só copia números para a cena (pincel, luz, vista, os alvos dos
+/// botões) e não escreve um vértice, uma face nem o plano — logo não há nada
+/// na peça que a água possa escrever por cima.
+///
+/// ⚠️ **O `match` é EXAUSTIVO de propósito, sem `_`:** um intent novo é erro de
+/// compilação aqui até alguém dizer se ele é um gesto ou um ajuste. Na dúvida
+/// ele é um GESTO (`true`) — fechar cedo perde o resto do escorrido; não fechar
+/// deixaria a água escrever sobre uma peça que mudou por baixo dela.
+pub(crate) fn o_painel_mexe_na_peca(intent: &ph2d_panel_sculpt3d::Sculpt3dIntent) -> bool {
+    use ph2d_panel_sculpt3d::Sculpt3dIntent as I;
+    match intent {
+        I::SetUi(_) => false,
+        // ⚠️ Chegou na fusão com a UIUX (2026-09-25): ele só ABRE o catálogo de pincéis — escolher
+        // é o *pick* da paleta, noutro quadro, e esse chega como `SetUi`. Não escreve na peça.
+        I::OpenBrushPalette => false,
+        I::ArmTransform(_)
+        | I::ArmFilter
+        | I::ArmStoredImage
+        | I::ToggleDyntopo
+        | I::ChangeLevel(_)
+        | I::Subdivide
+        | I::ReverseLevel
+        | I::Flatten
+        | I::Remesh
+        | I::QuadRemesh
+        | I::CloseHoles
+        | I::SetClothPersistentBase
+        | I::BakeAo
+        | I::BakeToSprite
+        | I::AlphaFromSprite
+        | I::AddSphere
+        | I::AddCube
+        | I::AddCylinder
+        | I::AddTorus
+        | I::Duplicate
+        | I::Delete
+        | I::ToggleIsolate
+        | I::Merge
+        | I::MaskClear
+        | I::MaskInvert
+        | I::MaskBlur
+        | I::MaskSharpen
+        | I::ColorFill
+        | I::Extract => true,
+    }
+}

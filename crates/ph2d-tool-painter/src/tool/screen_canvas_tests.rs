@@ -570,3 +570,31 @@ fn diag_a_tinta_molhada_depois_do_pen_up() {
         }
     }
 }
+
+/// ⭐ **GATE — trocar a cor do pincel NÃO seca a água** (report do dono, 24/09:
+/// *«a simulação seca (para) ao trocar a cor do pincel»*). ⚠️ A causa estava do
+/// lado da ESCULTURA (o painel dela fechava a pincelada em todo ajuste); este é a
+/// metade do Painter, medida para ilibar esta crate: as duas portas da cor — o
+/// evento do selector e a escrita directa da shell — deixam a água a correr.
+#[test]
+fn trocar_a_cor_nao_seca_a_agua() {
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = pintor();
+    t.set_paint_media(PaintMedia::WetPaint);
+    assert!(t.bind_screen_canvas(W, H));
+    assert!(t.seed_screen_canvas([128u8, 128, 128, 255].repeat((W * H) as usize)));
+    traco(&mut t);
+    t.on_tick(16.7);
+    assert!(t.screen_canvas_is_flowing(), "o CONTROLO: a água corre");
+    t.handle_panel_event(PanelEvent::SelectOption(
+        ph2d_editor_core::ids::PAINTER_COLOR_THUMB,
+        "0,255,0".to_string(),
+    ));
+    assert!(t.screen_canvas_is_flowing(), "o evento da cor secou a água");
+    t.set_brush_color_srgb8([0, 0, 255]);
+    t.on_tick(16.7);
+    assert!(
+        t.screen_canvas_is_flowing() && t.screen_canvas_is_wet(),
+        "a escrita directa da cor secou a água"
+    );
+}

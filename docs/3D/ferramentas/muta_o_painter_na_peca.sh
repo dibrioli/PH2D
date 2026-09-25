@@ -437,9 +437,17 @@ muta COSTURA crates/ph2d-app-sculpt3d/src/keys.rs \
   '' \
   'E11 uma tecla da escultura mexe na peça com a pincelada aberta'
 muta COSTURA crates/ph2d-app-sculpt3d/src/panel.rs \
-  '        self.painter_fecha_o_que_escorre();' \
+  '            self.painter_fecha_o_que_escorre();' \
   '' \
   'E12 o painel muda a peça com o plano emprestado'
+muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
+  '        I::SetUi(_) => false,' \
+  '        I::SetUi(_) => true,' \
+  'E14 trocar a cor do pincel fecha a pincelada que escorre (o report do dono)'
+muta COSTURA crates/ph2d-app-sculpt3d/src/panel.rs \
+  '        if crate::painter_na_malha::o_painel_mexe_na_peca(&intent) {' \
+  '        if true {' \
+  'E15 o painel ignora a pergunta e fecha em todo intent'
 muta COSTURA crates/ph2d-app-sculpt3d/src/input_down.rs \
   '    scene.painter_fecha_o_que_escorre();' \
   '' \

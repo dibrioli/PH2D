@@ -235,6 +235,13 @@ fn elos() -> Vec<(
             1,
             "P24 um clique da escultura abre um traço por cima da pincelada aberta",
         ),
+        (
+            "panel.rs",
+            PANEL,
+            "crate::painter_na_malha::o_painel_mexe_na_peca(&intent)",
+            1,
+            "P25 um AJUSTE do painel (a cor do pincel) fecha a pincelada que escorre",
+        ),
     ]
 }
 
@@ -242,7 +249,7 @@ fn elos() -> Vec<(
 #[test]
 fn a_costura_do_painter_esta_ligada_nas_duas_pontas() {
     let elos = elos();
-    assert!(elos.len() >= 24, "o piso de população: {} elos", elos.len());
+    assert!(elos.len() >= 25, "o piso de população: {} elos", elos.len());
     for (ficheiro, texto, agulha, esperado, parte) in elos {
         let n = sem_prosa(texto).matches(agulha).count();
         assert_eq!(
@@ -261,6 +268,32 @@ fn nenhuma_agulha_da_costura_vive_na_prosa() {
         assert!(
             !so_a_prosa(texto).contains(agulha),
             "{ficheiro}: `{agulha}` aparece num comentário — o censo leria a prosa"
+        );
+    }
+}
+
+/// ⭐⭐ **GATE — um AJUSTE do painel não fecha a pincelada que escorre; um GESTO
+/// fecha.** Report do dono (24/09): *«a simulação seca (para) ao trocar a cor do
+/// pincel»* — a caixa de cor do painel é um `SetUi`. ⚠️ Corre sem adaptador, ao
+/// contrário do gate de produto irmão (`trocar_a_cor_com_a_agua…`, `#[ignore]`),
+/// logo é ESTE que a suíte e o CI vêem.
+#[test]
+fn um_ajuste_do_painel_nao_fecha_a_pincelada_e_um_gesto_fecha() {
+    use crate::painter_na_malha::o_painel_mexe_na_peca;
+    use ph2d_panel_sculpt3d::{Sculpt3dIntent, Sculpt3dUi};
+    assert!(
+        !o_painel_mexe_na_peca(&Sculpt3dIntent::SetUi(Sculpt3dUi::default())),
+        "trocar a cor do pincel fecha a pincelada (o report do dono)"
+    );
+    for gesto in [
+        Sculpt3dIntent::MaskClear,
+        Sculpt3dIntent::Remesh,
+        Sculpt3dIntent::Subdivide,
+        Sculpt3dIntent::ToggleDyntopo,
+    ] {
+        assert!(
+            o_painel_mexe_na_peca(&gesto),
+            "o CONTROLO: um gesto do painel deixou de fechar ({gesto:?})"
         );
     }
 }

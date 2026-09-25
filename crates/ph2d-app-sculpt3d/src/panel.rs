@@ -273,9 +273,12 @@ impl Sculpt3dScene {
         &mut self,
         intent: Sculpt3dIntent,
     ) -> Option<Sculpt3dFrameRequest> {
-        // ⭐ O painel pode mexer na peça (e na TOPOLOGIA, que o plano emprestado
-        // não sobrevive): a pincelada do Painter que ainda escorre fecha antes.
-        self.painter_fecha_o_que_escorre();
+        // ⭐ Um GESTO do painel pode mexer na peça (e na TOPOLOGIA, que o plano
+        // emprestado não sobrevive): a pincelada do Painter que ainda escorre
+        // fecha antes. ⛔ Um AJUSTE não fecha — ver `o_painel_mexe_na_peca`.
+        if crate::painter_na_malha::o_painel_mexe_na_peca(&intent) {
+            self.painter_fecha_o_que_escorre();
+        }
         match intent {
             // ⚠️ Ele ARMA e sai, e não faz nada com a cena: o bake precisa do
             // mundo, do renderizador e do mapa de atlas, e os três só existem

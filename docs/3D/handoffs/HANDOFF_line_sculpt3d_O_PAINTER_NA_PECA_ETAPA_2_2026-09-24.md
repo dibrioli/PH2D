@@ -425,3 +425,25 @@ DIRECTAMENTE, e a re-corrida dá **2 de 2**. Pré-voo `66/66`.
 * **A outra metade da etapa 3 — o relevo do impasto — é a seguinte:** decisão do
   dono (24/09): *relevo de LUZ, com a luz do cenário 3D* (a tinta ganha espessura
   que pega a luz da cena; a forma da peça não muda).
+
+### §9.5 — ⛔ O smoke devolveu: *«a simulação seca (para) ao trocar a cor do pincel»*
+
+**O Painter estava ILIBADO, medido primeiro** (`trocar_a_cor_nao_seca_a_agua`,
+sem adaptador): as duas portas da cor dele — o evento do selector e a escrita
+directa da shell — deixam a sessão da água viva e a correr.
+
+**A causa era MINHA, do §9.2:** eu pus o fecho da pincelada em **todo** intent do
+painel da escultura, e a caixa de cor desse painel (que a cena `=52` mostra,
+porque abre com o pincel de pintura da escultura) é um `SetUi` — um **AJUSTE**:
+o `apply_ui` só copia números para a cena e não escreve um vértice, uma face nem
+o plano. ⇒ `painter_na_malha::o_painel_mexe_na_peca`, um `match` **exaustivo e
+sem `_`** (um intent novo é erro de compilação até alguém dizer se é gesto ou
+ajuste), com o `SetUi` a `false` e os 29 gestos a `true`.
+
+Gates: `um_ajuste_do_painel_nao_fecha_a_pincelada_e_um_gesto_fecha` (sem
+adaptador — é o que a suíte e o CI vêem, com os gestos como CONTROLO) ·
+`trocar_a_cor_com_a_agua_a_correr_nao_fecha_a_pincelada` (produto, placa: as
+DUAS caixas de cor a meio do escorrido, a água a continuar a chegar à peça, e o
+CONTROLO de que limpar a máscara ainda fecha) — **red-first**: com o `SetUi` a
+`true` ele reprova com a frase do report. Censo da fiação **24 → 25** elos.
+Mutação **E12, E14, E15: 3 de 3 sangram**; pré-voo `68/68`.

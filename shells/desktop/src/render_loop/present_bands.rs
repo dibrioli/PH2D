@@ -32,6 +32,9 @@ pub(super) struct BandGear<'a> {
     pub band_doc_scenes: &'a [ph2d_vector::VectorScene],
     /// As peças da receita aberta — retidas em toda faixa do fundo. `None` sem vidro.
     pub held_back: Option<&'a std::collections::BTreeSet<ph2d_ecs::Entity>>,
+    /// ⭐ A grade ATRÁS dos objectos — a primeira camada depois do fundo. `None` = à frente
+    /// (ela vai na cena do chrome) ou desligada.
+    pub grid_behind: Option<&'a ph2d_vector::VectorScene>,
 }
 
 /// O plano de faixas deste quadro — as quatro respostas que os dois passes e o compositor leem.
@@ -82,6 +85,24 @@ pub(super) fn draw_lower_bands(
     // espaço do desenhista é a porta, e não o chamador (report do Enio: *«o canvas
     // escurece»*, que foi exactamente esta escolha feita no sítio errado).
     g.world_rt.clear_linear(gpu, clear);
+    // ⭐⭐ **A GRADE ATRÁS DOS OBJECTOS** (report do dono de 2026-09-24): a primeira camada depois
+    //    do fundo, antes de qualquer faixa — é isso que a põe por baixo de toda forma e sprite.
+    if let Some(grid) = g.grid_behind {
+        if let Err(e) = g.vello_pass.render_to_intermediate(
+            gpu,
+            grid.inner(),
+            (g.window_size.width, g.window_size.height),
+            VelloColor::TRANSPARENT,
+        ) {
+            eprintln!("[grid] a grade atras dos objectos falhou: {e}");
+        }
+        g.band_blit.blit(
+            gpu,
+            g.world_rt.blend_view(),
+            g.vello_pass.intermediate_view(),
+            ph2d_render::BandSource::Vector,
+        );
+    }
     let upto = plan.last_sprite.unwrap_or(plan.bands.len());
     let mut doc_i = 0usize;
     for band in plan.bands.iter().take(upto) {
@@ -236,3 +257,7 @@ impl FramePlan {
             .map(|i| (self.bands[i].lo, self.bands[i].hi))
     }
 }
+
+#[cfg(test)]
+#[path = "present_bands_grid_tests.rs"]
+mod grid_tests;

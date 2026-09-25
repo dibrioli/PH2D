@@ -7,7 +7,6 @@
 use ph2d_editor_core::NodeId;
 use ph2d_editor_core::grid_snap::{GridKind, GridSnapState};
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
-use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
 use ph2d_editor_core::widget::{
     Button, ButtonKind, ButtonState, GroupCell, block_cells, grid_height, paint_button,
 };
@@ -17,44 +16,10 @@ use ph2d_grid::square::SquareNeighborhood;
 use ph2d_grid::tri::TriNeighborhood;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme};
+use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
 use ph2d_vector::VectorScene;
 
 use super::layout::row_gap;
-
-pub(crate) fn paint_section_label(
-    label: &str,
-    x: f32,
-    w: f32,
-    y: f32,
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-) -> f32 {
-    ph2d_editor_core::paint::paint_text_title(
-        text_system,
-        scene,
-        label,
-        x,
-        y,
-        ph2d_tokens::TypeToken::Md.px(),
-        w,
-        resolve(ColorToken::Text1, theme),
-    );
-    let after_title_y = y + ph2d_tokens::TypeToken::Md.px() + Spacing::Md.px();
-    // Accent-colored separator line — same visual as Inspector's
-    // `paint_section_separator` (Border token reads as invisible on
-    // dark themes; Accent reads as the canonical section divider).
-    let sep_pad_x = 2.0_f32;
-    let sep = Rect::new(
-        x + sep_pad_x,
-        after_title_y,
-        (w - sep_pad_x * 2.0).max(0.0),
-        1.0,
-    );
-    fill_rounded_rect(scene, sep, 0.5, resolve(ColorToken::Accent, theme));
-    after_title_y + 1.0 + Spacing::Md.px()
-}
 
 /// Big individual Snap toggle at the top of the panel — primary
 /// action chip that flips `state.snap_enabled`. Full-width;

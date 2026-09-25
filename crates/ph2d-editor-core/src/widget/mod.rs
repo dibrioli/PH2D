@@ -175,7 +175,9 @@ pub use scrollbar_ids::{
     TOKENS_SCROLLBAR_ID, UPSCALE_SCROLLBAR_ID, VECTOR_SCROLLBAR_ID, WET_TUNING_SCROLLBAR_ID,
 };
 pub use section_header::body::{SectionFold, folded_gap, has_body as section_has_body};
-pub use section_header::{SectionHeader, color_circle_hit_rect, paint_section_header};
+pub use section_header::{
+    SectionHeader, color_circle_hit_rect, paint_section_header, section_title_px,
+};
 pub use segmented_adaptive::{
     SegmentedAdaptive, SegmentedOption, measure_segmented_adaptive, paint_segmented_adaptive,
 };

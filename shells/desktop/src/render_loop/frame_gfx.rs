@@ -229,6 +229,8 @@ impl<'a> FrameGfx<'a> {
             frost_doc_scene,
             frost_front_scene,
             frosting,
+            // ⭐ A grade ATRÁS dos objectos é do PRESENTE (`present.rs` enche-a e desenha-a).
+            grid_behind_scene: _,
         } = gfx;
         Self {
             doc_guides,

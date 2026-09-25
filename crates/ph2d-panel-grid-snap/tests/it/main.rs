@@ -8,6 +8,7 @@
 
 mod a_seccao_poe_todas_as_caixas_na_mesma_coluna;
 mod as_escolhas_passam_pela_porta;
+mod as_seccoes_dobram;
 mod every_word_this_panel_shows_comes_from_the_string_table;
 mod grid_snap_apply_event;
 mod grid_snap_paint;

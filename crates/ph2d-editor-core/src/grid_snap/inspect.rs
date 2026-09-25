@@ -326,9 +326,40 @@ pub fn paint(
         text_system,
         theme,
     );
+    let _ = paint_body(
+        rect.x,
+        rect.w,
+        rect.y + SECTION_HEADER_H + list_row_gap_px(),
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        state,
+    );
+}
 
+/// ⭐ **O CORPO da secção *Inspect*, sem o cabeçalho** — para o painel que pinta o cabeçalho ele
+/// mesmo, DOBRÁVEL (ordem do dono, 2026-09-24: *«no Grid as seções não fecham»*). Começa em `y` e
+/// devolve o `y` seguinte, que é o que uma [`crate::widget::SectionFold`] mede.
+///
+/// ⚠️ É o mesmo corpo que o [`paint`] pinta — o [`paint`] delega aqui, logo as duas formas não
+/// podem divergir.
+#[allow(clippy::too_many_arguments)]
+pub fn paint_body(
+    x: f32,
+    w: f32,
+    y: f32,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut crate::interaction::HitIndex,
+    store: &crate::interaction::WidgetStore,
+    state: &GridSnapState,
+) -> f32 {
+    let rect = Rect::new(x, y, w, 0.0);
     let snap = snapshot(state);
-    let mut y = rect.y + SECTION_HEADER_H + list_row_gap_px();
+    let mut y = y;
 
     let rows: [(String, String); 5] = [
         (
@@ -445,6 +476,7 @@ pub fn paint(
             seccao,
         );
     }
+    y
 }
 
 #[cfg(test)]

@@ -178,6 +178,7 @@ pub(crate) fn build_initial_state(
         frost_front_scene: ph2d_vector::VectorScene::new(),
         frosting: false,
         band_doc_scenes: Vec::new(),
+        grid_behind_scene: ph2d_vector::VectorScene::new(),
         compositor_reads_world: false,
         motion_fx,
         tonemap,

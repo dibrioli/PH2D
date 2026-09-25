@@ -1,8 +1,8 @@
-//! [`SectionHeader`] — single-line uppercase header for inspector
-//! sections.
+//! [`SectionHeader`] — the single-line section title of every panel.
 //!
-//! Layout (left → right): optional collapse chevron · accent dot ·
-//! label uppercase · optional count chip on the far right.
+//! Layout (left → right): collapse chevron · label (as written, the *Grid Settings* title style —
+//! owner's order of 2026-09-24) · the accent rule running to the right edge · optional count chip
+//! or colour circle on the far right.
 //! Used by the editor Inspector to break a body into "Params (12)",
 //! "Advanced (7)", "Inputs (24)" etc.
 
@@ -97,9 +97,39 @@ impl SectionHeader {
     }
 }
 
+/// ⭐ **O corpo do título de secção** — uma porta só, lida pelo pintor e por quem precisa de saber
+/// que altura o título pede (o `Md`, o do título do painel *Grid Settings*: ordem do dono de
+/// 2026-09-24).
+#[must_use]
+pub fn section_title_px() -> f32 {
+    TypeToken::Md.px()
+}
+
+/// A espessura do separador azul que corre à direita do título — a mesma linha de `1 px` que o
+/// *Grid Settings* pintava por baixo dele.
+const SECTION_RULE_PX: f32 = 1.0; // LITERAL-PX-OK: hairline rule (chrome)
+
+/// ⭐ **Onde corre o separador azul de um título de secção** — da ponta do nome até `right`, na
+/// MESMA linha do título, a meia altura do texto. `None` quando o nome já chega à borda.
+///
+/// ⚠️ Função pura, lida pelo pintor e pelo gate: a regra do dono (*«na mesma linha à direita»*) é
+/// geometria, e geometria mede-se sem pintar.
+#[must_use]
+pub fn regua_do_titulo(
+    nome_x: f32,
+    nome_w: f32,
+    right: f32,
+    label_y: f32,
+    font: f32,
+) -> Option<Rect> {
+    let x = nome_x + nome_w + ph2d_tokens::icon_label_gap_px();
+    let w = right - x;
+    (w > 0.0).then(|| Rect::new(x, label_y + font * 0.5, w, SECTION_RULE_PX))
+}
+
 /// Canonical section-header chrome (Inspector + every collapsible
 /// panel uses this). Layout (left → right): collapse chevron + label
-/// in UPPERCASE + optional count pill on the far right. The previous
+/// (as written) + the accent rule to the right + optional count pill on the far right. The previous
 /// accent-dot ornament was retired — every section is collapsible by
 /// design, so the chevron itself is the only "anchor" glyph.
 pub fn paint_section_header(
@@ -148,29 +178,48 @@ pub fn paint_section_header(
     );
     cursor_x += icon_w + ph2d_tokens::icon_label_gap_px();
 
-    // Label in UPPERCASE, painted at SEMI_BOLD (600) to match panel
-    // titles — user feedback 2026-05-24 ("quase negrito"). Parley
-    // supports the InterVariable axis (text/system.rs `layout_with_weight`),
-    // so the editor stack DOES expose weights now (the older
-    // text/lib.rs comment "no italics, no weight" is stale).
-    let font = TypeToken::Sm.px();
+    // ⭐⭐ **O TÍTULO DE SECÇÃO DO APP É O DO GRID** (ordem do dono, 2026-09-24, com foto do painel
+    //    *Grid Settings*: *«quero que essa seja a formatação exata (Font, tamanho da Font, etc) para
+    //    todo o APP»*). ⇒ o corpo [`TypeToken::Md`], o peso `SemiBold` do [`paint_text_title`], a
+    //    cor `Text1` e o texto **como está escrito na tabela** — ⛔ não mais em CAIXA ALTA (o `Sm` +
+    //    `to_uppercase` de 2026-05-24 saiu nesse dia).
+    let font = section_title_px();
     let label_y = rect.y + (rect.h - font) * 0.5;
-    let label_w = if header.count.is_some() {
-        (rect.x + rect.w - cursor_x - Spacing::Xl4.px() - pad_x).max(0.0)
+    // ⚠️ O fim do espaço do título é o início do ornamento da direita (a pastilha de contagem ou o
+    //    círculo de cor), quando há um — é ali que a linha também acaba.
+    let right = if header.count.is_some() || header.color.is_some() {
+        rect.x + rect.w - pad_x - Spacing::Xl4.px()
     } else {
-        (rect.x + rect.w - cursor_x - pad_x).max(0.0)
+        rect.x + rect.w - pad_x
     };
-    let upper = header.label.to_uppercase();
+    let label_w = (right - cursor_x).max(0.0);
     paint_text_title(
         text_system,
         scene,
-        &upper,
+        &header.label,
         cursor_x,
         label_y,
         font,
         label_w,
         resolve(ColorToken::Text1, theme),
     );
+    // ⭐⭐ **O SEPARADOR AZUL NA MESMA LINHA, À DIREITA DO NOME** (mesma ordem: *«o separador azul
+    //    não quero em baixo do título da seção, mas sim na mesma linha à direita»*). Ele começa
+    //    onde o nome ACABA — medido no MESMO peso em que é pintado (`SemiBold`; medir em `Medium`
+    //    punha a linha dentro da última letra) e limitado à largura que o nome recebeu, que é o
+    //    que ele ocupa quando corta — e vai até à borda (ou ao ornamento). Centrado na altura do
+    //    TEXTO, não da fileira, para cortar o título pelo meio como no Grid.
+    let nome_w = text_system
+        .prefix_width_weighted(&header.label, font, ph2d_text::FontWeight::SEMI_BOLD)
+        .min(label_w);
+    if let Some(linha) = regua_do_titulo(cursor_x, nome_w, right, label_y, font) {
+        fill_rounded_rect(
+            scene,
+            linha,
+            SECTION_RULE_PX * 0.5,
+            resolve(ColorToken::Accent, theme),
+        );
+    }
 
     // Right-edge ornament. Priority: color circle > count chip.
     // The color circle is the user-clickable "open the picker for
@@ -246,6 +295,40 @@ pub fn color_circle_hit_rect(header: &SectionHeader, host: Rect) -> Option<Rect>
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// ⭐ **O separador azul corre NA LINHA do título, à DIREITA do nome** (ordem do dono,
+    /// 2026-09-24: *«não quero em baixo do título da seção, mas sim nas mesma linha à direita»*).
+    /// *Mutação: a régua de volta a `label_y + font + Spacing::Md` (por baixo) ⇒ sai da faixa do
+    /// texto; a começar em `nome_x` ⇒ risca o nome.*
+    #[test]
+    fn a_regua_corre_na_linha_do_titulo_a_direita_do_nome() {
+        let (nome_x, nome_w, right, label_y, font) = (40.0, 60.0, 280.0, 10.0, 14.0);
+        let r = regua_do_titulo(nome_x, nome_w, right, label_y, font).expect("ha espaco");
+        assert!(
+            r.x >= nome_x + nome_w,
+            "a regua comeca DENTRO do nome ({})",
+            r.x
+        );
+        assert!(
+            r.y > label_y && r.y + r.h < label_y + font,
+            "a regua nao esta na faixa do texto do titulo ({}..{}): esta em {}",
+            label_y,
+            label_y + font,
+            r.y
+        );
+        assert!(
+            (r.x + r.w - right).abs() < 1e-4,
+            "a regua nao chega a' borda"
+        );
+        // e quando o nome ja' ocupa tudo, nao ha regua
+        assert!(regua_do_titulo(nome_x, right, right, label_y, font).is_none());
+    }
+
+    /// ⭐ **O corpo do título é o do *Grid Settings*** (`TypeToken::Md`), por ordem do dono.
+    #[test]
+    fn o_titulo_de_seccao_tem_o_corpo_do_grid() {
+        assert!((section_title_px() - TypeToken::Md.px()).abs() < f32::EPSILON);
+    }
 
     /// **O NEUTRO do `t` é o BINÁRIO de hoje** — um cabeçalho que ninguém migrou pinta exactamente
     /// o que pintava. *Mutação: `fold_t` a cair em `0.0` ⇒ toda secção aberta não-migrada desenha

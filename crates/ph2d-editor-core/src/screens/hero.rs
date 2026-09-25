@@ -41,6 +41,9 @@ pub mod file_menu;
 pub mod fixture;
 mod frame_layout;
 pub mod global_palette;
+/// ⭐⭐⭐ **A camada da grade** — à frente dos objectos (no chrome) ou ATRÁS deles (numa cena que
+/// a shell monta antes dos sprites). Report do dono de 2026-09-24.
+pub mod grid_layer;
 pub(crate) mod menu_row_mark;
 pub mod panel_ids;
 /// O MODELO do menu radial (E4) — a vista de OITO direcções da mesma lista da paleta.

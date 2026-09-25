@@ -87,6 +87,10 @@ pub(crate) struct AppGfx {
     /// ⚠️ Vazio ⇒ o documento foi codificado na cena do chrome, como sempre, e o presente não tem
     /// faixa de vetor nenhuma a desenhar.
     pub(crate) band_doc_scenes: Vec<ph2d_vector::VectorScene>,
+    /// ⭐ **A grade ATRÁS dos objectos** (report do dono de 2026-09-24) — a cena que a
+    /// `grid_layer::paint_behind` enche quando o `Behind` está ligado, e que o acumulador do mundo
+    /// desenha logo depois do fundo. Reusada entre quadros (HR-3).
+    pub(crate) grid_behind_scene: ph2d_vector::VectorScene,
     /// ⭐⭐⭐ **O VIDRO JATEADO** (2026-09-07) — o passe que borra o acumulador do mundo entre o
     /// desenho dele e o da receita aberta. Ver [`crate::render_loop::present_frost`].
     pub(crate) frost: ph2d_render::FrostPass,

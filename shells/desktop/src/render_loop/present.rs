@@ -197,6 +197,8 @@ impl crate::App {
             band_blit,
             band_doc_scenes,
             frame_order,
+            hero_screen,
+            grid_behind_scene,
             ..
         } = gfx;
         // M14.5 — viewport / RT pipeline. Four GPU submissions
@@ -282,7 +284,14 @@ impl crate::App {
         // porquê de a ÚLTIMA faixa de sprites não se ter movido vivem no cabeçalho do
         // irmão `present_bands`. Sem intercalação nada disto corre e o quadro é
         // **byte-idêntico** ao de sempre.
-        let plan = super::present_bands::plan_frame(frame_order);
+        let mut plan = super::present_bands::plan_frame(frame_order);
+        // ⭐⭐ **A GRADE ATRÁS DOS OBJECTOS força o quadro em CAMADAS** (report do dono de
+        //    2026-09-24): é o acumulador do mundo que sabe pôr alguma coisa por baixo dos sprites.
+        //    ⚠️ Sem intercalação e sem `Behind`, nada muda — o quadro de sempre, byte a byte.
+        let grid_behind = hero_screen.as_ref().is_some_and(|h| {
+            ph2d_editor_core::screens::hero::grid_layer::paint_behind(h, grid_behind_scene)
+        });
+        plan.banded |= grid_behind;
         let banded = plan.banded;
         // ⭐⭐⭐ **QUEM SOBE PARA CIMA DO VIDRO** — as peças da receita aberta saem do
         // fundo (senão o borrão delas escapa por fora da silhueta, como um halo) e são
@@ -308,6 +317,7 @@ impl crate::App {
                     vello_pass,
                     band_doc_scenes,
                     held_back: held.as_ref(),
+                    grid_behind: grid_behind.then_some(&*grid_behind_scene),
                 },
             );
         }

@@ -930,6 +930,69 @@ grupo declarado** — mais o fechar.
   pela catraca de comandos) · a escolha pintada FORA da porta · a 2.ª peça com id errado.
 - **Portão:** `nextest-impacted` **17 706 / 17 706** · clippy zero · `fmt` limpo · censos 12 de 12.
 
+## §9-noniestricies — ⭐⭐ O TÍTULO DE SECÇÃO DO APP É O DO GRID · as secções do Grid DOBRAM · a grade vai ATRÁS de verdade
+
+Três ordens do dono de 2026-09-24, com foto do painel *Grid Settings*:
+*«quero que essa seja a formatação exata (Font, tamanho da Font, etc) para todo o APP. Contudo o
+separador azul não quero em baixo do título da seção, mas sim nas mesma linha à direita. No grid
+as seções não fecham»* — e, no mesmo smoke: *«Behind deixa o grid mais discreto mas não atrás dos
+objetos. corrija»*.
+
+### O título (o `SectionHeader` da casa — os 49 sítios que o pintam)
+
+- `paint_section_header` passa a pintar o nome **como está escrito** (⛔ saiu o `to_uppercase()`),
+  no corpo `TypeToken::Md` (a porta nova `section_title_px()`) e no peso `SemiBold` do
+  `paint_text_title` — exactamente o título que o Grid pintava à mão.
+- ⭐ **O separador azul corre na MESMA linha, à DIREITA do nome** — da ponta do nome (medida no
+  MESMO peso em que é pintado: medir em `Medium` punha a linha dentro da última letra) até à borda
+  ou ao ornamento da direita (pastilha / círculo de cor), a meia altura do texto. A geometria é a
+  função pura `regua_do_titulo`, com gate (`a_regua_corre_na_linha_do_titulo_a_direita_do_nome`).
+- ⚠️ **O chevron FICA:** a foto do Grid não o tinha, mas a mesma ordem pede que as secções fechem, e
+  o chevron é o que diz *«isto dobra»*. *A formatação pedida é a do TEXTO.*
+- ⚠️ **As alturas dos cabeçalhos são dos chamadores** e nenhuma catraca de altura se mexeu; as
+  elisões do app (a escada de quatro larguras) ficaram verdes com o corpo maior.
+
+### As secções do Grid
+
+- *Grid Kind* · *Target* · *Display* · *Inspect* eram texto pintado à mão (`paint_section_label`,
+  **APAGADO**) ou um `SectionHeader` de id `NodeId(0)` — nenhum registava hit-rect. Hoje são o
+  cabeçalho da casa com `SectionFold` (`paint_body_sections::dobravel`, um só sítio), ids
+  `GS_SEC_KIND`/`GS_SEC_TARGET`/`GS_SEC_DISPLAY` (panel) + o `GS_INSPECT_HEADER` que a fundação já
+  declarava, registados por `mark_collapsible_section`.
+- ⚠️ **Uma chamada por id, nunca um laço** — o `the_painted_control_reaches_a_consumer` reconhece o
+  despacho por KIND pelo TEXTO `mark_collapsible_section(ids::X)` e leu os quatro como órfãos
+  quando estavam num array.
+- A *Inspect* partiu-se na fundação: `grid_snap::inspect::paint_body` (o corpo sem cabeçalho,
+  devolve o `y`) e o `paint` antigo delega-lhe — as duas formas não divergem.
+- Gate `as_seccoes_dobram` (clique REAL no centro de cada título ⇒ `is_collapsed`).
+
+### A grade ATRÁS dos objectos
+
+- ⛔ O `Behind` era uma APROXIMAÇÃO escrita por extenso no `hero/paint.rs` — a opacidade × `0,4` —
+  com o caminho verdadeiro deixado como *TODO: «a second Vello intermediate + a 3-layer
+  compositor»*. ⭐ **Esse caminho já existia com outro nome:** o acumulador do mundo das FAIXAS DE
+  DESENHO (ADR-0154 Fase 2) monta o quadro de trás para a frente e o compositor lê-o.
+- ⇒ `screens::hero::grid_layer` (porta nova, UMA decisão de «onde»): `paint_in_chrome` pinta a grade
+  no chrome **só à frente**; `paint_behind` pinta-a numa cena própria (`AppGfx::grid_behind_scene`)
+  **só atrás**, e devolve `true`. No `present.rs`, `plan.banded |= grid_behind` FORÇA o quadro em
+  camadas, e o `draw_lower_bands` desenha a grade **logo depois de limpar o fundo e antes de toda
+  faixa**. Sem `Behind` e sem intercalação, o quadro é o de sempre.
+- ⚠️ **Forçar o modo em camadas numa cena que não intercala é seguro, por medição do código:** com
+  `needs_banding == false` o `doc_bands_of` devolve vazio, o documento continua na cena do chrome, e
+  o `band_doc_scenes.get(i)` dos dois passes devolve `None` — nada se desenha duas vezes.
+- **Foto** (roteiro `fotografa_cena.sh`, `PH2D_PHYSICS_SMOKE=1`, `grid_in_front` forçado a `false`
+  só para a foto e reposto): à frente as linhas passam por cima do chão e da caixa; atrás elas ficam
+  no fundo, com a MESMA força, e os objectos por cima.
+- Gates: `grid_layer_tests` (a grade sai de UMA cena só, medido pelo que cada cena EMITE —
+  `probe_bin_info_words`; e a metade da FORÇA por texto, porque a régua das palavras é cega à cor) ·
+  `present_bands_grid_tests` (o `|=`, a engrenagem e a ORDEM limpar → grade → faixas).
+- ⚠️ A régua da força apanhou a MINHA prosa a citar o código antigo (`opacity *=` no doc) — reescrita.
+
+**Mutação 6 de 6** (régua no nome · régua por baixo · *Target* sem dobra · grade sempre no chrome ·
+`paint_behind` a devolver `false` · o `|=` apagado). **Portão:** `nextest-impacted` **17 712 /
+17 712** (a `load 100`) · clippy `-D warnings` zero (`editor-core`, `grid-snap`, a shell) · `fmt`
+limpo · censos da árvore combinada 12 de 12.
+
 ## §11 — O que esta linha recomenda a quem a integrar
 
 1. **Correr o `diag_onde_cai_a_pista_do_pente` da `line/sculpt3d` DEPOIS da fusão** e reescrever com

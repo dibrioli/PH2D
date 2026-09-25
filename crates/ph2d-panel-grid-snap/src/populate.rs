@@ -46,6 +46,14 @@ pub(crate) fn populate(store: &mut WidgetStore) {
             kind: BlenderHitKind::ResizeHandleBl,
         },
     );
+    // ⭐ As quatro secções DOBRAM (2026-09-24) — cabeçalhos canónicos da casa, sem estado: o despacho
+    //    dobra-os ao clique (`toggle_collapsed`). ⚠️ Uma chamada por id, e não um laço: a régua
+    //    `the_painted_control_reaches_a_consumer` reconhece o despacho por KIND pelo texto
+    //    `mark_collapsible_section(ids::X)`, e um id dentro de um array de laço lê-se como órfão.
+    store.mark_collapsible_section(crate::ids::GS_SEC_KIND);
+    store.mark_collapsible_section(crate::ids::GS_SEC_TARGET);
+    store.mark_collapsible_section(crate::ids::GS_SEC_DISPLAY);
+    store.mark_collapsible_section(ph2d_editor_core::grid_snap::ids::GS_INSPECT_HEADER);
     // Scrollbar thumb — must be in the store as `Plain` so dispatch's
     // `is_focusable` lets the Down handler seed the scrollbar drag.
     store.register(GRID_SETTINGS_SCROLLBAR_ID, InteractiveState::Plain);

@@ -204,34 +204,11 @@ pub fn paint_hero_screen(
     //    propósito: o pintor acima só corre em modo FIXTURA, e foi essa a razão de a wave 31 não
     //    ter mudado nada no ecrã do dono.
     super::canvas::paint_window_ground(&layout, scene, hero.theme);
-    // M14.4b: world-space grid overlay. Painted between the canvas
-    // background and the selection marquee so the marquee remains
-    // legible over the grid. Skipped when toggle is off or host
-    // hasn't published a camera view. We substitute the layout's
-    // computed canvas rect into the view so the host doesn't have
-    // to mirror layout math — it only owns camera + window dims.
-    //
-    // Layer-order toggle (2026-05-15): the compositor currently
-    // composes `game_rt_ldr` UNDER `vello_intermediate` in a single
-    // pass — chrome (including the grid) always lands on top of
-    // sprites. Real "behind" rendering needs a second Vello
-    // intermediate + a 3-layer compositor shader (TODO follow-up).
-    // For now we approximate by halving the grid's effective opacity
-    // when `grid_in_front == false`, which reads as "the grid is
-    // farther / underneath" without changing the compositing path.
-    if hero.view.grid_visible
-        && let Some(view) = hero.grid.view
-    {
-        let view = crate::grid::GridView {
-            canvas: layout.canvas,
-            ..view
-        };
-        let mut state_for_paint = hero.grid.snap_state.clone();
-        if !state_for_paint.grid_in_front {
-            state_for_paint.opacity *= 0.4; // LITERAL-PX-OK: grid behind-canvas dim ratio (visual effect)
-        }
-        crate::grid_snap::render::paint(scene, &view, &state_for_paint, hero.theme);
-    }
+    // M14.4b: world-space grid overlay, painted between the canvas background and the selection
+    // marquee so the marquee remains legible over it. ⭐ **À FRENTE ou ATRÁS dos objectos** —
+    // a decisão vive em [`super::grid_layer`] (report do dono de 2026-09-24: o `Behind` era um
+    // `opacity × 0,4` e não punha a grade atrás de nada).
+    super::grid_layer::paint_in_chrome(hero, &layout, scene);
     // O rect que ESTE paint resolveu para as RÉGUAS, para quem trata ponteiro (o gesto da guia)
     // ler o mesmo retângulo — o irmão do `last_viewport`, e pelo mesmo motivo.
     //

@@ -644,3 +644,32 @@ espelhada (esq direita) como faz o blender»*. Lei no motor (`copiarPose`/`espel
   mutações 126. ⚠️ O portão inclina metade dos destinos 0,8 rad: no corpus do dino os giros diferem 6° e o
   controlo dava quase o mesmo número.
 - ABERTO (dono): preservar a folga do destino (1,8 cm em pontas de pés) vs. zerá-la.
+
+**2026-09-24 (10.ª volta) — A POSE AUTOMÁTICA APRENDIDA (B49): a rede PROPÕE, o solver GARANTE.**
+Ordem do dono: uma rede pequena NOSSA, treinada em mocap real, sem perder a obediência (B21). Paredes:
+ProtoRes só o ARTIGO (código/pesos não-comerciais, nunca abertos); Cascadeur só os artigos públicos, as
+saídas dele ficam RÉGUA e nunca dado. Corpus: os 2 548 clipes da CMU (lista com sha em
+`dados_treino/lista_cmu.txt`, BVH fora do git) → 356 530 poses de perfil → MLP 4×256 (0,88 MB, 0,11 ms
+no Chrome, paridade JS×PyTorch 4,8e-7) → `modelo_pose_cascy.js` + `pose_aprendida.js`; o palpite entra
+no `poseAutomatica` como atrator (`opts.palpite`, mesma lei da chave, preço igual por junta). Torch: o
+`.venv` do ph2d-motionbricks. Refazer: `treino/LEIA.md`. Caixa «Pose automática: aprendida», DESLIGADA.
+- **Resultado (92 obedientes):** pose 9,41 → 8,84° · CoM 4,90 → 4,79 · cabeça 8,72 → 8,63 · ponto ao
+  alvo 3,45 → 3,44 (três sementes: 8,81–8,84) — nenhuma coluna piora; o ganho mora no COTOVELO. Modesto.
+- ⭐ **Base de perfil POR QUADRO** (eixo das ancas do quadro): 90 % dos quadros com o braço de perfil —
+  a base da CENA é que fazia os braços «sair do plano» e recusava clipes inteiros.
+- ⛔ **A rede CRUA piora tudo** (pose média dela puxa o corpo) ⇒ palpite = partida + a MUDANÇA que a
+  rede vê, com os pontos não tocados como pista solta.
+- ⛔⛔ **Uma entrada de TOLERÂNCIA só funciona se o ruído do treino puder CONTRADIZER a verdade** tanto
+  quanto o uso vai contradizer: com o σM=0,1 do artigo a rede ignorava Λ (Λ 0 = Λ 1 ao dígito) e a
+  bacia não agachava com a cabeça «pedida» de pé; σM=0,3 m cura. Instrumento que o viu: o palpite
+  SOZINHO medido contra o rato (o veredito só mostrava «ganho pequeno»).
+- ⛔ Mais peso (0,6) dá mais pose e DESOBEDECE (bacia 1,6 cm aquém); «duas fases» obedece e perde o ganho.
+- ⭐⭐⭐ **O achado maior não é da rede: o joelho e o cotovelo do rig NÃO ESTICAM** — repouso da Cascy
+  dobrado 21,6°/35,7° (3D) e limite escrito à mão só +2°; o oráculo estica 18–25°/10–13° além disso em
+  metade dos casos. Limite ao osso reto + rede: 8,69° · 4,75 · 8,20 · ponto 3,12 (tudo melhora). ⏳
+  DECISÃO DO DONO (muda o boneco com a caixa desligada).
+- Suíte 258 · mutações 136 · `gesto_pose_aprendida.js` (6 + 5 mutações).
+- ⚠️ `rodar_gestos.js` com 16 testes levou 46 min e o `gesto_dinossauro.js` saiu «(sem veredito)»: o
+  prazo POR TESTE é 45 min e a fila com 4 Chromes o atinge; sozinho ele dá TUDO OK em 5,5 min. Um
+  «sem veredito» lê-se como reprovação — confira sozinho antes de procurar defeito (e o tecto quer subir).
+- Commits do testbed: `aa37217` (B49) + `c4b14df` (fotos regeneradas).

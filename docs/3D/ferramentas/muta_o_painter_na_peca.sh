@@ -33,6 +33,7 @@ cd "$ROOT" || exit 2
 BK=$(mktemp -d)
 FICHEIROS=(
   crates/ph2d-sculpt3d/src/tela_na_malha.rs
+  crates/ph2d-sculpt3d/src/tela_na_malha_pousa.rs
   crates/ph2d-sculpt3d/src/tela_semente.rs
   crates/ph2d-tool-painter/src/tool/paint/mode_switch.rs
   crates/ph2d-sculpt3d/src/tinta_fina.rs
@@ -131,15 +132,15 @@ muta LEI crates/ph2d-sculpt3d/src/tela_na_malha.rs \
   '    ponto(n, sub(olho, p(0))) > 0.0' \
   '    ponto(n, sub(olho, p(0))) > 0.0 || true' \
   'L2 a face de costas também é pintada'
-muta LEI crates/ph2d-sculpt3d/src/tela_na_malha.rs \
+muta LEI crates/ph2d-sculpt3d/src/tela_na_malha_pousa.rs \
   '            let fica = 1.0 - a * k;' \
   '            let fica = 0.0 * a * k;' \
   'L3 a tinta substitui a base em vez de a cobrir'
-muta LEI crates/ph2d-sculpt3d/src/tela_na_malha.rs \
-  '                    let k = keep_da_amostra(w, &m[..n]);' \
-  '                    let k = { let _ = (w, &m[..n]); 1.0 };' \
+muta LEI crates/ph2d-sculpt3d/src/tela_na_malha_pousa.rs \
+  '    let k = keep_da_amostra(w, m);' \
+  '    let k = { let _ = (w, m); 1.0 };' \
   'L4 a máscara deixa de proteger a tinta fina'
-muta LEI crates/ph2d-sculpt3d/src/tela_na_malha.rs \
+muta LEI crates/ph2d-sculpt3d/src/tela_na_malha_pousa.rs \
   '                    let k = keep_da_amostra(&[1.0], &m[c..=c]);' \
   '                    let k = { let _ = &m[c..=c]; 1.0 };' \
   'L5 a máscara deixa de proteger os vértices'
@@ -157,13 +158,37 @@ muta LEI crates/ph2d-sculpt3d/src/stroke_freeze.rs \
   '        let nova = cor(self.base_color[self.slot[v as usize] as usize]);' \
   '        let nova = cor(mesh.colors_mut()[v as usize]);' \
   'L8 o vértice mistura sobre a CORRENTE: pousar duas vezes escurece'
-muta LEI crates/ph2d-sculpt3d/src/tela_na_malha.rs \
-  '            s[0] >= caixa[0] && s[0] <= caixa[2] && s[1] >= caixa[1] && s[1] <= caixa[3]' \
-  '            s[0] >= caixa[0] && s[1] >= caixa[1]' \
+muta LEI crates/ph2d-sculpt3d/src/tela_na_malha_pousa.rs \
+  '    s[0] >= caixa[0] && s[0] <= caixa[2] && s[1] >= caixa[1] && s[1] <= caixa[3]' \
+  '    s[0] >= caixa[0] && s[1] >= caixa[1]' \
   'L9 o rectângulo sujo deixa de limitar a pousada'
 
-# ── ETAPA 2: o retrato e a lei da DIFERENÇA ──────────────────────────────
+# ── O PREÇO a 256x (24/09): a oclusão por (face, píxel) e os blocos da retícula.
+#    Os dois atalhos pintam o MESMO que o caminho sem eles; o gate dos blocos e o
+#    do contador existem porque, sem eles, desligar os blocos era INOBSERVÁVEL.
+muta LEI crates/ph2d-sculpt3d/src/tela_na_malha_pousa.rs \
+  'b[2] >= caixa[0]' \
+  'b[0] >= caixa[0]' \
+  'L13 a caixa do bloco mede o INÍCIO e deixa amostras por pintar'
 muta LEI crates/ph2d-sculpt3d/src/tela_na_malha.rs \
+  '.then(|| y as usize * w + x as usize);' \
+  '.then(|| y as usize * w + x as usize).filter(|_| false);' \
+  'L14 a oclusão volta a ser um raio por AMOSTRA'
+muta LEI crates/ph2d-sculpt3d/src/tela_na_malha.rs \
+  'let chave = face.wrapping_add(1) & !VEREDITO;' \
+  'let chave = 1u32;' \
+  'L15 a chave do píxel esquece a FACE: a placa decide pelo que está atrás'
+muta LEI crates/ph2d-sculpt3d/src/tela_na_malha_pousa.rs \
+  '.is_none_or(|b| {' \
+  '.is_none_or(|b| true || {' \
+  'L16 nenhum bloco é cortado: um traço pequeno projecta a face inteira'
+muta LEI crates/ph2d-sculpt3d/src/tela_na_malha_pousa.rs \
+  'sessao.projetadas += 1;' \
+  'sessao.projetadas += 0;' \
+  'L17 o contador de projecção fica mudo'
+
+# ── ETAPA 2: o retrato e a lei da DIFERENÇA ──────────────────────────────
+muta LEI crates/ph2d-sculpt3d/src/tela_na_malha_pousa.rs \
   '            (base[0] + d[0] * k).clamp(0.0, 1.0),' \
   '            base[0].clamp(0.0, 1.0),' \
   'L10 a diferença deixa de chegar ao canal vermelho'

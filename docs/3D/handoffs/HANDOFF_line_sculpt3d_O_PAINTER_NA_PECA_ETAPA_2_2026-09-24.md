@@ -246,3 +246,112 @@ da árvore COMBINADA **127/127** (controlo do filtro 12 de 12) · clippy
 * O ajuste do balde DEPOIS de largar continua sem chegar à peça na hora — com a
   tela molhada guardada ele passaria a chegar no traço seguinte; só com a
   aquarela, e o dono não o vai encontrar por acaso.
+
+## §8 — ⭐⭐⭐⭐ «A resolução de 16x não chega para o Painter»: os degraus `32x`…`256x`, com o tecto do DISPOSITIVO e o preço MEDIDO
+
+Report do dono (24/09, depois do smoke das duas correcções da §7): *«a resolução de
+16x não chega para o painter. Demais implementações SMOKE OK.»*
+
+### §8.1 — A necessidade, medida antes do número
+
+Sonda `diag_pixeis_por_amostra_da_tinta_fina` (cena `=52`, vista de fábrica): a
+`16x` a tinta fina tem **uma amostra a cada `1,9`–`3,6` píxeis de ecrã** — o traço
+do Painter é mais fino que a tinta que o recebe. A `64x` ela é sub-píxel em todo o
+lado. ⇒ o tecto antigo (`NIVEL_MAX = 4`) tinha sido medido **na peça errada**
+(uma densa, onde `16x` já era sub-píxel) — §0.0: quem move o número reconfere a nota.
+
+### §8.2 — O tecto é de DOIS recursos, e os dois são LEI
+
+1. **O índice de 32 bits** (`ph2d-mesh-colors`): o plano endereça amostras em `u32`.
+   `Topologia::nova` conta o total **antes** de alocar (`conta`, `u64`, a mesma
+   fórmula que a alocação usa — gate `a_conta_prevista_e_a_conta_alocada`) e **desce**
+   ao maior degrau que cabe; `regraduada` devolve `None` acima dele. A `Tinta` toma o
+   nível que a topologia DEU, nunca o pedido.
+2. **O buffer do dispositivo** (`ph2d-app-sculpt3d`): `12 bytes` por amostra num
+   storage buffer ⇒ `orcamento_da_placa = min(max_storage_buffer_binding_size,
+   max_buffer_size) / 12` (a RTX 5060 Ti desta máquina: `4 GiB` ⇒ ~`357 M` amostras).
+   `degrau_que_cabe` desce ao maior degrau que cabe, reaproveitando a topologia que
+   já existe (o 2.º quadro **não** reconstrói — gate
+   `o_plano_descido_nao_e_refeito_no_quadro_seguinte`), e o slot **diz ao artista**
+   (`app.sculpt3d.tinta_fina.nao_cabe_na_placa`) e **acerta a fileira** para o degrau
+   que ficou. ⛔ *O caminho lento não define o produto*: o tecto é do dispositivo.
+
+A fileira `Paint Detail` passa a `Mesh · 2x · 4x · 8x · 16x · 32x · 64x · 128x · 256x`
+(`NIVEL_MAX = 8`).
+
+### §8.3 — ⭐⭐⭐ O preço de pintar a `256x` era a OCLUSÃO, e a cura é o PÍXEL
+
+Sonda `diag_o_preco_de_pintar_em_cada_degrau` (`--profile smoke`, `load ~4–5`),
+pen-down / pior quadro de um traço:
+
+| degrau | amostras | antes | + oclusão por píxel | + blocos (shipa) |
+|---|---|---|---|---|
+| `16x` | `188 418` | — | `2,6` / `1,2 ms` | `2,2` / `1,0 ms` |
+| `64x` | `3,0 M` | — | `9,7` / `2,4` | `7,5` / `2,1` |
+| `128x` | `12,1 M` | `62,8` / `12,1` | `12,7` / `6,8` | `8,6` / `3,5` |
+| `256x` | `48,2 M` | **`247`** / **`45,7`** | `28,2` / `21,8` | **`15,0`** / **`9,1`** |
+
+A sonda `diag_de_que_e_feito_o_pen_down` pô-lo no sítio: a 1.ª drenagem custava
+`232,7 ms`, quase tudo **raios de oclusão por AMOSTRA** — a `256x` há `~70` amostras
+por píxel de ecrã, e cada uma pagava o seu. Duas curas, as duas em
+`ph2d-sculpt3d/tela_na_malha*`:
+
+* **A oclusão decide-se por (face, PÍXEL)** (`TelaNaMalha::ve_se_no_pixel`, cache de
+  mapeamento directo, uma entrada por píxel da vista). ⚠️ A chave inclui a **FACE**:
+  dois lados de uma dobra no mesmo píxel têm vereditos opostos — uma colisão custa
+  um raio, nunca um veredito errado (mutação L15 sangra no gate da placa).
+* **Blocos de `16×16` da retícula de um QUAD que a caixa do traço não alcança nem se
+  projectam**: um retalho bilinear fica no fecho convexo dos quatro cantos e a
+  projecção perspectiva preserva-o para pontos à frente da câmera ⇒ a caixa dos
+  quatro cantos projectados LIMITA o bloco. Os triângulos (pólos) não se partem.
+
+⚠️ **Os blocos eram INOBSERVÁVEIS**: pintam o MESMO com e sem eles, e a mutação que os
+desliga SOBREVIVEU ao gate de equivalência ⇒ sonda de custo `TelaNaMalha::projetadas`
+e o gate `um_traco_pequeno_projecta_a_pegada_e_nao_a_face` (com o CONTROLO do
+instrumento: `projetadas >= pintadas`, senão um contador mudo passava — L17).
+
+⭐ **A regra «dentro da caixa» é UMA função** (`na_caixa`), lida pelo vértice e pela
+amostra: com o corte ela tinha ficado escrita duas vezes.
+
+⚠️ **LOC:** o `tela_na_malha.rs` foi a `748` — curado por **CORTE**: o DEPÓSITO
+(a lei por amostra e o percurso da retícula) mudou-se para o filho
+`tela_na_malha_pousa.rs` (`522` + `240`). ⏳ **`armar` a `256x` custa `~160 ms` uma
+vez** (alocar `48 M` amostras, `579 MB` na CPU e na placa) — é um clique no chip, não
+um quadro; não curado.
+
+### §8.4 — Gates e prova
+
+| onde | novos | o que afirmam |
+|---|---|---|
+| `ph2d-mesh-colors/topo_tests.rs` | 3 | a conta prevista é a alocada · uma malha grande desce ao degrau que cabe no índice (com o controlo de uma pequena) · regraduar acima do índice recusa |
+| `tinta_da_peca_placa_tests.rs` | 4 | o degrau desce ao maior que cabe · sem o `2x` não há plano · o plano descido não é refeito · o orçamento é o MENOR tecto / 12 bytes |
+| `tela_na_malha_pousa_tests.rs` | 4 | os blocos não mudam o que se pinta (conjunto EXACTO contra a contagem sem atalho) · a oclusão é partilhada no píxel · com tinta fina o escondido não se pinta · um traço pequeno projecta a pegada |
+| `tinta_fiacao_tests.rs` | +3 elos (31) | o slot passa o orçamento da placa · diz o degrau que ficou · fala |
+
+**Mutação — versionada nos três arneses:** `muta_o_painter_na_peca.sh` ganhou
+**L13–L17** e re-ancorou **L3/L4/L5/L9/L10** no filho (o pré-voo apanhou-as a casar
+`0`); `muta_a_metade_visivel.sh` ganhou **M43–M47** e re-ancorou **M2** (casava `2`
+depois da segunda saída cedo do `garante`) e **M24** (o tecto é `8`);
+`muta_a_cerca_do_plano.sh` ganhou **N10–N12**. Corridos: **11 de 11** · **2 de 2** ·
+**5 de 5** · **3 de 3** sangram. Pré-voo dos três: `54/54` · `54/54` · `12/12`.
+
+⚠️ **O portão apanhou um tecto de LOC meu** (`tinta_da_peca.rs` `718` de `700`),
+curado por **CORTE**: o recurso do dispositivo (`orcamento_da_placa`,
+`degrau_que_cabe`) mudou-se para o filho `tinta_da_peca_placa.rs` (`677` + `53`),
+re-exportado pelo pai (o elo do censo da fiação continua a ler
+`crate::tinta_da_peca::orcamento_da_placa`); M43/M44 re-ancoradas no filho e
+re-corridas, **2 de 2**. ⚠️ **E o roteiro da `=52` ensinava o contrário** (o passo
+(4-bis) chamava ao `16x` *«o último da fileira»*): hoje manda carregar `256x` e diz
+que numa peça densa a fileira desce sozinha, com o aviso no topo.
+
+**Portão:** `nextest-impacted` **18 688/18 688** · censos da árvore COMBINADA
+**127/127** (controlo do filtro 12 de 12) · clippy `-D warnings` zero · gates da tinta
+fina e do Painter na peça com placa **84/84** · pré-voo dos três arneses verde.
+
+### §8.5 — ⏳ O que fica, dito
+
+* `armar` o `256x` custa `~160 ms` uma vez (a alocação de `48 M` amostras).
+* Os triângulos (os pólos) não se partem em blocos — são poucos; se uma peça de
+  triângulos for pintada a `256x`, o custo volta a ser por face inteira.
+* A oclusão por píxel pode errar uma amostra cuja borda de oclusor caia DENTRO de
+  um píxel — abaixo do que a tela do Painter distingue, por construção.

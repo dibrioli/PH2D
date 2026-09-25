@@ -97,17 +97,21 @@ fn a_cena_da_tinta_fina_abre_com_o_pincel_e_o_arame() {
 fn o_oito_e_o_primeiro_degrau_que_alcanca_a_densidade_da_cena_irma() {
     use ph2d_panel_sculpt3d::state::DetalheDaTinta;
 
-    /// Quantas amostras a fileira dá a esta malha em cada chip — pelo PRODUTO.
+    /// Quantas amostras a fileira dá a esta malha em cada chip.
+    ///
+    /// ⚠️ **Contadas, não alocadas:** desde que a fileira vai a `256x` construir
+    /// um plano por chip custava `580 MB` neste teste. A conta prevista é a
+    /// alocada — há gate a prová-lo (`a_conta_prevista_e_a_conta_alocada`, na
+    /// `ph2d-mesh-colors`).
     fn amostras(m: &ph2d_mesh::Mesh, d: DetalheDaTinta) -> usize {
         match d.nivel() {
             None => m.vert_count(),
-            Some(k) => ph2d_mesh_colors::Tinta::nova(
+            Some(k) => ph2d_mesh_colors::Topologia::nova(
                 m.vert_count(),
                 m.faces().iter().map(ph2d_mesh::Face::verts),
-                k,
+                0,
             )
-            .amostras()
-            .len(),
+            .amostras_ao_nivel(k) as usize,
         }
     }
 

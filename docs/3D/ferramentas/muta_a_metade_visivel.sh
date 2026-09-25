@@ -174,8 +174,12 @@ muta "$APP/tinta_da_peca.rs" \
 #    dele sobra a do degrau — e a que saiu e' de proposito, porque um plano
 #    graduado GRAVADO tem de sobreviver a' abertura do ficheiro.
 muta "$APP/tinta_da_peca.rs" \
-  '        && t.nivel() == k' \
-  '        && true' \
+  '    let k = nivel.map(|k| k.min(NIVEL_MAX));
+    if let (Some(k), Some(t)) = (k, tinta.as_ref())
+        && t.nivel() == k' \
+  '    let k = nivel.map(|k| k.min(NIVEL_MAX));
+    if let (Some(k), Some(t)) = (k, tinta.as_ref())
+        && true' \
   'M2 garante: trocar de nivel deixa de reconstruir'
 
 # ⚠️⚠️ **A CONTA MUDOU DE SITIO em 2026-09-21** — ela e' hoje a
@@ -365,8 +369,8 @@ muta "$APP/scenes_tinta_fina.rs" \
   'M23 cena: a const da licao separa-se do roteiro'
 
 muta "$APP/tinta_da_peca.rs" \
-  'pub(crate) const NIVEL_MAX: u8 = 4;' \
-  'pub(crate) const NIVEL_MAX: u8 = 3;' \
+  'pub(crate) const NIVEL_MAX: u8 = 8;' \
+  'pub(crate) const NIVEL_MAX: u8 = 7;' \
   'M24 tecto: o motor deixa de alocar o degrau que o painel oferece'
 
 # ── ⭐⭐⭐⭐ O GESTO QUE ERRA A PECA (o que sobrou do report de 21/09) ─────
@@ -463,6 +467,34 @@ muta "$APP/input_down.rs" \
   '            let dono = scene.objects[scene.active].id;' \
   '            let dono = crate::objects::ObjectId(u32::MAX);' \
   'M37 o emprestimo deixa de carregar quem o emprestou'
+
+# ── O TECTO DA PLACA (24/09, «16x nao chega»): o degrau pedido desce ao maior
+#    que cabe no buffer do dispositivo, e o artista e' avisado. A metade PURA
+#    (a contagem e a descida da topologia) mora no `muta_a_cerca_do_plano.sh`.
+muta "$APP/tinta_da_peca_placa.rs" \
+  '.min(lim.max_buffer_size)' \
+  '.max(lim.max_buffer_size)' \
+  'M43 placa: o orcamento sai do MAIOR tecto do dispositivo'
+
+muta "$APP/tinta_da_peca_placa.rs" \
+  '.find(|&j| topo.amostras_ao_nivel(j) <= orcamento)' \
+  '.find(|&j| topo.amostras_ao_nivel(j) <= orcamento.saturating_mul(64))' \
+  'M44 placa: o degrau deixa de caber no orcamento'
+
+muta "$APP/tinta_da_peca.rs" \
+  '.filter(|&j| j > 0);' \
+  '.filter(|&j| j > 100);' \
+  'M45 placa: a descida devolve sempre nenhum plano'
+
+muta "$APP/slots.rs" \
+  'self.tinta_nivel = ficou;' \
+  'let _ = ficou;' \
+  'M46 placa: a fileira continua a mostrar o degrau que NAO coube'
+
+muta "$PAN/state_modes.rs" \
+  '            Self::DuzentosECinquentaESeis => Some(8),' \
+  '            Self::DuzentosECinquentaESeis => Some(7),' \
+  'M47 DetalheDaTinta: o 256x colapsa no 128x'
 
 echo
 if [ -n "$SO_ANCORAS" ]; then

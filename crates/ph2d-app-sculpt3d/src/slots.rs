@@ -182,8 +182,28 @@ impl Sculpt3dScene {
                     tinta_parqueada,
                     ..
                 } = obj;
-                if crate::tinta_da_peca::garante(stack.mesh(), tinta, tinta_parqueada, pedir) {
+                if crate::tinta_da_peca::garante_no_orcamento(
+                    stack.mesh(),
+                    tinta,
+                    tinta_parqueada,
+                    pedir,
+                    crate::tinta_da_peca::orcamento_da_placa(&device.limits()),
+                ) {
                     obj.tinta_suja = true;
+                }
+                // ⭐⭐ **O degrau que ficou volta ao PAINEL, e a peça DIZ porquê**
+                //    — senão o chip mostraria um degrau que a placa recusou e o
+                //    quadro seguinte tentaria outra vez. Uma vez só: depois disto
+                //    o pedido É o que ficou.
+                let ficou = self.objects[i]
+                    .tinta
+                    .as_ref()
+                    .map(ph2d_mesh_colors::Tinta::nivel);
+                if pedir.is_some() && ficou != pedir && i == self.active {
+                    self.tinta_nivel = ficou;
+                    self.fala(String::from(ph2d_i18n::tr(
+                        "app.sculpt3d.tinta_fina.nao_cabe_na_placa",
+                    )));
                 }
             }
             // ⚠️⚠️ **Um dab que MOVEU vértices suja o plano**, e não é por

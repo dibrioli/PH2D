@@ -109,20 +109,23 @@ impl Topologia {
     /// ⛔ Ele é o **nível** (`k`) e não o **lado** (`2^k`): a escada é de
     /// potências de dois por lei (ver [`Self::nivel_da_face`]), e um argumento
     /// `lado: u32` deixaria alguém escrever `6`.
+    ///
+    /// ⛔⛔ **O nível EFECTIVO é o maior `≤ nivel` cujo plano cabe no ÍNDICE desta
+    /// malha** ([`Self::amostras_ao_nivel`] `≤ u32::MAX`) — e o recurso é o
+    /// índice, não um número escolhido: todo endereço desta crate é `u32`, e a
+    /// `lado = 256` uma malha de `1 M` vértices pediria `6,6e10` amostras. Os
+    /// prefixos somavam em `u32` e **transbordavam em silêncio** (em release
+    /// dão a volta), que é tinta no sítio errado. Lê-se o nível que ficou em
+    /// [`Self::nivel_uniforme`].
     #[must_use]
     pub fn nova<'a>(verts: usize, faces: impl Iterator<Item = &'a [u32]>, nivel: u8) -> Self {
-        let lado = 1u32 << nivel;
         let mut mapa: BTreeMap<(u32, u32), u32> = BTreeMap::new();
         let mut dono_da_aresta: Vec<u32> = Vec::new();
         let mut lado_da_face = Vec::new();
         let mut cantos_da_face = Vec::new();
-        let mut off_interior = Vec::new();
-        let mut acc = 0u32;
         let mut fi = 0u32;
         for f in faces {
             let n = cantos(f);
-            off_interior.push(acc);
-            acc += interior_por_face(n, lado);
             cantos_da_face.push(n as u8);
             for s in 0..4 {
                 if s >= n {
@@ -140,8 +143,22 @@ impl Topologia {
             }
             fi += 1;
         }
-        off_interior.push(acc);
         let arestas = mapa.len();
+        let nivel = (0..=nivel)
+            .rev()
+            .find(|&k| {
+                conta(verts, arestas, cantos_da_face.iter().map(|&c| c as usize), k)
+                    <= u64::from(u32::MAX)
+            })
+            .unwrap_or(0);
+        let lado = 1u32 << nivel;
+        let mut off_interior = Vec::with_capacity(cantos_da_face.len() + 1);
+        let mut acc = 0u32;
+        for &n in &cantos_da_face {
+            off_interior.push(acc);
+            acc += interior_por_face(n as usize, lado);
+        }
+        off_interior.push(acc);
         let faces = cantos_da_face.len();
         let mut off_aresta = Vec::with_capacity(arestas + 1);
         let mut a = 0u32;
@@ -194,6 +211,20 @@ impl Topologia {
                 let e = &mut nivel_da_aresta[id as usize];
                 *e = (*e).max(k);
             }
+        }
+
+        // ⛔ A mesma cerca do ÍNDICE da [`Self::nova`], mas aqui RECUSA em vez de
+        //    descer: a lista de níveis é do chamador, e reescrevê-la em silêncio
+        //    seria outra graduação que ninguém pediu.
+        let mut total = self.verts as u64;
+        for &k in &nivel_da_aresta {
+            total += (1u64 << k) - 1;
+        }
+        for (f, &k) in nivel_da_face.iter().enumerate() {
+            total += u64::from(interior_por_face(self.cantos_de(f), 1u32 << k));
+        }
+        if total > u64::from(u32::MAX) {
+            return None;
         }
 
         let mut off_aresta = Vec::with_capacity(self.arestas + 1);
@@ -328,6 +359,19 @@ impl Topologia {
         self.arestas
     }
 
+    /// ⭐ **Quantas amostras ESTA malha teria num nível uniforme `k`** — sem
+    /// construir nada. É a pergunta de quem tem um orçamento (a placa, a
+    /// memória) antes de pedir um plano; ver [`conta`].
+    #[must_use]
+    pub fn amostras_ao_nivel(&self, k: u8) -> u64 {
+        conta(
+            self.verts,
+            self.arestas,
+            self.cantos_da_face.iter().map(|&c| c as usize),
+            k,
+        )
+    }
+
     /// Quantas faces.
     #[must_use]
     pub fn faces(&self) -> usize {
@@ -382,6 +426,28 @@ impl Topologia {
 
 /// Quantas amostras de INTERIOR uma face de `n` cantos tem ao nível `lado`.
 ///
+/// ⭐ **Quantas amostras uma malha tem num nível UNIFORME** — em `u64`, para a
+/// pergunta *«cabe no índice?»* poder ser feita antes de se alocar.
+///
+/// `V + E·(L−1) + Σ interior(face)`: a mesma conta da [`crate::total`], sobre
+/// as três grandezas que não dependem do nível.
+#[must_use]
+pub fn conta(verts: usize, arestas: usize, cantos: impl Iterator<Item = usize>, nivel: u8) -> u64 {
+    let lado = 1u64 << nivel;
+    let mut n = verts as u64 + arestas as u64 * (lado - 1);
+    for c in cantos {
+        let l = lado - 1;
+        n += if lado <= 1 {
+            0
+        } else if c == 3 {
+            l * l.saturating_sub(1) / 2
+        } else {
+            l * l
+        };
+    }
+    n
+}
+
 /// ⭐ **Triângulo `(L−1)(L−2)/2`, quad `(L−1)²`** — é a contagem dos pontos da
 /// retícula com nenhuma coordenada baricêntrica (ou bilinear) nula. A `L = 1`
 /// os dois dão **zero**, que é a linha que faz o nível base ser *cor

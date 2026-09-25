@@ -123,6 +123,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
              armed for this piece, so the paint has its own resolution and refining would only \
              throw the fine plane away (a shape brush still densifies)"
         }
+        "app.sculpt3d.tinta_fina.nao_cabe_na_placa" => "Paint Detail lowered: too big for the GPU",
         "app.sculpt3d.trim_aplica.sem_peca_para_cortar" => "there is no piece to cut",
         "app.sculpt3d.trim_aplica.pilha_montada_j_reverte" => {
             "a multiresolution stack is mounted -- J reverts it and the cut comes back"

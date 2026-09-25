@@ -406,3 +406,209 @@ fn half(b: u16) -> f32 {
         _ => (1.0 + m / 1024.0) * 2f32.powi(e - 15),
     }
 }
+
+/// 🔎 **SONDA (não é gate) — quantos píxeis de ECRÃ cabem entre duas amostras
+/// de tinta fina**, na peça da cena `=52` e no enquadramento dela, por nível.
+/// A pergunta do report *«16x não chega para o Painter»*: o Painter pinta à
+/// resolução do ecrã, e um passo de amostra maior que `1 px` é tinta mais
+/// grossa do que o pincel que a pôs.
+#[test]
+#[ignore = "sonda: precisa de adaptador e imprime a tabela"]
+fn diag_pixeis_por_amostra_da_tinta_fina() {
+    let gpu = gpu_or_skip!();
+    for (w, h) in [(900.0f32, 700.0f32), (1400.0, 900.0), (1900.0, 1000.0)] {
+        let mut s = cena_52(&gpu.device);
+        s.note_canvas(ph2d_editor_core::zones::Rect::new(0.0, 0.0, w, h));
+        let o = s.obj().expect("peça");
+        let pose = o.pose;
+        let mesh = o.stack.mesh();
+        let olho: [f32; 3] = s.camera.eye().into();
+        let mut arestas: Vec<f32> = Vec::new();
+        for f in mesh.faces() {
+            let vs = f.verts();
+            let p: Vec<[f32; 3]> = vs
+                .iter()
+                .map(|&v| pose.point_to_world(mesh.positions()[v as usize]))
+                .collect();
+            let c = p
+                .iter()
+                .fold([0.0f32; 3], |a, q| [a[0] + q[0], a[1] + q[1], a[2] + q[2]]);
+            let n = p.len() as f32;
+            let c = [c[0] / n, c[1] / n, c[2] / n];
+            let (a, b, d) = (p[0], p[1], p[2]);
+            let e1 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+            let e2 = [d[0] - a[0], d[1] - a[1], d[2] - a[2]];
+            let nor = [
+                e1[1] * e2[2] - e1[2] * e2[1],
+                e1[2] * e2[0] - e1[0] * e2[2],
+                e1[0] * e2[1] - e1[1] * e2[0],
+            ];
+            let para_o_olho = [olho[0] - c[0], olho[1] - c[1], olho[2] - c[2]];
+            if nor[0] * para_o_olho[0] + nor[1] * para_o_olho[1] + nor[2] * para_o_olho[2] <= 0.0 {
+                continue;
+            }
+            let ecra: Vec<(f32, f32)> = p.iter().filter_map(|&q| s.project_window(q)).collect();
+            if ecra.len() != p.len() {
+                continue;
+            }
+            for i in 0..ecra.len() {
+                let (x0, y0) = ecra[i];
+                let (x1, y1) = ecra[(i + 1) % ecra.len()];
+                arestas.push(((x1 - x0).powi(2) + (y1 - y0).powi(2)).sqrt());
+            }
+        }
+        arestas.sort_by(f32::total_cmp);
+        let q = |f: f32| arestas[((arestas.len() - 1) as f32 * f) as usize];
+        eprintln!(
+            "vista {w}x{h}: {} vértices, aresta de frente p50 {:.1} px · p90 {:.1} px · máx {:.1} px",
+            mesh.vert_count(),
+            q(0.5),
+            q(0.9),
+            q(1.0)
+        );
+        for k in 4u8..=8 {
+            let lado = f32::from(1u16 << k);
+            let amostras = mesh.vert_count() as f64 * f64::from(lado) * f64::from(lado);
+            eprintln!(
+                "  k={k} ({lado}x): px por amostra p50 {:.2} · p90 {:.2} · máx {:.2} · plano {:.1} MB aqui · {:.0} MB na peça de fábrica",
+                q(0.5) / lado,
+                q(0.9) / lado,
+                q(1.0) / lado,
+                amostras * 12.0 / 1e6,
+                98_306.0 * f64::from(lado) * f64::from(lado) * 12.0 / 1e6
+            );
+        }
+    }
+}
+
+/// 🔎 **SONDA (não é gate) — quanto custa pintar com o Painter em cada degrau**,
+/// na peça da cena `=52`: armar o plano (uma vez), o pen-down e cada quadro do
+/// traço. A pergunta do report *«16x não chega»* tem uma segunda metade: o
+/// degrau que chega tem de continuar a pintar a `60 Hz`.
+#[test]
+#[ignore = "sonda: precisa de adaptador e imprime a tabela"]
+fn diag_o_preco_de_pintar_em_cada_degrau() {
+    use std::time::Instant;
+    let gpu = gpu_or_skip!();
+    for k in [4u8, 5, 6, 7, 8] {
+        let mut s = cena_52(&gpu.device);
+        s.note_canvas(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1400.0, 900.0));
+        s.tinta_nivel = Some(k);
+        let t0 = Instant::now();
+        s.sync_mesh(&gpu.device, &gpu.queue);
+        let armar = t0.elapsed();
+        let n = s
+            .obj()
+            .and_then(|o| o.tinta.as_ref())
+            .map_or(0, |t| t.amostras().len());
+        let mut p = painter_vermelho();
+        quadro(Some(&mut s), Some(&mut p));
+        let t1 = Instant::now();
+        assert!(entrega(
+            &mut s,
+            &mut p,
+            600.0,
+            450.0,
+            1.0,
+            PointerPhase::Down
+        ));
+        quadro(Some(&mut s), Some(&mut p));
+        s.sync_mesh(&gpu.device, &gpu.queue);
+        let down = t1.elapsed();
+        let mut pior = std::time::Duration::ZERO;
+        for j in 1..=20u8 {
+            let t = Instant::now();
+            entrega(
+                &mut s,
+                &mut p,
+                600.0 + 4.0 * f32::from(j),
+                450.0,
+                1.0,
+                PointerPhase::Move,
+            );
+            quadro(Some(&mut s), Some(&mut p));
+            s.sync_mesh(&gpu.device, &gpu.queue);
+            pior = pior.max(t.elapsed());
+        }
+        entrega(&mut s, &mut p, 680.0, 450.0, 1.0, PointerPhase::Up);
+        eprintln!(
+            "k={k} ({}x): {n} amostras · armar {:.1} ms · pen-down {:.1} ms · pior quadro {:.1} ms",
+            1u32 << k,
+            armar.as_secs_f64() * 1e3,
+            down.as_secs_f64() * 1e3,
+            pior.as_secs_f64() * 1e3
+        );
+    }
+}
+
+/// 🔎 **SONDA (não é gate) — de que é feito o pen-down a `256x`.**
+#[test]
+#[ignore = "sonda: precisa de adaptador e imprime a tabela"]
+fn diag_de_que_e_feito_o_pen_down() {
+    use std::time::Instant;
+    let gpu = gpu_or_skip!();
+    let mut s = cena_52(&gpu.device);
+    s.note_canvas(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1400.0, 900.0));
+    s.tinta_nivel = Some(8);
+    s.sync_mesh(&gpu.device, &gpu.queue);
+    let ms = |t: Instant| t.elapsed().as_secs_f64() * 1e3;
+    let tinta = s.objects[s.active].tinta.clone().expect("plano");
+    let mesh = s.objects[s.active].stack.mesh().clone();
+    let n = tinta.amostras().len();
+    let t = Instant::now();
+    let emp = ph2d_sculpt3d::tinta_fina::TintaDoTraco::nova(tinta, 0);
+    eprintln!("TintaDoTraco::nova: {:.1} ms", ms(t));
+    let t = Instant::now();
+    drop(emp);
+    eprintln!("largar o empréstimo: {:.1} ms", ms(t));
+    let vista = ph2d_sculpt3d::tela_na_malha::Vista::nova([1.0; 16], (1400, 900), [0.0; 3]);
+    let t = Instant::now();
+    let sessao = ph2d_sculpt3d::tela_na_malha::TelaNaMalha::nova(&mesh, vista, n);
+    eprintln!("TelaNaMalha::nova: {:.1} ms", ms(t));
+    drop(sessao);
+    let t = Instant::now();
+    assert!(s.painter_abre(600.0, 450.0));
+    eprintln!("painter_abre inteiro: {:.1} ms", ms(t));
+    let t = Instant::now();
+    s.painter_fecha();
+    eprintln!("painter_fecha: {:.1} ms", ms(t));
+
+    let mut p = painter_vermelho();
+    quadro(Some(&mut s), Some(&mut p));
+    assert!(entrega(
+        &mut s,
+        &mut p,
+        600.0,
+        450.0,
+        1.0,
+        PointerPhase::Down
+    ));
+    let f = p.take_screen_canvas();
+    eprintln!(
+        "1.ª drenagem depois do pen-down: rect {:?}",
+        f.as_ref().map(|f| f.rect)
+    );
+    if let Some(f) = f {
+        let t = Instant::now();
+        s.painter_pousa(&f);
+        eprintln!("pousar a 1.ª drenagem: {:.1} ms", ms(t));
+    }
+    for j in 1..=3u8 {
+        entrega(
+            &mut s,
+            &mut p,
+            600.0 + 4.0 * f32::from(j),
+            450.0,
+            1.0,
+            PointerPhase::Move,
+        );
+        let f = p.take_screen_canvas();
+        let r = f.as_ref().map(|f| f.rect);
+        let t = Instant::now();
+        if let Some(f) = f {
+            s.painter_pousa(&f);
+        }
+        eprintln!("move {j}: rect {r:?} · pousar {:.1} ms", ms(t));
+    }
+    entrega(&mut s, &mut p, 620.0, 450.0, 1.0, PointerPhase::Up);
+}

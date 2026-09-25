@@ -160,24 +160,44 @@ pub enum DetalheDaTinta {
     Quatro,
     /// `8` intervalos por aresta.
     Oito,
-    /// `16` intervalos por aresta — o mais fino que o produto oferece, e o
-    /// tecto é MEDIDO (ver `ph2d_app_sculpt3d::tinta_da_peca::NIVEL_MAX`).
+    /// `16` intervalos por aresta.
     ///
     /// ⭐ **Ordem do dono (2026-09-20): *«acrescente a opção de 16x»***, e o
-    /// degrau só entrou depois de medido — a nota que aqui estava dizia
-    /// *«um degrau novo aqui mede-se antes de se escrever»*, e a medição está
-    /// na tabela daquela constante.
+    /// degrau só entrou depois de medido.
     Dezasseis,
+    /// `32` intervalos por aresta.
+    ///
+    /// ⭐⭐ **Os quatro degraus de cima nasceram do report *«a resolução de 16x
+    /// não chega para o painter»* (2026-09-24)**, e o porquê está MEDIDO: na
+    /// vista do dono o `16x` põe uma amostra a cada `1,9`–`3,6` píxeis, mais
+    /// grosso que o pincel do Painter. ⚠️ **Um chip daqui pode DESCER** numa
+    /// peça densa — o tecto é o que a placa aceita para AQUELA peça (ver
+    /// `ph2d_app_sculpt3d::tinta_da_peca::orcamento_da_placa`), e o painel
+    /// mostra o degrau que ficou.
+    TrintaEDois,
+    /// `64` intervalos por aresta — a primeira em que a peça da lição fica
+    /// abaixo de `1` píxel por amostra em toda a bola, na vista do dono.
+    SessentaEQuatro,
+    /// `128` intervalos por aresta — ainda abaixo de meio píxel depois de
+    /// aproximar `2×`.
+    CentoEVinteEOito,
+    /// `256` intervalos por aresta — o fim da escada da
+    /// `ph2d_mesh_colors::NIVEL_MAX`.
+    DuzentosECinquentaESeis,
 }
 
 impl DetalheDaTinta {
     /// A ordem em que os chips são pintados. **É** a ordem do enum.
-    pub const ALL: [Self; 5] = [
+    pub const ALL: [Self; 9] = [
         Self::Malha,
         Self::Duas,
         Self::Quatro,
         Self::Oito,
         Self::Dezasseis,
+        Self::TrintaEDois,
+        Self::SessentaEQuatro,
+        Self::CentoEVinteEOito,
+        Self::DuzentosECinquentaESeis,
     ];
 
     /// Chave i18n do rótulo.
@@ -188,6 +208,16 @@ impl DetalheDaTinta {
             Self::Quatro => ph2d_i18n::tr("panel.sculpt3d.tinta_detalhe.quatro"),
             Self::Oito => ph2d_i18n::tr("panel.sculpt3d.tinta_detalhe.oito"),
             Self::Dezasseis => ph2d_i18n::tr("panel.sculpt3d.tinta_detalhe.dezasseis"),
+            Self::TrintaEDois => ph2d_i18n::tr("panel.sculpt3d.tinta_detalhe.trinta_e_dois"),
+            Self::SessentaEQuatro => {
+                ph2d_i18n::tr("panel.sculpt3d.tinta_detalhe.sessenta_e_quatro")
+            }
+            Self::CentoEVinteEOito => {
+                ph2d_i18n::tr("panel.sculpt3d.tinta_detalhe.cento_e_vinte_e_oito")
+            }
+            Self::DuzentosECinquentaESeis => {
+                ph2d_i18n::tr("panel.sculpt3d.tinta_detalhe.duzentos_e_cinquenta_e_seis")
+            }
         }
     }
 
@@ -204,6 +234,10 @@ impl DetalheDaTinta {
             Self::Quatro => Some(2),
             Self::Oito => Some(3),
             Self::Dezasseis => Some(4),
+            Self::TrintaEDois => Some(5),
+            Self::SessentaEQuatro => Some(6),
+            Self::CentoEVinteEOito => Some(7),
+            Self::DuzentosECinquentaESeis => Some(8),
         }
     }
 

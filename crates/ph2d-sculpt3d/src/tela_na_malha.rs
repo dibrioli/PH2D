@@ -51,9 +51,6 @@
 
 use ph2d_mesh::{Mesh, Ray};
 
-use crate::SculptStroke;
-use crate::preenche::keep_da_amostra;
-
 /// Lado de uma célula da grelha de faces, em píxeis da tela.
 const CELULA: f32 = 32.0;
 
@@ -214,10 +211,15 @@ pub struct TelaNaMalha {
     /// Por amostra (ou por vértice, sem plano): `0` por decidir · `1` vê-se ·
     /// `2` escondida.
     visivel: Vec<u8>,
+    /// ⭐ **A oclusão decidida por (face, PÍXEL)** — cache de mapeamento
+    /// directo, uma entrada por píxel da vista: `face + 1` nos 31 bits de
+    /// baixo, o veredito no bit de cima; `0` = vazia. Ver [`Self::ve_se_no_pixel`].
+    visivel_no_pixel: Vec<u32>,
     carimbo_face: Vec<u32>,
     carimbo_amostra: Vec<u32>,
     epoca: u32,
     raios: usize,
+    projetadas: usize,
     /// ⭐⭐ **O retrato da peça com que a tela do Painter COMEÇOU** — só nos
     /// modos que lêem a cor debaixo do pincel ([`crate::tela_semente`]). Com
     /// ele a lei deixa de ser o «over» e passa a ser a DIFERENÇA.
@@ -266,10 +268,16 @@ impl TelaNaMalha {
             linhas,
             celulas,
             visivel: vec![0; amostras],
+            visivel_no_pixel: vec![
+                0;
+                (vista.largura.max(1.0) as usize)
+                    * (vista.altura.max(1.0) as usize)
+            ],
             carimbo_face: vec![0; mesh.faces().len()],
             carimbo_amostra: vec![0; amostras],
             epoca: 0,
             raios: 0,
+            projetadas: 0,
             semente: None,
         }
     }
@@ -325,6 +333,13 @@ impl TelaNaMalha {
         self.raios
     }
 
+    /// Quantas amostras do plano este traço já projectou no ecrã — sonda de
+    /// custo: com os blocos da retícula ela segue a PEGADA, não a face.
+    #[must_use]
+    pub fn projetadas(&self) -> usize {
+        self.projetadas
+    }
+
     fn proxima_epoca(&mut self) {
         self.epoca = self.epoca.wrapping_add(1);
         if self.epoca == 0 {
@@ -376,7 +391,56 @@ impl TelaNaMalha {
         }
         *v == 1
     }
+
+    /// ⭐⭐ **A mesma pergunta, decidida UMA vez por (face, píxel do ecrã).**
+    ///
+    /// A `256x` a peça de fábrica põe `~70` amostras em cada píxel da vista, e
+    /// cada uma pagava o seu raio de oclusão — medido, a 1.ª drenagem de um
+    /// traço custava `232,7 ms`, quase tudo raios. Duas amostras da MESMA face
+    /// que caem no MESMO píxel são, para o que o artista vê, o mesmo ponto: um
+    /// oclusor que tapa uma e não a outra tem a borda DENTRO de um píxel, onde
+    /// a tela do Painter já não distingue as duas.
+    ///
+    /// ⚠️ A chave inclui a FACE: dois lados de uma dobra (duas faces de frente
+    /// no mesmo píxel, uma à frente da outra) têm vereditos opostos, e é isso
+    /// que a lei da oclusão existe para separar. Uma colisão de face no mesmo
+    /// píxel só custa um raio, nunca um veredito errado.
+    fn ve_se_no_pixel(
+        &mut self,
+        mesh: &Mesh,
+        face: u32,
+        s: [f32; 2],
+        idx: u32,
+        p: [f32; 3],
+    ) -> bool {
+        let v = self.visivel[idx as usize];
+        if v != 0 {
+            return v == 1;
+        }
+        let w = self.vista.largura.max(1.0) as usize;
+        let h = self.vista.altura.max(1.0) as usize;
+        let (x, y) = (s[0].floor(), s[1].floor());
+        let chave = face.wrapping_add(1) & !VEREDITO;
+        let slot = (x >= 0.0 && y >= 0.0 && (x as usize) < w && (y as usize) < h)
+            .then(|| y as usize * w + x as usize);
+        if let Some(i) = slot {
+            let c = self.visivel_no_pixel[i];
+            if c & !VEREDITO == chave {
+                let ve = c & VEREDITO != 0;
+                self.visivel[idx as usize] = if ve { 1 } else { 2 };
+                return ve;
+            }
+        }
+        let ve = self.ve_se(mesh, idx, p);
+        if let Some(i) = slot {
+            self.visivel_no_pixel[i] = chave | if ve { VEREDITO } else { 0 };
+        }
+        ve
+    }
 }
+
+/// O bit do veredito na cache por píxel ([`TelaNaMalha::ve_se_no_pixel`]).
+const VEREDITO: u32 = 1 << 31;
 
 pub(crate) fn de_frente(pos: &[[f32; 3]], cantos: &[u32], olho: [f32; 3]) -> bool {
     let p = |k: usize| pos[cantos[k] as usize];
@@ -458,136 +522,7 @@ enum Mistura {
     Diferenca([f32; 3]),
 }
 
-/// A mistura de uma amostra — ver o cabeçalho.
-fn pousa(base: [f32; 3], mistura: Mistura, k: f32) -> [f32; 3] {
-    match mistura {
-        Mistura::Sobre { pm, a } => {
-            let fica = 1.0 - a * k;
-            [
-                base[0] * fica + pm[0] * k,
-                base[1] * fica + pm[1] * k,
-                base[2] * fica + pm[2] * k,
-            ]
-        }
-        Mistura::Diferenca(d) => [
-            (base[0] + d[0] * k).clamp(0.0, 1.0),
-            (base[1] + d[1] * k).clamp(0.0, 1.0),
-            (base[2] + d[2] * k).clamp(0.0, 1.0),
-        ],
-    }
-}
-
-impl SculptStroke {
-    /// ⭐⭐⭐ **POUSA A TELA NA PEÇA** dentro do rectângulo `r` — no plano de
-    /// tinta fina quando o traço o tem emprestado, senão na cor por vértice.
-    ///
-    /// Devolve os VÉRTICES cuja cor mudou (para o upload incremental; vazio no
-    /// caminho do plano, que sobe pelas amostras sujas do próprio empréstimo) e
-    /// quantas amostras mudaram.
-    ///
-    /// ⚠️ O traço tem de ter sido aberto (`begin`) sobre esta malha.
-    pub fn pousa_a_tela(
-        &mut self,
-        mesh: &mut Mesh,
-        sessao: &mut TelaNaMalha,
-        tela: &Tela<'_>,
-        r: Rectangulo,
-    ) -> (Vec<u32>, usize) {
-        // ⚠️ **Um píxel de folga à volta**: a amostragem é bilinear, logo uma
-        // amostra até um píxel fora do rectângulo mudado lê um píxel de dentro.
-        let caixa = [
-            r[0] as f32 - 1.0,
-            r[1] as f32 - 1.0,
-            r[0].saturating_add(r[2]) as f32 + 1.0,
-            r[1].saturating_add(r[3]) as f32 + 1.0,
-        ];
-        let dentro = |s: [f32; 2]| {
-            s[0] >= caixa[0] && s[0] <= caixa[2] && s[1] >= caixa[1] && s[1] <= caixa[3]
-        };
-        sessao.proxima_epoca();
-        let faces = sessao.faces_em(caixa);
-        let mut mudaram = 0usize;
-        let mut vertices = Vec::new();
-        for fi in faces {
-            let face = mesh.faces()[fi as usize];
-            let cantos = face.verts();
-            let n = cantos.len();
-            let mut m = [0.0f32; 4];
-            for (mk, &v) in m.iter_mut().zip(cantos) {
-                *mk = mesh
-                    .masks()
-                    .map_or(ph2d_mesh::DEFAULT_MASK, |k| k[v as usize]);
-            }
-            if let Some(fina) = self.tinta_fina.as_mut() {
-                let lado = fina.tinta().lado_da_face(fi as usize) as f32;
-                let mut pedidas: Vec<(u32, [f32; 4])> = Vec::new();
-                let t = fina.tinta();
-                if n == 3 {
-                    t.para_cada_amostra_tri(fi as usize, cantos, |idx, (i, j, k)| {
-                        pedidas.push((
-                            idx,
-                            [i as f32 / lado, j as f32 / lado, k as f32 / lado, 0.0],
-                        ));
-                    });
-                } else {
-                    t.para_cada_amostra_quad(fi as usize, cantos, |idx, (i, j)| {
-                        pedidas.push((
-                            idx,
-                            crate::tinta_fina::bilinear(i as f32 / lado, j as f32 / lado),
-                        ));
-                    });
-                }
-                for (idx, w4) in pedidas {
-                    let w = &w4[..n];
-                    if sessao.repetida(idx) {
-                        continue;
-                    }
-                    let p = combina(mesh.positions(), cantos, w);
-                    let Some(s) = sessao.vista.ecra(p) else {
-                        continue;
-                    };
-                    if !dentro(s) {
-                        continue;
-                    }
-                    let (mistura, vazia) = sessao.leitura(tela, s);
-                    if vazia && !fina.tocou(idx) {
-                        continue;
-                    }
-                    if !sessao.ve_se(mesh, idx, p) {
-                        continue;
-                    }
-                    let k = keep_da_amostra(w, &m[..n]);
-                    if fina.repinta(idx, |base| pousa(base, mistura, k)) {
-                        mudaram += 1;
-                    }
-                }
-            } else {
-                for (c, &v) in cantos.iter().enumerate() {
-                    if sessao.repetida(v) {
-                        continue;
-                    }
-                    let Some(s) = sessao.ecra[v as usize] else {
-                        continue;
-                    };
-                    if !dentro(s) {
-                        continue;
-                    }
-                    let (mistura, vazia) = sessao.leitura(tela, s);
-                    if vazia && !self.tocou_vertice(v) {
-                        continue;
-                    }
-                    let p = mesh.positions()[v as usize];
-                    if !sessao.ve_se(mesh, v, p) {
-                        continue;
-                    }
-                    let k = keep_da_amostra(&[1.0], &m[c..=c]);
-                    if self.repinta_vertice(mesh, v, |base| pousa(base, mistura, k)) {
-                        mudaram += 1;
-                        vertices.push(v);
-                    }
-                }
-            }
-        }
-        (vertices, mudaram)
-    }
-}
+// ⭐ O que POUSA a tela na peça (a lei por amostra e o percurso da retícula)
+// vive num filho: este ficheiro é a VISTA e a OCLUSÃO, aquele o DEPÓSITO.
+#[path = "tela_na_malha_pousa.rs"]
+mod pousa;

@@ -112,6 +112,12 @@ const SAIDA: &str = include_str!("export.rs");
 /// de quem CONTÉM*.
 const SAIDA_DO_CAMPO: &str = include_str!("../../ph2d-app-field3d/src/export.rs");
 
+/// ⭐⭐⭐ **O QUADRO** — onde o plano é reconciliado com o tecto da PLACA
+/// (report de 24/09, *«16x não chega»*). A rota pede um `wgpu::Device`, logo
+/// o elo é texto: sem ele um degrau que não cabe na placa seria pedido e
+/// construído na mesma, ou desceria sem o painel nem o artista saberem.
+const QUADRO: &str = include_str!("slots.rs");
+
 /// Cada elo: o ficheiro, a agulha, e o nome da mutação que ela mata.
 fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
     vec![
@@ -446,6 +452,27 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
         // ⚠️ **O `P1` FICA:** o pincel lê o lado da FACE, e isso continua certo
         // para um plano uniforme — é um leitor, e *o que sai é quem CRIA,
         // nunca quem LÊ* (handoff §31.2).
+        //
+        // ── O TECTO DA PLACA (report de 24/09) ──
+        (
+            "slots.rs",
+            "Q1 o quadro volta à porta sem tecto: um plano maior que a placa é pedido na mesma",
+            "                    crate::tinta_da_peca::orcamento_da_placa(&device.limits()),"
+                .to_string(),
+            QUADRO,
+        ),
+        (
+            "slots.rs",
+            "Q2 o degrau descido não volta ao painel: o chip mente e o quadro tenta outra vez",
+            "                    self.tinta_nivel = ficou;".to_string(),
+            QUADRO,
+        ),
+        (
+            "slots.rs",
+            "Q3 a peça desce calada",
+            "                        \"app.sculpt3d.tinta_fina.nao_cabe_na_placa\",".to_string(),
+            QUADRO,
+        ),
     ]
 }
 
@@ -465,8 +492,8 @@ fn a_cura_da_tinta_fina_esta_ligada_nos_sitios_todos() {
     let elos = elos();
     assert_eq!(
         elos.len(),
-        28,
-        "a população deste censo são os vinte e oito elos"
+        31,
+        "a população deste censo são os trinta e um elos"
     );
 
     for (ficheiro, mutacao, agulha, fonte) in elos {

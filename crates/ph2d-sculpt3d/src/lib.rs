@@ -179,6 +179,9 @@ mod stroke;
 /// ⭐ **A TELA DO PAINTER POUSADA NA PEÇA** — ver o cabeçalho dele.
 pub mod tela_na_malha;
 #[cfg(test)]
+#[path = "tela_na_malha_pousa_tests.rs"]
+mod tela_na_malha_pousa_tests;
+#[cfg(test)]
 #[path = "tela_na_malha_tests.rs"]
 mod tela_na_malha_tests;
 /// ⭐⭐ **O RETRATO DA PEÇA** — a imagem com que a tela do Painter começa nos

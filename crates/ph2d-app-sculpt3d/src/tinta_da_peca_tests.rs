@@ -246,7 +246,11 @@ fn o_custo_do_tecto_por_vertice_e_o_que_a_constante_diz() {
     //    reprovou na primeira corrida: os PÓLOS dela são leques de TRIÂNGULOS,
     //    e este multiplicador só descreve a família dos quads. *A fixtura tem
     //    de conter o regime que a constante descreve.*
-    let m = ph2d_mesh::shapes::torus(48, 24, 1.0, 0.35);
+    // ⚠️ E um toro PEQUENO: a `256x` cada vértice custa `65 536` amostras, e o
+    //    `48×24` de antes alocava `900 MB` num teste unitário. A contagem é
+    //    exacta em qualquer toro fechado de quads, logo o tamanho não muda o que
+    //    se mede.
+    let m = ph2d_mesh::shapes::torus(8, 4, 1.0, 0.35);
     assert!(
         m.faces().iter().all(|f| !f.is_tri()),
         "a fixtura tem de ser de QUADS: a constante só descreve essa família"

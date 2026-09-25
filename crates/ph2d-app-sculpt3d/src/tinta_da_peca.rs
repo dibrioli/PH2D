@@ -36,52 +36,52 @@
 use ph2d_mesh::Mesh;
 use ph2d_mesh_colors::Tinta;
 
-/// O nível mais fino que o produto oferece — `lado = 2⁴ = 16` intervalos por
-/// aresta, **`256` amostras por vértice** numa malha de quads.
+/// O nível mais fino que o produto oferece — `lado = 2⁸ = 256` intervalos por
+/// aresta. ⛔⛔ **Mas o TECTO de uma peça NÃO é ele: é a PLACA**
+/// ([`orcamento_da_placa`]), e o degrau pedido DESCE ao maior que cabe
+/// ([`garante_no_orcamento`]).
 ///
-/// ⭐⭐⭐ **Ele subiu de `3` para `4` em 2026-09-20, por ORDEM DO DONO**
-/// (*«acrescente a opção de 16x»*) — e **depois de medido**, que é o que a
-/// redacção anterior desta nota exigia por escrito: *«o nível `4` não é um
-/// degrau a mais: é `4×` isso … um degrau novo aqui mede-se antes de se
-/// escrever»*.
+/// ⭐⭐⭐ **Subiu de `4` para `8` em 2026-09-24, por report do dono** (*«a
+/// resolução de 16x não chega para o painter»*) — e o report estava certo, com
+/// número. O Painter pinta à resolução do ECRÃ, logo a pergunta é *quantos
+/// píxeis cabem entre duas amostras* (sonda
+/// `diag_pixeis_por_amostra_da_tinta_fina`, peça da cena `=52`, arestas de
+/// frente, na vista `1900×1000`):
 ///
-/// # A MEDIÇÃO (2026-09-20, `--release`, peça de fábrica: `98 306` vértices)
+/// | `k` | lado | px por amostra p50 · p90 · máx | plano aqui | na peça de fábrica |
+/// |---|---|---|---|---|
+/// | `4` | `16` | `1,89` · `2,52` · `3,58` | `2,3 MB` | `302 MB` |
+/// | `5` | `32` | `0,94` · `1,26` · `1,79` | `9,1 MB` | `1,2 GB` |
+/// | `6` | `64` | `0,47` · `0,63` · `0,90` | `36 MB` | ⛔ `4,8 GB` |
+/// | `7` | `128` | `0,24` · `0,31` · `0,45` | `145 MB` | ⛔ `19 GB` |
+/// | `8` | `256` | `0,12` · `0,16` · `0,22` | `580 MB` | ⛔ `77 GB` |
 ///
-/// | `k` | lado | amostras | plano | construir | empacotar |
-/// |---|---|---|---|---|---|
-/// | `2` | `4` | `1,57 M` | `18 MB` | `32,9 ms` | `7,2 ms` |
-/// | `3` | `8` | `6,29 M` | `72 MB` | `46,1 ms` | `21,9 ms` |
-/// | **`4`** | **`16`** | **`25,2 M`** | **`288 MB`** | **`94,8 ms`** | **`81,7 ms`** |
+/// ⛔⛔ **O tecto de ontem (`16x`) tinha sido medido na peça ERRADA:** os
+/// `288 MB` eram da peça de fábrica, e na peça em que o artista pinta com
+/// tinta fina (grossa, porque a resolução é da tinta) o mesmo degrau custa
+/// `2,3 MB`. *Um limite medido no caso mais caro e aplicado a todos é o caminho
+/// lento a definir o rápido* (§0.0). O recurso é por PEÇA, e quem o diz é a
+/// placa: `4 GiB` por buffer nesta máquina.
 ///
-/// ⛔⛔ **A coluna «empacotar» era paga POR QUADRO enquanto o traço durava, e é
-/// ela que este degrau tornaria intransponível** — `81,7 ms` contra um quadro
-/// de `16,7`. ⭐ Duas curas na mesma wave e as duas MEDIDAS: o empacotamento
-/// deixou de existir (`bytemuck::cast_slice` sobre `[f32; 3]`, que já é o bloco
-/// de bytes) e o upload passou a subir **só as amostras que o traço escreveu**
-/// (`MeshRenderer::upload_tinta_amostras_at`) ⇒ o custo por quadro deixou de
-/// ser `O(plano)` e passou a ser `O(pegada do dab)`.
-///
-/// ⚠️ **O que SOBRA e é do CHAMADOR:** os `288 MB` de VRAM por PEÇA e os
-/// `94,8 ms` de construção **uma vez**, no gesto de carregar no chip. Na peça
-/// da cena `=52` (`738` vértices) o mesmo degrau custa `2,2 MB` e `519 µs`.
-/// ⛔ O tecto de cima é do DEVICE (`max_storage_buffer_binding_size`, que esta
-/// casa sobe ao que o adaptador anuncia) e o nível `5` da
-/// [`ph2d_mesh_colors::NIVEL_MAX`] fica fora por ele: `1,2 GB` por peça.
+/// ⚠️ **O que SOBRA e é do CHAMADOR:** a construção (`~3,8 ns` por amostra ⇒
+/// `~180 ms` a `256x` na peça da lição) corre **uma vez**, no gesto de
+/// carregar no chip; o custo POR QUADRO é `O(pegada do dab)` desde 2026-09-20
+/// (`MeshRenderer::upload_tinta_amostras_at`).
 ///
 /// ⚠️ **E ele conta na fila do desfazer** — ver [`SceneObject::footprint_bytes`],
 /// que soma o plano porque uma peça apagada entra inteira na fila.
 ///
 /// [`SceneObject::footprint_bytes`]: crate::objects::SceneObject
-pub(crate) const NIVEL_MAX: u8 = 4;
+pub(crate) const NIVEL_MAX: u8 = 8;
 
 /// ⭐ **Quantas amostras o tecto custa POR VÉRTICE, numa malha de quads** — o
 /// número que o parágrafo acima usa, e que o gate
 /// `o_custo_do_tecto_por_vertice_e_o_que_a_constante_diz` MEDE.
 ///
 /// A aritmética fecha à mão: numa malha de quads fechada há `~1` face e `~2`
-/// arestas por vértice, logo `1 + 2(L−1) + (L−1)² = L²` — e a `L = 16` isso são
-/// **`256`** amostras por vértice, `3 072` bytes de `f32` contra os `12` do
-/// canal por vértice.
+/// arestas por vértice, logo `1 + 2(L−1) + (L−1)² = L²` — e a `L = 256` isso
+/// são **`65 536`** amostras por vértice, `768 KB` de `f32` contra os `12` bytes
+/// do canal por vértice.
 ///
 /// ⚠️ **Ele é `#[cfg(test)]` e isso é a resposta certa, não uma cerca:** o
 /// produto não lê este número em sítio nenhum — quem paga a memória é o
@@ -89,7 +89,7 @@ pub(crate) const NIVEL_MAX: u8 = 4;
 /// acima envelheça. *Pôr um consumidor artificial no produto para calar o
 /// `dead_code` seria escrever código para o linter.*
 #[cfg(test)]
-pub(crate) const CUSTO_POR_VERTICE_NO_TECTO: usize = 256;
+pub(crate) const CUSTO_POR_VERTICE_NO_TECTO: usize = 65_536;
 
 /// **O plano ainda descreve esta malha?** — a pergunta da armadilha muda do
 /// cabeçalho deste módulo.
@@ -423,13 +423,55 @@ impl crate::Sculpt3dScene {
 /// *retirar o botão tira a capacidade de CRIAR, nunca o direito de abrir o que
 /// já está gravado*. Reconstruí-lo uniforme apagaria a tinta fina que o artista
 /// já tem no disco.
+///
+/// ⚠️ **Esta é a porta SEM tecto de placa, e é o arnês dos gates da lei**
+/// (`#[cfg(test)]`): o quadro usa a [`garante_no_orcamento`], que é a mesma lei
+/// com o degrau descido ao que a placa aceita para ESTA peça.
+#[cfg(test)]
 pub(crate) fn garante(
     mesh: &Mesh,
     tinta: &mut Option<Tinta>,
     parque: &mut Option<Tinta>,
     nivel: Option<u8>,
 ) -> bool {
+    garante_no_orcamento(mesh, tinta, parque, nivel, u64::MAX)
+}
+
+// ⭐ O TECTO DA PLACA (quantas amostras cabem, e o degrau que cabe) vive num
+// filho: aqui fica a lei do plano, lá o recurso do dispositivo que a limita.
+#[path = "tinta_da_peca_placa.rs"]
+mod placa;
+pub(crate) use placa::{degrau_que_cabe, orcamento_da_placa};
+
+/// ⭐⭐⭐ **A [`garante`] com o tecto da PLACA** — o que o quadro chama.
+///
+/// ⛔ **Um degrau que não cabe DESCE, não estoura nem é recusado em
+/// silêncio:** o plano nasce no maior que cabe (ou não nasce, se nem o `2x`
+/// cabe), e **quem chama lê o nível que ficou** em `tinta` e devolve-o ao
+/// painel — senão o chip mostraria um degrau que a peça não tem e o quadro
+/// seguinte tentaria outra vez. *Um tecto que aceita e entrega menos sem dizer
+/// é o «aceita e mente» que esta casa já pagou três vezes.*
+pub(crate) fn garante_no_orcamento(
+    mesh: &Mesh,
+    tinta: &mut Option<Tinta>,
+    parque: &mut Option<Tinta>,
+    nivel: Option<u8>,
+    orcamento: u64,
+) -> bool {
     let k = nivel.map(|k| k.min(NIVEL_MAX));
+    if let (Some(k), Some(t)) = (k, tinta.as_ref())
+        && t.nivel() == k
+        && concorda_com(t, mesh)
+    {
+        return false;
+    }
+    let ja = tinta
+        .as_ref()
+        .filter(|t| concorda_com(t, mesh))
+        .map(Tinta::topologia);
+    let k = k
+        .map(|k| degrau_que_cabe(mesh, ja, k, orcamento))
+        .filter(|&j| j > 0);
     if let (Some(k), Some(t)) = (k, tinta.as_ref())
         && t.nivel() == k
         && concorda_com(t, mesh)
@@ -611,6 +653,10 @@ pub(crate) fn devolve_ao_dono(
     true
 }
 
+/// O tecto da PLACA (24/09) — irmão dos dois de cima, pelo tecto de LOC deles.
+#[cfg(test)]
+#[path = "tinta_da_peca_placa_tests.rs"]
+mod placa_tests;
 /// ⚠️ **Irmão do [`tests`], cortado dele pelo tecto de LOC e pelo ASSUNTO** —
 /// lá o PLANO, aqui as PORTAS que decidem. Ver o cabeçalho do ficheiro.
 #[cfg(test)]

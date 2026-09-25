@@ -124,26 +124,33 @@ pub use topo::{TRI, Topologia, cantos, interior_por_face};
 /// `ph2d-mesh`, que é quem pode importar as duas.
 pub const BRANCO: [f32; 3] = [1.0, 1.0, 1.0];
 
-/// ⛔⛔ **O NÍVEL MÁXIMO, e ele nomeia DOIS recursos.**
+/// ⛔⛔ **O NÍVEL MÁXIMO da escada, e o tecto REAL não é ele: é o ÍNDICE de
+/// cada malha.**
 ///
-/// | `k` | `lado` | amostras na peça de fábrica (`98 306` V) | plano em `f32×3` |
+/// | `k` | `lado` | amostras na peça de fábrica (`98 306` V) | na peça da cena `=52` (`738` V) |
 /// |---|---|---|---|
-/// | `0` | `1` | `0,10 M` | `1,2 MB` |
-/// | `1` | `2` | `0,39 M` | `4,7 MB` |
-/// | `2` | `4` | `1,57 M` | `18,9 MB` |
-/// | `3` | `8` | `6,29 M` | `75,5 MB` |
-/// | `4` | `16` | `25,2 M` | `302 MB` |
-/// | `5` | `32` | `101 M` | ⛔ `1,2 GB` |
+/// | `3` | `8` | `6,29 M` · `75,5 MB` | `0,05 M` · `0,6 MB` |
+/// | `4` | `16` | `25,2 M` · `302 MB` | `0,19 M` · `2,3 MB` |
+/// | `5` | `32` | `101 M` · `1,2 GB` | `0,76 M` · `9,1 MB` |
+/// | `6` | `64` | `403 M` · `4,8 GB` | `3,0 M` · `36 MB` |
+/// | `7` | `128` | `1,6 G` · `19 GB` | `12 M` · `145 MB` |
+/// | `8` | `256` | `6,4 G` · ⛔ índice | `48 M` · `580 MB` |
 ///
 /// A contagem é `≈ V · lado²` numa malha de triângulos (`V` vértices, `3V`
 /// arestas, `2V` faces — a aritmética fecha e está no gate).
 ///
-/// ⭐ **`5` é onde o ÍNDICE ainda cabe:** a `lado = 64` uma malha de `1 M`
-/// vértices pede `4,1e9` amostras, e o `u32` que indexa este plano — e o buffer
-/// da placa — para em `4,29e9`. ⚠️ **O tecto de MEMÓRIA é mais apertado que este
-/// e é do CHAMADOR**, que é quem sabe quanta placa a cena tem: a tabela acima
-/// existe para ele escolher, e é por isso que ela está aqui e não num comentário.
-pub const NIVEL_MAX: u8 = 5;
+/// ⭐⭐ **O recurso é por MALHA, e é por isso que ele não é esta constante**
+/// (2026-09-24, report do dono *«16x não chega para o Painter»*): todo endereço
+/// desta crate é `u32`, e o que cabe nele depende de `V`. A
+/// [`Topologia::nova`] desce o nível de uma malha ao maior que cabe no índice
+/// DELA, e a [`Topologia::regraduada`] recusa — os prefixos somavam em `u32`
+/// e transbordavam em silêncio. ⚠️ **O tecto de MEMÓRIA da placa é mais
+/// apertado que o índice e é do CHAMADOR**, que é quem tem o device.
+///
+/// ⚠️ `8` é o fim da escada que o produto oferece e não um recurso: a `lado =
+/// 256` um quad tem `65 025` amostras de interior, e o que a peça da lição
+/// compra ali está medido no `ph2d_app_sculpt3d::tinta_da_peca::NIVEL_MAX`.
+pub const NIVEL_MAX: u8 = 8;
 
 /// ⭐ **O PLANO DE TINTA de uma malha.**
 ///
@@ -184,8 +191,10 @@ impl Tinta {
     /// [`Self::nivel`].
     #[must_use]
     pub fn nova<'a>(verts: usize, faces: impl Iterator<Item = &'a [u32]>, nivel: u8) -> Self {
-        let nivel = nivel.min(NIVEL_MAX);
-        let topo = Topologia::nova(verts, faces, nivel);
+        let topo = Topologia::nova(verts, faces, nivel.min(NIVEL_MAX));
+        // ⚠️ O nível EFECTIVO é o da topologia: ela desce-o quando o plano não
+        //    cabe no índice desta malha.
+        let nivel = topo.nivel_uniforme().unwrap_or(0);
         let n = total(&topo);
         Self {
             nivel,

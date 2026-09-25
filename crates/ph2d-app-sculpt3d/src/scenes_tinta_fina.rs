@@ -141,10 +141,11 @@ pub(crate) fn announce() {
          [sculpt3d]           quadrados outra vez, sao os mesmos. E' essa a diferenca\n\
          [sculpt3d]           para a cena =51, onde a borda so' limpava adensando a malha.\n\
          [sculpt3d]        -> Compare as duas marcas lado a lado.\n\
-         [sculpt3d]    (4-bis) Carregue `16x`, o ultimo da fileira, e pinte outra vez.\n\
-         [sculpt3d]        -> E' o mais fino que o app oferece. Numa peca desta grossura\n\
-         [sculpt3d]           a diferenca para o `8x` e' pequena de proposito: o `8x` ja'\n\
-         [sculpt3d]           passa a densidade da cena =51, e o `16x` e' a folga acima.\n\
+         [sculpt3d]    (4-bis) Carregue `256x`, o ultimo da fileira, e pinte outra vez.\n\
+         [sculpt3d]        -> E' o mais fino que o app oferece: menos de um pixel de ecra\n\
+         [sculpt3d]           por amostra, que e' o que o traco FINO do Painter pede.\n\
+         [sculpt3d]           Numa peca DENSA a placa pode nao o comportar: a fileira\n\
+         [sculpt3d]           desce sozinha ao maior que cabe, e um aviso aparece no topo.\n\
          [sculpt3d]    (5) Volte a fileira para `Mesh` e depois carregue `8x` outra vez.\n\
          [sculpt3d]        -> Em `Mesh` as marcas ENGROSSAM (sem plano, a cor mora nos\n\
          [sculpt3d]           vertices) e ao voltar ao `8x` elas ficam FINAS outra vez,\n\
@@ -190,7 +191,7 @@ pub(crate) fn announce() {
          [sculpt3d]           e a tinta fina existe precisamente para nao o pedir.\n\
          [sculpt3d]    (7) `Ctrl+Z` algumas vezes, e depois `Ctrl+Shift+Z`.\n\
          [sculpt3d]        -> A tinta volta atras traco a traco, e volta a aparecer --\n\
-         [sculpt3d]           COM o plano armado (`2x`..`16x`) e sem ele.\n\
+         [sculpt3d]           COM o plano armado (`2x`..`256x`) e sem ele.\n\
          [sculpt3d]        -> Ate' 21/09 o Ctrl+Z nao desfazia a tinta FINA (medido:\n\
          [sculpt3d]           1010 amostras pintadas, 1010 depois do desfazer). O\n\
          [sculpt3d]           desfazer olhava para os VERTICES tocados, e esta tinta\n\

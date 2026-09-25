@@ -188,6 +188,23 @@ muta "$COL/topo.rs" \
 ' \
   'N8 CONTROLO: uma mutacao INERTE (uma linha em branco) nao pode sangrar'
 
+# ── O INDICE DE u32 (24/09, «16x nao chega»): a topologia desce ao maior degrau
+#    cujo plano cabe num indice de 32 bits, e regraduar acima dele recusa.
+muta "$COL/topo.rs" \
+  '<= u64::from(u32::MAX)' \
+  '<= u64::MAX' \
+  'N10 topologia: o degrau deixa de descer ao que cabe no indice'
+
+muta "$COL/topo.rs" \
+  'if total > u64::from(u32::MAX) {' \
+  'if false {' \
+  'N11 regraduar acima do indice deixa de recusar'
+
+muta "$COL/topo.rs" \
+  'l * l.saturating_sub(1) / 2' \
+  'l * l / 2' \
+  'N12 a conta prevista do triangulo deixa de ser a alocada'
+
 echo
 if [ -n "$SO_ANCORAS" ]; then
   # ⚠️ **O sumario tem de dizer o que ele MEDIU.** Aqui nenhum teste correu:

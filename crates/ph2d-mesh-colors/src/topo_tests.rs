@@ -172,3 +172,76 @@ fn a_lei_de_descrever_mede_os_vertices_e_as_faces() {
     assert!(!topo.descreve(5, 2), "um vértice a menos é outra malha");
     assert!(!topo.descreve(6, 1), "uma face a menos é outra malha");
 }
+
+/// Uma grelha de quads `n × n` (vértices `(n+1)²`) — aberta, o que basta para
+/// contar: a lei do índice não pergunta se a malha fecha.
+fn grelha(n: u32) -> Vec<Vec<u32>> {
+    let w = n + 1;
+    let mut f = Vec::new();
+    for y in 0..n {
+        for x in 0..n {
+            let a = y * w + x;
+            f.push(vec![a, a + 1, a + w + 1, a + w]);
+        }
+    }
+    f
+}
+
+/// ⭐ **A conta PREVISTA é a conta ALOCADA** — a [`Topologia::amostras_ao_nivel`]
+/// responde *«cabe?»* antes de se construir, e só vale se disser o mesmo que
+/// o [`crate::total`] depois. Quads e triângulos, porque o interior deles
+/// conta-se por fórmulas diferentes.
+#[test]
+fn a_conta_prevista_e_a_conta_alocada() {
+    for faces in [quads(), triangulados(), grelha(3)] {
+        let v = faces.iter().flatten().map(|&i| i as usize + 1).max().unwrap_or(0);
+        let base = Topologia::nova(v, it(&faces), 0);
+        for k in 0..=5u8 {
+            let alocada = crate::total(&Topologia::nova(v, it(&faces), k));
+            assert_eq!(
+                base.amostras_ao_nivel(k),
+                alocada as u64,
+                "nível {k}: a previsão não é o que se aloca"
+            );
+        }
+    }
+}
+
+/// ⛔⛔ **Uma malha GRANDE desce ao nível que cabe no ÍNDICE dela** — os
+/// prefixos são `u32`, e somá-los além dele dava a volta em silêncio (tinta
+/// no sítio errado). `301²` vértices a `lado 256` pedem `5,9e9` amostras; a
+/// `lado 128` são `1,5e9`, que cabem.
+///
+/// ⚠️ **O CONTROLO é uma malha pequena no mesmo pedido:** ela fica no `8`, senão
+/// a guarda desceria toda a gente e o teste passaria a medir outra coisa.
+#[test]
+fn uma_malha_grande_desce_ao_nivel_que_cabe_no_indice() {
+    let grande = grelha(300);
+    let v = 301 * 301;
+    let t = Topologia::nova(v, it(&grande), 8);
+    assert!(t.amostras_ao_nivel(8) > u64::from(u32::MAX), "a fixtura estoura o índice a 256x");
+    assert_eq!(t.nivel_uniforme(), Some(7), "o nível não desceu ao que cabe");
+    assert_eq!(
+        crate::total(&t) as u64,
+        t.amostras_ao_nivel(7),
+        "o plano construído não é o do nível que ficou"
+    );
+
+    let pequena = grelha(3);
+    assert_eq!(
+        Topologia::nova(16, it(&pequena), 8).nivel_uniforme(),
+        Some(8),
+        "o CONTROLO: uma malha pequena fica no nível pedido"
+    );
+}
+
+/// ⛔ **Regraduar acima do índice é RECUSADO, nunca descido em silêncio** — a
+/// lista de níveis é do chamador. O CONTROLO é a lista que cabe.
+#[test]
+fn regraduar_acima_do_indice_e_recusado() {
+    let grande = grelha(300);
+    let base = Topologia::nova(301 * 301, it(&grande), 0);
+    let n = base.faces();
+    assert!(base.regraduada(&vec![8; n]).is_none(), "estourou o índice e foi aceite");
+    assert!(base.regraduada(&vec![7; n]).is_some(), "o CONTROLO: a lista que cabe");
+}

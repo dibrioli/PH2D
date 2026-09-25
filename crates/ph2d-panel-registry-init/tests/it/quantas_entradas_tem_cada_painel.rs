@@ -2304,7 +2304,16 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     // ⭐ `2 709 → 1 529`: as quatro secções que chegaram DEPOIS da decisão do dono nascem
     //    recolhidas. ⛔ Ele não cabe, e o que falta é DECISÃO: o `Texture` (`450`) e o `Stroke`
     //    (`368`) são dele, e com tudo recolhido o painel mediria `736`.
-    ("painter_layers", 1529.0),
+    // ⬆️ `1 529 → 1 596` na integração de 2026-09-25 (UIUX + PainterWatercolor), com a conta
+    //    fechada: é o cartão **Mixing** (a fileira `Pigment`), que a `line/PainterWatercolor` tirou
+    //    do cartão *Water* da aguada por ORDEM do dono de 2026-09-20 (*«ligue o digital»*) — o
+    //    `Pigment` passou a valer para três meios e o `Digital` é o de omissão. Medido pela porta
+    //    deste gate: `1 596` com o cartão e `1 529` com `pigment_offered = false` ⇒ `+67` =
+    //    separador + moldura + UMA fileira. ⛔ Nenhuma secção nasceu aberta; o número é a SOMA de
+    //    duas linhas que fecharam sem se ver (a UIUX mediu sem o cartão, a Painter nasceu antes
+    //    deste gate). ⚠️ Recolhê-lo não cura: um cabeçalho de secção custa quase o mesmo que a
+    //    fileira, e esconderia o controlo que o dono ainda vai smokar.
+    ("painter_layers", 1596.0),
     // ⬇️ `2 097 → 2 021`, `1 349 → 1 262` e `1 293 → 1 281` em 2026-09-23: as escolhas destes três
     //    painéis passaram pela porta da ESCOLHA, e as que cabem numa fileira deixaram de gastar uma
     //    linha só para o nome POR CIMA — a altura desceu sem uma secção a menos.

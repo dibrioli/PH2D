@@ -625,7 +625,8 @@ const PORTAS_DE_CRATE_VERIFICADAS: &[(&str, &str, &str, &str)] = &[
         "ph2d-panel-painter-layers",
         "src/card.rs",
         "src/number_field.rs",
-    ),];
+    ),
+];
 
 /// ⭐⭐ **E toda porta desta lista delega MESMO num primitivo.**
 ///

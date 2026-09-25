@@ -25,6 +25,9 @@ thread_local! {
     /// **Quantas absorções re-partiram o canvas pelo caminho BARATO** — sem ele, o gate de igualdade
     /// ficaria verde com o caminho barato nunca a correr (os dois lados seriam o caro).
     pub(crate) static CHEAP_FIRED: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+
+    /// **Quantas vezes o detector perguntou ao canvas só dentro da janela DECLARADA.**
+    pub(crate) static DETECTED_WITHIN: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
 }
 
 impl UndoController {
@@ -80,7 +83,36 @@ impl UndoController {
             m.mats.clear();
             m.relief_elided = crate::undo::elide::ElidedRelief::default();
         }
-        let detected = crate::undo_planes::PlaneDeltas::split(&mut a, &mut b, None, None);
+        // ⭐ **O CANVAS é perguntado só dentro da janela DECLARADA** (`crate::undo::window`), quando
+        // ela existe e descreve um passado que inclui o do cursor: o escorrido do Wet Paint declara a
+        // região que escreve (`wetpaint::composite`), e a janela acumula desde o último commit — um
+        // superconjunto de tudo o que mudou desde o cursor. A resposta é a MESMA do detector de sempre
+        // (a janela exacta, varrida no recorte — `StoredPlane::split_exact_within`), e em DEBUG a
+        // verdadeira é derivada e tem de caber na declarada. Medido a 4096²: o detector varria a tela
+        // inteira em `3–8 ms` por pen-down para achar um escorrido do tamanho de um pincel. Sem janela
+        // (um acesso ficou por declarar, ou o cursor é mais velho que ela) é o caminho de sempre.
+        let stride = crate::undo_delta::Strides::of(a.canvas_size.0).rgba;
+        let declared = self
+            .write_state
+            .get()
+            .hint_for(cursor.writes)
+            .and_then(|r| crate::undo_delta::PlaneWindow::from_region(r, a.canvas_size.0, stride));
+        #[cfg(test)]
+        let declared = declared.filter(|_| !ONLY_THE_FULL_PATH.with(std::cell::Cell::get));
+        let (canvas, _dentro) = crate::undo_delta::StoredPlane::split_exact_within(
+            &mut a.canvas_rgba,
+            &mut b.canvas_rgba,
+            stride,
+            declared,
+        );
+        #[cfg(test)]
+        if _dentro {
+            DETECTED_WITHIN.with(|c| c.set(c.get() + 1));
+        }
+        // Os dois lados do canvas já foram consumidos (esvaziados): o `split` dos outros planos passa
+        // por eles sem ler um byte, e o plano do canvas que vale é o de cima.
+        let mut detected = crate::undo_planes::PlaneDeltas::split(&mut a, &mut b, None, None);
+        *detected.canvas_mut() = canvas;
         if detected.heap_bytes() == 0 {
             return; // o topo já termina onde este passo começa: o caso comum, e ele não custa nada
         }

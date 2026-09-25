@@ -313,6 +313,12 @@ impl PainterTool {
             w: (px1 - px0) as u32,
             h: (py1 - py0) as u32,
         };
+        // ⭐ **E a mesma região DECLARA a escrita** (`crate::undo::window`): o `fork_canvas` acima abriu
+        // um acesso, e as duas passadas que escrevem — o composite e o véu — só tocam `px0..px1 ×
+        // py0..py1`. Sem esta linha o acesso ficava aberto e o histórico varria a tela inteira no
+        // commit do traço E na absorção do escorrido (medido 2026-09-24: `16–26` acessos por traço
+        // sem declaração, todos daqui). Em DEBUG o `split` confere que a janela verdadeira cabe nesta.
+        self.declare_wrote(Some(region));
         self.mark_dirty(region);
     }
 }

@@ -10,7 +10,8 @@
 //! ⚠️ E cada cenário afirma **qual caminho correu** ([`CHEAP_FIRED`]): uma igualdade entre dois lados
 //! que foram ambos o caminho caro é verdadeira e não diz nada.
 
-use super::super::absorb::{CHEAP_FIRED, ONLY_THE_FULL_PATH};
+use super::super::absorb::{ABSORB_FIRED, CHEAP_FIRED, DETECTED_WITHIN, ONLY_THE_FULL_PATH};
+use super::super::window::WriteWindow;
 use super::*;
 
 /// Largura e altura da tela dos cenários: grande o bastante para que uma janela de poucos pixels seja
@@ -48,18 +49,29 @@ fn estado(c: &UndoController) -> (String, String, usize) {
 
 /// Corre `passos` pelos dois caminhos e devolve quantas absorções o caminho BARATO fez.
 fn pelos_dois_caminhos(passos: impl Fn(&mut UndoController)) -> u32 {
+    pelos_dois_caminhos_contando(passos).0
+}
+
+/// O mesmo, devolvendo também quantas vezes o detector leu só a janela DECLARADA.
+fn pelos_dois_caminhos_contando(passos: impl Fn(&mut UndoController)) -> (u32, u32) {
     let correr = |so_o_caro: bool| {
         ONLY_THE_FULL_PATH.with(|f| f.set(so_o_caro));
         CHEAP_FIRED.with(|f| f.set(0));
+        DETECTED_WITHIN.with(|f| f.set(0));
         let mut c = UndoController::new(DEFAULT_MAX_BYTES);
         passos(&mut c);
         ONLY_THE_FULL_PATH.with(|f| f.set(false));
-        (estado(&c), CHEAP_FIRED.with(std::cell::Cell::get))
+        (
+            estado(&c),
+            CHEAP_FIRED.with(std::cell::Cell::get),
+            DETECTED_WITHIN.with(std::cell::Cell::get),
+        )
     };
-    let (caro, baratas_no_caro) = correr(true);
-    let (barato, baratas) = correr(false);
+    let (caro, baratas_no_caro, dentro_no_caro) = correr(true);
+    let (barato, baratas, dentro) = correr(false);
     assert_eq!(
-        baratas_no_caro, 0,
+        (baratas_no_caro, dentro_no_caro),
+        (0, 0),
         "o controlo tem de correr SÓ o caminho caro"
     );
     assert_eq!(
@@ -71,7 +83,7 @@ fn pelos_dois_caminhos(passos: impl Fn(&mut UndoController)) -> u32 {
         barato.0, caro.0,
         "a pilha de undo diverge entre o caminho barato e o caro"
     );
-    baratas
+    (baratas, dentro)
 }
 
 /// **O escorrido LONGE do traço, PERTO dele e DENTRO dele — a mesma entrada pelos dois caminhos.**
@@ -223,5 +235,114 @@ fn undoing_through_a_cheap_absorption_gives_back_the_pristine_canvas() {
         fwd.canvas_rgba.as_ref(),
         tela(&escorrido).canvas_rgba.as_ref(),
         "refazer o 1º passo devolve o traço COM o escorrido, que ele absorveu"
+    );
+}
+
+/// A janela que o escorrido DECLAROU desde o último commit — o que o `wetpaint::composite` escreve.
+fn declara(c: &UndoController, x: u32, y: u32, w: u32, h: u32) {
+    let mut win = WriteWindow::default();
+    win.open_write();
+    win.mark(Some(crate::compositor::Region { x, y, w, h }));
+    c.write_state.set(win);
+}
+
+/// **O detector que lê só a janela DECLARADA guarda a MESMA entrada** — com a janela justa ao
+/// escorrido e com uma folgada à volta dele (ela é um superconjunto, e é a exacta que tem de sair).
+#[test]
+fn the_declared_detector_absorbs_the_same_way_as_the_full_scan() {
+    let traco = bloco(3, 6, 3, 6, 0x22);
+    for (nome, janela) in [("justa", (10, 9, 3, 2)), ("folgada", (8, 7, 6, 6))] {
+        let (baratas, dentro) = pelos_dois_caminhos_contando(|c| {
+            c.record_structural(tela(&[]), tela(&traco));
+            let mut escorrido = traco.clone();
+            escorrido.extend(bloco(10, 13, 9, 11, 0x33));
+            let (x, y, w, h) = janela;
+            declara(c, x, y, w, h);
+            c.record_structural(tela(&escorrido), tela(&escorrido));
+        });
+        assert_eq!(dentro, 1, "{nome}: o detector não leu a janela declarada");
+        assert_eq!(baratas, 1, "{nome}: o caminho barato não correu");
+    }
+}
+
+/// **Uma janela declarada sobre bytes IGUAIS não faz a absorção disparar** — o caminho de sempre não
+/// dispara ali (o `Arc` é outro, o conteúdo é o mesmo), e o `split` COM janela dispararia: ele guarda a
+/// declarada tal como veio. É a metade que separa `split_exact_within` do `split` com dica.
+#[test]
+fn a_declared_window_over_unchanged_bytes_does_not_fire_the_absorption() {
+    let (_, dentro) = pelos_dois_caminhos_contando(|c| {
+        let traco = bloco(3, 6, 3, 6, 0x22);
+        c.record_structural(tela(&[]), tela(&traco));
+        declara(c, 2, 2, 5, 5);
+        ABSORB_FIRED.with(|f| f.set(0));
+        // Um `Arc` NOVO com o mesmo conteúdo do cursor.
+        c.record_structural(tela(&traco), tela(&traco));
+        assert_eq!(
+            ABSORB_FIRED.with(std::cell::Cell::get),
+            0,
+            "nada mudou: a absorção não pode disparar"
+        );
+    });
+    assert_eq!(dentro, 1, "o detector não leu a janela declarada");
+}
+
+/// **Uma janela declarada de meio plano ou mais cai no detector de sempre** — aí o escorrido pode ser
+/// meio plano, o detector de sempre guarda `Whole`, e a resposta de dentro da janela seria `Patch`.
+#[test]
+fn a_declared_window_of_half_the_plane_falls_back_to_the_full_scan() {
+    let (_, dentro) = pelos_dois_caminhos_contando(|c| {
+        c.record_structural(tela(&[]), tela(&bloco(3, 6, 3, 6, 0x22)));
+        declara(c, 0, 0, LADO, LADO);
+        // Um escorrido de DEZ linhas inteiras: mais de meio plano.
+        let escorrido = bloco(0, LADO as usize, 0, 10, 0x33);
+        c.record_structural(tela(&escorrido), tela(&escorrido));
+    });
+    assert_eq!(
+        dentro, 0,
+        "a janela de meio plano tinha de cair no detector de sempre"
+    );
+}
+
+/// **E a rede: uma janela declarada que NÃO contém o escorrido reprova em DEBUG** — é ela que torna
+/// seguro ler só a janela, e sem ela um sítio que declarasse mal deixaria escorrido sem dono.
+#[cfg(debug_assertions)]
+#[test]
+#[should_panic(expected = "detector da absorcao")]
+fn a_declared_window_that_misses_the_drip_is_caught_in_debug() {
+    let mut c = UndoController::new(DEFAULT_MAX_BYTES);
+    let traco = bloco(3, 6, 3, 6, 0x22);
+    c.record_structural(tela(&[]), tela(&traco));
+    let mut escorrido = traco.clone();
+    escorrido.push(((12, 12), 0x33));
+    declara(&c, 0, 0, 2, 2);
+    c.record_structural(tela(&escorrido), tela(&escorrido));
+}
+
+/// **Uma janela mais NOVA que o cursor não é lida** — ela acumula desde o último commit, e o que foi
+/// escrito entre o cursor e esse commit não está nela. É a metade de PROVENIÊNCIA do `hint_for`: sem
+/// ela o detector leria só a janela e o escorrido de antes do commit ficaria sem dono.
+#[test]
+fn a_declared_window_newer_than_the_cursor_is_not_read() {
+    let (_, dentro) = pelos_dois_caminhos_contando(|c| {
+        let traco = bloco(3, 6, 3, 6, 0x22);
+        c.record_structural(tela(&[]), tela(&traco)); // o cursor nasce com `writes = 0`
+        let mut escorrido = traco.clone();
+        escorrido.push(((12, 12), 0x33)); // escrito ANTES de a janela ser zerada…
+        escorrido.push(((1, 1), 0x44)); // …e este DEPOIS, o único que ela viu
+        let mut win = WriteWindow::default();
+        win.reset(10);
+        win.open_write();
+        win.mark(Some(crate::compositor::Region {
+            x: 1,
+            y: 1,
+            w: 1,
+            h: 1,
+        }));
+        c.write_state.set(win);
+        c.record_structural(tela(&escorrido), tela(&escorrido));
+    });
+    assert_eq!(
+        dentro, 0,
+        "a janela mais nova que o cursor não pode responder por ele"
     );
 }

@@ -3145,3 +3145,64 @@ acima mede. Suíte do Painter `1347` + `it` verdes em debug, clippy `-D warnings
 - Flake de carga vista uma vez nesta corrida e verde na seguinte:
   `mask_gate_tests::the_cost_of_a_gated_stroke_follows_the_footprint_not_the_canvas` (gate de razão,
   `load ~22`, zero linhas deste diff no módulo dele).
+
+## §41 — O composite do Wet Paint DECLARA onde escreve: o commit e o detector deixam de varrer a tela (2026-09-24)
+
+Ordem do dono: *«smoke ok. siga»* (o §40 aprovado). O item aberto era o **detector** da absorção
+(`3–8 ms` por pen-down, a tela inteira).
+
+### §41.1 — A causa: o único escritor de canvas do Wet Paint não declarava
+
+Sonda no `absorb_foreign_writes` (retirada): a cada pen-down `hint_for(...) = None` com
+**`16–26` acessos de escrita abertos sem declaração** — todos do `wetpaint_composite_veiled`, que abre o
+canvas pelo `fork_canvas` (acesso não-declarado por construção, `plane_fork.rs`) e nunca dizia onde
+escreveu. Consequência dupla: o **commit do traço** (pen-up) varria a tela para derivar a janela, e o
+**detector da absorção** também. As duas passadas que escrevem (composite e véu) só tocam
+`px0..px1 × py0..py1`, que é a região que o `mark_dirty` já publicava.
+
+### §41.2 — A cura, em duas metades
+
+1. **`self.declare_wrote(Some(region))`** no fim do composite (a porta de `stamp_preview.rs`). Com ela o
+   commit do Wet Paint passa a ser declarado (`record_structural_hinted`), com a rede de DEBUG do
+   `split` a conferir que a janela verdadeira cabe na declarada. ⭐ **A rede foi provada:** declarar
+   `1 × 1` reprova **seis** gates do `wetpaint` com *«a janela declarada nao contem a verdadeira»*.
+2. **O detector lê o canvas só dentro da janela declarada** (`StoredPlane::split_exact_within`, em
+   `undo_delta_absorb.rs`): a janela acumula desde o último commit, logo é um superconjunto de tudo o que
+   mudou desde o cursor quando `hint_for(cursor.writes)` a oferece, e o mesmo `diff_window` sobre o
+   recorte dá a janela EXACTA. ⚠️ **Não é o `split` com dica:** esse guardaria a declarada tal como
+   veio, e uma janela declarada sobre bytes iguais (outro `Arc`, mesmo conteúdo) faria a absorção
+   disparar onde o caminho de sempre não dispara. Meio plano ou mais, ou janela que não serve ao plano
+   ⇒ o `split` de sempre. Em DEBUG a janela verdadeira tem de caber na declarada.
+
+### §41.3 — Medido (A/B alternado, `pousos 24`, raio 100, 4096², `load 5–9`)
+
+| | sem declarar | declarando |
+|---|---|---|
+| pen-down p50 | `11,6 / 12,5 / 13,3 ms` | **`9,2 / 9,8 / 8,9 ms`** |
+| pen-down p90 | `13,6 / 14,4 / 15,2 ms` | **`12,7 / 12,0 / 11,1 ms`** |
+| **pen-up** p50 | `6,8 / 6,4 / 6,4 ms` | **`3,6 / 4,1 / 3,8 ms`** |
+
+(O `pousos` passou a imprimir o **pen-up** também — ele é o commit.) Somado ao §40, o pen-down de um
+traço sobre água a correr foi de `~27–35 ms` (sob carga) para `~9 ms`.
+
+### §41.4 — Gates e provas
+
+`undo_absorb_tests.rs` ganhou cinco: a mesma entrada com a janela justa e com uma folgada · uma janela
+declarada sobre bytes iguais **não** faz a absorção disparar · a de meio plano cai no detector de
+sempre (com um escorrido de mais de meio plano, onde o de sempre guarda `Whole`) · a janela mais NOVA
+que o cursor não é lida (a proveniência do `hint_for`) · e a rede de DEBUG (`should_panic`) com uma
+janela que não contém o escorrido. `DETECTED_WITHIN` prova que o detector de dentro correu (o
+`split_exact_within` devolve se a resposta saiu da janela; contar na chamada contaria recusas). **6 de 6
+mutações sangram** — a da proveniência **sobreviveu** à 1.ª redacção e escreveu o último gate. A linha
+que igualava os `Arc` do canvas antes do `split` dos outros planos saiu: era inerte (o plano do canvas é
+sobrescrito a seguir). Suíte do Painter `1352` verdes; duas flakes de razão conhecidas
+(`the_mask_stroke_cost_does_not_follow_the_canvas`, já na lista do §5.0, e
+`the_cost_of_a_gated_stroke_follows_the_footprint_not_the_canvas`) reprovaram no fan-out e passam 3/3
+sozinhas a `load ~7`. Clippy `-D warnings` limpo.
+
+### §41.5 — Aberto
+
+- **O resto do pen-down (`~9 ms`)** é o 1.º carimbo, e dentro dele o **fork do canvas**: o cursor do undo
+  segura o `Arc`, logo a 1.ª escrita depois de um commit copia os 67 MB. É o preço do undo por snapshot
+  com canvas inteiro; curá-lo pede canvas em ladrilhos — arquitectura, não wave.
+- **O 1.º traço da sessão** (`~40 ms`) cria o grid da simulação.

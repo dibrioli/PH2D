@@ -223,6 +223,7 @@ fn pousos(size: u32, raio: f32, n: usize) {
     let mut t = wet(size, raio);
     let c = size as f32 / 2.0;
     let mut pd = Vec::new();
+    let mut pu = Vec::new();
     for k in 0..n {
         let x = c - 600.0 + (k % 12) as f32 * 100.0;
         let y = c - 400.0 + (k / 12) as f32 * 160.0;
@@ -237,7 +238,9 @@ fn pousos(size: u32, raio: f32, n: usize) {
             let _ = t.take_preview_arc();
             vsync(tq);
         }
+        let tu = Instant::now();
         t.on_canvas_pointer(cp([x + 60.0, y], PointerPhase::Up));
+        pu.push(ms(tu));
         for _ in 0..30 {
             let tq = Instant::now();
             t.on_tick(DT_MS);
@@ -248,11 +251,15 @@ fn pousos(size: u32, raio: f32, n: usize) {
     let primeiro = pd[0];
     let mut resto = pd[1..].to_vec();
     resto.sort_by(f64::total_cmp);
+    pu.sort_by(f64::total_cmp);
     println!(
-        "POUSOS {n} (raio {raio}) — 1.º {primeiro:.2} ms | seguintes p50 {:.2} p90 {:.2} max {:.2} ms",
+        "POUSOS {n} (raio {raio}) — 1.º {primeiro:.2} ms | seguintes p50 {:.2} p90 {:.2} max {:.2} ms \
+         | LEVANTAR p50 {:.2} p90 {:.2} ms",
         resto[resto.len() / 2],
         resto[resto.len() * 9 / 10],
-        resto[resto.len() - 1]
+        resto[resto.len() - 1],
+        pu[pu.len() / 2],
+        pu[pu.len() * 9 / 10]
     );
 }
 

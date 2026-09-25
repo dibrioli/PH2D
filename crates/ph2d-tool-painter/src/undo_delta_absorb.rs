@@ -49,6 +49,66 @@ fn envolve(a: PlaneWindow, b: PlaneWindow) -> PlaneWindow {
 }
 
 impl<T: Copy + PartialEq + Send + Sync> StoredPlane<T> {
+    /// **O [`Self::split`] sem janela, respondido varrendo SÓ a janela DECLARADA** — o detector da
+    /// absorção, para o canvas.
+    ///
+    /// `split(before, after, stride, None)` varre o plano inteiro para achar a janela EXACTA. Quando
+    /// quem escreveu declarou onde (`crate::undo::window` — a janela é um superconjunto de tudo o que
+    /// mudou desde o snapshot), a janela exacta está dentro da declarada, e o mesmo [`diff_window`] sobre
+    /// o recorte dá a mesma caixa. O resultado é **o mesmo que o `split` sem janela** — e não o `split`
+    /// COM janela, que guardaria a declarada tal como veio: o detector decide se a absorção dispara, e
+    /// uma janela declarada sobre bytes iguais a faria disparar onde o caminho de sempre não dispara.
+    ///
+    /// Sem janela, com uma que não serve a este plano, ou com meio plano ou mais (aí o `split` poderia
+    /// guardar `Whole`), é o `split` de sempre. Em DEBUG a janela verdadeira é derivada e tem de caber
+    /// na declarada — a mesma rede do commit declarado. O `bool` diz se a resposta saiu de DENTRO da
+    /// janela (é o que o gate conta para saber que este caminho correu).
+    pub(crate) fn split_exact_within(
+        before: &mut std::sync::Arc<Vec<T>>,
+        after: &mut std::sync::Arc<Vec<T>>,
+        stride: usize,
+        declared: Option<PlaneWindow>,
+    ) -> (Self, bool) {
+        let len = before.len();
+        let dentro = declared
+            .filter(|_| after.len() == len && fits(len, stride))
+            .and_then(|d| d.fit_to(len))
+            .filter(|d| d.stride == stride && 2 * d.elems() < len);
+        let Some(d) = dentro else {
+            return (Self::split(before, after, stride, None), false);
+        };
+        if std::sync::Arc::ptr_eq(before, after) {
+            // O `split` responde isto sem ler um byte; a janela não muda nada aqui.
+            return (Self::split(before, after, stride, None), false);
+        }
+        #[cfg(debug_assertions)]
+        if let Some(real) = diff_window(before, after, stride) {
+            debug_assert!(
+                d.contains(&real),
+                "a janela declarada nao contem a verdadeira no detector da absorcao: declarada \
+                 {d:?}, real {real:?} — o escorrido fora dela ficaria sem dono"
+            );
+        }
+        let (antes, depois) = (d.extract(before), d.extract(after));
+        let resposta = match diff_window(&antes, &depois, d.cols) {
+            None => Self::Unchanged,
+            Some(local) => Self::Patch {
+                win: PlaneWindow {
+                    row: d.row + local.row,
+                    col: d.col + local.col,
+                    stride,
+                    plane_len: len,
+                    ..local
+                },
+                before: local.extract(&antes),
+                after: local.extract(&depois),
+            },
+        };
+        *before = super::drained();
+        *after = super::drained();
+        (resposta, true)
+    }
+
     /// **O plano que o re-split da absorção guardaria**, sem materializar nem varrer a tela inteira.
     ///
     /// `self` é o plano guardado no TOPO (o lado `after` dele é o `cursor`), `drip` é o que o DETECTOR

@@ -1,10 +1,10 @@
 # HANDOFF DE INTEGRAÇÃO — `line/motion-value`, 2026-09-24
 
 > **Para o agente INTEGRADOR** (só por ordem do Enio — `CLAUDE.md` §0.7). A linha fechou, fez o
-> `git rebase main` e passou o portão de fecho na árvore combinada (§7). **Não integra nem pusha
+> `git rebase main`, fez a auditoria final (§3.1) e passou o portão de fecho na árvore combinada (§7). **Não integra nem pusha
 > sozinha.** Este documento SUPERSEDE, como documento de integração, o de
 > [2026-09-20](HANDOFF_INTEGRACAO_line_motion_value_2026-09-20.md): aquele foi integrado (commits
-> `integ(motion-value)` no `main`), e o que segue são os **84 commits** feitos DEPOIS dele.
+> `integ(motion-value)` no `main`), e o que segue são os **85 commits** feitos DEPOIS dele (o último é o da auditoria, `9efb0bb76`, mais o do fecho deste documento).
 
 ## §0 — IDENTIDADE
 
@@ -13,7 +13,7 @@
 | worktree | `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value` |
 | ramo | `line/motion-value` |
 | base (pós-rebase) | `main` @ `20a630f1b` — **0** commits do `main` por trazer |
-| commits da linha | **84** (2026-09-20 → 2026-09-24) · `289` ficheiros |
+| commits da linha | **85** + o do fecho (2026-09-20 → 2026-09-25) · `297` ficheiros (+27 463 / −1 823) |
 | integração | `--ff-only` possível no momento do fecho (a linha está POR CIMA do `main`) |
 
 ## §1 — O QUE A LINHA ENTREGA
@@ -43,7 +43,7 @@ CONTRATO (§6)       crates/ph2d-nodegraph/src/node.rs 91 linhas mudadas (ver §
 ADR                 nenhum criado
 Cargo.lock          nenhum pacote externo novo
 MARCADORES          nenhum
-TETOS DE LOC        motion_bridge_gpu.rs 717/700 → CURADO no fecho por CORTE (§3)
+TETOS DE LOC        nenhum ficheiro da linha acima do tecto (motion_bridge_gpu.rs 717/700 → 658, CORTE, §3)
 ```
 
 ⇒ **Zero contador partilhado se move.** Não há degrau de `PROJECT_SCHEMA` a recontar.
@@ -146,11 +146,43 @@ mais a da medida). Nenhuma mexe em contador partilhado.
 | *«um pedido em voo de cada vez»* na leitura sem espera não tem régua determinística (só com placa mais lenta que o quadro) | nomeado |
 | `write_the_rig_figures` (`#[ignore]`): a cena `=120` tem `19` pontos na corda contra os `20` que o gerador afirma | linha Motion |
 | `measure_the_source_group` (`#[ignore]`): anterior à lei *«só com forma»*; passa com `PH2D_MOTION_SO_COM_FORMA=0` | linha Motion |
+| o gate do relator de erros da placa filtra comentários de linha (`//`); um bloco `/* */` com o nome do registo continuaria a passar | nomeado |
 | a medição ACIMA do tecto com a cura (compilação local) não foi refeita — a tabela do doc 120 §7.1 ficou conservadora para imagens | linha Motion |
 
 ## §7 — A PROVA DE FECHO (corrida nesta árvore, pós-rebase)
 
-_(preenchido no fim)_
+Corrida DEPOIS da auditoria, sobre o `HEAD` `9efb0bb76` (que está POR CIMA do `main` `20a630f1b`,
+`0` commits por trazer). ⚠️ A máquina esteve a `load 50`–`115` a corrida inteira (outras linhas).
+
+| portão | resultado |
+|---|---|
+| `cargo fmt --all -- --check` | ✅ (a 1.ª corrida apanhou um `assert!` meu por formatar — curado) |
+| `cargo check --workspace --config 'build.warnings="deny"'` (o passe do CI, sem `--all-targets`) | ✅ |
+| `cargo clippy --workspace --all-targets -- -D warnings` | ✅ (a 1.ª corrida apanhou um `mut` a mais num teste meu — curado) |
+| `nextest-impacted.sh` (`BASE` = merge-base, `ci-test`) | **20 201 / 20 202** — o único ✗ é `the_cost_of_sampling_a_path_is_flat_in_its_anchors` (`ph2d-timeline`), **membro NOMEADO** da família de flakes de fan-out do §5.0, **3 de 3 verde sozinho a `load 53`–`71`**, e a `ph2d-timeline` não tem uma linha do diff |
+| `censos-da-arvore-combinada.sh` (HR-15 + tectos, sobre o `main`) | ✅ **127 / 127**, controlo do filtro `12 de 12` |
+| `doc-index.sh --check` | ✅ |
+| machete · crates opcionais sozinhas · pacotes citados por workflow | ✅ na 1.ª corrida (`20 196 / 20 196` no impacted); a auditoria **não mexeu** em `Cargo.toml` nem no `Cargo.lock` |
+| GPU com adaptador (RTX, `#[ignore]`) | ✅ `tap_sem_espera` (3) · paridade do `motion.duplicator` (incl. o gate novo do orçamento a zero, Δpos `0`) · `ph2d-app-motion` tomada/gizmo/readout (11) |
+| `grep -rn LOCAL-MEDICAO crates shells` | `0` |
+
+**Provas de mutação das curas da auditoria — 12 de 12 sangram** (arnês com controlo de filtro:
+`run = 0` lê-se `FILTRO VAZIO`, nunca «sobreviveu»):
+
+| mutação (devolve o defeito) | gate que sangra |
+|---|---|
+| `MAX_MODULES = MAX_INSTANCIAS_POR_NO` (fora por um) | `instance_ceiling_agrees` |
+| o roteiro da `=126` deixa de nomear o `Grid` | `o_roteiro_nomeia_o_que_o_dono_vai_ver` |
+| o relator deixa de registar o `on_uncaptured_error` | `quem_cria_o_dispositivo_liga_a_voz_dele` |
+| o cone ignora os fios de param | `o_cone_segue_os_fios_que_conduzem_um_param` |
+| a marcha ignora as tomadas | `uma_tomada_armada_poe_o_laco_que_ela_le_no_cone` |
+| o scrub avança a rota inteira | `o_scrub_de_fronteiras_marcha_o_mesmo_cone` |
+| a leitura repetida conta como nova (fios) | `uma_leitura_repetida_nao_para_os_fios` |
+| a leitura repetida entra na sonda | `uma_leitura_repetida_nao_entra_no_anel_da_sonda` |
+| o `install` mantém o `cpu_pedida` | `loading_forgets_every_id_that_named_the_previous_document` |
+| o `medir` não reserva a fileira do número | `a_medida_reserva_a_fileira_do_numero` (`472` contra `494`) — ⚠️ e o irmão `a_arrumacao_nao_sobrepoe_dois_cartoes` fica VERDE sob ela, que é a razão de o gate novo existir |
+| o kernel lê os pontos com `dp_np = 0` (GPU) | `sem_orcamento_para_pontos_o_carimbo_devolve_a_forma` |
+| a leitura antiga fica depois do vazio (GPU) | `sem_nada_a_amostrar_a_leitura_antiga_e_esquecida` — ⚠️ **SOBREVIVEU à 1.ª redacção**: com nada a ler as duas versões devolvem vazio, e a leitura velha só reaparece na chamada SEGUINTE; o gate ganhou esse passo e sangra |
 
 ## §8 — OS SMOKES (o comando inteiro, copiável)
 
@@ -160,6 +192,14 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && env PH2D_G
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && env PH2D_GPU_COOK_DEMO=126 cargo run -p ph2d-host-desktop --release
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && env PH2D_MOTION_OBJ_SMOKE=16 cargo run -p ph2d-host-desktop --profile smoke
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && env PH2D_MOTION_OBJ_SMOKE=14 cargo run -p ph2d-host-desktop --profile smoke
+```
+
+Os dois binários ficam COMPILADOS nesta árvore (2.ª corrida, depois de apagar os `incremental`:
+`76 GB` reclamados):
+
+```
+Finished `smoke` profile [optimized] target(s) in 0.53s
+Finished `release` profile [optimized] target(s) in 0.33s
 ```
 
 (`=13` a mistura na placa · `=14` a mistura em grupo · `=15` o modo de uma linha · `=16` o enxame ·

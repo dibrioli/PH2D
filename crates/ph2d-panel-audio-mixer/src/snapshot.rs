@@ -283,13 +283,12 @@ pub(crate) fn set_duck_depth(v: f32) {
     DUCK_DEPTH.with(|c| c.set(v));
 }
 
-/// Advance the sidechain key to the next sub-bus (wraps). Returns the new index.
-pub(crate) fn cycle_duck_key() -> usize {
-    DUCK_KEY.with(|c| {
-        let next = (c.get() + 1) % SUB_BUS_COUNT;
-        c.set(next);
-        next
-    })
+/// Choose the sidechain key sub-bus. An index past the last bus is ignored — the choice has
+/// exactly [`SUB_BUS_COUNT`] segments, so it cannot happen from the panel.
+pub(crate) fn set_duck_key(i: usize) {
+    if i < SUB_BUS_COUNT {
+        DUCK_KEY.with(|c| c.set(i));
+    }
 }
 
 /// Shell → panel: current post-fader peak + RMS per sub-bus. Latches each

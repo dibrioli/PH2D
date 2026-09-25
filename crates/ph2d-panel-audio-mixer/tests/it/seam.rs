@@ -9,7 +9,7 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_panel_audio_mixer::state::AudioMixerState;
 use ph2d_panel_audio_mixer::{
-    AMIX_CUTOFF, AMIX_DELAY, AMIX_DELAY_TIME, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_DUCK_KEY,
+    AMIX_CUTOFF, AMIX_DELAY, AMIX_DELAY_TIME, AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_DUCK_KEY_BUS,
     AMIX_EQ_LOW, AMIX_FADER, AMIX_LIMITER, AMIX_LOWCUT, AMIX_MASTER_METER, AMIX_MASTER_MUTE,
     AMIX_PAN, AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_SIZE, AudioMixerPanel, FADER_UNITY_POS, SUB_COMP,
     SUB_DELAY_SEND, SUB_FADER, SUB_LOWCUT, SUB_MUTE, SUB_PAN, SUB_SEND, SUB_SOLO, SUB_TONE,
@@ -243,7 +243,7 @@ fn ducking_toggle_and_depth_publish() {
 
     let before = ducking();
     let outcome =
-        host.apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::Click(AMIX_DUCK));
+        host.apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::Toggled(AMIX_DUCK));
     assert_eq!(
         outcome,
         EventOutcome::Consumed,
@@ -263,26 +263,84 @@ fn ducking_toggle_and_depth_publish() {
     );
 }
 
-/// Clicking the sidechain Key selector advances the key sub-bus (wrapping),
-/// proving the AMIX_DUCK_KEY arm drives the shell's duck key.
+/// Clicking a segment of the sidechain Key choice sets THAT sub-bus — including going back
+/// to an earlier one, which the old cycling button could only reach by going all the way round.
 #[test]
-fn duck_key_click_cycles_the_key_bus() {
+fn duck_key_segment_chooses_its_own_bus() {
     let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
     let mut state = AudioMixerState;
 
-    let before = ducking_key();
-    let outcome =
-        host.apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::Click(AMIX_DUCK_KEY));
-    assert_eq!(
-        outcome,
-        EventOutcome::Consumed,
-        "panel ignored the Key click — the AMIX_DUCK_KEY arm is missing"
-    );
-    assert_eq!(
-        ducking_key(),
-        (before + 1) % 4,
-        "Key click must advance to the next sub-bus (wraps at 4)"
-    );
+    for i in [2, 0, 3, 1] {
+        let outcome = host.apply_panel_event::<AudioMixerPanel>(
+            &mut state,
+            WidgetEvent::Click(AMIX_DUCK_KEY_BUS[i]),
+        );
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "panel ignored the Key segment {i} — the AMIX_DUCK_KEY_BUS arm is missing"
+        );
+        assert_eq!(ducking_key(), i, "Key segment {i} must choose sub-bus {i}");
+    }
+}
+
+/// **Painted ⟹ clickable** for the master-effect controls (2026-09-24): the real `paint`, then the
+/// real dispatcher at the centre of the rect the paint registered. The four enables are house
+/// CHECKBOXES (the dispatch emits `Toggled`), the Key segments and Play Test are buttons (`Click`).
+///
+/// ⚠️ This is the half a hand-pushed `WidgetEvent` skips: a control can paint, hit-register and
+/// forward — every other gate green — and still be dead under the mouse because `populate`
+/// registered it as the wrong kind.
+#[test]
+fn every_master_effect_control_answers_where_it_is_drawn() {
+    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut state = AudioMixerState;
+    // Every effect group open, so its body is painted.
+    for sec in [
+        ph2d_panel_audio_mixer::AMIX_SEC_EQ,
+        ph2d_panel_audio_mixer::AMIX_SEC_REVERB,
+        ph2d_panel_audio_mixer::AMIX_SEC_DELAY,
+        ph2d_panel_audio_mixer::AMIX_SEC_COMP,
+        ph2d_panel_audio_mixer::AMIX_SEC_DUCK,
+    ] {
+        host.store_mut().set_collapsed(sec, false);
+    }
+    let viewport = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 300.0, 4000.0);
+    let painted = host.paint::<AudioMixerPanel>(&mut state, viewport);
+
+    let mut want: Vec<(&str, ph2d_a11y::NodeId, bool)> = vec![
+        ("Limiter", AMIX_LIMITER, true),
+        ("Reverb", AMIX_REVERB, true),
+        ("Delay", AMIX_DELAY, true),
+        ("Ducking", AMIX_DUCK, true),
+        ("Play Test", AMIX_PLAY, false),
+    ];
+    for id in AMIX_DUCK_KEY_BUS {
+        want.push(("Key segment", id, false));
+    }
+    for (name, id, caixa) in want {
+        let rect = painted
+            .iter()
+            .rev()
+            .find(|(pid, _)| *pid == id)
+            .map(|(_, r)| *r)
+            .unwrap_or_else(|| panic!("`{name}` ({id:?}) is never painted"));
+        let (cx, cy) = (rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+        assert_eq!(
+            host.hit_at(cx, cy),
+            Some(id),
+            "`{name}` is painted but something else owns the pixels at its centre"
+        );
+        let events = host.click_at(cx, cy);
+        assert!(
+            events.iter().any(|e| match e {
+                WidgetEvent::Toggled(c) => caixa && *c == id,
+                WidgetEvent::Click(c) => !caixa && *c == id,
+                _ => false,
+            }),
+            "clicking `{name}` at its painted centre produced no event of its kind: {events:?}"
+        );
+    }
 }
 
 /// The Delay toggle flips the enable flag, dragging Time publishes the raw 0..1
@@ -294,7 +352,7 @@ fn delay_toggle_time_and_send_publish() {
 
     let before = delay_on();
     let outcome =
-        host.apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::Click(AMIX_DELAY));
+        host.apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::Toggled(AMIX_DELAY));
     assert_eq!(
         outcome,
         EventOutcome::Consumed,
@@ -360,7 +418,7 @@ fn reverb_toggle_and_size_publish() {
 
     let before = reverb_on();
     let outcome =
-        host.apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::Click(AMIX_REVERB));
+        host.apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::Toggled(AMIX_REVERB));
     assert_eq!(
         outcome,
         EventOutcome::Consumed,
@@ -393,7 +451,7 @@ fn limiter_click_toggles_flag() {
 
     let before = limiter();
     let outcome =
-        host.apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::Click(AMIX_LIMITER));
+        host.apply_panel_event::<AudioMixerPanel>(&mut state, WidgetEvent::Toggled(AMIX_LIMITER));
     assert_eq!(
         outcome,
         EventOutcome::Consumed,

@@ -1313,6 +1313,12 @@ const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
     //    valor pela `caixa_do_botao`, via `RowCtx::action_button_kind`.
     ("vector", 8),
     ("model3d", 1),
+    // ⭐ Entra na catraca em 2026-09-24 com `22 → 17`: os quatro liga/desliga dos efeitos do master
+    //    (*Limiter* · *Reverb* · *Delay* · *Ducking*) são CAIXAS DE MARCAR, e o *Key* que ciclava os
+    //    barramentos é uma ESCOLHA declarada (conta como um grupo). Os `17` que ficam são comandos a
+    //    sério da mesa: fechar, os *Mute*/*Solo* das faixas, limpar o clip de cada medidor e o
+    //    *Play Test*.
+    ("audio_mixer", 17),
 ];
 
 #[test]
@@ -2305,7 +2311,13 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     ("tokens", 2866.0),
     ("vector", 1262.0),
     ("physics", 1281.0),
-    ("audio_mixer", 1209.0),
+    // ⬇️ `1209 → 1207` em 2026-09-24 (o mixer no molde da Física): os quatro liga/desliga do master
+    //    viraram caixas de marcar (passo da casa em vez de `MUTE_H + gap`), o *Play Test* passou pela
+    //    `caixa_do_botao` (`ROW_H_PX`), e saiu o `+ Spacing::Sm` escrito à mão depois do *Limiter*.
+    //    ⚠️ A escolha do barramento-chave do ducking CRESCEU: com as quatro peças à vista ela não
+    //    cabe ao lado do nome e é PALETA (nome por cima — a lei da porta, decisão do dono de
+    //    23/09); o número é a soma medida das duas coisas.
+    ("audio_mixer", 1207.0),
 ];
 
 #[test]

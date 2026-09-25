@@ -867,6 +867,43 @@ eram botões acesos; hoje passam pela porta da casa (`property_row::paint_check_
 - **Portão:** `nextest-impacted` **17 703 / 17 703** · clippy `-D warnings` zero nas duas crates ·
   `cargo fmt --check` limpo · censos da árvore combinada **127 / 127** (12 de 12 correram).
 
+## §9-septiestricies — ⭐ O MIXER no molde da Física: caixas de marcar, a escolha do *Key*, `22 → 17`
+
+*«siga»* depois da Física (2026-09-24). O painel `audio_mixer` era o 5.º do censo de comandos
+(`22`), e **cinco** deles eram o mesmo defeito que a Física pagou: liga/desliga pintados como
+botões ACESOS a toda a largura (`paint_toggle` em `Rect::new(x, y, w, MUTE_H)`).
+
+- **As quatro activações do master** (*Limiter* · *Reverb* · *Delay* · *Ducking*) são CAIXAS DE MARCAR
+  pela porta (`paint_check_row`): `populate` regista-as `Checkbox`, o `event.rs` casa `Toggled` e o
+  valor novo sai do `snapshot::toggle_*` (o modelo), nunca do store.
+- ⭐ **O *Key* do ducking deixou de CICLAR** (`Key: Music → SFX → …`, um clique por passo e só a opção
+  actual à vista) e é uma ESCOLHA pela porta da casa (`paint_choice_row`), com `AMIX_DUCK_KEY_BUS`
+  (uma peça por sub-barramento, alinhada com `SUB_BUS_LABELS`) e `snapshot::set_duck_key(i)` no lugar
+  do `cycle_duck_key`. A chave de texto `panel.audio_mixer.master.key` passa de `"Key: {bus}"` a
+  `"Key"`. ⚠️ **Ela é PALETA** (nome por cima, grupo a toda a largura): as quatro peças medem `281 px`
+  e não cabem ao lado do nome em nenhuma coluna do dock — é a lei da porta e a decisão do dono de
+  23/09, não uma escolha deste painel.
+- **A coluna do nome das caixas e do *Key* é MEDIDA sobre os nomes delas** (`Ctx::caixas`, uma
+  `Seccao::medida` para as cinco), e **não** a `col` das barras: as barras são a CAIXA ÚNICA da casa
+  (o nome DENTRO), logo não há coluna com quem alinhar, e a coluna de omissão cortava o nome no degrau
+  estreito — a lição do *Show Colliders* (§9-sexiestricies), aplicada antes de a catraca a cobrar.
+- **O *Play Test* fica botão** (é uma ACÇÃO, e o tom aceso é o que diz «a tocar») mas pela
+  `caixa_do_botao` — coluna do valor, `ROW_H_PX`.
+- **Catracas, MEDIDAS:** `CARGA_DE_COMANDOS` ganha `("audio_mixer", 17)` (os `17` são comandos da mesa:
+  fechar, *Mute*/*Solo* das faixas, limpar o clip de cada medidor, *Play Test*, e o grupo do *Key*);
+  a altura de abertura desce `1209 → 1207`. ⚠️ **A paleta do *Key* CRESCE a altura**; o que a paga é
+  o passo da casa nas caixas, o `ROW_H_PX` do *Play Test* e o `+ Spacing::Sm` **escrito à mão** que
+  saiu de depois do *Limiter* (medido a subir `+4` antes dessa última cura).
+- **Gate novo** `every_master_effect_control_answers_where_it_is_drawn`: pinta o painel com as secções
+  abertas e carrega no centro de cada caixa (espera `Toggled`) e de cada peça do *Key* e do *Play Test*
+  (espera `Click`). O antigo `duck_key_click_cycles_the_key_bus` virou
+  `duck_key_segment_chooses_its_own_bus` (inclui VOLTAR a um barramento anterior, que o botão que
+  ciclava só alcançava dando a volta inteira).
+- **Mutação 4 de 4:** braço do *Limiter* de volta a `Click` · peça do *Key* desviada de um · *Limiter*
+  registado como botão · peças do *Key* por registar — cada uma reprova exactamente um gate.
+- **Portão:** `nextest-impacted` **17 704 / 17 704** · clippy `-D warnings` zero (`audio-mixer`,
+  `i18n`, `registry-init`) · `fmt` limpo · censos da árvore combinada 12 de 12.
+
 ## §11 — O que esta linha recomenda a quem a integrar
 
 1. **Correr o `diag_onde_cai_a_pista_do_pente` da `line/sculpt3d` DEPOIS da fusão** e reescrever com

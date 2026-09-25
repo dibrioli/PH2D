@@ -148,7 +148,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.audio_mixer.master.eq" => "EQ",
         "panel.audio_mixer.master.comp" => "Comp",
         "panel.audio_mixer.master.ducking" => "Ducking",
-        "panel.audio_mixer.master.key" => "Key: {bus}",
+        // ⚠️ Era `"Key: {bus}"` — o rótulo de UM botão que ciclava os barramentos. Desde 2026-09-24 a
+        //    chave é uma ESCOLHA com as quatro peças à vista, e o nome dela é só o nome.
+        "panel.audio_mixer.master.key" => "Key",
         "panel.audio_mixer.master.depth" => "Depth",
         // ph2d-migrar-texto:end
         _ => return None,

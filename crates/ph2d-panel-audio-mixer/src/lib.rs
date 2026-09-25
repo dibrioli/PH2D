@@ -76,8 +76,19 @@ pub const AMIX_EQ_HIGH: NodeId = hash_node_id("audio_mixer_eq_high");
 pub const AMIX_DUCK: NodeId = hash_node_id("audio_mixer_duck");
 /// Ducking depth slider (how much the ducked buses drop).
 pub const AMIX_DUCK_DEPTH: NodeId = hash_node_id("audio_mixer_duck_depth");
-/// Sidechain key-bus selector button — cycles which sub-bus everything ducks under.
-pub const AMIX_DUCK_KEY: NodeId = hash_node_id("audio_mixer_duck_key");
+/// Sidechain key-bus choice — one segment per sub-bus, index-aligned with [`SUB_BUS_LABELS`]:
+/// everything ducks under the chosen one.
+///
+/// ⭐ **Era UM botão que CICLAVA** (`Key: Music` → `Key: SFX` → …) até 2026-09-24: uma escolha de
+/// quatro escondida atrás de cliques repetidos — o artista só via a opção actual e tinha de
+/// adivinhar quantas faltavam. Hoje é a porta da ESCOLHA da casa (`paint_choice_row`), com as
+/// quatro à vista, e o grupo conta UMA vez no censo de comandos.
+pub const AMIX_DUCK_KEY_BUS: [NodeId; SUB_BUS_COUNT] = [
+    hash_node_id("audio_mixer_duck_key_music"),
+    hash_node_id("audio_mixer_duck_key_sfx"),
+    hash_node_id("audio_mixer_duck_key_ui"),
+    hash_node_id("audio_mixer_duck_key_voice"),
+];
 
 /// Collapsible section headers for the master-effect footer groups. Registered
 /// via `mark_collapsible_section` in `populate`; clicking a header folds its

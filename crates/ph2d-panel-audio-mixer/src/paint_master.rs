@@ -10,9 +10,10 @@ use crate::paint::MUTE_H;
 use crate::paint_widgets::{paint_labeled_slider, paint_toggle};
 use crate::{
     AMIX_DELAY, AMIX_DELAY_FEEDBACK, AMIX_DELAY_MIX, AMIX_DELAY_TIME, AMIX_DUCK, AMIX_DUCK_DEPTH,
-    AMIX_DUCK_KEY, AMIX_EQ_HIGH, AMIX_EQ_LOW, AMIX_EQ_MID, AMIX_LIMITER, AMIX_PLAY, AMIX_REVERB,
-    AMIX_REVERB_MIX, AMIX_REVERB_SIZE, AMIX_SEC_COMP, AMIX_SEC_DELAY, AMIX_SEC_DUCK, AMIX_SEC_EQ,
-    AMIX_SEC_REVERB, SUB_BUS_COUNT, SUB_BUS_LABELS, SUB_COMP, SUB_DELAY_SEND, SUB_SEND, snapshot,
+    AMIX_DUCK_KEY_BUS, AMIX_EQ_HIGH, AMIX_EQ_LOW, AMIX_EQ_MID, AMIX_LIMITER, AMIX_PLAY,
+    AMIX_REVERB, AMIX_REVERB_MIX, AMIX_REVERB_SIZE, AMIX_SEC_COMP, AMIX_SEC_DELAY, AMIX_SEC_DUCK,
+    AMIX_SEC_EQ, AMIX_SEC_REVERB, SUB_BUS_COUNT, SUB_BUS_LABELS, SUB_COMP, SUB_DELAY_SEND,
+    SUB_SEND, snapshot,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
@@ -42,6 +43,13 @@ struct Ctx<'a> {
     /// bloco de efeitos do master lê-se como UMA pilha: *as labels alinhadas todas à direita*
     /// (ordem do dono) pára de ser verdade no dia em que cada secção medir a sua.
     col: f32,
+    /// ⭐ **A coluna do nome das CAIXAS DE MARCAR e da escolha do barramento-chave, medida uma vez
+    /// sobre os NOMES DELAS** — os quatro liga/desliga do master (*Limiter* · *Reverb* · *Delay* ·
+    /// *Ducking*) e o *Key*. ⚠️ Não é a `col` das barras: as barras são a CAIXA ÚNICA da casa (o
+    /// nome vive DENTRO da caixa), logo não há coluna de nome com quem alinhar — e a coluna de
+    /// omissão (metade da linha) cortava o nome no degrau estreito, que é o que a Física pagou no
+    /// mesmo dia com o *Show Colliders*.
+    caixas: ph2d_editor_core::widget::Seccao,
 }
 
 /// The master-section footer below the strips, top-down: Play Test · loudness ·
@@ -61,6 +69,17 @@ pub(crate) fn paint_master_section(
     // ⚠️ A coluna mede-se ANTES do `Ctx` nascer: ela precisa do sistema de texto, e o `Ctx`
     //    toma-o emprestado por inteiro.
     let col = crate::paint_widgets::coluna_dos_nomes(text_system, content_w);
+    let caixas = ph2d_editor_core::widget::Seccao::medida(
+        text_system,
+        1,
+        &[
+            tr("panel.audio_mixer.master.limiter"),
+            tr("panel.audio_mixer.master.reverb"),
+            tr("panel.audio_mixer.master.delay"),
+            tr("panel.audio_mixer.master.ducking"),
+            tr("panel.audio_mixer.master.key"),
+        ],
+    );
     let mut ctx = Ctx {
         scene,
         text_system,
@@ -70,6 +89,7 @@ pub(crate) fn paint_master_section(
         x: content_x,
         w: content_w,
         col,
+        caixas,
     };
     let mut y = y0;
     y = paint_play_test(&mut ctx, y);
@@ -82,25 +102,23 @@ pub(crate) fn paint_master_section(
     paint_ducking(&mut ctx, y)
 }
 
-/// A full-width toggle row; returns the next `y`.
-fn toggle_row(ctx: &mut Ctx, y: f32, label: &str, active: bool, id: NodeId) -> f32 {
-    paint_toggle(
-        Rect::new(ctx.x, y, ctx.w, MUTE_H),
-        label,
-        active,
-        ColorToken::Accent,
-        id,
-        ph2d_editor_core::widget::GroupCell {
-            col: ph2d_editor_core::widget::GroupPos::Only,
-            row: ph2d_editor_core::widget::GroupPos::Only,
-        },
+/// ⭐ **Um liga/desliga de efeito do master, pela porta da casa**
+/// ([`ph2d_editor_core::property_row::paint_check_row`]) — o nome na coluna das caixas e a marca
+/// na do valor. Ordem do dono (2026-09-24, *«siga»* depois da Física): eram botões acesos a toda
+/// a largura. ⚠️ O valor é o `bool` do RETRATO. Devolve o `y` seguinte.
+fn check_row(ctx: &mut Ctx, y: f32, label: &str, on: bool, id: NodeId) -> f32 {
+    ph2d_editor_core::property_row::paint_check_row(
         ctx.scene,
         ctx.text_system,
         ctx.theme,
-        ctx.store,
         ctx.hit_index,
-    );
-    y + MUTE_H + ph2d_tokens::control_gap_px()
+        ctx.store,
+        ctx.x,
+        ctx.w,
+        y,
+        (id, label, on),
+        ctx.caixas,
+    )
 }
 
 /// A labeled thin-slider row; returns the next `y`.
@@ -170,18 +188,35 @@ fn sub_bus_rows(
 
 fn paint_play_test(ctx: &mut Ctx, y: f32) -> f32 {
     // Play Test first — the primary "make sound" control stays reachable.
+    //
+    // ⭐ É uma ACÇÃO (liga e desliga o sinal de teste), e por isso fica botão — mas pela porta da
+    //    casa ([`ph2d_editor_core::property_row::caixa_do_botao`]): na coluna do valor quando o
+    //    rótulo cabe, a toda a largura quando não. O tom aceso fica: ele é o que diz «a tocar».
     let playing = snapshot::play_test();
-    toggle_row(
-        ctx,
-        y,
-        if playing {
-            tr("panel.audio_mixer.master.stop")
-        } else {
-            tr("panel.audio_mixer.master.play_test")
-        },
+    let label = if playing {
+        tr("panel.audio_mixer.master.stop")
+    } else {
+        tr("panel.audio_mixer.master.play_test")
+    };
+    let rect =
+        ph2d_editor_core::property_row::caixa_do_botao(ctx.text_system, ctx.x, ctx.w, y, label);
+    paint_toggle(
+        rect,
+        label,
         playing,
+        ColorToken::Accent,
         AMIX_PLAY,
-    )
+        ph2d_editor_core::widget::GroupCell {
+            col: ph2d_editor_core::widget::GroupPos::Only,
+            row: ph2d_editor_core::widget::GroupPos::Only,
+        },
+        ctx.scene,
+        ctx.text_system,
+        ctx.theme,
+        ctx.store,
+        ctx.hit_index,
+    );
+    ph2d_editor_core::property_row::abaixo_do_botao(rect)
 }
 
 fn paint_loudness(ctx: &mut Ctx, y: f32) -> f32 {
@@ -208,13 +243,18 @@ fn paint_loudness(ctx: &mut Ctx, y: f32) -> f32 {
 
 fn paint_limiter(ctx: &mut Ctx, y: f32) -> f32 {
     // Master output limiter — tames peaks below the clip ceiling.
-    toggle_row(
+    //
+    // ⚠️ Havia um `+ Spacing::Sm` escrito à mão depois dele (o vão que um botão aceso a toda a
+    //    largura pedia para não colar no cabeçalho do EQ). Uma linha de marcar já avança o passo da
+    //    casa (`row_pitch_px`), como todas as outras — e o vão à mão saiu (2026-09-24), com a
+    //    altura de abertura MEDIDA na catraca.
+    check_row(
         ctx,
         y,
         tr("panel.audio_mixer.master.limiter"),
         snapshot::limiter(),
         AMIX_LIMITER,
-    ) + Spacing::Sm.px()
+    )
 }
 
 fn paint_eq(ctx: &mut Ctx, y: f32) -> f32 {
@@ -260,7 +300,7 @@ fn paint_reverb(ctx: &mut Ctx, y: f32) -> f32 {
         TextKey::new("panel.audio_mixer.master.reverb"),
     );
     if let Some(fold) = fold {
-        y = toggle_row(
+        y = check_row(
             ctx,
             y,
             tr("panel.audio_mixer.master.reverb"),
@@ -295,7 +335,7 @@ fn paint_delay(ctx: &mut Ctx, y: f32) -> f32 {
         TextKey::new("panel.audio_mixer.master.delay"),
     );
     if let Some(fold) = fold {
-        y = toggle_row(
+        y = check_row(
             ctx,
             y,
             tr("panel.audio_mixer.master.delay"),
@@ -351,38 +391,32 @@ fn paint_ducking(ctx: &mut Ctx, y: f32) -> f32 {
         TextKey::new("panel.audio_mixer.master.ducking"),
     );
     if let Some(fold) = fold {
-        y = toggle_row(
+        y = check_row(
             ctx,
             y,
             tr("panel.audio_mixer.master.ducking"),
             snapshot::ducking(),
             AMIX_DUCK,
         );
-        // Key selector (a plain button — cycles the sidechain key sub-bus).
-        let key_label = ph2d_i18n::tr_with(
-            "panel.audio_mixer.master.key",
-            &[(
-                "bus",
-                &SUB_BUS_LABELS[snapshot::ducking_key() % SUB_BUS_COUNT].tr(),
-            )],
-        );
-        paint_toggle(
-            Rect::new(ctx.x, y, ctx.w, MUTE_H),
-            &key_label,
-            false,
-            ColorToken::Accent,
-            AMIX_DUCK_KEY,
-            ph2d_editor_core::widget::GroupCell {
-                col: ph2d_editor_core::widget::GroupPos::Only,
-                row: ph2d_editor_core::widget::GroupPos::Only,
-            },
+        // ⭐ The sidechain key is a CHOICE of sub-bus, painted by the house choice door with the
+        //    four buses in view (it used to be one button that CYCLED `Key: Music → SFX → …`).
+        let key = snapshot::ducking_key();
+        let rotulos: [&str; SUB_BUS_COUNT] = std::array::from_fn(|i| SUB_BUS_LABELS[i].tr());
+        let segmentos: [(&str, bool, NodeId); SUB_BUS_COUNT] =
+            std::array::from_fn(|i| (rotulos[i], i == key, AMIX_DUCK_KEY_BUS[i]));
+        y = ph2d_editor_core::property_row::paint_choice_row(
             ctx.scene,
             ctx.text_system,
             ctx.theme,
-            ctx.store,
             ctx.hit_index,
+            ctx.store,
+            ctx.x,
+            ctx.w,
+            y,
+            tr("panel.audio_mixer.master.key"),
+            &segmentos,
+            ctx.caixas,
         );
-        y += MUTE_H + ph2d_tokens::control_gap_px();
         y = slider_row(
             ctx,
             y,

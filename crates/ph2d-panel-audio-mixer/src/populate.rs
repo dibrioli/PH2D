@@ -3,14 +3,16 @@
 use crate::fader::FADER_UNITY_POS;
 use crate::{
     AMIX_CLOSE, AMIX_CUTOFF, AMIX_DELAY, AMIX_DELAY_FEEDBACK, AMIX_DELAY_MIX, AMIX_DELAY_TIME,
-    AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_DUCK_KEY, AMIX_EQ_HIGH, AMIX_EQ_LOW, AMIX_EQ_MID, AMIX_FADER,
-    AMIX_LIMITER, AMIX_LOWCUT, AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN, AMIX_PLAY,
-    AMIX_REVERB, AMIX_REVERB_MIX, AMIX_REVERB_SIZE, AMIX_SEC_COMP, AMIX_SEC_DELAY, AMIX_SEC_DUCK,
-    AMIX_SEC_EQ, AMIX_SEC_REVERB, SUB_COMP, SUB_DELAY_SEND, SUB_FADER, SUB_LOWCUT, SUB_METER,
-    SUB_MUTE, SUB_PAN, SUB_SEND, SUB_SOLO, SUB_TONE,
+    AMIX_DUCK, AMIX_DUCK_DEPTH, AMIX_DUCK_KEY_BUS, AMIX_EQ_HIGH, AMIX_EQ_LOW, AMIX_EQ_MID,
+    AMIX_FADER, AMIX_LIMITER, AMIX_LOWCUT, AMIX_MASTER_METER, AMIX_MASTER_MUTE, AMIX_PAN,
+    AMIX_PLAY, AMIX_REVERB, AMIX_REVERB_MIX, AMIX_REVERB_SIZE, AMIX_SEC_COMP, AMIX_SEC_DELAY,
+    AMIX_SEC_DUCK, AMIX_SEC_EQ, AMIX_SEC_REVERB, SUB_COMP, SUB_DELAY_SEND, SUB_FADER, SUB_LOWCUT,
+    SUB_METER, SUB_MUTE, SUB_PAN, SUB_SEND, SUB_SOLO, SUB_TONE,
 };
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
-use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState};
+use ph2d_editor_core::widget::{
+    ButtonState, CheckboxState, CheckboxValue, SliderOrientation, SliderState,
+};
 
 pub(crate) fn populate(store: &mut WidgetStore) {
     // Collapsible master-effect section headers — bare hit rects (no
@@ -36,11 +38,22 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     store.register(AMIX_CLOSE, button());
     store.register(AMIX_MASTER_MUTE, button());
     store.register(AMIX_PLAY, button());
-    store.register(AMIX_LIMITER, button());
-    store.register(AMIX_REVERB, button());
-    store.register(AMIX_DUCK, button());
-    store.register(AMIX_DUCK_KEY, button());
-    store.register(AMIX_DELAY, button());
+    // ⭐ Os quatro liga/desliga dos efeitos do master são CAIXAS DE MARCAR (2026-09-24, no molde da
+    //    Física): o despacho vira-as e emite `Toggled`. ⚠️ O valor pintado vem do RETRATO, nunca
+    //    do store — o `Unchecked` daqui é só o estado inicial do registo.
+    for id in [AMIX_LIMITER, AMIX_REVERB, AMIX_DELAY, AMIX_DUCK] {
+        store.register(
+            id,
+            InteractiveState::Checkbox {
+                state: CheckboxState::Normal,
+                value: CheckboxValue::Unchecked,
+            },
+        );
+    }
+    // As peças da escolha do barramento-chave do ducking (uma por sub-barramento).
+    for id in AMIX_DUCK_KEY_BUS {
+        store.register(id, button());
+    }
     for id in SUB_MUTE {
         store.register(id, button());
     }

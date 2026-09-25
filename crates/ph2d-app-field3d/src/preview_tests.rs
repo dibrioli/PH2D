@@ -585,3 +585,66 @@ fn a_oclusao_de_cpu_nao_chega_ao_artista_por_omissao() {
          `PH2D_FIELD_AO=1` é a porta de bissecção."
     );
 }
+
+/// ⭐⭐⭐⭐ **O DEGRAU ASSENTE DA PLACA só começa depois de a mão estar parada o que ele custa** —
+/// a regra do aluguer de esquis ([`super::Assentar::pode_comecar`]).
+///
+/// ⭐ **O CONTROLO é a CPU:** o mesmo custo medido, pintado por um caminho que se cancela, começa
+/// logo — senão a lei estaria a adiar trabalho que nunca travou ninguém.
+#[test]
+fn o_assente_da_placa_espera_o_que_custa_e_o_da_cpu_nao() {
+    // O nó de toro da cena `=28`, medido: `84,4 ms` a `1920×1080` com as sondas guardadas.
+    let medido = Some(super::Measured {
+        pixels: 1920 * 1080,
+        millis: 84.4,
+    });
+    let placa = super::Assentar {
+        medido,
+        pela_placa: true,
+        ..super::Assentar::default()
+    };
+    // O degrau de tela CHEIA custa `84,4`: a `80 ms` parada ainda não, a `85` sim.
+    assert!(!placa.pode_comecar_parado(80.0, 1920, 1080));
+    assert!(placa.pode_comecar_parado(85.0, 1920, 1080));
+    // O degrau do tamanho do MOVIMENTO (`D = 3`, um nono dos píxeis) custa um nono — ele não pode
+    // esperar o que o cheio custa, senão o artista esperaria pelo alisamento sem precisar.
+    assert!(placa.pode_comecar_parado(10.0, 640, 360));
+    assert!(!placa.pode_comecar_parado(8.0, 640, 360));
+    // ⭐ O CONTROLO: pela CPU, que se cancela, começa já.
+    let cpu = super::Assentar {
+        medido,
+        pela_placa: false,
+        ..super::Assentar::default()
+    };
+    assert!(cpu.pode_comecar_parado(0.0, 1920, 1080));
+    // E sem medição nenhuma também — o primeiro assente é a medição.
+    let sem = super::Assentar {
+        pela_placa: true,
+        ..super::Assentar::default()
+    };
+    assert!(sem.pode_comecar_parado(0.0, 1920, 1080));
+}
+
+/// ⭐⭐⭐⭐ **O laço do MOVIMENTO só aprende com quadros de MOVIMENTO, e o degrau espera** — a
+/// FIAÇÃO das duas leis no colher e no pedir (`smoke_draw`), que não é alcançável de um teste sem
+/// janela: a leitura é pelo TEXTO, e cada agulha é a linha que a cura escreveu.
+///
+/// ⚠️ Sem a 1.ª, o assente (que paga o ricochete: `252 ms` no nó com as sondas frias) escreve o
+/// `measured` e o primeiro quadro de cada rotação sai no tamanho mais grosso. Sem a 2.ª, a lei do
+/// aluguer existe e ninguém a chama.
+#[test]
+fn a_fiacao_do_assentar_esta_ligada() {
+    let fonte = include_str!("smoke_draw.rs");
+    assert!(
+        fonte.contains("if !r.assente || smoke.vps[i].measured.is_none() {"),
+        "o laço do movimento voltou a aprender com os quadros assentes"
+    );
+    assert!(
+        fonte.contains(".assentar.pode_comecar(w, h) => None,"),
+        "o degrau assente deixou de esperar a mão parar o que ele custa"
+    );
+    assert!(
+        fonte.contains(".assentar.quieto_desde = std::time::Instant::now();"),
+        "o relógio da quietude deixou de se repor quando a mão mexe"
+    );
+}

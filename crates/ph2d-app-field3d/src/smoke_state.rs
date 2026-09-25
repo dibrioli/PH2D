@@ -97,6 +97,8 @@ pub struct Viewport {
     /// ⚠️ Separado do `last_trace_ms` de propósito: aquele é para o artista ler, este é para a
     /// máquina decidir, e um tempo sem os pixels ao lado não prevê coisa nenhuma.
     pub measured: Option<crate::preview::Measured>,
+    /// ⭐ O que o assentar lembra — ver [`crate::preview::Assentar`].
+    pub assentar: crate::preview::Assentar,
     /// **A área onde o quadro foi desenhado da última vez** — é ela que responde *"este clique é
     /// meu?"*. Sem isto a cena engoliria gestos de qualquer canto da janela.
     pub area: Option<EditorRect>,
@@ -205,6 +207,7 @@ impl Viewport {
             requested: None,
             last_trace_ms: 0.0,
             measured: None,
+            assentar: crate::preview::Assentar::default(),
             area: None,
             label: None,
             manual,
@@ -660,6 +663,10 @@ pub struct Ready {
     /// Ainda vêm mais quadros por este canal? É o que mantém o [`InFlight`] vivo — e portanto
     /// cancelável — enquanto o refinamento corre.
     pub(super) mais: bool,
+    /// Um quadro ASSENTE? Ver [`crate::preview::Assentar`] — ele não mede o laço do movimento.
+    pub(super) assente: bool,
+    /// Pintado pela PLACA, que não se cancela? Ver [`crate::preview::Assentar::pode_comecar`].
+    pub(super) pela_placa: bool,
 }
 
 pub(super) struct MatcapTexels {

@@ -1682,9 +1682,25 @@ A imagem guardada é **idêntica** à fria (`0` canais acima de um nível, com o
 [`preview_device_w9_sondas_tests.rs`](../../crates/ph2d-app-field3d/src/preview_device_w9_sondas_tests.rs),
 mutação **3 de 3** (⚠️ a 1.ª fixtura da peça trocava também a BOLA, e a chave sem a peça
 **sobrevivia** — as duas peças do gate partilham a bola agora). ⛔ Uma peça com escultura não é
-guardada (a cerca da cache do chão). ⏳ **Fica:** o 1.º assente depois de mexer na peça ou na luz
-paga a assadura inteira, e o 2.º degrau da escada (a tela CHEIA) custa o que o quadro de movimento
-custaria nesse tamanho — `~84 ms` no nó — e também não se cancela.
+guardada (a cerca da cache do chão).
+
+⭐⭐⭐ **E as duas metades que sobravam, na mesma wave** ([`preview::Assentar`](../../crates/ph2d-app-field3d/src/preview.rs)):
+
+1. **O degrau assente da placa só começa depois de a mão estar parada o que ele CUSTA** — a regra do
+   *aluguer de esquis*: um trabalho que não se cancela e dura `L` só começa após `L` de quietude;
+   uma pausa mais curta nunca o paga, e o pior caso espera no máximo o dobro do óptimo. ⇒ o atraso
+   não é um número escolhido, é o custo MEDIDO do degrau (`84 ms` na tela cheia do nó, um nono
+   disso no degrau do tamanho do movimento). ⚠️ Só na placa: a CPU cancela-se a meio e ali adiar só
+   custaria nitidez (é o CONTROLO do gate).
+2. **O laço do MOVIMENTO só aprende com quadros de MOVIMENTO** — o assente escrevia o `measured`, e o
+   primeiro quadro de cada rotação saía no tamanho mais grosso por causa do ricochete (`252 ms` frio
+   no nó) que o movimento não paga. Era a *«redução severa da qualidade ao rotacionar»* do report. É a
+   lei da `passagem`, um degrau acima; o assente só SEMEIA a medição quando não há nenhuma.
+
+Gates `o_assente_da_placa_espera_o_que_custa_e_o_da_cpu_nao` e `a_fiacao_do_assentar_esta_ligada`,
+mutação **3 de 3**. ⏳ **Fica, nomeado:** o 1.º assente depois de mexer na PEÇA ou na LUZ paga a
+assadura inteira das sondas (`~170 ms` no nó) e a regra prevê-o pelo custo do último assente, que era
+morno — ele pode ainda travar uma vez por edição.
 
 ## W10 — ✅ O GÉMEO DO AMACIAMENTO NO DISPOSITIVO — **FECHADA em 2026-09-19**
 

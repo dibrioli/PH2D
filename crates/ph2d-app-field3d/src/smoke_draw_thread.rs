@@ -165,6 +165,8 @@ pub(crate) fn traca(p: &Pedido) {
             millis: t0.elapsed().as_secs_f64() * 1000.0,
             passagem: 0,
             mais: false,
+            assente: p.assente,
+            pela_placa: true,
         });
         return;
     }
@@ -220,6 +222,8 @@ pub(crate) fn traca(p: &Pedido) {
             millis: t0.elapsed().as_secs_f64() * 1000.0,
             passagem: 0,
             mais: false,
+            assente: p.assente,
+            pela_placa: true,
         });
         return;
     }
@@ -459,6 +463,8 @@ pub(crate) fn traca(p: &Pedido) {
                 millis: t0.elapsed().as_secs_f64() * 1000.0,
                 passagem: 0,
                 mais: p.refinar,
+                assente: p.assente,
+                pela_placa: false,
             });
             if !p.refinar {
                 return;
@@ -511,6 +517,8 @@ pub(crate) fn traca(p: &Pedido) {
                         millis: t0.elapsed().as_secs_f64() * 1000.0,
                         passagem,
                         mais: !ultima,
+                        assente: p.assente,
+                        pela_placa: false,
                     });
                     // ⚠️ **A mão voltou a mexer**: parar aqui é o que impede o refinamento
                     // de queimar um núcleo por uma imagem que já não se vê.
@@ -530,5 +538,7 @@ pub(crate) fn traca(p: &Pedido) {
         millis: t0.elapsed().as_secs_f64() * 1000.0,
         passagem: 0,
         mais: false,
+        assente: p.assente,
+        pela_placa: false,
     });
 }

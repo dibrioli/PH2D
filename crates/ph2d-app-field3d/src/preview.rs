@@ -99,6 +99,69 @@ pub struct Measured {
     pub millis: f32,
 }
 
+/// ⭐⭐⭐⭐ **O que o ASSENTAR lembra entre quadros** — o travão ao girar (report do dono de
+/// 2026-09-24: *«travamentos ao rotacionar a tela continuam»*).
+///
+/// Um quadro assente pintado pela PLACA **não se cancela**: quando a mão volta a mexer, o quadro de
+/// movimento seguinte espera por ele (o traçador é um só). Com as sondas guardadas
+/// (`ph2d_field_gpu::sondas_na_placa`) o degrau do tamanho do movimento custa o que um quadro de
+/// movimento custa — e o de tela CHEIA custa o que o movimento custaria nesse tamanho: `~84 ms` no nó
+/// de toro da cena `=28`, `15`–`20` nas outras.
+#[derive(Clone, Copy, Debug)]
+pub struct Assentar {
+    /// Desde quando a câmera e o documento não mudam — reposto a cada pedido de MOVIMENTO.
+    pub quieto_desde: std::time::Instant,
+    /// O custo do último quadro ASSENTE, com os pixels — o que prevê o próximo degrau.
+    pub medido: Option<Measured>,
+    /// `true` quando esse quadro foi pintado pela placa — o único caminho que não se cancela.
+    pub pela_placa: bool,
+}
+
+impl Default for Assentar {
+    fn default() -> Self {
+        Self {
+            quieto_desde: std::time::Instant::now(),
+            medido: None,
+            pela_placa: false,
+        }
+    }
+}
+
+impl Assentar {
+    /// ⭐⭐⭐⭐ **O degrau assente de `w×h` pode começar AGORA?**
+    ///
+    /// ⭐ **A regra é a do aluguer de esquis** (*ski rental*, o problema clássico de decisão em
+    /// linha): um trabalho que **não se cancela** e dura `L` só começa depois de a mão estar parada
+    /// há `L`. Qualquer pausa mais curta nunca o paga, e o pior caso — a mão volta mesmo depois de
+    /// ele começar — espera **no máximo o dobro** do óptimo que alguém que soubesse o futuro
+    /// conseguiria. ⇒ *o atraso não é um número escolhido: é o custo MEDIDO do degrau.*
+    ///
+    /// ⚠️ **Só vale para a placa.** O caminho de CPU cancela-se a meio (`trace_cancellable`), e ali
+    /// adiar custaria nitidez sem comprar nada — sem medição, ou com o último assente pela CPU, a
+    /// resposta é sempre *«pode»*.
+    #[must_use]
+    pub fn pode_comecar(&self, w: u32, h: u32) -> bool {
+        self.pode_comecar_parado(self.quieto_desde.elapsed().as_secs_f64() * 1000.0, w, h)
+    }
+
+    /// O mesmo, com o tempo PARADO dado — a porta pela qual a lei se testa sem relógio.
+    #[must_use]
+    pub fn pode_comecar_parado(&self, parado_ms: f64, w: u32, h: u32) -> bool {
+        if !self.pela_placa {
+            return true;
+        }
+        let Some(m) = self.medido else {
+            return true;
+        };
+        if m.pixels == 0 {
+            return true;
+        }
+        #[allow(clippy::cast_precision_loss)]
+        let previsto = f64::from(m.millis) * (f64::from(w) * f64::from(h)) / m.pixels as f64;
+        parado_ms >= previsto
+    }
+}
+
 /// **O orçamento de um traçado em movimento: um quadro a 60 Hz.**
 ///
 /// ⚠️ O número é do **monitor**, não uma preferência: um traçado que cabe num quadro faz a imagem

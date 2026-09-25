@@ -298,10 +298,24 @@ fn viewport_pass(
                 // ⭐ **A medição que fecha o laço** (W24): o tempo **com** os pixels a que foi
                 // medido. O pedido seguinte sai daqui, e é por isso que este módulo não precisa
                 // de saber em que máquina corre.
-                smoke.vps[i].measured = Some(crate::preview::Measured {
+                let medida = crate::preview::Measured {
                     pixels: u64::from(r.width) * u64::from(r.height),
                     millis: r.millis as f32,
-                });
+                };
+                // ⛔⛔ **O laço do MOVIMENTO só aprende com quadros de MOVIMENTO** (2026-09-24, o
+                // report *«ao rotacionar há redução severa da qualidade»*). O assente paga o
+                // ricochete — `252 ms` no nó com as sondas frias, contra `80,7` do movimento no
+                // mesmo tamanho — e deixá-lo escrever aqui fazia o PRIMEIRO quadro de cada rotação
+                // sair no tamanho mais grosso por causa de um trabalho que o movimento não paga. É
+                // a mesma lei da `passagem`, um degrau acima. ⚠️ Sem medição nenhuma o assente
+                // SEMEIA-a: o primeiro traçado continua a ser a medição.
+                if !r.assente || smoke.vps[i].measured.is_none() {
+                    smoke.vps[i].measured = Some(medida);
+                }
+                if r.assente {
+                    smoke.vps[i].assentar.medido = Some(medida);
+                    smoke.vps[i].assentar.pela_placa = r.pela_placa;
+                }
             }
             if trace_log() {
                 println!(
@@ -383,6 +397,18 @@ fn viewport_pass(
         smoke.vps[i].frame.is_some(),
         MIN_TRACE,
     );
+    // ⭐⭐⭐⭐ **O degrau assente só começa depois de a mão estar parada o que ele CUSTA** — ver
+    // [`crate::preview::Assentar::pode_comecar`] (a regra do aluguer de esquis: o quadro assente da
+    // placa não se cancela). ⚠️ O relógio da quietude repõe-se a cada pedido de MOVIMENTO, com ou
+    // sem traçado em voo — é esse que diz *«a mão mexeu»*.
+    let ask = match ask {
+        Some((_, _, true)) => {
+            smoke.vps[i].assentar.quieto_desde = std::time::Instant::now();
+            ask
+        }
+        Some((w, h, false)) if !smoke.vps[i].assentar.pode_comecar(w, h) => None,
+        outro => outro,
+    };
     // ⭐ **E um REFINAMENTO cede à mão** (W32): se o que está em voo é o quadro cheio e o que se
     // pede agora é mais grosso, a mão voltou a mexer — abandona-se o refinamento em vez de o
     // esperar (até **121 ms** medidos). ⛔ O contrário nunca: um traçado de movimento corre até

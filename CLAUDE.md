@@ -244,7 +244,9 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   a contar o próximo degrau precisa de ver — e a **constante fica colada à ponta**, que é a lei do
   degrau `v69`. ⚠️ Antes de cortar, `grep 'mod project_schema_history'` no `main.rs`: **o padrão já
   existe com três irmãos**, e a 1.ª tentativa daquela integração escreveu por cima do primeiro
-  deles (490 linhas de história) por não o ter olhado.
+  deles (490 linhas de história) por não o ter olhado. ⚠️ **Hoje são SEIS faixas** — a sexta,
+  `v144`..`v160`, na rodada 03 de 25/09 (`160` → `176`, dezasseis degraus outra vez: o tamanho da
+  rodada, não de um autor; [registo](docs/archive/integracao-jornadas/HANDOFF_INTEGRACAO_rodada03_2026-09-25.md)).
 - ⛔⛔ **UMA ISENÇÃO DE CENSO É PROPRIEDADE DO CÓDIGO, NÃO DO SÍTIO ONDE O CÓDIGO ESTÁ — ela VIAJA.**
   Medido três vezes na integração de 2026-09-17: um ficheiro sai da shell para a crate da família e
   a linha do `FORA` fica **órfã** de um lado enquanto os literais ficam **sem abrigo** do outro.
@@ -503,7 +505,9 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   retiming, extrapolação, **sinais** ([ADR-0143](docs/architecture/decisions/0143-timeline-signals-a-marker-emits-a-decoupled-event-not-a-call.md)) e expressões
   ([ADR-0144](docs/architecture/decisions/0144-timeline-expressions-frozen-ir-separate-post-composition-pass.md) / [0151](docs/architecture/decisions/0151-timeline-expressions-are-per-clip-so-a-strip-windows-them.md) / [0152](docs/architecture/decisions/0152-timeline-expressions-are-a-first-class-lane-source-that-fades.md)).
   ⚠️ O `TimelineDoc` viaja como **blob dentro do `ProjectFile` e carrega a própria versão** — é por isso que ele evolui
-  sem mover o `PROJECT_SCHEMA`. ⚠️ A **AUTORIA** de expressões foi **retirada** (o motor ficou; registro em
+  sem mover o `PROJECT_SCHEMA` — e desde 25/09 essa porta (gravar · reinstalar · reencontrar o objecto de uma track
+  depois de um respawn) vive na crate-folha [`ph2d-timeline-persist`](crates/ph2d-timeline-persist/), que desceu da
+  shell na integração da rodada 03. ⚠️ A **AUTORIA** de expressões foi **retirada** (o motor ficou; registro em
   [doc 14](docs/Timeline/14_a_autoria_de_expressoes_foi_retirada.md)) — remover a feature **não** removeu o schema.
   **Aberto:** a expressão **PURA** (sem keys) extrapola a strip — ligar exige vínculo autorado (produto + provável
   `DOC_VERSION`) · **W4.T4** (o dock da timeline dentro do Motion) aguarda re-smoke: duas linhas discordaram, o código

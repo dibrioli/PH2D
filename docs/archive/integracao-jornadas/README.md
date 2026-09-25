@@ -61,3 +61,9 @@ indistinguíveis*.
 
 ⚠️ **O ganho é navegacional, não de tokens** — eles não eram lidos, então mover não economiza
 contexto. Está escrito aqui para ninguém "medir de novo" esperando ver o número cair.
+
+## Rodada 03 de 2026-09-25 (sete linhas, três integradores)
+
+| Arquivo | O quê |
+|---|---|
+| [HANDOFF_INTEGRACAO_rodada03_2026-09-25.md](HANDOFF_INTEGRACAO_rodada03_2026-09-25.md) | O integrador das três últimas (`line/Vector` → `components` → `3DModeling`): os números contados, a 6.ª faixa da escada, as duas crates que desceram da shell, e ⚠️ a faixa de commits que não compila sozinha (`git bisect skip`) |

@@ -259,6 +259,10 @@ pub struct Sonda {
     /// continua exacto — `None` é a oclusão sobre a árvore, a de sempre. Ver
     /// [`ph2d_field_gpu::longe::Longe::so_ceu`] e `docs/Render3d/03` §W9, «a oclusão na grade».
     pub ceu_na_grade: Option<u32>,
+    /// ⭐⭐⭐⭐ **O passo da oclusão no quadro de MOVIMENTO** — ver
+    /// [`ph2d_field_gpu::trace::MarchSetup::ceu_passo`] e [`crate::preview::o_passo_do_ceu_a_mexer`].
+    /// O quadro ASSENTE pede sempre `1`: é ele que a paridade com a CPU mede.
+    pub ceu_passo: u32,
 }
 
 impl Default for Sonda {
@@ -274,6 +278,7 @@ impl Default for Sonda {
             chao_em_cache: crate::preview::o_campo_do_chao_e_reaproveitado(),
             longe: crate::preview::a_grade_de_longe(),
             ceu_na_grade: None,
+            ceu_passo: crate::preview::o_passo_do_ceu_a_mexer(),
         }
     }
 }
@@ -333,9 +338,13 @@ pub fn paint_com(
         [um] => Some(ph2d_field_render::sss_shadow::raio_em_pixeis(cam, h, *um)),
         _ => return None,
     };
-    let (campo, fita, setup) = pedido(
+    let (campo, fita, mut setup) = pedido(
         doc, reg, cam, &mundos, ground, cabem, sonda, w, h, mole, true,
     )?;
+    // ⭐⭐⭐⭐ **A oclusão a passo só a MEXER** — a lei W73, *grosso a mexer, nítido ao assentar*.
+    if !assente {
+        setup.ceu_passo = sonda.ceu_passo;
+    }
     // ⚠️ **As duas listas nascem do MESMO `points`**, e é por isso que a ordem não pode divergir:
     // a posição da lâmpada `l` viaja no `MarchSetup` e a radiância dela aqui.
     let mut lamp_radiance = [[0.0f32; 3]; ph2d_field_gpu::trace::MAX_LAMPS];
@@ -594,6 +603,7 @@ pub(super) fn pedido(
         ball_radius: bola.radius,
         ao_rays: ph2d_field_render::OCCLUSION_PASSES,
         ao_reach: ph2d_field_render::OCCLUSION_REACH * cam.half_extent,
+        ceu_passo: 1,
         ground: ground.map(|g| g.height),
         edge_cos: ph2d_field_render::EDGE_COS,
         mole,

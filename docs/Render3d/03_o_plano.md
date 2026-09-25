@@ -1702,6 +1702,63 @@ mutação **3 de 3**. ⏳ **Fica, nomeado:** o 1.º assente depois de mexer na P
 assadura inteira das sondas (`~170 ms` no nó) e a regra prevê-o pelo custo do último assente, que era
 morno — ele pode ainda travar uma vez por edição.
 
+### ⭐⭐⭐⭐ A OCLUSÃO A PASSO NO QUADRO DE MOVIMENTO — o passo `2` da `F1` ([`14` §6](14_a_ordem_de_superar.md)) (2026-09-24)
+
+Report do dono, depois das curas acima: *«render de boa qualidade, movimentação mais fluida, mas
+queda de resolução do modelo»*. A queda é o laço do movimento a encolher a tela para caber no
+orçamento, e o que o obriga é a oclusão: medido (`diag_o_ceu_a_passo`, `1920×1080`, `99 %` ociosa),
+o nó custa `109 ms` com ela e `34`–`37` sem ela.
+
+⇒ **no quadro de MOVIMENTO os cones marcham num pixel de cada `2×2`** e os outros reconstroem-na
+dos quatro representantes à volta, só aceitando os da MESMA superfície (a normal a `≤ 25°`, a regra
+do borrão da oclusão, e o ponto deles no plano tangente deste). Onde nenhum serve, o pixel marcha os
+cones ele próprio — *nenhum pixel recebe a oclusão de uma superfície que não é a dele*. O quadro
+ASSENTE continua com a oclusão inteira, byte a byte (é ele que a paridade com a CPU mede).
+`PH2D_FIELD_CEU_PASSO=1` bissecta.
+
+| cena | passo `1` | **passo `2`** | `3` | `4` | sem oclusão |
+|---|---:|---:|---:|---:|---:|
+| `=28` nó | `108,9` | **`55,5`** | `46,6` | `51,1` | `34`–`37` |
+| `=5` vaso | `18,1` | **`11,7`** | `10,5` | `10,2` | `8,8` |
+| `=11` lote | `22,6` | **`14,8`** | `13,4` | `12,5` | `10,8` |
+| `=30` curvas | `25,6` | **`20,1`** | `22,1` | `18,4` | `13,7` |
+
+A imagem a passo `2` contra `1`: no nó `31` canais acima de `8` níveis em `8,3 M`, pior `14`; a
+diferença ampliada `8×` é preta com um fio nas silhuetas dos tubos. O passo `3` já põe `1 285`
+canais acima de `8` no nó e `4 433` nas curvas — ⇒ **fábrica `2`**.
+
+⭐ **O kill-criterion da `F1` ([`14` §6](14_a_ordem_de_superar.md)) PASSA:** com a luz ligada e a
+mexer, a `1920×1080`, as cenas que já eram nítidas cabem nos `16,7 ms` (vaso `11,7` · lote `14,8` ·
+rosca `13,9` · polígono `15,4` · triângulo `8,2` · cilindros `9,4`). O nó (`55,5`) e as curvas
+(`20,1`) continuam acima, e o laço do movimento encolhe a tela por eles — *mas menos do dobro do que
+encolhia*.
+
+⛔⛔ **A 1.ª redacção NÃO poupava nada, e está MEDIDO:** os cones marchavam no `luz_so` só nos
+pixels que representam — e as 32 threads de um warp andam juntas, logo com um representante em cada
+quatro o warp esperava sempre pelos `48` cones (nó `107 → 90 ms`). É a lei que a borda re-amostrada
+já pagou neste mesmo passe (*a divergência cobra o trabalho inteiro*): os representantes correm
+COMPACTOS no `ceu_meia`, **uma thread por célula**, sobre a grelha grossa. ⚠️ Os pixels que
+recorrem aos cones ainda divergem dentro do `ceu_sobe`; medido, custam `~3 ms` no nó a passo `2`
+(`52,5` teóricos contra `55,5`), e compactá-los numa lista fica **nomeado e não construído**.
+
+⚠️ **O passo mora no ENCHIMENTO do `vec3` do `ball_center`** (um `u32` depois de um `vec3` ocupa os
+quatro bytes que sobram) — zero bytes a mais no uniforme e zero ligações novas no grupo `0`, que é
+o que a contagem de armazéns guarda.
+
+Gates em [`preview_device_w9_ceu_passo_tests.rs`](../../crates/ph2d-app-field3d/src/preview_device_w9_ceu_passo_tests.rs):
+a reconstrução não desenha halo (no nó **e** na rosca — ⚠️ a cerca do PLANO só morde na rosca,
+filetes paralelos a alturas diferentes; *uma fixtura só de tubos não contém o degrau entre duas faces
+paralelas*), o assente ignora o passo, e a porta de fábrica usa-o. Mutação **8 de 8** com controlo.
+
+⭐ **E o gate VERMELHO herdado — `com_o_dispositivo_a_maioria_das_cenas_e_nitida_em_movimento` —
+passou VERDE na mesma corrida**, e a máquina estava a `load ~90` (outra linha a correr): ⚠️ um verde
+sob carga não é uma medição limpa, mas um gate de relógio só erra para o VERMELHO sob carga, logo ele
+não fica mais apertado por o repetir calmo. ⛔ **E um gate teve a premissa MORTA:** o
+`o_quadro_de_movimento_nao_paga_o_ricochete` compara o movimento do dispositivo com a CPU e passou a
+ler `13` níveis — era a oclusão a passo (divergência declarada, com gate próprio) e não o ricochete;
+o passo vai a `1` NESSE gate, e a mutação que põe o ricochete no movimento continua a reprová-lo
+(`7` níveis).
+
 ## W10 — ✅ O GÉMEO DO AMACIAMENTO NO DISPOSITIVO — **FECHADA em 2026-09-19**
 
 > Ele adiou-a de manhã (*«coloque a possibilidade de melhoramento na fila mais no fim»*) e **trouxe-a

@@ -178,11 +178,11 @@ O que a `W9` deixou nomeado, agora com a causa identificada no §3.
 
 1. **As sondas persistem entre quadros.** Buffer próprio, reassado quando a **cena** ou a **luz**
    mudam — nunca quando a câmera roda. *A lei já está escrita no cabeçalho delas; falta cumpri-la.*
-2. **A oclusão a meia resolução.** ⭐ Já medida e **não construída**, com a nota escrita em
-   [`occlusion.rs`](../../crates/ph2d-field-render/src/occlusion.rs): *«cabe em meia resolução com
-   reconstrução guiada pela normal — `4×` mais barata, o que poria `96` cones abaixo do preço dos
-   `16` de ontem»*. Traz uma classe de artefacto própria (halo na descontinuidade de profundidade),
-   que é o que a wave tem de medir.
+2. ✅ **A oclusão a meia resolução — CONSTRUÍDA em 2026-09-24** no quadro de MOVIMENTO
+   ([`03` §W9](03_o_plano.md), «a oclusão a passo»): nó `109 → 55,5 ms`, vaso `18,1 → 11,7`, sem
+   halo (gate no nó e na rosca). ⚠️ O passo `1` também já está feito (as sondas guardadas na placa).
+   *(A redacção original: «já medida e não construída… traz uma classe de artefacto própria (halo na
+   descontinuidade de profundidade), que é o que a wave tem de medir».)*
 3. **Reprojecção temporal.** O quadro anterior é informação; hoje é deitado fora.
 
 - **Régua:** a luz indirecta e a sombra **ligadas** com a câmera a mexer, dentro do orçamento de

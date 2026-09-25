@@ -157,6 +157,7 @@ fn diag_a_grade_de_longe_contra_a_referencia() {
                 ball_radius: bola.radius,
                 ao_rays: ph2d_field_render::OCCLUSION_PASSES,
                 ao_reach: ph2d_field_render::OCCLUSION_REACH * cam.half_extent,
+                ceu_passo: 1,
                 ground: None,
                 antialias: true,
                 edge_cos: ph2d_field_render::EDGE_COS,

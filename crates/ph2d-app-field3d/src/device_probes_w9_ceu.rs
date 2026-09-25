@@ -388,6 +388,10 @@ fn luz_no_vazio_do_no(doc: &ph2d_field::FieldDoc, c: [f32; 3], r: f32) -> [f32; 
 #[path = "device_probes_w9_chao_grelha.rs"]
 mod grelha;
 
+/// ⏱️ **A oclusão a passo no quadro de movimento** — ver o cabeçalho do [`passo`].
+#[path = "device_probes_w9_ceu_passo.rs"]
+mod passo;
+
 /// ⏱️ **Sonda: o quadro ASSENTE com as sondas FRIAS contra GUARDADAS** — a cura do travão ao girar
 /// (`ph2d_field_gpu::sondas_na_placa`). A luz é FIXA em mundo, senão orbitar trocava a chave.
 #[test]

@@ -350,7 +350,12 @@ fn o_quadro_de_movimento_nao_paga_o_ricochete() {
         &ph2d_field_render::Presentation::of(olhar),
         FUNDO,
     );
-    let gpu = crate::gpu_frame::paint(
+    // ⛔⛔ **E A PREMISSA MORREU OUTRA VEZ em 2026-09-24, com `13` níveis:** o quadro de movimento
+    // passou a marchar a oclusão A PASSO (`MarchSetup::ceu_passo`, `docs/Render3d/03` §W9) — uma
+    // divergência DECLARADA da CPU, com gate próprio (`ceu_passo::a_oclusao_a_passo_nao_desenha_halo`,
+    // tecto `24`). A pergunta DESTE gate é outra — *o movimento paga o ricochete?* — e para a isolar
+    // o passo vai a `1`; senão ele mede a oclusão reconstruída e acusa o ricochete.
+    let gpu = crate::gpu_frame::paint_com(
         t,
         &doc,
         &reg,
@@ -363,6 +368,10 @@ fn o_quadro_de_movimento_nao_paga_o_ricochete() {
         W,
         H,
         false,
+        crate::gpu_frame::Sonda {
+            ceu_passo: 1,
+            ..crate::gpu_frame::Sonda::default()
+        },
     )
     .expect("o pintor do dispositivo");
 

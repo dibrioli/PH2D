@@ -100,6 +100,7 @@ mod escultura_posta {
                 ball_radius: bola.radius,
                 ao_rays: 0,
                 ao_reach: ph2d_field_render::OCCLUSION_REACH * cam.half_extent,
+                ceu_passo: 1,
                 ground: None,
                 antialias: false,
                 edge_cos: ph2d_field_render::EDGE_COS,

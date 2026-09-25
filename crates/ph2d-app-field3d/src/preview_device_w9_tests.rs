@@ -641,3 +641,7 @@ mod chao;
 /// ⭐⭐⭐⭐ **Os gates das sondas guardadas na placa** — ver o cabeçalho do [`sondas`].
 #[path = "preview_device_w9_sondas_tests.rs"]
 mod sondas;
+
+/// ⭐⭐⭐⭐ **Os gates da oclusão a passo no quadro de movimento** — ver o cabeçalho do [`ceu_passo`].
+#[path = "preview_device_w9_ceu_passo_tests.rs"]
+mod ceu_passo;

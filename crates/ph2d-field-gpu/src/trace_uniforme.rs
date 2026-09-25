@@ -54,20 +54,22 @@ pub(super) fn uniforme_do_pedido(
     ] {
         u.extend_from_slice(&f.to_le_bytes());
     }
-    for v in [
-        setup.target,
-        setup.right,
-        setup.up,
-        setup.fwd,
-        setup.ball_center,
+    // ⚠️ O quarto `u32` de cada `vec3` é enchimento — menos o do `ball_center`, onde mora o
+    // `ceu_passo` (um `u32` a seguir a um `vec3` ocupa os bytes que sobram dele).
+    for (v, cauda) in [
+        (setup.target, 0),
+        (setup.right, 0),
+        (setup.up, 0),
+        (setup.fwd, 0),
+        (setup.ball_center, setup.ceu_passo),
         // ⚠️ **Sem borda mole ele vai a ZERO e ninguém o lê** — o `s.mole` é que decide, e um raio
         // aqui sem a bandeira não acorda passagem nenhuma.
-        setup.mole.unwrap_or([0.0; 3]),
+        (setup.mole.unwrap_or([0.0; 3]), 0),
     ] {
         for f in v {
             u.extend_from_slice(&f.to_le_bytes());
         }
-        u.extend_from_slice(&0f32.to_le_bytes()); // o padding do `vec3`
+        u.extend_from_slice(&cauda.to_le_bytes());
     }
     // ⚠️ **O array vai INTEIRO**, e não só as válidas: um `array<vec4, 8>` de uniforme tem tamanho
     // fixo, e escrever menos deixaria a cauda com o lixo do que lá estivesse.

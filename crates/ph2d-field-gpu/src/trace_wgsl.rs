@@ -26,6 +26,11 @@ struct Setup {
     ball_radius: f32, ao_reach: f32, edge_cos: f32, chao_y: f32,
     alvo: vec3<f32>, right: vec3<f32>, up: vec3<f32>, fwd: vec3<f32>,
     ball_center: vec3<f32>,
+    // ⭐⭐⭐⭐ **O PASSO DA OCLUSÃO** — ela é marchada num pixel de cada `ceu_passo × ceu_passo` e os
+    // outros reconstroem-na (`ceu_sobe`). `0` e `1` são a oclusão em todo pixel, a de sempre, ao
+    // bit. ⚠️ Ele mora no enchimento do `vec3` de cima: um `u32` a seguir a um `vec3` ocupa os
+    // quatro bytes que sobram, e o resto da struct não se mexe.
+    ceu_passo: u32,
     // ⭐⭐⭐ **O RAIO DA BORDA MOLE, por canal e em PÍXEIS** — o `sss_shadow::raio_em_pixeis` da CPU.
     // ⚠️ Ele é por CANAL porque a distância de espalhamento é por canal, e é isso que faz a borda
     // ficar avermelhada num jade: o vermelho viaja mais e entra mais fundo na sombra.
@@ -384,26 +389,115 @@ fn escreve_a_luz(i: u32, r: Raio, c: vec4<f32>) {
     // nascer a zero — *uma propriedade do driver a segurar uma lei do produto*.
     for (var c: u32 = 0u; c < 6u; c = c + 1u) { luz[base_do_ricochete(i) + c] = 0.0; }
 
-    // ⭐⭐⭐ **A OCLUSÃO POR CONES** — `ao_rays` direcções FIXAS de mundo, pesadas pelo cosseno.
-    //
-    // A dureza de cada cone é `1/(n·d)`: é o cone que ROÇA o plano tangente, e é ele que faz um
-    // corpo CONVEXO ler exactamente `1,0`. Ver `ph2d_field_render::cone_dir` para o porquê de o
-    // conjunto ser de MUNDO e não de um referencial tangente.
+    // ⭐⭐⭐⭐ **Com a oclusão a passo (`ceu_passo > 1`) NENHUM pixel marcha os cones aqui** — os
+    // representantes marcham-nos no `ceu_meia`, uma thread cada, e os outros são reconstruídos no
+    // `ceu_sobe`. ⛔⛔ Marchá-los AQUI só nos representantes não poupa nada, e está MEDIDO: as 32
+    // threads de um warp andam juntas, e com um representante em cada quatro o warp espera sempre
+    // pelos 48 cones (nó `107 → 90 ms`, contra `30` sem oclusão nenhuma).
     var ceu = 1.0;
-    if (s.ao_rays > 0u) {
-        var soma = 0.0;
-        var peso = 0.0;
-        for (var j: u32 = 0u; j < s.ao_rays; j = j + 1u) {
-            let dd = direccao_do_cone(j, s.ao_rays);
-            let c = dot(n, dd);
-            if (c <= 0.0) { continue; }
-            peso = peso + c;
-            let ate = min(s.ao_reach, cerca_da_bola(erguido, dd, s.ao_reach));
-            soma = soma + c * visivel_ceu(erguido, dd, ate, 1.0 / c);
-        }
-        if (peso > 0.0) { ceu = soma / peso; }
+    if (s.ao_rays > 0u && s.ceu_passo <= 1u) {
+        ceu = ceu_por_cones(erguido, n);
     }
     luz[base] = ceu;
+}
+
+// ⭐⭐⭐⭐ **OS REPRESENTANTES, compactos: uma thread por célula** — o despacho é a grelha GROSSA
+// (`⌈w/passo⌉ × ⌈h/passo⌉`), logo todas as threads de um warp marcham cones. ⚠️ O ponto e a normal
+// saem da MESMA aritmética do `escreve_a_luz`, logo um representante lê exactamente o que o passo
+// `1` lhe daria.
+@compute @workgroup_size(8, 8, 1)
+fn ceu_meia(@builtin(global_invocation_id) g: vec3<u32>) {
+    let passo = max(s.ceu_passo, 1u);
+    let x = g.x * passo;
+    let y = g.y * passo;
+    if (x >= s.w || y >= s.h) { return; }
+    let i = y * s.w + x;
+    let c = centro[i];
+    if (c.x < 0.0) { return; }
+    let r = ray_at_plane(raio(f32(x) + 0.5, f32(y) + 0.5));
+    let p = r.o + r.d * c.x;
+    let n = s.right * c.y + s.up * c.z + s.fwd * c.w;
+    luz[i * passo_da_luz()] = ceu_por_cones(p + n * (s.hit_eps * 4.0), n);
+}
+
+// ⭐⭐⭐ **A OCLUSÃO POR CONES** — `ao_rays` direcções FIXAS de mundo, pesadas pelo cosseno.
+//
+// A dureza de cada cone é `1/(n·d)`: é o cone que ROÇA o plano tangente, e é ele que faz um
+// corpo CONVEXO ler exactamente `1,0`. Ver `ph2d_field_render::cone_dir` para o porquê de o
+// conjunto ser de MUNDO e não de um referencial tangente.
+fn ceu_por_cones(erguido: vec3<f32>, n: vec3<f32>) -> f32 {
+    var soma = 0.0;
+    var peso = 0.0;
+    for (var j: u32 = 0u; j < s.ao_rays; j = j + 1u) {
+        let dd = direccao_do_cone(j, s.ao_rays);
+        let c = dot(n, dd);
+        if (c <= 0.0) { continue; }
+        peso = peso + c;
+        let ate = min(s.ao_reach, cerca_da_bola(erguido, dd, s.ao_reach));
+        soma = soma + c * visivel_ceu(erguido, dd, ate, 1.0 / c);
+    }
+    if (peso > 0.0) { return soma / peso; }
+    return 1.0;
+}
+
+// ⭐ **Este pixel marcha a oclusão?** — todos, com o passo de sempre; um em cada
+// `ceu_passo × ceu_passo`, com a oclusão a passo.
+fn representa(i: u32) -> bool {
+    let p = max(s.ceu_passo, 1u);
+    return (i % s.w) % p == 0u && (i / s.w) % p == 0u;
+}
+
+// ⭐⭐⭐⭐ **A OCLUSÃO RECONSTRUÍDA, guiada pela FORMA** (`docs/Render3d/03` §W9, a alavanca que o
+// `ph2d_field_render::OCCLUSION_PASSES` nomeava). Cada pixel que não representa a célula lê os
+// QUATRO representantes à volta dele, com o peso bilinear, e só aceita os que estão na MESMA
+// superfície: a normal parecida (a regra do borrão da oclusão, `{CEU_COS}`) e o ponto deles no
+// plano tangente deste (a distância ao plano abaixo de `{CEU_PLANO}` da distância entre os dois).
+//
+// ⛔⛔ **Sem nenhum aceite, o pixel MARCHA os cones ele próprio** — a descontinuidade de profundidade
+// é onde uma reconstrução desenha o HALO (a oclusão da parede de trás escorre para a aresta da
+// frente), e é ali que o pixel deixa de a reconstruir. *Nenhum pixel recebe a oclusão de uma
+// superfície que não é a dele.*
+@compute @workgroup_size(8, 8, 1)
+fn ceu_sobe(@builtin(global_invocation_id) g: vec3<u32>) {
+    if (g.x >= s.w || g.y >= s.h) { return; }
+    let i = g.y * s.w + g.x;
+    if (representa(i)) { return; }
+    let c = centro[i];
+    // Quem não acerta a peça já tem o céu do CHÃO (ou `1`), escrito pela luz.
+    if (c.x < 0.0) { return; }
+    let r = ray_at_plane(raio(f32(g.x) + 0.5, f32(g.y) + 0.5));
+    let p = r.o + r.d * c.x;
+    let n = s.right * c.y + s.up * c.z + s.fwd * c.w;
+    let passo = max(s.ceu_passo, 1u);
+    let x0 = (g.x / passo) * passo;
+    let y0 = (g.y / passo) * passo;
+    let fx = f32(g.x - x0) / f32(passo);
+    let fy = f32(g.y - y0) / f32(passo);
+    var soma = 0.0;
+    var peso = 0.0;
+    for (var dy: u32 = 0u; dy < 2u; dy = dy + 1u) {
+        for (var dx: u32 = 0u; dx < 2u; dx = dx + 1u) {
+            let xr = x0 + dx * passo;
+            let yr = y0 + dy * passo;
+            if (xr >= s.w || yr >= s.h) { continue; }
+            let wb = select(1.0 - fx, fx, dx == 1u) * select(1.0 - fy, fy, dy == 1u);
+            if (wb <= 0.0) { continue; }
+            let j = yr * s.w + xr;
+            let cr = centro[j];
+            if (cr.x < 0.0) { continue; }
+            if (dot(c.yzw, cr.yzw) < {CEU_COS}) { continue; }
+            let rr = ray_at_plane(raio(f32(xr) + 0.5, f32(yr) + 0.5));
+            let dp = rr.o + rr.d * cr.x - p;
+            if (abs(dot(n, dp)) > {CEU_PLANO} * length(dp)) { continue; }
+            soma = soma + wb * luz[j * passo_da_luz()];
+            peso = peso + wb;
+        }
+    }
+    if (peso > 1e-4) {
+        luz[i * passo_da_luz()] = soma / peso;
+    } else {
+        luz[i * passo_da_luz()] = ceu_por_cones(p + n * (s.hit_eps * 4.0), n);
+    }
 }
 
 // ⭐⭐⭐ **A SEGUNDA PASSAGEM: a borda re-amostrada.** Ela precisa dos VIZINHOS, logo não pode
@@ -471,8 +565,18 @@ fn difere(a: u32, b: u32) -> bool {
 /// ⚠️ Ele é uma função e não uma constante porque o `concat!` só junta LITERAIS. O custo é uma
 /// alocação por quadro, ao lado do `replace` do `{FIELD}` que o cache de pipelines já faz.
 pub(crate) fn molde() -> String {
-    format!("{}{}{KERNELS}", comum(), leis())
+    let kernels = KERNELS
+        .replace("{CEU_COS}", &numero(ph2d_field_render::OCCLUSION_BLUR_COS))
+        .replace("{CEU_PLANO}", &numero(CEU_PLANO));
+    format!("{}{}{kernels}", comum(), leis())
 }
+
+/// ⭐⭐⭐ **Quão fora do plano tangente um representante pode estar** — o seno do ângulo entre o
+/// segmento que os une e esse plano. Numa superfície lisa o representante está a `~1` célula e o
+/// afastamento é `O(célula²·curvatura)`, logo o quociente é pequeno; num degrau de profundidade o
+/// segmento sobe pela parede e ele vai para `~1`. ⚠️ Com a normal PARECIDA dos dois lados (duas
+/// placas empilhadas) é esta a única pergunta que separa as superfícies.
+pub(crate) const CEU_PLANO: f32 = 0.35;
 
 /// ⭐⭐⭐ **AS LEIS DA MARCHA, sem os kernels** — o campo, a marcha, a visibilidade, o conjunto de
 /// cones e as cercas.

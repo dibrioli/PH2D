@@ -69,6 +69,16 @@ pub(super) fn marcha_com(
             .entry_with_layout(device, &molde_com_esculturas, fita, "luz_so", Some(&layout))
             .clone()
     });
+    // ⭐⭐⭐⭐ **A oclusão a passo** reconstrói-se DEPOIS de a luz estar escrita em toda a imagem: o
+    // `ceu_sobe` lê os representantes vizinhos.
+    let p_ceu = (!so_o_centro && setup.ao_rays > 0 && setup.ceu_passo > 1).then(|| {
+        let mut e = |nome| {
+            cache
+                .entry_with_layout(device, &molde_com_esculturas, fita, nome, Some(&layout))
+                .clone()
+        };
+        (e("ceu_meia"), e("ceu_sobe"))
+    });
     // ⚠️ **Compilar é o caro** — o pipeline da borda só nasce quando ela vai de facto correr.
     let p_bordas = setup.antialias.then(|| {
         let mut e = |nome| {
@@ -237,23 +247,34 @@ pub(super) fn marcha_com(
     // ⚠️ **DOIS despachos, e a ordem é a lei**: a borda pergunta pelos VIZINHOS, logo o centro tem
     // de estar escrito para toda a imagem antes de ela correr.
     // ⭐ E a re-amostragem é um TERCEIRO, depois de a lista estar escrita — ver o `bordas_marcha`.
-    let mut despachos: Vec<(&wgpu::ComputePipeline, &wgpu::BindGroup)> =
-        vec![(&p_centro, &bg_centro)];
+    // ⚠️ Cada despacho leva o SEU tamanho: o `ceu_meia` corre na grelha grossa dos representantes.
+    let inteira = (width.div_ceil(8), height.div_ceil(8));
+    let mut despachos: Vec<(&wgpu::ComputePipeline, &wgpu::BindGroup, (u32, u32))> =
+        vec![(&p_centro, &bg_centro, inteira)];
     if let Some(p) = &p_luz {
-        despachos.push((p, &bg_centro));
+        despachos.push((p, &bg_centro, inteira));
+    }
+    if let Some((meia, sobe)) = &p_ceu {
+        let passo = setup.ceu_passo.max(1);
+        let grossa = (
+            width.div_ceil(passo).div_ceil(8),
+            height.div_ceil(passo).div_ceil(8),
+        );
+        despachos.push((meia, &bg_centro, grossa));
+        despachos.push((sobe, &bg_centro, inteira));
     }
     if let (Some((p, pm)), Some(bg)) = (p_bordas.as_ref(), bg_bordas.as_ref()) {
-        despachos.push((p, bg));
-        despachos.push((pm, bg));
+        despachos.push((p, bg, inteira));
+        despachos.push((pm, bg, inteira));
     }
-    for (p, bg) in despachos {
+    for (p, bg, (gx, gy)) in despachos {
         let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: None,
             timestamp_writes: None,
         });
         cp.set_pipeline(p);
         cp.set_bind_group(0, bg, &[]);
-        cp.dispatch_workgroups(width.div_ceil(8), height.div_ceil(8), 1);
+        cp.dispatch_workgroups(gx, gy, 1);
     }
 
     let ler = |enc: &mut wgpu::CommandEncoder, b: &wgpu::Buffer, bytes: u64| {

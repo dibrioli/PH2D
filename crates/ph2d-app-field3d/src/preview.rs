@@ -534,6 +534,27 @@ pub fn a_fita_sai_do_pintor() -> bool {
 /// `PH2D_FIELD_TAPE_CACHE=0`: *um report de «piorou» não diz QUAL mudança o causou, e duas corridas
 /// dizem.* ⭐ Aqui ela tem um segundo uso, que é o smoke: com `=0` a fervura **volta**, e é assim
 /// que o dono vê o antes e o depois sem ter de acreditar numa tabela.
+/// ⭐⭐⭐⭐ **A OCLUSÃO DO QUADRO DE MOVIMENTO, a passo** (`docs/Render3d/03` §W9) — os cones marcham
+/// num pixel de cada `n × n` e os outros reconstroem-na guiados pela forma.
+///
+/// ⚠️ Medido (`diag_o_ceu_a_passo`): a oclusão era `60`–`80 %` do Render a mexer, e é ela que obriga
+/// o laço do movimento a encolher a tela. `PH2D_FIELD_CEU_PASSO=1` volta à oclusão em todo pixel e
+/// é a porta de bissecção; o número de fábrica mora aqui ao lado da medição que o escolheu.
+#[must_use]
+pub fn o_passo_do_ceu_a_mexer() -> u32 {
+    static PASSO: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
+    *PASSO.get_or_init(|| {
+        std::env::var("PH2D_FIELD_CEU_PASSO")
+            .ok()
+            .and_then(|v| v.trim().parse().ok())
+            .unwrap_or(PASSO_DO_CEU_A_MEXER)
+            .clamp(1, 8)
+    })
+}
+
+/// O passo de fábrica — ver [`o_passo_do_ceu_a_mexer`].
+pub const PASSO_DO_CEU_A_MEXER: u32 = 2;
+
 #[must_use]
 pub fn re_amostra_a_silhueta() -> bool {
     static LIGADO: std::sync::OnceLock<bool> = std::sync::OnceLock::new();

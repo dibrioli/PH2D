@@ -113,6 +113,11 @@ pub struct MarchSetup {
     pub ao_rays: u32,
     /// O alcance da oclusão em unidades de mundo.
     pub ao_reach: f32,
+    /// ⭐⭐⭐⭐ **A OCLUSÃO A PASSO** (`docs/Render3d/03` §W9): os cones marcham-se num pixel de cada
+    /// `ceu_passo × ceu_passo` e os outros reconstroem-na guiados pela forma, marchando eles
+    /// próprios onde nenhum vizinho está na mesma superfície. `0` e `1` são a oclusão em todo
+    /// pixel, **ao bit** — e é o que todo caminho que a CPU mede pede.
+    pub ceu_passo: u32,
     /// ⭐⭐⭐ **O CHÃO QUE SÓ RECEBE** (`docs/Render3d/07`) — a altura dele no MUNDO, ou `None`.
     ///
     /// Com ele, um pixel que **falha** a peça e vê o chão guarda nos canais de luz a sombra e o céu

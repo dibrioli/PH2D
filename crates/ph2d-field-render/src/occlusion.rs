@@ -84,11 +84,11 @@ pub const OCCLUSION_REACH: f32 = 1.0;
 /// e o das outras cenas de `7`–`17` a `5`–`7 ms` ⇒ *a oclusão é `60`–`80 %` do Render a mexer.*
 /// *Quem move o número que tornava algo barato tem de reconferir a nota* (`CLAUDE.md` §0.0).
 ///
-/// ⏳ **A alavanca que fica, medida e NÃO construída:** a oclusão é de baixa frequência (é a mesma
-/// premissa que legitima o [`blur_occlusion`]), logo cabe em **meia resolução** com reconstrução
-/// guiada pela normal — `4×` mais barata, o que poria `96` cones abaixo do preço dos `16` raios de
-/// ontem. Ela traz uma classe de artefacto própria (halo na descontinuidade de profundidade) e é
-/// wave com espec própria.
+/// ⭐⭐⭐ **E a alavanca que aqui estava nomeada FOI CONSTRUÍDA (2026-09-24), no quadro de MOVIMENTO
+/// do dispositivo:** os cones marcham num pixel de cada `2×2` e os outros reconstroem-na guiados
+/// pela normal e pelo plano tangente, marchando eles próprios onde nenhum vizinho está na mesma
+/// superfície — ver `ph2d_field_gpu::trace::MarchSetup::ceu_passo` e `docs/Render3d/03` §W9. O nó
+/// vai de `109` a `55,5 ms`; o quadro ASSENTE (e esta referência de CPU) fica com a oclusão inteira.
 pub const OCCLUSION_PASSES: u32 = 48;
 
 /// ⭐ **Quão parecidas duas normais têm de ser para a suavização as misturar** — o cosseno entre

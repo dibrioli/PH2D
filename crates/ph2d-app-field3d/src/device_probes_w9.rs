@@ -529,6 +529,11 @@ fn diag_quantos_quadros_a_regua_precisa() {
 #[path = "device_probes_w9_torno.rs"]
 mod torno;
 
+/// ⏱️ **O modo de omissão (o matcap): o arrasto, o campo contra a marcha e o quadro nos dois
+/// motores** — ver o cabeçalho do [`omissao`].
+#[path = "device_probes_w9_omissao.rs"]
+mod omissao;
+
 /// ⏱️⭐⭐⭐⭐ **A grade assada contra a árvore** — ver o cabeçalho do [`grade`].
 #[path = "device_probes_w9_grade.rs"]
 mod grade;

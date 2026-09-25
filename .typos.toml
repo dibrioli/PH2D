@@ -990,6 +990,31 @@ MOER = "MOER"
 # e `unparseable` é a grafia técnica que o typos quer trocar por "unparsable".
 dout = "dout"
 unparseable = "unparseable"
+# ─── Rodada 03 de 2026-09-25 (sete linhas) — a mesma lei de 17/09: o `typos` só corre no
+# `ship.sh`, logo as palavras novas de cada linha aterram no integrador. ⛔ Uma era erro A SÉRIO
+# e foi CORRIGIDA no texto, não isentada (`muder` → `mudar`, num doc-comment da escultura).
+# pt: «cenários» (o corpus do oráculo do GDevelop) · «depósitos» · «monstros» (a cena da vida) ·
+# «coice» (o recuo do abanão) · «extrapole» (o verbo) · «três» escrito `tre^s` numa string ASCII.
+CENARIOS = "CENARIOS"
+depositos = "depositos"
+monstros = "monstros"
+MONSTROS = "MONSTROS"
+coice = "coice"
+extrapole = "extrapole"
+tre = "tre"
+TRE = "TRE"
+# Identificadores curtos (metades de um par ou prefixos): `alo`/`ahi` (o mínimo e o máximo de uma
+# caixa), `melhor_aloc` (a melhor ALOCAÇÃO), `rest_anc` (as ÂNCORAS de repouso), `(ff, fo)`,
+# `largOURO` (a LARGURA do ouro).
+alo = "alo"
+aloc = "aloc"
+anc = "anc"
+fo = "fo"
+larg = "larg"
+# `strenght`/`Strenght` são CITAÇÃO VERBATIM do dono num comentário (entre «»): corrigir a
+# citação seria reescrever o que ele disse.
+strenght = "strenght"
+Strenght = "Strenght"
 
 [files]
 extend-exclude = [

@@ -194,7 +194,7 @@ fn todo_nome_entre_crases_do_roteiro_da_bake_existe_na_tela() {
 /// metade da wave sem nunca olhar para a outra.
 ///
 /// ⚠️ **A agulha é a FRASE do passo e não o número dele**: um `(2-bis)` é a numeração, que um corte
-/// futuro pode muder sem que nada se perca; o que não pode desaparecer é o dono ser mandado
+/// futuro pode mudar sem que nada se perca; o que não pode desaparecer é o dono ser mandado
 /// comparar o enquadramento.
 #[test]
 fn o_roteiro_ensina_a_lente_e_o_enquadramento() {

@@ -50,3 +50,4 @@ mod plan_da_uniao;
 
 mod plan_simulation;
 mod sim_invalidation;
+mod tap_sem_espera;

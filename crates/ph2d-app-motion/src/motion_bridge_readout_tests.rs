@@ -336,6 +336,51 @@ fn gpu_driven_fixture() -> Option<(ph2d_gpu::GpuContext, MotionState, NodeId)> {
     Some((gpu, motion, osc))
 }
 
+/// **A leitura dos cartões atravessa DOIS quadros** (ciclo 12, doc 120 §8.6): o 1.º encomenda e não
+/// devolve nada, o seguinte recolhe. ⚠️ A 1.ª metade é afirmada: uma leitura que devolvesse números
+/// logo no 1.º quadro estaria a esperar pela placa, que é o defeito que a partiu em duas.
+fn tap_de_dois_quadros(
+    motion: &mut MotionState,
+    gpu: &ph2d_gpu::GpuContext,
+) -> std::collections::BTreeMap<NodeId, ph2d_nodegraph::attr::Stream> {
+    assert!(
+        super::take_tap(motion, gpu).is_none(),
+        "o 1.o quadro so' encomenda a leitura"
+    );
+    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+    super::take_tap(motion, gpu).expect("o quadro seguinte recolhe-a")
+}
+
+/// ⭐⭐ **Um quadro que NÃO é da placa descarta a leitura** — sem isso, voltar à placa mostraria
+/// nos cartões os números de quando ela conduziu pela última vez. O CONTROLO é o quadro da placa,
+/// que a mantém.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn um_quadro_da_cpu_descarta_a_leitura_da_placa() {
+    let Some((gpu, mut motion, _osc)) = gpu_driven_fixture() else {
+        return;
+    };
+    let _ = tap_de_dois_quadros(&mut motion, &gpu);
+    assert!(
+        motion.gpu_cook.tap_em_voo(),
+        "CONTROLO: o quadro da placa deixa a leitura seguinte encomendada"
+    );
+    motion.gpu_live = false;
+    assert!(
+        super::take_tap(&mut motion, &gpu).is_none(),
+        "um quadro da CPU nao le a placa"
+    );
+    assert!(
+        !motion.gpu_cook.tap_em_voo(),
+        "e esquece o que estava em voo"
+    );
+    motion.gpu_live = true;
+    assert!(
+        super::take_tap(&mut motion, &gpu).is_none(),
+        "de volta a' placa, os numeros de antes NAO reaparecem"
+    );
+}
+
 /// **The probe reads the device's real numbers** — it used to answer `"gpu"` and
 /// nothing else.
 ///
@@ -354,7 +399,7 @@ fn the_probe_reads_the_device_instead_of_announcing_it_cannot() {
         return;
     };
     motion.probe = Some(osc);
-    let tapped = super::take_tap(&mut motion, &gpu).expect("a GPU frame taps");
+    let tapped = tap_de_dois_quadros(&mut motion, &gpu);
     let view = super::super::edit::sample_probe(&mut motion, 0.0, Some(&tapped))
         .expect("the probe reports");
     assert_eq!(
@@ -391,7 +436,7 @@ fn a_gpu_driven_frame_fills_the_cards_and_quotes_the_exact_count() {
     let Some((gpu, mut motion, osc)) = gpu_driven_fixture() else {
         return;
     };
-    let tapped = super::take_tap(&mut motion, &gpu).expect("a GPU frame taps");
+    let tapped = tap_de_dois_quadros(&mut motion, &gpu);
     let mut snap = ph2d_panel_motion_graph::snapshot_from(&motion.doc.graph, &motion.registry);
     stamp(&mut motion, Some(&tapped), &mut snap);
 

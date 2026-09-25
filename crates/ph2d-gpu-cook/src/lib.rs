@@ -78,6 +78,7 @@ pub mod shape;
 pub mod stream;
 mod stream_op;
 pub mod tap;
+mod tap_voo;
 mod tex_runs;
 pub mod voronoi;
 

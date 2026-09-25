@@ -272,14 +272,24 @@ fn uniform_gid(stream: &Stream) -> Option<u32> {
 /// in the product — only in a test — so an optional-device parameter would make
 /// "pass the wrong thing and the GPU readouts silently vanish" a reachable bug,
 /// for the sake of a shape only tests want.
+///
+/// ⭐⭐⭐ **E ela NÃO ESPERA pela placa** (ciclo 12, doc 120 §8.6): o `tap` síncrono fazia
+/// `poll(wait_indefinitely)`, e no app a fila tem o quadro anterior inteiro — `0,68 ms` por quadro
+/// de CPU parada na escada dos tectos, `60 %` do Motion que sobrava. Hoje a leitura encomenda-se
+/// neste quadro e recolhe-se no seguinte ([`ph2d_gpu_cook::GpuCook::tap_sem_espera`]), logo os
+/// cartões ficam um quadro mais atrás. ⚠️ **Um quadro que não é da placa DESCARTA a leitura**: sem
+/// isso, voltar à placa mostraria os números de quando ela conduziu pela última vez.
 pub(super) fn take_tap(
     motion: &mut MotionState,
     gpu: &ph2d_gpu::GpuContext,
 ) -> Option<BTreeMap<NodeId, Stream>> {
+    if !motion.gpu_live {
+        motion.gpu_cook.descarta_tap_em_voo();
+        return None;
+    }
     motion
-        .gpu_live
-        .then(|| motion.gpu_cook.tap(gpu, ph2d_gpu_cook::tap::TAP_SAMPLES))
-        .flatten()
+        .gpu_cook
+        .tap_sem_espera(gpu, ph2d_gpu_cook::tap::TAP_SAMPLES)
 }
 
 /// `tapped` is [`take_tap`]'s result — `None` on a CPU-driven frame.

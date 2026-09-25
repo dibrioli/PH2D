@@ -98,7 +98,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 "#;
 
 /// One column's slot in the packed output buffer.
-struct Slot {
+pub(crate) struct Slot {
     node: NodeId,
     column: String,
     dim: Dim,
@@ -113,6 +113,11 @@ struct Slot {
 pub(crate) struct TapPipeline {
     pipeline: wgpu::ComputePipeline,
     layout: wgpu::BindGroupLayout,
+    /// ⭐ **Os parâmetros de TODAS as colunas num buffer só, persistente e só a crescer** (ciclo 12,
+    /// doc 120 §8.6). Um buffer `mapped_at_creation` por coluna e por quadro custava `0,34 ms` na
+    /// RTX a encomendar a leitura da escada — mais do que a leitura inteira. Um `write_buffer` por
+    /// quadro, e cada coluna lê a sua fatia alinhada.
+    params: Option<wgpu::Buffer>,
 }
 
 impl TapPipeline {
@@ -123,7 +128,11 @@ impl TapPipeline {
     fn new(gpu: &GpuContext) -> Self {
         let pipeline = crate::create_pipeline(gpu, TAP_WGSL, "ph2d-gpu-cook tap");
         let layout = pipeline.get_bind_group_layout(0);
-        Self { pipeline, layout }
+        Self {
+            pipeline,
+            layout,
+            params: None,
+        }
     }
 }
 
@@ -143,6 +152,25 @@ impl GpuCook {
     /// calls this inside the same frame as the cook and before the next
     /// [`crate::BufferPool::reclaim`].
     pub fn tap(&mut self, gpu: &GpuContext, samples: u32) -> Option<BTreeMap<NodeId, Stream>> {
+        let (staging, slots) = self.encomenda_tap(gpu, samples)?;
+        let slice = staging.slice(..);
+        let (tx, rx) = std::sync::mpsc::channel();
+        slice.map_async(wgpu::MapMode::Read, move |r| {
+            let _ = tx.send(r);
+        });
+        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+        rx.recv().ok()?.ok()?;
+        Some(le_tap(&staging, &slots))
+    }
+
+    /// **A metade que ENCOMENDA** — codifica o gather e submete-o, e devolve o buffer de leitura
+    /// ainda por mapear mais o mapa das colunas. Partilhada pelo [`Self::tap`] síncrono e pela
+    /// leitura sem espera ([`crate::tap_voo`]), para as duas lerem exactamente as mesmas amostras.
+    pub(crate) fn encomenda_tap(
+        &mut self,
+        gpu: &GpuContext,
+        samples: u32,
+    ) -> Option<(wgpu::Buffer, Vec<Slot>)> {
         let streams: Vec<(NodeId, &GpuStream)> =
             self.tap_streams.iter().map(|(n, s)| (*n, s)).collect();
         if streams.is_empty() {
@@ -176,6 +204,35 @@ impl GpuCook {
         let pipe = self
             .tap_pipeline
             .get_or_insert_with(|| TapPipeline::new(gpu));
+        // Os parâmetros de cada fatia, num buffer só: uma fatia por coluna, no alinhamento que o
+        // dispositivo exige a um deslocamento de uniform.
+        let passo = u64::from(gpu.device.limits().min_uniform_buffer_offset_alignment).max(16);
+        let precisa = passo * slots.len() as u64;
+        if pipe.params.as_ref().is_none_or(|b| b.size() < precisa) {
+            pipe.params = Some(gpu.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("ph2d-gpu-cook tap params"),
+                size: precisa.next_power_of_two().max(passo),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            }));
+        }
+        let params_buf = pipe.params.as_ref().expect("acabou de ser garantido");
+        let mut empacotado = vec![0u8; precisa as usize];
+        for (k, slot) in slots.iter().enumerate() {
+            let stream = streams
+                .iter()
+                .find(|(n, _)| *n == slot.node)
+                .map(|(_, s)| *s)
+                .expect("slot came from this list");
+            let col = stream
+                .get(&slot.column)
+                .expect("slot came from this stream");
+            let lanes = crate::stream::element_stride(col.dim) as u32 / 4;
+            let params = [stream.count, lanes, slot.samples, slot.offset];
+            let ini = k * passo as usize;
+            empacotado[ini..ini + 16].copy_from_slice(bytemuck::cast_slice(&params));
+        }
+        gpu.queue.write_buffer(params_buf, 0, &empacotado);
         let bytes = u64::from(total) * 4;
         let dst = gpu.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("ph2d-gpu-cook tap dst"),
@@ -196,7 +253,7 @@ impl GpuCook {
                 timestamp_writes: None,
             });
             pass.set_pipeline(&pipe.pipeline);
-            for slot in &slots {
+            for (k, slot) in slots.iter().enumerate() {
                 let stream = streams
                     .iter()
                     .find(|(n, _)| *n == slot.node)
@@ -205,25 +262,18 @@ impl GpuCook {
                 let col = stream
                     .get(&slot.column)
                     .expect("slot came from this stream");
-                let lanes = crate::stream::element_stride(col.dim) as u32 / 4;
-                let params = [stream.count, lanes, slot.samples, slot.offset];
-                let ub = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-                    label: Some("ph2d-gpu-cook tap params"),
-                    size: 16,
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                    mapped_at_creation: true,
-                });
-                ub.slice(..)
-                    .get_mapped_range_mut()
-                    .copy_from_slice(bytemuck::cast_slice(&params));
-                ub.unmap();
+                let fatia = wgpu::BufferBinding {
+                    buffer: params_buf,
+                    offset: k as u64 * passo,
+                    size: std::num::NonZeroU64::new(16),
+                };
                 let bg = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
                     label: Some("ph2d-gpu-cook tap bg"),
                     layout: &pipe.layout,
                     entries: &[
                         wgpu::BindGroupEntry {
                             binding: 0,
-                            resource: ub.as_entire_binding(),
+                            resource: wgpu::BindingResource::Buffer(fatia),
                         },
                         wgpu::BindGroupEntry {
                             binding: 1,
@@ -247,50 +297,46 @@ impl GpuCook {
         });
         encoder.copy_buffer_to_buffer(&dst, 0, &staging, 0, bytes);
         gpu.queue.submit(Some(encoder.finish()));
-
-        let slice = staging.slice(..);
-        let (tx, rx) = std::sync::mpsc::channel();
-        slice.map_async(wgpu::MapMode::Read, move |r| {
-            let _ = tx.send(r);
-        });
-        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-        rx.recv().ok()?.ok()?;
-        let flat: Vec<f32> = bytemuck::cast_slice(&slice.get_mapped_range()).to_vec();
-        staging.unmap();
-
-        let mut out: BTreeMap<NodeId, Stream> = BTreeMap::new();
-        for slot in &slots {
-            let lanes = crate::stream::element_stride(slot.dim) as usize / 4;
-            let n = slot.samples as usize;
-            let base = slot.offset as usize;
-            let run = &flat[base..base + n * lanes];
-            let col = match slot.dim {
-                Dim::Scalar => Column::Scalar(run.to_vec()),
-                Dim::Vec2 => Column::Vec2(
-                    run.as_chunks::<2>()
-                        .0
-                        .iter()
-                        .map(|c| [c[0], c[1]])
-                        .collect(),
-                ),
-                // Vec3 pads to 16 bytes (4 lanes) — take the first three.
-                Dim::Vec3 => Column::Vec3(
-                    run.chunks_exact(lanes)
-                        .map(|c| [c[0], c[1], c[2]])
-                        .collect(),
-                ),
-                _ => Column::Vec4(
-                    run.as_chunks::<4>()
-                        .0
-                        .iter()
-                        .map(|c| [c[0], c[1], c[2], c[3]])
-                        .collect(),
-                ),
-            };
-            out.entry(slot.node)
-                .or_insert_with(|| Stream::new(n))
-                .set(slot.column.clone(), col);
-        }
-        Some(out)
+        Some((staging, slots))
     }
+}
+
+/// **A metade que LÊ** — um `staging` já MAPEADO de volta em streams, e desmapeia-o.
+pub(crate) fn le_tap(staging: &wgpu::Buffer, slots: &[Slot]) -> BTreeMap<NodeId, Stream> {
+    let flat: Vec<f32> = bytemuck::cast_slice(&staging.slice(..).get_mapped_range()).to_vec();
+    staging.unmap();
+    let mut out: BTreeMap<NodeId, Stream> = BTreeMap::new();
+    for slot in slots {
+        let lanes = crate::stream::element_stride(slot.dim) as usize / 4;
+        let n = slot.samples as usize;
+        let base = slot.offset as usize;
+        let run = &flat[base..base + n * lanes];
+        let col = match slot.dim {
+            Dim::Scalar => Column::Scalar(run.to_vec()),
+            Dim::Vec2 => Column::Vec2(
+                run.as_chunks::<2>()
+                    .0
+                    .iter()
+                    .map(|c| [c[0], c[1]])
+                    .collect(),
+            ),
+            // Vec3 pads to 16 bytes (4 lanes) — take the first three.
+            Dim::Vec3 => Column::Vec3(
+                run.chunks_exact(lanes)
+                    .map(|c| [c[0], c[1], c[2]])
+                    .collect(),
+            ),
+            _ => Column::Vec4(
+                run.as_chunks::<4>()
+                    .0
+                    .iter()
+                    .map(|c| [c[0], c[1], c[2], c[3]])
+                    .collect(),
+            ),
+        };
+        out.entry(slot.node)
+            .or_insert_with(|| Stream::new(n))
+            .set(slot.column.clone(), col);
+    }
+    out
 }

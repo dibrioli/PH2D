@@ -345,11 +345,7 @@ imagens**; a medição acima do tecto (compilação local) fica por refazer, e o
 vectorial viva — ADR-0154) e leu `~0,7 ms` acima do §3 nesta sessão; o código dela é o mesmo, logo a
 diferença é do ambiente (o app aberto acima).
 
-⏳ **ABERTO, e é a próxima alavanca:** a leitura dos números nos cartões do grafo
-(`readout::take_tap`) espera a placa terminar (`poll` síncrono) — **`0,68 ms` por quadro**, `60 %` do
-Motion que sobra. Ela mediu-se a `+0,075 ms` num arnês sem janela, onde não há quadro anterior a
-esperar; no app ela serializa a CPU com a placa. A cura é a leitura **assíncrona, um quadro atrás**
-(o cartão já é um quadro atrás hoje — ver o `stamp`).
+✅ **E a leitura dos cartões, que era a próxima alavanca, FECHOU no §8.6.**
 
 ⛔ **Dois vermelhos PRÉ-EXISTENTES que a corrida de fecho apanhou** (os dois `#[ignore]`, logo o CI
 nunca os corre): `write_the_rig_figures` (a cena `=120` tem hoje `19` pontos na corda contra os `20`
@@ -362,3 +358,45 @@ com o CONTROLO da marcha completa) · a bomba usa-a na rota de fronteiras e não
 (`a_rota_de_fronteiras_nao_simula_o_laco_que_elas_nao_leem`) · a lei do veredito e a filtragem, puras ·
 e a costura inteira **na placa real** (`a_placa_que_desenhou_o_sink_nao_pede_a_tomada`, com o CONTROLO
 de uma grelha sem aparência, que continua a pedir) · o pivô pede o sink dele. **Mutação 6 de 6.**
+
+### §8.6 — ✅ A leitura dos cartões deixou de esperar pela placa (2026-09-24)
+
+⚠️ **O que o dono aprovou no smoke da §8.5** (as imagens a `1,23 ms` de Motion; as cruzinhas das
+posições intactas) é o ponto de partida desta wave, que ele mandou seguir.
+
+**O defeito:** o `GpuCook::tap` fazia `poll(wait_indefinitely)`. O cabeçalho dele mediu `+0,075 ms`
+num arnês sem janela — e ali a fila está vazia. No app a fila tem o quadro anterior inteiro, e a CPU
+ficava parada à espera de TUDO: `0,68 ms` por quadro na RTX, `60 %` do Motion que sobrava.
+
+**A cura** ([`tap_voo.rs`](../../crates/ph2d-gpu-cook/src/tap_voo.rs)): `GpuCook::tap_sem_espera`
+encomenda a leitura num quadro e recolhe-a no seguinte (`poll(Poll)`, que não bloqueia), com **um**
+pedido em voo de cada vez. Os cartões ficam um quadro mais atrás (já eram um). ⚠️ **Um quadro que
+não é da placa DESCARTA a leitura** — sem isso, voltar à placa mostraria números de há minutos. O
+`tap` síncrono **fica** para os gates e as sondas, e as duas rotas partilham o gather e a leitura
+(`encomenda_tap` · `le_tap`), logo leem as **mesmas** amostras — e há gate a afirmá-lo ao bit.
+
+**E a encomenda ficou mais barata:** ela criava um buffer de parâmetros **por coluna e por quadro**;
+hoje é **um** buffer persistente escrito de uma vez, com uma fatia alinhada por coluna.
+
+**Medido (imagens, `32 768`):**
+
+| placa | Motion (§8.5) | **Motion agora** | CPU (§8.5) | **CPU agora** | load |
+|---|---:|---:|---:|---:|---|
+| **iGPU** (proxy de telemóvel) | 3,98 | **0,72–0,75** | 6,62 | **3,65** | `4,3 → 4,1` |
+| RTX | 1,18 | ~1,1–1,3 | 3,59 | — | ⚠️ `4,5 → 5,8`, 48 processos de outras linhas |
+
+⭐⭐ **No proxy de telemóvel o Motion caiu `5×`** — o custo era esperar por uma placa LENTA, que é
+exactamente o regime do telemóvel. ⚠️ **Na RTX quase não mexe, e a medição mostra porquê:** ali o
+que custa é a ENCOMENDA (`0,34`–`0,42 ms`, relógios locais), e o empacotamento dos parâmetros **não
+a moveu** — o custo na NVIDIA está na submissão em si. ⏳ **Nomeado e não perseguido:** a cura seria
+encomendar a leitura no MESMO submit do cozimento; no computador de secretária já é 60 fps com folga,
+e o alvo do ciclo é o telemóvel.
+
+**Gates:** a leitura encomenda num quadro e recolhe no seguinte, **igual ao bit** à síncrona, e
+descartar esquece as duas coisas (com o controlo) · a leitura **nunca espera** (régua de TEXTO sobre
+o corpo — um relógio seria mais uma flake de carga, e esperar dá a mesma resposta mais tarde) · na
+ponte, dois quadros até haver números e um quadro da CPU a descartar. **Mutação 5 de 5** — esperar
+pela placa · descartar só metade · a ponte sem descarte · a ponte de volta ao síncrono · todas as
+colunas a lerem a fatia da primeira. ⚠️ **NOMEADA e sem régua determinística:** *«um pedido em voo de
+cada vez»* — encomendar por cima de um em voo só se vê com uma placa mais lenta que o quadro, o que
+nenhum gate sem relógio reproduz; a guarda é o `if em_voo.is_none()`.

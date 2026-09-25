@@ -113,6 +113,8 @@ pub struct GpuCook {
     /// The tap's compute pipeline, built on first use and reused. `Option` and
     /// not built in `new()` because `GpuCook` is `Default` and has no device.
     pub(crate) tap_pipeline: Option<tap::TapPipeline>,
+    /// A leitura dos cartões sem esperar pela placa — ver [`crate::tap_voo`].
+    pub(crate) tap_voo: crate::tap_voo::TapVoo,
     /// The fixed tick [`Self::prev`] belongs to — the GPU sim's own clock,
     /// mirroring `MotionCookPump::last_cooked_tick`. A sequential cook owes one
     /// step per tick, so the caller needs to know which one it last took; a

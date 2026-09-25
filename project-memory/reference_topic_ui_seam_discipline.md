@@ -88,3 +88,4 @@ de `0/42`.
 cópias. ⚠️ O gatilho foi acrescentar um `<select>` ao cabeçalho: ele fez a barra dobrar em duas linhas
 (50 → 96 px) e tudo desceu 46 px. *Uma mudança de layout de um controlo novo paga-se num botão do
 outro lado da página, e o teste acusa a lei.*
+- ⛔⛔ [Uma AMOSTRA de selector NÃO emite evento — o despacho curto-circuita, e um braço de `Click` ali é código morto](feedback_a_picker_swatch_emits_no_event_and_a_click_arm_for_it_is_dead_code.md) (descido do índice na integração de 2026-09-25)

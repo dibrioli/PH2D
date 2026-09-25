@@ -101,6 +101,17 @@ fn render_at(
     }
     let shade = Shade {
         wireframe: wire,
+        // ⛔⛔ **A LUZ É ESCRITA POR NOME, e não herdada do `Shade::default()`** (integração da
+        // rodada 03, 2026-09-25). As barras desta sonda (`78 %` rasante, `70 %` do miolo) foram
+        // calibradas sobre o `Matcap(0)`, e a `line/3DModeling` trocou a luz de FÁBRICA para a
+        // lei que assa (`Lighting::Pbr`, `c185de0a3`) — a sonda passou a ler `57,4 %` e `62 %`
+        // sem uma linha do arame mudar, e com esta linha volta a `9 de 9`. É a armadilha que o
+        // §5 já tem escrita para o `the_two_lights_agree…`: *uma sonda que tira a vista do
+        // valor de fábrica mede outro programa no dia em que a fábrica muda*. ⚠️ O que ela
+        // NÃO responde, e fica nomeado no registo da rodada: se o arame se LÊ tão bem sobre a
+        // luz PBR (a régua `ink_in` é um CONTRASTE de luma, e a superfície PBR rasante é mais
+        // escura) — essa é outra pergunta, com outra régua.
+        lighting: ph2d_mesh_render::Lighting::Matcap(0),
         ..Shade::default()
     };
     let rig = LightRig::default();

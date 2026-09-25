@@ -70,11 +70,23 @@ Use `git bisect skip` nessa faixa.
 - `CARGO_BUILD_WARNINGS=deny cargo check --workspace --all-targets` — limpo.
 - `cargo clippy --workspace --all-targets -- -D warnings` — zero avisos.
 - `BASE=main nextest-impacted` — **19 278 / 19 278** verdes, zero TIMEOUT/SIGSEGV.
-- `censos-da-arvore-combinada.sh` e a bateria de GPU do `ph2d-mesh-render` — ver o fim deste §.
+- `censos-da-arvore-combinada.sh` — **127 / 127** verdes (controlo do filtro `12 de 12`).
+- Os dois gates que leem o `CLAUDE.md` (`architecture_docs_*`) — `6 / 6`.
+- A bateria de GPU (`#[ignore]`, o CI **não** a corre) do `ph2d-mesh-render` + `ph2d-form-pbr`,
+  com adaptador: `221 / 223` à primeira. ⛔ **Os dois vermelhos vinham da PRÓPRIA linha**
+  (`probe_wire_continuity`: o arame do miolo a `62 %` contra `70`, o rasante a `57,4 %` contra
+  `78`) — o `main` lê `9 / 9` e a ponta ORIGINAL da `line/3DModeling` (`4c4c18ce7`, antes do
+  rebase) lê os MESMOS dois números. A causa: a sonda tirava a luz do `Shade::default()`, e a
+  linha trocou a luz de fábrica de `Matcap(0)` para `Pbr` (`c185de0a3`). Com a luz escrita por
+  nome volta a `9 / 9` — cura no commit do portão, com o porquê no fonte.
 
 ## §6 — Resíduo de processo
 
 - Um bloco `merge=text` temporário em `.git/info/attributes` (contra o Mergiraf a apagar
   remoções em ficheiros de contagem) foi **retirado** no fim.
+- ⏳ **ABERTO e nomeado (da `line/3DModeling`):** a sonda do arame prova a CONTINUIDADE em
+  profundidade sobre o matcap; **ninguém mediu se o arame se LÊ tão bem sobre a luz PBR de
+  fábrica** — a régua `ink_in` é um contraste de luma, e sobre a superfície PBR rasante o mesmo
+  arame lê `57–62 %` de tinta visível. É outra pergunta, com outra régua, e é da linha.
 - Os abertos de cada linha continuam nos handoffs delas (a foto do dono de 25/09 da 3DModeling;
   *«não vejo a bala»* na `=2` da vida).

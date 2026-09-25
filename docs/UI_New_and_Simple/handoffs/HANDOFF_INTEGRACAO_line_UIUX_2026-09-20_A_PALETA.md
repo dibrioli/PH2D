@@ -5,6 +5,12 @@
 > ⛔ Ele **não** é o handoff de [`…_2026-09-20.md`](HANDOFF_INTEGRACAO_line_UIUX_2026-09-20.md) (a
 > fronteira dos motores / as elisões / o balão), que já foi integrado. Esta é a **reabertura** da
 > linha por ordem do dono depois daquela integração: `7` commits sobre o merge-base `395da6a55`.
+>
+> ⛔⛔ **A jornada cresceu para `72` commits e este documento ficou como o DIÁRIO dela (uma `§9-*`
+> por wave).** A superfície de colisão do §2 abaixo é a dos primeiros `7` e está **VELHA**; o
+> documento do INTEGRADOR, com a superfície re-corrida depois do rebase, as assinaturas que mudaram
+> e o portão medido, é o
+> [`HANDOFF_INTEGRACAO_line_UIUX_2026-09-25_A_LINHA.md`](HANDOFF_INTEGRACAO_line_UIUX_2026-09-25_A_LINHA.md).
 
 ---
 

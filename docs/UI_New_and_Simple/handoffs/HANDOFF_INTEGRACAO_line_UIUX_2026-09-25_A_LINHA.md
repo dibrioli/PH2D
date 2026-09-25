@@ -16,14 +16,14 @@
 | | |
 |---|---|
 | ramo | `line/UIUX` · worktree `Worktrees/line-UIUX` |
-| merge-base | `395da6a55` |
-| commits | **72** (`git log --oneline main..line/UIUX`) · `291` ficheiros · `+21 567 / −4 818` |
-| o `main` andou | **1** commit desde o merge-base (`20a630f1b`, só `project-memory/project_teste_cascadeur_2d_bones_testbed.md`) — **sem sobreposição** com a linha |
+| merge-base | `20a630f1b` (depois do rebase; a linha nasceu de `395da6a55`) |
+| commits | **73** (`git log --oneline main..line/UIUX`, 72 de produto + este handoff) · `292` ficheiros |
+| o `main` andou | **1** commit desde que a linha nasceu (`20a630f1b`, só `project-memory/project_teste_cascadeur_2d_bones_testbed.md`) — **sem sobreposição**; o rebase aplicou os 73 **sem conflito** |
 | contadores partilhados | **ZERO mexidos** (tabela do script no §1) |
 | contrato congelado (§6) | **intocado** |
 | ADR | **nenhum** |
 | pacote externo novo | **nenhum** |
-| rebase | ver §6 — feito na worktree antes deste handoff |
+| rebase | feito sobre `main` = `20a630f1b`, limpo (§6) — a fusão é `--ff-only` se o `main` não andar |
 
 **O que a linha entrega, por assunto** (o detalhe de cada um é a `§9-*` indicada no handoff da jornada):
 
@@ -50,7 +50,7 @@
 
 ```text
 SUPERFÍCIE DE COLISÃO — line/UIUX contra main
-  merge-base 395da6a55   ·   72 commit(s)   ·   291 arquivo(s)
+  merge-base 20a630f1b   ·   73 commit(s)   ·   292 arquivo(s)
 ▸ SCHEMAS
     PROJECT_SCHEMA                        160   (base: 160)
       └ tripla do gate               (160, 13, 22)   (base: (160, 13, 22))
@@ -178,13 +178,29 @@ Inspector (abre dobrado, ações na coluna do valor).
 
 ## §5 — O portão do fecho (MEDIDO, sobre o diff acumulado)
 
-PREENCHIDO_NO_FECHO
+Tudo na worktree, pela porta `scripts/ph2d-run.sh`, com a máquina a `load 40`–`77` (outras linhas a correr):
+
+| portão | resultado |
+|---|---|
+| `nextest-impacted.sh` sobre o diff acumulado (contra o merge-base original) | **17 712 / 17 712** verdes |
+| `CARGO_BUILD_WARNINGS=deny cargo check --workspace --all-targets` | **zero** erros, **zero** avisos |
+| `cargo clippy --workspace --all-targets -- -D warnings` | **verde** (`6 min 09 s`) |
+| `check-standalone-optional.sh` | ✓ (`10` crates com dependência interna opcional, entre elas `ph2d-tool-painter` e `ph2d-host-desktop`) |
+| `check-workflow-packages.sh` | ✓ (`32` nomes citados pelos workflows contra `387` membros) |
+| `doc-index.sh --check` | verde depois de regenerar o índice desta pasta (este handoff é o 13.º) |
+| provas de mutação das waves | cada `§9-*` da jornada traz a sua (as desta última wave: `§9-noniestricies`) |
+
+⚠️ **O `ship.sh` NÃO foi corrido** — é do integrador/ship, por ordem do dono (§0.7).
 
 ---
 
 ## §6 — Rebase e árvore combinada
 
-PREENCHIDO_NO_REBASE
+- `git rebase main` sobre `20a630f1b`: **73/73 aplicados, zero conflitos** (o único commit do `main` toca um ficheiro de `project-memory/` que a linha não toca).
+- `bash scripts/censos-da-arvore-combinada.sh` **depois** do rebase: **127 / 127 verdes**, controlo do filtro **12 de 12** censos correram.
+- A superfície do §1 foi **re-corrida depois do rebase** (é a que está colada): nenhum contador se mexeu.
+
+⚠️ **Se outra linha fundir antes desta**, o que tem de se re-correr na árvore somada é: os censos (§1.5.9 5-bis), as catracas do §2.3 (são medidas e SOMAM) e o gate `nenhuma_escolha_do_app_e_montada_a_mao` — uma escolha pintada à mão noutra linha reprova aqui, e a cura é a porta, não a lista de excepções.
 
 ---
 

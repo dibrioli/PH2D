@@ -410,6 +410,10 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   explica que é para não medir o perfil de build) — ⚠️ **verdade sobre o PERFIL e falso sobre o
   FAN-OUT**, que é exactamente a distinção que esta lista existe para guardar.
   *Todo gate que compara duas medianas de um RECURSO é candidato, e a lista nunca estará completa.*
+  **Promovidos pela integração de 2026-09-25** (a pedido da `line/PainterWatercolor`):
+  `the_cost_of_a_gated_stroke_follows_the_footprint_not_the_canvas` ([`ph2d-tool-painter`](crates/ph2d-tool-painter/),
+  `mask_gate_tests` — 3/3 verde sozinho a `load ~7`, zero linhas de diff) · `the_pen_down_is_still_a_canvas_copy_and_this_is_its_number`
+  (`measure_input_cost.rs`; §31.3 do diário arquivado da linha).
   ⛔ **E um CONTADOR atrás de estado POR THREAD (memo, arena) também** — ele conta quantas threads o escalonador pôs a
   trabalhar: o gate da superfórmula leu `morno 0/4/8` sob fan-out e foi curado numa pool de UMA thread (13/09, ESTADO W2 §6).
 - ⛔⛔ **E há uma flake de GPU que NÃO é `#[ignore]` e só existe no LINUX do CI** (medido
@@ -564,7 +568,15 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ([handoff](docs/Painter/handoffs/HANDOFF_INTEGRACAO_line_app_painter_2026-09-12.md): o §5 tem as
   **oito** armadilhas, entre elas cinco `#[cfg(test)]` órfãos que se colaram ao módulo vizinho **em
   silêncio**, e o §6 as **cinco** premissas minhas que a medição derrubou).
-  **Smokes:** `PH2D_IMPASTO_SMOKE=1|2` · `PH2D_WETPAINT_SMOKE` (+ `PH2D_FLUID_PROFILE=1`) · `PH2D_MASK_SMOKE` ·
+  ⭐⭐⭐ **E a `line/PainterWatercolor` fechou em 25/09 (140 commits, smoke do dono aprovado em cada wave):** a costura
+  do retorno na aquarela · a lei da tinta K–M na folha `ph2d-pigment` (o Digital mistura por ela; a aquarela não,
+  recusa medida) · o **Composite Brush** de até 7 camadas, montado à mão, com ordem por traço, e o Blur da pilha em
+  caixa · o produto em **`x86-64-v2`** (ADR-0174) · o **Wet Paint** a `~8 ms` por quadro a raio 250 (era `~31`) ·
+  ADRs **0171–0175**. ⚠️ **Na integração (com a UIUX) o cartão *Mixing* subiu a altura de abertura do
+  `painter_layers` de `1 529` para `1 596`** — é a SOMA das duas linhas, com a conta fechada no gate
+  (`+67` = uma fileira com moldura). [Handoff da linha](docs/Painter/handoffs/HANDOFF_INTEGRACAO_line_PainterWatercolor_A_LINHA_2026-09-25.md)
+  · [diário](docs/Painter/handoffs/HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-09-20.md).
+  **Smokes:** `PH2D_IMPASTO_SMOKE=1|2` · `PH2D_COMPOSITE_SMOKE=1` · `PH2D_WETPAINT_SMOKE` (+ `PH2D_FLUID_PROFILE=1`) · `PH2D_MASK_SMOKE` ·
   `PH2D_TAPER_SMOKE` · `PH2D_LINE_SMOKE` · `PH2D_SUBSTRATE_SMOKE`. Diagnóstico: `PH2D_PAINT_PERF=1` ·
   `PH2D_PREVIEW_DIAG` · `PH2D_PREVIEW_DUMP=<dir>`.
   ⚠️ **Rode a suíte do Painter em DEBUG também** (precedente registrado), e os `--ignored` com **`--test-threads=1`**
@@ -1559,33 +1571,16 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   em 18 crates). ⛔⛔ **Para quem funde:** os 30 gates são CENSOS — um literal de UI novo de outra linha reprova na
   árvore COMBINADA (cura: migrar o texto, ou isenção NOMEADA com mecanismo), e o CI **não os corre** (o job de teste é
   um `-p` de 25 pacotes; quem os corre é o `ship.sh`).
-  **Aberto:** ⭐⭐⭐ **A FRONTEIRA DOS MOTORES FECHOU e o HR-15 está a ZERO sobre a população LARGA**
-  (20/09, [handoff](docs/UI_New_and_Simple/handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-09-20.md)): os `1 519` rótulos que
-  os MOTORES escreviam numa tabela de dados falam por `ph2d-i18n` (`4 344` → **`5 386`** chaves, 19 tabelas novas), com a
-  chave **derivada do id** — ⭐ `74 %` da fronteira era DERIVAÇÃO e não autoria, medido antes da 1.ª linha. ⚠️ **A
-  população do gate era `44` de `325` crates**, e alargada ela acusou `189` rótulos que ninguém via: *a dívida não era o
-  que a régua dizia; a régua é que era estreita.* ⭐⭐ **E há uma régua que lê o ECRÃ e não o fonte** — os 30 censos
-  respondem *«vem da tabela?»* e a varredura das elisões responde ***«COUBE?»***, sobre uma **ESCADA** de quatro larguras
-  (⛔ ela media UMA, a de FÁBRICA, e o dono trabalha no mínimo: `129` cortes invisíveis e **três controlos que pintavam
-  NADA** apareceram de uma vez). ⭐⭐⭐ **E a ordem do dono de 19/09 — *«encurtar · balão ao passar o rato»* — está
-  cumprida nas duas metades:** toda palavra cortada por este app é legível ao passar o rato (`128` de `128`, com o gate a
-  prová-lo pela MESMA varredura que as achou), e *um nome perde a EXPLICAÇÃO antes de perder LETRAS* tirou as reticências
-  a `18` rótulos **sem uma chave nova**. ⛔ **Renomear um rótulo à mão foi MEDIDO e REVERTIDO:** quatro renomes fecharam
-  `2` de `80` e deixaram `54` citações do nome antigo na prosa, três delas **neste §5** ⇒ os `~63` nomes compostos que
-  ficam são decisão de VOCABULÁRIO do dono, não dívida.
-  ⛔⛔⛔ **E a varredura das elisões estava calibrada num ÂMBITO e julgada noutro — curado na integração de 20/09:**
-  `flip`, `painter_layers` e `wet_tuning` **não estão no `default`** do `ph2d-panel-registry-init` (chegam pelo
-  `shells/desktop`), logo uma corrida `-p` **não os regista** e a catraca lia `0` como *«este painel não corta»* em vez de
-  *«este painel não existe aqui»* — `7` rótulos cortados que as duas catracas declaravam a ZERO, com todas as corridas da
-  linha verdes. Medido: `-p` **24 painéis / 11 375 rótulos** contra `--workspace` **28 / 12 545**. ⭐ Hoje o piso é o do
-  âmbito em que o app CORRE (`28` / `12 000`) e a corrida pobre **reprova alto com a causa na mensagem** — *um piso que
-  ambos os âmbitos passam não é um piso, é um adorno*, e a frase que condena a redacção antiga já estava escrita pelo
-  próprio autor dela.
-  ⏳ **Ficam as três decisões do dono:** a pose 2D/3D (`722` sítios de produto, 5 crates), partir o `DrawMode` nos dois
-  eixos (`17` variantes vivas, eram 14) e os 9 toggles de módulo → Layout · o **«travou por um minuto»** de 09/09 segue
-  **sem reprodução** (o gatilho — colapsar por arrasto — saiu na w49, e o penhasco de `182 ms` foi medido e **não** é ele:
-  três ordens de grandeza) · ⏳ **as superfícies de UI que as outras linhas trouxeram foram escritas contra a lei de
-  espaçamento ANTIGA** — wave do dono da UI, não da integração.
+  ⭐⭐⭐ **A LINHA DE PROPRIEDADE CHEGOU AOS PAINÉIS E O TÍTULO DE SECÇÃO É UM SÓ** (25/09,
+  [handoff do integrador](docs/UI_New_and_Simple/handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-09-25_A_LINHA.md)):
+  toda escolha passa por `paint_choice_row`, todo botão de acção por `caixa_do_botao`, todo grupo se
+  DECLARA (`composto::grupo`) e a catraca `CARGA_DE_COMANDOS` só desce; o título de secção do app é o
+  do Grid (corpo `Md`, sem caixa alta, separador à direita) e a grade `Behind` vai atrás de verdade
+  pelo acumulador das faixas. A fronteira dos motores, a escada das elisões e o balão (20/09) estão no
+  [handoff de 20/09](docs/UI_New_and_Simple/handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-09-20.md).
+  ⏳ **Aberto:** partir o `DrawMode` nos dois eixos · a pose 2D/3D e os 9 toggles de módulo → Layout (as três
+  **decisão do dono**) · as caixas do `painter_layers` registadas como botão (só instrumento) · o painel da
+  escultura (território da `line/sculpt3d`) · o **«travou por um minuto»** de 09/09 segue **sem reprodução**.
   **Smokes:** abrir o app (a UI nova é o caminho de omissão) · abrir **todos** os painéis pelo menu *Window* e mexer no
   ecrã (a w50: sem número à vista, o sintoma é o app deixar de engasgar) · *View → Reset Panel Layout*.
   ⚠️ **`PH2D_UI_NEW=0` NÃO é o ecrã de antes do redesenho** — ele devolve **seis pintores de widget**, a família de temas

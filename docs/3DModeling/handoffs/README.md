@@ -13,7 +13,7 @@
 [`06_resultados_cena_e_gizmo.md`](../06_resultados_cena_e_gizmo.md) são uma wave cada, com a tabela
 medida e as provas de mutação ao lado. Esta pasta guarda o que atravessa a **fronteira da linha**.
 
-**12 handoffs.** ⚠️ *Esta contagem dizia «10» e a tabela não tinha o de 10/09 — um índice escrito à
+**18 handoffs.** ⚠️ *Esta contagem dizia «10» e a tabela não tinha o de 10/09 — um índice escrito à
 mão envelhece no dia do primeiro esquecimento.*
 
 | Data | Arquivo | Papel | Assunto |
@@ -35,6 +35,8 @@ mão envelhece no dia do primeiro esquecimento.*
 
 | 2026-09-16 | [HANDOFF_INTEGRACAO_line_3DModeling_FECHO_2026-09-16.md](HANDOFF_INTEGRACAO_line_3DModeling_FECHO_2026-09-16.md) | ⭐ **FECHO DA LINHA** | **89 commits desde `1d43da737`**, `238` ficheiros. O ÍNDICE e o mapa de colisão da rodada: o **modo Render** inteiro (material · luz como objecto · céu · olhar), **o quadro no DISPOSITIVO**, a `W4` (sombra própria · oclusão · **o chão**), **o arco** do perfil e o **tecto de recursos por LINHA** · ⭐⭐ o `main` **não andou** ⇒ `--ff-only` directo · ⚠️ `PROJECT_SCHEMA` **128 → 132** e `FIELD_DOC_VERSION` **22 → 23** (conte o DELTA) · **três crates novas**, zero deps externas · contrato congelado **intocado**, zero ADR |
 | 2026-09-20 | [HANDOFF_INTEGRACAO_line_3DModeling_A_LINHA_2026-09-20.md](HANDOFF_INTEGRACAO_line_3DModeling_A_LINHA_2026-09-20.md) | ⭐ **FECHO DA LINHA** | **87 commits**, `228` ficheiros, **já rebaseado** sobre o `main` (dois conflitos, ambos em ficheiros de MEMÓRIA append-only; **zero em código**). Fecha **SETE dos oito** ingredientes do modo Render: a luz indirecta por SONDAS, a cor devolvida ao chão, a **luz que atravessa a peça**, o **acabamento** (brilho), a **camada de estilo** e a **`W10`** — a borda mole da sombra a chegar ao MODO NORMAL (`9,20 → 1,00` na placa) · ⚠️ `PROJECT_SCHEMA` **144 → 145**, **conte o DELTA** · ⭐ os três registos, os outros quatro schemas e o contrato congelado **INTOCADOS**, zero ADR, **zero deps externas** · ⛔⛔ os censos da árvore combinada apanharam **um** vermelho (o censo de i18n lia TRÊS tabelas de QUATRO) e ele está **curado** · ⚠️ a parede clean-room deixou de ser um doc e passou a `deny` real em `.claude/` · ⛔⛔⛔ **e ela traz UM GATE VERMELHO por ORDEM DO DONO** (o quadro de MOVIMENTO: `10` de `22` cenas nítidas contra `15` de `18` no main, com a cena `30` a `7,2×` e INVARIANTE à carga) — a dívida está nomeada na **§10** e vai para a `W9` |
+| 2026-09-21 | [HANDOFF_INTEGRACAO_line_3DModeling_A_CURVA_2026-09-21.md](HANDOFF_INTEGRACAO_line_3DModeling_A_CURVA_2026-09-21.md) | wave | **A CURVA:** o assado e a malha passam a escrever o MESMO byte no ecrã (a curva sRGB) — ⚠️ nunca integrado sozinho; SUPERSEDIDO pelo de 25/09 |
+| 2026-09-25 | [HANDOFF_INTEGRACAO_line_3DModeling_A_LINHA_2026-09-25.md](HANDOFF_INTEGRACAO_line_3DModeling_A_LINHA_2026-09-25.md) | ⭐ **FECHO DA LINHA** | **105 commits**, `308` ficheiros, **já rebaseados** sobre `20a630f1b`. A 1.ª obra (a lei que acende o sprite, `ph2d-form-pbr`), «o que se vê é o que se assa», o catavento (`Mesh3D`), e a `W9` inteira até à oclusão a passo · ⚠️ `PROJECT_SCHEMA` **+5** (`161`–`165`), registos **+1** · o atrito é com a `line/components`, a `line/sculpt3d` e a `line/UIUX` (§4, medido) |
 
 ---
 

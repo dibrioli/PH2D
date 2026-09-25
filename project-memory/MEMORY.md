@@ -33,9 +33,7 @@
 ## Comunicação & decisão
 - ⭐ [Decisões TÉCNICAS são delegadas (padrão-ouro); produto e envio são do Enio](feedback_architecture_decisions_are_delegated_to_the_gold_standard.md)
 - ⛔ [A linha acaba no HANDOFF — ordem das linhas e árvore suja são do INTEGRADOR](feedback_the_line_ends_at_the_handoff_never_ask_the_owner_an_integrators_question.md)
-- ⭐⭐ [Chave e texto do MESMO tipo é defeito à espera — tipe a chave](feedback_a_key_and_a_text_of_the_same_type_is_a_defect_waiting.md)
 - ⭐ [**Como um CONTROLO mente** — a família (21)](reference_topic_control_design_hazards.md)
-- ⛔⛔⛔ [Smoke do Motion = FORMAS + SIMULAÇÃO com campos; sem forma só há gizmos — esquecido 2× em 23/09; fotografe antes](feedback_a_motion_smoke_scene_needs_shapes_and_simulation.md)
 - ⭐⭐ [Chave e texto do MESMO tipo é defeito à espera](feedback_a_key_and_a_text_of_the_same_type_is_a_defect_waiting.md)
 - ⛔⛔⛔ [Smoke do Motion = FORMAS + SIMULAÇÃO; fotografe antes](feedback_a_motion_smoke_scene_needs_shapes_and_simulation.md)
 - ⛔ [Smoke ao dono explica o que cada coisa na tela É; cada passo conduzido e fotografado](feedback_a_smoke_for_the_owner_explains_what_each_thing_on_screen_is.md)
@@ -55,7 +53,7 @@
 - ⭐⭐ [A CARA de um app é a tabela de tokens, não os widgets — redesenhar 44 pintores com a mesma pele deixa «a mesma cara»; comece pelos 5 números](feedback_the_face_of_an_app_is_its_token_table_not_its_widgets.md)
 - ⛔ [Gesto escrito em DUAS metades aceita a variante nova em SÓ UMA — silêncio absoluto, e a fixtura que chama a porta interna fica verde](feedback_a_gesture_written_in_two_halves_accepts_a_new_variant_in_only_one.md)
 - ⭐⭐ [Máximo AMOSTRADO que vira limite de segurança erra sempre PARA BAIXO](feedback_a_sampled_maximum_that_becomes_a_safety_bound_errs_only_downwards.md)
-- 📚 [Comunicação & decisão: mais (57) lições, uma linha cada, verbatim](reference_topic_communication_and_decision_lessons.md)
+- 📚 [Comunicação & decisão: mais (58) lições, uma linha cada, verbatim](reference_topic_communication_and_decision_lessons.md)
 
 ## Git & colisão multi-agente
 - [Perigos de git/edição (15)](reference_topic_git_hazards.md)
@@ -108,9 +106,8 @@
 - [Teste Cascadeur (ossos 2D fora do repo); a rede neural só pelo rato simulado](project_teste_cascadeur_2d_bones_testbed.md)
 - [onde os objetos NASCEM](feedback_where_new_objects_are_born_is_the_fixture_your_gates_are_missing.md)
 - [Física do impasto/sculpt (10)](reference_topic_impasto_physics.md)
-- ⭐ [**Como uma RÉGUA mente** — a família (161)](reference_topic_measurement_discipline.md)
+- ⭐ [**Como uma RÉGUA mente** — a família (165)](reference_topic_measurement_discipline.md)
 - ⛔⛔⛔ [Uma régua enviesada manda a wave seguinte para onde ela própria está errada](feedback_a_biased_ruler_sends_work_to_where_it_is_itself_wrong.md)
-- ⛔⛔ [Régua de layout alimentada pelo que o layout PRODUZIU oscila em DOIS quadros — e nenhuma régua de um quadro o vê](feedback_a_ruler_that_reads_what_the_layout_produced_oscillates.md)
 - ⛔ [Régua de vazamento cuja máscara usa o predicado DO PRODUTO lê 0,00 % sobre o defeito](feedback_a_leak_ruler_masked_by_the_products_own_predicate_hides_the_leak.md)
 - ⛔⛔ [Sweep da parede VERDE sobre espec que TRADUZIA o alvo](feedback_a_sweep_in_one_language_does_not_prove_filtering_in_another.md)
 - ⛔ [viés em NDC não é constante no mundo: 3e-3 = 30 % da distância do olho](feedback_a_depth_bias_constant_in_ndc_is_not_constant_in_the_world.md)

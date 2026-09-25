@@ -872,6 +872,7 @@ ponderação ser observável* — a mesma família do corpus no ponto neutro de 
 - ⛔⛔⛔ [Uma cena que MUDA de aspecto depois de uma wave pode ser a CURA — construa o lado convergido e meça os dois contra ele (`0,3767` contra `0,0142`)](feedback_a_photograph_found_what_no_gate_could_see.md)
 - ⛔⛔ [Gate que mede com a MESMA função que julga fica verde sobre qualquer mutação dela](feedback_a_ruler_that_is_the_law_approves_any_law.md)
 - ⛔⛔ [Uma recusa medida guarda o VEREDITO; o mecanismo escrito ao lado é hipótese, e pode mandar procurar no sítio errado](feedback_a_refusal_names_a_mechanism_and_the_mechanism_can_be_wrong.md)
+- ⛔⛔ [Régua de layout alimentada pelo que o layout PRODUZIU oscila em DOIS quadros — e nenhuma régua de um quadro o vê](feedback_a_ruler_that_reads_what_the_layout_produced_oscillates.md)
 ## ⛔⛔⛔ Uma forma CENTRADA no pivô não consegue declarar uma cabeça (2026-09-19)
 
 Report do dono, de manhã: *«Shape:Bone em Skeleton:Duplicator ficou 180 graus rodado.»* Eu medi a

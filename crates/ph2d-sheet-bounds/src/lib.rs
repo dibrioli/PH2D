@@ -42,20 +42,20 @@ use ph2d_render::Sprite;
 /// nos sprites que alguém tivesse repivotado. *Uma segunda resposta a «onde está isto» é como as
 /// duas passam a discordar.*
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) struct PieceBox {
+pub struct PieceBox {
     /// Centro do quad, em unidades locais do pai.
-    pub(crate) center: [f32; 2],
+    pub center: [f32; 2],
     /// Meias-extensões da AABB do quad (já com rotação e escala), em unidades locais do pai.
-    pub(crate) half: [f32; 2],
+    pub half: [f32; 2],
     /// `center - translation` — o que é preciso subtrair para voltar da caixa à pose.
-    pub(crate) pivot_offset: [f32; 2],
+    pub pivot_offset: [f32; 2],
 }
 
 /// A caixa de uma peça, a partir do seu `Sprite` + `Transform` locais.
 ///
 /// PURA de propósito: é aqui que mora a única trigonometria deste módulo, e um teste consegue
 /// varrê-la sem montar um mundo.
-pub(crate) fn piece_box(
+pub fn piece_box(
     size: [f32; 2],
     t_translation: [f32; 2],
     t_rotation: f32,
@@ -95,7 +95,7 @@ pub(crate) fn piece_box(
 /// silencioso — a [`health`] vê a mesma condição e acende a moldura, que é onde o artista a lê.
 /// *Um `clamp` com `min > max` devolve lixo em silêncio; este eixo responde `0.0` e deixa o aviso
 /// para quem o sabe mostrar.*
-pub(crate) fn clamp_center(center: [f32; 2], half: [f32; 2], bounds_half: [f32; 2]) -> [f32; 2] {
+pub fn clamp_center(center: [f32; 2], half: [f32; 2], bounds_half: [f32; 2]) -> [f32; 2] {
     let axis = |c: f32, h: f32, bh: f32| {
         let limit = bh - h;
         if limit <= 0.0 {
@@ -111,7 +111,7 @@ pub(crate) fn clamp_center(center: [f32; 2], half: [f32; 2], bounds_half: [f32; 
 }
 
 /// O pai desta entidade, se — e só se — ele for uma folha.
-pub(crate) fn sheet_parent(sim: &SimWorld, piece: Entity) -> Option<Entity> {
+pub fn sheet_parent(sim: &SimWorld, piece: Entity) -> Option<Entity> {
     let parent = sim.world().get::<ChildOf>(piece)?.parent();
     sim.world()
         .get::<SpriteSheetFrame>(parent)
@@ -124,7 +124,7 @@ pub(crate) fn sheet_parent(sim: &SimWorld, piece: Entity) -> Option<Entity> {
 /// ⚠️ Do `VecShape`, que **é** o tamanho: a folha recusa ter um campo próprio de tamanho (vide
 /// [`SpriteSheetFrame`]), e ler daqui é o que faz o redimensionamento pelo gizmo mudar as
 /// fronteiras sem ninguém propagar coisa nenhuma.
-pub(crate) fn sheet_half_local(sim: &SimWorld, sheet: Entity) -> Option<[f32; 2]> {
+pub fn sheet_half_local(sim: &SimWorld, sheet: Entity) -> Option<[f32; 2]> {
     match sim.world().get::<VecShape>(sheet)? {
         VecShape::Param { w, h, .. } => Some([(*w as f32 * 0.5).abs(), (*h as f32 * 0.5).abs()]),
         VecShape::Text(_) => None,
@@ -132,7 +132,7 @@ pub(crate) fn sheet_half_local(sim: &SimWorld, sheet: Entity) -> Option<[f32; 2]
 }
 
 /// A caixa de uma peça, lida do mundo. `None` se ela não for um sprite posicionado.
-pub(crate) fn piece_box_of(sim: &SimWorld, piece: Entity) -> Option<PieceBox> {
+pub fn piece_box_of(sim: &SimWorld, piece: Entity) -> Option<PieceBox> {
     let world = sim.world();
     let sprite = world.get::<Sprite>(piece)?;
     let t = world.get::<Transform>(piece)?;
@@ -151,7 +151,7 @@ pub(crate) fn piece_box_of(sim: &SimWorld, piece: Entity) -> Option<PieceBox> {
 /// sprite, ou quando já estava dentro. É esse silêncio que a torna segura de chamar a cada
 /// `CursorMoved` de um arrasto: sem movimento não há escrita, e sem escrita o undo (que regista
 /// por DIFF do mundo) não vê passo nenhum.
-pub(crate) fn confine(sim: &mut SimWorld, piece: Entity) -> bool {
+pub fn confine(sim: &mut SimWorld, piece: Entity) -> bool {
     let Some(sheet) = sheet_parent(sim, piece) else {
         return false;
     };
@@ -175,15 +175,15 @@ pub(crate) fn confine(sim: &mut SimWorld, piece: Entity) -> bool {
 
 /// O que está mal numa folha — as duas condições que o Enio quer ver na moldura.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub(crate) struct SheetHealth {
+pub struct SheetHealth {
     /// Duas peças ocupam o mesmo pixel. No bake, uma taparia a outra.
-    pub(crate) overlap: bool,
+    pub overlap: bool,
     /// Alguma peça sai da folha — porque a folha foi encolhida, ou porque a peça é maior que ela.
-    pub(crate) overflow: bool,
+    pub overflow: bool,
 }
 
 impl SheetHealth {
-    pub(crate) fn is_ok(self) -> bool {
+    pub fn is_ok(self) -> bool {
         !self.overlap && !self.overflow
     }
 }
@@ -225,7 +225,7 @@ fn child_boxes(sim: &SimWorld, sheet: Entity) -> Vec<Aabb> {
 /// um eixo. O ingénuo é `O(n²)` e roda **por quadro, por folha**: com as peças que um atlas real
 /// carrega isso é trabalho a mais no caminho do desenho, e o custo cresce onde ninguém olha. Aqui
 /// é `O(n log n)` mais os pares que de facto se cruzam em `x`.
-pub(crate) fn health(sim: &SimWorld, sheet: Entity) -> SheetHealth {
+pub fn health(sim: &SimWorld, sheet: Entity) -> SheetHealth {
     let Some(bounds_half) = sheet_half_local(sim, sheet) else {
         return SheetHealth::default();
     };

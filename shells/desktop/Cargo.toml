@@ -72,6 +72,8 @@ ph2d-panel-tokens = { path = "../../crates/ph2d-panel-tokens" }
 ph2d-panel-authored = { path = "../../crates/ph2d-panel-authored" }
 ph2d-panel-wet-tuning = { path = "../../crates/ph2d-panel-wet-tuning" }
 ph2d-render = { path = "../../crates/ph2d-render" }
+# As fronteiras de uma folha de sprites — saiu da shell na integração de 2026-09-25.
+ph2d-sheet-bounds = { path = "../../crates/ph2d-sheet-bounds" }
 # ⭐ A folha do afim `imagem-px → ecrã-px`: quatro assuntos da shell partilhavam esta lei, e duas
 # famílias que partilham código partilham uma FOLHA, nunca uma delas à outra (HOWTO §1.2).
 # ⭐ A folha da ranhura de pre-visualizacao: o tipo era uma struct do `app_state.rs`,
@@ -139,6 +141,8 @@ ph2d-timeline = { path = "../../crates/ph2d-timeline", features = [
     "skeleton",
 ] }
 ph2d-timeline-preview = { path = "../../crates/ph2d-timeline-preview" }
+# A timeline dentro do ficheiro de projecto — saiu da shell na integração de 2026-09-25.
+ph2d-timeline-persist = { path = "../../crates/ph2d-timeline-persist" }
 # ⭐ O MOTOR do onion da timeline — saiu da shell em 2026-09-14 (a cura nomeada do tecto
 # `the_shell_only_shrinks`): ele só depende de crates irmãs, e a shell fica com a CHAMADA.
 ph2d-timeline-onion = { path = "../../crates/ph2d-timeline-onion" }

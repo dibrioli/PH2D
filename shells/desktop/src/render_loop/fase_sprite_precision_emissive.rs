@@ -116,7 +116,7 @@ impl crate::App {
                 .bridge
                 .entity_for(row)
                 .map(ph2d_ecs::Entity::from_bits)
-                .and_then(|e| crate::sheet_bounds::sheet_parent(sim, e));
+                .and_then(|e| ph2d_sheet_bounds::sheet_parent(sim, e));
             if in_sheet.is_some() {
                 hero_intents::drain_reparent(
                     ph2d_editor_core::screens::hero::HierReparentIntent {

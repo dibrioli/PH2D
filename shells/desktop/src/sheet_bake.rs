@@ -22,7 +22,7 @@
 //! ⚠️ **Recusa quando a folha está doente.** Sobreposição faz uma peça conter os pixels da vizinha;
 //! transbordo faz a região declarada apontar para fora da imagem. Nos dois casos o `.png` e o
 //! `.json` sairiam a discordar um do outro, e esse defeito **só aparece no consumidor**, meses
-//! depois, noutro programa. A moldura já acende vermelha (`crate::sheet_bounds::health`) e o
+//! depois, noutro programa. A moldura já acende vermelha (`ph2d_sheet_bounds::health`) e o
 //! toast nomeia o remédio — *recusar apontando para a cura é melhor do que assar uma folha
 //! partida.*
 
@@ -96,7 +96,7 @@ pub(crate) fn compose_sheet(
     };
     // ⚠️ A recusa vem ANTES de qualquer leitura de GPU: ler N texturas para depois descobrir que a
     // folha está doente paga o custo caro do caminho que ia ser deitado fora.
-    let health = crate::sheet_bounds::health(sim, sheet);
+    let health = ph2d_sheet_bounds::health(sim, sheet);
     if !health.is_ok() {
         let what = match (health.overlap, health.overflow) {
             (true, true) => tr("shell.sheet_bake.pieces_overlap_and"),
@@ -109,7 +109,7 @@ pub(crate) fn compose_sheet(
         )));
         return None;
     }
-    let Some(sheet_half) = crate::sheet_bounds::sheet_half_local(sim, sheet) else {
+    let Some(sheet_half) = ph2d_sheet_bounds::sheet_half_local(sim, sheet) else {
         toasts.push(Toast::warning(tr("shell.sheet_bake.bake_sheet_select_a")));
         return None;
     };
@@ -291,7 +291,7 @@ fn read_pieces(
     // unicidade garante-se aqui, onde ela é load-bearing.
     let mut seen: std::collections::BTreeMap<String, u32> = std::collections::BTreeMap::new();
     for child in children {
-        let Some(bx) = crate::sheet_bounds::piece_box_of(sim, child) else {
+        let Some(bx) = ph2d_sheet_bounds::piece_box_of(sim, child) else {
             continue;
         };
         let Some(src) =

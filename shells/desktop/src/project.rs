@@ -44,7 +44,7 @@ pub(crate) struct ProjectFile {
     ///
     /// As bindings viajam com o **`wire_id`** (hash do `Name` do objeto) carimbado no save, e
     /// NÃO com os bits de entidade — que o load recicla. Quem as recola é o `upkeep` do frame,
-    /// a mesma função que cura delete+undo (ver [`crate::timeline_persist`]). Um projeto sem
+    /// a mesma função que cura delete+undo (ver [`ph2d_timeline_persist`]). Um projeto sem
     /// animação carrega `vec![]`.
     pub(crate) timeline: Vec<u8>,
     /// As **settings de MUNDO** da física (ADR-0131 D8 / W2b).

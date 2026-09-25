@@ -1,0 +1,35 @@
+[package]
+name = "ph2d-timeline-persist"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⛔ **Uma folha por ASSUNTO, nunca um saco** (ESTADO_W2 §2). O assunto desta é UM: *a timeline
+# dentro do ficheiro de projecto* — como uma track reencontra o objecto dela depois de um respawn
+# (o `upkeep` por quadro), os nomes que a shell publica ao painel, e a ida-e-volta do `TimelineDoc`
+# pelo `.ph2dproj` (`serialize` / `install_from_project`).
+#
+# ⭐ Saiu da shell na integração de 2026-09-25 (rodada 03), pela catraca `the_shell_only_shrinks`:
+# a árvore combinada pôs a shell `1 218` linhas acima do tecto, e este era o maior bloco da shell
+# que nunca tocou na `App` (só `ph2d-ecs` + `ph2d-timeline`) — o molde do HOWTO de partir a shell.
+# ⚠️ **O `timeline_orphan_tests.rs` FICA na shell**, e isso é o desenho: ele exercita o `upkeep`
+# sobre uma cena da shell (`nest_smoke::build_library`), logo mora com o que exercita (HOWTO §2.6).
+[dependencies]
+ph2d-anim = { path = "../ph2d-anim" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+# ⚠️ Invisível enquanto vivia na shell (HOWTO §1.3): a purga pergunta quem ainda pede um clip
+# pelo NOME — os ossos inteligentes (`SmartBone`).
+ph2d-skeleton-ecs = { path = "../ph2d-skeleton-ecs" }
+ph2d-timeline = { path = "../ph2d-timeline" }
+
+# ⚠️ Só as fixturas dos gates: o relógio (`ph2d-core`).
+[dev-dependencies]
+ph2d-core = { path = "../ph2d-core" }
+
+[lints]
+workspace = true

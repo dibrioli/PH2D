@@ -1,0 +1,29 @@
+[package]
+name = "ph2d-sheet-bounds"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⛔ **Uma folha por ASSUNTO** (ESTADO_W2 §2). O desta é UM: *as fronteiras de uma folha de
+# sprites* — a caixa de cada peça no referencial da folha, o confinamento que a devolve para dentro
+# e a SAÚDE da moldura (sobreposição · não cabe). Uma lei com três gestos (arrastar · largar na
+# hierarquia · assar a folha), e é por ser UMA que vive numa porta só.
+#
+# ⭐ Saiu da shell na integração de 2026-09-25 (rodada 03), pela catraca `the_shell_only_shrinks`:
+# era puro (só `ph2d-ecs` + `ph2d-render`, zero `App`) e os gates vivem dentro dele.
+# ⚠️ **Não é a `ph2d-sprite-sheet`**, que se declara fina de propósito (`asset` + `color`): o
+# documento da folha não pode passar a conhecer o mundo nem o `Sprite`.
+[dependencies]
+# Os `Children` da folha (a hierarquia é a do bevy, que o `ph2d-ecs` re-usa).
+bevy_ecs = "0.19"
+ph2d-core = { path = "../ph2d-core" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-render = { path = "../ph2d-render" }
+
+[lints]
+workspace = true

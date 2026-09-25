@@ -124,7 +124,7 @@ impl crate::App {
         // ...e QUEM é cada objeto animado, por nome, pela mesma razão: o documento aponta
         // para os objetos por `wire_id` (o hash de um `Name`), nunca pelo nome. Sem isto o
         // dope-sheet rotula toda row como `#7294`.
-        crate::timeline_persist::publish_object_names(&mut self.timeline_view, sim.world());
+        ph2d_timeline_persist::publish_object_names(&mut self.timeline_view, sim.world());
         // ...e QUANTO cada propriedade animada vale AGORA, para a row o mostrar (Enio, 2026-09-04).
         // ⚠️ **Depois do `timeline_bridge::run`**, que é quem escreve a pose deste quadro: lido
         // antes, o número atrasaria um quadro — e este é o sítio onde o mundo já está escrito.

@@ -41,7 +41,7 @@ impl crate::App {
         // não some por um bug — some porque o app abriu, mentiu e salvou. Recusar é a única
         // leitura honesta (a mesma regra da versão do projeto, logo acima), e o parse vem ANTES
         // de qualquer mutação da sessão, então a recusa não custa nada ao documento aberto.
-        let timeline = match crate::timeline_persist::install_from_project(&file.timeline) {
+        let timeline = match ph2d_timeline_persist::install_from_project(&file.timeline) {
             Ok(t) => t,
             Err(e) => {
                 eprintln!("[proj] timeline ilegivel — load RECUSADO: {e}");

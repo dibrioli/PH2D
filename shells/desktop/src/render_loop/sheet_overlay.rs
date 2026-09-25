@@ -117,7 +117,7 @@ pub(crate) fn draw(
         // ⚠️ A saúde é CONTADA aqui, a cada quadro, e não guardada em lado nenhum — vide
         // `sheet_bounds::health`. Um sinalizador guardado ficaria vermelho sobre uma folha já
         // arrumada no dia em que alguém movesse uma peça sem o atualizar.
-        let health = crate::sheet_bounds::health(sim, entity);
+        let health = ph2d_sheet_bounds::health(sim, entity);
         let edge = if health.is_ok() {
             resolve(ColorToken::BorderStrong, theme)
         } else {
@@ -325,7 +325,7 @@ fn draw_label(
 /// sairia como um quadradinho — o defeito que o gate `no_tofu_glyphs` existe para apanhar (ele
 /// varre os blocos das setas e dos símbolos técnicos; este viveria fora do alcance dele e chegaria
 /// ao ecrã). O separador é o `\u{00b7}`, o único não-ASCII que aquele gate nomeia como seguro.
-fn warning_suffix(health: crate::sheet_bounds::SheetHealth) -> &'static str {
+fn warning_suffix(health: ph2d_sheet_bounds::SheetHealth) -> &'static str {
     match (health.overlap, health.overflow) {
         (true, true) => tr("shell.sheet_overlay.overlap_doesn_t_fit"),
         (true, false) => tr("shell.sheet_overlay.overlap"),

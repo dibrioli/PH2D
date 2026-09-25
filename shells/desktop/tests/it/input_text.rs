@@ -302,7 +302,7 @@ fn every_door_is_whole_and_every_ramo_is_called() {
         (
             "advance_gizmo_drag",
             gizmo_drag(),
-            "crate::sheet_bounds::confine(&mut gfx.sim, extra_entity);",
+            "ph2d_sheet_bounds::confine(&mut gfx.sim, extra_entity);",
         ),
     ];
     let mut todas = String::new();

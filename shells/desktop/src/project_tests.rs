@@ -66,7 +66,7 @@ fn animation_of_hero() -> Vec<u8> {
         ph2d_timeline::AnimValue::Float(42.0),
         ph2d_timeline::Interp::Linear,
     );
-    crate::timeline_persist::serialize(&mut timeline, sim.world_mut())
+    ph2d_timeline_persist::serialize(&mut timeline, sim.world_mut())
         .expect("serializa a timeline")
 }
 
@@ -479,7 +479,7 @@ fn project_file_round_trips_through_postcard() {
     );
     // A animação viaja como postcard do `TimelineDoc` — e volta LEGÍVEL do outro lado do
     // arquivo (bytes iguais não bastariam: o que importa é o documento reabrir).
-    let back_timeline = crate::timeline_persist::install_from_project(&back.timeline)
+    let back_timeline = ph2d_timeline_persist::install_from_project(&back.timeline)
         .expect("a animação volta legível do outro lado do arquivo");
     assert_eq!(
         back_timeline.doc.bindings().len(),

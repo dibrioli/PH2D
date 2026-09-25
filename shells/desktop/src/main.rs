@@ -420,7 +420,6 @@ mod sculpt3d_host;
 mod shape_build_gesture;
 /// O BAKE da folha — as peças passam a ser N janelas para UMA textura (plano §7.3, W5.2).
 mod sheet_bake;
-mod sheet_bounds;
 /// A EXPORTAÇÃO da folha — `.png` + `.json`, o formato do Aseprite (plano §7.3, W5.2).
 mod sheet_export;
 mod sheet_frame;
@@ -474,7 +473,6 @@ mod timeline_onion_smoke;
 #[cfg(test)]
 #[path = "timeline_orphan_tests.rs"]
 mod timeline_orphan_tests;
-mod timeline_persist;
 /// **A timeline é o TERCEIRO membro da família pré-visualização↔documento** — enquanto o playhead
 /// toca, as curvas escrevem poses que não são edições do artista (`crate::preview_drive`).
 mod timeline_preview;

@@ -249,7 +249,7 @@ pub(crate) fn run(
     // nome), then purge — a deleted object's tracks leave the document with it,
     // and deleting the LAST animated object resets the timeline whole
     // (`timeline_persist::upkeep`).
-    crate::timeline_persist::upkeep(timeline, world)
+    ph2d_timeline_persist::upkeep(timeline, world)
 }
 
 /// Translate a transport [`PanelEvent`] (by widget id) into a [`TimelineIntent`].

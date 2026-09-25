@@ -36,7 +36,7 @@
 //!
 //! - **delete + undo**: o undo global respawna o objeto (bits novos, mesmo `Name`) e a binding
 //!   órfã se recola — as rows voltam ([`upkeep`], por-frame).
-//! - **load de projeto**: o `TimelineDoc` viaja DENTRO do arquivo de projeto ([`crate::project`],
+//! - **load de projeto**: o `TimelineDoc` viaja DENTRO do arquivo de projeto (`project` da shell,
 //!   campo `timeline`) e volta com as bindings **destacadas** ([`install_from_project`]); o
 //!   `upkeep` do frame as recola nos objetos que o load acabou de spawnar.
 //! - **save**: [`serialize`] carimba a identidade em cada binding antes de gravar.
@@ -118,7 +118,7 @@ fn wire_of(world: &World, entity_bits: u64) -> WireId {
 /// panel's container trail); nothing here touches a playhead, because this
 /// function does not own one. Healing is not counted back: its oracle is the
 /// bindings themselves (`entity` bits + `!missing`).
-pub(crate) fn upkeep(timeline: &mut TimelineState, world: &mut World) -> bool {
+pub fn upkeep(timeline: &mut TimelineState, world: &mut World) -> bool {
     // ⚠️ **Incondicional, e é o que torna esta função auto-suficiente.** A metade VIVA do heal
     // carimba o id em cada binding, e ela corre mesmo com nada `missing`: um objeto acabado de
     // criar que ainda não tivesse id seria carimbado NULL, e ao morrer a binding dele seria
@@ -252,7 +252,7 @@ fn purge_the_dead(
 /// ⚠️ **Reaproveita as `String`s** (`clear` + `push_str` quando o nome não mudou; nada é
 /// realocado em regime) e **poda por varredura das tracks** em vez de montar um conjunto:
 /// são poucas rows, e um `Vec` de scratch por frame custaria mais que o laço que ele evitaria.
-pub(crate) fn publish_object_names(view: &mut ph2d_timeline::TimelineViewSnapshot, world: &World) {
+pub fn publish_object_names(view: &mut ph2d_timeline::TimelineViewSnapshot, world: &World) {
     let ph2d_timeline::TimelineViewSnapshot {
         tracks,
         object_names,
@@ -278,7 +278,7 @@ pub(crate) fn publish_object_names(view: &mut ph2d_timeline::TimelineViewSnapsho
 
 /// Carimba o `wire_id` (a identidade estável do objeto) em cada binding e serializa o
 /// documento — os bytes que o arquivo de projeto carrega no campo `timeline`
-/// ([`crate::project`]).
+/// (`project` da shell).
 ///
 /// ⚠️ **`&mut World` porque a invariante se impõe na DERIVAÇÃO** — a mesma lei do
 /// `world_to_snapshot` (ADR-0164 F1 passo 3). Esta função corre **antes** da captura no
@@ -286,7 +286,7 @@ pub(crate) fn publish_object_names(view: &mut ph2d_timeline::TimelineViewSnapsho
 /// atribui: um objeto criado no mesmo frame do Ctrl+S seria gravado com `wire_id` NULL, e a
 /// track dele nunca mais reencontraria ninguém. Pedir `&mut` é o que torna isso impossível
 /// em vez de improvável.
-pub(crate) fn serialize(
+pub fn serialize(
     timeline: &mut TimelineState,
     world: &mut World,
 ) -> Result<Vec<u8>, String> {
@@ -311,7 +311,7 @@ pub(crate) fn serialize(
 ///
 /// Selection / history / clipboard não são persistidos: nascem limpos em volta do documento
 /// carregado, então um undo depois do load não alcança a sessão anterior.
-pub(crate) fn install_from_project(bytes: &[u8]) -> Result<TimelineState, String> {
+pub fn install_from_project(bytes: &[u8]) -> Result<TimelineState, String> {
     if bytes.is_empty() {
         // **Projeto SEM animação abre com o padrão do PRODUTO** (4 s autorados), não com o
         // documento derivado-0 (Enio: *"a duração padrão do clip deve ser 4seg, mas ao abrir a

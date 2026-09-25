@@ -64,7 +64,7 @@ impl crate::App {
         let timeline = match self.gfx.as_mut() {
             Some(gfx) => {
                 let world = gfx.sim.world_mut();
-                match crate::timeline_persist::serialize(&mut self.timeline, world) {
+                match ph2d_timeline_persist::serialize(&mut self.timeline, world) {
                     Ok(b) => b,
                     Err(e) => {
                         eprintln!("[proj] timeline nao serializou, projeto salvo SEM ela: {e}");

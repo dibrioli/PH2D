@@ -6102,6 +6102,7 @@ dependencies = [
  "ph2d-sculpt3d",
  "ph2d-sdf",
  "ph2d-shake",
+ "ph2d-sheet-bounds",
  "ph2d-skeleton",
  "ph2d-skeleton-demo",
  "ph2d-skeleton-ecs",
@@ -6115,6 +6116,7 @@ dependencies = [
  "ph2d-text",
  "ph2d-timeline",
  "ph2d-timeline-onion",
+ "ph2d-timeline-persist",
  "ph2d-timeline-preview",
  "ph2d-token-math",
  "ph2d-tokens",
@@ -8630,6 +8632,16 @@ name = "ph2d-shake"
 version = "0.0.0"
 
 [[package]]
+name = "ph2d-sheet-bounds"
+version = "0.0.0"
+dependencies = [
+ "bevy_ecs",
+ "ph2d-core",
+ "ph2d-ecs",
+ "ph2d-render",
+]
+
+[[package]]
 name = "ph2d-skeleton"
 version = "0.0.0"
 dependencies = [
@@ -8843,6 +8855,17 @@ dependencies = [
  "ph2d-skeleton-live",
  "ph2d-timeline",
  "ph2d-vec-entities",
+]
+
+[[package]]
+name = "ph2d-timeline-persist"
+version = "0.0.0"
+dependencies = [
+ "ph2d-anim",
+ "ph2d-core",
+ "ph2d-ecs",
+ "ph2d-skeleton-ecs",
+ "ph2d-timeline",
 ]
 
 [[package]]

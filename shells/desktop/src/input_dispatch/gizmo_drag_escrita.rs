@@ -247,7 +247,7 @@ impl crate::App {
                 // ⚠️ E vale para rotação e escala também, não só para Translate: crescer uma
                 // peça encostada à borda empurra-a para fora tanto quanto arrastá-la. A porta
                 // é a mesma; ela não faz nada quando a entidade não é filha de uma folha.
-                crate::sheet_bounds::confine(&mut gfx.sim, entity);
+                ph2d_sheet_bounds::confine(&mut gfx.sim, entity);
                 // Multi-selection TRANSLATE: rigid-body shift — add the
                 // dragged primary's world delta to every extra's start
                 // translation, converted into each extra's LOCAL frame via
@@ -280,7 +280,7 @@ impl crate::App {
                         // cada uma, não do arrasto. Confinar o grupo como bloco rígido pararia
                         // as cinco porque uma chegou à borda — e as outras quatro não têm nada
                         // a ver com essa borda.
-                        crate::sheet_bounds::confine(&mut gfx.sim, extra_entity);
+                        ph2d_sheet_bounds::confine(&mut gfx.sim, extra_entity);
                     }
                 }
             }

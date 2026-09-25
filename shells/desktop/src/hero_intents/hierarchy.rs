@@ -209,7 +209,7 @@ pub(crate) fn drain_reparent(
     //
     // A ordem também é de propósito: confinar DEPOIS de a pose local estar re-resolvida, senão
     // confinaríamos a pose antiga, do pai anterior.
-    crate::sheet_bounds::confine(sim, dragged);
+    ph2d_sheet_bounds::confine(sim, dragged);
     // ⭐ A única fala deste dreno — ver o doc: sem ela o objecto sai da cena em silêncio.
     if into_a_recipe {
         toasts.push(ph2d_editor_core::Toast::warning(tr(

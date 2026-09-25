@@ -346,7 +346,7 @@ fn bloco_contador(
         // à mesma. *Sem esta linha, «atravessa um recomeço» lê-se como «nunca mais volta ao
         // início», e o artista conclui que a caixa está partida ao carregar em Rewind.*
         if i.counter_keep {
-            cur_y = warn(
+            cur_y = super::rows::aviso(
                 scene,
                 text_system,
                 theme,

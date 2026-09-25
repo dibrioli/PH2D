@@ -86,6 +86,7 @@ fn corpo(
         // desaparece e sobram os quatro números. Acender um prometeria um estado que o componente
         // não guarda, e ele mentiria no instante em que o artista afinasse a amplitude.
         usize::MAX,
+        seccao,
     );
     for (id, label, step, unidade) in [
         (

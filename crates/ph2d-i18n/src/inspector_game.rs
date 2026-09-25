@@ -660,6 +660,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.weapon.reload_on_label" => "Reload On",
         "panel.inspector.weapon.on_empty_label" => "On Empty",
         "panel.inspector.weapon.on_reloaded_label" => "On Reloaded",
+        "panel.inspector.weapon.reserve_label" => "Reserve",
         "panel.inspector.weapon.the_clock_is_stopped_u_a_weapon_only_fires_during_a_run" => {
             "The clock is stopped \u{2014} a weapon only fires during a run."
         }

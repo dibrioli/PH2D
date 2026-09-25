@@ -16,8 +16,7 @@ use ph2d_i18n::tr;
 use ph2d_tokens::Spacing;
 
 use super::widgets::{
-    self, command, command_na_celula, header, labelled_seg, readout, row_of_two, toggle,
-    toggle_na_celula,
+    self, command, command_na_celula, header, labelled_seg, readout, row_of_two, toggle_na_celula,
 };
 
 use crate::state::Sculpt3dSnapshot;
@@ -164,7 +163,6 @@ pub(super) fn paint_bake(
         y = widgets::labelled_seg(
             ctx,
             tr("panel.sculpt3d.bake_law"),
-            crate::ids::SCULPT3D_SEC_BAKE,
             &crate::ids::SCULPT3D_BAKE_LAW,
             &labels,
             escolhida,

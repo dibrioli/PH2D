@@ -18,8 +18,7 @@ use super::body_peca::{paint_bake, paint_scene};
 use super::brush::{paint_brush_tail, paint_level_row};
 use super::tool::paint_tool;
 use super::widgets::{
-    self, command, command_na_celula, header, labelled_seg, readout, row_of_two, toggle,
-    toggle_na_celula,
+    self, command, header, labelled_seg, readout, row_of_two, toggle, toggle_na_celula,
 };
 
 use crate::rows;
@@ -221,7 +220,6 @@ fn paint_shading_tail(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f3
     let y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.lens"),
-        crate::ids::SCULPT3D_SEC_SHADING,
         &crate::ids::SCULPT3D_LENS,
         &lens_labels,
         snap.ui.lens.option_index(),

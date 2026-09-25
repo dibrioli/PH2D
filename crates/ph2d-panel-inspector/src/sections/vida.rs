@@ -80,8 +80,10 @@ pub(super) fn nome(
     x: f32,
     w: f32,
     y: f32,
+    rotulo: &str,
     id: NodeId,
     dica: &str,
+    seccao: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
     super::anim_rows::text_row(
         scene,
@@ -92,8 +94,10 @@ pub(super) fn nome(
         x,
         w,
         y,
+        rotulo,
         id,
         TextInput::new(id, "").placeholder(dica),
+        seccao,
     )
 }
 
@@ -246,6 +250,11 @@ fn corpo_vida(
         tr("panel.inspector.vida.shield_duration_0_forever"),
         tr("panel.inspector.vida.shield_regen"),
         tr("panel.inspector.vida.shield_regen_delay"),
+        // Os quatro campos de TEXTO do fim — medidos na MESMA coluna, senão o nome deles cortava.
+        tr("panel.inspector.vida.team"),
+        tr("panel.inspector.vida.on_damage"),
+        tr("panel.inspector.vida.on_heal"),
+        tr("panel.inspector.vida.on_death"),
     ];
     let seccao = ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &rotulos);
     let s = Some(Unit::Seconds);
@@ -333,17 +342,24 @@ fn corpo_vida(
         cur_y,
         h,
     );
-    for (id, dica) in [
-        (ids::INSP_VIDA_TEAM, tr("panel.inspector.vida.team_hint")),
+    for (rotulo, id, dica) in [
         (
+            tr("panel.inspector.vida.team"),
+            ids::INSP_VIDA_TEAM,
+            tr("panel.inspector.vida.team_hint"),
+        ),
+        (
+            tr("panel.inspector.vida.on_damage"),
             ids::INSP_VIDA_ON_DAMAGE,
             tr("panel.inspector.vida.on_damage_hint"),
         ),
         (
+            tr("panel.inspector.vida.on_heal"),
             ids::INSP_VIDA_ON_HEAL,
             tr("panel.inspector.vida.on_heal_hint"),
         ),
         (
+            tr("panel.inspector.vida.on_death"),
             ids::INSP_VIDA_ON_DEATH,
             tr("panel.inspector.vida.on_death_hint"),
         ),
@@ -357,8 +373,10 @@ fn corpo_vida(
             x,
             w,
             cur_y,
+            rotulo,
             id,
             dica,
+            seccao,
         );
     }
     cur_y

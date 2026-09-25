@@ -242,6 +242,7 @@ fn corpo(
         // separá-los por três sinais faria o artista ler o segundo como sendo de outro assunto.
         (
             crate::ids::INSP_WEAPON_RESERVE,
+            tr("panel.inspector.weapon.reserve_label"),
             tr("panel.inspector.weapon.counter_that_is_the_depot_u"),
         ),
     ] {

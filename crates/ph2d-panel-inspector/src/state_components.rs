@@ -15,8 +15,8 @@
 //!
 //! ⛔ **Nunca subir o número do cap: ele só desce.**
 
-use ph2d_editor_core::parallax_edits::InspectorParallaxInfo;
 use ph2d_editor_core::mesh3d_edits::InspectorMesh3dInfo;
+use ph2d_editor_core::parallax_edits::InspectorParallaxInfo;
 use ph2d_editor_core::particles_edits::InspectorParticlesInfo;
 use ph2d_editor_core::path_follow_edits::InspectorPathFollowInfo;
 use ph2d_editor_core::projectile_edits::InspectorProjectileInfo;

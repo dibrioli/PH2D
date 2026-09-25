@@ -66,6 +66,21 @@ fn corpo_barra(
     let mut cur_y = super::rows::aviso(scene, text_system, theme, x, w, y, &frase, cor);
     // ⚠️ O ALVO vem logo a seguir à frase que fala dele — é o campo que a cura de duas das três
     // queixas pede.
+    let rotulos = [
+        tr("panel.inspector.vida.bar_width"),
+        tr("panel.inspector.vida.bar_height"),
+        tr("panel.inspector.vida.bar_offset_x"),
+        tr("panel.inspector.vida.bar_offset_y"),
+        tr("panel.inspector.vida.bar_trail_delay"),
+        tr("panel.inspector.vida.bar_trail_speed"),
+        // O ALVO — o campo de texto do topo, medido na MESMA coluna.
+        tr("panel.inspector.vida.bar_target"),
+        // As três amostras de cor do fim.
+        tr("panel.inspector.vida.bar_fill"),
+        tr("panel.inspector.vida.bar_trail"),
+        tr("panel.inspector.vida.bar_back"),
+    ];
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &rotulos);
     cur_y = nome(
         scene,
         text_system,
@@ -75,18 +90,11 @@ fn corpo_barra(
         x,
         w,
         cur_y,
+        tr("panel.inspector.vida.bar_target"),
         ids::INSP_BARRA_TARGET,
         tr("panel.inspector.vida.bar_target_hint"),
+        seccao,
     );
-    let rotulos = [
-        tr("panel.inspector.vida.bar_width"),
-        tr("panel.inspector.vida.bar_height"),
-        tr("panel.inspector.vida.bar_offset_x"),
-        tr("panel.inspector.vida.bar_offset_y"),
-        tr("panel.inspector.vida.bar_trail_delay"),
-        tr("panel.inspector.vida.bar_trail_speed"),
-    ];
-    let seccao = ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &rotulos);
     let m = Some(Unit::Meters);
     cur_y = numeros(
         scene,
@@ -119,7 +127,7 @@ fn corpo_barra(
         (back, "panel.inspector.vida.bar_back", b.back),
     ] {
         let cell = Rect::new(x, cur_y, w, ph2d_tokens::ROW_H_PX);
-        super::color_tint::paint_tint_swatch_cell(
+        cur_y = super::color_tint::paint_tint_swatch_cell(
             cell,
             tr(chave),
             id,
@@ -130,8 +138,8 @@ fn corpo_barra(
             scene,
             text_system,
             theme,
+            seccao,
         );
-        cur_y += ph2d_tokens::row_pitch_px();
     }
     caixa(
         scene,

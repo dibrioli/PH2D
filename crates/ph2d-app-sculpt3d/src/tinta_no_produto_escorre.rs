@@ -261,7 +261,7 @@ fn trocar_a_cor_com_a_agua_a_correr_nao_fecha_a_pincelada() {
     );
 
     // (1) A caixa de cor do painel da ESCULTURA — um `SetUi`.
-    let mut ui = s.panel_snapshot(false).ui.clone();
+    let mut ui = s.panel_snapshot(false, None).ui.clone();
     ui.brush.color = [0.0, 1.0, 0.0];
     let _ = s.apply_panel_intent(Sculpt3dIntent::SetUi(ui));
     assert!(

@@ -56,6 +56,7 @@ fn corpo_dano(
             tr("panel.inspector.vida.hitstop"),
             tr("panel.inspector.vida.knockback"),
             tr("panel.inspector.vida.knockback_lift"),
+            tr("panel.inspector.vida.team"),
         ],
     );
     let v = Some(ph2d_editor_core::widget::Unit::MetersPerSecond);
@@ -137,8 +138,10 @@ fn corpo_dano(
         x,
         w,
         cur_y,
+        tr("panel.inspector.vida.team"),
         ids::INSP_DANO_TEAM,
         tr("panel.inspector.vida.damage_team_hint"),
+        seccao,
     )
 }
 

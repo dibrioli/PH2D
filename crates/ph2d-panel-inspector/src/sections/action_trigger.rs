@@ -382,21 +382,19 @@ fn botao_criar_a_accao(
     if row.no_mapa != NoMapa::Desconhecida || row.action.trim().is_empty() {
         return y;
     }
-    let rect = Rect::new(x, y, w, BTN_H);
+    let rotulo = tr("panel.inspector.trigger.create_this_action");
+    let rect = ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, y, rotulo);
     hit_index.register(ids::INSP_TRIGGER_CREATE_ACTION, rect);
     paint_button(
-        &Button::new(
-            ids::INSP_TRIGGER_CREATE_ACTION,
-            tr("panel.inspector.trigger.create_this_action"),
-        )
-        .kind(ButtonKind::Default)
-        .visual(store.button_visual(ids::INSP_TRIGGER_CREATE_ACTION)),
+        &Button::new(ids::INSP_TRIGGER_CREATE_ACTION, rotulo)
+            .kind(ButtonKind::Default)
+            .visual(store.button_visual(ids::INSP_TRIGGER_CREATE_ACTION)),
         rect,
         scene,
         text_system,
         theme,
     );
-    y + BTN_H + ph2d_tokens::control_gap_px()
+    ph2d_editor_core::property_row::abaixo_do_botao(rect)
 }
 
 /// ⚠️⚠️ **A LINHA QUE RESPONDE AO «nada acontece»** — da mais específica para a mais geral.

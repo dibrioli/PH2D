@@ -21,7 +21,10 @@ use super::*;
 use ph2d_editor_core::script_edits::{
     InspectorScriptInfo, InspectorScriptProp, InspectorScriptValue, PorqueOrfao,
 };
-use ph2d_editor_core::widget::{Dropdown, DropdownOption, SectionFold, paint_dropdown_chip};
+use ph2d_editor_core::widget::{
+    ColorSwatch, Dropdown, DropdownOption, SectionFold, SwatchSize, paint_color_swatch,
+    paint_dropdown_chip,
+};
 use ph2d_i18n::{tr, tr_with};
 
 /// **A largura de um botão que DIZ o rótulo inteiro** — o texto medido no tamanho do botão e o recuo
@@ -491,7 +494,7 @@ fn controlo(
                     reason = "k e' 0 ou 1: nao ha' precisao a perder"
                 )]
                 let x = ctrl.x + (meia + gap_eixos) * k as f32;
-                let r = Rect::new(x, row_y, meia, FIELD_H);
+                let r = Rect::new(x, row_y, meia, ctrl.h);
                 hit_index.register(id, r);
                 let (state, _, buffer, caret, anchor) = read_number_input(store, id);
                 let input = NumberInput::new(id, "", v[k])

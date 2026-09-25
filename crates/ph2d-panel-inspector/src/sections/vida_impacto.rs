@@ -35,6 +35,8 @@ pub(super) fn corpo_impacto(
         tr("panel.inspector.vida.blink"),
         tr("panel.inspector.vida.knockback_taken"),
         tr("panel.inspector.vida.numbers_size"),
+        // A amostra de cor dos números — na MESMA coluna.
+        tr("panel.inspector.vida.numbers_color"),
     ];
     let seccao = ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &rotulos);
     let s = Some(Unit::Seconds);
@@ -73,7 +75,7 @@ pub(super) fn corpo_impacto(
         return cur_y;
     }
     let cell = Rect::new(x, cur_y, w, ph2d_tokens::ROW_H_PX);
-    super::color_tint::paint_tint_swatch_cell(
+    cur_y = super::color_tint::paint_tint_swatch_cell(
         cell,
         tr("panel.inspector.vida.numbers_color"),
         ids::INSP_VIDA_NUMBERS_COLOR,
@@ -84,8 +86,8 @@ pub(super) fn corpo_impacto(
         scene,
         text_system,
         theme,
+        seccao,
     );
-    cur_y += ph2d_tokens::row_pitch_px();
     numeros(
         scene,
         text_system,

@@ -257,4 +257,3 @@ pub(crate) fn paint_mesh3d_section(
         &[],
     )
 }
-

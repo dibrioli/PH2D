@@ -19,7 +19,7 @@
 //! [`ph2d_editor_core::mesh3d_edits`] — nunca neste pintor. *Uma unidade convertida no sítio onde
 //! ela é desenhada é a segunda resposta à pergunta «que unidade é esta».*
 
-use super::tween::warn;
+use super::rows::aviso;
 use super::*;
 use ph2d_editor_core::mesh3d_edits::{
     InspectorMesh3dInfo, MESH3D_ANGLE_STEP as PASSO_ANG, MESH3D_SPIN_STEP as PASSO_SPIN,
@@ -55,7 +55,7 @@ fn corpo(
     let mut cur_y = y;
     // ⚠️ **A QUEIXA primeiro** — quem não vê nada mexer não quer afinar um ângulo.
     if let Some(q) = i.queixa() {
-        cur_y = warn(
+        cur_y = aviso(
             scene,
             text_system,
             theme,

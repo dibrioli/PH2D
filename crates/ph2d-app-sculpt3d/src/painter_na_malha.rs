@@ -405,6 +405,10 @@ pub(crate) fn o_painel_mexe_na_peca(intent: &ph2d_panel_sculpt3d::Sculpt3dIntent
         // ⚠️ Chegou na fusão com a UIUX (2026-09-25): ele só ABRE o catálogo de pincéis — escolher
         // é o *pick* da paleta, noutro quadro, e esse chega como `SetUi`. Não escreve na peça.
         I::OpenBrushPalette => false,
+        // ⚠️ Chegou na fusão com a 3DModeling (2026-09-25): ele troca a LEI que acende um sprite
+        // JÁ ASSADO — um campo do documento do objecto 2D, que a cena 3D nem conhece. Não escreve
+        // na peça, logo não fecha a pincelada que escorre.
+        I::LeiDoAlvo(_) => false,
         I::ArmTransform(_)
         | I::ArmFilter
         | I::ArmStoredImage

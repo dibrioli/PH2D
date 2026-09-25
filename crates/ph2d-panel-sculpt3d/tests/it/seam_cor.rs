@@ -69,6 +69,10 @@ fn retrato(ui: Sculpt3dUi) -> Sculpt3dSnapshot {
         alpha_seed: 0.0375,
         model_span: 1.0,
         has_bake_target: true,
+        // ⚠️ Os dois campos da LEI do objecto assado (line/3DModeling, integração de 2026-09-25):
+        // esta fixtura mede a amostra de COR, e sem lei a fileira dos chips nem é desenhada.
+        lei_do_alvo: None,
+        lei_rotulos: &[],
     }
 }
 

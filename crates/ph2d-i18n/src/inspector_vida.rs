@@ -36,6 +36,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.vida.hitstop" => "Hit Pause",
         "panel.inspector.vida.knockback" => "Push",
         "panel.inspector.vida.knockback_lift" => "Push Up",
+        // ⚠️ Os RÓTULOS dos campos de texto (integração de 2026-09-25): a linha nasceu antes da
+        //    lei da UIUX de que nenhum campo vive só de dica, e a porta `text_row` passou a pedi-los.
+        "panel.inspector.vida.team" => "Team",
+        "panel.inspector.vida.on_damage" => "On Damage",
+        "panel.inspector.vida.on_heal" => "On Heal",
+        "panel.inspector.vida.on_death" => "On Death",
+        "panel.inspector.vida.bar_target" => "Target",
         "panel.inspector.vida.team_hint" => "Team \u{2014} the same team does not hurt it\u{2026}",
         "panel.inspector.vida.on_damage_hint" => "Signal when it takes damage\u{2026}",
         "panel.inspector.vida.on_heal_hint" => "Signal when it is healed\u{2026}",

@@ -417,7 +417,7 @@ fn o_primeiro_quadro_nao_deita_fora_o_plano_que_o_documento_trouxe() {
 
 /// ⭐⭐⭐ **GATE — o degrau que o documento pede de volta, nas três células.**
 #[test]
-fn o_degrau_do_documento_sai_da_peca_activa_e_recorre_as_outras() {
+fn o_degrau_do_documento_sai_da_peca_activa_e_cai_para_as_outras() {
     use crate::objects::{ObjectId, SceneObject};
     let m = dois_tris();
     let mut pecas: Vec<SceneObject> = (0..3)

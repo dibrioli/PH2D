@@ -194,7 +194,12 @@ fn grelha(n: u32) -> Vec<Vec<u32>> {
 #[test]
 fn a_conta_prevista_e_a_conta_alocada() {
     for faces in [quads(), triangulados(), grelha(3)] {
-        let v = faces.iter().flatten().map(|&i| i as usize + 1).max().unwrap_or(0);
+        let v = faces
+            .iter()
+            .flatten()
+            .map(|&i| i as usize + 1)
+            .max()
+            .unwrap_or(0);
         let base = Topologia::nova(v, it(&faces), 0);
         for k in 0..=5u8 {
             let alocada = crate::total(&Topologia::nova(v, it(&faces), k));
@@ -219,8 +224,15 @@ fn uma_malha_grande_desce_ao_nivel_que_cabe_no_indice() {
     let grande = grelha(300);
     let v = 301 * 301;
     let t = Topologia::nova(v, it(&grande), 8);
-    assert!(t.amostras_ao_nivel(8) > u64::from(u32::MAX), "a fixtura estoura o índice a 256x");
-    assert_eq!(t.nivel_uniforme(), Some(7), "o nível não desceu ao que cabe");
+    assert!(
+        t.amostras_ao_nivel(8) > u64::from(u32::MAX),
+        "a fixtura estoura o índice a 256x"
+    );
+    assert_eq!(
+        t.nivel_uniforme(),
+        Some(7),
+        "o nível não desceu ao que cabe"
+    );
     assert_eq!(
         crate::total(&t) as u64,
         t.amostras_ao_nivel(7),
@@ -242,6 +254,12 @@ fn regraduar_acima_do_indice_e_recusado() {
     let grande = grelha(300);
     let base = Topologia::nova(301 * 301, it(&grande), 0);
     let n = base.faces();
-    assert!(base.regraduada(&vec![8; n]).is_none(), "estourou o índice e foi aceite");
-    assert!(base.regraduada(&vec![7; n]).is_some(), "o CONTROLO: a lista que cabe");
+    assert!(
+        base.regraduada(&vec![8; n]).is_none(),
+        "estourou o índice e foi aceite"
+    );
+    assert!(
+        base.regraduada(&vec![7; n]).is_some(),
+        "o CONTROLO: a lista que cabe"
+    );
 }

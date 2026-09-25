@@ -42,7 +42,7 @@
 //! voltam a ser produtos (`id × (lado − 1)`, `f × interior(lado)`), e o passo
 //! do subconjunto vale `1` em toda aresta.
 //!
-//! ⛔⛔ **Quem recusa um plano graduado, e a história tem TRÊS datas.** O assado
+//! ⛔⛔ **Quem recusa um plano graduado, e a história tem TRÊS dias.** O assado
 //! deixou de o recusar quando o empacotador passou a dispor um ladrilho por
 //! face (2026-09-22), e continua a saber dispô-lo. O device deixou de o recusar
 //! quando o registo achatado passou a carregar o lado da face e o bloco de cada

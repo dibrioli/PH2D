@@ -147,8 +147,12 @@ impl Topologia {
         let nivel = (0..=nivel)
             .rev()
             .find(|&k| {
-                conta(verts, arestas, cantos_da_face.iter().map(|&c| c as usize), k)
-                    <= u64::from(u32::MAX)
+                conta(
+                    verts,
+                    arestas,
+                    cantos_da_face.iter().map(|&c| c as usize),
+                    k,
+                ) <= u64::from(u32::MAX)
             })
             .unwrap_or(0);
         let lado = 1u32 << nivel;

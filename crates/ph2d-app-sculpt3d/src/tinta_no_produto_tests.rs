@@ -510,7 +510,7 @@ fn a_folha_que_o_olho_ve_vale_para_a_amostra() {
     assert!(livre > 0, "premissa: o traço tem de pintar alguma coisa");
     assert!(
         armada * 10 < livre * 8,
-        "a máscara não cortou nada de substancial na tinta fina: {armada} contra \
+        "a máscara não cortou nada que se note na tinta fina: {armada} contra \
          {livre} — antes desta wave ela era INERTE aqui, e a lei da folha tem de \
          valer para a AMOSTRA e não só para o vértice"
     );

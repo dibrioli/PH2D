@@ -438,7 +438,7 @@ fn as_duas_formas_das_amostras_fazem_o_que_prometem() {
 
     // (b) ⛔ E o plano de uma peça com cor VARIADA nunca custa MAIS que cru.
     //     É isto que a segunda forma compra: sem ela a medição lê `1,083×`,
-    //     porque cada corrida de uma amostra paga o varian­te a mais.
+    //     porque cada corrida de uma amostra paga o variante a mais.
     let n = m.vert_count();
     let variadas: Vec<[f32; 3]> = (0..n).map(|i| [i as f32 / n as f32, 0.4, 0.6]).collect();
     let semeada = ph2d_mesh_colors::Tinta::semeada(&variadas, faces(), 3);

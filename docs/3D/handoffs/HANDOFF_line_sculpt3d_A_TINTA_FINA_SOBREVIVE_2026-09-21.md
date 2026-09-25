@@ -1594,7 +1594,7 @@ impede a cura de ARMAR a fileira num documento que nunca teve tinta fina.
   dele e é ele que reproduz o defeito:** com a fileira desarmada o plano é
   deitado fora; com o degrau do documento ele sobrevive **ao nível em que foi
   gravado**.
-- `o_degrau_do_documento_sai_da_peca_activa_e_recorre_as_outras` — as três
+- `o_degrau_do_documento_sai_da_peca_activa_e_cai_para_as_outras` — as três
   células (nada · só uma peça distante · a activa manda).
 - o censo da fiação vai a **DEZANOVE** elos: *o `decode` pode estar certo, o
   `install_doc` pode instalar, e o degrau não voltar à fileira — e aí o ficheiro

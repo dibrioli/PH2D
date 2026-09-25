@@ -45,12 +45,17 @@ ph2d-tokens = { path = "../ph2d-tokens" }
 [features]
 panel-audio-editor = ["dep:ph2d-panel-audio-editor", "dep:ph2d-audio-edit", "dep:ph2d-audio-encode"]
 audio-ml = ["panel-audio-editor", "dep:ph2d-audio-ml"]
-# ⚠️ HOWTO §2.5 — UM item atravessa a fronteira: o `SceneAudio::decoded_ok`, que um gate do
-# `render_loop` lê. Dentro da shell ele não precisava de feature; do outro lado de uma crate um
-# `cfg(test)` é falso. O tamanho da feature é o que ATRAVESSA, contado pelo compilador.
-test-support = []
+# ⚠️ A feature `test-support` MORREU na integração de 2026-09-25: o único item que a atravessava
+# (`SceneAudio::decoded_ok`) é lido pelo gate da ponte do som, e a ponte desceu para ESTA crate —
+# o tamanho da feature é o que atravessa (HOWTO §2.5), e deixou de atravessar nada.
 
 [dev-dependencies]
+# O `Vec2` das fixturas da ponte do som de cena (`audio_2d_tests.rs`), que desceu da shell em
+# 2026-09-25 com os testes dela.
+ph2d-core = { path = "../ph2d-core" }
+# E o `.wav` das mesmas fixturas: a normal é OPCIONAL (feature `panel-audio-editor`), e uma
+# feature não viaja com o código (HOWTO §2.4) — sem esta linha a crate sozinha não compila os testes.
+ph2d-audio-encode = { path = "../ph2d-audio-encode" }
 # A régua lexical do HR-15, para o gate por crate (`tests/it/`).
 ph2d-label-census = { path = "../ph2d-label-census" }
 

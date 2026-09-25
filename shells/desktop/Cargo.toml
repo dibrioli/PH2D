@@ -500,8 +500,6 @@ ph2d-preview-drive = { path = "../../crates/ph2d-preview-drive", features = ["te
 # E a fixtura da ponte do vetor (`setup`/`bits`): o irmão da selecção usa-a de dentro da crate e
 # o ficheiro de gates que ficou na shell de fora — uma porta só para as duas.
 ph2d-vec-entities = { path = "../../crates/ph2d-vec-entities", features = ["test-support"] }
-# E o livro das vozes da cena: o `decoded_ok` que o gate do `render_loop` lê era `#[cfg(test)]`.
-ph2d-app-audio = { path = "../../crates/ph2d-app-audio", features = ["test-support"] }
 # E o `TokenCtx::factory` da família do vetor (W2/L4-B2): quatro ficheiros da shell constroem a
 # régua de tokens, e ela é `#[cfg(test)]` — invisível assim que o `vec_bindings` mudou de crate.
 ph2d-app-vec = { path = "../../crates/ph2d-app-vec", features = ["test-support"] }

@@ -37,6 +37,9 @@ pub mod fx_presets;
 mod fx_presets_factory;
 #[cfg(feature = "panel-audio-editor")]
 use editor::AudioEditorRuntime;
+/// ⭐⭐ **A PONTE do som de cena** — lê o mundo, chama a lei e manda o livro tocar. Desceu da
+/// shell na integração de 2026-09-25 (catraca `the_shell_only_shrinks`): nunca tocou na `App`.
+pub mod audio_2d;
 /// A ESCOLHA DO DISPOSITIVO e a escrita nele — irmão por assunto e pelo teto de 600 LOC.
 mod device;
 /// ⭐⭐⭐ **O SOM DA CENA** (TOP-20 #4) — o livro das vozes que os objectos tem a soar.

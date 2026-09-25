@@ -4,7 +4,7 @@
 //!
 //! - A **lei** vive no [`ph2d_ecs::audio_2d`]: quem são as orelhas, quanto se ouve, de que lado.
 //!   Ela é pura e não conhece o dispositivo.
-//! - O **livro das vozes** vive no [`ph2d_app_audio::scene`]: o que está a soar agora, chaveado por
+//! - O **livro das vozes** vive no [`crate::scene`]: o que está a soar agora, chaveado por
 //!   `StableId`, ao lado do `cpal`.
 //! - Este ficheiro é a **costura**: lê o mundo, chama a lei, e manda o livro tocar.
 //!
@@ -31,12 +31,12 @@ use ph2d_ecs::{AudioSource2D, Entity, SimWorld, StableId};
 
 use ph2d_audio::AudioEngine;
 
-use ph2d_app_audio::AudioSystem;
-use ph2d_app_audio::scene::SceneAudio;
+use crate::AudioSystem;
+use crate::scene::SceneAudio;
 
 /// O que o quadro fez com o som — o que o smoke imprime.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub(crate) struct AudioSceneReport {
+pub struct AudioSceneReport {
     /// Quantas fontes nasceram com `autoplay` e arrancaram neste quadro.
     pub started: usize,
     /// Quantas vozes de cena estão vivas depois deste quadro.
@@ -72,7 +72,7 @@ fn position_of(sim: &SimWorld, e: Entity) -> Option<[f32; 2]> {
 /// ⚠️ **O passo 4 corre para TODAS as fontes, e não só para as que nasceram agora**: é ele que faz
 /// o som andar com o objecto. Sem ele o pan ficaria congelado no instante do disparo, que é o
 /// defeito que a espacialização existe para não ter.
-pub(crate) fn update(sim: &mut SimWorld, audio: Option<&mut AudioSystem>) -> AudioSceneReport {
+pub fn update(sim: &mut SimWorld, audio: Option<&mut AudioSystem>) -> AudioSceneReport {
     let Some(audio) = audio else {
         return AudioSceneReport::default();
     };
@@ -137,11 +137,7 @@ pub(crate) fn update_with(
 ///
 /// ⚠️ **A posição é lida AGORA**, e não a do último quadro: um som disparado por um sinal nasce de
 /// onde o objecto está no instante do disparo.
-pub(crate) fn play_target(
-    sim: &mut SimWorld,
-    audio: Option<&mut AudioSystem>,
-    target: Entity,
-) -> bool {
+pub fn play_target(sim: &mut SimWorld, audio: Option<&mut AudioSystem>, target: Entity) -> bool {
     let Some(audio) = audio else {
         return false;
     };
@@ -171,11 +167,7 @@ pub(crate) fn play_target_with(
 }
 
 /// **CALA** o som de um alvo — o verbo `StopSound`.
-pub(crate) fn stop_target(
-    sim: &mut SimWorld,
-    audio: Option<&mut AudioSystem>,
-    target: Entity,
-) -> bool {
+pub fn stop_target(sim: &mut SimWorld, audio: Option<&mut AudioSystem>, target: Entity) -> bool {
     let Some(audio) = audio else {
         return false;
     };

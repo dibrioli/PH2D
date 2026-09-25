@@ -109,7 +109,6 @@ mod anchor_overlay;
 /// ⭐⭐⭐ A ponte do `SignalActions` (#5) — DESCEU para a família em 19/09; o porquê está no
 /// cabeçalho dela. ⛔ A do SOM tentou descer junto e o gate das camadas apanhou-a, e por isso FICA.
 use ph2d_app_components::signal_actions_bridge as signal_actions;
-mod audio_2d;
 /// ⭐⭐⭐ **A CÂMERA DE JOGO** (TOP-20 #7) — a costura entre a lei pura e a vista da shell.
 /// O anel de um objeto VAZIO selecionado — ver o módulo.
 mod empty_object_overlay;
@@ -143,7 +142,9 @@ mod tags_panel;
 // `ph2d_app_components` em 2026-09-12: é **lei da família das instâncias**, não do laço. O gate do
 // anel de objecto vazio (`group_gizmo_view_tests`) continua a acender a receita pela porta de
 // VERDADE, hoje escrita `ph2d_app_components::master_editing::mark`.
-pub(crate) use audio_2d::AudioSceneReport;
+// ⭐⭐ **A ponte do som de cena DESCEU para a família em 25/09** (catraca `the_shell_only_shrinks`);
+// o nome `audio_2d` fica aqui para os três chamadores do quadro continuarem a lê-lo igual.
+pub(crate) use ph2d_app_audio::audio_2d::{self, AudioSceneReport};
 // ⭐⭐ **A fase da câmera SAIU para a crate da família em 19/09** (catraca `the_shell_only_shrinks`)
 // — o relatório dela continua a ser lido aqui pela `fase_game_camera`.
 pub(crate) use ph2d_app_components::camera_2d::CameraSceneReport;

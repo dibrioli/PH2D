@@ -75,9 +75,9 @@ impl SceneAudio {
     /// ⚠️ **Só o gate a consulta**, e é por isso que ela é gateada: uma sonda que ninguém do
     /// produto lê é exactamente um `dead_code` a ser tolerado em silêncio.
     ///
-    /// ⚠️ `any(test, feature = "test-support")` e não `test` (HOWTO §2.5): quem a lê é um gate do
-    /// `render_loop`, na SHELL, e um `cfg(test)` é falso numa dependência.
-    #[cfg(any(test, feature = "test-support"))]
+    /// ⚠️ `cfg(test)` e já não `any(test, feature = "test-support")`: o gate que a lê (o da ponte do
+    /// som, `audio_2d_tests.rs`) desceu da shell para esta crate em 2026-09-25, e a feature com ele.
+    #[cfg(test)]
     pub fn decoded_ok(&self) -> usize {
         self.decoded.values().filter(|d| d.is_some()).count()
     }

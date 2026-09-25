@@ -1662,9 +1662,29 @@ contra `0,0052` da lei nova) — ⚠️ com a luz no CENTRO do buraco as duas le
 fixtura não conteria o fenómeno. Mutação **2 de 2**, cada uma a sangrar só o seu gate. As paridades
 de sombra, chão e luz na placa passam (`44/44`).
 
-⏳ **E os travões ao girar no Render têm mecanismo medido e ficam por curar:** quando a mão hesita um
-quadro, o app pede o quadro ASSENTE, que a placa não cancela — no nó são `240 ms` (o ricochete sozinho
-`158`), nas outras `16`–`38` — e o quadro de movimento seguinte espera por ele.
+✅ **E os travões ao girar no Render — a metade GRANDE curada (2026-09-24):** quando a mão hesita um
+quadro, o app pede o quadro ASSENTE, que a placa não cancela, e o quadro de movimento seguinte espera
+por ele. Medido (`diag_o_quadro_assente_partido`, `1920×1080`): o assente custa o MESMO que o de
+movimento **menos o ricochete** (nó `82,2` contra `79,1`), e do ricochete a parte fixa é a assadura
+das SONDAS — que **não dependem da orientação da câmera**. ⇒ elas ficam guardadas na placa
+([`sondas_na_placa`](../../crates/ph2d-field-gpu/src/sondas_na_placa.rs)), com a chave de tudo o que
+a assadura lê (a fita, as luzes, as foscas, a lei do dono, a bola, a tolerância, a grade de longe):
+
+| cena | a mexer | assente FRIO | **assente GUARDADO** |
+|---:|---:|---:|---:|
+| `=28` nó | `80,7` | `252,3` | **`84,4`** |
+| `=30` curvas | `14,9` | `65,3` | **`16,5`** |
+| `=11` lote | `15,3` | `37,5` | **`19,3`** |
+| `=5` vaso | `16,7` | `33,7` | **`16,1`** |
+
+A imagem guardada é **idêntica** à fria (`0` canais acima de um nível, com o ricochete a mover
+`147 844` na fixtura) — gates em
+[`preview_device_w9_sondas_tests.rs`](../../crates/ph2d-app-field3d/src/preview_device_w9_sondas_tests.rs),
+mutação **3 de 3** (⚠️ a 1.ª fixtura da peça trocava também a BOLA, e a chave sem a peça
+**sobrevivia** — as duas peças do gate partilham a bola agora). ⛔ Uma peça com escultura não é
+guardada (a cerca da cache do chão). ⏳ **Fica:** o 1.º assente depois de mexer na peça ou na luz
+paga a assadura inteira, e o 2.º degrau da escada (a tela CHEIA) custa o que o quadro de movimento
+custaria nesse tamanho — `~84 ms` no nó — e também não se cancela.
 
 ## W10 — ✅ O GÉMEO DO AMACIAMENTO NO DISPOSITIVO — **FECHADA em 2026-09-19**
 

@@ -329,6 +329,14 @@ pub(super) fn marcha_com(
                 width,
                 height,
                 usadas,
+                // ⭐⭐⭐⭐ **A chave das sondas** — ver [`crate::sondas_na_placa`].
+                crate::sondas_na_placa::ChaveDasSondas::de(
+                    fita,
+                    sculpts,
+                    &setup,
+                    pintor,
+                    lei_do_dono.as_ref(),
+                ),
             ),
             Pintura::Matcap(mc) => {
                 crate::matcap::pinta(device, queue, cache, mc, &alvos, width, height, usadas)

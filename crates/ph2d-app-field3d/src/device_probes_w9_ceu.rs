@@ -387,3 +387,72 @@ fn luz_no_vazio_do_no(doc: &ph2d_field::FieldDoc, c: [f32; 3], r: f32) -> [f32; 
 /// 📏 **A grelha da luz devolvida ao chão contra uma referência fina** — ver o cabeçalho do [`grelha`].
 #[path = "device_probes_w9_chao_grelha.rs"]
 mod grelha;
+
+/// ⏱️ **Sonda: o quadro ASSENTE com as sondas FRIAS contra GUARDADAS** — a cura do travão ao girar
+/// (`ph2d_field_gpu::sondas_na_placa`). A luz é FIXA em mundo, senão orbitar trocava a chave.
+#[test]
+#[ignore = "sonda de GPU"]
+fn diag_o_assente_com_as_sondas_guardadas() {
+    const W: u32 = 1920;
+    const H: u32 = 1080;
+    let Some(t) = crate::gpu_frame::shared() else {
+        println!("sem adaptador");
+        return;
+    };
+    let materiais = [ph2d_material::OpenPbr::default().prepare()];
+    let surfaces = ph2d_field_render::Surfaces {
+        all: &materiais,
+        owners: None,
+    };
+    let pres = ph2d_field_render::Presentation::of(ph2d_view_transform::Look::default());
+    let luz = [ph2d_field_render::PointLamp {
+        world: [1.6, 2.4, 1.2],
+        radiance_at_one: [7.0, 7.0, 7.0],
+    }];
+    println!(
+        "\n  {}\n  cena · a mexer ms · assente FRIO ms · assente GUARDADO ms [mín 3]",
+        super::super::super::super::contexto()
+    );
+    for cena in [5u32, 28, 1, 11, 30] {
+        let doc = crate::smoke::scene(cena);
+        let reg = crate::smoke::sampled_registry();
+        let mede = |assente: bool, frio: bool| {
+            let mut m = f64::INFINITY;
+            for i in 0..4 {
+                let cam = ph2d_field_render::Orbit {
+                    rotation: ph2d_field_render::Orbit::from_yaw_pitch(0.3 * i as f32, 0.5)
+                        .rotation,
+                    ..ph2d_field_render::Orbit::default()
+                };
+                if frio {
+                    t.lock().expect("o traçador").esquece_as_sondas();
+                }
+                let t0 = std::time::Instant::now();
+                let _ = crate::gpu_frame::paint(
+                    t,
+                    &doc,
+                    &reg,
+                    &cam,
+                    &luz,
+                    &surfaces,
+                    &pres,
+                    [0, 0, 0, 0],
+                    None,
+                    W,
+                    H,
+                    assente,
+                );
+                if i > 0 {
+                    m = m.min(t0.elapsed().as_secs_f64() * 1e3);
+                }
+            }
+            m
+        };
+        println!(
+            "  {cena:4} · {:>7.2} · {:>7.2} · {:>7.2}",
+            mede(false, false),
+            mede(true, true),
+            mede(true, false)
+        );
+    }
+}

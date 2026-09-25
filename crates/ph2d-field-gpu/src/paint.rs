@@ -267,6 +267,7 @@ pub(crate) fn pinta(
     width: u32,
     height: u32,
     bordas: u64,
+    chave_sondas: Option<crate::sondas_na_placa::ChaveDasSondas>,
 ) -> Vec<u8> {
     let leis = alvos.leis;
     let fita = alvos.fita;
@@ -418,12 +419,23 @@ pub(crate) fn pinta(
     // ⭐ As sondas: `PROBE_GRID³ × 28` floats. ⚠️ Ele existe mesmo sem ricochete (a bandeira `0`
     // é «fora», e o pintor só o lê quando o despacho das sondas correu).
     let n_sondas = ph2d_field_render::probes::PROBE_GRID.pow(3);
-    let b_sondas = device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("sondas"),
-        size: (n_sondas * 28 * 4) as u64,
-        usage: wgpu::BufferUsages::STORAGE,
-        mapped_at_creation: false,
-    });
+    let bytes_sondas = (n_sondas * 28 * 4) as u64;
+    // ⭐⭐⭐⭐ **Guardadas entre quadros** ([`crate::sondas_na_placa`]): com a mesma chave (a peça,
+    // as luzes, os materiais, a tolerância — nunca a orientação da câmera) o armazém é o de antes e
+    // a assadura NÃO corre. ⚠️ Sem ricochete o armazém é só a rede que o binding exige.
+    let (b_sondas, assar_sondas) = if p_assa.is_some() {
+        cache.sondas(device, chave_sondas, bytes_sondas)
+    } else {
+        (
+            device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("sondas"),
+                size: bytes_sondas,
+                usage: wgpu::BufferUsages::STORAGE,
+                mapped_at_creation: false,
+            }),
+            false,
+        )
+    };
     // ⭐ **O campo do chão**: `n² × 3` floats. ⚠️ Ele existe sempre (um armazém vazio não é ligável),
     // e o pintor só o lê com `modo2.y >= 2`.
     let mut chao: Vec<u8> = Vec::with_capacity(pintor.ground_bounce.value.len() * 12);
@@ -473,9 +485,10 @@ pub(crate) fn pinta(
     // canal para o suavizar, logo ela precisa dele escrito em TODO o quadro — não só neste pixel.
     // *Escrito na mesma passagem, cada pixel leria oito vizinhos de um quadro que ainda não existe.*
     // ⭐⭐⭐ **As SONDAS primeiro**: um grupo de 256 threads por sonda — `PROBE_GRID³` grupos, que
-    // cabem no limite de `65 535` por dimensão a `32³`. Elas não dependem da câmera; assá-las por
-    // quadro assente custa `~1 ms` e uma cache por cena é a wave seguinte.
-    if let Some(p) = &p_assa {
+    // cabem no limite de `65 535` por dimensão a `32³`. ⛔ Elas custavam `~1 ms` na peça em que
+    // esta nota foi escrita e custam `~150 ms` no nó de toro da cena `=28` — hoje só correm quando
+    // a chave muda ([`crate::sondas_na_placa`]).
+    if let (Some(p), true) = (&p_assa, assar_sondas) {
         let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: None,
             timestamp_writes: None,

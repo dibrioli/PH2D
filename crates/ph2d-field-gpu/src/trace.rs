@@ -206,6 +206,17 @@ impl Tracer {
         self.cache.compiled()
     }
 
+    /// Ver [`crate::FieldPipelines::sondas_assadas`].
+    #[must_use]
+    pub fn sondas_assadas(&self) -> usize {
+        self.cache.sondas_assadas()
+    }
+
+    /// Ver [`crate::FieldPipelines::esquece_as_sondas`].
+    pub fn esquece_as_sondas(&mut self) {
+        self.cache.esquece_as_sondas();
+    }
+
     /// Ver [`crate::FieldPipelines::entradas_compiladas`].
     #[must_use]
     pub fn entradas_compiladas(&self) -> Vec<String> {

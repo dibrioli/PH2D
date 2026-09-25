@@ -637,3 +637,7 @@ fn o_modo_de_omissao_e_pintado_no_dispositivo() {
 /// ⭐⭐⭐⭐ **Os gates da cache do campo do chão** — ver o cabeçalho do [`chao`].
 #[path = "preview_device_w9_chao_tests.rs"]
 mod chao;
+
+/// ⭐⭐⭐⭐ **Os gates das sondas guardadas na placa** — ver o cabeçalho do [`sondas`].
+#[path = "preview_device_w9_sondas_tests.rs"]
+mod sondas;

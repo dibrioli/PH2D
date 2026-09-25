@@ -136,6 +136,8 @@ mod paint_wgsl_sondas;
 pub mod parity;
 pub mod probe;
 pub mod sculpt;
+/// ⭐ **As sondas do ricochete guardadas na placa entre quadros** — ver o módulo.
+mod sondas_na_placa;
 pub mod trace;
 mod trace_grupo;
 mod trace_lampadas;
@@ -164,6 +166,10 @@ pub struct FieldPipelines {
     foto: Option<FotoNaPlaca>,
     /// Quantas vezes uma fotografia subiu — ver [`FieldPipelines::matcaps_enviados`].
     envios_foto: usize,
+    /// ⭐⭐⭐⭐ **As sondas do ricochete que já estão na placa** — ver [`sondas_na_placa`].
+    sondas: Option<sondas_na_placa::SondasNaPlaca>,
+    /// Quantas vezes as sondas foram assadas — ver [`FieldPipelines::sondas_assadas`].
+    assaduras_de_sondas: usize,
 }
 
 /// ⭐⭐⭐ **A fotografia residente** — ver [`FieldPipelines::matcap_buffer`].
@@ -208,6 +214,8 @@ impl FieldPipelines {
             envios: 0,
             foto: None,
             envios_foto: 0,
+            sondas: None,
+            assaduras_de_sondas: 0,
         }
     }
 

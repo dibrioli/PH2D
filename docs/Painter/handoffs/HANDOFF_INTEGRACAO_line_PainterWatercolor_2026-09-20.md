@@ -3247,3 +3247,29 @@ apaga o descarte reprova no caso do papel autorado.
   linha, paralelizável ao bit — pede o `rayon` no `ph2d-wet-paint`, que exige ADR).
 - **Com um papel do ARTISTA** o `seed_paper_with` amostra a textura do painter célula a célula em série
   (16,7 M chamadas a 4096²) — não medido.
+
+## §43 — O papel do nascimento por linhas: o 1.º traço com um papel do artista deixa de congelar (2026-09-24)
+
+Continuação do §42.3. Sonda (retirada) com um papel do artista no pincel: o `seed_paper_with` — a lei
+de textura do painter chamada célula a célula, em série, 16,7 M vezes a 4096² — custava **`95–277 ms`**
+no 1.º traço de cada sessão (e em toda troca de papel a meio). ⇒ o bake do tile e a semente passam a
+correr por linhas (ADR-0175 **§3-bis**, `par::walk_rows`), byte-idênticos por construção, com a lei do
+hospedeiro a passar a `&(dyn Fn + Sync)`.
+
+| 1.º traço da sessão (4096², raio 100, `load ~7`) | antes | depois |
+|---|---|---|
+| sem papel | `~30 ms` (§42) | **`17,7 ms`** |
+| papel `1` / `2` / `5` | `308,7 / 229,7 / 126,4 ms` | **`42,7 / 35,4 / 27,6 ms`** |
+
+O `mede_o_wet_paint` ganhou o 5.º argumento `[papel]` (o `kind` do slot, como o painel o escreve).
+Pisos MEDIDOS e diferentes (`MIN_CELLS_PAPER_BAKE = 128 k`, uma cópia; `MIN_CELLS_PAPER_SEED = 2 k`, a lei
+do hospedeiro). Gates `tests/it/paper_rows.rs`: as duas rotas ao bit, o **laço de antes congelado** como
+oráculo do bake (as duas rotas partilham o corpo por linha, e compará-las uma com a outra não apanha um
+corpo errado — o tile é o da folha `1` contra o `0` do construtor, senão uma linha saltada ficava com o
+papel certo por acaso), a cobertura do anel na semente e o corte à faixa do dente. **6 de 6 mutações
+sangram**; três sobreviveram à 1.ª redacção (o oráculo independente e o corte faltavam). Suítes do motor
+e do Painter verdes, clippy `-D warnings` limpo.
+
+**Aberto:** o tile do motor (`~12 ms`, em série de propósito — impressão digital) e, com um papel do
+artista, o bake do tile do motor que o papel do hospedeiro sobrescreve logo a seguir (trabalho deitado
+fora, `~2 ms` depois desta wave).

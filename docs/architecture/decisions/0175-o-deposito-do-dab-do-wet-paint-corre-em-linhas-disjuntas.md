@@ -66,6 +66,20 @@ por gosto:** o 3 é uma SOMA em `f64` (a ordem muda os bits) e o arrasto do 4 l�
 `film[si]` de células que o mesmo laço pode já ter escrito — é Gauss-Seidel, e trocá-lo por Jacobi
 mudaria a tinta (a mesma fronteira que o ADR-0147 só atravessou com decisão de produto).
 
+**3-bis. O PAPEL no nascimento da sessão também corre por linhas** (acrescentado 2026-09-24, mesma
+linha): o bake do tile do motor na grade (`paper::bake_paper_rows`) e a semente do papel do HOSPEDEIRO
+(`Engine::seed_paper_with_rows`). As três condições do ADR-0109 valem por construção — cada linha
+escreve só a própria linha do `paper`, lê só o tile (que ninguém escreve) ou chama a lei do hospedeiro
+com as células dela, e não há redução nenhuma. A lei do hospedeiro passa de `&mut dyn FnMut` a
+`&(dyn Fn + Sync)` pela mesma razão do ponto 2. **Medido no produto** (`mede_o_wet_paint pousos … [papel]`,
+4096²): o 1.º traço de uma sessão com um papel do artista era **`126–308 ms`** (a semente em série,
+16,7 M chamadas) e passa a **`28–43 ms`**; sem papel, `~30 → ~18 ms`. Pisos em `par.rs`
+(`MIN_CELLS_PAPER_BAKE` · `MIN_CELLS_PAPER_SEED`, com a tabela de `tests/it/measure_paper_rows.rs`);
+gates em `tests/it/paper_rows.rs` (as duas rotas ao bit, o laço de antes congelado como oráculo, e o
+corte à faixa do dente), **6 de 6 mutações a sangrar**. ⛔ **O tile (`generate_paper_tile`, `~12 ms`)
+fica em série:** a caminhada das fibras consome o gerador aleatório em ordem e as somas são `f64` de
+ordem fixa — é a impressão digital do motor.
+
 ### Os pisos, medidos (`tests/it/measure_deposit_rows.rs`, release, `load 1,55`, as duas rotas ALTERNADAS na mesma ronda, mínimo de 15)
 
 ```text

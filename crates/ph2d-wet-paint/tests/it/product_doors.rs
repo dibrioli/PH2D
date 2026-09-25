@@ -186,7 +186,7 @@ fn the_hosts_paper_seed_covers_the_whole_padded_plane() {
             "the preset paper must be non-constant ({lo}..{hi})"
         );
     }
-    e.seed_paper_with(&mut |_, _| 0.7);
+    e.seed_paper_with(&|_, _| 0.7);
     let g = e.active_grid();
     assert!(
         g.paper.iter().all(|&v| v == 0.7),

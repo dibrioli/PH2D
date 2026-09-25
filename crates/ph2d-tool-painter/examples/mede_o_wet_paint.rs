@@ -19,7 +19,7 @@
 //! ```text
 //! bash scripts/ph2d-run.sh cargo run -p ph2d-tool-painter --release --example mede_o_wet_paint
 //! bash scripts/ph2d-run.sh cargo run -p ph2d-tool-painter --release --example mede_o_wet_paint -- [tela] [raio]
-//! bash scripts/ph2d-run.sh cargo run -p ph2d-tool-painter --release --example mede_o_wet_paint -- [tela] [raio] pousos [n]
+//! bash scripts/ph2d-run.sh cargo run -p ph2d-tool-painter --release --example mede_o_wet_paint -- [tela] [raio] pousos [n] [papel]
 //! ```
 //!
 //! Imprime `/proc/loadavg` ao lado: acima de `load ~5` nenhum relógio desta máquina vale nada em
@@ -219,8 +219,12 @@ fn carga() -> String {
 /// **O POUSAR** — traços curtos em sequência, com a água a correr entre eles (meio segundo de
 /// quadros), como quem pinta pinceladas soltas. Imprime o pen-down de cada um; é também o modo que
 /// o amostrador de pilhas usa para ver o pousar sem o gesto por cima.
-fn pousos(size: u32, raio: f32, n: usize) {
+fn pousos(size: u32, raio: f32, n: usize, papel: Option<u8>) {
     let mut t = wet(size, raio);
+    // Um PAPEL do artista no pincel (o `kind` do slot): o 1.º traço semeia-o na grade inteira.
+    if let Some(k) = papel {
+        t.set_brush_paper_kind(k);
+    }
     let c = size as f32 / 2.0;
     let mut pd = Vec::new();
     let mut pu = Vec::new();
@@ -269,8 +273,9 @@ fn main() {
     let raio: f32 = args.get(1).and_then(|s| s.parse().ok()).unwrap_or(100.0);
     if args.get(2).is_some_and(|s| s == "pousos") {
         let n = args.get(3).and_then(|s| s.parse().ok()).unwrap_or(24);
-        println!("load {}", carga());
-        pousos(size, raio, n);
+        let papel = args.get(4).and_then(|s| s.parse().ok());
+        println!("load {} · papel {papel:?}", carga());
+        pousos(size, raio, n, papel);
         return;
     }
     // `perfil`: só os gestos, e mais traços — para o amostrador de pilhas ver o que o pincel custa.

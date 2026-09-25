@@ -88,7 +88,7 @@ impl PainterTool {
                 // e o papel é uma lei de CANVAS — sob razão > 1 amostrá-lo na
                 // coordenada de célula encolheria o dente do papel pelo mesmo
                 // fator, e o papel deixaria de casar com o do resto do app.
-                sess.engine.seed_paper_with(&mut |cx, cy| {
+                sess.engine.seed_paper_with(&|cx, cy| {
                     let px = grid_map::cell_center_texel(cx as i32 + 1, ratio);
                     let py = grid_map::cell_center_texel(cy as i32 + 1, ratio);
                     f64::from(ph2d_painter_brush::texture::sample_tiled_rot_wrapped(

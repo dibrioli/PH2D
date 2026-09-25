@@ -241,6 +241,26 @@ pub const MIN_CELLS_DEPOSIT: usize = 6 << 10;
 /// salta o papel em branco —, e por isso o piso dele é mais alto.
 pub const MIN_CELLS_TIP: usize = 16 << 10;
 
+/// Os pisos do PAPEL (ADR-0175 §3-bis), medidos por `tests/it/measure_paper_rows.rs` (release,
+/// `load 5`, as duas rotas ALTERNADAS, mínimo de 9):
+///
+/// ```text
+///  lado   células | bake sér bake par  razão | seed sér seed par  razão
+///    32      1156 |    0.001    0.008  0.08x |    0.008    0.011  0.69x
+///    64      4356 |    0.002    0.017  0.10x |    0.028    0.013  2.20x
+///   128     16900 |    0.008    0.022  0.36x |    0.111    0.027  4.07x
+///   256     66564 |    0.020    0.032  0.63x |    0.426    0.083  5.15x
+///   512    264196 |    0.069    0.053  1.32x |    1.699    0.316  5.37x
+///  1024   1052676 |    0.255    0.091  2.81x |    6.795    1.200  5.66x
+///  2048   4202500 |    0.986    0.328  3.01x |   27.280    4.104  6.65x
+/// ```
+///
+/// São DOIS pisos porque o custo por célula é outro: o bake é uma CÓPIA do tile (paga-se entre
+/// `66 k` e `264 k`), a semente chama a lei de textura do hospedeiro (paga-se entre `1 k` e `4 k`).
+pub const MIN_CELLS_PAPER_BAKE: usize = 128 << 10;
+/// Ver [`MIN_CELLS_PAPER_BAKE`].
+pub const MIN_CELLS_PAPER_SEED: usize = 2 << 10;
+
 /// [`walk_rows_reduce`] sobre **ITENS já fatiados** em vez de uma faixa com passo.
 ///
 /// O consumidor é o depósito de um dab (ADR-0175): cada linha dele escreve em DOIS buffers de

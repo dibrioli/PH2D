@@ -302,15 +302,30 @@ impl Engine {
     /// exact index domain [`crate::paper::bake_paper`] covers, pad ring
     /// included; values clamp to the tooth range 0..1. Not calling it keeps
     /// the port's own preset tile, byte-identical.
-    pub fn seed_paper_with(&mut self, f: &mut dyn FnMut(i64, i64) -> f64) {
+    ///
+    /// ⚠️ `f` é `Fn + Sync` e não `FnMut`: a lei do papel é uma função PURA da célula, e o laço corre
+    /// por linhas em paralelo (ADR-0175 §3-bis). Medido 2026-09-24, 4096², com um papel do artista:
+    /// esta varredura em série eram **`95–277 ms`** no 1.º traço de cada sessão (16,7 M chamadas).
+    pub fn seed_paper_with(&mut self, f: &(dyn Fn(i64, i64) -> f64 + Sync)) {
+        let g = &self.layers[self.active_layer].grid;
+        let mode = crate::par::Rows::pick(g.rows, g.s, crate::par::MIN_CELLS_PAPER_SEED);
+        self.seed_paper_with_rows(f, mode);
+    }
+
+    /// [`Self::seed_paper_with`] pela rota `mode` — a porta do gate e da sonda. Cada linha escreve só
+    /// a própria linha e chama `f` só com as células dela: byte-idêntica por construção.
+    pub fn seed_paper_with_rows(
+        &mut self,
+        f: &(dyn Fn(i64, i64) -> f64 + Sync),
+        mode: crate::par::Rows,
+    ) {
         let g = &mut self.layers[self.active_layer].grid;
-        for y in 0..g.rows {
-            let mut i = y * g.s;
-            for x in 0..g.s {
-                g.paper[i] = (f(x as i64 - 1, y as i64 - 1) as f32).clamp(0.0, 1.0);
-                i += 1;
+        let s = g.s;
+        crate::par::walk_rows(mode, &mut g.paper[..g.rows * s], s, |y, row| {
+            for (x, cell) in row.iter_mut().enumerate() {
+                *cell = (f(x as i64 - 1, y as i64 - 1) as f32).clamp(0.0, 1.0);
             }
-        }
+        });
     }
 
     /// End a real-dab stroke: every lane's tip remainder is dropped by

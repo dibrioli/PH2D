@@ -275,15 +275,21 @@ fn box_blur_wrap(src: &[f32], r: i32) -> Vec<f32> {
 /// Bake a tile into the padded grid paper array, pad ring included, with
 /// integer wrap (nearest texel). Cell (x,y) maps to tile texel (x-1, y-1).
 pub fn bake_paper(grid: &mut Grid, tile: &[f32]) {
+    let mode = crate::par::Rows::pick(grid.rows, grid.s, crate::par::MIN_CELLS_PAPER_BAKE);
+    bake_paper_rows(grid, tile, mode);
+}
+
+/// [`bake_paper`] pela rota `mode` — a porta do gate e da sonda
+/// (`tests/it/paper_rows.rs`, ADR-0175 §3-bis). Cada linha escreve só a própria linha e lê só o
+/// `tile`, que ninguém escreve: byte-idêntica por construção.
+pub fn bake_paper_rows(grid: &mut Grid, tile: &[f32], mode: crate::par::Rows) {
     let s = grid.s;
-    for y in 0..grid.rows {
+    crate::par::walk_rows(mode, &mut grid.paper[..grid.rows * s], s, |y, row| {
         let ty = wrap_mask(y as i32 - 1, TMASK) * TS;
-        let mut i = y * s;
-        for x in 0..s {
-            grid.paper[i] = tile[ty + wrap_mask(x as i32 - 1, TMASK)];
-            i += 1;
+        for (x, cell) in row.iter_mut().enumerate() {
+            *cell = tile[ty + wrap_mask(x as i32 - 1, TMASK)];
         }
-    }
+    });
 }
 
 /// Measured statistics of a tile (acceptance test §18.6 + calibration).

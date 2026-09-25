@@ -89,7 +89,7 @@ mod vivo_tests;
 #[path = "materia_da_forma_tests.rs"]
 mod materia_da_forma_tests;
 
-/// Os gates da CENA do catavento (`=52`) — ver o módulo.
+/// Os gates da CENA do catavento (`=53`) — ver o módulo.
 #[cfg(test)]
 #[path = "catavento_cena_tests.rs"]
 mod catavento_cena_tests;

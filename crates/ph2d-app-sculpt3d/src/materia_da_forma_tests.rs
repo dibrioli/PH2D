@@ -89,7 +89,7 @@ fn o_censo_da_corrente_sabe_dizer_que_nao() {
 ///
 /// ⛔⛔ **Sem esta metade a wave inteira é invisível ao dono:** o `albedo::veste_a_forma` só arma
 /// quando **nenhum** texel do sprite tem alfa, logo sobre uma tela BRANCA a matéria nunca é a forma
-/// e a `=52` mostraria a peça dentro de um cartão — *a cena não conteria o fenómeno que ela existe
+/// e a `=53` mostraria a peça dentro de um cartão — *a cena não conteria o fenómeno que ela existe
 /// para julgar*, que é a espécie que o `CLAUDE.md` §5.0 chama de pior que uma cena ausente.
 ///
 /// ⚠️ **E os dois números são atados ao SIGNIFICADO deles**, não afirmados soltos: a escada vive no
@@ -100,7 +100,7 @@ fn a_cena_do_catavento_pede_a_tela_em_que_a_peca_sai_recortada() {
     assert_eq!(
         crate::donation::fundo_da_tela(true),
         0,
-        "a =52 tem de pedir uma tela TRANSPARENTE — sobre branco o vestir nunca arma"
+        "a =53 tem de pedir uma tela TRANSPARENTE — sobre branco o vestir nunca arma"
     );
     assert_eq!(
         crate::donation::fundo_da_tela(false),

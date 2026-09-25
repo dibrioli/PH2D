@@ -149,7 +149,7 @@ fn o_padrao_pergunta_as_camadas_vivas_antes_da_imagem_guardada() {
 /// 21/09 (*«ao assar com a sprite transparente, não aparece no Inspector os controlos da sprite
 /// 3D»*).
 ///
-/// ⚠️ **A secção `Live Mesh` só é pintada COM o componente** (ADR-0166), e até aqui só a cena `=52`
+/// ⚠️ **A secção `Live Mesh` só é pintada COM o componente** (ADR-0166), e até aqui só a cena `=53`
 /// o semeava — o artista que assava a peça dele tinha a forma 3D no objecto e **nenhuma superfície
 /// para a virar**. *Um motor com a lei certa e o artista sem lhe chegar lê-se, da cadeira dele,
 /// como um motor sem a lei.*

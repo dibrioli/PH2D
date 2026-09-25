@@ -107,7 +107,7 @@ pub(crate) fn materia_para(
 /// gesto — *«a luz da forma MULTIPLICA, então sobre branco o que se vê é ela e mais nada»*. Branco
 /// é o **neutro multiplicativo**, e usá-lo aqui é aplicar a escolha que o produto já fez.
 ///
-/// ⚠️⚠️ **E a partir de 2026-09-21 a cena do CATAVENTO (`=52`) pede TRANSPARENTE**, exactamente
+/// ⚠️⚠️ **E a partir de 2026-09-21 a cena do CATAVENTO (`=53`) pede TRANSPARENTE**, exactamente
 /// para esta lei armar lá: é onde a peça tem de sair recortada e continuar recortada a virar. *Uma
 /// cena que não contém o fenómeno é o mesmo que uma cena ausente.*
 ///

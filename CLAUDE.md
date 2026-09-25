@@ -1453,7 +1453,7 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   árvore deu `10`, `9` e `6` — *meça a ociosidade real, o `loadavg` mente a decair*.
   [Handoff §10](docs/3DModeling/handoffs/HANDOFF_INTEGRACAO_line_3DModeling_A_LINHA_2026-09-20.md) ·
   [plano `W9`](docs/Render3d/03_o_plano.md)
-  ⭐⭐⭐ **E A LINHA FECHOU OUTRA VEZ em 25/09 (105 commits, já rebaseados): a lei que acende o sprite (`ph2d-form-pbr`), «o que se vê é o que se assa», o catavento (`Mesh3D`, cena `=52`) e a `W9` até à oclusão a passo — o gate vermelho herdado está VERDE; `PROJECT_SCHEMA` +5 e registos +1, com o atrito MEDIDO contra `line/components`, `line/sculpt3d` e `line/UIUX`; ⏳ a foto do dono de 25/09 (grosso a mexer + contorno pontilhado) fica aberta** — [handoff do INTEGRADOR](docs/3DModeling/handoffs/HANDOFF_INTEGRACAO_line_3DModeling_A_LINHA_2026-09-25.md).
+  ⭐⭐⭐ **E A LINHA FECHOU OUTRA VEZ em 25/09 (105 commits, já rebaseados): a lei que acende o sprite (`ph2d-form-pbr`), «o que se vê é o que se assa», o catavento (`Mesh3D`, cena `=53`) e a `W9` até à oclusão a passo — o gate vermelho herdado está VERDE; `PROJECT_SCHEMA` +5 e registos +1, com o atrito MEDIDO contra `line/components`, `line/sculpt3d` e `line/UIUX`; ⏳ a foto do dono de 25/09 (grosso a mexer + contorno pontilhado) fica aberta** — [handoff do INTEGRADOR](docs/3DModeling/handoffs/HANDOFF_INTEGRACAO_line_3DModeling_A_LINHA_2026-09-25.md).
   **Aberto:** ⏳ **O filete só é um ARCO a 90°** — o operador recua o vértice `(1 − 1/√2)·r/sin α` e um
   arco verdadeiro recua `r·(1/sin α − 1)`; numa ponta de estrela (19°) isso é **`2,29×` menos** filete
   do que o número diz. Hoje compensa-se **só nas quinas AGUDAS** (`max(1, factor)`), e as duas curas

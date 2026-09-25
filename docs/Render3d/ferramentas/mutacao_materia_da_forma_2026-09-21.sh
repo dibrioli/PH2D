@@ -163,7 +163,7 @@ muta "a rota B passa-o à lei (no PIXEL)" "$VIVA" \
   catavento_com_materia_da_forma ph2d-app-sculpt3d --release -- --ignored
 
 # (8-bis) A cena do catavento deixa de pedir a tela onde a lei arma.
-muta "a =52 pede tela TRANSPARENTE" crates/ph2d-app-sculpt3d/src/donation.rs \
+muta "a =53 pede tela TRANSPARENTE" crates/ph2d-app-sculpt3d/src/donation.rs \
   'if catavento { 0 } else { 2 }' 'if catavento { 2 } else { 2 }' 1 \
   a_cena_do_catavento_pede ph2d-app-sculpt3d
 

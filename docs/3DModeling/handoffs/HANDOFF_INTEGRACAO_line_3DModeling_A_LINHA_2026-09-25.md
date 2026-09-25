@@ -31,7 +31,7 @@
 |---|---|---|---|
 | **1.ª — a lei que acende o sprite** (`F4`) | o sprite assado passa a ser aceso pelo **OpenPBR** (crate-folha nova [`ph2d-form-pbr`](../../../crates/ph2d-form-pbr/)), no dispositivo, com o céu, a oclusão e a indirecta da casa; `PH2D_FORM_PBR=0` volta à lei de tinta | [`15` §7–§8](../../Render3d/15_as_metas.md) | ✅ **aprovado 21/09** |
 | **«o que se vê é o que se assa»** | as QUATRO causas do *«o bake não é idêntico ao 3D»*: o modo do visor, a lei do bake, a **matéria** e a **curva sRGB** (`Rgba8Unorm → Rgba8UnormSrgb`); a lei **por objecto** gravada; a **lente**; o **recorte**; a **matéria da peça** | [`16`](../../Render3d/16_o_que_se_ve_e_o_que_se_assa.md) · [`../Render/01`](../../Render/01_o_assado_e_identico_ao_que_se_ve.md) · [`A_CURVA`](HANDOFF_INTEGRACAO_line_3DModeling_A_CURVA_2026-09-21.md) | ✅ a 1.ª metade (21/09) |
-| **2.ª — a rota B, o catavento** (`F3`) | o componente **`Mesh3D`** (a malha viva que um sprite mantém, com a pose 3D e o `spin`), a fase `fase_cataventos`, a cena **`=52`**, a secção **Live Mesh** do Inspector | [`17`](../../Render3d/17_a_rota_b_o_catavento.md) | ⏳ reports de 21/09 curados; sem aprovação final |
+| **2.ª — a rota B, o catavento** (`F3`) | o componente **`Mesh3D`** (a malha viva que um sprite mantém, com a pose 3D e o `spin`), a fase `fase_cataventos`, a cena **`=53`**, a secção **Live Mesh** do Inspector | [`17`](../../Render3d/17_a_rota_b_o_catavento.md) | ⏳ reports de 21/09 curados; sem aprovação final |
 | **3.ª — a luz sobrevive ao movimento** (absorve a `W9`) | fita inerte · cache do chão · o **gate vermelho herdado resolvido** · o vaso por FÓRMULA · o modo de omissão (matcap) na placa · armazéns CONTADOS · o recorte pela caixa da marcha · matcap em kernel magro · borda compacta · luz em kernel próprio · a luz encostada sem anéis · o chão sem rectângulos · **sondas guardadas na placa** · o assentar que espera o que custa · **a oclusão a passo `2` no quadro de movimento** | [`03` §W9](../../Render3d/03_o_plano.md) (da secção «O PRIMEIRO ACTO» até «A OCLUSÃO A PASSO») | ✅ recorte (24/09) · ⏳ o resto (§6) |
 | `W7d` (profundidade de campo) | **FORA, por decisão do dono** (22/09) | [`12` §W7d](../../Render3d/12_o_acabamento.md) | — |
 
@@ -164,7 +164,7 @@ saída do adaptador, não um gate: leia a linha do `test result`, não o código
      reconstruída na silhueta, onde os representantes caem no fundo); o 1.º passo é bissectar com
      `PH2D_FIELD_CEU_PASSO=1` no mesmo enquadramento. A outra candidata é a **borda re-amostrada** na
      tela encolhida, que se bissecta com `PH2D_FIELD_BORDA=0`.
-- ⏳ O catavento (`=52`) e a Live Mesh — curados sobre reports de 21/09, sem aprovação final.
+- ⏳ O catavento (`=53`) e a Live Mesh — curados sobre reports de 21/09, sem aprovação final.
 - ✅ Aprovados: a lei que acende o sprite (21/09) · o recorte pela caixa da marcha (24/09).
 
 **Smoke para o dono, quando houver ordem:**

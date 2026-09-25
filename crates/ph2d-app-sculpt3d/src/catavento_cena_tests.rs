@@ -1,4 +1,4 @@
-//! **OS GATES DA CENA `=52`** — o catavento, do lado que não precisa de placa.
+//! **OS GATES DA CENA `=53`** — o catavento, do lado que não precisa de placa.
 //!
 //! ⚠️ Os dois medem coisas que a suíte inteira deixaria passar e que só o DONO veria, cada uma
 //! como uma cena que ensina o contrário do que diz (a espécie que o `CLAUDE.md` §5.0 chama de
@@ -9,7 +9,7 @@ use crate::scenes::GIRO_DA_CENA;
 /// ⭐⭐⭐ **A PEÇA DA CENA NÃO PODE SER INVARIANTE À ROTAÇÃO** — o controlo da própria cena.
 ///
 /// ⛔ Uma esfera LISA tem raio constante, logo rodá-la em torno do centro devolve **a mesma
-/// superfície**: o catavento giraria e a imagem não mudaria, e a `=52` ensinaria que a rota B não
+/// superfície**: o catavento giraria e a imagem não mudaria, e a `=53` ensinaria que a rota B não
 /// faz nada. *O que separa uma cena que prova a wave de uma que a desmente é esta propriedade da
 /// MALHA, e ela não está escrita em lado nenhum senão aqui.*
 ///
@@ -48,20 +48,20 @@ fn a_peca_do_catavento_tem_relevo_que_a_rotacao_revela() {
         .iter()
         .fold((f32::MAX, f32::MIN), |(a, b), &r| (a.min(r), b.max(r)));
     let excursao = (hi - lo) / medio;
-    eprintln!("relevo da peca da =52: excursao {excursao:.3} do raio medio {medio:.3}");
+    eprintln!("relevo da peca da =53: excursao {excursao:.3} do raio medio {medio:.3}");
     assert!(
         excursao > 0.10,
-        "a peca da =52 e' quase esferica (excursao {excursao:.3}): rodar nao muda a imagem, e a \
+        "a peca da =53 e' quase esferica (excursao {excursao:.3}): rodar nao muda a imagem, e a \
          cena ensinaria que a rota B nao faz nada"
     );
     // ⚠️⚠️ **A SEGUNDA METADE, e sem ela a primeira afirma sobre uma fixtura que a cena pode não
-    // usar:** medir o relevo da `ridged_sphere` não prova que é ela que a `=52` abre. O elo é a
+    // usar:** medir o relevo da `ridged_sphere` não prova que é ela que a `=53` abre. O elo é a
     // lista do `scenes_mesh`, e ele é lido por texto porque escolher a malha lê a env — que esta
     // crate não pode armar (ela proíbe `unsafe`).
     let fonte = include_str!("scenes_mesh.rs");
     assert!(
         fonte.contains("|| catavento_scene()"),
-        "a =52 saiu da lista que devolve a esfera com CRISTAS: ela passaria a abrir com a esfera \
+        "a =53 saiu da lista que devolve a esfera com CRISTAS: ela passaria a abrir com a esfera \
          lisa do default, que e' invariante a' rotacao"
     );
 }
@@ -73,7 +73,7 @@ fn a_peca_do_catavento_tem_relevo_que_a_rotacao_revela() {
 /// catavento imóvel, que se lê exactamente como a rota B partida.
 ///
 /// ⚠️ A terceira metade é de TEXTO e não de execução: esta crate proíbe `unsafe`, logo um teste
-/// não pode armar a env para medir que é a `=52` **e não outra cena** que pede o catavento. O que
+/// não pode armar a env para medir que é a `=53` **e não outra cena** que pede o catavento. O que
 /// ele afirma é a FIAÇÃO — que a porta com a lei é guardada pelo predicado da cena —, e quem mede
 /// o predicado em si é o censo do roteador.
 ///
@@ -89,7 +89,7 @@ fn a_cena_pede_giro_e_o_componente_nasce_parado() {
     let pedido = crate::donation::catavento_da_cena();
     assert!(
         pedido.spin.abs() > 0.0,
-        "a cena =52 semeia um catavento PARADO — ela mostraria a rota B a nao fazer nada"
+        "a cena =53 semeia um catavento PARADO — ela mostraria a rota B a nao fazer nada"
     );
     assert!(
         (pedido.spin - GIRO_DA_CENA).abs() < f32::EPSILON,
@@ -105,7 +105,7 @@ fn a_cena_pede_giro_e_o_componente_nasce_parado() {
 
 /// ⭐⭐⭐ **O ROTEIRO MANDA DAR PLAY, LOGO A CENA TEM DE ABRIR A RÉGUA DO TEMPO.**
 ///
-/// ⛔⛔ **Achado por uma FOTO e não por um gate** (21/09): a `=52` abria **sem timeline nenhuma**,
+/// ⛔⛔ **Achado por uma FOTO e não por um gate** (21/09): a `=53` abria **sem timeline nenhuma**,
 /// o passo (5) mandava *«dê PLAY (a régua do tempo)»*, e sem transporte a andar o `playhead` fica
 /// em `0` ⇒ **o catavento nunca gira**. *O dono julgaria a wave sem nunca a ver*, e os seis gates
 /// da cena estavam verdes — eles medem a lei, e o que faltava era um PAINEL.
@@ -120,15 +120,15 @@ fn o_roteiro_pede_play_e_a_cena_abre_a_regua() {
     let roteiro = include_str!("scripts.rs");
     // ⚠️ **A âncora é o NÚMERO da cena e não o título**, e a razão foi medida em 21/09: ao
     // traduzir o roteiro para inglês (ordem do dono — *«o app é em inglês»*) este gate reprovou,
-    // porque procurava `=52 O CATAVENTO`. *Uma agulha que contém prosa traduzível reprova na
+    // porque procurava `=53 O CATAVENTO`. *Uma agulha que contém prosa traduzível reprova na
     // tradução, e o defeito que ela existe para apanhar continua lá.*
     let i = roteiro
-        .find("=52 ")
-        .expect("o roteiro da =52 tem de existir");
+        .find("=53 ")
+        .expect("o roteiro da =53 tem de existir");
     let bloco = &roteiro[i..i + 1800.min(roteiro.len() - i)];
     assert!(
         bloco.contains("PLAY"),
-        "o roteiro da =52 deixou de pedir PLAY — se o giro passou a ser visível sem transporte, \
+        "o roteiro da =53 deixou de pedir PLAY — se o giro passou a ser visível sem transporte, \
          esta metade e a da visibilidade da régua deixam as duas de descrever o produto"
     );
     // ⚠️ A outra ponta vive na SHELL, que esta crate não compila — logo é lida por TEXTO, que é a
@@ -138,7 +138,7 @@ fn o_roteiro_pede_play_e_a_cena_abre_a_regua() {
         include_str!("../../../shells/desktop/src/render_loop/fase_sculpt3d_donation_smoke.rs");
     assert!(
         cena.contains(r#"hero.panel_visibility.insert("timeline", true)"#),
-        "a cena =52 deixou de abrir a regua do tempo: o passo (5) do roteiro manda carregar num \
+        "a cena =53 deixou de abrir a regua do tempo: o passo (5) do roteiro manda carregar num \
          botao que nao esta' na tela, e o catavento nunca gira"
     );
 }

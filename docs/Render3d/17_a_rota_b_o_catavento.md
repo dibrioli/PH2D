@@ -416,7 +416,7 @@ mostrasse a rotação no plano estaria a demonstrar uma coisa que a rota A já f
 ## §7 — ⭐⭐⭐ W3: **o catavento chega à cena** (construída em 2026-09-21)
 
 O motor da §6 tinha tudo menos um dono: nada no mundo dizia *«este objecto é um catavento»*. A W3 é
-o componente, a fase do quadro que o varre, e a cena `=52`.
+o componente, a fase do quadro que o varre, e a cena `=53`.
 
 ### §7.1 — ⛔⛔ A pose 3D mora no COMPONENTE, e isso é uma MEDIÇÃO
 
@@ -461,7 +461,7 @@ remendo seria pôr ali um valor que ninguém usou.*
 duas rotas:** a rota A promete acender **sem** o módulo 3D no build (a forma dela viaja no
 documento); esta RASTERIZA por quadro, logo precisa da malha.
 
-### §7.4 — A cena `=52`, e o controlo dentro dela
+### §7.4 — A cena `=53`, e o controlo dentro dela
 
 A mesma mesa da `=11` (esfera com **cristas** + tela branca), com o componente semeado na tela.
 ⭐⭐ **O CONTROLO é o botão de PLAY:** com o transporte parado a peça fica no `yaw` autorado — que é,
@@ -496,7 +496,7 @@ e uma esfera lisa lê `0,000`.
 
 ## §8 — ⭐⭐⭐ W4: **o Live Mesh tem controlo**, e os dois reports do dono (2026-09-21)
 
-A W3 fechou com o componente vivo e **inalcançável**: só a cena `=52` o
+A W3 fechou com o componente vivo e **inalcançável**: só a cena `=53` o
 semeava. O dono respondeu ao item aberto com **«sim. quero»**, e a wave é a
 secção do Inspector mais as duas correcções que ele devolveu no mesmo turno.
 
@@ -627,7 +627,7 @@ no mesmo ficheiro: três frases portuguesas e as duas recusas de verde.
 camadas vivas antes da imagem guardada) passa a ser afirmada **contando as leituras**.
 
 ⚠️ E caiu hoje a **terceira** âncora de gate presa a prosa traduzível (`"escala {scale:"`, depois
-de `"=52 O CATAVENTO"`).
+de `"=53 O CATAVENTO"`).
 
 ## §9 — ⭐⭐⭐ O smoke seguinte: o barro PRETO e o painel sem controlos (2026-09-21)
 
@@ -655,7 +655,7 @@ ficheiro mudar de sítio.
 
 ### §9.2 — ⭐⭐ *«ao assar com a sprite transparente, não aparece no Inspector os controlos»*
 
-A secção `Live Mesh` só é pintada **com** o componente (ADR-0166), e até aqui **só a cena `=52` o
+A secção `Live Mesh` só é pintada **com** o componente (ADR-0166), e até aqui **só a cena `=53` o
 semeava** — o artista que assava a peça dele tinha a forma 3D no objecto e **nenhuma superfície
 para a virar**. *Um motor com a lei certa e o artista sem lhe chegar lê-se, da cadeira dele, como
 um motor sem a lei.*
@@ -874,12 +874,12 @@ o canal a ser deitado fora»*).
 
 ### §11.5 — E a CENA tinha de mudar, senão a wave era invisível
 
-⛔⛔⛔ A `=52` pedia uma tela **BRANCA** (`bg: 2`). Sobre branco o vestir **nunca arma** — o sprite
+⛔⛔⛔ A `=53` pedia uma tela **BRANCA** (`bg: 2`). Sobre branco o vestir **nunca arma** — o sprite
 já tem alfa em todo o lado —, logo `materia_da_forma` seria sempre `false` e a cena mostraria a peça
 dentro de um cartão branco: **exactamente o que a cura existe para tirar**.
 
 ⇒ o fundo passa a ser da CENA (`donation::fundo_da_tela`): a `=11` continua a julgar a **LUZ** sobre
-branco, que é o neutro multiplicativo, e a `=52` pede **transparente**, porque o que ela julga é o
+branco, que é o neutro multiplicativo, e a `=53` pede **transparente**, porque o que ela julga é o
 **RECORTE a virar**. ⚠️ *Uma cena que não contém o fenómeno é o mesmo que uma cena ausente*, e o dono
 aprova-a sem nunca julgar a metade que importa.
 
@@ -1020,7 +1020,7 @@ ARTE. *É a resposta certa, e é a razão de o facto ser do gesto que assa e nã
 | aplicar a cobertura na COR quando a matéria é a forma | ela já viaja no alfa; aplicá-la duas vezes puxa a borda para o branco do vestido | §11.7-bis |
 | uma regra de vestir/recortar por TEXEL | num sprite com arte desenhada ela enche de branco a volta do desenho sempre que a malha for maior — *a pergunta é «este sprite tem arte?» e responde-se UMA vez* | §11.3 |
 | ler o doc do `acende_faixa` (*«o alfa atravessa intacto»*) como *«o bake não escreve alfa»* | a promessa é verdadeira sobre a LEI, e o alfa nascia no VESTIR, a montante dela — a sonda mediu `53 252` de `65 536` texels vazios | §11.2 |
-| deixar a `=52` com a tela BRANCA | sobre branco o vestir nunca arma ⇒ a cena mostraria a peça num cartão e a cura seria invisível a quem a smoka | §11.5 |
+| deixar a `=53` com a tela BRANCA | sobre branco o vestir nunca arma ⇒ a cena mostraria a peça num cartão e a cura seria invisível a quem a smoka | §11.5 |
 | medir a silhueta a virar com uma ESFERA | ela é invariante a toda pose — é o controlo dos gates vizinhos e a fixtura que não contém o fenómeno | §11.6 |
 | virar o toro pelo `yaw` | ele assenta nesse plano ⇒ `0` de `65 536` texels a mexer, que se lê como uma lei que não chega ao pixel | §11.6 |
 | uma paridade de placa com a matéria DESLIGADA só | as duas linhas novas do shader nunca eram percorridas — a cegueira do matcap, que custou um report | §11.4 |
@@ -1042,7 +1042,7 @@ ARTE. *É a resposta certa, e é a razão de o facto ser do gesto que assa e nã
 | `use ph2d_mesh_render::Framing` na `ph2d-form-donation` | ela é a fronteira que o runtime atravessa SEM o módulo 3D, e o `use` traria `wgpu` + matcaps + `imageio` | §10.3 |
 | recomputar o enquadramento por quadro em vez de o congelar | a forma passaria a seguir o OVERLAY 3D e a deslizar dentro do sprite quando o canvas 2D fizesse pan | §10.3 |
 | pôr o giro no `Default` do componente | toda peça do app passaria a girar; o giro é da CENA, e há gate nas duas metades | §7.4 |
-| abrir a `=52` com uma esfera LISA | raio constante ⇒ invariante à rotação ⇒ a cena ensinaria que a rota B não faz nada | §7.4 |
+| abrir a `=53` com uma esfera LISA | raio constante ⇒ invariante à rotação ⇒ a cena ensinaria que a rota B não faz nada | §7.4 |
 | usar o relógio da PAREDE para o giro | a peça continuaria a girar com a régua parada, e o controlo da cena (o botão de Play) deixaria de existir | §7.2 |
 | uma `Unit` nova para *voltas por segundo* | o sufixo dela acabaria em `s` e teria de **PRECEDER** `Seconds` no `parse_suffix` — *uma tabela de sufixos é sensível à ordem, e uma entrada nova no fim lê-se como inerte*; a `Unit::PerSecond` já exprime a grandeza | §8.2 |
 | deixar o descritor em `Machinery` e oferecer o componente por um botão | `Machinery` proíbe por escrito a secção do Inspector, e a secção só é pintada COM o componente (ADR-0166) ⇒ **não existe superfície sempre visível que o anexe**: sem a paleta o artista nunca lá chega | §8.1 |
@@ -1057,4 +1057,4 @@ ARTE. *É a resposta certa, e é a razão de o facto ser do gesto que assa e nã
 | usar a cobertura do G-buffer também no visor | ele corre **por quadro** e não rasteriza forma nenhuma; ali a peça é o barro inteiro | §9.1 |
 | a cobertura fora do plano cair na última lida | um `base` maior que o G-buffer é um defeito de TAMANHO, e vesti-lo escondê-lo-ia com uma cauda de branco | §9.1 |
 | carimbar o `Mesh3D` em TODO bake, mesmo re-assando | apagaria o giro que o artista acabou de pôr — o argumento que o `lei_ao_assar` e o slot já fazem | §9.2 |
-| uma âncora de gate feita do TÍTULO de uma cena | ela reprova no dia da tradução, e o defeito que o gate existe para apanhar continua vivo — a âncora é o **número** (`=52 `) | §8.6 |
+| uma âncora de gate feita do TÍTULO de uma cena | ela reprova no dia da tradução, e o defeito que o gate existe para apanhar continua vivo — a âncora é o **número** (`=53 `) | §8.6 |

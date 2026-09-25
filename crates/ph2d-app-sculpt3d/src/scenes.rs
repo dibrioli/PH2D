@@ -45,7 +45,7 @@ use super::fixtures::{
 /// enumeração que aqui viveu apodreceu no dia previsível, e a cena `=14` abriu com o canvas em
 /// branco porque ninguém lhe acrescentou o `"14"`. *O censo mede os predicados; ele não pede a
 /// ninguém que se lembre de uma lista.*
-pub const CENAS: u32 = 52;
+pub const CENAS: u32 = 53;
 
 /// ⭐⭐ **O PRÓLOGO — o que uma cena ARMA depois de a cena nascer.**
 ///
@@ -610,7 +610,7 @@ pub(crate) fn reopen_scene() -> bool {
     std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("12")
 }
 
-/// `=52` — **O CATAVENTO** (`docs/3D/02.2`, rota **B**): a mesma mesa da [`bake_scene`], e a peça
+/// `=53` — **O CATAVENTO** (`docs/3D/02.2`, rota **B**): a mesma mesa da [`bake_scene`], e a peça
 /// passa a VIRAR.
 ///
 /// ⚠️ **Cena própria, e a razão é a mesma que separou a `=11` da `=2`: a PERGUNTA é outra.** Lá é
@@ -623,10 +623,10 @@ pub(crate) fn reopen_scene() -> bool {
 /// põe a girar é a que mostra a diferença. *Uma cena que precisasse de uma irmã ao lado para ter
 /// controlo obrigaria o dono a comparar duas sessões de memória.*
 pub(crate) fn catavento_scene() -> bool {
-    std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("52")
+    std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("53")
 }
 
-/// **Quantas VOLTAS POR SEGUNDO a peça da `=52` dá.**
+/// **Quantas VOLTAS POR SEGUNDO a peça da `=53` dá.**
 ///
 /// ⭐⭐ **UMA VOLTA NA DURAÇÃO DA RÉGUA, e o número é DERIVADO e não do olho.** A 1.ª redacção dizia
 /// *«uma volta em oito segundos, e o número é do OLHO»* — e a FOTO da cena mostrou a régua a abrir

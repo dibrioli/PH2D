@@ -310,7 +310,7 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
         // entre as duas rotas (`docs/Render3d/17` §1.5: no plano a rota A dá `0,00°`; fora dele
         // `31,69°`).
         eprintln!(
-            "[sculpt3d] =52 THE WEATHERVANE: the same table as =11, and the piece now TURNS.\n\
+            "[sculpt3d] =53 THE WEATHERVANE: the same table as =11, and the piece now TURNS.\n\
              [sculpt3d]    (1) The SPRITE on the table is TRANSPARENT (already SELECTED), so you\n\
              [sculpt3d]        see nothing there yet -- only its outline. The sphere arrives with\n\
              [sculpt3d]        RIDGES: the light takes its shape from them.\n\

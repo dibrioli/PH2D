@@ -53,7 +53,7 @@ pub struct TelaPedida {
     /// ⭐ **A `=11` pede BRANCO:** a doação MULTIPLICA a tinta (o modelo é RELATIVO), então sobre
     /// branco a luz da forma é o que se vê, sem cor competindo.
     ///
-    /// ⭐⭐⭐⭐ **E a `=52` pede TRANSPARENTE, por um report do dono** (2026-09-21): é a cena do
+    /// ⭐⭐⭐⭐ **E a `=53` pede TRANSPARENTE, por um report do dono** (2026-09-21): é a cena do
     /// catavento, e é ali que a peça tem de sair **RECORTADA** e continuar recortada a virar. Sobre
     /// branco o `veste_a_forma` nunca arma — o sprite já tem alfa em todo o lado —, logo a cena
     /// mostraria a peça dentro de um cartão branco e a cura desta wave seria **invisível** a quem a
@@ -75,7 +75,7 @@ pub struct TelaPedida {
 pub fn canvas_wanted() -> Option<TelaPedida> {
     super::wants_canvas().then(|| TelaPedida {
         edge: CANVAS_EDGE,
-        // ⭐⭐⭐⭐ **O fundo é DA CENA** — ver o campo: a `=11` julga a luz sobre branco e a `=52`
+        // ⭐⭐⭐⭐ **O fundo é DA CENA** — ver o campo: a `=11` julga a luz sobre branco e a `=53`
         // julga o RECORTE a virar, que sobre branco não existe.
         bg: fundo_da_tela(super::scenes::catavento_scene()),
         center: Vec2::new(0.0, 0.0),
@@ -95,7 +95,7 @@ pub fn fundo_da_tela(catavento: bool) -> u8 {
     if catavento { 0 } else { 2 }
 }
 
-/// ⭐⭐ **A TELA DESTA CENA É UM CATAVENTO?** — o componente que a `=52` quer na tela que acabou de
+/// ⭐⭐ **A TELA DESTA CENA É UM CATAVENTO?** — o componente que a `=53` quer na tela que acabou de
 /// nascer, ou `None` em toda outra cena.
 ///
 /// ⚠️ **A decisão é da FAMÍLIA e o gesto é da shell**, que é a mesma regra 2 do
@@ -111,11 +111,11 @@ pub fn catavento_pedido() -> Option<ph2d_ecs::Mesh3D> {
     super::scenes::catavento_scene().then(catavento_da_cena)
 }
 
-/// **O catavento que a `=52` pede** — a LEI, separada da leitura da env.
+/// **O catavento que a `=53` pede** — a LEI, separada da leitura da env.
 ///
 /// ⚠️ **Ela é uma função própria porque esta crate proíbe `unsafe`**, e sem isso um gate não pode
 /// armar a variável de ambiente para medir o que a cena pede: ele mediria o `None` e ficaria verde
-/// a afirmar nada. ⭐ A metade *«e é a `=52` e não outra cena»* é medida pelo censo do roteador,
+/// a afirmar nada. ⭐ A metade *«e é a `=53` e não outra cena»* é medida pelo censo do roteador,
 /// que varre os predicados desta crate à procura da forma `== Some("N")`.
 #[must_use]
 pub fn catavento_da_cena() -> ph2d_ecs::Mesh3D {
@@ -131,7 +131,7 @@ pub fn catavento_da_cena() -> ph2d_ecs::Mesh3D {
 pub fn canvas_born(feito: Result<(String, u64), String>) -> Option<u64> {
     match feito {
         Ok((label, bits)) => {
-            // ⚠️ **A `=52` entra AQUI e não no ramo de baixo**, e a razão foi medida numa foto
+            // ⚠️ **A `=53` entra AQUI e não no ramo de baixo**, e a razão foi medida numa foto
             // (21/09): a tela dela nascia a dizer *«esculpa, aperte D até ler LUZ, pegue o Painter
             // e pinte»* — o texto da DOAÇÃO — enquanto o roteiro dela manda `Shift+B`. *Uma cena
             // que imprime dois caminhos diferentes ensina o errado a metade de quem a lê.*

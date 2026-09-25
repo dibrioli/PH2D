@@ -344,7 +344,7 @@ fn o_barro_tem_um_caminho_de_volta_e_e_o_esquece() {
 /// sprite transparente o bake fica invisível»*, eu respondi impedindo-o, e a foto seguinte —
 /// *«o objeto continua sem assar»* — foi o mesmo pedido outra vez: *ele queria que funcionasse*.
 /// ⚠️ E a rota da cena estava ILIBADA por medição antes de eu tocar em código: o
-/// `the_bake_gesture_lights_the_selected_sprite` (GPU, `#[ignore]`) assa a tela branca da `=52`
+/// `the_bake_gesture_lights_the_selected_sprite` (GPU, `#[ignore]`) assa a tela branca da `=53`
 /// **verde** — logo a sprite dele era dele, não a da cena.
 ///
 /// **As três metades:**

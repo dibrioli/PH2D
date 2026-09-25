@@ -305,3 +305,20 @@ fn um_argumento_ilegivel_ou_um_alvo_sem_vida_e_inerte() {
     );
     assert_eq!((r.applied, r.inert), (0, 8));
 }
+
+/// ⭐⭐ **A dica do campo segue o que o parâmetro É** (plano 28, W2b). ⛔ Nasceu de uma FOTO: a
+/// linha `Damage` pintava *«timer name»* no campo da quantidade.
+#[test]
+fn a_dica_do_argumento_diz_o_que_ele_e() {
+    use super::dica_do_argumento;
+    use ph2d_editor_core::screens::hero::ActionArgHint;
+    for (v, esperado) in [
+        (SignalVerb::StartTimer, ActionArgHint::TimerName),
+        (SignalVerb::StopTimer, ActionArgHint::TimerName),
+        (SignalVerb::AddToCounter, ActionArgHint::Count),
+        (SignalVerb::Damage, ActionArgHint::Amount),
+        (SignalVerb::Heal, ActionArgHint::Amount),
+    ] {
+        assert_eq!(dica_do_argumento(v), esperado, "{}", v.label());
+    }
+}

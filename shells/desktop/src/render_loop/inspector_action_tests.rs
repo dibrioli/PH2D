@@ -91,28 +91,6 @@ fn the_argument_field_follows_the_verb() {
     }
 }
 
-/// ⭐⭐ **E a DICA do campo segue o que o parâmetro É** (plano 28, W2b) — a tradução
-/// `SignalVerb::arg_kind` → `ActionArgHint` mora aqui, e sem esta régua ela é invisível.
-///
-/// ⛔ Nasceu de uma FOTO: a linha `Damage` pintava *«timer name»* no campo da quantidade.
-#[test]
-fn the_argument_hint_says_what_the_argument_is() {
-    use ph2d_editor_core::screens::hero::ActionArgHint;
-    let mut sim = SimWorld::default();
-    let reg = registry();
-    let e = objecto(&mut sim, vec![SignalAction::default()]);
-    for (v, esperado) in [
-        (SignalVerb::StartTimer, ActionArgHint::TimerName),
-        (SignalVerb::StopTimer, ActionArgHint::TimerName),
-        (SignalVerb::AddToCounter, ActionArgHint::Count),
-        (SignalVerb::Damage, ActionArgHint::Amount),
-        (SignalVerb::Heal, ActionArgHint::Amount),
-    ] {
-        edit(&mut sim, e, &reg, ActionFieldEdit::Verb(0, v.tag()));
-        assert_eq!(info(&sim, e).rows[0].arg_hint, esperado, "{}", v.label());
-    }
-}
-
 /// **O `+` cria uma linha que ainda não dispara — e o painel tem de o dizer.**
 ///
 /// ⚠️ Um default que disparasse em alguma coisa faria um `+` mudar a cena sem ninguém pedir.

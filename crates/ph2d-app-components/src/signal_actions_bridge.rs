@@ -189,6 +189,21 @@ pub fn apply(
 /// ⛔ **Inerte, nunca adivinhado:** um `arg` vazio, ilegível, não finito ou `≤ 0` não pede nada
 /// (ao contrário do `AddToCounter`, *«tira vida»* não tem número natural), e um alvo sem
 /// [`ph2d_physics_ecs::Health`] também não — a lei do alvo que não tem o que o verbo escreve.
+/// ⭐⭐ **A dica do campo do parâmetro de uma linha, pelo que o `arg` do verbo É** (plano 28, W2b).
+///
+/// ⚠️ **A tradução mora AQUI e não na shell**, e a razão é dupla: o painel não vê o `ph2d-ecs`
+/// (ADR-0029), e a catraca `the_shell_only_shrinks` reprovou a 1.ª redacção, que a escrevia na shell
+/// com o teste ao lado — *a cura de um tecto da shell é MOVER*.
+#[must_use]
+pub fn dica_do_argumento(verb: SignalVerb) -> ph2d_editor_core::screens::hero::ActionArgHint {
+    use ph2d_editor_core::screens::hero::ActionArgHint;
+    match verb.arg_kind() {
+        ph2d_ecs::ArgKind::Count => ActionArgHint::Count,
+        ph2d_ecs::ArgKind::Amount => ActionArgHint::Amount,
+        ph2d_ecs::ArgKind::TimerName | ph2d_ecs::ArgKind::None => ActionArgHint::TimerName,
+    }
+}
+
 fn pedido_de_vida(sim: &SimWorld, fx: &SignalEffect) -> Option<ph2d_physics_ecs::PedidoDeVida> {
     sim.world().get::<ph2d_physics_ecs::Health>(fx.target)?;
     let quanto: f64 = fx.arg.trim().parse().ok()?;

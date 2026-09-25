@@ -21,7 +21,7 @@ use ph2d_ecs::{
     Entity, SIGNAL_ACTIONS_MAX, SignalAction, SignalActions, SignalTarget, SignalVerb, SimWorld,
     World,
 };
-use ph2d_editor_core::screens::hero::{ActionArgHint, ActionTargetMode};
+use ph2d_editor_core::screens::hero::ActionTargetMode;
 use ph2d_editor_core::{ActionFieldEdit, InspectorActionInfo, InspectorActionRow, Toast};
 use ph2d_i18n::{tr, tr_with};
 use ph2d_tags::TagTree;
@@ -50,11 +50,7 @@ pub(super) fn build_action_info(
             verb_tag: a.verb.tag(),
             arg: a.arg.clone(),
             uses_arg: a.verb.uses_arg(),
-            arg_hint: match a.verb.arg_kind() {
-                ph2d_ecs::ArgKind::Count => ActionArgHint::Count,
-                ph2d_ecs::ArgKind::Amount => ActionArgHint::Amount,
-                ph2d_ecs::ArgKind::TimerName | ph2d_ecs::ArgKind::None => ActionArgHint::TimerName,
-            },
+            arg_hint: ph2d_app_components::signal_actions_bridge::dica_do_argumento(a.verb),
             uses_target: a.verb.uses_target(),
             // ⭐⭐⭐ **Os dois campos do suplente #24** — o modo do alvo e a cerca. ⚠️ **A tradução
             // mora AQUI e nos dois sentidos** (ver o dreno abaixo): o painel é chrome e não vê o

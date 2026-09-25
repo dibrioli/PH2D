@@ -445,6 +445,10 @@ porque as três metades de um vértice passam pelo MESMO afim e *um afim preserv
 `120°`, medido por diferença central), porque o peso é interpolado no **PARÂMETRO** e a derivada
 dele salta em cada nó — *seguir fielmente um alvo com uma quina é desenhar a quina*.
 
+> ⛔⛔⛔ **SUPERADO em 2026-09-20 (commit `a986e098f`, rebaseado): a `reconcilia` foi APAGADA.** Medida
+> pela porta do produto, ELA era a serpentina (`9,3×`): o ajuste livre sozinho É o chão do modelo às três
+> casas. Não a reconstrua — ver [handoff de 2026-09-24](handoffs/HANDOFF_INTEGRACAO_line_Vector_O_CAMPO_E_A_PESQUISA_2026-09-24.md) §3.
+
 ⭐⭐⭐ **A cura é um quarto passe** ([`ph2d_vec_skin::curva::reconcilia`]): cada alça tem um **EIXO** —
 a direcção que o afim **daquele nó** dá à tangente da fonte —, o ajuste livre afastou-a dele por um
 ângulo, e o passe faz as duas metades concordarem num ângulo só (a média pesada pelo COMPRIMENTO) e
@@ -635,6 +639,12 @@ um ajuste mau satisfaz as duas. ⇒ `as_alcas_corrigidas_seguem_a_curva_verdadei
 Mutação **7 de 7** a sangrar (mais 3 declaradas como não-lei).
 
 ### F32 — ⭐⭐⭐ **A SUBDIVISÃO NASCE NO BIND: os pontos ficam à vista** (ordem do dono, 2026-09-19: *«sem saber onde os pontos estão não fica legal. Melhor criar a subdivisão visível logo na associação com os ossos»*)
+
+> ⛔⛔⛔ **SUPERADO em 2026-09-20 por ordem do dono** (*«retire a criação automática de ponto no bind»*,
+> commit `37b5e8715`): o `bind` já NÃO subdivide; a lei fica alcançável só por `bind_com(.., true)`
+> (contrafactual e formas gravadas entre 19 e 20/09). Custo medido: `184×` de fidelidade na dobra forte —
+> ver [handoff de 2026-09-24](handoffs/HANDOFF_INTEGRACAO_line_Vector_O_CAMPO_E_A_PESQUISA_2026-09-24.md) e
+> [`04_pesquisa_ossos_sobre_desenho_vetorial.md`](04_pesquisa_ossos_sobre_desenho_vetorial.md).
 
 É a lei que a **2.ª mídia já tinha** — uma imagem presa ganha no bind uma malha graduada pelas
 articulações — agora também para uma forma vectorial. A barra da cena passa de **8** nós (os oito

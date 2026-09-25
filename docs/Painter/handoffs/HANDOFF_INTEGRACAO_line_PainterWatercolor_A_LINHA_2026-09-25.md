@@ -125,6 +125,7 @@ commit); a colisão com a `line/sculpt3d` nesse ficheiro é de outras linhas do 
 | `bash scripts/adr-index.sh --check` · `bash scripts/doc-index.sh --check` | em dia |
 | `#[cfg(target_os` escrito ou movido | **nenhum** (conferido no diff) |
 | `unsafe` novo | **nenhum** (as três ocorrências no diff são comentários e um `forbid(unsafe_code)`) |
+| binário do smoke, depois do `rm -rf target/*/incremental` | 1.ª `cargo build -p ph2d-host-desktop --release` `1m 19s`; 2.ª **`Finished release … in 0.82s`, `rc=0`** |
 
 ⚠️ **Flakes de recurso a promover à lista do §5.0** (acto do integrador), as duas gates de RAZÃO do
 Painter, que reprovaram no meio do fan-out desta jornada e passam sozinhas:

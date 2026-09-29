@@ -93,7 +93,7 @@ fn diag_o_preco_do_desenho_fiel_por_quadro() {
         let t = Instant::now();
         let mut n = 0_u32;
         while t.elapsed().as_millis() < 300 {
-            p.dobra_em_s(if n % 2 == 0 { 90.0 } else { 60.0 });
+            p.dobra_em_s(if n.is_multiple_of(2) { 90.0 } else { 60.0 });
             let _ = crate::skin_live::recook_leis(&p.sim, &mut sc, leis);
             n += 1;
         }

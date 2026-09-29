@@ -19,6 +19,12 @@ pub enum BandSource {
     Sprites,
     /// O intermediário do Vello: `Rgba8Unorm` (sem descodificação) e com alfa **directa**.
     Vector,
+    /// ⭐⭐⭐ A camada do passe de FORMAS instanciado (doc 121 do Motion): meio-float com as cores
+    /// no espaço do desenhista (as MESMAS que o Vello recebe, sem descodificação) e
+    /// **pré-multiplicada**, porque é a mistura por hardware que a escreve.
+    ///
+    /// ⚠️ Apendado: a posição é o índice do uniforme, e reordenar trocaria as convenções em silêncio.
+    Formas,
 }
 
 impl BandSource {
@@ -28,6 +34,7 @@ impl BandSource {
         match self {
             BandSource::Sprites => (1, 1),
             BandSource::Vector => (0, 0),
+            BandSource::Formas => (0, 1),
         }
     }
 }
@@ -36,7 +43,7 @@ pub struct BandBlit {
     pipeline: wgpu::RenderPipeline,
     bgl: wgpu::BindGroupLayout,
     sampler: wgpu::Sampler,
-    uniforms: [wgpu::Buffer; 2],
+    uniforms: [wgpu::Buffer; 3],
 }
 
 impl BandBlit {
@@ -139,10 +146,11 @@ impl BandBlit {
             min_filter: wgpu::FilterMode::Nearest,
             ..Default::default()
         });
-        // Um uniforme por fonte, construído uma vez: os dois valores são constantes.
+        // Um uniforme por fonte, construído uma vez: os três valores são constantes.
         let uniforms = [
             uniform_for(device, BandSource::Sprites),
             uniform_for(device, BandSource::Vector),
+            uniform_for(device, BandSource::Formas),
         ];
         Self {
             pipeline,
@@ -232,6 +240,8 @@ mod tests {
     fn the_two_sources_disagree_on_both_conventions() {
         assert_eq!(BandSource::Sprites.flags(), (1, 1));
         assert_eq!(BandSource::Vector.flags(), (0, 0));
+        // ⭐ A terceira: as cores do desenhista (como o Vello) e pré-multiplicada (como a sprite).
+        assert_eq!(BandSource::Formas.flags(), (0, 1));
     }
 
     /// O índice do uniforme é o discriminante — um enum reordenado trocaria os dois em silêncio.
@@ -239,5 +249,6 @@ mod tests {
     fn the_uniform_index_follows_the_discriminant() {
         assert_eq!(BandSource::Sprites as usize, 0);
         assert_eq!(BandSource::Vector as usize, 1);
+        assert_eq!(BandSource::Formas as usize, 2);
     }
 }

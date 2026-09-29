@@ -93,6 +93,13 @@ impl crate::App {
                 },
             );
         }
+        // ⭐⭐⭐ **AS FORMAS DO MOTION, pela placa** (doc 121, W2) — por cima do mundo (sprites e
+        // documento, já no acumulador) e por baixo dos gizmos e do chrome, que vêm na cena Vello.
+        let tamanho = (window_size.width, window_size.height);
+        if let Some(camada) = self.motion_shell.placa.desenha(surface.gpu(), tamanho) {
+            let formas = ph2d_render::BandSource::Formas;
+            band_blit.blit(surface.gpu(), world_rt.blend_view(), camada, formas);
+        }
         // ⭐⭐⭐ **O VIDRO** — entre o mundo e a receita, e ANTES da cena de chrome de
         // propósito: os painéis entram pelo compositor, acima de tudo, e é isso que os
         // deixa nítidos sem uma máscara os nomear. Ver [`crate::render_loop::present_frost`].
@@ -121,7 +128,6 @@ impl crate::App {
         // ⭐⭐⭐ **Uma cena que mistura com o CENÁRIO leva o mundo por baixo** (doc 118 W2): o
         // mundo é o que o compositor poria por baixo do intermédio — o acumulador quando ele o lê,
         // o tonemap no quadro de sempre. ⛔ Sem a marca, o render de sempre, byte a byte.
-        let tamanho = (window_size.width, window_size.height);
         let feito = if vector_scene.quer_o_mundo_por_baixo() {
             let mundo = if banded || frosting {
                 world_rt.sample_view()

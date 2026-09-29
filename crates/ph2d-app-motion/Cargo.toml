@@ -91,6 +91,7 @@ ph2d-render = { path = "../ph2d-render" }
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 ph2d-vec-render = { path = "../ph2d-vec-render" }
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+ph2d-shape-gpu = { path = "../ph2d-shape-gpu" }
 ph2d-node-util-reroute = { path = "../ph2d-node-util-reroute" }
 ph2d-system-fonts = { path = "../ph2d-system-fonts" }
 ph2d-vec-text = { path = "../ph2d-vec-text" }

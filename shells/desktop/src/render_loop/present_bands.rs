@@ -261,3 +261,7 @@ impl FramePlan {
 #[cfg(test)]
 #[path = "present_bands_grid_tests.rs"]
 mod grid_tests;
+
+#[cfg(test)]
+#[path = "present_placa_tests.rs"]
+mod placa_tests;

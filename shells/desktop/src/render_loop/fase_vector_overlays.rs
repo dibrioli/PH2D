@@ -40,7 +40,8 @@ impl crate::App {
         // document rides in, so they composite behind the chrome and over the
         // sprites (Fase 1: vector over sprite), aligned with the Motion sprites
         // by the same `cam_affine`.
-        if motion_tool_active {
+        // ⭐⭐⭐ Com as formas na PLACA (doc 121, W2) a cena Vello não as leva — o presente cola-as.
+        if motion_tool_active && !self.motion_shell.placa.ativa() {
             // ⭐⭐⭐ **A ARTE dos quads do passe vectorial** (a terceira média): resolvida
             // aqui porque é aqui que o `renderer` e a GPU estão em mão, e memoizada em
             // [`ph2d_app_motion::motion_leaf_images`] porque cada leitura PARA a GPU.

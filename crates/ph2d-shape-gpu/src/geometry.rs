@@ -156,8 +156,13 @@ fn extensao(input: &ShapeInput<'_>) -> Option<f64> {
 /// Aplana `path` e acrescenta os segmentos, com cada sub-caminho FECHADO — a regra do Vello para
 /// um preenchimento (um sub-caminho aberto fecha-se implicitamente).
 ///
-/// ⚠️ **Os segmentos HORIZONTAIS não entram**: a contribuição deles para a área é `dy = 0`, exacta,
-/// na fórmula do rasterizador fino — saltá-los é trabalho a menos, não uma aproximação.
+/// ⛔⛔ **Um segmento HORIZONTAL no espaço LOCAL entra, e é MEDIDO:** a 1.ª redacção saltava-os
+/// (*«a contribuição deles é `dy = 0`, exacta»*) — verdade só no referencial em que o shader os
+/// avalia, que é o ECRÃ. Uma cópia RODADA põe a aresta de cima de um rectângulo arredondado a
+/// atravessar linhas de pixel, e sem ela o contorno fica ABERTO: riscos horizontais na caixa da
+/// forma (gate de paridade do PRODUTO, `ph2d-app-motion`, 2026-09-29 — o gate desta crate não os via
+/// porque nenhuma das suas formas tinha uma aresta horizontal). Só sai o segmento de comprimento
+/// ZERO, que não tem direcção em referencial nenhum.
 fn aplana_fechado(
     path: impl IntoIterator<Item = PathEl>,
     tol: f64,
@@ -169,7 +174,7 @@ fn aplana_fechado(
     let mut empurra = |a: Point, b: Point, caixa: &mut Caixa| {
         caixa.inclui(a);
         caixa.inclui(b);
-        if a.y != b.y {
+        if a != b {
             #[expect(clippy::cast_possible_truncation, reason = "a placa lê f32")]
             out.push([a.x as f32, a.y as f32, b.x as f32, b.y as f32]);
         }

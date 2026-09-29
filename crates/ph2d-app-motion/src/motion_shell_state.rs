@@ -45,4 +45,8 @@ pub struct MotionShellState {
     /// terceira média (ver [`crate::motion_leaf_images`]). Vive aqui porque toda leitura PARA a
     /// GPU, e ela tem de sobreviver ao quadro.
     pub leaf_images: crate::motion_leaf_images::LeafImages,
+
+    /// ⭐⭐⭐ **As formas a caminho da PLACA** (doc 121, W2) — o cache de geometria, as cópias do
+    /// quadro e a camada onde o passe instanciado as desenha. Vive aqui porque sobrevive ao quadro.
+    pub placa: crate::motion_shape_placa::PlacaDeFormas,
 }

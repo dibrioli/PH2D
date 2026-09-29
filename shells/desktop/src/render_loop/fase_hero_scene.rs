@@ -102,8 +102,14 @@ impl crate::App {
             self.fase_vector_layout_recook(vec_view, vec_xf, vec_live)?;
         let (vec_view, vec_xf, cam_affine, vec_live) =
             self.fase_vector_fx_recook(vec_view, vec_xf, cam_affine, vec_live)?;
-        let (vec_view, vec_xf, cam_affine) =
-            self.fase_vector_bands(vec_view, vec_xf, cam_affine, vec_live, viewport)?;
+        let (vec_view, vec_xf, cam_affine) = self.fase_vector_bands(
+            motion_tool_active,
+            vec_view,
+            vec_xf,
+            cam_affine,
+            vec_live,
+            viewport,
+        )?;
         let (overlay, vec_xf, cam_affine) =
             self.fase_vector_overlays(motion_tool_active, vector_active, vec_xf, cam_affine)?;
         let (vec_xf, cam_affine) =

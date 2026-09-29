@@ -18,6 +18,7 @@ impl crate::App {
     /// Ver o cabeçalho do módulo.
     pub(super) fn fase_vector_bands(
         &mut self,
+        motion_tool_active: bool,
         vec_view: ph2d_vec_scene::VecViewState,
         vec_xf: ph2d_vec_scene::VecXforms,
         cam_affine: ph2d_vector::Affine,
@@ -44,6 +45,7 @@ impl crate::App {
             frost_doc_scene,
             frost_front_scene,
             frosting,
+            motion,
             ..
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
@@ -113,7 +115,15 @@ impl crate::App {
         *frosting = ph2d_app_components::master_editing::any_open(sim);
         frost_doc_scene.reset();
         frost_front_scene.reset();
-        let doc_bands = crate::draw_bands::doc_bands_of(frame_order);
+        // ⭐⭐⭐ **AS FORMAS DO MOTION NA PLACA?** (doc 121, W2) — decidido AQUI, antes de o documento
+        // ser codificado: com elas na placa o documento vai às FAIXAS, para ficar por baixo delas.
+        let placa = self.motion_shell.placa.decide(
+            motion_tool_active && !*frosting && ph2d_app_motion::motion_shape_placa::por_ordem(),
+            &motion.pump.vector_instances,
+            &motion.shape_store,
+            cam_affine,
+        );
+        let doc_bands = crate::draw_bands::doc_bands_of(frame_order, placa);
         for band in &doc_bands {
             let keep = frame_order.vector_ids_in(*band);
             let mut band_view = vec_view.clone();

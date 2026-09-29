@@ -492,6 +492,9 @@ pub(crate) fn draw_path_with(
 }
 
 mod instance;
+// ⭐ A forma para o passe instanciado da placa (doc 121 do Motion) — os mesmos passos do desenho.
+mod placa;
+pub use placa::{FormaParaAPlaca, forma_para_a_placa};
 /// **A camada de INSTÂNCIA de Motion** — módulo irmão pelo teto de 700 LOC. O corte é por assunto:
 /// aqui o motor de path (acima); ali o desenho de UMA instância de Motion e o LOTE que compartilha
 /// geometria, tesselando cada handle uma vez (o congelamento das 160k estrelas, ADR-0154).

@@ -333,7 +333,9 @@ fn pelo_passe(
     gpu.queue.submit(Some(enc.finish()));
     if format == wgpu::TextureFormat::Rgba16Float {
         let b = bytes_de_textura(gpu, &tex, 8);
-        b.as_chunks::<8>().0.iter()
+        b.as_chunks::<8>()
+            .0
+            .iter()
             .flat_map(|px| {
                 let h = |i: usize| f16(u16::from_le_bytes([px[2 * i], px[2 * i + 1]]));
                 separa([h(0), h(1), h(2), h(3)])
@@ -341,7 +343,9 @@ fn pelo_passe(
             .collect()
     } else {
         bytes_de_textura(gpu, &tex, 4)
-            .as_chunks::<4>().0.iter()
+            .as_chunks::<4>()
+            .0
+            .iter()
             .flat_map(|px| {
                 let f = |i: usize| f32::from(px[i]) / 255.0;
                 separa([f(0), f(1), f(2), f(3)])
@@ -373,7 +377,13 @@ fn compara(vello: &[u8], passe: &[u8]) -> Desvio {
         pior_cor: (0, [0; 4], [0; 4]),
         pixels_com_tinta: 0,
     };
-    for (i, (v, p)) in vello.as_chunks::<4>().0.iter().zip(passe.as_chunks::<4>().0.iter()).enumerate() {
+    for (i, (v, p)) in vello
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(passe.as_chunks::<4>().0.iter())
+        .enumerate()
+    {
         let da = v[3].abs_diff(p[3]);
         d.alfa_max = d.alfa_max.max(da);
         if da > 1 {

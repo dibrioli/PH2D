@@ -98,6 +98,42 @@ fn um_caminho_aberto_fecha_se_no_preenchimento() {
     assert!((a - 0.5).abs() < 1e-6, "o triangulo aberto deu area {a}");
 }
 
+/// ⛔⛔ **Uma aresta HORIZONTAL no espaço local fica na geometria** — porque a cópia RODA.
+///
+/// A régua `∫ x dy` é cega a uma aresta horizontal (ela contribui `dy = 0`), e é por isso que o
+/// defeito passou: ele só existe no referencial do ECRÃ. ⇒ a área mede-se DEPOIS de rodar os
+/// segmentos `30°`, que é o que a placa faz a uma cópia rodada. Sem as arestas de cima e de baixo,
+/// o contorno rodado fica aberto e a área sai errada (medido: o gate de paridade do produto viu
+/// riscos horizontais na caixa de todo rectângulo arredondado rodado).
+#[test]
+fn uma_aresta_horizontal_sobrevive_a_rotacao() {
+    let mut bp = BezPath::new();
+    bp.move_to((-0.5, -0.25));
+    bp.line_to((0.5, -0.25));
+    bp.line_to((0.5, 0.25));
+    bp.line_to((-0.5, 0.25));
+    bp.close_path();
+    let g = so_preenchido(&bp);
+    let [ini, n, _, _] = g.record.ranges[0];
+    let (s, c) = 30f64.to_radians().sin_cos();
+    let rodada: f64 = g.segments[ini as usize..(ini + n) as usize]
+        .iter()
+        .map(|seg| {
+            let r = |x: f32, y: f32| {
+                let (x, y) = (f64::from(x), f64::from(y));
+                (c * x - s * y, s * x + c * y)
+            };
+            let ((x0, y0), (x1, y1)) = (r(seg[0], seg[1]), r(seg[2], seg[3]));
+            0.5 * (x0 + x1) * (y1 - y0)
+        })
+        .sum::<f64>()
+        .abs();
+    assert!(
+        (rodada - 0.5).abs() < 1e-6,
+        "o rectangulo rodado deu area {rodada}, e nao 0,5"
+    );
+}
+
 /// ⭐ **O traço é um preenchimento com a área de uma faixa:** um círculo de raio `r` com traço de
 /// largura `w` cobre `2πr·w` (a coroa entre `r − w/2` e `r + w/2`). A régua é outra vez a área,
 /// independente de como o contorno foi expandido.

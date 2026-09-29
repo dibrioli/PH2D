@@ -229,9 +229,12 @@ impl FrameOrder {
 /// da Fase 1?»*: nenhuma faixa (cena vazia), só sprites, só vetores, ou sprites-e-depois-vetores
 /// são exactamente o que o pipeline de sempre desenha — e nesses casos o quadro tem de ficar
 /// **byte-idêntico**, porque toda a arte já feita e todo o golden dependem dele.
-pub(crate) fn doc_bands_of(order: &FrameOrder) -> Vec<Band> {
+///
+/// ⭐ `forcar` = as formas do Motion vão à PLACA neste quadro (doc 121, W2): a camada delas é
+/// colada no acumulador por cima do documento, logo o documento TEM de ir às faixas.
+pub(crate) fn doc_bands_of(order: &FrameOrder, forcar: bool) -> Vec<Band> {
     let (bands, _degraded) = order.plan();
-    if !needs_banding(&bands) {
+    if !forcar && !needs_banding(&bands) {
         return Vec::new();
     }
     bands
@@ -485,12 +488,17 @@ mod tests {
         let mut o = FrameOrder::default();
         o.record(0, None);
         o.record(1, Some(5));
-        assert!(doc_bands_of(&o).is_empty(), "[S, V] e' o caminho de sempre");
+        assert!(
+            doc_bands_of(&o, false).is_empty(),
+            "[S, V] e' o caminho de sempre"
+        );
+        // ⭐ Com as formas na placa o mesmo quadro manda o documento às faixas.
+        assert_eq!(doc_bands_of(&o, true).len(), 1);
 
         let mut o = FrameOrder::default();
         o.record(0, Some(5));
         o.record(1, None);
-        let b = doc_bands_of(&o);
+        let b = doc_bands_of(&o, false);
         assert_eq!(b.len(), 1);
         assert_eq!(b[0].family, V);
         assert_eq!(o.vector_ids_in(b[0]), vec![5]);

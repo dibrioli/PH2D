@@ -144,6 +144,8 @@ pub mod motion_scene_ctx;
 /// e a metade que faz o glow alcançar as formas (bug do Enio, 2026-08-20).
 pub mod motion_shape_bake;
 pub mod motion_shape_lod;
+/// ⭐⭐⭐ As formas na PLACA — a rota da CPU do passe instanciado (doc 121, W2).
+pub mod motion_shape_placa;
 pub mod motion_shape_smoke;
 pub mod motion_shape_smoke_knobs;
 pub mod motion_shell_state;

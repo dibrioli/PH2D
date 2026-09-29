@@ -302,6 +302,8 @@ impl crate::App {
             ph2d_editor_core::screens::hero::grid_layer::paint_behind(h, grid_behind_scene)
         });
         plan.banded |= grid_behind;
+        // ⭐⭐⭐ E AS FORMAS NA PLACA (doc 121, W2): a camada delas cola-se no acumulador do mundo.
+        plan.banded |= self.motion_shell.placa.ativa();
         let banded = plan.banded;
         // ⭐⭐⭐ **QUEM SOBE PARA CIMA DO VIDRO** — as peças da receita aberta saem do
         // fundo (senão o borrão delas escapa por fora da silhueta, como um halo) e são

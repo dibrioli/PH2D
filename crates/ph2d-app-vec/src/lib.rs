@@ -178,6 +178,7 @@ pub mod smoke_bone_envelope;
 /// ⭐⭐⭐ Um canvas do Painter PRESO a ossos e dobrado — a cena que faltava à cura das guias chatas.
 pub mod smoke_bone_media;
 pub mod smoke_bone_paint;
+pub mod smoke_bone_par;
 
 /// A lei do AUTO LAYOUT de uma forma — veio da shell na integracao de 2026-09-20,
 /// por CORTE da catraca `the_shell_only_shrinks` (ADR-0153: o passe publica ONDE as

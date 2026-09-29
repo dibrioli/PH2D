@@ -44,10 +44,12 @@ use ph2d_skeleton_demo::{
 ///   bifurcação. É a cena que ele já aprovou.
 /// - **`=2`** — O ENVELOPE: a mesma corda com dois alcances e uma barra preenchida ao lado, que é
 ///   onde o alcance não manda. Ver [`crate::smoke_bone_envelope`].
+/// - **`=3`** — O PAR: a MESMA barra como desenho e como imagem, com esqueletos iguais (ordem do
+///   dono, 2026-09-29). Ver [`crate::smoke_bone_par`].
 ///
 /// ⚠️ **A env ERA de presença** (`is_some`) e passou a ter níveis: um valor ilegível cai em `1`, o
 /// caminho de omissão — *a cena que o dono já aprovou, nunca uma que ele não pediu*.
-pub const NIVEIS: u32 = 2;
+pub const NIVEIS: u32 = 3;
 
 /// ⭐ **A BARRA LARANJA da cena, num sítio só** — canto mínimo, canto máximo e o raio da quina.
 ///
@@ -121,6 +123,10 @@ pub fn build(
 ) {
     if nivel() == 2 {
         crate::smoke_bone_envelope::build(scene, sim, st);
+        return;
+    }
+    if nivel() == 3 {
+        crate::smoke_bone_par::build(scene, sim, renderer, assets, ppm, st);
         return;
     }
     // ⭐ O BRAÇO e o TENTÁCULO: barras deitadas, com a cadeia pelo MEIO delas.
@@ -229,6 +235,10 @@ pub fn bind(
 ) {
     if nivel() == 2 {
         crate::smoke_bone_envelope::bind(scene, sim, st);
+        return;
+    }
+    if nivel() == 3 {
+        crate::smoke_bone_par::bind(scene, sim, assets, ppm, st);
         return;
     }
     st.bone_smoke_step = 2;

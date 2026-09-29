@@ -19,6 +19,7 @@ fn o_nivel_da_cena_dos_ossos_e_coagido_a_faixa() {
     for (v, esperado, porque) in [
         (Some("1"), 1, "a cena que o dono ja' aprovou"),
         (Some("2"), 2, "a cena do ENVELOPE"),
+        (Some("3"), 3, "a cena do PAR"),
         (
             Some("9"),
             super::NIVEIS,

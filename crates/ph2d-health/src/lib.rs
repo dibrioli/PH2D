@@ -381,6 +381,9 @@ impl Vida {
 
     /// `Hit(dano, usa_escudo, usa_armadura)` — o pipeline do cabeçalho. `sorteio` é chamado
     /// **exactamente uma vez** por golpe que passa a invencibilidade (mesmo com chance `0`).
+    ///
+    /// É o [`Self::golpe_tipado`] com a [`Taxa::NEUTRA`] — **ao bit** o de antes de haver tipos (a
+    /// bancada do oráculo corre por aqui).
     pub fn golpe(
         &mut self,
         cfg: &Config,
@@ -390,10 +393,40 @@ impl Vida {
         usa_armadura: bool,
         sorteio: &mut impl FnMut() -> f64,
     ) {
+        self.golpe_tipado(
+            cfg,
+            regras,
+            dano,
+            Taxa::NEUTRA,
+            usa_escudo,
+            usa_armadura,
+            sorteio,
+        );
+    }
+
+    /// ⭐ **O golpe de um TIPO** (plano 28, W6) — a [`Taxa`] da vida para esse tipo entra DEPOIS da
+    /// armadura e ANTES do escudo (ver [`tipos`]). ⚠️ Um tipo que ela ABSORVE não é um golpe: é uma
+    /// CURA de `dano × taxa`, pela porta da cura — não sorteia, não é travado pela invencibilidade e
+    /// não a arma.
+    #[allow(clippy::too_many_arguments)] // o `Hit` do alvo tem estes seis, mais a taxa
+    pub fn golpe_tipado(
+        &mut self,
+        cfg: &Config,
+        regras: Regras,
+        dano: f64,
+        taxa: Taxa,
+        usa_escudo: bool,
+        usa_armadura: bool,
+        sorteio: &mut impl FnMut() -> f64,
+    ) {
         if !regras.aceita_negativos && (!dano.is_finite() || dano < 0.0) {
             return;
         }
         if !regras.morto_nao_e_final && self.morta() {
+            return;
+        }
+        if taxa.absorve {
+            self.cura(cfg, regras, dano * taxa.fator());
             return;
         }
         if self.invencivel(cfg) {
@@ -410,9 +443,39 @@ impl Vida {
                 d *= 1.0 - cfg.armadura_pct.min(1.0);
             }
         }
+        if d > 0.0 {
+            d *= taxa.fator();
+        }
+        self.leva(cfg, regras, d, usa_escudo, true);
+    }
+
+    /// ⭐ **Um PULSO de uma aflição** (plano 28, W6) — o dano que DURA. Ver [`tipos`]: não esquiva,
+    /// não passa pela armadura, não é travado pela invencibilidade **nem a arma**; a taxa do tipo
+    /// vale (um corpo imune ao veneno não perde nada), e o escudo também.
+    pub fn pulso(&mut self, cfg: &Config, regras: Regras, dano: f64, taxa: Taxa, usa_escudo: bool) {
+        if !regras.aceita_negativos && (!dano.is_finite() || dano < 0.0) {
+            return;
+        }
+        if !regras.morto_nao_e_final && self.morta() {
+            return;
+        }
+        if taxa.absorve {
+            self.cura(cfg, regras, dano * taxa.fator());
+            return;
+        }
+        let d = dano * taxa.fator();
+        self.leva(cfg, regras, d, usa_escudo, false);
+    }
+
+    /// O fim comum de um golpe e de um pulso: o escudo, e o que sobra para a vida. `arma` diz se o
+    /// que ENTRA re-arma a invencibilidade (um golpe sim, um pulso não).
+    fn leva(&mut self, cfg: &Config, regras: Regras, dano: f64, usa_escudo: bool, arma: bool) {
+        let mut d = dano;
         if usa_escudo && self.escudo_activo(cfg) && d > 0.0 {
             self.escudo_acabou_de_levar_dano = true;
-            self.arma_invencibilidade();
+            if arma {
+                self.arma_invencibilidade();
+            }
             if d <= self.escudo {
                 self.escudo -= d;
                 self.dano_ao_escudo_anterior = d;
@@ -431,7 +494,9 @@ impl Vida {
         self.dano_anterior = d;
         if d > 0.0 {
             self.acabou_de_levar_dano = true;
-            self.arma_invencibilidade();
+            if arma {
+                self.arma_invencibilidade();
+            }
             let novo = self.pontos - d;
             self.define(cfg, regras, novo);
         }
@@ -449,6 +514,8 @@ impl Vida {
 
 pub mod impacto;
 pub use impacto::{Pausa, pisca_visivel};
+pub mod tipos;
+pub use tipos::{Aflicao, Aflicoes, Pulso, Taxa};
 
 #[cfg(test)]
 #[path = "lib_tests.rs"]

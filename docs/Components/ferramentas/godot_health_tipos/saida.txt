@@ -1,0 +1,29 @@
+# SAÍDA do oráculo dos TIPOS de dano — gravada 2026-09-29 por `sonda.gd` (esta pasta).
+# alvo: addon «Health, HitBoxes, HurtBoxes» (cluttered-code, MIT), commit c9d2185, Godot 4.7.2.stable.arch_linux.ed1daf0bf, --headless.
+# cada linha: caso · passo · pedido · vida antes -> depois · aplicado (sinal). Vida INTEIRA no alvo (ver tipos.rs).
+neutro · 1 · DAMAGE KINETIC 10 · 100 -> 90 · dano 10
+mult_1 · 1 · DAMAGE KINETIC 10 · 100 -> 90 · dano 10
+imune · 1 · DAMAGE KINETIC 10 · 100 -> 100 · dano 0
+meio · 1 · DAMAGE KINETIC 10 · 100 -> 95 · dano 5
+dobro · 1 · DAMAGE KINETIC 10 · 100 -> 80 · dano 20
+terco · 1 · DAMAGE KINETIC 10 · 100 -> 97 · dano 3
+terco · 2 · DAMAGE KINETIC 10 · 97 -> 94 · dano 3
+terco · 3 · DAMAGE KINETIC 10 · 94 -> 91 · dano 3
+quarto · 1 · DAMAGE KINETIC 10 · 100 -> 97 · dano 3
+quarto · 2 · DAMAGE KINETIC 2 · 97 -> 96 · dano 1
+tres_quartos · 1 · DAMAGE KINETIC 10 · 100 -> 92 · dano 8
+tres_quartos · 2 · DAMAGE KINETIC 2 · 92 -> 90 · dano 2
+negativo · 1 · DAMAGE KINETIC 10 · 50 -> 50 · dano 0
+absorve · 1 · DAMAGE KINETIC 10 · 50 -> 60 · cura 10
+absorve_cheio · 1 · DAMAGE KINETIC 10 · 100 -> 100 · -
+absorve_meio · 1 · DAMAGE KINETIC 10 · 50 -> 55 · cura 5
+inc_menos3_mult2 · 1 · DAMAGE KINETIC 10 · 100 -> 86 · dano 14
+inc_mais5_mult0 · 1 · DAMAGE KINETIC 10 · 100 -> 100 · dano 0
+inc_menos20 · 1 · DAMAGE KINETIC 10 · 100 -> 100 · dano 0
+outro_tipo · 1 · DAMAGE MEDICINE 10 · 100 -> 90 · dano 10
+cura_tipada · 1 · HEAL MEDICINE 10 · 50 -> 70 · cura 20
+cura_imune · 1 · HEAL MEDICINE 10 · 50 -> 50 · cura 0
+hurtbox_e_vida · 1 · DAMAGE KINETIC 10 +hurtbox HealthModifier<incrementer=0 multiplier=2.0000 convert_affect=NONE conver_type=NONE> · 100 -> 90 · dano 10
+hurtbox_so · 1 · DAMAGE KINETIC 10 +hurtbox HealthModifier<incrementer=0 multiplier=2.0000 convert_affect=NONE conver_type=NONE> · 100 -> 80 · dano 20
+morte · 1 · DAMAGE KINETIC 10 · 15 -> 0 · dano 15
+morte · 2 · DAMAGE KINETIC 10 · 0 -> 0 · -

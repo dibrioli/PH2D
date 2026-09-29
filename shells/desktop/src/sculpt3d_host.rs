@@ -92,7 +92,14 @@ impl App {
         let tomou = self.com_a_cena_emprestada(|host, scene| {
             ph2d_app_sculpt3d::input_down::pointer_down(host, scene, button)
         });
-        if tomou {
+        // ⚠️ Só um gesto que ESCREVE na peça toma o canvas: navegar (órbita, pan, gizmo) deixa
+        // a ferramenta em mãos — report do dono de 29/09, o Painter caía da mão ao girar.
+        let escreve = self
+            .gfx
+            .as_ref()
+            .and_then(|g| g.sculpt3d.as_ref())
+            .is_some_and(ph2d_app_sculpt3d::Sculpt3dScene::o_gesto_escreve_na_peca);
+        if tomou && escreve {
             self.a_escultura_toma_o_canvas();
         }
         tomou

@@ -42,3 +42,32 @@ pub(super) struct TwistSweep {
     pub(super) last: Option<[f32; 2]>,
     pub(super) total: f32,
 }
+
+impl Drag {
+    /// ⭐⭐ **Este gesto ESCREVE na peça?** — a pergunta que decide se ele toma
+    /// o canvas à ferramenta em mãos.
+    ///
+    /// Report do dono (29/09): *«a rotação provoca a saída do modo painter e
+    /// retorno para o modo sculpt e pausa a simulação da tinta»*. A shell largava
+    /// a ferramenta em TODO aperto que a escultura consumia, e girar a vista é um
+    /// deles ⇒ o Painter caía da mão e a pincelada que escorria fechava.
+    ///
+    /// ⚠️ **O `match` é EXAUSTIVO de propósito, sem `_`:** um gesto novo é erro
+    /// de compilação aqui até alguém dizer se ele escreve ou só navega. Navegar
+    /// (órbita, pan) não escreve um vértice; os outros quatro escrevem.
+    pub(crate) fn escreve_na_peca(self) -> bool {
+        match self {
+            Drag::Orbit | Drag::Pan => false,
+            Drag::Sculpt | Drag::Transform | Drag::Filter | Drag::Trim => true,
+        }
+    }
+}
+
+impl crate::Sculpt3dScene {
+    /// O gesto que o pen-down acabou de abrir escreve na peça? `false` sem
+    /// gesto nenhum (o gizmo de navegação, a costura, o menu de vistas vivem
+    /// fora do [`Drag`]) — nenhum deles toma o canvas à ferramenta em mãos.
+    pub fn o_gesto_escreve_na_peca(&self) -> bool {
+        self.drag.is_some_and(Drag::escreve_na_peca)
+    }
+}

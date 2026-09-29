@@ -146,6 +146,10 @@ pub fn model_takes_the_canvas(now: &Owner, neutral: &ToolId) -> bool {
 ///
 /// ⚠️ Quem a chama é o gesto da escultura no canvas (o pen-down que a família CONSUMIU), e não a
 /// entrada no modo — ver o cabeçalho, onde a ordem medida está escrita.
+///
+/// ⚠️ **E só um gesto que ESCREVE na peça** (`Sculpt3dScene::o_gesto_escreve_na_peca`): navegar a
+/// vista não toma o canvas. Report do dono (29/09): girar tirava o Painter da mão e parava a tinta
+/// que escorria.
 pub fn clay_takes_the_canvas(now: &Owner, neutral: &ToolId) -> bool {
     larga_para_a_neutra(now, neutral)
 }

@@ -342,3 +342,22 @@ fn navegar_nao_fecha_a_pincelada_que_escorre_e_o_esquerdo_fecha() {
         "keys.rs: a guarda das teclas da vista saiu — um Numpad volta a secar a água"
     );
 }
+
+/// ⭐⭐ **GATE — navegar não toma o canvas; escrever na peça toma.** Report do
+/// dono (29/09): *«a rotação provoca a saída do modo painter»*. As duas metades:
+/// sem a primeira girar volta a tirar o Painter da mão; sem a segunda (o
+/// CONTROLO) um predicado que respondesse `false` a tudo deixaria esculpir com a
+/// ferramenta vectorial em mãos — o report de 16/09, das teclas mortas.
+#[test]
+fn navegar_nao_toma_o_canvas_e_escrever_toma() {
+    use crate::Drag;
+    for d in [Drag::Orbit, Drag::Pan] {
+        assert!(!d.escreve_na_peca(), "navegar tira a ferramenta da mão");
+    }
+    for d in [Drag::Sculpt, Drag::Transform, Drag::Filter, Drag::Trim] {
+        assert!(
+            d.escreve_na_peca(),
+            "o CONTROLO: um gesto que escreve deixou de tomar o canvas"
+        );
+    }
+}

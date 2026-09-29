@@ -556,8 +556,13 @@ fn a_sculpt_gesture_releases_the_tool_in_hand() {
         .find("self.a_escultura_toma_o_canvas()")
         .expect("⛔ o pen-down deixou de largar a ferramenta — o report de 16/09 volta");
     assert!(
-        familia < larga && pd[familia..larga].contains("iftomou{"),
-        "a ferramenta e' largada sem a familia ter TOMADO o aperto"
+        familia < larga && pd[familia..larga].contains("iftomou&&escreve{"),
+        "a ferramenta e' largada sem a familia ter TOMADO o aperto — ou NAVEGAR volta a \
+         largar a ferramenta em maos (report de 29/09: girar tirava o Painter da mao)"
+    );
+    assert!(
+        pd[familia..larga].contains("o_gesto_escreve_na_peca"),
+        "⛔ o pen-down deixou de perguntar se o gesto ESCREVE na peca"
     );
 
     let solta = squeeze(fn_body(&host, "a_escultura_toma_o_canvas").expect("a soltura"));

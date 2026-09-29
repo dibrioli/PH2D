@@ -63,7 +63,12 @@ fn the_price_of_the_thread() {
     );
     println!("\n── e a rosca, entrada a entrada (passo 0,16 · flanco 30° · uma mão) ──");
     let mut linhas = Vec::new();
-    for s in [1_u32, 8, 32, 64, 96, 128, 192, 256, 384] {
+    // ⚠️ A escada pára no tecto do MODELO: acima dele o documento RECUSA a peça (`NonPositive
+    // starts`) e a sonda rebentava no `expect` — as linhas `192..384` eram de antes do tecto.
+    for s in [1_u32, 8, 32, 64, 96, 128, 192, 256, 384]
+        .into_iter()
+        .filter(|&s| s <= ph2d_field::MAX_THREAD_STARTS)
+    {
         linhas.push((
             s,
             cronometra(
@@ -95,6 +100,12 @@ fn the_price_of_the_thread() {
         // o passo cresce com a profundidade pedida, para o tecto do período não a cortar
         let depth = radius * (1.0 - fundo);
         let pitch = depth * 2.0 * (30.0_f32).to_radians().tan() * 1.02;
+        // ⚠️ O documento RECUSA uma profundidade acima do tecto do modelo (o núcleo tem piso,
+        // `THREAD_CORE_FLOOR`) — a linha diz-se recusada em vez de rebentar o `expect`.
+        if depth > thread_depth_ceiling(radius, pitch, 30.0) {
+            println!("  núcleo = {fundo:.2}·R (depth {depth:.3})   recusado: acima do tecto");
+            continue;
+        }
         cronometra(
             &format!("núcleo = {fundo:.2}·R (depth {depth:.3})"),
             Primitive::Thread {

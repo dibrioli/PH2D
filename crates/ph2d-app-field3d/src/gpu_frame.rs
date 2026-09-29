@@ -645,6 +645,12 @@ mod matcap_parity_tests;
 #[path = "paint_parity_luz_tests.rs"]
 pub(crate) mod paint_parity_luz_tests;
 
+/// ⭐⭐⭐ **O CONTORNO PONTILHADO** — a luz de um pixel de silhueta vem do mesmo pixel que o ponto
+/// (foto do dono de 2026-09-25). Corre na CPU, logo o CI corre-o.
+#[cfg(test)]
+#[path = "borda_pontilhado_tests.rs"]
+mod borda_pontilhado_tests;
+
 /// ⭐⭐⭐ **A CAMADA DE ESTILO chega ao pixel nos DOIS motores** (`docs/Render3d/03`, a `W8`) — e o
 /// primeiro gate dali é **estrutural**, porque é a forma que o §24 do `docs/Render3d/10` cobra.
 #[cfg(test)]

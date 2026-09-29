@@ -516,20 +516,29 @@ fn pinta_bordas(@builtin(global_invocation_id) g: vec3<u32>) {
     // ⭐⭐⭐ **O PIXEL DE QUEM A BORDA PEDE O PONTO EMPRESTADO** — ver `pixel_da_borda`. Dele sai a
     // POSIÇÃO, que é o que escolhe o material.
     //
-    // ⛔⛔⛔ **E SÓ a posição.** A 1.ª redacção emprestou também o céu e o ricochete: isso não move
-    // o rebordo um byte (medido, `+0,0` das duas maneiras) e parte **nove** paridades com a CPU.
-    // *Uma cura maior do que a medição pede é uma regressão com um bom argumento ao lado.*
+    // ⚠️ **E, desde 2026-09-29, também a LUZ (abaixo).** Em 13/09 (`824514f70`) emprestar o céu e o
+    // ricochete foi medido contra o REBORDO da `=36` e não o movia um byte — verdade, e sobre OUTRO
+    // defeito. O contorno pontilhado da `=28` mede-se noutra régua (pixels isolados mais claros que
+    // os oito vizinhos), e ali a luz do centro que falha é a causa inteira. ⛔ Os dois motores mudam
+    // JUNTOS — é a condição da paridade.
     let j = pixel_da_borda(i, x, y);
     let cj = centro[j];
-    let c = centro[i];
     let r = ray_at_plane(raio(f32(x) + 0.5, f32(y) + 0.5));
     let v = direccao_de_vista(r.d);
     let rj = ray_at_plane(raio(f32(j % s.w) + 0.5, f32(j / s.w) + 0.5));
     let p = rj.o + rj.d * cj.x;
-    let ceu_vis = ceu_em(x, y, i, c.yzw);
+    // ⭐⭐⭐ **E A LUZ vem do MESMO pixel que o ponto** (o contorno pontilhado da foto de 25/09).
+    // Num pixel cujo centro FALHA a peça, o céu, a sombra da lâmpada e o ricochete do próprio `i`
+    // são os de um pixel de FUNDO — o céu aberto e a lâmpada sem sombra —, e as sub-amostras que
+    // acertam acendiam-se com eles: um ponto claro isolado em cada degrau da silhueta de um tubo
+    // escuro. Com o centro na peça `j == i` e nada muda. O gémeo da CPU é o `i: j` do laço da
+    // borda no `shade_render`.
+    let jx = j % s.w;
+    let jy = j / s.w;
+    let ceu_vis = ceu_em(jx, jy, j, cj.yzw);
     // ⚠️ **As sub-amostras partilham o ricochete do CENTRO**, exactamente como partilham o material
     // — a mesma aproximação declarada da borda, e pela mesma razão.
-    let ric = ricochete_no_pixel(x, y, i, c.yzw);
+    let ric = ricochete_no_pixel(jx, jy, j, cj.yzw);
     // ⭐⭐ **O fundo de uma sub-amostra que falha é o fundo COM o chão** — sem isto a silhueta de
     // baixo pinta um fio do fundo limpo entre a peça e a sombra de contacto.
     let f_chao = fator_da_borda(i, x, y);
@@ -541,11 +550,11 @@ fn pinta_bordas(@builtin(global_invocation_id) g: vec3<u32>) {
     let luz_do_fundo = chao_da_borda(i, x, y);
     var acc = vec4<f32>(0.0);
     var acc_luz = vec3<f32>(0.0);
-    for (var j = 0u; j < 4u; j = j + 1u) {
-        let q = borda[slot * 5u + 1u + j];
+    for (var k = 0u; k < 4u; k = k + 1u) {
+        let q = borda[slot * 5u + 1u + k];
         var cor = fundo;
         if (q.x >= 0.0) {
-            cor = vec4<f32>(radiancia(p, q.yzw, v, i, ceu_vis, ric).ecra, 1.0);
+            cor = vec4<f32>(radiancia(p, q.yzw, v, j, ceu_vis, ric).ecra, 1.0);
         } else {
             acc_luz = acc_luz + luz_do_fundo * 0.25;
         }

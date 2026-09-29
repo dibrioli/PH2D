@@ -500,12 +500,16 @@ pub fn shade_render(
                 let rgb = mixed_radiance(
                     surfaces,
                     PixelGeom {
-                        // ⛔⛔⛔ **O ÍNDICE fica no do pixel que se PINTA; só o PONTO é emprestado.**
-                        // A 1.ª redacção emprestou também a oclusão, a sombra e o ricochete (`i: j`)
-                        // — e isso NÃO move o rebordo um byte (medido: `+0,0` das duas maneiras) e
-                        // parte **nove** paridades entre os motores. *Uma cura maior do que a
-                        // medição pede é uma regressão com um bom argumento ao lado.*
-                        i,
+                        // ⭐⭐⭐ **A LUZ vem do MESMO pixel que o ponto** (o contorno pontilhado da
+                        // foto de 25/09, 2026-09-29). Num pixel cujo centro FALHA a peça, a oclusão,
+                        // a sombra e o ricochete de `i` são os de um pixel de FUNDO — céu aberto e
+                        // lâmpada sem sombra —, e as sub-amostras que acertam acendiam-se com eles:
+                        // um ponto claro isolado em cada degrau da silhueta de um tubo escuro
+                        // (`597` contra `25` sem a borda, no nó a `960×540`). Com o centro na peça
+                        // `j == i` e nada muda. ⚠️ Em 13/09 isto foi medido contra o REBORDO da `=36`
+                        // e não o movia — verdade, e sobre outro defeito. ⛔ O gémeo do dispositivo
+                        // (`pinta_bordas`) muda JUNTO: é a condição da paridade.
+                        i: j,
                         p: g.point[j],
                         n: e.normal[k],
                         v,

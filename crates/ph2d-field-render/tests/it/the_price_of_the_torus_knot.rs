@@ -48,7 +48,12 @@ fn the_price_of_the_torus_knot() {
     );
     println!("\n── e o nó, volta a volta (q = 3) ──");
     let mut linhas = Vec::new();
-    for p in [1_u32, 2, 3, 4, 6, 8, 10, 12] {
+    // ⚠️ A escada pára no tecto do MODELO (`MAX_KNOT_WINDS`, W134b): `p = 10` e `12` eram de
+    // antes dele, e o documento RECUSA-os.
+    for p in [1_u32, 2, 3, 4, 6, 8, 10, 12]
+        .into_iter()
+        .filter(|&p| p <= ph2d_field::MAX_KNOT_WINDS)
+    {
         linhas.push((p, cronometra(&format!("nó (p = {p}, q = 3)"), no(p, 3))));
     }
     println!("\n── e voltando ao tubo, no PIOR `q/p` que existe (p = 1) ──");
@@ -62,7 +67,10 @@ fn the_price_of_the_torus_knot() {
         (2, 8),
         (3, 12),
         (12, 48),
-    ] {
+    ]
+    .into_iter()
+    .filter(|&(pp, qq)| pp <= ph2d_field::MAX_KNOT_WINDS && qq <= ph2d_field::max_knot_loops(pp))
+    {
         cronometra(&format!("nó (p = {pp}, q = {qq})"), no(pp, qq));
     }
     println!("\n  esfera {esfera:.1} ms · toro {toro:.1} ms");

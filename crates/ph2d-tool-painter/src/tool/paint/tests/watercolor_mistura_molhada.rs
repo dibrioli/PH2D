@@ -237,3 +237,79 @@ fn a_porta_das_duas_leis_tem_as_pontas_ao_bit() {
         }
     }
 }
+
+/// **A medição do report «reduzindo Charge para < 1 não se percebe a mistura»** (dono, 2026-09-29).
+/// Instrumento, não gate: imprime o meio da sobreposição e o amarelo sozinho, seco e molhado, com e
+/// sem `Pigment`, ao longo do `Charge`.
+#[test]
+#[ignore = "measurement, not a gate — o instrumento do report do Charge"]
+fn diag_pigment_com_charge() {
+    let medir = |pigment: bool, secar: bool, charge: f32| {
+        let mut t = white_canvas(SIZE, 14.0);
+        let mut b = pincel(AZUL, pigment);
+        b.wet_charge = charge;
+        arma(&mut t, b);
+        traco(&mut t, 86.0, 1);
+        if secar {
+            for _ in 0..300 {
+                t.paint_tick(0.5);
+            }
+        }
+        let mut b = pincel(AMARELO, pigment);
+        b.wet_charge = charge;
+        arma(&mut t, b);
+        traco(&mut t, 100.0, 1);
+        (
+            px(&t, SIZE, X_MEIO, Y),
+            px(&t, SIZE, X_SO_AMARELO, Y),
+            px(&t, SIZE, 86, Y),
+        )
+    };
+    println!();
+    for secar in [true, false] {
+        for charge in [1.0f32, 0.9, 0.75, 0.5, 0.25] {
+            let (m0, a0, z0) = medir(false, secar, charge);
+            let (m1, a1, z1) = medir(true, secar, charge);
+            println!(
+                "secar={secar:<5} charge={charge:<4} | meio sem {:?} com {:?} | só amarelo sem {:?} com {:?} | azul sem {:?} com {:?}",
+                &m0[..3],
+                &m1[..3],
+                &a0[..3],
+                &a1[..3],
+                &z0[..3],
+                &z1[..3]
+            );
+        }
+    }
+}
+
+/// **Um pincel que «apanha cor» (`Charge < 1`) continua a misturar molhado sobre molhado** (report do
+/// dono, 2026-09-29: *«reduzindo Charge para < 1 não se percebe a mistura»*). O mixer do Charge só
+/// grava na tela o que APANHOU, e ele lê a base CONGELADA — a tinta molhada da própria sessão não
+/// está lá, logo não apanha nada e não gravava nada: o `Pigment` ficava sem parceiro e o meio lia o
+/// MESMO pixel com o botão ligado e desligado (`249,243,149` a `Charge 0,9`). Depois: `159,198,161`.
+#[test]
+fn o_charge_abaixo_de_um_nao_desliga_o_pigment_molhado() {
+    let meio = |pigment: bool, charge: f32| {
+        let mut t = white_canvas(SIZE, 14.0);
+        for (x, cor) in [(86.0, AZUL), (100.0, AMARELO)] {
+            let mut b = pincel(cor, pigment);
+            b.wet_charge = charge;
+            arma(&mut t, b);
+            traco(&mut t, x, 1);
+        }
+        px(&t, SIZE, X_MEIO, Y)
+    };
+    for charge in [0.9f32, 0.5] {
+        let sem = meio(false, charge);
+        let com = meio(true, charge);
+        assert!(
+            !e_verde(sem),
+            "controlo (Charge {charge}): sem Pigment o amarelo tapa o azul ({sem:?})"
+        );
+        assert!(
+            e_verde(com),
+            "Charge {charge}: com Pigment o meio molhado tem de dar verde — lê {com:?} (sem: {sem:?})"
+        );
+    }
+}

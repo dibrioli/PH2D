@@ -651,13 +651,21 @@ impl PainterTool {
                         }
                         _ => feather(dn),
                     };
-                    let a = peak * wgt * prio * depl * keep;
-                    if a <= 0.0 {
-                        continue;
-                    }
                     let idx = (base + x) * 4;
                     if mistura > 0.0 {
-                        super::watercolor_mistura::deposita(buf, planos, idx, col, a, mistura);
+                        // ⚠️ O `Pigment` deposita a tinta que a brocha LARGA (`depl`), SEM a prioridade
+                        // do mixer (`prio = pickup × carga`): sobre tinta molhada da própria sessão o
+                        // mixer não apanha nada (ele lê a base CONGELADA), a prioridade é zero, e com
+                        // ela no peso o `Charge < 1` não gravava tinta nenhuma — a mistura ficava sem
+                        // parceiro e o botão virava inerte AO BIT (report do dono, 2026-09-29; doc 44 §2).
+                        let a = peak * wgt * depl * keep;
+                        if a > 0.0 {
+                            super::watercolor_mistura::deposita(buf, planos, idx, col, a, mistura);
+                        }
+                        continue;
+                    }
+                    let a = peak * wgt * prio * depl * keep;
+                    if a <= 0.0 {
                         continue;
                     }
                     let da = f32::from(buf[idx + 3]) / 255.0;

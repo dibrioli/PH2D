@@ -125,3 +125,33 @@ RYB ao bit em `0`.
 **Suítes:** `ph2d-tool-painter` + `ph2d-painter-brush` + `ph2d-pigment` **1 829/1 829**.
 
 ⏳ **Por smokar pelo dono.**
+
+### §2.1 — O smoke: *«reduzindo Charge para < 1 não se percebe a mistura»* (2026-09-29)
+
+**Medido** (`diag_pigment_com_charge`, o mesmo amarelo sobre azul, ao longo do `Charge`):
+- **seco:** a mistura continua em todos os valores;
+- **molhado:** com `Charge < 1` o meio lia o **MESMO pixel com o botão ligado e desligado** (`249,243,149` a `0,9`).
+
+⛔ **A causa é a prioridade do mixer.** `Charge < 1` arma o pincel que apanha cor, e o depósito
+escreve com peso `prio = pickup × carga`: só grava o que o pincel APANHOU. O mixer lê a base
+CONGELADA, e a tinta molhada da própria sessão não está lá ⇒ ele não apanha nada ⇒ `prio = 0` ⇒
+nenhum dos dois traços grava cor. A `deposita` do `Pigment` ficava sem os dois parceiros, e a cor
+vinha inteira do DONO do texel.
+
+⭐ **A cura:** no caminho do `Pigment` o peso é a tinta que a brocha LARGA (`depl`), sem a prioridade.
+Fora do `Pigment` nada muda.
+
+**Depois:** molhado `159,198,161` (`0,9`) · `160,199,164` (`0,75`) · `162,200,171` (`0,5`) ·
+`168,203,181` (`0,25`), contra `159,198,159` a `1`.
+
+**Gate:** `o_charge_abaixo_de_um_nao_desliga_o_pigment_molhado`. Mutação `1 de 1` (repor a
+prioridade no peso sangra este gate e só ele).
+
+⚠️ **Nomeado, e não é defeito:** sobre PAPEL com `Charge < 1` e o botão ligado o amarelo sozinho
+muda até `7` num canal (`253,245,128 → 252,244,121`). Não é mistura com o papel. É o depósito a
+passar a gravar a cor da brocha onde antes a cor vinha do dono SUAVIZADO na junção com o azul, e fica
+igual ao que o `Charge 1` já fazia (`253,244,119`). O `o_pigment_nao_mistura_com_o_papel` corre a
+`Charge 1`, onde continua ao bit.
+
+⚠️ `the_pen_down_is_still_a_canvas_copy_and_this_is_its_number` reprovou uma vez na suíte a `load ~20`
+e passou sozinho: é membro da família de flakes de carga (§5.0).

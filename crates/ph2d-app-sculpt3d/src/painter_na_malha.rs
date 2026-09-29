@@ -48,6 +48,9 @@ use ph2d_tool_painter::{PainterTool, ScreenCanvasFrame};
 use crate::Sculpt3dScene;
 use crate::objects::ObjectId;
 
+#[path = "painter_na_malha_registo.rs"]
+mod registo;
+
 /// ⭐⭐ **A tela da aquarela que ficou MOLHADA depois de um traço** — o que a
 /// peça recebeu, e a chave que diz se a tela ainda o descreve.
 ///
@@ -88,6 +91,9 @@ impl TelaMolhada {
 pub fn quadro(scene: Option<&mut Sculpt3dScene>, painter: Option<&mut PainterTool>) {
     let Some(painter) = painter else {
         if let Some(s) = scene {
+            if s.painter_tela.is_some() && registo::ligado() {
+                eprintln!("[painter3d] fecho: a ferramenta em maos deixou de ser o Painter");
+            }
             s.painter_fecha();
             s.painter_raio_px = None;
         }
@@ -112,12 +118,28 @@ pub fn quadro(scene: Option<&mut Sculpt3dScene>, painter: Option<&mut PainterToo
             if let Some((w, h)) = s.tela_do_painter()
                 && painter.bind_screen_canvas(w, h)
             {
+                if registo::ligado() {
+                    eprintln!("[painter3d] a tela RENASCEU a {w}x{h} (a vista mudou de tamanho)");
+                }
                 s.painter_molhada = None;
                 s.painter_fecha();
             }
             s.painter_raio_px = Some(painter.screen_canvas_ring_px());
+            if let Some(morreu) = registo::transicao(painter.screen_canvas_is_wet()) {
+                eprintln!(
+                    "[painter3d] a agua mudou: morreu={morreu} · tela {:?} · escorre {:?} · \
+                     molhada guardada {} · edits {}",
+                    s.tela_do_painter(),
+                    s.painter_escorre,
+                    s.painter_molhada.is_some(),
+                    s.edits
+                );
+            }
         }
         Some(s) => {
+            if registo::ligado() {
+                eprintln!("[painter3d] a tela SOLTOU-SE: o barro saiu do ecra");
+            }
             s.painter_fecha();
             s.painter_raio_px = None;
             s.painter_molhada = None;
@@ -205,8 +227,18 @@ fn termina(scene: &mut Sculpt3dScene, painter: &mut PainterTool) {
     scene.painter_fecha();
     let ultima = scene.painter_ultima.take();
     // ⭐⭐ Papel molhado ⇒ a tela FICA: limpá-la secava-o.
+    let molhado = painter.screen_canvas_is_wet();
+    if registo::ligado() {
+        let guarda = vista.is_some() && ultima.is_some() && semeado && molhado;
+        eprintln!(
+            "[painter3d] fim da pincelada: semeada {semeado} · molhada {molhado} · retrato {} · \
+             edits {} · guarda a tela molhada={guarda}",
+            ultima.is_some(),
+            scene.edits,
+        );
+    }
     match (vista, ultima) {
-        (Some(vista), Some(retrato)) if semeado && painter.screen_canvas_is_wet() => {
+        (Some(vista), Some(retrato)) if semeado && molhado => {
             scene.painter_guarda(vista, retrato);
         }
         _ => {
@@ -290,10 +322,30 @@ impl Sculpt3dScene {
         };
         // ⭐⭐ O papel ainda molhado e a tela ainda a descrever a peça: a tela
         // FICA como está (semeá-la secava-o) e a semente é o que a peça recebeu.
+        let molhada_agora = painter.screen_canvas_is_wet();
+        if registo::ligado() {
+            match (&guardada, chave) {
+                (None, _) => eprintln!(
+                    "[painter3d] pen-down: nenhuma tela molhada guardada -> retrato novo (seca)"
+                ),
+                (Some(g), objeto) => eprintln!(
+                    "[painter3d] pen-down: guardada · vista igual {} · peca igual {} · edits {} vs \
+                     {} · molhada {}",
+                    g.vista == *sessao.vista(),
+                    Some(g.objeto) == objeto,
+                    g.edits,
+                    edits,
+                    molhada_agora
+                ),
+            }
+        }
         if let (Some(g), Some(objeto)) = (guardada, chave)
-            && painter.screen_canvas_is_wet()
+            && molhada_agora
             && g.serve(sessao.vista(), objeto, edits)
         {
+            if registo::ligado() {
+                eprintln!("[painter3d] pen-down: REAPROVEITA a tela molhada");
+            }
             sessao.com_semente(g.retrato.as_ref().clone());
             self.painter_ultima = Some(g.retrato);
             return true;
@@ -376,6 +428,9 @@ impl Sculpt3dScene {
     /// peça é que deixa de a receber. O traço seguinte volta ao retrato fresco.
     pub(crate) fn painter_fecha_o_que_escorre(&mut self) {
         if self.painter_escorre.is_some() {
+            if registo::ligado() {
+                eprintln!("[painter3d] fecho: outra porta mexeu na peca com a agua a escorrer");
+            }
             self.painter_fecha();
             self.painter_molhada = None;
         }

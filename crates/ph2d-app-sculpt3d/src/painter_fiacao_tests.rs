@@ -161,7 +161,10 @@ fn elos() -> Vec<(
             "painter_na_malha.rs",
             COSTURA,
             "painter.screen_canvas_is_wet()",
-            2,
+            // ⚠️ 3 e não 2 desde 29/09: o fim da pincelada e o pen-down (as duas que decidem) mais
+            // o registo `PH2D_PAINTER3D_LOG`, que lê o mesmo facto uma vez por quadro. Apagar uma
+            // das duas que decidem continua a mudar a contagem.
+            3,
             "P14 a aquarela seca a cada traço: limpar ou semear a tela seca o papel",
         ),
         (

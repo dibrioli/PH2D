@@ -1083,7 +1083,7 @@ fn fs_core(in: VsOut, vcolor: vec3<f32>) -> vec4<f32> {
     // Sem lâmpada acesa não há razão a computar: o barro cru é a leitura honesta
     // de "o artista apagou tudo" para uma superfície opaca.
     if (rig.n == 0u) {
-        return vec4<f32>(CLAY * in.vcolor, 1.0);
+        return vec4<f32>(CLAY * vcolor, 1.0);
     }
 
     // ⭐⭐⭐⭐ **O MODO PBR — a MESMA lei que assa o sprite.**
@@ -1124,7 +1124,10 @@ fn fs_core(in: VsOut, vcolor: vec3<f32>) -> vec4<f32> {
         if (pbr.vista.y == 1u) {
             materia = albedo_do_texel(in.clip.xy);
         }
-        let mt = mx_at_base_color(pbr.mat, materia * in.vcolor);
+        // ⚠️ O ARGUMENTO `vcolor` e nunca o `in.vcolor`: com a tinta fina armada é ele que traz a cor
+        // lida da retícula, e ler o do vértice deitava fora a pintura inteira no modo PBR (report do
+        // dono, 29/09: «em PBR (Material) a pintura não funciona»).
+        let mt = mx_at_base_color(pbr.mat, materia * vcolor);
 
         var luz = vec3<f32>(0.0);
         for (var i = 0u; i < rig.n; i = i + 1u) {

@@ -213,3 +213,55 @@ fn as_duas_fontes_do_shader_parsam_e_validam() {
         "a fonte sem tinta ainda menciona a capacidade que ela existe para evitar"
     );
 }
+
+/// ⭐⭐ **GATE — dentro do `fs_core` NENHUM modo de luz lê a cor bruta do vértice.**
+///
+/// Report do dono (29/09): *«em PBR (Material) a pintura não funciona»*. O `fs_core` recebe o
+/// albedo como ARGUMENTO (`vcolor`) precisamente para que a tinta fina entre por um só caminho; o
+/// ramo PBR e o de "sem lâmpadas" liam o `in.vcolor` do vértice e deitavam fora a cor lida da
+/// retícula — com o PBR a ser o modo de FÁBRICA (`DEFAULT_LIGHTING`). *Um argumento que um ramo
+/// ignora é um canal morto nesse ramo.*
+///
+/// ⚠️ Corre sem device: é o único gate desta pergunta que o CI vê (os de pixel são `#[ignore]`).
+/// ⚠️ **O CONTROLO:** o corpo lido tem de conter os QUATRO ramos de luz, senão uma extracção
+/// partida devolvia um corpo vazio e o gate passava sobre nada.
+#[test]
+fn o_fs_core_nunca_le_a_cor_bruta_do_vertice() {
+    let src = include_str!("shaders/mesh.wgsl");
+    let inicio = src.find("fn fs_core(").expect("o fs_core existe");
+    let mut fundo = 0i32;
+    let mut fim = None;
+    for (i, c) in src[inicio..].char_indices() {
+        match c {
+            '{' => fundo += 1,
+            '}' => {
+                fundo -= 1;
+                if fundo == 0 {
+                    fim = Some(inicio + i);
+                    break;
+                }
+            }
+            _ => {}
+        }
+    }
+    let corpo: String = src[inicio..fim.expect("o fs_core fecha")]
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("//"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    for ramo in [
+        "CLAY * vcolor",
+        "lit * vcolor",
+        "mx_at_base_color(",
+        "rig.n == 0u",
+    ] {
+        assert!(
+            corpo.contains(ramo),
+            "o CONTROLO: o corpo lido não tem `{ramo}`"
+        );
+    }
+    assert!(
+        !corpo.contains("in.vcolor"),
+        "um ramo do fs_core lê `in.vcolor`: a tinta fina morre nesse modo de luz (report de 29/09)"
+    );
+}

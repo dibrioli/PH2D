@@ -414,3 +414,54 @@ fn rodar_a_vista_com_a_agua_a_correr_nao_fecha_a_pincelada() {
     );
     crate::input::pointer_up(&mut s);
 }
+
+/// SONDA (report do dono, 29/09: *«entre a primeira e segunda pincelada a tinta
+/// seca; depois da terceira funciona»*) — imprime, traço a traço, o contador
+/// de edições e se a tela molhada está guardada, nos dois regimes do artista:
+/// o traço seguinte com a água a correr, e depois de ela parar.
+#[test]
+#[ignore = "sonda: precisa de adaptador e corre em tempo real"]
+fn diag_o_segundo_traco_seca() {
+    let gpu = gpu_or_skip!();
+    for esperar_parar in [false, true] {
+        let mut s = cena_52(&gpu.device);
+        s.sync_mesh(&gpu.device, &gpu.queue);
+        let mut p = molhado();
+        for (i, x) in [420.0, 340.0, 260.0].into_iter().enumerate() {
+            eprintln!(
+                "[{esperar_parar}] antes do traço {i}: edits={} molhada={} wet={} escorre={:?}",
+                s.edits,
+                s.painter_molhada.is_some(),
+                p.screen_canvas_is_wet(),
+                s.painter_escorre
+            );
+            assert!(traco(&mut s, &mut p, x));
+            eprintln!(
+                "[{esperar_parar}] pen-up {i}: edits={} escorre={:?} wet={}",
+                s.edits,
+                s.painter_escorre,
+                p.screen_canvas_is_wet()
+            );
+            let t0 = Instant::now();
+            let mut n = 0;
+            loop {
+                um_quadro(&mut s, &mut p);
+                n += 1;
+                let parou = s.painter_escorre.is_none();
+                if (!esperar_parar && n >= 10)
+                    || (esperar_parar && parou && n > 5)
+                    || t0.elapsed() > Duration::from_secs(40)
+                {
+                    break;
+                }
+            }
+            eprintln!(
+                "[{esperar_parar}] depois de {n} quadros: edits={} molhada={} wet={} escorre={:?}",
+                s.edits,
+                s.painter_molhada.is_some(),
+                p.screen_canvas_is_wet(),
+                s.painter_escorre
+            );
+        }
+    }
+}

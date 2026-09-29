@@ -439,6 +439,8 @@ pub mod keys_view;
 #[path = "trim_gesto.rs"]
 pub(crate) mod trim_gesto;
 
+/// ⭐ As abas da peça seguem a ferramenta (a escultura e o Painter) — report de 29/09.
+pub mod abas;
 /// ⭐ **O roteiro e a leitura da SONDA DO UNDO** (report de 2026-09-16) — o executor vive na shell.
 /// Ver [`sonda_undo`].
 pub mod sonda_undo;

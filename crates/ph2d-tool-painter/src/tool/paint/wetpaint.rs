@@ -319,13 +319,31 @@ impl PainterTool {
     /// [`WetSession::canvas`] for why the token is weak, and why comparing its
     /// address is sound *because* it is weak (the handle pins the allocation,
     /// so the address it names can never be re-issued to a different canvas).
+    #[track_caller]
     fn wetpaint_guard(&mut self) {
         if let Some(sess) = &self.paint.wetpaint.session
             && !std::ptr::eq(sess.canvas.as_ptr(), Arc::as_ptr(&self.canvas_rgba))
         {
+            if registo_da_agua() {
+                eprintln!(
+                    "[painter3d] ⛔ a sessao da agua ACABOU: o guarda de identidade viu a tela \
+                     TROCADA por outra mao (chamado de {})",
+                    std::panic::Location::caller()
+                );
+            }
             self.paint.wetpaint.session = None;
         }
     }
+}
+
+/// **O registo do fim da água** (`PH2D_PAINTER3D_LOG=1`, o mesmo interruptor da costura da
+/// escultura) — report do dono de 29/09 (*«entre a primeira e a segunda pincelada a tinta seca»*),
+/// que o arnês de teste não reproduz. Diz PORQUÊ e DE ONDE a sessão acabou, que é o que uma corrida
+/// do app real precisa de dizer para a causa deixar de ser um palpite. Terminal só, e a frase vive
+/// DENTRO do `eprintln!` de quem chama (é assim que o censo de texto da UI isenta o terminal).
+pub(crate) fn registo_da_agua() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| std::env::var_os("PH2D_PAINTER3D_LOG").is_some())
 }
 
 mod authored_actions; // canvas actions + session birth + facts — child file (LOC cap)

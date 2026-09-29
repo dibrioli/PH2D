@@ -22,6 +22,12 @@ impl crate::App {
                     .downcast_mut::<ph2d_tool_painter::PainterTool>()
             }),
         );
+        // Lido ANTES de desmontar o `gfx`: as abas da peça seguem a ferramenta (report de 29/09).
+        #[cfg(feature = "sculpt3d")]
+        let barro = gfx
+            .sculpt3d
+            .as_ref()
+            .is_some_and(ph2d_app_sculpt3d::Sculpt3dScene::clay_on_screen);
         let FrameGfx {
             renderer,
             sim,
@@ -150,6 +156,14 @@ impl crate::App {
                 })
             },
             &note_preview_px,
+        );
+        // ⭐ DEPOIS da ponte, que reescreve a visibilidade da aba do Painter em todo quadro.
+        #[cfg(feature = "sculpt3d")]
+        ph2d_app_sculpt3d::abas::abas_seguem_a_ferramenta(
+            hero,
+            barro,
+            tools.active().map(ph2d_editor_core::Tool::id)
+                == Some(ph2d_editor_core::ToolId::new("painter")),
         );
         // Live-preview a non-selected sprite used as the brush Shape (so its opacity/blend remote-
         // control edits show in real time), into a SECOND preview slot/override.

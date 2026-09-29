@@ -8,9 +8,7 @@
 //! publishes scroll bounds back to the store.
 
 use crate::paint_frame::{PanelFinish, publish_and_finish};
-use crate::state::{
-    self, current_inspector_visibility_section, last_inspector_content_h, last_inspector_visible_h,
-};
+use crate::state::{self, current_inspector_visibility_section};
 use crate::state_popovers;
 use crate::sync::sync_inspector_from_snapshots;
 use crate::{InspectorPanel, sections};
@@ -48,6 +46,7 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
     // &WidgetStore, &mut Scene, &mut TextSystem — all from disjoint
     // refs on the host. Reborrow store via `store()` then `store_mut()`
     // sequentially below for the post-paint scroll publish.
+    let pending;
     {
         // Build a transient owning copy of selection to avoid holding an
         // immutable borrow of host while also borrowing host's
@@ -64,7 +63,7 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
         // ⛔ Ler o `slot` aqui compila e prende o popover dentro da coluna.
         let popover_layout = ctx.layout;
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-        paint_inspector(
+        pending = paint_inspector(
             ctx.slot,
             popover_layout,
             selection_clone.as_ref(),
@@ -87,10 +86,6 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
     }
     state::set_current_display_unit(display_unit, ppm); // keep symmetric with legacy
     state::set_current_display_angle(display_angle);
-    // Publish content_h + clamp scroll right after paint so
-    // `dispatch_wheel` sees the new bounds on the very next event.
-    let content_h = last_inspector_content_h();
-    let visible_h = last_inspector_visible_h();
     let store = ctx.host.store_mut();
     // ⭐ **O popover diferido publica o RECT dele aqui, e é o que o faz FECHAR ao clique fora.**
     //
@@ -111,13 +106,9 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
             store.set_panel_scroll(id, max_scroll);
         }
     }
-    store.set_panel_content_h(ids::INSP_PANEL, content_h);
-    store.set_panel_visible_h(ids::INSP_PANEL, visible_h);
-    let max_scroll = (content_h - visible_h).max(0.0);
-    let cur = store.panel_scroll(ids::INSP_PANEL);
-    if cur > max_scroll {
-        store.set_panel_scroll(ids::INSP_PANEL, max_scroll);
-    }
+    // As alturas do corpo, o clamp e o dono da barra — a metade da porta que precisa do store
+    // mutável (`scroll_area::Pending`).
+    pending.publish(store);
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -168,15 +159,15 @@ fn paint_inspector(
     tween_selected: &mut usize,
     sm_state_selected: &mut usize,
     sm_trans_selected: &mut usize,
-) {
+) -> ph2d_editor_core::widget::scroll_area::Pending {
     let crate::paint_body::BodyFrame {
         rect,
         content_top,
         content_bottom,
-        scroll_y,
         inner_x,
         inner_w,
         body_top_y,
+        area,
     } = crate::paint_body::open_body(slot, scene, text_system, theme, hit_index, store);
     let mut section_tops_y: Vec<f32> = Vec::with_capacity(4);
     // Os snapshots e o `any_section`, numa pergunta só. Ver `paint_frame::LiveSnapshots`.
@@ -336,8 +327,6 @@ fn paint_inspector(
         scene,
         text_system,
         theme,
-        hit_index,
-        store,
         PanelFinish {
             any_section: snaps.any_section,
             has_selection: selection.is_some(),
@@ -347,12 +336,20 @@ fn paint_inspector(
             content_bottom,
             body_top_y,
             y,
-            scroll_y,
-            rect,
         },
         section_tops_y,
     );
-    crate::paint_body::close_body(scene, text_system, theme, hit_index, rect, store, layout);
+    crate::paint_body::close_body(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        rect,
+        store,
+        layout,
+        area,
+        crate::state::last_inspector_content_h(),
+    )
 }
 
 /// **O corpo da §8 Visibility** — a caixa `Visible` mais os controlos do componente opcional.

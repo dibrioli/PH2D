@@ -10,16 +10,12 @@
 use crate::state::{self, SkeletonPanelState};
 use crate::{SkeletonPanel, section, section_campos};
 use ph2d_editor_core::ids;
-use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::panel::{PaintCtx, Panel, RowCtx};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
     paint_panel_surface, paint_panel_title,
 };
-use ph2d_editor_core::widget::{
-    SCROLLBAR_W, VECTOR_SCROLLBAR_ID, paint_scrollbar, scrollbar_is_needed, scrollbar_thumb_rect,
-    scrollbar_track_rect,
-};
+use ph2d_editor_core::widget::{SCROLLBAR_W, SKELETON_SCROLLBAR_ID, scroll_area};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing, TypeToken};
 
@@ -81,67 +77,52 @@ pub(crate) fn paint(_state: &mut SkeletonPanelState, ctx: &mut PaintCtx) {
         store.set_number_value(ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_RADIUS, raio);
         store.set_number_value(ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_AMOUNT, quanto);
     }
-    let content_h = {
+    let (content_h, area) = {
         let scene = &mut *ctx.scene;
         let text_system = &mut *ctx.text_system;
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-        let scroll_y = store.panel_scroll(ids::SKELETON_PANEL).max(0.0);
-        let clip = rect_to_vello(Rect::new(rect.x, body_top, rect.w, body_h));
-        scene.push_clip(&clip);
-        let body_top_y = body_top - scroll_y;
-        let mut r = RowCtx {
+        // ⭐ A PORTA da rolagem (spec `04_a_rolagem_unica` D3): com barra PRÓPRIA — ele pintava com
+        //    o id do Vector, e arrastá-la rolava o painel Vector.
+        let body = Rect::new(rect.x, body_top, rect.w, body_h);
+        let area = scroll_area::open_with(
             scene,
-            text_system,
-            store,
             hit_index,
-            theme,
-            inner_x,
-            inner_w,
-            row_h: ROW_H_PX,
-            // ⚠️ **`control_gap_px()` e não `Spacing::Xs`** — escrito na INTEGRAÇÃO de 2026-09-10.
-            // Este painel nasceu de uma secção do `ph2d-panel-vector`, e herdou de lá o
-            // `Spacing::Xs.px()` (**4**); a porta do vão entre controlos vale **3**, e as duas
-            // grandezas divergiram no dia em que o dono fixou o número
-            // (`every_stack_of_rows_asks_the_rhythm`, cuja lista de dívida está **vazia** e assim
-            // fica). ⛔ *Um token certo na pergunta errada passa em todo gate desta casa e continua
-            // fora do ritmo* — o painel de origem é dívida tolerada de outra wave, não o modelo.
-            row_gap: ph2d_tokens::control_gap_px(),
-            font: TypeToken::Base.px(),
-            open_fold: None,
-        };
-        let y = section::body(&mut r, body_top_y);
-        // ⚠️ **A dobra fecha aqui**: ela é aberta pelo cabeçalho e, sem isto, o painel ficaria com a
-        // secção meio-aberta para sempre.
-        let y = r.close_fold(y);
-        let content_h = (y - body_top_y + PANEL_HEAD_PAD).max(0.0);
-        if scrollbar_is_needed(content_h, body_h) {
-            let body = Rect::new(rect.x, body_top, rect.w, body_h);
-            let thumb =
-                scrollbar_thumb_rect(scrollbar_track_rect(body), scroll_y, content_h, body_h);
-            paint_scrollbar(
-                body,
-                scroll_y,
-                content_h,
-                body_h,
-                r.store.scrollbar_visual(VECTOR_SCROLLBAR_ID),
-                r.scene,
+            store,
+            ids::SKELETON_PANEL,
+            SKELETON_SCROLLBAR_ID,
+            body,
+        );
+        let body_top_y = area.top();
+        let y = {
+            let mut r = RowCtx {
+                scene: &mut *scene,
+                text_system,
+                store,
+                hit_index: &mut *hit_index,
                 theme,
-            );
-            r.hit_index.register(VECTOR_SCROLLBAR_ID, thumb);
-        }
-        r.scene.pop_layer();
-        content_h
+                inner_x,
+                inner_w,
+                row_h: ROW_H_PX,
+                // ⚠️ **`control_gap_px()` e não `Spacing::Xs`** — escrito na INTEGRAÇÃO de 2026-09-10.
+                // Este painel nasceu de uma secção do `ph2d-panel-vector`, e herdou de lá o
+                // `Spacing::Xs.px()` (**4**); a porta do vão entre controlos vale **3**, e as duas
+                // grandezas divergiram no dia em que o dono fixou o número
+                // (`every_stack_of_rows_asks_the_rhythm`, cuja lista de dívida está **vazia** e assim
+                // fica). ⛔ *Um token certo na pergunta errada passa em todo gate desta casa e continua
+                // fora do ritmo* — o painel de origem é dívida tolerada de outra wave, não o modelo.
+                row_gap: ph2d_tokens::control_gap_px(),
+                font: TypeToken::Base.px(),
+                open_fold: None,
+            };
+            let y = section::body(&mut r, body_top_y);
+            // ⚠️ **A dobra fecha aqui**: ela é aberta pelo cabeçalho e, sem isto, o painel ficaria
+            // com a secção meio-aberta para sempre.
+            r.close_fold(y)
+        };
+        ((y - body_top_y + PANEL_HEAD_PAD).max(0.0), area)
     };
+    scroll_area::close(area, ctx, content_h);
 
-    let store = ctx.host.store_mut();
-    store.set_panel_content_h(ids::SKELETON_PANEL, content_h);
-    store.set_panel_visible_h(ids::SKELETON_PANEL, body_h);
-    // Apara uma rolagem rançosa quando o conteúdo encolheu (uma secção fechada), para o corpo nunca
-    // ficar desenhado acima do topo.
-    let max_scroll = (content_h - body_h).max(0.0);
-    if store.panel_scroll(ids::SKELETON_PANEL) > max_scroll {
-        store.set_panel_scroll(ids::SKELETON_PANEL, max_scroll);
-    }
     // ⭐⭐⭐ O passe DIFERIDO: a lista de acções por cima de tudo.
     if let Some(chip_rect) = state::take_pending_bone_action_dd() {
         crate::section_smart::paint_action_popover(ctx, chip_rect, theme);

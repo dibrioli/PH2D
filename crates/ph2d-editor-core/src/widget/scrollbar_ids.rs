@@ -197,8 +197,14 @@ pub const LAB_SCROLLBAR_ID: NodeId = NodeId(846);
 /// exactamente a auditoria que o `INPUT_MAP_SCROLLBAR_ID` já pagou acima. *O dono de um id de barra
 /// é o despacho, nunca quem a desenha.*
 ///
-/// Next free id is `848`; re-read the collision note above before taking it.
 pub const TAGS_SCROLLBAR_ID: NodeId = NodeId(847);
+/// ⭐ **O painel de OSSOS** (2026-09-29, spec `04_a_rolagem_unica` D3) — ele pintava com o
+/// `VECTOR_SCROLLBAR_ID` **emprestado**, e arrastar a barra dele **rolava o painel Vector**. Com a
+/// porta `scroll_area` o dono passa a ser publicado a cada quadro, mas o id continua a ser CONTADO
+/// aqui: dois painéis abertos com o mesmo id publicariam dois donos, e ganhava o último a pintar.
+///
+/// Next free id is `849`; re-read the collision note above before taking it.
+pub const SKELETON_SCROLLBAR_ID: NodeId = NodeId(848);
 
 #[cfg(test)]
 mod tests {
@@ -247,6 +253,7 @@ mod tests {
             ("LAB", LAB_SCROLLBAR_ID),
             ("ASSET_BROWSER", ASSET_BROWSER_SCROLLBAR_ID),
             ("TAGS", TAGS_SCROLLBAR_ID),
+            ("SKELETON", SKELETON_SCROLLBAR_ID),
             ("DROPDOWN", crate::widget::DROPDOWN_SCROLLBAR_ID),
         ];
         for (i, (na, a)) in ids.iter().enumerate() {

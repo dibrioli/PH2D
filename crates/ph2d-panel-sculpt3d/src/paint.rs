@@ -3,19 +3,15 @@
 //! registrado e o que despacha não possam discordar.
 
 use ph2d_editor_core::ids;
-use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
     paint_panel_empty, paint_panel_surface, paint_panel_title,
 };
-use ph2d_editor_core::widget::{
-    SCULPT3D_SCROLLBAR_ID, paint_scrollbar, paint_slider_with_chip_layout_adaptive,
-    scrollbar_is_needed, scrollbar_thumb_rect, scrollbar_track_rect,
-};
+use ph2d_editor_core::widget::{SCULPT3D_SCROLLBAR_ID, paint_slider_with_chip_layout_adaptive};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
+use ph2d_tokens::{ROW_H_PX, Spacing};
 
 use crate::state::{self, Sculpt3dPanelState, set_last_content_h, set_last_visible_h};
 use crate::{Sculpt3dPanel, rows};
@@ -122,20 +118,24 @@ pub(crate) fn paint(_state: &mut Sculpt3dPanelState, ctx: &mut PaintCtx) {
     let body_top = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
     let body_h = (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0);
     let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
-    let scroll = ctx.host.store().panel_scroll(ids::SCULPT3D_PANEL);
-
-    ctx.scene.push_clip(&rect_to_vello(body_rect));
+    // ⭐ A PORTA da rolagem (spec `04_a_rolagem_unica`, `line/UIUX` 2026-09-29).
+    let area = ph2d_editor_core::widget::scroll_area::open(
+        ctx,
+        ids::SCULPT3D_PANEL,
+        SCULPT3D_SCROLLBAR_ID,
+        body_rect,
+    );
     let y_after = body::paint_sections(
         ctx,
         &snapshot,
         rect.x + PANEL_HEAD_PAD,
         (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0),
-        body_top - scroll,
+        area.top(),
     );
-    let content_h = (y_after + scroll) - body_top + PANEL_HEAD_PAD;
+    let content_h = (y_after + area.scroll()) - body_top + PANEL_HEAD_PAD;
     set_last_content_h(content_h);
     set_last_visible_h(body_h);
-    ctx.scene.pop_layer();
+    ph2d_editor_core::widget::scroll_area::close(area, ctx, content_h);
 
     // ⭐⭐⭐ **O SELECTOR SEGUE O SUJEITO** — ver
     // [`brush_cor::fecha_um_selector_orfao`]. A pergunta é feita à MESMA porta
@@ -145,8 +145,6 @@ pub(crate) fn paint(_state: &mut Sculpt3dPanelState, ctx: &mut PaintCtx) {
     // ⚠️ **Aqui e não dentro do pintor:** ele devolve cedo quando o verbo não
     // deposita cor, logo o sítio onde a ausência é observável é FORA dele.
     brush_cor::fecha_um_selector_orfao(ctx, snapshot.ui.brush.verb.deposita_a_cor_do_pincel());
-
-    paint_scrollbar_and_publish(ctx, body_rect, content_h, body_h, scroll, theme);
 }
 
 /// Uma row de slider+chip, da tabela.
@@ -190,38 +188,6 @@ pub(crate) fn paint_row(
     )
 }
 
-fn paint_scrollbar_and_publish(
-    ctx: &mut PaintCtx,
-    body_rect: Rect,
-    content_h: f32,
-    body_h: f32,
-    scroll: f32,
-    theme: Theme,
-) {
-    if scrollbar_is_needed(content_h, body_h) {
-        let track = scrollbar_track_rect(body_rect);
-        let thumb = scrollbar_thumb_rect(track, scroll, content_h, body_h);
-        paint_scrollbar(
-            body_rect,
-            scroll,
-            content_h,
-            body_h,
-            ctx.host.store().scrollbar_visual(SCULPT3D_SCROLLBAR_ID),
-            ctx.scene,
-            theme,
-        );
-        ctx.host
-            .hit_index_mut()
-            .register(SCULPT3D_SCROLLBAR_ID, thumb);
-    }
-    let store = ctx.host.store_mut();
-    store.set_panel_content_h(ids::SCULPT3D_PANEL, content_h);
-    store.set_panel_visible_h(ids::SCULPT3D_PANEL, body_h);
-    let max_scroll = (content_h - body_h).max(0.0);
-    if store.panel_scroll(ids::SCULPT3D_PANEL) > max_scroll {
-        store.set_panel_scroll(ids::SCULPT3D_PANEL, max_scroll);
-    }
-}
 
 /// **A porta do READOUT para fora do módulo de pintura.**
 ///

@@ -24,9 +24,7 @@ use ph2d_vector::VectorScene;
 
 use ph2d_editor_core::interaction::NoteData;
 use ph2d_editor_core::paint::{paint_text_block, resolve};
-use ph2d_editor_core::widget::INSPECTOR_SCROLLBAR_ID;
 use ph2d_editor_core::widget::showcase::LAST_SECTION_TOPS_Y;
-use ph2d_editor_core::widget::{self};
 use ph2d_tokens::{ColorToken, TypeToken};
 
 use crate::state::{set_last_inspector_content_h, set_last_inspector_visible_h};
@@ -419,12 +417,10 @@ pub(crate) struct PanelFinish {
     pub content_bottom: f32,
     pub body_top_y: f32,
     pub y: f32,
-    pub scroll_y: f32,
-    pub rect: Rect,
 }
 
-/// Phase B of the Inspector paint: the empty-state placeholder, the scroll
-/// bookkeeping the host reads next frame, and the scrollbar.
+/// Phase B of the Inspector paint: the empty-state placeholder and the scroll
+/// bookkeeping the host reads next frame (the scrollbar is the door's, in `close_body`).
 ///
 /// Lifted out of `paint_inspector` for the same reason as the section frame —
 /// its LOC allowance is frozen and every new section costs ~18 lines. The
@@ -433,8 +429,6 @@ pub(crate) fn publish_and_finish(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: ph2d_tokens::Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
     f: PanelFinish,
     section_tops_y: Vec<f32>,
 ) {
@@ -486,21 +480,7 @@ pub(crate) fn publish_and_finish(
     set_last_inspector_visible_h(visible_h);
     LAST_SECTION_TOPS_Y.with(|t| *t.borrow_mut() = section_tops_y);
 
-    if widget::scrollbar_is_needed(content_h, visible_h) {
-        let body = Rect::new(f.rect.x, f.content_top, f.rect.w, visible_h);
-        let track = widget::scrollbar_track_rect(body);
-        let thumb = widget::scrollbar_thumb_rect(track, f.scroll_y, content_h, visible_h);
-        widget::paint_scrollbar(
-            body,
-            f.scroll_y,
-            content_h,
-            visible_h,
-            store.scrollbar_visual(INSPECTOR_SCROLLBAR_ID),
-            scene,
-            theme,
-        );
-        hit_index.register(INSPECTOR_SCROLLBAR_ID, thumb);
-    }
+    // A barra pinta-se na porta (`close_body` → `scroll_area::close_parts`).
 }
 
 /// ⭐ **Os snapshots vivos do quadro** — irmão por `#[path]`, cortado em 2026-09-14 pelo tecto de

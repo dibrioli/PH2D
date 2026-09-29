@@ -249,7 +249,8 @@ pub(super) fn begin_bar_drag(
     //    partiria do alvo e a lista saltaria debaixo do dedo no primeiro Move.
     let mut scroll_at_down = store.panel_scroll(panel);
     if published.is_some() {
-        let thumb = crate::widget::scrollbar_thumb_rect(track, scroll_at_down, content_h, visible_h);
+        let thumb =
+            crate::widget::scrollbar_thumb_rect(track, scroll_at_down, content_h, visible_h);
         if cursor_y < thumb.y || cursor_y > thumb.y + thumb.h {
             scroll_at_down = crate::widget::scroll_area::scroll_for_track_press(
                 track, cursor_y, content_h, visible_h,

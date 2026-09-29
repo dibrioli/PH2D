@@ -67,7 +67,7 @@ pub(crate) fn paint(state: &mut state::HierarchyState, ctx: &mut PaintCtx) {
         .set_panel_rect(ids::HIER_PANEL, ctx.slot);
     let theme = ctx.host.theme();
     let rename_target = state.rename_target_row;
-    let row_set = {
+    let (row_set, area) = {
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
         paint_hierarchy_body(
             ctx.slot,
@@ -80,15 +80,8 @@ pub(crate) fn paint(state: &mut state::HierarchyState, ctx: &mut PaintCtx) {
         )
     };
     let content_h = state::last_hierarchy_content_h();
-    let store = ctx.host.store_mut();
-    store.set_hierarchy_row_ids(row_set);
-    store.set_panel_content_h(ids::HIER_PANEL, content_h);
-    let visible_h = (ctx.slot.h - 60.0).max(0.0); // LITERAL-PX-OK: header+scrollbar reserve composite (chrome dim)
-    let max_scroll = (content_h - visible_h).max(0.0);
-    let cur = store.panel_scroll(ids::HIER_PANEL);
-    if cur > max_scroll {
-        store.set_panel_scroll(ids::HIER_PANEL, max_scroll);
-    }
+    ctx.host.store_mut().set_hierarchy_row_ids(row_set);
+    widget::scroll_area::close(area, ctx, content_h);
 }
 
 /// ⭐ **AS LINHAS DE PARENTESCO** — as guias no estilo do Godot que ligam um pai aos filhos.
@@ -273,7 +266,10 @@ fn paint_hierarchy_body(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
     rename_target: Option<ph2d_a11y::NodeId>,
-) -> std::collections::BTreeSet<ph2d_a11y::NodeId> {
+) -> (
+    std::collections::BTreeSet<ph2d_a11y::NodeId>,
+    widget::scroll_area::ScrollArea,
+) {
     paint_panel_surface(rect, scene, theme);
     // ⛔ **A ALÇA DE ARRASTO E AS DUAS DE RESIZE SAÍRAM** (2026-08-30): esta coluna é ANCORADA.
     // Saíram **em par** com o `InteractiveState::BlenderHit` do `pre_populate.rs` — ver o irmão
@@ -284,15 +280,19 @@ fn paint_hierarchy_body(
 
     let body_top = search_rect.y + search_rect.h + Spacing::Sm.px();
     let content_bottom = rect.y + rect.h - Spacing::Xs.px();
-    let scroll_y = store.panel_scroll(ids::HIER_PANEL).max(0.0);
-    let clip = ph2d_vector::Rect::new(
-        rect.x as f64,
-        body_top as f64,
-        (rect.x + rect.w) as f64,
-        content_bottom as f64,
+    // ⭐ A PORTA da rolagem (spec `04_a_rolagem_unica` D2): a altura visível passa a ser
+    //    PUBLICADA — sem ela a barra desta coluna nunca armava e o arrasto no corpo estava
+    //    desligado —, e o clique das linhas roladas para fora do corpo deixa de valer.
+    let body = Rect::new(rect.x, body_top, rect.w, (content_bottom - body_top).max(0.0));
+    let area = widget::scroll_area::open_with(
+        scene,
+        hit_index,
+        store,
+        ids::HIER_PANEL,
+        HIERARCHY_SCROLLBAR_ID,
+        body,
     );
-    scene.push_clip(&clip);
-    let start_y = body_top - scroll_y;
+    let start_y = area.top();
     let mut y = start_y;
     // Enio 2026-05-26: ícones do row colados na borda direita do
     // painel — sem reserva pra scrollbar (que sobrepõe). Antes:
@@ -427,23 +427,12 @@ fn paint_hierarchy_body(
         let fallback = Rect::new(rect.x + body_pad, y - 1.0, row_w, 2.0);
         paint_drop_indicator(d, &row_rects, fallback, scene, theme);
     }
-    scene.pop_layer();
     // ⛔ **As três alças saíram (2026-08-30)** — esta coluna é ANCORADA. Elas eram
     // re-registadas aqui, no fim do quadro, para ganharem o z-order ao corpo; sem braço que as
     // consuma, re-registá-las seria pintar chrome morto sob o dedo.
     let content_h = (y - start_y).max(0.0);
     set_last_hierarchy_content_h(content_h);
-
-    let visible_h = (content_bottom - body_top).max(0.0);
-    if widget::scrollbar_is_needed(content_h, visible_h) {
-        let body = Rect::new(rect.x, body_top, rect.w, visible_h);
-        let track = widget::scrollbar_track_rect(body);
-        let thumb = widget::scrollbar_thumb_rect(track, scroll_y, content_h, visible_h);
-        let visual = store.scrollbar_visual(HIERARCHY_SCROLLBAR_ID);
-        widget::paint_scrollbar(body, scroll_y, content_h, visible_h, visual, scene, theme);
-        hit_index.register(HIERARCHY_SCROLLBAR_ID, thumb);
-    }
-    order.iter().copied().collect()
+    (order.iter().copied().collect(), area)
 }
 
 /// **A caixa de renomear de uma linha da Hierarquia.**

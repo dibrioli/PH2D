@@ -36,8 +36,8 @@
 //! ⚠️ A barra pinta-se **depois** de desfeito o recorte: ela vive no corpo mas não rola com ele.
 
 use crate::interaction::{HitIndex, WidgetStore};
-use crate::panel::PaintCtx;
 use crate::paint::rect_to_vello;
+use crate::panel::PaintCtx;
 use crate::widget::scrollbar::{SCROLLBAR_THUMB_MIN_H, is_needed, paint_scrollbar, track_rect};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
@@ -106,24 +106,69 @@ pub fn close_with(
     content_h: f32,
     theme: Theme,
 ) {
+    close_parts(area, scene, hit_index, store, content_h, theme).publish(store);
+}
+
+/// ⭐ **Fechar em DOIS tempos** — para o pintor que só tem o store IMUTÁVEL quando fecha o corpo
+/// (o `store_and_hit_index_mut` do host dá `&WidgetStore`).
+///
+/// Desfaz os recortes, pinta a barra e regista a TRILHA **agora** — tem de ser antes de tudo o que
+/// se pinta por cima do corpo (um popover diferido não pode ficar por baixo da barra, nem ser
+/// recortado pela banda) — e devolve o que falta: as alturas, o clamp e o dono, que precisam do
+/// store mutável. ⚠️ O [`Pending`] é `#[must_use]`: esquecê-lo é a Hierarquia de antes (a barra
+/// pinta e nunca arma).
+pub fn close_parts(
+    area: ScrollArea,
+    scene: &mut VectorScene,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    content_h: f32,
+    theme: Theme,
+) -> Pending {
     scene.pop_layer();
     hit_index.pop_clip();
     let visible_h = area.body.h;
-    publish(store, area.panel, content_h, visible_h);
-    if is_needed(content_h, visible_h) {
+    let track = is_needed(content_h, visible_h).then(|| {
         let track = track_rect(area.body);
-        let visual = store.scrollbar_visual(area.bar);
         let _ = paint_scrollbar(
             area.body,
             area.scroll,
             content_h,
             visible_h,
-            visual,
+            store.scrollbar_visual(area.bar),
             scene,
             theme,
         );
         hit_index.register(area.bar, track);
-        store.publish_scroll_bar(area.bar, area.panel, track);
+        track
+    });
+    Pending {
+        panel: area.panel,
+        bar: area.bar,
+        track,
+        content_h,
+        visible_h,
+    }
+}
+
+/// A metade do fecho que precisa do store mutável — ver [`close_parts`].
+#[must_use = "sem publicar, a barra pinta e nunca arma, e a roda não sabe onde a lista acaba"]
+#[derive(Debug, Clone, Copy)]
+pub struct Pending {
+    panel: NodeId,
+    bar: NodeId,
+    track: Option<Rect>,
+    content_h: f32,
+    visible_h: f32,
+}
+
+impl Pending {
+    /// Publica as duas alturas, clampa o alvo e o dono da barra.
+    pub fn publish(self, store: &mut WidgetStore) {
+        publish(store, self.panel, self.content_h, self.visible_h);
+        if let Some(track) = self.track {
+            store.publish_scroll_bar(self.bar, self.panel, track);
+        }
     }
 }
 

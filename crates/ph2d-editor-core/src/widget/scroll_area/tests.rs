@@ -27,7 +27,11 @@ fn the_door_registers_the_whole_track_and_publishes_its_owner() {
     let (mut store, mut hit) = (WidgetStore::default(), HitIndex::new());
     frame(&mut store, &mut hit, 120.0, 2000.0);
     let track = hit.rect_for(BAR).expect("a barra tem de estar registada");
-    assert_eq!(track.h, body().h, "registou {track:?}, não a trilha inteira");
+    assert_eq!(
+        track.h,
+        body().h,
+        "registou {track:?}, não a trilha inteira"
+    );
     assert_eq!(store.scroll_bar_panel(BAR), Some(PANEL));
     assert_eq!(store.scroll_bar_track(BAR), Some(track));
 }
@@ -90,5 +94,8 @@ fn a_press_on_the_track_centres_the_thumb_under_the_finger() {
     assert_eq!(scroll_for_track_press(track, 0.0, 2000.0, 400.0), 0.0);
     assert_eq!(scroll_for_track_press(track, 400.0, 2000.0, 400.0), 1600.0);
     let mid = scroll_for_track_press(track, 200.0, 2000.0, 400.0);
-    assert!((mid - 800.0).abs() < 0.01, "o meio da trilha é o meio da lista; deu {mid}");
+    assert!(
+        (mid - 800.0).abs() < 0.01,
+        "o meio da trilha é o meio da lista; deu {mid}"
+    );
 }

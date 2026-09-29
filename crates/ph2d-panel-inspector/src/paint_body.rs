@@ -25,10 +25,11 @@ pub(crate) struct BodyFrame {
     pub rect: ph2d_editor_core::zones::Rect,
     pub content_top: f32,
     pub content_bottom: f32,
-    pub scroll_y: f32,
     pub inner_x: f32,
     pub inner_w: f32,
     pub body_top_y: f32,
+    /// O corpo aberto pela porta — só o [`close_body`] o fecha.
+    pub area: ph2d_editor_core::widget::scroll_area::ScrollArea,
 }
 
 pub(crate) fn open_body(
@@ -52,32 +53,24 @@ pub(crate) fn open_body(
     let content_top =
         crate::paint_head::paint_panel_head(rect, scene, text_system, theme, hit_index, store);
     let content_bottom = rect.y + rect.h - Spacing::Xs.px();
-    let scroll_y = store.panel_scroll(ids::INSP_PANEL).max(0.0);
-    // ⏳⏳ **ABERTO, MEDIDO E NÃO CURADO: o `HitIndex` deste painel NÃO é recortado**
-    // (auditoria de 2026-08-31, achado A4).
-    //
-    // O `push_clip` acima recorta o DESENHO. O gémeo no `HitIndex` — `hit_index.push_clip(banda)`
-    // — não existe, então tudo o que sai do corpo continua **registado** onde ninguém o vê: com
-    // `body_top_y = content_top − scroll_y`, rolar leva os hit-rects para a faixa do TÍTULO, e o
-    // clique deles passa a valer ali. É a costura que o `ph2d-panel-motion-params` pagou
-    // (CLAUDE.md §5.0: *«uma banda, dois consumidores»*).
-    //
-    // ⛔⛔ **Ela foi IMPLEMENTADA duas vezes e REVERTIDA as duas, com o preço contado:**
-    //
-    // | tentativa | resultado |
-    // |---|---|
-    // | recorte simétrico (topo + fundo) | **7** gates vermelhos (`seam_joint`, `seam_physics`) |
-    // | só o topo (a cerca no lado perigoso) | **8** vermelhos, outro conjunto |
-    //
-    // ⚠️ **O que a medição revela é maior que o defeito:** aqueles gates pintam num viewport alto,
-    // o painel recebe a altura dele, e as secções de baixo caem **fora** do corpo visível — onde
-    // eles as clicam. *Eles provam cliques em widgets que o artista não vê, e são verdes hoje
-    // porque o painel tem exactamente este defeito: o defeito e os gates seguram-se um ao outro.*
-    //
-    // ⇒ curá-lo é reescrever aqueles gates para **rolar antes de clicar**, e isso é uma wave — não
-    // um remendo no fim de outra. ⛔ A segunda tentativa (só o topo) reprovou um conjunto
-    // DIFERENTE da primeira, o que diz que o mecanismo ainda não está compreendido: shipar
-    // qualquer das duas seria trocar um defeito que ninguém reportou por um que não sei nomear.
+    // ⭐⭐ **A PORTA da rolagem** (spec `04_a_rolagem_unica` D4/D5, 2026-09-29): o corpo volta a
+    // ser RECORTADO — o `push_clip` saiu por acidente em `41e6597bf` e o `close_body` ficou com um
+    // `pop_layer` sem par — e o `HitIndex` passa a ser recortado pela MESMA banda (o achado A4 da
+    // auditoria de 31/08: rolar levava os hit-rects para a faixa do título).
+    let area = ph2d_editor_core::widget::scroll_area::open_with(
+        scene,
+        hit_index,
+        store,
+        ids::INSP_PANEL,
+        ph2d_editor_core::widget::INSPECTOR_SCROLLBAR_ID,
+        ph2d_editor_core::zones::Rect::new(
+            rect.x,
+            content_top,
+            rect.w,
+            (content_bottom - content_top).max(0.0),
+        ),
+    );
+    let scroll_y = area.scroll();
     let scrollbar_reserve = ph2d_editor_core::widget::SCROLLBAR_W + Spacing::Sm.px();
     ph2d_editor_core::widget::showcase::LAST_BODY_TOP_SCREEN_Y
         .with(|c| c.set(content_top + Spacing::Xs.px()));
@@ -88,10 +81,10 @@ pub(crate) fn open_body(
         rect,
         content_top,
         content_bottom,
-        scroll_y,
         inner_x: rect.x + crate::paint::BODY_PAD,
         inner_w: (rect.w - crate::paint::BODY_PAD * 2.0 - scrollbar_reserve).max(0.0),
         body_top_y,
+        area,
     }
 }
 
@@ -111,9 +104,17 @@ pub(crate) fn close_body(
     rect: ph2d_editor_core::zones::Rect,
     store: &ph2d_editor_core::interaction::WidgetStore,
     layout: &ph2d_editor_core::screens::HeroLayout,
-) {
+    area: ph2d_editor_core::widget::scroll_area::ScrollArea,
+    content_h: f32,
+) -> ph2d_editor_core::widget::scroll_area::Pending {
     // ⭐ Os cartões vão para BAIXO do corpo, antes de tudo o que se pinta por cima.
     ph2d_editor_core::widget::section_cards::end_section_cards(scene);
+    // ⭐ A porta FECHA aqui: depois dos cartões (que rolam com o corpo) e ANTES dos popovers, que
+    //    escorregam para fora do painel de propósito — nem o desenho nem o clique deles podem ser
+    //    recortados pela banda do corpo, e a barra fica por baixo deles.
+    let pending = ph2d_editor_core::widget::scroll_area::close_parts(
+        area, scene, hit_index, store, content_h, theme,
+    );
     // **OS QUATRO POPOVERS DIFERIDOS**, pintados por último para ficarem acima de tudo.
     // ⚠️ Saíram do orquestrador em 2026-08-23: os quatro andam juntos porque partilham UMA lei — o
     // popover pinta-se fora da ordem das seções.
@@ -125,8 +126,8 @@ pub(crate) fn close_body(
         store,
         layout.popover_region(),
     );
-    scene.pop_layer();
     close_frame_hits(hit_index, rect);
+    pending
 }
 
 /// ⭐ **O que se re-regista no FIM do quadro, e porquê** — as alças, o X e o `+`.

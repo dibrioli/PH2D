@@ -42,11 +42,16 @@ use ph2d_panel_inspector::{
 };
 use ph2d_ui_testkit::MockPanelHost;
 
+/// ⚠️ **Alta o bastante para as SEIS secções caberem no corpo visível** (2026-09-29). Desde a porta
+/// `scroll_area` o `HitIndex` do Inspector é recortado pelo corpo (o achado A4 de 31/08): um
+/// cabeçalho abaixo da dobra deixa de estar registado, e a 900 px as duas últimas caíam lá. *Este
+/// gate mede ONDE as secções são desenhadas umas em relação às outras, não o que cabe num ecrã* —
+/// a altura não é a pergunta dele, e com ela a fixtura volta a conter as seis.
 const VIEWPORT: Rect = Rect {
     x: 0.0,
     y: 0.0,
     w: 1600.0,
-    h: 900.0,
+    h: 4000.0,
 };
 
 fn transform() -> InspectorTransformInfo {

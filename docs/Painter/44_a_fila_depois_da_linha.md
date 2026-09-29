@@ -42,7 +42,39 @@
 - **Passo 3.** Somas parciais por linha, somadas numa ordem fixa, mudam o `f64` no último bit. Esse valor só chega à tinta através de `old + v − shed` guardado em `f32`, com `old ≥ 3000`, onde o ulp do `f32` é `2,4e-4`. Um erro de `~1e-13` no `shed` quase nunca muda o `f32`. ⇒ paralelizar o passo 3 é, provavelmente, uma **decisão técnica**: cabe à linha medir se sai ao bit.
 - **Passo 5.** O arrasto é Gauss-Seidel **dependente da direcção do traço**. O laço varre da esquerda para a direita e de cima para baixo. Quando o traço anda para a direita ou para baixo, `si` (a janela anterior) fica ANTES de `i` no varrimento e já foi escrita neste laço. Para a esquerda ou para cima, ainda não foi. ⇒ hoje o arrasto provavelmente puxa a tinta de maneira diferente conforme o sentido do traço. Mudá-lo para uma leitura sem ordem (Jacobi, como fez o ADR-0147 com o solver) muda a tinta. Isso é **produto**.
 
-**Antes de o dono decidir, medir (sonda):**
-1. o mesmo traço para a direita e para a esquerda, espelhado: quanto difere a tinta (bytes, píxeis);
-2. a mesma cena com o arrasto Jacobi: quanto difere de hoje;
-3. o relógio dos dois passos isolados, com a máquina calma.
+**Medido (2026-09-29, sonda [`measure_drag_direction`](../../crates/ph2d-wet-paint/tests/it/measure_drag_direction.rs)):**
+
+⛔ **O teste de ESPELHO foi a 1.ª redacção e está RECUSADO.** O mesmo traço espelhado com `Drag = 0`
+já diverge `67 %` da mudança que o traço faz, porque o papel e as cerdas têm ruído com semente e não
+são simétricos. O fundo afoga o sinal: a assimetria até DESCE com o arrasto (`0,67 → 0,59` a
+`Drag 0,4`).
+
+⭐ **A régua que decide é a própria lei trocada.** A sonda grava o grid final de um traço horizontal
+em cada sentido. Uma cópia temporária do `transfer.rs` lê a origem do arrasto de um instantâneo
+tirado antes do laço (Jacobi), a sonda corre outra vez, e o ficheiro é reposto (`git diff` vazio
+conferido). A previsão é o que dá o controlo: **para a ESQUERDA as duas leis têm de coincidir**, porque
+ali a origem ainda não foi escrita.
+
+| passo/quadro | sentido | Σ\|GS−Jacobi\| / Σ\|mudança\| (susp · sett · film) | pior célula susp | células > 0,1 % | pior RGB | pior `wet` |
+|---|---|---|---|---|---|---|
+| 3 px | direita | `1,99 %` · `1,18 %` · `1,90 %` | `64,3` | `611` | `3,29` | `7` |
+| 3 px | **esquerda (controlo)** | `0,00 %` | `0,0028` | **`0`** | `0` | `0` |
+| 12 px | direita | `0,22 %` · `0,22 %` · `0,21 %` | `21,0` | `23` | `0,38` | `5` |
+| 12 px | **esquerda (controlo)** | `0,00 %` | `0,0285` | **`0`** | `0` | `0` |
+
+**Leitura:**
+- a dependência do sentido **existe** e é **pequena**: `~2 %` da tinta que um traço LENTO move, `~0,2 %` num traço rápido;
+- a esquerda é o Jacobi a menos do ruído de `f32` (o resíduo `≤ 0,03` de massa não passa em nenhuma célula), logo **a lei sem ordem é a que o traço para a esquerda já pinta hoje**;
+- mudá-la muda a tinta **só nos traços para a direita e para baixo** e só nesta ordem de grandeza.
+
+⏳ **Por medir antes de se construir:** o relógio. O diário dá `~1,9 ms` por transfer e `~2` transfers
+por quadro a raio 250, contra `~8 ms` de quadro, e a leitura sem ordem paga uma cópia da janela de
+origem por transfer.
+
+⛔ **E o preço que a tabela não mostra:** o Wet Paint é um porte 1:1 com impressão digital
+(ADR-0134/0147). Trocar a leitura re-baseia as impressões desse caminho, como o ADR-0147 fez ao
+solver, que manteve a rota antiga PREGADA (`PINNED_GAUSS_SEIDEL`).
+
+**Decisão do dono** (§0.8), com os números acima:
+- (a) fica como está;
+- (b) passa a sem-ordem: os quatro sentidos pintam igual, os dois passos podem dividir-se pelos núcleos, e a tinta muda `≤ 2 %` nos traços lentos para a direita ou para baixo.

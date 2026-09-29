@@ -14,6 +14,12 @@ pelo `exec 9>` do `ph2d-run.sh` e segura o `flock` até o scope morrer pelo `Run
 - ⭐ **Cura:** o comando é lançado com `9>&-` nos dois ramos (`systemd-run` e `timeout`) — quem segura
   a placa é o bash da porta, que vive exactamente o tempo do comando. Controlo: com o fd 9 aberto no
   chamador, o comando vê `0 1 2 255` com a cura e `0 1 2 255 9` sem ela.
+- ⭐ **A cura irmã (`line/components`, medida 2026-09-29, a 1.ª ocorrência — três linhas presas
+  21 min com o `.dono` VAZIO):** o servidor do `sccache` é posto a correr ANTES do `exec 9>` e fora
+  da fatia, e a mensagem de espera lista os seguradores (`fuser`) quando o `.dono` está vazio. As
+  duas curas vivem juntas no `ph2d-run.sh` desde a rodada de 02/10 (as duas linhas acharam o mesmo
+  defeito sem se ver, e o integrador fundiu-as): o `9>&-` cobre QUALQUER daemon, e o arranque
+  antecipado impede o servidor partilhado de nascer na fatia de uma linha e morrer com ela.
 - ⚠️ Desprender na hora: `sccache --stop-server` (com a máquina ociosa — ele volta sozinho no
   próximo `cargo`).
 - ⚠️ Cada worktree tem a SUA cópia do script: a cura só vale nas árvores que a tiverem, e o `sccache`

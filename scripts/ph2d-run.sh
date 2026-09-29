@@ -114,10 +114,30 @@ fechadura="${XDG_RUNTIME_DIR:-/tmp}/ph2d-gpu.lock"
 usa_fd=""
 if [ "${PH2D_GPU:-0}" = "1" ]; then
   espera="${PH2D_GPU_ESPERA:-300}"
+  # ⛔⛔ **NENHUM FILHO SEGURA A PLACA — DUAS curas, uma por caminho de fuga** (29/09 e 01/10).
+  # Um `flock` é do DESCRITOR, não de quem o pediu: todo filho que herda o fd 9 e fica vivo é um
+  # segurador, e um DAEMON é exactamente o filho que fica vivo. O que mordeu foi o servidor do
+  # `sccache` (o `rustc-wrapper` global arranca-o na 1.ª compilação que não o encontra): o comando
+  # acabava, o `trap` apagava o `.dono`, e as outras linhas esperavam por um dono que ninguém
+  # nomeava (21 min presas em 29/09; 14 min em 01/10, numa fatia de outra linha).
+  #   1. **`9>&-` no lançamento do comando** (abaixo, nos dois ramos) — a cura GERAL: nenhum
+  #      descendente do comando recebe o fd, seja qual for o daemon. Só ela bastaria ao cadeado.
+  #   2. **O servidor nasce AQUI, antes do `exec 9>` e FORA da fatia** — a cura do `sccache` em
+  #      particular: nascido dentro do `systemd-run --scope` ele seria dessa fatia e morreria com
+  #      ela (o `RuntimeMaxSec`/o fim do comando), levando o servidor partilhado por todas as linhas.
+  #      Se já corre, o `--start-server` recusa e nada muda.
+  #   3. Com o `.dono` vazio, a mensagem de espera lista quem segura (`fuser`) — uma worktree velha,
+  #      sem as duas curas, ainda pode prender a placa até o integrador fundir.
+  if command -v sccache >/dev/null 2>&1; then
+    sccache --start-server >/dev/null 2>&1 || true
+  fi
   exec 9>"$fechadura"
   if ! flock -w "$espera" 9; then
     echo "✗ a placa está com outra linha há mais de ${espera}s — quem a segura:" >&2
     cat "${fechadura}.dono" 2>/dev/null | sed 's/^/    /' >&2
+    # ⚠️ Sem `.dono` a fechadura está com um processo que a HERDOU e não a pediu (um daemon) —
+    # nomeá-lo é o que separa «espere» de «há um órfão a segurar a placa».
+    [ -s "${fechadura}.dono" ] || fuser -v "$fechadura" 2>&1 | sed 's/^/    /' >&2
     echo "  (⛔ NÃO force: duas linhas na placa ao mesmo tempo foi o que pendurou o driver em 14/09)" >&2
     exit 75   # EX_TEMPFAIL — tente outra vez, não é erro do seu código
   fi
@@ -136,12 +156,8 @@ printf '▸ linha %s · CPU ≤ %s de %s núcleos · mem ≤ %s · prazo %ss%s\n
 # sempre. Ela é EXPORTADA, logo vale para tudo o que nascer dentro do comando.
 export PH2D_NA_PORTA=1
 
-# ⛔⛔ O COMANDO NÃO HERDA O CADEADO DA PLACA (`9>&-` nos dois ramos abaixo) — medido 01/10:
-# um `cargo` sob a porta arranca o servidor do `sccache`, que se DESTACA e vive para lá do
-# comando; ele herdava o fd 9 e segurava o `flock` até ao prazo da fatia (30 min), com o
-# `.dono` a nomear um comando que já tinha acabado e as outras linhas paradas no `flock -w`.
-# Quem segura a placa é ESTE bash (o `exec 9>` acima), e ele vive exactamente o tempo do
-# comando — que é o tempo que o cadeado deve durar.
+# ⛔⛔ `9>&-` nos dois ramos: o comando NÃO herda o cadeado da placa — a razão e a cura irmã estão
+# no bloco da placa, acima (quem segura a placa é ESTE bash, que vive o tempo do comando).
 if [ "$temos_systemd" = "1" ]; then
   props=( -p MemoryMax="$mem" -p MemorySwapMax=0 )
   [ "$prazo" != "0" ] && props+=( -p RuntimeMaxSec="${prazo}s" )

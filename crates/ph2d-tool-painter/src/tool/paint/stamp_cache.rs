@@ -459,8 +459,8 @@ impl PainterTool {
             );
         }
         // **O lote para o DISPOSITIVO**, resolvido antes de a tela ser forkada. Ele estreita o mesmo
-        // pincel de falloff puro do ramo abaixo com mais três cláusulas — blend `Mix`, sem pigmento
-        // RYB, sem Smooth Edges —, cada uma uma lei que o kernel não transcreve
+        // pincel de falloff puro do ramo abaixo com mais três cláusulas — blend `Mix`, sem a mistura
+        // de pigmento (K–M), sem Smooth Edges —, cada uma uma lei que o kernel não transcreve
         // ([`super::stamp_device::eligible`]). Sem ponte instalada, ou fora do predicado, `None`: o
         // lote segue para a rota em banda da CPU e nada muda.
         // ⚠️ **DUAS perguntas, e colapsá-las custava o lote inteiro.** A rota em BANDA quer saber se

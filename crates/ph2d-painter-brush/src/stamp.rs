@@ -107,7 +107,8 @@ struct BlitCtx<'a> {
     mask: &'a StampMask,
     color: [f32; 3],
     blend: BrushBlend,
-    /// Watercolor Pigment mix (`0` = plain blend, byte-identical) — the subtractive RYB amount.
+    /// Pigment mix (`0` = plain blend, byte-identical) — the amount of the Kubelka–Munk paint mix
+    /// ([`crate::blend::blend_over_pigment`], the Wet Paint law since 2026-09-20; the note said RYB).
     pigment_mix: f32,
     cx: f32,
     cy: f32,

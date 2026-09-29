@@ -10,8 +10,8 @@
 
 | # | item | de quem | estado |
 |---|---|---|---|
-| 1 | Wet Paint: passos 3–4 do transfer em série (soma `f64` · arrasto Gauss-Seidel) | dono | **aberto (conferido 29/09)** — §1 |
-| 2 | Aquarela: unificar a mistura seca (RYB) e a molhada (K–M) — a pista do *glaze*, diário §17.3 | dono | a conferir |
+| 1 | Wet Paint: passos 3–4 do transfer em série (soma `f64` · arrasto Gauss-Seidel) | dono | **decidido (29/09): (a), fica como está** — §1 |
+| 2 | Aquarela: unificar a mistura seca (RYB) e a molhada (K–M) — a pista do *glaze*, diário §17.3 | linha (a ordem do dono já existia, 20/09) | **feito (29/09), por smokar** — §2 |
 | 3 | O `Mixing` no Impasto | dono | a conferir |
 | 4 | O `Pigment` que mudou de sítio na aquarela (do cartão *Water* para o *Mixing*) | dono | a conferir |
 | 5 | Composite Brush: a pilha cheia numa tela grande (a alavanca é o RAIO) | dono | a conferir |
@@ -78,3 +78,50 @@ solver, que manteve a rota antiga PREGADA (`PINNED_GAUSS_SEIDEL`).
 **Decisão do dono** (§0.8), com os números acima:
 - (a) fica como está;
 - (b) passa a sem-ordem: os quatro sentidos pintam igual, os dois passos podem dividir-se pelos núcleos, e a tinta muda `≤ 2 %` nos traços lentos para a direita ou para baixo.
+
+**Decidido pelo dono (2026-09-29): (a).** A lei fica como está. A sonda e esta tabela ficam, porque são
+a resposta a quem voltar a propor a troca.
+
+---
+
+## §2 — Item 2: a aquarela seca mistura pela lei do Wet Paint
+
+**Conferência — a decisão JÁ EXISTIA.** A ordem do dono de 2026-09-20 é *«trocar as duas para a lei do
+Wet Paint (os três meios passam a misturar igual)»* (diário §17, arquivado em
+`docs/archive/docs-2026-09-24/painter/`). O Digital trocou, o depósito molhado da aquarela trocou em
+24/09, e ficou por fazer o composite da aquarela sobre tinta SECA. A 1.ª tentativa foi revertida
+(§17.3). ⇒ o item era trabalho, não decisão.
+
+**§0.0 — a premissa da recusa foi reconferida e não caiu.** A presença de tinta (24/09) tirou o
+papel da mistura do BOTÃO, mas o `watercolor_soak_…` continua a ler o MESMO pixel (`228,23,23`) com
+o K–M. ⭐ **O mecanismo não é o papel: é o termo da ÁGUA** (`wet × tinta molhada`). O pigmento dele
+é o que a própria água dissolveu da base, e no K–M o parceiro mais absorvente domina a mistura, o
+que apaga o clarear do soak.
+
+**A lei que fica** ([`alvo_sobre_seco`](../../crates/ph2d-tool-painter/src/tool/paint/watercolor_mistura.rs)):
+- o **botão `Pigment`** (misturar duas tintas) passa ao K–M;
+- a **água** continua RYB;
+- o K–M manda só na parte que o botão pede **além** da água: `(botão − água)⁺ / botão`.
+
+⛔ A 1.ª redacção partilhava por `botão/(botão+água)` e partiu o
+`watercolor_wet_drives_the_paint_mix_without_pigment`, que guarda a lei do dono de 2026-07-06: *com
+`wet = 1` o botão não muda nada*. A partilha pelo EXCESSO honra-a ao bit.
+
+**Medido** (`diag_pigment_molhado_sobre_molhado`, amarelo sobre azul, `Pigment` ligado, o meio):
+
+| | seco | molhado |
+|---|---|---|
+| antes | `119,209,228` (ciano) | `159,198,159` |
+| depois | **`128,173,139`** (verde) | `159,198,159` |
+
+**Gates:**
+- `seco_e_molhado_dao_o_mesmo_tom` (barra `45`, do vale medido: `31` depois, `69` antes);
+- `a_porta_das_duas_leis_tem_as_pontas_ao_bit`.
+
+**Mutação:** 4 de 4 sangram (sempre-RYB · partilha pela soma · sempre-K–M · sem o ramo do RYB). Mais
+duas equivalentes, nomeadas: um `.max(0)` redundante, que foi **apagado**, e `<=` por `<`, que dá o
+RYB ao bit em `0`.
+
+**Suítes:** `ph2d-tool-painter` + `ph2d-painter-brush` + `ph2d-pigment` **1 829/1 829**.
+
+⏳ **Por smokar pelo dono.**

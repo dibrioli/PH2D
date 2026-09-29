@@ -109,7 +109,8 @@ fn watercolor_granulation_textures_the_wash() {
 }
 
 /// Watercolor render-path #3 — **Pigment** mixes wet-on-wet subtractively: painting yellow over an
-/// opaque blue base with Pigment on lifts GREEN in the overlap (RYB: blue + yellow → green), where the
+/// opaque blue base with Pigment on lifts GREEN in the overlap (Kubelka–Munk since 2026-09-29 — it was
+/// RYB; blue + yellow → green in both laws), where the
 /// plain optical composite (Pigment off) stays a muddy Beer–Lambert blend. A dense wash (high Fill/Depth)
 /// so the pigment film is opaque enough to mix. Real composite. DIRETIVA §4.
 #[test]
@@ -145,7 +146,7 @@ fn watercolor_pigment_mixes_wet_on_wet_toward_green() {
         px(&t, size, 24, 24)
     }
     let off = center_pixel(0.0); // Pigment off → plain Beer–Lambert blend (a muddy YELLOW-green: high red)
-    let on = center_pixel(1.0); // Pigment on → subtractive RYB → a true GREEN (green pulls ahead of red)
+    let on = center_pixel(1.0); // Pigment on → subtractive K–M → a true GREEN (green pulls ahead of red)
     // "Toward green" = green dominates red more strongly with Pigment on. (The green *channel* alone is
     // higher in the yellow-green off-state — yellow carries green too — so the signature is green−red.)
     let green_lead = |p: [u8; 4]| i32::from(p[1]) - i32::from(p[0]);

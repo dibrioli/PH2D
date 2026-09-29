@@ -30,7 +30,6 @@ use super::watercolor_rewet_px::{
     sample_wet_field, style_at,
 };
 use super::*;
-use ph2d_painter_brush::blend::ryb_mix;
 use rayon::prelude::*;
 
 /// Hardened-coverage smoothstep edges (wet_edges `SS0`/`SS1`): below `SS0` the wash is transparent,
@@ -576,7 +575,9 @@ impl PainterTool {
                     } else {
                         0.0
                     };
-                    let mix_amt = (st.pigment_mix * tinta).max(st_wet_px * wet_paint);
+                    let pelo_botao = st.pigment_mix * tinta;
+                    let pela_agua = st_wet_px * wet_paint;
+                    let mix_amt = pelo_botao.max(pela_agua);
                     if mix_amt > 0.0 {
                         // The (possibly lifted) base APPEARANCE over the ground — for an opaque base with
                         // no lift this is the raw base bytes exactly (`l2s(s2l(b)) == b`); for a
@@ -587,14 +588,13 @@ impl PainterTool {
                             f32::from(lut.l2s_byte(sb[1])) / 255.0,
                             f32::from(lut.l2s_byte(sb[2])) / 255.0,
                         ];
-                        // ⛔⛔ **A LEI AQUI CONTINUA RYB:** a troca para o Kubelka–Munk foi CONSTRUÍDA,
-                        // MEDIDA e REVERTIDA (handoff §17.3) — o parceiro é a BASE, e um lerp em `K/S`
-                        // contra papel (`K/S ≈ 0`) satura: o `watercolor_soak_…` leu o MESMO pixel
-                        // para as duas demoras. A pista da 2.ª tentativa é o **glaze**
-                        // ([`ph2d_wet_paint::colorops::km_glaze_channel_linear`]). ⚠️ Tinta molhada
-                        // sobre tinta molhada NÃO passa aqui: mistura-se no depósito, com o K–M
-                        // ([`super::watercolor_mistura`] — ali os dois parceiros são pigmento).
-                        let mixed = ryb_mix(
+                        // ⭐ **DUAS leis, uma por termo** ([`super::watercolor_mistura::alvo_sobre_seco`]):
+                        // o botão `Pigment` mistura pela lei do Wet Paint (K–M, a ordem do dono de
+                        // 2026-09-20), e a água que molha a tinta seca continua RYB, porque o K–M
+                        // apaga o clarear do soak (medido duas vezes, a razão está na porta). ⚠️ Tinta
+                        // molhada sobre tinta molhada NÃO passa aqui: mistura-se no depósito
+                        // ([`super::watercolor_mistura::deposita`] — ali os dois parceiros são pigmento).
+                        let mixed = super::watercolor_mistura::alvo_sobre_seco(
                             mix_base,
                             [
                                 f32::from(pig[0]) / 255.0,
@@ -602,6 +602,8 @@ impl PainterTool {
                                 f32::from(pig[2]) / 255.0,
                             ],
                             film_a,
+                            pelo_botao,
+                            pela_agua,
                         );
                         for c in 0..3 {
                             let sub = (mixed[c].clamp(0.0, 1.0) * 255.0 + 0.5).clamp(0.0, 255.0);

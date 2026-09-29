@@ -63,6 +63,61 @@ pub(super) fn presenca_de_tinta(base: &[u8], ground: &[u8], bi: usize) -> (f32, 
     (smoothstep(14.0, 50.0, d), visto) // LITERAL-PX-OK: wet_edges PAINT_LO/PAINT_HI
 }
 
+/// **O alvo da mistura de uma lavagem sobre TINTA SECA** — a cor para onde o composite puxa o pixel,
+/// com o peso `max(pelo_botao, pela_agua)` que o chamador já aplica.
+///
+/// São DOIS termos com DUAS leis, e o K–M manda só na parte da mistura que o botão pede ALÉM da
+/// água (`(pelo_botao − pela_agua)⁺ / pelo_botao`):
+///
+/// * **o botão `Pigment`** (`pelo_botao = pigment_mix × presença de tinta`) mistura duas TINTAS que o
+///   artista escolheu, e a lei é a do Wet Paint e do Digital (`ph2d_pigment::mix_unit`, Kubelka–Munk)
+///   — ordem do dono de 2026-09-20 (*«os três meios passam a misturar igual»*). Medido na
+///   `diag_pigment_molhado_sobre_molhado`, amarelo sobre azul: SECO `119,209,228` (um CIANO) com a lei
+///   antiga e `128,173,139` com esta, contra `159,198,159` molhado — *é esta troca que faz o seco e o
+///   molhado darem a mesma família de tom*;
+/// * **a água que molha a tinta seca** (`pela_agua = wet × tinta molhada`) continua na lei antiga
+///   (RYB, Gossett & Chen). ⛔ Não por inércia: o pigmento dela é o que a própria água DISSOLVEU da
+///   base, e numa mistura de Kubelka–Munk o parceiro mais absorvente domina — o clarear do *soak*
+///   desaparece (`watercolor_soak_deepens_and_widens_the_dissolve_while_parked` lê o MESMO pixel,
+///   `228,23,23`, para 2 s de demora e para a passagem rápida; medido 2026-09-20 e outra vez
+///   2026-09-29). Esse clarear é o *«segredo do wet-on-wet»* que o dono aprovou em 2026-07-06.
+///
+/// ⚠️ **Onde a água já mistura tanto quanto o botão pede, o botão não muda nada** — é a lei do
+/// `watercolor_wet_drives_the_paint_mix_without_pigment` (dono, 2026-07-06: *a mistura da água não
+/// fica presa atrás da caixa*), e com `wet = 1` a saída é a de botão desligado AO BIT. Logo:
+/// * botão desligado ⇒ RYB **ao bit** (o K–M nem é calculado) — todo pixel sem `Pigment` sai igual ao
+///   de antes desta lei;
+/// * água a zero ⇒ K–M **ao bit**;
+/// * entre os dois a partilha é contínua (em `pelo_botao = pela_agua` ela é zero dos dois lados).
+pub(super) fn alvo_sobre_seco(
+    base: [f32; 3],
+    pigmento: [f32; 3],
+    film_a: f32,
+    pelo_botao: f32,
+    pela_agua: f32,
+) -> [f32; 3] {
+    // Negativa quando a água passa o botão — e aí o `<= 0` abaixo devolve o RYB (um `.max(0.0)` aqui
+    // seria uma linha que nenhuma mutação consegue matar: medido, 2026-09-29).
+    let km_share = if pelo_botao > 0.0 {
+        (pelo_botao - pela_agua) / pelo_botao
+    } else {
+        0.0
+    };
+    if km_share >= 1.0 {
+        return ph2d_pigment::mix_unit(base, pigmento, film_a);
+    }
+    let ryb = ph2d_painter_brush::blend::ryb_mix(base, pigmento, film_a);
+    if km_share <= 0.0 {
+        return ryb;
+    }
+    let km = ph2d_pigment::mix_unit(base, pigmento, film_a);
+    [
+        ryb[0] + (km[0] - ryb[0]) * km_share,
+        ryb[1] + (km[1] - ryb[1]) * km_share,
+        ryb[2] + (km[2] - ryb[2]) * km_share,
+    ]
+}
+
 /// Os dois planos da mistura molhada (RGBA, `w*h*4` cada), vivos só enquanto o `Pigment` está ligado.
 /// `proprio` recomeça a zero em cada traço; `antes` é escrito no primeiro toque, logo nunca precisa
 /// de ser limpo.

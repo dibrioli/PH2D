@@ -165,3 +165,75 @@ fn sobre_tinta_seca_o_pigment_continua_a_misturar() {
         "sobre tinta seca o Pigment deixou de fazer efeito"
     );
 }
+
+/// **Seco e molhado dão a MESMA família de tom** (ordem do dono de 2026-09-20: *«os três meios passam a
+/// misturar igual»*; a metade da aquarela seca fechou em 2026-09-29, doc 44 §2). Medido nesta
+/// fixtura, `Pigment` ligado, o meio da sobreposição:
+///
+/// | | seco | molhado | pior canal |
+/// |---|---|---|---|
+/// | lei antiga (RYB no seco) | `119,209,228` — um CIANO | `159,198,159` | `69` |
+/// | K–M nos dois | `128,173,139` | `159,198,159` | `31` |
+///
+/// A barra (`45`) sai do vale entre os dois lados medidos. ⚠️ O `e_verde` é a metade que o CIANO
+/// reprova: com a lei antiga o azul DOMINA (`228 > 209`).
+#[test]
+fn seco_e_molhado_dao_o_mesmo_tom() {
+    let seco = px(&cena(true, true, 1), SIZE, X_MEIO, Y);
+    let molhado = px(&cena(true, false, 1), SIZE, X_MEIO, Y);
+    assert!(
+        e_verde(molhado),
+        "controlo: o molhado é o verde ({molhado:?})"
+    );
+    assert!(
+        e_verde(seco),
+        "amarelo sobre azul SECO com Pigment tem de dar verde, como o molhado — lê {seco:?} \
+         (a lei antiga dava um ciano, 119,209,228)"
+    );
+    let pior = seco
+        .iter()
+        .zip(&molhado)
+        .take(3)
+        .map(|(a, b)| (i32::from(*a) - i32::from(*b)).abs())
+        .max()
+        .unwrap_or(0);
+    assert!(
+        pior <= 45,
+        "seco {seco:?} e molhado {molhado:?} afastam-se {pior} num canal (K–M mede 31, RYB 69)"
+    );
+}
+
+/// **A porta das duas leis** ([`super::super::watercolor_mistura::alvo_sobre_seco`]) nas três pontas,
+/// AO BIT — é o que garante que tudo o que não liga o botão sai igual ao de antes.
+#[test]
+fn a_porta_das_duas_leis_tem_as_pontas_ao_bit() {
+    use super::super::watercolor_mistura::alvo_sobre_seco;
+    use ph2d_painter_brush::blend::ryb_mix;
+    let base = [0.12, 0.44, 0.93];
+    let pig = [0.97, 0.88, 0.22];
+    let a = 0.37;
+    let ryb = ryb_mix(base, pig, a);
+    let km = ph2d_pigment::mix_unit(base, pig, a);
+    assert_ne!(
+        ryb, km,
+        "controlo: as duas leis dão cores diferentes nesta fixtura"
+    );
+    // Botão desligado: a lei antiga, ao bit.
+    assert_eq!(alvo_sobre_seco(base, pig, a, 0.0, 0.8), ryb);
+    // Água a zero: a lei do Wet Paint, ao bit.
+    assert_eq!(alvo_sobre_seco(base, pig, a, 0.6, 0.0), km);
+    // A água já mistura tanto quanto o botão pede: o botão não muda nada (a lei de 2026-07-06).
+    assert_eq!(alvo_sobre_seco(base, pig, a, 0.5, 0.5), ryb);
+    assert_eq!(alvo_sobre_seco(base, pig, a, 0.5, 1.0), ryb);
+    // Entre as duas: estritamente entre, em cada canal onde elas diferem.
+    let meio = alvo_sobre_seco(base, pig, a, 1.0, 0.5);
+    for c in 0..3 {
+        let (lo, hi) = (ryb[c].min(km[c]), ryb[c].max(km[c]));
+        if hi > lo {
+            assert!(
+                meio[c] > lo && meio[c] < hi,
+                "canal {c}: {meio:?} fora de ]{lo}, {hi}["
+            );
+        }
+    }
+}

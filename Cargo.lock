@@ -5847,6 +5847,7 @@ name = "ph2d-gpu"
 version = "0.0.0"
 dependencies = [
  "ph2d-host",
+ "ph2d-label-census",
  "pollster",
  "wgpu",
 ]
@@ -8634,6 +8635,18 @@ dependencies = [
 [[package]]
 name = "ph2d-shake"
 version = "0.0.0"
+
+[[package]]
+name = "ph2d-shape-gpu"
+version = "0.0.0"
+dependencies = [
+ "bytemuck",
+ "ph2d-gpu",
+ "ph2d-vector",
+ "pollster",
+ "vello",
+ "wgpu",
+]
 
 [[package]]
 name = "ph2d-sheet-bounds"

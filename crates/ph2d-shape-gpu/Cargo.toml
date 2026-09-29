@@ -1,0 +1,26 @@
+[package]
+name = "ph2d-shape-gpu"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# `BezPath` + o aplanamento e a expansão do traço (re-exportados pela porta única do kurbo).
+ph2d-vector = { path = "../ph2d-vector" }
+# O `GpuContext` — o dispositivo e a fila onde o passe vive.
+ph2d-gpu = { path = "../ph2d-gpu" }
+wgpu = "29.0.4"
+bytemuck = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+# Os gates de paridade de PIXEL rasterizam as MESMAS cópias pelo Vello e comparam.
+vello = { version = "0.10.0", default-features = false, features = ["wgpu"] }
+pollster = "0.4.0"
+
+[lints]
+workspace = true

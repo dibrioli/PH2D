@@ -72,6 +72,11 @@ pub use ph2d_vector_doc::{
 pub use vello::kurbo::{
     Affine, BezPath, Cap, Circle, Join, PathEl, Point, Rect, RoundedRect, Shape, Stroke, Vec2,
 };
+// ⭐ **Aplanar e expandir um traço NA CPU** (doc 121 do Motion, o passe de formas instanciado): a
+// forma é preparada UMA vez por geometria — o contorno do traço vira um preenchimento e as curvas
+// viram segmentos —, e a placa desenha as `N` cópias. Re-exportados pela mesma razão de versão que
+// o resto do `kurbo` acima; o `stroke` com nome próprio porque `Stroke` já é o ESTILO.
+pub use vello::kurbo::{StrokeOpts, flatten, stroke as expand_stroke};
 pub use vello::peniko::{
     Brush, Color, ColorStop, ColorStops, Extend, Fill, Gradient, GradientKind, ImageData,
     ImageQuality, LinearGradientPosition,

@@ -124,3 +124,14 @@ seguidas: *leia as duas LADO A LADO antes de acusar o teste*.
 aquelas páginas podem sair para o disco e subir o tecto não reabre o travamento
 acima. Tabela das quatro corridas: `docs/DevOps/TETOS_DE_RECURSO_POR_LINHA.md`
 §1.1.
+
+## ⛔ Segunda consequência (2026-09-25, ship da rodada 03): o tmpfs ENCHE A FATIA da linha
+
+O `target/debug` do primário é link para `/mnt/ramtarget`, e as páginas que um comando escreve
+ali são **shmem cobrado ao cgroup que as escreveu** — a fatia `ph2d-ph2d.slice` do `ph2d-run.sh`.
+Sem swap (`swap max 0`) elas **não se recuperam**: a fatia ficou com `23,1 GB` e **zero processos**
+e o OOM killer matou o `rustc` do `ship.sh` com `939 MB` de pico no comando
+(`memory.stat`: `anon 0`, `shmem 24,6 GB`). ⇒ antes de um ship no primário, se o `shmem` da
+fatia estiver alto, `rm -rf /mnt/ramtarget/PH2D/debug/incremental` (sem `cargo` vivo) e
+`PH2D_MEM_MAX=44G ./scripts/ship.sh`. O «crate não compila sozinha» e o nextest vermelhos
+daquele ship eram este OOM (`sccache: Compile terminated by signal 9`), não o código.

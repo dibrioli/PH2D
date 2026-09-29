@@ -18,7 +18,7 @@
 |---|---|
 | ramo | `line/UIUX` · worktree `Worktrees/line-UIUX` |
 | merge-base | `912a9652e` (= o `main` de hoje: **o `main` não andou** desde que a linha nasceu) |
-| commits | ver `git log --oneline main..line/UIUX` (as waves W1–W2 já commitadas + o fecho W2–W6) |
+| commits | **5** (`git log --oneline main..line/UIUX`: W1, W2 ×2, o fecho W2–W6 e este handoff) · `122` ficheiros |
 | contadores partilhados | **ZERO** (`PROJECT_SCHEMA`, os três registos, os schemas — §1) |
 | **número CONTADO que soma entre linhas** | ⚠️ **dois ids de barra de rolagem**: `SKELETON_SCROLLBAR_ID = NodeId(848)` e `CMD_PALETTE_SCROLLBAR_ID = NodeId(849)` — **próximo livre `850`** (§2.3) |
 | contrato congelado (§6) | **intocado** |
@@ -50,7 +50,48 @@
 
 ## §1 — Superfície de colisão (colada do script, não escrita à mão)
 
-Re-corrida depois do commit de fecho — ver §6.
+```text
+
+SUPERFÍCIE DE COLISÃO — line/UIUX contra main
+  merge-base 912a9652e   ·   4 commit(s)   ·   122 arquivo(s)
+───────────────────────────────────────────────────────────────────────────────
+▸ SCHEMAS — ⚠️ o valor se CONTA contra o main do dia; confira nos TRÊS sítios
+    PROJECT_SCHEMA                        176   (base: 176)
+      └ tripla do gate               (176, 13, 22)   (base: (176, 13, 22))
+    VEC_SCENE_SCHEMA                       22   (base: 22)
+    FLIP_SCHEMA                            13   (base: 13)
+    DOC_VERSION (timeline)                 18   (base: 18)
+    FIELD_DOC_VERSION                      23   (base: 23)
+  ⚠️  esta linha TOCA project*.rs — a escada e a tripla moram em arquivos IRMÃOS;
+      um degrau escrito no arquivo errado funde LIMPO e evapora.
+
+▸ REGISTRO DE COMPONENTES — o contador é TRÊS, cada um roda só na suíte da própria crate
+    ph2d-ecs                              108   (base: 108)
+    ph2d-render (espelho)                 109   (base: 109)
+    ph2d-script (espelho)                 109   (base: 109)
+
+▸ CONTRATO CONGELADO (§6) — deve ser INTOCADO; se não, exige ADR
+    crates/ph2d-nodegraph/src/node.rs              intocado
+    crates/ph2d-editor-core/src/tool.rs            intocado
+
+▸ ADR — número escolhido numa linha paralela é PROVISÓRIO
+    último no disco: 0175   próximo livre: 0176
+    esta linha não cria ADR ⇒ fora de toda disputa de número
+
+▸ Cargo.lock — pacote EXTERNO novo é o que importa; aresta interna não
+    nenhum '+name' novo
+
+▸ MARCADORES DE CONFLITO — inclui '|||||||' (diff3), que uma varredura de 3 marcadores NÃO vê
+    nenhum nos arquivos da linha
+
+▸ TETOS DE LOC nos arquivos que a linha tocou (700 workspace · 600 painel/shell · 500 widget · 650 tool-runtime)
+    nenhum arquivo da linha passa do teto
+───────────────────────────────────────────────────────────────────────────────
+  ⚠️ Isto é o MAPA, não o gate. O gate mecânico é scripts/foundational-integrate.sh;
+     o que exige julgamento (mesmo-símbolo, decisão de produto) continua leitura humana.
+```
+
+Nenhum contador partilhado mexe. ⚠️ A coluna `base:` é o MERGE-BASE; se outra linha fundir antes, releia os valores no ficheiro.
 
 ---
 

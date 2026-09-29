@@ -82,6 +82,8 @@ cima. ⛔ Desenhar o passe por cima do alvo do Vello pintaria as formas **por ci
 - ⏳ W0 — por correr (a placa estava ocupada por outras linhas em 2026-09-29).
 - ✅ **W1 — a crate [`ph2d-shape-gpu`](../../crates/ph2d-shape-gpu/) existe e desenha o que o Vello
   desenha** (§6).
+- ✅ **W2 — a rota da CPU está LIGADA por omissão** (§7): as formas do Motion vão ao passe numa
+  camada de meio-float, TUDO-OU-NADA por quadro. `PH2D_FORMAS_NA_PLACA=0` bissecta.
 
 ## §6 — ✅ W1: a paridade de PIXEL, medida (2026-09-29, RTX, alvo de meio-float)
 
@@ -119,3 +121,37 @@ do shader nunca achava o `7`. Enche-se com `u32::MAX`.
 traço · o quad a cortar a borda · a rotação transposta). ⚠️ **E uma 1.ª mutação SOBREVIVEU e apagou
 código:** a margem de um pixel à volta do quad não era lei — o `floor`/`ceil` da caixa dos segmentos
 já inclui todo pixel com cobertura —, e ela saiu.
+
+## §7 — ✅ W2: a rota da CPU, e o defeito da W1 que só o PRODUTO mostrou (2026-09-29)
+
+**O que liga:** `ph2d_vec_render::forma_para_a_placa` (a forma pelos MESMOS passos do desenho de
+hoje) → `ph2d_app_motion::motion_shape_placa::PlacaDeFormas` (decisão, cache por handle, camada,
+passe) → `ph2d_render::BandSource::Formas` (`(0, 1)`: cores do desenhista, pré-multiplicada) → a
+shell (`+~30` LOC): com a placa armada **o documento vai às FAIXAS** (senão ficaria na cena Vello,
+POR CIMA das formas) e o presente cola a camada entre as faixas de cima e a cena do chrome.
+
+⚠️ **TUDO-OU-NADA, porque a ordem das linhas é o desenho:** uma imagem, uma mistura (de linha ou de
+grupo), uma tinta própria ou um traço sob afim NÃO conforme devolvem o quadro inteiro ao Vello —
+partir a lista trocaria a ordem entre as duas metades.
+
+⭐⭐⭐ **O gate de paridade do PRODUTO** (`motion_shape_placa::gpu_tests`, `#[ignore]`): o `encode` e
+o `VelloPass` do produto contra a placa, `240` cópias das seis formas de fábrica (com traço,
+rodadas, translúcidas, câmara com o espelho do Y). ⛔⛔ **Ele reprovou à primeira com riscos
+horizontais** — a geometria da W1 saltava os segmentos HORIZONTAIS no espaço LOCAL (*«a
+contribuição deles é `dy = 0`, exacta»*), verdade só no referencial do ECRÃ: numa cópia rodada a
+aresta de cima de um rectângulo arredondado atravessa linhas de pixel, e sem ela o contorno fica
+aberto. **O gate da W1 não o via porque nenhuma das suas formas tinha uma aresta horizontal.**
+Curado (`a != b`) com gate que mede a área DEPOIS de rodar a geometria (mutação: vermelho).
+
+| estado | alfa máx. | cor máx. | pixels `> 16` | área (vello / placa) |
+|---|---:|---:|---:|---|
+| **a rota que shipa** | `66` | `63` | `3 790` (`2,0 %`) | `191 599` / `191 859` |
+| a aresta horizontal saltada | `254` | `237` | `38 929` (`20,3 %`) | `191 599` / `187 861` |
+
+No app (fotografado em tela virtual, cena `=126`, `32 761` estrelas): a mesma tinta nas duas rotas
+(brilho médio `0,5282` / `0,5281`, desvio igual); o contador lê `109` contra `83` quadros por
+segundo em bruto a favor da placa — ⚠️ **preliminar** (perfil `smoke`, máquina a `load 8`–`18`), a
+medição a sério é a W5.
+
+⏳ **Por fazer:** W3 (a rota do dispositivo — hoje um grafo com forma viva continua a cozer na CPU) ·
+W4 (o traço sob afim não conforme, os glifos) · W5 (a medição de fecho e o smoke do dono).

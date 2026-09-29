@@ -37,6 +37,7 @@ pub mod drag;
 /// sai do painel que o começou. Ver o cabeçalho do módulo.
 pub mod drag_payload;
 pub mod event;
+pub mod fling;
 pub mod flip_strip;
 pub mod hit;
 pub mod state;

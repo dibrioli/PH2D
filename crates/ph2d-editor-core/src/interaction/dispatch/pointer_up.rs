@@ -26,6 +26,9 @@ pub(super) fn dispatch_up<'frame>(
     store.end_panel_resize();
     // Same for scrollbar drag.
     store.end_scrollbar_drag();
+    // ⭐ A inércia: um dedo que largou depressa LANÇA a lista (tem de vir antes do `end`, que
+    //    esquece de que painel era o arrasto).
+    store.release_body_scroll(event.timestamp_ns);
     store.end_body_scroll_drag();
     // M14.A: NumberInput drag-or-edit Up cleanup. If the
     // threshold was crossed, this Up *commits* the drag-slider

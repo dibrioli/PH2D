@@ -32,6 +32,7 @@ const PUB_MODULE_OVERRIDE: &[&str] = &[
     "command_palette",
     "composto",
     "panel_chrome",
+    "scroll_area",
     "section_cards",
     "showcase",
 ];
@@ -49,6 +50,9 @@ const PUB_MODULE_OVERRIDE: &[&str] = &[
 // (2026-09-21), e quem o usa alcanca sub-caminhos dele direto (`composto::medindo`,
 // `::grupos`). ⚠️ Achata-lo poria um `medindo` e um `grupos` genericos no `widget::`, ao lado dos
 // homonimos do censo de elisoes — e o nome do modulo e' metade da frase que ele diz.
+// `scroll_area` entra pelo MESMO criterio (2026-09-29): e' a PORTA da rolagem, chamada de fora por
+// todo painel como `scroll_area::open` / `scroll_area::close`. Achatar poria um `open` e um
+// `close` genericos no `widget::`, e o par so' se le como par com o nome do modulo a frente.
 
 /// Scan widget dir for `*.rs` files (excluding `mod.rs`). Returns
 /// stems (snake_case), sorted alphabetically.

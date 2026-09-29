@@ -110,6 +110,7 @@ pub(super) fn dispatch_move<'frame>(
     // pode encolher a meio do arrasto — uma secção que se fecha — e um tecto velho deixaria rolar
     // para além do fim.
     if let Some(anchor) = store.body_scroll_drag() {
+        store.push_body_scroll_sample(event.timestamp_ns, event.y);
         let max = match (
             store.panel_content_h(anchor.panel),
             store.panel_visible_h(anchor.panel),

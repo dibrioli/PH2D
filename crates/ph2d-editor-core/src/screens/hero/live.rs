@@ -18,7 +18,7 @@ use super::HeroScreen;
 pub(super) fn tick(hero: &mut HeroScreen, dt: f64) {
     tick_hover(hero, dt);
     tick_palette_cascade(hero, dt);
-    tick_panel_scroll(hero);
+    tick_panel_scroll(hero, dt);
     tick_section_fold(hero);
     tick_fill_tether(hero, dt);
 }
@@ -148,12 +148,35 @@ fn fold_track(section: ph2d_a11y::NodeId) -> ph2d_a11y::NodeId {
 ///
 /// ⚠️ E **não anda o relógio**: quem o andou foi o `motion.advance` dentro do [`tick_hover`], que
 /// corre antes desta família. Uma segunda chamada aqui daria a esta o dobro do `dt` das outras.
-fn tick_panel_scroll(hero: &mut HeroScreen) {
+///
+/// ⭐⭐ **E é também o motor da INÉRCIA** (spec `04_a_rolagem_unica` §3.4): uma lista largada
+/// depressa voa — o ALVO anda pela lei exacta do [`crate::interaction::fling::step`] — e, enquanto
+/// voa ou o dedo a segura, o vivo **é** o alvo: a mola existe para a roda, que nomeia um destino, e
+/// um conteúdo que seguisse o dedo por ela escorregaria debaixo dele. ⚠️ Pedir o `Role::Number`
+/// ESQUECE a track; quando o comando volta à roda, a primeira vista chega ao alvo sem animar.
+fn tick_panel_scroll(hero: &mut HeroScreen, dt: f64) {
+    let flights: Vec<(ph2d_a11y::NodeId, f32)> = hero.store.flings().collect();
+    for (panel, v) in flights {
+        let max = match (
+            hero.store.panel_content_h(panel),
+            hero.store.panel_visible_h(panel),
+        ) {
+            (Some(c), Some(vis)) => (c - vis).max(0.0),
+            _ => 0.0,
+        };
+        let from = hero.store.panel_scroll_target(panel);
+        let (pos, v_next, done) = crate::interaction::fling::step(from, v, dt, max);
+        hero.store.set_panel_scroll(panel, pos);
+        hero.store.set_fling(panel, (!done).then_some(v_next));
+    }
     let targets: Vec<(ph2d_a11y::NodeId, f32)> = hero.store.scrolled_panels().collect();
     for (panel, target) in targets {
-        let live = hero
-            .motion
-            .animate(scroll_track(panel), target, crate::motion::Role::Surface);
+        let role = if hero.store.scroll_is_direct(panel) {
+            crate::motion::Role::Number
+        } else {
+            crate::motion::Role::Surface
+        };
+        let live = hero.motion.animate(scroll_track(panel), target, role);
         // ⚠️ **A superfície pousa na GRADE DE PIXELS, e é aqui — no PUBLICAR — que ela pousa.**
         //    O relógio guarda o valor contínuo (uma mola alimentada com entrada quantizada pode
         //    estagnar perto do alvo) e o ALVO guarda o valor exato (é ele que soma os deltas

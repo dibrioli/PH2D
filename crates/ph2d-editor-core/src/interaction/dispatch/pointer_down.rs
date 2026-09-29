@@ -8,7 +8,6 @@ use super::curve::apply_curve_point_drag;
 use super::focus::is_focusable;
 use super::hover::set_widget_pressed;
 use super::number_input::{apply_number_stepper_if_hit, update_drag_value};
-use super::scroll::scrollbar_panel_for_id;
 use super::text_ops::{byte_offset_from_click_xy, place_text_caret};
 use super::{init_number_buffer, select_all_in_text_widget};
 use crate::interaction::ContextMenuKind;
@@ -69,14 +68,12 @@ pub(super) fn dispatch_down<'frame>(
     // o próprio fundo no `HitIndex`, então "não acertou em nada" é exactamente "espaço vazio do
     // painel". Um widget que reclame a pressão continua a ficar com ela — ⛔ este arrasto **nunca**
     // rouba um gesto, porque só existe onde não havia gesto nenhum.
+    // ⭐ E uma pressão sobre um painel em VOO segura-o (a inércia pára debaixo do dedo).
+    super::scroll::grab_fling_at(store, event.x, event.y);
     if hit.is_none()
         && let Some(panel) = store.scrollable_panel_at(event.x, event.y)
     {
-        store.begin_body_scroll_drag(crate::interaction::drag::BodyScrollAnchor {
-            panel,
-            cursor_y_at_down: event.y,
-            scroll_at_down: store.panel_scroll(panel),
-        });
+        super::scroll::begin_body_drag(store, panel, event.y, event.timestamp_ns);
     }
     // ⭐⭐ **Uma aba pode ser CLICADA ou ARRASTADA** (decisão D4: *o artista escolhe qual painel vai
     // em cada lugar*). O Down arma as duas: só a distância percorrida decide qual foi, e ela é
@@ -607,30 +604,11 @@ pub(super) fn dispatch_down<'frame>(
         }
     }
 
-    // Scrollbar drag — NOT gated on `is_focusable`. The bar isn't a registered `InteractiveState`, so
-    // it is never focusable: gating the begin behind the focus block above meant the drag never
-    // started (the real reason no scrollbar could be dragged). Snapshot the panel metrics so Move
-    // computes a proportional `panel_scroll` delta. The single dropdown scrollbar id maps to whichever
-    // dropdown is open; the rest are fixed (see `scrollbar_panel_for_id`).
+    // Scrollbar drag — NOT gated on `is_focusable` (the bar isn't a registered `InteractiveState`,
+    // so it is never focusable; gating it behind the focus block meant no bar could be dragged).
+    // ⭐ A TRILHA e o dono vêm do que a porta `widget::scroll_area` publicou — ver `begin_bar_drag`.
     if let Some((id, rect)) = hit {
-        let scroll_panel = if id == crate::widget::DROPDOWN_SCROLLBAR_ID {
-            store.dropdown_popover().map(|(dd, _)| dd)
-        } else {
-            scrollbar_panel_for_id(id)
-        };
-        if let Some(panel) = scroll_panel
-            && let (Some(content_h), Some(visible_h)) =
-                (store.panel_content_h(panel), store.panel_visible_h(panel))
-        {
-            store.begin_scrollbar_drag(drag::ScrollbarDragAnchor {
-                panel,
-                cursor_y_at_down: event.y,
-                scroll_at_down: store.panel_scroll(panel),
-                track_h: rect.h,
-                content_h,
-                visible_h,
-            });
-        }
+        super::scroll::begin_bar_drag(store, id, rect, event.y);
     }
 }
 

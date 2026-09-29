@@ -94,6 +94,10 @@ const WIDGET_OPT_OUT: &[(&str, &str)] = &[
         "chrome-internal: anchored popover invoked from scenes / settings menus",
     ),
     (
+        "scroll_area",
+        "door: the open/close pair every scrollable panel body goes through; it draws only the scrollbar, which has its own entry",
+    ),
+    (
         "scrollbar",
         "primitive: painted by every scrollable panel automatically, no idle visual",
     ),

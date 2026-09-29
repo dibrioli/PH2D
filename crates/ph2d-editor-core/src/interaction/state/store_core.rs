@@ -62,6 +62,7 @@ impl WidgetStore {
             sub_scroll_rects: BTreeMap::new(),
             panel_content_h: BTreeMap::new(),
             panel_visible_h: BTreeMap::new(),
+            scroll: super::scroll_state::ScrollState::default(),
             tooltips: BTreeMap::new(),
             collapsed: BTreeMap::new(),
             context_menu: None,

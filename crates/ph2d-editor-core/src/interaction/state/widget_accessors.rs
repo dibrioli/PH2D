@@ -103,7 +103,7 @@ impl WidgetStore {
     /// acrescentar uma: o chamador passa o id do polegar e mais nada.
     #[must_use]
     pub fn scrollbar_visual(&self, thumb: NodeId) -> (crate::widget::ScrollbarState, f32) {
-        let panel = crate::interaction::dispatch::scroll::scrollbar_panel_for_id(thumb);
+        let panel = self.scroll_bar_panel(thumb);
         self.scrollbar_visual_for(thumb, panel)
     }
 

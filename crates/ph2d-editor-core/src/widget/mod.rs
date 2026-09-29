@@ -43,6 +43,7 @@ mod property_box;
 mod radial_menu;
 mod radio_group;
 mod rect2_editor;
+pub mod scroll_area;
 mod scrollbar;
 mod scrollbar_ids;
 pub mod section_cards;

@@ -176,11 +176,10 @@ impl WidgetStore {
     /// repouso. **Apagar a entrada** devolveria [`crate::motion::SETTLED`] e deixaria o polegar
     /// **quente para sempre**.
     pub fn scrollbar_hover_targets(&self) -> impl Iterator<Item = (NodeId, f32)> + '_ {
-        use crate::interaction::dispatch::scroll::scrollbar_panel_for_id;
         use crate::widget::ScrollbarState as S;
         let hot = self
             .hot_id()
-            .filter(|id| scrollbar_panel_for_id(*id).is_some());
+            .filter(|id| self.scroll_bar_panel(*id).is_some());
         // ⚠️ **`!= 0.0`, e NÃO `> 0.0`** — a mola do carácter Expressivo ULTRAPASSA: medido, o
         //    voo de saída passa por **−0,0109** antes de voltar. Com `> 0.0` o tique largava-o ali,
         //    a track era podada a meio do caminho e o `hover_live` guardava um negativo para
@@ -193,7 +192,7 @@ impl WidgetStore {
         // ⚠️ `t` PRIMEIRO: quase toda entrada do mapa está fria, e assim o predicado caro (o mapa
         //    do despachante) quase nunca corre.
         let cooling = self.hover_live.iter().filter_map(move |(id, t)| {
-            (*t != 0.0 && Some(*id) != hot && scrollbar_panel_for_id(*id).is_some()).then_some(*id)
+            (*t != 0.0 && Some(*id) != hot && self.scroll_bar_panel(*id).is_some()).then_some(*id)
         });
         hot.into_iter().chain(cooling).map(|id| {
             let lit = matches!(self.scrollbar_visual(id).0, S::Hovered | S::Dragging);

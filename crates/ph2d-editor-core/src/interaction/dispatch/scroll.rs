@@ -111,6 +111,8 @@ pub fn dispatch_wheel<'frame>(
     if let Some(panel) = store.panel_at(event.x, event.y) {
         // ⚠️ O ALVO, nunca o vivo: girar depressa sobre uma posição em voo anda menos do que
         //    o dedo pediu.
+        // A roda toma o comando de volta de uma lista em voo.
+        store.stop_fling(panel);
         let cur = store.panel_scroll_target(panel);
         // delta_y > 0 from winit means "scroll forward" / content
         // moves up. We store offset as "how far down content
@@ -206,5 +208,87 @@ pub(crate) fn scrollbar_panel_for_id(id: NodeId) -> Option<NodeId> {
         Some(ids::ASSET_PANEL)
     } else {
         None
+    }
+}
+
+/// ⭐⭐ **Uma pressão numa BARRA arma o arrasto dela** — a metade da porta
+/// [`crate::widget::scroll_area`] que vive no despacho.
+///
+/// ⚠️ **A trilha vem do que a porta PUBLICOU, nunca da altura do rect acertado.** Até 2026-09-29
+/// era `track_h: rect.h`, e 14 painéis registavam o POLEGAR ⇒ a conta proporcional via uma trilha
+/// do tamanho do polegar e o conteúdo andava várias vezes mais depressa do que o dedo (com o
+/// polegar no mínimo o alcance colapsava a `1 px` e um pixel saltava ao fim). Uma barra que ainda
+/// não passa pela porta cai no rect acertado, como antes.
+///
+/// ⭐ **Carregar na trilha FORA do polegar faz o polegar saltar para debaixo do dedo**
+/// ([`crate::widget::scroll_area::scroll_for_track_press`]) e o arrasto continua dali — só para
+/// barras publicadas, porque numa legada o rect acertado É o polegar.
+pub(super) fn begin_bar_drag(
+    store: &mut WidgetStore,
+    id: NodeId,
+    rect: crate::zones::Rect,
+    cursor_y: f32,
+) {
+    let published = store.scroll_bar_track(id);
+    let panel = if id == crate::widget::DROPDOWN_SCROLLBAR_ID {
+        store.dropdown_popover().map(|(dd, _)| dd)
+    } else {
+        store.scroll_bar_panel(id)
+    };
+    let Some(panel) = panel else {
+        return;
+    };
+    let (Some(content_h), Some(visible_h)) =
+        (store.panel_content_h(panel), store.panel_visible_h(panel))
+    else {
+        return;
+    };
+    let track = published.unwrap_or(rect);
+    store.stop_fling(panel);
+    // ⚠️ O alvo passa a ser ONDE A SUPERFÍCIE ESTÁ: com a mola a meio caminho, o arrasto 1:1
+    //    partiria do alvo e a lista saltaria debaixo do dedo no primeiro Move.
+    let mut scroll_at_down = store.panel_scroll(panel);
+    if published.is_some() {
+        let thumb = crate::widget::scrollbar_thumb_rect(track, scroll_at_down, content_h, visible_h);
+        if cursor_y < thumb.y || cursor_y > thumb.y + thumb.h {
+            scroll_at_down = crate::widget::scroll_area::scroll_for_track_press(
+                track, cursor_y, content_h, visible_h,
+            );
+        }
+    }
+    store.set_panel_scroll(panel, scroll_at_down);
+    store.begin_scrollbar_drag(crate::interaction::drag::ScrollbarDragAnchor {
+        panel,
+        cursor_y_at_down: cursor_y,
+        scroll_at_down,
+        track_h: track.h,
+        content_h,
+        visible_h,
+    });
+}
+
+/// ⭐⭐ **O dedo agarra o CORPO de um painel** — arma o arrasto 1:1 e começa a amostrar o dedo
+/// para a inércia de quando ele largar ([`crate::interaction::fling`]).
+pub(super) fn begin_body_drag(store: &mut WidgetStore, panel: NodeId, cursor_y: f32, t_ns: u128) {
+    store.stop_fling(panel);
+    let scroll_at_down = store.panel_scroll(panel);
+    store.set_panel_scroll(panel, scroll_at_down);
+    store.clear_body_scroll_samples();
+    store.push_body_scroll_sample(t_ns, cursor_y);
+    store.begin_body_scroll_drag(crate::interaction::drag::BodyScrollAnchor {
+        panel,
+        cursor_y_at_down: cursor_y,
+        scroll_at_down,
+    });
+}
+
+/// Uma pressão sobre um painel em voo SEGURA-O, acerte ela num widget ou no vazio.
+pub(super) fn grab_fling_at(store: &mut WidgetStore, x: f32, y: f32) {
+    if let Some(panel) = store.panel_at(x, y) {
+        let live = store.panel_scroll(panel);
+        if store.flings().any(|(p, _)| p == panel) {
+            store.stop_fling(panel);
+            store.set_panel_scroll(panel, live);
+        }
     }
 }

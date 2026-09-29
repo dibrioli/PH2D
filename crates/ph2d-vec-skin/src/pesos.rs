@@ -44,9 +44,31 @@ const AMOSTRAS: usize = 16;
 
 /// ⭐ **Quantos triângulos a malha do bind de um caminho tem.**
 ///
-/// ⚠️ **Menos que os `3 000` de uma imagem, e o motivo é o que se mede sobre ela:** aqui os pesos
-/// são amostrados em **pontos de controlo** (dezenas), não em cada vértice desenhado (milhares) —
-/// a malha é um andaime que morre no fim do bind, e refiná-la só paga a solução, nunca o desenho.
+/// ⛔⛔ **A razão que aqui esteve MORREU e o número FICA, por outra razão, medida.** Ela dizia
+/// *«os pesos são amostrados em pontos de controlo (dezenas), a malha é um andaime que morre no
+/// fim do bind»* — falso desde 2026-09-20 (o campo SOBREVIVE ao bind) e desde 2026-09-29 (o desenho
+/// fiel lê-o ao longo da curva inteira, [`crate::curva::assa_a_pele`]).
+///
+/// ⛔ **Subir para os `3 000` de uma imagem foi CONSTRUÍDO, MEDIDO e RECUSADO** (2026-09-29, report
+/// do dono: *«o osso do meio provoca ondulações discretas, que diferem da deformação de
+/// imagens»*). A barra da cena como IMAGEM e como FORMA, os mesmos ossos, distância da borda da
+/// imagem à curva da forma (gate `a_forma_e_a_imagem_presas_aos_mesmos_ossos_dobram_igual`):
+///
+/// | orçamento da forma | S `70°` p50 / máx | C `70°` p50 / máx | trocas de curvatura (ouro, S `70°`) | BICO do cotovelo |
+/// |---|---:|---:|---:|---:|
+/// | **`1 200` (fica)** | `0,0120` / `0,0409` | `0,0115` / `0,0346` | `64` | **`93°`** |
+/// | `3 000` (o da imagem) | `0,0052` / `0,0326` | `0,0056` / `0,0326` | `38` | **`80°`** |
+/// | `12 000` | `0,0100` / `0,0422` | `0,0100` / `0,0418` | — | — |
+///
+/// ⭐ **A onda de fundo é da LEI e está nas duas mídias** (a sobreposição coincide); o que o
+/// orçamento muda é `~1` pixel de arte. ⛔⛔ **E a última coluna é o que decide:** com pesos mais
+/// finos a transição entre ossos fica mais AGUDA, e o vinco de dentro do cotovelo (`det J`, §1.3
+/// da pesquisa 04) passa a nascer **`13°` mais cedo** — o gate
+/// `a_lei_desdobrada_empurra_o_bico_e_a_dobra` reprovou com isso. *Comprar meio pixel de
+/// concordância com a imagem ao preço de a dobra forte partir mais cedo é trocar um defeito
+/// aceitável por um pior.* ⚠️ E `12 000` mostra que mais fino **não converge para a imagem**: ela
+/// também é uma discretização. ⇒ o caminho para as duas concordarem passa pela cura do vinco
+/// (rotas C/D), não por este número.
 const ALVO_DE_TRIANGULOS: usize = 1_200;
 
 /// ⭐⭐⭐ **O CAMPO DE PESOS DO DOMÍNIO — a malha do bind, VIVA.**

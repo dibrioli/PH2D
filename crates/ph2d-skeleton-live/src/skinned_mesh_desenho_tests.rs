@@ -111,8 +111,9 @@ fn diag_o_preco_do_desenho_fiel_por_quadro() {
         },
     );
     let com = mede(&mut p, base);
+    let com_c1 = mede(&mut p, crate::skin_desenho::Leis { c1: true, ..base });
     println!(
-        "  µs/forma/quadro a mexer: nós {so_nos:.1} · com o desenho fiel {com:.1} · loadavg {}",
+        "  µs/forma/quadro a mexer: nós {so_nos:.1} · com o desenho fiel {com:.1} · fiel C¹ {com_c1:.1} · loadavg {}",
         std::fs::read_to_string("/proc/loadavg")
             .unwrap_or_default()
             .trim()
@@ -208,5 +209,55 @@ fn uma_forma_com_quinas_vivas_segue_o_padrao_ouro() {
     assert!(
         vmax < 0.01,
         "o desenho fiel afasta-se {vmax} do padrão-ouro"
+    );
+}
+
+/// ⭐⭐⭐ **GATE — O DESENHO FIEL NÃO ESPETA, em dobra nenhuma.**
+///
+/// Report do dono (2026-09-29, com foto): *«uma linha anómala no stroke, atravessando a forma»*.
+/// Reproduzido na barra da cena em **C a `60°`**: o pior afastamento ao padrão-ouro era **`1,41`**
+/// (a peça tem `1` de espessura) contra `≤ 0,004` em toda a outra dobra — uma cúbica aceite pelo
+/// `kurbo` com a alça a `9,5` de distância. A causa e a cura estão no `ajusta` da
+/// `ph2d_vec_skin::curva_segundo_corpo`, e o gate unitário dela usa as amostras EXACTAS.
+///
+/// ⚠️ **Aqui é a varredura pela porta do PRODUTO**, e os dois sentidos da dobra, de `10` em `10`
+/// graus: um espeto é um acidente de UMA pose, e a pose do report não é a da cena.
+///
+/// ⚠️ **A barra (`0,1`) fica entre as DUAS coisas que aqui se leem parecidas e não são:** o
+/// espeto (`1,41`, UMA cúbica) e a DOBRA do mapa — de `140°` para cima o próprio padrão-ouro
+/// cruza-se sobre si (`2` cruzamentos) e o desenho fiel, que é liso por construção, afasta-se dele
+/// `0,02`–`0,06` em centenas de amostras junto do cotovelo (pior `0,060` a `150°`). *Esse é o
+/// vinco de dentro do cotovelo, que tem outra cura (rotas C/D da pesquisa 04), e não este defeito.*
+#[test]
+fn o_desenho_fiel_nao_espeta_em_dobra_nenhuma() {
+    let mut pior = (0.0_f64, "", 0.0_f32);
+    for (lado, s) in [("S", true), ("C", false)] {
+        for k in 3..=15 {
+            let graus = 10.0 * k as f32;
+            let mut p = b_palco(false);
+            p.reparte_com(1, false);
+            p.lei_do_peso(false);
+            if s {
+                p.dobra_em_s(graus);
+            } else {
+                p.dobra(graus);
+            }
+            let pele = p.pele();
+            let rest = b_amostra_com(&p.fonte, DENSO);
+            let ouro = ideal_denso(&p, &pele, &rest, false);
+            let (_, visto) = o_que_se_ve(&p);
+            let (_, _, vmax) = b_perfil(&b_amostra_com(&visto, DENSO), &ouro);
+            if vmax > pior.0 {
+                pior = (vmax, lado, graus);
+            }
+        }
+    }
+    println!("  pior: {} a {}° — {:.4}", pior.1, pior.2, pior.0);
+    assert!(
+        pior.0 < 0.1,
+        "o desenho fiel afasta-se {:.4} do padrão-ouro em {} a {}° — é a linha que atravessa a forma",
+        pior.0,
+        pior.1,
+        pior.2
     );
 }

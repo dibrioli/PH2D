@@ -84,6 +84,26 @@ bind anterior a 2026-09-20 com quinas vivas (sem campo para a tabela). ⏳ **ABE
 (`det J`, §1.3 da pesquisa) **continua** — ela é do padrão-ouro, e é a rota C/D · o `[bone] N NÓ(S)
 caem FORA` passa a soar também quando a gaveta prepara uma fonte com quinas vivas.
 
+⭐⭐ **O 1.º smoke do dono (2026-09-29): *«o melhor resultado até agora»*, com DUAS observações.**
+**(1) *«uma linha anómala no stroke, atravessando a forma»* — um ESPETO, e a causa é do `kurbo`
+0.13:** o `fit_to_cubic` mede o erro só no sentido FONTE → CÚBICA (raios normais), e só liga o
+comprimento de arco numa fonte *«picante»*; num troço QUASE RECTO ele aceita uma cúbica que sai ao
+longo da própria recta e volta (alça a `9,5` numa corda de `0,94`, C a `60°` → desvio `1,41`; sem a
+cura a varredura acha `13,76` a C `40°`). ⇒ o `ajusta` da `ph2d_vec_skin::curva_segundo_corpo` é a
+mesma recursão com a metade que falta — CÚBICA → FONTE a `≤ 2 × tolerância` — e a Hermite do
+próprio bake no fundo. Gates: `o_ajuste_nunca_sai_da_fonte` (as `65` amostras EXACTAS do report,
+com o controlo do `kurbo` sozinho a espetar `2,38`) e `o_desenho_fiel_nao_espeta_em_dobra_nenhuma`
+(S e C, `30°`–`150°`). **(2) *«o osso do meio provoca ondulações discretas, que diferem da
+deformação de imagens»* — a onda de fundo é da LEI e está nas duas** (a barra da cena como IMAGEM e
+como FORMA, mesmos ossos, sobrepõem-se); o resto (`~1` pixel de arte, p50 `0,012`) é a resolução
+dos pesos — `1 200` triângulos na forma contra `3 000` na imagem. ⛔ **Igualá-la foi CONSTRUÍDO,
+MEDIDO e RECUSADO:** p50 `0,0120 → 0,0052`, mas pesos mais finos tornam a transição entre ossos mais
+aguda e o **vinco de dentro do cotovelo passa a nascer a `80°` em vez de `93°`** (tabela no
+`ALVO_DE_TRIANGULOS` da `ph2d_vec_skin::pesos`; e `12 000` não converge para a imagem, que também é
+uma discretização). ⇒ a concordância fina passa pela cura do vinco (rotas C/D). Gate de REGRESSÃO
+`a_forma_e_a_imagem_presas_aos_mesmos_ossos_dobram_igual` (p50 `< 0,015`). ⛔ A leitura `C¹` também
+foi medida e **não** é a cura desta onda (move a distância à imagem `< 8 %` e custa `2,3×` o bake).
+
 ### F20 — ✅ **O GIZMO DO ENVELOPE SÓ EXISTE ONDE ELE MANDA, e agora POR OSSO** (report do dono, 2026-09-18)
 
 *«O gizmo do envelope fica sempre visível mesmo quando não é usado?»* — **sim, ficava.** A F17 curou

@@ -55,7 +55,7 @@ pub(super) fn b_amostra(p: &ph2d_vec_scene::VecPath) -> Vec<[f64; 2]> {
 /// ⚠️ Ela é a mesma lei: a `b_amostra` delega. *Duas cópias divergiriam no dia em que a
 /// parametrização mudasse, e é ela que faz a correspondência ponto a ponto entre a fonte e o
 /// produto valer.*
-pub(super) fn b_amostra_com(p: &ph2d_vec_scene::VecPath, por_seg: usize) -> Vec<[f64; 2]> {
+pub(crate) fn b_amostra_com(p: &ph2d_vec_scene::VecPath, por_seg: usize) -> Vec<[f64; 2]> {
     let cozido = p.cooked();
     let Some((v, _)) = cozido.contour(0) else {
         return Vec::new();
@@ -97,7 +97,7 @@ pub(super) fn b_pct(v: &mut [f64]) -> (f64, f64, f64) {
 }
 
 /// A distância de `p` à POLILINHA FECHADA `poli` — *«o desenho passa por aqui?»*.
-pub(super) fn b_dist(p: [f64; 2], poli: &[[f64; 2]]) -> f64 {
+pub(crate) fn b_dist(p: [f64; 2], poli: &[[f64; 2]]) -> f64 {
     let n = poli.len();
     let mut melhor = f64::INFINITY;
     for i in 0..n {

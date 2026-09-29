@@ -219,3 +219,116 @@ mod sonda_da_dobra;
 
 #[path = "sonda_do_rig_partilhado_tests.rs"]
 mod sonda_do_rig_partilhado;
+
+/// ⭐⭐⭐ **GATE — A FORMA E A IMAGEM PRESAS AOS MESMOS OSSOS DOBRAM IGUAL.**
+///
+/// Report do dono (2026-09-29): *«o osso do meio provoca ondulações discretas, aceitáveis mas que
+/// diferem da deformação de imagens»*. A fixtura é a barra da cena DUAS vezes — como FORMA (o
+/// desenho fiel) e como IMAGEM (a mesma cápsula `7 × 1` a `100 px/m`) —, os mesmos três ossos e a
+/// mesma dobra. A régua é a distância da borda da malha da imagem à curva da forma, longe das
+/// pontas (a escada do alfa não é a lei).
+///
+/// ⭐ **A onda de fundo é da LEI e está nas duas** (a sobreposição coincide); o que resta é a
+/// resolução a que cada mídia resolve os pesos — `1 200` triângulos na forma contra os `3 000` da
+/// imagem —, e igualá-la foi MEDIDO e RECUSADO porque adianta o vinco do cotovelo `93° → 80°`
+/// (tabela no `ALVO_DE_TRIANGULOS` da `ph2d_vec_skin::pesos`). Hoje: p50 `0,0120 · 0,0115 ·
+/// 0,0080`, ou seja `~1` pixel de arte a `100 px/m`.
+///
+/// ⚠️ **A barra (`0,015`, `1,5` pixel de arte) é de REGRESSÃO e não de concordância:** ela guarda
+/// que as duas mídias continuam a resolver a MESMA lei. A concordância a meio pixel existe (`0,005`
+/// com o orçamento da imagem) e tem o preço escrito ao lado dela.
+#[test]
+fn a_forma_e_a_imagem_presas_aos_mesmos_ossos_dobram_igual() {
+    use crate::skinned_mesh::ouro_reguas_tests::{b_amostra_com, b_dist};
+    for (nome, s, graus) in [("S", true, 70.0_f32), ("C", false, 70.0), ("S", true, 45.0)] {
+        let (mut sim, mut scene, _map, id, ossos) =
+            crate::barra_da_cena_tests_support::barra_da_cena_com(false);
+        let (w, h) = (700u32, 100u32);
+        let mut rgba = vec![0u8; (w * h * 4) as usize];
+        for y in 0..h {
+            for x in 0..w {
+                let (px, py) = (f64::from(x) + 0.5, f64::from(y) + 0.5);
+                if (px - px.clamp(50.0, 650.0)).hypot(py - 50.0) <= 50.0 {
+                    rgba[((y * w + x) * 4 + 3) as usize] = 255;
+                }
+            }
+        }
+        let sp = sprite(7.0, 1.0, 0.0, 0.0);
+        let e = sim
+            .world_mut()
+            .spawn((
+                Transform {
+                    translation: ph2d_core::Vec2::new(-5.0, 2.5),
+                    ..Transform::IDENTITY
+                },
+                sp,
+            ))
+            .id();
+        assert!(crate::skin_image_bind::bind_image(
+            &mut sim,
+            e,
+            &rgba,
+            [w, h],
+            PPM,
+            ph2d_poly2d::GridOptions::default(),
+            ossos.first().copied()
+        ));
+        for (k, o) in ossos.iter().enumerate().skip(1) {
+            let sinal = if s && k % 2 == 1 { -1.0 } else { 1.0 };
+            sim.world_mut()
+                .get_mut::<Transform>(*o)
+                .expect("osso")
+                .rotation = (sinal * graus).to_radians();
+        }
+        let mut present = PresentWorld::new();
+        let p = present
+            .world_mut()
+            .spawn((SimRef(e), instancia_de(&sp)))
+            .id();
+        attach_skin_meshes(&sim, &mut present, PPM, &[]);
+        let m = present
+            .world()
+            .get::<SpriteMesh>(p)
+            .expect("malha")
+            .posado()
+            .into_owned();
+        let mut conta = std::collections::BTreeMap::<(u32, u32), u32>::new();
+        for t in &m.tris {
+            for (a, b) in [(t[0], t[1]), (t[1], t[2]), (t[2], t[0])] {
+                *conta.entry((a.min(b), a.max(b))).or_default() += 1;
+            }
+        }
+        let fronteira: Vec<[f64; 2]> = conta
+            .iter()
+            .filter(|(_, n)| **n == 1)
+            .flat_map(|((a, b), _)| [*a, *b])
+            .filter(|i| (0.12..0.88).contains(&m.uv[*i as usize][0]))
+            .map(|i| {
+                let q = m.local[i as usize];
+                [f64::from(q[0]) - 5.0, f64::from(q[1]) + 2.5]
+            })
+            .collect();
+        assert!(fronteira.len() > 100, "a imagem não deu borda para medir");
+        let d = crate::skin_live::recook_leis(
+            &sim,
+            &mut scene,
+            crate::skin_desenho::Leis {
+                c1: false,
+                ..crate::skin_desenho::Leis::do_ambiente()
+            },
+        );
+        let poli = b_amostra_com(d.get(&id).expect("desenho fiel"), 64);
+        let mut ds: Vec<f64> = fronteira.iter().map(|&q| b_dist(q, &poli)).collect();
+        ds.sort_by(f64::total_cmp);
+        let p50 = ds[ds.len() / 2];
+        println!(
+            "  {nome} {graus}°: imagem→forma p50 {p50:.4} máx {:.4}",
+            ds[ds.len() - 1]
+        );
+        assert!(
+            p50 < 0.015,
+            "{nome} a {graus}°: a forma e a imagem presas aos mesmos ossos afastam-se {p50:.4} \
+             (mediana) — elas resolvem os pesos a resoluções diferentes"
+        );
+    }
+}

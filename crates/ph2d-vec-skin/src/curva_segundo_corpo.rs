@@ -309,7 +309,7 @@ pub fn assa_a_pele(
             if k == 0 {
                 inicio = assado[0];
             }
-            let fitado = kurbo::fit_to_bezpath(&Assado(&assado), tolerancia);
+            let fitado = ajusta(&Assado(&assado), tolerancia);
             ph2d_vec_envelope::push_cubics(&fitado, &mut cubicas);
         }
         if let Some((alvo, _)) = out.contour_mut(c) {
@@ -318,6 +318,92 @@ pub fn assa_a_pele(
         base += n;
     }
     out
+}
+
+/// ⭐⭐⭐ **O AJUSTE com a conferência nos DOIS sentidos** — o `kurbo::fit_to_bezpath` com a
+/// aceitação que ele não tem.
+///
+/// ⛔⛔ **O defeito que isto cura (report do dono, 2026-09-29, com foto: *«uma linha anómala no
+/// stroke, atravessando a forma»*):** o `fit_to_cubic` do `kurbo` 0.13 mede o erro só no sentido
+/// FONTE → CÚBICA (um raio normal por amostra da fonte), e só liga a medida por comprimento de arco
+/// quando a fonte é *«picante»*. Num trecho QUASE RECTO nenhuma das duas vê uma cúbica que sai ao
+/// longo da própria recta e volta: cada amostra acha a cúbica ao pé de si. Medido na barra da cena
+/// em **C a `60°`**: um pedaço de corda `0,94` aceite com uma alça a **`9,5`** de distância — o
+/// espeto de `1,41` que o traço desenha através da forma.
+///
+/// ⇒ a mesma recursão do `kurbo` (ajustar, e partir ao meio se não serve), com UMA cláusula a mais:
+/// a cúbica só entra se **toda ela** ficar perto da fonte ([`fecha`]). No fundo da recursão (um
+/// pedaço mais curto que o passo da amostragem) sai a Hermite do próprio bake — que É a curva que
+/// o fitter recebe, logo não há o que conferir.
+fn ajusta(src: &Assado<'_>, tolerancia: f64) -> kurbo::BezPath {
+    let mut path = kurbo::BezPath::new();
+    ajusta_rec(src, 0.0..1.0, tolerancia, &mut path);
+    path
+}
+
+fn ajusta_rec(
+    src: &Assado<'_>,
+    range: core::ops::Range<f64>,
+    tolerancia: f64,
+    path: &mut kurbo::BezPath,
+) {
+    #[expect(clippy::cast_precision_loss, reason = "um punhado de amostras")]
+    let passo = 1.0 / (src.0.len().max(2) - 1) as f64;
+    let c = if range.end - range.start <= passo {
+        Some(src.hermite(range.clone()))
+    } else {
+        kurbo::fit_to_cubic(src, range.clone(), tolerancia)
+            .map(|(c, _)| c)
+            .filter(|c| fecha(src, *c, range.clone(), tolerancia))
+    };
+    if let Some(c) = c {
+        if path.elements().is_empty() {
+            path.move_to(c.p0);
+        }
+        path.curve_to(c.p1, c.p2, c.p3);
+        return;
+    }
+    let meio = 0.5 * (range.start + range.end);
+    ajusta_rec(src, range.start..meio, tolerancia, path);
+    ajusta_rec(src, meio..range.end, tolerancia, path);
+}
+
+/// **A metade que o `kurbo` não confere: CÚBICA → FONTE.** Cada ponto da cúbica tem de ficar a
+/// menos de `2 × tolerância` da fonte (a folga cobre a corda da polilinha densa em que ela é
+/// medida). Com a metade dele (fonte → cúbica, já feita), é a distância de Hausdorff.
+fn fecha(
+    src: &Assado<'_>,
+    c: kurbo::CubicBez,
+    range: core::ops::Range<f64>,
+    tolerancia: f64,
+) -> bool {
+    use kurbo::{ParamCurve, ParamCurveNearest};
+    const NA_CUBICA: usize = 24;
+    #[expect(clippy::cast_precision_loss, reason = "um punhado de amostras")]
+    let intervalos = (src.0.len().max(2) - 1) as f64;
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "o alcance é finito e positivo"
+    )]
+    let densos = ((range.end - range.start) * intervalos * 4.0)
+        .ceil()
+        .max(4.0) as usize;
+    #[expect(clippy::cast_precision_loss, reason = "um punhado")]
+    let fonte: Vec<Point> = (0..=densos)
+        .map(|i| {
+            src.em(range.start + (range.end - range.start) * i as f64 / densos as f64)
+                .0
+        })
+        .collect();
+    let folga2 = (2.0 * tolerancia).powi(2);
+    (0..=NA_CUBICA).all(|i| {
+        #[expect(clippy::cast_precision_loss, reason = "um punhado")]
+        let p = c.eval(i as f64 / NA_CUBICA as f64);
+        fonte
+            .windows(2)
+            .any(|w| kurbo::Line::new(w[0], w[1]).nearest(p, 1e-12).distance_sq <= folga2)
+    })
 }
 
 /// A polilinha assada vista como curva paramétrica **lisa** — o que o fitter recebe.
@@ -384,6 +470,17 @@ impl Assado<'_> {
     }
 }
 
+impl Assado<'_> {
+    /// O pedaço `range` da própria curva do bake, como UMA cúbica de Hermite — exacto quando o
+    /// pedaço cabe num intervalo de amostragem, porque ali o bake É uma Hermite.
+    fn hermite(&self, range: core::ops::Range<f64>) -> kurbo::CubicBez {
+        let (p0, d0) = self.em(range.start);
+        let (p1, d1) = self.em(range.end);
+        let k = (range.end - range.start) / 3.0;
+        kurbo::CubicBez::new(p0, p0 + d0 * k, p1 - d1 * k, p1)
+    }
+}
+
 impl kurbo::ParamCurveFit for Assado<'_> {
     fn sample_pt_tangent(&self, t: f64, _sign: f64) -> kurbo::CurveFitSample {
         let (p, tangent) = self.em(t);
@@ -398,6 +495,10 @@ impl kurbo::ParamCurveFit for Assado<'_> {
         None
     }
 }
+
+#[cfg(test)]
+#[path = "curva_segundo_corpo_espeto_tests.rs"]
+mod espeto_tests;
 
 #[cfg(test)]
 mod tests {

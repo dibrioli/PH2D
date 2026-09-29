@@ -290,3 +290,9 @@ mod rive_tests;
 #[cfg(test)]
 #[path = "skinned_mesh_rive_sondas_tests.rs"]
 mod rive_sondas_tests;
+
+/// ⭐⭐⭐ **O DESENHO FIEL contra o padrão-ouro, pela porta do PRODUTO** (2026-09-29) — ver
+/// [`crate::skin_desenho`].
+#[cfg(test)]
+#[path = "skinned_mesh_desenho_tests.rs"]
+mod desenho_tests;

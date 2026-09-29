@@ -4,8 +4,13 @@
 //! performance não for muito alto»*, e depois *«e se fizer um bake para imagem e usar a imagem
 //! como referência para usar a técnica de arc»*.
 //!
-//! ⛔ **Nenhuma das duas tem consumidor de produto** — elas são a medição que responde à condição
-//! dele, e ficam com as tabelas ao lado porque *o que foi medido e rejeitado não se reconstrói*.
+//! ⭐⭐⭐ **O BAKE SHIPA desde 2026-09-29** ([`assa_a_pele`], chamado pela gaveta do
+//! `ph2d_skeleton_live::skin_desenho`) — ordem do dono, *«siga como achar melhor, buscando o padrão
+//! ouro»*, com a recusa de 2026-09-20 relida contra a base certa: ela foi medida contra a
+//! subdivisão do `Bind` que o commit seguinte RETIROU, e sobre os `8` nós que ficaram o bake é
+//! `108`–`149×` mais fiel ao padrão-ouro (barra da cena, `30°`–`90°` em S). ⛔ O
+//! [`refit_pela_curva`] continua **sem** consumidor — é a recusa medida, com a tabela ao lado,
+//! porque *o que foi medido e rejeitado não se reconstrói*.
 //! A [`refit_pela_curva`] chama a lei de dentro do fitter e custa `3`–`5 ms` por forma; a
 //! [`refit_pelo_bake`] assa primeiro e custa `521`–`658 µs`, **`7,7×` menos e melhor nas duas
 //! colunas**.
@@ -17,7 +22,7 @@ use kurbo::{Point, Vec2};
 use ph2d_skeleton::{Correccao, Skin};
 use ph2d_vec_scene::VecPath;
 
-use super::{LeituraDoCampo, SegmentoDaPele, cubica, linha};
+use super::{CampoIndexado, LeituraDoCampo, SegmentoDaPele, cubica, linha};
 
 /// **Quanto o bake amostra e com que tolerância ajusta** — os dois números que andam juntos.
 ///
@@ -219,18 +224,51 @@ pub fn refit_pelo_bake(
     leitura: LeituraDoCampo<'_>,
     bake: Bake,
 ) -> VecPath {
-    let (
-        LeituraDoCampo { campo, c1 },
-        Bake {
-            amostras,
-            tolerancia,
-        },
-    ) = (leitura, bake);
-    let mut out = fonte.clone();
+    let LeituraDoCampo { campo, c1 } = leitura;
     let suave = campo
         .filter(|_| c1)
         .and_then(crate::pesos_suave::CampoSuave::novo);
     let indice = campo.and_then(|c| crate::pesos::IndiceDoCampo::novo(&c.malha));
+    assa_a_pele(
+        pele,
+        fonte,
+        pesos,
+        correcoes,
+        rigido,
+        CampoIndexado {
+            campo,
+            indice: indice.as_ref(),
+            suave: suave.as_ref(),
+        },
+        bake,
+    )
+}
+
+/// ⭐⭐⭐ **O BAKE com o campo JÁ INDEXADO** — o corpo da [`refit_pelo_bake`], e a porta que o
+/// PRODUTO chama desde 2026-09-29 ([`ph2d_skeleton_live::skin_desenho`]), com o índice guardado
+/// por bind em vez de refeito por quadro.
+#[must_use]
+pub fn assa_a_pele(
+    pele: &Skin,
+    fonte: &VecPath,
+    pesos: &[f64],
+    correcoes: &[Correccao],
+    rigido: bool,
+    lido: CampoIndexado<'_>,
+    bake: Bake,
+) -> VecPath {
+    let (
+        CampoIndexado {
+            campo,
+            indice,
+            suave,
+        },
+        Bake {
+            amostras,
+            tolerancia,
+        },
+    ) = (lido, bake);
+    let mut out = fonte.clone();
     let ossos = if pesos.is_empty() {
         0
     } else {
@@ -257,8 +295,8 @@ pub fn refit_pelo_bake(
                 correcoes,
                 rigido,
                 campo,
-                indice: indice.as_ref(),
-                suave: suave.as_ref(),
+                indice,
+                suave,
             };
             // ⭐ O BAKE: um número FIXO de pontos, com a leitura barata.
             let assado: Vec<Point> = (0..=amostras)

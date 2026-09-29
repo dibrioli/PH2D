@@ -62,6 +62,8 @@ pub mod recusa_do_osso;
 pub mod skin_bake;
 pub mod skin_bake_cache;
 pub mod skin_budget;
+/// ⭐⭐⭐ **O DESENHO DA FORMA PRESA** — a gaveta por bind e o bake que se VÊ (2026-09-29).
+pub mod skin_desenho;
 pub mod skin_image;
 /// ⭐ **PRENDER uma IMAGEM** — irmão do `skin_live` pelo tecto de LOC, cortado por assunto.
 pub mod skin_image_bind;

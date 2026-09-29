@@ -286,8 +286,22 @@ pub fn skin_of_in(
 
 /// **Um quadro de pele.** Corre depois do `vec_entities::sync` (as entidades existem) e ao lado do
 /// `envelope_live::recook`.
+///
+/// ⭐⭐⭐ **Devolve o DESENHO FIEL de cada forma presa** ([`crate::skin_desenho`]) — o caminho da cena
+/// continua a receber a lei nos nós do artista; o que se vê entra pela geometria viva do quadro.
 pub fn recook(sim: &SimWorld, scene: &mut VecScene) {
-    recook_com(sim, scene, ph2d_vec_skin::curva::lei_da_curva_activa());
+    let _ = recook_desenhando(sim, scene);
+}
+
+/// ⭐⭐⭐ **O [`recook`] que DEVOLVE o desenho fiel** — a porta do quadro do produto, que o entrega
+/// à geometria viva ([`crate::skin_desenho::funde`]). O [`recook`] fica para quem só quer o
+/// caminho da cena (os gates, as sondas) e não tem onde pôr o desenho.
+#[must_use]
+pub fn recook_desenhando(
+    sim: &SimWorld,
+    scene: &mut VecScene,
+) -> crate::skin_desenho::SkinDesenhado {
+    recook_leis(sim, scene, crate::skin_desenho::Leis::do_ambiente())
 }
 
 /// ⭐⭐ **[`recook`] com a LEI EXPLÍCITA** — a porta que os gates das duas leis chamam.
@@ -301,12 +315,13 @@ pub fn recook_com(sim: &SimWorld, scene: &mut VecScene, curva: bool) {
     // ⚠️ **A porta do CAMPO lê-se AQUI**, no sítio de chamada, e viaja como parâmetro daí para
     // baixo — a mesma lei que a irmã da curva já escreve. Quem precisar de a controlar num gate
     // chama o [`recook_com_mistura`] directamente.
-    recook_com_mistura(
+    let _ = recook_leis(
         sim,
         scene,
-        curva,
-        true,
-        ph2d_vec_skin::curva::lei_do_campo_activa(),
+        crate::skin_desenho::Leis {
+            curva,
+            ..crate::skin_desenho::Leis::do_ambiente()
+        },
     );
 }
 
@@ -314,6 +329,9 @@ pub fn recook_com(sim: &SimWorld, scene: &mut VecScene, curva: bool) {
 ///
 /// `rigido = false` é a mistura LINEAR, o caminho de antes de 2026-09-19: ela dá a CORDA do arco e
 /// encolhe a arte, e é o **CONTROLO** dos gates que medem a cura do entalhe do cotovelo.
+///
+/// ⚠️ **Sem o desenho fiel** (`desenho: false`): os gates que a chamam medem a lei nos NÓS, que é
+/// o que ela escreve no caminho da cena — e o bake custaria o relógio deles sem ser lido.
 pub fn recook_com_mistura(
     sim: &SimWorld,
     scene: &mut VecScene,
@@ -321,6 +339,26 @@ pub fn recook_com_mistura(
     rigido: bool,
     campo: bool,
 ) {
+    let _ = recook_leis(
+        sim,
+        scene,
+        crate::skin_desenho::Leis {
+            curva,
+            rigido,
+            campo,
+            c1: ph2d_vec_skin::curva::lei_c1_activa(),
+            desenho: false,
+        },
+    );
+}
+
+/// ⭐⭐⭐ **O recook com TODAS as leis como parâmetro** — o corpo das três portas acima.
+pub fn recook_leis(
+    sim: &SimWorld,
+    scene: &mut VecScene,
+    leis: crate::skin_desenho::Leis,
+) -> crate::skin_desenho::SkinDesenhado {
+    let mut desenho = crate::skin_desenho::SkinDesenhado::new();
     let alvos: Vec<(Entity, SkinBind, VecPathId)> = sim
         .world()
         .iter_entities()
@@ -358,66 +396,40 @@ pub fn recook_com_mistura(
             let m: Vec<[f64; 6]> = pele.bones().iter().map(|b| b.pose.0).collect();
             eprintln!("[bone] {id}: {} osso(s), poses={m:?}", pele.len());
         }
+        // ⭐⭐⭐ **A GAVETA DESTA FORMA** ([`crate::skin_desenho::quadro`]): o que se deriva do BIND
+        // (a fonte lida, o índice da malha do campo) sai de lá já feito, e um quadro em que nada
+        // mudou devolve o anterior. ⚠️ A LEI é a mesma de sempre, ao bit — o que ela lê do bind
+        // está descrito no [`crate::skin_desenho::calcula`], e as correcções à mão, a escolha do
+        // artista (`SkinLaw`) e o campo do domínio passam pelas mesmas portas.
+        //
         // Uma fonte corrompida é PULADA (não há o que deformar, e melhor não escrever lixo) — a
         // forma fica com a última geometria boa. Mesma escolha do envelope.
-        let Some(guardado) = crate::skinned_mesh::le(&skin.source) else {
+        let estilo_serve = scene
+            .paths()
+            .iter()
+            .find(|p| p.id == id)
+            .is_some_and(crate::skin_desenho::o_estilo_serve);
+        let Some(q) = crate::skin_desenho::quadro(e.to_bits(), &skin, &pele, leis, estilo_serve)
+        else {
             continue;
         };
-        // ⛔ Uma tabela que não fecha com o caminho cai na lei derivada em vez de ser lida
-        // deslocada — pesos plausíveis sobre os pontos errados dão arte errada sem um erro.
-        //
-        // ⭐⭐⭐ **E a ESCOLHA DO ARTISTA passa pela mesma porta** (`SkinBind::pesos_do_quadro`, a
-        // wave de 2026-09-19): com `SkinLaw::Envelope` ela devolve vazio e este desenho cai na lei
-        // euclidiana, onde o alcance de cada osso manda. ⚠️ A tabela guardada **não** é tocada —
-        // voltar ao `Auto` volta a lê-la no quadro seguinte, sem re-resolver nada.
-        let fecha: &[f64] = if guardado.valida() {
-            &guardado.pesos
-        } else {
-            &[]
-        };
-        let pesos = skin.pesos_do_quadro(fecha);
-        let mut src = guardado.path.clone();
-        // ⭐⭐⭐ **E AS CORRECÇÕES À MÃO** — a porta é a mesma das duas mídias
-        // (`SkinBind::correcoes_resolvidas`), e com a lista vazia isto é byte-idêntico ao que era.
-        //
-        // ⭐⭐⭐⭐ **A ARTE SEGUE O PESO ENTRE OS NÓS** (F30, 2026-09-19). A pele é um mapa **não-afim**,
-        // e deformar os pontos de controlo acerta nos nós e **no interior nunca** — o cabeçalho da
-        // [`ph2d_vec_envelope`] escreve-o há meses, e são as duas queixas do dono desta jornada:
-        // *«pintar peso entre os vértices não faz nada»* (medido: `0,000000` contra `0,836850`) e
-        // *«o ponto criado deforma a malha»*.
-        //
-        // ⚠️ **`PH2D_SKIN_CURVE=0` volta ao caminho dos pontos de controlo** — ele fica vivo, e é
-        // por onde se bissecta um report. ⛔ A leitura é UMA vez por quadro e não por forma: um
-        // `var_os` por pele seria uma syscall no laço do desenho.
-        if curva {
-            ph2d_vec_skin::curva::aplica_pela_curva_com(
-                &pele,
-                &mut src,
-                pesos,
-                &skin.correcoes_resolvidas(),
-                rigido,
-                // ⭐⭐⭐ **O campo do domínio, quando o bind o guardou.** `None` num bind anterior a
-                // 2026-09-20 ⇒ a lei volta à mistura das linhas dos nós, que é o que ele desenhava.
-                // ⚠️ `PH2D_SKIN_CAMPO=0` bissecta — ver [`ph2d_vec_skin::curva::lei_do_campo_activa`].
-                campo.then_some(guardado.campo.as_ref()).flatten(),
-            );
-        } else {
-            ph2d_vec_skin::aplica_corrigido_com(
-                &pele,
-                &mut src,
-                pesos,
-                &skin.correcoes_resolvidas(),
-                rigido,
-            );
-        }
         if let Some(p) = scene.path_mut(id) {
             // ⭐⭐⭐ **GEOMETRIA, e nunca o estilo** — report do dono de 2026-09-19 (*«num vector
-            // linkado aos ossos não consigo mudar a espessura do stroke»*). A `src` é a FOTOGRAFIA
-            // do instante do `Bind`, e mandar o estilo dela para cá desfazia toda edição de traço
-            // ou preenchimento no quadro seguinte. Ver o cabeçalho da [`ph2d_vec_scene::recook`].
-            p.replace_geometry(src);
+            // linkado aos ossos não consigo mudar a espessura do stroke»*). A fonte é a
+            // FOTOGRAFIA do instante do `Bind`, e mandar o estilo dela para cá desfazia toda edição
+            // de traço ou preenchimento no quadro seguinte. Ver o cabeçalho da
+            // [`ph2d_vec_scene::recook`].
+            p.replace_geometry(q.cru);
+            // ⭐⭐⭐ **E O DESENHO FIEL leva o ESTILO VIVO** pela mesma porta: a geometria vem do
+            // bake, o resto do caminho da cena.
+            if let Some(d) = q.desenhado {
+                let mut visto = p.clone();
+                visto.replace_geometry(d);
+                desenho.insert(id, visto);
+            }
         }
     }
+    desenho
 }
 
 /// **Prende as formas ao esqueleto.** Devolve quantas prendeu.

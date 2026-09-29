@@ -119,10 +119,22 @@ fn o_tecto_de_manchas_custa_uma_razao_e_nao_uma_ordem_de_grandeza() {
 /// quadros passaram a custar o caro*, que é o que esta razão limita.
 #[test]
 fn o_indicador_custa_o_que_o_quadro_ja_paga_pela_mesma_arte() {
-    let (sim, mut scene, map, id, ossos) = palco_estrela();
+    let (mut sim, mut scene, map, id, ossos) = palco_estrela();
     let _ = forma(&map, id);
+    // ⛔⛔ **A pose ALTERNA a cada chamada, e é a premissa deste gate a MUDAR (2026-09-29).** Desde
+    // a gaveta do [`crate::skin_desenho`] um quadro PARADO não recalcula nada — medido, `8,85 µs`
+    // contra `433 µs` do indicador — e a razão contra ele deixou de dizer alguma coisa: o
+    // indicador não ficou mais caro, a referência é que passou a ser a gaveta. A referência
+    // honesta é o quadro que RECALCULA (o de um osso a mexer), e com a lei nos NÓS (sem o bake),
+    // que é a mesma conta que este gate sempre comparou — com o bake a régua ficaria mais frouxa.
+    let mut vira = false;
     let quadro = mede(|| {
-        crate::skin_live::recook(&sim, &mut scene);
+        vira = !vira;
+        sim.world_mut()
+            .get_mut::<ph2d_ecs::Transform>(ossos[0])
+            .expect("Transform")
+            .rotation = if vira { 0.3 } else { 0.0 };
+        crate::skin_live::recook_com_mistura(&sim, &mut scene, true, true, true);
     });
     let visto = mede(|| {
         let v = crate::peso_a_mao::pontos_do_indicador(&sim, PPM, Some(ossos[0]));

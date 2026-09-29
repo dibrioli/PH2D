@@ -331,10 +331,23 @@ fn mover_um_osso_nao_muda_a_tabela_do_bind() {
 /// [`as_correccoes_a_mao_chegam_a_tabela_da_placa`], e aqui fica a rota.
 #[test]
 fn as_duas_midias_vivas_chegam_pela_porta_corrigida() {
-    let recook = include_str!("skin_live.rs");
+    // ⚠️ **A rota do vector mudou-se para a GAVETA** (`skin_desenho.rs`, 2026-09-29): o laço do
+    // `skin_live` pede o quadro à gaveta e é ela que chama a lei. A agulha segue o CÓDIGO que chama
+    // a lei, não o ficheiro de onde ela costumava ser chamada — e o laço tem de continuar a pedir
+    // o quadro à gaveta, senão a rota corrigida fica viva num ficheiro que ninguém chama.
+    let laco = include_str!("skin_live.rs");
     assert!(
-        recook.contains("aplica_corrigido_com(") || recook.contains("aplica_pela_curva_com("),
+        laco.contains("skin_desenho::quadro("),
+        "o recook do vector deixou de pedir o quadro à gaveta"
+    );
+    let recook = include_str!("skin_desenho.rs");
+    assert!(
+        recook.contains("aplica_corrigido_com(") && recook.contains("aplica_pela_curva_indexada("),
         "o recook do vector deixou de passar pela porta corrigida"
+    );
+    assert!(
+        recook.contains("correcoes_resolvidas()"),
+        "a gaveta deixou de ler as correcções à mão — a arte presa desenharia sem as manchas"
     );
     let imagem = include_str!("skin_image.rs");
     for agulha in ["posed_sprite_mesh_corrigida", "sprite_mesh_para_a_placa"] {

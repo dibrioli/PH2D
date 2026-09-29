@@ -143,6 +143,10 @@ impl crate::App {
                 .iter()
                 .map(|(id, v)| (*id, v.clone())),
         );
+        // ⭐⭐⭐ **A FORMA PRESA A OSSOS desenha a curva FIEL** — por último entre os que estendem,
+        // porque ela CEDE: uma forma presa com offset, padrão ou largura viva mostra o que aquele
+        // produtor cozeu dela. E antes da booleana, que consome o que os operandos DESENHAM.
+        ph2d_skeleton_live::skin_desenho::funde(&self.vec.skin_desenhado, &vec_xf, &mut vec_live);
         // **A BOOLEANA VIVA roda DEPOIS dos cinco e ANTES do alinhamento**, e a ordem é a lei
         // da wave — trocar dois destes termos dá arte diferente sem nenhum gate vermelho:
         //

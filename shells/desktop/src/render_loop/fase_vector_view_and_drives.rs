@@ -146,7 +146,9 @@ impl crate::App {
         // ⚠️ Sem `xforms`: a pele resolve a pose de cada osso e da forma pela hierarquia (a
         // propagação de `Transform` que a casa já corre), que é a mesma razão de a cinemática
         // directa não precisar de código.
-        crate::skeleton_live::recook(sim, vec_scene);
+        // ⭐⭐⭐ E o que se VÊ da forma presa é o desenho fiel, entregue à geometria viva na
+        // `fase_vector_live_geometry` — o caminho da cena fica com os nós do artista.
+        self.vec.skin_desenhado = crate::skeleton_live::recook_desenhando(sim, vec_scene);
         // **Select: arrastar o objeto blend move as fontes** — o gizmo mira as FONTES (não o
         // spine), então ele as move NATIVAMENTE como grupo (`vec_selection::sync_selection`
         // redireciona a seleção do gizmo). O spine as segue no `recook`. Nada a fazer aqui: um

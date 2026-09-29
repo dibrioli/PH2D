@@ -332,6 +332,12 @@ pub struct VecState {
     /// a mesma frescura — o que muda é o número de produtores, de um para nove.
     pub live_drawn: ph2d_vec_render::LiveGeometry,
 
+    /// ⭐⭐⭐ **O DESENHO FIEL das formas presas a ossos, deste quadro** (2026-09-29) — em LOCAL,
+    /// escrito pelo recook da pele e fundido na geometria viva pela fase que a monta
+    /// ([`ph2d_skeleton_live::skin_desenho`]). ⚠️ Mora aqui só porque as duas pontas são FASES
+    /// diferentes do quadro; é derivado e refeito a cada quadro, nunca documento.
+    pub skin_desenhado: ph2d_skeleton_live::skin_desenho::SkinDesenhado,
+
     /// **Os fatos DERIVADOS por frame sobre os caminhos** — os intervalos das molduras e as poses
     /// que o auto layout deu —, publicados pelo passe de DESENHO para quem vier depois.
     ///

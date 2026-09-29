@@ -120,9 +120,9 @@ pub fn repousos(sim: &SimWorld, alvo: Entity, ppm: f32) -> Vec<[f64; 2]> {
     let Some(skin) = sim.world().get::<SkinBind>(alvo) else {
         return Vec::new();
     };
-    if let Some(g) = crate::skinned_mesh::le(&skin.source) {
+    if let Some(g) = crate::skin_desenho::lida(alvo.to_bits(), skin) {
         let mut out = Vec::new();
-        let mut caminho = g.path;
+        let mut caminho = g.guardado.path.clone();
         caminho.for_each_vert_mut(|v| {
             out.push(v.anchor);
             out.push(v.in_handle);
@@ -169,7 +169,7 @@ pub(crate) fn posados(sim: &SimWorld, alvo: Entity, ppm: f32) -> Vec<[f64; 2]> {
         return Vec::new();
     };
     let repousos = repousos(sim, alvo, ppm);
-    let guardados = pesos_guardados(&skin, repousos.len());
+    let guardados = pesos_guardados(alvo, &skin, repousos.len());
     let n = pele.len();
     let correcoes = skin.correcoes_resolvidas();
     let (x, _) = mundo_e_escala(sim, alvo);
@@ -337,7 +337,7 @@ pub fn pontos_da_pele(sim: &SimWorld, alvo: Entity, osso: Entity, ppm: f32) -> V
         return Vec::new();
     };
     let repousos = repousos(sim, alvo, ppm);
-    let guardados = pesos_guardados(&skin, repousos.len());
+    let guardados = pesos_guardados(alvo, &skin, repousos.len());
     let n = pele.len();
     let correcoes = skin.correcoes_resolvidas();
     let (x, _) = mundo_e_escala(sim, alvo);
@@ -441,12 +441,13 @@ pub fn pontos_do_indicador(sim: &SimWorld, ppm: f32, osso: Option<Entity>) -> Ve
 fn e_caminho(sim: &SimWorld, alvo: Entity) -> bool {
     sim.world()
         .get::<SkinBind>(alvo)
-        .is_some_and(|skin| crate::skinned_mesh::le(&skin.source).is_some())
+        .is_some_and(|skin| crate::skin_desenho::lida(alvo.to_bits(), skin).is_some())
 }
 
 /// A tabela do padrão-ouro, quando ela fecha com a contagem de pontos desta pele.
-fn pesos_guardados(skin: &SkinBind, pontos: usize) -> Option<Vec<f64>> {
-    if let Some(g) = crate::skinned_mesh::le(&skin.source) {
+fn pesos_guardados(alvo: Entity, skin: &SkinBind, pontos: usize) -> Option<Vec<f64>> {
+    if let Some(p) = crate::skin_desenho::lida(alvo.to_bits(), skin) {
+        let g = &p.guardado;
         let fecha: &[f64] = if g.valida() { &g.pesos } else { &[] };
         let p = skin.pesos_do_quadro(fecha);
         return (!p.is_empty() && p.len().is_multiple_of(pontos.max(1))).then(|| p.to_vec());

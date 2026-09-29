@@ -192,7 +192,6 @@ struct SegmentoDaPele<'a> {
     /// A mistura: rígida (o produto) ou linear (o controlo dos gates).
     rigido: bool,
     /// ⭐⭐⭐ **O CAMPO DO DOMÍNIO, quando o bind o guardou** — ver [`Self::pesos`].
-    /// ⭐⭐⭐ **O CAMPO DO DOMÍNIO, quando o bind o guardou** — ver [`Self::pesos`].
     campo: Option<&'a crate::pesos::CampoDoDominio>,
     /// ⭐⭐⭐ **O ÍNDICE da malha do campo** — derivado UMA vez por forma pelo chamador. Sem ele a
     /// consulta varre TODOS os triângulos, e isso é `95 %` do custo de amostrar um ponto
@@ -379,8 +378,6 @@ pub fn aplica_pela_curva_com(
     rigido: bool,
     campo: Option<&crate::pesos::CampoDoDominio>,
 ) {
-    let fonte = path.clone();
-    crate::aplica_corrigido_com(pele, path, pesos, correcoes, rigido);
     // ⭐⭐⭐ **OS GRADIENTES DO CAMPO DERIVAM-SE UMA VEZ POR FORMA, aqui.** A leitura `C¹` precisa
     // do gradiente de cada peso em cada vértice da malha, e ele é `O(V·B)`: derivá-lo por AMOSTRA
     // de curva seria uma varredura da malha dentro do laço do desenho.
@@ -390,11 +387,63 @@ pub fn aplica_pela_curva_com(
     let suave = campo
         .filter(|_| lei_c1_activa())
         .and_then(crate::pesos_suave::CampoSuave::novo);
-    let suave_ref = suave.as_ref();
     // ⭐⭐⭐ **O ÍNDICE DA MALHA, derivado UMA VEZ POR FORMA** — a mesma disciplina dos gradientes
     // acima, e pela mesma razão elevada ao quadrado: sem ele cada amostra varre os `878`
     // triângulos da malha, o que é `95 %` do custo de amostrar um ponto.
+    //
+    // ⚠️ **O PRODUTO não passa por aqui desde 2026-09-29** — ele guarda o índice POR BIND
+    // ([`ph2d_skeleton_live::skin_desenho`]) e chama a [`aplica_pela_curva_indexada`]; esta porta
+    // fica para quem tem UM campo na mão e nenhum sítio onde o guardar (os gates, as sondas).
     let indice = campo.and_then(|c| crate::pesos::IndiceDoCampo::novo(&c.malha));
+    aplica_pela_curva_indexada(
+        pele,
+        path,
+        pesos,
+        correcoes,
+        rigido,
+        CampoIndexado {
+            campo,
+            indice: indice.as_ref(),
+            suave: suave.as_ref(),
+        },
+    );
+}
+
+/// ⭐⭐⭐ **O campo com o que se DERIVA dele já derivado** — o índice da malha e, quando a porta
+/// `C¹` está aberta, os gradientes.
+///
+/// ⚠️ **Existe porque o índice custa `44 µs` e dependia só do BIND** (medido na barra da cena,
+/// `--release`), e era refeito a cada quadro por cada forma — `~46 %` do recook. Quem tem onde o
+/// guardar (o memo por bind do produto) passa-o feito; quem não tem usa a
+/// [`aplica_pela_curva_com`], que o deriva e delega aqui. *Uma lei, duas portas de entrada, e a
+/// resposta é a MESMA ao bit — o índice não muda a resposta, só o relógio*
+/// (`pesos_tests::o_indice_da_a_mesma_resposta_que_a_varredura`).
+#[derive(Clone, Copy, Default)]
+pub struct CampoIndexado<'a> {
+    /// O campo do domínio, quando o bind o guardou.
+    pub campo: Option<&'a crate::pesos::CampoDoDominio>,
+    /// O índice da malha DESTE campo — `None` volta à varredura (mesma resposta, mais lenta).
+    pub indice: Option<&'a crate::pesos::IndiceDoCampo>,
+    /// A leitura `C¹` do mesmo campo, quando pedida.
+    pub suave: Option<&'a crate::pesos_suave::CampoSuave<'a>>,
+}
+
+/// ⭐⭐⭐ **A lei da curva com o campo JÁ INDEXADO** — o corpo da [`aplica_pela_curva_com`].
+pub fn aplica_pela_curva_indexada(
+    pele: &Skin,
+    path: &mut VecPath,
+    pesos: &[f64],
+    correcoes: &[Correccao],
+    rigido: bool,
+    lido: CampoIndexado<'_>,
+) {
+    let CampoIndexado {
+        campo,
+        indice,
+        suave,
+    } = lido;
+    let fonte = path.clone();
+    crate::aplica_corrigido_com(pele, path, pesos, correcoes, rigido);
     let ossos = if pesos.is_empty() {
         0
     } else {
@@ -416,8 +465,8 @@ pub fn aplica_pela_curva_com(
                 correcoes,
                 rigido,
                 campo,
-                indice: indice.as_ref(),
-                suave: suave_ref,
+                indice,
+                suave,
             };
             let Some((alvo, _)) = path.contour_mut(c) else {
                 continue;
@@ -555,7 +604,7 @@ fn cubica(verts: &[VecVertex], k: usize, n: usize) -> CubicBez {
 /// recusada pelo preço e a outra é a ideia do dono, `7,7×` mais barata e melhor.
 #[path = "curva_segundo_corpo.rs"]
 mod segundo_corpo;
-pub use segundo_corpo::{Bake, refit_pela_curva, refit_pelo_bake};
+pub use segundo_corpo::{Bake, assa_a_pele, refit_pela_curva, refit_pelo_bake};
 
 #[cfg(test)]
 #[path = "curva_tests.rs"]

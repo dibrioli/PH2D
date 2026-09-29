@@ -91,7 +91,7 @@ const CENA_Y: f32 = -0.9;
 /// Pontos da corda. ⚠️ **Não é um tecto — é o tamanho de uma corda que alguém faz**, e a §7 mediu
 /// o preço dela: `272,7`–`275,5 ns/ponto`, PLANO sobre uma faixa de `14×`. A `20` isto custa
 /// `0,005 ms`, `0,03 %` de um quadro.
-const CORDA_PONTOS: f32 = 20.0;
+pub(crate) const CORDA_PONTOS: f32 = 20.0;
 /// O comprimento em unidades de mundo — a corda pendurada tem de caber no pano.
 const CORDA_COMPRIMENTO: f32 = 1.9;
 /// ⭐⭐⭐ **A PEÇA JUSTA: uma cadeia de rig já não escolhe o tamanho da peça — ela HERDA-O**

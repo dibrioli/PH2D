@@ -31,8 +31,17 @@
 //! antes disto o painel, os drenos e as intenções, e nada disso é do grupo.
 //!
 //! ```text
-//! cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture measure_the_source_group
+//! PH2D_MOTION_SO_COM_FORMA=0 cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture measure_the_source_group
 //! ```
+//!
+//! ⛔⛔ **O `PH2D_MOTION_SO_COM_FORMA=0` é OBRIGATÓRIO, e a sonda recusa-se a correr sem ele.** Esta
+//! cadeia (`X → scale → output`) não carrega aparência, e desde a lei do dono de 2026-09-19 uma
+//! corrente sem forma desenha MARCAS e **não despacha** linhas: a sonda lia `0` em toda fonte que
+//! só produz posições e reprovava na asserção de população — calada, porque é `#[ignore]` e o CI
+//! nunca a corre (apanhada no fecho da `line/motion-value`, 2026-09-24). ⚠️ **Pôr um
+//! `motion.duplicator` na cadeia NÃO é a cura:** ele mediria o CARIMBO e, com uma forma viva, a
+//! cadeia inteira na CPU — outra pergunta. O que esta sonda mede é o que a fonte custa a FAZER as
+//! linhas, e isso é exactamente o ladrilho de omissão que a variável devolve.
 //! (imprime o `/proc/loadavg` na primeira linha — CLAUDE.md §5.0.)
 
 use crate::motion_state::MotionState;
@@ -279,6 +288,12 @@ fn mede(gpu: &GpuContext, tipo: Option<&str>, lado: f32) -> Linha {
 #[test]
 #[ignore = "sonda de medição — corra à mão, em RELEASE, com adaptador e com a máquina calma"]
 fn measure_the_source_group() {
+    assert!(
+        !ph2d_eval_motion::so_com_forma_por_ordem(),
+        "esta sonda mede o COZIMENTO de uma fonte numa cadeia SEM forma, e sob a lei do dono \
+         (so com forma) essa cadeia nao despacha linha nenhuma. Corra-a com \
+         PH2D_MOTION_SO_COM_FORMA=0 (ver o cabecalho)."
+    );
     let Some(gpu) = GpuContext::new(GpuContext::default_instance(), None).ok() else {
         panic!("sem adaptador — esta sonda corre a ponte do produto, que coze na placa");
     };

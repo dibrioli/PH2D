@@ -18,5 +18,12 @@ wgpu = "29.0.4"
 # `bash scripts/stack-audit.sh --tetos` (medido 2026-08-29).
 pollster = "0.4.0"
 
+[dev-dependencies]
+# A régua que apaga os comentários de um fonte — as DUAS formas (`//` e `/* */`, aninhados) e
+# nunca o interior de uma string. O gate da voz do dispositivo lia só as linhas começadas por
+# `//`, e um bloco `/* */` com o nome do registo deixava-o verde (auditoria do fecho, 2026-09-24).
+# Zero dependências: ela não traz nada à árvore desta crate.
+ph2d-label-census = { path = "../ph2d-label-census" }
+
 [lints]
 workspace = true

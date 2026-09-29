@@ -65,6 +65,19 @@ const PELE_ROWS: usize = 7;
 )]
 const OSSOS_DA_CORRENTE: usize = crate::motion_state::rig_demo::OSSOS_JUNTAS as usize - 1;
 
+/// Quantas PEÇAS a corda entrega — **derivado, pela mesma lei dos ossos**.
+///
+/// ⛔ A asserção que este número substitui dizia `20` («a corda tem vinte pontos») e ficou
+/// vermelha, `#[ignore]` e calada, desde que a corda passou por um `rig.bones` para vestir o
+/// `Rope Segment` (2026-09-20): vinte pontos ligados são **dezanove** segmentos, porque a primeira
+/// junta não tem osso a chegar a ela. *Um número escrito à mão ao lado de outro que foi derivado é
+/// o que envelhece.*
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "vinte pontos, contados da cena"
+)]
+const SEGMENTOS_DA_CORDA: usize = crate::motion_state::rig_demo::CORDA_PONTOS as usize - 1;
+
 /// Coze a cena `=120` em regime e devolve o stream de cada pano.
 ///
 /// ⚠️ **Sem membranas, ao contrário do ciclo 8:** as seis cadeias fabricam a CORRENTE a partir de
@@ -249,7 +262,11 @@ fn write_the_rig_figures() {
     assert_eq!(p.len(), 6, "a cena tem seis panos");
 
     // ⛔ As asserções ANTES de escrever: uma figura vazia lê-se, no PDF, como produto partido.
-    assert_eq!(p[CORDA].count(), 20, "a corda tem vinte pontos");
+    assert_eq!(
+        p[CORDA].count(),
+        SEGMENTOS_DA_CORDA,
+        "a corda entrega SEGMENTOS (n pontos ligados sao n-1 pecas)"
+    );
     assert_eq!(p[CAMPO].count(), 121, "o campo e' 11x11");
     assert_eq!(
         p[FK].count(),

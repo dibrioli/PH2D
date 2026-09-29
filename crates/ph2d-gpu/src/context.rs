@@ -304,12 +304,11 @@ mod voz_do_dispositivo_tests {
     fn quem_cria_o_dispositivo_liga_a_voz_dele() {
         // ⛔ Sem os comentários (auditoria do fecho, 2026-09-24): o doc do relator cita o
         // `on_uncaptured_error` pelo nome, logo contra o ficheiro inteiro a 2.ª metade ficava
-        // verde com o registo APAGADO.
-        let fonte: String = include_str!("context.rs")
-            .lines()
-            .filter(|l| !l.trim_start().starts_with("//"))
-            .collect::<Vec<_>>()
-            .join("\n");
+        // verde com o registo APAGADO. ⚠️ E as DUAS formas de comentário: a 1.ª redacção filtrava
+        // só as linhas começadas por `//`, e um bloco `/* */` com o nome dentro — ou um `//` no
+        // FIM de uma linha de código — continuava a satisfazer a agulha. A régua da casa apaga as
+        // duas e deixa o interior das strings intacto.
+        let fonte = ph2d_label_census::sem_comentarios(include_str!("context.rs"));
         let chamada = concat!("relata_erros_do_", "dispositivo(&device);");
         assert!(
             fonte.contains(chamada),

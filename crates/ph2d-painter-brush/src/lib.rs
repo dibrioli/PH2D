@@ -162,7 +162,7 @@ pub use jitter::shift_colors_like;
 pub use mask_ops::{MaskCanvasOp, apply_mask_op};
 pub use ramp_alpha::RampAlphaMode;
 pub use sampler::MAX_INPUT_SAMPLES;
-pub use smear::smear_dab;
+pub use smear::{smear_dab, smear_dab_premultiplicado};
 pub use smear_field::{
     Arco, MapWindow, SEM_TECTO, SmearOut, TECTO_MEDIDO_E_RECUSADO_EM_RAIOS, Transporte,
     accumulate_dab_smear,

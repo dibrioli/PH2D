@@ -20,7 +20,7 @@
 | 8 | Composite Brush: o relevo fora da recomposição da pilha | linha | a conferir |
 | 9 | Composite Brush: o resíduo Blur+Smear (`12/255`) | linha | a conferir |
 | 10 | Composite Brush: metade dos bytes dos intermédios da pilha | linha | a conferir |
-| 11 | Aquarela: o **Smudge** não mexe na tinta MOLHADA da sessão (report do dono, 29/09) | linha | **medido, por construir** — §3 |
+| 11 | Aquarela: o **Smudge** não mexe na tinta MOLHADA da sessão (report do dono, 29/09) | linha | **feito** — §3.1 (smoke do dono por fazer) |
 | 12 | Aquarela: o **Rewet** mexe pouco na tinta MOLHADA da sessão (report do dono, 29/09) | linha | **medido, por construir** — §3 |
 
 ---
@@ -186,3 +186,40 @@ cima, knob em `0` e em `1`, `Pigment` desligado):
 **Desenho proposto (por construir):** o Smudge arrasta também os planos da sessão, pela mesma lei do
 `smear_dab`. O Rewet passa a ler a tinta da sessão como tinta levantável, via os campos UNIÃO e nunca
 reassando a sessão.
+
+### §3.1 — Item 11 feito: o Smudge arrasta a tinta molhada (2026-09-29)
+
+**A lei** ([`watercolor_mistura_arrasto`](../../crates/ph2d-tool-painter/src/tool/paint/watercolor_mistura_arrasto.rs)):
+a cada dab, ANTES do depósito, a tinta que a sessão tinha antes deste traço (o `antes` da mistura) é
+arrastada do dab anterior para este pela MESMA lei de levantar e pesar do Smudge seco; o depósito
+mistura a cor nova por cima dela com o peso do Smudge. Três escolhas, cada uma decidida por medição:
+
+| escolha | o que acontecia sem ela (fixtura do gate, pincel de fábrica) |
+|---|---|
+| arrastar o `antes`, **nunca** o plano da cor | o depósito recompõe cada texel do `antes` e deitava o arrasto fora: fila às RISCAS, texels ao bit o amarelo entre os dabs |
+| mistura em alfa **pré-multiplicado** (`smear_dab_premultiplicado`, `ph2d-painter-brush`) | o papel do plano é `0,0,0,0`: o rasto saía `152,152,129` (oliva sujo) contra `219,235,141` |
+| fotografar o destino ANTES de o arrastar (flag `capturado` por texel) | com os dabs espaçados (`0,6`) cada texel é arrastado uma vez só, e o rasto abria texels a `0` |
+
+**Resultado** (ganho de azul sobre o mesmo traço sem Smudge, em cada texel do rasto `x 108..150`):
+`0` antes · `13`–`44` depois, sem falha; com os dabs espaçados, pior texel `14`.
+
+**Duas coisas que a medição decidiu contra o primeiro desenho:**
+- **a prioridade do mixer fica** no depósito do Smudge (sai só com o `Pigment`, §2.1): sem ela a
+  poça do Wet Mix (dono, 2026-07-07) mudava com o Smudge ligado, e o
+  `watercolor_color_change_junction_is_soft` reprovou;
+- **não é preciso recompor os texels sem depósito:** sobre a tinta molhada o mixer apanha sempre, e a
+  medição a Charge `1`, `0,5`, `0,326`, `0,2` e `0` não mudou um byte com ou sem essa recomposição.
+
+⚠️ **Com o Smudge a `1` e a queda constante** o arrasto copia o papel do início do traço por cima
+de tudo e o azul é APAGADO em vez de arrastado — a mesma lei do Smudge seco. O rasto vê-se com a
+queda de fábrica (suave) ou com o Smudge abaixo de `1`.
+
+⏳ **Aberto, medido e PRÉ-EXISTENTE:** com `Charge < 1` o mixer já carrega a cor molhada sozinho, e
+o Smudge **tira** cor a esse rasto (soma do ganho a Charge `0`: `−2 279` sem o arrasto molhado,
+`−1 899` com ele). Vem do arrasto da RESERVA do mixer (`smear_level`), que é anterior a esta fila.
+
+**Gates:** [`watercolor_arrasto_molhado`](../../crates/ph2d-tool-painter/src/tool/paint/tests/watercolor_arrasto_molhado.rs)
+(6) + `premultiplied_smear_drags_transparency_without_darkening` (`ph2d-painter-brush`). Prova de
+mutação: [`muta_o_arrasto_molhado.sh`](ferramentas/muta_o_arrasto_molhado.sh), **13 de 13 sangram**.
+A captura da ORIGEM do arrasto foi escrita e **retirada**: com um taper de `3` diâmetros a saída
+ficava ao bit a mesma sem ela (a origem é a pegada do dab anterior, já fotografada).

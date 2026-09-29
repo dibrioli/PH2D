@@ -334,6 +334,10 @@ fn diag_smudge_e_rewet_sobre_molhado() {
         let mut b = pincel(AMARELO, false);
         b.wet_smudge = smudge;
         b.wet_rewet = rewet;
+        if std::env::var("PH2D_DIAG_FABRICA").is_ok() {
+            let f = BrushSpec::default();
+            (b.falloff, b.hardness) = (f.falloff, f.hardness);
+        }
         arma(&mut t, b);
         assert!(t.on_canvas_pointer(cp([40.0, 96.0], PointerPhase::Down)));
         let mut x = 40.0f32;
@@ -374,6 +378,37 @@ fn diag_smudge_e_rewet_sobre_molhado() {
                     n += 1;
                     soma += d;
                 }
+            }
+            if std::env::var("PH2D_DIAG_LINHA").is_ok() {
+                let linha = |t: &PainterTool| {
+                    (60..190u32)
+                        .step_by(4)
+                        .map(|x| {
+                            let p = px(t, SIZE, x, 96);
+                            format!("{x}:{},{},{}", p[0], p[1], p[2])
+                        })
+                        .collect::<Vec<_>>()
+                        .join(" ")
+                };
+                println!("  knob0 {}", linha(&base));
+                println!("  knob1 {}", linha(&k));
+                let cor = |t: &PainterTool| {
+                    (60..190usize)
+                        .step_by(8)
+                        .map(|x| {
+                            let i = (96 * SIZE as usize + x) * 4;
+                            let c = &t.paint.stroke_color;
+                            if c.len() > i + 3 {
+                                format!("{x}:{},{},{}/{}", c[i], c[i + 1], c[i + 2], c[i + 3])
+                            } else {
+                                "-".into()
+                            }
+                        })
+                        .collect::<Vec<_>>()
+                        .join(" ")
+                };
+                println!("  cor da sessão knob0 {}", cor(&base));
+                println!("  cor da sessão knob1 {}", cor(&k));
             }
             println!(
                 "secar={secar:<5} {nome:<8} | texels mudados {n:>6} · soma |Δ| {soma:>8} | azul arrastado (B−R máx à direita): knob0 {} knob1 {} | meio {:?} → {:?}",

@@ -121,7 +121,7 @@ impl WetShapeStamp {
     /// - PROCEDURAL tip ⇒ wet = the falloff envelope alone (the pattern must not hole the water);
     ///   density = the pattern value. (Shape Tone ramp deliberately not applied — queued, doc 13 #7.)
     #[inline]
-    fn sample(
+    pub(super) fn sample(
         &self,
         dn: f32,
         basis: Option<&ph2d_painter_brush::texture::TexDabBasis>,
@@ -163,7 +163,7 @@ impl WetShapeStamp {
     /// `dab_angle_deg`, spun by Jitter Rotate) + the Shape basis when the slot is active. The
     /// footprint deforms the ENVELOPE distance too ([`Self::env_t`]) — Flatten/Rotate act on the
     /// watercolor stamp like they do on the plain dab.
-    fn dab_frame(
+    pub(super) fn dab_frame(
         &self,
         d: &Dab,
         rng: &mut u64,
@@ -193,7 +193,7 @@ impl WetShapeStamp {
     /// bit-exact continuity path — `falloff_t`'s own rounding differs), else the deformed distance
     /// (Flatten squeezes the minor axis; Rotate/Jitter orient it).
     #[inline]
-    fn env_t(
+    pub(super) fn env_t(
         fp: ph2d_painter_brush::footprint::FootprintDeform,
         dn: f32,
         dx: f32,
@@ -553,139 +553,5 @@ impl PainterTool {
             }
         }
         self.paint.wet_level_smear_pos = smear_from;
-    }
-
-    /// Splat each dab's colour into the per-stroke colour buffer, **source-over** (recent dab wins on
-    /// overlap, carrying its colour — wet_edges `stampColor`), straight-alpha RGBA. Same soft-disc
-    /// feather as the coverage, so the deposited colour and the silhouette agree.
-    pub(super) fn accumulate_wet_color(&mut self, dabs: &[Dab]) {
-        let (fw, fh) = self.source_size;
-        let (fw, fh) = (fw as usize, fh as usize);
-        if fw == 0 || fh == 0 {
-            return;
-        }
-        if self.paint.stroke_color.len() != fw * fh * 4 {
-            self.paint.stroke_color = vec![0u8; fw * fh * 4];
-        }
-        // Wet Mix (`docs/Painter/07` §4): the deposited colour is the mixer's per-dab blend of the
-        // brush colour with the surface it picked up (Charge/Pull). Off (default `wet_charge = 1`) ⇒
-        // each dab's own colour (byte-identical). Computed BEFORE borrowing `stroke_color`.
-        let mixed = self.wet_mix_dab_colors(dabs);
-        // Selection + protection + alpha-lock gates — twin of the coverage splat (see [`splat_keep`]).
-        let (sel, prot, alock) = self.wet_splat_gates();
-        let gated = sel.is_some() || prot.is_some() || alock.is_some();
-        // Shape "Automatic" OFF: REPLAY the coverage pass's rng stream from the same seed (identical
-        // per-dab Random bases ⇒ colour and coverage agree pixel-wise), then ADVANCE the stroke
-        // stream here — net one advance per batch, like every other stamp route.
-        let stamp = self.wet_shape_stamp();
-        let groups = self.paint.dab_groups.clone(); // same group map ⇒ the two passes stay in lock-step
-        let mut rng = super::tiling::DabRng::new(self.paint.tex_rng);
-        let shape_img_owned = self.paint.shape_image.as_ref().map(|i| i.as_mask());
-        let canvas = [fw as f32, fh as f32];
-        // O `Pigment` mistura a cor nova com a tinta que a SESSÃO já tinha ([`super::watercolor_mistura`]).
-        let mistura = self.paint.brush.effective_pigment_mix();
-        let planos = &mut self.paint.wet_mistura;
-        if mistura > 0.0 {
-            planos.garante(fw * fh);
-        }
-        let buf = &mut self.paint.stroke_color;
-        for (di, (d, (dcol, prio, depl))) in dabs.iter().zip(&mixed).enumerate() {
-            // Frame draw BEFORE any skip — mirror of the coverage pass (stream sync; see there).
-            let rng = rng.enter(&groups, di);
-            let frame = stamp.as_ref().map(|s| s.dab_frame(d, &mut *rng, canvas));
-            let r = d.radius_px;
-            let peak = WASH_DEPOSIT_PEAK; // NUNCA `d.coverage` — ver a const
-            if r <= 0.0 || peak <= 0.0 {
-                continue;
-            }
-            // Deposit PRIORITY (Wet Mix): a high-pickup dab writes at full alpha; a low-pickup one
-            // (leaving a pool over bare ground) barely writes, so it can't overwrite the stronger
-            // picked-up colour — the pool's exit edge stays as coloured as its entry (Enio 2026-07-07).
-            // `prio == 1` when the mixer is off ⇒ byte-identical source-over.
-            let prio = prio.clamp(0.0, 1.0);
-            let depl = depl.clamp(0.0, 1.0);
-            let col = [
-                (dcol[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
-                (dcol[1].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
-                (dcol[2].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
-            ];
-            let inv_r = 1.0 / r;
-            let (cx, cy) = (d.center[0], d.center[1]);
-            let x0 = (cx - r).floor().max(0.0) as usize;
-            let y0 = (cy - r).floor().max(0.0) as usize;
-            let x1 = ((cx + r).ceil() as i64).clamp(0, fw as i64) as usize;
-            let y1 = ((cy + r).ceil() as i64).clamp(0, fh as i64) as usize;
-            for y in y0..y1 {
-                let dy = (y as f32 + 0.5) - cy;
-                let base = y * fw;
-                for x in x0..x1 {
-                    let dx = (x as f32 + 0.5) - cx;
-                    let dn = (dx * dx + dy * dy).sqrt() * inv_r;
-                    if dn >= 1.0 {
-                        continue;
-                    }
-                    let keep = if gated {
-                        splat_keep(
-                            sel.as_deref().map(Vec::as_slice),
-                            prot.as_deref().map(Vec::as_slice),
-                            alock.as_deref().map(Vec::as_slice),
-                            base + x,
-                        )
-                    } else {
-                        1.0
-                    };
-                    // source alpha = silhouette weight × deposit priority × the paint gates —
-                    // the SAME weight as the coverage splat (manual Shape stamp or the feather),
-                    // so the deposited colour and the silhouette always agree.
-                    let wgt = match (&stamp, &frame) {
-                        (Some(st), Some((fp, basis))) => {
-                            st.sample(
-                                WetShapeStamp::env_t(*fp, dn, dx, dy, inv_r),
-                                basis.as_ref(),
-                                shape_img_owned.as_ref(),
-                                [x, y],
-                                d.center,
-                                r,
-                            )
-                            .0
-                        }
-                        _ => feather(dn),
-                    };
-                    let idx = (base + x) * 4;
-                    if mistura > 0.0 {
-                        // ⚠️ O `Pigment` deposita a tinta que a brocha LARGA (`depl`), SEM a prioridade
-                        // do mixer (`prio = pickup × carga`): sobre tinta molhada da própria sessão o
-                        // mixer não apanha nada (ele lê a base CONGELADA), a prioridade é zero, e com
-                        // ela no peso o `Charge < 1` não gravava tinta nenhuma — a mistura ficava sem
-                        // parceiro e o botão virava inerte AO BIT (report do dono, 2026-09-29; doc 44 §2).
-                        let a = peak * wgt * depl * keep;
-                        if a > 0.0 {
-                            super::watercolor_mistura::deposita(buf, planos, idx, col, a, mistura);
-                        }
-                        continue;
-                    }
-                    let a = peak * wgt * prio * depl * keep;
-                    if a <= 0.0 {
-                        continue;
-                    }
-                    let da = f32::from(buf[idx + 3]) / 255.0;
-                    let na = a + da * (1.0 - a); // straight-alpha over
-                    if na <= 0.0 {
-                        continue;
-                    }
-                    for c in 0..3 {
-                        let dc = f32::from(buf[idx + c]) / 255.0;
-                        let sc = f32::from(col[c]) / 255.0;
-                        let out = (sc * a + dc * da * (1.0 - a)) / na;
-                        buf[idx + c] = (out * 255.0 + 0.5).clamp(0.0, 255.0) as u8;
-                    }
-                    buf[idx + 3] = (na * 255.0 + 0.5).clamp(0.0, 255.0) as u8;
-                }
-            }
-        }
-        // Manual stamp: advance the stroke's texture-rng stream (once per batch — the coverage pass
-        // replayed the same seed without writing back). Automatic ⇒ `rng` untouched, write-back is a
-        // no-op (the historical stream stays byte-identical).
-        self.paint.tex_rng = rng.finish();
     }
 }

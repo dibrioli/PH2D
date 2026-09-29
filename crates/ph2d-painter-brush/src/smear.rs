@@ -44,6 +44,90 @@ pub fn smear_dab(
     strength: f32,
     wrap: [bool; 2],
 ) -> Option<DirtyRect> {
+    smear_com(
+        buf,
+        width,
+        height,
+        from,
+        to,
+        spec,
+        strength,
+        wrap,
+        mistura_recta,
+    )
+}
+
+/// O mesmo arrasto de [`smear_dab`] — a MESMA lei de levantar e de pesar — sobre um plano cujo
+/// transparente NÃO é tinta: a mistura faz-se em alfa **pré-multiplicado**.
+///
+/// ⚠️ A interpolação recta do [`smear_dab`] é exacta sobre uma tela opaca e ERRADA sobre um plano
+/// que é quase todo transparente (o da cor molhada da aquarela, `stroke_color`): o transparente
+/// guarda `0,0,0,0`, e `lerp(azul, 0,0,0,0, ½)` dá um azul a METADE da luz com metade do alfa — uma
+/// orla ESCURA onde o papel foi arrastado sobre a tinta. Pré-multiplicado, o mesmo arrasto dá o azul
+/// com metade do alfa, que é o que «papel arrastado sobre tinta» quer dizer.
+///
+/// Sobre um plano opaco (`α = 255` nos dois lados) as duas misturas dão o mesmo byte.
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+pub fn smear_dab_premultiplicado(
+    buf: &mut [u8],
+    width: u32,
+    height: u32,
+    from: [f32; 2],
+    to: [f32; 2],
+    spec: &BrushSpec,
+    strength: f32,
+    wrap: [bool; 2],
+) -> Option<DirtyRect> {
+    smear_com(
+        buf,
+        width,
+        height,
+        from,
+        to,
+        spec,
+        strength,
+        wrap,
+        mistura_premultiplicada,
+    )
+}
+
+/// `dest = lerp(dest, src, w)` canal a canal, alfa incluído — o arrasto de sempre, byte a byte.
+fn mistura_recta(dst: &mut [u8], src: [u8; 4], w: f32) {
+    for c in 0..4 {
+        let d = dst[c] as f32;
+        let s = src[c] as f32;
+        dst[c] = (d + (s - d) * w).round().clamp(0.0, 255.0) as u8;
+    }
+}
+
+/// A mesma interpolação em alfa pré-multiplicado, de volta a recto.
+fn mistura_premultiplicada(dst: &mut [u8], src: [u8; 4], w: f32) {
+    let da = f32::from(dst[3]) / 255.0;
+    let sa = f32::from(src[3]) / 255.0;
+    let na = da + (sa - da) * w;
+    if na > 0.0 {
+        for c in 0..3 {
+            let pd = f32::from(dst[c]) * da;
+            let ps = f32::from(src[c]) * sa;
+            dst[c] = ((pd + (ps - pd) * w) / na).round().clamp(0.0, 255.0) as u8;
+        }
+    }
+    dst[3] = (na * 255.0).round().clamp(0.0, 255.0) as u8;
+}
+
+#[allow(clippy::too_many_arguments)]
+fn smear_com(
+    buf: &mut [u8],
+    width: u32,
+    height: u32,
+    from: [f32; 2],
+    to: [f32; 2],
+    spec: &BrushSpec,
+    strength: f32,
+    wrap: [bool; 2],
+    mistura: fn(&mut [u8], [u8; 4], f32),
+) -> Option<DirtyRect> {
     let radius = spec.clamped_radius();
     let strength = strength.clamp(0.0, 1.0);
     if strength <= 0.0 || radius <= 0.0 {
@@ -117,11 +201,7 @@ pub fn smear_dab(
             }
             let src = lifted[j * bw + i];
             let di = ((y * fw + x) * 4) as usize;
-            for c in 0..4 {
-                let d = buf[di + c] as f32;
-                let s = src[c] as f32;
-                buf[di + c] = (d + (s - d) * w).round().clamp(0.0, 255.0) as u8;
-            }
+            mistura(&mut buf[di..di + 4], src, w);
         }
     }
 
@@ -351,6 +431,74 @@ mod tests {
         assert!(
             buf.as_chunks::<4>().0.iter().all(|p| p[3] == 255),
             "a lift past the TOP edge reads the edge row, never transparent"
+        );
+    }
+
+    /// A mistura pré-multiplicada arrasta o PAPEL sem escurecer a tinta, e sobre um plano opaco é a
+    /// recta byte a byte (o arrasto seco continua o mesmo).
+    #[test]
+    fn premultiplied_smear_drags_transparency_without_darkening() {
+        let (w, h) = (16, 16);
+        let spec = BrushSpec {
+            radius_px: 5.0,
+            ..Default::default()
+        };
+        const AZUL: [u8; 4] = [60, 110, 240, 255];
+        // Transparente à esquerda (x < 8), azul opaco à direita; o dab anda para a direita.
+        let plano = || {
+            let mut b = canvas(w, h);
+            for y in 0..h {
+                for x in 8..w {
+                    set(&mut b, w, x, y, AZUL);
+                }
+            }
+            b
+        };
+        let (mut recto, mut pre) = (plano(), plano());
+        let de = [7.0, 8.0];
+        let ate = [10.0, 8.0];
+        let _ = smear_dab(&mut recto, w, h, de, ate, &spec, 1.0, [false, false]);
+        let _ = smear_dab_premultiplicado(&mut pre, w, h, de, ate, &spec, 1.0, [false, false]);
+        let mut arrastados = 0;
+        for y in 0..h {
+            for x in 8..w {
+                let p = px(&pre, w, x, y);
+                if p[3] < 255 && p[3] > 0 {
+                    arrastados += 1;
+                    assert_eq!(&p[..3], &AZUL[..3], "({x},{y}) escureceu: {p:?}");
+                }
+            }
+        }
+        assert!(
+            arrastados > 0,
+            "controlo: o arrasto levou papel para cima do azul"
+        );
+        // CONTROLO: a recta, sobre o mesmo plano, escurece — é o defeito que esta porta existe para
+        // não ter.
+        assert!(
+            (8..w).any(|x| {
+                let p = px(&recto, w, x, 8);
+                p[3] < 255 && p[3] > 0 && p[2] < AZUL[2]
+            }),
+            "controlo: a mistura recta escurecia o azul arrastado"
+        );
+        // Opaco dos dois lados: as duas misturas dão o mesmo byte.
+        let opaco = || {
+            let mut b = canvas(w, h);
+            for y in 0..h {
+                for x in 0..w {
+                    let v = (x * 16) as u8;
+                    set(&mut b, w, x, y, [v, 255 - v, 90, 255]);
+                }
+            }
+            b
+        };
+        let (mut a, mut b) = (opaco(), opaco());
+        let _ = smear_dab(&mut a, w, h, de, ate, &spec, 0.7, [false, false]);
+        let _ = smear_dab_premultiplicado(&mut b, w, h, de, ate, &spec, 0.7, [false, false]);
+        assert!(
+            a == b,
+            "sobre um plano opaco as duas misturas são o mesmo arrasto"
         );
     }
 }

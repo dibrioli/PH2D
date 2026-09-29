@@ -167,6 +167,7 @@ mod shape_per_layer_color;
 mod shape_silhouette;
 mod stroke_and_session;
 mod texture_and_tiling;
+mod watercolor_arrasto_molhado; // o Smudge arrasta a tinta MOLHADA da sessão (2026-09-29)
 mod watercolor_look;
 mod watercolor_mistura_molhada; // o Pigment mistura molhado sobre molhado, e nunca com o papel (2026-09-24)
 mod watercolor_parity;

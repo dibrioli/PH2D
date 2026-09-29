@@ -118,29 +118,64 @@ pub(super) fn alvo_sobre_seco(
     ]
 }
 
-/// Os dois planos da mistura molhada (RGBA, `w*h*4` cada), vivos só enquanto o `Pigment` está ligado.
-/// `proprio` recomeça a zero em cada traço; `antes` é escrito no primeiro toque, logo nunca precisa
-/// de ser limpo.
+/// Os dois planos da mistura molhada (RGBA, `w*h*4` cada), vivos só enquanto o `Pigment` (ou o
+/// Smudge sobre tinta molhada) está ligado. `proprio` recomeça a zero em cada traço; `antes` é escrito
+/// na CAPTURA de cada texel, logo nunca precisa de ser limpo.
 #[derive(Default)]
 pub(super) struct PlanosDaMistura {
     pub(super) antes: Vec<u8>,
     pub(super) proprio: Vec<u8>,
+    /// **O `antes` deste texel já é deste traço?** Recomeça a `false` em cada traço.
+    ///
+    /// ⚠️ Era o alfa do `proprio` (`== 0` ⇒ primeiro toque), e com o Smudge isso deixou de bastar: o
+    /// arrasto escreve no `antes` de texels onde este traço ainda não depositou nada (a frente do dab,
+    /// e a orla que o `feather` deixa a zero), e o primeiro depósito a seguir voltava a fotografar o
+    /// plano da sessão POR CIMA do arrasto — a tinta arrastada desaparecia exactamente onde chegava.
+    /// Sem Smudge a captura só acontece no depósito, logo a flag e o alfa marcam os mesmos texels.
+    pub(super) capturado: Vec<bool>,
+    /// **Há tinta MOLHADA de traços anteriores nesta sessão?** Escrito no pen-down (é o
+    /// `wet_session_continues` de lá). É a porta do Smudge sobre tinta molhada
+    /// ([`super::watercolor_smudge`]): o 1.º traço de uma sessão não tem o que arrastar (o `antes`
+    /// dele é papel), e sem ela passava na mesma pela rota de depósito da mistura, que ignora a
+    /// prioridade do mixer — com o `Charge < 1` esse traço mudava só por o Smudge estar ligado.
+    pub(super) ha_tinta_da_sessao: bool,
+    /// A cadeia do Smudge sobre a COR da sessão: o centro do último dab ORIGINAL (nunca uma cópia de
+    /// Tiling), recomeçada a cada traço.
+    pub(super) arrasto: Option<[f32; 2]>,
 }
 
 impl PlanosDaMistura {
     /// Garante o tamanho `n` texels; devolve `true` se os planos acabaram de nascer (a zero).
     pub(super) fn garante(&mut self, n: usize) -> bool {
-        if self.proprio.len() == n * 4 && self.antes.len() == n * 4 {
+        if self.proprio.len() == n * 4 && self.antes.len() == n * 4 && self.capturado.len() == n {
             return false;
         }
         self.antes = vec![0; n * 4];
         self.proprio = vec![0; n * 4];
+        self.capturado = vec![false; n];
         true
     }
 
-    /// Um traço novo começa: nada deste traço foi depositado ainda.
+    /// Um traço novo começa: nada deste traço foi depositado ainda, e a cadeia do arrasto recomeça.
     pub(super) fn novo_traco(&mut self) {
         self.proprio.iter_mut().for_each(|b| *b = 0);
+        self.capturado.iter_mut().for_each(|c| *c = false);
+        self.arrasto = None;
+    }
+
+    /// Fotografa no `antes` o plano da sessão `buf` em todo texel do rectângulo `[x0,x1)×[y0,y1)`
+    /// (linhas de `fw` texels) que este traço ainda não capturou. O Smudge chama-a ANTES de arrastar o
+    /// `antes` ([`super::watercolor_mistura_arrasto`]).
+    pub(super) fn captura(&mut self, buf: &[u8], fw: usize, [x0, y0, x1, y1]: [usize; 4]) {
+        for y in y0..y1 {
+            for x in x0..x1 {
+                let i = y * fw + x;
+                if !self.capturado[i] {
+                    self.capturado[i] = true;
+                    self.antes[i * 4..i * 4 + 4].copy_from_slice(&buf[i * 4..i * 4 + 4]);
+                }
+            }
+        }
     }
 }
 
@@ -172,8 +207,9 @@ pub(super) fn deposita(
     mistura: f32,
 ) {
     let px = idx..idx + 4;
-    if planos.proprio[idx + 3] == 0 {
+    if !planos.capturado[idx / 4] {
         // O primeiro toque DESTE traço: o que o plano tem agora é a tinta das pinceladas anteriores.
+        planos.capturado[idx / 4] = true;
         planos.antes[px.clone()].copy_from_slice(&buf[px.clone()]);
     }
     over(&mut planos.proprio[px.clone()], col, a);

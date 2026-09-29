@@ -9,8 +9,34 @@
 use super::*;
 
 impl PainterTool {
+    /// **O Smudge sobre a tinta MOLHADA da sessão** — `Some(força)` quando este traço arrasta a COR
+    /// que os traços anteriores da sessão deixaram molhada (report do dono, 2026-09-29: *«o Smudge não
+    /// afeta a mancha quando a tinta está molhada»*; medido: `0` texels mudados, doc 44 §3).
+    ///
+    /// O [`Self::smear_wet_base`] arrasta a tinta SECA de antes da sessão, e a molhada vive noutro
+    /// plano — a cor depositada da sessão (`stroke_color`), que ninguém arrastava. Com isto, a cada
+    /// dab, antes do depósito dele, a tinta que a sessão tinha ANTES deste traço (o `antes` da
+    /// mistura) é arrastada do dab anterior para este pela MESMA lei de levantar e pesar
+    /// ([`ph2d_painter_brush::smear_dab_premultiplicado`] — em pré-multiplicado, porque o papel
+    /// daquele plano é `0,0,0,0` e em alfa recto o arrasto dele ESCURECIA a tinta), e a força entra
+    /// também como peso da MISTURA do depósito ([`super::watercolor_mistura::deposita`]): sem ela, o
+    /// `over` da cor nova tapava a tinta arrastada no próprio sítio onde ela chegava.
+    ///
+    /// ⛔ **Nunca o plano da cor em si:** o depósito recompõe cada texel a partir do `antes` e do
+    /// `proprio`, e um arrasto escrito lá era deitado fora no mesmo dab (medido: a fila saía às
+    /// riscas, com texels ao bit o amarelo entre os dabs).
+    ///
+    /// ⚠️ **Só com tinta de traços ANTERIORES** (`ha_tinta_da_sessao`): o 1.º traço de uma sessão sai
+    /// AO BIT o de antes — ali o seco já é arrastado pelo `smear_wet_base` e não há molhado alheio.
+    pub(super) fn arrasto_da_sessao(&self) -> Option<f32> {
+        (self.paint.wet_mistura.ha_tinta_da_sessao && self.wet_smudge_live()).then(|| {
+            self.paint.brush.wet_smudge.clamp(0.0, 1.0) * super::watercolor_accum::WASH_DEPOSIT_PEAK
+        })
+    }
+
     /// **Uma porta** para *«o Smudge arrasta neste traço?»* — lida pelo arrasto da BASE
-    /// (`stamp_route`) e pelo dos NÍVEIS do traço vivo (`accumulate_wet_coverage`). Só os métodos
+    /// (`stamp_route`) e pelo dos NÍVEIS do traço vivo (`accumulate_wet_coverage`) e pelo da COR
+    /// molhada ([`Self::arrasto_da_sessao`]). Só os métodos
     /// cumulativos: os previews que re-carimbam (Drag Dot/Anchored/Line) re-arrastariam a cada quadro.
     pub(super) fn wet_smudge_live(&self) -> bool {
         self.paint.brush.wet_smudge > 0.0

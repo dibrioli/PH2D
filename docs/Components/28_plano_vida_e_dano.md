@@ -647,3 +647,37 @@ amostras de cor e a tabela dos inimigos como `struct`) · fmt · censos da árvo
 - os números não têm **acumulação** (dez golpes de uma rajada são dez números, não um que soma) —
   decisão de produto por tomar;
 - a bala **só-sensor** (defeito G) continua aberta.
+
+## §13 — ✅ *«Não vejo a bala»* (smoke da W5, cena `=2`): a SIMULAÇÃO estava certa, a CENA não
+
+- **Medido antes de curar, em três camadas.** (1) A simulação, pelas portas do produto (fábrica +
+  `apply_births` + ponte + `draws_this_frame`): a cópia da bala nasce, voa e **desenha** — nas duas
+  cenas. (2) A foto com tiro automático (um temporizador provisório a publicar o sinal do tiro):
+  as balas **estão lá**, amarelas — uma junto ao herói, outra depois do alvo — e as do meio **debaixo
+  da pilha de avisos `Signal: …`**. (3) A causa: cada sinal vira um aviso no topo e ao centro do ecrã
+  (`fase_signal_outbox`), um tiro e um golpe são DOIS, a coluna cresce para baixo, e a linha de tiro
+  atravessava o ecrã na horizontal por baixo dela. ⚠️ A mesma lei que a cena do placar do #20 já pagou.
+- ⛔ **Não é o defeito G** (a bala só-sensor): esse continua aberto e é outro assunto.
+- **A cura é a CENA**, com a coluna MEDIDA na foto (`x ∈ [−1,77, +1,79]` m, em
+  `vida_smoke::COLUNA_DOS_AVISOS_X`) e ERRO DE COMPILAÇÃO a guardá-la:
+  - `=2` — a fila dos três inimigos passa para CIMA, à esquerda da coluna, e o herói atira para CIMA
+    (nasce virado para a fila); o espinho fica à esquerda do herói. A bala desta cena corre a
+    `5 m/s` (a da `=1` a `9`): o tiro vertical é curto, e a `9` ela vivia `11` tiques à vista antes
+    do golpe contra `20` agora.
+  - `=1` — tinha a MESMA geometria (e o herói em `x = −6`, cortado pela borda esquerda, e o placar
+    em `x = 0`, exactamente debaixo dos avisos): a galeria passa para a direita da coluna e o placar
+    para o canto de cima à esquerda.
+- **Gates:** `a_bala_sobe_ate_ao_leve_fora_da_coluna_dos_avisos` (`=2`) e
+  `a_bala_voa_fora_da_coluna_dos_avisos` (`=1`), sobre um arnês partilhado
+  (`smoke_copia::voo_da_bala`) que conta os tiques à vista **até ao golpe** — sem o dreno das mortes
+  (que é da shell) a bala gasta fica na cena, e a 1.ª redacção contava `120` tiques nas duas
+  rapidezes. Mutações: o herói sem o rumo para cima · a bala a `9 m/s` · o herói da `=1` em `x = −6`
+  — as três sangram; o controlo (`× 1,0`) fica verde.
+- ⏳ **Fica aberto e NÃO é desta linha:** a coluna dos avisos em cima do jogo é uma FAMÍLIA (o placar
+  do #20, as duas cenas da vida) — toda cena de jogo tem de a evitar à mão. A cura de produto
+  (juntar avisos repetidos, ou tirá-los do centro do canvas enquanto o jogo corre) é da linha do
+  runtime/UI e decisão do dono.
+- ⚠️ **E a investigação achou um defeito de infra-estrutura:** a trava da placa estava presa há
+  `21` minutos pelo servidor do `sccache`, que a HERDOU de um comando `PH2D_GPU=1` e sobreviveu-lhe
+  (o `.dono` vazio, três linhas à espera). Cura em `scripts/ph2d-run.sh` (o servidor arranca antes
+  da trava) e memória `feedback_a_daemon_launched_under_the_gpu_lock_holds_it_forever`.

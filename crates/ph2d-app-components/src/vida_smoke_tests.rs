@@ -437,3 +437,28 @@ fn o_placar_mostra_a_vida_do_roxo() {
         "o CONTROLO: o placar não tem vida própria — é a forma do HUD"
     );
 }
+
+/// ⭐⭐⭐ **A bala vai do herói ao alvo de cima sem passar por baixo da coluna dos avisos** — a mesma
+/// régua da cena do impacto ([`crate::smoke_copia::voo_da_bala`]).
+///
+/// ⛔ **Nasceu do smoke da cena `=2`** (*«não vejo a bala»*): esta cena tinha a MESMA geometria — o
+/// herói em `x = −6` (cortado pela borda esquerda) a atirar na horizontal por baixo dos avisos, e o
+/// placar no topo, ao centro, exactamente onde eles se empilham.
+///
+/// **Mutações que devem sangrar:** a coluna de alvos de volta a `x = 4` com o herói em `x = −6`.
+#[test]
+fn a_bala_voa_fora_da_coluna_dos_avisos() {
+    let mut sim = mundo();
+    let voo = crate::smoke_copia::voo_da_bala(&mut sim, COMECAR, ALVOS[0].0);
+    assert!(voo.acertou, "a bala não chegou ao alvo de cima: {voo:?}");
+    assert!(
+        voo.x[0] - 0.25 >= COLUNA_DOS_AVISOS_X[1],
+        "a bala passou por baixo da coluna dos avisos: {voo:?}"
+    );
+    // ⚠️ À vista durante o voo: medido `17` tiques a `9 m/s` (do herói ao alvo de cima).
+    assert!(
+        voo.vista >= 10,
+        "a bala esteve à vista só {} tiques",
+        voo.vista
+    );
+}

@@ -37,6 +37,9 @@ fn inimigo(
     )
 }
 
+/// Onde o alvo da corrida de lei é posto — longe da bala, numa recta (a LEI não sabe da fila).
+const ALVO_X: f32 = 3.0;
+
 /// **Quanto um tiro da bala DA CENA empurra a cópia de `nome`** — a distância que ela percorre
 /// depois do golpe, até assentar.
 fn quanto_voa(nome: &str) -> f32 {
@@ -61,7 +64,7 @@ fn quanto_voa(nome: &str) -> f32 {
             alvo.2,
             alvo.3,
             alvo.4,
-            Transform::from_translation(Vec2::new(X_INIMIGOS, 0.0)),
+            Transform::from_translation(Vec2::new(ALVO_X, 0.0)),
         ))
         .id();
     sim.world_mut().spawn((
@@ -75,7 +78,7 @@ fn quanto_voa(nome: &str) -> f32 {
     for t in 0..=240 {
         ponte.dispatch(&mut sim, true, t);
     }
-    sim.world().get::<Transform>(a).unwrap().translation.x - X_INIMIGOS
+    sim.world().get::<Transform>(a).unwrap().translation.x - ALVO_X
 }
 
 /// ⭐⭐⭐ **O leve VOA, o pesado mal se mexe, o CONTROLO não sai do sítio** — o passo (2)–(4) do
@@ -166,23 +169,50 @@ fn a_bala_o_espinho_e_o_heroi_tem_o_impacto() {
 /// cena da arma) — a coluna, a barra de cima, o herói e o espinho.
 #[test]
 fn a_cena_cabe_na_banda_visivel() {
-    for Inimigo { y, .. } in INIMIGOS {
-        assert!(
-            y - LADO / 2.0 >= -1.19,
-            "um inimigo cai por baixo da banda: {y}"
-        );
-        assert!(
-            y + 0.6 + 0.05 <= 4.09,
-            "a barra de um inimigo sai por cima: {y}"
-        );
-    }
-    for y in [HEROI_XY[1], ESPINHO_XY[1]] {
-        assert!(
-            (-1.19 + 0.4..=4.09 - 0.4).contains(&y),
-            "fora da banda: {y}"
-        );
-    }
+    // ⚠️ O LEVE é empurrado para CIMA — é a posição DEPOIS do golpe que tem de caber, com a barra.
+    let voo = quanto_voa(INIMIGOS[0].nome);
+    assert!(
+        Y_INIMIGOS + voo + 0.6 + 0.05 <= 4.09,
+        "o LEVE voa para fora da banda por cima: {} + {voo}",
+        Y_INIMIGOS
+    );
+    // (O herói virado para cima e o espinho a caberem por BAIXO são ERRO DE COMPILAÇÃO, ao lado
+    // das constantes: duas constantes comparadas não são um teste.)
     // ⚠️ E o `x` — a metade que a 1.ª redacção deste gate não media (a foto apanhou o herói e o
     // espinho cortados pela borda esquerda) — é ERRO DE COMPILAÇÃO ao lado da `BORDA_ESQUERDA`:
     // duas constantes comparadas não são um teste.
+}
+
+/// ⭐⭐⭐ **A bala SOBE do herói ao LEVE sem passar por baixo da coluna dos avisos** — a costura
+/// inteira do passo (2), pelas portas do PRODUTO: a fábrica do herói (`tick_factories` +
+/// `apply_births`), o rumo com que ele nasce, a ponte da física e a porta de desenho
+/// (`draws_this_frame`).
+///
+/// ⛔ **Nasceu do smoke do dono** (*«não vejo a bala»*): a 1.ª redacção atirava na horizontal,
+/// através da coluna onde os avisos de sinal se empilham — a simulação estava certa e a bala voava
+/// escondida. Este gate mede o que a foto mostrou: por onde a bala passa, e que ela desenha lá.
+///
+/// **Mutações que devem sangrar:** o herói a nascer sem o [`HEROI_RUMO`] (a bala vai para a
+/// direita, para a coluna) · a bala sem a [`RAPIDEZ_DA_BALA`] (à vista tiques a menos).
+#[test]
+fn a_bala_sobe_ate_ao_leve_fora_da_coluna_dos_avisos() {
+    let mut sim = mundo();
+    let voo = crate::smoke_copia::voo_da_bala(&mut sim, COMECAR, INIMIGOS[0].nome);
+    assert!(voo.acertou, "a bala não chegou ao LEVE: {voo:?}");
+    // ⛔ Nenhum instante debaixo da coluna dos avisos (a bala tem meio comprimento `0,25`).
+    assert!(
+        voo.x[1] + 0.25 <= COLUNA_DOS_AVISOS,
+        "a bala passou por baixo da coluna dos avisos: {voo:?}"
+    );
+    assert!(
+        voo.y[1] > HEROI_XY[1] + 0.5,
+        "a bala não subiu — o herói não nasceu virado para a fila: {voo:?}"
+    );
+    // ⚠️ **A barra sai do VALE medido**: com a [`RAPIDEZ_DA_BALA`] a bala está à vista `20` tiques
+    // antes do golpe, e com a rapidez da `=1` (`9 m/s`) estava `11` — o voo que o dono não via.
+    assert!(
+        voo.vista >= 16,
+        "a bala esteve à vista só {} tiques antes do golpe",
+        voo.vista
+    );
 }

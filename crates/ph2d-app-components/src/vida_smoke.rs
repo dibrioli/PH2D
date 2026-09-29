@@ -67,7 +67,7 @@ pub const ACCAO: &str = crate::dano_smoke::ACCAO;
 /// O nome da tecla, para o roteiro.
 pub const TECLA_NOME: &str = crate::dano_smoke::TECLA_NOME;
 /// O sinal do gatilho.
-const SINAL: &str = "tiro-vida";
+pub(crate) const SINAL: &str = "tiro-vida";
 /// O sinal que arranca as quatro fábricas.
 const COMECAR: &str = "comecar-vida";
 /// O que um alvo grita ao levar dano, e ao morrer.
@@ -162,8 +162,23 @@ pub const ALVOS: [(&str, f32, &str, [f32; 4], f32); 4] = [
         -0.5,
     ),
 ];
-/// O `x` da coluna de alvos.
-pub const X_ALVOS: f32 = 4.0;
+/// O `x` da coluna de alvos — à DIREITA da coluna dos avisos, junto da borda direita.
+pub const X_ALVOS: f32 = 5.6;
+/// ⛔⛔ **As duas bordas da COLUNA DOS AVISOS de sinal** (em metros de mundo), MEDIDAS na foto da cena
+/// do impacto (`1930×1040`: os avisos ocupam os px `785`–`1145`; régua `−600` no px `358` e `−500`
+/// no `459`). Cada sinal vira um aviso no topo e ao centro do ecrã (`fase_signal_outbox`) e a coluna
+/// CRESCE para baixo a cada um — um tiro e um golpe são dois. ⇒ nenhuma peça que o roteiro manda
+/// ver pode morar entre as duas (smoke do dono, 25/09: *«não vejo a bala»*: ela voava por baixo).
+pub const COLUNA_DOS_AVISOS_X: [f32; 2] = [-1.77, 1.79];
+/// A borda DIREITA do canvas, medida na mesma foto (o canvas acaba no px `1622`).
+pub const BORDA_DIREITA: f32 = 6.51;
+/// Onde o herói nasce — à DIREITA da coluna dos avisos, à altura do alvo de cima.
+pub const HEROI_X: f32 = 2.45;
+// ⚠️ A galeria cabe entre a coluna dos avisos e a borda direita, e o placar entre a borda esquerda e
+// a coluna — ERRO DE COMPILAÇÃO, e não um teste. (O herói tem meia largura `0,45`.)
+const _: () = assert!(HEROI_X - 0.45 >= COLUNA_DOS_AVISOS_X[1] + 0.1);
+const _: () = assert!(X_ALVOS + LADO / 2.0 <= BORDA_DIREITA - 0.2);
+const _: () = assert!(HEROI_X + 0.45 + 1.0 <= X_ALVOS - LADO / 2.0);
 /// O lado de um alvo. ⚠️ Com `1,3` m entre filas, a janela de mira do herói é `LADO/2 + 0,1` =
 /// `0,6` m para cada lado — o dobro do raio do herói.
 pub const LADO: f32 = 1.0;
@@ -184,13 +199,17 @@ pub const PLACAR: &str = "Placar";
 /// (`ph2d_unique_name`), e o molde já tem o nome sem sufixo. ⇒ o placar nomeia a CÓPIA, e um gate
 /// prova que a cópia que a fábrica faz é esta (senão o placar diria «ninguém com esse nome»).
 pub const ALVO_DO_PLACAR: &str = "Alvo de 3 tiros (1)";
-/// Onde o placar mora — dentro da banda que a régua deixa visível (topo `+4,09`), longe da coluna.
-pub const PLACAR_XY: [f32; 2] = [0.0, 3.8];
+/// Onde o placar mora — no canto de cima À ESQUERDA, fora da coluna dos avisos (a 1.ª redacção
+/// punha-o em `x = 0`, que é exactamente onde os avisos de sinal se empilham).
+pub const PLACAR_XY: [f32; 2] = [-3.95, 3.8];
 /// O tamanho do placar — a barra de um HUD é larga e grossa, de propósito.
 pub const PLACAR_WH: [f32; 2] = [4.0, 0.3];
 // ⚠️ **O placar cabe na banda visível** (topo `+4,09`, medido na foto da cena da arma) — ERRO DE
 // COMPILAÇÃO e não um gate: um `assert!` sobre constantes é dobrado pelo compilador.
 const _: () = assert!(PLACAR_XY[1] + PLACAR_WH[1] / 2.0 <= 4.09);
+const _: () = assert!(PLACAR_XY[0] + PLACAR_WH[0] / 2.0 <= COLUNA_DOS_AVISOS_X[0] - 0.1);
+const _: () =
+    assert!(PLACAR_XY[0] - PLACAR_WH[0] / 2.0 >= crate::vida_impacto_smoke::BORDA_ESQUERDA + 0.2);
 
 /// **A receita que esta fábrica ainda vai apontar** — o marcador de MONTAGEM (o molde da cena do
 /// golpe): a identidade só é atribuída depois.
@@ -381,7 +400,7 @@ fn cena_um(world: &mut World) -> Entity {
     ));
 
     // ⚠️ Nasce À ALTURA do alvo de cima — o 1.º tiro não pede pontaria.
-    heroi(world, [-6.0, ALVOS[0].4], HEROI_RGBA, bala)
+    heroi(world, [HEROI_X, ALVOS[0].4], HEROI_RGBA, bala)
 }
 
 /// ⭐ **O HERÓI**: anda com as setas, roda para onde anda, e a arma aponta para onde ele aponta —

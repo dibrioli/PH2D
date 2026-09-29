@@ -138,6 +138,9 @@ pub fn paint_hero_screen(
     // ⭐ **O quadro começa aqui para o BALÃO** — ⚠️ ANTES de qualquer pintor, senão o que ele
     // recolheu já foi apagado. Ver [`crate::text_elide::balao::novo_quadro`].
     crate::text_elide::balao::novo_quadro();
+    // ⭐ **E para a ROLAGEM** (D9): as alturas e os donos de barra que este quadro publicar são os
+    // únicos que sobrevivem a ele — ver [`crate::interaction::WidgetStore::end_scroll_frame`].
+    hero.store.begin_scroll_frame();
     // Publish the user-picked radius scale to the thread-local read
     // by `paint::fill_rounded_rect` / `stroke_rounded_rect`. Set
     // every frame so it stays in sync with the topbar's radius menu.
@@ -685,4 +688,5 @@ pub fn paint_hero_screen(
         text_system,
         hero.theme,
     );
+    hero.store.end_scroll_frame();
 }

@@ -38,6 +38,7 @@ mod cada_motor_da_fronteira_resolve_as_chaves_dele;
 mod convert_to_curves_asks_one_question;
 mod delete_drops_the_shape_in_hand;
 mod deleting_a_piece_of_a_copy_goes_through_the_recipe_door;
+mod diag_onde_acaba_o_corpo_das_colunas;
 mod dragging_inside_a_flow_reorders_it;
 mod every_asset_browser_control_answers;
 mod every_demo_scene_ends_in_an_output_node;

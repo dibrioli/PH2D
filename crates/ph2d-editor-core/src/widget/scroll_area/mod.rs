@@ -148,6 +148,7 @@ pub fn close_parts(
     scene.pop_layer();
     hit_index.pop_clip();
     let visible_h = area.body.h;
+    let content_h = with_tail(content_h, visible_h);
     let track = is_needed(content_h, visible_h).then(|| {
         let track = track_rect(area.body);
         let _ = paint_scrollbar(
@@ -168,6 +169,31 @@ pub fn close_parts(
         track,
         content_h,
         visible_h,
+    }
+}
+
+/// ⭐ **A margem do FIM: uma lista que transborda rola até o último controlo ficar UMA FILEIRA
+/// acima da borda de baixo** (report do dono, 2026-09-29: *«painéis como Inspector e Hierarchy não
+/// têm padding no final e alguns controles ficam escondidos na parte de baixo da tela»*).
+///
+/// ⚠️ Medido na pintura real (`diag_onde_acaba_o_corpo_das_colunas`, janela `1930×1012`): as duas
+/// colunas acabam no fundo da JANELA e o corpo `4 px` acima dele, e a altura que cada pintor conta
+/// acaba no último controlo ⇒ no fim da rolagem o último controlo **encostava** na borda da janela.
+/// Qualquer coisa por cima dessa faixa (um painel do sistema, uma janela maior que o ecrã)
+/// escondia-o, e não havia rolagem que o trouxesse.
+///
+/// ⭐ **Na PORTA e não nos pintores**: somada aqui ela vale para toda lista que rola — as barras, o
+/// tecto da roda, o arrasto e a inércia leem a mesma altura publicada.
+/// ⚠️ **Só quando transborda**: uma lista que cabe continua sem barra — somar sempre pôr-lhe-ia uma
+/// barra para rolar vazio.
+/// ⚠️ A unidade é o PASSO de uma fileira ([`ph2d_tokens::row_pitch_px`] — a altura dela mais o vão
+/// até à seguinte), porque é a unidade de que estas listas são feitas e a porta do ritmo é a dona dela.
+#[must_use]
+pub fn with_tail(content_h: f32, visible_h: f32) -> f32 {
+    if content_h > visible_h {
+        content_h + ph2d_tokens::row_pitch_px()
+    } else {
+        content_h
     }
 }
 

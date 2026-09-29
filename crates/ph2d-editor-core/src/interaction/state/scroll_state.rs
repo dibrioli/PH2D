@@ -21,13 +21,17 @@ use super::WidgetStore;
 use crate::interaction::fling;
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// O estado da rolagem que não é um escalar por painel.
 #[derive(Debug, Default)]
 pub struct ScrollState {
     /// `id da barra → (painel, trilha)`, publicado pela porta a cada quadro.
     bar_owner: BTreeMap<NodeId, (NodeId, Rect)>,
+    /// Quem publicou as alturas NESTE quadro — ver [`WidgetStore::end_scroll_frame`].
+    heights_this_frame: BTreeSet<NodeId>,
+    /// As barras publicadas NESTE quadro.
+    bars_this_frame: BTreeSet<NodeId>,
     /// `painel → velocidade de rolagem em px/s` enquanto a lista voa depois de largada.
     fling: BTreeMap<NodeId, f32>,
     /// `(tempo_ns, y)` dos `Move` do arrasto no corpo que está em curso.
@@ -43,6 +47,44 @@ impl WidgetStore {
     /// ⭐ **A porta publica o dono e a trilha da barra que acabou de pintar.**
     pub fn publish_scroll_bar(&mut self, bar: NodeId, panel: NodeId, track: Rect) {
         self.scroll.bar_owner.insert(bar, (panel, track));
+        self.scroll.bars_this_frame.insert(bar);
+    }
+
+    /// O painel `id` publicou uma das alturas neste quadro (os dois `set_panel_*_h` chamam isto).
+    pub(super) fn mark_heights_published(&mut self, id: NodeId) {
+        self.scroll.heights_this_frame.insert(id);
+    }
+
+    /// ⭐ **O quadro de pintura começa** — ver [`Self::end_scroll_frame`].
+    pub fn begin_scroll_frame(&mut self) {
+        self.scroll.heights_this_frame.clear();
+        self.scroll.bars_this_frame.clear();
+    }
+
+    /// ⭐⭐ **O quadro de pintura acaba: o que NÃO foi publicado nele é esquecido** (D9 da spec
+    /// `04_a_rolagem_unica`).
+    ///
+    /// ⛔ As alturas (`content_h`/`visible_h`) e o dono de cada barra só eram escritos — nunca
+    /// apagados. Um painel que deixava de passar pela porta (o estado vazio da escultura, que pinta
+    /// o rect e nenhuma lista; um menu suspenso que fechou) ficava com as alturas do ÚLTIMO quadro em
+    /// que rolava: a roda continuava a mexer num alvo que ninguém desenhava, o arrasto no corpo armava
+    /// e a inércia voava sobre o vazio, e quando a lista voltava ela aparecia noutro sítio.
+    ///
+    /// ⇒ as três tabelas passam a descrever **o último quadro pintado**, sem mais: quem publicou
+    /// fica, quem não publicou sai, e um voo sobre um painel que saiu **pára** (senão o tique, sem
+    /// alturas, lia `max = 0` e puxava o alvo a zero — perdendo a posição que o artista deixou).
+    /// ⚠️ O ALVO de rolagem (`panel_scroll`) **não** é esquecido: fechar e reabrir um painel volta ao
+    /// sítio onde estava, e a porta prende-o ao conteúdo novo ao publicar.
+    ///
+    /// ⚠️ Só a pintura do ecrã chama o par; quem escreve alturas fora dela (um teste, uma cena)
+    /// não é varrido.
+    pub fn end_scroll_frame(&mut self) {
+        let heights = &self.scroll.heights_this_frame;
+        self.panel_content_h.retain(|id, _| heights.contains(id));
+        self.panel_visible_h.retain(|id, _| heights.contains(id));
+        self.scroll.fling.retain(|id, _| heights.contains(id));
+        let bars = &self.scroll.bars_this_frame;
+        self.scroll.bar_owner.retain(|id, _| bars.contains(id));
     }
 
     /// ⭐ **O painel que uma barra rola** — o que a porta publicou ao pintá-la, e mais nada.
@@ -103,16 +145,24 @@ impl WidgetStore {
     /// * Presa ao fim publicado (`content_h − visible_h`); sem o fim, a pintura seguinte prendia-a de
     ///   volta com um salto de um quadro («saltos indesejados se rodamos a roda no fim»). Antes da
     ///   1.ª publicação da altura visível vale o palpite `rect.h − 60`.
+    ///
+    /// ⛔ **Sem altura publicada, a roda NÃO mexe** (D9): antes, `content_h` em falta queria dizer
+    /// *«sem tecto»* e a roda sobre um painel que não desenha lista nenhuma (o estado vazio da
+    /// escultura) somava sem fim num alvo que ninguém lia — e a lista reaparecia lá em baixo. Todo
+    /// pintor que lê a rolagem publica as alturas pela porta, logo esta ausência só acontece onde
+    /// não há nada para rolar.
     pub fn wheel_panel(&mut self, panel: NodeId, delta_y: f32) {
         self.stop_fling(panel);
-        let mut next = (self.panel_scroll_target(panel) - delta_y).max(0.0);
-        if let Some(content_h) = self.panel_content_h(panel) {
-            let visible_h = self.panel_visible_h(panel).unwrap_or_else(|| {
-                self.panel_rect(panel)
-                    .map_or(0.0, |r| (r.h - 60.0).max(0.0)) // LITERAL-PX-OK: palpite do 1.º quadro, anterior à publicação
-            });
-            next = next.min((content_h - visible_h).max(0.0));
-        }
+        let Some(content_h) = self.panel_content_h(panel) else {
+            return;
+        };
+        let visible_h = self.panel_visible_h(panel).unwrap_or_else(|| {
+            self.panel_rect(panel)
+                .map_or(0.0, |r| (r.h - 60.0).max(0.0)) // LITERAL-PX-OK: palpite do 1.º quadro, anterior à publicação
+        });
+        let next = (self.panel_scroll_target(panel) - delta_y)
+            .max(0.0)
+            .min((content_h - visible_h).max(0.0));
         self.set_panel_scroll(panel, next);
     }
 
@@ -150,3 +200,7 @@ impl WidgetStore {
             || self.scroll.fling.contains_key(&panel)
     }
 }
+
+#[cfg(test)]
+#[path = "scroll_state_tests.rs"]
+mod tests;

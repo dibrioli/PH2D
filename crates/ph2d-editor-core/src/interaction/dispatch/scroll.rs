@@ -93,12 +93,7 @@ pub fn dispatch_wheel<'frame>(
             Some(InteractiveState::Dropdown { open: true, .. })
         )
     {
-        let mut next = (store.panel_scroll_target(dd) - event.delta_y).max(0.0);
-        if let Some(content_h) = store.panel_content_h(dd) {
-            let visible_h = store.panel_visible_h(dd).unwrap_or(0.0);
-            next = next.min((content_h - visible_h).max(0.0));
-        }
-        store.set_panel_scroll(dd, next);
+        store.wheel_panel(dd, event.delta_y);
         return events.into_bump_slice();
     }
     // ⭐⭐ **Uma SUB-REGIÃO rolável ganha à roda do painel que a contém** — a coluna de catálogos
@@ -106,12 +101,7 @@ pub fn dispatch_wheel<'frame>(
     // inteiro e rolaria a grade enquanto o polegar da coluna arrastava certo. Mesma forma do
     // popover acima, e a mesma razão de o rect viver num slot próprio.
     if let Some(sub) = store.sub_scroll_region_at(event.x, event.y) {
-        let mut next = (store.panel_scroll_target(sub) - event.delta_y).max(0.0);
-        if let Some(content_h) = store.panel_content_h(sub) {
-            let visible_h = store.panel_visible_h(sub).unwrap_or(0.0);
-            next = next.min((content_h - visible_h).max(0.0));
-        }
-        store.set_panel_scroll(sub, next);
+        store.wheel_panel(sub, event.delta_y);
         return events.into_bump_slice();
     }
     if let Some(panel) = store.panel_at(event.x, event.y) {

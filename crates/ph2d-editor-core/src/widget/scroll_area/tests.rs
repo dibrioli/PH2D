@@ -54,7 +54,11 @@ fn no_overflow_no_bar() {
 fn both_heights_are_published() {
     let (mut store, mut hit) = (WidgetStore::default(), HitIndex::new());
     frame(&mut store, &mut hit, 120.0, 2000.0);
-    assert_eq!(store.panel_content_h(PANEL), Some(2000.0));
+    // ⚠️ Com a margem do fim (2026-09-29): uma lista que transborda publica UMA FILEIRA a mais.
+    assert_eq!(
+        store.panel_content_h(PANEL),
+        Some(2000.0 + ph2d_tokens::row_pitch_px())
+    );
     assert_eq!(store.panel_visible_h(PANEL), Some(400.0));
 }
 
@@ -81,7 +85,44 @@ fn the_target_is_clamped_when_the_content_shrinks() {
     let (mut store, mut hit) = (WidgetStore::default(), HitIndex::new());
     store.set_panel_scroll(PANEL, 1500.0);
     frame(&mut store, &mut hit, 120.0, 900.0);
-    assert_eq!(store.panel_scroll_target(PANEL), 500.0);
+    assert_eq!(
+        store.panel_scroll_target(PANEL),
+        500.0 + ph2d_tokens::row_pitch_px(),
+        "o fim é `content − visible` MAIS a margem do fim"
+    );
+}
+
+/// ⭐⭐ **No fim da rolagem o último controlo fica UMA FILEIRA acima da borda do corpo** — o report
+/// do dono de 2026-09-29 (*«sem padding no final, controles escondidos em baixo»*).
+///
+/// A régua é a GEOMETRIA: rola-se até ao fim publicado e mede-se onde acaba o último controlo, na
+/// mesma conta com que o pintor o desenha (`y − scroll`).
+///
+/// Mutação: apagar o `with_tail` de um dos dois fechos · somar a margem sempre (a 2.ª metade).
+#[test]
+fn at_the_end_the_last_control_stands_one_row_above_the_edge() {
+    let (mut store, mut hit) = (WidgetStore::default(), HitIndex::new());
+    let content_h = 2000.0;
+    frame(&mut store, &mut hit, 120.0, content_h);
+    let fim = store.panel_content_h(PANEL).unwrap() - store.panel_visible_h(PANEL).unwrap();
+    // O último controlo acaba em `content_h` (medido do topo do corpo, sem rolagem).
+    let ultimo_fundo = body().y + content_h - fim;
+    let borda = body().y + body().h;
+    assert!(
+        borda - ultimo_fundo >= ph2d_tokens::row_pitch_px() - 0.01,
+        "no fim o último controlo acaba a {:.1} px da borda — pede-se uma fileira ({:.1})",
+        borda - ultimo_fundo,
+        ph2d_tokens::row_pitch_px()
+    );
+    // ⚠️ E uma lista que CABE não ganha barra por causa da margem: somar sempre dava-lhe uma barra
+    // para rolar vazio.
+    let (mut store, mut hit) = (WidgetStore::default(), HitIndex::new());
+    frame(&mut store, &mut hit, 120.0, body().h - 1.0);
+    assert!(
+        hit.rect_for(BAR).is_none(),
+        "uma lista que cabe ganhou barra"
+    );
+    assert_eq!(store.panel_content_h(PANEL), Some(body().h - 1.0));
 }
 
 /// **Carregar na trilha põe o CENTRO do polegar debaixo do dedo** — nas pontas, no topo e no fim.

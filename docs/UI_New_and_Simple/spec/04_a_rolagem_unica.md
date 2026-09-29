@@ -31,7 +31,7 @@
 | D6 | **Duas fontes de verdade para «este painel rola»**: a roda usa a lista À MÃO do shell (`cursor_over_hero_panel`); o arrasto no corpo deriva das alturas publicadas. D3 é o preço. | `forwarding.rs` × `panel_ops.rs::scrollable_panel_at` | ✔ |
 | D7 | **A roda e o arrasto ignoram a ordem z** (`panel_at` percorre um `BTreeMap` por id) ⇒ sobre painéis flutuantes sobrepostos pode rolar o de baixo. | `panel_ops.rs::panel_at` | ✔ (código) |
 | D8 | **O arrasto no corpo não é 1:1**: ele escreve o ALVO e o conteúdo segue pela mola da suavidade. | `pointer_move.rs` + `live.rs::tick_panel_scroll` | ✔ (código) |
-| D9 | **Alturas velhas nunca se limpam** (ex.: o caminho de cena vazia do Sculpt3d publica o rect sem `content_h`). | `panel_ops.rs` | não |
+| D9 | **Alturas velhas nunca se limpam** (ex.: o caminho de cena vazia do Sculpt3d publica o rect sem `content_h`). | `panel_ops.rs` | ✔ — curado (§4.1) |
 | D10 | Entradas mortas no despacho (`MOTION_PARAMS`, `PAINTER_BRUSH_STUDIO`). | `scroll.rs`, `forwarding.rs` | não |
 | D11 | A coluna de catálogos do navegador não é limpa quando o painel fecha. | `ph2d-panel-asset-browser` | não |
 | D12 | **Não há inércia em lado nenhum**: soltar o dedo depois de um arrasto no corpo pára a lista no sítio. | — | ✔ |
@@ -136,8 +136,21 @@ juntos, e os dois gates de lista (`every_scrollable_panel_intercepts_the_wheel` 
   coluna de catálogos limpa a região dela pelas **duas** portas de desaparecer (colapsada · painel
   fechado) através de UMA função, `paint_catalog::forget_region` — escrita no `paint.rs` ao lado, a
   limpeza pôs o id num segundo ficheiro e o censo `the_painted_control_reaches_a_consumer` acusou-o
-  como controlo sem consumidor. ⏳ **D9 continua aberto** (alturas velhas de um painel que publica
-  o rect sem `content_h`).
+  como controlo sem consumidor.
+- ⭐ **D9 fechou: as tabelas da rolagem descrevem o ÚLTIMO QUADRO PINTADO.** O `paint_hero_screen`
+  abre e fecha um quadro de rolagem (`begin_scroll_frame` · `end_scroll_frame`), e no fim dele as
+  alturas, o dono de cada barra e o voo de quem NÃO publicou saem. ⚠️ O **alvo** de rolagem fica
+  (fechar e reabrir volta ao mesmo sítio; a porta prende-o ao conteúdo novo). ⭐ E a roda **sem
+  altura publicada não mexe** — antes somava sem tecto num alvo que ninguém lia. As três cópias da
+  lei da roda no despacho (painel · menu suspenso · sub-região) passaram a UMA (`wheel_panel`).
+- ⭐ **A margem do FIM** (report do dono, 29/09: *«Inspector e Hierarchy não têm padding no final e
+  alguns controles ficam escondidos em baixo»*). Medido na pintura real
+  (`diag_onde_acaba_o_corpo_das_colunas`, `1930×1012`): as colunas acabam no fundo da janela, o
+  corpo `4 px` acima, e a altura contada acaba no último controlo ⇒ no fim da rolagem ele
+  **encostava** na borda. A porta publica agora **uma fileira** (`row_pitch_px()`, o passo de uma fileira) a mais quando a lista
+  transborda (`widget::scroll_area::with_tail`) — nunca quando cabe, senão uma lista curta ganhava
+  barra. ⭐ E o fecho com `PaintCtx` passou a **delegar** no das partes soltas: as duas formas
+  repetiam a lei, e a margem teve de ser escrita nas duas.
 - **A catraca `widget → interaction` DESCEU de `49` para `46`**: a paleta passou a receber o
   `WidgetStore` (a porta precisa dele) e as referências redundantes dos testes da paleta (o
   `HitIndex` já vinha pelo `use super::*`) saíram — a catraca só encolhe e o número é o medido.

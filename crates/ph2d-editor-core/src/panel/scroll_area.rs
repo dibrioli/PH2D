@@ -14,10 +14,7 @@
 
 use super::PaintCtx;
 use crate::paint::rect_to_vello;
-use crate::widget::scroll_area::{ScrollArea, publish};
-use crate::widget::{
-    paint_scrollbar, scrollbar_is_needed as is_needed, scrollbar_track_rect as track_rect,
-};
+use crate::widget::scroll_area::ScrollArea;
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 
@@ -29,32 +26,20 @@ pub fn open(ctx: &mut PaintCtx, panel: NodeId, bar: NodeId, body: Rect) -> Scrol
     ScrollArea::opened(panel, bar, body, scroll)
 }
 
-/// Fecha o corpo de um painel: desfaz os recortes, publica as alturas (com o clamp), pinta a barra
-/// fora do recorte, regista a TRILHA e publica o dono dela.
+/// Fecha o corpo de um painel: desfaz os recortes, pinta a barra fora do recorte, regista a TRILHA,
+/// e publica as alturas (com a margem do fim e o clamp) e o dono da barra.
+///
+/// ⭐ **Delega no fecho das partes soltas** ([`crate::widget::scroll_area::close_parts`]): as duas
+/// formas repetiam a mesma lei, e a margem do fim (2026-09-29) teve de ser escrita nas DUAS — *uma
+/// lei escrita em dois sítios ainda não é uma lei; só uma porta é*. Hoje este fecho é a costura com
+/// o `PaintCtx` e mais nada.
 pub fn close(area: ScrollArea, ctx: &mut PaintCtx, content_h: f32) {
     let theme = ctx.host.theme();
-    ctx.scene.pop_layer();
-    ctx.host.hit_index_mut().pop_clip();
-    let body = area.body();
-    let visible_h = body.h;
-    publish(ctx.host.store_mut(), area.panel(), content_h, visible_h);
-    if is_needed(content_h, visible_h) {
-        let track = track_rect(body);
-        let visual = ctx.host.store().scrollbar_visual(area.bar());
-        let _ = paint_scrollbar(
-            body,
-            area.scroll(),
-            content_h,
-            visible_h,
-            visual,
-            ctx.scene,
-            theme,
-        );
-        ctx.host.hit_index_mut().register(area.bar(), track);
-        ctx.host
-            .store_mut()
-            .publish_scroll_bar(area.bar(), area.panel(), track);
-    }
+    let pending = {
+        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+        crate::widget::scroll_area::close_parts(area, ctx.scene, hit_index, store, content_h, theme)
+    };
+    pending.publish(ctx.host.store_mut());
 }
 
 /// Fecha o corpo da GALERIA de widgets — a porta, e depois o cromo dela por cima (os pontos dos

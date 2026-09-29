@@ -204,3 +204,24 @@ Na entrada **UI/UX**, a seguir à linha de 25/09:
 - **O painel da escultura** é território da `line/sculpt3d`: a migração dele foi **uma chamada**
   (a porta), e se aquela linha reescrever o `paint` ela tem de continuar a passar por lá (§2.2).
 - **A timeline** fica fora por desenho (§3).
+
+---
+
+## §9 — Depois do smoke aprovado (29/09): o D9 e a margem do fim
+
+Ordem do dono: *«smoke ok. Siga: caso raro em que um painel pode guardar uma altura antiga»* e, a
+meio, *«Painéis como Inspector e Hierarchy não têm padding no final e alguns controles ficam
+escondidos na parte de baixo da tela»*. Mecanismo na spec `04` §4.1.
+
+**O que muda para quem funde:**
+
+| item (`ph2d-editor-core`) | agora |
+|---|---|
+| `WidgetStore::begin_scroll_frame` / `end_scroll_frame` | **novos**; o `paint_hero_screen` abre e fecha o quadro. No fim, as alturas, o dono de cada barra e o voo de quem NÃO publicou neste quadro saem. ⚠️ Quem escreve `set_panel_content_h`/`visible_h` fora da pintura do ecrã (um teste) não é varrido até ao quadro seguinte. |
+| `WidgetStore::wheel_panel` | **sem altura publicada, não mexe** (antes: sem tecto). O despacho da roda deixou de ter três cópias da lei (painel · menu suspenso · sub-região) — as três chamam esta. |
+| `widget::scroll_area::with_tail` | **nova**: a margem do fim (`row_pitch_px()`) somada à altura publicada **quando a lista transborda**. ⚠️ **Um gate de outra linha que afirme o `panel_content_h` EXACTO de uma lista que transborda lê agora `row_pitch_px()` a mais** — é a cura, não uma regressão. |
+| `panel::scroll_area::close` | passou a **delegar** em `widget::scroll_area::close_parts` (uma lei só). A assinatura não mudou. |
+
+**Gates novos:** `scroll_state_tests` (as leis do quadro e da roda, 3) · `a_rolagem_esquece_o_que_o_quadro_nao_publicou` (a fiação pelo `paint_hero_screen`, 2 — vermelhos sem a cura) · `at_the_end_the_last_control_stands_one_row_above_the_edge` (a margem, com a metade «uma lista que cabe não ganha barra»). Mutação **4 de 4** (o voo não varrido · a roda sem tecto · a margem fora do fecho · a margem sempre). Sonda versionada: `shells/desktop/tests/it/diag_onde_acaba_o_corpo_das_colunas.rs` (`#[ignore]`).
+
+**Portão:** `nextest-impacted` **16 377 / 16 379** com os dois vermelhos resolvidos — o censo do ritmo (a margem passou a ser o `row_pitch_px()`, a porta dona do passo de uma fileira) e `the_cost_of_sampling_a_path_is_flat_in_its_anchors`, **membro catalogado** da família de flakes de carga (`load 88` na corrida; sozinho, verde). Clippy `-D warnings` verde · censos da árvore combinada **127 / 127**.

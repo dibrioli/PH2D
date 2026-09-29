@@ -200,6 +200,7 @@ impl WidgetStore {
     /// clamp (treated as infinite).
     pub fn set_panel_content_h(&mut self, panel: NodeId, content_h: f32) {
         self.panel_content_h.insert(panel, content_h);
+        self.mark_heights_published(panel);
     }
 
     /// Read the total content height for a panel. Returns `None`
@@ -214,6 +215,7 @@ impl WidgetStore {
     /// of a `panel.h - 60` heuristic) to compute `max_scroll`.
     pub fn set_panel_visible_h(&mut self, panel: NodeId, visible_h: f32) {
         self.panel_visible_h.insert(panel, visible_h);
+        self.mark_heights_published(panel);
     }
 
     /// Read the visible body height for a panel.

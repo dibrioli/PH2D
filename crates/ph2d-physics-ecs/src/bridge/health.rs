@@ -32,16 +32,16 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use ph2d_ecs::{Entity, SimWorld};
-use ph2d_health::{Regras, Vida};
+use ph2d_health::{Aflicoes, Regras, Vida};
 use ph2d_physics::RigidBodyHandle;
 
 use super::PhysicsBridge;
-use crate::components::{Damage, Health, OnHit};
+use crate::components::{Damage, Health, OnHit, kind_key};
 
 /// **O ESTADO VIVO de uma vida** — o que o anel de checkpoints guarda por entidade.
 ///
-/// ⚠️ **Três metades, e é o TIPO que as mantém juntas:** a vida da lei, o gerador da esquiva e a
-/// memória do toque. Guardar só a primeira faria um scrub devolver a vida certa com a sequência de
+/// ⚠️ **Quatro metades, e é o TIPO que as mantém juntas:** a vida da lei, o gerador da esquiva, a
+/// memória do toque e as AFLIÇÕES (plano 28, W6 — o veneno que dura). Guardar só a primeira faria um scrub devolver a vida certa com a sequência de
 /// sorteios de outra corrida, ou com um `Began` a mais (a memória vazia lê todo toque em curso como
 /// novo).
 #[derive(Clone, Debug, PartialEq)]
@@ -51,6 +51,10 @@ pub struct HealthState {
     rng: u64,
     /// Quem estava a tocar esta vida no tique ANTERIOR — um `Began` é *«agora e não antes»*.
     tocando: BTreeSet<Entity>,
+    /// ⭐ O dano que DURA (W6): uma aflição por tipo, com a fase do pulso. ⚠️ Mora AQUI e não na
+    /// `Vida` porque a `Vida` é `Copy` (o antes/depois dos factos lê-se de duas cópias), e porque
+    /// sem o anel um scrub devolvia a vida certa com o veneno de outra corrida.
+    aflicoes: Aflicoes,
 }
 
 impl HealthState {
@@ -58,6 +62,12 @@ impl HealthState {
     #[must_use]
     pub fn vida(&self) -> &Vida {
         &self.vida
+    }
+
+    /// As aflições vivas, para quem lê (o Inspector, a cena).
+    #[must_use]
+    pub fn aflicoes(&self) -> &Aflicoes {
+        &self.aflicoes
     }
 }
 
@@ -255,6 +265,24 @@ impl PhysicsBridge {
             });
             st.vida.anda(dt_ms);
             st.vida.pre_quadro(&cfg, Regras::CASA, dt);
+            // ⭐ W6: as aflições pulsam DEPOIS do início do quadro da lei e ANTES dos golpes deste
+            // tique — um veneno aplicado agora só morde daqui a um intervalo (a fase nasce cheia).
+            // ⚠️ A fonte do evento é o PRÓPRIO alvo, o idioma dos pedidos da tabela: o veneno não
+            // tem quem bata, e quem o deixou pode já nem existir.
+            for p in st.aflicoes.anda(dt) {
+                let antes = st.vida;
+                st.vida
+                    .pulso(&cfg, Regras::CASA, p.pontos, h.taxa(&p.tipo), true);
+                if publicar {
+                    for kind in factos(&antes, &st.vida) {
+                        self.health_events.push(HealthEvent {
+                            target: alvo,
+                            source: alvo,
+                            kind,
+                        });
+                    }
+                }
+            }
             // ⭐⭐ Os pedidos da TABELA (W2b), pela ordem em que foram feitos — depois do início do
             // quadro da lei (a regeneração e as marcas) e antes dos golpes do contacto.
             for &(quem, pedido) in &pedidos {
@@ -303,11 +331,14 @@ impl PhysicsBridge {
                     gastos.insert(fonte);
                 }
                 let antes = st.vida;
+                let taxa = h.taxa(&dano.kind);
+                let barrado = st.vida.invencivel(&cfg) && !taxa.absorve;
                 let rng = &mut st.rng;
-                st.vida.golpe(
+                st.vida.golpe_tipado(
                     &cfg,
                     Regras::CASA,
                     quanto,
+                    taxa,
                     !dano.ignores_shield,
                     !dano.ignores_armor,
                     &mut || sorteio(rng),
@@ -315,6 +346,23 @@ impl PhysicsBridge {
                 // ⚠️ Os factos saem SEMPRE, e só a publicação depende do laço: o empurrão é estado
                 // da simulação e o replay tem de o refazer igual.
                 let fs = factos(&antes, &st.vida);
+                // ⭐ W6: **a aflição entra COM o golpe** — o que o golpe não atravessa (a esquiva, a
+                // invencibilidade) também não a deixa, e uma vida morta não a recebe. ⚠️ Um tipo a
+                // que a vida é imune ENTRA na mesma, e os pulsos saem a zero pela taxa: a regra de
+                // quem pode ser afligido é UMA (o golpe), e a de quanto dói é a outra (a taxa).
+                if comecou
+                    && !barrado
+                    && !fs.contains(&HealthEventKind::Dodged)
+                    && !st.vida.morta()
+                    && dano.over_time_per_s > 0.0
+                {
+                    st.aflicoes.aplica(
+                        &kind_key(&dano.kind).unwrap_or_default(),
+                        f64::from(dano.over_time_per_s),
+                        f64::from(dano.over_time_s),
+                        f64::from(dano.over_time_every_s),
+                    );
+                }
                 if comecou && let Some(dv) = empurrao(dano, &h, toque.direccao, &fs) {
                     empurroes.push((toque.corpo, dv));
                 }
@@ -329,6 +377,11 @@ impl PhysicsBridge {
                 }
             }
             st.tocando = fontes.into_keys().collect();
+            // ⚠️ A morte CURA: uma aflição que sobrevivesse faria o renascimento (a cura da tabela
+            // com `Revive`) acordar já envenenado.
+            if st.vida.morta() {
+                st.aflicoes.limpa();
+            }
             vivos.insert(alvo, st);
         }
         self.health_state = vivos;
@@ -515,6 +568,7 @@ fn nascer(h: &Health, cfg: &ph2d_health::Config, id: Option<u64>) -> HealthState
         vida,
         rng: h.seed ^ id.unwrap_or(0),
         tocando: BTreeSet::new(),
+        aflicoes: Aflicoes::default(),
     }
 }
 

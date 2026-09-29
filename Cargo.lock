@@ -8432,6 +8432,7 @@ dependencies = [
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-health",
+ "ph2d-label-fold",
  "ph2d-physics",
  "ph2d-platformer",
  "ph2d-projectile",

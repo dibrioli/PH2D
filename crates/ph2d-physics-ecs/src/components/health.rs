@@ -105,6 +105,40 @@ pub struct Health {
     /// A altura dos números, em metros do mundo (eles crescem e encolhem com a câmera, como tudo o
     /// que vive na cena).
     pub numbers_size: f32,
+    /// ⭐ **As RESISTÊNCIAS por tipo de dano** (plano 28, W6) — uma linha por tipo: imune (`0`),
+    /// resiste (`0,5`), fraco (`2`), ou ABSORVE (o dano desse tipo cura). Um tipo que não está aqui
+    /// passa normal. ⚠️ **A primeira linha com o nome ganha** — a secção avisa quando há duas.
+    pub resistances: Vec<Resistance>,
+}
+
+/// ⭐ **Uma resistência a um TIPO de dano** (plano 28, W6) — a lei é a [`ph2d_health::Taxa`].
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Resistance {
+    /// O nome do tipo, como no [`Damage::kind`]. ⚠️ Comparado pela DOBRA da casa
+    /// ([`kind_key`]): `Fogo`, `fogo` e `FOGO` são o mesmo tipo.
+    pub kind: String,
+    /// O multiplicador: `1` normal · `0` imune · `0,5` resiste · `2` fraco.
+    pub rate: f32,
+    /// O dano deste tipo CURA (`dano × rate`) em vez de ferir.
+    pub absorbs: bool,
+}
+
+impl Default for Resistance {
+    fn default() -> Self {
+        Self {
+            kind: String::new(),
+            rate: 1.0,
+            absorbs: false,
+        }
+    }
+}
+
+/// ⭐ **A chave de um tipo de dano** — a dobra da casa (a mesma das tags: maiúsculas e acentos não
+/// importam), ou `None` se o nome estiver em branco. ⚠️ **UMA porta** para os dois lados que
+/// escrevem o nome — o dano e a resistência —, senão `Fogo` num e `fogo` no outro seriam dois tipos.
+#[must_use]
+pub fn kind_key(kind: &str) -> Option<String> {
+    signal_name(kind).map(ph2d_label_fold::fold)
 }
 
 impl Default for Health {
@@ -141,6 +175,7 @@ impl Default for Health {
             numbers: false,
             numbers_color: [1.0, 0.86, 0.3, 1.0],
             numbers_size: 0.45,
+            resistances: Vec::new(),
         }
     }
 }
@@ -171,6 +206,23 @@ impl Health {
     #[must_use]
     pub fn team(&self) -> Option<&str> {
         signal_name(&self.team)
+    }
+
+    /// ⭐ **A resposta desta vida a um tipo de dano** — a primeira resistência cujo nome tem a
+    /// mesma [`kind_key`]; um dano SEM tipo, ou um tipo que ela não lista, passa com a
+    /// [`ph2d_health::Taxa::NEUTRA`] (ao bit o golpe de antes de haver tipos).
+    #[must_use]
+    pub fn taxa(&self, kind: &str) -> ph2d_health::Taxa {
+        let Some(chave) = kind_key(kind) else {
+            return ph2d_health::Taxa::NEUTRA;
+        };
+        self.resistances
+            .iter()
+            .find(|r| kind_key(&r.kind).as_deref() == Some(chave.as_str()))
+            .map_or(ph2d_health::Taxa::NEUTRA, |r| ph2d_health::Taxa {
+                mult: f64::from(r.rate),
+                absorve: r.absorbs,
+            })
     }
 }
 
@@ -213,6 +265,17 @@ pub struct Damage {
     /// ⭐ **E para CIMA, em m/s** — somado ao empurrão, a direito. É o que faz um golpe num chão
     /// plano levantar o herói: ali a normal do contacto é horizontal e o empurrão sozinho arrasta-o.
     pub knockback_lift: f32,
+    /// ⭐ **O TIPO do dano** (plano 28, W6) — o nome que as resistências de quem leva procuram
+    /// (`fogo`, `gelo`, `veneno`…). Vazio = sem tipo: passa normal por toda a gente.
+    pub kind: String,
+    /// ⭐ **O dano que DURA, em pontos por segundo** — um golpe que ENTRA deixa uma aflição do
+    /// [`Self::kind`] em quem leva (o veneno, a queimadura), que continua a tirar depois do toque.
+    /// `0` = não dura, o de fábrica. ⚠️ Não é o [`Self::per_second`], que fere só ENQUANTO toca.
+    pub over_time_per_s: f32,
+    /// Quanto tempo a aflição dura, em segundos. O total que ela tira é `por segundo × duração`.
+    pub over_time_s: f32,
+    /// Cada quanto tempo ela pulsa, em segundos (`0` = a cada tique).
+    pub over_time_every_s: f32,
 }
 
 impl Default for Damage {
@@ -227,6 +290,10 @@ impl Default for Damage {
             hitstop_s: 0.0,
             knockback: 0.0,
             knockback_lift: 0.0,
+            kind: String::new(),
+            over_time_per_s: 0.0,
+            over_time_s: 3.0,
+            over_time_every_s: 1.0,
         }
     }
 }

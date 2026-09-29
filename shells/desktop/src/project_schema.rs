@@ -313,4 +313,19 @@
 /// postcard e' POSICIONAL*.
 ///
 /// ⚠️ **A tripla NAO ve^ este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
-pub(crate) const PROJECT_SCHEMA: u32 = 176;
+///
+/// # `176 → 177` — **os TIPOS de dano e o dano que DURA** (plano 28, W6, 2026-09-29)
+///
+/// `Damage` ganha o TIPO (`kind`) e as três grandezas da aflição (`over_time_per_s`,
+/// `over_time_s`, `over_time_every_s`); `Health` ganha as RESISTÊNCIAS (`resistances`, uma
+/// linha por tipo com a taxa e o «absorve»). ⛔ **ZERO componentes registados novos** — são CAMPOS
+/// de dois que já viajam, logo os três contadores NÃO se mexem.
+///
+/// ⚠️ **Sem degrau de migração, e está certo:** um documento anterior não tem tipo em dano nenhum
+/// nem resistência em vida nenhuma, e os valores de fábrica (`kind` vazio, `over_time_per_s = 0`,
+/// `resistances` vazia) são exactamente o golpe de antes **ao bit** (`Taxa::NEUTRA`). ⛔ O degrau
+/// existe pelo motivo de sempre — *o postcard é POSICIONAL*: sem ele um v176 seria lido errado em
+/// silêncio, e com ele o load recusa em voz alta.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
+pub(crate) const PROJECT_SCHEMA: u32 = 177;

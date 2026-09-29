@@ -20,6 +20,8 @@
 | 8 | Composite Brush: o relevo fora da recomposição da pilha | linha | a conferir |
 | 9 | Composite Brush: o resíduo Blur+Smear (`12/255`) | linha | a conferir |
 | 10 | Composite Brush: metade dos bytes dos intermédios da pilha | linha | a conferir |
+| 11 | Aquarela: o **Smudge** não mexe na tinta MOLHADA da sessão (report do dono, 29/09) | linha | **medido, por construir** — §3 |
+| 12 | Aquarela: o **Rewet** mexe pouco na tinta MOLHADA da sessão (report do dono, 29/09) | linha | **medido, por construir** — §3 |
 
 ---
 
@@ -155,3 +157,32 @@ igual ao que o `Charge 1` já fazia (`253,244,119`). O `o_pigment_nao_mistura_co
 
 ⚠️ `the_pen_down_is_still_a_canvas_copy_and_this_is_its_number` reprovou uma vez na suíte a `load ~20`
 e passou sozinho: é membro da família de flakes de carga (§5.0).
+
+---
+
+## §3 — Itens 11 e 12: o Smudge e o Rewet sobre tinta MOLHADA (report do dono, 2026-09-29)
+
+> *«Aparentemente o Smudge e o Rewet não afetam a mancha de tinta quando a tinta está molhada.»*
+
+**Medido** (`diag_smudge_e_rewet_sobre_molhado`: faixa azul vertical e traço amarelo horizontal por
+cima, knob em `0` e em `1`, `Pigment` desligado):
+
+| | texels mudados · soma \|Δ\| | o meio da faixa |
+|---|---|---|
+| Smudge 1, azul SECO | `728` · `84 258` | `190,202,138 → 253,245,140` |
+| **Smudge 1, azul MOLHADO** | **`0` · `0`** | igual |
+| Rewet 1, azul SECO | `3 588` · `152 402` | `190,202,138 → 214,229,253` (o azul sobe) |
+| **Rewet 1, azul MOLHADO** | `3 901` · `59 007` | `253,245,140 → 253,247,167` (mal se vê) |
+
+**Causa, lida no código (a confirmar pela cura):**
+- o **Smudge** arrasta a BASE (a tinta seca de antes da sessão, `smear_wet_base`) e os NÍVEIS de
+  reserva do traço vivo (`smear_level`, só com `Charge < 1`). A tinta molhada da sessão vive noutros
+  planos — cobertura, cor, dono, água —, e **nenhum é arrastado**. Sobre ela o Smudge é inerte AO BIT;
+- o **Rewet** levanta e dissolve a BASE da sessão (`build_rewet_fields`). A tinta molhada da própria
+  sessão entra só pelos campos UNIÃO da água (anel, tinta, lift), e o efeito sai `2,6×` mais fraco.
+  ⚠️ A cura óbvia — reassar a sessão na base — está **recusada por escrito** (Enio 2026-07-09: o
+  vizinho assado re-renderizava como um RECTÂNGULO que clareia).
+
+**Desenho proposto (por construir):** o Smudge arrasta também os planos da sessão, pela mesma lei do
+`smear_dab`. O Rewet passa a ler a tinta da sessão como tinta levantável, via os campos UNIÃO e nunca
+reassando a sessão.

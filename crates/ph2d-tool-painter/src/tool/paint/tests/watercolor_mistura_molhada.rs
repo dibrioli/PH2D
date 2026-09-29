@@ -313,3 +313,75 @@ fn o_charge_abaixo_de_um_nao_desliga_o_pigment_molhado() {
         );
     }
 }
+
+/// **A medição do report «o Smudge e o Rewet não afetam a mancha quando a tinta está molhada»**
+/// (dono, 2026-09-29). Instrumento: uma faixa azul VERTICAL, e um traço amarelo HORIZONTAL que a
+/// atravessa da esquerda para a direita, com o knob em `0` e em `1`, com o azul SECO e MOLHADO.
+/// Imprime quantos texels o knob mudou, quanto (soma de |Δ| por canal) e o azul ARRASTADO para lá da
+/// faixa (texels à direita dela, na linha do traço, mais azuis que o amarelo sozinho).
+#[test]
+#[ignore = "measurement, not a gate — o instrumento do report do Smudge/Rewet"]
+fn diag_smudge_e_rewet_sobre_molhado() {
+    let tela = |secar: bool, smudge: f32, rewet: f32| {
+        let mut t = white_canvas(SIZE, 14.0);
+        arma(&mut t, pincel(AZUL, false));
+        traco(&mut t, 86.0, 1);
+        if secar {
+            for _ in 0..300 {
+                t.paint_tick(0.5);
+            }
+        }
+        let mut b = pincel(AMARELO, false);
+        b.wet_smudge = smudge;
+        b.wet_rewet = rewet;
+        arma(&mut t, b);
+        assert!(t.on_canvas_pointer(cp([40.0, 96.0], PointerPhase::Down)));
+        let mut x = 40.0f32;
+        while x < 160.0 {
+            x += 2.0;
+            t.on_canvas_pointer(cp([x, 96.0], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([160.0, 96.0], PointerPhase::Up));
+        t
+    };
+    let azul_depois = |t: &PainterTool| {
+        // à direita da faixa (86 ± 14), na linha do traço: quanto o B passa o R (o amarelo tem R ≫ B)
+        (104..150u32)
+            .map(|x| {
+                let p = px(t, SIZE, x, 96);
+                (i32::from(p[2]) - i32::from(p[0])).max(-255)
+            })
+            .max()
+            .unwrap_or(0)
+    };
+    println!();
+    for secar in [true, false] {
+        let base = tela(secar, 0.0, 0.0);
+        for (nome, s, r) in [("smudge 1", 1.0f32, 0.0f32), ("rewet 1", 0.0, 1.0)] {
+            let k = tela(secar, s, r);
+            let (mut n, mut soma) = (0usize, 0i64);
+            for (a, b) in base
+                .canvas_rgba
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .zip(k.canvas_rgba.as_chunks::<4>().0)
+            {
+                let d: i64 = (0..3)
+                    .map(|c| (i64::from(a[c]) - i64::from(b[c])).abs())
+                    .sum();
+                if d > 0 {
+                    n += 1;
+                    soma += d;
+                }
+            }
+            println!(
+                "secar={secar:<5} {nome:<8} | texels mudados {n:>6} · soma |Δ| {soma:>8} | azul arrastado (B−R máx à direita): knob0 {} knob1 {} | meio {:?} → {:?}",
+                azul_depois(&base),
+                azul_depois(&k),
+                &px(&base, SIZE, 86, 96)[..3],
+                &px(&k, SIZE, 86, 96)[..3],
+            );
+        }
+    }
+}

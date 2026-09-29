@@ -172,14 +172,17 @@ fn diag_o_contorno_pontilhado() {
         .and_then(|v| v.parse().ok())
         .unwrap_or(28u32);
     let base = quadro_bissecto(t, cena, 1, true, W, H);
-    println!("\n  cena {cena} · passo · borda · canais >2 B · >8 B · máx B");
+    println!(
+        "\n  cena {cena} · passo · borda · canais >2 B · >8 B · máx B · pontos claros isolados"
+    );
     for (passo, bordas) in [(1u32, true), (2, true), (1, false), (2, false)] {
         let img = quadro_bissecto(t, cena, passo, bordas, W, H);
         let d: Vec<u8> = img.iter().zip(&base).map(|(a, b)| a.abs_diff(*b)).collect();
         let a2 = d.iter().filter(|x| **x > 2).count();
         let a8 = d.iter().filter(|x| **x > 8).count();
         let max = d.iter().copied().max().unwrap_or(0);
-        println!("  {passo:5} · {bordas:5} · {a2:>9} · {a8:>7} · {max:>5}");
+        let isolados = pontos_claros_isolados(&img, W as usize, H as usize);
+        println!("  {passo:5} · {bordas:5} · {a2:>9} · {a8:>7} · {max:>5} · {isolados:>6}");
         if let Ok(dir) = std::env::var("PH2D_SONDA_DIR") {
             let mut ppm = format!("P6\n{W} {H}\n255\n").into_bytes();
             for px in img.as_chunks::<4>().0 {
@@ -190,4 +193,31 @@ fn diag_o_contorno_pontilhado() {
             println!("  gravado {caminho}");
         }
     }
+}
+
+/// ⭐ **A régua da foto de 25/09:** um pixel cuja luminância passa a de TODOS os oito vizinhos por
+/// mais de `12` níveis. ⚠️ O zero dela não é zero — o serrilhado de uma silhueta já produz alguns —,
+/// logo lê-se sempre ao lado da linha com a borda DESLIGADA.
+fn pontos_claros_isolados(rgba: &[u8], w: usize, h: usize) -> usize {
+    let lum = |k: usize| {
+        0.2126 * f32::from(rgba[4 * k])
+            + 0.7152 * f32::from(rgba[4 * k + 1])
+            + 0.0722 * f32::from(rgba[4 * k + 2])
+    };
+    let mut n = 0;
+    for y in 1..h - 1 {
+        for x in 1..w - 1 {
+            let c = lum(y * w + x);
+            let mut m = f32::MIN;
+            for dy in 0..3 {
+                for dx in 0..3 {
+                    if dy != 1 || dx != 1 {
+                        m = m.max(lum((y + dy - 1) * w + x + dx - 1));
+                    }
+                }
+            }
+            n += usize::from(c > m + 12.0);
+        }
+    }
+    n
 }

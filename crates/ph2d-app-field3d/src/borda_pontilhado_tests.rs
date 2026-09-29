@@ -194,3 +194,139 @@ fn a_luz_de_uma_subamostra_que_acerta_nunca_vem_do_fundo() {
          sub-amostra que ACERTA está a ser lida no pixel de FUNDO"
     );
 }
+
+/// ⭐⭐⭐ **Onde a peça passa por cima de si mesma, a luz de uma sub-amostra vem da SUPERFÍCIE dela**
+/// (foto do dono de 2026-09-29: *«quando o objeto sobrepõe a si mesmo ainda aparecem pontos»*).
+/// Numa borda entre dois pedaços da peça o centro ACERTA, e o gate irmão acima não a vê.
+///
+/// A régua é o inverso da irmã: a população são as bordas de centro na peça com alguma sub-amostra
+/// noutra superfície que não a do centro (a guarda `OCCLUSION_BLUR_COS`) e com um vizinho de cruz
+/// na dela; envenena-se a luz DESSES vizinhos e o pixel TEM de mudar — a luz daquela sub-amostra
+/// vem de lá. ⛔ Com a lei antiga (a luz do centro para todas) o veneno não chegava a pixel nenhum.
+/// ⚠️ Um pixel da população que seja ele próprio envenenado não se mede: ali mudaria por si.
+#[test]
+fn na_sobreposicao_a_luz_vem_da_superficie_da_subamostra() {
+    let cam = ph2d_field_render::Orbit::default();
+    let doc = crate::smoke::scene(CENA);
+    let reg = crate::smoke::sampled_registry();
+    let materiais = [ph2d_material::OpenPbr::default().prepare()];
+    let surfaces = ph2d_field_render::Surfaces {
+        all: &materiais,
+        owners: None,
+    };
+    let lampada = [crate::gpu_frame::tests_lampada(&cam)];
+    let mundos: Vec<[f32; 3]> = lampada.iter().map(|l| l.world).collect();
+    let chao = ph2d_field_render::lowest_point(&doc, &reg)
+        .map(|height| ph2d_field_render::Ground { height });
+    let g = ph2d_field_render::trace(&doc, &reg, &cam, W, H);
+    let sh = ph2d_field_render::shadow_pass_on(&doc, &reg, &cam, &g, &mundos, chao);
+    let (w, h) = (W as usize, H as usize);
+    let dot = |a: [f32; 3], b: [f32; 3]| a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    let mesma = |c: usize, n: [f32; 3]| {
+        g.hit[c] && dot(g.normal[c], n) >= ph2d_field_render::OCCLUSION_BLUR_COS
+    };
+    let cruz = |i: usize| {
+        let (x, y) = (i % w, i / w);
+        [
+            (x > 0).then(|| i - 1),
+            (x + 1 < w).then(|| i + 1),
+            (y > 0).then(|| i - w),
+            (y + 1 < h).then(|| i + w),
+        ]
+        .into_iter()
+        .flatten()
+    };
+    let mut envenenado = vec![false; g.hit.len()];
+    let mut populacao = Vec::new();
+    for e in &g.edges {
+        let i = e.pixel as usize;
+        if !g.hit[i] {
+            continue;
+        }
+        let mut dela = false;
+        for k in (0..4).filter(|&k| e.hit[k] && !mesma(i, e.normal[k])) {
+            if let Some(c) = cruz(i).find(|&c| mesma(c, e.normal[k])) {
+                envenenado[c] = true;
+                dela = true;
+            }
+        }
+        if dela {
+            populacao.push(i);
+        }
+    }
+    populacao.retain(|&i| !envenenado[i]);
+    assert!(
+        populacao.len() >= 50,
+        "só {} bordas de sobreposição — a fixtura não contém o fenómeno",
+        populacao.len()
+    );
+    let n = g.hit.len();
+    let mut veneno = sh.clone();
+    veneno.set_ambient(
+        (0..n)
+            .map(|i| {
+                if envenenado[i] {
+                    VENENO_CEU
+                } else {
+                    sh.ambient_at(i)
+                }
+            })
+            .collect(),
+    );
+    for l in 0..lampada.len() {
+        veneno.set_lamp(
+            l,
+            (0..n)
+                .map(|i| {
+                    if envenenado[i] {
+                        VENENO_LAMPADA
+                    } else {
+                        sh.at(l, i)
+                    }
+                })
+                .collect(),
+        );
+    }
+    veneno.set_bounce(
+        (0..n)
+            .map(|i| {
+                if envenenado[i] {
+                    VENENO_RICOCHETE
+                } else {
+                    sh.bounce_at(i)
+                }
+            })
+            .collect(),
+    );
+    let sem_ecra: [ph2d_field_render::Lamp; 0] = [];
+    let pinta = |s: &Shadows| {
+        ph2d_field_render::shade_render(
+            &g,
+            &cam,
+            &surfaces,
+            &ph2d_field_render::Lighting {
+                lamps: &sem_ecra,
+                points: &lampada,
+                sky: &crate::render_light::StudioSky,
+                shadows: Some(s),
+            },
+            &ph2d_field_render::Presentation::of(ph2d_view_transform::Look::default()),
+            [40, 40, 40, 255],
+        )
+    };
+    let limpo = pinta(&sh);
+    let com_veneno = pinta(&veneno);
+    let parados = populacao
+        .iter()
+        .filter(|&&i| limpo[4 * i..4 * i + 3] == com_veneno[4 * i..4 * i + 3])
+        .count();
+    println!(
+        "cena {CENA} {W}×{H} · bordas de sobreposição {} · paradas com o vizinho envenenado {parados}",
+        populacao.len()
+    );
+    assert_eq!(
+        parados, 0,
+        "{parados} bordas de sobreposição NÃO sentiram o veneno no vizinho da superfície delas — a \
+         sub-amostra que caiu no outro pedaço da peça está a ler a luz do centro"
+    );
+}

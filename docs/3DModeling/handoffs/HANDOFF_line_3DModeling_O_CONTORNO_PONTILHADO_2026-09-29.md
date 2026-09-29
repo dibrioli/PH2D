@@ -85,3 +85,31 @@ função que o documento usa. Hoje `6 de 6` verdes.
 ```
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-3DModeling && env PH2D_FIELD_SMOKE=28 cargo run -p ph2d-host-desktop --profile smoke
 ```
+
+## §6 — A segunda metade: onde a peça passa por cima de si mesma (foto de 29/09)
+
+Report do dono com foto, depois da §1: *«quando o objeto sobrepõe a si mesmo ainda aparecem
+pontos»*. ⭐ **Os `94` que a §1 deixava eram isto, e não a aproximação que eu tinha declarado.** A
+borda é marcada também por salto de NORMAL, logo existe entre DOIS pedaços da peça — e ali o centro
+ACERTA, a §1 devolvia-o, e a sub-amostra que caiu no pedaço de trás (na sombra do da frente)
+acendia-se com a luz do centro.
+
+⇒ **a fonte escolhe-se POR SUB-AMOSTRA:** fica o centro se ele está na MESMA superfície da
+sub-amostra (a guarda `OCCLUSION_BLUR_COS` — a mesma da oclusão e da sombra mole, e o shader lê-a do
+ficheiro que a declara); senão, o primeiro de cruz que esteja; e sem nenhum, o primeiro que acerte
+(a regra da §1). Placa: **`94 → 25`**, que é o número com a borda DESLIGADA (o serrilhado normal).
+
+⛔ **RECUSA MEDIDA — a vizinha de normal MAIS próxima:** construída, e partiu a paridade
+(`a_borda_mole_da_sombra_e_a_mesma_nos_dois_motores`, pior byte `12` contra `≤ 4`). Dentro do MESMO
+tubo o centro e os vizinhos têm normais iguais a menos do ruído, o máximo escolhia por esse ruído, e
+a CPU e a placa escolhiam vizinhos diferentes numa borda de sombra mole. *Uma escolha por MÁXIMO
+entre candidatos quase iguais é uma escolha pelo ruído.* Com a guarda: as `13` paridades verdes.
+
+**O gate** (`na_sobreposicao_a_luz_vem_da_superficie_da_subamostra`) é o INVERSO da irmã: ⛔ a
+população «todas as sub-amostras no outro pedaço» é **vazia** nesta cena (medido: `0`), logo
+envenena-se o VIZINHO da superfície de cada sub-amostra que discorda do centro e o pixel **tem de
+mudar** — `433` bordas, `0` paradas. Mutação (a lei da §1, `g.hit[i]` no lugar da guarda):
+**`433` de `433` paradas**, sangra. A sonda `diag_o_contorno_pontilhado` ganhou a coluna dos pontos
+isolados — deixou de ser precisa um script de fora.
+
+⚠️ `shade_render.rs` fica a **`696`** de `700` — o próximo que lhe tocar corta primeiro.

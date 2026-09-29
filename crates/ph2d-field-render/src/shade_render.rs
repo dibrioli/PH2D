@@ -458,22 +458,41 @@ pub fn shade_render(
     ///
     /// ⚠️ **Sem vizinho que acerte, devolve o que havia** — um pixel de silhueta sem um único vizinho
     /// de cruz na peça é uma peça com menos de um pixel de largura, e ali não há material a emprestar.
-    fn pixel_da_borda(g: &Gbuffer, i: usize) -> usize {
-        if g.hit[i] {
-            return i;
-        }
+    ///
+    /// ⭐⭐⭐ **E a escolha é POR SUB-AMOSTRA, pela NORMAL** (foto do dono de 2026-09-29: *«quando o
+    /// objeto sobrepõe a si mesmo ainda aparecem pontos»*). Onde o tubo passa por cima de si mesmo
+    /// a borda fica entre DOIS pedaços da peça, o centro ACERTA, e a sub-amostra que caiu no pedaço de
+    /// trás — na sombra do da frente — acendia-se com a luz do CENTRO. ⇒ fica o centro se ele está na
+    /// MESMA superfície da sub-amostra (a guarda [`crate::OCCLUSION_BLUR_COS`], a mesma da oclusão e
+    /// da sombra mole); senão, o primeiro de cruz que esteja (esquerda · direita · cima · baixo); e
+    /// sem nenhum, o primeiro que acerte.
+    ///
+    /// ⛔ **NÃO o de normal MAIS próxima** — construído e medido: dentro do MESMO tubo o centro e os
+    /// vizinhos têm normais iguais a menos do ruído, o máximo escolhia por esse ruído, e a CPU e a
+    /// placa escolhiam vizinhos diferentes numa borda de sombra mole (pior byte `12` contra `≤ 4`).
+    /// ⛔ O gémeo do dispositivo (`pixel_da_borda` no WGSL) escolhe igual — é a condição da paridade.
+    fn pixel_da_borda(g: &Gbuffer, i: usize, n: [f32; 3]) -> usize {
         let (w, h) = (g.width as usize, g.height as usize);
         let (x, y) = (i % w, i / w);
-        [
+        let mesma = |c: usize| {
+            let m = g.normal[c];
+            g.hit[c] && m[0] * n[0] + m[1] * n[1] + m[2] * n[2] >= crate::OCCLUSION_BLUR_COS
+        };
+        let cruz = [
             (x > 0).then(|| i - 1),
             (x + 1 < w).then(|| i + 1),
             (y > 0).then(|| i - w),
             (y + 1 < h).then(|| i + w),
-        ]
-        .into_iter()
-        .flatten()
-        .find(|&j| g.hit[j])
-        .unwrap_or(i)
+        ];
+        if mesma(i) {
+            return i;
+        }
+        cruz.into_iter()
+            .flatten()
+            .find(|&c| mesma(c))
+            .or_else(|| (g.hit[i]).then_some(i))
+            .or_else(|| cruz.into_iter().flatten().find(|&c| g.hit[c]))
+            .unwrap_or(i)
     }
 
     for e in &g.edges {
@@ -487,8 +506,6 @@ pub fn shade_render(
         let fundo = shadowed_background(bg, edge_ground_factor(g, &fatores, i));
         // ⭐ **E a luz devolvida viaja ao lado**, pela mesma razão do ramo do fundo acima.
         let luz_do_fundo = edge_ground_bounce(g, &postas, i);
-        // ⭐⭐⭐ **O PIXEL DE QUEM A BORDA PEDE EMPRESTADO** — ver [`pixel_da_borda`].
-        let j = pixel_da_borda(g, i);
         // ⚠️ **E o MATERIAL do centro serve às quatro amostras**, pela mesma razão da vista: a borda
         // não guarda os pontos das sub-amostras. ⛔ Numa silhueta entre DUAS peças de cores
         // diferentes isto pinta a borda com a cor da que o centro apanhou — declarado, e é a mesma
@@ -497,6 +514,8 @@ pub fn shade_render(
         let mut acc_luz = [0.0f32; 3];
         for k in 0..4 {
             let c = if e.hit[k] {
+                // ⭐⭐⭐ **O PIXEL DE QUEM ESTA SUB-AMOSTRA PEDE EMPRESTADO** — ver [`pixel_da_borda`].
+                let j = pixel_da_borda(g, i, e.normal[k]);
                 let rgb = mixed_radiance(
                     surfaces,
                     PixelGeom {

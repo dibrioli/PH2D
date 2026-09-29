@@ -393,7 +393,22 @@ fn direccao_de_vista(d: vec3<f32>) -> vec3<f32> {
 // ⭐ A cura é o espelho do `fator_da_borda`: ele empresta dos vizinhos de cruz que FALHAM, isto
 // empresta do primeiro que ACERTA, na MESMA ordem (esquerda, direita, cima, baixo). Sem nenhum,
 // devolve o que havia — uma peça com menos de um pixel de largura não tem material a emprestar.
-fn pixel_da_borda(i: u32, x: u32, y: u32) -> u32 {
+// ⭐⭐⭐ Por SUB-AMOSTRA e pela NORMAL (2026-09-29, a sobreposição do tubo consigo mesmo): fica o
+// centro se ele está na MESMA superfície de `n` (a guarda `BLUR_COS`, a da oclusão e da sombra mole);
+// senão o primeiro de cruz que esteja (esquerda · direita · cima · baixo); e sem nenhum, o primeiro
+// que acerte. O gémeo da CPU é o `pixel_da_borda` do `shade_render`, com a recusa medida do «normal
+// mais próxima» escrita lá.
+fn mesma_da_borda(c: u32, n: vec3<f32>) -> bool {
+    let q = centro[c];
+    return q.x >= 0.0 && dot(q.yzw, n) >= BLUR_COS;
+}
+
+fn pixel_da_borda(i: u32, x: u32, y: u32, n: vec3<f32>) -> u32 {
+    if (mesma_da_borda(i, n)) { return i; }
+    if (x > 0u && mesma_da_borda(i - 1u, n)) { return i - 1u; }
+    if (x + 1u < s.w && mesma_da_borda(i + 1u, n)) { return i + 1u; }
+    if (y > 0u && mesma_da_borda(i - s.w, n)) { return i - s.w; }
+    if (y + 1u < s.h && mesma_da_borda(i + s.w, n)) { return i + s.w; }
     if (centro[i].x >= 0.0) { return i; }
     if (x > 0u && centro[i - 1u].x >= 0.0) { return i - 1u; }
     if (x + 1u < s.w && centro[i + 1u].x >= 0.0) { return i + 1u; }
@@ -513,32 +528,12 @@ fn pinta_bordas(@builtin(global_invocation_id) g: vec3<u32>) {
     if (i >= s.w * s.h) { return; }
     let x = i % s.w;
     let y = i / s.w;
-    // ⭐⭐⭐ **O PIXEL DE QUEM A BORDA PEDE O PONTO EMPRESTADO** — ver `pixel_da_borda`. Dele sai a
-    // POSIÇÃO, que é o que escolhe o material.
-    //
-    // ⚠️ **E, desde 2026-09-29, também a LUZ (abaixo).** Em 13/09 (`824514f70`) emprestar o céu e o
-    // ricochete foi medido contra o REBORDO da `=36` e não o movia um byte — verdade, e sobre OUTRO
-    // defeito. O contorno pontilhado da `=28` mede-se noutra régua (pixels isolados mais claros que
-    // os oito vizinhos), e ali a luz do centro que falha é a causa inteira. ⛔ Os dois motores mudam
-    // JUNTOS — é a condição da paridade.
-    let j = pixel_da_borda(i, x, y);
-    let cj = centro[j];
+    // ⚠️ **A vista do CENTRO serve às quatro sub-amostras**; o PONTO e a LUZ de cada uma vêm do pixel
+    // que ela escolhe (abaixo). Em 13/09 (`824514f70`) emprestar o céu e o ricochete foi medido contra
+    // o REBORDO da `=36` e não o movia um byte — verdade, e sobre OUTRO defeito: o contorno
+    // pontilhado da `=28` mede-se noutra régua (pixels isolados mais claros que os oito vizinhos).
     let r = ray_at_plane(raio(f32(x) + 0.5, f32(y) + 0.5));
     let v = direccao_de_vista(r.d);
-    let rj = ray_at_plane(raio(f32(j % s.w) + 0.5, f32(j / s.w) + 0.5));
-    let p = rj.o + rj.d * cj.x;
-    // ⭐⭐⭐ **E A LUZ vem do MESMO pixel que o ponto** (o contorno pontilhado da foto de 25/09).
-    // Num pixel cujo centro FALHA a peça, o céu, a sombra da lâmpada e o ricochete do próprio `i`
-    // são os de um pixel de FUNDO — o céu aberto e a lâmpada sem sombra —, e as sub-amostras que
-    // acertam acendiam-se com eles: um ponto claro isolado em cada degrau da silhueta de um tubo
-    // escuro. Com o centro na peça `j == i` e nada muda. O gémeo da CPU é o `i: j` do laço da
-    // borda no `shade_render`.
-    let jx = j % s.w;
-    let jy = j / s.w;
-    let ceu_vis = ceu_em(jx, jy, j, cj.yzw);
-    // ⚠️ **As sub-amostras partilham o ricochete do CENTRO**, exactamente como partilham o material
-    // — a mesma aproximação declarada da borda, e pela mesma razão.
-    let ric = ricochete_no_pixel(jx, jy, j, cj.yzw);
     // ⭐⭐ **O fundo de uma sub-amostra que falha é o fundo COM o chão** — sem isto a silhueta de
     // baixo pinta um fio do fundo limpo entre a peça e a sombra de contacto.
     let f_chao = fator_da_borda(i, x, y);
@@ -554,6 +549,20 @@ fn pinta_bordas(@builtin(global_invocation_id) g: vec3<u32>) {
         let q = borda[slot * 5u + 1u + k];
         var cor = fundo;
         if (q.x >= 0.0) {
+            // ⭐⭐⭐ **O ponto E a luz vêm do pixel de quem ESTA sub-amostra pede emprestado** —
+            // escolhido pela normal dela (`pixel_da_borda`). Num pixel cujo centro FALHA a peça o
+            // céu e a sombra do centro são os do FUNDO (o contorno pontilhado de 25/09); onde o tubo
+            // passa por cima de si mesmo são os do OUTRO pedaço (a foto de 29/09). ⚠️ As
+            // sub-amostras partilham o material e o ricochete desse pixel — a aproximação declarada
+            // da borda. ⛔ O gémeo da CPU muda JUNTO: é a condição da paridade.
+            let j = pixel_da_borda(i, x, y, q.yzw);
+            let cj = centro[j];
+            let jx = j % s.w;
+            let jy = j / s.w;
+            let rj = ray_at_plane(raio(f32(jx) + 0.5, f32(jy) + 0.5));
+            let p = rj.o + rj.d * cj.x;
+            let ceu_vis = ceu_em(jx, jy, j, cj.yzw);
+            let ric = ricochete_no_pixel(jx, jy, j, cj.yzw);
             cor = vec4<f32>(radiancia(p, q.yzw, v, j, ceu_vis, ric).ecra, 1.0);
         } else {
             acc_luz = acc_luz + luz_do_fundo * 0.25;

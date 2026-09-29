@@ -12,16 +12,12 @@ use crate::paint_layers::{self, LayerMetrics, PendingBlend};
 use crate::paint_sections::BodyCtx;
 use crate::state::{self, FlipPanelState, set_last_content_h, set_last_visible_h};
 use crate::{FlipPanel, ids};
-use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
     paint_panel_surface, paint_panel_title, panel_close_button_rect,
 };
-use ph2d_editor_core::widget::{
-    FLIP_SCROLLBAR_ID, NUMBER_INPUT_MIN_W_PX, SCROLLBAR_W, paint_scrollbar, scrollbar_is_needed,
-    scrollbar_thumb_rect, scrollbar_track_rect,
-};
+use ph2d_editor_core::widget::{FLIP_SCROLLBAR_ID, NUMBER_INPUT_MIN_W_PX, SCROLLBAR_W};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing, TypeToken};
 
@@ -82,15 +78,15 @@ pub(crate) fn paint(state: &mut FlipPanelState, ctx: &mut PaintCtx) {
     let body_top = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
     let body_h = (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0);
 
-    // Clip the body region + shift content up by `scroll_y`.
-    let scroll_y = ctx
-        .host
-        .store()
-        .panel_scroll(ph2d_editor_core::ids::FLIP_PANEL)
-        .max(0.0);
-    let clip = rect_to_vello(Rect::new(rect.x, body_top, rect.w, body_h));
-    ctx.scene.push_clip(&clip);
-    let body_top_y = body_top - scroll_y;
+    // ⭐ A PORTA da rolagem (spec `04_a_rolagem_unica`): recorte do desenho e do clique, as duas
+    // alturas, o clamp e a barra — agora FORA do recorte, com a TRILHA registada.
+    let area = ph2d_editor_core::panel::scroll_area::open(
+        ctx,
+        ph2d_editor_core::ids::FLIP_PANEL,
+        FLIP_SCROLLBAR_ID,
+        Rect::new(rect.x, body_top, rect.w, body_h),
+    );
+    let body_top_y = area.top();
     let mut y = body_top_y;
     let mut pending_blend: Option<PendingBlend> = None;
 
@@ -136,41 +132,20 @@ pub(crate) fn paint(state: &mut FlipPanelState, ctx: &mut PaintCtx) {
     // Total painted height (independent of scroll — both ends shift with it).
     let content_h = (y - body_top_y + PANEL_HEAD_PAD).max(0.0);
 
-    // Body scrollbar (inside the clip, right rail) + its drag hit target.
-    if scrollbar_is_needed(content_h, body_h) {
-        let body = Rect::new(rect.x, body_top, rect.w, body_h);
-        let thumb = scrollbar_thumb_rect(scrollbar_track_rect(body), scroll_y, content_h, body_h);
-        paint_scrollbar(
-            body,
-            scroll_y,
-            content_h,
-            body_h,
-            ctx.host.store().scrollbar_visual(FLIP_SCROLLBAR_ID),
-            ctx.scene,
-            theme,
-        );
-        ctx.host.hit_index_mut().register(FLIP_SCROLLBAR_ID, thumb);
-    }
-    ctx.scene.pop_layer();
+    ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
 
     // Deferred blend popover — OUTSIDE the body clip so it isn't cut off.
     if let Some(p) = &pending_blend {
         paint_layers::paint_blend_popover(ctx, theme, p);
     }
 
-    // Mark the Stroke swatch so a Down opens the shared OKLCH picker + publish
-    // the body heights so wheel/thumb scroll works.
+    // Mark the Stroke swatch so a Down opens the shared OKLCH picker (the body
+    // heights are published by the door).
     {
         let store = ctx.host.store_mut();
         store.register_picker_swatch(ids::FLIP_STROKE_SWATCH);
         store.register_picker_swatch(ids::FLIP_FILL_SWATCH);
         store.register_picker_swatch(ids::FLIP_COLORIZE_SWATCH);
-        store.set_panel_content_h(ph2d_editor_core::ids::FLIP_PANEL, content_h);
-        store.set_panel_visible_h(ph2d_editor_core::ids::FLIP_PANEL, body_h);
-        let max_scroll = (content_h - body_h).max(0.0);
-        if store.panel_scroll(ph2d_editor_core::ids::FLIP_PANEL) > max_scroll {
-            store.set_panel_scroll(ph2d_editor_core::ids::FLIP_PANEL, max_scroll);
-        }
     }
     set_last_content_h(content_h);
     set_last_visible_h(body_h);

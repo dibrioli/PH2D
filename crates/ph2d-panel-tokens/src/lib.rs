@@ -37,7 +37,9 @@ pub mod state;
 
 mod event;
 
-pub use state::{TokensIntent, TokensPanelState, drain_intents, last_content_h, last_visible_h};
+pub use state::{
+    TokensIntent, TokensPanelState, drain_intents, last_body_top, last_content_h, last_visible_h,
+};
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};

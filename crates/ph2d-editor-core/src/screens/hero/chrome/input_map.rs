@@ -35,8 +35,8 @@ use crate::interaction::{HitIndex, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_text, resolve};
 use crate::widget::{
     Button, IconButtonStyle, IconGlyph, ListItem, ListItemState, TextInput, TextInputState,
-    paint_button, paint_icon_button, paint_list_item, paint_scrollbar,
-    paint_slider_with_chip_layout, paint_text_input_with_buffer, slider_with_chip_min_w,
+    paint_button, paint_icon_button, paint_list_item, paint_slider_with_chip_layout,
+    paint_text_input_with_buffer, slider_with_chip_min_w,
 };
 use crate::zones::Rect;
 use ph2d_i18n::tr;
@@ -167,10 +167,8 @@ pub fn paint_input_map_window(
     store: &WidgetStore,
     map: &InputMap,
     viewport: Rect,
-) {
-    let Some((x, y)) = store.input_map_pos() else {
-        return;
-    };
+) -> Option<(Rect, crate::widget::scroll_area::Pending)> {
+    let (x, y) = store.input_map_pos()?;
     let row_h = ROW_H_PX;
     let gap = Spacing::Xs.px();
     let pad_y = Spacing::Sm.px();
@@ -323,15 +321,22 @@ pub fn paint_input_map_window(
     // `HitIndex` só decide quem RESPONDE; a auditoria de 2026-08-24 mostrou que o conteúdo rolado
     // continuava a **DESENHAR** por cima do título e para fora do cartão. Quem recorta pixels é a
     // cena — [`VectorScene::push_layer`].
+    //
+    // ⭐ **Desde 2026-09-29 é a PORTA da rolagem** (`widget::scroll_area`, spec
+    // `04_a_rolagem_unica` W5): ela recorta os dois, regista a TRILHA com o dono publicado e dá à
+    // janela o que todo painel tem — o polegar que ARRASTA (antes ele pintava, fazia hover e não
+    // se agarrava: o despacho não lhe conhecia o dono), o salto na trilha, a roda sem caso
+    // especial na shell, o arrasto no corpo e a inércia. A chave das tabelas é o FUNDO do cartão.
     let body = Rect::new(rect.x, cy, rect.w, body_h);
-    hit_index.push_clip(body);
-    scene.push_clip(&ph2d_vector::Rect::new(
-        f64::from(body.x),
-        f64::from(body.y),
-        f64::from(body.x + body.w),
-        f64::from(body.y + body.h),
-    ));
-    let scroll = store.input_map_scroll();
+    let area = crate::widget::scroll_area::open_with(
+        scene,
+        hit_index,
+        store,
+        ids::INPUT_MAP_SURFACE,
+        crate::widget::INPUT_MAP_SCROLLBAR_ID,
+        body,
+    );
+    let scroll = area.scroll();
     let icon_w = Spacing::Xl2.px();
     // ⭐ **UMA lista, e o `y` de cada linha É o índice dela.** Enquanto o desenho re-derivava a
     // sequência à mão, um texto pintado fora de ordem caía por cima do vizinho — que é o
@@ -507,29 +512,14 @@ pub fn paint_input_map_window(
             theme,
         );
     }
-    hit_index.pop_clip();
-    scene.pop_layer();
-
-    // ── A BARRA DE ROLAGEM, quando a lista não cabe — e ela é REGISTADA. ──
+    // ── A BARRA DE ROLAGEM, quando a lista não cabe — pela porta, que a pinta DEPOIS de desfeito o
+    // recorte e regista a TRILHA. ──
     //
-    // ⛔ Auditoria 2026-08-24: ela era pintada e **nunca registada** — não arrastava, não fazia
-    // hover, e não tinha id nenhum. *Uma barra que não se pode agarrar é um enfeite que promete um
-    // gesto.* O `visual` também passa a vir do store, senão ela nasce inerte sob o rato.
-    if want_body > body_h {
-        hit_index.register(
-            crate::widget::INPUT_MAP_SCROLLBAR_ID,
-            crate::widget::scrollbar_track_rect(body),
-        );
-        paint_scrollbar(
-            body,
-            scroll,
-            want_body,
-            body_h,
-            store.scrollbar_visual(crate::widget::INPUT_MAP_SCROLLBAR_ID),
-            scene,
-            theme,
-        );
-    }
+    // ⛔ Auditoria 2026-08-24: ela era pintada e **nunca registada**; em 2026-08-24 passou a ser
+    // registada mas sem dono no despacho, logo **continuava a não arrastar** — até à porta.
+    let pending =
+        crate::widget::scroll_area::close_parts(area, scene, hit_index, store, want_body, theme);
+    Some((rect, pending))
 }
 
 /// **UMA LIGAÇÃO, indentada** — o que ela é, de que dispositivo, e o `X` que a remove.

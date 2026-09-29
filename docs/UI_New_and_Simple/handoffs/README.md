@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**13 arquivos** · **6** citados pelo `CLAUDE.md` (marcados **◆**) · **13** são handoffs (registro **morto**).
+**14 arquivos** · **6** citados pelo `CLAUDE.md` (marcados **◆**) · **14** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -28,6 +28,7 @@
 | 2026-09-20 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-20.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-20.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-09-20 |
 | 2026-09-20 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-20_A_PALETA.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-20_A_PALETA.md) | ⚠️ handoff (morto) | `line/UIUX` · 2026-09-20 (2.ª volta) · **O SELECTOR DE PINCÉIS SAI DO PAINEL, E UM MODAL É DONO DA ENTRADA** |
 | 2026-09-25 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-25_A_LINHA.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-25_A_LINHA.md) | ⚠️ handoff (morto) | `line/UIUX` · 2026-09-25 · **HANDOFF DO INTEGRADOR — a linha inteira desde `395da6a55`** |
+| 2026-09-29 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-29_A_ROLAGEM.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-29_A_ROLAGEM.md) | ⚠️ handoff (morto) | `line/UIUX` · 2026-09-29 · **HANDOFF DO INTEGRADOR — a rolagem única, com inércia** |
 
 ---
 

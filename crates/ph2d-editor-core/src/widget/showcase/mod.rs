@@ -436,4 +436,4 @@ use switches::paint_switches_section;
 use vector::paint_vector_section;
 
 mod body;
-pub use body::paint_showcase_body;
+pub use body::{ShowcaseBody, close_showcase_body_with, finish_chrome, paint_showcase_body};

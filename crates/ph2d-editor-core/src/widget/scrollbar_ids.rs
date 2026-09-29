@@ -192,10 +192,9 @@ pub const LAB_SCROLLBAR_ID: NodeId = NodeId(846);
 ///
 /// ⛔⛔ **Ele NASCEU na crate do painel e teve de VIR PARA CÁ** — e foi o
 /// `hit_indexed_ids_are_registered` que o disse. Um id de barra declarado do lado do painel é
-/// invisível ao [`crate::interaction::dispatch`]: o `scrollbar_panel_for_id` não o mapeia, o
-/// `begin_scrollbar_drag` nunca arma, e o polegar fica **pintado e impossível de agarrar** — que é
-/// exactamente a auditoria que o `INPUT_MAP_SCROLLBAR_ID` já pagou acima. *O dono de um id de barra
-/// é o despacho, nunca quem a desenha.*
+/// invisível à contagem de colisões desta lista. (Na época o despachante tinha uma tabela à mão e o
+/// polegar ficava **pintado e impossível de agarrar**; desde 2026-09-29 o dono é o que a porta
+/// `scroll_area` publica, e a lista continua a ser o sítio onde os ids se CONTAM.)
 ///
 pub const TAGS_SCROLLBAR_ID: NodeId = NodeId(847);
 /// ⭐ **O painel de OSSOS** (2026-09-29, spec `04_a_rolagem_unica` D3) — ele pintava com o
@@ -203,8 +202,14 @@ pub const TAGS_SCROLLBAR_ID: NodeId = NodeId(847);
 /// porta `scroll_area` o dono passa a ser publicado a cada quadro, mas o id continua a ser CONTADO
 /// aqui: dois painéis abertos com o mesmo id publicariam dois donos, e ganhava o último a pintar.
 ///
-/// Next free id is `849`; re-read the collision note above before taking it.
+/// ⚠️ O `849` foi tomado pela barra da PALETA de comandos, abaixo.
 pub const SKELETON_SCROLLBAR_ID: NodeId = NodeId(848);
+/// ⭐ **A PALETA de comandos** (2026-09-29, spec `04_a_rolagem_unica` W5) — ela rolava pela roda e
+/// não tinha barra nenhuma: um degradê dizia que havia mais, e nada deixava AGARRAR a lista. Desde a
+/// porta `scroll_area` a lista usa as tabelas de todo painel com a chave `CMD_PALETTE_CARD`.
+///
+/// Next free id is `850`; re-read the collision note above before taking it.
+pub const CMD_PALETTE_SCROLLBAR_ID: NodeId = NodeId(849);
 
 #[cfg(test)]
 mod tests {
@@ -254,6 +259,7 @@ mod tests {
             ("ASSET_BROWSER", ASSET_BROWSER_SCROLLBAR_ID),
             ("TAGS", TAGS_SCROLLBAR_ID),
             ("SKELETON", SKELETON_SCROLLBAR_ID),
+            ("CMD_PALETTE", CMD_PALETTE_SCROLLBAR_ID),
             ("DROPDOWN", crate::widget::DROPDOWN_SCROLLBAR_ID),
         ];
         for (i, (na, a)) in ids.iter().enumerate() {

@@ -29,11 +29,17 @@ use ph2d_ui_testkit::MockPanelHost;
 
 /// A dock-sized viewport. Tall, because the panel has five sections and a
 /// paint that ran out of room would register nothing and quietly pass.
+///
+/// ⚠️ Desde a porta da rolagem (`scroll_area`) o clique também é RECORTADO pelo corpo: um controlo
+/// rolado para fora deixa de estar registado. Medido 2026-09-29: o corpo pede `1194` px e a
+/// `1200` de viewport o corpo visível era `1074` — o *Show Colliders* e os verbos da fita ficavam
+/// FORA, e só passavam porque o registo não era recortado. `1600` cabe o painel inteiro com folga
+/// (o verbo da fita acrescenta uma linha).
 const VIEWPORT: Rect = Rect {
     x: 0.0,
     y: 0.0,
     w: 1600.0,
-    h: 1200.0,
+    h: 1600.0,
 };
 
 /// Put a known world in front of the panel and clear anything queued.

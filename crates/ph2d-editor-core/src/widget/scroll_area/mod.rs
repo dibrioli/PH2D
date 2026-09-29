@@ -16,10 +16,15 @@
 //! ⇒ **um par ABRIR / FECHAR**, e o nome diz que há uma metade por fechar:
 //!
 //! ```text
-//! let area = scroll_area::open(ctx, PANEL, BAR, body);
+//! let area = panel::scroll_area::open(ctx, PANEL, BAR, body);
 //! … o corpo pinta a partir de  area.top()  …
-//! scroll_area::close(area, ctx, content_h);
+//! panel::scroll_area::close(area, ctx, content_h);
 //! ```
+//!
+//! ⚠️ **As formas com `PaintCtx` moram em [`crate::panel::scroll_area`]**, não aqui: o `widget` não
+//! pode conhecer o `panel` (o DAG dos módulos de topo — `panel → action_bus → interaction →
+//! widget` já existe, e `widget → panel` fechava o ciclo). Aqui fica a porta com as PARTES soltas,
+//! que é a que a moldura e os pintores de janela flutuante usam.
 //!
 //! ## O que a porta garante, por construção
 //!
@@ -37,14 +42,14 @@
 
 use crate::interaction::{HitIndex, WidgetStore};
 use crate::paint::rect_to_vello;
-use crate::panel::PaintCtx;
 use crate::widget::scrollbar::{SCROLLBAR_THUMB_MIN_H, is_needed, paint_scrollbar, track_rect};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
 
-/// Um corpo rolável ABERTO. Só o [`close`] (ou o [`close_with`]) o consome.
+/// Um corpo rolável ABERTO. Só um fecho o consome ([`close_with`], [`close_parts`] ou o
+/// `crate::panel::scroll_area::close`).
 #[must_use = "um corpo aberto tem de ser fechado — senão o recorte fica aberto"]
 #[derive(Debug, Clone, Copy)]
 pub struct ScrollArea {
@@ -74,6 +79,21 @@ impl ScrollArea {
     #[must_use]
     pub fn panel(&self) -> NodeId {
         self.panel
+    }
+    /// O id da barra (o dono da trilha que o fecho regista).
+    #[must_use]
+    pub fn bar(&self) -> NodeId {
+        self.bar
+    }
+    /// ⚠️ Só a crate constrói um corpo aberto: quem o constrói é também quem empurra os recortes,
+    /// e um `ScrollArea` sem recorte aberto seria um fecho que desempilha o recorte de outro.
+    pub(crate) fn opened(panel: NodeId, bar: NodeId, body: Rect, scroll: f32) -> Self {
+        Self {
+            panel,
+            bar,
+            body,
+            scroll,
+        }
     }
 }
 
@@ -172,47 +192,8 @@ impl Pending {
     }
 }
 
-/// Abre o corpo de um painel — a forma de todo `Panel::paint`.
-pub fn open(ctx: &mut PaintCtx, panel: NodeId, bar: NodeId, body: Rect) -> ScrollArea {
-    let scroll = ctx.host.store().panel_scroll(panel).max(0.0);
-    ctx.scene.push_clip(&rect_to_vello(body));
-    ctx.host.hit_index_mut().push_clip(body);
-    ScrollArea {
-        panel,
-        bar,
-        body,
-        scroll,
-    }
-}
-
-/// Fecha o corpo de um painel.
-pub fn close(area: ScrollArea, ctx: &mut PaintCtx, content_h: f32) {
-    let theme = ctx.host.theme();
-    ctx.scene.pop_layer();
-    ctx.host.hit_index_mut().pop_clip();
-    let visible_h = area.body.h;
-    publish(ctx.host.store_mut(), area.panel, content_h, visible_h);
-    if is_needed(content_h, visible_h) {
-        let track = track_rect(area.body);
-        let visual = ctx.host.store().scrollbar_visual(area.bar);
-        let _ = paint_scrollbar(
-            area.body,
-            area.scroll,
-            content_h,
-            visible_h,
-            visual,
-            ctx.scene,
-            theme,
-        );
-        ctx.host.hit_index_mut().register(area.bar, track);
-        ctx.host
-            .store_mut()
-            .publish_scroll_bar(area.bar, area.panel, track);
-    }
-}
-
 /// As duas alturas e o clamp do alvo — a metade que NÃO depende de a barra ser precisa.
-fn publish(store: &mut WidgetStore, panel: NodeId, content_h: f32, visible_h: f32) {
+pub(crate) fn publish(store: &mut WidgetStore, panel: NodeId, content_h: f32, visible_h: f32) {
     store.set_panel_content_h(panel, content_h);
     store.set_panel_visible_h(panel, visible_h);
     let max = (content_h - visible_h).max(0.0);

@@ -18,11 +18,15 @@ use ph2d_tokens::overrides::{TokenValue, clear_color_overrides, set_color_overri
 use ph2d_tokens::{ColorToken, NumToken, Theme};
 use ph2d_ui_testkit::MockPanelHost;
 
+/// ⚠️ Alto o bastante para a lista INTEIRA caber sem rolar: desde a porta da rolagem
+/// (`scroll_area`) o clique também é recortado pelo corpo, e uma linha rolada para fora deixa de
+/// estar registada. Medido 2026-09-29: o corpo pede `2779` px na fábrica contra `774` visíveis a
+/// `900` de viewport — as linhas de baixo só eram «pintadas» porque o registo não era recortado.
 const VIEWPORT: Rect = Rect {
     x: 0.0,
     y: 0.0,
     w: 1600.0,
-    h: 900.0,
+    h: 4000.0,
 };
 const SEC: u128 = 1_000_000_000;
 

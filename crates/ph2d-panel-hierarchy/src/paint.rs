@@ -81,7 +81,7 @@ pub(crate) fn paint(state: &mut state::HierarchyState, ctx: &mut PaintCtx) {
     };
     let content_h = state::last_hierarchy_content_h();
     ctx.host.store_mut().set_hierarchy_row_ids(row_set);
-    widget::scroll_area::close(area, ctx, content_h);
+    ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
 }
 
 /// ⭐ **AS LINHAS DE PARENTESCO** — as guias no estilo do Godot que ligam um pai aos filhos.
@@ -283,7 +283,12 @@ fn paint_hierarchy_body(
     // ⭐ A PORTA da rolagem (spec `04_a_rolagem_unica` D2): a altura visível passa a ser
     //    PUBLICADA — sem ela a barra desta coluna nunca armava e o arrasto no corpo estava
     //    desligado —, e o clique das linhas roladas para fora do corpo deixa de valer.
-    let body = Rect::new(rect.x, body_top, rect.w, (content_bottom - body_top).max(0.0));
+    let body = Rect::new(
+        rect.x,
+        body_top,
+        rect.w,
+        (content_bottom - body_top).max(0.0),
+    );
     let area = widget::scroll_area::open_with(
         scene,
         hit_index,

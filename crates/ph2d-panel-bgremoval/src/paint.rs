@@ -23,18 +23,14 @@ use crate::paint_sections::{
     paint_islands, paint_protect_brush, paint_slider_rows,
 };
 use crate::state::{self, BgRemovalPanelState, set_last_content_h, set_last_visible_h};
-use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
+use ph2d_editor_core::widget::BG_REMOVAL_SCROLLBAR_ID;
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
     paint_panel_surface, paint_panel_title,
 };
-use ph2d_editor_core::widget::{
-    BG_REMOVAL_SCROLLBAR_ID, paint_scrollbar, scrollbar_is_needed, scrollbar_thumb_rect,
-    scrollbar_track_rect,
-};
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
+use ph2d_tokens::{ROW_H_PX, Spacing};
 
 pub(crate) fn paint(_state: &mut BgRemovalPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(BgRemovalPanel::ID) {
@@ -103,12 +99,14 @@ pub(crate) fn paint(_state: &mut BgRemovalPanelState, ctx: &mut PaintCtx) {
     let body_top = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
     let body_h = (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0);
     let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
-    let scroll = ctx
-        .host
-        .store()
-        .panel_scroll(ph2d_editor_core::ids::BGR_PANEL);
-
-    ctx.scene.push_clip(&rect_to_vello(body_rect));
+    // ⭐ A PORTA da rolagem (spec `04_a_rolagem_unica`): recorte do desenho e do clique, as duas
+    // alturas, o clamp e a barra com a TRILHA registada.
+    let area = ph2d_editor_core::panel::scroll_area::open(
+        ctx,
+        ph2d_editor_core::ids::BGR_PANEL,
+        BG_REMOVAL_SCROLLBAR_ID,
+        body_rect,
+    );
     let y_after = paint_body_sections(
         ctx,
         &snapshot,
@@ -117,19 +115,17 @@ pub(crate) fn paint(_state: &mut BgRemovalPanelState, ctx: &mut PaintCtx) {
         row_h,
         row_gap,
         chip_w,
-        body_top - scroll,
+        area.top(),
     );
 
     // `content_h` is the painted body height in body-local coords (undo
     // the scroll subtraction we applied when laying out from `body_top
     // - scroll`). The scrollbar uses this against `body_h` to decide
     // whether it's needed and how tall the thumb is.
-    let content_h = (y_after + scroll) - body_top + PANEL_HEAD_PAD;
+    let content_h = (y_after + area.scroll()) - body_top + PANEL_HEAD_PAD;
     set_last_content_h(content_h);
     set_last_visible_h(body_h);
-    ctx.scene.pop_layer();
-
-    paint_scrollbar_and_publish(ctx, body_rect, content_h, body_h, scroll, theme);
+    ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
 
     // Re-register close at end-of-frame so scrolled body widgets behind
     // the title can't shadow it (canon — vide panel_chrome doc).
@@ -251,41 +247,4 @@ fn paint_body_sections(
         row_gap,
         y,
     )
-}
-
-/// Paint the vertical scrollbar (only if needed) and publish
-/// `content_h` / `visible_h` to the store so wheel dispatch can bound
-/// the offset against painter-known metrics. Also clamps any over-scroll
-/// left over from a content shrink in the previous frame.
-fn paint_scrollbar_and_publish(
-    ctx: &mut PaintCtx,
-    body_rect: Rect,
-    content_h: f32,
-    body_h: f32,
-    scroll: f32,
-    theme: Theme,
-) {
-    if scrollbar_is_needed(content_h, body_h) {
-        let track = scrollbar_track_rect(body_rect);
-        let thumb = scrollbar_thumb_rect(track, scroll, content_h, body_h);
-        paint_scrollbar(
-            body_rect,
-            scroll,
-            content_h,
-            body_h,
-            ctx.host.store().scrollbar_visual(BG_REMOVAL_SCROLLBAR_ID),
-            ctx.scene,
-            theme,
-        );
-        ctx.host
-            .hit_index_mut()
-            .register(BG_REMOVAL_SCROLLBAR_ID, thumb);
-    }
-    let store = ctx.host.store_mut();
-    store.set_panel_content_h(ph2d_editor_core::ids::BGR_PANEL, content_h);
-    store.set_panel_visible_h(ph2d_editor_core::ids::BGR_PANEL, body_h);
-    let max_scroll = (content_h - body_h).max(0.0);
-    if store.panel_scroll(ph2d_editor_core::ids::BGR_PANEL) > max_scroll {
-        store.set_panel_scroll(ph2d_editor_core::ids::BGR_PANEL, max_scroll);
-    }
 }

@@ -21,8 +21,11 @@ use ph2d_panel_painter_layers::state::{PainterLayersPanelState, set_current_brus
 use ph2d_tool_painter::PainterTool;
 use ph2d_ui_testkit::MockPanelHost;
 
+/// ⚠️ **Alto o bastante para o corpo inteiro caber** (2026-09-29): desde a porta `scroll_area` o
+/// `HitIndex` deste painel é recortado pelo corpo, e a 900 px as linhas de baixo deixavam de estar
+/// registadas. Este gate mede se o controlo é pintado e vivo, não o que cabe num ecrã.
 fn viewport() -> Rect {
-    Rect::new(0.0, 0.0, 1600.0, 900.0)
+    Rect::new(0.0, 0.0, 1600.0, 4000.0)
 }
 
 /// Um painter com uma Shape de `layers` camadas instalada, publicada como o shell publica por frame.

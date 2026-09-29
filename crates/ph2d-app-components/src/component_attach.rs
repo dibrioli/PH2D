@@ -249,23 +249,18 @@ fn attach_one(
 /// fora dela». Uma roda que atravessasse o scrim daria zoom no canvas escurecido por baixo, que é
 /// o gesto errado com a mão no sítio certo.
 ///
-/// ⚠️ **O sinal é INVERTIDO** (`-dy`), como no Input Map: a roda para cima sobe a lista, isto é
-/// DIMINUI o deslocamento.
-pub fn palette_wheel(
-    hero: &mut HeroScreen,
-    text_system: &mut ph2d_text::TextSystem,
-    viewport: ph2d_editor_core::zones::Rect,
-    dy: f32,
-) -> bool {
+/// ⚠️ O sinal é o do `dispatch_wheel` (roda para cima ⇒ o deslocamento DIMINUI), porque a lei é a
+/// mesma função.
+pub fn palette_wheel(hero: &mut HeroScreen, dy: f32) -> bool {
     if !hero.store.command_palette_open() {
         return false;
     }
-    let max = ph2d_editor_core::screens::hero::chrome::command_palette_max_scroll(
-        text_system,
-        &hero.store,
-        viewport,
+    // ⭐ A lei é a de todo corpo rolável (`WidgetStore::wheel_panel`), com a chave da paleta: o fim
+    // é o que a porta `scroll_area` publicou no quadro, medido pelo mesmo pintor que desenha.
+    hero.store.wheel_panel(
+        ph2d_editor_core::widget::command_palette::CMD_PALETTE_CARD,
+        dy,
     );
-    hero.store.scroll_command_palette(-dy, max);
     true
 }
 

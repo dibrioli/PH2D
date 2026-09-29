@@ -280,25 +280,23 @@ fn the_scrollbar_thumb_is_registered_so_the_drag_can_start() {
     );
 }
 
-/// ⚠️ **O polegar da barra resolve para ESTE painel** no mapa do despachante — sem essa entrada o
-/// arrasto move a rolagem de outro painel (ou de nenhum).
+/// ⚠️ **O polegar da barra resolve para ESTE painel** — sem isso o arrasto move a rolagem de outro
+/// painel (ou de nenhum).
+///
+/// ⚠️ Desde 2026-09-29 a resposta é o DONO que a porta `scroll_area` publica ao pintar a barra (a
+/// tabela à mão do despachante morreu), logo a régua é o texto da chamada: a grelha abre a porta
+/// com a chave `ASSET_PANEL` e a barra `ASSET_BROWSER_SCROLLBAR_ID`, JUNTAS na mesma chamada.
 #[test]
 fn the_scrollbar_thumb_maps_back_to_this_panel() {
-    let host = MockPanelHost::with_panel::<AssetBrowserPanel>();
-    let (_, _) = host.store().scrollbar_visual_for(
-        ph2d_editor_core::widget::ASSET_BROWSER_SCROLLBAR_ID,
-        Some(ph2d_editor_core::ids::ASSET_PANEL),
-    );
-    // A prova real é o mapa do despachante, alcançado pelo `scrollbar_visual` de UM argumento:
-    // ele pergunta ao `scrollbar_panel_for_id`, e um id ausente dali devolve o par de repouso
-    // mesmo com o painel a rolar.
-    let visual_via_map = host
-        .store()
-        .scrollbar_visual(ph2d_editor_core::widget::ASSET_BROWSER_SCROLLBAR_ID);
-    assert_eq!(
-        visual_via_map.0,
-        ph2d_editor_core::widget::ScrollbarState::Normal,
-        "o par de repouso mudou de forma; re-leia este gate"
+    let src = include_str!("../../src/paint.rs");
+    let at = src
+        .find("scroll_area::open(")
+        .expect("a grelha deixou de passar pela porta da rolagem");
+    let call = &src[at..at + src[at..].find(");").expect("chamada fechada")];
+    assert!(
+        call.contains("ASSET_PANEL") && call.contains("ASSET_BROWSER_SCROLLBAR_ID"),
+        "a porta da grelha não recebe o par (ASSET_PANEL, ASSET_BROWSER_SCROLLBAR_ID) — o dono \
+         publicado da barra seria outro painel:\n{call}"
     );
 }
 

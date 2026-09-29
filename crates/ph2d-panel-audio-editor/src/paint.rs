@@ -12,7 +12,7 @@ use crate::{AEDIT_CLOSE, AEDIT_FX_PARAMS, AEDIT_NAME, AEDIT_PANEL, AudioEditorPa
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::motion;
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_centered, rect_to_vello, resolve};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_centered, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
@@ -21,7 +21,6 @@ use ph2d_editor_core::widget::panel_chrome::{
 };
 use ph2d_editor_core::widget::{
     AUDIO_EDITOR_SCROLLBAR_ID, ButtonState, GroupCell, GroupPos, SCROLLBAR_W, TextInputState,
-    paint_scrollbar, scrollbar_is_needed, scrollbar_thumb_rect, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -96,9 +95,17 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
     let bottom_pad = Spacing::Lg.px();
     let body_h = (rect.y + rect.h - body_top - bottom_pad).max(0.0);
     let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
-    // Read the scroll BEFORE the mutable store/hit borrows below.
-    let scroll = ctx.host.store().panel_scroll(AEDIT_PANEL);
-    let y = body_top - scroll;
+    // ⭐ A PORTA da rolagem (spec `04_a_rolagem_unica`): recorte do desenho e do clique, as duas
+    // alturas, o clamp e a barra com a TRILHA registada. Aberta ANTES dos empréstimos mutáveis
+    // store/hit abaixo; nada se pinta nem regista até ao corpo.
+    let area = ph2d_editor_core::panel::scroll_area::open(
+        ctx,
+        AEDIT_PANEL,
+        AUDIO_EDITOR_SCROLLBAR_ID,
+        body_rect,
+    );
+    let scroll = area.scroll();
+    let y = area.top();
 
     // Snapshot (shell → panel).
     let loaded = snapshot::loaded();
@@ -136,9 +143,10 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
     };
 
     let (scene, text_system) = (&mut *ctx.scene, &mut *ctx.text_system);
-    // Anything scrolled past the body's top/bottom is hidden — and, via
-    // `ClippedHits`, unclickable.
-    scene.push_clip(&rect_to_vello(body_rect));
+    // Anything scrolled past the body's top/bottom is hidden (the door) — and, via
+    // `ClippedHits`, unclickable. ⚠️ O `ClippedHits` FICA: ele é mais estrito que o recorte
+    // da porta (larga INTEIRO o widget que cruza a borda, em vez de o aparar) e carrega o
+    // store que os pintores do corpo leem. Os dois recortes compõem.
     // ⚠️ **O empréstimo CONJUNTO existe para isto** (`PanelHostInternal::store_and_hit_index_mut`,
     // e o doc dele diz-o): sem ele o `hit_index_mut` tranca o host e o corpo fica sem forma de
     // perguntar como um widget se pinta — que foi exactamente por que este painel nasceu inerte.
@@ -172,8 +180,7 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
 
     // Total scrollable height in body-local coords (undo the `- scroll` offset).
     let content_h = (final_y + scroll) - body_top + bottom_pad;
-    scene.pop_layer();
-    paint_scroll_chrome(ctx, body_rect, scroll, content_h, body_h, theme);
+    ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
 
     // Re-register the close button last so body widgets can't shadow it.
     ctx.host
@@ -212,46 +219,6 @@ fn sync_widget_buffers(ctx: &mut PaintCtx) {
                 *value = norms[i];
             }
         }
-    }
-}
-
-/// The scrollbar (only when the content overflows), plus the `content_h`/`visible_h`
-/// the wheel dispatcher needs to clamp against. Then clamp any leftover over-scroll —
-/// the content shrinks whenever a chain stage is removed, and a stale offset would
-/// leave the body parked past its own end.
-fn paint_scroll_chrome(
-    ctx: &mut PaintCtx,
-    body_rect: Rect,
-    scroll: f32,
-    content_h: f32,
-    body_h: f32,
-    theme: Theme,
-) {
-    if scrollbar_is_needed(content_h, body_h) {
-        let track = scrollbar_track_rect(body_rect);
-        let thumb = scrollbar_thumb_rect(track, scroll, content_h, body_h);
-        paint_scrollbar(
-            body_rect,
-            scroll,
-            content_h,
-            body_h,
-            ctx.host.store().scrollbar_visual(AUDIO_EDITOR_SCROLLBAR_ID),
-            ctx.scene,
-            theme,
-        );
-        // The thumb sits on the rail OUTSIDE the body's widgets, and its drag is routed
-        // by `scrollbar_panel_for_id`, not by an `InteractiveState` — so it registers on
-        // the raw hit index, unclipped.
-        ctx.host
-            .hit_index_mut()
-            .register(AUDIO_EDITOR_SCROLLBAR_ID, thumb);
-    }
-    let store = ctx.host.store_mut();
-    store.set_panel_content_h(AEDIT_PANEL, content_h);
-    store.set_panel_visible_h(AEDIT_PANEL, body_h);
-    let max_scroll = (content_h - body_h).max(0.0);
-    if store.panel_scroll(AEDIT_PANEL) > max_scroll {
-        store.set_panel_scroll(AEDIT_PANEL, max_scroll);
     }
 }
 

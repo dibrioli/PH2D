@@ -45,6 +45,11 @@ const VIEWPORT: Rect = Rect {
     h: 900.0,
 };
 
+/// A altura da viewport onde se MEDE o `y` do *Reset This Mode* com a rolagem em zero — maior do
+/// que o conteúdo do pior caso desta bateria (`spacing.* = 65536`). ⚠️ As posições medidas lá são
+/// pequenas (o botão pousa perto de `2·px`), logo a precisão de `f32` não é gasta nesta altura.
+const MEASURE_VIEWPORT_H: f32 = 1.0e8;
+
 fn host() -> (MockPanelHost, TokensPanelState) {
     let mut h = MockPanelHost::with_panel::<TokensPanel>();
     h.set_panel_visible(TokensPanel::ID, true);
@@ -92,11 +97,25 @@ fn author_one_neutral_token() {
 /// **confirma-se pintando lá**. Exacto, e sem laço.
 fn scroll_that_reaches_the_undo() -> Option<(f32, Rect)> {
     let (mut h, mut st) = host();
-    let at_zero = h.painted_rect::<TokensPanel>(&mut st, VIEWPORT, ids::TOKENS_RESET_ALL)?;
+    // ⚠️ Desde a porta da rolagem o clique é recortado pelo corpo: com a rolagem em zero o botão,
+    // lá em baixo, NÃO está registado na viewport real. Mede-se então numa viewport alta o bastante
+    // para o conter, e o que se leva de lá é a posição dele NO CONTEÚDO (`y − topo do corpo`) — a
+    // única grandeza que não depende da altura da janela: o topo do corpo depende, porque desde
+    // 2026-09-29 o cabeçalho não pode comer o corpo inteiro (o piso de uma linha).
+    let measure = Rect {
+        h: MEASURE_VIEWPORT_H,
+        ..VIEWPORT
+    };
+    let at_zero = h.painted_rect::<TokensPanel>(&mut st, measure, ids::TOKENS_RESET_ALL)?;
+    let in_content = at_zero.y - ph2d_panel_tokens::last_body_top();
+    let _ = h.painted_rect::<TokensPanel>(&mut st, VIEWPORT, ids::TOKENS_RESET_ALL);
+    let top = ph2d_panel_tokens::last_body_top();
     let max = (ph2d_panel_tokens::last_content_h() - ph2d_panel_tokens::last_visible_h()).max(0.0);
 
-    // Quanto é preciso rolar para a caixa pousar no meio da tela — clampado à faixa que existe.
-    let want = (at_zero.y - VIEWPORT.h * 0.5).clamp(0.0, max);
+    // Quanto é preciso rolar para a caixa pousar no meio do CORPO visível — clampado à faixa que
+    // existe.
+    let mid = top + ph2d_panel_tokens::last_visible_h() * 0.5;
+    let want = (top + in_content - mid).clamp(0.0, max);
     h.set_panel_scroll(ph2d_editor_core::ids::TOKENS_PANEL, want);
     let r = h.painted_rect::<TokensPanel>(&mut st, VIEWPORT, ids::TOKENS_RESET_ALL)?;
     (r.w > 0.0 && r.h > 0.0 && r.y + r.h > VIEWPORT.y && r.y < VIEWPORT.y + VIEWPORT.h)

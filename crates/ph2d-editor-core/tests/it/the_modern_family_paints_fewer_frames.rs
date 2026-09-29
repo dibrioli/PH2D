@@ -14,7 +14,7 @@
 //! galeria pinta os 42, e é o conjunto que o dono vê.
 
 use ph2d_editor_core::interaction::HitIndex;
-use ph2d_editor_core::widget::showcase::paint_showcase_body;
+use ph2d_editor_core::widget::showcase::{close_showcase_body_with, paint_showcase_body};
 use ph2d_editor_core::zones::Rect;
 use ph2d_editor_core::{HeroScreen, NodeId};
 use ph2d_text::TextSystem;
@@ -23,11 +23,11 @@ use ph2d_vector::VectorScene;
 
 fn paths_of_the_gallery(theme: Theme) -> u32 {
     ph2d_editor_core::test_support::ensure_panel_registry();
-    let hero = HeroScreen::new(NodeId(1));
+    let mut hero = HeroScreen::new(NodeId(1));
     let mut scene = VectorScene::new();
     let mut text = TextSystem::without_system_fonts();
     let mut hit = HitIndex::new();
-    paint_showcase_body(
+    let body = paint_showcase_body(
         Rect::new(0.0, 0.0, 420.0, 2400.0),
         &mut scene,
         &mut text,
@@ -35,6 +35,7 @@ fn paths_of_the_gallery(theme: Theme) -> u32 {
         &mut hit,
         &hero.store,
     );
+    close_showcase_body_with(body, &mut scene, &mut hit, &mut hero.store, theme);
     scene.inner().encoding().n_paths
 }
 

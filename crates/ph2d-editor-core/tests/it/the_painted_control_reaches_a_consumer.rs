@@ -271,6 +271,12 @@ const PANEL_CALLS: &[&str] = &[
     "blender_picker_offset",
     "set_panel_visible",
     "is_panel_visible",
+    // ⚠️ **A sub-região de rolagem é o irmão do `set_panel_rect`** (rolagem única, 2026-09-29): um
+    // rect registado por id e lido por POSIÇÃO (`sub_scroll_region_at`), logo o consumidor nunca
+    // nomeia o id. Até à W3 quem o nomeava era a tabela à mão `scrollbar_panel_for_id` — APAGADA —,
+    // e o `ASSET_CATALOG_COL` passou a ler-se como controlo sem consumidor.
+    "set_sub_scroll_region",
+    "clear_sub_scroll_region",
 ];
 const READ_CALLS: &[&str] = &[
     "slider",

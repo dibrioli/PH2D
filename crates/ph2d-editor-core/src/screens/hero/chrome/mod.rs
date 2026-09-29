@@ -120,7 +120,7 @@ pub use onion_modal::paint_onion_modal;
 
 /// Paint the full-screen command palette (Motion's "Add Node"; gated on `store.command_palette_model()`).
 /// Re-exported so the hero paint pass renders it over the whole app, above the floating dialogs.
-pub use command_palette::{command_palette_max_scroll, paint_command_palette};
+pub use command_palette::paint_command_palette;
 
 /// ⭐⭐⭐ **O PONTEIRO DE UM MODAL DE ECRÃ INTEIRO, hoistado para ANTES dos painéis.**
 ///

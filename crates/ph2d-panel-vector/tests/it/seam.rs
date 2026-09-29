@@ -221,11 +221,14 @@ fn clicking_connect_pill_reaches_the_tool() {
 #[test]
 fn the_three_align_chips_are_clickable_and_reach_the_tool() {
     use ph2d_vec_scene::StrokeAlign;
+    // ⚠️ Alta de propósito: a porta da rolagem (`scroll_area`, spec `04_a_rolagem_unica`) recorta o
+    // CLIQUE à banda do corpo, logo um controlo abaixo da dobra deixa de estar registado. A 900 px
+    // estes gates clicavam fantasmas invisíveis; a 4000 o corpo inteiro cabe e o clique é real.
     const VIEWPORT: Rect = Rect {
         x: 0.0,
         y: 0.0,
         w: 1600.0,
-        h: 900.0,
+        h: 4000.0,
     };
     let mut tool = VectorTool::default();
     // O default é Centre — o mundo de quem nunca tocou nisto.
@@ -1065,7 +1068,7 @@ fn every_envelope_command_button_reaches_the_bus_when_clicked() {
         x: 0.0,
         y: 0.0,
         w: 1600.0,
-        h: 900.0,
+        h: 4000.0,
     };
     const SEC: u128 = 1_000_000_000;
     // A seleção É um envelope — sem isto o Expand/Release nem chegam à tela.
@@ -1141,7 +1144,7 @@ fn the_envelope_controls_are_not_offered_without_an_envelope() {
         x: 0.0,
         y: 0.0,
         w: 1600.0,
-        h: 900.0,
+        h: 4000.0,
     };
     ph2d_panel_vector::set_current_has_envelope(false);
     ph2d_panel_vector::set_current_envelope_presets(&["Arc", "Flag", "Wave"], Some(0), 0.5);
@@ -1199,7 +1202,7 @@ fn every_blend_command_button_reaches_the_bus_when_clicked() {
         x: 0.0,
         y: 0.0,
         w: 1600.0,
-        h: 900.0,
+        h: 4000.0,
     };
     const SEC: u128 = 1_000_000_000;
     for (id, name) in [
@@ -1298,7 +1301,7 @@ fn the_bend_slider_is_not_offered_without_an_active_preset() {
         x: 0.0,
         y: 0.0,
         w: 1600.0,
-        h: 900.0,
+        h: 4000.0,
     };
     ph2d_panel_vector::set_current_has_envelope(true);
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
@@ -1354,7 +1357,7 @@ fn the_pins_controls_and_the_cage_controls_are_exclusive() {
         x: 0.0,
         y: 0.0,
         w: 1600.0,
-        h: 900.0,
+        h: 4000.0,
     };
     ph2d_panel_vector::set_current_has_envelope(true);
     ph2d_panel_vector::set_current_envelope_presets(&["Arc", "Flag"], Some(0), 0.5);
@@ -1418,7 +1421,7 @@ fn every_effect_stack_button_reaches_the_bus_when_clicked() {
         x: 0.0,
         y: 0.0,
         w: 1600.0,
-        h: 900.0,
+        h: 4000.0,
     };
     const SEC: u128 = 1_000_000_000;
     const KINDS: &[&str] = &["Trim Path", "Zig Zag"];
@@ -1529,7 +1532,7 @@ fn the_effect_section_offers_nothing_without_a_single_target() {
         x: 0.0,
         y: 0.0,
         w: 1600.0,
-        h: 900.0,
+        h: 4000.0,
     };
     ph2d_panel_vector::set_current_effects(false, &["Trim Path"], Vec::new());
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
@@ -1580,7 +1583,7 @@ fn the_effect_chip_carries_the_documents_range_not_the_normalised_track() {
         x: 0.0,
         y: 0.0,
         w: 1600.0,
-        h: 900.0,
+        h: 4000.0,
     };
     // Faixas do produto: uma percentagem que vai a 100 e uma CONTAGEM que vai a 128. Uma faixa
     // `0..1` aqui deixaria o gate verde sobre o bug — a identidade e a verdade coincidiriam.
@@ -1669,7 +1672,7 @@ fn every_expand_control_reaches_its_destination_when_clicked() {
         x: 0.0,
         y: 0.0,
         w: 1600.0,
-        h: 900.0,
+        h: 4000.0,
     };
     const SEC: u128 = 1_000_000_000;
     for (id, name, forwards) in [
@@ -1796,7 +1799,7 @@ fn clicking_a_join_chip_records_that_join() {
         x: 0.0,
         y: 0.0,
         w: 1600.0,
-        h: 900.0,
+        h: 4000.0,
     };
     const SEC: u128 = 1_000_000_000;
     for (id, want, name) in [
@@ -1841,7 +1844,7 @@ fn clicking_a_side_chip_records_that_side() {
         x: 0.0,
         y: 0.0,
         w: 1600.0,
-        h: 900.0,
+        h: 4000.0,
     };
     const SEC: u128 = 1_000_000_000;
     for (id, want, name) in [
@@ -1888,7 +1891,7 @@ fn every_text_on_path_control_reaches_the_bus_when_clicked() {
         x: 0.0,
         y: 0.0,
         w: 1600.0,
-        h: 900.0,
+        h: 4000.0,
     };
     const SEC: u128 = 1_000_000_000;
     ph2d_panel_vector::set_current_text_visible(true);
@@ -1971,7 +1974,7 @@ fn the_text_on_path_section_offers_only_what_applies() {
         x: 0.0,
         y: 0.0,
         w: 1600.0,
-        h: 900.0,
+        h: 4000.0,
     };
     let rect = |id| {
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
@@ -2038,7 +2041,7 @@ fn every_pattern_on_path_control_reaches_the_bus_when_clicked() {
         x: 0.0,
         y: 0.0,
         w: 1600.0,
-        h: 900.0,
+        h: 4000.0,
     };
     const SEC: u128 = 1_000_000_000;
     for (linked, id, name) in [
@@ -2144,7 +2147,7 @@ fn the_pattern_on_path_section_offers_only_what_applies() {
         x: 0.0,
         y: 0.0,
         w: 1600.0,
-        h: 900.0,
+        h: 4000.0,
     };
     let rect = |id| {
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
@@ -2264,7 +2267,7 @@ fn the_rotation_row_is_reachable_by_a_pointer() {
         x: 0.0,
         y: 0.0,
         w: 1600.0,
-        h: 900.0,
+        h: 4000.0,
     };
     ph2d_panel_vector::set_current_patternpath(true, 0.0, 1.0, 1.0, 0.0, false, 0.0);
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
@@ -2329,7 +2332,7 @@ fn the_selection_reach_buttons_reach_the_bus_when_clicked() {
         x: 0.0,
         y: 0.0,
         w: 1600.0,
-        h: 900.0,
+        h: 4000.0,
     };
     const SEC: u128 = 1_000_000_000;
     for (id, name) in [
@@ -2384,7 +2387,7 @@ fn the_node_ops_reach_the_bus_when_clicked() {
         x: 0.0,
         y: 0.0,
         w: 1600.0,
-        h: 900.0,
+        h: 4000.0,
     };
     const SEC: u128 = 1_000_000_000;
     for (id, name, needs_two) in [
@@ -2445,7 +2448,7 @@ fn the_join_button_is_not_offered_for_a_single_path() {
         x: 0.0,
         y: 0.0,
         w: 1600.0,
-        h: 900.0,
+        h: 4000.0,
     };
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut panel_state = VectorPanelState;
@@ -2514,7 +2517,7 @@ fn every_tool_row_pill_answers_a_real_pointer() {
         x: 0.0,
         y: 0.0,
         w: 1600.0,
-        h: 900.0,
+        h: 4000.0,
     };
     const SEC: u128 = 1_000_000_000;
     let pills: [(ph2d_a11y::NodeId, &str); 12] = [
@@ -2569,7 +2572,7 @@ fn the_cut_buttons_only_appear_with_the_cut_tool_in_hand() {
         x: 0.0,
         y: 0.0,
         w: 1600.0,
-        h: 900.0,
+        h: 4000.0,
     };
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut panel_state = VectorPanelState;
@@ -2614,7 +2617,7 @@ fn the_cut_buttons_need_a_blade_to_exist() {
         x: 0.0,
         y: 0.0,
         w: 1600.0,
-        h: 900.0,
+        h: 4000.0,
     };
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut panel_state = VectorPanelState;
@@ -2672,7 +2675,7 @@ fn every_pathfinder_button_answers_a_real_pointer() {
         x: 0.0,
         y: 0.0,
         w: 1600.0,
-        h: 900.0,
+        h: 4000.0,
     };
     const SEC: u128 = 1_000_000_000;
     let ops: [(ph2d_a11y::NodeId, &str); 8] = [
@@ -2721,7 +2724,7 @@ fn symmetry_rects(
         x: 0.0,
         y: 0.0,
         w: 1600.0,
-        h: 900.0,
+        h: 4000.0,
     };
     let snap = ph2d_tool_vector::VectorStyleSnapshot {
         symmetry: ph2d_symmetry::SymmetryStyle {
@@ -2827,7 +2830,7 @@ fn the_enable_pair_gates_the_whole_symmetry_section() {
         x: 0.0,
         y: 0.0,
         w: 1600.0,
-        h: 900.0,
+        h: 4000.0,
     };
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     ph2d_panel_vector::set_current_vector_style(None);

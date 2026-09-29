@@ -51,13 +51,9 @@ fn as_escolhas_com_nome_passam_pela_porta() {
 fn cada_peca_responde_onde_e_pintada() {
     let mut host = MockPanelHost::with_panel::<GridSnapPanel>();
     let mut state = GridSnapPanelState;
-    let painted = host.paint::<GridSnapPanel>(&mut state, VIEWPORT);
-    let centro = |id| {
-        let r = painted
-            .iter()
-            .rev()
-            .find(|(pid, _)| *pid == id)
-            .map(|(_, r)| *r)
+    // ⚠️ Rola até à peça quando ela está abaixo da dobra — ver `rolar_ate_ver`.
+    let centro = |host: &mut MockPanelHost, state: &mut GridSnapPanelState, id| {
+        let r = crate::rolar_ate_ver::pinta_ate_ver(host, state, VIEWPORT, id)
             .unwrap_or_else(|| panic!("{id:?} nunca foi pintado"));
         (r.x + r.w * 0.5, r.y + r.h * 0.5)
     };
@@ -71,7 +67,7 @@ fn cada_peca_responde_onde_e_pintada() {
     assert!(host.grid_snap_state().grid_in_front);
 
     for id in [g::GS_CFG_NEIGHBORHOOD_8, g::GS_LAYER_BEHIND] {
-        let (cx, cy) = centro(id);
+        let (cx, cy) = centro(&mut host, &mut state, id);
         assert_eq!(
             host.hit_at(cx, cy),
             Some(id),

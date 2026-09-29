@@ -2,15 +2,12 @@
 //! consulta —, então o que é pintado e o que despacha não podem discordar.
 
 use ph2d_editor_core::ids;
-use ph2d_editor_core::paint::{paint_text_block, rect_to_vello, resolve};
+use ph2d_editor_core::paint::{paint_text_block, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
+use ph2d_editor_core::widget::MODEL3D_SCROLLBAR_ID;
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
     paint_panel_surface, paint_panel_title,
-};
-use ph2d_editor_core::widget::{
-    MODEL3D_SCROLLBAR_ID, paint_scrollbar, scrollbar_is_needed, scrollbar_thumb_rect,
-    scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_field::Bound;
@@ -117,15 +114,15 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
     // rola esconde os controles e não diz nada.** O rodapé e as fileiras de parâmetros de um
     // documento com vários nós ficavam inalcançáveis, sem sinal nenhum de que existiam.
     let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
-    let scroll = ctx.host.store().panel_scroll(ids::MODEL3D_PANEL);
-    ctx.scene.push_clip(&rect_to_vello(body_rect));
-    // ⚠️ **UMA BANDA, DOIS CONSUMIDORES** — a lei que o painel do Motion pagou. O `push_clip` da
-    // cena recorta o **DESENHO**; sem o gémeo no `HitIndex`, uma fileira rolada para cima continua
-    // **registada** onde ninguém a vê, e o hit-rect dela sobe para a faixa do TÍTULO. *Enquanto
-    // nada rolava isto era inofensivo por aritmética; ligar a rolagem é o dia em que passa a
-    // morder.*
-    ctx.host.hit_index_mut().push_clip(body_rect);
-    let mut y = body_top - scroll;
+    // ⭐ A PORTA da rolagem (spec `04_a_rolagem_unica`): recorte do desenho E do clique (*uma banda,
+    // dois consumidores*), as duas alturas, o clamp e a barra com a TRILHA registada.
+    let area = ph2d_editor_core::panel::scroll_area::open(
+        ctx,
+        ids::MODEL3D_PANEL,
+        MODEL3D_SCROLLBAR_ID,
+        body_rect,
+    );
+    let mut y = area.top();
     // ⛔⛔ **O GIZMO SAIU DAQUI em 2026-09-01** — os três verbos e os dois referenciais pintam-se
     // agora no **2.º pulldown da área** (`crate::area_bar`), cuja face é o verbo em mãos.
     //
@@ -234,14 +231,9 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
     // ⚠️ O `+ scroll` desfaz o deslocamento: a altura do conteúdo é do CONTEÚDO, e não de onde ele
     // calhou de ser desenhado. Sem ele o `max_scroll` encolheria a cada rolagem e o painel
     // empurraria o artista de volta para o topo.
-    let content_h = y + scroll - body_top + PANEL_HEAD_PAD;
+    let content_h = y + area.scroll() - body_top + PANEL_HEAD_PAD;
     state::set_last_content_h(content_h);
-    ctx.scene.pop_layer();
-    // ⚠️ O `pop` vem ANTES da barra, e de propósito: o polegar vive no corpo mas **não rola com
-    // ele** — recortá-lo pela mesma banda seria correcto hoje e uma armadilha no dia em que ele
-    // saísse um pixel.
-    ctx.host.hit_index_mut().pop_clip();
-    paint_scroll_chrome(ctx, body_rect, content_h, body_h, scroll, theme);
+    ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
 }
 
 /// ⭐⭐ **AS FILEIRAS DE CHIPS DO CORPO DO PAINEL** — o laço, criar/combinar, o verbo, o carácter, os
@@ -379,47 +371,6 @@ fn close_a_stranded_picker(ctx: &mut PaintCtx, agora: &[ph2d_a11y::NodeId]) {
         && !agora.contains(&alvo)
     {
         ctx.host.store_mut().set_picker_target(None);
-    }
-}
-
-/// Desenha a barra de rolagem e **publica** o par `content_h`/`visible_h` que o dispatch da roda
-/// consome.
-///
-/// ⚠️ **Publicar é a metade que não se vê e sem a qual a roda não faz nada:** o `dispatch_wheel`
-/// deriva o `max_scroll` desses dois números, então um painel que recorta, desloca e desenha o
-/// polegar — mas não publica — rola com o polegar e fica **inerte na roda**.
-fn paint_scroll_chrome(
-    ctx: &mut PaintCtx,
-    body_rect: Rect,
-    content_h: f32,
-    body_h: f32,
-    scroll: f32,
-    theme: ph2d_tokens::Theme,
-) {
-    if scrollbar_is_needed(content_h, body_h) {
-        let track = scrollbar_track_rect(body_rect);
-        let thumb = scrollbar_thumb_rect(track, scroll, content_h, body_h);
-        paint_scrollbar(
-            body_rect,
-            scroll,
-            content_h,
-            body_h,
-            ctx.host.store().scrollbar_visual(MODEL3D_SCROLLBAR_ID),
-            ctx.scene,
-            theme,
-        );
-        ctx.host
-            .hit_index_mut()
-            .register(MODEL3D_SCROLLBAR_ID, thumb);
-    }
-    let store = ctx.host.store_mut();
-    store.set_panel_content_h(ids::MODEL3D_PANEL, content_h);
-    store.set_panel_visible_h(ids::MODEL3D_PANEL, body_h);
-    // ⚠️ O clamp existe porque o conteúdo ENCOLHE: apagar um nó na Hierarquia tira fileiras, e um
-    // painel rolado até ao fim abriria em branco.
-    let max_scroll = (content_h - body_h).max(0.0);
-    if store.panel_scroll(ids::MODEL3D_PANEL) > max_scroll {
-        store.set_panel_scroll(ids::MODEL3D_PANEL, max_scroll);
     }
 }
 

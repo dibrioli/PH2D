@@ -616,7 +616,12 @@ pub fn paint_hero_screen(
     // A JANELA DO INPUT MAP (plano 30 §0.2) — flutuante sobre o canvas, à la Godot. No-op quando
     // fechada. Mesma camada de diálogo flutuante que o Fill modal, e pintada DEPOIS do menu de
     // contexto pelo mesmo motivo: os hit rects dela ficam acima do canvas.
-    chrome::paint_input_map_window(
+    //
+    // ⭐ Desde 2026-09-29 o corpo dela passa pela PORTA da rolagem: o que o pintor devolve é a
+    // metade que precisa do store mutável (alturas, clamp, dono da barra) e o rect do cartão, que se
+    // publica como rect de painel — é ele que dá à janela a roda, o arrasto no corpo e a inércia
+    // pelo mesmo caminho de todo painel, sem o caso especial que a shell tinha. Fechada, o rect sai.
+    match chrome::paint_input_map_window(
         scene,
         text_system,
         hero.theme,
@@ -624,7 +629,13 @@ pub fn paint_hero_screen(
         &hero.store,
         &hero.input_map,
         viewport,
-    );
+    ) {
+        Some((card, pending)) => {
+            pending.publish(&mut hero.store);
+            hero.store.set_panel_rect(ids::INPUT_MAP_SURFACE, card);
+        }
+        None => hero.store.clear_panel_rect(ids::INPUT_MAP_SURFACE),
+    }
     // Onion settings modal (ADR-0142 W3b) — a floating, draggable card opened from the timeline's
     // Onion-settings button (no-op when closed). Same floating-dialog layer as the Fill modal.
     chrome::paint_onion_modal(
@@ -638,7 +649,7 @@ pub fn paint_hero_screen(
     // Command palette (Motion's "Add Node") — a full-screen dimmed modal painted over the whole app
     // (no-op when closed). Above the floating dialogs so it dominates; its full-viewport scrim registers
     // FIRST so the card + item pills (registered after) win the back-to-front hit walk.
-    chrome::paint_command_palette(
+    if let Some(pending) = chrome::paint_command_palette(
         scene,
         text_system,
         hero.theme,
@@ -646,7 +657,9 @@ pub fn paint_hero_screen(
         &hero.store,
         viewport,
         &hero.motion,
-    );
+    ) {
+        pending.publish(&mut hero.store);
+    }
     // ⭐ **O PIE MENU** (estudo de UI viva, E4) — acima da paleta porque ele é o gesto EM CURSO: o
     // artista está com a tecla em baixo, e nada pode ficar por cima do que a mão está a fazer.
     //

@@ -434,8 +434,8 @@ fn an_unregistered_checkbox_still_follows_the_pointer() {
 ///
 /// As rows da Hierarquia são registadas `Plain` exactamente como um polegar, então um corte por
 /// tipo apanharia as duas famílias — e uma lista que se varre com o cursor **não** deve amaciar
-/// (estudo §6.2: *descer oito rows deixa-as todas meio-acesas ao mesmo tempo*). A régua é o mapa
-/// do despachante (`scrollbar_panel_for_id`), uma propriedade que um polegar novo **já tem de**
+/// (estudo §6.2: *descer oito rows deixa-as todas meio-acesas ao mesmo tempo*). A régua é o DONO
+/// PUBLICADO pela porta `widget::scroll_area`, uma propriedade que um polegar **já tem de**
 /// satisfazer para o próprio arrasto funcionar.
 ///
 /// *Mutação: trocar o predicado por `matches!(st, InteractiveState::Plain)` ⇒ a row entra na lista
@@ -446,6 +446,11 @@ fn the_thumb_census_names_the_thumb_and_leaves_the_list_row_alone() {
     let row = NodeId(0x00fe_0001); // um `Plain` qualquer que NÃO é polegar
     let mut store = store_with(&[(row.0, InteractiveState::Plain)]);
     store.register(thumb, InteractiveState::Plain);
+    store.publish_scroll_bar(
+        thumb,
+        crate::ids::INSP_PANEL,
+        crate::zones::Rect::new(0.0, 0.0, 10.0, 100.0),
+    );
 
     // Nada quente, nada publicado ⇒ o censo está vazio.
     assert!(store.scrollbar_hover_targets().next().is_none());
@@ -498,6 +503,11 @@ fn a_thumb_stays_lit_while_the_finger_drags_it() {
     let thumb = crate::widget::INSPECTOR_SCROLLBAR_ID;
     let mut store = store_with(&[]);
     store.register(thumb, InteractiveState::Plain);
+    store.publish_scroll_bar(
+        thumb,
+        crate::ids::INSP_PANEL,
+        crate::zones::Rect::new(0.0, 0.0, 10.0, 100.0),
+    );
     store.set_hover_live(thumb, 1.0);
 
     // O cursor SAIU do polegar — mas o dedo continua a arrastá-lo.
@@ -541,4 +551,45 @@ fn opening_the_colour_picker_brings_the_panel_the_paint_uses_to_the_front() {
         "o seletor aberto não está no topo da ordem com o id dele — a ordem é {:?}",
         store.panel_z_order()
     );
+}
+
+/// ⭐ **Onde dois painéis se sobrepõem, o gesto vai ao que está POR CIMA — nunca ao de id menor.**
+///
+/// ⛔ Até 2026-09-29 o `panel_at` percorria o `BTreeMap` pela ordem dos ids, logo sobre uma janela
+/// flutuante posta por cima de uma doca a roda e o arrasto no corpo iam ao painel de BAIXO sempre que
+/// o id dele fosse menor (rolagem única, W3). O CONTROLO é a mesma sobreposição com a ordem trocada:
+/// sem ele um `panel_at` que devolvesse sempre o id maior passaria nesta metade.
+#[test]
+fn the_panel_on_top_owns_the_point_where_two_panels_overlap() {
+    use crate::zones::Rect;
+    let mut store = WidgetStore::with_capacity(4);
+    let (under, over) = (NodeId(1), NodeId(2));
+    store.set_panel_rect(under, Rect::new(0.0, 0.0, 200.0, 200.0));
+    store.set_panel_rect(over, Rect::new(50.0, 50.0, 100.0, 100.0));
+    store.bump_panel_z(over);
+    store.bump_panel_z(under);
+    assert_eq!(
+        store.panel_at(100.0, 100.0),
+        Some(under),
+        "o de cima é o `under`"
+    );
+    store.bump_panel_z(over);
+    assert_eq!(
+        store.panel_at(100.0, 100.0),
+        Some(over),
+        "o de cima passou a ser o `over`"
+    );
+    // Fora da sobreposição cada um continua dono do seu.
+    assert_eq!(store.panel_at(10.0, 10.0), Some(under));
+    // Um rect que não está na ordem é um overlay pintado DEPOIS de todo painel (o overlay do
+    // áudio): por cima deles por construção, logo ganha mesmo sobre o painel do topo.
+    let loose = NodeId(3);
+    store.set_panel_rect(loose, Rect::new(90.0, 90.0, 50.0, 50.0));
+    assert_eq!(store.panel_at(100.0, 100.0), Some(loose));
+    assert_eq!(
+        store.panel_at(60.0, 60.0),
+        Some(over),
+        "fora do overlay volta a mandar a ordem"
+    );
+    assert_eq!(store.panel_at(1000.0, 1000.0), None);
 }

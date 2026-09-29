@@ -150,7 +150,10 @@ fn a_header_click_folds_locally() {
 /// nothing is a dead control wearing a live one's clothes).
 #[test]
 fn paint_offers_the_table_and_hides_engine_paper_knobs_under_artist_paper() {
-    let viewport = Rect::new(0.0, 0.0, 1600.0, 900.0);
+    // ⚠️ Alto o bastante para o painel INTEIRO caber: desde a porta da rolagem o clique também é
+    // recortado pelo corpo, e medido 2026-09-29 o corpo pede `1333` px contra `766` visíveis a
+    // `900` de viewport — as linhas de baixo só passavam porque o registo não era recortado.
+    let viewport = Rect::new(0.0, 0.0, 1600.0, 1800.0);
     let paint_with = |brush: ph2d_tool_painter::BrushSettings| {
         set_current_brush(Some(brush));
         let mut host = MockPanelHost::with_panel::<WetTuningPanel>();

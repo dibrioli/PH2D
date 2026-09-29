@@ -27,6 +27,7 @@ pub mod panel_trait;
 pub mod registry;
 /// ⭐⭐⭐ **O vocabulário de LINHAS de um painel de propriedades** — uma lei, N hospedeiros.
 pub mod rows;
+pub mod scroll_area;
 pub mod seam_macro;
 
 pub use erased::ErasedPanel;

@@ -132,6 +132,7 @@ mod the_ground_paints_around_the_area_not_under_it;
 mod the_hero_paint_docks_the_timeline_into_motion;
 mod the_hover_axis_never_flashes_the_far_end;
 mod the_indent_of_a_child_is_one_number;
+mod the_input_map_list_scrolls_like_a_panel;
 mod the_input_map_window_binds_a_key;
 mod the_input_map_window_is_painted_where_it_says;
 mod the_inspector_is_open_when_the_app_opens;

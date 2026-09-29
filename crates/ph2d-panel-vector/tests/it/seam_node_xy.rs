@@ -14,11 +14,14 @@ use ph2d_panel_vector::state::VectorPanelState;
 use ph2d_tool_vector::{VertexSel, VertexType};
 use ph2d_ui_testkit::MockPanelHost;
 
+// ⚠️ Alta de propósito: a porta da rolagem (`scroll_area`, spec `04_a_rolagem_unica`) recorta o
+// CLIQUE à banda do corpo, logo um controlo abaixo da dobra deixa de estar registado. A 900 px
+// estes gates clicavam fantasmas invisíveis; a 4000 o corpo inteiro cabe e o clique é real.
 const VIEWPORT: Rect = Rect {
     x: 0.0,
     y: 0.0,
     w: 1600.0,
-    h: 900.0,
+    h: 4000.0,
 };
 
 /// A seção Vertex só existe com uma seleção de nós; as duas fileiras, só com uma MEDIANA.

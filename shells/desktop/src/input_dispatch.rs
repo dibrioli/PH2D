@@ -276,11 +276,9 @@ impl App {
         if self.command_palette_wheel(dy) {
             return;
         }
-        // ⭐ **A roda sobre a janela do Input Map é dela** — e vem ANTES do resto, pelo motivo do
-        // arrasto: a roda que atravessasse o cartão daria zoom no canvas por baixo dele.
-        if self.input_map_wheel(dy) {
-            return;
-        }
+        // ⭐ A janela do Input Map já não precisa de caso próprio (rolagem única, W5): ela publica o
+        // rect do cartão como rect de painel, logo o `cursor_over_hero_panel` abaixo a apanha e a roda
+        // rola-a pelo mesmo caminho de todo painel — e nunca dá zoom no canvas por baixo dela.
         let over_panel =
             cursor_over_hero_panel(self.gfx.as_ref(), self.last_pointer.0, self.last_pointer.1);
         // ADR-0150 W1/M2: fora de painel, a roda aproxima a câmera 3D. Um

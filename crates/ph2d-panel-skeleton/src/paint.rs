@@ -121,7 +121,7 @@ pub(crate) fn paint(_state: &mut SkeletonPanelState, ctx: &mut PaintCtx) {
         };
         ((y - body_top_y + PANEL_HEAD_PAD).max(0.0), area)
     };
-    scroll_area::close(area, ctx, content_h);
+    ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
 
     // ⭐⭐⭐ O passe DIFERIDO: a lista de acções por cima de tudo.
     if let Some(chip_rect) = state::take_pending_bone_action_dd() {

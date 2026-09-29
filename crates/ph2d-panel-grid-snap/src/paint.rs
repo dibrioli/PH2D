@@ -25,15 +25,12 @@ use crate::state::{
 };
 use ph2d_editor_core::grid_snap::GridSnapState;
 use ph2d_editor_core::interaction::WidgetStore;
-use ph2d_editor_core::paint::{paint_icon, rect_to_vello, resolve};
+use ph2d_editor_core::paint::{paint_icon, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
+use ph2d_editor_core::widget::GRID_SETTINGS_SCROLLBAR_ID;
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_TITLE_BASELINE, clamp_panel_rect, paint_panel_corner_dot, paint_panel_surface_floating,
     paint_panel_title, panel_drag_handle_rect, panel_resize_handle_rect,
-};
-use ph2d_editor_core::widget::{
-    GRID_SETTINGS_SCROLLBAR_ID, paint_scrollbar, scrollbar_is_needed, scrollbar_thumb_rect,
-    scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Density, Spacing, StrokeToken};
@@ -182,13 +179,14 @@ fn paint_body(ctx: &mut PaintCtx<'_>, rect: Rect, state: &GridSnapState) {
     let body_top = title_y + close_size + row_gap() * 2.0;
     let body_h = (rect.y + rect.h - body_top - pad()).max(0.0);
     let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
-    let scroll = ctx
-        .host
-        .store()
-        .panel_scroll(ph2d_editor_core::ids::GS_PANEL);
-
-    ctx.scene.push_clip(&rect_to_vello(body_rect));
-    let mut y = body_top - scroll;
+    // ⭐ A PORTA da rolagem (spec `04_a_rolagem_unica`): recorte do desenho E do clique.
+    let area = ph2d_editor_core::panel::scroll_area::open(
+        ctx,
+        ph2d_editor_core::ids::GS_PANEL,
+        GRID_SETTINGS_SCROLLBAR_ID,
+        body_rect,
+    );
+    let mut y = area.top();
 
     // ─── Snap (BIG individual toggle) ───────────────────────────
     {
@@ -213,39 +211,13 @@ fn paint_body(ctx: &mut PaintCtx<'_>, rect: Rect, state: &GridSnapState) {
     y = crate::paint_body_sections::paint_display_section(ctx, state, inner_x, inner_w, y);
     y = crate::paint_body_sections::paint_inspect_section(ctx, state, inner_x, inner_w, y);
 
-    ctx.scene.pop_layer();
-
     // Content / visible-height publication for `dispatch_wheel`
-    // scroll bound: stash into thread-locals; the host caller reads
-    // via `state::last_content_h()` / `last_visible_h()` and publishes
-    // through `&mut store` further below.
-    let content_h = (y + scroll) - body_top;
+    // scroll bound: stash into thread-locals (the store half — both
+    // heights, the clamp and the scrollbar with its TRACK — is the door's).
+    let content_h = (y + area.scroll()) - body_top;
     set_last_content_h(content_h);
     set_last_visible_h(body_h);
-
-    // Vertical scrollbar at the right edge of the body region —
-    // mirrors the Inspector / Widget Gallery setup. Skips paint +
-    // hit registration when the content fits the visible area.
-    let needs_scrollbar = scrollbar_is_needed(content_h, body_h);
-    if needs_scrollbar {
-        let track = scrollbar_track_rect(body_rect);
-        let thumb = scrollbar_thumb_rect(track, scroll, content_h, body_h);
-        paint_scrollbar(
-            body_rect,
-            scroll,
-            content_h,
-            body_h,
-            ctx.host
-                .store()
-                .scrollbar_visual(GRID_SETTINGS_SCROLLBAR_ID),
-            ctx.scene,
-            theme,
-        );
-        {
-            let hit_index = ctx.host.hit_index_mut();
-            hit_index.register(GRID_SETTINGS_SCROLLBAR_ID, thumb);
-        }
-    }
+    ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
 
     paint_panel_corner_dot(rect, ctx.scene, theme);
     ph2d_editor_core::widget::panel_chrome::paint_panel_corner_dot_bl(rect, ctx.scene, theme);
@@ -278,18 +250,6 @@ fn paint_body(ctx: &mut PaintCtx<'_>, rect: Rect, state: &GridSnapState) {
     // temos o círculo de marcar a cor. Retire isso."). O GS_TITLE_COLOR
     // continua registrado no store mas sem hit/paint visual.
     let _ = ids::GS_TITLE_COLOR;
-
-    // Publish content_h / visible_h to the store + clamp scroll.
-    {
-        let store = ctx.host.store_mut();
-        store.set_panel_content_h(ph2d_editor_core::ids::GS_PANEL, content_h);
-        store.set_panel_visible_h(ph2d_editor_core::ids::GS_PANEL, body_h);
-        let max_scroll = (content_h - body_h).max(0.0);
-        let cur = store.panel_scroll(ph2d_editor_core::ids::GS_PANEL);
-        if cur > max_scroll {
-            store.set_panel_scroll(ph2d_editor_core::ids::GS_PANEL, max_scroll);
-        }
-    }
 }
 
 /// Default panel rect when first opened — sized for title + 4

@@ -114,7 +114,7 @@ pub(crate) fn paint(_state: &mut PaddingPanelState, ctx: &mut PaintCtx) {
     let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
     // ⭐ A PORTA da rolagem (spec `04_a_rolagem_unica`): recorte do desenho e do clique, as duas
     // alturas, o clamp e a barra com a TRILHA registada.
-    let area = ph2d_editor_core::widget::scroll_area::open(
+    let area = ph2d_editor_core::panel::scroll_area::open(
         ctx,
         ph2d_editor_core::ids::PAD_PANEL,
         PADDING_SCROLLBAR_ID,
@@ -133,7 +133,7 @@ pub(crate) fn paint(_state: &mut PaddingPanelState, ctx: &mut PaintCtx) {
     let content_h = (y_after + area.scroll()) - body_top + PANEL_HEAD_PAD;
     set_last_content_h(content_h);
     set_last_visible_h(body_h);
-    ph2d_editor_core::widget::scroll_area::close(area, ctx, content_h);
+    ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
 
     ctx.host.hit_index_mut().register(
         ids::PAD_CANCEL,
@@ -304,4 +304,3 @@ fn paint_body_sections(
     y += row_h;
     y
 }
-

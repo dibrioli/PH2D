@@ -10,7 +10,8 @@
 //! `scrollbar_panel_for_id` do despachante), e um painel novo que não soubesse dela emprestava o
 //! id de outro: o painel de ossos pintava com o id do Vector, e arrastar a barra dele **rolava o
 //! Vector**. A porta [`crate::widget::scroll_area`] publica aqui, a cada quadro, *esta barra é
-//! deste painel e a trilha dela é este rectângulo* — e o despachante lê isto **antes** da tabela.
+//! deste painel e a trilha dela é este rectângulo* — e esta é a ÚNICA resposta: a tabela à mão
+//! morreu no mesmo dia, quando o último painel passou pela porta.
 //! ⇒ um painel que passa pela porta não tem onde escrever o id do vizinho.
 //!
 //! ⚠️ **A TRILHA viaja junto com o dono**, e é ela que cura o arrasto rápido demais: o despachante
@@ -44,15 +45,14 @@ impl WidgetStore {
         self.scroll.bar_owner.insert(bar, (panel, track));
     }
 
-    /// ⭐ **O painel que uma barra rola** — o publicado pela porta, e só depois a tabela antiga
-    /// do despachante (os painéis que ainda não passam pela porta).
+    /// ⭐ **O painel que uma barra rola** — o que a porta publicou ao pintá-la, e mais nada.
+    ///
+    /// ⚠️ A tabela à mão do despachante (`scrollbar_panel_for_id`) morreu em 2026-09-29: toda barra
+    /// passa pela porta, e uma barra nunca pintada não pode ser carregada. `None` antes do 1.º
+    /// quadro é a resposta certa — ainda não há barra nenhuma.
     #[must_use]
     pub fn scroll_bar_panel(&self, bar: NodeId) -> Option<NodeId> {
-        self.scroll
-            .bar_owner
-            .get(&bar)
-            .map(|(p, _)| *p)
-            .or_else(|| crate::interaction::dispatch::scroll::scrollbar_panel_for_id(bar))
+        self.scroll.bar_owner.get(&bar).map(|(p, _)| *p)
     }
 
     /// A TRILHA publicada de uma barra, se ela passa pela porta.
@@ -91,6 +91,29 @@ impl WidgetStore {
         if let Some(scroll_v) = fling::launch(v) {
             self.scroll.fling.insert(anchor.panel, scroll_v);
         }
+    }
+
+    /// ⭐ **A roda sobre `panel`** — a lei ÚNICA dela, para todo corpo rolável (os painéis pelo
+    /// `dispatch_wheel`, a paleta de comandos pela shell, que toma a roda da tela inteira).
+    ///
+    /// * O **alvo**, nunca o vivo: girar depressa sobre uma posição em voo andaria menos do que o
+    ///   dedo pediu.
+    /// * A roda **toma o comando de volta** de uma lista em voo.
+    /// * `delta_y > 0` (winit) é «para a frente»: o conteúdo sobe, logo o deslocamento DESCE.
+    /// * Presa ao fim publicado (`content_h − visible_h`); sem o fim, a pintura seguinte prendia-a de
+    ///   volta com um salto de um quadro («saltos indesejados se rodamos a roda no fim»). Antes da
+    ///   1.ª publicação da altura visível vale o palpite `rect.h − 60`.
+    pub fn wheel_panel(&mut self, panel: NodeId, delta_y: f32) {
+        self.stop_fling(panel);
+        let mut next = (self.panel_scroll_target(panel) - delta_y).max(0.0);
+        if let Some(content_h) = self.panel_content_h(panel) {
+            let visible_h = self.panel_visible_h(panel).unwrap_or_else(|| {
+                self.panel_rect(panel)
+                    .map_or(0.0, |r| (r.h - 60.0).max(0.0)) // LITERAL-PX-OK: palpite do 1.º quadro, anterior à publicação
+            });
+            next = next.min((content_h - visible_h).max(0.0));
+        }
+        self.set_panel_scroll(panel, next);
     }
 
     /// Pegar no conteúdo em voo SEGURA-O — a lei de todo sistema tátil.

@@ -35,12 +35,8 @@ fn cada_seccao_dobra_ao_clique_no_titulo() {
     for (nome, id) in cabecalhos {
         let mut host = MockPanelHost::with_panel::<GridSnapPanel>();
         let mut state = GridSnapPanelState;
-        let painted = host.paint::<GridSnapPanel>(&mut state, VIEWPORT);
-        let rect = painted
-            .iter()
-            .rev()
-            .find(|(pid, _)| *pid == id)
-            .map(|(_, r)| *r)
+        // ⚠️ Rola até ao título quando ele está abaixo da dobra — ver `rolar_ate_ver`.
+        let rect = crate::rolar_ate_ver::pinta_ate_ver(&mut host, &mut state, VIEWPORT, id)
             .unwrap_or_else(|| {
                 panic!("o titulo `{nome}` nao registou hit-rect — nao se pode clicar")
             });

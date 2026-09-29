@@ -22,7 +22,7 @@
 use crate::ids;
 use crate::state::{AssetBrowserState, CatalogPick, with_catalogs};
 use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, rect_to_vello, resolve};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::ButtonState;
 use ph2d_editor_core::zones::Rect;
@@ -131,6 +131,13 @@ fn rows(needle: &str) -> Vec<Row> {
 /// ⚠️ **Ela recorta nos DOIS canais e ANINHA** — o `HitIndex::push_clip` intersecta com o topo da
 /// pilha, então o par dela é exacto mesmo dentro do recorte de outra região. Sem o segundo canal,
 /// uma linha rolada para fora continua clicável e o artista filtra por um catálogo que não vê.
+/// ⭐ **A coluna deixa de publicar a região dela** — a porta das DUAS maneiras de ela
+/// desaparecer (colapsada · painel fechado). Uma limpeza escrita em dois sítios diverge no dia em
+/// que a coluna ganhar uma terceira região; e o id fica num ficheiro só, o da coluna que o pinta.
+pub(crate) fn forget_region(store: &mut ph2d_editor_core::interaction::WidgetStore) {
+    store.clear_sub_scroll_region(ph2d_editor_core::ids::ASSET_CATALOG_COL);
+}
+
 pub(crate) fn paint(
     state: &mut AssetBrowserState,
     ctx: &mut PaintCtx,
@@ -147,9 +154,7 @@ pub(crate) fn paint(
         crate::paint_catalog_rename::abandon(state, ctx.host.store_mut());
         // ⚠️ **Limpeza simétrica:** sem ela a roda continuaria a ser comida no sítio onde a coluna
         // esteve — o mesmo contrato que o `clear_panel_rect` do painel fechado.
-        ctx.host
-            .store_mut()
-            .clear_sub_scroll_region(ph2d_editor_core::ids::ASSET_CATALOG_COL);
+        forget_region(ctx.host.store_mut());
         return 0.0;
     }
     let theme = ctx.host.theme();
@@ -199,13 +204,14 @@ pub(crate) fn paint(
     let list_top = new_rect.y + row_h + Spacing::Xs.px();
     let list_rect = Rect::new(col.x, list_top, col.w, (col.y + col.h - list_top).max(0.0));
     let content_h = row_h * list.len() as f32;
-    let scroll = ctx
-        .host
-        .store()
-        .panel_scroll(ph2d_editor_core::ids::ASSET_CATALOG_COL);
 
-    ctx.scene.push_clip(&rect_to_vello(list_rect));
-    ctx.host.hit_index_mut().push_clip(list_rect);
+    // ⭐ A PORTA da rolagem (spec `04_a_rolagem_unica`) — ela aceita a sub-região como «painel».
+    let area = ph2d_editor_core::panel::scroll_area::open(
+        ctx,
+        ph2d_editor_core::ids::ASSET_CATALOG_COL,
+        ph2d_editor_core::widget::ASSET_CATALOG_SCROLLBAR_ID,
+        list_rect,
+    );
     let mut painted: Vec<CatalogPick> = Vec::new();
     // ⚠️ **O `y` da linha a renomear sai deste laço**, e não de uma segunda conta: o campo tem de
     // ficar exactamente onde a linha está, e duas contas divergem no dia em que a lista mudar.
@@ -215,7 +221,7 @@ pub(crate) fn paint(
         if i >= ph2d_editor_core::ids::MAX_CATALOG_ROWS {
             break;
         }
-        let y = list_rect.y + row_h * i as f32 - scroll;
+        let y = area.top() + row_h * i as f32;
         painted.push(r.pick);
         if renaming.is_some_and(|id| r.pick == CatalogPick::One(id)) {
             rename_y = Some(y);
@@ -277,42 +283,14 @@ pub(crate) fn paint(
         }
         ctx.host.hit_index_mut().register(id, row);
     }
-    ctx.host.hit_index_mut().pop_clip();
-    ctx.scene.pop_layer();
     crate::state::set_painted_rows(painted);
+    // ⚠️ O campo de renomear pinta-se ANTES de fechar: a barra fica por cima dele (como ficava),
+    // e o `y` dele já é clampado para dentro da banda, então o recorte não o corta.
     crate::paint_catalog_rename::paint(state, ctx, list_rect, row_h, rename_y);
-
-    // ⭐⭐⭐ **A barra, DEPOIS do recorte** — e ela regista **o polegar que o pintor devolveu**.
-    //
-    // ⛔⛔ Esta chamada tinha TRÊS números onde há um só (achado da auditoria de 2026-08-30): o
-    // pintor recebia `col` e a geometria do hit recebia `list_rect` — **30 px de desvio**, o
-    // polegar desenhado num sítio e agarrável noutro —, e o `visible_h` era `body_h` num e
-    // `list_rect.h` no outro. Pior: a fronteira era perguntada duas vezes com denominadores
-    // diferentes, e na janela entre elas o `register` corria sobre uma barra que o pintor não
-    // desenhara ⇒ polegar **invisível e agarrável**.
-    //
-    // ⇒ **uma banda (`list_rect`), uma altura, e o rect vem de quem pintou.** *Pintar e agarrar
-    // têm de projectar pela mesma porta.*
-    let visual = ctx.host.store().scrollbar_visual_for(
-        ph2d_editor_core::widget::ASSET_CATALOG_SCROLLBAR_ID,
-        Some(ph2d_editor_core::ids::ASSET_CATALOG_COL),
-    );
-    if let Some(thumb) = ph2d_editor_core::widget::paint_scrollbar(
-        list_rect,
-        scroll,
-        content_h,
-        list_rect.h,
-        visual,
-        ctx.scene,
-        theme,
-    ) {
-        ctx.host
-            .hit_index_mut()
-            .register(ph2d_editor_core::widget::ASSET_CATALOG_SCROLLBAR_ID, thumb);
-    }
+    // ⭐⭐⭐ A barra pinta-se DEPOIS do recorte e regista a TRILHA — uma banda (`list_rect`), uma
+    // altura; a porta é que o garante (a auditoria de 2026-08-30 achou aqui três números onde há um).
+    ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
     let store = ctx.host.store_mut();
-    store.set_panel_content_h(ph2d_editor_core::ids::ASSET_CATALOG_COL, content_h);
-    store.set_panel_visible_h(ph2d_editor_core::ids::ASSET_CATALOG_COL, list_rect.h);
     // ⭐ **Onde ela está**, para a roda a achar antes do painel que a contém.
     store.set_sub_scroll_region(ph2d_editor_core::ids::ASSET_CATALOG_COL, list_rect);
 

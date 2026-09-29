@@ -20,15 +20,14 @@ use crate::EqualizeSizesPanel;
 use crate::state::{self, EqualizeSizesPanelState, set_last_content_h, set_last_visible_h};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
-use ph2d_editor_core::paint::{paint_text_centered, rect_to_vello, resolve};
+use ph2d_editor_core::paint::{paint_text_centered, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_surface, paint_panel_title,
 };
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, EQUALIZE_SIZES_SCROLLBAR_ID, paint_button, paint_scrollbar,
-    paint_slider_with_chip_layout_adaptive, scrollbar_is_needed, scrollbar_thumb_rect,
-    scrollbar_track_rect,
+    Button, ButtonKind, ButtonState, EQUALIZE_SIZES_SCROLLBAR_ID, paint_button,
+    paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -100,27 +99,19 @@ pub(crate) fn paint(_state: &mut EqualizeSizesPanelState, ctx: &mut PaintCtx) {
     let body_top = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
     let body_h = (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0);
     let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
-    let scroll = ctx
-        .host
-        .store()
-        .panel_scroll(ph2d_editor_core::ids::EQS_PANEL);
-
-    ctx.scene.push_clip(&rect_to_vello(body_rect));
-    let y_after = paint_body_sections(
+    // ⭐ A PORTA da rolagem (spec `04_a_rolagem_unica`): recorte do desenho e do clique, as duas
+    // alturas, o clamp e a barra com a TRILHA registada.
+    let area = ph2d_editor_core::panel::scroll_area::open(
         ctx,
-        &snapshot,
-        inner_x,
-        inner_w,
-        row_h,
-        row_gap,
-        body_top - scroll,
+        ph2d_editor_core::ids::EQS_PANEL,
+        EQUALIZE_SIZES_SCROLLBAR_ID,
+        body_rect,
     );
-    let content_h = (y_after + scroll) - body_top + PANEL_HEAD_PAD;
+    let y_after = paint_body_sections(ctx, &snapshot, inner_x, inner_w, row_h, row_gap, area.top());
+    let content_h = (y_after + area.scroll()) - body_top + PANEL_HEAD_PAD;
     set_last_content_h(content_h);
     set_last_visible_h(body_h);
-    ctx.scene.pop_layer();
-
-    paint_scrollbar_and_publish(ctx, body_rect, content_h, body_h, scroll, theme);
+    ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
 
     ctx.host.hit_index_mut().register(
         ph2d_tool_equalize_sizes::ids::EQS_CANCEL,
@@ -417,41 +408,6 @@ fn paint_mode_rows(
         }
     }
     y
-}
-
-fn paint_scrollbar_and_publish(
-    ctx: &mut PaintCtx,
-    body_rect: Rect,
-    content_h: f32,
-    body_h: f32,
-    scroll: f32,
-    theme: Theme,
-) {
-    if scrollbar_is_needed(content_h, body_h) {
-        let track = scrollbar_track_rect(body_rect);
-        let thumb = scrollbar_thumb_rect(track, scroll, content_h, body_h);
-        paint_scrollbar(
-            body_rect,
-            scroll,
-            content_h,
-            body_h,
-            ctx.host
-                .store()
-                .scrollbar_visual(EQUALIZE_SIZES_SCROLLBAR_ID),
-            ctx.scene,
-            theme,
-        );
-        ctx.host
-            .hit_index_mut()
-            .register(EQUALIZE_SIZES_SCROLLBAR_ID, thumb);
-    }
-    let store = ctx.host.store_mut();
-    store.set_panel_content_h(ph2d_editor_core::ids::EQS_PANEL, content_h);
-    store.set_panel_visible_h(ph2d_editor_core::ids::EQS_PANEL, body_h);
-    let max_scroll = (content_h - body_h).max(0.0);
-    if store.panel_scroll(ph2d_editor_core::ids::EQS_PANEL) > max_scroll {
-        store.set_panel_scroll(ph2d_editor_core::ids::EQS_PANEL, max_scroll);
-    }
 }
 
 /// Paint a horizontal row of N equal-width buttons that behave as a

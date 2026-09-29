@@ -6,7 +6,7 @@
 
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::ids;
-use ph2d_editor_core::paint::{paint_icon, paint_text, paint_text_block, rect_to_vello, resolve};
+use ph2d_editor_core::paint::{paint_icon, paint_text, paint_text_block, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
@@ -14,8 +14,7 @@ use ph2d_editor_core::widget::panel_chrome::{
 };
 use ph2d_editor_core::widget::{
     Button, ButtonState, ColorSwatch, IconButtonStyle, IconGlyph, SwatchState, TOKENS_SCROLLBAR_ID,
-    paint_button, paint_color_swatch, paint_icon_button, paint_scrollbar, scrollbar_is_needed,
-    scrollbar_thumb_rect, scrollbar_track_rect,
+    paint_button, paint_color_swatch, paint_icon_button,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
@@ -25,7 +24,7 @@ use ph2d_tokens::overrides::{TokenValue, color_override, overridden_count};
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, StrokeToken, Theme, TypeToken};
 
 use crate::TokensPanel;
-use crate::state::{TokensPanelState, set_last_content_h, set_last_visible_h};
+use crate::state::{TokensPanelState, set_last_body_top, set_last_content_h, set_last_visible_h};
 
 /// Lado de um botão de ÍCONE da linha (o elo, o `f(x)`, o *Reset*) — quadrado, como todo botão de
 /// ícone compacto do app.
@@ -76,21 +75,35 @@ pub(crate) fn paint(state: &mut TokensPanelState, ctx: &mut PaintCtx) {
         theme,
     );
 
-    let body_top = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
+    // ⛔ **O cabeçalho nunca come o corpo** (rolagem única, 2026-09-29). Este painel desenha-se com
+    // os tokens que edita, e o vão entre o título e o corpo é o `Spacing::Md`: com a escala autorada
+    // a `1024 px` o corpo começava ABAIXO da janela, a altura visível era zero e nenhuma rolagem
+    // trazia o *Reset This Mode* à tela. Antes da porta da rolagem isto passava despercebido porque o
+    // clique não era recortado — o botão ficava registado por baixo de um recorte de altura zero,
+    // clicável às cegas. ⇒ o corpo guarda sempre UMA linha (`ROW_H_PX`), e a rolagem faz o resto;
+    // o recurso é a TELA, logo o piso é a altura de uma linha e não um número escolhido.
+    let body_floor = rect.y + rect.h - PANEL_HEAD_PAD - ROW_H_PX;
+    let body_top = (rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px())
+        .min(body_floor)
+        .max(rect.y);
     let body_h = (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0);
     let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
-    let scroll = ctx.host.store().panel_scroll(ids::TOKENS_PANEL);
-
-    ctx.scene.push_clip(&rect_to_vello(body_rect));
+    // ⭐ A PORTA da rolagem (spec `04_a_rolagem_unica`): recorte do desenho e do clique, as duas
+    // alturas, o clamp e a barra com a TRILHA registada.
+    let area = ph2d_editor_core::panel::scroll_area::open(
+        ctx,
+        ids::TOKENS_PANEL,
+        TOKENS_SCROLLBAR_ID,
+        body_rect,
+    );
     let x = rect.x + PANEL_HEAD_PAD;
     let w = (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0);
-    let y_after = paint_body(ctx, theme, x, w, body_top - scroll, state);
-    let content_h = (y_after + scroll) - body_top + PANEL_HEAD_PAD;
+    let y_after = paint_body(ctx, theme, x, w, area.top(), state);
+    let content_h = (y_after + area.scroll()) - body_top + PANEL_HEAD_PAD;
     set_last_content_h(content_h);
     set_last_visible_h(body_h);
-    ctx.scene.pop_layer();
-
-    paint_scrollbar_and_publish(ctx, body_rect, content_h, body_h, scroll, theme);
+    set_last_body_top(body_top);
+    ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
 }
 
 /// O readout do modo + o *Reset All* + as DUAS listas.
@@ -501,37 +514,4 @@ fn theme_label(theme: Theme) -> &'static str {
     // ⚠️ Era um `match` de quatro braços — a família moderna (2026-09-04) tornou-o o segundo
     //    sítio a saber o nome de um tema, e o nome vive no próprio `Theme`.
     tr(theme.display_name_key())
-}
-
-fn paint_scrollbar_and_publish(
-    ctx: &mut PaintCtx,
-    body_rect: Rect,
-    content_h: f32,
-    body_h: f32,
-    scroll: f32,
-    theme: Theme,
-) {
-    if scrollbar_is_needed(content_h, body_h) {
-        let track = scrollbar_track_rect(body_rect);
-        let thumb = scrollbar_thumb_rect(track, scroll, content_h, body_h);
-        paint_scrollbar(
-            body_rect,
-            scroll,
-            content_h,
-            body_h,
-            ctx.host.store().scrollbar_visual(TOKENS_SCROLLBAR_ID),
-            ctx.scene,
-            theme,
-        );
-        ctx.host
-            .hit_index_mut()
-            .register(TOKENS_SCROLLBAR_ID, thumb);
-    }
-    let store = ctx.host.store_mut();
-    store.set_panel_content_h(ids::TOKENS_PANEL, content_h);
-    store.set_panel_visible_h(ids::TOKENS_PANEL, body_h);
-    let max_scroll = (content_h - body_h).max(0.0);
-    if store.panel_scroll(ids::TOKENS_PANEL) > max_scroll {
-        store.set_panel_scroll(ids::TOKENS_PANEL, max_scroll);
-    }
 }

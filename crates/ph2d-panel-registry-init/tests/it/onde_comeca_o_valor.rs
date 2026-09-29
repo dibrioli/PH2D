@@ -18,12 +18,16 @@ use super::a_marca_tem_a_altura_da_linha::abre_as_gavetas;
 /// A largura do dono: a coluna docada que ele fotografou em 2026-09-19.
 const LARGURA_DO_DONO: f32 = 300.0;
 
+/// ⛔ **A ALTURA tem de conter o painel inteiro** (rolagem única, 2026-09-29): a porta
+/// `scroll_area` recorta o CLIQUE pelo corpo visível, e a `4000` a varredura passou a ver só a parte
+/// acima da dobra (`238` linhas contra o piso de `400`). A mesma exigência da `viewport()` de
+/// `a_marca_tem_a_altura_da_linha`.
 fn vista() -> Rect {
     Rect {
         x: 0.0,
         y: 0.0,
         w: LARGURA_DO_DONO,
-        h: 4000.0,
+        h: 16000.0,
     }
 }
 
@@ -47,6 +51,29 @@ fn colhe(
     nomes: &std::collections::BTreeMap<ph2d_editor_core::NodeId, String>,
 ) -> (f32, Vec<Arranque>) {
     let _ = host.medindo_a_pintura_do_registo(painel, vista());
+    // ⛔ **Uma JANELA FLUTUANTE não cresce com a vista** (a galeria pára em `720 px`), e com a
+    // rolagem única o clique é recortado pelo corpo visível ⇒ a varredura via só o topo do catálogo
+    // e leu `1` coluna onde há `3` (2026-09-29). ⇒ o censo puxa o canto de toda janela que
+    // transborda até o conteúdo caber — o gesto do artista —, e pinta outra vez. Um painel docado
+    // já cabe na vista de `16000 px` e não é tocado.
+    let rects: Vec<Rect> = host.store().panel_rects().collect();
+    let mut cresceu = false;
+    for r in rects {
+        let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+        let Some(id) = host.store().scrollable_panel_at(cx, cy) else {
+            continue;
+        };
+        let falta = host.store().panel_content_h(id).unwrap_or(0.0)
+            - host.store().panel_visible_h(id).unwrap_or(0.0);
+        if falta > 0.0 {
+            let (dw, dh) = host.store().panel_resize_delta(id);
+            host.store_mut().set_panel_resize_delta(id, dw, dh + falta);
+            cresceu = true;
+        }
+    }
+    if cresceu {
+        let _ = host.medindo_a_pintura_do_registo(painel, vista());
+    }
     let pintados = host.registos_da_ultima_pintura();
     let borda = pintados
         .iter()

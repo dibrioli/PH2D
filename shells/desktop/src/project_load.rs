@@ -391,7 +391,10 @@ impl crate::App {
             hero.store.stop_listening();
             // A rolagem também: a lista nova tem outro tamanho, e uma rolagem herdada abre a
             // janela num vazio.
-            hero.store.scroll_input_map(f32::NEG_INFINITY, 0.0);
+            hero.store
+                .set_panel_scroll(ph2d_editor_core::ids::INPUT_MAP_SURFACE, 0.0);
+            hero.store
+                .set_panel_scroll_live(ph2d_editor_core::ids::INPUT_MAP_SURFACE, 0.0);
         }
         // ⚠️ E o estado RESOLVIDO zera junto: ele guarda um tique atrás, e o tique atrás de um
         // documento que acabou de fechar é de outro jogo — uma borda `just_pressed` fantasma no

@@ -125,61 +125,12 @@ impl crate::App {
 }
 
 impl crate::App {
-    /// **A RODA sobre a janela do Input Map rola a lista.** `true` ⇒ consome.
-    ///
-    /// ⛔ Report do Enio (2026-08-24): *"estreito e **sem scroll**"*. Um cartão que cresce com a
-    /// lista sai do ecrã e a última acção fica inalcançável — e nada na tela diz porquê.
-    ///
-    /// ⚠️ **O TETO vem daqui, não do `WidgetStore`**: ele não vê o mapa, e só quem conta as linhas
-    /// sabe onde a lista acaba. Sem teto, a roda leva a lista para longe e o artista vê um cartão
-    /// vazio sem saber como voltar.
-    ///
-    /// ⚠️ **Consome sempre que o cursor está sobre a janela**, mesmo quando ela cabe inteira: a
-    /// roda que atravessasse o cartão daria zoom no canvas por baixo dele, que é o gesto errado
-    /// com a mão no sítio certo.
     /// ⭐ **A roda pertence à PALETA enquanto ela estiver aberta** — ver
     /// [`ph2d_app_components::component_attach::palette_wheel`], onde mora o porquê.
     pub(crate) fn command_palette_wheel(&mut self, dy: f32) -> bool {
-        let Some(gfx) = self.gfx.as_mut() else {
-            return false;
-        };
-        let viewport = gfx.hero_screen.as_ref().map(|h| h.last_viewport);
-        let (Some(hero), Some(viewport)) = (gfx.hero_screen.as_mut(), viewport) else {
-            return false;
-        };
-        ph2d_app_components::component_attach::palette_wheel(
-            hero,
-            &mut gfx.text_system,
-            viewport,
-            dy,
-        )
-    }
-
-    pub(crate) fn input_map_wheel(&mut self, dy: f32) -> bool {
-        let (px, py) = self.last_pointer;
         let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) else {
             return false;
         };
-        let Some((wx, wy)) = hero.store.input_map_pos() else {
-            return false;
-        };
-        // ⚠️ **A ALTURA DA VIEWPORT É PARTE DA PERGUNTA** — auditoria 2026-08-24. A janela é
-        // clampada ao ecrã pelo pintor; perguntar o tamanho sem a viewport devolvia o tamanho
-        // PEDIDO, e a roda passava a testar um rectângulo que **não está na tela** assim que a
-        // lista transborda. O `last_viewport` é o mesmo que o pintor recebeu no quadro anterior.
-        let vh = hero.last_viewport.h;
-        let (ww, wh, max_scroll) =
-            ph2d_editor_core::screens::hero::chrome::input_map_window_size(&hero.input_map, vh);
-        // ⚠️ E a POSIÇÃO também é clampada, pelo mesmo motivo: o pintor prende o canto à viewport,
-        // e um cartão encostado à borda de baixo desenha acima de onde o store diz que ele está.
-        let vx = hero.last_viewport.x;
-        let vy = hero.last_viewport.y;
-        let wx = wx.clamp(vx, (vx + hero.last_viewport.w - ww).max(vx));
-        let wy = wy.clamp(vy, (vy + vh - wh).max(vy));
-        if px < wx || px > wx + ww || py < wy || py > wy + wh {
-            return false;
-        }
-        hero.store.scroll_input_map(-dy, max_scroll);
-        true
+        ph2d_app_components::component_attach::palette_wheel(hero, dy)
     }
 }

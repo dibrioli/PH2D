@@ -7,16 +7,12 @@
 use crate::state::{self, TagsPanelState};
 use crate::{TagsPanel, rows};
 use ph2d_editor_core::ids;
-use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
     paint_panel_surface, paint_panel_title,
 };
-use ph2d_editor_core::widget::{
-    SCROLLBAR_W, TAGS_SCROLLBAR_ID, paint_scrollbar, scrollbar_is_needed, scrollbar_thumb_rect,
-    scrollbar_track_rect,
-};
+use ph2d_editor_core::widget::{SCROLLBAR_W, TAGS_SCROLLBAR_ID};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::Spacing;
 
@@ -72,14 +68,19 @@ pub(crate) fn paint(state: &mut TagsPanelState, ctx: &mut PaintCtx) {
     let body_h = (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0);
 
     let (focus, renaming) = (state.focus, state.renaming);
+    // ⭐ A PORTA da rolagem (spec `04_a_rolagem_unica`): recorte do desenho e do clique, as duas
+    // alturas, o clamp e a barra com a TRILHA registada — a barra passa a pintar-se FORA do recorte.
+    let area = ph2d_editor_core::panel::scroll_area::open(
+        ctx,
+        ids::TAGS_PANEL,
+        TAGS_SCROLLBAR_ID,
+        Rect::new(rect.x, body_top, rect.w, body_h),
+    );
     let content_h = state::with_current(|info| {
         let scene = &mut *ctx.scene;
         let text_system = &mut *ctx.text_system;
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-        let scroll_y = store.panel_scroll(ids::TAGS_PANEL).max(0.0);
-        let clip = rect_to_vello(Rect::new(rect.x, body_top, rect.w, body_h));
-        scene.push_clip(&clip);
-        let top = body_top - scroll_y;
+        let top = area.top();
 
         let em_maos = focus.and_then(|f| info.rows.iter().find(|r| r.id == f));
         let verbos = rows::verbs(em_maos);
@@ -136,32 +137,9 @@ pub(crate) fn paint(state: &mut TagsPanelState, ctx: &mut PaintCtx) {
             y = rows::problem_line(scene, text_system, theme, inner_x, inner_w, y, 0, texto);
         }
 
-        let content_h = (y - top + PANEL_HEAD_PAD).max(0.0);
-        if scrollbar_is_needed(content_h, body_h) {
-            let body = Rect::new(rect.x, body_top, rect.w, body_h);
-            let thumb =
-                scrollbar_thumb_rect(scrollbar_track_rect(body), scroll_y, content_h, body_h);
-            paint_scrollbar(
-                body,
-                scroll_y,
-                content_h,
-                body_h,
-                store.scrollbar_visual(TAGS_SCROLLBAR_ID),
-                scene,
-                theme,
-            );
-            hit_index.register(TAGS_SCROLLBAR_ID, thumb);
-        }
-        scene.pop_layer();
-        content_h
+        (y - top + PANEL_HEAD_PAD).max(0.0)
     });
 
     state::set_last_content_h(content_h);
-    let store = ctx.host.store_mut();
-    store.set_panel_content_h(ids::TAGS_PANEL, content_h);
-    store.set_panel_visible_h(ids::TAGS_PANEL, body_h);
-    let max_scroll = (content_h - body_h).max(0.0);
-    if store.panel_scroll(ids::TAGS_PANEL) > max_scroll {
-        store.set_panel_scroll(ids::TAGS_PANEL, max_scroll);
-    }
+    ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
 }

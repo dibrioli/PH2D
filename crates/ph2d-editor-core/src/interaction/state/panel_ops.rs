@@ -221,18 +221,28 @@ impl WidgetStore {
         self.panel_visible_h.get(&panel).copied()
     }
 
-    /// Find the panel whose rect contains `(x, y)`. Walks all
-    /// registered panels and returns the first match. Acceptable
-    /// because there are only a handful of panels (~3-5); for
-    /// dozens, switch to the same back-to-front Vec approach as
-    /// [`crate::interaction::HitIndex`].
+    /// Find the panel whose rect contains `(x, y)` — the one **drawn on top**.
+    ///
+    /// ⚠️ **The stacking order decides, never the id** (rolagem única, W3). Until 2026-09-29 this
+    /// walked the `BTreeMap` in id order, so where two published rects overlap (a floating panel
+    /// over a dock, the colour picker over the Inspector) the wheel and the body drag went to
+    /// whichever id sorted first — the panel UNDER the one the artist sees. Now the `panel_z_order`
+    /// is walked back-to-front (its ids are the manifest `panel_node_id`, the same the painters
+    /// publish). ⚠️ Rects that are NOT in it are the overlays painted AFTER every panel (the audio
+    /// overlay; a floating window) — they are on top by construction, so they are asked FIRST.
     pub fn panel_at(&self, x: f32, y: f32) -> Option<NodeId> {
-        for (id, rect) in &self.panel_rects {
-            if rect.contains(x, y) {
-                return Some(*id);
-            }
-        }
-        None
+        let loose = self
+            .panel_rects
+            .iter()
+            .find(|(id, rect)| !self.panel_z_order.contains(id) && rect.contains(x, y))
+            .map(|(id, _)| *id);
+        loose.or_else(|| {
+            self.panel_z_order
+                .iter()
+                .rev()
+                .find(|id| self.panel_rects.get(id).is_some_and(|r| r.contains(x, y)))
+                .copied()
+        })
     }
 
     /// Begin a scrollbar drag at the given anchor. Stores the

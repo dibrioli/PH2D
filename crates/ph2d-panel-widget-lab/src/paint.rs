@@ -19,17 +19,14 @@ use crate::state::WidgetLabState;
 use crate::study::{Bench, paint_study};
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::ids;
-use ph2d_editor_core::paint::{paint_icon, paint_text, rect_to_vello, resolve};
+use ph2d_editor_core::paint::{paint_icon, paint_text, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, clamp_panel_rect, paint_panel_corner_dot, paint_panel_corner_dot_bl,
     paint_panel_surface_floating, panel_drag_handle_rect, panel_resize_handle_rect,
     panel_resize_handle_rect_bl,
 };
-use ph2d_editor_core::widget::{
-    LAB_SCROLLBAR_ID, SCROLLBAR_W, SliderState, paint_scrollbar, scrollbar_is_needed,
-    scrollbar_thumb_rect, scrollbar_track_rect,
-};
+use ph2d_editor_core::widget::{LAB_SCROLLBAR_ID, SCROLLBAR_W, SliderState};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Spacing, TypeToken};
 
@@ -62,7 +59,6 @@ pub(crate) fn paint(state: &mut WidgetLabState, ctx: &mut PaintCtx) {
         let (s, v) = store_imm.slider_visual(crate::ids::LAB_LIVE_BOX);
         (v, s == SliderState::Dragging)
     };
-    let scroll = store_imm.panel_scroll(ids::LAB_PANEL);
     {
         let store = ctx.host.store_mut();
         if (c_off.0 - off.0).abs() > f32::EPSILON || (c_off.1 - off.1).abs() > f32::EPSILON {
@@ -121,8 +117,8 @@ pub(crate) fn paint(state: &mut WidgetLabState, ctx: &mut PaintCtx) {
     let inner_x = rect.x + BODY_PAD;
     let inner_w = (rect.w - BODY_PAD * 2.0 - SCROLLBAR_W - Spacing::Sm.px()).max(1.0);
 
-    let used = {
-        let (_store, hit_index) = ctx.host.store_and_hit_index_mut();
+    let (area, used) = {
+        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
         // ⚠️ **As alças ANTES do recorte.** Elas vivem no bordo da janela, e o recorte do corpo
         // começa abaixo do título — registá-las lá dentro deixaria a de cima fora da banda.
         hit_index.register(
@@ -139,43 +135,29 @@ pub(crate) fn paint(state: &mut WidgetLabState, ctx: &mut PaintCtx) {
         );
         hit_index.register(crate::ids::LAB_CLOSE, close_rect);
 
-        hit_index.push_clip(body);
-        ctx.scene.push_clip(&rect_to_vello(body));
+        // ⭐ A PORTA da rolagem (spec `04_a_rolagem_unica`): recorte do desenho e do clique, as
+        // duas alturas, o clamp e a barra — pintada FORA do recorte (é cromo da janela, não
+        // conteúdo) com a TRILHA registada.
+        let area = ph2d_editor_core::widget::scroll_area::open_with(
+            ctx.scene,
+            hit_index,
+            store,
+            ids::LAB_PANEL,
+            LAB_SCROLLBAR_ID,
+            body,
+        );
         let mut b = Bench {
             scene: ctx.scene,
             text: ctx.text_system,
-            hit: hit_index,
+            hit: &mut *hit_index,
             theme,
             x: inner_x,
             w: inner_w,
-            y: content_top - scroll + Spacing::Xs.px(),
+            y: area.top() + Spacing::Xs.px(),
         };
-        paint_study(&mut b, state, (live_t, live_drag))
+        (area, paint_study(&mut b, state, (live_t, live_drag)))
     };
-    ctx.scene.pop_layer();
-    ctx.host.store_and_hit_index_mut().1.pop_clip();
-
-    // ── A barra de rolagem ─────────────────────────────────────────────────
-    // ⚠️ **Fora do recorte, de propósito:** ela é cromo da janela, não conteúdo — dentro da banda
-    // ela rolaria com o que está a medir.
-    if scrollbar_is_needed(used, visible_h) {
-        let track = scrollbar_track_rect(body);
-        let thumb = scrollbar_thumb_rect(track, scroll, used, visible_h);
-        let vis = ctx.host.store().scrollbar_visual(LAB_SCROLLBAR_ID);
-        paint_scrollbar(body, scroll, used, visible_h, vis, ctx.scene, theme);
-        ctx.host
-            .store_and_hit_index_mut()
-            .1
-            .register(LAB_SCROLLBAR_ID, thumb);
-    }
-
-    let store = ctx.host.store_mut();
-    store.set_panel_content_h(ids::LAB_PANEL, used);
-    store.set_panel_visible_h(ids::LAB_PANEL, visible_h);
-    let max_scroll = (used - visible_h).max(0.0);
-    if store.panel_scroll(ids::LAB_PANEL) > max_scroll {
-        store.set_panel_scroll(ids::LAB_PANEL, max_scroll);
-    }
+    ph2d_editor_core::panel::scroll_area::close(area, ctx, used);
     // ⚠️ **Repõe a aparência do app.** A bancada força o redesenho para si, e o thread-local é
     // partilhado — sem isto, o painel pintado a seguir herdava-a e o app inteiro mudava de cara
     // por a bancada estar aberta.

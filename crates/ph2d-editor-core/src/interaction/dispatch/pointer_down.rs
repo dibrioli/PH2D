@@ -70,8 +70,11 @@ pub(super) fn dispatch_down<'frame>(
     // rouba um gesto, porque só existe onde não havia gesto nenhum.
     // ⭐ E uma pressão sobre um painel em VOO segura-o (a inércia pára debaixo do dedo).
     super::scroll::grab_fling_at(store, event.x, event.y);
-    if hit.is_none()
-        && let Some(panel) = store.scrollable_panel_at(event.x, event.y)
+    // ⚠️ A pressão no FUNDO do próprio painel também é espaço vazio: uma janela flutuante regista o
+    // fundo com o id que a porta usa como chave (o Input Map, para o clique não vazar ao canvas), e
+    // esse registo não é um widget a reclamar o gesto.
+    if let Some(panel) = store.scrollable_panel_at(event.x, event.y)
+        && hit.is_none_or(|(id, _)| id == panel)
     {
         super::scroll::begin_body_drag(store, panel, event.y, event.timestamp_ns);
     }

@@ -43,9 +43,9 @@ pub const TAGS_UNPARENT: NodeId = hash_node_id("tags.unparent");
 pub const TAGS_RENAME_INPUT: NodeId = hash_node_id("tags.rename_input");
 
 // ⛔⛔ **A barra de rolagem NÃO tem id aqui, e a ausência é a decisão.** Ela é
-// `ph2d_editor_core::widget::TAGS_SCROLLBAR_ID`, porque o dono de um id de barra é o DESPACHO: o
-// `scrollbar_panel_for_id` tem de o mapear ao painel, senão o polegar pinta e não se agarra. A 1.ª
-// redacção declarou-o aqui e o `hit_indexed_ids_are_registered` apanhou-o.
+// `ph2d_editor_core::widget::TAGS_SCROLLBAR_ID`, onde os ids de barra se CONTAM contra colisão (o
+// dono dele é o que a porta `scroll_area` publica ao pintá-la). A 1.ª redacção declarou-o aqui e o
+// `hit_indexed_ids_are_registered` apanhou-o.
 
 /// **O id da LINHA de uma tag** — derivado da identidade dela.
 ///

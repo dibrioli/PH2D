@@ -20,16 +20,12 @@
 use crate::paint_sections::BodyCtx;
 use crate::state::{self, VectorPanelState, set_last_content_h, set_last_visible_h};
 use crate::{VectorPanel, ids};
-use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
     paint_panel_surface, paint_panel_title, panel_close_button_rect,
 };
-use ph2d_editor_core::widget::{
-    NUMBER_INPUT_MIN_W_PX, SCROLLBAR_W, VECTOR_SCROLLBAR_ID, paint_scrollbar, scrollbar_is_needed,
-    scrollbar_thumb_rect, scrollbar_track_rect,
-};
+use ph2d_editor_core::widget::{NUMBER_INPUT_MIN_W_PX, SCROLLBAR_W, VECTOR_SCROLLBAR_ID};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing, TypeToken};
 
@@ -81,16 +77,12 @@ fn seed_text_sliders(store: &mut ph2d_editor_core::interaction::WidgetStore) {
 
 /// **Fase B** do frame (store MUTÁVEL — roda depois que o empréstimo imutável do corpo
 /// morre): marca as swatches como picker-swatch, semeia os campos derivados do que a shell
-/// publicou (bbox do Transform · faixas dos eixos de variação · sliders de texto) e publica
-/// as alturas do scroll.
+/// publicou (bbox do Transform · faixas dos eixos de variação · sliders de texto). As alturas
+/// do scroll são publicadas pela porta `scroll_area` (spec `04_a_rolagem_unica`).
 ///
 /// **Regra:** o campo em FOCO nunca é semeado — senão o seed sobrescreveria a tecla que o
 /// usuário acabou de digitar / o arrasto em curso.
-fn seed_and_publish(
-    store: &mut ph2d_editor_core::interaction::WidgetStore,
-    content_h: f32,
-    body_h: f32,
-) {
+fn seed_and_publish(store: &mut ph2d_editor_core::interaction::WidgetStore) {
     // Mark the two colour swatches so a Down opens the shared OKLCH picker
     // (generic `is_picker_swatch` dispatch). Idempotent — a set membership.
     store.register_picker_swatch(ph2d_tool_vector::ids::VECTOR_STROKE_SWATCH);
@@ -156,14 +148,6 @@ fn seed_and_publish(
     // se fazem UMA vez), e ali a família que se repete oito vezes — *re-semear um campo do
     // estado publicado, nunca sobre o que está em FOCO*.
     seed_number_fields(store);
-    store.set_panel_content_h(ph2d_editor_core::ids::VECTOR_PANEL, content_h);
-    store.set_panel_visible_h(ph2d_editor_core::ids::VECTOR_PANEL, body_h);
-    // Clamp any stale scroll if the content shrank (e.g. a collapsed section) so we never
-    // leave a blank gap below the last row.
-    let max_scroll = (content_h - body_h).max(0.0);
-    if store.panel_scroll(ph2d_editor_core::ids::VECTOR_PANEL) > max_scroll {
-        store.set_panel_scroll(ph2d_editor_core::ids::VECTOR_PANEL, max_scroll);
-    }
 }
 
 /// **Re-semeia os campos numéricos do estado publicado** — a família que o [`seed_and_publish`]
@@ -383,22 +367,23 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
 
     // Body paint — `store_and_hit_index_mut()` hands out an IMMUTABLE store (for
     // reading widget values while painting) + a mutable hit_index. The
-    // picker-swatch MARK + content_h publish need `&mut store`, so they run
+    // picker-swatch MARK + the door's `close` need `&mut store`, so they run
     // AFTER this borrow ends (Phase B below).
-    let content_h = {
+    let (content_h, area) = {
         let scene = &mut *ctx.scene;
         let text_system = &mut *ctx.text_system;
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-        // Vertical scroll — the wheel already updates `panel_scroll` via the
-        // generic dispatch (this panel publishes its rect + heights); thumb-drag
-        // via `VECTOR_SCROLLBAR_ID`. Clip the body region and shift content up by
-        // `scroll_y` — mirror of the Inspector.
-        let scroll_y = store
-            .panel_scroll(ph2d_editor_core::ids::VECTOR_PANEL)
-            .max(0.0);
-        let clip = rect_to_vello(Rect::new(rect.x, body_top, rect.w, body_h));
-        scene.push_clip(&clip);
-        let body_top_y = body_top - scroll_y;
+        // ⭐ A PORTA da rolagem (spec `04_a_rolagem_unica`): recorte do desenho e do clique, as
+        // duas alturas, o clamp e a barra (FORA do recorte, com a TRILHA registada).
+        let area = ph2d_editor_core::widget::scroll_area::open_with(
+            scene,
+            hit_index,
+            store,
+            ph2d_editor_core::ids::VECTOR_PANEL,
+            VECTOR_SCROLLBAR_ID,
+            Rect::new(rect.x, body_top, rect.w, body_h),
+        );
+        let body_top_y = area.top();
         // Section painters live in `paint_sections` (panel LOC cap): each takes
         // the running `y` and returns the advanced `y`.
         let mut b = BodyCtx {
@@ -418,36 +403,19 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
         // A ORDEM das seções (e as fronteiras entre elas) vive em `BodyCtx::paint_body` — o
         // orquestrador aqui só monta o contexto e mede.
         // ⭐⭐ **O corpo pinta-se DENTRO de cartões** (2026-09-06) — o par abre depois do
-        //    `push_clip`, para que o corpo devolvido caia dentro do recorte da rolagem.
+        //    `open` da porta, para que o corpo devolvido caia dentro do recorte da rolagem.
         ph2d_editor_core::widget::section_cards::begin_section_cards(b.scene, theme, body_top_y);
         let y = b.paint_body(&snap, body_top_y);
         ph2d_editor_core::widget::section_cards::end_section_cards(b.scene);
 
         // Total painted height (independent of scroll — both ends shift with it).
-        let content_h = (y - body_top_y + PANEL_HEAD_PAD).max(0.0);
-        // Scrollbar (painted inside the clip, right rail) + its drag hit target.
-        if scrollbar_is_needed(content_h, body_h) {
-            let body = Rect::new(rect.x, body_top, rect.w, body_h);
-            let thumb =
-                scrollbar_thumb_rect(scrollbar_track_rect(body), scroll_y, content_h, body_h);
-            paint_scrollbar(
-                body,
-                scroll_y,
-                content_h,
-                body_h,
-                b.store.scrollbar_visual(VECTOR_SCROLLBAR_ID),
-                b.scene,
-                theme,
-            );
-            b.hit_index.register(VECTOR_SCROLLBAR_ID, thumb);
-        }
-        b.scene.pop_layer();
-        content_h
+        ((y - body_top_y + PANEL_HEAD_PAD).max(0.0), area)
     };
+    ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
 
     // ── Phase B (mutable store) — sibling fn: o corpo do `paint` estourava o teto de
     // 200 LOC por função dos painéis.
-    seed_and_publish(ctx.host.store_mut(), content_h, body_h);
+    seed_and_publish(ctx.host.store_mut());
     set_last_content_h(content_h);
     set_last_visible_h(body_h);
 

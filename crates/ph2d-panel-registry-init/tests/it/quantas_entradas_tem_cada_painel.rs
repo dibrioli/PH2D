@@ -56,7 +56,7 @@ use ph2d_ui_testkit::MockPanelHost;
 /// e é contra ele que aquela linha declara *«o painel está sobre o orçamento»*.
 pub(super) const DOBRA: f32 = 880.0;
 
-/// ⛔⛔ **A viewport é ALTA de propósito: `4000 px`.**
+/// ⛔⛔ **A viewport é ALTA de propósito: `16000 px`.**
 ///
 /// A pergunta do degrau `G` é *«quantas coisas este painel põe à frente do artista?»*, e um painel
 /// que não cabe **rola** — ele não deixa de ter as entradas. Numa viewport de ecrã o índice de
@@ -64,11 +64,18 @@ pub(super) const DOBRA: f32 = 880.0;
 /// exactamente o painel que precisou de barra de rolagem (que foi o report do dono que abriu
 /// este degrau, em 2026-08-27). ⇒ mede-se com ecrã a sobrar, e o número é o do painel, não o da
 /// janela.
+///
+/// ⛔⛔ **E desde 2026-09-29 «a sobrar» é uma exigência, não uma folga** (rolagem única): a porta
+/// `widget::scroll_area` recorta o CLIQUE pelo corpo visível, logo o que fica abaixo da janela deixa
+/// de estar no índice de acerto. A `4000 px` o Inspector armado (`~4 000` de conteúdo) perdeu
+/// `49` das `81` entradas e a régua leu-o como painel que encolheu. `16000` cobre o maior painel
+/// medido com folga de `4×`, e o piso de população de cada censo é quem acusa o dia em que não
+/// cobrir.
 pub(super) const VIEWPORT: Rect = Rect {
     x: 0.0,
     y: 0.0,
     w: 1920.0,
-    h: 4000.0,
+    h: 16000.0,
 };
 
 /// ⭐⭐⭐ **A SEGUNDA ALTURA — o controlo que separa CONTEÚDO de CROMO ANCORADO.**
@@ -81,17 +88,20 @@ pub(super) const VIEWPORT: Rect = Rect {
 /// ⇒ mede-se **duas vezes**, e quem acompanha a janela declara-se **não medido**. *Uma régua de
 /// altura sem um segundo ponto não distingue um painel alto de um painel esticado* — e as duas
 /// leituras mandam a wave para sítios opostos.
+///
+/// ⚠️ Ela também tem de conter o painel INTEIRO (o recorte do clique, 2026-09-29): um painel mais
+/// alto que ela leria duas alturas diferentes e passaria por ANCORADO sem o ser.
 const VIEWPORT_CURTA: Rect = Rect {
     x: 0.0,
     y: 0.0,
     w: 1920.0,
-    h: 2000.0,
+    h: 8000.0,
 };
 
 /// A altura é do CONTEÚDO se ela **não** se moveu com a janela.
 ///
 /// ⚠️ A folga de `1 px` é para o arredondamento de uma linha, não para tolerar deriva: as duas
-/// viewports diferem `2 000 px`, logo um painel ancorado move-se `2 000`, não `1`.
+/// viewports diferem `8 000 px`, logo um painel ancorado move-se `8 000`, não `1`.
 fn altura_e_do_conteudo(alta: f32, curta: f32) -> bool {
     (alta - curta).abs() <= 1.0
 }
@@ -449,7 +459,7 @@ fn censo() -> Vec<Linha> {
                     c
                 });
 
-            // ⭐ **O CONTROLO**: a mesma pintura numa janela `2 000 px` mais baixa. Corre-se sempre
+            // ⭐ **O CONTROLO**: a mesma pintura numa janela `8 000 px` mais baixa. Corre-se sempre
             //   no estado VAZIO — o que se pergunta é se o painel ANCORA, e isso não depende de
             //   haver um documento na mão.
             let mut host = MockPanelHost::new();

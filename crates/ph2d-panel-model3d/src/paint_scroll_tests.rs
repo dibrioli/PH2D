@@ -6,10 +6,10 @@
 //! esconde os controles e não diz nada.** O rodapé e as fileiras de parâmetros de um documento com
 //! vários nós ficavam inalcançáveis, sem sinal nenhum de que existiam.
 //!
-//! ⚠️ **Fazer um painel rolar são QUATRO edições e só três falham alto** (o arch-gate
-//! `scrollable_panels_intercept_the_wheel` nomeia-as): o id do polegar, o braço no
-//! `scrollbar_panel_for_id`, o **pintor** (que lê o `panel_scroll` e publica `content_h`/
-//! `visible_h`) e o id em `cursor_over_hero_panel`. Este arquivo é o juiz da terceira.
+//! ⚠️ **Fazer um painel rolar era QUATRO edições e só três falhavam alto** — até 2026-09-29, quando
+//! a porta `panel::scroll_area` passou a fazer três delas (o dono publicado da barra, as alturas e o
+//! recorte) e a roda deixou de ter lista. O que sobra ao pintor é PASSAR pela porta com a altura do
+//! conteúdo certa — e este arquivo é o juiz disso.
 
 use super::*;
 use ph2d_a11y::NodeId;

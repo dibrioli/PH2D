@@ -7,10 +7,16 @@
 //!    `panel_scroll`, and clamps against the painter-published
 //!    `content_h` / `visible_h` so wheeling past the end doesn't
 //!    produce a 1-frame jump.
-//! 2. [`scrollbar_panel_for_id`] — maps a scrollbar thumb's
-//!    [`ph2d_a11y::NodeId`] back to the panel it scrolls. Pure
-//!    routing table; hosts that add new scrollable panels extend
-//!    the match here.
+//! 2. The two drags a scroll body answers — the bar (`begin_bar_drag`) and the body itself
+//!    (`begin_body_drag`, with the inertia of `crate::interaction::fling`).
+//!
+//! ⚠️ **There is no routing table any more** (rolagem única, 2026-09-29). Until then
+//!    `scrollbar_panel_for_id` mapped every bar id to its panel by hand — 26 arms, two of them for
+//!    panels that no longer existed, and a new panel that forgot its arm painted a bar that could
+//!    not be grabbed (the Input Map's was like that from 24/08 to 29/09). Today the owner is what the
+//!    door `widget::scroll_area` PUBLISHES when it paints the bar ([`WidgetStore::scroll_bar_panel`]);
+//!    a bar that was never painted cannot be pressed, so a published owner always exists by the time
+//!    a press reaches it.
 
 use super::super::{InteractiveState, WidgetEvent, WidgetStore};
 use bumpalo::Bump;
@@ -109,106 +115,9 @@ pub fn dispatch_wheel<'frame>(
         return events.into_bump_slice();
     }
     if let Some(panel) = store.panel_at(event.x, event.y) {
-        // ⚠️ O ALVO, nunca o vivo: girar depressa sobre uma posição em voo anda menos do que
-        //    o dedo pediu.
-        // A roda toma o comando de volta de uma lista em voo.
-        store.stop_fling(panel);
-        let cur = store.panel_scroll_target(panel);
-        // delta_y > 0 from winit means "scroll forward" / content
-        // moves up. We store offset as "how far down content
-        // pretends to be" — so positive delta increments the
-        // offset (showing content further down).
-        let mut next = (cur - event.delta_y).max(0.0);
-        // Clamp at the upper bound when the painter has published a
-        // content_h for this panel. Without this, wheeling past the
-        // last element pushes `next` arbitrarily high; the next
-        // paint pass clamps it back, producing a 1-frame "jump"
-        // (the user's "saltos indesejados se rodamos a roda no fim").
-        if let Some(content_h) = store.panel_content_h(panel) {
-            // Prefer the painter-published visible_h (exact body
-            // height); fall back to `panel.h - 60` only when the
-            // painter hasn't seeded one yet (first frame).
-            let visible_h = store.panel_visible_h(panel).unwrap_or_else(|| {
-                store
-                    .panel_rect(panel)
-                    .map(|r| (r.h - 60.0).max(0.0))
-                    .unwrap_or(0.0)
-            });
-            let max_scroll = (content_h - visible_h).max(0.0);
-            if next > max_scroll {
-                next = max_scroll;
-            }
-        }
-        store.set_panel_scroll(panel, next);
+        store.wheel_panel(panel, event.delta_y);
     }
     events.into_bump_slice()
-}
-
-/// Maps a scrollbar thumb's hit id back to the panel it scrolls.
-/// Returns `None` for non-scrollbar ids. Keeps the panel↔scrollbar
-/// mapping in one place — hosts that add new scrollable panels
-/// extend this match.
-pub(crate) fn scrollbar_panel_for_id(id: NodeId) -> Option<NodeId> {
-    use crate::ids;
-    if id == crate::widget::INSPECTOR_SCROLLBAR_ID {
-        Some(ids::INSP_PANEL)
-    } else if id == crate::widget::HIERARCHY_SCROLLBAR_ID {
-        Some(ids::HIER_PANEL)
-    } else if id == crate::widget::GALLERY_SCROLLBAR_ID {
-        Some(ids::GAL_PANEL)
-    } else if id == crate::widget::LAB_SCROLLBAR_ID {
-        Some(ids::LAB_PANEL)
-    } else if id == crate::widget::GRID_SETTINGS_SCROLLBAR_ID {
-        Some(crate::ids::GS_PANEL)
-    } else if id == crate::widget::COLOR_EQUALIZATION_SCROLLBAR_ID {
-        Some(crate::ids::CEQ_PANEL)
-    } else if id == crate::widget::BG_REMOVAL_SCROLLBAR_ID {
-        Some(crate::ids::BGR_PANEL)
-    } else if id == crate::widget::PADDING_SCROLLBAR_ID {
-        Some(crate::ids::PAD_PANEL)
-    } else if id == crate::widget::UPSCALE_SCROLLBAR_ID {
-        Some(crate::ids::UPS_PANEL)
-    } else if id == crate::widget::EQUALIZE_SIZES_SCROLLBAR_ID {
-        Some(crate::ids::EQS_PANEL)
-    } else if id == crate::widget::PAINTER_LAYERS_SCROLLBAR_ID {
-        Some(ids::PAINTER_LAYERS_PANEL)
-    } else if id == crate::widget::PAINTER_BRUSH_STUDIO_SCROLLBAR_ID {
-        Some(ids::PAINTER_BRUSH_STUDIO_PANEL)
-    } else if id == crate::widget::AUDIO_MIXER_SCROLLBAR_ID {
-        Some(ids::AUDIO_MIXER_PANEL)
-    } else if id == crate::widget::VECTOR_SCROLLBAR_ID {
-        Some(ids::VECTOR_PANEL)
-    } else if id == crate::widget::AUDIO_EDITOR_SCROLLBAR_ID {
-        Some(ids::AUDIO_EDITOR_PANEL)
-    } else if id == crate::widget::FLIP_SCROLLBAR_ID {
-        Some(ids::FLIP_PANEL)
-    } else if id == crate::widget::PHYSICS_SCROLLBAR_ID {
-        Some(ids::PHYSICS_PANEL)
-    } else if id == crate::widget::TAGS_SCROLLBAR_ID {
-        Some(ids::TAGS_PANEL)
-    } else if id == crate::widget::WET_TUNING_SCROLLBAR_ID {
-        Some(ids::WET_TUNING_PANEL)
-    } else if id == crate::widget::MOTION_PARAMS_SCROLLBAR_ID {
-        Some(ids::MOTION_PARAMS_PANEL)
-    } else if id == crate::widget::TOKENS_SCROLLBAR_ID {
-        Some(ids::TOKENS_PANEL)
-    } else if id == crate::widget::AUTHORED_SCROLLBAR_ID {
-        Some(ids::AUTHORED_PANEL)
-    } else if id == crate::widget::SCULPT3D_SCROLLBAR_ID {
-        Some(ids::SCULPT3D_PANEL)
-    } else if id == crate::widget::MODEL3D_SCROLLBAR_ID {
-        Some(ids::MODEL3D_PANEL)
-    } else if id == crate::widget::ASSET_CATALOG_SCROLLBAR_ID {
-        // ⚠️ **A chave NÃO é um painel** — a coluna de catálogos é uma segunda região rolável
-        // dentro do navegador, e as três tabelas de rolagem aceitam qualquer `NodeId` (é o que o
-        // popover do dropdown já faz). ⛔ Devolver o `ASSET_PANEL` aqui faria as duas regiões
-        // rolarem juntas.
-        Some(crate::ids::ASSET_CATALOG_COL)
-    } else if id == crate::widget::ASSET_BROWSER_SCROLLBAR_ID {
-        Some(ids::ASSET_PANEL)
-    } else {
-        None
-    }
 }
 
 /// ⭐⭐ **Uma pressão numa BARRA arma o arrasto dela** — a metade da porta

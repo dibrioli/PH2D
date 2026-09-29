@@ -3,19 +3,16 @@
 //! cannot disagree.
 
 use ph2d_editor_core::ids;
-use ph2d_editor_core::paint::{paint_text_block, rect_to_vello, resolve};
+use ph2d_editor_core::paint::{paint_text_block, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
     paint_panel_surface, paint_panel_title,
 };
-use ph2d_editor_core::widget::{
-    PHYSICS_SCROLLBAR_ID, paint_scrollbar, paint_slider_with_chip_layout_adaptive,
-    scrollbar_is_needed, scrollbar_thumb_rect, scrollbar_track_rect,
-};
+use ph2d_editor_core::widget::{PHYSICS_SCROLLBAR_ID, paint_slider_with_chip_layout_adaptive};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
 
 use crate::state::{self, PhysicsPanelState, set_last_content_h, set_last_visible_h};
 use crate::{PhysicsPanel, rows};
@@ -70,22 +67,25 @@ pub(crate) fn paint(_state: &mut PhysicsPanelState, ctx: &mut PaintCtx) {
     let body_top = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
     let body_h = (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0);
     let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
-    let scroll = ctx.host.store().panel_scroll(ids::PHYSICS_PANEL);
-
-    ctx.scene.push_clip(&rect_to_vello(body_rect));
+    // ⭐ A PORTA da rolagem (spec `04_a_rolagem_unica`): recorte do desenho e do clique, as duas
+    // alturas, o clamp e a barra com a TRILHA registada.
+    let area = ph2d_editor_core::panel::scroll_area::open(
+        ctx,
+        ids::PHYSICS_PANEL,
+        PHYSICS_SCROLLBAR_ID,
+        body_rect,
+    );
     let y_after = body::paint_sections(
         ctx,
         &snapshot,
         rect.x + PANEL_HEAD_PAD,
         (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0),
-        body_top - scroll,
+        area.top(),
     );
-    let content_h = (y_after + scroll) - body_top + PANEL_HEAD_PAD;
+    let content_h = (y_after + area.scroll()) - body_top + PANEL_HEAD_PAD;
     set_last_content_h(content_h);
     set_last_visible_h(body_h);
-    ctx.scene.pop_layer();
-
-    paint_scrollbar_and_publish(ctx, body_rect, content_h, body_h, scroll, theme);
+    ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
 }
 
 /// One slider+chip row, from the table.
@@ -192,37 +192,4 @@ pub(crate) fn paint_hint(ctx: &mut PaintCtx, key: &str, x: f32, w: f32, y: f32) 
     // O piso é a altura de row: uma dica de uma linha continua ocupando o mesmo
     // espaço que sempre ocupou, e só o excedente da quebra é acrescentado.
     y + (ROW_H_PX - font).mul_add(0.5, used).max(ROW_H_PX) + ph2d_tokens::control_gap_px()
-}
-
-fn paint_scrollbar_and_publish(
-    ctx: &mut PaintCtx,
-    body_rect: Rect,
-    content_h: f32,
-    body_h: f32,
-    scroll: f32,
-    theme: Theme,
-) {
-    if scrollbar_is_needed(content_h, body_h) {
-        let track = scrollbar_track_rect(body_rect);
-        let thumb = scrollbar_thumb_rect(track, scroll, content_h, body_h);
-        paint_scrollbar(
-            body_rect,
-            scroll,
-            content_h,
-            body_h,
-            ctx.host.store().scrollbar_visual(PHYSICS_SCROLLBAR_ID),
-            ctx.scene,
-            theme,
-        );
-        ctx.host
-            .hit_index_mut()
-            .register(PHYSICS_SCROLLBAR_ID, thumb);
-    }
-    let store = ctx.host.store_mut();
-    store.set_panel_content_h(ids::PHYSICS_PANEL, content_h);
-    store.set_panel_visible_h(ids::PHYSICS_PANEL, body_h);
-    let max_scroll = (content_h - body_h).max(0.0);
-    if store.panel_scroll(ids::PHYSICS_PANEL) > max_scroll {
-        store.set_panel_scroll(ids::PHYSICS_PANEL, max_scroll);
-    }
 }

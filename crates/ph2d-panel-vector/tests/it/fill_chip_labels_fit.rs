@@ -28,11 +28,14 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::TypeToken;
 use ph2d_ui_testkit::MockPanelHost;
 
+// ⚠️ Alta de propósito: a porta da rolagem (`scroll_area`, spec `04_a_rolagem_unica`) recorta o
+// CLIQUE à banda do corpo, logo um controlo abaixo da dobra deixa de estar registado. A 900 px
+// estes gates clicavam fantasmas invisíveis; a 4000 o corpo inteiro cabe e o clique é real.
 const VIEWPORT: Rect = Rect {
     x: 0.0,
     y: 0.0,
     w: 1600.0,
-    h: 900.0,
+    h: 4000.0,
 };
 
 /// A folga mínima de cada lado. ⚠️ Não é estética: um rótulo colado à borda do chip lê-se como

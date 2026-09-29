@@ -87,12 +87,17 @@ pub(crate) struct Marca {
 /// ⚠️ **A altura não depende da largura da janela** — a escada da varredura de elisões muda `x` e
 /// `w` das colunas e nunca o `h` de uma fileira. Uma janela chega, e varrer três seria medir a
 /// mesma coisa três vezes.
+///
+/// ⛔ **A ALTURA, essa, tem de conter o painel inteiro** (rolagem única, 2026-09-29): a porta
+/// `widget::scroll_area` recorta o CLIQUE pelo corpo visível, e um censo que conta o que o índice de
+/// acerto regista passou a ver só a parte acima da dobra (`17` marcas em `27` painéis contra o piso
+/// de `40`). Ver a `VIEWPORT` de `quantas_entradas_tem_cada_painel`, a mesma exigência.
 pub(crate) fn viewport() -> Rect {
     Rect {
         x: 0.0,
         y: 0.0,
         w: 1366.0,
-        h: 1024.0,
+        h: 16000.0,
     }
 }
 

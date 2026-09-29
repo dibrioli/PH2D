@@ -4,7 +4,6 @@
 //! immediately to its LEFT ("na lateral do painel do painter").
 
 use ph2d_editor_core::ids;
-use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, clamp_panel_rect,
@@ -14,9 +13,8 @@ use ph2d_editor_core::widget::panel_chrome::{
 };
 use ph2d_editor_core::widget::{
     Checkbox, CheckboxValue, IconButtonStyle, IconGlyph, SectionFold, SectionHeader,
-    WET_TUNING_SCROLLBAR_ID, paint_checkbox, paint_icon_button, paint_scrollbar,
-    paint_section_header, paint_slider_with_chip_layout_adaptive, scrollbar_is_needed,
-    scrollbar_thumb_rect, scrollbar_track_rect,
+    WET_TUNING_SCROLLBAR_ID, paint_checkbox, paint_icon_button, paint_section_header,
+    paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -92,25 +90,28 @@ pub(crate) fn paint(_state: &mut WetTuningPanelState, ctx: &mut PaintCtx) {
     let body_top = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
     let body_h = (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0);
     let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
-    let scroll = ctx.host.store().panel_scroll(ids::WET_TUNING_PANEL);
-
-    ctx.scene.push_clip(&rect_to_vello(body_rect));
+    // ⭐ A PORTA da rolagem (spec `04_a_rolagem_unica`): recorte do desenho e do clique, as duas
+    // alturas, o clamp e a barra com a TRILHA registada.
+    let area = ph2d_editor_core::panel::scroll_area::open(
+        ctx,
+        ids::WET_TUNING_PANEL,
+        WET_TUNING_SCROLLBAR_ID,
+        body_rect,
+    );
     let y_after = paint_body(
         ctx,
         &brush,
         rect.x + PANEL_HEAD_PAD,
         (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0),
-        body_top - scroll,
+        area.top(),
         theme,
     );
-    let content_h = (y_after + scroll) - body_top + PANEL_HEAD_PAD;
-    ctx.scene.pop_layer();
-
-    paint_scrollbar_and_publish(ctx, body_rect, content_h, body_h, scroll, theme);
+    let content_h = (y_after + area.scroll()) - body_top + PANEL_HEAD_PAD;
+    ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
 
     // Chrome grabbers — registered AFTER the body on purpose. Hit dispatch
     // is last-registered-wins, and body rows keep their hit rects when they
-    // scroll up under the title (registration is not clipped): the drag band
+    // scroll up under the title (the door clips registration too, but the band stays): the drag band
     // both MOVES the panel and SHIELDS the heading, so a press there can
     // never scrub the invisible slider behind it. The band stops exactly at
     // `body_top` (everything above is chrome, everything below is live body)
@@ -454,37 +455,4 @@ fn note_text(ctx: &mut PaintCtx, theme: Theme, x: f32, w: f32, y: f32, note: &st
         emit(&cur, &mut yy, ctx);
     }
     yy + ph2d_tokens::control_gap_px()
-}
-
-fn paint_scrollbar_and_publish(
-    ctx: &mut PaintCtx,
-    body_rect: Rect,
-    content_h: f32,
-    body_h: f32,
-    scroll: f32,
-    theme: Theme,
-) {
-    if scrollbar_is_needed(content_h, body_h) {
-        let track = scrollbar_track_rect(body_rect);
-        let thumb = scrollbar_thumb_rect(track, scroll, content_h, body_h);
-        paint_scrollbar(
-            body_rect,
-            scroll,
-            content_h,
-            body_h,
-            ctx.host.store().scrollbar_visual(WET_TUNING_SCROLLBAR_ID),
-            ctx.scene,
-            theme,
-        );
-        ctx.host
-            .hit_index_mut()
-            .register(WET_TUNING_SCROLLBAR_ID, thumb);
-    }
-    let store = ctx.host.store_mut();
-    store.set_panel_content_h(ids::WET_TUNING_PANEL, content_h);
-    store.set_panel_visible_h(ids::WET_TUNING_PANEL, body_h);
-    let max_scroll = (content_h - body_h).max(0.0);
-    if store.panel_scroll(ids::WET_TUNING_PANEL) > max_scroll {
-        store.set_panel_scroll(ids::WET_TUNING_PANEL, max_scroll);
-    }
 }

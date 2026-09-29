@@ -15,7 +15,7 @@ use crate::state::{AssetBrowserState, is_published, painted_at, with_index};
 use ph2d_asset_index::{AssetEntry, Query};
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_icon, paint_text, paint_text_centered, rect_to_vello, resolve,
+    fill_rounded_rect, paint_icon, paint_text, paint_text_centered, resolve,
 };
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
@@ -25,7 +25,7 @@ use ph2d_editor_core::widget::panel_chrome::{
 };
 use ph2d_editor_core::widget::{
     ASSET_BROWSER_SCROLLBAR_ID, Button, ButtonKind, Slider, SliderOrientation, TextInput,
-    TextInputState, paint_button, paint_scrollbar, paint_slider, paint_text_input_with_buffer,
+    TextInputState, paint_button, paint_slider, paint_text_input_with_buffer,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -94,6 +94,9 @@ pub(crate) fn paint(state: &mut AssetBrowserState, ctx: &mut PaintCtx) {
         // focado e invisível a comer as teclas do app inteiro. *Uma limpeza escrita num sítio só
         // ainda não é uma limpeza — o painel tem duas maneiras de desaparecer.*
         crate::paint_catalog_rename::abandon(state, ctx.host.store_mut());
+        // ⛔ **E a sub-região da coluna de catálogos** — a coluna colapsada já a limpava, o painel
+        // fechado não: a roda continuaria a ser comida no sítio onde a coluna esteve.
+        crate::paint_catalog::forget_region(ctx.host.store_mut());
         return;
     }
     let base = match state.rect {
@@ -334,10 +337,6 @@ fn paint_grid(
     let x = rect.x + col_w + pad();
     let body_h = (rect.y + rect.h - body_top - pad()).max(0.0);
     let body = Rect::new(rect.x + col_w, body_top, rect.w - col_w, body_h);
-    let scroll = ctx
-        .host
-        .store()
-        .panel_scroll(ph2d_editor_core::ids::ASSET_PANEL);
 
     let q = Query {
         text: ctx
@@ -388,10 +387,14 @@ fn paint_grid(
     };
     let content_h = rows as f32 * (card_h + gap()) + beyond_h;
 
-    // ⛔ **Os DOIS canais de recorte.** Sem o segundo, um cartão rolado para fora continua
-    // clicável e o artista instancia o que não vê.
-    ctx.scene.push_clip(&rect_to_vello(body));
-    ctx.host.hit_index_mut().push_clip(body);
+    // ⛔ **Os DOIS canais de recorte** — pela PORTA da rolagem (spec `04_a_rolagem_unica`). Sem o
+    // segundo, um cartão rolado para fora continua clicável e o artista instancia o que não vê.
+    let area = ph2d_editor_core::panel::scroll_area::open(
+        ctx,
+        ph2d_editor_core::ids::ASSET_PANEL,
+        ASSET_BROWSER_SCROLLBAR_ID,
+        body,
+    );
 
     if cards.is_empty() {
         // ⚠️ **Vazio e por-publicar dizem coisas diferentes.** Um balde que ninguém encheu lê-se
@@ -431,7 +434,7 @@ fn paint_grid(
         let col = i % cols;
         let row = i / cols;
         let cx = x + col as f32 * (cell + gap());
-        let cy = body_top + row as f32 * (card_h + gap()) - scroll;
+        let cy = area.top() + row as f32 * (card_h + gap());
         // Fora do corpo: nada a pintar, e — mais importante — nada a registar.
         if cy + card_h < body.y || cy > body.y + body.h {
             continue;
@@ -464,7 +467,7 @@ fn paint_grid(
     }
 
     if beyond > 0 {
-        let y = body_top + rows as f32 * (card_h + gap()) - scroll;
+        let y = area.top() + rows as f32 * (card_h + gap());
         paint_text(
             ctx.text_system,
             ctx.scene,
@@ -477,8 +480,8 @@ fn paint_grid(
         );
     }
 
-    ctx.host.hit_index_mut().pop_clip();
-    ctx.scene.pop_layer();
+    // A barra (a TRILHA registada), as duas alturas e o clamp — tudo na porta.
+    ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
 
     // ⭐⭐ **Os cartões dizem-se ao despachante** (etapa B): o `pointer_down` precisa de responder
     // *«este id é um cartão?»* sem conhecer este painel — o mesmo idioma do
@@ -493,27 +496,6 @@ fn paint_grid(
     crate::state::set_painted(keys);
     crate::state::set_last_content_h(content_h);
     crate::state::set_last_visible_h(body_h);
-
-    // A barra, e o clamp da rolagem.
-    // ⚠️ **O irmão da coluna passa pela MESMA porta** — ele já era consistente, e ler o rect de
-    // quem pintou é o que o impede de deixar de o ser.
-    let visual = ctx.host.store().scrollbar_visual_for(
-        ASSET_BROWSER_SCROLLBAR_ID,
-        Some(ph2d_editor_core::ids::ASSET_PANEL),
-    );
-    if let Some(thumb) = paint_scrollbar(body, scroll, content_h, body_h, visual, ctx.scene, theme)
-    {
-        ctx.host
-            .hit_index_mut()
-            .register(ASSET_BROWSER_SCROLLBAR_ID, thumb);
-    }
-    let store = ctx.host.store_mut();
-    store.set_panel_content_h(ph2d_editor_core::ids::ASSET_PANEL, content_h);
-    store.set_panel_visible_h(ph2d_editor_core::ids::ASSET_PANEL, body_h);
-    let max_scroll = (content_h - body_h).max(0.0);
-    if store.panel_scroll(ph2d_editor_core::ids::ASSET_PANEL) > max_scroll {
-        store.set_panel_scroll(ph2d_editor_core::ids::ASSET_PANEL, max_scroll);
-    }
 }
 
 /// A entrada que a célula `index` desenhou — a porta que o `apply_event` usa.

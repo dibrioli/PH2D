@@ -98,9 +98,10 @@ impl WidgetStore {
     /// respondiam só à primeira, cada um com a sua linha de `matches!(..d.panel == X)`, e nenhum à
     /// segunda: **nenhuma barra do app acendia sob o ponteiro**.
     ///
-    /// A ponte entre as duas chaves já existia e tinha um dono — o `scrollbar_panel_for_id`, que o
-    /// despachante mantém —, então perguntar aqui **remove** uma linha de cada sítio em vez de
-    /// acrescentar uma: o chamador passa o id do polegar e mais nada.
+    /// A ponte entre as duas chaves é o DONO que a porta `widget::scroll_area` publica ao pintar a
+    /// barra ([`Self::scroll_bar_panel`]; até 2026-09-29 era a tabela à mão do despachante), então
+    /// perguntar aqui **remove** uma linha de cada sítio em vez de acrescentar uma: o chamador passa
+    /// o id do polegar e mais nada.
     #[must_use]
     pub fn scrollbar_visual(&self, thumb: NodeId) -> (crate::widget::ScrollbarState, f32) {
         let panel = self.scroll_bar_panel(thumb);

@@ -259,119 +259,27 @@ pub fn forward_text_to_hero(gfx: Option<&mut AppGfx>, ch: char) {
     }
 }
 
-/// M14.4b.bis: true when `(x, y)` lies inside either the Inspector
-/// or Hierarchy panel rect published by the most-recent
-/// `paint_hero_screen` pass. Used to decide whether a mouse-wheel
-/// event should zoom the camera (over canvas) or scroll a panel
-/// (over a panel).
+/// `true` when `(x, y)` lies inside ANY panel rect published by the most recent
+/// `paint_hero_screen` pass — the wheel then scrolls/zooms the panel instead of the camera.
 ///
-/// Returns false when no hero is active — the demo's fixture mode
-/// shows raw sprites with no panels, so the whole window is "canvas"
-/// and wheel zooms the camera.
+/// ⭐ **Derived, never listed** (rolagem única, W3 — `docs/UI_New_and_Simple/spec/04_a_rolagem_unica.md`).
+/// Until 2026-09-29 this was a hand-written `inside(ID) ||` chain of 26 ids, and it was the
+/// fourth of the four edits a scrollable panel needed — the only one that did not fail loud.
+/// It cost, in order: the Audio Mixer (07/09), the Asset Browser (30/08), the Model3D panel
+/// (27/08), the Widget Lab (03/09), the Tags panel — and the Skeleton panel, which was still
+/// missing on the day it died (the wheel over the bones ZOOMED the camera underneath).
+/// Every panel publishes its rect while visible and clears it when it closes
+/// (`clear_panel_rect`), so the published table IS the list — a new panel gets the wheel
+/// without writing a line. Gate: `shells/desktop/tests/it/scrollable_panels_intercept_the_wheel.rs`.
+///
+/// Returns false when no hero is active — the demo's fixture mode shows raw sprites with no
+/// panels, so the whole window is "canvas" and the wheel zooms the camera.
 pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
     let Some(gfx) = gfx else { return false };
     let Some(hero) = gfx.hero_screen.as_ref() else {
         return false;
     };
-    use ph2d_editor_core::ids::{
-        AUDIO_EDITOR_PANEL, AUDIO_MIXER_PANEL, AUTHORED_PANEL, BGR_PANEL, CEQ_PANEL, EQS_PANEL,
-        FLIP_PANEL, FLIP_STRIP_PANEL, GAL_PANEL, HIER_PANEL, INSP_PANEL, LAB_PANEL, MODEL3D_PANEL,
-        MOTION_PARAMS_PANEL, PAD_PANEL, PAINTER_LAYERS_PANEL, PHYSICS_PANEL, SCULPT3D_PANEL,
-        TOKENS_PANEL, UPS_PANEL, VECTOR_PANEL, WET_TUNING_PANEL,
-    };
-    let inside = |panel_id| {
-        hero.store
-            .panel_rect(panel_id)
-            .map(|r| r.contains(x, y))
-            .unwrap_or(false)
-    };
-    // Every panel that publishes a rect intercepts the wheel so it
-    // scrolls the panel body instead of zooming the camera underneath.
-    // `panel_rect(...)` is only published while the panel is visible,
-    // so each check is false in the panel's closed state. Image-tool
-    // panels (CEQ/BGR/PAD/UPS/EQS) added 2026-05-24 — without them
-    // CEQ's wheel routed to camera zoom instead of panel scroll.
-    inside(INSP_PANEL)
-        // ⚠️ **A BANCADA DE WIDGETS** (2026-09-03). Ela ganhou barra de rolagem quando o Enio
-        // reportou *«o painel não tem scroll»* — e a barra ARRASTAVA enquanto a roda continuava a
-        // dar zoom na câmera por baixo. ⛔ *Publicar um polegar de rolagem e não interceptar a roda
-        // é meia-cura*, e só este gate a apanha: ele vive em `shells/desktop/tests/`, onde nem o
-        // `cargo test --bins` nem a suíte da crate do painel chegam.
-        || inside(LAB_PANEL)
-        // ⚠️ **O painel do módulo de MODELAGEM 3D** (report do Enio, 2026-08-27). Sem esta linha a
-        // roda sobre ele **orbitava a peça** em vez de rolar a lista — a quarta das quatro edições
-        // que o `scrollable_panels_intercept_the_wheel` nomeia, e a única que não falha alto.
-        || inside(MODEL3D_PANEL)
-        // ⛔⛔ **O navegador de ASSETS** (achado do portão de fecho, 2026-08-30). Ele publica um
-        // polegar de barra desde a etapa A e **não** interceptava a roda: rolar a grade dava ZOOM
-        // na câmera por baixo. O gate `every_scrollable_panel_intercepts_the_wheel` vive em
-        // `shells/desktop/tests/` e o portão desta linha corria `--bins`, que não lhe toca.
-        || inside(ph2d_editor_core::ids::ASSET_PANEL)
-        || inside(MOTION_PARAMS_PANEL)
-        || inside(HIER_PANEL)
-        || inside(GAL_PANEL)
-        || inside(ph2d_editor_core::ids::GS_PANEL)
-        || inside(BGR_PANEL)
-        || inside(PAD_PANEL)
-        || inside(CEQ_PANEL)
-        || inside(UPS_PANEL)
-        || inside(EQS_PANEL)
-        // Painter layers panel (right-dock takeover). Without it, a Primary
-        // Down / wheel over the panel falls through to the canvas behind it
-        // (the sprite footprint extends UNDER the docked panel), so the click
-        // would interact with the sprite "through" the panel chrome.
-        || inside(PAINTER_LAYERS_PANEL)
-        // Vector Style panel (right-dock takeover, ADR-0108). Same reason as
-        // painter-layers: the canvas extends under the docked panel.
-        || inside(VECTOR_PANEL)
-        // Flip Style panel (right-dock takeover, ADR-0114 W2). Publishes a
-        // scrollbar thumb (the Layers stack overflows), so it must intercept the
-        // wheel — same bug otherwise (wheel zooms the camera under the panel).
-        || inside(FLIP_PANEL)
-        // Flip frame strip (bottom dock, W3): sem isto um clique numa CÉLULA cairia
-        // no canvas atrás dela (o objeto Flip se estende por baixo da faixa) e o
-        // gesto viraria um traço — a tira ficaria intocável.
-        || inside(FLIP_STRIP_PANEL)
-        // Audio Mixer + Audio Editor (Inspector-slot docks). Both publish a
-        // scrollbar thumb, so both must intercept the wheel — a panel that scrolls
-        // by thumb but zooms the camera on the wheel is the same bug twice. Missing
-        // until 2026-07-09: the mixer's wheel silently zoomed the camera.
-        // `shells/desktop/tests/it/scrollable_panels_intercept_the_wheel.rs` gates this.
-        || inside(AUDIO_MIXER_PANEL)
-        || inside(AUDIO_EDITOR_PANEL)
-        // Motion Nodes graph panel (M1) — the bottom half of the center split.
-        // Without it, wheel-over-graph zooms the camera instead of the graph
-        // (the anchored graph zoom the M0 dispatch routes via `set_graph_canvas`).
-        || inside(ph2d_editor_core::ids::MOTION_GRAPH_PANEL)
-        // General timeline dock (W2.E6) — same reason as the graph: without it a
-        // wheel over the dope-sheet zooms the CAMERA behind the panel instead of
-        // the time axis (`set_timeline_canvas`), and the panel's zoom/pan is dead.
-        // Physics world panel (right-dock takeover, ADR-0131 D8 / W2b). It
-        // publishes a scrollbar thumb — five sections overflow the dock — so it
-        // must intercept the wheel, or wheeling over it zooms the camera
-        // underneath in silence.
-        || inside(PHYSICS_PANEL)
-        // ⭐⭐⭐ O painel das TAGS (TOP-20 #9, W4). Ele publica um thumb — uma taxonomia real
-        // transborda o dock com poucas dezenas de tags —, e sem esta linha rolar a árvore daria
-        // ZOOM na câmera por baixo, em silêncio. *O gate `every_scrollable_panel_intercepts_the_wheel`
-        // vive em `shells/desktop/tests/`, que nem o `--bins` nem a suíte da crate do painel alcançam.*
-        || inside(ph2d_editor_core::ids::TAGS_PANEL)
-        // O painel de TOKENS (plano UI/UX W6): ~80 linhas transbordam o dock em qualquer
-        // resolução, então ele publica um thumb — e sem esta linha rolar a lista de cores
-        // daria ZOOM na câmera por baixo, em silêncio.
-        || inside(TOKENS_PANEL)
-        // O painel AUTORADO (plano UI/UX W8b.2): a lista de rows e' o que o artista desenhou,
-        // entao ela transborda o dock em qualquer altura e ele publica um thumb — sem esta linha,
-        // rolar as rows daria ZOOM na camera por baixo, em silencio.
-        || inside(AUTHORED_PANEL)
-        // O painel da cena 3D (ADR-0150 W12). Ele publica um thumb — seis seções
-        // transbordam o dock em qualquer resolução —, e sem esta linha rolar a
-        // lista de ferramentas daria DOLLY na câmera 3D por baixo, em silêncio:
-        // a roda sobre a cena é o zoom dela, e a barreira de painel é a única
-        // coisa que separa as duas.
-        || inside(SCULPT3D_PANEL)
-        || inside(WET_TUNING_PANEL)
-        || inside(ph2d_editor_core::ids::TIMELINE_PANEL)
+    hero.store.panel_at(x, y).is_some()
 }
 
 /// **Os fundos que a MOLDURA do app pinta** — os obstáculos que o gizmo de navegação contorna.

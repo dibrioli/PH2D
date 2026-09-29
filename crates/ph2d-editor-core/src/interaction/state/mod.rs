@@ -378,12 +378,8 @@ pub struct WidgetStore {
     /// no mesmo quadro. Guardá-la sem drenar faria a mesma tecla ligar-se outra vez ao gesto
     /// seguinte — a família do canal que se lê com `take`, que este repo já pinou noutro sítio.
     pub(super) input_map_captured: Option<ph2d_input::Key>,
-    /// **Quanto a lista da janela está rolada**, em px (`0` = topo).
-    ///
-    /// ⛔ Report do Enio (2026-08-24): *"estreito e **sem scroll**"*. Um cartão que cresce com a
-    /// lista sai do ecrã, e a última acção fica inalcançável — pior que uma lista curta, porque
-    /// nada na tela o diz.
-    pub(super) input_map_scroll: f32,
+    // ⚠️ A rolagem da lista da janela NÃO mora aqui desde 2026-09-29: ela passou às tabelas de
+    // rolagem de todo painel, com a chave `ids::INPUT_MAP_SURFACE` (a porta `widget::scroll_area`).
     /// Onion settings floating modal (ADR-0142 W3b): `Some((x, y))` = the card's top-left in screen
     /// px (open); `None` = closed. Opened by the timeline's Onion-settings button (shell-side, so it
     /// can seed the widgets from `TimelineState::onion`); dragging the title band offsets it. Its
@@ -415,12 +411,8 @@ pub struct WidgetStore {
     /// abriu a paleta é que sabe, e é ele que reconstrói o modelo. É a mesma lei do `command_pick`:
     /// o editor-core nunca aprende o que um item quer dizer.
     pub(super) command_palette_toggled: bool,
-    /// ⭐ **Quanto a lista da paleta está rolada, em px** (F3 / ADR-0166).
-    ///
-    /// ⚠️ **Zerado ao ABRIR e ao FECHAR** — uma paleta nova nunca herda a rolagem da anterior, pela
-    /// mesma razão que ela não herda a busca. E o **teto** não vive aqui: quem sabe até onde ir é
-    /// quem MEDE o conteúdo (`command_palette::max_scroll`), porque a altura depende de medir texto.
-    pub(super) command_palette_scroll: f32,
+    // ⚠️ A rolagem da lista da paleta NÃO mora aqui desde 2026-09-29: ela passou às tabelas de todo
+    // painel com a chave `widget::command_palette::CMD_PALETTE_CARD` (a porta `scroll_area`, W5).
     /// Section-header id → highlighter color index (0..4 for the 5
     /// canonical colors; missing entry == "no outline"). Painted by
     /// the inspector as a colored stroke around the section block.

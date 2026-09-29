@@ -11,16 +11,16 @@
 //! - Drag / resize clamp via `widget::panel_chrome::clamp_panel_rect`.
 //! - Chrome publish (`set_panel_rect`).
 //! - Delegated showcase paint (`widget::showcase::paint_showcase_body`).
-//! - `content_h` / `visible_h` publish + scroll clamp.
+//! - `content_h` / `visible_h` publish + scroll clamp — pela porta `scroll_area`
+//!   (`close_showcase_body`).
 
 use crate::WidgetGalleryPanel;
 use crate::state::WidgetGalleryState;
 use ph2d_editor_core::ids;
+use ph2d_editor_core::panel::scroll_area::close_showcase_body;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::clamp_panel_rect;
-use ph2d_editor_core::widget::showcase::{
-    last_gallery_content_h, last_gallery_visible_h, paint_showcase_body,
-};
+use ph2d_editor_core::widget::showcase::paint_showcase_body;
 use ph2d_editor_core::zones::Rect;
 
 pub(crate) fn paint(state: &mut WidgetGalleryState, ctx: &mut PaintCtx) {
@@ -71,7 +71,7 @@ pub(crate) fn paint(state: &mut WidgetGalleryState, ctx: &mut PaintCtx) {
         store.set_panel_rect(ids::GAL_PANEL, gallery_rect);
     }
     let theme = ctx.host.theme();
-    {
+    let body = {
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
         paint_showcase_body(
             gallery_rect,
@@ -80,18 +80,11 @@ pub(crate) fn paint(state: &mut WidgetGalleryState, ctx: &mut PaintCtx) {
             theme,
             hit_index,
             store,
-        );
-    }
-    let content_h = last_gallery_content_h();
-    let visible_h = last_gallery_visible_h();
-    let store = ctx.host.store_mut();
-    store.set_panel_content_h(ids::GAL_PANEL, content_h);
-    store.set_panel_visible_h(ids::GAL_PANEL, visible_h);
-    let max_scroll = (content_h - visible_h).max(0.0);
-    let cur = store.panel_scroll(ids::GAL_PANEL);
-    if cur > max_scroll {
-        store.set_panel_scroll(ids::GAL_PANEL, max_scroll);
-    }
+        )
+    };
+    // ⭐ A PORTA da rolagem fecha aqui (o `store` já é mutável): barra com a TRILHA, as duas
+    // alturas, o clamp — e só depois o cromo do título é re-registado por cima.
+    close_showcase_body(body, ctx);
 }
 
 /// Default panel geometry when the gallery is first opened. Width

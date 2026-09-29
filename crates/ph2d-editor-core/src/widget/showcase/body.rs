@@ -4,6 +4,26 @@
 
 use super::*;
 
+/// O corpo da galeria ABERTO — o recorte da PORTA da rolagem continua de pé até ele ser fechado
+/// (`crate::panel::scroll_area::close_showcase_body` ou [`close_showcase_body_with`]).
+///
+/// ⚠️ Existe porque quem pinta a galeria só tem o `store` IMUTÁVEL (`store_and_hit_index_mut`), e
+/// fechar a porta publica as alturas e o dono da barra — ⇒ abre-se aqui, fecha-se lá fora.
+#[must_use = "o corpo da galeria tem de ser fechado — senão o recorte fica aberto"]
+pub struct ShowcaseBody {
+    area: crate::widget::scroll_area::ScrollArea,
+    content_h: f32,
+    rect: Rect,
+}
+
+impl ShowcaseBody {
+    /// As três partes, para quem fecha com um `PaintCtx` (`crate::panel::scroll_area`).
+    #[must_use = "a área aberta tem de ser fechada, senão os recortes ficam na pilha"]
+    pub fn into_parts(self) -> (crate::widget::scroll_area::ScrollArea, f32, Rect) {
+        (self.area, self.content_h, self.rect)
+    }
+}
+
 pub fn paint_showcase_body(
     rect: Rect,
     scene: &mut VectorScene,
@@ -11,7 +31,7 @@ pub fn paint_showcase_body(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-) {
+) -> ShowcaseBody {
     crate::widget::panel_chrome::paint_panel_surface_floating(rect, scene, theme);
     // Drag pill + resize gripper hit zones. Visuals are inside
     // `paint_panel_surface` / `paint_panel_corner_dot`; we register
@@ -81,21 +101,23 @@ pub fn paint_showcase_body(
     // routed through `GAL_PANEL` (independent of `INSP_PANEL`).
     // Reserve room for the scrollbar even when it isn't visible so
     // the section content width is stable.
+    // ⭐ Pela PORTA da rolagem (spec `04_a_rolagem_unica`): o desenho E o clique recortados.
     let content_top = div_y + Spacing::Sm.px();
     let content_bottom = rect.y + rect.h - Spacing::Xs.px();
-    let scroll_y = store.panel_scroll(ids::GAL_PANEL).max(0.0);
-    let clip = ph2d_vector::Rect::new(
-        rect.x as f64,
-        content_top as f64,
-        (rect.x + rect.w) as f64,
-        content_bottom as f64,
+    let visible_h = (content_bottom - content_top).max(0.0);
+    let area = crate::widget::scroll_area::open_with(
+        scene,
+        hit_index,
+        store,
+        ids::GAL_PANEL,
+        crate::widget::GALLERY_SCROLLBAR_ID,
+        Rect::new(rect.x, content_top, rect.w, visible_h),
     );
-    scene.push_clip(&clip);
 
     let inner_x = rect.x + BODY_PAD;
     let scrollbar_reserve = crate::widget::SCROLLBAR_W + Spacing::Sm.px();
     let inner_w = (rect.w - BODY_PAD * 2.0 - scrollbar_reserve).max(0.0);
-    let body_top_y = content_top - scroll_y + Spacing::Xs.px();
+    let body_top_y = area.top() + Spacing::Xs.px();
     let mut y = body_top_y;
     // ⭐⭐ **A galeria também mostra o CARTÃO** — ela é a fonte de verdade do cromo (DIRETRIZ
     //    §5.2), logo um risco aqui seria a galeria a ensinar o que o app já não faz.
@@ -232,28 +254,8 @@ pub fn paint_showcase_body(
     // correctly. Mirror of the live Inspector's `set_last_inspector_*`
     // pair — kept separate so the two panels can scroll independently.
     let content_h = (y - body_top_y).max(0.0);
-    let visible_h = (content_bottom - content_top).max(0.0);
     set_last_gallery_content_h(content_h);
     set_last_gallery_visible_h(visible_h);
-
-    // Scrollbar — same widget as Inspector / Hierarchy, but routed
-    // via `GALLERY_SCROLLBAR_ID` so `dispatch::scrollbar_panel_for_id`
-    // sends drag-thumb moves to `GAL_PANEL`.
-    if crate::widget::scrollbar_is_needed(content_h, visible_h) {
-        let body = Rect::new(rect.x, content_top, rect.w, visible_h);
-        let track = crate::widget::scrollbar_track_rect(body);
-        let thumb = crate::widget::scrollbar_thumb_rect(track, scroll_y, content_h, visible_h);
-        crate::widget::paint_scrollbar(
-            body,
-            scroll_y,
-            content_h,
-            visible_h,
-            store.scrollbar_visual(crate::widget::GALLERY_SCROLLBAR_ID),
-            scene,
-            theme,
-        );
-        hit_index.register(crate::widget::GALLERY_SCROLLBAR_ID, thumb);
-    }
 
     // Late-paint phase: open Dropdown popover sits on top of every
     // section that ran before it. `take_pending_dropdown_chip` is a
@@ -280,7 +282,43 @@ pub fn paint_showcase_body(
     }
 
     crate::widget::section_cards::end_section_cards(scene);
-    scene.pop_layer();
+    ShowcaseBody {
+        area,
+        content_h,
+        rect,
+    }
+}
+
+/// O fecho da galeria com as partes soltas. A forma com `PaintCtx` é
+/// `crate::panel::scroll_area::close_showcase_body` (o `widget` não conhece o `panel`).
+pub fn close_showcase_body_with(
+    body: ShowcaseBody,
+    scene: &mut VectorScene,
+    hit_index: &mut HitIndex,
+    store: &mut WidgetStore,
+    theme: Theme,
+) {
+    crate::widget::scroll_area::close_with(
+        body.area,
+        scene,
+        hit_index,
+        store,
+        body.content_h,
+        theme,
+    );
+    finish_chrome(body.rect, scene, hit_index, theme);
+}
+
+/// O cromo da galeria por cima do corpo (pontos dos cantos, alça, redimensionamentos, fechar).
+pub fn finish_chrome(rect: Rect, scene: &mut VectorScene, hit_index: &mut HitIndex, theme: Theme) {
+    let drag_handle_rect = panel_drag_handle_rect(
+        rect,
+        crate::widget::panel_chrome::PANEL_HEADER_H_DEFAULT,
+        crate::widget::panel_chrome::PANEL_HEADER_CLOSE_RESERVE,
+    );
+    let resize_handle_rect = panel_resize_handle_rect(rect);
+    let resize_handle_bl_rect = crate::widget::panel_chrome::panel_resize_handle_rect_bl(rect);
+
     paint_panel_corner_dot(rect, scene, theme);
     crate::widget::panel_chrome::paint_panel_corner_dot_bl(rect, scene, theme);
     // End-of-frame re-registration of the title-bar drag handle so it

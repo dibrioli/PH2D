@@ -17,7 +17,6 @@
 
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, clamp_panel_rect,
@@ -27,8 +26,8 @@ use ph2d_editor_core::widget::panel_chrome::{
 };
 use ph2d_editor_core::widget::{
     AUTHORED_SCROLLBAR_ID, DROPDOWN_SCROLLBAR_ID, Dropdown, DropdownOption, SectionFold, SkinParam,
-    icon_glyph, inline_option_rect, paint_dropdown_popover_scrolled, paint_scrollbar,
-    paint_widget_skin_with, scrollbar_is_needed, scrollbar_thumb_rect, scrollbar_track_rect,
+    icon_glyph, inline_option_rect, paint_dropdown_popover_scrolled, paint_widget_skin_with,
+    scrollbar_is_needed, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
@@ -101,20 +100,23 @@ pub(crate) fn paint(_state: &mut AuthoredPanelState, ctx: &mut PaintCtx) {
     let body_top = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
     let body_h = (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0);
     let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
-    let scroll = ctx.host.store().panel_scroll(ids::AUTHORED_PANEL);
-
-    ctx.scene.push_clip(&rect_to_vello(body_rect));
+    // ⭐ A PORTA da rolagem (spec `04_a_rolagem_unica`): recorte do desenho e do clique, as duas
+    // alturas (publicadas SEMPRE), o clamp e a barra com a TRILHA registada.
+    let area = ph2d_editor_core::panel::scroll_area::open(
+        ctx,
+        ids::AUTHORED_PANEL,
+        AUTHORED_SCROLLBAR_ID,
+        body_rect,
+    );
     let x = rect.x + PANEL_HEAD_PAD;
     let w = (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0);
-    let (y_after, open_lists) = paint_body(ctx, theme, x, w, body_top - scroll);
-    let content_h = (y_after + scroll) - body_top + PANEL_HEAD_PAD;
-    ctx.scene.pop_layer();
-
-    paint_scrollbar_and_publish(ctx, body_rect, content_h, body_h, scroll, theme);
+    let (y_after, open_lists) = paint_body(ctx, theme, x, w, area.top());
+    let content_h = (y_after + area.scroll()) - body_top + PANEL_HEAD_PAD;
+    ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
 
     // Punhos de chrome — registados DEPOIS do corpo de propósito: o hit é
-    // último-registado-ganha, e as rows guardam o retângulo delas mesmo rolando para debaixo do
-    // título (o registro não é recortado). A faixa MOVE o painel e BLINDA o cabeçalho.
+    // último-registado-ganha, e a faixa MOVE o painel e BLINDA o cabeçalho (o recorte da porta já
+    // corta o registro das rows à banda do corpo; o chrome é a segunda cerca).
     paint_panel_corner_dot(rect, ctx.scene, theme);
     paint_panel_corner_dot_bl(rect, ctx.scene, theme);
     let hit_index = ctx.host.hit_index_mut();
@@ -376,33 +378,4 @@ fn paint_body(
         y = f.finish(store, scene, hit_index, y);
     }
     (y, open_lists)
-}
-
-fn paint_scrollbar_and_publish(
-    ctx: &mut PaintCtx,
-    body: Rect,
-    content_h: f32,
-    body_h: f32,
-    scroll: f32,
-    theme: Theme,
-) {
-    if scrollbar_is_needed(content_h, body_h) {
-        let track = scrollbar_track_rect(body);
-        let thumb = scrollbar_thumb_rect(track, scroll, content_h, body_h);
-        let visual = ctx.host.store().scrollbar_visual(AUTHORED_SCROLLBAR_ID);
-        paint_scrollbar(body, scroll, content_h, body_h, visual, ctx.scene, theme);
-        ctx.host
-            .hit_index_mut()
-            .register(AUTHORED_SCROLLBAR_ID, thumb);
-    }
-    // ⚠️ Publicado SEMPRE, e não só quando a barra é pintada: a roda do rato lê estes dois números
-    // para saber quanto pode rolar, e um painel que só os publica quando transborda ficaria com o
-    // último valor de quando transbordava.
-    let store = ctx.host.store_mut();
-    store.set_panel_content_h(ids::AUTHORED_PANEL, content_h);
-    store.set_panel_visible_h(ids::AUTHORED_PANEL, body_h);
-    let max_scroll = (content_h - body_h).max(0.0);
-    if store.panel_scroll(ids::AUTHORED_PANEL) > max_scroll {
-        store.set_panel_scroll(ids::AUTHORED_PANEL, max_scroll);
-    }
 }

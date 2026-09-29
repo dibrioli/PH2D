@@ -90,13 +90,13 @@ fn enter_is_a_noop_on_empty_or_no_match() {
 fn hit_rect_with_cascade(t: f32) -> crate::zones::Rect {
     let mut scene = ph2d_vector::VectorScene::new();
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
-    let mut hit = crate::interaction::HitIndex::new();
+    let mut hit = HitIndex::new();
     let mut motion = crate::motion::UiMotion::default();
     // A primeira vista CHEGA ao alvo ⇒ isto crava o track em `t` exactamente.
     for i in 0..8 {
         motion.animate(cascade_id(i), t, crate::motion::Role::Travel);
     }
-    paint(
+    let _ = paint(
         &mut scene,
         &mut ts,
         ph2d_tokens::Theme::Forge,
@@ -105,7 +105,7 @@ fn hit_rect_with_cascade(t: f32) -> crate::zones::Rect {
         "",
         crate::zones::Rect::new(0.0, 0.0, 1600.0, 900.0),
         &motion,
-        0.0,
+        &WidgetStore::with_capacity(4),
     );
     hit.rect_for(hash_node_id("Grid"))
         .expect("o pill Grid regista")
@@ -138,12 +138,12 @@ fn the_entrance_actually_moves_the_drawing() {
     fn drawn(t: f32) -> Vec<u32> {
         let mut scene = ph2d_vector::VectorScene::new();
         let mut ts = ph2d_text::TextSystem::without_system_fonts();
-        let mut hit = crate::interaction::HitIndex::new();
+        let mut hit = HitIndex::new();
         let mut motion = crate::motion::UiMotion::default();
         for i in 0..8 {
             motion.animate(cascade_id(i), t, crate::motion::Role::Travel);
         }
-        paint(
+        let _ = paint(
             &mut scene,
             &mut ts,
             ph2d_tokens::Theme::Forge,
@@ -152,7 +152,7 @@ fn the_entrance_actually_moves_the_drawing() {
             "",
             crate::zones::Rect::new(0.0, 0.0, 1600.0, 900.0),
             &motion,
-            0.0,
+            &WidgetStore::with_capacity(4),
         );
         scene.inner().encoding().path_data.clone()
     }
@@ -171,7 +171,6 @@ fn the_entrance_actually_moves_the_drawing() {
 /// índice, que continuaria clicável.
 #[test]
 fn the_band_toggle_registers_its_hit_only_when_the_model_has_one() {
-    use crate::interaction::HitIndex;
     use ph2d_text::TextSystem;
     use ph2d_vector::VectorScene;
 
@@ -180,7 +179,7 @@ fn the_band_toggle_registers_its_hit_only_when_the_model_has_one() {
         let mut ts = TextSystem::new();
         let mut hits = HitIndex::new();
         let motion = crate::motion::UiMotion::default();
-        paint(
+        let _ = paint(
             &mut scene,
             &mut ts,
             ph2d_tokens::Theme::default(),
@@ -189,7 +188,7 @@ fn the_band_toggle_registers_its_hit_only_when_the_model_has_one() {
             "",
             Rect::new(0.0, 0.0, 1600.0, 900.0),
             &motion,
-            0.0,
+            &WidgetStore::with_capacity(4),
         );
         hits.rect_for(CMD_PALETTE_SHOW_ALL).is_some()
     }
@@ -232,7 +231,6 @@ fn the_band_toggle_survives_the_search_filter() {
 
 // ── A ROLAGEM e a ARRUMAÇÃO (F3 / ADR-0166, report do Enio de 25/08) ──────────────────────────
 
-use crate::interaction::HitIndex;
 use crate::zones::Rect as ZRect;
 use ph2d_text::TextSystem;
 use ph2d_vector::VectorScene;
@@ -275,7 +273,11 @@ fn painted(m: &PaletteModel, scroll: f32) -> Vec<(ph2d_a11y::NodeId, ZRect)> {
     let mut ts = TextSystem::new();
     let mut hits = HitIndex::new();
     let motion = crate::motion::UiMotion::default();
-    paint(
+    // ⚠️ Desde a porta da rolagem (2026-09-29) o deslocamento vem das tabelas de todo painel, com
+    // a chave do cartão — o que se desenha é o VIVO.
+    let mut store = WidgetStore::with_capacity(4);
+    store.set_panel_scroll_live(CMD_PALETTE_CARD, scroll);
+    let _ = paint(
         &mut scene,
         &mut ts,
         ph2d_tokens::Theme::default(),
@@ -284,7 +286,7 @@ fn painted(m: &PaletteModel, scroll: f32) -> Vec<(ph2d_a11y::NodeId, ZRect)> {
         "",
         VP,
         &motion,
-        scroll,
+        &store,
     );
     hits.iter_registrations().collect()
 }

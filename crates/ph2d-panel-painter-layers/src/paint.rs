@@ -25,15 +25,13 @@ use crate::state::{self, PainterLayersPanelState, set_last_content_h, set_last_v
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::ids::{self as core_ids};
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
-use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
     paint_panel_surface, paint_panel_title, panel_close_button_rect,
 };
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, PAINTER_LAYERS_SCROLLBAR_ID, paint_button, paint_scrollbar,
-    scrollbar_is_needed, scrollbar_track_rect,
+    Button, ButtonKind, ButtonState, PAINTER_LAYERS_SCROLLBAR_ID, paint_button,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -133,18 +131,19 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     let body_h = (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0);
     let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
 
-    ctx.scene.push_clip(&rect_to_vello(body_rect));
-
-    let scroll_y = ctx
-        .host
-        .store()
-        .panel_scroll(core_ids::PAINTER_LAYERS_PANEL)
-        .max(0.0);
+    // ⭐ A PORTA da rolagem (spec `04_a_rolagem_unica`): recorte do desenho E do clique, as duas
+    // alturas, o clamp e a barra com a TRILHA registada.
+    let area = ph2d_editor_core::panel::scroll_area::open(
+        ctx,
+        core_ids::PAINTER_LAYERS_PANEL,
+        PAINTER_LAYERS_SCROLLBAR_ID,
+        body_rect,
+    );
     // Body content scrolls: the paint origin is offset up by the scroll
     // position; content_h is measured from it (scroll-independent). Extra top
     // padding so the active-row accent outline is not clipped at the body top
     // and the first row sits clear of the Layers title.
-    let body_paint_top = body_top + Spacing::Md.px() - scroll_y;
+    let body_paint_top = area.top() + Spacing::Md.px();
     let y = body_paint_top;
     let content_w = rect.w - PANEL_HEAD_PAD * 2.0;
 
@@ -167,30 +166,9 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     set_last_content_h(content_h);
     set_last_visible_h(body_h);
 
-    ctx.scene.pop_layer();
-
-    // Visual scrollbar (self-gates when the content fits). Wheel/trackpad
-    // scrolling works via the generic `dispatch_wheel` once the bounds below are
-    // published; thumb-DRAG works via the foundational
-    // `scrollbar_panel_for_id → PAINTER_LAYERS_PANEL` mapping (Coord `d5146b7`)
-    // plus the hit-rect registered in the post-body chrome block. O par visual do
-    // store tinge o polegar (repouso -> hover -> Accent enquanto arrasta).
-    let visual = ctx
-        .host
-        .store()
-        .scrollbar_visual(PAINTER_LAYERS_SCROLLBAR_ID);
-    paint_scrollbar(
-        body_rect, scroll_y, content_h, body_h, visual, ctx.scene, theme,
-    );
+    ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
 
     register_header_chrome(ctx, rect);
-    // Scrollbar drag: register the whole TRACK after the rows (same last-wins reason) so the bar is
-    // grabbable anywhere; hands the dispatch the real track height for proportional scrolling.
-    if scrollbar_is_needed(content_h, body_h) {
-        ctx.host
-            .hit_index_mut()
-            .register(PAINTER_LAYERS_SCROLLBAR_ID, scrollbar_track_rect(body_rect));
-    }
 
     // Action toolbar icons (New layer / Group / Duplicate / Delete) — one row
     // below the header. Painted + registered AFTER the rows (same last-wins
@@ -198,16 +176,8 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     paint_action_toolbar(ctx, toolbar_rect, theme);
     paint_modifier_toolbar(ctx, modifier_toolbar_rect, theme);
 
-    // Publish scroll bounds so `dispatch_wheel` scrolls this panel + clamp the
-    // offset to the new content (so deleting/collapsing rows snaps back).
     {
         let store = ctx.host.store_mut();
-        store.set_panel_content_h(core_ids::PAINTER_LAYERS_PANEL, content_h);
-        store.set_panel_visible_h(core_ids::PAINTER_LAYERS_PANEL, body_h);
-        let max_scroll = (content_h - body_h).max(0.0);
-        if store.panel_scroll(core_ids::PAINTER_LAYERS_PANEL) > max_scroll {
-            store.set_panel_scroll(core_ids::PAINTER_LAYERS_PANEL, max_scroll);
-        }
         // Tell the dispatch which NodeIds are draggable layer rows (Down on one
         // of these begins a `PanelRowReparent` drag — Coord drag foundation).
         store.set_panel_row_ids(
@@ -249,49 +219,27 @@ fn paint_brush_view(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, rect: Rect, h
     let body_top = header_bottom;
     let body_h = (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0);
     let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
-    let scroll_y = ctx
-        .host
-        .store()
-        .panel_scroll(core_ids::PAINTER_LAYERS_PANEL)
-        .max(0.0);
-    let body_paint_top = body_top + Spacing::Md.px() - scroll_y;
+    // ⭐ A mesma PORTA da vista Layers — o mesmo painel e a mesma barra.
+    let area = ph2d_editor_core::panel::scroll_area::open(
+        ctx,
+        core_ids::PAINTER_LAYERS_PANEL,
+        PAINTER_LAYERS_SCROLLBAR_ID,
+        body_rect,
+    );
+    let body_paint_top = area.top() + Spacing::Md.px();
 
-    ctx.scene.push_clip(&rect_to_vello(body_rect));
     // ⭐⭐ **O corpo pinta-se DENTRO de cartões** (2026-09-06) — o par abre depois do `push_clip`
     //    de propósito: a cena estacionada leva o recorte aberta, e o corpo é devolvido para
     //    dentro dele. *Trocar a ordem faria o cartão ignorar a rolagem.*
     ph2d_editor_core::widget::section_cards::begin_section_cards(ctx.scene, theme, body_paint_top);
     let content_bottom = crate::paint_brush::paint_brush_body(ctx, theme, rect, body_paint_top);
     ph2d_editor_core::widget::section_cards::end_section_cards(ctx.scene);
-    ctx.scene.pop_layer();
 
     let content_h = (content_bottom - body_paint_top + PANEL_HEAD_PAD).max(0.0);
     set_last_content_h(content_h);
     set_last_visible_h(body_h);
-
-    let visual = ctx
-        .host
-        .store()
-        .scrollbar_visual(PAINTER_LAYERS_SCROLLBAR_ID);
-    paint_scrollbar(
-        body_rect, scroll_y, content_h, body_h, visual, ctx.scene, theme,
-    );
-    if scrollbar_is_needed(content_h, body_h) {
-        // Register the whole TRACK as the drag zone (grab the bar anywhere; real `track_h` for the
-        // dispatch). The Brush-properties view overflows readily now, so this is the path Enio hits.
-        ctx.host
-            .hit_index_mut()
-            .register(PAINTER_LAYERS_SCROLLBAR_ID, scrollbar_track_rect(body_rect));
-    }
-    {
-        let store = ctx.host.store_mut();
-        store.set_panel_content_h(core_ids::PAINTER_LAYERS_PANEL, content_h);
-        store.set_panel_visible_h(core_ids::PAINTER_LAYERS_PANEL, body_h);
-        let max_scroll = (content_h - body_h).max(0.0);
-        if store.panel_scroll(core_ids::PAINTER_LAYERS_PANEL) > max_scroll {
-            store.set_panel_scroll(core_ids::PAINTER_LAYERS_PANEL, max_scroll);
-        }
-    }
+    // A barra regista a TRILHA inteira (agarra-se em qualquer ponto) — a Brush transborda depressa.
+    ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
     register_header_chrome(ctx, rect);
     // The open dropdown popover (Blend / Falloff / Method / Jitter Unit) floats over the body,
     // unclipped, above the scrollbar.

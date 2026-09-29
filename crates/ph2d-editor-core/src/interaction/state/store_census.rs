@@ -148,10 +148,10 @@ impl WidgetStore {
     /// **19 registos** espalhados por 19 painéis — a enumeração que apodrece, e o 23º nasceria sem
     /// ela — e poria o hover em DOIS sítios (o estado guardado contra o `hot_id`).
     ///
-    /// ✅ **`scrollbar_panel_for_id` é uma propriedade que um polegar já TEM de satisfazer:** sem
-    /// o braço dele o arrasto da barra não funciona, e o
-    /// `shells/desktop/tests/it/scrollable_panels_intercept_the_wheel.rs` nomeia-o como uma das
-    /// quatro edições obrigatórias. *Uma barra nova nasce coberta porque já tinha de nascer ali.*
+    /// ✅ **O DONO PUBLICADO é uma propriedade que um polegar já TEM de satisfazer:** a porta
+    /// `widget::scroll_area` publica-o ao pintar a barra, e sem ele o arrasto não funciona.
+    /// *Uma barra nova nasce coberta porque passa pela porta.* (Até 2026-09-29 a régua era a
+    /// tabela à mão `scrollbar_panel_for_id`, que morreu nesse dia.)
     ///
     /// ⚠️ **O polegar do popover de um dropdown fica de FORA, e é nomeado:** ele é chaveado pelo
     /// CHIP, não por um painel (o motivo de o [`Self::scrollbar_visual_for`] existir), então não

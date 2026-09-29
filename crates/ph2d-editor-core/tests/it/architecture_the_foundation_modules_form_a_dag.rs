@@ -54,7 +54,7 @@ const ARESTAS_TOLERADAS: &[(&str, &str, usize, &str)] = &[
     (
         "widget",
         "interaction",
-        49,
+        46,
         "o SUBSTRATO que os pintores recebem — `HitIndex`, `WidgetStore`, `InteractiveState`, \
          `WidgetEvent`. Cura: o estado de widget (os `*State` + `InteractiveState` + `HitIndex` + \
          `WidgetStore`) desce para um módulo ABAIXO dos pintores, e o `dispatch` fica em cima.",

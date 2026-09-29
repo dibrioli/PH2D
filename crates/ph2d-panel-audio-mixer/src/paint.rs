@@ -20,7 +20,7 @@ use crate::{
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_centered, rect_to_vello, resolve};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_centered, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
@@ -28,7 +28,7 @@ use ph2d_editor_core::widget::panel_chrome::{
 };
 use ph2d_editor_core::widget::{
     AUDIO_MIXER_SCROLLBAR_ID, LevelMeter, Slider, SliderOrientation, paint_level_meter,
-    paint_scrollbar, paint_slider, scrollbar_is_needed, scrollbar_thumb_rect, scrollbar_track_rect,
+    paint_slider,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -117,14 +117,20 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
     let header_bottom = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
 
     // The body (strips + the stacked master-effect sections) is clipped + scrolled
-    // — the collapsible effect groups overflow the dock height. Wheel + the
-    // scrollbar thumb (`AUDIO_MIXER_SCROLLBAR_ID` → `AMIX_PANEL`) keep the lower
-    // sections reachable. Read `scroll` BEFORE the mutable store/hit borrow below.
+    // — the collapsible effect groups overflow the dock height. ⭐ A PORTA da rolagem
+    // (spec `04_a_rolagem_unica`) recorta o desenho E o clique, publica as alturas e pinta a
+    // barra. Abre-se ANTES do empréstimo mutável store/hit abaixo.
     let body_top = header_bottom;
     let bottom_pad = Spacing::Lg.px();
     let body_h = (rect.y + rect.h - body_top - bottom_pad).max(0.0);
     let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
-    let scroll = ctx.host.store().panel_scroll(AMIX_PANEL);
+    let area = ph2d_editor_core::panel::scroll_area::open(
+        ctx,
+        AMIX_PANEL,
+        AUDIO_MIXER_SCROLLBAR_ID,
+        body_rect,
+    );
+    let scroll = area.scroll();
 
     // Gather the live snapshot (shell → panel) + the fader values (the store is
     // the source of truth — the shared slider dispatch writes them on drag).
@@ -204,10 +210,9 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
 
     // Body is scrolled: content lays out from `body_top - scroll`, clipped to the
     // body rect so anything scrolled past the top/bottom is hidden.
-    let strip_top = body_top - scroll;
+    let strip_top = area.top();
     let row = StripRow::new(rect, strips.len(), strip_top, ctx.text_system);
     let (content_x, content_w) = (row.content_x, row.content_w);
-    ctx.scene.push_clip(&rect_to_vello(body_rect));
     paint_strips(
         &strips,
         row,
@@ -251,50 +256,13 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
 
     // Total scrollable height in body-local coords (undo the `- scroll` offset).
     let content_h = (final_y + scroll) - body_top + bottom_pad;
-    ctx.scene.pop_layer();
-
-    paint_scrollbar_and_publish(ctx, body_rect, content_h, body_h, scroll, theme);
+    ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
 
     // Re-register the close button at end-of-frame so scrolled body widgets can't
     // shadow it (panel_chrome canon).
     ctx.host
         .hit_index_mut()
         .register(AMIX_CLOSE, panel_close_button_rect(rect));
-}
-
-/// **A barra de rolagem e as alturas publicadas** — só há barra quando o conteúdo transborda, e o
-/// que sobra de rolagem depois de publicar é aparado.
-///
-/// ⚠️ Saiu do [`paint`] pelo tecto de 200 LOC por função, verbatim; corre no mesmo sítio, antes de
-/// o botão de fechar se re-registar.
-fn paint_scrollbar_and_publish(
-    ctx: &mut PaintCtx,
-    body_rect: Rect,
-    content_h: f32,
-    body_h: f32,
-    scroll: f32,
-    theme: Theme,
-) {
-    // Scrollbar (only if the content overflows) + publish content/visible heights
-    // so wheel dispatch can clamp; then clamp any leftover over-scroll.
-    if scrollbar_is_needed(content_h, body_h) {
-        let track = scrollbar_track_rect(body_rect);
-        let thumb = scrollbar_thumb_rect(track, scroll, content_h, body_h);
-        let visual = ctx.host.store().scrollbar_visual(AUDIO_MIXER_SCROLLBAR_ID);
-        paint_scrollbar(
-            body_rect, scroll, content_h, body_h, visual, ctx.scene, theme,
-        );
-        ctx.host
-            .hit_index_mut()
-            .register(AUDIO_MIXER_SCROLLBAR_ID, thumb);
-    }
-    let store = ctx.host.store_mut();
-    store.set_panel_content_h(AMIX_PANEL, content_h);
-    store.set_panel_visible_h(AMIX_PANEL, body_h);
-    let max_scroll = (content_h - body_h).max(0.0);
-    if store.panel_scroll(AMIX_PANEL) > max_scroll {
-        store.set_panel_scroll(AMIX_PANEL, max_scroll);
-    }
 }
 
 /// Paint one channel strip in its column: label · pan · fader (standard

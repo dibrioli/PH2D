@@ -24,6 +24,9 @@ use ph2d_tool_vector::params::DrawMode;
 use ph2d_vector::VectorScene;
 use std::sync::Once;
 
+/// O corpo inteiro do painel cabe — ver o `paint_in`.
+const TALL_VIEWPORT_H: f32 = HERO_VIEWPORT_H * 4.0;
+
 const SRC: &str = include_str!("../../src/paint_sections.rs");
 
 /// **As ferramentas, DERIVADAS do vocabulário** ([`DrawMode::ALL`]).
@@ -53,7 +56,10 @@ fn paint_in(hero: &mut HeroScreen, snap: VectorStyleSnapshot) {
     let mut text = TextSystem::without_system_fonts();
     paint_hero_screen(
         hero,
-        Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H),
+        // ⚠️ Alta de propósito: a porta da rolagem (`scroll_area`, spec `04_a_rolagem_unica`)
+        // recorta o CLIQUE à banda do corpo, e o `painted` lê o registo — à altura de fábrica uma
+        // secção abaixo da dobra lia-se «não oferecida». Aqui a pergunta é a LEI, não a dobra.
+        Rect::new(0.0, 0.0, HERO_VIEWPORT_W, TALL_VIEWPORT_H),
         &mut scene,
         &mut text,
     );

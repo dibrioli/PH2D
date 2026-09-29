@@ -99,14 +99,48 @@ juntos, e os dois gates de lista (`every_scrollable_panel_intercepts_the_wheel` 
 
 ## §4 — As waves
 
-| wave | o quê | fecha |
-|---|---|---|
-| **W1** | a porta `scroll_area` + a trilha registada + salto na trilha + tabela de dono derivada | D1, D3 (id), D6 (barra) |
-| **W2** | migrar todos os painéis do caminho do `WidgetStore` para a porta | D1, D2, D4, D5 (parcial) |
-| **W3** | a roda sem lista, e o `panel_at` pela ordem z | D3 (roda), D6, D7, D10 |
-| **W4** | a inércia + o 1:1 | D8, D12 |
-| **W5** | as três implementações à parte (Input Map, paleta, timeline) passam a usar as mesmas tabelas e a mesma barra | §1 «quatro implementações» |
-| **W6** | o recorte do `HitIndex` onde falta, com os gates que clicavam no invisível reescritos | D5 |
+| wave | o quê | fecha | estado (2026-09-29) |
+|---|---|---|---|
+| **W1** | a porta `scroll_area` + a trilha registada + salto na trilha + tabela de dono derivada | D1, D3 (id), D6 (barra) | ✅ |
+| **W2** | migrar todos os painéis do caminho do `WidgetStore` para a porta | D1, D2, D4, D5 (parcial) | ✅ **25** painéis (a galeria incluída; o Painter com as duas vistas) + a coluna do catálogo — com o Input Map e a paleta da W5, **28** chamadas à porta |
+| **W3** | a roda sem lista, e o `panel_at` pela ordem z | D3 (roda), D6, D7, D10 | ✅ + a tabela `scrollbar_panel_for_id` APAGADA (o dono publicado é a única resposta) |
+| **W4** | a inércia + o 1:1 | D8, D12 | ✅ |
+| **W5** | as três implementações à parte (Input Map, paleta, timeline) passam a usar as mesmas tabelas e a mesma barra | §1 «quatro implementações» | ✅ Input Map e paleta · ⛔ timeline fora, por DESENHO (§4.1) |
+| **W6** | o recorte do `HitIndex` onde falta, com os gates que clicavam no invisível reescritos | D5 | ✅ por construção (a porta recorta) |
+
+### 4.1 — O que a implementação mudou no desenho
+
+- **As formas com `PaintCtx` moram em `panel::scroll_area`**, não em `widget::scroll_area`: o
+  `widget` não pode conhecer o `panel` (`panel → action_bus → interaction → widget` já existe, e
+  `widget → panel` fechava o ciclo que `the_foundation_modules_form_a_dag` reprova). No `widget`
+  fica a porta com as partes soltas (`open_with` · `close_with` · `close_parts` → `Pending`).
+- **`panel_at` pergunta primeiro aos rects FORA da ordem z** (o overlay do áudio, o cartão do Input
+  Map): eles são pintados depois de todo painel, logo estão por cima por construção. Depois a ordem z
+  de cima para baixo.
+- **O arrasto no corpo aceita a pressão no FUNDO do próprio painel** (`hit == panel`): uma janela
+  flutuante regista o fundo para o clique não vazar ao canvas, e esse registo não é um widget.
+- **A roda tem UMA lei** (`WidgetStore::wheel_panel`): o `dispatch_wheel` e a paleta (que toma a
+  roda da tela inteira) chamam a mesma função.
+- **A timeline fica FORA**: a roda nela é zoom do EIXO DO TEMPO (`set_timeline_canvas`), um gesto de
+  canvas e não de lista — pô-la na porta trocaria o gesto.
+- **O cabeçalho de um painel nunca come o corpo** (Tokens): o painel desenha-se com os tokens que
+  edita, e com `spacing.* ≥ 1024` o corpo começava abaixo da janela — antes da porta o *Reset This
+  Mode* ficava registado por baixo de um recorte de altura zero, **clicável às cegas**. O corpo
+  guarda sempre uma linha (`ROW_H_PX`).
+- **Os censos que contam o que o índice de acerto regista passaram a pintar numa janela que contém o
+  painel inteiro** (`16000 px`): com o clique recortado, o que fica abaixo da janela deixa de estar
+  no índice. O piso de população de cada censo é quem acusa o dia em que não chegar.
+
+- **D10 e D11 fecharam de passagem.** As entradas mortas do despacho saíram com a tabela à mão
+  (`scrollbar_panel_for_id` APAGADA; `cursor_over_hero_panel` é `panel_at(x, y).is_some()`), e a
+  coluna de catálogos limpa a região dela pelas **duas** portas de desaparecer (colapsada · painel
+  fechado) através de UMA função, `paint_catalog::forget_region` — escrita no `paint.rs` ao lado, a
+  limpeza pôs o id num segundo ficheiro e o censo `the_painted_control_reaches_a_consumer` acusou-o
+  como controlo sem consumidor. ⏳ **D9 continua aberto** (alturas velhas de um painel que publica
+  o rect sem `content_h`).
+- **A catraca `widget → interaction` DESCEU de `49` para `46`**: a paleta passou a receber o
+  `WidgetStore` (a porta precisa dele) e as referências redundantes dos testes da paleta (o
+  `HitIndex` já vinha pelo `use super::*`) saíram — a catraca só encolhe e o número é o medido.
 
 ⚠️ O painel da escultura (`ph2d-panel-sculpt3d`) é território da `line/sculpt3d` e muda todos os
 dias: a migração dele é **uma linha** (a chamada à porta) e fica anotada no handoff para a

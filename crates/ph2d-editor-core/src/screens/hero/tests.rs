@@ -1856,6 +1856,13 @@ fn a_scrollbar_thumb_fades_in_and_out_instead_of_snapping() {
     hero.motion
         .set_character(crate::motion::UiCharacter::Expressive);
     let thumb = crate::widget::INSPECTOR_SCROLLBAR_ID;
+    // O dono de uma barra é o que a porta PUBLICA ao pintá-la (a tabela à mão morreu em
+    // 2026-09-29) — o quadro de produto publica-o antes de o cursor poder chegar ao polegar.
+    hero.store.publish_scroll_bar(
+        thumb,
+        crate::ids::INSP_PANEL,
+        crate::zones::Rect::new(0.0, 0.0, 10.0, 100.0),
+    );
 
     // CONTROLO: nunca tocado ⇒ o neutro, sem o relógio ter corrido.
     let (_, cold) = hero.store.scrollbar_visual(thumb);
@@ -1919,6 +1926,13 @@ fn re_entering_a_thumb_animates_again_instead_of_snapping() {
     hero.motion
         .set_character(crate::motion::UiCharacter::Expressive);
     let thumb = crate::widget::HIERARCHY_SCROLLBAR_ID;
+    // O dono de uma barra é o que a porta PUBLICA ao pintá-la (a tabela à mão morreu em
+    // 2026-09-29) — o quadro de produto publica-o antes de o cursor poder chegar ao polegar.
+    hero.store.publish_scroll_bar(
+        thumb,
+        crate::ids::HIER_PANEL,
+        crate::zones::Rect::new(0.0, 0.0, 10.0, 100.0),
+    );
 
     hero.store.set_hot(Some(thumb));
     for _ in 0..120 {
@@ -1956,6 +1970,13 @@ fn a_thumb_that_cooled_is_forgotten_by_the_clock_but_not_by_the_painter() {
     hero.motion
         .set_character(crate::motion::UiCharacter::Expressive);
     let thumb = crate::widget::INSPECTOR_SCROLLBAR_ID;
+    // O dono de uma barra é o que a porta PUBLICA ao pintá-la (a tabela à mão morreu em
+    // 2026-09-29) — o quadro de produto publica-o antes de o cursor poder chegar ao polegar.
+    hero.store.publish_scroll_bar(
+        thumb,
+        crate::ids::INSP_PANEL,
+        crate::zones::Rect::new(0.0, 0.0, 10.0, 100.0),
+    );
 
     hero.store.set_hot(Some(thumb));
     for _ in 0..120 {

@@ -84,33 +84,39 @@ fn every_registered_id_is_given_geometry_by_the_painter() {
 /// ⛔ Um painel que recorta e não rola é a pior das três formas (a nota do `MODEL3D_SCROLLBAR_ID`
 /// já o dizia, e não impediu nada): sem recorte o conteúdo desenha por cima e **vê-se**; com
 /// recorte e rolagem funciona; **com recorte e sem rolagem os controlos de baixo somem calados**.
+///
+/// ⭐ Desde 2026-09-29 o par recortar/rolar é **UMA porta** (`scroll_area`, spec
+/// `04_a_rolagem_unica`): o `open` recorta o desenho E o clique, e o `close` publica as duas
+/// alturas, clampa e pinta a barra — por construção. A premissa do gate (recortar sem rolar) vive
+/// agora em ABRIR sem FECHAR, e é isso que ele mede.
 #[test]
 fn a_body_that_clips_also_scrolls() {
     let paint = read(&crate_root().join("src/paint.rs"));
     assert!(
-        paint.contains("push_clip"),
-        "o corpo deixou de recortar — se foi de proposito, apague este gate com o motivo"
+        paint.contains("scroll_area::open"),
+        "o corpo deixou de recortar pela porta — se foi de proposito, apague este gate com o motivo"
     );
-    for needle in [
-        "paint_scrollbar",
-        "scrollbar_is_needed",
-        "set_panel_content_h",
-        "set_panel_visible_h",
-    ] {
-        assert!(
-            paint.contains(needle),
-            "o corpo RECORTA e nao chama `{needle}` — as seccoes de baixo ficam inalcancaveis \
-             sem sinal nenhum de que existem"
-        );
-    }
+    assert!(
+        paint.contains("scroll_area::close"),
+        "o corpo RECORTA e nao chama `scroll_area::close` — as seccoes de baixo ficam \
+         inalcancaveis sem sinal nenhum de que existem"
+    );
 }
 
 /// ⚠️ **E o polegar tem de estar ROTEADO**, senão arrastá-lo não move painel nenhum.
+///
+/// ⚠️ Desde 2026-09-29 o roteamento é o DONO que a porta `scroll_area` publica ao pintar a barra (a
+/// tabela à mão do despachante morreu) ⇒ a régua é a chamada da porta levar o par certo.
 #[test]
 fn the_scrollbar_thumb_routes_back_to_this_panel() {
-    let scroll = read(&crate_root().join("../ph2d-editor-core/src/interaction/dispatch/scroll.rs"));
+    let paint = read(&crate_root().join("src/paint.rs"));
+    let at = paint
+        .find("scroll_area::open_with(")
+        .expect("a bancada deixou de abrir o corpo pela porta");
+    let call = &paint[at..at + paint[at..].find(");").expect("chamada fechada")];
     assert!(
-        scroll.contains("LAB_SCROLLBAR_ID") && scroll.contains("ids::LAB_PANEL"),
-        "o `scrollbar_panel_for_id` nao conhece o polegar da bancada — arrasta'-lo nao rola nada"
+        call.contains("LAB_SCROLLBAR_ID") && call.contains("ids::LAB_PANEL"),
+        "a porta da bancada não recebe o par (LAB_PANEL, LAB_SCROLLBAR_ID) — arrasta'-lo não rola \
+         a bancada:\n{call}"
     );
 }

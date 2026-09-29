@@ -119,7 +119,7 @@ pub(crate) fn paint(_state: &mut Sculpt3dPanelState, ctx: &mut PaintCtx) {
     let body_h = (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0);
     let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
     // ⭐ A PORTA da rolagem (spec `04_a_rolagem_unica`, `line/UIUX` 2026-09-29).
-    let area = ph2d_editor_core::widget::scroll_area::open(
+    let area = ph2d_editor_core::panel::scroll_area::open(
         ctx,
         ids::SCULPT3D_PANEL,
         SCULPT3D_SCROLLBAR_ID,
@@ -135,7 +135,7 @@ pub(crate) fn paint(_state: &mut Sculpt3dPanelState, ctx: &mut PaintCtx) {
     let content_h = (y_after + area.scroll()) - body_top + PANEL_HEAD_PAD;
     set_last_content_h(content_h);
     set_last_visible_h(body_h);
-    ph2d_editor_core::widget::scroll_area::close(area, ctx, content_h);
+    ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
 
     // ⭐⭐⭐ **O SELECTOR SEGUE O SUJEITO** — ver
     // [`brush_cor::fecha_um_selector_orfao`]. A pergunta é feita à MESMA porta
@@ -187,7 +187,6 @@ pub(crate) fn paint_row(
         theme,
     )
 }
-
 
 /// **A porta do READOUT para fora do módulo de pintura.**
 ///

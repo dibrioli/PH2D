@@ -644,6 +644,12 @@ fn scrollbar_track_drag_begins_without_focus_and_scrolls() {
         crate::widget::PAINTER_LAYERS_SCROLLBAR_ID,
         Rect::new(200.0, 0.0, 10.0, 100.0), // the full track
     );
+    // O dono é o que a porta publica ao pintar a barra (a tabela à mão morreu em 2026-09-29).
+    store.publish_scroll_bar(
+        crate::widget::PAINTER_LAYERS_SCROLLBAR_ID,
+        panel,
+        Rect::new(200.0, 0.0, 10.0, 100.0),
+    );
     let arena = Bump::new();
     let _ = dispatch_pointer(
         &mut store,
@@ -677,7 +683,7 @@ fn scrollbar_track_drag_begins_without_focus_and_scrolls() {
 #[test]
 fn vector_panel_scrollbar_thumb_drag_begins_and_scrolls() {
     // Same proof as above but for the Vector Style panel (ADR-0108): the thumb id
-    // must map to VECTOR_PANEL via `scrollbar_panel_for_id`, and the Down must
+    // must map to VECTOR_PANEL through the owner the door publishes, and the Down must
     // begin the drag + the Move scroll it.
     let mut store = WidgetStore::with_capacity(8);
     let panel = crate::ids::VECTOR_PANEL;
@@ -686,6 +692,12 @@ fn vector_panel_scrollbar_thumb_drag_begins_and_scrolls() {
     let mut hits = HitIndex::new();
     hits.register(
         crate::widget::VECTOR_SCROLLBAR_ID,
+        Rect::new(200.0, 0.0, 10.0, 100.0),
+    );
+    // O dono é o que a porta publica ao pintar a barra (a tabela à mão morreu em 2026-09-29).
+    store.publish_scroll_bar(
+        crate::widget::VECTOR_SCROLLBAR_ID,
+        panel,
         Rect::new(200.0, 0.0, 10.0, 100.0),
     );
     let arena = Bump::new();
@@ -697,7 +709,7 @@ fn vector_panel_scrollbar_thumb_drag_begins_and_scrolls() {
     );
     assert!(
         store.scrollbar_drag().is_some(),
-        "Down on the Vector scrollbar thumb begins a drag (scrollbar_panel_for_id maps VECTOR_SCROLLBAR_ID)"
+        "Down on the Vector scrollbar thumb begins a drag (the published owner maps VECTOR_SCROLLBAR_ID)"
     );
     let _ = dispatch_pointer(
         &mut store,
@@ -714,7 +726,7 @@ fn vector_panel_scrollbar_thumb_drag_begins_and_scrolls() {
 #[test]
 fn audio_editor_panel_scrollbar_thumb_drag_begins_and_scrolls() {
     // Same proof for the Audio Editor panel (docs/Audio/, W3 block 3b). The thumb id
-    // must map to AUDIO_EDITOR_PANEL via `scrollbar_panel_for_id` — a thumb aliased
+    // must map to AUDIO_EDITOR_PANEL through the owner the door publishes — a thumb aliased
     // onto `DROPDOWN_SCROLLBAR_ID` (831) would paint but never drag.
     let mut store = WidgetStore::with_capacity(8);
     let panel = crate::ids::AUDIO_EDITOR_PANEL;
@@ -723,6 +735,12 @@ fn audio_editor_panel_scrollbar_thumb_drag_begins_and_scrolls() {
     let mut hits = HitIndex::new();
     hits.register(
         crate::widget::AUDIO_EDITOR_SCROLLBAR_ID,
+        Rect::new(200.0, 0.0, 10.0, 100.0),
+    );
+    // O dono é o que a porta publica ao pintar a barra (a tabela à mão morreu em 2026-09-29).
+    store.publish_scroll_bar(
+        crate::widget::AUDIO_EDITOR_SCROLLBAR_ID,
+        panel,
         Rect::new(200.0, 0.0, 10.0, 100.0),
     );
     let arena = Bump::new();

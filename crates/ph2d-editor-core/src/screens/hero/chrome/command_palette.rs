@@ -22,6 +22,10 @@ use ph2d_vector::VectorScene;
 
 /// Paint the full-screen command palette over `viewport`. No-op when closed (mirrors
 /// [`super::onion_modal::paint_onion_modal`]'s open-gate).
+///
+/// ⭐ Devolve a metade da PORTA da rolagem que precisa do store mutável — quem chama publica-a
+/// (spec `04_a_rolagem_unica` W5). `None` quando a paleta está fechada.
+#[must_use = "sem publicar, a barra da paleta pinta e nunca arma"]
 pub fn paint_command_palette(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
@@ -30,11 +34,9 @@ pub fn paint_command_palette(
     store: &WidgetStore,
     viewport: Rect,
     motion: &crate::motion::UiMotion,
-) {
-    let Some(model) = store.command_palette_model() else {
-        return;
-    };
-    command_palette::paint(
+) -> Option<crate::widget::scroll_area::Pending> {
+    let model = store.command_palette_model()?;
+    Some(command_palette::paint(
         scene,
         text_system,
         theme,
@@ -43,23 +45,8 @@ pub fn paint_command_palette(
         store.command_palette_query(),
         viewport,
         motion,
-        store.command_palette_scroll(),
-    );
-}
-
-/// ⭐ **Até onde a roda pode levar a paleta aberta** — `0` quando ela está fechada ou tudo cabe.
-///
-/// ⚠️ Existe aqui, e não na shell, porque a shell não deve conhecer o `PaletteModel`: ela sabe
-/// **que houve roda**, e o chrome responde *quanto*. É o mesmo corte do `input_map_window_size`.
-#[must_use]
-pub fn command_palette_max_scroll(
-    text_system: &mut TextSystem,
-    store: &WidgetStore,
-    viewport: Rect,
-) -> f32 {
-    store.command_palette_model().map_or(0.0, |model| {
-        command_palette::max_scroll(text_system, model, store.command_palette_query(), viewport)
-    })
+        store,
+    ))
 }
 
 /// Dispatch the command palette's widget events (wired into `chrome::dispatch_all`). Only acts while the

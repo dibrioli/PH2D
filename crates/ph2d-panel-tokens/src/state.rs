@@ -93,6 +93,7 @@ thread_local! {
     static INTENTS: RefCell<Vec<TokensIntent>> = const { RefCell::new(Vec::new()) };
     static LAST_CONTENT_H: Cell<f32> = const { Cell::new(0.0) };
     static LAST_VISIBLE_H: Cell<f32> = const { Cell::new(0.0) };
+    static LAST_BODY_TOP: Cell<f32> = const { Cell::new(0.0) };
 }
 
 /// Enfileira um pedido (painel → shell).
@@ -123,6 +124,16 @@ pub(crate) fn set_last_content_h(h: f32) {
 }
 pub(crate) fn set_last_visible_h(h: f32) {
     LAST_VISIBLE_H.with(|c| c.set(h));
+}
+pub(crate) fn set_last_body_top(y: f32) {
+    LAST_BODY_TOP.with(|c| c.set(y));
+}
+
+/// O `y` onde o corpo rolável começou na última pintura — com ele um gate converte a posição de uma
+/// caixa em posição no CONTEÚDO, que não depende da altura da janela.
+#[must_use]
+pub fn last_body_top() -> f32 {
+    LAST_BODY_TOP.with(Cell::get)
 }
 
 /// Altura do conteúdo na última pintura — o que a barra de rolagem precisa.

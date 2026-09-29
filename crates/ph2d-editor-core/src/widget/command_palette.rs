@@ -16,7 +16,7 @@
 //! The paint is a pure function of the model + viewport; the chrome handler ([`crate::screens::hero::chrome`])
 //! gates it on the store's open-state and routes its [`apply`]-side events. Nothing here mutates state.
 
-use crate::interaction::HitIndex;
+use crate::interaction::{HitIndex, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_text, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
@@ -230,8 +230,11 @@ struct CardLayout {
 /// are called the palette is open). Registers hit rects for the scrim (first, so it loses), the card
 /// (next), and the close-X + every item pill (last, so they win inside the card).
 ///
-/// ⚠️ `scroll` é quanto a lista está rolada, em px — preso ao [`max_scroll`] **aqui dentro**, para
-/// que um valor velho no store (o conteúdo encolheu com a busca) não mostre um cartão vazio.
+/// ⭐ **A lista passa pela PORTA da rolagem** (`crate::widget::scroll_area`, spec
+/// `04_a_rolagem_unica` W5, 2026-09-29): a rolagem vive nas tabelas de todo painel com a chave
+/// [`CMD_PALETTE_CARD`], e o que o pintor devolve é a metade que precisa do store mutável (as
+/// alturas, o clamp, o dono da barra) — quem chama publica-a. ⚠️ O clamp é o da porta, e ele segue
+/// a busca: o conteúdo encolhe, a porta prende o alvo, e um cartão vazio não fica à mostra.
 #[allow(clippy::too_many_arguments)]
 pub fn paint(
     scene: &mut VectorScene,
@@ -242,8 +245,8 @@ pub fn paint(
     query: &str,
     viewport: Rect,
     motion: &crate::motion::UiMotion,
-    scroll: f32,
-) {
+    store: &WidgetStore,
+) -> crate::widget::scroll_area::Pending {
     // ── The live search text filters the model (empty = show everything). Filtering keeps only the
     //    matching items and drops emptied sub-clusters / categories; `Enter` adds the same top match. ──
     let filtered;
@@ -301,6 +304,22 @@ pub fn paint(
     // ── Content: paint the measured category cards at the card's content origin — or a "No matches"
     //    message when the search filtered everything out. ──
     let content_y = header_y + HEADER_H + Spacing::Sm.px();
+    // ⭐ **O CORPO É RECORTADO no CLIQUE e na PINTURA** (F3 / ADR-0166) — pela PORTA: sem os dois
+    //    recortes o conteúdo rolado desenha por cima do cabeçalho e por fora do cartão, que foi o
+    //    report do Enio no 1.º smoke (a lista saía pela base do ecrã).
+    let body = Rect::new(content_x, content_y, content_w, view_h);
+    let area = crate::widget::scroll_area::open_with(
+        scene,
+        hit_index,
+        store,
+        CMD_PALETTE_CARD,
+        crate::widget::CMD_PALETTE_SCROLLBAR_ID,
+        body,
+    );
+    // ⚠️ O vivo é o da mola e pode passar do fim por um quadro depois de a busca encolher o
+    //    conteúdo; a porta prende o ALVO e o vivo alcança-o. Preso também aqui, para esse quadro não
+    //    mostrar um cartão vazio.
+    let scroll = crate::math::safe_clamp(area.scroll(), 0.0, (content_h - view_h).max(0.0));
     if no_match {
         paint_text(
             ts,
@@ -313,22 +332,6 @@ pub fn paint(
             resolve(ColorToken::Text2, theme),
         );
     } else {
-        // ⭐ **O CORPO É RECORTADO no CLIQUE e na PINTURA** (F3 / ADR-0166) — e são duas coisas
-        //    diferentes: o `push_clip` do `HitIndex` decide quem RESPONDE; quem recorta pixels é a
-        //    cena. Sem os dois, o conteúdo rolado desenha por cima do cabeçalho e por fora do
-        //    cartão — que foi o report do Enio no 1.º smoke (a lista saía pela base do ecrã).
-        //
-        // ⚠️ **O `scroll` é preso AQUI**, e não onde a roda o escreve: a busca encolhe o conteúdo,
-        //    e um valor velho mostraria um cartão vazio sem nada que explicasse como voltar.
-        let scroll = crate::math::safe_clamp(scroll, 0.0, (content_h - view_h).max(0.0));
-        let body = Rect::new(content_x, content_y, content_w, view_h);
-        hit_index.push_clip(body);
-        scene.push_clip(&ph2d_vector::Rect::new(
-            f64::from(body.x),
-            f64::from(body.y),
-            f64::from(body.x + body.w),
-            f64::from(body.y + body.h),
-        ));
         // ⚠️ A CASCATA: o cartão `i` desenha-se subido por `cascade_rise(t)` e o hit regista na
         //    posição ASSENTE. É a mesma lei do `hover_lift` — o alvo que o dedo procura não pode
         //    estar noutro sítio do que o alvo que o olho vê —, e aqui ela morde mais forte, porque
@@ -349,13 +352,16 @@ pub fn paint(
                 crate::motion::cascade_rise(t, travels),
             );
         }
-        scene.pop_layer();
-        hit_index.pop_clip();
+    }
+    let pending =
+        crate::widget::scroll_area::close_parts(area, scene, hit_index, store, content_h, theme);
+    if !no_match {
         paint_scroll_hint(scene, theme, body, content_h, view_h, scroll);
     }
 
     // Close-X last (wins its rect inside the card).
     hit_index.register(CMD_PALETTE_CLOSE, close_rect);
+    pending
 }
 
 /// Paint one category card: a rounded `Bg2` box + `Border`, then its header (dot + name + count +

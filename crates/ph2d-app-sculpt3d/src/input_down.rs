@@ -33,9 +33,12 @@ pub fn pointer_down(
     if host.pointer_over_chrome(pos.0, pos.1) {
         return false;
     }
-    // ⭐ Um clique da escultura na peça fecha a pincelada do Painter que ainda
-    // escorre — os dois escreveriam no mesmo traço.
-    scene.painter_fecha_o_que_escorre();
+    // ⚠️ A pincelada do Painter que ainda escorre fecha SÓ no braço que mexe na
+    // peça (o esquerdo, mais abaixo) — nunca aqui em cima. Report do dono
+    // (29/09): *«rotacionar a peça no 3d encerra a simulação de tinta
+    // escorrendo»*. Navegar (órbita, pan, gizmo, menu, costura) não escreve um
+    // vértice, e a sessão pousa pela vista CONGELADA no pen-down, logo a água
+    // continua a cair no sítio certo com a câmera noutro lado.
     let mods = host.mods();
     let (ctrl, shift) = (mods.control, mods.shift);
     // ⚠️ **Com o barro fora da tela, o ponteiro NÃO é da cena.** Sem esta
@@ -147,6 +150,11 @@ pub fn pointer_down(
     }
     match button {
         winit::event::MouseButton::Left => {
+            // ⭐ O esquerdo é o braço que escreve na peça (corte, filtro,
+            // transform, traço): a pincelada do Painter que ainda escorre fecha
+            // ANTES — os dois escreveriam no mesmo traço, e o `aim` abaixo pode
+            // trocar a peça activa debaixo dela.
+            scene.painter_fecha_o_que_escorre();
             // ⚠️ **Com o transform ARMADO o esquerdo transforma.** Não há
             // fallback para órbita aqui, e é deliberado: o arm é um estado
             // que o painel MOSTRA, e um botão que às vezes transforma e às

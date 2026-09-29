@@ -242,3 +242,37 @@ fn nenhum_braco_de_tecla_vive_debaixo_de_um_catch_all_do_mesmo_modificador() {
          `sculpt3d_key` (foi o que a tecla da divisao fez, para o despacho)"
     );
 }
+
+/// ⭐⭐ **GATE — as teclas da VISTA não fecham a pincelada do Painter que
+/// escorre; as da PEÇA fecham.** Report do dono (29/09): *«rotacionar a peça no
+/// 3d encerra a simulação de tinta escorrendo»*. As duas metades: sem a
+/// primeira a vista volta a secar a água; sem a segunda (o CONTROLO) um
+/// predicado que respondesse `true` a tudo deixaria o `Delete` escrever por
+/// cima de uma pincelada aberta.
+#[test]
+fn as_teclas_da_vista_nao_fecham_a_tinta_que_escorre() {
+    use super::so_mexe_na_vista;
+    use winit::keyboard::KeyCode as K;
+    for (k, ctrl) in [
+        (K::Numpad1, false),
+        (K::Numpad1, true),
+        (K::Numpad3, false),
+        (K::Numpad7, true),
+        (K::Numpad5, false),
+        (K::Escape, false),
+    ] {
+        assert!(so_mexe_na_vista(k, ctrl), "{k:?} (ctrl {ctrl}) é da vista");
+    }
+    for (k, ctrl) in [
+        (K::Delete, false),
+        (K::KeyD, false),
+        (K::KeyZ, true),
+        (K::KeyG, false),
+        (K::Numpad5, true),
+    ] {
+        assert!(
+            !so_mexe_na_vista(k, ctrl),
+            "{k:?} (ctrl {ctrl}) não é só da vista"
+        );
+    }
+}

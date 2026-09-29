@@ -68,8 +68,9 @@ pub fn key(
     let KeyPress { code, ctrl, shift } = press;
     let keys_live = morta.is_empty();
     // ⭐ Uma tecla viva da escultura pode mexer na peça: a pincelada do Painter
-    // que ainda escorre fecha antes (`painter_na_malha`).
-    if keys_live {
+    // que ainda escorre fecha antes (`painter_na_malha`). ⚠️ Menos as teclas da
+    // VISTA — rodar a câmera não escreve na peça (report do dono, 29/09).
+    if keys_live && !super::keys_view::so_mexe_na_vista(code, ctrl) {
         scene.painter_fecha_o_que_escorre();
     }
     if let Some(queixa) = keys_delete::queixa_do_desfazer(press, factos.clay_on_screen, morta) {

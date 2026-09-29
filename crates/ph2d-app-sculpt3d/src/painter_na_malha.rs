@@ -30,8 +30,14 @@
 //! Pinta-se o lado que se VÊ (o de trás espera que o artista rode a peça). A
 //! pintura simples começa numa tela TRANSPARENTE; os modos que lêem a cor
 //! debaixo do pincel começam com o RETRATO da peça ([`Sculpt3dScene::painter_semeia`],
-//! etapa 2). E rodar a vista SECA a aquarela: a humidade vive nos píxeis do
-//! ecrã, não na superfície.
+//! etapa 2). E rodar a vista SECA a aquarela para o traço SEGUINTE: a humidade
+//! vive nos píxeis do ecrã, não na superfície.
+//!
+//! ⭐ **Mas rodar NÃO pára a água que já escorre** (report do dono, 29/09): a
+//! sessão pousa pela vista CONGELADA no pen-down, logo o que a tela ainda
+//! escorre cai no sítio certo da peça com a câmera noutro lado. Quem fecha a
+//! pincelada que escorre é só quem mexe na PEÇA — o esquerdo da escultura, as
+//! teclas que não são da vista, o painel, o desfazer — nunca a navegação.
 
 use std::sync::Arc;
 

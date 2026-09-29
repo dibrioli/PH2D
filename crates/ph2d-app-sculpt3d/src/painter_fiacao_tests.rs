@@ -304,3 +304,41 @@ fn um_ajuste_do_painel_nao_fecha_a_pincelada_e_um_gesto_fecha() {
         );
     }
 }
+
+/// ⭐⭐ **GATE — NAVEGAR não fecha a pincelada que escorre; o ESQUERDO fecha.**
+/// Report do dono (29/09): *«rotacionar a peça no 3d encerra a simulação de
+/// tinta escorrendo»*. O pen-down fechava-a ANTES de saber de quem era o clique,
+/// e com o Painter na mão o que sobra à cena é a órbita, o pan e o gizmo.
+///
+/// ⚠️ **A régua é a POSIÇÃO no despacho, e não a contagem** (o P24 conta): a
+/// chamada tem de viver DEPOIS do gizmo de navegação e DENTRO do braço do
+/// esquerdo, antes do primeiro gesto que escreve na peça. ⭐ Corre sem adaptador,
+/// ao contrário do gate de produto irmão (`rodar_a_vista_com_a_agua…`,
+/// `#[ignore]`), logo é ESTE que o CI vê.
+#[test]
+fn navegar_nao_fecha_a_pincelada_que_escorre_e_o_esquerdo_fecha() {
+    let codigo = sem_prosa(INPUT_DOWN);
+    let pos = |agulha: &str| {
+        codigo
+            .find(agulha)
+            .unwrap_or_else(|| panic!("input_down.rs: `{agulha}` não está no código"))
+    };
+    let fecha = pos("scene.painter_fecha_o_que_escorre();");
+    let gizmo = pos("scene.nav_pointer_down(");
+    let esquerdo = pos("winit::event::MouseButton::Left => {");
+    let corte = pos("ph2d_sculpt3d::Verb::BoxTrim");
+    assert!(
+        gizmo < esquerdo,
+        "o CONTROLO: o gizmo de navegação deixou de vir antes do braço do esquerdo"
+    );
+    assert!(
+        fecha > esquerdo && fecha < corte,
+        "a pincelada que escorre fecha fora do braço do esquerdo: rodar a vista \
+         (órbita, pan, gizmo) volta a secar a água (o report do dono)"
+    );
+    // E o teclado: a tecla da VISTA não fecha.
+    assert!(
+        sem_prosa(KEYS).contains("!super::keys_view::so_mexe_na_vista(code, ctrl)"),
+        "keys.rs: a guarda das teclas da vista saiu — um Numpad volta a secar a água"
+    );
+}

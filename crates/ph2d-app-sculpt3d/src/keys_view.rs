@@ -59,6 +59,20 @@ pub(crate) fn camera_key(
     false
 }
 
+/// ⭐⭐ **Esta tecla só mexe na VISTA?** — as que o [`camera_key`] consome: o
+/// `Escape` do menu, as seis vistas nomeadas e a lente. Nenhuma escreve na
+/// peça, logo a pincelada do Painter que ainda escorre NÃO fecha por elas
+/// (report do dono, 29/09: *«rotacionar a peça no 3d encerra a simulação de
+/// tinta escorrendo»*).
+///
+/// ⚠️ É a MESMA tabela que o [`camera_key`] lê, pergunta a pergunta — uma
+/// segunda lista escrita à mão divergiria no dia da tecla seguinte.
+pub(crate) fn so_mexe_na_vista(code: winit::keyboard::KeyCode, ctrl: bool) -> bool {
+    code == winit::keyboard::KeyCode::Escape
+        || ph2d_viewport3d::views::view_for_key(code, ctrl).is_some()
+        || (ph2d_viewport3d::views::is_lens_key(code) && !ctrl)
+}
+
 /// ⭐⭐⭐ **`Ctrl+Alt+Q` ABRE E FECHA A DIVISÃO** — a MESMA tecla do módulo de
 /// modelagem, que é a do Blender para o *Toggle Quad View*.
 ///

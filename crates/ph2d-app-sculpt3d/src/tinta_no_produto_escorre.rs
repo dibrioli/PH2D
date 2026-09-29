@@ -352,3 +352,65 @@ fn um_segundo_traco_nao_seca_a_agua_do_primeiro() {
         primeiro.len()
     );
 }
+
+/// ⭐⭐⭐ **GATE — RODAR a vista com a água a escorrer NÃO fecha a pincelada**, e
+/// a água continua a chegar à peça depois da órbita.
+///
+/// Report do dono (29/09): *«em wet painter rotacionar a peça no 3d encerra a
+/// simulação de tinta escorrendo. Permita continuar escorrendo mesmo após
+/// rotacionar»*. O pen-down da escultura fechava a pincelada ANTES de saber de
+/// quem era o clique, e com o Painter na mão o botão que sobra para a cena é o
+/// da órbita. ⚠️ **A régua da órbita é a CÂMERA ter mudado** (sem isso o gate
+/// ficaria verde sobre um gesto que não rodou nada), e **o CONTROLO é o
+/// esquerdo**, que escreve na peça e continua a fechar.
+#[test]
+#[ignore = "precisa de adaptador e corre em tempo real"]
+fn rodar_a_vista_com_a_agua_a_correr_nao_fecha_a_pincelada() {
+    let gpu = gpu_or_skip!();
+    let mut s = cena_52(&gpu.device);
+    s.sync_mesh(&gpu.device, &gpu.queue);
+    let mut p = molhado();
+    assert!(traco(&mut s, &mut p, 420.0), "o traço molhado");
+    for _ in 0..5 {
+        um_quadro(&mut s, &mut p);
+    }
+    assert!(
+        s.painter_escorre.is_some(),
+        "o CONTROLO: a água ainda corre"
+    );
+    let olho = s.camera.eye();
+    let mut host = super::super::HostDeTeste {
+        ponteiro: (450.0, 350.0),
+    };
+    let _ = crate::input_down::pointer_down(&mut host, &mut s, winit::event::MouseButton::Right);
+    for k in 1..=10u8 {
+        crate::input::pointer_move(&mut s, 450.0 + 12.0 * f32::from(k), 350.0);
+        um_quadro(&mut s, &mut p);
+    }
+    crate::input::pointer_up(&mut s);
+    assert_ne!(s.camera.eye(), olho, "a órbita não rodou a vista");
+    assert!(
+        s.painter_escorre.is_some(),
+        "rodar a vista fechou a pincelada que escorria (o report do dono)"
+    );
+    let depois_de_rodar = vivas(&s);
+    for _ in 0..30 {
+        um_quadro(&mut s, &mut p);
+    }
+    assert_ne!(
+        vivas(&s),
+        depois_de_rodar,
+        "a água deixou de chegar à peça depois de rodar a vista"
+    );
+
+    // O CONTROLO: o esquerdo da escultura escreve na peça e continua a fechar.
+    let mut host = super::super::HostDeTeste {
+        ponteiro: (450.0, 350.0),
+    };
+    let _ = crate::input_down::pointer_down(&mut host, &mut s, winit::event::MouseButton::Left);
+    assert!(
+        s.painter_escorre.is_none(),
+        "um clique esquerdo da escultura deixou de fechar a pincelada que escorre"
+    );
+    crate::input::pointer_up(&mut s);
+}

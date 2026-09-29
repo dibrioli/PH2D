@@ -66,6 +66,24 @@ diz onde ler o mecanismo:
 
 ---
 
+### F37 — ⭐⭐⭐ **O DESENHO FIEL: os nós do artista ficam, e o que se VÊ segue o padrão-ouro** (ordem do dono, 2026-09-29: *«hoje nosso problema é o uso de osso com desenho vetorial… buscando o padrão ouro»*)
+
+As rotas **A** e **B** da [pesquisa 04 §6](04_pesquisa_ossos_sobre_desenho_vetorial.md), juntas
+(`ph2d_skeleton_live::skin_desenho`). ⭐ **A gaveta por forma presa** deriva a fonte lida e o
+`IndiceDoCampo` UMA vez por FONTE (eram por quadro) e devolve o quadro anterior quando pose, bind e
+leis não mudaram. ⭐ **O caminho da cena fica com os nós do artista** (modo Node, ponto novo,
+`Release`); o que se vê é o bake (`assa_a_pele`) na `LiveGeometry`, com o estilo vivo, cedendo a
+qualquer outro produtor. **Medido na barra da cena, 8 nós, S:** desvio máx ao padrão-ouro
+`0,253 / 0,496 / 0,460 → 0,0018 / 0,0033 / 0,0043` a `30° / 60° / 90°` (`108–149×`); quinas vivas
+`0,482 → 0,0048` (o bake percorre a fonte JÁ arredondada, com a tabela da mesma porta do `Bind`).
+Custo `~0,2–0,3 ms` por forma **só nos quadros em que os ossos mexem** (load alto na medição — a
+refazer calma). Bónus: o indicador do pincel de pesos lê a fonte da gaveta, `433 → 17 µs`.
+⛔ **Fica de fora, declarado:** forma com EFEITOS no caminho vivo (o efeito corre sobre os nós) e
+bind anterior a 2026-09-20 com quinas vivas (sem campo para a tabela). ⏳ **ABERTO:** o SMOKE do dono
+(`PH2D_VEC_BONE_SMOKE=1`, e `PH2D_SKIN_DESENHO=0` para comparar) · a dobra do mapa no cotovelo
+(`det J`, §1.3 da pesquisa) **continua** — ela é do padrão-ouro, e é a rota C/D · o `[bone] N NÓ(S)
+caem FORA` passa a soar também quando a gaveta prepara uma fonte com quinas vivas.
+
 ### F20 — ✅ **O GIZMO DO ENVELOPE SÓ EXISTE ONDE ELE MANDA, e agora POR OSSO** (report do dono, 2026-09-18)
 
 *«O gizmo do envelope fica sempre visível mesmo quando não é usado?»* — **sim, ficava.** A F17 curou

@@ -174,6 +174,9 @@ auxiliar conduzido a **metade** do ângulo da junta — divide o ângulo que cad
 
 ## 6. As rotas, com o preço (minhas — o painel que as julgaria NÃO correu)
 
+> ✅ **A e B FEITAS em 2026-09-29** ([fila F37](01_a_fila.md)) — `108–149×` mais fiel sobre os `8`
+> nós, com o índice guardado por fonte. C, D e E continuam abertas.
+
 | rota | o que compra | preço conhecido | o que falta medir |
 |---|---|---|---|
 | **A. Memoizar o índice do campo** (§1.4) | `~46 %` do recook, sem mudar um pixel | nenhum | o quadro inteiro, pela porta do produto |

@@ -419,4 +419,110 @@ mod fatias_tests {
         }
         assert!(casos >= 32, "o corpus encolheu: {casos} casos");
     }
+
+    /// ⭐⭐ **A rota FUNDIDA de ponta a ponta dá o MESMO `f32` que a de antes, AO BIT** (fila 44,
+    /// item 10). O avental passou a ser construído linha a linha dentro da horizontal e o desfazer
+    /// da premultiplicação a correr na escrita da vertical: duas travessias da região inteira em
+    /// `[f32; 4]` a menos, e nenhuma conta mudou — a mesma [`linha_do_avental`] e o mesmo
+    /// [`desfaz`] sobre os mesmos valores.
+    ///
+    /// O ORÁCULO é a rota de antes, literalmente: o avental materializado, as seis caixas fundidas
+    /// e o desfazer numa passagem. O corpus tem o que as duas portas podem tratar diferente — alfa
+    /// `0` e parcial (o ramo do desfazer), regiões que saem da tela (o `clamp`), o `wrap` nos dois
+    /// eixos, raio `1` a `96` e as duas rotas (série e paralelo). A comparação é por BITS: um
+    /// `-0.0` contra `0.0` passaria num `==`.
+    #[test]
+    fn a_rota_fundida_de_ponta_a_ponta_da_o_mesmo_f32() {
+        let (fw, fh) = (97i64, 61i64);
+        let buf: Vec<u8> = (0..(fw * fh * 4) as usize)
+            .map(|i| {
+                let v = (i * 2_654_435_761 % 1_000_003) as u8;
+                // Um quarto dos píxeis com alfa ZERO: é o ramo do desfazer que devolve `0`.
+                if i % 4 == 3 && (i / 4) % 4 == 0 { 0 } else { v }
+            })
+            .collect();
+        let bits =
+            |v: &[[f32; 4]]| -> Vec<u32> { v.iter().flatten().map(|f| f.to_bits()).collect() };
+        let mut casos = 0usize;
+        for k in [1usize, 3, 24, 96] {
+            let raios = box_radii(k);
+            let r_total: usize = raios.iter().sum();
+            for (min_x, min_y, bw, bh) in [
+                (0i64, 0i64, 1usize, 1usize),
+                (-5, 3, 30, 17),
+                (80, 50, 40, 20),
+                (10, -9, 97, 61),
+            ] {
+                for wrap in [[false, false], [true, true], [true, false]] {
+                    for paralelo in [false, true] {
+                        let (ap_w, ap_h) = (bw + 2 * r_total, bh + 2 * r_total);
+                        let apron = super::super::avental(
+                            &buf, fw, fh, min_x, min_y, ap_w, ap_h, r_total, wrap, paralelo,
+                        );
+                        let (mut antes, _, _) =
+                            super::super::as_seis_caixas(apron, ap_w, ap_h, raios, paralelo, true);
+                        antes.iter_mut().for_each(super::super::desfaz);
+                        let agora = super::super::rota_fundida(
+                            &buf,
+                            fw,
+                            fh,
+                            min_x,
+                            min_y,
+                            (bw, bh),
+                            raios,
+                            wrap,
+                            paralelo,
+                        );
+                        assert!(
+                            bits(&agora) == bits(&antes),
+                            "a rota fundida mudou bits (k={k}, região {min_x},{min_y} {bw}×{bh}, \
+                             wrap={wrap:?}, paralelo={paralelo})"
+                        );
+                        casos += 1;
+                    }
+                }
+            }
+        }
+        assert!(casos >= 96, "o corpus encolheu: {casos} casos");
+    }
+
+    /// **O PRODUTO toma a rota fundida** — nenhum avental inteiro é materializado pela porta
+    /// [`blur_region_caixa`]. A escolha é de CUSTO e nenhuma régua de VALOR a vê (as duas rotas dão
+    /// o mesmo `f32`), por isso a régua é a CONTA. O CONTROLO é a rota separada, que materializa um.
+    ///
+    /// ⚠️ Com `PH2D_BLUR_SEM_FUSAO=1` o produto toma a separada DE PROPÓSITO (a porta de
+    /// bissecção), e o gate cala-se — é a única leitura do ambiente, e é a que ele descreve.
+    #[test]
+    fn o_produto_nao_materializa_o_avental() {
+        if super::super::sem_fusao() {
+            return;
+        }
+        let (fw, fh) = (64i64, 48i64);
+        let buf: Vec<u8> = (0..(fw * fh * 4) as usize)
+            .map(|i| (i % 251) as u8)
+            .collect();
+        super::super::conta::zera();
+        let _ = super::super::blur_region_caixa(&buf, fw, fh, 4, 4, 40, 30, 8, [false, false]);
+        assert_eq!(
+            super::super::conta::AVENTAIS_INTEIROS.get(),
+            0,
+            "o produto materializou o avental"
+        );
+        let _ = super::super::blur_region_caixa_separado(
+            &buf,
+            fw,
+            fh,
+            4,
+            4,
+            (40, 30),
+            box_radii(8),
+            [false, false],
+            false,
+        );
+        assert_eq!(
+            super::super::conta::AVENTAIS_INTEIROS.get(),
+            1,
+            "controlo: a rota separada materializa um"
+        );
+    }
 }

@@ -26,8 +26,6 @@
 //! ⚠️ Este módulo nasceu de um **CORTE** do `blur.rs` (`822` linhas contra o tecto de `700`), nunca
 //! de uma entrada nova no `FILE_OVERAGE_OK`.
 
-use super::blur::src_coord;
-
 /// As três larguras de caixa cuja variância somada mais se aproxima da do binomial de raio `k`.
 ///
 /// Uma caixa de largura ímpar `w` tem variância `(w² − 1)/12`; três delas somam `Σ(wᵢ² − 1)/12`, e
@@ -145,9 +143,30 @@ fn caixa_h3(
     raios: [usize; 3],
     paralelo: bool,
 ) -> (Vec<[f32; 4]>, usize) {
+    caixa_h3_de(&FonteH::Plano(src), w, h, raios, paralelo)
+}
+
+/// A [`caixa_h3`] com a FONTE da linha como argumento — a mesma aritmética, só muda de onde a linha
+/// de entrada vem.
+fn caixa_h3_de(
+    fonte: &FonteH<'_>,
+    w: usize,
+    h: usize,
+    raios: [usize; 3],
+    paralelo: bool,
+) -> (Vec<[f32; 4]>, usize) {
     let r_total: usize = raios.iter().sum();
     if r_total == 0 {
-        return (src.to_vec(), w);
+        return match fonte {
+            FonteH::Plano(src) => (src.to_vec(), w),
+            FonteH::Tela(f) => {
+                let mut out = vec![[0f32; 4]; w * h];
+                out.chunks_mut(w.max(1))
+                    .enumerate()
+                    .for_each(|(j, d)| f(j, d));
+                (out, w)
+            }
+        };
     }
     let ow = w - 2 * r_total;
     let mut out = vec![[0f32; 4]; ow * h];
@@ -184,24 +203,42 @@ fn caixa_h3(
     //    dentro do laço — `2 × h` alocações por passagem —, e isso comeria o tráfego que a fusão
     //    existe para poupar. O `for_each_init` do rayon dá um rascunho por trabalhador; em série ele
     //    é um só, fora do laço.
-    let linha =
-        |t1: &mut Vec<[f32; 4]>, t2: &mut Vec<[f32; 4]>, j: usize, dest: &mut [[f32; 4]]| {
-            let ent = &src[j * w..j * w + w];
-            caixa(ent, raios[0], t1);
-            caixa(t1, raios[1], t2);
-            caixa(t2, raios[2], dest);
+    type Rascunho = (Vec<[f32; 4]>, Vec<[f32; 4]>, Vec<[f32; 4]>);
+    let linha = |(t0, t1, t2): &mut Rascunho, j: usize, dest: &mut [[f32; 4]]| {
+        let ent: &[[f32; 4]] = match fonte {
+            FonteH::Plano(src) => &src[j * w..j * w + w],
+            FonteH::Tela(f) => {
+                f(j, t0);
+                t0
+            }
         };
+        caixa(ent, raios[0], t1);
+        caixa(t1, raios[1], t2);
+        caixa(t2, raios[2], dest);
+    };
+    // O rascunho da linha de ENTRADA só existe quando a fonte é a tela.
+    let w0 = if matches!(fonte, FonteH::Tela(_)) {
+        w
+    } else {
+        0
+    };
+    let novo = || -> Rascunho {
+        (
+            vec![[0f32; 4]; w0],
+            vec![[0f32; 4]; w1],
+            vec![[0f32; 4]; w2],
+        )
+    };
     if paralelo {
         use rayon::prelude::*;
-        out.par_chunks_mut(ow).enumerate().for_each_init(
-            || (vec![[0f32; 4]; w1], vec![[0f32; 4]; w2]),
-            |(t1, t2), (j, dest)| linha(t1, t2, j, dest),
-        );
+        out.par_chunks_mut(ow)
+            .enumerate()
+            .for_each_init(novo, |r, (j, dest)| linha(r, j, dest));
     } else {
-        let (mut t1, mut t2) = (vec![[0f32; 4]; w1], vec![[0f32; 4]; w2]);
+        let mut r = novo();
         out.chunks_mut(ow)
             .enumerate()
-            .for_each(|(j, dest)| linha(&mut t1, &mut t2, j, dest));
+            .for_each(|(j, dest)| linha(&mut r, j, dest));
     }
     (out, ow)
 }
@@ -234,9 +271,12 @@ fn sem_fusao() -> bool {
     *V.get_or_init(|| std::env::var("PH2D_BLUR_SEM_FUSAO").is_ok_and(|v| v != "0"))
 }
 
+#[path = "blur_caixa_avental.rs"]
+mod avental_da_caixa;
+pub(crate) use avental_da_caixa::{FonteH, avental, desfaz, linha_do_avental};
 #[path = "blur_caixa_vertical.rs"]
 mod vertical;
-use vertical::{caixa_v, caixa_v3};
+use vertical::{caixa_v, caixa_v3, caixa_v3_com};
 
 /// **Em quantas fatias o trabalho se parte** — o número de threads que a pool de `rayon` tem.
 ///
@@ -412,58 +452,6 @@ pub(crate) fn vale_a_pena_partir(bw: usize, bh: usize) -> bool {
 /// ⇒ `256²` é o primeiro tamanho em que ele **deixa de perder**, e é esse o valor.
 pub(crate) const PIXEIS_PARA_PARALELIZAR: usize = 256 * 256;
 
-/// **O AVENTAL**: a região mais a margem que as três caixas vão consumir, lida do canvas e já
-/// PREMULTIPLICADA. ⭐ Ele é por-pixel puro — *uma linha dele não lê nenhuma outra* —, logo parti-lo
-/// em fatias é byte-idêntico (ADR-0171).
-///
-/// ⚠️ **Porta própria desde 2026-09-22, e não por estética:** a sonda que parte o relógio do borrão
-/// entre as passagens (`diag_onde_o_borrao_gasta`) precisava de o cronometrar sozinho, e a
-/// alternativa era **replicá-lo** no teste — *uma sonda que replica o passo que mede pode medir
-/// outro programa, que é como as sondas desta casa já mentiram meia dúzia de vezes*.
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn avental(
-    buf: &[u8],
-    fw: i64,
-    fh: i64,
-    min_x: i64,
-    min_y: i64,
-    ap_w: usize,
-    ap_h: usize,
-    r_total: usize,
-    wrap: [bool; 2],
-    paralelo: bool,
-) -> Vec<[f32; 4]> {
-    let mut apron = vec![[0f32; 4]; ap_w * ap_h];
-    let linha_avental = |j: usize, dest: &mut [[f32; 4]]| {
-        let sy = src_coord(min_y + j as i64 - r_total as i64, fh, wrap[1]);
-        for (i, d) in dest.iter_mut().enumerate().take(ap_w) {
-            let sx = src_coord(min_x + i as i64 - r_total as i64, fw, wrap[0]);
-            let si = ((sy * fw + sx) * 4) as usize;
-            let a = f32::from(buf[si + 3]);
-            let af = a / 255.0;
-            *d = [
-                f32::from(buf[si]) * af,
-                f32::from(buf[si + 1]) * af,
-                f32::from(buf[si + 2]) * af,
-                a,
-            ];
-        }
-    };
-    if paralelo {
-        use rayon::prelude::*;
-        apron
-            .par_chunks_mut(ap_w)
-            .enumerate()
-            .for_each(|(j, dest)| linha_avental(j, dest));
-    } else {
-        apron
-            .chunks_mut(ap_w)
-            .enumerate()
-            .for_each(|(j, dest)| linha_avental(j, dest));
-    }
-    apron
-}
-
 /// **A CONTA do borrão** — quantas vezes ele correu, sobre quantos píxeis, e a maior região.
 ///
 /// ⛔⛔ **Por THREAD e NUNCA um átomo global, e isto foi pago duas vezes no mesmo dia:** a 1.ª
@@ -492,13 +480,18 @@ pub mod conta {
         /// O maior LADO de região que ele recebeu — *uma média não separa uma FAIXA que acompanha
         /// o dab da CAIXA do traço inteiro, e essas duas têm curas opostas.*
         pub static MAIOR_LADO: Cell<u64> = const { Cell::new(0) };
+        /// Quantos AVENTAIS INTEIROS foram materializados (fila 44, item 10): a rota fundida
+        /// constrói-o linha a linha e deixa este número em `0`. É a régua da ESCOLHA de rota, que
+        /// nenhuma régua de valor vê — as duas rotas dão o mesmo `f32` ao bit.
+        pub static AVENTAIS_INTEIROS: Cell<u64> = const { Cell::new(0) };
     }
-    /// Zera as quatro — a porta que todo leitor usa antes de medir.
+    /// Zera as cinco — a porta que todo leitor usa antes de medir.
     pub fn zera() {
         BORROES.set(0);
         PIXEIS_BORRADOS.set(0);
         PIXEIS_UTEIS.set(0);
         MAIOR_LADO.set(0);
+        AVENTAIS_INTEIROS.set(0);
     }
 }
 
@@ -534,16 +527,73 @@ pub(crate) fn blur_region_caixa_com(
     conta::PIXEIS_BORRADOS.set(conta::PIXEIS_BORRADOS.get() + (ap_w * ap_h) as u64);
     conta::PIXEIS_UTEIS.set(conta::PIXEIS_UTEIS.get() + (bw * bh) as u64);
     conta::MAIOR_LADO.set(conta::MAIOR_LADO.get().max(bw.max(bh) as u64));
+    // ⭐ **A rota FUNDIDA de ponta a ponta** (fila 44, item 10): o avental é construído linha a
+    //    linha dentro da horizontal e o desfazer da premultiplicação corre na escrita da vertical.
+    //    Duas travessias da região inteira em `[f32; 4]` deixam de existir, e nenhuma conta muda
+    //    — o gate `a_rota_fundida_de_ponta_a_ponta_da_o_mesmo_f32` compara-a com a de antes AO BIT.
+    if r_total > 0 && !sem_fusao() {
+        return rota_fundida(buf, fw, fh, min_x, min_y, (bw, bh), raios, wrap, paralelo);
+    }
+    blur_region_caixa_separado(buf, fw, fh, min_x, min_y, (bw, bh), raios, wrap, paralelo)
+}
+
+/// **A rota FUNDIDA de ponta a ponta** — o avental linha a linha dentro da horizontal, e o desfazer
+/// na escrita da vertical. Porta própria para o gate a chamar pelo NOME (a escolha do produto lê o
+/// ambiente, e um gate que lê o ambiente mede a máquina).
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+pub(crate) fn rota_fundida(
+    buf: &[u8],
+    fw: i64,
+    fh: i64,
+    min_x: i64,
+    min_y: i64,
+    (bw, bh): (usize, usize),
+    raios: [usize; 3],
+    wrap: [bool; 2],
+    paralelo: bool,
+) -> Vec<[f32; 4]> {
+    let r_total: usize = raios.iter().sum();
+    let (ap_w, ap_h) = (bw + 2 * r_total, bh + 2 * r_total);
+    let fonte = |j: usize, dest: &mut [[f32; 4]]| {
+        linha_do_avental(buf, fw, fh, min_x, min_y, r_total, wrap, j, dest);
+    };
+    let (cur, w) = caixa_h3_de(&FonteH::Tela(&fonte), ap_w, ap_h, raios, paralelo);
+    let (out, h) = caixa_v3_com(
+        &cur,
+        w,
+        ap_h,
+        raios,
+        LARGURA_DA_BANDA_FUNDIDA,
+        paralelo,
+        true,
+    );
+    debug_assert_eq!((w, h), (bw, bh));
+    out
+}
+
+/// **A rota de ANTES do item 10** — avental materializado, as seis caixas, e o desfazer numa
+/// passagem inteira. É a porta de bissecção (`PH2D_BLUR_SEM_FUSAO=1`) e o ORÁCULO da fundida.
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+pub(crate) fn blur_region_caixa_separado(
+    buf: &[u8],
+    fw: i64,
+    fh: i64,
+    min_x: i64,
+    min_y: i64,
+    (bw, bh): (usize, usize),
+    raios: [usize; 3],
+    wrap: [bool; 2],
+    paralelo: bool,
+) -> Vec<[f32; 4]> {
+    let r_total: usize = raios.iter().sum();
+    let (ap_w, ap_h) = (bw + 2 * r_total, bh + 2 * r_total);
     let apron = avental(
         buf, fw, fh, min_x, min_y, ap_w, ap_h, r_total, wrap, paralelo,
     );
     let (mut cur, w, h) = as_seis_caixas(apron, ap_w, ap_h, raios, paralelo, !sem_fusao());
     debug_assert_eq!((w, h), (bw, bh));
-    let desfaz = |p: &mut [f32; 4]| {
-        let a = p[3];
-        let inv = if a > 1e-4 { 255.0 / a } else { 0.0 };
-        *p = [p[0] * inv, p[1] * inv, p[2] * inv, a];
-    };
     if paralelo {
         use rayon::prelude::*;
         cur.par_iter_mut().for_each(desfaz);

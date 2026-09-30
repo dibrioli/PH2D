@@ -30,9 +30,29 @@ pub(super) fn caixa_v3(
     largura_da_banda: usize,
     paralelo: bool,
 ) -> (Vec<[f32; 4]>, usize) {
+    caixa_v3_com(src, w, h, raios, largura_da_banda, paralelo, false)
+}
+
+/// A [`caixa_v3`] com o **desfazer da premultiplicação na ESCRITA final** (fila 44, item 10):
+/// cada pixel sai da banda já desfeito, pela mesma [`super::desfaz`] que a rota separada corre numa
+/// passagem inteira — uma travessia da região a menos, e a mesma conta sobre o mesmo valor.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn caixa_v3_com(
+    src: &[[f32; 4]],
+    w: usize,
+    h: usize,
+    raios: [usize; 3],
+    largura_da_banda: usize,
+    paralelo: bool,
+    desfaz: bool,
+) -> (Vec<[f32; 4]>, usize) {
     let r_total: usize = raios.iter().sum();
     if r_total == 0 {
-        return (src.to_vec(), h);
+        let mut out = src.to_vec();
+        if desfaz {
+            out.iter_mut().for_each(super::desfaz);
+        }
+        return (out, h);
     }
     let oh = h - 2 * r_total;
     let mut out = vec![[0f32; 4]; w * oh];
@@ -109,6 +129,9 @@ pub(super) fn caixa_v3(
         passo(t2, largura, 0, largura, h2, raios[2], acc, t3);
         for (j, linha) in dest.iter_mut().enumerate() {
             linha.copy_from_slice(&t3[j * largura..][..largura]);
+            if desfaz {
+                linha.iter_mut().for_each(super::desfaz);
+            }
         }
     };
 

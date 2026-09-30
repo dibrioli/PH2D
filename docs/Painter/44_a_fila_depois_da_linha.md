@@ -19,7 +19,7 @@
 | 7 | Wet Paint: o tile do papel do motor (`~12 ms`, em série por impressão digital) | linha | **feito (30/09): `7,41 → 0,013 ms`** — §5.2 |
 | 8 | Composite Brush: o relevo fora da recomposição da pilha | linha | **feito (30/09): 8a relevo, filme e Tiling iguais ao avulso ao bit · 8b a borracha de cima apaga o corpo** — §6 |
 | 9 | Composite Brush: o resíduo Blur+Smear (`12/255`) | linha | **feito (30/09): `0` nos seis arranjos, a atribuição de 21/09 estava errada** — §7 |
-| 10 | Composite Brush: metade dos bytes dos intermédios da pilha | linha | a conferir |
+| 10 | Composite Brush: metade dos bytes dos intermédios da pilha | linha | **feito (30/09): duas travessias a menos, AO BIT — `1,2×`–`1,7×` no borrão, `~5 %` na pilha do dono** — §8 |
 | 11 | Aquarela: o **Smudge** não mexe na tinta MOLHADA da sessão (report do dono, 29/09) | linha | **feito, smoke do dono OK (29/09)** — §3.1 |
 | 12 | Aquarela: o **Rewet** mexe pouco na tinta MOLHADA da sessão (report do dono, 29/09) | linha | **feito, smoke do dono OK (29/09)** — §3.2 |
 
@@ -460,3 +460,41 @@ a de hoje, `≤ 1` byte.
 
 Gate `a_regiao_nao_deixa_rectangulo` (barra `16 → 0`, três arranjos, com os controlos da escrita
 estreita e do replay). Mutação **3 de 3**.
+
+---
+
+## §8 — Item 10: os bytes dos intermédios do borrão (2026-09-30)
+
+**A conferência:** a nota (diário §28.10) pedia intermédios de `u16` premultiplicado no lugar de
+`[f32; 4]`, com a premissa de que o borrão é limitado por largura de banda. Duas coisas mudaram
+desde então: os planos da pilha já são `u8`, e a fusão de 22–23/09 (§33 do diário) pôs os
+intermédios das três caixas em rascunhos por linha e bandas de cache. O que ainda atravessava a
+região INTEIRA em `[f32; 4]` eram quatro buffers: o **avental** (escrito e lido), a saída
+horizontal, a saída vertical e uma **passagem de desfazer** a premultiplicação.
+
+**A cura é byte-idêntica, e por isso ficou antes da de `u16`** (que não o é e pediria uma barra de
+qualidade): o avental é construído **linha a linha dentro da horizontal** (`FonteH::Tela`, pela mesma
+`linha_do_avental`) e o desfazer corre **na escrita final da vertical** (`caixa_v3_com`, pela mesma
+`desfaz`). Duas das quatro travessias deixam de existir e nenhuma conta muda.
+
+**Medido** (`--release`, A/B alternado no mesmo binário, mínimo de 9, `load ~7`, duas corridas):
+
+| região | `k` | série | paralelo |
+|---|---|---|---|
+| `340²` (a do raio de fábrica) | `24` | `1,38×`–`1,40×` | `1,25×`–`1,39×` |
+| `912×400` | `96` | `1,35×`–`1,50×` | `2,7×`–`3,1×` |
+| `1024²` | `96` | `1,68×`–`1,70×` | `2,3×`–`2,4×` |
+| `1484²` | `96` | `1,22×` | `1,20×`–`1,26×` |
+
+⚠️ **Na pilha do DONO o efeito é pequeno, e é honesto dizê-lo:** o traço inteiro vai de `~117,7` para
+`~117,4 ms` (dentro do ruído). O borrão ali faz 44 chamadas de `~340²` e o grosso do custo é a fase de
+**compor** as outras camadas (`79 %`). *A alavanca seguinte da pilha do dono não são os bytes do
+borrão — é a composição por camada.*
+
+Gates: `a_rota_fundida_de_ponta_a_ponta_da_o_mesmo_f32` (ao BIT contra a rota de antes, com alfa `0`,
+regiões fora da tela, `wrap` e as duas rotas) e `o_produto_nao_materializa_o_avental` (a escolha de
+rota é de custo e nenhuma régua de valor a vê ⇒ a régua é a CONTA `AVENTAIS_INTEIROS`). Mutação
+**4 de 4**. Sonda `diag_a_rota_fundida_de_ponta_a_ponta`.
+
+⛔ **Os intermédios em `u16` ficam por fazer, e agora com a pergunta certa:** o que sobra em `f32`
+são duas travessias (a saída horizontal e a vertical), e a pilha do dono não é limitada por elas.

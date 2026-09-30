@@ -380,3 +380,84 @@ fn diag_a_largura_da_banda_fundida() {
     }
     println!();
 }
+
+/// **O A/B da fila 44, item 10** — a rota FUNDIDA de ponta a ponta (o avental dentro da
+/// horizontal, o desfazer na escrita da vertical) contra a de antes (avental materializado, seis
+/// caixas fundidas, desfazer numa passagem). ALTERNADAS na mesma corrida, em série e em paralelo:
+/// a contenção da máquina cai sobre os dois lados por igual. Mínimo de 9.
+///
+/// ```text
+/// bash scripts/ph2d-run.sh cargo test -p ph2d-painter-brush --release --lib \
+///     diag_a_rota_fundida_de_ponta_a_ponta -- --ignored --nocapture --test-threads=1
+/// ```
+#[test]
+#[ignore = "sonda de relógio: corre à mão, em --release"]
+fn diag_a_rota_fundida_de_ponta_a_ponta() {
+    let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    println!(
+        "\n  A ROTA FUNDIDA DE PONTA A PONTA   (load {})",
+        carga.trim()
+    );
+    println!("   bw × bh |   k | paralelo |  antes ms | agora ms | ganho");
+    let (fw, fh) = (2048i64, 2048i64);
+    let buf: Vec<u8> = (0..(fw * fh * 4) as usize)
+        .map(|i| ((i * 37) % 256) as u8)
+        .collect();
+    for &(bw, bh, k) in &[
+        (340usize, 340usize, 24usize),
+        (912, 400, 96),
+        (1024, 1024, 96),
+        (1484, 1484, 96),
+    ] {
+        let raios = super::box_radii(k);
+        let r_total: usize = raios.iter().sum();
+        let (ap_w, ap_h) = (bw + 2 * r_total, bh + 2 * r_total);
+        for paralelo in [false, true] {
+            let (mut antes, mut agora) = (f64::MAX, f64::MAX);
+            for _ in 0..9 {
+                let t0 = std::time::Instant::now();
+                let apron = super::avental(
+                    &buf,
+                    fw,
+                    fh,
+                    0,
+                    0,
+                    ap_w,
+                    ap_h,
+                    r_total,
+                    [false, false],
+                    paralelo,
+                );
+                let (mut v, _, _) = super::as_seis_caixas(apron, ap_w, ap_h, raios, paralelo, true);
+                if paralelo {
+                    use rayon::prelude::*;
+                    v.par_iter_mut().for_each(super::desfaz);
+                } else {
+                    v.iter_mut().for_each(super::desfaz);
+                }
+                std::hint::black_box(&v);
+                antes = antes.min(t0.elapsed().as_secs_f64() * 1e3);
+                let t1 = std::time::Instant::now();
+                let v = super::rota_fundida(
+                    &buf,
+                    fw,
+                    fh,
+                    0,
+                    0,
+                    (bw, bh),
+                    raios,
+                    [false, false],
+                    paralelo,
+                );
+                std::hint::black_box(&v);
+                agora = agora.min(t1.elapsed().as_secs_f64() * 1e3);
+            }
+            println!(
+                "  {bw:4}×{bh:<4} | {k:3} | {paralelo:8} | {antes:9.2} | {agora:8.2} | {:.2}×",
+                antes / agora
+            );
+        }
+    }
+    let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    println!("  (load ao fim: {})", carga.trim());
+}

@@ -437,9 +437,10 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
 }
 
 #[test]
-fn the_lowering_validates_for_all_256_column_subsets_and_every_style() {
-    // OITO colunas (`uv_cell` juntou-se ao `blend`, doc 89 folha 17), então 256
-    // subconjuntos — o bit 6 é a coluna `blend` e o 7 é a `uv_cell`. O ESTILO do sink
+fn the_lowering_validates_for_all_512_column_subsets_and_every_style() {
+    // NOVE colunas (`uv_cell` juntou-se ao `blend`, doc 89 folha 17; a `geometry_id` ao fim, doc
+    // 121 W3), então 512 subconjuntos — o bit 6 é a coluna `blend`, o 7 a `uv_cell` e o 8 a
+    // `geometry_id`. O ESTILO do sink
     // (folha 17) continua a ser uma CONSTANTE DE CODEGEN, então ele é parte da fonte que o
     // naga tem de aceitar: um estilo que produzisse WGSL malformado só apareceria na
     // primeira vez que um artista escolhesse aquele valor, num device, sem mensagem nenhuma.
@@ -460,13 +461,15 @@ fn the_lowering_validates_for_all_256_column_subsets_and_every_style() {
             ..SinkStyle::PLAIN
         },
     ];
-    for mask in 0u16..256 {
+    for mask in 0u16..512 {
         let present = std::array::from_fn(|i| mask & (1 << i) != 0);
         for blend in 0..ph2d_render::pipeline::BLEND_PIPELINE_COUNT as u8 {
             for base in styles {
                 let style = SinkStyle { blend, ..base };
                 let src = ph2d_gpu_cook::lower::lower_module(present, style);
-                validate(&format!("lowering mask {mask:08b} style {style:?}"), &src);
+                let label = format!("lowering mask {mask:09b} style {style:?}");
+                validate(&label, &src);
+                todo_read_declarado_e_lido(&label, &src, None);
             }
         }
     }
@@ -527,5 +530,21 @@ fn todo_read_declarado_e_lido(label: &str, src: &str, chave_do_gather: Option<&s
              mais (crash em `create_bind_group`, e SO' no tique em que a coluna nasce)",
             nome.trim()
         );
+    }
+}
+
+/// ⭐⭐⭐ **O BAIXAMENTO DAS FORMAS valida para os 32 subconjuntos de colunas e para os dois pivôs**
+/// (doc 121 W3). ⚠️ Com a MESMA régua do `read` declarado e não lido: uma coluna presente que o
+/// corpo não lesse sairia do layout derivado e rebentaria no `create_bind_group`.
+#[test]
+fn the_shape_lowering_validates_for_all_32_column_subsets_and_both_pivots() {
+    for mask in 0u8..32 {
+        let present = std::array::from_fn(|i| mask & (1 << i) != 0);
+        for pivot in [[0.0, 0.0], [0.5, -0.25]] {
+            let src = ph2d_gpu_cook::lower_forma::forma_module(present, pivot);
+            let label = format!("shape lowering mask {mask:05b} pivot {pivot:?}");
+            validate(&label, &src);
+            todo_read_declarado_e_lido(&label, &src, None);
+        }
     }
 }

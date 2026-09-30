@@ -18,14 +18,14 @@
 use super::*;
 use ph2d_vec_scene::{Rgba8, StrokeSpec};
 
-const LADO: u32 = 512;
+pub(crate) const LADO: u32 = 512;
 
 fn gpu() -> Option<GpuContext> {
     GpuContext::new(GpuContext::default_instance(), None).ok()
 }
 
 /// A câmara do produto: `height_world = 16`, centro `(0, 0)`, Y para cima no mundo.
-fn camara() -> Affine {
+pub(crate) fn camara() -> Affine {
     let k = f64::from(LADO) / 16.0;
     Affine::translate((f64::from(LADO) * 0.5, f64::from(LADO) * 0.5))
         * Affine::scale_non_uniform(k, -k)
@@ -128,11 +128,19 @@ fn f16(b: u16) -> f32 {
 /// A placa: a camada do produto, lida de volta com a cor SEPARADA, como o Vello a grava.
 fn pela_placa(gpu: &GpuContext, insts: &[VectorInstance], store: &VecPathStore) -> Vec<u8> {
     let mut p = PlacaDeFormas::default();
+    let mut geometrias = GeometriasDaPlaca::default();
     assert!(
-        p.decide(true, insts, store, camara()),
+        p.decide(true, insts, store, &mut geometrias, camara()),
         "a cena do gate tem de ir à placa — senão ela mede o Vello contra si mesmo"
     );
-    p.desenha(gpu, (LADO, LADO)).expect("a placa desenha");
+    p.desenha(gpu, (LADO, LADO), &geometrias, None)
+        .expect("a placa desenha");
+    le_a_camada(gpu, &p)
+}
+
+/// A camada que a placa desenhou, lida de volta com a cor SEPARADA (`[r, g, b, a]` por pixel) —
+/// partilhada com a paridade da rota do DISPOSITIVO (doc 121 W3).
+pub(crate) fn le_a_camada(gpu: &GpuContext, p: &PlacaDeFormas) -> Vec<u8> {
     let tex = p.textura_da_camada().expect("a camada existe");
     let bpr = LADO * 8;
     let buf = gpu.device.create_buffer(&wgpu::BufferDescriptor {
@@ -187,7 +195,7 @@ fn pela_placa(gpu: &GpuContext, insts: &[VectorInstance], store: &VecPathStore) 
 
 /// O pior desvio de alfa, o pior de cor separada (`α ≥ 64`), e quantos pixels cada rota pinta.
 /// E, por último, quantos pixels desviam mais de `16` no alfa ou na cor — o que se VÊ.
-fn compara(v: &[u8], p: &[u8]) -> (u8, u8, usize, usize, usize) {
+pub(crate) fn compara(v: &[u8], p: &[u8]) -> (u8, u8, usize, usize, usize) {
     let (mut alfa, mut cor, mut nv, mut np, mut fora) = (0u8, 0u8, 0usize, 0usize, 0usize);
     for (a, b) in v.as_chunks::<4>().0.iter().zip(p.as_chunks::<4>().0.iter()) {
         let da = a[3].abs_diff(b[3]);

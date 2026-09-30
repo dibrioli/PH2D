@@ -66,18 +66,16 @@ fn a_real_emitter_nodes_type_name_drives_the_policy() {
     assert!(!edit_renumbers_emitter(&ty(&motion, grid), "rate"));
 }
 
-/// **The recusal catches the live vector but NOT the object** (ADR-0154 /
-/// this wave). `source.shape` (a live vector, `geometry_id`) has no GPU
-/// render route, so it recuses; `source.object` (an engine object,
-/// `texture_id`) is now GPU-renderable, so it does NOT recuse via the
-/// live-vector door — it is an OBJECT source, guarded only by the
-/// count-changing cerca. Pinned through a REAL `MotionState` registry so the
-/// flags the two source nodes declare are what drive it. FALSIFIED by
-/// `source.object` re-registering the live-vector flag (it would recuse
-/// again → lose the acceleration) or by dropping the shape's flag (white
-/// rectangles for a live vector).
+/// **The object door catches the object and nothing else** (ADR-0154 / doc 121 W3).
+/// `source.object` (an engine object, `texture_id`) is an OBJECT source, guarded by the
+/// count-changing cerca; `source.shape` is not.
+///
+/// ⛔ **A metade do vector vivo MORREU no doc 121 W3:** este gate afirmava que o `source.shape`
+/// recusa pelo TIPO (`graph_has_live_vector_source`, *«geometry_id, no GPU route»*). A rota existe
+/// hoje (o passe de formas), e a cerca que a guarda pergunta pelo CONTEÚDO — os gates dela vivem em
+/// `motion_bridge_gpu_forma_tests`.
 #[test]
-fn the_recusal_catches_the_live_vector_but_not_the_object() {
+fn the_object_door_catches_the_object_and_nothing_else() {
     let build = |ty: &str| {
         let mut m = MotionState::new();
         let src = m.doc.graph.add_node(ty);
@@ -92,26 +90,10 @@ fn the_recusal_catches_the_live_vector_but_not_the_object() {
             .expect("connect");
         m
     };
-    let live_vector = |ty: &str| {
-        let m = build(ty);
-        graph_has_live_vector_source(&m.doc.graph, &m.registry)
-    };
     let object = |ty: &str| {
         let m = build(ty);
         graph_has_object_source(&m.doc.graph, &m.registry)
     };
-
-    // A live vector SHAPE recuses; an OBJECT does NOT (it is GPU-renderable).
-    assert!(
-        live_vector("source.shape"),
-        "a live vector shape recuses (geometry_id, no GPU route)"
-    );
-    assert!(
-        !live_vector("source.object"),
-        "an engine object does NOT recuse via the live-vector door (it is drawn)"
-    );
-    // The object IS an object source (for the count-changing cerca); the
-    // shape is not, and neither is a plain point source.
     assert!(
         object("source.object"),
         "an engine object is an object source (texture_id)"
@@ -120,16 +102,9 @@ fn the_recusal_catches_the_live_vector_but_not_the_object() {
         !object("source.shape"),
         "a live vector shape is not an object source"
     );
-    // Controls: a point/value-domain document is neither. Without these the
-    // test could pass by always returning the same answer.
-    assert!(
-        !live_vector("motion.grid") && !object("motion.grid"),
-        "a plain point source is neither"
-    );
-    assert!(
-        !live_vector("motion.rotate") && !object("motion.rotate"),
-        "a modifier alone is neither"
-    );
+    // Controls: without these the test could pass by always returning the same answer.
+    assert!(!object("motion.grid"), "a plain point source is not");
+    assert!(!object("motion.rotate"), "a modifier alone is not");
 }
 
 #[test]

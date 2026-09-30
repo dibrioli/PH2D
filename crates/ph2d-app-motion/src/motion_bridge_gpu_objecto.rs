@@ -2,35 +2,17 @@
 //! dispositivo a pode desenhar (irmão por responsabilidade do `motion_bridge_gpu`, partido pelo
 //! tecto de LOC no fecho da linha de 2026-09-24).
 //!
-//! Duas fontes, e cada uma pergunta de maneira diferente: o **vector vivo** (`source.shape`) pelo
-//! TIPO do nó — a placa não tem rota para `geometry_id` —, e o **objecto** (`source.object`) pelo
-//! CONTEÚDO do que a membrana publicou: um objecto que resolve para vector recusa, um todo no átlas
-//! passa mesmo quando o sufixo na placa muda a contagem (doc 120 §8.2).
+//! O **objecto** (`source.object`) pergunta pelo CONTEÚDO do que a membrana publicou: um objecto que
+//! resolve para vector recusa, um todo no átlas passa mesmo quando o sufixo na placa muda a
+//! contagem (doc 120 §8.2).
+//!
+//! ⚠️ **O vector vivo (`source.shape`) já não recusa aqui** (doc 121 W3): a cerca do TIPO
+//! (`graph_has_live_vector_source`) saiu quando o cozimento ganhou a rota das formas, e a pergunta
+//! passou a ser de CONTEÚDO, no irmão [`super::forma`].
 
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::graph::Graph;
 use ph2d_nodegraph::node::NodeTypeId;
-
-/// Does this document bring in a live vector SHAPE (`source.shape`)? (ADR-0154)
-///
-/// A live vector is drawn by the vector pass (`geometry_id`), which the
-/// GPU-resident cook has NO route for — so a document carrying one draws as
-/// blank atlas quads the moment a GPU stage runs (`source → duplicator → … `
-/// is Hybrid). Recuse it to the CPU render (which draws it) at PLAN time, so the
-/// CPU pump owns the tick from scratch and no sequential prefix is marched
-/// twice. The signal is a registry flag `source.shape` sets
-/// (`is_live_vector_source`), not a node-name match.
-///
-/// ⚠️ An OBJECT source (`source.object`, `texture_id`) is NOT here: the GPU cook
-/// now draws it (the lowering carries the id, the renderer binds the texture per
-/// run). It recuses only when its GPU suffix reorders / changes count — see
-/// [`graph_has_object_source`] + [`ph2d_gpu_cook::GpuPlan::suffix_changes_count`].
-pub(crate) fn graph_has_live_vector_source(graph: &Graph, reg: &NodeRegistry) -> bool {
-    graph
-        .nodes()
-        .iter()
-        .any(|n| reg.is_live_vector_source(NodeTypeId::of(n.type_name.as_str())))
-}
 
 /// Does this document bring in an engine OBJECT (`source.object`, `texture_id`)?
 /// Read together with [`ph2d_gpu_cook::GpuPlan::suffix_changes_count`] for the

@@ -112,6 +112,72 @@ pub fn conforme(inst: &VectorInstance) -> bool {
     roda || espelha
 }
 
+/// ⭐⭐⭐ **As geometrias que a placa sabe desenhar** — o cache por handle (que o [`VecPathStore`]
+/// nunca recicla), PARTILHADO pelas duas rotas (doc 121 W3): a da CPU pergunta-o cópia a cópia, a
+/// do dispositivo pergunta-o ANTES de cozinhar, handle a handle, e o presente liga as prontas ao
+/// passe. ⚠️ **Um cache só, e é essa a razão de ele morar no `MotionState`:** duas respostas à
+/// pergunta *«esta forma vai à placa?»* divergiriam na primeira forma nova, e a rota do
+/// dispositivo não tem volta — uma forma que ela aceitasse e a placa recusasse simplesmente
+/// desapareceria (o dispositivo já a calou no buffer das sprites).
+#[derive(Default)]
+pub struct GeometriasDaPlaca {
+    cache: BTreeMap<u32, Entrada>,
+}
+
+/// O que uma geometria é para a placa, sem a geometria — a resposta que a ponte lê.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Veredito {
+    /// A placa desenha-a; `traco` = ela tem traço (e então só vai com afim conforme).
+    Pronta { traco: bool },
+    /// Não desenha nada (sem preenchimento nem traço).
+    Vazia,
+    /// A placa não a sabe desenhar como o Vello.
+    Recusada,
+    /// O handle não está no store (largado, ou nunca publicado) — não há o que desenhar.
+    Ausente,
+}
+
+impl GeometriasDaPlaca {
+    /// Larga as entradas cujo handle o store largou — ⚠️ um handle largado nunca volta.
+    pub fn varre(&mut self, store: &VecPathStore) {
+        self.cache.retain(|h, _| store.get(*h).is_some());
+    }
+
+    fn entrada(&mut self, handle: u32, store: &VecPathStore) -> Option<&Entrada> {
+        let path = store.get(handle)?;
+        Some(self.cache.entry(handle).or_insert_with(|| prepara(path)))
+    }
+
+    /// **Esta geometria vai à placa?** Prepara-a da primeira vez que alguém pergunta.
+    pub fn veredito(&mut self, handle: u32, store: &VecPathStore) -> Veredito {
+        match self.entrada(handle, store) {
+            None => Veredito::Ausente,
+            Some(Entrada::Recusada) => Veredito::Recusada,
+            Some(Entrada::Vazia) => Veredito::Vazia,
+            Some(Entrada::Pronta { traco, .. }) => Veredito::Pronta { traco: *traco },
+        }
+    }
+
+    /// As geometrias prontas, para o passe.
+    fn prontas(&self) -> impl Iterator<Item = (u32, &ShapeGeometry)> {
+        self.cache.iter().filter_map(|(h, e)| match e {
+            Entrada::Pronta { geometria, .. } => Some((*h, &**geometria)),
+            _ => None,
+        })
+    }
+
+    /// Quantas geometrias estão no cache (o diagnóstico).
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.cache.len()
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.cache.is_empty()
+    }
+}
+
 /// A porta de bissecção do produto: `PH2D_FORMAS_NA_PLACA=0` devolve toda forma ao Vello.
 ///
 /// ⚠️ **Lida UMA vez e só aqui**, na porta do produto — a decisão ([`PlacaDeFormas::decide`])
@@ -154,16 +220,19 @@ impl Gpu {
     }
 }
 
-/// ⭐⭐⭐ **As formas do quadro, a caminho da placa** — o cache de geometria (por handle, que o
-/// [`VecPathStore`] nunca recicla), as cópias deste quadro e a camada onde elas se desenham.
+/// ⭐⭐⭐ **As formas do quadro, a caminho da placa** — as cópias deste quadro (ou a contagem das
+/// que o dispositivo escreveu) e a camada onde elas se desenham. As geometrias vivem no
+/// [`GeometriasDaPlaca`] do `MotionState`, partilhado com a ponte.
 #[derive(Default)]
 pub struct PlacaDeFormas {
-    cache: BTreeMap<u32, Entrada>,
     copias: Vec<ShapeInstance>,
     ativa: bool,
+    /// ⭐ **As cópias vêm do DISPOSITIVO** (doc 121 W3): quantas o cozimento escreveu no buffer
+    /// dele — `None` na rota da CPU, onde elas são as [`Self::copias`].
+    do_dispositivo: Option<u32>,
     gpu: Option<Gpu>,
-    /// A rota do quadro anterior — o diagnóstico fala na MUDANÇA, nunca por quadro.
-    anterior: Option<bool>,
+    /// A rota do quadro anterior (placa? do dispositivo?) — o diagnóstico fala na MUDANÇA.
+    anterior: Option<(bool, bool)>,
     /// O afim mundo→pixel do quadro — o MESMO que a cena Vello recebe.
     cam: Affine,
 }
@@ -179,44 +248,89 @@ impl PlacaDeFormas {
         ligada: bool,
         insts: &[VectorInstance],
         store: &VecPathStore,
+        geometrias: &mut GeometriasDaPlaca,
         cam: Affine,
     ) -> bool {
         self.cam = cam;
-        self.ativa = ligada && !insts.is_empty() && self.monta(insts, store);
+        self.do_dispositivo = None;
+        self.ativa = ligada && !insts.is_empty() && self.monta(insts, store, geometrias);
         if !self.ativa {
             self.copias.clear();
         }
-        if self.anterior != Some(self.ativa) && !insts.is_empty() {
-            eprintln!(
-                "[formas] {} copias de {} geometrias pela {}",
-                insts.len(),
-                self.cache.len(),
-                if self.ativa { "PLACA" } else { "cena Vello" }
-            );
-            self.anterior = Some(self.ativa);
-        }
+        self.diz(insts.len(), geometrias.len());
         self.ativa
     }
 
+    /// ⭐⭐⭐ **As cópias vêm do DISPOSITIVO** (doc 121 W3) — o cozimento escreveu `n` cópias no
+    /// buffer dele, e a ponte já perguntou handle a handle se a placa as desenha
+    /// ([`GeometriasDaPlaca::veredito`], a MESMA porta). Aqui só se garante que cada geometria viva
+    /// está preparada para o passe.
+    ///
+    /// ⚠️ **`ligada` NÃO pergunta pelo vidro**, e é de propósito: o dispositivo já CALOU as formas
+    /// no buffer das sprites, logo com a placa desligada elas não se desenhariam em sítio nenhum.
+    /// Com o vidro subido, as formas desenham-se por baixo dele, como o resto do mundo.
+    pub fn decide_do_dispositivo(
+        &mut self,
+        ligada: bool,
+        n: u32,
+        vivas: &[u32],
+        store: &VecPathStore,
+        geometrias: &mut GeometriasDaPlaca,
+        cam: Affine,
+    ) -> bool {
+        self.cam = cam;
+        self.copias.clear();
+        for &h in vivas {
+            let _ = geometrias.veredito(h, store);
+        }
+        self.ativa = ligada && n > 0;
+        self.do_dispositivo = self.ativa.then_some(n);
+        self.diz(n as usize, geometrias.len());
+        self.ativa
+    }
+
+    /// O diagnóstico fala na MUDANÇA de rota, nunca por quadro.
+    ///
+    /// ⚠️ Todo o texto mora DENTRO do formato do `eprintln!` — é terminal, e o censo do HR-15 só o
+    /// reconhece como tal ali (um literal passado por argumento lê-se como texto de ecrã).
+    fn diz(&mut self, n: usize, geometrias: usize) {
+        let rota = (self.ativa, self.do_dispositivo.is_some());
+        if n > 0 && self.anterior != Some(rota) {
+            match rota {
+                (true, true) => eprintln!(
+                    "[formas] {n} copias de {geometrias} geometrias pela PLACA (do dispositivo)"
+                ),
+                (true, false) => {
+                    eprintln!("[formas] {n} copias de {geometrias} geometrias pela PLACA");
+                }
+                (false, _) => {
+                    eprintln!("[formas] {n} copias de {geometrias} geometrias pela cena Vello");
+                }
+            }
+            self.anterior = Some(rota);
+        }
+    }
+
     /// As cópias, ou `false` ao primeiro motivo para o quadro ficar no Vello.
-    fn monta(&mut self, insts: &[VectorInstance], store: &VecPathStore) -> bool {
+    fn monta(
+        &mut self,
+        insts: &[VectorInstance],
+        store: &VecPathStore,
+        geometrias: &mut GeometriasDaPlaca,
+    ) -> bool {
         self.copias.clear();
         // ⚠️ Um handle que o store largou nunca volta (não é reciclado) — a entrada dele é lixo.
-        self.cache.retain(|h, _| store.get(*h).is_some());
+        geometrias.varre(store);
         for inst in insts {
             if inst.geometry_id == 0 || crate::motion_shape_gen::mistura::precisa_do_vello(inst) {
                 return false;
             }
-            let entrada = self.cache.entry(inst.geometry_id).or_insert_with(|| {
-                store
-                    .get(inst.geometry_id)
-                    .map_or(Entrada::Recusada, prepara)
-            });
-            match entrada {
-                Entrada::Recusada => return false,
-                Entrada::Vazia => {}
-                Entrada::Pronta { traco, .. } => {
-                    if *traco && !conforme(inst) {
+            match geometrias.veredito(inst.geometry_id, store) {
+                // ⚠️ Na rota da CPU um handle ausente devolve o quadro ao Vello, como sempre fez.
+                Veredito::Recusada | Veredito::Ausente => return false,
+                Veredito::Vazia => {}
+                Veredito::Pronta { traco } => {
+                    if traco && !conforme(inst) {
                         return false;
                     }
                     self.copias.push(ShapeInstance {
@@ -249,7 +363,16 @@ impl PlacaDeFormas {
     /// **Desenha as formas na camada** e devolve-a, para o presente a colar no acumulador do
     /// mundo, com o afim que o [`Self::decide`] recebeu; `tamanho` é o do alvo.
     /// `None` quando o quadro não vai à placa.
-    pub fn desenha(&mut self, gpu: &GpuContext, tamanho: (u32, u32)) -> Option<&wgpu::TextureView> {
+    ///
+    /// ⭐ Na rota do dispositivo (doc 121 W3) as cópias são o `buffer` do cozimento, passado em
+    /// `dispositivo` — nunca lidas de volta.
+    pub fn desenha(
+        &mut self,
+        gpu: &GpuContext,
+        tamanho: (u32, u32),
+        geometrias: &GeometriasDaPlaca,
+        dispositivo: Option<&wgpu::Buffer>,
+    ) -> Option<&wgpu::TextureView> {
         // ⚠️ **A decisão vale UM quadro** e é consumida aqui: um quadro que não a tome (sem o ecrã
         // do herói, que é onde ela corre) volta ao caminho de sempre em vez de colar as cópias velhas.
         if !std::mem::take(&mut self.ativa) {
@@ -268,14 +391,16 @@ impl PlacaDeFormas {
             (g.textura, g.vista) = Gpu::camada(gpu, tamanho);
             g.tamanho = tamanho;
         }
-        g.passe.set_geometries(
-            gpu,
-            self.cache.iter().filter_map(|(h, e)| match e {
-                Entrada::Pronta { geometria, .. } => Some((*h, &**geometria)),
-                _ => None,
-            }),
-        );
-        g.passe.upload_instances(gpu, &self.copias);
+        g.passe.set_geometries(gpu, geometrias.prontas());
+        // ⚠️ A contagem do dispositivo sem o buffer dele é um quadro sem cópias: o presente só
+        // passa o buffer com o cozimento vivo, e colar cópias velhas seria pior que não desenhar.
+        let (buffer, count) = match self.do_dispositivo {
+            Some(n) => (dispositivo?, n),
+            None => {
+                g.passe.upload_instances(gpu, &self.copias);
+                (g.passe.uploaded()?, u32::try_from(self.copias.len()).ok()?)
+            }
+        };
         let c = self.cam.as_coeffs();
         #[expect(clippy::cast_possible_truncation, reason = "a placa lê f32")]
         #[expect(clippy::cast_precision_loss, reason = "um alvo cabe num f32")]
@@ -284,7 +409,6 @@ impl PlacaDeFormas {
             t: [c[4] as f32, c[5] as f32],
             alvo: [tamanho.0.max(1) as f32, tamanho.1.max(1) as f32],
         };
-        let count = u32::try_from(self.copias.len()).ok()?;
         let mut enc = gpu
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
@@ -294,10 +418,7 @@ impl PlacaDeFormas {
             &g.vista,
             wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
             vista,
-            Copias {
-                buffer: g.passe.uploaded()?,
-                count,
-            },
+            Copias { buffer, count },
         );
         gpu.queue.submit([enc.finish()]);
         Some(&g.vista)
@@ -318,4 +439,4 @@ mod tests;
 
 #[cfg(test)]
 #[path = "motion_shape_placa_gpu_tests.rs"]
-mod gpu_tests;
+pub(crate) mod gpu_tests;

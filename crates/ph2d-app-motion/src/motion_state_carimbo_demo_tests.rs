@@ -534,3 +534,44 @@ fn entradas_de(doc: &MotionDoc, alvo: NodeId) -> Vec<(u16, NodeId)> {
         .map(|e| (e.to.1, e.from.0))
         .collect()
 }
+
+/// ⭐⭐⭐ **O PASSO (4) COMPARA COM A PORTA QUE AINDA MUDA A ROTA** (doc 121 W3).
+///
+/// ⛔⛔ Até a W3 o passo (4) mandava correr com `PH2D_CARIMBO_PREPARADO=0` e os passos (6)–(8)
+/// ensinavam a troca por FOTOGRAFIA ao afastar (`PH2D_LOD_DA_FORMA=0`). Com as formas na placa as
+/// duas portas deixaram de tocar na rota de omissão — medido na foto da cena (perfil `smoke`,
+/// `load ~2`): `raw 227` de omissão · `224` com o carimbo por preparar · `205` sem a troca, e
+/// **`88`** com `PH2D_FORMAS_NA_PLACA=0`. *Um roteiro que manda comparar duas corridas iguais ensina
+/// que a cura não faz nada* — a espécie que o §5.0 chama de pior que uma cena ausente.
+///
+/// ⇒ o gate afirma que o passo (4) nomeia a porta que a PLACA DE FORMAS lê (lida do fonte, para
+/// um rename reprovar aqui) e que o roteiro não volta a ensinar a troca por fotografia, que a rota
+/// de omissão já não faz.
+#[test]
+fn o_passo_quatro_compara_com_a_porta_que_ainda_muda_a_rota() {
+    let placa = include_str!("motion_shape_placa.rs");
+    let porta = "PH2D_FORMAS_NA_PLACA";
+    assert!(
+        placa.contains(&format!("std::env::var(\"{porta}\")")),
+        "a placa de formas deixou de ler {porta:?} -- o passo (4) aponta para uma porta morta"
+    );
+    let anuncio = include_str!("motion_state_carimbo_demo.rs")
+        .split_once("pub(super) fn announce()")
+        .expect("a cena tem um roteiro")
+        .1;
+    let passo4 = anuncio
+        .split_once("(4)")
+        .and_then(|(_, r)| r.split_once("(5)"))
+        .expect("o roteiro tem os passos (4) e (5)")
+        .0;
+    assert!(
+        passo4.contains(porta),
+        "o passo (4) tem de comparar com {porta:?}, a unica porta que ainda muda a rota"
+    );
+    for morto in ["PH2D_LOD_DA_FORMA", "FOTOGRAFIA"] {
+        assert!(
+            !anuncio.contains(morto),
+            "o roteiro voltou a ensinar {morto:?}, que a rota de omissao ja' nao faz"
+        );
+    }
+}

@@ -58,11 +58,14 @@ mod encode;
 pub mod error;
 mod estado;
 pub mod field_name;
+mod formas;
 mod gather;
 pub mod grid;
 pub mod instances;
 mod lifecycle;
 pub mod lower;
+pub mod lower_forma;
+pub use formas::GpuFormas;
 pub mod plan;
 pub mod reduce;
 // PUBLIC for one reason, written here so it is not "tidied" back: the naga sweep
@@ -82,7 +85,7 @@ mod tap_voo;
 mod tex_runs;
 pub mod voronoi;
 
-pub use debug_read::read_instances;
+pub use debug_read::{read_formas, read_instances};
 pub use error::GpuCookError;
 pub use instances::GpuInstances;
 pub use plan::{DrivenParams, GpuPlan, GpuSource, GpuStage, plan, plan_driven, plan_driven_many};

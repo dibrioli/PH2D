@@ -9,9 +9,16 @@
 //! ⚠️ **Dois estados GÉMEOS** (montados da mesma cena): a rota híbrida marcha a bomba até às
 //! fronteiras, e cozinhar a CPU no mesmo estado seria perguntar-lhe um tique que ela já deu.
 //!
-//! ⚠️ **Só se julga o que a ponte mandou para a placa** — uma cena que ela recusa (forma vectorial
-//! viva, colisor, mistura em grupo…) é contada e nomeada, nunca comparada: a CPU consigo mesma não
-//! prova nada. E há um PISO: se nenhuma cena de várias saídas fosse à placa, o gate seria vácuo.
+//! ⚠️ **Só se julga o que a ponte mandou para a placa** — uma cena que ela recusa (colisor, glow,
+//! traço, mistura em grupo…) é contada e nomeada, nunca comparada: a CPU consigo mesma não prova
+//! nada. E há um PISO: se nenhuma cena de várias saídas fosse à placa, o gate seria vácuo.
+//!
+//! ⭐⭐ **Desde o doc 121 W3 as FORMAS vivas vão à placa**, e o desenho tem DUAS listas dos dois
+//! lados: os quads (as sprites) e as formas. Na placa as linhas de forma saem também como quads,
+//! CALADOS (tamanho zero — o passe de formas é quem as desenha); ⇒ um quad de tamanho zero não
+//! cobre pixel nenhum e sai das DUAS contas, e as formas comparam-se à parte — as cópias do
+//! dispositivo contra as `VectorInstance` da CPU. ⛔ A 1.ª redacção deste gate (anterior à W3)
+//! tratava toda `VectorInstance` da CPU como defeito, e reprovou 14 cenas com `Δ = 0`.
 //!
 //! `#[ignore]`: precisa de adapter real.
 //!   cargo test -p ph2d-app-motion --lib -- --ignored --nocapture as_cenas_de_varias_saidas
@@ -89,15 +96,54 @@ fn da_placa(gpu: &GpuContext, m: &MotionState) -> Vec<[f32; 2]> {
         .unwrap_or_default();
     let runs = m.gpu_cook.texture_runs();
     if runs.is_empty() {
-        return inst.iter().map(|i| i.world_pos).collect();
+        return inst
+            .iter()
+            .filter(|i| desenha(i))
+            .map(|i| i.world_pos)
+            .collect();
     }
     runs.iter()
         .flat_map(|r| {
             inst[r.start as usize..r.end as usize]
                 .iter()
+                .filter(|i| desenha(i))
                 .map(|i| i.world_pos)
         })
         .collect()
+}
+
+/// Um quad cobre pixels? — a linha de forma calada pela placa tem tamanho zero (ver o cabeçalho).
+fn desenha(i: &RenderInstance) -> bool {
+    i.size != [0.0, 0.0]
+}
+
+/// As posições das FORMAS, ordenadas: as cópias do dispositivo que acham geometria, e as
+/// `VectorInstance` da CPU. ⚠️ Ordenadas dos dois lados — a ordem entre saídas das duas listas não
+/// é o que este gate julga (a paridade de PIXEL das formas é o `formas_tests`).
+fn formas_da_placa(gpu: &GpuContext, m: &MotionState) -> Vec<[f32; 2]> {
+    let w = ph2d_gpu_cook::lower_forma::FORMA_WORDS as usize;
+    let mut v: Vec<[f32; 2]> = m
+        .gpu_cook
+        .formas()
+        .map(|f| ph2d_gpu_cook::read_formas(gpu, f))
+        .unwrap_or_default()
+        .chunks_exact(w)
+        .filter(|c| c[10] != ph2d_gpu_cook::lower_forma::SEM_GEOMETRIA)
+        .map(|c| [f32::from_bits(c[0]), f32::from_bits(c[1])])
+        .collect();
+    v.sort_by(|a, b| a.partial_cmp(b).expect("finito"));
+    v
+}
+
+fn formas_da_cpu(m: &MotionState) -> Vec<[f32; 2]> {
+    let mut v: Vec<[f32; 2]> = m
+        .pump
+        .vector_instances
+        .iter()
+        .map(|i| i.world_pos)
+        .collect();
+    v.sort_by(|a, b| a.partial_cmp(b).expect("finito"));
+    v
 }
 
 /// A coluna `P` de cada saída, pela placa — a corrente que o plano da UNIÃO produziu.
@@ -158,6 +204,7 @@ fn as_cenas_de_varias_saidas_pela_placa_dao_o_que_a_cpu_da() {
     let mut recusadas = Vec::new();
     let mut erradas: Vec<String> = Vec::new();
     let mut linhas_p = 0usize;
+    let mut formas_p = 0usize;
     for level in 1..=MAX_DEMO_LEVEL {
         let Some(mut m) = estado(level) else { continue };
         let Some(mut cpu) = estado(level) else {
@@ -174,9 +221,15 @@ fn as_cenas_de_varias_saidas_pela_placa_dao_o_que_a_cpu_da() {
             continue;
         }
         let p = da_placa(&gpu, &m);
-        let vec_cpu_antes = cpu.pump.vector_instances.len();
         let c = da_cpu(&mut cpu);
-        let vec_cpu = cpu.pump.vector_instances.len().max(vec_cpu_antes);
+        let (fp, fc) = (formas_da_placa(&gpu, &m), formas_da_cpu(&cpu));
+        let pior_forma = fp
+            .iter()
+            .zip(&fc)
+            .map(|(a, b)| (a[0] - b[0]).abs().max((a[1] - b[1]).abs()))
+            .fold(0.0f32, f32::max);
+        let formas_erradas = fp.len() != fc.len() || pior_forma > EPS;
+        formas_p += fp.len();
         let dif = |a: &[f32; 2], b: &[f32; 2]| (a[0] - b[0]).abs().max((a[1] - b[1]).abs());
         let pior = p
             .iter()
@@ -247,12 +300,14 @@ fn as_cenas_de_varias_saidas_pela_placa_dao_o_que_a_cpu_da() {
                 )
             })
             .collect();
-        if p.len() != c.len() || pior > EPS || fora_da_barra || vec_cpu > 0 || !p_iguais {
+        if p.len() != c.len() || pior > EPS || fora_da_barra || formas_erradas || !p_iguais {
             eprintln!("  ={level} por saída: {por_saida:#?}");
             erradas.push(format!(
-                "={level}: placa {} linhas · cpu {} linhas + {vec_cpu} vectoriais · P por saída placa {:?} cpu {:?} · pior |Δ| desenho {pior:e} · P {pior_p:e} · {:?}",
+                "={level}: placa {} linhas · cpu {} linhas · formas placa {} cpu {} (pior {pior_forma:e}) · P por saída placa {:?} cpu {:?} · pior |Δ| desenho {pior:e} · P {pior_p:e} · {:?}",
                 p.len(),
                 c.len(),
+                fp.len(),
+                fc.len(),
                 pp.iter().map(Vec::len).collect::<Vec<_>>(),
                 pc.iter().map(Vec::len).collect::<Vec<_>>(),
                 m.route_said
@@ -280,11 +335,17 @@ fn as_cenas_de_varias_saidas_pela_placa_dao_o_que_a_cpu_da() {
     );
     // O PISO, nas duas grandezas: se nenhuma cena de várias saídas fosse à placa, ou se as que
     // vão não tivessem posições, o gate seria verde a medir nada.
-    eprintln!("  posições P comparadas: {linhas_p}");
+    eprintln!("  posições P comparadas: {linhas_p} · formas comparadas: {formas_p}");
     assert!(
         julgadas.len() >= 20 && linhas_p >= 1000,
         "só {} cenas de várias saídas foram à placa, com {linhas_p} posições — o gate deixou de medir",
         julgadas.len()
+    );
+    // E a metade das FORMAS tem o seu piso: sem ele, uma placa que nunca escrevesse uma cópia
+    // passaria aqui com as duas listas vazias.
+    assert!(
+        formas_p >= 100,
+        "só {formas_p} formas comparadas — a metade das formas deixou de medir"
     );
 }
 

@@ -8,6 +8,7 @@
 
 mod a_lei_do_dono_no_dispositivo;
 mod a_variante_entra_na_chave_do_pipeline;
+mod as_formas_no_dispositivo;
 mod boundary_arity;
 mod generated_wgsl_validates;
 mod gpu_boids;

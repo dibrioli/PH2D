@@ -411,6 +411,18 @@ pub struct MotionState {
     /// looks it up to draw the shape live. Kept across frames — a static shape
     /// builds once.
     pub shape_store: crate::motion_shape_gen::VecPathStore,
+    /// ⭐⭐⭐ **As geometrias que a placa sabe desenhar** (doc 121 W3) — o cache PARTILHADO pela
+    /// ponte (que pergunta antes de cozinhar no dispositivo) e pelo presente (que as liga ao
+    /// passe). Ver [`crate::motion_shape_placa::GeometriasDaPlaca`].
+    pub placa_geometrias: crate::motion_shape_placa::GeometriasDaPlaca,
+    /// ⭐ **Os handles de forma que o dispositivo desenhou neste quadro** (doc 121 W3) — escritos
+    /// pela ponte quando a rota do dispositivo aceita as formas, e lidos pelo presente para
+    /// preparar cada geometria viva. Vazio em todo quadro sem formas no dispositivo.
+    pub formas_no_dispositivo: Vec<u32>,
+    /// ⭐ **O dispositivo recusou uma saída com formas E mistura por linha** no último cozimento
+    /// (doc 121 W3) — a ponte recusa pelo nome no quadro seguinte e CONSOME a anotação. Ver
+    /// `motion_bridge::gpu::forma::saida_com_mistura_em_formas`.
+    pub formas_pedem_o_vello: bool,
     /// ⭐ O arrasto em curso do gizmo do COLISOR da forma (doc 109 §5) — mora aqui e não na `App`
     /// porque é estado da família: a shell só entrega o ponteiro em coordenadas de mundo.
     pub collider_drag: Option<crate::collider_gizmo::Arrasto>,

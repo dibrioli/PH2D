@@ -78,7 +78,7 @@ fn o_veredito_corta_so_onde_a_lei_manda() {
 /// aqui é o que impede alguém de «resolver» isto ensinando o hash a comer o campo.
 #[test]
 fn a_lei_corta_antes_porque_a_assinatura_nao_a_ve() {
-    let com_ladrilho = [false, false, false, false, true, false, false, false];
+    let com_ladrilho = [false, false, false, false, true, false, false, false, false];
 
     // (1) A assinatura é CEGA à lei — com as mesmas colunas, ligada e desligada dão o mesmo hash.
     let (desenha, st) = veredito(com_a_lei(), false, true);

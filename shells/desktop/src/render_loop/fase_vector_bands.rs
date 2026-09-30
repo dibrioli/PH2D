@@ -117,12 +117,26 @@ impl crate::App {
         frost_front_scene.reset();
         // ⭐⭐⭐ **AS FORMAS DO MOTION NA PLACA?** (doc 121, W2) — decidido AQUI, antes de o documento
         // ser codificado: com elas na placa o documento vai às FAIXAS, para ficar por baixo delas.
-        let placa = self.motion_shell.placa.decide(
-            motion_tool_active && !*frosting && ph2d_app_motion::motion_shape_placa::por_ordem(),
-            &motion.pump.vector_instances,
-            &motion.shape_store,
-            cam_affine,
-        );
+        // ⭐⭐⭐ Com o cozimento no DISPOSITIVO (doc 121 W3) as cópias já estão no buffer dele: a
+        // placa lê-o sem o trazer de volta, e só prepara as geometrias vivas que a ponte anotou.
+        let por_ordem = ph2d_app_motion::motion_shape_placa::por_ordem();
+        let placa = match motion.gpu_cook.formas().filter(|_| motion.gpu_live) {
+            Some(f) => self.motion_shell.placa.decide_do_dispositivo(
+                motion_tool_active && por_ordem,
+                f.len(),
+                &motion.formas_no_dispositivo,
+                &motion.shape_store,
+                &mut motion.placa_geometrias,
+                cam_affine,
+            ),
+            None => self.motion_shell.placa.decide(
+                motion_tool_active && !*frosting && por_ordem,
+                &motion.pump.vector_instances,
+                &motion.shape_store,
+                &mut motion.placa_geometrias,
+                cam_affine,
+            ),
+        };
         let doc_bands = crate::draw_bands::doc_bands_of(frame_order, placa);
         for band in &doc_bands {
             let keep = frame_order.vector_ids_in(*band);

@@ -77,6 +77,11 @@ pub struct GpuCook {
     pub(crate) uniforms: Vec<wgpu::Buffer>,
     /// The persistent instance output (grow-only, like `InstanceBuffer`).
     pub(crate) instances: Option<GpuInstances>,
+    /// ⭐ **As cópias de FORMA** (doc 121 W3) — o buffer que o passe de formas lê. Ver
+    /// [`crate::formas`].
+    pub(crate) formas: Option<crate::formas::GpuFormas>,
+    /// Os baixamentos de forma, pela assinatura [`crate::lower_forma::forma_signature`].
+    pub(crate) forma_pipelines: BTreeMap<u64, CachedPipeline>,
     /// **Last tick's output** of each node that feeds a `pre` edge — the GPU
     /// mirror of `Cook::prev_outputs`, populated at the end of every cook by
     /// the same rule as `Cook::advance_tick_scoped` (ADR-0127 D1).

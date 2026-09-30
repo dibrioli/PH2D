@@ -44,7 +44,13 @@ fn formas_conformes_vao_a_placa_na_ordem() {
         vi(lisa, 3.0, rot, [0.5, 0.5]),
     ];
     let mut p = PlacaDeFormas::default();
-    assert!(p.decide(true, &insts, &s, Affine::IDENTITY));
+    assert!(p.decide(
+        true,
+        &insts,
+        &s,
+        &mut GeometriasDaPlaca::default(),
+        Affine::IDENTITY
+    ));
     assert!(p.ativa());
     let xs: Vec<f32> = p.copias().iter().map(|c| c.pos[0]).collect();
     assert_eq!(xs, vec![1.0, 2.0, 3.0], "a ordem das linhas é o desenho");
@@ -65,7 +71,13 @@ fn uma_imagem_no_meio_devolve_tudo_ao_vello() {
         vi(lisa, 3.0, ID, [1.0, 1.0]),
     ];
     let mut p = PlacaDeFormas::default();
-    assert!(!p.decide(true, &insts, &s, Affine::IDENTITY));
+    assert!(!p.decide(
+        true,
+        &insts,
+        &s,
+        &mut GeometriasDaPlaca::default(),
+        Affine::IDENTITY
+    ));
     assert!(p.copias().is_empty(), "nenhuma cópia fica a meio caminho");
 }
 
@@ -80,6 +92,7 @@ fn uma_mistura_devolve_tudo_ao_vello() {
         true,
         &[vi(lisa, 1.0, ID, [1.0, 1.0]), m],
         &s,
+        &mut GeometriasDaPlaca::default(),
         Affine::IDENTITY
     ));
 }
@@ -94,9 +107,16 @@ fn o_traco_sob_escala_nao_uniforme_fica_no_vello() {
         true,
         &[vi(tracada, 1.0, ID, [3.0, 1.0])],
         &s,
+        &mut GeometriasDaPlaca::default(),
         Affine::IDENTITY
     ));
-    assert!(p.decide(true, &[vi(lisa, 1.0, ID, [3.0, 1.0])], &s, Affine::IDENTITY));
+    assert!(p.decide(
+        true,
+        &[vi(lisa, 1.0, ID, [3.0, 1.0])],
+        &s,
+        &mut GeometriasDaPlaca::default(),
+        Affine::IDENTITY
+    ));
 }
 
 /// Sem a porta ligada, ou sem cópias, o quadro é o de sempre.
@@ -108,9 +128,16 @@ fn desligada_ou_vazia_nao_vai_a_placa() {
         false,
         &[vi(lisa, 1.0, ID, [1.0, 1.0])],
         &s,
+        &mut GeometriasDaPlaca::default(),
         Affine::IDENTITY
     ));
-    assert!(!p.decide(true, &[], &s, Affine::IDENTITY));
+    assert!(!p.decide(
+        true,
+        &[],
+        &s,
+        &mut GeometriasDaPlaca::default(),
+        Affine::IDENTITY
+    ));
 }
 
 /// ⛔ Uma forma com TINTA própria é do Vello (o passe pinta com a cor da cópia).
@@ -121,7 +148,13 @@ fn uma_tinta_propria_fica_no_vello() {
     pintada.fill = Some(ph2d_vec_scene::Paint::Solid(Rgba8::new(1, 2, 3, 255)));
     let h = s.push(pintada);
     let mut p = PlacaDeFormas::default();
-    assert!(!p.decide(true, &[vi(h, 1.0, ID, [1.0, 1.0])], &s, Affine::IDENTITY));
+    assert!(!p.decide(
+        true,
+        &[vi(h, 1.0, ID, [1.0, 1.0])],
+        &s,
+        &mut GeometriasDaPlaca::default(),
+        Affine::IDENTITY
+    ));
 }
 
 /// A conformidade: rotação e escala uniforme sim, espelho sim, esticão e cisalha não.

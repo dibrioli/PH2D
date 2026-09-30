@@ -28,3 +28,18 @@ fn as_formas_na_placa_entram_entre_o_mundo_e_o_chrome() {
     );
     assert!(chrome.contains("ph2d_render::BandSource::Formas"));
 }
+
+/// ⭐⭐⭐ **A rota do DISPOSITIVO chega ao quadro** (doc 121 W3): a decisão lê as formas do
+/// cozimento e o presente passa o buffer dele à placa — os dois SÓ com o cozimento vivo, que é a
+/// pergunta que o passe de sprites já faz (`motion.gpu_live`). *Mutações: apagar o `filter` de uma
+/// das pontas (um quadro que caiu para a CPU desenharia as formas do ANTERIOR) · decidir sempre
+/// pela CPU (as formas do dispositivo, caladas nas sprites, não se desenhariam em sítio nenhum).*
+#[test]
+fn a_rota_do_dispositivo_chega_ao_quadro() {
+    let bandas = include_str!("fase_vector_bands.rs");
+    assert!(bandas.contains(".formas().filter(|_| motion.gpu_live)"));
+    assert!(bandas.contains("self.motion_shell.placa.decide_do_dispositivo("));
+    let chrome = include_str!("present_chrome.rs");
+    assert!(chrome.contains(".filter(|_| motion.gpu_live)"));
+    assert!(chrome.contains("do_dispositivo,"));
+}

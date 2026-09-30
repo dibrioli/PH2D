@@ -62,4 +62,9 @@ pub enum GpuCookError {
     /// de uma saída: a CPU entrelaça as linhas das saídas por índice e a placa só ordena faixas.
     /// Ver [`crate::ordem_reproduzivel`], que a rota pergunta antes de cozinhar.
     OrdemEntreSaidas,
+    /// ⭐ **Uma saída com FORMAS vivas traz a coluna `blend`** (doc 121 W3) — a mistura POR LINHA
+    /// pede uma camada fora do alvo, que o passe de formas não tem. Ver [`crate::formas`]: a
+    /// pergunta é a PRESENÇA da coluna (ler o valor custaria uma descarga por quadro), e a recusa
+    /// cai para o lado conservador — a CPU desenha o quadro, como a rota dela faria.
+    FormaComMistura,
 }

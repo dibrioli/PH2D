@@ -29,10 +29,12 @@
 //! (`PH2D_MOTION_OBJ_SMOKE`). *Uma cena de ciclo mostra a lei; o catálogo tem as cenas da
 //! conferência.*
 //!
-//! ⚠️⚠️ **Esta cena inteira coze na CPU, e é PROPRIEDADE, não defeito:** um `source.shape` ou um
-//! `source.text` no documento recusa o dispositivo para o grafo TODO
-//! (`gpu::graph_has_live_vector_source` — a placa não tem rota para `geometry_id`). Com seis panos
-//! pequenos não se vê; é a §7 que o mede, e é por isso que a medição do grupo não sai desta cena.
+//! ⚠️⚠️ **A rota desta cena depende do CONTEÚDO, não do tipo dos nós:** até ao doc 121 W3 um
+//! `source.shape` ou um `source.text` recusava o dispositivo para o grafo TODO (a placa não tinha
+//! rota para `geometry_id`); hoje as formas vão à placa pelo passe de formas, e o que ainda recusa
+//! é o que a cerca `gpu::forma::formas_para_a_placa` nomeia (traço, `fx.glow`, colisor lido,
+//! mistura por linha). Com seis panos pequenos não se vê; é a §7 que o mede, e é por isso que a
+//! medição do grupo não sai desta cena.
 
 use crate::motion_demo_legend::Caption;
 use ph2d_motion_doc::MotionDoc;

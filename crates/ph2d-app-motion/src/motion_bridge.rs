@@ -499,8 +499,10 @@ pub fn dispatch(
     // grid of 160k is a per-frame freeze (~one Vello fill each). This moves any
     // geometry stamped past the knee onto `instances` as a GPU-instanced tile (which
     // scaled to millions), leaving the below-threshold shapes crisp. It runs ONLY on
-    // the CPU pump: a live-vector graph always recuses the GPU path above (it has no
-    // `geometry_id` route), so the branch that returns early never carries vectors.
+    // the CPU pump. ⚠️ Since doc 121 W3 a live-vector graph MAY take the device route
+    // (the shape pass draws the cook's copies sharp at any count, so no LOD photo is
+    // needed there); the branch that returns early carries its shapes in
+    // `gpu_cook.formas()`, never in `vector_instances`, so there is nothing to LOD.
     objects::apply_object_lod(
         &mut motion.pump.instances,
         &mut motion.pump.vector_instances,

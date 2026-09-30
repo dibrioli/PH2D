@@ -89,6 +89,9 @@ impl MotionState {
             flip_object_bake: crate::motion_flip_bake::FlipObjectBake::default(),
             // ADR-0154: empty until the publish pass interns a `source.shape`.
             shape_store: crate::motion_shape_gen::VecPathStore::default(),
+            placa_geometrias: crate::motion_shape_placa::GeometriasDaPlaca::default(),
+            formas_no_dispositivo: Vec::new(),
+            formas_pedem_o_vello: false,
             collider_drag: None,
             lsystem_memo: crate::motion_lsystem_gen::PlantMemo::default(),
             band_cache: crate::motion_audio_gen::BandCache::default(),

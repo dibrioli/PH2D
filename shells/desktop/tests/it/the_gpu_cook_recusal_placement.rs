@@ -3,10 +3,12 @@
 //! O `cook_gpu` recusa por três motivos de aparência, e ONDE cada um roda relativo
 //! ao plano é load-bearing:
 //!
-//! - **Live vector SHAPE (`source.shape`)** — sem rota `geometry_id` no device —
-//!   recusa ANTES de `ph2d_gpu_cook::plan(...)`, para o pump da CPU possuir o tick
-//!   do zero (sem marchar duas vezes um prefixo sequencial). Sinal: por-TIPO de nó
-//!   (`graph_has_live_vector_source`).
+//! - **As FORMAS vivas** (`source.shape`, os glifos, a fita do L-System) — desde o doc 121 W3
+//!   VÃO à placa pelo passe de formas, e o que ainda recusa (a placa desligada, um traço, uma
+//!   tinta própria, o `fx.glow`, um colisor lido, a mistura por linha) recusa ANTES de
+//!   `ph2d_gpu_cook::plan(...)`, para o pump da CPU possuir o tick do zero. Sinal: por CONTEÚDO
+//!   (`forma::formas_para_a_placa`, `forma::saida_com_mistura_em_formas`). ⛔ Era a cerca do
+//!   TIPO (`graph_has_live_vector_source`) e a da instância condicional, que recusavam SEMPRE.
 //! - **Objeto que resolve para um VETOR VIVO (`source.object` → `geometry_id`)** —
 //!   recusa também ANTES do plano, mas por CONTEÚDO: se um `source.object` é um
 //!   vetor depende do que o artista NOMEOU, então a recusa varre os externals
@@ -36,15 +38,15 @@ fn the_recusals_run_in_the_right_place_relative_to_the_plan() {
         .expect("cook_gpu exists")
         .1;
 
-    let live_vector = body.find("graph_has_live_vector_source(").expect(
-        "cook_gpu consults graph_has_live_vector_source — the live-vector recusal was removed",
+    // ⭐⭐⭐ doc 121 W3: as formas vivas vão à placa, e a cerca pergunta pelo CONTEÚDO.
+    let live_vector = body.find("forma::formas_para_a_placa(").expect(
+        "cook_gpu consulta a cerca das FORMAS — sem ela uma forma que so' o Vello desenha (ou com \
+         traco) iria a' placa",
     );
-    // ⭐ A mesma lei por INSTÂNCIA (doc 119 §7): um nó que só desenha uma forma em alguns modos
-    // (o L-System em `Branches`). Achada pela varredura das cenas de várias saídas — a placa
-    // desenhava cinco quadrados onde a CPU desenha cinco plantas.
-    let live_conditional = body.find("forma::desenha_forma_condicional(").expect(
-        "cook_gpu consulta a forma viva CONDICIONAL — sem ela um L-System em Ramos seguido de um \
-         nó da placa sai como quadrados de atlas em branco",
+    // A mistura POR LINHA de uma saída com formas: a camada que ela pede não existe no passe.
+    let live_conditional = body.find("forma::saida_com_mistura_em_formas(").expect(
+        "cook_gpu consulta a mistura por linha das formas — sem ela o quadro recusaria DENTRO do \
+         cozimento, e a rota hibrida nao desenharia nada",
     );
     let live_geo = body.find("cook_publishes_live_geometry(").expect(
         "cook_gpu consults cook_publishes_live_geometry — the content-aware object recusal was removed",

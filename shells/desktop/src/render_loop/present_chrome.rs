@@ -46,6 +46,7 @@ impl crate::App {
             frost,
             frost_doc_scene,
             frost_front_scene,
+            motion,
             ..
         } = gfx;
         // Pass 2: AgX tonemap
@@ -96,7 +97,19 @@ impl crate::App {
         // ⭐⭐⭐ **AS FORMAS DO MOTION, pela placa** (doc 121, W2) — por cima do mundo (sprites e
         // documento, já no acumulador) e por baixo dos gizmos e do chrome, que vêm na cena Vello.
         let tamanho = (window_size.width, window_size.height);
-        if let Some(camada) = self.motion_shell.placa.desenha(surface.gpu(), tamanho) {
+        // ⚠️ O buffer do DISPOSITIVO só com o cozimento vivo (doc 121 W3) — o mesmo `gpu_live` que o
+        // passe de sprites pergunta: um buffer de um quadro que caiu para a CPU é de outro quadro.
+        let do_dispositivo = motion
+            .gpu_cook
+            .formas()
+            .filter(|_| motion.gpu_live)
+            .map(|f| f.buffer());
+        if let Some(camada) = self.motion_shell.placa.desenha(
+            surface.gpu(),
+            tamanho,
+            &motion.placa_geometrias,
+            do_dispositivo,
+        ) {
             let formas = ph2d_render::BandSource::Formas;
             band_blit.blit(surface.gpu(), world_rt.blend_view(), camada, formas);
         }

@@ -109,8 +109,7 @@ pub fn gpu_route(
 #[path = "motion_bridge_gpu_objecto.rs"]
 mod objecto;
 pub(super) use objecto::{
-    cook_publishes_live_geometry, cook_publishes_only_atlas_objects, graph_has_live_vector_source,
-    graph_has_object_source,
+    cook_publishes_live_geometry, cook_publishes_only_atlas_objects, graph_has_object_source,
 };
 
 /// ⭐⭐⭐ **As três CERCAS DO COLISOR** vivem num irmão (docs 109 W2 · 115 W1/W4) — ver o cabeçalho
@@ -292,21 +291,31 @@ pub(super) fn cook_gpu(
     if let Some(porque) = motion.cpu_pedida {
         return fell(motion, porque);
     }
-    // A document that brings in a live vector SHAPE (`source.shape`) recuses to
-    // the CPU render — the GPU cook has no `geometry_id` route and would draw it
-    // as blank atlas quads once a GPU stage runs. Checked before planning so the
-    // CPU pump owns the tick from scratch (no double-march of a sequential
-    // prefix). An OBJECT source (`source.object`) is NOT recused here — the GPU
-    // cook draws it; the count-changing cerca below is its only guard.
-    if graph_has_live_vector_source(&motion.doc.graph, &motion.registry) {
-        return fell(
-            motion,
-            "CPU: o grafo traz uma FORMA vectorial viva (source.shape)",
-        );
+    // ⭐⭐⭐ **AS FORMAS VIVAS VÃO À PLACA** (doc 121 W3). Até esta wave um grafo com uma forma
+    // viva recusava aqui pelo TIPO do nó (`graph_has_live_vector_source`) e pela instância
+    // condicional (o L-System em `Branches`): a placa não tinha rota para um `geometry_id` e
+    // desenhava quadrados de átlas em branco. Hoje o cozimento escreve as linhas de forma para o
+    // passe de formas, e a pergunta é de CONTEÚDO — cada forma publicada neste quadro, a placa a
+    // desenha como o Vello? (a MESMA porta que a rota da CPU pergunta cópia a cópia). ⚠️ Antes do
+    // plano, pela razão de sempre: a bomba da CPU tem de ser dona do tique desde o início.
+    motion.formas_no_dispositivo.clear();
+    let vivas = forma::handles_publicados(&motion.pump.cook);
+    let com_colisor_lido = !vivas.is_empty()
+        && graph_reads_declared_collider(&motion.doc.graph, &motion.registry)
+        && forma::forma_declara_colisor(motion, target as f64 * fixed_dt);
+    let com_brilho = ph2d_node_fx_glow::from_graph(&motion.doc.graph).is_some();
+    if !vivas.is_empty() && forma::saida_com_mistura_em_formas(motion) {
+        return fell(motion, forma::RECUSA_FORMA_COM_MISTURA);
     }
-    // A mesma lei por INSTÂNCIA: um nó que desenha uma forma só em alguns modos (doc 119 §7).
-    if forma::desenha_forma_condicional(motion, target as f64 * fixed_dt) {
-        return fell(motion, forma::RECUSA_FORMA_CONDICIONAL);
+    if let Err(porque) = forma::formas_para_a_placa(
+        crate::motion_shape_placa::por_ordem(),
+        &vivas,
+        com_brilho,
+        com_colisor_lido,
+        &motion.shape_store,
+        &mut motion.placa_geometrias,
+    ) {
+        return fell(motion, porque);
     }
     // Doc 109: o contacto entre peças ainda só existe na CPU — ver [`graph_declares_collider`].
     if graph_declares_collider(&motion.doc.graph) {
@@ -462,21 +471,19 @@ pub(super) fn cook_gpu(
                 // o do plano congelaria a animação no primeiro deles.
                 let dirigidos = valores_dirigidos(motion, playhead);
                 motion.gpu_cook.set_driven(dirigidos);
-                motion
-                    .gpu_cook
-                    .cook_many(
-                        gpu,
-                        &motion.doc.graph,
-                        &motion.registry,
-                        &motion.registry,
-                        &plan,
-                        &[],
-                        ph2d_gpu_cook::CookClock { playhead, tick },
-                        motion.default_uv_rect,
-                        motion.default_size,
-                        &estilos,
-                    )
-                    .is_ok()
+                let feito = motion.gpu_cook.cook_many(
+                    gpu,
+                    &motion.doc.graph,
+                    &motion.registry,
+                    &motion.registry,
+                    &plan,
+                    &[],
+                    ph2d_gpu_cook::CookClock { playhead, tick },
+                    motion.default_uv_rect,
+                    motion.default_size,
+                    &estilos,
+                );
+                forma::anota_a_mistura(&mut motion.formas_pedem_o_vello, feito)
             });
             // A cook that errored leaves `gpu_live` false → let the CPU pump draw.
             if motion.gpu_live {
@@ -504,6 +511,7 @@ pub(super) fn cook_gpu(
                     .pump
                     .cook_taps_only(&motion.doc.graph, &motion.registry, ultimo, scopes);
                 say_route(motion, "device: o plano inteiro (fully-GPU)");
+                forma::anota_as_formas(motion, vivas);
                 GpuOutcome::Handled
             } else {
                 fell(motion, "CPU: o cook no device ERROU -- o pump desenha")
@@ -555,39 +563,36 @@ pub(super) fn cook_gpu(
                     let ticks: Vec<u64> = (motion.gpu_cook.rewind_for(target)..=target).collect();
                     let ticks = substep_clocks(&ticks, sub, fixed_dt, true);
                     motion.gpu_live = ticks.iter().all(|&(playhead, tick)| {
-                        motion
-                            .gpu_cook
-                            .cook_many(
-                                gpu,
-                                &motion.doc.graph,
-                                &motion.registry,
-                                &motion.registry,
-                                &plan,
-                                &handed,
-                                ph2d_gpu_cook::CookClock { playhead, tick },
-                                motion.default_uv_rect,
-                                motion.default_size,
-                                &estilos,
-                            )
-                            .is_ok()
-                    });
-                } else {
-                    motion.gpu_live = motion
-                        .gpu_cook
-                        .cook_many(
+                        let feito = motion.gpu_cook.cook_many(
                             gpu,
                             &motion.doc.graph,
                             &motion.registry,
                             &motion.registry,
                             &plan,
                             &handed,
-                            // A stateless hybrid: nothing to sequence.
-                            ph2d_gpu_cook::CookClock::at(target as f64 * fixed_dt),
+                            ph2d_gpu_cook::CookClock { playhead, tick },
                             motion.default_uv_rect,
                             motion.default_size,
                             &estilos,
-                        )
-                        .is_ok();
+                        );
+                        forma::anota_a_mistura(&mut motion.formas_pedem_o_vello, feito)
+                    });
+                } else {
+                    let feito = motion.gpu_cook.cook_many(
+                        gpu,
+                        &motion.doc.graph,
+                        &motion.registry,
+                        &motion.registry,
+                        &plan,
+                        &handed,
+                        // A stateless hybrid: nothing to sequence.
+                        ph2d_gpu_cook::CookClock::at(target as f64 * fixed_dt),
+                        motion.default_uv_rect,
+                        motion.default_size,
+                        &estilos,
+                    );
+                    motion.gpu_live =
+                        forma::anota_a_mistura(&mut motion.formas_pedem_o_vello, feito);
                 }
             }
             // The pump was marched to the boundary this frame regardless of the
@@ -599,6 +604,9 @@ pub(super) fn cook_gpu(
                 motion,
                 "device: HIBRIDO -- prefixo na CPU, sufixo no device",
             );
+            if motion.gpu_live {
+                forma::anota_as_formas(motion, vivas);
+            }
             GpuOutcome::Handled
         }
     }
@@ -654,3 +662,8 @@ mod taps_tests;
 #[cfg(test)]
 #[path = "motion_bridge_gpu_varias_saidas_tests.rs"]
 mod varias_saidas_tests;
+
+/// ⭐⭐⭐ **As FORMAS pela rota do DISPOSITIVO desenham o que a rota da CPU desenha** (doc 121 W3).
+#[cfg(test)]
+#[path = "motion_bridge_gpu_formas_tests.rs"]
+mod formas_tests;

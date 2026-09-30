@@ -19,9 +19,10 @@
 //!   número só não diz qual — no §6 deste ciclo `6,05` dos `9,62 ms` eram a **republicação**.
 //!   Depois da cura da W1 o primeiro é ~zero com a fonte parada, e isso **é** o resultado: mede-se
 //!   para o poder afirmar.
-//! - **A ROTA.** Uma fonte de FORMA VIVA recusa o dispositivo para a cadeia inteira
-//!   (`graph_has_live_vector_source`) e as linhas dela saem como `VectorInstance`, não como
-//!   quads — contar só `instances` leria **zero** sobre uma cena cheia de desenho.
+//! - **A ROTA.** As linhas de uma FORMA VIVA não são quads: na CPU saem como `VectorInstance`, e
+//!   desde o doc 121 W3 (a forma vai à placa) saem como CÓPIAS de forma no buffer do cozimento
+//!   (`GpuCook::formas`) — contar só `instances` leria **zero** sobre uma cena cheia de desenho,
+//!   nas duas rotas. ⚠️ A coluna `vectores` conta as cópias da placa quando a placa responde.
 //! - **O NEUTRO e o REGIME.** Metade do grupo nasce sem conteúdo (um `source.table` sem ficheiro é
 //!   uma fonte de nada) e o emissor só tem a nuvem em regime depois de uma vida inteira de
 //!   partícula ⇒ [`prepara`] arma cada um, e cronometra-se a **mediana** de [`AMOSTRAS`] quadros
@@ -253,7 +254,7 @@ fn mede(gpu: &GpuContext, tipo: Option<&str>, lado: f32) -> Linha {
         if device {
             let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
             linhas = m.gpu_cook.instances().map_or(0, |b| b.len() as usize);
-            vectores = 0;
+            vectores = m.gpu_cook.formas().map_or(0, |f| f.len() as usize);
         } else {
             for tick in crate::motion_bridge::ticks_owed(m.pump.last_cooked_tick(), f) {
                 m.pump.advance_or_scrub_scoped(

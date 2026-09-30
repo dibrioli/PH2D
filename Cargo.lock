@@ -5959,6 +5959,7 @@ dependencies = [
  "ph2d-node-value-wrap",
  "ph2d-nodegraph",
  "ph2d-render",
+ "ph2d-shape-gpu",
  "wgpu",
 ]
 

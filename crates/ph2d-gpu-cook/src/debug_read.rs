@@ -166,3 +166,37 @@ pub fn read_instances(
     staging.unmap();
     out
 }
+
+/// ⭐ **As cópias de FORMA do último cozimento, em palavras** (doc 121 W3) — para os gates, que as
+/// leem como `ph2d_shape_gpu::ShapeInstance` (`16` palavras cada). A mesma regra do
+/// [`read_instances`]: fora do caminho do quadro, e o buffer inteiro.
+pub fn read_formas(gpu: &GpuContext, formas: &crate::GpuFormas) -> Vec<u32> {
+    let n = formas.len as usize;
+    if n == 0 {
+        return Vec::new();
+    }
+    let bytes = (n * crate::lower_forma::FORMA_WORDS as usize * 4) as u64;
+    let staging = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("ph2d-gpu-cook readback formas"),
+        size: bytes,
+        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+        mapped_at_creation: false,
+    });
+    let mut encoder = gpu
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+    encoder.copy_buffer_to_buffer(&formas.buffer, 0, &staging, 0, bytes);
+    gpu.queue.submit(Some(encoder.finish()));
+    let slice = staging.slice(..);
+    let (tx, rx) = std::sync::mpsc::channel();
+    slice.map_async(wgpu::MapMode::Read, move |r| {
+        let _ = tx.send(r);
+    });
+    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+    rx.recv()
+        .expect("map_async callback ran")
+        .expect("readback map succeeded");
+    let out: Vec<u32> = bytemuck::cast_slice(&slice.get_mapped_range()).to_vec();
+    staging.unmap();
+    out
+}

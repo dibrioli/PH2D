@@ -81,6 +81,30 @@ impl GpuCook {
         if saidas.len() > 1 {
             self.ensure_instance_capacity(gpu, total.max(1));
         }
+        // ⭐⭐⭐ **AS FORMAS** (doc 121 W3) — as saídas que levam `geometry_id` escrevem também as
+        // cópias do passe de formas. ⚠️ A recusa e a reserva vêm ANTES da primeira escrita, pela
+        // mesma razão das sprites: crescer o buffer a meio apagaria as saídas já escritas.
+        let com_forma: Vec<bool> = saidas.iter().map(crate::formas::leva_formas).collect();
+        if saidas
+            .iter()
+            .zip(&com_forma)
+            .any(|(s, &f)| f && s.cols.contains_key("blend"))
+        {
+            return Err(GpuCookError::FormaComMistura);
+        }
+        let total_formas: u64 = saidas
+            .iter()
+            .zip(&com_forma)
+            .filter(|(_, f)| **f)
+            .map(|(s, _)| u64::from(s.count))
+            .sum();
+        if total_formas > 0 {
+            let t = crate::formas::cabe(gpu, total_formas)?;
+            self.reservar_formas(gpu, t);
+        } else if let Some(f) = self.formas.as_mut() {
+            // Um quadro sem formas não desenha as do quadro anterior.
+            f.len = 0;
+        }
 
         let uma_so = saidas.len() == 1;
         let mut partes: Vec<(u32, u32, Vec<GpuTexRun>)> = Vec::with_capacity(saidas.len());
@@ -112,6 +136,12 @@ impl GpuCook {
                 escreveu,
                 "a reserva do total vem antes da 1.a escrita, logo nenhuma baixa recusa"
             );
+            if com_forma[k] {
+                // A vaga das formas vive PARA LÁ das das sprites (`2·stages + k`, `k < saídas`):
+                // duas escritas na mesma vaga chegariam ambas à última.
+                let vaga_forma = 2 * plan.stages.len() + saidas.len() + 1 + k;
+                self.encode_formas(gpu, encoder, vaga_forma, stream, style.pivot);
+            }
             let escrito = self
                 .instances
                 .as_ref()

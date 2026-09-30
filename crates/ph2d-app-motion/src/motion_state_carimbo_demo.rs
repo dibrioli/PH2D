@@ -596,27 +596,24 @@ pub(super) fn announce() {
          (2) Aproxime com a roda do rato ate' ver as pontas: sao ESTRELAS, todas iguais.\n    \
          O ecra mostra um pedaco do campo — as {n} existem e sao TODAS desenhadas.\n\
          (3) Arraste o fundo com o botao do meio: tem de passear LISO.\n\
-         (4) Feche o app e corra o MESMO comando com `PH2D_CARIMBO_PREPARADO=0` a' frente:\n    \
-         e' o caminho ANTIGO. Olhe o `raw` (os `fps` param no tecto do ecra e nao\n    \
-         dizem a diferenca): o `raw` CAI — o quadro passa a gastar cerca de {DIFERENCA_MS:.1} ms a mais de\n    \
-         CPU, so' para desenhar as MESMAS {n} estrelas.\n\
+         (4) Feche o app e corra o MESMO comando com `PH2D_FORMAS_NA_PLACA=0` a' frente:\n    \
+         e' o caminho ANTIGO, em que as estrelas eram desenhadas pelo processador. Olhe o\n    \
+         `raw` (os `fps` param no tecto do ecra e nao dizem a diferenca): o `raw` CAI\n    \
+         bastante, so' para desenhar as MESMAS {n} estrelas.\n\
          (5) Compare os dois `raw` que anotou. A galaxia e' a MESMA nas duas corridas (as\n    \
          estrelas giram igual) — so' a folga muda.\n\
          \n\
-         (6) AFASTE com a roda ate' o campo INTEIRO caber no ecra. As estrelas ficam\n    \
-         com 3 pixeis ou menos, e a esse tamanho o app troca cada desenho pela\n    \
-         FOTOGRAFIA dele — medido: a essa distancia as duas sao indistinguiveis\n    \
-         (menos de um tom de 255 de diferenca). O `raw` tem de SUBIR, nao cair.\n\
-         (7) APROXIME outra vez ate' ver as pontas: elas voltam a ser DESENHO nitido.\n    \
-         A troca tem os dois sentidos, e a fronteira e' `4 px` de lado.\n\
-         (8) Corra o mesmo comando com `PH2D_LOD_DA_FORMA=0` a' frente e repita o (6):\n    \
-         e' o caminho de antes desta cura, sem a troca.\n\
+         (6) Volte ao comando do inicio e AFASTE com a roda ate' o campo INTEIRO caber no\n    \
+         ecra. As estrelas continuam a ser DESENHO nitido, por pequenas que fiquem, e o\n    \
+         `raw` nao cai. APROXIME outra vez: continuam iguais, sem nenhum salto.\n\
+         (7) (Opcional) Corra com `PH2D_FORMAS_NA_PLACA=0 PH2D_CARIMBO_PREPARADO=0` a' frente:\n    \
+         e' o caminho mais antigo de todos. Contra o passo (4), o quadro gasta cerca de\n    \
+         {DIFERENCA_MS:.1} ms a mais de CPU.\n\
          \n\
          DEU ERRADO se: o campo nao aparecer; se as estrelas ficarem PARADAS; se o `raw`\n\
-         for IGUAL nas duas corridas;\n\
+         for IGUAL nas duas corridas do passo (4);\n\
          se a galaxia girar DIFERENTE entre as duas; ou se ao AFASTAR as estrelas\n\
-         DESAPARECEREM, ficarem BRANCAS ou PISCAREM — isso e' a troca a falhar,\n\
-         e `PH2D_LOD_DA_FORMA=0` confirma-o num comando.\n"
+         DESAPARECEREM, ficarem BRANCAS ou PISCAREM.\n"
     );
 }
 

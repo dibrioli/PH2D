@@ -84,6 +84,9 @@ cima. ⛔ Desenhar o passe por cima do alvo do Vello pintaria as formas **por ci
   desenha** (§6).
 - ✅ **W2 — a rota da CPU está LIGADA por omissão** (§7): as formas do Motion vão ao passe numa
   camada de meio-float, TUDO-OU-NADA por quadro. `PH2D_FORMAS_NA_PLACA=0` bissecta.
+- ✅ **W3 — a rota do DISPOSITIVO está LIGADA** (§8): o cozimento escreve as cópias de forma num
+  buffer PRÓPRIO que o passe lê sem descarga; a ponte deixou de recusar pelo TIPO e pergunta pelo
+  CONTEÚDO. A mesma porta (`PH2D_FORMAS_NA_PLACA=0`) bissecta as duas rotas.
 
 ## §6 — ✅ W1: a paridade de PIXEL, medida (2026-09-29, RTX, alvo de meio-float)
 
@@ -153,5 +156,110 @@ No app (fotografado em tela virtual, cena `=126`, `32 761` estrelas): a mesma ti
 segundo em bruto a favor da placa — ⚠️ **preliminar** (perfil `smoke`, máquina a `load 8`–`18`), a
 medição a sério é a W5.
 
-⏳ **Por fazer:** W3 (a rota do dispositivo — hoje um grafo com forma viva continua a cozer na CPU) ·
-W4 (o traço sob afim não conforme, os glifos) · W5 (a medição de fecho e o smoke do dono).
+⏳ **Por fazer (em 29/09, antes da W3):** W3 (a rota do dispositivo — hoje um grafo com forma viva
+continua a cozer na CPU) · W4 (o traço sob afim não conforme, os glifos) · W5 (a medição de fecho e
+o smoke do dono). ✅ A W3 fechou — §8.
+
+## §8 — ✅ W3: a rota do DISPOSITIVO (2026-09-29)
+
+**O que liga, de ponta a ponta:**
+
+1. **O baixamento das formas** ([`lower_forma`](../../crates/ph2d-gpu-cook/src/lower_forma.rs)) —
+   gémeo do `lower` das sprites. Cada linha de uma saída que carrega `geometry_id` vira uma cópia
+   `ShapeInstance` de `16` palavras (`pos` 0-1 · `size` 2-3 · `basis` 4-7 · `anchor` 8-9 ·
+   `geometry` 10 · almofada 11 · `tint` 12-15), com **as contas da CPU uma a uma**
+   (`lower_vector_onto`, braço `RowMedium::Shape`): `size` ausente é `[1, 1]` (não o
+   `default_size`), `basis` do `rot` em graus, `anchor = pivô × size` com o pivô zero CRAVADO, e a
+   linha é forma quando `geometry_id > 0,5`; a que não é leva `0xffffffff`, que o passe não acha.
+2. **O buffer** ([`formas`](../../crates/ph2d-gpu-cook/src/formas.rs)): `STORAGE | COPY_SRC`,
+   reservado UMA vez por quadro com o total de todas as saídas (cresce a dobrar, nunca encolhe),
+   cada saída escreve a partir de `primeiro`. `GpuCook::formas()` é `None` num quadro sem formas.
+3. **A sprite CALA a linha de forma**: o baixamento irmão zera as palavras `2`, `3`, `17`, `18` e
+   `35` (tamanho, âncora e opacidade) de toda linha com `geometry_id > 0,5` — senão ela seria
+   desenhada duas vezes, como quad e como forma.
+4. **A cerca da ponte é de CONTEÚDO** e corre ANTES do plano
+   ([`forma::formas_para_a_placa`](../../crates/ph2d-app-motion/src/motion_bridge_gpu_forma.rs),
+   pura, com `GeometriasDaPlaca::veredito` por handle): recusa com o nome no
+   `PH2D_MOTION_ROUTE_LOG` a placa desligada · o `fx.glow` (o halo lê as cópias da CPU) · um
+   colisor declarado pela forma e lido pelo grafo (o contacto só existe na CPU, doc 109) · uma
+   forma que só o Vello desenha (tinta própria, traço de padrão ou pincel) · e **um traço** (W4).
+   ⛔ Era a cerca do TIPO (`graph_has_live_vector_source`) e a da instância condicional, que
+   recusavam SEMPRE — foram apagadas.
+5. **A mistura POR LINHA** ([`forma::saida_com_mistura_em_formas`]): uma saída com formas e com a
+   coluna `blend` pede uma camada que o passe não tem. O cozimento recusa-a
+   (`GpuCookError::FormaComMistura`) e a ponte **detecta-a antes do plano** por duas metades —
+   a memória da CPU (a última saída cozida) e a bandeira `formas_pedem_o_vello`, que cobre o 1.º
+   quadro e é CONSUMIDA. ⛔ Uma recusa DENTRO do cozimento, na rota híbrida, deixava o quadro sem
+   desenho nenhum.
+6. **O quadro lê o buffer só com o cozimento a andar** (`.filter(|_| motion.gpu_live)` nas duas
+   fases da shell): `PlacaDeFormas::decide_do_dispositivo` limpa `pump.vector_instances`, prepara
+   as geometrias vivas que a ponte anotou (`formas_no_dispositivo`) e o `desenha` liga o buffer do
+   cozimento como `Copias { buffer, count }`.
+
+**Medido na cena `=126`** (`32 761` estrelas, fotografada em tela virtual, perfil `smoke`,
+`load ~2`; ⚠️ preliminar — a medição a sério é a W5, em `release`):
+
+| corrida | rota (`PH2D_MOTION_ROUTE_LOG`) | `raw` |
+|---|---|---:|
+| omissão | `device: HIBRIDO` · `[formas] 32761 copias … pela PLACA (do dispositivo)` | `227` |
+| `PH2D_CARIMBO_PREPARADO=0` | a mesma | `224` |
+| `PH2D_LOD_DA_FORMA=0` | a mesma | `205` |
+| `PH2D_FORMAS_NA_PLACA=0` | `CPU: formas vivas com a placa de formas desligada` | `88` |
+
+⛔⛔ **As duas portas do meio deixaram de tocar na rota de omissão** — o carimbo preparado e a troca
+por fotografia (`LOD`) são da rota da CPU. **O roteiro da `=126` ensinava a compará-las** (o passo
+(4) e os (6)–(8)): foi reescrito em volta de `PH2D_FORMAS_NA_PLACA=0`, com gate
+(`o_passo_quatro_compara_com_a_porta_que_ainda_muda_a_rota`) — *um roteiro que manda comparar duas
+corridas iguais ensina que a cura não faz nada*. ⚠️ E a sonda do relógio das fontes contava
+`vectores = 0` sempre que a placa respondia; hoje conta as cópias do dispositivo.
+
+**Divergências DECLARADAS:**
+- **A mistura julga-se pela PRESENÇA da coluna** e a CPU pelo VALOR — ler o valor custaria uma
+  descarga por quadro; a divergência cai para o lado conservador (uma coluna toda a zero manda o
+  quadro à CPU, que o desenha certo).
+- **Sob o vidro jateado** (a edição de um prefab) a rota do dispositivo continua a desenhar as
+  formas, por baixo do vidro, como o resto do mundo.
+- **O traço fica na CPU** até à W4 (`RECUSA_FORMA_COM_TRACO`).
+- ⚠️ **Pré-existente:** a camada do `fx.glow` num quadro do dispositivo lê o `pump` do quadro
+  anterior — inalcançável com formas, porque o glow com formas recusa a placa.
+
+**Gates:** `as_palavras_da_forma_sao_as_do_shape_instance` (as palavras contra o `#[repr(C)]`) ·
+`o_dispositivo_baixa_as_formas_como_a_cpu` e `a_mistura_por_linha_de_uma_forma_recusa_o_quadro`
+(`#[ignore]`, RTX) · `as_formas_pela_rota_do_dispositivo_desenham_o_que_a_cpu_desenha` (paridade de
+PIXEL do produto, `#[ignore]`) · a cerca (`a_cerca_das_formas_nomeia_cada_recusa`) · a mistura
+(`a_mistura_por_linha_das_formas_manda_o_quadro_a_cpu`, com o CONTROLO e a bandeira consumida) ·
+a validação WGSL (`32` subconjuntos × `2` pivôs) · e na shell a ordem das recusas
+(`the_recusals_run_in_the_right_place_relative_to_the_plan`) e a fiação
+(`a_rota_do_dispositivo_chega_ao_quadro`).
+
+**A paridade de PIXEL do produto** (`as_formas_pela_rota_do_dispositivo_desenham_o_que_a_cpu_desenha`,
+RTX, `36` cópias): as mesmas formas pela rota da CPU (W2) e pela do dispositivo — pixels pintados
+`45 172` = `45 172`, **alfa máx. `1`, cor máx. `0`**, pixels acima de `16`: `0` (barras `4`/`4`/`0`).
+E o baixamento, palavra a palavra, contra o da CPU: `4` formas iguais.
+
+**Mutação `11` de `11`** (controlos: pré-voo das âncoras, as três corridas LIMPAS verdes com
+`9`/`18`/`1` testes, restauro com `touch`):
+
+| # | mutação | quem sangra |
+|---|---|---|
+| M1 | a sprite deixa de calar a linha de forma | `a_sprite_cala_a_linha_de_forma` + a paridade do baixamento |
+| M2 | o limiar `geometry_id > 0,5` deixa passar toda linha | `a_linha_e_forma_acima_de_meio` + paridade |
+| M3 | a âncora deixa de multiplicar pelo `size` | `o_pivo_zero_crava_a_ancora` + paridade |
+| M4–M6 | o traço · o glow · o colisor lido deixam de recusar | `a_cerca_das_formas_nomeia_cada_recusa` |
+| M7 | a bandeira da mistura nunca se gasta | `a_mistura_por_linha_das_formas_manda_o_quadro_a_cpu` |
+| M8 | a memória da mistura nunca acusa | a mesma |
+| M9 | a placa esquece o buffer do dispositivo | a paridade de PIXEL do produto |
+| M10 | o passo (4) da `=126` volta à porta morta | `o_passo_quatro_compara_com_a_porta_que_ainda_muda_a_rota` |
+| M11 | o quadro lê o buffer com o cozimento parado | `a_rota_do_dispositivo_chega_ao_quadro` |
+
+⛔⛔ **E um gate de GPU do doc 119 tinha a premissa MORTA:** o
+`as_cenas_de_varias_saidas_pela_placa_dao_o_que_a_cpu_da` tratava toda `VectorInstance` da CPU como
+defeito (antes da W3 uma cena com forma nunca chegava à placa) e reprovou **14** cenas com `Δ = 0`.
+Hoje ele compara o que cada rota DESENHA: os quads que cobrem pixels (a linha de forma calada tem
+tamanho zero, e sai das duas contas) e, à parte, as cópias de forma do dispositivo contra as
+`VectorInstance` da CPU — `73` cenas julgadas, `21 171` posições e **`361` formas**, com piso nas
+duas metades. Prova: deslocar o `x` da cópia de forma em `1` reprova as mesmas `14` cenas.
+
+⚠️ **A mistura na ponte não tinha gate nenhum** até a prova de mutação a procurar — o gate do
+cozimento (`a_mistura_por_linha_de_uma_forma_recusa_o_quadro`) prova a recusa DENTRO dele, e a
+detecção ANTES do plano, que é a que impede o quadro sem desenho, só existia como código.

@@ -4,8 +4,10 @@
 
 // ⚠️ **Dois níveis, e a separação é a do ficheiro:** as CERCAS vivem no irmão (`super`) e o
 // DESPACHO no pai (`super::super`) — ver o cabeçalho do `motion_bridge_gpu_colisor.rs`.
-use super::super::{GpuOutcome, cook_gpu, graph_has_live_vector_source};
-use super::{RECUSA_COLISOR, cook_publishes_collider, graph_declares_collider};
+use super::super::{GpuOutcome, cook_gpu, forma};
+use super::{
+    RECUSA_COLISOR, cook_publishes_collider, graph_declares_collider, graph_reads_declared_collider,
+};
 use crate::motion_state::MotionState;
 use ph2d_nodegraph::attr::{
     COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN, Column, Stream,
@@ -480,9 +482,14 @@ fn only_the_exact_collider_name_sends_the_document_to_the_cpu() {
 /// com `applicable: None`. ⛔⛔ **Sem uma cerca, o MESMO grafo daria uma pilha de caixas na CPU e
 /// um borrão de discos na placa, sem erro nenhum** — a espécie de defeito que este repo caça.
 ///
-/// ⚠️⚠️ **A cerca já existia, e o achado foi esse: são DUAS e cobrem as duas rotas.** O
-/// [`super::graph_has_live_vector_source`] apanha o `source.shape` (que é quem declara pelo cartão)
-/// e o [`graph_declares_collider`] apanha quem escreva a coluna **pelo nome**. ⛔ E a `applicable`
+/// ⚠️⚠️ **A cerca já existia, e o achado foi esse: são DUAS e cobrem as duas rotas.** A do
+/// `source.shape` (que é quem declara pelo cartão) e o [`graph_declares_collider`], que apanha quem
+/// escreva a coluna **pelo nome**.
+///
+/// ⛔ **A do cartão MUDOU de pergunta no doc 121 W3:** era a cerca do TIPO
+/// (`graph_has_live_vector_source`), que recusava TODA forma viva; com as formas a irem à placa,
+/// ela passou a ser a pergunta exacta — *a forma declara (`Collide` resolvido) E o grafo lê a
+/// declaração?* ([`forma::forma_declara_colisor`] + [`graph_reads_declared_collider`]). ⛔ E a `applicable`
 /// do kernel **não podia** resolver isto: ela recebe só os PARAMS do nó, e a declaração é uma
 /// propriedade da CORRENTE que chega.
 ///
@@ -507,10 +514,17 @@ fn a_cadeia_que_declara_colisor_pela_forma_e_recusada_do_dispositivo() {
         .expect("fio");
     }
     assert!(
-        graph_has_live_vector_source(&m.doc.graph, &m.registry),
-        "a cadeia do `source.shape` tem de ser recusada do dispositivo — sem isso o \
-         `motion.collide` separa CAIXAS na CPU e DISCOS na placa, para o mesmo grafo"
+        graph_reads_declared_collider(&m.doc.graph, &m.registry)
+            && forma::forma_declara_colisor(&mut m, 0.0),
+        "a cadeia do `source.shape` com `Collide` tem de ser recusada do dispositivo — sem isso \
+         o `motion.collide` separa CAIXAS na CPU e DISCOS na placa, para o mesmo grafo"
     );
+    // ⚠️ **O CONTROLO do cartão:** a mesma forma SEM `Collide` não declara — senão a cerca
+    // recusaria toda forma seguida de um `motion.collide`, que é a cerca do TIPO outra vez.
+    m.doc
+        .graph
+        .set_param(forma, ph2d_node_motion_shape::param::COLLIDE, 0.0);
+    assert!(!forma::forma_declara_colisor(&mut m, 0.0));
 
     // ⚠️ **O CONTROLO:** a mesma cadeia sem a forma NÃO pode ser recusada por esta razão, senão a
     // cerca seria incondicional e este gate passaria por ela, não pelo que afirma.
@@ -528,7 +542,7 @@ fn a_cadeia_que_declara_colisor_pela_forma_e_recusada_do_dispositivo() {
         .expect("fio");
     }
     assert!(
-        !graph_has_live_vector_source(&m2.doc.graph, &m2.registry),
+        !forma::forma_declara_colisor(&mut m2, 0.0),
         "o CONTROLO (grelha, sem forma) nao pode ser recusado — a cerca seria incondicional"
     );
     assert!(

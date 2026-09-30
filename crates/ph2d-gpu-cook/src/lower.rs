@@ -33,7 +33,7 @@ pub const INSTANCE_WORDS: u32 = 47;
 /// binding and the default. `texture_id` is a `Scalar` column like `rot` — it
 /// is read as `f32` and truncated to `u32`, mirroring the CPU lowering's
 /// `scalar_at(tex, i, 0.0) as u32`.
-pub const LOWER_COLUMNS: [&str; 8] = [
+pub const LOWER_COLUMNS: [&str; 9] = [
     "P",
     "size",
     "rot",
@@ -48,6 +48,11 @@ pub const LOWER_COLUMNS: [&str; 8] = [
     // `[escala_u, escala_v, desloc_u, desloc_v]`, RELATIVO ao ladrilho da linha, que é
     // exactamente o `uv_xform`. Ausente ⇒ a identidade que esta geradora cravava.
     "uv_cell",
+    // doc 121 W3 — a GEOMETRIA viva. Uma linha com `geometry_id > 0,5` é uma FORMA, que o
+    // baixamento irmão ([`crate::lower_forma`]) escreve para o passe de formas; aqui ela é
+    // CALADA (tamanho e opacidade zero), como a CPU, que só baixa sprites das linhas `Sprite`.
+    // Ausente ⇒ `0`, nenhuma linha é forma ⇒ byte-idêntico.
+    "geometry_id",
 ];
 
 /// Generate the lowering module for a concrete column set. Binding 0 = the
@@ -66,7 +71,7 @@ pub const LOWER_COLUMNS: [&str; 8] = [
 /// ⚠️ **O PIVÔ é a excepção que não é constante**: ele é uma fracção do `size` de
 /// cada linha, então o que a fonte soletra é a FRACÇÃO e a multiplicação é feita
 /// no shader, ao lado do `read_size` — exactamente como o `anchor_for` da CPU.
-pub fn lower_module(present: [bool; 8], style: SinkStyle) -> String {
+pub fn lower_module(present: [bool; 9], style: SinkStyle) -> String {
     let blend_bits = style.flip_uv();
     // ⚠️ **Um pivô ZERO emite a palavra CRAVADA, não `s.x * 0.0`.** Não é micro-optimização:
     // com um `size` degenerado (`inf`/`NaN` vindo de um `value.*`) a multiplicação propaga o
@@ -116,6 +121,7 @@ pub fn lower_module(present: [bool; 8], style: SinkStyle) -> String {
         "f32",
         "f32",
         "vec4<f32>",
+        "f32",
     ];
     let mut slot = 2u32;
     for (i, col) in LOWER_COLUMNS.iter().enumerate() {
@@ -139,6 +145,7 @@ pub fn lower_module(present: [bool; 8], style: SinkStyle) -> String {
         "0.0",                           // texture_id (absent → atlas 0)
         "0.0",                           // blend (absent → 0 = o modo do SINK)
         "vec4<f32>(1.0, 1.0, 0.0, 0.0)", // uv_cell (absent → IDENTITY_UV_XFORM)
+        "0.0",                           // geometry_id (absent → nenhuma linha é forma)
     ];
     for (i, col) in LOWER_COLUMNS.iter().enumerate() {
         if present[i] {
@@ -235,6 +242,16 @@ pub fn lower_module(present: [bool; 8], style: SinkStyle) -> String {
         \x20   instances[base + 44u] = 0u;\n\
         \x20   instances[base + 45u] = 0u;\n\
         \x20   instances[base + 46u] = {sub_order};\n\
+        \x20   // ⭐ doc 121 W3: uma linha de FORMA e' desenhada pelo passe de formas, nunca\n\
+        \x20   // como quad — a CPU so' baixa sprites das linhas `Sprite`. Tamanho, ancora e\n\
+        \x20   // opacidade a zero: um quad degenerado, que nao cobre pixel nenhum.\n\
+        \x20   if (read_geometry_id(i) > 0.5) {{\n\
+        \x20       instances[base + 2u] = 0u;\n\
+        \x20       instances[base + 3u] = 0u;\n\
+        \x20       instances[base + 17u] = 0u;\n\
+        \x20       instances[base + 18u] = 0u;\n\
+        \x20       instances[base + 35u] = 0u;\n\
+        \x20   }}\n\
         }}\n"
     ));
     src
@@ -252,7 +269,7 @@ pub fn lower_module(present: [bool; 8], style: SinkStyle) -> String {
 /// por isso que a assinatura é um hash e não uma concatenação de campos — não há
 /// bits que cheguem para os quatro em `u64`.
 #[must_use]
-pub fn lower_signature(present: [bool; 8], style: SinkStyle) -> u64 {
+pub fn lower_signature(present: [bool; 9], style: SinkStyle) -> u64 {
     let cols = present
         .iter()
         .enumerate()
@@ -293,7 +310,7 @@ mod tests {
 
     #[test]
     fn absent_columns_read_the_cpu_defaults() {
-        let src = lower_module([false; 8], SinkStyle::PLAIN);
+        let src = lower_module([false; 9], SinkStyle::PLAIN);
         assert!(src.contains("return vec2<f32>(0.0, 0.0);")); // P
         assert!(src.contains("return params.default_size;"));
         assert!(src.contains("return params.default_uv;"));
@@ -307,7 +324,7 @@ mod tests {
     /// tile handle only reaches the device if the lowering reads the column.
     #[test]
     fn the_lowering_carries_texture_id() {
-        let mut present = [false; 8];
+        let mut present = [false; 9];
         present[5] = true; // texture_id present
         let src = lower_module(present, SinkStyle::PLAIN);
         // The column is bound and read as f32 (like `rot`), truncated to u32.
@@ -322,7 +339,7 @@ mod tests {
     /// graph is byte-identical — the reader falls back to `0.0`, truncating to 0.
     #[test]
     fn absent_texture_id_is_the_atlas() {
-        let src = lower_module([false; 8], SinkStyle::PLAIN);
+        let src = lower_module([false; 9], SinkStyle::PLAIN);
         assert!(src.contains("fn read_texture_id(i: u32) -> f32 { _ = i; return 0.0; }"));
         assert!(src.contains("instances[base + 41u] = u32(read_texture_id(i));"));
     }
@@ -333,7 +350,7 @@ mod tests {
     /// byte-identical instance.
     #[test]
     fn the_neutral_blend_emits_the_zero_word_it_always_did() {
-        let src = lower_module([false; 8], SinkStyle::PLAIN);
+        let src = lower_module([false; 9], SinkStyle::PLAIN);
         // ⚠️ A palavra deixou de ser um literal e passou a ser um `if` sobre a coluna
         // `blend` (doc 89 folha 07). O que continua a valer é a CONSTANTE de que ele parte:
         // sem coluna, o `read_blend` é `0.0`, o ramo nunca corre, e o que sai é este `0u`.
@@ -357,7 +374,7 @@ mod tests {
         for blend in 1..BLEND_PIPELINE_COUNT as u8 {
             let bits = ph2d_render::RenderInstance::pack_blend_bits(blend);
             let src = lower_module(
-                [false; 8],
+                [false; 9],
                 SinkStyle {
                     blend,
                     ..SinkStyle::PLAIN
@@ -378,7 +395,7 @@ mod tests {
     /// vê a feature funcionar e depois parar sem mexer em nada"*.
     #[test]
     fn the_blend_column_reaches_word_36_on_the_device_route() {
-        let mut present = [false; 8];
+        let mut present = [false; 9];
         present[6] = true; // a coluna `blend`
         let src = lower_module(present, SinkStyle::PLAIN);
         assert!(src.contains("var<storage, read> in_blend: array<f32>;"));
@@ -426,8 +443,8 @@ mod tests {
         }
         // And the column bits still separate column sets at a FIXED blend — the
         // tag must not have eaten the bits it rides above.
-        let a = lower_signature([false; 8], SinkStyle::PLAIN);
-        let b = lower_signature([true; 8], SinkStyle::PLAIN);
+        let a = lower_signature([false; 9], SinkStyle::PLAIN);
+        let b = lower_signature([true; 9], SinkStyle::PLAIN);
         assert_ne!(a, b, "the column bits stopped separating column sets");
     }
 
@@ -460,7 +477,7 @@ mod tests {
     /// valor diferente nas duas rotas é a porta de uma divergência no dia em que alguém o ordenar.
     #[test]
     fn o_device_escreve_o_z_do_motion_por_cima_do_mundo() {
-        let src = lower_module([false; 8], SinkStyle::PLAIN);
+        let src = lower_module([false; 9], SinkStyle::PLAIN);
         let z = ph2d_render::RenderInstance::Z_ORDER_OVER_THE_WORLD;
         assert!(
             src.contains(&format!("instances[base + 42u] = {z}u;")),
@@ -476,8 +493,8 @@ mod tests {
     /// A régua é a mesma para os quatro — a fonte MUDA, e a chave também.
     #[test]
     fn every_style_field_changes_both_the_source_and_the_cache_key() {
-        let plain = lower_module([false; 8], SinkStyle::PLAIN);
-        let key = lower_signature([false; 8], SinkStyle::PLAIN);
+        let plain = lower_module([false; 9], SinkStyle::PLAIN);
+        let key = lower_signature([false; 9], SinkStyle::PLAIN);
         for (what, style) in [
             (
                 "blend",
@@ -509,12 +526,12 @@ mod tests {
             ),
         ] {
             assert_ne!(
-                lower_module([false; 8], style),
+                lower_module([false; 9], style),
                 plain,
                 "{what}: a fonte gerada nao mudou — o campo nao alcanca o device"
             );
             assert_ne!(
-                lower_signature([false; 8], style),
+                lower_signature([false; 9], style),
                 key,
                 "{what}: a chave do cache nao mudou — o device reusa a pipeline errada"
             );
@@ -525,10 +542,10 @@ mod tests {
     /// cravada.** Word 46 é o `sub_order` (ADR-0070-amendment-9).
     #[test]
     fn the_stream_order_writes_the_invocation_index_into_word_46() {
-        assert!(lower_module([false; 8], SinkStyle::PLAIN).contains("instances[base + 46u] = 0u;"));
+        assert!(lower_module([false; 9], SinkStyle::PLAIN).contains("instances[base + 46u] = 0u;"));
         assert!(
             lower_module(
-                [false; 8],
+                [false; 9],
                 SinkStyle {
                     stream_order: true,
                     ..SinkStyle::PLAIN
@@ -541,14 +558,14 @@ mod tests {
     /// **A COLUNA `uv_cell` CHEGA ÀS PALAVRAS 37-40** — o sub-UV na rota do device.
     #[test]
     fn the_uv_cell_column_reaches_the_uv_xform_words() {
-        let mut present = [false; 8];
+        let mut present = [false; 9];
         present[7] = true;
         let src = lower_module(present, SinkStyle::PLAIN);
         assert!(src.contains("var<storage, read> in_uv_cell: array<vec4<f32>>;"));
         assert!(src.contains("let uc = read_uv_cell(i);"));
         assert!(src.contains("wf(base + 37u, uc.x);"));
         // Ausente ⇒ a identidade que esta geradora cravava.
-        let plain = lower_module([false; 8], SinkStyle::PLAIN);
+        let plain = lower_module([false; 9], SinkStyle::PLAIN);
         assert!(plain.contains(
             "fn read_uv_cell(i: u32) -> vec4<f32> { _ = i; return vec4<f32>(1.0, 1.0, 0.0, 0.0); }"
         ));
@@ -559,11 +576,11 @@ mod tests {
     /// que apanharia — no caso de canto, que é o pior sítio para a descobrir.
     #[test]
     fn a_zero_pivot_writes_the_hardcoded_word_not_a_multiply_by_zero() {
-        let plain = lower_module([false; 8], SinkStyle::PLAIN);
+        let plain = lower_module([false; 9], SinkStyle::PLAIN);
         assert!(plain.contains("instances[base + 17u] = 0u;"));
         assert!(!plain.contains("wf(base + 17u,"));
         let moved = lower_module(
-            [false; 8],
+            [false; 9],
             SinkStyle {
                 pivot: [0.5, -0.25],
                 ..SinkStyle::PLAIN

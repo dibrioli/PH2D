@@ -21,7 +21,7 @@
 | 9 | Composite Brush: o resíduo Blur+Smear (`12/255`) | linha | a conferir |
 | 10 | Composite Brush: metade dos bytes dos intermédios da pilha | linha | a conferir |
 | 11 | Aquarela: o **Smudge** não mexe na tinta MOLHADA da sessão (report do dono, 29/09) | linha | **feito** — §3.1 (smoke do dono por fazer) |
-| 12 | Aquarela: o **Rewet** mexe pouco na tinta MOLHADA da sessão (report do dono, 29/09) | linha | **medido, por construir** — §3 |
+| 12 | Aquarela: o **Rewet** mexe pouco na tinta MOLHADA da sessão (report do dono, 29/09) | linha | **feito** — §3.2 (smoke do dono por fazer) |
 
 ---
 
@@ -219,7 +219,36 @@ o Smudge **tira** cor a esse rasto (soma do ganho a Charge `0`: `−2 279` sem o
 `−1 899` com ele). Vem do arrasto da RESERVA do mixer (`smear_level`), que é anterior a esta fila.
 
 **Gates:** [`watercolor_arrasto_molhado`](../../crates/ph2d-tool-painter/src/tool/paint/tests/watercolor_arrasto_molhado.rs)
-(6) + `premultiplied_smear_drags_transparency_without_darkening` (`ph2d-painter-brush`). Prova de
-mutação: [`muta_o_arrasto_molhado.sh`](ferramentas/muta_o_arrasto_molhado.sh), **13 de 13 sangram**.
+(os do Smudge) + `premultiplied_smear_drags_transparency_without_darkening` (`ph2d-painter-brush`).
+Prova de mutação: [`muta_o_arrasto_molhado.sh`](ferramentas/muta_o_arrasto_molhado.sh), **13 de 13 sangram**.
 A captura da ORIGEM do arrasto foi escrita e **retirada**: com um taper de `3` diâmetros a saída
 ficava ao bit a mesma sem ela (a origem é a pegada do dab anterior, já fotografada).
+
+### §3.2 — Item 12 feito: o Rewet redissolve a tinta molhada (2026-09-29)
+
+**Porque a cura não é no composite:** o Rewet de lá lê a base SECA da sessão de propósito — a tinta
+molhada vizinha seria contada duas vezes (o rectângulo que clareia, dono 2026-07-09). A tinta
+molhada vive no plano da cor da sessão, e é no DEPÓSITO deste traço que a água a encontra
+([`watercolor_mistura_agua`](../../crates/ph2d-tool-painter/src/tool/paint/watercolor_mistura_agua.rs)):
+
+- **dissolve** — o parceiro da mistura de cada texel passa a ser a tinta de ANTES do traço borrada
+  pelo MESMO raio do Spread que o seco usa (`raio_da_agua`, uma porta com os dois leitores) e pela
+  MESMA soma (`box_blur4`, presença e cores pesadas por ela), levada a `Rewet` do caminho, em
+  pré-multiplicado. Um borrão por LOTE de dabs; o plano de antes não muda durante o traço, logo o
+  resultado não depende da cadência;
+- **mistura** — o `deposita` passa os dois pesos pela porta do composite seco (`alvo_sobre_seco`):
+  o botão (Pigment, Smudge) pelo K–M, a água do Rewet pela lei da água.
+
+**Resultado, com o SECO como régua** (o lado aprovado): o meio da faixa `253,245,140 → 188,226,174`
+(verde: as duas tintas molhadas misturam); o azul espalha-se de `x = 63` a `x = 108`, a MESMA faixa do
+Rewet seco, a menos de `8` por texel; o `B − R` longe da faixa lê `−61` contra `−62` do seco.
+⚠️ A cor não é a do seco (lá o azul SOBE por uma película amarela fina: `214,229,253`), e é de
+propósito: sobre molhado são duas tintas molhadas, e misturam.
+
+**Gates:** `o_rewet_mistura_a_tinta_molhada` · `o_rewet_espalha_a_tinta_molhada_como_espalha_a_seca`
+(barra por texel a `12` do seco) · `a_agua_mistura_pela_lei_da_agua_e_o_botao_pela_do_pigmento` ·
+`diluir_com_papel_muda_o_alfa_e_nao_a_cor` · a porta nos três estados da sessão. Mutação: o mesmo
+arnês, **20 de 20** com o Smudge. ⚠️ A mistura recta no parceiro SOBREVIVIA à fixtura do produto (ali
+o papel é `0,0,0,0` e a faixa opaca, e as duas misturas coincidem) — só a orla de alfa parcial as
+separa, e é essa a fixtura do gate de unidade.
+

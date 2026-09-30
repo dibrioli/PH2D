@@ -93,7 +93,7 @@ impl PainterTool {
         };
         let dirty = dirty?;
 
-        let spread = self.paint.brush.edge_spread.round().clamp(0.0, 48.0) as usize;
+        let spread = super::super::watercolor_mistura_agua::raio_da_agua(&self.paint.brush);
         let warp_amp = self.paint.brush.warp.max(0.0);
         let wet = self.paint.brush.wet_rewet.clamp(0.0, 1.0);
         // Silhouette-feather radius (`inner`), capped so a pool keeps a saturated core.

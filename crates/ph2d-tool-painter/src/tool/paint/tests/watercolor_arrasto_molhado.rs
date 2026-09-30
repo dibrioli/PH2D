@@ -185,11 +185,21 @@ fn a_porta_do_arrasto_molhado_so_abre_sobre_tinta_de_tracos_anteriores() {
         t.arrasto_da_sessao().is_none(),
         "e o arrasto molhado fica desligado nele"
     );
+    t.paint.brush.wet_rewet = 1.0;
+    assert!(
+        t.agua_da_sessao().is_none(),
+        "e a água do Rewet também — não há tinta molhada alheia a redissolver"
+    );
     arma(&mut t, pincel(AMARELO, 1.0, false));
     traco(&mut t, [40.0, 96.0], [160.0, 96.0]);
     assert!(
         porta(&t),
         "o 2.º traço da MESMA sessão arrasta a tinta molhada do 1.º"
+    );
+    t.paint.brush.wet_rewet = 1.0;
+    assert!(
+        t.agua_da_sessao().is_some(),
+        "e a água do Rewet redissolve-a pela MESMA porta"
     );
     for _ in 0..300 {
         t.paint_tick(0.5);
@@ -329,5 +339,124 @@ fn o_keep_parcial_pesa_o_arrasto() {
     assert!(
         mudados > 20,
         "controlo: o arrasto cheio mexeu no plano ({mudados} texels)"
+    );
+}
+
+/// Azul em `x = 86` (molhado, ou seco se `secar`), e o amarelo com o Rewet a atravessá-lo.
+fn cena_rewet(rewet: f32, secar: bool) -> PainterTool {
+    let mut t = white_canvas(SIZE, 14.0);
+    arma(&mut t, pincel(AZUL, 0.0, false));
+    traco(&mut t, [86.0, 40.0], [86.0, 150.0]);
+    if secar {
+        for _ in 0..300 {
+            t.paint_tick(0.5);
+        }
+    }
+    arma(
+        &mut t,
+        BrushSpec {
+            wet_rewet: rewet,
+            ..pincel(AMARELO, 0.0, false)
+        },
+    );
+    traco(&mut t, [40.0, 96.0], [160.0, 96.0]);
+    t
+}
+
+/// O verde de uma mistura de azul com amarelo: o verde é o canal DOMINANTE, com folga sobre os dois.
+fn e_verde(p: [u8; 4]) -> bool {
+    let [r, g, b, _] = p.map(i32::from);
+    g >= r + 20 && g >= b + 20
+}
+
+#[test]
+fn o_rewet_mistura_a_tinta_molhada() {
+    // Medido (2026-09-29): o meio da faixa lia `253,245,140` com e sem o Rewet (o amarelo TAPA o azul
+    // no plano da sessão, e a água do composite só via a tinta SECA). Com a cura, `188,226,174`.
+    let sem = px(&cena_rewet(0.0, false), SIZE, 86, Y);
+    assert!(
+        !e_verde(sem) && sem[0] > sem[2] + 60,
+        "controlo: sem Rewet o amarelo molhado tapa o azul ({sem:?})"
+    );
+    let com = px(&cena_rewet(1.0, false), SIZE, 86, Y);
+    assert!(
+        e_verde(com),
+        "com o Rewet, a água do amarelo tem de redissolver o azul molhado e misturá-los — lê {com:?}"
+    );
+}
+
+#[test]
+fn o_rewet_espalha_a_tinta_molhada_como_espalha_a_seca() {
+    // A régua é o LADO APROVADO: o Rewet sobre tinta SECA (o dono aprovou-o em 2026-07-06) espalha o
+    // azul para fora da faixa até ao raio do Spread. Ganho de azul sobre o traço sem Rewet, menos o
+    // ganho LONGE da tinta (o clarear da própria lavagem molhada, `27`, igual nos dois):
+    // * seco — sobe a partir de `x = 63`, some depois de `x = 108`;
+    // * molhado, com a cura — a MESMA faixa, `63..108`, a menos de `8` por texel;
+    // * molhado, antes da cura — zero fora da faixa (o azul molhado não se mexia).
+    // ⇒ por texel, nas duas orlas de fora da faixa azul: o molhado a `≤ 12` do seco (folga sobre o
+    //   `8` medido), e o espalhamento tem de EXISTIR (o seco passa `20` em `x = 104`).
+    const FOLGA: i32 = 12;
+    let orla = |secar: bool| {
+        let (sem, com) = (cena_rewet(0.0, secar), cena_rewet(1.0, secar));
+        let g = move |x: u32| azul(px(&com, SIZE, x, Y)) - azul(px(&sem, SIZE, x, Y));
+        let longe = g(140);
+        move |x: u32| g(x) - longe
+    };
+    let (seco, molhado) = (orla(true), orla(false));
+    assert!(
+        seco(104) >= 20,
+        "controlo: o Rewet seco espalha o azul até x = 104"
+    );
+    let mut pior = (0, 0);
+    for x in (60..=71u32).chain(101..=112) {
+        let d = (molhado(x) - seco(x)).abs();
+        if d > pior.1 {
+            pior = (x, d);
+        }
+    }
+    assert!(
+        pior.1 <= FOLGA,
+        "o Rewet molhado não espalha como o seco: em ({}, {Y}) o molhado ganha {} e o seco {}",
+        pior.0,
+        molhado(pior.0),
+        seco(pior.0)
+    );
+}
+
+#[test]
+fn a_agua_mistura_pela_lei_da_agua_e_o_botao_pela_do_pigmento() {
+    // O depósito passa os dois pesos pela MESMA porta do composite sobre tinta seca
+    // (`alvo_sobre_seco`): o botão (Pigment, Smudge) pelo Kubelka–Munk, a água do Rewet pela lei da
+    // água. O controlo: as duas leis dão cores DIFERENTES para o mesmo par, senão isto não afirma nada.
+    use super::super::watercolor_mistura::{PlanosDaMistura, alvo_sobre_seco, deposita};
+    const AZ: [u8; 4] = [60, 110, 240, 255];
+    const AM: [u8; 3] = [250, 230, 64];
+    let unit = |p: [u8; 3]| p.map(|c| f32::from(c) / 255.0);
+    let corre = |pesos: (f32, f32)| {
+        let mut p = PlanosDaMistura::default();
+        p.garante(1);
+        p.novo_traco();
+        let mut buf = AZ.to_vec();
+        deposita(&mut buf, &mut p, 0, AM, 1.0, pesos, None);
+        [buf[0], buf[1], buf[2]]
+    };
+    let esperado = |botao: f32, agua: f32| {
+        alvo_sobre_seco(unit([AZ[0], AZ[1], AZ[2]]), unit(AM), 0.5, botao, agua)
+            .map(|c| (c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8)
+    };
+    let (km, agua) = (esperado(1.0, 0.0), esperado(0.0, 1.0));
+    assert!(
+        km.iter().zip(&agua).any(|(a, b)| a.abs_diff(*b) > 8),
+        "controlo: as duas leis dão cores distintas para o azul com o amarelo ({km:?} · {agua:?})"
+    );
+    let perto = |a: [u8; 3], b: [u8; 3]| a.iter().zip(&b).all(|(x, y)| x.abs_diff(*y) <= 1);
+    let (lido_km, lido_agua) = (corre((1.0, 0.0)), corre((0.0, 1.0)));
+    assert!(
+        perto(lido_km, km),
+        "o botão mistura pelo K–M: lê {lido_km:?}, esperado {km:?}"
+    );
+    assert!(
+        perto(lido_agua, agua),
+        "a água do Rewet mistura pela lei da água: lê {lido_agua:?}, esperado {agua:?}"
     );
 }

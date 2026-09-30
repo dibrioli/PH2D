@@ -197,15 +197,23 @@ fn over(dst: &mut [u8], col: [u8; 3], a: f32) {
 }
 
 /// Deposita um toque de alfa `a` e cor `col` no texel `idx` (índice de byte) do plano da sessão
-/// `buf`, misturando com a tinta que a sessão lá tinha ANTES deste traço pelo peso `mistura`.
+/// `buf`, misturando com a tinta que a sessão lá tinha ANTES deste traço.
+///
+/// Os dois pesos são os do composite sobre tinta SECA, e passam pela MESMA porta
+/// ([`alvo_sobre_seco`]): `pelo_botao` é tinta a misturar com tinta (o `Pigment`, e o Smudge que
+/// empurra uma para dentro da outra) e vai pelo Kubelka–Munk; `pela_agua` é a água do Rewet a
+/// redissolver a tinta molhada de baixo e vai pela lei da água. Com `pela_agua = 0` a mistura é o
+/// Kubelka–Munk ao bit, como era antes de a água entrar aqui.
 pub(super) fn deposita(
     buf: &mut [u8],
     planos: &mut PlanosDaMistura,
     idx: usize,
     col: [u8; 3],
     a: f32,
-    mistura: f32,
+    (pelo_botao, pela_agua): (f32, f32),
+    parceiro: Option<[u8; 4]>,
 ) {
+    let mistura = pelo_botao.max(pela_agua);
     let px = idx..idx + 4;
     if !planos.capturado[idx / 4] {
         // O primeiro toque DESTE traço: o que o plano tem agora é a tinta das pinceladas anteriores.
@@ -213,12 +221,14 @@ pub(super) fn deposita(
         planos.antes[px.clone()].copy_from_slice(&buf[px.clone()]);
     }
     over(&mut planos.proprio[px.clone()], col, a);
-    let antes = [
+    // O parceiro da mistura: a tinta que estava neste texel, ou — com o Rewet — a da vizinhança
+    // dissolvida na água ([`super::watercolor_mistura_agua`]).
+    let antes = parceiro.unwrap_or([
         planos.antes[idx],
         planos.antes[idx + 1],
         planos.antes[idx + 2],
         planos.antes[idx + 3],
-    ];
+    ]);
     let proprio = [
         planos.proprio[idx],
         planos.proprio[idx + 1],
@@ -245,11 +255,30 @@ pub(super) fn deposita(
             f32::from(p[2]) / 255.0,
         ]
     };
-    let misturado = ph2d_pigment::mix_unit(unit(antes), unit(proprio), t);
+    let misturado = alvo_sobre_seco(unit(antes), unit(proprio), t, pelo_botao, pela_agua);
     for c in 0..3 {
         let o = f32::from(out[c]);
         let m = misturado[c].clamp(0.0, 1.0) * 255.0;
         out[c] = (o + (m - o) * mistura + 0.5).clamp(0.0, 255.0) as u8;
     }
     buf[px].copy_from_slice(&out);
+}
+
+impl super::PainterTool {
+    /// **O Rewet sobre a tinta MOLHADA da sessão** — `Some(água)` quando este traço redissolve a
+    /// tinta que os traços anteriores da sessão deixaram molhada (report do dono, 2026-09-29: *«o
+    /// Rewet não afeta a mancha molhada»*; medido `2,6×` mais fraco que sobre a seca, doc 44 §3).
+    ///
+    /// O Rewet do composite lê a base da sessão — a tinta SECA de baixo —, e de propósito: a tinta
+    /// molhada vizinha ali seria contada duas vezes (a base refeita com ela re-renderizava-a como um
+    /// rectângulo que clareia, Enio 2026-07-09). A tinta molhada vive no plano da cor da sessão, e é
+    /// lá que a água a encontra: o depósito deste traço mistura com ela pela lei da água
+    /// ([`deposita`]), com o peso do knob — o `st_wet` do composite, que dentro do traço é ele.
+    ///
+    /// ⚠️ Só com tinta de traços ANTERIORES (`ha_tinta_da_sessao`), pela mesma razão do Smudge
+    /// ([`super::PlanosDaMistura::ha_tinta_da_sessao`]).
+    pub(super) fn agua_da_sessao(&self) -> Option<f32> {
+        let agua = self.paint.brush.wet_rewet.clamp(0.0, 1.0);
+        (self.paint.wet_mistura.ha_tinta_da_sessao && agua > 0.0).then_some(agua)
+    }
 }

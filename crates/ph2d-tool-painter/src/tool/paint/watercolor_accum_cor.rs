@@ -35,10 +35,15 @@ impl PainterTool {
         let shape_img_owned = self.paint.shape_image.as_ref().map(|i| i.as_mask());
         let canvas = [fw as f32, fh as f32];
         // O `Pigment` mistura a cor nova com a tinta que a SESSÃO já tinha ([`super::watercolor_mistura`]).
-        // E o Smudge sobre a tinta molhada da sessão arrasta a cor e mistura-a ([`Self::arrasto_da_sessao`]).
+        // Sobre a tinta molhada da sessão, o Smudge arrasta-a e mistura-a ([`Self::arrasto_da_sessao`])
+        // e o Rewet redissolve-a na água deste traço ([`Self::agua_da_sessao`]).
         let arrasto = self.arrasto_da_sessao();
         let pigment = self.paint.brush.effective_pigment_mix();
-        let mistura = pigment.max(arrasto.unwrap_or(0.0));
+        let pesos = (
+            pigment.max(arrasto.unwrap_or(0.0)),
+            self.agua_da_sessao().unwrap_or(0.0),
+        );
+        let mistura = pesos.0.max(pesos.1);
         let pigment = pigment > 0.0;
         let (spec, tiling) = (self.paint.brush, self.paint.tiling);
         let planos = &mut self.paint.wet_mistura;
@@ -47,6 +52,31 @@ impl PainterTool {
             planos.garante(fw * fh);
         }
         let buf = &mut self.paint.stroke_color;
+        // O Rewet dissolve a tinta de antes do traço na vizinhança do LOTE, uma vez por lote
+        // ([`super::watercolor_mistura_agua`]).
+        let dissolucao = (pesos.1 > 0.0)
+            .then(|| {
+                let caixa = dabs
+                    .iter()
+                    .filter(|d| d.radius_px > 0.0)
+                    .map(|d| {
+                        let (cx, cy, r) = (d.center[0], d.center[1], d.radius_px);
+                        let lo = |v: f32, n: usize| ((v - r).floor().max(0.0) as usize).min(n);
+                        let hi = |v: f32, n: usize| ((v + r).ceil().max(0.0) as usize).min(n);
+                        [lo(cx, fw), lo(cy, fh), hi(cx, fw), hi(cy, fh)]
+                    })
+                    .reduce(|a, b| {
+                        [
+                            a[0].min(b[0]),
+                            a[1].min(b[1]),
+                            a[2].max(b[2]),
+                            a[3].max(b[3]),
+                        ]
+                    })?;
+                let raio = super::watercolor_mistura_agua::raio_da_agua(&spec);
+                Some(planos.dissolve(buf, (fw, fh), caixa, raio, pesos.1))
+            })
+            .flatten();
         for (di, (d, (dcol, prio, depl))) in dabs.iter().zip(&mixed).enumerate() {
             // Frame draw BEFORE any skip — mirror of the coverage pass (stream sync; see there).
             let rng = rng.enter(&groups, di);
@@ -156,7 +186,17 @@ impl PainterTool {
                         let prio_do_deposito = if pigment { 1.0 } else { prio };
                         let a = peak * wgt * prio_do_deposito * depl * keep;
                         if a > 0.0 {
-                            super::watercolor_mistura::deposita(buf, planos, idx, col, a, mistura);
+                            let parceiro = dissolucao.as_ref().map(|dis| {
+                                let de = if planos.capturado[base + x] {
+                                    &planos.antes[idx..idx + 4]
+                                } else {
+                                    &buf[idx..idx + 4]
+                                };
+                                dis.parceiro([de[0], de[1], de[2], de[3]], x, y)
+                            });
+                            super::watercolor_mistura::deposita(
+                                buf, planos, idx, col, a, pesos, parceiro,
+                            );
                         }
                         continue;
                     }

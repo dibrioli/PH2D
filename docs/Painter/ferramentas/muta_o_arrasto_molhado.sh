@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prova de mutação do Smudge sobre a tinta MOLHADA (doc 44 §3, 2026-09-29). Corre-se pela porta da linha:
+# Prova de mutação do Smudge e do Rewet sobre a tinta MOLHADA (doc 44 §3, 2026-09-29). Corre-se pela porta da linha:
 #   bash scripts/ph2d-run.sh bash docs/Painter/ferramentas/muta_o_arrasto_molhado.sh
 # MUTA_SO_ANCORAS=1 = só o pré-voo (cada âncora casa 1×); MUTA_FILTRO="M3 M5" = só essas.
 # Controlos: âncora casa 1× (pré-voo), corrida limpa
@@ -13,9 +13,10 @@ SMU=crates/ph2d-tool-painter/src/tool/paint/watercolor_smudge.rs
 SME=crates/ph2d-painter-brush/src/smear.rs
 ARR=crates/ph2d-tool-painter/src/tool/paint/watercolor_mistura_arrasto.rs
 COR=crates/ph2d-tool-painter/src/tool/paint/watercolor_accum_cor.rs
+AGU=crates/ph2d-tool-painter/src/tool/paint/watercolor_mistura_agua.rs
 corre() { # imprime "rc total"
   local tot=0 rc=0 out
-  for f in watercolor_arrasto_molhado watercolor_mistura_molhada junction_is_soft; do
+  for f in watercolor_arrasto_molhado watercolor_mistura_molhada junction_is_soft watercolor_mistura_agua; do
     out=$(cargo test -q -p ph2d-tool-painter --profile ci-test --lib "$f" 2>&1); r=$?
     [ $r -ne 0 ] && rc=1
     n=$(printf '%s\n' "$out" | grep -oE '[0-9]+ passed; [0-9]+ failed' | awk '{s+=$1+$3} END{print s+0}')
@@ -34,7 +35,7 @@ M=(
 "M3|$MIS|    if !planos.capturado[idx / 4] {|    if planos.proprio[idx + 3] == 0 {"
 "M5|$ARR|        self.captura(buf, fw, [x0, y0, x1, y1]);|"
 "M6|crates/ph2d-tool-painter/src/tool/paint/stroke_lifecycle.rs|self.paint.wet_mistura.ha_tinta_da_sessao = wet_session;|self.paint.wet_mistura.ha_tinta_da_sessao = true;"
-"M7|$COR|        let mistura = pigment.max(arrasto.unwrap_or(0.0));|        let mistura = pigment;"
+"M7|$COR|            pigment.max(arrasto.unwrap_or(0.0)),|            pigment,"
 "M8|$SME|            dst[c] = ((pd + (ps - pd) * w) / na).round().clamp(0.0, 255.0) as u8;|            dst[c] = (pd + (ps - pd) * w).round().clamp(0.0, 255.0) as u8;"
 "M9|$MIS|        self.capturado.iter_mut()|        self.capturado.iter_mut().take(0)"
 "M10|$SME|        mistura_premultiplicada,|        mistura_recta,"
@@ -42,6 +43,13 @@ M=(
 "M12|$ARR|        let (Some(keep), Some(v)) = (guarda, antes_do_arrasto) else {|        let (Some(keep), Some(v)) = (None::<fn(usize) -> f32>, antes_do_arrasto) else {"
 "M13|$COR|if gated { Some(|if false { Some("
 "M14|$ARR|            let pd = f32::from(dst[c]) * da;|            let pd = f32::from(dst[c]);"
+"R1|$MIS|.then_some(agua)|.then_some(0.0)"
+"R2|$MIS|    let antes = parceiro.unwrap_or([|    let antes = parceiro.filter(|_| false).unwrap_or(["
+"R3|$COR|let raio = super::watercolor_mistura_agua::raio_da_agua(|let raio = 0 * super::watercolor_mistura_agua::raio_da_agua("
+"R4|$MIS|t, pelo_botao, pela_agua);|t, pela_agua, pelo_botao);"
+"R5|$AGU|            let pd = f32::from(antes[c]) * aa;|            let pd = f32::from(antes[c]);"
+"R6|$AGU|                let px = if self.capturado[g] {|                let px = if false {"
+"R7|$MIS|    let mistura = pelo_botao.max(pela_agua);|    let mistura = pelo_botao;"
 )
 aplica() { python3 - "$1" "$2" "$3" <<'PY'
 import sys

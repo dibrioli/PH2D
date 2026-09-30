@@ -302,6 +302,13 @@ impl TelaNaMalha {
         self.semente.is_some()
     }
 
+    /// Os bytes com que a lei da diferença compara — a régua dos gates que
+    /// perguntam se a semente é o que a peça TEM.
+    #[must_use]
+    pub fn semente(&self) -> Option<&[u8]> {
+        self.semente.as_deref()
+    }
+
     /// ⭐ **O que a tela pede a um ponto** — e se isso é «nada a fazer».
     fn leitura(&self, tela: &Tela<'_>, s: [f32; 2]) -> (Mistura, bool) {
         let (pm, a) = tela.amostra(s[0], s[1]);

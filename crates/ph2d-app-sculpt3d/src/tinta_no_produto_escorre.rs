@@ -532,3 +532,100 @@ fn diag_o_segundo_traco_seca() {
         }
     }
 }
+
+/// ⭐⭐⭐ **GATE — depois de rodar a vista, a semente do traço seguinte é o que
+/// a peça TEM** (report do dono, 29/09, com duas fotos: *«fica uma marca sem
+/// tinta no local onde a simulação reinicia — só acontece após rotacionar a
+/// view»*). A lei da diferença pousa `tela − semente`, logo tudo onde a semente
+/// diverge da peça fica na peça PARA SEMPRE: a semente era a tela LEVADA da
+/// vista de antes, que junto da frente da água mostra a borda escura dela um
+/// píxel ao lado de onde a peça a tem — e quando a água seguia, a peça ficava
+/// com uma linha clara onde a borda levada estava.
+///
+/// ⚠️ **A régua é a IGUALDADE AO BYTE com o retrato**, e não a linha na foto: a
+/// linha é esse desvio amplificado pela borda da frente, e esta bancada não
+/// reproduz a frente carregada do dono (a água dela assenta cedo). O que se
+/// pode afirmar com exactidão é a causa — *a semente de uma vista nova é a
+/// mesma que a de uma vista seca*, que é o caminho que o dono aprovou.
+/// ⚠️ Longe do 1.º carimbo do traço novo, que já pousou antes da leitura.
+#[test]
+#[ignore = "precisa de adaptador e corre em tempo real"]
+fn depois_de_rodar_a_semente_e_o_que_a_peca_tem() {
+    use ph2d_editor_core::tool::PointerPhase;
+    let gpu = gpu_or_skip!();
+    let mut s = cena_52(&gpu.device);
+    s.sync_mesh(&gpu.device, &gpu.queue);
+    let mut p = molhado();
+    p.set_brush_size_px(60.0);
+    assert!(traco(&mut s, &mut p, 420.0), "o 1.º traço molhado");
+    for _ in 0..10 {
+        um_quadro(&mut s, &mut p);
+    }
+    let olho = s.camera.eye();
+    let mut host = super::super::HostDeTeste {
+        ponteiro: (450.0, 350.0),
+    };
+    let _ = crate::input_down::pointer_down(&mut host, &mut s, winit::event::MouseButton::Right);
+    for k in 1..=6u8 {
+        crate::input::pointer_move(&mut s, 450.0 + 10.0 * f32::from(k), 350.0);
+        um_quadro(&mut s, &mut p);
+    }
+    crate::input::pointer_up(&mut s);
+    assert_ne!(s.camera.eye(), olho, "a órbita não rodou a vista");
+    assert!(
+        s.painter_escorre.is_some(),
+        "o CONTROLO: a água do 1.º traço ainda corre"
+    );
+
+    quadro(Some(&mut s), Some(&mut p));
+    let dedo = (330.0f32, 470.0f32);
+    assert!(
+        crate::painter_na_malha::entrega(&mut s, &mut p, dedo.0, dedo.1, 1.0, PointerPhase::Down),
+        "o traço novo pegou na peça"
+    );
+    // O CONTROLO do caminho: a água sobreviveu ao pen-down, logo ele LEVOU-A
+    // para a vista nova — no caminho seco a semente também é o retrato, e o
+    // gate ficaria verde sem medir nada.
+    assert!(
+        p.screen_canvas_is_wet(),
+        "o pen-down secou a água: o caminho medido não é o da vista nova"
+    );
+    let sessao = s.painter_tela.as_ref().expect("o traço novo está aberto");
+    let v = *sessao.vista();
+    let semente = sessao.semente().expect("a lei é a diferença").to_vec();
+    let tinta = s.stroke.tinta_fina.as_ref().map(|t| t.tinta());
+    let retrato = ph2d_sculpt3d::tela_semente::semente(s.mesh(), tinta, &v);
+    assert_eq!(semente.len(), retrato.len());
+    let (w, _) = v.tamanho();
+    let longe = |i: usize| {
+        let (x, y) = ((i % w as usize) as f32, (i / w as usize) as f32);
+        (x - dedo.0).hypot(y - dedo.1) > 120.0
+    };
+    // O CONTROLO: a fixture tem a água levada à vista — há tinta do 1.º traço
+    // no retrato, longe do dedo (sem ela a igualdade seria a de uma peça crua).
+    let vermelhos = retrato
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .enumerate()
+        .filter(|&(i, c)| longe(i) && c[3] == 255 && c[0] > c[1].saturating_add(60))
+        .count();
+    eprintln!("vermelhos à vista: {vermelhos}");
+    assert!(
+        vermelhos > 2000,
+        "a fixture não tem a tinta do 1.º traço à vista: {vermelhos}"
+    );
+    let diferentes = semente
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(retrato.as_chunks::<4>().0)
+        .enumerate()
+        .filter(|&(i, (a, b))| longe(i) && a != b)
+        .count();
+    assert_eq!(
+        diferentes, 0,
+        "a semente do traço depois de rodar não é o que a peça tem: {diferentes} píxeis \
+         diferem do retrato — cada um fica na peça para sempre (a marca clara do report)"
+    );
+}

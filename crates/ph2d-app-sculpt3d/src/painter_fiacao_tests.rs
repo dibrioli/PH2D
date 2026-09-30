@@ -267,6 +267,23 @@ fn elos() -> Vec<(
             "P28 rodar e pintar: a tela é re-semeada da vista nova e a água do traço \
              anterior pára (report do dono, 29/09)",
         ),
+        (
+            "painter_na_malha.rs",
+            COSTURA,
+            "(Some(vista), Some(retrato)) if semeado && molhado =>",
+            1,
+            "P14b a tela fica depois de TODO traço semeado, molhado ou não: o traço seco \
+             reaproveita uma tela que já não descreve a peça",
+        ),
+        (
+            "painter_na_malha.rs",
+            COSTURA,
+            "sessao.com_semente(retrato);",
+            1,
+            "P29 depois de rodar a semente volta a ser a tela levada, e cada píxel dela \
+             que a peça não tem fica na peça para sempre — a marca clara (report do \
+             dono, 29/09)",
+        ),
     ]
 }
 
@@ -274,7 +291,7 @@ fn elos() -> Vec<(
 #[test]
 fn a_costura_do_painter_esta_ligada_nas_duas_pontas() {
     let elos = elos();
-    assert!(elos.len() >= 28, "o piso de população: {} elos", elos.len());
+    assert!(elos.len() >= 30, "o piso de população: {} elos", elos.len());
     for (ficheiro, texto, agulha, esperado, parte) in elos {
         let n = sem_prosa(texto).matches(agulha).count();
         assert_eq!(

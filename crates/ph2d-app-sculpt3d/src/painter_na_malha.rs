@@ -373,9 +373,15 @@ impl Sculpt3dScene {
                 if registo::ligado() {
                     eprintln!("[painter3d] pen-down: a vista mudou -> a agua MUDA DE VISTA");
                 }
-                // A semente é a tela LEVADA: o que a peça já tem é o que ela
-                // mostra, e a lei da diferença pousa só o que a água mudar daqui.
-                sessao.com_semente(f.rgba.as_ref().clone());
+                // ⭐⭐ A semente é o RETRATO — o que a peça TEM vista daqui —, e
+                // nunca a tela levada: a levada é a de antes amostrada pelo
+                // píxel mais perto, e junto da frente da água ela mostra tinta
+                // onde a peça não a tem (e vice-versa). Com ela por semente, a
+                // diferença desse píxel nascia ZERO e ficava zero enquanto a
+                // água o cobria: a peça nunca recebia a tinta que a tela
+                // mostrava — a marca clara da frente de antes (report do dono,
+                // 29/09, *«só acontece após rotacionar a view»*).
+                sessao.com_semente(retrato);
                 self.painter_ultima = Some(f.rgba);
                 return true;
             }

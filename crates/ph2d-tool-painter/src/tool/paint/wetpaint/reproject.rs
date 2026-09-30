@@ -13,7 +13,8 @@
 //! Painter não sabe o que é uma malha, e continua a não saber. Ele recebe, píxel
 //! a píxel da tela nova, a coordenada CONTÍNUA na tela de antes do mesmo ponto
 //! da superfície — ou `None` onde a vista de antes não o via —, e o retrato da
-//! peça na vista nova para os sítios que a vista de antes não via.
+//! peça na vista nova, que é a tela em todo píxel onde a água não desenha nada
+//! (só debaixo dela fica a base de antes — ver o fim de `wetpaint_reproject`).
 
 use super::*;
 
@@ -63,28 +64,68 @@ impl PainterTool {
         for camada in &mut sess.engine.layers {
             ph2d_wet_paint::grid::reproject_grid(&mut camada.grid, celula);
         }
-        // ⭐ A base congelada: onde a vista de antes via, a base de antes (a
-        // peça ANTES da água — o composite põe a água por cima dela outra vez);
-        // onde não via, o retrato novo, que ali não tem água nenhuma.
+        // ⭐ A base congelada, 1.ª passagem: onde a vista de antes via, a base
+        // de antes (a peça ANTES da água — o composite põe a água por cima dela
+        // outra vez); onde não via, o retrato novo, que ali não tem água. A 2.ª
+        // passagem, abaixo, devolve o retrato a todo píxel onde a água não
+        // desenha nada.
         let mut base = semente.to_vec();
         for (p, px) in base.as_chunks_mut::<4>().0.iter_mut().enumerate() {
             if let Some(q) = pixel_de_antes(p) {
                 px.copy_from_slice(&sess.base[q * 4..q * 4 + 4]);
             }
         }
+        self.wetpaint_rebase(base, false);
+        // ⭐⭐⭐ **Onde a água não põe NADA, a tela É o retrato novo** (report do
+        // dono, 29/09: *«fica uma marca sem tinta no local onde a simulação
+        // reinicia — só acontece após rotacionar a view»*). A base levada é a
+        // de ANTES amostrada pelo píxel mais perto, e o retrato é a PEÇA vista
+        // agora: os dois não são os mesmos bytes, e quem chama semeia a lei da
+        // diferença com o RETRATO (é o que a peça TEM). Um píxel seco da base
+        // levada pousaria na peça, no 1.º traço, a diferença entre duas
+        // amostragens da mesma superfície. ⇒ a base levada fica SÓ onde a água
+        // desenha alguma coisa — e isso lê-se do composite SEM o véu, porque
+        // ali um píxel sem pigmento é a base copiada (`pa <= 0`).
+        let Some(sess) = self.paint.wetpaint.session.as_ref() else {
+            return false;
+        };
+        let mut base = sess.base.as_ref().clone();
+        let tela = self.canvas_rgba.as_ref();
+        if tela.len() == base.len() {
+            for ((b, t), s) in base
+                .as_chunks_mut::<4>()
+                .0
+                .iter_mut()
+                .zip(tela.as_chunks::<4>().0)
+                .zip(semente.as_chunks::<4>().0)
+            {
+                if b == t {
+                    *b = *s;
+                }
+            }
+        }
+        let veu = self.paint.wetpaint.show_wet;
+        self.wetpaint_rebase(base, veu);
+        true
+    }
+
+    /// Troca a base congelada da sessão e refaz a tela inteira por cima dela —
+    /// a mesma forma do nascimento da sessão (`ensure_wet_session`), com o
+    /// guarda re-armado para a tela nova. `veu` é o do composite: a leitura
+    /// do que é seco pede-o DESLIGADO.
+    fn wetpaint_rebase(&mut self, base: Vec<u8>, veu: bool) {
+        let Some(sess) = self.paint.wetpaint.session.as_mut() else {
+            return;
+        };
         let base = Arc::new(base);
         sess.base = Arc::clone(&base);
         sess.preview = None;
         sess.lanes.clear();
         sess.engine.mark_dirty_full();
-        // A tela nasce igual à base e o composite põe a água por cima — a
-        // mesma forma do nascimento da sessão (`ensure_wet_session`), com o
-        // guarda re-armado pelo próprio composite.
         self.replace_canvas(base);
         if let Some(sess) = self.paint.wetpaint.session.as_mut() {
             sess.canvas = Arc::downgrade(&self.canvas_rgba);
         }
-        self.wetpaint_composite();
-        true
+        self.wetpaint_composite_veiled(veu);
     }
 }

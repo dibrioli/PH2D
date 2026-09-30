@@ -51,6 +51,7 @@ FICHEIROS=(
   crates/ph2d-app-sculpt3d/src/input_down.rs
   crates/ph2d-tool-painter/src/tool/paint/wetpaint/offthread.rs
   crates/ph2d-tool-painter/src/tool/paint/wetpaint/session.rs
+  crates/ph2d-tool-painter/src/tool/paint/wetpaint/reproject.rs
   shells/desktop/src/sculpt3d_host.rs
   shells/desktop/src/input_dispatch/painter_canvas_input.rs
   shells/desktop/src/render_loop/fase_painter_dispatch.rs
@@ -344,8 +345,8 @@ muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
   's.painter_raio_px = Some(painter.dab_footprint_px());' \
   'P13 a costura lê o raio do pincel de pintura para o anel'
 muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
-  'if semeado && painter.screen_canvas_is_wet()' \
-  'if semeado' \
+  '(Some(vista), Some(retrato)) if semeado && molhado =>' \
+  '(Some(vista), Some(retrato)) if semeado =>' \
   'P14 a tela fica depois de TODO traço semeado, molhado ou não'
 muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
   '            scene.painter_guarda(vista, retrato);' \
@@ -371,20 +372,20 @@ muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
   '        }' \
   'P19 a pintura simples começa por cima da tela molhada'
 muta PRODUTO crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
-  'if semeado && painter.screen_canvas_is_wet()' \
-  'if false && semeado && painter.screen_canvas_is_wet()' \
+  '(Some(vista), Some(retrato)) if semeado && molhado =>' \
+  '(Some(vista), Some(retrato)) if false && semeado && molhado =>' \
   'W1 a tela limpa-se sempre: a aquarela seca a cada traço'
 muta PRODUTO crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
-  '&& g.serve(sessao.vista(), objeto, edits)' \
+  '&& g.mesma_peca(objeto, edits)' \
   '&& true' \
   'W2 a tela molhada é reaproveitada sem conferir a chave'
 muta PRODUTO crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
-  'self.vista == *vista && self.objeto == objeto && self.edits == edits' \
-  'self.vista == *vista && self.objeto == objeto' \
+  'self.objeto == objeto && self.edits == edits' \
+  'self.objeto == objeto' \
   'W3 a chave não vê a peça mudar (Ctrl+Z, outro pincel)'
 muta PRODUTO crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
-  'self.vista == *vista && self.objeto == objeto && self.edits == edits' \
-  'self.objeto == objeto && self.edits == edits' \
+  '            if g.vista == *sessao.vista() {' \
+  '            if true {' \
   'W4 a chave não vê a vista rodar'
 
 # ── ETAPA 3: a tinta molhada que ESCORRE depois de largar ─────────────────
@@ -456,6 +457,29 @@ muta COSTURA crates/ph2d-app-sculpt3d/src/input_down.rs \
   '    scene.painter_fecha_o_que_escorre();' \
   '' \
   'E13 um clique da escultura abre um traço por cima da pincelada aberta'
+
+# ── A MARCA CLARA DEPOIS DE RODAR (report do dono, 29/09) ──────────────────
+# A semente de um pen-down numa vista NOVA é o retrato da peça, e a tela só
+# guarda a base de antes debaixo da água.
+muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
+  '                sessao.com_semente(retrato);' \
+  '                sessao.com_semente(f.rgba.as_ref().clone());' \
+  'V1 depois de rodar a semente volta a ser a tela levada (censo)'
+muta ESCORRE crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
+  '                sessao.com_semente(retrato);' \
+  '                sessao.com_semente(f.rgba.as_ref().clone());' \
+  'V2 depois de rodar a semente volta a ser a tela levada (produto)'
+muta PINTOR crates/ph2d-tool-painter/src/tool/paint/wetpaint/reproject.rs \
+  '                if b == t {' \
+  '                if false {' \
+  'V3 o píxel seco guarda a base levada em vez do retrato'
+muta PINTOR crates/ph2d-tool-painter/src/tool/paint/wetpaint/reproject.rs \
+  '                if b == t {' \
+  '                if true {' \
+  'V4 debaixo da água a base passa a ser o retrato (a água pintada duas vezes)'
+# ⚠️ NOMEADA e fora do placar: ler o seco COM o véu (`wetpaint_rebase(base, true)`)
+#    SOBREVIVE — na fixture todo píxel húmido tem pigmento, e o véu só muda a
+#    leitura num papel húmido SEM tinta (água limpa), que ela não produz.
 
 # ── O CONTROLO — tem de SOBREVIVER ──────────────────────────────────────────
 muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \

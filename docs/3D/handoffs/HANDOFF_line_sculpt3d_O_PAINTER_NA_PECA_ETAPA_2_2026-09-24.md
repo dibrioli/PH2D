@@ -470,3 +470,74 @@ Gate `um_segundo_traco_nao_seca_a_agua_do_primeiro` (placa): ⚠️ **a régua �
 REGIÃO do 1.º traço** e não o «a água corre?» — o 2.º deposita água nova, e uma
 sessão recém-nascida responderia «corre» sobre o defeito. Censo da fiação
 **25 → 26** (P26); mutação **E16** na população `ESCORRE`; pré-voo `69/69`.
+
+### §9.7 — ⛔ *«rotacionar e pintar em seguida está pausando a simulação»* (29/09, `82b0f9ee9`)
+
+A §9.6 deixou escrito *«rodar a vista entre os dois continua a secar»* — e o dono
+foi lá. A tela guardada tem a vista de ANTES, logo a chave não serve e o traço
+novo re-semeava a tela com o retrato novo ⇒ `set_source` ⇒ a sessão da água
+morria. ⭐ **A água passa a MUDAR DE VISTA com a peça**, em três peças e uma
+costura: `ph2d_wet_paint::grid::reproject_grid` (cópia por célula, sem
+interpolar; a velocidade recomeça do zero — é um vector do ECRÃ), a porta
+`PainterTool::reproject_screen_canvas` (grade · base congelada · tela, e a
+sessão SOBREVIVE) e `ph2d_sculpt3d::tela_origem::origem` (por píxel da vista
+nova, o ponto CONTÍNUO da vista de antes que via o mesmo sítio da superfície,
+com teste de profundidade — `None` onde a vista de antes não via). A chave da
+tela molhada partiu-se em duas (`mesma_peca` + a vista, conferida À PARTE: a
+vista igual REAPROVEITA, a vista diferente LEVA). Gate de placa
+`rodar_e_pintar_nao_seca_a_agua_do_primeiro_traco`; censo P27/P28.
+
+### §9.8 — ⛔ E o smoke seguinte: *«fica uma marca sem tinta no local onde a simulação reinicia — só acontece após rotacionar a view»*
+
+Duas fotos: uma linha clara de **1–2 px**, tracejada, a desenhar a FRENTE da água
+no instante do traço seguinte, e que **fica** — os escorridos atravessam-na e ela
+continua lá. ⭐⭐ **O mecanismo é a lei da diferença, não a água:** a peça recebe
+`tela − semente`, e na §9.7 a semente do traço depois de rodar era a **tela
+LEVADA** — a de antes amostrada pelo píxel/célula mais perto. Junto da frente a
+água tem uma borda escura fina, e a levada põe-na **um píxel ao lado** de onde a
+peça a tem ⇒ no píxel onde a semente tem borda e a peça não, a diferença nasce
+ZERO e fica zero enquanto a tela a mostra; quando a água segue, a tela clareia ali
+e a peça clareia **o mesmo tanto a partir de um valor que já era claro** ⇒ a
+linha. *Tudo onde a semente diverge da peça fica na peça para sempre.* O caminho
+seco e o de REAPROVEITAR não o têm porque ali a semente **é** o que a peça mostra.
+
+**A cura tem DUAS metades, uma por lado da porta:**
+
+- **Quem chama** semeia com o RETRATO (`sessao.com_semente(retrato)`): *a semente
+  é o que a peça TEM*, a mesma regra do caminho seco. A tela levada pousa na peça,
+  no 1.º quadro em que a água passa por ali, só a diferença entre ela e a peça —
+  a borda salta um píxel e **acompanha** a tela dali em diante.
+- **O Painter** devolve o retrato a todo píxel onde a água não desenha nada: sem
+  isso, com a semente nova, um píxel SECO da base levada (a amostragem de antes)
+  pousaria na peça a diferença entre duas amostragens da mesma superfície. A
+  leitura do seco é o composite **sem o véu** (`pa <= 0` ⇒ a base copiada ao
+  byte); debaixo da água fica a base de ANTES — o retrato novo já traz a água
+  pintada, e compô-la por cima pintá-la-ia duas vezes.
+
+⚠️ **O que esta bancada NÃO reproduz, e porquê a régua é outra:** a linha é o
+desvio amplificado pela borda da frente, e a água das fixturas assenta cedo (o
+escorrido carregado do dono não se forma aqui). Uma contagem de píxeis «a peça
+mais clara que a tela» foi construída e **não discrimina** — sem rodar ela lê
+`66`, rodando e com a cura `51`, sem a cura `48`: é resolução (a peça não
+representa o grão de 1 px da tela), igual nos três. ⇒ o gate afirma a **CAUSA**,
+ao byte: `depois_de_rodar_a_semente_e_o_que_a_peca_tem` (placa) — longe do 1.º
+carimbo, a semente é o retrato; **`6 394` píxeis diferem sem a cura, `0` com
+ela**, com os dois controlos dentro (há tinta do 1.º traço à vista; a água
+SOBREVIVE ao pen-down, senão o caminho seco — cuja semente também é o retrato —
+deixaria o gate verde sem medir nada). No Painter,
+`sob_a_agua_a_base_e_a_de_antes_e_fora_dela_o_retrato`: as duas metades falham
+ao contrário (fora da água o retrato ao byte · debaixo dela o pigmento vermelho
+sobre o cinzento de antes tem verde = azul, sobre o retrato azul teria mais azul),
+com o controlo de que há borda meio transparente. Censo **P29**.
+⛔ **E o pré-voo apanhou CINCO âncoras mortas no arnês** (`P14` · `W1`–`W4`): o
+`termina` e a chave da tela molhada tinham sido reescritos por §9.6/§9.7 e as
+mutações deixaram de casar — *um arnês com âncora morta imprime um placar e não
+mede nada*. Re-ancoradas ao código de hoje.
+Mutação: **V1–V4 sangram** (V1 pelo censo P29, V2 pelo gate de placa, V3/V4
+pelo gate do Painter, um em cada sentido) e as re-ancoradas `W1`–`W4` sangram;
+a `P14` **sobreviveu** ao ser re-ancorada — o censo contava as chamadas a
+`screen_canvas_is_wet()` e o `termina` passou a lê-lo para uma variável ⇒ elo
+novo **P14b** sobre a própria guarda (censo `29 → 30`), e ela sangra. ⚠️ **V5
+NOMEADA e fora do placar:** ler o seco COM o véu sobrevive, porque na fixture todo
+píxel húmido tem pigmento — o véu só muda a leitura em papel húmido SEM tinta
+(água limpa), que ela não produz. Pré-voo `73/73`.

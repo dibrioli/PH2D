@@ -210,12 +210,11 @@ fn envenena(
 }
 
 /// ⭐⭐⭐ **O veneno que DURA: o golpe, e depois três pulsos, um por segundo, que somam
-/// `por segundo × duração`** — com o espinho ainda a tocar, porque a aflição entra no COMEÇO do
-/// toque e é ela, e não o toque, que continua a morder.
+/// `por segundo × duração`** — com o espinho ainda a tocar, porque um golpe único entra no COMEÇO
+/// do toque e é a aflição, e não o toque, que continua a morder.
 ///
 /// **Mutações que devem sangrar:** apagar o `st.aflicoes.aplica(…)`; apagar o laço do
-/// `st.aflicoes.anda(dt)`; e aplicar a aflição fora do `comecou` (ela seria RENOVADA a cada tique
-/// e nunca acabaria).
+/// `st.aflicoes.anda(dt)`.
 #[test]
 fn o_veneno_morde_depois_do_golpe_e_soma_o_que_promete() {
     let (ponte, a, factos) = envenena(Health::default(), "veneno", 10.0, (4.0, 3.0, 1.0), 300);
@@ -248,6 +247,56 @@ fn o_veneno_morde_depois_do_golpe_e_soma_o_que_promete() {
     let (ponte, a, factos) = envenena(Health::default(), "veneno", 10.0, (0.0, 3.0, 1.0), 300);
     assert_eq!(danos(&factos).len(), 1);
     assert_eq!(pontos(&ponte, a), 90.0);
+}
+
+/// ⭐⭐ **A LAVA queima enquanto se pisa** — um dano POR SEGUNDO golpeia em cada tique do toque, e
+/// cada golpe RENOVA a queimadura: parado dentro dela três segundos, a aflição de UM segundo ainda
+/// está viva e ainda pulsa. ⚠️ A renovação não adia o pulso (a fase fica), logo os pulsos caem a
+/// cada meio segundo como numa aflição que ninguém renovou.
+///
+/// **Mutação que deve sangrar:** aplicar a aflição só no COMEÇO do toque (`comecou &&`) — a lava
+/// queimaria o primeiro segundo e depois só feriria pelo dano por segundo.
+#[test]
+fn a_lava_renova_a_queimadura_enquanto_se_pisa() {
+    let queima = |por_segundo: bool| {
+        let mut sim = SimWorld::new();
+        let a = alvo(
+            &mut sim,
+            Health {
+                max: 1000.0,
+                start: 1000.0,
+                ..Health::default()
+            },
+        );
+        espinho(
+            &mut sim,
+            Damage {
+                per_second: por_segundo,
+                over_time_per_s: 4.0,
+                over_time_s: 1.0,
+                over_time_every_s: 0.5,
+                ..tipado(1.0, "fogo")
+            },
+        );
+        let (ponte, factos) = corre(&mut sim, 180);
+        let vivas = ponte.health_of(a).expect("tem vida").aflicoes().0.len();
+        // Os pulsos são os danos de `2` pontos (`4/s × 0,5 s`); o golpe da lava é `1 × dt`.
+        let pulsos = danos(&factos)
+            .iter()
+            .filter(|&&(_, x)| (x - 2.0).abs() < 1e-9)
+            .count();
+        (vivas, pulsos)
+    };
+    let (vivas, pulsos) = queima(true);
+    assert_eq!(vivas, 1, "parado na lava, a queimadura continua viva");
+    assert!(
+        pulsos >= 5,
+        "três segundos de lava pulsam a cada meio segundo: {pulsos}"
+    );
+    // O CONTROLO: o mesmo toque com um golpe ÚNICO queima o segundo dele e acaba.
+    let (vivas, pulsos) = queima(false);
+    assert_eq!(vivas, 0);
+    assert_eq!(pulsos, 2, "um segundo a meio segundo por pulso");
 }
 
 /// ⭐⭐ **A resistência vale para os PULSOS também** — o veneno de fogo numa salamandra não morde,
@@ -350,7 +399,9 @@ fn a_morte_cura_as_aflicoes() {
         "veneno",
         0.0,
         (10.0, 5.0, 1.0),
-        400,
+        // ⚠️ DENTRO da duração (morre no 2.º pulso, ~2 s; o veneno duraria 5): a `400` tiques a
+        // aflição já tinha acabado sozinha e a asserção de baixo ficava verde sem a limpeza.
+        150,
     );
     assert_eq!(pontos(&ponte, a), 0.0);
     assert_eq!(

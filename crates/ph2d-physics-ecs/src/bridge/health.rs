@@ -347,14 +347,16 @@ impl PhysicsBridge {
                 // da simulação e o replay tem de o refazer igual.
                 let fs = factos(&antes, &st.vida);
                 // ⭐ W6: **a aflição entra COM o golpe** — o que o golpe não atravessa (a esquiva, a
-                // invencibilidade) também não a deixa, e uma vida morta não a recebe. ⚠️ Um tipo a
-                // que a vida é imune ENTRA na mesma, e os pulsos saem a zero pela taxa: a regra de
-                // quem pode ser afligido é UMA (o golpe), e a de quanto dói é a outra (a taxa).
-                if comecou
-                    && !barrado
-                    && !fs.contains(&HealthEventKind::Dodged)
-                    && !st.vida.morta()
-                    && dano.over_time_per_s > 0.0
+                // invencibilidade) também não a deixa. ⚠️ Um tipo a que a vida é imune ENTRA na
+                // mesma, e os pulsos saem a zero pela taxa: a regra de quem pode ser afligido é UMA
+                // (o golpe), e a de quanto dói é a outra (a taxa).
+                // ⭐ **Um dano POR SEGUNDO golpeia em cada tique do toque**, logo RENOVA a aflição
+                // enquanto se está dentro dele (a lava queima enquanto se pisa, e ainda `dur_s`
+                // depois de sair) — a regra do reaplicar mantém a fase, e o pulso não se adia.
+                // ⛔ Sem guarda de «morta» aqui, de propósito (medido por mutação): uma vida morta
+                // não é golpeada (`fs` vem vazio) e a morte LIMPA as aflições no fim deste mesmo
+                // tique — uma segunda guarda seria uma linha que nenhum gate consegue matar.
+                if !barrado && !fs.contains(&HealthEventKind::Dodged) && dano.over_time_per_s > 0.0
                 {
                     st.aflicoes.aplica(
                         &kind_key(&dano.kind).unwrap_or_default(),

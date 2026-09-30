@@ -109,10 +109,10 @@ muta $L "        if taxa.absorve {
 
 seccao FIS "a PONTE"
 corre CONTROLO "${FIS[@]}"
-muta $F "                    && !barrado
-" "" "F1 a invencibilidade deixa a aflicao" "${FIS[@]}"
-muta $F "                    && !fs.contains(&HealthEventKind::Dodged)
-" "" "F2 a esquiva deixa a aflicao" "${FIS[@]}"
+C0='                if !barrado && !fs.contains(&HealthEventKind::Dodged) && dano.over_time_per_s > 0.0'
+muta $F "$C0" '                if !fs.contains(&HealthEventKind::Dodged) && dano.over_time_per_s > 0.0' \
+  "F1 a invencibilidade deixa a aflicao" "${FIS[@]}"
+muta $F "$C0" '                if !barrado && dano.over_time_per_s > 0.0' "F2 a esquiva deixa a aflicao" "${FIS[@]}"
 muta $F "                st.aflicoes.limpa();" "" "F3 a morte nao cura" "${FIS[@]}"
 muta $F "            for p in st.aflicoes.anda(dt) {" "            for p in st.aflicoes.anda(0.0) {" \
   "F4 as aflicoes nunca pulsam" "${FIS[@]}"
@@ -121,12 +121,8 @@ muta $F "                    .pulso(&cfg, Regras::CASA, p.pontos, h.taxa(&p.tipo
   "F5 o pulso ignora a resistencia" "${FIS[@]}"
 muta $F "                let taxa = h.taxa(&dano.kind);" "                let taxa = ph2d_health::Taxa::NEUTRA;" \
   "F6 o golpe ignora a resistencia" "${FIS[@]}"
-muta $F "                if comecou
-                    && !barrado" "                if true
-                    && !barrado" "F7 a aflicao renova em todo tique do toque" "${FIS[@]}"
-muta $F "                    && !st.vida.morta()
-" "" "F8 um morto e' afligido" "${FIS[@]}"
-
+muta $F "$C0" '                if comecou && !barrado && !fs.contains(&HealthEventKind::Dodged) && dano.over_time_per_s > 0.0' \
+  "F7 a lava so' queima no comeco do toque" "${FIS[@]}"
 seccao CHAVE "a CHAVE do tipo"
 muta $C "    signal_name(kind).map(ph2d_label_fold::fold)" "    signal_name(kind).map(str::to_owned)" \
   "C1 o tipo nao se dobra" "${FIS[@]}"

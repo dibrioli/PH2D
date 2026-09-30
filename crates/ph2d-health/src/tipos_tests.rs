@@ -52,6 +52,12 @@ fn o_oraculo_decide_imune_meio_dobro_negativo_e_absorver() {
         let mut v = vida(antes, &cfg);
         golpe(&mut v, &cfg, dano, t);
         assert_eq!(v.pontos, depois, "«{nome}»: {antes} → {}", v.pontos);
+        // ⭐ E o dano APLICADO que a vida regista é o que o alvo imprime (`dano N`): uma taxa
+        // negativa aplica `0`, nunca um negativo — sem o `fator` a devolver `0`, o `leva` já não
+        // tira pontos (ele só age sobre `d > 0`) e só esta leitura o vê.
+        if !t.absorve {
+            assert_eq!(v.dano_anterior, antes - depois, "«{nome}»: dano aplicado");
+        }
     }
     // absorve_cheio: nada — nem a cura, e os sinais saem da DIFERENÇA de pontos.
     let mut v = vida(100.0, &cfg);

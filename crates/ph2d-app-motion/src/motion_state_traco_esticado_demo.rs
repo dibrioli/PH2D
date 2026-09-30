@@ -38,42 +38,105 @@ use ph2d_nodegraph::graph::{Edge, NodeId, Pos};
 
 use super::carimbo_demo::PX_POR_UNIDADE;
 
-/// **A pegada de uma estrela ANTES de esticar, em píxeis.** Maior do que a da `=126` (`6 px`) de
-/// propósito: o assunto desta cena é o CONTORNO, e um contorno de dois píxeis numa estrela de seis
-/// é uma mancha.
-pub(crate) const ESTRELA_PX: f32 = 22.0;
-
-/// O `size` do `source.shape` é o **raio** (metade da pegada).
-pub(crate) const TAMANHO: f32 = ESTRELA_PX / (2.0 * PX_POR_UNIDADE);
-
 /// **O esticão**: o X cresce e o Y encolhe. ⚠️ Os dois têm de ser DIFERENTES — é isso que faz a
 /// cópia NÃO conforme, e há gate. O produto (`1,08`) fica perto de `1` para a caneta
 /// (`w·√|det|`) ter quase a largura autorada: o que a cena mostra é a FORMA dela, não o tamanho.
 pub(crate) const ESTICA_X: f32 = 1.8;
 pub(crate) const ESTICA_Y: f32 = 0.6;
 
-/// **O contorno, em píxeis de ecrã** — e a largura em unidades de mundo sai dele pela escala da
-/// câmara de arranque (o param é de mundo, ver o doc do `stroke_width`).
-pub(crate) const CONTORNO_PX: f32 = 1.5;
-pub(crate) const CONTORNO: f32 = CONTORNO_PX / PX_POR_UNIDADE;
-
-/// O lado da grelha. ⚠️ **Não é o tecto da `=126`:** a galáxia é um disco rígido de NÚCLEO `17 m`,
-/// e fora dele o ímã ganha à órbita — o canto do campo tem de ficar dentro (`gate
-/// o_campo_cabe_no_nucleo_da_galaxia`).
-pub(crate) const LADO_N: u32 = 32;
-
-/// O vão entre posições — o MESMO nos dois eixos, e igual à pegada ESTICADA inteira.
+/// **Os dois arranjos da cena**, e porque são dois.
 ///
-/// ⛔ A 1.ª redacção dava a cada eixo a pegada dele (`2,4 × tamanho × esticão`), e a foto
-/// desmentiu-a: a galáxia RODA as posições e o esticão fica sempre na horizontal, logo uma fileira
-/// que começa horizontal passa a diagonal e as estrelas de vão curto FUNDEM-SE numa tira contínua,
-/// em que o contorno de uma corta o da vizinha. Com o vão do eixo comprido nos dois sentidos, a
-/// distância entre vizinhas nunca fica abaixo da largura esticada, seja qual for o ângulo.
-pub(crate) const VAO_X: f32 = 2.0 * TAMANHO * ESTICA_X;
-pub(crate) const VAO_Y: f32 = VAO_X;
+/// ⛔⛔ **As duas leis puxam em sentidos opostos** (a mesma aritmética do cabeçalho da `=126`): o
+/// CONTORNO só se julga numa estrela grande, e a FOLGA do quadro só se mexe com milhares de estrelas
+/// à vista. Medido na foto (perfil `smoke`, as duas rotas seguidas): com o arranjo LEGÍVEL (`1 024`
+/// estrelas de `22 px`, umas `300` à vista) a placa lê `186`/`209 raw` e o Vello `223`/`201` —
+/// **ruído**, e o roteiro que prometia *«o `raw` cai»* ensinava uma coisa falsa. ⇒ o passo do relógio
+/// corre o arranjo DENSO (`PH2D_TRACO_ESTICADO_DENSO=1`), e o do contorno o legível.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Arranjo {
+    /// O lado da grelha.
+    pub(crate) lado: u32,
+    /// A pegada de uma estrela ANTES de esticar, em píxeis de ecrã na câmara de arranque.
+    pub(crate) estrela_px: f32,
+    /// O contorno, em píxeis de ecrã (o param é de mundo; sai daqui pela escala da câmara).
+    pub(crate) contorno_px: f32,
+}
 
-/// Quantas estrelas a cena desenha.
-pub(crate) const ESTRELAS: u32 = LADO_N * LADO_N;
+/// O arranjo de omissão: estrelas grandes, o contorno julga-se a olho.
+pub(crate) const LEGIVEL: Arranjo = Arranjo {
+    lado: 32,
+    estrela_px: 22.0,
+    contorno_px: 1.5,
+};
+
+/// O arranjo do relógio: milhares de estrelas à vista na câmara de arranque.
+pub(crate) const DENSO: Arranjo = Arranjo {
+    lado: 128,
+    estrela_px: 8.0,
+    contorno_px: 1.0,
+};
+
+impl Arranjo {
+    /// O `size` do `source.shape` é o **raio** (metade da pegada).
+    pub(crate) fn tamanho(self) -> f32 {
+        self.estrela_px / (2.0 * PX_POR_UNIDADE)
+    }
+
+    /// O vão entre posições — o MESMO nos dois eixos, e igual à pegada ESTICADA inteira.
+    ///
+    /// ⛔ A 1.ª redacção dava a cada eixo a pegada dele (`2,4 × tamanho × esticão`), e a foto
+    /// desmentiu-a: a galáxia RODA as posições e o esticão fica sempre na horizontal, logo uma
+    /// fileira que começa horizontal passa a diagonal e as estrelas de vão curto FUNDEM-SE numa
+    /// tira contínua. Com o vão do eixo comprido nos dois sentidos a distância entre vizinhas nunca
+    /// fica abaixo da largura esticada, seja qual for o ângulo.
+    pub(crate) fn vao(self) -> f32 {
+        2.0 * self.tamanho() * ESTICA_X
+    }
+
+    pub(crate) fn contorno(self) -> f32 {
+        self.contorno_px / PX_POR_UNIDADE
+    }
+
+    pub(crate) fn estrelas(self) -> u32 {
+        self.lado * self.lado
+    }
+
+    /// A distância do centro ao canto do campo.
+    pub(crate) fn meia_diagonal(self) -> f32 {
+        #[expect(clippy::cast_precision_loss, reason = "um lado de grelha pequeno")]
+        let meio = self.vao() * (self.lado as f32 - 1.0) / 2.0;
+        meio * std::f32::consts::SQRT_2
+    }
+
+    /// **A galáxia deste campo** — a lei da `=126` ([`Galaxia`](super::carimbo_demo::Galaxia)) com o
+    /// NÚCLEO a cobrir o canto (fora dele o ímã ganha à órbita e as estrelas caem para o meio) e o
+    /// ímã derivado do núcleo (`s_a = s_v² / núcleo`, o equilíbrio de todo raio, corrigido pelo
+    /// `1 − d/alcance` a meio raio). ⚠️ Com o campo da `=126` ela devolve os números dela (gate).
+    pub(crate) fn galaxia(self) -> super::carimbo_demo::Galaxia {
+        let base = super::carimbo_demo::GALAXIA;
+        let nucleo = (self.meia_diagonal() * 1.03).max(base.nucleo);
+        let iman = base.vortex * base.vortex / nucleo * (1.0 - 0.5 * nucleo / base.alcance);
+        super::carimbo_demo::Galaxia {
+            nucleo,
+            iman,
+            ..base
+        }
+    }
+}
+
+/// **Que arranjo a cena monta** — o [`LEGIVEL`], a menos que `PH2D_TRACO_ESTICADO_DENSO=1`.
+fn arranjo_semeado() -> Arranjo {
+    arranjo_por(std::env::var("PH2D_TRACO_ESTICADO_DENSO").ok().as_deref())
+}
+
+/// A LEI da porta acima, **pura** (um gate que lê o ambiente mede a máquina).
+pub(crate) fn arranjo_por(valor: Option<&str>) -> Arranjo {
+    if valor.map(str::trim) == Some("1") {
+        DENSO
+    } else {
+        LEGIVEL
+    }
+}
 
 /// O índice da `Star` no enum — pela mesma porta da `=126` (nunca pelo rótulo, que é i18n).
 fn indice_da_estrela() -> f32 {
@@ -114,13 +177,14 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         n
     };
 
+    let arranjo = arranjo_semeado();
     let grade = no(g, "motion.grid", 0.0, 0.0);
     #[expect(clippy::cast_precision_loss, reason = "um lado de grelha pequeno")]
-    let lado = LADO_N as f32;
+    let lado = arranjo.lado as f32;
     g.set_param(grade, "rows", lado);
     g.set_param(grade, "cols", lado);
-    g.set_param(grade, "gap_x", VAO_X);
-    g.set_param(grade, "gap_y", VAO_Y);
+    g.set_param(grade, "gap_x", arranjo.vao());
+    g.set_param(grade, "gap_y", arranjo.vao());
 
     // ── A FORMA: uma estrela AMARELA com CONTORNO azul-escuro. ⚠️ Sem tracejado: o tracejado sob
     // escala não-uniforme continua no Vello (doc 121 §9) e a cena mostraria a rota errada.
@@ -128,13 +192,13 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
     let forma = no(g, "source.shape", 0.0, 220.0);
     for (chave, valor) in [
         (p::KIND, indice_da_estrela()),
-        (p::SIZE, TAMANHO),
+        (p::SIZE, arranjo.tamanho()),
         (p::FILL, 1.0),
         (p::FILL_R, 1.0),
         (p::FILL_G, 0.82),
         (p::FILL_B, 0.25),
         (p::FILL_A, 1.0),
-        (p::STROKE_WIDTH, CONTORNO),
+        (p::STROKE_WIDTH, arranjo.contorno()),
         (p::STROKE_R, 0.06),
         (p::STROKE_G, 0.10),
         (p::STROKE_B, 0.35),
@@ -144,7 +208,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
     }
 
     // ── A SIMULAÇÃO COM CAMPOS: a galáxia da `=126` (regra do dono, doc 103 §1).
-    let ig = super::carimbo_demo::simulacao(g, grade)?;
+    let ig = super::carimbo_demo::simulacao_com(g, grade, &arranjo.galaxia())?;
 
     // ── O CARIMBO. A forma na porta `0`, os pontos na `1` (o manifesto do duplicador).
     let dup = no(g, "motion.duplicator", 240.0, 110.0);
@@ -181,7 +245,8 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 
 /// **O roteiro que o dono segue.** Cada passo nomeia o que aparece NA TELA (`CLAUDE.md` §0.8).
 pub(super) fn announce() {
-    let n = ESTRELAS;
+    let n = LEGIVEL.estrelas();
+    let d = DENSO.estrelas();
     eprintln!(
         "\n[estrelas esticadas] {n} ESTRELAS AMARELAS COM CONTORNO AZUL, esticadas para os lados:\n\
          cada uma fica mais larga do que alta. Elas GIRAM devagar, como uma galaxia: e' uma\n\
@@ -189,19 +254,21 @@ pub(super) fn announce() {
          \n\
          (1) Aproxime com a roda do rato ate' uma estrela ocupar um bom pedaco do ecra.\n    \
          Olhe o CONTORNO AZUL: ele tem a MESMA grossura nas pontas compridas (dos lados) e\n    \
-         nas curtas (em cima e em baixo), como um risco feito com uma caneta redonda.\n\
+         nas curtas (em cima e em baixo), como um risco feito com uma caneta redonda, e nao\n    \
+         ha' nenhuma LINHA a atravessar a estrela.\n\
          (2) Arraste o fundo com o botao do meio: tem de passear LISO, e as estrelas continuam\n    \
          a girar.\n\
-         (3) Olhe a BARRA DE BAIXO do ecra e ANOTE o terceiro numero, o `raw` (a folga do\n    \
-         quadro: quanto MAIOR, melhor).\n\
-         (4) Feche o app e corra o MESMO comando com `PH2D_FORMAS_NA_PLACA=0` a' frente: e' o\n    \
-         caminho antigo, em que o processador desenhava as estrelas. A imagem tem de ser a\n    \
-         MESMA (o mesmo contorno, a mesma grossura); o `raw` CAI.\n\
+         (3) Feche o app e corra o MESMO comando com `PH2D_TRACO_ESTICADO_DENSO=1` a' frente:\n    \
+         agora sao {d} estrelas pequenas. ANOTE o terceiro numero da barra de baixo, o `raw`\n    \
+         (a folga do quadro: quanto MAIOR, melhor).\n\
+         (4) Feche e corra com `PH2D_TRACO_ESTICADO_DENSO=1 PH2D_FORMAS_NA_PLACA=0` a' frente:\n    \
+         e' o caminho antigo, em que o processador desenhava as estrelas. A imagem tem de ser\n    \
+         a MESMA; o `raw` CAI.\n\
          \n\
          DEU ERRADO se: as estrelas nao aparecerem; se ficarem PARADAS; se o contorno for\n\
-         GROSSO em cima e em baixo e FINO dos lados (ou ao contrario); se o contorno tiver\n\
-         BURACOS ou DENTES nas pontas; se a imagem for DIFERENTE entre as duas corridas do\n\
-         passo (4); ou se o `raw` for IGUAL nas duas.\n"
+         GROSSO em cima e em baixo e FINO dos lados (ou ao contrario); se houver uma LINHA\n\
+         escura a atravessar as estrelas; se o contorno tiver BURACOS ou DENTES nas pontas;\n\
+         se a imagem for DIFERENTE entre as corridas (3) e (4); ou se o `raw` nao cair.\n"
     );
 }
 

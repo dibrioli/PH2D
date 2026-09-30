@@ -308,3 +308,160 @@ fn a_rota_da_placa_desenha_o_traco_esticado_como_a_casa() {
         "{fora} pixels desviam > 16 — acima de 5 % dos {nv} pintados"
     );
 }
+
+/// ⭐⭐⭐ **UMA FORMA ALINHADA AOS EIXOS NÃO RISCA UMA LINHA** (report do dono, 2026-09-30, a foto da
+/// cena `=127`: *«artefatos de imagem: veja linha nas estrelas»*).
+///
+/// ⛔⛔ **Os gates de paridade nunca tinham uma cópia ALINHADA**: todos sorteiam o ângulo, e com
+/// um ângulo qualquer nenhuma aresta cai exactamente na vertical. Na cena as estrelas não rodam, e
+/// a junta redonda da ponta de uma estrela esticada tem uma aresta VERTICAL (os dois lados da ponta
+/// são espelho um do outro, ao bit). A cobertura portada do Vello divide por `xmax − xmin` e conta
+/// com um `−1e-6` para nunca dar zero — verdade num ladrilho de `16 px`, falso aqui, onde as
+/// coordenadas são relativas ao PIXEL e chegam a centenas: longe à esquerda o `−1e-6` perde-se no
+/// `f32`, a conta vira `0/0 = NaN`, e o `min(abs(NaN), 1)` pintava a fileira inteira à direita da
+/// ponta até ao fim do quad — a linha escura da foto.
+///
+/// **Medido** (RTX, três estrelas de 8 pontas com cantos arredondados, esticadas `1,8 × 0,6`, sem
+/// rotação): antes da cura **alfa `255` · cor `235` · `1 934` px fora**; depois **alfa `65` · cor
+/// `68` · `685` px** sobre `23 144` (o quarto de pixel das curvas da W1). O CONTROLO é a estrela de
+/// 5 pontas sem cantos, que não tem aresta vertical e lia limpa antes e depois.
+#[test]
+#[ignore = "precisa de adapter de GPU"]
+fn a_forma_alinhada_aos_eixos_nao_risca_uma_linha() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem adapter — o gate não correu");
+        return;
+    };
+    let mut store = VecPathStore::default();
+    let mut f = ph2d_vec_scene::star_rounded([0.0, 0.0], 0.5, 0.5, 8, 0.6, 0.08, 0.08);
+    f.stroke = Some(StrokeSpec::new(Rgba8::new(20, 30, 90, 255), 0.06));
+    let h = store.push(f);
+    let insts: Vec<VectorInstance> = [2.0f32, 3.3, 4.7]
+        .iter()
+        .enumerate()
+        .map(|(i, lado)| {
+            #[expect(clippy::cast_precision_loss, reason = "tres copias")]
+            let y = 5.0 - 5.0 * i as f32;
+            VectorInstance {
+                geometry_id: h,
+                texture_id: 0,
+                atlas_uv: [0.0, 0.0, 1.0, 1.0],
+                premultiplied: 0.0,
+                world_pos: [0.3, y + 0.013],
+                size: [lado * 1.8, lado * 0.6],
+                // ⚠️ SEM rotação: é o que põe a aresta da ponta exactamente na vertical.
+                basis: [1.0, 0.0, 0.0, 1.0],
+                tint: [1.0, 0.8, 0.2, 1.0],
+                anchor: [0.0, 0.0],
+                sampling: 0,
+                blend_linha: 0,
+                mistura: Default::default(),
+            }
+        })
+        .collect();
+    assert!(
+        insts.iter().all(|c| !super::conforme(c)),
+        "controlo: as copias tem de ser NAO conformes (o traço sai do eixo)"
+    );
+    let v = pelo_vello(&gpu, &insts, &store);
+    let p = pela_placa(&gpu, &insts, &store);
+    let (alfa, cor, nv, np, fora) = compara(&v, &p);
+    eprintln!(
+        "  alinhada: alfa max {alfa} · cor max {cor} · {fora} px fora · vello {nv} · placa {np}"
+    );
+    assert!(nv > 15_000, "controlo: a cena pinta pouco ({nv} px)");
+    assert!(
+        nv.abs_diff(np) * 100 <= nv,
+        "área pintada diverge: {nv} contra {np}"
+    );
+    assert!(alfa <= 100, "alfa {alfa} acima da barra das curvas (100)");
+    assert!(
+        cor <= 100,
+        "cor {cor} acima da barra das curvas (100) — a linha da ponta voltou"
+    );
+    assert!(
+        fora * 20 <= nv,
+        "{fora} pixels desviam > 16 — acima de 5 % dos {nv} pintados"
+    );
+}
+
+/// SONDA de relógio (doc 121 W4, report de 2026-09-30: *«com `PH2D_FORMAS_NA_PLACA=0` o `raw` está
+/// quase sempre maior»*, com as estrelas GRANDES no ecrã). Estrelas esticadas que enchem o alvo,
+/// desenhadas `N` vezes por cada rota, com o dispositivo drenado entre elas.
+#[test]
+#[ignore = "sonda de relógio"]
+fn sonda_relogio_das_estrelas_grandes() {
+    let Some(gpu) = gpu() else { return };
+    let mut store = VecPathStore::default();
+    let mut f = ph2d_vec_scene::star_rounded([0.0, 0.0], 0.5, 0.5, 8, 0.6, 0.08, 0.08);
+    let modo = std::env::var("PH2D_SONDA_MODO").unwrap_or_default();
+    if modo != "fill" {
+        f.stroke = Some(StrokeSpec::new(Rgba8::new(20, 30, 90, 255), 0.06));
+    }
+    let (ex, ey) = if modo == "conforme" {
+        (1.04, 1.04)
+    } else {
+        (1.8, 0.6)
+    };
+    let h = store.push(f);
+    let mut insts = Vec::new();
+    for i in 0..6 {
+        for j in 0..12 {
+            #[expect(clippy::cast_precision_loss, reason = "uma grelha pequena")]
+            let (x, y) = (-7.0 + 2.8 * i as f32, -7.5 + 1.3 * j as f32);
+            insts.push(VectorInstance {
+                geometry_id: h,
+                texture_id: 0,
+                atlas_uv: [0.0, 0.0, 1.0, 1.0],
+                premultiplied: 0.0,
+                world_pos: [x, y],
+                size: [2.0 * ex, 2.0 * ey],
+                basis: [1.0, 0.0, 0.0, 1.0],
+                tint: [1.0, 0.8, 0.2, 1.0],
+                anchor: [0.0, 0.0],
+                sampling: 0,
+                blend_linha: 0,
+                mistura: Default::default(),
+            });
+        }
+    }
+    let n = 40u32;
+    let mut p = PlacaDeFormas::default();
+    let mut geo = GeometriasDaPlaca::default();
+    let quadro = |p: &mut PlacaDeFormas, geo: &mut GeometriasDaPlaca| {
+        assert!(p.decide(true, &insts, &store, geo, camara()));
+        let _ = p.desenha(&gpu, (LADO, LADO), geo, None);
+        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+    };
+    quadro(&mut p, &mut geo);
+    let t = std::time::Instant::now();
+    for _ in 0..n {
+        quadro(&mut p, &mut geo);
+    }
+    let placa = t.elapsed().as_secs_f64() * 1e3 / f64::from(n);
+    let mut cena = ph2d_vector::VectorScene::new();
+    let janela = ph2d_vector::Rect::new(0.0, 0.0, f64::from(LADO), f64::from(LADO));
+    crate::motion_shape_gen::encode(
+        &insts,
+        &store,
+        &mut |_, _| None,
+        camara(),
+        Some(janela),
+        ph2d_render::ImageFilterMode::Smooth,
+        &mut cena,
+    );
+    let mut vp =
+        ph2d_render::VelloPass::new(&gpu, wgpu::TextureFormat::Bgra8UnormSrgb, (LADO, LADO))
+            .expect("vello");
+    let _ = vp.render_and_readback(&gpu, cena.inner(), (LADO, LADO));
+    let t = std::time::Instant::now();
+    for _ in 0..n {
+        let _ = vp.render_and_readback(&gpu, cena.inner(), (LADO, LADO));
+    }
+    let vello = t.elapsed().as_secs_f64() * 1e3 / f64::from(n);
+    let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    eprintln!(
+        "  [{modo}] {} copias: placa {placa:.3} ms · vello {vello:.3} ms (com leitura) · load {carga}",
+        insts.len()
+    );
+}

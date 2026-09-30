@@ -104,20 +104,68 @@ fn a_cena_tem_contorno_esticao_e_simulacao() {
     }
 }
 
-/// **O canto do campo fica DENTRO do núcleo da galáxia** — fora dele o ímã ganha à órbita e as
-/// estrelas caem para o meio (o doc da `GALAXIA`, na `=126`).
+/// **O canto do campo fica DENTRO do núcleo da galáxia, nos DOIS arranjos** — fora dele o ímã ganha
+/// à órbita e as estrelas caem para o meio (o doc da `GALAXIA`, na `=126`). E o ímã sai do núcleo
+/// pela lei dela: com o núcleo da `=126` a derivação devolve o número dela.
 #[test]
 fn o_campo_cabe_no_nucleo_da_galaxia() {
-    #[expect(clippy::cast_precision_loss, reason = "um lado de grelha pequeno")]
-    let lado = LADO_N as f32;
-    let meio_x = VAO_X * (lado - 1.0) / 2.0;
-    let meio_y = VAO_Y * (lado - 1.0) / 2.0;
-    let canto = (meio_x * meio_x + meio_y * meio_y).sqrt();
-    let nucleo = super::super::carimbo_demo::GALAXIA.nucleo;
+    for a in [LEGIVEL, DENSO] {
+        let gx = a.galaxia();
+        assert!(
+            a.meia_diagonal() < gx.nucleo,
+            "{a:?}: o canto esta' a {} e o nucleo e' {}",
+            a.meia_diagonal(),
+            gx.nucleo
+        );
+        let equilibrio = gx.vortex * gx.vortex / gx.nucleo;
+        assert!(
+            gx.iman < equilibrio && gx.iman > 0.9 * equilibrio,
+            "{a:?}: o iman {} fugiu do equilibrio {equilibrio}",
+            gx.iman
+        );
+    }
+    let base = super::super::carimbo_demo::GALAXIA;
+    let mesma = LEGIVEL.galaxia();
     assert!(
-        canto < nucleo,
-        "o canto esta' a {canto} e o nucleo e' {nucleo}"
+        (mesma.nucleo - base.nucleo).abs() < 1e-6,
+        "o legivel cabe no nucleo da =126"
     );
+    assert!(
+        (mesma.iman - base.iman).abs() < 0.03 * base.iman,
+        "a derivacao devolve o iman da =126 ({} contra {})",
+        mesma.iman,
+        base.iman
+    );
+}
+
+/// ⭐ **O arranjo DENSO põe milhares de estrelas à vista na câmara de arranque, e o legível não** —
+/// é a razão de existirem dois (ver o doc do [`Arranjo`]): o relógio só se mexe com milhares à
+/// vista, e o contorno só se julga numa estrela grande. A janela de arranque é a da `=126`
+/// (`21,8 × 6,8` unidades, medida na foto dela).
+#[test]
+fn o_denso_enche_o_ecra_e_o_legivel_mostra_o_contorno() {
+    let a_vista = |a: Arranjo| (21.8 / a.vao()) * (6.8 / a.vao());
+    assert!(
+        a_vista(DENSO) > 1500.0,
+        "o denso mostra {} estrelas",
+        a_vista(DENSO)
+    );
+    assert!(
+        a_vista(LEGIVEL) < 500.0,
+        "o legivel mostra {} estrelas",
+        a_vista(LEGIVEL)
+    );
+    const { assert!(LEGIVEL.estrela_px >= 2.0 * DENSO.estrela_px) };
+    const { assert!(LEGIVEL.estrela_px * ESTICA_Y >= 8.0 * LEGIVEL.contorno_px) };
+}
+
+/// **A porta do arranjo:** ausente, lixo ou `0` ⇒ o legível; só `1` pede o denso.
+#[test]
+fn a_porta_do_arranjo_so_abre_com_um() {
+    assert_eq!(arranjo_por(None), LEGIVEL);
+    assert_eq!(arranjo_por(Some("0")), LEGIVEL);
+    assert_eq!(arranjo_por(Some("sim")), LEGIVEL);
+    assert_eq!(arranjo_por(Some(" 1 ")), DENSO);
 }
 
 /// **O `=127` monta esta cena, e o tecto da varredura alcança-a.**

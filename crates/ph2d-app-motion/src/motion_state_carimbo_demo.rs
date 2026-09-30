@@ -526,27 +526,33 @@ pub(crate) const GALAXIA: Galaxia = Galaxia {
 /// ⛔ **Sem `force.drag`, de propósito:** o redemoinho em modo alvo JÁ amortece (é a lei dele,
 /// `a = resistência · (alvo − v)`), e um arrasto a zero seria um nó morto na cena do dono.
 pub(super) fn simulacao(g: &mut ph2d_nodegraph::graph::Graph, grade: NodeId) -> Option<NodeId> {
+    simulacao_com(g, grade, &GALAXIA)
+}
+
+/// A mesma simulação com OUTRA galáxia — para uma cena cujo campo tem outro tamanho (a `=127`): o
+/// núcleo tem de cobrir o canto do campo, e o ímã sai dele pela lei do doc da [`Galaxia`].
+pub(super) fn simulacao_com(
+    g: &mut ph2d_nodegraph::graph::Graph,
+    grade: NodeId,
+    gx: &Galaxia,
+) -> Option<NodeId> {
     let ig = g.add_node("motion.integrate");
     g.set_pos(ig, Pos { x: 120.0, y: -60.0 });
     let nucleo = g.add_node("motion.falloff");
     g.set_param(nucleo, "shape", 0.0);
     g.set_param(nucleo, "curve", 0.0);
-    g.set_param(nucleo, "radius", GALAXIA.nucleo);
+    g.set_param(nucleo, "radius", gx.nucleo);
     g.set_param(nucleo, "invert", 1.0);
     let vortex = g.add_node("force.vortex");
-    g.set_param(vortex, "strength", GALAXIA.vortex);
-    g.set_param(vortex, "radius", GALAXIA.alcance);
+    g.set_param(vortex, "strength", gx.vortex);
+    g.set_param(vortex, "radius", gx.alcance);
     g.set_param(vortex, ph2d_node_force_vortex::MODE, 1.0);
-    g.set_param(
-        vortex,
-        ph2d_node_force_vortex::AIR_RESIST,
-        GALAXIA.resistencia,
-    );
+    g.set_param(vortex, ph2d_node_force_vortex::AIR_RESIST, gx.resistencia);
     let im = g.add_node("force.attractor");
-    g.set_param(im, "strength", GALAXIA.iman);
-    g.set_param(im, "radius", GALAXIA.alcance);
+    g.set_param(im, "strength", gx.iman);
+    g.set_param(im, "radius", gx.alcance);
     let curl = g.add_node("force.curl");
-    g.set_param(curl, "strength", GALAXIA.ruido);
+    g.set_param(curl, "strength", gx.ruido);
     g.set_param(curl, "scale", 0.15);
     g.set_param(curl, "speed", 0.4);
     let cadeia = [nucleo, vortex, im, curl];

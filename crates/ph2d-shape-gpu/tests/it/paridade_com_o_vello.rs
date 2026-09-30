@@ -712,3 +712,75 @@ fn o_passe_desenha_o_que_o_vello_desenha() {
     }
     assert!(algum);
 }
+
+/// Uma CRUZ: côncava e com arestas exactamente verticais quando a cópia não roda.
+fn cruz() -> BezPath {
+    let (a, b) = (0.5, 0.16);
+    let mut bp = BezPath::new();
+    bp.move_to((-b, -a));
+    for (x, y) in [
+        (b, -a),
+        (b, -b),
+        (a, -b),
+        (a, b),
+        (b, b),
+        (b, a),
+        (-b, a),
+        (-b, b),
+        (-a, b),
+        (-a, -b),
+        (-b, -b),
+    ] {
+        bp.line_to((x, y));
+    }
+    bp.close_path();
+    bp
+}
+
+/// ⭐⭐⭐ **UMA ARESTA VERTICAL LONGE DO PIXEL NÃO VIRA `NaN`** (doc 121 §9.2, a linha da `=127`).
+///
+/// A cobertura portada do Vello divide por `xmax − xmin` e conta com um `−1e-6` que só sobrevive em
+/// coordenadas de ladrilho (`16 px`); aqui elas são relativas ao pixel, e numa aresta VERTICAL a
+/// dezenas de píxeis à esquerda a conta vira `0/0`. ⚠️ **O traço deixou de a expor** quando passou
+/// a saltar as peças que não tocam no pixel — e foi a prova de mutação que o disse: sem a guarda o
+/// gate da estrela alinhada ficou VERDE. ⇒ o caso que ainda a expõe é o PREENCHIMENTO de uma forma
+/// CÔNCAVA alinhada aos eixos: nas fileiras dos braços de cima e de baixo, os pixéis à direita das
+/// duas arestas verticais e FORA da cruz leem o `NaN` e pintavam-se.
+///
+/// ⚠️ As cópias NÃO rodam (é o que põe as arestas na vertical) e são grandes (a aresta fica longe o
+/// bastante para o `−1e-6` se perder no `f32`).
+#[test]
+#[ignore = "precisa de adapter de GPU"]
+fn uma_aresta_vertical_longe_do_pixel_nao_vira_nan() {
+    let cz = cruz();
+    let forma = Forma {
+        bp: &cz,
+        linha: None,
+        regra: FillRule::NonZero,
+        traco: None,
+    };
+    let cs: Vec<Copia> = (0..4)
+        .map(|k| {
+            #[expect(clippy::cast_precision_loss, reason = "quatro copias")]
+            let k = k as f32;
+            Copia {
+                pos: [128.0 + 256.0 * (k % 2.0), 128.0 + 256.0 * (k / 2.0).floor()],
+                lado: 180.0 + 20.0 * k,
+                ang: 0.0,
+                tint: [0.2, 0.4, 0.8, 1.0],
+                aspecto: 1.0,
+            }
+        })
+        .collect();
+    let Some(d) = corre("cruz alinhada", &forma, &cs) else {
+        eprintln!("sem adapter — o gate não correu");
+        return;
+    };
+    assert!(d.pixels_com_tinta > 50_000, "controlo: a cena pinta pouco");
+    assert!(
+        d.alfa_max <= 2 && d.cor_max <= 4,
+        "a cruz alinhada desvia do Vello (alfa {}, cor {}) — o NaN da aresta vertical voltou",
+        d.alfa_max,
+        d.cor_max
+    );
+}

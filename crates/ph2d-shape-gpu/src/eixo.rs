@@ -32,6 +32,19 @@ pub const ITEM_TROCO: u32 = 0;
 pub const ITEM_JUNTA: u32 = 1;
 /// Uma ponta em `b`, no fim do troço `a → b` (a direcção `a → b` aponta para FORA).
 pub const ITEM_PONTA: u32 = 2;
+/// ⭐ O CABEÇALHO de um bloco de peças consecutivas: `a`/`b` são a caixa LOCAL dos pontos delas,
+/// `meia_largura` o maior alcance para fora do eixo (`meia × fator`: a esquadria numa quina em esquadria,
+/// `1,5` numa ponta quadrada, `1` no resto — ainda sem a caneta),
+/// e `_pad` quantas peças se seguem. O shader salta o bloco inteiro quando a caixa, alargada pela
+/// caneta da cópia, não toca no pixel — cada peça é fechada, logo uma que não toca soma zero.
+pub const ITEM_BLOCO: u32 = 3;
+
+/// Quantas peças cabem num bloco. ⚠️ MEDIDO (sonda `sonda_relogio_das_estrelas_grandes`, `72`
+/// estrelas arredondadas de `115 × 38 px`, RTX, `--release`): sem blocos cada pixel lia as `240`
+/// peças da estrela e o traço custava `1,34 ms` contra `0,37` do Vello. Com os blocos e as caixas
+/// no ECRÃ: `4` → `0,48` · **`8` → `0,40`** · `16` → `0,43` · `32` → `0,53–0,60 ms`. Abaixo de `8`
+/// os cabeçalhos pesam mais do que as peças que poupam; acima, a caixa do bloco engorda.
+pub const PECAS_POR_BLOCO: usize = 8;
 
 /// A junta, como o shader a lê: `0` esquadria · `1` chanfro · `2` redonda.
 pub const JUNTA_ESQUADRIA: u32 = 0;
@@ -202,6 +215,48 @@ fn sub_caminhos(path: &BezPath, tol: f64) -> Vec<Sub> {
     }
     fecha(atual, &mut subs);
     subs
+}
+
+/// As peças de um nível, arrumadas em blocos de [`PECAS_POR_BLOCO`], cada um com o cabeçalho
+/// [`ITEM_BLOCO`] à frente. A ordem das peças fica — a regra não-nula não depende dela.
+#[must_use]
+pub fn em_blocos(pecas: &[EixoItem]) -> Vec<EixoItem> {
+    let mut out = Vec::with_capacity(pecas.len() + pecas.len() / PECAS_POR_BLOCO + 1);
+    for bloco in pecas.chunks(PECAS_POR_BLOCO) {
+        let (mut lo, mut hi) = ([f32::INFINITY; 2], [f32::NEG_INFINITY; 2]);
+        let mut alcance: f32 = 0.0;
+        for it in bloco {
+            let pontos: &[[f32; 2]] = if it.tipo == ITEM_JUNTA {
+                &[it.a, it.b, it.c]
+            } else {
+                &[it.a, it.b]
+            };
+            for q in pontos {
+                for k in 0..2 {
+                    lo[k] = lo[k].min(q[k]);
+                    hi[k] = hi[k].max(q[k]);
+                }
+            }
+            // O mesmo alcance que o shader dá à peça (`alcance_da_peca`).
+            let fator = match it.tipo {
+                ITEM_JUNTA if it.junta == JUNTA_ESQUADRIA => it.limite_esquadria.max(1.0),
+                ITEM_PONTA if it.ponta == PONTA_QUADRADA => 1.5,
+                _ => 1.0,
+            };
+            alcance = alcance.max(it.meia_largura * fator);
+        }
+        out.push(EixoItem {
+            a: lo,
+            b: hi,
+            meia_largura: alcance,
+            tipo: ITEM_BLOCO,
+            #[expect(clippy::cast_possible_truncation, reason = "um bloco tem 16 peças")]
+            _pad: bloco.len() as u32,
+            ..EixoItem::default()
+        });
+        out.extend_from_slice(bloco);
+    }
+    out
 }
 
 fn f(p: Point) -> [f32; 2] {

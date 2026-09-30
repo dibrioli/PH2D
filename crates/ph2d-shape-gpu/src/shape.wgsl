@@ -210,6 +210,14 @@ fn contribuicao(p0: vec2<f32>, p1: vec2<f32>, xy: vec2<f32>) -> f32 {
     let x1 = startx + t1 * delta.x;
     let xmin0 = min(x0, x1);
     let xmax0 = max(x0, x1);
+    // ⛔ doc 121 W4 (a linha da `=127`): o segmento todo à ESQUERDA do pixel conta a faixa inteira.
+    // A fórmula abaixo dá `1` aí só enquanto `xmax − xmin ≠ 0` — e o `−1e-6` que a garante é do
+    // Vello, cujas coordenadas são relativas a um ladrilho de 16 px. Aqui elas são relativas ao
+    // PIXEL e chegam a centenas: numa aresta VERTICAL longe à esquerda o `−1e-6` perde-se no `f32`,
+    // a conta vira `0/0 = NaN`, e o `min(abs(NaN), 1)` pinta a fileira inteira.
+    if xmax0 <= 0.0 {
+        return dy;
+    }
     let xmin = min(xmin0, 1.0) - 1.0e-6;
     let xmax = xmax0;
     let b = min(xmax, 1.0);
@@ -280,61 +288,116 @@ fn leque(centro: vec2<f32>, n0: vec2<f32>, alpha: f32, dir: f32, r: f32, xy: vec
 }
 
 fn traco_do_eixo(inicio: u32, n: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32, xy: vec2<f32>) -> f32 {
+    // ⭐ Cada peça é FECHADA, logo uma que não toca no pixel soma ZERO (as faixas das arestas à
+    // esquerda cancelam-se). ⇒ salta-se pela caixa: primeiro a do BLOCO (`ITEM_BLOCO`, as peças
+    // seguintes), depois a de cada peça — as duas no ECRÃ e alargadas pelo que a peça vai para fora
+    // do eixo NESTA cópia. ⛔ No espaço local o teste teria de alargar pela PIOR direcção do afim, e
+    // sob escala não uniforme isso engolia meia estrela (medido: `1,09 → 0,99 ms`, quase nada).
+    // No ecrã: `1,34 → 0,40 ms`, contra `0,37` do Vello (ver `PECAS_POR_BLOCO`).
+    let xa = xy;
+    let xb = xy + vec2<f32>(1.0);
     var s = 0.0;
-    for (var i = 0u; i < n; i += 1u) {
-        let it = eixo[inicio + i];
-        let r = it.meia * caneta;
-        let a = aplica(lin, t, it.a);
-        let b = aplica(lin, t, it.b);
-        let dab = b - a;
-        let lab = length(dab);
-        if lab <= 0.0 || r <= 0.0 {
+    var i = 0u;
+    loop {
+        if i >= n {
+            break;
+        }
+        let cab = eixo[inicio + i];
+        let fim = i + 1u + cab._pad;
+        let c0 = aplica(lin, t, cab.a);
+        let c1 = aplica(lin, t, vec2<f32>(cab.b.x, cab.a.y));
+        let c2 = aplica(lin, t, vec2<f32>(cab.a.x, cab.b.y));
+        let c3 = aplica(lin, t, cab.b);
+        let fb = cab.meia * caneta;
+        let blo = min(min(c0, c1), min(c2, c3)) - vec2<f32>(fb);
+        let bhi = max(max(c0, c1), max(c2, c3)) + vec2<f32>(fb);
+        if bhi.x < xa.x || blo.x > xb.x || bhi.y < xa.y || blo.y > xb.y {
+            i = fim;
             continue;
         }
-        let u = dab / lab;
-        if it.tipo == 0u {
-            let nr = perp(u) * r;
-            s += quad(a + nr, b + nr, b - nr, a - nr, xy);
-        } else if it.tipo == 1u {
-            let c = aplica(lin, t, it.c);
-            let dbc = c - b;
-            let lbc = length(dbc);
-            if lbc <= 0.0 {
-                continue;
-            }
-            let v = dbc / lbc;
-            let cr = u.x * v.y - u.y * v.x;
-            let dt = clamp(dot(u, v), -1.0, 1.0);
-            if abs(cr) < 1.0e-7 && dt > 0.0 {
-                continue;
-            }
-            // O lado de FORA é o oposto ao da viragem.
-            let lado = select(1.0, -1.0, cr > 0.0);
-            let n0 = perp(u) * r * lado;
-            let n1 = perp(v) * r * lado;
-            if it.junta == 0u && 2.0 <= (1.0 + dt) * it.limite * it.limite {
-                let m = b + (n0 + n1) / (1.0 + dt);
-                s += quad(b, b + n0, m, b + n1, xy);
-            } else if it.junta == 2u {
-                var dir = sign(n0.x * n1.y - n0.y * n1.x);
-                if dir == 0.0 {
-                    dir = sign(n0.x * u.y - n0.y * u.x);
-                }
-                s += leque(b, n0, acos(dt), dir, r, xy);
-            } else {
-                s += tri(b, b + n0, b + n1, xy);
-            }
-        } else {
-            let nr = perp(u) * r;
-            if it.ponta == 1u {
-                s += quad(b + nr, b + nr + u * r, b - nr + u * r, b - nr, xy);
-            } else if it.ponta == 2u {
-                let dir = sign(nr.x * u.y - nr.y * u.x);
-                s += leque(b, nr, 3.14159265, dir, r, xy);
-            }
+        i += 1u;
+        for (; i < fim; i += 1u) {
+            s += peca_do_eixo(eixo[inicio + i], lin, t, caneta, xy);
         }
     }
     return min(abs(s), 1.0);
+}
+
+// Quantas meias larguras a peça vai para FORA do eixo: a esquadria até ao limite (só numa quina em
+// esquadria), a ponta quadrada até `√2`, o resto até `1`.
+fn alcance_da_peca(it: Eixo) -> f32 {
+    if it.tipo == 1u && it.junta == 0u {
+        return max(it.limite, 1.0);
+    }
+    if it.tipo == 2u && it.ponta == 1u {
+        return 1.5;
+    }
+    return 1.0;
+}
+
+// Uma peça do eixo, no ecrã: o quadrilátero de um troço, a junta de uma quina, a ponta de um extremo.
+fn peca_do_eixo(it: Eixo, lin: vec4<f32>, t: vec2<f32>, caneta: f32, xy: vec2<f32>) -> f32 {
+    let r = it.meia * caneta;
+    let a = aplica(lin, t, it.a);
+    let b = aplica(lin, t, it.b);
+    var c = b;
+    if it.tipo == 1u {
+        c = aplica(lin, t, it.c);
+    }
+    let fp = r * alcance_da_peca(it);
+    let plo = min(min(a, b), c) - vec2<f32>(fp);
+    let phi = max(max(a, b), c) + vec2<f32>(fp);
+    if phi.x < xy.x || plo.x > xy.x + 1.0 || phi.y < xy.y || plo.y > xy.y + 1.0 {
+        return 0.0;
+    }
+    let dab = b - a;
+    let lab = length(dab);
+    if lab <= 0.0 || r <= 0.0 {
+        return 0.0;
+    }
+    let u = dab / lab;
+    if it.tipo == 0u {
+        let nr = perp(u) * r;
+        return quad(a + nr, b + nr, b - nr, a - nr, xy);
+    }
+    if it.tipo == 1u {
+        let dbc = c - b;
+        let lbc = length(dbc);
+        if lbc <= 0.0 {
+            return 0.0;
+        }
+        let v = dbc / lbc;
+        let cr = u.x * v.y - u.y * v.x;
+        let dt = clamp(dot(u, v), -1.0, 1.0);
+        if abs(cr) < 1.0e-7 && dt > 0.0 {
+            return 0.0;
+        }
+        // O lado de FORA é o oposto ao da viragem.
+        let lado = select(1.0, -1.0, cr > 0.0);
+        let n0 = perp(u) * r * lado;
+        let n1 = perp(v) * r * lado;
+        if it.junta == 0u && 2.0 <= (1.0 + dt) * it.limite * it.limite {
+            let m = b + (n0 + n1) / (1.0 + dt);
+            return quad(b, b + n0, m, b + n1, xy);
+        }
+        if it.junta == 2u {
+            var dir = sign(n0.x * n1.y - n0.y * n1.x);
+            if dir == 0.0 {
+                dir = sign(n0.x * u.y - n0.y * u.x);
+            }
+            return leque(b, n0, acos(dt), dir, r, xy);
+        }
+        return tri(b, b + n0, b + n1, xy);
+    }
+    let nr = perp(u) * r;
+    if it.ponta == 1u {
+        return quad(b + nr, b + nr + u * r, b - nr + u * r, b - nr, xy);
+    }
+    if it.ponta == 2u {
+        let dir = sign(nr.x * u.y - nr.y * u.x);
+        return leque(b, nr, 3.14159265, dir, r, xy);
+    }
+    return 0.0;
 }
 
 @fragment

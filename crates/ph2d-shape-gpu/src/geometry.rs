@@ -141,11 +141,13 @@ impl ShapeGeometry {
             record.ranges[nivel] = [fill_start, fill_count, stroke_start, stroke_count];
             let eixo_start = conta_eixo(&itens);
             if !tracejado {
+                let mut pecas = Vec::new();
                 for s in &input.strokes {
                     #[expect(clippy::cast_possible_truncation, reason = "a placa lê f32")]
                     let meia = (s.style.width * 0.5) as f32;
-                    ext_fora = ext_fora.max(meia * eixo(s.path, s.style, tol * 0.5, &mut itens));
+                    ext_fora = ext_fora.max(meia * eixo(s.path, s.style, tol * 0.5, &mut pecas));
                 }
+                itens.extend(crate::eixo::em_blocos(&pecas));
             }
             record.eixo[nivel] = [eixo_start, conta_eixo(&itens) - eixo_start, marcas, 0];
         }

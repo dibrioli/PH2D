@@ -119,3 +119,76 @@ fn o_tracejado_so_se_desenha_conforme() {
     assert_eq!(g.record.flags & crate::FLAG_SO_CONFORME, 0);
     assert!(g.record.eixo.iter().all(|e| e[1] > 0));
 }
+
+/// ⭐ **Os BLOCOS guardam as peças todas, pela ordem, e a caixa de cada um cobre o alcance delas.**
+///
+/// ⚠️ O shader salta um bloco pela caixa do cabeçalho: uma caixa curta de mais apaga peças que
+/// tocam no pixel (buracos no traço), um alcance curto apaga a ponta de uma esquadria. As duas
+/// metades são medidas contra as próprias peças.
+#[test]
+fn os_blocos_guardam_as_pecas_e_cobrem_o_alcance_delas() {
+    let mut st = Stroke::new(0.1);
+    st.join = Join::Miter;
+    st.miter_limit = 4.0;
+    st.start_cap = Cap::Square;
+    st.end_cap = Cap::Square;
+    let mut bp = BezPath::new();
+    bp.move_to((0.0, 0.0));
+    for k in 1..40 {
+        bp.line_to((f64::from(k) * 0.1, if k % 2 == 0 { 0.0 } else { 0.3 }));
+    }
+    let (pecas, _) = itens(&bp, &st);
+    let blocos = em_blocos(&pecas);
+    let so_pecas: Vec<EixoItem> = blocos
+        .iter()
+        .filter(|i| i.tipo != ITEM_BLOCO)
+        .copied()
+        .collect();
+    assert_eq!(
+        so_pecas, pecas,
+        "as peças atravessam os blocos todas e pela ordem"
+    );
+    let mut i = 0;
+    let mut vistos = 0;
+    while i < blocos.len() {
+        let cab = blocos[i];
+        assert_eq!(cab.tipo, ITEM_BLOCO, "o item {i} tinha de ser um cabeçalho");
+        let n = cab._pad as usize;
+        assert!((1..=PECAS_POR_BLOCO).contains(&n), "um bloco com {n} peças");
+        for it in &blocos[i + 1..i + 1 + n] {
+            let mut pts = vec![it.a, it.b];
+            if it.tipo == ITEM_JUNTA {
+                pts.push(it.c);
+            }
+            for q in pts {
+                assert!(
+                    (0..2).all(|k| cab.a[k] <= q[k] && q[k] <= cab.b[k]),
+                    "a caixa do bloco nao cobre {q:?}"
+                );
+            }
+            let fator = match it.tipo {
+                ITEM_JUNTA if it.junta == JUNTA_ESQUADRIA => it.limite_esquadria,
+                ITEM_PONTA if it.ponta == PONTA_QUADRADA => 1.5,
+                _ => 1.0,
+            };
+            assert!(
+                cab.meia_largura >= it.meia_largura * fator,
+                "o alcance do bloco ({}) nao cobre a peça ({})",
+                cab.meia_largura,
+                it.meia_largura * fator
+            );
+        }
+        vistos += 1;
+        i += 1 + n;
+    }
+    assert!(
+        vistos >= 10,
+        "controlo: a fixtura tem de dar varios blocos ({vistos})"
+    );
+    assert!(
+        blocos
+            .iter()
+            .any(|c| c.tipo == ITEM_BLOCO && (c.meia_largura - 0.05 * 4.0).abs() < 1e-6),
+        "controlo: ha' um bloco cujo alcance e' o da esquadria (0,05 x 4)"
+    );
+}

@@ -379,6 +379,80 @@ esticão com os eixos SEPARADOS e diferentes · sem tracejado · simulação nos
 canto do campo cabe no núcleo da galáxia · o `=127` monta-a e o tecto alcança-a · o passo (4)
 compara com a porta que a placa lê e o roteiro manda ler o `raw`.
 
+⛔⛔ **E o passo do relógio estava FALSO nesta cena, medido depois do smoke:** com o arranjo
+LEGÍVEL (`1 024` estrelas de `22 px`, umas `300` à vista) as duas rotas leem o mesmo `raw` —
+placa `186`/`209`, Vello `223`/`201`, fotografadas seguidas —, e o roteiro prometia *«o `raw`
+cai»*. *Um contorno julga-se numa estrela grande e uma folga só se mexe com milhares à vista*
+(a aritmética do cabeçalho da `=126`). ⇒ a cena tem dois arranjos (`Arranjo`): o LEGÍVEL de
+omissão, para o contorno, e o DENSO (`PH2D_TRACO_ESTICADO_DENSO=1`, `128 × 128` de `8 px`), para o
+relógio — com a galáxia DERIVADA do campo (`simulacao_com`: o núcleo cobre o canto, o ímã sai do
+núcleo pela lei da `=126`, e com o campo dela a derivação devolve os números dela, gate).
+
+| arranjo denso, `16 384` estrelas | rota | barra |
+|---|---|---|
+| corrida 1 | `[formas] … pela PLACA (do dispositivo)` | `59 fps · 124 raw` |
+| corrida 1, `PH2D_FORMAS_NA_PLACA=0` | `pela cena Vello` | **`44 fps · 22.3 ms · 50 raw`** |
+| corrida 2 | placa | `59 fps · 232 raw` |
+| corrida 2, `PH2D_FORMAS_NA_PLACA=0` | Vello | `60 fps · 89 raw` |
+
+### §9.2 — O smoke da `=127` devolveu DOIS defeitos, e os dois eram do passe (2026-09-30)
+
+*«no primeiro artefatos de imagem: veja linha nas estrelas»* e *«com `PH2D_FORMAS_NA_PLACA=0` o
+`raw` está quase sempre maior»* — com a foto de estrelas de 8 pontas com cantos arredondados, sem
+rotação e ampliadas.
+
+**(a) A LINHA era um `NaN`.** A cobertura portada do Vello (`contribuicao`) divide por
+`xmax − xmin` e conta com um `−1e-6` para nunca dar zero — verdade no Vello, cujas coordenadas são
+relativas a um ladrilho de `16 px`; falso no passe, onde são relativas ao PIXEL e chegam a
+centenas. Numa aresta **exactamente vertical**, longe à esquerda do pixel, o `−1e-6` perde-se no
+`f32`, a conta vira `0/0`, e o `min(abs(NaN), 1)` da placa devolvia `1`: a fileira inteira pintada
+à direita da ponta até ao fim do quad. ⚠️ **A aresta vertical só existe com a forma ALINHADA aos
+eixos** (a junta redonda da ponta tem os dois lados espelhados ao bit) — e **nenhum gate de
+paridade tinha uma cópia alinhada**: todos sorteiam o ângulo. É a mesma família do defeito da W2
+(a aresta horizontal saltada), pelo outro eixo. Cura: um segmento todo à esquerda do pixel devolve
+a faixa inteira (`dy`) antes da divisão. ⛔⛔ **E o PREENCHIMENTO tinha o mesmo defeito desde a W1**
+— numa forma CÔNCAVA alinhada aos eixos, os pixéis à direita de uma aresta vertical e FORA da forma
+pintavam-se (gate `uma_aresta_vertical_longe_do_pixel_nao_vira_nan`, uma cruz sem rotação: **`137 636`
+px pintados contra `96 872` do Vello** sem a guarda, alfa `1` com ela). ⚠️ **Quem o disse foi uma
+mutação SOBREVIVENTE:** depois da cura (b) o traço salta as peças que não tocam no pixel, logo o
+`NaN` deixou de ser avaliado ali e o gate da estrela alinhada ficou VERDE sem a guarda — *a cura do
+relógio escondia a do defeito*, e só o preenchimento, que não salta nada, ainda a expunha.
+Gate `a_forma_alinhada_aos_eixos_nao_risca_uma_linha`: antes **alfa `255` · cor `235` · `1 934` px
+fora**, depois **alfa `65` · cor `68` · `685` px** sobre `23 144`.
+
+**(b) O RELÓGIO: cada pixel lia TODAS as peças do traço.** Medido com a sonda
+`sonda_relogio_das_estrelas_grandes` (`72` estrelas de `115 × 38 px`, RTX, `--release`, o Vello COM
+a leitura de volta):
+
+| estado | só preenchimento | traço conforme | traço esticado | Vello |
+|---|---:|---:|---:|---:|
+| a W4 que shipou | `0,16` | `0,31` | **`1,34 ms`** | `0,37` |
+| salto por peça, caixa no ecrã | | | `1,02` | |
+| salto por peça, caixa LOCAL | | | `1,09` | |
+| blocos de 16, caixa LOCAL | | | `0,99` | |
+| **blocos de 8, caixa no ECRÃ, alcance por peça** | `0,16` | `0,30` | **`0,40 ms`** | `0,38` |
+
+⭐ Cada peça do traço é FECHADA, logo uma que não toca no pixel soma **zero** e pode saltar-se. As
+peças vão em blocos (`ITEM_BLOCO`, um cabeçalho com a caixa local e o maior alcance das peças que se
+seguem, `PECAS_POR_BLOCO = 8` pela varredura `4 → 0,48 · 8 → 0,40 · 16 → 0,43 · 32 → 0,53`).
+⛔⛔ **O teste no espaço LOCAL foi construído, medido e RECUSADO:** para lá o alcance tem de ir pela
+PIOR direcção do afim, e sob escala `1,8 × 0,6` isso engolia meia estrela (`1,09 → 0,99`, quase
+nada). No ecrã a caixa é a verdadeira. ⚠️ E o alcance é **por peça**: a esquadria só numa quina em
+esquadria, `1,5` numa ponta quadrada, `1` no resto — a 1.ª redacção dava a folga da esquadria a
+todas. A ablação que o decidiu: com o traço desligado o quadro lia `0,21 ms`, e o laço de salto
+SOZINHO (sem desenhar peça nenhuma) já custava `0,69`.
+
+Gate `os_blocos_guardam_as_pecas_e_cobrem_o_alcance_delas` (as peças atravessam os blocos todas e
+pela ordem; a caixa e o alcance de cada cabeçalho cobrem as peças dele, com o controlo de um bloco
+cujo alcance é o da esquadria). A paridade das cinco suítes de GPU fica verde.
+
+**Mutação `7` de `7`** (pré-voo `7/7`, corridas LIMPAS verdes com `15` e `4` testes, restauro com
+`touch`): a guarda do `NaN` apagada → a cruz alinhada · a caixa do bloco com um canto só · a
+esquadria sem alcance (no shader e no cabeçalho) · o bloco sem a caneta · o bloco a contar uma peça
+a menos · a peça sem alcance — todas pela paridade do passe, e as duas do cabeçalho também pelo
+gate dos blocos. ⚠️ A 1.ª corrida deu `6 de 7`: a guarda sobrevivia ao gate da estrela alinhada
+pela razão descrita em (a), e o gate da cruz é o que a matou.
+
 ⏳ **Por fazer:** W0 (a medição de partida, que a placa ocupada adiou) e W5 (medição de fecho em
 `release` + smoke do dono com formas e simulação com campos, fotografado antes) · os glifos do
 `source.text` · o tracejado no dispositivo.

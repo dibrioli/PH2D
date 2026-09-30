@@ -161,7 +161,7 @@ pub use march::{
 };
 pub use occlusion::{
     ConeSlice, OCCLUSION_BLUR_COS, OCCLUSION_PASSES, OCCLUSION_REACH, blur_occlusion, cone_dir,
-    occlusion, occlusion_slice, occlusion_slice_with_reach, occlusion_with_reach,
+    occlusion, occlusion_reach, occlusion_slice, occlusion_slice_with_reach, occlusion_with_reach,
 };
 /// ⭐ Os botões do BRILHO, re-exportados — quem monta uma [`Presentation`] não tem de declarar
 /// a dependência, que é a mesma cortesia que o `Presentation` já faz pelo `Look`.

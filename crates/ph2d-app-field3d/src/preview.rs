@@ -552,6 +552,15 @@ pub fn o_passo_do_ceu_a_mexer() -> u32 {
     })
 }
 
+/// ⭐⭐⭐⭐ **A oclusão vive NO TEMPO** (`ph2d_field_gpu::ceu_tempo`, ordem do dono de 2026-09-29:
+/// *«somos uma game engine»*) — o céu de um ponto não depende da câmara, logo o quadro de movimento
+/// herda o do quadro anterior e só marcha onde o ponto é novo. `PH2D_FIELD_CEU_TEMPO=0` bissecta.
+#[must_use]
+pub fn o_ceu_vive_no_tempo() -> bool {
+    static LIGADO: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *LIGADO.get_or_init(|| std::env::var("PH2D_FIELD_CEU_TEMPO").map_or(true, |v| v.trim() != "0"))
+}
+
 /// O passo de fábrica — ver [`o_passo_do_ceu_a_mexer`].
 pub const PASSO_DO_CEU_A_MEXER: u32 = 2;
 

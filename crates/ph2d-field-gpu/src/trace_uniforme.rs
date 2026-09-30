@@ -64,7 +64,9 @@ pub(super) fn uniforme_do_pedido(
         (setup.ball_center, setup.ceu_passo),
         // ⚠️ **Sem borda mole ele vai a ZERO e ninguém o lê** — o `s.mole` é que decide, e um raio
         // aqui sem a bandeira não acorda passagem nenhuma.
-        (setup.mole.unwrap_or([0.0; 3]), 0),
+        //
+        // ⭐⭐⭐⭐ E o `ceu_tempo` mora no enchimento do `mole_raio` — a mesma arrumação do `ceu_passo`.
+        (setup.mole.unwrap_or([0.0; 3]), setup.ceu_tempo.codigo()),
     ] {
         for f in v {
             u.extend_from_slice(&f.to_le_bytes());

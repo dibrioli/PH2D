@@ -50,6 +50,35 @@ pub(super) fn marcha_com(
     // em raios a correr ao mesmo tempo. Medido a `1920×1080`: a mesma marcha num kernel que só marcha
     // custa `18×`–`31×` menos do que o quadro que a hospedava (o nó, `2,76` contra `86,34 ms`).
     let so_o_centro = matches!(pintura, Pintura::Matcap(_));
+    // ⭐⭐⭐⭐ **A OCLUSÃO NO TEMPO** — ver [`crate::ceu_tempo`]. Sem chave (uma escultura) ou sem
+    // oclusão, o quadro é o de sempre: o modo desce a `Nao` ANTES de o uniforme ser escrito.
+    let mut setup = setup;
+    let ceu_tempo =
+        (!so_o_centro && setup.ao_rays > 0 && setup.ceu_tempo != crate::ceu_tempo::CeuTempo::Nao)
+            .then(|| {
+                let l = device.limits();
+                crate::ceu_tempo::ChaveDoCeu::de(
+                    fita,
+                    sculpts,
+                    &setup,
+                    u64::from(width) * u64::from(height),
+                    l.max_storage_buffer_binding_size.min(l.max_buffer_size),
+                )
+            })
+            .flatten();
+    if ceu_tempo.is_none() {
+        setup.ceu_tempo = crate::ceu_tempo::CeuTempo::Nao;
+    }
+    // ⚠️ Um quadro de movimento cuja PEÇA mudou (a mão a arrastar um parâmetro) não tem histórico a
+    // herdar — a tabela vai recomeçar do zero, e acumular ali daria a cada pixel UMA fatia de cones.
+    // Esse quadro faz a oclusão de sempre e GRAVA-a, e o seguinte (se a peça parar) já herda.
+    if setup.ceu_tempo == crate::ceu_tempo::CeuTempo::Acumula
+        && !ceu_tempo
+            .as_ref()
+            .is_some_and(|c| crate::ceu_tempo::herda(cache, c))
+    {
+        setup.ceu_tempo = crate::ceu_tempo::CeuTempo::Grava;
+    }
     let luz_a_parte = !so_o_centro && crate::luz_separada();
     let p_centro = cache
         .entry_with_layout(
@@ -71,14 +100,19 @@ pub(super) fn marcha_com(
     });
     // ⭐⭐⭐⭐ **A oclusão a passo** reconstrói-se DEPOIS de a luz estar escrita em toda a imagem: o
     // `ceu_sobe` lê os representantes vizinhos.
-    let p_ceu = (!so_o_centro && setup.ao_rays > 0 && setup.ceu_passo > 1).then(|| {
-        let mut e = |nome| {
-            cache
-                .entry_with_layout(device, &molde_com_esculturas, fita, nome, Some(&layout))
-                .clone()
-        };
-        (e("ceu_meia"), e("ceu_sobe"))
-    });
+    // ⚠️ Com a oclusão NO TEMPO a mexer, quem a escreve é o `ceu_tempo_acumula` — o passo não corre.
+    let p_ceu = (!so_o_centro
+        && setup.ao_rays > 0
+        && setup.ceu_passo > 1
+        && setup.ceu_tempo != crate::ceu_tempo::CeuTempo::Acumula)
+        .then(|| {
+            let mut e = |nome| {
+                cache
+                    .entry_with_layout(device, &molde_com_esculturas, fita, nome, Some(&layout))
+                    .clone()
+            };
+            (e("ceu_meia"), e("ceu_sobe"))
+        });
     // ⚠️ **Compilar é o caro** — o pipeline da borda só nasce quando ela vai de facto correr.
     let p_bordas = setup.antialias.then(|| {
         let mut e = |nome| {
@@ -275,6 +309,22 @@ pub(super) fn marcha_com(
         cp.set_pipeline(p);
         cp.set_bind_group(0, bg, &[]);
         cp.dispatch_workgroups(gx, gy, 1);
+    }
+    // ⭐⭐⭐⭐ O histórico da oclusão — DEPOIS da luz, que é quem deixa o canal do céu de cada pixel.
+    if let Some(chave) = ceu_tempo {
+        crate::ceu_tempo::despacha(
+            device,
+            &mut enc,
+            cache,
+            &molde_com_esculturas,
+            fita,
+            &bgl,
+            &bg_centro,
+            chave,
+            &setup,
+            width,
+            height,
+        );
     }
 
     let ler = |enc: &mut wgpu::CommandEncoder, b: &wgpu::Buffer, bytes: u64| {

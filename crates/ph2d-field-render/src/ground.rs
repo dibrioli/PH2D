@@ -228,7 +228,7 @@ pub const GROUND_SKY_STRENGTH: f32 = 0.80;
 ///
 /// ```text
 /// céu(q) = clamp(1 − κ · Σₖ γ^(k−1) · clamp(1 − d(q + ŷ·hₖ) / (α·hₖ), 0, 1) / Σₖ γ^(k−1), 0, 1)
-/// hₖ = alcance · k / N,   k = 1..N,   alcance = OCCLUSION_REACH · half_extent
+/// hₖ = alcance · k / N,   k = 1..N,   alcance = occlusion_reach(bola) — em MUNDO
 /// ```
 ///
 /// A oclusão por CAMPO DE DISTÂNCIA, amostrada na vertical: um ponto do chão com a peça por cima ou
@@ -274,17 +274,12 @@ pub const GROUND_SKY_STRENGTH: f32 = 0.80;
 /// ⇒ longe da peça nenhuma amostra corre e o céu é **exactamente** `1`, que é o que deixa o fundo com
 /// os bytes de sempre. O dispositivo usa a MESMA cerca, amostra a amostra.
 #[must_use]
-pub fn ground_sky(
-    doc: &FieldDoc,
-    reg: &Registry,
-    cam: &Orbit,
-    pontos: &[Option<[f32; 3]>],
-) -> Vec<f32> {
+pub fn ground_sky(doc: &FieldDoc, reg: &Registry, pontos: &[Option<[f32; 3]>]) -> Vec<f32> {
     use rayon::prelude::*;
     let Some(bola) = ph2d_field_eval::bounds::bounding_ball(doc, reg) else {
         return vec![1.0; pontos.len()];
     };
-    let alcance = crate::OCCLUSION_REACH * cam.half_extent;
+    let alcance = crate::occlusion_reach(bola.radius);
     let shape = ph2d_field_eval::hybrid::Hybrid::new(doc, reg);
     let n = GROUND_SKY_SAMPLES;
     let mut soma_w = 0.0f32;

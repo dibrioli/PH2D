@@ -98,7 +98,6 @@ fn o_ceu_do_chao_nao_desenha_aneis_a_volta_de_um_campo_que_nao_e_exacto() {
         loops,
     });
     let reg = Registry::new();
-    let cam = Orbit::default();
     let chao = crate::lowest_point(&doc, &reg).expect("o chão");
     let n = 3000;
     let pontos: Vec<Option<[f32; 3]>> = (0..n)
@@ -108,7 +107,7 @@ fn o_ceu_do_chao_nao_desenha_aneis_a_volta_de_um_campo_que_nao_e_exacto() {
             Some([x, chao, 0.07])
         })
         .collect();
-    let ceu = crate::ground::ground_sky(&doc, &reg, &cam, &pontos);
+    let ceu = crate::ground::ground_sky(&doc, &reg, &pontos);
     let minimo = ceu.iter().copied().fold(1.0f32, f32::min);
     let salto = maior_salto(&ceu);
     println!("céu mínimo {minimo:.4} · maior salto {salto:.4}");

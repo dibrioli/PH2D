@@ -38,8 +38,12 @@ fn quadro(t: &crate::gpu_frame::SharedTracer, cena: u32, passo: u32, assente: bo
         LW,
         LH,
         assente,
+        // ⚠️ SEM a oclusão no tempo: o sujeito destes gates é a lei do PASSO, que é o caminho do
+        // quadro cuja tabela não serve (a peça acabada de editar). Com a tabela quente o 2.º quadro
+        // herdaria do 1.º e a comparação mediria o histórico.
         crate::gpu_frame::Sonda {
             ceu_passo: passo,
+            ceu_no_tempo: false,
             ..crate::gpu_frame::Sonda::default()
         },
     )
@@ -125,9 +129,13 @@ fn o_quadro_assente_ignora_o_passo() {
     );
 }
 
-/// ⭐⭐⭐⭐ **O QUADRO DE MOVIMENTO DO PRODUTO USA O PASSO** — a porta de fábrica (`paint`, com a
-/// `Sonda::default()`) dá o quadro a passo [`crate::preview::PASSO_DO_CEU_A_MEXER`] e NÃO o de passo
-/// `1`. ⛔ Sem esta metade a cura podia existir só na sonda.
+/// ⭐⭐⭐⭐ **O QUADRO DE MOVIMENTO DO PRODUTO USA O PASSO QUANDO NÃO HÁ HISTÓRICO** — a porta de
+/// fábrica (`paint`, com a `Sonda::default()`) dá, com a tabela da oclusão VAZIA (a peça acabada de
+/// editar), o quadro a passo [`crate::preview::PASSO_DO_CEU_A_MEXER`] e NÃO o de passo `1`.
+/// ⛔ Sem esta metade a cura podia existir só na sonda.
+///
+/// ⚠️ **A premissa mudou em 2026-09-30** (a oclusão no tempo): com a tabela QUENTE o quadro de
+/// movimento herda-a, e o passo só corre no quadro que não tem o que herdar — é esse que se mede.
 #[test]
 #[ignore = "precisa de GPU"]
 fn o_quadro_de_movimento_do_produto_usa_o_passo() {
@@ -152,6 +160,9 @@ fn o_quadro_de_movimento_do_produto_usa_o_passo() {
     let luz = [crate::gpu_frame::tests_lampada(&cam)];
     let chao = ph2d_field_render::lowest_point(&doc, &reg)
         .map(|height| ph2d_field_render::Ground { height });
+    if let Ok(mut g) = t.lock() {
+        g.esquece_o_ceu();
+    }
     let produto = crate::gpu_frame::paint(
         t,
         &doc,

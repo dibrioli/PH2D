@@ -104,6 +104,8 @@ pub fn luz_separada() -> bool {
 
 /// ⭐⭐⭐ **O BRILHO no dispositivo** — ver o módulo.
 pub mod brilho;
+/// ⭐⭐⭐⭐ **A oclusão no tempo** — o histórico do céu guardado na placa entre quadros.
+pub mod ceu_tempo;
 /// ⭐ **Os bytes que o compositor lê, em WGSL** — ver o módulo.
 mod empacota_wgsl;
 /// ⏱️ O banco compilada contra interpretada — instrumento; ver o módulo.
@@ -170,6 +172,10 @@ pub struct FieldPipelines {
     sondas: Option<sondas_na_placa::SondasNaPlaca>,
     /// Quantas vezes as sondas foram assadas — ver [`FieldPipelines::sondas_assadas`].
     assaduras_de_sondas: usize,
+    /// ⭐⭐⭐⭐ **O histórico da oclusão** — ver [`ceu_tempo`].
+    ceu_tempo: Option<ceu_tempo::Tabela>,
+    /// Quantas vezes ele recomeçou do zero — ver [`FieldPipelines::ceu_tempo_reinicios`].
+    ceu_tempo_reinicios: usize,
 }
 
 /// ⭐⭐⭐ **A fotografia residente** — ver [`FieldPipelines::matcap_buffer`].
@@ -216,6 +222,8 @@ impl FieldPipelines {
             envios_foto: 0,
             sondas: None,
             assaduras_de_sondas: 0,
+            ceu_tempo: None,
+            ceu_tempo_reinicios: 0,
         }
     }
 

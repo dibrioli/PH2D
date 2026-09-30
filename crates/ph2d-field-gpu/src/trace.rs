@@ -118,6 +118,8 @@ pub struct MarchSetup {
     /// próprios onde nenhum vizinho está na mesma superfície. `0` e `1` são a oclusão em todo
     /// pixel, **ao bit** — e é o que todo caminho que a CPU mede pede.
     pub ceu_passo: u32,
+    /// ⭐⭐⭐⭐ **A OCLUSÃO NO TEMPO** — ver [`crate::ceu_tempo`]. `Nao` é o quadro de sempre, ao bit.
+    pub ceu_tempo: crate::ceu_tempo::CeuTempo,
     /// ⭐⭐⭐ **O CHÃO QUE SÓ RECEBE** (`docs/Render3d/07`) — a altura dele no MUNDO, ou `None`.
     ///
     /// Com ele, um pixel que **falha** a peça e vê o chão guarda nos canais de luz a sombra e o céu
@@ -215,6 +217,17 @@ impl Tracer {
     #[must_use]
     pub fn sondas_assadas(&self) -> usize {
         self.cache.sondas_assadas()
+    }
+
+    /// Ver [`crate::FieldPipelines::ceu_tempo_reinicios`].
+    #[must_use]
+    pub fn ceu_tempo_reinicios(&self) -> usize {
+        self.cache.ceu_tempo_reinicios()
+    }
+
+    /// Ver [`crate::FieldPipelines::esquece_o_ceu`].
+    pub fn esquece_o_ceu(&mut self) {
+        self.cache.esquece_o_ceu();
     }
 
     /// Ver [`crate::FieldPipelines::esquece_as_sondas`].

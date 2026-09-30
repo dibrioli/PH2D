@@ -35,6 +35,10 @@ struct Setup {
     // ⚠️ Ele é por CANAL porque a distância de espalhamento é por canal, e é isso que faz a borda
     // ficar avermelhada num jade: o vermelho viaja mais e entra mais fundo na sombra.
     mole_raio: vec3<f32>,
+    // ⭐⭐⭐⭐ **A OCLUSÃO NO TEMPO** (`crate::ceu_tempo`): `0` a de sempre, `1` o quadro ASSENTE grava
+    // o histórico, `2` o quadro de MOVIMENTO acumula-o — e aí NENHUM pixel marcha os cones na luz.
+    // ⚠️ Mora no enchimento do `vec3` de cima, como o `ceu_passo`.
+    ceu_tempo: u32,
     // ⭐⭐⭐ **AS LÂMPADAS, e não uma** — `xyz` é a posição no MUNDO. Ver `MAX_LAMPS`.
     lamps: array<vec4<f32>, {MAX_LAMPS}>,
 };
@@ -395,7 +399,7 @@ fn escreve_a_luz(i: u32, r: Raio, c: vec4<f32>) {
     // threads de um warp andam juntas, e com um representante em cada quatro o warp espera sempre
     // pelos 48 cones (nó `107 → 90 ms`, contra `30` sem oclusão nenhuma).
     var ceu = 1.0;
-    if (s.ao_rays > 0u && s.ceu_passo <= 1u) {
+    if (s.ao_rays > 0u && s.ceu_passo <= 1u && s.ceu_tempo != 2u) {
         ceu = ceu_por_cones(erguido, n);
     }
     luz[base] = ceu;
@@ -610,7 +614,7 @@ pub(crate) fn leis() -> String {
 }
 
 /// Um `f32` que o WGSL leia como `f32` — o irmão do `paint::formata`, e pela mesma razão.
-fn numero(v: f32) -> String {
+pub(crate) fn numero(v: f32) -> String {
     let s = format!("{v:?}");
     if s.contains('.') || s.contains('e') {
         s

@@ -160,8 +160,9 @@ fn main() {
         ball_center: bola.center,
         ball_radius: bola.radius,
         ao_rays: cones,
-        ao_reach: ph2d_field_render::OCCLUSION_REACH * cam.half_extent,
+        ao_reach: ph2d_field_render::occlusion_reach(bola.radius),
         ceu_passo: 1,
+        ceu_tempo: ph2d_field_gpu::ceu_tempo::CeuTempo::Nao,
         // Sem chão: estas sondas medem a peça, e o chão é outra pergunta.
         ground: None,
         edge_cos: ph2d_field_render::EDGE_COS,

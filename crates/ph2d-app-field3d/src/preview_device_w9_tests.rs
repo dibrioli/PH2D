@@ -44,6 +44,11 @@ fn a_fita_inerte_no_pintor_nao_muda_um_byte() {
     };
     let chao = Some(ph2d_field_render::Ground { height: -1.0 });
     let pinta = |fita_inerte: bool| {
+        // ⚠️ Cada quadro parte da tabela da oclusão VAZIA: com ela quente o 2.º herdaria do 1.º
+        // ([`ph2d_field_gpu::ceu_tempo`]), e a igualdade mediria o histórico e não esta cura.
+        if let Ok(mut g) = t.lock() {
+            g.esquece_o_ceu();
+        }
         crate::gpu_frame::paint_com(
             t,
             &doc,
@@ -260,6 +265,11 @@ fn quem_le_o_campo_continua_a_leva_lo_no_shader() {
     let cam = ph2d_field_render::Orbit::default();
     let luz = [crate::gpu_frame::tests_lampada(&cam)];
     let pinta = |mats: &[ph2d_material::Surface], assente: bool, fita_inerte: bool| {
+        // ⚠️ Cada quadro parte da tabela da oclusão VAZIA: com ela quente o 2.º herdaria do 1.º
+        // ([`ph2d_field_gpu::ceu_tempo`]), e a igualdade mediria o histórico e não esta cura.
+        if let Ok(mut g) = t.lock() {
+            g.esquece_o_ceu();
+        }
         let surfaces = ph2d_field_render::Surfaces {
             all: mats,
             owners: None,
@@ -336,6 +346,9 @@ fn quem_le_o_campo_continua_a_leva_lo_no_shader() {
         ..ph2d_field_render::Presentation::of(olhar)
     };
     let pinta_com_estilo = |fita_inerte: bool| {
+        if let Ok(mut g) = t.lock() {
+            g.esquece_o_ceu();
+        }
         let surfaces = ph2d_field_render::Surfaces {
             all: &liso,
             owners: None,
@@ -429,6 +442,11 @@ fn a_lei_do_dono_e_inerte_numa_peca_de_material_unico() {
         ),
     );
     let pinta = |mats: &[ph2d_material::Surface], com_dono: bool| {
+        // ⚠️ Cada quadro parte da tabela da oclusão VAZIA: com ela quente o 2.º herdaria do 1.º
+        // ([`ph2d_field_gpu::ceu_tempo`]), e a igualdade mediria o histórico e não esta cura.
+        if let Ok(mut g) = t.lock() {
+            g.esquece_o_ceu();
+        }
         let surfaces = ph2d_field_render::Surfaces {
             all: mats,
             owners: com_dono.then_some(&owners),
@@ -645,3 +663,7 @@ mod sondas;
 /// ⭐⭐⭐⭐ **Os gates da oclusão a passo no quadro de movimento** — ver o cabeçalho do [`ceu_passo`].
 #[path = "preview_device_w9_ceu_passo_tests.rs"]
 mod ceu_passo;
+
+/// ⭐⭐⭐⭐ **Os gates da oclusão no tempo** — ver o cabeçalho do [`ceu_tempo`].
+#[path = "preview_device_w9_ceu_tempo_tests.rs"]
+mod ceu_tempo;

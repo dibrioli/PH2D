@@ -13,9 +13,24 @@ use crate::{Gbuffer, Orbit, Sharpness, Stencil};
 use ph2d_field::FieldDoc;
 use ph2d_field_eval::hybrid::Registry;
 
-/// ⭐ **O ALCANCE da oclusão**, em unidades do enquadramento — até onde um vizinho ainda escurece.
+/// ⭐ **O ALCANCE da oclusão**, em fracção do DIÂMETRO da bola da peça — até onde um vizinho ainda
+/// escurece. `1,0` é a bola inteira, e como a cerca da bola ([`occlusion_slice`]) já fecha cada cone
+/// na saída dela, é a VISIBILIDADE DO CÉU exacta: fora da bola não há nada da peça para tapar.
 ///
-/// # ⛔ O número foi MEDIDO depois de eu o ter ESCOLHIDO
+/// # ⛔⛔⛔ Até 2026-09-30 ele era em unidades do ENQUADRAMENTO, e isso fazia a oclusão MUDAR COM O ZOOM
+///
+/// `alcance = OCCLUSION_REACH × half_extent`: aproximar encolhia o alcance e as sombras de contacto
+/// CLAREAVAM. Medido no quadro assente das `22` cenas vivas (`diag_tmp_alcance_no_mundo`, a lei de
+/// antes contra esta): afastado (`half_extent = 1,6`) `0` de `22` cenas mudam mais de `8` níveis
+/// (pior `7`) — ali a cerca da bola já vinculava; no enquadramento de fábrica (`0,8`) `5` de `22`,
+/// pior `13`, todas a ESCURECER no fundo das fendas; aproximado (`0,4`) **as `22`**, pior `59`.
+/// ⇒ a lei de antes era a de agora com um alcance que dependia da câmara. O que o expôs foi a
+/// oclusão no tempo (`ph2d_field_gpu::ceu_tempo`): um valor guardado no MUNDO só sobrevive a um
+/// gesto de câmara se não depender dela, e com o alcance no enquadramento cada quadro de zoom
+/// recomeçava a tabela e pagava a oclusão inteira. O estado da arte guarda o alcance em MUNDO (a
+/// oclusão do *Workbench* e do *Eevee* do Blender tem uma *Distance* em unidades de cena).
+///
+/// # ⛔ O número foi MEDIDO depois de eu o ter ESCOLHIDO (a tabela é da lei de ANTES, em enquadramento)
 ///
 /// A 1.ª redacção dizia `0,35`, a olho. Varrido (`measure_the_occlusion_reach`, três cilindros
 /// cruzados), a resposta **satura** — e o que a mostra é a CAUDA, nunca a média:
@@ -35,9 +50,16 @@ use ph2d_field_eval::hybrid::Registry;
 /// é ler o que o olho vê.* É o «extremo global» que este repositório já pagou cinco vezes, do lado
 /// oposto.
 ///
-/// ⇒ **`1,0`, que é onde a resposta deixa de mudar.** Acima disso não há mais nada para encontrar —
-/// e a cerca da bola ([`occlusion_slice`] fecha na saída dela) já o bordava de qualquer forma.
+/// ⇒ a resposta SATURA, e a lei de hoje é a própria saturação: um cone não passa da saída da bola,
+/// logo nenhum alcance acima do diâmetro dela encontra mais nada.
 pub const OCCLUSION_REACH: f32 = 1.0;
+
+/// ⭐⭐⭐ **O alcance da oclusão, em MUNDO** — a porta única: a CPU, o dispositivo, o chão e as
+/// sondas leem-no daqui. ⛔ Nunca da câmara (ver [`OCCLUSION_REACH`]).
+#[must_use]
+pub fn occlusion_reach(ball_radius: f32) -> f32 {
+    OCCLUSION_REACH * 2.0 * ball_radius
+}
 
 /// ⭐⭐⭐ **QUANTAS DIRECÇÕES TEM O CONJUNTO DE CONES** — e o recurso que ele nomeia é **o relógio
 /// do quadro assente**.
@@ -339,7 +361,6 @@ pub fn occlusion_slice_with_reach(
         stencil: Stencil::Tetra4,
     };
     let lift = scene.sharp.hit * crate::march::BIAS;
-    let alcance = reach * cam.half_extent;
     // ⭐⭐⭐ **A CERCA DA BOLA — o DOMÍNIO da pergunta, e o dispositivo já a tinha.**
     //
     // ⚠️ Ela viveu só no WGSL desde que o traçado foi para lá, e a paridade não a acusava porque
@@ -349,6 +370,8 @@ pub fn occlusion_slice_with_reach(
     // corre com o estimador errado.*
     let bola = ph2d_field_eval::bounds::bounding_ball(doc, reg)
         .unwrap_or(ph2d_field_eval::bounds::Ball::EMPTY);
+    // A fracção `reach` do diâmetro da bola — ver [`occlusion_reach`].
+    let alcance = reach * 2.0 * bola.radius;
     let ate_sair_da_bola = |o: [f32; 3], d: [f32; 3]| -> f32 {
         let oc = [0, 1, 2].map(|c| o[c] - bola.center[c]);
         let b = oc[0] * d[0] + oc[1] * d[1] + oc[2] * d[2];

@@ -179,8 +179,9 @@ fn main() {
         ball_center: bola.center,
         ball_radius: bola.radius,
         ao_rays: raios,
-        ao_reach: ph2d_field_render::OCCLUSION_REACH * cam.half_extent,
+        ao_reach: ph2d_field_render::occlusion_reach(bola.radius),
         ceu_passo: 1,
+        ceu_tempo: ph2d_field_gpu::ceu_tempo::CeuTempo::Nao,
         // Sem chão: estas sondas medem a peça, e o chão é outra pergunta.
         ground: None,
         edge_cos: ph2d_field_render::EDGE_COS,
@@ -264,7 +265,7 @@ fn main() {
         "peça: {na_peca} pixels · remendos lisos: {} ({:.1} % da peça) · alcance {:.3}",
         lisos.len(),
         100.0 * lisos.len() as f64 / na_peca as f64,
-        ph2d_field_render::OCCLUSION_REACH * cam.half_extent
+        ph2d_field_render::occlusion_reach(bola.radius)
     );
     println!();
     println!(

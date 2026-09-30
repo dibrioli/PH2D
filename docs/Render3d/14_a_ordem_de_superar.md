@@ -183,7 +183,13 @@ O que a `W9` deixou nomeado, agora com a causa identificada no §3.
    halo (gate no nó e na rosca). ⚠️ O passo `1` também já está feito (as sondas guardadas na placa).
    *(A redacção original: «já medida e não construída… traz uma classe de artefacto própria (halo na
    descontinuidade de profundidade), que é o que a wave tem de medir».)*
-3. **Reprojecção temporal.** O quadro anterior é informação; hoje é deitado fora.
+3. ✅ **O quadro anterior deixou de ser deitado fora — CONSTRUÍDO em 2026-09-30, e não por
+   reprojecção** ([handoff](../3DModeling/handoffs/HANDOFF_line_3DModeling_A_OCLUSAO_NO_TEMPO_2026-09-30.md)):
+   a reprojecção no ECRÃ foi medida e recusada (o erro acumula); o céu guarda-se no MUNDO
+   (`ph2d_field_gpu::ceu_tempo`), e isso obrigou o alcance da oclusão a deixar de vir da câmara.
+   Nó a girar `28,5 → 18,3 ms`, a aproximar `66,3 → 29,5`, as outras cenas `5,8`–`10,6`.
+   ⛔ **O critério de paragem abaixo DISPAROU para o nó a aproximar:** sem céu nenhum ele custa
+   `21,0 ms` — ali o problema é a marcha da peça, não a amortização da luz.
 
 - **Régua:** a luz indirecta e a sombra **ligadas** com a câmera a mexer, dentro do orçamento de
   `16,7 ms` a `1920×1080`.
@@ -276,4 +282,5 @@ falha.
 | **reescrever o motor** | as leis são crates-folha de zero dependências com gémeo em WGSL; falta um consumidor, não um motor | §1 |
 | **levar o ray-march de SDF para o jogo** | o custo é `instruções × passos × píxeis`, e cada objecto acrescenta instruções que TODO pixel corre — `308` para `21` objectos | §2 |
 | **GI dinâmica a 60 Hz como alvo** | o alvo (Frostbite/Enlighten) **pré-calcula**; a nossa persistência é o equivalente | §3 |
+| **reprojectar a oclusão no ECRÃ** | cada salto recopia o vizinho e o erro ACUMULA: `9 212` canais acima de `8` níveis num quadro de meio grau | [handoff 30/09](../3DModeling/handoffs/HANDOFF_line_3DModeling_A_OCLUSAO_NO_TEMPO_2026-09-30.md) §1 |
 | **comprar o BfN agora** | a pergunta técnica já está respondida de graça; a calibração vem depois da `F1` | §7 |

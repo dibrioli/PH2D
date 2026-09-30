@@ -511,7 +511,8 @@ fn ceu_por_cones(
         stencil: crate::Stencil::Tetra4,
     };
     let lift = scene.sharp.hit * crate::march::BIAS;
-    let alcance = crate::OCCLUSION_REACH * cam.half_extent;
+    let alcance = ph2d_field_eval::bounds::bounding_ball(doc, reg)
+        .map_or(0.0, |b| crate::occlusion_reach(b.radius));
     let (mut quem, mut origens, mut dirs, mut cercas, mut durezas) =
         (Vec::new(), Vec::new(), Vec::new(), Vec::new(), Vec::new());
     let mut peso = vec![0.0f32; pontos.len()];
@@ -622,7 +623,7 @@ fn ceu_das_duas_leis(doc: &FieldDoc, w: u32, h: u32, cones: u32) -> (Vec<f32>, V
     let g = trace(doc, &reg, &cam, w, h);
     let chao = lowest_point(doc, &reg).map(|height| Ground { height });
     let pontos = crate::ground::ground_points(&cam, &g, chao);
-    let lei = crate::ground::ground_sky(doc, &reg, &cam, &pontos);
+    let lei = crate::ground::ground_sky(doc, &reg, &pontos);
     let referencia = ceu_por_cones(doc, &reg, &cam, &g, &pontos, cones);
     let (a, b): (Vec<f32>, Vec<f32>) = pontos
         .iter()
@@ -695,8 +696,16 @@ fn extremos_do_chao(ceu: &[f32], w: usize, h: usize) -> usize {
 
 /// ⭐⭐ **O CHÃO NÃO TEM ANÉIS** — a razão de a lei não ser a dos cones da peça.
 ///
-/// O controlo são os `48` cones do produto no mesmo chão (os anéis que a primeira imagem mostrou), e a
-/// barra é uma FRACÇÃO deles: a lei contínua só muda de sentido onde a peça muda de forma.
+/// A barra é a referência CONVERGIDA (`1024` cones): a lei não pode mudar de sentido MAIS vezes do
+/// que a verdade muda — o que a verdade tem é forma da peça, e o que passar disso são anéis. O
+/// controlo são os `48` cones do produto no mesmo chão (os anéis que a primeira imagem mostrou), que
+/// têm de ter mais do DOBRO dos extremos da convergida — senão a fixtura não contém anéis nenhuns.
+///
+/// ⛔ **A 1.ª barra era uma fracção dos `48` cones (`lei × 4 ≤ cones`) e media o CONTROLO:** quando o
+/// alcance da oclusão passou do enquadramento para o MUNDO (2026-09-30) a lei ficou onde estava
+/// (`212 → 210` extremos) e os anéis dos `48` cones caíram (`904 → 654`), porque cones mais longos
+/// saturam mais cedo. Medido nos dois alcances: convergida `394` e `264` — a lei fica abaixo dela
+/// nos dois.
 #[test]
 fn o_ceu_do_chao_nao_tem_aneis() {
     let (w, h) = (320u32, 180u32);
@@ -715,7 +724,7 @@ fn o_ceu_do_chao_nao_tem_aneis() {
             .map(|(c, q)| if q.is_some() { *c } else { 1.0 })
             .collect()
     };
-    let lei = so_chao(crate::ground::ground_sky(&doc, &reg, &cam, &pontos));
+    let lei = so_chao(crate::ground::ground_sky(&doc, &reg, &pontos));
     let cones = so_chao(ceu_por_cones(
         &doc,
         &reg,
@@ -724,18 +733,21 @@ fn o_ceu_do_chao_nao_tem_aneis() {
         &pontos,
         crate::OCCLUSION_PASSES,
     ));
-    let (a, b) = (
+    let convergidos = so_chao(ceu_por_cones(&doc, &reg, &cam, &g, &pontos, 1024));
+    let (a, b, c) = (
         extremos_do_chao(&lei, w as usize, h as usize),
         extremos_do_chao(&cones, w as usize, h as usize),
+        extremos_do_chao(&convergidos, w as usize, h as usize),
     );
-    println!("extremos: lei {a} · 48 cones {b}");
+    println!("extremos: lei {a} · 48 cones {b} · 1024 cones {c}");
     assert!(
-        b > 200,
-        "o controlo tem de mostrar os anéis dos cones, e mostra {b}"
+        b > 2 * c,
+        "CONTROLO: os 48 cones têm de mostrar anéis (mais do dobro dos {c} extremos da referência \
+         convergida), e mostram {b}"
     );
     assert!(
-        a * 4 <= b,
-        "o chão da lei tem {a} extremos contra {b} dos cones — anéis?"
+        a <= c,
+        "o chão da lei tem {a} extremos contra {c} da referência convergida — anéis?"
     );
 }
 

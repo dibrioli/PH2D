@@ -392,6 +392,10 @@ mod grelha;
 #[path = "device_probes_w9_ceu_passo.rs"]
 mod passo;
 
+/// ⏱️ **A oclusão no tempo, a girar** — ver o cabeçalho do [`tempo`].
+#[path = "device_probes_w9_ceu_tempo.rs"]
+mod tempo;
+
 /// ⏱️ **Sonda: o quadro ASSENTE com as sondas FRIAS contra GUARDADAS** — a cura do travão ao girar
 /// (`ph2d_field_gpu::sondas_na_placa`). A luz é FIXA em mundo, senão orbitar trocava a chave.
 #[test]

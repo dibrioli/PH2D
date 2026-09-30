@@ -286,7 +286,7 @@ pub fn shadow_pass_on(
     let ambient = if chao.is_empty() {
         Vec::new()
     } else {
-        crate::ground::ground_sky(doc, reg, cam, &chao)
+        crate::ground::ground_sky(doc, reg, &chao)
     };
     if lamps_world.is_empty() || pixels == 0 {
         return Shadows {

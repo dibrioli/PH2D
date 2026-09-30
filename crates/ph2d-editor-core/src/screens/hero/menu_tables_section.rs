@@ -62,7 +62,19 @@ pub(super) const SECTION_MENU_REDESIGN_ROWS: &[MenuRow] = &[
     menu_row_swatch(
         ids::CTX_MENU_SECTION_THEME_CANDY,
         "chrome.menu.candy",
-        [0xf7, 0xcf, 0xe3, 0xFF],
+        [0xe3, 0xbd, 0xd1, 0xFF],
+    ),
+    menu_row(
+        ids::CTX_MENU_SECTION_THEMES_RESET,
+        "chrome.menu.section_themes_reset",
+    ),
+    menu_row(
+        ids::CTX_MENU_SECTION_THEMES_SAVE_CUSTOM,
+        "chrome.menu.section_themes_save_custom",
+    ),
+    menu_row(
+        ids::CTX_MENU_SECTION_THEMES_LOAD_CUSTOM,
+        "chrome.menu.section_themes_load_custom",
     ),
     menu_row(ids::CTX_MENU_OUTLINE_NONE, "chrome.menu.no_outline"),
     menu_row_swatch(
@@ -137,6 +149,18 @@ pub(super) const SECTION_MENU_CLASSIC_ROWS: &[MenuRow] = &[
         ids::CTX_MENU_SECTION_THEME_BLUEPRINT,
         "chrome.menu.blueprint_light",
         [0x6c, 0x8e, 0xc8, 0xFF],
+    ),
+    menu_row(
+        ids::CTX_MENU_SECTION_THEMES_RESET,
+        "chrome.menu.section_themes_reset",
+    ),
+    menu_row(
+        ids::CTX_MENU_SECTION_THEMES_SAVE_CUSTOM,
+        "chrome.menu.section_themes_save_custom",
+    ),
+    menu_row(
+        ids::CTX_MENU_SECTION_THEMES_LOAD_CUSTOM,
+        "chrome.menu.section_themes_load_custom",
     ),
     menu_row(ids::CTX_MENU_OUTLINE_NONE, "chrome.menu.no_outline"),
     menu_row_swatch(

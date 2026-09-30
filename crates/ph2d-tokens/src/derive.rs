@@ -205,6 +205,22 @@ pub struct Roles {
     /// É o que faz cada área ler-se como um cartão: sem ele o painel É o tom mais escuro, e a
     /// divisória entre duas áreas não tem nada para mostrar.
     pub ground: Rgb,
+    /// ⭐⭐ **O fundo que o PINTOR DOS CARTÕES usa numa secção.** É o `dark_3` (o `bg-1`) em todo
+    /// tema cuja escada separa — e um degrau ABSOLUTO acima do painel onde ela COLAPSA.
+    ///
+    /// ⛔ **Não é o `bg-1`**: esse slot é também o fundo do CANVAS (`hero::canvas_backdrop`), que o
+    /// dono aprovou byte a byte e já devolveu uma vez (*«mudou a cor do canvas»*, 2026-09-05). O
+    /// degrau vive só onde a pergunta é «de que cor é o cartão?» — [`card_surface`].
+    ///
+    /// ⛔ Report do dono (2026-09-30): *«No tema Black o fundo do painel e o fundo dos cards é
+    /// igual e desse modo os cards não são visíveis»*. Com a base preta e `contrast = 0` a família
+    /// multiplicativa devolve preto para o painel, o cartão e o sub-cartão, e a *Draw Extra
+    /// Borders* que devia separá-los **nunca chegava ao cartão**: o pintor dos cartões só
+    /// PREENCHE. *O tema declarava uma moldura; o cartão não a recebia.*
+    pub card: Rgb,
+    /// O fundo de um cartão de **subsecção** — a `base` (o `bg-2`) onde a escada separa, e um degrau
+    /// acima do [`Self::card`] onde ela colapsa.
+    pub subcard: Rgb,
     pub contrast_1: Rgb,
     pub contrast_2: Rgb,
     pub font: Rgb,
@@ -306,11 +322,16 @@ impl Inputs {
                 dark: true,
                 extra_borders: false,
             },
-            // `#f7cfe3` + `#c0187e` — claro, com o contraste negativo do `light`.
+            // `#e3bdd1` + `#c0187e` — claro. ⚠️ Era `#f7cfe3` com o contraste `−0,06` do `light`, e o
+            //    cartão ficava a `9/255` do painel (medido em 2026-09-30, quando o gate
+            //    `a_card_stands_off_its_panel` passou a varrer os oito modernos): o painel satura no
+            //    `255` do vermelho — a cerca que o `Light` já escreve acima — e numa base SATURADA o
+            //    `dimmed` do cartão tira saturação, o que CLAREIA o verde e o azul e come o degrau.
+            //    Medido: só escurecer a base dá `10`, só o contraste `−0,08` dá `11`; as duas juntas passam.
             Theme::Candy => Self {
-                base: Rgb::new(0.969, 0.812, 0.89),
+                base: Rgb::new(0.89, 0.74, 0.82),
                 accent: Rgb::new(0.753, 0.094, 0.494),
-                contrast: -0.06,
+                contrast: -0.08,
                 dark: false,
                 extra_borders: false,
             },
@@ -347,13 +368,15 @@ impl Inputs {
         //    passo na mesma direcção» não separa nada. Derivar do painel dá a mesma leitura nos
         //    quatro: uma superfície um degrau ABAIXO daquela em que as áreas assentam.
         let panel = base.lerp(Rgb::BLACK, c * 1.8);
+        let dark_3 = base.dimmed(c, 0.8, 0.9);
+        let (card, subcard) = card_surfaces(panel, dark_3, base, self.dark);
         Roles {
             base,
             accent: self.accent,
             mono,
             mono_inv,
             dark_1: base.lerp(Rgb::BLACK, c * 1.15),
-            dark_3: base.dimmed(c, 0.8, 0.9),
+            dark_3,
             // O `1.8` é o degrau MEDIDO: com ele o cartão (`Bg1`) fica a 12/255 do painel no
             // Dark, 19 no Gray e 14 no Light (gate `a_card_stands_off_its_panel`), contra os 4
             // que o dono viu. ⛔ O OLED tem base preta: a família multiplicativa colapsa lá, e
@@ -371,6 +394,8 @@ impl Inputs {
                 panel.b - SURFACE_STEP,
             )
             .clamp(),
+            card,
+            subcard,
             contrast_1: base.lerp(mono, c_floor * 1.15),
             contrast_2: base.lerp(mono, c_floor * 1.725),
             font: mono.over(base, 0.8),
@@ -389,6 +414,55 @@ impl Inputs {
             contrast: c,
         }
     }
+}
+
+/// ⭐⭐ **Quantos degraus de [`SURFACE_STEP`] o cartão sobe acima do painel quando a escada
+/// COLAPSA** — e o sub-cartão sobe [`COLLAPSED_SUBCARD_STEPS`].
+///
+/// Medido contra o que o dono aprovou nos temas que separam: no `Dark` o cartão fica a `12/255`
+/// do painel e o sub-cartão `10` acima do cartão. Sobre PRETO a mesma distância lê-se menos (o
+/// olho é logarítmico no escuro), logo o OLED ganha dois degraus (`20/255`, `#141414`) e o
+/// sub-cartão três (`31/255`, `#1f1f1f`).
+const COLLAPSED_CARD_STEPS: f32 = 2.0;
+/// Ver [`COLLAPSED_CARD_STEPS`].
+const COLLAPSED_SUBCARD_STEPS: f32 = 3.0;
+
+/// ⭐⭐ **Os fundos dos dois cartões**, com a cerca do colapso.
+///
+/// A escada separa ⇒ `(dark_3, base)`, byte a byte o que shipava. A escada COLAPSA (o cartão a
+/// menos de um [`SURFACE_STEP`] do painel no pior canal — o `Oled`, e qualquer tema futuro de base
+/// preta ou branca pura) ⇒ degraus ABSOLUTOS a partir do painel, na direcção da elevação do tema.
+fn card_surfaces(panel: Rgb, dark_3: Rgb, base: Rgb, dark: bool) -> (Rgb, Rgb) {
+    let gap = (dark_3.r - panel.r)
+        .abs()
+        .max((dark_3.g - panel.g).abs())
+        .max((dark_3.b - panel.b).abs());
+    if gap >= SURFACE_STEP {
+        return (dark_3, base);
+    }
+    let dir = if dark { 1.0 } else { -1.0 };
+    let lift = |steps: f32| {
+        let d = dir * steps * SURFACE_STEP;
+        Rgb::new(panel.r + d, panel.g + d, panel.b + d).clamp()
+    };
+    (lift(COLLAPSED_CARD_STEPS), lift(COLLAPSED_SUBCARD_STEPS))
+}
+
+/// ⭐⭐ **O fundo de um cartão pintado pelo livro dos cartões — `Some` só onde a escada COLAPSA.**
+///
+/// `None` diz *«pinte o token de sempre»* (e o chamador resolve-o, com as sobreposições do
+/// projecto), logo os temas cuja escada separa ficam byte a byte o que eram. `Some` é o degrau
+/// absoluto do [`card_surfaces`] — hoje só o `Oled`, e qualquer tema futuro de base preta ou branca
+/// pura. A família clássica não tem cartões (desenha o risco) e devolve `None`.
+#[must_use]
+pub fn card_surface(theme: Theme, subsection: bool) -> Option<Color> {
+    let r = Inputs::of(theme)?.roles();
+    let (natural, lifted) = if subsection {
+        (r.base, r.subcard)
+    } else {
+        (r.dark_3, r.card)
+    };
+    (lifted != natural).then(|| lifted.color())
 }
 
 /// A alfa do `highlight_color` do Godot — `Color(accent, 0.275)`.

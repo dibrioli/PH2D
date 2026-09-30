@@ -292,3 +292,43 @@ fn closing_twice_in_a_row_is_one_close() {
     );
     assert_eq!(cards.rects.len(), 1);
 }
+
+/// ⭐⭐⭐ **No tema Black o cartão pousa uma tinta que NÃO é a do painel — medido na CENA.**
+///
+/// ⛔ Report do dono (2026-09-30): *«No tema Black o fundo do painel e o fundo dos cards é igual e
+/// desse modo os cards não são visíveis.»* O gate do `ph2d-tokens` mede a PORTA
+/// (`derive::card_surface`); este mede o PINTOR — uma porta certa que ninguém chama produz
+/// exactamente o ecrã do report. A régua é o `draw_data` do Vello (`a<<24|b<<16|g<<8|r`).
+///
+/// **Mutação que sangra:** devolver o `paint_into` ao `resolve(depth.token(), ..)` ⇒ a secção e a
+/// subsecção pousam o preto do painel.
+#[test]
+fn in_black_the_card_is_not_the_panel_colour() {
+    let theme = Theme::Oled;
+    let empacota = |c: ph2d_vector::Color| {
+        let [r, g, b, a] = c.to_rgba8().to_u8_array();
+        (u32::from(a) << 24) | (u32::from(b) << 16) | (u32::from(g) << 8) | u32::from(r)
+    };
+    let painel = empacota(resolve(ColorToken::PanelBg, theme));
+    let mut scene = VectorScene::new();
+    with_section_cards(&mut scene, theme, 0.0, |scene| {
+        let y = close_section(scene, theme, 0.0, 100.0, 40.0);
+        close_subsection(scene, theme, 0.0, 100.0, y + 40.0);
+    });
+    let tintas = scene.inner().encoding().draw_data.clone();
+    let seccao = empacota(CardDepth::Section.fill(theme));
+    let sub = empacota(CardDepth::Subsection.fill(theme));
+    assert!(
+        seccao != painel && sub != painel && sub != seccao,
+        "no Black o cartao ({seccao:08X}), o sub-cartao ({sub:08X}) e o painel ({painel:08X}) tem \
+         de ser tres tintas"
+    );
+    assert!(
+        tintas.contains(&seccao) && tintas.contains(&sub),
+        "o pintor dos cartoes nao pousou a tinta do cartao ({tintas:08X?})"
+    );
+    assert!(
+        !tintas.contains(&painel),
+        "o pintor dos cartoes pousou o preto do PAINEL — o report de 2026-09-30"
+    );
+}

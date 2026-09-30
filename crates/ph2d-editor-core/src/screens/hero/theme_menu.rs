@@ -101,6 +101,9 @@ pub fn apply_section_theme_click(
     let crate::interaction::WidgetEvent::Click(id) = event else {
         return false;
     };
+    if apply_custom_theme_click(store, id) {
+        return true;
+    }
     let Some(escolha) = section_theme_of_menu_id(id) else {
         return false;
     };
@@ -109,6 +112,27 @@ pub fn apply_section_theme_click(
     {
         store.set_section_theme(section, escolha);
     }
+    true
+}
+
+/// ⭐⭐ **Os três verbos do TEMA CUSTOM** — *Reset All Card Themes*, *Save Custom Theme* e *Load
+/// Custom Theme* (ordem do dono, 2026-09-30). Agem sobre o PAINEL inteiro, logo o pedido do menu só
+/// é consumido (fecha-o) e a secção dele não é lida. Devolve se `id` era um deles.
+fn apply_custom_theme_click(store: &mut crate::interaction::WidgetStore, id: NodeId) -> bool {
+    let verbo: fn(&mut crate::interaction::WidgetStore) =
+        if id == ids::CTX_MENU_SECTION_THEMES_RESET {
+            crate::interaction::WidgetStore::reset_section_themes
+        } else if id == ids::CTX_MENU_SECTION_THEMES_SAVE_CUSTOM {
+            crate::interaction::WidgetStore::save_custom_section_themes
+        } else if id == ids::CTX_MENU_SECTION_THEMES_LOAD_CUSTOM {
+            |s| {
+                let _ = s.load_custom_section_themes();
+            }
+        } else {
+            return false;
+        };
+    let _ = store.consume_last_context_menu();
+    verbo(store);
     true
 }
 
@@ -171,5 +195,30 @@ mod tests {
             &mut store,
             WidgetEvent::Click(ids::CTX_MENU_THEME_LIGHT)
         ));
+    }
+
+    /// ⭐⭐ **As três linhas do TEMA CUSTOM chegam à lei pelo MESMO despacho do clique** — gravar,
+    /// limpar tudo e voltar a pôr, em duas secções ao mesmo tempo. *Mutação: trocar o braço do
+    /// `Reset` pelo do `Save` ⇒ as secções não voltam ao app.*
+    #[test]
+    fn as_linhas_do_tema_custom_chegam_a_lei() {
+        use crate::interaction::{WidgetEvent, WidgetStore};
+        let (a, b) = (
+            ids::INSP_LIVE_TRANSFORM_SECTION,
+            ids::INSP_LIVE_VISIBILITY_SECTION,
+        );
+        let mut store = WidgetStore::with_capacity(8);
+        store.set_section_theme(a, Some(Theme::Oled));
+        store.set_section_theme(b, Some(Theme::Sunset));
+        let clica = |store: &mut WidgetStore, id| {
+            assert!(apply_section_theme_click(store, WidgetEvent::Click(id)));
+        };
+        clica(&mut store, ids::CTX_MENU_SECTION_THEMES_SAVE_CUSTOM);
+        clica(&mut store, ids::CTX_MENU_SECTION_THEMES_RESET);
+        assert_eq!(store.section_theme(a), None);
+        assert_eq!(store.section_theme(b), None);
+        clica(&mut store, ids::CTX_MENU_SECTION_THEMES_LOAD_CUSTOM);
+        assert_eq!(store.section_theme(a), Some(Theme::Oled));
+        assert_eq!(store.section_theme(b), Some(Theme::Sunset));
     }
 }

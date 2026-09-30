@@ -15,6 +15,8 @@
 
 use super::WidgetStore;
 use ph2d_a11y::NodeId;
+
+mod tema_custom;
 use ph2d_tokens::Theme;
 use std::collections::BTreeMap;
 
@@ -27,6 +29,10 @@ pub struct SectionPrefs {
     /// ⭐ O arrasto de uma NOTA pela pega dela (2026-09-30) — mora aqui porque é o mesmo gesto
     /// sobre o mesmo painel, e o `mod.rs` do store está no tecto de LOC. Ver [`super::notes_ops`].
     pub(super) note_drag: Option<super::notes_ops::NoteDrag>,
+    /// ⭐ O TEMA CUSTOM guardado — a combinação de temas das secções que o artista gravou com
+    /// *Save Custom Theme* (2026-09-30). `None` = nunca gravou; `Some(vazio)` = gravou «todas no
+    /// tema do app», que é uma combinação legítima. Ver [`tema_custom`].
+    custom: Option<BTreeMap<NodeId, Theme>>,
     /// Mudou algo que se GRAVA (tema ou ordem) desde a última vez que a shell perguntou.
     dirty: bool,
 }
@@ -213,6 +219,7 @@ pub fn section_prefs_text(store: &WidgetStore) -> String {
     for (id, t) in store.section_themes() {
         let _ = writeln!(s, "theme.{}={}", id.0, t.id());
     }
+    tema_custom::escreve(store, &mut s);
     s
 }
 
@@ -221,6 +228,7 @@ pub fn section_prefs_text(store: &WidgetStore) -> String {
 pub fn restore_section_prefs_text(store: &mut WidgetStore, text: &str) {
     let mut order = Vec::new();
     let mut themes = BTreeMap::new();
+    let mut custom = tema_custom::Leitura::default();
     for line in text.lines() {
         let Some((k, v)) = line.trim().split_once('=') else {
             continue;
@@ -236,9 +244,12 @@ pub fn restore_section_prefs_text(store: &mut WidgetStore, text: &str) {
             && let (Ok(id), Some(t)) = (id.parse(), Theme::from_id(v.trim()))
         {
             themes.insert(NodeId(id), t);
+        } else {
+            custom.linha(k, v);
         }
     }
     store.restore_section_prefs(order, themes);
+    store.section_prefs.custom = custom.fim();
 }
 
 /// ⭐⭐ **Onde uma secção arrastada cai** — antes da primeira secção cujo cabeçalho tem o meio

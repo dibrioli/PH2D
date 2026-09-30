@@ -93,6 +93,10 @@ pub(super) fn id_is_currently_selected(
             _ => false,
         };
     }
+    // ⭐ *Load Custom Theme* acende quando a combinação de agora É a guardada (2026-09-30).
+    if id == ids::CTX_MENU_SECTION_THEMES_LOAD_CUSTOM {
+        return store.section_themes_are_the_custom();
+    }
     let theme_id = super::theme_menu::theme_menu_id(theme);
     if id == theme_id {
         return true;

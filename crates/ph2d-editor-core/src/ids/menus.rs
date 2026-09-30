@@ -41,6 +41,14 @@ pub const CTX_MENU_SECTION_THEME_PLUMBER_GREEN: NodeId =
     hash_node_id("ctx_menu_section_theme_plumber_green");
 pub const CTX_MENU_SECTION_THEME_SUNSET: NodeId = hash_node_id("ctx_menu_section_theme_sunset");
 pub const CTX_MENU_SECTION_THEME_CANDY: NodeId = hash_node_id("ctx_menu_section_theme_candy");
+// ⭐⭐ Os três verbos do TEMA CUSTOM (ordem do dono, 2026-09-30: *«um botão para resetar todos os
+//    themes dos cards e … um botão para salvar o theme custom»*) — agem sobre o PAINEL inteiro, não
+//    sobre a secção do pedido. Lei em `interaction::state::section_prefs_ops::tema_custom`.
+pub const CTX_MENU_SECTION_THEMES_RESET: NodeId = hash_node_id("ctx_menu_section_themes_reset");
+pub const CTX_MENU_SECTION_THEMES_SAVE_CUSTOM: NodeId =
+    hash_node_id("ctx_menu_section_themes_save_custom");
+pub const CTX_MENU_SECTION_THEMES_LOAD_CUSTOM: NodeId =
+    hash_node_id("ctx_menu_section_themes_load_custom");
 // Theme selector menu items — opened by clicking TOPBAR_THEME.
 pub const CTX_MENU_THEME_FORGE: NodeId = hash_node_id("ctx_menu_theme_forge");
 pub const CTX_MENU_THEME_PAINT: NodeId = hash_node_id("ctx_menu_theme_paint");

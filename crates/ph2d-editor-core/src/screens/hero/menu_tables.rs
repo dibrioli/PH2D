@@ -122,7 +122,7 @@ pub(super) const THEME_SELECTOR_REDESIGN_ROWS: &[MenuRow] = &[
     menu_row_swatch(
         ids::CTX_MENU_THEME_CANDY,
         "chrome.menu.candy",
-        [0xf7, 0xcf, 0xe3, 0xFF],
+        [0xe3, 0xbd, 0xd1, 0xFF],
     ),
     menu_row(ids::CTX_MENU_RADIUS_SHARP, "chrome.menu.corners_sharp"),
     menu_row(ids::CTX_MENU_RADIUS_DEFAULT, "chrome.menu.corners_default"),

@@ -67,6 +67,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.menu.no_outline" => "No outline",
         // ⭐ A 1.ª linha do menu de tema de uma SECÇÃO — desfaz a escolha (2026-09-29).
         "chrome.menu.section_theme_app" => "App Theme",
+        // ⭐ Os três verbos do TEMA CUSTOM (2026-09-30) — agem sobre o painel inteiro.
+        "chrome.menu.section_themes_reset" => "Reset All Card Themes",
+        "chrome.menu.section_themes_save_custom" => "Save Custom Theme",
+        "chrome.menu.section_themes_load_custom" => "Load Custom Theme",
         "chrome.note.grip_hint" => {
             "Drag to move this note. Right-click it to recolor, duplicate or delete."
         }

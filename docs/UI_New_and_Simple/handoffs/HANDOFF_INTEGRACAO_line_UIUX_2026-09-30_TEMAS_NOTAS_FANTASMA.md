@@ -185,3 +185,57 @@ passa a contar `stroke_rounded_rect_radii(` como traço cru e o `stroke_frame_ra
 sem isso a função nova seria uma fuga ao censo. ⚠️ `transport::paint_item` passou do tecto de
 200 LOC ⇒ a fileira de transporte virou `transport_row` (corte por assunto).
 Prova: `nextest-impacted` **19 085/19 085** · censos **127/127** · clippy e fmt limpos.
+
+## §6 — Adenda (mesmo dia): o cartão no Black, e o TEMA CUSTOM dos cartões
+
+Ordem do dono: *«No tema Black o fundo do painel e o fundo dos cards é igual e desse modo os cards
+não são visíveis. Ainda não temos um botão para resetar todos os themes dos cards e nem um botão
+para salvar o theme custom. Corrija tudo.»*
+
+### 6.1 O cartão no `Oled`
+
+- **Causa:** base preta com `contrast = 0` ⇒ `bg-1`, `bg-2` e `panel-bg` são os três `#000000`, e a
+  *Draw Extra Borders* que o gate `the_oled_theme_separates_by_border` dava como a separação **nunca
+  chegava ao cartão** — `section_cards::paint_into` só PREENCHE. *O gate media a porta
+  `frame(Oled, Rest)`, não o pintor.*
+- ⛔ **O `bg-1` NÃO sobe:** é também o fundo do CANVAS (`hero::canvas_backdrop`), preso pelo gate
+  `the_canvas_ground_is_the_one_the_owner_approved` (report de 05/09, *«mudou a cor do canvas»*) —
+  a 1.ª tentativa desta adenda subiu-o e esse gate reprovou.
+- ⇒ `derive::card_surfaces` (degrau ABSOLUTO acima do painel quando o cartão está a menos de um
+  `SURFACE_STEP` dele: cartão `+2` degraus `#141414`, sub-cartão `+3` `#1f1f1f`) exposto pela porta
+  `derive::card_surface(theme, sub) -> Option<Color>` (`None` = pinte o token, byte a byte o de
+  sempre) e lido pelo `CardDepth::fill`, que o `paint_into` usa. `Roles` ganhou `card`/`subcard`.
+- ⭐ **O gate `a_card_stands_off_its_panel` varre agora os OITO modernos** (varria três) e mede a
+  tinta do cartão pela mesma porta. Ele apanhou o **`Candy`** a `9/255`: base `#f7cfe3 → #e3bdd1` e
+  contraste `−0,06 → −0,08` (medido: cada metade sozinha dá `10`/`11`; as duas juntas passam). As
+  amostras de cor do Candy nos dois menus seguiram a base.
+- Gate de PINTOR novo: `section_cards::tests::in_black_the_card_is_not_the_panel_colour` (régua é o
+  `draw_data`).
+- ⚠️ Os ~26 sítios que pedem `CardDepth::X.token()` para saber *em que superfície assentam* (Painter,
+  Inspector, Áudio) continuam a ler `bg-1`/`bg-2` (preto no Oled) — as marcas deles leem-se pela
+  moldura extra; só o PREENCHIMENTO do cartão mudou.
+
+### 6.2 O TEMA CUSTOM
+
+- Três linhas novas no menu do botão direito do título de uma secção (nas duas famílias), entre os
+  temas e os contornos: **Reset All Card Themes** · **Save Custom Theme** · **Load Custom Theme**.
+  Agem sobre o PAINEL inteiro. Ids `CTX_MENU_SECTION_THEMES_{RESET,SAVE_CUSTOM,LOAD_CUSTOM}`
+  (append em `ids/menus.rs`), chaves `chrome.menu.section_themes_*`, registo no `pre_populate`,
+  despacho em `theme_menu::apply_custom_theme_click` (chamado pelo `apply_section_theme_click` — o
+  `hero.rs` está a 696/700 e não foi tocado).
+- Lei em `interaction/state/section_prefs_ops/tema_custom.rs` (filho do módulo das secções: o
+  `state/mod.rs` está a 696/700). `SectionPrefs.custom: Option<BTreeMap<NodeId, Theme>>` — `None`
+  nunca gravou, `Some(vazio)` gravou «todas no app». O *Reset* não toca no custom.
+- ⚠️ **A escolha de cada secção já se gravava sozinha** desde 29/09; o custom é uma cópia SEPARADA,
+  «um sítio para onde voltar». Viaja no mesmo `~/.ph2d/sections.txt` (`custom=1` + `custom.<id>=`),
+  com as duas chaves isentas no censo HR-15 com o mecanismo.
+- A marca do menu acende *Load Custom Theme* quando a combinação de agora É a guardada.
+- ⏳ **Aberto:** *Load* sem nada gravado não faz nada e a linha não se desliga (o menu não tem linhas
+  desactivadas, e a tabela é estática por `ContextMenuKind`).
+
+### 6.3 Prova
+
+- Mutação **4 de 4** a sangrar: `paint_into` de volta ao token · `reset` a apagar o custom · o braço
+  do *Reset* trocado pelo do *Save* · a marca `custom=1` só com entradas.
+- `nextest-impacted` **19 089/19 089** · clippy `-D warnings` zero nos crates tocados · `fmt` limpo ·
+  censos da árvore COMBINADA **127/127**. Fotos `Oled` e `Candy` (cartões do Inspector visíveis).

@@ -157,24 +157,46 @@ fn the_canvas_ground_is_the_one_the_owner_approved() {
 /// contraste `0` colapsam a família, e quem separa lá é a *Draw Extra Borders*, como no Godot.
 #[test]
 fn a_card_stands_off_its_panel() {
-    for theme in [Theme::Dark, Theme::Gray, Theme::Light] {
+    // ⛔⛔ **Os OITO modernos, não três** (2026-09-30): este gate media só `Dark`/`Gray`/`Light`, e
+    //    o `Oled` passou por fora com o cartão a `0/255` do painel — *«no tema Black o fundo do
+    //    painel e o fundo dos cards é igual»* (report do dono). Os quatro coloridos também nunca
+    //    tinham sido medidos aqui.
+    let mut medidos = 0;
+    for theme in Theme::MODERN {
         // ⚠️ A MÉDIA dos três canais e não o verde (2026-09-30): com a base cinzenta os três eram
         //    iguais e ler um bastava; com uma base TINGIDA o verde sozinho mede a matiz e não o
         //    degrau.
-        let grey = |t: ColorToken| {
-            let c = t.factory(theme);
-            (i32::from(c.r) + i32::from(c.g) + i32::from(c.b)) / 3
+        let grey_of =
+            |c: ph2d_tokens::Color| (i32::from(c.r) + i32::from(c.g) + i32::from(c.b)) / 3;
+        // ⚠️ A tinta do CARTÃO é a porta `card_surface` quando a escada colapsa (o `Oled`), e o
+        //    `bg-1` nos outros — é a mesma pergunta que o pintor dos cartões faz.
+        let card = |sub: bool, t: ColorToken| {
+            ph2d_tokens::derive::card_surface(theme, sub).unwrap_or_else(|| t.factory(theme))
         };
-        let step = grey(ColorToken::Bg1) - grey(ColorToken::PanelBg);
-        let sign = if theme == Theme::Light { -1 } else { 1 };
+        let grey = |t: ColorToken| grey_of(t.factory(theme));
+        let (bg1, bg2) = (card(false, ColorToken::Bg1), card(true, ColorToken::Bg2));
+        let step = grey_of(bg1) - grey(ColorToken::PanelBg);
+        let dark = ph2d_tokens::derive::Inputs::of(theme)
+            .expect("um tema moderno tem entradas")
+            .dark;
+        let sign = if dark { 1 } else { -1 };
         assert!(
             step * sign >= 12,
             "{theme:?}: o cartao esta' a {} de 255 do painel (bg1 {:?}, panel {:?})",
             step.abs(),
-            ColorToken::Bg1.factory(theme),
+            bg1,
             ColorToken::PanelBg.factory(theme)
         );
+        // ⭐ E o SUB-cartão lê-se contra o cartão em que assenta — mesmo sentido, degrau próprio.
+        let sub = grey_of(bg2) - grey_of(bg1);
+        assert!(
+            sub * sign >= 8,
+            "{theme:?}: o sub-cartao esta' a {} de 255 do cartao (bg2 {bg2:?}, bg1 {bg1:?})",
+            sub.abs()
+        );
+        medidos += 1;
     }
+    assert_eq!(medidos, Theme::MODERN.len(), "a varredura saltou temas");
 }
 
 /// **Um tema moderno claro escurece o que o escuro clareia** — o contraste negativo do preset

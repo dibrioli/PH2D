@@ -90,6 +90,18 @@ const NOT_LANGUAGE_TEXT: &[ph2d_label_census::gate::Excecao] = &[
         "a mesma sintaxe do `sections.txt` — o tema de uma secção, chave e `Theme::id`",
     ),
     (
+        "interaction/state/section_prefs_ops/tema_custom.rs",
+        "custom=1",
+        "a mesma sintaxe do `sections.txt` — a marca de que o TEMA CUSTOM foi gravado (2026-09-30), \
+         que o leitor procura para distinguir «gravou vazio» de «nunca gravou»",
+    ),
+    (
+        "interaction/state/section_prefs_ops/tema_custom.rs",
+        "custom.{}={}",
+        "a mesma sintaxe do `sections.txt` — o tema de uma secção DENTRO do custom, chave e \
+         `Theme::id`",
+    ),
+    (
         "interaction/state/store_core.rs",
         "Level_01",
         "o NOME DE FICHEIRO da cena por omissão — um dado do projecto (identificador com `_`), \

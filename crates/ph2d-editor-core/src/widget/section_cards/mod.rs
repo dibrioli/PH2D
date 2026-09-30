@@ -89,6 +89,23 @@ impl CardDepth {
             Self::Subsection => ColorToken::Bg2,
         }
     }
+
+    /// ⭐⭐ **A tinta com que o CARTÃO é pintado** — o [`Self::token`] resolvido, excepto onde a escada
+    /// de superfícies do tema COLAPSA.
+    ///
+    /// ⛔ Report do dono (2026-09-30): *«No tema Black o fundo do painel e o fundo dos cards é igual
+    /// e desse modo os cards não são visíveis»*. No `Oled` o `bg-1`, o `bg-2` e o `panel-bg` são os
+    /// três `#000000`, e a *Draw Extra Borders* que devia separá-los nunca chegava aqui — o
+    /// [`SectionCards::paint_into`] só PREENCHE. ⇒ o cartão sobe um degrau absoluto
+    /// ([`ph2d_tokens::derive::card_surface`]), e o `bg-1` fica onde está porque é também o fundo do
+    /// CANVAS, que o dono aprovou byte a byte.
+    #[must_use]
+    pub fn fill(self, theme: Theme) -> ph2d_vector::Color {
+        ph2d_tokens::derive::card_surface(theme, self == Self::Subsection).map_or_else(
+            || resolve(self.token(), theme),
+            crate::paint::token_to_vello,
+        )
+    }
 }
 
 /// ⭐⭐ **O livro dos cartões** — recolhe os rects enquanto o corpo se pinta.
@@ -164,7 +181,7 @@ impl SectionCards {
     fn paint_into(&self, scene: &mut VectorScene) {
         let radius = crate::paint::frame_radius(self.theme, Radius::Md.px());
         for (rect, depth, theme) in &self.rects {
-            fill_rounded_rect(scene, *rect, radius, resolve(depth.token(), *theme));
+            fill_rounded_rect(scene, *rect, radius, depth.fill(*theme));
         }
     }
 }

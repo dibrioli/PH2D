@@ -11,17 +11,17 @@
 | # | item | de quem | estado |
 |---|---|---|---|
 | 1 | Wet Paint: passos 3–4 do transfer em série (soma `f64` · arrasto Gauss-Seidel) | dono | **decidido (29/09): (a), fica como está** — §1 |
-| 2 | Aquarela: unificar a mistura seca (RYB) e a molhada (K–M) — a pista do *glaze*, diário §17.3 | linha (a ordem do dono já existia, 20/09) | **feito (29/09), por smokar** — §2 |
-| 3 | O `Mixing` no Impasto | dono | a conferir |
-| 4 | O `Pigment` que mudou de sítio na aquarela (do cartão *Water* para o *Mixing*) | dono | a conferir |
-| 5 | Composite Brush: a pilha cheia numa tela grande (a alavanca é o RAIO) | dono | a conferir |
+| 2 | Aquarela: unificar a mistura seca (RYB) e a molhada (K–M) — a pista do *glaze*, diário §17.3 | linha (a ordem do dono já existia, 20/09) | **feito, smoke do dono OK (29/09)** — §2 |
+| 3 | O `Mixing` no Impasto | dono | **aberto (conferido)** — §4.1 |
+| 4 | O `Pigment` que mudou de sítio na aquarela (do cartão *Water* para o *Mixing*) | dono | **aberto (conferido)** — §4.2 |
+| 5 | Composite Brush: a pilha cheia numa tela grande (a alavanca é o RAIO) | dono | **premissa morta, medido** — §4.3 |
 | 6 | Wet Paint: o *fork* do canvas no 1.º toque depois de soltar (`~9 ms`) — pede canvas em ladrilhos | linha | a conferir |
 | 7 | Wet Paint: o tile do papel do motor (`~12 ms`, em série por impressão digital) | linha | a conferir |
 | 8 | Composite Brush: o relevo fora da recomposição da pilha | linha | a conferir |
 | 9 | Composite Brush: o resíduo Blur+Smear (`12/255`) | linha | a conferir |
 | 10 | Composite Brush: metade dos bytes dos intermédios da pilha | linha | a conferir |
-| 11 | Aquarela: o **Smudge** não mexe na tinta MOLHADA da sessão (report do dono, 29/09) | linha | **feito** — §3.1 (smoke do dono por fazer) |
-| 12 | Aquarela: o **Rewet** mexe pouco na tinta MOLHADA da sessão (report do dono, 29/09) | linha | **feito** — §3.2 (smoke do dono por fazer) |
+| 11 | Aquarela: o **Smudge** não mexe na tinta MOLHADA da sessão (report do dono, 29/09) | linha | **feito, smoke do dono OK (29/09)** — §3.1 |
+| 12 | Aquarela: o **Rewet** mexe pouco na tinta MOLHADA da sessão (report do dono, 29/09) | linha | **feito, smoke do dono OK (29/09)** — §3.2 |
 
 ---
 
@@ -251,4 +251,63 @@ propósito: sobre molhado são duas tintas molhadas, e misturam.
 arnês, **20 de 20** com o Smudge. ⚠️ A mistura recta no parceiro SOBREVIVIA à fixtura do produto (ali
 o papel é `0,0,0,0` e a faixa opaca, e as duas misturas coincidem) — só a orla de alfa parcial as
 separa, e é essa a fixtura do gate de unidade.
+
+## §4 — Itens 3, 4 e 5: conferidos (2026-09-29)
+
+### §4.1 — Item 3: o cartão `Mixing` no Impasto
+
+- **Proveniência.** Ninguém pediu. A decisão está escrita no diário arquivado
+  ([§18.7](../archive/docs-2026-09-24/painter/HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-09-20.md)):
+  *«não foi pedido … decisão do dono, e reverter é uma linha»*. O que existe é o `7489b8385`: a mistura
+  de pigmento chega ao Digital e ao Impasto através de `PaintMedia::offers_pigment_mixing`.
+- **Funciona.** Foi medido no diário (`|d| 142`).
+- **Preço que o dono tem de saber.** Com o `Pigment` acima de zero, o carimbo sai do dispositivo,
+  porque `stamp_device::eligible` exige `pigment_mix == 0`. O pincel volta ao caminho da CPU.
+- **Decisão do dono:** manter ou retirar. Retirar é uma linha em `offers_pigment_mixing`.
+- **Recomendação da linha:** manter.
+
+### §4.2 — Item 4: o `Pigment` saiu do cartão *Water* para o *Mixing* (aquarela)
+
+- **Proveniência.** Foi um censo que o forçou
+  ([§19.5](../archive/docs-2026-09-24/painter/HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-09-20.md)).
+  Não houve uma ordem do dono.
+- **O que é hoje.** Nos três meios que o oferecem, o controlo vive no mesmo cartão.
+- **Decisão do dono:** confirmar o lugar.
+- **Recomendação da linha:** manter. Um controlo com o mesmo nome em cartões diferentes, conforme o
+  meio, é a forma de «não encontro o botão».
+
+### §4.3 — Item 5: a pilha cheia com pincel grande — a premissa MORREU
+
+O §22.6-ter do diário dizia *«raio 96: 181–204 % de um quadro»*. Esse número foi medido antes de
+duas curas da própria linha:
+- o Blur da pilha passou a ser em caixa (`a586f21c2`);
+- a pilha passou a compor **uma vez por quadro** (`set_compor_por_quadro`), em vez de uma vez por
+  evento.
+
+**Re-medido pela porta do produto.** Instrumento
+[`mede_a_pilha`](../../crates/ph2d-tool-painter/examples/mede_a_pilha.rs). Condições: `--release`,
+`load 3,4`, tela 1024², a pilha da foto do dono (7 camadas), raio `~83 px` (`size_norm 0,4`),
+drenagem a cada 16 eventos.
+
+| passo | ms do traço (720 px) | ms por quadro |
+|---|---|---|
+| 2 px | 74,1 | **3,37** |
+| 8 px | 49,2 | **9,84** (59 % de 16,7) |
+
+A decomposição no passo 8 foi obtida por ablação, retirando uma camada de cada vez. A pilha cheia
+custa `47,5` por quadro (compor `7,7`, acumular `39,8`). As camadas mais caras são:
+
+| camada retirada | Δ por quadro (ms) |
+|---|---|
+| Blur | 15,4 |
+| Smear | 10,4 |
+| Erase | 5,7 |
+
+⇒ **a pilha cheia cabe num quadro com folga.** Hoje não há defeito a curar.
+
+⛔ **Continua recusado:** qualquer corte silencioso por orçamento.
+
+⏳ **A alavanca, se um dia for precisa:** o Blur é a camada mais cara.
+
+**Decisão do dono:** fechar o item.
 

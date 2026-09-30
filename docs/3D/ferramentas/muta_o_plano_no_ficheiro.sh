@@ -74,27 +74,27 @@ open(p,"w").write(s.replace(a, b, 1))
 
 # ── A FORMA das amostras ─────────────────────────────────────────────────
 muta "$APP/doc_tinta.rs" \
-  '        Some((n, cor)) if bits(*cor) == bits(a) && *n < u32::MAX => *n += 1,' \
-  '        Some((n, cor)) if *cor == a && *n < u32::MAX => *n += 1,' \
+  '        bits(*self) == bits(*outra)' \
+  '        *self == *outra' \
   'P1 corridas: a igualdade volta a ser == e o -0.0 junta-se ao +0.0'
 
 muta "$APP/doc_tinta.rs" \
-  '    if custo_corridas < amostras.len() * 12 {
-        AmostrasDoc::Corridas(corridas)
+  '    if custo_corridas < amostras.len() * T::BYTES {
+        Forma::Corridas(corridas)
     } else {
-        AmostrasDoc::Cruas(amostras.to_vec())
+        Forma::Cruas(amostras.to_vec())
     }' \
-  '    AmostrasDoc::Corridas(corridas)' \
+  '    Forma::Corridas(corridas)' \
   'P2 forma: o escritor escolhe SEMPRE corridas (o caso 1,083x volta)'
 
 muta "$APP/doc_tinta.rs" \
-  '    if custo_corridas < amostras.len() * 12 {
-        AmostrasDoc::Corridas(corridas)
+  '    if custo_corridas < amostras.len() * T::BYTES {
+        Forma::Corridas(corridas)
     } else {
-        AmostrasDoc::Cruas(amostras.to_vec())
+        Forma::Cruas(amostras.to_vec())
     }' \
   '    let _ = custo_corridas;
-    AmostrasDoc::Cruas(amostras.to_vec())' \
+    Forma::Cruas(amostras.to_vec())' \
   'P3 forma: o escritor escolhe SEMPRE cruas (o plano por pintar volta a 75 MB)'
 
 muta "$APP/doc_tinta.rs" \
@@ -157,12 +157,28 @@ muta "$APP/tinta_da_peca.rs" \
   '    da_activa' \
   'P14 degrau: o recurso as OUTRAS pecas desaparece'
 
+# ── O RELEVO (docs/3D/29, v4) ────────────────────────────────────────────
+muta "$APP/doc_tinta.rs" \
+  '        self.to_bits() == outra.to_bits()' \
+  '        *self == *outra' \
+  'P16 relevo: a igualdade volta a ser == e o -0.0 da altura junta-se ao +0.0'
+
+muta "$APP/doc.rs" \
+  '                    alturas: t.alturas().map(doc_tinta::a_menor_forma),' \
+  '                    alturas: None,' \
+  'P17 relevo: o escritor nao grava o relevo'
+
+muta "$APP/doc.rs" \
+  '        t.com_alturas(Some(alturas));' \
+  '        let _ = alturas;' \
+  'P18 relevo: o leitor le o relevo e deita-o fora'
+
 # ── O CONTROLO ───────────────────────────────────────────────────────────
 # ⚠️ Uma mutacao INERTE nao pode sangrar. Sem ela um arnes partido — um filtro
 # que casa zero testes, uma arvore ja' vermelha — devolve um placar PERFEITO.
 muta "$APP/doc_tinta.rs" \
-  'pub(super) type Corrida = (u32, [f32; 3]);' \
-  'pub(super) type Corrida = (u32, [f32; 3]);
+  'pub(super) type AlturasDoc = Forma<f32>;' \
+  'pub(super) type AlturasDoc = Forma<f32>;
 ' \
   'P12 CONTROLO: uma mutacao INERTE (uma linha em branco) nao pode sangrar'
 

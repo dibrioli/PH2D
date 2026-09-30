@@ -1,0 +1,171 @@
+//! Os gates do [RELEVO](crate::relevo) — irmão (`#[path]`) do `lib.rs`.
+//!
+//! ⚠️ A régua da leitura é a COR: as duas passam pelos mesmos pesos, logo uma
+//! altura igual a um canal da cor tem de se ler IGUAL AO BIT a esse canal, em
+//! todo ponto. Uma segunda redacção da interpolação na altura divergia aqui.
+//! A régua de ENDEREÇO (um nó da retícula lê a amostra que lá está) vem ao
+//! lado, porque a primeira sozinha aprovaria duas leituras erradas iguais.
+
+use crate::{Tinta, sitio_quad, sitio_tri};
+
+fn valor(i: usize) -> f32 {
+    let h = (i as u32).wrapping_mul(2_654_435_761);
+    (h & 0xffff) as f32 / 65_535.0 - 0.5
+}
+
+/// `3 × 3` células, a última fila partida em triângulos — as duas formas.
+fn grelha() -> (usize, Vec<Vec<u32>>) {
+    const N: u32 = 3;
+    let v = |i: u32, j: u32| j * (N + 1) + i;
+    let mut faces = Vec::new();
+    for j in 0..N {
+        for i in 0..N {
+            let (a, b, c, d) = (v(i, j), v(i + 1, j), v(i + 1, j + 1), v(i, j + 1));
+            if j == N - 1 {
+                faces.push(vec![a, b, c]);
+                faces.push(vec![a, c, d]);
+            } else {
+                faces.push(vec![a, b, c, d]);
+            }
+        }
+    }
+    (((N + 1) * (N + 1)) as usize, faces)
+}
+
+/// Um plano com cor e relevo: o relevo é o canal VERMELHO da cor, e os dois
+/// distintos por amostra.
+fn com_relevo(nivel: u8) -> (Vec<Vec<u32>>, Tinta) {
+    let (verts, faces) = grelha();
+    let mut t = Tinta::nova(verts, faces.iter().map(|f| &f[..]), nivel);
+    for (i, a) in t.amostras_mut().iter_mut().enumerate() {
+        *a = [valor(i), valor(i + 7), valor(i + 13)];
+    }
+    let vermelho: Vec<f32> = t.amostras().iter().map(|c| c[0]).collect();
+    t.alturas_mut().copy_from_slice(&vermelho);
+    (faces, t)
+}
+
+/// ⭐ **Sem impasto, o relevo não existe e não pesa um byte.**
+#[test]
+fn sem_relevo_nao_ha_alturas_e_nao_se_paga_nada() {
+    let (verts, faces) = grelha();
+    let mut t = Tinta::nova(verts, faces.iter().map(|f| &f[..]), 3);
+    assert!(!t.tem_relevo());
+    assert!(t.alturas().is_none());
+    assert_eq!(t.altura(0), 0.0);
+    assert_eq!(t.altura_tri(6, &faces[6], [0.2, 0.3, 0.5]), 0.0);
+    let sem = t.footprint_bytes();
+    let n = t.amostras().len();
+    assert!(t.alturas_mut().iter().all(|&h| h == 0.0), "nasce a zero");
+    assert!(t.tem_relevo());
+    assert!(
+        t.footprint_bytes() >= sem + n * size_of::<f32>(),
+        "o relevo conta no peso da peça (a fila de desfazer soma bytes)"
+    );
+}
+
+/// ⭐⭐⭐ **A altura lê-se pelos MESMOS pesos da cor, ao bit** — em pontos
+/// dentro das faces das duas formas e nos quatro degraus mais baixos.
+#[test]
+fn a_altura_le_com_os_pesos_da_cor_ao_bit() {
+    for nivel in 0..=3 {
+        let (faces, t) = com_relevo(nivel);
+        let mut pontos = 0;
+        for (fi, f) in faces.iter().enumerate() {
+            for s in 0..9 {
+                let a = (s as f32 + 0.37) / 9.3;
+                let b = ((s * 5 % 9) as f32 + 0.21) / 9.7;
+                if f.len() == 3 {
+                    let bar = [a * (1.0 - b), b, (1.0 - a) * (1.0 - b)];
+                    assert_eq!(
+                        t.altura_tri(fi, f, bar).to_bits(),
+                        t.cor_tri(fi, f, bar)[0].to_bits(),
+                        "nível {nivel}, face {fi}"
+                    );
+                } else {
+                    let uv = [a, b];
+                    assert_eq!(
+                        t.altura_quad(fi, f, uv).to_bits(),
+                        t.cor_quad(fi, f, uv)[0].to_bits(),
+                        "nível {nivel}, face {fi}"
+                    );
+                }
+                pontos += 1;
+            }
+        }
+        assert!(pontos > 50, "a fixtura tem de ter pontos: {pontos}");
+    }
+}
+
+/// ⭐⭐ **Um nó da retícula lê a amostra que lá está** — a régua de ENDEREÇO,
+/// sem interpolação nenhuma (a de cima sozinha aprovaria duas leituras erradas
+/// iguais).
+#[test]
+fn um_no_da_reticula_le_a_altura_que_la_esta() {
+    let (faces, t) = com_relevo(2);
+    let a = t.alturas().expect("com relevo");
+    for (fi, f) in faces.iter().enumerate() {
+        let l = t.lado_da_face(fi);
+        let lf = l as f32;
+        if f.len() == 3 {
+            for i in 0..=l {
+                for j in 0..=(l - i) {
+                    let k = l - i - j;
+                    let idx = t.indice_de(fi, f, sitio_tri(l, i, j, k)) as usize;
+                    let bar = [i as f32 / lf, j as f32 / lf, k as f32 / lf];
+                    let lida = t.altura_tri(fi, f, bar);
+                    assert!((lida - a[idx]).abs() <= 1e-6, "face {fi} ({i},{j},{k})");
+                }
+            }
+        } else {
+            for j in 0..=l {
+                for i in 0..=l {
+                    let idx = t.indice_de(fi, f, sitio_quad(l, i, j)) as usize;
+                    let lida = t.altura_quad(fi, f, [i as f32 / lf, j as f32 / lf]);
+                    assert!((lida - a[idx]).abs() <= 1e-6, "face {fi} ({i},{j})");
+                }
+            }
+        }
+    }
+}
+
+/// ⛔ **Um relevo com o tamanho errado é RECUSADO e nada muda.**
+#[test]
+fn um_relevo_do_tamanho_errado_e_recusado() {
+    let (_, mut t) = com_relevo(1);
+    let antes = t.clone();
+    let n = t.amostras().len();
+    assert!(!t.com_alturas(Some(vec![1.0; n + 1])));
+    assert_eq!(t, antes, "a recusa não mexeu em nada");
+    assert!(t.com_alturas(Some(vec![0.5; n])));
+    assert_eq!(t.altura(3), 0.5);
+    assert!(t.com_alturas(None), "retirar o relevo é sempre possível");
+    assert!(!t.tem_relevo());
+}
+
+/// ⭐ **Levar o plano a um degrau só leva o relevo com ele** — e um plano sem
+/// relevo continua sem.
+#[test]
+fn a_uniformizada_leva_o_relevo() {
+    let (verts, faces) = grelha();
+    let ks: Vec<u8> = (0..faces.len()).map(|f| (f % 3) as u8).collect();
+    let mut t =
+        Tinta::graduada(verts, faces.iter().map(|f| &f[..]), &ks, 2).expect("descreve a malha");
+    for (i, a) in t.amostras_mut().iter_mut().enumerate() {
+        *a = [valor(i), 0.0, 0.0];
+    }
+    let sem = t
+        .uniformizada(faces.iter().map(|f| &f[..]))
+        .expect("descreve");
+    assert!(!sem.tem_relevo(), "sem relevo não se inventa um");
+
+    let vermelho: Vec<f32> = t.amostras().iter().map(|c| c[0]).collect();
+    t.alturas_mut().copy_from_slice(&vermelho);
+    let u = t
+        .uniformizada(faces.iter().map(|f| &f[..]))
+        .expect("descreve");
+    let a = u.alturas().expect("o relevo foi com o plano");
+    for (i, c) in u.amostras().iter().enumerate() {
+        assert_eq!(a[i].to_bits(), c[0].to_bits(), "amostra {i}");
+    }
+}

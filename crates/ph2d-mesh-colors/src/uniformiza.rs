@@ -57,6 +57,9 @@ impl Tinta {
             return None;
         }
         let mut novo = Self::nova(topo.verts(), faces, self.nivel());
+        // ⚠️ O RELEVO vai com a cor, pelos mesmos pesos (`crate::relevo`):
+        // sem isto, levar um plano graduado a um degrau só apagava o impasto.
+        let relevo = self.tem_relevo();
         let l = 1u32 << self.nivel();
         let lf = l as f32;
 
@@ -73,6 +76,9 @@ impl Tinta {
                         let bar = [i as f32 / lf, j as f32 / lf, k as f32 / lf];
                         let idx = indice(novo.topologia(), fi, sitio_tri(l, i, j, k), cantos);
                         novo.amostras_mut()[idx as usize] = self.cor_tri(fi, cantos, bar);
+                        if relevo {
+                            novo.alturas_mut()[idx as usize] = self.altura_tri(fi, cantos, bar);
+                        }
                     }
                 }
             } else {
@@ -81,6 +87,9 @@ impl Tinta {
                         let uv = [i as f32 / lf, j as f32 / lf];
                         let idx = indice(novo.topologia(), fi, sitio_quad(l, i, j), cantos);
                         novo.amostras_mut()[idx as usize] = self.cor_quad(fi, cantos, uv);
+                        if relevo {
+                            novo.alturas_mut()[idx as usize] = self.altura_quad(fi, cantos, uv);
+                        }
                     }
                 }
             }

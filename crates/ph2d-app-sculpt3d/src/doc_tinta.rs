@@ -52,23 +52,44 @@
 //! nunca é igual a si próprio por `==` (o que partiria toda corrida de `NaN`) e
 //! é igual a si próprio nos bits.
 
-/// Uma corrida de amostras iguais: quantas, e a cor.
-pub(super) type Corrida = (u32, [f32; 3]);
+/// ⭐⭐ **O que se pode guardar em corridas** — a cor (`[f32; 3]`) e, desde a
+/// etapa 3b, o RELEVO (`f32`, `docs/3D/29`). Uma lei, dois canais: a
+/// igualdade é por BITS nos dois (a razão está acima: `-0.0` e `NaN`).
+pub(super) trait Amostra: Copy {
+    /// Quanto uma amostra CRUA custa no ficheiro.
+    const BYTES: usize;
+    /// São a mesma amostra, bit a bit?
+    fn mesmos_bits(&self, outra: &Self) -> bool;
+}
+
+impl Amostra for [f32; 3] {
+    const BYTES: usize = 12;
+    fn mesmos_bits(&self, outra: &Self) -> bool {
+        bits(*self) == bits(*outra)
+    }
+}
+
+impl Amostra for f32 {
+    const BYTES: usize = 4;
+    fn mesmos_bits(&self, outra: &Self) -> bool {
+        self.to_bits() == outra.to_bits()
+    }
+}
 
 fn bits(c: [f32; 3]) -> [u32; 3] {
     [c[0].to_bits(), c[1].to_bits(), c[2].to_bits()]
 }
 
 /// **As amostras em corridas.**
-pub(super) fn em_corridas(amostras: &[[f32; 3]]) -> Vec<Corrida> {
-    let mut out: Vec<Corrida> = Vec::new();
+pub(super) fn em_corridas<T: Amostra>(amostras: &[T]) -> Vec<(u32, T)> {
+    let mut out: Vec<(u32, T)> = Vec::new();
     for &a in amostras {
         match out.last_mut() {
             // ⚠️ `u32::MAX` parte a corrida em vez de estourar o contador — um
             // plano com mais de `4 · 10⁹` amostras iguais é inalcançável hoje
             // (o `16x` da peça de fábrica tem `25 · 10⁶`), e *um contador que
             // dá a volta escreve a cor no sítio errado em silêncio*.
-            Some((n, cor)) if bits(*cor) == bits(a) && *n < u32::MAX => *n += 1,
+            Some((n, cor)) if cor.mesmos_bits(&a) && *n < u32::MAX => *n += 1,
             _ => out.push((1, a)),
         }
     }
@@ -92,29 +113,35 @@ fn varint(n: u32) -> usize {
 /// ⚠️ **A conta é exacta e custa uma passagem**, e é por isso que ela não
 /// serializa as duas para comparar: aos `16x` cada serialização são `300 MB`.
 /// Os dois lados omitem o prefixo de comprimento, que é o mesmo nos dois.
-pub(super) fn a_menor_forma(amostras: &[[f32; 3]]) -> AmostrasDoc {
+pub(super) fn a_menor_forma<T: Amostra>(amostras: &[T]) -> Forma<T> {
     let corridas = em_corridas(amostras);
-    let custo_corridas: usize = corridas.iter().map(|&(n, _)| varint(n) + 12).sum();
-    if custo_corridas < amostras.len() * 12 {
-        AmostrasDoc::Corridas(corridas)
+    let custo_corridas: usize = corridas.iter().map(|&(n, _)| varint(n) + T::BYTES).sum();
+    if custo_corridas < amostras.len() * T::BYTES {
+        Forma::Corridas(corridas)
     } else {
-        AmostrasDoc::Cruas(amostras.to_vec())
+        Forma::Cruas(amostras.to_vec())
     }
 }
 
 /// As amostras de um plano, numa das duas formas.
 #[derive(serde::Serialize, serde::Deserialize)]
-pub(super) enum AmostrasDoc {
+pub(super) enum Forma<T> {
     /// Uma por uma — a forma que ganha quando todas são distintas.
-    Cruas(Vec<[f32; 3]>),
+    Cruas(Vec<T>),
     /// Em corridas — a forma que leva um plano por pintar a `~0`.
-    Corridas(Vec<Corrida>),
+    Corridas(Vec<(u32, T)>),
 }
 
-impl AmostrasDoc {
+/// A cor de um plano, como o ficheiro a guarda.
+pub(super) type AmostrasDoc = Forma<[f32; 3]>;
+
+/// O RELEVO de um plano, como o ficheiro o guarda (`docs/3D/29`).
+pub(super) type AlturasDoc = Forma<f32>;
+
+impl<T: Amostra> Forma<T> {
     /// **As amostras de volta** — `None` quando não somam o que a topologia
     /// desta malha pede. Ver [`das_corridas`].
-    pub(super) fn amostras(&self, esperadas: usize) -> Option<Vec<[f32; 3]>> {
+    pub(super) fn amostras(&self, esperadas: usize) -> Option<Vec<T>> {
         match self {
             Self::Cruas(v) if v.len() == esperadas => Some(v.clone()),
             Self::Cruas(_) => None,
@@ -130,7 +157,7 @@ impl AmostrasDoc {
 /// leitura segura: as corridas são entrada de terceiro, e um plano com o
 /// tamanho errado instalado numa malha é tinta no sítio errado — o defeito que
 /// o pânico de 21/09 (§14) já custou uma sessão do dono.
-pub(super) fn das_corridas(corridas: &[Corrida], esperadas: usize) -> Option<Vec<[f32; 3]>> {
+pub(super) fn das_corridas<T: Amostra>(corridas: &[(u32, T)], esperadas: usize) -> Option<Vec<T>> {
     // ⛔ A soma é feita ANTES de alocar: um documento forjado com corridas que
     // somam biliões faria o `with_capacity` pedir a memória toda.
     let total: u64 = corridas.iter().map(|&(n, _)| u64::from(n)).sum();

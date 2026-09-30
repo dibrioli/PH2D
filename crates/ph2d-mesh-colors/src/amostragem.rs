@@ -180,15 +180,8 @@ impl Tinta {
     /// redacção da mesma aritmética.
     #[must_use]
     pub fn cor_tri(&self, face: usize, cantos: &[u32], bar: [f32; 3]) -> [f32; 3] {
-        let l = self.lado_da_face(face);
         let mut out = [0.0f32; 3];
-        for (ijk, peso) in leitura_tri(l, bar) {
-            let idx = indice(
-                self.topologia(),
-                face,
-                sitio_tri(l, ijk.0, ijk.1, ijk.2),
-                cantos,
-            ) as usize;
+        for (idx, peso) in self.pesos_tri(face, cantos, bar) {
             let c = self.amostras()[idx];
             for e in 0..3 {
                 out[e] += c[e] * peso;
@@ -201,10 +194,8 @@ impl Tinta {
     /// e o outro dono da lei que o gémeo em WGSL confere.
     #[must_use]
     pub fn cor_quad(&self, face: usize, cantos: &[u32], uv: [f32; 2]) -> [f32; 3] {
-        let l = self.lado_da_face(face);
         let mut out = [0.0f32; 3];
-        for (ij, peso) in leitura_quad(l, uv) {
-            let idx = indice(self.topologia(), face, sitio_quad(l, ij.0, ij.1), cantos) as usize;
+        for (idx, peso) in self.pesos_quad(face, cantos, uv) {
             let c = self.amostras()[idx];
             for e in 0..3 {
                 out[e] += c[e] * peso;
@@ -213,9 +204,57 @@ impl Tinta {
         out
     }
 
+    /// ⭐⭐ **As amostras que um ponto de um triângulo lê, com o peso de cada
+    /// uma** — a lei da interpolação, escrita UMA vez para os dois canais que a
+    /// lêem (a cor e o [relevo](crate::relevo)). ⚠️ A ORDEM é a de sempre: a
+    /// cor acumula por ela, e trocá-la mudaria o último bit.
+    pub(crate) fn pesos_tri(
+        &self,
+        face: usize,
+        cantos: &[u32],
+        bar: [f32; 3],
+    ) -> impl Iterator<Item = (usize, f32)> + '_ {
+        let l = self.lado_da_face(face);
+        let (cs, n) = cantos_fixos(cantos);
+        leitura_tri(l, bar).into_iter().map(move |(ijk, peso)| {
+            let idx = indice(
+                self.topologia(),
+                face,
+                sitio_tri(l, ijk.0, ijk.1, ijk.2),
+                &cs[..n],
+            ) as usize;
+            (idx, peso)
+        })
+    }
+
+    /// A irmã para QUADS.
+    pub(crate) fn pesos_quad(
+        &self,
+        face: usize,
+        cantos: &[u32],
+        uv: [f32; 2],
+    ) -> impl Iterator<Item = (usize, f32)> + '_ {
+        let l = self.lado_da_face(face);
+        let (cs, n) = cantos_fixos(cantos);
+        leitura_quad(l, uv).into_iter().map(move |(ij, peso)| {
+            let idx = indice(self.topologia(), face, sitio_quad(l, ij.0, ij.1), &cs[..n]) as usize;
+            (idx, peso)
+        })
+    }
+
     /// O sítio de um ponto da retícula de `face`, resolvido em índice global.
     #[must_use]
     pub fn indice_de(&self, face: usize, cantos: &[u32], sitio: Sitio) -> u32 {
         indice(self.topologia(), face, sitio, cantos)
     }
+}
+
+/// Os cantos de uma face num array fixo — um triângulo ou um quad cabem em
+/// quatro, e a leitura corre por píxel no retrato da CPU: copiá-los para um
+/// `Vec` seria uma alocação por píxel.
+fn cantos_fixos(cantos: &[u32]) -> ([u32; 4], usize) {
+    let n = cantos.len().min(4);
+    let mut cs = [0u32; 4];
+    cs[..n].copy_from_slice(&cantos[..n]);
+    (cs, n)
 }

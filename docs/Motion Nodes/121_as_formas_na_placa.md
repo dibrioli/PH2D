@@ -93,6 +93,7 @@ cima. ⛔ Desenhar o passe por cima do alvo do Vello pintaria as formas **por ci
   cópia no ECRÃ a partir do EIXO aplanado, com a caneta redonda da casa e as juntas e pontas
   autoradas. Só o traço TRACEJADO sob escala não-uniforme fica no Vello. Censo: `17` das `22`
   cenas com forma vão à placa.
+  ✅ **Smoke do dono aprovado na `=127`** (§9.2): denso `raw 200` pela placa contra `100` sem ela.
 
 ## §6 — ✅ W1: a paridade de PIXEL, medida (2026-09-29, RTX, alvo de meio-float)
 
@@ -452,6 +453,10 @@ esquadria sem alcance (no shader e no cabeçalho) · o bloco sem a caneta · o b
 a menos · a peça sem alcance — todas pela paridade do passe, e as duas do cabeçalho também pelo
 gate dos blocos. ⚠️ A 1.ª corrida deu `6 de 7`: a guarda sobrevivia ao gate da estrela alinhada
 pela razão descrita em (a), e o gate da cruz é o que a matou.
+
+✅ **Smoke do dono APROVADO (2026-09-30), com os números dele:** no arranjo denso `raw 200` pela
+placa contra **`raw 100`** com `PH2D_FORMAS_NA_PLACA=0` — *o dobro* —, e *«imagem ok»* (a linha
+das estrelas alinhadas não voltou). Bate com as minhas fotos (`124`/`232` contra `50`/`89`).
 
 ⏳ **Por fazer:** W0 (a medição de partida, que a placa ocupada adiou) e W5 (medição de fecho em
 `release` + smoke do dono com formas e simulação com campos, fotografado antes) · os glifos do

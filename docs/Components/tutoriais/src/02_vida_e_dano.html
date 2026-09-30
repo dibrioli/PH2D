@@ -1,0 +1,360 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>PH2D · Vida e Dano</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm; }
+  :root {
+    --bg: #0f0e12; --card: #17161c; --line: #2a2830;
+    --t1: #ece9f2; --t2: #a9a3b8; --t3: #6f6a7d;
+    --acc: #c9a6ff; --ok: #7ee0b0; --warn: #ffcf7a;
+    --red: #e0573a; --ice: #73d9ff; --lava: #f2731a; --heart: #fa73a6; --bat: #9e61d9;
+    --hero: #59a0f2; --bar: #5cc770;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--t1);
+         font:14px/1.55 "Inter","Segoe UI",system-ui,sans-serif; }
+  h1 { font-size:30px; line-height:1.15; margin:0 0 4px; letter-spacing:-.02em; }
+  h1 small { display:block; font-size:14px; font-weight:400; color:var(--t2); margin-top:6px; }
+  h2 { font-size:19px; margin:26px 0 10px; padding-top:12px; border-top:1px solid var(--line); }
+  h3 { font-size:15px; margin:18px 0 6px; color:var(--acc); }
+  p { margin:8px 0; }
+  code, kbd { font-family:"JetBrains Mono",ui-monospace,monospace; font-size:12px; }
+  kbd { background:#22202a; border:1px solid var(--line); border-bottom-width:2px;
+        border-radius:5px; padding:1px 6px; color:var(--t1); }
+  .cmd { background:#080810; border:1px solid var(--line); border-left:3px solid var(--acc);
+         border-radius:8px; padding:11px 13px; color:var(--ok); font-family:ui-monospace,monospace;
+         font-size:11.5px; overflow-wrap:anywhere; margin:10px 0; }
+  .steps { counter-reset:s; list-style:none; padding:0; margin:0; }
+  .steps > li { counter-increment:s; position:relative; padding:0 0 0 40px; margin:0 0 16px;
+                break-inside:avoid; }
+  .steps > li::before { content:counter(s); position:absolute; left:0; top:-1px;
+      width:26px; height:26px; border-radius:50%; background:var(--acc); color:#1a1420;
+      font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; }
+  .steps b { color:var(--t1); }
+  .out { color:var(--t2); }
+  .out::before { content:"\2192 "; color:var(--acc); }
+  .bad { color:var(--warn); }
+  .bad::before { content:"\26A0 "; }
+  table { border-collapse:collapse; width:100%; margin:6px 0 14px; font-size:11.5px; }
+  th, td { text-align:left; padding:5px 8px; border-bottom:1px solid var(--line);
+           vertical-align:top; }
+  th { color:var(--t3); font-weight:600; font-size:10.5px; text-transform:uppercase;
+       letter-spacing:.05em; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:3px solid var(--acc);
+          border-radius:8px; padding:10px 13px; margin:12px 0; font-size:13px; break-inside:avoid; }
+  .note b { color:var(--acc); }
+  .two { display:grid; grid-template-columns:262px 1fr; gap:18px; align-items:start;
+         break-inside:avoid; margin:8px 0; }
+  .panel { background:var(--card); border:1px solid var(--line); border-radius:9px;
+           overflow:hidden; font-size:11px; }
+  .panel .h { padding:6px 10px; font-weight:600; font-size:11.5px; color:var(--acc);
+              border-bottom:1px solid var(--line); }
+  .panel .body { padding:8px; display:grid; gap:4px; }
+  .panel .now { background:#241f33; border-left:2px solid var(--acc); border-radius:4px;
+                padding:4px 8px; color:var(--acc); }
+  .panel .warnrow { background:#2e1e1c; border-left:2px solid var(--red); border-radius:4px;
+                padding:4px 8px; color:#ffb3a6; }
+  .panel .list { background:#0b0a0e; border:1px solid var(--line); border-radius:5px;
+                 padding:3px; display:grid; gap:2px; }
+  .panel .li { padding:3px 7px; border-radius:3px; color:var(--t2); }
+  .panel .li.sel { background:#2a2438; color:var(--t1); }
+  .panel .btns { display:flex; gap:4px; }
+  .panel .btn { flex:1; background:#22202a; border:1px solid var(--line); border-radius:5px;
+                padding:3px 0; text-align:center; color:var(--t1); font-size:10.5px; }
+  .panel .f { display:flex; justify-content:space-between; background:#0b0a0e;
+              border-radius:4px; padding:3px 7px; }
+  .panel .f .k { color:var(--t2); } .panel .f .v { color:var(--t1); }
+  .panel .ph { color:var(--t3); font-style:italic; }
+  code.ui { color:var(--t1); }
+  .cal { font-size:11.5px; color:var(--t2); }
+  .cal li { margin:4px 0; }
+  .cal b { color:var(--t1); }
+  .sw { display:inline-block; width:10px; height:10px; border-radius:2px; vertical-align:-1px;
+        margin-right:4px; }
+  footer { margin-top:26px; padding-top:10px; border-top:1px solid var(--line);
+           color:var(--t3); font-size:11px; }
+</style>
+
+<h1>Vida e Dano
+  <small>PH2D &middot; Componentes &middot; um jogo pequeno do princ&iacute;pio ao fim &mdash;
+  quem tem vida, quem fere, o que cura, o que queima, e o que acontece quando se perde</small></h1>
+
+<p>Este tutorial monta uma <b>arena</b>: um her&oacute;i que anda e atira, um inimigo que s&oacute;
+cai a uma das armas, morcegos que perseguem, uma po&ccedil;a de lava, cora&ccedil;&otilde;es que
+curam &mdash; e, quando o her&oacute;i morre, <b>o jogo recome&ccedil;a sozinho</b>. Nenhuma linha de
+programa: tudo o que acontece est&aacute; escrito em <b>tr&ecirc;s pe&ccedil;as</b> que se p&otilde;em
+nos objetos.</p>
+
+<table>
+  <tr><th>pe&ccedil;a</th><th>quem a tem</th><th>o que diz</th></tr>
+  <tr><td><b><code class="ui">Health</code></b></td><td>quem <b>leva</b> dano</td>
+      <td>quanta vida tem, a que resiste, o que grita ao sofrer, curar e morrer</td></tr>
+  <tr><td><b><code class="ui">Damage</code></b></td><td>quem <b>fere</b></td>
+      <td>quanto tira, de que tipo, se o golpe fica a doer depois, e se some ao acertar</td></tr>
+  <tr><td><b><code class="ui">Health Bar</code></b></td><td>quem <b>mostra</b></td>
+      <td>a barra por cima do pr&oacute;prio objeto &mdash; ou a de outro, pelo nome</td></tr>
+</table>
+
+<div class="note"><b>As figuras deste tutorial s&atilde;o desenhos</b>, n&atilde;o fotografias da
+tela. Os nomes em <code>c&oacute;digo</code> s&atilde;o exatamente os que aparecem na tela.</div>
+
+<h2>1 &middot; Abrir a arena</h2>
+<p>Cole isto inteiro num terminal.</p>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-components &amp;&amp; env PH2D_VIDA_SMOKE=4 cargo run -p ph2d-host-desktop --profile smoke</div>
+<p class="out">A cena abre j&aacute; a <b>tocar</b>: a r&eacute;gua de tempo embaixo anda sozinha. A
+arena s&oacute; vive enquanto o rel&oacute;gio anda &mdash; parado, ningu&eacute;m fere
+ningu&eacute;m.</p>
+<p class="bad">Se n&atilde;o aparecer a linha <code>[vida-smoke] cena=4</code> no terminal, pare: a
+cena n&atilde;o montou.</p>
+
+<h2>2 &middot; O que est&aacute; na arena</h2>
+<table>
+  <tr><th>na tela</th><th>&eacute;</th><th>o que ensina</th></tr>
+  <tr><td><span class="sw" style="background:var(--hero)"></span><b>azul</b>, &agrave; direita</td>
+      <td>o <b>her&oacute;i</b>: vida 100, setas para andar, <kbd>Q</kbd> fogo, <kbd>J</kbd> gelo</td>
+      <td>pisca depois de um golpe, e mostra o n&uacute;mero do dano</td></tr>
+  <tr><td><span class="sw" style="background:var(--bar)"></span><b>barra larga</b>, canto de cima &agrave; esquerda</td>
+      <td>o <b>placar</b></td><td>a vida do her&oacute;i, vista de longe</td></tr>
+  <tr><td><span class="sw" style="background:var(--red)"></span><b>vermelho</b>, &agrave; direita</td>
+      <td>a <b>Salamandra</b>, vida 60</td><td>imune ao fogo, fraca ao gelo</td></tr>
+  <tr><td><span class="sw" style="background:var(--bat)"></span><b>roxos</b>, canto de cima &agrave; esquerda</td>
+      <td>os <b>morcegos</b>, um de 3 em 3 s</td><td>perseguem o her&oacute;i, mordem 15 e somem</td></tr>
+  <tr><td><span class="sw" style="background:var(--lava)"></span><b>ret&acirc;ngulo laranja</b>, embaixo &agrave; esquerda</td>
+      <td>a <b>lava</b></td><td>n&atilde;o d&aacute; golpe: <b>queima</b> enquanto se pisa, e ainda depois</td></tr>
+  <tr><td><span class="sw" style="background:var(--heart)"></span><b>rosa</b>, &agrave; esquerda</td>
+      <td>o <b>cora&ccedil;&atilde;o</b>, um de 6 em 6 s</td><td>cura 25 &mdash; &eacute; um &laquo;dano&raquo; que o her&oacute;i absorve</td></tr>
+</table>
+<p class="out">Os quadrados de contorno verde no <b>meio</b> do ecr&atilde; s&atilde;o os
+<b>moldes</b>: &eacute; deles que a Salamandra, os morcegos, o cora&ccedil;&atilde;o e as balas
+nascem. Os avisos <code>Signal: &hellip;</code> no topo s&atilde;o os sinais da cena &mdash; por isso
+tudo o que h&aacute; para ver fica dos lados deles.</p>
+
+<h2>3 &middot; Jogar</h2>
+<ol class="steps">
+  <li><b>Carregue no <kbd>Q</kbd></b> (bala laranja, fogo) com o her&oacute;i virado para a
+      Salamandra.
+      <div class="out">A bala some ao bater e <b>nada acontece</b>: nem n&uacute;mero, nem barra.
+      Ela &eacute; imune ao fogo.</div></li>
+  <li><b>Carregue no <kbd>J</kbd></b> (bala azul-clara, gelo) tr&ecirc;s vezes.
+      <div class="out">Sobe <b>20</b> em cada tiro &mdash; o dobro dos 10 de uma bala &mdash; e a
+      barra dela desce. Ao terceiro ela morre e aparece <code>venceu</code>.</div></li>
+  <li><b>Fuja dos morcegos</b>, ou vire-se para eles com as setas e atire.
+      <div class="out">Um morcego que toca o her&oacute;i <b>some</b>, sobe um <b>15</b> por cima
+      do her&oacute;i, o placar desce e o her&oacute;i <b>pisca</b> &mdash; nesse instante nada o
+      fere. Um tiro de qualquer arma mata um morcego. Eles s&atilde;o mais lentos que o
+      her&oacute;i: fugir funciona.</div></li>
+  <li><b>Pise a lava.</b>
+      <div class="out">A cada meio segundo sobe um <b>3</b> e o placar desce. Saia: ainda queima
+      mais <b>dois segundos</b>.</div></li>
+  <li><b>Passe por cima do cora&ccedil;&atilde;o</b> com o her&oacute;i ferido.
+      <div class="out">Ele some e o placar <b>sobe 25</b>. Com a vida cheia ele some na mesma:
+      quem apanha, gasta.</div></li>
+  <li><b>Deixe o her&oacute;i morrer.</b>
+      <div class="out">O placar esvazia, aparece <code>heroi-caiu</code>, e um segundo e meio
+      depois <b>tudo recome&ccedil;a</b>: o her&oacute;i com a vida cheia, a Salamandra de volta, os
+      morcegos e o cora&ccedil;&atilde;o do princ&iacute;pio.</div></li>
+</ol>
+
+<h2>4 &middot; A vida &mdash; <code class="ui">Health</code></h2>
+<p><b>Clique no her&oacute;i.</b> No painel da direita (o <b>Inspector</b>), des&ccedil;a at&eacute; a
+se&ccedil;&atilde;o <b><code class="ui">Health</code></b>.</p>
+
+<div class="two">
+  <div class="panel">
+    <div class="h">Health</div>
+    <div class="body">
+      <div class="now">Now: 85 of 100</div>
+      <div class="f"><span class="k">Max</span><span class="v">100</span></div>
+      <div class="f"><span class="k">Start</span><span class="v">100</span></div>
+      <div class="f"><span class="k">Invincible</span><span class="v">0.8</span></div>
+      <div class="f"><span class="k">Blink</span><span class="v">0.08</span></div>
+      <div class="f"><span class="k">Hit Numbers</span><span class="v">&#10003;</span></div>
+      <div class="f"><span class="k">Team</span><span class="v">herois</span></div>
+      <div class="f"><span class="k">On Death</span><span class="v">heroi-caiu</span></div>
+      <div class="h" style="border:0;padding:6px 2px 2px">Resistances</div>
+      <div class="list">
+        <div class="li sel">cura &nbsp;heals &times;1</div>
+      </div>
+      <div class="btns"><div class="btn">+ Add Resistance</div><div class="btn">x Remove</div></div>
+      <div class="f"><span class="k">Type</span><span class="v">cura</span></div>
+      <div class="f"><span class="k">Rate</span><span class="v">1</span></div>
+      <div class="f"><span class="k">Absorbs</span><span class="v">&#10003;</span></div>
+    </div>
+  </div>
+  <ul class="cal">
+    <li><b><code class="ui">Now:</code></b> a vida <i>agora</i>. Ela s&oacute; anda com o rel&oacute;gio a
+        andar; parado, no lugar dela aparece um aviso a diz&ecirc;-lo.</li>
+    <li><b><code class="ui">Max</code></b> &eacute; o teto (uma cura n&atilde;o passa dele) e
+        <b><code class="ui">Start</code></b> &eacute; com quanto ele nasce &mdash; e renasce a cada
+        recome&ccedil;o.</li>
+    <li><b><code class="ui">Invincible</code></b>: depois de um golpe, quantos segundos nada o fere.
+        <b><code class="ui">Blink</code></b> faz piscar durante esse tempo.</li>
+    <li><b><code class="ui">Team</code></b>: um dano da <b>mesma equipa</b> n&atilde;o fere. &Eacute; por
+        isso que as balas do her&oacute;i n&atilde;o o acertam a ele.</li>
+    <li><b><code class="ui">On Death</code></b> &eacute; o nome que ele <b>grita</b> ao morrer &mdash; a
+        sec&ccedil;&atilde;o 8 mostra quem o ouve.</li>
+    <li><b><code class="ui">Resistances</code></b>: uma linha por tipo de dano. Clique numa linha e ela
+        abre por baixo.</li>
+  </ul>
+</div>
+
+<h2>5 &middot; Quem fere &mdash; <code class="ui">Damage</code></h2>
+<p><b>Clique na lava</b> (ou escolha <code>Lava</code> na Hierarquia &agrave; esquerda) e
+des&ccedil;a at&eacute; <b><code class="ui">Damage</code></b>.</p>
+
+<div class="two">
+  <div class="panel">
+    <div class="h">Damage</div>
+    <div class="body">
+      <div class="f"><span class="k">Amount / s</span><span class="v">0</span></div>
+      <div class="f"><span class="k">Per Second</span><span class="v">&#10003;</span></div>
+      <div class="f"><span class="k">Type</span><span class="v">fogo</span></div>
+      <div class="f"><span class="k">Lasting / s</span><span class="v">6</span></div>
+      <div class="f"><span class="k">Lasts</span><span class="v">2</span></div>
+      <div class="f"><span class="k">Every</span><span class="v">0.5</span></div>
+      <div class="f"><span class="k">Vanish on Hit</span><span class="ph">&mdash;</span></div>
+    </div>
+  </div>
+  <ul class="cal">
+    <li><b><code class="ui">Amount</code></b> &eacute; o golpe. Com <b><code class="ui">Per Second</code></b>
+        ligado o r&oacute;tulo vira <b><code class="ui">Amount / s</code></b>: fere <i>enquanto
+        toca</i>, e n&atilde;o uma vez por toque.</li>
+    <li><b><code class="ui">Type</code></b> &eacute; o nome que as resist&ecirc;ncias procuram
+        (<code>fogo</code>, <code>gelo</code>, <code>cura</code>&hellip;). Vazio fere toda a gente igual.</li>
+    <li><b><code class="ui">Lasting / s</code></b> &eacute; o dano que <b>dura</b>: um golpe que entra
+        deixa uma queimadura que continua a tirar <b><code class="ui">Lasts</code></b> segundos, um
+        pulso a cada <b><code class="ui">Every</code></b>.</li>
+    <li><b><code class="ui">Vanish on Hit</code></b>: quem bate some ao acertar &mdash; ligado nas balas,
+        nos morcegos e no cora&ccedil;&atilde;o.</li>
+  </ul>
+</div>
+
+<div class="note"><b>Porque a lava tem golpe ZERO.</b> O her&oacute;i fica invenc&iacute;vel por um
+instante depois de cada golpe, e um golpe <i>por segundo</i> seria quase todo barrado. Um golpe de
+zero n&atilde;o arma essa invencibilidade &mdash; e a queimadura passa por ela. Resultado: pisar a
+lava renova a queimadura a cada instante, e os pulsos caem certos, de meio em meio segundo.</div>
+
+<h2>6 &middot; Tipos: o que ferve, o que gela, o que cura</h2>
+<table>
+  <tr><th>quem</th><th><code class="ui">Resistances</code></th><th>fogo (<kbd>Q</kbd>)</th><th>gelo (<kbd>J</kbd>)</th></tr>
+  <tr><td><b>Salamandra</b></td><td><code>fogo immune</code> &middot; <code>gelo &times;2</code></td>
+      <td><b>nada</b> &mdash; nem golpe nem queimadura</td><td><b>20</b>, o dobro</td></tr>
+  <tr><td><b>Morcego</b></td><td>nenhuma</td><td>10 e depois a queimadura</td><td>10</td></tr>
+  <tr><td><b>Her&oacute;i</b></td><td><code>cura heals &times;1</code></td>
+      <td colspan="2">o <b>cora&ccedil;&atilde;o</b> &eacute; um dano do tipo <code>cura</code>; como o
+      her&oacute;i o <b>absorve</b>, ele <b>sobe</b> em vez de descer</td></tr>
+</table>
+<ul class="cal">
+  <li><b><code class="ui">Rate</code></b>: <code>1</code> normal &middot; <code>0</code> imune &middot;
+      <code>0.5</code> resiste &middot; <code>2</code> fraco.</li>
+  <li><b><code class="ui">Absorbs</code></b>: esse tipo <b>cura</b> em vez de ferir.</li>
+  <li>Mai&uacute;sculas e acentos n&atilde;o importam: <code>Fogo</code> e <code>fogo</code> s&atilde;o
+      o mesmo tipo.</li>
+</ul>
+
+<h2>7 &middot; A barra e o placar &mdash; <code class="ui">Health Bar</code></h2>
+<p><b>Escolha <code>Placar</code> na Hierarquia.</b> Ele n&atilde;o tem vida nenhuma: tem s&oacute;
+uma <b><code class="ui">Health Bar</code></b> com <b><code class="ui">Target</code></b> =
+<code>Heroi</code>. &Eacute; assim que uma barra mostra a vida de <b>outro</b> objeto &mdash; pelo
+nome.</p>
+<ul class="cal">
+  <li>A Salamandra tem a sua pr&oacute;pria barra, com <b><code class="ui">Target</code></b> vazio: vazio
+      quer dizer <i>a minha</i>.</li>
+  <li>Quando a vida desce, o peda&ccedil;o perdido fica um instante noutra cor e depois escorre
+      &mdash; o <b>rasto</b> (<b><code class="ui">Trail Delay</code></b>, <b><code class="ui">Trail / s</code></b>).
+      Uma cura sobe de uma vez, sem rasto.</li>
+</ul>
+
+<h2>8 &middot; Perder e recome&ccedil;ar</h2>
+<p>A morte do her&oacute;i n&atilde;o &eacute; um caso especial: &eacute; um <b>sinal</b>, como os
+outros. Quem o ouve &eacute; a tabela <b><code class="ui">Signal Actions</code></b> do pr&oacute;prio
+her&oacute;i, com duas linhas, as duas marcadas <b><code class="ui">From Myself</code></b> (s&oacute;
+ouvem o que ele pr&oacute;prio diz):</p>
+
+<svg viewBox="0 0 560 120" style="width:100%;margin:8px 0">
+  <g font-family="Inter,system-ui" font-size="12">
+    <rect x="6" y="36" width="118" height="48" rx="8" fill="#17161c" stroke="#2a2830"/>
+    <text x="65" y="54" fill="#a9a3b8" text-anchor="middle" font-size="10">A VIDA CHEGA A ZERO</text>
+    <text x="65" y="72" fill="#7ee0b0" text-anchor="middle" font-family="monospace">heroi-caiu</text>
+    <path d="M128 60 H170" fill="none" stroke="#c9a6ff" stroke-width="1.5" marker-end="url(#a)"/>
+    <rect x="174" y="30" width="170" height="60" rx="8" fill="#17161c" stroke="#c9a6ff"/>
+    <text x="259" y="48" fill="#c9a6ff" text-anchor="middle" font-size="10">LINHA 1</text>
+    <text x="259" y="66" fill="#ece9f2" text-anchor="middle">Start Timer &middot; recomeco</text>
+    <text x="259" y="82" fill="#6f6a7d" text-anchor="middle" font-size="10">espera 1,5 s</text>
+    <path d="M348 60 H390" fill="none" stroke="#c9a6ff" stroke-width="1.5" marker-end="url(#a)"/>
+    <rect x="394" y="30" width="160" height="60" rx="8" fill="#17161c" stroke="#c9a6ff"/>
+    <text x="474" y="48" fill="#c9a6ff" text-anchor="middle" font-size="10">LINHA 2 &middot; ao ouvir recomecar</text>
+    <text x="474" y="70" fill="#ece9f2" text-anchor="middle">Restart Run</text>
+  </g>
+  <defs>
+    <marker id="a" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+      <path d="M0 0 L7 3.5 L0 7 z" fill="#c9a6ff"/></marker>
+  </defs>
+</svg>
+
+<ul class="cal">
+  <li><b><code class="ui">Start Timer</code></b> arranca um rel&oacute;gio do her&oacute;i que, um
+      segundo e meio depois, diz <code>recomecar</code>.</li>
+  <li><b><code class="ui">Restart Run</code></b> p&otilde;e a corrida no princ&iacute;pio <i>sem a
+      parar</i>: quem nasceu na corrida sai, as vidas voltam ao <code class="ui">Start</code>, as
+      queimaduras apagam-se, os rel&oacute;gios e as f&aacute;bricas recome&ccedil;am.</li>
+  <li>O intervalo n&atilde;o &eacute; enfeite: sem ele o recome&ccedil;o apagava a morte antes de
+      ela se ver.</li>
+</ul>
+
+<h2>9 &middot; Mexer e ver acontecer</h2>
+<ol class="steps">
+  <li><b>Tire a imunidade da Salamandra.</b> Clique nela (a da direita, n&atilde;o o molde), em
+      <b><code class="ui">Resistances</code></b> clique na linha do fogo e troque o
+      <b><code class="ui">Rate</code></b> para <code>1</code>.
+      <div class="out">O <kbd>Q</kbd> passa a feri-la: 10 e depois a queimadura, tr&ecirc;s pulsos
+      de 3.</div></li>
+  <li><b>Fa&ccedil;a a lava queimar mais.</b> Na lava, troque <b><code class="ui">Lasts</code></b>
+      para <code>5</code>.
+      <div class="out">Depois de sair dela o her&oacute;i continua a perder vida cinco segundos
+      em vez de dois.</div></li>
+  <li><b>Tire ao her&oacute;i a resist&ecirc;ncia &agrave; cura.</b> No her&oacute;i, clique na linha
+      <code>cura</code> e carregue em <b><code class="ui">x Remove</code></b>.
+      <div class="out">O cora&ccedil;&atilde;o passa a <b>ferir</b>: sem ningu&eacute;m a absorver,
+      um dano do tipo <code>cura</code> &eacute; um dano como outro qualquer. &Eacute; a mesma
+      pe&ccedil;a a fazer o contr&aacute;rio, s&oacute; porque quem a leva mudou.</div></li>
+  <li><b>Recomece:</b> deixe o her&oacute;i morrer, ou carregue em <code>Reset</code> e depois em
+      <code>Play</code> na barra de cima.
+      <div class="bad">As mudan&ccedil;as feitas numa c&oacute;pia (a Salamandra, um morcego)
+      desaparecem com ela no recome&ccedil;o &mdash; quem renasce, renasce do <b>molde</b>. As feitas
+      no her&oacute;i e na lava ficam.</div></li>
+</ol>
+
+<h2>10 &middot; Os avisos, e o que cada um quer dizer</h2>
+<table>
+  <tr><th>o painel diz</th><th>quer dizer</th><th>o que fazer</th></tr>
+  <tr><td><code class="ui">it hurts nobody.</code></td>
+      <td>golpe zero e nada que dure: esta pe&ccedil;a n&atilde;o fere ningu&eacute;m</td>
+      <td>d&ecirc; um <code class="ui">Amount</code>, ou uma queimadura em <code class="ui">Lasting / s</code></td></tr>
+  <tr><td><code class="ui">it stays dead; rewind to bring it back.</code></td>
+      <td>a vida chegou a zero</td><td>recome&ccedil;ar traz de volta</td></tr>
+  <tr><td><code class="ui">add a Physics Body so it can hit or be hit.</code></td>
+      <td>sem corpo, a f&iacute;sica n&atilde;o o v&ecirc;</td><td><code class="ui">Add Component</code> &rarr; um corpo</td></tr>
+  <tr><td><code class="ui">hits only land while it plays.</code></td>
+      <td>o rel&oacute;gio est&aacute; parado</td><td>aperte <kbd>Espa&ccedil;o</kbd></td></tr>
+  <tr><td><code class="ui">the bar draws nothing.</code></td>
+      <td>a barra aponta um nome que ningu&eacute;m tem, ou algu&eacute;m sem vida</td>
+      <td>confira o <code class="ui">Target</code></td></tr>
+  <tr><td><code class="ui">only the first one counts.</code></td>
+      <td>duas linhas de resist&ecirc;ncia com o mesmo tipo</td><td>apague a repetida</td></tr>
+</table>
+
+<h2>11 &middot; Como saber que deu errado</h2>
+<ul class="cal">
+  <li><b>O fogo fere a Salamandra</b>, ou o gelo tira-lhe s&oacute; 10: as resist&ecirc;ncias
+      dela n&atilde;o est&atilde;o a chegar.</li>
+  <li><b>Os morcegos n&atilde;o seguem o her&oacute;i</b>, ou um que morde n&atilde;o some.</li>
+  <li><b>A lava n&atilde;o queima</b>, ou p&aacute;ra de queimar no instante em que se sai dela.</li>
+  <li><b>O cora&ccedil;&atilde;o fere</b> um her&oacute;i que ainda tem a linha <code>cura</code>.</li>
+  <li><b>O her&oacute;i morre e nada recome&ccedil;a</b> &mdash; ou recome&ccedil;a ferido, ou a
+      queimar.</li>
+</ul>
+
+<footer>PH2D &middot; Componentes &middot; plano 28, Vida e Dano &middot; cena de teste
+<code>PH2D_VIDA_SMOKE=4</code> &middot; as outras tr&ecirc;s cenas da fam&iacute;lia:
+<code>=1</code> a vida &middot; <code>=2</code> o golpe que pesa &middot; <code>=3</code> os tipos</footer>

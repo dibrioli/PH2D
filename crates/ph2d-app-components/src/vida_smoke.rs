@@ -59,8 +59,9 @@ use ph2d_render::{Sprite, WHITE_TILE_KEY};
 use ph2d_topdown::{TopDownLaw, direction::DirectionMode};
 
 /// ⭐⭐ **Quantas cenas este roteador serve** — CONTADO do `match` do [`montar`]: a `=1` (a vida), a
-/// `=2` (o impacto, [`crate::vida_impacto_smoke`]) e a `=3` (os tipos, [`crate::vida_tipos_smoke`]).
-pub const CENAS: u32 = 3;
+/// `=2` (o impacto, [`crate::vida_impacto_smoke`]), a `=3` (os tipos, [`crate::vida_tipos_smoke`])
+/// e a `=4` (a arena, [`crate::vida_arena_smoke`]).
+pub const CENAS: u32 = 4;
 
 /// A acção e a tecla — as MESMAS da cena do golpe, que é a fonte (a tecla foi medida lá).
 pub const ACCAO: &str = crate::dano_smoke::ACCAO;
@@ -96,12 +97,12 @@ pub const ACCOES: [(&str, u32); 2] = [
     (ACCAO, crate::trigger_smoke::TECLA),
     (ACCAO_VENENO, TECLA_VENENO),
 ];
-/// ⭐ **As acções que o prólogo cria para a cena `nivel`** — a `=3` tem as dela (fogo e gelo), as
-/// outras duas partilham as da `=1`. ⚠️ Uma PORTA e não um `if` na shell: a cena que acrescenta
-/// acções é a que as declara.
+/// ⭐ **As acções que o prólogo cria para a cena `nivel`** — a `=3` tem as dela (fogo e gelo), e a
+/// `=4` usa as mesmas (a arena tem as duas armas); as outras duas partilham as da `=1`.
+/// ⚠️ Uma PORTA e não um `if` na shell: a cena que acrescenta acções é a que as declara.
 #[must_use]
 pub fn accoes(nivel: u32) -> &'static [(&'static str, u32)] {
-    if nivel == 3 {
+    if nivel == 3 || nivel == 4 {
         &crate::vida_tipos_smoke::ACCOES
     } else {
         &ACCOES
@@ -484,6 +485,15 @@ pub struct Montada {
 
 /// **Monta a cena que `nivel` pede, e devolve QUAL montou.**
 pub fn montar(world: &mut World, nivel: u32) -> Montada {
+    if nivel == 4 {
+        let escolhido = crate::vida_arena_smoke::cena_quatro(world);
+        resolver_receitas(world);
+        crate::vida_arena_smoke::roteiro();
+        return Montada {
+            nivel: 4,
+            escolhido: escolhido.to_bits(),
+        };
+    }
     if nivel == 3 {
         let escolhido = crate::vida_tipos_smoke::cena_tres(world);
         resolver_receitas(world);

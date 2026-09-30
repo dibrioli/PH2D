@@ -64,8 +64,15 @@ const TABELAS: [&str; 2] = [
 
 /// Os pares `("chave", "texto")` das tabelas, já com os escapes resolvidos.
 fn chaves_e_textos() -> Vec<(String, String)> {
+    chaves_e_textos_de(&TABELAS)
+}
+
+/// ⭐ **A PORTA do parser das tabelas** — o gate do tutorial da VIDA (plano 28, W7) lê as tabelas
+/// dele por aqui. ⛔ Uma segunda cópia do parser divergiria no dia em que uma das duas aprendesse a
+/// terceira forma de braço, e o gate que não a aprendesse ficaria verde a medir menos.
+pub(crate) fn chaves_e_textos_de(tabelas: &[&str]) -> Vec<(String, String)> {
     let mut v = Vec::new();
-    for t in TABELAS {
+    for t in tabelas {
         // ⚠️⚠️ **Duas FORMAS de braço, e a segunda é a das frases longas**: o `rustfmt` escreve
         //    `"k" => {` e põe o texto na linha seguinte. Um parser que só conhecesse a forma de
         //    uma linha lia ZERO avisos — exactamente as frases que o tutorial cita.
@@ -104,13 +111,27 @@ fn chaves_e_textos() -> Vec<(String, String)> {
     v
 }
 
+/// ⭐⭐ **O pintor SEM a prosa** — as linhas de comentário saem antes de se medir.
+///
+/// ⛔ **Uma mutação SOBREVIVENTE achou-o** (plano 28, W7): o gate do tutorial da vida cita `Restart
+/// Run`, e apagar a chave do verbo deixava-o VERDE porque um comentário do `actions_editor.rs`
+/// escreve essas duas palavras — *uma régua textual lê o doc-comment que EXPLICA o produto como se
+/// fosse o produto* (a forma que a Fase B da física já registou).
+pub(crate) fn sem_prosa(fonte: &str) -> String {
+    fonte
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("//"))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 /// **Traduz os escapes `\u{XXXX}` do fonte Rust para o caracter real.**
 ///
 /// ⚠️ Sem isto o gate comparava `The clock is stopped — it…` (o que o artista l&ecirc;) com
 /// `The clock is stopped \u{2014} it…` (o que est&aacute; escrito no ficheiro) e acusava um
 /// r&oacute;tulo VIVO. *Uma r&eacute;gua que compara a forma escrita com a forma lida mede o
 /// codificador, n&atilde;o o produto.*
-fn desescapa(fonte: &str) -> String {
+pub(crate) fn desescapa(fonte: &str) -> String {
     let mut out = String::with_capacity(fonte.len());
     let mut resto = fonte;
     while let Some(i) = resto.find("\\u{") {
@@ -142,9 +163,14 @@ fn desescapa(fonte: &str) -> String {
 /// tabela, que traz o carácter. ⇒ um rótulo com `·` cita-se pela metade ASCII — foi o que a frase
 /// da selecção fez em 2026-09-22. *Curar isto é des-escapar entidades, e ninguém mediu se vale.*
 fn rotulos_citados() -> Vec<String> {
+    rotulos_citados_de(TUTORIAL)
+}
+
+/// ⭐ **A PORTA da marca** — a mesma leitura para os dois tutoriais.
+pub(crate) fn rotulos_citados_de(html: &str) -> Vec<String> {
     const ABRE: &str = "<code class=\"ui\">";
     let mut v = Vec::new();
-    let mut resto = TUTORIAL;
+    let mut resto = html;
     while let Some(i) = resto.find(ABRE) {
         let tail = &resto[i + ABRE.len()..];
         let j = tail
@@ -163,7 +189,7 @@ fn rotulos_citados() -> Vec<String> {
 /// existe, e hoje isso reprova.
 #[test]
 fn o_tutorial_so_cita_rotulos_que_o_painel_pinta() {
-    let pintores: Vec<String> = PINTORES.iter().map(|s| desescapa(s)).collect();
+    let pintores: Vec<String> = PINTORES.iter().map(|s| desescapa(&sem_prosa(s))).collect();
     let citados = rotulos_citados();
     // ⚠️ **PISO DE POPULAÇÃO** — sem ele, uma marca renomeada faz o gate varrer ZERO e ficar
     // verde a medir nada (a falha MUDA que a W2 mediu ao mover ficheiros).

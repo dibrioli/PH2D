@@ -424,3 +424,18 @@ apertar uma barra até ela medir o ruído de outra propriedade. **How to apply:*
 mutação sobrevivente do ARNÊS, **meça a grandeza nos dois lados**; se a mutação a faz subir,
 NOMEIE-a no gate com o número em vez de a matar, e escreva uma irmã que a faça descer (ali: a
 cobertura a `0` e a fixtura sem relevo nenhum, as duas a lerem `0` e a sangrar).
+
+## ⛔⛔⛔ O escopo DINÂMICO do bash: um nome de variável repetido entre `muta` e `corre` REPÕE o backup no ficheiro errado (2026-09-30, `line/components`, W7)
+
+O arnês da W7 tinha `local f=$1` (o FICHEIRO) no `muta` e, no `corre` chamado por ele, `f=$(… awk
+'{print $6}')` (as REPROVADAS) **sem `local`**. Em bash uma atribuição sem `local` numa função
+chamada escreve na variável **local mais próxima da pilha de chamadas** — o `f` do `muta`. Depois do
+`corre`, `cp backup "$f"` escreveu o backup num ficheiro chamado `1` (ou `2`, `3`…) **na raiz**, e o
+ficheiro mutado **nunca foi reposto**: as mutações ficaram presas e CUMULATIVAS, e o placar dizia
+«19 sangram» por cima de uma árvore cada vez mais partida (sete ficheiros-lixo na raiz foram o
+sinal). **Why:** o placar não mede a árvore; um backup que vai para o sítio errado não falha alto.
+**How to apply:** em todo arnês de mutação, **toda** variável de função é `local` e o ficheiro-alvo
+tem nome que nada mais use (`alvo`); e o arnês leva o **controlo da ÁRVORE**: somas dos ficheiros
+mutados antes e depois, `exit 2` se diferirem — sem ele esta falha lê-se como sucesso. Reposição
+depois do acidente: substituições de contagem EXACTA mutação a mutação (o pré-voo das âncoras a voltar
+a casar `1` vez é a prova), nunca `git checkout` sobre ficheiros com trabalho por comitar.

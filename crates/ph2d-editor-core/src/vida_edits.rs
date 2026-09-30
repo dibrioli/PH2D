@@ -200,10 +200,28 @@ impl InspectorVidaInfo {
         {
             return Some(VidaQueixa::Morto);
         }
-        if self.damage.as_ref().is_some_and(|d| d.amount <= 0.0) {
+        if self.damage.as_ref().is_some_and(|d| !d.fere()) {
             return Some(VidaQueixa::NaoFere);
         }
         None
+    }
+}
+
+impl InspectorDamageInfo {
+    /// ⭐⭐ **Este dano FERE alguém?** — um golpe maior que zero, **ou** um dano que DURA.
+    ///
+    /// ⛔⛔ **A queixa perguntava só pelo golpe, e mentia sobre a LAVA** (plano 28, W7): a arena
+    /// monta a lava com `amount = 0` e uma queimadura — de propósito, porque um golpe de zero não
+    /// arma a invencibilidade de quem pisa —, e o painel dizia *«Amount 0 · it hurts nobody.»* sobre
+    /// a peça que mais fere da cena. A W6 trouxe o dano que dura e a queixa não aprendeu com ela: *a
+    /// lente do painel mais estreita que a do consumidor.*
+    ///
+    /// ⚠️ **As DUAS metades da aflição**, porque é o que a lei pede para ela existir
+    /// (`ph2d_health::Aflicoes::aplica` recusa um `por_s` ou uma duração `≤ 0`): uma queimadura de
+    /// `3/s` que dura `0 s` não fere, e o painel tem de continuar a dizê-lo.
+    #[must_use]
+    pub fn fere(&self) -> bool {
+        self.amount > 0.0 || (self.dura() && self.over_time_s > 0.0)
     }
 }
 
@@ -436,6 +454,28 @@ mod tests {
         assert_eq!(inofensivo.queixa(), Some(VidaQueixa::NaoFere));
         inofensivo.damage = Some(dano(10.0));
         assert_eq!(inofensivo.queixa(), None, "o CONTROLO: um dano de 10 fere");
+    }
+
+    /// ⭐⭐ **Um dano de ZERO que DURA fere — a lava da arena não se queixa** (plano 28, W7).
+    ///
+    /// **Mutações que devem sangrar:** a queixa voltar a perguntar só pelo `amount` (a lava lê
+    /// «hurts nobody»); esquecer a duração (uma queimadura de `0 s` deixa de se queixar).
+    #[test]
+    fn um_dano_de_zero_que_dura_nao_se_queixa() {
+        let mut lava = info();
+        let mut d = dano(0.0);
+        d.over_time_per_s = 6.0;
+        d.over_time_s = 2.0;
+        lava.damage = Some(d.clone());
+        assert_eq!(
+            lava.queixa(),
+            None,
+            "a lava queima e o painel diz que não fere"
+        );
+        // O CONTROLO: a mesma queimadura com duração zero não fere nada.
+        d.over_time_s = 0.0;
+        lava.damage = Some(d);
+        assert_eq!(lava.queixa(), Some(VidaQueixa::NaoFere));
     }
 
     /// ⭐ **Uma barra SOZINHA não precisa de corpo** — a do placar mostra a vida de outro objecto, e

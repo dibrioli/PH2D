@@ -200,6 +200,9 @@ pub mod tween_inspector;
 /// ⭐⭐⭐ **O TWEEN** (suplente #22) — a galeria dos canais e a cópia que nasce a meio da
 /// corrida; ver o cabeçalho.
 pub mod tween_smoke;
+/// ⭐⭐⭐ A ARENA (plano 28, W7) — um jogo pequeno com vida, do princípio ao fim;
+/// `PH2D_VIDA_SMOKE=4`.
+pub mod vida_arena_smoke;
 /// ⭐ A cena do IMPACTO (plano 28, W5) — `PH2D_VIDA_SMOKE=2`.
 pub mod vida_impacto_smoke;
 /// ⭐⭐⭐ O instantâneo e o dreno das secções HEALTH e DAMAGE (plano 28, W3).

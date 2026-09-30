@@ -744,3 +744,56 @@ amostras de cor e a tabela dos inimigos como `struct`) · fmt · censos da árvo
   escolhas montadas à mão) · cortes no degrau estreito `87 → 89` e letras perdidas `83 → 85` (o par
   `+ Add Resistance` / `x Remove`, como os nove irmãos). `Absorbs (heals)` encolheu para `Absorbs`,
   e `x Remove Resistance` foi medido a cortar na largura de FÁBRICA.
+
+## §15 — ✅ W7 (2026-09-30): a ARENA e o tutorial em PDF
+
+- **A cena `=4`** ([`vida_arena_smoke.rs`](../../crates/ph2d-app-components/src/vida_arena_smoke.rs)) é
+  um jogo pequeno do princípio ao fim, **sem uma peça nova de motor** — cada uma já tinha a sua
+  cena e os seus gates, e o que a arena prova é que **compõem**: o herói (vida `100`, piscar,
+  números, `Q` fogo com queimadura, `J` gelo) · o PLACAR com `Target = Heroi` · a **Salamandra**
+  (vida `60`, fogo `immune`, gelo `×2`, grita `venceu`) · **morcegos** que nascem de `3` em `3 s`
+  (máx. `3`), **perseguem** o herói pelo nome (`homing_target = stable_name_id("Heroi")`), mordem `15`
+  e somem · a **lava** · o **coração** que nasce de `6` em `6 s` e cura `25` · e a **morte do herói →
+  `Start Timer` (1,5 s) → `Restart Run`**, pela tabela do próprio herói com `From Myself`.
+- ⭐⭐ **A lava tem `amount = 0`, e é medido na lei:** o herói tem invencibilidade (a janela contra
+  os morcegos), e um dano por segundo que GOLPEIA é barrado por ela — daria `amount × dt` uma vez
+  por janela, com um número `0.1` a subir. Um golpe de zero **não arma** a invencibilidade
+  (`Vida::leva` só arma com `d > 0`) e um PULSO passa por ela sem a armar ⇒ pisar renova a
+  queimadura a cada tique (a lei da lava da W6) e os pulsos caem certos a cada `0,5 s`.
+  ⚠️ **Medido, não suposto:** depois de sair, o total fica em `por_s × [dur, dur + intervalo)` e não
+  em `por_s × dur` — o 1.º pulso leva também o tempo que já corria desde o anterior (a 1.ª redacção
+  do gate dizia «exactamente 4 pulsos» e leu `3·3·3·3·2,8`).
+- ⭐ **O coração é da equipa dos MONSTROS, e é isso que o protege:** um dano sem equipa fere toda a
+  gente, e o `Vanish` é de quem TOCA (cure ou não) — um morcego que passasse por ele gastava-o.
+  ⚠️ **Com a vida cheia ele some na mesma**, e o roteiro e o tutorial dizem-no.
+- ⛔⛔ **A arena achou um defeito de PRODUTO no Inspector:** a queixa *«Amount 0 · it hurts
+  nobody.»* perguntava só pelo golpe e mentia sobre a lava — a W6 trouxe o dano que dura e a queixa
+  não aprendeu com ela (*a lente do painel mais estreita que a do consumidor*). ⇒
+  `InspectorDamageInfo::fere` (golpe `> 0` **ou** aflição com `por_s > 0` **e** duração `> 0`, as
+  duas metades que `Aflicoes::aplica` exige), com gate e CONTROLO.
+- **Gates da cena (`11`)** correm o QUADRO inteiro pelas portas do produto (relógios · fábricas +
+  `apply_births` · `resolve_signal_actions` + `apply` · ponte · `signal_events` · `mortes_anunciadas`
+  + `apply_deaths` · o recomeço servido como a shell o serve). ⭐ Um deles é o **exercício 3 do
+  tutorial** (sem a resistência `cura` o coração FERE) — *um passo de tutorial que promete um efeito
+  é uma afirmação sobre o produto*. ⛔ **E o do coração/morcego nasceu a medir nada:** teletransportar
+  um mover escrevendo o `Transform` não o move (a ponte conduz a pose) e a mutação sobreviveu ⇒ a
+  fábrica do coração muda-se para o ninho e os dois NASCEM sobrepostos.
+- **O tutorial** [`tutoriais/02_vida_e_dano.pdf`](tutoriais/02_vida_e_dano.pdf) (fonte em `src/`),
+  com gate irmão do do #15 (`o_tutorial_da_vida_nomeia_rotulos_que_existem`, pisos `30`/`200`). ⭐ Os
+  dois gates partilham UMA porta do parser (`chaves_e_textos_de` · `rotulos_citados_de` ·
+  `desescapa`), e ⛔ **os dois passaram a ler os pintores SEM a prosa** (`sem_prosa`): a mutação que
+  apagava a chave do verbo `Restart Run` sobrevivia porque um COMENTÁRIO do `actions_editor.rs`
+  escreve essas duas palavras.
+- **Contadores:** `PROJECT_SCHEMA` **0** · os três registos **0** · `vida_smoke::CENAS` **3 → 4**
+  (com gate que monta cada nível até ao tecto) · zero contrato, zero ADR.
+- **Prova de mutação:** **21 de 21** sangram
+  ([`mutacao_vida_w7_2026-09-30.sh`](ferramentas/mutacao_vida_w7_2026-09-30.sh)). ⛔⛔⛔ **E a 1.ª
+  corrida MENTIU e deixou a árvore MUTADA:** o `f` do `corre` (as reprovadas) era atribuído ao
+  `local f` do `muta` (o FICHEIRO) pelo escopo **dinâmico** do bash, e o `cp` de reposição escreveu
+  cada backup num ficheiro chamado `1`, `2`… na raiz — as mutações ficaram presas e CUMULATIVAS, e o
+  placar dizia «19 sangram» por cima de uma árvore cada vez mais partida. Reposta à mão com
+  substituições de contagem exacta (as `21` âncoras voltaram a casar uma vez) e o arnês ganhou o
+  **4.º controlo**: as somas dos ficheiros mutados antes e depois, com `exit 2` se diferirem. A 2.ª
+  corrida, honesta, achou as **duas** sobreviventes reais (o coração/morcego e a prosa do gate).
+- ⏳ **Aberto:** a regra *«um dano por segundo RENOVA a aflição a cada tique de contacto»* (W6) é
+  decisão MINHA, lida da frase da própria lei — o dono pode querer outra (renovar só ao entrar).

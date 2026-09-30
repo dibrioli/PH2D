@@ -159,5 +159,5 @@
 - [HISTÓRICO: Painter no teto — premissa dissolvida](project_painter_core_files_at_loc_cap.md) · [8GB = full-gate ~10min](project_solo_coord_backlog_ship_2026_05_29.md)
 - 📚 [Arquitetura / norte / perf: mais (19) lições — ⭐⭐⭐ e as secções de 20/09: caminho DERIVADO × do ARTISTA · pontos no PRENDER · ASSAR e ajustar (7,7×)](reference_topic_architecture_north_perf_lessons.md)
 - [fixture (17)](reference_topic_fixture_discipline.md)
-- [Provas de mutação (42) — 4 controles + pré-voo de âncoras · ⛔ duas cercas em SEQUÊNCIA · ⛔ agulha-FRAGMENTO mede o fragmento](reference_topic_mutation_proofs.md)
+- [Provas de mutação (42) — 4 controlos, pré-voo das âncoras, `local` em tudo · ⛔ cercas em SEQUÊNCIA · agulha-FRAGMENTO](reference_topic_mutation_proofs.md)
 - ⛔⛔ [Atribuição VELHA de um vermelho não cobre o suspeito de HOJE — abla o teu e confirma o número AO BIT](feedback_an_old_attribution_is_worth_more_after_ablating_todays_suspect.md)

@@ -167,6 +167,15 @@ fn traco(s: &ph2d_vec_scene::StrokeSpec) -> (String, Option<&'static str>) {
         alfa(c),
         num(s.width)
     );
+    // ⚠️ O SVG tem `4` por omissão e o documento tem [`ph2d_vec_scene::MITER_LIMIT`]: sem isto o
+    // ficheiro exportado cortava o bico que o ecrã mostra.
+    if matches!(s.join, ph2d_vec_scene::LineJoin::Miter) {
+        let _ = write!(
+            a,
+            r#" stroke-miterlimit="{}""#,
+            num(ph2d_vec_scene::MITER_LIMIT)
+        );
+    }
     // ⚠️ O tracejado do documento é em MÚLTIPLOS da largura; o do SVG é em unidades.
     if let Some((d, g)) = s.dash
         && d > 0.0

@@ -119,3 +119,117 @@ fn um_toque_nao_e_um_cruzamento() {
     ]);
     assert!(!cruzes(&p), "tocar num ponto foi lido como cruzar");
 }
+
+fn canto(p: [f64; 2]) -> VecVertex {
+    VecVertex::corner(p)
+}
+
+/// ⭐⭐ **GATE — um segmento MINÚSCULO junto de uma quina é soldado**, e a quina fica UM vértice
+/// com as duas tangentes reais (report do dono de 2026-09-29: a junta do traço era calculada sobre
+/// um segmento de comprimento zero). CONTROLO: um segmento do tamanho da forma fica.
+#[test]
+fn um_segmento_minusculo_e_soldado_na_quina() {
+    let tol = 1e-3;
+    let v = vec![
+        canto([0.0, 0.0]),
+        canto([1.0, 0.0]),
+        canto([1.0 + 1e-5, 1e-5]),
+        canto([1.0, 1.0]),
+        canto([0.0, 1.0]),
+    ];
+    let s = solda_os_segmentos_curtos(v, tol);
+    assert_eq!(s.len(), 4, "o segmento de 1e-5 ficou: {s:?}");
+    let q = vec![
+        canto([0.0, 0.0]),
+        canto([1.0, 0.0]),
+        canto([1.0, 1.0]),
+        canto([0.0, 1.0]),
+    ];
+    assert_eq!(
+        solda_os_segmentos_curtos(q.clone(), tol),
+        q,
+        "o CONTROLO: um quadrado limpo foi mexido"
+    );
+}
+
+/// ⭐⭐ **GATE — a alça que a SOLDA herda é limpa DEPOIS dela.** O vértice que fica leva a alça de
+/// saída do fundido, que mora na âncora DELE — a distância de ruído da nova e, no caso medido
+/// (a barra dobrada a `150°`), do lado de TRÁS. A junta lia aí uma meia-volta onde a quina tem `90°`.
+#[test]
+fn a_alca_herdada_da_solda_nao_torce_a_quina() {
+    let tol = 1e-3;
+    let mut minusculo = canto([1.0 + 1e-5, 0.0]);
+    minusculo.out_handle = [1.0 - 1e-6, 1e-6];
+    let v = vec![
+        canto([0.0, 0.0]),
+        canto([1.0, 0.0]),
+        minusculo,
+        canto([1.0, 1.0]),
+        canto([0.0, 1.0]),
+    ];
+    let s = solda_os_segmentos_curtos(v, tol);
+    assert_eq!(s.len(), 4, "o segmento minúsculo não foi soldado: {s:?}");
+    let vira = crate::overlap::viragem_do_vertice(&s, 1).expect("a quina tem tangentes");
+    assert!(
+        (vira - 90.0).abs() < 1e-6,
+        "a quina de 90° lê {vira}° — a alça herdada ficou a torcê-la: {s:?}"
+    );
+}
+
+/// ⭐⭐ **GATE — a alça que caiu na ponta de LÁ encaixa nela.** Numa recta cujas alças estão
+/// uma EXACTAMENTE numa ponta e a outra a ruído da MESMA ponta, a tangente na outra ponta recua para
+/// a alça de ruído (a kurbo só troca por coincidência exacta) e lê uma direcção falsa. Os dois ramos
+/// cruzados, cada um no seu lado de um quadrado: o de baixo tem a alça de SAÍDA caída no fim, o de
+/// cima tem a de ENTRADA caída no começo — e as quatro quinas têm de ler `90°`.
+///
+/// ⚠️ Os dois ramos só mordem com a OUTRA alça exacta na ponta; com ela noutro sítio a kurbo nunca
+/// recua até à alça de ruído, e foi por isso que a mutação que os apagava sobreviveu à barra dobrada.
+#[test]
+fn uma_alca_caida_na_ponta_de_la_encaixa_nela() {
+    let tol = 1e-3;
+    let mut v = vec![
+        canto([0.0, 0.0]),
+        canto([1.0, 0.0]),
+        canto([1.0, 1.0]),
+        canto([0.0, 1.0]),
+    ];
+    // Baixo (0 → 1): p1 a ruído do FIM, p2 exacto no fim.
+    v[0].out_handle = [1.0 - 1e-7, 1e-7];
+    // Cima (2 → 3): p1 exacto no começo, p2 a ruído do COMEÇO.
+    v[3].in_handle = [1.0 - 1e-7, 1.0 - 1e-7];
+    let s = solda_os_segmentos_curtos(v, tol);
+    for i in 0..4 {
+        let vira = crate::overlap::viragem_do_vertice(&s, i).expect("a quina tem tangentes");
+        assert!(
+            (vira - 90.0).abs() < 1e-6,
+            "a quina {i} lê {vira}° — a alça caída na ponta de lá ficou a torcê-la: {s:?}"
+        );
+    }
+}
+
+/// ⭐⭐ **GATE — a viragem máxima é a do limite do bico**: numa quina que vira exactamente
+/// [`viragem_maxima`] o bico mede o limite (`1/sin(θ/2)`, `θ` por dentro). Sem isto os dois números
+/// derivavam cada um para o seu lado e uma quina que sobra podia virar chanfro.
+#[test]
+fn a_viragem_maxima_e_a_do_limite_do_bico() {
+    let dentro = (180.0 - viragem_maxima()).to_radians();
+    let bico = 1.0 / (dentro / 2.0).sin();
+    assert!(
+        (bico - ph2d_vec_scene::MITER_LIMIT).abs() < 1e-9,
+        "o bico na viragem máxima mede {bico} contra o limite {}",
+        ph2d_vec_scene::MITER_LIMIT
+    );
+    assert!(
+        viragem_maxima() > 155.0,
+        "a viragem máxima ({}) corta quinas verdadeiras do contacto (medidas até 153°)",
+        viragem_maxima()
+    );
+}
+
+/// ⭐⭐ **GATE — o traço ASSADO (*Outline Stroke*) tem o mesmo limite do desenhado.**
+#[test]
+fn o_bico_do_traco_assado_e_o_do_documento() {
+    let s = StrokeSpec::new(Rgba8::new(0, 0, 0, 255), 1.0);
+    let k = crate::expand::line_pen(&VecPath::default(), &s);
+    assert!((k.miter_limit - ph2d_vec_scene::MITER_LIMIT).abs() < f64::EPSILON);
+}

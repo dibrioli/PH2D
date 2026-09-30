@@ -66,6 +66,60 @@ diz onde ler o mecanismo:
 
 ---
 
+### F39 — ⭐⭐⭐ **A QUINA DO CONTACTO OBEDECE À JUNTA DO PAINEL** (report do dono, 2026-09-30, com duas fotos: *«A depender do ângulo a quina fica inconsistente.. Faça obedecer ao que foi escolhido no painel»*)
+
+⭐⭐⭐ **Eram TRÊS causas, e cada uma desviava a junta noutro ângulo** — por isso a mesma quina saía
+em bico, cortada ou com um dente conforme a dobra. Medidas com a sonda
+`diag_a_quina_do_contacto` (três formas de dobra × `100°`..`150°` de `5` em `5`, a viragem de
+cada vértice pelas tangentes que o TRAÇO usa):
+
+1. **Pedaços MINÚSCULOS junto do cruzamento** (comprimento `0` a `~4e-3` numa diagonal de `4`): a
+   tangente de um segmento degenerado é arbitrária. ⇒ [`solda_os_segmentos_curtos`](../../crates/ph2d-vec-boolean/src/overlap.rs),
+   com a tolerância [`SOLDA_DA_QUINA`] = `1e-3` da diagonal.
+2. **Alças a DISTÂNCIA DE RUÍDO** (`1e-6`–`1e-9`) de uma ponta, às vezes do lado de TRÁS dela, e às
+   vezes caídas na ponta de LÁ de uma recta — no motor **e** no bake. A kurbo só troca de tangente
+   por coincidência EXACTA, logo a junta via uma meia-volta de `180°` onde a quina tem `~40°`.
+   ⇒ [`limpa_as_alcas`] põe o ponto EXACTAMENTE sobre a ponta (um ponto a `≤ tol` muda a curva em
+   `≤ tol`). ⛔⛔ **E corre DEPOIS da solda:** o vértice que fica herda a alça de saída do fundido,
+   que mora na âncora DELE — foi essa a meia-volta que sobrava a `C 150°` (`1,6e-6` da âncora) com
+   a limpeza escrita ANTES. ⚠️ E uma passagem antes **E** depois foi escrita e a de antes **APAGADA**:
+   a mutação que a removia sobreviveu (a solda não decide nada a partir das alças limpas). ⚠️ Os
+   dois ramos CRUZADOS (a alça caída na ponta de LÁ) também sobreviveram à barra dobrada — eles só
+   mordem com a OUTRA alça exactamente na ponta — e ganharam fixture própria.
+3. **O `Miter` era cortado em silêncio**: o traço nunca escrevia o limite do bico e a kurbo usa `4`;
+   a quina de contacto vira `120°`–`152°`, e acima de `~151°` a razão do bico passa de `4` ⇒
+   **o artista escolhia `Miter` e via `Bevel`**. ⇒ [`ph2d_vec_scene::MITER_LIMIT`](../../crates/ph2d-vec-scene/src/stroke_style.rs)
+   = **`10`** (o de omissão do Illustrator), **UMA porta com TRÊS leitores**: o ecrã
+   (`kurbo_stroke`), o *Outline Stroke* (`expand::line_pen`) e o **SVG exportado**
+   (`stroke-miterlimit="10"` — ⚠️ o SVG tem `4` por omissão, e sem ele o ficheiro cortava o bico que
+   o ecrã mostra).
+
+**Medido depois da cura:** zero segmentos que caibam na solda e a pior quina a **`152,0°`** nas `33`
+dobras, contra a [`viragem_maxima`] = `180 − 2·asin(1/10)` = **`168,5°`** (a viragem em que o bico
+chega ao limite) ⇒ **toda quina da silhueta sai com a junta que o painel escolheu**. Gate
+`toda_quina_da_silhueta_respeita_a_junta_do_painel` (piso de `20` silhuetas resolvidas).
+
+⚠️ **O preço tem endereço, e é CORRECTO:** a caixa que o renderer reserva para um traço com junta em
+bico é `½ · largura · limite` por lado — `5 × largura` em vez de `2 ×`. Ela lê o limite do MESMO
+construtor (`standalone::transbordo_do_caminho`), logo acompanha sozinha; sem isso o bico mais
+comprido sairia **ceifado** contra a borda do scratch.
+
+⛔⛔ **Um passo que APAGAVA as «lascas» (vértices acima da viragem máxima) foi construído e
+APAGADO:** depois da limpeza das alças não tinha **um único** vértice a tirar nas `33` dobras — as
+«meias-voltas de `180°`» que ele existia para apagar eram TODAS alças a ruído, não geometria — e
+ligado ele arqueava a silhueta para longe do contorno (`9,8e-2` numa diagonal de `4,05`, apanhado
+por `a_silhueta_esta_sobre_o_contorno_de_antes`). *Uma linha que nenhuma dobra medida exige não é
+lei.*
+
+- **Gates:** `um_segmento_minusculo_e_soldado_na_quina` · `a_alca_herdada_da_solda_nao_torce_a_quina`
+  · `uma_alca_caida_na_ponta_de_la_encaixa_nela` · `a_viragem_maxima_e_a_do_limite_do_bico` ·
+  `o_bico_do_traco_assado_e_o_do_documento` · `o_bico_do_traco_desenhado_e_o_do_documento` ·
+  `o_svg_leva_o_limite_do_bico` · e o do contacto acima.
+- **Mutação `16 de 16` + controlo** — as sete da F38 e as nove `Q*` do
+  [arnês](ferramentas/muta_a_silhueta_do_contacto.sh), com a população a ser de quem **OBSERVA**
+  (o renderer e o SVG entram só nas mutações deles). Duas sobreviveram à 1.ª corrida e as duas
+  mudaram o produto: uma passagem apagada, uma fixture escrita.
+
 ### F38 — ⭐⭐⭐ **A DOBRA FORTE: o contacto sai como SILHUETA** (ordem do dono, 2026-09-29: *«a dobra forte do cotovelo: tente o estado da arte diretamente»*)
 
 ⭐⭐⭐ **O defeito visível NÃO é a pele virar do avesso — é CONTACTO.** Numa dobra forte a face de

@@ -473,3 +473,31 @@ fn a_layers_offset_crosses_the_svg_in_file_space() {
         "uma camada no neutro escreveu um transform"
     );
 }
+
+/// ⭐⭐ **GATE — o SVG exportado leva o limite do bico do documento** numa junta `Miter` (o SVG tem
+/// `4` por omissão e cortaria o bico que o ecrã mostra), e não o escreve onde não há bico.
+#[test]
+fn o_svg_leva_o_limite_do_bico() {
+    let mut scene = VecScene::new();
+    quadrado(&mut scene, 10.0);
+    let out = svg(&scene, &VecXforms::new(), &sempre_nao, &sempre_nao);
+    assert!(
+        out.texto.contains(&format!(
+            "stroke-miterlimit=\"{}\"",
+            ph2d_vec_scene::MITER_LIMIT
+        )),
+        "o limite do bico não viajou"
+    );
+    let mut redondo = VecScene::new();
+    let id = quadrado(&mut redondo, 10.0);
+    if let Some(p) = redondo.path_mut(id)
+        && let Some(s) = p.stroke.as_mut()
+    {
+        s.join = ph2d_vec_scene::LineJoin::Round;
+    }
+    let out = svg(&redondo, &VecXforms::new(), &sempre_nao, &sempre_nao);
+    assert!(
+        !out.texto.contains("stroke-miterlimit"),
+        "uma junta redonda não tem bico a limitar"
+    );
+}

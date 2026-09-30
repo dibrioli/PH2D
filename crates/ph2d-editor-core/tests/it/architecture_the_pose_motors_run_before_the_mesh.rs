@@ -61,8 +61,11 @@ fn the_canvas_half_does_not_drive_the_skeleton_a_second_time() {
         .collect::<Vec<_>>()
         .join("\n");
     // Controlo positivo: é ESTE o ficheiro que recozinha a pele vectorial — sem ele o gate mede o nada.
+    // ⚠️ Desde a F37 do esqueleto (2026-09-29) a chamada é o `recook_desenhando` (ela devolve também
+    // o desenho fiel que se VÊ); a agulha antiga (`recook(`) deixou de casar e ESTE controlo fez o
+    // trabalho dele — reprovou em vez de ficar verde a medir um ficheiro sem sujeito.
     assert!(
-        src.contains("skeleton_live::recook("),
+        src.contains("skeleton_live::recook_desenhando("),
         "{} deixou de recozinhar a pele vectorial — este gate perdeu o sujeito",
         f.display()
     );

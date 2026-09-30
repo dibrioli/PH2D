@@ -642,3 +642,18 @@ fn a_shared_batch_draws_exactly_what_n_single_draws_do() {
         "a TINTA divergiu entre o lote e as chamadas unicas"
     );
 }
+
+/// ⭐⭐ **GATE — o traço DESENHADO usa o limite do bico do DOCUMENTO**, nunca o default da `kurbo`
+/// (`4`). Sem isto uma junta `Miter` escolhida no painel virava chanfro numa quina entre `~11,5°`
+/// e `~29°` por dentro — o report do dono de 2026-09-29 (ver [`ph2d_vec_scene::MITER_LIMIT`]).
+#[test]
+fn o_bico_do_traco_desenhado_e_o_do_documento() {
+    let s = ph2d_vec_scene::StrokeSpec::new(ph2d_vec_scene::Rgba8::new(0, 0, 0, 255), 1.0);
+    let k = kurbo_stroke(&s, None);
+    assert!(
+        (k.miter_limit - ph2d_vec_scene::MITER_LIMIT).abs() < f64::EPSILON,
+        "o traço desenhado tem limite {} e o documento {}",
+        k.miter_limit,
+        ph2d_vec_scene::MITER_LIMIT
+    );
+}

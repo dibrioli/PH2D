@@ -60,10 +60,34 @@ pub(crate) const DOBRA: f32 = 40.0;
 /// pergunta.
 pub(crate) const DOBRA_FORTE: f32 = 120.0;
 
-/// A dobra por junta de cada nível desta cena.
+/// A dobra por junta de cada nível desta cena — na `=4`, `PH2D_VEC_BONE_DOBRA=<graus>` abre-a
+/// noutra dobra (F39, 2026-09-30: a quina do contacto só se lê numa ESCADA de ângulos, e a foto
+/// não tem mão para escrever no Inspector).
 #[must_use]
 pub(crate) fn dobra_do_nivel(nivel: u32) -> f32 {
-    if nivel >= 4 { DOBRA_FORTE } else { DOBRA }
+    dobra_de(nivel, std::env::var("PH2D_VEC_BONE_DOBRA").ok().as_deref())
+}
+
+/// A lei pura de [`dobra_do_nivel`]: o pedido só vale na `=4` e só se for um número finito.
+#[must_use]
+pub(crate) fn dobra_de(nivel: u32, pedido: Option<&str>) -> f32 {
+    if nivel < 4 {
+        return DOBRA;
+    }
+    pedido
+        .and_then(|s| s.trim().parse::<f32>().ok())
+        .filter(|g| g.is_finite())
+        .unwrap_or(DOBRA_FORTE)
+}
+
+/// A espessura do contorno da `=4` — `PH2D_VEC_BONE_TRACO=<fracção da espessura da peça>` troca a
+/// de fábrica ([`ESPESSURA_DO_CONTORNO`]). A junta em bico só se LÊ num traço grosso (F39).
+#[must_use]
+pub(crate) fn espessura_do_contorno(pedido: Option<&str>) -> f64 {
+    pedido
+        .and_then(|s| s.trim().parse::<f64>().ok())
+        .filter(|f| f.is_finite() && *f > 0.0)
+        .unwrap_or(ESPESSURA_DO_CONTORNO)
 }
 
 /// A cor das duas peças — a do braço da cena `=1`.
@@ -228,7 +252,7 @@ pub(crate) fn build(
     if nivel >= 4 {
         peca_vec.stroke = Some(ph2d_vec_scene::StrokeSpec::new(
             ph2d_vec_scene::Rgba8::new(CONTORNO[0], CONTORNO[1], CONTORNO[2], 255),
-            t * ESPESSURA_DO_CONTORNO,
+            t * espessura_do_contorno(std::env::var("PH2D_VEC_BONE_TRACO").ok().as_deref()),
         ));
     }
     let desenho = scene.push_path(peca_vec);
@@ -482,5 +506,23 @@ mod tests {
                  IMAGEM: {p:?}"
             );
         }
+    }
+
+    /// ⭐ **Os dois pedidos da foto só valem onde devem.** A dobra pedida só entra na `=4` (a `=3`
+    /// é o PAR de comparação e tem de abrir sempre igual) e um número inválido cai no de fábrica —
+    /// nunca num `NaN` que montasse a cena torta em silêncio.
+    #[test]
+    fn a_dobra_e_o_traco_pedidos_so_valem_onde_devem() {
+        assert!((dobra_de(4, Some("145")) - 145.0).abs() < f32::EPSILON);
+        assert!((dobra_de(4, None) - DOBRA_FORTE).abs() < f32::EPSILON);
+        assert!((dobra_de(4, Some("nan")) - DOBRA_FORTE).abs() < f32::EPSILON);
+        assert!((dobra_de(4, Some("x")) - DOBRA_FORTE).abs() < f32::EPSILON);
+        assert!(
+            (dobra_de(3, Some("145")) - DOBRA).abs() < f32::EPSILON,
+            "a dobra pedida chegou ao nivel 3, o PAR de comparacao"
+        );
+        assert!((espessura_do_contorno(Some("0.3")) - 0.3).abs() < f64::EPSILON);
+        assert!((espessura_do_contorno(Some("-1")) - ESPESSURA_DO_CONTORNO).abs() < f64::EPSILON);
+        assert!((espessura_do_contorno(None) - ESPESSURA_DO_CONTORNO).abs() < f64::EPSILON);
     }
 }

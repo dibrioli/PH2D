@@ -204,16 +204,13 @@ fn a_porta_do_recorte_so_desliga_com_zero() {
 /// mão (`((meia · smax) · alcance)`), e um epsilon aqui esconderia precisamente o defeito que este
 /// gate existe para apanhar — reassociar três factores.
 ///
-/// ⛔⛔ **E há um MUTANTE EQUIVALENTE aqui, NOMEADO com a medição em vez de forçado a sangrar:**
-/// reassociar para `meia · (smax · alcance)` **não muda um bit**, e não por sorte — o `alcance` é
-/// `1,0` (junta não-miter) ou o `miter_limit` da kurbo, que o [`crate::kurbo_stroke`] **nunca
-/// escreve** e cujo default é `4,0` (`kurbo-0.13.0/src/stroke.rs:98`; o `with_miter_limit` não tem
-/// chamador nesta crate). *Multiplicar por uma potência de dois é exacto em IEEE-754*, logo
-/// nenhuma fixtura pode distinguir as duas associações enquanto a junta não for configurável.
-///
-/// ⚠️ **A ordem fica preservada na mesma**, porque ela custa zero e porque o dia em que alguém
-/// expuser o `miter_limit` é o dia em que este mutante deixa de ser equivalente — e ninguém vai
-/// lembrar-se de voltar aqui.
+/// ⛔⛔ **E havia um MUTANTE EQUIVALENTE aqui, e ELE DEIXOU DE O SER em 2026-09-30:** reassociar
+/// para `meia · (smax · alcance)` não mudava um bit enquanto o `alcance` era `1,0` ou o `4,0` por
+/// omissão da kurbo — *multiplicar por uma potência de dois é exacto em IEEE-754*. Desde a F39 do
+/// esqueleto o [`crate::kurbo_stroke`] escreve o [`ph2d_vec_scene::MITER_LIMIT`] (`10`), que NÃO é
+/// potência de dois ⇒ as duas associações podem divergir no último bit, e a ordem preservada à mão
+/// passou de «custa zero» a ser a coisa que este `==` protege. (A nota antiga previa exactamente
+/// isto — *«o dia em que alguém expuser o `miter_limit`»* — e foi lida no dia.)
 #[test]
 fn o_transbordo_hoistado_e_a_lei_de_referencia_ao_bit() {
     let mut fino = quadrado();
@@ -319,11 +316,18 @@ fn a_caixa_e_a_do_contorno_mais_gordo_da_pilha() {
     )))];
     // ⚠️ **A ARITMÉTICA da fixtura, escrita por extenso porque a 1.ª redacção caiu EM CIMA da
     // folga da janela** (o controlo leu `x1 = −2` contra uma borda em `−2`, e `toca` usa `>=` de
-    // propósito). Com escala `10` e junta MITER (alcance `4`): o traço fino infla
-    // `0,5 · 0,1 · 10 · 4 = 2` e o gordo `0,5 · 1,0 · 10 · 4 = 20`; o preenchimento mede `±5`.
-    // ⇒ a `x = −12` o fino chega a `−5` (FORA da janela inflada, que começa em `−2`) e o gordo
-    // chega a `+13` (DENTRO). *É a única posição em que os dois lados do gate afirmam algo.*
-    let pose = Affine::translate((-12.0, 50.0)) * Affine::scale(10.0);
+    // propósito). Com escala `10` e junta MITER (alcance `L` = o limite do bico): o traço fino
+    // infla `0,5 · 0,1 · 10 · L = 0,5·L` e o gordo `0,5 · 1,0 · 10 · L = 5·L`; o preenchimento mede
+    // `±5`, e a janela inflada começa em `−2`. ⇒ o fino fica FORA se `x + 5 + 0,5·L < −2` e o gordo
+    // DENTRO se `x + 5 + 5·L ≥ −2`, e a pose é o MEIO dessa faixa.
+    // ⛔⛔ **A pose é DERIVADA do limite, e não um literal, por medição:** ela era `x = −12`, escrita
+    // com o `4` por omissão da kurbo, e quando o limite passou a [`ph2d_vec_scene::MITER_LIMIT`]
+    // (`10`, F39 do esqueleto, 2026-09-30) o traço fino passou a inflar `5` e a chegar EXACTAMENTE a
+    // `−2` — o CONTROLO deixou de recortar. *Uma fixtura cuja aritmética cita um número de outra
+    // crate tem de o LER, senão parte-se no dia em que ele muda.*
+    let l = ph2d_vec_scene::MITER_LIMIT;
+    let x = -2.0 - 5.0 - 2.75 * l;
+    let pose = Affine::translate((x, 50.0)) * Affine::scale(10.0);
     let (objectos, recortadas) = desenha(&p, &[pose], Some(janela()));
     assert!(
         objectos >= 1 && recortadas == 0,

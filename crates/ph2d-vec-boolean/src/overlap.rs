@@ -45,7 +45,7 @@
 
 use kurbo::{BezPath, PathEl, Shape};
 use linesweeper::{BinaryOp, FillRule as LsFillRule};
-use ph2d_vec_scene::{Contour, FillRule, VecPath};
+use ph2d_vec_scene::{Contour, FillRule, VecPath, VecVertex};
 
 /// ⭐ **A tolerância do achatamento na detecção, em fracção da diagonal da forma** — `1e-4`.
 ///
@@ -72,7 +72,14 @@ pub fn resolve_overlap(path: &VecPath) -> Option<VecPath> {
     // ⭐ `A ∪ ∅` e NÃO `A ∪ A` — a regra de multiplicidade do `linesweeper` 0.4 (ver
     // `expand.rs`, `Region::of`): uma aresta com multiplicidade par não se dissolve.
     let groups = crate::binary_grouped(&bez, &BezPath::new(), rule, BinaryOp::Union)?;
-    let mut contornos = groups.iter().flatten().filter_map(crate::verts_from_bez);
+    let caixa = bez.bounding_box();
+    let solda = SOLDA_DA_QUINA * caixa.width().hypot(caixa.height());
+    let mut contornos = groups
+        .iter()
+        .flatten()
+        .filter_map(crate::verts_from_bez)
+        .map(|v| solda_os_segmentos_curtos(v, solda))
+        .filter(|v| v.len() >= 3);
     let outer = contornos.next()?;
     let resto: Vec<Contour> = contornos.map(Contour::new_closed).collect();
     let mut out = path.clone();
@@ -87,6 +94,139 @@ pub fn resolve_overlap(path: &VecPath) -> Option<VecPath> {
     };
     out.subpaths = resto;
     Some(out)
+}
+
+/// ⭐⭐⭐ **A solda da QUINA, em fracção da diagonal da forma** — `1e-3`.
+///
+/// ⛔ **O motor deixa pedaços MINÚSCULOS junto do ponto de cruzamento** (medido, report do dono de
+/// 2026-09-29: *«a depender do ângulo a quina fica inconsistente»*): na barra da cena, dobrada de
+/// `100°` a `150°`, a silhueta traz segmentos de comprimento `0` a `~4e-3` colados à quina nova, e um
+/// vértice que VIRA `180°` sobre um deles. A junta do traço é calculada sobre as TANGENTES dos dois
+/// segmentos que se encontram — e a tangente de um segmento degenerado é arbitrária ⇒ a mesma quina
+/// saía em bico, cortada ou com um dente conforme o ângulo, em vez de seguir a junta escolhida no
+/// painel. ⇒ um segmento cujos QUATRO pontos cabem nesta distância é fundido no vizinho, e a quina
+/// fica UM vértice com as duas tangentes reais.
+///
+/// ⚠️ O número: acima do ruído da varredura (os pedaços medidos vão até `~1e-3` da diagonal) e
+/// milhares de vezes abaixo de qualquer geometria que um artista desenhe ou veja — na barra da cena
+/// são `4 mm` numa forma de `4 m`, contra um traço de `60 mm`.
+pub const SOLDA_DA_QUINA: f64 = 1e-3;
+
+/// ⛔⛔ **Um ponto de controlo a DISTÂNCIA DE RUÍDO de outro é posto EXACTAMENTE sobre ele.**
+///
+/// A junta de um traço é calculada sobre a tangente de cada segmento na ponta, e a tangente de uma
+/// cúbica `(p0, p1, p2, p3)` na ponta de saída é `p1 − p0`, ou `p2 − p0` se `p1` coincide, ou
+/// `p3 − p0` se `p2` também — com coincidência EXACTA. Medido (report do dono de 2026-09-29): o
+/// motor e o bake devolvem segmentos cuja alça está a `~1e-6`–`1e-9` da ponta, às vezes do lado de
+/// TRÁS dela, e aí a «tangente» é ruído — a junta via uma meia-volta de `180°` onde a geometria
+/// tem uma quina de `~40°`, e a quina saía diferente a cada ângulo. ⇒ `p1` a `≤ tol` de `p0` passa
+/// a `p0`; `p2` a `≤ tol` de `p3` passa a `p3`; e os dois cruzados (`p2` sobre `p0`, `p1` sobre
+/// `p3` — uma recta cuja alça caiu na ponta de LÁ). Um ponto a `≤ tol` muda a curva em `≤ tol`.
+pub fn limpa_as_alcas(verts: &mut [VecVertex], tol: f64) {
+    let perto = |a: [f64; 2], b: [f64; 2]| (a[0] - b[0]).hypot(a[1] - b[1]) <= tol;
+    let n = verts.len();
+    for i in 0..n {
+        let j = (i + 1) % n;
+        let (p0, p3) = (verts[i].anchor, verts[j].anchor);
+        let (mut p1, mut p2) = (verts[i].out_handle, verts[j].in_handle);
+        if perto(p1, p0) {
+            p1 = p0;
+        } else if perto(p1, p3) {
+            p1 = p3;
+        }
+        if perto(p2, p3) {
+            p2 = p3;
+        } else if perto(p2, p0) {
+            p2 = p0;
+        }
+        verts[i].out_handle = p1;
+        verts[j].in_handle = p2;
+    }
+}
+
+/// Funde todo segmento cujos quatro pontos de controlo cabem em `tol` do vértice onde ele começa —
+/// o vértice que fica leva a alça de ENTRADA dele e a de SAÍDA do fundido. Cíclico (o contorno é
+/// fechado), e nunca abaixo de três vértices.
+#[must_use]
+pub fn solda_os_segmentos_curtos(mut verts: Vec<VecVertex>, tol: f64) -> Vec<VecVertex> {
+    let perto = |a: [f64; 2], b: [f64; 2]| (a[0] - b[0]).hypot(a[1] - b[1]) <= tol;
+    let mut i = 0;
+    while i < verts.len() && verts.len() > 3 {
+        let n = verts.len();
+        let (c, q) = (verts[i], verts[(i + 1) % n]);
+        let minusculo = perto(c.anchor, q.anchor)
+            && perto(c.anchor, c.out_handle)
+            && perto(c.anchor, q.in_handle);
+        if minusculo {
+            let j = (i + 1) % n;
+            verts[i].out_handle = q.out_handle;
+            verts[i].kind = crate::classify(&verts[i]);
+            verts.remove(j);
+            // Não avança: o novo vizinho pode ser minúsculo também. Se o removido vinha ANTES
+            // (o fecho), o índice deslizou um para trás.
+            if j < i {
+                i -= 1;
+            }
+        } else {
+            i += 1;
+        }
+    }
+    // ⚠️ A limpeza das alças corre DEPOIS de soldar, e só aí: o vértice que fica herda a alça de
+    // saída do fundido, que mora na âncora DELE — a `~1e-6` da nova (medido: era essa a meia-volta
+    // que sobrava a `150°`). ⛔ Uma passagem ANTES da solda foi escrita e a mutação que a apagava
+    // SOBREVIVEU: a solda não decide nada a partir das alças limpas (um ponto a ruído passa no
+    // mesmo `perto`), e o ruído medido (`1e-9`–`1e-6`) está três ordens abaixo da tolerância.
+    limpa_as_alcas(&mut verts, tol);
+    verts
+}
+
+/// ⭐⭐ **A maior VIRAGEM que uma quina de silhueta pode ter, em graus** — DERIVADA do
+/// [`ph2d_vec_scene::MITER_LIMIT`]: a viragem em que o bico de uma junta `Miter` chega ao limite
+/// (`1/sin(θ/2) = limite`, com `θ` o ângulo POR DENTRO) — `~168,5°` com o limite `10`.
+///
+/// Medido na barra da cena de `100°` a `150°`, nas três formas de dobra, DEPOIS da solda e da
+/// limpeza das alças: as quinas do contacto viram `23°`–`152°`, todas abaixo dela — logo a junta
+/// escolhida no painel vale em TODA quina da silhueta, e nenhuma passa do limite e vira chanfro
+/// sem o artista o ter pedido. ⛔ As «meias-voltas» de `180°` que se mediam ANTES eram todas
+/// alças a distância de ruído ([`limpa_as_alcas`]), não geometria: um passo que APAGAVA vértices
+/// acima desta viragem foi construído, e depois da limpeza não tinha um único vértice a tirar em
+/// `33` dobras — e ligado ele arqueava a silhueta para longe do contorno (`9,8e-2` numa diagonal
+/// de `4,05`) ⇒ apagado. Quem o voltar a propor precisa de uma dobra MEDIDA que o exija (report do dono de 2026-09-29, *«a depender do ângulo a
+/// quina fica inconsistente. Faça obedecer ao que foi escolhido no painel»*).
+#[must_use]
+pub fn viragem_maxima() -> f64 {
+    180.0 - 2.0 * (1.0 / ph2d_vec_scene::MITER_LIMIT).asin().to_degrees()
+}
+
+/// A direcção unitária `a → b`, ou `None` se os dois pontos coincidem.
+fn direccao(a: [f64; 2], b: [f64; 2]) -> Option<[f64; 2]> {
+    let (x, y) = (b[0] - a[0], b[1] - a[1]);
+    let l = x.hypot(y);
+    (l > 1e-12).then(|| [x / l, y / l])
+}
+
+/// Quanto o contorno VIRA no vértice `i`, em graus — pelas tangentes que o traço usa (a alça, e na
+/// falta dela o ponto de controlo seguinte, e na falta deste o vizinho).
+#[must_use]
+pub fn viragem_do_vertice(verts: &[VecVertex], i: usize) -> Option<f64> {
+    viragem(verts, i)
+}
+
+fn viragem(verts: &[VecVertex], i: usize) -> Option<f64> {
+    let n = verts.len();
+    let (p, c, q) = (&verts[(i + n - 1) % n], &verts[i], &verts[(i + 1) % n]);
+    let ent = direccao(c.in_handle, c.anchor)
+        .or_else(|| direccao(p.out_handle, c.anchor))
+        .or_else(|| direccao(p.anchor, c.anchor))?;
+    let sai = direccao(c.anchor, c.out_handle)
+        .or_else(|| direccao(c.anchor, q.in_handle))
+        .or_else(|| direccao(c.anchor, q.anchor))?;
+    Some(
+        (ent[0] * sai[0] + ent[1] * sai[1])
+            .clamp(-1.0, 1.0)
+            .acos()
+            .to_degrees(),
+    )
 }
 
 /// ⭐⭐ **O contorno cruza-se?** — os contornos achatados, e um par de segmentos que se ATRAVESSA.

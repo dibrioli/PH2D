@@ -170,14 +170,16 @@ fn tolerance(bez: &BezPath) -> f64 {
 /// a MESMA porta que o renderer usa. Se um ajustasse e o outro não, a forma assada sairia com
 /// o tracejado noutra cadência que a desenhada; e sem ajuste nenhum a emenda do contorno
 /// fechado fica à vista (Enio, 2026-08-22).
-fn line_pen(line: &VecPath, s: &StrokeSpec) -> Stroke {
+pub(crate) fn line_pen(line: &VecPath, s: &StrokeSpec) -> Stroke {
     let pen = Stroke::new(s.width)
         .with_caps(match s.cap {
             LineCap::Butt => Cap::Butt,
             LineCap::Round => Cap::Round,
             LineCap::Square => Cap::Square,
         })
-        .with_join(join_of(s.join));
+        .with_join(join_of(s.join))
+        // ⚠️ O MESMO limite do traço desenhado — ver [`ph2d_vec_scene::MITER_LIMIT`].
+        .with_miter_limit(ph2d_vec_scene::MITER_LIMIT);
     // Os comprimentos vêm do `StrokeSpec` — a MESMA porta que o renderer usa, senão o
     // tracejado assado sairia noutra cadência que o desenhado.
     // ⚠️ A peça chega da FONTE (o `stroke_plan` recebe o objeto e encurta a linha para a ponta

@@ -315,9 +315,10 @@ fn measuring_the_art_obeys_the_same_cycle_refusal_as_the_bake() {
 /// | `4 x 12` | `2,000` |
 /// | **`8 x 24`** e acima | **`1,000` ← o quadrado do report** |
 ///
-/// ⚠️ E chega-se lá depressa: a caixa de um traço é inflada por `2 x width` por lado
-/// (`miter_limit = 4`), então uma caixa `1 x 1` com traço de largura `1` já mede **5** das 8
-/// unidades.
+/// ⚠️ E chega-se lá depressa: a caixa de um traço com junta em bico é inflada por
+/// `½ x width x miter_limit` por lado — `5 x width` desde que o limite passou a ser o
+/// [`ph2d_vec_scene::MITER_LIMIT`] (`10`, 2026-09-30; antes era o `4` por omissão da kurbo e
+/// a caixa `1 x 1` com traço de largura `1` media **5** unidades, hoje **11**).
 ///
 /// ⛔ E o doc do [`MAX_TILE_SIDE`] prometia o contrário — *"clamped to it (a coarser effective
 /// DPI)"*. **Não havia DPI nenhum mais grosso.** *Uma afirmação que descreve o que se queria, e não

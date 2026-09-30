@@ -294,7 +294,7 @@ mod stroke_style;
 pub use brush_stroke::{brush_along_path, brush_copies, brush_height, brush_spans};
 
 pub use stroke_style::{
-    BrushStroke, LineCap, LineJoin, OffsetSide, StrokeAlign, StrokePaint, StrokeSpec,
+    BrushStroke, LineCap, LineJoin, MITER_LIMIT, OffsetSide, StrokeAlign, StrokePaint, StrokeSpec,
 };
 
 /// **O perfil de largura** de um traço (Power Stroke / Width Tool) — a largura varia ao longo

@@ -518,7 +518,10 @@ pub(crate) fn kurbo_stroke(s: &StrokeSpec, dash: Option<[f64; 2]>) -> Stroke {
         LineJoin::Round => Join::Round,
         LineJoin::Bevel => Join::Bevel,
     };
-    let stroke = Stroke::new(s.width).with_caps(cap).with_join(join);
+    let stroke = Stroke::new(s.width)
+        .with_caps(cap)
+        .with_join(join)
+        .with_miter_limit(ph2d_vec_scene::MITER_LIMIT);
     // Os comprimentos vêm do `StrokeSpec` (que guarda MÚLTIPLOS da largura) — porta única,
     // porque o Outline Stroke assa o mesmo tracejado com outra versão da kurbo.
     // ⚠️ **O tracejado chega JÁ AJUSTADO ao comprimento do caminho** — quem o mede é a

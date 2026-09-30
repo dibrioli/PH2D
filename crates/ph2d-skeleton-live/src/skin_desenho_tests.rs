@@ -233,8 +233,31 @@ fn a_reparticao_das_amostras_e_a_medida() {
 
 /// Os quadros da barra da cena dobrada a `graus` — com e sem a silhueta do contacto.
 fn com_e_sem_contacto(graus: f32) -> (VecPath, VecPath) {
+    com_e_sem_contacto_em(graus, Forma::C)
+}
+
+/// A FORMA da dobra: as duas juntas para o mesmo lado (`C`, a de sempre destes gates), em Z (a da
+/// cena `=4` do par) ou só a primeira junta (a da foto do dono de 2026-09-29).
+#[derive(Clone, Copy, Debug)]
+enum Forma {
+    C,
+    Z,
+    Uma,
+}
+
+fn com_e_sem_contacto_em(graus: f32, forma: Forma) -> (VecPath, VecPath) {
     let (mut sim, mut scene, _map, id, ossos) = barra_da_cena_com(false);
-    dobra(&mut sim, &ossos, graus);
+    for (k, o) in ossos.iter().enumerate().skip(1) {
+        let g = match (forma, k) {
+            (Forma::C, _) | (Forma::Z | Forma::Uma, 1) => graus,
+            (Forma::Z, _) => -graus,
+            (Forma::Uma, _) => 0.0,
+        };
+        sim.world_mut()
+            .get_mut::<Transform>(*o)
+            .expect("Transform")
+            .rotation = g.to_radians();
+    }
     let sem = crate::skin_live::recook_leis(
         &sim,
         &mut scene,
@@ -390,4 +413,221 @@ fn diag_o_preco_da_porta_do_contacto() {
             sem.verts_all().count()
         );
     }
+}
+
+/// 📏 **SONDA — a QUINA do contacto, dobra a dobra** (report do dono de 2026-09-29: *«a depender do
+/// ângulo a quina fica inconsistente»*). Para cada vértice da silhueta onde o contorno VIRA, os dois
+/// segmentos vizinhos (corda) e as duas alças — um segmento minúsculo junto da quina é o que faz a
+/// junção do traço mudar de cara com o ângulo.
+#[test]
+#[ignore = "sonda — imprime a geometria da quina"]
+fn diag_a_quina_do_contacto() {
+    let dir = |a: [f64; 2], b: [f64; 2]| {
+        let (x, y) = (b[0] - a[0], b[1] - a[1]);
+        let l = x.hypot(y);
+        (l > 1e-12).then(|| [x / l, y / l])
+    };
+    for forma in [Forma::C, Forma::Z, Forma::Uma] {
+        let mut g = 100.0_f32;
+        while g <= 150.0 {
+            let (_, com) = com_e_sem_contacto_em(g, forma);
+            let vs = &com.verts;
+            let n = vs.len();
+            for i in 0..n {
+                let (p, c, q) = (&vs[(i + n - 1) % n], &vs[i], &vs[(i + 1) % n]);
+                let ent = dir(c.in_handle, c.anchor)
+                    .or_else(|| dir(p.out_handle, c.anchor))
+                    .or_else(|| dir(p.anchor, c.anchor));
+                let sai = dir(c.anchor, c.out_handle)
+                    .or_else(|| dir(c.anchor, q.in_handle))
+                    .or_else(|| dir(c.anchor, q.anchor));
+                let (Some(e), Some(s)) = (ent, sai) else {
+                    println!("  {g:>5.1}° v{i}: tangente DEGENERADA");
+                    continue;
+                };
+                let vira = (e[0] * s[0] + e[1] * s[1])
+                    .clamp(-1.0, 1.0)
+                    .acos()
+                    .to_degrees();
+                if vira > 15.0 {
+                    let corda = |a: [f64; 2], b: [f64; 2]| (b[0] - a[0]).hypot(b[1] - a[1]);
+                    println!(
+                        "  {forma:?} {g:>5.1}° v{i}/{n}: vira {vira:>6.1}° · corda antes {:.4} depois {:.4} · \
+                     alça in {:.4} out {:.4} · kind {:?}",
+                        corda(p.anchor, c.anchor),
+                        corda(c.anchor, q.anchor),
+                        corda(c.in_handle, c.anchor),
+                        corda(c.anchor, c.out_handle),
+                        c.kind
+                    );
+                }
+            }
+            g += 5.0;
+        }
+    }
+}
+
+/// 📏 **SONDA — o contorno DESENHADO, em SVG** (`PH2D_SONDA_DIR`), para se VER a quina: um traço
+/// de `0,06` com junta em bico e os vértices marcados.
+#[test]
+#[ignore = "sonda — escreve SVG"]
+fn diag_desenha_a_quina_do_contacto() {
+    let Ok(dir) = std::env::var("PH2D_SONDA_DIR") else {
+        return;
+    };
+    for (forma, g) in [
+        (Forma::C, 140.0_f32),
+        (Forma::Uma, 100.0),
+        (Forma::Uma, 120.0),
+        (Forma::Z, 115.0),
+        (Forma::Z, 130.0),
+    ] {
+        for (lado, p) in [("sem", 0), ("com", 1)] {
+            let par = com_e_sem_contacto_em(g, forma);
+            let path = if p == 0 { par.0 } else { par.1 };
+            let mut d = String::new();
+            let mut cont: Vec<&[ph2d_vec_scene::VecVertex]> = vec![&path.verts];
+            cont.extend(path.subpaths.iter().map(|c| c.verts.as_slice()));
+            let mut pontos = String::new();
+            for vs in cont {
+                let n = vs.len();
+                for i in 0..=n {
+                    let v = &vs[i % n];
+                    if i == 0 {
+                        d += &format!("M{} {} ", v.anchor[0], -v.anchor[1]);
+                    } else {
+                        let a = &vs[i - 1];
+                        d += &format!(
+                            "C{} {} {} {} {} {} ",
+                            a.out_handle[0],
+                            -a.out_handle[1],
+                            v.in_handle[0],
+                            -v.in_handle[1],
+                            v.anchor[0],
+                            -v.anchor[1]
+                        );
+                    }
+                    if i < n {
+                        pontos += &format!(
+                            "<circle cx='{}' cy='{}' r='0.015' fill='red'/>",
+                            v.anchor[0], -v.anchor[1]
+                        );
+                    }
+                }
+                d += "Z ";
+            }
+            let c = diagonal(&path);
+            let _ = c;
+            let svg = format!(
+                "<svg xmlns='http://www.w3.org/2000/svg' viewBox='-10 -6 10 8' width='1200' \
+                 height='960'><rect x='-10' y='-6' width='10' height='8' fill='#606060'/>\
+                 <path d='{d}' fill='#e6aa5a' stroke='#783f15' stroke-width='0.06' \
+                 stroke-linejoin='miter' fill-rule='nonzero'/>{pontos}</svg>"
+            );
+            std::fs::write(format!("{dir}/quina_{forma:?}_{g}_{lado}.svg"), svg).expect("svg");
+        }
+    }
+}
+
+/// 📏 SONDA — os vértices do desenho (com e sem contacto) numa dobra de UMA junta, com a viragem.
+#[test]
+#[ignore = "sonda — lista vértices"]
+fn diag_lista_os_vertices_da_quina() {
+    let g: f32 = std::env::var("PH2D_SONDA_G")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(100.0);
+    let forma = match std::env::var("PH2D_SONDA_FORMA").as_deref() {
+        Ok("C") => Forma::C,
+        Ok("Z") => Forma::Z,
+        _ => Forma::Uma,
+    };
+    let (sem, com) = com_e_sem_contacto_em(g, forma);
+    if std::env::var("PH2D_SONDA_EXACTO").is_ok() {
+        let directo = ph2d_vec_boolean::resolve_overlap(&sem);
+        println!(
+            "  DIRECTO: {:?} vértices, igual ao com: {}",
+            directo.as_ref().map(|d| d.verts.len()),
+            directo.as_ref() == Some(&com)
+        );
+        if let Some(d) = &directo {
+            println!("  DIRECTO último: {:?}", d.verts.last());
+        }
+    }
+    for (nome, p) in [("sem", &sem), ("com", &com)] {
+        println!(
+            "--- {nome} ({} vértices, {} sub)",
+            p.verts.len(),
+            p.subpaths.len()
+        );
+        let n = p.verts.len();
+        for i in 0..n {
+            let c = &p.verts[i];
+            let q = &p.verts[(i + 1) % n];
+            if std::env::var("PH2D_SONDA_EXACTO").is_ok() && i + 1 >= n.saturating_sub(1) {
+                println!("  EXACTO v{i}: {c:?}\n  EXACTO próximo: {q:?}");
+            }
+            let vira = ph2d_vec_boolean::overlap::viragem_do_vertice(&p.verts, i).unwrap_or(-1.0);
+            println!(
+                "  v{i:>2} vira {vira:>6.1} ({:>8.4},{:>8.4}) in ({:>8.4},{:>8.4}) out ({:>8.4},{:>8.4}) → corda {:.4}",
+                c.anchor[0],
+                c.anchor[1],
+                c.in_handle[0] - c.anchor[0],
+                c.in_handle[1] - c.anchor[1],
+                c.out_handle[0] - c.anchor[0],
+                c.out_handle[1] - c.anchor[1],
+                (q.anchor[0] - c.anchor[0]).hypot(q.anchor[1] - c.anchor[1])
+            );
+        }
+    }
+}
+
+/// ⭐⭐⭐ **GATE — TODA quina da silhueta respeita a junta do painel** (report do dono de
+/// 2026-09-29: *«a depender do ângulo a quina fica inconsistente. Faça obedecer ao que foi
+/// escolhido no painel»*).
+///
+/// Nas três formas de dobra (C · Z · uma junta), de `100°` a `150°` de `5` em `5`: nenhum vértice
+/// vira mais do que a [`ph2d_vec_boolean::overlap::viragem_maxima`] — logo nenhuma junta `Miter`
+/// passa do limite e vira chanfro sem ser pedido — e nenhum segmento cabe na solda (a junta seria
+/// calculada sobre uma tangente arbitrária). ⚠️ Com piso de população: alguma dobra da régua TEM de
+/// ter passado pela porta, senão o gate varreria desenhos sem contacto e ficaria verde a medir nada.
+#[test]
+fn toda_quina_da_silhueta_respeita_a_junta_do_painel() {
+    let maxima = ph2d_vec_boolean::overlap::viragem_maxima();
+    let mut resolvidas = 0;
+    for forma in [Forma::C, Forma::Z, Forma::Uma] {
+        let mut g = 100.0_f32;
+        while g <= 150.0 {
+            let (sem, com) = com_e_sem_contacto_em(g, forma);
+            if com != sem {
+                resolvidas += 1;
+            }
+            let tol = ph2d_vec_boolean::overlap::SOLDA_DA_QUINA * diagonal(&com);
+            let vs = &com.verts;
+            let n = vs.len();
+            for i in 0..n {
+                let (c, q) = (&vs[i], &vs[(i + 1) % n]);
+                let longe = |a: [f64; 2], b: [f64; 2]| (a[0] - b[0]).hypot(a[1] - b[1]) > tol;
+                assert!(
+                    longe(c.anchor, q.anchor)
+                        || longe(c.anchor, c.out_handle)
+                        || longe(c.anchor, q.in_handle),
+                    "{forma:?} {g}°: o segmento v{i} cabe na solda — a junta seria calculada \
+                     sobre uma tangente arbitrária"
+                );
+                if let Some(v) = ph2d_vec_boolean::overlap::viragem_do_vertice(vs, i) {
+                    assert!(
+                        v <= maxima + 1e-9,
+                        "{forma:?} {g}°: o vértice v{i} vira {v:.1}° (máx {maxima:.1}°) — uma \
+                         junta Miter passaria do limite e sairia em chanfro"
+                    );
+                }
+            }
+            g += 5.0;
+        }
+    }
+    assert!(
+        resolvidas >= 20,
+        "só {resolvidas} dobras passaram pela porta — a régua deixou de conter o contacto"
+    );
 }

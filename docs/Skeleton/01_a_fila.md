@@ -66,6 +66,49 @@ diz onde ler o mecanismo:
 
 ---
 
+### F38 — ⭐⭐⭐ **A DOBRA FORTE: o contacto sai como SILHUETA** (ordem do dono, 2026-09-29: *«a dobra forte do cotovelo: tente o estado da arte diretamente»*)
+
+⭐⭐⭐ **O defeito visível NÃO é a pele virar do avesso — é CONTACTO.** Numa dobra forte a face de
+DENTRO de dois membros rígidos que rodam em torno de uma junta passa uma por cima da outra; o
+preenchimento (não-zero) pinta a região certa e o TRAÇO desenha o contorno inteiro, **com o «olho»
+da sobreposição por dentro**. Medido na barra da cena (três ossos, `dobra` nos dois de baixo): o
+desenho fiel **não se cruza até `90°` e cruza-se de `110°` a `150°`**.
+
+⭐⭐ **A cura é a do estado da arte, na forma exacta que um caminho vectorial permite:** no contacto
+a pele fica na FRONTEIRA DA UNIÃO dos membros (*Implicit Skinning*, Vaillant et al. 2013), e para
+um caminho essa fronteira é a união do caminho com o **VAZIO** pelo motor da `ph2d-vec-boolean`
+(⚠️ `A ∪ ∅`, **nunca** `A ∪ A` — a regra de multiplicidade do `linesweeper` 0.4). Porta nova:
+[`ph2d_vec_boolean::resolve_overlap`](../../crates/ph2d-vec-boolean/src/overlap.rs), ligada no
+DESENHADO em `skin_desenho::calcula` — ⛔ **nunca no `cru`**, que são os nós que o artista edita.
+⭐ **A imagem presa já faz isto de graça** (um membro por cima do outro, canto em «V»), logo a
+porta põe o vector a **concordar com ela**; a imagem não muda.
+
+- **Só corre no contacto:** fora dele o desenho sai **AO BIT** o de antes (gate). Preço medido
+  (`--release`, a `load 30` — tecto, não chão): `16`–`26 µs` por forma por quadro recalculado para
+  a detecção, `138 µs` quando há união.
+- **Bissecção:** `PH2D_SKIN_CONTACTO=0` devolve o contorno com o «olho» (a leitura da porta é pura,
+  `contacto_de`, com gate do valor de fábrica).
+- **Gates:** `numa_dobra_forte_o_desenho_nao_se_cruza` (três metades: o CONTROLO cruza · com a lei
+  nenhuma dobra cruza · sem contacto é ao bit) · `a_silhueta_esta_sobre_o_contorno_de_antes` (pior
+  `1,8e-4` numa diagonal de `4,05` — sem ela o CASCO passaria) · `o_contacto_nasce_ligado` · e os
+  cinco da porta em `overlap_tests.rs`.
+- **Mutação `7 de 7` + controlo** ([`muta_a_silhueta_do_contacto.sh`](ferramentas/muta_a_silhueta_do_contacto.sh)).
+  ⛔ **O salto dos VIZINHOS foi APAGADO:** a mutação que o removia SOBREVIVEU — dois segmentos
+  consecutivos partilham o extremo com os mesmos bits, um teste de lado dá **zero exacto** e o teste
+  estrito já o recusa. *Uma linha que a mutação não mata não é lei.*
+
+⭐⭐ **A cena é a `PH2D_VEC_BONE_SMOKE=4` (A DOBRA FORTE)** — o par da `=3` empilhado e aberto a
+`120°` por junta, e ⚠️ **o desenho leva CONTORNO nesta cena, por FOTOGRAFIA**: sem traço as fotos com
+e sem `PH2D_SKIN_CONTACTO=0` saíam iguais ao pixel (o preenchimento não-zero já pinta a união) — *o
+que a sobreposição estraga é o TRAÇO*. Com ele, sem a lei aparecem dois laços por dentro das juntas;
+com ela, dois cantos em «V» com a forma da imagem de baixo.
+
+⛔⛔ **DUAS curas do estado da arte foram construídas na MALHA, medidas e RECUSADAS antes desta** (as
+sondas ficam, versionadas: `skinned_mesh_arap_sonda_tests.rs` e `skinned_mesh_contacto_sonda_tests.rs`,
+todas `#[ignore]`) — ver a tabela de recusas no fim. ⏳ **ABERTO e nomeado:** o **bico** a `~90°`
+(uma cúspide SEM cruzamento — a dobra do mapa da §1.3 da [pesquisa](04_pesquisa_ossos_sobre_desenho_vetorial.md))
+continua; a porta não o vê porque não há o que unir.
+
 ### F37 — ⭐⭐⭐ **O DESENHO FIEL: os nós do artista ficam, e o que se VÊ segue o padrão-ouro** (ordem do dono, 2026-09-29: *«hoje nosso problema é o uso de osso com desenho vetorial… buscando o padrão ouro»*)
 
 As rotas **A** e **B** da [pesquisa 04 §6](04_pesquisa_ossos_sobre_desenho_vetorial.md), juntas
@@ -2406,6 +2449,8 @@ refinar em *compute shader* por quadro sem primeiro medir a malha assada.
 | ⭐⭐ **O `smoothstep` no peso entre dois nós** (`lerp(ra, rb, 3t²−2t³)`, F35, 2026-09-19) | Ele torna a derivada do peso **nula nos dois nós**, o que faz a curva-ALVO deixar de quebrar ali por construção — e **não chega**: corta a quebra do alvo a meio (`p50 9,05° → 3,98°`) e deixa o **máximo** em `26,98°` contra `28,62°`, porque o resto da quebra é do AJUSTE e não do alvo. Com a conciliação das alças por cima ele não muda a quebra (já é `0,000°`) e **piora** o desvio à verdade (`0,03049 → 0,03459`). *Uma segunda lei que não move a régua da primeira não entra.* |
 | ⭐⭐ **A CASCATA da tangente** (`C''`, depois a corda) para dar eixo a uma alça degenerada (F35) | Construída e **removida**: nos nós em que ela era lida a **outra** metade do nó tinha comprimento zero e a `reconcilia` saltava-os na mesma ⇒ **nenhuma mutação a conseguia matar**. *Uma linha que a mutação não mata não é lei.* ⚠️ E a variante óbvia — tirar o eixo da cúbica **já deformada** — é pior que inerte: aquele vector mistura DOIS nós, logo as duas pontas de uma aresta recta recebiam a **mesma recta** e o segmento não conseguia arquear. |
 | ⭐⭐⭐ **A correcção das alças PRESA à direcção de cada uma** (o primeiro desenho da F35) | Ela dá quebra `0,000°` e **mata a F30**: numa aresta recta as duas pontas ficam sobre a mesma linha e o segmento **não arqueia** ⇒ pintar peso no meio de uma aresta volta a mover `0,000000`. Medido, o desvio à verdade também é pior que o da conciliação (`0,03049` contra `0,02451` a `120°`). *A tangente tem de poder RODAR — desde que os dois lados rodem juntos.* |
+| ⭐⭐⭐ **ARAP onde a lei esmaga** (*As-Rigid-As-Possible*, Sorkine–Alexa 2007 — a família do Plastic do OpenToonz; F38, 2026-09-29) | Sobre a malha do domínio, os vértices com `det J < τ` soltos e a energia ARAP a decidir: desfaz os triângulos virados e **CRIA laços a `90°`** — ela resiste à compressão, e o lado de DENTRO de um cotovelo TEM de comprimir. |
+| ⭐⭐⭐ **A menor correcção sem inversão** (barreira sobre `det J`, `χ(d,ε) = (d+√(ε²+d²))/2`, à la IPC / Garanzha 2021; F38) | **Zero** triângulos virados em toda a dobra (`10 → 0` a `S 100°`, `49 → 0` a `C 150°`, `18`–`25 ms`) **e o contorno continua a cruzar-se** (`2 → 2`) ⇒ *o defeito não é a pele virar do avesso, é o CONTACTO*. Acrescentar uma barreira sobre o ângulo da BORDA (a soma passa de `360°`) **trava o optimizador**: colapsa triângulos a área zero. |
 | **Ler os lados do modo MISTO da pose VIVA** | Estável enquanto o alvo está ao alcance (o modo é ponto fixo, e há gate) e **apagado para sempre** no primeiro arrasto que o leve para fora dele: fora do alcance a resposta certa é a RECTA, e uma recta não tem lado nenhum para ler. «Inicial» tem de ser o DOCUMENTO. |
 | ⭐⭐⭐ **A DOBRA SOB A LEI DE PESO DE HOJE, RE-MEDIDA** (2026-09-18) — *não é uma recusa, é a reconferência que o §0.0 exige* | ⛔⛔ A recusa acima diz *«zero pontos invertidos até `150°`»* e mede a lei **derivada por distância**; o bind passou ao **padrão-ouro (BBW)** em **15/09** e **ninguém reconferiu**. Re-medida pela porta do produto sobre a arte do braço da cena `=2` (sonda `sonda_da_dobra`, `ph2d-skeleton-live`): a lei **continua de pé** — `0` triângulos do avesso a `0/13/25/50/75°` por junta, e a **primeira** inversão a `90°` (`19` de `3 593`), com a corrente dobrada por completo sobre si. Pior factor de área: `1,44 · 1,22 · 0,99 · 0,49 · 0,03 · −0,18`. ⇒ **gate** `a_pele_nao_vira_um_triangulo_ate_setenta_e_cinco_graus`, com o controlo positivo a `90°` dentro dele. ⛔⛔ **E uma nota de PRODUTO caiu junto:** a cena `=2` dobrava `13°` por um doc meu que dizia que a `25°` *«a malha dobra sobre si mesma e a arte lê-se RASGADA»* — **falso**; o rasgo da foto eram os gargalos da união dos quadros e o configurar-depois-de-prender, os dois curados na mesma jornada. *Baixar o ângulo fez o sintoma encolher, e por isso pareceu uma cura.* A cena volta a `25°`. |
 | **Fazer a malha SEGUIR a silhueta** em vez de a cobrir (F6-b) | Traz de volta as células deformadas da borda, que são o defeito que a wave cura. O recorte fino é do **alfa da própria arte**, de graça e ao sub-pixel — o *Expansion* do *Puppet* do AE. |

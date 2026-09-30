@@ -175,7 +175,11 @@ auxiliar conduzido a **metade** do ângulo da junta — divide o ângulo que cad
 ## 6. As rotas, com o preço (minhas — o painel que as julgaria NÃO correu)
 
 > ✅ **A e B FEITAS em 2026-09-29** ([fila F37](01_a_fila.md)) — `108–149×` mais fiel sobre os `8`
-> nós, com o índice guardado por fonte. C, D e E continuam abertas.
+> nós, com o índice guardado por fonte.
+> ⛔ **D MEDIDA e RECUSADA no mesmo dia** ([fila F38](01_a_fila.md)): o ARAP sobre a malha do
+> domínio cria laços a `90°`, e a barreira de inversão zera os triângulos virados sem descruzar o
+> contorno — *o defeito visível da dobra forte é CONTACTO, não inversão*. ✅ A cura shipada é a
+> **SILHUETA** (a união do desenho com o vazio, só no contacto). C e E continuam abertas.
 
 | rota | o que compra | preço conhecido | o que falta medir |
 |---|---|---|---|

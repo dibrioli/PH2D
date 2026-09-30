@@ -348,6 +348,7 @@ pub fn recook_com_mistura(
             campo,
             c1: ph2d_vec_skin::curva::lei_c1_activa(),
             desenho: false,
+            contacto: false,
         },
     );
 }

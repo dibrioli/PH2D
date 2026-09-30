@@ -24,6 +24,12 @@
 //! pose de REPOUSO, e com o esqueleto já dobrado as duas peças aprenderiam o dobrado como repouso e
 //! abririam RECTAS.
 //!
+//! ⭐⭐⭐ **E a `=4` é A DOBRA FORTE** (ordem do dono, 2026-09-29: *«a dobra forte do cotovelo:
+//! tente o estado da arte diretamente»*): o MESMO par, empilhado e aberto já a [`DOBRA_FORTE`] por
+//! junta — onde a face de dentro de dois membros se SOBREPÕE. O desenho sai como a SILHUETA dos
+//! membros (canto em «V»), que é o que a imagem de baixo já mostra de graça; com
+//! `PH2D_SKIN_CONTACTO=0` volta o contorno com o «olho» por dentro, e é essa a comparação.
+//!
 //! ⚠️ **Nada mais na cena, de propósito** — o dono pediu *«apenas»*. Sem folha solta, sem
 //! bifurcação, sem barra por cima: *uma cena de comparação com uma terceira peça obriga o olho a
 //! decidir o que comparar*.
@@ -44,8 +50,31 @@ pub(crate) const OSSOS: u32 = 3;
 /// (`det J`, pesquisa 04 §1.3), e a cena passaria a mostrar esse, que é outra pergunta.
 pub(crate) const DOBRA: f32 = 40.0;
 
+/// ⭐⭐⭐ **A dobra da `=4`, em graus por junta** — a pose em que há CONTACTO.
+///
+/// ⚠️ **Medido, não escolhido:** na barra da cena (a mesma proporção `6 × 1` desta peça) o desenho
+/// fiel NÃO se cruza até `90°` e cruza-se de `110°` para cima (gate
+/// `skin_desenho::tests::numa_dobra_forte_o_desenho_nao_se_cruza`). `120°` fica dentro da faixa
+/// com folga, e em Z o 3.º osso volta a deitar por CIMA do 1.º sem lhe tocar (vão de `~0,4`
+/// espessuras) — acima de `~130°` os dois membros das pontas começam a tocar-se, que é outra
+/// pergunta.
+pub(crate) const DOBRA_FORTE: f32 = 120.0;
+
+/// A dobra por junta de cada nível desta cena.
+#[must_use]
+pub(crate) fn dobra_do_nivel(nivel: u32) -> f32 {
+    if nivel >= 4 { DOBRA_FORTE } else { DOBRA }
+}
+
 /// A cor das duas peças — a do braço da cena `=1`.
 pub(crate) const COR: [u8; 3] = [230, 170, 90];
+
+/// A cor do CONTORNO do desenho na `=4` — o mesmo laranja escurecido, para ler como borda da peça.
+pub(crate) const CONTORNO: [u8; 3] = [120, 70, 25];
+
+/// A espessura do contorno da `=4`, em fracção da espessura da peça — fina o bastante para não
+/// esconder o canto, grossa o bastante para o «olho» se ver à câmera de omissão.
+pub(crate) const ESPESSURA_DO_CONTORNO: f64 = 0.06;
 
 /// A arte da imagem, em pixels. ⚠️ O tamanho no MUNDO sai daqui pelo `ppm` do projecto ([`peca`]),
 /// e o desenho vectorial copia esse tamanho — logo os dois são iguais em qualquer `ppm`.
@@ -73,6 +102,49 @@ pub(crate) fn centros(ppm: f32) -> [f64; 2] {
     let (_, t) = peca(ppm);
     let d = AFASTAMENTO * t / 2.0;
     [d, -d]
+}
+
+/// ⭐ **A caixa do EIXO dobrado** de uma peça centrada em `centro` (antes de dobrar), alargada pela
+/// meia espessura — a pose que o [`dobra`] produz: o 2.º osso sobe `graus`, o 3.º volta a deitar.
+#[must_use]
+pub(crate) fn caixa_dobrada(ppm: f32, centro: [f64; 2], graus: f32) -> [f64; 4] {
+    let (l, t) = peca(ppm);
+    let passo = (l - t) / f64::from(OSSOS);
+    let mut p = [centro[0] - l / 2.0 + t / 2.0, centro[1]];
+    let mut ang = 0.0_f64;
+    let mut caixa = [p[0], p[1], p[0], p[1]];
+    for k in 0..OSSOS {
+        if k > 0 {
+            let sinal = if k % 2 == 1 { 1.0 } else { -1.0 };
+            ang += sinal * f64::from(graus).to_radians();
+        }
+        p = [p[0] + passo * ang.cos(), p[1] + passo * ang.sin()];
+        caixa = [
+            caixa[0].min(p[0]),
+            caixa[1].min(p[1]),
+            caixa[2].max(p[0]),
+            caixa[3].max(p[1]),
+        ];
+    }
+    let r = t / 2.0;
+    [caixa[0] - r, caixa[1] - r, caixa[2] + r, caixa[3] + r]
+}
+
+/// ⭐⭐ **Onde nasce cada peça** (`[x, y]` do centro, RECTA) — o desenho primeiro.
+///
+/// A `=3` é a disposição de sempre ([`centros`]). A `=4` empilha as duas peças DOBRADAS com um vão
+/// de uma espessura e centra a caixa de cada uma em `x`: em Z a `120°` a peça dobrada é mais alta
+/// do que larga, e a disposição da `=3` poria a imagem por cima do desenho.
+#[must_use]
+pub(crate) fn origens(ppm: f32, nivel: u32) -> [[f64; 2]; 2] {
+    if nivel < 4 {
+        let [y_vec, y_img] = centros(ppm);
+        return [[0.0, y_vec], [0.0, y_img]];
+    }
+    let (_, t) = peca(ppm);
+    let [x0, y0, x1, y1] = caixa_dobrada(ppm, [0.0, 0.0], dobra_do_nivel(nivel));
+    let cx = -(x0 + x1) / 2.0;
+    [[cx, t / 2.0 - y0], [cx, -t / 2.0 - y1]]
 }
 
 /// A arte da imagem: a cápsula deitada, cor chapada, borda suave de um pixel.
@@ -109,10 +181,11 @@ fn pixels() -> Vec<u8> {
 
 /// Um esqueleto de [`OSSOS`] ossos pelo EIXO da cápsula centrada em `y`, recto (o repouso), com os
 /// ossos nomeados `«{prefixo} bone k»` — o nome que o roteiro manda escolher na Hierarquia.
-fn esqueleto(sim: &mut SimWorld, ppm: f32, y: f64, prefixo: &str) -> Option<Entity> {
+fn esqueleto(sim: &mut SimWorld, ppm: f32, centro: [f64; 2], prefixo: &str) -> Option<Entity> {
     let (l, t) = peca(ppm);
+    let y = centro[1];
     // ⚠️ Das pontas do EIXO, e não das pontas da peça: a tampa redonda é meia espessura de cada lado.
-    let x0 = -l / 2.0 + t / 2.0;
+    let x0 = centro[0] - l / 2.0 + t / 2.0;
     let passo = (l - t) / f64::from(OSSOS);
     let mut pai = None;
     let mut raiz = None;
@@ -136,18 +209,30 @@ pub(crate) fn build(
     renderer: &mut ph2d_render::SpriteRenderer,
     assets: &mut ph2d_asset::AssetDb,
     ppm: f32,
+    nivel: u32,
     st: &mut crate::state::VecState,
 ) {
     let (l, t) = peca(ppm);
-    let [y_vec, y_img] = centros(ppm);
-    let desenho = scene.push_path(shape(
+    let [o_vec, o_img] = origens(ppm, nivel);
+    let mut peca_vec = shape(
         ShapeKind::RoundRect,
-        [-l / 2.0, y_vec - t / 2.0],
-        [l / 2.0, y_vec + t / 2.0],
+        [o_vec[0] - l / 2.0, o_vec[1] - t / 2.0],
+        [o_vec[0] + l / 2.0, o_vec[1] + t / 2.0],
         &[t / 2.0],
         COR,
-    ));
-    let osso_vec = esqueleto(sim, ppm, y_vec, "Vector");
+    );
+    // ⭐⭐⭐ **Na `=4` o desenho leva CONTORNO, e é ele que mostra o fenómeno** (FOTOGRAFADO,
+    // 2026-09-29): o preenchimento (não-zero) de um contorno sobreposto JÁ pinta a união dos
+    // membros — sem traço, as fotos com e sem `PH2D_SKIN_CONTACTO` saíam iguais ao pixel. O que a
+    // sobreposição estraga é o TRAÇO, que desenha o «olho» por dentro da junta.
+    if nivel >= 4 {
+        peca_vec.stroke = Some(ph2d_vec_scene::StrokeSpec::new(
+            ph2d_vec_scene::Rgba8::new(CONTORNO[0], CONTORNO[1], CONTORNO[2], 255),
+            t * ESPESSURA_DO_CONTORNO,
+        ));
+    }
+    let desenho = scene.push_path(peca_vec);
+    let osso_vec = esqueleto(sim, ppm, o_vec, "Vector");
     let px = pixels();
     st.bone_smoke_img = match renderer.acquire_individual(IMG_W, IMG_H, &px) {
         Ok(texture_id) => {
@@ -159,11 +244,11 @@ pub(crate) fn build(
                     texture_id,
                     pixels_id,
                 },
-                ph2d_core::Vec2::new(0.0, y_img as f32),
+                ph2d_core::Vec2::new(o_img[0] as f32, o_img[1] as f32),
                 [l as f32, t as f32],
                 "Image",
             );
-            Some((bits, esqueleto(sim, ppm, y_img, "Image")))
+            Some((bits, esqueleto(sim, ppm, o_img, "Image")))
         }
         Err(e) => {
             eprintln!("[vec-bone-smoke] PARE: a imagem nao subiu para a GPU: {e}");
@@ -180,6 +265,7 @@ pub(crate) fn bind(
     sim: &mut SimWorld,
     assets: &ph2d_asset::AssetDb,
     ppm: f32,
+    nivel: u32,
     st: &mut crate::state::VecState,
 ) {
     st.bone_smoke_step = 2;
@@ -224,13 +310,13 @@ pub(crate) fn bind(
         raizes.extend(raiz);
     }
     for raiz in &raizes {
-        dobra(sim, *raiz);
+        dobra(sim, *raiz, dobra_do_nivel(nivel));
     }
-    anuncia(vector_preso, imagem_presa);
+    anuncia(vector_preso, imagem_presa, nivel);
 }
 
-/// ⭐ **A MESMA pose nos dois**: o 2.º osso sobe [`DOBRA`], o 3.º volta a deitar — em Z.
-pub(crate) fn dobra(sim: &mut SimWorld, raiz: Entity) {
+/// ⭐ **A MESMA pose nos dois**: o 2.º osso sobe `graus`, o 3.º volta a deitar — em Z.
+pub(crate) fn dobra(sim: &mut SimWorld, raiz: Entity, graus: f32) {
     let mut e = raiz;
     let mut k = 0;
     while let Some(f) = sim.world().get::<ph2d_ecs::Children>(e).and_then(|c| {
@@ -242,12 +328,12 @@ pub(crate) fn dobra(sim: &mut SimWorld, raiz: Entity) {
         k += 1;
         let sinal = if k % 2 == 1 { 1.0 } else { -1.0 };
         if let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(e) {
-            t.rotation += sinal * DOBRA.to_radians();
+            t.rotation += sinal * graus.to_radians();
         }
     }
 }
 
-fn anuncia(vector_preso: bool, imagem_presa: bool) {
+fn anuncia(vector_preso: bool, imagem_presa: bool, nivel: u32) {
     if !vector_preso || !imagem_presa {
         eprintln!(
             "[vec-bone-smoke] PARE: o desenho {} e a imagem {} -- a cena nao montou",
@@ -262,6 +348,22 @@ fn anuncia(vector_preso: bool, imagem_presa: bool) {
                 "NAO prendeu"
             },
         );
+    }
+    if nivel >= 4 {
+        println!(
+            "[vec-bone-smoke] A DOBRA FORTE: o MESMO par, com as duas juntas dobradas a \
+             {DOBRA_FORTE}° (em cima o DESENHO VECTORIAL «Vector», em baixo a IMAGEM «Image»).\n\
+             [vec-bone-smoke] 1) Olhe o lado de DENTRO de cada junta do desenho de cima: o \
+             CONTORNO escuro faz um canto em «V», com a mesma forma da imagem de baixo -- sem um \
+             laco nem um «olho» desenhado por dentro da curva.\n\
+             [vec-bone-smoke] 2) Para ver o que era antes: feche o app e volte a abri-lo com \
+             PH2D_SKIN_CONTACTO=0 no comando -- o contorno do desenho passa a cruzar-se por \
+             dentro das duas juntas.\n\
+             [vec-bone-smoke] 3) Para outras dobras: na Hierarquia clique em «Vector bone 2» e \
+             escreva outro numero no campo de rotacao do Inspector. Abaixo de ~100 nao ha' \
+             contacto e o desenho fica como sempre."
+        );
+        return;
     }
     println!(
         "[vec-bone-smoke] O PAR: a MESMA barra duas vezes, com o MESMO tamanho, a MESMA cor e um \
@@ -283,67 +385,69 @@ fn anuncia(vector_preso: bool, imagem_presa: bool) {
 mod tests {
     use super::*;
 
-    /// A caixa de uma peça DOBRADA, em mundo — os pontos da cadeia com a pose da cena, alargados
-    /// pela meia espessura (a cápsula à volta do eixo).
-    fn caixa_dobrada(ppm: f32, y: f64) -> [f64; 4] {
-        let (l, t) = peca(ppm);
-        let passo = (l - t) / f64::from(OSSOS);
-        let mut p = [-l / 2.0 + t / 2.0, y];
-        let mut ang = 0.0_f64;
-        let mut caixa = [p[0], p[1], p[0], p[1]];
-        for k in 0..OSSOS {
-            if k > 0 {
-                let sinal = if k % 2 == 1 { 1.0 } else { -1.0 };
-                ang += sinal * f64::from(DOBRA).to_radians();
-            }
-            p = [p[0] + passo * ang.cos(), p[1] + passo * ang.sin()];
-            caixa = [
-                caixa[0].min(p[0]),
-                caixa[1].min(p[1]),
-                caixa[2].max(p[0]),
-                caixa[3].max(p[1]),
-            ];
-        }
-        let r = t / 2.0;
-        [caixa[0] - r, caixa[1] - r, caixa[2] + r, caixa[3] + r]
-    }
-
     /// ⭐⭐⭐ **O PAR CABE NA CÂMERA DE OMISSÃO e as duas peças não se tocam.**
     ///
     /// A câmera de omissão mostra `height_world` de alto, e a largura VISÍVEL é a do canvas entre
     /// as duas colunas laterais, que tapam `~37 %` da janela (medido pela família das mídias) — com
     /// uma janela `16:9` isso são `height × 16/9 × 0,63`. A barra exige `90 %` de cada um, para a
     /// peça não encostar à borda. ⚠️ No `ppm` de omissão do projecto, que é o da cena do dono.
+    ///
+    /// ⚠️ **Nos DOIS níveis desta cena** — a `=4` empilha peças dobradas a [`DOBRA_FORTE`], e a
+    /// disposição da `=3` pô-las-ia uma por cima da outra.
     #[test]
     fn o_par_cabe_na_camera_de_omissao_e_nao_se_toca() {
         let ppm = ph2d_editor_core::DEFAULT_PIXELS_PER_METER;
         let cam = ph2d_render::Camera2d::default();
-        let [y_vec, y_img] = centros(ppm);
-        let (a, b) = (caixa_dobrada(ppm, y_vec), caixa_dobrada(ppm, y_img));
-        let (x0, x1) = (a[0].min(b[0]), a[2].max(b[2]));
-        let (y0, y1) = (a[1].min(b[1]), a[3].max(b[3]));
-        let h = f64::from(cam.height_world);
-        let meia_largura = h * 16.0 / 9.0 * 0.63 * 0.9 / 2.0;
-        let meia_altura = h * 0.9 / 2.0;
-        for (v, lim, eixo) in [
-            (x0.abs().max(x1.abs()), meia_largura, "x"),
-            (y0.abs().max(y1.abs()), meia_altura, "y"),
-        ] {
-            assert!(
-                v <= lim,
-                "o par vai a {v:.3} m do centro em {eixo}, e a camera de omissao mostra {lim:.3} — \
-                 uma das pecas sai do ecra'"
-            );
-        }
-        {
+        for nivel in [3, 4] {
+            let g = dobra_do_nivel(nivel);
+            let [o_vec, o_img] = origens(ppm, nivel);
+            let (a, b) = (caixa_dobrada(ppm, o_vec, g), caixa_dobrada(ppm, o_img, g));
+            let (x0, x1) = (a[0].min(b[0]), a[2].max(b[2]));
+            let (y0, y1) = (a[1].min(b[1]), a[3].max(b[3]));
+            let h = f64::from(cam.height_world);
+            let meia_largura = h * 16.0 / 9.0 * 0.63 * 0.9 / 2.0;
+            let meia_altura = h * 0.9 / 2.0;
+            for (v, lim, eixo) in [
+                (x0.abs().max(x1.abs()), meia_largura, "x"),
+                (y0.abs().max(y1.abs()), meia_altura, "y"),
+            ] {
+                assert!(
+                    v <= lim,
+                    "=`{nivel}`: o par vai a {v:.3} m do centro em {eixo}, e a camera de omissao \
+                     mostra {lim:.3} — uma das pecas sai do ecra'"
+                );
+            }
             assert!(
                 b[3] < a[1],
-                "a imagem (topo {:.3}) toca o desenho (base {:.3}) — a comparacao exige as duas \
-                 SEPARADAS",
+                "=`{nivel}`: a imagem (topo {:.3}) toca o desenho (base {:.3}) — a comparacao exige \
+                 as duas SEPARADAS",
                 b[3],
                 a[1]
             );
         }
+    }
+
+    /// ⭐⭐ **A `=4` TEM contacto nas juntas e NÃO tem entre as pontas.** A dobra fica na faixa em que
+    /// o desenho fiel se cruza (medida na barra da cena: de `110°` para cima), e o 3.º osso volta a
+    /// deitar ACIMA do 1.º com mais de uma espessura entre os eixos — senão a cena mostraria dois
+    /// membros das pontas a tocar-se, que é outra pergunta.
+    #[test]
+    fn a_dobra_forte_tem_contacto_nas_juntas_e_nao_nas_pontas() {
+        let (l, t) = peca(ph2d_editor_core::DEFAULT_PIXELS_PER_METER);
+        let passo = (l - t) / f64::from(OSSOS);
+        assert!(
+            (110.0..=130.0).contains(&DOBRA_FORTE),
+            "a dobra forte saiu da faixa medida de contacto: {DOBRA_FORTE}"
+        );
+        let entre_eixos = passo * f64::from(DOBRA_FORTE).to_radians().sin();
+        assert!(
+            entre_eixos > t,
+            "o 3.º osso deita a {entre_eixos:.3} do 1.º, com espessura {t:.3} — as pontas tocam-se"
+        );
+        assert!(
+            (dobra_do_nivel(3) - DOBRA).abs() < f32::EPSILON,
+            "a `=3` (a cena aprovada) mudou de pose"
+        );
     }
 
     /// ⭐⭐ **As duas peças TÊM O MESMO TAMANHO** — o desenho copia o da imagem pela mesma porta, e
@@ -366,14 +470,17 @@ mod tests {
     /// enquadrou a peça de baixo sozinha, com o desenho de cima fora do ecrã.
     #[test]
     fn o_prologo_do_par_fecha_a_timeline_e_nao_enquadra() {
-        let p = crate::smoke_bone_envelope::prologo_do_nivel(3);
-        assert!(
-            p.timeline_fechada && p.painel_do_osso,
-            "a cena do PAR abre sem o prologo de que precisa: {p:?}"
-        );
-        assert!(
-            !p.enquadrar,
-            "a cena do PAR voltou a pedir o Frame All, que enquadra so' a IMAGEM: {p:?}"
-        );
+        for nivel in [3, 4] {
+            let p = crate::smoke_bone_envelope::prologo_do_nivel(nivel);
+            assert!(
+                p.timeline_fechada && p.painel_do_osso,
+                "a cena do PAR (=`{nivel}`) abre sem o prologo de que precisa: {p:?}"
+            );
+            assert!(
+                !p.enquadrar,
+                "a cena do PAR (=`{nivel}`) voltou a pedir o Frame All, que enquadra so' a \
+                 IMAGEM: {p:?}"
+            );
+        }
     }
 }

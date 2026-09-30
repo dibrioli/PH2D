@@ -33,6 +33,7 @@ const PRODUTO: Leis = Leis {
     campo: true,
     c1: false,
     desenho: true,
+    contacto: true,
 };
 
 /// ⭐⭐⭐ **GATE — A GAVETA NÃO MUDA A RESPOSTA: o caminho da cena é a lei de sempre, AO BIT.**
@@ -228,4 +229,165 @@ fn a_reparticao_das_amostras_e_a_medida() {
     );
     assert_eq!(amostras_por_segmento(0), 64);
     assert_eq!(amostras_por_segmento(1), 64);
+}
+
+/// Os quadros da barra da cena dobrada a `graus` — com e sem a silhueta do contacto.
+fn com_e_sem_contacto(graus: f32) -> (VecPath, VecPath) {
+    let (mut sim, mut scene, _map, id, ossos) = barra_da_cena_com(false);
+    dobra(&mut sim, &ossos, graus);
+    let sem = crate::skin_live::recook_leis(
+        &sim,
+        &mut scene,
+        Leis {
+            contacto: false,
+            ..PRODUTO
+        },
+    );
+    let com = crate::skin_live::recook_leis(&sim, &mut scene, PRODUTO);
+    (
+        sem.get(&id).expect("desenho sem contacto").clone(),
+        com.get(&id).expect("desenho com contacto").clone(),
+    )
+}
+
+/// As dobras da régua — de uma pose calma até ao contacto franco.
+const DOBRAS: [f32; 8] = [30.0, 45.0, 60.0, 75.0, 90.0, 110.0, 130.0, 150.0];
+
+/// ⭐⭐⭐ **GATE — NUMA DOBRA FORTE O DESENHO NÃO SE CRUZA: sai a SILHUETA dos membros.**
+///
+/// ⚠️ **As três metades são obrigatórias:**
+/// - o **CONTROLO** (`contacto: false`): alguma dobra da régua CRUZA o contorno — sem isto a
+///   barra deixou de conter o fenómeno e o gate passaria sobre uma cena sem contacto;
+/// - com a lei, **nenhuma** dobra cruza;
+/// - e onde o controlo NÃO cruza, o desenho sai **ao bit** o de antes — é o que prova que a porta
+///   só corre no contacto e deixa toda pose calma intacta.
+#[test]
+fn numa_dobra_forte_o_desenho_nao_se_cruza() {
+    let mut cruzou = Vec::new();
+    for &g in &DOBRAS {
+        let (sem, com) = com_e_sem_contacto(g);
+        let sem_cruza = ph2d_vec_boolean::resolve_overlap(&sem).is_some();
+        let com_cruza = ph2d_vec_boolean::resolve_overlap(&com).is_some();
+        println!("  dobra {g:>5.1}° · sem contacto cruza: {sem_cruza} · com: {com_cruza}");
+        assert!(
+            !com_cruza,
+            "a {g}° o desenho COM a lei do contacto ainda se cruza"
+        );
+        if sem_cruza {
+            cruzou.push(g);
+        } else {
+            assert_eq!(
+                com, sem,
+                "a {g}° não há contacto e o desenho mudou — a porta correu fora do contacto"
+            );
+        }
+    }
+    assert!(
+        !cruzou.is_empty(),
+        "o CONTROLO: nenhuma dobra da régua cruza o contorno — a barra deixou de conter o contacto"
+    );
+}
+
+/// ⭐⭐ **GATE — a silhueta está SOBRE o contorno de antes: ela corta o «olho», não inventa forma.**
+///
+/// Cada ponto da silhueta tem de estar sobre o desenho sem contacto (à tolerância do achatamento):
+/// a fronteira da união de uma região é feita de pedaços da fronteira dela. ⚠️ Sem esta metade, uma
+/// porta que devolvesse o CASCO convexo também passaria no gate irmão — ela não se cruza.
+#[test]
+fn a_silhueta_esta_sobre_o_contorno_de_antes() {
+    let (sem, com) = com_e_sem_contacto(*DOBRAS.last().expect("régua"));
+    assert!(
+        ph2d_vec_boolean::resolve_overlap(&sem).is_some(),
+        "o CONTROLO: a dobra mais forte da régua não cruza"
+    );
+    let amostra = |p: &VecPath| -> Vec<[f64; 2]> {
+        let mut out = Vec::new();
+        let mut contornos: Vec<Vec<ph2d_vec_scene::VecVertex>> = vec![p.verts.clone()];
+        contornos.extend(p.subpaths.iter().map(|c| c.verts.clone()));
+        for vs in &contornos {
+            let n = vs.len();
+            for i in 0..n {
+                let (a, b) = (&vs[i], &vs[(i + 1) % n]);
+                let (p0, p1, p2, p3) = (a.anchor, a.out_handle, b.in_handle, b.anchor);
+                for k in 0..32 {
+                    let t = f64::from(k) / 32.0;
+                    let u = 1.0 - t;
+                    let c = |i: usize| {
+                        u * u * u * p0[i]
+                            + 3.0 * u * u * t * p1[i]
+                            + 3.0 * u * t * t * p2[i]
+                            + t * t * t * p3[i]
+                    };
+                    out.push([c(0), c(1)]);
+                }
+            }
+        }
+        out
+    };
+    let antes = amostra(&sem);
+    let depois = amostra(&com);
+    let diag = diagonal(&sem);
+    let pior = depois
+        .iter()
+        .map(|q| {
+            antes
+                .windows(2)
+                .map(|w| dist_ao_segmento(*q, w[0], w[1]))
+                .fold(f64::INFINITY, f64::min)
+        })
+        .fold(0.0_f64, f64::max);
+    println!("  pior distância da silhueta ao contorno de antes: {pior:.3e} (diagonal {diag:.3})");
+    assert!(
+        pior < 2e-3 * diag,
+        "a silhueta afasta-se {pior:.3e} do contorno de antes — ela inventou forma"
+    );
+}
+
+fn dist_ao_segmento(q: [f64; 2], a: [f64; 2], b: [f64; 2]) -> f64 {
+    let (dx, dy) = (b[0] - a[0], b[1] - a[1]);
+    let l2 = dx * dx + dy * dy;
+    let t = if l2 > 0.0 {
+        (((q[0] - a[0]) * dx + (q[1] - a[1]) * dy) / l2).clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    ((q[0] - a[0] - t * dx).powi(2) + (q[1] - a[1] - t * dy).powi(2)).sqrt()
+}
+
+/// ⭐ **GATE — o contacto nasce LIGADO**: sem a variável (e com qualquer valor que não `"0"`) a
+/// porta está aberta; `"0"` fecha-a. Sem esta régua, trocar o valor de fábrica passaria calado —
+/// todo gate acima corre com o `PRODUTO` escrito à mão, nunca com o ambiente.
+#[test]
+fn o_contacto_nasce_ligado() {
+    assert!(
+        contacto_de(None),
+        "sem a variável o contacto está desligado"
+    );
+    assert!(contacto_de(Some("1")));
+    assert!(
+        !contacto_de(Some("0")),
+        "`PH2D_SKIN_CONTACTO=0` não o desliga"
+    );
+}
+
+/// 📏 **SONDA — o preço da porta por quadro** (`--release`): a detecção corre em TODO quadro
+/// recalculado, com ou sem contacto; a união só no contacto.
+#[test]
+#[ignore = "sonda de relógio — corre em --release e com a máquina calma"]
+fn diag_o_preco_da_porta_do_contacto() {
+    for &g in &[45.0_f32, 90.0, 130.0] {
+        let (sem, _) = com_e_sem_contacto(g);
+        let n = 200;
+        let t = std::time::Instant::now();
+        for _ in 0..n {
+            std::hint::black_box(ph2d_vec_boolean::resolve_overlap(std::hint::black_box(
+                &sem,
+            )));
+        }
+        let us = t.elapsed().as_secs_f64() * 1e6 / f64::from(n);
+        println!(
+            "  dobra {g:>5.1}° · {} nós · porta {us:>8.1} µs",
+            sem.verts_all().count()
+        );
+    }
 }

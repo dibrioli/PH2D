@@ -119,6 +119,10 @@ pub struct Leis {
     /// ⭐ O desenho fiel — `PH2D_SKIN_DESENHO=0` volta ao desenho nos nós do artista, e é por onde
     /// se bissecta um report.
     pub desenho: bool,
+    /// ⭐⭐⭐ **O CONTACTO de uma dobra forte** — o desenho fiel que se sobrepõe a si mesmo sai como a
+    /// SILHUETA dos membros ([`ph2d_vec_boolean::resolve_overlap`]). `PH2D_SKIN_CONTACTO=0` volta ao
+    /// contorno com o «olho» por dentro, e é por onde se bissecta um report.
+    pub contacto: bool,
 }
 
 impl Leis {
@@ -131,6 +135,7 @@ impl Leis {
             campo: ph2d_vec_skin::curva::lei_do_campo_activa(),
             c1: ph2d_vec_skin::curva::lei_c1_activa(),
             desenho: lei_do_desenho_activa(),
+            contacto: lei_do_contacto_activa(),
         }
     }
 }
@@ -139,6 +144,19 @@ impl Leis {
 #[must_use]
 pub fn lei_do_desenho_activa() -> bool {
     std::env::var("PH2D_SKIN_DESENHO").as_deref() != Ok("0")
+}
+
+/// `PH2D_SKIN_CONTACTO=0` desliga a silhueta do contacto — ver [`Leis::contacto`].
+#[must_use]
+pub fn lei_do_contacto_activa() -> bool {
+    contacto_de(std::env::var("PH2D_SKIN_CONTACTO").ok().as_deref())
+}
+
+/// A leitura da porta, PURA — ligada salvo `"0"`. ⚠️ É ela que o gate mede: um gate que lesse o
+/// ambiente mediria a máquina onde corre.
+#[must_use]
+pub fn contacto_de(valor: Option<&str>) -> bool {
+    valor != Some("0")
 }
 
 /// O que se deriva do BIND e não do quadro: a fonte lida e o índice da malha do campo dela.
@@ -414,6 +432,21 @@ fn calcula(
                     tolerancia: TOLERANCIA_DA_DIAGONAL * diagonal(fonte),
                 },
             )
+        })
+        // ⭐⭐⭐ **O CONTACTO.** Numa dobra forte a face de DENTRO de dois membros passa uma por cima
+        // da outra — é geometria de dois pedaços rígidos que rodam em torno de uma junta, não erro
+        // da lei — e o TRAÇO desenharia o «olho» da sobreposição por dentro. A silhueta é a
+        // fronteira da UNIÃO dos membros, que é o que o estado da arte põe no contacto (Implicit
+        // Skinning, Vaillant 2013) e o que a IMAGEM presa já mostra de graça (um membro por cima
+        // do outro, canto em «V»). ⚠️ **Só corre quando o contorno se CRUZA**: fora do contacto a
+        // forma sai byte-idêntica, e o custo é uma varredura de segmentos. ⛔ Só no DESENHADO — o
+        // `cru` são os nós que o artista edita, e trocá-los pela silhueta mudar-lhe-ia a malha.
+        .map(|d| {
+            if leis.contacto {
+                ph2d_vec_boolean::resolve_overlap(&d).unwrap_or(d)
+            } else {
+                d
+            }
         });
     Quadro { cru, desenhado }
 }

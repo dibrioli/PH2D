@@ -46,10 +46,13 @@ use ph2d_skeleton_demo::{
 ///   onde o alcance não manda. Ver [`crate::smoke_bone_envelope`].
 /// - **`=3`** — O PAR: a MESMA barra como desenho e como imagem, com esqueletos iguais (ordem do
 ///   dono, 2026-09-29). Ver [`crate::smoke_bone_par`].
+/// - **`=4`** — A DOBRA FORTE: o mesmo par, empilhado e aberto já em contacto nas juntas (ordem do
+///   dono, 2026-09-29). A dobra é a `DOBRA_FORTE` do par — ⚠️ nomeada sem o caminho
+///   `crate::…` de propósito: o gate do despacho CONTA essa agulha.
 ///
 /// ⚠️ **A env ERA de presença** (`is_some`) e passou a ter níveis: um valor ilegível cai em `1`, o
 /// caminho de omissão — *a cena que o dono já aprovou, nunca uma que ele não pediu*.
-pub const NIVEIS: u32 = 3;
+pub const NIVEIS: u32 = 4;
 
 /// ⭐ **A BARRA LARANJA da cena, num sítio só** — canto mínimo, canto máximo e o raio da quina.
 ///
@@ -125,8 +128,8 @@ pub fn build(
         crate::smoke_bone_envelope::build(scene, sim, st);
         return;
     }
-    if nivel() == 3 {
-        crate::smoke_bone_par::build(scene, sim, renderer, assets, ppm, st);
+    if nivel() >= 3 {
+        crate::smoke_bone_par::build(scene, sim, renderer, assets, ppm, nivel(), st);
         return;
     }
     // ⭐ O BRAÇO e o TENTÁCULO: barras deitadas, com a cadeia pelo MEIO delas.
@@ -237,8 +240,8 @@ pub fn bind(
         crate::smoke_bone_envelope::bind(scene, sim, st);
         return;
     }
-    if nivel() == 3 {
-        crate::smoke_bone_par::bind(scene, sim, assets, ppm, st);
+    if nivel() >= 3 {
+        crate::smoke_bone_par::bind(scene, sim, assets, ppm, nivel(), st);
         return;
     }
     st.bone_smoke_step = 2;

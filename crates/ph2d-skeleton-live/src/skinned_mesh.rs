@@ -226,6 +226,15 @@ pub(crate) mod ouro_reguas_tests;
 #[path = "skinned_mesh_ouro_tests.rs"]
 mod ouro_tests;
 
+/// ⭐⭐⭐ **A correcção ARAP onde a lei dobra** — a sonda do estado da arte para o cotovelo.
+#[cfg(test)]
+#[path = "skinned_mesh_arap_sonda_tests.rs"]
+mod arap_sonda_tests;
+/// ⭐⭐⭐ **O contacto no cotovelo** — a sonda da silhueta, irmã da de cima.
+#[cfg(test)]
+#[path = "skinned_mesh_contacto_sonda_tests.rs"]
+mod contacto_sonda_tests;
+
 /// ⭐⭐ **ONDE O ERRO NASCE** — a atribuição ao substrato, e o que cada wave comprou.
 #[cfg(test)]
 #[path = "skinned_mesh_ouro_nos_tests.rs"]

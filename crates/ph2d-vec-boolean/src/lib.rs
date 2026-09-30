@@ -53,6 +53,11 @@ pub use expand::{
 pub mod align;
 pub use align::aligned_stroke;
 
+/// ⭐⭐⭐ **A SILHUETA de uma forma que se sobrepõe a si mesma** — o contacto de um cotovelo forte
+/// resolvido pela regra do preenchimento. Módulo irmão: é COMPOSIÇÃO do motor daqui (`A ∪ ∅`).
+pub mod overlap;
+pub use overlap::{crosses_itself, resolve_overlap};
+
 use linesweeper::{BinaryOp, FillRule as LsFillRule};
 
 /// **A fronteira com o motor** — conversão, guarda de entrada e o motivo da recusa. Irmão pelo

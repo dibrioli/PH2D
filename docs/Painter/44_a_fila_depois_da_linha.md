@@ -17,7 +17,7 @@
 | 5 | Composite Brush: a pilha cheia numa tela grande (a alavanca é o RAIO) | dono | **fechado (30/09): premissa morta, medido** — §4.3 |
 | 6 | Wet Paint: o *fork* do canvas no 1.º toque depois de soltar (`~9 ms`) — pede canvas em ladrilhos | linha | **fechado (30/09): medido, `~3 ms` de `~9–10`** — §5.1 |
 | 7 | Wet Paint: o tile do papel do motor (`~12 ms`, em série por impressão digital) | linha | **feito (30/09): `7,41 → 0,013 ms`** — §5.2 |
-| 8 | Composite Brush: o relevo fora da recomposição da pilha | linha | a conferir |
+| 8 | Composite Brush: o relevo fora da recomposição da pilha | linha | **8a feita (30/09): relevo, filme e Tiling iguais ao avulso ao bit · 8b aberta** — §6 |
 | 9 | Composite Brush: o resíduo Blur+Smear (`12/255`) | linha | a conferir |
 | 10 | Composite Brush: metade dos bytes dos intermédios da pilha | linha | a conferir |
 | 11 | Aquarela: o **Smudge** não mexe na tinta MOLHADA da sessão (report do dono, 29/09) | linha | **feito, smoke do dono OK (29/09)** — §3.1 |
@@ -356,3 +356,51 @@ Mutação **4 de 4**, com controlo (6 testes no filtro limpo):
 
 ⚠️ O contador de gerações vive no **gerador**. Com ele na memória, o gate da fiação era vácuo:
 contava os pedidos à memória, e não se o gerador corria.
+
+## §6 — Item 8: o relevo sob o pincel composto (2026-09-30)
+
+### §6.1 — A conferência achou mais do que a nota dizia
+
+A nota falava de *«relevo fora da recomposição»*. A sonda
+[`diag_o_relevo_da_pilha`](../../crates/ph2d-tool-painter/src/tool/paint/diag_o_relevo_da_pilha.rs)
+mediu o mesmo traço no Impasto, com e sem pilha. Com **duas camadas ou mais**:
+
+| o que se mede | pincel avulso | pilha, antes |
+|---|---|---|
+| corpo depositado | `974,24` | **`0,00`** — o Impasto pintava chapado |
+| tinta com `Draw To = Depth` | `0` | **`393 834`** — punha cor onde não devia |
+| a camada Erase no relevo | morde (`0,84 → 0,63`) | **não morde** |
+| a cor, no Impasto | o FILME | **a tinta cheia do Digital** (pior `178`) |
+| Tiling: cor do outro lado da costura | `738` px | **`0`** px (também no Digital) |
+
+As quatro primeiras têm a mesma causa: os planos da pilha forçavam `Draw To = Color`. A quinta é
+outra: a região da pilha era medida com os dabs **sem** o Tiling.
+
+### §6.2 — 8a: feita
+
+A lei: **o relevo é da tela e a cor é do plano, uma porta cada.**
+- Os planos ficam com o `Draw To` do artista (o filme volta).
+- O depósito de altura não corre dentro de um plano (`acumulando_no_plano`).
+- Cada camada deposita o relevo à parte
+  ([`composite_relevo`](../../crates/ph2d-tool-painter/src/tool/paint/composite_relevo.rs)): Brush
+  põe corpo; Erase de escopo `Tudo` morde como a borracha avulsa; `Traco`, Blur e Smear não lhe
+  tocam, como os avulsos.
+- A região da pilha conta as cópias do Tiling, e o depósito da pilha publica os grupos.
+
+**Resultado:** cor e relevo da pilha **idênticos ao bit** aos do pincel avulso, no Digital e no
+Impasto, para o Brush e para a borracha; e o Tiling atravessa a costura ao byte. `8` gates, mutação
+**10 de 10** com controlo.
+
+⚠️ Com grão ALEATÓRIO a pilha não é igual ao avulso, **mesmo longe da costura**: cada camada tem o
+seu próprio fluxo aleatório (`rng_camada`), e isso é desenho da pilha. A régua dos grupos do Tiling é
+outra: numa tela em Tiling, o mesmo traço deslocado de uma largura inteira pinta a mesma imagem.
+
+### §6.3 — 8b: aberta, nomeada
+
+Uma camada Erase **acima** de um Brush, no mesmo traço, apaga a **cor** que o Brush pôs e **não o
+corpo**. O corpo do traço vive num envelope que só assenta ao soltar, e a borracha da pilha só morde o
+relevo já assente.
+
+A cura é compor o envelope pela lei dos planos de cor: a cobertura acumulada de cada borracha acima
+multiplica a tinta do envelope, com a tinta crua guardada à parte. Isto toca o envelope do Impasto
+(o commit e a luz leem-no), por isso é trabalho próprio.

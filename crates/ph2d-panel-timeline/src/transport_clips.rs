@@ -19,22 +19,26 @@ use ph2d_timeline::TimelineIntent;
 use crate::ids;
 use crate::state::{self, TimelinePanelState};
 use crate::tab::Tab;
-use crate::transport::{BTN_W, ClipChip, icon_button};
+use crate::transport::{BTN_W, ClipChip, icon_button_in};
 
 const CLIP_DD_W: f32 = 108.0; // LITERAL-PX-OK: clip dropdown chip width
 
 /// How wide the cluster paints — the single source `transport`'s flow measures against.
+/// Quantos botões tem o corpo `+ ⧉ T 🗑` — o lixo só existe acima de UM clip. Uma porta, dois
+/// leitores (a medida e o pintor), para a fileira nunca medir um corpo e pintar outro.
+fn botoes_do_grupo(snap: &TimelineViewSnapshot) -> u8 {
+    if snap.clips.len() > 1 { 4 } else { 3 }
+}
+
 pub(crate) fn width(snap: &TimelineViewSnapshot, _tab: Tab) -> f32 {
     let half = Spacing::Sm.px() * 0.5;
     // [ Main v ] [+] [copy] [pencil] [trash] — the trash only exists above one clip.
     // Duplicate sits beside the `+` that made the clip (Enio, 2026-07-16): they are the
     // two ways to get a clip, and the difference is only whether it starts empty.
-    let trash = if snap.clips.len() > 1 {
-        BTN_W + half
-    } else {
-        0.0
-    };
-    CLIP_DD_W + half + BTN_W + half + BTN_W + half + BTN_W + half + trash
+    // ⭐ Os botões são UM corpo com um fio entre peças (2026-09-30) — o mesmo `fio` do pintor.
+    let n = f32::from(botoes_do_grupo(snap));
+    let fio = ph2d_editor_core::widget::SEGMENT_HAIRLINE;
+    CLIP_DD_W + half + BTN_W * n + fio * (n - 1.0) + half
 }
 
 /// The clip cluster: `[ Main ▾ ] [+] [✎] [🗑]`.
@@ -73,11 +77,22 @@ pub(crate) fn cluster(
     paint_dropdown_chip(&dd, chip, ctx.scene, ctx.text_system, theme);
     x += CLIP_DD_W + gap * 0.5;
 
-    x = icon_button(ctx, theme, x, y, ids::TIMELINE_ADD_CLIP, IconId::Plus) + gap * 0.5;
-    x = icon_button(ctx, theme, x, y, ids::TIMELINE_DUP_CLIP, IconId::Duplicate) + gap * 0.5;
-    x = icon_button(ctx, theme, x, y, ids::TIMELINE_RENAME_CLIP, IconId::Text) + gap * 0.5;
-    if snap.clips.len() > 1 {
-        icon_button(ctx, theme, x, y, ids::TIMELINE_DELETE_CLIP, IconId::Trash);
+    // ⭐ `+ ⧉ T 🗑` são UM corpo (report do dono de 2026-09-30): encostam a um fio e só as pontas
+    //    de fora arredondam. O lixo só existe acima de um clip, e a fileira conta-o.
+    let fio = ph2d_editor_core::widget::SEGMENT_HAIRLINE;
+    let botoes: &[(ph2d_a11y::NodeId, IconId)] = &[
+        (ids::TIMELINE_ADD_CLIP, IconId::Plus),
+        (ids::TIMELINE_DUP_CLIP, IconId::Duplicate),
+        (ids::TIMELINE_RENAME_CLIP, IconId::Text),
+        (ids::TIMELINE_DELETE_CLIP, IconId::Trash),
+    ];
+    let n = usize::from(botoes_do_grupo(snap));
+    for (i, &(id, glyph)) in botoes[..n].iter().enumerate() {
+        let cell = ph2d_editor_core::widget::GroupCell {
+            col: ph2d_editor_core::widget::GroupPos::of(i, n),
+            row: ph2d_editor_core::widget::GroupPos::Only,
+        };
+        x = icon_button_in(ctx, theme, x, y, id, glyph, cell) + fio;
     }
 
     Some(ClipChip { rect: chip, open })

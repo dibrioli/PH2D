@@ -183,6 +183,37 @@ pub fn paint_icon_button(
     scene: &mut VectorScene,
     theme: Theme,
 ) {
+    paint_icon_button_in_group(
+        rect,
+        glyph,
+        style,
+        visual,
+        super::GroupCell::ONLY,
+        scene,
+        theme,
+    );
+}
+
+/// ⭐⭐ **O mesmo botão de ícone, sabendo ONDE está numa fileira** — a lei do grupo do Blender
+/// (só as bordas de FORA arredondam) chega aos botões de ícone.
+///
+/// Report do dono, 2026-09-30: *«botões que em alguns casos ficaram com quinas redondas mesmo se
+/// ao lado de outros»* — o transporte da Timeline (`⏮ ◀ ⏯ ▶ ⏭`) eram cinco peças encostadas com
+/// vinte quinas. O `Button` e o segmento conheciam a lei desde a wave 20; o botão de ÍCONE não, e
+/// é por isso que o mesmo par de vizinhos falava dois idiomas conforme o widget.
+///
+/// ⚠️ `GroupCell::ONLY` é o neutro e pinta **byte a byte** o que sempre pintou (as portas de
+/// quatro quinas iguais delegam nas de um raio só).
+#[allow(clippy::too_many_arguments)]
+pub fn paint_icon_button_in_group(
+    rect: Rect,
+    glyph: IconGlyph,
+    style: IconButtonStyle,
+    visual: (ButtonState, f32),
+    cell: super::GroupCell,
+    scene: &mut VectorScene,
+    theme: Theme,
+) {
     let (state, hover_t) = visual;
     let (icon_rect, icon_color) = match style {
         IconButtonStyle::Chip | IconButtonStyle::Compact => {
@@ -196,11 +227,21 @@ pub fn paint_icon_button(
                     Radius::Xl.px()
                 },
             );
-            fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
-            crate::paint::stroke_frame(
+            let radii = cell.radii(radius);
+            if cell == super::GroupCell::ONLY {
+                fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
+            } else {
+                crate::paint::fill_rounded_rect_radii(
+                    scene,
+                    rect,
+                    radii,
+                    resolve(ColorToken::BgElev, theme),
+                );
+            }
+            crate::paint::stroke_frame_radii(
                 scene,
                 rect,
-                radius,
+                radii,
                 theme,
                 ph2d_tokens::visuals::Feel::Rest,
                 StrokeToken::Default.px(),

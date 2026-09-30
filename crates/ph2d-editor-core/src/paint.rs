@@ -59,7 +59,10 @@ pub use label_box::{
 
 #[path = "paint_rounded.rs"]
 mod rounded;
-pub use rounded::{fill_rounded_rect, fill_rounded_rect_radii, stroke_rect, stroke_rounded_rect};
+pub use rounded::{
+    fill_rounded_rect, fill_rounded_rect_radii, stroke_rect, stroke_rounded_rect,
+    stroke_rounded_rect_radii,
+};
 
 /// Apply the snap strategy to a glyph X. `None` returns `x` unchanged
 /// (preserves subpixel kerning); `Half` snaps to 0.5 px (preserves ~50 %
@@ -130,12 +133,35 @@ pub fn stroke_frame(
     classic_w: f32,
     classic_colour: Color,
 ) {
+    stroke_frame_radii(
+        scene,
+        rect,
+        (radius, radius, radius, radius),
+        theme,
+        feel,
+        classic_w,
+        classic_colour,
+    );
+}
+
+/// ⭐⭐ **A mesma moldura, com as QUATRO quinas** — a de uma peça de GRUPO, que só arredonda as
+/// bordas de fora (ver [`stroke_rounded_rect_radii`], e o report de 2026-09-30 que a fez nascer).
+#[allow(clippy::too_many_arguments)]
+pub fn stroke_frame_radii(
+    scene: &mut VectorScene,
+    rect: Rect,
+    radii: (f32, f32, f32, f32),
+    theme: Theme,
+    feel: ph2d_tokens::visuals::Feel,
+    classic_w: f32,
+    classic_colour: Color,
+) {
     match ph2d_tokens::visuals::frame(theme, feel) {
         ph2d_tokens::visuals::Frame::Classic => {
-            stroke_rounded_rect(scene, rect, radius, classic_w, classic_colour);
+            stroke_rounded_rect_radii(scene, rect, radii, classic_w, classic_colour);
         }
         ph2d_tokens::visuals::Frame::Modern(s) if s.is_visible() => {
-            stroke_rounded_rect(scene, rect, radius, s.width, token_to_vello(s.color));
+            stroke_rounded_rect_radii(scene, rect, radii, s.width, token_to_vello(s.color));
         }
         ph2d_tokens::visuals::Frame::Modern(_) => {}
     }

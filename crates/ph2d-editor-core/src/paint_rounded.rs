@@ -118,6 +118,48 @@ pub fn stroke_rounded_rect(
         .stroke(&stroke, Affine::IDENTITY, color, None, &rr);
 }
 
+/// ⭐⭐ **O CONTORNO de uma peça de GRUPO** — a irmã traçada do [`fill_rounded_rect_radii`].
+///
+/// ⛔ Report do dono (2026-09-30): *«botões que em alguns casos ficaram com quinas redondas mesmo
+/// se ao lado de outros»*. O FUNDO de uma peça de grupo já arredondava só as bordas de FORA (a lei
+/// do Blender, wave 10/20), e o CONTORNO continuava a sair do [`stroke_rounded_rect`] com as
+/// quatro quinas iguais ⇒ em todo tema que TRAÇA bordas (os quatro clássicos, o OLED com *Draw
+/// Extra Borders*, e o anel de FOCO em qualquer tema) a quina redonda voltava entre vizinhos.
+/// *Duas metades da mesma forma escritas por duas portas divergem na metade que não foi olhada.*
+///
+/// Quatro raios iguais delegam no [`stroke_rounded_rect`] — o botão sozinho fica byte-idêntico.
+// FRAME-RAW-OK: e' a CASA do primitivo — `stroke_rounded_rect_radii` e' definido aqui
+pub fn stroke_rounded_rect_radii(
+    scene: &mut VectorScene,
+    rect: Rect,
+    radii: (f32, f32, f32, f32),
+    width: f32,
+    color: Color,
+) {
+    let (tl, tr, br, bl) = radii;
+    if tl == tr && tr == br && br == bl {
+        // FRAME-RAW-OK: a casa do primitivo delega na irma de um raio so'
+        stroke_rounded_rect(scene, rect, tl, width, color);
+        return;
+    }
+    let rr = RoundedRect::new(
+        rect.x as f64,
+        rect.y as f64,
+        (rect.x + rect.w) as f64,
+        (rect.y + rect.h) as f64,
+        (
+            scale_radius(tl) as f64,
+            scale_radius(tr) as f64,
+            scale_radius(br) as f64,
+            scale_radius(bl) as f64,
+        ),
+    );
+    let stroke = Stroke::new(width as f64);
+    scene
+        .inner_mut()
+        .stroke(&stroke, Affine::IDENTITY, color, None, &rr);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

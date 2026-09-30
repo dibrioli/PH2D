@@ -85,6 +85,12 @@ pub struct GroupCell {
 }
 
 impl GroupCell {
+    /// Sozinho nas duas dimensões — o neutro, que pinta as quatro quinas como sempre.
+    pub const ONLY: Self = Self {
+        col: GroupPos::Only,
+        row: GroupPos::Only,
+    };
+
     /// Os quatro raios, na ordem do kurbo: `(cima-esq, cima-dir, baixo-dir, baixo-esq)`.
     #[must_use]
     pub fn radii(self, radius: f32) -> (f32, f32, f32, f32) {

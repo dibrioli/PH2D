@@ -91,6 +91,14 @@ fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
 /// no código em três sítios (`value_slider`, `probe`, `paint_rows`) sem o gate saber ler.
 /// *A decisão vivia ao lado da linha e o portão consultava outra folha.* Com o marcador não há
 /// duas cópias do motivo, logo não há a metade de obsolescência a manter.
+/// ⭐ **A régua conhece o traço cru nas DUAS formas** — o de um raio e o de quatro
+/// (`stroke_rounded_rect_radii`, 2026-09-30, a moldura de uma peça de GRUPO). ⛔ Sem a segunda, a
+/// irmã nova seria uma porta de fuga ao censo: um pintor que a chamasse cru compilava, passava, e
+/// traçava um contorno num tema que prometeu não ter nenhum.
+fn traca_cru(l: &str) -> bool {
+    l.contains("stroke_rounded_rect(") || l.contains("stroke_rounded_rect_radii(")
+}
+
 fn raw_calls(p: &Path) -> Vec<String> {
     let src = fs::read_to_string(p).expect("ficheiro legivel");
     let body = match src.find("#[cfg(test)]") {
@@ -108,7 +116,7 @@ fn raw_calls(p: &Path) -> Vec<String> {
     let mut out = Vec::new();
     for (i, l) in lines.iter().enumerate() {
         let t = l.trim_start();
-        if !l.contains("stroke_rounded_rect(") || t.starts_with("//") || t.starts_with("use ") {
+        if !traca_cru(l) || t.starts_with("//") || t.starts_with("use ") {
             continue;
         }
         if doors.iter().any(|(a, b)| offs[i] >= *a && offs[i] < *b) {
@@ -152,8 +160,12 @@ fn raw_calls(p: &Path) -> Vec<String> {
 fn door_bodies(src: &str) -> Vec<(usize, usize)> {
     let mut out = Vec::new();
     let mut from = 0usize;
-    while let Some(rel) = src[from..].find("pub fn stroke_frame(") {
-        let at = from + rel;
+    // ⭐ As DUAS portas (2026-09-30): a de um raio delega na de quatro, e as duas são a porta.
+    while let Some(at) = ["pub fn stroke_frame(", "pub fn stroke_frame_radii("]
+        .iter()
+        .filter_map(|k| src[from..].find(k).map(|r| from + r))
+        .min()
+    {
         let Some(open) = src[at..].find('{').map(|o| at + o) else {
             break;
         };
@@ -188,10 +200,7 @@ fn stale_markers(p: &Path) -> Vec<String> {
             continue;
         }
         let to = (i + 6).min(lines.len());
-        if !lines[i..to]
-            .iter()
-            .any(|w| w.contains("stroke_rounded_rect("))
-        {
+        if !lines[i..to].iter().any(|w| traca_cru(w)) {
             out.push(format!("{}:{}", p.display(), i + 1));
         }
     }

@@ -362,3 +362,128 @@ fn nenhum_painel_reparte_uma_fileira_de_rotulos_em_partes_iguais() {
         found.join("\n  ")
     );
 }
+
+/// ⭐⭐⭐ **O CONTORNO de uma peça de grupo segue as MESMAS quinas do fundo** — report do dono de
+/// 2026-09-30: *«botões que em alguns casos ficaram com quinas redondas mesmo se ao lado de
+/// outros»*.
+///
+/// ⛔ O gate de cima mede **só o `Dark`**, onde um botão não tem moldura em repouso — e por isso
+/// era cego à metade que partia: o fundo já endireitava as quinas de dentro e o CONTORNO saía do
+/// `stroke_rounded_rect` com as quatro iguais. Em todo tema que traça bordas (os clássicos, o OLED)
+/// a quina redonda voltava entre vizinhos.
+///
+/// ⭐ **A régua é o PONTO da quina:** uma peça do MEIO tem as quatro quinas rectas, logo o traço
+/// passa EXACTAMENTE por `(x, y)`; uma quina arredondada nunca lá toca. O fundo sozinho já pousa
+/// esse ponto `k` vezes (medido na mesma corrida, pela mesma porta) ⇒ com o contorno certo a
+/// contagem tem de SUBIR acima de `k`. O texto não conta (o Vello encaminha glifos por
+/// `draw_glyphs`, fora dos caminhos). A fixtura é um `Default` — o botão que TRAÇA moldura. ⚠️ O
+/// CONTROLO é a peça SOZINHA: ela não pode pousar o ponto
+/// da quina no traço (senão a régua mediria outra coisa).
+#[test]
+fn o_contorno_de_uma_peca_de_grupo_segue_as_quinas_do_fundo() {
+    use ph2d_editor_core::widget::{Button, ButtonKind, GroupCell, GroupPos, paint_button};
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_text::TextSystem;
+    use ph2d_tokens::Theme;
+    use ph2d_vector::VectorScene;
+
+    let rect = Rect::new(10.0, 20.0, 80.0, 22.0);
+    let quina = [10.0_f32.to_bits(), 20.0_f32.to_bits()];
+    let conta = |scene: &VectorScene| {
+        scene
+            .inner()
+            .encoding()
+            .path_data
+            .windows(2)
+            .filter(|w| *w == quina)
+            .count()
+    };
+    let mut ts = TextSystem::without_system_fonts();
+    for theme in [Theme::Forge, Theme::Sunstone, Theme::Oled] {
+        assert!(
+            ph2d_tokens::visuals::Widgets::of(theme)
+                .inactive
+                .bg_stroke
+                .is_visible(),
+            "fixtura: {theme:?} tem de TRAÇAR bordas, senão esta régua mede o nada"
+        );
+        let peca = |cell: GroupCell, ts: &mut TextSystem| {
+            let mut scene = VectorScene::new();
+            let b = Button::new(ph2d_a11y::NodeId(1), "Apply")
+                .kind(ButtonKind::Default)
+                .in_group(cell);
+            paint_button(&b, rect, &mut scene, ts, theme);
+            scene
+        };
+        let meio = peca(
+            GroupCell {
+                col: GroupPos::Middle,
+                row: GroupPos::Only,
+            },
+            &mut ts,
+        );
+        let so = peca(
+            GroupCell {
+                col: GroupPos::Only,
+                row: GroupPos::Only,
+            },
+            &mut ts,
+        );
+        // O fundo SOZINHO de uma peça do meio, pela mesma porta que o pintor usa.
+        let mut fundo = VectorScene::new();
+        ph2d_editor_core::paint::fill_rounded_rect_radii(
+            &mut fundo,
+            rect,
+            (0.0, 0.0, 0.0, 0.0),
+            ph2d_vector::Color::from_rgba8(0, 0, 0, 255), // LITERAL-COLOR-OK: fixtura de geometria
+        );
+        // ⚠️ Só conta se o botão PINTA fundo neste tema (um `Default` pode ser fantasma).
+        let tem_fundo = Button::new(ph2d_a11y::NodeId(1), "Apply")
+            .kind(ButtonKind::Default)
+            .bg_color(theme)
+            .is_some();
+        let k = if tem_fundo { conta(&fundo) } else { 0 };
+        assert_eq!(
+            conta(&so),
+            0,
+            "{theme:?}: a peca SOZINHA pousou o ponto da quina — a regua deixou de separar"
+        );
+        assert!(
+            conta(&meio) > k,
+            "{theme:?}: o CONTORNO da peca do meio nao passa pela quina ({} contra {k} do fundo \
+             sozinho) — ele continua arredondado entre vizinhos",
+            conta(&meio)
+        );
+        // ⭐ E a OUTRA porta de peça de grupo — o segmento (Keys | Containers | Arrange). O fundo
+        //    dele é sempre pintado, logo `k` conta sempre.
+        let seg = |pos: GroupCell, ts: &mut TextSystem| {
+            let mut scene = VectorScene::new();
+            ph2d_editor_core::widget::panel_chrome::paint_segmented_button_in_group(
+                rect,
+                "Keys",
+                false,
+                (
+                    ph2d_editor_core::widget::ButtonState::Normal,
+                    ph2d_editor_core::motion::SETTLED,
+                ),
+                &mut scene,
+                ts,
+                theme,
+                pos,
+            );
+            scene
+        };
+        let seg_meio = seg(
+            GroupCell {
+                col: GroupPos::Middle,
+                row: GroupPos::Only,
+            },
+            &mut ts,
+        );
+        assert!(
+            conta(&seg_meio) > conta(&fundo),
+            "{theme:?}: o CONTORNO do segmento do meio nao passa pela quina — arredondado entre \
+             vizinhos"
+        );
+    }
+}

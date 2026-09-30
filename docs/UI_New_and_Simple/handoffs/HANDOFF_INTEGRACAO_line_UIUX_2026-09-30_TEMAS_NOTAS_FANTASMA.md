@@ -153,3 +153,35 @@ sem graça. Tente melhorar um pouco os originais de modo que sejam interessantes
   o acento.
 - Prova: `nextest-impacted` **19 084/19 084** · censos **127/127** · clippy e fmt limpos · as oito
   cenas FOTOGRAFADAS com `PH2D_THEME=<id>` (`fotografa_cena.sh`, a cena do script).
+
+## §5 — Adenda (mesmo dia): quinas redondas entre botões vizinhos
+
+Report do dono: *«houve uma regressão na forma de alguns widgets como os botões que em alguns
+casos ficaram com quinas redondas mesmo se ao lado de outros. corrija»*. Eram DUAS coisas:
+
+1. ⛔⛔ **O CONTORNO de uma peça de grupo ignorava a posição.** O `paint_button` e o
+   `paint_segmented_button_in_group` já enchiam o FUNDO com `cell.radii(r)` (só as bordas de fora
+   arredondam — wave 10/20), e traçavam a MOLDURA e o anel de FOCO com o `radius` uniforme. Num tema
+   moderno sem moldura em repouso isso não se via; **em todo tema que traça bordas (os quatro
+   clássicos, o OLED) e no foco de qualquer tema, a quina redonda voltava entre vizinhos** — e
+   passou a ver-se quando o dono foi experimentar os temas. Portas novas
+   `paint::stroke_rounded_rect_radii` e `paint::stroke_frame_radii` (quatro raios iguais delegam
+   nas de um raio ⇒ um botão sozinho é **byte-idêntico**). Gate
+   `o_contorno_de_uma_peca_de_grupo_segue_as_quinas_do_fundo` (Forge · Sunstone · OLED, botão E
+   segmento): a régua é o PONTO da quina no `path_data` — o traço de uma peça do meio passa por
+   `(x, y)`, uma quina redonda nunca; o controlo é a peça sozinha (zero pousos). ⚠️ O gate irmão
+   de sempre media só o `Dark`, que é exactamente o tema sem moldura. **Mutação 2 de 2** (o traço
+   do botão e o do segmento de volta ao raio uniforme ⇒ vermelho).
+2. **O transporte da Timeline e o `+ ⧉ T 🗑` dos clipes eram botões de ÍCONE soltos** — cinco (e
+   três ou quatro) peças encostadas com quatro quinas cada, em TODOS os temas. O `Button` e o
+   segmento conheciam a lei do grupo; o botão de ícone não. ⇒ `paint_icon_button_in_group` (o
+   `paint_icon_button` delega com o neutro `GroupCell::ONLY`, byte-idêntico), `icon_button_in` na
+   timeline, as peças a um `SEGMENT_HAIRLINE` e a MEDIDA de cada fileira com o mesmo fio (a
+   contagem do corpo dos clipes numa porta só, `botoes_do_grupo`, lida pela medida e pelo pintor).
+   Fotografado em Dark, OLED e Forge.
+
+⚠️ **A régua da porta das molduras ganhou a irmã:** `every_frame_goes_through_the_theme_door`
+passa a contar `stroke_rounded_rect_radii(` como traço cru e o `stroke_frame_radii` como porta —
+sem isso a função nova seria uma fuga ao censo. ⚠️ `transport::paint_item` passou do tecto de
+200 LOC ⇒ a fileira de transporte virou `transport_row` (corte por assunto).
+Prova: `nextest-impacted` **19 085/19 085** · censos **127/127** · clippy e fmt limpos.

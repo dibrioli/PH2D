@@ -14,7 +14,7 @@
 //! responsabilidade: aqui mora *o que um botão É e como se pinta*; ali, *que cor ele tem*.
 
 use crate::icons::IconId;
-use crate::paint::{paint_icon, paint_text_centered, stroke_rounded_rect};
+use crate::paint::{paint_icon, paint_text_centered};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
@@ -232,10 +232,13 @@ pub fn paint_button(
         .bg_stroke
         .is_visible();
     if let Some(b) = button.border_color(theme).filter(|_| outlines) {
-        stroke_rounded_rect(
+        // ⚠️ O contorno segue as MESMAS quatro quinas do fundo (report de 2026-09-30: *«quinas
+        //    redondas mesmo se ao lado de outros»*) — com o `radius` uniforme, toda peça de grupo
+        //    traçava a quina redonda que o fundo tinha acabado de endireitar.
+        crate::paint::stroke_rounded_rect_radii(
             scene,
             rect,
-            radius,
+            radii,
             StrokeToken::Default.px(),
             ph2d_vector::Color::from_rgba8(b.r, b.g, b.b, b.a), // LITERAL-COLOR-OK: token-bridge — `b` is ColorToken::Border
         );
@@ -246,10 +249,10 @@ pub fn paint_button(
         // `Widgets::of(theme).inactive.bg_stroke.is_visible()` no `if`) e por isso nao leva
         // marcador — este nao pergunta de proposito: onde esta' o foco tem de ver-se em qualquer
         // pele, senao o teclado deixa de ter onde pousar.
-        stroke_rounded_rect(
+        crate::paint::stroke_rounded_rect_radii(
             scene,
             rect,
-            radius,
+            radii,
             2.0,
             ph2d_vector::Color::from_rgba8(ring.r, ring.g, ring.b, ring.a), // LITERAL-COLOR-OK: token-bridge — `ring` is ColorToken::BorderEmph
         );

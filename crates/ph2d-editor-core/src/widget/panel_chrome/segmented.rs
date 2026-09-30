@@ -116,10 +116,11 @@ pub fn paint_segmented_button_in_group(
     // ⭐⭐ **Só as bordas de FORA do grupo arredondam** — a lei do Blender (report do dono,
     //    2026-09-06). Um segmento sozinho continua a arredondar os quatro cantos.
     crate::paint::fill_rounded_rect_radii(scene, rect, pos.radii(radius), fill);
-    crate::paint::stroke_frame(
+    // ⚠️ A MOLDURA segue as MESMAS quatro quinas do fundo (report de 2026-09-30).
+    crate::paint::stroke_frame_radii(
         scene,
         rect,
-        radius,
+        pos.radii(radius),
         theme,
         feel,
         StrokeToken::Default.px(),

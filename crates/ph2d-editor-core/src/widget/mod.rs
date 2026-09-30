@@ -116,7 +116,9 @@ pub use segmented_layout::{segment_rects_for, wrapped_cells_for};
 pub(crate) use segmented_layout::{segmented_natural_widths, segmented_row_counts};
 // ⚠️ A lei da borda de um campo, já com o eixo do hover — `pub(crate)` porque os seus
 // consumidores são os três pintores da família e os gates, nunca um painel.
-pub use icon_button::{IconButtonStyle, IconGlyph, icon_glyph, paint_icon_button};
+pub use icon_button::{
+    IconButtonStyle, IconGlyph, icon_glyph, paint_icon_button, paint_icon_button_in_group,
+};
 pub use key_value_list::{KeyValueEntry, KeyValueList, paint_key_value_list};
 pub use level_meter::{LevelMeter, paint_level_meter};
 pub use list_item::{ListItem, ListItemState, paint_list_item};

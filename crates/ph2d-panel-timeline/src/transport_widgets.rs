@@ -18,13 +18,37 @@ pub(crate) fn icon_button(
     id: ph2d_a11y::NodeId,
     glyph: IconId,
 ) -> f32 {
+    icon_button_in(
+        ctx,
+        theme,
+        x,
+        y,
+        id,
+        glyph,
+        ph2d_editor_core::widget::GroupCell::ONLY,
+    )
+}
+
+/// ⭐ O mesmo botão, sabendo **onde está numa fileira** — as peças de um grupo encostam e só as
+/// pontas de FORA arredondam (report do dono de 2026-09-30, ver
+/// [`ph2d_editor_core::widget::paint_icon_button_in_group`]).
+pub(crate) fn icon_button_in(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    x: f32,
+    y: f32,
+    id: ph2d_a11y::NodeId,
+    glyph: IconId,
+    cell: ph2d_editor_core::widget::GroupCell,
+) -> f32 {
     let rect = Rect::new(x, y, BTN_W, ROW_H_PX);
     let state = ctx.host.store().button_visual(id);
-    paint_icon_button(
+    ph2d_editor_core::widget::paint_icon_button_in_group(
         rect,
         IconGlyph::Builtin(glyph),
         IconButtonStyle::Compact,
         state,
+        cell,
         ctx.scene,
         theme,
     );
@@ -43,15 +67,17 @@ pub(crate) fn dead_icon_button(
     x: f32,
     y: f32,
     glyph: IconId,
+    cell: ph2d_editor_core::widget::GroupCell,
 ) -> f32 {
     let rect = Rect::new(x, y, BTN_W, ROW_H_PX);
-    paint_icon_button(
+    ph2d_editor_core::widget::paint_icon_button_in_group(
         rect,
         IconGlyph::Builtin(glyph),
         IconButtonStyle::Compact,
         // ⚠️ Estado DURO e declarado: um botão morto não tem hover a apresentar, e o neutro é o
         //    que diz isso em vez de o deixar acontecer por omissão.
         (ButtonState::Disabled, ph2d_editor_core::motion::SETTLED),
+        cell,
         ctx.scene,
         theme,
     );

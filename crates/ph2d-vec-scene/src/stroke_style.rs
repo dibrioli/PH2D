@@ -283,21 +283,23 @@ pub struct StrokeSpec {
     pub align: StrokeAlign,
 }
 
-/// ⭐⭐⭐ **O LIMITE DO BICO de uma junta `Miter`** — `10`, o do Illustrator: o bico só é cortado
-/// (vira chanfro) quando o comprimento dele passaria de `10×` a largura do traço, ou seja numa
-/// quina com menos de `~11,5°` por dentro.
+/// ⭐⭐⭐ **O LIMITE DO BICO de uma junta `Miter`** — `4`, o do SVG, da `kurbo`, do Vello e do Skia:
+/// o bico só é cortado (vira chanfro) quando o comprimento dele passaria de `4×` a largura do traço,
+/// ou seja numa quina com menos de `~29°` por dentro.
 ///
-/// ⛔ **Até 2026-09-29 este número NÃO existia no documento**, e quem decidia era o default da
-/// `kurbo` (`4`, o do SVG — corta abaixo de `~29°`). O painel oferece `Miter`/`Round`/`Bevel` e não
-/// oferece limite, logo o artista escolhia `Miter` e via um CHANFRO nas quinas agudas — report do
-/// dono (*«a depender do ângulo a quina fica inconsistente. Faça obedecer ao que foi escolhido no
-/// painel»*), achado na quina que o contacto de uma dobra forte cria: ali a quina vira `120°`–`155°`
-/// conforme a dobra, e o `4` caía dentro dessa faixa.
+/// ⛔⛔ **Ele esteve em `10` (o do Illustrator) um dia, e VOLTOU, com a medição ao lado** (F39 do
+/// esqueleto, 2026-09-29/30). Subiu para a quina do CONTACTO de uma dobra não virar chanfro — ela
+/// vira `120°`–`161°`, e o `4` corta a partir de `~151°`. Com `10` o bico chegava a CINCO larguras
+/// de traço logo depois do encosto e ATRAVESSAVA a peça (report do dono com cinco fotos: *«fica tão
+/// pontudo que perfura o outro lado da forma»*). ⇒ nenhum limite servia as duas queixas, e a cura
+/// foi o vinco deixar de ser quina (`ph2d_vec_boolean::overlap::RAIO_DO_VINCO`, decisão do dono:
+/// arredondado). Sem vinco a proteger, o `10` só comprava bicos `2,5×` mais longos em toda quina
+/// aguda que o artista desenha, e caixas de traço `2,5×` maiores ⇒ o número do ecossistema.
 ///
 /// ⚠️ **Uma porta, três leitores** — o traço desenhado (`ph2d-vec-render`), o traço ASSADO
 /// (*Outline Stroke*, `ph2d-vec-boolean`) e o SVG exportado (`stroke-miterlimit`). Com duas cópias
 /// o ficheiro exportado cortaria o bico que o ecrã mostra.
-pub const MITER_LIMIT: f64 = 10.0;
+pub const MITER_LIMIT: f64 = 4.0;
 
 /// O default do [`StrokeSpec::marker_scale`]. Precisa ser uma função porque o default de
 /// `serde` para um `f64` é **zero** — e uma ponta de tamanho zero é uma ponta invisível.

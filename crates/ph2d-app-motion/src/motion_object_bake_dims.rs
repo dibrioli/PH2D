@@ -45,9 +45,9 @@ fn union_box(
 /// ⭐⭐ **E o recorte trazia o report de volta.** Medido na auditoria desta wave, num grupo de razão
 /// geométrica `3,000`: a `4 x 12` unidades de mundo a razão medida cai para `2,000`, e a `8 x 24`
 /// para **`1,000` — o quadrado do report original**, porque os dois eixos saturam no mesmo número.
-/// ⚠️ E chega-se lá depressa: uma caixa `1 x 1` com traço de largura `1` já mede **11 unidades**
+/// ⚠️ E chega-se lá depressa: uma caixa `1 x 1` com traço de largura `1` já mede **5 unidades**
 /// (uma junta em bico infla a caixa em `½ x width x` [`ph2d_vec_scene::MITER_LIMIT`] por lado —
-/// `5 x width` com o limite `10`; eram `5` unidades enquanto o limite era o `4` da kurbo).
+/// `2 x width` com o limite `4`).
 ///
 /// ⇒ a escala é **uniforme**, calculada do lado MAIOR: o aspecto sobrevive por construção, e o que
 /// se perde é resolução — que é exactamente o que a nota do tecto sempre prometeu.

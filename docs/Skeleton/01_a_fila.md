@@ -66,7 +66,64 @@ diz onde ler o mecanismo:
 
 ---
 
+### F40 — ⭐⭐⭐ **O VINCO DO CONTACTO É UM ARCO** (report do dono, 2026-09-30, com cinco fotos: *«além de inconsistente, fica tão pontudo que perfura o outro lado da forma»*; decisão dele entre três saídas: **arredondado**)
+
+⛔⛔ **A F39 tinha duas metades e a segunda estava ERRADA.** Subir o limite do bico para `10` fazia
+o `Miter` obedecer ao painel — e o bico de um vinco CÔNCAVO aponta para DENTRO do preenchimento,
+com comprimento `(w/2)/sin((180 − viragem)/2)`. Medido na pose das fotos (junta de baixo a `125°`,
+a de cima a `95°`–`115°`): o vinco vira `124°`–`161°`, e perto do início do contacto a viragem
+tende a `180°` ⇒ o bico ia até `5×` a largura e **atravessava a peça**. Com o limite `4` ele vira
+chanfro a partir de `~151°` e a quina muda de forma com o ângulo, que era a queixa de antes.
+⇒ **nenhum limite serve as duas queixas**; a cura é o vinco deixar de ser quina.
+
+⭐⭐⭐ **A lei: todo vinco que a UNIÃO cria é trocado por um arco tangente** —
+[`arredonda_os_vincos`](../../crates/ph2d-vec-boolean/src/overlap.rs), de raio
+[`RAIO_DO_VINCO`] = `1e-2` da diagonal. O traço desenha-se por cima dele como um arco de raio
+`r + ½·largura` ⇒ **arredondado com qualquer junta** e em todo ângulo; as quinas que o ARTISTA
+desenhou continuam com a junta do painel. O `MITER_LIMIT` **volta a `4`** (o de omissão de SVG,
+kurbo, vello e Skia) e continua UMA porta com os três leitores da F39.
+
+Quatro leis, todas MEDIDAS na barra dobrada, e três delas por gates vermelhos:
+1. **Um vinco é um vértice que VIRA MAIS do que virava no desenho** — ⛔ não «um vértice que não é
+   nó do desenho». O motor da união **ENCAIXA** o cruzamento num nó liso vizinho quando ele cai
+   dentro da precisão dele: na pose das fotos o vinco de `161°` sai **exactamente** sobre um nó do
+   assado que no desenho virava `0°`. Por isso os nós do desenho viajam com a viragem que tinham
+   (`nos_do_desenho`).
+2. **Só o CÔNCAVO** (o vinco de uma dobra são dois membros que se unem); a régua da ÁREA o prova —
+   arredondar um côncavo só ACRESCENTA área.
+3. **O corte mede-se ao longo do CONTORNO, engole os nós lisos, e NÃO pára numa micro-quina:** o
+   assado deixa micro-quinas de `1,4°`–`1,7°` nas costuras; tratadas como parede prendiam o arco a
+   `45 %` de um segmento de `0,0017`. Parede é outro vinco ou uma quina do desenho acima de
+   [`PAREDE_MINIMA`] = `15°`.
+4. **O corte nunca cai na solda:** a distância é `r·tan(α/2)` **com piso `r`** (um vinco raso da
+   dobra em C a `95°` dava um arco de `0,0013`), e um nó liso logo além do corte é **engolido** até
+   ficar a [`FOLGA_DO_CORTE`] = `0,2` raio dele (na pose das fotos a `150°` o 1.º nó ficava a
+   `0,0008` do corte).
+
+- **Gates:** `o_vinco_vira_arco_e_a_quina_do_artista_fica` (o arco começa a `r·tan(α/2)` · o meio da
+  cúbica cai a `r` do centro, que é o que a alça `(4/3)·tan(θ/4)` garante · a área só cresce · o
+  CONTROLO do nó que já virava · o ENCAIXE num nó liso · o CONTROLO convexo) ·
+  `nenhum_vinco_da_silhueta_fica_em_quina` (C · Z · uma junta · a pose das fotos, `95°`–`150°`:
+  todo vértice que vira é um nó do desenho e nenhum segmento cabe na solda; piso de `25`
+  silhuetas resolvidas). ⛔ O `a_viragem_maxima_e_a_do_limite_do_bico` e a própria
+  `viragem_maxima` **SAÍRAM** — a lei deles não tem mais onde morar.
+- **Recusas medidas:** limite `10` (fura a peça) · limite `4` sem arco (inconsistente com o ângulo) ·
+  «nó do desenho» por igualdade ao bit (o encaixe) ou por proximidade (o assado tem nós a `~0,01`
+  junto da junta, e um caía dentro da solda).
+- **Gate novo por mutação SOBREVIVENTE:** `os_nos_lisos_dentro_do_arco_saem` — deixar os nós lisos
+  dentro do arco (a `V7`) passava a suíte inteira, porque o nó é do desenho (o gate da silhueta
+  perdoa-o) e as alças dele apontam para a frente (nenhuma viragem o acusa): o contorno ia ao corte,
+  voltava ao nó e seguia. A fixtura é o entalhe com um nó a meio de cada lado, e a saída tem de ser
+  a mesma do entalhe sem eles.
+- **Mutação `23 de 23` + controlo** ([arnês](ferramentas/muta_a_silhueta_do_contacto.sh)): as oito
+  `V*` do vinco e as quinze da F38/F39. ⚠️ Q7/Q8 passaram a ser *«volta ao `10`»* — com o limite
+  de volta a `4`, apagar o `.with_miter_limit` seria um mutante EQUIVALENTE (é o de omissão da kurbo).
+
 ### F39 — ⭐⭐⭐ **A QUINA DO CONTACTO OBEDECE À JUNTA DO PAINEL** (report do dono, 2026-09-30, com duas fotos: *«A depender do ângulo a quina fica inconsistente.. Faça obedecer ao que foi escolhido no painel»*)
+
+⛔ **Duas afirmações desta secção foram SUPERADAS pela F40 no mesmo dia:** o limite do bico voltou
+a `4` (o `10` fazia o bico do vinco furar a peça) e a `viragem_maxima` saiu com o gate dela — o
+vinco passou a ser arco. As causas 1 e 2 continuam de pé.
 
 ⭐⭐⭐ **Eram TRÊS causas, e cada uma desviava a junta noutro ângulo** — por isso a mesma quina saía
 em bico, cortada ou com um dente conforme a dobra. Medidas com a sonda

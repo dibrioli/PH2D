@@ -59,9 +59,13 @@ fn a_silhueta_de_um_contorno_cruzado_nao_se_cruza() {
         pecas.len()
     );
     let base: f64 = pecas.iter().map(crate::area).sum();
+    // ⚠️ O vinco ARREDONDADO (`RAIO_DO_VINCO`) é a única diferença deliberada, e ele só ACRESCENTA
+    // área, e pouca: nunca mais do que um quadrado do raio por vértice da união.
+    let caixa = kurbo::Shape::bounding_box(&crate::to_bez(&p));
+    let r = crate::overlap::RAIO_DO_VINCO * caixa.width().hypot(caixa.height());
     assert!(
-        (area - base).abs() < 1e-9,
-        "a silhueta tem área {area} e a união do caminho com o vazio tem {base}"
+        area >= base - 1e-9 && area - base <= r * r * s.verts.len() as f64,
+        "a silhueta tem área {area} e a união do caminho com o vazio tem {base} (raio {r})"
     );
 }
 
@@ -207,22 +211,212 @@ fn uma_alca_caida_na_ponta_de_la_encaixa_nela() {
     }
 }
 
-/// ⭐⭐ **GATE — a viragem máxima é a do limite do bico**: numa quina que vira exactamente
-/// [`viragem_maxima`] o bico mede o limite (`1/sin(θ/2)`, `θ` por dentro). Sem isto os dois números
-/// derivavam cada um para o seu lado e uma quina que sobra podia virar chanfro.
+/// ⭐⭐⭐ **GATE — o VINCO vira ARCO, e a quina do artista fica.** Um entalhe CÔNCAVO cuja ponta
+/// NÃO é nó do desenho (nasceu no cruzamento) sai com dois vértices lisos e um arco tangente entre
+/// eles, e a área só CRESCE; a MESMA ponta declarada como nó do desenho (o CONTROLO) sai intacta,
+/// ao bit — e uma ponta CONVEXA nascida no cruzamento também.
 #[test]
-fn a_viragem_maxima_e_a_do_limite_do_bico() {
-    let dentro = (180.0 - viragem_maxima()).to_radians();
-    let bico = 1.0 / (dentro / 2.0).sin();
-    assert!(
-        (bico - ph2d_vec_scene::MITER_LIMIT).abs() < 1e-9,
-        "o bico na viragem máxima mede {bico} contra o limite {}",
-        ph2d_vec_scene::MITER_LIMIT
+fn o_vinco_vira_arco_e_a_quina_do_artista_fica() {
+    // Um rectângulo com um entalhe fundo: a ponta em (2, 0.3) vira `~166°`, como o vinco das fotos.
+    let pontos = [
+        [0.0, 0.0],
+        [4.0, 0.0],
+        [4.0, 3.0],
+        [2.3, 3.0],
+        [2.0, 0.3],
+        [1.7, 3.0],
+        [0.0, 3.0],
+    ];
+    let v: Vec<VecVertex> = pontos.iter().map(|p| canto(*p)).collect();
+    let raio = 0.05;
+    let fora: Vec<[f64; 2]> = pontos
+        .iter()
+        .copied()
+        .filter(|p| *p != [2.0, 0.3])
+        .collect();
+    // Os nós do desenho levam a viragem que tinham lá — é contra ela que um vinco se mede.
+    let com_viragem = |ps: &[[f64; 2]], vs: &[VecVertex]| -> Vec<([f64; 2], f64)> {
+        ps.iter()
+            .map(|p| {
+                let i = vs.iter().position(|q| q.anchor == *p).expect("nó");
+                (*p, crate::overlap::viragem_do_vertice(vs, i).unwrap_or(0.0))
+            })
+            .collect()
+    };
+    let nos_fora = com_viragem(&fora, &v);
+    let alfa = crate::overlap::viragem_do_vertice(&v, 4)
+        .expect("tangentes")
+        .to_radians();
+    let s = crate::overlap::arredonda_os_vincos(v.clone(), &nos_fora, raio);
+    assert_eq!(
+        s.len(),
+        8,
+        "o vinco não foi trocado por dois vértices: {s:?}"
     );
+    for (i, p) in s.iter().enumerate() {
+        let vira = crate::overlap::viragem_do_vertice(&s, i).unwrap_or(0.0);
+        assert!(
+            fora.contains(&p.anchor) || vira < 1e-6,
+            "o vértice v{i} do arco vira {vira}° — o vinco ainda é uma quina: {s:?}"
+        );
+    }
+    // O arco começa À DISTÂNCIA do raio: `r·tan(α/2)` da ponta, nos dois lados.
+    let d = raio * (0.5 * alfa).tan();
+    for p in s.iter().filter(|p| !fora.contains(&p.anchor)) {
+        let dd = (p.anchor[0] - 2.0).hypot(p.anchor[1] - 0.3);
+        assert!(
+            (dd - d).abs() < 1e-9,
+            "o arco começa a {dd} da ponta, e o raio pede {d}"
+        );
+    }
+    // E é um ARCO de círculo, não só uma curva tangente: o meio da cúbica cai a `r` do centro
+    // (a alça `(4/3)·tan(θ/4)` põe-no EXACTAMENTE na circunferência).
+    let k = s
+        .iter()
+        .position(|p| !fora.contains(&p.anchor))
+        .expect("o arco");
+    let (va, vb) = (&s[k], &s[k + 1]);
+    let ta = [
+        va.out_handle[0] - va.anchor[0],
+        va.out_handle[1] - va.anchor[1],
+    ];
+    let nt = ta[0].hypot(ta[1]);
+    let centro = [-1.0_f64, 1.0].map(|lado| {
+        [
+            va.anchor[0] - lado * raio * ta[1] / nt,
+            va.anchor[1] + lado * raio * ta[0] / nt,
+        ]
+    });
+    let c = *centro
+        .iter()
+        .min_by(|x, y| {
+            let dx = |q: &[f64; 2]| ((q[0] - vb.anchor[0]).hypot(q[1] - vb.anchor[1]) - raio).abs();
+            dx(x).total_cmp(&dx(y))
+        })
+        .expect("dois lados");
+    let meio = |i: usize| {
+        0.125 * (va.anchor[i] + vb.anchor[i]) + 0.375 * (va.out_handle[i] + vb.in_handle[i])
+    };
+    let r_meio = (meio(0) - c[0]).hypot(meio(1) - c[1]);
     assert!(
-        viragem_maxima() > 155.0,
-        "a viragem máxima ({}) corta quinas verdadeiras do contacto (medidas até 153°)",
-        viragem_maxima()
+        (r_meio - raio).abs() < 1e-9 * raio.max(1.0) + 1e-12,
+        "o meio do arco está a {r_meio} do centro, e o raio é {raio}"
+    );
+    // Um côncavo arredondado só ACRESCENTA área.
+    let area = |vs: &[VecVertex]| {
+        crate::area(&VecPath {
+            verts: vs.to_vec(),
+            closed: true,
+            ..VecPath::default()
+        })
+    };
+    assert!(area(&s) > area(&v), "o arco tirou área a um vinco côncavo");
+    // CONTROLO: a mesma ponta como NÓ do desenho, que JÁ virava assim, fica intacta.
+    assert_eq!(
+        crate::overlap::arredonda_os_vincos(v.clone(), &com_viragem(&pontos, &v), raio),
+        v,
+        "uma quina que o artista desenhou foi arredondada"
+    );
+    // O ENCAIXE: a ponta é um nó do desenho que ali era LISO (virava `0°`) — o motor da união
+    // encaixou o cruzamento nele. Ela vira mais do que virava ⇒ é vinco, e arredonda igual.
+    let mut encaixado = nos_fora.clone();
+    encaixado.push(([2.0, 0.3], 0.0));
+    assert_eq!(
+        crate::overlap::arredonda_os_vincos(v.clone(), &encaixado, raio),
+        s,
+        "um vinco que o motor encaixou num nó liso ficou em quina"
+    );
+    // CONTROLO: uma ponta CONVEXA nascida no cruzamento fica (o vinco de uma dobra é côncavo).
+    let convexo = vec![
+        canto([0.0, 0.0]),
+        canto([2.0, 0.0]),
+        canto([0.12, 0.68]),
+        canto([-1.0, 1.0]),
+    ];
+    let so_o_resto = com_viragem(&[[0.0, 0.0], [0.12, 0.68], [-1.0, 1.0]], &convexo);
+    assert_eq!(
+        crate::overlap::arredonda_os_vincos(convexo.clone(), &so_o_resto, raio),
+        convexo,
+        "uma ponta CONVEXA foi arredondada"
+    );
+}
+
+/// ⭐⭐ **GATE — os nós LISOS dentro do arco SAEM.** O assado põe nós a `~0,01` junto da junta, e o
+/// corte cai além deles: se ficassem, o contorno iria ao corte, voltaria ao nó e seguiria — um
+/// laço que nenhuma viragem acusa (o nó é do desenho e as alças dele apontam para a frente). A
+/// fixtura é o entalhe do gate irmão com um nó liso a meio de cada lado, DENTRO do alcance do
+/// arco; a saída tem de ser a MESMA do entalhe sem eles.
+#[test]
+fn os_nos_lisos_dentro_do_arco_saem() {
+    let ponta = [2.0, 0.3];
+    let (esq, dir) = ([1.7, 3.0], [2.3, 3.0]);
+    let a_meio = |a: [f64; 2], t: f64| {
+        [
+            ponta[0] + (a[0] - ponta[0]) * t,
+            ponta[1] + (a[1] - ponta[1]) * t,
+        ]
+    };
+    let sem_nos = [
+        [0.0, 0.0],
+        [4.0, 0.0],
+        [4.0, 3.0],
+        dir,
+        ponta,
+        esq,
+        [0.0, 3.0],
+    ];
+    let com_nos = [
+        [0.0, 0.0],
+        [4.0, 0.0],
+        [4.0, 3.0],
+        dir,
+        a_meio(dir, 0.05),
+        ponta,
+        a_meio(esq, 0.05),
+        esq,
+        [0.0, 3.0],
+    ];
+    let raio = 0.05;
+    let nos = |ps: &[[f64; 2]]| -> Vec<([f64; 2], f64)> {
+        ps.iter()
+            .copied()
+            .filter(|p| *p != ponta)
+            .map(|p| (p, 0.0))
+            .collect()
+    };
+    let arredonda = |ps: &[[f64; 2]]| {
+        let v: Vec<VecVertex> = ps.iter().map(|p| canto(*p)).collect();
+        crate::overlap::arredonda_os_vincos(v, &nos(ps), raio)
+    };
+    let (a, b) = (arredonda(&sem_nos), arredonda(&com_nos));
+    // O CONTROLO de que os nós caem DENTRO do alcance do arco (senão a fixtura não contém nada).
+    let alcance = a
+        .iter()
+        .map(|v| (v.anchor[0] - ponta[0]).hypot(v.anchor[1] - ponta[1]))
+        .fold(f64::INFINITY, f64::min);
+    let no = a_meio(dir, 0.05);
+    assert!(
+        (no[0] - ponta[0]).hypot(no[1] - ponta[1]) < alcance,
+        "o nó a meio do lado está FORA do arco — a fixtura não o testa"
+    );
+    assert_eq!(b.len(), a.len(), "um nó liso dentro do arco ficou: {b:?}");
+    // As âncoras de todos, e as alças do ARCO (o par que não estava na entrada). ⚠️ As alças das
+    // rectas cortadas NÃO se comparam: são a mesma recta parametrizada a partir de outro nó.
+    let perto = |p: [f64; 2], q: [f64; 2]| (p[0] - q[0]).hypot(p[1] - q[1]) < 1e-9;
+    for (x, y) in a.iter().zip(&b) {
+        assert!(
+            perto(x.anchor, y.anchor),
+            "o arco muda com um nó liso dentro dele: {:?} contra {:?}",
+            x.anchor,
+            y.anchor
+        );
+    }
+    let k = a
+        .iter()
+        .position(|v| !sem_nos.contains(&v.anchor))
+        .expect("o arco");
+    assert!(
+        perto(a[k].out_handle, b[k].out_handle) && perto(a[k + 1].in_handle, b[k + 1].in_handle)
     );
 }
 

@@ -159,18 +159,55 @@ muta "$BOO/overlap.rs" '    limpa_as_alcas(&mut verts, tol);
 muta "$BOO/overlap.rs" '            p1 = p3;' '            let _ = p3;' \
   'Q5 a alca que caiu na ponta de LA fica'
 
-muta "$BOO/overlap.rs" '    180.0 - 2.0 * (1.0 / ph2d_vec_scene::MITER_LIMIT)' '    180.0 - 1.0 * (1.0 / ph2d_vec_scene::MITER_LIMIT)' \
-  'Q6 a viragem maxima deixa de ser a do limite'
+# ⛔ A VIRAGEM MAXIMA (o antigo Q6) SAIU com a lei dela: o vinco deixou de ser quina e
+# passou a ser arco, por decisao do dono (2026-09-30) — ela nao tem mais onde morar.
+# ⚠️ E Q7/Q8 deixaram de ser «volta ao limite 4»: o limite do documento VOLTOU a 4, que e' o
+# valor por omissao do kurbo, e apagar o `.with_miter_limit` seria um mutante EQUIVALENTE.
+# A regressao que importa e' o `10` que furava a peca.
+muta "$BOO/expand.rs" '        .with_miter_limit(ph2d_vec_scene::MITER_LIMIT);' '        .with_miter_limit(10.0);' \
+  'Q7 o Outline Stroke volta ao limite 10 (o que furava)'
 
-muta "$BOO/expand.rs" '        .with_miter_limit(ph2d_vec_scene::MITER_LIMIT);' '        ;' \
-  'Q7 o Outline Stroke volta ao limite 4'
-
-EXTRA=ren muta "$REN/lib.rs" '        .with_miter_limit(ph2d_vec_scene::MITER_LIMIT);' '        ;' \
-  'Q8 o ecra volta ao limite 4'
+EXTRA=ren muta "$REN/lib.rs" '        .with_miter_limit(ph2d_vec_scene::MITER_LIMIT);' '        .with_miter_limit(10.0);' \
+  'Q8 o ecra volta ao limite 10 (o que furava)'
 
 EXTRA=apv muta "$APV/svg_export.rs" '    if matches!(s.join, ph2d_vec_scene::LineJoin::Miter) {' \
   '    if false && matches!(s.join, ph2d_vec_scene::LineJoin::Miter) {' \
-  'Q9 o SVG exportado volta ao limite 4'
+  'Q9 o SVG exportado perde o limite do bico'
+
+# ── O VINCO (2026-09-30, report do dono com cinco fotos: «alem de inconsistente, fica tao
+# pontudo que perfura o outro lado da forma» — decisao: o vinco e' ARREDONDADO) ──────────
+muta "$BOO/overlap.rs" '        .map(|v| arredonda_os_vincos(v, &originais, raio))' '        .map(|v| {
+            let _ = (&originais, raio);
+            v
+        })' \
+  'V1 a silhueta nao arredonda o vinco'
+
+muta "$BOO/overlap.rs" '    let novo = |i: usize| antes(verts[i].anchor).is_none_or(|v| vira(i) > v + VINCO_MINIMO);' \
+  '    let novo = |i: usize| antes(verts[i].anchor).is_none();' \
+  'V2 um vinco ENCAIXADO num no liso passa por quina do artista'
+
+muta "$BOO/overlap.rs" '        .map(|i| vira(i) > VINCO_MINIMO && concavo(i) && novo(i))' \
+  '        .map(|i| vira(i) > VINCO_MINIMO && novo(i))' \
+  'V3 uma quina CONVEXA do cruzamento tambem arredonda'
+
+muta "$BOO/overlap.rs" '        .map(|i| vinco[i] || (vira(i) > PAREDE_MINIMA && antes(verts[i].anchor).is_some()))' \
+  '        .map(|i| vinco[i] || (vira(i) > VINCO_MINIMO && antes(verts[i].anchor).is_some()))' \
+  'V4 as micro-quinas do assado viram parede'
+
+muta "$BOO/overlap.rs" '        let mut d = raio * (0.5 * alfa).tan().max(1.0);' \
+  '        let mut d = raio * (0.5 * alfa).tan();' \
+  'V5 um vinco raso ganha um arco do tamanho da solda'
+
+muta "$BOO/overlap.rs" '            if cresce <= d || cresce > tecto {' \
+  '            if true || cresce <= d || cresce > tecto {' \
+  'V6 o no liso logo alem do corte nao e engolido'
+
+muta "$BOO/overlap.rs" '                some[k] = true;' '                let _ = k;' \
+  'V7 os nos dentro do arco ficam'
+
+muta "$BOO/overlap.rs" '            (4.0 / 3.0) * (0.25 * theta).tan() * corda' \
+  '            (1.0 / 3.0) * (0.25 * theta).tan() * corda' \
+  'V8 a curva tangente deixa de ser um arco de circulo'
 
 # ── O CONTROLO (nao pode sangrar) ────────────────────────────────────────
 muta "$BOO/overlap.rs" '/// ⭐⭐ **O contorno cruza-se?** — os' '/// ⭐⭐ **O contorno cruza-se (controlo)?** — os' \

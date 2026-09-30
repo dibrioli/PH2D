@@ -243,13 +243,17 @@ enum Forma {
     C,
     Z,
     Uma,
+    /// Em Z com a SEGUNDA junta à parte (a pose das fotos do dono de 2026-09-30: a de baixo forte e
+    /// a de cima a mal tocar — é logo DEPOIS do contacto que o vinco é mais agudo).
+    Dono(f32),
 }
 
 fn com_e_sem_contacto_em(graus: f32, forma: Forma) -> (VecPath, VecPath) {
     let (mut sim, mut scene, _map, id, ossos) = barra_da_cena_com(false);
     for (k, o) in ossos.iter().enumerate().skip(1) {
         let g = match (forma, k) {
-            (Forma::C, _) | (Forma::Z | Forma::Uma, 1) => graus,
+            (Forma::C, _) | (Forma::Z | Forma::Uma | Forma::Dono(_), 1) => graus,
+            (Forma::Dono(segunda), _) => -segunda,
             (Forma::Z, _) => -graus,
             (Forma::Uma, _) => 0.0,
         };
@@ -360,8 +364,11 @@ fn a_silhueta_esta_sobre_o_contorno_de_antes() {
         })
         .fold(0.0_f64, f64::max);
     println!("  pior distância da silhueta ao contorno de antes: {pior:.3e} (diagonal {diag:.3})");
+    // ⚠️ A barra é o RAIO DO VINCO: o arredondado é o único afastamento deliberado, e ele fica a
+    // `ρ·(1 − sin(β/2)) < ρ` do contorno (`β` o ângulo por dentro do vinco). Fora dele a silhueta
+    // está sobre o contorno de antes a `≤ 1,8e-4` da diagonal (medido antes do arredondado).
     assert!(
-        pior < 2e-3 * diag,
+        pior < ph2d_vec_boolean::overlap::RAIO_DO_VINCO * diag,
         "a silhueta afasta-se {pior:.3e} do contorno de antes — ela inventou forma"
     );
 }
@@ -540,6 +547,12 @@ fn diag_lista_os_vertices_da_quina() {
     let forma = match std::env::var("PH2D_SONDA_FORMA").as_deref() {
         Ok("C") => Forma::C,
         Ok("Z") => Forma::Z,
+        Ok("D") => Forma::Dono(
+            std::env::var("PH2D_SONDA_G2")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(100.0),
+        ),
         _ => Forma::Uma,
     };
     let (sem, com) = com_e_sem_contacto_em(g, forma);
@@ -582,52 +595,53 @@ fn diag_lista_os_vertices_da_quina() {
     }
 }
 
-/// ⭐⭐⭐ **GATE — TODA quina da silhueta respeita a junta do painel** (report do dono de
-/// 2026-09-29: *«a depender do ângulo a quina fica inconsistente. Faça obedecer ao que foi
-/// escolhido no painel»*).
+/// ⭐⭐⭐ **GATE — NENHUM VINCO da silhueta fica em QUINA** (decisão do dono de 2026-09-30, sobre
+/// cinco fotos: *«além de inconsistente, fica tão pontudo que perfura o outro lado da forma»* — o
+/// vinco fica arredondado em todo ângulo e em toda junta).
 ///
-/// Nas três formas de dobra (C · Z · uma junta), de `100°` a `150°` de `5` em `5`: nenhum vértice
-/// vira mais do que a [`ph2d_vec_boolean::overlap::viragem_maxima`] — logo nenhuma junta `Miter`
-/// passa do limite e vira chanfro sem ser pedido — e nenhum segmento cabe na solda (a junta seria
-/// calculada sobre uma tangente arbitrária). ⚠️ Com piso de população: alguma dobra da régua TEM de
-/// ter passado pela porta, senão o gate varreria desenhos sem contacto e ficaria verde a medir nada.
+/// Nas quatro formas de dobra (C · Z · uma junta · a pose das fotos, com a junta de cima a mal
+/// tocar), de `95°` a `150°`: todo vértice que VIRA é um nó do desenho de antes (o vinco novo é
+/// trocado por um arco tangente) — e nenhum segmento cabe na solda. ⚠️ Com piso de população:
+/// alguma dobra da régua TEM de ter passado pela porta, senão o gate varreria desenhos sem contacto.
 #[test]
-fn toda_quina_da_silhueta_respeita_a_junta_do_painel() {
-    let maxima = ph2d_vec_boolean::overlap::viragem_maxima();
+fn nenhum_vinco_da_silhueta_fica_em_quina() {
     let mut resolvidas = 0;
-    for forma in [Forma::C, Forma::Z, Forma::Uma] {
-        let mut g = 100.0_f32;
+    for forma in [Forma::C, Forma::Z, Forma::Uma, Forma::Dono(0.0)] {
+        let mut g = 95.0_f32;
         while g <= 150.0 {
-            let (sem, com) = com_e_sem_contacto_em(g, forma);
+            // A pose das fotos: a de baixo forte (`125°`) e a de cima a varrer.
+            let (sem, com) = match forma {
+                Forma::Dono(_) => com_e_sem_contacto_em(125.0, Forma::Dono(g)),
+                f => com_e_sem_contacto_em(g, f),
+            };
             if com != sem {
                 resolvidas += 1;
             }
             let tol = ph2d_vec_boolean::overlap::SOLDA_DA_QUINA * diagonal(&com);
+            let perto = |a: [f64; 2], b: [f64; 2]| (a[0] - b[0]).hypot(a[1] - b[1]) <= tol;
             let vs = &com.verts;
             let n = vs.len();
             for i in 0..n {
                 let (c, q) = (&vs[i], &vs[(i + 1) % n]);
-                let longe = |a: [f64; 2], b: [f64; 2]| (a[0] - b[0]).hypot(a[1] - b[1]) > tol;
                 assert!(
-                    longe(c.anchor, q.anchor)
-                        || longe(c.anchor, c.out_handle)
-                        || longe(c.anchor, q.in_handle),
+                    !perto(c.anchor, q.anchor)
+                        || !perto(c.anchor, c.out_handle)
+                        || !perto(c.anchor, q.in_handle),
                     "{forma:?} {g}°: o segmento v{i} cabe na solda — a junta seria calculada \
                      sobre uma tangente arbitrária"
                 );
-                if let Some(v) = ph2d_vec_boolean::overlap::viragem_do_vertice(vs, i) {
-                    assert!(
-                        v <= maxima + 1e-9,
-                        "{forma:?} {g}°: o vértice v{i} vira {v:.1}° (máx {maxima:.1}°) — uma \
-                         junta Miter passaria do limite e sairia em chanfro"
-                    );
-                }
+                let vira = ph2d_vec_boolean::overlap::viragem_do_vertice(vs, i).unwrap_or(0.0);
+                assert!(
+                    vira <= 1.0 || sem.verts.iter().any(|o| perto(o.anchor, c.anchor)),
+                    "{forma:?} {g}°: o vértice v{i} vira {vira:.1}° e não é um nó do desenho — \
+                     um VINCO ficou em quina, e a junta Miter faria dele um bico"
+                );
             }
             g += 5.0;
         }
     }
     assert!(
-        resolvidas >= 20,
+        resolvidas >= 25,
         "só {resolvidas} dobras passaram pela porta — a régua deixou de conter o contacto"
     );
 }

@@ -80,6 +80,17 @@ pub(crate) fn dobra_de(nivel: u32, pedido: Option<&str>) -> f32 {
         .unwrap_or(DOBRA_FORTE)
 }
 
+/// A junta do contorno da `=4` — `PH2D_VEC_BONE_JUNTA=miter|round|bevel` (F39: a foto precisa de
+/// ver as três juntas no mesmo vinco). Qualquer outra coisa é a de fábrica do traço.
+#[must_use]
+pub(crate) fn junta_de(pedido: Option<&str>) -> ph2d_vec_scene::LineJoin {
+    match pedido.map(str::trim) {
+        Some("round") => ph2d_vec_scene::LineJoin::Round,
+        Some("bevel") => ph2d_vec_scene::LineJoin::Bevel,
+        _ => ph2d_vec_scene::LineJoin::Miter,
+    }
+}
+
 /// A espessura do contorno da `=4` — `PH2D_VEC_BONE_TRACO=<fracção da espessura da peça>` troca a
 /// de fábrica ([`ESPESSURA_DO_CONTORNO`]). A junta em bico só se LÊ num traço grosso (F39).
 #[must_use]
@@ -250,10 +261,12 @@ pub(crate) fn build(
     // membros — sem traço, as fotos com e sem `PH2D_SKIN_CONTACTO` saíam iguais ao pixel. O que a
     // sobreposição estraga é o TRAÇO, que desenha o «olho» por dentro da junta.
     if nivel >= 4 {
-        peca_vec.stroke = Some(ph2d_vec_scene::StrokeSpec::new(
+        let mut traco = ph2d_vec_scene::StrokeSpec::new(
             ph2d_vec_scene::Rgba8::new(CONTORNO[0], CONTORNO[1], CONTORNO[2], 255),
             t * espessura_do_contorno(std::env::var("PH2D_VEC_BONE_TRACO").ok().as_deref()),
-        ));
+        );
+        traco.join = junta_de(std::env::var("PH2D_VEC_BONE_JUNTA").ok().as_deref());
+        peca_vec.stroke = Some(traco);
     }
     let desenho = scene.push_path(peca_vec);
     let osso_vec = esqueleto(sim, ppm, o_vec, "Vector");
@@ -333,14 +346,32 @@ pub(crate) fn bind(
             });
         raizes.extend(raiz);
     }
+    let g1 = dobra_do_nivel(nivel);
+    // ⚠️ `PH2D_VEC_BONE_DOBRA2` dobra a SEGUNDA junta à parte (F39): o vinco mais agudo nasce logo
+    // DEPOIS do contacto, e com as duas juntas iguais ele fica escondido debaixo do traço — a
+    // fotografia do dono tinha a de baixo forte e a de cima a mal tocar.
+    let g2 = segunda_dobra(nivel, g1, std::env::var("PH2D_VEC_BONE_DOBRA2").ok().as_deref());
     for raiz in &raizes {
-        dobra(sim, *raiz, dobra_do_nivel(nivel));
+        dobra_duas(sim, *raiz, g1, g2);
     }
     anuncia(vector_preso, imagem_presa, nivel);
 }
 
-/// ⭐ **A MESMA pose nos dois**: o 2.º osso sobe `graus`, o 3.º volta a deitar — em Z.
-pub(crate) fn dobra(sim: &mut SimWorld, raiz: Entity, graus: f32) {
+/// A dobra da SEGUNDA junta: a mesma da primeira, salvo um pedido na `=4`.
+#[must_use]
+pub(crate) fn segunda_dobra(nivel: u32, primeira: f32, pedido: Option<&str>) -> f32 {
+    if nivel < 4 {
+        return primeira;
+    }
+    pedido
+        .and_then(|s| s.trim().parse::<f32>().ok())
+        .filter(|g| g.is_finite())
+        .unwrap_or(primeira)
+}
+
+/// ⭐ **A MESMA pose nos dois**: o 2.º osso sobe `graus`, o 3.º volta a deitar `segunda` — em Z
+/// (as duas iguais, salvo o pedido de [`segunda_dobra`]).
+pub(crate) fn dobra_duas(sim: &mut SimWorld, raiz: Entity, graus: f32, segunda: f32) {
     let mut e = raiz;
     let mut k = 0;
     while let Some(f) = sim.world().get::<ph2d_ecs::Children>(e).and_then(|c| {
@@ -351,8 +382,9 @@ pub(crate) fn dobra(sim: &mut SimWorld, raiz: Entity, graus: f32) {
         e = f;
         k += 1;
         let sinal = if k % 2 == 1 { 1.0 } else { -1.0 };
+        let g = if k >= 2 { segunda } else { graus };
         if let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(e) {
-            t.rotation += sinal * graus.to_radians();
+            t.rotation += sinal * g.to_radians();
         }
     }
 }

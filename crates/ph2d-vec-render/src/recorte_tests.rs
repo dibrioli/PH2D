@@ -204,13 +204,15 @@ fn a_porta_do_recorte_so_desliga_com_zero() {
 /// mão (`((meia · smax) · alcance)`), e um epsilon aqui esconderia precisamente o defeito que este
 /// gate existe para apanhar — reassociar três factores.
 ///
-/// ⛔⛔ **E havia um MUTANTE EQUIVALENTE aqui, e ELE DEIXOU DE O SER em 2026-09-30:** reassociar
-/// para `meia · (smax · alcance)` não mudava um bit enquanto o `alcance` era `1,0` ou o `4,0` por
-/// omissão da kurbo — *multiplicar por uma potência de dois é exacto em IEEE-754*. Desde a F39 do
-/// esqueleto o [`crate::kurbo_stroke`] escreve o [`ph2d_vec_scene::MITER_LIMIT`] (`10`), que NÃO é
-/// potência de dois ⇒ as duas associações podem divergir no último bit, e a ordem preservada à mão
-/// passou de «custa zero» a ser a coisa que este `==` protege. (A nota antiga previa exactamente
-/// isto — *«o dia em que alguém expuser o `miter_limit`»* — e foi lida no dia.)
+/// ⛔⛔ **E há um MUTANTE EQUIVALENTE aqui, NOMEADO com a medição em vez de forçado a sangrar:**
+/// reassociar para `meia · (smax · alcance)` **não muda um bit**, e não por sorte — o `alcance` é
+/// `1,0` (junta não-miter) ou o [`ph2d_vec_scene::MITER_LIMIT`] que o [`crate::kurbo_stroke`]
+/// escreve, `4,0`. *Multiplicar por uma potência de dois é exacto em IEEE-754*, logo nenhuma
+/// fixtura pode distinguir as duas associações enquanto o limite for potência de dois.
+///
+/// ⚠️ **A ordem fica preservada na mesma**, porque ela custa zero e porque o dia em que o limite
+/// deixar de ser potência de dois é o dia em que este mutante deixa de ser equivalente. (Ele esteve
+/// em `10` por um dia, na F39 do esqueleto, e voltou — ver o doc da constante.)
 #[test]
 fn o_transbordo_hoistado_e_a_lei_de_referencia_ao_bit() {
     let mut fino = quadrado();

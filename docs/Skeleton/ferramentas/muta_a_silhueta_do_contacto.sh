@@ -37,8 +37,9 @@ EXTRA=""
 
 corrida() {
   local a b c ra rb rc=0
-  a=$(cargo nextest run -p ph2d-vec-boolean --lib -E 'test(overlap)' 2>&1); ra=$?
-  b=$(cargo nextest run -p ph2d-skeleton-live --lib -E 'test(skin_desenho::tests)' 2>&1); rb=$?
+  a=$(cargo nextest run -p ph2d-vec-boolean --lib -E 'test(overlap) | test(bola)' 2>&1); ra=$?
+  b=$(cargo nextest run -p ph2d-skeleton-live --lib \
+    -E 'test(skin_desenho::tests) | test(skinned_mesh::desenho_tests)' 2>&1); rb=$?
   c=""
   case "$EXTRA" in
     *ren*) c=$(cargo nextest run -p ph2d-vec-render --lib -E 'test(o_bico_do_traco)' 2>&1) || rc=1 ;;
@@ -174,40 +175,77 @@ EXTRA=apv muta "$APV/svg_export.rs" '    if matches!(s.join, ph2d_vec_scene::Lin
   '    if false && matches!(s.join, ph2d_vec_scene::LineJoin::Miter) {' \
   'Q9 o SVG exportado perde o limite do bico'
 
-# ── O VINCO (2026-09-30, report do dono com cinco fotos: «alem de inconsistente, fica tao
-# pontudo que perfura o outro lado da forma» — decisao: o vinco e' ARREDONDADO) ──────────
-muta "$BOO/overlap.rs" '        .map(|v| arredonda_os_vincos(v, &originais, raio))' '        .map(|v| {
-            let _ = (&originais, raio);
-            v
-        })' \
-  'V1 a silhueta nao arredonda o vinco'
+# ── A BOLA (F41, 2026-09-30 — report do dono com tres fotos: «arredonda demais, nao e'
+# progressivo, e ainda produz artefatos circulares»). O filete de tamanho fixo da F40 SAIU e as
+# ancoras dele com ele: o vinco e' o arco de uma bola que rola por FORA do contorno. ────────────
+muta "$BOO/overlap.rs" '    let rolado = crate::bola::rola_a_bola(base.verts.clone(), &nos_do_desenho(path), raio, solda);' \
+  '    let rolado = {
+        let _ = (nos_do_desenho(path), raio, solda);
+        base.verts.clone()
+    };' \
+  'B1 a silhueta nao rola a bola'
 
-muta "$BOO/overlap.rs" '    let novo = |i: usize| antes(verts[i].anchor).is_none_or(|v| vira(i) > v + VINCO_MINIMO);' \
-  '    let novo = |i: usize| antes(verts[i].anchor).is_none();' \
-  'V2 um vinco ENCAIXADO num no liso passa por quina do artista'
+# ⚠️ B2 SOBREVIVE e fica NOMEADA: as paralelas de FORA de uma quina convexa DIVERGEM, logo uma
+# semente convexa nao acha cruzamento e a bola nao pousa — o sinal poupa a procura, nao a forma.
+muta "$BOO/bola.rs" '            dth * sinal < -1e-9 && (b.p - a.p).hypot() < APERTO * raio * dth.abs()' \
+  '            dth.abs() > 1e-9 && (b.p - a.p).hypot() < APERTO * raio * dth.abs()' \
+  'B2 uma aresta CONVEXA tambem e semente'
 
-muta "$BOO/overlap.rs" '        .map(|i| vira(i) > VINCO_MINIMO && concavo(i) && novo(i))' \
-  '        .map(|i| vira(i) > VINCO_MINIMO && novo(i))' \
-  'V3 uma quina CONVEXA do cruzamento tambem arredonda'
+muta "$BOO/bola.rs" 'const APERTO: f64 = 0.99;' 'const APERTO: f64 = 0.5;' \
+  'B3 so um canto muito mais apertado que a bola e tocado'
 
-muta "$BOO/overlap.rs" '        .map(|i| vinco[i] || (vira(i) > PAREDE_MINIMA && antes(verts[i].anchor).is_some()))' \
-  '        .map(|i| vinco[i] || (vira(i) > VINCO_MINIMO && antes(verts[i].anchor).is_some()))' \
-  'V4 as micro-quinas do assado viram parede'
+muta "$BOO/bola.rs" 'const ALCANCE: f64 = 32.0;' 'const ALCANCE: f64 = 8.0;' \
+  'B4 a janela da procura volta a 8 raios'
 
-muta "$BOO/overlap.rs" '        let mut d = raio * (0.5 * alfa).tan().max(1.0);' \
-  '        let mut d = raio * (0.5 * alfa).tan();' \
-  'V5 um vinco raso ganha um arco do tamanho da solda'
+muta "$BOO/bola.rs" '                && vira > crate::overlap::PAREDE_MINIMA' '                && vira >= 0.0' \
+  'B5 um no que a uniao deixou liso continua parede'
 
-muta "$BOO/overlap.rs" '            if cresce <= d || cresce > tecto {' \
-  '            if true || cresce <= d || cresce > tecto {' \
-  'V6 o no liso logo alem do corte nao e engolido'
+# ⛔ B6 (o `v > PAREDE_MINIMA` a parte) foi APAGADA com a linha: ela SOBREVIVEU porque as duas
+# condicoes da viragem ACTUAL ja' a implicam (`v >= vira - 1 > 14`).
 
-muta "$BOO/overlap.rs" '                some[k] = true;' '                let _ = k;' \
-  'V7 os nos dentro do arco ficam'
+muta "$BOO/bola.rs" '            if ok && (novo - c).hypot() < raio {' \
+  '            if false && ok && (novo - c).hypot() < raio {' \
+  'B7 o centro fica o das cordas amostradas'
 
-muta "$BOO/overlap.rs" '            (4.0 / 3.0) * (0.25 * theta).tan() * corda' \
-  '            (1.0 / 3.0) * (0.25 * theta).tan() * corda' \
-  'V8 a curva tangente deixa de ser um arco de circulo'
+# ⚠️ B8 e B9 SOBREVIVEM e ficam NOMEADAS (F41): a poda e a fusao foram escritas contra casos
+# (Z a 80 graus, a junta a 91) que o centro EXACTO e a bola VAZIA dissolveram — dois vaos da mesma
+# reentrancia passaram a ser a MESMA bola, e um vao contido noutro e' saltado pelo percurso (ele
+# comeca DEPOIS do de fora e o salto vai ao fim deste). Ficam como rede; nenhuma fixtura desta
+# wave (fundos planos, em W, o dente) as alcanca.
+muta "$BOO/bola.rs" '        if engolido {' '        if false && engolido {' \
+  'B8 um vao contido noutro fica'
+
+muta "$BOO/bola.rs" '                    let (lo, hi) = (fontes[x].0.min(fontes[y].0), fontes[x].1.max(fontes[y].1));' \
+  '                    let (lo, hi) = (fontes[x].0, fontes[y].1);' \
+  'B9 a fusao de dois vaos toma o comeco de um e o fim do outro'
+
+muta "$BOO/bola.rs" '        if 2.0 * raio * (0.5 * giro.min(3.1)).tan() < solda {' \
+  '        if 2.0 * raio * (0.5 * giro.min(3.1)).tan() < 2.0 * solda {' \
+  'B10 o limiar do ruido volta a DUAS soldas'
+
+muta "$BOO/bola.rs" '    let partes = ((varre / std::f64::consts::FRAC_PI_4).ceil() as usize).max(1);' \
+  '    let partes = ((varre / std::f64::consts::FRAC_PI_2).ceil() as usize).max(1);' \
+  'B11 o arco em pedacos de 90 graus'
+
+muta "$BOO/bola.rs" '            return (a, tangente_do_circulo(a), ra);' '            return (a, ta, ra);' \
+  'B12 o toque leva a tangente da curva e nao a do circulo'
+
+muta "$BOO/bola.rs" '    let alca = (4.0 / 3.0) * (0.25 * passo).tan();' \
+  '    let alca = (1.0 / 3.0) * (0.25 * passo).tan();' \
+  'B13 o pedaco deixa de ser um arco de circulo'
+
+muta "$BOO/bola.rs" '        let &(_, i, u, j, w, c) = candidatos.iter().find(|k| vazia(k.5))?;' \
+  '        let &(_, i, u, j, w, c) = candidatos.first()?;' \
+  'B14 a bola mais barata e aceite mesmo com o contorno dentro dela'
+
+# ── O DETECTOR (F41: o passo de UM ULP lia-se como cruzamento) ──────────────
+muta "$BOO/overlap.rs" '                let colar = segs.len() > n0 &&' \
+  '                let colar = false && segs.len() > n0 &&' \
+  'D1 um passo de um ULP no meio do contorno nasce como segmento'
+
+muta "$BOO/overlap.rs" '        if segs.len() > n0 && (ult[0] - ini[0]).hypot(ult[1] - ini[1]) <= cola {' \
+  '        if false && segs.len() > n0 && (ult[0] - ini[0]).hypot(ult[1] - ini[1]) <= cola {' \
+  'D2 um fecho a um ULP do inicio nasce como segmento'
 
 # ── O CONTROLO (nao pode sangrar) ────────────────────────────────────────
 muta "$BOO/overlap.rs" '/// ⭐⭐ **O contorno cruza-se?** — os' '/// ⭐⭐ **O contorno cruza-se (controlo)?** — os' \

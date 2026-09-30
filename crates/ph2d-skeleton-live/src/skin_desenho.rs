@@ -438,12 +438,13 @@ fn calcula(
         // da lei — e o TRAÇO desenharia o «olho» da sobreposição por dentro. A silhueta é a
         // fronteira da UNIÃO dos membros, que é o que o estado da arte põe no contacto (Implicit
         // Skinning, Vaillant 2013) e o que a IMAGEM presa já mostra de graça (um membro por cima
-        // do outro, canto em «V»). ⚠️ **Só corre quando o contorno se CRUZA**: fora do contacto a
-        // forma sai byte-idêntica, e o custo é uma varredura de segmentos. ⛔ Só no DESENHADO — o
+        // do outro, canto em «V»). ⚠️ **Desde a F41 a porta corre SEMPRE**: a união só quando o
+        // contorno se CRUZA, e a bola que arredonda o vinco em todo ângulo, antes e depois do
+        // encosto; sem vinco apertado a forma sai ao bit. ⛔ Só no DESENHADO — o
         // `cru` são os nós que o artista edita, e trocá-los pela silhueta mudar-lhe-ia a malha.
         .map(|d| {
             if leis.contacto {
-                ph2d_vec_boolean::resolve_overlap(&d).unwrap_or(d)
+                ph2d_vec_boolean::silhueta_da_pele(&d).unwrap_or(d)
             } else {
                 d
             }

@@ -211,219 +211,64 @@ fn uma_alca_caida_na_ponta_de_la_encaixa_nela() {
     }
 }
 
-/// ⭐⭐⭐ **GATE — o VINCO vira ARCO, e a quina do artista fica.** Um entalhe CÔNCAVO cuja ponta
-/// NÃO é nó do desenho (nasceu no cruzamento) sai com dois vértices lisos e um arco tangente entre
-/// eles, e a área só CRESCE; a MESMA ponta declarada como nó do desenho (o CONTROLO) sai intacta,
-/// ao bit — e uma ponta CONVEXA nascida no cruzamento também.
-#[test]
-fn o_vinco_vira_arco_e_a_quina_do_artista_fica() {
-    // Um rectângulo com um entalhe fundo: a ponta em (2, 0.3) vira `~166°`, como o vinco das fotos.
-    let pontos = [
-        [0.0, 0.0],
-        [4.0, 0.0],
-        [4.0, 3.0],
-        [2.3, 3.0],
-        [2.0, 0.3],
-        [1.7, 3.0],
-        [0.0, 3.0],
-    ];
-    let v: Vec<VecVertex> = pontos.iter().map(|p| canto(*p)).collect();
-    let raio = 0.05;
-    let fora: Vec<[f64; 2]> = pontos
-        .iter()
-        .copied()
-        .filter(|p| *p != [2.0, 0.3])
-        .collect();
-    // Os nós do desenho levam a viragem que tinham lá — é contra ela que um vinco se mede.
-    let com_viragem = |ps: &[[f64; 2]], vs: &[VecVertex]| -> Vec<([f64; 2], f64)> {
-        ps.iter()
-            .map(|p| {
-                let i = vs.iter().position(|q| q.anchor == *p).expect("nó");
-                (*p, crate::overlap::viragem_do_vertice(vs, i).unwrap_or(0.0))
-            })
-            .collect()
-    };
-    let nos_fora = com_viragem(&fora, &v);
-    let alfa = crate::overlap::viragem_do_vertice(&v, 4)
-        .expect("tangentes")
-        .to_radians();
-    let s = crate::overlap::arredonda_os_vincos(v.clone(), &nos_fora, raio);
-    assert_eq!(
-        s.len(),
-        8,
-        "o vinco não foi trocado por dois vértices: {s:?}"
-    );
-    for (i, p) in s.iter().enumerate() {
-        let vira = crate::overlap::viragem_do_vertice(&s, i).unwrap_or(0.0);
-        assert!(
-            fora.contains(&p.anchor) || vira < 1e-6,
-            "o vértice v{i} do arco vira {vira}° — o vinco ainda é uma quina: {s:?}"
-        );
-    }
-    // O arco começa À DISTÂNCIA do raio: `r·tan(α/2)` da ponta, nos dois lados.
-    let d = raio * (0.5 * alfa).tan();
-    for p in s.iter().filter(|p| !fora.contains(&p.anchor)) {
-        let dd = (p.anchor[0] - 2.0).hypot(p.anchor[1] - 0.3);
-        assert!(
-            (dd - d).abs() < 1e-9,
-            "o arco começa a {dd} da ponta, e o raio pede {d}"
-        );
-    }
-    // E é um ARCO de círculo, não só uma curva tangente: o meio da cúbica cai a `r` do centro
-    // (a alça `(4/3)·tan(θ/4)` põe-no EXACTAMENTE na circunferência).
-    let k = s
-        .iter()
-        .position(|p| !fora.contains(&p.anchor))
-        .expect("o arco");
-    let (va, vb) = (&s[k], &s[k + 1]);
-    let ta = [
-        va.out_handle[0] - va.anchor[0],
-        va.out_handle[1] - va.anchor[1],
-    ];
-    let nt = ta[0].hypot(ta[1]);
-    let centro = [-1.0_f64, 1.0].map(|lado| {
-        [
-            va.anchor[0] - lado * raio * ta[1] / nt,
-            va.anchor[1] + lado * raio * ta[0] / nt,
-        ]
-    });
-    let c = *centro
-        .iter()
-        .min_by(|x, y| {
-            let dx = |q: &[f64; 2]| ((q[0] - vb.anchor[0]).hypot(q[1] - vb.anchor[1]) - raio).abs();
-            dx(x).total_cmp(&dx(y))
-        })
-        .expect("dois lados");
-    let meio = |i: usize| {
-        0.125 * (va.anchor[i] + vb.anchor[i]) + 0.375 * (va.out_handle[i] + vb.in_handle[i])
-    };
-    let r_meio = (meio(0) - c[0]).hypot(meio(1) - c[1]);
-    assert!(
-        (r_meio - raio).abs() < 1e-9 * raio.max(1.0) + 1e-12,
-        "o meio do arco está a {r_meio} do centro, e o raio é {raio}"
-    );
-    // Um côncavo arredondado só ACRESCENTA área.
-    let area = |vs: &[VecVertex]| {
-        crate::area(&VecPath {
-            verts: vs.to_vec(),
-            closed: true,
-            ..VecPath::default()
-        })
-    };
-    assert!(area(&s) > area(&v), "o arco tirou área a um vinco côncavo");
-    // CONTROLO: a mesma ponta como NÓ do desenho, que JÁ virava assim, fica intacta.
-    assert_eq!(
-        crate::overlap::arredonda_os_vincos(v.clone(), &com_viragem(&pontos, &v), raio),
-        v,
-        "uma quina que o artista desenhou foi arredondada"
-    );
-    // O ENCAIXE: a ponta é um nó do desenho que ali era LISO (virava `0°`) — o motor da união
-    // encaixou o cruzamento nele. Ela vira mais do que virava ⇒ é vinco, e arredonda igual.
-    let mut encaixado = nos_fora.clone();
-    encaixado.push(([2.0, 0.3], 0.0));
-    assert_eq!(
-        crate::overlap::arredonda_os_vincos(v.clone(), &encaixado, raio),
-        s,
-        "um vinco que o motor encaixou num nó liso ficou em quina"
-    );
-    // CONTROLO: uma ponta CONVEXA nascida no cruzamento fica (o vinco de uma dobra é côncavo).
-    let convexo = vec![
-        canto([0.0, 0.0]),
-        canto([2.0, 0.0]),
-        canto([0.12, 0.68]),
-        canto([-1.0, 1.0]),
-    ];
-    let so_o_resto = com_viragem(&[[0.0, 0.0], [0.12, 0.68], [-1.0, 1.0]], &convexo);
-    assert_eq!(
-        crate::overlap::arredonda_os_vincos(convexo.clone(), &so_o_resto, raio),
-        convexo,
-        "uma ponta CONVEXA foi arredondada"
-    );
-}
-
-/// ⭐⭐ **GATE — os nós LISOS dentro do arco SAEM.** O assado põe nós a `~0,01` junto da junta, e o
-/// corte cai além deles: se ficassem, o contorno iria ao corte, voltaria ao nó e seguiria — um
-/// laço que nenhuma viragem acusa (o nó é do desenho e as alças dele apontam para a frente). A
-/// fixtura é o entalhe do gate irmão com um nó liso a meio de cada lado, DENTRO do alcance do
-/// arco; a saída tem de ser a MESMA do entalhe sem eles.
-#[test]
-fn os_nos_lisos_dentro_do_arco_saem() {
-    let ponta = [2.0, 0.3];
-    let (esq, dir) = ([1.7, 3.0], [2.3, 3.0]);
-    let a_meio = |a: [f64; 2], t: f64| {
-        [
-            ponta[0] + (a[0] - ponta[0]) * t,
-            ponta[1] + (a[1] - ponta[1]) * t,
-        ]
-    };
-    let sem_nos = [
-        [0.0, 0.0],
-        [4.0, 0.0],
-        [4.0, 3.0],
-        dir,
-        ponta,
-        esq,
-        [0.0, 3.0],
-    ];
-    let com_nos = [
-        [0.0, 0.0],
-        [4.0, 0.0],
-        [4.0, 3.0],
-        dir,
-        a_meio(dir, 0.05),
-        ponta,
-        a_meio(esq, 0.05),
-        esq,
-        [0.0, 3.0],
-    ];
-    let raio = 0.05;
-    let nos = |ps: &[[f64; 2]]| -> Vec<([f64; 2], f64)> {
-        ps.iter()
-            .copied()
-            .filter(|p| *p != ponta)
-            .map(|p| (p, 0.0))
-            .collect()
-    };
-    let arredonda = |ps: &[[f64; 2]]| {
-        let v: Vec<VecVertex> = ps.iter().map(|p| canto(*p)).collect();
-        crate::overlap::arredonda_os_vincos(v, &nos(ps), raio)
-    };
-    let (a, b) = (arredonda(&sem_nos), arredonda(&com_nos));
-    // O CONTROLO de que os nós caem DENTRO do alcance do arco (senão a fixtura não contém nada).
-    let alcance = a
-        .iter()
-        .map(|v| (v.anchor[0] - ponta[0]).hypot(v.anchor[1] - ponta[1]))
-        .fold(f64::INFINITY, f64::min);
-    let no = a_meio(dir, 0.05);
-    assert!(
-        (no[0] - ponta[0]).hypot(no[1] - ponta[1]) < alcance,
-        "o nó a meio do lado está FORA do arco — a fixtura não o testa"
-    );
-    assert_eq!(b.len(), a.len(), "um nó liso dentro do arco ficou: {b:?}");
-    // As âncoras de todos, e as alças do ARCO (o par que não estava na entrada). ⚠️ As alças das
-    // rectas cortadas NÃO se comparam: são a mesma recta parametrizada a partir de outro nó.
-    let perto = |p: [f64; 2], q: [f64; 2]| (p[0] - q[0]).hypot(p[1] - q[1]) < 1e-9;
-    for (x, y) in a.iter().zip(&b) {
-        assert!(
-            perto(x.anchor, y.anchor),
-            "o arco muda com um nó liso dentro dele: {:?} contra {:?}",
-            x.anchor,
-            y.anchor
-        );
-    }
-    let k = a
-        .iter()
-        .position(|v| !sem_nos.contains(&v.anchor))
-        .expect("o arco");
-    assert!(
-        perto(a[k].out_handle, b[k].out_handle) && perto(a[k + 1].in_handle, b[k + 1].in_handle)
-    );
-}
-
 /// ⭐⭐ **GATE — o traço ASSADO (*Outline Stroke*) tem o mesmo limite do desenhado.**
 #[test]
 fn o_bico_do_traco_assado_e_o_do_documento() {
     let s = StrokeSpec::new(Rgba8::new(0, 0, 0, 255), 1.0);
     let k = crate::expand::line_pen(&VecPath::default(), &s);
     assert!((k.miter_limit - ph2d_vec_scene::MITER_LIMIT).abs() < f64::EPSILON);
+}
+
+/// ⭐⭐ **GATE — o fecho do contorno a UM ULP do vértice de partida não é um cruzamento.**
+///
+/// Os números são os MEDIDOS (F41, a pose do dono a `98°`): o último segmento achatado acabava em
+/// `…086966` e o primeiro começava em `…086967`, os dois quase colineares — e o detector lia um par
+/// que se atravessa. ⚠️ **As duas metades são obrigatórias:** sem o CONTROLO (a fixtura tem MESMO a
+/// folga de um ULP) o gate passaria sobre um fecho de bits iguais, que nunca teve o defeito.
+#[test]
+fn um_fecho_a_um_ulp_do_inicio_nao_e_um_cruzamento() {
+    let b0: [f64; 2] = [-7.795_316_120_352_435, 4.180_012_725_086_967];
+    let b1 = [-7.793_159_739_362_697, 4.143_647_140_753_746];
+    let a0 = [-7.794_741_701_595_443, 4.223_965_945_657_155];
+    let a1: [f64; 2] = [-7.795_316_120_352_435, 4.180_012_725_086_966];
+    assert_ne!(a1, b0, "CONTROLO: a fixtura perdeu a folga de um ULP");
+    assert!(
+        (a1[1] - b0[1]).abs() < 1e-14,
+        "CONTROLO: a folga deixou de ser de arredondamento"
+    );
+    let mut bez = BezPath::new();
+    bez.move_to((b0[0], b0[1]));
+    bez.line_to((b1[0], b1[1]));
+    bez.line_to((-6.0, 4.18));
+    bez.line_to((a0[0], a0[1]));
+    bez.line_to((a1[0], a1[1]));
+    bez.close_path();
+    assert!(
+        !crosses_itself(&bez),
+        "um fecho a um ULP do início foi lido como cruzamento"
+    );
+}
+
+/// ⭐⭐ **GATE — um passo de UM ULP no MEIO do contorno não é um cruzamento** — o caso que o gate
+/// do dono de facto tinha: o achatamento emitiu o ponto calculado (`…086966`) e depois o vértice
+/// guardado (`…086967`), num nó LISO longe do fecho. A cura só do fecho deixou-o vermelho.
+#[test]
+fn um_passo_de_um_ulp_no_meio_nao_e_um_cruzamento() {
+    let calc: [f64; 2] = [-7.795_316_120_352_435, 4.180_012_725_086_966];
+    let guardado: [f64; 2] = [-7.795_316_120_352_435, 4.180_012_725_086_967];
+    assert_ne!(
+        calc, guardado,
+        "CONTROLO: a fixtura perdeu a folga de um ULP"
+    );
+    let mut bez = BezPath::new();
+    bez.move_to((-6.0, 4.18));
+    bez.line_to((-7.794_741_701_595_443, 4.223_965_945_657_155));
+    bez.line_to((calc[0], calc[1]));
+    bez.line_to((guardado[0], guardado[1]));
+    bez.line_to((-7.793_159_739_362_697, 4.143_647_140_753_746));
+    bez.close_path();
+    assert!(
+        !crosses_itself(&bez),
+        "um passo de um ULP no meio do contorno foi lido como cruzamento"
+    );
 }

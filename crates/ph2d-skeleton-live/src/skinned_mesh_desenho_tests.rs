@@ -10,13 +10,19 @@ use super::ondulacao_regua_tests::{DENSO, ideal_denso};
 use super::ouro_reguas_tests::*;
 
 /// O caminho da cena e o desenho fiel dele, pela porta do produto.
-fn o_que_se_ve(p: &BPalco) -> (ph2d_vec_scene::VecPath, ph2d_vec_scene::VecPath) {
+///
+/// ⚠️ **`contacto` separa as DUAS etapas do que se vê** (F41): a LEI do desenho, que o padrão-ouro
+/// julga, e a SILHUETA, que rola a bola por fora do contorno e **arredonda o vinco de propósito**
+/// (decisão do dono, 2026-09-29: *«Arredondado»*). Desde que a bola corre sempre, julgar as duas
+/// juntas contra o ideal acusaria o arredondamento pedido de ser um defeito da lei.
+fn o_que_se_ve(p: &BPalco, contacto: bool) -> (ph2d_vec_scene::VecPath, ph2d_vec_scene::VecPath) {
     let mut sc = p.scene.clone();
     let desenho = crate::skin_live::recook_leis(
         &p.sim,
         &mut sc,
         crate::skin_desenho::Leis {
             c1: false,
+            contacto,
             ..crate::skin_desenho::Leis::do_ambiente()
         },
     );
@@ -31,6 +37,18 @@ fn o_que_se_ve(p: &BPalco) -> (ph2d_vec_scene::VecPath, ph2d_vec_scene::VecPath)
         .cloned()
         .expect("a barra tem desenho fiel");
     (cru, visto)
+}
+
+/// A diagonal da caixa das âncoras — a régua da bola ([`ph2d_vec_boolean::overlap::RAIO_DO_VINCO`]).
+fn diagonal_de(p: &ph2d_vec_scene::VecPath) -> f64 {
+    let (mut lo, mut hi) = ([f64::INFINITY; 2], [f64::NEG_INFINITY; 2]);
+    for v in p.verts_all() {
+        for k in 0..2 {
+            lo[k] = lo[k].min(v.anchor[k]);
+            hi[k] = hi[k].max(v.anchor[k]);
+        }
+    }
+    (hi[0] - lo[0]).hypot(hi[1] - lo[1])
 }
 
 /// ⭐⭐⭐ **GATE — O QUE SE VÊ SEGUE O PADRÃO-OURO nos 8 nós do artista, em toda a dobra.**
@@ -53,9 +71,18 @@ fn o_que_se_ve_segue_o_padrao_ouro_nos_nos_do_artista() {
         let pele = p.pele();
         let rest = b_amostra_com(&p.fonte, DENSO);
         let ouro = ideal_denso(&p, &pele, &rest, false);
-        let (cru, visto) = o_que_se_ve(&p);
+        let (cru, visto) = o_que_se_ve(&p, false);
         let (_, c90, cmax) = b_perfil(&b_amostra_com(&cru, DENSO), &ouro);
         let (_, v90, vmax) = b_perfil(&b_amostra_com(&visto, DENSO), &ouro);
+        let (_, silhueta) = o_que_se_ve(&p, true);
+        let (_, _, smax) = b_perfil(&b_amostra_com(&silhueta, DENSO), &ouro);
+        let bola = ph2d_vec_boolean::overlap::RAIO_DO_VINCO * diagonal_de(&silhueta);
+        println!("  {graus:>4}°: com a silhueta máx {smax:.5} · a bola {bola:.5}");
+        assert!(
+            smax <= vmax + bola,
+            "a {graus}° a silhueta afasta o que se vê {smax} do padrão-ouro — mais que a lei \
+             ({vmax}) e UMA bola ({bola}) juntas"
+        );
         println!(
             "  {graus:>4}°: nós do artista p90 {c90:.5} máx {cmax:.5} · desenho fiel ({} nós) p90 \
              {v90:.5} máx {vmax:.5} · {:.0}×",
@@ -189,7 +216,7 @@ fn uma_forma_com_quinas_vivas_segue_o_padrao_ouro() {
     let cozida = p.fonte.cooked().into_owned();
     let rest = b_amostra_com(&cozida, DENSO);
     let ouro = ideal_denso(&p, &pele, &rest, false);
-    let (cru, visto) = o_que_se_ve(&p);
+    let (cru, visto) = o_que_se_ve(&p, false);
     let hoje = cru.cooked().into_owned();
     let (_, c90, cmax) = b_perfil(&b_amostra_com(&hoje, DENSO), &ouro);
     let (_, v90, vmax) = b_perfil(&b_amostra_com(&visto, DENSO), &ouro);
@@ -245,7 +272,7 @@ fn o_desenho_fiel_nao_espeta_em_dobra_nenhuma() {
             let pele = p.pele();
             let rest = b_amostra_com(&p.fonte, DENSO);
             let ouro = ideal_denso(&p, &pele, &rest, false);
-            let (_, visto) = o_que_se_ve(&p);
+            let (_, visto) = o_que_se_ve(&p, true);
             let (_, _, vmax) = b_perfil(&b_amostra_com(&visto, DENSO), &ouro);
             if vmax > pior.0 {
                 pior = (vmax, lado, graus);

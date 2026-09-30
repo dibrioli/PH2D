@@ -35,8 +35,11 @@
 //!
 //! # A lei desta porta
 //!
-//! - **Só corre quando o contorno se cruza** ([`crosses_itself`]) — fora do contacto a forma sai
-//!   **byte-idêntica**, e o custo é o de uma varredura de segmentos.
+//! - **A UNIÃO só corre quando o contorno se cruza** ([`crosses_itself`]) — fora do contacto ela
+//!   não toca na forma, e o custo é o de uma varredura de segmentos.
+//! - ⚠️ **A silhueta da pele ([`silhueta_da_pele`]) já NÃO é só a união** (F41): ela rola SEMPRE
+//!   a bola de [`RAIO_DO_VINCO`] por fora do contorno ([`crate::bola`]), antes e depois do
+//!   contacto. Fora de um vinco apertado ela devolve `None` e a forma sai ao bit.
 //! - **O estilo é o da forma** (preenchimento, traço, opacidade, mistura, camadas); só a geometria
 //!   muda. ⚠️ Não é o `compound_from` da booleana, que devolve o estilo MÍNIMO de um resultado
 //!   de edição: aqui a forma é a mesma, desenhada.
@@ -53,6 +56,12 @@ use ph2d_vec_scene::{Contour, FillRule, VecPath, VecVertex};
 /// corda de uma curva sem auto-intersecção só cruza outra quando os dois fios estão a menos da
 /// tolerância um do outro — e aí o contacto existe à escala do desenho.
 pub const DETECTION_TOLERANCE: f64 = 1e-4;
+
+/// A distância, em fracção da diagonal, abaixo da qual o fecho de um contorno achatado **é** o
+/// vértice de partida ([`crosses_itself`]). Um ULP de uma coordenada de `f64` perto de `10` vale
+/// `~2e-15`; `1e-12` fica três ordens acima do arredondamento e nove abaixo da tolerância do
+/// achatamento — nenhum segmento de verdade é tão curto.
+pub const FECHO_EXACTO: f64 = 1e-12;
 
 /// ⭐⭐⭐ **A silhueta de `path`** quando ele se sobrepõe a si mesmo; `None` quando não se
 /// sobrepõe, é aberto, ou o motor recusa (e aí quem chama desenha a forma como estava).
@@ -75,14 +84,11 @@ pub fn resolve_overlap(path: &VecPath) -> Option<VecPath> {
     let caixa = bez.bounding_box();
     let diagonal = caixa.width().hypot(caixa.height());
     let solda = SOLDA_DA_QUINA * diagonal;
-    let raio = RAIO_DO_VINCO * diagonal;
-    let originais = nos_do_desenho(path);
     let mut contornos = groups
         .iter()
         .flatten()
         .filter_map(crate::verts_from_bez)
         .map(|v| solda_os_segmentos_curtos(v, solda))
-        .map(|v| arredonda_os_vincos(v, &originais, raio))
         .filter(|v| v.len() >= 3);
     let outer = contornos.next()?;
     let resto: Vec<Contour> = contornos.map(Contour::new_closed).collect();
@@ -97,6 +103,40 @@ pub fn resolve_overlap(path: &VecPath) -> Option<VecPath> {
         FillRule::EvenOdd
     };
     out.subpaths = resto;
+    Some(out)
+}
+
+/// ⭐⭐⭐⭐ **A SILHUETA DA PELE** — a porta que o desenho da pele chama em todo quadro: a união
+/// quando o contorno se CRUZA ([`resolve_overlap`]) e, SEMPRE, a bola de raio [`RAIO_DO_VINCO`] a
+/// rolar por fora do contorno de fora ([`crate::bola::rola_a_bola`]) — nenhum canto interno fica
+/// mais apertado que ela, antes e depois do contacto (report do dono de 2026-09-30, a F41).
+///
+/// `None` quando nada muda: o desenho sai como estava, ao bit.
+#[must_use]
+pub fn silhueta_da_pele(path: &VecPath) -> Option<VecPath> {
+    if !path.closed || path.subpaths.iter().any(|c| !c.closed) || path.verts.len() < 3 {
+        return None;
+    }
+    let caixa = crate::to_bez(path).bounding_box();
+    let diagonal = caixa.width().hypot(caixa.height());
+    if !diagonal.is_finite() || diagonal <= 0.0 {
+        return None;
+    }
+    let solda = SOLDA_DA_QUINA * diagonal;
+    let raio = RAIO_DO_VINCO * diagonal;
+    let unido = resolve_overlap(path);
+    let base = unido.as_ref().unwrap_or(path);
+    let rolado = crate::bola::rola_a_bola(base.verts.clone(), &nos_do_desenho(path), raio, solda);
+    if rolado == base.verts {
+        return unido;
+    }
+    let mut out = base.clone();
+    // ⛔ SEM solda depois da bola: ela fundia o toque com um nó do desenho a `3,3 mm` dele (a
+    // solda é `1e-3` da diagonal) e tirava o arco do sítio — o 1.º pedaço saía com raio `0,94 r`,
+    // e rolar a bola outra vez lia-o como apertado (medido na dobra em Z a `80°`). A solda existe
+    // para os RESTOS da união, que já foram soldados antes; um pedaço curto RECORTADO de uma curva
+    // lisa tem as tangentes dela, não uma arbitrária.
+    out.verts = rolado;
     Some(out)
 }
 
@@ -199,236 +239,25 @@ pub fn solda_os_segmentos_curtos(mut verts: Vec<VecVertex>, tol: f64) -> Vec<Vec
 /// numa diagonal de `4 m`, `4 %` da espessura da barra da cena), e muito acima da solda (`1e-3`), senão
 /// o arco nasceria soldado. O traço desenha-se por cima dele como um arco de raio `r + ½·largura`:
 /// arredondado com qualquer junta.
+///
+/// ⛔⛔ **A F40 arredondava com um filete de TAMANHO fixo, só no cruzamento — e o dono reprovou-o
+/// com três fotos** (2026-09-30: *«arredonda demais, não é progressivo … ainda produz artefatos
+/// circulares»*). Desde a F41 este raio é o de uma BOLA que rola por fora do contorno
+/// ([`crate::bola::rola_a_bola`]): um canto só é tocado onde ela não cabe, o arco cresce com o
+/// ângulo em vez de saltar, e o vinco que nasce ANTES do encosto (onde a união não corre) é
+/// tratado pela mesma lei. ⚠️ **Divergência declarada:** uma curva côncava LISA do desenho mais
+/// apertada que a bola também é alargada — não há correspondência entre o repouso e o assado que
+/// permita poupá-la.
 pub const RAIO_DO_VINCO: f64 = 1e-2;
 
-/// ⭐⭐⭐ **Arredonda os VINCOS da silhueta**: todo vértice CÔNCAVO que VIRA e que NÃO é um nó do
-/// desenho (`originais`) nasceu no cruzamento — é um vinco — e é trocado por um arco tangente aos
-/// dois lados, de raio `raio`.
-///
-/// Três leis, cada uma MEDIDA na barra dobrada (F39, 2026-09-30):
-/// - **Um vinco é um vértice que VIRA MAIS do que virava no desenho.** Os nós saem da união com as
-///   coordenadas exactas (distância `0e0`) — ⛔ mas o motor ENCAIXA o cruzamento num nó vizinho
-///   quando ele cai dentro da precisão dele: na pose das fotos o vinco de `161°` sai EXACTAMENTE
-///   sobre um nó que no desenho era liso. Nem a proximidade (o assado tem nós a `~0,01` junto da
-///   junta, e um caía dentro da solda) nem a igualdade ao bit servem sozinhas: a pergunta é se o nó
-///   JÁ virava assim.
-/// - **Só o CÔNCAVO:** o vinco de uma dobra é sempre côncavo (dois membros que se unem); uma quina
-///   convexa nascida no cruzamento fica como está — e a régua da ÁREA o prova (arredondar um
-///   côncavo só ACRESCENTA área).
-/// - **O corte mede-se ao longo do CONTORNO:** junto da junta o assado tem segmentos de `~0,01`,
-///   e um arco preso ao primeiro deles saía minúsculo — o defeito dos pedaços soltos outra vez. Os
-///   nós lisos dentro do arco são engolidos; ⛔ uma quina do ARTISTA nunca (o arco encolhe antes).
-#[must_use]
-pub fn arredonda_os_vincos(
-    verts: Vec<VecVertex>,
-    originais: &[([f64; 2], f64)],
-    raio: f64,
-) -> Vec<VecVertex> {
-    use kurbo::{CubicBez, ParamCurve, ParamCurveDeriv, Point};
-    let n = verts.len();
-    if n < 3 || raio <= 0.0 {
-        return verts;
-    }
-    // A viragem que o nó tinha no DESENHO, se o vértice é (ao bit) um nó dele.
-    let antes = |a: [f64; 2]| {
-        originais
-            .iter()
-            .find(|(o, _)| {
-                (o[0] - a[0]).abs() <= 1e-12 * (1.0 + a[0].abs())
-                    && (o[1] - a[1]).abs() <= 1e-12 * (1.0 + a[1].abs())
-            })
-            .map(|(_, v)| *v)
-    };
-    // A orientação do contorno (a área com sinal pelas âncoras chega para o SINAL).
-    let area2: f64 = (0..n)
-        .map(|i| {
-            let (a, b) = (verts[i].anchor, verts[(i + 1) % n].anchor);
-            a[0] * b[1] - b[0] * a[1]
-        })
-        .sum();
-    let concavo = |i: usize| {
-        tangentes(&verts, i).is_some_and(|(e, s)| (e[0] * s[1] - e[1] * s[0]) * area2 < 0.0)
-    };
-    let vira = |i: usize| viragem(&verts, i).unwrap_or(0.0);
-    // Vira mais do que virava: um cruzamento novo, ou um nó liso sobre o qual o motor o encaixou.
-    let novo = |i: usize| antes(verts[i].anchor).is_none_or(|v| vira(i) > v + VINCO_MINIMO);
-    let vinco: Vec<bool> = (0..n)
-        .map(|i| vira(i) > VINCO_MINIMO && concavo(i) && novo(i))
-        .collect();
-    if !vinco.contains(&true) {
-        return verts;
-    }
-    // Onde o arco NÃO pode entrar: outro vinco, ou uma quina a sério do desenho (as micro-quinas
-    // de `1,4°`–`1,7°` que o assado deixa nos nós são engolidas).
-    let parede: Vec<bool> = (0..n)
-        .map(|i| vinco[i] || (vira(i) > PAREDE_MINIMA && antes(verts[i].anchor).is_some()))
-        .collect();
-    let pt = |a: [f64; 2]| Point::new(a[0], a[1]);
-    let arr = |p: Point| [p.x, p.y];
-    let seg = |j: usize| {
-        let (c, q) = (&verts[j], &verts[(j + 1) % n]);
-        CubicBez::new(
-            pt(c.anchor),
-            pt(c.out_handle),
-            pt(q.in_handle),
-            pt(q.anchor),
-        )
-    };
-    let dist = |j: usize, v: Point| pt(verts[j].anchor).distance(v);
-    // O parâmetro do segmento onde ele está a `d` de `v`, entre a ponta `perto_t` (a menos de `d`)
-    // e a `longe_t` (a `d` ou mais).
-    let corte = |c: &CubicBez, v: Point, d: f64, mut perto_t: f64, mut longe_t: f64| {
-        for _ in 0..52 {
-            let m = 0.5 * (perto_t + longe_t);
-            if c.eval(m).distance(v) < d {
-                perto_t = m;
-            } else {
-                longe_t = m;
-            }
-        }
-        0.5 * (perto_t + longe_t)
-    };
-    // Anda a partir do vinco `i` num sentido até ao 1.º nó a `d` ou mais; devolve o nó, ou a PAREDE
-    // onde parou.
-    let anda = |i: usize, d: f64, passo: usize| -> (usize, bool) {
-        let v = pt(verts[i].anchor);
-        let mut u = i;
-        for _ in 1..n {
-            u = (u + passo) % n;
-            if parede[u] {
-                return (u, false);
-            }
-            if dist(u, v) >= d {
-                return (u, true);
-            }
-        }
-        (u, false)
-    };
-    let mut t_ini = vec![0.0; n];
-    let mut t_fim = vec![1.0; n];
-    let mut some = vec![false; n];
-    let mut sb_de = vec![0; n];
-    let mut sf_de = vec![0; n];
-    for i in (0..n).filter(|&i| vinco[i]) {
-        let v = pt(verts[i].anchor);
-        let alfa = viragem(&verts, i).unwrap_or(0.0).to_radians();
-        // O corte fica a `r·tan(α/2)` do vinco, e NUNCA a menos de `r`: um vinco que mal vira
-        // (medido na dobra em C a `95°`: poucos graus) dava um arco de `0,0013`, dentro da solda, e
-        // a junta seria calculada sobre uma tangente arbitrária. Com o piso, um vinco raso ganha
-        // um arco largo e suave (raio `r/tan(α/2)`), e a partir de `90°` o piso não pesa.
-        let mut d = raio * (0.5 * alfa).tan().max(1.0);
-        // Uma parede no caminho encolhe o arco para não passar de metade da distância até ela; um
-        // nó liso que fica LOGO ALÉM do corte é engolido (o arco cresce até o deixar a `folga`), senão
-        // sobra entre os dois um segmento do tamanho da solda — medido na pose das fotos a `150°`:
-        // o 1.º nó além do corte ficava a `0,0008` dele.
-        let folga = FOLGA_DO_CORTE * raio;
-        let mut tecto = f64::INFINITY;
-        for _ in 0..16 {
-            let (b, okb) = anda(i, d, n - 1);
-            let (f, okf) = anda(i, d, 1);
-            for (u, ok) in [(b, okb), (f, okf)] {
-                if !ok {
-                    tecto = tecto.min(0.45 * dist(u, v));
-                }
-            }
-            if d > tecto {
-                d = tecto;
-                continue;
-            }
-            let cresce = [(b, okb), (f, okf)]
-                .into_iter()
-                .filter(|&(u, ok)| ok && dist(u, v) - d < folga)
-                .map(|(u, _)| dist(u, v) + folga)
-                .fold(d, f64::max);
-            if cresce <= d || cresce > tecto {
-                break;
-            }
-            d = cresce;
-        }
-        let (ub, _) = anda(i, d, n - 1);
-        let (uf, _) = anda(i, d, 1);
-        let (sb, sf) = (ub, (uf + n - 1) % n);
-        t_fim[sb] = corte(&seg(sb), v, d, 1.0, 0.0);
-        t_ini[sf] = corte(&seg(sf), v, d, 0.0, 1.0);
-        sb_de[i] = sb;
-        sf_de[i] = sf;
-        // Os nós estritamente entre `ub` e `uf` saem (o vinco é trocado por dois).
-        let mut k = (ub + 1) % n;
-        while k != uf {
-            if k != i {
-                some[k] = true;
-            }
-            k = (k + 1) % n;
-        }
-    }
-    let corta = |j: usize| {
-        let c = seg(j);
-        if t_ini[j] == 0.0 && t_fim[j] == 1.0 {
-            c
-        } else {
-            c.subsegment(t_ini[j]..t_fim[j])
-        }
-    };
-    let unit = |w: kurbo::Vec2, reserva: kurbo::Vec2| {
-        let w = if w.hypot() > 1e-12 { w } else { reserva };
-        w / w.hypot().max(1e-300)
-    };
-    let mut out = Vec::with_capacity(n + 8);
-    for i in 0..n {
-        if some[i] {
-            continue;
-        }
-        if !vinco[i] {
-            let mut v = verts[i];
-            v.in_handle = arr(corta((i + n - 1) % n).p2);
-            v.out_handle = arr(corta(i).p1);
-            out.push(v);
-            continue;
-        }
-        let (sb, sf) = (sb_de[i], sf_de[i]);
-        let (a, d) = (corta(sb), corta(sf));
-        let (pa, pb) = (a.p3, d.p0);
-        let ta = unit(seg(sb).deriv().eval(t_fim[sb]).to_vec2(), pa - a.p0);
-        let tb = unit(seg(sf).deriv().eval(t_ini[sf]).to_vec2(), d.p3 - pb);
-        // O arco circular de varrimento `θ` entre `A` e `B`: alça `(4/3)·tan(θ/4)·r`, com
-        // `r = corda / (2·sin(θ/2))`.
-        let theta = ta.dot(tb).clamp(-1.0, 1.0).acos();
-        let corda = pa.distance(pb);
-        let h = if theta > 1e-9 {
-            (4.0 / 3.0) * (0.25 * theta).tan() * corda / (2.0 * (0.5 * theta).sin())
-        } else {
-            corda / 3.0
-        };
-        let mut va = verts[i];
-        va.in_handle = arr(a.p2);
-        va.anchor = arr(pa);
-        va.out_handle = arr(pa + ta * h);
-        let mut vb = verts[i];
-        vb.in_handle = arr(pb - tb * h);
-        vb.anchor = arr(pb);
-        vb.out_handle = arr(d.p1);
-        out.push(va);
-        out.push(vb);
-    }
-    for v in &mut out {
-        v.kind = crate::classify(v);
-    }
-    out
-}
-
-/// A distância mínima, em raios, entre o corte do arco e o nó liso seguinte — `0,2`: o dobro da
-/// solda (`SOLDA_DA_QUINA / RAIO_DO_VINCO = 0,1`), e abaixo do passo dos nós do assado junto da junta
-/// (`~0,01` numa peça de `4 m`, ou `0,25` raio), senão o arco cresceria nó a nó até à parede.
-const FOLGA_DO_CORTE: f64 = 0.2;
-
 /// Abaixo desta viragem um vértice é uma curva que continua, não uma quina — `1°`.
-const VINCO_MINIMO: f64 = 1.0;
+pub(crate) const VINCO_MINIMO: f64 = 1.0;
 
 /// A viragem a partir da qual um nó do desenho é uma QUINA que o arco não engole — `15°`. Medido:
 /// o assado deixa micro-quinas de `1,4°`–`1,7°` nos nós (a costura das tampas), que um arco de
 /// `4 cm` pode engolir sem ninguém ver; tratá-las como parede prendia o arco a `45 %` de um
 /// segmento de `0,0017` e ele saía minúsculo.
-const PAREDE_MINIMA: f64 = 15.0;
+pub(crate) const PAREDE_MINIMA: f64 = 15.0;
 
 /// Os nós do desenho com a viragem que cada um tinha — o que a união NÃO pode tocar.
 fn nos_do_desenho(path: &VecPath) -> Vec<([f64; 2], f64)> {
@@ -453,6 +282,10 @@ pub fn viragem_do_vertice(verts: &[VecVertex], i: usize) -> Option<f64> {
 }
 
 /// As tangentes de ENTRADA e de SAÍDA do vértice `i`, unitárias, como o traço as lê.
+pub(crate) fn tangentes_do_vertice(verts: &[VecVertex], i: usize) -> Option<([f64; 2], [f64; 2])> {
+    tangentes(verts, i)
+}
+
 fn tangentes(verts: &[VecVertex], i: usize) -> Option<([f64; 2], [f64; 2])> {
     let n = verts.len();
     let (p, c, q) = (&verts[(i + n - 1) % n], &verts[i], &verts[(i + 1) % n]);
@@ -482,6 +315,16 @@ fn viragem(verts: &[VecVertex], i: usize) -> Option<f64> {
 /// extremo com os MESMOS bits, logo um dos quatro testes de lado subtrai um ponto de si mesmo e dá
 /// **zero exacto** — e o teste estrito de [`atravessa`] recusa-o. Um salto explícito foi escrito e
 /// uma mutação que o apagava SOBREVIVEU: *uma linha que a mutação não consegue matar não é lei.*
+///
+/// ⛔⛔ **A excepção é o passo de UM ULP, e ele acusava um cruzamento que não existe** (medido F41,
+/// a pose do dono a `98°`): o achatamento emite o ponto CALCULADO da cúbica perto de `t = 1` e
+/// depois o vértice GUARDADO, e os dois podem diferir por **um ULP** — nasce um segmento de
+/// `1e-15`, os dois vizinhos dele deixam de ser consecutivos e de partilhar os bits, os testes de
+/// lado deixam de dar zero exacto, e dois segmentos quase colineares que se TOCAM leem-se como um
+/// par que se ATRAVESSA. O mesmo vale para o FECHO (o último ponto calculado contra o `ini`
+/// guardado). ⇒ um passo a menos de [`FECHO_EXACTO`] da diagonal **cola** a ponta do segmento
+/// anterior, em vez de nascer como segmento. ⚠️ A primeira cura tratou só o fecho e o gate do dono
+/// continuou vermelho: o nó onde o passo nasceu era um vértice LISO no meio do contorno.
 #[must_use]
 pub fn crosses_itself(bez: &BezPath) -> bool {
     let caixa = bez.bounding_box();
@@ -492,30 +335,46 @@ pub fn crosses_itself(bez: &BezPath) -> bool {
     let mut segs: Vec<([f64; 2], [f64; 2])> = Vec::new();
     let (mut ini, mut ult) = ([0.0; 2], [0.0; 2]);
     let mut aberto = false;
-    let fecha = |segs: &mut Vec<_>, ult: [f64; 2], ini: [f64; 2]| {
-        if ult != ini {
-            segs.push((ult, ini));
+    let mut n0 = 0usize;
+    let cola = diag * FECHO_EXACTO;
+    let fecha = |segs: &mut Vec<([f64; 2], [f64; 2])>, n0: usize, ult: [f64; 2], ini: [f64; 2]| {
+        if ult == ini {
+            return;
         }
+        if segs.len() > n0 && (ult[0] - ini[0]).hypot(ult[1] - ini[1]) <= cola {
+            if let Some(ultimo) = segs.last_mut() {
+                ultimo.1 = ini;
+            }
+            return;
+        }
+        segs.push((ult, ini));
     };
     kurbo::flatten(bez.iter(), diag * DETECTION_TOLERANCE, |el| match el {
         PathEl::MoveTo(p) => {
             if aberto {
-                fecha(&mut segs, ult, ini);
+                fecha(&mut segs, n0, ult, ini);
             }
             aberto = true;
+            n0 = segs.len();
             ini = [p.x, p.y];
             ult = ini;
         }
         PathEl::LineTo(p) => {
             let q = [p.x, p.y];
             if q != ult {
-                segs.push((ult, q));
+                // Um passo de um ULP COLA ao segmento anterior em vez de nascer como segmento —
+                // senão os dois vizinhos dele deixam de partilhar os bits.
+                let colar = segs.len() > n0 && (q[0] - ult[0]).hypot(q[1] - ult[1]) <= cola;
+                match segs.last_mut() {
+                    Some(ultimo) if colar => ultimo.1 = q,
+                    _ => segs.push((ult, q)),
+                }
                 ult = q;
             }
         }
         PathEl::ClosePath => {
             if aberto {
-                fecha(&mut segs, ult, ini);
+                fecha(&mut segs, n0, ult, ini);
                 aberto = false;
             }
         }
@@ -523,7 +382,7 @@ pub fn crosses_itself(bez: &BezPath) -> bool {
         PathEl::QuadTo(..) | PathEl::CurveTo(..) => {}
     });
     if aberto {
-        fecha(&mut segs, ult, ini);
+        fecha(&mut segs, n0, ult, ini);
     }
     segs.sort_by(|a, b| a.0[0].min(a.1[0]).total_cmp(&b.0[0].min(b.1[0])));
     for (i, s) in segs.iter().enumerate() {

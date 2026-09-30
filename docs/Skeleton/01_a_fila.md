@@ -66,6 +66,87 @@ diz onde ler o mecanismo:
 
 ---
 
+### F41 — ⭐⭐⭐ **A BOLA QUE ROLA: nenhum canto interno da pele fica mais apertado que um raio** (report do dono, 2026-09-30, com três fotos: *«melhor mas ainda inconsistente. veja que o ângulo da linha arredonda demais, não é progressivo. e veja que ainda produz artefatos circulares»*)
+
+⛔⛔ **A F40 estava certa sobre o QUÊ e errada sobre o QUANDO e o QUANTO.** A sonda
+`diag_a_zona_da_dobra` mostrou que as três fotos são UMA lei a faltar:
+- **Antes do contacto a pele já aperta até ao bico** — o raio côncavo do lado de dentro vai de
+  `0,12` raio a `85°` para `0,002` a `92°` **sem o contorno se cruzar** (a dobra do mapa,
+  `det J = |1 − θ̄′·r|`), e o filete da F40 só corria no cruzamento. O bico é a foto 1; o fundo a
+  aparecer dentro dele com a ponta redonda da junta é o «artefato circular» da foto 3.
+- **O cruzamento liga e desliga de grau para grau** (`88°`–`89°` cruza, `90°`–`92°` não, `93°`
+  cruza): o canto saltava de bico para arco e de volta — o «não é progressivo».
+- **O arco de um vinco raso era ENORME** (o piso `r` da F40 dava raio `r/tan(α/2)`): o «arredonda
+  demais» da foto 2.
+
+⭐⭐⭐ **A lei: o FECHO morfológico por uma bola de raio `r`, só no lado côncavo, SEMPRE**
+([`bola.rs`](../../crates/ph2d-vec-boolean/src/bola.rs), chamada por
+[`silhueta_da_pele`](../../crates/ph2d-vec-boolean/src/overlap.rs) — a união continua a correr só no
+cruzamento). A bola rola por fora; onde não cabe, o contorno passa a ser o arco dela ⇒ **contínuo
+na forma**: o canto aperta aos poucos, fica em `r`, e é o mesmo antes e depois do encosto. Um vinco
+de viragem `α` recebe o arco tangente a `r·tan(α/2)` (o da F40, **sem** o piso); uma curva mais
+larga que `r` sai **ao bit**.
+
+Leis que a MEDIÇÃO impôs, cada uma por um gate vermelho:
+1. **O centro é EXACTO** (Newton sobre os dois toques): o cruzamento das paralelas AMOSTRADAS
+   deixava o arco um nada mais apertado que `r` e rolar outra vez trocava-o (dobra em C a `135°`).
+2. **Pedaços de `45°`, não de `90°`**, e limiar `APERTO = 0,99`: a cúbica de um quarto de círculo
+   desce a `0,992 r` e a bola re-lia o próprio arco como apertado — o fecho deixava de ser
+   IDEMPOTENTE.
+3. **A tangente nos toques é a do CÍRCULO** — num toque que cai num nó que já é quina, a da curva
+   torce o 1.º pedaço (`0,98 r`, junta única a `125°`).
+4. **A fusão de dois vãos vai do mais à esquerda ao mais à direita** (a 1.ª redacção perdia os dois
+   a `91°`) e **um vão contido noutro sai** (dobra em Z a `80°`).
+5. **Uma parede é uma quina do artista que AINDA é quina** — a união pode alisar um nó do desenho
+   (dobra em C a `135°`), e o limiar do ruído é UMA solda de corda (`~5,7°`), não duas (um vinco de
+   `9°` ficava em quina a `125°`).
+6. **SEM solda depois da bola** — ela fundia o toque com um nó a `3,3 mm` e tirava o arco do sítio.
+7. ⛔⛔ **O DETECTOR de cruzamento tinha um falso positivo**, e foi o último vermelho (pose do dono a
+   `98°`): o achatamento emite o ponto CALCULADO da cúbica perto de `t = 1` e depois o vértice
+   GUARDADO, que diferem por **um ULP**; os dois vizinhos desse segmento de `1e-15` deixam de
+   partilhar os bits e dois segmentos quase colineares que se TOCAM liam-se como um par que se
+   ATRAVESSA ⇒ a união corria sobre uma silhueta já resolvida. A cura **cola** um passo a menos de
+   `FECHO_EXACTO = 1e-12` da diagonal ao segmento anterior (no meio e no fecho). ⚠️ A 1.ª cura tratou
+   só o FECHO e o gate continuou vermelho: o nó era um vértice LISO no meio do contorno — *quem o
+   expôs foi a bola rodar o vértice de partida, e o defeito veio atrás dele*.
+
+8. ⛔⛔ **A bola tem de estar VAZIA** — achado pela prova de mutação, não por um report: cinco
+   mutações SOBREVIVERAM (sementes convexas, a poda e a fusão dos vãos, pedaços de `90°`, a parede
+   do ruído) e a sonda que se escreveu para lhes dar corpus achou um DEFEITO: um **dente convexo**
+   dentro de um vinco mais estreito que a bola saía com dois arcos cruzados por cima dele e uma
+   meia-volta de `180°`, não idempotente. O toque mais BARATO pousava num vale do dente e a bola
+   atravessava o outro lado ⇒ os candidatos correm por custo e fica o primeiro cuja bola não tem
+   ponto nenhum do contorno dentro (`FOLGA_DA_BOLA = 0,999`). ⚠️ O `v > PAREDE_MINIMA` da parede
+   SAIU: as duas condições da viragem actual já o implicam (`v ≥ vira − 1° > 14°`).
+
+- **Gates:** `um_fundo_mais_estreito_que_a_bola_e_engolido_inteiro` (fundo plano de `0,2`–`1,2 r`, em
+  W de 3 a 5 cantos, e o DENTE: nenhuma zona abaixo de `0,99 r`, nenhuma quina nova, idempotente e
+  o fundo inteiro engolido) · `bola_tests.rs` (o entalhe de `166°` vira o arco da bola, a quina do artista fica, o
+  convexo fica · uma curva mais apertada que a bola vira o arco dela, idempotente · os nós lisos
+  dentro do arco saem · o ruído do assado não é tocado) · `nenhum_canto_da_silhueta_e_mais_apertado_que_a_bola`
+  (C · Z · uma junta de `60°` a `150°`, e a pose do dono de `60°` a `150°` grau a grau: nenhuma zona
+  apertada abaixo de `0,9 r` maior que `12°` e **rolar outra vez não muda nada**; piso: pelo menos
+  uma silhueta tocada ANTES do cruzamento) · `um_fecho_a_um_ulp_do_inicio_nao_e_um_cruzamento` ·
+  `um_passo_de_um_ulp_no_meio_nao_e_um_cruzamento` (os números medidos, com o CONTROLO de que a
+  folga de um ULP existe).
+- ⚠️ **Os dois gates do padrão-ouro passaram a medir as DUAS etapas separadas** (`o_que_se_ve(p,
+  contacto)`): a LEI do desenho contra o ideal com a barra de sempre (`0,01`), e o que se vê com a
+  bola a no máximo **uma bola** além da lei (medido a `90°`: `0,038` contra `0,004 + 0,058`). Julgar
+  as duas juntas acusaria o arredondamento PEDIDO de ser um defeito da lei.
+- ⚠️ **Divergência DECLARADA:** uma curva côncava LISA do desenho mais apertada que `r` (`1 %` da
+  diagonal) também é alargada — não há correspondência entre o repouso e o assado que a poupe.
+- **Recusas medidas:** o filete da F40 só no cruzamento (bico antes do encosto) · o piso `r` no
+  recuo (arco enorme num vinco raso) · janela de `8` raios (o entalhe de `166°` ficava fora) · pedaços
+  de `90°` (não idempotente) · o centro das cordas amostradas · solda depois da bola.
+- **Mutação `27 de 30` + controlo, com as 3 que sobram NOMEADAS**
+  ([arnês](ferramentas/muta_a_silhueta_do_contacto.sh)): o bloco `V*` do filete SAIU com a lei dele;
+  entram `B1`–`B14` (a bola) e `D1`–`D2` (o detector). ⚠️ **B2** (semente convexa) é equivalente na
+  forma — as paralelas de fora de uma quina convexa divergem e a bola não pousa; **B8/B9** (poda e
+  fusão dos vãos) foram escritas contra casos que o centro exacto e a bola vazia dissolveram, e o
+  percurso já salta um vão contido; ficam como rede. ⛔ E **Q1** (a solda da união) passou a
+  SOBREVIVER com a bola a engolir os restos junto do vinco — o gate voltou a medir a UNIÃO na própria
+  etapa, e sangra.
+
 ### F40 — ⭐⭐⭐ **O VINCO DO CONTACTO É UM ARCO** (report do dono, 2026-09-30, com cinco fotos: *«além de inconsistente, fica tão pontudo que perfura o outro lado da forma»*; decisão dele entre três saídas: **arredondado**)
 
 ⛔⛔ **A F39 tinha duas metades e a segunda estava ERRADA.** Subir o limite do bico para `10` fazia

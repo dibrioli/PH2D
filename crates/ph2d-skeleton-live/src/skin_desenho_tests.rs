@@ -286,8 +286,10 @@ const DOBRAS: [f32; 8] = [30.0, 45.0, 60.0, 75.0, 90.0, 110.0, 130.0, 150.0];
 /// - o **CONTROLO** (`contacto: false`): alguma dobra da régua CRUZA o contorno — sem isto a
 ///   barra deixou de conter o fenómeno e o gate passaria sobre uma cena sem contacto;
 /// - com a lei, **nenhuma** dobra cruza;
-/// - e onde o controlo NÃO cruza, o desenho sai **ao bit** o de antes — é o que prova que a porta
-///   só corre no contacto e deixa toda pose calma intacta.
+/// - e onde o controlo NÃO cruza e não tem zona mais apertada que a bola, o desenho sai **ao bit**
+///   o de antes — é o que prova que a porta deixa toda pose calma intacta. ⚠️ Desde a F41 a bola
+///   corre também FORA do contacto (a pele aperta até ao bico antes de se cruzar), logo «fora do
+///   contacto» sozinho já não basta para prometer o bit.
 #[test]
 fn numa_dobra_forte_o_desenho_nao_se_cruza() {
     let mut cruzou = Vec::new();
@@ -300,9 +302,10 @@ fn numa_dobra_forte_o_desenho_nao_se_cruza() {
             !com_cruza,
             "a {g}° o desenho COM a lei do contacto ainda se cruza"
         );
+        let r = ph2d_vec_boolean::overlap::RAIO_DO_VINCO * diagonal(&sem);
         if sem_cruza {
             cruzou.push(g);
-        } else {
+        } else if zona::maior_zona_apertada(&sem, 0.9 * r).0 < 12.0 {
             assert_eq!(
                 com, sem,
                 "a {g}° não há contacto e o desenho mudou — a porta correu fora do contacto"
@@ -617,18 +620,42 @@ fn nenhum_vinco_da_silhueta_fica_em_quina() {
             if com != sem {
                 resolvidas += 1;
             }
+            // ⚠️ A UNIÃO sozinha continua a não deixar segmento nenhum na solda (o contrato da
+            // F38): desde a F41 a bola engole os restos junto do vinco, e medir só a silhueta
+            // deixava a solda da união SEM régua (a mutação que a apagava sobreviveu).
+            if let Some(u) = ph2d_vec_boolean::resolve_overlap(&sem) {
+                let tol = ph2d_vec_boolean::overlap::SOLDA_DA_QUINA * diagonal(&u);
+                let perto = |a: [f64; 2], b: [f64; 2]| (a[0] - b[0]).hypot(a[1] - b[1]) <= tol;
+                let vs = &u.verts;
+                for i in 0..vs.len() {
+                    let (c, q) = (&vs[i], &vs[(i + 1) % vs.len()]);
+                    assert!(
+                        !(perto(c.anchor, q.anchor)
+                            && perto(c.anchor, c.out_handle)
+                            && perto(c.anchor, q.in_handle)),
+                        "{forma:?} {g}°: a união deixou o segmento v{i} dentro da solda"
+                    );
+                }
+            }
             let tol = ph2d_vec_boolean::overlap::SOLDA_DA_QUINA * diagonal(&com);
             let perto = |a: [f64; 2], b: [f64; 2]| (a[0] - b[0]).hypot(a[1] - b[1]) <= tol;
             let vs = &com.verts;
             let n = vs.len();
             for i in 0..n {
                 let (c, q) = (&vs[i], &vs[(i + 1) % n]);
+                // ⚠️ Desde a F41 um pedaço CURTO pode ficar (o recorte entre um nó e o toque da
+                // bola): o que a solda proíbe é a TANGENTE arbitrária, e ela vê-se nas pontas.
+                let minusculo = perto(c.anchor, q.anchor)
+                    && perto(c.anchor, c.out_handle)
+                    && perto(c.anchor, q.in_handle);
+                let vira_nas_pontas = [i, (i + 1) % n]
+                    .iter()
+                    .map(|&k| ph2d_vec_boolean::overlap::viragem_do_vertice(vs, k).unwrap_or(0.0))
+                    .fold(0.0, f64::max);
                 assert!(
-                    !perto(c.anchor, q.anchor)
-                        || !perto(c.anchor, c.out_handle)
-                        || !perto(c.anchor, q.in_handle),
-                    "{forma:?} {g}°: o segmento v{i} cabe na solda — a junta seria calculada \
-                     sobre uma tangente arbitrária"
+                    !minusculo || vira_nas_pontas <= 1.0,
+                    "{forma:?} {g}°: o segmento v{i} cabe na solda e vira {vira_nas_pontas:.1}° \
+                     numa ponta — a junta seria calculada sobre uma tangente arbitrária"
                 );
                 let vira = ph2d_vec_boolean::overlap::viragem_do_vertice(vs, i).unwrap_or(0.0);
                 assert!(
@@ -645,3 +672,6 @@ fn nenhum_vinco_da_silhueta_fica_em_quina() {
         "só {resolvidas} dobras passaram pela porta — a régua deixou de conter o contacto"
     );
 }
+
+#[path = "skin_desenho_zona_tests.rs"]
+mod zona;

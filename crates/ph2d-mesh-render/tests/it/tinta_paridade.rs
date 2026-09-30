@@ -43,7 +43,7 @@ fn cs(@builtin(global_invocation_id) gid: vec3<u32>) {
     let i = gid.x;
     if (i >= arrayLength(&sondas)) { return; }
     let s = sondas[i];
-    saida[i] = vec4<f32>(tinta_no_ponto(s.pi, s.p.xyz), 1.0);
+    saida[i] = tinta_no_ponto4(s.pi, s.p.xyz);
 }
 "#;
 
@@ -84,6 +84,8 @@ struct Sonda {
     pi: u32,
     p: [f32; 3],
     esperado: [f32; 3],
+    /// A altura do RELEVO no mesmo ponto (`docs/3D/29`), pela mesma lei.
+    altura: f32,
     onde: String,
 }
 
@@ -123,6 +125,7 @@ fn sondas_da_grelha(m: &Mesh, faces: &[Vec<u32>], t: &Tinta, origem: &[u32]) -> 
                 // ⭐ A célula é o quadrado unitário ⇒ o mundo É o `(u, v)`.
                 p: [a[0] + u, a[1] + v, 0.0],
                 esperado: t.cor_quad(fi, f, [u, v]),
+                altura: t.altura_quad(fi, f, [u, v]),
                 onde: format!("grelha face {fi} sub {sub} ({u}, {v})"),
             });
         }
@@ -158,6 +161,7 @@ fn sondas_da_esfera(m: &Mesh, t: &Tinta, origem: &[u32]) -> Vec<Sonda> {
                 pi: pi as u32,
                 p,
                 esperado: t.cor_tri(fi, f, bar),
+                altura: t.altura_tri(fi, f, bar),
                 onde: format!("esfera face {fi} {bar:?}"),
             });
         }
@@ -192,6 +196,18 @@ fn a_lei_da_reticula_le_o_mesmo_na_placa_e_na_cpu() {
         for i in 0..t.amostras().len() {
             t.amostras_mut()[i] = cor_embaralhada(i);
         }
+        // ⭐ **O RELEVO viaja pela MESMA leitura** (`docs/3D/29`), com uma
+        //   altura embaralhada DIFERENTE da cor — senão um endereço trocado
+        //   entre os dois canais leria certo. ⚠️ A grelha de nível `0` fica
+        //   SEM relevo de propósito: é o CONTROLO de que o bit desligado lê
+        //   zero, e de que a cor não depende de haver relevo.
+        let com_relevo = nome != "grelha plana, nível 0";
+        if com_relevo {
+            for i in 0..t.amostras().len() {
+                t.alturas_mut()[i] = cor_embaralhada(i + 1_000_003)[0] - 0.5;
+            }
+        }
+        assert_eq!(t.tem_relevo(), com_relevo);
 
         let mut pay = Vec::new();
         assert!(
@@ -215,7 +231,8 @@ fn a_lei_da_reticula_le_o_mesmo_na_placa_e_na_cpu() {
         let mut pior = 0.0f32;
         let mut pior_onde = String::new();
         for (s, got) in sondas.iter().zip(lido.iter()) {
-            for (e, (g, esp)) in got.iter().zip(s.esperado.iter()).enumerate() {
+            let esp4 = [s.esperado[0], s.esperado[1], s.esperado[2], s.altura];
+            for (e, (g, esp)) in got.iter().zip(esp4.iter()).enumerate() {
                 let d = (g - esp).abs();
                 if d > pior {
                     pior = d;
@@ -246,7 +263,7 @@ fn corre_na_placa(
     tris: &[[u32; 3]],
     origem: &[u32],
     sondas: &[Sonda],
-) -> Vec<[f32; 3]> {
+) -> Vec<[f32; 4]> {
     use wgpu::util::DeviceExt as _;
 
     let amostras: Vec<f32> = t.amostras().iter().flat_map(|c| *c).collect();
@@ -282,6 +299,10 @@ fn corre_na_placa(
     let b_idx = buf(bytemuck::cast_slice(&idx), st);
     let b_pos = buf(bytemuck::cast_slice(&posicoes), st);
     let b_cfg = buf(bytemuck::cast_slice(&cfg), wgpu::BufferUsages::UNIFORM);
+    // ⚠️ Sem relevo o buffer é um DUMMY de uma altura, como no produto: um
+    //   binding de storage não pode ter tamanho zero.
+    let alturas: Vec<f32> = t.alturas().map_or_else(|| vec![0.0], <[f32]>::to_vec);
+    let b_alt = buf(bytemuck::cast_slice(&alturas), st);
     let b_sondas = buf(bytemuck::cast_slice(&entrada), st);
     let n = sondas.len();
     let b_saida = device.create_buffer(&wgpu::BufferDescriptor {
@@ -316,6 +337,7 @@ fn corre_na_placa(
                 },
                 count: None,
             },
+            storage(7),
         ],
     });
 
@@ -380,6 +402,10 @@ fn corre_na_placa(
                 binding: 6,
                 resource: b_cfg.as_entire_binding(),
             },
+            wgpu::BindGroupEntry {
+                binding: 7,
+                resource: b_alt.as_entire_binding(),
+            },
         ],
     });
 
@@ -409,7 +435,7 @@ fn corre_na_placa(
         .as_chunks::<4>()
         .0
         .iter()
-        .map(|c| [c[0], c[1], c[2]])
+        .map(|c| [c[0], c[1], c[2], c[3]])
         .collect();
     drop(dados);
     b_ler.unmap();

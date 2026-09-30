@@ -228,7 +228,18 @@ fn as_duas_fontes_do_shader_parsam_e_validam() {
 #[test]
 fn o_fs_core_nunca_le_a_cor_bruta_do_vertice() {
     let src = include_str!("shaders/mesh.wgsl");
-    let inicio = src.find("fn fs_core(").expect("o fs_core existe");
+    // ⚠️ **O corpo mudou de casa em 2026-09-30 (o RELEVO, `docs/3D/29`):** o
+    //   `fs_core` passou a delegar num `fs_core_n` que recebe a normal, para o
+    //   relevo inclinar a luz sem uma segunda lei. A pergunta é a mesma e o
+    //   corpo que a responde é o `fs_core_n` — com a delegação afirmada, senão
+    //   um `fs_core` que voltasse a ter corpo próprio escaparia a este gate.
+    assert_eq!(
+        src.matches("return fs_core_n(in, vcolor, in.n_view);")
+            .count(),
+        1,
+        "o `fs_core` deixou de delegar no `fs_core_n` com a normal de sempre"
+    );
+    let inicio = src.find("fn fs_core_n(").expect("o fs_core_n existe");
     let mut fundo = 0i32;
     let mut fim = None;
     for (i, c) in src[inicio..].char_indices() {

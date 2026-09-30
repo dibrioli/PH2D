@@ -194,7 +194,9 @@ fn the_clay_and_the_donation_ask_the_same_door_how_dark_a_crevice_is() {
     //   `fs_core(in, vcolor)` para que a tinta fina não trouxesse uma SEGUNDA
     //   lei de luz, logo é o `fs_core` que tem de perguntar à porta. A metade
     //   nova, logo abaixo, é a que impede alguém de re-embutir um corpo.
-    for entry in ["fs_core", "fs_gbuffer"] {
+    //   ⚠️ E em 2026-09-30 mudou outra vez, para o `fs_core_n` (o RELEVO
+    //   entra pela normal que ele recebe; `docs/3D/29`).
+    for entry in ["fs_core_n", "fs_gbuffer"] {
         let body = src
             .split_once(&format!("fn {entry}("))
             .expect("o fragment existe")

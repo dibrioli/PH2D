@@ -17,9 +17,9 @@ use ph2d_mesh::{Mesh, shapes};
 use ph2d_mesh_render::{Camera3d, MeshRenderer};
 use ph2d_sculpt3d::{Brush, Dab, SculptStroke, Symmetry, Verb};
 
-const W: u32 = 128;
-const H: u32 = 128;
-const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+pub(super) const W: u32 = 128;
+pub(super) const H: u32 = 128;
+pub(super) const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
 /// O device de teste — **a porta única desta suíte**
 /// ([`super::device_de_teste`]): quatro cópias pediam o piso do WebGPU
@@ -44,7 +44,7 @@ use super::device_de_teste::device;
 ///
 /// *Uma fixture que chega ao estado pelo DEFAULT inverte de sentido no dia em
 /// que o default anda, e segue verde testando o oposto.*
-fn rig_shade() -> ph2d_mesh_render::Shade {
+pub(super) fn rig_shade() -> ph2d_mesh_render::Shade {
     ph2d_mesh_render::Shade {
         lighting: ph2d_mesh_render::Lighting::Rig,
         ..ph2d_mesh_render::Shade::default()
@@ -133,7 +133,7 @@ fn render_using_rig_cavity(
 /// O mesmo desenho, com o [`ph2d_mesh_render::Shade`] INTEIRO — a porta que o
 /// gate do AO precisa, e a que o helper de cavidade agora delega. Um segundo
 /// corpo aqui seria duas respostas a *"como esta cena é desenhada"*.
-fn render_using_rig_shade(
+pub(super) fn render_using_rig_shade(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     renderer: &mut MeshRenderer,
@@ -251,7 +251,7 @@ fn readback(
 }
 
 /// Luminância aproximada do pixel `(x, y)`.
-fn lum(px: &[u8], x: u32, y: u32) -> f32 {
+pub(super) fn lum(px: &[u8], x: u32, y: u32) -> f32 {
     let i = ((y * W + x) * 4) as usize;
     0.2126 * f32::from(px[i]) + 0.7152 * f32::from(px[i + 1]) + 0.0722 * f32::from(px[i + 2])
 }
@@ -278,7 +278,7 @@ fn coverage(px: &[u8]) -> f32 {
     lit as f32 / (W * H) as f32
 }
 
-fn camera_for(mesh: &Mesh) -> Camera3d {
+pub(super) fn camera_for(mesh: &Mesh) -> Camera3d {
     // De frente, para que "esquerda" e "direita" na tela sejam esquerda e
     // direita do modelo — o gate da luz depende disso.
     //

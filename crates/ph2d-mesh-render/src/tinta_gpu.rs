@@ -2,9 +2,9 @@
 //!
 //! ⚠️ **Módulo próprio e não mais um bloco no [`crate::pipeline_upload`]:** o
 //! `pipeline_build` estava a **duas linhas** do tecto de LOC quando esta wave
-//! chegou, e seis entradas de layout não cabem lá. *O corte por
+//! chegou, e as entradas de layout não cabem lá. *O corte por
 //! responsabilidade é mais barato do que a isenção que o evitaria* — e aqui
-//! ele é o certo de qualquer maneira: um sítio só sabe a disposição dos seis.
+//! ele é o certo de qualquer maneira: um sítio só sabe a disposição de todas.
 //!
 //! ⚠️⚠️ **Os buffers existem SEMPRE, mesmo sem plano armado**, e isso não é
 //! desperdício: o bind group por objecto é criado quando o slot nasce, e um
@@ -19,7 +19,7 @@ use wgpu::util::DeviceExt as _;
 
 use crate::MeshRenderer;
 
-/// Os seis buffers, e o que cabe em cada um hoje.
+/// Os sete buffers, e o que cabe em cada um hoje.
 pub(super) struct TintaGpu {
     amostras: wgpu::Buffer,
     topo: wgpu::Buffer,
@@ -27,6 +27,10 @@ pub(super) struct TintaGpu {
     idx: wgpu::Buffer,
     pos: wgpu::Buffer,
     cfg: wgpu::Buffer,
+    /// ⭐ **O RELEVO** (`docs/3D/29`) — uma altura por amostra, na MESMA ordem
+    /// das amostras. Um dummy de `16` B quando o plano não tem relevo, e o bit
+    /// [`RELEVO`] da configuração desligado.
+    alturas: wgpu::Buffer,
     cap_amostras: usize,
     cap_topo: usize,
     cap_tri: usize,
@@ -42,6 +46,10 @@ pub(super) struct TintaGpu {
     /// rápido e despeja milhares de bytes num buffer de `16`.
     cap_idx: usize,
     cap_pos: usize,
+    cap_alturas: usize,
+    /// O espelho do bit [`RELEVO`] já escrito no device — o incremental recusa
+    /// quando o plano ganhou (ou perdeu) relevo desde a última subida inteira.
+    relevo: bool,
     /// ⭐ **Há plano ligado?** — o espelho do `armado` que já foi escrito no
     /// device, para o `upload_tinta_at` não reescrever a configuração por
     /// quadro quando nada mudou.
@@ -56,7 +64,13 @@ pub(super) struct TintaGpu {
     pub(super) n_amostras: usize,
 }
 
-const N: usize = 6;
+const N: usize = 7;
+
+/// ⭐ **O bit do RELEVO no `armado`** (`docs/3D/29`): `1` = há plano, `2` = e
+/// ele tem relevo. ⚠️ O `0` continua a querer dizer *nenhum plano*, e é por
+/// isso que o relevo é um BIT e não um valor novo: o `fs_main_tinta` e todo
+/// leitor que já compara `armado == 0` continuam certos.
+pub const RELEVO: u32 = 2;
 /// O primeiro binding da tinta no grupo POR OBJECTO (o `0` é a `obj.model`).
 const B0: u32 = 1;
 
@@ -75,7 +89,7 @@ fn buffer_de_armazenamento(binding: u32) -> wgpu::BindGroupLayoutEntry {
     }
 }
 
-/// As seis entradas que o layout do grupo POR OBJECTO ganha.
+/// As sete entradas que o layout do grupo POR OBJECTO ganha.
 pub(super) fn entradas_do_layout() -> [wgpu::BindGroupLayoutEntry; N] {
     [
         buffer_de_armazenamento(B0),
@@ -93,6 +107,7 @@ pub(super) fn entradas_do_layout() -> [wgpu::BindGroupLayoutEntry; N] {
             },
             count: None,
         },
+        buffer_de_armazenamento(B0 + 6),
     ]
 }
 
@@ -133,12 +148,12 @@ pub fn cfg_de(t: Option<&Tinta>) -> [u32; 4] {
         lado,
         t.topologia().verts() as u32,
         t.topologia().arestas() as u32,
-        1,
+        if t.tem_relevo() { 1 | RELEVO } else { 1 },
     ]
 }
 
 impl TintaGpu {
-    /// Os seis buffers de um elemento — o estado de quem não tem plano.
+    /// Os sete buffers de um elemento — o estado de quem não tem plano.
     pub(super) fn vazia(device: &wgpu::Device) -> Self {
         let st = wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST;
         let um = |rotulo: &str, dados: &[u8], uso: wgpu::BufferUsages| {
@@ -156,6 +171,7 @@ impl TintaGpu {
             origem: um("ph2d-mesh tinta origem", zero4u, st),
             idx: um("ph2d-mesh tinta idx", zero4u, st),
             pos: um("ph2d-mesh tinta pos", zero4, st),
+            alturas: um("ph2d-mesh tinta alturas", zero4, st),
             cfg: um(
                 "ph2d-mesh tinta cfg",
                 bytemuck::cast_slice(&cfg_de(None)),
@@ -172,12 +188,14 @@ impl TintaGpu {
             cap_tri: 16,
             cap_idx: 16,
             cap_pos: 16,
+            cap_alturas: 16,
+            relevo: false,
             armado: false,
             n_amostras: 0,
         }
     }
 
-    /// As seis entradas do bind group por objecto.
+    /// As sete entradas do bind group por objecto.
     pub(super) fn entradas(&self) -> [wgpu::BindGroupEntry<'_>; N] {
         fn r(binding: u32, b: &wgpu::Buffer) -> wgpu::BindGroupEntry<'_> {
             wgpu::BindGroupEntry {
@@ -192,6 +210,7 @@ impl TintaGpu {
             r(B0 + 3, &self.idx),
             r(B0 + 4, &self.pos),
             r(B0 + 5, &self.cfg),
+            r(B0 + 6, &self.alturas),
         ]
     }
 }
@@ -319,7 +338,22 @@ impl MeshRenderer {
             );
             refez |= poe(device, queue, &mut g.idx, &mut g.cap_idx, idx, "idx", st);
             refez |= poe(device, queue, &mut g.pos, &mut g.cap_pos, pos, "pos", st);
+            // ⚠️ Sem relevo o buffer fica como está (o dummy, ou o relevo de
+            //    uma subida anterior): o bit do `cfg` é quem diz ao shader que
+            //    não o leia, logo não há bytes a apagar.
+            if let Some(a) = t.alturas() {
+                refez |= poe(
+                    device,
+                    queue,
+                    &mut g.alturas,
+                    &mut g.cap_alturas,
+                    bytemuck::cast_slice(a),
+                    "alturas",
+                    st,
+                );
+            }
             queue.write_buffer(&g.cfg, 0, bytemuck::cast_slice(&cfg_de(Some(t))));
+            g.relevo = t.tem_relevo();
             g.armado = true;
             g.n_amostras = t.amostras().len();
         }
@@ -364,7 +398,11 @@ impl MeshRenderer {
             return false;
         };
         let g = &slot.gpu.tinta;
-        if !g.armado || g.n_amostras != tinta.amostras().len() {
+        // ⚠️ O RELEVO também tem de ser o que o device tem: um plano que o
+        //    ganhou a meio de um traço (o 1.º toque de impasto) precisa da
+        //    subida inteira — o buffer das alturas ainda é o dummy de 16 B, e
+        //    escrever nele por índice seria escrever fora dele.
+        if !g.armado || g.n_amostras != tinta.amostras().len() || g.relevo != tinta.tem_relevo() {
             return false;
         }
         if sujas.is_empty() {
@@ -373,8 +411,13 @@ impl MeshRenderer {
         let bytes: &[u8] = bytemuck::cast_slice(tinta.amostras());
         let mut corridas = Vec::new();
         corridas_das_sujas(sujas, &mut corridas);
+        let alturas: &[u8] = tinta.alturas().map_or(&[], bytemuck::cast_slice);
         for (de, ate) in corridas {
             queue.write_buffer(&g.amostras, de as u64, &bytes[de..ate]);
+            if !alturas.is_empty() {
+                let (ha, hb) = em_alturas((de, ate));
+                queue.write_buffer(&g.alturas, ha as u64, &alturas[ha..hb]);
+            }
         }
         true
     }
@@ -428,6 +471,15 @@ pub(super) fn corridas_das_sujas(sujas: &mut Vec<u32>, out: &mut Vec<(usize, usi
         out.push((inicio as usize * 12, (fim as usize + 1) * 12));
         i += 1;
     }
+}
+
+/// A corrida de BYTES das alturas que corresponde a uma corrida de BYTES das
+/// amostras: a mesma faixa de amostras, a `4` bytes cada em vez de `12`.
+///
+/// ⚠️ Escrita à parte, e com gate, pela mesma razão da [`corridas_das_sujas`]:
+/// é aritmética que põe bytes VÁLIDOS no sítio errado quando erra.
+pub(super) fn em_alturas((de, ate): (usize, usize)) -> (usize, usize) {
+    (de / 12 * 4, ate / 12 * 4)
 }
 
 #[cfg(test)]

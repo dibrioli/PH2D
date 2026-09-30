@@ -28,7 +28,7 @@ impl MeshRenderer {
         } = grupo;
 
         // ⭐ A tinta fina entra AQUI, no grupo por OBJECTO — ver
-        //   `crate::tinta_gpu`. As seis entradas vêm de lá porque este ficheiro
+        //   `crate::tinta_gpu`. As entradas vêm de lá porque este ficheiro
         //   estava a duas linhas do tecto de LOC.
         let mut obj_entries = vec![wgpu::BindGroupLayoutEntry {
             binding: 0,

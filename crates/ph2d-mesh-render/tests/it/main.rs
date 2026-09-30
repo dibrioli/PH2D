@@ -24,3 +24,4 @@ mod probe_pick_round_trip;
 mod probe_wire_continuity;
 mod tinta_no_device;
 mod tinta_paridade;
+mod tinta_relevo_no_device;

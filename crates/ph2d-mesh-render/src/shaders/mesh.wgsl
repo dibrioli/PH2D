@@ -1027,7 +1027,16 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
 /// lida da retícula, e daí para baixo é **o mesmo caminho**. *Duas leis de luz
 /// para a mesma peça divergem no dia em que alguém afinar uma.*
 fn fs_core(in: VsOut, vcolor: vec3<f32>) -> vec4<f32> {
-    let nc = canvas_normal(in.n_view);
+    return fs_core_n(in, vcolor, in.n_view);
+}
+
+/// ⭐ **O mesmo corpo com a normal de VISTA como argumento** — a porta por onde
+/// o RELEVO da tinta fina entra (`docs/3D/29`): o `fs_main_tinta` passa a
+/// normal inclinada pela espessura, e daí para baixo é o sombreamento de
+/// sempre, nos três modos que lêem a normal. ⚠️ O `fs_core` passa o
+/// `in.n_view` tal como vem, logo quem não tem relevo desenha ao bit.
+fn fs_core_n(in: VsOut, vcolor: vec3<f32>, n_view: vec3<f32>) -> vec4<f32> {
+    let nc = canvas_normal(n_view);
 
     // A leitura de FORMA — cavidade × os dois AOs — pela porta que o G-buffer
     // também atravessa, para que a tinta acesa por esta peça escureça a fresta

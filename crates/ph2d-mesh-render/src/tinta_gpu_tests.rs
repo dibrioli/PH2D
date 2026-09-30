@@ -65,3 +65,49 @@ fn sem_amostras_sujas_nao_ha_corrida_nenhuma() {
         "CONTROLO: uma amostra só devia dar a corrida dos 12 bytes dela"
     );
 }
+
+/// ⭐⭐ **GATE — a corrida das ALTURAS é a MESMA faixa de amostras** — `4`
+/// bytes por amostra em vez de `12`. Um erro aqui escreve a espessura de uma
+/// amostra na vizinha, com bytes válidos (`docs/3D/29`).
+#[test]
+fn a_corrida_das_alturas_e_a_mesma_faixa_de_amostras() {
+    let mut sujas = vec![3, 4, 5, 40];
+    let mut out = Vec::new();
+    corridas_das_sujas(&mut sujas, &mut out);
+    let alturas: Vec<(usize, usize)> = out.iter().map(|&c| super::em_alturas(c)).collect();
+    assert_eq!(alturas, vec![(12, 24), (160, 164)], "de {out:?}");
+    for ((de, ate), (ad, aa)) in out.iter().zip(&alturas) {
+        assert_eq!(de / 12, ad / 4, "o início não é a mesma amostra");
+        assert_eq!(ate / 12, aa / 4, "o fim não é a mesma amostra");
+    }
+}
+
+/// ⭐⭐ **GATE — o bit do relevo só arma com relevo, e é o MESMO nas duas
+/// pontas.** O CONTROLO (sem relevo ⇒ `armado == 1`, byte a byte o de antes)
+/// é a metade que prova que uma peça sem impasto desenha como sempre.
+#[test]
+fn o_bit_do_relevo_e_o_mesmo_nas_duas_pontas() {
+    use ph2d_mesh_colors::Tinta;
+    let faces: Vec<Vec<u32>> = vec![vec![0, 1, 2, 3]];
+    let it = || faces.iter().map(|f| &f[..]);
+
+    let mut t = Tinta::nova(4, it(), 2);
+    assert_eq!(
+        super::cfg_de(Some(&t))[3],
+        1,
+        "CONTROLO: sem relevo arma só a cor"
+    );
+    t.alturas_mut()[0] = 0.25;
+    assert_eq!(
+        super::cfg_de(Some(&t))[3],
+        1 | super::RELEVO,
+        "com relevo o bit tem de ARMAR"
+    );
+
+    let agulha = format!("const TINTA_RELEVO: u32 = {}u;", super::RELEVO);
+    assert_eq!(
+        crate::fonte::TINTA_WGSL.matches(&agulha).count(),
+        1,
+        "o shader não declara o mesmo bit que a CPU escreve ({agulha})"
+    );
+}

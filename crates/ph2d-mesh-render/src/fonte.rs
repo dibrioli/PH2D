@@ -38,7 +38,46 @@ fn fs_main_tinta(in: VsOut, @builtin(primitive_index) pi: u32) -> @location(0) v
     if (tinta_cfg.armado == 0u) {
         return fs_core(in, in.vcolor);
     }
-    return fs_core(in, tinta_no_ponto(pi, in.opos));
+    let t = tinta_no_ponto4(pi, in.opos);
+    // ⚠️ Sem relevo, o caminho de sempre AO BIT: a normal nem é tocada.
+    if ((tinta_cfg.armado & TINTA_RELEVO) == 0u) {
+        return fs_core(in, t.xyz);
+    }
+    return fs_core_n(in, t.xyz, tinta_relevo_n(in, t.w));
+}
+
+// ⭐⭐⭐ **A NORMAL INCLINADA PELO RELEVO** — *bump mapping* sem parametrização
+// (M. Mikkelsen, «Bump Mapping Unparametrized Surfaces on the GPU», 2010): a
+// normal da superfície `p + h·n` sai das derivadas de ECRÃ da posição e da
+// altura, sem tangentes e sem UV — que é o que uma malha esculpida não tem.
+//
+// ⚠️ Tudo em espaço de VISTA, o espaço do `n_view`. A altura vem em unidades
+// de OBJECTO, logo é escalada pela escala do `obj.model` (a pose é uniforme).
+//
+// ⛔ As derivadas são chamadas aqui, fora de qualquer ramo divergente: o
+// `tinta_no_ponto4` ramifica por `topo` (o valor que ele devolve pode vir de
+// um ramo, a CHAMADA de `dpdx` não pode), e os dois `if` de cima leem um
+// uniforme.
+fn tinta_relevo_n(in: VsOut, h: f32) -> vec3<f32> {
+    let escala = length(obj.model[0].xyz);
+    let p = (cam.view * obj.model * vec4<f32>(in.opos, 1.0)).xyz;
+    let hs = h * escala;
+    let sx = dpdx(p);
+    let sy = dpdy(p);
+    let dhx = dpdx(hs);
+    let dhy = dpdy(hs);
+    let n = normalize(in.n_view);
+    let r1 = cross(sy, n);
+    let r2 = cross(n, sx);
+    let det = dot(sx, r1);
+    let grad = sign(det) * (dhx * r1 + dhy * r2);
+    let nb = abs(det) * n - grad;
+    let l = length(nb);
+    // Um triângulo degenerado no ecrã (det = 0) não tem gradiente a ler.
+    if (l <= 0.0) {
+        return in.n_view;
+    }
+    return nb / l;
 }
 "#;
 

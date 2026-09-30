@@ -39,15 +39,39 @@ struct TintaCfg {
 @group(1) @binding(4) var<storage, read> tinta_idx: array<u32>;
 @group(1) @binding(5) var<storage, read> tinta_pos: array<f32>;
 @group(1) @binding(6) var<uniform> tinta_cfg: TintaCfg;
+// ⭐ **O RELEVO** (`docs/3D/29`): uma altura por amostra, na ordem das
+// amostras, em unidades de objecto ao longo da normal. Lido só com o bit
+// `TINTA_RELEVO` do `armado` ligado — sem ele o buffer é um dummy.
+@group(1) @binding(7) var<storage, read> tinta_alturas: array<f32>;
 
 const TINTA_STRIDE: u32 = 10u;
 // O sentinela do 4.º índice de um triângulo — o MESMO valor das duas crates,
 // e isso é gateado (`o_sentinela_do_triangulo_e_o_mesmo_nas_duas_crates`).
 const TINTA_TRI: u32 = 0xffffffffu;
+// O bit do relevo no `armado` — o MESMO valor do `tinta_gpu::RELEVO`, e isso é
+// gateado (`o_bit_do_relevo_e_o_mesmo_nas_duas_pontas`).
+const TINTA_RELEVO: u32 = 2u;
 
 fn tinta_amostra(i: u32) -> vec3<f32> {
     let b = 3u * i;
     return vec3<f32>(tinta_amostras[b], tinta_amostras[b + 1u], tinta_amostras[b + 2u]);
+}
+
+// A altura de uma amostra — zero sem relevo armado, que é a superfície sem
+// tinta espessa.
+fn tinta_altura(i: u32) -> f32 {
+    if ((tinta_cfg.armado & TINTA_RELEVO) == 0u) {
+        return 0.0;
+    }
+    return tinta_alturas[i];
+}
+
+// ⭐ **A amostra INTEIRA: a cor e a altura.** A leitura (`tinta_le_tri`/
+// `tinta_le_quad`) acumula as duas pelos MESMOS pesos — a lei da interpolação
+// é uma, como na `ph2d_mesh_colors` (`pesos_tri`/`pesos_quad`). ⚠️ A cor sai
+// ao bit como saía: cada componente de um `vec4` acumula-se independentemente.
+fn tinta_amostra4(i: u32) -> vec4<f32> {
+    return vec4<f32>(tinta_amostra(i), tinta_altura(i));
 }
 
 fn tinta_vert(v: u32) -> vec3<f32> {
@@ -114,7 +138,7 @@ fn tinta_sitio_quad(i: u32, j: u32) -> vec3<u32> {
 
 // ⭐⭐ **A leitura de um TRIÂNGULO** — o gémeo do `amostragem::leitura_tri`,
 // com os dois sub-triângulos (o direito e o INVERTIDO).
-fn tinta_cor_tri(base: u32, bar: vec3<f32>) -> vec3<f32> {
+fn tinta_le_tri(base: u32, bar: vec3<f32>) -> vec4<f32> {
     let l = tinta_cfg.lado;
     let lf = f32(l);
     let b0 = max(bar, vec3<f32>(0.0));
@@ -142,20 +166,20 @@ fn tinta_cor_tri(base: u32, bar: vec3<f32>) -> vec3<f32> {
         ijk2 = vec3<u32>(i + 1u, j + 1u, k);
         w = vec3<f32>(1.0) - f;
     }
-    var out = vec3<f32>(0.0);
+    var out = vec4<f32>(0.0);
     let s0 = tinta_sitio_tri(ijk0.x, ijk0.y, ijk0.z);
-    out += tinta_amostra(tinta_indice(base, s0.x, s0.y, s0.z)) * w.x;
+    out += tinta_amostra4(tinta_indice(base, s0.x, s0.y, s0.z)) * w.x;
     let s1 = tinta_sitio_tri(ijk1.x, ijk1.y, ijk1.z);
-    out += tinta_amostra(tinta_indice(base, s1.x, s1.y, s1.z)) * w.y;
+    out += tinta_amostra4(tinta_indice(base, s1.x, s1.y, s1.z)) * w.y;
     let s2 = tinta_sitio_tri(ijk2.x, ijk2.y, ijk2.z);
-    out += tinta_amostra(tinta_indice(base, s2.x, s2.y, s2.z)) * w.z;
+    out += tinta_amostra4(tinta_indice(base, s2.x, s2.y, s2.z)) * w.z;
     return out;
 }
 
 // ⭐⭐ **A leitura de um QUAD** — o gémeo do `amostragem::leitura_quad`. Aqui
 // não há sub-triângulos invertidos: uma célula tem sempre quatro cantos, e a
 // leitura é a BILINEAR deles.
-fn tinta_cor_quad(base: u32, uv: vec2<f32>) -> vec3<f32> {
+fn tinta_le_quad(base: u32, uv: vec2<f32>) -> vec4<f32> {
     let l = tinta_cfg.lado;
     let lf = f32(l);
     let c = clamp(uv, vec2<f32>(0.0), vec2<f32>(1.0)) * lf;
@@ -175,15 +199,15 @@ fn tinta_cor_quad(base: u32, uv: vec2<f32>) -> vec3<f32> {
     let j = min(u32(floor(c.y)), l - 1u);
     let fu = c.x - f32(i);
     let fv = c.y - f32(j);
-    var out = vec3<f32>(0.0);
+    var out = vec4<f32>(0.0);
     let a = tinta_sitio_quad(i, j);
-    out += tinta_amostra(tinta_indice(base, a.x, a.y, a.z)) * ((1.0 - fu) * (1.0 - fv));
+    out += tinta_amostra4(tinta_indice(base, a.x, a.y, a.z)) * ((1.0 - fu) * (1.0 - fv));
     let b = tinta_sitio_quad(i + 1u, j);
-    out += tinta_amostra(tinta_indice(base, b.x, b.y, b.z)) * (fu * (1.0 - fv));
+    out += tinta_amostra4(tinta_indice(base, b.x, b.y, b.z)) * (fu * (1.0 - fv));
     let d = tinta_sitio_quad(i + 1u, j + 1u);
-    out += tinta_amostra(tinta_indice(base, d.x, d.y, d.z)) * (fu * fv);
+    out += tinta_amostra4(tinta_indice(base, d.x, d.y, d.z)) * (fu * fv);
     let e = tinta_sitio_quad(i, j + 1u);
-    out += tinta_amostra(tinta_indice(base, e.x, e.y, e.z)) * ((1.0 - fu) * fv);
+    out += tinta_amostra4(tinta_indice(base, e.x, e.y, e.z)) * ((1.0 - fu) * fv);
     return out;
 }
 
@@ -200,6 +224,12 @@ fn tinta_cor_quad(base: u32, uv: vec2<f32>) -> vec3<f32> {
 // `sub = 0` os cantos são `(a,b,c)` e em `sub = 1` são `(a,c,d)`. *Sem ele,
 // metade de cada quad lê o `(u, v)` da outra metade.*
 fn tinta_no_ponto(pi: u32, p: vec3<f32>) -> vec3<f32> {
+    return tinta_no_ponto4(pi, p).xyz;
+}
+
+// ⭐⭐ **A cor E a altura de um fragmento** — o corpo da [`tinta_no_ponto`], que
+// é a metade de cor dela. A altura é o `w`.
+fn tinta_no_ponto4(pi: u32, p: vec3<f32>) -> vec4<f32> {
     let o = tinta_origem[pi];
     let face = o >> 1u;
     let sub = o & 1u;
@@ -224,11 +254,11 @@ fn tinta_no_ponto(pi: u32, p: vec3<f32>) -> vec3<f32> {
     }
 
     if (tinta_topo[base + 9u] == 3u) {
-        return tinta_cor_tri(base, bar);
+        return tinta_le_tri(base, bar);
     }
     // `sub = 0`: (a,b,c) ⇒ u = βb + βc, v = βc.
     // `sub = 1`: (a,c,d) ⇒ u = βc,      v = βc + βd.
     var uv = vec2<f32>(bar.y + bar.z, bar.z);
     if (sub == 1u) { uv = vec2<f32>(bar.y, bar.y + bar.z); }
-    return tinta_cor_quad(base, uv);
+    return tinta_le_quad(base, uv);
 }

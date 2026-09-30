@@ -525,7 +525,7 @@ pub(crate) const GALAXIA: Galaxia = Galaxia {
 ///
 /// ⛔ **Sem `force.drag`, de propósito:** o redemoinho em modo alvo JÁ amortece (é a lei dele,
 /// `a = resistência · (alvo − v)`), e um arrasto a zero seria um nó morto na cena do dono.
-fn simulacao(g: &mut ph2d_nodegraph::graph::Graph, grade: NodeId) -> Option<NodeId> {
+pub(super) fn simulacao(g: &mut ph2d_nodegraph::graph::Graph, grade: NodeId) -> Option<NodeId> {
     let ig = g.add_node("motion.integrate");
     g.set_pos(ig, Pos { x: 120.0, y: -60.0 });
     let nucleo = g.add_node("motion.falloff");

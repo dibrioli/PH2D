@@ -116,6 +116,11 @@ mod pontos_demo;
 #[path = "motion_state_carimbo_demo.rs"]
 pub(crate) mod carimbo_demo;
 
+/// ⭐⭐⭐ **AS ESTRELAS ESTICADAS COM CONTORNO** (cena `=127`) — a W4 do doc 121: o traço sob
+/// escala NÃO uniforme, que nenhuma cena do catálogo continha. Ver o cabeçalho dela.
+#[path = "motion_state_traco_esticado_demo.rs"]
+mod traco_esticado_demo;
+
 /// A cena `=122` — o passe sobre uma SIMULAÇÃO a correr (doc 115 §15.2).
 #[path = "motion_state_passe_sim_demo.rs"]
 mod passe_sim_demo;

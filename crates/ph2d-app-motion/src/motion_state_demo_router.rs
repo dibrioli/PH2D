@@ -31,7 +31,7 @@ use super::*;
 /// número em dois sítios, que é como ele envelhece. *Um valor sob `cfg(test)` é invisível do
 /// outro lado da fronteira (HOWTO §2.5) — e aqui a cura não é abrir uma feature, é reconhecer
 /// que a constante deixou de ser só do teste.*
-pub const MAX_DEMO_LEVEL: u32 = 126;
+pub const MAX_DEMO_LEVEL: u32 = 127;
 
 /// **As cenas de smoke dos CICLOS** — irmãs pelo tecto de LOC, cortadas por responsabilidade;
 /// ver o cabeçalho delas.
@@ -511,6 +511,13 @@ pub fn build_level(
         // star) fps cai para 27»*), montada à escala em que a cura do carimbo se VÊ. ⚠️ Ela é a
         // única cena de PERFORMANCE de desenho do catálogo, e é por isso que ela não podia ser uma
         // das outras: medido (doc 116 §5.7), a mais pesada delas desenha `190` linhas.
+        // ⭐⭐⭐ **AS ESTRELAS ESTICADAS COM CONTORNO** — a W4 do doc 121 (o traço sob escala NÃO
+        // uniforme vai à placa). Ver o cabeçalho de [`traco_esticado_demo`].
+        Some("127") => {
+            let sinks = traco_esticado_demo::build(doc, registry).unwrap_or_default();
+            traco_esticado_demo::announce();
+            sinks
+        }
         Some("126") => {
             let sinks = carimbo_demo::build(doc, registry).unwrap_or_default();
             carimbo_demo::announce();

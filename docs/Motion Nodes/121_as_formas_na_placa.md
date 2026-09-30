@@ -347,6 +347,38 @@ testes, restauro com `touch`):
 reprovou (com um *timeout* ao lado) numa bateria de GPU a `load ~23,3`, e passou **2 de 2 sozinho
 a `load 2,3`–`4,5`**; a suíte sem GPU correu `1 476/1 476` a `load 8,15`.
 
+### §9.1 — A cena `=127`: as estrelas esticadas com contorno
+
+⛔ **Nenhuma cena do catálogo continha o fenómeno da W4** (o censo acima: traço + escala
+não-uniforme em zero cenas; a `=126` tem as estrelas sem contorno e com a escala igual nos dois
+eixos, logo desenha exactamente o mesmo antes e depois). ⇒ a cena nova
+([`motion_state_traco_esticado_demo`](../../crates/ph2d-app-motion/src/motion_state_traco_esticado_demo.rs)):
+`32 × 32` estrelas amarelas com contorno azul, `motion.scale` com os eixos separados
+(`1,8 × 0,6`) **depois** do carimbo, e a galáxia da `=126` **reutilizada** (a `simulacao` passou a
+`pub(super)`: duas cópias da lei divergiriam).
+
+⛔ **A 1.ª redacção foi desmentida pela FOTO:** `48 × 48` estrelas de `16 px` com o vão de cada
+eixo igual à pegada dele — a galáxia RODA as posições e o esticão fica sempre na horizontal, logo as
+fileiras viravam diagonais e as estrelas FUNDIAM-SE numa tira em que o contorno engolia os braços.
+Hoje o vão é o do eixo comprido nos dois sentidos e a estrela tem `22 px` com contorno de `1,5 px`.
+
+**Fotografada** (tela virtual `1930×1040`, perfil `smoke`, `load ~15` ⇒ preliminar):
+
+| corrida | rota (`PH2D_MOTION_ROUTE_LOG`) | barra |
+|---|---|---|
+| omissão | `device: HIBRIDO` · `[formas] 1024 copias … pela PLACA (do dispositivo)` | `59 fps · 16.7 ms · 176 raw` |
+| `PH2D_FORMAS_NA_PLACA=0` | `CPU: formas vivas com a placa de formas desligada` | `60 fps · 16.6 ms · 132 raw` |
+
+O contorno ampliado é o MESMO nas duas (caneta redonda, a mesma grossura nos lados compridos e nos
+curtos, pontas sem buracos). ⚠️ Uma diferença de pixéis entre as duas fotos **não** mede paridade:
+a galáxia anda, e as duas corridas são fotografadas em instantes diferentes (medido: `7 %` dos
+pixéis a mais de `16`, todos de posição) — a paridade é do gate de GPU.
+
+**Gates** (`motion_state_traco_esticado_demo_tests`): a cena contém o fenómeno (contorno ·
+esticão com os eixos SEPARADOS e diferentes · sem tracejado · simulação nos pontos do carimbo) · o
+canto do campo cabe no núcleo da galáxia · o `=127` monta-a e o tecto alcança-a · o passo (4)
+compara com a porta que a placa lê e o roteiro manda ler o `raw`.
+
 ⏳ **Por fazer:** W0 (a medição de partida, que a placa ocupada adiou) e W5 (medição de fecho em
 `release` + smoke do dono com formas e simulação com campos, fotografado antes) · os glifos do
 `source.text` · o tracejado no dispositivo.

@@ -354,3 +354,144 @@ fn as_edicoes_do_impacto_vao_e_voltam() {
     assert_eq!(h.numbers_color, [1.0, 0.0, 0.5, 1.0], "a cor fica em 0..=1");
     assert_eq!(d.knockback, 0.0, "um empurrão não finito cai a zero");
 }
+
+/// ⭐⭐⭐ **O tipo e o dano que DURA vão e voltam** (plano 28, W6) — e as cercas: o tipo perde os
+/// espaços da ponta (a dobra da lei já os ignora, e gravá-los faria o painel mostrar um nome que a
+/// lei não lê assim), e um número negativo ou não finito cai a zero.
+///
+/// **Mutação que deve sangrar:** tirar qualquer braço novo do `apply_damage`.
+#[test]
+fn o_tipo_e_o_dano_que_dura_vao_e_voltam() {
+    let (mut sim, b) = mundo(false, true, true);
+    for e in [
+        E::DamageKind("  fogo ".into()),
+        E::OverTimePerS(4.0),
+        E::OverTimeS(2.5),
+        E::OverTimeEveryS(0.0),
+    ] {
+        assert!(apply(&mut sim, b, &e), "{e:?} não tocou no mundo");
+    }
+    let d = build_vida_info(sim.world(), b, 1, true)
+        .and_then(|i| i.damage)
+        .expect("dano");
+    assert_eq!(d.kind, "fogo");
+    assert_eq!(
+        (d.over_time_per_s, d.over_time_s, d.over_time_every_s),
+        (4.0, 2.5, 0.0),
+        "o intervalo `0` é legítimo (a lava pulsa a cada tique)"
+    );
+    assert!(d.dura());
+    for e in [E::OverTimePerS(-1.0), E::OverTimeS(f32::NAN)] {
+        assert!(apply(&mut sim, b, &e));
+    }
+    let d = build_vida_info(sim.world(), b, 1, true)
+        .and_then(|i| i.damage)
+        .expect("dano");
+    assert_eq!((d.over_time_per_s, d.over_time_s), (0.0, 0.0));
+    assert!(
+        !d.dura(),
+        "o CONTROLO: sem pontos por segundo, ele não dura"
+    );
+}
+
+/// ⭐⭐⭐ **A tabela de resistências: juntar, escrever, tirar** — e o instantâneo lê-a de volta
+/// pela ordem da LEI.
+///
+/// **Mutações que devem sangrar:** tirar qualquer braço de resistência do `apply_health`; o
+/// `RemoveResistance` tirar outra linha.
+#[test]
+fn a_tabela_de_resistencias_vai_e_volta() {
+    let (mut sim, b) = mundo(true, false, true);
+    for e in [
+        E::AddResistance,
+        E::AddResistance,
+        E::ResistanceKind(0, "fogo".into()),
+        E::ResistanceRate(0, 0.0),
+        E::ResistanceKind(1, "gelo".into()),
+        E::ResistanceRate(1, 2.0),
+        E::ResistanceAbsorbs(1, true),
+    ] {
+        assert!(apply(&mut sim, b, &e), "{e:?} não tocou no mundo");
+    }
+    let rs = |sim: &SimWorld| {
+        build_vida_info(sim.world(), b, 1, true)
+            .and_then(|i| i.health)
+            .expect("vida")
+            .resistances
+    };
+    let r = rs(&sim);
+    assert_eq!(r.len(), 2);
+    assert_eq!(
+        (r[0].kind.as_str(), r[0].rate, r[0].absorbs),
+        ("fogo", 0.0, false)
+    );
+    assert_eq!(
+        (r[1].kind.as_str(), r[1].rate, r[1].absorbs),
+        ("gelo", 2.0, true)
+    );
+    // Uma linha NOVA nasce NEUTRA (taxa 1, sem tipo): uma linha a meio de ser escrita não muda
+    // nada até o artista lhe dar um tipo.
+    assert!(apply(&mut sim, b, &E::AddResistance));
+    let r = rs(&sim);
+    assert_eq!(
+        (r[2].kind.as_str(), r[2].rate, r[2].absorbs),
+        ("", 1.0, false)
+    );
+    // Tirar a do MEIO leva a do meio.
+    assert!(apply(&mut sim, b, &E::RemoveResistance(1)));
+    let kinds: Vec<String> = rs(&sim).into_iter().map(|r| r.kind).collect();
+    assert_eq!(kinds, vec!["fogo".to_string(), String::new()]);
+    // As cercas: um índice fora da tabela não toca em nada, e uma taxa negativa cai a zero.
+    assert!(!apply(&mut sim, b, &E::ResistanceKind(9, "x".into())));
+    assert!(!apply(&mut sim, b, &E::RemoveResistance(9)));
+    assert!(apply(&mut sim, b, &E::ResistanceRate(0, -3.0)));
+    assert_eq!(rs(&sim)[0].rate, 0.0);
+}
+
+/// ⭐⭐ **Juntar pára no TECTO** — o `RESISTANCES_MAX`, que um gate na shell amarra à lista pintada.
+///
+/// **Mutação que deve sangrar:** tirar a cerca do `AddResistance`.
+#[test]
+fn juntar_para_no_tecto() {
+    let (mut sim, b) = mundo(true, false, true);
+    for _ in 0..RESISTANCES_MAX {
+        assert!(apply(&mut sim, b, &E::AddResistance));
+    }
+    assert!(
+        !apply(&mut sim, b, &E::AddResistance),
+        "a 9.ª linha entrou — um estado que o painel não mostra"
+    );
+    let n = build_vida_info(sim.world(), b, 1, true)
+        .and_then(|i| i.health)
+        .expect("vida")
+        .resistances
+        .len();
+    assert_eq!(n, RESISTANCES_MAX);
+}
+
+/// ⭐⭐ **A REPETIDA marca-se pela dobra da LEI** — `FOGO` depois de `fogo` é a mesma linha para a
+/// lei, e o painel tem de o dizer; uma linha SEM tipo nunca é repetida (está a meio de ser escrita).
+///
+/// **Mutação que deve sangrar:** comparar os nomes crus no `resistance_rows`.
+#[test]
+fn a_repetida_marca_se_pela_dobra_da_lei() {
+    let (mut sim, b) = mundo(true, false, true);
+    sim.world_mut()
+        .get_mut::<Health>(Entity::from_bits(b))
+        .expect("vida")
+        .resistances = ["fogo", "", "FÓGO", "", "gelo"]
+        .iter()
+        .map(|k| Resistance {
+            kind: (*k).to_string(),
+            ..Resistance::default()
+        })
+        .collect();
+    let rep: Vec<bool> = build_vida_info(sim.world(), b, 1, true)
+        .and_then(|i| i.health)
+        .expect("vida")
+        .resistances
+        .into_iter()
+        .map(|r| r.repetida)
+        .collect();
+    assert_eq!(rep, vec![false, false, true, false, false]);
+}

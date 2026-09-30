@@ -82,6 +82,7 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
             &mut inspector_state.tween_selected,
             &mut inspector_state.sm_state_selected,
             &mut inspector_state.sm_trans_selected,
+            &mut inspector_state.resist_selected,
         );
     }
     state::set_current_display_unit(display_unit, ppm); // keep symmetric with legacy
@@ -127,6 +128,7 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
 /// - `action_selected` — SIGNAL ACTIONS: qual acção está aberta. Mesmo contrato.
 /// - `sm_state_selected` / `sm_trans_selected` — STATE MACHINE: **duas** listas independentes, e
 ///   partilhá-las faria abrir um estado fechar a seta que o artista estava a editar.
+/// - `resist_selected` — HEALTH: qual resistência está aberta (plano 28, W6). Mesmo contrato.
 /// - `editing_value` — qual eixo do cartão de propriedades está a ser **reescrito**; ver
 ///
 /// # A moldura e o fecho
@@ -159,6 +161,7 @@ fn paint_inspector(
     tween_selected: &mut usize,
     sm_state_selected: &mut usize,
     sm_trans_selected: &mut usize,
+    resist_selected: &mut usize,
 ) -> ph2d_editor_core::widget::scroll_area::Pending {
     let crate::paint_body::BodyFrame {
         rect,
@@ -267,6 +270,7 @@ fn paint_inspector(
         tween_selected,
         sm_state_selected,
         sm_trans_selected,
+        resist_selected,
         &snaps,
     );
     let mut tela = crate::plano::Tela {

@@ -21,13 +21,14 @@ const LARGURA_DO_DONO: f32 = 300.0;
 /// ⛔ **A ALTURA tem de conter o painel inteiro** (rolagem única, 2026-09-29): a porta
 /// `scroll_area` recorta o CLIQUE pelo corpo visível, e a `4000` a varredura passou a ver só a parte
 /// acima da dobra (`238` linhas contra o piso de `400`). A mesma exigência da `viewport()` de
-/// `a_marca_tem_a_altura_da_linha`.
+/// `a_marca_tem_a_altura_da_linha` (`32000` desde 02/10, quando o Inspector armado passou dos
+/// `16000`).
 fn vista() -> Rect {
     Rect {
         x: 0.0,
         y: 0.0,
         w: LARGURA_DO_DONO,
-        h: 16000.0,
+        h: 32000.0,
     }
 }
 
@@ -55,7 +56,7 @@ fn colhe(
     // rolagem única o clique é recortado pelo corpo visível ⇒ a varredura via só o topo do catálogo
     // e leu `1` coluna onde há `3` (2026-09-29). ⇒ o censo puxa o canto de toda janela que
     // transborda até o conteúdo caber — o gesto do artista —, e pinta outra vez. Um painel docado
-    // já cabe na vista de `16000 px` e não é tocado.
+    // já cabe na vista de `32000 px` e não é tocado.
     let rects: Vec<Rect> = host.store().panel_rects().collect();
     let mut cresceu = false;
     for r in rects {

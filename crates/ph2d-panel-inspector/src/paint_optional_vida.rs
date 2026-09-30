@@ -22,10 +22,13 @@ pub(crate) fn push_vida_sections<'a>(
     inner_w: f32,
     header_h: f32,
     info: Option<&'a InspectorVidaInfo>,
+    resist_selected: usize,
 ) {
     let Some(info) = info else {
         return;
     };
+    // ⭐ W6 — a resistência aberta, pela MESMA porta que a semente e o clique usam.
+    let aberta = crate::sync_vida::resistencia_aberta(info, resist_selected);
     if let Some(h) = &info.health {
         emoldurada(
             plano,
@@ -36,7 +39,7 @@ pub(crate) fn push_vida_sections<'a>(
             header_h,
             move |c, t, y| {
                 crate::sections::vida::paint_health_section(
-                    c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, info, h,
+                    c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, info, h, aberta,
                 )
             },
         );

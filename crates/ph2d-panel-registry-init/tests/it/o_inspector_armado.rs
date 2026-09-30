@@ -76,8 +76,8 @@ use ph2d_editor_core::topdown_edits::{
 };
 use ph2d_editor_core::tween_edits::{InspectorTweenInfo, InspectorTweenRow};
 use ph2d_editor_core::vida_edits::{
-    BarraAlvo, InspectorBarInfo, InspectorDamageInfo, InspectorHealthInfo, InspectorVidaInfo,
-    VidaAgora,
+    BarraAlvo, InspectorBarInfo, InspectorDamageInfo, InspectorHealthInfo, InspectorResistanceRow,
+    InspectorVidaInfo, VidaAgora,
 };
 use ph2d_editor_core::weapon_edits::InspectorWeaponInfo;
 use ph2d_panel_inspector as insp;
@@ -1045,6 +1045,22 @@ fn arma_o_top20() {
             numbers: true,
             numbers_color: [1.0, 0.86, 0.3, 1.0],
             numbers_size: 0.45,
+            // ⭐ W6 — resistências, a ABERTA a absorver (a frase mais longa da lista: `heals ×…`) e
+            // uma REPETIDA (a lista pinta-a em WARN).
+            resistances: vec![
+                InspectorResistanceRow {
+                    kind: "fire".to_string(),
+                    rate: 1.0,
+                    absorbs: true,
+                    repetida: false,
+                },
+                InspectorResistanceRow {
+                    kind: "fire".to_string(),
+                    rate: 2.0,
+                    absorbs: false,
+                    repetida: true,
+                },
+            ],
             agora: Some(VidaAgora {
                 pontos: 70.0,
                 escudo: 12.0,
@@ -1061,6 +1077,11 @@ fn arma_o_top20() {
             hitstop_s: 0.05,
             knockback: 6.0,
             knockback_lift: 2.0,
+            // ⭐ W6 — com o dano a DURAR, senão a duração e o intervalo ficavam fora da varredura.
+            kind: "poison".to_string(),
+            over_time_per_s: 4.0,
+            over_time_s: 3.0,
+            over_time_every_s: 1.0,
         }),
         // ⭐ A barra (plano 28, W4) — armada com um ALVO que ela encontra, para a frase mais longa
         // que ela pinta (`Shows … of …`) entrar na varredura das elisões.

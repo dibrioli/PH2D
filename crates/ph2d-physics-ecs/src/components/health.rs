@@ -111,6 +111,15 @@ pub struct Health {
     pub resistances: Vec<Resistance>,
 }
 
+/// ⭐ **Quantas resistências uma vida aceita** (plano 28, W6).
+///
+/// ⚠️ **O recurso é o DOCK, e o número é o da lista que o Inspector pinta** — *um modelo que aceita o
+/// que o painel não mostra produz estado inalcançável* (a lei do `ANIM_TAGS_MAX`), e um gate na shell
+/// amarra os dois. A LEI não tem tecto (a taxa lê um `Vec`); oito tipos por vida já é um RPG inteiro
+/// (fogo · gelo · raio · veneno · físico · luz · trevas · água), e a nona linha seria uma tabela que
+/// o artista deixou de conseguir ler numa coluna de ~30 linhas.
+pub const RESISTANCES_MAX: usize = 8;
+
 /// ⭐ **Uma resistência a um TIPO de dano** (plano 28, W6) — a lei é a [`ph2d_health::Taxa`].
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Resistance {

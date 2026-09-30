@@ -56,7 +56,7 @@ use ph2d_ui_testkit::MockPanelHost;
 /// e é contra ele que aquela linha declara *«o painel está sobre o orçamento»*.
 pub(super) const DOBRA: f32 = 880.0;
 
-/// ⛔⛔ **A viewport é ALTA de propósito: `16000 px`.**
+/// ⛔⛔ **A viewport é ALTA de propósito: `32000 px`.**
 ///
 /// A pergunta do degrau `G` é *«quantas coisas este painel põe à frente do artista?»*, e um painel
 /// que não cabe **rola** — ele não deixa de ter as entradas. Numa viewport de ecrã o índice de
@@ -68,14 +68,21 @@ pub(super) const DOBRA: f32 = 880.0;
 /// ⛔⛔ **E desde 2026-09-29 «a sobrar» é uma exigência, não uma folga** (rolagem única): a porta
 /// `widget::scroll_area` recorta o CLIQUE pelo corpo visível, logo o que fica abaixo da janela deixa
 /// de estar no índice de acerto. A `4000 px` o Inspector armado (`~4 000` de conteúdo) perdeu
-/// `49` das `81` entradas e a régua leu-o como painel que encolheu. `16000` cobre o maior painel
+/// `49` das `81` entradas e a régua leu-o como painel que encolheu. `16000` cobria o maior painel
 /// medido com folga de `4×`, e o piso de população de cada censo é quem acusa o dia em que não
 /// cobrir.
+///
+/// ⛔⛔ **A folga de `4×` ENVELHECEU sem ninguém a medir** (fusão da rodada de 02/10): o Inspector
+/// armado já media `15 968 px` no `main` da UIUX — `32 px` abaixo da janela —, e as secções da VIDA
+/// W6 e da NAVEGAÇÃO empurraram-no para lá dela. Quem acusou **não** foi o piso de população: foi a
+/// igualdade da `a_ordem_das_seccoes_e_a_da_paleta` (*«24 declaradas, 21 pintadas»*) e a catraca de
+/// comandos (`79` contra `82`), as duas a medir o recorte da janela como se fosse o painel. ⇒
+/// `32000`, e a coluna da altura do censo é quem diz quando chegar a vez de subir outra vez.
 pub(super) const VIEWPORT: Rect = Rect {
     x: 0.0,
     y: 0.0,
     w: 1920.0,
-    h: 16000.0,
+    h: 32000.0,
 };
 
 /// ⭐⭐⭐ **A SEGUNDA ALTURA — o controlo que separa CONTEÚDO de CROMO ANCORADO.**
@@ -1301,7 +1308,19 @@ const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
     //    atribuída uma a uma.
     // ⬇️ `81 → 78` em 2026-09-29: os PONTOS DE COR dos cabeçalhos saíram (ordem do dono); a pega que
     //    ocupa o lugar deles é um alvo de ARRASTO, não um comando.
-    ("inspector", 78),
+    // ⛔⛔ **E o `78` era um RECORTE** (fusão de 02/10): o Inspector armado do `main` media `16 203 px`
+    //    e a `VIEWPORT` parava nos `16 000` ⇒ três comandos do fundo ficavam fora do índice de
+    //    acerto. Com a janela a `32 000` o `main` mede `81` — os pontos de cor saíram, e o que a
+    //    régua leu como `−3` era o mesmo número de comandos a cair debaixo da borda.
+    // ⬆️ `81 → 85` em 2026-09-29 (plano 28, W6; o DELTA `+4` sobre o `81` medido do `main`) —
+    //    **o painel ganhou uma capacidade nova**, a tabela de RESISTÊNCIAS da
+    //    secção Health: `+ Add` e `x Remove` (dois comandos a sério) e as DUAS linhas da lista na
+    //    fixtura armada, contadas como as linhas das seis listas irmãs (a mesma porta,
+    //    `statemachine::lista`). ⛔ Declarar as linhas composto foi medido e RECUSADO: o censo
+    //    `nenhuma_escolha_do_app_e_montada_a_mao` lê um composto a toda a largura como uma escolha
+    //    montada à mão e manda-a para o `paint_choice_row` — e uma lista não é um segmentado. A
+    //    recontagem das linhas é da régua, e é de todas as listas de uma vez.
+    ("inspector", 85),
     // ⛔⛔ `110` botões, **`4`** comandos: fechar · importar · exportar · e o *elo*, que é pintado
     //    uma vez por linha por decisão escrita no pintor. O painel é uma LISTA, não uma dívida.
     ("tokens", 4),

@@ -57,6 +57,11 @@ fn corpo_dano(
             tr("panel.inspector.vida.knockback"),
             tr("panel.inspector.vida.knockback_lift"),
             tr("panel.inspector.vida.team"),
+            // ⭐ W6 — o tipo e o dano que DURA, na MESMA coluna.
+            tr("panel.inspector.vida.damage_kind"),
+            tr("panel.inspector.vida.over_time"),
+            tr("panel.inspector.vida.over_time_s"),
+            tr("panel.inspector.vida.over_time_every"),
         ],
     );
     let v = Some(ph2d_editor_core::widget::Unit::MetersPerSecond);
@@ -91,6 +96,48 @@ fn corpo_dano(
                 v,
             ),
         ],
+        seccao,
+    );
+    // ⭐ W6 — o dano que DURA. ⚠️ A duração e o intervalo só aparecem quando ele dura: mostrar
+    //    sempre entregaria dois controlos mortos (a lei do `tem_escudo`).
+    let s = Some(ph2d_editor_core::widget::Unit::Seconds);
+    let mut dura: Vec<(
+        &str,
+        ph2d_a11y::NodeId,
+        f64,
+        Option<ph2d_editor_core::widget::Unit>,
+    )> = vec![(
+        tr("panel.inspector.vida.over_time"),
+        ids::INSP_DANO_OT_PER_S,
+        0.5, // LITERAL-PX-OK: pontos/s
+        None,
+    )];
+    if d.dura() {
+        dura.extend([
+            (
+                tr("panel.inspector.vida.over_time_s"),
+                ids::INSP_DANO_OT_S,
+                0.1, // LITERAL-PX-OK: segundos
+                s,
+            ),
+            (
+                tr("panel.inspector.vida.over_time_every"),
+                ids::INSP_DANO_OT_EVERY,
+                0.05, // LITERAL-PX-OK: segundos
+                s,
+            ),
+        ]);
+    }
+    cur_y = numeros(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        &dura,
         seccao,
     );
     for (id, chave, ligada) in [
@@ -130,6 +177,21 @@ fn corpo_dano(
             seccao,
         );
     }
+    // ⭐ W6 — o TIPO, antes da equipa: os dois são NOMES que o outro lado procura.
+    cur_y = nome(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        tr("panel.inspector.vida.damage_kind"),
+        ids::INSP_DANO_KIND,
+        tr("panel.inspector.vida.damage_kind_hint"),
+        seccao,
+    );
     nome(
         scene,
         text_system,

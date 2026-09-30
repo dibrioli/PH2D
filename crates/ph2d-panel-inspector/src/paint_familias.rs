@@ -331,6 +331,7 @@ pub(crate) fn push_familia_logica_cont<'a>(
         inner_w,
         header_h,
         snaps.vida_info.as_ref(),
+        infos.resist_selected,
     );
 }
 

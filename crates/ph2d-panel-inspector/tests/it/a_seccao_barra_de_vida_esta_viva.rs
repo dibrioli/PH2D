@@ -318,6 +318,7 @@ fn a_barra_do_inimigo_mora_ao_lado_da_vida_dele() {
         numbers: false,
         numbers_color: [1.0; 4],
         numbers_size: 0.45,
+        resistances: Vec::new(),
         agora: None,
     };
     let mut i = info(barra());
@@ -362,6 +363,7 @@ fn vida_com_numeros() -> InspectorHealthInfo {
         numbers: true,
         numbers_color: [0.2, 0.4, 0.6, 1.0],
         numbers_size: 0.45,
+        resistances: Vec::new(),
         agora: None,
     }
 }

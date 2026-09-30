@@ -65,7 +65,7 @@ fn resumo_seta(t: &InspectorTransitionRow, estados: &[InspectorStateRow]) -> Str
 /// ⚠️ **Uma função e não duas**, pela lei das portas: duas cópias divergiriam no dia em que o
 /// realce ou o zebrado mudasse, e a diferença só apareceria numa screenshot.
 #[allow(clippy::too_many_arguments)]
-fn lista(
+pub(super) fn lista(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -127,7 +127,7 @@ fn lista(
 
 /// Os dois botões de uma lista, **pela porta do grupo**.
 #[allow(clippy::too_many_arguments)]
-fn botoes(
+pub(super) fn botoes(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,

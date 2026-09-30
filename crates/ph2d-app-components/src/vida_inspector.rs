@@ -12,10 +12,34 @@
 
 use ph2d_ecs::{Entity, SimWorld, World};
 use ph2d_editor_core::vida_edits::{
-    BarraAlvo, InspectorBarInfo, InspectorDamageInfo, InspectorHealthInfo, InspectorVidaInfo,
-    VidaAgora, VidaFieldEdit as E,
+    BarraAlvo, InspectorBarInfo, InspectorDamageInfo, InspectorHealthInfo, InspectorResistanceRow,
+    InspectorVidaInfo, VidaAgora, VidaFieldEdit as E,
 };
-use ph2d_physics_ecs::{Damage, Health, HealthBar, HealthNow, OnHit, RigidBody};
+use ph2d_physics_ecs::{
+    Damage, Health, HealthBar, HealthNow, OnHit, RESISTANCES_MAX, Resistance, RigidBody, kind_key,
+};
+
+/// ⭐ **As linhas da tabela de resistências, com a REPETIDA marcada** — pela MESMA porta que a lei
+/// usa para comparar ([`kind_key`]), senão o painel diria «repetida» de uma linha que a lei lê.
+/// ⚠️ Uma linha SEM tipo nunca é repetida: ela é uma linha a meio de ser escrita.
+fn resistance_rows(rs: &[Resistance]) -> Vec<InspectorResistanceRow> {
+    let mut vistas: Vec<String> = Vec::new();
+    rs.iter()
+        .map(|r| {
+            let chave = kind_key(&r.kind);
+            let repetida = chave.as_ref().is_some_and(|c| vistas.contains(c));
+            if let Some(c) = chave {
+                vistas.push(c);
+            }
+            InspectorResistanceRow {
+                kind: r.kind.clone(),
+                rate: r.rate,
+                absorbs: r.absorbs,
+                repetida,
+            }
+        })
+        .collect()
+}
 
 fn health_info(h: &Health, agora: Option<&HealthNow>) -> InspectorHealthInfo {
     InspectorHealthInfo {
@@ -45,6 +69,7 @@ fn health_info(h: &Health, agora: Option<&HealthNow>) -> InspectorHealthInfo {
         numbers: h.numbers,
         numbers_color: h.numbers_color,
         numbers_size: h.numbers_size,
+        resistances: resistance_rows(&h.resistances),
         agora: agora.map(|a| VidaAgora {
             pontos: a.pontos,
             escudo: a.escudo,
@@ -64,6 +89,10 @@ fn damage_info(d: &Damage) -> InspectorDamageInfo {
         hitstop_s: d.hitstop_s,
         knockback: d.knockback,
         knockback_lift: d.knockback_lift,
+        kind: d.kind.clone(),
+        over_time_per_s: d.over_time_per_s,
+        over_time_s: d.over_time_s,
+        over_time_every_s: d.over_time_every_s,
     }
 }
 
@@ -168,6 +197,34 @@ fn apply_health(h: &mut Health, edit: &E) -> bool {
         E::Numbers(b) => h.numbers = *b,
         E::NumbersColor(c) => h.numbers_color = cor(*c),
         E::NumbersSize(v) => h.numbers_size = positivo(*v),
+        // ⭐ W6 — a tabela de resistências. ⚠️ Juntar pára no TECTO (o gate da shell amarra-o à
+        // lista que o painel pinta) e um índice fora da tabela não toca em nada — e diz `false`.
+        E::AddResistance => {
+            if h.resistances.len() >= RESISTANCES_MAX {
+                return false;
+            }
+            h.resistances.push(Resistance::default());
+        }
+        E::RemoveResistance(i) => {
+            if usize::from(*i) >= h.resistances.len() {
+                return false;
+            }
+            h.resistances.remove(usize::from(*i));
+        }
+        E::ResistanceKind(i, t) => match h.resistances.get_mut(usize::from(*i)) {
+            Some(r) => r.kind = t.trim().to_string(),
+            None => return false,
+        },
+        // ⚠️ **A taxa é `≥ 0`** — o oráculo mediu que uma taxa negativa NÃO cura (curar é o
+        // «absorve»), logo um negativo gravado seria um número que mente sobre o que faz.
+        E::ResistanceRate(i, v) => match h.resistances.get_mut(usize::from(*i)) {
+            Some(r) => r.rate = positivo(*v),
+            None => return false,
+        },
+        E::ResistanceAbsorbs(i, b) => match h.resistances.get_mut(usize::from(*i)) {
+            Some(r) => r.absorbs = *b,
+            None => return false,
+        },
         _ => return false,
     }
     true
@@ -187,6 +244,11 @@ fn apply_damage(d: &mut Damage, edit: &E) -> bool {
         // empurrão aceita o sinal, e só o não-finito cai a zero.
         E::Knockback(v) => d.knockback = if v.is_finite() { *v } else { 0.0 },
         E::KnockbackLift(v) => d.knockback_lift = if v.is_finite() { *v } else { 0.0 },
+        // ⭐ W6. ⚠️ O intervalo `0` é LEGÍTIMO (pulsa a cada tique — a lava), logo é `≥ 0` e não `> 0`.
+        E::DamageKind(t) => d.kind = t.trim().to_string(),
+        E::OverTimePerS(v) => d.over_time_per_s = positivo(*v),
+        E::OverTimeS(v) => d.over_time_s = positivo(*v),
+        E::OverTimeEveryS(v) => d.over_time_every_s = positivo(*v),
         _ => return false,
     }
     true

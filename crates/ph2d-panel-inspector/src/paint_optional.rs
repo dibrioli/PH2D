@@ -221,6 +221,7 @@ pub(crate) fn push_optional_sections<'a>(
     // ⚠️ **Duas selecções e não uma** — as listas de estados e de setas são independentes.
     sm_state_selected: &'a mut usize,
     sm_trans_selected: &'a mut usize,
+    resist_selected: &mut usize,
     // ⭐⭐⭐ **A struct do QUADRO, inteira** — e não os dezoito instantâneos desmontados um a um.
     //
     // ⚠️ **Desmontá-la na chamada era uma SEGUNDA CÓPIA dela**, e ela cobrava: o `paint_inspector`
@@ -242,6 +243,7 @@ pub(crate) fn push_optional_sections<'a>(
             tween: *tween_selected,
             sm_state: *sm_state_selected,
             sm_trans: *sm_trans_selected,
+            resist: *resist_selected,
         },
     );
     // ── IDENTIDADE (família 1 de 16) ──────────────────────────────────────────────────────────

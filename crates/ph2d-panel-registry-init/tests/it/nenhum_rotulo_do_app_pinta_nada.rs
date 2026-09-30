@@ -640,7 +640,15 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    `"Keep on Restart"` e `"Only This Object"` (as duas secções do CONTADOR), que a linha
     //    mediu a cortar contra `103`. *Duas catracas que somam entre linhas contam-se na árvore
     //    COMBINADA* — o valor é o medido pelo portão dela, não a soma escrita à mão.
-    ("inspector", 87),
+    // ⬆️ `87 → 89` em 2026-09-29 (plano 28, W6): a tabela de RESISTÊNCIAS da secção Health traz o
+    //    par `"+ Add Resistance"` / `"x Remove"`, e no degrau estreito ele corta como os NOVE pares
+    //    irmãos (`+ Add State` · `x Remove Tween` · …) — os dois botões repartem a coluna.
+    //    ⚠️ Medido e não empurrado: o `"Absorbs (heals)"` que também cortava encolheu para
+    //    `"Absorbs"` (a lista por cima já diz *«heals»*). ⛔ E o `x Remove` é CURTO de propósito:
+    //    `"x Remove Resistance"` (o nome da família) foi medido e corta também na largura de
+    //    FÁBRICA (`105 + 130 px`: «Resistance» é mais largo em píxeis que «Transition»), enquanto o
+    //    curto cabe — por baixo do título `Resistances` ele não perde sentido.
+    ("inspector", 89),
     // ⭐ Era `6`: o `Mute` do Master deixou de ler `…` quando a coluna aperta (report do dono,
     //    19/09). *Uma catraca que desce é a metade justa dela a funcionar.*
     ("audio_mixer", 5),
@@ -727,7 +735,8 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⬆️ `75 → 79` em 2026-09-23, pela coluna ÚNICA do painel (ordem do dono) — ver a irmã acima.
     // ⬆️ `79 → 81` em 2026-09-23, os mesmos dois VALORES da irmã acima (`83 → 85`).
     // ⬆️ `81 → 83` na integração de 2026-09-25, pelos mesmos dois rótulos do contador — ver a irmã acima.
-    ("inspector", 83),
+    // ⬆️ `83 → 85` em 2026-09-29, pelo mesmo par da tabela de resistências — ver a irmã acima.
+    ("inspector", 85),
     ("audio_mixer", 5),
     ("sculpt3d", 6),
     ("hierarchy", 5),

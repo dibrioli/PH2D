@@ -681,3 +681,49 @@ amostras de cor e a tabela dos inimigos como `struct`) · fmt · censos da árvo
   `21` minutos pelo servidor do `sccache`, que a HERDOU de um comando `PH2D_GPU=1` e sobreviveu-lhe
   (o `.dono` vazio, três linhas à espera). Cura em `scripts/ph2d-run.sh` (o servidor arranca antes
   da trava) e memória `feedback_a_daemon_launched_under_the_gpu_lock_holds_it_forever`.
+
+## §14 — ✅ W6 (2026-09-29): os TIPOS de dano, as resistências e o dano que DURA
+
+- **O oráculo muda de casa, e a triagem parou na primeira porta ABERTA.** O GDevelop (W0–W5) não
+  tem tipos; o addon *Health, HitBoxes, HurtBoxes* do Godot (cluttered-code, **MIT**, commit
+  `c9d2185`) tem, e foi **corrido** sem interface sobre `21` casos nossos
+  ([`godot_health_tipos/`](ferramentas/godot_health_tipos/)). A tabela do que ele decidiu vive no
+  cabeçalho de [`ph2d-health/src/tipos.rs`](../../crates/ph2d-health/src/tipos.rs): taxa `0` é
+  **imune**, taxa negativa dá `0` e **não cura**, *absorver* é um interruptor À PARTE e cura
+  `dano × taxa`, e com a vida cheia absorver não faz nada (nem o sinal).
+  ⛔ **Divergência DECLARADA:** o alvo arredonda cada golpe (vida inteira); a casa é `f64` e não
+  arredonda — `3 × 3,3 = 9,9`, não `9`.
+- **A taxa entra depois da armadura e antes do escudo** (`golpe_tipado`), e o `golpe` de sempre é
+  `golpe_tipado(Taxa::NEUTRA)` — a paridade da W1 não se move por construção.
+- **O dano que dura é LEI NOSSA** (nenhuma referência da pesquisa o tem embutido), e cada cláusula
+  tem gate: o total é sempre `por_s × dur_s` (o último pulso leva o resto) · reaplicar RENOVA para o
+  maior e **mantém a fase do pulso** · um tipo, uma aflição · **um pulso não é um golpe** — não
+  esquiva, salta a armadura, ignora a invencibilidade e não a arma (senão um herói envenenado ficava
+  invencível aos inimigos).
+- **Ponte:** a aflição entra **com o golpe** (só no `comecou`; nunca se o golpe foi esquivado,
+  travado pela invencibilidade sem absorver, ou o alvo já estava morto) · os pulsos correm depois do
+  `pre_quadro` e antes dos golpes, com a fonte = o próprio alvo · a morte limpa as aflições · as
+  `Aflicoes` vivem no `HealthState` (no ANEL), porque a `Vida` é `Copy`.
+- **O tipo é um NOME**, dobrado pela dobra da casa (`ph2d-label-fold`): `Fogo`, `fogo` e `fôgo` são o
+  mesmo tipo; numa tabela com duas linhas do mesmo tipo **a primeira ganha**, e o painel marca a
+  outra como repetida (⚠️ uma linha SEM tipo nunca é repetida — é a linha que o artista acabou de
+  acrescentar).
+- **Inspector:** o `Damage` ganha `Type` e a secção do dano que dura (`per s` · `for s` · `every s`,
+  as duas últimas só pintadas quando o dano dura); o `Health` ganha a lista `Resistances` no idioma
+  da máquina de estados — lista + `+ Add` / `x Remove` + UM editor para a linha aberta. ⭐ A linha
+  aberta é estado do PAINEL e nunca vai ao barramento (abrir uma linha não é um passo de desfazer),
+  e o editor **re-semeia-se** ao abrir outra linha (a `assinatura` do `sync_vida` inclui a aberta).
+  ⚠️ **Reaproveita** `statemachine::lista`/`botoes` (passaram a `pub(super)`) em vez de uma 5.ª cópia.
+- **Tecto:** `RESISTANCES_MAX = 8`, e o recurso é o **encaixe** do painel: o número é o dos ids que a
+  lista pinta, e um gate na shell ata os dois — *um modelo que aceita o que o painel não mostra produz
+  estado inalcançável* (a lei do `ANIM_TAGS_MAX`). ⚠️ A LEI não tem tecto (lê um `Vec`), e se a dobra
+  com oito linhas abertas cabe no encaixe **não foi medido**. O `+` **desaparece** no tecto.
+- **Contadores:** `PROJECT_SCHEMA` **+1** (campos novos em componentes já registados; zero
+  registos; sem migração — nenhum projecto gravado tem vida ainda). Os três registos **0**.
+- **Cena `=3`** ([`vida_tipos_smoke.rs`](../../crates/ph2d-app-components/src/vida_tipos_smoke.rs)):
+  três alvos numa coluna à direita (Salamandra imune ao fogo e fraca ao gelo · o **CONTROLO** sem
+  resistências · um Elemental que **absorve** o fogo e nasce a meio da vida, senão a cura não se
+  vê), um herói com duas armas (`Q` fogo com queimadura `3/s` por `3 s`, `J` gelo). Fotografada:
+  nada sob a coluna dos avisos (§13). Os `5` gates da cena correm as portas do produto (fábricas +
+  `apply_births` + ponte) e o controlo é o que prova que o «nada» da salamandra não é uma bala que
+  falha.

@@ -22,7 +22,7 @@ use ph2d_editor_core::widget::{CheckboxState, CheckboxValue, TextInputState};
 ///
 /// ⚠️ **Os valores de partida são os do `Health::default()`/`Damage::default()`**, e não zeros: uma
 /// vida que nasce a `0` lê-se como um campo partido.
-pub(crate) const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 28] = [
+pub(crate) const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 32] = [
     (ids::INSP_VIDA_MAX, 100.0, 0.0, 100_000.0, 1.0), // LITERAL-PX-OK: pontos
     (ids::INSP_VIDA_START, 100.0, 0.0, 100_000.0, 1.0), // LITERAL-PX-OK: pontos
     (ids::INSP_VIDA_INVINCIBLE, 0.0, 0.0, 600.0, 0.05), // LITERAL-PX-OK: segundos
@@ -59,10 +59,18 @@ pub(crate) const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 28] = [
     (ids::INSP_BARRA_OFFSET_Y, 0.75, -1_000.0, 1_000.0, 0.05), // LITERAL-PX-OK: metros
     (ids::INSP_BARRA_TRAIL_DELAY, 0.4, 0.0, 600.0, 0.05), // LITERAL-PX-OK: segundos
     (ids::INSP_BARRA_TRAIL_SPEED, 1.0, 0.0, 1_000.0, 0.1), // LITERAL-PX-OK: barras/s
+    // ⭐ W6 — o dano que DURA: pontos/s na escala da vida, segundos na da invencibilidade. ⚠️ O
+    // intervalo desce a `0` (pulsa a cada tique — a lava), e a lei aceita-o.
+    (ids::INSP_DANO_OT_PER_S, 0.0, 0.0, 100_000.0, 0.5), // LITERAL-PX-OK: pontos/s
+    (ids::INSP_DANO_OT_S, 3.0, 0.0, 600.0, 0.1),         // LITERAL-PX-OK: segundos
+    (ids::INSP_DANO_OT_EVERY, 1.0, 0.0, 600.0, 0.05),    // LITERAL-PX-OK: segundos
+    // ⚠️ A TAXA vai a `100`: é um MULTIPLICADOR (fraco × 2, × 4…), e o tecto é a escala de um
+    // número que o artista ainda lê; `0` é imune, e o oráculo mediu que um negativo não cura.
+    (ids::INSP_VIDA_RESIST_RATE, 1.0, 0.0, 100.0, 0.05), // LITERAL-PX-OK: multiplicador
 ];
 
 /// As caixas, com o valor de partida de cada uma.
-const CAIXAS: [(ph2d_a11y::NodeId, bool); 8] = [
+const CAIXAS: [(ph2d_a11y::NodeId, bool); 9] = [
     (ids::INSP_VIDA_OVERHEAL, false),
     (ids::INSP_VIDA_SHIELD_BLOCKS, false),
     (ids::INSP_DANO_PER_SECOND, false),
@@ -71,19 +79,29 @@ const CAIXAS: [(ph2d_a11y::NodeId, bool); 8] = [
     (ids::INSP_DANO_VANISH, false),
     (ids::INSP_BARRA_HIDE_FULL, false),
     (ids::INSP_VIDA_NUMBERS, false),
+    (ids::INSP_VIDA_RESIST_ABSORBS, false),
 ];
 
 /// Os campos de texto — a equipa e os três sinais da vida, e a equipa do dano.
-pub(crate) const TEXTOS: [ph2d_a11y::NodeId; 6] = [
+pub(crate) const TEXTOS: [ph2d_a11y::NodeId; 8] = [
     ids::INSP_VIDA_TEAM,
     ids::INSP_VIDA_ON_DAMAGE,
     ids::INSP_VIDA_ON_HEAL,
     ids::INSP_VIDA_ON_DEATH,
     ids::INSP_DANO_TEAM,
     ids::INSP_BARRA_TARGET,
+    ids::INSP_DANO_KIND,
+    ids::INSP_VIDA_RESIST_KIND,
 ];
 
 pub(crate) fn populate_vida(store: &mut WidgetStore) {
+    // ⭐ W6 — a lista de resistências e os dois botões dela: BOTÕES, senão o clique morre no
+    // `is_focusable` (a lei que o cabeçalho escreve).
+    super::populate::register_button_ids(store, &ids::INSP_VIDA_RESIST_ROW);
+    super::populate::register_button_ids(
+        store,
+        &[ids::INSP_VIDA_RESIST_ADD, ids::INSP_VIDA_RESIST_REMOVE],
+    );
     for (id, value, lo, hi, step) in NUMEROS {
         store.register(
             id,

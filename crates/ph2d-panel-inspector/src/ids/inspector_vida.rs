@@ -89,6 +89,41 @@ pub const INSP_DANO_HITSTOP: NodeId = hash_node_id("insp_dano_hitstop");
 pub const INSP_DANO_KNOCKBACK: NodeId = hash_node_id("insp_dano_knockback");
 /// O empurrão para cima, em m/s.
 pub const INSP_DANO_KNOCKBACK_LIFT: NodeId = hash_node_id("insp_dano_knockback_lift");
+/// ⭐ O TIPO do dano (plano 28, W6) — o nome que as resistências de quem leva procuram.
+pub const INSP_DANO_KIND: NodeId = hash_node_id("insp_dano_kind");
+/// Os pontos por segundo do dano que DURA (`0` = não dura).
+pub const INSP_DANO_OT_PER_S: NodeId = hash_node_id("insp_dano_ot_per_s");
+/// Quanto tempo ele dura. ⚠️ Só pintado quando o dano dura.
+pub const INSP_DANO_OT_S: NodeId = hash_node_id("insp_dano_ot_s");
+/// Cada quanto tempo ele pulsa. ⚠️ Só pintado quando o dano dura.
+pub const INSP_DANO_OT_EVERY: NodeId = hash_node_id("insp_dano_ot_every");
+
+// ── HEALTH · RESISTÊNCIAS (plano 28, W6) ────────────────────────────────────
+/// As linhas da lista de RESISTÊNCIAS — clicar numa abre-a no editor (o idioma da máquina de
+/// estados: uma lista, `+ Add` / `x Remove`, e UM editor para a linha aberta).
+///
+/// ⚠️ **O tecto é o `RESISTANCES_MAX` do componente** (8), e os dois números são o MESMO facto —
+/// um gate na shell, que vê as duas crates, amarra-os.
+pub const INSP_VIDA_RESIST_ROW: [NodeId; 8] = [
+    hash_node_id("insp_vida_resist_row0"),
+    hash_node_id("insp_vida_resist_row1"),
+    hash_node_id("insp_vida_resist_row2"),
+    hash_node_id("insp_vida_resist_row3"),
+    hash_node_id("insp_vida_resist_row4"),
+    hash_node_id("insp_vida_resist_row5"),
+    hash_node_id("insp_vida_resist_row6"),
+    hash_node_id("insp_vida_resist_row7"),
+];
+/// `+ Add Resistance`.
+pub const INSP_VIDA_RESIST_ADD: NodeId = hash_node_id("insp_vida_resist_add");
+/// `x Remove Resistance` — apaga a linha aberta.
+pub const INSP_VIDA_RESIST_REMOVE: NodeId = hash_node_id("insp_vida_resist_remove");
+/// O TIPO da linha aberta.
+pub const INSP_VIDA_RESIST_KIND: NodeId = hash_node_id("insp_vida_resist_kind");
+/// A TAXA da linha aberta (`0` imune · `1` normal · `2` fraco).
+pub const INSP_VIDA_RESIST_RATE: NodeId = hash_node_id("insp_vida_resist_rate");
+/// O «absorve» da linha aberta — o dano desse tipo CURA.
+pub const INSP_VIDA_RESIST_ABSORBS: NodeId = hash_node_id("insp_vida_resist_absorbs");
 
 // ── HEALTH BAR (plano 28, W4) ───────────────────────────────────────────────
 /// O NOME do objecto cuja vida a barra mostra — vazio = este.

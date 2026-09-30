@@ -206,6 +206,8 @@ pub mod vida_impacto_smoke;
 pub mod vida_inspector;
 /// ⭐⭐⭐ **O smoke da VIDA** (plano 28, W2) — três alvos, três vidas, e o aliado que não morre.
 pub mod vida_smoke;
+/// ⭐ A cena dos TIPOS de dano e do dano que DURA (plano 28, W6) — `PH2D_VIDA_SMOKE=3`.
+pub mod vida_tipos_smoke;
 /// ⭐⭐⭐ **A ARMA** — a ponte que lê o pente, escreve a munição e publica o tiro; ver o cabeçalho.
 pub mod weapon_bridge;
 /// ⭐⭐⭐ **A ARMA** — o instantâneo e o dreno da secção dela; ver o cabeçalho.

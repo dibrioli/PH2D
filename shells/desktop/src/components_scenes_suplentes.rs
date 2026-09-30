@@ -509,7 +509,7 @@ impl crate::App {
         self.components.smokes.vida_raise = crate::components_scenes::LEVANTA_O_INSPECTOR;
         self.timeline.flags.simulate_physics = true;
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            for (nome, tecla) in ph2d_app_components::vida_smoke::ACCOES {
+            for &(nome, tecla) in ph2d_app_components::vida_smoke::accoes(montada.nivel) {
                 crate::components_scenes::liga_a_accao(hero, nome, tecla);
             }
             hero.panel_visibility.insert("inspector", true);

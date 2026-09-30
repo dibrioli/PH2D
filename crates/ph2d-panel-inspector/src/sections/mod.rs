@@ -149,6 +149,7 @@ pub(crate) mod vida;
 pub(crate) mod vida_barra;
 pub(crate) mod vida_dano;
 pub(crate) mod vida_impacto;
+pub(crate) mod vida_resist;
 pub(crate) mod weapon;
 // ⚠️ O DESENHO de uma linha do Transform — separado da orquestração delas pelo tecto de LOC.
 mod visibility;

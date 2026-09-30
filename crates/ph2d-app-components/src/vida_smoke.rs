@@ -58,9 +58,9 @@ use ph2d_projectile::ProjectileLaw;
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 use ph2d_topdown::{TopDownLaw, direction::DirectionMode};
 
-/// ⭐⭐ **Quantas cenas este roteador serve** — CONTADO do `match` do [`montar`]: a `=1` (a vida) e
-/// a `=2` (o impacto, [`crate::vida_impacto_smoke`]).
-pub const CENAS: u32 = 2;
+/// ⭐⭐ **Quantas cenas este roteador serve** — CONTADO do `match` do [`montar`]: a `=1` (a vida), a
+/// `=2` (o impacto, [`crate::vida_impacto_smoke`]) e a `=3` (os tipos, [`crate::vida_tipos_smoke`]).
+pub const CENAS: u32 = 3;
 
 /// A acção e a tecla — as MESMAS da cena do golpe, que é a fonte (a tecla foi medida lá).
 pub const ACCAO: &str = crate::dano_smoke::ACCAO;
@@ -96,6 +96,17 @@ pub const ACCOES: [(&str, u32); 2] = [
     (ACCAO, crate::trigger_smoke::TECLA),
     (ACCAO_VENENO, TECLA_VENENO),
 ];
+/// ⭐ **As acções que o prólogo cria para a cena `nivel`** — a `=3` tem as dela (fogo e gelo), as
+/// outras duas partilham as da `=1`. ⚠️ Uma PORTA e não um `if` na shell: a cena que acrescenta
+/// acções é a que as declara.
+#[must_use]
+pub fn accoes(nivel: u32) -> &'static [(&'static str, u32)] {
+    if nivel == 3 {
+        &crate::vida_tipos_smoke::ACCOES
+    } else {
+        &ACCOES
+    }
+}
 /// O nome que o `J` tem na tela, para o roteiro.
 pub const TECLA_VENENO_NOME: &str = "J";
 /// O sinal do veneno — o herói publica-o, a tabela do roxo ouve-o.
@@ -473,6 +484,15 @@ pub struct Montada {
 
 /// **Monta a cena que `nivel` pede, e devolve QUAL montou.**
 pub fn montar(world: &mut World, nivel: u32) -> Montada {
+    if nivel == 3 {
+        let escolhido = crate::vida_tipos_smoke::cena_tres(world);
+        resolver_receitas(world);
+        crate::vida_tipos_smoke::roteiro();
+        return Montada {
+            nivel: 3,
+            escolhido: escolhido.to_bits(),
+        };
+    }
     if nivel == 2 {
         let escolhido = crate::vida_impacto_smoke::cena_dois(world);
         resolver_receitas(world);

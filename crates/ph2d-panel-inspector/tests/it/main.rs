@@ -8,6 +8,7 @@
 
 mod a_caixa_do_contador_esta_viva;
 mod a_field_is_never_narrower_than_its_owner_declared;
+mod a_lista_de_resistencias_esta_viva;
 mod a_lista_de_tags_cabe_no_popover;
 mod a_long_popover_scrolls;
 mod a_pega_reordena_as_seccoes;

@@ -75,6 +75,31 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.vida.damage_team_hint" => {
             "Team \u{2014} it does not hurt its own team\u{2026}"
         }
+        // ⭐ W6 — os TIPOS de dano e o dano que DURA.
+        "panel.inspector.vida.damage_kind" => "Type",
+        "panel.inspector.vida.damage_kind_hint" => {
+            "Type \u{2014} fire, ice\u{2026} empty hurts everyone the same"
+        }
+        "panel.inspector.vida.over_time" => "Lasting / s",
+        "panel.inspector.vida.over_time_s" => "Lasts",
+        "panel.inspector.vida.over_time_every" => "Every",
+        "panel.inspector.vida.resistances" => "Resistances",
+        "panel.inspector.vida.no_resistances" => {
+            "No resistances \u{b7} every type hurts it normally."
+        }
+        "panel.inspector.vida.add_resistance" => "+ Add Resistance",
+        "panel.inspector.vida.x_remove_resistance" => "x Remove",
+        "panel.inspector.vida.resist_kind" => "Type",
+        "panel.inspector.vida.resist_kind_hint" => "fire, ice, poison\u{2026}",
+        "panel.inspector.vida.resist_rate" => "Rate",
+        "panel.inspector.vida.resist_absorbs" => "Absorbs",
+        "panel.inspector.vida.resist_untyped" => "(no type)",
+        "panel.inspector.vida.resist_immune" => "{kind}  immune",
+        "panel.inspector.vida.resist_heals" => "{kind}  heals \u{d7}{rate}",
+        "panel.inspector.vida.resist_times" => "{kind}  \u{d7}{rate}",
+        "panel.inspector.vida.resist_repeated" => {
+            "Another row above has this type \u{b7} only the first one counts."
+        }
         "panel.inspector.vida.health_bar" => "Health Bar",
         "panel.inspector.vida.bar_width" => "Width",
         "panel.inspector.vida.bar_height" => "Height",

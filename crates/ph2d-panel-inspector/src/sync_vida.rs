@@ -22,8 +22,19 @@ use ph2d_editor_core::vida_edits::InspectorVidaInfo;
 use crate::ids;
 use crate::state::InspectorState;
 
+/// A resistência ABERTA (plano 28, W6) — a selecção do painel presa ao alcance da tabela, ou
+/// `None` quando não há nenhuma.
+///
+/// ⚠️ **Uma porta, três leitores** (a semente, a pintura e o clique): a selecção sobrevive a
+/// trocar de objecto e a apagar linhas, e cada leitor que a prendesse à mão prendê-la-ia diferente.
+pub(crate) fn resistencia_aberta(i: &InspectorVidaInfo, selected: usize) -> Option<usize> {
+    let n = i.health.as_ref().map_or(0, |h| h.resistances.len());
+    (n > 0).then(|| selected.min(n - 1))
+}
+
 /// Os números a semear, com o valor do instantâneo — `None` quando o componente não está lá.
-fn numeros(i: &InspectorVidaInfo) -> Vec<(ph2d_a11y::NodeId, f64)> {
+/// `aberta` é a resistência cujo editor está pintado.
+fn numeros(i: &InspectorVidaInfo, aberta: Option<usize>) -> Vec<(ph2d_a11y::NodeId, f64)> {
     let mut out = Vec::new();
     if let Some(h) = &i.health {
         #[allow(clippy::cast_precision_loss)]
@@ -54,6 +65,9 @@ fn numeros(i: &InspectorVidaInfo) -> Vec<(ph2d_a11y::NodeId, f64)> {
             (ids::INSP_VIDA_KNOCKBACK_TAKEN, f64::from(h.knockback_taken)),
             (ids::INSP_VIDA_NUMBERS_SIZE, f64::from(h.numbers_size)),
         ]);
+        if let Some(r) = aberta.and_then(|k| h.resistances.get(k)) {
+            out.push((ids::INSP_VIDA_RESIST_RATE, f64::from(r.rate)));
+        }
     }
     if let Some(d) = &i.damage {
         out.extend([
@@ -61,6 +75,9 @@ fn numeros(i: &InspectorVidaInfo) -> Vec<(ph2d_a11y::NodeId, f64)> {
             (ids::INSP_DANO_HITSTOP, f64::from(d.hitstop_s)),
             (ids::INSP_DANO_KNOCKBACK, f64::from(d.knockback)),
             (ids::INSP_DANO_KNOCKBACK_LIFT, f64::from(d.knockback_lift)),
+            (ids::INSP_DANO_OT_PER_S, f64::from(d.over_time_per_s)),
+            (ids::INSP_DANO_OT_S, f64::from(d.over_time_s)),
+            (ids::INSP_DANO_OT_EVERY, f64::from(d.over_time_every_s)),
         ]);
     }
     if let Some(b) = &i.bar {
@@ -77,7 +94,7 @@ fn numeros(i: &InspectorVidaInfo) -> Vec<(ph2d_a11y::NodeId, f64)> {
 }
 
 /// Os textos a semear.
-fn textos(i: &InspectorVidaInfo) -> Vec<(ph2d_a11y::NodeId, &str)> {
+fn textos(i: &InspectorVidaInfo, aberta: Option<usize>) -> Vec<(ph2d_a11y::NodeId, &str)> {
     let mut out = Vec::new();
     if let Some(h) = &i.health {
         out.extend([
@@ -86,9 +103,13 @@ fn textos(i: &InspectorVidaInfo) -> Vec<(ph2d_a11y::NodeId, &str)> {
             (ids::INSP_VIDA_ON_HEAL, h.on_heal.as_str()),
             (ids::INSP_VIDA_ON_DEATH, h.on_death.as_str()),
         ]);
+        if let Some(r) = aberta.and_then(|k| h.resistances.get(k)) {
+            out.push((ids::INSP_VIDA_RESIST_KIND, r.kind.as_str()));
+        }
     }
     if let Some(d) = &i.damage {
         out.push((ids::INSP_DANO_TEAM, d.team.as_str()));
+        out.push((ids::INSP_DANO_KIND, d.kind.as_str()));
     }
     if let Some(b) = &i.bar {
         out.push((ids::INSP_BARRA_TARGET, b.target.as_str()));
@@ -151,15 +172,17 @@ fn cores(host: &mut dyn PanelHostInternal, i: &InspectorVidaInfo) {
     }
 }
 
-/// ⚠️ **Só o que SEMEIA um widget entra** — ver o cabeçalho sobre a vida agora.
-pub(crate) fn assinatura(i: &InspectorVidaInfo) -> u64 {
+/// ⚠️ **Só o que SEMEIA um widget entra** — ver o cabeçalho sobre a vida agora. ⭐ A resistência
+/// ABERTA entra (W6): abrir outra linha tem de re-semear o editor, e é a mesma aresta do tween.
+pub(crate) fn assinatura(i: &InspectorVidaInfo, aberta: Option<usize>) -> u64 {
     let mut h = std::hash::DefaultHasher::new();
     i.entity_bits.hash(&mut h);
-    for (id, v) in numeros(i) {
+    aberta.hash(&mut h);
+    for (id, v) in numeros(i, aberta) {
         id.0.hash(&mut h);
         v.to_bits().hash(&mut h);
     }
-    for (id, t) in textos(i) {
+    for (id, t) in textos(i, aberta) {
         id.0.hash(&mut h);
         t.hash(&mut h);
     }
@@ -177,20 +200,21 @@ pub(crate) fn sync(
         return;
     };
     cores(host, &info);
-    let sig = assinatura(&info);
+    let aberta = resistencia_aberta(&info, inspector_state.resist_selected);
+    let sig = assinatura(&info, aberta);
     if !entity_changed && inspector_state.last_vida_sig == Some(sig) {
         return;
     }
     inspector_state.last_vida_sig = Some(sig);
     let focus = host.store().focus_id();
     let drag = host.store().number_input_drag().map(|d| d.id);
-    for (id, v) in numeros(&info) {
+    for (id, v) in numeros(&info, aberta) {
         if focus == Some(id) || drag == Some(id) {
             continue; // a mão do artista ganha ao instantâneo
         }
         host.store_mut().set_number_value(id, v);
     }
-    for (id, t) in textos(&info) {
+    for (id, t) in textos(&info, aberta) {
         crate::sync_text_field::escreve_texto(host, focus, id, t);
     }
 }

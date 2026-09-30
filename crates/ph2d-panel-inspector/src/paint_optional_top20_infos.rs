@@ -45,6 +45,8 @@ pub(crate) struct Top20<'a> {
     pub sm_state_selected: usize,
     /// Idem, a das setas.
     pub sm_trans_selected: usize,
+    /// ⭐ A resistência aberta da VIDA (plano 28, W6).
+    pub resist_selected: usize,
 }
 
 impl<'a> Top20<'a> {
@@ -74,6 +76,7 @@ impl<'a> Top20<'a> {
             tags: snaps.tags_info.as_ref(),
             sm_state_selected: sel.sm_state,
             sm_trans_selected: sel.sm_trans,
+            resist_selected: sel.resist,
         }
     }
 }
@@ -87,4 +90,5 @@ pub(crate) struct Selecoes {
     pub tween: usize,
     pub sm_state: usize,
     pub sm_trans: usize,
+    pub resist: usize,
 }

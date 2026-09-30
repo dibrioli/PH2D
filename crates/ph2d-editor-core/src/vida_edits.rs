@@ -34,7 +34,18 @@ pub struct VidaAgora {
     pub morta: bool,
 }
 
-/// A metade VIDA do instantâneo — os vinte e seis campos do `Health`.
+/// ⭐ **Uma linha da tabela de RESISTÊNCIAS** (plano 28, W6).
+#[derive(Clone, Debug, PartialEq)]
+pub struct InspectorResistanceRow {
+    pub kind: String,
+    pub rate: f32,
+    pub absorbs: bool,
+    /// ⚠️ **Outra linha ACIMA tem o mesmo tipo** (pela dobra da casa) — a lei lê só a primeira, e
+    /// esta é uma linha que o artista escreve e que não faz nada. A lista pinta-a em WARN.
+    pub repetida: bool,
+}
+
+/// A metade VIDA do instantâneo — os vinte e sete campos do `Health`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct InspectorHealthInfo {
     pub max: f32,
@@ -65,6 +76,8 @@ pub struct InspectorHealthInfo {
     pub numbers: bool,
     pub numbers_color: [f32; 4],
     pub numbers_size: f32,
+    /// ⭐ As RESISTÊNCIAS por tipo de dano (plano 28, W6), pela ordem em que a lei as lê.
+    pub resistances: Vec<InspectorResistanceRow>,
     /// ⭐ A vida AGORA — `None` antes do 1.º tique (a vida ainda não nasceu).
     pub agora: Option<VidaAgora>,
 }
@@ -80,7 +93,7 @@ impl InspectorHealthInfo {
     }
 }
 
-/// A metade DANO do instantâneo — os nove campos do `Damage`.
+/// A metade DANO do instantâneo — os treze campos do `Damage`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct InspectorDamageInfo {
     pub amount: f32,
@@ -94,6 +107,20 @@ pub struct InspectorDamageInfo {
     pub hitstop_s: f32,
     pub knockback: f32,
     pub knockback_lift: f32,
+    /// ⭐ O TIPO do dano e o dano que DURA (plano 28, W6).
+    pub kind: String,
+    pub over_time_per_s: f32,
+    pub over_time_s: f32,
+    pub over_time_every_s: f32,
+}
+
+impl InspectorDamageInfo {
+    /// ⭐ **O dano DURA?** — a pergunta que decide se a duração e o intervalo aparecem (a lei do
+    /// `tem_escudo`: mostrar sempre entrega dois controlos mortos).
+    #[must_use]
+    pub fn dura(&self) -> bool {
+        self.over_time_per_s > 0.0
+    }
 }
 
 /// **De quem a barra mostra a vida, e o que ela encontrou** (plano 28, W4) — resolvido pela MESMA
@@ -218,6 +245,18 @@ pub enum VidaFieldEdit {
     HitstopS(f32),
     Knockback(f32),
     KnockbackLift(f32),
+    /// ⭐ W6 — o tipo do dano e as três grandezas do dano que dura.
+    DamageKind(String),
+    OverTimePerS(f32),
+    OverTimeS(f32),
+    OverTimeEveryS(f32),
+    /// ⭐ W6 — a tabela de resistências: juntar uma linha ao fim, tirar a linha `i`, e os três
+    /// campos da linha `i`. ⚠️ O índice é da LEI (a ordem em que ela lê), não da lista pintada.
+    AddResistance,
+    RemoveResistance(u8),
+    ResistanceKind(u8, String),
+    ResistanceRate(u8, f32),
+    ResistanceAbsorbs(u8, bool),
     BarTarget(String),
     BarWidth(f32),
     BarHeight(f32),
@@ -263,6 +302,7 @@ mod tests {
             numbers: false,
             numbers_color: [1.0; 4],
             numbers_size: 0.45,
+            resistances: Vec::new(),
             agora: None,
         }
     }
@@ -278,6 +318,10 @@ mod tests {
             hitstop_s: 0.0,
             knockback: 0.0,
             knockback_lift: 0.0,
+            kind: String::new(),
+            over_time_per_s: 0.0,
+            over_time_s: 3.0,
+            over_time_every_s: 1.0,
         }
     }
 
@@ -334,6 +378,15 @@ mod tests {
             VidaFieldEdit::HitstopS(0.0),
             VidaFieldEdit::Knockback(0.0),
             VidaFieldEdit::KnockbackLift(0.0),
+            VidaFieldEdit::DamageKind(String::new()),
+            VidaFieldEdit::OverTimePerS(0.0),
+            VidaFieldEdit::OverTimeS(0.0),
+            VidaFieldEdit::OverTimeEveryS(0.0),
+            VidaFieldEdit::AddResistance,
+            VidaFieldEdit::RemoveResistance(0),
+            VidaFieldEdit::ResistanceKind(0, String::new()),
+            VidaFieldEdit::ResistanceRate(0, 0.0),
+            VidaFieldEdit::ResistanceAbsorbs(0, false),
             VidaFieldEdit::BarTarget(String::new()),
             VidaFieldEdit::BarWidth(0.0),
             VidaFieldEdit::BarHeight(0.0),
@@ -346,11 +399,13 @@ mod tests {
             VidaFieldEdit::BarTrailSpeed(0.0),
             VidaFieldEdit::BarHideWhenFull(false),
         ];
+        // ⚠️ **As resistências são UM campo e CINCO edições** (juntar · tirar · os três de uma
+        // linha), logo a conta é `26 + 5`: uma tabela é mais do que um valor.
         assert_eq!(
             variantes.len(),
-            26 + 9 + 11,
-            "o `Health` tem VINTE E SEIS campos, o `Damage` NOVE e o `HealthBar` ONZE — se um nasceu, ele \
-             precisa de uma variante aqui e de uma row no painel"
+            (26 + 5) + 13 + 11,
+            "o `Health` tem VINTE E SEIS campos escalares e a tabela de resistências, o `Damage` TREZE \
+             e o `HealthBar` ONZE — se um nasceu, ele precisa de uma variante aqui e de uma row no painel"
         );
     }
 

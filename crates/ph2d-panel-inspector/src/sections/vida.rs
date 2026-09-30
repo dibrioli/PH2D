@@ -204,6 +204,7 @@ fn corpo_vida(
     y: f32,
     i: &InspectorVidaInfo,
     h: &InspectorHealthInfo,
+    aberta: Option<usize>,
 ) -> f32 {
     let mut cur_y = y;
     if let Some(q @ (VidaQueixa::SemCorpo | VidaQueixa::Morto)) = i.queixa() {
@@ -254,6 +255,10 @@ fn corpo_vida(
         tr("panel.inspector.vida.on_damage"),
         tr("panel.inspector.vida.on_heal"),
         tr("panel.inspector.vida.on_death"),
+        // ⭐ W6 — os três do editor da resistência aberta, na MESMA coluna.
+        tr("panel.inspector.vida.resist_kind"),
+        tr("panel.inspector.vida.resist_rate"),
+        tr("panel.inspector.vida.resist_absorbs"),
     ];
     let seccao = ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &rotulos);
     let s = Some(Unit::Seconds);
@@ -331,6 +336,20 @@ fn corpo_vida(
             seccao,
         );
     }
+    // ⭐ W6 — as RESISTÊNCIAS: depois da armadura e do escudo, que é onde a lei as aplica.
+    cur_y = super::vida_resist::corpo_resistencias(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        h,
+        aberta,
+        seccao,
+    );
     // ⭐ O IMPACTO (plano 28, W5) — o bloco irmão, antes dos nomes.
     cur_y = super::vida_impacto::corpo_impacto(
         scene,
@@ -440,6 +459,7 @@ pub(crate) fn paint_health_section(
     y: f32,
     info: &InspectorVidaInfo,
     h: &InspectorHealthInfo,
+    aberta: Option<usize>,
 ) -> f32 {
     let (fold, cur_y) = match cabecalho(
         scene,
@@ -468,6 +488,7 @@ pub(crate) fn paint_health_section(
         cur_y,
         info,
         h,
+        aberta,
     );
     fold.finish(store, scene, hit_index, cur_y)
 }

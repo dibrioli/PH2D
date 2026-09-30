@@ -8,14 +8,16 @@
 //! primeiro clique depois de trocar de objecto mandar o valor do objecto **anterior**.
 
 use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
-use ph2d_editor_core::interaction::WidgetEvent;
+use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::vida_edits::{InspectorVidaInfo, VidaFieldEdit as E};
 
 use crate::ids;
+use crate::state::InspectorState;
 
-/// A caixa clicada, e a edição que ela pede — o INVERTIDO do que o snapshot diz.
-fn caixa(id: ph2d_a11y::NodeId, i: &InspectorVidaInfo) -> Option<E> {
+/// A caixa clicada, e a edição que ela pede — o INVERTIDO do que o snapshot diz. `aberta` é a
+/// resistência cujo editor está pintado.
+fn caixa(id: ph2d_a11y::NodeId, i: &InspectorVidaInfo, aberta: Option<usize>) -> Option<E> {
     let h = i.health.as_ref();
     let d = i.damage.as_ref();
     let b = i.bar.as_ref();
@@ -28,13 +30,17 @@ fn caixa(id: ph2d_a11y::NodeId, i: &InspectorVidaInfo) -> Option<E> {
         ids::INSP_DANO_VANISH => E::Vanish(!d?.vanish),
         ids::INSP_BARRA_HIDE_FULL => E::BarHideWhenFull(!b?.hide_when_full),
         ids::INSP_VIDA_NUMBERS => E::Numbers(!h?.numbers),
+        ids::INSP_VIDA_RESIST_ABSORBS => {
+            let k = aberta?;
+            E::ResistanceAbsorbs(u8::try_from(k).ok()?, !h?.resistances.get(k)?.absorbs)
+        }
         _ => return None,
     })
 }
 
 /// Um número editado. ⚠️ **Um `match` e não um `if` por campo** — com `if`s, o terceiro acaba a
 /// escrever no primeiro (a lição dos três campos de texto da tabela de acções).
-fn numero(id: ph2d_a11y::NodeId, v: f64) -> Option<E> {
+fn numero(id: ph2d_a11y::NodeId, v: f64, aberta: Option<usize>) -> Option<E> {
     #[allow(clippy::cast_possible_truncation)]
     let f = v as f32;
     Some(match id {
@@ -69,12 +75,16 @@ fn numero(id: ph2d_a11y::NodeId, v: f64) -> Option<E> {
         ids::INSP_BARRA_OFFSET_Y => E::BarOffsetY(f),
         ids::INSP_BARRA_TRAIL_DELAY => E::BarTrailDelayS(f),
         ids::INSP_BARRA_TRAIL_SPEED => E::BarTrailSpeed(f),
+        ids::INSP_DANO_OT_PER_S => E::OverTimePerS(f),
+        ids::INSP_DANO_OT_S => E::OverTimeS(f),
+        ids::INSP_DANO_OT_EVERY => E::OverTimeEveryS(f),
+        ids::INSP_VIDA_RESIST_RATE => E::ResistanceRate(u8::try_from(aberta?).ok()?, f),
         _ => return None,
     })
 }
 
 /// Um texto editado.
-fn texto(id: ph2d_a11y::NodeId, t: String) -> Option<E> {
+fn texto(id: ph2d_a11y::NodeId, t: String, aberta: Option<usize>) -> Option<E> {
     Some(match id {
         ids::INSP_VIDA_TEAM => E::Team(t),
         ids::INSP_VIDA_ON_DAMAGE => E::OnDamage(t),
@@ -82,24 +92,74 @@ fn texto(id: ph2d_a11y::NodeId, t: String) -> Option<E> {
         ids::INSP_VIDA_ON_DEATH => E::OnDeath(t),
         ids::INSP_DANO_TEAM => E::DamageTeam(t),
         ids::INSP_BARRA_TARGET => E::BarTarget(t),
+        ids::INSP_DANO_KIND => E::DamageKind(t),
+        ids::INSP_VIDA_RESIST_KIND => E::ResistanceKind(u8::try_from(aberta?).ok()?, t),
         _ => return None,
     })
 }
 
+/// ⭐ **Os cliques da lista de RESISTÊNCIAS** (W6) — abrir uma linha, juntar, tirar. `Some(edição)`
+/// quando o clique vai ao barramento, `Some(None)` quando ele só mexe na selecção (⚠️ abrir uma
+/// linha NÃO vai ao barramento: um passo de undo por clique sobre um facto que a cena não tem), e
+/// `None` quando o clique não é desta lista.
+fn clique_da_lista(
+    panel: &mut InspectorState,
+    id: ph2d_a11y::NodeId,
+    info: &InspectorVidaInfo,
+    aberta: Option<usize>,
+) -> Option<Option<E>> {
+    let n = info.health.as_ref()?.resistances.len();
+    if let Some(i) = ids::INSP_VIDA_RESIST_ROW.iter().position(|&o| o == id)
+        && i < n
+    {
+        panel.resist_selected = i;
+        return Some(None);
+    }
+    if id == ids::INSP_VIDA_RESIST_ADD {
+        // ⚠️ **Abre a que acabou de nascer** — senão o `+` lê-se como se não fizesse nada.
+        panel.resist_selected = n;
+        return Some(Some(E::AddResistance));
+    }
+    if id == ids::INSP_VIDA_RESIST_REMOVE {
+        let k = aberta?;
+        panel.resist_selected = k.saturating_sub(1);
+        return Some(Some(E::RemoveResistance(u8::try_from(k).ok()?)));
+    }
+    None
+}
+
 /// Despacha um evento das secções HEALTH e DAMAGE. `true` = consumido.
-pub(crate) fn apply_vida_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
+pub(crate) fn apply_vida_event(
+    panel: &mut InspectorState,
+    host: &mut dyn PanelHostInternal,
+    ev: WidgetEvent,
+) -> bool {
     let Some(info) = crate::state_components::current_inspector_vida() else {
         return false;
     };
+    let aberta = crate::sync_vida::resistencia_aberta(&info, panel.resist_selected);
     let edit = match ev {
-        WidgetEvent::Toggled(id) => caixa(id, &info),
+        WidgetEvent::Click(id) => {
+            let Some(pedido) = clique_da_lista(panel, id, &info, aberta) else {
+                return false;
+            };
+            // Repõe o visual do botão momentâneo — senão ele fica `Pressed` depois do clique.
+            if let Some(InteractiveState::Button { state }) = host.store_mut().get_mut(id) {
+                *state = ph2d_editor_core::widget::ButtonState::Normal;
+            }
+            match pedido {
+                Some(e) => Some(e),
+                None => return true,
+            }
+        }
+        WidgetEvent::Toggled(id) => caixa(id, &info, aberta),
         WidgetEvent::ValueChanged(id) => {
             let v = host.store().number_value(id).unwrap_or(0.0);
-            numero(id, v)
+            numero(id, v, aberta)
         }
         WidgetEvent::TextChanged(id) => {
             let t = host.store().text(id).unwrap_or("").to_string();
-            texto(id, t)
+            texto(id, t, aberta)
         }
         _ => None,
     };

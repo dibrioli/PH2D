@@ -91,13 +91,14 @@ pub(crate) struct Marca {
 /// ⛔ **A ALTURA, essa, tem de conter o painel inteiro** (rolagem única, 2026-09-29): a porta
 /// `widget::scroll_area` recorta o CLIQUE pelo corpo visível, e um censo que conta o que o índice de
 /// acerto regista passou a ver só a parte acima da dobra (`17` marcas em `27` painéis contra o piso
-/// de `40`). Ver a `VIEWPORT` de `quantas_entradas_tem_cada_painel`, a mesma exigência.
+/// de `40`). Ver a `VIEWPORT` de `quantas_entradas_tem_cada_painel`, a mesma exigência — e a mesma
+/// altura (`32000` desde 02/10, quando o Inspector armado passou dos `16000`).
 pub(crate) fn viewport() -> Rect {
     Rect {
         x: 0.0,
         y: 0.0,
         w: 1366.0,
-        h: 16000.0,
+        h: 32000.0,
     }
 }
 

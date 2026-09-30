@@ -111,6 +111,10 @@ pub struct InspectorState {
     pub last_sm_state_row: Option<usize>,
     /// Idem, para a lista de transições.
     pub last_sm_trans_row: Option<usize>,
+    /// HEALTH — qual RESISTÊNCIA da lista está aberta (plano 28, W6). **Estado do painel**, como a
+    /// do cérebro: qual linha se edita é um facto da UI, e publicá-lo faria um passo de undo por
+    /// clique.
+    pub resist_selected: usize,
     /// SCRIPT — a ASSINATURA do último instantâneo semeado (a aresta da semente; ver `sync_script`).
     pub last_script_sig: Option<u64>,
     /// PARTICLES — idem, e pela mesma razão: 19 números e 4 textos semeados por quadro apagariam

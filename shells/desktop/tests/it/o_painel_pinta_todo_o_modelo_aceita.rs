@@ -33,6 +33,20 @@ fn o_cerebro_nao_aceita_mais_estados_nem_setas_do_que_a_seccao_pinta() {
     assert_eq!(ids::INSP_SM_TRANS_ROW.len(), ph2d_ecs::TRANSITIONS_MAX);
 }
 
+/// ⭐⭐ **Uma vida não aceita mais resistências do que a secção HEALTH pinta** (plano 28, W6).
+///
+/// **Mutação que deve sangrar:** mudar o `RESISTANCES_MAX` ou encurtar a tabela de ids.
+#[test]
+fn a_vida_nao_aceita_mais_resistencias_do_que_a_seccao_pinta() {
+    assert_eq!(
+        ids::INSP_VIDA_RESIST_ROW.len(),
+        ph2d_physics_ecs::RESISTANCES_MAX,
+        "a lista das resistências endereça {} linhas e a vida aceita {}",
+        ids::INSP_VIDA_RESIST_ROW.len(),
+        ph2d_physics_ecs::RESISTANCES_MAX
+    );
+}
+
 /// ⭐⭐ **O documento não aceita mais cutscenes do que o selector consegue endereçar** (TOP-20 #19).
 ///
 /// ⚠️ **O chrome não sabe cunhar um id em runtime**, logo a 17.ª cutscene seria uma que o artista vê

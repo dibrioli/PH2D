@@ -13,7 +13,7 @@
 //! uma que esconde sempre passam as duas na primeira metade.*
 
 use ph2d_editor_core::vida_edits::{
-    InspectorDamageInfo, InspectorHealthInfo, InspectorVidaInfo, VidaAgora,
+    InspectorDamageInfo, InspectorHealthInfo, InspectorResistanceRow, InspectorVidaInfo, VidaAgora,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_inspector::{InspectorPanel, InspectorState, ids, set_current_inspector_vida};
@@ -59,6 +59,21 @@ fn vida() -> InspectorHealthInfo {
         numbers: true,
         numbers_color: [1.0, 0.86, 0.3, 1.0],
         numbers_size: 0.6,
+        // ⭐ W6 — duas resistências, com a ABERTA (a 0) fora do neutro: imune ao fogo.
+        resistances: vec![
+            InspectorResistanceRow {
+                kind: "fogo".into(),
+                rate: 0.0,
+                absorbs: false,
+                repetida: false,
+            },
+            InspectorResistanceRow {
+                kind: "gelo".into(),
+                rate: 2.0,
+                absorbs: false,
+                repetida: false,
+            },
+        ],
         agora: Some(VidaAgora {
             pontos: 70.0,
             escudo: 12.0,
@@ -78,6 +93,12 @@ fn dano() -> InspectorDamageInfo {
         hitstop_s: 0.05,
         knockback: 6.0,
         knockback_lift: 2.5,
+        // ⭐ W6 — o tipo e o dano que DURA, fora do neutro (e a durar: é isso que pinta a duração
+        // e o intervalo).
+        kind: "fogo".into(),
+        over_time_per_s: 4.0,
+        over_time_s: 3.5,
+        over_time_every_s: 0.5,
     }
 }
 
@@ -103,7 +124,7 @@ fn host(i: InspectorVidaInfo) -> (MockPanelHost, InspectorState) {
 }
 
 /// Os QUINZE números das duas secções, com o valor que a fixtura tem.
-const NUMEROS: [(ph2d_a11y::NodeId, f64); 22] = [
+const NUMEROS: [(ph2d_a11y::NodeId, f64); 26] = [
     (ids::INSP_VIDA_MAX, 120.0),
     (ids::INSP_VIDA_START, 90.0),
     (ids::INSP_VIDA_INVINCIBLE, 0.75),
@@ -126,19 +147,26 @@ const NUMEROS: [(ph2d_a11y::NodeId, f64); 22] = [
     (ids::INSP_DANO_HITSTOP, 0.05),
     (ids::INSP_DANO_KNOCKBACK, 6.0),
     (ids::INSP_DANO_KNOCKBACK_LIFT, 2.5),
+    // ⭐ W6.
+    (ids::INSP_DANO_OT_PER_S, 4.0),
+    (ids::INSP_DANO_OT_S, 3.5),
+    (ids::INSP_DANO_OT_EVERY, 0.5),
+    (ids::INSP_VIDA_RESIST_RATE, 0.0),
 ];
 
 /// Os CINCO nomes, com o texto que a fixtura tem.
-const NOMES: [(ph2d_a11y::NodeId, &str); 5] = [
+const NOMES: [(ph2d_a11y::NodeId, &str); 7] = [
     (ids::INSP_VIDA_TEAM, "enemies"),
     (ids::INSP_VIDA_ON_DAMAGE, "ai"),
     (ids::INSP_VIDA_ON_HEAL, "cura"),
     (ids::INSP_VIDA_ON_DEATH, "morreu"),
     (ids::INSP_DANO_TEAM, "player"),
+    (ids::INSP_DANO_KIND, "fogo"),
+    (ids::INSP_VIDA_RESIST_KIND, "fogo"),
 ];
 
 /// As SETE caixas.
-const CAIXAS: [ph2d_a11y::NodeId; 7] = [
+const CAIXAS: [ph2d_a11y::NodeId; 8] = [
     ids::INSP_VIDA_OVERHEAL,
     ids::INSP_VIDA_SHIELD_BLOCKS,
     ids::INSP_DANO_PER_SECOND,
@@ -146,10 +174,11 @@ const CAIXAS: [ph2d_a11y::NodeId; 7] = [
     ids::INSP_DANO_IGNORES_ARMOR,
     ids::INSP_DANO_VANISH,
     ids::INSP_VIDA_NUMBERS,
+    ids::INSP_VIDA_RESIST_ABSORBS,
 ];
 
 /// As linhas que SÓ aparecem com o interruptor delas ligado.
-const CONDICIONAIS: [ph2d_a11y::NodeId; 10] = [
+const CONDICIONAIS: [ph2d_a11y::NodeId; 15] = [
     ids::INSP_VIDA_REGEN_DELAY,
     ids::INSP_VIDA_SEED,
     ids::INSP_VIDA_SHIELD_DURATION,
@@ -161,6 +190,12 @@ const CONDICIONAIS: [ph2d_a11y::NodeId; 10] = [
     ids::INSP_VIDA_BLINK,
     ids::INSP_VIDA_NUMBERS_COLOR,
     ids::INSP_VIDA_NUMBERS_SIZE,
+    // ⭐ W6: a duração e o intervalo sem o dano durar; o editor e o `x Remove` sem resistências.
+    ids::INSP_DANO_OT_S,
+    ids::INSP_DANO_OT_EVERY,
+    ids::INSP_VIDA_RESIST_KIND,
+    ids::INSP_VIDA_RESIST_RATE,
+    ids::INSP_VIDA_RESIST_REMOVE,
 ];
 
 /// ⭐⭐ **TODO campo das duas secções é pintado com área clicável.**
@@ -201,7 +236,10 @@ fn as_linhas_condicionais_somem_sem_o_interruptor() {
     v.max = 0.0;
     v.invincible_s = 0.0;
     v.numbers = false;
-    let (mut h, mut st) = host(info(Some(v), Some(dano())));
+    v.resistances.clear();
+    let mut d = dano();
+    d.over_time_per_s = 0.0;
+    let (mut h, mut st) = host(info(Some(v), Some(d)));
     let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
     for id in CONDICIONAIS {
         assert!(
@@ -322,6 +360,9 @@ fn escrever_num_nome_chega_ao_barramento_com_a_variante_dele() {
             i if i == ids::INSP_VIDA_ON_HEAL => E::OnHeal(t),
             i if i == ids::INSP_VIDA_ON_DEATH => E::OnDeath(t),
             i if i == ids::INSP_DANO_TEAM => E::DamageTeam(t),
+            i if i == ids::INSP_DANO_KIND => E::DamageKind(t),
+            // ⚠️ A resistência ABERTA é a 0 — a selecção de fábrica do painel.
+            i if i == ids::INSP_VIDA_RESIST_KIND => E::ResistanceKind(0, t),
             _ => panic!("{id:?} nao esta' na tabela de NOMES deste gate"),
         }
     };
@@ -371,6 +412,7 @@ fn uma_caixa_pede_o_contrario_do_que_o_objecto_tem() {
         (ids::INSP_DANO_IGNORES_ARMOR, E::IgnoresArmor(true)),
         (ids::INSP_DANO_VANISH, E::Vanish(false)),
         (ids::INSP_VIDA_NUMBERS, E::Numbers(false)),
+        (ids::INSP_VIDA_RESIST_ABSORBS, E::ResistanceAbsorbs(0, true)),
     ];
     for (id, e) in esperado {
         let (mut h, mut st) = host(info(Some(v.clone()), Some(d.clone())));
@@ -408,6 +450,11 @@ fn os_numeros_do_impacto_chegam_ao_barramento_com_a_variante_deles() {
         (ids::INSP_DANO_HITSTOP, E::HitstopS(0.5)),
         (ids::INSP_DANO_KNOCKBACK, E::Knockback(0.5)),
         (ids::INSP_DANO_KNOCKBACK_LIFT, E::KnockbackLift(0.5)),
+        // ⭐ W6.
+        (ids::INSP_DANO_OT_PER_S, E::OverTimePerS(0.5)),
+        (ids::INSP_DANO_OT_S, E::OverTimeS(0.5)),
+        (ids::INSP_DANO_OT_EVERY, E::OverTimeEveryS(0.5)),
+        (ids::INSP_VIDA_RESIST_RATE, E::ResistanceRate(0, 0.5)),
     ];
     for (id, e) in esperado {
         let (mut h, mut st) = host(info(Some(vida()), Some(dano())));

@@ -193,3 +193,24 @@ PINADA, para ninguém "simplificar" o gate de volta à força cheia) ·
 porque o `Sculpt3dScene::new` recebe um `wgpu::Device` e não há como construir o
 nascimento headless — ele afirma a PROPRIEDADE, com controle positivo).
 **4 mutações, 4 sangram** (a do `birth_for` sangra DUAS).
+
+---
+
+## #5 — "Depois de rodar a vista, a tinta molhada deixa uma marca clara" — a cura MELHOROU e não curou (2026-09-29/30)
+
+**Sintoma (fotos do dono):** *Wet Paint* sobre a peça, rodar a vista e pintar
+de novo enquanto a água corre ⇒ uma linha clara de 1–2 px desenha a frente da
+água e **fica**.
+
+**O que enganou:** a 1.ª cura trocou a semente do traço (a tela levada pelo
+píxel mais perto) pelo retrato da peça na vista nova, e a marca **encolheu** —
+de um píxel para meio píxel interpolado. Parecia a direcção certa a precisar de
+mais precisão. **Não era:** a lei `nova = base + k·(c − s)` assa na amostra todo
+o resíduo `base − s`, e depois de rodar nenhuma amostragem nova reproduz o
+detalhe sub-píxel da antiga — *melhor* nunca chega a *zero*. E a bancada não
+reproduzia o escorrido do dono, logo a régua do sintoma não discriminava.
+
+**A causa real e a cura:** o resíduo é da FORMA da lei. A cura escreve a base e
+a semente contra o mesmo instante — **antes da cadeia de traços molhados** —, e
+o resíduo deixa de existir por construção. Mecanismo, lei, gates e lições:
+[`28_a_marca_da_agua_depois_de_rodar.md`](28_a_marca_da_agua_depois_de_rodar.md).

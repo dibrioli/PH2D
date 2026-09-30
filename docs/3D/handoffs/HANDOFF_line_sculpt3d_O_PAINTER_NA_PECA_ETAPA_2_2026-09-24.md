@@ -544,6 +544,10 @@ píxel húmido tem pigmento — o véu só muda a leitura em papel húmido SEM t
 
 ### §9.9 — ⛔ E o smoke seguinte: *«melhorou mas não curou perfeitamente»* (30/09)
 
+> ✅ **Smoke do dono aprovado (30/09).** O bug inteiro — as três rondas, o
+> mecanismo e a lei — está documentado em
+> [`28_a_marca_da_agua_depois_de_rodar.md`](../28_a_marca_da_agua_depois_de_rodar.md).
+
 **A cura de §9.8 atacou o sintoma de uma causa que continuou lá.** A lei da tela
 semeada é `nova = base + k·(c − s)`, e ela só dá `nova ≈ c` quando
 `base − s(p) ≈ 0` na amostra `p`. Num traço na MESMA vista isso é verdade por

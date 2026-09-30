@@ -27,6 +27,10 @@ pub use scratch::{AdvCell, SolverScratch};
 mod patch;
 pub use patch::{GridPatch, restore_grid_region, snapshot_grid_region};
 
+#[path = "grid/reproject.rs"]
+mod reproject; // a água muda de VISTA (a peça 3D rodou) — filho por LOC
+pub use reproject::reproject_grid;
+
 pub const DEFAULT_WIDTH: usize = 900;
 pub const DEFAULT_HEIGHT: usize = 450;
 

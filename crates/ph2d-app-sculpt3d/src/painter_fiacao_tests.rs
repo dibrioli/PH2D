@@ -252,6 +252,21 @@ fn elos() -> Vec<(
             1,
             "P26 o 2.º traço fecha a pincelada que escorre SEM guardar a tela: a água morre",
         ),
+        (
+            "painter_na_malha.rs",
+            COSTURA,
+            "ph2d_sculpt3d::tela_origem::origem(mesh, sessao.vista(), &g.vista)",
+            1,
+            "P27 rodar e pintar: ninguém pergunta onde cada píxel estava, e a água morre",
+        ),
+        (
+            "painter_na_malha.rs",
+            COSTURA,
+            "painter.reproject_screen_canvas(&retrato, &mapa)",
+            1,
+            "P28 rodar e pintar: a tela é re-semeada da vista nova e a água do traço \
+             anterior pára (report do dono, 29/09)",
+        ),
     ]
 }
 
@@ -259,7 +274,7 @@ fn elos() -> Vec<(
 #[test]
 fn a_costura_do_painter_esta_ligada_nas_duas_pontas() {
     let elos = elos();
-    assert!(elos.len() >= 26, "o piso de população: {} elos", elos.len());
+    assert!(elos.len() >= 28, "o piso de população: {} elos", elos.len());
     for (ficheiro, texto, agulha, esperado, parte) in elos {
         let n = sem_prosa(texto).matches(agulha).count();
         assert_eq!(

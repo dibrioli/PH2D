@@ -33,6 +33,15 @@
 //! etapa 2). E rodar a vista SECA a aquarela para o traço SEGUINTE: a humidade
 //! vive nos píxeis do ecrã, não na superfície.
 //!
+//! ⭐⭐ **A tinta molhada (`Wet Paint`) NÃO seca ao rodar** (report do dono,
+//! 29/09: *«rotacionar e pintar em seguida está pausando a simulação»*): no
+//! traço seguinte a água MUDA DE VISTA — cada píxel da tela nova pergunta ao
+//! [`ph2d_sculpt3d::tela_origem`] onde o mesmo ponto da superfície estava na
+//! tela de antes, e o Painter refaz a sessão da água lá
+//! (`PainterTool::reproject_screen_canvas`). ⚠️ Onde a vista de antes não via
+//! a peça não há água a levar; e a velocidade recomeça (é um vector do ecrã,
+//! e o ecrã rodou).
+//!
 //! ⭐ **Mas rodar NÃO pára a água que já escorre** (report do dono, 29/09): a
 //! sessão pousa pela vista CONGELADA no pen-down, logo o que a tela ainda
 //! escorre cai no sítio certo da peça com a câmera noutro lado. Quem fecha a
@@ -77,9 +86,10 @@ pub(crate) struct TelaMolhada {
 }
 
 impl TelaMolhada {
-    /// A tela ainda descreve a peça como ela está AGORA?
-    fn serve(&self, vista: &Vista, objeto: ObjectId, edits: u64) -> bool {
-        self.vista == *vista && self.objeto == objeto && self.edits == edits
+    /// A peça é a mesma e nada mais mexeu nela? — a pergunta que decide se a
+    /// água desta tela ainda pode continuar (na mesma vista, ou levada à nova).
+    fn mesma_peca(&self, objeto: ObjectId, edits: u64) -> bool {
+        self.objeto == objeto && self.edits == edits
     }
 }
 
@@ -339,19 +349,37 @@ impl Sculpt3dScene {
                 ),
             }
         }
-        if let (Some(g), Some(objeto)) = (guardada, chave)
-            && molhada_agora
-            && g.serve(sessao.vista(), objeto, edits)
-        {
-            if registo::ligado() {
-                eprintln!("[painter3d] pen-down: REAPROVEITA a tela molhada");
-            }
-            sessao.com_semente(g.retrato.as_ref().clone());
-            self.painter_ultima = Some(g.retrato);
-            return true;
-        }
         let tinta = self.stroke.tinta_fina.as_ref().map(|t| t.tinta());
         let mesh = self.objects[self.active].stack.mesh();
+        if let (Some(g), Some(objeto)) = (guardada, chave)
+            && molhada_agora
+            && g.mesma_peca(objeto, edits)
+        {
+            if g.vista == *sessao.vista() {
+                if registo::ligado() {
+                    eprintln!("[painter3d] pen-down: REAPROVEITA a tela molhada");
+                }
+                sessao.com_semente(g.retrato.as_ref().clone());
+                self.painter_ultima = Some(g.retrato);
+                return true;
+            }
+            // ⭐⭐ A vista MUDOU (o artista rodou a peça): a água muda de vista
+            // com ela, em vez de o retrato novo a secar.
+            let retrato = ph2d_sculpt3d::tela_semente::semente(mesh, tinta, sessao.vista());
+            let mapa = ph2d_sculpt3d::tela_origem::origem(mesh, sessao.vista(), &g.vista);
+            if painter.reproject_screen_canvas(&retrato, &mapa)
+                && let Some(f) = painter.take_screen_canvas()
+            {
+                if registo::ligado() {
+                    eprintln!("[painter3d] pen-down: a vista mudou -> a agua MUDA DE VISTA");
+                }
+                // A semente é a tela LEVADA: o que a peça já tem é o que ela
+                // mostra, e a lei da diferença pousa só o que a água mudar daqui.
+                sessao.com_semente(f.rgba.as_ref().clone());
+                self.painter_ultima = Some(f.rgba);
+                return true;
+            }
+        }
         let retrato = ph2d_sculpt3d::tela_semente::semente(mesh, tinta, sessao.vista());
         if painter.seed_screen_canvas(retrato.clone()) {
             let _ = painter.take_screen_canvas();

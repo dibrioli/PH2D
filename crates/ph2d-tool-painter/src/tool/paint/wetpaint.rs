@@ -164,6 +164,7 @@ impl Default for WetPaintState {
 
 mod dab_route; // a ROTA DO DAB (pincel -> fluido) — filho por LOC
 pub(super) mod grid_map; // a grade do fluido != a grade de PIXELS — filho por LOC
+mod reproject; // a sessão muda de VISTA (a peça 3D rodou) — filho por LOC
 mod session; // what a wet SESSION is (data model) — child file (LOC cap)
 use session::{Lane, PaperKey};
 pub(super) use session::{WetEngineFacts, WetSession};

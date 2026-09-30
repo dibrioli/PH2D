@@ -415,6 +415,73 @@ fn rodar_a_vista_com_a_agua_a_correr_nao_fecha_a_pincelada() {
     crate::input::pointer_up(&mut s);
 }
 
+/// ⭐⭐⭐ **GATE — RODAR e PINTAR a seguir NÃO seca a água do traço anterior.**
+///
+/// Report do dono (29/09): *«rotacionar e pintar em seguida está pausando a
+/// simulação»*. Rodar já não fechava a pincelada (o gate de cima), mas o traço
+/// seguinte começava numa tela refeita a partir da vista NOVA, e refazer a
+/// tela MATA a sessão da água ⇒ a do 1.º traço parava. Hoje a água muda de
+/// vista com a peça (`ph2d_sculpt3d::tela_origem` + `reproject_screen_canvas`).
+/// ⚠️ **A régua é a REGIÃO do 1.º traço** e não o «a água corre?», pela razão
+/// do gate irmão sem rotação: o 2.º traço deposita água nova, e uma sessão
+/// recém-nascida responderia «corre» sobre o defeito. ⚠️ **E a régua da órbita
+/// é a câmera ter mudado** — sem isso a vista seria a mesma e o caminho
+/// medido seria o de REAPROVEITAR a tela, não o de a levar.
+#[test]
+#[ignore = "precisa de adaptador e corre em tempo real"]
+fn rodar_e_pintar_nao_seca_a_agua_do_primeiro_traco() {
+    let gpu = gpu_or_skip!();
+    let mut s = cena_52(&gpu.device);
+    s.sync_mesh(&gpu.device, &gpu.queue);
+    let antes = amostras(&s);
+    let mut p = molhado();
+    assert!(traco(&mut s, &mut p, 420.0), "o 1.º traço molhado");
+    for _ in 0..10 {
+        um_quadro(&mut s, &mut p);
+    }
+    assert!(
+        s.painter_escorre.is_some(),
+        "o CONTROLO: a água do 1.º corre"
+    );
+    let primeiro: Vec<usize> = vivas(&s)
+        .iter()
+        .zip(&antes)
+        .enumerate()
+        .filter(|(_, (a, b))| a != b)
+        .map(|(i, _)| i)
+        .collect();
+    assert!(!primeiro.is_empty(), "o 1.º traço não chegou à peça");
+
+    let olho = s.camera.eye();
+    let mut host = super::super::HostDeTeste {
+        ponteiro: (450.0, 350.0),
+    };
+    let _ = crate::input_down::pointer_down(&mut host, &mut s, winit::event::MouseButton::Right);
+    for k in 1..=6u8 {
+        crate::input::pointer_move(&mut s, 450.0 + 10.0 * f32::from(k), 350.0);
+        um_quadro(&mut s, &mut p);
+    }
+    crate::input::pointer_up(&mut s);
+    assert_ne!(s.camera.eye(), olho, "a órbita não rodou a vista");
+
+    assert!(traco(&mut s, &mut p, 300.0), "o 2.º traço, depois de rodar");
+    let no_pen_up = vivas(&s);
+    for _ in 0..40 {
+        um_quadro(&mut s, &mut p);
+    }
+    let depois = vivas(&s);
+    let mexeram = primeiro
+        .iter()
+        .filter(|&&i| depois[i] != no_pen_up[i])
+        .count();
+    assert!(
+        mexeram > 0,
+        "rodar e pintar a seguir parou a água do 1.º traço (o report do dono): \
+         0 de {} amostras dele mudaram",
+        primeiro.len()
+    );
+}
+
 /// SONDA (report do dono, 29/09: *«entre a primeira e segunda pincelada a tinta
 /// seca; depois da terceira funciona»*) — imprime, traço a traço, o contador
 /// de edições e se a tela molhada está guardada, nos dois regimes do artista:

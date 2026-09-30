@@ -92,19 +92,28 @@ pub fn semente(mesh: &Mesh, tinta: Option<&Tinta>, vista: &Vista) -> Vec<u8> {
                 }
                 o
             };
-            rasteriza(&ps, (w, h), &mut perto, &mut rgba, cor);
+            rasteriza_com(&ps, (w, h), &mut perto, |o, bar| {
+                let c = cor(bar);
+                let px = &mut rgba[o * 4..o * 4 + 4];
+                for e in 0..3 {
+                    px[e] = (c[e].clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+                }
+                px[3] = 255;
+            });
         }
     }
     rgba
 }
 
-/// Um triângulo de ecrã `[(ponto, 1/w); 3]` para dentro da tela.
-fn rasteriza(
+/// Um triângulo de ecrã `[(ponto, 1/w); 3]` para dentro da tela: `pinta(píxel,
+/// baricêntricas corrigidas)` em cada centro de píxel que ganha o teste de
+/// profundidade. O último a ganhar um píxel é o mais perto, logo quem escreve
+/// por píxel fica com a superfície que se VÊ.
+pub(crate) fn rasteriza_com(
     ps: &[([f32; 2], f32)],
     (w, h): (u32, u32),
     perto: &mut [f32],
-    rgba: &mut [u8],
-    cor: impl Fn([f32; 3]) -> [f32; 3],
+    mut pinta: impl FnMut(usize, [f32; 3]),
 ) {
     let (a, b, c) = (ps[0].0, ps[1].0, ps[2].0);
     let area = aresta(a, b, c);
@@ -138,12 +147,7 @@ fn rasteriza(
                 l[1] * ps[1].1 / inv,
                 l[2] * ps[2].1 / inv,
             ];
-            let c = cor(bar);
-            let px = &mut rgba[o * 4..o * 4 + 4];
-            for e in 0..3 {
-                px[e] = (c[e].clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
-            }
-            px[3] = 255;
+            pinta(o, bar);
         }
     }
 }

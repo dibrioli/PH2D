@@ -94,6 +94,28 @@ impl PainterTool {
         true
     }
 
+    /// ⭐⭐ **A tinta molhada muda de VISTA** — o pen-down depois de rodar a
+    /// peça (report do dono, 29/09: *«rotacionar e pintar em seguida está
+    /// pausando a simulação»*). Semear a tela com o retrato da vista nova
+    /// matava a sessão da água; isto refaz a sessão na vista nova e a água
+    /// CONTINUA a correr.
+    ///
+    /// `semente` é o retrato na vista nova; `origem`, por píxel da tela nova,
+    /// o ponto na tela de ANTES que vê o mesmo sítio da superfície (`None`
+    /// onde a vista de antes não o via). Devolve `false` — e nada muda — sem
+    /// sessão da água viva: quem chama semeia como antes.
+    ///
+    /// ⚠️ **Só a tinta molhada (`Wet Paint`).** A humidade da aquarela vive
+    /// noutra sessão, e rodar a vista continua a secá-la (declarado na
+    /// costura da escultura).
+    pub fn reproject_screen_canvas(
+        &mut self,
+        semente: &[u8], // COLOR-RAW-OK: the new view's portrait bytes, same contract as `seed_screen_canvas`
+        origem: &[Option<[f32; 2]>],
+    ) -> bool {
+        self.on_screen_canvas() && self.wetpaint_reproject(semente, origem)
+    }
+
     /// ⭐ **O raio do anel do cursor sobre a peça**, em píxeis da tela — o que
     /// o gesto vai de facto mexer.
     ///
@@ -183,3 +205,7 @@ fn transparente(w: u32, h: u32) -> Vec<u8> {
 #[cfg(test)]
 #[path = "screen_canvas_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "screen_canvas_reproject_tests.rs"]
+mod reproject_tests;

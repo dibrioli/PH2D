@@ -184,6 +184,9 @@ mod tela_na_malha_pousa_tests;
 #[cfg(test)]
 #[path = "tela_na_malha_tests.rs"]
 mod tela_na_malha_tests;
+/// ⭐⭐ **ONDE CADA PÍXEL ESTAVA** — o mapa que leva a tinta molhada de uma
+/// vista para a outra; ver o cabeçalho dele.
+pub mod tela_origem;
 /// ⭐⭐ **O RETRATO DA PEÇA** — a imagem com que a tela do Painter começa nos
 /// modos que lêem a cor debaixo do pincel; ver o cabeçalho dele.
 pub mod tela_semente;

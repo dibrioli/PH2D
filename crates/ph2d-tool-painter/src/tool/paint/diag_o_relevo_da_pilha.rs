@@ -344,3 +344,42 @@ fn diag_o_tiling_ao_byte() {
         }
     }
 }
+
+/// **8b — a borracha POR CIMA de um Brush, no mesmo traço:** a cor vai e o CORPO fica?
+///
+/// Camada 0 (topo) = Erase, camada 1 = Brush. A borracha cheia (dura, `1,5×` o tamanho) cobre toda a
+/// pegada do Brush: a tela tem de voltar ao `pre` e o corpo tem de ser ZERO. A macia mede o meio.
+#[test]
+#[ignore = "sonda: o corpo fantasma da borracha de cima"]
+fn diag_o_corpo_fantasma() {
+    use super::composite::EscopoDaBorracha;
+    use CompositeOp::{Brush, Erase};
+    let (so_brush, _, _) = {
+        let mut t = tela(&[Brush]);
+        traco(&mut t);
+        relevo(&t)
+    };
+    println!("  referência: 1 Brush, relevo soma {so_brush:9.2}");
+    for escopo in [EscopoDaBorracha::Traco, EscopoDaBorracha::Tudo] {
+        for (nome, dura) in [("macia", false), ("cheia", true)] {
+            for (ordem, camadas) in [
+                ("Erase EM CIMA", [Erase, Brush]),
+                ("Erase EM BAIXO", [Brush, Erase]),
+            ] {
+                let mut t = tela(&camadas);
+                let e = usize::from(camadas[1] == Erase);
+                t.paint.composite[e].erase_scope = escopo;
+                if dura {
+                    t.paint.composite[e].hardness = Some(1.0);
+                    t.paint.composite[e].size = 1.5;
+                }
+                traco(&mut t);
+                let (soma, max, n) = relevo(&t);
+                println!(
+                    "  {escopo:?} {nome:<5} {ordem:<14} relevo soma {soma:9.2} max {max:.3} texels {n:5} · tinta {}",
+                    tinta(&t)
+                );
+            }
+        }
+    }
+}

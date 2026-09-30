@@ -42,10 +42,38 @@
 //! * **Blur** não mexe no relevo, como o Blur avulso (medido: `974,24` antes e depois).
 //! * **Smear** já o arrasta pela sessão de deformação, como o avulso (medido: `929,24` nos dois).
 //!
-//! ⏳ **O que fica ABERTO, nomeado:** uma Erase **acima** de um Brush apaga a COR que o Brush pôs
-//! neste traço e **não** o CORPO dele, porque o corpo ainda vive no envelope, que só assenta no fim.
-//! Curá-lo pede compor o envelope pela mesma lei dos planos de cor (a cobertura acumulada da borracha
-//! a multiplicar a tinta do envelope), e é trabalho próprio.
+//! # ⭐ A borracha POR CIMA de um Brush, no mesmo traço (fila 44, 8b)
+//!
+//! A Erase de cima apagava a COR que o Brush de baixo pôs neste traço e **não** o CORPO dele: o corpo
+//! vive no envelope do traço, que é UM plano partilhado e só assenta ao soltar. Medido (sonda
+//! `diag_o_corpo_fantasma`, borracha dura e maior que o Brush, escopo `Traco`): tinta **`0`** e
+//! relevo **`974,24`** — exactamente o de um Brush sozinho. *Um corpo sem tinta nenhuma, que a luz
+//! sombreia.*
+//!
+//! ⇒ quando há uma Erase viva por cima de um Brush vivo, **cada Brush guarda o SEU envelope**
+//! ([`PlanosDoCorpo`], trocado à volta do depósito como a cadeia) e o envelope do traço é
+//! RECOMPOSTO por evento, de baixo para cima, pela mesma lei dos planos de cor:
+//!
+//! ```text
+//!     tinta ← max(tinta, tinta_b)          uma camada Brush (o envelope é um máximo)
+//!     tinta ← tinta · (α_e / 255)          uma camada Erase (o que o escudo dela deixou)
+//! ```
+//!
+//! ⭐ **A borracha tira TINTA, e o corpo DERIVA-SE do que sobra** — nunca `altura × k`. O corpo que
+//! assenta ao soltar é re-derivado da TINTA do traço ([`PainterTool::commit_stroke_height`]: *«os
+//! ingredientes são a verdade»*), logo multiplicar só a altura seria desfeito no commit e ressuscitado
+//! por cada toque no `Depth`. O filme (a cobertura que a luz pesa) é multiplicado pelo mesmo `k`,
+//! como a borracha avulsa multiplica a `cover`.
+//!
+//! ⚠️ **DIVERGÊNCIA DECLARADA contra «Brush, e depois uma borracha avulsa por cima»:** a avulsa
+//! morde a ALTURA assente (`h ← h·(1−c)`), e aqui o corpo é `derive(tinta·k)`. As duas leis
+//! coincidem onde a borracha não toca (`k = 1`) e onde apaga tudo (`k = 0`), e divergem na orla
+//! parcial: pela curva do `Body`, meia tinta ainda pode estar no planalto. É a lei que sobrevive a um
+//! ajuste do `Depth` depois do traço, e é por isso que é esta.
+//!
+//! ⚠️ **Só corre quando é preciso** ([`PainterTool::corpo_por_camada`]): sem uma Erase por cima de um
+//! Brush nada muda de caminho, e o traço é **byte-idêntico** ao de antes (o envelope partilhado já é
+//! o máximo das camadas). O deslocamento do `Push` continua partilhado: a borracha não o desfaz.
 //!
 //! # E o TILING, que a mesma régua apanhou
 //!
@@ -63,7 +91,7 @@
 //! 1.ª camada de um lote ligar-se-ia à ÚLTIMA camada do lote anterior — outro tamanho, outra força —,
 //! logo cada camada guarda os seus e troca-os à volta da passagem, como o `rng_camada` e a máscara.
 
-use super::composite::{CompositeOp, EscopoDaBorracha};
+use super::composite::{CompositeOp, EscopoDaBorracha, N_CAMADAS};
 use super::relief_state::WaveTip;
 use crate::tool::PainterTool;
 use ph2d_painter_brush::Dab;
@@ -73,6 +101,30 @@ use ph2d_painter_brush::Dab;
 pub(super) struct RelevoDaCamada {
     cadeia: Vec<Option<([f32; 2], f32)>>,
     onda: Vec<(f32, Option<WaveTip>)>,
+    /// O envelope PRÓPRIO desta camada — vazio fora de [`PainterTool::corpo_por_camada`].
+    planos: PlanosDoCorpo,
+}
+
+/// ⭐ **O envelope de UMA camada Brush** — os mesmos cinco planos do envelope do traço
+/// ([`super::relief_state::ReliefState`]), trocados com eles à volta do depósito dela.
+#[derive(Default)]
+pub(super) struct PlanosDoCorpo {
+    height: Vec<f32>,
+    paint: Vec<f32>,
+    grain: Vec<u8>,
+    film: Vec<u8>,
+    radius: Vec<f32>,
+}
+
+impl PlanosDoCorpo {
+    /// Trocar com o envelope do traço — a mesma porta nos dois sentidos.
+    fn troca(&mut self, r: &mut super::relief_state::ReliefState) {
+        std::mem::swap(&mut self.height, &mut r.stroke_height);
+        std::mem::swap(&mut self.paint, &mut r.stroke_paint);
+        std::mem::swap(&mut self.grain, &mut r.stroke_grain);
+        std::mem::swap(&mut self.film, &mut r.stroke_film);
+        std::mem::swap(&mut self.radius, &mut r.stroke_radius);
+    }
 }
 
 /// Que relevo a camada escreve — a porta ÚNICA da pergunta.
@@ -128,17 +180,26 @@ impl PainterTool {
             &mut self.paint.stroke_mask,
             &mut self.paint.composite_mask[pos],
         );
+        // O envelope é da CAMADA só quando uma borracha acima o vai apagar (8b); a mordida (`morde`)
+        // escreve o relevo ASSENTE e nunca o envelope.
+        let proprio = !morde && self.corpo_por_camada();
         let estado = &mut self.paint.pilha.relevo[pos];
         std::mem::swap(
             &mut self.paint.relief.last_height_center,
             &mut estado.cadeia,
         );
         std::mem::swap(&mut self.paint.relief.stroke_wave, &mut estado.onda);
+        if proprio {
+            estado.planos.troca(&mut self.paint.relief);
+        }
 
         let spec = self.stroke_spec();
         self.stamp_dabs_height(&lista, &spec);
 
         let estado = &mut self.paint.pilha.relevo[pos];
+        if proprio {
+            estado.planos.troca(&mut self.paint.relief);
+        }
         std::mem::swap(
             &mut self.paint.relief.last_height_center,
             &mut estado.cadeia,
@@ -153,5 +214,123 @@ impl PainterTool {
         self.paint.brush.hardness = saved_hardness;
         self.paint.brush.strength = saved_strength;
         self.paint.dab_groups = grupos_de_antes;
+    }
+
+    /// **Há uma Erase viva por CIMA de um Brush vivo?** — a porta ÚNICA da pergunta, lida pelo
+    /// depósito (o envelope passa a ser da camada) e pela recomposição (quem o volta a juntar). Duas
+    /// respostas deixariam um envelope próprio sem ninguém que o juntasse.
+    pub(super) fn corpo_por_camada(&self) -> bool {
+        let e_viva = |pos: usize, op: CompositeOp| {
+            self.camada_viva(pos) && self.paint.composite[pos].op == op
+        };
+        // A posição 0 é o TOPO: uma Erase em `e` está por cima de todo `b > e`.
+        (0..N_CAMADAS).any(|e| {
+            e_viva(e, CompositeOp::Erase)
+                && (e + 1..N_CAMADAS).any(|b| e_viva(b, CompositeOp::Brush))
+        })
+    }
+
+    /// ⭐ **O envelope do traço, recomposto de baixo para cima** sobre a região deste lote (8b).
+    ///
+    /// A região é a das camadas crescida pelo MAIOR raio do lote: o corpo de um dab é varrido até ao
+    /// centro do anterior (a lei da cápsula exige que ele caiba no raio), logo pode escrever até um
+    /// raio para lá da pegada que o `dabs_bounds` mede.
+    pub(super) fn compoe_o_corpo(&mut self, camadas: &[Vec<Dab>; N_CAMADAS]) {
+        if !self.corpo_por_camada() {
+            return;
+        }
+        let (w, h) = self.source_size;
+        let n = (w as usize) * (h as usize);
+        let Some(caixa) = super::region::caixa_das_camadas(camadas, (w, h), self.paint.tiling)
+        else {
+            return;
+        };
+        let raio = camadas
+            .iter()
+            .flatten()
+            .map(|d| d.radius_px)
+            .fold(0.0_f32, f32::max);
+        let Some(r) = super::region::grow_region(caixa, raio.ceil() as u32 + 2, w, h) else {
+            return;
+        };
+        // De baixo (posição N−1) para cima (0): o que cada uma é, e se entra.
+        let ordem: Vec<(usize, CompositeOp)> = (0..N_CAMADAS)
+            .rev()
+            .filter(|&p| self.camada_viva(p))
+            .map(|p| (p, self.paint.composite[p].op))
+            .collect();
+        let pilha = &self.paint.pilha;
+        let algum = ordem
+            .iter()
+            .any(|&(p, op)| op == CompositeOp::Brush && pilha.relevo[p].planos.paint.len() == n);
+        if !algum {
+            return;
+        }
+        let spec = self.stroke_spec();
+        let push = spec.effective_impasto_push();
+        let relief = &mut self.paint.relief;
+        for (v, zero) in [
+            (&mut relief.stroke_height, 0.0),
+            (&mut relief.stroke_paint, 0.0),
+            (&mut relief.stroke_radius, 0.0),
+        ] {
+            if v.len() != n {
+                *v = vec![zero; n];
+            }
+        }
+        for v in [&mut relief.stroke_grain, &mut relief.stroke_film] {
+            if v.len() != n {
+                *v = vec![0u8; n];
+            }
+        }
+        let com_push = push > 0.0 && relief.stroke_push.len() == n;
+        let mut spec_i = spec;
+        for py in r.y..r.y + r.h {
+            let linha = py as usize * w as usize;
+            for px in r.x..r.x + r.w {
+                let i = linha + px as usize;
+                let (mut tinta, mut grao, mut filme, mut raio_i) = (0.0_f32, 0u8, 0u8, 0.0_f32);
+                for &(p, op) in &ordem {
+                    match op {
+                        CompositeOp::Brush => {
+                            let c = &pilha.relevo[p].planos;
+                            if c.paint.len() != n {
+                                continue;
+                            }
+                            if c.paint[i] > tinta {
+                                (tinta, grao, raio_i) = (c.paint[i], c.grain[i], c.radius[i]);
+                            }
+                            filme = filme.max(c.film[i]);
+                        }
+                        CompositeOp::Erase => {
+                            let escudo = &pilha.planos[p];
+                            if escudo.len() != n * 4 {
+                                continue;
+                            }
+                            let k = f32::from(escudo[i * 4 + 3]) / 255.0;
+                            tinta *= k;
+                            // A mesma arredondação da `cover` na borracha avulsa.
+                            filme = (f32::from(filme) * k) as u8;
+                        }
+                        CompositeOp::Blur | CompositeOp::Smear => {}
+                    }
+                }
+                spec_i.radius_px = raio_i;
+                let mut altura = ph2d_painter_brush::height::derive_height(
+                    &spec_i,
+                    tinta,
+                    f32::from(grao) / 255.0,
+                );
+                if com_push {
+                    altura += push * relief.stroke_push[i];
+                }
+                relief.stroke_paint[i] = tinta;
+                relief.stroke_grain[i] = grao;
+                relief.stroke_film[i] = filme;
+                relief.stroke_radius[i] = raio_i;
+                relief.stroke_height[i] = altura;
+            }
+        }
+        self.mark_dirty(r);
     }
 }

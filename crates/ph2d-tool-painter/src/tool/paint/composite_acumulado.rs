@@ -139,6 +139,8 @@ impl PainterTool {
             self.relevo_da_camada(pos, lista);
             self.acumula_camada(pos, lista);
         }
+        // O CORPO do traço, recomposto de baixo para cima quando uma borracha o apaga (fila 44, 8b).
+        self.compoe_o_corpo(&camadas);
         #[cfg(test)]
         fases::soma(fases::ACUMULAR, t_acumular);
         // ⭐ A composição é UMA por quadro quando o hospedeiro drena por quadro — ver
@@ -258,7 +260,7 @@ impl PainterTool {
     /// a orla borrada, e um borrão em `NaN` correria com avental `0`. O painel não produz um `NaN`
     /// (o commit do número recusa não-finitos), mas o `set_composite_layer_strength` é público e o
     /// `clamp` deixa-o passar. ⇒ uma porta, e `NaN` está MORTA (`NaN > 0` é falso).
-    fn camada_viva(&self, pos: usize) -> bool {
+    pub(super) fn camada_viva(&self, pos: usize) -> bool {
         self.paint.composite[pos].strength > 0.0
     }
 

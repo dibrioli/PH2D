@@ -17,7 +17,7 @@
 | 5 | Composite Brush: a pilha cheia numa tela grande (a alavanca é o RAIO) | dono | **fechado (30/09): premissa morta, medido** — §4.3 |
 | 6 | Wet Paint: o *fork* do canvas no 1.º toque depois de soltar (`~9 ms`) — pede canvas em ladrilhos | linha | **fechado (30/09): medido, `~3 ms` de `~9–10`** — §5.1 |
 | 7 | Wet Paint: o tile do papel do motor (`~12 ms`, em série por impressão digital) | linha | **feito (30/09): `7,41 → 0,013 ms`** — §5.2 |
-| 8 | Composite Brush: o relevo fora da recomposição da pilha | linha | **8a feita (30/09): relevo, filme e Tiling iguais ao avulso ao bit · 8b aberta** — §6 |
+| 8 | Composite Brush: o relevo fora da recomposição da pilha | linha | **feito (30/09): 8a relevo, filme e Tiling iguais ao avulso ao bit · 8b a borracha de cima apaga o corpo** — §6 |
 | 9 | Composite Brush: o resíduo Blur+Smear (`12/255`) | linha | a conferir |
 | 10 | Composite Brush: metade dos bytes dos intermédios da pilha | linha | a conferir |
 | 11 | Aquarela: o **Smudge** não mexe na tinta MOLHADA da sessão (report do dono, 29/09) | linha | **feito, smoke do dono OK (29/09)** — §3.1 |
@@ -395,12 +395,28 @@ Impasto, para o Brush e para a borracha; e o Tiling atravessa a costura ao byte.
 seu próprio fluxo aleatório (`rng_camada`), e isso é desenho da pilha. A régua dos grupos do Tiling é
 outra: numa tela em Tiling, o mesmo traço deslocado de uma largura inteira pinta a mesma imagem.
 
-### §6.3 — 8b: aberta, nomeada
+### §6.3 — 8b: feita — a borracha de cima apaga o CORPO
 
-Uma camada Erase **acima** de um Brush, no mesmo traço, apaga a **cor** que o Brush pôs e **não o
-corpo**. O corpo do traço vive num envelope que só assenta ao soltar, e a borracha da pilha só morde o
-relevo já assente.
+Uma camada Erase **acima** de um Brush, no mesmo traço, apagava a **cor** que o Brush pôs e **não o
+corpo**: o corpo vive num envelope do traço, UM plano partilhado que só assenta ao soltar. Medido
+(sonda `diag_o_corpo_fantasma`, borracha dura `1,5×` maior que o Brush, escopo `Traco`): tinta **`0`**
+e relevo **`974,24`** — o de um Brush sozinho.
 
-A cura é compor o envelope pela lei dos planos de cor: a cobertura acumulada de cada borracha acima
-multiplica a tinta do envelope, com a tinta crua guardada à parte. Isto toca o envelope do Impasto
-(o commit e a luz leem-no), por isso é trabalho próprio.
+**A cura** (`composite_relevo.rs`): quando há uma Erase VIVA por cima de um Brush VIVO
+(`corpo_por_camada`, a porta única), cada Brush guarda o SEU envelope (trocado à volta do depósito
+como a cadeia) e o envelope do traço é recomposto **por evento**, de baixo para cima, com a lei dos
+planos de cor: `tinta ← max(tinta, tinta_b)` num Brush, `tinta ← tinta·α_e/255` numa Erase. O corpo
+DERIVA-SE da tinta que sobra (o commit re-deriva-o da tinta — multiplicar só a altura seria desfeito
+ali e ressuscitado por cada toque no `Depth`); o filme encolhe pelo mesmo `k`.
+
+| pilha (Impasto) | antes | depois |
+|---|---|---|
+| Erase cheia EM CIMA (`Traco` e `Tudo`) | `974,24` | **`0,00`** |
+| Erase macia EM CIMA | `974,24` | `151,46` |
+| Erase EM BAIXO (controlo) | `974,24` | `974,24` |
+
+⚠️ **Divergência declarada** contra «Brush, e depois uma borracha avulsa»: a avulsa morde a ALTURA
+assente (`h·(1−c)`), a pilha deriva o corpo da tinta restante (`derive(tinta·k)`). Coincidem em `k = 1`
+e `k = 0`; na orla parcial, pela curva do `Body`, meia tinta pode ainda estar no planalto. O `Push`
+continua partilhado (a borracha não o desfaz). Sem Erase por cima de um Brush nada muda de caminho
+(byte-idêntico). `4` gates novos, mutação **8 de 8**.

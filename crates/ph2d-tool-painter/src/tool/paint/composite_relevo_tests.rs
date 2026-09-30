@@ -286,3 +286,114 @@ fn com_tiling_o_traco_deslocado_de_uma_tela_pinta_o_mesmo() {
         "o traço deslocado de uma tela pintou outra imagem ({dif} bytes)"
     );
 }
+
+/// Uma pilha Erase (topo, dura e `1,5×` maior — cobre a pegada inteira do Brush) sobre um Brush.
+fn borracha_cheia_sobre_brush(escopo: EscopoDaBorracha, borracha_em_cima: bool) -> PainterTool {
+    let camadas = if borracha_em_cima {
+        [CompositeOp::Erase, CompositeOp::Brush]
+    } else {
+        [CompositeOp::Brush, CompositeOp::Erase]
+    };
+    let mut t = tela(&camadas);
+    let e = usize::from(!borracha_em_cima);
+    t.paint.composite[e].erase_scope = escopo;
+    t.paint.composite[e].hardness = Some(1.0);
+    t.paint.composite[e].size = 1.5;
+    t
+}
+
+/// A cobertura assente da camada activa (o FILME que a luz pesa).
+fn filme(t: &PainterTool) -> u64 {
+    let layer = t.layers.active().expect("camada");
+    t.covers
+        .get(&layer)
+        .map_or(0, |c| c.iter().map(|v| u64::from(*v)).sum())
+}
+
+/// ⭐ **8b — a borracha POR CIMA de um Brush apaga o CORPO que ele pôs neste traço**, não só a cor.
+/// Antes da cura a tinta ia a `0` e o relevo ficava em `974,24` — o de um Brush sozinho: um corpo
+/// sem tinta nenhuma, que a luz sombreava. Nos dois escopos, e o FILME vai com ele.
+///
+/// O CONTROLO é a mesma borracha POR BAIXO do Brush: ali ela não toca no traço, e o corpo é o do
+/// pincel avulso ao bit — senão a primeira metade passaria com uma borracha que apaga tudo.
+#[test]
+fn a_borracha_de_cima_apaga_o_corpo_do_brush_de_baixo() {
+    let mut avulso = tela(&[]);
+    horizontal(&mut avulso);
+    assert!(soma(&corpo(&avulso)) > 100.0, "a fixtura deposita corpo");
+    for escopo in [EscopoDaBorracha::Traco, EscopoDaBorracha::Tudo] {
+        let mut t = borracha_cheia_sobre_brush(escopo, true);
+        assert!(t.corpo_por_camada());
+        horizontal(&mut t);
+        assert_eq!(
+            soma(&corpo(&t)),
+            0.0,
+            "{escopo:?}: a borracha de cima deixou o corpo do Brush"
+        );
+        assert_eq!(filme(&t), 0, "{escopo:?}: e o filme");
+        let mut baixo = borracha_cheia_sobre_brush(escopo, false);
+        assert!(!baixo.corpo_por_camada());
+        horizontal(&mut baixo);
+        igual(
+            &corpo(&baixo),
+            &corpo(&avulso),
+            &format!("{escopo:?}: a borracha de BAIXO tocou no corpo do Brush"),
+        );
+    }
+    // A cor da de cima foi-se de facto (escopo `Traco` devolve o `pre`, que é branco).
+    let mut t = borracha_cheia_sobre_brush(EscopoDaBorracha::Traco, true);
+    horizontal(&mut t);
+    assert!(t.canvas_rgba.iter().all(|&b| b == 255));
+}
+
+/// **O que a luz mostra A MEIO do traço já é o corpo apagado** — a recomposição é por EVENTO, não
+/// só ao soltar. Com o envelope a recompor-se só no commit, o artista veria o corpo fantasma enquanto
+/// arrasta e ele desapareceria ao largar.
+#[test]
+fn a_meio_do_traco_o_corpo_ja_vem_apagado() {
+    let a_meio = |em_cima: bool| {
+        let mut t = borracha_cheia_sobre_brush(EscopoDaBorracha::Traco, em_cima);
+        t.on_canvas_pointer(cp([20.0, 64.0], PointerPhase::Down));
+        for i in 1..=15 {
+            t.on_canvas_pointer(cp([20.0 + 3.0 * i as f32, 64.0], PointerPhase::Move));
+        }
+        t.paint.relief.stroke_height.iter().sum::<f32>()
+    };
+    assert!(
+        a_meio(false) > 50.0,
+        "controlo: sem borracha por cima há corpo vivo"
+    );
+    assert_eq!(a_meio(true), 0.0, "o corpo vivo não foi apagado");
+}
+
+/// **A borracha MACIA tira TINTA, e o corpo deriva-se do que sobra** — fica entre nada e o todo, e
+/// é o que a derivação da tinta RESTANTE dá (o commit re-deriva o corpo da tinta; uma borracha que
+/// multiplicasse só a altura seria desfeita ali).
+#[test]
+fn a_borracha_macia_de_cima_deixa_o_corpo_da_tinta_que_sobra() {
+    let mut avulso = tela(&[]);
+    horizontal(&mut avulso);
+    let todo = soma(&corpo(&avulso));
+    let mut t = tela(&[CompositeOp::Erase, CompositeOp::Brush]);
+    horizontal(&mut t);
+    let parte = soma(&corpo(&t));
+    assert!(
+        parte > 0.0 && parte < 0.5 * todo,
+        "a borracha macia deixou {parte:.2} de {todo:.2}"
+    );
+}
+
+/// **A pergunta tem UMA porta, e só uma Erase VIVA por CIMA de um Brush VIVO a arma** — um Blur por
+/// cima, uma borracha por baixo ou uma borracha a zero deixam o envelope partilhado (o caminho de
+/// sempre, byte-idêntico).
+#[test]
+fn so_uma_borracha_viva_por_cima_arma_o_corpo_por_camada() {
+    use CompositeOp::{Blur, Brush, Erase};
+    assert!(tela(&[Erase, Brush]).corpo_por_camada());
+    assert!(tela(&[Erase, Blur, Brush]).corpo_por_camada());
+    assert!(!tela(&[Blur, Brush]).corpo_por_camada());
+    assert!(!tela(&[Brush, Erase]).corpo_por_camada());
+    let mut a_zero = tela(&[Erase, Brush]);
+    a_zero.paint.composite[0].strength = 0.0;
+    assert!(!a_zero.corpo_por_camada());
+}

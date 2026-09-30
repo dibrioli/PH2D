@@ -397,3 +397,59 @@ fn so_uma_borracha_viva_por_cima_arma_o_corpo_por_camada() {
     a_zero.paint.composite[0].strength = 0.0;
     assert!(!a_zero.corpo_por_camada());
 }
+
+/// ⭐⭐ **O volume assente sobrevive à última composição da pilha** — report do dono (2026-09-30,
+/// com fotos): pilha Blur/Smear/Brush no Impasto, e o corpo do traço NOVO sumia num RECTÂNGULO
+/// depois de soltar, só por cima de tinta com volume.
+///
+/// O mecanismo: o pen-up à mão livre (`commit_drag_preview`) assentava o volume ANTES de compor a
+/// região pendente do quadro, e a camada `Smear` dessa composição reescreve o relevo da camada a
+/// partir da cópia congelada no início do traço — sem este traço. Medido: `588 929` de corpo contra
+/// `782 492` da rota por evento, com um rectângulo a ZERO.
+///
+/// A régua: o MESMO par de traços com a composição por quadro (a do app) e por evento dá o mesmo
+/// relevo AO BIT. O CONTROLO é que a fixtura chega ao soltar com composição PENDENTE — sem isso as
+/// duas rotas seriam a mesma e a igualdade não afirmaria nada.
+#[test]
+fn a_ultima_composicao_nao_apaga_o_corpo_assente() {
+    let corre = |por_quadro: bool| -> (Vec<u32>, bool) {
+        let mut t = tela(&[CompositeOp::Blur, CompositeOp::Smear, CompositeOp::Brush]);
+        t.set_compor_por_quadro(por_quadro);
+        t.paint.composite[0].size = 1.339;
+        let risca = |t: &mut PainterTool, de: [f32; 2], ate: [f32; 2]| -> bool {
+            t.on_canvas_pointer(cp(de, PointerPhase::Down));
+            for i in 1..=30 {
+                let s = i as f32 / 30.0;
+                t.on_canvas_pointer(cp(
+                    [de[0] + (ate[0] - de[0]) * s, de[1] + (ate[1] - de[1]) * s],
+                    PointerPhase::Move,
+                ));
+                if i % 3 == 0 {
+                    t.compoe_o_pendente();
+                }
+            }
+            t.on_canvas_pointer(cp([ate[0] + 2.0, ate[1]], PointerPhase::Move));
+            let pendente = t.paint.pilha.pendente.is_some();
+            t.on_canvas_pointer(cp(ate, PointerPhase::Up));
+            pendente
+        };
+        risca(&mut t, [20.0, 64.0], [108.0, 64.0]);
+        let pendente = risca(&mut t, [64.0, 20.0], [64.0, 108.0]);
+        (corpo(&t), pendente)
+    };
+    let (por_evento, _) = corre(false);
+    let (por_quadro, pendente) = corre(true);
+    assert!(
+        pendente,
+        "controlo: a fixtura tem de chegar ao soltar com composição pendente"
+    );
+    assert!(
+        soma(&por_evento) > 100.0,
+        "controlo: a fixtura deposita corpo"
+    );
+    igual(
+        &por_quadro,
+        &por_evento,
+        "a última composição apagou o corpo assente",
+    );
+}

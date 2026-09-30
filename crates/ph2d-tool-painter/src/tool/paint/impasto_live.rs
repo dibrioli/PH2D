@@ -19,6 +19,15 @@ impl PainterTool {
     /// `close_stroke`, BEFORE the undo entry is recorded, so the step captures the relief with the
     /// pigment that made it — one Ctrl+Z takes both.
     pub(super) fn commit_stroke_height(&mut self) {
+        // ⛔⛔ **O volume só ASSENTA depois de toda composição PENDENTE da pilha** (report do dono,
+        // 2026-09-30, com fotos: *«o relevo da nova pincelada some»*, em RECTÂNGULOS, só depois de
+        // soltar e só por cima de tinta com volume). Uma camada `Smear` na composição reescreve o
+        // relevo ASSENTE da camada a partir da cópia que a sessão dela congelou no início do traço
+        // (`warp_render_relief`) — cópia que não tem este traço. Composta DEPOIS deste commit, ela
+        // apagava o corpo novo dentro da caixa pendente. O `close_stroke` já compunha antes; o
+        // `commit_drag_preview` (todo pen-up à mão livre) compunha depois. ⇒ a ordem vive AQUI, na
+        // porta, e não em cada chamador. Sem pendente é um no-op.
+        self.compoe_o_pendente();
         if self.paint.relief.stroke_paint.is_empty() {
             return;
         }

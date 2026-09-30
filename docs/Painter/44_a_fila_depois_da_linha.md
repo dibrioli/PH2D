@@ -498,3 +498,29 @@ rota é de custo e nenhuma régua de valor a vê ⇒ a régua é a CONTA `AVENTA
 
 ⛔ **Os intermédios em `u16` ficam por fazer, e agora com a pergunta certa:** o que sobra em `f32`
 são duas travessias (a saída horizontal e a vertical), e a pilha do dono não é limitada por elas.
+
+---
+
+## §9 — Depois do smoke dos itens 8b, 9 e 10: o corpo que sumia num rectângulo (2026-09-30)
+
+**Report do dono, com fotos:** pilha `Blur` (`1,339`) / `Smear` / `Brush`, tudo a força `1`, no
+Impasto — o corpo do traço NOVO some em rectângulos, **depois de soltar**, **só por cima de tinta que
+já tem volume**; e o mesmo com `Erase` no lugar do `Blur`.
+
+**Seis sondas não o viram**, e todas pelo mesmo motivo: compunham a pilha por EVENTO. O app compõe
+por QUADRO, e o traço chega ao soltar com uma região por compor. Repetido esse modo, o volume do 2.º
+traço caía `790 505 → 588 929`, e o mapa mostrou um **rectângulo a zero**.
+
+**O mecanismo:** o `commit_drag_preview` (todo pen-up à mão livre) assentava o volume do traço e SÓ
+DEPOIS compunha o pendente; o `Smear` dessa composição reescreve o relevo da camada a partir da cópia
+que a sessão dele congelou no início do traço — sem o traço novo. Sem volume anterior a sessão não
+congela nada, e por isso só acontecia por cima de tinta com volume. O `close_stroke` já compunha
+antes; era o caminho irmão.
+
+**A cura** vive na porta: `commit_stroke_height` compõe o pendente primeiro. Por quadro e por evento
+passam a dar o MESMO relevo AO BIT (gate `a_ultima_composicao_nao_apaga_o_corpo_assente`, com o
+controlo de que a fixtura chega ao soltar com pendente; vermelho sem a cura). `BUGS_painter` #27.
+
+⚠️ **O que NÃO é defeito, e fica dito:** uma camada `Erase` **por cima** de um `Brush` e **maior** que
+ele apaga o traço inteiro desse Brush — cor e, desde o 8b, corpo. É a lei da pilha (a borracha de
+cima corta o que as de baixo puseram neste traço).

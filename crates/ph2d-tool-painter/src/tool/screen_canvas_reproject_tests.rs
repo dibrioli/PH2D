@@ -118,53 +118,35 @@ fn a_tinta_vai_com_a_superficie() {
     assert_eq!(
         px(&f.rgba, 60, 44),
         [0, 0, 255, 255],
-        "onde se via e não há água a tela é o retrato novo"
+        "onde se via e não há água a tela é a semente"
     );
 }
 
-/// ⭐⭐⭐ **Debaixo da água a base é a de ANTES; fora dela a tela é o retrato
-/// NOVO** (report do dono, 29/09: *«fica uma marca sem tinta no local onde a
-/// simulação reinicia — só acontece após rotacionar a view»*). Quem chama
-/// semeia a lei da diferença com o retrato, logo um píxel seco que mostrasse
-/// a base levada pousaria na peça a diferença entre duas amostragens da
-/// mesma superfície. As duas metades falham ao contrário uma da outra:
+/// ⭐⭐⭐ **A base da água na vista nova é a SEMENTE, em todo píxel** (report do
+/// dono, 30/09: *«melhorou mas não curou perfeitamente»*). Quem chama entrega a
+/// peça SEM a água; levar a base de antes pelo píxel mais perto (a cura de
+/// 29/09, debaixo da água) era adivinhar o que ele já sabe. A régua: a base de
+/// antes é CINZENTA (`G = 128`) e a semente AZUL (`G = 0`), e o pigmento é
+/// vermelho (`G = 0`) — um píxel com verde tem a base de antes nele.
 ///
-/// - **Fora da água, o retrato ao byte** — a base levada pintaria o cinzento
-///   de antes onde a peça, vista agora, é azul.
-/// - **Debaixo da água, a base de antes** — o pigmento vermelho tem verde e
-///   azul iguais, e o cinzento de antes também; sobre o retrato AZUL a borda
-///   meio transparente do traço sairia com mais azul que verde (a água
-///   pintada por cima da peça que já a tem, duas vezes).
+/// O CONTROLO: há água (vermelho) e há borda meio transparente (vermelho E
+/// azul no mesmo píxel) — sem ela o pigmento opaco tapava qualquer base.
 #[test]
-fn sob_a_agua_a_base_e_a_de_antes_e_fora_dela_o_retrato() {
+fn a_base_da_agua_e_a_semente_em_todo_pixel() {
     let mut t = molhada();
     assert!(t.reproject_screen_canvas(&azul(), &deslocada()));
     let f = t.take_screen_canvas().expect("a tela mudou");
     let (mut molhados, mut meio) = (0, 0);
     for p in 0..(W * H) as usize {
         let c = px(&f.rgba, p % W as usize, p / W as usize);
-        if c == [0, 0, 255, 255] {
-            continue;
-        }
-        molhados += 1;
-        // A base de antes NUA (cinzento sem pigmento nenhum) é um píxel seco
-        // que ficou com a amostragem de antes — o que a leitura do seco COM o
-        // véu faria a todo papel húmido sem tinta.
-        assert_ne!(
-            c,
-            [128, 128, 128, 255],
-            "o píxel {p} é seco e ficou com a base levada em vez do retrato"
-        );
-        assert!(
-            c[1].abs_diff(c[2]) <= 1,
-            "o píxel {p} está debaixo da água sobre a base ERRADA: {c:?}"
-        );
-        if c[1] > 20 {
-            meio += 1;
+        assert_eq!(c[1], 0, "o píxel {p} tem a base de antes nele: {c:?}");
+        if c[0] > 20 {
+            molhados += 1;
+            if c[2] > 20 {
+                meio += 1;
+            }
         }
     }
-    // O CONTROLO: há água, e há borda meio transparente — sem ela a metade de
-    // baixo não distinguiria base nenhuma (o pigmento opaco tapa as duas).
     assert!(molhados > 100, "a fixture não tem água: {molhados}");
     assert!(
         meio > 10,

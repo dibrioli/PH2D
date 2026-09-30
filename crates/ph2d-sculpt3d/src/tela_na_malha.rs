@@ -224,6 +224,9 @@ pub struct TelaNaMalha {
     /// modos que lêem a cor debaixo do pincel ([`crate::tela_semente`]). Com
     /// ele a lei deixa de ser o «over» e passa a ser a DIFERENÇA.
     semente: Option<Vec<u8>>,
+    /// ⭐⭐ **A base da cadeia molhada** — só na tela semeada; ver
+    /// [`BaseDaCadeia`].
+    cadeia: BaseDaCadeia,
 }
 
 impl TelaNaMalha {
@@ -279,6 +282,7 @@ impl TelaNaMalha {
             raios: 0,
             projetadas: 0,
             semente: None,
+            cadeia: BaseDaCadeia::vazia(amostras),
         }
     }
 
@@ -294,6 +298,40 @@ impl TelaNaMalha {
     /// Painter foi semeada, senão o que o pincel não tocou deixa de se anular.
     pub fn com_semente(&mut self, rgba: Vec<u8>) {
         self.semente = Some(rgba);
+    }
+
+    /// ⭐⭐ **O traço continua uma cadeia molhada** — a base de cada amostra
+    /// que ela já tocou é a de antes dela, e a semente tem de ser o retrato SEM
+    /// ela ([`crate::tela_semente::semente_antes_da_cadeia`]). Uma cadeia de
+    /// outro destino (o plano mudou de tamanho) é recusada: devolve `false`.
+    pub fn com_cadeia(&mut self, cadeia: BaseDaCadeia) -> bool {
+        if cadeia.destino() != self.visivel.len() {
+            return false;
+        }
+        self.cadeia = cadeia;
+        true
+    }
+
+    /// O tamanho do destino — as amostras do plano, ou os vértices sem ele.
+    #[must_use]
+    pub fn destino(&self) -> usize {
+        self.visivel.len()
+    }
+
+    /// A cadeia deste traço, para os gates.
+    #[must_use]
+    pub fn cadeia(&self) -> &BaseDaCadeia {
+        &self.cadeia
+    }
+
+    /// ⭐ **Larga a semente e a cadeia** — no fim do traço, para o seguinte as
+    /// continuar.
+    pub fn larga(&mut self) -> (Option<Vec<u8>>, BaseDaCadeia) {
+        let vazia = BaseDaCadeia::vazia(self.visivel.len());
+        (
+            self.semente.take(),
+            std::mem::replace(&mut self.cadeia, vazia),
+        )
     }
 
     /// Há retrato? — o modo em que a lei é a diferença.
@@ -324,7 +362,7 @@ impl TelaNaMalha {
         // ⚠️ Sem cobertura de um dos lados não há cor a comparar: um píxel
         // APAGADO (a borracha) e o fundo fora da silhueta não mexem na peça.
         if a <= COBERTURA_MINIMA || sa <= COBERTURA_MINIMA {
-            return (Mistura::Diferenca([0.0; 3]), true);
+            return (Mistura::SemCor, true);
         }
         let d = [
             pm[0] / a - spm[0] / sa,
@@ -527,9 +565,18 @@ enum Mistura {
     Sobre { pm: [f32; 3], a: f32 },
     /// A tela SEMEADA: a diferença entre o que ela ficou e o retrato.
     Diferenca([f32; 3]),
+    /// A tela SEMEADA sem cor a comparar num dos lados (um píxel apagado, o
+    /// fundo fora da silhueta): a amostra fica como estava antes do traço — e
+    /// NÃO volta à base da cadeia, que seria apagar a tinta dela por falta de
+    /// informação.
+    SemCor,
 }
 
 // ⭐ O que POUSA a tela na peça (a lei por amostra e o percurso da retícula)
 // vive num filho: este ficheiro é a VISTA e a OCLUSÃO, aquele o DEPÓSITO.
 #[path = "tela_na_malha_pousa.rs"]
 mod pousa;
+
+#[path = "tela_na_malha_cadeia.rs"]
+mod cadeia;
+pub use cadeia::BaseDaCadeia;

@@ -47,11 +47,16 @@
 //! escorre cai no sítio certo da peça com a câmera noutro lado. Quem fecha a
 //! pincelada que escorre é só quem mexe na PEÇA — o esquerdo da escultura, as
 //! teclas que não são da vista, o painel, o desfazer — nunca a navegação.
-
-use std::sync::Arc;
+//!
+//! ⭐⭐⭐ **Uma pincelada molhada e as que a continuam são uma CADEIA** (report
+//! do dono, 30/09, sobre a cura de 29/09: *«melhorou mas não curou
+//! perfeitamente»*): a base de cada amostra é a de ANTES da cadeia e a semente é
+//! a peça SEM ela ([`ph2d_sculpt3d::tela_na_malha::BaseDaCadeia`]) — senão, depois
+//! de rodar, a frente de água que a peça já tem entra na lei como resíduo e
+//! fica desenhada onde a água já não está.
 
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase};
-use ph2d_sculpt3d::tela_na_malha::{Tela, TelaNaMalha, Vista};
+use ph2d_sculpt3d::tela_na_malha::{BaseDaCadeia, Tela, TelaNaMalha, Vista};
 use ph2d_tool_painter::{PainterTool, ScreenCanvasFrame};
 
 use crate::Sculpt3dScene;
@@ -69,8 +74,10 @@ mod registo;
 /// ⚠️ **rodar a vista seca a aquarela**, porque a humidade vive nos píxeis do
 /// ecrã e não na superfície.
 ///
-/// ⭐ O `retrato` é a SEMENTE do traço seguinte — a lei da diferença pede
-/// `c − s` com `s` = o que a peça já tem, e o que ela tem é esta tela.
+/// ⭐ A `semente` é a do traço seguinte: o retrato da peça SEM a cadeia nesta
+/// vista, que é a base congelada da água do Painter — e a `cadeia` é a cor de
+/// antes de cada amostra que ela já tocou. A tela é o pigmento por cima da
+/// semente, e a lei soma-o à cor de antes.
 ///
 /// ⛔ **Um contador do HISTÓRICO ao lado do `edits` foi construído e RETIRADO
 /// por prova de mutação:** o desfazer e um traço de outro pincel na tinta fina
@@ -82,7 +89,8 @@ pub(crate) struct TelaMolhada {
     vista: Vista,
     objeto: ObjectId,
     edits: u64,
-    retrato: Arc<Vec<u8>>,
+    semente: Vec<u8>,
+    cadeia: BaseDaCadeia,
 }
 
 impl TelaMolhada {
@@ -231,25 +239,31 @@ pub fn entrega(
 /// deixou a escorrer parou. Fecha o traço, e decide se a tela FICA (papel
 /// molhado) ou se limpa.
 fn termina(scene: &mut Sculpt3dScene, painter: &mut PainterTool) {
-    // A vista ANTES do fecho: é ele que larga a sessão.
-    let vista = scene.painter_tela.as_ref().map(|s| *s.vista());
-    let semeado = scene.painter_tela.as_ref().is_some_and(|s| s.tem_semente());
+    // A vista, a semente e a cadeia ANTES do fecho: é ele que larga a sessão.
+    let (vista, semente, cadeia) = match scene.painter_tela.as_mut() {
+        Some(s) => {
+            let vista = *s.vista();
+            let (semente, cadeia) = s.larga();
+            (Some(vista), semente, cadeia)
+        }
+        None => (None, None, BaseDaCadeia::default()),
+    };
     scene.painter_fecha();
-    let ultima = scene.painter_ultima.take();
     // ⭐⭐ Papel molhado ⇒ a tela FICA: limpá-la secava-o.
     let molhado = painter.screen_canvas_is_wet();
     if registo::ligado() {
-        let guarda = vista.is_some() && ultima.is_some() && semeado && molhado;
+        let semeado = semente.is_some();
+        let guarda = vista.is_some() && semeado && molhado;
         eprintln!(
-            "[painter3d] fim da pincelada: semeada {semeado} · molhada {molhado} · retrato {} · \
+            "[painter3d] fim da pincelada: semeada {semeado} · molhada {molhado} · cadeia {} · \
              edits {} · guarda a tela molhada={guarda}",
-            ultima.is_some(),
+            cadeia.len(),
             scene.edits,
         );
     }
-    match (vista, ultima) {
-        (Some(vista), Some(retrato)) if semeado && molhado => {
-            scene.painter_guarda(vista, retrato);
+    match (vista, semente) {
+        (Some(vista), Some(semente)) if molhado => {
+            scene.painter_guarda(vista, semente, cadeia);
         }
         _ => {
             painter.clear_screen_canvas();
@@ -349,48 +363,64 @@ impl Sculpt3dScene {
                 ),
             }
         }
-        let tinta = self.stroke.tinta_fina.as_ref().map(|t| t.tinta());
-        let mesh = self.objects[self.active].stack.mesh();
+        let active = self.active;
+        let vista_nova = *sessao.vista();
         if let (Some(g), Some(objeto)) = (guardada, chave)
             && molhada_agora
             && g.mesma_peca(objeto, edits)
+            && g.cadeia.destino() == sessao.destino()
         {
-            if g.vista == *sessao.vista() {
+            let TelaMolhada {
+                vista: vista_velha,
+                semente,
+                mut cadeia,
+                ..
+            } = g;
+            if vista_velha == vista_nova {
                 if registo::ligado() {
                     eprintln!("[painter3d] pen-down: REAPROVEITA a tela molhada");
                 }
-                sessao.com_semente(g.retrato.as_ref().clone());
-                self.painter_ultima = Some(g.retrato);
+                sessao.com_semente(semente);
+                let _ = sessao.com_cadeia(cadeia);
                 return true;
             }
             // ⭐⭐ A vista MUDOU (o artista rodou a peça): a água muda de vista
             // com ela, em vez de o retrato novo a secar.
-            let retrato = ph2d_sculpt3d::tela_semente::semente(mesh, tinta, sessao.vista());
-            let mapa = ph2d_sculpt3d::tela_origem::origem(mesh, sessao.vista(), &g.vista);
-            if painter.reproject_screen_canvas(&retrato, &mapa)
-                && let Some(f) = painter.take_screen_canvas()
-            {
+            let mesh = self.objects[active].stack.mesh_mut();
+            let mapa = ph2d_sculpt3d::tela_origem::origem(mesh, &vista_nova, &vista_velha);
+            cadeia.so_o_que_a_vista_levou(&vista_nova, &mapa);
+            // ⭐⭐⭐ A semente é a peça SEM a cadeia, vista daqui — a base da
+            // água na vista nova. Com o retrato da peça COMO ESTÁ (a cura de
+            // 29/09) a amostra levava a frente de antes na base e o retrato
+            // levava-a amostrada nos píxeis de agora: a diferença entre as duas
+            // ficava somada à peça enquanto a água passava — a linha clara
+            // onde a frente estava (report do dono, 30/09: *«melhorou mas não
+            // curou perfeitamente»*).
+            let semente = ph2d_sculpt3d::tela_semente::semente_antes_da_cadeia(
+                mesh,
+                self.stroke.tinta_fina.as_mut(),
+                &vista_nova,
+                &mut cadeia,
+            );
+            if painter.reproject_screen_canvas(&semente, &mapa) {
+                let _ = painter.take_screen_canvas();
                 if registo::ligado() {
-                    eprintln!("[painter3d] pen-down: a vista mudou -> a agua MUDA DE VISTA");
+                    eprintln!(
+                        "[painter3d] pen-down: a vista mudou -> a agua MUDA DE VISTA · cadeia {}",
+                        cadeia.len()
+                    );
                 }
-                // ⭐⭐ A semente é o RETRATO — o que a peça TEM vista daqui —, e
-                // nunca a tela levada: a levada é a de antes amostrada pelo
-                // píxel mais perto, e junto da frente da água ela mostra tinta
-                // onde a peça não a tem (e vice-versa). Com ela por semente, a
-                // diferença desse píxel nascia ZERO e ficava zero enquanto a
-                // água o cobria: a peça nunca recebia a tinta que a tela
-                // mostrava — a marca clara da frente de antes (report do dono,
-                // 29/09, *«só acontece após rotacionar a view»*).
-                sessao.com_semente(retrato);
-                self.painter_ultima = Some(f.rgba);
+                sessao.com_semente(semente);
+                let _ = sessao.com_cadeia(cadeia);
                 return true;
             }
         }
-        let retrato = ph2d_sculpt3d::tela_semente::semente(mesh, tinta, sessao.vista());
+        let tinta = self.stroke.tinta_fina.as_ref().map(|t| t.tinta());
+        let mesh = self.objects[active].stack.mesh();
+        let retrato = ph2d_sculpt3d::tela_semente::semente(mesh, tinta, &vista_nova);
         if painter.seed_screen_canvas(retrato.clone()) {
             let _ = painter.take_screen_canvas();
-            sessao.com_semente(retrato.clone());
-            self.painter_ultima = Some(Arc::new(retrato));
+            sessao.com_semente(retrato);
         }
         false
     }
@@ -408,12 +438,13 @@ impl Sculpt3dScene {
 
     /// **Guarda a tela molhada** no pen-up — com a chave lida DEPOIS do fecho,
     /// que é quem devolve a cor grossa e sobe o `edits`.
-    fn painter_guarda(&mut self, vista: Vista, retrato: Arc<Vec<u8>>) {
+    fn painter_guarda(&mut self, vista: Vista, semente: Vec<u8>, cadeia: BaseDaCadeia) {
         self.painter_molhada = self.obj().map(|o| TelaMolhada {
             vista,
             objeto: o.id,
             edits: self.edits,
-            retrato,
+            semente,
+            cadeia,
         });
     }
 
@@ -435,7 +466,6 @@ impl Sculpt3dScene {
         let (vertices, _) = self
             .stroke
             .pousa_a_tela(o.stack.mesh_mut(), sessao, &tela, rect);
-        self.painter_ultima = Some(Arc::clone(&f.rgba));
         if !vertices.is_empty() {
             Self::mesh_changed(&mut o.dirty, &mut self.edits, &vertices);
         }

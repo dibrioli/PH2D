@@ -504,10 +504,6 @@ pub struct Sculpt3dScene {
     /// o que a peça recebeu e a chave que diz se a tela ainda a descreve; ver
     /// [`crate::painter_na_malha::TelaMolhada`].
     pub(crate) painter_molhada: Option<crate::painter_na_malha::TelaMolhada>,
-    /// O último retrato da tela que a peça RECEBEU no traço em voo (a semente, e
-    /// depois cada drenagem pousada) — o que a [`Self::painter_molhada`] guarda
-    /// no pen-up.
-    pub(crate) painter_ultima: Option<std::sync::Arc<Vec<u8>>>,
     /// ⭐⭐ **A pincelada do Painter continua ABERTA depois do pen-up porque a
     /// tinta molhada ainda escorre** (etapa 3). `Some(e)` guarda o `edits` do
     /// último pouso DESTE traço: se ele mudar por outra mão, o traço fecha antes

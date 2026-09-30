@@ -232,6 +232,12 @@ impl TintaDoTraco {
         &self.tinta
     }
 
+    /// ⚠️ O plano SEM a janela do desfazer — só para trocas que se desfazem
+    /// antes de voltar ([`crate::tela_semente::semente_antes_da_cadeia`]).
+    pub(crate) fn tinta_mut(&mut self) -> &mut Tinta {
+        &mut self.tinta
+    }
+
     /// As amostras que este traço tocou, na ordem em que foram tocadas.
     #[must_use]
     pub fn tocadas(&self) -> &[u32] {

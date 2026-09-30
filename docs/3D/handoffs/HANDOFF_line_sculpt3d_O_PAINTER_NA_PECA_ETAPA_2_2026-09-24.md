@@ -541,3 +541,86 @@ novo **P14b** sobre a própria guarda (censo `29 → 30`), e ela sangra. ⚠️ 
 NOMEADA e fora do placar:** ler o seco COM o véu sobrevive, porque na fixture todo
 píxel húmido tem pigmento — o véu só muda a leitura em papel húmido SEM tinta
 (água limpa), que ela não produz. Pré-voo `73/73`.
+
+### §9.9 — ⛔ E o smoke seguinte: *«melhorou mas não curou perfeitamente»* (30/09)
+
+**A cura de §9.8 atacou o sintoma de uma causa que continuou lá.** A lei da tela
+semeada é `nova = base + k·(c − s)`, e ela só dá `nova ≈ c` quando
+`base − s(p) ≈ 0` na amostra `p`. Num traço na MESMA vista isso é verdade por
+construção (a amostra foi escrita pela mesma tela, lida no mesmo ponto). Depois
+de RODAR não é: a amostra traz a frente da água de antes **com o detalhe da vista
+de antes** (a tinta fina é mais fina que o ecrã), e o retrato da vista nova é essa
+mesma cor amostrada **nos centros de píxel de agora** e interpolada. Numa frente
+dura as duas diferem, e a lei somava essa diferença a cada quadro enquanto a água
+passava — a frente ficava desenhada onde a água já não estava. §9.8 trocou a
+semente «tela levada pelo píxel mais perto» (erro de um píxel inteiro) pelo
+«retrato» (erro de meio píxel interpolado): **melhorou, e não se anulou**, que é
+exactamente o report.
+
+**A cura: uma pincelada molhada e as que a continuam são uma CADEIA**
+([`BaseDaCadeia`](../../../crates/ph2d-sculpt3d/src/tela_na_malha_cadeia.rs)):
+
+- a **base** de cada amostra é a cor de ANTES da primeira pincelada da cadeia,
+  guardada na 1.ª vez que a cadeia a toca (um `BTreeMap` por amostra tocada —
+  `O(pegada)`, nunca `O(plano)`; ⚠️ `HashMap` é tipo proibido nesta casa, e o
+  clippy `-D warnings` do fecho apanhou-o) e levada de traço em traço na `TelaMolhada`;
+- a **semente** é a peça SEM a cadeia — o retrato com a cor de antes trocada
+  para dentro do destino e desfeita antes de voltar
+  ([`semente_antes_da_cadeia`](../../../crates/ph2d-sculpt3d/src/tela_semente.rs)),
+  que é também a **base congelada inteira** da água do Painter na vista nova
+  (o Painter deixou de adivinhar: nem base levada pelo píxel mais perto, nem o
+  `b == t` de §9.8);
+- ⇒ `c − s` é exactamente o pigmento da cadeia, e a frente de antes deixa de
+  existir como resíduo: ela só vive no pigmento, que corre.
+
+⚠️ **Três metades que a lei nova obrigou, cada uma com gate:**
+
+1. **Na mesma vista ela É a lei antiga, somada** — `(antes + k(c₁−s₀)) + k(c−c₁)
+   = antes + k(c−s₀)`; o gate compara as duas leis sobre a mesma peça.
+2. **Uma amostra da cadeia é repintada mesmo com `c − s₀ = 0`** — é quando a água
+   SAIU dali; a lei antiga fazia-o com `c − c₁ ≠ 0`, e sem esta metade a amostra
+   ficava com a água que já não está (`na_cadeia` na pousada).
+3. **Sem cor a comparar (um píxel apagado) ela NÃO volta à base da cadeia**
+   (`Mistura::SemCor`, separada da `Diferenca` zero) — seria apagar tinta por
+   falta de informação. ⚠️ E o traço apagado **nem toca** a amostra da cadeia:
+   a cerca de `na_cadeia` pergunta pela mistura. ⛔ Ela nasceu SEM régua — a
+   mutação K2 (tirar a pergunta) sobreviveu, porque a `base_de` devolve `pre`
+   para o `SemCor` e a cor não muda: *duas cercas que se tapam uma à outra*.
+   O efeito real era a amostra entrar na janela do desfazer e do upload sem
+   mudar ⇒ o gate passou a contar **as amostras DA CADEIA na janela do traço**
+   (só essas: na orla do apagão a bilinear mistura píxeis apagados e vivos e a
+   diferença ali é real — `66` capturas legítimas, medido), com o CONTROLO de
+   que o traço sem apagão as toca.
+4. **Rodar deixa na cadeia só o que a vista nova herdou**
+   (`so_o_que_a_vista_levou`): uma amostra cujo píxel novo não tem origem (ou que
+   a vista nova não mostra) sai — a água dela não viajou, e sem sair ela voltaria
+   à cor de antes da cadeia, **apagando** a tinta que ali pousou.
+
+**Gates** — a LEI vive na crate dela
+([`tela_na_malha_cadeia_tests`](../../../crates/ph2d-sculpt3d/src/tela_na_malha_cadeia_tests.rs),
+sem placa), com a fixtura que contém o fenómeno: uma frente de UM píxel e a vista
+seguinte deslocada MEIO píxel, nas duas rotas (cor por vértice e plano de tinta
+fina), e o **CONTROLO a ser a lei de §9.8 sobre a mesma peça** (ela deixa a frente
+desenhada; a da cadeia deixa a peça chapada a `≤ 1/255`). O FIO é o gate de placa
+`depois_de_rodar_a_semente_e_a_peca_sem_a_agua` (a semente não tem a tinta do 1.º
+traço, com o controlo de que a peça a tem, e a cadeia chega ao traço novo), e no
+Painter `a_base_da_agua_e_a_semente_em_todo_pixel` (nenhum píxel da tela tem a
+base de antes). Censo **P16** (agora a cadeia no traço reaproveitado), **P29**
+(a semente sem a cadeia), **P30** (a cadeia filtrada pela vista nova).
+⛔ O campo `painter_ultima` **saiu**: a semente do traço reaproveitado era a
+última tela pousada, e com a cadeia ela é a semente da cadeia, que a sessão já tem.
+
+⚠️ **Custo:** a pousada da faixa inteira do plano fino custa `~25 s` em debug no
+gate (medido), logo o gate pousa o rectângulo das duas frentes — que é o que o
+produto pousa (o rectângulo que o Painter mudou).
+
+**Prova de mutação** (`muta_o_painter_na_peca.sh`, pré-voo **83/83** depois do
+`fmt`): a rede da lei e da costura **19 de 19** sangram com o controlo C1 a
+sobreviver (a K2 sangra desde a régua acima; a K9 teve de ser re-ancorada — o
+`fmt` partiu o tuplo do `larga` em três linhas), e as de PRODUTO na placa
+(`MUTA_PRODUTO=1`, W1 · W4 · V2) **3 de 3**. Pré-voo dos outros doze arneses da
+família: todos a casar uma vez.
+
+⏳ **O que fica, dito:** a bancada continua a não reproduzir a frente carregada do
+dono (§9.8); a régua da cura é a lei, com o controlo a mostrar o defeito que ela
+tira. O smoke do dono é a prova de ponta a ponta.

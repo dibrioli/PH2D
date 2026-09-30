@@ -24,6 +24,7 @@ fn pousa(base: [f32; 3], mistura: Mistura, k: f32) -> [f32; 3] {
             (base[1] + d[1] * k).clamp(0.0, 1.0),
             (base[2] + d[2] * k).clamp(0.0, 1.0),
         ],
+        Mistura::SemCor => base,
     }
 }
 
@@ -64,14 +65,40 @@ fn pousa_amostra(
         return false;
     }
     let (mistura, vazia) = sessao.leitura(tela, s);
-    if vazia && !fina.tocou(idx) {
+    if vazia && !fina.tocou(idx) && !na_cadeia(sessao, idx, mistura) {
         return false;
     }
     if !sessao.ve_se_no_pixel(mesh, fi, s, idx, p) {
         return false;
     }
     let k = keep_da_amostra(w, m);
-    fina.repinta(idx, |base| pousa(base, mistura, k))
+    fina.repinta(idx, |pre| {
+        pousa(base_de(sessao, idx, pre, p, mistura), mistura, k)
+    })
+}
+
+/// A amostra é de uma cadeia molhada? — então ela é repintada mesmo sem
+/// diferença: a água SAIU dali, e ela volta ao que era antes dela
+/// ([`super::BaseDaCadeia`]).
+fn na_cadeia(sessao: &TelaNaMalha, idx: u32, mistura: Mistura) -> bool {
+    matches!(mistura, Mistura::Diferenca(_)) && sessao.cadeia.contem(idx)
+}
+
+/// ⭐⭐ **A base da lei** — na tela semeada é a de ANTES da cadeia molhada,
+/// guardada na 1.ª vez que a cadeia a toca; no «over» e sem cor a comparar é
+/// a de antes do traço.
+fn base_de(
+    sessao: &mut TelaNaMalha,
+    idx: u32,
+    pre: [f32; 3],
+    p: [f32; 3],
+    mistura: Mistura,
+) -> [f32; 3] {
+    if matches!(mistura, Mistura::Diferenca(_)) {
+        sessao.cadeia.base(idx, pre, p)
+    } else {
+        pre
+    }
 }
 
 impl SculptStroke {
@@ -224,7 +251,7 @@ impl SculptStroke {
                         continue;
                     }
                     let (mistura, vazia) = sessao.leitura(tela, s);
-                    if vazia && !self.tocou_vertice(v) {
+                    if vazia && !self.tocou_vertice(v) && !na_cadeia(sessao, v, mistura) {
                         continue;
                     }
                     let p = mesh.positions()[v as usize];
@@ -232,7 +259,9 @@ impl SculptStroke {
                         continue;
                     }
                     let k = keep_da_amostra(&[1.0], &m[c..=c]);
-                    if self.repinta_vertice(mesh, v, |base| pousa(base, mistura, k)) {
+                    if self.repinta_vertice(mesh, v, |pre| {
+                        pousa(base_de(sessao, v, pre, p, mistura), mistura, k)
+                    }) {
                         mudaram += 1;
                         vertices.push(v);
                     }

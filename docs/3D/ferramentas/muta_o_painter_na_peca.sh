@@ -34,6 +34,7 @@ BK=$(mktemp -d)
 FICHEIROS=(
   crates/ph2d-sculpt3d/src/tela_na_malha.rs
   crates/ph2d-sculpt3d/src/tela_na_malha_pousa.rs
+  crates/ph2d-sculpt3d/src/tela_na_malha_cadeia.rs
   crates/ph2d-sculpt3d/src/tela_semente.rs
   crates/ph2d-tool-painter/src/tool/paint/mode_switch.rs
   crates/ph2d-sculpt3d/src/tinta_fina.rs
@@ -67,7 +68,10 @@ restore() {
 }
 trap restore EXIT
 
-LEI=(cargo test -p ph2d-sculpt3d --lib tela_)
+LEI=(cargo test -p ph2d-sculpt3d --lib tela_ -- --skip tela_na_malha_cadeia)
+# A base da CADEIA molhada (30/09): ~45 s por corrida em debug, logo população
+# própria — as mutações da LEI de antes não a pagam.
+CADEIA=(cargo test -p ph2d-sculpt3d --lib tela_na_malha_cadeia)
 PINTOR=(cargo test -p ph2d-tool-painter --lib screen_canvas)
 COSTURA=(cargo test -p ph2d-app-sculpt3d --lib painter_fiacao)
 PRODUTO=(cargo test -p ph2d-app-sculpt3d --lib
@@ -81,7 +85,7 @@ SEM_PLACA='no GPU adapter'
 corridos() { grep -oP 'test result: \w+\. \K[0-9]+(?= passed)|[0-9]+(?= failed)' | awk '{s+=$1}END{print s+0}'; }
 
 if [ -z "$SO_ANCORAS" ]; then
-  pops=(LEI PINTOR COSTURA)
+  pops=(LEI CADEIA PINTOR COSTURA)
   [ -n "$COM_PRODUTO" ] && pops+=(PRODUTO ESCORRE)
   for pop in "${pops[@]}"; do
     declare -n cmd="$pop"
@@ -294,8 +298,8 @@ muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
   'P4 o traço só aparece quando o dedo sobe'
 muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
   '    scene.painter_fecha();
-    let ultima' \
-  '    let ultima' \
+    // ⭐⭐ Papel molhado' \
+  '    // ⭐⭐ Papel molhado' \
   'P5 o traço nunca fecha'
 muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
   '        _ => {
@@ -317,13 +321,13 @@ muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
   '        if false {' \
   'P9 a costura nunca semeia a tela'
 muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
-  '            sessao.com_semente(retrato.clone());' \
-  '            let _ = retrato.clone();' \
+  '            sessao.com_semente(retrato);' \
+  '            let _ = retrato;' \
   'P10 a sessão não recebe o retrato: a lei continua o «over»'
 muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
   '            let _ = painter.take_screen_canvas();
-            sessao.com_semente(retrato.clone());' \
-  '            sessao.com_semente(retrato.clone());' \
+            sessao.com_semente(retrato);' \
+  '            sessao.com_semente(retrato);' \
   'P11 o retrato é pousado como mudança'
 muta COSTURA shells/desktop/src/input_dispatch/painter_canvas_input.rs \
   '            super::painter_canvas_mods::forward(painter, shift, ctrl, alt);
@@ -345,17 +349,25 @@ muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
   's.painter_raio_px = Some(painter.dab_footprint_px());' \
   'P13 a costura lê o raio do pincel de pintura para o anel'
 muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
-  '(Some(vista), Some(retrato)) if semeado && molhado =>' \
-  '(Some(vista), Some(retrato)) if semeado =>' \
+  '(Some(vista), Some(semente)) if molhado =>' \
+  '(Some(vista), Some(semente)) if true =>' \
   'P14 a tela fica depois de TODO traço semeado, molhado ou não'
 muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
-  '            scene.painter_guarda(vista, retrato);' \
-  '            let _ = (vista, retrato);' \
+  '            scene.painter_guarda(vista, semente, cadeia);' \
+  '            let _ = (vista, semente, cadeia);' \
   'P15 a tela molhada nunca é guardada'
 muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
-  '        self.painter_ultima = Some(Arc::clone(&f.rgba));' \
-  '' \
-  'P16 a semente guardada não é o que a peça recebeu'
+  '                sessao.com_semente(semente);
+                let _ = sessao.com_cadeia(cadeia);
+                return true;
+            }
+            // ⭐⭐ A vista MUDOU' \
+  '                sessao.com_semente(semente);
+                let _ = cadeia;
+                return true;
+            }
+            // ⭐⭐ A vista MUDOU' \
+  'P16 o traço reaproveitado não continua a cadeia: a água soma duas vezes'
 muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
   '                s.painter_molhada = None;' \
   '' \
@@ -372,8 +384,8 @@ muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
   '        }' \
   'P19 a pintura simples começa por cima da tela molhada'
 muta PRODUTO crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
-  '(Some(vista), Some(retrato)) if semeado && molhado =>' \
-  '(Some(vista), Some(retrato)) if false && semeado && molhado =>' \
+  '(Some(vista), Some(semente)) if molhado =>' \
+  '(Some(vista), Some(semente)) if false && molhado =>' \
   'W1 a tela limpa-se sempre: a aquarela seca a cada traço'
 muta PRODUTO crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
   '&& g.mesma_peca(objeto, edits)' \
@@ -384,7 +396,7 @@ muta PRODUTO crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
   'self.objeto == objeto' \
   'W3 a chave não vê a peça mudar (Ctrl+Z, outro pincel)'
 muta PRODUTO crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
-  '            if g.vista == *sessao.vista() {' \
+  '            if vista_velha == vista_nova {' \
   '            if true {' \
   'W4 a chave não vê a vista rodar'
 
@@ -458,28 +470,82 @@ muta COSTURA crates/ph2d-app-sculpt3d/src/input_down.rs \
   '' \
   'E13 um clique da escultura abre um traço por cima da pincelada aberta'
 
-# ── A MARCA CLARA DEPOIS DE RODAR (report do dono, 29/09) ──────────────────
-# A semente de um pen-down numa vista NOVA é o retrato da peça, e a tela só
-# guarda a base de antes debaixo da água.
+# ── A MARCA CLARA DEPOIS DE RODAR (reports do dono, 29/09 e 30/09) ────────
+# Numa cadeia molhada a base de cada amostra é a de ANTES da cadeia, e a
+# semente de um pen-down numa vista NOVA é a peça SEM a cadeia — que passa a
+# ser a base inteira da água do Painter.
+V_SEMENTE='            let semente = ph2d_sculpt3d::tela_semente::semente_antes_da_cadeia(
+                mesh,
+                self.stroke.tinta_fina.as_mut(),
+                &vista_nova,
+                &mut cadeia,
+            );'
+V_COMO_ESTA='            let semente = ph2d_sculpt3d::tela_semente::semente(
+                mesh,
+                self.stroke.tinta_fina.as_ref().map(|t| t.tinta()),
+                &vista_nova,
+            );'
 muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
-  '                sessao.com_semente(retrato);' \
-  '                sessao.com_semente(f.rgba.as_ref().clone());' \
-  'V1 depois de rodar a semente volta a ser a tela levada (censo)'
+  "$V_SEMENTE" "$V_COMO_ESTA" \
+  'V1 depois de rodar a semente é a peça COMO ESTÁ (censo)'
 muta ESCORRE crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
-  '                sessao.com_semente(retrato);' \
-  '                sessao.com_semente(f.rgba.as_ref().clone());' \
-  'V2 depois de rodar a semente volta a ser a tela levada (produto)'
+  "$V_SEMENTE" "$V_COMO_ESTA" \
+  'V2 depois de rodar a semente é a peça COMO ESTÁ (produto)'
 muta PINTOR crates/ph2d-tool-painter/src/tool/paint/wetpaint/reproject.rs \
-  '                if b == t {' \
-  '                if false {' \
-  'V3 o píxel seco guarda a base levada em vez do retrato'
-muta PINTOR crates/ph2d-tool-painter/src/tool/paint/wetpaint/reproject.rs \
-  '                if b == t {' \
-  '                if true {' \
-  'V4 debaixo da água a base passa a ser o retrato (a água pintada duas vezes)'
-# ⚠️ NOMEADA e fora do placar: ler o seco COM o véu (`wetpaint_rebase(base, true)`)
-#    SOBREVIVE — na fixture todo píxel húmido tem pigmento, e o véu só muda a
-#    leitura num papel húmido SEM tinta (água limpa), que ela não produz.
+  '        self.wetpaint_rebase(semente.to_vec(), veu);' \
+  '        let b = self.paint.wetpaint.session.as_ref().map(|s| s.base.as_ref().clone()).unwrap_or_default();
+        self.wetpaint_rebase(b, veu);' \
+  'V3 a base da água fica a de antes, sem viajar para a vista nova'
+muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \
+  '            cadeia.so_o_que_a_vista_levou(&vista_nova, &mapa);' \
+  '' \
+  'V4 rodar leva a cadeia inteira (censo)'
+muta CADEIA crates/ph2d-sculpt3d/src/tela_na_malha_pousa.rs \
+  '    matches!(mistura, Mistura::Diferenca(_)) && sessao.cadeia.contem(idx)' \
+  '    { let _ = (sessao, idx, mistura); false }' \
+  'K1 a água sai e a amostra da cadeia fica com ela'
+muta CADEIA crates/ph2d-sculpt3d/src/tela_na_malha_pousa.rs \
+  '    matches!(mistura, Mistura::Diferenca(_)) && sessao.cadeia.contem(idx)' \
+  '    { let _ = mistura; sessao.cadeia.contem(idx) }' \
+  'K2 um píxel apagado devolve a amostra à cor de antes da cadeia'
+muta CADEIA crates/ph2d-sculpt3d/src/tela_na_malha_pousa.rs \
+  '        sessao.cadeia.base(idx, pre, p)' \
+  '        { let _ = (idx, p); pre }' \
+  'K3 a base volta a ser a amostra: a frente de antes fica na peça'
+muta CADEIA crates/ph2d-sculpt3d/src/tela_na_malha_pousa.rs \
+  '    if matches!(mistura, Mistura::Diferenca(_)) {
+        sessao.cadeia.base' \
+  '    if true {
+        sessao.cadeia.base' \
+  'K4 sem cor a comparar, a amostra volta à cor de antes da CADEIA'
+muta CADEIA crates/ph2d-sculpt3d/src/tela_na_malha_cadeia.rs \
+  '            mapa[j * wu + i].is_some()' \
+  '            { let _ = (i, j, mapa); true }' \
+  'K5 rodar deixa na cadeia a tinta cuja água não viajou'
+muta CADEIA crates/ph2d-sculpt3d/src/tela_semente.rs \
+  '            let trocou = cadeia.troca(f.tinta_mut().amostras_mut());' \
+  '            let trocou = false;' \
+  'K6 o retrato sem a cadeia é o da peça como está (plano)'
+muta CADEIA crates/ph2d-sculpt3d/src/tela_semente.rs \
+  '            let trocou = cadeia.troca(mesh.colors_mut());' \
+  '            let trocou = false;' \
+  'K7 o retrato sem a cadeia é o da peça como está (vértices)'
+muta CADEIA crates/ph2d-sculpt3d/src/tela_semente.rs \
+  '            if trocou {
+                cadeia.troca(f.tinta_mut().amostras_mut());
+            }' \
+  '            let _ = trocou;' \
+  'K8 o retrato sem a cadeia deixa a peça sem a tinta dela'
+muta CADEIA crates/ph2d-sculpt3d/src/tela_na_malha.rs \
+  '            std::mem::replace(&mut self.cadeia, vazia),' \
+  '            vazia,' \
+  'K9 o fim do traço larga a cadeia'
+muta CADEIA crates/ph2d-sculpt3d/src/tela_na_malha.rs \
+  '        if cadeia.destino() != self.visivel.len() {
+            return false;
+        }' \
+  '' \
+  'K10 uma cadeia de outro destino entra'
 
 # ── O CONTROLO — tem de SOBREVIVER ──────────────────────────────────────────
 muta COSTURA crates/ph2d-app-sculpt3d/src/painter_na_malha.rs \

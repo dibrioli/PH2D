@@ -533,24 +533,24 @@ fn diag_o_segundo_traco_seca() {
     }
 }
 
-/// ⭐⭐⭐ **GATE — depois de rodar a vista, a semente do traço seguinte é o que
-/// a peça TEM** (report do dono, 29/09, com duas fotos: *«fica uma marca sem
-/// tinta no local onde a simulação reinicia — só acontece após rotacionar a
-/// view»*). A lei da diferença pousa `tela − semente`, logo tudo onde a semente
-/// diverge da peça fica na peça PARA SEMPRE: a semente era a tela LEVADA da
-/// vista de antes, que junto da frente da água mostra a borda escura dela um
-/// píxel ao lado de onde a peça a tem — e quando a água seguia, a peça ficava
-/// com uma linha clara onde a borda levada estava.
+/// ⭐⭐⭐ **GATE — depois de rodar a vista, a semente do traço seguinte é a peça
+/// SEM a água** (report do dono, 30/09, sobre a cura de 29/09: *«melhorou mas
+/// não curou perfeitamente»*). A lei pousa `antes + (tela − semente)`: com a
+/// semente a ser o retrato da peça COMO ESTÁ, a frente da água de antes —
+/// desenhada na peça com o detalhe da vista de antes — entrava na lei como
+/// resíduo (`amostra − retrato`) e ficava desenhada enquanto a água passava. A
+/// cura é a CADEIA: a base de cada amostra é a de antes da primeira pincelada
+/// molhada, e a semente é a peça sem a cadeia vista daqui.
 ///
-/// ⚠️ **A régua é a IGUALDADE AO BYTE com o retrato**, e não a linha na foto: a
-/// linha é esse desvio amplificado pela borda da frente, e esta bancada não
-/// reproduz a frente carregada do dono (a água dela assenta cedo). O que se
-/// pode afirmar com exactidão é a causa — *a semente de uma vista nova é a
-/// mesma que a de uma vista seca*, que é o caminho que o dono aprovou.
-/// ⚠️ Longe do 1.º carimbo do traço novo, que já pousou antes da leitura.
+/// ⚠️ **A régua da LEI vive na crate dela** (`tela_na_malha_cadeia_tests`, com a
+/// frente fina e a vista deslocada meio píxel — e o CONTROLO a ser a lei de
+/// 29/09); esta bancada não reproduz a frente carregada do dono. Aqui mede-se o
+/// FIO: o pen-down de uma vista nova entrega à sessão a peça sem a água e a
+/// cadeia do traço de antes. ⚠️ Longe do 1.º carimbo do traço novo, que já
+/// pousou antes da leitura.
 #[test]
 #[ignore = "precisa de adaptador e corre em tempo real"]
-fn depois_de_rodar_a_semente_e_o_que_a_peca_tem() {
+fn depois_de_rodar_a_semente_e_a_peca_sem_a_agua() {
     use ph2d_editor_core::tool::PointerPhase;
     let gpu = gpu_or_skip!();
     let mut s = cena_52(&gpu.device);
@@ -593,6 +593,10 @@ fn depois_de_rodar_a_semente_e_o_que_a_peca_tem() {
     let sessao = s.painter_tela.as_ref().expect("o traço novo está aberto");
     let v = *sessao.vista();
     let semente = sessao.semente().expect("a lei é a diferença").to_vec();
+    assert!(
+        !sessao.cadeia().is_empty(),
+        "a cadeia do traço de antes não chegou ao traço novo"
+    );
     let tinta = s.stroke.tinta_fina.as_ref().map(|t| t.tinta());
     let retrato = ph2d_sculpt3d::tela_semente::semente(s.mesh(), tinta, &v);
     assert_eq!(semente.len(), retrato.len());
@@ -601,31 +605,26 @@ fn depois_de_rodar_a_semente_e_o_que_a_peca_tem() {
         let (x, y) = ((i % w as usize) as f32, (i / w as usize) as f32);
         (x - dedo.0).hypot(y - dedo.1) > 120.0
     };
-    // O CONTROLO: a fixture tem a água levada à vista — há tinta do 1.º traço
-    // no retrato, longe do dedo (sem ela a igualdade seria a de uma peça crua).
-    let vermelhos = retrato
-        .as_chunks::<4>()
-        .0
-        .iter()
-        .enumerate()
-        .filter(|&(i, c)| longe(i) && c[3] == 255 && c[0] > c[1].saturating_add(60))
-        .count();
-    eprintln!("vermelhos à vista: {vermelhos}");
+    let vermelhos = |img: &[u8]| {
+        img.as_chunks::<4>()
+            .0
+            .iter()
+            .enumerate()
+            .filter(|&(i, c)| longe(i) && c[3] == 255 && c[0] > c[1].saturating_add(60))
+            .count()
+    };
+    // O CONTROLO: a peça TEM a tinta do 1.º traço à vista — sem ela a semente
+    // sem a água e a peça como está seriam a mesma imagem.
+    let na_peca = vermelhos(&retrato);
+    eprintln!("vermelhos na peça: {na_peca}");
     assert!(
-        vermelhos > 2000,
-        "a fixture não tem a tinta do 1.º traço à vista: {vermelhos}"
+        na_peca > 2000,
+        "a fixture não tem a tinta do 1.º traço à vista: {na_peca}"
     );
-    let diferentes = semente
-        .as_chunks::<4>()
-        .0
-        .iter()
-        .zip(retrato.as_chunks::<4>().0)
-        .enumerate()
-        .filter(|&(i, (a, b))| longe(i) && a != b)
-        .count();
+    let na_semente = vermelhos(&semente);
     assert_eq!(
-        diferentes, 0,
-        "a semente do traço depois de rodar não é o que a peça tem: {diferentes} píxeis \
-         diferem do retrato — cada um fica na peça para sempre (a marca clara do report)"
+        na_semente, 0,
+        "a semente do traço depois de rodar tem a água de antes: {na_semente} píxeis — a \
+         frente dela entra na lei como resíduo e fica na peça (a marca clara do report)"
     );
 }

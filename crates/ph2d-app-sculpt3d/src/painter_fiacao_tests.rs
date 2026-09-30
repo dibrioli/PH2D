@@ -130,7 +130,7 @@ fn elos() -> Vec<(
         (
             "painter_na_malha.rs",
             COSTURA,
-            "sessao.com_semente(retrato.clone());",
+            "sessao.com_semente(retrato);",
             1,
             "P10 a tela semeada é pousada como «over»: a peça inteira vira o retrato",
         ),
@@ -138,9 +138,10 @@ fn elos() -> Vec<(
             "painter_na_malha.rs",
             COSTURA,
             "let _ = painter.take_screen_canvas();",
-            2,
-            "P11 o retrato (ou a limpeza de uma tela molhada) é pousado como mudança: \
-             o quadro seguinte varre a peça inteira",
+            // 3 desde 30/09: o retrato, a limpeza e a tela levada a uma vista nova.
+            3,
+            "P11 o retrato (ou a limpeza de uma tela molhada, ou a tela levada a uma \
+             vista nova) é pousado como mudança: o quadro seguinte varre a peça inteira",
         ),
         (
             "painter_canvas_input.rs",
@@ -170,16 +171,17 @@ fn elos() -> Vec<(
         (
             "painter_na_malha.rs",
             COSTURA,
-            "scene.painter_guarda(vista, retrato);",
+            "scene.painter_guarda(vista, semente, cadeia);",
             1,
             "P15 a tela molhada nunca é guardada: o traço seguinte nasce em papel seco",
         ),
         (
             "painter_na_malha.rs",
             COSTURA,
-            "self.painter_ultima = Some(Arc::clone(&f.rgba));",
-            1,
-            "P16 a semente reaproveitada não é o que a peça recebeu: o traço anterior soma duas vezes",
+            "let _ = sessao.com_cadeia(cadeia);",
+            2,
+            "P16 o traço seguinte não continua a cadeia: a base volta a ser a amostra, e a água \
+             que ela já tem entra na lei como resíduo (a marca do report de 30/09)",
         ),
         (
             "painter_na_malha.rs",
@@ -255,14 +257,14 @@ fn elos() -> Vec<(
         (
             "painter_na_malha.rs",
             COSTURA,
-            "ph2d_sculpt3d::tela_origem::origem(mesh, sessao.vista(), &g.vista)",
+            "ph2d_sculpt3d::tela_origem::origem(mesh, &vista_nova, &vista_velha)",
             1,
             "P27 rodar e pintar: ninguém pergunta onde cada píxel estava, e a água morre",
         ),
         (
             "painter_na_malha.rs",
             COSTURA,
-            "painter.reproject_screen_canvas(&retrato, &mapa)",
+            "painter.reproject_screen_canvas(&semente, &mapa)",
             1,
             "P28 rodar e pintar: a tela é re-semeada da vista nova e a água do traço \
              anterior pára (report do dono, 29/09)",
@@ -270,7 +272,7 @@ fn elos() -> Vec<(
         (
             "painter_na_malha.rs",
             COSTURA,
-            "(Some(vista), Some(retrato)) if semeado && molhado =>",
+            "(Some(vista), Some(semente)) if molhado =>",
             1,
             "P14b a tela fica depois de TODO traço semeado, molhado ou não: o traço seco \
              reaproveita uma tela que já não descreve a peça",
@@ -278,11 +280,19 @@ fn elos() -> Vec<(
         (
             "painter_na_malha.rs",
             COSTURA,
-            "sessao.com_semente(retrato);",
+            "ph2d_sculpt3d::tela_semente::semente_antes_da_cadeia(",
             1,
-            "P29 depois de rodar a semente volta a ser a tela levada, e cada píxel dela \
-             que a peça não tem fica na peça para sempre — a marca clara (report do \
-             dono, 29/09)",
+            "P29 depois de rodar a semente é a peça COMO ESTÁ: a frente de antes, \
+             amostrada nos píxeis de agora, fica na peça enquanto a água passa — a \
+             marca clara (reports do dono, 29/09 e 30/09)",
+        ),
+        (
+            "painter_na_malha.rs",
+            COSTURA,
+            "cadeia.so_o_que_a_vista_levou(&vista_nova, &mapa);",
+            1,
+            "P30 rodar leva na cadeia a tinta de um sítio cuja água não viajou: a amostra \
+             volta à cor de antes da cadeia e a tinta que ali pousou é APAGADA",
         ),
     ]
 }
@@ -291,7 +301,7 @@ fn elos() -> Vec<(
 #[test]
 fn a_costura_do_painter_esta_ligada_nas_duas_pontas() {
     let elos = elos();
-    assert!(elos.len() >= 30, "o piso de população: {} elos", elos.len());
+    assert!(elos.len() >= 31, "o piso de população: {} elos", elos.len());
     for (ficheiro, texto, agulha, esperado, parte) in elos {
         let n = sem_prosa(texto).matches(agulha).count();
         assert_eq!(

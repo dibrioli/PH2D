@@ -105,6 +105,49 @@ pub fn semente(mesh: &Mesh, tinta: Option<&Tinta>, vista: &Vista) -> Vec<u8> {
     rgba
 }
 
+/// ⭐⭐ **O retrato da peça SEM a cadeia molhada** — cada amostra que a cadeia
+/// já tocou entra com a cor de ANTES dela ([`crate::tela_na_malha::BaseDaCadeia`]).
+/// É a semente de um traço que continua a cadeia noutra vista: a tela da água
+/// é o pigmento por cima DESTE retrato, e a lei da diferença soma-o à base de
+/// antes — nunca à amostra que já o tem.
+///
+/// ⚠️ A troca é feita no destino e desfeita antes de voltar (cada troca é a sua
+/// própria inversa), logo nem o plano nem a malha mudam — e a janela do
+/// desfazer e a do upload não são tocadas. Uma cadeia de outro destino não é
+/// trocada: o retrato é o da peça como está.
+#[must_use]
+pub fn semente_antes_da_cadeia(
+    mesh: &mut Mesh,
+    fina: Option<&mut crate::tinta_fina::TintaDoTraco>,
+    vista: &Vista,
+    cadeia: &mut crate::tela_na_malha::BaseDaCadeia,
+) -> Vec<u8> {
+    if cadeia.is_empty() {
+        return semente(mesh, fina.as_deref().map(|f| f.tinta()), vista);
+    }
+    match fina {
+        Some(f) => {
+            let trocou = cadeia.troca(f.tinta_mut().amostras_mut());
+            let r = semente(mesh, Some(f.tinta()), vista);
+            if trocou {
+                cadeia.troca(f.tinta_mut().amostras_mut());
+            }
+            r
+        }
+        // Sem cor por vértice a cadeia não pintou nada: o retrato é o de sempre
+        // (e `colors_mut` materializaria o plano só para o ler).
+        None if mesh.colors().is_none() => semente(mesh, None, vista),
+        None => {
+            let trocou = cadeia.troca(mesh.colors_mut());
+            let r = semente(mesh, None, vista);
+            if trocou {
+                cadeia.troca(mesh.colors_mut());
+            }
+            r
+        }
+    }
+}
+
 /// Um triângulo de ecrã `[(ponto, 1/w); 3]` para dentro da tela: `pinta(píxel,
 /// baricêntricas corrigidas)` em cada centro de píxel que ganha o teste de
 /// profundidade. O último a ganhar um píxel é o mais perto, logo quem escreve

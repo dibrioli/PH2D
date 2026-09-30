@@ -1015,6 +1015,9 @@ larg = "larg"
 # citação seria reescrever o que ele disse.
 strenght = "strenght"
 Strenght = "Strenght"
+# `line/components`, plano 28 W6–W7 (2026-09-30): pt «resistências», sem acento em identificador —
+# a lista `Resistances` do `Health` (os tipos de dano) e os gates dela.
+resistencias = "resistencias"
 
 [files]
 extend-exclude = [
@@ -1081,4 +1084,9 @@ extend-exclude = [
     # Slot 2 (bgremoval) — mantida durante a migração TG-B; conteúdo agora
     # vive no crate isolado pós-ADR-0040.
     "crates/ph2d-tool-bgremoval/**",
+    # SAÍDA VERBATIM de um oráculo corrido (o addon MIT *Health, HitBoxes, HurtBoxes* do Godot,
+    # plano 28 W6): o `conver_type` é a grafia do PRÓPRIO addon no `to_string` do
+    # `HealthModifier`. Corrigir a fixture seria reescrever o que o alvo imprimiu, e isentar a
+    # palavra `conver` esconderia um erro real no repo inteiro — por isso exclui-se o FICHEIRO.
+    "docs/Components/ferramentas/godot_health_tipos/saida.txt",
 ]

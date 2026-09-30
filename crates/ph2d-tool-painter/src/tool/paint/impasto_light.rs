@@ -140,6 +140,14 @@ impl PainterTool {
     /// Cheap enough to call per frame — the height map is empty for every document nobody has sculpted.
     #[must_use]
     pub fn impasto_visible(&self) -> bool {
+        // ⛔⛔ **Na tela da vista 3D não há luz 2D** (`docs/3D/29`, D4): ali o
+        //   relevo é da PEÇA, e quem o acende é a luz da cena 3D (decisão do
+        //   dono, 24/09). Assar a luz 2D na cor faria a peça acender duas vezes
+        //   a mesma espessura — uma com a luz do Painter pintada na tinta, outra
+        //   com a da cena. A espessura sai crua pela `layer_height_px_in`.
+        if self.on_screen_canvas() {
+            return false;
+        }
         // ⚠️ **A doação é a SEGUNDA razão para o passe existir, e ela não passa pelo `impasto_show`.**
         //
         // Aquele interruptor pergunta *"mostrar o relevo da TINTA?"*, e a forma de uma escultura não é

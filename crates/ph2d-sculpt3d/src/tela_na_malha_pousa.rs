@@ -4,7 +4,7 @@
 
 use ph2d_mesh::Mesh;
 
-use super::{Mistura, Rectangulo, Tela, TelaNaMalha, combina};
+use super::{Mistura, Rectangulo, Relevo, Tela, TelaNaMalha, combina};
 use crate::SculptStroke;
 use crate::preenche::keep_da_amostra;
 
@@ -46,6 +46,7 @@ fn pousa_amostra(
     fina: &mut crate::tinta_fina::TintaDoTraco,
     mesh: &Mesh,
     tela: &Tela<'_>,
+    relevo: Option<&Relevo<'_>>,
     caixa: [f32; 4],
     fi: u32,
     cantos: &[u32],
@@ -65,16 +66,29 @@ fn pousa_amostra(
         return false;
     }
     let (mistura, vazia) = sessao.leitura(tela, s);
-    if vazia && !fina.tocou(idx) && !na_cadeia(sessao, idx, mistura) {
+    // ⭐ A ESPESSURA conta como tinta: um verbo de relevo que não muda a cor
+    //   (o esculpir do impasto) também tem de chegar à peça.
+    let hp = relevo.map_or(0.0, |r| r.em(s[0], s[1]));
+    if vazia && hp == 0.0 && !fina.tocou(idx) && !na_cadeia(sessao, idx, mistura) {
         return false;
     }
     if !sessao.ve_se_no_pixel(mesh, fi, s, idx, p) {
         return false;
     }
     let k = keep_da_amostra(w, m);
-    fina.repinta(idx, |pre| {
+    let cor = fina.repinta(idx, |pre| {
         pousa(base_de(sessao, idx, pre, p, mistura), mistura, k)
-    })
+    });
+    // ⭐⭐ **`nova = antes + altura`** (`docs/3D/29`, D3), a altura convertida
+    //   de píxeis para a peça no próprio ponto e pesada pela máscara como a
+    //   cor. ⚠️ Sem relevo na tela nem se pergunta — o plano não ganha um
+    //   vector de alturas por uma pincelada de cor.
+    let alt = relevo.is_some()
+        && sessao
+            .vista
+            .mundo_por_pixel(p)
+            .is_some_and(|wpp| fina.eleva(idx, |antes| antes + hp * k * wpp));
+    cor | alt
 }
 
 /// A amostra é de uma cadeia molhada? — então ela é repintada mesmo sem
@@ -117,6 +131,20 @@ impl SculptStroke {
         tela: &Tela<'_>,
         r: Rectangulo,
     ) -> (Vec<u32>, usize) {
+        self.pousa_a_tela_com_relevo(mesh, sessao, tela, None, r)
+    }
+
+    /// ⭐⭐ A mesma pousada com a ESPESSURA do impasto (`docs/3D/29`) — só no
+    /// plano de tinta fina: a cor por vértice não tem onde a guardar (D1), e
+    /// ali o `relevo` é ignorado.
+    pub fn pousa_a_tela_com_relevo(
+        &mut self,
+        mesh: &mut Mesh,
+        sessao: &mut TelaNaMalha,
+        tela: &Tela<'_>,
+        relevo: Option<&Relevo<'_>>,
+        r: Rectangulo,
+    ) -> (Vec<u32>, usize) {
         // ⚠️ **Um píxel de folga à volta**: a amostragem é bilinear, logo uma
         // amostra até um píxel fora do rectângulo mudado lê um píxel de dentro.
         let caixa = [
@@ -154,6 +182,7 @@ impl SculptStroke {
                             fina,
                             mesh,
                             tela,
+                            relevo,
                             caixa,
                             fi,
                             cantos,
@@ -220,8 +249,8 @@ impl SculptStroke {
                                             j as f32 / ld,
                                         );
                                         if pousa_amostra(
-                                            sessao, fina, mesh, tela, caixa, fi, cantos, idx, &w4,
-                                            &m,
+                                            sessao, fina, mesh, tela, relevo, caixa, fi, cantos,
+                                            idx, &w4, &m,
                                         ) {
                                             mudaram += 1;
                                         }

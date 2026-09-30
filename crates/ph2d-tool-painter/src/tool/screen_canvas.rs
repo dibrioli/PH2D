@@ -182,7 +182,43 @@ impl PainterTool {
         }
         let (rgba, w, h) = self.drain_preview_arc()?;
         let rect = self.take_preview_upload_bbox();
-        Some(ScreenCanvasFrame { rgba, w, h, rect })
+        // ⭐ **A espessura vai no MESMO quadro que a cor** (`docs/3D/29`) — uma
+        //   drenagem, uma verdade: quem pousa lê as duas do mesmo instante.
+        //   ⚠️ A janela é o rectângulo com `MARGEM_DO_RELEVO` à volta: a
+        //   pousada aceita um píxel fora do rectângulo e amostra bilinear, logo
+        //   lê até dois píxeis além dele.
+        let window = rect.map_or((0, 0, w, h), |(x, y, rw, rh)| {
+            let x0 = x.saturating_sub(MARGEM_DO_RELEVO);
+            let y0 = y.saturating_sub(MARGEM_DO_RELEVO);
+            let x1 = (x + rw + MARGEM_DO_RELEVO).min(w);
+            let y1 = (y + rh + MARGEM_DO_RELEVO).min(h);
+            (x0, y0, x1.saturating_sub(x0), y1.saturating_sub(y0))
+        });
+        let relief = self
+            .screen_canvas_heights_in(window)
+            .map(|px| ScreenCanvasRelief { px, window });
+        Some(ScreenCanvasFrame {
+            rgba,
+            w,
+            h,
+            rect,
+            relief,
+        })
+    }
+
+    /// ⭐⭐ **A ESPESSURA da tela numa janela, em píxeis** — o relevo do
+    /// impasto que a escultura pousa na peça (`docs/3D/29`). A cor que a
+    /// [`Self::take_screen_canvas`] entrega sai SEM a luz 2D (ver o
+    /// `impasto_visible`); a espessura sai daqui, crua.
+    ///
+    /// `None` fora da tela da vista ou quando nada nela tem relevo.
+    #[must_use]
+    pub fn screen_canvas_heights_in(&self, janela: (u32, u32, u32, u32)) -> Option<Vec<f32>> {
+        if !self.on_screen_canvas() {
+            return None;
+        }
+        let id = self.layers.active()?;
+        self.layer_height_px_in(id, janela)
     }
 }
 
@@ -196,7 +232,22 @@ pub struct ScreenCanvasFrame {
     pub h: u32,
     /// `(x, y, largura, altura)` do que mudou; `None` = tudo.
     pub rect: Option<(u32, u32, u32, u32)>,
+    /// ⭐ A espessura do impasto à volta do `rect` (`docs/3D/29`); `None` sem
+    /// relevo nenhum na tela.
+    pub relief: Option<ScreenCanvasRelief>,
 }
+
+/// A espessura da tela numa janela — em PÍXEIS, linha a linha.
+pub struct ScreenCanvasRelief {
+    /// `window.2 × window.3` alturas.
+    pub px: Vec<f32>,
+    /// `(x, y, largura, altura)` da janela na tela.
+    pub window: (u32, u32, u32, u32),
+}
+
+/// Quantos píxeis a janela da espessura estende o rectângulo mudado — um da
+/// folga da pousada, mais um do vizinho bilinear.
+const MARGEM_DO_RELEVO: u32 = 2;
 
 fn transparente(w: u32, h: u32) -> Vec<u8> {
     vec![0; (w as usize) * (h as usize) * 4]

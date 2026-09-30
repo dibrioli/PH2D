@@ -580,3 +580,9 @@ mod pousa;
 #[path = "tela_na_malha_cadeia.rs"]
 mod cadeia;
 pub use cadeia::BaseDaCadeia;
+
+// ⭐ A ESPESSURA do impasto (`docs/3D/29`) — a janela de alturas e a conversão
+// de píxel para a peça.
+#[path = "tela_relevo.rs"]
+mod relevo;
+pub use relevo::Relevo;

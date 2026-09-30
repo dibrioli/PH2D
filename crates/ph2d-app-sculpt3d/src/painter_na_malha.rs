@@ -463,9 +463,21 @@ impl Sculpt3dScene {
         let Some(o) = self.objects.get_mut(active) else {
             return;
         };
-        let (vertices, _) = self
-            .stroke
-            .pousa_a_tela(o.stack.mesh_mut(), sessao, &tela, rect);
+        // ⭐ A ESPESSURA do impasto vai no mesmo quadro (`docs/3D/29`).
+        let relevo = f
+            .relief
+            .as_ref()
+            .map(|r| ph2d_sculpt3d::tela_na_malha::Relevo {
+                px: &r.px,
+                janela: [r.window.0, r.window.1, r.window.2, r.window.3],
+            });
+        let (vertices, _) = self.stroke.pousa_a_tela_com_relevo(
+            o.stack.mesh_mut(),
+            sessao,
+            &tela,
+            relevo.as_ref(),
+            rect,
+        );
         if !vertices.is_empty() {
             Self::mesh_changed(&mut o.dirty, &mut self.edits, &vertices);
         }

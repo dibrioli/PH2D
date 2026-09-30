@@ -20,6 +20,7 @@ pub mod hierarchy;
 mod hover;
 pub mod key;
 pub mod keymap;
+pub mod note_drag;
 mod number_input;
 mod pointer;
 mod pointer_down;

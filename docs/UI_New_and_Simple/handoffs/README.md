@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**15 arquivos** · **6** citados pelo `CLAUDE.md` (marcados **◆**) · **15** são handoffs (registro **morto**).
+**16 arquivos** · **6** citados pelo `CLAUDE.md` (marcados **◆**) · **16** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -30,6 +30,7 @@
 | 2026-09-25 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-25_A_LINHA.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-25_A_LINHA.md) | ⚠️ handoff (morto) | `line/UIUX` · 2026-09-25 · **HANDOFF DO INTEGRADOR — a linha inteira desde `395da6a55`** |
 | 2026-09-29 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-29_A_ROLAGEM.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-29_A_ROLAGEM.md) | ⚠️ handoff (morto) | `line/UIUX` · 2026-09-29 · **HANDOFF DO INTEGRADOR — a rolagem única, com inércia** |
 | 2026-09-30 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-30_OS_CARTOES.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-30_OS_CARTOES.md) | ⚠️ handoff (morto) | Handoff de integração — `line/UIUX`, 2026-09-30 — OS CARTÕES DE SECÇÃO, A PEGA E O TEMA POR SECÇÃO |
+| 2026-09-30 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-30_TEMAS_NOTAS_FANTASMA.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-30_TEMAS_NOTAS_FANTASMA.md) | ⚠️ handoff (morto) | Handoff de integração — `line/UIUX`, 2026-09-30 — OS QUATRO TEMAS COLORIDOS, AS CORES VIVAS, O FANTASMA DO ARR… |
 
 ---
 

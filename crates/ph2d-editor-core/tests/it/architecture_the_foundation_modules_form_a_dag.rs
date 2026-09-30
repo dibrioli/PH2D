@@ -54,7 +54,10 @@ const ARESTAS_TOLERADAS: &[(&str, &str, usize, &str)] = &[
     (
         "widget",
         "interaction",
-        46,
+        // 46 → 44 (2026-09-30): a galeria juntou num `use` só as importações que repetia a meio
+        // do ficheiro, e as notas trouxeram UMA aresta nova (o fantasma lê a mesma lei de queda
+        // que o `pointer_up` grava) dentro do `use` que já existia.
+        44,
         "o SUBSTRATO que os pintores recebem — `HitIndex`, `WidgetStore`, `InteractiveState`, \
          `WidgetEvent`. Cura: o estado de widget (os `*State` + `InteractiveState` + `HitIndex` + \
          `WidgetStore`) desce para um módulo ABAIXO dos pintores, e o `dispatch` fica em cima.",

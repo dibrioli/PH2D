@@ -20,7 +20,6 @@ pub(crate) fn push_vida_sections<'a>(
     store: &'a WidgetStore,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     header_h: f32,
     info: Option<&'a InspectorVidaInfo>,
 ) {
@@ -34,9 +33,7 @@ pub(crate) fn push_vida_sections<'a>(
             store,
             inner_x,
             inner_w,
-            body_top_y,
             header_h,
-            &[],
             move |c, t, y| {
                 crate::sections::vida::paint_health_section(
                     c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, info, h,
@@ -51,9 +48,7 @@ pub(crate) fn push_vida_sections<'a>(
             store,
             inner_x,
             inner_w,
-            body_top_y,
             header_h,
-            &[],
             move |c, t, y| {
                 crate::sections::vida_dano::paint_damage_section(
                     c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, info, d,
@@ -70,9 +65,7 @@ pub(crate) fn push_vida_sections<'a>(
             store,
             inner_x,
             inner_w,
-            body_top_y,
             header_h,
-            &[],
             move |c, t, y| {
                 crate::sections::vida_barra::paint_health_bar_section(
                     c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, info, b,

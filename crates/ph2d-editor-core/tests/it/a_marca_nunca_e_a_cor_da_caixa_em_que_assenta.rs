@@ -148,18 +148,22 @@ fn e_o_pintor_da_linha_de_marcar_usa_essa_porta() {
             theme,
         );
         let tintas = scene.inner().encoding().draw_data.clone();
-        let argb = |c: Color| {
-            (u32::from(c.a) << 24) | (u32::from(c.r) << 16) | (u32::from(c.g) << 8) | u32::from(c.b)
+        // ⛔ A ORDEM dos bytes é a do `draw_data` do Vello (`[r, g, b, a]` little-endian ⇒
+        //    `a<<24 | b<<16 | g<<8 | r`), NÃO `argb`. Escrita como `argb` esta régua só casava nos
+        //    temas cinzentos (R == B) e reprovou no 1.º tema COLORIDO (`PlumberRed`, 2026-09-30)
+        //    com a caixa pintada à vista: `FF090448` na cena contra `FF480409` procurado.
+        let empacota = |c: Color| {
+            (u32::from(c.a) << 24) | (u32::from(c.b) << 16) | (u32::from(c.g) << 8) | u32::from(c.r)
         };
-        let caixa = argb(chrome.field_fill);
-        let marca = argb(on_field_fill(theme, Feel::Rest, ColorToken::Bg1));
+        let caixa = empacota(chrome.field_fill);
+        let marca = empacota(on_field_fill(theme, Feel::Rest, ColorToken::Bg1));
         assert!(
             caixa != marca,
             "{theme:?}: a porta devolve a cor da caixa — o teste de cima ja' o disse"
         );
         assert!(
             tintas.contains(&caixa),
-            "{theme:?}: a CAIXA do campo nao foi pintada ({tintas:08X?}) — esta regua deixou de \
+            "{theme:?}: a CAIXA do campo {caixa:08X} nao foi pintada ({tintas:08X?}) — esta regua deixou de \
              medir uma linha de marcar de formulario"
         );
         assert!(

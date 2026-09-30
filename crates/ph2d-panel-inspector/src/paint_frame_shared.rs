@@ -6,24 +6,18 @@
 //! diferentes*, e extrair para o mesmo ficheiro curaria um e estouraria o outro — a lição que o
 //! par de PRECISAO já pagou em 2026-08-20.
 //!
-//! Elas andam juntas porque partilham a mesma porta — **qualquer entidade com `Transform`** — e
-//! porque manter os quatro slots de nota (6..9) adjacentes é o que os torna obviamente distintos.
+//! Elas andam juntas porque partilham a mesma porta — **qualquer entidade com `Transform`**
+//! (as notas deixaram de ter ranhura por posição em 2026-09-30: cada uma guarda a SECÇÃO a que pertence).
 
 use ph2d_editor_core::ids;
-use ph2d_editor_core::interaction::{NoteData, WidgetStore};
+use ph2d_editor_core::interaction::WidgetStore;
 
 use crate::plano::{Plano, emoldurada};
-
-/// A fatia de notas de uma secção.
-fn slot(notes: &[Vec<(usize, NoteData)>], i: usize) -> &[(usize, NoteData)] {
-    notes.get(i).map_or(&[][..], |v| &v[..])
-}
 
 /// ⭐⭐ **As TRÊS seções que TODO objecto tem** — §1 Name, §8 Visibility e §2 Transform.
 ///
 /// ⚠️ **Elas andam juntas por uma PORTA, como as quatro compartilhadas abaixo:** são as únicas que
-/// aparecem para *qualquer* entidade seleccionada, e os três slots de nota (`0..2`) ficam
-/// adjacentes de propósito.
+/// aparecem para *qualquer* entidade seleccionada.
 ///
 /// ⚠️ **Saíram do orquestrador em 2026-09-09**, quando a secção SIGNAL ACTIONS o levou a `253`
 /// contra uma catraca de `250`. ⛔ **A catraca só desce**, e levar só a secção nova devolveria o
@@ -42,49 +36,35 @@ pub(crate) fn push_core_sections<'a>(
     store: &'a WidgetStore,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     row_h: f32,
     header_h: f32,
     name_present: bool,
     visibility: bool,
     transform: bool,
-    notes: &'a [Vec<(usize, NoteData)>],
 ) {
-    for (presente, id, banda, idx) in [
-        (name_present, ids::INSP_LIVE_NAME_SECTION, row_h, 0usize),
-        (visibility, ids::INSP_LIVE_VISIBILITY_SECTION, row_h, 1),
-        (transform, ids::INSP_LIVE_TRANSFORM_SECTION, header_h, 2),
+    for (presente, id, banda) in [
+        (name_present, ids::INSP_LIVE_NAME_SECTION, row_h),
+        (visibility, ids::INSP_LIVE_VISIBILITY_SECTION, row_h),
+        (transform, ids::INSP_LIVE_TRANSFORM_SECTION, header_h),
     ] {
         if !presente {
             continue;
         }
         // ⚠️ **O corpo sai de um `match` sobre o ID**, e não de três blocos copiados: as três
         // molduras são idênticas, e o que muda é UMA chamada.
-        emoldurada(
-            plano,
-            id,
-            store,
-            inner_x,
-            inner_w,
-            body_top_y,
-            banda,
-            slot(notes, idx),
-            move |c, t, y| {
-                if id == ids::INSP_LIVE_NAME_SECTION {
-                    crate::sections::paint_entity_name_row(
-                        c.scene, c.text, t, c.hit, store, inner_x, inner_w, y,
-                    )
-                } else if id == ids::INSP_LIVE_VISIBILITY_SECTION {
-                    crate::paint::visibility_body(
-                        c.scene, c.text, t, c.hit, store, inner_x, inner_w, y,
-                    )
-                } else {
-                    crate::sections::paint_transform_section(
-                        c.scene, c.text, t, c.hit, store, inner_x, inner_w, y,
-                    )
-                }
-            },
-        );
+        emoldurada(plano, id, store, inner_x, inner_w, banda, move |c, t, y| {
+            if id == ids::INSP_LIVE_NAME_SECTION {
+                crate::sections::paint_entity_name_row(
+                    c.scene, c.text, t, c.hit, store, inner_x, inner_w, y,
+                )
+            } else if id == ids::INSP_LIVE_VISIBILITY_SECTION {
+                crate::paint::visibility_body(c.scene, c.text, t, c.hit, store, inner_x, inner_w, y)
+            } else {
+                crate::sections::paint_transform_section(
+                    c.scene, c.text, t, c.hit, store, inner_x, inner_w, y,
+                )
+            }
+        });
     }
 }
 
@@ -92,9 +72,7 @@ pub(crate) fn push_core_sections<'a>(
 ///
 /// Levantadas do `paint_inspector` pelo mesmo motivo da família da física: aquele orquestrador
 /// está numa tolerância de LOC que **só encolhe**, e a §5 (2026-08-21) empurrou-o para 436 contra
-/// 414. As quatro vivem juntas porque partilham a mesma porta — qualquer entidade com `Transform`
-/// — e porque manter os seus quatro slots de nota (6..9) adjacentes é o que os torna obviamente
-/// distintos.
+/// 414. As quatro vivem juntas porque partilham a mesma porta — qualquer entidade com `Transform`.
 ///
 /// Devolve o novo `y`.
 #[allow(clippy::too_many_arguments)]
@@ -103,13 +81,11 @@ pub(crate) fn push_shared_sections<'a>(
     store: &'a WidgetStore,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     header_h: f32,
     slice: Option<&'a ph2d_editor_core::screens::hero::InspectorSliceInfo>,
     ordering: Option<&'a ph2d_editor_core::screens::hero::InspectorOrderingInfo>,
     sampling: Option<&'a ph2d_editor_core::screens::hero::InspectorSamplingInfo>,
     blend: Option<&'a ph2d_editor_core::screens::hero::InspectorBlendInfo>,
-    notes: &'a [Vec<(usize, NoteData)>],
 ) {
     // §5 9-Slice — LOGO A SEGUIR à Sprite Sheet, que é a vizinhança que a explica. ⚠️ Aparece
     // para toda sprite, COM ou SEM o componente — sem ele mostra só o «+ Add 9-Slice».
@@ -120,9 +96,7 @@ pub(crate) fn push_shared_sections<'a>(
             store,
             inner_x,
             inner_w,
-            body_top_y,
             header_h,
-            slot(notes, 6),
             move |c, t, y| {
                 crate::sections::slice_nine::paint_slice_section(
                     c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, sl,
@@ -138,9 +112,7 @@ pub(crate) fn push_shared_sections<'a>(
             store,
             inner_x,
             inner_w,
-            body_top_y,
             header_h,
-            slot(notes, 7),
             move |c, t, y| {
                 crate::sections::paint_ordering_section(
                     c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, ord,
@@ -156,9 +128,7 @@ pub(crate) fn push_shared_sections<'a>(
             store,
             inner_x,
             inner_w,
-            body_top_y,
             header_h,
-            slot(notes, 8),
             move |c, t, y| {
                 crate::sections::paint_sampling_section(
                     c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, samp,
@@ -174,9 +144,7 @@ pub(crate) fn push_shared_sections<'a>(
             store,
             inner_x,
             inner_w,
-            body_top_y,
             header_h,
-            slot(notes, 9),
             move |c, t, y| {
                 crate::sections::paint_material_blend_section(
                     c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, bl,
@@ -198,11 +166,9 @@ pub(crate) fn push_anchor_section<'a>(
     store: &'a WidgetStore,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     header_h: f32,
     anchor: Option<&'a ph2d_editor_core::screens::hero::InspectorAnchorInfo>,
     selected: &mut usize,
-    notes: &'a [Vec<(usize, NoteData)>],
 ) {
     let Some(anch) = anchor else {
         // Sem snapshot não há ficha aberta — e o gizmo do canvas tem de saber disso, senão ele
@@ -222,9 +188,7 @@ pub(crate) fn push_anchor_section<'a>(
         store,
         inner_x,
         inner_w,
-        body_top_y,
         header_h,
-        slot(notes, 14),
         move |c, t, y| {
             crate::sections::anchors::paint_anchors_section(
                 c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, anch, sel,
@@ -245,18 +209,16 @@ pub(crate) fn push_sprite_sections<'a>(
     store: &'a WidgetStore,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     header_h: f32,
     sprite: Option<&'a ph2d_editor_core::screens::hero::InspectorSpriteInfo>,
-    notes: &'a [Vec<(usize, NoteData)>],
 ) {
     let Some(info) = sprite else {
         return;
     };
-    for (section_id, note_slot, which) in [
-        (ids::INSP_LIVE_RENDER_SECTION, 3usize, 0u8),
-        (ids::INSP_LIVE_COLOR_SECTION, 4, 1),
-        (ids::INSP_LIVE_SHEET_SECTION, 5, 2),
+    for (section_id, which) in [
+        (ids::INSP_LIVE_RENDER_SECTION, 0u8),
+        (ids::INSP_LIVE_COLOR_SECTION, 1),
+        (ids::INSP_LIVE_SHEET_SECTION, 2),
     ] {
         emoldurada(
             plano,
@@ -264,9 +226,7 @@ pub(crate) fn push_sprite_sections<'a>(
             store,
             inner_x,
             inner_w,
-            body_top_y,
             header_h,
-            slot(notes, note_slot),
             move |c, t, y| match which {
                 0 => crate::sections::paint_render_source_section(
                     c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, info,

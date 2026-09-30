@@ -85,6 +85,11 @@ const fn theme_from_u8(b: u8) -> Theme {
         5 => Theme::Gray,
         6 => Theme::Light,
         7 => Theme::Oled,
+        // Os quatro coloridos (2026-09-30), também no FIM — nenhum byte anterior se mexe.
+        8 => Theme::PlumberRed,
+        9 => Theme::PlumberGreen,
+        10 => Theme::Sunset,
+        11 => Theme::Candy,
         _ => Theme::Forge,
     }
 }

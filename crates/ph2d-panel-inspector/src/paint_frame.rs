@@ -21,28 +21,22 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{Radius, Spacing, StrokeToken};
 use ph2d_vector::VectorScene;
 
-use ph2d_editor_core::interaction::NoteData;
 use ph2d_editor_core::paint::{paint_text_block, resolve};
-use ph2d_editor_core::widget::showcase::LAST_SECTION_TOPS_Y;
 use ph2d_tokens::{ColorToken, TypeToken};
 
 use crate::state::{set_last_inspector_content_h, set_last_inspector_visible_h};
-use ph2d_editor_core::widget::panel_chrome::HIGHLIGHTER_RGBA;
-use ph2d_editor_core::widget::showcase::{paint_one_note, push_section_top_y};
+use ph2d_editor_core::widget::showcase::paint_one_note;
 
 /// Record where a section starts and make its header clickable.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn begin_section(
-    section_tops_y: &mut Vec<f32>,
     hit_index: &mut HitIndex,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     y_before: f32,
     section_id: NodeId,
     header_h: f32,
 ) {
-    push_section_top_y(section_tops_y, y_before - body_top_y);
     let head = Rect::new(inner_x, y_before, inner_w, header_h);
     hit_index.register(section_id, head);
     // ⭐⭐ **A PEGA regista-se AQUI, e não em cada secção** (2026-09-29): as quarenta molduras
@@ -59,7 +53,11 @@ pub(crate) fn begin_section(
     }
 }
 
-/// As notas que não estão ancoradas a seção nenhuma — pintadas no fim do corpo.
+/// As notas que não estão em secção nenhuma À VISTA — pintadas no fim do corpo.
+///
+/// ⭐ «À vista» lê-se no hit-index DESTE quadro: toda secção pintada registou o cabeçalho no
+/// `begin_section`. ⚠️ Uma nota cuja secção não existe neste objecto (o artista pô-la na Física de
+/// outro objecto) cai aqui em vez de desaparecer — até 2026-09-30 ela sumia em silêncio.
 ///
 /// ⚠️ Saiu do `paint_inspector` por CAP: ela estava exactamente na catraca (387) e a §12 não
 /// cabia. Este bloco é o candidato óbvio — *não olha para seção nenhuma*.
@@ -72,20 +70,26 @@ pub(crate) fn paint_trailing_notes(
     inner_x: f32,
     inner_w: f32,
     y: &mut f32,
-    trailing: &[(usize, NoteData)],
 ) {
-    for (slot, note) in trailing {
-        paint_one_note(
-            scene,
-            text_system,
-            hit_index,
-            store,
-            inner_x,
-            inner_w,
-            y,
-            note,
-            *slot,
-        );
+    let a_vista: Vec<NodeId> = hit_index
+        .iter_registrations()
+        .map(|(id, _)| id)
+        .filter(|id| ids::LIVE_SECTION_IDS.contains(id))
+        .collect();
+    for (slot, note) in store.notes_for_panel(ids::INSP_PANEL).iter().enumerate() {
+        if !note.section.is_some_and(|s| a_vista.contains(&s)) {
+            paint_one_note(
+                scene,
+                text_system,
+                hit_index,
+                store,
+                inner_x,
+                inner_w,
+                y,
+                note,
+                slot,
+            );
+        }
     }
 }
 
@@ -96,8 +100,7 @@ pub(crate) fn paint_trailing_notes(
 /// cap, and §12 pushed it past the line §11 had already ratcheted down to. The
 /// three live here together because they are one family — the joint section's
 /// creation gesture is a button in the body section, and the wheel's is a button
-/// in the joint section — and because keeping them adjacent is what makes their
-/// three note slots obviously distinct.
+/// in the joint section.
 ///
 /// Returns the new `y`.
 #[allow(clippy::too_many_arguments)]
@@ -106,7 +109,6 @@ pub(crate) fn push_physics_sections<'a>(
     store: &'a WidgetStore,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     header_h: f32,
     physics: Option<&'a ph2d_editor_core::screens::hero::InspectorPhysicsInfo>,
     joint: Option<&'a ph2d_editor_core::screens::hero::InspectorJointInfo>,
@@ -114,11 +116,8 @@ pub(crate) fn push_physics_sections<'a>(
     // §14 Platform Player (W5) — a quarta da família, e a única cujo assunto é
     // COMPORTAMENTO em vez de corpo.
     player: Option<&'a ph2d_editor_core::screens::hero::InspectorPlayerInfo>,
-    // Os slots de nota da PANELA inteira: a família indexa os seus (10..13) aqui dentro.
-    notes: &'a [Vec<(usize, NoteData)>],
 ) {
     use crate::plano::emoldurada;
-    let slot = |i: usize| notes.get(i).map_or(&[][..], |v| &v[..]);
     // §11 Physics Body — offered for ANY Transform-bearing entity, with or without a body: the
     // empty state is the Add button (ADR-0131 D8).
     if let Some(phys) = physics {
@@ -128,9 +127,7 @@ pub(crate) fn push_physics_sections<'a>(
             store,
             inner_x,
             inner_w,
-            body_top_y,
             header_h,
-            slot(10),
             move |c, t, y| {
                 crate::sections::paint_physics_section(
                     c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, phys,
@@ -147,9 +144,7 @@ pub(crate) fn push_physics_sections<'a>(
             store,
             inner_x,
             inner_w,
-            body_top_y,
             header_h,
-            slot(11),
             move |c, t, y| {
                 crate::sections::paint_joint_section(
                     c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, j,
@@ -165,9 +160,7 @@ pub(crate) fn push_physics_sections<'a>(
             store,
             inner_x,
             inner_w,
-            body_top_y,
             header_h,
-            slot(12),
             move |c, t, y| {
                 crate::sections::paint_wheel_section(
                     c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, wh,
@@ -183,9 +176,7 @@ pub(crate) fn push_physics_sections<'a>(
             store,
             inner_x,
             inner_w,
-            body_top_y,
             header_h,
-            slot(13),
             move |c, t, y| {
                 crate::sections::paint_player_section(
                     c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, pl,
@@ -208,11 +199,10 @@ pub(crate) fn finish_section(
     section_id: ph2d_a11y::NodeId,
     y_before: f32,
     new_y: f32,
-    notes: &[(usize, NoteData)],
 ) -> f32 {
     let mut new_y = new_y;
     if let Some(color_idx) = store.section_outline_color(section_id) {
-        let rgba = HIGHLIGHTER_RGBA[color_idx.min(4) as usize];
+        let rgba = ph2d_editor_core::widget::panel_chrome::highlighter_rgba(color_idx);
         let pad = Spacing::Xs.px();
         let block = Rect::new(
             inner_x - pad,
@@ -234,18 +224,22 @@ pub(crate) fn finish_section(
             outline_color,
         );
     }
-    for (slot, note) in notes {
-        paint_one_note(
-            scene,
-            text_system,
-            hit_index,
-            store,
-            inner_x,
-            inner_w,
-            &mut new_y,
-            note,
-            *slot,
-        );
+    // ⭐ As notas DESTA secção — pela identidade dela (`NoteData::section`, 2026-09-30), onde quer
+    //    que o artista a tenha arrastado. ⚠️ Ranhura = posição na lista do painel.
+    for (slot, note) in store.notes_for_panel(ids::INSP_PANEL).iter().enumerate() {
+        if note.section == Some(section_id) {
+            paint_one_note(
+                scene,
+                text_system,
+                hit_index,
+                store,
+                inner_x,
+                inner_w,
+                &mut new_y,
+                note,
+                slot,
+            );
+        }
     }
     new_y
 }
@@ -259,45 +253,6 @@ pub(crate) fn finish_section(
 #[allow(clippy::too_many_arguments, clippy::fn_params_excessive_bools)]
 pub(crate) fn any_live_section(flags: [bool; 34]) -> bool {
     flags.iter().any(|&b| b)
-}
-
-/// **As notas, distribuídas por seção.**
-///
-/// Mora aqui pelo mesmo argumento que trouxe a pintura da família de física: o
-/// orquestrador de seções está num cap de LOC com CATRACA cujo texto diz, sobre
-/// si mesmo, *"está na linha: a próxima seção divide de novo"* — e a §14 foi
-/// ela. Um bloco autocontido que não olha para seção nenhuma é o corte honesto.
-///
-/// ⚠️ **O tamanho do array é uma slot por seção viva.** Dimensionado errado, uma
-/// nota ancorada na ÚLTIMA seção cai em silêncio no `trailing` em vez de onde o
-/// autor a pôs — e o silêncio é o problema, não o deslocamento.
-pub(crate) type SectionNotes = ([Vec<(usize, NoteData)>; 15], Vec<(usize, NoteData)>);
-
-pub(crate) fn split_notes(store: &WidgetStore) -> SectionNotes {
-    // ⚠️ **QUINZE desde 2026-08-21** — a §12 Sockets/Anchors entrou no slot 14, DEPOIS da
-    // família da física, que é onde ela é pintada. Pô-la no slot da spec (12) obrigaria a
-    // empurrar a família outra vez; pô-la no fim mantém **índice == ordem visual**, que é o que
-    // `before_section` significa.
-    // ⚠️ **CATORZE antes disso** — a §5 9-Slice entrou no slot 6 e empurrou todas as que
-    // vêm depois. O array estava CHEIO (0..12): renumerar sem o crescer punha a §10 Blend no
-    // slot 9, que é o do Physics Body, e as duas passavam a partilhar as mesmas notas em
-    // silêncio. *Um índice que soma entre seções conta-se; não se escolhe um livre que não há.*
-    let mut per_section: [Vec<(usize, NoteData)>; 15] = Default::default();
-    let mut trailing: Vec<(usize, NoteData)> = Vec::new();
-    for (idx, note) in store
-        .notes_for_panel(ids::INSP_PANEL)
-        .to_vec()
-        .into_iter()
-        .enumerate()
-    {
-        match note.before_section {
-            Some(i) if (i as usize) < per_section.len() => {
-                per_section[i as usize].push((idx, note));
-            }
-            _ => trailing.push((idx, note)),
-        }
-    }
-    (per_section, trailing)
 }
 
 /// Os três snapshots da FAMÍLIA de física, buscados de uma vez.
@@ -346,7 +301,6 @@ pub(crate) fn publish_and_finish(
     text_system: &mut TextSystem,
     theme: ph2d_tokens::Theme,
     f: PanelFinish,
-    section_tops_y: Vec<f32>,
 ) {
     if !f.any_section {
         let placeholder = if f.has_selection {
@@ -394,7 +348,6 @@ pub(crate) fn publish_and_finish(
     let visible_h = (f.content_bottom - f.content_top).max(0.0);
     set_last_inspector_content_h(content_h);
     set_last_inspector_visible_h(visible_h);
-    LAST_SECTION_TOPS_Y.with(|t| *t.borrow_mut() = section_tops_y);
 
     // A barra pinta-se na porta (`close_body` → `scroll_area::close_parts`).
 }

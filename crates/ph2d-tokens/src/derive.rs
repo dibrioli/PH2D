@@ -268,6 +268,42 @@ impl Inputs {
                 dark: true,
                 extra_borders: true,
             },
+            // ⭐⭐ **Os quatro COLORIDOS** (2026-09-30, ver [`Theme::PlumberRed`]). ⚠️ Estes NÃO
+            //    vêm do Godot — são as primeiras cores escolhidas à mão da família moderna, por
+            //    ordem do dono. O que continua da regra é o resto: cinco entradas, a mesma
+            //    derivação, e o mesmo gate de contraste WCAG (`contrast_tests.rs`) a medi-los.
+            // `#b3202a` (o boné) + `#ffd23c` (os botões).
+            Theme::PlumberRed => Self {
+                base: Rgb::new(0.70, 0.125, 0.165),
+                accent: Rgb::new(1.0, 0.824, 0.235),
+                contrast: 0.3,
+                dark: true,
+                extra_borders: false,
+            },
+            // `#17702f` (o boné) + `#6db8ff` (o macacão, clareado para se ler sobre o verde).
+            Theme::PlumberGreen => Self {
+                base: Rgb::new(0.09, 0.44, 0.184),
+                accent: Rgb::new(0.427, 0.722, 1.0),
+                contrast: 0.3,
+                dark: true,
+                extra_borders: false,
+            },
+            // `#4a2166` + `#ff8a3d`.
+            Theme::Sunset => Self {
+                base: Rgb::new(0.29, 0.13, 0.40),
+                accent: Rgb::new(1.0, 0.541, 0.239),
+                contrast: 0.3,
+                dark: true,
+                extra_borders: false,
+            },
+            // `#f7cfe3` + `#c0187e` — claro, com o contraste negativo do `light`.
+            Theme::Candy => Self {
+                base: Rgb::new(0.969, 0.812, 0.89),
+                accent: Rgb::new(0.753, 0.094, 0.494),
+                contrast: -0.06,
+                dark: false,
+                extra_borders: false,
+            },
             _ => return None,
         })
     }

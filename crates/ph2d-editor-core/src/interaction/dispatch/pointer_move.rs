@@ -134,7 +134,11 @@ pub(super) fn dispatch_move<'frame>(
     }
     // ⭐ O arrasto de uma secção pela pega — o painel desenha a marca da queda a partir daqui.
     if store.section_drag().is_some() {
-        store.update_section_drag(event.y);
+        store.update_section_drag(event.x, event.y);
+    }
+    // ⭐ O arrasto de uma nota pela pega — o painel desenha o fantasma e a marca a partir daqui.
+    if store.note_drag().is_some() {
+        store.update_note_drag(event.x, event.y);
     }
     // M14.A: NumberInput drag-or-slider. When a Down on the
     // NumberInput body seeded `number_input_drag`, every Move

@@ -21,7 +21,7 @@
 //! de um corte por responsabilidade. A §12 é a mais antiga das três e vive onde nasceu.
 
 use ph2d_editor_core::ids;
-use ph2d_editor_core::interaction::{HitIndex, NoteData, WidgetStore};
+use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_text::TextSystem;
 use ph2d_vector::VectorScene;
@@ -38,10 +38,8 @@ pub(crate) fn paint_anim_section(
     theme: ph2d_tokens::Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     mut y: f32,
     header_h: f32,
     anim: Option<&ph2d_editor_core::screens::hero::InspectorAnimInfo>,
@@ -54,11 +52,9 @@ pub(crate) fn paint_anim_section(
     y = close_section(scene, theme, inner_x, inner_w, y);
     let y_before = y;
     begin_section(
-        section_tops_y,
         hit_index,
         inner_x,
         inner_w,
-        body_top_y,
         y_before,
         ids::INSP_LIVE_ANIM_SECTION,
         header_h,
@@ -88,7 +84,6 @@ pub(crate) fn paint_anim_section(
         ids::INSP_LIVE_ANIM_SECTION,
         y_before,
         new_y,
-        &[],
     )
 }
 
@@ -101,10 +96,8 @@ pub(crate) fn paint_timer_section(
     theme: ph2d_tokens::Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     mut y: f32,
     header_h: f32,
     timer: Option<&ph2d_editor_core::screens::hero::InspectorTimerInfo>,
@@ -117,11 +110,9 @@ pub(crate) fn paint_timer_section(
     y = close_section(scene, theme, inner_x, inner_w, y);
     let y_before = y;
     begin_section(
-        section_tops_y,
         hit_index,
         inner_x,
         inner_w,
-        body_top_y,
         y_before,
         ids::INSP_LIVE_TIMER_SECTION,
         header_h,
@@ -150,7 +141,6 @@ pub(crate) fn paint_timer_section(
         ids::INSP_LIVE_TIMER_SECTION,
         y_before,
         new_y,
-        &[],
     )
 }
 
@@ -162,10 +152,8 @@ pub(crate) fn paint_action_section(
     theme: ph2d_tokens::Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     mut y: f32,
     header_h: f32,
     action: Option<&ph2d_editor_core::screens::hero::InspectorActionInfo>,
@@ -178,11 +166,9 @@ pub(crate) fn paint_action_section(
     y = close_section(scene, theme, inner_x, inner_w, y);
     let y_before = y;
     begin_section(
-        section_tops_y,
         hit_index,
         inner_x,
         inner_w,
-        body_top_y,
         y_before,
         ids::INSP_LIVE_ACTION_SECTION,
         header_h,
@@ -209,7 +195,6 @@ pub(crate) fn paint_action_section(
         ids::INSP_LIVE_ACTION_SECTION,
         y_before,
         new_y,
-        &[],
     )
 }
 
@@ -224,7 +209,6 @@ pub(crate) fn push_optional_sections<'a>(
     store: &'a WidgetStore,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     header_h: f32,
     anim_selected: &'a mut usize,
     anchor_selected: &'a mut usize,
@@ -245,7 +229,6 @@ pub(crate) fn push_optional_sections<'a>(
     //
     // ⛔ Curado por CORTE, nunca por uma entrada no `FN_OVERAGE_OK` — aquela lista está VAZIA.
     snaps: &'a crate::paint_frame::LiveSnapshots,
-    notes: &'a [Vec<(usize, NoteData)>],
 ) {
     // ⭐⭐⭐ **A ORDEM É A DA PALETA** — ver o cabeçalho de [`crate::paint_familias`]. As famílias
     //    vêm pela ordem que o catálogo declara (`ComponentCategory::ALL`), e **não** pela ordem em
@@ -266,8 +249,7 @@ pub(crate) fn push_optional_sections<'a>(
         ph2d_editor_core::ids::INSP_LIVE_TAGS_SECTION,
         move |c, t, y| {
             crate::paint_optional_factory::paint_tags_section(
-                c.scene, c.text, t, c.hit, store, c.tops, inner_x, inner_w, body_top_y, y,
-                header_h, infos.tags,
+                c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, header_h, infos.tags,
             )
         },
     );
@@ -281,10 +263,8 @@ pub(crate) fn push_optional_sections<'a>(
                 t,
                 c.hit,
                 store,
-                c.tops,
                 inner_x,
                 inner_w,
-                body_top_y,
                 y,
                 header_h,
                 infos.particles,
@@ -301,10 +281,8 @@ pub(crate) fn push_optional_sections<'a>(
                 t,
                 c.hit,
                 store,
-                c.tops,
                 inner_x,
                 inner_w,
-                body_top_y,
                 y,
                 header_h,
                 snaps.anim_info.as_ref(),
@@ -318,16 +296,12 @@ pub(crate) fn push_optional_sections<'a>(
         store,
         inner_x,
         inner_w,
-        body_top_y,
         header_h,
         snaps.anchor_info.as_ref(),
         anchor_selected,
-        notes,
     );
     // ── FÍSICA (10) ───────────────────────────────────────────────────────────────────────────
-    crate::paint_familias::push_familia_fisica(
-        plano, store, inner_x, inner_w, body_top_y, header_h, snaps,
-    );
+    crate::paint_familias::push_familia_fisica(plano, store, inner_x, inner_w, header_h, snaps);
     // ── MODELO 3D (11) ────────────────────────────────────────────────────────────────────────
     // ⭐ A LIVE MESH (o CATAVENTO, `docs/3D/02.2` rota B) — `ph2d::ecs::Mesh3D` é da família
     // `Model3D`, a 11.ª do catálogo, e é por ela que a secção aparece entre a FÍSICA e a LÓGICA
@@ -341,10 +315,8 @@ pub(crate) fn push_optional_sections<'a>(
                 t,
                 c.hit,
                 store,
-                c.tops,
                 inner_x,
                 inner_w,
-                body_top_y,
                 y,
                 header_h,
                 snaps.mesh3d_info.as_ref(),
@@ -357,17 +329,16 @@ pub(crate) fn push_optional_sections<'a>(
         store,
         inner_x,
         inner_w,
-        body_top_y,
         header_h,
         snaps,
         timer_selected,
         action_selected,
     );
     crate::paint_familias::push_familia_logica_cont(
-        plano, store, inner_x, inner_w, body_top_y, header_h, snaps, infos,
+        plano, store, inner_x, inner_w, header_h, snaps, infos,
     );
     // ── ÁUDIO (13) · CÂMERA (14) · SCRIPT (15) ────────────────────────────────────────────────
     crate::paint_familias::push_familia_saida(
-        plano, store, inner_x, inner_w, body_top_y, header_h, snaps, infos,
+        plano, store, inner_x, inner_w, header_h, snaps, infos,
     );
 }

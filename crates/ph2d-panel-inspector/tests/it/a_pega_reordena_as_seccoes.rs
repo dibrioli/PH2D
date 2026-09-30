@@ -81,7 +81,8 @@ fn centro(r: Rect) -> (f32, f32) {
 /// ⭐⭐ **Arrastar a pega da Sprite Sheet para cima do Render Source põe-na no topo das três**, e
 /// um clique PARADO na pega não reordena nem dobra nada. *Mutações: tirar o registo da pega no
 /// `begin_section` ⇒ o Down cai no cabeçalho e dobra a secção; o plano a ignorar a ordem ⇒ a
-/// Sprite Sheet continua em baixo.*
+/// Sprite Sheet continua em baixo; o plano a não devolver o fantasma ⇒ o quadro a meio do arrasto
+/// tem a mesma geometria do de depois.*
 #[test]
 fn arrastar_a_pega_poe_a_seccao_onde_se_larga() {
     let mut h = MockPanelHost::with_panel::<InspectorPanel>();
@@ -115,7 +116,15 @@ fn arrastar_a_pega_poe_a_seccao_onde_se_larga() {
     let alvo_y = render.y + 1.0;
     let _ = h.dispatch_pointer_event(pointer(PointerKind::Down, px, py, 2 * SEC));
     let _ = h.dispatch_pointer_event(pointer(PointerKind::Move, px, alvo_y, 2 * SEC + 1));
+    // ⭐ A meio do arrasto o FANTASMA pinta-se (2026-09-30: *«permita ver o card sendo arrastado,
+    //    menor e meio transparente»*) — a secção inteira uma segunda vez, logo muito mais geometria.
+    let (_, a_meio) = h.paint_and_count_geometry::<InspectorPanel>(&mut st, VIEWPORT);
     let _ = h.dispatch_pointer_event(pointer(PointerKind::Up, px, alvo_y, 2 * SEC + 2));
+    let (_, depois) = h.paint_and_count_geometry::<InspectorPanel>(&mut st, VIEWPORT);
+    assert!(
+        a_meio > depois,
+        "a meio do arrasto nada mais se pintou (sem fantasma): {a_meio} contra {depois}"
+    );
     assert!(
         !h.store().section_order().is_empty(),
         "a queda nao gravou ordem nenhuma"

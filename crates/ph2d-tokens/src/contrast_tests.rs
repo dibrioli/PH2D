@@ -13,7 +13,7 @@ fn put(theme: Theme, token: ColorToken, colour: Color) {
         .expect("um literal nunca fecha um laco");
 }
 
-const ALL_THEMES: [Theme; 8] = [
+const ALL_THEMES: [Theme; 12] = [
     Theme::Forge,
     Theme::Workshop,
     Theme::Sunstone,
@@ -24,6 +24,12 @@ const ALL_THEMES: [Theme; 8] = [
     Theme::Gray,
     Theme::Light,
     Theme::Oled,
+    // ⭐ E os quatro COLORIDOS (2026-09-30) — as primeiras cores à mão da família moderna, logo as
+    //    que mais precisam da régua.
+    Theme::PlumberRed,
+    Theme::PlumberGreen,
+    Theme::Sunset,
+    Theme::Candy,
 ];
 
 /// **A tabela de FÁBRICA cumpre a WCAG nos quatro modos** — o gate que as quatro cópias eram.

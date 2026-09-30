@@ -34,12 +34,11 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, StrokeToken, Theme};
 use ph2d_vector::VectorScene;
 
-/// ⭐ **Onde uma secção pinta** — os quatro mutáveis que toda moldura de secção pede.
+/// ⭐ **Onde uma secção pinta** — os três mutáveis que toda moldura de secção pede.
 pub(crate) struct Tela<'c> {
     pub scene: &'c mut VectorScene,
     pub text: &'c mut TextSystem,
     pub hit: &'c mut HitIndex,
-    pub tops: &'c mut Vec<f32>,
 }
 
 /// Uma secção à espera: recebe a tela, o TEMA dela e o `y`, e devolve o `y` seguinte.
@@ -81,7 +80,9 @@ impl<'a> Plano<'a> {
         out
     }
 
-    /// ⭐⭐ **Pinta todas as secções** e devolve o `y` depois da última.
+    /// ⭐⭐ **Pinta todas as secções** e devolve o `y` depois da última — e, durante um arrasto, o
+    /// [`Fantasma`] da secção arrastada, que o chamador pinta DEPOIS do resto do corpo (as notas do
+    /// fim do painel incluídas), para ele ficar por cima de tudo.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn run(
         mut self,
@@ -92,9 +93,11 @@ impl<'a> Plano<'a> {
         inner_w: f32,
         header_h: f32,
         mut y: f32,
-    ) -> f32 {
+    ) -> (f32, Option<Fantasma>) {
         let ordem = self.ordem(store);
         let mut faixas: Vec<Faixa> = Vec::with_capacity(ordem.len());
+        let arrastada = store.section_drag().filter(|d| d.active).map(|d| d.section);
+        let mut fantasma: Option<VectorScene> = None;
         for id in ordem {
             let Some(i) = self.tarefas.iter().position(|(t, _)| *t == id) else {
                 continue;
@@ -103,7 +106,23 @@ impl<'a> Plano<'a> {
             let tema = store.section_theme(id).unwrap_or(painel);
             y = close_section(tela.scene, painel, inner_x, inner_w, y);
             let y0 = y;
-            y = tarefa(tela, tema, y);
+            if arrastada == Some(id) {
+                // ⭐⭐ **A secção arrastada pinta-se numa cena À PARTE** (2026-09-30): ela é pousada
+                //    no sítio de sempre (onde o contorno de arrasto a marca) e reusada, no fim,
+                //    como o FANTASMA que segue o cursor. ⚠️ Os alvos dela registam-se no sítio
+                //    real — o fantasma não é clicável.
+                let mut parte = VectorScene::new();
+                let mut sub = Tela {
+                    scene: &mut parte,
+                    text: &mut *tela.text,
+                    hit: &mut *tela.hit,
+                };
+                y = tarefa(&mut sub, tema, y);
+                tela.scene.inner_mut().append(parte.inner(), None);
+                fantasma = Some(parte);
+            } else {
+                y = tarefa(tela, tema, y);
+            }
             if y > y0 {
                 faixas.push((id, y0, y, tema));
             }
@@ -117,7 +136,52 @@ impl<'a> Plano<'a> {
         paint_marca_da_queda(
             tela.scene, store, painel, &faixas, inner_x, inner_w, header_h,
         );
-        y
+        let fantasma = fantasma.and_then(|conteudo| {
+            let &(_, y0, y1, tema) = faixas.iter().find(|f| Some(f.0) == arrastada)?;
+            let pad = ph2d_tokens::card_pad_px();
+            Some(Fantasma {
+                conteudo,
+                cartao: Rect::new(
+                    inner_x - pad,
+                    y0 - pad,
+                    inner_w + pad * 2.0,
+                    y1 - y0 + pad * 2.0,
+                ),
+                tema,
+            })
+        });
+        (y, fantasma)
+    }
+}
+
+/// ⭐⭐ **O FANTASMA da secção arrastada** — o cartão dela, menor e meio transparente, com o
+/// ponto por onde a mão pegou debaixo do cursor (ordem do dono, 2026-09-30: *«permita ver o card
+/// sendo arrastado, menor e meio transparente»*). O fundo é o do cartão, no TEMA da secção.
+pub(crate) struct Fantasma {
+    conteudo: VectorScene,
+    cartao: Rect,
+    tema: Theme,
+}
+
+impl Fantasma {
+    /// Pinta-o — por último, sobre o corpo inteiro.
+    pub(crate) fn pinta(self, scene: &mut VectorScene, store: &WidgetStore) {
+        let Some(drag) = store.section_drag().filter(|d| d.active) else {
+            return;
+        };
+        let cor = resolve(
+            ph2d_editor_core::widget::section_cards::CardDepth::Section.token(),
+            self.tema,
+        );
+        ph2d_editor_core::widget::paint_card_ghost(
+            scene,
+            &self.conteudo,
+            self.cartao,
+            ph2d_editor_core::paint::frame_radius(self.tema, ph2d_tokens::Radius::Md.px()),
+            Some(cor),
+            (drag.down_x, drag.down_y),
+            (drag.cursor_x, drag.cursor_y),
+        );
     }
 }
 
@@ -131,18 +195,14 @@ pub(crate) fn emoldurada<'a>(
     store: &'a WidgetStore,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     banda: f32,
-    notas: &'a [(usize, ph2d_editor_core::interaction::NoteData)],
     corpo: impl for<'c> FnOnce(&mut Tela<'c>, Theme, f32) -> f32 + 'a,
 ) {
     plano.push(id, move |c, tema, y| {
-        crate::paint_frame::begin_section(
-            c.tops, c.hit, inner_x, inner_w, body_top_y, y, id, banda,
-        );
+        crate::paint_frame::begin_section(c.hit, inner_x, inner_w, y, id, banda);
         let novo = corpo(c, tema, y);
         crate::paint_frame::finish_section(
-            c.scene, c.text, c.hit, store, inner_x, inner_w, id, y, novo, notas,
+            c.scene, c.text, c.hit, store, inner_x, inner_w, id, y, novo,
         )
     });
 }
@@ -275,12 +335,10 @@ mod tests {
         let mut scene = VectorScene::new();
         let mut text = TextSystem::without_system_fonts();
         let mut hit = HitIndex::default();
-        let mut tops = Vec::new();
         let mut tela = Tela {
             scene: &mut scene,
             text: &mut text,
             hit: &mut hit,
-            tops: &mut tops,
         };
         let _ = plano.run(&mut tela, &store, painel, 0.0, 100.0, 20.0, 0.0);
         assert_eq!(

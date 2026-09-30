@@ -80,6 +80,26 @@ impl MockPanelHost {
     ///
     /// ⚠️ **Ele ASSENTA a dobra a seguir**: a secção anima, e um gate que pintasse no quadro
     /// seguinte mediria a animação a meio em vez do estado que pediu.
+    /// **Acrescenta uma nota ao painel, no fim da `section`** — o que o *Create Note* do botão
+    /// direito escreve (2026-09-30). Devolve o índice dela.
+    ///
+    /// ⚠️ Método NOMEADO, nunca um `store_mut()`: responde a UMA pergunta — *e se o painel tiver
+    /// uma nota?* — para o gate da pega e do menu da nota medir o GESTO sobre ela, não semeá-lo.
+    pub fn add_note(&mut self, panel: NodeId, section: Option<NodeId>) -> Option<usize> {
+        self.store.notes_push(panel, 0, section)
+    }
+
+    /// **Escolhe uma linha do menu de botão direito que está aberto** — o fecho que o despacho
+    /// real faz no Down sobre a linha (que guarda o pedido) e o clique que o ecrã principal
+    /// entrega aos verbos da galeria/Inspector (`apply_showcase_event`).
+    pub fn choose_context_menu_row(&mut self, row: NodeId) -> bool {
+        self.store.close_context_menu();
+        ph2d_editor_core::widget::showcase::apply_showcase_event(
+            &mut self.store,
+            WidgetEvent::Click(row),
+        )
+    }
+
     pub fn set_collapsed(&mut self, id: NodeId, collapsed: bool) {
         self.store.set_collapsed(id, collapsed);
         self.settle_section_folds();

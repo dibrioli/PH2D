@@ -707,8 +707,7 @@ fn gallery_create_note_targets_gal_panel() {
     hero.view.widget_gallery_visible = true;
     let mut scene = VectorScene::new();
     let mut text = TextSystem::without_system_fonts();
-    // Paint once so `panel_rect(GAL_PANEL)` is published and
-    // `LAST_BODY_TOP_SCREEN_Y` is set for the upcoming dispatch.
+    // Paint once so `panel_rect(GAL_PANEL)` is published for the upcoming dispatch.
     paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
     let gallery_rect = hero.store.panel_rect(ids::GAL_PANEL).unwrap();
     let cx = gallery_rect.x + gallery_rect.w * 0.5;
@@ -722,7 +721,7 @@ fn gallery_create_note_targets_gal_panel() {
             y: cy,
             kind: crate::interaction::ContextMenuKind::CreateNote {
                 panel: ids::GAL_PANEL,
-                before_section: None,
+                section: None,
             },
         });
     // The real pointer dispatch closes the menu on the Down that

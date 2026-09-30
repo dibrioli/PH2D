@@ -24,6 +24,9 @@ pub struct SectionPrefs {
     themes: BTreeMap<NodeId, Theme>,
     order: Vec<NodeId>,
     drag: Option<SectionDrag>,
+    /// ⭐ O arrasto de uma NOTA pela pega dela (2026-09-30) — mora aqui porque é o mesmo gesto
+    /// sobre o mesmo painel, e o `mod.rs` do store está no tecto de LOC. Ver [`super::notes_ops`].
+    pub(super) note_drag: Option<super::notes_ops::NoteDrag>,
     /// Mudou algo que se GRAVA (tema ou ordem) desde a última vez que a shell perguntou.
     dirty: bool,
 }
@@ -32,7 +35,10 @@ pub struct SectionPrefs {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct SectionDrag {
     pub section: NodeId,
+    /// Onde a mão pegou — o ponto do cartão que o FANTASMA mantém debaixo do cursor.
+    pub down_x: f32,
     pub down_y: f32,
+    pub cursor_x: f32,
     pub cursor_y: f32,
     /// Vira `true` depois do limiar — antes disso um Down+Up na pega não reordena nada.
     pub active: bool,
@@ -100,10 +106,12 @@ impl WidgetStore {
     }
 
     /// Down primário na pega de `section`.
-    pub fn begin_section_drag(&mut self, section: NodeId, y: f32) {
+    pub fn begin_section_drag(&mut self, section: NodeId, x: f32, y: f32) {
         self.section_prefs.drag = Some(SectionDrag {
             section,
+            down_x: x,
             down_y: y,
+            cursor_x: x,
             cursor_y: y,
             active: false,
         });
@@ -111,8 +119,9 @@ impl WidgetStore {
 
     /// Avança o cursor; vira `active` depois do limiar das abas ([`super::TAB_DRAG_THRESHOLD_PX`]
     /// — *a mesma pergunta*: quanto tem a mão de andar para um clique virar um arrasto).
-    pub fn update_section_drag(&mut self, y: f32) {
+    pub fn update_section_drag(&mut self, x: f32, y: f32) {
         if let Some(d) = self.section_prefs.drag.as_mut() {
+            d.cursor_x = x;
             d.cursor_y = y;
             if (y - d.down_y).abs() > super::TAB_DRAG_THRESHOLD_PX {
                 d.active = true;
@@ -358,10 +367,10 @@ mod tests {
     #[test]
     fn o_arrasto_arma_depois_do_limiar() {
         let mut s = WidgetStore::with_capacity(4);
-        s.begin_section_drag(A, 100.0);
-        s.update_section_drag(101.0);
+        s.begin_section_drag(A, 0.0, 100.0);
+        s.update_section_drag(0.0, 101.0);
         assert!(!s.section_drag().unwrap().active);
-        s.update_section_drag(100.0 + super::super::TAB_DRAG_THRESHOLD_PX + 1.0);
+        s.update_section_drag(0.0, 100.0 + super::super::TAB_DRAG_THRESHOLD_PX + 1.0);
         assert!(s.section_drag().unwrap().active);
         assert_eq!(s.end_section_drag().unwrap().section, A);
         assert!(s.section_drag().is_none());

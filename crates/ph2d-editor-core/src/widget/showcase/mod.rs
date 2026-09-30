@@ -16,11 +16,11 @@
 
 use crate::icons::IconId;
 use crate::ids;
-use crate::interaction::{HitIndex, InteractiveState, NoteData, WidgetStore};
+use crate::interaction::{ContextMenuKind, HitIndex, InteractiveState, WidgetEvent, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_text, rect_to_vello, resolve};
 use crate::widget::panel_chrome::{
-    HIGHLIGHTER_RGBA, PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_corner_dot,
-    paint_panel_title, panel_drag_handle_rect, panel_resize_handle_rect,
+    PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_corner_dot, paint_panel_title,
+    panel_drag_handle_rect, panel_resize_handle_rect,
 };
 use crate::widget::{
     Avatar, AvatarShape, Button, ButtonKind, ButtonState, Card, Checkbox, CheckboxState,
@@ -44,14 +44,13 @@ use ph2d_vector::VectorScene;
 
 pub mod state;
 pub use state::{
-    LAST_BODY_TOP_SCREEN_Y, LAST_GALLERY_CONTENT_H, LAST_GALLERY_VISIBLE_H, LAST_SECTION_TOPS_Y,
-    PENDING_DROPDOWN_CHIP, last_body_top_screen_y, last_gallery_content_h, last_gallery_visible_h,
-    push_section_top_y, section_index_below_body_y, set_last_gallery_content_h,
-    set_last_gallery_visible_h, set_pending_dropdown_chip, take_pending_dropdown_chip,
+    LAST_GALLERY_CONTENT_H, LAST_GALLERY_VISIBLE_H, PENDING_DROPDOWN_CHIP, last_gallery_content_h,
+    last_gallery_visible_h, set_last_gallery_content_h, set_last_gallery_visible_h,
+    set_pending_dropdown_chip, take_pending_dropdown_chip,
 };
 
 mod notes;
-pub use notes::paint_one_note;
+pub use notes::{paint_note_drag_ghost, paint_one_note};
 
 use crate::ids::SECTION_IDS;
 
@@ -59,49 +58,10 @@ use crate::ids::SECTION_IDS;
 /// "Layers" tree.
 pub const TREE_LEAF_IDS: [NodeId; 2] = [ids::INSP_SAMPLE_TREE_LEAF_A, ids::INSP_SAMPLE_TREE_LEAF_B];
 
-/// Hit-slot NodeIds for the 12 possible notes per panel.
-pub const NOTE_SLOT_IDS: [NodeId; 12] = [
-    ids::INSP_NOTE_SLOT_0,
-    ids::INSP_NOTE_SLOT_1,
-    ids::INSP_NOTE_SLOT_2,
-    ids::INSP_NOTE_SLOT_3,
-    ids::INSP_NOTE_SLOT_4,
-    ids::INSP_NOTE_SLOT_5,
-    ids::INSP_NOTE_SLOT_6,
-    ids::INSP_NOTE_SLOT_7,
-    ids::INSP_NOTE_SLOT_8,
-    ids::INSP_NOTE_SLOT_9,
-    ids::INSP_NOTE_SLOT_10,
-    ids::INSP_NOTE_SLOT_11,
-];
-pub const NOTE_TITLE_IDS: [NodeId; 12] = [
-    ids::INSP_NOTE_TITLE_0,
-    ids::INSP_NOTE_TITLE_1,
-    ids::INSP_NOTE_TITLE_2,
-    ids::INSP_NOTE_TITLE_3,
-    ids::INSP_NOTE_TITLE_4,
-    ids::INSP_NOTE_TITLE_5,
-    ids::INSP_NOTE_TITLE_6,
-    ids::INSP_NOTE_TITLE_7,
-    ids::INSP_NOTE_TITLE_8,
-    ids::INSP_NOTE_TITLE_9,
-    ids::INSP_NOTE_TITLE_10,
-    ids::INSP_NOTE_TITLE_11,
-];
-pub const NOTE_BODY_IDS: [NodeId; 12] = [
-    ids::INSP_NOTE_BODY_0,
-    ids::INSP_NOTE_BODY_1,
-    ids::INSP_NOTE_BODY_2,
-    ids::INSP_NOTE_BODY_3,
-    ids::INSP_NOTE_BODY_4,
-    ids::INSP_NOTE_BODY_5,
-    ids::INSP_NOTE_BODY_6,
-    ids::INSP_NOTE_BODY_7,
-    ids::INSP_NOTE_BODY_8,
-    ids::INSP_NOTE_BODY_9,
-    ids::INSP_NOTE_BODY_10,
-    ids::INSP_NOTE_BODY_11,
-];
+// ⭐ As listas das notas vivem em `crate::ids::notes` (2026-09-30): a ARRUMAÇÃO das notas
+// (apagar, duplicar, mover) é uma operação do `WidgetStore` sobre as caixas de texto delas, e
+// `interaction` não pode ler `widget` (DAG). O showcase re-exporta-as para quem já as lia daqui.
+pub use crate::ids::{NOTE_BODY_IDS, NOTE_GRIP_IDS, NOTE_SLOT_IDS, NOTE_TITLE_IDS};
 
 pub const RADIO_GROUP_IDS: [NodeId; 3] = [
     ids::INSP_SAMPLE_RADIO_A,
@@ -265,43 +225,50 @@ pub fn read_number_input(
 ///
 /// Returns `true` when `event` was consumed (host should stop
 /// further dispatch).
-pub fn apply_showcase_event(
-    store: &mut WidgetStore,
-    event: crate::interaction::WidgetEvent,
-) -> bool {
-    use crate::interaction::{ContextMenuKind, InteractiveState, WidgetEvent};
+pub fn apply_showcase_event(store: &mut WidgetStore, event: WidgetEvent) -> bool {
     if let WidgetEvent::Click(id) = event {
-        const OUTLINE_ITEMS: [(NodeId, Option<u8>); 6] = [
+        // ⭐ As DEZ escolhas de marcador (2026-09-30: cinco pastéis e as quatro vivas) — a posição
+        //    na paleta é o índice que a nota e o contorno guardam.
+        const OUTLINE_ITEMS: [(NodeId, Option<u8>); 10] = [
             (crate::ids::CTX_MENU_OUTLINE_NONE, None),
             (crate::ids::CTX_MENU_OUTLINE_0, Some(0)),
             (crate::ids::CTX_MENU_OUTLINE_1, Some(1)),
             (crate::ids::CTX_MENU_OUTLINE_2, Some(2)),
             (crate::ids::CTX_MENU_OUTLINE_3, Some(3)),
             (crate::ids::CTX_MENU_OUTLINE_4, Some(4)),
+            (crate::ids::CTX_MENU_OUTLINE_5, Some(5)),
+            (crate::ids::CTX_MENU_OUTLINE_6, Some(6)),
+            (crate::ids::CTX_MENU_OUTLINE_7, Some(7)),
+            (crate::ids::CTX_MENU_OUTLINE_8, Some(8)),
         ];
         if id == crate::ids::CTX_MENU_CREATE_NOTE {
             if let Some(req) = store.consume_last_context_menu()
-                && let ContextMenuKind::CreateNote { panel, .. } = req.kind
+                && let ContextMenuKind::CreateNote { panel, section } = req.kind
+                && let Some(novo) = store.notes_push(panel, 0, section)
             {
-                let scroll_y = store.panel_scroll(panel);
-                let body_top_screen = last_body_top_screen_y();
-                let body_y = req.y - body_top_screen + scroll_y;
-                let before = section_index_below_body_y(body_y);
-                let new_index = store.notes_for_panel(panel).len();
-                store.notes_push(panel, 0, before);
-                if let Some(title_id) = NOTE_TITLE_IDS.get(new_index)
-                    && let Some(InteractiveState::TextInput { text, caret, .. }) =
-                        store.get_mut(*title_id)
-                {
-                    *text = format!("Note {}", new_index + 1);
-                    *caret = text.len();
+                // ⭐ O título nasce do da própria nota (`chrome.interaction.note_n`, traduzido), e
+                //    o corpo vazio — as caixas são da RANHURA, e podem guardar texto de outra nota.
+                let titulo = store.notes_for_panel(panel)[novo].title.clone();
+                for (ids, texto) in [(&NOTE_TITLE_IDS, titulo), (&NOTE_BODY_IDS, String::new())] {
+                    if let Some(InteractiveState::TextInput { text, caret, .. }) =
+                        store.get_mut(ids[novo])
+                    {
+                        *caret = texto.len();
+                        *text = texto;
+                    }
                 }
-                if let Some(body_id) = NOTE_BODY_IDS.get(new_index)
-                    && let Some(InteractiveState::TextInput { text, caret, .. }) =
-                        store.get_mut(*body_id)
-                {
-                    text.clear();
-                    *caret = 0;
+            }
+            return true;
+        }
+        // ⭐⭐ Os dois verbos da nota (2026-09-30: *«opções de apagar e duplicar»*).
+        if id == crate::ids::CTX_MENU_NOTE_DUPLICATE || id == crate::ids::CTX_MENU_NOTE_DELETE {
+            if let Some(req) = store.consume_last_context_menu()
+                && let ContextMenuKind::NoteBackground { panel, note_index } = req.kind
+            {
+                if id == crate::ids::CTX_MENU_NOTE_DELETE {
+                    store.note_delete(panel, usize::from(note_index));
+                } else {
+                    let _ = store.note_duplicate(panel, usize::from(note_index));
                 }
             }
             return true;
@@ -362,7 +329,7 @@ pub fn apply_showcase_event(
 
 fn pin_showcase_button_selection(store: &mut WidgetStore, selected: NodeId, group: &[NodeId]) {
     for id in group {
-        if let Some(crate::interaction::InteractiveState::Button { state }) = store.get_mut(*id) {
+        if let Some(InteractiveState::Button { state }) = store.get_mut(*id) {
             *state = if *id == selected {
                 crate::widget::ButtonState::Pressed
             } else {
@@ -411,3 +378,81 @@ use vector::paint_vector_section;
 
 mod body;
 pub use body::{ShowcaseBody, close_showcase_body_with, finish_chrome, paint_showcase_body};
+
+#[cfg(test)]
+mod menu_tests {
+    use super::*;
+    use crate::interaction::ContextMenuRequest;
+
+    fn escolhe(store: &mut WidgetStore, kind: ContextMenuKind, linha: NodeId) {
+        store.open_context_menu(ContextMenuRequest {
+            x: 0.0,
+            y: 0.0,
+            kind,
+        });
+        store.close_context_menu();
+        assert!(apply_showcase_event(store, WidgetEvent::Click(linha)));
+    }
+
+    /// ⭐⭐ **As quatro cores VIVAS chegam à secção e à nota** (2026-09-30) — com os índices 5..8 da
+    /// paleta. *Mutação: a tabela de itens de volta a seis ⇒ o clique no vermelho vivo não pinta.*
+    #[test]
+    fn as_cores_vivas_chegam_a_seccao_e_a_nota() {
+        let mut s = WidgetStore::with_capacity(8);
+        let sec = ids::INSP_LIVE_RENDER_SECTION;
+        for (linha, idx) in [
+            (ids::CTX_MENU_OUTLINE_5, 5u8),
+            (ids::CTX_MENU_OUTLINE_6, 6),
+            (ids::CTX_MENU_OUTLINE_7, 7),
+            (ids::CTX_MENU_OUTLINE_8, 8),
+        ] {
+            escolhe(
+                &mut s,
+                ContextMenuKind::SectionOutline { section: sec },
+                linha,
+            );
+            assert_eq!(s.section_outline_color(sec), Some(idx));
+        }
+        s.notes_push(ids::INSP_PANEL, 0, None);
+        escolhe(
+            &mut s,
+            ContextMenuKind::NoteBackground {
+                panel: ids::INSP_PANEL,
+                note_index: 0,
+            },
+            ids::CTX_MENU_OUTLINE_7,
+        );
+        assert_eq!(s.notes_for_panel(ids::INSP_PANEL)[0].color_idx, 7);
+    }
+
+    /// ⭐ **Criar uma nota põe-na na secção que o botão direito apontou** e semeia o título com o
+    /// nome traduzido da própria nota.
+    #[test]
+    fn criar_uma_nota_poe_a_na_seccao_do_pedido() {
+        let mut s = WidgetStore::with_capacity(8);
+        s.register(
+            NOTE_TITLE_IDS[0],
+            InteractiveState::TextInput {
+                state: crate::widget::TextInputState::Normal,
+                text: String::from("velho"),
+                caret: 0,
+                selection_anchor: None,
+            },
+        );
+        let sec = ids::INSP_LIVE_COLOR_SECTION;
+        escolhe(
+            &mut s,
+            ContextMenuKind::CreateNote {
+                panel: ids::INSP_PANEL,
+                section: Some(sec),
+            },
+            ids::CTX_MENU_CREATE_NOTE,
+        );
+        let nota = &s.notes_for_panel(ids::INSP_PANEL)[0];
+        assert_eq!(nota.section, Some(sec));
+        match s.get(NOTE_TITLE_IDS[0]) {
+            Some(InteractiveState::TextInput { text, .. }) => assert_eq!(*text, nota.title),
+            _ => panic!("sem caixa"),
+        }
+    }
+}

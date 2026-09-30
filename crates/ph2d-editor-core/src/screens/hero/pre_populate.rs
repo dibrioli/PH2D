@@ -14,9 +14,7 @@
 
 use crate::ids;
 use crate::interaction::{InteractiveState, WidgetStore};
-use crate::widget::showcase::{
-    NOTE_BODY_IDS, NOTE_SLOT_IDS, NOTE_TITLE_IDS, RADIO_GROUP_IDS, TAB_GROUP_IDS, TREE_LEAF_IDS,
-};
+use crate::widget::showcase::{RADIO_GROUP_IDS, TAB_GROUP_IDS, TREE_LEAF_IDS};
 use crate::widget::{
     ButtonState, CheckboxState, CheckboxValue, ComboboxState, DropdownState,
     HIERARCHY_SCROLLBAR_ID, INSPECTOR_SCROLLBAR_ID, ListItemState, SliderOrientation, SliderState,
@@ -240,32 +238,8 @@ fn populate_samples(store: &mut WidgetStore) {
     }
     let _ = (RADIO_GROUP_IDS, TAB_GROUP_IDS, TREE_LEAF_IDS); // imports keep namespaces aligned with event.rs
 
-    for id in NOTE_SLOT_IDS {
-        store.register(id, InteractiveState::Plain);
-    }
-    for id in NOTE_TITLE_IDS {
-        store.register(
-            id,
-            InteractiveState::TextInput {
-                state: TextInputState::Normal,
-                text: String::new(),
-                caret: 0,
-                selection_anchor: None,
-            },
-        );
-    }
-    for id in NOTE_BODY_IDS {
-        store.register(
-            id,
-            InteractiveState::TextInput {
-                state: TextInputState::Normal,
-                text: String::new(),
-                caret: 0,
-                selection_anchor: None,
-            },
-        );
-        store.mark_multiline_text(id);
-    }
+    // As NOTAS (ranhura · pega · título · corpo) vivem no irmão — ver o doc dele.
+    super::pre_populate_notes::populate_notes(store);
 
     for (id, text) in [
         (ids::INSP_SAMPLE_TEXT, tr("chrome.sample.textinput_sample")),
@@ -401,11 +375,21 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         ids::CTX_MENU_SECTION_THEME_GRAY,
         ids::CTX_MENU_SECTION_THEME_LIGHT,
         ids::CTX_MENU_SECTION_THEME_OLED,
+        ids::CTX_MENU_SECTION_THEME_PLUMBER_RED,
+        ids::CTX_MENU_SECTION_THEME_PLUMBER_GREEN,
+        ids::CTX_MENU_SECTION_THEME_SUNSET,
+        ids::CTX_MENU_SECTION_THEME_CANDY,
         ids::CTX_MENU_OUTLINE_0,
         ids::CTX_MENU_OUTLINE_1,
         ids::CTX_MENU_OUTLINE_2,
         ids::CTX_MENU_OUTLINE_3,
         ids::CTX_MENU_OUTLINE_4,
+        ids::CTX_MENU_OUTLINE_5,
+        ids::CTX_MENU_OUTLINE_6,
+        ids::CTX_MENU_OUTLINE_7,
+        ids::CTX_MENU_OUTLINE_8,
+        ids::CTX_MENU_NOTE_DUPLICATE,
+        ids::CTX_MENU_NOTE_DELETE,
         ids::CTX_MENU_THEME_FORGE,
         ids::CTX_MENU_THEME_PAINT,
         ids::CTX_MENU_THEME_SUNSTONE,
@@ -414,6 +398,10 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         ids::CTX_MENU_THEME_GRAY,
         ids::CTX_MENU_THEME_LIGHT,
         ids::CTX_MENU_THEME_OLED,
+        ids::CTX_MENU_THEME_PLUMBER_RED,
+        ids::CTX_MENU_THEME_PLUMBER_GREEN,
+        ids::CTX_MENU_THEME_SUNSET,
+        ids::CTX_MENU_THEME_CANDY,
         ids::CTX_MENU_RADIUS_SHARP,
         ids::CTX_MENU_RADIUS_DEFAULT,
         ids::CTX_MENU_RADIUS_ROUND,

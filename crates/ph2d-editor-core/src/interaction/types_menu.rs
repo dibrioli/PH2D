@@ -51,21 +51,20 @@ pub struct ContextMenuRequest {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ContextMenuKind {
     /// Right-clicked inside a panel. Menu offers "Create note" —
-    /// the new note is parented to `panel`. `before_section`, when
-    /// `Some(i)`, anchors the new note above `SECTION_IDS[i]`
-    /// (computed at right-click time from the cursor y).
+    /// the new note is parented to `panel`. `section` é a secção sob o cursor no momento do
+    /// botão direito ([`crate::interaction::seccao_sob`]); a nota nasce no fim dela.
     CreateNote {
         panel: NodeId,
-        before_section: Option<u8>,
+        section: Option<NodeId>,
     },
     /// Right-clicked on a section header. Menu offers 5 highlight
     /// outline colors for the section.
     SectionOutline {
         section: NodeId,
     },
-    /// Right-clicked on an existing note. Menu offers 5 highlight
-    /// background colors. `panel` is the note's host; `note_index`
-    /// is the index into `notes_per_panel[panel]`.
+    /// Right-clicked on an existing note (qualquer das faces dela — fundo, título, corpo, pega).
+    /// O menu oferece as cores de marcador, *Duplicate* e *Delete*. `panel` is the note's host;
+    /// `note_index` is the index into `notes_per_panel[panel]`.
     NoteBackground {
         panel: NodeId,
         note_index: u8,
@@ -353,7 +352,7 @@ impl ContextMenuKind {
     pub const ALL: &'static [Self] = &[
         Self::CreateNote {
             panel: NodeId(1),
-            before_section: None,
+            section: None,
         },
         Self::SectionOutline { section: NodeId(1) },
         Self::ToolBarOverflow,

@@ -32,6 +32,8 @@ pub use kinds::{InteractiveState, NamedPalette};
 mod asset_drag_ops;
 mod dock_width_ops;
 mod graph_ops;
+mod notes_ops;
+pub use notes_ops::NoteDrag;
 mod number_scrub;
 mod panel_ops;
 mod scroll_state;

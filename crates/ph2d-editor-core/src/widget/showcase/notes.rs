@@ -12,15 +12,19 @@
 //! whole slot for the right-click background-color menu, plus
 //! title + body sub-rects for the TextInput focus + edit pipeline.
 
-use super::{NOTE_BODY_IDS, NOTE_SLOT_IDS, NOTE_TITLE_IDS, read_text_input};
-use crate::interaction::{HitIndex, NoteData, WidgetStore};
-use crate::paint::{fill_rounded_rect, paint_text};
+use super::{NOTE_BODY_IDS, NOTE_GRIP_IDS, NOTE_SLOT_IDS, NOTE_TITLE_IDS, read_text_input};
+use crate::interaction::{
+    HitIndex, NoteData, WidgetStore,
+    dispatch::note_drag::{lugar_da_queda, seccoes_do_painel},
+};
+use crate::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
 use crate::widget::TextInputState;
-use crate::widget::panel_chrome::HIGHLIGHTER_RGBA;
+use crate::widget::panel_chrome::highlighter_rgba;
+use crate::widget::section_grip::{grip_hit_rect, grip_rect, grip_slot_w_px, paint_grip};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{Radius, Spacing, StrokeToken, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 /// Horizontal inset between a note's rect edge and where text drawn
@@ -63,7 +67,7 @@ pub fn paint_one_note(
     if let Some(slot_id) = NOTE_SLOT_IDS.get(slot) {
         hit_index.register(*slot_id, r);
     }
-    let rgba = HIGHLIGHTER_RGBA[note.color_idx.min(4) as usize];
+    let rgba = highlighter_rgba(note.color_idx);
     let bg = ph2d_vector::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]); // LITERAL-COLOR-OK: user-color — HIGHLIGHTER_RGBA palette (note background)
     // ⛔ **A ÚNICA fill que fica FORA da porta do raio, e é declarada:** um post-it não é cromo —
     // ele tem cor de marcador fixa (`HIGHLIGHTER_RGBA`) e este pintor não recebe tema nenhum.
@@ -71,7 +75,17 @@ pub fn paint_one_note(
     fill_rounded_rect(scene, r, Radius::Md.px(), bg);
 
     let dark = ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0xFF); // LITERAL-COLOR-OK: note-text — dark glyph fixed across themes
-    let title_rect = Rect::new(r.x + pad, r.y + pad, r.w - pad * 2.0, title_h);
+    // ⭐ **A PEGA da nota** (ordem do dono, 2026-09-30: *«Coloque os 10 pontinhos de arrastar
+    //    também nas notas»*) — a mesma pega das secções, na ponta direita da fila do título, e o
+    //    título encolhe para lhe dar o lugar. ⚠️ Regista-se DEPOIS do título: o hit-index resolve
+    //    o último primeiro, e a pega fica por cima da caixa de texto.
+    let fila = Rect::new(r.x, r.y + pad, r.w, title_h);
+    let title_rect = Rect::new(
+        r.x + pad,
+        r.y + pad,
+        (r.w - pad - grip_slot_w_px()).max(0.0),
+        title_h,
+    );
     if let Some(title_id) = NOTE_TITLE_IDS.get(slot) {
         hit_index.register(*title_id, title_rect);
         paint_note_editable_line(
@@ -84,6 +98,12 @@ pub fn paint_one_note(
             dark,
             "Title",
         );
+    }
+    if let Some(grip_id) = NOTE_GRIP_IDS.get(slot) {
+        hit_index.register(*grip_id, grip_hit_rect(fila));
+        // Os pontos na cor do texto da nota a meia força — a mesma do texto de espera.
+        let pontos = ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x80); // LITERAL-COLOR-OK: note-grip — the placeholder glyph tone
+        paint_grip(scene, grip_rect(fila), pontos);
     }
     let body_rect = Rect::new(r.x + pad, r.y + pad + title_h, r.w - pad * 2.0, body_h);
     if let Some(body_id) = NOTE_BODY_IDS.get(slot) {
@@ -100,6 +120,100 @@ pub fn paint_one_note(
         );
     }
     *y += note_h + Spacing::Md.px();
+}
+
+/// ⭐⭐ **A nota arrastada: o contorno dela no sítio de onde saiu, a marca de onde vai cair e o
+/// FANTASMA** — ela, menor e meio transparente, colada ao cursor (ordem do dono, 2026-09-30).
+///
+/// Corre no FIM do corpo do painel, depois de todas as notas pintadas: a geometria é a do
+/// hit-index DESTE quadro (a ranhura da nota e os cabeçalhos), e o fantasma fica por cima de tudo.
+/// ⚠️ **A queda é a MESMA lei do despacho** ([`lugar_da_queda`]) — uma porta, dois leitores: o
+/// `pointer_up` que a grava e este pintor que a mostra.
+#[allow(clippy::too_many_arguments)]
+pub fn paint_note_drag_ghost(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    hit_index: &HitIndex,
+    store: &WidgetStore,
+    panel: NodeId,
+    theme: Theme,
+) {
+    let Some(d) = store.note_drag().filter(|d| d.active && d.panel == panel) else {
+        return;
+    };
+    let (Some(note), Some(painel)) = (
+        store.notes_for_panel(panel).get(d.index).cloned(),
+        store.panel_rect(panel),
+    ) else {
+        return;
+    };
+    let dentro = |r: &Rect| painel.contains(r.x + r.w * 0.5, r.y + r.h * 0.5);
+    let ranhura = |i: usize| {
+        hit_index
+            .iter_registrations()
+            .find(|(id, r)| *id == NOTE_SLOT_IDS[i] && dentro(r))
+            .map(|(_, r)| r)
+    };
+    let Some(original) = ranhura(d.index) else {
+        return;
+    };
+    let acento = resolve(ColorToken::Accent, theme);
+    let espessura = StrokeToken::Thick.px();
+    let raio = Radius::Md.px();
+    // FRAME-RAW-OK: o contorno de ARRASTO — um estado do gesto, da cor do acento (irmão do das secções).
+    stroke_rounded_rect(scene, original, raio, espessura, acento);
+    if let Some((seccao, rank)) = lugar_da_queda(store, hit_index, &d, d.cursor_y) {
+        let notas = store.notes_for_panel(panel);
+        let mut membros: Vec<Rect> = (0..notas.len())
+            .filter(|&i| i != d.index && notas[i].section == seccao)
+            .filter_map(ranhura)
+            .collect();
+        membros.sort_by(|a, b| a.y.total_cmp(&b.y));
+        let meio = Spacing::Md.px() * 0.5;
+        let y = match (membros.get(rank), membros.last()) {
+            (Some(m), _) => Some(m.y - meio),
+            (None, Some(u)) => Some(u.y + u.h + meio),
+            (None, None) => {
+                let heads = seccoes_do_painel(hit_index, painel);
+                let proxima = heads
+                    .iter()
+                    .skip_while(|(id, _)| Some(*id) != seccao)
+                    .nth(1);
+                proxima.map(|(_, top)| top - ph2d_tokens::section_gap_px() * 0.5)
+            }
+        };
+        if let Some(y) = y {
+            fill_rounded_rect(
+                scene,
+                Rect::new(original.x, y - espessura * 0.5, original.w, espessura),
+                espessura * 0.5,
+                acento,
+            );
+        }
+    }
+    let mut conteudo = VectorScene::new();
+    let mut descartado = HitIndex::default();
+    let mut y = original.y;
+    paint_one_note(
+        &mut conteudo,
+        text_system,
+        &mut descartado,
+        store,
+        original.x,
+        original.w,
+        &mut y,
+        &note,
+        d.index,
+    );
+    crate::widget::paint_card_ghost(
+        scene,
+        &conteudo,
+        original,
+        raio,
+        None,
+        (d.down_x, d.down_y),
+        (d.cursor_x, d.cursor_y),
+    );
 }
 
 #[allow(clippy::too_many_arguments)]

@@ -31,10 +31,8 @@ pub(crate) fn paint_topdown_section(
     theme: ph2d_tokens::Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     mut y: f32,
     header_h: f32,
     info: Option<&ph2d_editor_core::topdown_edits::InspectorTopDownInfo>,
@@ -46,11 +44,9 @@ pub(crate) fn paint_topdown_section(
     y = close_section(scene, theme, inner_x, inner_w, y);
     let y_before = y;
     begin_section(
-        section_tops_y,
         hit_index,
         inner_x,
         inner_w,
-        body_top_y,
         y_before,
         ids::INSP_LIVE_TOPDOWN_SECTION,
         header_h,
@@ -76,7 +72,6 @@ pub(crate) fn paint_topdown_section(
         ids::INSP_LIVE_TOPDOWN_SECTION,
         y_before,
         new_y,
-        &[],
     )
 }
 
@@ -91,10 +86,8 @@ pub(crate) fn paint_projectile_section(
     theme: ph2d_tokens::Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     mut y: f32,
     header_h: f32,
     info: Option<&ph2d_editor_core::projectile_edits::InspectorProjectileInfo>,
@@ -106,11 +99,9 @@ pub(crate) fn paint_projectile_section(
     y = close_section(scene, theme, inner_x, inner_w, y);
     let y_before = y;
     begin_section(
-        section_tops_y,
         hit_index,
         inner_x,
         inner_w,
-        body_top_y,
         y_before,
         ids::INSP_LIVE_PROJECTILE_SECTION,
         header_h,
@@ -136,7 +127,6 @@ pub(crate) fn paint_projectile_section(
         ids::INSP_LIVE_PROJECTILE_SECTION,
         y_before,
         new_y,
-        &[],
     )
 }
 
@@ -151,10 +141,8 @@ pub(crate) fn paint_path_follow_section(
     theme: ph2d_tokens::Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     mut y: f32,
     header_h: f32,
     info: Option<&ph2d_editor_core::path_follow_edits::InspectorPathFollowInfo>,
@@ -166,11 +154,9 @@ pub(crate) fn paint_path_follow_section(
     y = close_section(scene, theme, inner_x, inner_w, y);
     let y_before = y;
     begin_section(
-        section_tops_y,
         hit_index,
         inner_x,
         inner_w,
-        body_top_y,
         y_before,
         ids::INSP_LIVE_PATHFOLLOW_SECTION,
         header_h,
@@ -196,6 +182,5 @@ pub(crate) fn paint_path_follow_section(
         ids::INSP_LIVE_PATHFOLLOW_SECTION,
         y_before,
         new_y,
-        &[],
     )
 }

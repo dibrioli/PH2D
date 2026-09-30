@@ -19,7 +19,7 @@ pub(super) const CREATE_NOTE_ROWS: &[MenuRow] = &[menu_row(
     "chrome.menu.create_note",
 )];
 
-// Right-clicked on a note: 5 background-color options (reuses the outline color slot ids;
+// Right-clicked on a note: the 9 background-color options + Duplicate + Delete (reuses the outline color slot ids;
 // apply_event branches on `last_context_menu.kind` to set the section outline vs the note bg).
 /// As linhas de `ContextMenuKind::NoteBackground { .. }`.
 pub(super) const NOTE_BACKGROUND_ROWS: &[MenuRow] = &[
@@ -48,12 +48,37 @@ pub(super) const NOTE_BACKGROUND_ROWS: &[MenuRow] = &[
         "chrome.menu.orange",
         HIGHLIGHTER_RGBA[4],
     ),
+    menu_row_swatch(
+        ids::CTX_MENU_OUTLINE_5,
+        "chrome.menu.vivid_red",
+        HIGHLIGHTER_RGBA[5],
+    ),
+    menu_row_swatch(
+        ids::CTX_MENU_OUTLINE_6,
+        "chrome.menu.vivid_blue",
+        HIGHLIGHTER_RGBA[6],
+    ),
+    menu_row_swatch(
+        ids::CTX_MENU_OUTLINE_7,
+        "chrome.menu.vivid_green",
+        HIGHLIGHTER_RGBA[7],
+    ),
+    menu_row_swatch(
+        ids::CTX_MENU_OUTLINE_8,
+        "chrome.menu.vivid_yellow",
+        HIGHLIGHTER_RGBA[8],
+    ),
+    // ⭐⭐ Os dois verbos da nota (2026-09-30). ⚠️ Os ids das cores continuam os do contorno (o
+    //    `apply_showcase_event` ramifica pelo tipo do menu aberto); estes dois são só da nota.
+    menu_row(ids::CTX_MENU_NOTE_DUPLICATE, "chrome.menu.note_duplicate"),
+    menu_row(ids::CTX_MENU_NOTE_DELETE, "chrome.menu.note_delete"),
 ];
 
 // Topbar theme cluster click: 4 themes + 3 radius presets. Theme entries get a small accent
 // swatch tinted with each theme's flavor so the user can recognize them at a glance.
-// ⭐ **UMA família por aparência** (2026-09-04): o redesenho mostra os quatro presets
-//    DERIVADOS (Godot 4.6, `ph2d_tokens::Theme::MODERN`), o clássico os quatro de sempre.
+// ⭐ **UMA família por aparência** (2026-09-04): o redesenho mostra os presets DERIVADOS
+//    (`ph2d_tokens::Theme::MODERN` — os quatro do Godot 4.6 e os quatro coloridos de 2026-09-30),
+//    o clássico os quatro de sempre.
 //    Misturá-los poria um tema tingido ao lado de um plano sem o artista saber que está a
 //    escolher entre dois sistemas. As linhas de baixo (cantos, trilho, espelho, estatísticas,
 //    repor) são as mesmas nas duas.
@@ -78,6 +103,26 @@ pub(super) const THEME_SELECTOR_REDESIGN_ROWS: &[MenuRow] = &[
         ids::CTX_MENU_THEME_OLED,
         "chrome.menu.black_oled",
         [0x73, 0xbf, 0xff, 0xFF],
+    ),
+    menu_row_swatch(
+        ids::CTX_MENU_THEME_PLUMBER_RED,
+        "chrome.menu.plumber_red",
+        [0xb3, 0x20, 0x2a, 0xFF],
+    ),
+    menu_row_swatch(
+        ids::CTX_MENU_THEME_PLUMBER_GREEN,
+        "chrome.menu.plumber_green",
+        [0x17, 0x70, 0x2f, 0xFF],
+    ),
+    menu_row_swatch(
+        ids::CTX_MENU_THEME_SUNSET,
+        "chrome.menu.sunset",
+        [0x4a, 0x21, 0x66, 0xFF],
+    ),
+    menu_row_swatch(
+        ids::CTX_MENU_THEME_CANDY,
+        "chrome.menu.candy",
+        [0xf7, 0xcf, 0xe3, 0xFF],
     ),
     menu_row(ids::CTX_MENU_RADIUS_SHARP, "chrome.menu.corners_sharp"),
     menu_row(ids::CTX_MENU_RADIUS_DEFAULT, "chrome.menu.corners_default"),

@@ -67,6 +67,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.menu.no_outline" => "No outline",
         // ⭐ A 1.ª linha do menu de tema de uma SECÇÃO — desfaz a escolha (2026-09-29).
         "chrome.menu.section_theme_app" => "App Theme",
+        "chrome.note.grip_hint" => {
+            "Drag to move this note. Right-click it to recolor, duplicate or delete."
+        }
         "chrome.section.grip_hint" => {
             "Drag to move this section. Right-click the title to pick its theme."
         }
@@ -75,10 +78,22 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.menu.green" => "Green",
         "chrome.menu.blue" => "Blue",
         "chrome.menu.orange" => "Orange",
+        // ⭐ As quatro cores VIVAS do contorno e da nota (2026-09-30) — as cinco de cima são tons
+        //    de marcador; estas são as saturadas que o dono pediu.
+        "chrome.menu.vivid_red" => "Vivid Red",
+        "chrome.menu.vivid_blue" => "Vivid Blue",
+        "chrome.menu.vivid_green" => "Vivid Green",
+        "chrome.menu.vivid_yellow" => "Vivid Yellow",
+        "chrome.menu.note_duplicate" => "Duplicate Note",
+        "chrome.menu.note_delete" => "Delete Note",
         "chrome.menu.dark" => "Dark",
         "chrome.menu.gray" => "Gray",
         "chrome.menu.light" => "Light",
         "chrome.menu.black_oled" => "Black (OLED)",
+        "chrome.menu.plumber_red" => "Plumber Red",
+        "chrome.menu.plumber_green" => "Plumber Green",
+        "chrome.menu.sunset" => "Sunset",
+        "chrome.menu.candy" => "Candy",
         "chrome.menu.corners_sharp" => "— Corners: Sharp",
         "chrome.menu.corners_default" => "— Corners: Default",
         "chrome.menu.corners_round" => "— Corners: Round",

@@ -27,6 +27,7 @@ pub mod command_palette;
 pub mod composto;
 mod context_menu;
 mod divider;
+mod drag_ghost;
 mod dropdown;
 mod icon_button;
 mod key_value_list;
@@ -101,6 +102,7 @@ pub use combobox::{
 };
 pub use context_menu::{ContextMenu, ContextMenuEntry, paint_context_menu};
 pub use divider::{Divider, DividerOrientation, paint_divider};
+pub use drag_ghost::{afim_do_fantasma, paint_card_ghost};
 pub use dropdown::{
     DROPDOWN_SCROLLBAR_ID, Dropdown, DropdownOption, DropdownState, chip_border_color,
     dropdown_chevron_size, dropdown_chip_width_for, dropdown_feel, dropdown_label_budget,

@@ -122,49 +122,26 @@ pub fn paint_showcase_body(
     // ⭐⭐ **A galeria também mostra o CARTÃO** — ela é a fonte de verdade do cromo (DIRETRIZ
     //    §5.2), logo um risco aqui seria a galeria a ensinar o que o app já não faz.
     crate::widget::section_cards::begin_section_cards(scene, theme, body_top_y);
-    // Publish the body's screen-Y origin so the right-click dispatch
-    // can convert screen-y → body-y when computing `before_section`
-    // for a new note (`section_index_below_body_y`). Inspector's live
-    // paint also writes this thread-local, but the gallery paints
-    // AFTER inspector in `paint_hero_screen`, so the gallery's value
-    // wins for the next dispatch tick — correct for clicks on the
-    // gallery body.
-    LAST_BODY_TOP_SCREEN_Y.with(|c| c.set(content_top + Spacing::Xs.px()));
-
-    // Notes — read once and partition by `before_section`. Notes
-    // tagged with `Some(i)` paint immediately above `SECTION_IDS[i]`;
-    // notes with `None` paint at the tail after the last section.
+    // ⭐ As notas — lidas uma vez. Cada uma pinta-se no FIM da secção a que pertence (pela
+    //    identidade dela, `NoteData::section`, desde 2026-09-30); as de nenhuma secção da galeria
+    //    pintam-se no fim do corpo.
     let all_notes = store.notes_for_panel(ids::GAL_PANEL).to_vec();
-    let mut notes_per_section: [Vec<(usize, NoteData)>; 11] = Default::default();
-    let mut trailing_notes: Vec<(usize, NoteData)> = Vec::new();
-    for (idx, note) in all_notes.into_iter().enumerate() {
-        match note.before_section {
-            Some(i) if (i as usize) < notes_per_section.len() => {
-                notes_per_section[i as usize].push((idx, note));
-            }
-            _ => trailing_notes.push((idx, note)),
-        }
-    }
-
-    // Body-relative top-Y of each section header — captured so the
-    // right-click dispatch can map a click to "which section the
-    // user is targeting" for note insertion.
-    let mut section_tops_y: Vec<f32> = Vec::with_capacity(SECTION_IDS.len());
-    let mut section_idx: usize = 0;
     macro_rules! paint_pending_notes {
-        () => {
-            for (slot, note) in &notes_per_section[section_idx] {
-                paint_one_note(
-                    scene,
-                    text_system,
-                    hit_index,
-                    store,
-                    inner_x,
-                    inner_w,
-                    &mut y,
-                    note,
-                    *slot,
-                );
+        ($section_id:expr) => {
+            for (slot, note) in all_notes.iter().enumerate() {
+                if note.section == Some($section_id) {
+                    paint_one_note(
+                        scene,
+                        text_system,
+                        hit_index,
+                        store,
+                        inner_x,
+                        inner_w,
+                        &mut y,
+                        note,
+                        slot,
+                    );
+                }
             }
         };
     }
@@ -172,8 +149,7 @@ pub fn paint_showcase_body(
     // the user picked one via right-click → "Section outline"), then
     // any notes anchored to THIS section (at the end of the section,
     // BEFORE the separator — UI canon post-2026-05-24), then the
-    // separator. Each iteration also records the section's body-
-    // relative top y so `section_index_below_body_y` works.
+    // separator.
     //
     // Pre-canon, notes painted ABOVE the section header (separator
     // between section and note). User complaint 2026-05-24: notes
@@ -182,7 +158,6 @@ pub fn paint_showcase_body(
     macro_rules! section {
         ($f:ident, $section_id:expr) => {
             let y_before = y;
-            push_section_top_y(&mut section_tops_y, y_before - body_top_y);
             let new_y = $f(
                 scene,
                 text_system,
@@ -194,7 +169,7 @@ pub fn paint_showcase_body(
                 y,
             );
             if let Some(color_idx) = store.section_outline_color($section_id) {
-                let rgba = HIGHLIGHTER_RGBA[color_idx.min(4) as usize];
+                let rgba = crate::widget::panel_chrome::highlighter_rgba(color_idx);
                 let pad = Spacing::Xs.px();
                 let block = Rect::new(
                     inner_x - pad,
@@ -214,12 +189,8 @@ pub fn paint_showcase_body(
                 );
             }
             y = new_y;
-            paint_pending_notes!();
+            paint_pending_notes!($section_id);
             y = crate::widget::section_cards::close_section(scene, theme, inner_x, inner_w, y);
-            #[allow(unused_assignments)]
-            {
-                section_idx += 1;
-            }
         };
     }
     section!(paint_inputs_section, ids::INSP_SECTION_INPUTS);
@@ -233,22 +204,24 @@ pub fn paint_showcase_body(
     section!(paint_identity_section, ids::INSP_SECTION_IDENTITY);
     section!(paint_card_section, ids::INSP_SECTION_CARD);
     section!(paint_inspector_w6_section, ids::INSP_SECTION_W6);
-    // Trailing notes (anchor = None or out-of-range section index)
-    // paint at the bottom after all sections.
-    for (slot, note) in &trailing_notes {
-        paint_one_note(
-            scene,
-            text_system,
-            hit_index,
-            store,
-            inner_x,
-            inner_w,
-            &mut y,
-            note,
-            *slot,
-        );
+    // As notas de nenhuma secção da galeria — no fim do corpo.
+    for (slot, note) in all_notes.iter().enumerate() {
+        if !note.section.is_some_and(|s| SECTION_IDS.contains(&s)) {
+            paint_one_note(
+                scene,
+                text_system,
+                hit_index,
+                store,
+                inner_x,
+                inner_w,
+                &mut y,
+                note,
+                slot,
+            );
+        }
     }
-    LAST_SECTION_TOPS_Y.with(|t| *t.borrow_mut() = section_tops_y);
+    // ⭐ A nota arrastada — o fantasma por cima de tudo o que o corpo pintou.
+    super::paint_note_drag_ghost(scene, text_system, hit_index, store, ids::GAL_PANEL, theme);
     // Publish content + visible heights so the host can clamp the
     // wheel-scroll bound and so the scrollbar's thumb sizes itself
     // correctly. Mirror of the live Inspector's `set_last_inspector_*`

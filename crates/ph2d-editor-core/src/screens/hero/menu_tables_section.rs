@@ -14,6 +14,9 @@ use crate::widget::panel_chrome::HIGHLIGHTER_RGBA;
 /// poderemos escolher o theme da seção entre os themes disponíveis para o app»*), depois o
 /// contorno de marcador que este menu já oferecia.
 ///
+/// ⭐ A swatch dos quatro COLORIDOS (2026-09-30) é a BASE deles e não o acento, ao contrário dos
+/// quatro do Godot: o que os distingue é a cor dos painéis, e é ela que se reconhece no menu.
+///
 /// ⚠️ **Os temas oferecidos são os da FAMÍLIA do app** — a mesma lei do seletor do topo: misturar
 /// um tema tingido com um plano poria o artista a escolher entre dois sistemas sem o saber.
 pub(super) const SECTION_MENU_REDESIGN_ROWS: &[MenuRow] = &[
@@ -41,6 +44,26 @@ pub(super) const SECTION_MENU_REDESIGN_ROWS: &[MenuRow] = &[
         "chrome.menu.black_oled",
         [0x73, 0xbf, 0xff, 0xFF],
     ),
+    menu_row_swatch(
+        ids::CTX_MENU_SECTION_THEME_PLUMBER_RED,
+        "chrome.menu.plumber_red",
+        [0xb3, 0x20, 0x2a, 0xFF],
+    ),
+    menu_row_swatch(
+        ids::CTX_MENU_SECTION_THEME_PLUMBER_GREEN,
+        "chrome.menu.plumber_green",
+        [0x17, 0x70, 0x2f, 0xFF],
+    ),
+    menu_row_swatch(
+        ids::CTX_MENU_SECTION_THEME_SUNSET,
+        "chrome.menu.sunset",
+        [0x4a, 0x21, 0x66, 0xFF],
+    ),
+    menu_row_swatch(
+        ids::CTX_MENU_SECTION_THEME_CANDY,
+        "chrome.menu.candy",
+        [0xf7, 0xcf, 0xe3, 0xFF],
+    ),
     menu_row(ids::CTX_MENU_OUTLINE_NONE, "chrome.menu.no_outline"),
     menu_row_swatch(
         ids::CTX_MENU_OUTLINE_0,
@@ -66,6 +89,26 @@ pub(super) const SECTION_MENU_REDESIGN_ROWS: &[MenuRow] = &[
         ids::CTX_MENU_OUTLINE_4,
         "chrome.menu.orange",
         HIGHLIGHTER_RGBA[4],
+    ),
+    menu_row_swatch(
+        ids::CTX_MENU_OUTLINE_5,
+        "chrome.menu.vivid_red",
+        HIGHLIGHTER_RGBA[5],
+    ),
+    menu_row_swatch(
+        ids::CTX_MENU_OUTLINE_6,
+        "chrome.menu.vivid_blue",
+        HIGHLIGHTER_RGBA[6],
+    ),
+    menu_row_swatch(
+        ids::CTX_MENU_OUTLINE_7,
+        "chrome.menu.vivid_green",
+        HIGHLIGHTER_RGBA[7],
+    ),
+    menu_row_swatch(
+        ids::CTX_MENU_OUTLINE_8,
+        "chrome.menu.vivid_yellow",
+        HIGHLIGHTER_RGBA[8],
     ),
 ];
 
@@ -120,5 +163,25 @@ pub(super) const SECTION_MENU_CLASSIC_ROWS: &[MenuRow] = &[
         ids::CTX_MENU_OUTLINE_4,
         "chrome.menu.orange",
         HIGHLIGHTER_RGBA[4],
+    ),
+    menu_row_swatch(
+        ids::CTX_MENU_OUTLINE_5,
+        "chrome.menu.vivid_red",
+        HIGHLIGHTER_RGBA[5],
+    ),
+    menu_row_swatch(
+        ids::CTX_MENU_OUTLINE_6,
+        "chrome.menu.vivid_blue",
+        HIGHLIGHTER_RGBA[6],
+    ),
+    menu_row_swatch(
+        ids::CTX_MENU_OUTLINE_7,
+        "chrome.menu.vivid_green",
+        HIGHLIGHTER_RGBA[7],
+    ),
+    menu_row_swatch(
+        ids::CTX_MENU_OUTLINE_8,
+        "chrome.menu.vivid_yellow",
+        HIGHLIGHTER_RGBA[8],
     ),
 ];

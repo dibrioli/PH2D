@@ -197,7 +197,7 @@ pub(super) fn dispatch_down<'frame>(
 
     // Right-click context menus + TopBar/chip popovers. On a handled event the
     // original arm returned immediately — preserve that here.
-    if super::pointer_down_menus::handle_down_menus(store, hit, event) {
+    if super::pointer_down_menus::handle_down_menus(store, hit_index, hit, event) {
         return;
     }
     // Primary click elsewhere closes any open menu before
@@ -434,7 +434,16 @@ pub(super) fn dispatch_down<'frame>(
         && event.button == ph2d_host::PointerButton::Primary
         && crate::ids::section_of_grip(id).is_some()
     {
-        super::section_drag::seed(store, id, event.y);
+        super::section_drag::seed(store, id, event.x, event.y);
+        return;
+    }
+    // ⭐ A PEGA de uma NOTA (2026-09-30) — a mesma porta e a mesma razão. ⚠️ A pega fica por cima
+    //    do título da nota; sem este braço o Down focava a caixa de texto por baixo dela.
+    if let Some((id, _)) = hit
+        && event.button == ph2d_host::PointerButton::Primary
+        && crate::ids::note_of_grip(id).is_some()
+    {
+        super::note_drag::seed(store, id, event.x, event.y);
         return;
     }
 

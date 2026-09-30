@@ -161,6 +161,12 @@ pub use header_buttons::{
     panel_header_add_button_rect,
 };
 
+/// **A PALETA DE MARCADOR** das notas e dos contornos — irmão por assunto e pelo tecto de 500
+/// LOC (2026-09-30, quando as quatro cores vivas o levaram a 511): aqui fica a MOLDURA de um
+/// painel, lá a tinta que o artista escolhe para marcar.
+mod highlighter;
+pub use highlighter::{HIGHLIGHTER_RGBA, highlighter_rgba};
+
 mod segmented;
 // ⚠️ Re-export PLANO: os chamadores dizem `panel_chrome::paint_segmented_button` em oito crates, e
 //    um caminho novo seria a segunda maneira de nomear a mesma porta.
@@ -476,19 +482,3 @@ pub fn clamp_panel_rect(
         (clamped_dw, clamped_dh),
     )
 }
-
-/// Highlighter palette used by user-placed notes + section-outline
-/// markings inside panel bodies. Five colors selectable from the
-/// right-click context menu ("Section outline" submenu).
-///
-/// Indices 0..4 map to Yellow / Pink / Green / Blue / Orange.
-/// Hoisted to `panel_chrome` so panel crates can paint notes
-/// without reaching into `ph2d_editor::screens::hero::context_menu_overlay`.
-pub const HIGHLIGHTER_RGBA: [[u8; 4]; 5] = [
-    // LITERAL-COLOR-OK: highlighter palette — user-pickable note + outline colors.
-    [0xFF, 0xF5, 0x9D, 0xFF], // yellow
-    [0xF8, 0xBB, 0xD0, 0xFF], // pink
-    [0xC8, 0xE6, 0xC9, 0xFF], // green
-    [0xBB, 0xDE, 0xFB, 0xFF], // blue
-    [0xFF, 0xE0, 0xB2, 0xFF], // orange
-];

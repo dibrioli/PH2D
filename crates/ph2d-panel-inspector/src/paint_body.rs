@@ -72,8 +72,6 @@ pub(crate) fn open_body(
     );
     let scroll_y = area.scroll();
     let scrollbar_reserve = ph2d_editor_core::widget::SCROLLBAR_W + Spacing::Sm.px();
-    ph2d_editor_core::widget::showcase::LAST_BODY_TOP_SCREEN_Y
-        .with(|c| c.set(content_top + Spacing::Xs.px()));
     let body_top_y = content_top - scroll_y + Spacing::Xs.px();
     // ⭐⭐ **O corpo pinta-se DENTRO de cartões** — o fecho é o `close_body`, simétrico deste.
     begin_section_cards(scene, theme, body_top_y);

@@ -21,10 +21,8 @@ pub(crate) fn paint_factory_section(
     theme: ph2d_tokens::Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     mut y: f32,
     header_h: f32,
     info: Option<&ph2d_editor_core::screens::hero::InspectorFactoryInfo>,
@@ -37,11 +35,9 @@ pub(crate) fn paint_factory_section(
     y = close_section(scene, theme, inner_x, inner_w, y);
     let y_before = y;
     begin_section(
-        section_tops_y,
         hit_index,
         inner_x,
         inner_w,
-        body_top_y,
         y_before,
         ids::INSP_LIVE_FACTORY_SECTION,
         header_h,
@@ -67,7 +63,6 @@ pub(crate) fn paint_factory_section(
         ids::INSP_LIVE_FACTORY_SECTION,
         y_before,
         new_y,
-        &[],
     )
 }
 
@@ -79,10 +74,8 @@ pub(crate) fn paint_lifecycle_section(
     theme: ph2d_tokens::Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     mut y: f32,
     header_h: f32,
     info: Option<&ph2d_editor_core::screens::hero::InspectorFactoryInfo>,
@@ -93,11 +86,9 @@ pub(crate) fn paint_lifecycle_section(
     y = close_section(scene, theme, inner_x, inner_w, y);
     let y_before = y;
     begin_section(
-        section_tops_y,
         hit_index,
         inner_x,
         inner_w,
-        body_top_y,
         y_before,
         ids::INSP_LIVE_LIFECYCLE_SECTION,
         header_h,
@@ -123,7 +114,6 @@ pub(crate) fn paint_lifecycle_section(
         ids::INSP_LIVE_LIFECYCLE_SECTION,
         y_before,
         new_y,
-        &[],
     )
 }
 
@@ -141,10 +131,8 @@ pub(crate) fn paint_statemachine_section(
     theme: ph2d_tokens::Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     mut y: f32,
     header_h: f32,
     info: Option<&ph2d_editor_core::statemachine_edits::InspectorStateMachineInfo>,
@@ -158,11 +146,9 @@ pub(crate) fn paint_statemachine_section(
     y = close_section(scene, theme, inner_x, inner_w, y);
     let y_before = y;
     begin_section(
-        section_tops_y,
         hit_index,
         inner_x,
         inner_w,
-        body_top_y,
         y_before,
         ids::INSP_LIVE_SM_SECTION,
         header_h,
@@ -190,7 +176,6 @@ pub(crate) fn paint_statemachine_section(
         ids::INSP_LIVE_SM_SECTION,
         y_before,
         new_y,
-        &[],
     )
 }
 
@@ -203,10 +188,8 @@ pub(crate) fn paint_script_section(
     theme: ph2d_tokens::Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     mut y: f32,
     header_h: f32,
     info: Option<&ph2d_editor_core::script_edits::InspectorScriptInfo>,
@@ -218,11 +201,9 @@ pub(crate) fn paint_script_section(
     y = close_section(scene, theme, inner_x, inner_w, y);
     let y_before = y;
     begin_section(
-        section_tops_y,
         hit_index,
         inner_x,
         inner_w,
-        body_top_y,
         y_before,
         ids::INSP_LIVE_SCRIPT_SECTION,
         header_h,
@@ -248,7 +229,6 @@ pub(crate) fn paint_script_section(
         ids::INSP_LIVE_SCRIPT_SECTION,
         y_before,
         new_y,
-        &[],
     )
 }
 
@@ -265,10 +245,8 @@ pub(crate) fn paint_tags_section(
     theme: ph2d_tokens::Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     mut y: f32,
     header_h: f32,
     tags: Option<&ph2d_editor_core::screens::hero::InspectorTagsInfo>,
@@ -279,11 +257,9 @@ pub(crate) fn paint_tags_section(
     y = close_section(scene, theme, inner_x, inner_w, y);
     let y_before = y;
     begin_section(
-        section_tops_y,
         hit_index,
         inner_x,
         inner_w,
-        body_top_y,
         y_before,
         ids::INSP_LIVE_TAGS_SECTION,
         header_h,
@@ -312,7 +288,6 @@ pub(crate) fn paint_tags_section(
         ids::INSP_LIVE_TAGS_SECTION,
         y_before,
         new_y,
-        &[],
     )
 }
 
@@ -325,10 +300,8 @@ pub(crate) fn paint_camera_section(
     theme: ph2d_tokens::Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     mut y: f32,
     header_h: f32,
     camera: Option<&ph2d_editor_core::screens::hero::InspectorCameraInfo>,
@@ -339,11 +312,9 @@ pub(crate) fn paint_camera_section(
     y = close_section(scene, theme, inner_x, inner_w, y);
     let y_before = y;
     begin_section(
-        section_tops_y,
         hit_index,
         inner_x,
         inner_w,
-        body_top_y,
         y_before,
         ids::INSP_LIVE_CAMERA_SECTION,
         header_h,
@@ -369,7 +340,6 @@ pub(crate) fn paint_camera_section(
         ids::INSP_LIVE_CAMERA_SECTION,
         y_before,
         new_y,
-        &[],
     )
 }
 
@@ -382,10 +352,8 @@ pub(crate) fn paint_audio_section(
     theme: ph2d_tokens::Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     mut y: f32,
     header_h: f32,
     audio: Option<&ph2d_editor_core::screens::hero::InspectorAudioInfo>,
@@ -396,11 +364,9 @@ pub(crate) fn paint_audio_section(
     y = close_section(scene, theme, inner_x, inner_w, y);
     let y_before = y;
     begin_section(
-        section_tops_y,
         hit_index,
         inner_x,
         inner_w,
-        body_top_y,
         y_before,
         ids::INSP_LIVE_AUDIO_SECTION,
         header_h,
@@ -426,6 +392,5 @@ pub(crate) fn paint_audio_section(
         ids::INSP_LIVE_AUDIO_SECTION,
         y_before,
         new_y,
-        &[],
     )
 }

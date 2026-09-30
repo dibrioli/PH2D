@@ -11,6 +11,16 @@ pub const CTX_MENU_OUTLINE_1: NodeId = hash_node_id("ctx_menu_outline_1");
 pub const CTX_MENU_OUTLINE_2: NodeId = hash_node_id("ctx_menu_outline_2");
 pub const CTX_MENU_OUTLINE_3: NodeId = hash_node_id("ctx_menu_outline_3");
 pub const CTX_MENU_OUTLINE_4: NodeId = hash_node_id("ctx_menu_outline_4");
+// ⭐ As quatro cores VIVAS (2026-09-30) — índices 5..8 da `HIGHLIGHTER_RGBA`, lidas pelo contorno
+//    de uma secção e pelo fundo de uma nota.
+pub const CTX_MENU_OUTLINE_5: NodeId = hash_node_id("ctx_menu_outline_5");
+pub const CTX_MENU_OUTLINE_6: NodeId = hash_node_id("ctx_menu_outline_6");
+pub const CTX_MENU_OUTLINE_7: NodeId = hash_node_id("ctx_menu_outline_7");
+pub const CTX_MENU_OUTLINE_8: NodeId = hash_node_id("ctx_menu_outline_8");
+// ⭐⭐ Os dois verbos de uma NOTA (ordem do dono, 2026-09-30: *«botão direito sobre as notas devem
+//    ter no menu a mudança de cor das notas, opções de apagar e duplicar»*).
+pub const CTX_MENU_NOTE_DUPLICATE: NodeId = hash_node_id("ctx_menu_note_duplicate");
+pub const CTX_MENU_NOTE_DELETE: NodeId = hash_node_id("ctx_menu_note_delete");
 // ⭐⭐ O TEMA DE UMA SECÇÃO (ordem do dono, 2026-09-29) — as linhas de tema do menu de botão
 //    direito no título de uma secção. Um id por tema, mais o «tema do app» que desfaz a escolha.
 //    ⚠️ Ids PRÓPRIOS e não os do seletor do topo: aqueles mudam o tema do APP inteiro, e partilhar
@@ -25,6 +35,12 @@ pub const CTX_MENU_SECTION_THEME_DARK: NodeId = hash_node_id("ctx_menu_section_t
 pub const CTX_MENU_SECTION_THEME_GRAY: NodeId = hash_node_id("ctx_menu_section_theme_gray");
 pub const CTX_MENU_SECTION_THEME_LIGHT: NodeId = hash_node_id("ctx_menu_section_theme_light");
 pub const CTX_MENU_SECTION_THEME_OLED: NodeId = hash_node_id("ctx_menu_section_theme_oled");
+pub const CTX_MENU_SECTION_THEME_PLUMBER_RED: NodeId =
+    hash_node_id("ctx_menu_section_theme_plumber_red");
+pub const CTX_MENU_SECTION_THEME_PLUMBER_GREEN: NodeId =
+    hash_node_id("ctx_menu_section_theme_plumber_green");
+pub const CTX_MENU_SECTION_THEME_SUNSET: NodeId = hash_node_id("ctx_menu_section_theme_sunset");
+pub const CTX_MENU_SECTION_THEME_CANDY: NodeId = hash_node_id("ctx_menu_section_theme_candy");
 // Theme selector menu items — opened by clicking TOPBAR_THEME.
 pub const CTX_MENU_THEME_FORGE: NodeId = hash_node_id("ctx_menu_theme_forge");
 pub const CTX_MENU_THEME_PAINT: NodeId = hash_node_id("ctx_menu_theme_paint");
@@ -36,6 +52,11 @@ pub const CTX_MENU_THEME_DARK: NodeId = hash_node_id("ctx_menu_theme_dark");
 pub const CTX_MENU_THEME_GRAY: NodeId = hash_node_id("ctx_menu_theme_gray");
 pub const CTX_MENU_THEME_LIGHT: NodeId = hash_node_id("ctx_menu_theme_light");
 pub const CTX_MENU_THEME_OLED: NodeId = hash_node_id("ctx_menu_theme_oled");
+// ⭐ Os quatro COLORIDOS (2026-09-30), da mesma família derivada.
+pub const CTX_MENU_THEME_PLUMBER_RED: NodeId = hash_node_id("ctx_menu_theme_plumber_red");
+pub const CTX_MENU_THEME_PLUMBER_GREEN: NodeId = hash_node_id("ctx_menu_theme_plumber_green");
+pub const CTX_MENU_THEME_SUNSET: NodeId = hash_node_id("ctx_menu_theme_sunset");
+pub const CTX_MENU_THEME_CANDY: NodeId = hash_node_id("ctx_menu_theme_candy");
 // Corner-radius scale presets — also exposed via the theme menu.
 pub const CTX_MENU_RADIUS_SHARP: NodeId = hash_node_id("ctx_menu_radius_sharp");
 pub const CTX_MENU_RADIUS_DEFAULT: NodeId = hash_node_id("ctx_menu_radius_default");

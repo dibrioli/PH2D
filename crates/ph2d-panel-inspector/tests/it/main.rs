@@ -27,6 +27,7 @@ mod a_seccao_vida_esta_viva;
 mod a_seccao_weapon_esta_viva;
 mod action_verb_is_a_dropdown;
 mod as_caixas_que_encurtaram_guardam_a_explicacao;
+mod as_notas_tem_pega_e_menu;
 mod as_quatro_seccoes_que_estreavam_a_catraca;
 mod every_form_row_reserves_the_animation_column;
 mod every_label_this_panel_paints_fits_its_column;

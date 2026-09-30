@@ -169,7 +169,6 @@ fn paint_inspector(
         body_top_y,
         area,
     } = crate::paint_body::open_body(slot, scene, text_system, theme, hit_index, store);
-    let mut section_tops_y: Vec<f32> = Vec::with_capacity(4);
     // Os snapshots e o `any_section`, numa pergunta só. Ver `paint_frame::LiveSnapshots`.
     //
     // ⚠️ **Ele NÃO é destruturado, e a diferença é o teto de LOC**: a lista de nomes era vinte e
@@ -193,7 +192,6 @@ fn paint_inspector(
         inner_w,
         body_top_y + Spacing::Xs.px(),
     );
-    let (notes_per_section, trailing_notes) = crate::paint_frame::split_notes(store);
     // ⛔ **O macro `live_section!` MORREU em 2026-09-09, e a morte dele é o ganho.**
     //
     // Ele existia para as três seções que TODO objecto tem — as únicas que ainda se pintavam aqui
@@ -214,13 +212,11 @@ fn paint_inspector(
         store,
         inner_x,
         inner_w,
-        body_top_y,
         ROW_H_PX,
         SECTION_HEAD_H,
         snaps.name_present,
         snaps.visibility_info.is_some(),
         snaps.transform_info.is_some(),
-        &notes_per_section,
     );
     // **As três da SPRITE** — só existem se houver sprite.
     crate::paint_frame_shared::push_sprite_sections(
@@ -228,10 +224,8 @@ fn paint_inspector(
         store,
         inner_x,
         inner_w,
-        body_top_y,
         SECTION_HEAD_H,
         snaps.sprite_info.as_ref(),
-        &notes_per_section,
     );
     // **As quatro COMPARTILHADAS** — qualquer entidade com `Transform`.
     crate::paint_frame_shared::push_shared_sections(
@@ -239,26 +233,22 @@ fn paint_inspector(
         store,
         inner_x,
         inner_w,
-        body_top_y,
         SECTION_HEAD_H,
         snaps.slice_info.as_ref(),
         snaps.ordering_info.as_ref(),
         snaps.sampling_info.as_ref(),
         snaps.blend_info.as_ref(),
-        &notes_per_section,
     );
     crate::paint_frame::push_physics_sections(
         &mut plano,
         store,
         inner_x,
         inner_w,
-        body_top_y,
         SECTION_HEAD_H,
         snaps.physics_info.as_ref(),
         snaps.joint_info.as_ref(),
         snaps.wheel_info.as_ref(),
         snaps.player_info.as_ref(),
-        &notes_per_section,
     );
     // **As OPCIONAIS** — pela ordem da paleta (ver `paint_familias`).
     crate::paint_optional::push_optional_sections(
@@ -266,7 +256,6 @@ fn paint_inspector(
         store,
         inner_x,
         inner_w,
-        body_top_y,
         SECTION_HEAD_H,
         anim_selected,
         anchor_selected,
@@ -279,15 +268,14 @@ fn paint_inspector(
         sm_state_selected,
         sm_trans_selected,
         &snaps,
-        &notes_per_section,
     );
     let mut tela = crate::plano::Tela {
         scene: &mut *scene,
         text: &mut *text_system,
         hit: &mut *hit_index,
-        tops: &mut section_tops_y,
     };
-    y = plano.run(&mut tela, store, theme, inner_x, inner_w, SECTION_HEAD_H, y);
+    let (fim, fantasma) = plano.run(&mut tela, store, theme, inner_x, inner_w, SECTION_HEAD_H, y);
+    y = fim;
     if snaps.any_section {
         crate::paint_frame::paint_trailing_notes(
             scene,
@@ -297,9 +285,21 @@ fn paint_inspector(
             inner_x,
             inner_w,
             &mut y,
-            &trailing_notes,
         );
     }
+    // ⭐ Os FANTASMAS — a secção ou a nota que a pega arrasta, por cima de tudo o que o corpo
+    //    pintou (2026-09-30). Nunca os dois: só há um arrasto de cada vez.
+    if let Some(f) = fantasma {
+        f.pinta(scene, store);
+    }
+    ph2d_editor_core::widget::showcase::paint_note_drag_ghost(
+        scene,
+        text_system,
+        hit_index,
+        store,
+        ids::INSP_PANEL,
+        theme,
+    );
     publish_and_finish(
         scene,
         text_system,
@@ -314,7 +314,6 @@ fn paint_inspector(
             body_top_y,
             y,
         },
-        section_tops_y,
     );
     crate::paint_body::close_body(
         scene,

@@ -39,6 +39,14 @@ use std::path::{Path, PathBuf};
 //    `#[cfg(test)]`, porque já está dentro de um). *A enumeração apodrece; a lei não.*
 /// Each entry: (relative path under `src/widget/`, justification).
 const A11Y_OPT_OUT: &[(&str, &str)] = &[
+    (
+        "panel_chrome/highlighter.rs",
+        "a paleta de marcador (uma tabela de cores e a porta que a indexa); nao pinta nem emite no' — quem regista a a11y e' o menu de contexto que oferece cada cor e a nota que a veste.",
+    ),
+    (
+        "drag_ghost.rs",
+        "copia translucida do cartao a ser arrastado, pintada so' durante o gesto; nao regista hit nem no' — a a11y e o hit sao da PEGA (`NOTE_GRIP_IDS`/pega da seccao), que a arrastou.",
+    ),
     // ⚠️ **A COR de um botão não tem semântica** (2026-09-19, quando o tecto de LOC partiu o
     //    `button.rs`): este ficheiro é uma `impl Button` que devolve TOKENS por estado — quem
     //    emite o no' de AccessKit e quem regista o hit e' o `paint_button`, no irmao.
@@ -1023,7 +1031,7 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
     // `BodyCtx::row2` / `action_button` (in paint_sections), which paint via the
     // a11y-wired `paint_button` primitive; this file has no widget of its own.
     // As QUATRO seções compartilhadas do Inspector (§5 9-Slice, §7 Ordering, §9 Sampling,
-    // §10 Material & Blend). ⚠️ Orquestrador PURO: ele decide moldura, separador e slot de nota,
+    // §10 Material & Blend). ⚠️ Orquestrador PURO: ele decide moldura e separador,
     // e cada corpo é pintado por `sections::paint_*_section`, que são os ficheiros com a fiação
     // de a11y. Um widget próprio aqui seria a duplicação que este corte existe para evitar.
     (

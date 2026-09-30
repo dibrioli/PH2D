@@ -142,7 +142,7 @@ fn gallery_create_note_targets_gal_panel() {
             y: cy,
             kind: ph2d_editor_core::interaction::ContextMenuKind::CreateNote {
                 panel: ids::GAL_PANEL,
-                before_section: None,
+                section: None,
             },
         });
     // Mirror the real Down-on-menu-item path that snapshots the

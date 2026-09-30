@@ -17,6 +17,7 @@ use ph2d_host::PointerEvent;
 /// `true` the caller returns immediately — no widget focus/drag is started.
 pub(super) fn handle_down_menus(
     store: &mut WidgetStore,
+    hit_index: &crate::interaction::HitIndex,
     hit: Option<(ph2d_a11y::NodeId, Rect)>,
     event: PointerEvent,
 ) -> bool {
@@ -53,20 +54,14 @@ pub(super) fn handle_down_menus(
             .map(|(id, _)| id)
             .map(|id| crate::ids::section_of_grip(id).unwrap_or(id));
         let is_section = hit_id.map(is_section_header_id).unwrap_or(false);
-        // Note slot hit (id range 800..811): right-click on a
-        // painted note opens the NoteBackground menu for that
-        // slot's index. The inspector painter publishes the
-        // slot→note-index mapping by always painting note
-        // `i` at `NOTE_SLOT_IDS[i]`, so slot id - 800 IS the
-        // note index.
-        let note_slot = hit_id.and_then(|id| {
-            let v = id.0;
-            if (800..=811).contains(&v) {
-                Some((v - 800) as u8)
-            } else {
-                None
-            }
-        });
+        // ⭐⭐ **Botão direito sobre uma NOTA** — qualquer das quatro faces dela (fundo, título,
+        //    corpo, pega) abre o menu da nota: cor, *Duplicate*, *Delete*.
+        // ⛔ Até 2026-09-30 isto perguntava `800..=811`: os ids das notas são hashes e nunca lá
+        //    caíam, e o título e o corpo (registados por cima do fundo) ganhavam o clique de
+        //    qualquer maneira ⇒ o menu da nota NUNCA abriu. A pertença lê-se pela tabela.
+        let note_slot = hit_id
+            .and_then(crate::ids::note_index_of)
+            .and_then(|i| u8::try_from(i).ok());
         // M14.6 F: right-click on a hierarchy row opens the
         // per-entity actions menu. Resolved BEFORE the broader
         // panel-under fallback because the row lives inside
@@ -231,9 +226,8 @@ pub(super) fn handle_down_menus(
                 // *«Create note»* dentro do navegador.
                 && *p != crate::ids::ASSET_PANEL
         }) {
-            // `before_section` is filled in by apply_event
-            // — only the inspector knows the screen→body
-            // conversion + section y-ranges.
+            // ⭐ A secção sob o cursor resolve-se AQUI, pela régua do arrasto de nota
+            //    ([`super::note_drag::seccao_sob`]) — a nota nasce no fim dela.
             //
             // Hierarchy + image-tool panels (PAD/BGR/CEQ/UPS/EQS)
             // + the timeline are excluded by design — these are
@@ -247,7 +241,12 @@ pub(super) fn handle_down_menus(
                 y: event.y,
                 kind: ContextMenuKind::CreateNote {
                     panel,
-                    before_section: None,
+                    section: store.panel_rect(panel).and_then(|r| {
+                        super::note_drag::seccao_sob(
+                            &super::note_drag::seccoes_do_painel(hit_index, r),
+                            event.y,
+                        )
+                    }),
                 },
             });
         } else {

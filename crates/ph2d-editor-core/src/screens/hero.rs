@@ -55,6 +55,7 @@ use ph2d_i18n::tr;
 pub mod left_rail;
 pub mod pre_populate;
 pub mod pre_populate_blender;
+mod pre_populate_notes;
 pub mod selection;
 pub mod state;
 pub mod style;

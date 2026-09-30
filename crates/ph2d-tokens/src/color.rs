@@ -571,7 +571,14 @@ impl ColorToken {
             Theme::Workshop => crate::generated::COLORS_WORKSHOP,
             Theme::Sunstone => crate::generated::COLORS_SUNSTONE,
             Theme::Blueprint => crate::generated::COLORS_BLUEPRINT,
-            Theme::Dark | Theme::Gray | Theme::Light | Theme::Oled => {
+            Theme::Dark
+            | Theme::Gray
+            | Theme::Light
+            | Theme::Oled
+            | Theme::PlumberRed
+            | Theme::PlumberGreen
+            | Theme::Sunset
+            | Theme::Candy => {
                 return crate::derive::colour(theme, self);
             }
         };

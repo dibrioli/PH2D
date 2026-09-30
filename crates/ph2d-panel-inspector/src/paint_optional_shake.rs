@@ -28,10 +28,8 @@ pub(crate) fn paint_shake_section(
     theme: ph2d_tokens::Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     mut y: f32,
     header_h: f32,
     info: Option<&ph2d_editor_core::shake_edits::InspectorShakeInfo>,
@@ -43,11 +41,9 @@ pub(crate) fn paint_shake_section(
     y = close_section(scene, theme, inner_x, inner_w, y);
     let y_before = y;
     begin_section(
-        section_tops_y,
         hit_index,
         inner_x,
         inner_w,
-        body_top_y,
         y_before,
         ids::INSP_LIVE_SHAKE_SECTION,
         header_h,
@@ -73,7 +69,6 @@ pub(crate) fn paint_shake_section(
         ids::INSP_LIVE_SHAKE_SECTION,
         y_before,
         new_y,
-        &[],
     )
 }
 
@@ -85,10 +80,8 @@ pub(crate) fn paint_shake_emitter_section(
     theme: ph2d_tokens::Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     mut y: f32,
     header_h: f32,
     info: Option<&ph2d_editor_core::shake_edits::InspectorEmitterInfo>,
@@ -100,11 +93,9 @@ pub(crate) fn paint_shake_emitter_section(
     y = close_section(scene, theme, inner_x, inner_w, y);
     let y_before = y;
     begin_section(
-        section_tops_y,
         hit_index,
         inner_x,
         inner_w,
-        body_top_y,
         y_before,
         ids::INSP_LIVE_EMITTER_SECTION,
         header_h,
@@ -131,6 +122,5 @@ pub(crate) fn paint_shake_emitter_section(
         ids::INSP_LIVE_EMITTER_SECTION,
         y_before,
         new_y,
-        &[],
     )
 }

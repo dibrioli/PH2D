@@ -29,10 +29,8 @@ pub(crate) fn paint_hud_section(
     theme: ph2d_tokens::Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     mut y: f32,
     header_h: f32,
     info: Option<&ph2d_editor_core::hud_edits::InspectorHudInfo>,
@@ -44,11 +42,9 @@ pub(crate) fn paint_hud_section(
     y = close_section(scene, theme, inner_x, inner_w, y);
     let y_before = y;
     begin_section(
-        section_tops_y,
         hit_index,
         inner_x,
         inner_w,
-        body_top_y,
         y_before,
         ids::INSP_LIVE_HUD_SECTION,
         header_h,
@@ -74,7 +70,6 @@ pub(crate) fn paint_hud_section(
         ids::INSP_LIVE_HUD_SECTION,
         y_before,
         new_y,
-        &[],
     )
 }
 
@@ -88,10 +83,8 @@ pub(crate) fn paint_counter_watch_section(
     theme: ph2d_tokens::Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     mut y: f32,
     header_h: f32,
     info: Option<&ph2d_editor_core::counter_watch_edits::InspectorCounterWatchInfo>,
@@ -104,11 +97,9 @@ pub(crate) fn paint_counter_watch_section(
     y = close_section(scene, theme, inner_x, inner_w, y);
     let y_before = y;
     begin_section(
-        section_tops_y,
         hit_index,
         inner_x,
         inner_w,
-        body_top_y,
         y_before,
         ids::INSP_LIVE_WATCH_SECTION,
         header_h,
@@ -135,7 +126,6 @@ pub(crate) fn paint_counter_watch_section(
         ids::INSP_LIVE_WATCH_SECTION,
         y_before,
         new_y,
-        &[],
     )
 }
 
@@ -148,10 +138,8 @@ pub(crate) fn paint_action_trigger_section(
     theme: ph2d_tokens::Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     mut y: f32,
     header_h: f32,
     info: Option<&ph2d_editor_core::action_trigger_edits::InspectorActionTriggerInfo>,
@@ -164,11 +152,9 @@ pub(crate) fn paint_action_trigger_section(
     y = close_section(scene, theme, inner_x, inner_w, y);
     let y_before = y;
     begin_section(
-        section_tops_y,
         hit_index,
         inner_x,
         inner_w,
-        body_top_y,
         y_before,
         ids::INSP_LIVE_TRIGGER_SECTION,
         header_h,
@@ -195,7 +181,6 @@ pub(crate) fn paint_action_trigger_section(
         ids::INSP_LIVE_TRIGGER_SECTION,
         y_before,
         new_y,
-        &[],
     )
 }
 
@@ -206,10 +191,8 @@ pub(crate) fn paint_sequence_section(
     theme: ph2d_tokens::Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     mut y: f32,
     header_h: f32,
     info: Option<&ph2d_editor_core::sequence_edits::InspectorSequenceInfo>,
@@ -221,11 +204,9 @@ pub(crate) fn paint_sequence_section(
     y = close_section(scene, theme, inner_x, inner_w, y);
     let y_before = y;
     begin_section(
-        section_tops_y,
         hit_index,
         inner_x,
         inner_w,
-        body_top_y,
         y_before,
         ids::INSP_LIVE_SEQ_SECTION,
         header_h,
@@ -251,7 +232,6 @@ pub(crate) fn paint_sequence_section(
         ids::INSP_LIVE_SEQ_SECTION,
         y_before,
         new_y,
-        &[],
     )
 }
 
@@ -264,10 +244,8 @@ pub(crate) fn paint_particles_section(
     theme: ph2d_tokens::Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     mut y: f32,
     header_h: f32,
     info: Option<&ph2d_editor_core::particles_edits::InspectorParticlesInfo>,
@@ -279,11 +257,9 @@ pub(crate) fn paint_particles_section(
     y = close_section(scene, theme, inner_x, inner_w, y);
     let y_before = y;
     begin_section(
-        section_tops_y,
         hit_index,
         inner_x,
         inner_w,
-        body_top_y,
         y_before,
         ids::INSP_LIVE_PARTICLES_SECTION,
         header_h,
@@ -309,6 +285,5 @@ pub(crate) fn paint_particles_section(
         ids::INSP_LIVE_PARTICLES_SECTION,
         y_before,
         new_y,
-        &[],
     )
 }

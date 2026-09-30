@@ -21,18 +21,21 @@ pub use super::types_blender::{BlenderHitKind, PaletteIoKind};
 /// State of a user-created sticky note inside a panel.
 #[derive(Clone, Debug)]
 pub struct NoteData {
-    /// Highlighter color index (0..4) into the 5-color palette.
+    /// Índice na paleta de marcador (`panel_chrome::HIGHLIGHTER_RGBA`, lida pela porta
+    /// `highlighter_rgba`, que cai na última cor em vez de estourar).
     pub color_idx: u8,
     /// Note title (single line).
     pub title: String,
     /// Note body (multi-line).
     pub body: String,
-    /// Inspector-section index this note should appear ABOVE.
-    /// `Some(i)` means "paint this note just before
-    /// `SECTION_IDS[i]`"; `None` appends at the bottom (the legacy
-    /// fallback for notes created via context menu hitting the
-    /// empty area below all sections).
-    pub before_section: Option<u8>,
+    /// ⭐⭐ **A secção a que a nota pertence — pela IDENTIDADE dela** (2026-09-30). A nota pinta-se
+    /// no FIM dessa secção, onde quer que o artista a tenha posto com a pega. `None` = no fim do
+    /// painel, e é também para lá que cai uma nota cuja secção não está à vista neste objecto.
+    ///
+    /// ⛔ Até 2026-09-30 era um ÍNDICE de posição (`before_section: Option<u8>`): com as secções
+    /// reordenáveis (2026-09-29) e as opcionais intercaladas, o índice da posição onde o clique
+    /// caiu não era o da ranhura que a pintava, e a nota nascia noutra secção.
+    pub section: Option<NodeId>,
 }
 
 /// What a timeline preset pick applies to. Both variants are opaque here —

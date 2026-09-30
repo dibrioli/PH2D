@@ -63,6 +63,24 @@ pub enum Theme {
     /// fundo preto não há para onde escurecer) e **bordas extra** para separar o que o contraste
     /// já não separa.
     Oled,
+    /// ⭐⭐ **OS QUATRO COLORIDOS** (ordem do dono, 2026-09-30: *«crie 4 outros themes, dessa vez bem
+    /// coloridos. um com as cores do tema de Mario, outro com as cores de Luigi. Escolha outros
+    /// 2»*). São DERIVADOS pelas mesmas regras do Godot — cinco entradas e nenhum slot à mão —, e
+    /// o que os faz coloridos é a BASE ter matiz em vez de ser cinzenta.
+    ///
+    /// ⚠️ **Os nomes não levam a marca registada** (*Mario* e *Luigi* são da Nintendo): um tema
+    /// chamado assim num produto comercial é uma decisão jurídica, não de cor. O nome que se lê
+    /// vive na tabela de traduções e muda-se lá sem tocar no código.
+    ///
+    /// `plumber_red` — o do Mario: base vermelha do boné, acento amarelo dos botões.
+    PlumberRed,
+    /// `plumber_green` — o do Luigi: base verde do boné, acento azul-claro do macacão.
+    PlumberGreen,
+    /// `sunset` — base violeta, acento laranja.
+    Sunset,
+    /// `candy` — o único CLARO dos quatro: base rosa, acento magenta (contraste negativo, como o
+    /// `light`).
+    Candy,
 }
 
 /// Panel layout flag — declared per-theme in tokens.json.
@@ -76,7 +94,7 @@ pub enum PanelLayout {
 
 impl Theme {
     /// Todos os temas, na ordem do menu — a família clássica primeiro.
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 12] = [
         Self::Forge,
         Self::Workshop,
         Self::Sunstone,
@@ -85,13 +103,27 @@ impl Theme {
         Self::Gray,
         Self::Light,
         Self::Oled,
+        Self::PlumberRed,
+        Self::PlumberGreen,
+        Self::Sunset,
+        Self::Candy,
     ];
 
     /// A família clássica — os quatro escritos à mão no `tokens.json`.
     pub const CLASSIC: [Self; 4] = [Self::Forge, Self::Workshop, Self::Sunstone, Self::Blueprint];
 
-    /// A família moderna — os quatro presets DERIVADOS pelas regras do Godot 4.6.
-    pub const MODERN: [Self; 4] = [Self::Dark, Self::Gray, Self::Light, Self::Oled];
+    /// A família moderna — os quatro presets DERIVADOS pelas regras do Godot 4.6, mais os quatro
+    /// COLORIDOS (2026-09-30), derivados pelas mesmas regras.
+    pub const MODERN: [Self; 8] = [
+        Self::Dark,
+        Self::Gray,
+        Self::Light,
+        Self::Oled,
+        Self::PlumberRed,
+        Self::PlumberGreen,
+        Self::Sunset,
+        Self::Candy,
+    ];
 
     /// **É um tema derivado** (moderno), e não uma tabela do `tokens.json`?
     ///
@@ -99,7 +131,17 @@ impl Theme {
     /// e é por isso que ela está aqui e não em cada pintor.
     #[must_use]
     pub const fn is_modern(self) -> bool {
-        matches!(self, Self::Dark | Self::Gray | Self::Light | Self::Oled)
+        matches!(
+            self,
+            Self::Dark
+                | Self::Gray
+                | Self::Light
+                | Self::Oled
+                | Self::PlumberRed
+                | Self::PlumberGreen
+                | Self::Sunset
+                | Self::Candy
+        )
     }
 
     /// A família a que este tema pertence, na ordem do menu.
@@ -141,7 +183,14 @@ impl Theme {
     pub const fn is_dark(self) -> bool {
         matches!(
             self,
-            Self::Forge | Self::Workshop | Self::Dark | Self::Gray | Self::Oled
+            Self::Forge
+                | Self::Workshop
+                | Self::Dark
+                | Self::Gray
+                | Self::Oled
+                | Self::PlumberRed
+                | Self::PlumberGreen
+                | Self::Sunset
         )
     }
 
@@ -172,6 +221,10 @@ impl Theme {
             Self::Gray => "gray",
             Self::Light => "light",
             Self::Oled => "oled",
+            Self::PlumberRed => "plumber_red",
+            Self::PlumberGreen => "plumber_green",
+            Self::Sunset => "sunset",
+            Self::Candy => "candy",
         }
     }
 
@@ -202,6 +255,10 @@ impl Theme {
             Self::Gray => "design.theme.gray",
             Self::Light => "design.theme.light",
             Self::Oled => "design.theme.oled",
+            Self::PlumberRed => "design.theme.plumber_red",
+            Self::PlumberGreen => "design.theme.plumber_green",
+            Self::Sunset => "design.theme.sunset",
+            Self::Candy => "design.theme.candy",
         }
     }
 }

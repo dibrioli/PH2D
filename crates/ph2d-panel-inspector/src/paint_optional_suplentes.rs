@@ -27,10 +27,8 @@ pub(crate) fn paint_ray_section(
     theme: ph2d_tokens::Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     mut y: f32,
     header_h: f32,
     info: Option<&ph2d_editor_core::ray_edits::InspectorRayInfo>,
@@ -42,11 +40,9 @@ pub(crate) fn paint_ray_section(
     y = close_section(scene, theme, inner_x, inner_w, y);
     let y_before = y;
     begin_section(
-        section_tops_y,
         hit_index,
         inner_x,
         inner_w,
-        body_top_y,
         y_before,
         ids::INSP_LIVE_RAY_SECTION,
         header_h,
@@ -72,7 +68,6 @@ pub(crate) fn paint_ray_section(
         ids::INSP_LIVE_RAY_SECTION,
         y_before,
         new_y,
-        &[],
     )
 }
 
@@ -87,10 +82,8 @@ pub(crate) fn paint_parallax_section(
     theme: ph2d_tokens::Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     mut y: f32,
     header_h: f32,
     info: Option<&ph2d_editor_core::parallax_edits::InspectorParallaxInfo>,
@@ -103,11 +96,9 @@ pub(crate) fn paint_parallax_section(
     y = close_section(scene, theme, inner_x, inner_w, y);
     let y_before = y;
     begin_section(
-        section_tops_y,
         hit_index,
         inner_x,
         inner_w,
-        body_top_y,
         y_before,
         ids::INSP_LIVE_PARALLAX_SECTION,
         header_h,
@@ -133,7 +124,6 @@ pub(crate) fn paint_parallax_section(
         ids::INSP_LIVE_PARALLAX_SECTION,
         y_before,
         new_y,
-        &[],
     )
 }
 
@@ -149,10 +139,8 @@ pub(crate) fn paint_weapon_section(
     theme: ph2d_tokens::Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     mut y: f32,
     header_h: f32,
     info: Option<&ph2d_editor_core::weapon_edits::InspectorWeaponInfo>,
@@ -164,11 +152,9 @@ pub(crate) fn paint_weapon_section(
     y = close_section(scene, theme, inner_x, inner_w, y);
     let y_before = y;
     begin_section(
-        section_tops_y,
         hit_index,
         inner_x,
         inner_w,
-        body_top_y,
         y_before,
         ids::INSP_LIVE_WEAPON_SECTION,
         header_h,
@@ -194,7 +180,6 @@ pub(crate) fn paint_weapon_section(
         ids::INSP_LIVE_WEAPON_SECTION,
         y_before,
         new_y,
-        &[],
     )
 }
 
@@ -210,10 +195,8 @@ pub(crate) fn paint_mesh3d_section(
     theme: ph2d_tokens::Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
     inner_x: f32,
     inner_w: f32,
-    body_top_y: f32,
     mut y: f32,
     header_h: f32,
     info: Option<&ph2d_editor_core::mesh3d_edits::InspectorMesh3dInfo>,
@@ -224,11 +207,9 @@ pub(crate) fn paint_mesh3d_section(
     y = close_section(scene, theme, inner_x, inner_w, y);
     let y_before = y;
     begin_section(
-        section_tops_y,
         hit_index,
         inner_x,
         inner_w,
-        body_top_y,
         y_before,
         ids::INSP_LIVE_MESH3D_SECTION,
         header_h,
@@ -254,6 +235,5 @@ pub(crate) fn paint_mesh3d_section(
         ids::INSP_LIVE_MESH3D_SECTION,
         y_before,
         new_y,
-        &[],
     )
 }

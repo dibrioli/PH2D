@@ -75,3 +75,15 @@ pub const PILL_PADDING_PX: f32 = crate::generated::CHROME_PILL_PADDING;
 
 /// Checkbox box edge length. Per tokens.json `chrome.checkbox-box`.
 pub const CHECKBOX_BOX_PX: f32 = crate::generated::CHROME_CHECKBOX_BOX;
+
+/// ⭐ **O FANTASMA de um cartão arrastado — a fracção do tamanho dele** (ordem do dono,
+/// 2026-09-30: *«permita ver o card sendo arrastado, menor e meio transparente»*).
+///
+/// ⚠️ Adimensional: é uma ESCALA aplicada ao cartão inteiro (fundo e conteúdo) à volta do ponto
+/// por onde a mão o pegou. `0,75` lê-se ainda como *o mesmo cartão* e deixa ver por baixo onde ele
+/// vai cair — menor que isto o texto do fantasma deixa de ser legível numa coluna de ~260 px.
+pub const DRAG_GHOST_SCALE: f32 = 0.75; // LITERAL-PX-OK: escala adimensional do fantasma
+
+/// ⭐ **O FANTASMA de um cartão arrastado — a opacidade dele.** Meio transparente: a marca da
+/// queda (a barra de acento entre dois cartões) tem de se ver através dele.
+pub const DRAG_GHOST_ALPHA: f32 = 0.55; // LITERAL-PX-OK: opacidade do fantasma

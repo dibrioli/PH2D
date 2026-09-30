@@ -25,6 +25,10 @@ use std::path::{Path, PathBuf};
 /// Each entry: (file slug under `widget/`, one-line reason).
 const WIDGET_OPT_OUT: &[(&str, &str)] = &[
     (
+        "drag_ghost",
+        "nao e' um widget: e' o FANTASMA de um cartao a ser arrastado (ordem do dono, 2026-09-30: *«permita ver o card sendo arrastado, menor e meio transparente»*) — ele so' existe enquanto o dedo segura uma pega, nao regista nada e nao tem estado. A galeria JA' o consome (as notas dela desenham-no ao arrastar a pega de uma nota), e a lei dele — escala a volta da PEGA, a pega sob o cursor — prova-se em `widget::drag_ghost::tests` e no gate de costura `ph2d-panel-inspector/tests/it/as_notas_tem_pega_e_menu.rs`, que medem a GEOMETRIA pintada.",
+    ),
+    (
         "composto",
         "nao e' um widget: e' o CENSO dos controlos COMPOSTOS (2026-09-21). Ele nao pinta um pixel e nao tem estado — os pintores canonicos (`paint_segmented_group{,_adaptive}`, `paint_bitmask_grid32`) declaram nele o GRUPO das suas celulas, e so' quando um gate o arma. Nasceu porque o censo das entradas por painel contava cada opcao de um selector como um COMANDO: o Inspector lia 314 e tem 150, e o `3D Model` lia 39 e tem 1. A galeria mostra os widgets que o consomem (o `SegmentedAdaptive` e o `BitmaskGrid32`); a lei dele prova-se em `quantas_entradas_tem_cada_painel::os_pintores_de_composto_declaram_o_grupo`, que mede o PRODUTO.",
     ),

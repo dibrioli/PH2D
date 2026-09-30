@@ -65,6 +65,7 @@ mod menus_asset;
 mod menus_hierarchy;
 mod menus_settings;
 mod menus_timeline;
+mod notes;
 
 pub use chrome::*;
 pub use gallery::*;
@@ -89,3 +90,4 @@ pub use menus_asset::*;
 pub use menus_hierarchy::*;
 pub use menus_settings::*;
 pub use menus_timeline::*;
+pub use notes::*;

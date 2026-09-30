@@ -54,6 +54,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "design.theme.gray" => "Gray",
         "design.theme.light" => "Light",
         "design.theme.oled" => "Black (OLED)",
+        // ⭐ Os quatro coloridos (2026-09-30) — ⚠️ sem a marca registada: ver `Theme::PlumberRed`.
+        "design.theme.plumber_red" => "Plumber Red",
+        "design.theme.plumber_green" => "Plumber Green",
+        "design.theme.sunset" => "Sunset",
+        "design.theme.candy" => "Candy",
         "design.theme.sunstone" => "Sunstone",
         "design.theme.workshop" => "Workshop",
         _ => return None,

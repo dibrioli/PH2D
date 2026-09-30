@@ -1,6 +1,6 @@
 //! Editor chrome state on [`WidgetStore`] — clipboard outbox, scene
 //! name, tool toggles, tooltips, collapsed flags, context menu,
-//! section outlines, notes, picker target, widget colors,
+//! section outlines, picker target, widget colors (as notas moram no irmão `notes_ops`),
 //! radius scale.
 //!
 //! Extracted from [`super`] (Track D6). All these are short
@@ -11,7 +11,6 @@
 use super::WidgetStore;
 use crate::interaction::ContextMenuRequest;
 use crate::interaction::InteractiveState;
-use crate::interaction::types::NoteData;
 use crate::widget::{ButtonState, SliderOrientation, SliderState};
 use ph2d_a11y::NodeId;
 
@@ -537,44 +536,6 @@ impl WidgetStore {
             None => {
                 self.section_outline_color.remove(&section);
             }
-        }
-    }
-
-    /// Read the per-panel note list. Returns an empty slice when no
-    /// notes have been created for the panel.
-    pub fn notes_for_panel(&self, panel: NodeId) -> &[NoteData] {
-        self.notes_per_panel
-            .get(&panel)
-            .map(|v| v.as_slice())
-            .unwrap_or(&[])
-    }
-
-    /// Append a new sticky-note to the panel's list. Caller passes the
-    /// highlighter color index + the optional section-anchor to the
-    /// panel's note list. Cap at 12 notes per panel
-    /// to keep paint bounded. `before_section: Some(i)` makes the
-    /// painter slot the note immediately above `SECTION_IDS[i]`;
-    /// `None` appends at the bottom.
-    pub fn notes_push(&mut self, panel: NodeId, color_idx: u8, before_section: Option<u8>) {
-        const CAP: usize = 12;
-        let list = self.notes_per_panel.entry(panel).or_default();
-        if list.len() >= CAP {
-            return;
-        }
-        list.push(NoteData {
-            color_idx,
-            title: ph2d_i18n::tr_with("chrome.interaction.note_n", &[("n", &(list.len() + 1))]),
-            body: String::new(),
-            before_section,
-        });
-    }
-
-    /// Update an existing note's color index.
-    pub fn note_set_color(&mut self, panel: NodeId, index: usize, color_idx: u8) {
-        if let Some(list) = self.notes_per_panel.get_mut(&panel)
-            && let Some(note) = list.get_mut(index)
-        {
-            note.color_idx = color_idx.min(4);
         }
     }
 

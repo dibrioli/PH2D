@@ -1,4 +1,4 @@
-//! ⭐ **A tabela `id da linha ⇄ tema` do menu de tema** — os oito, das duas famílias.
+//! ⭐ **A tabela `id da linha ⇄ tema` do menu de tema** — os doze, das duas famílias.
 //!
 //! Uma tabela, três leitores: o despacho (`chrome::theme`), a marca de estado do menu
 //! (`context_menu_overlay`) e as rows (`menu_rows`). Um `match` em cada um seria o trio que
@@ -14,8 +14,8 @@ use crate::ids;
 use ph2d_a11y::NodeId;
 use ph2d_tokens::Theme;
 
-/// `(id da linha do menu de tema, tema)` — os oito, na ordem do menu.
-pub const THEME_MENU: [(NodeId, Theme); 8] = [
+/// `(id da linha do menu de tema, tema)` — os doze, na ordem do menu.
+pub const THEME_MENU: [(NodeId, Theme); 12] = [
     (ids::CTX_MENU_THEME_FORGE, Theme::Forge),
     (ids::CTX_MENU_THEME_PAINT, Theme::Workshop),
     (ids::CTX_MENU_THEME_SUNSTONE, Theme::Sunstone),
@@ -24,6 +24,10 @@ pub const THEME_MENU: [(NodeId, Theme); 8] = [
     (ids::CTX_MENU_THEME_GRAY, Theme::Gray),
     (ids::CTX_MENU_THEME_LIGHT, Theme::Light),
     (ids::CTX_MENU_THEME_OLED, Theme::Oled),
+    (ids::CTX_MENU_THEME_PLUMBER_RED, Theme::PlumberRed),
+    (ids::CTX_MENU_THEME_PLUMBER_GREEN, Theme::PlumberGreen),
+    (ids::CTX_MENU_THEME_SUNSET, Theme::Sunset),
+    (ids::CTX_MENU_THEME_CANDY, Theme::Candy),
 ];
 
 /// O id da linha de menu que escolhe `theme`.
@@ -47,10 +51,10 @@ pub fn theme_of_menu_id(id: NodeId) -> Option<Theme> {
 
 /// ⭐⭐ **O menu de tema de uma SECÇÃO** — `(id da linha, tema)`, com `None` = *«o tema do app»*.
 ///
-/// Os mesmos oito do seletor do topo, com ids próprios (ver [`crate::ids::CTX_MENU_SECTION_THEME_APP`]).
+/// Os mesmos doze do seletor do topo, com ids próprios (ver [`crate::ids::CTX_MENU_SECTION_THEME_APP`]).
 /// ⚠️ É a tabela de despacho do gate `every_menu_row_reaches_a_handler`: o clique numa destas linhas
 /// é resolvido por [`section_theme_of_menu_id`], e o marcador de estado lê a mesma tabela.
-pub const SECTION_THEME_MENU: [(NodeId, Option<Theme>); 9] = [
+pub const SECTION_THEME_MENU: [(NodeId, Option<Theme>); 13] = [
     (ids::CTX_MENU_SECTION_THEME_APP, None),
     (ids::CTX_MENU_SECTION_THEME_FORGE, Some(Theme::Forge)),
     (ids::CTX_MENU_SECTION_THEME_PAINT, Some(Theme::Workshop)),
@@ -63,6 +67,16 @@ pub const SECTION_THEME_MENU: [(NodeId, Option<Theme>); 9] = [
     (ids::CTX_MENU_SECTION_THEME_GRAY, Some(Theme::Gray)),
     (ids::CTX_MENU_SECTION_THEME_LIGHT, Some(Theme::Light)),
     (ids::CTX_MENU_SECTION_THEME_OLED, Some(Theme::Oled)),
+    (
+        ids::CTX_MENU_SECTION_THEME_PLUMBER_RED,
+        Some(Theme::PlumberRed),
+    ),
+    (
+        ids::CTX_MENU_SECTION_THEME_PLUMBER_GREEN,
+        Some(Theme::PlumberGreen),
+    ),
+    (ids::CTX_MENU_SECTION_THEME_SUNSET, Some(Theme::Sunset)),
+    (ids::CTX_MENU_SECTION_THEME_CANDY, Some(Theme::Candy)),
 ];
 
 /// A escolha que a linha de menu `id` faz para uma secção: `Some(None)` = o tema do app,
@@ -102,7 +116,7 @@ pub fn apply_section_theme_click(
 mod tests {
     use super::*;
 
-    /// Os oito temas têm linha, e `theme_of_menu_id` é o inverso exacto de `theme_menu_id`.
+    /// Os doze temas têm linha, e `theme_of_menu_id` é o inverso exacto de `theme_menu_id`.
     #[test]
     fn every_theme_has_one_row_and_the_map_round_trips() {
         for theme in Theme::ALL {
@@ -111,7 +125,7 @@ mod tests {
         }
         assert_eq!(THEME_MENU.len(), Theme::ALL.len());
         assert_eq!(theme_of_menu_id(ids::TOOL_UNDO), None);
-        // ⭐ e o menu de SECÇÃO cobre os oito mais o do app, sem partilhar um id com o do topo
+        // ⭐ e o menu de SECÇÃO cobre os doze mais o do app, sem partilhar um id com o do topo
         for theme in Theme::ALL {
             assert!(SECTION_THEME_MENU.iter().any(|(_, t)| *t == Some(theme)));
         }

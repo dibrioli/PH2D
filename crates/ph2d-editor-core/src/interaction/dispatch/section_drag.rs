@@ -13,11 +13,11 @@ use crate::interaction::{HitIndex, SECCOES_FIXAS, WidgetStore, alvo_da_queda, re
 use ph2d_a11y::NodeId;
 
 /// Down primário sobre `id`: se é a pega de uma secção que se arrasta, semeia o arrasto.
-pub(super) fn seed(store: &mut WidgetStore, id: NodeId, y: f32) {
+pub(super) fn seed(store: &mut WidgetStore, id: NodeId, x: f32, y: f32) {
     if let Some(section) = crate::ids::section_of_grip(id)
         && !SECCOES_FIXAS.contains(&section)
     {
-        store.begin_section_drag(section, y);
+        store.begin_section_drag(section, x, y);
     }
 }
 
@@ -80,15 +80,15 @@ mod tests {
         }
         let mut s = store();
         // um Down+Up PARADO na pega não reordena
-        seed(&mut s, ids::INSP_LIVE_SHEET_GRIP, 190.0);
+        seed(&mut s, ids::INSP_LIVE_SHEET_GRIP, 0.0, 190.0);
         drop(&mut s, &hit, 190.0);
         assert!(
             s.section_order().is_empty(),
             "um clique parado na pega reordenou"
         );
         // o gesto: pega do Sheet, larga acima do Render
-        seed(&mut s, ids::INSP_LIVE_SHEET_GRIP, 190.0);
-        s.update_section_drag(95.0);
+        seed(&mut s, ids::INSP_LIVE_SHEET_GRIP, 0.0, 190.0);
+        s.update_section_drag(0.0, 95.0);
         drop(&mut s, &hit, 95.0);
         assert_eq!(
             s.section_order(),
@@ -104,9 +104,9 @@ mod tests {
     #[test]
     fn as_seccoes_fixas_nao_semeiam_arrasto() {
         let mut s = store();
-        seed(&mut s, ids::INSP_LIVE_NAME_GRIP, 10.0);
+        seed(&mut s, ids::INSP_LIVE_NAME_GRIP, 0.0, 10.0);
         assert!(s.section_drag().is_none());
-        seed(&mut s, ids::INSP_LIVE_TRANSFORM_GRIP, 10.0);
+        seed(&mut s, ids::INSP_LIVE_TRANSFORM_GRIP, 0.0, 10.0);
         assert!(s.section_drag().is_some());
     }
 }

@@ -66,7 +66,7 @@ pub use drag::{
 pub use event::{PanelRowDrop, PanelRowFamily, WidgetEvent};
 pub use hit::HitIndex;
 pub use state::{
-    InteractiveState, NamedPalette, SECCOES_FIXAS, SectionDrag, TAB_DRAG_THRESHOLD_PX,
+    InteractiveState, NamedPalette, NoteDrag, SECCOES_FIXAS, SectionDrag, TAB_DRAG_THRESHOLD_PX,
     TabDragAnchor, WidgetStore, alvo_da_queda, capture_if_listening, fracao_para_pista,
     ordena_seccoes, pista_para_fracao, reordena_seccoes, restore_section_prefs_text,
     section_prefs_text,

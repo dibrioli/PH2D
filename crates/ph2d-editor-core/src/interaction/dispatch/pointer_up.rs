@@ -224,6 +224,8 @@ pub(super) fn dispatch_up<'frame>(
     // então o bloco da hierarquia acima já foi no-op quando este é `Some`.
     // ⭐⭐ O arrasto de uma SECÇÃO pela pega: grava a ordem nova (ver `section_drag`).
     super::section_drag::drop(store, hit_index, event.y);
+    // ⭐ O arrasto de uma NOTA pela pega: muda-a de secção ou de posição (ver `note_drag`).
+    super::note_drag::drop(store, hit_index, event.y);
     if let Some((family, drag)) = store.end_panel_row_drag()
         && drag.active
     {

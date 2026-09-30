@@ -22,10 +22,13 @@
 //! Tinta que não é uma cor (gradiente, padrão), mistura em grupo, e o quad de IMAGEM do passe
 //! vectorial — quem chama decide e manda esses ao Vello, como hoje (doc 121 §2.1).
 
+mod eixo;
 mod geometry;
 mod pass;
 
+pub use eixo::EixoItem;
 pub use geometry::{
-    FillRule, GeometryRecord, LEVELS, ShapeGeometry, ShapeInput, StrokeInput, TOL_BASE, TOL_STEP,
+    FLAG_EVEN_ODD, FLAG_SO_CONFORME, FillRule, GeometryRecord, LEVELS, ShapeGeometry, ShapeInput,
+    StrokeInput, TOL_BASE, TOL_STEP,
 };
 pub use pass::{Copias, ShapeInstance, ShapePass, ShapeView};

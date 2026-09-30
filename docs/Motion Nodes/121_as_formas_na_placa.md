@@ -53,11 +53,13 @@ que é o que esta casa usa: `ph2d-render/src/vello_pass.rs`).
 | mistura EM GRUPO / camada por cópia (doc 118) | pede uma camada fora do alvo | Vello, como hoje |
 | quad de IMAGEM no passe vectorial (a «terceira média») | é uma textura, não uma forma | Vello, como hoje |
 
-⚠️ **E um caso que o passe desenha com divergência DECLARADA:** traço + afim NÃO conforme (escala
+⚠️ **E um caso que o passe desenha com lei PRÓPRIA:** traço + afim NÃO conforme (escala
 não-uniforme). A lei do dono (bug #27: *«quando engrossa, engrossa por igual nos dois eixos»*) pede
 a caneta no MUNDO; o traço expandido no espaço LOCAL daria uma caneta elíptica. ⇒ essas cópias
-desenham o traço por **distância ao eixo no ecrã** (caneta redonda certa, juntas REDONDAS em vez de
-esquadria). Tudo o resto — o preenchimento, e o traço de toda cópia conforme — é a conta do Vello.
+constroem o traço **no ecrã a partir do eixo** (W4, §9: caneta redonda `w·√|det|`, juntas e pontas
+AUTORADAS — ⛔ a redacção de 29/09 dizia *«juntas redondas em vez de esquadria»* e a W4 não o
+aceitou). Tudo o resto — o preenchimento, e o traço de toda cópia conforme — é a conta do Vello.
+⛔ O traço **tracejado** sob afim não conforme continua no Vello (§9).
 
 ## §3 — A ORDEM no quadro não muda
 
@@ -87,6 +89,10 @@ cima. ⛔ Desenhar o passe por cima do alvo do Vello pintaria as formas **por ci
 - ✅ **W3 — a rota do DISPOSITIVO está LIGADA** (§8): o cozimento escreve as cópias de forma num
   buffer PRÓPRIO que o passe lê sem descarga; a ponte deixou de recusar pelo TIPO e pergunta pelo
   CONTEÚDO. A mesma porta (`PH2D_FORMAS_NA_PLACA=0`) bissecta as duas rotas.
+- ✅ **W4 — o traço sob afim NÃO conforme vai à placa** (§9): o passe constrói o traço de cada
+  cópia no ECRÃ a partir do EIXO aplanado, com a caneta redonda da casa e as juntas e pontas
+  autoradas. Só o traço TRACEJADO sob escala não-uniforme fica no Vello. Censo: `17` das `22`
+  cenas com forma vão à placa.
 
 ## §6 — ✅ W1: a paridade de PIXEL, medida (2026-09-29, RTX, alvo de meio-float)
 
@@ -134,8 +140,9 @@ shell (`+~30` LOC): com a placa armada **o documento vai às FAIXAS** (senão fi
 POR CIMA das formas) e o presente cola a camada entre as faixas de cima e a cena do chrome.
 
 ⚠️ **TUDO-OU-NADA, porque a ordem das linhas é o desenho:** uma imagem, uma mistura (de linha ou de
-grupo), uma tinta própria ou um traço sob afim NÃO conforme devolvem o quadro inteiro ao Vello —
-partir a lista trocaria a ordem entre as duas metades.
+grupo), uma tinta própria ou um traço **tracejado** sob afim NÃO conforme devolvem o quadro inteiro
+ao Vello — partir a lista trocaria a ordem entre as duas metades. (Até à W4 era *todo* traço sob
+afim não conforme; desde a §9 só o tracejado.)
 
 ⭐⭐⭐ **O gate de paridade do PRODUTO** (`motion_shape_placa::gpu_tests`, `#[ignore]`): o `encode` e
 o `VelloPass` do produto contra a placa, `240` cópias das seis formas de fábrica (com traço,
@@ -182,7 +189,8 @@ o smoke do dono). ✅ A W3 fechou — §8.
    pura, com `GeometriasDaPlaca::veredito` por handle): recusa com o nome no
    `PH2D_MOTION_ROUTE_LOG` a placa desligada · o `fx.glow` (o halo lê as cópias da CPU) · um
    colisor declarado pela forma e lido pelo grafo (o contacto só existe na CPU, doc 109) · uma
-   forma que só o Vello desenha (tinta própria, traço de padrão ou pincel) · e **um traço** (W4).
+   forma que só o Vello desenha (tinta própria, traço de padrão ou pincel) · e, até à W4, **um
+   traço** — hoje só um traço **tracejado** (`RECUSA_FORMA_TRACEJADA`, §9).
    ⛔ Era a cerca do TIPO (`graph_has_live_vector_source`) e a da instância condicional, que
    recusavam SEMPRE — foram apagadas.
 5. **A mistura POR LINHA** ([`forma::saida_com_mistura_em_formas`]): uma saída com formas e com a
@@ -219,7 +227,8 @@ corridas iguais ensina que a cura não faz nada*. ⚠️ E a sonda do relógio d
   quadro à CPU, que o desenha certo).
 - **Sob o vidro jateado** (a edição de um prefab) a rota do dispositivo continua a desenhar as
   formas, por baixo do vidro, como o resto do mundo.
-- **O traço fica na CPU** até à W4 (`RECUSA_FORMA_COM_TRACO`).
+- ~~**O traço fica na CPU** até à W4 (`RECUSA_FORMA_COM_TRACO`).~~ **Superada pela W4** (§9): a
+  recusa passou a ser só do traço tracejado (`RECUSA_FORMA_TRACEJADA`).
 - ⚠️ **Pré-existente:** a camada do `fx.glow` num quadro do dispositivo lê o `pump` do quadro
   anterior — inalcançável com formas, porque o glow com formas recusa a placa.
 
@@ -263,3 +272,81 @@ duas metades. Prova: deslocar o `x` da cópia de forma em `1` reprova as mesmas 
 ⚠️ **A mistura na ponte não tinha gate nenhum** até a prova de mutação a procurar — o gate do
 cozimento (`a_mistura_por_linha_de_uma_forma_recusa_o_quadro`) prova a recusa DENTRO dele, e a
 detecção ANTES do plano, que é a que impede o quadro sem desenho, só existia como código.
+
+## §9 — ✅ W4: o traço sob afim NÃO conforme (2026-09-30)
+
+**A lei é a da casa, e já estava escrita:** `ph2d_vec_render::stroke_uniform::pen_for` — a geometria
+transforma-se, a caneta fica REDONDA com largura `w·√|det|`, os traços do tracejado escalam por `k`,
+e as juntas e pontas são as AUTORADAS. O passe passa a cumpri-la no dispositivo em vez de devolver o
+quadro ao Vello.
+
+**O que liga:**
+
+1. **O eixo** ([`eixo.rs`](../../crates/ph2d-shape-gpu/src/eixo.rs)): a geometria de cada forma com
+   traço leva, ao lado do contorno pré-expandido, o **EIXO aplanado** — `EixoItem` `#[repr(C)]` de
+   `48 B` por segmento, com a marca de **quina** (`ponto < 0 || cruz² > 1e-6·n`) e o intervalo das
+   juntas de um laço fechado (a última junta interior entra; ⛔ a 1.ª redacção saltava-a).
+2. **O passe** ([`shape.wgsl`](../../crates/ph2d-shape-gpu/src/shape.wgsl), `traco_do_eixo`): por
+   cópia NÃO conforme com eixo, o traço é construído no **ecrã**: um quad por segmento, a junta do
+   estilo em cada quina real (esquadria se `2 ≤ (1 + dot)·ml²`, senão chanfro; redonda por leque com
+   flecha de `0,25 px`, a tolerância do Vello), **juntas redondas dentro das curvas** (o aplanamento
+   não é quina), pontas `Butt`/`Square`/`Round`, e cobertura não-nula com orientação positiva.
+   ⛔ **A cópia CONFORME continua no contorno pré-expandido**, que é o do Vello **ao bit** — o passe
+   não troca uma lei exacta por uma construída.
+3. **A cerca é do TRACEJADO:** a geometria carrega `FLAG_SO_CONFORME` quando o traço é tracejado;
+   a rota da CPU (`Entrada::Pronta { so_conforme }`) salta para o Vello **só** com esse traço sob
+   afim não conforme, e a do dispositivo recusa-o antes do plano (`RECUSA_FORMA_TRACEJADA`, que
+   substitui a `RECUSA_FORMA_COM_TRACO` da W3).
+4. **O buffer do eixo** é o *binding* `5` do passe, com o início de cada geometria rebaseado
+   (`e[0] += base_eixo`); ⛔ vazio ele pintava **zero pixels** (um buffer de armazenamento vazio não
+   se liga) ⇒ leva um `EixoItem` de enchimento.
+
+**Medido** (RTX, alvo de meio-float, `#[ignore]`):
+- `a_rota_da_placa_desenha_o_traco_esticado_como_a_casa` — `240` cópias das seis formas de fábrica
+  com o aspecto entre `0,35` e `2,8` (controlo: `> 200` NÃO conformes): **alfa máx. `74` · cor máx.
+  `92` · `2 607` px acima de `16`** sobre `224 342` pintados pelo Vello contra `224 483` pela placa
+  (área a `0,06 %`). Barras: `100`/`100`/`5 %`/`1 %` — as das curvas da W1.
+- Na crate, a paridade contra o Vello ganhou as **cópias esticadas** e um **zigue-zague** (quinas
+  de esquadria e de chanfro na mesma linha).
+
+**Censo de rota** (`motion_bridge_gpu_rota_das_formas_probe`, `#[ignore]`, as cenas do catálogo com
+forma): **`17` de `22` vão à PLACA**. As `5` que ficam, cada uma com a recusa nomeada: `fx.glow`
+(`=70`) · passagem (`=120`) · colisor lido pelo grafo (`=114`, `=115`) · traço tracejado (`=76`).
+
+**Divergências DECLARADAS:**
+- **Tracejado sob escala não-uniforme fica no Vello** (CPU e dispositivo) — o tracejado no
+  dispositivo pede o comprimento de arco por cópia, que é wave própria.
+- **O teste de conformidade** do passe é em `f32` a `1e-5` e o da CPU a `1e-4`: uma cópia entre os
+  dois cai no contorno pré-expandido numa rota e no eixo na outra — as duas desenham a mesma caneta
+  redonda, e a diferença é a de arredondamento.
+- **As marcas sob afim não conforme** somam a cobertura do contorno e a do eixo com `min(…, 1)`.
+- **Nas curvas** o resíduo é o da família da W1 (a borda até `0,25 px`, do lado do Vello).
+
+**Mutação `15` de `15`** (controlos: pré-voo `15/15` âncoras, corridas LIMPAS verdes com `13` e `16`
+testes, restauro com `touch`):
+
+| # | mutação | sangra (`P` = `o_passe_desenha_o_que_o_vello_desenha`, na crate) |
+|---|---|---|
+| W1 | o eixo nunca arma (a caneta elíptica) | `P` |
+| W1b | o mesmo, pelo gate do PRODUTO | `a_rota_da_placa_desenha_o_traco_esticado_como_a_casa` |
+| W2 | esquadria vira chanfro | `P` |
+| W3 | redonda vira chanfro | `P` |
+| W4 | a ponta quadrada some | `P` |
+| W5 | a ponta redonda some | `P` |
+| W6 | a caneta passa a ser o maior eixo e não `√|det|` | `P` |
+| W7 | nenhuma fronteira é quina | `P` + dois gates do `eixo` (laço aberto e fechado) |
+| W8 | toda fronteira é quina | `dentro_de_uma_curva_a_junta_e_redonda` |
+| W9 | o quad não cresce pela caneta | `P` |
+| W10 | o início do eixo não é rebaseado por geometria | o gate do PRODUTO |
+| W11 | o eixo vazio sem enchimento | `P` |
+| W12 | o tracejado não se marca | `o_tracejado_so_se_desenha_conforme` |
+| W13 | a placa esquece o tracejado | `so_o_traco_tracejado_sob_escala_nao_uniforme_fica_no_vello` + a cerca |
+| W14 | o dispositivo aceita o tracejado | `a_cerca_das_formas_nomeia_cada_recusa` |
+
+⚠️ **Flake de carga, não defeito:** `as_cenas_de_varias_saidas_pela_placa_dao_o_que_a_cpu_da`
+reprovou (com um *timeout* ao lado) numa bateria de GPU a `load ~23,3`, e passou **2 de 2 sozinho
+a `load 2,3`–`4,5`**; a suíte sem GPU correu `1 476/1 476` a `load 8,15`.
+
+⏳ **Por fazer:** W0 (a medição de partida, que a placa ocupada adiou) e W5 (medição de fecho em
+`release` + smoke do dono com formas e simulação com campos, fotografado antes) · os glifos do
+`source.text` · o tracejado no dispositivo.

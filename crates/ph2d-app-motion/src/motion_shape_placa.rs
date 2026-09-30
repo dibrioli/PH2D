@@ -20,9 +20,10 @@
 //! - uma geometria que a placa não desenha como o Vello
 //!   ([`ph2d_vec_render::forma_para_a_placa`] devolve `None`: tinta própria, traço de padrão ou
 //!   de pincel);
-//! - ⛔ **um TRAÇO sob afim NÃO conforme** — a lei do dono (bug #27: *«quando engrossa, engrossa
-//!   por igual nos dois eixos»*) põe a caneta no MUNDO, e o contorno expandido no espaço LOCAL
-//!   daria uma caneta elíptica. É a divergência que a W4 resolve; até lá, o Vello.
+//! - ⛔ **um traço TRACEJADO sob afim NÃO conforme** — o tracejado mede-se no MUNDO (a lei do dono,
+//!   bug #27), e sob escala não uniforme o comprimento de arco no mundo não é proporcional ao local.
+//!   ⭐ Um traço CONTÍNUO sob escala não uniforme vai à placa desde a W4: o shader constrói-o no
+//!   ecrã a partir do EIXO, com a caneta redonda `w·√|det|` ([`ph2d_shape_gpu`], `eixo`).
 //!
 //! ⚠️ **E a placa desenha numa CAMADA própria de meio-float**, que o presente cola no acumulador
 //! do mundo entre o documento e os gizmos: o Vello grava a cor SEPARADA do alfa, logo o passe não
@@ -47,10 +48,11 @@ pub const FORMATO_DA_CAMADA: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Fl
 
 /// O que uma geometria É para a placa.
 enum Entrada {
-    /// A placa desenha-a. `traco` = ela tem traço, e então só vai com afim conforme.
+    /// A placa desenha-a. `so_conforme` = o traço dela é TRACEJADO, e então só vai com afim
+    /// conforme (o [`ph2d_shape_gpu::FLAG_SO_CONFORME`] da geometria).
     Pronta {
         geometria: Box<ShapeGeometry>,
-        traco: bool,
+        so_conforme: bool,
     },
     /// Não desenha nada (sem preenchimento nem traço) — a cópia é saltada, como no Vello.
     Vazia,
@@ -80,7 +82,6 @@ fn prepara(path: &VecPath) -> Entrada {
             color: f.cor_do_traco,
         })
         .collect();
-    let traco = !strokes.is_empty() || !f.preenchimentos_do_traco.is_empty();
     let input = ShapeInput {
         fill,
         strokes,
@@ -88,8 +89,8 @@ fn prepara(path: &VecPath) -> Entrada {
     };
     match ShapeGeometry::prepare(&input) {
         Some(g) => Entrada::Pronta {
+            so_conforme: g.record.flags & ph2d_shape_gpu::FLAG_SO_CONFORME != 0,
             geometria: Box::new(g),
-            traco,
         },
         None => Entrada::Vazia,
     }
@@ -127,8 +128,9 @@ pub struct GeometriasDaPlaca {
 /// O que uma geometria é para a placa, sem a geometria — a resposta que a ponte lê.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Veredito {
-    /// A placa desenha-a; `traco` = ela tem traço (e então só vai com afim conforme).
-    Pronta { traco: bool },
+    /// A placa desenha-a; `so_conforme` = o traço dela é TRACEJADO (e então só vai com afim
+    /// conforme).
+    Pronta { so_conforme: bool },
     /// Não desenha nada (sem preenchimento nem traço).
     Vazia,
     /// A placa não a sabe desenhar como o Vello.
@@ -154,7 +156,9 @@ impl GeometriasDaPlaca {
             None => Veredito::Ausente,
             Some(Entrada::Recusada) => Veredito::Recusada,
             Some(Entrada::Vazia) => Veredito::Vazia,
-            Some(Entrada::Pronta { traco, .. }) => Veredito::Pronta { traco: *traco },
+            Some(Entrada::Pronta { so_conforme, .. }) => Veredito::Pronta {
+                so_conforme: *so_conforme,
+            },
         }
     }
 
@@ -329,8 +333,8 @@ impl PlacaDeFormas {
                 // ⚠️ Na rota da CPU um handle ausente devolve o quadro ao Vello, como sempre fez.
                 Veredito::Recusada | Veredito::Ausente => return false,
                 Veredito::Vazia => {}
-                Veredito::Pronta { traco } => {
-                    if traco && !conforme(inst) {
+                Veredito::Pronta { so_conforme } => {
+                    if so_conforme && !conforme(inst) {
                         return false;
                     }
                     self.copias.push(ShapeInstance {

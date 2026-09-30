@@ -51,6 +51,8 @@ pub struct ShapePass {
     records: wgpu::Buffer,
     segs: wgpu::Buffer,
     handles: wgpu::Buffer,
+    /// Os itens do eixo do traço de todas as geometrias ([`crate::eixo`]).
+    eixo: wgpu::Buffer,
     instances: Option<wgpu::Buffer>,
     /// As geometrias carregadas, pela ordem dos handles — o que a comparação de [`Self::set_geometries`] lê.
     carregadas: Vec<u32>,
@@ -118,6 +120,7 @@ impl ShapePass {
                 storage_entry(2),
                 storage_entry(3),
                 storage_entry(4),
+                storage_entry(5),
             ],
         });
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -164,6 +167,7 @@ impl ShapePass {
             records: vazio("ph2d-shape-gpu records"),
             segs: vazio("ph2d-shape-gpu segs"),
             handles: vazio("ph2d-shape-gpu handles"),
+            eixo: vazio("ph2d-shape-gpu eixo"),
             instances: None,
             carregadas: Vec::new(),
         }
@@ -186,16 +190,35 @@ impl ShapePass {
         }
         let mut records: Vec<GeometryRecord> = Vec::with_capacity(v.len());
         let mut segs: Vec<[f32; 4]> = Vec::new();
+        let mut eixo: Vec<crate::EixoItem> = Vec::new();
         for (_, g) in &v {
             let base = u32::try_from(segs.len()).expect("segmentos cabem em u32");
+            let base_eixo = u32::try_from(eixo.len()).expect("itens do eixo cabem em u32");
             let mut r = g.record;
             for rg in &mut r.ranges {
                 rg[0] += base;
                 rg[2] += base;
             }
+            for e in &mut r.eixo {
+                e[0] += base_eixo;
+            }
             records.push(r);
             segs.extend_from_slice(&g.segments);
+            eixo.extend_from_slice(&g.eixo);
         }
+        // ⛔ **Um item a mais quando não há eixo nenhum:** o mínimo do buffer é `16` bytes e um
+        // item tem `48` — uma ligação mais curta que UM elemento do `array<Eixo>` reprova a
+        // validação do desenho, e o passe não pintava um pixel numa cena só de preenchimentos
+        // (medido na 1.ª corrida da W4: `0 px` contra `77 296`). Nenhum registo o conta.
+        if eixo.is_empty() {
+            eixo.push(crate::EixoItem::default());
+        }
+        self.eixo = buffer_com(
+            gpu,
+            "ph2d-shape-gpu eixo",
+            bytemuck::cast_slice(&eixo),
+            wgpu::BufferUsages::STORAGE,
+        );
         self.records = buffer_com(
             gpu,
             "ph2d-shape-gpu records",
@@ -294,6 +317,10 @@ impl ShapePass {
                 wgpu::BindGroupEntry {
                     binding: 4,
                     resource: self.handles.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: self.eixo.as_entire_binding(),
                 },
             ],
         });

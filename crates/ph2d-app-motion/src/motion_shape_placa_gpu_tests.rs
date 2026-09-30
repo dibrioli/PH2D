@@ -269,3 +269,42 @@ fn a_rota_da_placa_desenha_o_que_a_cena_vello_desenha() {
         "{fora} pixels desviam > 16 — acima de 5 % dos {nv} pintados"
     );
 }
+
+/// ⭐⭐⭐ **O TRAÇO SOB ESCALA NÃO UNIFORME, pela rota do PRODUTO** (doc 121 W4) — as MESMAS seis
+/// formas de fábrica, ESTICADAS (aspecto entre `0,35` e `2,8`), pelo `encode` do produto (que aplica a
+/// lei da casa: a geometria transformada, a caneta redonda `w·√|det|` — `stroke_uniform`) e pela
+/// placa (o traço construído no ecrã a partir do eixo). Até à W4 este quadro nem ia à placa.
+#[test]
+#[ignore = "precisa de adapter de GPU"]
+fn a_rota_da_placa_desenha_o_traco_esticado_como_a_casa() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem adapter — o gate não correu");
+        return;
+    };
+    let (store, hs) = store();
+    let mut insts = copias(&hs, 240);
+    for (i, c) in insts.iter_mut().enumerate() {
+        #[expect(clippy::cast_precision_loss, reason = "uma fixtura pequena")]
+        let k = (i as f32 * 0.618_034).fract();
+        c.size[1] *= 0.35 + 2.45 * k;
+    }
+    assert!(
+        insts.iter().filter(|c| !super::conforme(c)).count() > 200,
+        "controlo: a fixtura tem de ser feita de copias NAO conformes"
+    );
+    let v = pelo_vello(&gpu, &insts, &store);
+    let p = pela_placa(&gpu, &insts, &store);
+    let (alfa, cor, nv, np, fora) = compara(&v, &p);
+    eprintln!(
+        "  produto esticado: alfa max {alfa} · cor max {cor} · {fora} px fora · vello {nv} px · placa {np} px"
+    );
+    assert!(nv > 20_000, "controlo: a cena pinta pouco ({nv} px)");
+    let diff = nv.abs_diff(np);
+    assert!(diff * 100 <= nv, "área pintada diverge: {nv} contra {np}");
+    assert!(alfa <= 100, "alfa {alfa} acima da barra das curvas (100)");
+    assert!(cor <= 100, "cor {cor} acima da barra das curvas (100)");
+    assert!(
+        fora * 20 <= nv,
+        "{fora} pixels desviam > 16 — acima de 5 % dos {nv} pintados"
+    );
+}

@@ -31,10 +31,26 @@ struct Record {
     stroke_color: vec4<f32>,
     tol: array<vec4<f32>, 2>,
     ranges: array<vec4<u32>, 8>,
+    // Por nível: eixo_start, eixo_count, marcas_count, 0 (doc 121 W4).
+    eixo: array<vec4<u32>, 8>,
+    eixo_bbox: vec4<f32>,
     flags: u32,
+    ext_fora: f32,
     _pad0: u32,
     _pad1: u32,
-    _pad2: u32,
+}
+
+// Um item do EIXO do traço (`eixo.rs`): troço a→b · junta em b entre a→b e b→c · ponta em b.
+struct Eixo {
+    a: vec2<f32>,
+    b: vec2<f32>,
+    c: vec2<f32>,
+    meia: f32,
+    limite: f32,
+    tipo: u32,
+    junta: u32,
+    ponta: u32,
+    _pad: u32,
 }
 
 @group(0) @binding(0) var<uniform> view: View;
@@ -43,6 +59,7 @@ struct Record {
 @group(0) @binding(3) var<storage, read> segs: array<vec4<f32>>;
 // Os handles de geometria, ORDENADOS — a posição de um handle é o índice do registo dele.
 @group(0) @binding(4) var<storage, read> handles: array<u32>;
+@group(0) @binding(5) var<storage, read> eixo: array<Eixo>;
 
 struct VsOut {
     @builtin(position) pos: vec4<f32>,
@@ -54,6 +71,9 @@ struct VsOut {
     @location(4) @interpolate(flat) tint: vec4<f32>,
     @location(5) @interpolate(flat) stroke_color: vec4<f32>,
     @location(6) @interpolate(flat) even_odd: u32,
+    // doc 121 W4: a cópia é NÃO conforme e o traço dela sai do EIXO (x = início, y = contagem), com
+    // as marcas (z) e a caneta `√|det|` (w, em bits). `y = 0` ⇒ o caminho conforme de sempre.
+    @location(7) @interpolate(flat) eixo_rg: vec4<u32>,
 }
 
 // O índice do registo de um handle, ou `0xffffffff` se a geometria não existe.
@@ -117,6 +137,19 @@ fn vs_main(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> 
         }
     }
     let rg = rec.ranges[nivel];
+    // ⭐ doc 121 W4 — **CONFORME?** A mesma pergunta do `stroke_uniform::is_conformal` da casa: as
+    // duas colunas do afim com o mesmo comprimento e perpendiculares. Sob escala NÃO uniforme o
+    // traço sai do eixo, com a caneta REDONDA de largura `w·√|det|` (bug #27).
+    let l1 = lin.x * lin.x + lin.y * lin.y;
+    let l2 = lin.z * lin.z + lin.w * lin.w;
+    let esc2 = max(max(l1, l2), 1.0e-30);
+    let conforme = abs(l1 - l2) <= esc2 * 1.0e-5 && abs(lin.x * lin.z + lin.y * lin.w) <= esc2 * 1.0e-5;
+    let caneta = sqrt(abs(lin.x * lin.w - lin.z * lin.y));
+    let ex = rec.eixo[nivel];
+    var eixo_rg = vec4<u32>(0u, 0u, 0u, 0u);
+    if !conforme && ex.y > 0u && (rec.flags & 2u) == 0u {
+        eixo_rg = vec4<u32>(ex.x, ex.y, ex.z, bitcast<u32>(caneta));
+    }
     // O quad: a caixa da forma no ECRÃ, arredondada PARA FORA ao pixel inteiro.
     // ⚠️ **Sem margem, e é medido:** a caixa é a dos SEGMENTOS aplanados, e um pixel só tem
     // cobertura se um segmento (ou o interior entre eles) lhe toca — logo o `floor`/`ceil` já
@@ -126,8 +159,21 @@ fn vs_main(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> 
     let c1 = aplica(lin, t, rec.bbox.zy);
     let c2 = aplica(lin, t, rec.bbox.xw);
     let c3 = aplica(lin, t, rec.bbox.zw);
-    let lo = floor(min(min(c0, c1), min(c2, c3)));
-    let hi = ceil(max(max(c0, c1), max(c2, c3)));
+    var lo_f = min(min(c0, c1), min(c2, c3));
+    var hi_f = max(max(c0, c1), max(c2, c3));
+    if eixo_rg.y > 0u {
+        // O traço do eixo vai até `ext_fora × caneta` para FORA dos pontos do eixo, no ecrã — a caixa
+        // local do contorno expandido não o cobre sob escala não uniforme.
+        let e0 = aplica(lin, t, rec.eixo_bbox.xy);
+        let e1 = aplica(lin, t, rec.eixo_bbox.zy);
+        let e2 = aplica(lin, t, rec.eixo_bbox.xw);
+        let e3 = aplica(lin, t, rec.eixo_bbox.zw);
+        let m = vec2<f32>(rec.ext_fora * caneta);
+        lo_f = min(lo_f, min(min(e0, e1), min(e2, e3)) - m);
+        hi_f = max(hi_f, max(max(e0, e1), max(e2, e3)) + m);
+    }
+    let lo = floor(lo_f);
+    let hi = ceil(hi_f);
     var canto = array<vec2<f32>, 6>(
         vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 0.0), vec2<f32>(0.0, 1.0),
         vec2<f32>(0.0, 1.0), vec2<f32>(1.0, 0.0), vec2<f32>(1.0, 1.0),
@@ -141,6 +187,7 @@ fn vs_main(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> 
     out.tint = inst.tint;
     out.stroke_color = rec.stroke_color;
     out.even_odd = rec.flags & 1u;
+    out.eixo_rg = eixo_rg;
     return out;
 }
 
@@ -181,6 +228,115 @@ fn area(inicio: u32, n: u32, lin: vec4<f32>, t: vec2<f32>, xy: vec2<f32>) -> f32
     return s;
 }
 
+// ⭐ doc 121 W4 — **O TRAÇO DE UMA CÓPIA NÃO CONFORME, construído no ECRÃ a partir do eixo.** Cada
+// peça (o quadrilátero de um troço, a junta de uma quina, a ponta de um extremo) soma a área dela com
+// a orientação POSITIVA, e a soma passa pela regra não-nula — a mesma com que o Vello preenche o
+// contorno que o kurbo expande. As peças do lado de FORA não se sobrepõem (a junta vive entre as
+// duas normais, a ponta à frente do fim), logo a borda anti-serrilhada é a da área exacta.
+
+fn orienta(v: f32, a: vec2<f32>, b: vec2<f32>, c: vec2<f32>) -> f32 {
+    let x = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+    return select(-v, v, x >= 0.0);
+}
+
+fn tri(a: vec2<f32>, b: vec2<f32>, c: vec2<f32>, xy: vec2<f32>) -> f32 {
+    let v = contribuicao(a, b, xy) + contribuicao(b, c, xy) + contribuicao(c, a, xy);
+    return orienta(v, a, b, c);
+}
+
+// Um quadrilátero CONVEXO a→b→c→d.
+fn quad(a: vec2<f32>, b: vec2<f32>, c: vec2<f32>, d: vec2<f32>, xy: vec2<f32>) -> f32 {
+    let v = contribuicao(a, b, xy) + contribuicao(b, c, xy) + contribuicao(c, d, xy)
+        + contribuicao(d, a, xy);
+    return orienta(v, a, b, c);
+}
+
+fn perp(u: vec2<f32>) -> vec2<f32> {
+    return vec2<f32>(-u.y, u.x);
+}
+
+fn roda(v: vec2<f32>, ang: f32) -> vec2<f32> {
+    let c = cos(ang);
+    let s = sin(ang);
+    return vec2<f32>(c * v.x - s * v.y, s * v.x + c * v.y);
+}
+
+// Um leque de `centro` sobre o arco de `n0` a `alpha` radianos no sentido `dir`, com os passos que
+// mantêm a flecha do arco em `0,25 px` (a tolerância do Vello).
+fn leque(centro: vec2<f32>, n0: vec2<f32>, alpha: f32, dir: f32, r: f32, xy: vec2<f32>) -> f32 {
+    var passo_max = 3.14159265;
+    if r > 0.25 {
+        passo_max = 2.0 * acos(1.0 - 0.25 / r);
+    }
+    let k = u32(clamp(ceil(alpha / max(passo_max, 1.0e-4)), 1.0, 64.0));
+    var s = 0.0;
+    var p = centro + n0;
+    for (var j = 1u; j <= k; j += 1u) {
+        let q = centro + roda(n0, dir * alpha * f32(j) / f32(k));
+        s += tri(centro, p, q, xy);
+        p = q;
+    }
+    return s;
+}
+
+fn traco_do_eixo(inicio: u32, n: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32, xy: vec2<f32>) -> f32 {
+    var s = 0.0;
+    for (var i = 0u; i < n; i += 1u) {
+        let it = eixo[inicio + i];
+        let r = it.meia * caneta;
+        let a = aplica(lin, t, it.a);
+        let b = aplica(lin, t, it.b);
+        let dab = b - a;
+        let lab = length(dab);
+        if lab <= 0.0 || r <= 0.0 {
+            continue;
+        }
+        let u = dab / lab;
+        if it.tipo == 0u {
+            let nr = perp(u) * r;
+            s += quad(a + nr, b + nr, b - nr, a - nr, xy);
+        } else if it.tipo == 1u {
+            let c = aplica(lin, t, it.c);
+            let dbc = c - b;
+            let lbc = length(dbc);
+            if lbc <= 0.0 {
+                continue;
+            }
+            let v = dbc / lbc;
+            let cr = u.x * v.y - u.y * v.x;
+            let dt = clamp(dot(u, v), -1.0, 1.0);
+            if abs(cr) < 1.0e-7 && dt > 0.0 {
+                continue;
+            }
+            // O lado de FORA é o oposto ao da viragem.
+            let lado = select(1.0, -1.0, cr > 0.0);
+            let n0 = perp(u) * r * lado;
+            let n1 = perp(v) * r * lado;
+            if it.junta == 0u && 2.0 <= (1.0 + dt) * it.limite * it.limite {
+                let m = b + (n0 + n1) / (1.0 + dt);
+                s += quad(b, b + n0, m, b + n1, xy);
+            } else if it.junta == 2u {
+                var dir = sign(n0.x * n1.y - n0.y * n1.x);
+                if dir == 0.0 {
+                    dir = sign(n0.x * u.y - n0.y * u.x);
+                }
+                s += leque(b, n0, acos(dt), dir, r, xy);
+            } else {
+                s += tri(b, b + n0, b + n1, xy);
+            }
+        } else {
+            let nr = perp(u) * r;
+            if it.ponta == 1u {
+                s += quad(b + nr, b + nr + u * r, b - nr + u * r, b - nr, xy);
+            } else if it.ponta == 2u {
+                let dir = sign(nr.x * u.y - nr.y * u.x);
+                s += leque(b, nr, 3.14159265, dir, r, xy);
+            }
+        }
+    }
+    return min(abs(s), 1.0);
+}
+
 @fragment
 fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     let xy = floor(in.pos.xy);
@@ -192,7 +348,15 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
         af = min(abs(af), 1.0);
     }
     // O traço é sempre não-nulo: o contorno expandido é um preenchimento.
-    let as_ = min(abs(area(in.stroke.x, in.stroke.y, in.lin, in.t, xy)), 1.0);
+    var as_ = 0.0;
+    if in.eixo_rg.y > 0u {
+        // Sob escala não uniforme: as MARCAS (as primeiras `z` peças do traço) mais o traço do eixo.
+        let marcas = area(in.stroke.x, in.eixo_rg.z, in.lin, in.t, xy);
+        let eixo_cob = traco_do_eixo(in.eixo_rg.x, in.eixo_rg.y, in.lin, in.t, bitcast<f32>(in.eixo_rg.w), xy);
+        as_ = min(min(abs(marcas), 1.0) + eixo_cob, 1.0);
+    } else {
+        as_ = min(abs(area(in.stroke.x, in.stroke.y, in.lin, in.t, xy)), 1.0);
+    }
     let f = vec4<f32>(in.tint.rgb * in.tint.a, in.tint.a) * af;
     let s = vec4<f32>(in.stroke_color.rgb * in.stroke_color.a, in.stroke_color.a) * as_;
     // O traço POR CIMA do preenchimento — a ordem dos dois `fill` do Vello, composta aqui.

@@ -20,7 +20,7 @@ use ph2d_gpu::GpuContext;
 use ph2d_shape_gpu::{
     Copias, FillRule, ShapeGeometry, ShapeInput, ShapeInstance, ShapePass, ShapeView, StrokeInput,
 };
-use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Join, Shape, Stroke};
+use ph2d_vector::{Affine, BezPath, Brush, Cap, Circle, Color, Fill, Join, Shape, Stroke};
 
 const LADO: u32 = 512;
 
@@ -62,16 +62,29 @@ fn pentagrama() -> BezPath {
     bp
 }
 
+/// Um caminho ABERTO com quinas nos dois sentidos — pontas e juntas.
+fn zigue_zague() -> BezPath {
+    let mut bp = BezPath::new();
+    bp.move_to((-0.5, 0.2));
+    bp.line_to((-0.2, -0.3));
+    bp.line_to((0.0, 0.25));
+    bp.line_to((0.25, -0.25));
+    bp.line_to((0.5, 0.3));
+    bp
+}
+
 fn circulo() -> BezPath {
     Circle::new((0.0, 0.0), 0.5).to_path(0.1)
 }
 
-/// Uma cópia: posição, lado, ângulo e cor.
+/// Uma cópia: posição, lado, ângulo e cor — e o ASPECTO (`altura / largura`), que é `1` numa cópia
+/// conforme e outra coisa sob escala NÃO uniforme (doc 121 W4).
 struct Copia {
     pos: [f32; 2],
     lado: f32,
     ang: f32,
     tint: [f32; 4],
+    aspecto: f32,
 }
 
 /// Uma GRELHA de cópias opacas que não se tocam, de lados crescentes — a fixtura em que o desvio
@@ -89,6 +102,7 @@ fn grelha_isolada() -> Vec<Copia> {
                 lado: 8.0 + 6.9 * (x + 8.0 * y) * 0.125,
                 ang: 0.29 * (x + 8.0 * y),
                 tint: [0.2, 0.4, 0.8, 1.0],
+                aspecto: 1.0,
             });
         }
     }
@@ -115,9 +129,21 @@ fn copias(n: usize, lado_min: f32, lado_max: f32, semente: u64) -> Vec<Copia> {
                 lado: lado_min + r() * (lado_max - lado_min),
                 ang: r() * std::f32::consts::TAU,
                 tint: [r(), r(), r(), 0.35 + 0.65 * r()],
+                aspecto: 1.0,
             }
         })
         .collect()
+}
+
+/// As mesmas cópias, ESTICADAS: o aspecto de cada uma entre `0,35` e `2,8`, nos dois sentidos.
+fn esticadas(n: usize, lado_min: f32, lado_max: f32, semente: u64) -> Vec<Copia> {
+    let mut v = copias(n, lado_min, lado_max, semente);
+    for (i, c) in v.iter_mut().enumerate() {
+        #[expect(clippy::cast_precision_loss, reason = "uma fixtura pequena")]
+        let k = (i as f32 * 0.618_034).fract();
+        c.aspecto = 0.35 + 2.45 * k;
+    }
+    v
 }
 
 fn basis(ang: f32) -> [f32; 4] {
@@ -125,14 +151,15 @@ fn basis(ang: f32) -> [f32; 4] {
     [c, s, -s, c]
 }
 
-/// A pose de mundo de uma cópia, EXACTAMENTE como o shader a compõe (`pos + basis·(q·lado)`).
+/// A pose de mundo de uma cópia, EXACTAMENTE como o shader a compõe (`pos + basis·(q·size)`).
 fn pose(c: &Copia) -> Affine {
     let [b0, b1, b2, b3] = basis(c.ang);
+    let (sx, sy) = (c.lado, c.lado * c.aspecto);
     Affine::new([
-        f64::from(b0 * c.lado),
-        f64::from(b1 * c.lado),
-        f64::from(b2 * c.lado),
-        f64::from(b3 * c.lado),
+        f64::from(b0 * sx),
+        f64::from(b1 * sx),
+        f64::from(b2 * sy),
+        f64::from(b3 * sy),
         f64::from(c.pos[0]),
         f64::from(c.pos[1]),
     ])
@@ -142,6 +169,8 @@ struct Forma<'a> {
     bp: &'a BezPath,
     regra: FillRule,
     traco: Option<(Stroke, [f32; 4])>,
+    /// A linha que o traço segue, quando não é o contorno do preenchimento (um caminho ABERTO).
+    linha: Option<&'a BezPath>,
 }
 
 /// Os bytes crus de uma textura (`px` bytes por pixel).
@@ -212,7 +241,23 @@ fn pelo_vello(gpu: &GpuContext, forma: &Forma<'_>, cs: &[Copia]) -> Vec<u8> {
         let t = pose(c);
         cena.fill(regra, t, &Brush::Solid(Color::new(c.tint)), None, forma.bp);
         if let Some((s, cor)) = &forma.traco {
-            cena.stroke(s, t, &Brush::Solid(Color::new(*cor)), None, forma.bp);
+            let linha = forma.linha.unwrap_or(forma.bp);
+            if (c.aspecto - 1.0).abs() < 1e-6 {
+                cena.stroke(s, t, &Brush::Solid(Color::new(*cor)), None, linha);
+            } else {
+                // ⭐ A LEI DA CASA sob escala não uniforme (`ph2d_vec_render::stroke_uniform`, bug
+                // #27): a geometria atravessa o afim, a caneta não — ela é REDONDA, de largura
+                // `w·√|det|`.
+                let mut pen = s.clone();
+                pen.width *= t.determinant().abs().sqrt();
+                cena.stroke(
+                    &pen,
+                    Affine::IDENTITY,
+                    &Brush::Solid(Color::new(*cor)),
+                    None,
+                    &(t * linha.clone()),
+                );
+            }
         }
     }
     let mut r = vello::Renderer::new(
@@ -283,7 +328,7 @@ fn pelo_passe(
     format: wgpu::TextureFormat,
 ) -> Vec<u8> {
     let traco = forma.traco.as_ref().map(|(s, cor)| StrokeInput {
-        path: forma.bp,
+        path: forma.linha.unwrap_or(forma.bp),
         style: s,
         color: *cor,
     });
@@ -299,7 +344,7 @@ fn pelo_passe(
         .iter()
         .map(|c| ShapeInstance {
             pos: c.pos,
-            size: [c.lado, c.lado],
+            size: [c.lado, c.lado * c.aspecto],
             basis: basis(c.ang),
             anchor: [0.0, 0.0],
             geometry: 7,
@@ -472,20 +517,44 @@ fn barra(nome: &str) -> (u8, u8) {
         "circulos (curvas)" => (4, 60),
         "circulos isolados" => (100, 4),
         "estrela com traco" => (32, 8),
+        // ⭐⭐ doc 121 W4 — o traço sob escala NÃO uniforme, contra a lei da casa. Ver `ESTICADO`.
+        "circulo esticado com traco" | "zigue-zague esticado, redondo" => (100, 100),
+        n if n.contains("esticad") => (64, 40),
         _ => (2, 4),
     }
 }
+
+/// ⭐⭐ **O traço sob escala NÃO uniforme (doc 121 W4) — o vale, MEDIDO** (2026-09-30, RTX, meio-float).
+/// A régua é a lei da casa (`stroke_uniform`: a geometria transformada, a caneta REDONDA de largura
+/// `w·√|det|`). A linha de CONTROLO é o passe SEM o eixo (a caneta elíptica do contorno expandido no
+/// espaço local — o bug #27), medida com o eixo desligado no shader:
+///
+/// | família | com o eixo: alfa · cor · px `> 1` | sem o eixo (o defeito) |
+/// |---|---|---|
+/// | estrela, esquadria | `40` · `25` · `29` | `255` · `228` · `26 526` |
+/// | círculo | `66` · `68` · `7 277` (`3,0 %`) | `255` · `216` · `23 637` (`9,8 %`) |
+/// | zigue-zague, chanfro + pontas quadradas | `22` · `8` · `2` | `255` · `211` · `37 119` |
+/// | zigue-zague, redondo | `52` · `39` · `762` | `255` · `224` · `30 742` |
+/// | traço FINO (`0,01`) | `41` · `23` · `211` | `255` · `241` · `28 754` |
+///
+/// ⚠️ **O que sobra nas curvas e nas juntas redondas é a família dos círculos**: o Vello aplana o
+/// contorno no ecrã e deixa-o até `0,25 px` para DENTRO; o passe aplana o eixo no espaço local e os
+/// leques com a mesma flecha — a borda difere até `~0,25 px` (alfa `64`), o mesmo vale dos
+/// `circulos isolados`. ⇒ barras `100`/`100` nas curvas, `64`/`40` nos polígonos, e em todas a
+/// fracção de pixels com alfa `> 1` abaixo de `5 %` (o defeito lê `≥ 9,8 %`).
+const ESTICADO_FRACCAO_MAX: f64 = 0.05;
 
 /// ⭐⭐⭐ **As famílias do passe, contra o Vello, pixel a pixel** — e a mesma área pintada.
 #[test]
 #[ignore = "precisa de adapter de GPU"]
 fn o_passe_desenha_o_que_o_vello_desenha() {
-    let (est, pent, circ) = (estrela(), pentagrama(), circulo());
+    let (est, pent, circ, zz) = (estrela(), pentagrama(), circulo(), zigue_zague());
     let casos: Vec<(&str, Forma<'_>, Vec<Copia>)> = vec![
         (
             "estrelas pequenas",
             Forma {
                 bp: &est,
+                linha: None,
                 regra: FillRule::NonZero,
                 traco: None,
             },
@@ -495,6 +564,7 @@ fn o_passe_desenha_o_que_o_vello_desenha() {
             "estrelas grandes",
             Forma {
                 bp: &est,
+                linha: None,
                 regra: FillRule::NonZero,
                 traco: None,
             },
@@ -504,6 +574,7 @@ fn o_passe_desenha_o_que_o_vello_desenha() {
             "circulos (curvas)",
             Forma {
                 bp: &circ,
+                linha: None,
                 regra: FillRule::NonZero,
                 traco: None,
             },
@@ -513,6 +584,7 @@ fn o_passe_desenha_o_que_o_vello_desenha() {
             "circulos isolados",
             Forma {
                 bp: &circ,
+                linha: None,
                 regra: FillRule::NonZero,
                 traco: None,
             },
@@ -522,6 +594,7 @@ fn o_passe_desenha_o_que_o_vello_desenha() {
             "pentagrama even-odd",
             Forma {
                 bp: &pent,
+                linha: None,
                 regra: FillRule::EvenOdd,
                 traco: None,
             },
@@ -531,6 +604,7 @@ fn o_passe_desenha_o_que_o_vello_desenha() {
             "estrela com traco",
             Forma {
                 bp: &est,
+                linha: None,
                 regra: FillRule::NonZero,
                 traco: Some((
                     Stroke::new(0.06).with_join(Join::Miter),
@@ -538,6 +612,76 @@ fn o_passe_desenha_o_que_o_vello_desenha() {
                 )),
             },
             copias(40, 40.0, 220.0, 5),
+        ),
+        // ⭐⭐ doc 121 W4 — o traço sob escala NÃO uniforme, contra a lei da casa.
+        (
+            "estrela esticada com traco",
+            Forma {
+                bp: &est,
+                linha: None,
+                regra: FillRule::NonZero,
+                traco: Some((
+                    Stroke::new(0.06).with_join(Join::Miter),
+                    [0.1, 0.1, 0.1, 1.0],
+                )),
+            },
+            esticadas(40, 40.0, 220.0, 6),
+        ),
+        (
+            "circulo esticado com traco",
+            Forma {
+                bp: &circ,
+                linha: None,
+                regra: FillRule::NonZero,
+                traco: Some((
+                    Stroke::new(0.08).with_join(Join::Miter),
+                    [0.9, 0.2, 0.1, 1.0],
+                )),
+            },
+            esticadas(40, 30.0, 200.0, 7),
+        ),
+        (
+            "zigue-zague esticado, chanfro e pontas quadradas",
+            Forma {
+                bp: &zz,
+                linha: Some(&zz),
+                regra: FillRule::NonZero,
+                traco: Some((
+                    Stroke::new(0.07)
+                        .with_join(Join::Bevel)
+                        .with_caps(Cap::Square),
+                    [0.1, 0.5, 0.2, 1.0],
+                )),
+            },
+            esticadas(40, 40.0, 220.0, 8),
+        ),
+        (
+            "zigue-zague esticado, redondo",
+            Forma {
+                bp: &zz,
+                linha: Some(&zz),
+                regra: FillRule::NonZero,
+                traco: Some((
+                    Stroke::new(0.07)
+                        .with_join(Join::Round)
+                        .with_caps(Cap::Round),
+                    [0.3, 0.1, 0.6, 1.0],
+                )),
+            },
+            esticadas(40, 40.0, 220.0, 9),
+        ),
+        (
+            "traco fino esticado",
+            Forma {
+                bp: &est,
+                linha: None,
+                regra: FillRule::NonZero,
+                traco: Some((
+                    Stroke::new(0.01).with_join(Join::Miter),
+                    [0.0, 0.0, 0.0, 1.0],
+                )),
+            },
+            esticadas(60, 40.0, 220.0, 10),
         ),
     ];
     let mut algum = false;
@@ -556,6 +700,15 @@ fn o_passe_desenha_o_que_o_vello_desenha() {
             d.alfa_max <= alfa && d.cor_max <= cor,
             "{nome}: o passe desenha outra coisa que o Vello (barra alfa {alfa}, cor {cor}): {d:?}"
         );
+        if nome.contains("esticad") {
+            #[expect(clippy::cast_precision_loss, reason = "contagens de pixels")]
+            let fr = d.alfa_acima_de_1 as f64 / d.pixels_com_tinta as f64;
+            assert!(
+                fr <= ESTICADO_FRACCAO_MAX,
+                "{nome}: {:.1} % dos pixels desviam no alfa -- a caneta nao e' a da casa: {d:?}",
+                100.0 * fr
+            );
+        }
     }
     assert!(algum);
 }

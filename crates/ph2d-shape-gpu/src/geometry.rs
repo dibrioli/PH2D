@@ -13,6 +13,7 @@
 //! `tolerância × escala`. Com [`TOL_BASE`] `= 1/16` e passo `1/4`, o nível mais fino é `1/262 144`
 //! da extensão — `0,25 px` numa forma de `65 536 px` de lado.
 
+use crate::eixo::{EixoItem, eixo};
 use bytemuck::{Pod, Zeroable};
 use ph2d_vector::{BezPath, PathEl, Point, Shape, Stroke, StrokeOpts, expand_stroke, flatten};
 
@@ -24,6 +25,13 @@ pub const TOL_BASE: f64 = 1.0 / 16.0;
 /// curva aplanada cresce com `1/√tol`, logo cada nível DOBRA os segmentos — o mesmo passo que o
 /// shader dá na escala.
 pub const TOL_STEP: f64 = 0.25;
+
+/// `flags` bit 0: a regra even-odd.
+pub const FLAG_EVEN_ODD: u32 = 1;
+/// `flags` bit 1: **o traço só se desenha sob afim CONFORME** — um tracejado, que sob escala não
+/// uniforme se mede no MUNDO (ver [`crate::eixo`]). Quem chama manda as cópias não conformes ao
+/// Vello.
+pub const FLAG_SO_CONFORME: u32 = 2;
 
 /// A regra de preenchimento — a mesma escolha que o Vello recebe (`Fill`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -63,11 +71,20 @@ pub struct GeometryRecord {
     /// A tolerância LOCAL de cada nível.
     pub tol: [f32; LEVELS],
     /// Por nível: `fill_start, fill_count, stroke_start, stroke_count`, em segmentos. Relativos a
-    /// esta geometria até ao upload, que os torna absolutos.
+    /// esta geometria até ao upload, que os torna absolutos. ⚠️ O traço começa pelas MARCAS (os
+    /// preenchimentos com a cor dele) e segue com o contorno expandido.
     pub ranges: [[u32; 4]; LEVELS],
-    /// `bit 0` = even-odd.
+    /// Por nível: `eixo_start, eixo_count, marcas_count, 0` — os itens do [`crate::eixo`] (em
+    /// itens, relativos até ao upload) e quantos dos segmentos do traço são MARCAS.
+    pub eixo: [[u32; 4]; LEVELS],
+    /// A caixa LOCAL dos pontos do eixo — o shader alarga-a no ecrã pela caneta de cada cópia.
+    pub eixo_bbox: [f32; 4],
+    /// [`FLAG_EVEN_ODD`] · [`FLAG_SO_CONFORME`].
     pub flags: u32,
-    pub _pad: [u32; 3],
+    /// Quanto o traço vai para FORA do eixo, em unidades locais de LARGURA (`meia × esquadria`), antes
+    /// da caneta da cópia (`× √|det|`).
+    pub ext_fora: f32,
+    pub _pad: [u32; 2],
 }
 
 /// Uma geometria pronta: o registo e os segmentos de todos os níveis, em espaço LOCAL.
@@ -75,6 +92,8 @@ pub struct ShapeGeometry {
     pub record: GeometryRecord,
     /// `[x0, y0, x1, y1]` por segmento.
     pub segments: Vec<[f32; 4]>,
+    /// O eixo do traço de todos os níveis ([`crate::eixo`]).
+    pub eixo: Vec<EixoItem>,
 }
 
 impl ShapeGeometry {
@@ -84,8 +103,14 @@ impl ShapeGeometry {
     pub fn prepare(input: &ShapeInput<'_>) -> Option<Self> {
         let ext = extensao(input)?;
         let mut segments = Vec::new();
+        let mut itens: Vec<EixoItem> = Vec::new();
         let mut record = GeometryRecord::zeroed();
         let mut caixa = Caixa::vazia();
+        let mut ext_fora: f32 = 0.0;
+        let tracejado = input
+            .strokes
+            .iter()
+            .any(|s| !s.style.dash_pattern.is_empty());
         for nivel in 0..LEVELS {
             #[expect(clippy::cast_possible_wrap, reason = "LEVELS é oito")]
             let tol = ext * TOL_BASE * TOL_STEP.powi(nivel as i32);
@@ -99,6 +124,12 @@ impl ShapeGeometry {
             }
             let fill_count = conta(&segments) - fill_start;
             let stroke_start = conta(&segments);
+            // As MARCAS primeiro: sob afim não conforme o shader lê-as sozinhas (o contorno
+            // expandido dá lugar ao eixo), e a regra não-nula não depende da ordem.
+            for bp in &input.stroke_fills {
+                aplana_fechado(bp.iter(), tol, &mut segments, &mut caixa);
+            }
+            let marcas = conta(&segments) - stroke_start;
             for s in &input.strokes {
                 // ⚠️ Metade do orçamento para a expansão e metade para o aplanamento: os dois
                 // erros SOMAM-se, e o nível promete `tol` no total.
@@ -106,20 +137,50 @@ impl ShapeGeometry {
                     expand_stroke(s.path.iter(), s.style, &StrokeOpts::default(), tol * 0.5);
                 aplana_fechado(contorno.iter(), tol * 0.5, &mut segments, &mut caixa);
             }
-            for bp in &input.stroke_fills {
-                aplana_fechado(bp.iter(), tol, &mut segments, &mut caixa);
-            }
             let stroke_count = conta(&segments) - stroke_start;
             record.ranges[nivel] = [fill_start, fill_count, stroke_start, stroke_count];
+            let eixo_start = conta_eixo(&itens);
+            if !tracejado {
+                for s in &input.strokes {
+                    #[expect(clippy::cast_possible_truncation, reason = "a placa lê f32")]
+                    let meia = (s.style.width * 0.5) as f32;
+                    ext_fora = ext_fora.max(meia * eixo(s.path, s.style, tol * 0.5, &mut itens));
+                }
+            }
+            record.eixo[nivel] = [eixo_start, conta_eixo(&itens) - eixo_start, marcas, 0];
         }
         if segments.is_empty() {
             return None;
         }
         record.bbox = caixa.como_f32();
         record.stroke_color = input.strokes.first().map_or([0.0; 4], |s| s.color);
-        record.flags = u32::from(matches!(input.fill, Some((_, FillRule::EvenOdd))));
-        Some(Self { record, segments })
+        let mut ceixo = Caixa::vazia();
+        for it in &itens {
+            for q in [it.a, it.b] {
+                ceixo.inclui(Point::new(f64::from(q[0]), f64::from(q[1])));
+            }
+        }
+        record.eixo_bbox = if itens.is_empty() {
+            record.bbox
+        } else {
+            ceixo.como_f32()
+        };
+        record.ext_fora = ext_fora;
+        record.flags = if matches!(input.fill, Some((_, FillRule::EvenOdd))) {
+            FLAG_EVEN_ODD
+        } else {
+            0
+        } | if tracejado { FLAG_SO_CONFORME } else { 0 };
+        Some(Self {
+            record,
+            segments,
+            eixo: itens,
+        })
     }
+}
+
+fn conta_eixo(v: &[EixoItem]) -> u32 {
+    u32::try_from(v.len()).expect("um eixo com mais de 4 mil milhoes de itens")
 }
 
 fn conta(v: &[[f32; 4]]) -> u32 {

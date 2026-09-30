@@ -2,8 +2,8 @@
 //! que recebe, e a varredura das cenas que a achou é `#[ignore]` (o CI nunca a corre).
 
 use super::{
-    RECUSA_FORMA_COM_BRILHO, RECUSA_FORMA_COM_COLISOR, RECUSA_FORMA_COM_TRACO,
-    RECUSA_FORMA_DO_VELLO, RECUSA_FORMAS_DESLIGADAS, formas_para_a_placa, handles_publicados,
+    RECUSA_FORMA_COM_BRILHO, RECUSA_FORMA_COM_COLISOR, RECUSA_FORMA_DO_VELLO,
+    RECUSA_FORMA_TRACEJADA, RECUSA_FORMAS_DESLIGADAS, formas_para_a_placa, handles_publicados,
     saida_com_mistura_em_formas,
 };
 use crate::motion_shape_gen::VecPathStore;
@@ -86,12 +86,14 @@ fn a_bandeira_de_tipo_do_lsystem_nao_mudou() {
     );
 }
 
-/// Um store com uma estrela LISA, uma com TRAÇO e uma com TINTA própria.
+/// Um store com uma estrela LISA, uma com traço TRACEJADO e uma com TINTA própria.
 fn store() -> (VecPathStore, u32, u32, u32) {
     let mut s = VecPathStore::default();
     let lisa = s.push(ph2d_vec_scene::star([0.0, 0.0], 0.5, 0.5, 5, 0.4));
     let mut t = ph2d_vec_scene::ellipse([0.0, 0.0], 0.5, 0.5);
-    t.stroke = Some(StrokeSpec::new(Rgba8::new(0, 0, 0, 255), 0.05));
+    let mut spec = StrokeSpec::new(Rgba8::new(0, 0, 0, 255), 0.05);
+    spec.dash = Some((2.0, 1.0));
+    t.stroke = Some(spec);
     let tracada = s.push(t);
     let mut p = ph2d_vec_scene::ellipse([0.0, 0.0], 0.5, 0.5);
     p.fill = Some(ph2d_vec_scene::Paint::Solid(Rgba8::new(1, 2, 3, 255)));
@@ -133,7 +135,24 @@ fn a_cerca_das_formas_nomeia_cada_recusa() {
     );
     assert_eq!(
         cerca(true, &[lisa, tracada], false, false),
-        Err(RECUSA_FORMA_COM_TRACO)
+        Err(RECUSA_FORMA_TRACEJADA)
+    );
+    // ⭐ doc 121 W4 — o CONTROLO do traço: o mesmo traço CONTÍNUO vai à placa.
+    let mut continuo = ph2d_vec_scene::ellipse([0.0, 0.0], 0.5, 0.5);
+    continuo.stroke = Some(StrokeSpec::new(Rgba8::new(0, 0, 0, 255), 0.05));
+    let mut s2 = VecPathStore::default();
+    let h = s2.push(continuo);
+    assert_eq!(
+        formas_para_a_placa(
+            true,
+            &[h],
+            false,
+            false,
+            &s2,
+            &mut GeometriasDaPlaca::default()
+        ),
+        Ok(()),
+        "um traco continuo vai a' placa -- o shader constroi-o no ecra"
     );
     assert_eq!(
         cerca(true, &[pintada, lisa], false, false),

@@ -97,22 +97,37 @@ fn uma_mistura_devolve_tudo_ao_vello() {
     ));
 }
 
-/// ⛔ Um TRAÇO sob escala não uniforme vai ao Vello (a caneta é do MUNDO, bug #27); o MESMO
-/// afim sem traço vai à placa — ⚠️ é o controlo que prova que a recusa é do traço.
+/// ⭐ doc 121 W4 — um traço CONTÍNUO sob escala não uniforme vai à PLACA (o shader constrói-o no
+/// ecrã a partir do eixo); o mesmo traço TRACEJADO fica no Vello (o tracejado mede-se no MUNDO).
+/// ⚠️ As duas metades: sem a segunda, uma placa que aceitasse tudo passaria; sem a primeira, a
+/// recusa antiga (todo traço) passaria.
 #[test]
-fn o_traco_sob_escala_nao_uniforme_fica_no_vello() {
-    let (s, lisa, tracada) = store();
+fn so_o_traco_tracejado_sob_escala_nao_uniforme_fica_no_vello() {
+    let (mut s, _lisa, tracada) = store();
     let mut p = PlacaDeFormas::default();
-    assert!(!p.decide(
+    assert!(p.decide(
         true,
         &[vi(tracada, 1.0, ID, [3.0, 1.0])],
         &s,
         &mut GeometriasDaPlaca::default(),
         Affine::IDENTITY
     ));
+    let mut t = ph2d_vec_scene::ellipse([0.0, 0.0], 0.5, 0.5);
+    let mut spec = StrokeSpec::new(Rgba8::new(0, 0, 0, 255), 0.05);
+    spec.dash = Some((2.0, 1.0));
+    t.stroke = Some(spec);
+    let tracejada = s.push(t);
+    assert!(!p.decide(
+        true,
+        &[vi(tracejada, 1.0, ID, [3.0, 1.0])],
+        &s,
+        &mut GeometriasDaPlaca::default(),
+        Affine::IDENTITY
+    ));
+    // CONTROLO: o tracejado CONFORME vai à placa (o contorno expandido é o do Vello).
     assert!(p.decide(
         true,
-        &[vi(lisa, 1.0, ID, [3.0, 1.0])],
+        &[vi(tracejada, 1.0, ID, [2.0, 2.0])],
         &s,
         &mut GeometriasDaPlaca::default(),
         Affine::IDENTITY

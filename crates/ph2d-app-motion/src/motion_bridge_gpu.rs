@@ -667,3 +667,8 @@ mod varias_saidas_tests;
 #[cfg(test)]
 #[path = "motion_bridge_gpu_formas_tests.rs"]
 mod formas_tests;
+
+/// A sonda da W4 do doc 121: por onde vai cada cena de demo com formas, e porquê.
+#[cfg(test)]
+#[path = "motion_bridge_gpu_rota_das_formas_probe.rs"]
+mod rota_das_formas_probe;

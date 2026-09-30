@@ -126,3 +126,64 @@ fn monta_a_barra(
 pub(crate) fn raio_de_fabrica() -> f64 {
     40.0 / f64::from(PPM)
 }
+
+/// ⭐⭐ **O BRAÇO DA DOBRA FORTE** — a peça e os ossos do `PH2D_VEC_BONE_SMOKE=4`, nas proporções
+/// DELA: comprimento `6×` a espessura, três ossos de `5/3` de espessura entre as duas tampas, criados
+/// pela mesma porta ([`crate::bone::create`]), com o traço de `traco × espessura`.
+///
+/// ⛔ **A [`barra_da_cena_com`] NÃO contém o gancho da dobra** (medido, report do dono de
+/// 2026-09-30): com ossos de `2,13` espessuras a dobra fica LISA em toda pose de `110°`–`140°` ×
+/// `70°`–`100°` (nenhum nó do assado vira mais de `0,7°`), e com os da cena um nó do assado vira
+/// `180°` no vinco. *Uma fixtura com outras proporções mede outra dobra.*
+pub(crate) fn braco_da_dobra_forte(
+    traco: f64,
+) -> (SimWorld, VecScene, VecEntityMap, VecPathId, Vec<Entity>) {
+    let (l, t) = (6.0_f64, 1.0_f64);
+    let mut peca = cook(
+        ShapeKind::RoundRect,
+        [-l / 2.0, -t / 2.0],
+        [l / 2.0, t / 2.0],
+        &[t / 2.0],
+    );
+    if traco > 0.0 {
+        peca.stroke = Some(ph2d_vec_scene::StrokeSpec::new(
+            ph2d_vec_scene::Rgba8::new(120, 70, 25, 255),
+            traco * t,
+        ));
+    }
+    let x0 = -l / 2.0 + t / 2.0;
+    let passo = (l - t) / 3.0;
+    let juntas: Vec<[f64; 2]> = (0..=3_u32)
+        .map(|k| [x0 + passo * f64::from(k), 0.0])
+        .collect();
+    peca_presa(peca, &juntas)
+}
+
+/// **Uma peça presa a uma CADEIA de ossos pela porta do produto** — `juntas` são as pontas da
+/// cadeia no mundo (`n + 1` pontos para `n` ossos), cada osso criado por [`crate::bone::create`] como
+/// o gesto do editor o cria, e o bind é o do produto. A forma carrega o `Sprite` pela razão do
+/// [`barra_da_cena_com`].
+pub(crate) fn peca_presa(
+    peca: ph2d_vec_scene::VecPath,
+    juntas: &[[f64; 2]],
+) -> (SimWorld, VecScene, VecEntityMap, VecPathId, Vec<Entity>) {
+    let mut sim = SimWorld::default();
+    let mut scene = VecScene::new();
+    let mut map = VecEntityMap::new();
+    let id = scene.push_path(peca);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
+    let mut pai = None;
+    let mut ids = Vec::new();
+    for par in juntas.windows(2) {
+        let e =
+            Entity::from_bits(crate::bone::create(&mut sim, pai, par[0], par[1]).expect("osso"));
+        pai = Some(e);
+        ids.push(e);
+    }
+    crate::skin_live::bind(&mut sim, &scene, &map, &[id], None);
+    let alvo = forma(&map, id);
+    sim.world_mut()
+        .entity_mut(alvo)
+        .insert(ph2d_render::Sprite::atlas(0, [1.0, 1.0], [1.0; 4]));
+    (sim, scene, map, id, ids)
+}

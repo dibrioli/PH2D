@@ -604,7 +604,9 @@ fn cubica(verts: &[VecVertex], k: usize, n: usize) -> CubicBez {
 /// recusada pelo preço e a outra é a ideia do dono, `7,7×` mais barata e melhor.
 #[path = "curva_segundo_corpo.rs"]
 mod segundo_corpo;
-pub use segundo_corpo::{Bake, assa_a_pele, refit_pela_curva, refit_pelo_bake};
+pub use segundo_corpo::{
+    Bake, assa_a_pele, assa_a_pele_com_nos, refit_pela_curva, refit_pelo_bake,
+};
 
 #[cfg(test)]
 #[path = "curva_tests.rs"]

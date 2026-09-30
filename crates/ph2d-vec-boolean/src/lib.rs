@@ -57,7 +57,7 @@ pub use align::aligned_stroke;
 /// resolvido pela regra do preenchimento. Módulo irmão: é COMPOSIÇÃO do motor daqui (`A ∪ ∅`).
 pub mod bola;
 pub mod overlap;
-pub use overlap::{crosses_itself, resolve_overlap, silhueta_da_pele};
+pub use overlap::{crosses_itself, quinas_de, resolve_overlap, silhueta_da_pele};
 
 use linesweeper::{BinaryOp, FillRule as LsFillRule};
 

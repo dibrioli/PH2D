@@ -420,7 +420,7 @@ fn calcula(
     let desenhado = percurso
         .filter(|_| leis.desenho && estilo_serve)
         .map(|(fonte, tabela)| {
-            ph2d_vec_skin::curva::assa_a_pele(
+            let (d, nos) = ph2d_vec_skin::curva::assa_a_pele_com_nos(
                 pele,
                 fonte,
                 tabela,
@@ -431,7 +431,8 @@ fn calcula(
                     amostras: amostras_por_segmento(segmentos(fonte)),
                     tolerancia: TOLERANCIA_DA_DIAGONAL * diagonal(fonte),
                 },
-            )
+            );
+            (d, quinas_do_artista(fonte, nos))
         })
         // ⭐⭐⭐ **O CONTACTO.** Numa dobra forte a face de DENTRO de dois membros passa uma por cima
         // da outra — é geometria de dois pedaços rígidos que rodam em torno de uma junta, não erro
@@ -442,14 +443,30 @@ fn calcula(
         // contorno se CRUZA, e a bola que arredonda o vinco em todo ângulo, antes e depois do
         // encosto; sem vinco apertado a forma sai ao bit. ⛔ Só no DESENHADO — o
         // `cru` são os nós que o artista edita, e trocá-los pela silhueta mudar-lhe-ia a malha.
-        .map(|d| {
+        .map(|(d, quinas)| {
             if leis.contacto {
-                ph2d_vec_boolean::silhueta_da_pele(&d).unwrap_or(d)
+                ph2d_vec_boolean::silhueta_da_pele(&d, &quinas).unwrap_or(d)
             } else {
                 d
             }
         });
     Quadro { cru, desenhado }
+}
+
+/// ⭐⭐ **As QUINAS DO ARTISTA do assado** — cada nó da `fonte` onde o assado o pousou, com a viragem
+/// que ele tem EM REPOUSO (F42, report do dono de 2026-09-30).
+///
+/// ⛔ A viragem lida no desenho DEFORMADO não serve: na dobra do mapa um nó do assado vira `180°` sem
+/// que ninguém tenha desenhado quina nenhuma, a bola protegia-o como parede, e o traço sobre a
+/// meia-volta abria fatias de cinzento e laranja no vinco. Um nó que a fonte não tem (os do ajuste)
+/// fica fora da lista e é da bola.
+fn quinas_do_artista(fonte: &VecPath, nos: Vec<[f64; 2]>) -> Vec<([f64; 2], f64)> {
+    let repouso = ph2d_vec_boolean::quinas_de(fonte);
+    debug_assert_eq!(repouso.len(), nos.len(), "um nó assado por nó da fonte");
+    nos.into_iter()
+        .zip(repouso)
+        .map(|(no, (_, vira))| (no, vira))
+        .collect()
 }
 
 /// Quantos segmentos a forma tem, somados os contornos.

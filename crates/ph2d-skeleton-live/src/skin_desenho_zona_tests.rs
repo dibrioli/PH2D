@@ -255,8 +255,10 @@ fn nenhum_canto_da_silhueta_e_mais_apertado_que_a_bola() {
     for (forma, g) in casos {
         let (sem, com) = com_e_sem_contacto_em(g, forma);
         let r = ph2d_vec_boolean::overlap::RAIO_DO_VINCO * diagonal(&sem);
+        // ⚠️ `&[]` é EXACTAMENTE as quinas do repouso desta barra: as tampas viram `≤ 1,45°`, abaixo
+        // da `PAREDE_MINIMA`, logo nenhuma é parede e a lista do produto não protegeria nada.
         assert!(
-            ph2d_vec_boolean::silhueta_da_pele(&com).is_none(),
+            ph2d_vec_boolean::silhueta_da_pele(&com, &[]).is_none(),
             "{forma:?} {g}°: rolar a bola outra vez mudou a silhueta — ela não é um ponto fixo"
         );
         let (vira, onde) = maior_zona_apertada(&com, 0.9 * r);
@@ -275,5 +277,160 @@ fn nenhum_canto_da_silhueta_e_mais_apertado_que_a_bola() {
     assert!(
         antes_do_cruzamento >= 1,
         "a bola não mexeu em nenhuma dobra antes do cruzamento — o gate não viu o fenómeno"
+    );
+}
+
+/// A maior viragem de um vértice do contorno de fora, em graus.
+fn viragem_maxima(p: &VecPath) -> f64 {
+    (0..p.verts.len())
+        .filter_map(|i| ph2d_vec_boolean::overlap::viragem_do_vertice(&p.verts, i))
+        .fold(0.0, f64::max)
+}
+
+/// O braço da dobra forte na pose `(primeira, segunda)`, sem e com a silhueta — o produto inteiro.
+fn braco_em(primeira: f32, segunda: f32) -> (VecPath, VecPath) {
+    let (mut sim, mut scene, _map, id, ossos) =
+        crate::barra_da_cena_tests_support::braco_da_dobra_forte(0.3);
+    for (k, g) in [(1, primeira), (2, -segunda)] {
+        sim.world_mut()
+            .get_mut::<ph2d_ecs::Transform>(ossos[k])
+            .expect("Transform")
+            .rotation += g.to_radians();
+    }
+    let sem = crate::skin_live::recook_leis(
+        &sim,
+        &mut scene,
+        super::Leis {
+            contacto: false,
+            ..super::PRODUTO
+        },
+    );
+    let com = crate::skin_live::recook_leis(&sim, &mut scene, super::PRODUTO);
+    (
+        sem.get(&id).expect("sem contacto").clone(),
+        com.get(&id).expect("com contacto").clone(),
+    )
+}
+
+/// ⭐⭐⭐ **GATE — o GANCHO da dobra não é QUINA DO ARTISTA** (F42, report do dono de 2026-09-30 com
+/// duas fotos: *«melhorou muito o ângulo e suas transições; restam os artefatos de imagem»* — fatias
+/// de cinzento e de laranja dentro do castanho, no vinco).
+///
+/// ⛔ **A causa:** na dobra do mapa um nó do ASSADO vira `180°` (um gancho de raio `~0,005` no vinco,
+/// medido na cena `=4` a `(125°, 85°)`), e a bola lia a viragem das quinas no desenho DEFORMADO — o
+/// gancho passava por quina desenhada, ficava, e o traço sobre a meia-volta abria as fatias. Hoje as
+/// quinas são os nós da FONTE com a viragem do REPOUSO.
+///
+/// ⭐ **Medido** (varredura de `891` poses, `100°`–`150°` × `70°`–`110°` de meio em meio grau): o
+/// gancho aparece no desenho em `16`, a lei de antes deixa-o ficar em `11` — cada uma um buraco no
+/// traço —, e o produto em `0`. Aqui corre a faixa da foto (`125°`, `70°`–`110°`), onde ele vive entre
+/// `84°` e `85°`: um defeito de UM grau que só uma varredura fina vê.
+///
+/// ⚠️ **As três metades:** o CONTROLO de que a fixtura contém o gancho (o desenho sem contacto vira
+/// `> 150°` em alguma pose da faixa — a [`barra_da_cena_com`] não o contém, e é por isso que este
+/// braço tem as proporções da cena); o CONTROLO de mecanismo (com as quinas lidas no deformado, a lei
+/// de antes, o gancho FICA); e o produto — nenhum vértice vira mais que a `PAREDE_MINIMA` (este braço
+/// não tem quina desenhada) nem sobra zona côncava mais apertada que a bola.
+///
+/// [`barra_da_cena_com`]: crate::barra_da_cena_tests_support::barra_da_cena_com
+#[test]
+fn o_gancho_da_dobra_nao_e_quina_do_artista() {
+    let (mut ganchos, mut ficavam) = (0, 0);
+    for passo in 0..=160_u16 {
+        let segunda = 70.0 + 0.5 * f32::from(passo);
+        let (sem, com) = braco_em(125.0, segunda);
+        let velho = ph2d_vec_boolean::silhueta_da_pele(&sem, &ph2d_vec_boolean::quinas_de(&sem))
+            .unwrap_or_else(|| sem.clone());
+        println!(
+            "  {segunda}°: desenho {:.1}° · lei de antes {:.1}° · produto {:.1}°",
+            viragem_maxima(&sem),
+            viragem_maxima(&velho),
+            viragem_maxima(&com)
+        );
+        ganchos += usize::from(viragem_maxima(&sem) > 150.0);
+        ficavam += usize::from(viragem_maxima(&velho) > 150.0);
+        let vira = viragem_maxima(&com);
+        assert!(
+            vira < ph2d_vec_boolean::overlap::PAREDE_MINIMA,
+            "{segunda}°: um vértice da silhueta vira {vira:.1}° — o gancho da dobra ficou como quina"
+        );
+        let r = ph2d_vec_boolean::overlap::RAIO_DO_VINCO * diagonal(&com);
+        let (zona, onde) = maior_zona_apertada(&com, 0.9 * r);
+        assert!(
+            zona < 12.0,
+            "{segunda}°: uma zona côncava mais apertada que a bola vira {zona:.1}° em {onde:?}"
+        );
+    }
+    assert!(
+        ganchos >= 1,
+        "nenhuma pose da faixa tem o gancho — a fixtura deixou de conter o fenómeno"
+    );
+    assert!(
+        ficavam >= 1,
+        "com as quinas lidas no DEFORMADO o gancho não fica em pose nenhuma — o controlo deixou de \
+         medir o mecanismo"
+    );
+}
+
+/// ⭐⭐ **GATE — a quina que o artista DESENHOU continua em bico** (F42). A metade que impede a cura
+/// do gancho de virar «nenhuma quina é protegida»: um «L» com a quina côncava de `90°`, preso a dois
+/// ossos, sai com a quina inteira — e o CONTROLO (a mesma silhueta sem lista de quinas) arredonda-a,
+/// senão o gate não mediria a protecção.
+///
+/// ⚠️ **A raiz RODA `30°`:** o movimento é rígido (a quina muda de SÍTIO e não de ângulo), e é isso
+/// que separa «a quina está onde o assado a POUSOU» de «a quina está onde a FONTE a tem» — em repouso
+/// os dois coincidem e uma lista com as posições do repouso passaria.
+#[test]
+fn a_quina_desenhada_continua_em_bico() {
+    let (a, giro) = ([0.5_f64, 0.5], 30.0_f64.to_radians());
+    let em_repouso = [1.0, 1.0];
+    let quina = [
+        a[0] + (em_repouso[0] - a[0]) * giro.cos() - (em_repouso[1] - a[1]) * giro.sin(),
+        a[1] + (em_repouso[0] - a[0]) * giro.sin() + (em_repouso[1] - a[1]) * giro.cos(),
+    ];
+    let l: Vec<ph2d_vec_scene::VecVertex> = [
+        [0.0, 0.0],
+        [4.0, 0.0],
+        [4.0, 1.0],
+        em_repouso,
+        [1.0, 3.0],
+        [0.0, 3.0],
+    ]
+    .into_iter()
+    .map(ph2d_vec_scene::VecVertex::corner)
+    .collect();
+    let peca = VecPath {
+        verts: l,
+        closed: true,
+        ..VecPath::default()
+    };
+    let (mut sim, mut scene, _map, id, ossos) =
+        crate::barra_da_cena_tests_support::peca_presa(peca, &[a, [2.0, 0.5], [3.5, 0.5]]);
+    #[expect(clippy::cast_possible_truncation, reason = "um ângulo de teste")]
+    let giro_f32 = giro as f32;
+    sim.world_mut()
+        .get_mut::<ph2d_ecs::Transform>(ossos[0])
+        .expect("Transform")
+        .rotation += giro_f32;
+    let com = crate::skin_live::recook_leis(&sim, &mut scene, super::PRODUTO);
+    let com = com.get(&id).expect("desenho");
+    let perto = |p: &VecPath| {
+        (0..p.verts.len())
+            .filter(|&i| {
+                let a = p.verts[i].anchor;
+                (a[0] - quina[0]).hypot(a[1] - quina[1]) < 1e-4
+            })
+            .filter_map(|i| ph2d_vec_boolean::overlap::viragem_do_vertice(&p.verts, i))
+            .fold(0.0, f64::max)
+    };
+    let vira = perto(com);
+    assert!(
+        (vira - 90.0).abs() < 1.0,
+        "a quina desenhada do «L» saiu a {vira:.1}° — a bola comeu-a"
+    );
+    let sem_quinas = ph2d_vec_boolean::silhueta_da_pele(com, &[]).expect("controlo: a bola actua");
+    assert!(
+        perto(&sem_quinas) < 1.0,
+        "sem lista de quinas a bola não arredonda o «L» — o gate não mede a protecção"
     );
 }

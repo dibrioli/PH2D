@@ -111,9 +111,13 @@ pub fn resolve_overlap(path: &VecPath) -> Option<VecPath> {
 /// rolar por fora do contorno de fora ([`crate::bola::rola_a_bola`]) — nenhum canto interno fica
 /// mais apertado que ela, antes e depois do contacto (report do dono de 2026-09-30, a F41).
 ///
+/// `quinas` são as QUINAS DO ARTISTA — cada nó que ele pôs, onde caiu no desenho deformado, com a
+/// viragem que tinha EM REPOUSO ([`quinas_de`] para um desenho que é o seu próprio repouso). Só elas
+/// ficam em quina; todo o resto do contorno é da bola.
+///
 /// `None` quando nada muda: o desenho sai como estava, ao bit.
 #[must_use]
-pub fn silhueta_da_pele(path: &VecPath) -> Option<VecPath> {
+pub fn silhueta_da_pele(path: &VecPath, quinas: &[([f64; 2], f64)]) -> Option<VecPath> {
     if !path.closed || path.subpaths.iter().any(|c| !c.closed) || path.verts.len() < 3 {
         return None;
     }
@@ -126,7 +130,7 @@ pub fn silhueta_da_pele(path: &VecPath) -> Option<VecPath> {
     let raio = RAIO_DO_VINCO * diagonal;
     let unido = resolve_overlap(path);
     let base = unido.as_ref().unwrap_or(path);
-    let rolado = crate::bola::rola_a_bola(base.verts.clone(), &nos_do_desenho(path), raio, solda);
+    let rolado = crate::bola::rola_a_bola(base.verts.clone(), quinas, raio, solda);
     if rolado == base.verts {
         return unido;
     }
@@ -235,6 +239,15 @@ pub fn solda_os_segmentos_curtos(mut verts: Vec<VecVertex>, tol: f64) -> Vec<Vec
 /// peça; com o limite `4` o bico vira chanfro a partir de `~151°` e a quina muda de forma com o
 /// ângulo. ⇒ nenhum limite serve as duas queixas, e a cura é o vinco deixar de ser quina.
 ///
+/// ⛔ **RECUSA MEDIDA (F42): a bola NÃO cresce até à meia-largura do traço.** Hipótese: um arco
+/// côncavo de raio `r` traçado com meia-largura `h > r` tem a curva paralela do lado do centro
+/// invertida, e o laço dela lê enrolamento zero na regra não-zero (um buraco em fatia). Construída
+/// (`raio = max(r, 1,05·h)`) e fotografada na cena `=4` a `80°`–`105°` com e sem ela: as DUAS saem
+/// limpas — o traçador do Vello desenha estes arcos (`r ≈ 0,04`, `h = 0,15` da espessura) sem fenda,
+/// e as fatias da foto do dono eram o GANCHO da dobra protegido como quina (ver [`quinas_de`]). E
+/// ela custava o que o dono tinha acabado de aprovar: o castanho/laranja do lado de dentro passava de
+/// raio `r + h` a `2,05·h`.
+///
 /// ⚠️ O número: pequeno o bastante para o PREENCHIMENTO continuar com o «V» da imagem presa (`4 cm`
 /// numa diagonal de `4 m`, `4 %` da espessura da barra da cena), e muito acima da solda (`1e-3`), senão
 /// o arco nasceria soldado. O traço desenha-se por cima dele como um arco de raio `r + ½·largura`:
@@ -257,10 +270,18 @@ pub(crate) const VINCO_MINIMO: f64 = 1.0;
 /// o assado deixa micro-quinas de `1,4°`–`1,7°` nos nós (a costura das tampas), que um arco de
 /// `4 cm` pode engolir sem ninguém ver; tratá-las como parede prendia o arco a `45 %` de um
 /// segmento de `0,0017` e ele saía minúsculo.
-pub(crate) const PAREDE_MINIMA: f64 = 15.0;
+pub const PAREDE_MINIMA: f64 = 15.0;
 
-/// Os nós do desenho com a viragem que cada um tinha — o que a união NÃO pode tocar.
-fn nos_do_desenho(path: &VecPath) -> Vec<([f64; 2], f64)> {
+/// ⭐⭐ **As quinas de um desenho que é o seu próprio REPOUSO** — cada nó com a viragem que tem.
+///
+/// ⛔⛔ **Não sirva isto a um desenho DEFORMADO** (F42, report do dono de 2026-09-30 com duas fotos:
+/// *«restam os artefatos de imagem»*). O assado da pele tem nós que o artista nunca pôs, e na DOBRA
+/// do mapa um deles vira `180°` (medido na cena `=4` a `85°`: um gancho de `0,015` no vinco, de
+/// raio `0,005`). Lido aqui, o gancho passava por quina desenhada, a bola não lhe tocava, e o traço
+/// desenhado sobre a meia-volta abria fatias de cinzento e de laranja no castanho. A viragem de
+/// uma quina é a do REPOUSO, e quem a sabe é quem assou (o `assa_a_pele_com_nos` da `ph2d-vec-skin`).
+#[must_use]
+pub fn quinas_de(path: &VecPath) -> Vec<([f64; 2], f64)> {
     std::iter::once(&path.verts)
         .chain(path.subpaths.iter().map(|c| &c.verts))
         .flat_map(|vs| (0..vs.len()).map(move |i| (vs[i].anchor, viragem(vs, i).unwrap_or(0.0))))

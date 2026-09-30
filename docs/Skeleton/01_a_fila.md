@@ -66,6 +66,14 @@ diz onde ler o mecanismo:
 
 ---
 
+### F42 — ⭐⭐ **O GANCHO DA DOBRA NÃO É QUINA DO ARTISTA** (report do dono, 2026-09-30, com duas fotos: *«melhorou muito o ângulo e suas transições. Restam os artefatos de imagem»* — fatias de cinzento e de laranja dentro do castanho, no vinco)
+
+- **Reproduzido na cena `=4`** a `(125°, 85°)` com `TRACO=0.3`, e despejado do produto: na DOBRA do mapa um nó do ASSADO vira `180°` (um gancho de raio `~0,005` no vinco). A bola lia as quinas no desenho **DEFORMADO** (`nos_do_desenho(d)`), o gancho passava por quina desenhada (`viragem ≤ a dele + 1°`), ficava, e o traço sobre a meia-volta tinha `311°` de curva mais apertada que a caneta — as fatias.
+- **Cura:** as quinas são os nós da **FONTE**, onde o assado os pousou, com a viragem do **REPOUSO** — `ph2d_vec_skin::curva::assa_a_pele_com_nos` (a âncora que o `rebuild` dá a cada nó) + `skin_desenho::quinas_do_artista`; a porta passa a ser `silhueta_da_pele(path, quinas)` e o `quinas_de` serve só um desenho que é o seu próprio repouso.
+- **Medido:** varredura de `891` poses (`100°`–`150°` × `70°`–`110°`, meio grau) — gancho no desenho em `16`, a lei de antes deixa-o em `11`, o produto em `0`. Foto limpa a `84,5°` e `85°`.
+- **Gates:** `o_gancho_da_dobra_nao_e_quina_do_artista` (fixtura nova `braco_da_dobra_forte`, nas proporções da cena — ⛔ a barra de sempre **não contém o gancho**: com ossos de `2,13` espessuras a dobra fica lisa) e `a_quina_desenhada_continua_em_bico` (um «L» cuja raiz roda `30°`, com o CONTROLO sem quinas a arredondá-lo). Mutação **3 de 4**; a 4.ª (o `ponto(0)` no lugar da âncora) é **equivalente no corpus** e está nomeada no código.
+- ⛔ **RECUSA MEDIDA:** a bola com raio mínimo igual à meia-largura do traço (hipótese: arco `r < h` abre buraco pela curva paralela invertida). Fotografada de `80°` a `105°` com e sem ela: as duas limpas, e ela mudava o que o dono aprovou (o castanho/laranja de dentro passava de raio `r + h` a `2,05·h`). Registo no doc do `RAIO_DO_VINCO`.
+
 ### F41 — ⭐⭐⭐ **A BOLA QUE ROLA: nenhum canto interno da pele fica mais apertado que um raio** (report do dono, 2026-09-30, com três fotos: *«melhor mas ainda inconsistente. veja que o ângulo da linha arredonda demais, não é progressivo. e veja que ainda produz artefatos circulares»*)
 
 ⛔⛔ **A F40 estava certa sobre o QUÊ e errada sobre o QUANDO e o QUANTO.** A sonda

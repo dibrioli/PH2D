@@ -257,6 +257,28 @@ pub fn assa_a_pele(
     lido: CampoIndexado<'_>,
     bake: Bake,
 ) -> VecPath {
+    assa_a_pele_com_nos(pele, fonte, pesos, correcoes, rigido, lido, bake).0
+}
+
+/// ⭐⭐ **O BAKE e ONDE caiu cada nó da fonte** — a [`assa_a_pele`] mais a posição assada do nó `k`
+/// de cada contorno, na ordem de [`VecPath::verts_all`] (F42, report do dono de 2026-09-30).
+///
+/// ⛔ **O assado deixa nós que o artista NUNCA pôs** — o ajuste parte cada segmento em quantas
+/// cúbicas a tolerância pedir, e na DOBRA do mapa um desses nós vira `180°` (medido na cena `=4` a
+/// `85°`: um gancho de `0,015` no vinco). Quem pergunta *«esta quina é do artista?»* precisa de
+/// saber quais nós do assado são os DELE, e a resposta é esta lista: o `k`-ésimo ponto é, ao bit,
+/// a âncora do vértice que abre o segmento `k` no resultado.
+#[must_use]
+pub fn assa_a_pele_com_nos(
+    pele: &Skin,
+    fonte: &VecPath,
+    pesos: &[f64],
+    correcoes: &[Correccao],
+    rigido: bool,
+    lido: CampoIndexado<'_>,
+    bake: Bake,
+) -> (VecPath, Vec<[f64; 2]>) {
+    let mut nos = Vec::with_capacity(fonte.verts_all().count());
     let (
         CampoIndexado {
             campo,
@@ -309,15 +331,30 @@ pub fn assa_a_pele(
             if k == 0 {
                 inicio = assado[0];
             }
+            // ⚠️ O nó é a ÂNCORA que o `rebuild` lhe dá — o `inicio` no primeiro, e o fim da
+            // última cúbica do segmento anterior nos outros —, porque quem compara compara ao bit e
+            // é ESSA a posição que o vértice tem. ⚠️ Nomeado: no corpus o `ponto(0)` do segmento
+            // coincide com ela ao bit (a mutação que o usa SOBREVIVE, F42) — é a definição, não
+            // uma divergência medida.
+            let no = cubicas.last().map_or(inicio, |c| c[2]);
+            nos.push([no.x, no.y]);
             let fitado = ajusta(&Assado(&assado), tolerancia);
             ph2d_vec_envelope::push_cubics(&fitado, &mut cubicas);
         }
         if let Some((alvo, _)) = out.contour_mut(c) {
             *alvo = ph2d_vec_envelope::rebuild(&cubicas, inicio, fechado);
         }
+        if !fechado {
+            // O último nó de um contorno ABERTO não abre segmento: é o fim do último.
+            nos.push(
+                cubicas
+                    .last()
+                    .map_or([inicio.x, inicio.y], |c| [c[2].x, c[2].y]),
+            );
+        }
         base += n;
     }
-    out
+    (out, nos)
 }
 
 /// ⭐⭐⭐ **O AJUSTE com a conferência nos DOIS sentidos** — o `kurbo::fit_to_bezpath` com a

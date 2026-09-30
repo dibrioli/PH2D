@@ -237,33 +237,43 @@ impl Inputs {
     /// As entradas de um tema moderno; `None` para a família clássica.
     #[must_use]
     pub fn of(theme: Theme) -> Option<Self> {
-        // ⚠️ Os quatro vêm da tabela `color_preset` do Godot 4.6 (MIT), literalmente — nenhuma
-        // cor nova. `Default` é o preset que o editor aplica a uma instalação nova.
+        // ⚠️ Os quatro primeiros NASCERAM da tabela `color_preset` do Godot 4.6 (MIT) — todos
+        //    cinzentos com um azul de acento. ⭐ Em 2026-09-30 o dono pediu-os «interessantes como
+        //    os novos» (*«ficaram um pouco sem graça»*), e cada um ganhou uma MATIZ na base e um
+        //    acento mais vivo, guardando o carácter do nome: o `Dark` continua o mais escuro e
+        //    azul, o `Gray` o meio-tom, o `Light` o claro e o `Oled` o preto puro com bordas. O
+        //    Godot fica como a ORIGEM da regra (as cinco entradas e a derivação), não das cores.
         Some(match theme {
+            // `#1e2433` (meia-noite azulada) + `#4aa3ff` (azul eléctrico) — era `#292929` + `#569eff`.
             Theme::Dark => Self {
-                base: Rgb::new(0.161, 0.161, 0.161),
-                accent: Rgb::new(0.337, 0.62, 1.0),
+                base: Rgb::new(0.118, 0.141, 0.2),
+                accent: Rgb::new(0.29, 0.64, 1.0),
                 contrast: 0.3,
                 dark: true,
                 extra_borders: false,
             },
+            // `#3d3833` (grafite quente) + `#2ec4b0` (verde-água) — era `#3d3d3d` + `#70bafa`.
             Theme::Gray => Self {
-                base: Rgb::new(0.24, 0.24, 0.24),
-                accent: Rgb::new(0.44, 0.73, 0.98),
+                base: Rgb::new(0.24, 0.22, 0.2),
+                accent: Rgb::new(0.18, 0.77, 0.69),
                 contrast: 0.3,
                 dark: true,
                 extra_borders: false,
             },
+            // `#e6dccb` (papel) + `#4150d8` (índigo) — era `#e6e6e6` + `#2e80ff`. ⚠️ A base não
+            //    pode ser mais clara que a do Godot: o painel sobe acima dela e satura no `255`,
+            //    e o degrau cartão/painel encolhe (medido: `#ede4d3` deu `10/255` contra `12`).
             Theme::Light => Self {
-                base: Rgb::new(0.9, 0.9, 0.9),
-                accent: Rgb::new(0.18, 0.50, 1.00),
+                base: Rgb::new(0.902, 0.863, 0.796),
+                accent: Rgb::new(0.255, 0.314, 0.847),
                 contrast: -0.06,
                 dark: false,
                 extra_borders: false,
             },
+            // preto puro (fica — é o que o nome promete) + `#b57bff` (violeta néon) — era `#73bfff`.
             Theme::Oled => Self {
                 base: Rgb::BLACK,
-                accent: Rgb::new(0.45, 0.75, 1.0),
+                accent: Rgb::new(0.71, 0.482, 1.0),
                 contrast: 0.0,
                 dark: true,
                 extra_borders: true,

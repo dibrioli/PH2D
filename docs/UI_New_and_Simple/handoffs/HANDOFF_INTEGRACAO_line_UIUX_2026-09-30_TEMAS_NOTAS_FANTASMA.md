@@ -122,3 +122,34 @@ N?»). O `begin_section`/`finish_section` do Inspector perderam o encanamento de
 - ⚠️ **O fantasma NÃO foi fotografado** — ele só existe com o dedo a segurar a pega, e o XTest é
   ignorado na Xwayland virtual (o `ydotool` moveria o rato real do dono). A geometria dele prova-se
   nos gates de costura, que medem a cena pintada; o que se vê é do smoke do dono.
+
+## §4 — Adenda (mesmo dia): os OITO temas originais ganharam cor
+
+Ordem do dono, depois do smoke dos quatro coloridos: *«Tão bons que os originais ficaram um pouco
+sem graça. Tente melhorar um pouco os originais de modo que sejam interessantes como os novos.»*
+
+- **Os quatro modernos** (`derive::Inputs::of`): cada um ganhou uma MATIZ na base e um acento mais
+  vivo, guardando o carácter do nome — `Dark` `#1e2433` + `#4aa3ff` (era `#292929` + `#569eff`) ·
+  `Gray` `#3d3833` + `#2ec4b0` · `Light` `#e6dccb` + `#4150d8` · `Oled` preto + `#b57bff`. O Godot
+  fica como a ORIGEM da regra (cinco entradas e a derivação), não das cores.
+  ⚠️ A base do `Light` **não pode ser mais clara que a do Godot**: o painel sobe acima dela e satura
+  no `255`, e o degrau cartão/painel encolhe (`#ede4d3` mediu `10/255` contra a barra de `12`).
+- **Os quatro clássicos** (`docs/design/tokens.json`): a escada neutra (`bg-*`, `border*`,
+  `text-*`, `canvas`, `panel-bg`, `window-ground`, `rail-bg`, `graph-bg`, `graph-inert`) teve o
+  croma multiplicado — ×4 no fundo e ×2 no texto no `forge` (ameixa), ×2,5/×1,5 no `sunstone`
+  (creme) e no `blueprint` (azul-papel), com tecto de `0,045` — e os acentos subiram `+0,02`–`+0,035`.
+  ⭐ O **`workshop` ganhou escada PRÓPRIA** (a do `forge` com matiz `220`, petróleo): antes herdava
+  o fundo do forge, e herdar a ameixa punha o acento ciano sobre roxo.
+- ⛔ **Um gate teve a premissa MORTA por esta ordem e foi reescrito com a morte à vista:**
+  `the_dark_preset_is_godots_default` (as entradas do Godot, byte a byte) passou a
+  `o_dark_guarda_o_caracter_do_nome` (base e acento azuis, o mais escuro dos escuros com base
+  não-preta, e os dois chegam ao app intactos).
+- ⚠️ **E uma régua lia só o VERDE:** `a_card_stands_off_its_panel` media o degrau cartão/painel no
+  canal `g`, que numa base cinzenta é igual aos outros dois; com uma base tingida ele mede a matiz.
+  Passou à média dos três canais.
+- ⚠️ **O fundo do canvas muda de cor em todos os temas** (o `Bg1` é o fundo do canvas, e o dono já
+  devolveu uma vez *«mudou a cor do canvas»*, em 05/09). Aqui é o pedido: os coloridos fazem o
+  mesmo desde que nasceram. Se ele o recusar, a alavanca é a escada de fundo (`bg-0`/`bg-1`) e não
+  o acento.
+- Prova: `nextest-impacted` **19 084/19 084** · censos **127/127** · clippy e fmt limpos · as oito
+  cenas FOTOGRAFADAS com `PH2D_THEME=<id>` (`fotografa_cena.sh`, a cena do script).

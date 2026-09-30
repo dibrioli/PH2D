@@ -62,25 +62,43 @@ fn the_timeline_slots_are_aliases_by_construction() {
     }
 }
 
-/// **As entradas são as do Godot, literalmente** — o cinza e o azul que o dono escolheu.
+/// **O `Dark` guarda o CARÁCTER do nome** — o mais escuro da família e azul, na base e no acento.
 ///
-/// `#292929` é `Color(0.161, 0.161, 0.161)` e `#569eff` é `Color(0.337, 0.62, 1.0)` — a tabela
-/// `color_preset == "Default"` do `editor_theme_manager.cpp` (MIT).
+/// ⚠️ **A premissa deste gate MORREU por ordem do dono (2026-09-30)** e ele foi reescrito com a
+/// morte à vista: nasceu como *«as entradas são as do Godot, literalmente»* (`#292929` +
+/// `#569eff`, a tabela `color_preset == "Default"` do `editor_theme_manager.cpp`, MIT), e o dono
+/// achou os quatro originais *«um pouco sem graça»* ao lado dos coloridos. Hoje o `Dark` é
+/// `#1e2433` + `#4aa3ff`. O que continua a valer — e o que um retoque futuro não pode partir —
+/// é o que o NOME promete: ele é o mais escuro dos três escuros com base não-preta, a base puxa ao
+/// azul, o acento é azul, e os dois chegam ao app intactos.
 #[test]
-fn the_dark_preset_is_godots_default() {
+fn o_dark_guarda_o_caracter_do_nome() {
     let d = Inputs::of(Theme::Dark).expect("moderno");
     let base = d.base.color();
     let accent = d.accent.color();
-    assert_eq!(
-        (base.r, base.g, base.b),
-        (0x29, 0x29, 0x29),
-        "o cinza do Godot"
+    assert!(
+        base.b > base.r && base.b > base.g,
+        "a base do Dark puxa ao azul: {base:?}"
     );
-    assert_eq!(
-        (accent.r, accent.g, accent.b),
-        (0x56, 0x9e, 0xff),
-        "o azul do Godot"
+    assert!(
+        accent.b > accent.r && accent.b > accent.g,
+        "o acento do Dark e' azul: {accent:?}"
     );
+    let soma = |t: Theme| {
+        let c = Inputs::of(t).expect("moderno").base.color();
+        u32::from(c.r) + u32::from(c.g) + u32::from(c.b)
+    };
+    for outro in [
+        Theme::Gray,
+        Theme::PlumberRed,
+        Theme::PlumberGreen,
+        Theme::Sunset,
+    ] {
+        assert!(
+            soma(Theme::Dark) < soma(outro),
+            "o Dark deixou de ser o mais escuro (contra {outro:?})"
+        );
+    }
     assert!((d.contrast - 0.3).abs() < 1e-6);
     // E o tema chega ao app com esses dois números intactos.
     assert_eq!(ColorToken::Bg2.factory(Theme::Dark), base, "bg-2 e' a base");
@@ -140,7 +158,13 @@ fn the_canvas_ground_is_the_one_the_owner_approved() {
 #[test]
 fn a_card_stands_off_its_panel() {
     for theme in [Theme::Dark, Theme::Gray, Theme::Light] {
-        let grey = |t: ColorToken| i32::from(t.factory(theme).g);
+        // ⚠️ A MÉDIA dos três canais e não o verde (2026-09-30): com a base cinzenta os três eram
+        //    iguais e ler um bastava; com uma base TINGIDA o verde sozinho mede a matiz e não o
+        //    degrau.
+        let grey = |t: ColorToken| {
+            let c = t.factory(theme);
+            (i32::from(c.r) + i32::from(c.g) + i32::from(c.b)) / 3
+        };
         let step = grey(ColorToken::Bg1) - grey(ColorToken::PanelBg);
         let sign = if theme == Theme::Light { -1 } else { 1 };
         assert!(

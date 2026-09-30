@@ -15,8 +15,8 @@
 | 3 | O `Mixing` no Impasto | dono | **decidido (30/09): manter** — §4.1 |
 | 4 | O `Pigment` que mudou de sítio na aquarela (do cartão *Water* para o *Mixing*) | dono | **decidido (30/09): fica no *Mixing*** — §4.2 |
 | 5 | Composite Brush: a pilha cheia numa tela grande (a alavanca é o RAIO) | dono | **fechado (30/09): premissa morta, medido** — §4.3 |
-| 6 | Wet Paint: o *fork* do canvas no 1.º toque depois de soltar (`~9 ms`) — pede canvas em ladrilhos | linha | a conferir |
-| 7 | Wet Paint: o tile do papel do motor (`~12 ms`, em série por impressão digital) | linha | a conferir |
+| 6 | Wet Paint: o *fork* do canvas no 1.º toque depois de soltar (`~9 ms`) — pede canvas em ladrilhos | linha | **fechado (30/09): medido, `~3 ms` de `~9–10`** — §5.1 |
+| 7 | Wet Paint: o tile do papel do motor (`~12 ms`, em série por impressão digital) | linha | **feito (30/09): `7,41 → 0,013 ms`** — §5.2 |
 | 8 | Composite Brush: o relevo fora da recomposição da pilha | linha | a conferir |
 | 9 | Composite Brush: o resíduo Blur+Smear (`12/255`) | linha | a conferir |
 | 10 | Composite Brush: metade dos bytes dos intermédios da pilha | linha | a conferir |
@@ -311,3 +311,48 @@ custa `47,5` por quadro (compor `7,7`, acumular `39,8`). As camadas mais caras s
 
 **Decisão do dono (30/09): FECHADO.**
 
+
+## §5 — Itens 6 e 7: o custo de o Wet Paint renascer (2026-09-30)
+
+### §5.1 — Item 6: o *fork* da tela — fecha por medição
+
+A sonda [`diag_o_fork_da_tela_a_4096`](../../crates/ph2d-tool-painter/src/plane_copy.rs) mede a cópia
+da tela que o 1.º toque depois de soltar paga. Tela 4096², `load 45` (os números são tectos):
+
+| cópia | ms |
+|---|---|
+| fria (páginas por tocar) | 3,26 |
+| quente | 2,56 |
+
+A cópia **já é paralela** e o que sobra dela é o 1.º toque nas páginas. São `~3 ms` de um pen-down
+de `~9–10`. Descer daí pede **tela em ladrilhos** (copiar só o que o traço toca), que é arquitectura
+e não afinação. Não há defeito a curar hoje.
+
+### §5.2 — Item 7: o papel é feito uma vez por entrada
+
+O tile do papel é função pura de `(preset, folha, knobs)`, e o gerador é **serial de propósito** (a
+ordem do gerador aleatório é a impressão digital do motor; paralelizá-lo está recusado). Ele
+repetia-se a cada vez que a sessão do Wet Paint renascia — cada Ctrl+Z, cada troca de modo — e
+**duas** vezes com papel autorado (o `reconcile_facts` re-coze).
+
+Cura: [`paper_memo::paper_tile`](../../crates/ph2d-wet-paint/src/paper_memo.rs), memória **exacta**:
+- a chave são os **BITS** das entradas (`-0.0 ≠ 0.0`);
+- o mais usado fica à frente e o tecto esquece o menos usado;
+- `MEMO_CAP = 8`, e o recurso é a memória (1 MiB por tile);
+- o gerador corre fora da trava.
+
+Medido (`--release`, `load 1,5`):
+
+| | ms |
+|---|---|
+| gerar | 7,41 |
+| acerto na memória | 0,013 |
+
+Mutação **4 de 4**, com controlo (6 testes no filtro limpo):
+- tirar o *mover à frente* do acerto;
+- o motor cozer pela porta crua;
+- tirar o tecto;
+- a chave pelo `==`.
+
+⚠️ O contador de gerações vive no **gerador**. Com ele na memória, o gate da fiação era vácuo:
+contava os pedidos à memória, e não se o gerador corria.

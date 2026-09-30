@@ -58,6 +58,11 @@ mod composite_formas_tests; // a pilha contra os metodos de RE-CARIMBO: o boolea
 #[path = "diag_composite_e_as_formas.rs"]
 mod diag_composite_e_as_formas;
 
+#[path = "composite_relevo_tests.rs"]
+mod composite_relevo_tests;
+#[path = "diag_o_relevo_da_pilha.rs"]
+mod diag_o_relevo_da_pilha; // a fila 44, item 8: o relevo sob o pincel composto // o RELEVO de cada camada: a régua é a ferramenta avulsa
+
 #[path = "diag_preco_do_recarimbo.rs"]
 mod diag_preco_do_recarimbo; // o PRECO
 

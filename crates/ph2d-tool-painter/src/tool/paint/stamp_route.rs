@@ -374,7 +374,13 @@ impl PainterTool {
         // ⚠️ The contract is honoured TWICE by design: `impasto_applies` (inside the pass) is
         // Paint-only, so mutating THIS gate alone survives G12 — the same layered-defense shape
         // as the GPU light's early-out. This branch states the intent where the routing lives.
-        if !matches!(self.paint.paint_mode, PaintMode::WetPaint) {
+        // ⛔ E NUNCA dentro de um PLANO de medição do Composite: o canvas que o depósito vê ali é o
+        // plano de uma camada, e o relevo é da TELA — a camada deposita-o à parte, pela mesma porta
+        // (`composite_relevo`). Com o `Draw To` do artista intacto no plano, é esta linha que impede o
+        // corpo de ser depositado duas vezes; e é por o `Draw To` ficar intacto que o FILME corta o
+        // pigmento da camada como corta o do pincel avulso.
+        if !matches!(self.paint.paint_mode, PaintMode::WetPaint) && !self.paint.acumulando_no_plano
+        {
             self.stamp_dabs_height(dabs, &brush);
         }
         // ── SCULPT: the same list, a different verb on the same plane ────────────────────────────

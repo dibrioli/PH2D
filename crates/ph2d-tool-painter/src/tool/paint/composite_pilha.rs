@@ -191,6 +191,8 @@ pub(super) struct PilhaDoTraco {
     /// Quem hospeda a ferramenta drena a pré-visualização uma vez por quadro? Semeado pelo
     /// hospedeiro (`set_compor_por_quadro`); ⚠️ **NÃO é do traço** — o [`Self::fecha`] não o toca.
     pub(super) por_quadro: bool,
+    /// O estado do depósito de RELEVO de cada camada ao longo do traço ([`super::composite_relevo`]).
+    pub(super) relevo: [super::composite_relevo::RelevoDaCamada; N_CAMADAS],
 }
 
 impl PilhaDoTraco {
@@ -209,6 +211,7 @@ impl PilhaDoTraco {
         for p in &mut self.planos {
             *p = Arc::new(Vec::new());
         }
+        self.relevo = Default::default();
     }
 }
 
@@ -279,7 +282,9 @@ impl PainterTool {
             self.paint.pilha.pre = (*self.canvas_rgba).clone();
             self.paint.pilha.lotes.clear();
         }
-        let Some(caixa_nova) = caixa_das_camadas(&camadas, w, h) else {
+        let Some(caixa_nova) =
+            super::region::caixa_das_camadas(&camadas, (w, h), self.paint.tiling)
+        else {
             return;
         };
         #[cfg(test)]
@@ -547,10 +552,11 @@ impl PainterTool {
             &mut plano,
             &self.undo.write_state,
         );
-        let saved_draw = self.paint.brush.impasto_draw_to;
-        self.paint.brush.impasto_draw_to = ph2d_painter_brush::DrawTo::Color;
+        // O escudo é um plano de MEDIÇÃO: o relevo fica fora dele pela mesma porta da acumulação,
+        // e o `Draw To` do artista fica (o filme corta a cobertura como corta a da borracha avulsa).
+        self.paint.acumulando_no_plano = true;
         self.aplica_deposito(dabs);
-        self.paint.brush.impasto_draw_to = saved_draw;
+        self.paint.acumulando_no_plano = false;
         super::plane_fork::swap_canvas_plane(
             &mut self.canvas_rgba,
             &mut plano,
@@ -593,11 +599,18 @@ impl PainterTool {
 
     /// O depósito nu (a rota do Brush), com o Tiling aplicado — partilhado pela camada Brush, pela
     /// borracha de escopo `Tudo` e pela medição do escudo.
+    ///
+    /// ⚠️ Publica os GRUPOS do Tiling como a rota avulsa (`stamp_dabs_routed`): uma cópia embrulhada é
+    /// o MESMO dab visto do outro lado da costura, e sem o mapa cada cópia tirava a sua própria moldura
+    /// aleatória e o seu próprio antecessor.
     pub(super) fn aplica_deposito(&mut self, dabs: &[Dab]) {
         let tiling = self.paint.tiling;
         if tiling[0] || tiling[1] {
-            let wrapped = super::tiling::tiled_dabs(dabs, self.source_size, tiling);
+            let (wrapped, groups) =
+                super::tiling::tiled_dabs_grouped(dabs, self.source_size, tiling);
+            let de_antes = std::mem::replace(&mut self.paint.dab_groups, groups);
             self.stamp_dabs_inner(&wrapped);
+            self.paint.dab_groups = de_antes;
         } else {
             self.stamp_dabs_inner(dabs);
         }
@@ -653,17 +666,6 @@ impl PainterTool {
         self.paint.brush.strength = saved_strength;
         self.paint.brush.hardness = saved_hardness;
     }
-}
-
-/// A união das footprints de todas as camadas de um lote.
-pub(super) fn caixa_das_camadas(camadas: &[Vec<Dab>; N_CAMADAS], w: u32, h: u32) -> Option<Region> {
-    let mut acc: Option<Region> = None;
-    for lista in camadas {
-        if let Some(r) = dabs_bounds(lista, w, h) {
-            acc = Some(acc.map_or(r, |a| union_region(a, r)));
-        }
-    }
-    acc
 }
 
 /// Dois rectângulos meio-abertos que se intersectam.

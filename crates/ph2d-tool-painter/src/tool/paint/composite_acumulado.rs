@@ -105,10 +105,13 @@ impl PainterTool {
             for p in &mut self.paint.pilha.planos {
                 *p = Arc::new(Vec::new());
             }
+            self.paint.pilha.relevo = Default::default();
         }
         #[cfg(test)]
         fases::soma(fases::PRE, t_pre);
-        let Some(caixa_nova) = super::composite_pilha::caixa_das_camadas(&camadas, w, h) else {
+        let Some(caixa_nova) =
+            super::region::caixa_das_camadas(&camadas, (w, h), self.paint.tiling)
+        else {
             return;
         };
         // A bissecção do §3.1 da auditoria, agora sobre a rota de acumulação: com a região a ser o
@@ -132,6 +135,8 @@ impl PainterTool {
             if !self.camada_viva(pos) || lista.is_empty() {
                 continue;
             }
+            // O RELEVO primeiro: ele lê uma CÓPIA do fluxo aleatório da camada, a cor consome-o.
+            self.relevo_da_camada(pos, lista);
             self.acumula_camada(pos, lista);
         }
         #[cfg(test)]
@@ -200,7 +205,6 @@ impl PainterTool {
         let saved_strength = self.paint.brush.strength;
         let saved_blend = self.paint.brush.blend;
         let saved_hardness = self.paint.brush.hardness;
-        let saved_draw = self.paint.brush.impasto_draw_to;
         self.paint.brush.strength = layer.strength;
         self.paint.brush.hardness = layer.hardness.unwrap_or(saved_hardness);
         // ⚠️ A TINTA acumula-se com `Mix` e **não** com o blend do pincel: o blend é da CAMADA e
@@ -209,8 +213,10 @@ impl PainterTool {
             Acumulo::Tinta => BrushBlend::Mix,
             _ => BrushBlend::EraseAlpha,
         };
-        // ⛔ O relevo não entra num plano de medição — ele é da TELA.
-        self.paint.brush.impasto_draw_to = ph2d_painter_brush::DrawTo::Color;
+        // ⛔ O relevo não entra num plano de medição — ele é da TELA, e quem o impede é o
+        // `acumulando_no_plano` no despacho. O `Draw To` do artista FICA: é ele que corta o pigmento
+        // de um pincel que deposita corpo num FILME, e forçá-lo a `Color` aqui pintava a camada com a
+        // tinta cheia do Digital (sonda `diag_a_cor_da_pilha_no_impasto`: pior `178` contra o avulso).
         // O fluxo de RNG desta camada é dela: um fluxo partilhado daria realizações diferentes
         // conforme a ordem em que as camadas correm.
         self.paint.tex_rng = self.paint.rng_camada[pos];
@@ -238,7 +244,6 @@ impl PainterTool {
             &mut self.paint.composite_mask[pos],
         );
         self.paint.rng_camada[pos] = self.paint.tex_rng;
-        self.paint.brush.impasto_draw_to = saved_draw;
         self.paint.brush.blend = saved_blend;
         self.paint.brush.strength = saved_strength;
         self.paint.brush.hardness = saved_hardness;

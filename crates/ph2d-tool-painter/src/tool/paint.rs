@@ -171,6 +171,7 @@ mod composite_linhas; // as passagens POR PIXEL da composição, em linhas disju
 mod composite_montagem;
 mod composite_pilha;
 mod composite_por_quadro; // a tela compõe-se UMA vez por quadro; os planos, a cada evento
+mod composite_relevo; // o RELEVO de cada camada da pilha (fila 44, item 8)
 mod composite_reposicoes; // as duas reposicoes da pilha: descascar e FIXAR
 /// **Grid Stamp** — os controles do método (célula, deslocamento, Show Grid) e a régua norm↔px.
 /// ⭐ **O dab que o motor vai emitir** — irmão do [`grid_stamp_settings`] pelo tecto de LOC,

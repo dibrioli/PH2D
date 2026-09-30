@@ -3,6 +3,7 @@
 //! keeps access to `PaintState`'s private fields). Used by `paint::stamp_drag_preview`.
 
 use super::Region;
+use super::composite::N_CAMADAS;
 use crate::tool::PainterTool;
 use ph2d_painter_brush::Dab;
 use std::sync::Arc;
@@ -279,6 +280,35 @@ pub(super) fn dabs_bounds(dabs: &[Dab], w: u32, h: u32) -> Option<Region> {
             h: r.h,
         };
         acc = Some(acc.map_or(r, |a| union_region(a, r)));
+    }
+    acc
+}
+
+/// A união das footprints de todas as camadas de um lote — **com as cópias do Tiling**.
+///
+/// ⛔ As listas chegam SEM embrulhar (o depósito embrulha-as ele próprio), e a região é o sítio onde
+/// a composição escreve de volta. Medida só com os dabs crus ela não continha as cópias do outro lado
+/// da costura: um lote cujo cursor já passou da borda dava `None` e a pilha saía CEDO, e as cópias
+/// que os planos acumulavam nunca eram compostas na tela. Medido (sonda `diag_o_tiling_sob_a_pilha`,
+/// traço a atravessar a borda direita): a borda esquerda ficava com `0` px de cor contra `738` do
+/// pincel avulso — no Digital também, e o corpo do Impasto com `594` contra `814`.
+pub(super) fn caixa_das_camadas(
+    camadas: &[Vec<Dab>; N_CAMADAS],
+    (w, h): (u32, u32),
+    tiling: [bool; 2],
+) -> Option<Region> {
+    let mut acc: Option<Region> = None;
+    for lista in camadas {
+        let embrulhada;
+        let lista = if tiling[0] || tiling[1] {
+            embrulhada = super::tiling::tiled_dabs(lista, (w, h), tiling);
+            &embrulhada
+        } else {
+            lista
+        };
+        if let Some(r) = dabs_bounds(lista, w, h) {
+            acc = Some(acc.map_or(r, |a| union_region(a, r)));
+        }
     }
     acc
 }

@@ -12,9 +12,9 @@
 |---|---|---|---|
 | 1 | Wet Paint: passos 3–4 do transfer em série (soma `f64` · arrasto Gauss-Seidel) | dono | **decidido (29/09): (a), fica como está** — §1 |
 | 2 | Aquarela: unificar a mistura seca (RYB) e a molhada (K–M) — a pista do *glaze*, diário §17.3 | linha (a ordem do dono já existia, 20/09) | **feito, smoke do dono OK (29/09)** — §2 |
-| 3 | O `Mixing` no Impasto | dono | **aberto (conferido)** — §4.1 |
-| 4 | O `Pigment` que mudou de sítio na aquarela (do cartão *Water* para o *Mixing*) | dono | **aberto (conferido)** — §4.2 |
-| 5 | Composite Brush: a pilha cheia numa tela grande (a alavanca é o RAIO) | dono | **premissa morta, medido** — §4.3 |
+| 3 | O `Mixing` no Impasto | dono | **decidido (30/09): manter** — §4.1 |
+| 4 | O `Pigment` que mudou de sítio na aquarela (do cartão *Water* para o *Mixing*) | dono | **decidido (30/09): fica no *Mixing*** — §4.2 |
+| 5 | Composite Brush: a pilha cheia numa tela grande (a alavanca é o RAIO) | dono | **fechado (30/09): premissa morta, medido** — §4.3 |
 | 6 | Wet Paint: o *fork* do canvas no 1.º toque depois de soltar (`~9 ms`) — pede canvas em ladrilhos | linha | a conferir |
 | 7 | Wet Paint: o tile do papel do motor (`~12 ms`, em série por impressão digital) | linha | a conferir |
 | 8 | Composite Brush: o relevo fora da recomposição da pilha | linha | a conferir |
@@ -263,7 +263,7 @@ separa, e é essa a fixtura do gate de unidade.
 - **Funciona.** Foi medido no diário (`|d| 142`).
 - **Preço que o dono tem de saber.** Com o `Pigment` acima de zero, o carimbo sai do dispositivo,
   porque `stamp_device::eligible` exige `pigment_mix == 0`. O pincel volta ao caminho da CPU.
-- **Decisão do dono:** manter ou retirar. Retirar é uma linha em `offers_pigment_mixing`.
+- **Decisão do dono (30/09): MANTER.** Retirar seria uma linha em `offers_pigment_mixing`.
 - **Recomendação da linha:** manter.
 
 ### §4.2 — Item 4: o `Pigment` saiu do cartão *Water* para o *Mixing* (aquarela)
@@ -272,7 +272,7 @@ separa, e é essa a fixtura do gate de unidade.
   ([§19.5](../archive/docs-2026-09-24/painter/HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-09-20.md)).
   Não houve uma ordem do dono.
 - **O que é hoje.** Nos três meios que o oferecem, o controlo vive no mesmo cartão.
-- **Decisão do dono:** confirmar o lugar.
+- **Decisão do dono (30/09): o lugar fica** — o `Pigment` vive no cartão *Mixing*.
 - **Recomendação da linha:** manter. Um controlo com o mesmo nome em cartões diferentes, conforme o
   meio, é a forma de «não encontro o botão».
 
@@ -309,5 +309,5 @@ custa `47,5` por quadro (compor `7,7`, acumular `39,8`). As camadas mais caras s
 
 ⏳ **A alavanca, se um dia for precisa:** o Blur é a camada mais cara.
 
-**Decisão do dono:** fechar o item.
+**Decisão do dono (30/09): FECHADO.**
 

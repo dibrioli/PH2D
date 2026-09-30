@@ -169,6 +169,16 @@ fraca ao gelo, o CONTROLO sem resistências, o Elemental que absorve o fogo). A 
 continuam (§6 do handoff anterior), agora com a bala visível. ✅ **Aprovados pelo dono:** W6 (`=3`) e
 W7 (`=4`, 2026-09-30).
 
+**O binário do smoke está COMPILADO na worktree** (DIRETRIZ §1.5.9 item 9), depois de
+`rm -rf target/*/incremental` (`45 G` de `debug` + `6,1 G` de `smoke` reclamados). A 2.ª corrida de
+`bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`, colada — zero linhas
+`Compiling`:
+
+```
+▸ linha line_components · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+    Finished `smoke` profile [optimized] target(s) in 0.54s
+```
+
 **Linha proposta para o `CLAUDE.md §5`** (Componentes, a seguir à entrada da VIDA E DANO — quem a
 aplica é o integrador):
 

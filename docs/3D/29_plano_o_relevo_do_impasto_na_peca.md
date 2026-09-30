@@ -106,3 +106,28 @@ ela**: ele é byte-idêntico ao de hoje por construção, com gate.
   plano (o que o Painter faz em 2D) — com o custo medido antes.
 - Se a subida incremental das alturas custar mais de `1 ms` por quadro durante um
   traço na peça de fábrica, a W2 não fecha nessa forma.
+
+## 5. O estado (30/09)
+
+| onda | commit | o que ficou | gates · mutação |
+|---|---|---|---|
+| **W1** | `sculpt3d(relevo W1)` | como planeado | 5 + 3 + 4 · `muta_o_relevo.sh` 8/8 |
+| **W2** | `c5fbff7ec` | o `binding 7`, a leitura `vec4` (cor e altura pelos MESMOS pesos), o *bump* de Mikkelsen num `fs_core_n` que recebe a normal — o `fs_core` delega nele com `in.n_view`, logo sem relevo o ramo nem é tomado | a paridade lê `.w` · `o_relevo_inclina_a_luz_so_onde_ha_degrau` (pixel, com adaptador) · 3/3 + controlo |
+| **W3** | `82a057060` | a luz 2D desligada NA TELA DA VISTA (`impasto_visible`, uma porta para os dois caminhos do Painter) · a espessura numa JANELA à volta do rectângulo mudado, no mesmo quadro que a cor · `Vista::mundo_por_pixel` PARALELO À IMAGEM · `nova = antes + h_px·k·píxel` | 4 + 5 · `muta_o_relevo_na_peca.sh` 9/9 + controlo |
+| **W4** | este | a VOZ do pen-down: um traço que molda relevo (`stroke_shapes_relief`) sobre uma peça sem tinta fina diz que só a cor fica | as 4 células + o elo no pen-down |
+
+⚠️ **Duas correcções que a construção impôs ao plano:**
+
+- **O píxel mede-se paralelo à IMAGEM, não perpendicular ao RAIO** (D2). A 1.ª
+  redacção seguia o raio e o gate leu `0,5 %` de erro no canto da tela — fora do
+  eixo as duas direcções diferem, e a espessura do Painter é medida no plano do
+  ecrã. A linha `w` da matriz é o «em frente»; sem perspectiva, a linha `z`.
+- **A espessura A MEIO do traço** vive no envelope do traço aberto e não no
+  comprometido — uma janela que lesse só o comprometido entregava zero a
+  pincelada inteira, e o gate que media depois do pen-up **não o via** (a
+  mutação P3 sobreviveu até existir o gate a meio).
+
+⏳ **Por medir no smoke do dono:** o relógio do upload incremental com relevo
+(o critério de desistência do §4 fala de `> 1 ms`; a escrita é por corrida de
+amostras sujas, a `4` bytes cada, ao lado da cor) e a leitura a olho do relevo
+sob a luz de fábrica (`Pbr`).

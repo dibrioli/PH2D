@@ -205,3 +205,24 @@ fn a_meio_do_traco_a_espessura_ja_sai() {
     }
     assert!(algum, "a meio do traço a janela entregou zero");
 }
+
+/// ⭐ **GATE — «este traço molda o relevo?»** — o depósito só com o `Impasto`
+/// ligado; a faca sempre; a borracha nunca. É a pergunta da voz da escultura
+/// (`docs/3D/29`, D1), e uma resposta larga demais avisaria de um preço que o
+/// traço não paga.
+#[test]
+fn o_traco_molda_o_relevo_so_quando_deixa_corpo() {
+    let mut t = PainterTool::default();
+    assert!(
+        !t.stroke_shapes_relief(),
+        "um pincel sem Impasto não molda relevo"
+    );
+    impasto(&mut t);
+    assert!(t.stroke_shapes_relief(), "o depósito com Impasto molda");
+    t.paint.eraser = true;
+    assert!(!t.stroke_shapes_relief(), "a borracha não molda");
+    t.paint.eraser = false;
+    let mut f = PainterTool::default();
+    f.set_impasto_tool(super::super::impasto_tool::IMPASTO_TOOL_KNIFE);
+    assert!(f.stroke_shapes_relief(), "a faca molda o corpo que lá está");
+}

@@ -123,6 +123,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
              armed for this piece, so the paint has its own resolution and refining would only \
              throw the fine plane away (a shape brush still densifies)"
         }
+        "app.sculpt3d.recusa.o_relevo_pede_a_tinta_fina" => {
+            "Impasto relief needs Paint Detail on this piece -- without it the paint has no \
+             thickness to keep, so this stroke lays colour only (pick 2x or finer in Paint Detail)"
+        }
         "app.sculpt3d.tinta_fina.nao_cabe_na_placa" => "Paint Detail lowered: too big for the GPU",
         // ⛔⛔⛔ **O TOAST DO BAKE — e ele estava em PORTUGUÊS NA TELA até 21/09** (foto do dono:
         //    `[sculpt3d] nao assou: this sprite is fully tra…`, um prefixo PT colado a uma frase

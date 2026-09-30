@@ -82,6 +82,24 @@ impl PainterTool {
             && !self.paint.eraser
     }
 
+    /// ⭐ **Este traço MOLDA o relevo?** — o depósito com o `Impasto` ligado, a
+    /// faca e os verbos de esculpir. A pergunta da escultura antes de pintar a
+    /// peça (`docs/3D/29`, D1): sem plano de tinta fina a espessura não tem
+    /// onde morar, e o artista tem de ouvir isso no pen-down.
+    ///
+    /// ⚠️ É o [`Self::impasto_section_applies`] com o depósito a exigir o
+    /// interruptor do pincel — a secção aparece em `Paint` mesmo com ele
+    /// desligado, e aí o traço não deixa corpo nenhum.
+    #[must_use]
+    pub fn stroke_shapes_relief(&self) -> bool {
+        self.impasto_section_applies()
+            && match self.paint.paint_mode {
+                PaintMode::Paint => self.paint.brush.impasto,
+                PaintMode::Knife | PaintMode::Sculpt => true,
+                _ => false,
+            }
+    }
+
     /// Which of the ten tools is in the artist's hand — a pure function of the modes, never a field.
     ///
     /// Storing it would make a second place for "which tool?" to be true, and the rail can already change

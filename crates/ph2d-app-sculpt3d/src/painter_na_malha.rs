@@ -205,6 +205,12 @@ pub fn entrega(
         if !scene.painter_abre(x, y) {
             return false;
         }
+        if let Some(v) = voz_do_relevo(
+            painter.stroke_shapes_relief(),
+            scene.stroke.tinta_fina.is_some(),
+        ) {
+            eprintln!("[sculpt3d] {v}");
+        }
         // ⭐⭐ Os modos que lêem a cor debaixo do pincel começam com o RETRATO
         // da peça na tela, e a lei passa a ser a diferença (etapa 2).
         if painter.screen_canvas_reads_the_piece() {
@@ -233,6 +239,17 @@ pub fn entrega(
         }
     }
     consumed
+}
+
+/// ⭐ **A VOZ do relevo sem plano** (`docs/3D/29`, D1): um traço que molda o
+/// relevo sobre uma peça sem tinta fina deixa só a cor — a espessura não tem
+/// onde morar —, e sem esta frase isso leria-se como um impasto partido.
+///
+/// ⚠️ PURA, e com as QUATRO células num gate: calada quando não há relevo a
+/// perder, e calada quando o plano está lá.
+pub(crate) fn voz_do_relevo(molda_relevo: bool, plano_armado: bool) -> Option<String> {
+    (molda_relevo && !plano_armado)
+        .then(|| ph2d_i18n::tr("app.sculpt3d.recusa.o_relevo_pede_a_tinta_fina").to_owned())
 }
 
 /// ⭐ **O fim de uma pincelada do Painter** — no pen-up, ou quando a água que ela
@@ -577,3 +594,7 @@ pub(crate) fn o_painel_mexe_na_peca(intent: &ph2d_panel_sculpt3d::Sculpt3dIntent
         | I::Extract => true,
     }
 }
+
+#[cfg(test)]
+#[path = "painter_voz_tests.rs"]
+mod voz_tests;

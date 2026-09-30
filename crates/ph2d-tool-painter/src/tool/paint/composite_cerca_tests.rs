@@ -417,17 +417,23 @@ fn traco_do_dono(
     ((*t.canvas_rgba).clone(), pad)
 }
 
-/// ⭐⭐⭐ **O AVENTAL ESTREITO DÁ A MESMA IMAGEM — na pilha do dono, AO BIT** (2026-09-23).
+/// ⭐⭐⭐ **O AVENTAL ESTREITO DÁ A MESMA IMAGEM — na pilha do dono** (2026-09-23).
 ///
 /// O avental da composição passou de `k·P + 1` (o alcance do núcleo binomial) para o alcance do
 /// núcleo de CAIXA que o composite de facto usa. Na pilha do dono isso é `257 → 33 px`, e a
-/// composição de todas as camadas corre sobre essa área.
+/// composição de todas as camadas corre sobre essa área. A fixtura é a mais dura que a pilha do
+/// dono admite: tela com TEXTURA (numa chapada o borrão é um no-op), traço ONDULADO (o esfregão
+/// arrasta através de vários eventos) e dois passos do rato.
 ///
-/// ⚠️ **A régua é a IMAGEM contra a do avental de antes, ao bit** — não «dentro de uma barra»: o
-/// argumento é que nada do que o `alvo` largo compunha a mais chegava à `caixa_nova`, e isso só se
-/// prova com igualdade. A fixtura é a mais dura que a pilha do dono admite: tela com TEXTURA (numa
-/// chapada o borrão é um no-op), traço ONDULADO (o esfregão arrasta através de vários eventos) e
-/// dois passos do rato.
+/// ⛔⛔ **A PREMISSA DE ANTES MORREU em 2026-09-30, e à vista:** este gate afirmava a igualdade
+/// **AO BIT** — verdade enquanto só a caixa do lote era escrita. Desde a fila 44, item 9, a caixa
+/// ESCRITA é a do lote ALARGADA pelo avental (é o que apaga o carimbo rectangular), logo o borrão
+/// corre sobre regiões de tamanhos diferentes dos dois lados — e o borrão de caixa de uma
+/// sub-região não é o miolo do da região maior: a soma corrente carrega o sítio onde começou, e
+/// um byte pode mudar num punhado de píxeis (a divergência que o `alguem_acima_le_vizinhanca` já
+/// declara). ⇒ as duas metades: **com a escrita estreita os dois continuam iguais AO BIT** (o
+/// avental estreito não perdeu nada), e **com a escrita de hoje diferem em no máximo UM byte**,
+/// numa fracção desprezável.
 ///
 /// ⛔ **O CONTROLO é a primeira asserção:** o avental tem de ter de facto ENCOLHIDO nesta fixtura
 /// — sem ela, um avental que não mudasse passaria a igualdade por construção.
@@ -436,19 +442,36 @@ fn traco_do_dono(
 /// esfregão acima (ver o gate irmão) · o alcance da caixa trocado por metade dele.
 #[test]
 fn o_avental_estreito_da_a_mesma_imagem_na_pilha_do_dono() {
-    for passo in [3.0f32, 11.0] {
+    let compara = |passo: f32, estreita: bool| {
+        super::composite_acumulado::ESCRITA_ESTREITA.with(|c| c.set(estreita));
         let (estreito, pad_estreito) = traco_do_dono(&PILHA_DO_DONO, 640, passo, false);
         let (largo, pad_largo) = traco_do_dono(&PILHA_DO_DONO, 640, passo, true);
+        super::composite_acumulado::ESCRITA_ESTREITA.with(|c| c.set(false));
         assert!(
             pad_estreito * 4 < pad_largo,
-            "controlo: o avental tem de ENCOLHER na pilha do dono (estreito {pad_estreito} · \\
+            "controlo: o avental tem de ENCOLHER na pilha do dono (estreito {pad_estreito} · \
              largo {pad_largo})"
         );
         let diferentes = estreito.iter().zip(&largo).filter(|(a, b)| a != b).count();
+        let pior = estreito
+            .iter()
+            .zip(&largo)
+            .map(|(a, b)| a.abs_diff(*b))
+            .max()
+            .unwrap_or(0);
+        (diferentes, pior, estreito.len())
+    };
+    for passo in [3.0f32, 11.0] {
+        let (diferentes, _, _) = compara(passo, true);
         assert_eq!(
             diferentes, 0,
-            "passo {passo}: o avental estreito mudou {diferentes} bytes da imagem do dono \\
-             (avental {pad_estreito} contra {pad_largo} px)"
+            "passo {passo}: com a escrita estreita o avental estreito mudou {diferentes} bytes"
+        );
+        let (diferentes, pior, total) = compara(passo, false);
+        assert!(
+            pior <= 1 && diferentes * 1000 <= total,
+            "passo {passo}: o avental estreito mudou {diferentes} bytes (pior {pior}) da imagem \
+             do dono — mais do que a soma corrente do borrão de caixa explica"
         );
     }
 }

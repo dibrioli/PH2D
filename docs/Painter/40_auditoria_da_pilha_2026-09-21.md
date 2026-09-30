@@ -234,6 +234,13 @@ leem `0` — e é a base congelada do esfregão, refrescada só dentro da regiã
 `p − disp(p)`, que pode cair fora dela. ⭐ A cura tem endereço: **com os planos, «a tela como as
 camadas de baixo a deixaram» é calculável em qualquer região.**
 
+⛔⛔ **Esta ATRIBUIÇÃO foi REFUTADA em 2026-09-30** ([doc 44 §7](44_a_fila_depois_da_linha.md)): o
+resíduo é do **BORRÃO** e não da base do esfregão. Um pixel já borrado fora da caixa do lote lê
+vizinhos que o lote mudou, e só a caixa era reescrita. Escrever a caixa alargada pelo avental leva
+os seis arranjos medidos a `0` — com o Smear no fundo (onde a base dele é o `pre` e não pode ficar
+velha) e por cima de um Brush. *Uma atribuição feita pelos arranjos em que o resíduo aparece
+(«só com Blur e Smear juntos») nomeou o par sem o separar.*
+
 ### §5.4 — As leis que a wave pagou
 
 * ⛔⛔ **DUAS premissas escritas no repo morreram** — *«o número de lotes não cresce com o traço»*

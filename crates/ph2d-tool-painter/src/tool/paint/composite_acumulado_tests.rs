@@ -222,48 +222,78 @@ fn a_acumulacao_e_exacta_menos_no_borrao() {
     }
 }
 
-/// ⭐⭐⭐ **O limite REGIONAL quase não custa imagem** — o carimbo rectangular do report encolheu
-/// de uma ordem de grandeza.
+/// ⭐⭐⭐ **O limite REGIONAL não custa imagem** — o carimbo rectangular do report de 2026-09-21
+/// foi a ZERO (fila 44, item 9).
 ///
 /// A régua é a composição da região contra a do canvas INTEIRO: se elas discordam, a fronteira da
-/// discordância é um **rectângulo**, e é isso que o dono fotografou em 2026-09-21.
+/// discordância é um **rectângulo**, e é isso que o dono fotografou.
 ///
-/// **Medido nesta fixtura:** replay **`103`** de 255 · acumulação **`12`**, e a barra de `16` sai desse vale. ⏳ E o resíduo que fica
-/// está ATRIBUÍDO: ele só existe com **Blur e Smear juntos** (Brush só, Blur+Brush e Brush+Smear
-/// leem `0`), e é a base congelada do esfregão, que é refrescada só dentro da região — o esfregão
-/// lê `p − disp(p)`, que pode cair fora dela. A cura tem endereço e não é desta wave: com os
-/// planos, *«a tela como as camadas de baixo a deixaram»* é calculável em qualquer região.
+/// **Medido nesta fixtura:** replay **`103`** de 255 · acumulação com a escrita da caixa do lote
+/// **`14`** (Blur+Brush+Smear), **`5`** (Blur+Brush) e **`20`** (Blur+Smear sobre Brush) ·
+/// acumulação com a escrita ALARGADA pelo alcance do borrão **`0`** nos três. ⛔ O resíduo estava
+/// atribuído à base congelada do esfregão, e a atribuição estava ERRADA: é o borrão — um pixel já
+/// borrado fora da caixa do lote lê vizinhos que o lote mudou, e ninguém o reescrevia.
 ///
-/// ⚠️ **O CONTROLO é a metade que torna a barra honesta:** ele exige que a rota de REPLAY continue
-/// a falhar por muito mais. Sem ele, um motor que não pintasse nada passaria.
+/// ⚠️ **Os CONTROLOS são a metade que torna a barra honesta:** a escrita estreita (o código de
+/// antes) tem de continuar a deixar resíduo, e a rota de REPLAY também. Sem eles, um motor que não
+/// pintasse nada passaria.
+/// Uma pilha como `(posição, operação, força)`.
+type Arranjo = [(usize, CompositeOp, f32)];
+
 #[test]
-fn a_regiao_quase_nao_deixa_rectangulo() {
-    const BARRA: u8 = 16;
+fn a_regiao_nao_deixa_rectangulo() {
+    use CompositeOp::{Blur, Brush, Smear};
     let pts = rabisco(90);
-    let img = |global: bool, replay: bool| {
+    let img = |global: bool, replay: bool, estreita: bool, ops: &Arranjo| {
         super::composite_pilha::RECOMPOSICAO_GLOBAL.with(|c| c.set(global));
+        super::composite_acumulado::ESCRITA_ESTREITA.with(|c| c.set(estreita));
         let mut t = tela();
         t.paint.pilha_por_replay = replay;
-        com(&mut t, 0, CompositeOp::Blur, 0.4, None);
-        com(&mut t, 1, CompositeOp::Brush, 0.3, Some([1.0, 0.0, 0.0]));
-        com(&mut t, 3, CompositeOp::Smear, 0.6, None);
+        for &(pos, op, s) in ops {
+            let cor = (op == Brush).then_some([1.0, 0.0, 0.0]);
+            com(&mut t, pos, op, s, cor);
+        }
         corre(&mut t, &pts);
         super::composite_pilha::RECOMPOSICAO_GLOBAL.with(|c| c.set(false));
+        super::composite_acumulado::ESCRITA_ESTREITA.with(|c| c.set(false));
         (*t.canvas_rgba).clone()
     };
-    let (pior, n, caixa) = diferenca(&img(true, false), &img(false, false));
+    let arranjos: [(&str, &Arranjo); 3] = [
+        ("Blur+Brush", &[(0, Blur, 0.4), (1, Brush, 0.3)]),
+        (
+            "Blur+Brush+Smear",
+            &[(0, Blur, 0.4), (1, Brush, 0.3), (3, Smear, 0.6)],
+        ),
+        (
+            "Blur+Smear sobre Brush",
+            &[(0, Blur, 0.4), (1, Smear, 0.6), (2, Brush, 0.3)],
+        ),
+    ];
+    for (nome, ops) in arranjos {
+        let (pior, n, caixa) = diferenca(
+            &img(true, false, false, ops),
+            &img(false, false, false, ops),
+        );
+        assert_eq!(
+            pior, 0,
+            "{nome}: compor só a região discorda de compor o canvas inteiro por {pior} de 255 \
+             ({n} px, caixa {caixa}) — a fronteira dessa discordância é um RECTÂNGULO"
+        );
+        let (estreita, _, _) =
+            diferenca(&img(true, false, true, ops), &img(false, false, true, ops));
+        assert!(
+            estreita > 2,
+            "{nome}: o CONTROLO falhou — escrever só a caixa do lote tinha de deixar resíduo \
+             ({estreita}); sem ele esta fixtura não contém o defeito"
+        );
+    }
+    let ops = arranjos[1].1;
+    let (pior_replay, _, _) =
+        diferenca(&img(true, true, false, ops), &img(false, true, false, ops));
     assert!(
-        pior <= BARRA,
-        "compor só a região discorda de compor o canvas inteiro por {pior} de 255 \
-         ({n} px, caixa {caixa}) — a fronteira dessa discordância é um RECTÂNGULO, que é o \
-         artefacto do report de 2026-09-21"
-    );
-    let (pior_replay, _, _) = diferenca(&img(true, true), &img(false, true));
-    assert!(
-        pior_replay > pior * 2,
-        "o CONTROLO falhou: a rota de replay tinha de discordar por MUITO mais \
-         (replay {pior_replay}, acumulação {pior}) — se as duas são iguais, esta fixtura não \
-         contém o defeito que a wave curou"
+        pior_replay > 50,
+        "o CONTROLO da rota de replay falhou ({pior_replay}): a fixtura deixou de conter o carimbo \
+         que a acumulação curou"
     );
 }
 

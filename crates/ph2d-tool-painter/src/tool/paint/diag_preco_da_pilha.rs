@@ -183,6 +183,18 @@ fn diag_preco_da_pilha() {
     linha("  └ avental LARGO (k·P + 1)", largo);
     linha("  └ avental ESTREITO (alcance)", estreito);
     println!("     ⇒ o avental estreito: {:.2}×", largo / estreito);
+    // ⭐ O A/B da ESCRITA (fila 44, item 9, 2026-09-30): a caixa do lote contra a caixa ALARGADA
+    //    pelo avental, que é o que apaga o carimbo rectangular. Alternados, como o do avental.
+    let (mut so_o_lote, mut alargada) = (f64::MAX, f64::MAX);
+    for _ in 0..3 {
+        super::composite_acumulado::ESCRITA_ESTREITA.with(|c| c.set(true));
+        so_o_lote = so_o_lote.min(monta(None));
+        super::composite_acumulado::ESCRITA_ESTREITA.with(|c| c.set(false));
+        alargada = alargada.min(monta(None));
+    }
+    linha("  └ escreve só a caixa do lote", so_o_lote);
+    linha("  └ escreve a caixa + o avental", alargada);
+    println!("     ⇒ a escrita alargada: {:.2}×", alargada / so_o_lote);
     for (i, &(op, st, sz)) in dono.iter().enumerate() {
         let ms = monta(Some(i));
         linha(&format!("{} {op:?} str {st} size {sz}", i + 1), ms);

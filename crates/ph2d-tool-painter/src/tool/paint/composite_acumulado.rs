@@ -160,6 +160,23 @@ impl PainterTool {
         // 3. A região da composição. ⚠️ O apron do Blur é o que impede a convolução de ler, na orla,
         //    bytes que a composição ainda não escreveu — e é por isso que só o miolo sobrevive.
         let pad = self.pad_do_borrao();
+        // ⭐⭐ **A caixa ESCRITA é a do lote ALARGADA pelo alcance do borrão** (fila 44, item 9).
+        //
+        // Um pixel que o borrão já borrou num evento anterior, FORA da caixa deste, lê vizinhos que
+        // este evento mudou: a saída dele mudou e ninguém a reescrevia. Era isso o «carimbo
+        // rectangular» que sobrava (`12`–`20` de 255 com Blur na pilha, contra `0` recompondo o
+        // canvas inteiro) — e **não** a base congelada do esfregão, a que a auditoria de 21/09 o
+        // atribuiu: com a escrita alargada os seis arranjos medidos vão a `0`, com o Smear em baixo
+        // E por cima de um Brush. ⇒ reescreve-se a caixa + o alcance, e compõe-se mais um alcance
+        // à volta para ela ler. Sem borrão vivo o `pad` é `0` e nada muda.
+        let escrita = super::region::grow_region(caixa_nova, pad, w, h).unwrap_or(caixa_nova);
+        #[cfg(test)]
+        let escrita = if ESCRITA_ESTREITA.with(std::cell::Cell::get) {
+            caixa_nova
+        } else {
+            escrita
+        };
+        let caixa_nova = escrita;
         let alvo = super::region::grow_region(caixa_nova, pad, w, h).unwrap_or(caixa_nova);
         // 4. Guardar a orla, compor, e devolver tudo o que não é a caixa nova.
         #[cfg(test)]
@@ -462,6 +479,9 @@ thread_local! {
     /// `true` = o avental de antes de 2026-09-23 (`k·P + 1`) em toda pilha — o CONTROLO do gate
     /// que prova que o avental estreito dá a mesma imagem.
     pub(super) static AVENTAL_LARGO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// `true` = escrever só a caixa do lote (o código de antes do item 9) — o CONTROLO do gate
+    /// `a_regiao_nao_deixa_rectangulo`.
+    pub(super) static ESCRITA_ESTREITA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
 impl PainterTool {

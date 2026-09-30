@@ -18,7 +18,7 @@
 | 6 | Wet Paint: o *fork* do canvas no 1.º toque depois de soltar (`~9 ms`) — pede canvas em ladrilhos | linha | **fechado (30/09): medido, `~3 ms` de `~9–10`** — §5.1 |
 | 7 | Wet Paint: o tile do papel do motor (`~12 ms`, em série por impressão digital) | linha | **feito (30/09): `7,41 → 0,013 ms`** — §5.2 |
 | 8 | Composite Brush: o relevo fora da recomposição da pilha | linha | **feito (30/09): 8a relevo, filme e Tiling iguais ao avulso ao bit · 8b a borracha de cima apaga o corpo** — §6 |
-| 9 | Composite Brush: o resíduo Blur+Smear (`12/255`) | linha | a conferir |
+| 9 | Composite Brush: o resíduo Blur+Smear (`12/255`) | linha | **feito (30/09): `0` nos seis arranjos, a atribuição de 21/09 estava errada** — §7 |
 | 10 | Composite Brush: metade dos bytes dos intermédios da pilha | linha | a conferir |
 | 11 | Aquarela: o **Smudge** não mexe na tinta MOLHADA da sessão (report do dono, 29/09) | linha | **feito, smoke do dono OK (29/09)** — §3.1 |
 | 12 | Aquarela: o **Rewet** mexe pouco na tinta MOLHADA da sessão (report do dono, 29/09) | linha | **feito, smoke do dono OK (29/09)** — §3.2 |
@@ -420,3 +420,43 @@ assente (`h·(1−c)`), a pilha deriva o corpo da tinta restante (`derive(tinta�
 e `k = 0`; na orla parcial, pela curva do `Body`, meia tinta pode ainda estar no planalto. O `Push`
 continua partilhado (a borracha não o desfaz). Sem Erase por cima de um Brush nada muda de caminho
 (byte-idêntico). `4` gates novos, mutação **8 de 8**.
+
+---
+
+## §7 — Item 9: o carimbo rectangular que sobrava (2026-09-30)
+
+**A conferência:** a nota vinha da [auditoria 40 §5.3](40_auditoria_da_pilha_2026-09-21.md) — `12`
+de `255` na fixtura do gate `a_regiao_quase_nao_deixa_rectangulo`, «só com Blur e Smear juntos»,
+atribuído à base congelada do esfregão. Re-medido na árvore de hoje (composição da região contra a do
+canvas inteiro, o mesmo rabisco):
+
+| arranjo | escreve só a caixa do lote | escreve a caixa + o avental do borrão |
+|---|---|---|
+| Brush só · Brush+Smear · Smear sobre Brush | `0` | `0` |
+| Blur+Brush | **`5`** (237 px) | **`0`** |
+| Blur+Brush+Smear | **`14`** (4 110 px) | **`0`** |
+| Blur+Smear sobre Brush | **`20`** (4 240 px) | **`0`** |
+
+⛔ **A atribuição estava ERRADA:** Blur+Brush já deixa resíduo sem Smear nenhum, e nesta fixtura o
+Smear está no FUNDO, onde a base dele é o `pre` e não pode ficar velha. O que fica velho é o
+**borrão**: um pixel borrado num evento anterior, fora da caixa deste, lê vizinhos que este evento
+mudou — e só a caixa era reescrita.
+
+**A cura** (`composite_acumulado.rs`, `compoe_a_regiao`): a caixa ESCRITA é a do lote alargada pelo
+avental do borrão, e compõe-se mais um avental à volta para ela ler. Sem borrão vivo o avental é `0`
+e nada muda de caminho.
+
+**O preço, medido** (`--release`, pilha do dono, raio `82,8 px`, `load ~8`, composição por evento —
+o pior caso, 16 eventos por quadro): `0,279 → 0,325 ms` por evento (`1,17×`), de `26,7 %` para
+`31,2 %` do quadro. O avental estreito de 23/09 continua a deixar a pilha `3,2×` mais barata que antes
+dele.
+
+⚠️ **Um gate teve a premissa MORTA, e à vista:** o `o_avental_estreito_da_a_mesma_imagem_na_pilha_do_dono`
+afirmava igualdade AO BIT entre os dois aventais. Com a escrita alargada o borrão corre sobre
+regiões de tamanhos diferentes dos dois lados, e o borrão de caixa de uma sub-região difere do da
+maior em um byte num punhado de píxeis (a divergência já declarada da soma corrente): medido `85`
+bytes de `1,6 M`, pior `1`. Reescrito em duas metades — com a escrita estreita continua AO BIT; com
+a de hoje, `≤ 1` byte.
+
+Gate `a_regiao_nao_deixa_rectangulo` (barra `16 → 0`, três arranjos, com os controlos da escrita
+estreita e do replay). Mutação **3 de 3**.

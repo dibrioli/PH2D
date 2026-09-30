@@ -127,7 +127,7 @@ pub fn paint_property_box(
     value_column(rect, value_w, decorator)
 }
 
-/// A superfície — é aqui que os quatro desenhos divergem, e **só** aqui.
+/// A superfície — é aqui que os cinco desenhos divergem, e **só** aqui.
 fn paint_surface(
     scene: &mut VectorScene,
     theme: Theme,
@@ -152,6 +152,29 @@ fn paint_surface(
     let base_h = StrokeToken::Thick.px();
 
     match style.design {
+        // ⭐⭐ O `Underline` com o preenchimento do `Ghost` (ordem do dono, 2026-09-30): a caixa, o
+        //    preenchimento ténue por baixo do texto, e a linha de valor de 2 px por cima dele.
+        //    ⚠️ Só as quinas da ESQUERDA do preenchimento arredondam, excepto quando ele enche a
+        //    caixa — senão a borda direita do valor ganha uma quina que a caixa não tem ali.
+        SliderDesign::Tinted => {
+            fill_rounded_rect(scene, r, rad, resolve(trough, theme));
+            if fill_w > 0.5 {
+                let cheio = fill_w >= r.w - 0.5;
+                let dir = if cheio { rad } else { 0.0 };
+                crate::paint::fill_rounded_rect_radii(
+                    scene,
+                    Rect::new(r.x, r.y, fill_w, r.h),
+                    (rad, dir, dir, rad),
+                    resolve(ColorToken::AccentSoft, theme),
+                );
+            }
+            let base = Rect::new(r.x, r.y + r.h - base_h, r.w, base_h);
+            fill_rounded_rect(scene, base, 0.0, resolve(ColorToken::Border, theme));
+            if fill_w > 0.5 {
+                let f = Rect::new(r.x, r.y + r.h - base_h, fill_w, base_h);
+                fill_rounded_rect(scene, f, 0.0, resolve(accent, theme));
+            }
+        }
         SliderDesign::Underline => {
             fill_rounded_rect(scene, r, rad, resolve(trough, theme));
             let base = Rect::new(r.x, r.y + r.h - base_h, r.w, base_h);

@@ -31,9 +31,11 @@ fn the_paint_default_matches_the_token_default() {
 /// `SliderStyle::default()` seria uma tautologia — mediria a struct contra ela mesma e passaria
 /// depois de alguém trocar o desenho padrão.
 #[test]
-fn the_default_is_underline_radius_four_row_twentytwo() {
+fn the_default_is_tinted_radius_four_row_twentytwo() {
     let d = SliderStyle::default();
-    assert_eq!(d.design, SliderDesign::Underline, "o desenho padrao mudou");
+    // ⭐ `Tinted` desde 2026-09-30 (ordem do dono: *«um slider que mistura o tipo 1 com o tipo 4.
+    //    Isso para todos os sliders do app»*); era `Underline`.
+    assert_eq!(d.design, SliderDesign::Tinted, "o desenho padrao mudou");
     assert_eq!(d.radius, Radius::Xs, "o raio padrao mudou");
     assert_eq!(
         d.density,
@@ -60,14 +62,14 @@ fn the_default_is_underline_radius_four_row_twentytwo() {
 /// duas colunas, e tê-la na lista deixaria o artista escolher de volta os `154 px` de cromo que o
 /// redesenho inteiro existe para apagar.
 #[test]
-fn the_customisation_offers_exactly_the_four_chosen_designs() {
+fn the_customisation_offers_exactly_the_chosen_designs() {
     let names: Vec<&str> = SliderDesign::ALL
         .iter()
         .map(|d| ph2d_i18n::tr(d.label_key()))
         .collect();
     assert_eq!(
         names,
-        vec!["Underline", "Bar", "Inset", "Ghost"],
+        vec!["Tinted", "Underline", "Bar", "Inset", "Ghost"],
         "a lista de desenhos mudou — se foi decisao do Enio, actualize tambem o `slider_style.rs`, \
          que e' onde as duas recusas medidas (Notch, Split) estao registadas"
     );
@@ -101,5 +103,67 @@ fn every_user_facing_string_is_english() {
     assert!(
         bad.is_empty(),
         "estas strings sao lidas pelo artista e nao estao em ingles: {bad:?}"
+    );
+}
+
+/// ⭐⭐ **O `Tinted` pousa as DUAS metades — o preenchimento do `Ghost` e a linha do `Underline`.**
+///
+/// Ordem do dono (2026-09-30): *«um slider que mistura o tipo 1 com o tipo 4»*. A régua é a TINTA
+/// que o pintor pousou (`draw_data`, `a<<24|b<<16|g<<8|r`): o tom `AccentSoft` (o preenchimento do
+/// `Ghost`) **e** o acento cheio (a linha de 2 px do `Underline`) têm de estar na cena. E os dois
+/// pais servem de CONTROLO: o `Underline` não pousa o tom suave, o `Ghost` não pousa o acento.
+///
+/// **Mutação que sangra:** apagar o preenchimento do braço `Tinted` ⇒ o tom suave some.
+#[test]
+fn tinted_paints_the_ghost_fill_and_the_underline_line() {
+    use ph2d_editor_core::widget::{PropertyBox, PropertyBoxState, paint_property_box};
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_tokens::{ColorToken, Theme};
+    let theme = Theme::Dark;
+    let empacota = |c: ph2d_tokens::Color| {
+        (u32::from(c.a) << 24) | (u32::from(c.b) << 16) | (u32::from(c.g) << 8) | u32::from(c.r)
+    };
+    let suave = empacota(ColorToken::AccentSoft.resolve(theme));
+    let acento = empacota(ColorToken::Accent.resolve(theme));
+    let tintas = |design: SliderDesign| {
+        let mut scene = ph2d_vector::VectorScene::new();
+        let mut text = ph2d_text::TextSystem::without_system_fonts();
+        paint_property_box(
+            &mut scene,
+            &mut text,
+            theme,
+            Rect::new(0.0, 0.0, 240.0, 22.0),
+            PropertyBox {
+                label: "Geometry Offset",
+                value: "0.10 m",
+                t: 0.5,
+                state: PropertyBoxState::Normal,
+                accent: ColorToken::Accent,
+                decorator: false,
+                value_w: None,
+            },
+            SliderStyle {
+                design,
+                ..SliderStyle::default()
+            },
+        );
+        scene.inner().encoding().draw_data.clone()
+    };
+    let t = tintas(SliderDesign::Tinted);
+    assert!(
+        t.contains(&suave),
+        "o Tinted nao pousou o preenchimento suave do Ghost"
+    );
+    assert!(
+        t.contains(&acento),
+        "o Tinted nao pousou a linha de valor do Underline"
+    );
+    assert!(
+        !tintas(SliderDesign::Underline).contains(&suave),
+        "controlo: o Underline nao tem preenchimento suave — se tem, esta regua nao separa nada"
+    );
+    assert!(
+        !tintas(SliderDesign::Ghost).contains(&acento),
+        "controlo: o Ghost nao tem a linha de acento cheio"
     );
 }

@@ -38,7 +38,7 @@ pub fn radius_scale() -> f32 {
 thread_local! {
     static SLIDER_STYLE: std::cell::Cell<ph2d_tokens::SliderStyle> =
         const { std::cell::Cell::new(ph2d_tokens::SliderStyle {
-            design: ph2d_tokens::SliderDesign::Underline,
+            design: ph2d_tokens::SliderDesign::Tinted,
             radius: ph2d_tokens::Radius::Xs,
             density: ph2d_tokens::Density::Compact,
         }) };
@@ -46,7 +46,7 @@ thread_local! {
 
 /// **A aparência das linhas de propriedade**, publicada uma vez por quadro pelo shell.
 ///
-/// ⭐ Decisão do Enio (2026-09-02): o padrão do app é `Underline` · raio `4` · linha `22`.
+/// ⭐ Decisão do Enio (2026-09-02): raio `4` · linha `22`; o desenho é `Tinted` desde 2026-09-30.
 ///
 /// ⚠️ **O `const` acima repete o [`SliderStyle::default()`](ph2d_tokens::SliderStyle) porque um
 /// `thread_local!` `const`-inicializado não pode chamar `Default::default()`** — e é a inicialização

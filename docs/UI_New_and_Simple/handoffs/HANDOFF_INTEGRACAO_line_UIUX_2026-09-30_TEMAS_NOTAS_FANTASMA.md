@@ -239,3 +239,24 @@ para salvar o theme custom. Corrija tudo.»*
   do *Reset* trocado pelo do *Save* · a marca `custom=1` só com entradas.
 - `nextest-impacted` **19 089/19 089** · clippy `-D warnings` zero nos crates tocados · `fmt` limpo ·
   censos da árvore COMBINADA **127/127**. Fotos `Oled` e `Candy` (cartões do Inspector visíveis).
+
+## §7 — Adenda (mesmo dia): o slider `Tinted` é o padrão do app
+
+Ordem do dono, com foto do Widget Lab: *«Escolhi o tipo 1. Mas agora quero um slider que mistura o
+tipo 1 com o tipo 4. Isso para todos os sliders do app.»*
+
+- `SliderDesign::Tinted` (1.ª variante e `#[default]`; `ALL` 4 → 5, com ele à frente porque o
+  selector abre na primeira): a caixa e a linha de valor de 2 px do `Underline` + o preenchimento
+  `AccentSoft` do `Ghost` por baixo do texto (só as quinas da esquerda arredondam, excepto cheio).
+  Pintado no `property_box::paint_surface`, o único sítio onde os desenhos divergem.
+- ⚠️ **Os DOIS defaults mudaram juntos** (`SliderStyle::default()` e o `thread_local` const do
+  `published.rs`), e o gate `the_paint_default_matches_the_token_default` segura-os. O gate do
+  dono virou `the_default_is_tinted_radius_four_row_twentytwo` e a lista de nomes
+  `the_customisation_offers_exactly_the_chosen_designs` (5 nomes; a citação no `catalogue.rs` do
+  lab seguiu o nome novo). Raio 4 e linha 22 não mudaram.
+- Gate de PINTOR novo: `tinted_paints_the_ghost_fill_and_the_underline_line` (as duas tintas na
+  cena, com o `Underline` e o `Ghost` como controlos). Mutação 1/1 a sangrar.
+- ⚠️ O desenho **não se grava em disco** (só o Widget Lab o muda, por sessão) — logo não há
+  migração: o app inteiro passa ao `Tinted` no arranque.
+- Prova: `nextest-impacted` **19 090/19 090** · clippy `-D warnings` zero · `fmt` · censos
+  **127/127** · foto do Widget Lab e do painel Vector com o desenho novo.

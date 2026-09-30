@@ -141,7 +141,7 @@ pub(crate) fn paint_study(b: &mut Bench<'_>, st: &WidgetLabState, live: (f32, bo
     paint_controls(b, st);
 
     // ── §1 — os quatro desenhos ────────────────────────────────────────────
-    b.head("1 \u{b7} THE FOUR DESIGNS");
+    b.head("1 \u{b7} THE FIVE DESIGNS");
     for d in SliderDesign::ALL {
         if d == style.design {
             let mark = Rect::new(b.x - Spacing::Sm.px(), b.y, StrokeToken::Thick.px(), row_h);

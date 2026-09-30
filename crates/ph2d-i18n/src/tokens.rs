@@ -44,6 +44,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "design.slider.inset.blurb" => {
             "a capsule in a groove \u{b7} clearly a control \u{b7} spends height on framing"
         }
+        "design.slider.tinted" => "Tinted",
+        "design.slider.tinted.blurb" => {
+            "2 px line plus a soft fill \u{b7} exact and readable at a glance \u{b7} text never competes"
+        }
         "design.slider.underline" => "Underline",
         "design.slider.underline.blurb" => {
             "2 px fill at the bottom \u{b7} cleanest text \u{b7} quietest at a glance"

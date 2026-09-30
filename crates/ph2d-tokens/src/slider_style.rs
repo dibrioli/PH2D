@@ -33,9 +33,15 @@ use crate::{Density, Radius};
 /// ⚠️ **Os nomes são os que o artista lê no ecrã**, e por isso são em inglês (regra do app).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub enum SliderDesign {
-    /// O preenchimento é uma linha fina no bordo de baixo. ⭐ **O padrão**, escolhido pelo Enio:
-    /// o texto nunca compete com a barra.
+    /// ⭐⭐ **O `Underline` com o preenchimento do `Ghost`** — a caixa e a linha de valor de `2 px`
+    /// do primeiro, e por baixo do texto o preenchimento ténue do quarto. ⭐ **O padrão desde
+    /// 2026-09-30**, ordem do dono: *«Escolhi o tipo 1. Mas agora quero um slider que mistura o
+    /// tipo 1 com o tipo 4. Isso para todos os sliders do app»*. A linha diz o valor com precisão;
+    /// o preenchimento torna-o legível de relance sem competir com o texto (é o tom `AccentSoft`,
+    /// não o acento cheio da `Bar`).
     #[default]
+    Tinted,
+    /// O preenchimento é uma linha fina no bordo de baixo. Foi o padrão de 2026-09-02 a 2026-09-30.
     Underline,
     /// O preenchimento é o fundo inteiro da caixa (o do manual do Blender).
     Bar,
@@ -50,7 +56,8 @@ impl SliderDesign {
     ///
     /// ⚠️ A ordem começa no `Underline` porque ele é o padrão — a primeira entrada de um selector é
     /// onde o olho pousa, e pô-la a discordar do default faz o artista pensar que mudou algo.
-    pub const ALL: [SliderDesign; 4] = [
+    pub const ALL: [SliderDesign; 5] = [
+        SliderDesign::Tinted,
         SliderDesign::Underline,
         SliderDesign::Bar,
         SliderDesign::Inset,
@@ -61,6 +68,7 @@ impl SliderDesign {
     #[must_use]
     pub const fn label_key(self) -> &'static str {
         match self {
+            SliderDesign::Tinted => "design.slider.tinted",
             SliderDesign::Underline => "design.slider.underline",
             SliderDesign::Bar => "design.slider.bar",
             SliderDesign::Inset => "design.slider.inset",
@@ -76,6 +84,7 @@ impl SliderDesign {
     #[must_use]
     pub const fn blurb_key(self) -> &'static str {
         match self {
+            SliderDesign::Tinted => "design.slider.tinted.blurb",
             SliderDesign::Underline => "design.slider.underline.blurb",
             SliderDesign::Bar => "design.slider.bar.blurb",
             SliderDesign::Inset => "design.slider.inset.blurb",
@@ -125,13 +134,14 @@ pub struct SliderStyle {
 }
 
 impl Default for SliderStyle {
-    /// ⭐ **O padrão do app, escrito pelo dono:** `Underline` · raio `4` · linha `22`.
+    /// ⭐ **O padrão do app, escrito pelo dono:** `Tinted` · raio `4` · linha `22` (o desenho era
+    /// `Underline` até 2026-09-30; o raio e a linha ficam os de 2026-09-02).
     ///
     /// ⚠️ **Escrito à mão, não derivado dos `Default` de cada campo.** O `Density::default()` é
     /// `Comfortable` (32) por causa do Pencil, e herdá-lo aqui contradiria a decisão em silêncio.
     fn default() -> Self {
         Self {
-            design: SliderDesign::Underline,
+            design: SliderDesign::Tinted,
             radius: Radius::Xs,
             density: Density::Compact,
         }

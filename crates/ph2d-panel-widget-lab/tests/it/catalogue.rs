@@ -70,7 +70,7 @@ fn every_design_states_what_it_trades() {
 /// em 2026-09-02, e ela — com a `Notch` — deixou de shipar.
 ///
 /// ⚠️ **O que ela guardava passou a ser guardado noutro sítio**, e é isso que faz esta remoção ser
-/// segura: `the_customisation_offers_exactly_the_four_chosen_designs`
+/// segura: `the_customisation_offers_exactly_the_chosen_designs`
 /// (`ph2d-editor-core/tests/it/the_app_default_slider_style_is_the_one_the_owner_chose.rs`) afirma a
 /// lista pelo nome, e o `slider_style.rs` regista as duas recusas com o mecanismo de cada uma.
 /// *Apagar um gate sem dizer quem herdou a pergunta é como a propriedade se perde.*

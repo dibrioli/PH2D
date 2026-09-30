@@ -700,10 +700,14 @@ amostras de cor e a tabela dos inimigos como `struct`) · fmt · censos da árvo
   maior e **mantém a fase do pulso** · um tipo, uma aflição · **um pulso não é um golpe** — não
   esquiva, salta a armadura, ignora a invencibilidade e não a arma (senão um herói envenenado ficava
   invencível aos inimigos).
-- **Ponte:** a aflição entra **com o golpe** (só no `comecou`; nunca se o golpe foi esquivado,
-  travado pela invencibilidade sem absorver, ou o alvo já estava morto) · os pulsos correm depois do
-  `pre_quadro` e antes dos golpes, com a fonte = o próprio alvo · a morte limpa as aflições · as
-  `Aflicoes` vivem no `HealthState` (no ANEL), porque a `Vida` é `Copy`.
+- **Ponte:** a aflição entra **com o golpe** (nunca se o golpe foi esquivado ou travado pela
+  invencibilidade sem absorver) · ⭐ um dano **POR SEGUNDO** golpeia em cada tique do toque, logo
+  **renova** a aflição enquanto se pisa (a lava queima enquanto se está nela e ainda `dur_s` depois)
+  — a regra achada pela prova de mutação: a 1.ª redacção só a aplicava no começo do toque, o que
+  contradizia a própria frase · os pulsos correm depois do `pre_quadro` e antes dos golpes, com a
+  fonte = o próprio alvo · a morte limpa as aflições no fim do tique (⛔ uma guarda de «morta» no
+  `aplica` era redundante por construção e saiu) · as `Aflicoes` vivem no `HealthState` (no ANEL),
+  porque a `Vida` é `Copy`.
 - **O tipo é um NOME**, dobrado pela dobra da casa (`ph2d-label-fold`): `Fogo`, `fogo` e `fôgo` são o
   mesmo tipo; numa tabela com duas linhas do mesmo tipo **a primeira ganha**, e o painel marca a
   outra como repetida (⚠️ uma linha SEM tipo nunca é repetida — é a linha que o artista acabou de
@@ -727,3 +731,16 @@ amostras de cor e a tabela dos inimigos como `struct`) · fmt · censos da árvo
   nada sob a coluna dos avisos (§13). Os `5` gates da cena correm as portas do produto (fábricas +
   `apply_births` + ponte) e o controlo é o que prova que o «nada» da salamandra não é uma bala que
   falha.
+- **Prova de mutação:** **37 de 37** sangram
+  ([`mutacao_vida_w6_2026-09-29.sh`](ferramentas/mutacao_vida_w6_2026-09-29.sh), com pré-voo das
+  âncoras e filtro por secção — as 37 inteiras passam o prazo de 30 min da fatia). A 1.ª corrida
+  deixou **seis** sobreviventes e cada um tinha causa: a taxa negativa só se via no dano REGISTADO
+  (o `leva` ignora `d ≤ 0`) · o gate da morte corria além da duração do veneno · a guarda de morta
+  era redundante (apagada) · a renovação por tique só era alcançável pela lava, e a regra escrita
+  pedia-a (código mudado) · o tipo aparado não tinha gate · e a linha aberta na assinatura só se vê
+  com DUAS linhas IGUAIS (um texto a meio de escrever pendurava-se no editor da outra).
+- **Catracas do Inspector** (medidas no âmbito do app, `--workspace`): comandos `81 → 85` (a lista
+  nova, contada como as seis irmãs; declarar as linhas composto foi medido e recusado pelo censo das
+  escolhas montadas à mão) · cortes no degrau estreito `87 → 89` e letras perdidas `83 → 85` (o par
+  `+ Add Resistance` / `x Remove`, como os nove irmãos). `Absorbs (heals)` encolheu para `Absorbs`,
+  e `x Remove Resistance` foi medido a cortar na largura de FÁBRICA.

@@ -398,7 +398,7 @@ fn o_tipo_e_o_dano_que_dura_vao_e_voltam() {
 /// pela ordem da LEI.
 ///
 /// **Mutações que devem sangrar:** tirar qualquer braço de resistência do `apply_health`; o
-/// `RemoveResistance` tirar outra linha.
+/// `RemoveResistance` tirar outra linha; gravar o tipo sem o aparar.
 #[test]
 fn a_tabela_de_resistencias_vai_e_volta() {
     let (mut sim, b) = mundo(true, false, true);
@@ -446,6 +446,10 @@ fn a_tabela_de_resistencias_vai_e_volta() {
     assert!(!apply(&mut sim, b, &E::RemoveResistance(9)));
     assert!(apply(&mut sim, b, &E::ResistanceRate(0, -3.0)));
     assert_eq!(rs(&sim)[0].rate, 0.0);
+    // ⚠️ O tipo grava-se APARADO: um espaço que o artista deixou no fim não pode fazer a linha
+    // parecer um tipo e ser outro (a dobra da lei apara, a linha do painel mostraria o espaço).
+    assert!(apply(&mut sim, b, &E::ResistanceKind(1, "  gelo ".into())));
+    assert_eq!(rs(&sim)[1].kind, "gelo");
 }
 
 /// ⭐⭐ **Juntar pára no TECTO** — o `RESISTANCES_MAX`, que um gate na shell amarra à lista pintada.

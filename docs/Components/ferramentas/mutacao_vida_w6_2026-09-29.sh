@@ -152,7 +152,7 @@ seccao PAINEL "o PAINEL"
 corre CONTROLO "${PAINEL[@]}"
 muta $S "    let aberta = resistencia_aberta(&info, inspector_state.resist_selected);" \
   "    let aberta = resistencia_aberta(&info, 0);" "P1 a semente fica na 1.a linha" "${PAINEL[@]}"
-muta $S "    aberta.hash(&mut h);" "" "P2 a assinatura sem a aberta (NOMEADA: os valores ja' a cobrem)" \
+muta $S "    aberta.hash(&mut h);" "" "P2 a assinatura sem a aberta (duas linhas iguais)" \
   "${PAINEL[@]}"
 muta $E "        panel.resist_selected = n;" "        panel.resist_selected = 0;" "P3 o + nao abre a nova" \
   "${PAINEL[@]}"

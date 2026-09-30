@@ -134,6 +134,29 @@ fn abrir_uma_linha_mostra_a_linha_aberta_no_editor() {
     set_current_inspector_vida(None);
 }
 
+/// ⭐ **Abrir OUTRA linha re-semeia o editor mesmo quando as duas linhas são IGUAIS** — um texto a
+/// meio de ser escrito no editor da 1.ª não pode ficar pendurado no editor da 2.ª. Com linhas
+/// diferentes os VALORES já mudam a assinatura; com linhas iguais só a linha aberta a muda.
+///
+/// **Mutação que deve sangrar:** tirar o `aberta.hash` da `assinatura` do `sync_vida`.
+#[test]
+fn abrir_outra_linha_igual_tambem_re_semeia_o_editor() {
+    set_current_inspector_vida(Some(info(vec![linha("fogo", 0.0), linha("fogo", 0.0)])));
+    let mut h = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut st = InspectorState::default();
+    let _ = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    // O artista começou a escrever no editor da 1.ª linha e não confirmou.
+    h.set_text(ids::INSP_VIDA_RESIST_KIND, "fo");
+    st.resist_selected = 1;
+    let _ = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    assert_eq!(
+        h.store().text(ids::INSP_VIDA_RESIST_KIND),
+        Some("fogo"),
+        "o editor da 2.ª linha herdou o texto a meio da 1.ª"
+    );
+    set_current_inspector_vida(None);
+}
+
 /// ⭐⭐ **`+ Add` junta uma linha E abre-a; `x Remove` tira a aberta e desce a selecção.**
 ///
 /// **Mutações que devem sangrar:** o `+` não abrir a nova (`resist_selected = n`); o `x` tirar

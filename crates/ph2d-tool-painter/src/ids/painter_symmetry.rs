@@ -15,10 +15,6 @@ use ph2d_tool_registry::hash_node_id;
 /// collapse chevron). Click toggles collapse; default collapsed (`crate::populate`).
 pub const PAINTER_BRUSH_SYMMETRY_SECTION: NodeId = hash_node_id("painter_brush.symmetry_section");
 
-/// The Symmetry header's assignable colour dot (a picker swatch, like the other section dots).
-pub const PAINTER_BRUSH_SYMMETRY_SECTION_COLOR: NodeId =
-    hash_node_id("painter_brush.symmetry_section_color");
-
 /// Symmetry section **reset** icon button — restores the section to defaults. `Click` → `reset_symmetry`.
 pub const PAINTER_BRUSH_SYMMETRY_RESET: NodeId = hash_node_id("painter_brush.symmetry_reset");
 

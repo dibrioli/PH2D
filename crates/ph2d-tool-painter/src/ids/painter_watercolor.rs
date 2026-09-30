@@ -17,10 +17,6 @@ use ph2d_tool_registry::{hash_node_id, hash_node_id_runtime};
 /// dot). `mark_collapsible_section`-registered in `crate::populate`.
 pub const PAINTER_WATERCOLOR_SECTION: NodeId = hash_node_id("painter_brush.watercolor_section");
 
-/// The Watercolor header's colour dot — a picker swatch (`register_picker_swatch`).
-pub const PAINTER_WATERCOLOR_SECTION_COLOR: NodeId =
-    hash_node_id("painter_brush.watercolor_section_color");
-
 /// Watercolor section **reset** icon button. `Click` → `reset_brush_watercolor`.
 pub const PAINTER_WATERCOLOR_RESET: NodeId = hash_node_id("painter_brush.watercolor_reset");
 
@@ -122,10 +118,6 @@ pub const PAINTER_WATERCOLOR_WET_NOW: NodeId = hash_node_id("painter_brush.water
 /// Collapsible **Paper** section header (ALL-CAPS + chevron + colour dot).
 pub const PAINTER_WATERCOLOR_PAPER_SECTION: NodeId =
     hash_node_id("painter_brush.watercolor_paper_section");
-
-/// The Paper header's colour dot (assignable swatch).
-pub const PAINTER_WATERCOLOR_PAPER_SECTION_COLOR: NodeId =
-    hash_node_id("painter_brush.watercolor_paper_section_color");
 
 /// Paper section **reset** icon button.
 pub const PAINTER_WATERCOLOR_PAPER_RESET: NodeId =

@@ -1,13 +1,20 @@
 //! [`SectionHeader`] — the single-line section title of every panel.
 //!
 //! Layout (left → right): collapse chevron · label (as written, the *Grid Settings* title style —
-//! owner's order of 2026-09-24) · the accent rule running to the right edge · optional count chip
-//! or colour circle on the far right.
+//! owner's order of 2026-09-24) · optional count chip, or the **drag grip** on the far right.
+//!
+//! ⛔ **Two things LEFT this header on 2026-09-29, by order of the owner** (*«Temos uma linha
+//! separadora nos títulos das seções. Vamos retirá-la»* · *«um círculo cuja única função é dar
+//! cor ao círculo. Vamos retirar isso»*): the accent rule that ran to the right of the name, and
+//! the colour circle. The circle's slot is now the [`grip`] — the Blender panel grip, which drags
+//! the section to a new place — and the per-section look it pretended to give is now a real one:
+//! a right-click on the title picks the THEME the section is painted with.
 //! Used by the editor Inspector to break a body into "Params (12)",
 //! "Advanced (7)", "Inputs (24)" etc.
 
 pub mod body;
 mod fold;
+pub mod grip;
 use fold::{paint_chevron, plate_color};
 
 use crate::paint::{fill_rounded_rect, paint_text_centered, paint_text_title, resolve};
@@ -17,7 +24,7 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{
     ColorToken, ICON_BTN_SIZE_PX, INLINE_ICON_PX, Radius, Spacing, Theme, TypeToken,
 };
-use ph2d_vector::{Affine, Brush, Circle, Color as VelloColor, Fill, Point, VectorScene};
+use ph2d_vector::VectorScene;
 
 #[derive(Clone, Debug)]
 pub struct SectionHeader {
@@ -29,11 +36,15 @@ pub struct SectionHeader {
     pub collapsible: Option<bool>,
     /// O `t` VIVO da dobra; `None` = o binário de sempre. Ver [`SectionHeader::open_t`].
     pub open_t: Option<f32>,
-    /// Right-edge color circle (RGBA bytes). When `Some`, replaces
-    /// the count chip — the user can click it to open the global
-    /// color picker for the section. When `None`, falls back to
-    /// the count chip (or nothing).
-    pub color: Option<[u8; 4]>,
+    /// ⭐ **A pega de arrasto** na ponta direita — `Some(lit)` quando esta secção se REORDENA
+    /// (o `lit` acende-a sob o rato ou durante o arrasto). Substitui a pastilha de contagem.
+    ///
+    /// ⚠️ **`None` num painel que não sabe reordenar é a decisão, não um esquecimento:** uma pega
+    /// pintada onde nenhum despacho a lê seria um controlo MORTO com cara de controlo.
+    pub grip: Option<bool>,
+    /// Pixels a mais reservados à direita do título para um controlo que o CHAMADOR pinta ali (o
+    /// botão de repor da Transform, do Pincel) — sem isto um título comprido corria por baixo dele.
+    pub reserve_right: f32,
 }
 
 impl SectionHeader {
@@ -44,7 +55,8 @@ impl SectionHeader {
             count: None,
             collapsible: None,
             open_t: None,
-            color: None,
+            grip: None,
+            reserve_right: 0.0,
         }
     }
 
@@ -70,8 +82,15 @@ impl SectionHeader {
         self
     }
 
-    pub fn color(mut self, rgba: [u8; 4]) -> Self {
-        self.color = Some(rgba);
+    /// Reserva `px` à direita do título para um controlo que o chamador pinta ali.
+    pub fn reserve_right(mut self, px: f32) -> Self {
+        self.reserve_right = px.max(0.0);
+        self
+    }
+
+    /// Pinta a pega de arrasto; `lit` acende-a (rato por cima ou arrasto em curso).
+    pub fn grip(mut self, lit: bool) -> Self {
+        self.grip = Some(lit);
         self
     }
 
@@ -105,31 +124,9 @@ pub fn section_title_px() -> f32 {
     TypeToken::Md.px()
 }
 
-/// A espessura do separador azul que corre à direita do título — a mesma linha de `1 px` que o
-/// *Grid Settings* pintava por baixo dele.
-const SECTION_RULE_PX: f32 = 1.0; // LITERAL-PX-OK: hairline rule (chrome)
-
-/// ⭐ **Onde corre o separador azul de um título de secção** — da ponta do nome até `right`, na
-/// MESMA linha do título, a meia altura do texto. `None` quando o nome já chega à borda.
-///
-/// ⚠️ Função pura, lida pelo pintor e pelo gate: a regra do dono (*«na mesma linha à direita»*) é
-/// geometria, e geometria mede-se sem pintar.
-#[must_use]
-pub fn regua_do_titulo(
-    nome_x: f32,
-    nome_w: f32,
-    right: f32,
-    label_y: f32,
-    font: f32,
-) -> Option<Rect> {
-    let x = nome_x + nome_w + ph2d_tokens::icon_label_gap_px();
-    let w = right - x;
-    (w > 0.0).then(|| Rect::new(x, label_y + font * 0.5, w, SECTION_RULE_PX))
-}
-
 /// Canonical section-header chrome (Inspector + every collapsible
 /// panel uses this). Layout (left → right): collapse chevron + label
-/// (as written) + the accent rule to the right + optional count pill on the far right. The previous
+/// (as written) + the drag grip or the count pill on the far right. The previous
 /// accent-dot ornament was retired — every section is collapsible by
 /// design, so the chevron itself is the only "anchor" glyph.
 pub fn paint_section_header(
@@ -153,7 +150,14 @@ pub fn paint_section_header(
     //    (o flag já virou, o `t` ainda desce) e **sumia de repente a ABRIR** (o flag vira para
     //    `Some(true)` no clique e a placa deixa de ser pintada nesse quadro). Um efeito que só é
     //    simétrico num sentido é um efeito que ninguém escreveu.
-    if let Some(plate) = plate_color(header, theme) {
+    // ⭐⭐ **Dentro de um CARTÃO a placa não é pintada: o cartão JÁ É a placa** (report do dono,
+    //    2026-09-29, com o Blender ao lado: cada secção, aberta ou fechada, é UM cartão). Pintá-la
+    //    punha um segundo cartão dentro do primeiro, que é o que tornava tudo *«mal definido»*.
+    //    ⚠️ Fora de um cartão (o tema clássico, e os painéis que não abrem o livro) ela fica: ali é
+    //    o único sinal de que a secção está dobrada.
+    if let Some(plate) =
+        plate_color(header, theme).filter(|_| !crate::widget::section_cards::inside_cards())
+    {
         // ⭐ O raio da placa é o do cromo do TEMA (`Radius::Sm` no clássico, `4` no moderno).
         fill_rounded_rect(
             scene,
@@ -185,13 +189,15 @@ pub fn paint_section_header(
     //    `to_uppercase` de 2026-05-24 saiu nesse dia).
     let font = section_title_px();
     let label_y = rect.y + (rect.h - font) * 0.5;
-    // ⚠️ O fim do espaço do título é o início do ornamento da direita (a pastilha de contagem ou o
-    //    círculo de cor), quando há um — é ali que a linha também acaba.
-    let right = if header.count.is_some() || header.color.is_some() {
+    // ⚠️ O fim do espaço do título é o início do ornamento da direita (a pega ou a pastilha de
+    //    contagem), quando há um.
+    let right = if header.grip.is_some() {
+        rect.x + rect.w - pad_x - grip::grip_w_px() - ph2d_tokens::icon_label_gap_px()
+    } else if header.count.is_some() {
         rect.x + rect.w - pad_x - Spacing::Xl4.px()
     } else {
         rect.x + rect.w - pad_x
-    };
+    } - header.reserve_right;
     let label_w = (right - cursor_x).max(0.0);
     paint_text_title(
         text_system,
@@ -203,51 +209,14 @@ pub fn paint_section_header(
         label_w,
         resolve(ColorToken::Text1, theme),
     );
-    // ⭐⭐ **O SEPARADOR AZUL NA MESMA LINHA, À DIREITA DO NOME** (mesma ordem: *«o separador azul
-    //    não quero em baixo do título da seção, mas sim na mesma linha à direita»*). Ele começa
-    //    onde o nome ACABA — medido no MESMO peso em que é pintado (`SemiBold`; medir em `Medium`
-    //    punha a linha dentro da última letra) e limitado à largura que o nome recebeu, que é o
-    //    que ele ocupa quando corta — e vai até à borda (ou ao ornamento). Centrado na altura do
-    //    TEXTO, não da fileira, para cortar o título pelo meio como no Grid.
-    let nome_w = text_system
-        .prefix_width_weighted(&header.label, font, ph2d_text::FontWeight::SEMI_BOLD)
-        .min(label_w);
-    if let Some(linha) = regua_do_titulo(cursor_x, nome_w, right, label_y, font) {
-        fill_rounded_rect(
-            scene,
-            linha,
-            SECTION_RULE_PX * 0.5,
-            resolve(ColorToken::Accent, theme),
-        );
-    }
-
-    // Right-edge ornament. Priority: color circle > count chip.
-    // The color circle is the user-clickable "open the picker for
-    // this section" affordance; the count chip is legacy and only
-    // shown when no color is configured.
-    if let Some(rgba) = header.color {
-        let radius_px = 7.0_f32; // LITERAL-PX-OK: section header color circle radius (chrome-specific accent)
-        let cx = rect.x + rect.w - pad_x - radius_px;
-        let cy = rect.y + rect.h * 0.5;
-        let circle = Circle::new(Point::new(cx as f64, cy as f64), radius_px as f64);
-        let fill = VelloColor::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]); // LITERAL-COLOR-OK: user-color — `rgba` is the user's per-section accent, not a theme token
-        scene.inner_mut().fill(
-            Fill::NonZero,
-            Affine::IDENTITY,
-            &Brush::Solid(fill),
-            None,
-            &circle,
-        );
-        // 1-px ring so the circle still reads against same-colored
-        // backgrounds (e.g. a light yellow circle on light theme).
-        let ring = Circle::new(Point::new(cx as f64, cy as f64), (radius_px + 0.5) as f64);
-        scene.inner_mut().stroke(
-            &ph2d_vector::Stroke::new(1.0),
-            Affine::IDENTITY,
-            &Brush::Solid(resolve(ColorToken::Border, theme)),
-            None,
-            &ring,
-        );
+    // Right-edge ornament. Priority: the drag grip > the count chip.
+    if let Some(lit) = header.grip {
+        let tone = if lit {
+            ColorToken::Text1
+        } else {
+            ColorToken::Text3
+        };
+        grip::paint_grip(scene, grip::grip_rect(rect), resolve(tone, theme));
     } else if let Some(n) = header.count {
         let chip_w = ICON_BTN_SIZE_PX;
         let chip_h = (rect.h - Spacing::Xs.px()).max(INLINE_ICON_PX);
@@ -275,54 +244,16 @@ pub fn paint_section_header(
     }
 }
 
-/// Rect of the color-circle hit zone in screen coordinates. Hosts
-/// register this rect for hit-testing the "open picker for this
-/// section" gesture. Returns `None` for headers that have no color
-/// circle (the painter falls back to the count chip / no ornament).
-pub fn color_circle_hit_rect(header: &SectionHeader, host: Rect) -> Option<Rect> {
-    header.color?;
-    let pad_x = Spacing::Md.px();
-    let radius_px = 7.0_f32; // LITERAL-PX-OK: hit-zone radius mirrors paint geometry
-    let size = radius_px * 2.0 + Spacing::Xs.px();
-    Some(Rect::new(
-        host.x + host.w - pad_x - size,
-        host.y + (host.h - size) * 0.5,
-        size,
-        size,
-    ))
+/// O rect que a pega regista no hit-index — a banda da direita do cabeçalho, da altura dele.
+/// `None` quando o cabeçalho não tem pega. Ver [`grip::grip_hit_rect`].
+pub fn grip_hit_rect(header: &SectionHeader, host: Rect) -> Option<Rect> {
+    header.grip?;
+    Some(grip::grip_hit_rect(host))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// ⭐ **O separador azul corre NA LINHA do título, à DIREITA do nome** (ordem do dono,
-    /// 2026-09-24: *«não quero em baixo do título da seção, mas sim nas mesma linha à direita»*).
-    /// *Mutação: a régua de volta a `label_y + font + Spacing::Md` (por baixo) ⇒ sai da faixa do
-    /// texto; a começar em `nome_x` ⇒ risca o nome.*
-    #[test]
-    fn a_regua_corre_na_linha_do_titulo_a_direita_do_nome() {
-        let (nome_x, nome_w, right, label_y, font) = (40.0, 60.0, 280.0, 10.0, 14.0);
-        let r = regua_do_titulo(nome_x, nome_w, right, label_y, font).expect("ha espaco");
-        assert!(
-            r.x >= nome_x + nome_w,
-            "a regua comeca DENTRO do nome ({})",
-            r.x
-        );
-        assert!(
-            r.y > label_y && r.y + r.h < label_y + font,
-            "a regua nao esta na faixa do texto do titulo ({}..{}): esta em {}",
-            label_y,
-            label_y + font,
-            r.y
-        );
-        assert!(
-            (r.x + r.w - right).abs() < 1e-4,
-            "a regua nao chega a' borda"
-        );
-        // e quando o nome ja' ocupa tudo, nao ha regua
-        assert!(regua_do_titulo(nome_x, right, right, label_y, font).is_none());
-    }
 
     /// ⭐ **O corpo do título é o do *Grid Settings*** (`TypeToken::Md`), por ordem do dono.
     #[test]

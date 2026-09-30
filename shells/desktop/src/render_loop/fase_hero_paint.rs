@@ -46,6 +46,7 @@ impl crate::App {
         // DENTRO do `paint`. *Um detector no caminho de um gesto só vê os gestos que passam
         // por ele; o quadro vê todos, porque é onde o estado assenta.*
         crate::layout_persist::save_if_changed(hero);
+        crate::layout_persist::save_sections_if_changed(&mut hero.store);
         if let Some(t0) = hero_t0 {
             FRAME_PROF_HERO_US.with(|c| c.set(t0.elapsed().as_micros() as u64));
         }

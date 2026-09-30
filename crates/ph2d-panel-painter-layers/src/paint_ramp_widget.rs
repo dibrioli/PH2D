@@ -44,7 +44,6 @@ const DD_MIN_W: f32 = 56.0; // LITERAL-PX-OK: min usable width of one Mode/Inter
 #[derive(Clone, Copy)]
 pub(crate) struct RampIds {
     pub section: NodeId,
-    pub section_color: NodeId,
     pub reset: NodeId,
     pub enable: NodeId,
     pub mode: NodeId,
@@ -102,7 +101,6 @@ pub(crate) fn paint_color_ramp_section(
         y,
         title,
         ids.section,
-        ids.section_color,
         ids.reset,
     );
     let Some(fold) = fold else {

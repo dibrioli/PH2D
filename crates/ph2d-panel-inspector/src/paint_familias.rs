@@ -22,9 +22,7 @@
 //! ⚠️ **Os cortes entre `…_logica` e `…_logica_cont` são do TECTO DE FUNÇÃO e não significam
 //! nada** — a família LÓGICA tem doze secções e doze chamadas não cabem em `200` linhas.
 
-use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
-use ph2d_text::TextSystem;
-use ph2d_vector::VectorScene;
+use ph2d_editor_core::interaction::WidgetStore;
 
 use crate::paint_optional_top20::Top20;
 
@@ -34,297 +32,339 @@ use crate::paint_optional_top20::Top20;
 /// dá (`ph2d::ecs::PathFollow`): ele vivia neste grupo por ter chegado na mesma wave que os dois
 /// movers, que é exactamente a ordem que esta wave existe para desfazer.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn paint_familia_fisica(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: ph2d_tokens::Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
+pub(crate) fn push_familia_fisica<'a>(
+    plano: &mut crate::plano::Plano<'a>,
+    store: &'a WidgetStore,
     inner_x: f32,
     inner_w: f32,
     body_top_y: f32,
-    mut y: f32,
     header_h: f32,
-    snaps: &crate::paint_frame::LiveSnapshots,
-) -> f32 {
-    y = crate::paint_optional_movers::paint_topdown_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        snaps.topdown_info.as_ref(),
+    snaps: &'a crate::paint_frame::LiveSnapshots,
+) {
+    plano.push(
+        ph2d_editor_core::ids::INSP_LIVE_TOPDOWN_SECTION,
+        move |c, t, y| {
+            crate::paint_optional_movers::paint_topdown_section(
+                c.scene,
+                c.text,
+                t,
+                c.hit,
+                store,
+                c.tops,
+                inner_x,
+                inner_w,
+                body_top_y,
+                y,
+                header_h,
+                snaps.topdown_info.as_ref(),
+            )
+        },
     );
-    y = crate::paint_optional_movers::paint_projectile_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        snaps.projectile_info.as_ref(),
+    plano.push(
+        ph2d_editor_core::ids::INSP_LIVE_PROJECTILE_SECTION,
+        move |c, t, y| {
+            crate::paint_optional_movers::paint_projectile_section(
+                c.scene,
+                c.text,
+                t,
+                c.hit,
+                store,
+                c.tops,
+                inner_x,
+                inner_w,
+                body_top_y,
+                y,
+                header_h,
+                snaps.projectile_info.as_ref(),
+            )
+        },
     );
-    y = crate::paint_optional_suplentes::paint_ray_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        snaps.ray_info.as_ref(),
+    plano.push(
+        ph2d_editor_core::ids::INSP_LIVE_RAY_SECTION,
+        move |c, t, y| {
+            crate::paint_optional_suplentes::paint_ray_section(
+                c.scene,
+                c.text,
+                t,
+                c.hit,
+                store,
+                c.tops,
+                inner_x,
+                inner_w,
+                body_top_y,
+                y,
+                header_h,
+                snaps.ray_info.as_ref(),
+            )
+        },
     );
-    y
 }
 
 /// ⭐ **LÓGICA** (família `11` de 16), primeira metade — *o que faz um jogo acontecer sem uma
 /// linha de script*.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn paint_familia_logica(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: ph2d_tokens::Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
+pub(crate) fn push_familia_logica<'a>(
+    plano: &mut crate::plano::Plano<'a>,
+    store: &'a WidgetStore,
     inner_x: f32,
     inner_w: f32,
     body_top_y: f32,
-    mut y: f32,
     header_h: f32,
-    snaps: &crate::paint_frame::LiveSnapshots,
-    timer_selected: &mut usize,
-    action_selected: &mut usize,
-) -> f32 {
-    y = crate::paint_optional::paint_timer_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        snaps.timer_info.as_ref(),
-        timer_selected,
+    snaps: &'a crate::paint_frame::LiveSnapshots,
+    timer_selected: &'a mut usize,
+    action_selected: &'a mut usize,
+) {
+    plano.push(
+        ph2d_editor_core::ids::INSP_LIVE_TIMER_SECTION,
+        move |c, t, y| {
+            crate::paint_optional::paint_timer_section(
+                c.scene,
+                c.text,
+                t,
+                c.hit,
+                store,
+                c.tops,
+                inner_x,
+                inner_w,
+                body_top_y,
+                y,
+                header_h,
+                snaps.timer_info.as_ref(),
+                timer_selected,
+            )
+        },
     );
-    y = crate::paint_optional::paint_action_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        snaps.action_info.as_ref(),
-        action_selected,
+    plano.push(
+        ph2d_editor_core::ids::INSP_LIVE_ACTION_SECTION,
+        move |c, t, y| {
+            crate::paint_optional::paint_action_section(
+                c.scene,
+                c.text,
+                t,
+                c.hit,
+                store,
+                c.tops,
+                inner_x,
+                inner_w,
+                body_top_y,
+                y,
+                header_h,
+                snaps.action_info.as_ref(),
+                action_selected,
+            )
+        },
     );
-    y = crate::paint_optional_factory::paint_factory_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        snaps.factory_info.as_ref(),
+    plano.push(
+        ph2d_editor_core::ids::INSP_LIVE_FACTORY_SECTION,
+        move |c, t, y| {
+            crate::paint_optional_factory::paint_factory_section(
+                c.scene,
+                c.text,
+                t,
+                c.hit,
+                store,
+                c.tops,
+                inner_x,
+                inner_w,
+                body_top_y,
+                y,
+                header_h,
+                snaps.factory_info.as_ref(),
+            )
+        },
     );
-    y = crate::paint_optional_factory::paint_lifecycle_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        snaps.factory_info.as_ref(),
+    plano.push(
+        ph2d_editor_core::ids::INSP_LIVE_LIFECYCLE_SECTION,
+        move |c, t, y| {
+            crate::paint_optional_factory::paint_lifecycle_section(
+                c.scene,
+                c.text,
+                t,
+                c.hit,
+                store,
+                c.tops,
+                inner_x,
+                inner_w,
+                body_top_y,
+                y,
+                header_h,
+                snaps.factory_info.as_ref(),
+            )
+        },
     );
-    y = crate::paint_optional_movers::paint_path_follow_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        snaps.path_follow_info.as_ref(),
+    plano.push(
+        ph2d_editor_core::ids::INSP_LIVE_PATHFOLLOW_SECTION,
+        move |c, t, y| {
+            crate::paint_optional_movers::paint_path_follow_section(
+                c.scene,
+                c.text,
+                t,
+                c.hit,
+                store,
+                c.tops,
+                inner_x,
+                inner_w,
+                body_top_y,
+                y,
+                header_h,
+                snaps.path_follow_info.as_ref(),
+            )
+        },
     );
-    y = crate::paint_optional_suplentes::paint_weapon_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        snaps.weapon_info.as_ref(),
+    plano.push(
+        ph2d_editor_core::ids::INSP_LIVE_WEAPON_SECTION,
+        move |c, t, y| {
+            crate::paint_optional_suplentes::paint_weapon_section(
+                c.scene,
+                c.text,
+                t,
+                c.hit,
+                store,
+                c.tops,
+                inner_x,
+                inner_w,
+                body_top_y,
+                y,
+                header_h,
+                snaps.weapon_info.as_ref(),
+            )
+        },
     );
-    y
 }
 
 /// ⭐ **LÓGICA**, segunda metade. ⚠️ A fronteira é o TECTO DE FUNÇÃO e não significa nada.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn paint_familia_logica_cont(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: ph2d_tokens::Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
+pub(crate) fn push_familia_logica_cont<'a>(
+    plano: &mut crate::plano::Plano<'a>,
+    store: &'a WidgetStore,
     inner_x: f32,
     inner_w: f32,
     body_top_y: f32,
-    mut y: f32,
     header_h: f32,
-    snaps: &crate::paint_frame::LiveSnapshots,
-    infos: &Top20,
-) -> f32 {
-    y = crate::paint_optional_factory::paint_statemachine_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        infos.statemachine,
-        infos.sm_state_selected,
-        infos.sm_trans_selected,
+    snaps: &'a crate::paint_frame::LiveSnapshots,
+    infos: Top20<'a>,
+) {
+    plano.push(
+        ph2d_editor_core::ids::INSP_LIVE_SM_SECTION,
+        move |c, t, y| {
+            crate::paint_optional_factory::paint_statemachine_section(
+                c.scene,
+                c.text,
+                t,
+                c.hit,
+                store,
+                c.tops,
+                inner_x,
+                inner_w,
+                body_top_y,
+                y,
+                header_h,
+                infos.statemachine,
+                infos.sm_state_selected,
+                infos.sm_trans_selected,
+            )
+        },
     );
-    y = crate::paint_optional_top20::paint_hud_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        infos.hud,
+    plano.push(
+        ph2d_editor_core::ids::INSP_LIVE_HUD_SECTION,
+        move |c, t, y| {
+            crate::paint_optional_top20::paint_hud_section(
+                c.scene, c.text, t, c.hit, store, c.tops, inner_x, inner_w, body_top_y, y,
+                header_h, infos.hud,
+            )
+        },
     );
-    y = crate::paint_optional_top20::paint_sequence_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        infos.sequence,
+    plano.push(
+        ph2d_editor_core::ids::INSP_LIVE_SEQ_SECTION,
+        move |c, t, y| {
+            crate::paint_optional_top20::paint_sequence_section(
+                c.scene,
+                c.text,
+                t,
+                c.hit,
+                store,
+                c.tops,
+                inner_x,
+                inner_w,
+                body_top_y,
+                y,
+                header_h,
+                infos.sequence,
+            )
+        },
     );
-    y = crate::paint_optional_top20::paint_counter_watch_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        infos.watch,
-        infos.watch_selected,
+    plano.push(
+        ph2d_editor_core::ids::INSP_LIVE_WATCH_SECTION,
+        move |c, t, y| {
+            crate::paint_optional_top20::paint_counter_watch_section(
+                c.scene,
+                c.text,
+                t,
+                c.hit,
+                store,
+                c.tops,
+                inner_x,
+                inner_w,
+                body_top_y,
+                y,
+                header_h,
+                infos.watch,
+                infos.watch_selected,
+            )
+        },
     );
-    y = crate::paint_optional_top20::paint_action_trigger_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        infos.trigger,
-        infos.trigger_selected,
+    plano.push(
+        ph2d_editor_core::ids::INSP_LIVE_TRIGGER_SECTION,
+        move |c, t, y| {
+            crate::paint_optional_top20::paint_action_trigger_section(
+                c.scene,
+                c.text,
+                t,
+                c.hit,
+                store,
+                c.tops,
+                inner_x,
+                inner_w,
+                body_top_y,
+                y,
+                header_h,
+                infos.trigger,
+                infos.trigger_selected,
+            )
+        },
     );
-    y = crate::paint_optional_top20_tail::paint_tween_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        infos.tween,
-        infos.tween_selected,
+    plano.push(
+        ph2d_editor_core::ids::INSP_LIVE_TWEEN_SECTION,
+        move |c, t, y| {
+            crate::paint_optional_top20_tail::paint_tween_section(
+                c.scene,
+                c.text,
+                t,
+                c.hit,
+                store,
+                c.tops,
+                inner_x,
+                inner_w,
+                body_top_y,
+                y,
+                header_h,
+                infos.tween,
+                infos.tween_selected,
+            )
+        },
     );
     // ⭐⭐⭐ A VIDA e o DANO (plano 28, W3) — família LÓGICA pelo catálogo
     // (`ph2d::physics::Health` · `ph2d::physics::Damage`), as últimas a chegar a ela; entraram
     // depois da ordem por família (integração de 2026-09-25).
-    y = crate::paint_optional_vida::paint_vida_sections(
-        scene,
-        text_system,
-        theme,
-        hit_index,
+    crate::paint_optional_vida::push_vida_sections(
+        plano,
         store,
-        section_tops_y,
         inner_x,
         inner_w,
         body_top_y,
-        y,
         header_h,
         snaps.vida_info.as_ref(),
     );
-    y
 }
 
 /// ⭐ **ÁUDIO** (`12`) · **CÂMERA** (`13`) · **SCRIPT** (`14`) — as três últimas famílias que o
@@ -334,107 +374,131 @@ pub(crate) fn paint_familia_logica_cont(
 /// (`ph2d::ecs::CameraShake` · `ph2d::ecs::ShakeEmitter`), e é por isso que vêm com ela e não no
 /// fim, onde chegaram.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn paint_familia_saida(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: ph2d_tokens::Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
+pub(crate) fn push_familia_saida<'a>(
+    plano: &mut crate::plano::Plano<'a>,
+    store: &'a WidgetStore,
     inner_x: f32,
     inner_w: f32,
     body_top_y: f32,
-    mut y: f32,
     header_h: f32,
-    snaps: &crate::paint_frame::LiveSnapshots,
-    infos: &Top20,
-) -> f32 {
-    y = crate::paint_optional_factory::paint_audio_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        snaps.audio_info.as_ref(),
+    snaps: &'a crate::paint_frame::LiveSnapshots,
+    infos: Top20<'a>,
+) {
+    plano.push(
+        ph2d_editor_core::ids::INSP_LIVE_AUDIO_SECTION,
+        move |c, t, y| {
+            crate::paint_optional_factory::paint_audio_section(
+                c.scene,
+                c.text,
+                t,
+                c.hit,
+                store,
+                c.tops,
+                inner_x,
+                inner_w,
+                body_top_y,
+                y,
+                header_h,
+                snaps.audio_info.as_ref(),
+            )
+        },
     );
-    y = crate::paint_optional_factory::paint_camera_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        snaps.camera_info.as_ref(),
+    plano.push(
+        ph2d_editor_core::ids::INSP_LIVE_CAMERA_SECTION,
+        move |c, t, y| {
+            crate::paint_optional_factory::paint_camera_section(
+                c.scene,
+                c.text,
+                t,
+                c.hit,
+                store,
+                c.tops,
+                inner_x,
+                inner_w,
+                body_top_y,
+                y,
+                header_h,
+                snaps.camera_info.as_ref(),
+            )
+        },
     );
-    y = crate::paint_optional_shake::paint_shake_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        infos.shake,
+    plano.push(
+        ph2d_editor_core::ids::INSP_LIVE_SHAKE_SECTION,
+        move |c, t, y| {
+            crate::paint_optional_shake::paint_shake_section(
+                c.scene,
+                c.text,
+                t,
+                c.hit,
+                store,
+                c.tops,
+                inner_x,
+                inner_w,
+                body_top_y,
+                y,
+                header_h,
+                infos.shake,
+            )
+        },
     );
-    y = crate::paint_optional_shake::paint_shake_emitter_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        infos.emitter,
-        infos.emitter_selected,
+    plano.push(
+        ph2d_editor_core::ids::INSP_LIVE_EMITTER_SECTION,
+        move |c, t, y| {
+            crate::paint_optional_shake::paint_shake_emitter_section(
+                c.scene,
+                c.text,
+                t,
+                c.hit,
+                store,
+                c.tops,
+                inner_x,
+                inner_w,
+                body_top_y,
+                y,
+                header_h,
+                infos.emitter,
+                infos.emitter_selected,
+            )
+        },
     );
     // ⭐⭐⭐ A PARALAXE (plano 24) — família CÂMERA pelo catálogo (`ph2d::ecs::ScrollFactor`…), logo
     // a seguir às irmãs dela; chegou depois da ordem por família (integração de 2026-09-25).
-    y = crate::paint_optional_suplentes::paint_parallax_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        snaps.parallax_info.as_ref(),
+    plano.push(
+        ph2d_editor_core::ids::INSP_LIVE_PARALLAX_SECTION,
+        move |c, t, y| {
+            crate::paint_optional_suplentes::paint_parallax_section(
+                c.scene,
+                c.text,
+                t,
+                c.hit,
+                store,
+                c.tops,
+                inner_x,
+                inner_w,
+                body_top_y,
+                y,
+                header_h,
+                snaps.parallax_info.as_ref(),
+            )
+        },
     );
-    y = crate::paint_optional_factory::paint_script_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        infos.script,
+    plano.push(
+        ph2d_editor_core::ids::INSP_LIVE_SCRIPT_SECTION,
+        move |c, t, y| {
+            crate::paint_optional_factory::paint_script_section(
+                c.scene,
+                c.text,
+                t,
+                c.hit,
+                store,
+                c.tops,
+                inner_x,
+                inner_w,
+                body_top_y,
+                y,
+                header_h,
+                infos.script,
+            )
+        },
     );
-    y
 }

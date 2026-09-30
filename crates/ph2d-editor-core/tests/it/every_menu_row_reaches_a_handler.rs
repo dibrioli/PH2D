@@ -59,6 +59,8 @@ fn workspace_root() -> PathBuf {
 const MENU_ROWS: &[&str] = &[
     "crates/ph2d-editor-core/src/screens/hero/menu_rows.rs",
     "crates/ph2d-editor-core/src/screens/hero/menu_tables.rs",
+    // ⭐ O menu do título de uma secção (tema + contorno), cortado pelo tecto de LOC em 2026-09-29.
+    "crates/ph2d-editor-core/src/screens/hero/menu_tables_section.rs",
 ];
 
 /// **A população** — todo `ids::NOME` que a tabela de linhas menciona, menos as tabelas.
@@ -128,6 +130,7 @@ fn dispatch_sources(root: &Path) -> Vec<(PathBuf, String)> {
             !s.contains("/ids/")
                 && !s.ends_with("menu_rows.rs")
                 && !s.ends_with("menu_tables.rs")
+                && !s.ends_with("menu_tables_section.rs")
                 && !s.contains("pre_populate")
                 && !s.ends_with("populate.rs")
                 && !s.contains("/tests/")

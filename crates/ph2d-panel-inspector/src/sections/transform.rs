@@ -225,28 +225,18 @@ fn paint_header_and_begin_fold(
     // requested the swap.
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
     let reset_size = header_h; // square icon button matching header height
-    let color_id = core_ids::INSP_LIVE_TRANSFORM_COLOR;
-    let rgba = store
-        .widget_color(color_id)
-        .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default for unconfigured section accent
-    // Header rect spans the FULL panel width so paint_section_header
-    // anchors the color dot at the right edge (panel border).
+    // Header rect spans the FULL panel width so the grip sits at the panel border; the reset icon
+    // slots just to the LEFT of the grip, and the title reserves room for it.
     let header = section_header(
         store,
         core_ids::INSP_LIVE_TRANSFORM_SECTION,
         tr("panel.inspector.transform.transform"),
     )
-    .color(rgba);
+    .reserve_right(reset_size);
     let header_rect = Rect::new(x, y, w, header_h);
-    // Reserve for the color dot at the right edge (≈ Md pad + 14 px
-    // dot diameter) — the reset icon slots just to the LEFT of it.
-    let color_slot_w = Spacing::Md.px() + 14.0; // LITERAL-PX-OK: color dot diameter (2 * radius 7)
+    let grip_slot_w = ph2d_editor_core::widget::section_grip::grip_slot_w_px();
     paint_section_header(&header, header_rect, scene, text_system, theme);
-    if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
-    {
-        hit_index.register(color_id, circle_rect);
-    }
-    let reset_rect = Rect::new(x + w - color_slot_w - reset_size, y, reset_size, reset_size);
+    let reset_rect = Rect::new(x + w - grip_slot_w - reset_size, y, reset_size, reset_size);
     let reset_state = store.button_visual(ids::INSP_TRANSFORM_RESET);
     hit_index.register(ids::INSP_TRANSFORM_RESET, reset_rect);
     paint_icon_button(

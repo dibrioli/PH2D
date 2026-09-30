@@ -5,150 +5,79 @@
 //! moldura, um `Option` que decide se a secção existe, a chamada ao pintor) — com uma diferença: um
 //! objecto pode ter AS DUAS (um inimigo que também magoa), e aí elas pintam-se em sequência.
 
-use super::paint_frame::{begin_section, finish_section};
+use crate::plano::{Plano, emoldurada};
 use ph2d_editor_core::ids;
-use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
+use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::vida_edits::InspectorVidaInfo;
-use ph2d_editor_core::widget::section_cards::close_section;
-use ph2d_text::TextSystem;
-use ph2d_vector::VectorScene;
 
-/// **As secções HEALTH e DAMAGE** — moldura e tudo. Devolve o `y` seguinte.
+/// **As secções HEALTH, DAMAGE e HEALTH BAR** — empurradas para o [`Plano`], cada uma com a sua
+/// moldura (2026-09-29: cada uma arrasta-se sozinha).
 ///
 /// ⚠️ **Cada secção só existe se o objecto TIVER o componente dela** — ADR-0166.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn paint_vida_sections(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: ph2d_tokens::Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
+pub(crate) fn push_vida_sections<'a>(
+    plano: &mut Plano<'a>,
+    store: &'a WidgetStore,
     inner_x: f32,
     inner_w: f32,
     body_top_y: f32,
-    mut y: f32,
     header_h: f32,
-    info: Option<&InspectorVidaInfo>,
-) -> f32 {
+    info: Option<&'a InspectorVidaInfo>,
+) {
     let Some(info) = info else {
-        return y;
+        return;
     };
     if let Some(h) = &info.health {
-        y = close_section(scene, theme, inner_x, inner_w, y);
-        let y_before = y;
-        begin_section(
-            section_tops_y,
-            hit_index,
+        emoldurada(
+            plano,
+            ids::INSP_LIVE_HEALTH_SECTION,
+            store,
             inner_x,
             inner_w,
             body_top_y,
-            y_before,
-            ids::INSP_LIVE_HEALTH_SECTION,
             header_h,
-        );
-        let new_y = crate::sections::vida::paint_health_section(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            inner_x,
-            inner_w,
-            y,
-            info,
-            h,
-        );
-        y = finish_section(
-            scene,
-            text_system,
-            hit_index,
-            store,
-            inner_x,
-            inner_w,
-            ids::INSP_LIVE_HEALTH_SECTION,
-            y_before,
-            new_y,
             &[],
+            move |c, t, y| {
+                crate::sections::vida::paint_health_section(
+                    c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, info, h,
+                )
+            },
         );
     }
     if let Some(d) = &info.damage {
-        y = close_section(scene, theme, inner_x, inner_w, y);
-        let y_before = y;
-        begin_section(
-            section_tops_y,
-            hit_index,
+        emoldurada(
+            plano,
+            ids::INSP_LIVE_DAMAGE_SECTION,
+            store,
             inner_x,
             inner_w,
             body_top_y,
-            y_before,
-            ids::INSP_LIVE_DAMAGE_SECTION,
             header_h,
-        );
-        let new_y = crate::sections::vida_dano::paint_damage_section(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            inner_x,
-            inner_w,
-            y,
-            info,
-            d,
-        );
-        y = finish_section(
-            scene,
-            text_system,
-            hit_index,
-            store,
-            inner_x,
-            inner_w,
-            ids::INSP_LIVE_DAMAGE_SECTION,
-            y_before,
-            new_y,
             &[],
+            move |c, t, y| {
+                crate::sections::vida_dano::paint_damage_section(
+                    c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, info, d,
+                )
+            },
         );
     }
     // ⭐ A terceira — HEALTH BAR (plano 28, W4): a barra do inimigo mora com a vida dele, e a do
     // placar mora num objecto que só tem a barra.
     if let Some(b) = &info.bar {
-        y = close_section(scene, theme, inner_x, inner_w, y);
-        let y_before = y;
-        begin_section(
-            section_tops_y,
-            hit_index,
+        emoldurada(
+            plano,
+            ids::INSP_LIVE_HEALTH_BAR_SECTION,
+            store,
             inner_x,
             inner_w,
             body_top_y,
-            y_before,
-            ids::INSP_LIVE_HEALTH_BAR_SECTION,
             header_h,
-        );
-        let new_y = crate::sections::vida_barra::paint_health_bar_section(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            inner_x,
-            inner_w,
-            y,
-            info,
-            b,
-        );
-        y = finish_section(
-            scene,
-            text_system,
-            hit_index,
-            store,
-            inner_x,
-            inner_w,
-            ids::INSP_LIVE_HEALTH_BAR_SECTION,
-            y_before,
-            new_y,
             &[],
+            move |c, t, y| {
+                crate::sections::vida_barra::paint_health_bar_section(
+                    c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, info, b,
+                )
+            },
         );
     }
-    y
 }

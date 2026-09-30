@@ -11,5 +11,5 @@ use super::*;
 
 /// A secção SIGNAL ACTIONS — o cabeçalho colapsável. Entra em [`super::LIVE_SECTIONS`].
 pub const INSP_LIVE_ACTION_SECTION: NodeId = hash_node_id("insp_live_action_section");
-/// SIGNAL ACTIONS — ponto de cor do cabeçalho.
-pub const INSP_LIVE_ACTION_COLOR: NodeId = hash_node_id("insp_live_action_color");
+/// SIGNAL ACTIONS — a pega de arrasto do cabeçalho.
+pub const INSP_LIVE_ACTION_GRIP: NodeId = hash_node_id("insp_live_action_grip");

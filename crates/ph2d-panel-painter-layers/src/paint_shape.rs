@@ -61,7 +61,6 @@ pub(crate) fn paint_shape_section(
         y,
         tr("panel.painter_layers.shape.shape"),
         ph2d_tool_painter::ids::PAINTER_SHAPE_SECTION,
-        ph2d_tool_painter::ids::PAINTER_SHAPE_SECTION_COLOR,
         ph2d_tool_painter::ids::PAINTER_SHAPE_RESET,
     );
     let Some(fold) = fold else {

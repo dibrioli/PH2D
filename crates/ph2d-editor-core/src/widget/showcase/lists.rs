@@ -25,7 +25,6 @@ pub(super) fn paint_lists_section(
         w,
         y,
         ids::INSP_SECTION_LISTS,
-        ids::INSP_SECTION_LISTS_COLOR,
         "Lists",
         4,
     );

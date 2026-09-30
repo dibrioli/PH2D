@@ -213,10 +213,6 @@ pub(crate) fn paint_action_section(
     selected: usize,
 ) -> f32 {
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: banda do cabeçalho
-    let color_id = core_ids::INSP_LIVE_ACTION_COLOR;
-    let rgba = store
-        .widget_color(color_id)
-        .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: acento neutro por omissão
     let title = if info.rows.is_empty() {
         String::from(tr("panel.inspector.actions.signal_actions"))
     } else {
@@ -225,13 +221,9 @@ pub(crate) fn paint_action_section(
             &[("n", &info.rows.len())],
         )
     };
-    let header = section_header(store, core_ids::INSP_LIVE_ACTION_SECTION, &title).color(rgba);
+    let header = section_header(store, core_ids::INSP_LIVE_ACTION_SECTION, &title);
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
-    if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
-    {
-        hit_index.register(color_id, circle_rect);
-    }
     let Some(fold) = SectionFold::begin(
         store,
         core_ids::INSP_LIVE_ACTION_SECTION,

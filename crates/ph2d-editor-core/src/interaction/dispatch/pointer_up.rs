@@ -222,6 +222,8 @@ pub(super) fn dispatch_up<'frame>(
     // lado do store (a `LayerStack` é da ferramenta, a `TagTree` é do documento). Largar sobre a
     // própria linha (o cursor voltou) é no-op. Só um arrasto de linha pode estar vivo por quadro,
     // então o bloco da hierarquia acima já foi no-op quando este é `Some`.
+    // ⭐⭐ O arrasto de uma SECÇÃO pela pega: grava a ordem nova (ver `section_drag`).
+    super::section_drag::drop(store, hit_index, event.y);
     if let Some((family, drag)) = store.end_panel_row_drag()
         && drag.active
     {

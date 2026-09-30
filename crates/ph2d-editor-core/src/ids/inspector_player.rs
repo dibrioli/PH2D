@@ -19,4 +19,4 @@ use ph2d_a11y::NodeId;
 /// **O cabeçalho da §14 — Platform Player** (dono do estado de colapso) e o
 /// círculo de cor dele.
 pub const INSP_LIVE_PLAYER_SECTION: NodeId = hash_node_id("insp_live_player_section");
-pub const INSP_LIVE_PLAYER_COLOR: NodeId = hash_node_id("insp_live_player_color");
+pub const INSP_LIVE_PLAYER_GRIP: NodeId = hash_node_id("insp_live_player_grip");

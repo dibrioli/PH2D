@@ -425,6 +425,19 @@ pub(super) fn dispatch_down<'frame>(
         return;
     }
 
+    // ⭐⭐ **A PEGA de uma secção** semeia o arrasto que reordena o painel (2026-09-29) — ANTES da
+    //    porta da focabilidade, como o ponto de curva acima. ⚠️ Atrás dela a pega dependia de
+    //    alguém a ter registado como `Plain` (o `pre_populate` do ecrã principal), e um gesto não
+    //    pode morrer por um registo esquecido: o teste do gesto real apanhou-o no anfitrião de
+    //    testes, que não corre aquele `pre_populate`. Uma pega não ganha foco nem buffer.
+    if let Some((id, _)) = hit
+        && event.button == ph2d_host::PointerButton::Primary
+        && crate::ids::section_of_grip(id).is_some()
+    {
+        super::section_drag::seed(store, id, event.y);
+        return;
+    }
+
     if let Some((id, rect)) = hit
         && is_focusable(store, id)
     {

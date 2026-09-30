@@ -21,5 +21,5 @@ use super::*;
 
 /// §12 — o cabeçalho colapsável. Entra em [`super::LIVE_SECTIONS`] emparelhado com o ponto.
 pub const INSP_LIVE_ANCHOR_SECTION: NodeId = hash_node_id("insp_live_anchor_section");
-/// §12 — ponto de cor do cabeçalho.
-pub const INSP_LIVE_ANCHOR_COLOR: NodeId = hash_node_id("insp_live_anchor_color");
+/// §12 — a pega de arrasto do cabeçalho.
+pub const INSP_LIVE_ANCHOR_GRIP: NodeId = hash_node_id("insp_live_anchor_grip");

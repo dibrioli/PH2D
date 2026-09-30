@@ -25,7 +25,6 @@ pub(super) fn paint_status_section(
         w,
         y,
         ids::INSP_SECTION_STATUS,
-        ids::INSP_SECTION_STATUS_COLOR,
         "Status",
         3,
     );

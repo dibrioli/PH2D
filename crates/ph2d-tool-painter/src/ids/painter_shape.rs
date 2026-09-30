@@ -41,9 +41,6 @@ pub fn painter_shape_kind_option_id(k: u8) -> NodeId {
 /// assignable color dot). `mark_collapsible_section`-registered in `crate::populate`.
 pub const PAINTER_SHAPE_SECTION: NodeId = hash_node_id("painter_brush.shape_section");
 
-/// The Shape header's color dot — a picker swatch (`register_picker_swatch`).
-pub const PAINTER_SHAPE_SECTION_COLOR: NodeId = hash_node_id("painter_brush.shape_section_color");
-
 /// Shape section **reset** icon button — clears the Shape image (→ falloff) and resets the rotation
 /// controls. `Click` → tool reset. Part of [`super::PAINTER_BRUSH_SECTION_RESETS`].
 pub const PAINTER_SHAPE_RESET: NodeId = hash_node_id("painter_brush.shape_reset");
@@ -282,10 +279,6 @@ pub fn painter_taper_handle_id(channel: u8) -> NodeId {
 // tone remap of the silhouette (the Grain, if any, owns colour). Auto-B&W-on when a Grain is assigned.
 /// Collapsible **Shape Color** section header. `mark_collapsible_section`-registered in `crate::populate`.
 pub const PAINTER_SHAPE_RAMP_SECTION: NodeId = hash_node_id("painter_brush.shape_ramp_section");
-
-/// The Shape Color header's colour dot (picker swatch).
-pub const PAINTER_SHAPE_RAMP_SECTION_COLOR: NodeId =
-    hash_node_id("painter_brush.shape_ramp_section_color");
 
 /// Shape Color section **reset** — ramp off + default gradient. `Click` → `reset_shape_ramp`.
 pub const PAINTER_SHAPE_RAMP_RESET: NodeId = hash_node_id("painter_brush.shape_ramp_reset");

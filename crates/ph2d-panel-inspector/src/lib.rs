@@ -96,6 +96,7 @@ mod paint_optional_top20;
 mod paint_optional_top20_infos;
 mod paint_optional_top20_tail;
 mod paint_optional_vida;
+mod plano;
 mod popovers;
 mod populate;
 /// ⭐ O registo dos widgets da secção SIGNAL ACTIONS — irmão por CAP de ficheiro.

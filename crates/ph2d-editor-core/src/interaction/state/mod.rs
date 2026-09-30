@@ -35,6 +35,11 @@ mod graph_ops;
 mod number_scrub;
 mod panel_ops;
 mod scroll_state;
+mod section_prefs_ops;
+pub use section_prefs_ops::{
+    SECCOES_FIXAS, SectionDrag, alvo_da_queda, ordena_seccoes, reordena_seccoes,
+    restore_section_prefs_text, section_prefs_text,
+};
 mod slot_ops;
 pub use slider_curve::{fracao_para_pista, pista_para_fracao};
 pub use slot_ops::{TAB_DRAG_THRESHOLD_PX, TabDragAnchor};
@@ -417,6 +422,8 @@ pub struct WidgetStore {
     /// canonical colors; missing entry == "no outline"). Painted by
     /// the inspector as a colored stroke around the section block.
     pub(super) section_outline_color: BTreeMap<NodeId, u8>,
+    /// ⭐ O TEMA, a ORDEM e o ARRASTO das secções (2026-09-29) — ver [`section_prefs_ops`].
+    pub(super) section_prefs: section_prefs_ops::SectionPrefs,
     /// Per-panel list of user-created notes. Each note carries a
     /// background color index into the highlighter palette. New
     /// notes append; right-click → delete removes by index. The

@@ -256,7 +256,7 @@ fn every_impasto_click_widget_is_reachable_by_a_pointer() {
     }
 }
 
-/// **The section header collapses, and its colour dot opens the picker.**
+/// **The section header collapses.**
 ///
 /// Found by asking the same question of every other widget the section paints (the lamp chips were
 /// the reported symptom, not the extent of it): the Impasto header was never
@@ -295,18 +295,6 @@ fn the_section_header_collapses_and_its_colour_dot_opens_the_picker() {
         "clicking the Impasto section header did not collapse it — the id was never \
          `mark_collapsible_section`'d, so `apply_click`'s collapse branch never sees it and the \
          chevron is decoration"
-    );
-
-    // The colour dot: Down on a picker swatch targets the shared picker (its own dispatch path).
-    let dot = rect_of(ph2d_tool_painter::ids::PAINTER_IMPASTO_SECTION_COLOR)
-        .expect("the section colour dot is painted");
-    let (dx, dy) = centre(dot);
-    let _ = host.click_at(dx, dy);
-    assert_eq!(
-        host.store().picker_target(),
-        Some(ph2d_tool_painter::ids::PAINTER_IMPASTO_SECTION_COLOR),
-        "clicking the Impasto colour dot did not open the shared picker — the id was never \
-         `register_picker_swatch`'d, so Down falls through to the focus path and does nothing"
     );
 }
 

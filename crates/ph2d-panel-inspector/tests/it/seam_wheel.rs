@@ -288,7 +288,7 @@ fn every_number_row_the_wheel_section_paints_is_seeded_synced_and_routed() {
         ph2d_panel_inspector::ids::INSP_WHEEL_WRAP_GROUP,
         ph2d_panel_inspector::ids::INSP_WHEEL_DIFF_GROUP,
         ids::INSP_LIVE_WHEEL_SECTION,
-        ids::INSP_LIVE_WHEEL_COLOR,
+        ids::INSP_LIVE_WHEEL_GRIP,
         // W3: os dois botões de ícone da row de montagem. Declarados aqui, e não
         // silenciados — a varredura os PEGOU no minuto em que nasceram, que é
         // exatamente o que ela existe para fazer; o que ela cobra é que alguém

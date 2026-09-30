@@ -17,10 +17,10 @@
 
 use super::*;
 
-/// A secção CAMERA — o cabeçalho colapsável. Entra em [`super::LIVE_SECTIONS`] com o ponto de cor.
+/// A secção CAMERA — o cabeçalho colapsável. Entra em [`super::LIVE_SECTIONS`] com a pega de arrasto.
 pub const INSP_LIVE_CAMERA_SECTION: NodeId = hash_node_id("insp_live_camera_section");
-/// CAMERA — ponto de cor do cabeçalho.
-pub const INSP_LIVE_CAMERA_COLOR: NodeId = hash_node_id("insp_live_camera_color");
+/// CAMERA — a pega de arrasto do cabeçalho.
+pub const INSP_LIVE_CAMERA_GRIP: NodeId = hash_node_id("insp_live_camera_grip");
 
 /// A secção FACTORY — o cabeçalho colapsável (TOP-20 #11, W3).
 ///
@@ -78,54 +78,54 @@ pub const INSP_LIVE_LIFECYCLE_SECTION: NodeId = hash_node_id("insp_live_lifecycl
 /// porque entrar na tabela continua a ser um passo que se pode **esquecer**. A cura de fundo seria
 /// um censo que exigisse que todo `INSP_LIVE_*_SECTION` estivesse na tabela; ele está escrito no
 /// gate irmão desta wave.
-pub const INSP_LIVE_FACTORY_COLOR: NodeId = hash_node_id("insp_live_factory_color");
-/// Ver [`INSP_LIVE_FACTORY_COLOR`].
-pub const INSP_LIVE_LIFECYCLE_COLOR: NodeId = hash_node_id("insp_live_lifecycle_color");
-/// Ver [`INSP_LIVE_FACTORY_COLOR`].
-pub const INSP_LIVE_TOPDOWN_COLOR: NodeId = hash_node_id("insp_live_topdown_color");
-/// Ver [`INSP_LIVE_FACTORY_COLOR`].
-pub const INSP_LIVE_PROJECTILE_COLOR: NodeId = hash_node_id("insp_live_projectile_color");
-/// Ver [`INSP_LIVE_FACTORY_COLOR`].
-pub const INSP_LIVE_SM_COLOR: NodeId = hash_node_id("insp_live_sm_color");
-/// Ver [`INSP_LIVE_FACTORY_COLOR`].
-pub const INSP_LIVE_SCRIPT_COLOR: NodeId = hash_node_id("insp_live_script_color");
-/// Ver [`INSP_LIVE_FACTORY_COLOR`].
-pub const INSP_LIVE_PARTICLES_COLOR: NodeId = hash_node_id("insp_live_particles_color");
-/// O ponto de cor da secção HUD (TOP-20 #20).
-pub const INSP_LIVE_HUD_COLOR: NodeId = hash_node_id("insp_live_hud_color");
-/// O ponto de cor da secção SEQUENCE (TOP-20 #19).
-pub const INSP_LIVE_SEQ_COLOR: NodeId = hash_node_id("insp_live_seq_color");
-/// O ponto de cor da secção COUNTER WATCH.
-pub const INSP_LIVE_WATCH_COLOR: NodeId = hash_node_id("insp_live_watch_color");
-/// O ponto de cor da secção GATILHO.
-pub const INSP_LIVE_TRIGGER_COLOR: NodeId = hash_node_id("insp_live_trigger_color");
-/// O ponto de cor da secção TWEEN (suplente #22).
-pub const INSP_LIVE_TWEEN_COLOR: NodeId = hash_node_id("insp_live_tween_color");
-/// O ponto de cor da secção PATH FOLLOW (suplente #23).
-pub const INSP_LIVE_PATHFOLLOW_COLOR: NodeId = hash_node_id("insp_live_pathfollow_color");
-/// O ponto de cor da secção CAMERA SHAKE (suplente #25).
-pub const INSP_LIVE_SHAKE_COLOR: NodeId = hash_node_id("insp_live_shake_color");
-/// O ponto de cor da secção SHAKE EMITTER (suplente #25).
-pub const INSP_LIVE_EMITTER_COLOR: NodeId = hash_node_id("insp_live_emitter_color");
-/// O ponto de cor da secção RAY SENSOR.
-pub const INSP_LIVE_RAY_COLOR: NodeId = hash_node_id("insp_live_ray_color");
-/// O ponto de cor da secção PARALLAX — ver [`INSP_LIVE_PARALLAX_SECTION`].
-pub const INSP_LIVE_PARALLAX_COLOR: NodeId = hash_node_id("insp_live_parallax_color");
-/// O ponto de cor da secção WEAPON.
-pub const INSP_LIVE_WEAPON_COLOR: NodeId = hash_node_id("insp_live_weapon_color");
+pub const INSP_LIVE_FACTORY_GRIP: NodeId = hash_node_id("insp_live_factory_grip");
+/// Ver [`INSP_LIVE_FACTORY_GRIP`].
+pub const INSP_LIVE_LIFECYCLE_GRIP: NodeId = hash_node_id("insp_live_lifecycle_grip");
+/// Ver [`INSP_LIVE_FACTORY_GRIP`].
+pub const INSP_LIVE_TOPDOWN_GRIP: NodeId = hash_node_id("insp_live_topdown_grip");
+/// Ver [`INSP_LIVE_FACTORY_GRIP`].
+pub const INSP_LIVE_PROJECTILE_GRIP: NodeId = hash_node_id("insp_live_projectile_grip");
+/// Ver [`INSP_LIVE_FACTORY_GRIP`].
+pub const INSP_LIVE_SM_GRIP: NodeId = hash_node_id("insp_live_sm_grip");
+/// Ver [`INSP_LIVE_FACTORY_GRIP`].
+pub const INSP_LIVE_SCRIPT_GRIP: NodeId = hash_node_id("insp_live_script_grip");
+/// Ver [`INSP_LIVE_FACTORY_GRIP`].
+pub const INSP_LIVE_PARTICLES_GRIP: NodeId = hash_node_id("insp_live_particles_grip");
+/// A pega de arrasto da secção HUD (TOP-20 #20).
+pub const INSP_LIVE_HUD_GRIP: NodeId = hash_node_id("insp_live_hud_grip");
+/// A pega de arrasto da secção SEQUENCE (TOP-20 #19).
+pub const INSP_LIVE_SEQ_GRIP: NodeId = hash_node_id("insp_live_seq_grip");
+/// A pega de arrasto da secção COUNTER WATCH.
+pub const INSP_LIVE_WATCH_GRIP: NodeId = hash_node_id("insp_live_watch_grip");
+/// A pega de arrasto da secção GATILHO.
+pub const INSP_LIVE_TRIGGER_GRIP: NodeId = hash_node_id("insp_live_trigger_grip");
+/// A pega de arrasto da secção TWEEN (suplente #22).
+pub const INSP_LIVE_TWEEN_GRIP: NodeId = hash_node_id("insp_live_tween_grip");
+/// A pega de arrasto da secção PATH FOLLOW (suplente #23).
+pub const INSP_LIVE_PATHFOLLOW_GRIP: NodeId = hash_node_id("insp_live_pathfollow_grip");
+/// A pega de arrasto da secção CAMERA SHAKE (suplente #25).
+pub const INSP_LIVE_SHAKE_GRIP: NodeId = hash_node_id("insp_live_shake_grip");
+/// A pega de arrasto da secção SHAKE EMITTER (suplente #25).
+pub const INSP_LIVE_EMITTER_GRIP: NodeId = hash_node_id("insp_live_emitter_grip");
+/// A pega de arrasto da secção RAY SENSOR.
+pub const INSP_LIVE_RAY_GRIP: NodeId = hash_node_id("insp_live_ray_grip");
+/// A pega de arrasto da secção PARALLAX — ver [`INSP_LIVE_PARALLAX_SECTION`].
+pub const INSP_LIVE_PARALLAX_GRIP: NodeId = hash_node_id("insp_live_parallax_grip");
+/// A pega de arrasto da secção WEAPON.
+pub const INSP_LIVE_WEAPON_GRIP: NodeId = hash_node_id("insp_live_weapon_grip");
 /// O cabeçalho dobrável da secção HEALTH — quem LEVA (plano 28, W3).
 pub const INSP_LIVE_HEALTH_SECTION: NodeId = hash_node_id("insp_live_health_section");
-/// O ponto de cor da secção HEALTH.
-pub const INSP_LIVE_HEALTH_COLOR: NodeId = hash_node_id("insp_live_health_color");
+/// A pega de arrasto da secção HEALTH.
+pub const INSP_LIVE_HEALTH_GRIP: NodeId = hash_node_id("insp_live_health_grip");
 /// O cabeçalho dobrável da secção DAMAGE — quem BATE (plano 28, W3).
 pub const INSP_LIVE_DAMAGE_SECTION: NodeId = hash_node_id("insp_live_damage_section");
-/// O ponto de cor da secção DAMAGE.
-pub const INSP_LIVE_DAMAGE_COLOR: NodeId = hash_node_id("insp_live_damage_color");
+/// A pega de arrasto da secção DAMAGE.
+pub const INSP_LIVE_DAMAGE_GRIP: NodeId = hash_node_id("insp_live_damage_grip");
 /// O cabeçalho dobrável da secção HEALTH BAR — quem MOSTRA a vida (plano 28, W4).
 pub const INSP_LIVE_HEALTH_BAR_SECTION: NodeId = hash_node_id("insp_live_health_bar_section");
-/// O ponto de cor da secção HEALTH BAR.
-pub const INSP_LIVE_HEALTH_BAR_COLOR: NodeId = hash_node_id("insp_live_health_bar_color");
-/// O ponto de cor da secção LIVE MESH (o catavento).
-pub const INSP_LIVE_MESH3D_COLOR: NodeId = hash_node_id("insp_live_mesh3d_color");
+/// A pega de arrasto da secção HEALTH BAR.
+pub const INSP_LIVE_HEALTH_BAR_GRIP: NodeId = hash_node_id("insp_live_health_bar_grip");
+/// A pega de arrasto da secção LIVE MESH (o catavento).
+pub const INSP_LIVE_MESH3D_GRIP: NodeId = hash_node_id("insp_live_mesh3d_grip");
 /// Quantas opções o segmentado do ONDE tem — a porta que o painel lê para repartir a largura.
 pub const INSP_FACTORY_WHERE_LEN: usize = 3;

@@ -25,7 +25,6 @@ pub(super) fn paint_actions_section(
         w,
         y,
         ids::INSP_SECTION_ACTIONS,
-        ids::INSP_SECTION_ACTIONS_COLOR,
         "Actions",
         4,
     );

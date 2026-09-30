@@ -14,7 +14,7 @@ use ph2d_a11y::NodeId;
 
 /// The §12 section header (collapse state owner) and its colour circle.
 pub const INSP_LIVE_JOINT_SECTION: NodeId = hash_node_id("insp_live_joint_section");
-pub const INSP_LIVE_JOINT_COLOR: NodeId = hash_node_id("insp_live_joint_color");
+pub const INSP_LIVE_JOINT_GRIP: NodeId = hash_node_id("insp_live_joint_grip");
 
 /// **O cabeçalho da §13 — Pulley Wheel** (dono do estado de colapso) e o
 /// círculo de cor dele.
@@ -25,4 +25,4 @@ pub const INSP_LIVE_JOINT_COLOR: NodeId = hash_node_id("insp_live_joint_color");
 /// conforme o que está selecionado teria um estado de colapso descrevendo dois
 /// objetos diferentes.
 pub const INSP_LIVE_WHEEL_SECTION: NodeId = hash_node_id("insp_live_wheel_section");
-pub const INSP_LIVE_WHEEL_COLOR: NodeId = hash_node_id("insp_live_wheel_color");
+pub const INSP_LIVE_WHEEL_GRIP: NodeId = hash_node_id("insp_live_wheel_grip");

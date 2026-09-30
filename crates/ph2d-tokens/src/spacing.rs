@@ -215,8 +215,28 @@ pub fn control_gap_px() -> f32 {
 /// com *«quanto separa duas secções?»* — e foi essa ausência que deixou a cauda de um bloco crescer
 /// para quatro respostas, uma delas (`Md` = 8) **igual à da secção**, que é a que faz um bloco
 /// interior ler-se como uma secção.
+///
+/// ⛔⛔ **E em 2026-09-29 ele deixou de valer só as duas folgas**, por report do dono com o
+/// Blender ao lado (*«ao abrir as seções não temos padding entre cards de seções e tudo fica mal
+/// definido»*): `8 = 4 + 4` era EXACTAMENTE a folga de baixo de um cartão mais a de cima do
+/// seguinte, logo os dois **encostavam** e o painel lia-se como um bloco só. Hoje é
+/// `folga + vão + folga` — o [`card_gap_px`] é a faixa de painel que se vê entre dois cartões.
 pub fn section_gap_px() -> f32 {
-    Spacing::Xs.px() * 2.0
+    card_pad_px() * 2.0 + card_gap_px()
+}
+
+/// ⭐ **A folga de um cartão de secção para fora do conteúdo que ele envolve** — o `Spacing::Xs`
+/// da casa, a mesma pergunta do vão entre linhas (`separation_margin` do Godot).
+pub fn card_pad_px() -> f32 {
+    Spacing::Xs.px()
+}
+
+/// ⭐ **A faixa de PAINEL que se vê entre dois cartões de secção** (2026-09-29). É ela que faz
+/// cada secção ler-se como um corpo próprio — o que o Blender faz entre os painéis de uma região.
+/// ⚠️ O mesmo `Spacing::Xs` da folga: a borda de fora de um cartão fica à mesma distância do
+/// vizinho e do conteúdo dele, e nenhum dos dois vãos se lê como o maior.
+pub fn card_gap_px() -> f32 {
+    Spacing::Xs.px()
 }
 
 /// ⭐⭐⭐ **O vão entre duas linhas de uma LISTA — e ele NÃO é o de um formulário.**

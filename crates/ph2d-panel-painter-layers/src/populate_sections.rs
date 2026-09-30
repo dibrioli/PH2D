@@ -1,74 +1,34 @@
-//! The Brush panel's **collapsible section headers** — which ones collapse, which start collapsed,
-//! and which colour dot opens the shared picker.
+//! The Brush panel's **collapsible section headers** — which ones collapse and which start
+//! collapsed. (⚠️ Until 2026-09-29 each also had a colour dot; the owner retired it.)
 //!
 //! A sibling of `populate.rs` (which hit the 600-LOC panel cap), and cohesive on its own: this is the
-//! one table that decides whether a section's chevron and colour dot are alive. Both are *silent*
-//! failures when an id is missing — the header still paints its chevron and the dot still paints its
-//! colour, they simply do nothing under the mouse (`dispatch_pointer` needs the id marked, not merely
-//! drawn). Impasto shipped that way. If you add a section, add it HERE too, and gate it by CLICKING it.
+//! one table that decides whether a section's chevron is alive. It is a *silent* failure when an id
+//! is missing — the header still paints its chevron, it simply does nothing under the mouse
+//! (`dispatch_pointer` needs the id marked, not merely drawn). Impasto shipped that way. If you add a section, add it HERE too, and gate it by CLICKING it.
 
 use ph2d_editor_core::interaction::WidgetStore;
 
-/// Mark each collapsible Brush section's header (click-to-collapse) + make its colour dot a picker
-/// swatch (clicking opens the shared picker to assign the dot's colour). Randomize Color, Color Ramp
+/// Mark each collapsible Brush section's header (click-to-collapse). Randomize Color, Color Ramp
 /// and Tiling START COLLAPSED; Texture + Stroke start expanded (Enio 2026-06-24).
 pub(crate) fn register_collapsible_sections(store: &mut WidgetStore) {
-    for (section, color) in [
-        (
-            ph2d_tool_painter::ids::PAINTER_SHAPE_SECTION,
-            ph2d_tool_painter::ids::PAINTER_SHAPE_SECTION_COLOR,
-        ),
-        (
-            ph2d_tool_painter::ids::PAINTER_BRUSH_RANDOMIZE_SECTION,
-            ph2d_tool_painter::ids::PAINTER_BRUSH_RANDOMIZE_SECTION_COLOR,
-        ),
-        (
-            ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_SECTION,
-            ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_SECTION_COLOR,
-        ),
-        (
-            ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_RAMP_SECTION,
-            ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_RAMP_SECTION_COLOR,
-        ),
-        (
-            ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_SECTION,
-            ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_SECTION_COLOR,
-        ),
-        (
-            ph2d_tool_painter::ids::PAINTER_BRUSH_TILING_SECTION,
-            ph2d_tool_painter::ids::PAINTER_BRUSH_TILING_SECTION_COLOR,
-        ),
-        (
-            ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_SECTION,
-            ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_SECTION_COLOR,
-        ),
-        (
-            ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_SECTION,
-            ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_SECTION_COLOR,
-        ),
-        (
-            ph2d_tool_painter::ids::PAINTER_WETPAINT_SECTION,
-            ph2d_tool_painter::ids::PAINTER_WETPAINT_SECTION_COLOR,
-        ),
-        (
-            ph2d_tool_painter::ids::PAINTER_WATERCOLOR_SECTION,
-            ph2d_tool_painter::ids::PAINTER_WATERCOLOR_SECTION_COLOR,
-        ),
-        (
-            ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_SECTION,
-            ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_SECTION_COLOR,
-        ),
-        // Impasto — MISSING since the section landed: its header painted a chevron that could not
-        // collapse and a colour dot that opened nothing, because neither id was here. Same silence
-        // as the lamp chips, one row higher up (`tests/seam_impasto_rig.rs`).
-        (
-            ph2d_tool_painter::ids::PAINTER_IMPASTO_SECTION,
-            ph2d_tool_painter::ids::PAINTER_IMPASTO_SECTION_COLOR,
-        ),
-    ] {
-        store.mark_collapsible_section(section);
-        store.register_picker_swatch(color);
-    }
+    // ⚠️ Uma chamada por secção, e não um laço sobre uma lista: o gate
+    //    `the_painted_control_reaches_a_consumer` lê o id na chamada que o consome, e através de uma
+    //    variável de laço ele não o vê (2026-09-29, quando os pares `(secção, ponto de cor)` saíram).
+    store.mark_collapsible_section(ph2d_tool_painter::ids::PAINTER_SHAPE_SECTION);
+    store.mark_collapsible_section(ph2d_tool_painter::ids::PAINTER_BRUSH_RANDOMIZE_SECTION);
+    store.mark_collapsible_section(ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_SECTION);
+    store.mark_collapsible_section(ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_RAMP_SECTION);
+    store.mark_collapsible_section(ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_SECTION);
+    store.mark_collapsible_section(ph2d_tool_painter::ids::PAINTER_BRUSH_TILING_SECTION);
+    store.mark_collapsible_section(ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_SECTION);
+    store.mark_collapsible_section(ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_SECTION);
+    store.mark_collapsible_section(ph2d_tool_painter::ids::PAINTER_WETPAINT_SECTION);
+    store.mark_collapsible_section(ph2d_tool_painter::ids::PAINTER_WATERCOLOR_SECTION);
+    store.mark_collapsible_section(ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_SECTION);
+    // Impasto — MISSING since the section landed: its header painted a chevron that could not
+    // collapse, because the id was not here. Same silence as the lamp chips, one row higher up
+    // (`tests/seam_impasto_rig.rs`).
+    store.mark_collapsible_section(ph2d_tool_painter::ids::PAINTER_IMPASTO_SECTION);
     // ⭐ **A decisão do DONO, de 2026-06-24** — `Randomize Color`, `Color Ramp` e `Tiling` nascem
     //    recolhidas; `Texture` e `Stroke` nascem abertas. ⛔ Ela não se toca.
     for collapsed in [

@@ -25,7 +25,6 @@ pub(super) fn paint_switches_section(
         w,
         y,
         ids::INSP_SECTION_SWITCHES,
-        ids::INSP_SECTION_SWITCHES_COLOR,
         "Switches",
         3,
     );

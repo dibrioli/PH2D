@@ -20,7 +20,7 @@
 
 use super::*;
 
-/// A secção AUDIO — o cabeçalho colapsável. Entra em [`super::LIVE_SECTIONS`] com o ponto de cor.
+/// A secção AUDIO — o cabeçalho colapsável. Entra em [`super::LIVE_SECTIONS`] com a pega de arrasto.
 pub const INSP_LIVE_AUDIO_SECTION: NodeId = hash_node_id("insp_live_audio_section");
-/// AUDIO — ponto de cor do cabeçalho.
-pub const INSP_LIVE_AUDIO_COLOR: NodeId = hash_node_id("insp_live_audio_color");
+/// AUDIO — a pega de arrasto do cabeçalho.
+pub const INSP_LIVE_AUDIO_GRIP: NodeId = hash_node_id("insp_live_audio_grip");

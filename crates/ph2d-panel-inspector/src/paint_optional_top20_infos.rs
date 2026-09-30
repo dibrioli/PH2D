@@ -9,6 +9,7 @@
 //! vez de duas num ficheiro que já não cabia.
 
 /// Os instantâneos das quatro secções da cauda, mais as duas linhas abertas do cérebro.
+#[derive(Clone, Copy)]
 pub(crate) struct Top20<'a> {
     /// O CÉREBRO (TOP-20 #15).
     pub statemachine: Option<&'a ph2d_editor_core::statemachine_edits::InspectorStateMachineInfo>,

@@ -39,26 +39,25 @@ pub const INSP_LIVE_ORDERING_SECTION: NodeId = hash_node_id("insp_live_ordering_
 pub const INSP_LIVE_SAMPLING_SECTION: NodeId = hash_node_id("insp_live_sampling_section");
 /// Sprite Inspector v2 §10 — Material & Blend live section header.
 pub const INSP_LIVE_BLEND_SECTION: NodeId = hash_node_id("insp_live_blend_section");
-/// Color-circle hit NodeIds — one per Inspector live section, parallel
-/// to [`LIVE_SECTION_IDS`]. Clicking the circle opens the canonical
-/// BlenderPicker pointing at this id; the picker writes the chosen
-/// rgba back via `set_widget_color(<color_id>, rgba)`, and the next
-/// `paint_section_header` call paints the dot in that color.
-pub const INSP_LIVE_NAME_COLOR: NodeId = hash_node_id("insp_live_name_color");
-pub const INSP_LIVE_VISIBILITY_COLOR: NodeId = hash_node_id("insp_live_visibility_color");
-pub const INSP_LIVE_TRANSFORM_COLOR: NodeId = hash_node_id("insp_live_transform_color");
-pub const INSP_LIVE_RENDER_COLOR: NodeId = hash_node_id("insp_live_render_color");
-/// Color-circle hit id for the Color & Tint section header.
-pub const INSP_LIVE_COLOR_COLOR: NodeId = hash_node_id("insp_live_color_color");
-/// Color-circle hit id for the Sprite Sheet section header.
-pub const INSP_LIVE_SHEET_COLOR: NodeId = hash_node_id("insp_live_sheet_color");
-/// Color-circle hit id for the Ordering / Sorting section header.
-pub const INSP_LIVE_ORDERING_COLOR: NodeId = hash_node_id("insp_live_ordering_color");
+/// Drag-grip hit NodeIds — one per Inspector live section, parallel to [`LIVE_SECTION_IDS`]. A
+/// primary Down on the grip starts a SECTION drag; the Up reorders the Inspector (2026-09-29,
+/// owner's order). ⚠️ These were the colour-circle ids until that day — the circle left and its
+/// slot became the grip, so a section still has exactly one right-edge control.
+pub const INSP_LIVE_NAME_GRIP: NodeId = hash_node_id("insp_live_name_grip");
+pub const INSP_LIVE_VISIBILITY_GRIP: NodeId = hash_node_id("insp_live_visibility_grip");
+pub const INSP_LIVE_TRANSFORM_GRIP: NodeId = hash_node_id("insp_live_transform_grip");
+pub const INSP_LIVE_RENDER_GRIP: NodeId = hash_node_id("insp_live_render_grip");
+/// Drag-grip hit id for the Color & Tint section header.
+pub const INSP_LIVE_COLOR_GRIP: NodeId = hash_node_id("insp_live_color_grip");
+/// Drag-grip hit id for the Sprite Sheet section header.
+pub const INSP_LIVE_SHEET_GRIP: NodeId = hash_node_id("insp_live_sheet_grip");
+/// Drag-grip hit id for the Ordering / Sorting section header.
+pub const INSP_LIVE_ORDERING_GRIP: NodeId = hash_node_id("insp_live_ordering_grip");
 
 /// §11 Physics Body — collapsible section header.
 pub const INSP_LIVE_PHYSICS_SECTION: NodeId = hash_node_id("insp_live_physics_section");
-/// §11 Physics Body — section accent color dot.
-pub const INSP_LIVE_PHYSICS_COLOR: NodeId = hash_node_id("insp_live_physics_color");
+/// §11 Physics Body — section drag grip.
+pub const INSP_LIVE_PHYSICS_GRIP: NodeId = hash_node_id("insp_live_physics_grip");
 
 /// Collapsible sub-header for the Visibility Layer 4×8 bitmask grid — a
 /// `mark_collapsible_section` id so clicking the row folds the grid.

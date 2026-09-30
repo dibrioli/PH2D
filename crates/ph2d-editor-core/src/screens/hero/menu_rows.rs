@@ -34,7 +34,12 @@ use ph2d_i18n::tr;
 pub fn menu_rows(kind: ContextMenuKind) -> &'static [crate::ids::MenuRow] {
     match kind {
         ContextMenuKind::CreateNote { .. } => menu_tables::CREATE_NOTE_ROWS,
-        ContextMenuKind::SectionOutline { .. } => menu_tables::SECTION_OUTLINE_ROWS,
+        ContextMenuKind::SectionOutline { .. } if crate::paint::ui_is_redesign() => {
+            super::menu_tables_section::SECTION_MENU_REDESIGN_ROWS
+        }
+        ContextMenuKind::SectionOutline { .. } => {
+            super::menu_tables_section::SECTION_MENU_CLASSIC_ROWS
+        }
         ContextMenuKind::NoteBackground { .. } => menu_tables::NOTE_BACKGROUND_ROWS,
         ContextMenuKind::ThemeSelector if crate::paint::ui_is_redesign() => {
             menu_tables::THEME_SELECTOR_REDESIGN_ROWS

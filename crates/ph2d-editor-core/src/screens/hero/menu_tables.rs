@@ -19,36 +19,6 @@ pub(super) const CREATE_NOTE_ROWS: &[MenuRow] = &[menu_row(
     "chrome.menu.create_note",
 )];
 
-/// As linhas de `ContextMenuKind::SectionOutline { .. }`.
-pub(super) const SECTION_OUTLINE_ROWS: &[MenuRow] = &[
-    menu_row(ids::CTX_MENU_OUTLINE_NONE, "chrome.menu.no_outline"),
-    menu_row_swatch(
-        ids::CTX_MENU_OUTLINE_0,
-        "chrome.menu.yellow",
-        HIGHLIGHTER_RGBA[0],
-    ),
-    menu_row_swatch(
-        ids::CTX_MENU_OUTLINE_1,
-        "chrome.menu.pink",
-        HIGHLIGHTER_RGBA[1],
-    ),
-    menu_row_swatch(
-        ids::CTX_MENU_OUTLINE_2,
-        "chrome.menu.green",
-        HIGHLIGHTER_RGBA[2],
-    ),
-    menu_row_swatch(
-        ids::CTX_MENU_OUTLINE_3,
-        "chrome.menu.blue",
-        HIGHLIGHTER_RGBA[3],
-    ),
-    menu_row_swatch(
-        ids::CTX_MENU_OUTLINE_4,
-        "chrome.menu.orange",
-        HIGHLIGHTER_RGBA[4],
-    ),
-];
-
 // Right-clicked on a note: 5 background-color options (reuses the outline color slot ids;
 // apply_event branches on `last_context_menu.kind` to set the section outline vs the note bg).
 /// As linhas de `ContextMenuKind::NoteBackground { .. }`.

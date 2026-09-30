@@ -139,7 +139,6 @@ pub(crate) fn paint_paper_section(
         y,
         tr("panel.painter_layers.paper.paper"),
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_SECTION,
-        ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_SECTION_COLOR,
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_RESET,
     );
     let Some(fold) = fold else {

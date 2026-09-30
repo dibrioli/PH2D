@@ -12,8 +12,8 @@
 
 use super::*;
 
-/// W3 §9 Sampling — section accent color dot.
-pub const INSP_LIVE_SAMPLING_COLOR: NodeId = hash_node_id("insp_live_sampling_color");
+/// W3 §9 Sampling — section drag grip.
+pub const INSP_LIVE_SAMPLING_GRIP: NodeId = hash_node_id("insp_live_sampling_grip");
 
-/// §10 Material & Blend — section accent color dot.
-pub const INSP_LIVE_BLEND_COLOR: NodeId = hash_node_id("insp_live_blend_color");
+/// §10 Material & Blend — section drag grip.
+pub const INSP_LIVE_BLEND_GRIP: NodeId = hash_node_id("insp_live_blend_grip");

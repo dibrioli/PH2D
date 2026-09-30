@@ -92,6 +92,7 @@ mod live;
 pub mod menu_bar;
 pub mod menu_rows;
 mod menu_tables;
+mod menu_tables_section;
 /// O que esta tela OFERECE agora — as portas de *«esta superfície está viva?»*.
 mod offers;
 mod paint;
@@ -632,7 +633,9 @@ impl HeroScreen {
         // panel is installed) and the Widget Gallery (legacy);
         // running at host level means the gallery keeps working
         // when the typed Inspector is absent.
-        if crate::widget::showcase::apply_showcase_event(&mut self.store, event) {
+        if theme_menu::apply_section_theme_click(&mut self.store, event)
+            || crate::widget::showcase::apply_showcase_event(&mut self.store, event)
+        {
             return true;
         }
         // Wave 9 Eixo A.1: chrome affordances split per file under

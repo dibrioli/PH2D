@@ -78,7 +78,6 @@ pub(crate) fn paint_impasto_section(
         y,
         tr("panel.painter_layers.impasto.title"),
         ph2d_tool_painter::ids::PAINTER_IMPASTO_SECTION,
-        ph2d_tool_painter::ids::PAINTER_IMPASTO_SECTION_COLOR,
         ph2d_tool_painter::ids::PAINTER_IMPASTO_RESET,
     );
     let Some(fold) = fold else {

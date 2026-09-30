@@ -5,12 +5,15 @@
 //! allowlist não é* — os ratchets só descem.
 //!
 //! A responsabilidade também separa limpo: `menus.rs` é sobre o que o botão-direito ABRE; isto é
-//! sobre o que uma seção viva É, e as quatro faces dela (dobra · ponto de cor · despacho do ponto ·
-//! menu de contorno) que passaram meses a discordar por serem enumeradas em quatro sítios.
+//! sobre o que uma seção viva É, e as quatro faces dela (dobra · pega de arrasto · despacho da pega ·
+//! menu de botão direito) que passaram meses a discordar por serem enumeradas em quatro sítios.
 
 use super::*;
 
-/// **A TABELA ÚNICA das seções vivas do Inspector: `(cabeçalho, ponto de cor)`.**
+/// **A TABELA ÚNICA das seções vivas do Inspector: `(cabeçalho, pega de arrasto)`.**
+///
+/// ⚠️ A 2.ª coluna foi o PONTO DE COR até 2026-09-29: o dono retirou o círculo e o lugar dele
+/// virou a pega que reordena a secção — a mesma tabela, a mesma posição, outro controlo.
 ///
 /// Name · Visibility · Transform · Render · Color & Tint · Sprite Sheet · Ordering · Sampling ·
 /// **9-Slice** · **Sockets/Anchors** · Material & Blend · Physics Body · Physics Joint · Pulley Wheel · Platform Player.
@@ -31,93 +34,93 @@ use super::*;
 /// isso uma seção ausente daqui tem um contorno que o passe de pintura está pronto a desenhar e
 /// gesto nenhum que o possa definir.
 pub const LIVE_SECTIONS: [(NodeId, NodeId); 43] = [
-    (INSP_LIVE_NAME_SECTION, INSP_LIVE_NAME_COLOR),
-    (INSP_LIVE_VISIBILITY_SECTION, INSP_LIVE_VISIBILITY_COLOR),
-    (INSP_LIVE_TRANSFORM_SECTION, INSP_LIVE_TRANSFORM_COLOR),
-    (INSP_LIVE_RENDER_SECTION, INSP_LIVE_RENDER_COLOR),
-    (INSP_LIVE_COLOR_SECTION, INSP_LIVE_COLOR_COLOR),
-    (INSP_LIVE_SHEET_SECTION, INSP_LIVE_SHEET_COLOR),
-    (INSP_LIVE_ORDERING_SECTION, INSP_LIVE_ORDERING_COLOR),
-    (INSP_LIVE_SAMPLING_SECTION, INSP_LIVE_SAMPLING_COLOR),
-    (INSP_LIVE_SLICE_SECTION, INSP_LIVE_SLICE_COLOR),
-    (INSP_LIVE_ANCHOR_SECTION, INSP_LIVE_ANCHOR_COLOR),
-    (INSP_LIVE_ANIM_SECTION, INSP_LIVE_ANIM_COLOR),
-    (INSP_LIVE_BLEND_SECTION, INSP_LIVE_BLEND_COLOR),
-    (INSP_LIVE_PHYSICS_SECTION, INSP_LIVE_PHYSICS_COLOR),
-    (INSP_LIVE_JOINT_SECTION, INSP_LIVE_JOINT_COLOR),
-    (INSP_LIVE_WHEEL_SECTION, INSP_LIVE_WHEEL_COLOR),
-    (INSP_LIVE_PLAYER_SECTION, INSP_LIVE_PLAYER_COLOR),
+    (INSP_LIVE_NAME_SECTION, INSP_LIVE_NAME_GRIP),
+    (INSP_LIVE_VISIBILITY_SECTION, INSP_LIVE_VISIBILITY_GRIP),
+    (INSP_LIVE_TRANSFORM_SECTION, INSP_LIVE_TRANSFORM_GRIP),
+    (INSP_LIVE_RENDER_SECTION, INSP_LIVE_RENDER_GRIP),
+    (INSP_LIVE_COLOR_SECTION, INSP_LIVE_COLOR_GRIP),
+    (INSP_LIVE_SHEET_SECTION, INSP_LIVE_SHEET_GRIP),
+    (INSP_LIVE_ORDERING_SECTION, INSP_LIVE_ORDERING_GRIP),
+    (INSP_LIVE_SAMPLING_SECTION, INSP_LIVE_SAMPLING_GRIP),
+    (INSP_LIVE_SLICE_SECTION, INSP_LIVE_SLICE_GRIP),
+    (INSP_LIVE_ANCHOR_SECTION, INSP_LIVE_ANCHOR_GRIP),
+    (INSP_LIVE_ANIM_SECTION, INSP_LIVE_ANIM_GRIP),
+    (INSP_LIVE_BLEND_SECTION, INSP_LIVE_BLEND_GRIP),
+    (INSP_LIVE_PHYSICS_SECTION, INSP_LIVE_PHYSICS_GRIP),
+    (INSP_LIVE_JOINT_SECTION, INSP_LIVE_JOINT_GRIP),
+    (INSP_LIVE_WHEEL_SECTION, INSP_LIVE_WHEEL_GRIP),
+    (INSP_LIVE_PLAYER_SECTION, INSP_LIVE_PLAYER_GRIP),
     // ⭐ A secção TIMERS (TOP-20 #2, W3) — a 17.ª, e a primeira da família LÓGICA.
-    (INSP_LIVE_TIMER_SECTION, INSP_LIVE_TIMER_COLOR),
+    (INSP_LIVE_TIMER_SECTION, INSP_LIVE_TIMER_GRIP),
     // ⭐ A secção SIGNAL ACTIONS (TOP-20 #5, W3) — a 18.ª, e a segunda da família LÓGICA.
-    (INSP_LIVE_ACTION_SECTION, INSP_LIVE_ACTION_COLOR),
+    (INSP_LIVE_ACTION_SECTION, INSP_LIVE_ACTION_GRIP),
     // ⭐ A secção AUDIO (TOP-20 #4, W3) — a 19.ª, e a primeira da família ÁUDIO.
-    (INSP_LIVE_AUDIO_SECTION, INSP_LIVE_AUDIO_COLOR),
+    (INSP_LIVE_AUDIO_SECTION, INSP_LIVE_AUDIO_GRIP),
     // ⭐ A secção CAMERA (TOP-20 #7, W3) — a 20.ª, e a primeira da família CÂMERA.
-    (INSP_LIVE_CAMERA_SECTION, INSP_LIVE_CAMERA_COLOR),
+    (INSP_LIVE_CAMERA_SECTION, INSP_LIVE_CAMERA_GRIP),
     // ⭐ A secção TAGS (TOP-20 #9, W3) — a 21.ª, e a primeira da família IDENTIDADE que é opcional.
     //
     // ⚠️ **No FIM da tabela, e pintada com as outras opcionais**, embora o descritor a ponha na
     // família `Identity`: uma secção que só existe para quem TEM o componente (ADR-0166) nasce no
     // grupo das opcionais, como as quatro acima — e acrescentar a meio renumeraria a lista posicional
     // das notas, que é a armadilha que a §5 9-Slice já pagou.
-    (INSP_LIVE_TAGS_SECTION, INSP_LIVE_TAGS_COLOR),
+    (INSP_LIVE_TAGS_SECTION, INSP_LIVE_TAGS_GRIP),
     // ⛔⛔ **As três seguintes entraram TARDE, e o atraso é o achado** (ver
-    // [`super::INSP_LIVE_FACTORY_COLOR`]): as duas da fábrica shiparam **fora** desta tabela em
+    // [`super::INSP_LIVE_FACTORY_GRIP`]): as duas da fábrica shiparam **fora** desta tabela em
     // 2026-09-14, logo com o chevron a prometer uma dobra que não podia acontecer. Quem o viu foi
     // a wave seguinte, ao ir escrever a mesma linha.
     //
     // ⭐ A 22.ª e a 23.ª — FACTORY e LIFECYCLE (TOP-20 #11 e #12).
-    (INSP_LIVE_FACTORY_SECTION, INSP_LIVE_FACTORY_COLOR),
-    (INSP_LIVE_LIFECYCLE_SECTION, INSP_LIVE_LIFECYCLE_COLOR),
+    (INSP_LIVE_FACTORY_SECTION, INSP_LIVE_FACTORY_GRIP),
+    (INSP_LIVE_LIFECYCLE_SECTION, INSP_LIVE_LIFECYCLE_GRIP),
     // ⭐ A 24.ª — TOP-DOWN PLAYER (TOP-20 #13), a primeira da família MOVIMENTO que é opcional.
-    (INSP_LIVE_TOPDOWN_SECTION, INSP_LIVE_TOPDOWN_COLOR),
+    (INSP_LIVE_TOPDOWN_SECTION, INSP_LIVE_TOPDOWN_GRIP),
     // ⭐ A 25.ª — PROJECTILE MOTION (TOP-20 #14), a segunda da família MOVIMENTO.
-    (INSP_LIVE_PROJECTILE_SECTION, INSP_LIVE_PROJECTILE_COLOR),
+    (INSP_LIVE_PROJECTILE_SECTION, INSP_LIVE_PROJECTILE_GRIP),
     // ⭐⭐ RAY SENSOR (suplente #21) — o objecto que OLHA. ⚠️ **Entrar aqui não é arrumação:** quem
     // falta nesta tabela não é `mark_collapsible_section`ado nem é `is_section_header_id`, logo o
     // cabeçalho pinta o chevron e **a dobra não pode acontecer** — o defeito que a FACTORY e a
     // LIFECYCLE shiparam em 2026-09-14 e que a wave seguinte apanhou ao vir escrever esta linha.
-    (INSP_LIVE_RAY_SECTION, INSP_LIVE_RAY_COLOR),
+    (INSP_LIVE_RAY_SECTION, INSP_LIVE_RAY_GRIP),
     // ⭐ A 26.ª — STATE MACHINE (TOP-20 #15), o cérebro autorável. ⚠️ Entrou **no mesmo commit** que
     // a secção, que é exactamente o que o censo `architecture_every_live_section_is_in_the_table`
     // existe para garantir desde que a fábrica shipou fora desta tabela.
-    (INSP_LIVE_SM_SECTION, INSP_LIVE_SM_COLOR),
+    (INSP_LIVE_SM_SECTION, INSP_LIVE_SM_GRIP),
     // ⭐ A 27.ª — SCRIPT (TOP-20 #16), no mesmo commit que a secção, pela lei do censo acima.
-    (INSP_LIVE_SCRIPT_SECTION, INSP_LIVE_SCRIPT_COLOR),
+    (INSP_LIVE_SCRIPT_SECTION, INSP_LIVE_SCRIPT_GRIP),
     // ⭐ A 28.ª — PARTICLES (TOP-20 #18), no mesmo commit que a secção, pela lei do censo acima.
-    (INSP_LIVE_PARTICLES_SECTION, INSP_LIVE_PARTICLES_COLOR),
+    (INSP_LIVE_PARTICLES_SECTION, INSP_LIVE_PARTICLES_GRIP),
     // ⭐ A 29.ª — HUD (TOP-20 #20), no mesmo commit que a secção, pela lei do censo acima.
-    (INSP_LIVE_HUD_SECTION, INSP_LIVE_HUD_COLOR),
+    (INSP_LIVE_HUD_SECTION, INSP_LIVE_HUD_GRIP),
     // ⭐ A 30.ª — SEQUENCE (TOP-20 #19), no mesmo commit que a secção, pela lei do censo acima.
-    (INSP_LIVE_SEQ_SECTION, INSP_LIVE_SEQ_COLOR),
-    (INSP_LIVE_WATCH_SECTION, INSP_LIVE_WATCH_COLOR),
+    (INSP_LIVE_SEQ_SECTION, INSP_LIVE_SEQ_GRIP),
+    (INSP_LIVE_WATCH_SECTION, INSP_LIVE_WATCH_GRIP),
     // ⭐ A 32.ª — GATILHO (suplente #24), no mesmo commit que a secção, pela lei do censo acima.
-    (INSP_LIVE_TRIGGER_SECTION, INSP_LIVE_TRIGGER_COLOR),
+    (INSP_LIVE_TRIGGER_SECTION, INSP_LIVE_TRIGGER_GRIP),
     // ⭐ A 33.ª — TWEEN (suplente #22), no mesmo commit que a secção, pela lei do censo acima.
-    (INSP_LIVE_TWEEN_SECTION, INSP_LIVE_TWEEN_COLOR),
+    (INSP_LIVE_TWEEN_SECTION, INSP_LIVE_TWEEN_GRIP),
     // ⭐ A 34.ª — PATH FOLLOW (suplente #23), no mesmo commit que a secção, pela lei do censo acima.
-    (INSP_LIVE_PATHFOLLOW_SECTION, INSP_LIVE_PATHFOLLOW_COLOR),
+    (INSP_LIVE_PATHFOLLOW_SECTION, INSP_LIVE_PATHFOLLOW_GRIP),
     // ⭐ A 35.ª e a 36.ª — CAMERA SHAKE e SHAKE EMITTER (suplente #25), no mesmo commit que as
     // secções, pela lei do censo acima. ⚠️ **Duas e não uma:** elas moram em objectos DIFERENTES
     // (a câmera e quem explode), logo nunca aparecem juntas no mesmo Inspector.
-    (INSP_LIVE_SHAKE_SECTION, INSP_LIVE_SHAKE_COLOR),
-    (INSP_LIVE_EMITTER_SECTION, INSP_LIVE_EMITTER_COLOR),
+    (INSP_LIVE_SHAKE_SECTION, INSP_LIVE_SHAKE_GRIP),
+    (INSP_LIVE_EMITTER_SECTION, INSP_LIVE_EMITTER_GRIP),
     // ⭐ A 37.ª — WEAPON (a ARMA do jogador), no mesmo commit que a secção, pela lei do censo
     // `architecture_every_live_section_is_in_the_table`.
-    (INSP_LIVE_WEAPON_SECTION, INSP_LIVE_WEAPON_COLOR),
+    (INSP_LIVE_WEAPON_SECTION, INSP_LIVE_WEAPON_GRIP),
     // ⭐ A 39.ª — PARALLAX (plano 24), no mesmo commit que a secção, pela lei do censo acima.
-    (INSP_LIVE_PARALLAX_SECTION, INSP_LIVE_PARALLAX_COLOR),
+    (INSP_LIVE_PARALLAX_SECTION, INSP_LIVE_PARALLAX_GRIP),
     // ⭐ A 40.ª e a 41.ª — HEALTH e DAMAGE (plano 28, W3), no mesmo commit que as secções, pela lei
     // do censo acima. ⚠️ **Duas e não uma:** um inimigo que também magoa mostra as duas, e uma bala
     // só a segunda.
-    (INSP_LIVE_HEALTH_SECTION, INSP_LIVE_HEALTH_COLOR),
-    (INSP_LIVE_DAMAGE_SECTION, INSP_LIVE_DAMAGE_COLOR),
+    (INSP_LIVE_HEALTH_SECTION, INSP_LIVE_HEALTH_GRIP),
+    (INSP_LIVE_DAMAGE_SECTION, INSP_LIVE_DAMAGE_GRIP),
     // ⭐ A 42.ª — HEALTH BAR (plano 28, W4), no mesmo commit que a secção, pela lei do censo acima.
-    (INSP_LIVE_HEALTH_BAR_SECTION, INSP_LIVE_HEALTH_BAR_COLOR),
+    (INSP_LIVE_HEALTH_BAR_SECTION, INSP_LIVE_HEALTH_BAR_GRIP),
     // ⭐ A 43.ª — LIVE MESH (o CATAVENTO, `docs/3D/02.2` rota B), no mesmo commit que a secção,
     // pela lei do censo `architecture_every_live_section_is_in_the_table`.
-    (INSP_LIVE_MESH3D_SECTION, INSP_LIVE_MESH3D_COLOR),
+    (INSP_LIVE_MESH3D_SECTION, INSP_LIVE_MESH3D_GRIP),
 ];
 
 /// Só os cabeçalhos — **projeção** de [`LIVE_SECTIONS`], nunca uma segunda lista.
@@ -137,10 +140,10 @@ const fn project_section_ids() -> [NodeId; LIVE_SECTIONS.len()] {
     out
 }
 
-/// Só os pontos de cor — a outra projeção da mesma tabela.
-pub const LIVE_SECTION_COLOR_IDS: [NodeId; LIVE_SECTIONS.len()] = project_section_color_ids();
+/// Só as pegas de arrasto — a outra projeção da mesma tabela.
+pub const LIVE_SECTION_GRIP_IDS: [NodeId; LIVE_SECTIONS.len()] = project_section_grip_ids();
 
-const fn project_section_color_ids() -> [NodeId; LIVE_SECTIONS.len()] {
+const fn project_section_grip_ids() -> [NodeId; LIVE_SECTIONS.len()] {
     let mut out = [NodeId(0); LIVE_SECTIONS.len()];
     let mut i = 0;
     while i < LIVE_SECTIONS.len() {
@@ -148,4 +151,22 @@ const fn project_section_color_ids() -> [NodeId; LIVE_SECTIONS.len()] {
         i += 1;
     }
     out
+}
+
+/// ⭐ **A pega de arrasto de uma secção** — a leitura da tabela na direcção cabeçalho → pega.
+#[must_use]
+pub fn grip_of(section: NodeId) -> Option<NodeId> {
+    LIVE_SECTIONS
+        .iter()
+        .find(|(s, _)| *s == section)
+        .map(|(_, g)| *g)
+}
+
+/// ⭐ **A secção de uma pega** — a leitura na outra direcção, a do despacho do arrasto.
+#[must_use]
+pub fn section_of_grip(grip: NodeId) -> Option<NodeId> {
+    LIVE_SECTIONS
+        .iter()
+        .find(|(_, g)| *g == grip)
+        .map(|(s, _)| *s)
 }

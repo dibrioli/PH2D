@@ -43,7 +43,6 @@ pub(crate) fn paint_stroke_section(
         y,
         tr("panel.painter_layers.stroke.stroke"),
         ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_SECTION,
-        ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_SECTION_COLOR,
         ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_RESET,
     );
     let Some(fold) = fold else {
@@ -227,7 +226,6 @@ pub(crate) fn paint_tiling_section(
         y,
         tr("panel.painter_layers.stroke.tiling"),
         ph2d_tool_painter::ids::PAINTER_BRUSH_TILING_SECTION,
-        ph2d_tool_painter::ids::PAINTER_BRUSH_TILING_SECTION_COLOR,
         ph2d_tool_painter::ids::PAINTER_BRUSH_TILING_RESET,
     );
     let Some(fold) = fold else {

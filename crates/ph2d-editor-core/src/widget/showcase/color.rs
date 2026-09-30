@@ -25,7 +25,6 @@ pub(super) fn paint_color_section(
         w,
         y,
         ids::INSP_SECTION_COLOR,
-        ids::INSP_SECTION_COLOR_COLOR,
         "Color",
         1,
     );

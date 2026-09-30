@@ -25,7 +25,6 @@ pub(super) fn paint_identity_section(
         w,
         y,
         ids::INSP_SECTION_IDENTITY,
-        ids::INSP_SECTION_IDENTITY_COLOR,
         "Identity",
         2,
     );

@@ -245,7 +245,6 @@ const SINGLE_ID_CLICKS: &[fn(&mut dyn PanelHostInternal, WidgetEvent) -> bool] =
     crate::event_instance::restore_piece_click,
     crate::event_instance::apply_added_click,
     crate::event_instance::apply_level_click,
-    section_color_click,
     texture_slot_click,
 ];
 
@@ -418,7 +417,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
 /// campos numéricos seria um segundo formato de edição vivendo dentro do
 /// primeiro.
 ///
-/// ⚠️ **Função própria pelo MESMO motivo que a `section_color_click` abaixo**, e
+/// ⚠️ **Função própria pelo MESMO motivo das irmãs desta tabela**, e
 /// pela mesma catraca: o `apply_event_impl` vive sob um teto que só pode
 /// ENCOLHER, e a row de sinal da W-Signal o empurrou de 452 para 470. Movê-la
 /// para cá é a correção certa — subir o número do allowlist seria usar como
@@ -472,16 +471,6 @@ fn section_text_changed(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bo
     false
 }
 
-/// A click on a section's colour dot — seed the canonical `BlenderPicker` at
-/// that section's colour id, the same flow the Widget Gallery uses for its
-/// `SECTION_COLOR_IDS`. The picker writes the chosen rgba back via
-/// `set_widget_color(<color_id>, rgba)` (drained in `hero.rs`), and the next
-/// `paint_section_header` paints the dot in it. UI canon 2026-05-24: every
-/// section can carry a per-user accent colour.
-///
-/// Its own function because `apply_event_impl` is under a ratcheting LOC cap
-/// and the two physics dots (§11/§12) pushed it over. Returns whether the
-/// event was consumed.
 /// **A caixa «Visible» do topo** (M14.D) — extraída da mãe em 2026-08-21 pela catraca de LOC.
 ///
 /// ⚠️ O que a fez crescer foi o **fan-out**: esta caixa editava só a primária enquanto a §8
@@ -508,30 +497,6 @@ fn visibility_toggle(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool 
                 mixed: false,
             },
         ));
-        return true;
-    }
-    false
-}
-
-fn section_color_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
-    // ⚠️ **A condição deixou de ENUMERAR os seus leitores** (2026-08-21). Ela listava seis dos
-    // treze pontos, e a nota no topo deste ficheiro — que já denunciava a podridão — dizia
-    // **três**: *uma nota de dívida também envelhece*. Agora a fonte é `ids::LIVE_SECTIONS`, a
-    // mesma tabela que o `pre_populate` lê para registar o ponto e a dobra. Um ponto novo arma no
-    // dia em que a seção entra na tabela.
-    if let WidgetEvent::Click(id) = ev
-        && core_ids::LIVE_SECTION_COLOR_IDS.contains(&id)
-    {
-        let seed = host
-            .store()
-            .widget_color(id)
-            .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral seed
-        host.store_mut().set_widget_color(id, seed);
-        host.store_mut().set_picker_target(Some(id));
-        host.store_mut().set_blender_value(
-            core_ids::INSP_BLENDER_PICKER,
-            ph2d_tokens::ColorValue::from_rgba8(seed[0], seed[1], seed[2], seed[3]),
-        );
         return true;
     }
     false

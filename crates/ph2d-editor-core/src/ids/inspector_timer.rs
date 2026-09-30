@@ -16,7 +16,7 @@
 
 use super::*;
 
-/// A secção TIMERS — o cabeçalho colapsável. Entra em [`super::LIVE_SECTIONS`] com o ponto de cor.
+/// A secção TIMERS — o cabeçalho colapsável. Entra em [`super::LIVE_SECTIONS`] com a pega de arrasto.
 pub const INSP_LIVE_TIMER_SECTION: NodeId = hash_node_id("insp_live_timer_section");
-/// TIMERS — ponto de cor do cabeçalho.
-pub const INSP_LIVE_TIMER_COLOR: NodeId = hash_node_id("insp_live_timer_color");
+/// TIMERS — a pega de arrasto do cabeçalho.
+pub const INSP_LIVE_TIMER_GRIP: NodeId = hash_node_id("insp_live_timer_grip");

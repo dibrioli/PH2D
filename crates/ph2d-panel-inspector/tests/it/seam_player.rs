@@ -768,9 +768,17 @@ fn every_player_control_carries_a_hover_hint() {
     // deixou de nascer. O gate reprovou a dizer *«isenção STALE»*, que é exactamente o trabalho
     // dela. ⇒ *a prova de que a conversão encurtou o painel não foi uma medição minha: foi uma
     // isenção a deixar de descrever alguma coisa.*
-    let chrome: [(&str, ph2d_a11y::NodeId); 2] = [
+    // ⚠️ A pega TEM dica (o `pre_populate` dá-lha a todas); fica aqui como cromo porque é do
+    //    cabeçalho e não da §14. E a BARRA DE ROLAGEM do painel entra desde 2026-09-29: com os
+    //    cartões espaçados o corpo desta fixtura passou a transbordar, e a barra só aparece com a
+    //    secção — ela é do painel, não um controlo da §14.
+    let chrome: [(&str, ph2d_a11y::NodeId); 3] = [
         ("o cabecalho da secao", ids::INSP_LIVE_PLAYER_SECTION),
-        ("o circulo de cor do cabecalho", ids::INSP_LIVE_PLAYER_COLOR),
+        ("a pega de arrasto do cabecalho", ids::INSP_LIVE_PLAYER_GRIP),
+        (
+            "a barra de rolagem do painel",
+            ph2d_editor_core::widget::INSPECTOR_SCROLLBAR_ID,
+        ),
     ];
 
     let with_player = painted(player());

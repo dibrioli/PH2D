@@ -1082,7 +1082,7 @@ fn every_number_row_the_section_paints_is_seeded_synced_and_routed() {
         ph2d_panel_inspector::ids::INSP_JOINT_COPY,
         ph2d_panel_inspector::ids::INSP_JOINT_PASTE,
         ids::INSP_LIVE_JOINT_SECTION,
-        ids::INSP_LIVE_JOINT_COLOR,
+        ids::INSP_LIVE_JOINT_GRIP,
         // ⚠️ A BARRA DE ROLAGEM do Inspector, e ela não é da §12: a seção só a
         // faz aparecer porque o conteúdo passa a não caber. O gate a acusou
         // sozinho, que é a direção segura de falha desta lista.

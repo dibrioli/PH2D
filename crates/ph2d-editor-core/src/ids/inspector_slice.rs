@@ -16,11 +16,11 @@
 use super::*;
 
 /// §5 9-Slice — o cabeçalho colapsável. Entra em [`super::LIVE_SECTIONS`] emparelhado com o
-/// ponto de cor abaixo, e é isso — **uma linha** — que o faz nascer vivo nas quatro faces
-/// (dobra · ponto · despacho do ponto · menu de contorno).
+/// a pega de arrasto abaixo, e é isso — **uma linha** — que o faz nascer vivo nas quatro faces
+/// (dobra · pega · despacho da pega · menu de botão direito).
 pub const INSP_LIVE_SLICE_SECTION: NodeId = hash_node_id("insp_live_slice_section");
-/// §5 9-Slice — ponto de cor do cabeçalho.
-pub const INSP_LIVE_SLICE_COLOR: NodeId = hash_node_id("insp_live_slice_color");
+/// §5 9-Slice — a pega de arrasto do cabeçalho.
+pub const INSP_LIVE_SLICE_GRIP: NodeId = hash_node_id("insp_live_slice_grip");
 
 // ⛔ Houve aqui um **«× Remove 9-Slice»**, retirado em 2026-08-22 pela pergunta do Enio: *«o
 // botao xRemove 9-slice ainda faz sentido?»*. Medido, não fazia — um sprite **sem** o componente

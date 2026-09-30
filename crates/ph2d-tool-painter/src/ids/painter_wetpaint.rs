@@ -17,10 +17,6 @@ use ph2d_tool_registry::hash_node_id;
 /// dot). `mark_collapsible_section`-registered in `crate::populate`.
 pub const PAINTER_WETPAINT_SECTION: NodeId = hash_node_id("painter_brush.wetpaint_section");
 
-/// The Wet Paint header's colour dot — a picker swatch (`register_picker_swatch`).
-pub const PAINTER_WETPAINT_SECTION_COLOR: NodeId =
-    hash_node_id("painter_brush.wetpaint_section_color");
-
 /// Wet Paint section **reset** icon button. `Click` → `reset_brush_wetpaint` — restores the
 /// section's defaults INCLUDING the enable (the Watercolor reset's exact semantics: disarming
 /// bakes the live water, since ending the session IS the bake).

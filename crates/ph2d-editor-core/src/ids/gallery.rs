@@ -54,27 +54,11 @@ pub const INSP_SECTION_ACTIONS: NodeId = hash_node_id("insp_section_actions");
 pub const INSP_SECTION_IDENTITY: NodeId = hash_node_id("insp_section_identity");
 pub const INSP_SECTION_CARD: NodeId = hash_node_id("insp_section_card");
 
-// Section header color-circle hit ids. Each section displays a
-// small colored circle on the right of its title (replacing the
-// old count chip); clicking the circle opens the global color
-// picker for that section. Index ordering matches `SECTION_IDS`.
-pub const INSP_SECTION_INPUTS_COLOR: NodeId = hash_node_id("insp_section_inputs_color");
-pub const INSP_SECTION_SLIDER_COLOR: NodeId = hash_node_id("insp_section_slider_color");
-pub const INSP_SECTION_SWITCHES_COLOR: NodeId = hash_node_id("insp_section_switches_color");
-pub const INSP_SECTION_LISTS_COLOR: NodeId = hash_node_id("insp_section_lists_color");
-pub const INSP_SECTION_VECTOR_COLOR: NodeId = hash_node_id("insp_section_vector_color");
-pub const INSP_SECTION_STATUS_COLOR: NodeId = hash_node_id("insp_section_status_color");
-pub const INSP_SECTION_COLOR_COLOR: NodeId = hash_node_id("insp_section_color_color");
-pub const INSP_SECTION_ACTIONS_COLOR: NodeId = hash_node_id("insp_section_actions_color");
-pub const INSP_SECTION_IDENTITY_COLOR: NodeId = hash_node_id("insp_section_identity_color");
-pub const INSP_SECTION_CARD_COLOR: NodeId = hash_node_id("insp_section_card_color");
-
 // Sprite Inspector v2 W6 (spec §15.7): Widget Gallery showcase section
 // for the new Inspector v2 foundational widgets (Rect2Editor,
 // BitmaskGrid32, NumericInputWithUnit, VariantEditor, KeyValueList,
 // SegmentedAdaptive).
 pub const INSP_SECTION_W6: NodeId = hash_node_id("insp_section_w6");
-pub const INSP_SECTION_W6_COLOR: NodeId = hash_node_id("insp_section_w6_color");
 /// Rect2Editor demo: X/Y/W/H number inputs.
 pub const INSP_SAMPLE_W6_RECT: [NodeId; 4] = [
     hash_node_id("insp_sample_w6_rect_x"),

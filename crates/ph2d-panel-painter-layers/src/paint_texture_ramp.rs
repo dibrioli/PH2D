@@ -19,7 +19,6 @@ use ph2d_tool_painter::{BrushSettings, RampAlphaMode, RampColorMode, RampInterp}
 fn grain_ramp_ids() -> RampIds {
     RampIds {
         section: ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_RAMP_SECTION,
-        section_color: ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_RAMP_SECTION_COLOR,
         reset: ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_RAMP_RESET,
         enable: ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE,
         mode: ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE,

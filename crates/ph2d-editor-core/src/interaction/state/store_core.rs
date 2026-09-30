@@ -84,6 +84,7 @@ impl WidgetStore {
             command_palette_query: String::new(),
             command_palette_toggled: false,
             section_outline_color: BTreeMap::new(),
+            section_prefs: Default::default(),
             notes_per_panel: BTreeMap::new(),
             last_context_menu: None,
             picker_target: None,

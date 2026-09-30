@@ -20,9 +20,9 @@
 
 use super::*;
 
-/// §11 Animation — o cabeçalho colapsável. Entra em [`super::LIVE_SECTIONS`] com o ponto de cor.
+/// §11 Animation — o cabeçalho colapsável. Entra em [`super::LIVE_SECTIONS`] com a pega de arrasto.
 pub const INSP_LIVE_ANIM_SECTION: NodeId = hash_node_id("insp_live_anim_section");
-/// §11 Animation — ponto de cor do cabeçalho.
-pub const INSP_LIVE_ANIM_COLOR: NodeId = hash_node_id("insp_live_anim_color");
+/// §11 Animation — a pega de arrasto do cabeçalho.
+pub const INSP_LIVE_ANIM_GRIP: NodeId = hash_node_id("insp_live_anim_grip");
 
 // ── O TOCADOR (o estado, e não a autoria) ────────────────────────────────────────────────────

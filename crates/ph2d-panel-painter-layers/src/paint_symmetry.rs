@@ -42,7 +42,6 @@ pub(crate) fn paint_symmetry_section(
         y,
         tr("panel.painter_layers.symmetry.symmetry"),
         ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_SECTION,
-        ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_SECTION_COLOR,
         ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_RESET,
     );
     let Some(fold) = fold else {

@@ -50,7 +50,6 @@ pub(crate) fn paint_wetpaint_section(
         y,
         tr("panel.painter_layers.wetpaint.wet_paint"),
         ph2d_tool_painter::ids::PAINTER_WETPAINT_SECTION,
-        ph2d_tool_painter::ids::PAINTER_WETPAINT_SECTION_COLOR,
         ph2d_tool_painter::ids::PAINTER_WETPAINT_RESET,
     );
     let Some(fold) = fold else {

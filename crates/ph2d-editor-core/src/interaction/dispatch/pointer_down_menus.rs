@@ -46,7 +46,12 @@ pub(super) fn handle_down_menus(
             return false;
         }
         let panel_under = store.panel_at(event.x, event.y);
-        let hit_id = hit.map(|(id, _)| id);
+        // ⭐ A PEGA de uma secção fica POR CIMA do cabeçalho (2026-09-29), logo o botão direito
+        //    sobre ela tem de abrir o menu da SECÇÃO — senão metade da largura do título abria o
+        //    menu de notas. Ela responde como o cabeçalho que move.
+        let hit_id = hit
+            .map(|(id, _)| id)
+            .map(|id| crate::ids::section_of_grip(id).unwrap_or(id));
         let is_section = hit_id.map(is_section_header_id).unwrap_or(false);
         // Note slot hit (id range 800..811): right-click on a
         // painted note opens the NoteBackground menu for that

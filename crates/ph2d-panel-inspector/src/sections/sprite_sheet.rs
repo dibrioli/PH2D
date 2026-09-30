@@ -56,22 +56,13 @@ pub(crate) fn paint_sprite_sheet_section(
     let row_gap = ph2d_tokens::control_gap_px();
     let label_color = resolve(ColorToken::Text2, theme);
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
-    let color_id = core_ids::INSP_LIVE_SHEET_COLOR;
-    let rgba = store
-        .widget_color(color_id)
-        .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default for unconfigured section accent
     let header = section_header(
         store,
         core_ids::INSP_LIVE_SHEET_SECTION,
         tr("panel.inspector.sprite_sheet.sprite_sheet"),
-    )
-    .color(rgba);
+    );
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
-    if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
-    {
-        hit_index.register(color_id, circle_rect);
-    }
     // ⚠️ **A DOBRA do corpo** — o escopo recorta a cena E o hit, e escala o `y` de saída, para
     //    que tudo o que está por baixo suba junto. Ver `SectionFold`.
     // ⚠️ **Pergunta o `t`, e NUNCA o `is_collapsed`:** ao clicar para fechar o flag semântico vira

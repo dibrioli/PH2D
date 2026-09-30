@@ -178,6 +178,9 @@ fn paint_inspector(
     // *Um `let` que só renomeia um campo não é código: é uma segunda lista da primeira.*
     let snaps = crate::paint_frame::LiveSnapshots::fetch();
     // ⭐⭐ Os dois CARTÕES do topo — o porquê vive no cabeçalho de [`crate::paint_cards`].
+    // ⚠️ O livro dos cartões começa ONDE O CONTEÚDO começa — sem isto os `Xs` de folga do topo
+    //    fechavam como um cartão vazio no quadro em que não há cartão de instância (2026-09-29).
+    ph2d_editor_core::widget::section_cards::skip_section_header(body_top_y + Spacing::Xs.px());
     let mut y = crate::paint_cards::paint_top_cards(
         scene,
         text_system,
@@ -202,17 +205,16 @@ fn paint_inspector(
     // ⭐⭐ **As TRÊS que TODO objecto tem** — §1 Name, §8 Visibility, §2 Transform. Ver o cabeçalho
     // de [`crate::paint_frame_shared::paint_core_sections`]: elas saíram daqui quando a secção
     // SIGNAL ACTIONS empurrou este orquestrador contra a catraca dele.
-    y = crate::paint_frame_shared::paint_core_sections(
-        scene,
-        text_system,
-        theme,
-        hit_index,
+    // ⭐⭐⭐ **O PLANO** (2026-09-29): os grupos EMPURRAM as secções deles e o plano pinta-as pela
+    //    ordem que o artista escolheu com a pega — ver [`crate::plano`]. A ordem em que os grupos
+    //    empurram é a NATURAL (a da paleta), e é ela que uma secção nunca movida segue.
+    let mut plano = crate::plano::Plano::new();
+    crate::paint_frame_shared::push_core_sections(
+        &mut plano,
         store,
-        &mut section_tops_y,
         inner_x,
         inner_w,
         body_top_y,
-        y,
         ROW_H_PX,
         SECTION_HEAD_H,
         snaps.name_present,
@@ -220,41 +222,24 @@ fn paint_inspector(
         snaps.transform_info.is_some(),
         &notes_per_section,
     );
-    // **As três seções da SPRITE** — §3 Render Source, §6 Color & Tint e §4 Sprite Sheet —
-    // moram em `paint_frame_shared` pelo mesmo cap que levou lá as compartilhadas. Elas andam
-    // juntas porque partilham a mesma porta: **só existem se houver sprite**.
-    y = crate::paint_frame_shared::paint_sprite_sections(
-        scene,
-        text_system,
-        theme,
-        hit_index,
+    // **As três da SPRITE** — só existem se houver sprite.
+    crate::paint_frame_shared::push_sprite_sections(
+        &mut plano,
         store,
-        &mut section_tops_y,
         inner_x,
         inner_w,
         body_top_y,
-        y,
         SECTION_HEAD_H,
         snaps.sprite_info.as_ref(),
         &notes_per_section,
     );
-    // **As quatro seções COMPARTILHADAS** — §5 9-Slice, §7 Ordering, §9 Sampling e §10 Material
-    // & Blend — moram em `paint_frame`, como a família da física e pela mesma razão: este
-    // orquestrador está numa catraca que só desce, e a §5 (2026-08-21) empurrou-o para 436
-    // contra 414. As quatro andam juntas porque partilham a mesma porta — qualquer entidade com
-    // `Transform` — e porque os seus quatro slots de nota (6..9) ficam obviamente distintos ao
-    // lado uns dos outros.
-    y = crate::paint_frame_shared::paint_shared_sections(
-        scene,
-        text_system,
-        theme,
-        hit_index,
+    // **As quatro COMPARTILHADAS** — qualquer entidade com `Transform`.
+    crate::paint_frame_shared::push_shared_sections(
+        &mut plano,
         store,
-        &mut section_tops_y,
         inner_x,
         inner_w,
         body_top_y,
-        y,
         SECTION_HEAD_H,
         snaps.slice_info.as_ref(),
         snaps.ordering_info.as_ref(),
@@ -262,17 +247,12 @@ fn paint_inspector(
         snaps.blend_info.as_ref(),
         &notes_per_section,
     );
-    y = crate::paint_frame::paint_physics_sections(
-        scene,
-        text_system,
-        theme,
-        hit_index,
+    crate::paint_frame::push_physics_sections(
+        &mut plano,
         store,
-        &mut section_tops_y,
         inner_x,
         inner_w,
         body_top_y,
-        y,
         SECTION_HEAD_H,
         snaps.physics_info.as_ref(),
         snaps.joint_info.as_ref(),
@@ -280,23 +260,13 @@ fn paint_inspector(
         snaps.player_info.as_ref(),
         &notes_per_section,
     );
-    // **AS DUAS SEÇÕES COM ESTADO DE PAINEL** — a §11 Animation e a §12 Sockets/Anchors são as
-    // únicas cuja pintura depende de qual LINHA está aberta, e por isso saíram juntas para
-    // `paint_frame_shared::paint_stateful_sections`.
-    //
-    // ⚠️ Saíram porque a §11 levou este orquestrador de 348 a 365 contra uma tolerância que **só
-    // desce** — e levar só a nova devolveria o número a 348 exactos, que é ficar no mesmo sítio.
-    y = crate::paint_optional::paint_optional_sections(
-        scene,
-        text_system,
-        theme,
-        hit_index,
+    // **As OPCIONAIS** — pela ordem da paleta (ver `paint_familias`).
+    crate::paint_optional::push_optional_sections(
+        &mut plano,
         store,
-        &mut section_tops_y,
         inner_x,
         inner_w,
         body_top_y,
-        y,
         SECTION_HEAD_H,
         anim_selected,
         anchor_selected,
@@ -311,6 +281,13 @@ fn paint_inspector(
         &snaps,
         &notes_per_section,
     );
+    let mut tela = crate::plano::Tela {
+        scene: &mut *scene,
+        text: &mut *text_system,
+        hit: &mut *hit_index,
+        tops: &mut section_tops_y,
+    };
+    y = plano.run(&mut tela, store, theme, inner_x, inner_w, SECTION_HEAD_H, y);
     if snaps.any_section {
         crate::paint_frame::paint_trailing_notes(
             scene,

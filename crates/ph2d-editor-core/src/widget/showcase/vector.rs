@@ -31,7 +31,6 @@ pub(super) fn paint_vector_section(
         w,
         y,
         ids::INSP_SECTION_VECTOR,
-        ids::INSP_SECTION_VECTOR_COLOR,
         "Vector",
         2,
     );

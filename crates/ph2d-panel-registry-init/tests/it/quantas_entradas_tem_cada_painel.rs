@@ -1299,7 +1299,9 @@ const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
     //    o `Sort Point`) passaram pela porta da ESCOLHA e são peças de um grupo DECLARADO — um
     //    composto conta uma vez. ⚠️ O `7` é o que a catraca mediu; a partição por secção não foi
     //    atribuída uma a uma.
-    ("inspector", 81),
+    // ⬇️ `81 → 78` em 2026-09-29: os PONTOS DE COR dos cabeçalhos saíram (ordem do dono); a pega que
+    //    ocupa o lugar deles é um alvo de ARRASTO, não um comando.
+    ("inspector", 78),
     // ⛔⛔ `110` botões, **`4`** comandos: fechar · importar · exportar · e o *elo*, que é pintado
     //    uma vez por linha por decisão escrita no pintor. O painel é uma LISTA, não uma dívida.
     ("tokens", 4),
@@ -2310,7 +2312,11 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     // ⬇️ `918 → 822` em 2026-09-23 pela coluna ÚNICA do painel (ordem do dono): com a coluna do nome
     //    a mesma em todas as secções, escolhas que antes viravam PALETA por não caberem ao lado de
     //    um nome largo passam a caber na fileira dele. *Menos altura sem uma linha a menos.*
-    ("inspector", 822.0),
+    // ⬆️ `822 → 831` em 2026-09-29, e NÃO é uma secção a nascer aberta: é o VÃO ENTRE CARTÕES que o
+    //    dono pediu (*«não temos padding entre cards de seções»*) — `section_gap_px` foi de `8` para
+    //    `12`, e cada fronteira de cartão à vista na abertura custa esses `4 px`. ⚠️ A política de
+    //    dobra não mudou: continuam abertas só as que já o eram.
+    ("inspector", 831.0),
     // ⭐ `2 709 → 1 529`: as quatro secções que chegaram DEPOIS da decisão do dono nascem
     //    recolhidas. ⛔ Ele não cabe, e o que falta é DECISÃO: o `Texture` (`450`) e o `Stroke`
     //    (`368`) são dele, e com tudo recolhido o painel mediria `736`.

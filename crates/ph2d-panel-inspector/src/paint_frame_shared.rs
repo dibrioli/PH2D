@@ -10,13 +10,14 @@
 //! porque manter os quatro slots de nota (6..9) adjacentes é o que os torna obviamente distintos.
 
 use ph2d_editor_core::ids;
-use ph2d_editor_core::interaction::{HitIndex, NoteData, WidgetStore};
-use ph2d_editor_core::widget::section_cards::close_section;
+use ph2d_editor_core::interaction::{NoteData, WidgetStore};
 
-use ph2d_text::TextSystem;
-use ph2d_vector::VectorScene;
+use crate::plano::{Plano, emoldurada};
 
-use super::paint_frame::{begin_section, finish_section};
+/// A fatia de notas de uma secção.
+fn slot(notes: &[Vec<(usize, NoteData)>], i: usize) -> &[(usize, NoteData)] {
+    notes.get(i).map_or(&[][..], |v| &v[..])
+}
 
 /// ⭐⭐ **As TRÊS seções que TODO objecto tem** — §1 Name, §8 Visibility e §2 Transform.
 ///
@@ -31,26 +32,24 @@ use super::paint_frame::{begin_section, finish_section};
 /// ⚠️ **Elas usam `begin_section`/`finish_section` directamente**, e não o `live_section!` do
 /// orquestrador: aquele macro captura meia dúzia de locais do corpo dele, e é exactamente por
 /// isso que este trio nunca tinha saído. Aqui a captura vira argumentos, como nas irmãs.
+///
+/// ⭐ **Desde 2026-09-29 elas EMPURRAM-SE para o [`Plano`]** em vez de se pintarem — o plano é que
+/// as pinta, pela ordem que o artista escolheu. O Nome e a Visibilidade continuam no topo (são as
+/// [`ph2d_editor_core::interaction::SECCOES_FIXAS`]).
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn paint_core_sections(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: ph2d_tokens::Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
+pub(crate) fn push_core_sections<'a>(
+    plano: &mut Plano<'a>,
+    store: &'a WidgetStore,
     inner_x: f32,
     inner_w: f32,
     body_top_y: f32,
-    mut y: f32,
     row_h: f32,
     header_h: f32,
     name_present: bool,
     visibility: bool,
     transform: bool,
-    notes: &[Vec<(usize, NoteData)>],
-) -> f32 {
-    let slot = |i: usize| notes.get(i).map_or(&[][..], |v| &v[..]);
+    notes: &'a [Vec<(usize, NoteData)>],
+) {
     for (presente, id, banda, idx) in [
         (name_present, ids::INSP_LIVE_NAME_SECTION, row_h, 0usize),
         (visibility, ids::INSP_LIVE_VISIBILITY_SECTION, row_h, 1),
@@ -59,69 +58,34 @@ pub(crate) fn paint_core_sections(
         if !presente {
             continue;
         }
-        let y_before = y;
-        begin_section(
-            section_tops_y,
-            hit_index,
-            inner_x,
-            inner_w,
-            body_top_y,
-            y_before,
-            id,
-            banda,
-        );
         // ⚠️ **O corpo sai de um `match` sobre o ID**, e não de três blocos copiados: as três
-        // molduras são idênticas, e o que muda é UMA chamada. Escrevê-las três vezes seria a
-        // forma de a quarta nascer com a moldura ligeiramente diferente.
-        let new_y = if id == ids::INSP_LIVE_NAME_SECTION {
-            crate::sections::paint_entity_name_row(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                inner_x,
-                inner_w,
-                y,
-            )
-        } else if id == ids::INSP_LIVE_VISIBILITY_SECTION {
-            crate::paint::visibility_body(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                inner_x,
-                inner_w,
-                y,
-            )
-        } else {
-            crate::sections::paint_transform_section(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                inner_x,
-                inner_w,
-                y,
-            )
-        };
-        y = finish_section(
-            scene,
-            text_system,
-            hit_index,
+        // molduras são idênticas, e o que muda é UMA chamada.
+        emoldurada(
+            plano,
+            id,
             store,
             inner_x,
             inner_w,
-            id,
-            y_before,
-            new_y,
-            slot(idx),
+            body_top_y,
+            banda,
+            slot(notes, idx),
+            move |c, t, y| {
+                if id == ids::INSP_LIVE_NAME_SECTION {
+                    crate::sections::paint_entity_name_row(
+                        c.scene, c.text, t, c.hit, store, inner_x, inner_w, y,
+                    )
+                } else if id == ids::INSP_LIVE_VISIBILITY_SECTION {
+                    crate::paint::visibility_body(
+                        c.scene, c.text, t, c.hit, store, inner_x, inner_w, y,
+                    )
+                } else {
+                    crate::sections::paint_transform_section(
+                        c.scene, c.text, t, c.hit, store, inner_x, inner_w, y,
+                    )
+                }
+            },
         );
-        y = close_section(scene, theme, inner_x, inner_w, y);
     }
-    y
 }
 
 /// **§5 9-Slice + §7 Ordering + §9 Sampling + §10 Material & Blend**, moldura e tudo.
@@ -134,181 +98,92 @@ pub(crate) fn paint_core_sections(
 ///
 /// Devolve o novo `y`.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn paint_shared_sections(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: ph2d_tokens::Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
+pub(crate) fn push_shared_sections<'a>(
+    plano: &mut Plano<'a>,
+    store: &'a WidgetStore,
     inner_x: f32,
     inner_w: f32,
     body_top_y: f32,
-    mut y: f32,
     header_h: f32,
-    slice: Option<&ph2d_editor_core::screens::hero::InspectorSliceInfo>,
-    ordering: Option<&ph2d_editor_core::screens::hero::InspectorOrderingInfo>,
-    sampling: Option<&ph2d_editor_core::screens::hero::InspectorSamplingInfo>,
-    blend: Option<&ph2d_editor_core::screens::hero::InspectorBlendInfo>,
-    notes: &[Vec<(usize, NoteData)>],
-) -> f32 {
-    let slot = |i: usize| notes.get(i).map_or(&[][..], |v| &v[..]);
-    // §5 9-Slice — LOGO A SEGUIR à Sprite Sheet, que é a vizinhança que a explica: as duas
-    // descrevem como os pixels da fonte se distribuem pelo quad. ⚠️ Aparece para toda sprite,
-    // COM ou SEM o componente — sem ele mostra só o «+ Add 9-Slice». Uma seção que só existe
-    // depois de a feature estar ligada é uma feature que ninguém descobre.
+    slice: Option<&'a ph2d_editor_core::screens::hero::InspectorSliceInfo>,
+    ordering: Option<&'a ph2d_editor_core::screens::hero::InspectorOrderingInfo>,
+    sampling: Option<&'a ph2d_editor_core::screens::hero::InspectorSamplingInfo>,
+    blend: Option<&'a ph2d_editor_core::screens::hero::InspectorBlendInfo>,
+    notes: &'a [Vec<(usize, NoteData)>],
+) {
+    // §5 9-Slice — LOGO A SEGUIR à Sprite Sheet, que é a vizinhança que a explica. ⚠️ Aparece
+    // para toda sprite, COM ou SEM o componente — sem ele mostra só o «+ Add 9-Slice».
     if let Some(sl) = slice {
-        y = close_section(scene, theme, inner_x, inner_w, y);
-        let y_before = y;
-        begin_section(
-            section_tops_y,
-            hit_index,
+        emoldurada(
+            plano,
+            ids::INSP_LIVE_SLICE_SECTION,
+            store,
             inner_x,
             inner_w,
             body_top_y,
-            y_before,
-            ids::INSP_LIVE_SLICE_SECTION,
             header_h,
-        );
-        let new_y = crate::sections::slice_nine::paint_slice_section(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            inner_x,
-            inner_w,
-            y,
-            sl,
-        );
-        y = finish_section(
-            scene,
-            text_system,
-            hit_index,
-            store,
-            inner_x,
-            inner_w,
-            ids::INSP_LIVE_SLICE_SECTION,
-            y_before,
-            new_y,
-            slot(6),
+            slot(notes, 6),
+            move |c, t, y| {
+                crate::sections::slice_nine::paint_slice_section(
+                    c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, sl,
+                )
+            },
         );
     }
     // §7 Ordering / Sorting — vale para qualquer entidade com Transform, não só sprites.
     if let Some(ord) = ordering {
-        y = close_section(scene, theme, inner_x, inner_w, y);
-        let y_before = y;
-        begin_section(
-            section_tops_y,
-            hit_index,
+        emoldurada(
+            plano,
+            ids::INSP_LIVE_ORDERING_SECTION,
+            store,
             inner_x,
             inner_w,
             body_top_y,
-            y_before,
-            ids::INSP_LIVE_ORDERING_SECTION,
             header_h,
-        );
-        let new_y = crate::sections::paint_ordering_section(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            inner_x,
-            inner_w,
-            y,
-            ord,
-        );
-        y = finish_section(
-            scene,
-            text_system,
-            hit_index,
-            store,
-            inner_x,
-            inner_w,
-            ids::INSP_LIVE_ORDERING_SECTION,
-            y_before,
-            new_y,
-            slot(7),
+            slot(notes, 7),
+            move |c, t, y| {
+                crate::sections::paint_ordering_section(
+                    c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, ord,
+                )
+            },
         );
     }
     // §9 Sampling — irmã da §7.
     if let Some(samp) = sampling {
-        y = close_section(scene, theme, inner_x, inner_w, y);
-        let y_before = y;
-        begin_section(
-            section_tops_y,
-            hit_index,
+        emoldurada(
+            plano,
+            ids::INSP_LIVE_SAMPLING_SECTION,
+            store,
             inner_x,
             inner_w,
             body_top_y,
-            y_before,
-            ids::INSP_LIVE_SAMPLING_SECTION,
             header_h,
-        );
-        let new_y = crate::sections::paint_sampling_section(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            inner_x,
-            inner_w,
-            y,
-            samp,
-        );
-        y = finish_section(
-            scene,
-            text_system,
-            hit_index,
-            store,
-            inner_x,
-            inner_w,
-            ids::INSP_LIVE_SAMPLING_SECTION,
-            y_before,
-            new_y,
-            slot(8),
+            slot(notes, 8),
+            move |c, t, y| {
+                crate::sections::paint_sampling_section(
+                    c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, samp,
+                )
+            },
         );
     }
     // §10 Material & Blend — irmã da §9.
     if let Some(bl) = blend {
-        y = close_section(scene, theme, inner_x, inner_w, y);
-        let y_before = y;
-        begin_section(
-            section_tops_y,
-            hit_index,
+        emoldurada(
+            plano,
+            ids::INSP_LIVE_BLEND_SECTION,
+            store,
             inner_x,
             inner_w,
             body_top_y,
-            y_before,
-            ids::INSP_LIVE_BLEND_SECTION,
             header_h,
-        );
-        let new_y = crate::sections::paint_material_blend_section(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            inner_x,
-            inner_w,
-            y,
-            bl,
-        );
-        y = finish_section(
-            scene,
-            text_system,
-            hit_index,
-            store,
-            inner_x,
-            inner_w,
-            ids::INSP_LIVE_BLEND_SECTION,
-            y_before,
-            new_y,
-            slot(9),
+            slot(notes, 9),
+            move |c, t, y| {
+                crate::sections::paint_material_blend_section(
+                    c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, bl,
+                )
+            },
         );
     }
-    y
 }
 
 /// **§12 Sockets / Named Anchors** (ADR-0072) — a última seção, e a única que precisa do
@@ -318,70 +193,44 @@ pub(crate) fn paint_shared_sections(
 /// apontar para além do fim, e um editor aberto sobre uma linha que já não existe é a forma mais
 /// direta de escrever na âncora errada.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn paint_anchor_section(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: ph2d_tokens::Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
+pub(crate) fn push_anchor_section<'a>(
+    plano: &mut Plano<'a>,
+    store: &'a WidgetStore,
     inner_x: f32,
     inner_w: f32,
     body_top_y: f32,
-    mut y: f32,
     header_h: f32,
-    anchor: Option<&ph2d_editor_core::screens::hero::InspectorAnchorInfo>,
+    anchor: Option<&'a ph2d_editor_core::screens::hero::InspectorAnchorInfo>,
     selected: &mut usize,
-    notes: &[Vec<(usize, NoteData)>],
-) -> f32 {
+    notes: &'a [Vec<(usize, NoteData)>],
+) {
     let Some(anch) = anchor else {
         // Sem snapshot não há ficha aberta — e o gizmo do canvas tem de saber disso, senão ele
         // continua a oferecer alças de uma âncora que a seção já não mostra.
         crate::state::set_open_anchor_row(None);
-        return y;
+        return;
     };
     *selected = (*selected).min(anch.rows.len().saturating_sub(1));
     // ⚠️ **A linha aberta viaja para a SHELL aqui** — é o que dá alças ao gizmo do canvas. Sai da
     // PINTURA e não do despacho de propósito: a pintura corre todo o quadro e conhece o estado
-    // final (já corrigido contra o tamanho da lista, na linha acima), enquanto o despacho só
-    // corre quando alguém clica.
+    // final (já corrigido contra o tamanho da lista, na linha acima).
     crate::state::set_open_anchor_row((!anch.rows.is_empty()).then_some(*selected));
-    y = close_section(scene, theme, inner_x, inner_w, y);
-    let y_before = y;
-    begin_section(
-        section_tops_y,
-        hit_index,
+    let sel = *selected;
+    emoldurada(
+        plano,
+        ids::INSP_LIVE_ANCHOR_SECTION,
+        store,
         inner_x,
         inner_w,
         body_top_y,
-        y_before,
-        ids::INSP_LIVE_ANCHOR_SECTION,
         header_h,
+        slot(notes, 14),
+        move |c, t, y| {
+            crate::sections::anchors::paint_anchors_section(
+                c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, anch, sel,
+            )
+        },
     );
-    let new_y = crate::sections::anchors::paint_anchors_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        inner_x,
-        inner_w,
-        y,
-        anch,
-        *selected,
-    );
-    finish_section(
-        scene,
-        text_system,
-        hit_index,
-        store,
-        inner_x,
-        inner_w,
-        ids::INSP_LIVE_ANCHOR_SECTION,
-        y_before,
-        new_y,
-        notes.get(14).map_or(&[][..], |v| &v[..]),
-    )
 }
 
 /// **§3 Render Source + §6 Color & Tint + §4 Sprite Sheet** — as três que só existem quando há
@@ -391,90 +240,44 @@ pub(crate) fn paint_anchor_section(
 /// Sockets/Anchors empurrou-o para 403 contra uma catraca de 387. *A cura de um teto estourado
 /// é o corte.*
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn paint_sprite_sections(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: ph2d_tokens::Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
+pub(crate) fn push_sprite_sections<'a>(
+    plano: &mut Plano<'a>,
+    store: &'a WidgetStore,
     inner_x: f32,
     inner_w: f32,
     body_top_y: f32,
-    mut y: f32,
     header_h: f32,
-    sprite: Option<&ph2d_editor_core::screens::hero::InspectorSpriteInfo>,
-    notes: &[Vec<(usize, NoteData)>],
-) -> f32 {
+    sprite: Option<&'a ph2d_editor_core::screens::hero::InspectorSpriteInfo>,
+    notes: &'a [Vec<(usize, NoteData)>],
+) {
     let Some(info) = sprite else {
-        return y;
+        return;
     };
-    let slot = |i: usize| notes.get(i).map_or(&[][..], |v| &v[..]);
     for (section_id, note_slot, which) in [
         (ids::INSP_LIVE_RENDER_SECTION, 3usize, 0u8),
         (ids::INSP_LIVE_COLOR_SECTION, 4, 1),
         (ids::INSP_LIVE_SHEET_SECTION, 5, 2),
     ] {
-        if which > 0 {
-            y = close_section(scene, theme, inner_x, inner_w, y);
-        }
-        let y_before = y;
-        begin_section(
-            section_tops_y,
-            hit_index,
-            inner_x,
-            inner_w,
-            body_top_y,
-            y_before,
+        emoldurada(
+            plano,
             section_id,
-            header_h,
-        );
-        let new_y = match which {
-            0 => crate::sections::paint_render_source_section(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                inner_x,
-                inner_w,
-                y,
-                info,
-            ),
-            1 => crate::sections::paint_color_tint_section(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                inner_x,
-                inner_w,
-                y,
-            ),
-            _ => crate::sections::paint_sprite_sheet_section(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                inner_x,
-                inner_w,
-                y,
-                info,
-            ),
-        };
-        y = finish_section(
-            scene,
-            text_system,
-            hit_index,
             store,
             inner_x,
             inner_w,
-            section_id,
-            y_before,
-            new_y,
-            slot(note_slot),
+            body_top_y,
+            header_h,
+            slot(notes, note_slot),
+            move |c, t, y| match which {
+                0 => crate::sections::paint_render_source_section(
+                    c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, info,
+                ),
+                1 => crate::sections::paint_color_tint_section(
+                    c.scene, c.text, t, c.hit, store, inner_x, inner_w, y,
+                ),
+                _ => crate::sections::paint_sprite_sheet_section(
+                    c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, info,
+                ),
+            },
         );
     }
-    y
 }

@@ -54,7 +54,6 @@ pub(crate) fn paint_watercolor_section(
         y,
         tr("panel.painter_layers.watercolor.watercolor"),
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_SECTION,
-        ph2d_tool_painter::ids::PAINTER_WATERCOLOR_SECTION_COLOR,
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_RESET,
     );
     let Some(fold) = fold else {

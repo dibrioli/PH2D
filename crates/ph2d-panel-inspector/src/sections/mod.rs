@@ -185,10 +185,21 @@ pub(crate) use wheel::paint_wheel_section;
 /// local (ele decide se o CORPO é pintado, que é outra pergunta) — passá-lo aqui seria pedir ao
 /// chamador que mantivesse duas respostas coerentes, e é assim que nasce um cabeçalho a dizer
 /// aberto sobre um corpo escondido. As duas leituras são puras e do mesmo quadro.
+///
+/// ⭐⭐ **E é ela que põe a PEGA** (2026-09-29): toda secção que se arrasta ganha os dez pontos de
+/// uma vez, incluindo as dezassete que nunca tiveram o ponto de cor. A pega acende sob o rato e
+/// durante o arrasto da própria secção. ⛔ O Nome e a Visibilidade não a têm — não se arrastam.
 pub(crate) fn section_header(store: &WidgetStore, id: NodeId, label: &str) -> SectionHeader {
-    SectionHeader::new(id, label)
+    let h = SectionHeader::new(id, label)
         .collapsible(!store.is_collapsed(id))
-        .open_t(store.section_open_live(id))
+        .open_t(store.section_open_live(id));
+    match ph2d_editor_core::ids::grip_of(id) {
+        Some(grip) if !ph2d_editor_core::interaction::SECCOES_FIXAS.contains(&id) => {
+            let arrastando = store.section_drag().is_some_and(|d| d.section == id);
+            h.grip(arrastando || store.hot_id() == Some(grip))
+        }
+        _ => h,
+    }
 }
 
 /// ⭐⭐ **A altura que este texto vai de facto ocupar**, nunca menos que uma linha.

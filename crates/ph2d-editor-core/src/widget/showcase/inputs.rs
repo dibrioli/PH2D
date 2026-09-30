@@ -25,7 +25,6 @@ pub(super) fn paint_inputs_section(
         w,
         y,
         ids::INSP_SECTION_INPUTS,
-        ids::INSP_SECTION_INPUTS_COLOR,
         "Inputs",
         4,
     );

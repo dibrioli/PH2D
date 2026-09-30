@@ -68,7 +68,6 @@ pub(crate) fn paint_texture_section(
             y,
             tr("panel.painter_layers.grain.grain"),
             ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_SECTION,
-            ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_SECTION_COLOR,
             ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RESET,
         )
     };

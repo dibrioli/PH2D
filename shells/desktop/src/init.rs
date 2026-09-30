@@ -367,6 +367,7 @@ fn boot_hero_screen(
         // preferências — instalar depois faria o primeiro quadro desenhar a arrumação de omissão e
         // saltar para a do artista no seguinte.
         crate::layout_persist::install_saved(&mut hero, tools, &crate::layout_persist::load());
+        crate::layout_persist::load_sections(&mut hero.store);
         Some(hero)
     } else {
         None

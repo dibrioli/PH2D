@@ -132,6 +132,10 @@ pub(super) fn dispatch_move<'frame>(
     if store.panel_row_drag().is_some() {
         store.update_panel_row_drag(event.x, event.y);
     }
+    // ⭐ O arrasto de uma secção pela pega — o painel desenha a marca da queda a partir daqui.
+    if store.section_drag().is_some() {
+        store.update_section_drag(event.y);
+    }
     // M14.A: NumberInput drag-or-slider. When a Down on the
     // NumberInput body seeded `number_input_drag`, every Move
     // first checks distance against the threshold; once

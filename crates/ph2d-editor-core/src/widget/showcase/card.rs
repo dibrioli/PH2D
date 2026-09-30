@@ -25,7 +25,6 @@ pub(super) fn paint_card_section(
         w,
         y,
         ids::INSP_SECTION_CARD,
-        ids::INSP_SECTION_CARD_COLOR,
         "Card",
         1,
     );

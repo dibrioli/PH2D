@@ -84,7 +84,7 @@ pub(super) fn paint_part_face(
         w,
         yy,
         tr("panel.inspector.physics.collider"),
-        core_ids::INSP_LIVE_PHYSICS_COLOR,
+        core_ids::INSP_LIVE_PHYSICS_GRIP,
         &ids::INSP_PHYS_SHAPE,
         &super::physics::SHAPE_LABELS.map(TextKey::tr),
         info.shape_tag,

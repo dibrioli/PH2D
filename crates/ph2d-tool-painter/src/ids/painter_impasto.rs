@@ -19,10 +19,6 @@ use ph2d_tool_registry::hash_node_id;
 /// Collapsible **Impasto** section header (ALL-CAPS label + collapse chevron + assignable colour dot).
 pub const PAINTER_IMPASTO_SECTION: NodeId = hash_node_id("painter_brush.impasto_section");
 
-/// The Impasto header's colour dot — a picker swatch (`register_picker_swatch`).
-pub const PAINTER_IMPASTO_SECTION_COLOR: NodeId =
-    hash_node_id("painter_brush.impasto_section_color");
-
 /// Impasto section **reset** icon button. `Click` → `reset_brush_impasto`.
 pub const PAINTER_IMPASTO_RESET: NodeId = hash_node_id("painter_brush.impasto_reset");
 

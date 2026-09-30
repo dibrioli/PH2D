@@ -59,16 +59,13 @@
 
 use crate::paint::{fill_rounded_rect, resolve};
 use crate::zones::Rect;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme};
+use ph2d_tokens::{ColorToken, Radius, Theme};
 use ph2d_vector::VectorScene;
 
-/// A folga que o cartão ganha para fora do conteúdo que envolve.
-///
-/// ⚠️ **Ela é o `Spacing::Xs` da casa (4 px) porque é a MESMA pergunta do vão entre linhas** — o
-/// `separation_margin` do Godot, que a wave 8 pôs numa porta. Um número próprio aqui seria a
-/// oitava resposta a uma pergunta que já tem uma.
+/// A folga que o cartão ganha para fora do conteúdo que envolve — a porta
+/// [`ph2d_tokens::card_pad_px`], lida também pelo vão entre dois cartões.
 fn card_pad() -> f32 {
-    Spacing::Xs.px()
+    ph2d_tokens::card_pad_px()
 }
 
 /// ⭐ **A que profundidade um cartão está** — e é só isso que separa uma secção de uma subsecção.
@@ -105,7 +102,7 @@ pub struct SectionCards {
     theme: Theme,
     /// Onde começa o cartão que ainda não fechou.
     cursor: f32,
-    rects: Vec<(Rect, CardDepth)>,
+    rects: Vec<(Rect, CardDepth, Theme)>,
 }
 
 impl SectionCards {
@@ -146,7 +143,13 @@ impl SectionCards {
                 w + pad * 2.0,
                 (y - self.cursor) + pad * 2.0,
             );
-            self.rects.push((r, depth));
+            self.rects.push((r, depth, self.theme));
+        } else {
+            // ⭐ **Fechar sem nada pintado desde o último fecho é um NO-OP** (2026-09-29): o
+            //    Inspector passou a fechar ANTES de cada secção por um corredor só, e as molduras
+            //    antigas ainda fecham dentro de si — sem esta guarda, cada fecho duplicado somava
+            //    mais um vão, e duas secções vizinhas ficavam a distâncias diferentes.
+            return y;
         }
         // ⭐ **O vão entre dois cartões tem NOME desde a wave 19** — `ph2d_tokens::section_gap_px()`,
         //    contado do fim do CONTEÚDO, com o `pad` de baixo do cartão a ser metade dele. Ele
@@ -160,8 +163,8 @@ impl SectionCards {
 
     fn paint_into(&self, scene: &mut VectorScene) {
         let radius = crate::paint::frame_radius(self.theme, Radius::Md.px());
-        for (rect, depth) in &self.rects {
-            fill_rounded_rect(scene, *rect, radius, resolve(depth.token(), self.theme));
+        for (rect, depth, theme) in &self.rects {
+            fill_rounded_rect(scene, *rect, radius, resolve(depth.token(), *theme));
         }
     }
 }
@@ -274,6 +277,33 @@ fn close_with(
     };
     LEDGER.with(|l| l.borrow_mut().push((cards, parked)));
     next
+}
+
+/// ⭐ **Estamos dentro de um corpo com cartões?** — a pergunta do cabeçalho de secção, que deixa
+/// de pintar a placa de «dobrada» quando o cartão já é a placa (2026-09-29).
+#[must_use]
+pub fn inside_cards() -> bool {
+    LEDGER.with(|l| !l.borrow().is_empty())
+}
+
+/// ⭐⭐ **Os cartões desta faixa vertical são pintados neste TEMA** — o da secção, quando o artista
+/// lhe escolheu um pelo botão direito no título (ordem do dono, 2026-09-29: *«a cada seção
+/// poderemos atribuir o theme que quisermos»*).
+///
+/// Todo cartão cujo MEIO cai em `y0..=y1` muda de tema — o da secção e os das subsecções dela, que
+/// assentam no do pai e têm de ser do mesmo sistema de cores. ⚠️ Chama-se DEPOIS de o cartão
+/// fechar: é o fecho que o regista. Fora de um corpo com cartões é um no-op.
+pub fn retheme(y0: f32, y1: f32, theme: Theme) {
+    LEDGER.with(|l| {
+        if let Some((c, _)) = l.borrow_mut().last_mut() {
+            for (r, _, t) in &mut c.rects {
+                let meio = r.y + r.h * 0.5;
+                if meio >= y0 && meio <= y1 {
+                    *t = theme;
+                }
+            }
+        }
+    });
 }
 
 /// ⚠️ **Um cabeçalho fica FORA do cartão** — o título de uma secção vive sobre o painel, e o de

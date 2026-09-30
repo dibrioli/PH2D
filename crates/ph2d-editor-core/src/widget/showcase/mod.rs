@@ -28,12 +28,11 @@ use crate::widget::{
     DropdownState, LevelMeter, ListItem, ListItemState, NumberInput, ProgressBar, RadioGroup,
     RadioOption, RadioOrientation, SectionHeader, SliderState, Spinner, SwatchSize, TabItem, Tabs,
     TabsVariant, Tag, TagState, TagTone, TextArea, TextInput, TextInputState, Toggle, ToggleState,
-    TreeNode, TreeView, color_circle_hit_rect, paint_avatar, paint_button, paint_card,
-    paint_checkbox, paint_color_swatch, paint_combobox_with_state, paint_level_meter,
-    paint_list_item, paint_number_input_with_buffer, paint_progress_bar,
-    paint_radio_group_with_labels, paint_section_header, paint_slider_with_chip, paint_spinner,
-    paint_tabs, paint_tag, paint_text_area_with_state, paint_text_input_with_buffer, paint_toggle,
-    paint_tree_view,
+    TreeNode, TreeView, paint_avatar, paint_button, paint_card, paint_checkbox, paint_color_swatch,
+    paint_combobox_with_state, paint_level_meter, paint_list_item, paint_number_input_with_buffer,
+    paint_progress_bar, paint_radio_group_with_labels, paint_section_header,
+    paint_slider_with_chip, paint_spinner, paint_tabs, paint_tag, paint_text_area_with_state,
+    paint_text_input_with_buffer, paint_toggle, paint_tree_view,
 };
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
@@ -104,22 +103,6 @@ pub const NOTE_BODY_IDS: [NodeId; 12] = [
     ids::INSP_NOTE_BODY_11,
 ];
 
-/// Color-circle hit NodeIds — one per section header, in the same
-/// order as `SECTION_IDS`.
-pub const SECTION_COLOR_IDS: [NodeId; 11] = [
-    ids::INSP_SECTION_INPUTS_COLOR,
-    ids::INSP_SECTION_SLIDER_COLOR,
-    ids::INSP_SECTION_SWITCHES_COLOR,
-    ids::INSP_SECTION_LISTS_COLOR,
-    ids::INSP_SECTION_VECTOR_COLOR,
-    ids::INSP_SECTION_STATUS_COLOR,
-    ids::INSP_SECTION_COLOR_COLOR,
-    ids::INSP_SECTION_ACTIONS_COLOR,
-    ids::INSP_SECTION_IDENTITY_COLOR,
-    ids::INSP_SECTION_CARD_COLOR,
-    ids::INSP_SECTION_W6_COLOR,
-];
-
 pub const RADIO_GROUP_IDS: [NodeId; 3] = [
     ids::INSP_SAMPLE_RADIO_A,
     ids::INSP_SAMPLE_RADIO_B,
@@ -169,23 +152,14 @@ pub(super) fn paint_collapsible_header(
     w: f32,
     y: f32,
     id: NodeId,
-    color_id: NodeId,
     label: &str,
     _count: u32,
 ) -> (f32, bool) {
     let r = Rect::new(x, y, w, SECTION_HEAD_H);
     let is_collapsed = store.is_collapsed(id);
     hit_index.register(id, r);
-    let rgba = store
-        .widget_color(color_id)
-        .unwrap_or([0x88, 0x88, 0x88, 0xFF]);
-    let header = SectionHeader::new(id, label)
-        .color(rgba)
-        .collapsible(!is_collapsed);
+    let header = SectionHeader::new(id, label).collapsible(!is_collapsed);
     paint_section_header(&header, r, scene, text_system, theme);
-    if let Some(circle_rect) = color_circle_hit_rect(&header, r) {
-        hit_index.register(color_id, circle_rect);
-    }
     (y + SECTION_HEAD_H + Spacing::Xs.px(), !is_collapsed)
 }
 
@@ -348,7 +322,7 @@ pub fn apply_showcase_event(
             }
             return true;
         }
-        if SECTION_COLOR_IDS.contains(&id) || id == crate::ids::INSP_SAMPLE_SWATCH {
+        if id == crate::ids::INSP_SAMPLE_SWATCH {
             let seed = store.widget_color(id).unwrap_or([0x88, 0x88, 0x88, 0xFF]);
             store.set_widget_color(id, seed);
             store.set_picker_target(Some(id));

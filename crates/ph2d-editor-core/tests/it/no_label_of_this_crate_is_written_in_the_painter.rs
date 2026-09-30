@@ -79,6 +79,17 @@ const NOT_LANGUAGE_TEXT: &[ph2d_label_census::gate::Excecao] = &[
         "o mesmo diagnóstico de consola do `diag_down`, o terceiro braço do mesmo `match`",
     ),
     (
+        "interaction/state/section_prefs_ops.rs",
+        "order={}",
+        "a SINTAXE do ficheiro `~/.ph2d/sections.txt` (a ordem das secções, 2026-09-29) — uma chave \
+         que o próprio leitor procura, nunca texto de ecrã; traduzi-la partiria o ficheiro por língua",
+    ),
+    (
+        "interaction/state/section_prefs_ops.rs",
+        "theme.{}={}",
+        "a mesma sintaxe do `sections.txt` — o tema de uma secção, chave e `Theme::id`",
+    ),
+    (
         "interaction/state/store_core.rs",
         "Level_01",
         "o NOME DE FICHEIRO da cena por omissão — um dado do projecto (identificador com `_`), \

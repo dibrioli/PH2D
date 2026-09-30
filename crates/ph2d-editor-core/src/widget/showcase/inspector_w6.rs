@@ -51,7 +51,6 @@ pub(super) fn paint_inspector_w6_section(
         w,
         y,
         ids::INSP_SECTION_W6,
-        ids::INSP_SECTION_W6_COLOR,
         "Inspector v2 (W6)",
         6,
     );

@@ -70,7 +70,7 @@ fn the_card_is_an_outset_so_no_row_moves() {
     let mut scene = VectorScene::new();
     let next = cards.close(&mut scene, 20.0, 100.0, 70.0);
 
-    let (rect, depth) = cards.rects[0];
+    let (rect, depth, _) = cards.rects[0];
     assert_eq!(depth, CardDepth::Section);
     assert!(
         rect.y < 10.0 && rect.y + rect.h > 70.0 && rect.x < 20.0 && rect.x + rect.w > 120.0,
@@ -226,4 +226,69 @@ fn two_nested_depths_never_paint_the_same_tone() {
             d(section, sub) * 255.0
         );
     }
+}
+
+/// ⭐⭐ **Entre dois cartões vê-se o PAINEL** (report do dono, 2026-09-29: *«não temos padding
+/// entre cards de seções e tudo fica mal definido»*). O vão tinha `8 = 4 + 4` — a folga de baixo
+/// de um mais a de cima do outro — e os dois encostavam. *Mutação: `section_gap_px` de volta a
+/// `card_pad·2` ⇒ a faixa mede `0`.*
+#[test]
+fn two_cards_never_touch_the_panel_shows_between_them() {
+    let theme = Theme::MODERN[0];
+    let mut cards = SectionCards::new(theme, 10.0);
+    let mut scene = VectorScene::new();
+    let next = cards.close(&mut scene, 20.0, 100.0, 70.0);
+    let _ = cards.close(&mut scene, 20.0, 100.0, next + 30.0);
+    let (a, _, _) = cards.rects[0];
+    let (b, _, _) = cards.rects[1];
+    let faixa = b.y - (a.y + a.h);
+    assert!(
+        (faixa - ph2d_tokens::card_gap_px()).abs() < 1e-4 && faixa > 0.0,
+        "a faixa de painel entre os dois cartoes mede {faixa} (esperado {})",
+        ph2d_tokens::card_gap_px()
+    );
+}
+
+/// ⭐⭐ **O tema que a secção pediu vale para a faixa DELA e só para ela** — o cartão seguinte fica
+/// no do painel. *Mutação: `retheme` a ignorar a faixa ⇒ o segundo cartão herda o tema.*
+#[test]
+fn a_card_theme_belongs_to_its_band_only() {
+    let painel = Theme::MODERN[0];
+    let pedido = Theme::MODERN[2];
+    assert_ne!(painel, pedido);
+    let mut scene = VectorScene::new();
+    begin_section_cards(&mut scene, painel, 0.0);
+    assert!(inside_cards(), "dentro do livro a pergunta responde SIM");
+    let y = close_section(&mut scene, painel, 0.0, 100.0, 40.0);
+    let _ = close_section(&mut scene, painel, 0.0, 100.0, y + 30.0);
+    retheme(0.0, 40.0, pedido);
+    let temas: Vec<Theme> = LEDGER.with(|l| {
+        l.borrow()
+            .last()
+            .unwrap()
+            .0
+            .rects
+            .iter()
+            .map(|r| r.2)
+            .collect()
+    });
+    let _ = end_section_cards(&mut scene);
+    assert!(!inside_cards(), "fora do livro a pergunta responde NAO");
+    assert_eq!(temas, vec![pedido, painel]);
+}
+
+/// ⭐ **Fechar duas vezes seguidas não soma dois vãos.** *Mutação: tirar a guarda ⇒ o segundo
+/// fecho avança mais um `section_gap_px`.*
+#[test]
+fn closing_twice_in_a_row_is_one_close() {
+    let theme = Theme::MODERN[0];
+    let mut cards = SectionCards::new(theme, 0.0);
+    let mut scene = VectorScene::new();
+    let a = cards.close(&mut scene, 0.0, 100.0, 40.0);
+    let b = cards.close(&mut scene, 0.0, 100.0, a);
+    assert!(
+        (a - b).abs() < 1e-6,
+        "o fecho vazio moveu o cursor de {a} para {b}"
+    );
+    assert_eq!(cards.rects.len(), 1);
 }

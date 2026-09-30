@@ -15,7 +15,6 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::paint::stroke_rounded_rect;
-use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
@@ -44,7 +43,20 @@ pub(crate) fn begin_section(
     header_h: f32,
 ) {
     push_section_top_y(section_tops_y, y_before - body_top_y);
-    hit_index.register(section_id, Rect::new(inner_x, y_before, inner_w, header_h));
+    let head = Rect::new(inner_x, y_before, inner_w, header_h);
+    hit_index.register(section_id, head);
+    // ⭐⭐ **A PEGA regista-se AQUI, e não em cada secção** (2026-09-29): as quarenta molduras
+    //    passam todas por esta porta, logo nenhuma nasce com a pega pintada e morta sob o rato.
+    //    ⚠️ DEPOIS do cabeçalho — o hit-index resolve o último registado primeiro, e a pega
+    //    fica por cima do rect que dobra a secção.
+    if let Some(grip) = ids::grip_of(section_id)
+        && !ph2d_editor_core::interaction::SECCOES_FIXAS.contains(&section_id)
+    {
+        hit_index.register(
+            grip,
+            ph2d_editor_core::widget::section_grip::grip_hit_rect(head),
+        );
+    }
 }
 
 /// As notas que não estão ancoradas a seção nenhuma — pintadas no fim do corpo.
@@ -89,194 +101,98 @@ pub(crate) fn paint_trailing_notes(
 ///
 /// Returns the new `y`.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn paint_physics_sections(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: ph2d_tokens::Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
+pub(crate) fn push_physics_sections<'a>(
+    plano: &mut crate::plano::Plano<'a>,
+    store: &'a WidgetStore,
     inner_x: f32,
     inner_w: f32,
     body_top_y: f32,
-    mut y: f32,
     header_h: f32,
-    physics: Option<&ph2d_editor_core::screens::hero::InspectorPhysicsInfo>,
-    joint: Option<&ph2d_editor_core::screens::hero::InspectorJointInfo>,
-    wheel: Option<&ph2d_editor_core::screens::hero::InspectorWheelInfo>,
+    physics: Option<&'a ph2d_editor_core::screens::hero::InspectorPhysicsInfo>,
+    joint: Option<&'a ph2d_editor_core::screens::hero::InspectorJointInfo>,
+    wheel: Option<&'a ph2d_editor_core::screens::hero::InspectorWheelInfo>,
     // §14 Platform Player (W5) — a quarta da família, e a única cujo assunto é
     // COMPORTAMENTO em vez de corpo.
-    player: Option<&ph2d_editor_core::screens::hero::InspectorPlayerInfo>,
-    // Os slots de nota da PANELA inteira: a família indexa os seus (9, 10, 11)
-    // aqui dentro, em vez de o orquestrador passar um por seção. É o mesmo
-    // corte que trouxe a pintura para cá — quem é dono das três seções é dono
-    // dos três slots.
-    notes: &[Vec<(usize, NoteData)>],
-) -> f32 {
+    player: Option<&'a ph2d_editor_core::screens::hero::InspectorPlayerInfo>,
+    // Os slots de nota da PANELA inteira: a família indexa os seus (10..13) aqui dentro.
+    notes: &'a [Vec<(usize, NoteData)>],
+) {
+    use crate::plano::emoldurada;
     let slot = |i: usize| notes.get(i).map_or(&[][..], |v| &v[..]);
-    // §11 Physics Body — offered for ANY Transform-bearing entity, with or
-    // without a body: the empty state is the Add button, and without it a
-    // sprite could never become physical (ADR-0131 D8).
+    // §11 Physics Body — offered for ANY Transform-bearing entity, with or without a body: the
+    // empty state is the Add button (ADR-0131 D8).
     if let Some(phys) = physics {
-        y = close_section(scene, theme, inner_x, inner_w, y);
-        let y_before = y;
-        begin_section(
-            section_tops_y,
-            hit_index,
+        emoldurada(
+            plano,
+            ids::INSP_LIVE_PHYSICS_SECTION,
+            store,
             inner_x,
             inner_w,
             body_top_y,
-            y_before,
-            ids::INSP_LIVE_PHYSICS_SECTION,
             header_h,
-        );
-        let new_y = crate::sections::paint_physics_section(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            inner_x,
-            inner_w,
-            y,
-            phys,
-        );
-        y = finish_section(
-            scene,
-            text_system,
-            hit_index,
-            store,
-            inner_x,
-            inner_w,
-            ids::INSP_LIVE_PHYSICS_SECTION,
-            y_before,
-            new_y,
             slot(10),
+            move |c, t, y| {
+                crate::sections::paint_physics_section(
+                    c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, phys,
+                )
+            },
         );
     }
-    // §12 Physics Joint — only for an entity that IS a joint. Unlike §11 it has
-    // no empty face: there is nothing to offer on an object that is not a
-    // joint, and the gesture that creates one lives in §11, where the two
-    // bodies you want to join are what you are looking at.
+    // §12 Physics Joint — only for an entity that IS a joint (no empty face: the gesture that
+    // creates one lives in §11).
     if let Some(j) = joint {
-        y = close_section(scene, theme, inner_x, inner_w, y);
-        let y_before = y;
-        begin_section(
-            section_tops_y,
-            hit_index,
+        emoldurada(
+            plano,
+            ids::INSP_LIVE_JOINT_SECTION,
+            store,
             inner_x,
             inner_w,
             body_top_y,
-            y_before,
-            ids::INSP_LIVE_JOINT_SECTION,
             header_h,
-        );
-        let new_y = crate::sections::paint_joint_section(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            inner_x,
-            inner_w,
-            y,
-            j,
-        );
-        y = finish_section(
-            scene,
-            text_system,
-            hit_index,
-            store,
-            inner_x,
-            inner_w,
-            ids::INSP_LIVE_JOINT_SECTION,
-            y_before,
-            new_y,
             slot(11),
+            move |c, t, y| {
+                crate::sections::paint_joint_section(
+                    c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, j,
+                )
+            },
         );
     }
-    // §13 Pulley Wheel — só para uma entidade que É uma roldana. Como a §12 e
-    // pelo mesmo motivo, ela não tem face vazia: não há o que oferecer num
-    // objeto que não é roldana, e o gesto que cria uma mora na §12, onde está a
-    // corda que vai atravessá-la.
+    // §13 Pulley Wheel — só para uma entidade que É uma roldana.
     if let Some(wh) = wheel {
-        y = close_section(scene, theme, inner_x, inner_w, y);
-        let y_before = y;
-        begin_section(
-            section_tops_y,
-            hit_index,
+        emoldurada(
+            plano,
+            ids::INSP_LIVE_WHEEL_SECTION,
+            store,
             inner_x,
             inner_w,
             body_top_y,
-            y_before,
-            ids::INSP_LIVE_WHEEL_SECTION,
             header_h,
-        );
-        let new_y = crate::sections::paint_wheel_section(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            inner_x,
-            inner_w,
-            y,
-            wh,
-        );
-        y = finish_section(
-            scene,
-            text_system,
-            hit_index,
-            store,
-            inner_x,
-            inner_w,
-            ids::INSP_LIVE_WHEEL_SECTION,
-            y_before,
-            new_y,
             slot(12),
+            move |c, t, y| {
+                crate::sections::paint_wheel_section(
+                    c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, wh,
+                )
+            },
         );
     }
-    // §14 Platform Player — para todo corpo Dynamic, COM ou SEM o componente:
-    // a face vazia é o botão que faz o comportamento existir, e sem ela ele
-    // seria alcançável só onde já existe (a lição da §11 do W2a).
+    // §14 Platform Player — para todo corpo Dynamic, COM ou SEM o componente.
     if let Some(pl) = player {
-        y = close_section(scene, theme, inner_x, inner_w, y);
-        let y_before = y;
-        begin_section(
-            section_tops_y,
-            hit_index,
+        emoldurada(
+            plano,
+            ids::INSP_LIVE_PLAYER_SECTION,
+            store,
             inner_x,
             inner_w,
             body_top_y,
-            y_before,
-            ids::INSP_LIVE_PLAYER_SECTION,
             header_h,
-        );
-        let new_y = crate::sections::paint_player_section(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            inner_x,
-            inner_w,
-            y,
-            pl,
-        );
-        y = finish_section(
-            scene,
-            text_system,
-            hit_index,
-            store,
-            inner_x,
-            inner_w,
-            ids::INSP_LIVE_PLAYER_SECTION,
-            y_before,
-            new_y,
             slot(13),
+            move |c, t, y| {
+                crate::sections::paint_player_section(
+                    c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, pl,
+                )
+            },
         );
     }
-    y
 }
 
 /// The chrome that wraps EVERY live section: the highlighter outline a user

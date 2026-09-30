@@ -309,7 +309,10 @@ fn the_list_flips_above_when_below_would_leave_the_screen() {
     let regiao = HeroLayout::for_viewport(JANELA_TABLET).popover_region();
     let mut h = MockPanelHost::with_panel::<InspectorPanel>();
     let mut st = InspectorState::default();
-    let info = actions_n(16);
+    // ⚠️ `13` e não os `16` de antes (2026-09-29): os cartões de secção ganharam um vão entre si, e
+    //    com 16 acções o chip caía abaixo da janela — não era pintado. A metade 1 continua a exigir
+    //    que a lista, pendurada abaixo, SAIA da região; é ela que diz que este número ainda serve.
+    let info = actions_n(13);
     assert_fixture_covers_the_model(&info);
     set_current_inspector_action(Some(info));
     let _ = h.paint::<InspectorPanel>(&mut st, JANELA_TABLET);

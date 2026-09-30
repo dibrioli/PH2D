@@ -27,6 +27,7 @@ mod pointer_down_menus;
 mod pointer_move;
 mod pointer_up;
 pub mod scroll;
+pub mod section_drag;
 pub mod text_input;
 mod text_ops;
 pub mod tick;

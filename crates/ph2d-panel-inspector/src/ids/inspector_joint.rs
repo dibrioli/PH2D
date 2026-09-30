@@ -23,7 +23,7 @@ use ph2d_tool_registry::hash_node_id;
 /// only by `build_a11y`, which **has no callers yet** — so today these are
 /// inert and nothing observes a collision. They are distinct anyway because
 /// §11 next door does reuse `INSP_LIVE_PHYSICS_SECTION` and
-/// `INSP_LIVE_PHYSICS_COLOR` as group ids, and the day accessibility is wired
+/// `INSP_LIVE_PHYSICS_GRIP` as group ids, and the day accessibility is wired
 /// that is two rects answering to one id. Cheap to get right now; a rename
 /// hunt later.
 pub const INSP_JOINT_KIND_GROUP: NodeId = hash_node_id("insp_joint_kind_group");

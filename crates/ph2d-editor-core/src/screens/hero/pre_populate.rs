@@ -15,8 +15,7 @@
 use crate::ids;
 use crate::interaction::{InteractiveState, WidgetStore};
 use crate::widget::showcase::{
-    NOTE_BODY_IDS, NOTE_SLOT_IDS, NOTE_TITLE_IDS, RADIO_GROUP_IDS, SECTION_COLOR_IDS,
-    TAB_GROUP_IDS, TREE_LEAF_IDS,
+    NOTE_BODY_IDS, NOTE_SLOT_IDS, NOTE_TITLE_IDS, RADIO_GROUP_IDS, TAB_GROUP_IDS, TREE_LEAF_IDS,
 };
 use crate::widget::{
     ButtonState, CheckboxState, CheckboxValue, ComboboxState, DropdownState,
@@ -239,9 +238,6 @@ fn populate_samples(store: &mut WidgetStore) {
     for id in ids::SECTION_IDS {
         store.register(id, InteractiveState::Plain);
     }
-    for id in SECTION_COLOR_IDS {
-        store.register(id, InteractiveState::Plain);
-    }
     let _ = (RADIO_GROUP_IDS, TAB_GROUP_IDS, TREE_LEAF_IDS); // imports keep namespaces aligned with event.rs
 
     for id in NOTE_SLOT_IDS {
@@ -396,6 +392,15 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
     for id in [
         ids::CTX_MENU_CREATE_NOTE,
         ids::CTX_MENU_OUTLINE_NONE,
+        ids::CTX_MENU_SECTION_THEME_APP,
+        ids::CTX_MENU_SECTION_THEME_FORGE,
+        ids::CTX_MENU_SECTION_THEME_PAINT,
+        ids::CTX_MENU_SECTION_THEME_SUNSTONE,
+        ids::CTX_MENU_SECTION_THEME_BLUEPRINT,
+        ids::CTX_MENU_SECTION_THEME_DARK,
+        ids::CTX_MENU_SECTION_THEME_GRAY,
+        ids::CTX_MENU_SECTION_THEME_LIGHT,
+        ids::CTX_MENU_SECTION_THEME_OLED,
         ids::CTX_MENU_OUTLINE_0,
         ids::CTX_MENU_OUTLINE_1,
         ids::CTX_MENU_OUTLINE_2,
@@ -577,17 +582,18 @@ fn populate_hierarchy_chrome(store: &mut WidgetStore) {
         },
     );
 
-    // Inspector live-section color-dot hit ids — registered as Plain
-    // so is_focusable returns true and apply_click can fire the
-    // section's color-picker handler (Inspector apply_event seeds
-    // INSP_BLENDER_PICKER). Same canon Widget Gallery's
-    // SECTION_COLOR_IDS use.
+    // Inspector live-section DRAG GRIPS — registered as Plain so `is_focusable` answers true and
+    // the primary Down reaches the section-drag seed (`dispatch::pointer_down`). They were the
+    // colour-dot ids until 2026-09-29 (the owner retired the dot; its slot became the grip).
     // ⚠️ **DERIVADO da mesma tabela `ids::LIVE_SECTIONS`.** Era uma lista à mão, e cinco pontos —
     // Ordering · Sampling · Material & Blend · Pulley Wheel · Platform Player — estavam pintados,
     // hit-registered e **dead under the mouse**, porque `is_focusable` respondia false. A §11/§12
     // tinha sido curada aqui à mão pela mesma razão, e a cura não alcançou as vizinhas.
-    for id in ids::LIVE_SECTION_COLOR_IDS {
+    for id in ids::LIVE_SECTION_GRIP_IDS {
         store.register(id, InteractiveState::Plain);
+        // ⭐ A dica ENSINA os dois gestos novos de uma vez — a pega arrasta, e o botão direito no
+        //    título escolhe o tema. Sem ela, dez pontos não dizem o que fazem.
+        store.set_tooltip(id, tr("chrome.section.grip_hint"));
     }
 
     // Bottom-LEFT resize handles (post-2026-05-24 chrome canon — every

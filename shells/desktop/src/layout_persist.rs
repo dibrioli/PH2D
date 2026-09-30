@@ -243,6 +243,35 @@ pub fn save(v: &Saved) {
     }
 }
 
+/// ⭐ `~/.ph2d/sections.txt` — a ORDEM e os TEMAS das secções (2026-09-29). O formato é do
+/// editor ([`ph2d_editor_core::interaction::section_prefs_text`]); aqui mora só o disco.
+fn sections_file() -> Option<PathBuf> {
+    layout_file().map(|p| p.with_file_name("sections.txt"))
+}
+
+/// Grava as secções **se mudaram** — chamado no quadro, ao lado do [`save_if_changed`].
+pub fn save_sections_if_changed(store: &mut ph2d_editor_core::interaction::WidgetStore) {
+    if !store.take_section_prefs_dirty() {
+        return;
+    }
+    if let Some(path) = sections_file() {
+        if let Some(dir) = path.parent() {
+            let _ = std::fs::create_dir_all(dir);
+        }
+        let text = ph2d_editor_core::interaction::section_prefs_text(store);
+        if let Err(e) = std::fs::write(&path, text) {
+            eprintln!("[ph2d] sections save: {e}");
+        }
+    }
+}
+
+/// Lê as secções do disco; ficheiro ausente ⇒ a ordem natural e o tema do app em todas.
+pub fn load_sections(store: &mut ph2d_editor_core::interaction::WidgetStore) {
+    if let Some(t) = sections_file().and_then(|p| std::fs::read_to_string(p).ok()) {
+        ph2d_editor_core::interaction::restore_section_prefs_text(store, &t);
+    }
+}
+
 /// Lê + parseia. Vazio com o ficheiro ausente / ilegível / malformado.
 #[must_use]
 pub fn load() -> Saved {

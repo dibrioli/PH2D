@@ -11,6 +11,20 @@ pub const CTX_MENU_OUTLINE_1: NodeId = hash_node_id("ctx_menu_outline_1");
 pub const CTX_MENU_OUTLINE_2: NodeId = hash_node_id("ctx_menu_outline_2");
 pub const CTX_MENU_OUTLINE_3: NodeId = hash_node_id("ctx_menu_outline_3");
 pub const CTX_MENU_OUTLINE_4: NodeId = hash_node_id("ctx_menu_outline_4");
+// ⭐⭐ O TEMA DE UMA SECÇÃO (ordem do dono, 2026-09-29) — as linhas de tema do menu de botão
+//    direito no título de uma secção. Um id por tema, mais o «tema do app» que desfaz a escolha.
+//    ⚠️ Ids PRÓPRIOS e não os do seletor do topo: aqueles mudam o tema do APP inteiro, e partilhar
+//    o id faria o mesmo clique responder às duas perguntas.
+pub const CTX_MENU_SECTION_THEME_APP: NodeId = hash_node_id("ctx_menu_section_theme_app");
+pub const CTX_MENU_SECTION_THEME_FORGE: NodeId = hash_node_id("ctx_menu_section_theme_forge");
+pub const CTX_MENU_SECTION_THEME_PAINT: NodeId = hash_node_id("ctx_menu_section_theme_paint");
+pub const CTX_MENU_SECTION_THEME_SUNSTONE: NodeId = hash_node_id("ctx_menu_section_theme_sunstone");
+pub const CTX_MENU_SECTION_THEME_BLUEPRINT: NodeId =
+    hash_node_id("ctx_menu_section_theme_blueprint");
+pub const CTX_MENU_SECTION_THEME_DARK: NodeId = hash_node_id("ctx_menu_section_theme_dark");
+pub const CTX_MENU_SECTION_THEME_GRAY: NodeId = hash_node_id("ctx_menu_section_theme_gray");
+pub const CTX_MENU_SECTION_THEME_LIGHT: NodeId = hash_node_id("ctx_menu_section_theme_light");
+pub const CTX_MENU_SECTION_THEME_OLED: NodeId = hash_node_id("ctx_menu_section_theme_oled");
 // Theme selector menu items — opened by clicking TOPBAR_THEME.
 pub const CTX_MENU_THEME_FORGE: NodeId = hash_node_id("ctx_menu_theme_forge");
 pub const CTX_MENU_THEME_PAINT: NodeId = hash_node_id("ctx_menu_theme_paint");

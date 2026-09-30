@@ -317,7 +317,8 @@ pub fn paint(
         count: None,
         collapsible: None,
         open_t: None,
-        color: None,
+        grip: None,
+        reserve_right: 0.0,
     };
     paint_section_header(
         &header,

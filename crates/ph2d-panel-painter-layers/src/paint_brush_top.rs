@@ -7,8 +7,7 @@ use ph2d_editor_core::IconId;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
     Checkbox, CheckboxValue, IconButtonStyle, IconGlyph, SectionFold, SectionHeader,
-    color_circle_hit_rect, paint_checkbox, paint_icon_button, paint_section_header,
-    paint_slider_with_chip,
+    paint_checkbox, paint_icon_button, paint_section_header, paint_slider_with_chip,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -124,20 +123,14 @@ pub(crate) fn paint_collapsible_section(
     y: f32,
     label: &str,
     section_id: ph2d_a11y::NodeId,
-    color_id: ph2d_a11y::NodeId,
     reset_id: ph2d_a11y::NodeId,
 ) -> (f32, Option<SectionFold>) {
     let header_h = TypeToken::Md.px() + Spacing::Md.px();
     let collapsed = ctx.host.store().is_collapsed(section_id);
-    let rgba = ctx
-        .host
-        .store()
-        .widget_color(color_id)
-        .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default for an unconfigured section dot
     let header = SectionHeader::new(section_id, label)
         .collapsible(!collapsed)
         .open_t(ctx.host.store().section_open_live(section_id))
-        .color(rgba);
+        .reserve_right(header_h);
     let header_rect = Rect::new(x, y, content_w, header_h);
     let reset_state = ctx.host.store().button_visual(reset_id);
     {
@@ -146,14 +139,11 @@ pub(crate) fn paint_collapsible_section(
         paint_section_header(&header, header_rect, scene, text_system, theme);
     }
     ctx.host.hit_index_mut().register(section_id, header_rect);
-    if let Some(circle) = color_circle_hit_rect(&header, header_rect) {
-        ctx.host.hit_index_mut().register(color_id, circle);
-    }
-    // Reset icon button — a square matching the header height, slotted just LEFT of the colour dot
-    // (same layout the Inspector's Transform header uses).
-    let color_slot_w = Spacing::Md.px() + 14.0; // LITERAL-PX-OK: colour dot diameter (2 * radius 7)
+    // Reset icon button — a square matching the header height, at the right edge. ⚠️ The colour
+    // dot that sat to its right LEFT on 2026-09-29 (owner's order), and the title reserves the
+    // button's width so a long name never runs under it.
     let reset_rect = Rect::new(
-        x + content_w - color_slot_w - header_h,
+        x + content_w - Spacing::Md.px() - header_h,
         y,
         header_h,
         header_h,
@@ -203,7 +193,6 @@ pub(crate) fn paint_randomize_section(
         y,
         tr("panel.painter_layers.brush.randomize_color"),
         ph2d_tool_painter::ids::PAINTER_BRUSH_RANDOMIZE_SECTION,
-        ph2d_tool_painter::ids::PAINTER_BRUSH_RANDOMIZE_SECTION_COLOR,
         ph2d_tool_painter::ids::PAINTER_BRUSH_RANDOMIZE_RESET,
     );
     let Some(fold) = fold else {

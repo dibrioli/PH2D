@@ -83,6 +83,16 @@ pub(super) fn id_is_currently_selected(
             Some(crate::widget::ButtonState::Pressed)
         );
     }
+    // ⭐ O tema da SECÇÃO sobre a qual o menu abriu — a linha acesa é a escolha dela, e o «tema do
+    //   app» quando ela não escolheu nenhum. *Fiar o clique não é fiar o ESTADO.*
+    if let Some(escolha) = super::theme_menu::section_theme_of_menu_id(id) {
+        return match store.context_menu().map(|r| r.kind) {
+            Some(crate::interaction::ContextMenuKind::SectionOutline { section }) => {
+                store.section_theme(section) == escolha
+            }
+            _ => false,
+        };
+    }
     let theme_id = super::theme_menu::theme_menu_id(theme);
     if id == theme_id {
         return true;

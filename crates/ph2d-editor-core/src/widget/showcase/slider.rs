@@ -25,7 +25,6 @@ pub(super) fn paint_slider_section(
         w,
         y,
         ids::INSP_SECTION_SLIDER,
-        ids::INSP_SECTION_SLIDER_COLOR,
         "Slider",
         1,
     );

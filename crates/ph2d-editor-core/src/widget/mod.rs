@@ -177,9 +177,9 @@ pub use scrollbar_ids::{
     VECTOR_SCROLLBAR_ID, WET_TUNING_SCROLLBAR_ID,
 };
 pub use section_header::body::{SectionFold, folded_gap, has_body as section_has_body};
-pub use section_header::{
-    SectionHeader, color_circle_hit_rect, paint_section_header, section_title_px,
-};
+/// ⭐ A geometria e o pintor da PEGA de secção (2026-09-29) — lidos pelo painel que regista o alvo.
+pub use section_header::grip as section_grip;
+pub use section_header::{SectionHeader, grip_hit_rect, paint_section_header, section_title_px};
 pub use segmented_adaptive::{
     SegmentedAdaptive, SegmentedOption, measure_segmented_adaptive, paint_segmented_adaptive,
 };

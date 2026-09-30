@@ -5,9 +5,8 @@
 //! - `*_CHIP` ids back the editable [`crate::widget::NumberInput`] paired with each
 //!   brush slider (canonical slider-with-chip; the chip is `link_slider_number`-linked
 //!   to the slider so an edit propagates back as the slider's `ValueChanged`).
-//! - `PAINTER_BRUSH_RANDOMIZE_SECTION` is the collapsible "Randomize Color" header;
-//!   `*_SECTION_COLOR` is its assignable color-dot (a picker swatch, like the
-//!   Inspector's section circles).
+//! - `PAINTER_BRUSH_RANDOMIZE_SECTION` is the collapsible "Randomize Color" header (the colour
+//!   dot it had left on 2026-09-29, by the owner's order).
 //!
 //! ⚠️ **Desceu de `ph2d-editor-core/src/ids/chrome/painter_brush_sections.rs` em 2026-09-12** (auditoria de arquitectura
 //! A5b): quem LÊ estes ids mora nesta crate, e a fundação que 60 crates recompilam deixou de os
@@ -459,35 +458,17 @@ pub const PAINTER_BRUSH_COMPOSITE_BUTTONS: [NodeId; 2 + 6 * N_POS] = {
 /// the section-outline color menu.
 pub const PAINTER_BRUSH_RANDOMIZE_SECTION: NodeId = hash_node_id("painter_brush.randomize_section");
 
-/// The "Randomize Color" header's color dot — a picker swatch; clicking it opens the
-/// shared Blender picker to assign the section's accent color (stored in `widget_color`).
-pub const PAINTER_BRUSH_RANDOMIZE_SECTION_COLOR: NodeId =
-    hash_node_id("painter_brush.randomize_section_color");
-
-// Collapsible-section headers + their assignable color dots (Inspector pattern, same as Randomize
-// Color above). Texture + Stroke default expanded; Color Ramp + Tiling default collapsed (Enio
-// 2026-06-24). Each `*_SECTION` is `mark_collapsible_section`-registered + the `*_SECTION_COLOR` is a
-// `register_picker_swatch` dot, both in `crate::populate`.
+// Collapsible-section headers (Inspector pattern, same as Randomize Color above). Texture + Stroke
+// default expanded; Color Ramp + Tiling default collapsed (Enio 2026-06-24). Each `*_SECTION` is
+// `mark_collapsible_section`-registered in `crate::populate`.
 pub const PAINTER_BRUSH_TEXTURE_SECTION: NodeId = hash_node_id("painter_brush.texture_section");
-
-pub const PAINTER_BRUSH_TEXTURE_SECTION_COLOR: NodeId =
-    hash_node_id("painter_brush.texture_section_color");
 
 pub const PAINTER_BRUSH_COLOR_RAMP_SECTION: NodeId =
     hash_node_id("painter_brush.color_ramp_section");
 
-pub const PAINTER_BRUSH_COLOR_RAMP_SECTION_COLOR: NodeId =
-    hash_node_id("painter_brush.color_ramp_section_color");
-
 pub const PAINTER_BRUSH_STROKE_SECTION: NodeId = hash_node_id("painter_brush.stroke_section");
 
-pub const PAINTER_BRUSH_STROKE_SECTION_COLOR: NodeId =
-    hash_node_id("painter_brush.stroke_section_color");
-
 pub const PAINTER_BRUSH_TILING_SECTION: NodeId = hash_node_id("painter_brush.tiling_section");
-
-pub const PAINTER_BRUSH_TILING_SECTION_COLOR: NodeId =
-    hash_node_id("painter_brush.tiling_section_color");
 
 // Per-section **reset** icon buttons (Inspector-Transform pattern: an `IconId::Reset` button in the
 // header, just left of the colour dot). Clicking restores that section's brush fields to defaults

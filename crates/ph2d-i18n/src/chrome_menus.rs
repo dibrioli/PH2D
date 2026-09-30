@@ -65,6 +65,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.menu_bar.run" => "Run",
         "chrome.menu.create_note" => "Create note",
         "chrome.menu.no_outline" => "No outline",
+        // ⭐ A 1.ª linha do menu de tema de uma SECÇÃO — desfaz a escolha (2026-09-29).
+        "chrome.menu.section_theme_app" => "App Theme",
+        "chrome.section.grip_hint" => {
+            "Drag to move this section. Right-click the title to pick its theme."
+        }
         "chrome.menu.yellow" => "Yellow",
         "chrome.menu.pink" => "Pink",
         "chrome.menu.green" => "Green",

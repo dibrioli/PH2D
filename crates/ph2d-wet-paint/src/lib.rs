@@ -37,6 +37,7 @@ pub mod jsmath;
 pub mod opacity;
 pub mod painter;
 pub mod paper;
+pub mod paper_memo;
 pub mod par;
 pub mod render;
 pub mod rng;

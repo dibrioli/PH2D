@@ -372,4 +372,40 @@ mod tests {
             "os dois limiares convergiram — este gate deixou de dizer alguma coisa"
         );
     }
+
+    /// **Sonda do item 6 da fila 44: quanto custa o FORK da tela a 4096².** O começo de uma pincelada
+    /// do Wet Paint copia a tela inteira (o undo segura o `Arc`); esta sonda isola essa cópia, pela
+    /// mesma porta ([`par_clone`]), a FRIO (cada amostra aloca páginas novas, como o produto) e a
+    /// QUENTE (o mesmo destino reutilizado — o tecto do que um reaproveitamento de buffer compraria).
+    #[test]
+    #[ignore = "sonda de relógio: corre à mão, em --release e com a máquina calma"]
+    fn diag_o_fork_da_tela_a_4096() {
+        const LADO: usize = 4096;
+        let src: Vec<u8> = (0..LADO * LADO * 4).map(|i| (i % 251) as u8).collect();
+        let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+        let mut frio = f64::MAX;
+        let mut guardadas = Vec::new();
+        for _ in 0..7 {
+            let t = std::time::Instant::now();
+            let c = par_clone(&src);
+            frio = frio.min(t.elapsed().as_secs_f64() * 1e3);
+            guardadas.push(c); // segurada: a próxima amostra não herda estas páginas
+        }
+        let mut destino = guardadas.pop().unwrap_or_default();
+        let mut quente = f64::MAX;
+        for _ in 0..7 {
+            let t = std::time::Instant::now();
+            destino
+                .par_chunks_mut(1 << 20)
+                .zip(src.par_chunks(1 << 20))
+                .for_each(|(d, s)| d.copy_from_slice(s));
+            quente = quente.min(t.elapsed().as_secs_f64() * 1e3);
+        }
+        println!(
+            "\n  FORK DA TELA {LADO}² ({} MB)  load {}\n  a frio (produto): {frio:.2} ms · a quente (buffer reaproveitado): {quente:.2} ms",
+            src.len() >> 20,
+            carga.trim()
+        );
+        assert_eq!(destino, src);
+    }
 }

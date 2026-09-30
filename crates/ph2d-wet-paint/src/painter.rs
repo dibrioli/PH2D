@@ -9,7 +9,7 @@ use crate::grid::{
     Grid, GridSnapshot, clear_canvas, dry_canvas, restore_grid, snapshot_grid, wet_canvas,
 };
 use crate::jsmath::clamp01;
-use crate::paper::{PaperKnobs, PaperPreset, bake_paper, generate_paper_tile};
+use crate::paper::{PaperKnobs, PaperPreset, bake_paper};
 use crate::sim::{Sim, sim_fast_dry, sim_step};
 use crate::stroke::{Stroke, StrokeEvent};
 use crate::tools::{TOOL_HARDNESS, apply_blow, apply_dry, apply_erase, apply_smear, apply_wet};
@@ -217,8 +217,10 @@ impl Engine {
     }
 
     pub fn rebake_paper(&mut self) {
+        // Pela MEMÓRIA ([`crate::paper_memo`]): o tile é função das entradas, e um motor que renasce
+        // (cada Ctrl+Z, cada troca de modo) não o refaz — ao bit o que o gerador daria.
         self.paper_tile =
-            generate_paper_tile(self.paper_preset, self.paper_sheet, self.paper_knobs());
+            crate::paper_memo::paper_tile(self.paper_preset, self.paper_sheet, self.paper_knobs());
         for l in &mut self.layers {
             bake_paper(&mut l.grid, &self.paper_tile);
             l.grid.paper_preset = self.paper_preset;

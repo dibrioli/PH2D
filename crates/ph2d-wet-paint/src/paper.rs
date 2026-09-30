@@ -131,8 +131,22 @@ fn lattice_noise(values: &[f32], n: usize, x: usize, y: usize) -> f64 {
     a + (b - a) * ty
 }
 
+// Quantas vezes o GERADOR correu nesta thread — o contador dos gates da [`crate::paper_memo`]. Um gate
+// de bytes não distingue um acerto de uma geração (os dois devolvem o mesmo tile); só a contagem o
+// faz. ⚠️ Mora AQUI, no gerador, e não na memória: contado dentro da memória, um motor que chamasse
+// o gerador cru nunca o incrementava, e o gate da fiação ficou VERDE sem a fiação (medido). Por
+// thread, porque a memória é global e outro teste ao lado geraria na dele.
+#[cfg(test)]
+thread_local! {
+    pub(crate) static GERADOS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
 /// Generate one paper tile. Deterministic per (preset, sheet, knobs).
+///
+/// Quem o pede para um motor passa pela memória: [`crate::paper_memo::paper_tile`].
 pub fn generate_paper_tile(preset: PaperPreset, sheet_index: u32, knobs: PaperKnobs) -> Vec<f32> {
+    #[cfg(test)]
+    GERADOS.with(|c| c.set(c.get() + 1));
     let p = preset.params();
     let seed = p
         .seed_base

@@ -272,3 +272,51 @@ fn um_passo_de_um_ulp_no_meio_nao_e_um_cruzamento() {
         "um passo de um ULP no meio do contorno foi lido como cruzamento"
     );
 }
+
+/// Uma estrela de cinco pontas, anti-horária, à volta de `(2, 2)`.
+fn estrela() -> (VecPath, Vec<[f64; 2]>) {
+    let mut pts = Vec::new();
+    let mut pontas = Vec::new();
+    for k in 0..10 {
+        let a = std::f64::consts::FRAC_PI_2 + f64::from(k) * std::f64::consts::PI / 5.0;
+        let r = if k % 2 == 0 { 1.5 } else { 0.6 };
+        let p = [2.0 + r * a.cos(), 2.0 + r * a.sin()];
+        if k % 2 == 0 {
+            pontas.push(p);
+        }
+        pts.push(p);
+    }
+    (poligono(&pts), pontas)
+}
+
+/// ⭐⭐ **GATE — a ABERTURA (F46) não come a ponta que o artista DESENHOU, mesmo afiada pela
+/// deformação.** Na abertura todo nó do artista é parede, seja qual for a viragem de repouso dele:
+/// aqui as viragens de repouso são `30°` mais brandas que as de agora (a deformação afiou tudo), e
+/// as cinco pontas ficam AO BIT.
+///
+/// ⚠️ O CONTROLO: sem quinas a mesma silhueta arredonda as pontas — senão o gate não mede a parede,
+/// mede uma abertura que não actua.
+#[test]
+fn a_abertura_nao_come_a_ponta_desenhada() {
+    let (star, pontas) = estrela();
+    let afiadas: Vec<([f64; 2], f64)> = quinas_de(&star)
+        .into_iter()
+        .map(|(p, v)| (p, v - 30.0))
+        .collect();
+    let com = silhueta_da_pele(&star, &afiadas).unwrap_or_else(|| star.clone());
+    for p in &pontas {
+        assert!(
+            com.verts.iter().any(|v| v.anchor == *p),
+            "a ponta {p:?} saiu da silhueta"
+        );
+    }
+    let sem = silhueta_da_pele(&star, &[]).expect("controlo: a bola actua sem quinas");
+    let ficaram = pontas
+        .iter()
+        .filter(|p| sem.verts.iter().any(|v| v.anchor == **p))
+        .count();
+    assert_eq!(
+        ficaram, 0,
+        "sem quinas as pontas ficaram — a abertura não actua e o gate não mede a parede"
+    );
+}

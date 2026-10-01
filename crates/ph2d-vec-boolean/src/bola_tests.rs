@@ -373,3 +373,49 @@ fn um_fundo_mais_estreito_que_a_bola_e_engolido_inteiro() {
     }
     assert!(falhas.is_empty(), "{falhas:?}");
 }
+
+/// O rectângulo `4 × 3` com uma FENDA de largura `largura` e fundo `fundo` a descer do meio do lado
+/// de cima — a boca são dois nós CONVEXOS.
+fn com_fenda(largura: f64, fundo: f64) -> (Vec<P>, [P; 4]) {
+    let (e, d) = (2.0 - 0.5 * largura, 2.0 + 0.5 * largura);
+    let fenda = [[d, 3.0], [d, 3.0 - fundo], [e, 3.0 - fundo], [e, 3.0]];
+    let mut ps: Vec<P> = vec![[0.0, 0.0], [4.0, 0.0], [4.0, 3.0]];
+    ps.extend(fenda);
+    ps.push([0.0, 3.0]);
+    (ps, fenda)
+}
+
+/// ⭐⭐ **GATE — a fenda de boca mais estreita que a bola é FECHADA** (F46, o entalhe do braço
+/// dobrado de volta, medido a `(176°, 100°)`). A bola pousa nos DOIS nós da boca, e o centro é onde
+/// os dois ARCOS de raio `r` à volta deles se cruzam ([`super::toque::ArcoDoNo`]); a corda entre as
+/// normais de um nó passa por DENTRO do arco, o centro saía perto demais da boca, a bola nunca
+/// estava vazia, e a fenda ficava aberta até ao fundo.
+///
+/// ⚠️ O CONTROLO: uma fenda mais LARGA que a bola fica aberta (a bola cabe; só o fundo arredonda) —
+/// senão o gate passaria com um fecho que enche tudo.
+#[test]
+fn uma_fenda_de_boca_estreita_e_fechada() {
+    let fora = [[0.0, 0.0], [4.0, 0.0], [4.0, 3.0], [0.0, 3.0]];
+    let (ps, fenda) = com_fenda(0.6 * RAIO, 4.0 * RAIO);
+    let v = cantos(&ps);
+    let s = rola_a_bola(v.clone(), &com_viragem(&fora, &v), RAIO, SOLDA);
+    assert!(
+        // A boca são os TOQUES da bola (ficam); o fundo é o que ela engole.
+        s.iter()
+            .all(|q| q.anchor != fenda[1] && q.anchor != fenda[2]),
+        "a fenda estreita ficou aberta"
+    );
+    assert!(
+        area(&s) > area(&v) + 0.9 * 0.6 * RAIO * 4.0 * RAIO,
+        "a fenda não foi cheia: área {} contra {}",
+        area(&s),
+        area(&v)
+    );
+    let (ps, larga) = com_fenda(3.0 * RAIO, 4.0 * RAIO);
+    let v = cantos(&ps);
+    let s = rola_a_bola(v.clone(), &com_viragem(&fora, &v), RAIO, SOLDA);
+    assert!(
+        s.iter().any(|q| q.anchor == larga[0]) && s.iter().any(|q| q.anchor == larga[3]),
+        "a boca da fenda larga saiu — o fecho enche o que a bola alcança"
+    );
+}

@@ -66,6 +66,18 @@ diz onde ler o mecanismo:
 
 ---
 
+### F46 — ⭐⭐ **O BRAÇO DOBRADO DE VOLTA** (ordem do dono, 2026-10-01: *«siga nas correções com cuidado para não danificar o que já temos»* — o aberto que a F45 deixou)
+
+- **Medido:** com uma junta a `174°`–`180°` a pele dos dois membros quase coincide, e a união deixa no contorno de fora **quatro** defeitos diferentes — a varredura da F45 tinha `574` poses más nesta família. Cada um tem a sua peça, e cada peça tem uma mutação que a prova:
+  - **Dentes e fendas de `~0,02`** (`85°`–`132°`): a bola fechava o lado côncavo e ninguém tirava a saliência convexa mais fina que ela ⇒ **ABERTURA** (a mesma bola a rolar por DENTRO) entre dois fechos. ⚠️ Na abertura **todo nó do artista é parede** (viragem `180°`), seja qual for a de repouso: uma ponta desenhada fica em ponta mesmo afiada pela deformação.
+  - **O esporão** (`(0°, 174°)`, `180°`): um segmento recto que REFAZ o fim do anterior. Área zero ⇒ não é forma, de nenhum tamanho; a bola lê o sentido de uma viragem de `180°` por um produto vectorial que é ruído, e o desfazer dos ganchos pára no tamanho da bola ⇒ [`ph2d_vec_boolean::esporao`] corta o longo onde o curto acaba e tira o curto.
+  - **A fenda de boca estreita** (`(176°, 100°)`): os toques são dois nós CONVEXOS, e o offset de um nó convexo é um **ARCO** de raio `r` à volta dele, não a corda entre as duas normais — com a corda o centro ficava perto demais da boca, a bola nunca estava vazia e a fenda ficava aberta ([`bola_toque::ArcoDoNo`]).
+  - **O fundo do canal que se fecha** (`(176°, −142°)` `112°`, `(144°, −174°)` `150°`): a bola certa ERA encontrada e era recusada por `0,2 %`–`0,3 %` do raio — o centro tirado das CORDAS amostradas, contra a `FOLGA_DA_BOLA` de `0,1 %`. ⇒ só quando **nenhum** candidato passa pelas cordas, cada um é julgado pelo centro EXACTO. ⚠️ A ordem é load-bearing: com um candidato vazio pelas cordas a resposta é a de sempre, ao bit.
+- **Medido, varredura a passo `2` (`16 110` poses, C e Z) contra o `HEAD`:** `574` curadas, **`0` pioradas**; sobra `1`, a `(36°, −144°)` com `21°`, **igual ao `HEAD`** (isolada, anterior). Das `1 222` poses boas que mudaram, **fora da família o contorno andou no máximo `0,40` solda** (ponto→segmento); dentro dela até `0,9 r`, que é a abertura a achatar o nó mais fino que a bola (visto na foto da diferença).
+- **Gates:** `o_braco_dobrado_de_volta_nao_deixa_dentes` (`~270` poses da família; CONTROLO: o fecho de antes deixa bico) · `o_esporao_sai_de_qualquer_tamanho` · `o_que_nao_e_esporao_fica_intacto` · `o_esporao_de_entrada_sai` · `uma_fenda_de_boca_estreita_e_fechada` (CONTROLO: a larga fica aberta) · `a_abertura_nao_come_a_ponta_desenhada` (CONTROLO: sem quinas as pontas arredondam). Mutação **6 de 6**.
+- **Cortes de LOC:** a geometria do toque saiu de `bola.rs` para `bola_toque.rs` (`778 → 672`); os gates do braço dobrado forte para `skin_desenho_dobra_tests.rs`.
+- ⏳ **ABERTO:** a pose isolada `(36°, −144°)`.
+
 ### F45 — ⭐⭐ **O GANCHO QUE A UNIÃO DEIXA** (ordem do dono, 2026-10-01: *«siga nas correções com cuidado para não danificar o que já temos»* — a família que a F44 deixou aberta)
 
 - **Medido:** com o braço em C e as duas juntas a somar `~238°` (`(130°,108°)` … `(170°,70°)`), a união corta uma cúbica do assado DENTRO da dobra dela e o nó novo sai com a 2.ª alça `0,035`–`0,056` além dele: meia-volta de `171°`–`179°` no contorno de FORA, e o traço desenha a meia-lua (foto). ⛔ A bola não lhe toca (a ponta é para fora); o desenho sem contacto vira só `0,7°` — quem cria o gancho é a união.

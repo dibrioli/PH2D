@@ -129,59 +129,9 @@ fn tangente(verts: &[VecVertex], j: usize, t: f64) -> Vec2 {
     unit(segmento(verts, j).deriv().eval(t).to_vec2()).unwrap_or_else(fallback)
 }
 
-fn cruza_segmentos(a: Point, b: Point, c: Point, d: Point) -> Option<(f64, f64)> {
-    let r = b - a;
-    let s = d - c;
-    let den = r.cross(s);
-    if den.abs() < 1e-300 {
-        return None;
-    }
-    let u = (c - a).cross(s) / den;
-    let w = (c - a).cross(r) / den;
-    ((0.0..=1.0).contains(&u) && (0.0..=1.0).contains(&w)).then_some((u, w))
-}
-
-/// O parâmetro do segmento `c` em `[lo, hi]` mais perto de `alvo` (secção áurea).
-fn pe(c: &CubicBez, alvo: Point, mut lo: f64, mut hi: f64) -> f64 {
-    let g = 0.5 * (5.0_f64.sqrt() - 1.0);
-    let f = |t: f64| (c.eval(t) - alvo).hypot2();
-    let (mut x1, mut x2) = (hi - g * (hi - lo), lo + g * (hi - lo));
-    let (mut f1, mut f2) = (f(x1), f(x2));
-    for _ in 0..60 {
-        if f1 < f2 {
-            hi = x2;
-            x2 = x1;
-            f2 = f1;
-            x1 = hi - g * (hi - lo);
-            f1 = f(x1);
-        } else {
-            lo = x1;
-            x1 = x2;
-            f1 = f2;
-            x2 = lo + g * (hi - lo);
-            f2 = f(x2);
-        }
-    }
-    // ⚠️ A secção áurea sobre o QUADRADO da distância pára a `~√ε` (o mínimo é chato) — dois
-    // toques da mesma bola desviavam `1e-9` conforme o segmento amostrado. Newton sobre a derivada
-    // (`(c(t) − alvo) · c′(t) = 0`) leva-o à precisão da máquina.
-    let (a, b) = (lo, hi);
-    let mut t = 0.5 * (lo + hi);
-    let (d1, d2) = (c.deriv(), c.deriv().deriv());
-    for _ in 0..8 {
-        let (v, dv, ddv) = (c.eval(t) - alvo, d1.eval(t).to_vec2(), d2.eval(t).to_vec2());
-        let den = dv.dot(dv) + v.dot(ddv);
-        if den.abs() < 1e-300 {
-            break;
-        }
-        let novo = (t - v.dot(dv) / den).clamp(a.min(t), b.max(t));
-        if (novo - t).abs() < 1e-16 {
-            break;
-        }
-        t = novo;
-    }
-    t
-}
+#[path = "bola_toque.rs"]
+mod toque;
+use toque::{ArcoDoNo, cruza_segmentos, pe};
 
 /// **O vértice `i` é uma QUINA DO ARTISTA?** — está sobre um nó de `protegidos` (ao bit) e vira AGORA
 /// mais que a `PAREDE_MINIMA` e não mais que a viragem que esse nó tinha (+ `VINCO_MINIMO`). A regra
@@ -310,6 +260,26 @@ fn rola(
         .iter()
         .map(|a| a.p + Vec2::new(a.tan.y, -a.tan.x) * (sinal * raio))
         .collect();
+    // ⭐ F46 (o entalhe estreito do braço dobrado de volta, medido a `(176°, 100°)`): quando a bola
+    // pousa nas DUAS bordas da boca de uma fenda mais estreita que ela, os toques são dois nós
+    // CONVEXOS, e o centro é onde os dois ARCOS de raio `raio` à volta deles se cruzam. A corda
+    // entre as normais de um nó passa por DENTRO do arco: o cruzamento de duas cordas punha o centro
+    // perto demais da boca, a bola nunca estava vazia, e a fenda ficava aberta.
+    let arco_de = |e: usize| -> Option<ArcoDoNo> {
+        let (a, b) = (&am[e], &am[(e + 1) % m]);
+        if a.seg == b.seg {
+            return None;
+        }
+        let dth = a.tan.cross(b.tan).atan2(a.tan.dot(b.tan));
+        (dth * sinal > 1e-9).then(|| {
+            let n = |t: Vec2| Vec2::new(t.y, -t.x) * sinal;
+            ArcoDoNo {
+                c: b.p,
+                n0: n(a.tan),
+                n1: n(b.tan),
+            }
+        })
+    };
     // A aresta `e` (amostra `e` → `e + 1`) sobre um nó que é quina do artista é parede.
     let aresta_parede = |e: usize| e % k1 == AMOSTRAS && parede[(e / k1 + 1) % n];
     // As sementes: arestas CÔNCAVAS mais apertadas que `raio`.
@@ -374,11 +344,32 @@ fn rola(
         for &i in &esq {
             let ci = dist_s((i + 1) % m, lo);
             for &j in &dir {
-                if let Some((u, w)) =
-                    cruza_segmentos(fora[i], fora[(i + 1) % m], fora[j], fora[(j + 1) % m])
-                {
-                    let c = fora[i] + (fora[(i + 1) % m] - fora[i]) * u;
-                    candidatos.push((ci + dist_s((hi + 1) % m, j), i, u, j, w, c));
+                let custo = ci + dist_s((hi + 1) % m, j);
+                let (pi, qi) = (fora[i], fora[(i + 1) % m]);
+                let (pj, qj) = (fora[j], fora[(j + 1) % m]);
+                // ⭐ F46: o offset de um nó CONVEXO é um ARCO de raio `raio` à volta dele, nunca a
+                // corda entre as duas normais (ver [`arco_de`]).
+                match (arco_de(i), arco_de(j)) {
+                    (None, None) => {
+                        if let Some((u, w)) = cruza_segmentos(pi, qi, pj, qj) {
+                            candidatos.push((custo, i, u, j, w, pi + (qi - pi) * u));
+                        }
+                    }
+                    (Some(ai), None) => {
+                        for (c, w) in ai.com_segmento(pj, qj, raio) {
+                            candidatos.push((custo, i, 0.0, j, w, c));
+                        }
+                    }
+                    (None, Some(aj)) => {
+                        for (c, u) in aj.com_segmento(pi, qi, raio) {
+                            candidatos.push((custo, i, u, j, 0.0, c));
+                        }
+                    }
+                    (Some(ai), Some(aj)) => {
+                        for c in ai.com_arco(&aj, raio) {
+                            candidatos.push((custo, i, 0.0, j, 0.0, c));
+                        }
+                    }
                 }
             }
         }
@@ -389,66 +380,79 @@ fn rola(
         // certa pousa nos dois flancos e engole o dente — é o candidato seguinte que está vazio.
         candidatos.sort_by(|a, b| a.0.total_cmp(&b.0));
         let vazia = |c: Point| am.iter().all(|a| (a.p - c).hypot() >= FOLGA_DA_BOLA * raio);
-        let &(_, i, u, j, w, c) = candidatos.iter().find(|k| vazia(k.5))?;
-        let pe_de = |e: usize, f: f64| -> (usize, f64) {
-            let (a, b) = (&am[e], &am[(e + 1) % m]);
-            if a.seg != b.seg {
-                // A aresta de um nó: o toque é o próprio nó.
-                return (b.seg, 0.0);
-            }
-            let dt = 1.0 / AMOSTRAS as f64;
-            let t0 = a.t + (b.t - a.t) * f;
-            let cub = segmento(&verts, a.seg);
-            (a.seg, pe(&cub, c, (t0 - dt).max(0.0), (t0 + dt).min(1.0)))
-        };
-        let (seg_a, mut t_a) = pe_de(i, u);
-        let (seg_b, mut t_b) = pe_de(j, w);
-        let mut c = c;
-        // ⭐ O centro EXACTO: o ponto a `raio` para fora dos DOIS toques ao mesmo tempo, por Newton
-        // sobre `(t_a, t_b)`. ⚠️ O cruzamento das paralelas AMOSTRADAS (cordas) deixa o centro
-        // desviado, o arco sai um nada mais apertado que `raio`, e rolar a bola outra vez trocava
-        // o arco dela — medido na dobra em C a `135°`, um toque a andar `1,5e-4`. Um toque num
-        // NÓ (`t = 0` de uma aresta de nó) não se refina: ali o toque é o próprio nó.
-        let para_fora = |seg: usize, t: f64| {
-            let tg = tangente(&verts, seg, t);
-            segmento(&verts, seg).eval(t) + Vec2::new(tg.y, -tg.x) * (sinal * raio)
-        };
-        let nos_a = am[i].seg != am[(i + 1) % m].seg;
-        let nos_b = am[j].seg != am[(j + 1) % m].seg;
-        if !nos_a && !nos_b {
-            let (mut ta, mut tb) = (t_a, t_b);
-            let mut ok = false;
-            for _ in 0..24 {
-                let f = para_fora(seg_a, ta) - para_fora(seg_b, tb);
-                if f.hypot() < 1e-13 * raio.max(1.0) {
-                    ok = true;
-                    break;
+        let refina = |&(_, i, u, j, w, c): &(f64, usize, f64, usize, f64, Point)| -> Vao {
+            let pe_de = |e: usize, f: f64| -> (usize, f64) {
+                let (a, b) = (&am[e], &am[(e + 1) % m]);
+                if a.seg != b.seg {
+                    // A aresta de um nó: o toque é o próprio nó.
+                    return (b.seg, 0.0);
                 }
-                let h = 1e-7;
-                let da = (para_fora(seg_a, (ta + h).min(1.0 - 1e-12)) - para_fora(seg_a, ta)) / h;
-                let db = (para_fora(seg_b, tb) - para_fora(seg_b, (tb + h).min(1.0 - 1e-12))) / h;
-                let det = da.cross(db);
-                if det.abs() < 1e-300 {
-                    break;
+                let dt = 1.0 / AMOSTRAS as f64;
+                let t0 = a.t + (b.t - a.t) * f;
+                let cub = segmento(&verts, a.seg);
+                (a.seg, pe(&cub, c, (t0 - dt).max(0.0), (t0 + dt).min(1.0)))
+            };
+            let (seg_a, mut t_a) = pe_de(i, u);
+            let (seg_b, mut t_b) = pe_de(j, w);
+            let mut c = c;
+            // ⭐ O centro EXACTO: o ponto a `raio` para fora dos DOIS toques ao mesmo tempo, por Newton
+            // sobre `(t_a, t_b)`. ⚠️ O cruzamento das paralelas AMOSTRADAS (cordas) deixa o centro
+            // desviado, o arco sai um nada mais apertado que `raio`, e rolar a bola outra vez trocava
+            // o arco dela — medido na dobra em C a `135°`, um toque a andar `1,5e-4`. Um toque num
+            // NÓ (`t = 0` de uma aresta de nó) não se refina: ali o toque é o próprio nó.
+            let para_fora = |seg: usize, t: f64| {
+                let tg = tangente(&verts, seg, t);
+                segmento(&verts, seg).eval(t) + Vec2::new(tg.y, -tg.x) * (sinal * raio)
+            };
+            let nos_a = am[i].seg != am[(i + 1) % m].seg;
+            let nos_b = am[j].seg != am[(j + 1) % m].seg;
+            if !nos_a && !nos_b {
+                let (mut ta, mut tb) = (t_a, t_b);
+                let mut ok = false;
+                for _ in 0..24 {
+                    let f = para_fora(seg_a, ta) - para_fora(seg_b, tb);
+                    if f.hypot() < 1e-13 * raio.max(1.0) {
+                        ok = true;
+                        break;
+                    }
+                    let h = 1e-7;
+                    let da =
+                        (para_fora(seg_a, (ta + h).min(1.0 - 1e-12)) - para_fora(seg_a, ta)) / h;
+                    let db =
+                        (para_fora(seg_b, tb) - para_fora(seg_b, (tb + h).min(1.0 - 1e-12))) / h;
+                    let det = da.cross(db);
+                    if det.abs() < 1e-300 {
+                        break;
+                    }
+                    // Resolve `da·x + db·y = −f`.
+                    let x = -f.cross(db) / det;
+                    let y = -da.cross(f) / det;
+                    ta = (ta + x).clamp(1e-12, 1.0 - 1e-12);
+                    tb = (tb + y).clamp(1e-12, 1.0 - 1e-12);
                 }
-                // Resolve `da·x + db·y = −f`.
-                let x = -f.cross(db) / det;
-                let y = -da.cross(f) / det;
-                ta = (ta + x).clamp(1e-12, 1.0 - 1e-12);
-                tb = (tb + y).clamp(1e-12, 1.0 - 1e-12);
+                let novo = para_fora(seg_a, ta);
+                if ok && (novo - c).hypot() < raio {
+                    (t_a, t_b, c) = (ta, tb, novo);
+                }
             }
-            let novo = para_fora(seg_a, ta);
-            if ok && (novo - c).hypot() < raio {
-                (t_a, t_b, c) = (ta, tb, novo);
+            Vao {
+                seg_a,
+                t_a,
+                seg_b,
+                t_b,
+                centro: c,
             }
+        };
+        if let Some(k) = candidatos.iter().find(|k| vazia(k.5)) {
+            return Some(refina(k));
         }
-        Some(Vao {
-            seg_a,
-            t_a,
-            seg_b,
-            t_b,
-            centro: c,
-        })
+        // ⭐ F46 (o fundo do vinco do braço dobrado de volta, medido a `(176°, 142°)`): quando a bola
+        // pousa nas duas paredes de um canal que se fecha, o centro tirado das CORDAS amostradas
+        // fica a `0,2 %`–`0,3 %` de raio da curva — mais que a `FOLGA_DA_BOLA` — e TODOS os
+        // candidatos liam-se ocupados: o canal inteiro ficava aberto até ao fundo. ⇒ só quando
+        // nenhum passa, cada candidato é julgado pelo centro EXACTO. ⚠️ A ordem é load-bearing: com
+        // um candidato vazio pelas cordas a resposta é a de sempre, ao bit.
+        candidatos.iter().map(refina).find(|v| vazia(v.centro))
     };
     let ponto = |seg: usize, t: f64| segmento(&verts, seg).eval(t);
     let g = |seg: usize, t: f64| seg as f64 + t;

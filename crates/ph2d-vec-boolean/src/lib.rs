@@ -56,6 +56,7 @@ pub use align::aligned_stroke;
 /// ⭐⭐⭐ **A SILHUETA de uma forma que se sobrepõe a si mesma** — o contacto de um cotovelo forte
 /// resolvido pela regra do preenchimento. Módulo irmão: é COMPOSIÇÃO do motor daqui (`A ∪ ∅`).
 pub mod bola;
+pub mod esporao;
 pub mod gancho;
 pub mod ilha;
 pub mod overlap;

@@ -142,10 +142,26 @@ pub fn silhueta_da_pele(path: &VecPath, quinas: &[([f64; 2], f64)]) -> Option<Ve
     desenho.verts = crate::gancho::desfaz_os_ganchos(path.verts.clone(), quinas, solda);
     let unido = resolve_overlap(&desenho).map(|mut u| {
         u.verts = crate::gancho::desfaz_os_ganchos(std::mem::take(&mut u.verts), quinas, solda);
+        // ⭐ F46: e o ESPORÃO — o pedaço que volta pelo próprio caminho ([`crate::esporao`]).
+        u.verts = crate::esporao::tira_os_esporoes(std::mem::take(&mut u.verts), solda);
         u
     });
     let base = unido.as_ref().unwrap_or(&desenho);
     let rolado = crate::bola::rola_a_bola(base.verts.clone(), quinas, raio, solda);
+    // ⭐ F46: e a ABERTURA — a mesma bola a rolar por DENTRO do contorno de fora come a saliência
+    // mais fina que ela, e o fecho seguinte arredonda o pé que ela deixa. Medido com o braço dobrado
+    // de VOLTA (uma junta a `174°`–`180°`): a união deixa dentes e fendas de `~0,02` (a pele dos dois
+    // membros quase coincide), `85°`–`132°` de viragem, e a sequência fecho → abertura → fecho
+    // leva-os a `1,4°`. ⚠️ Na abertura TODO nó do artista que vira é parede (a viragem de repouso
+    // não limita): uma ponta convexa desenhada — a de uma estrela — fica em ponta mesmo quando a
+    // deformação a afia.
+    let paredes: Vec<([f64; 2], f64)> = quinas.iter().map(|&(p, _)| (p, 180.0)).collect();
+    let aberto = crate::bola::rola_a_bola_por_dentro(rolado.clone(), &paredes, raio, solda);
+    let rolado = if aberto == rolado {
+        rolado
+    } else {
+        crate::bola::rola_a_bola(aberto, quinas, raio, solda)
+    };
     if unido.is_none() && rolado == path.verts {
         return None;
     }

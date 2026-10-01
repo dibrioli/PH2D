@@ -183,6 +183,29 @@ fn pe(c: &CubicBez, alvo: Point, mut lo: f64, mut hi: f64) -> f64 {
     t
 }
 
+/// **O vértice `i` é uma QUINA DO ARTISTA?** — está sobre um nó de `protegidos` (ao bit) e vira AGORA
+/// mais que a `PAREDE_MINIMA` e não mais que a viragem que esse nó tinha (+ `VINCO_MINIMO`). A regra
+/// de quem fica em quina, com dois leitores: a bola e o desfazer dos ganchos ([`crate::gancho`]).
+pub(crate) fn quina_do_artista(
+    verts: &[VecVertex],
+    i: usize,
+    protegidos: &[([f64; 2], f64)],
+) -> bool {
+    let a = verts[i].anchor;
+    let vira = crate::overlap::viragem_do_vertice(verts, i).unwrap_or(0.0);
+    protegidos.iter().any(|(o, v)| {
+        (o[0] - a[0]).abs() <= 1e-12 * (1.0 + a[0].abs())
+            && (o[1] - a[1]).abs() <= 1e-12 * (1.0 + a[1].abs())
+            // ⚠️ Não há `v > PAREDE_MINIMA` à parte, e não é descuido: as duas linhas de baixo
+            // já o implicam (`v ≥ vira − 1° > 14°`), e a mutação que o apagava SOBREVIVEU.
+            // ⚠️ E AINDA é uma quina: a união pode deixar liso um nó que no desenho virava
+            // (medido na dobra em C a `135°`: um nó de mais de `15°` sai a `0,5°`), e uma
+            // parede ali prendia a procura a `0,019` do vinco — que ficava em quina.
+            && vira > crate::overlap::PAREDE_MINIMA
+            && vira <= v + crate::overlap::VINCO_MINIMO
+    })
+}
+
 /// ⭐⭐⭐ **Rola a bola de raio `raio` por fora do contorno fechado `verts`** e troca cada zona
 /// côncava onde ela não cabe pelo arco dela. `protegidos` são os nós do desenho com a viragem que
 /// tinham (as quinas do artista); `solda` é a escala abaixo da qual uma troca não se faz (um vão
@@ -201,22 +224,9 @@ pub fn rola_a_bola(
     if n < 3 || !raio.is_finite() || raio <= 0.0 {
         return verts;
     }
-    let quina_do_artista = |i: usize| {
-        let a = verts[i].anchor;
-        let vira = crate::overlap::viragem_do_vertice(&verts, i).unwrap_or(0.0);
-        protegidos.iter().any(|(o, v)| {
-            (o[0] - a[0]).abs() <= 1e-12 * (1.0 + a[0].abs())
-                && (o[1] - a[1]).abs() <= 1e-12 * (1.0 + a[1].abs())
-                // ⚠️ Não há `v > PAREDE_MINIMA` à parte, e não é descuido: as duas linhas de baixo
-                // já o implicam (`v ≥ vira − 1° > 14°`), e a mutação que o apagava SOBREVIVEU.
-                // ⚠️ E AINDA é uma quina: a união pode deixar liso um nó que no desenho virava
-                // (medido na dobra em C a `135°`: um nó de mais de `15°` sai a `0,5°`), e uma
-                // parede ali prendia a procura a `0,019` do vinco — que ficava em quina.
-                && vira > crate::overlap::PAREDE_MINIMA
-                && vira <= v + crate::overlap::VINCO_MINIMO
-        })
-    };
-    let parede: Vec<bool> = (0..n).map(quina_do_artista).collect();
+    let parede: Vec<bool> = (0..n)
+        .map(|i| quina_do_artista(&verts, i, protegidos))
+        .collect();
     // As amostras: `AMOSTRAS + 1` por segmento, com as duas pontas — a do fim com a tangente de
     // ENTRADA do nó seguinte, a do começo com a de SAÍDA. Um vinco fica assim como uma aresta de
     // comprimento zero entre duas tangentes.

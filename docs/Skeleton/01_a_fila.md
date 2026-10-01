@@ -66,6 +66,15 @@ diz onde ler o mecanismo:
 
 ---
 
+### F43 — ⭐⭐ **A MEIA-LUA DA JUNTA QUASE RECTA** (report do dono, 2026-09-30, com foto: *«quase perfeito, artefatos curados na quina dobrada. resquício quando quase reto»*)
+
+- **Reproduzido** com o braço da cena: a `(125°, 34°)`/`36°` e a `(110°, 10°–17,5°)` o produto tinha um nó a virar `~180°` num lado quase RECTO. Na dobra do mapa a velocidade do contorno chega a zero mesmo com a junta a `~35°`, e o assado devolve uma cúbica que DOBRA — a tangente invertida num nó (a 2.ª alça `0,006` atrás do nó) ou um **zigue-zague de `0,0016`** de largura por dentro dela. Invisível como forma; o traço desenha a meia-lua. ⛔ Não é vinco côncavo, logo a bola não lhe toca; e a união **piorava-o** (lia o zigue-zague como cruzamento e reescrevia-o num dardo real de `~0,03`).
+- **Cura:** `ph2d_vec_boolean::gancho::desfaz_os_ganchos` — por segmento, se a cúbica dobra (um passo vira `> 150°` contando com as tangentes dos vizinhos), é trocada pela Hermite que segue os vizinhos, só se a forma nova ficar a menos da solda (Hausdorff ponto→segmento). Corre **ANTES da união**; nunca toca numa quina do artista (a regra passou a ser UMA função, `bola::quina_do_artista`, com os dois leitores).
+- **Medido:** `1 053` poses (`110°`/`125°`/`140°` × `0°`–`175°`) — nenhum nó acima de `15°` até `175°`; fotos limpas a `17,5°` e `34°`.
+- **Gates:** `com_a_junta_quase_recta_nao_sobra_meia_lua` (com os dois CONTROLOS: a fixtura dobra, e união+bola sem o passe deixam-no) · `o_gancho_microscopico_sai_e_o_que_se_ve_fica` · `o_laco_dentro_da_cubica_sai`. Mutação **5 de 5** (o passe antes da união, o filtro das candidatas, a tolerância, a quina do artista); uma 2.ª passagem DEPOIS da união **saiu** — a mutação que a apagava sobreviveu e a varredura deu o mesmo.
+- ⏳ **ABERTO:** o braço dobrado de VOLTA sobre si mesmo (`175°`–`180°` na junta de cima) — a borda sai irregular na foto e `2` poses ficam com um nó de `~92°`. Pré-existente (já assim na F41/F42) e outro mecanismo: a sobreposição quase total de dois membros.
+- ⚠️ `PAREDE_MINIMA` passou a pública (lida pelos gates).
+
 ### F42 — ⭐⭐ **O GANCHO DA DOBRA NÃO É QUINA DO ARTISTA** (report do dono, 2026-09-30, com duas fotos: *«melhorou muito o ângulo e suas transições. Restam os artefatos de imagem»* — fatias de cinzento e de laranja dentro do castanho, no vinco)
 
 - **Reproduzido na cena `=4`** a `(125°, 85°)` com `TRACO=0.3`, e despejado do produto: na DOBRA do mapa um nó do ASSADO vira `180°` (um gancho de raio `~0,005` no vinco). A bola lia as quinas no desenho **DEFORMADO** (`nos_do_desenho(d)`), o gancho passava por quina desenhada (`viragem ≤ a dele + 1°`), ficava, e o traço sobre a meia-volta tinha `311°` de curva mais apertada que a caneta — as fatias.

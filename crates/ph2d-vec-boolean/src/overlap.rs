@@ -128,11 +128,18 @@ pub fn silhueta_da_pele(path: &VecPath, quinas: &[([f64; 2], f64)]) -> Option<Ve
     }
     let solda = SOLDA_DA_QUINA * diagonal;
     let raio = RAIO_DO_VINCO * diagonal;
-    let unido = resolve_overlap(path);
-    let base = unido.as_ref().unwrap_or(path);
+    // ⭐ F43: os ganchos que só existem na TANGENTE saem ANTES da união. ⛔ Depois dela é tarde
+    // (medido a `(110°, 17,5°)`): um zigue-zague de `0,0016` de largura conta como cruzamento, a união
+    // reescreve-o num dardo REAL de `~0,03`, e esse já não é ruído. ⚠️ Uma 2.ª passagem DEPOIS da
+    // união foi escrita e saiu: a mutação que a apagava SOBREVIVEU, e a varredura de `1 053` poses
+    // dava o mesmo com e sem ela.
+    let mut desenho = path.clone();
+    desenho.verts = crate::gancho::desfaz_os_ganchos(path.verts.clone(), quinas, solda);
+    let unido = resolve_overlap(&desenho);
+    let base = unido.as_ref().unwrap_or(&desenho);
     let rolado = crate::bola::rola_a_bola(base.verts.clone(), quinas, raio, solda);
-    if rolado == base.verts {
-        return unido;
+    if unido.is_none() && rolado == path.verts {
+        return None;
     }
     let mut out = base.clone();
     // ⛔ SEM solda depois da bola: ela fundia o toque com um nó do desenho a `3,3 mm` dele (a

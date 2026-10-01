@@ -434,3 +434,55 @@ fn a_quina_desenhada_continua_em_bico() {
         "sem lista de quinas a bola não arredonda o «L» — o gate não mede a protecção"
     );
 }
+
+/// ⭐⭐⭐ **GATE — com a junta QUASE RECTA não sobra meia-lua** (F43, report do dono de 2026-09-30, com
+/// foto: *«quase perfeito, artefatos curados na quina dobrada; resquício quando quase reto»*).
+///
+/// ⛔ Na dobra do MAPA a velocidade do contorno chega a zero mesmo com a junta a `~35°`, e o assado
+/// devolve uma cúbica que DOBRA — a tangente invertida num nó, ou um zigue-zague de `0,0016` de largura
+/// por dentro dela. Invisível como forma; o traço desenha-o como uma meia-lua. Não é vinco côncavo,
+/// logo a bola não lhe toca, e a união ainda o piorava (lia o zigue-zague como cruzamento e
+/// reescrevia-o num dardo real).
+///
+/// ⭐ **Medido** (`110°`/`125°`/`140°` × `0°`–`175°` de meio em meio grau, `1 053` poses): o produto
+/// tinha nós a virar `~180°` a `110°` com a de cima a `10°`–`17,5°` e `34°`–`36°`, e a `125°`/`140°` a
+/// `34°`–`36°`; agora em nenhuma pose até `175°`. Aqui correm `110°` e `125°` × `0°`–`70°`. ⚠️ **As metades:** o CONTROLO de que a fixtura contém o fenómeno (o desenho vira
+/// `> 150°` em alguma pose) e o de MECANISMO (a união e a bola sem o passe deixam-no em alguma pose);
+/// e o produto — nenhum vértice vira mais que a `PAREDE_MINIMA`.
+#[test]
+fn com_a_junta_quase_recta_nao_sobra_meia_lua() {
+    let (mut no_desenho, mut sem_passe) = (0, 0);
+    for (primeira, passo) in [110.0_f32, 125.0]
+        .into_iter()
+        .flat_map(|a| (0..=140_u16).map(move |b| (a, b)))
+    {
+        let segunda = 0.5 * f32::from(passo);
+        let (sem, com) = braco_em(primeira, segunda);
+        no_desenho += usize::from(viragem_maxima(&sem) > 150.0);
+        let d = diagonal(&sem);
+        let unido = ph2d_vec_boolean::resolve_overlap(&sem).unwrap_or_else(|| sem.clone());
+        let so_bola = VecPath {
+            verts: ph2d_vec_boolean::bola::rola_a_bola(
+                unido.verts.clone(),
+                &[],
+                ph2d_vec_boolean::overlap::RAIO_DO_VINCO * d,
+                ph2d_vec_boolean::overlap::SOLDA_DA_QUINA * d,
+            ),
+            ..unido
+        };
+        sem_passe += usize::from(viragem_maxima(&so_bola) > 150.0);
+        let vira = viragem_maxima(&com);
+        assert!(
+            vira < ph2d_vec_boolean::overlap::PAREDE_MINIMA,
+            "({primeira}°, {segunda}°): um vértice da silhueta vira {vira:.1}° — sobrou a meia-lua"
+        );
+    }
+    assert!(
+        no_desenho >= 1,
+        "nenhuma pose dobra — a fixtura deixou de conter o fenómeno"
+    );
+    assert!(
+        sem_passe >= 1,
+        "sem o passe dos ganchos a união e a bola já o curam — o controlo deixou de medir o mecanismo"
+    );
+}

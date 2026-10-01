@@ -66,6 +66,15 @@ diz onde ler o mecanismo:
 
 ---
 
+### F44 — ⭐⭐ **AS ILHAS: a bola rola por DENTRO** (report do dono, 2026-10-01, três fotos: *«smoke ok! Parece muito bom! Falta apenas corrigir o stroke quando uma parte do membro se sobrepõe a outra formando uma ilha. Nessa ilha as quinas ainda não estão corretas»*)
+
+- **Medido:** o braço dobrado em C fecha-se sobre si e a união deixa um BURACO (`subpaths`); a bola rolava só no contorno de fora ⇒ as ilhas ficavam com cantos até `153°`, e a junta do traço abria o espinho para dentro do preenchimento.
+- **Cura em três peças, cada uma achada por medição depois da anterior:** (1) `bola::rola_a_bola_por_dentro` — o lado de fora sai da orientação do PRÓPRIO contorno (área), logo inverter os vértices não serve: um parâmetro `Lado`. (2) **A janela de procura passa a meia volta** — numa ilha de perímetro `0,89` contra `32 r ≈ 1,2` o lado esquerdo comia a volta inteira e o direito ficava com zero arestas; o contorno de fora não muda AO BIT (o perímetro de uma curva fechada é `≥ √2·diagonal = 141 r` contra os `64 r` das duas janelas). (3) **Sem nó livre a montagem parte do FIM de um arco** — numa ilha triangular todo nó é canto, e a bola desistia. E a **ilha onde a bola não cabe é cheia inteira** (o fecho), `ilha::a_bola_cabe_dentro` (grelha `64×64`, do centro para fora).
+- **Medido** (`3 540` poses em C, `60°`–`176°` × `60°`–`178°` de dois em dois): poses com canto de ilha acima de `15°` **`595 → 0`**; o contorno de fora **idêntico** ao `HEAD` (os mesmos `113` nós, todos do braço dobrado de volta — abaixo).
+- **Gates:** `nas_ilhas_a_bola_rola_por_dentro` (três metades: a fixtura tem ilha em bico · alguma sobrevive arredondada · alguma é fechada) · `a_bola_arredonda_os_cantos_de_uma_ilha` (ilha pequena e grande, com o CONTROLO de que por fora a bola não toca) · `a_bola_cabe_so_onde_o_raio_inscrito_e_maior_que_o_dela` (`±5 %`). Mutação **7 de 7**.
+- ⚠️ **Fechar a ilha é um salto**, inerente ao fecho: quando o raio inscrito passa por `r` o buraco vai de um disco de raio `~r` a nada (com traço, o anel do buraco some). O mesmo salto que um vinco já tinha no contorno de fora.
+- ⏳ **ABERTO e PRÉ-EXISTENTE:** no contorno de fora, além do braço dobrado `≥ 176°`, uma família de ganchos `171°`–`179°` com as duas juntas a somar `~238°` (`(130,108)` … `(170,70)`) — medida igual no `HEAD`, por investigar.
+
 ### F43 — ⭐⭐ **A MEIA-LUA DA JUNTA QUASE RECTA** (report do dono, 2026-09-30, com foto: *«quase perfeito, artefatos curados na quina dobrada. resquício quando quase reto»*)
 
 - **Reproduzido** com o braço da cena: a `(125°, 34°)`/`36°` e a `(110°, 10°–17,5°)` o produto tinha um nó a virar `~180°` num lado quase RECTO. Na dobra do mapa a velocidade do contorno chega a zero mesmo com a junta a `~35°`, e o assado devolve uma cúbica que DOBRA — a tangente invertida num nó (a 2.ª alça `0,006` atrás do nó) ou um **zigue-zague de `0,0016`** de largura por dentro dela. Invisível como forma; o traço desenha a meia-lua. ⛔ Não é vinco côncavo, logo a bola não lhe toca; e a união **piorava-o** (lia o zigue-zague como cruzamento e reescrevia-o num dardo real de `~0,03`).

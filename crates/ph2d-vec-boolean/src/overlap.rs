@@ -148,6 +148,19 @@ pub fn silhueta_da_pele(path: &VecPath, quinas: &[([f64; 2], f64)]) -> Option<Ve
     // para os RESTOS da união, que já foram soldados antes; um pedaço curto RECORTADO de uma curva
     // lisa tem as tangentes dela, não uma arbitrária.
     out.verts = rolado;
+    // ⭐ F44: as ILHAS que a união deixa (um membro a fechar-se sobre outro) são buracos, e o
+    // vinco de um buraco é o canto dele — a bola rola por DENTRO de cada uma. Medido antes da
+    // cura: com o contorno de fora a `1,4°` no pior nó, as ilhas viravam até `153°`. ⚠️ Uma ilha
+    // onde a bola não cabe em sítio nenhum é cheia INTEIRA pelo fecho — sai ([`crate::ilha`]).
+    out.subpaths
+        .retain(|c| crate::ilha::a_bola_cabe_dentro(&c.verts, raio));
+    if out.subpaths.is_empty() {
+        out.fill_rule = path.fill_rule;
+    }
+    for c in &mut out.subpaths {
+        c.verts =
+            crate::bola::rola_a_bola_por_dentro(std::mem::take(&mut c.verts), quinas, raio, solda);
+    }
     Some(out)
 }
 

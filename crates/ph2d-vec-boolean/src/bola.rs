@@ -213,12 +213,49 @@ pub(crate) fn quina_do_artista(
 ///
 /// Nada a trocar ⇒ devolve `verts` intacto, ao bit.
 #[must_use]
-#[allow(clippy::too_many_lines)]
 pub fn rola_a_bola(
     verts: Vec<VecVertex>,
     protegidos: &[([f64; 2], f64)],
     raio: f64,
     solda: f64,
+) -> Vec<VecVertex> {
+    rola(verts, protegidos, raio, solda, Lado::Fora)
+}
+
+/// ⭐⭐ **A mesma bola a rolar por DENTRO do contorno** — o que o fecho da forma faz num BURACO
+/// (F44, report do dono de 2026-10-01 com três fotos: *«quando uma parte do membro se sobrepõe a
+/// outra formando uma ilha, nessa ilha as quinas ainda não estão corretas»*).
+///
+/// Um buraco é vazio por DENTRO do contorno dele, logo os cantos dele que são CONVEXOS como forma
+/// são os vincos CÔNCAVOS da pele — é ali que a junta do traço abre o espinho para dentro do
+/// preenchimento. O lado de fora da bola sai da orientação do PRÓPRIO contorno (pela área dele), e
+/// é por isso que esta porta existe em vez de inverter a ordem dos vértices: inverter não muda o
+/// lado que a área diz.
+#[must_use]
+pub fn rola_a_bola_por_dentro(
+    verts: Vec<VecVertex>,
+    protegidos: &[([f64; 2], f64)],
+    raio: f64,
+    solda: f64,
+) -> Vec<VecVertex> {
+    rola(verts, protegidos, raio, solda, Lado::Dentro)
+}
+
+/// De que lado do contorno o vazio está: por FORA (o contorno de fora de uma forma) ou por DENTRO
+/// (um buraco).
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Lado {
+    Fora,
+    Dentro,
+}
+
+#[allow(clippy::too_many_lines)]
+fn rola(
+    verts: Vec<VecVertex>,
+    protegidos: &[([f64; 2], f64)],
+    raio: f64,
+    solda: f64,
+    lado: Lado,
 ) -> Vec<VecVertex> {
     let n = verts.len();
     if n < 3 || !raio.is_finite() || raio <= 0.0 {
@@ -262,7 +299,10 @@ pub fn rola_a_bola(
     let area2: f64 = (0..m)
         .map(|i| am[i].p.to_vec2().cross(am[(i + 1) % m].p.to_vec2()))
         .sum();
-    let sinal = area2.signum();
+    let sinal = match lado {
+        Lado::Fora => area2.signum(),
+        Lado::Dentro => -area2.signum(),
+    };
     if sinal == 0.0 {
         return verts;
     }
@@ -304,7 +344,12 @@ pub fn rola_a_bola(
         let d = am[ate].s - am[de].s;
         if d >= 0.0 { d } else { d + perimetro }
     };
-    let janela = ALCANCE * raio;
+    // ⚠️ F44: cada lado procura no máximo MEIA VOLTA. Num contorno curto (uma ilha de perímetro
+    // `0,89` contra um alcance de `32 r ≈ 1,2`, medido) o lado esquerdo comia a volta inteira e o
+    // direito ficava com ZERO arestas — não havia par onde a bola pousar e o canto ficava em bico.
+    // O contorno de fora não muda ao bit: o perímetro de uma curva fechada é pelo menos o dobro da
+    // maior largura dela, logo `≥ √2·diagonal = 141 r` contra os `64 r` que as duas janelas somam.
+    let janela = (ALCANCE * raio).min(0.5 * perimetro);
     // Procura o toque da bola a volta da corrida `[lo, hi]`.
     let procura = |lo: usize, hi: usize| -> Option<Vao> {
         let mut esq: Vec<usize> = Vec::new();
@@ -495,17 +540,19 @@ pub fn rola_a_bola(
     if vaos.is_empty() {
         return verts;
     }
-    // Um nó de partida fora de todo vão.
-    let Some(s0) = (0..n).find(|&k| {
+    vaos.sort_by(|a, b| g(a.seg_a, a.t_a).total_cmp(&g(b.seg_a, b.t_a)));
+    // A partida: um nó fora de todo vão — e, quando TODOS os nós estão dentro de um (F44: uma ilha
+    // triangular, onde cada nó é um canto e cada canto é um vão), o FIM do arco do primeiro vão,
+    // que por construção não está dentro de nenhum. ⛔ Antes, sem nó livre a bola desistia e a
+    // ilha ficava com os três bicos.
+    let livre = (0..n).find(|&k| {
         vaos.iter()
             .all(|v| !dentro(v, g(k, 0.0)) && g(v.seg_a, v.t_a) != g(k, 0.0))
-    }) else {
-        return verts;
-    };
-    vaos.sort_by(|a, b| g(a.seg_a, a.t_a).total_cmp(&g(b.seg_a, b.t_a)));
+    });
+    let (s0, t0) = livre.map_or((vaos[0].seg_b, vaos[0].t_b), |k| (k, 0.0));
     // O percurso: pedaços de cúbica em ordem, cada um com o vértice que o começa.
     let mut pedacos: Vec<(CubicBez, Option<usize>)> = Vec::new();
-    let (mut seg, mut t) = (s0, 0.0_f64);
+    let (mut seg, mut t) = (s0, t0);
     for _ in 0..(4 * n + 4 * vaos.len() + 8) {
         let proximo = vaos
             .iter()
@@ -535,7 +582,7 @@ pub fn rola_a_bola(
             seg = (seg + 1) % n;
             t = 0.0;
         }
-        if seg == s0 && t == 0.0 {
+        if seg == s0 && t == t0 {
             break;
         }
     }

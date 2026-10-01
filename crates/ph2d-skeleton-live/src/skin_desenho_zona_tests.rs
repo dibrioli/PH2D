@@ -515,3 +515,62 @@ fn com_as_duas_juntas_no_mesmo_sentido_nao_sobra_meia_lua() {
         "nenhuma pose dobra — a fixtura deixou de conter o fenómeno"
     );
 }
+
+/// ⭐⭐⭐ **GATE — nas ILHAS a bola rola por dentro** (F44, report do dono de 2026-10-01, três fotos:
+/// *«quando uma parte do membro se sobrepõe a outra formando uma ilha, nessa ilha as quinas ainda
+/// não estão corretas»*). O braço dobrado em C fecha-se sobre si e a união deixa um BURACO; a bola
+/// rolava só no contorno de fora, e as ilhas ficavam com cantos até `153°` (a junta do traço abria o
+/// espinho para dentro do preenchimento).
+///
+/// **Medido** (`3 540` poses em C, `60°`–`176°` × `60°`–`178°` de dois em dois graus): ilhas com canto
+/// acima da `PAREDE_MINIMA` de `595` poses para `0`, e o contorno de fora IGUAL ao bit (os mesmos
+/// `113` nós — o braço dobrado de volta sobre si, aberto e anterior a esta wave).
+///
+/// ⚠️ As três metades: o CONTROLO de que a fixtura contém o fenómeno (a união crua deixa uma ilha
+/// em bico); que alguma ilha SOBREVIVE arredondada (senão o gate passaria por apagar todas); e que
+/// alguma é FECHADA (a bola não cabe — ver `ph2d_vec_boolean::ilha`).
+#[test]
+fn nas_ilhas_a_bola_rola_por_dentro() {
+    let (mut em_bico, mut ficou, mut fechou) = (0, 0, 0);
+    for a in (90..=130_u16).step_by(4) {
+        for b in (90..=130_u16).step_by(4) {
+            let (primeira, segunda) = (f32::from(a), -f32::from(b));
+            let (sem, com) = braco_em(primeira, segunda);
+            let crua = ph2d_vec_boolean::resolve_overlap(&sem).map_or(0, |u| u.subpaths.len());
+            if let Some(u) = ph2d_vec_boolean::resolve_overlap(&sem) {
+                em_bico += usize::from(u.subpaths.iter().any(|c| {
+                    let p = VecPath {
+                        verts: c.verts.clone(),
+                        ..VecPath::default()
+                    };
+                    viragem_maxima(&p) > 100.0
+                }));
+            }
+            ficou += usize::from(!com.subpaths.is_empty());
+            fechou += usize::from(crua > com.subpaths.len());
+            for c in &com.subpaths {
+                let p = VecPath {
+                    verts: c.verts.clone(),
+                    ..VecPath::default()
+                };
+                let vira = viragem_maxima(&p);
+                assert!(
+                    vira < ph2d_vec_boolean::overlap::PAREDE_MINIMA,
+                    "({primeira}°, {segunda}°): um canto da ilha vira {vira:.1}°"
+                );
+            }
+        }
+    }
+    assert!(
+        em_bico >= 1,
+        "nenhuma ilha em bico — a fixtura deixou de conter o fenómeno"
+    );
+    assert!(
+        ficou >= 1,
+        "nenhuma ilha sobreviveu — o gate não mede o arredondamento"
+    );
+    assert!(
+        fechou >= 1,
+        "nenhuma ilha foi fechada — o gate não mede a ilha onde a bola não cabe"
+    );
+}

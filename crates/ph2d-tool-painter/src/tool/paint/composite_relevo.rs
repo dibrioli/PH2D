@@ -91,6 +91,7 @@
 //! 1.ª camada de um lote ligar-se-ia à ÚLTIMA camada do lote anterior — outro tamanho, outra força —,
 //! logo cada camada guarda os seus e troca-os à volta da passagem, como o `rng_camada` e a máscara.
 
+use super::Region;
 use super::composite::{CompositeOp, EscopoDaBorracha, N_CAMADAS};
 use super::relief_state::WaveTip;
 use crate::tool::PainterTool;
@@ -216,35 +217,51 @@ impl PainterTool {
         self.paint.dab_groups = grupos_de_antes;
     }
 
-    /// **Há uma Erase viva por CIMA de um Brush vivo?** — a porta ÚNICA da pergunta, lida pelo
-    /// depósito (o envelope passa a ser da camada) e pela recomposição (quem o volta a juntar). Duas
-    /// respostas deixariam um envelope próprio sem ninguém que o juntasse.
+    /// **Há uma Erase — ou um Smear que leva corpo — viva por CIMA de um Brush vivo?** — a porta
+    /// ÚNICA da pergunta, lida pelo depósito (o envelope passa a ser da camada) e pela recomposição
+    /// (quem o volta a juntar). Duas respostas deixariam um envelope próprio sem ninguém que o juntasse.
     pub(super) fn corpo_por_camada(&self) -> bool {
         let e_viva = |pos: usize, op: CompositeOp| {
             self.camada_viva(pos) && self.paint.composite[pos].op == op
         };
-        // A posição 0 é o TOPO: uma Erase em `e` está por cima de todo `b > e`.
+        let leva = self.o_esfregao_leva_corpo();
+        // A posição 0 é o TOPO: uma camada em `e` está por cima de todo `b > e`.
         (0..N_CAMADAS).any(|e| {
-            e_viva(e, CompositeOp::Erase)
+            (e_viva(e, CompositeOp::Erase) || (leva && e_viva(e, CompositeOp::Smear)))
                 && (e + 1..N_CAMADAS).any(|b| e_viva(b, CompositeOp::Brush))
         })
     }
 
-    /// ⭐ **O envelope do traço, recomposto de baixo para cima** sobre a região deste lote (8b).
+    /// O esfregão arrasta o CORPO? — o interruptor `Affect Relief` e o `Plow` do pincel, as duas
+    /// perguntas que a sessão dele já faz ao relevo ASSENTE (`warp_render_relief`).
+    fn o_esfregao_leva_corpo(&self) -> bool {
+        #[cfg(test)]
+        if ESFREGAO_SEM_CORPO.with(std::cell::Cell::get) {
+            return false;
+        }
+        self.paint.warp.affect_relief && self.paint.brush.effective_impasto_plow() > 0.0
+    }
+
+    /// ⭐ **O envelope do traço, recomposto de baixo para cima** sobre a região da composição
+    /// (8b, e o report de 2026-09-30).
     ///
-    /// A região é a das camadas crescida pelo MAIOR raio do lote: o corpo de um dab é varrido até ao
-    /// centro do anterior (a lei da cápsula exige que ele caiba no raio), logo pode escrever até um
-    /// raio para lá da pegada que o `dabs_bounds` mede.
-    pub(super) fn compoe_o_corpo(&mut self, camadas: &[Vec<Dab>; N_CAMADAS]) {
+    /// Corre DEPOIS da composição da cor: é nela que o esfregão acumula o deslocamento do lote. A
+    /// região é a da composição (que já inclui o que o esfregão tocou) crescida pelo MAIOR raio do
+    /// lote: o corpo de um dab é varrido até ao centro do anterior, logo pode escrever até um raio
+    /// para lá da pegada.
+    ///
+    /// ⭐ **Um Smear por cima de Brushes arrasta o CORPO deles pelo MESMO deslocamento da cor**
+    /// (report do dono, 2026-09-30, com foto: *«smear puxa a cor e não puxa o relevo»*): o envelope
+    /// das camadas de BAIXO é escrito numa base (o slot de planos do próprio Smear, que não deposita
+    /// nada) e lido em `p − Plow·disp(p)`, exactamente como a cor lê `base(p − disp(p))` e o relevo
+    /// assente lê `pre_h`. Onde `disp = 0` a amostra bilinear devolve o valor do próprio texel, ao
+    /// bit — o caminho sem esfregão não muda.
+    pub(super) fn compoe_o_corpo(&mut self, caixa: Region, camadas: &[Vec<Dab>; N_CAMADAS]) {
         if !self.corpo_por_camada() {
             return;
         }
         let (w, h) = self.source_size;
         let n = (w as usize) * (h as usize);
-        let Some(caixa) = super::region::caixa_das_camadas(camadas, (w, h), self.paint.tiling)
-        else {
-            return;
-        };
         let raio = camadas
             .iter()
             .flatten()
@@ -259,78 +276,172 @@ impl PainterTool {
             .filter(|&p| self.camada_viva(p))
             .map(|p| (p, self.paint.composite[p].op))
             .collect();
-        let pilha = &self.paint.pilha;
-        let algum = ordem
-            .iter()
-            .any(|&(p, op)| op == CompositeOp::Brush && pilha.relevo[p].planos.paint.len() == n);
+        let algum = ordem.iter().any(|&(p, op)| {
+            op == CompositeOp::Brush && self.paint.pilha.relevo[p].planos.paint.len() == n
+        });
         if !algum {
             return;
         }
+        // O esfregão que leva corpo, e o deslocamento dele — `None` = nenhum (a dobra é uma só).
+        let ds = self.paint.warp.relief_disp_scale;
+        let disp = std::sync::Arc::clone(&self.paint.warp.disp);
+        let esfregao =
+            (self.o_esfregao_leva_corpo() && self.paint.warp.active && ds > 0.0 && disp.len() == n)
+                .then(|| ordem.iter().position(|&(_, op)| op == CompositeOp::Smear))
+                .flatten();
         let spec = self.stroke_spec();
         let push = spec.effective_impasto_push();
+        {
+            let relief = &mut self.paint.relief;
+            for (v, zero) in [
+                (&mut relief.stroke_height, 0.0),
+                (&mut relief.stroke_paint, 0.0),
+                (&mut relief.stroke_radius, 0.0),
+            ] {
+                if v.len() != n {
+                    *v = vec![zero; n];
+                }
+            }
+            for v in [&mut relief.stroke_grain, &mut relief.stroke_film] {
+                if v.len() != n {
+                    *v = vec![0u8; n];
+                }
+            }
+        }
+        // A BASE do esfregão: o envelope das camadas de baixo dele, escrito sobre a região.
+        let (acima, base) = match esfregao {
+            Some(k) => {
+                let pos = ordem[k].0;
+                let mut base = std::mem::take(&mut self.paint.pilha.relevo[pos].planos);
+                base.garante(n);
+                for py in r.y..r.y + r.h {
+                    for px in r.x..r.x + r.w {
+                        let i = py as usize * w as usize + px as usize;
+                        let e = dobra(Envelope::default(), &ordem[..k], i, &self.paint.pilha, n);
+                        base.escreve(i, e);
+                    }
+                }
+                (&ordem[k + 1..], Some((pos, base)))
+            }
+            None => (&ordem[..], None),
+        };
+        let pilha = &self.paint.pilha;
         let relief = &mut self.paint.relief;
-        for (v, zero) in [
-            (&mut relief.stroke_height, 0.0),
-            (&mut relief.stroke_paint, 0.0),
-            (&mut relief.stroke_radius, 0.0),
-        ] {
-            if v.len() != n {
-                *v = vec![zero; n];
-            }
-        }
-        for v in [&mut relief.stroke_grain, &mut relief.stroke_film] {
-            if v.len() != n {
-                *v = vec![0u8; n];
-            }
-        }
         let com_push = push > 0.0 && relief.stroke_push.len() == n;
         let mut spec_i = spec;
         for py in r.y..r.y + r.h {
             let linha = py as usize * w as usize;
             for px in r.x..r.x + r.w {
                 let i = linha + px as usize;
-                let (mut tinta, mut grao, mut filme, mut raio_i) = (0.0_f32, 0u8, 0u8, 0.0_f32);
-                for &(p, op) in &ordem {
-                    match op {
-                        CompositeOp::Brush => {
-                            let c = &pilha.relevo[p].planos;
-                            if c.paint.len() != n {
-                                continue;
-                            }
-                            if c.paint[i] > tinta {
-                                (tinta, grao, raio_i) = (c.paint[i], c.grain[i], c.radius[i]);
-                            }
-                            filme = filme.max(c.film[i]);
-                        }
-                        CompositeOp::Erase => {
-                            let escudo = &pilha.planos[p];
-                            if escudo.len() != n * 4 {
-                                continue;
-                            }
-                            let k = f32::from(escudo[i * 4 + 3]) / 255.0;
-                            tinta *= k;
-                            // A mesma arredondação da `cover` na borracha avulsa.
-                            filme = (f32::from(filme) * k) as u8;
-                        }
-                        CompositeOp::Blur | CompositeOp::Smear => {}
+                let inicio = match &base {
+                    Some((_, b)) => {
+                        let d = disp[i];
+                        b.amostra(w, h, px as f32 - d[0] * ds, py as f32 - d[1] * ds)
                     }
-                }
-                spec_i.radius_px = raio_i;
+                    None => Envelope::default(),
+                };
+                let e = dobra(inicio, acima, i, pilha, n);
+                spec_i.radius_px = e.raio;
                 let mut altura = ph2d_painter_brush::height::derive_height(
                     &spec_i,
-                    tinta,
-                    f32::from(grao) / 255.0,
+                    e.tinta,
+                    f32::from(e.grao) / 255.0,
                 );
                 if com_push {
                     altura += push * relief.stroke_push[i];
                 }
-                relief.stroke_paint[i] = tinta;
-                relief.stroke_grain[i] = grao;
-                relief.stroke_film[i] = filme;
-                relief.stroke_radius[i] = raio_i;
+                relief.stroke_paint[i] = e.tinta;
+                relief.stroke_grain[i] = e.grao;
+                relief.stroke_film[i] = e.filme;
+                relief.stroke_radius[i] = e.raio;
                 relief.stroke_height[i] = altura;
             }
         }
+        if let Some((pos, b)) = base {
+            self.paint.pilha.relevo[pos].planos = b;
+        }
         self.mark_dirty(r);
+    }
+}
+
+// `true` = o esfregão não leva o corpo do traço (o código de antes de 2026-09-30) — o CONTROLO.
+#[cfg(test)]
+thread_local! {
+    pub(super) static ESFREGAO_SEM_CORPO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// O envelope num texel — os quatro ingredientes que a dobra carrega.
+#[derive(Clone, Copy, Default)]
+struct Envelope {
+    tinta: f32,
+    grao: u8,
+    filme: u8,
+    raio: f32,
+}
+
+/// **A dobra de baixo para cima** das camadas `ops` num texel, a partir de `e`: um Brush entra pelo
+/// MÁXIMO (o envelope de uma passagem é um máximo), uma Erase multiplica pelo que o escudo dela
+/// deixou. O Blur não tem corpo e o Smear é tratado por quem chama (ele é uma amostra, não uma dobra).
+fn dobra(
+    mut e: Envelope,
+    ops: &[(usize, CompositeOp)],
+    i: usize,
+    pilha: &super::composite_pilha::PilhaDoTraco,
+    n: usize,
+) -> Envelope {
+    for &(p, op) in ops {
+        match op {
+            CompositeOp::Brush => {
+                let c = &pilha.relevo[p].planos;
+                if c.paint.len() != n {
+                    continue;
+                }
+                if c.paint[i] > e.tinta {
+                    (e.tinta, e.grao, e.raio) = (c.paint[i], c.grain[i], c.radius[i]);
+                }
+                e.filme = e.filme.max(c.film[i]);
+            }
+            CompositeOp::Erase => {
+                let escudo = &pilha.planos[p];
+                if escudo.len() != n * 4 {
+                    continue;
+                }
+                let k = f32::from(escudo[i * 4 + 3]) / 255.0;
+                e.tinta *= k;
+                // A mesma arredondação da `cover` na borracha avulsa.
+                e.filme = (f32::from(e.filme) * k) as u8;
+            }
+            CompositeOp::Blur | CompositeOp::Smear => {}
+        }
+    }
+    e
+}
+
+impl PlanosDoCorpo {
+    fn garante(&mut self, n: usize) {
+        if self.paint.len() != n {
+            self.paint = vec![0.0; n];
+            self.radius = vec![0.0; n];
+            self.grain = vec![0u8; n];
+            self.film = vec![0u8; n];
+        }
+    }
+
+    fn escreve(&mut self, i: usize, e: Envelope) {
+        self.paint[i] = e.tinta;
+        self.grain[i] = e.grao;
+        self.film[i] = e.filme;
+        self.radius[i] = e.raio;
+    }
+
+    /// A amostra bilinear em `(x, y)` — os MESMOS amostradores com que o relevo assente segue a cor.
+    fn amostra(&self, w: u32, h: u32, x: f32, y: f32) -> Envelope {
+        use super::warp::relief::{bilinear_f32, bilinear_u8};
+        Envelope {
+            tinta: bilinear_f32(&self.paint, w, h, x, y),
+            grao: bilinear_u8(&self.grain, w, h, x, y),
+            filme: bilinear_u8(&self.film, w, h, x, y),
+            raio: bilinear_f32(&self.radius, w, h, x, y),
+        }
     }
 }

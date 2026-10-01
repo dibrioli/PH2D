@@ -195,6 +195,65 @@ fn diag_preco_da_pilha() {
     linha("  └ escreve só a caixa do lote", so_o_lote);
     linha("  └ escreve a caixa + o avental", alargada);
     println!("     ⇒ a escrita alargada: {:.2}×", alargada / so_o_lote);
+    // ⭐ O A/B da REGIÃO DO ESFREGÃO (report de 2026-09-30): o que mudou inclui tudo o que o
+    //    esfregão já tocou, quando há quem pinte por baixo dele. Alternados.
+    let (mut sem_esfregao, mut com_esfregao) = (f64::MAX, f64::MAX);
+    for _ in 0..3 {
+        super::composite_acumulado::ESFREGAO_SO_O_LOTE.with(|c| c.set(true));
+        sem_esfregao = sem_esfregao.min(monta(None));
+        super::composite_acumulado::ESFREGAO_SO_O_LOTE.with(|c| c.set(false));
+        com_esfregao = com_esfregao.min(monta(None));
+    }
+    linha("  └ o que mudou = só o lote", sem_esfregao);
+    linha("  └ + o que o esfregão tocou", com_esfregao);
+    println!(
+        "     ⇒ a região do esfregão: {:.2}×",
+        com_esfregao / sem_esfregao
+    );
+    // E num RABISCO, que é onde a área tocada mais cresce: 480 eventos a voltar sobre si mesmos.
+    let rabisco = |so_o_lote: bool| -> f64 {
+        let mut melhor = f64::MAX;
+        for _ in 0..3 {
+            super::composite_acumulado::ESFREGAO_SO_O_LOTE.with(|c| c.set(so_o_lote));
+            let mut t = tela_de(SIZE, raio_do_dono);
+            t.set_compor_por_quadro(true);
+            t.paint.composite_len = dono.len();
+            for (i, &(op, st, sz)) in dono.iter().enumerate() {
+                t.paint.composite[i] = CompositeLayer {
+                    op,
+                    strength: st,
+                    size: sz,
+                    ..CompositeLayer::default()
+                };
+            }
+            let ini = std::time::Instant::now();
+            t.on_canvas_pointer(cp([512.0, 512.0], PointerPhase::Down));
+            for i in 1..=480 {
+                let s = i as f32 * 0.03;
+                t.on_canvas_pointer(cp(
+                    [
+                        512.0 + 300.0 * (1.3 * s).sin(),
+                        512.0 + 260.0 * (0.9 * s).cos(),
+                    ],
+                    PointerPhase::Move,
+                ));
+                if i % 16 == 0 {
+                    t.compoe_o_pendente();
+                }
+            }
+            t.on_canvas_pointer(cp([512.0, 512.0], PointerPhase::Up));
+            melhor = melhor.min(ini.elapsed().as_secs_f64() * 1e3);
+            super::composite_acumulado::ESFREGAO_SO_O_LOTE.with(|c| c.set(false));
+        }
+        melhor
+    };
+    let (r_antes, r_agora) = (rabisco(true), rabisco(false));
+    println!(
+        "  RABISCO (480 ev, 16 por quadro): só o lote {r_antes:.1} ms · + o esfregão {r_agora:.1} ms · {:.2}× · por quadro {:.2} → {:.2} ms",
+        r_agora / r_antes,
+        r_antes / 30.0,
+        r_agora / 30.0
+    );
     for (i, &(op, st, sz)) in dono.iter().enumerate() {
         let ms = monta(Some(i));
         linha(&format!("{} {op:?} str {st} size {sz}", i + 1), ms);

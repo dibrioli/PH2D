@@ -373,3 +373,69 @@ fn o_trinco_de_alfa_nao_apaga_a_acumulacao() {
         "o trinco de alfa ficou INERTE — ele tem de continuar a restringir a tinta ao alfa que já lá estava"
     );
 }
+
+/// ⭐⭐ **O esfregão não deixa RECTÂNGULOS de cor** — report do dono (2026-09-30, com foto). Ele lê
+/// cada pixel de longe (`base(p − disp(p))`); um pixel já esfregado fora da caixa do lote continuava
+/// a mostrar a tinta que o Brush de baixo tinha ali ANTES, e a fronteira era a caixa. A régua é a do
+/// item 9: a composição da região contra a do canvas INTEIRO, que tem de ser a MESMA imagem.
+///
+/// Medido antes da cura: pior `255` em `18 569` px (Smear/Brush) e `207` em `55 500` (Blur/Smear/
+/// Brush). O CONTROLO é o código de antes (`ESFREGAO_SO_O_LOTE`), que tem de continuar a divergir.
+#[test]
+fn o_esfregao_nao_deixa_rectangulos_de_cor() {
+    use CompositeOp::{Blur, Brush, Smear};
+    let pts: Vec<[f32; 2]> = (0..=240)
+        .map(|i| {
+            let s = i as f32 * 0.09;
+            [
+                256.0 + 150.0 * (1.3 * s).sin(),
+                256.0 + 130.0 * (0.9 * s).cos(),
+            ]
+        })
+        .collect();
+    let img = |global: bool, antes: bool, ops: &Arranjo| {
+        super::composite_pilha::RECOMPOSICAO_GLOBAL.with(|c| c.set(global));
+        super::composite_acumulado::ESFREGAO_SO_O_LOTE.with(|c| c.set(antes));
+        let mut t = tela();
+        t.set_compor_por_quadro(true);
+        for &(pos, op, s) in ops {
+            com(&mut t, pos, op, s, (op == Brush).then_some([1.0, 0.0, 0.0]));
+        }
+        // Uma drenagem a cada 4 eventos, como o app: sem ela o traço compõe-se de uma vez só e o
+        // rectângulo não pode existir.
+        t.on_canvas_pointer(cp(pts[0], PointerPhase::Down));
+        for (i, p) in pts.iter().enumerate().skip(1) {
+            t.on_canvas_pointer(cp(*p, PointerPhase::Move));
+            if i % 4 == 0 {
+                t.compoe_o_pendente();
+            }
+        }
+        t.on_canvas_pointer(cp(*pts.last().unwrap(), PointerPhase::Up));
+        super::composite_pilha::RECOMPOSICAO_GLOBAL.with(|c| c.set(false));
+        super::composite_acumulado::ESFREGAO_SO_O_LOTE.with(|c| c.set(false));
+        (*t.canvas_rgba).clone()
+    };
+    let arranjos: [(&str, &Arranjo); 2] = [
+        ("Smear/Brush", &[(0, Smear, 1.0), (1, Brush, 1.0)]),
+        (
+            "Blur/Smear/Brush",
+            &[(0, Blur, 1.0), (1, Smear, 1.0), (2, Brush, 1.0)],
+        ),
+    ];
+    for (nome, ops) in arranjos {
+        let (pior, n, caixa) = diferenca(&img(true, false, ops), &img(false, false, ops));
+        // ⚠️ `≤ 1` e não `0`: com um borrão na pilha ele é aplicado sobre a região escrita, e o borrão
+        // de caixa de uma sub-região difere do do canvas inteiro em um byte num punhado de píxeis (a
+        // soma corrente carrega onde começou — a divergência declarada no `alguem_acima_le_vizinhanca`).
+        // Um rectângulo de tinta velha lia `207`.
+        assert!(
+            pior <= 1,
+            "{nome}: a região discorda do canvas inteiro por {pior} ({n} px, caixa {caixa})"
+        );
+        let (antes, _, _) = diferenca(&img(true, true, ops), &img(false, true, ops));
+        assert!(
+            antes > 50,
+            "{nome}: CONTROLO — o código de antes tinha de deixar rectângulos ({antes})"
+        );
+    }
+}

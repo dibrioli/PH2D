@@ -453,3 +453,59 @@ fn a_ultima_composicao_nao_apaga_o_corpo_assente() {
         "a última composição apagou o corpo assente",
     );
 }
+
+/// ⭐⭐ **Um Smear por cima de um Brush arrasta o CORPO pelo MESMO deslocamento da cor** — report do
+/// dono (2026-09-30, com foto): *«smear puxa a cor e não puxa o relevo»*. Sem a cura a cor ficava
+/// marmoreada por dentro do traço e a luz desenhava um tubo liso por baixo.
+///
+/// A lei: a tinta do corpo do traço (`live_paint`, o ingrediente de que o commit re-deriva a altura)
+/// é a do Brush SOZINHO lida em `p − disp(p)`, com o `disp` final do esfregão — a mesma amostra com
+/// que a cor lê a base. O CONTROLO é que ela DIFERE da do Brush sem deslocamento: sem isso o
+/// esfregão não teria mexido em nada e a igualdade não afirmaria nada.
+#[test]
+fn o_esfregao_arrasta_o_corpo_com_a_cor() {
+    let corre = |smear: f32| -> (Vec<f32>, Vec<[f32; 2]>) {
+        let mut t = tela(&[CompositeOp::Smear, CompositeOp::Brush]);
+        t.paint.composite[0].strength = smear;
+        t.set_compor_por_quadro(true);
+        let pts: Vec<[f32; 2]> = (0..=80)
+            .map(|i| {
+                let s = i as f32 * 0.1;
+                [64.0 + 40.0 * (1.3 * s).sin(), 64.0 + 34.0 * (0.9 * s).cos()]
+            })
+            .collect();
+        t.on_canvas_pointer(cp(pts[0], PointerPhase::Down));
+        for (i, p) in pts.iter().enumerate().skip(1) {
+            t.on_canvas_pointer(cp(*p, PointerPhase::Move));
+            if i % 4 == 0 {
+                t.compoe_o_pendente();
+            }
+        }
+        t.on_canvas_pointer(cp(*pts.last().unwrap(), PointerPhase::Up));
+        let disp = super::smear_warp::espia::ultimo();
+        (t.paint.relief.live_paint.clone(), disp)
+    };
+    let (sozinho, _) = corre(0.0);
+    let (com, disp) = corre(1.0);
+    assert_eq!(disp.len(), (S * S) as usize, "a fixtura tem de esfregar");
+    let lida = |x: f32, y: f32| super::warp::relief::bilinear_f32(&sozinho, S, S, x, y);
+    let (mut fora_da_lei, mut deslocado) = (0usize, 0usize);
+    for i in 0..(S * S) as usize {
+        let (x, y) = ((i as u32 % S) as f32, (i as u32 / S) as f32);
+        let esperado = lida(x - disp[i][0], y - disp[i][1]);
+        if (com[i] - esperado).abs() > 1e-6 {
+            fora_da_lei += 1;
+        }
+        if (com[i] - sozinho[i]).abs() > 0.05 {
+            deslocado += 1;
+        }
+    }
+    assert!(
+        deslocado > 200,
+        "controlo: o esfregão tem de deslocar o corpo ({deslocado} texels)"
+    );
+    assert_eq!(
+        fora_da_lei, 0,
+        "{fora_da_lei} texels do corpo não seguem o deslocamento da cor"
+    );
+}

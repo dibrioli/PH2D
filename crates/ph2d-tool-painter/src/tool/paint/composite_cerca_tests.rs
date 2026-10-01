@@ -211,28 +211,22 @@ const SMEAR_BLUR_BRUSH: [(CompositeOp, f32); 3] = [
     (CompositeOp::Brush, 1.0),
 ];
 
-/// ⭐⭐⭐ **COM UM ESFREGÃO POR CIMA, A CURA NÃO MUDA UM BIT — e sem a cerca a imagem muda.**
+/// ⭐⭐⭐ **COM UM ESFREGÃO POR CIMA, UM LOTE E N LOTES DÃO A MESMA IMAGEM — ao bit** (2026-09-30).
 ///
-/// O esfregão desloca píxeis, logo LÊ a orla que o borrão de baixo deixa. A cerca devolve ao
-/// borrão o `alvo` inteiro sempre que há uma camada destas acima dele — e então o caminho é
-/// **exactamente** o de antes da cura, ao bit, em cada lote.
+/// O esfregão desloca píxeis, logo LÊ a orla que o borrão de baixo deixa, e a cerca devolve ao
+/// borrão o `alvo` inteiro sempre que há uma camada destas acima dele (o produto e o código de
+/// antes da cura do avental têm de continuar a ser o mesmo caminho, ao bit).
 ///
-/// **Medido** (`diag_a_cerca_do_borrao`, faixa do traço, três sementes com textura, passos `2`/`8`):
+/// ⛔⛔ **A PREMISSA DE ANTES MORREU, e à vista.** Este gate registava uma dívida PRÉ-EXISTENTE — o
+/// esfregão sobre o borrão dependia da entrega em lotes (pior `25`–`28` num lote contra N; `72`–`78`
+/// sem a cerca) — e o controlo dele exigia que desligar a cerca PIORASSE isso. A cura dos
+/// rectângulos do esfregão (report do dono, 2026-09-30) faz o que MUDOU incluir tudo o que o
+/// esfregão já tocou, alargado pelo alcance do borrão: a dívida foi a `0`, com a cerca e sem ela.
+/// ⇒ a lei afirmada passa a ser a mais forte (**um lote = N lotes, ao bit**), e o CONTROLO é o
+/// código de antes de 2026-09-30 (`ESFREGAO_SO_O_LOTE`), que tem de continuar a divergir.
 ///
-/// | cerca | pior (um lote contra N) |
-/// |---|---|
-/// | a do produto | `25`–`28` |
-/// | revertida (o código de antes) | `25`–`28`, **idêntico** |
-/// | DESLIGADA (o controlo) | **`72`–`78`** |
-///
-/// ⚠️ **A primeira linha não é zero, e isso NÃO é da cura:** o esfregão sobre o borrão já dependia
-/// da entrega em lotes antes dela (a linha do meio é a mesma). É dívida PRÉ-EXISTENTE, registada
-/// na fila do handoff (§33.12) — e é por isso que este gate compara o produto com o código de antes
-/// e não com um lote só: *a lei que a cura promete é «não muda nada aqui», não «isto está certo»*.
-/// ⚠️ Ela não é o caso do dono (na pilha dele o esfregão está ABAIXO do borrão).
-///
-/// **Mutações que sangram:** a cerca devolver sempre `false` · a lista esquecer o `Smear` · a
-/// cerca olhar para baixo.
+/// **Mutações que sangram:** o esfregão fora do que mudou · o alcance do borrão aplicado antes da
+/// união.
 #[test]
 fn com_um_esfregao_por_cima_a_cura_nao_muda_um_bit() {
     let mut casos = 0usize;
@@ -242,20 +236,25 @@ fn com_um_esfregao_por_cima_a_cura_nao_muda_um_bit() {
             let antes = monta(&SMEAR_BLUR_BRUSH, semente, passo, CURA_REVERTIDA);
             assert!(
                 produto == antes,
-                "com um esfregão acima do borrão, a cura tem de ser o caminho de antes AO BIT \
-                 (semente {semente}, passo {passo})"
+                "com um esfregão acima do borrão, a cura do avental tem de ser o caminho de antes \
+                 AO BIT (semente {semente}, passo {passo})"
+            );
+            let (pior, _, bytes) = diferenca(&SMEAR_BLUR_BRUSH, semente, passo, 0);
+            assert_eq!(
+                pior, 0,
+                "um lote contra N diverge por {pior} ({bytes} bytes; semente {semente}, passo {passo})"
             );
             casos += 1;
         }
     }
     assert!(casos >= 6, "o corpus encolheu: {casos}");
-    // O CONTROLO: sem a cerca a fixtura CONTÉM o fenómeno — senão a igualdade acima não prova nada.
-    let (pior_sem_cerca, _, _) = diferenca(&SMEAR_BLUR_BRUSH, 7, 2.0, CERCA_DESLIGADA);
-    let (pior_produto, _, _) = diferenca(&SMEAR_BLUR_BRUSH, 7, 2.0, 0);
+    // O CONTROLO: com o código de antes a fixtura CONTÉM o fenómeno.
+    super::composite_acumulado::ESFREGAO_SO_O_LOTE.with(|c| c.set(true));
+    let (pior_antes, _, _) = diferenca(&SMEAR_BLUR_BRUSH, 7, 2.0, 0);
+    super::composite_acumulado::ESFREGAO_SO_O_LOTE.with(|c| c.set(false));
     assert!(
-        pior_sem_cerca >= 2 * pior_produto && pior_sem_cerca > 40,
-        "controlo: sem a cerca o esfregão tem de ler a orla POR BORRAR e a imagem mudar \
-         (sem cerca pior {pior_sem_cerca}, produto {pior_produto})"
+        pior_antes > 10,
+        "controlo: com o código de antes um lote contra N tinha de divergir (pior {pior_antes})"
     );
 }
 

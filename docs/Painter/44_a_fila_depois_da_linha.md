@@ -524,3 +524,39 @@ controlo de que a fixtura chega ao soltar com pendente; vermelho sem a cura). `B
 ⚠️ **O que NÃO é defeito, e fica dito:** uma camada `Erase` **por cima** de um `Brush` e **maior** que
 ele apaga o traço inteiro desse Brush — cor e, desde o 8b, corpo. É a lei da pilha (a borracha de
 cima corta o que as de baixo puseram neste traço).
+
+---
+
+## §10 — O Smear: rectângulos de cor e a cor arrastada sem corpo (2026-09-30)
+
+**Report do dono, com foto:** *«smear puxa a cor e não puxa o relevo, cria rectângulos de cor como
+artefatos»*. Dois defeitos, duas curas.
+
+**(a) Os rectângulos.** O esfregão lê cada pixel de LONGE — `base(p − disp(p))` — e só a caixa do lote
+era reescrita. Um pixel já esfregado fora dela continuava a mostrar a tinta que o Brush de baixo
+tinha ali ANTES, e a fronteira era a caixa. Medido (a região contra o canvas inteiro, rabisco):
+Smear/Brush pior `255` em `18 569` px, Blur/Smear/Brush `207` em `55 500`. Uma nota no
+`smear_warp.rs` dava o limite por seguro (*«o `disp` só cresce enquanto o cursor está a menos de um
+raio»*) — verdade sobre o deslocamento, falso sobre a ORIGEM; corrigida. Cura
+(`composite_esfregao_regiao.rs`): o que mudou inclui **quem, na área que o esfregão tocou, lê de
+dentro da caixa do lote** — `≤ 1` (o byte declarado do borrão de caixa). Com um borrão POR BAIXO do
+esfregão a pergunta devolve a área tocada inteira (a orla do borrão lê a imagem final), e isso
+**curou a dívida antiga** do Smear por cima de Blur (um lote contra N: `25`–`28` ⇒ `0`).
+
+| preço (`--release`, `load ~3`, A/B alternado) | antes | depois |
+|---|---|---|
+| pilha do dono, traço recto | `113,8 ms` | `122,9` (`1,08×`) |
+| rabisco, 16 eventos por quadro | `11,1 ms`/quadro | `12,7` (`1,14×`) |
+| ⛔ reescrever a área tocada INTEIRA (recusada) | | `16,0`/quadro |
+
+**(b) A cor arrastada sem corpo.** O corpo do traço vive num envelope que o esfregão não tocava; ele
+só arrastava o relevo ASSENTE. Com um Smear por cima de Brushes, a recomposição do 8b passa a ler o
+envelope das camadas de baixo em `p − Plow·disp(p)` — a mesma amostra com que a cor lê a base — e
+corre DEPOIS da composição da cor (é lá que o deslocamento do lote é acumulado). ⚠️ Duas réguas de
+CONTAGEM foram cegas (o corpo cobre a cor arrastada); quem o mostrou foi a IMAGEM: sem a cura a cor
+marmoreia por dentro de um tubo liso, com ela o relevo segue os veios.
+
+Gates: `o_esfregao_nao_deixa_rectangulos_de_cor` · `o_esfregao_arrasta_o_corpo_com_a_cor` (a tinta do
+corpo é a do Brush sozinho lida em `p − disp(p)`, com o controlo de que ela se desloca) ·
+`com_um_esfregao_por_cima_a_cura_nao_muda_um_bit` reescrito com a premissa morta à vista. Mutação
+**9 de 10** (a 10.ª, a margem bilinear de um texel, é defensiva e nomeada). `BUGS_painter` #28.

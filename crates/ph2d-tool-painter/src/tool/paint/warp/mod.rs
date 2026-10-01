@@ -26,7 +26,7 @@ mod perf_tests;
 #[cfg(test)]
 mod rail_tests;
 mod reconstruct;
-mod relief;
+pub(crate) mod relief;
 #[cfg(test)]
 mod relief_tests;
 pub(crate) mod session;

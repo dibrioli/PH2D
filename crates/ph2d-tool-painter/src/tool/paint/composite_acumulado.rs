@@ -139,8 +139,6 @@ impl PainterTool {
             self.relevo_da_camada(pos, lista);
             self.acumula_camada(pos, lista);
         }
-        // O CORPO do traço, recomposto de baixo para cima quando uma borracha o apaga (fila 44, 8b).
-        self.compoe_o_corpo(&camadas);
         #[cfg(test)]
         fases::soma(fases::ACUMULAR, t_acumular);
         // ⭐ A composição é UMA por quadro quando o hospedeiro drena por quadro — ver
@@ -169,7 +167,30 @@ impl PainterTool {
         // atribuiu: com a escrita alargada os seis arranjos medidos vão a `0`, com o Smear em baixo
         // E por cima de um Brush. ⇒ reescreve-se a caixa + o alcance, e compõe-se mais um alcance
         // à volta para ela ler. Sem borrão vivo o `pad` é `0` e nada muda.
-        let escrita = super::region::grow_region(caixa_nova, pad, w, h).unwrap_or(caixa_nova);
+        //
+        // ⭐⭐ **E o que MUDOU inclui a área que o ESFREGÃO já tocou**, quando uma camada viva por
+        // baixo dele muda a tinta que ele puxa (report do dono, 2026-09-30, com foto: *«cria
+        // rectângulos de cor»*). O esfregão lê cada pixel de LONGE — `base(p − disp(p))` —, e um
+        // pixel já esfregado fora da caixa deste lote continuava a mostrar a tinta que o Brush de
+        // baixo tinha ali ANTES: o Brush mudou a origem, e ninguém reescrevia o destino. Medido
+        // (Smear/Brush, rabisco, a região contra o canvas inteiro): pior `255` em `18 569` px ⇒
+        // `0`. Reescreve-se quem LÊ da caixa (`quem_le_da_caixa`), não a área tocada inteira (que
+        // também curava e custava `10,5 → 16,0 ms` por quadro num rabisco; o preciso custa
+        // `11,1 → 12,7`). O alcance do borrão aplica-se DEPOIS da união, senão um borrão por cima
+        // fica velho na orla dela (`47` ⇒ `0`). Com o esfregão no fundo a base é o `pre` e não muda.
+        // ⚠️ Sem borrão por baixo do esfregão a tinta que ele lê só muda na caixa do lote (com um,
+        // `quem_le_da_caixa` devolve a área tocada inteira — ver lá porquê).
+        let mudou = match self.quem_le_da_caixa(caixa_nova) {
+            Some(d) => super::union_region(caixa_nova, d),
+            None => caixa_nova,
+        };
+        #[cfg(test)]
+        let mudou = if ESFREGAO_SO_O_LOTE.with(std::cell::Cell::get) {
+            caixa_nova
+        } else {
+            mudou
+        };
+        let escrita = super::region::grow_region(mudou, pad, w, h).unwrap_or(mudou);
         #[cfg(test)]
         let escrita = if ESCRITA_ESTREITA.with(std::cell::Cell::get) {
             caixa_nova
@@ -187,6 +208,9 @@ impl PainterTool {
         #[cfg(test)]
         let t_compor = std::time::Instant::now();
         self.compoe_a_pilha(alvo, caixa_nova, camadas);
+        // O CORPO do traço, recomposto de baixo para cima quando uma borracha o apaga (8b) ou um
+        // esfregão o arrasta — DEPOIS da cor, que é onde o esfregão acumula o deslocamento do lote.
+        self.compoe_o_corpo(caixa_nova, camadas);
         #[cfg(test)]
         fases::soma(fases::COMPOR, t_compor);
         #[cfg(test)]
@@ -482,6 +506,9 @@ thread_local! {
     /// `true` = escrever só a caixa do lote (o código de antes do item 9) — o CONTROLO do gate
     /// `a_regiao_nao_deixa_rectangulo`.
     pub(super) static ESCRITA_ESTREITA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// `true` = o que mudou é só a caixa do lote, mesmo com o esfregão a ler uma base que muda
+    /// (o código de antes de 2026-09-30) — o CONTROLO do gate dos rectângulos do esfregão.
+    pub(super) static ESFREGAO_SO_O_LOTE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
 impl PainterTool {

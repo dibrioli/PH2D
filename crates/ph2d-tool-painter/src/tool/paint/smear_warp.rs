@@ -251,9 +251,15 @@ impl PainterTool {
             // ⛔⛔ **E a pilha do Composite LIMITA o alvo do render** ([`super::composite_pilha`]): lá
             // a base (`warp.pre`) é refrescada só dentro da região recomposta, logo re-resolver a
             // CAUDA a partir dela escreveria o traço todo de uma base que ali é a de um lote antigo
-            // (medido: `|Δ| médio 110` contra `0,00` das outras três camadas). ⭐ E não se perde
-            // nada: *o `disp` de um texel só cresce enquanto o cursor está a menos de um raio dele*,
-            // que é exactamente enquanto ele está dentro da região recomposta.
+            // (medido: `|Δ| médio 110` contra `0,00` das outras três camadas).
+            //
+            // ⛔ **Esta nota dizia «e não se perde nada», e perdia-se** (report do dono,
+            // 2026-09-30: *«cria rectângulos de cor»*). É verdade que *o `disp` de um texel só cresce
+            // enquanto o cursor está a menos de um raio dele* — e é falso que isso chegue: o texel
+            // lê `base(p − disp(p))`, e a ORIGEM muda quando uma camada por baixo pinta lá depois.
+            // Quem garante hoje que a região cobre isso é a composição
+            // ([`super::composite_acumulado`], `o_esfregao_le_uma_base_que_muda`): o que mudou
+            // inclui tudo o que o esfregão já tocou.
             let all = match self.paint.limite_do_smear {
                 Some(lim) => match super::region::intersect_region(all, lim) {
                     Some(r) => r,

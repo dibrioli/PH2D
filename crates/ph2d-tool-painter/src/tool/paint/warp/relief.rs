@@ -24,7 +24,7 @@ use std::sync::Arc;
 /// Bilinear-sample an `f32` plane at fractional `(x, y)`, clamping to the edge — the heights' twin of
 /// `apply::bilinear_clamped` (no premultiply: a height is not a colour).
 #[inline]
-pub(super) fn bilinear_f32(field: &[f32], w: u32, h: u32, x: f32, y: f32) -> f32 {
+pub(crate) fn bilinear_f32(field: &[f32], w: u32, h: u32, x: f32, y: f32) -> f32 {
     let (x0, y0, x1, y1, fx, fy) = corners(w, h, x, y);
     let stride = w as usize;
     let at = |xi: usize, yi: usize| field[yi * stride + xi];
@@ -35,7 +35,7 @@ pub(super) fn bilinear_f32(field: &[f32], w: u32, h: u32, x: f32, y: f32) -> f32
 
 /// Bilinear-sample a `u8` plane (coverage) at fractional `(x, y)`, edge-clamped, rounded to nearest.
 #[inline]
-pub(super) fn bilinear_u8(field: &[u8], w: u32, h: u32, x: f32, y: f32) -> u8 {
+pub(crate) fn bilinear_u8(field: &[u8], w: u32, h: u32, x: f32, y: f32) -> u8 {
     let (x0, y0, x1, y1, fx, fy) = corners(w, h, x, y);
     let stride = w as usize;
     let at = |xi: usize, yi: usize| f32::from(field[yi * stride + xi]);

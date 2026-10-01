@@ -122,3 +122,44 @@ fn o_recuo_mais_fino_que_a_amostragem_sai() {
         viragens(&curado)
     );
 }
+
+/// Um quadrado cujo lado direito chega ao nó do meio PASSANDO dele: a 2.ª alça fica `e` além do nó
+/// e `sx·e` para o lado. Com `sx = 0` o pedaço a mais fica em cima do segmento seguinte.
+fn com_recuo(sx: f64, e: f64) -> Vec<VecVertex> {
+    vec![
+        v([0.0, 0.0], [0.0, 0.0], [0.0, 0.0]),
+        v([1.0, 0.0], [1.0, 0.0], [1.0, 0.1]),
+        v([1.0, 0.5], [1.0 + sx * e, 0.5 + e], [1.0, 0.6]),
+        v([1.0, 1.0], [1.0, 0.9], [1.0, 1.0]),
+        v([0.0, 1.0], [0.0, 1.0], [0.0, 1.0]),
+    ]
+}
+
+/// ⭐ **GATE — o recuo SOBRE O PRÓPRIO CAMINHO sai, até ao tamanho da bola** (F45, medido a
+/// `(166°, 74°)`: a união deixa uma cúbica que passa do nó `0,0059` — `1,4×` a solda — e volta
+/// pela mesma recta). Três recuos de régua conhecida (a cúbica sozinha muda `2,5×`, `16×` e `4,6×`
+/// a tolerância): o que volta pela recta sai; o maior que a bola fica; e o que sai DA recta, com a
+/// mesma ordem de grandeza, fica — ele muda o desenho, e é isso que separa os dois.
+#[test]
+fn o_recuo_sobre_o_proprio_caminho_sai_ate_ao_tamanho_da_bola() {
+    let tol = 0.0035;
+    let sobre_si = com_recuo(0.0, 0.08);
+    assert!(
+        viragens(&sobre_si)[2] > 170.0,
+        "a fixtura deixou de ter o recuo"
+    );
+    let curado = desfaz_os_ganchos(sobre_si, &[], tol);
+    assert!(
+        viragens(&curado)[2] < 1.0,
+        "o recuo sobre si ficou: {:?}",
+        viragens(&curado)
+    );
+    let grande = com_recuo(0.0, 0.25);
+    assert_eq!(desfaz_os_ganchos(grande.clone(), &[], tol), grande);
+    let de_lado = com_recuo(0.45, 0.08);
+    assert!(
+        viragens(&de_lado)[2] > VIRAGEM_DO_GANCHO,
+        "o controlo deixou de ser um gancho"
+    );
+    assert_eq!(desfaz_os_ganchos(de_lado.clone(), &[], tol), de_lado);
+}

@@ -32,6 +32,16 @@ pub const VIRAGEM_DO_GANCHO: f64 = 150.0;
 /// Amostras por cúbica na comparação da forma velha com a nova.
 const AMOSTRAS: u32 = 32;
 
+/// ⭐ **Até onde um recuo SOBRE O PRÓPRIO CAMINHO sai** — em soldas: `RAIO_DO_VINCO / SOLDA_DA_QUINA`,
+/// o tamanho da bola (F45). Medido a `(166°, 74°)`: a união deixa uma cúbica que passa do nó
+/// `0,0059` e volta pela MESMA recta — `1,4×` a solda, logo a régua da cúbica sozinha recusava a
+/// troca; e o pedaço a mais fica EM CIMA do resto do contorno (a `0,0003` dele), logo como forma é
+/// invisível e só o traço o desenha, como meia-lua. ⇒ a troca também se faz quando o CONTORNO
+/// inteiro mudar menos que a solda, desde que a cúbica não mude mais que a bola: um recuo maior
+/// que a bola é uma feição que a própria bola deixaria ficar, e não se mexe (o gate do recuo de
+/// meio lado continua de pé).
+const RECUO_SOBRE_SI: f64 = crate::overlap::RAIO_DO_VINCO / crate::overlap::SOLDA_DA_QUINA;
+
 type P = [f64; 2];
 
 fn ponto(c: &[P; 4], t: f64) -> P {
@@ -77,6 +87,26 @@ fn hausdorff(a: &[P], b: &[P]) -> f64 {
             .fold(0.0, f64::max)
     };
     lado(a, b).max(lado(b, a))
+}
+
+/// A distância de `p` ao conjunto de polilinhas `resto` mais a polilinha `c`.
+fn ao_contorno(p: P, c: &[P], resto: &[Vec<P>]) -> f64 {
+    std::iter::once(c)
+        .chain(resto.iter().map(Vec::as_slice))
+        .flat_map(|y| y.windows(2).map(move |s| ao_segmento(p, s[0], s[1])))
+        .fold(f64::INFINITY, f64::min)
+}
+
+/// ⭐ **Quanto muda o CONTORNO** ao trocar a cúbica `velha` pela `nova`, com o `resto` dele parado:
+/// cada amostra de uma contra a outra MAIS o resto, nos dois sentidos. Um pedaço que só refaz o
+/// caminho de outro pedaço não muda o conjunto de pontos desenhado ([`RECUO_SOBRE_SI`]).
+fn hausdorff_no_contorno(velha: &[P], nova: &[P], resto: &[Vec<P>]) -> f64 {
+    let lado = |x: &[P], y: &[P]| {
+        x.iter()
+            .map(|p| ao_contorno(*p, y, resto))
+            .fold(0.0, f64::max)
+    };
+    lado(velha, nova).max(lado(nova, velha))
 }
 
 /// A direcção de `a` para `b` — ou `None` se a distância for ruído que a PLACA não vê.
@@ -196,8 +226,29 @@ pub fn desfaz_os_ganchos(
             .filter(|h| !dobra(antes, h, depois))
             .map(|h| (hausdorff(&velha, &amostras(&h)), h))
             .min_by(|a, b| a.0.total_cmp(&b.0));
+        let aceita = |d: f64, h: &[P; 4]| {
+            if d <= tol {
+                return true;
+            }
+            if d > RECUO_SOBRE_SI * tol {
+                return false;
+            }
+            let resto: Vec<Vec<P>> = (0..n)
+                .filter(|&j| j != k)
+                .map(|j| {
+                    let jb = (j + 1) % n;
+                    amostras(&[
+                        verts[j].anchor,
+                        verts[j].out_handle,
+                        verts[jb].in_handle,
+                        verts[jb].anchor,
+                    ])
+                })
+                .collect();
+            hausdorff_no_contorno(&velha, &amostras(h), &resto) <= tol
+        };
         if let Some((d, h)) = melhor
-            && d <= tol
+            && aceita(d, &h)
         {
             verts[k].out_handle = h[1];
             verts[kb].in_handle = h[2];

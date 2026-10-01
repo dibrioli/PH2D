@@ -66,6 +66,15 @@ diz onde ler o mecanismo:
 
 ---
 
+### F45 — ⭐⭐ **O GANCHO QUE A UNIÃO DEIXA** (ordem do dono, 2026-10-01: *«siga nas correções com cuidado para não danificar o que já temos»* — a família que a F44 deixou aberta)
+
+- **Medido:** com o braço em C e as duas juntas a somar `~238°` (`(130°,108°)` … `(170°,70°)`), a união corta uma cúbica do assado DENTRO da dobra dela e o nó novo sai com a 2.ª alça `0,035`–`0,056` além dele: meia-volta de `171°`–`179°` no contorno de FORA, e o traço desenha a meia-lua (foto). ⛔ A bola não lhe toca (a ponta é para fora); o desenho sem contacto vira só `0,7°` — quem cria o gancho é a união.
+- **Cura em duas peças:** (1) **o desfazer dos ganchos corre também DEPOIS da união**. ⚠️ A F43 tinha-o retirado porque a mutação que o apagava sobrevivia — a varredura que a julgou só dobrava em Z; com o braço em C ele tem casos. (2) **a régua aceita o recuo SOBRE O PRÓPRIO CAMINHO**: a `(166°,74°)` a cúbica passa do nó `0,0059` (`1,4×` a solda, logo a régua da cúbica sozinha recusava) e volta pela MESMA recta — o pedaço a mais fica a `0,0003` do resto do contorno, invisível como forma. A troca faz-se quando o CONTORNO inteiro muda menos que a solda, até ao tamanho da bola (`RECUO_SOBRE_SI = RAIO_DO_VINCO / SOLDA_DA_QUINA`) — ⚠️ o gate do recuo de meio lado continua de pé.
+- ⚠️ **Os buracos NÃO levam a passagem**: em `3 540` poses em C nenhuma ilha deixou gancho, e uma passagem sem caso medido seria lei sem régua.
+- **Medido:** varredura a passo `4` (`4 050` poses, C e Z) contra o `HEAD`: `3` curadas, **`0` novas, `0` mudadas**; a passo `2` (`16 110`): `575` restantes, `574` com uma junta a `174°` ou mais (abaixo) e `1` isolada, `(36°,−144°)` com `21°`, **igual ao `HEAD`**.
+- **Gates:** `o_gancho_que_a_uniao_deixa_sai` (CONTROLO: sem a passagem a faixa fica em gancho) · `o_recuo_sobre_o_proprio_caminho_sai_ate_ao_tamanho_da_bola` (o que volta pela recta sai; o maior que a bola fica; o que sai DA recta fica). Sonda versionada `diag_a_varredura_da_dobra`. Mutação **4 de 4**.
+- ⏳ **ABERTO:** o braço dobrado de VOLTA (uma junta a `174°`–`180°`) — próximo; e a pose isolada `(36°,−144°)`.
+
 ### F44 — ⭐⭐ **AS ILHAS: a bola rola por DENTRO** (report do dono, 2026-10-01, três fotos: *«smoke ok! Parece muito bom! Falta apenas corrigir o stroke quando uma parte do membro se sobrepõe a outra formando uma ilha. Nessa ilha as quinas ainda não estão corretas»*)
 
 - **Medido:** o braço dobrado em C fecha-se sobre si e a união deixa um BURACO (`subpaths`); a bola rolava só no contorno de fora ⇒ as ilhas ficavam com cantos até `153°`, e a junta do traço abria o espinho para dentro do preenchimento.

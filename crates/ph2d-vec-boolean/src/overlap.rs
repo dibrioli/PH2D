@@ -130,12 +130,20 @@ pub fn silhueta_da_pele(path: &VecPath, quinas: &[([f64; 2], f64)]) -> Option<Ve
     let raio = RAIO_DO_VINCO * diagonal;
     // ⭐ F43: os ganchos que só existem na TANGENTE saem ANTES da união. ⛔ Depois dela é tarde
     // (medido a `(110°, 17,5°)`): um zigue-zague de `0,0016` de largura conta como cruzamento, a união
-    // reescreve-o num dardo REAL de `~0,03`, e esse já não é ruído. ⚠️ Uma 2.ª passagem DEPOIS da
-    // união foi escrita e saiu: a mutação que a apagava SOBREVIVEU, e a varredura de `1 053` poses
-    // dava o mesmo com e sem ela.
+    // reescreve-o num dardo REAL de `~0,03`, e esse já não é ruído.
+    // ⭐ F45: e TAMBÉM depois dela. A 1.ª redacção desta passagem saiu porque a mutação que a
+    // apagava sobreviveu — mas a varredura que a julgou só dobrava em Z. Com o braço em C e as duas
+    // juntas a somar `~238°` (`(130°,108°)` … `(170°,70°)`), a união corta uma cúbica do assado
+    // DENTRO da dobra dela e o nó novo sai com a alça `0,035` além dele: uma meia-volta de
+    // `171°`–`179°` no contorno de fora, e o traço desenha a meia-lua por cima. ⚠️ Só o contorno de
+    // FORA: em `3 540` poses em C nenhuma ilha deixou gancho, e uma passagem sem caso medido seria
+    // uma lei sem régua.
     let mut desenho = path.clone();
     desenho.verts = crate::gancho::desfaz_os_ganchos(path.verts.clone(), quinas, solda);
-    let unido = resolve_overlap(&desenho);
+    let unido = resolve_overlap(&desenho).map(|mut u| {
+        u.verts = crate::gancho::desfaz_os_ganchos(std::mem::take(&mut u.verts), quinas, solda);
+        u
+    });
     let base = unido.as_ref().unwrap_or(&desenho);
     let rolado = crate::bola::rola_a_bola(base.verts.clone(), quinas, raio, solda);
     if unido.is_none() && rolado == path.verts {

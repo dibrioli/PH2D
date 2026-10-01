@@ -214,9 +214,11 @@ pub fn accumulate_dab_smear(
     );
 
     // Pass 2 — compose. `disp_new(p) = v(p) + disp_old(p − v(p))`.
-    let compoe = |i: usize, add: f32| -> [f32; 2] {
-        let px = (i % width as usize) as f32;
-        let py = (i / width as usize) as f32;
+    // ⚠️ A coluna e a linha chegam de quem percorre a linha (`anda`), e não de `i % w` / `i / w`:
+    // são os MESMOS inteiros convertidos — logo os mesmos `f32` —, sem duas divisões por texel.
+    let compoe = |px: usize, py: usize, add: f32| -> [f32; 2] {
+        #[allow(clippy::cast_precision_loss)]
+        let (px, py) = (px as f32, py as f32);
         // O passo de volta: recto quando o caminho não virou, e uma rotação em torno do centro
         // de curvatura quando virou. O peso `add` gradua os dois do mesmo modo — um texel na
         // orla do dab acompanha uma fracção do movimento, e a `add = 0` ele não se mexe.
@@ -269,7 +271,7 @@ pub fn accumulate_dab_smear(
             let py = by0 + k;
             let base = py * w;
             tocou |= passeio.linha(py as i64, &mut |i, _dx, _dy, add| {
-                linha[i - base] = compoe(i, add);
+                linha[i - base] = compoe(i - base, py, add);
             });
         }
         tocou
@@ -285,22 +287,27 @@ pub fn accumulate_dab_smear(
     let tocou = if bandas <= 1 {
         anda(regiao, y0)
     } else {
-        let span = rows.div_ceil(bandas) * w;
-        let anda = &anda;
-        std::thread::scope(|sc| {
-            regiao
-                .chunks_mut(span)
-                .enumerate()
-                .map(|(bi, fatia)| sc.spawn(move || anda(fatia, y0 + bi * (span / w))))
-                // Coletado ANTES do fold para que TODA faixa seja juntada — a nota do
-                // `parallel_band_stamp`.
-                .collect::<Vec<_>>()
-                .into_iter()
-                .fold(false, |acc, h| acc | h.join().unwrap_or(false))
-        })
+        // ⭐ **Pela equipa do rayon em fatias de [`LINHAS_POR_TAREFA`], e não `band_count` threads
+        // novas por pingo** (2026-10-01, medido na sonda `diag_custo_do_pingo_recto_contra_arco`,
+        // raio `128,8`, `load ~7`): abrir `9` threads por pingo custava `227 µs`, a equipa em fatias
+        // de `2 · 4 · 8 · 16` linhas custa `230 · 152 · 164 · 186 µs` (série: `810`). ⚠️ A primeira
+        // tentativa com o rayon usava as MESMAS `9` fatias grandes e não ganhava nada — o ganho é das
+        // fatias pequenas, que a equipa reparte por todos os núcleos sem pagar abertura nenhuma.
+        // O `band_count` continua a decidir SE divide (o piso de área); a fatia decide em quantos.
+        use rayon::prelude::*;
+        regiao
+            .par_chunks_mut(LINHAS_POR_TAREFA * w)
+            .enumerate()
+            .map(|(bi, fatia)| anda(fatia, y0 + bi * LINHAS_POR_TAREFA))
+            .reduce(|| false, |a, b| a | b)
     };
     tocou.then_some(rect)
 }
+
+/// **Quantas linhas da pegada uma tarefa da equipa recebe** — o vale medido de
+/// `2 · 4 · 8 · 16` linhas (`230 · 152 · 164 · 186 µs` por pingo de raio `128,8`, ver
+/// [`accumulate_dab_smear`]).
+const LINHAS_POR_TAREFA: usize = 4;
 
 /// **O movimento deste dab: o passo e o TECTO do transporte** — o par que descreve para onde a
 /// tinta vai e até onde ela pode ir, agrupado do mesmo modo que [`SmearOut`] agrupa as saídas.

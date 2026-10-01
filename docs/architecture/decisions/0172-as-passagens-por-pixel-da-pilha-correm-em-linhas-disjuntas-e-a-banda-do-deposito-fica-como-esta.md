@@ -131,3 +131,23 @@ dentro: `walk_dab` `1,04` + composição `0,99` + janela `0,06` ms por quadro, `
 paralelismo DENTRO de um pingo é exacto (os texels de um pingo leem a janela congelada), e ele vive
 na `ph2d-painter-brush`, cuja excepção de `rayon` é outra (ADR-0158/0171) — com `~21 k` texels por
 pingo, no piso medido de uma divisão (`~25 k` visitas). Fica como a próxima alavanca, com o número.
+
+## Emenda 2026-10-01 (b) — o campo do esfregão em linhas DENTRO de cada pingo, e o perfil do smoke
+
+Report do dono: *«pincel com size 0.5 fps cai para 40»* e, depois da emenda acima, *«não percebi
+melhorias»*. A Size `0.5` (raio `128,8`) o campo do esfregão era a maior fatia da pilha.
+
+1. **A alavanca que a nota acima deixou nomeada foi tomada:** os texels de UM pingo leem só a
+   janela congelada e escrevem o seu próprio `disp`, logo as linhas de um pingo são disjuntas e
+   exactas (entre pingos a ordem fica). É o **terceiro** uso do `rayon` na `ph2d-painter-brush`
+   (a cerca do `Cargo.toml` dela nomeia-o), sob os mesmos invariantes: linhas disjuntas, a mesma
+   lei por texel (`sculpt::Passeio::linha` + a composição), e o gate
+   `as_faixas_do_pingo_dao_o_campo_da_serie` compara as duas rotas AO BIT. ⚠️ A 1.ª redacção abria
+   `band_count` threads por pingo (`227 µs`); a equipa em fatias de `4` linhas custa `152 µs`
+   (vale medido `2 · 4 · 8 · 16` → `230 · 152 · 164 · 186 µs`; série `810`).
+2. **O perfil `smoke` compilava o motor do pincel em 16 pedaços**, e o dono corre `smoke`: a mesma
+   pilha lia `14,4` ms por quadro ali contra `11,1` no `release`, com o buraco todo no acúmulo.
+   `[profile.smoke.package.ph2d-painter-brush] codegen-units = 1` fecha-o (`11,2`–`11,5`).
+3. **O instrumento do quadro INTEIRO:** `PH2D_COMPOSITE_RABISCO=<Size>` risca sozinho dentro da app
+   e imprime o período; numa tela virtual com `PH2D_PAINT_PERF=1` a Size `0.5` leu `52`–`55` fps,
+   com a pilha a `~12` ms e `~5` ms do resto do quadro.

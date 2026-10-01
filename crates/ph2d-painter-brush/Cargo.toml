@@ -38,6 +38,11 @@ authors.workspace = true
 # são **byte-idênticas** com gate. ⛔ A fatia da passagem vertical é de COLUNAS e não de linhas,
 # pelo mesmo mecanismo que o parágrafo acima nomeia para as arestas: uma banda de linhas teria de
 # re-semear o acumulador e esse `f32` não é o que a soma corrida acumulou.
+#
+# ⭐ **O TERCEIRO uso: as linhas de UM pingo do campo do esfregão** (`smear_field::
+# accumulate_dab_smear`), sob a **emenda (b) de 2026-10-01 do ADR-0172**. Os texels de um pingo leem só
+# a janela CONGELADA do campo e escrevem o seu próprio `disp` ⇒ linhas disjuntas e exactas, com gate
+# AO BIT contra a rota em série; ⛔ entre pingos a ordem fica (o seguinte lê o que este escreveu).
 rayon = "1"
 # A LEI da mistura de tintas (K–M), partilhada com o Wet Paint e a Aquarela — ordem do dono
 # (2026-09-20): os três meios misturam igual, logo leem a MESMA porta e não três cópias.

@@ -326,3 +326,53 @@ fn as_faixas_do_pingo_dao_o_campo_da_serie() {
         .all(|(a, b)| a[0].to_bits() == b[0].to_bits() && a[1].to_bits() == b[1].to_bits());
     assert!(iguais, "as faixas mudaram o campo contra a rota em série");
 }
+
+/// SONDA (relógio, `--release`, à mão): o custo por texel do pingo em SÉRIE, recto contra ARCO.
+#[test]
+#[ignore = "sonda de relógio"]
+fn diag_custo_do_pingo_recto_contra_arco() {
+    let (w, h) = (1024u32, 1024u32);
+    let n = (w * h) as usize;
+    let raio = 128.8f32;
+    let s = spec(raio);
+    for (arco_on, serie) in [(false, true), (true, true), (false, false)] {
+        crate::ablate::set(if serie { crate::ablate::SERIAL } else { 0 });
+        let mut sc = SmearScratch::default();
+        let mut disp = vec![[0.0f32; 2]; n];
+        let t = std::time::Instant::now();
+        let mut ant = [512.0f32, 512.0];
+        let reps = 200u32;
+        for k in 1..=reps {
+            let a = k as f32 * 0.02;
+            let c = [512.0 + 200.0 * a.sin(), 512.0 + 200.0 * (1.0 - a.cos())];
+            let arco = arco_on.then_some(Arco {
+                centro: [512.0, 712.0],
+                dtheta: 0.02,
+            });
+            let _ = accumulate_dab_smear(
+                SmearOut {
+                    disp: &mut disp,
+                    scratch: &mut sc,
+                },
+                Transporte {
+                    step: [c[0] - ant[0], c[1] - ant[1]],
+                    tecto_em_raios: SEM_TECTO,
+                    arco,
+                },
+                None,
+                w,
+                h,
+                &s,
+                &dab_at(c, raio),
+            );
+            ant = c;
+        }
+        crate::ablate::set(0);
+        let us = t.elapsed().as_secs_f64() * 1e6 / f64::from(reps);
+        let texels = std::f64::consts::PI * f64::from(raio) * f64::from(raio);
+        println!(
+            "arco={arco_on} serie={serie}: {us:.0} µs por pingo · {:.1} ns por texel",
+            us * 1e3 / texels
+        );
+    }
+}

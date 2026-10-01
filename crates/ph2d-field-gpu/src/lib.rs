@@ -106,6 +106,9 @@ pub fn luz_separada() -> bool {
 pub mod brilho;
 /// ⭐⭐⭐⭐ **A oclusão no tempo** — o histórico do céu guardado na placa entre quadros.
 pub mod ceu_tempo;
+mod ceu_tempo_wgsl;
+/// ⏱️ O relógio por passe na placa — só as sondas o ligam. Ver [`cronometro`].
+pub mod cronometro;
 /// ⭐ **Os bytes que o compositor lê, em WGSL** — ver o módulo.
 mod empacota_wgsl;
 /// ⏱️ O banco compilada contra interpretada — instrumento; ver o módulo.
@@ -176,6 +179,8 @@ pub struct FieldPipelines {
     ceu_tempo: Option<ceu_tempo::Tabela>,
     /// Quantas vezes ele recomeçou do zero — ver [`FieldPipelines::ceu_tempo_reinicios`].
     ceu_tempo_reinicios: usize,
+    /// ⏱️ **O relógio por passe** — `None` fora das sondas. Ver [`cronometro`].
+    pub(crate) cronometro: Option<cronometro::Cronometro>,
 }
 
 /// ⭐⭐⭐ **A fotografia residente** — ver [`FieldPipelines::matcap_buffer`].
@@ -224,6 +229,7 @@ impl FieldPipelines {
             assaduras_de_sondas: 0,
             ceu_tempo: None,
             ceu_tempo_reinicios: 0,
+            cronometro: None,
         }
     }
 
@@ -372,6 +378,21 @@ impl FieldPipelines {
         self.entry_with_layout(device, molde, field, entrada, None)
     }
 
+    /// ⭐⭐⭐ **Este pipeline JÁ está compilado?** — a pergunta de quem não pode esperar pelo
+    /// compilador (o quadro de movimento, que desenha sem o ricochete em vez de parar a imagem
+    /// `1,3`–`2,8 s`). ⚠️ A chave é a MESMA porta de quem compila ([`chave_do_pipeline`]): duas
+    /// redacções dela divergiriam, e esta pergunta passaria a responder sempre «não».
+    #[must_use]
+    pub fn tem_entrada(
+        &self,
+        molde: &str,
+        field: &ph2d_field_eval::wgsl::TapeWgsl,
+        entrada: &str,
+    ) -> bool {
+        self.por_texto
+            .contains_key(&chave_do_pipeline(molde, field, entrada).0)
+    }
+
     /// ⭐⭐ **O mesmo, com o layout de propósito** — e ele é obrigatório quando o molde tem DUAS
     /// entradas que usam bindings diferentes.
     ///
@@ -387,8 +408,7 @@ impl FieldPipelines {
         entrada: &str,
         layout: Option<&wgpu::PipelineLayout>,
     ) -> &wgpu::ComputePipeline {
-        let src = molde.replace(FIELD_SLOT, &field.source);
-        let chave = format!("{entrada}\u{0}{src}");
+        let (chave, src) = chave_do_pipeline(molde, field, entrada);
         self.por_texto.entry(chave).or_insert_with(|| {
             // ⏱️⭐⭐⭐ **O INSTRUMENTO que atribui o segundo e meio** (`docs/Render3d/03` §W9):
             // `PH2D_PIPELINE_LOG=1` imprime, por FALTA no cache, quanto custou cada metade. As duas
@@ -431,3 +451,13 @@ impl FieldPipelines {
 
 /// ⏱️ A porta do [`FieldPipelines::entry_with_layout`] — lida **uma vez**, como o resto do módulo.
 static PIPELINE_LOG: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+
+/// A chave de um pipeline no cache — a entrada e o TEXTO inteiro do shader —, e o texto.
+fn chave_do_pipeline(
+    molde: &str,
+    field: &ph2d_field_eval::wgsl::TapeWgsl,
+    entrada: &str,
+) -> (String, String) {
+    let src = molde.replace(FIELD_SLOT, &field.source);
+    (format!("{entrada}\u{0}{src}"), src)
+}

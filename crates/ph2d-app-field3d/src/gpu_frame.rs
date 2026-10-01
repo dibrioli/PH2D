@@ -229,10 +229,10 @@ pub fn paint_com(
     ground: Option<ph2d_field_render::Ground>,
     w: u32,
     h: u32,
-    // ⭐⭐⭐ **A BANDEIRA DA W73 chama-se pelo que ela ainda decide** (`W7c`, 2026-09-19): o
-    // ricochete e a cor que a peça devolve ao chão — os passageiros de `+284 ms` na cena `5`. ⛔ A
-    // segunda passagem da silhueta SAIU daqui: ela custa `+0,18`–`+2,66 ms` e corre em todo quadro.
-    // *Um nome que descreve o passageiro mais barato de quatro é como o mais caro se esconde.*
+    // ⭐⭐⭐ **A BANDEIRA DA W73 chama-se pelo que ela ainda decide:** no caminho da placa, só a
+    // OCLUSÃO — o assente marcha-a inteira e grava-a no tempo, o movimento herda-a. ⛔ Os passageiros
+    // saíram um a um quando deixaram de custar: a segunda passagem da silhueta (`W7c`, 2026-09-19) e
+    // o ricochete com a cor do chão (2026-09-30, ver `luz inteira também a mexer`).
     assente: bool,
     sonda: Sonda,
 ) -> Option<ph2d_field_gpu::trace::Pintado> {
@@ -304,7 +304,13 @@ pub fn paint_com(
     // ⚠️ **Ela viaja na MESMA bandeira que a sombra e o ricochete** (`assente`, a lei «grosso a
     // mexer, nítido ao assentar» da W73): sem chão ou no quadro de MOVIMENTO o campo é VAZIO, a
     // consulta devolve `[0,0,0]` e o pintor soma zero — o quadro fica **byte-idêntico** ao de hoje.
-    let campo_do_chao = match (ground, assente && sonda.chao_recebe_cor) {
+    // ⭐⭐⭐⭐ **A LUZ INTEIRA TAMBÉM A MEXER** (2026-09-30, report do dono: *«luz indireta ainda
+    // desliga»*). A lei W73 deixava o ricochete e a cor do chão para o assente quando eles custavam
+    // `+149,7 ms` no nó (as sondas eram reassadas a cada quadro); desde que as sondas e o campo do
+    // chão ficam guardados na placa (`ph2d_field_gpu::sondas_na_placa`) eles custam `+0,7`–`+1,4 ms`
+    // no quadro de movimento (`diag_o_ceu_no_tempo` com `PH2D_SONDA_LUZ_INTEIRA=1`: nó `18,3 → 19,7`,
+    // as outras `5,8`–`7,2 → 6,7`–`7,9`). *Quem move o número que tornava algo caro reconfere a nota.*
+    let campo_do_chao = match (ground, sonda.chao_recebe_cor) {
         (Some(chao), true) => campo_do_chao(
             doc, reg, cam, chao, surfaces, points, &fita, &campo, w, h, sonda,
         ),
@@ -323,23 +329,19 @@ pub fn paint_com(
         // o conjunto (`docs/Render3d/08`), logo partilham a contagem. ⚠️ Ele é lido do sítio que o
         // declara, e não transcrito: duas cópias divergiriam no dia em que uma subisse.
         //
-        // ⭐⭐⭐ **E ele viaja na bandeira que JÁ EXISTE** (`assente`, a lei da W73: *grosso a
-        // mexer, nítido ao assentar*) — a seguir ao contorno engrossado e à sombra directa. *Uma
-        // segunda pergunta para o mesmo facto podia divergir dela.*
-        //
-        // ⛔ **E o anti-serrilhado deixou de ser passageiro dela** (`W7c`): ele custa
-        // `+0,18`–`+2,66 ms` e este custa `+284 ms` na cena `5` — *a bandeira juntava passageiros
-        // com preços a duas ordens de grandeza de distância, e é assim que o barato fica invisível.*
-        //
-        // ⛔⛔ **Sem isto o ricochete corria no quadro de MOVIMENTO**, que é exactamente a
-        // regressão que o dono já reprovou uma vez (*«mover os objetos ficou muito lento»*). Com
-        // `0` a passagem não compila nem despacha, o canal fica vazio, e o quadro que a mão arrasta
-        // é **byte-idêntico** ao de hoje.
-        ao_rays: if assente && sonda.ricochete {
+        // ⭐⭐⭐⭐ **E ele corre em TODO quadro desde 2026-09-30** — ver `luz inteira também a mexer`,
+        // acima. ⛔ Até aí viajava na bandeira `assente` (a lei W73), porque custava `+284 ms` na
+        // cena `5` e o dono tinha reprovado *«mover os objetos ficou muito lento»*; com as sondas
+        // guardadas na placa o preço no quadro de movimento é `+0,7`–`+1,4 ms`, e a queixa passou a
+        // ser a OPOSTA (*«luz indireta ainda desliga»*).
+        ao_rays: if sonda.ricochete {
             ph2d_field_render::OCCLUSION_PASSES
         } else {
             0
         },
+        // ⭐⭐⭐⭐ **O movimento não espera pelo compilador** — ver
+        // [`ph2d_field_gpu::paint::PaintSetup::ricochete_sem_esperar`]. O assente compila.
+        ricochete_sem_esperar: !assente,
         // ⭐ O gémeo do `MarchSetup::mole`, do lado de quem COMPILA — os dois vêm da mesma decisão.
         mole: setup.mole.is_some(),
         // ⭐⭐⭐⭐ **A FITA DA PEÇA SÓ ENTRA NO SHADER DO PINTOR QUANDO ALGUÉM A LÊ**

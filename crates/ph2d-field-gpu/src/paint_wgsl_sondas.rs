@@ -523,7 +523,8 @@ fn pinta(@builtin(global_invocation_id) g: vec3<u32>) {
 @compute @workgroup_size(64, 1, 1)
 fn pinta_bordas(@builtin(global_invocation_id) g: vec3<u32>) {
     let slot = g.x;
-    if (slot >= pintor.modo.y) { return; }
+    // ⭐ A contagem é a que a marcha escreveu NESTE quadro — o despacho vem pelo tecto da lista.
+    if (slot >= min(pintor.modo.y, atomicLoad(&conta))) { return; }
     let i = bitcast<u32>(borda[slot * 5u].x);
     if (i >= s.w * s.h) { return; }
     let x = i % s.w;

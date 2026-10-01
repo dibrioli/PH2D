@@ -96,16 +96,18 @@ fn diferenca(a: &[u8], b: &[u8]) -> (usize, usize, u8) {
 
 /// Quantos pixels são um PONTO CLARO isolado: mais de `12` níveis acima do mais claro dos oito
 /// vizinhos — a régua dos *«pontos»* das fotos do dono.
-fn pontos_claros(img: &[u8]) -> usize {
-    let lum = |x: usize, y: usize| {
-        let i = (y * LW as usize + x) * 4;
-        (u32::from(img[i]) + u32::from(img[i + 1]) + u32::from(img[i + 2])) / 3
-    };
+fn lum(img: &[u8], x: usize, y: usize) -> u32 {
+    let i = (y * LW as usize + x) * 4;
+    (u32::from(img[i]) + u32::from(img[i + 1]) + u32::from(img[i + 2])) / 3
+}
+
+/// Os píxeis mais claros do que os OITO vizinhos por mais de `12` níveis.
+fn claros(img: &[u8]) -> Vec<(usize, usize)> {
     let (w, h) = (LW as usize, LH as usize);
-    let mut n = 0;
+    let mut v = Vec::new();
     for y in 1..h - 1 {
         for x in 1..w - 1 {
-            let c = lum(x, y);
+            let c = lum(img, x, y);
             let mut viz = 0;
             for (dx, dy) in [
                 (0, 1),
@@ -117,14 +119,29 @@ fn pontos_claros(img: &[u8]) -> usize {
                 (0, 2),
                 (2, 2),
             ] {
-                viz = viz.max(lum(x + dx - 1, y + dy - 1));
+                viz = viz.max(lum(img, x + dx - 1, y + dy - 1));
             }
             if c > viz + 12 {
-                n += 1;
+                v.push((x, y));
             }
         }
     }
-    n
+    v
+}
+
+fn pontos_claros(img: &[u8]) -> usize {
+    claros(img).len()
+}
+
+/// ⭐⭐⭐ **Os pontos claros NOVOS** — claros na imagem da cache e mais de `8` níveis acima da exacta
+/// no MESMO pixel. ⛔ A contagem crua (`pontos_claros`) contra a da exacta media o LIMIAR: a peça já
+/// tem faíscas na silhueta, e uma delas a `129` contra `128` da exacta (com o vizinho a `116`) entra
+/// de um lado e não do outro — medido na rosca a girar, `16` «a mais» de que só `3` passam `8` níveis.
+fn pontos_novos(img: &[u8], certo: &[u8]) -> usize {
+    claros(img)
+        .into_iter()
+        .filter(|&(x, y)| lum(img, x, y) > lum(certo, x, y) + 8)
+        .count()
 }
 
 /// Assenta a cena (o quadro que GRAVA a tabela), esquecendo a de antes.
@@ -226,8 +243,10 @@ fn os_gestos_da_camara_ficam_perto_da_exacta() {
             g.pior
         );
         assert!(
-            g.pontos <= g.pontos_certos + 5,
-            "cena {cena} gesto {qual}: a cache pinta PONTOS CLAROS: {} contra {} da oclusão exacta",
+            g.novos <= NOVOS_MAX,
+            "cena {cena} gesto {qual}: a cache pinta PONTOS CLAROS que a exacta não tem: {} (tecto \
+             {NOVOS_MAX}; claros {} contra {} da exacta)",
+            g.novos,
             g.pontos,
             g.pontos_certos
         );
@@ -235,27 +254,38 @@ fn os_gestos_da_camara_ficam_perto_da_exacta() {
 }
 
 /// ⭐ **`(cena, gesto, tecto dos canais acima de 8, tecto do pior)`** — o vale entre a lei e as que
-/// a prova de mutação separa. Medido a `1920×1080` (mín–máx de três repetições):
+/// a prova de mutação separa. Medido a `1920×1080` (mín–máx de três repetições), **2026-09-30 com a
+/// lei nova** (o chão na tabela, as fatias por quadro, a cópia entre níveis):
 ///
-/// | cena · gesto | a lei | concordância desligada | tabela a `2` por pixel | tabela `2²¹` |
-/// |---|---|---|---|---|
-/// | nó · girar | `11`–`32` · pior `11`–`23` | `54`–`61` | `11`–`32` | `64`–`131` |
-/// | rosca · girar | `176`–`214` · pior `23`–`25` | `309`–`311` | `181`–`239` | `480`–`548` |
-/// | nó · aproximar | `240`–`299` · pior `31`–`36` | `382`–`445` | `326`–`411` | `1 604`–`1 744` |
-/// | rosca · aproximar | `373`–`445` · pior `25` | `438`–`452` | `464`–`516` | `1 251`–`1 361` |
-/// | nó · afastar | `1` · pior `9` | `1` | `1`–`34` | `55`–`83` |
-/// | rosca · afastar | `49`–`69` · pior `35` | `52`–`64` | `57`–`75` | `144`–`187` |
+/// | cena · gesto | a lei | concordância desligada | tabela a `2` por pixel |
+/// |---|---|---|---|
+/// | nó · girar | `15`–`33` · pior `11`–`12` | `12`–`48` | `173`–`196` · pior `77` |
+/// | rosca · girar | `75`–`104` · pior `23` | `80`–`98` | `383`–`427` · pior `34` |
+/// | nó · aproximar | `89`–`178` · pior `22`–`26` | `70`–`184` | `1 020`–`1 044` |
+/// | rosca · aproximar | `415`–`537` · pior `21`–`33` | `424`–`515` | `603`–`718` |
+/// | nó · afastar | `0`–`10` · pior `7`–`17` | `0`–`19` | `21`–`62` · pior `11`–`24` |
+/// | rosca · afastar | `44`–`54` · pior `22` | `34`–`77` | `80`–`103` |
 ///
-/// ⚠️ A concordância só separa a girar e a aproximar o nó; a rosca a aproximar e o afastar não a
-/// distinguem, e as barras deles guardam só a capacidade da tabela.
+/// ⛔ **A CONCORDÂNCIA deixou de ser visível nestes gestos** (a coluna dela cai dentro da da lei): com
+/// a cópia entre níveis e as fatias por quadro o erro que sobra mora noutro sítio, e a mutação que a
+/// desliga SOBREVIVE a este gate — dito aqui em vez de uma barra que fingisse vê-la. ⚠️ A rosca a
+/// afastar também não separa a tabela a `2` por pixel; a barra dela guarda a capacidade da tabela.
+/// A herança com UMA vizinha (`quantas < 1`) sangra pela contagem: nó a girar `109`–`122`, nó a
+/// afastar `149`–`173`, rosca a girar `496`–`552`.
 const BARRAS: &[(u32, u32, usize, u8)] = &[
     (28, 0, 45, 30),
     (29, 0, 260, 30),
     (28, 1, 360, 45),
-    (29, 1, 520, 35),
-    (28, 2, 20, 15),
+    (29, 1, 570, 35),
+    (28, 2, 20, 22),
     (29, 2, 110, 45),
 ];
+
+/// ⭐ O tecto dos [`pontos_novos`] — medido `0` no nó e `1`–`9` na rosca, nos três gestos, com a lei e
+/// com as duas mutações da tabela acima: **ele não separa essas mutações** (quem as apanha são as
+/// barras de contagem). Ele é a guarda contra o SAL — pontos claros que a exacta não tem —, a
+/// assinatura de duas células diferentes fundidas numa entrada (a impressão da chave, 2026-09-30).
+const NOVOS_MAX: usize = 12;
 
 /// ⭐⭐⭐⭐ **UMA EDIÇÃO DA PEÇA NÃO HERDA NADA** — o quadro de movimento cuja peça mudou (a mão a
 /// arrastar um parâmetro) faz a oclusão de antes, BYTE A BYTE, e a tabela recomeça. ⛔ Sem isto a
@@ -317,6 +347,7 @@ struct Gesto {
     pior: u8,
     pontos: usize,
     pontos_certos: usize,
+    novos: usize,
     reinicios: usize,
 }
 
@@ -352,6 +383,7 @@ fn depois_do_gesto(
         pior,
         pontos: pontos_claros(&img),
         pontos_certos: pontos_claros(&certo),
+        novos: pontos_novos(&img, &certo),
         reinicios,
     }
 }
@@ -372,8 +404,8 @@ fn diag_os_gestos_da_camara() {
                 let g = depois_do_gesto(t, &doc, qual);
                 println!(
                     "DIAG cena {cena} gesto {qual} rep {rep}: {} acima · pior {} · pontos {}/{} · \
-                     {} reinícios",
-                    g.acima, g.pior, g.pontos, g.pontos_certos, g.reinicios
+                     novos {} · {} reinícios",
+                    g.acima, g.pior, g.pontos, g.pontos_certos, g.novos, g.reinicios
                 );
             }
         }
@@ -385,23 +417,36 @@ fn diag_os_gestos_da_camara() {
 /// deixa ligar. ⛔ Até 2026-09-30 era a constante `2²¹`, e a `1920×1080` ela enchia (o sal nas fendas).
 #[test]
 fn a_tabela_segue_a_vista_e_o_tecto_do_dispositivo() {
-    use ph2d_field_gpu::ceu_tempo::entradas_para;
+    use ph2d_field_gpu::ceu_tempo::{LAMPADAS_NA_TABELA, entradas_para, palavras_para};
     let hd = 1920 * 1080;
     let grande = 4 << 30;
     let piso_wgpu = 128 << 20;
-    assert_eq!(entradas_para(hd, grande), 4 * 1920 * 1080);
+    let ceu = palavras_para(0);
+    assert_eq!(ceu, 5, "sem lâmpadas, as cinco palavras do céu");
+    assert_eq!(entradas_para(hd, grande, ceu), 4 * 1920 * 1080);
     assert_eq!(
-        entradas_para(4 * hd, grande),
+        entradas_para(4 * hd, grande, ceu),
         16 * 1920 * 1080,
         "a 4K a tabela cresce com a vista"
     );
     assert_eq!(
-        entradas_para(hd, piso_wgpu),
+        entradas_para(hd, piso_wgpu, ceu),
         u32::try_from(piso_wgpu / 20).expect("cabe"),
         "no piso da wgpu quem manda é o tamanho da ligação"
     );
+    // ⭐ As LÂMPADAS: uma palavra de contagem e uma por par; acima do tecto voltam ao pixel.
+    assert_eq!(palavras_para(1), 7);
+    assert_eq!(palavras_para(2), 7);
+    assert_eq!(palavras_para(3), 8);
+    assert_eq!(palavras_para(LAMPADAS_NA_TABELA), 8);
+    assert_eq!(palavras_para(LAMPADAS_NA_TABELA + 1), 5);
     assert_eq!(
-        entradas_para(16, grande),
+        entradas_para(hd, piso_wgpu, 8),
+        u32::try_from(piso_wgpu / 32).expect("cabe"),
+        "com lâmpadas a entrada é maior e cabem menos na ligação"
+    );
+    assert_eq!(
+        entradas_para(16, grande, ceu),
         1 << 16,
         "uma vista minúscula tem um piso"
     );

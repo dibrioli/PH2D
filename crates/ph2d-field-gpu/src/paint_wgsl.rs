@@ -356,12 +356,14 @@ mod censo_de_quem_toca_a_fita {
     /// | `marcha_ate`, `visivel` | `assa_sondas` | só com `ao_rays > 0` |
     /// | `ceu_do_chao` | `centro_e_luz` (a MARCHA, outro shader) | sempre — e ele leva a fita |
     /// | `assa_sondas` | ele próprio | só com `ao_rays > 0` |
-    const SABIDAS: [&str; 5] = [
+    /// | `chao_perto_da_peca` (2026-09-30) | `luz_so`/`centro_e_luz` e os passes da tabela do mundo (a MARCHA, outro shader — vive nos `KERNELS`, que o pintor não recebe) | sempre |
+    const SABIDAS: [&str; 6] = [
         "{NOME}",
         "marcha_ate",
         "visivel",
         "ceu_do_chao",
         "assa_sondas",
+        "chao_perto_da_peca",
     ];
 
     #[test]

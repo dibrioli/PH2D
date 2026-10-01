@@ -131,7 +131,7 @@ fn o_gemeo_da_borda_mole_esta_ligado_no_dispositivo() {
         );
     }
     assert!(
-        despacho.contains("for p in [h_pass, v_pass] {"),
+        despacho.contains("[(h_pass, \"mole-h\"), (v_pass, \"mole-v\")]"),
         "as duas passagens deixaram de ser despachadas em sequência — a segunda lê os vizinhos do \
          que a primeira escreveu, e sem as duas o canal fica a meio"
     );

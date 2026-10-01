@@ -343,19 +343,14 @@ fn escreve_a_luz(i: u32, r: Raio, c: vec4<f32>) {
         // quanto de cada fonte chega A ELE. Ver `docs/Render3d/07`.
         let q = chao_em(r);
         if (q.w == 0.0) { return; }
-        let up = vec3<f32>(0.0, 1.0, 0.0);
-        let erguido = q.xyz + up * (s.hit_eps * 4.0);
+        // ⭐⭐⭐⭐ Com as lâmpadas na TABELA do mundo, quem escreve a sombra e o céu do chão LONGE da
+        // peça num quadro de movimento é o `ceu_tempo_le` — aqui ficam a `1` (ver `crate::ceu_tempo`).
+        if (lampadas_na_tabela() && !chao_perto_da_peca(q.xyz)) {
+            luz[base] = 1.0;
+            return;
+        }
         for (var l: u32 = 0u; l < s.n_lamps; l = l + 1u) {
-            let d = s.lamps[l].xyz - q.xyz;
-            let dist = length(d);
-            // A normal do chão é `+y`: `N·L > 0` é a lâmpada estar ACIMA dele.
-            if (dist <= 1e-6 || d.y <= 0.0) { continue; }
-            let dir = d / dist;
-            let ate = cerca_com(q.xyz, dir, dist, dist / 8.0);
-            // ⚠️ **Um raio que nem toca a bola alargada não marcha** — a CPU salta-o também, e um
-            // raio marchado com cerca `0` ainda avaliaria o campo uma vez.
-            if (ate <= 0.0) { continue; }
-            luz[base + 1u + l] = visivel(erguido, dir, ate, 8.0);
+            luz[base + 1u + l] = sombra_da_lampada(q.xyz, vec3<f32>(0.0, 1.0, 0.0), true, l);
         }
         luz[base] = ceu_do_chao(q.xyz);
         return;
@@ -371,16 +366,7 @@ fn escreve_a_luz(i: u32, r: Raio, c: vec4<f32>) {
     // ⚠️ **O custo é LINEAR nas lâmpadas e é a parte cara do passe**: um raio de sombra custa
     // `29,3` amostras contra `8,7` de um raio de câmera. O tecto de `MAX_LAMPS` sai daí.
     for (var l: u32 = 0u; l < s.n_lamps; l = l + 1u) {
-        var sombra = 1.0;
-        let d = s.lamps[l].xyz - p;
-        let dist = length(d);
-        if (dist > 1e-6) {
-            let dir = d / dist;
-            if (dot(n, dir) > 0.0) {
-                sombra = visivel(erguido, dir, cerca_da_bola(erguido, dir, dist), 8.0);
-            }
-        }
-        luz[base + 1u + l] = sombra;
+        luz[base + 1u + l] = sombra_da_lampada(p, n, false, l);
     }
 
     // ⚠️ **O ricochete nasce a ZERO e é o passe do PINTOR que o enche** — ele precisa dos
@@ -403,6 +389,64 @@ fn escreve_a_luz(i: u32, r: Raio, c: vec4<f32>) {
         ceu = ceu_por_cones(erguido, n);
     }
     luz[base] = ceu;
+}
+
+// ⭐⭐⭐⭐ **A SOMBRA DE UMA LÂMPADA num ponto** — da peça (`chao = false`, normal `n`) ou do CHÃO que
+// só recebe (normal `+y`). É a lei que o `escreve_a_luz` corre por pixel e que a tabela do mundo
+// (`crate::ceu_tempo`) corre por CÉLULA: uma função só, para as duas darem o mesmo número.
+fn sombra_da_lampada(p: vec3<f32>, n: vec3<f32>, chao: bool, l: u32) -> f32 {
+    let d = s.lamps[l].xyz - p;
+    let dist = length(d);
+    if (chao) {
+        // A normal do chão é `+y`: `N·L > 0` é a lâmpada estar ACIMA dele.
+        if (dist <= 1e-6 || d.y <= 0.0) { return 1.0; }
+        let dir = d / dist;
+        let ate = cerca_com(p, dir, dist, dist / 8.0);
+        // ⚠️ **Um raio que nem toca a bola alargada não marcha** — a CPU salta-o também, e um
+        // raio marchado com cerca `0` ainda avaliaria o campo uma vez.
+        if (ate <= 0.0) { return 1.0; }
+        return visivel(p + n * (s.hit_eps * 4.0), dir, ate, 8.0);
+    }
+    if (dist <= 1e-6) { return 1.0; }
+    let dir = d / dist;
+    if (dot(n, dir) <= 0.0) { return 1.0; }
+    let erguido = p + n * (s.hit_eps * 4.0);
+    return visivel(erguido, dir, cerca_da_bola(erguido, dir, dist), 8.0);
+}
+
+// O tamanho de um pixel da câmara ACTUAL no ponto `p`, em unidades de mundo.
+fn pixel_no_mundo(p: vec3<f32>) -> f32 {
+    var escala = 1.0;
+    if (s.eye_distance != 0.0) {
+        let eye = s.alvo + s.fwd * s.eye_distance;
+        escala = max(dot(p - eye, -s.fwd), 0.0) / s.eye_distance;
+    }
+    return s.half_extent / s.half_px * escala;
+}
+
+// O tamanho da PEGADA de um pixel no chão — a secção do raio sobre o `cos` do raspão (parado em
+// `1/16`). É o lado das células do chão na tabela do mundo.
+fn pegada_no_chao(q: vec3<f32>) -> f32 {
+    var olho = s.fwd;
+    if (s.eye_distance != 0.0) { olho = normalize(s.alvo + s.fwd * s.eye_distance - q); }
+    return pixel_no_mundo(q) / max(abs(olho.y), 0.0625);
+}
+
+// ⭐⭐⭐⭐ **Um ponto do chão PERTO da peça não usa a tabela** — a penumbra de uma lâmpada no chão
+// tem a largura da distância ao oclusor sobre a dureza (`8`), e perto da peça ela é mais fina do
+// que a célula: a sombra de CONTACTO saía em degraus do tamanho da célula (medido na rosca a
+// afastar). A distância é o CAMPO no ponto — uma avaliação, e só dentro da bola alargada.
+fn chao_perto_da_peca(q: vec3<f32>) -> bool {
+    let limite = {CHAO_PERTO} * pegada_no_chao(q);
+    if (length(q - s.ball_center) - s.ball_radius >= limite) { return false; }
+    return field(q) < limite;
+}
+
+// ⭐⭐⭐⭐ **As lâmpadas vivem na tabela do mundo neste quadro?** — um quadro de MOVIMENTO
+// (`ceu_tempo == 2`) com poucas lâmpadas: a regra é a MESMA que dá o tamanho da entrada na CPU
+// (`crate::ceu_tempo::palavras_para`).
+fn lampadas_na_tabela() -> bool {
+    return s.ceu_tempo == 2u && s.n_lamps > 0u && s.n_lamps <= {LAMPADAS_NA_TABELA}u;
 }
 
 // ⭐⭐⭐⭐ **OS REPRESENTANTES, compactos: uma thread por célula** — o despacho é a grelha GROSSA
@@ -571,7 +615,12 @@ fn difere(a: u32, b: u32) -> bool {
 pub(crate) fn molde() -> String {
     let kernels = KERNELS
         .replace("{CEU_COS}", &numero(ph2d_field_render::OCCLUSION_BLUR_COS))
-        .replace("{CEU_PLANO}", &numero(CEU_PLANO));
+        .replace("{CEU_PLANO}", &numero(CEU_PLANO))
+        .replace(
+            "{LAMPADAS_NA_TABELA}",
+            &crate::ceu_tempo::LAMPADAS_NA_TABELA.to_string(),
+        )
+        .replace("{CHAO_PERTO}", &numero(crate::ceu_tempo::CHAO_PERTO));
     format!("{}{}{kernels}", comum(), leis())
 }
 

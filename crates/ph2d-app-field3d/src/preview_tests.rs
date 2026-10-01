@@ -636,8 +636,13 @@ fn o_assente_da_placa_espera_o_que_custa_e_o_da_cpu_nao() {
 fn a_fiacao_do_assentar_esta_ligada() {
     let fonte = include_str!("smoke_draw.rs");
     assert!(
-        fonte.contains("if !r.assente || smoke.vps[i].measured.is_none() {"),
+        fonte.contains("if !r.assente || smoke.vps[i].measured.ultima.is_none() {"),
         "o laço do movimento voltou a aprender com os quadros assentes"
+    );
+    // ⭐ E o pedido lê a MAIS BARATA das duas últimas medições (`super::Medicoes`, 2026-09-30).
+    assert!(
+        fonte.contains("smoke.vps[i].measured.para_o_divisor(),"),
+        "o divisor voltou a decidir por UM quadro — o pico do 1.º quadro de um gesto baixa a resolução"
     );
     assert!(
         fonte.contains(".assentar.pode_comecar(w, h) => None,"),

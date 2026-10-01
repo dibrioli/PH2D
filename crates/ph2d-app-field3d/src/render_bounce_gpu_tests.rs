@@ -276,19 +276,24 @@ fn mede_o_que_o_ricochete_custa_no_dispositivo() {
     );
 }
 
-/// ⭐⭐⭐ **O QUADRO DE MOVIMENTO NÃO PAGA O RICOCHETE** — e é a metade que protege o report que o
-/// dono já fez uma vez (*«mover os objetos ficou muito lento»*).
+/// ⭐⭐⭐⭐ **O QUADRO DE MOVIMENTO LEVA O RICOCHETE** — report do dono (2026-09-30): *«luz indireta
+/// ainda desliga»*.
 ///
-/// Com a bandeira do quadro assente em baixo (`assente = false`) a passagem do ricochete não é
-/// compilada nem despachada, o canal fica vazio, e a imagem é a que a CPU pinta **com o canal
-/// vazio** — ou seja, a de sempre.
+/// ⛔⛔⛔ **A PREMISSA DESTE GATE MORREU em 2026-09-30, e ele trocou de sentido.** Chamava-se
+/// `o_quadro_de_movimento_nao_paga_o_ricochete` e protegia *«mover os objetos ficou muito lento»*,
+/// quando o ricochete custava `+149,7 ms` no nó porque as sondas eram reassadas a cada quadro. Com
+/// as sondas guardadas na placa ele custa `+0,7`–`+1,4 ms` no quadro de movimento
+/// (`diag_o_ceu_no_tempo`), e a queixa passou a ser a oposta.
 ///
-/// ⚠️⚠️ **O gate irmão (`o_ricochete_chega_a_imagem_do_dispositivo`) é o CONTROLO deste:** ali a
-/// mesma comparação tem de DIFERIR. *Sem o par, uma implementação que nunca calculasse o ricochete
-/// passaria neste e ninguém daria por isso.*
+/// As três metades: **(1)** com os pipelines já compilados (o assente passou antes), o quadro de
+/// MOVIMENTO é o ASSENTE **ao bit** — o passo da oclusão a `1` e sem histórico, para que a única
+/// diferença possível entre os dois seja o ricochete; **(2)** CONTROLO: sem o ricochete a imagem
+/// muda — senão a igualdade de (1) passava sobre um ricochete que não chega ao pixel; **(3)** o
+/// quadro de movimento de uma peça NUNCA compilada vai SEM ele e não compila nada — ver
+/// [`ph2d_field_gpu::paint::PaintSetup::ricochete_sem_esperar`].
 #[test]
 #[ignore = "precisa de GPU"]
-fn o_quadro_de_movimento_nao_paga_o_ricochete() {
+fn o_quadro_de_movimento_leva_o_ricochete() {
     let Some(t) = crate::gpu_frame::shared() else {
         println!("sem adaptador — saltado");
         return;
@@ -312,81 +317,110 @@ fn o_quadro_de_movimento_nao_paga_o_ricochete() {
         world: [0.6, 0.9, 0.9],
         radiance_at_one: [3.0; 3],
     }];
-    let mundos: Vec<[f32; 3]> = luz.iter().map(|l| l.world).collect();
     let olhar = ph2d_view_transform::Look::default();
-
-    // ⛔⛔⛔ **A PREMISSA DESTA LINHA MORREU em 2026-09-19 (`W7c`), e o gate reprovou por `191`
-    // níveis.** Ela dizia *«`false` nos DOIS lados — é a bandeira do quadro de movimento, e ela
-    // também desliga a re-amostragem da borda»*, e isso deixou de ser verdade: as duas bandeiras
-    // separaram-se (`docs/Render3d/12` §12). O `march` continua a governar a **borda** e o `paint` a
-    // governar o **ricochete** — logo o lado da CPU tem de re-amostrar, senão esta comparação volta
-    // a medir o anti-serrilhado, que é exactamente o que a linha antiga existia para impedir.
-    //
-    // ⭐ *A linha errada e a certa dizem a MESMA coisa — «os dois lados no mesmo regime» —, e o que
-    // mudou por baixo foi qual argumento exprime esse regime.*
-    let (g, sh) = crate::gpu_frame::march(
-        t,
-        &doc,
-        &reg,
-        &cam,
-        &mundos,
-        None,
-        W,
-        H,
-        crate::preview::re_amostra_a_silhueta(),
-    )
-    .expect("a marcha do dispositivo");
-    let sem_ecra: [ph2d_field_render::Lamp; 0] = [];
-    let cpu = ph2d_field_render::shade_render(
-        &g,
-        &cam,
-        &surfaces,
-        &ph2d_field_render::Lighting {
-            lamps: &sem_ecra,
-            points: &luz,
-            sky: &crate::render_light::StudioSky,
-            shadows: Some(&sh),
-        },
-        &ph2d_field_render::Presentation::of(olhar),
-        FUNDO,
-    );
-    // ⛔⛔ **E A PREMISSA MORREU OUTRA VEZ em 2026-09-24, com `13` níveis:** o quadro de movimento
-    // passou a marchar a oclusão A PASSO (`MarchSetup::ceu_passo`, `docs/Render3d/03` §W9) — uma
-    // divergência DECLARADA da CPU, com gate próprio (`ceu_passo::a_oclusao_a_passo_nao_desenha_halo`,
-    // tecto `24`). A pergunta DESTE gate é outra — *o movimento paga o ricochete?* — e para a isolar
-    // o passo vai a `1`; senão ele mede a oclusão reconstruída e acusa o ricochete.
-    let gpu = crate::gpu_frame::paint_com(
-        t,
-        &doc,
-        &reg,
-        &cam,
-        &luz,
-        &surfaces,
-        &ph2d_field_render::Presentation::of(olhar),
-        FUNDO,
-        None,
-        W,
-        H,
-        false,
-        crate::gpu_frame::Sonda {
-            ceu_passo: 1,
-            ..crate::gpu_frame::Sonda::default()
-        },
-    )
-    .expect("o pintor do dispositivo");
-
-    let pior = cpu
-        .iter()
-        .zip(gpu.rgba.iter())
-        .map(|(a, b)| a.abs_diff(*b))
-        .max()
-        .unwrap_or(0);
-    println!("  quadro de movimento · pior desvio {pior} nível(is)");
-    // A barra é a mesma do gate de paridade: `1` nível é arredondamento entre dois motores.
+    let pinta = |assente: bool, ricochete: bool| {
+        crate::gpu_frame::paint_com(
+            t,
+            &doc,
+            &reg,
+            &cam,
+            &luz,
+            &surfaces,
+            &ph2d_field_render::Presentation::of(olhar),
+            FUNDO,
+            None,
+            W,
+            H,
+            assente,
+            crate::gpu_frame::Sonda {
+                ceu_passo: 1,
+                ceu_no_tempo: false,
+                ricochete,
+                ..crate::gpu_frame::Sonda::default()
+            },
+        )
+        .expect("o pintor do dispositivo")
+        .rgba
+    };
+    let assente = pinta(true, true);
+    let movimento = pinta(false, true);
+    let sem = pinta(false, false);
+    let pior = |a: &[u8], b: &[u8]| {
+        a.iter()
+            .zip(b)
+            .map(|(x, y)| x.abs_diff(*y))
+            .max()
+            .unwrap_or(0)
+    };
+    let (igual, controlo) = (pior(&movimento, &assente), pior(&sem, &assente));
+    println!("  movimento contra assente: pior {igual} · sem ricochete: pior {controlo}");
+    // ⚠️ A barra é a do arredondamento entre dois motores (`2` níveis, a do gate de paridade); o
+    // ricochete desta fixtura mede `7` (2026-09-30).
     assert!(
-        pior <= 2,
-        "o quadro de movimento diverge da CPU sem ricochete por {pior} níveis — ele está a pagar \
-         o ricochete, e é essa a regressão que o dono já reprovou uma vez"
+        controlo > 2,
+        "CONTROLO: tirar o ricochete muda a imagem só {controlo} níveis — a fixtura não o mostra, \
+         e a igualdade abaixo não diria nada"
+    );
+    assert_eq!(
+        igual, 0,
+        "o quadro de MOVIMENTO não é o assente: pior {igual} níveis — a luz indirecta voltou a \
+         desligar-se ao mexer"
+    );
+
+    // (3) Uma peça de OUTRA estrutura, nunca vista por ESTE traçador: o movimento não espera.
+    // ⚠️⚠️ **Um traçador PRÓPRIO, e não o partilhado** (2026-09-30): na suíte inteira outro teste do
+    // mesmo processo já tinha compilado a cena `2` no partilhado, os pipelines estavam no cache e o
+    // ricochete corria — o gate reprovava sobre produto certo (`left: 1`), e passava sozinho. *Um
+    // gate cuja premissa é «nunca visto» não pode partilhar a memória de quem já viu.*
+    let proprio = std::sync::Arc::new(std::sync::Mutex::new(
+        ph2d_field_gpu::trace::Tracer::new().expect("um segundo traçador no mesmo adaptador"),
+    ));
+    let t = &proprio;
+    let doc2 = crate::smoke::scene(2);
+    let reg2 = crate::smoke::sampled_registry();
+    let padrao = [ph2d_material::OpenPbr::default().prepare()];
+    let s2 = ph2d_field_render::Surfaces {
+        all: &padrao,
+        owners: None,
+    };
+    let pinta2 = |assente: bool, ricochete: bool| {
+        crate::gpu_frame::paint_com(
+            t,
+            &doc2,
+            &reg2,
+            &cam,
+            &luz,
+            &s2,
+            &ph2d_field_render::Presentation::of(olhar),
+            FUNDO,
+            None,
+            W,
+            H,
+            assente,
+            crate::gpu_frame::Sonda {
+                ceu_passo: 1,
+                ceu_no_tempo: false,
+                ricochete,
+                ..crate::gpu_frame::Sonda::default()
+            },
+        )
+        .expect("o pintor do dispositivo")
+        .rgba
+    };
+    let novo = pinta2(false, true);
+    let novo_sem = pinta2(false, false);
+    assert_eq!(
+        pior(&novo, &novo_sem),
+        0,
+        "o 1.º quadro de MOVIMENTO de uma peça nova levou o ricochete — ele ESPEROU pelo compilador \
+         do pintor (`1,3`–`2,8 s` de imagem parada)"
+    );
+    let assentou = pinta2(true, true);
+    let depois = pinta2(false, true);
+    assert_eq!(
+        pior(&depois, &assentou),
+        0,
+        "depois de o assente compilar, o movimento da peça nova continua sem o ricochete"
     );
 }
 

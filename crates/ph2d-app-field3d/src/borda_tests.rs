@@ -242,7 +242,11 @@ fn os_tres_caminhos_de_um_quadro_leem_a_mesma_porta() {
     let thread = include_str!("smoke_draw_thread.rs");
     // ⚠️ A `Sonda::default` mudou-se para o irmão `gpu_frame_sonda.rs` por tecto de LOC
     // (2026-09-30): o pintor lê a porta ALI, e os dois ficheiros contam como um só.
-    let gpu = [include_str!("gpu_frame.rs"), include_str!("gpu_frame_sonda.rs")].concat();
+    let gpu = [
+        include_str!("gpu_frame.rs"),
+        include_str!("gpu_frame_sonda.rs"),
+    ]
+    .concat();
     let leitores = thread
         .matches("crate::preview::re_amostra_a_silhueta()")
         .count()

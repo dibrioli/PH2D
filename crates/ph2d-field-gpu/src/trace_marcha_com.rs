@@ -22,6 +22,7 @@ pub(super) fn marcha_com(
     height: u32,
     pintura: Pintura<'_>,
 ) -> Saida {
+    let mut relogio_cpu = std::time::Instant::now();
     // ⭐ O pintor de MATERIAL, quando é ele — as leis do dono e a fita são só dele.
     let pintor = match &pintura {
         Pintura::Material(p) => Some(*p),
@@ -266,10 +267,12 @@ pub(super) fn marcha_com(
                 },
             ],
         });
+        let mut crono = cache.cronometro.take();
         let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: Some("assa-longe"),
-            timestamp_writes: None,
+            timestamp_writes: crono.as_mut().and_then(|c| c.marca("assa-longe")),
         });
+        cache.cronometro = crono;
         cp.set_pipeline(&p_assa);
         cp.set_bind_group(0, &bg_assa, &[]);
         cp.dispatch_workgroups(
@@ -283,10 +286,14 @@ pub(super) fn marcha_com(
     // ⭐ E a re-amostragem é um TERCEIRO, depois de a lista estar escrita — ver o `bordas_marcha`.
     // ⚠️ Cada despacho leva o SEU tamanho: o `ceu_meia` corre na grelha grossa dos representantes.
     let inteira = (width.div_ceil(8), height.div_ceil(8));
-    let mut despachos: Vec<(&wgpu::ComputePipeline, &wgpu::BindGroup, (u32, u32))> =
-        vec![(&p_centro, &bg_centro, inteira)];
+    let mut despachos: Vec<(
+        &wgpu::ComputePipeline,
+        &wgpu::BindGroup,
+        (u32, u32),
+        &'static str,
+    )> = vec![(&p_centro, &bg_centro, inteira, "centro")];
     if let Some(p) = &p_luz {
-        despachos.push((p, &bg_centro, inteira));
+        despachos.push((p, &bg_centro, inteira, "luz"));
     }
     if let Some((meia, sobe)) = &p_ceu {
         let passo = setup.ceu_passo.max(1);
@@ -294,22 +301,24 @@ pub(super) fn marcha_com(
             width.div_ceil(passo).div_ceil(8),
             height.div_ceil(passo).div_ceil(8),
         );
-        despachos.push((meia, &bg_centro, grossa));
-        despachos.push((sobe, &bg_centro, inteira));
+        despachos.push((meia, &bg_centro, grossa, "ceu-meia"));
+        despachos.push((sobe, &bg_centro, inteira, "ceu-sobe"));
     }
     if let (Some((p, pm)), Some(bg)) = (p_bordas.as_ref(), bg_bordas.as_ref()) {
-        despachos.push((p, bg, inteira));
-        despachos.push((pm, bg, inteira));
+        despachos.push((p, bg, inteira, "bordas-lista"));
+        despachos.push((pm, bg, inteira, "bordas-marcha"));
     }
-    for (p, bg, (gx, gy)) in despachos {
+    let mut crono = cache.cronometro.take();
+    for (p, bg, (gx, gy), rotulo) in despachos {
         let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: None,
-            timestamp_writes: None,
+            timestamp_writes: crono.as_mut().and_then(|c| c.marca(rotulo)),
         });
         cp.set_pipeline(p);
         cp.set_bind_group(0, bg, &[]);
         cp.dispatch_workgroups(gx, gy, 1);
     }
+    cache.cronometro = crono;
     // ⭐⭐⭐⭐ O histórico da oclusão — DEPOIS da luz, que é quem deixa o canal do céu de cada pixel.
     if let Some(chave) = ceu_tempo {
         crate::ceu_tempo::despacha(
@@ -353,19 +362,75 @@ pub(super) fn marcha_com(
         )
     };
     let r_conta = ler(&mut enc, &b_conta, 16);
+    // ⭐⭐⭐⭐ **O MATERIAL pinta no MESMO encoder** — ver [`crate::paint::pinta`]: um envio só.
+    if let Pintura::Material(pintor) = pintura {
+        if let Some(c) = cache.cronometro.as_mut() {
+            c.cpu("cpu-marcha", relogio_cpu);
+        }
+        let alvos = crate::paint::Alvos {
+            leis: &leis_com_esculturas,
+            fita,
+            bgl: &bgl,
+            grades: &b_grades,
+            setup: &ub,
+            k: &kb,
+            centro: &b_centro,
+            luz: &b_luz,
+            conta: &b_conta,
+            borda: &b_borda,
+        };
+        let tecto = if setup.antialias { max_bordas } else { 0 };
+        let rgba = crate::paint::pinta(
+            device,
+            queue,
+            cache,
+            pintor,
+            lei_do_dono.as_ref(),
+            &alvos,
+            width,
+            height,
+            tecto,
+            // ⭐⭐⭐⭐ **A chave das sondas** — ver [`crate::sondas_na_placa`].
+            crate::sondas_na_placa::ChaveDasSondas::de(
+                fita,
+                sculpts,
+                &setup,
+                pintor,
+                lei_do_dono.as_ref(),
+            ),
+            enc,
+        );
+        // A contagem volta DEPOIS da imagem, no mesmo envio — ela só diz quantas bordas houve.
+        r_conta.slice(..).map_async(wgpu::MapMode::Read, |_| {});
+        device.poll(wgpu::PollType::wait_indefinitely()).ok();
+        let d = r_conta.slice(..).get_mapped_range();
+        let quantas = u64::from(u32::from_le_bytes([d[0], d[1], d[2], d[3]]));
+        #[allow(clippy::cast_possible_truncation)]
+        let edges = quantas.min(tecto) as usize;
+        return Saida::Imagem(Pintado { edges, rgba });
+    }
+    if let Some(c) = cache.cronometro.as_mut() {
+        c.resolve(&mut enc);
+        relogio_cpu = c.cpu("cpu-marcha", relogio_cpu);
+    }
     queue.submit([enc.finish()]);
 
     for b in r_centro.iter().chain(r_luz.iter()).chain([&r_conta]) {
         b.slice(..).map_async(wgpu::MapMode::Read, |_| {});
     }
     device.poll(wgpu::PollType::wait_indefinitely()).ok();
+    if let Some(c) = cache.cronometro.as_mut() {
+        relogio_cpu = c.cpu("espera-marcha", relogio_cpu);
+        c.colhe(device);
+    }
+    let _ = relogio_cpu;
 
     let d_conta = r_conta.slice(..).get_mapped_range();
     let quantas = u32::from_le_bytes([d_conta[0], d_conta[1], d_conta[2], d_conta[3]]) as u64;
     if pinta {
-        // ⚠️ **A contagem de bordas tinha de voltar primeiro**, e é isso que este ida-e-volta
-        // compra: quantos workgroups o passe da borda precisa é um número que o dispositivo
-        // escreveu. *O mesmo ida-e-volta que a leitura da lista já custava, sem a lista.*
+        // ⚠️ **A contagem de bordas tinha de voltar primeiro** — no MATCAP, que ainda pinta num
+        // segundo envio: quantos workgroups o passe da borda precisa é um número que o dispositivo
+        // escreveu.
         let usadas = if setup.antialias {
             quantas.min(max_bordas)
         } else {
@@ -374,9 +439,6 @@ pub(super) fn marcha_com(
         drop(d_conta);
         #[allow(clippy::cast_possible_truncation)]
         let edges = usadas as usize;
-        // ⭐⭐⭐ **OS ALVOS SÃO OS MESMOS PARA AS DUAS LEIS** — o grupo `0` que a marcha escreveu.
-        // ⚠️ O matcap lê dele só o `setup`, o `centro` e a `borda`; ligar o layout inteiro é o que
-        // faz o passe partilhar o grupo em vez de declarar um segundo (`crate::paint::Alvos`).
         let alvos = crate::paint::Alvos {
             leis: &leis_com_esculturas,
             fita,
@@ -390,29 +452,12 @@ pub(super) fn marcha_com(
             borda: &b_borda,
         };
         let rgba = match pintura {
-            Pintura::Material(pintor) => crate::paint::pinta(
-                device,
-                queue,
-                cache,
-                pintor,
-                lei_do_dono.as_ref(),
-                &alvos,
-                width,
-                height,
-                usadas,
-                // ⭐⭐⭐⭐ **A chave das sondas** — ver [`crate::sondas_na_placa`].
-                crate::sondas_na_placa::ChaveDasSondas::de(
-                    fita,
-                    sculpts,
-                    &setup,
-                    pintor,
-                    lei_do_dono.as_ref(),
-                ),
-            ),
             Pintura::Matcap(mc) => {
                 crate::matcap::pinta(device, queue, cache, mc, &alvos, width, height, usadas)
             }
-            Pintura::Nenhuma => unreachable!("o `pinta` acima já o excluiu"),
+            Pintura::Material(_) | Pintura::Nenhuma => {
+                unreachable!("o material pinta acima e o `pinta` exclui o nenhum")
+            }
         };
         return Saida::Imagem(Pintado { edges, rgba });
     }

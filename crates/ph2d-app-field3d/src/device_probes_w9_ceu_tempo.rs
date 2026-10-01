@@ -102,8 +102,12 @@ fn diag_o_ceu_no_tempo() {
         ceu_no_tempo: false,
         ..crate::gpu_frame::Sonda::default()
     };
+    // `PH2D_SONDA_ABLA=ricochete,bordas` tira também esses do chão — a escada de ablação.
+    let abla = std::env::var("PH2D_SONDA_ABLA").unwrap_or_default();
     let sem_ceu = crate::gpu_frame::Sonda {
         sem_ceu: true,
+        ricochete: !abla.contains("ricochete"),
+        bordas: !abla.contains("bordas"),
         ..crate::gpu_frame::Sonda::default()
     };
     let exacta = crate::gpu_frame::Sonda {
@@ -124,6 +128,8 @@ fn diag_o_ceu_no_tempo() {
         let mut chao = f64::INFINITY;
         let mut ultima = Vec::new();
         let mut cam = ph2d_field_render::Orbit::default();
+        let mut minimos: std::collections::BTreeMap<&'static str, (f64, u32)> =
+            std::collections::BTreeMap::new();
         for _ in 0..repete {
             cam = ph2d_field_render::Orbit::default();
             if let Ok(mut g) = t.lock() {
@@ -137,6 +143,12 @@ fn diag_o_ceu_no_tempo() {
             let _ = quadro(t, &doc, &reg, &cam, &luz, chao_da_cena, true, com, W, H);
             let reinicios = || t.lock().map_or(0, |g| g.ceu_tempo_reinicios());
             let r0 = reinicios();
+            // ⏱️ Esvaziar o relógio por passe: o relatório abaixo é SÓ dos quadros de movimento.
+            let relogio = || {
+                t.lock()
+                    .map_or_else(|_| Vec::new(), |mut g| g.cronometro_relatorio())
+            };
+            let _ = relogio();
             let mut tempos = Vec::new();
             let mut antes_ms = Vec::new();
             let quadros = std::env::var("PH2D_SONDA_QUADROS")
@@ -161,9 +173,20 @@ fn diag_o_ceu_no_tempo() {
                 ultima = img;
             }
             println!(
-                "  (cena {cena}: o histórico recomeçou {} vezes em {QUADROS} quadros)",
-                reinicios() - r0
+                "  (cena {cena}: o histórico recomeçou {} vezes em {QUADROS} quadros; quadro a quadro ms: {})",
+                reinicios() - r0,
+                tempos
+                    .iter()
+                    .map(|t| format!("{t:.1}"))
+                    .collect::<Vec<_>>()
+                    .join(" ")
             );
+            // ⏱️ O MÍNIMO por passe entre as repetições: a placa é partilhada com o ecrã e a mesma
+            // corrida varia `±20 %` de uma volta para a outra.
+            for (rotulo, ms, n) in relogio() {
+                let e = minimos.entry(rotulo).or_insert((f64::INFINITY, n));
+                e.0 = e.0.min(ms);
+            }
             for _ in 0..5 {
                 antes_ms
                     .push(quadro(t, &doc, &reg, &cam, &luz, chao_da_cena, false, antes, W, H).1);
@@ -190,6 +213,25 @@ fn diag_o_ceu_no_tempo() {
             melhor.0 = melhor.0.min(mediana(antes_ms));
             melhor.1 = melhor.1.min(mediana(tempos.clone()));
             melhor.2 = melhor.2.min(tempos[0]);
+        }
+        if !minimos.is_empty() {
+            let soma: f64 = minimos
+                .iter()
+                .filter(|p| {
+                    !p.0.starts_with("n-") && !p.0.starts_with("espera") && !p.0.starts_with("cpu")
+                })
+                .map(|p| p.1.0)
+                .sum();
+            println!(
+                "  (cena {cena}: placa por passe, MÍNIMO de {repete} — soma dos passes {soma:.2} ms)"
+            );
+            for (rotulo, (ms, n)) in &minimos {
+                if rotulo.starts_with("n-") {
+                    println!("      {rotulo:>14} · {ms:>9.0} por quadro · ×{n}");
+                } else {
+                    println!("      {rotulo:>14} · {ms:>7.3} ms · ×{n}");
+                }
+            }
         }
         let (ref_img, _) = quadro(t, &doc, &reg, &cam, &luz, chao_da_cena, false, exacta, W, H);
         if let Ok(dir) = std::env::var("PH2D_SONDA_DIR") {

@@ -67,6 +67,15 @@ pub struct PaintSetup<'a> {
     /// ⚠️ **Ele vem do chamador e não do uniforme** porque quem decide COMPILAR um pipeline é o
     /// Rust, e o uniforme só é lido dentro do shader.
     pub ao_rays: u32,
+    /// ⭐⭐⭐⭐ **O ricochete NÃO ESPERA PELO COMPILADOR** (o quadro de MOVIMENTO, 2026-09-30).
+    ///
+    /// Com o ricochete o pintor leva a peça no texto, logo uma edição de ESTRUTURA (uma forma nova)
+    /// recompila-o — `1,3`–`2,8 s` de imagem parada no quadro que a mão arrasta (o gate
+    /// `a_fita_inerte_faz_o_cache_acertar_na_peca_seguinte` apanhou-o). `true` ⇒ se os pipelines
+    /// do ricochete com ESTA peça ainda não estão no cache, este quadro vai sem ele (e com a fita
+    /// inerte); o quadro ASSENTE compila-os e o movimento seguinte já os encontra — o idioma da
+    /// indústria para a compilação de pipelines (desenhar o que já existe enquanto o novo compila).
+    pub ricochete_sem_esperar: bool,
     /// ⭐⭐⭐ **Este quadro tem BORDA MOLE?** (`docs/Render3d/10` §12) — o gémeo do
     /// [`crate::trace::MarchSetup::mole`], do lado de quem COMPILA.
     ///
@@ -254,8 +263,14 @@ mod paint_fonte;
 use paint_fonte::fonte;
 
 /// ⭐⭐⭐ **A imagem, pintada onde os dados estão.**
-// O dispositivo, a fila, o cache, o pedido, a lei do dono, os alvos da marcha, a tela e a contagem
-// de bordas — oito coisas independentes, e uma struct só as renomearia.
+// O dispositivo, a fila, o cache, o pedido, a lei do dono, os alvos da marcha, a tela, o TECTO de
+// bordas e o encoder da marcha — coisas independentes, e uma struct só as renomearia.
+//
+// ⭐⭐⭐⭐ **A pintura continua no ENCODER DA MARCHA — um envio só por quadro** (2026-09-30). Ela
+// esperava a contagem de bordas voltar à CPU para dimensionar o passe da borda: um ida-e-volta
+// inteiro a meio do quadro, com a placa parada enquanto a CPU montava a pintura (medido no nó:
+// `~0,6 ms` de espera mais `~0,6` de montagem). Hoje o passe da borda lê a contagem NA PLACA e é
+// despachado pelo `bordas` — o TECTO da lista —, com os grupos a mais a sair no primeiro `if`.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn pinta(
     device: &wgpu::Device,
@@ -268,7 +283,9 @@ pub(crate) fn pinta(
     height: u32,
     bordas: u64,
     chave_sondas: Option<crate::sondas_na_placa::ChaveDasSondas>,
+    enc: wgpu::CommandEncoder,
 ) -> Vec<u8> {
+    let mut relogio_cpu = std::time::Instant::now();
     let leis = alvos.leis;
     let fita = alvos.fita;
     // ⭐ As entradas saem da lista nomeada ([`entradas_do_pintor`]), que é o que torna o número de
@@ -299,12 +316,24 @@ pub(crate) fn pinta(
         source: FITA_INERTE.to_string(),
         consts: fita.consts.clone(),
     };
-    let fita = if pintor.le_o_campo || pintor.ao_rays > 0 {
+    let fonte = fonte(pintor, lei_do_dono, leis);
+    // ⭐⭐⭐⭐ Ver [`PaintSetup::ricochete_sem_esperar`] — os QUATRO pipelines que o ricochete pede,
+    // com a fita da peça.
+    let ao_rays = if pintor.ricochete_sem_esperar
+        && pintor.ao_rays > 0
+        && !["pinta", "pinta_ricochete", "assa_sondas", "borra_ricochete"]
+            .iter()
+            .all(|e| cache.tem_entrada(&fonte, fita, e))
+    {
+        0
+    } else {
+        pintor.ao_rays
+    };
+    let fita = if pintor.le_o_campo || ao_rays > 0 {
         fita
     } else {
         &inerte
     };
-    let fonte = fonte(pintor, lei_do_dono, leis);
     // ⚠️ **A fita é a MESMA da marcha, e tem de o ser:** o `k` que o grupo `0` liga já traz as
     // constantes dela, e um texto gerado de outra fita indexaria aquele armazém por outra
     // aritmética. *Era a fita VAZIA enquanto o pintor não marchava.*
@@ -313,19 +342,19 @@ pub(crate) fn pinta(
         .clone();
     // ⭐ **O ricochete só compila quando ele vai de facto correr** — a mesma lei que a borda já
     // segue: *compilar é o caro*.
-    let p_ricochete = (pintor.ao_rays > 0).then(|| {
+    let p_ricochete = (ao_rays > 0).then(|| {
         cache
             .entry_with_layout(device, &fonte, fita, "pinta_ricochete", Some(&layout))
             .clone()
     });
     // ⭐⭐⭐ As SONDAS assam-se antes do ricochete as ler (`ph2d_field_render::probes`).
-    let p_assa = (pintor.ao_rays > 0).then(|| {
+    let p_assa = (ao_rays > 0).then(|| {
         cache
             .entry_with_layout(device, &fonte, fita, "assa_sondas", Some(&layout))
             .clone()
     });
     // ⭐ A PRIMEIRA das duas passagens de borrão — a segunda é a recolha que o pintor faz ao ler.
-    let p_borra = (pintor.ao_rays > 0).then(|| {
+    let p_borra = (ao_rays > 0).then(|| {
         cache
             .entry_with_layout(device, &fonte, fita, "borra_ricochete", Some(&layout))
             .clone()
@@ -480,7 +509,7 @@ pub(crate) fn pinta(
         ],
     });
 
-    let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+    let mut enc = enc;
     // ⚠️⚠️ **O ricochete ANTES da pintura, e a ordem é a lei**: a pintura lê a vizinhança `3×3` do
     // canal para o suavizar, logo ela precisa dele escrito em TODO o quadro — não só neste pixel.
     // *Escrito na mesma passagem, cada pixel leria oito vizinhos de um quadro que ainda não existe.*
@@ -488,10 +517,12 @@ pub(crate) fn pinta(
     // cabem no limite de `65 535` por dimensão a `32³`. ⛔ Elas custavam `~1 ms` na peça em que
     // esta nota foi escrita e custam `~150 ms` no nó de toro da cena `=28` — hoje só correm quando
     // a chave muda ([`crate::sondas_na_placa`]).
+    // ⏱️ O relógio das sondas sai do cache enquanto os passes o usam (ver [`crate::cronometro`]).
+    let mut crono = cache.cronometro.take();
     if let (Some(p), true) = (&p_assa, assar_sondas) {
         let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: None,
-            timestamp_writes: None,
+            timestamp_writes: crono.as_mut().and_then(|c| c.marca("assa-sondas")),
         });
         cp.set_pipeline(p);
         cp.set_bind_group(0, &bg0, &[]);
@@ -502,7 +533,7 @@ pub(crate) fn pinta(
     if let Some(p) = &p_ricochete {
         let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: None,
-            timestamp_writes: None,
+            timestamp_writes: crono.as_mut().and_then(|c| c.marca("ricochete")),
         });
         cp.set_pipeline(p);
         cp.set_bind_group(0, &bg0, &[]);
@@ -515,7 +546,7 @@ pub(crate) fn pinta(
     if let Some(p) = &p_borra {
         let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: None,
-            timestamp_writes: None,
+            timestamp_writes: crono.as_mut().and_then(|c| c.marca("borra")),
         });
         cp.set_pipeline(p);
         cp.set_bind_group(0, &bg0, &[]);
@@ -526,10 +557,10 @@ pub(crate) fn pinta(
     // intermediário e a vertical o canal que o pintor lê. ⚠️ A ordem é a lei, e é a mesma do borrão
     // do ricochete acima: cada passagem precisa da anterior escrita em TODO o quadro.
     if let Some((h_pass, v_pass)) = &p_mole {
-        for p in [h_pass, v_pass] {
+        for (p, rotulo) in [(h_pass, "mole-h"), (v_pass, "mole-v")] {
             let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: None,
-                timestamp_writes: None,
+                timestamp_writes: crono.as_mut().and_then(|c| c.marca(rotulo)),
             });
             cp.set_pipeline(p);
             cp.set_bind_group(0, &bg0, &[]);
@@ -540,7 +571,7 @@ pub(crate) fn pinta(
     {
         let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: None,
-            timestamp_writes: None,
+            timestamp_writes: crono.as_mut().and_then(|c| c.marca("pinta")),
         });
         cp.set_pipeline(&p_pinta);
         cp.set_bind_group(0, &bg0, &[]);
@@ -552,13 +583,14 @@ pub(crate) fn pinta(
     if let Some(p) = &p_bordas {
         let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: None,
-            timestamp_writes: None,
+            timestamp_writes: crono.as_mut().and_then(|c| c.marca("bordas")),
         });
         cp.set_pipeline(p);
         cp.set_bind_group(0, &bg0, &[]);
         cp.set_bind_group(1, &bg1, &[]);
         cp.dispatch_workgroups(n_bordas.div_ceil(64), 1, 1);
     }
+    cache.cronometro = crono;
     // ⭐⭐⭐ **E O BRILHO, por último** — a cadeia e a composição, no dispositivo. Ver
     // [`crate::brilho`]. ⚠️ Os buffers dela são guardados até à submissão.
     let _brilho = crate::brilho::encadeia(
@@ -582,12 +614,23 @@ pub(crate) fn pinta(
         mapped_at_creation: false,
     });
     enc.copy_buffer_to_buffer(&b_saida, 0, &leitura, 0, (n * 4).max(16));
+    if let Some(c) = cache.cronometro.as_mut() {
+        c.resolve(&mut enc);
+        relogio_cpu = c.cpu("cpu-pinta", relogio_cpu);
+    }
     queue.submit([enc.finish()]);
     leitura.slice(..).map_async(wgpu::MapMode::Read, |_| {});
     device.poll(wgpu::PollType::wait_indefinitely()).ok();
+    if let Some(c) = cache.cronometro.as_mut() {
+        relogio_cpu = c.cpu("espera-pinta", relogio_cpu);
+        c.colhe(device);
+    }
     let dados = leitura.slice(..).get_mapped_range();
     #[allow(clippy::cast_possible_truncation)]
     let out = dados[..(n as usize) * 4].to_vec();
     drop(dados);
+    if let Some(c) = cache.cronometro.as_mut() {
+        c.cpu("cpu-leitura", relogio_cpu);
+    }
     out
 }

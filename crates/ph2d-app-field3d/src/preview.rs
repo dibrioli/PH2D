@@ -99,6 +99,43 @@ pub struct Measured {
     pub millis: f32,
 }
 
+/// ⭐⭐⭐⭐ **As DUAS últimas medições de movimento** — e o divisor decide pela mais BARATA (por pixel).
+///
+/// ⛔⛔ **Um quadro só decidia a resolução do seguinte, e o 1.º quadro de cada gesto é o mais caro**
+/// (report do dono, 2026-09-30: *«a resolução ainda cai»*). Medido no nó de toro a girar, a tela
+/// cheia: o 1.º quadro depois de parar custa `18`–`19 ms` (a oclusão no tempo enche as células que o
+/// quadro parado não tocou) e os seguintes descem a `13`–`16` — o laço via o pico e baixava o
+/// quadro SEGUINTE para metade dos píxeis por um custo que já tinha passado. ⇒ um pico ISOLADO não
+/// mexe na resolução; dois quadros seguidos acima do orçamento mexem, que é o laço de sempre.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Medicoes {
+    pub ultima: Option<Measured>,
+    pub antes: Option<Measured>,
+}
+
+impl Medicoes {
+    /// Guarda uma medição nova; a anterior passa a `antes`.
+    pub fn regista(&mut self, m: Measured) {
+        self.antes = self.ultima;
+        self.ultima = Some(m);
+    }
+
+    /// ⭐ **A que o divisor lê** — a de menor custo por pixel das duas.
+    #[must_use]
+    pub fn para_o_divisor(&self) -> Option<Measured> {
+        let por_pixel = |m: &Measured| f64::from(m.millis) / (m.pixels.max(1) as f64);
+        match (self.ultima, self.antes) {
+            (Some(a), Some(b)) => Some(if por_pixel(&b) < por_pixel(&a) { b } else { a }),
+            (a, b) => a.or(b),
+        }
+    }
+}
+
+/// ⭐ As duas medições — ver [`preview_medicoes_tests`].
+#[cfg(test)]
+#[path = "preview_medicoes_tests.rs"]
+mod preview_medicoes_tests;
+
 /// ⭐⭐⭐⭐ **O que o ASSENTAR lembra entre quadros** — o travão ao girar (report do dono de
 /// 2026-09-24: *«travamentos ao rotacionar a tela continuam»*).
 ///

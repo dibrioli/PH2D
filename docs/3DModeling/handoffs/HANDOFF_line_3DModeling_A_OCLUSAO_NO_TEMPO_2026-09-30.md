@@ -109,10 +109,101 @@ vassouras limpas sobre os `26` ficheiros.
    `#[ignore = "medição"]` num ficheiro que esta wave não tocou.
 4. A sonda de relógio ganhou o botão `Sonda::sem_ceu` (só sondas o ligam) e a coluna SEM CÉU.
 
+## §7 — ⭐⭐⭐⭐ *«a luz indirecta ainda desliga e a resolução ainda cai»* (report do dono, foto)
+
+⚠️ **Conte o DELTA: `PROJECT_SCHEMA` 0, registos 0, `FIELD_DOC_VERSION` 0, zero contrato, zero ADR,
+zero pacote externo.** Ficheiros novos: [`cronometro.rs`](../../../crates/ph2d-field-gpu/src/cronometro.rs),
+[`ceu_tempo_wgsl.rs`](../../../crates/ph2d-field-gpu/src/ceu_tempo_wgsl.rs) (o WGSL saiu do
+`ceu_tempo.rs` por tecto de LOC), [`preview_medicoes_tests.rs`](../../../crates/ph2d-app-field3d/src/preview_medicoes_tests.rs).
+
+### §7.1 — A LUZ: a lei W73 mudou
+
+O `assente` passa a governar SÓ a oclusão do céu: o **ricochete** e a **cor do chão** correm em
+todo quadro do dispositivo (`gpu_frame.rs`). ⚠️ Com uma peça nova os pipelines do ricochete ainda
+não estão compilados — [`PaintSetup::ricochete_sem_esperar`] (= `!assente`) faz esse quadro de
+movimento ir sem ricochete em vez de esperar o compilador (`1,3`–`2,8 s` de imagem parada), e o
+assente compila. Gate `render_bounce_gpu_tests::o_quadro_de_movimento_leva_o_ricochete` (o
+movimento é o assente AO BIT; sem ricochete difere `7` níveis — o controlo). ⚠️ A metade «peça
+nunca vista» usa um **traçador PRÓPRIO**: na suíte inteira outro teste já tinha compilado a cena
+`2` no partilhado e o gate reprovava sobre produto certo (`left: 1`), verde sozinho.
+
+### §7.2 — O INSTRUMENTO: o relógio por passe NA PLACA
+
+[`ph2d_field_gpu::cronometro`] (`TIMESTAMP_QUERY`, só com `PH2D_GPU_CRONOMETRO=1` — o produto
+continua a pedir `Features::empty()`): cada passe marca um rótulo, os troços de CPU (`cpu-*`,
+`espera-*`) e **contadores do dispositivo** (`n-*`: fatias pedidas, itens de lâmpada, transbordo,
+desfechos da herança) saem no relatório da `diag_o_ceu_no_tempo`, com o MÍNIMO por passe entre
+repetições (a placa é partilhada com o ecrã: `±20 %` entre voltas iguais). ⭐ *A escada de ablação
+media cada parte e o que ela arrastava; o relógio por passe responde quem come o quadro.*
+
+Primeira leitura (nó, giro `3°`, `1920×1080`): placa `~15 ms` — `luz 4,7` · `ceu-marcha 4,0` ·
+`centro 2,7` · `bordas-marcha 1,8` · `pinta 0,6` · o resto `< 0,5`; mais `~4,6 ms` de CPU e duas
+idas-e-voltas. ⚠️ **E a `luz` NÃO era a sombra da peça** (`~1 ms`, ablação): era a sombra das
+lâmpadas no CHÃO (`~3,5 ms`) — a placa mostrou-o, a intuição não.
+
+### §7.3 — As curas, cada uma com o número
+
+| cura | onde | medida |
+|---|---|---|
+| **envio único**: a pintura continua no encoder da marcha; o passe da borda lê a contagem NA PLACA (`min(tecto, conta)`) e despacha pelo tecto | `trace_marcha_com.rs`, `paint.rs`, `paint_wgsl_sondas.rs` | giro `14,3 → 13,9 ms`; a contagem volta depois da imagem |
+| **a sombra e o céu do CHÃO na tabela do mundo** (independentes da câmara), com a célula do tamanho da PEGADA do pixel no chão | `ceu_tempo_wgsl.rs` (`Alvo`, `chave_do_alvo`, `nivel_do_chao`), `trace_wgsl.rs` | passe da luz `5,3 → 1,4 ms` no giro |
+| **o chão PERTO da peça marcha por pixel** (`CHAO_PERTO = 32` pegadas, pelo campo): a penumbra ali é mais fina do que a célula | `chao_perto_da_peca` | rosca a afastar `207`–`249 → 30`–`54` canais `> 8`; `+0,4 ms` (`8`/`16`/`32` medidos) |
+| **a impressão da chave é um 2.º hash** (era `mistura(h)` do MESMO `h` de `32` bits ⇒ células fundidas, `N²/2³³` pares) | `chave_no_nivel` | pontos claros de `77` níveis → `0` |
+| **cópia entre NÍVEIS** (céu e lâmpadas do chão), só sem vizinhas no nível; uma cópia não é fonte de outra (`COPIA_*`) | `herda_do_nivel`, `lampadas_do_nivel` | céu no zoom `8,9 → 3,1 ms`; as «escamas» do zoom (cópia de cópia) curadas |
+| **fatias por quadro**: as `4` primeiras (de `8`) só nos `QUADROS_COM_TECTO = 2` depois do assente, o resto completa no seguinte | `FATIAS_POR_QUADRO`, `tab.por_quadro` | corta o PICO do 1.º quadro |
+| **procurar antes de reclamar** + marca de leitura só quando muda | `ceu_tempo_pede` | `pede` `0,78 → 0,69 ms` |
+| **o divisor decide pela mais BARATA das duas últimas medições** | [`preview::Medicoes`] | um pico isolado (o 1.º quadro de um gesto) não baixa a resolução; dois seguidos baixam |
+
+### §7.4 — ⛔ Recusas MEDIDAS (não reconstrua)
+
+- **A sombra das lâmpadas da PEÇA na tabela**: `luz 5,3 → 2,2 ms`, e a penumbra de um tubo sobre
+  outro saía em DEGRAUS do tamanho da célula (nó a aproximar `2 273` canais `> 8`, pior `123`,
+  contra `175`/`39`). A oclusão aguenta a célula porque é suave; uma sombra não.
+- **A célula de pegada na PEÇA** (só no chão ficou): `2 → 11 752` canais `> 8` no nó.
+- **O tecto de 4 fatias PERMANENTE** (até ao assente): `~2 ms` a menos num giro e um viés largo
+  nos sulcos da rosca (`9 024` canais `> 8` contra a barra `260`), que saltava ao parar.
+- **Um orçamento de fatias CONTADAS por quadro**: contar fatias não mede custo (rosca `364 884`
+  fatias por `1,5 ms`, nó `54 846` por `5,7 ms`).
+- **As 26 vizinhas** (cubo `3×3×3`) na herança: 1.º quadro `54 846 → 39 559` fatias e o erro
+  espalhado (`252 → 1 573` canais `> 8`).
+- **Medir o território novo no nível de CIMA**: `16,1 → 15,3 ms` e o erro a explodir (`36 → 588`,
+  pior `18 → 129`).
+
+### §7.5 — O relógio de agora
+
+`diag_o_ceu_no_tempo` (release, `1920×1080`, mín das medianas de `3`; ⚠️ carga `40`–`57`, a placa
+`47`–`91 %` ociosa — INDICATIVO; a sequência quadro a quadro está na sonda):
+
+| cena | girar `3°` | aproximar `3 %` | afastar `3 %` |
+|---|---|---|---|
+| nó (`28`) | `18,3 → 16,9` | `29,5 → 19,4` | `16,0 → 12,4` |
+| rosca `29` · `5` · `11` · `30` | `6,5`–`7,6` | `7,6`–`8,3` | `5,9`–`6,9` |
+
+⚠️ **O nó ainda não cabe em TODO quadro**: a girar os quadros `1`–`8` de um gesto custam `16`–`19`
+e os seguintes `13`–`15`; a aproximar o custo sobe com a peça a encher o ecrã (`17 → 21`). O
+divisor com histerese segura a resolução no pico isolado e baixa-a se o custo FICAR acima.
+
+### §7.6 — Gates e prova
+
+- `os_gestos_da_camara_ficam_perto_da_exacta`: **barras re-medidas pelo vale** com a lei nova (tabela
+  no doc de [`BARRAS`]); ⛔ a **concordância** deixou de ser visível nestes gestos (a mutação que a
+  desliga SOBREVIVE — escrito no doc em vez de uma barra que fingisse vê-la); a asserção dos pontos
+  claros passou a contar só os NOVOS (claros e `> 8` níveis acima da exacta no mesmo pixel) — a
+  contagem crua media o limiar (`129` contra `128` com o vizinho a `116`).
+- `preview_medicoes_tests` (`4`): pico isolado · dois seguidos · a 1.ª medição sozinha · por pixel.
+- Os censos de texto acompanharam a refactoração (`SABIDAS` ganhou `chao_perto_da_peca`, com a
+  entrada na tabela; a agulha das duas passagens moles segue o laço rotulado).
+- **Mutação `6 de 7`**: chão-perto desligado · borda pelo tecto (`12` paridades) · `le` sem as
+  lâmpadas do chão (`37 512`) · `le` sem o céu do chão · cópia como fonte · o divisor a ler só a
+  última — sangram. ⚠️ **NOMEADA**: tirar o tecto das fatias por quadro torna a imagem MELHOR; é uma
+  lei de CUSTO, e só um relógio a veria (um gate de relógio é da família das flakes).
+- ⚠️ O SIGSEGV na SAÍDA do processo da sonda (depois de `test result: ok`, `3` em `~45` corridas,
+  `0` em `6` a reproduzir) é o mesmo da §5.1 — desmontagem do driver.
+
 ## §6 — Aberto
 
-- ⏳ **A marcha do nó a aproximar** (`21 ms` sem céu) — o alvo seguinte do tempo real.
-- ⏳ A oclusão em movimento ainda pesa `~5 ms` no nó a girar e `2`–`5 ms` nas outras — medir onde
-  (pede · marcha · le) antes de mexer.
-- ⏳ O relógio com a máquina CALMA (`load < 5`) para a tabela do §3.
+- ⏳ **O nó em TODO quadro** (§7.5): o que sobra é a marcha primária (`centro`, `2,7`–`4,8 ms`), a
+  re-amostragem das bordas (`1,8`–`2,2`), a sombra da peça por pixel e as `48` direcções das
+  células novas — cada corte medido ou muda a imagem ou a paridade com a CPU.
+- ⏳ O relógio com a máquina CALMA (`load < 5`) para as tabelas do §3 e do §7.5.
 - ⏳ **Smoke do dono** (`PH2D_FIELD_SMOKE=28`, Render, girar e fazer zoom).

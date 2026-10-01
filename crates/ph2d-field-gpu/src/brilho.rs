@@ -235,13 +235,16 @@ pub(crate) fn encadeia(
         } else {
             &p_final
         };
+        let mut crono = cache.cronometro.take();
         let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: Some("brilho"),
-            timestamp_writes: None,
+            timestamp_writes: crono.as_mut().and_then(|c| c.marca("brilho-cadeia")),
         });
         cp.set_pipeline(pipeline);
         cp.set_bind_group(0, &bg, &[]);
         cp.dispatch_workgroups(dw.div_ceil(8), dh.div_ceil(8), 1);
+        drop(cp);
+        cache.cronometro = crono;
     }
 
     // (5) A COMPOSIÇÃO — o gémeo do `ph2d_field_render::brilho::soma_halo`.
@@ -301,13 +304,16 @@ pub(crate) fn encadeia(
         ],
     });
     {
+        let mut crono = cache.cronometro.take();
         let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: Some("brilho.compoe"),
-            timestamp_writes: None,
+            timestamp_writes: crono.as_mut().and_then(|c| c.marca("brilho-compoe")),
         });
         cp.set_pipeline(&p_compoe);
         cp.set_bind_group(0, &bg_c, &[]);
         cp.dispatch_workgroups(w.div_ceil(8), h.div_ceil(8), 1);
+        drop(cp);
+        cache.cronometro = crono;
     }
     ubs.push(ub_c);
     Some(Cadeia {

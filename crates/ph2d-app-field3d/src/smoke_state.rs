@@ -96,7 +96,7 @@ pub struct Viewport {
     ///
     /// ⚠️ Separado do `last_trace_ms` de propósito: aquele é para o artista ler, este é para a
     /// máquina decidir, e um tempo sem os pixels ao lado não prevê coisa nenhuma.
-    pub measured: Option<crate::preview::Measured>,
+    pub measured: crate::preview::Medicoes,
     /// ⭐ O que o assentar lembra — ver [`crate::preview::Assentar`].
     pub assentar: crate::preview::Assentar,
     /// **A área onde o quadro foi desenhado da última vez** — é ela que responde *"este clique é
@@ -206,7 +206,7 @@ impl Viewport {
             since: std::time::Instant::now(),
             requested: None,
             last_trace_ms: 0.0,
-            measured: None,
+            measured: crate::preview::Medicoes::default(),
             assentar: crate::preview::Assentar::default(),
             area: None,
             label: None,

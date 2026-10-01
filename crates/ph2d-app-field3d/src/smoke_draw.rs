@@ -309,8 +309,8 @@ fn viewport_pass(
                 // sair no tamanho mais grosso por causa de um trabalho que o movimento não paga. É
                 // a mesma lei da `passagem`, um degrau acima. ⚠️ Sem medição nenhuma o assente
                 // SEMEIA-a: o primeiro traçado continua a ser a medição.
-                if !r.assente || smoke.vps[i].measured.is_none() {
-                    smoke.vps[i].measured = Some(medida);
+                if !r.assente || smoke.vps[i].measured.ultima.is_none() {
+                    smoke.vps[i].measured.regista(medida);
                 }
                 if r.assente {
                     smoke.vps[i].assentar.medido = Some(medida);
@@ -393,7 +393,7 @@ fn viewport_pass(
         &smoke.vps[i].cam,
         doc,
         (tw, th),
-        smoke.vps[i].measured,
+        smoke.vps[i].measured.para_o_divisor(),
         smoke.vps[i].frame.is_some(),
         MIN_TRACE,
     );

@@ -192,18 +192,31 @@ impl Tracer {
         // Quem tiver uma placa mais fraca é servido pela mesma linha: ela pede o que a placa TEM.
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
             label: Some("marcha do campo"),
-            required_features: wgpu::Features::empty(),
+            // ⏱️ Só as sondas pedem o relógio por passe — ver [`crate::cronometro`].
+            required_features: crate::cronometro::feature(&adapter),
             required_limits: adapter.limits(),
             experimental_features: wgpu::ExperimentalFeatures::default(),
             memory_hints: wgpu::MemoryHints::Performance,
             trace: wgpu::Trace::Off,
         }))
         .ok()?;
+        let mut cache = crate::FieldPipelines::new();
+        cache.cronometro = crate::cronometro::Cronometro::novo(&device, &queue);
         Some(Self {
             device,
             queue,
-            cache: crate::FieldPipelines::new(),
+            cache,
         })
+    }
+
+    /// ⏱️ **O relatório do relógio por passe** — por rótulo, a média em ms e quantas vezes correu,
+    /// desde o último relatório. Vazio fora das sondas (`PH2D_GPU_CRONOMETRO=1`).
+    pub fn cronometro_relatorio(&mut self) -> Vec<(&'static str, f64, u32)> {
+        self.cache
+            .cronometro
+            .as_mut()
+            .map(crate::cronometro::Cronometro::relatorio)
+            .unwrap_or_default()
     }
 
     /// Quantos pipelines já foram compilados — o número que um gate de *«um arrasto não

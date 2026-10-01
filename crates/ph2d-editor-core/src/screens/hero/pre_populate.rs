@@ -457,6 +457,7 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         ids::CTX_MENU_FONT_NOTO_SANS,
         ids::CTX_MENU_FONT_ATKINSON,
         ids::CTX_MENU_SETTINGS_WEIGHT,
+        ids::CTX_MENU_WEIGHT_LIGHT,
         ids::CTX_MENU_WEIGHT_NORMAL,
         ids::CTX_MENU_WEIGHT_STRONG,
         ids::CTX_MENU_SETTINGS_SIZE,

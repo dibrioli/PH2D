@@ -187,6 +187,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.menu.font_inter" => "Inter",
         "chrome.menu.font_noto_sans" => "Noto Sans",
         "chrome.menu.font_atkinson" => "Atkinson Hyperlegible",
+        "chrome.menu.weight_light" => "Light",
         "chrome.menu.weight_normal" => "Normal",
         "chrome.menu.weight_strong" => "Strong",
         "chrome.menu.size_small" => "Small",

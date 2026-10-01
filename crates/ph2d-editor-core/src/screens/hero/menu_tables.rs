@@ -390,6 +390,7 @@ pub(super) const SETTINGS_FONT_SUBMENU_ROWS: &[MenuRow] = &[
 
 /// As linhas de `ContextMenuKind::SettingsWeightSubmenu`.
 pub(super) const SETTINGS_WEIGHT_SUBMENU_ROWS: &[MenuRow] = &[
+    menu_row(ids::CTX_MENU_WEIGHT_LIGHT, "chrome.menu.weight_light"),
     menu_row(ids::CTX_MENU_WEIGHT_NORMAL, "chrome.menu.weight_normal"),
     menu_row(ids::CTX_MENU_WEIGHT_STRONG, "chrome.menu.weight_strong"),
 ];

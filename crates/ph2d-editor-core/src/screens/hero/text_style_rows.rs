@@ -15,7 +15,8 @@ pub(crate) const FONTS: [(NodeId, UiFont); 3] = [
 ];
 
 /// A linha de cada peso.
-pub(crate) const WEIGHTS: [(NodeId, UiWeight); 2] = [
+pub(crate) const WEIGHTS: [(NodeId, UiWeight); 3] = [
+    (ids::CTX_MENU_WEIGHT_LIGHT, UiWeight::Light),
     (ids::CTX_MENU_WEIGHT_NORMAL, UiWeight::Normal),
     (ids::CTX_MENU_WEIGHT_STRONG, UiWeight::Strong),
 ];

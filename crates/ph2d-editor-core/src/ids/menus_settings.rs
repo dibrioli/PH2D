@@ -109,6 +109,7 @@ pub const CTX_MENU_FONT_INTER: NodeId = hash_node_id("ctx_menu_font_inter");
 pub const CTX_MENU_FONT_NOTO_SANS: NodeId = hash_node_id("ctx_menu_font_noto_sans");
 pub const CTX_MENU_FONT_ATKINSON: NodeId = hash_node_id("ctx_menu_font_atkinson");
 pub const CTX_MENU_SETTINGS_WEIGHT: NodeId = hash_node_id("ctx_menu_settings_weight");
+pub const CTX_MENU_WEIGHT_LIGHT: NodeId = hash_node_id("ctx_menu_weight_light");
 pub const CTX_MENU_WEIGHT_NORMAL: NodeId = hash_node_id("ctx_menu_weight_normal");
 pub const CTX_MENU_WEIGHT_STRONG: NodeId = hash_node_id("ctx_menu_weight_strong");
 pub const CTX_MENU_SETTINGS_SIZE: NodeId = hash_node_id("ctx_menu_settings_size");

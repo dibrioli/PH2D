@@ -69,10 +69,17 @@ impl UiFont {
     }
 }
 
-/// ⭐ **O peso da interface** — um reforço somado ao peso nominal de cada texto (o corpo é
-/// `Medium`, os títulos `SemiBold`), para os dois subirem juntos e a hierarquia ficar.
+/// ⭐ **O peso da interface** — um desvio somado ao peso nominal de cada texto (o corpo é
+/// `Medium`, os títulos `SemiBold`), para os dois andarem juntos e a hierarquia ficar.
+///
+/// ⚠️ Os dois desvios são o MESMO degrau da escada de pesos, um para cada lado — `Light` desce o
+/// que `Strong` sobe (pedido do dono, 2026-10-01: *«uma opção mais delicada que normal»*). As três
+/// fontes da casa são variáveis no peso e cobrem o degrau abaixo (Inter e Noto `100..900`,
+/// Atkinson `200..800`), logo nenhuma delas o arredonda para o vizinho.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub enum UiWeight {
+    /// Um degrau abaixo: o corpo em `Regular`, os títulos em `Medium`.
+    Light,
     /// O peso de cada texto, como o desenho o pede.
     #[default]
     Normal,
@@ -81,15 +88,19 @@ pub enum UiWeight {
 }
 
 impl UiWeight {
-    /// Ambos, pela ordem do menu.
-    pub const ALL: [Self; 2] = [Self::Normal, Self::Strong];
+    /// Os três, pela ordem do menu.
+    pub const ALL: [Self; 3] = [Self::Light, Self::Normal, Self::Strong];
 
-    /// O que se soma ao peso nominal (`0` no `Normal` — a identidade).
+    /// O que se soma ao peso nominal (`0` no `Normal` — a identidade; negativo no `Light`).
     #[must_use]
-    pub const fn boost(self) -> u16 {
+    pub const fn boost(self) -> i16 {
+        // Os pesos da escada são `100..=900`, logo cabem num `i16` sem perda.
+        let degrau_abaixo = FontWeight::Regular.value() as i16 - FontWeight::Medium.value() as i16;
+        let degrau_acima = FontWeight::Semibold.value() as i16 - FontWeight::Medium.value() as i16;
         match self {
+            Self::Light => degrau_abaixo,
             Self::Normal => 0,
-            Self::Strong => FontWeight::Semibold.value() - FontWeight::Medium.value(),
+            Self::Strong => degrau_acima,
         }
     }
 
@@ -97,6 +108,7 @@ impl UiWeight {
     #[must_use]
     pub const fn wire(self) -> &'static str {
         match self {
+            Self::Light => "light",
             Self::Normal => "normal",
             Self::Strong => "strong",
         }
@@ -181,6 +193,9 @@ mod tests {
     fn each_step_goes_the_way_its_name_says() {
         assert!(UiTextSize::Small.scale() < 1.0 && UiTextSize::Large.scale() > 1.0);
         assert!(UiWeight::Strong.boost() > 0);
+        assert!(UiWeight::Light.boost() < 0);
+        // O mesmo degrau para os dois lados — a hierarquia do corpo para o título fica igual.
+        assert_eq!(UiWeight::Light.boost(), -UiWeight::Strong.boost());
     }
 
     /// O ficheiro de preferências lê o que escreveu — nos três eixos, para todo valor.

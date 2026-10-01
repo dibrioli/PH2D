@@ -222,3 +222,58 @@ fn changing_how_it_is_painted_drops_the_frame_that_was_already_traced() {
         }
     });
 }
+
+/// ⭐⭐⭐⭐ **Mudar o DOCUMENTO não larga o pedido guardado; mudar um MATERIAL larga** (report do dono
+/// de 2026-10-01: *«arrastar objetos tem um delay absurdo»* e *«ao mudar o material dos objetos, o
+/// render só atualiza ao arrastar»*).
+///
+/// O laço compara o pedido guardado com o documento de agora: um documento diferente pede o quadro
+/// GROSSO de movimento. ⛔ A sincronização dos materiais largava o pedido a CADA mudança do
+/// documento — a cada quadro de um arrasto —, e sem pedido guardado o laço pede o quadro ASSENTE
+/// inteiro: o arrasto nunca tinha quadro de movimento. Uma cor nova, ao contrário, não muda nada do
+/// que o laço compara, e aí largar é a única forma de a pintar.
+///
+/// **Mutações que devem sangrar:** o `forget_requests` de volta no ramo `doc_mudou` do
+/// `materials::sync` (metade 1); apagá-lo do ramo dos números (metade 2).
+#[test]
+fn o_documento_mantem_o_pedido_e_a_cor_larga_o() {
+    armed(|| {
+        let (mut sim, root) = scene(&flat());
+        crate::scene::sync_scene_and_birth(&mut sim, None, &[], 0.0, &crate::scene::no_drawing());
+        let encena = || {
+            crate::smoke::with_smoke(|s| {
+                for vp in &mut s.vps {
+                    vp.probe_remember_a_served_request(flat());
+                }
+            })
+            .expect("armado");
+        };
+        let tem_pedido =
+            || crate::smoke::with_smoke(|s| s.vps.iter().all(|vp| vp.probe_has_request()));
+        // ── Metade 1: o documento mudou ──
+        encena();
+        crate::materials::sync(&mut sim, true);
+        assert_eq!(
+            tem_pedido(),
+            Some(true),
+            "⛔ uma mudança do DOCUMENTO largou o pedido guardado — num arrasto o laço pede o quadro \
+             assente inteiro a cada quadro em vez do de movimento"
+        );
+        // ── Metade 2: só a cor mudou ──
+        let folha = *sim
+            .world()
+            .get::<bevy_ecs::hierarchy::Children>(root)
+            .expect("a raiz tem filhos")
+            .first()
+            .expect("uma folha");
+        ph2d_field_ecs::set_param(sim.world_mut(), folha, ph2d_field::Param::Material(3), 0.0)
+            .expect("o azul");
+        encena();
+        crate::materials::sync(&mut sim, false);
+        assert_eq!(
+            crate::smoke::with_smoke(|s| s.vps.iter().any(|vp| vp.probe_has_request())),
+            Some(false),
+            "⛔ a cor mudou e o pedido guardado ficou de pé — a peça não muda até um arrasto"
+        );
+    });
+}

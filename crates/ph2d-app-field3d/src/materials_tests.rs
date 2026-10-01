@@ -139,19 +139,19 @@ fn each_leaf_wears_its_own_material() {
 
 /// ⭐⭐ **Arrastar um número NÃO recompila a geometria** — é a razão de a tabela ter duas metades.
 ///
-/// **Mutação que deve sangrar:** fazer o `refresh_authored` devolver `false` sempre (o slider de cor
-/// deixa de ter efeito), ou `true` sempre (o quadro re-traça para sempre).
+/// **Mutação que deve sangrar:** fazer o `renovada` devolver `None` sempre (o slider de cor deixa de
+/// ter efeito), ou uma tabela sempre (o quadro re-traça para sempre).
 #[test]
 fn changing_a_number_refreshes_the_surfaces_and_not_the_geometry() {
     // ⚠️ A fixtura leva materiais DISTINTOS porque a metade de baixo lê `t.owners` para observar
     // que a geometria não foi tocada — ver [`a_world_de_dois_materiais`].
     let (mut sim, root) = a_world_de_dois_materiais();
     let folhas = leaves_of(sim.world(), root);
-    let mut t = Table::build(sim.world(), root, 0.8, 480.0);
+    let t = Table::build(sim.world(), root, 0.8, 480.0);
     let antes = t.surfaces[0].direct([0.0, 0.0, 1.0], [0.0, 0.0, 1.0], [0.3, 0.6, 0.74], [3.0; 3]);
 
     assert!(
-        !t.refresh_authored(sim.world(), root),
+        t.renovada(sim.world(), root, 0.8, 480.0).is_none(),
         "nada mudou e a tabela disse que sim — o quadro re-traçaria para sempre"
     );
     ph2d_field_ecs::set_param(
@@ -161,10 +161,9 @@ fn changing_a_number_refreshes_the_surfaces_and_not_the_geometry() {
         0.9,
     )
     .expect("a rugosidade");
-    assert!(
-        t.refresh_authored(sim.world(), root),
-        "a rugosidade mudou e a tabela não deu por isso — o slider fica sem efeito"
-    );
+    let t = t
+        .renovada(sim.world(), root, 0.8, 480.0)
+        .expect("a rugosidade mudou e a tabela não deu por isso — o slider fica sem efeito");
     assert_ne!(
         t.surfaces[0].direct([0.0, 0.0, 1.0], [0.0, 0.0, 1.0], [0.3, 0.6, 0.74], [3.0; 3]),
         antes,
@@ -174,6 +173,43 @@ fn changing_a_number_refreshes_the_surfaces_and_not_the_geometry() {
     assert_eq!(
         t.owners.as_ref().expect("dois donos").at([-0.4, 0.0, 0.25]),
         Some(0)
+    );
+}
+
+/// ⭐⭐⭐⭐ **Mudar a cor de UMA forma numa peça de materiais IGUAIS acende-a** (report do dono de
+/// 2026-10-01: *«ao mudar o material dos objetos, o render só atualiza ao arrastar»*). Com os
+/// materiais iguais a tabela nasce SEM lei do dono, e a re-tradução dos números deixava-a assim — o
+/// pintor lia `all[0]` em toda a peça e a cor nova não aparecia até um arrasto reconstruir tudo.
+///
+/// **Mutação que deve sangrar:** o `renovada` sem o ramo do `precisa_de_donos` (só os números).
+#[test]
+fn a_cor_nova_de_uma_forma_constroi_o_dono() {
+    let (mut sim, root) = a_world();
+    let folhas = leaves_of(sim.world(), root);
+    let t = Table::build(sim.world(), root, 0.8, 480.0);
+    assert!(
+        t.owners.is_none(),
+        "CONTROLO: duas folhas com o mesmo material nasceram COM dono — a fixtura não contém o caso"
+    );
+    ph2d_field_ecs::set_param(
+        sim.world_mut(),
+        folhas[1],
+        ph2d_field::Param::Material(3),
+        0.0,
+    )
+    .expect("o azul");
+    let t = t
+        .renovada(sim.world(), root, 0.8, 480.0)
+        .expect("a cor mudou e a tabela não deu por isso");
+    assert_eq!(
+        t.owners.as_ref().map(|d| d.at([0.4, 0.0, 0.25])),
+        Some(Some(1)),
+        "a forma da direita mudou de cor e a tabela continua sem dono — o pintor lê a cor da \
+         primeira forma em toda a peça"
+    );
+    assert_ne!(
+        t.surfaces[0], t.surfaces[1],
+        "as duas superfícies ficaram iguais"
     );
 }
 
@@ -206,7 +242,7 @@ fn a_single_leaf_asks_nobody_who_it_belongs_to() {
 ///
 /// O [`changing_a_number_refreshes_the_surfaces_and_not_the_geometry`] afirma que o dono **responde o
 /// mesmo** depois de um número mudar. Isso é a **RESPOSTA**, e ela sai certa mesmo que alguém troque
-/// o `refresh_authored` por um `Table::build` inteiro: a geometria é a mesma, logo o dono responde o
+/// o `renovada` por um `Table::build` inteiro: a geometria é a mesma, logo o dono responde o
 /// mesmo — *e o quadro paga um JIT por folha a cada pixel de arrasto do slider de cor*.
 ///
 /// É a mesma lei que o [`ph2d_field_eval::owners::Owners::at_counting`] existe para servir, escrita
@@ -227,7 +263,7 @@ fn a_single_leaf_asks_nobody_who_it_belongs_to() {
 /// ⚠️ **Corre por `nextest`, que dá um processo por teste** — o §9 do `docs/Render3d/05` mede o que
 /// acontece a este contador sob `cargo test`: as threads vêem-se umas às outras e oito gates caem.
 ///
-/// **Mutação que deve sangrar:** `refresh_authored` a delegar num `Table::build`.
+/// **Mutação que deve sangrar:** `renovada` a delegar num `Table::build`.
 #[test]
 fn dragging_a_colour_compiles_no_tape_at_all() {
     use std::sync::atomic::Ordering;
@@ -241,7 +277,7 @@ fn dragging_a_colour_compiles_no_tape_at_all() {
 
     // ── O lado CARO: construir a tabela compila uma fita por folha ──
     ph2d_field_eval::POINT_TAPES.store(0, Ordering::Relaxed);
-    let mut t = Table::build(sim.world(), root, 0.8, 480.0);
+    let t = Table::build(sim.world(), root, 0.8, 480.0);
     let compiladas = ph2d_field_eval::POINT_TAPES.load(Ordering::Relaxed);
     assert!(
         compiladas >= folhas.len(),
@@ -259,7 +295,7 @@ fn dragging_a_colour_compiles_no_tape_at_all() {
     )
     .expect("a rugosidade");
     ph2d_field_eval::POINT_TAPES.store(0, Ordering::Relaxed);
-    let mudou = t.refresh_authored(sim.world(), root);
+    let mudou = t.renovada(sim.world(), root, 0.8, 480.0).is_some();
     let depois = ph2d_field_eval::POINT_TAPES.load(Ordering::Relaxed);
     assert!(
         mudou,

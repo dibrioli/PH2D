@@ -76,17 +76,37 @@ fn chave_no_nivel(p: vec3<f32>, n: vec3<f32>, nivel: i32) -> vec2<u32> {
     return vec2<u32>(h, f | 1u);
 }
 
+// ⭐ A troca da IMPRESSÃO de uma vaga, FORTE: a `Weak` do WGSL pode falhar sem razão (o valor velho
+// é o esperado e não houve troca), e uma falha espúria deixava a vaga VAZIA para trás enquanto a
+// chave ia viver na seguinte — a procura pára na primeira vazia e nunca mais a achava.
+struct Troca { exchanged: bool, old_value: u32 };
+fn troca_forte(b: u32, velho: u32, novo: u32) -> Troca {
+    for (var n: u32 = 0u; n < 4u; n = n + 1u) {
+        let r = atomicCompareExchangeWeak(&t[b], velho, novo);
+        if (r.exchanged || r.old_value != velho) { return Troca(r.exchanged, r.old_value); }
+    }
+    return Troca(false, velho);
+}
+
 // ⭐ A ENTRADA da célula: sondagem linear de `8`, reclamando uma vazia ou ROUBANDO uma velha.
 // `0xffffffff` quando não há lugar — o pixel marcha então uma fatia só para si.
 fn entrada_de(k: vec2<u32>) -> u32 {
     for (var i: u32 = 0u; i < 8u; i = i + 1u) {
         let e = (k.x + i) % tab.entradas;
         let b = e * tab.palavras;
-        let r = atomicCompareExchangeWeak(&t[b], 0u, k.y);
+        let r = troca_forte(b, 0u, k.y);
         if (r.exchanged || r.old_value == k.y) { return e; }
         let lida = atomicLoad(&t[b + 4u]);
         if (tab.quadro - lida > tab.velha) {
-            let s = atomicCompareExchangeWeak(&t[b], r.old_value, k.y);
+            let s = troca_forte(b, r.old_value, k.y);
+            // ⛔⛔ **Quem perde o roubo para a MESMA chave fica com a mesma célula** (report do dono
+            // de 2026-10-01, *«o ruído persiste se a view é rotacionada várias vezes»*): os píxeis de
+            // uma célula roubam-na todos ao mesmo tempo, e o perdedor seguia para a vaga SEGUINTE e
+            // reclamava uma SEGUNDA célula com a mesma chave. No quadro assente o `zera` dava-a por
+            // cheia e o `grava` nunca a achava (a procura pára na primeira) ⇒ uma célula «cheia» de
+            // soma zero, que muito depois — quando a primeira era roubada por outra chave — a
+            // procura passava a ler como CÉU ABERTO: o ponto claro na face escura do tubo.
+            if (!s.exchanged && s.old_value == k.y) { return e; }
             if (s.exchanged) {
                 atomicStore(&t[b + 1u], 0u);
                 atomicStore(&t[b + 2u], 0u);
@@ -657,7 +677,7 @@ fn ceu_tempo_le(@builtin(global_invocation_id) g: vec3<u32>) {
     if (!a.ok || (a.chao && !chao_na_tabela(a))) { return; }
     let e = procura(chave_do_alvo(a, nivel_do_alvo(a)));
     // Sem entrada, quem escreveu este pixel foi o passe 2.
-    if (e == 0xffffffffu) { return; }
+    if (e == 0xffffffffu) { conta_item(9u); return; }
     let b = e * tab.palavras;
     if (com_lampadas() && a.chao) { le_lampadas(b, i); }
     if (a.chao) {
@@ -672,8 +692,17 @@ fn ceu_tempo_le(@builtin(global_invocation_id) g: vec3<u32>) {
     // variância das corridas. *Uma linha que a mutação não consegue matar não é lei.*
     let soma = f32(atomicLoad(&t[b + 1u]));
     let peso = f32(atomicLoad(&t[b + 2u]));
-    var ceu = 1.0;
-    if (peso > 0.0) { ceu = soma / peso; }
-    luz[i * passo_da_luz()] = ceu;
+    // ⛔⛔ **Uma célula «cheia» de soma ZERO não é céu aberto** — era `1,0`, e cada uma pintava um
+    // ponto claro (report do dono de 2026-10-01). As cheias-e-vazias nasciam quase todas de uma
+    // corrida na reclamação (ver `entrada_de`, `991 → 5` por quadro); as que sobram pagam aqui os
+    // cones inteiros, e a célula volta a VAZIA para o pedido do quadro seguinte a encher.
+    if (peso <= 0.0) {
+        conta_item(10u);
+        let pn = ponto_do_pixel(i);
+        luz[i * passo_da_luz()] = ceu_por_cones(pn[0] + pn[1] * (s.hit_eps * 4.0), pn[1]);
+        atomicStore(&t[b + 3u], 0u);
+        return;
+    }
+    luz[i * passo_da_luz()] = soma / peso;
 }
 ";

@@ -204,8 +204,8 @@ const CONCORDANCIA: f32 = 0.06;
 
 /// ⏱️ Os contadores do quadro de movimento, depois da lista (ver [`crate::cronometro`]): os itens
 /// pedidos de céu, de lâmpadas da peça, de lâmpadas do chão, e os que não couberam.
-const CONTADORES: u64 = 9;
-const ROTULOS_DOS_CONTADORES: [&str; 9] = [
+const CONTADORES: u64 = 11;
+const ROTULOS_DOS_CONTADORES: [&str; 11] = [
     "n-ceu",
     "n-luz-peca",
     "n-luz-chao",
@@ -217,6 +217,10 @@ const ROTULOS_DOS_CONTADORES: [&str; 9] = [
     // ⭐ Os píxeis que não acharam LUGAR na tabela (a sondagem inteira ocupada por células vivas) —
     // marcham uma fatia só para si e pintam-na: era o «ruído ao rotacionar» do dono (2026-10-01).
     "n-sem-lugar",
+    // ⭐ Os píxeis cuja célula SUMIU entre o pedir e o ler (outra chave roubou-a no meio) — o
+    // pixel ficava com a luz de um quadro anterior.
+    "n-le-sem-entrada",
+    "n-le-peso-zero",
 ];
 
 /// O tecto de grupos de um despacho numa dimensão (`maxComputeWorkgroupsPerDimension` do piso da `wgpu`).

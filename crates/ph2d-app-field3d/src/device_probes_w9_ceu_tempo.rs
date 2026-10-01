@@ -168,11 +168,30 @@ fn diag_o_ceu_no_tempo() {
                 .ok()
                 .and_then(|v| v.parse::<usize>().ok())
                 .unwrap_or(QUADROS);
-            for _ in 0..quadros {
-                let graus = std::env::var("PH2D_SONDA_GRAUS")
-                    .ok()
-                    .and_then(|v| v.parse::<f32>().ok())
-                    .unwrap_or(PASSO_GRAUS);
+            // `PH2D_SONDA_GESTOS=<g>` parte os quadros em `g` GESTOS, cada um acabado por um quadro
+            // ASSENTE (o dono a largar o rato) — o *«girar várias vezes»* do report de 2026-10-01; com
+            // `PH2D_SONDA_VAIVEM=1` cada gesto gira para o lado oposto do anterior.
+            let gestos = std::env::var("PH2D_SONDA_GESTOS")
+                .ok()
+                .and_then(|v| v.parse::<usize>().ok())
+                .unwrap_or(1)
+                .max(1);
+            let vaivem = std::env::var("PH2D_SONDA_VAIVEM").is_ok_and(|v| v.trim() != "0");
+            let por_gesto = quadros.div_ceil(gestos).max(1);
+            for q in 0..quadros {
+                if q > 0 && q % por_gesto == 0 {
+                    let _ = quadro(t, &doc, &reg, &cam, &luz, chao_da_cena, true, com, W, H);
+                }
+                let sentido = if vaivem && (q / por_gesto) % 2 == 1 {
+                    -1.0
+                } else {
+                    1.0
+                };
+                let graus = sentido
+                    * std::env::var("PH2D_SONDA_GRAUS")
+                        .ok()
+                        .and_then(|v| v.parse::<f32>().ok())
+                        .unwrap_or(PASSO_GRAUS);
                 // `PH2D_SONDA_ZOOM=<factor>` troca o giro por um ZOOM (`0,97` aproxima, `1,03` afasta).
                 match std::env::var("PH2D_SONDA_ZOOM")
                     .ok()

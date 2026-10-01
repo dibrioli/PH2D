@@ -391,6 +391,84 @@ Nenhuma mexe — a contagem de **`n-sem-lugar`** (contador novo, nono, do `ceu_t
   (`quer.min(cabe).clamp(1 << 16, ENTRADAS_MAX)`) e foi re-corrida.
 - GPU `62 + 3`; `nextest` das três crates `642/642`; clippy `-D warnings` zero.
 
+## §10 — ⭐⭐⭐⭐ *«o ruído persiste se a view é rotacionada várias vezes»* + o material e o arrasto (reports do dono, 2026-10-01)
+
+### §10.1 — O ruído: uma célula «cheia» de soma ZERO lida como céu aberto
+
+A §9 curou o giro LONGO e não este: a sonda ganhou `PH2D_SONDA_GESTOS=<g>` (e `PH2D_SONDA_VAIVEM=1`),
+que parte os quadros em `g` gestos com um quadro ASSENTE entre eles — o dono a largar o rato. No nó
+(`=28`, `0,4` do enquadramento, `1920×1080`, `240` quadros de `3°`):
+
+| | um gesto | 12 gestos | 12 de 2 quadros |
+|---|---|---|---|
+| pontos claros | `14` | **`15 463`** | `65` |
+
+⇒ quem o fabrica é o ASSENTE no meio de uma sessão longa. ⛔ **A ablação dos atalhos da tabela não
+mexeu** (`base` `15 445` · herança sem cópias `15 482` · sem herança `15 651` · sem a do nível
+`15 651` · sem o tecto de fatias `15 702`) — o defeito não era uma aproximação.
+
+O contador que separou (`n-le-peso-zero`, novo: o `le` a encontrar uma célula cheia com `peso = 0`):
+`1` por quadro num gesto, **`991`** em doze. O `le` lia `0/0` como `1,0` — **céu aberto**, o ponto
+claro. O mecanismo: os píxeis de uma célula ROUBAM a mesma vaga velha ao mesmo tempo, e o perdedor do
+`compareExchange` — cujo `old_value` já era a SUA chave — seguia para a vaga seguinte e reclamava uma
+**segunda** célula com a mesma chave. No assente o `zera` dava as duas por cheias e o `grava` só achava
+a primeira (a procura pára nela) ⇒ a duplicada ficava cheia de soma zero; muito depois, quando a
+primeira era roubada por outra chave, a procura caía na duplicada.
+
+Cura em duas metades:
+1. **`entrada_de`**: quem perde o roubo para a MESMA chave fica com a célula; e a troca da impressão é
+   forte (`troca_forte` — a `Weak` pode falhar espuriamente e deixar uma vaga VAZIA para trás da
+   chave). Contadores a `240` quadros/`12` gestos: cheias-vazias `991 → 5`, sem-lugar `1 165 → 83`
+   (as duplicadas ENCHIAM a tabela), mediana do quadro `42 → 29 ms`; pontos `15 463 → 100`.
+2. **`ceu_tempo_le`**: uma cheia de peso zero nunca é céu aberto — o pixel paga os `48` cones e a
+   célula volta a VAZIA para o pedido seguinte. Pontos `100 → 0` (num gesto e em doze), `7` em
+   vaivém (era `4 048`), `19` em `480` quadros/`24` gestos.
+
+⛔ **Medido e REVERTIDO:** marcar a vaga como LIDA no instante da reclamação (para outra chave não a
+roubar no mesmo passe) — consistentemente PIOR (`13`–`15` cheias-vazias, `163`–`240` pontos em três
+corridas).
+
+### §10.2 — *«ao mudar o material dos objetos, o render só atualiza ao arrastar»*
+
+Duas metades no `materials::sync`, cada uma suficiente:
+- **o dono que não existia**: N folhas com o MESMO material nascem SEM lei do dono (a regra de
+  2026-09-22, `300×`), e a re-tradução dos números deixava-a assim — o pintor lia `all[0]` em toda a
+  peça. ⇒ `Table::renovada` constrói quando `precisa_de_donos` VIRA (a regra é uma função só, lida por
+  `build` e `renovada`).
+- **a tabela emprestada**: a troca era no sítio (`Arc::get_mut`), `None` enquanto um traçado em voo a
+  segura — e no `Render` o refinamento segura-a dezenas de passagens. ⇒ a tabela nova nasce ao lado
+  (`Clone` barato: a geometria compilada passou a viver num `Arc`), e o refinamento em voo é largado
+  (`Smoke::larga_os_refinamentos`; um traçado de MOVIMENTO nunca).
+
+### §10.3 — *«arrastar objetos tem um delay absurdo»* — uma das causas
+
+O mesmo `sync` chamava `forget_requests` em TODA mudança do documento — a cada quadro de um arrasto
+de gizmo. Sem pedido guardado o `next_trace` pede o quadro ASSENTE inteiro, e o arrasto nunca tinha
+quadro de MOVIMENTO. O laço já vê o documento novo sozinho (o pedido guardado leva-o) ⇒ o `forget`
+ficou só no ramo dos NÚMEROS. ⚠️ **A outra causa conhecida NÃO está curada:** com materiais
+distintos, cada quadro de arrasto reconstrói a tabela e COMPILA uma fita de dono por folha (a sonda
+`measure_what_building_the_table_costs_per_frame`); e acrescentar uma forma com lei do dono custa
+`2 310 ms` (a regra de 2026-09-22).
+
+### §10.4 — Gates e prova
+
+- `girar_varias_vezes_nao_deixa_pontos` (GPU): `12` gestos de `20` quadros com assente entre eles,
+  barra `50`, mede `9`. Mutação: sem a leitura curada `126` (sangra) · sem as duas `15 353` (sangra)
+  · ⚠️ **sem a reclamação curada SOBREVIVE, NOMEADA**: a leitura curada esconde-a no pixel; o efeito
+  dela é de custo e está na sonda (os contadores acima).
+- `materials::tests::a_cor_nova_de_uma_forma_constroi_o_dono` — sangra sem o ramo do
+  `precisa_de_donos`.
+- `reach_tests::shading::o_documento_mantem_o_pedido_e_a_cor_larga_o` — duas metades, as duas
+  sangram (o `forget` de volta no ramo do documento · tirado do ramo dos números).
+- `cargo nextest` das três crates `644/644`; GPU do céu no tempo `7/7`; clippy `-D warnings` zero.
+
+### §10.5 — ⚠️ Os gates de GPU desta família correm por `cargo test`, não por `nextest`
+
+Sob `nextest` (um processo por teste) **todo** gate de GPU deste ficheiro morre com `SIGSEGV`
+DEPOIS do `ok` — na saída do processo, ao largar a placa —, e o `os_gestos_da_camara…`, anterior a
+esta wave, morre igual ⇒ pré-existente. Corra-os com
+`cargo test --release -p ph2d-app-field3d --lib ceu_tempo -- --ignored --test-threads=1`.
+
 ## §6 — Aberto
 
 - ⏳ **O nó em TODO quadro** (§7.5): o que sobra é a marcha primária (`centro`, `2,7`–`4,8 ms`), a
@@ -404,3 +482,12 @@ Nenhuma mexe — a contagem de **`n-sem-lugar`** (contador novo, nono, do `ceu_t
 - ⏳ Os três primeiros quadros de um gesto de perto (`23`–`52 ms`, §8.4): o laço parte sem medição.
 - ⏳ A cauda a girar a `0,25` de perto (`17,9`–`25,8 ms` nos últimos quadros, §8.4) — por medir se é
   a peça a encher o ecrã ou o laço a subir de resolução cedo demais.
+- ⏳ **Reports do dono de 2026-10-01 ainda abertos:** *«ao colocar em render, o primeiro movimento de
+  rotação ainda apresenta um delay»* (suspeita: os passes do MOVIMENTO só compilam no 1.º quadro de
+  movimento — a sonda aquece-os com DOIS quadros `com` por isso) · *«ao acrescentar novos objetos o
+  render fica lento»* e *«com 3 objetos rotacionar faz cair a resolução»* (o custo do quadro sobe por
+  objecto; com materiais distintos a lei do dono compila uma fita por folha — §10.3) · a outra metade
+  do arrasto lento (§10.3).
+- ⏳ **Pergunta de RUMO devolvida ao dono** (*«tem certeza que esse sistema de modelagem pode
+  funcionar em uma game engine?»*): o campo como FONTE de edição, e o jogo/editor a desenhar uma
+  MALHA gerada dele — a recomendação está escrita na conversa; a decisão é dele.

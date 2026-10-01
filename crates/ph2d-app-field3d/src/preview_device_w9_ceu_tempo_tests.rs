@@ -598,3 +598,61 @@ fn um_giro_longo_nao_enche_a_tabela() {
          dono) — as células mortas não cedem o lugar, ou o pixel sem lugar marcha meio céu"
     );
 }
+
+/// ⭐⭐⭐⭐ **GIRAR VÁRIAS VEZES NÃO DEIXA PONTOS** (report do dono, 2026-10-01: *«o ruído persiste se a
+/// view é rotacionada várias vezes»*). `12` gestos de `20` quadros de `3°`, cada um acabado por um
+/// quadro ASSENTE (o dono a largar o rato), e o último contra a oclusão EXACTA.
+///
+/// ⛔⛔ O giro longo do gate de cima NÃO o via (`14` pontos num gesto só): o que fabrica o ruído é o
+/// ASSENTE no meio de uma sessão longa. Os píxeis de uma célula roubavam a mesma vaga ao mesmo tempo,
+/// o perdedor reclamava uma SEGUNDA célula com a mesma chave, o `zera` dava-a por cheia, o `grava`
+/// nunca a achava — e quando a primeira era roubada por outra chave, a procura caía na segunda e lia
+/// `soma/peso = 0/0` como CÉU ABERTO. Medido no nó (sonda `diag_o_ceu_no_tempo`, `1920×1080`):
+/// `15 463` pontos, `991` células cheias-e-vazias lidas por quadro ⇒ com a reclamação curada `100` e
+/// `5`, e com a leitura a recusar a cheia-e-vazia `0`. A barra `50` fica no vale.
+#[test]
+#[ignore = "precisa de GPU"]
+fn girar_varias_vezes_nao_deixa_pontos() {
+    let Some(t) = crate::gpu_frame::shared() else {
+        println!("sem adaptador — saltado");
+        return;
+    };
+    let doc = crate::smoke::scene(28);
+    let mut cam = ph2d_field_render::Orbit::default();
+    cam.half_extent *= 0.4;
+    let _ = quadro(t, &doc, &cam, true, exacta());
+    if let Ok(mut g) = t.lock() {
+        g.esquece_o_ceu();
+    }
+    let _ = quadro(t, &doc, &cam, true, com_cache());
+    let mut ultima = Vec::new();
+    for gesto in 0..12 {
+        if gesto > 0 {
+            let _ = quadro(t, &doc, &cam, true, com_cache());
+        }
+        for _ in 0..20 {
+            cam.turn_world([0.0, 1.0, 0.0], 3f32.to_radians());
+            ultima = quadro(t, &doc, &cam, false, com_cache());
+        }
+    }
+    let certo = quadro(t, &doc, &cam, false, exacta());
+    let (algum, ..) = diferenca(&ultima, &certo);
+    assert!(
+        algum > 1_000,
+        "CONTROLO: o quadro do giro é a exacta ({algum} canais de diferença) — a tabela não foi lida"
+    );
+    let mut pontos = 0usize;
+    for y in 0..LH as usize {
+        for x in 0..LW as usize {
+            if lum(&ultima, x, y) > lum(&certo, x, y) + 16 {
+                pontos += 1;
+            }
+        }
+    }
+    println!("doze gestos: {pontos} pontos claros contra a exacta");
+    assert!(
+        pontos <= 50,
+        "doze gestos com o rato largado entre eles deixaram {pontos} pontos claros (o ruído do dono) — \
+         uma célula cheia de soma ZERO está a ser lida como céu aberto"
+    );
+}

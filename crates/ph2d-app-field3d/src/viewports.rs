@@ -126,3 +126,20 @@ pub fn ensure_viewports(smoke: &mut Smoke, n: usize) {
     smoke.vps = novos;
     smoke.active = do_artista;
 }
+
+impl Smoke {
+    /// ⭐⭐ **Larga o REFINAMENTO em voo de todo viewport** — a porta de quem muda o que se PINTA sem
+    /// mudar o que o laço compara (a tabela de materiais): o refinamento já pinta a cor velha e
+    /// segurava o pedido novo até acabar (dezenas de passagens no `Render`). ⛔ Um traçado de
+    /// MOVIMENTO nunca se larga — numa órbita contínua a imagem congelaria (ver
+    /// `crate::preview::cancels_the_inflight`).
+    pub(crate) fn larga_os_refinamentos(&mut self) {
+        for vp in &mut self.vps {
+            if vp.inflight.as_ref().is_some_and(|j| j.refinement)
+                && let Some(j) = vp.inflight.take()
+            {
+                j.cancel.store(true, std::sync::atomic::Ordering::Relaxed);
+            }
+        }
+    }
+}

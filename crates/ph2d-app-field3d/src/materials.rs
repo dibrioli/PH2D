@@ -19,9 +19,14 @@ use ph2d_field::{FieldDoc, Node, NodeId, NodeKind, NodeShape};
 use ph2d_field_ecs::{FieldMaterial, FieldNode};
 
 /// **O que o sombreamento precisa de saber sobre os materiais de uma peça.**
+///
+/// ⚠️ **`Clone` é barato de propósito** — a geometria compilada vive num `Arc` e só os NÚMEROS se
+/// copiam: mudar uma cor faz uma tabela NOVA ao lado da que um traçado em voo está a usar (ver
+/// [`Table::renovada`]).
+#[derive(Clone)]
 pub struct Table {
     /// De quem é cada ponto. `None` numa peça de uma folha só — ver [`Table::surfaces_for`].
-    pub owners: Option<ph2d_field_eval::owners::Owners>,
+    pub owners: Option<std::sync::Arc<ph2d_field_eval::owners::Owners>>,
     /// Um material por folha, na ordem das folhas. **Nunca vazio.**
     pub surfaces: Vec<ph2d_material::Surface>,
     /// Os números de que as [`Table::surfaces`] foram feitas — a chave que diz se elas envelheceram.
@@ -221,6 +226,13 @@ pub fn colour_from_srgb8(srgb: [u8; 3]) -> [f32; 3] {
 ///
 /// ⚠️ **A pose é a de MUNDO**, e não a local: quem avalia a folha avalia-a onde ela está. É a mesma
 /// lei (e o mesmo erro evitado) do [`crate::pick::owners_under`].
+/// ⭐ **A peça precisa da lei do dono?** — mais de uma folha E pelo menos dois materiais
+/// diferentes. Uma resposta, dois leitores ([`Table::build`] e [`Table::renovada`]).
+#[must_use]
+pub(crate) fn precisa_de_donos(authored: &[FieldMaterial], folhas: usize) -> bool {
+    folhas > 1 && !authored.windows(2).all(|w| w[0] == w[1])
+}
+
 fn leaves(
     world: &bevy_ecs::world::World,
     root: bevy_ecs::entity::Entity,
@@ -287,13 +299,12 @@ impl Table {
         // ⛔ **E isto NÃO é uma optimização do caso raro: é o caso NORMAL de quem modela** — uma
         // peça a ser construída tem o material de omissão em toda folha, e só ganha materiais
         // distintos quando o artista os autora.
-        let so_um_material = authored.windows(2).all(|w| w[0] == w[1]);
-        let owners = (placed.len() > 1 && !so_um_material).then(|| {
-            ph2d_field_eval::owners::Owners::new(
+        let owners = precisa_de_donos(&authored, placed.len()).then(|| {
+            std::sync::Arc::new(ph2d_field_eval::owners::Owners::new(
                 &placed,
                 &crate::smoke::sampled_registry(),
                 ph2d_field_render::hit_tolerance(half_extent, side_px),
-            )
+            ))
         });
         let surfaces = if authored.is_empty() {
             // ⚠️ **Nunca vazia**: uma peça sem folha nenhuma (uma cena a ser apagada) ainda tem de
@@ -309,21 +320,36 @@ impl Table {
         }
     }
 
-    /// ⭐⭐ **Re-traduz só os NÚMEROS**, sem tocar na geometria compilada — `true` se algo mudou.
+    /// ⭐⭐⭐⭐ **A tabela que os materiais de AGORA pedem** — `None` se os números não mudaram.
     ///
-    /// ⚠️ É esta metade que faz arrastar um slider de cor **não** custar um JIT por folha.
-    pub fn refresh_authored(
-        &mut self,
+    /// ⛔⛔ **Report do dono (2026-10-01): *«ao mudar o material dos objetos, o render só atualiza ao
+    /// arrastar o objeto»*.** Eram DUAS metades, e cada uma sozinha chegava:
+    /// - **o dono que não existia**: N folhas com o MESMO material não constroem a lei do dono
+    ///   ([`precisa_de_donos`]), e mudar a cor de UMA só trocava os números — sem dono o pintor lê
+    ///   `all[0]` em toda a peça, e a cor nova não aparecia em lado nenhum até um arrasto mudar o
+    ///   documento e reconstruir tudo. ⇒ quando a resposta de [`precisa_de_donos`] VIRA, constrói-se;
+    /// - **a tabela emprestada**: a troca era feita NO SÍTIO (`Arc::get_mut`), que devolve `None`
+    ///   enquanto um traçado em voo a segura — e no `Render` o refinamento assente segura-a durante
+    ///   dezenas de passagens. ⇒ a tabela nova nasce AO LADO (o `Clone` copia só os números).
+    #[must_use]
+    pub fn renovada(
+        &self,
         world: &bevy_ecs::world::World,
         root: bevy_ecs::entity::Entity,
-    ) -> bool {
-        let (authored, _) = leaves(world, root);
+        half_extent: f32,
+        side_px: f32,
+    ) -> Option<Self> {
+        let (authored, placed) = leaves(world, root);
         if authored == self.authored || authored.is_empty() {
-            return false;
+            return None;
         }
-        self.surfaces = authored.iter().copied().map(surface_of).collect();
-        self.authored = authored;
-        true
+        if self.owners.is_none() && precisa_de_donos(&authored, placed.len()) {
+            return Some(Self::build(world, root, half_extent, side_px));
+        }
+        let mut t = self.clone();
+        t.surfaces = authored.iter().copied().map(surface_of).collect();
+        t.authored = authored;
+        Some(t)
     }
 
     /// A vista que o [`ph2d_field_render::shade_render`] consome.
@@ -331,7 +357,7 @@ impl Table {
     pub fn surfaces_for(&self) -> ph2d_field_render::Surfaces<'_> {
         ph2d_field_render::Surfaces {
             all: &self.surfaces,
-            owners: self.owners.as_ref(),
+            owners: self.owners.as_deref(),
         }
     }
 }
@@ -379,20 +405,25 @@ pub(crate) fn sync(sim: &mut ph2d_ecs::SimWorld, doc_mudou: bool) {
                 vp.area.map_or(480.0, |r| r.w.min(r.h).max(1.0)),
             )
         };
-        let refez = match (&mut s.materials, doc_mudou) {
-            (None, _) | (_, true) => {
+        // ⭐⭐⭐⭐ **Uma mudança do DOCUMENTO não esquece os pedidos** (report do dono de 2026-10-01:
+        // *«arrastar objetos tem um delay absurdo»*): o laço já a vê — o pedido guardado leva o
+        // documento, e um documento diferente pede o quadro GROSSO de movimento. Esquecer o pedido
+        // a cada quadro de um arrasto fazia o laço pedir o quadro ASSENTE inteiro em vez dele.
+        let nova = match (&s.materials, doc_mudou) {
+            (_, true) => {
                 s.materials = Some(std::sync::Arc::new(Table::build(world, root, he, lado)));
-                true
+                None
             }
-            // ⚠️ **`get_mut` devolve `None` enquanto uma thread de traçado segura o `Arc`**, e isso
-            // é a resposta certa: aquele traçado está a usar esta tabela **agora**. O quadro
-            // seguinte apanha-a — e o artista vê a cor mudar um quadro depois, não nunca.
-            (Some(t), false) => {
-                std::sync::Arc::get_mut(t).is_some_and(|t| t.refresh_authored(world, root))
-            }
+            (None, false) => Some(Table::build(world, root, he, lado)),
+            (Some(t), false) => t.renovada(world, root, he, lado),
         };
-        if refez {
+        // ⭐ Os NÚMEROS mudaram e o documento não: o laço não o vê sozinho, e o refinamento em voo
+        // já pinta a cor velha — é largado (um quadro de MOVIMENTO nunca: ver
+        // `preview::cancels_the_inflight`).
+        if let Some(t) = nova {
+            s.materials = Some(std::sync::Arc::new(t));
             s.forget_requests();
+            s.larga_os_refinamentos();
         }
     });
 }

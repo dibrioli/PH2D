@@ -128,7 +128,30 @@ impl PainterTool {
             super::composite_pilha::conta_evento();
             super::composite_pilha::conta_dabs(camadas.iter().map(Vec::len).sum::<usize>() as u64);
         }
-        // 2. Cada camada acumula os dabs NOVOS dela no plano dela. `O(dabs novos)`.
+        // 2. Cada camada acumula os dabs NOVOS dela no plano dela — e, quando o hospedeiro drena
+        //    por quadro, NÃO AGORA: o lote espera na fila da camada e o quadro inteiro acumula de
+        //    uma vez ([`super::composite_por_quadro`], 2026-10-01). A composição só lê os planos
+        //    no quadro, logo ninguém vê a diferença — e um lote de quadro é o que alcança a rota
+        //    em BANDAS do depósito, onde o pingo de um evento ficava sempre abaixo do piso dela.
+        if self.pilha_pode_adiar() {
+            #[cfg(test)]
+            if ACUMULA_NO_EVENTO.with(std::cell::Cell::get) {
+                self.acumula_as_camadas(&camadas);
+            }
+            self.adia_a_composicao(caixa_nova, camadas);
+            return;
+        }
+        // ⛔ Um lote que não pode esperar NÃO passa à frente dos que esperam: o plano de cada
+        //    camada é a soma dos dabs dela EM ORDEM, e acumular este antes dos de trás trocava-a.
+        self.compoe_o_pendente();
+        self.acumula_as_camadas(&camadas);
+        self.compoe_a_regiao(caixa_nova, &camadas);
+    }
+
+    /// **O passo 2 da lei: cada camada viva acumula a fila dela no plano dela**, pela ordem da
+    /// lista — o relevo primeiro, porque ele lê uma CÓPIA do fluxo aleatório da camada e a cor
+    /// consome-o. A porta das duas rotas: o evento (sem drenagem por quadro) e a drenagem.
+    pub(super) fn acumula_as_camadas(&mut self, camadas: &[Vec<Dab>; N_CAMADAS]) {
         #[cfg(test)]
         let t_acumular = std::time::Instant::now();
         for (pos, lista) in camadas.iter().enumerate() {
@@ -136,18 +159,36 @@ impl PainterTool {
                 continue;
             }
             // O RELEVO primeiro: ele lê uma CÓPIA do fluxo aleatório da camada, a cor consome-o.
+            #[cfg(test)]
+            let t_sub = std::time::Instant::now();
             self.relevo_da_camada(pos, lista);
+            #[cfg(test)]
+            fases::soma_sub(0, t_sub);
+            #[cfg(test)]
+            let t_sub = std::time::Instant::now();
             self.acumula_camada(pos, lista);
+            #[cfg(test)]
+            fases::soma_sub(
+                match self.paint.composite[pos].op {
+                    CompositeOp::Brush => 1,
+                    CompositeOp::Erase => 2,
+                    _ => 3,
+                },
+                t_sub,
+            );
         }
         #[cfg(test)]
         fases::soma(fases::ACUMULAR, t_acumular);
-        // ⭐ A composição é UMA por quadro quando o hospedeiro drena por quadro — ver
-        //    [`super::composite_por_quadro`]. Os planos já têm o lote; só a tela espera.
-        if self.pilha_pode_adiar() {
-            self.adia_a_composicao(caixa_nova, camadas);
-            return;
+    }
+
+    /// O pendente chegou à drenagem ainda por ACUMULAR? Sempre, no produto; o controlo de teste
+    /// [`ACUMULA_NO_EVENTO`] devolve a rota de antes, que acumulava em cada evento.
+    pub(super) fn o_acumulo_esperou(&self) -> bool {
+        #[cfg(test)]
+        if ACUMULA_NO_EVENTO.with(std::cell::Cell::get) {
+            return false;
         }
-        self.compoe_a_regiao(caixa_nova, &camadas);
+        true
     }
 
     /// **Compor a caixa `caixa_nova` a partir do `pre` e dos planos** — os passos 3 e 4 da lei, e
@@ -235,6 +276,8 @@ impl PainterTool {
         if matches!(modo, Acumulo::Nenhum) {
             return;
         }
+        #[cfg(test)]
+        fases::conta_acumulo();
         let len = self.canvas_rgba.len();
         if self.paint.pilha.planos[pos].len() != len {
             // ⚠️ O estado inicial é a lei do acumulador: a tinta compõe-se sobre o TRANSPARENTE, a
@@ -428,16 +471,13 @@ impl PainterTool {
             let (w, h) = self.source_size;
             let stride = w as usize * 4;
             // O peso é da REGIÃO, e é `1 − α` do escudo.
-            let mut peso = vec![0u8; r.w as usize * r.h as usize];
-            let mut algum = false;
-            for row in 0..r.h as usize {
-                let base = (r.y as usize + row) * stride + r.x as usize * 4;
-                for col in 0..r.w as usize {
-                    let v = 255 - plano[base + col * 4 + 3];
-                    peso[row * r.w as usize + col] = v;
-                    algum |= v > 0;
-                }
-            }
+            #[cfg(test)]
+            let t_sub = std::time::Instant::now();
+            let (peso, algum) = super::composite_linhas::peso_do_borrao(&plano, stride, r);
+            #[cfg(test)]
+            fases::soma_sub(4, t_sub);
+            #[cfg(test)]
+            let t_sub = std::time::Instant::now();
             if algum {
                 let raio = self.paint.brush.radius_px * self.tamanho_da_camada(pos);
                 // ⭐⭐ **UMA passagem de raio `P·k`, e não `P` passagens de raio `k`.** A variância
@@ -453,7 +493,11 @@ impl PainterTool {
                     w,
                     Some(r),
                 );
-                ph2d_painter_brush::blur_region_por_peso(
+                // A convolução e a mistura de volta em DOIS passos (2026-10-01): a mistura é por
+                // pixel em linhas disjuntas e corre na equipa de threads (ADR-0172); a lei dela é
+                // UMA, a [`ph2d_painter_brush::mistura_linha_por_peso`], que a porta em série
+                // [`ph2d_painter_brush::blur_region_por_peso`] também chama.
+                let borrada = ph2d_painter_brush::blur_region_borrado(
                     buf,
                     w,
                     h,
@@ -462,10 +506,16 @@ impl PainterTool {
                     r.w as usize,
                     r.h as usize,
                     k,
-                    &peso,
                     tiling,
                     ph2d_painter_brush::BlurKernel::Caixa,
                 );
+                #[cfg(test)]
+                fases::soma_sub(5, t_sub);
+                #[cfg(test)]
+                let t_sub = std::time::Instant::now();
+                super::composite_linhas::mistura_do_borrao(buf, &borrada, &peso, stride, r);
+                #[cfg(test)]
+                fases::soma_sub(8, t_sub);
             }
         }
         self.paint.pilha.planos[pos] = plano;
@@ -477,7 +527,13 @@ impl PainterTool {
         if dabs.is_empty() {
             return;
         }
+        #[cfg(test)]
+        let t_sub = std::time::Instant::now();
         self.refresca_a_base_do_smear(r);
+        #[cfg(test)]
+        fases::soma_sub(6, t_sub);
+        #[cfg(test)]
+        let t_sub = std::time::Instant::now();
         #[cfg(test)]
         let limite =
             (!super::composite_pilha::SMEAR_SEM_LIMITE.with(std::cell::Cell::get)).then_some(r);
@@ -485,6 +541,8 @@ impl PainterTool {
         let limite = Some(r);
         self.paint.limite_do_smear = limite;
         self.aplica_camada(pos, dabs);
+        #[cfg(test)]
+        fases::soma_sub(7, t_sub);
         self.paint.limite_do_smear = None;
     }
 }
@@ -509,6 +567,9 @@ thread_local! {
     /// `true` = o que mudou é só a caixa do lote, mesmo com o esfregão a ler uma base que muda
     /// (o código de antes de 2026-09-30) — o CONTROLO do gate dos rectângulos do esfregão.
     pub(super) static ESFREGAO_SO_O_LOTE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// `true` = acumular cada lote no EVENTO, mesmo com a composição adiada (o código de antes de
+    /// 2026-10-01) — o CONTROLO do gate que prova que acumular por quadro dá a mesma imagem.
+    pub(super) static ACUMULA_NO_EVENTO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
 impl PainterTool {

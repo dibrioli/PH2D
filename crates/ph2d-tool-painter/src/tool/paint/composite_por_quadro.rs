@@ -19,7 +19,15 @@
 //! refaz `16×` a mesma área que um passo de `256`. Um risco rápido de `3 000 px/s` pede ao segundo
 //! `~1 s` de trabalho — o app deixa de acompanhar o rato e o quadro estica.
 //!
-//! # A cura: os planos acumulam por evento, a TELA compõe-se por quadro
+//! # A cura: os planos acumulam e a TELA compõe-se UMA vez por quadro
+//!
+//! ⭐ **E desde 2026-10-01 o ACÚMULO também espera** (o parágrafo abaixo descreve a 1.ª redacção,
+//! em que os planos acumulavam a cada evento). Os dabs do quadro ficam na fila da camada e a
+//! drenagem acumula-os de uma vez antes de compor: o resultado é o mesmo ao byte (cada plano é a
+//! soma dos dabs DELE em ordem, e nada lê um plano entre a fila e a drenagem), e um lote de quadro
+//! alcança a rota em BANDA do depósito, onde o pingo de um evento nunca chegava (`4,4 → 2,0` ms por
+//! quadro no rabisco do dono; ADR-0172, emenda). ⛔ Um lote que NÃO pode esperar esvazia a fila
+//! primeiro, senão passava à frente dela.
 //!
 //! A composição lê só o `pre` e os planos ([`super::composite_acumulado`]), e os planos já têm todo
 //! o lote no fim de cada evento — logo compor a UNIÃO das caixas de um quadro dá a imagem que as
@@ -101,6 +109,9 @@ impl PainterTool {
             std::array::from_fn(|pos| std::mem::take(&mut self.paint.pilha.pendente_dabs[pos]));
         #[cfg(test)]
         conta_composicao();
+        if self.o_acumulo_esperou() {
+            self.acumula_as_camadas(&dabs);
+        }
         self.compoe_a_regiao(caixa, &dabs);
         // As filas voltam vazias mas com a capacidade — um quadro não re-aloca.
         for (fila, mut usada) in self.paint.pilha.pendente_dabs.iter_mut().zip(dabs) {

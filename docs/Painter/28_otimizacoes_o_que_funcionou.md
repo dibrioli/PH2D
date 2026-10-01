@@ -616,6 +616,23 @@ de um patch.
 mora **acima do modelo de pintura** — no documento e no undo. **Ela cura Digital, Impasto, Watercolor e
 Wet Paint de uma vez.**
 
+### 4.9 ✅ A pilha num RABISCO: acumular por QUADRO e misturar o Blur em linhas (2026-10-01)
+
+A pilha do dono de 6 camadas num rabisco rápido media **`12,33` ms por quadro** (sonda
+`diag_onde_vai_o_quadro_do_rabisco`, por fase e por operação). Duas curas exactas, nenhum byte
+mudado, e **`~8,0` ms** depois (−35 %):
+
+| fase | antes | depois | o quê |
+|---|---|---|---|
+| depósito nos planos | `4,4` | `2,0` | o acúmulo espera pela drenagem: o lote do quadro alcança a rota em BANDA |
+| Blur: mistura de volta | `1,66` | `0,11`–`0,17` | linhas disjuntas na equipa (ADR-0172, emenda) |
+| Blur: peso | `0,25` | `0,05`–`0,08` | idem |
+| Smear: campo | `~2,1` | `~2,1` | ⛔ fica: cada pingo lê o campo do anterior |
+
+⚠️ *A rota em banda existia desde 2026-08-03 e era byte-idêntica — o que faltava era o LOTE*: a
+composição por quadro (2026-09-23) adiou a tela e deixou o depósito por evento, um pingo por camada,
+sempre abaixo do piso de uma divisão. Mecanismo e gates: ADR-0172 §«Emenda 2026-10-01».
+
 ---
 
 ## 6. As lições de método (as que custaram tempo)

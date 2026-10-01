@@ -31,6 +31,7 @@ pub mod blend;
 pub mod blur;
 pub mod blur_caixa;
 pub mod blur_grain;
+pub mod blur_peso;
 pub mod canvas_warp;
 mod canvas_warp_curve;
 pub mod clone;
@@ -141,8 +142,9 @@ pub(crate) mod tip;
 mod tip_kernel_tests;
 
 pub use blend::{BrushBlend, MAX_BRUSH_BLEND_MODES, blend_over};
-pub use blur::{BlurKernel, blur_blit_stamp, blur_dab, blur_region_por_peso, kernel_radius};
+pub use blur::{BlurKernel, blur_blit_stamp, blur_dab, kernel_radius};
 pub use blur_grain::blur_blit_grain;
+pub use blur_peso::{blur_region_borrado, blur_region_por_peso, mistura_linha_por_peso};
 pub use clone::{clone_blit_stamp, clone_dab};
 pub use clone_grain::clone_blit_grain;
 pub use curve_fit::{CurveFit, auto_handles, fit_curve, flatten_bezier};

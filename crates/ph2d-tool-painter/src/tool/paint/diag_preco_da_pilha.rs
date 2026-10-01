@@ -558,6 +558,7 @@ fn diag_onde_vai_o_quadro_do_rabisco() {
     }
     let _ = fases::take();
     let _ = fases::take_ops();
+    let _ = fases::take_sub();
     let ini = std::time::Instant::now();
     t.on_canvas_pointer(cp([512.0, 512.0], PointerPhase::Down));
     let quadros = 30;
@@ -592,5 +593,12 @@ fn diag_onde_vai_o_quadro_do_rabisco() {
             ops[i] as f64 / 1e3 / q
         );
     }
-    println!("    área composta média: {area:.0}");
+    let sub = fases::take_sub();
+    for (i, nome) in fases::SUB_NOMES.iter().enumerate() {
+        println!("      {nome:12} {:7.2} ms/quadro", sub[i] as f64 / 1e3 / q);
+    }
+    println!(
+        "    área composta média: {:.3} da tela por composição",
+        area / ev.max(1) as f64
+    );
 }

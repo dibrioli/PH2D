@@ -268,7 +268,11 @@ impl PainterTool {
                 None => all,
             };
             // One resample of the frozen source over everything that moved — colour and body together.
+            #[cfg(test)]
+            let t_render = std::time::Instant::now();
             self.warp_render_from_session(all);
+            #[cfg(test)]
+            super::composite_acumulado::fases::soma_sub(9, t_render);
             // ⚠️ Sujo o que foi RENDERIZADO, não o que foi deslocado neste batch. Marcar só `rect`
             // deixava os texels re-resolvidos fora dele sem subir para a tela — o display ficava com os
             // pixels de uma fonte anterior, e a fronteira era a borda de `rect`. Isso explica a

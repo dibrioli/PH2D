@@ -439,3 +439,107 @@ fn o_esfregao_nao_deixa_rectangulos_de_cor() {
         );
     }
 }
+
+/// Bytes pseudo-aleatórios reprodutíveis (LCG), com um quarto deles nos extremos `0`/`255` — sem
+/// eles os ramos de peso nulo e cheio não são exercitados.
+fn ruido(n: usize, semente: u32) -> Vec<u8> {
+    let mut s = semente;
+    (0..n)
+        .map(|_| {
+            s = s.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+            let b = (s >> 24) as u8;
+            match b & 3 {
+                0 => 0,
+                1 => 255,
+                _ => b,
+            }
+        })
+        .collect()
+}
+
+const W: u32 = 97;
+const H: u32 = 61;
+/// Não começa em `(0,0)` e tem linhas que chegam para muitas tarefas.
+const R: Region = Region {
+    x: 5,
+    y: 3,
+    w: 80,
+    h: 50,
+};
+
+/// ⭐⭐ **A MISTURA do borrão em paralelo dá o MESMO byte que a porta em série** — a
+/// [`ph2d_painter_brush::blur_region_por_peso`], que é o que a pilha chamava até 2026-10-01, e o
+/// laço de referência escrito à letra (peso `f32::from(p)/255`, o `round` da biblioteca). O peso
+/// sai do escudo (`255 − α`) pela porta nova, e o que está FORA da região não se move.
+#[test]
+fn a_mistura_do_borrao_em_paralelo_da_o_byte_da_serie() {
+    let stride = W as usize * 4;
+    let escudo = ruido(stride * H as usize, 13);
+    let tela = ruido(stride * H as usize, 17);
+    let r = R;
+    let (peso, algum) = super::composite_linhas::peso_do_borrao(&escudo, stride, r);
+    assert!(algum, "CONTROLO: o escudo de ruído tem de ter algum peso");
+    // O peso é `255 − α` do escudo, na região e linha-maior.
+    for row in 0..r.h as usize {
+        for col in 0..r.w as usize {
+            let i = (r.y as usize + row) * stride + (r.x as usize + col) * 4;
+            assert_eq!(peso[row * r.w as usize + col], 255 - escudo[i + 3]);
+        }
+    }
+    let k = 6;
+    let borrada = ph2d_painter_brush::blur_region_borrado(
+        &tela,
+        W,
+        H,
+        i64::from(r.x),
+        i64::from(r.y),
+        r.w as usize,
+        r.h as usize,
+        k,
+        [false, false],
+        ph2d_painter_brush::BlurKernel::Caixa,
+    );
+    let mut serie = tela.clone();
+    for row in 0..r.h as usize {
+        for col in 0..r.w as usize {
+            let w = f32::from(peso[row * r.w as usize + col]) / 255.0;
+            if w <= 0.0 {
+                continue;
+            }
+            let i = (r.y as usize + row) * stride + (r.x as usize + col) * 4;
+            let src = borrada[row * r.w as usize + col];
+            for c in 0..4 {
+                let d = f32::from(serie[i + c]);
+                serie[i + c] = (d + (src[c] - d) * w).round().clamp(0.0, 255.0) as u8;
+            }
+        }
+    }
+    let mut porta = tela.clone();
+    ph2d_painter_brush::blur_region_por_peso(
+        &mut porta,
+        W,
+        H,
+        i64::from(r.x),
+        i64::from(r.y),
+        r.w as usize,
+        r.h as usize,
+        k,
+        &peso,
+        [false, false],
+        ph2d_painter_brush::BlurKernel::Caixa,
+    );
+    let mut par = tela.clone();
+    super::composite_linhas::mistura_do_borrao(&mut par, &borrada, &peso, stride, r);
+    assert!(
+        par == serie,
+        "a mistura paralela mudou bytes contra o laço de referência"
+    );
+    assert!(
+        par == porta,
+        "a mistura paralela mudou bytes contra a porta em série"
+    );
+    assert!(
+        par != tela,
+        "CONTROLO: a mistura não mudou um byte — fixtura inerte"
+    );
+}

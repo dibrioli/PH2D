@@ -97,3 +97,37 @@ produto. **Revertido** — uma excepção à cerca sem ganho medido é o que a c
   arredondamento e não foi medido.
 - O **depósito** das camadas no plano (a maior fatia que sobra: ~`43` de ~`57` ms por traço no passo
   8) e o **campo do esfregão** (`sample_window` + `walk_dab`, em série na thread principal).
+
+## Emenda 2026-10-01 — o borrão da pilha MISTURA em linhas, e o depósito recebe o lote do QUADRO
+
+Medido na sonda `diag_onde_vai_o_quadro_do_rabisco` (a pilha do dono, tela `1024²`, rabisco
+rápido, uma drenagem a cada `16` eventos, `--release`): **`12,33` ms por quadro**, com o depósito a
+`4,4`, o Blur a `3,2` e o Smear a `3,0`.
+
+1. **Uma quarta passagem por pixel entra nesta excepção, sob os mesmos três invariantes:** o borrão
+   da pilha passa a ser DOIS passos — a convolução (já em equipa, ADR-0171) e a **mistura de volta
+   por peso**, que corria num núcleo e custava MAIS do que a convolução (`1,66` contra `1,19` ms por
+   quadro). Hoje `composite_linhas::peso_do_borrao` e `composite_linhas::mistura_do_borrao` correm em
+   linhas disjuntas, e a lei da mistura é UMA ([`ph2d_painter_brush::mistura_linha_por_peso`]),
+   chamada também pela porta em série `blur_region_por_peso`. Gate
+   `a_mistura_do_borrao_em_paralelo_da_o_byte_da_serie`, contra o laço à letra **e** contra a porta
+   em série. Medido: a mistura `1,66 → 0,11–0,17` ms, o peso `0,25 → 0,05–0,08`.
+2. **O depósito da §«O que fica fora» foi curado SEM paralelismo novo:** com a drenagem por quadro
+   o acúmulo nos planos também espera por ela (`composite_por_quadro`), e o lote de um quadro —
+   uma dezena de pingos por camada — passa a alcançar a rota em BANDA que já existia
+   (`stamp_banded`, byte-idêntica por construção); o pingo de um evento ficava sempre abaixo do piso
+   dela. Gates `acumular_por_quadro_da_a_imagem_de_acumular_por_evento` (ao byte, depois de CADA
+   drenagem), `no_impasto_acumular_por_quadro_da_o_mesmo_relevo`,
+   `cada_camada_deposita_uma_vez_por_quadro` e `um_lote_que_nao_espera_esvazia_a_fila_primeiro`.
+   Medido: `4,4 → 2,0` ms por quadro.
+
+**Resultado, três corridas a `load 5`–`10`: `12,33 → 7,94`–`8,04` ms por quadro (−35 %), nenhum
+byte mudado.**
+
+⛔ **O campo do esfregão FICA em série, e a razão não é a cerca:** cada pingo compõe
+`disp_novo(p) = v(p) + disp_velho(p − v(p))`, ou seja lê o campo que o pingo ANTERIOR escreveu, e o
+retro-traçado cruza qualquer fronteira de banda — uma banda por linhas não é exacta. Medido por
+dentro: `walk_dab` `1,04` + composição `0,99` + janela `0,06` ms por quadro, `~208 k` texels. Só o
+paralelismo DENTRO de um pingo é exacto (os texels de um pingo leem a janela congelada), e ele vive
+na `ph2d-painter-brush`, cuja excepção de `rayon` é outra (ADR-0158/0171) — com `~21 k` texels por
+pingo, no piso medido de uma divisão (`~25 k` visitas). Fica como a próxima alavanca, com o número.

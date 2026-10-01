@@ -85,6 +85,52 @@ where
         .for_each(|(i, l)| linha(i, &mut l[x0..x0 + rw]));
 }
 
+/// **O PESO do borrão sobre `r`** — `255 − α` do escudo da camada, linha-maior do tamanho de `r` —
+/// e se ALGUM pixel o tem (sem nenhum, a convolução inteira é poupada).
+pub(super) fn peso_do_borrao(plano: &[u8], stride: usize, r: Region) -> (Vec<u8>, bool) {
+    let rw = r.w as usize;
+    if rw == 0 || r.h == 0 {
+        return (Vec::new(), false);
+    }
+    let mut peso = vec![0u8; rw * r.h as usize];
+    let algum = peso
+        .par_chunks_mut(rw)
+        .enumerate()
+        .with_min_len(8)
+        .map(|(i, linha)| {
+            let base = (r.y as usize + i) * stride + r.x as usize * 4;
+            let mut algum = false;
+            for (c, v) in linha.iter_mut().enumerate() {
+                let p = 255 - plano[base + c * 4 + 3];
+                *v = p;
+                algum |= p > 0;
+            }
+            algum
+        })
+        .reduce(|| false, |a, b| a || b);
+    (peso, algum)
+}
+
+/// **A MISTURA de volta do borrão** sobre `r`: cada linha pela lei de
+/// [`ph2d_painter_brush::mistura_linha_por_peso`] — a mesma que a porta em série chama, logo o
+/// byte é o mesmo para qualquer número de threads.
+pub(super) fn mistura_do_borrao(
+    buf: &mut [u8],
+    borrada: &[[f32; 4]],
+    peso: &[u8],
+    stride: usize,
+    r: Region,
+) {
+    let rw = r.w as usize;
+    por_linhas(buf, stride, r, |i, linha| {
+        ph2d_painter_brush::mistura_linha_por_peso(
+            linha,
+            &borrada[i * rw..(i + 1) * rw],
+            &peso[i * rw..(i + 1) * rw],
+        );
+    });
+}
+
 /// **A TINTA de uma camada Brush** sobre `r`: `tela ← blend(tela, plano)`, pixel a pixel.
 pub(super) fn tinta(
     buf: &mut [u8],

@@ -134,3 +134,49 @@ pub(in crate::tool::paint) fn soma_op(i: usize, t: std::time::Instant) {
 pub(in crate::tool::paint) fn take_ops() -> [u64; 5] {
     OPS.with(Cell::take)
 }
+
+/// **As SUB-fases** — o que mora dentro de `acumular` e dentro do Blur e do Smear da composição,
+/// medido para escolher onde cortar (sonda do rabisco, 2026-10-01).
+pub(in crate::tool::paint) const SUB_NOMES: [&str; 10] = [
+    "acum/relevo",
+    "acum/Brush",
+    "acum/Erase",
+    "acum/Blur",
+    "blur/peso",
+    "blur/núcleo",
+    "smear/base",
+    "smear/dabs",
+    "blur/mistura",
+    "smear/render",
+];
+
+thread_local! {
+    static SUB: Cell<[u64; 10]> = const { Cell::new([0; 10]) };
+}
+
+pub(in crate::tool::paint) fn soma_sub(i: usize, t: std::time::Instant) {
+    SUB.with(|c| {
+        let mut v = c.get();
+        v[i] += t.elapsed().as_micros() as u64;
+        c.set(v);
+    });
+}
+
+/// As sub-fases desde a última leitura, em µs — e ZERA.
+pub(in crate::tool::paint) fn take_sub() -> [u64; 10] {
+    SUB.with(Cell::take)
+}
+
+thread_local! {
+    static ACUMULOS: Cell<u64> = const { Cell::new(0) };
+}
+
+/// Um depósito de UMA camada no plano dela — a régua do gate que prova que o acúmulo é por QUADRO.
+pub(in crate::tool::paint) fn conta_acumulo() {
+    ACUMULOS.with(|c| c.set(c.get() + 1));
+}
+
+/// Quantos depósitos de camada correram desde a última leitura — e ZERA.
+pub(in crate::tool::paint) fn acumulos_e_zera() -> u64 {
+    ACUMULOS.with(Cell::take)
+}

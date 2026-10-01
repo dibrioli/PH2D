@@ -224,3 +224,181 @@ fn quem_le_a_tela_faz_a_composicao_correr_no_evento() {
     assert!(sel.paint.pilha.pendente.is_none());
     sel.on_canvas_pointer(cp([X0 + 30.0, Y], PointerPhase::Up));
 }
+
+/// O rabisco do [`rabisco`] com a ROTA DO ACÚMULO escolhida (`no_evento` = o código de antes de
+/// 2026-10-01) — devolve a tela a seguir a CADA drenagem e no fim, para a comparação apanhar uma
+/// diferença que o pen-up apagasse.
+fn rabisco_com_quadros(passo: f32, por_quadro: usize, no_evento: bool) -> Vec<Vec<u8>> {
+    super::composite_acumulado::ACUMULA_NO_EVENTO.with(|c| c.set(no_evento));
+    let mut t = pilha(true);
+    let mut quadros = Vec::new();
+    t.on_canvas_pointer(cp([X0, Y], PointerPhase::Down));
+    let (mut n, mut x) = (0usize, X0);
+    while x < X1 {
+        x += passo;
+        let y = Y + 30.0 * (x / 23.0).sin();
+        t.on_canvas_pointer(cp([x.min(X1), y], PointerPhase::Move));
+        n += 1;
+        if por_quadro > 0 && n.is_multiple_of(por_quadro) {
+            let _ = t.take_preview_arc();
+            quadros.push((*t.canvas_rgba).clone());
+        }
+    }
+    t.on_canvas_pointer(cp([X1, Y], PointerPhase::Up));
+    quadros.push((*t.canvas_rgba).clone());
+    super::composite_acumulado::ACUMULA_NO_EVENTO.with(|c| c.set(false));
+    quadros
+}
+
+/// ⭐⭐⭐ **ACUMULAR POR QUADRO DÁ A IMAGEM DE ACUMULAR POR EVENTO — AO BYTE** (2026-10-01).
+///
+/// A pilha do dono, no rabisco, drenando a cada `1`, `4` e `16` eventos e só no pen-up: a tela
+/// depois de CADA drenagem tem de ser a mesma nas duas rotas, sem barra nenhuma. ⚠️ Aqui não há o
+/// `≤ 1` do borrão do gate irmão: as duas rotas compõem a MESMA caixa com os MESMOS planos — o que
+/// muda é só QUANTOS dabs cada chamada do depósito recebe, e o depósito em banda é byte-idêntico ao
+/// em série por construção ([`super::stamp_banded`]).
+///
+/// ⚠️ CONTROLO: o traço tem de ter pintado, senão a igualdade é sobre nada.
+#[test]
+fn acumular_por_quadro_da_a_imagem_de_acumular_por_evento() {
+    for k in [1usize, 4, 16, 0] {
+        let antes = rabisco_com_quadros(2.0, k, true);
+        let agora = rabisco_com_quadros(2.0, k, false);
+        assert_eq!(antes.len(), agora.len());
+        let (pintados, _) = diferenca(antes.last().expect("o fim"), &arte());
+        assert!(
+            pintados > 40_000,
+            "CONTROLO: o rabisco pintou só {pintados} bytes"
+        );
+        for (q, (a, b)) in antes.iter().zip(&agora).enumerate() {
+            let (bytes, pior) = diferenca(a, b);
+            assert!(
+                bytes == 0,
+                "drenando a cada {k} eventos, o quadro {q} mudou {bytes} bytes (pior {pior}) — \
+                 acumular por quadro tem de dar a tela de acumular por evento ao byte"
+            );
+        }
+    }
+}
+
+/// ⭐⭐ **Cada camada DEPOSITA uma vez por QUADRO, não uma vez por evento** — a CONTA que a imagem
+/// não vê (as duas rotas pintam o mesmo, logo mede-se quantas chamadas o depósito recebe). É ela
+/// que põe o lote acima do piso da rota em banda: um evento traz um pingo por camada, um quadro
+/// traz a dezena.
+///
+/// Metades: (1) os depósitos são no máximo `camadas que depositam × composições`; (2) o CONTROLO,
+/// a rota de antes, deposita por evento — muitas vezes mais —, senão a fixtura não distinguia as
+/// duas.
+#[test]
+fn cada_camada_deposita_uma_vez_por_quadro() {
+    // As camadas que ACUMULAM num plano: o Blur e as três Brush e o Erase (o Smear não acumula).
+    const QUE_DEPOSITAM: u64 = 5;
+    let conta = |no_evento: bool| {
+        let _ = super::composite_acumulado::fases::acumulos_e_zera();
+        let _ = super::composite_por_quadro::composicoes_e_zera();
+        let _ = rabisco_com_quadros(2.0, 16, no_evento);
+        (
+            super::composite_acumulado::fases::acumulos_e_zera(),
+            super::composite_por_quadro::composicoes_e_zera(),
+        )
+    };
+    let (depositos, composicoes) = conta(false);
+    assert!(composicoes >= 4, "a fixtura drenou só {composicoes} vezes");
+    assert!(
+        depositos <= QUE_DEPOSITAM * composicoes,
+        "{depositos} depósitos para {composicoes} composições — as camadas depositaram por evento"
+    );
+    let (depositos_antes, _) = conta(true);
+    assert!(
+        depositos_antes > 8 * depositos,
+        "CONTROLO: a rota de antes devia depositar por EVENTO ({depositos_antes} contra {depositos})"
+    );
+}
+
+/// ⛔ **Um lote que não pode esperar não passa à frente dos que esperam.** Com dabs por acumular na
+/// fila, um evento que tem de compor no sítio (aqui: a drenagem por quadro desligada a meio do
+/// traço, pelo campo, sem a porta que comporia o resto) acumula PRIMEIRO o que estava pendente — o
+/// plano de cada camada é a soma dos dabs dela EM ORDEM.
+///
+/// ⚠️ A régua é o ESTADO e não a imagem, e é declarado: com a cor de uma camada fixa o `over` dos
+/// pingos dela comuta, logo a troca de ordem não mudaria um byte nesta fixtura — o que a régua
+/// afirma é que a fila foi esvaziada antes do lote novo, que é a lei.
+#[test]
+fn um_lote_que_nao_espera_esvazia_a_fila_primeiro() {
+    let mut t = pilha(true);
+    t.on_canvas_pointer(cp([X0, Y], PointerPhase::Down));
+    for i in 1..=6 {
+        t.on_canvas_pointer(cp([X0 + 4.0 * i as f32, Y], PointerPhase::Move));
+    }
+    assert!(
+        t.paint.pilha.pendente_dabs.iter().any(|f| !f.is_empty()),
+        "CONTROLO: seis eventos e nenhum dab à espera — a fixtura não adiou"
+    );
+    let _ = super::composite_por_quadro::composicoes_e_zera();
+    t.paint.pilha.por_quadro = false;
+    t.on_canvas_pointer(cp([X0 + 40.0, Y], PointerPhase::Move));
+    assert!(
+        t.paint.pilha.pendente.is_none() && t.paint.pilha.pendente_dabs.iter().all(Vec::is_empty),
+        "o lote que compõe no sítio deixou a fila por acumular"
+    );
+    assert_eq!(
+        super::composite_por_quadro::composicoes_e_zera(),
+        1,
+        "a fila tinha de ser composta ANTES do lote novo"
+    );
+    t.on_canvas_pointer(cp([X0 + 40.0, Y], PointerPhase::Up));
+}
+
+/// ⭐⭐ **E no IMPASTO, onde o relevo de cada camada também espera pela drenagem** — o corpo de uma
+/// Brush é partilhado ou próprio conforme o que está por cima dela ([`super::composite_relevo`]),
+/// logo a ordem ENTRE camadas muda (por evento: camada a camada dentro de cada evento; por quadro:
+/// o quadro inteiro de cada camada). A tela e o relevo assente têm de sair os mesmos, ao byte.
+#[test]
+fn no_impasto_acumular_por_quadro_da_o_mesmo_relevo() {
+    use super::diag_o_relevo_da_pilha::{relevo, tela};
+    use CompositeOp::{Blur, Brush, Erase, Smear};
+    for camadas in [
+        &[Brush][..],
+        &[Erase, Brush][..],
+        &[Blur, Brush, Brush, Smear, Erase][..],
+    ] {
+        let corre = |no_evento: bool| {
+            super::composite_acumulado::ACUMULA_NO_EVENTO.with(|c| c.set(no_evento));
+            let mut t = tela(camadas);
+            t.set_compor_por_quadro(true);
+            t.on_canvas_pointer(cp([20.0, 64.0], PointerPhase::Down));
+            let mut x = 20.0;
+            let mut n = 0;
+            while x < 108.0 {
+                x += 3.0;
+                t.on_canvas_pointer(cp([x, 64.0 + 12.0 * (x / 9.0).sin()], PointerPhase::Move));
+                n += 1;
+                if n % 5 == 0 {
+                    let _ = t.take_preview_arc();
+                }
+            }
+            t.on_canvas_pointer(cp([108.0, 64.0], PointerPhase::Up));
+            super::composite_acumulado::ACUMULA_NO_EVENTO.with(|c| c.set(false));
+            let layer = t.layers.active().expect("camada");
+            let h = t.heights.get(&layer).cloned().unwrap_or_default();
+            (relevo(&t), (*t.canvas_rgba).clone(), h)
+        };
+        let (r_antes, tela_antes, h_antes) = corre(true);
+        let (_, tela_agora, h_agora) = corre(false);
+        assert!(
+            r_antes.2 > 0,
+            "CONTROLO {camadas:?}: o traço não deixou relevo nenhum"
+        );
+        assert!(
+            tela_antes == tela_agora,
+            "{camadas:?}: a tela do impasto mudou com o acúmulo por quadro"
+        );
+        assert!(
+            h_antes
+                .iter()
+                .map(|v| v.to_bits())
+                .eq(h_agora.iter().map(|v| v.to_bits())),
+            "{camadas:?}: o relevo assente mudou com o acúmulo por quadro"
+        );
+    }
+}

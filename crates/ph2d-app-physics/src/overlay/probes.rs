@@ -50,7 +50,7 @@
 
 use ph2d_ecs::SimWorld;
 use ph2d_host::WindowSize;
-use ph2d_physics_ecs::{Collider, ProbeMark, ProbeShape, ProbeState, scaled_shape};
+use ph2d_physics_ecs::{Collider, ProbeKind, ProbeMark, ProbeShape, ProbeState, scaled_shape};
 use ph2d_render::Camera2d;
 use ph2d_vector::{BezPath, Point};
 
@@ -154,7 +154,9 @@ pub fn probe_marks(
                 // é geometria (mede o alcance real).
                 let (vx, vy) = (e.x - s.x, e.y - s.y);
                 let n = (vx * vx + vy * vy).sqrt();
-                if n > f64::EPSILON {
+                // ⚠️ **Uma parede da área andável não tem ponta nem acerto** (plano 30, W4): ela é
+                // um troço de um CONTORNO, e um tique em cada vértice picotava o mapa.
+                if n > f64::EPSILON && m.kind != ProbeKind::NavEdge {
                     let tick = |p: &mut BezPath, at: Point, half: f64| {
                         let (px, py) = (-vy / n * half, vx / n * half);
                         p.move_to(Point::new(at.x - px, at.y - py));

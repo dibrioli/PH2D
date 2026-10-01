@@ -283,7 +283,9 @@ pub fn montar(world: &mut World, nivel: u32) -> Montada {
         "[nav-smoke] =1 setas para andar com o AMARELO. O VERMELHO da' a volta as paredes para te \
          apanhar; o ROXO e' grande demais para a porta de baixo e fica do lado de ca' da parede; o CINZENTO (o \
          controlo) persegue em linha recta e bate nas paredes. A linha azul de cada um e' o caminho \
-         que ele planeou (tecla B)"
+         que ele planeou (tecla B), e o contorno CLARO e' por onde o centro de cada um pode andar: ha' \
+         um por tamanho, e o do ROXO fecha a porta de baixo. O ROXO esta' escolhido: a seccao Nav Agent \
+         do Inspector diz o que ele esta' a fazer agora e porque espera"
     );
     m
 }

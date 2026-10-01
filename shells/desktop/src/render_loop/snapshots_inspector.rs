@@ -145,6 +145,7 @@ pub(super) fn publish(
         inspector_parallax,
         inspector_weapon,
         inspector_vida,
+        inspector_nav,
         inspector_mesh3d,
         inspector_tween,
         inspector_path_follow,
@@ -203,6 +204,7 @@ pub(super) fn publish(
         ph2d_panel_inspector::set_current_inspector_parallax(inspector_parallax);
         ph2d_panel_inspector::set_current_inspector_weapon(inspector_weapon);
         ph2d_panel_inspector::set_current_inspector_vida(inspector_vida);
+        ph2d_panel_inspector::set_current_inspector_nav(inspector_nav);
         ph2d_panel_inspector::set_current_inspector_mesh3d(inspector_mesh3d);
         ph2d_panel_inspector::set_current_inspector_tween(inspector_tween);
         ph2d_panel_inspector::set_current_inspector_path_follow(inspector_path_follow);
@@ -262,6 +264,7 @@ struct LateSections {
     inspector_weapon: Option<ph2d_editor_core::weapon_edits::InspectorWeaponInfo>,
     /// ⭐⭐⭐ As secções HEALTH e DAMAGE (plano 28, W3).
     inspector_vida: Option<ph2d_editor_core::vida_edits::InspectorVidaInfo>,
+    inspector_nav: Option<ph2d_editor_core::nav_edits::InspectorNavInfo>,
     inspector_mesh3d: Option<ph2d_editor_core::mesh3d_edits::InspectorMesh3dInfo>,
     inspector_tween: Option<ph2d_editor_core::tween_edits::InspectorTweenInfo>,
     /// ⭐⭐⭐ A secção PATH FOLLOW (suplente #23).
@@ -415,23 +418,14 @@ fn late(
             preview_drive.drives_other_than(b, ph2d_preview_drive::Driver::ParallaxPose),
         )
     });
-    // ⭐⭐⭐ A secção WEAPON — `None` para quem não tem o componente (ADR-0166).
-    //
-    // ⚠️ Ela pede a MUNIÇÃO VIVA, que é o que a distingue das irmãs: sem *«4 de 6 balas»* ela
-    // seria oito campos numa tabela, e o artista não teria como afinar uma cadência a olhar.
+    // ⭐⭐⭐ A secção WEAPON (ADR-0166) — pede a MUNIÇÃO VIVA: sem *«4 de 6 balas»* ela seria oito
+    // campos numa tabela, e o artista não teria como afinar uma cadência a olhar.
     let inspector_weapon = hero.gizmo.selection.and_then(|b| {
         ph2d_app_components::weapon_inspector::build_info(sim, b, clock_playing, selected_count)
     });
-    // ⭐⭐⭐ As secções HEALTH e DAMAGE (plano 28, W3) — a vida AGORA vem do `HealthNow` que a
-    // ponte publica no mundo, logo o Inspector não precisa de alcançar a ponte.
-    let inspector_vida = hero.gizmo.selection.and_then(|b| {
-        ph2d_app_components::vida_inspector::build_vida_info(
-            sim.world(),
-            b,
-            selected_count,
-            clock_playing,
-        )
-    });
+    // ⭐⭐⭐ HEALTH/DAMAGE (plano 28) e NAV (plano 30) — família da FÍSICA, no irmão dela.
+    let (inspector_vida, inspector_nav) =
+        fisica::vida_e_nav(hero.gizmo.selection, sim, selected_count, clock_playing);
     // ⭐⭐⭐ A secção LIVE MESH — o CATAVENTO (`docs/3D/02.2`, rota B), `None` para quem não tem o
     // componente (ADR-0166).
     //
@@ -467,7 +461,7 @@ fn late(
     // ⚠️ Ela lê o VIVO (`StateMachineRuntime`) para dizer *«Now: …»*, e é isso que a torna útil com
     // o relógio a andar: sem o readout o artista tem de simular a tabela de cabeça.
     let inspector_statemachine = hero.gizmo.selection.and_then(|b| {
-        crate::render_loop::inspector_statemachine::build_statemachine_info(
+        ph2d_app_components::statemachine_inspector::build_statemachine_info(
             sim.world(),
             b,
             selected_count,
@@ -495,6 +489,7 @@ fn late(
         inspector_parallax,
         inspector_weapon,
         inspector_vida,
+        inspector_nav,
         inspector_mesh3d,
         inspector_tween,
         inspector_path_follow,

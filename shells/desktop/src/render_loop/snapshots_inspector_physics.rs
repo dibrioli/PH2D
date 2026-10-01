@@ -189,3 +189,26 @@ pub(super) fn physics(
         inspector_wheel,
     }
 }
+
+/// ⭐⭐⭐ **As duas secções cujo AGORA vem de um componente DERIVADO** — HEALTH/DAMAGE (plano 28)
+/// lê o `HealthNow` e NAV (plano 30) lê o `NavNow`, os dois publicados pela ponte da física no fim
+/// de cada despacho. ⚠️ Mudaram-se do [`super::late`] pelo tecto de função (`203` contra `200`),
+/// e cabem aqui por RESPONSABILIDADE: os quatro componentes vivem na `ph2d-physics-ecs`.
+pub(super) fn vida_e_nav(
+    selection: Option<u64>,
+    sim: &SimWorld,
+    selected_count: usize,
+    clock_playing: bool,
+) -> (
+    Option<ph2d_editor_core::vida_edits::InspectorVidaInfo>,
+    Option<ph2d_editor_core::nav_edits::InspectorNavInfo>,
+) {
+    let Some(b) = selection else {
+        return (None, None);
+    };
+    let w = sim.world();
+    (
+        ph2d_app_components::vida_inspector::build_vida_info(w, b, selected_count, clock_playing),
+        ph2d_app_components::nav_inspector::build_info(w, b, selected_count, clock_playing),
+    )
+}

@@ -25,11 +25,11 @@
 use ph2d_ecs::{Entity, SimWorld, StateMachine, StateMachineRuntime, World};
 
 /// Um anúncio de uma máquina — o nome autorado, e quem pensou.
-pub(crate) struct MachineSignal {
+pub struct MachineSignal {
     /// A entidade que carrega a máquina.
-    pub(crate) entity: Entity,
+    pub entity: Entity,
     /// O nome do sinal, como o artista o escreveu.
-    pub(crate) name: String,
+    pub name: String,
 }
 
 /// **Toda máquina tem um vivo, e ele nasce no estado inicial dela.**
@@ -56,7 +56,7 @@ fn ensure_runtime(world: &mut World) {
 /// ⚠️ **A ordem é a da IDENTIDADE**, nunca a da query — a lei de determinismo desta casa (HR-5):
 /// duas máquinas que anunciam no mesmo tique têm de o fazer sempre na mesma ordem, senão o replay
 /// diverge entre máquinas.
-pub(crate) fn advance_machines(sim: &mut SimWorld, fired: &[&str]) -> Vec<MachineSignal> {
+pub fn advance_machines(sim: &mut SimWorld, fired: &[&str]) -> Vec<MachineSignal> {
     let world = sim.world_mut();
     ensure_runtime(world);
 

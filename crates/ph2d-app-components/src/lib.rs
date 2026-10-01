@@ -130,6 +130,8 @@ pub mod instance_verbs;
 pub mod instance_verbs_walk;
 pub mod instantiate;
 pub mod master_editing;
+/// ⭐⭐⭐ As secções NAV REGION e NAV AGENT do Inspector — o instantâneo e o dreno (plano 30, W4).
+pub mod nav_inspector;
 /// ⭐⭐⭐ **O mover de VISTA DE CIMA** (TOP-20 #13) — as duas cenas do dono.
 /// ⭐⭐⭐ A NAVEGAÇÃO (plano 30, W3) — `PH2D_NAV_SMOKE=1`.
 pub mod nav_smoke;
@@ -187,6 +189,8 @@ pub mod signal_actions_bridge;
 /// catraca `the_shell_only_shrinks` estava a `16` linhas do tecto.
 pub mod signal_actions_inspector;
 /// ⭐⭐⭐ O smoke do CÉREBRO AUTORÁVEL (TOP-20 #15) — ver o cabeçalho.
+pub mod state_machine_tick;
+pub mod statemachine_inspector;
 pub mod statemachine_smoke;
 pub mod tags_doc;
 /// ⭐⭐⭐ As duas cenas do TOP-20 #9 (`PH2D_TAGS_SMOKE=1|2`) — ver o cabeçalho do módulo.

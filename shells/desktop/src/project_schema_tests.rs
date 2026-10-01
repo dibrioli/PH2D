@@ -280,7 +280,9 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // `VecScene`, e **nenhuma das duas se mexe**. Quem integrar conta o DELTA (+3).
         // ⚠️ **`177` em 2026-09-29** — os TIPOS de dano e o dano que DURA (plano 28, W6): campos
         // novos em `Damage` e `Health`, ZERO componentes registados. A tripla NÃO vê este degrau.
-        (177, 13, 22),
+        // ⚠️ **`178` em 2026-10-01** — a NAVEGAÇÃO (plano 30, W4): `NavRegion` e `NavAgent`
+        // REGISTADOS (física `+2`, espelhos `0`). A tripla NÃO vê este degrau.
+        (178, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

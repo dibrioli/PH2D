@@ -101,8 +101,9 @@ impl AgentRuntime {
         self.partial = false;
     }
 
-    /// O que falta andar pelo caminho, a partir de `pos`.
-    fn remaining(&self, pos: V2) -> f64 {
+    /// O que falta andar pelo caminho, a partir de `pos` — o que o Inspector lê (*«3,2 m to go»*).
+    #[must_use]
+    pub fn remaining(&self, pos: V2) -> f64 {
         if self.next >= self.path.len() {
             return 0.0;
         }

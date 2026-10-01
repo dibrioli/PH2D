@@ -100,6 +100,10 @@ pub enum ProbeKind {
     /// de *«para onde este raio olha?»*, e por isso o pintor é o mesmo: um segundo pintor de linhas
     /// seria a segunda resposta a *como se desenha uma linha de física*.
     Path,
+    /// ⭐ **Uma PAREDE da área andável** (plano 30, W4) — a fronteira da malha de um raio, por onde o
+    /// CENTRO de um agente desse raio pode andar. ⚠️ Sai em [`ProbeState::Idle`] e sem tiques: é
+    /// o MAPA, não uma pergunta, e mais clara que o caminho para não competir com ele.
+    NavEdge,
 }
 
 /// **O que o sensor respondeu** — e *"não foi perguntado"* é uma resposta.

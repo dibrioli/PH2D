@@ -50,6 +50,8 @@ pub use bridge::signals::SignalEvent;
 pub use bridge::triggers::TriggerEvent;
 pub use keyboard_driven::{for_each_keyboard_driven, reads_the_keyboard};
 pub use name_refs::{ResolvedRefs, resolve_body_names};
+/// O estado da condução de um agente — o que o [`NavNow`] carrega (a lei vive em [`ph2d_nav`]).
+pub use ph2d_nav::Status as NavStatus;
 pub use ref_remap::{remap_joint_refs, remap_wheel_refs};
 // O par de números que um readout de joint mostra. Re-exportado porque a shell
 // não depende de `ph2d-physics` direto.
@@ -80,12 +82,12 @@ pub use components::{
     AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaForceWorldAxes, AreaFormDrag,
     AreaTorque, BodyKind, Ccd, Collider, ColliderShape, CombineRule, Damage, DampMode,
     DampingOverride, Dominance, GravityScale, Health, HealthBar, HealthNow, InitialVelocity,
-    LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine, NavAgent, NavRegion,
-    NavTarget, NoWallCling, OnHit, OneWayPlatform, PlatformLift, PlatformPlayer, PlayerMode,
-    PlayerSignals, ProjectileMotion, PulleyWheel, RESISTANCES_MAX, RayHit, RaySensor, RaySignals,
-    Resistance, RigidBody, RopeStops, SignalOnHit, SignalOnLeave, SignalTagFilter, TopDownPlayer,
-    WalkSurface, WestonAxle, WrapSide, kind_key, reseat_mounted_axle, reseat_wheel_geometry,
-    rope_joint_of,
+    LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine, NavAgent, NavNow,
+    NavRegion, NavTarget, NoWallCling, OnHit, OneWayPlatform, PlatformLift, PlatformPlayer,
+    PlayerMode, PlayerSignals, ProjectileMotion, PulleyWheel, RESISTANCES_MAX, RayHit, RaySensor,
+    RaySignals, Resistance, RigidBody, RopeStops, SignalOnHit, SignalOnLeave, SignalTagFilter,
+    TopDownPlayer, WalkSurface, WestonAxle, WrapSide, kind_key, reseat_mounted_axle,
+    reseat_wheel_geometry, rope_joint_of,
 };
 pub use interaction::{
     HoldMode, InteractionSettings, InteractionTool, MAX_ATTRACT_FORCE, MAX_BLAST_IMPULSE,
@@ -233,6 +235,11 @@ pub fn register_physics_components(reg: &mut ComponentRegistry) {
     // ⭐ **A BARRA DE VIDA** (plano 28, W4) — registada no MESMO commit que a secção e o descritor,
     // pela lição da W3: sem o registo a cópia de um molde nascia SEM barra.
     reg.register_default::<HealthBar>("ph2d::physics::HealthBar");
+    // ⭐⭐⭐ **A NAVEGAÇÃO** (plano 30, W4) — a região e o agente, registados no MESMO commit que as
+    // secções do Inspector e os descritores, pela lição da vida: sem o registo, toda cópia de uma
+    // fábrica nascia sem agente e toda região evaporava ao gravar. ⛔ O `NavNow` NÃO: é derivado.
+    reg.register_default::<NavRegion>("ph2d::physics::NavRegion");
+    reg.register_default::<NavAgent>("ph2d::physics::NavAgent");
     reg.register_default::<PlayerMode>("ph2d::physics::PlayerMode");
     reg.register_default::<WalkSurface>("ph2d::physics::WalkSurface");
     reg.register_default::<NoWallCling>("ph2d::physics::NoWallCling");
@@ -263,7 +270,11 @@ mod tests {
         // passa a **+7**. Dois tipos e UM degrau de `PROJECT_SCHEMA`, como o raio.
         // ⭐ **+1 (plano 28, W4: `HealthBar`)** ⇒ `39 -> 40`, e o delta contra o `main` passa a
         // **+8**.
-        assert_eq!(reg.len(), 40);
+        // ⭐ **+2 (plano 30, W4: `NavRegion` e `NavAgent`)** ⇒ `40 -> 42`, e o delta contra o `main`
+        // passa a **+10**. Dois tipos e UM degrau de `PROJECT_SCHEMA`, como o raio e a vida.
+        assert_eq!(reg.len(), 42);
+        assert!(reg.get_by_name("ph2d::physics::NavRegion").is_some());
+        assert!(reg.get_by_name("ph2d::physics::NavAgent").is_some());
         assert!(reg.get_by_name("ph2d::physics::HealthBar").is_some());
         assert!(reg.get_by_name("ph2d::physics::Health").is_some());
         assert!(reg.get_by_name("ph2d::physics::Damage").is_some());

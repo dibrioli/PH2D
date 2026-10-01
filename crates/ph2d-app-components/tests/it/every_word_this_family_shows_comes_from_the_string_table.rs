@@ -34,6 +34,14 @@ const FORA: &[Isento] = &[
 /// Um literal isento, com o mecanismo — nomes que são IDENTIDADE, e consola.
 const NOT_LANGUAGE: &[Excecao] = &[
     (
+        "statemachine_inspector.rs",
+        "State {n}",
+        "⚠️ veio da shell com o ficheiro (plano 30, W4 — a catraca da shell): o NOME de omissão de um estado novo — ele entra no documento (`MachineState::name`) e o \
+         artista escreve por cima dele no mesmo gesto. É a lei dos nomes por omissão desta casa \
+         (`Prefab`, `Layer {}`, `Body`), e traduzi-lo poria a IDENTIDADE de um estado a mudar com \
+         a língua da sessão",
+    ),
+    (
         "instance_verbs.rs",
         "Prefab",
         "o nome por omissão de uma receita sem `Name` — entra no `Name`, que é identidade durável \

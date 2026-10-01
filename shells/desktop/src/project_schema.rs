@@ -328,4 +328,16 @@
 /// silêncio, e com ele o load recusa em voz alta.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
-pub(crate) const PROJECT_SCHEMA: u32 = 177;
+///
+/// # `177 → 178` — **a NAVEGAÇÃO** (plano 30, W4, 2026-10-01)
+///
+/// `NavRegion` e `NavAgent` passam a REGISTADOS — dois tipos e UM degrau, como o raio e a vida, no
+/// mesmo commit que as secções do Inspector (a lição da vida: um componente por registar é invisível
+/// à cópia de uma fábrica, ao `Ctrl+Z` e ao ficheiro de uma vez). ⚠️ **São da FÍSICA** ⇒ sobe o
+/// registo dela (`+2`) e os dois espelhos (`ph2d-render`, `ph2d-script`) NÃO se mexem. ⛔ O `NavNow`
+/// NÃO é registado: é derivado da memória da ponte, que vai no anel de checkpoints.
+///
+/// ⛔ **Sem degrau de migração**, pela mesma decisão — um v177 é recusado em voz alta.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
+pub(crate) const PROJECT_SCHEMA: u32 = 178;

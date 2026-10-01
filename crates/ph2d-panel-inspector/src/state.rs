@@ -129,9 +129,10 @@ pub struct InspectorState {
     pub last_parallax_sig: Option<u64>,
     /// A assinatura da secção CAMERA — ver o `sync_sections`.
     pub last_camera_sig: Option<u64>,
-    /// A assinatura da secção WEAPON — mesma lei do `last_ray_sig`, e nascida no MESMO commit
-    /// que a secção de propósito (ver o cabeçalho do `sync_weapon`).
+    /// A assinatura da secção WEAPON — mesma lei do `last_ray_sig` (ver o `sync_weapon`).
     pub last_weapon_sig: Option<u64>,
+    /// A assinatura das secções NAV REGION e NAV AGENT (plano 30, W4) — mesma lei.
+    pub last_nav_sig: Option<u64>,
     /// A assinatura das secções HEALTH e DAMAGE — mesma lei, nascida no MESMO commit que elas.
     pub last_vida_sig: Option<u64>,
     /// A assinatura do último instantâneo do MOVER DE VISTA DE CIMA semeado (plano 28, W5 — a

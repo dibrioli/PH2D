@@ -437,7 +437,10 @@ fn so_as_camadas_da_mascara_bloqueiam() {
     let (com, _) = area_da_malha(0b0000_0001, 0);
     let (sem, r) = area_da_malha(0b0000_0001, 3);
     // ⚠️ O raio é o da CHAVE da malha (arredondado para cima a `1/256 m`), não o `0,3` do colisor.
-    assert!((0.3..0.3 + 1.0 / 256.0).contains(&r), "o raio da chave: {r}");
+    assert!(
+        (0.3..0.3 + 1.0 / 256.0).contains(&r),
+        "o raio da chave: {r}"
+    );
     let livre = (16.0 - 2.0 * r) * (12.0 - 2.0 * r);
     assert!(
         (sem - livre).abs() < 1e-6,
@@ -524,4 +527,201 @@ fn um_reset_numa_linha_recta_nao_inventa_um_preso() {
     let (c2, f2) = corre(&mut sim, &mut bridge, quem, 1, 240);
     assert_eq!(f2, f1, "a 2.ª corrida disse outra coisa");
     assert_eq!(c2, c1, "a 2.ª corrida andou outro caminho");
+}
+
+/// ⭐⭐ **A ponte publica o agente AGORA no mundo** (W4: a leitura viva do Inspector) — o estado, o
+/// que falta andar e o raio DERIVADO do colisor; e quem a ponte salta ou deixa de ser agente perde
+/// o readout.
+///
+/// **Mutações que devem sangrar:** não chamar `publica_navegacao` no fim do dispatch · publicar o
+/// raio autorado (`0`) em vez do derivado · não varrer os velhos.
+#[test]
+fn a_ponte_publica_o_agente_agora() {
+    use ph2d_physics_ecs::{NavNow, NavStatus};
+    let (mut sim, mut bridge, quem) = cena_parede();
+    let _ = corre(&mut sim, &mut bridge, quem, 1, 5);
+    let n = *sim
+        .world()
+        .get::<NavNow>(quem)
+        .expect("o agente AGORA foi publicado");
+    assert_eq!(n.status, NavStatus::Moving);
+    assert!(
+        n.remaining > 8.0,
+        "à volta da parede falta mais que a recta ({})",
+        n.remaining
+    );
+    assert!(
+        (n.radius - 0.3).abs() < 1e-6,
+        "o raio DERIVADO da bola é 0,3, não o `0` autorado"
+    );
+
+    let _ = corre(&mut sim, &mut bridge, quem, 6, 400);
+    assert_eq!(
+        sim.world().get::<NavNow>(quem).unwrap().status,
+        NavStatus::Arrived
+    );
+
+    // ⛔ Quem deixa de ser agente perde o readout no dispatch seguinte.
+    sim.world_mut().entity_mut(quem).remove::<NavAgent>();
+    bridge.dispatch(&mut sim, true, 401);
+    assert!(
+        sim.world().get::<NavNow>(quem).is_none(),
+        "um número de outra corrida ficou de pé"
+    );
+
+    // ⭐ E o raio AUTORADO ganha ao derivado — a outra metade do mesmo campo.
+    let (mut sim, mut bridge, quem) = cena_parede();
+    sim.world_mut().get_mut::<NavAgent>(quem).unwrap().radius = 0.5;
+    let _ = corre(&mut sim, &mut bridge, quem, 1, 3);
+    assert!(
+        (sim.world().get::<NavNow>(quem).unwrap().radius - 0.5).abs() < 1e-6,
+        "um raio autorado > 0 é o que a leitura mostra, não o do colisor"
+    );
+
+    // E um agente cujo mover ouve o teclado é SALTADO, logo não tem número de agora.
+    let (mut sim, mut bridge, quem) = cena_parede();
+    let mut teclado = *sim.world().get::<TopDownPlayer>(quem).unwrap();
+    teclado.default_controls = true;
+    sim.world_mut().entity_mut(quem).insert(teclado);
+    let _ = corre(&mut sim, &mut bridge, quem, 1, 5);
+    assert!(sim.world().get::<NavNow>(quem).is_none());
+}
+
+/// ⭐⭐ **O PREÇO do 8-direcções, MEDIDO** (plano 30, W4 — a medição que decide a semente).
+///
+/// O agente segue rectas entre cantos com QUALQUER rumo; um mover em `EightWay` arredonda cada uma
+/// ao múltiplo de 45° mais perto, e o corpo serpenteia à volta da recta que pediu. A semente do
+/// `NavAgent` troca o modo de FÁBRICA (`EightWay`) por `Free` — este gate mede o que essa troca
+/// compra, em três rumos, e é o que impede a escolha de ser um palpite.
+///
+/// | alvo | `Free` | `EightWay` | preço |
+/// |---|---|---|---|
+/// | `(4, 0)` | `180` tiques · `11,933 m` | `186` · `12,331 m` | `+3,3 %` |
+/// | `(5,5, 2)` | `180` · `11,933 m` | `190` · `12,598 m` | `+5,6 %` |
+/// | `(3, −5)` | `136` · `9,000 m` | `142` · `9,400 m` | `+4,4 %` |
+///
+/// ⇒ **o 8-direcções CHEGA sempre** (o encaixe não parte a perseguição) **e paga `3`–`6 %` de
+/// caminho** — o preço de serpentear, e a razão da semente. ⚠️ Os dois `11,933` iguais não são
+/// coincidência de geometria: a contagem anda a passo inteiro (`4 m/s × 1/60`), e as duas rotas
+/// chegam no mesmo tique. A barra `1,10` sai do pior medido (`1,056`) com folga para outro rumo.
+#[test]
+fn o_preco_do_oito_direccoes() {
+    fn corrida(modo: DirectionMode, alvo: [f32; 2]) -> (Option<u64>, f32) {
+        let mut sim = SimWorld::new();
+        regiao(&mut sim);
+        parede(&mut sim, (0.0, 0.0), (0.3, 4.0));
+        let quem = agente(
+            &mut sim,
+            "Perseguidor",
+            (-4.0, 0.0),
+            0.3,
+            NavTarget::Point(alvo),
+        );
+        let mut m = *sim.world().get::<TopDownPlayer>(quem).unwrap();
+        let mut l = m.law();
+        l.direction = modo;
+        m = TopDownPlayer::from_law(l);
+        sim.world_mut().entity_mut(quem).insert(m);
+        let mut bridge = PhysicsBridge::new();
+        let mut andado = 0.0f32;
+        let mut antes = pos(&sim, quem);
+        for t in 1..=900u64 {
+            bridge.dispatch(&mut sim, true, t);
+            let p = pos(&sim, quem);
+            andado += ((p.0 - antes.0).powi(2) + (p.1 - antes.1).powi(2)).sqrt();
+            antes = p;
+            if bridge
+                .nav_events()
+                .iter()
+                .any(|e| e.agent == quem && e.kind == Event::Arrived)
+            {
+                return (Some(t), andado);
+            }
+        }
+        (None, andado)
+    }
+    let alvos = [[4.0, 0.0], [5.5, 2.0], [3.0, -5.0]];
+    for alvo in alvos {
+        let (tf, lf) = corrida(DirectionMode::Free, alvo);
+        let (t8, l8) = corrida(DirectionMode::EightWay, alvo);
+        println!(
+            "alvo {alvo:?}: Free chega em {tf:?} tiques ({lf:.3} m) · EightWay em {t8:?} ({l8:.3} m)"
+        );
+        let (tf, t8) = (
+            tf.expect("o Free chega"),
+            t8.expect("o 8-direcções também chega"),
+        );
+        assert!(t8 >= tf, "o 8-direcções nunca chega antes ({t8} < {tf})");
+        assert!(
+            l8 > lf && l8 / lf < 1.10,
+            "o 8-direcções paga caminho, e pouco: {l8:.3} contra {lf:.3}"
+        );
+    }
+}
+
+/// ⭐⭐ **A ÁREA ANDÁVEL desenha-se — um contorno por RAIO** (plano 30, W4).
+///
+/// Antes do 1.º tique não há malha (ela nasce para os raios que um agente pede); depois, as paredes
+/// da malha do raio `0,3` ficam a `0,3` da parede (menos a folga da corda nas quinas) e nunca a
+/// atravessam. O CONTROLO é um 2.º agente GRANDE: a malha dele é outra, o contorno dele também, e é
+/// esse contorno a mais que mostra ao artista porque é que ele não passa onde o pequeno passa.
+///
+/// **Mutações que devem sangrar:** `nav_mesh_marks` devolver vazio · o recuo esquecido (as paredes
+/// da malha do raio `0` encostam à parede real).
+#[test]
+fn a_area_andavel_desenha_um_contorno_por_raio() {
+    use ph2d_physics_ecs::{ProbeKind, ProbeShape, ProbeState};
+    let (mut sim, mut bridge, _quem) = cena_parede();
+    assert!(
+        bridge.nav_mesh_marks().is_empty(),
+        "antes do 1.º tique não há malha"
+    );
+    bridge.dispatch(&mut sim, true, 1);
+    let um = bridge.nav_mesh_marks();
+    assert!(
+        um.len() >= 8,
+        "a parede e a região dão um contorno: {} troços",
+        um.len()
+    );
+    for m in &um {
+        assert_eq!(m.kind, ProbeKind::NavEdge);
+        assert_eq!(m.state, ProbeState::Idle);
+        let ProbeShape::Ray {
+            origin, dir, reach, ..
+        } = m.shape
+        else {
+            panic!("uma parede é um troço");
+        };
+        for t in [0.0, 0.5, 1.0] {
+            let p = [
+                origin[0] + dir[0] * reach * t,
+                origin[1] + dir[1] * reach * t,
+            ];
+            // ⚠️ A DISTÂNCIA ao rectângulo da parede e não uma caixa inflada: o recuo é em ARCO
+            // nas quinas (a 1.ª redacção usava cantos vivos e acusou um ponto a `0,302` da quina).
+            // A folga `0,02` é a da corda: o arco sai em troços com os vértices SOBRE ele, logo o
+            // meio de cada troço fica um pouco para dentro.
+            let fora = [(p[0].abs() - 0.3).max(0.0), (p[1].abs() - 4.0).max(0.0)];
+            let d = (fora[0] * fora[0] + fora[1] * fora[1]).sqrt();
+            assert!(
+                d >= 0.3 - 0.02,
+                "um troço do contorno do raio 0,3 entra na parede inflada: {p:?} a {d:.3}"
+            );
+        }
+    }
+    let _grande = agente(
+        &mut sim,
+        "Grande",
+        (-4.0, 3.0),
+        0.8,
+        NavTarget::Named(stable_name_id("Alvo")),
+    );
+    bridge.dispatch(&mut sim, true, 2);
+    let dois = bridge.nav_mesh_marks();
+    assert!(
+        dois.len() > um.len(),
+        "o agente GRANDE traz a malha dele: {} troços contra {}",
+        dois.len(),
+        um.len()
+    );
 }

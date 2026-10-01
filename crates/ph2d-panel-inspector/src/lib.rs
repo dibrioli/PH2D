@@ -39,6 +39,7 @@ mod event_hud;
 mod event_instance;
 mod event_joint;
 mod event_mesh3d;
+mod event_nav;
 mod event_ordering;
 /// ⭐⭐⭐ O despacho da secção PARALLAX (plano 24, W7).
 mod event_parallax;
@@ -86,6 +87,7 @@ mod paint_head;
 mod paint_optional;
 mod paint_optional_factory;
 mod paint_optional_movers;
+mod paint_optional_nav;
 /// ⭐ As molduras das DUAS secções do ABANÃO (suplente #25).
 mod paint_optional_shake;
 /// ⭐ As molduras das duas secções dos SUPLENTES — o RAY SENSOR (#21) e a ARMA.
@@ -114,6 +116,7 @@ mod populate_hud;
 /// ⭐⭐ O registo do CARTÃO de instância — irmão por assunto, ver o cabeçalho de lá.
 mod populate_instance;
 mod populate_mesh3d;
+mod populate_nav;
 mod populate_parallax;
 mod populate_particles;
 mod populate_path_follow;
@@ -154,6 +157,7 @@ mod sync_action_trigger;
 mod sync_counter_watch;
 mod sync_hud;
 mod sync_mesh3d;
+mod sync_nav;
 /// ⭐⭐⭐ A semente da secção PARALLAX (plano 24, W7) — ver o cabeçalho dela.
 mod sync_parallax;
 /// ⭐ A semente da secção PARTICLES — irmã do `sync_sections` por CAP de ficheiro.
@@ -268,9 +272,10 @@ pub use state_components::{
     set_current_inspector_action, set_current_inspector_action_trigger,
     set_current_inspector_audio, set_current_inspector_camera, set_current_inspector_counter_watch,
     set_current_inspector_emitter, set_current_inspector_factory, set_current_inspector_hud,
-    set_current_inspector_mesh3d, set_current_inspector_parallax, set_current_inspector_particles,
-    set_current_inspector_path_follow, set_current_inspector_projectile, set_current_inspector_ray,
-    set_current_inspector_script, set_current_inspector_sequence, set_current_inspector_shake,
+    set_current_inspector_mesh3d, set_current_inspector_nav, set_current_inspector_parallax,
+    set_current_inspector_particles, set_current_inspector_path_follow,
+    set_current_inspector_projectile, set_current_inspector_ray, set_current_inspector_script,
+    set_current_inspector_sequence, set_current_inspector_shake,
     set_current_inspector_statemachine, set_current_inspector_timer, set_current_inspector_topdown,
     set_current_inspector_tween, set_current_inspector_vida, set_current_inspector_weapon,
 };

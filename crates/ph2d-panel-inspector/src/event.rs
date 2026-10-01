@@ -68,6 +68,10 @@ pub(crate) fn apply_event(
     }
     // ⭐⭐⭐ A VIDA e o DANO (plano 28, W3) — ⭐ com estado de painel desde a W6: a resistência
     // aberta.
+    // ⭐⭐⭐ A NAVEGAÇÃO (plano 30, W4) — sem estado de painel.
+    if crate::event_nav::apply_nav_event(host, ev) {
+        return EventOutcome::Consumed;
+    }
     if crate::event_vida::apply_vida_event(state, host, ev) {
         return EventOutcome::Consumed;
     }

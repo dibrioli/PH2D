@@ -43,6 +43,9 @@ const TABLES: &[&str] = &[
     //    chaves de vinte e seis campos mais os avisos, e a `inspector_game.rs` já está perto do
     //    tecto. O corte é por ASSUNTO outra vez.
     "crates/ph2d-i18n/src/inspector_vida.rs",
+    // ⭐ **A QUINTA, pela mesma lei:** as secções NAV REGION e NAV AGENT (plano 30, W4) — a
+    //    região, o agente, as oito queixas e a leitura viva. O corte é por ASSUNTO.
+    "crates/ph2d-i18n/src/inspector_nav.rs",
 ];
 
 /// ⭐ As excepções, **com o mecanismo** — `(ficheiro relativo a src/, texto exacto, porquê)`.

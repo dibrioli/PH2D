@@ -149,7 +149,7 @@ impl crate::App {
         // MESMO quadro em que o botão é tocado.
         //
         // ⚠️ **Todas as máquinas leem a mesma fotografia**, tirada antes de qualquer uma avançar —
-        // ver o cabeçalho de [`state_machine_tick`]. Uma emissão desta fase chega a quem a escuta
+        // ver o cabeçalho de [`ph2d_app_components::state_machine_tick`]. Uma emissão desta fase chega a quem a escuta
         // no quadro SEGUINTE, que é o que fecha a classe dos laços sem um `if`.
         {
             let ouvidos: Vec<String> = self
@@ -158,7 +158,7 @@ impl crate::App {
                 .map(|s| s.name.to_string())
                 .collect();
             let nomes: Vec<&str> = ouvidos.iter().map(String::as_str).collect();
-            let anunciados = state_machine_tick::advance_machines(sim, &nomes);
+            let anunciados = ph2d_app_components::state_machine_tick::advance_machines(sim, &nomes);
             for sig in anunciados {
                 self.signals
                     .publish(ph2d_runtime::Signal::from_state_machine(

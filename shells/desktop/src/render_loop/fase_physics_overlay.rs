@@ -94,11 +94,12 @@ impl crate::App {
         // `ProbeShape::Ray` já desenha a linha, a ponta do alcance e o tique do acerto, e um segundo
         // pintor seria a segunda resposta a *como se desenha um raio*. As duas listas ficam
         // separadas na PONTE (dois escritores) e juntam-se AQUI, que é o que a shell é.
-        // ⭐ E o CAMINHO de cada agente de navegação (plano 30, W3), pelo mesmo pintor.
+        // ⭐ E o CAMINHO de cada agente de navegação (plano 30, W3) e a ÁREA ANDÁVEL (W4).
         let probes = [
             physics.player_probe_marks(),
             physics.ray_marks(),
             &physics.nav_marks(),
+            &physics.nav_mesh_marks(),
         ]
         .concat();
         ph2d_app_physics::overlay::outline::draw(

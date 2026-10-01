@@ -9,7 +9,7 @@ use crate::overlay::outline::tests::{camera, points, window};
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, SimWorld, Transform};
 use ph2d_physics_ecs::{
-    BodyKind, Collider, ColliderShape, ProbeKind, ProbeMark, ProbeState, RigidBody,
+    BodyKind, Collider, ColliderShape, ProbeKind, ProbeMark, ProbeShape, ProbeState, RigidBody,
 };
 
 /// A contagem DEFAULT do perfil — lida da porta, nunca escrita à mão.
@@ -323,6 +323,45 @@ fn um_raio_autorado_desenha_o_alcance_inteiro() {
     assert!(
         (drawn_px - want_px).abs() < 0.5,
         "o desenho mede o alcance INTEIRO: {drawn_px:.1} != {want_px:.1} px"
+    );
+}
+
+/// ⭐ **Uma parede da área andável é um troço LIMPO** (plano 30, W4) — duas pontas e nada mais.
+///
+/// ⚠️ Com os tiques de alcance de um raio, cada vértice de um contorno de dezenas de troços levava
+/// um traço perpendicular e o mapa saía picotado. O CONTROLO é o mesmo troço como CAMINHO de agente,
+/// que tem de continuar a levar a ponta (senão a régua passaria por um pintor que perdeu os tiques).
+///
+/// **Mutação que deve sangrar:** tirar o `&& m.kind != ProbeKind::NavEdge` do pintor.
+#[test]
+fn uma_parede_da_area_andavel_nao_leva_tiques() {
+    let sim = no_world();
+    let parede = ProbeMark {
+        kind: ProbeKind::NavEdge,
+        state: ProbeState::Idle,
+        shape: ProbeShape::Ray {
+            origin: [0.0, 0.0],
+            dir: [1.0, 0.0],
+            reach: 2.0,
+            hit: None,
+            skin: 0.0,
+        },
+    };
+    let caminho = ProbeMark::ray(ProbeKind::Path, [0.0, 0.0], [1.0, 0.0], 2.0, None, 0.0);
+    let d = probe_marks(true, &[parede, caminho], &sim, &camera(), window());
+    assert_eq!(d.len(), 2);
+    assert_eq!(
+        points(&d[0].0).len(),
+        2,
+        "a parede é UM troço: as duas pontas"
+    );
+    assert!(
+        points(&d[1].0).len() > 2,
+        "o CONTROLO: o caminho continua a levar a ponta"
+    );
+    assert!(
+        d[0].1[3] < d[1].1[3],
+        "o mapa é mais claro que o caminho, para não competir com ele"
     );
 }
 

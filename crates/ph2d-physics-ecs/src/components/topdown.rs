@@ -123,6 +123,19 @@ impl TopDownPlayer {
         }
     }
 
+    /// ⭐ **Passa a ser conduzido pela NAVEGAÇÃO** (plano 30, W4) — o teclado sai **sempre**, e a
+    /// direcção vira `Free` **só se ainda for a de fábrica** (um `FourWay` escolhido fica). A porta
+    /// mora aqui, ao lado dos dois enums, para quem a chama (a semente da paleta) não ter de nomear
+    /// um `DirectionMode` — ver `ph2d_app_physics::physics_seed::seed_nav_agent`.
+    pub fn conduzido_pela_navegacao(&mut self) {
+        let mut l = self.law();
+        l.default_controls = false;
+        if l.direction == DirectionMode::default() {
+            l.direction = DirectionMode::Free;
+        }
+        *self = Self::from_law(l);
+    }
+
     /// Os três enums, já traduzidos — atalho de leitura para o painel.
     #[must_use]
     pub fn modes(&self) -> (DirectionMode, Viewpoint, RotationMode) {

@@ -143,6 +143,8 @@ pub mod factory_edits;
 pub mod hud_edits;
 /// ⭐⭐⭐ **O vocabulário do CATAVENTO** (a rota B do `docs/3D/02.2`) — ver o cabeçalho dele.
 pub mod mesh3d_edits;
+/// ⭐⭐⭐ O vocabulário das secções NAV REGION e NAV AGENT (plano 30, W4).
+pub mod nav_edits;
 /// ⭐⭐⭐ **O vocabulário do RAIO** (suplente #21) — ver o cabeçalho dele.
 pub mod parallax_edits;
 pub mod particles_edits;

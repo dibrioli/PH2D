@@ -12,7 +12,11 @@ use ph2d_editor_core::statemachine_edits::StateMachineFieldEdit;
 pub(super) fn aplicar(sim: &mut SimWorld, edits: &[(u64, StateMachineFieldEdit)]) -> bool {
     let mut mexeu = false;
     for (bits, edit) in edits {
-        if super::inspector_statemachine::apply_statemachine_edit(sim.world_mut(), *bits, edit) {
+        if ph2d_app_components::statemachine_inspector::apply_statemachine_edit(
+            sim.world_mut(),
+            *bits,
+            edit,
+        ) {
             mexeu = true;
         }
     }

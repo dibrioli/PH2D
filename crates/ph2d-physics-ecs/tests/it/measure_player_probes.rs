@@ -116,7 +116,7 @@ fn measure_how_often_each_sensor_is_actually_cast() {
                 // (`ray_marks`), e as duas têm escritores diferentes. Um aqui seria a prova de que
                 // alguém as fundiu, e o `unreachable!` é o que torna essa separação uma ASSERÇÃO em
                 // vez de uma suposição.
-                ProbeKind::Sensor | ProbeKind::Path => {
+                ProbeKind::Sensor | ProbeKind::Path | ProbeKind::NavEdge => {
                     unreachable!(
                         "o censo do PLAYER nao pode conter um raio autorado nem um caminho"
                     )

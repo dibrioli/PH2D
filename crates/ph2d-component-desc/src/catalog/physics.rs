@@ -253,6 +253,26 @@ pub const DESCS: &[D] = &[
         "ph2d::physics::MaterialCombine",
         "component.material_combine.name",
     ),
+    // ⭐⭐⭐ **PORTAS 5 e 6 — a NAVEGAÇÃO** (plano 30, W4): *este objecto PERSEGUE* e *os agentes andam
+    // AQUI* são duas intenções do artista, e nenhuma é uma row que a §11 já pinte.
+    //
+    // ⭐⭐ **O agente REQUER o `TopDownPlayer`** (que por sua vez requer o `RigidBody`, e a cascata é
+    // recursiva): o agente PEDE e o mover ANDA — sem mover, a paleta entregaria um componente inerte.
+    // A semente dele desliga o teclado do mover (`physics_seed::seed_nav_agent`), senão os dois
+    // falariam ao mesmo tempo. ⛔ A região **não** pede companhia: ela é um rectângulo, e os
+    // obstáculos são os corpos estáticos que já existem.
+    pr(
+        "ph2d::physics::NavAgent",
+        "component.nav_agent.name",
+        &["ph2d::physics::TopDownPlayer"],
+    ),
+    D::authored(
+        "ph2d::physics::NavRegion",
+        "component.nav_region.name",
+        C::Physics,
+        O::ANY,
+        &[],
+    ),
     i("ph2d::physics::NoWallCling", "component.no_wall_cling.name"),
     i(
         "ph2d::physics::OneWayPlatform",
@@ -391,7 +411,11 @@ mod tests {
         //    dos dois movers: *este objecto OLHA* é uma intenção que o artista escolhe. ⛔ Mas,
         //    ao contrário deles, ela **não pede companhia**: um olho sem corpo vê na mesma, e
         //    está medido.
-        const PORTAS: [&str; 4] = [
+        // ⭐ **SEIS portas desde 2026-10-01** — as novas são a NAVEGAÇÃO (plano 30, W4): o agente
+        //    (*este objecto persegue*, e pede o mover junto) e a região (*os agentes andam aqui*).
+        const PORTAS: [&str; 6] = [
+            "ph2d::physics::NavAgent",
+            "ph2d::physics::NavRegion",
             "ph2d::physics::ProjectileMotion",
             "ph2d::physics::RaySensor",
             "ph2d::physics::RigidBody",

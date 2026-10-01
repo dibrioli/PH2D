@@ -95,6 +95,34 @@ pub fn seed_kinematic_controller_body(sim: &mut SimWorld, entity_bits: u64) {
     });
 }
 
+/// ⭐⭐ **UM AGENTE DE NAVEGAÇÃO FAZ O MOVER OUVI-LO** (plano 30, W4).
+///
+/// O agente PEDE e o mover ANDA: a navegação escreve a intenção no canal do `TopDownPlayer`, e a
+/// ponte **salta** um mover que ainda ouve o teclado (os dois falariam ao mesmo tempo). ⇒ o gesto de
+/// anexar o agente É a declaração *«este objecto é conduzido pela navegação»*, e a semente cumpre-a:
+///
+/// - `default_controls = false` — **sempre**, mesmo num mover já autorado: um agente com o teclado
+///   ligado não anda, e o Inspector diria *«turn off its Default Controls»* sobre um gesto cujo
+///   sentido único é esse;
+/// - a direcção passa a `Free` **só se ainda for a de fábrica** (`EightWay`): um caminho anda em
+///   qualquer ângulo, e oito rumos fariam o agente serrar à volta de uma diagonal — mas um artista que
+///   escolheu `FourWay` para um inimigo de grelha escolheu-o, e a semente não o desfaz.
+///
+/// ⚠️ **A cascata anexa o mover ANTES do agente** (o catálogo pede-o), logo quando esta semente corre
+/// o mover já está lá — e o corpo já é `Kinematic` (a semente dele).
+pub fn seed_nav_agent(sim: &mut SimWorld, entity_bits: u64) {
+    let entity = Entity::from_bits(entity_bits);
+    let Some(mut mover) = sim
+        .world()
+        .get::<ph2d_physics_ecs::TopDownPlayer>(entity)
+        .copied()
+    else {
+        return;
+    };
+    mover.conduzido_pela_navegacao();
+    sim.world_mut().entity_mut(entity).insert(mover);
+}
+
 /// A semente de um componente: recebe o mundo e os bits da entidade acabada de anexar.
 /// ⚠️ Estruturalmente IGUAL a `ph2d_app_components::component_seed::Seed`, e escrita aqui de
 /// propósito — nomear a outra família seria a aresta que a A1 cortou.
@@ -110,6 +138,7 @@ pub type Seed = fn(&mut SimWorld, u64);
 /// precise de nomear a outra.
 pub const COMPONENT_SEEDS: &[(&str, Seed)] = &[
     ("ph2d::physics::Collider", seed_attached_collider),
+    ("ph2d::physics::NavAgent", seed_nav_agent),
     (
         "ph2d::physics::PlatformPlayer",
         crate::inspector::player::seed_attached_player,

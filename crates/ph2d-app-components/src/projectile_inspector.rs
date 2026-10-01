@@ -28,7 +28,7 @@ use ph2d_physics_ecs::{BodyKind, ProjectileMotion, RigidBody};
 ///
 /// ⚠️ **Devolve as DUAS coisas de uma vez.** Perguntar «qual é o nome?» e «ele existe?» em duas
 /// varreduras seria duas respostas à mesma pergunta, e a segunda envelhece.
-fn nome_do_alvo(world: &World, id: u64) -> (String, bool) {
+pub(crate) fn nome_do_alvo(world: &World, id: u64) -> (String, bool) {
     if id == 0 {
         return (String::new(), false);
     }

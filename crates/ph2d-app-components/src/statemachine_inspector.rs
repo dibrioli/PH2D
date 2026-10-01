@@ -21,7 +21,7 @@ use ph2d_editor_core::statemachine_edits::{
 };
 
 /// **O instantâneo.** `None` para quem não tem o componente (ADR-0166).
-pub(crate) fn build_statemachine_info(
+pub fn build_statemachine_info(
     world: &World,
     bits: u64,
     selected_count: usize,
@@ -67,7 +67,7 @@ pub(crate) fn build_statemachine_info(
 }
 
 /// **Aplica uma edição.** `true` = o documento mudou.
-pub(crate) fn apply_statemachine_edit(world: &mut World, bits: u64, edit: &E) -> bool {
+pub fn apply_statemachine_edit(world: &mut World, bits: u64, edit: &E) -> bool {
     let e = Entity::from_bits(bits);
     let Some(mut m) = world.get_mut::<StateMachine>(e) else {
         return false;
@@ -177,5 +177,5 @@ fn escreve<T>(lista: &mut [T], i: u8, f: impl FnOnce(&mut T)) -> bool {
 }
 
 #[cfg(test)]
-#[path = "inspector_statemachine_tests.rs"]
+#[path = "statemachine_inspector_tests.rs"]
 mod tests;

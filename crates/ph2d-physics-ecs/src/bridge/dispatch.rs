@@ -317,5 +317,7 @@ impl PhysicsBridge {
         // ⭐ E a VIDA AGORA (plano 28, W3), pela mesma razão do eixo das roldanas: este é o único
         // ponto por onde as quatro saídas passam, logo o readout descreve o tique que o artista vê.
         self.publica_vidas(sim);
+        // ⭐ E o agente AGORA (plano 30, W4) — pela mesma razão, e pelo mesmo ponto.
+        self.publica_navegacao(sim);
     }
 }

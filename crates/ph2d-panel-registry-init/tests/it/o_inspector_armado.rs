@@ -44,6 +44,9 @@ use ph2d_editor_core::factory_edits::{
 };
 use ph2d_editor_core::hud_edits::InspectorHudInfo;
 use ph2d_editor_core::mesh3d_edits::InspectorMesh3dInfo;
+use ph2d_editor_core::nav_edits::{
+    InspectorNavAgent, InspectorNavInfo, InspectorNavRegion, NavAgora, NavAlvoModo, NavEstado,
+};
 use ph2d_editor_core::particles_edits::InspectorParticlesInfo;
 use ph2d_editor_core::path_follow_edits::InspectorPathFollowInfo;
 use ph2d_editor_core::projectile_edits::InspectorProjectileInfo;
@@ -1117,6 +1120,45 @@ fn arma_o_top20() {
         spin: 0.25,
         assado: true,
     }));
+    // ⭐⭐ A NAVEGAÇÃO (plano 30, W4) — a região E o agente no MESMO objecto, cada um no estado
+    // que pinta MAIS linhas: a região com a queixa mais longa · o agente em `Ponto` (duas
+    // linhas de alvo contra uma do `Objecto`), com o mover a ler o teclado (a queixa mais
+    // longa da escada), a leitura PARCIAL (a frase mais longa) com o raio DERIVADO (a linha
+    // a mais) e o relógio PARADO (a última linha condicional).
+    insp::set_current_inspector_nav(Some(InspectorNavInfo {
+        entity_bits: BITS,
+        region: Some(InspectorNavRegion {
+            half_w: 10.0,
+            half_h: 6.0,
+            obstacle_layers: 0,
+        }),
+        agent: Some(InspectorNavAgent {
+            alvo_modo: NavAlvoModo::Ponto,
+            alvo_nome: String::new(),
+            alvo_perdido: false,
+            alvo_ponto: [4.5, -2.25],
+            radius: 0.0,
+            arrive: 0.1,
+            repath: 0.5,
+            stuck_after: 1.0,
+            active: true,
+            on_arrived: "arrived".to_string(),
+            on_no_path: "no_path".to_string(),
+            on_stuck: "stuck".to_string(),
+            has_body: true,
+            has_mover: true,
+            mover_reads_keys: true,
+            has_platformer: false,
+            in_region: true,
+            agora: Some(NavAgora {
+                estado: NavEstado::Parcial,
+                restante: 12.5,
+                raio: 0.35,
+            }),
+        }),
+        clock_playing: false,
+        selected_count: selecionados(),
+    }));
 }
 
 /// **Desarma as 29 portas.** ⚠️ Sem isto a varredura de fábrica passaria a medir um Inspector
@@ -1136,6 +1178,7 @@ pub fn desarma_tudo() {
     insp::set_current_inspector_weapon(None);
     insp::set_current_inspector_vida(None);
     insp::set_current_inspector_mesh3d(None);
+    insp::set_current_inspector_nav(None);
     insp::set_current_inspector_name(None);
     insp::set_current_inspector_transform(None);
     insp::set_current_inspector_visibility(None);
@@ -1239,6 +1282,8 @@ pub const PORTAS: &[(&str, fn())] = &[
     ("parallax", || insp::set_current_inspector_parallax(None)),
     ("vida", || insp::set_current_inspector_vida(None)),
     ("mesh3d", || insp::set_current_inspector_mesh3d(None)),
+    // ⭐ A NAVEGAÇÃO (plano 30, W4): a região e o agente partilham UMA porta.
+    ("nav", || insp::set_current_inspector_nav(None)),
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────

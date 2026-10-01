@@ -449,6 +449,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.visibility_layer.name" => "Visibility Layer",
         "component.walk_surface.name" => "Walk Surface",
         "component.weapon_fire.name" => "Weapon",
+        "component.nav_agent.name" => "Nav Agent",
+        "component.nav_region.name" => "Nav Region",
         "component.damage.name" => "Damage",
         "component.health.name" => "Health",
         "component.health_bar.name" => "Health Bar",

@@ -341,3 +341,64 @@ com a timeline aberta **não é centrada na origem** (medido no FIM DE JOGO e na
 2. **O desvio entre agentes nasce ligado ou desligado?** (o Godot nasce desligado) — **recomendado ligado** para
    quem tem `NavAgent`, depois de a W5 medir o custo.
 3. **Navegação em PLATAFORMAS (saltos)** — plano próprio, quando pedir.
+
+---
+
+## §12 — W4 FEITA (2026-10-01): o artista monta um perseguidor sem tabela nenhuma
+
+**O que se consegue fazer agora:** *Add Component → Nav Agent* num objecto entrega um perseguidor
+que funciona — a cascata do catálogo acrescenta o `TopDownPlayer` (e o corpo cinemático, pela semente
+que o #25 pagou), e a semente do `NavAgent` desliga as setas do mover e põe-no em `Free`. O Inspector
+ganha **duas secções** (`Nav Region` · `Nav Agent`) com todos os campos dos dois componentes, as
+queixas da ponte ditas em voz alta, e a **leitura viva** do agente (*Moving · 3,25 m to go*,
+*Can't reach it · going to the nearest point*, *Arrived.*). O canvas desenha a **área andável**: um
+contorno por raio, e o do agente grande fecha a porta por onde o pequeno passa.
+
+### §12.1 — As decisões, cada uma com a medição
+
+| decisão | porquê (medido) |
+|---|---|
+| a leitura viva vem de um componente DERIVADO (`NavNow`, não registado) que a ponte publica no fim de todo `dispatch` | o precedente do `HealthNow`: zero canal novo na shell, e só escreve quando muda (sem passo de undo por quadro) |
+| as queixas do painel são o ESPELHO das condições em que a ponte SALTA o agente (sem corpo · sem mover · mover a ler o teclado · `PlatformPlayer` · desligado · sem alvo / alvo perdido · fora de região) | um agente que a ponte salta e o painel não acusa é o *«parado sem razão»* (Q12 da pesquisa); a ordem é da mais específica para a mais geral, e o gate liga TODAS as gerais ao mesmo tempo |
+| o modo `Objecto` tem DUAS faltas (`SemAlvo` vazio · `AlvoPerdido`) e o perdido vem primeiro | um nome que ninguém tem lê-se com o nome VAZIO (o painel não pode mostrar o texto de um hash); as curas são diferentes |
+| o alvo grava `Named(0)` para um nome vazio, nunca o hash de `""` | a convenção de «ninguém» desta casa |
+| a semente troca `EightWay` por `Free` **só** quando o modo é o de fábrica | o preço do 8-direcções, **medido** (`o_preco_do_oito_direccoes`): chega sempre, e paga `+3,3 %`–`+5,6 %` de caminho e `6`–`10` tiques; um `FourWay` escolhido pelo artista é respeitado |
+| o contorno da área andável é desenhado pelo MESMO pintor dos sensores (`ProbeKind::NavEdge`, apendado), sem tiques e mais claro que o caminho | um segundo pintor seria a segunda resposta a *«como se desenha uma linha de física»*; com os tiques do raio cada vértice picotava o mapa |
+| o contorno vive no overlay de física (`show_colliders`), **sem** interruptor próprio | ⚠️ **DIVERGÊNCIA do plano** (§4 dizia *Show Navigation*): o overlay de física já é a vista *«do que a física vê»*, os caminhos da W3 já moram lá, e um segundo interruptor seria a segunda resposta à mesma pergunta. A malha só existe para os raios que um agente pede — *a área andável é DE QUEM anda* |
+| `PROJECT_SCHEMA` `177 → 178`; registo da física `40 → 42`; `LIVE_SECTIONS` `43 → 45`; `ComponentEdit` `+1` (`Nav`) | a registação entra no MESMO commit que as secções (a lei `every_registered_physics_component_has_a_ui_writer`) |
+
+### §12.2 — O que a medição derrubou
+
+- **A cadeia da SHELL não tinha régua**: apagar `nav_inspector::apply_all(sim, nav)` deixava a suíte
+  inteira verde (os gates da ponte entram pela porta da família, ABAIXO da costura). ⇒ censo DERIVADO
+  `toda_fila_do_inspector_chega_ao_seu_apply` (shell): as **40** filas do `DrainOut` são todas tiradas
+  por um `take`, e os **19** parâmetros da `aplicar` do TOP-20 chegam todos a uma porta. Vale para
+  todas as secções, não só a nova.
+- **O raio AUTORADO não tinha régua** na ponte (a fixtura tinha `0`, o derivado): a metade foi escrita
+  antes da prova de mutação, que a teria acusado.
+- **A minha 1.ª régua do contorno tratava o recuo como cantos vivos** e acusou um ponto na quina
+  arredondada (a `0,302` da quina real): a régua é a DISTÂNCIA ao rectângulo, com a folga da corda.
+- **A catraca da shell** (`the_shell_only_shrinks`) cobrou `78` linhas: a cura foi **mudar a máquina de
+  estados da shell para a `ph2d-app-components`** (`state_machine_tick` + `statemachine_inspector`,
+  `556` linhas, os `11` testes contados antes e depois), com a isenção `State {n}` do HR-15 a viajar
+  com o ficheiro e o arnês de mutação de 15/09 reapontado (as âncoras dele casavam ZERO nos caminhos
+  velhos — a espécie MUDA).
+- **A 1.ª foto mostrou a secção `Nav Agent` dobrada** (a política do Inspector fecha toda secção viva
+  menos o Transform): a cena abre-a.
+
+### §12.3 — A prova
+
+Mutação **27 de 27** a sangrar, zero defeitos de arnês
+([`mutacao_navegacao_w4_2026-10-01.py`](ferramentas/mutacao_navegacao_w4_2026-10-01.py), por grupos
+`MUTA_G` porque a fatia tem prazo e a shell recompila). Gates novos: `a_ponte_publica_o_agente_agora` ·
+`o_preco_do_oito_direccoes` · `a_area_andavel_desenha_um_contorno_por_raio` (com o CONTROLO de dois
+raios) · `uma_parede_da_area_andavel_nao_leva_tiques` (com o CONTROLO do caminho) · `nav_edits_tests`
+(4) · `nav_inspector_tests` (6) · `a_seccao_nav_esta_viva` (7, com clique real) ·
+`escolher_um_agente_na_paleta_entrega_um_mover_que_o_ouve` · `toda_fila_do_inspector_chega_ao_seu_apply`
+(2). As réguas de elisão e de altura do Inspector medem as duas secções ARMADAS no estado que pinta mais
+linhas (`o_inspector_armado`).
+
+### §12.4 — ⏳ O que fica para as waves seguintes
+
+O desvio entre agentes (W5) · o mundo que muda, as portas, os verbos `Start/Stop Navigation`, o alvo
+*a tag mais perto* e a patrulha (W6) · custo por área e atalhos (W7) · a arena e o tutorial (W8).

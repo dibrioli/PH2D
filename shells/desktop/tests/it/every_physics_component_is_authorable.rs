@@ -24,7 +24,7 @@ use std::fs;
 /// rows de ZONA (*o que esta ÁREA faz a outros corpos*) do resto (*o que ESTE corpo é*),
 /// e o gate nasceu VERMELHO nomeando os seis componentes de área — o corte moveu os
 /// escritores para fora da lista. Foi a falha ALTA que a lista existe para produzir.
-const WRITERS: [&str; 13] = [
+const WRITERS: [&str; 14] = [
     "../../crates/ph2d-app-physics/src/physics_apply.rs",
     "../../crates/ph2d-app-physics/src/physics_area.rs",
     // ⚠️ **O nono chegou pelo mesmo caminho do quarto** (W-Surface): o cap de
@@ -78,6 +78,10 @@ const WRITERS: [&str; 13] = [
     "../../crates/ph2d-app-components/src/ray_inspector.rs",
     // ⭐ A VIDA e o DANO (plano 28, W3): o dreno das duas secções do Inspector.
     "../../crates/ph2d-app-components/src/vida_inspector.rs",
+    // ⭐ A NAVEGAÇÃO (plano 30, W4): o dreno das secções NAV REGION e NAV AGENT — registados no
+    // MESMO commit que ela, pela lição da vida (um registo sem secção é um órfão; uma secção sem
+    // registo é uma cópia de fábrica que nasce sem o componente).
+    "../../crates/ph2d-app-components/src/nav_inspector.rs",
 ];
 
 #[test]

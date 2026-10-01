@@ -45,8 +45,10 @@ prova() { # nome  crate  filtro
 
 LEI=crates/ph2d-ecs/src/state_machine.rs
 PORTA=crates/ph2d-ecs/src/rewind_runtime.rs
-PONTE=shells/desktop/src/render_loop/state_machine_tick.rs
-INSP=shells/desktop/src/render_loop/inspector_statemachine.rs
+# ⚠️ Os dois ficheiros mudaram-se para a `ph2d-app-components` em 2026-10-01 (catraca da shell, plano 30
+#    W4) — sem esta troca as âncoras deles casavam ZERO e o arnês abortava em `conta`.
+PONTE=crates/ph2d-app-components/src/state_machine_tick.rs
+INSP=crates/ph2d-app-components/src/statemachine_inspector.rs
 
 # ── W0: a reposição do vivo ao rebobinar ─────────────────────────────────────
 guarda "$PORTA"
@@ -95,26 +97,26 @@ restaura "$LEI"
 guarda "$PONTE"
 conta "$PONTE" "    ensure_runtime(world);" 1 || exit 1
 sed -i 's|^    ensure_runtime(world);$|    // MUTADO|' "$PONTE"
-prova "o vivo NASCE no primeiro avanco" ph2d-host-desktop "o_vivo_de_uma_maquina_nasce"
+prova "o vivo NASCE no primeiro avanco" ph2d-app-components "o_vivo_de_uma_maquina_nasce"
 restaura "$PONTE"
 
 guarda "$PONTE"
 conta "$PONTE" "    quem.sort_unstable_by_key(|(id, _)| *id);" 1 || exit 1
 sed -i 's|    quem.sort_unstable_by_key(\|(id, _)\| \*id);|    quem.reverse();|' "$PONTE"
-prova "a ORDEM e' a da IDENTIDADE (HR-5)" ph2d-host-desktop "duas_maquinas_anunciam_na_ordem"
+prova "a ORDEM e' a da IDENTIDADE (HR-5)" ph2d-app-components "duas_maquinas_anunciam_na_ordem"
 restaura "$PONTE"
 
 # ── W3: o painel ─────────────────────────────────────────────────────────────
 guarda "$INSP"
 conta "$INSP" "            m.transitions.retain(|t| t.from != k && t.to != k);" 1 || exit 1
 sed -i 's|            m.transitions.retain(\|t\| t.from != k \&\& t.to != k);|            // MUTADO|' "$INSP"
-prova "apagar um estado LEVA as setas que o apontavam" ph2d-host-desktop "apagar_um_estado_leva_as_setas"
+prova "apagar um estado LEVA as setas que o apontavam" ph2d-app-components "apagar_um_estado_leva_as_setas"
 restaura "$INSP"
 
 guarda "$INSP"
 conta "$INSP" "                if t.from > k {" 1 || exit 1
 sed -i 's|^                if t.from > k {$|                if false {|' "$INSP"
-prova "…e RECUA as que apontavam depois dele" ph2d-host-desktop "apagar_um_estado_leva_as_setas"
+prova "…e RECUA as que apontavam depois dele" ph2d-app-components "apagar_um_estado_leva_as_setas"
 restaura "$INSP"
 
 # ⚠️ **A 1.ª redacção desta mutação não mutava NADA** — ela punha `has_exit: true && m…`, e
@@ -123,7 +125,7 @@ restaura "$INSP"
 guarda "$INSP"
 conta "$INSP" ".any(|t| t.from as usize == i && !t.on.is_empty())" 1 || exit 1
 sed -i 's|.any(\|t\| t.from as usize == i \&\& !t.on.is_empty())|.any(\|t\| !t.on.is_empty())|' "$INSP"
-prova "o BECO e' derivado das setas DESTE estado" ph2d-host-desktop "um_estado_sem_seta_de_saida_e_um_beco"
+prova "o BECO e' derivado das setas DESTE estado" ph2d-app-components "um_estado_sem_seta_de_saida_e_um_beco"
 restaura "$INSP"
 
 # ── W4: a cena ───────────────────────────────────────────────────────────────

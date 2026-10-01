@@ -275,6 +275,7 @@ mod the_width_tool_owns_its_gesture;
 mod the_z_projection_reads_the_tree_after_the_sync;
 mod timeline_signal_emits_in_arrange_only;
 mod timeline_stamps_the_clock_direction;
+mod toda_fila_do_inspector_chega_ao_seu_apply;
 mod um_aperto_no_canvas_larga_o_teclado_do_painel;
 mod um_modal_aberto_tem_o_teclado_antes_da_cena_3d;
 mod um_roteiro_nunca_rouba_uma_tecla_do_editor;

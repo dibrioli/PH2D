@@ -528,6 +528,8 @@ impl crate::App {
     /// por ele, e o roteiro manda olhar para a linha que dobra nos cantos.
     pub(crate) fn nav_smoke(&mut self) {
         if self.components.smokes.nav {
+            self.components.smokes.nav_raise =
+                self.levanta_o_inspector(self.components.smokes.nav_raise);
             return;
         }
         let Some(v) = std::env::var_os("PH2D_NAV_SMOKE") else {
@@ -537,12 +539,22 @@ impl crate::App {
         let Some(cx) = self.components_ctx() else {
             return;
         };
-        let _ = ph2d_app_components::nav_smoke::montar(cx.sim.world_mut(), nivel);
+        let montada = ph2d_app_components::nav_smoke::montar(cx.sim.world_mut(), nivel);
         self.components.smokes.nav = true;
+        self.components.smokes.nav_raise = crate::components_scenes::LEVANTA_O_INSPECTOR;
         self.timeline.flags.simulate_physics = true;
         self.show_colliders = true;
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            hero.panel_visibility.insert("inspector", true);
             crate::components_scenes::abre_a_regua_da_corrida(hero);
+            // ⭐ O ROXO escolhido (W4): a leitura viva dele — *«can't reach it»* — é o que explica a
+            // espera atrás da parede, e a secção é o passo do roteiro.
+            hero.gizmo.selection = Some(montada.roxo.to_bits());
+            hero.gizmo.extra_selection.clear();
+            // ⚠️ E ABERTA: a política do Inspector fecha toda secção viva menos o Transform, e a
+            // 1.ª foto mostrou a Nav Agent dobrada — o passo do roteiro ficava atrás de um clique.
+            let sec = ph2d_editor_core::ids::INSP_LIVE_NAV_AGENT_SECTION;
+            hero.store.set_collapsed(sec, false);
         }
         self.playhead.rewind();
         self.playhead.play();

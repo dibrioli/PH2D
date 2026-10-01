@@ -158,7 +158,7 @@ fn o_estado_corrente_vem_do_vivo() {
     let (mut sim, bits) = cena();
     let i = build_statemachine_info(sim.world(), bits, 1, true).unwrap();
     assert_eq!(i.current, None, "o vivo ainda nao nasceu");
-    crate::render_loop::state_machine_tick::advance_machines(&mut sim, &["botao"]);
+    crate::state_machine_tick::advance_machines(&mut sim, &["botao"]);
     let i = build_statemachine_info(sim.world(), bits, 1, true).unwrap();
     assert_eq!(
         i.current,

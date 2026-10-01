@@ -127,5 +127,13 @@ pub const INSP_LIVE_HEALTH_BAR_SECTION: NodeId = hash_node_id("insp_live_health_
 pub const INSP_LIVE_HEALTH_BAR_GRIP: NodeId = hash_node_id("insp_live_health_bar_grip");
 /// A pega de arrasto da secção LIVE MESH (o catavento).
 pub const INSP_LIVE_MESH3D_GRIP: NodeId = hash_node_id("insp_live_mesh3d_grip");
+/// O cabeçalho dobrável da secção NAV REGION — onde os agentes andam (plano 30, W4).
+pub const INSP_LIVE_NAV_REGION_SECTION: NodeId = hash_node_id("insp_live_nav_region_section");
+/// A pega de arrasto da secção NAV REGION.
+pub const INSP_LIVE_NAV_REGION_GRIP: NodeId = hash_node_id("insp_live_nav_region_grip");
+/// O cabeçalho dobrável da secção NAV AGENT — quem acha o caminho sozinho (plano 30, W4).
+pub const INSP_LIVE_NAV_AGENT_SECTION: NodeId = hash_node_id("insp_live_nav_agent_section");
+/// A pega de arrasto da secção NAV AGENT.
+pub const INSP_LIVE_NAV_AGENT_GRIP: NodeId = hash_node_id("insp_live_nav_agent_grip");
 /// Quantas opções o segmentado do ONDE tem — a porta que o painel lê para repartir a largura.
 pub const INSP_FACTORY_WHERE_LEN: usize = 3;

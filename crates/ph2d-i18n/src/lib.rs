@@ -96,6 +96,7 @@ mod inspector;
 /// da `inspector.rs`: com os 151 braços destes lá dentro ela passava o tecto de 700 LOC do HR-18,
 /// e um corte por ASSUNTO é o que esse tecto pede.
 mod inspector_game;
+mod inspector_nav;
 mod inspector_player;
 mod inspector_vida;
 mod model3d;
@@ -508,6 +509,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| inspector::tr(k))
             .or_else(|| inspector_game::tr(k))
             .or_else(|| inspector_vida::tr(k))
+            .or_else(|| inspector_nav::tr(k))
             .or_else(|| inspector_player::tr(k))
             .or_else(|| audio::tr(k))
             .or_else(|| grid_snap::tr(k))

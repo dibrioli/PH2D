@@ -275,7 +275,7 @@ pub(super) fn paint_mass_source(
 /// its own — what it MEANS is the row it occupies in the world matrix, and that
 /// is where the naming belongs. Naming them here would be a second place to
 /// keep names in sync with a matrix that does not know about them.
-const LAYER_LABELS: [&str; 8] = ["0", "1", "2", "3", "4", "5", "6", "7"];
+pub(crate) const LAYER_LABELS: [&str; 8] = ["0", "1", "2", "3", "4", "5", "6", "7"];
 
 /// Sensor toggle labels, indexed by `is_sensor as u8`: `0` a solid collider,
 /// `1` a sensor (trigger).

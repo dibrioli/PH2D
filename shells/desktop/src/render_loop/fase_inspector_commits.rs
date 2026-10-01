@@ -69,6 +69,8 @@ pub(super) struct InspectorIntents {
     pub(super) weapon_edits: Vec<(u64, ph2d_editor_core::weapon_edits::WeaponFieldEdit)>,
     /// ⭐⭐⭐ As edições das secções HEALTH e DAMAGE (plano 28, W3).
     pub(super) vida_edits: Vec<(u64, ph2d_editor_core::vida_edits::VidaFieldEdit)>,
+    /// ⭐⭐⭐ As edições das secções NAV REGION e NAV AGENT (plano 30, W4).
+    pub(super) nav_edits: Vec<(u64, ph2d_editor_core::nav_edits::NavFieldEdit)>,
     pub(super) mesh3d_edits: Vec<(u64, ph2d_editor_core::mesh3d_edits::Mesh3dFieldEdit)>,
     /// ⭐⭐⭐ As edições da secção TWEEN (suplente #22).
     pub(super) tween_edits: Vec<(u64, ph2d_editor_core::tween_edits::TweenFieldEdit)>,
@@ -163,6 +165,7 @@ impl crate::App {
             parallax_edits,
             weapon_edits,
             vida_edits,
+            nav_edits,
             mesh3d_edits,
             tween_edits,
             path_follow_edits,
@@ -271,6 +274,7 @@ impl crate::App {
             &parallax_edits,
             &weapon_edits,
             &vida_edits,
+            &nav_edits,
             &mesh3d_edits,
             &tween_edits,
             &path_follow_edits,

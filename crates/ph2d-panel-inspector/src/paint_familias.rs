@@ -91,6 +91,15 @@ pub(crate) fn push_familia_fisica<'a>(
             )
         },
     );
+    // ⭐⭐⭐ A NAVEGAÇÃO (plano 30, W4) — família FÍSICA pelo catálogo, a última a chegar a ela.
+    crate::paint_optional_nav::push_nav_sections(
+        plano,
+        store,
+        inner_x,
+        inner_w,
+        header_h,
+        snaps.nav_info.as_ref(),
+    );
 }
 
 /// ⭐ **LÓGICA** (família `11` de 16), primeira metade — *o que faz um jogo acontecer sem uma

@@ -16,6 +16,7 @@
 //! ⛔ **Nunca subir o número do cap: ele só desce.**
 
 use ph2d_editor_core::mesh3d_edits::InspectorMesh3dInfo;
+use ph2d_editor_core::nav_edits::InspectorNavInfo;
 use ph2d_editor_core::parallax_edits::InspectorParallaxInfo;
 use ph2d_editor_core::particles_edits::InspectorParticlesInfo;
 use ph2d_editor_core::path_follow_edits::InspectorPathFollowInfo;
@@ -123,6 +124,15 @@ pub fn set_current_inspector_weapon(info: Option<InspectorWeaponInfo>) {
 
 pub(crate) fn current_inspector_weapon() -> Option<InspectorWeaponInfo> {
     CURRENT_INSPECTOR_WEAPON.with(|c| c.borrow().clone())
+}
+
+/// Publica o instantâneo das secções NAV REGION e NAV AGENT (plano 30, W4).
+pub fn set_current_inspector_nav(info: Option<InspectorNavInfo>) {
+    CURRENT_INSPECTOR_NAV.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_nav() -> Option<InspectorNavInfo> {
+    CURRENT_INSPECTOR_NAV.with(|c| c.borrow().clone())
 }
 
 /// Publica o instantâneo das secções HEALTH e DAMAGE (plano 28, W3).
@@ -274,6 +284,10 @@ thread_local! {
     static CURRENT_INSPECTOR_WEAPON:
         std::cell::RefCell<Option<InspectorWeaponInfo>> = const { std::cell::RefCell::new(None) };
     /// ⭐⭐⭐ **O snapshot das secções HEALTH e DAMAGE** (plano 28, W3).
+    /// ⭐⭐⭐ **O snapshot das secções NAV** (plano 30, W4) — carrega a leitura VIVA do agente, logo
+    /// a shell reescreve-o todo o quadro.
+    static CURRENT_INSPECTOR_NAV:
+        std::cell::RefCell<Option<InspectorNavInfo>> = const { std::cell::RefCell::new(None) };
     static CURRENT_INSPECTOR_VIDA:
         std::cell::RefCell<Option<InspectorVidaInfo>> = const { std::cell::RefCell::new(None) };
     /// ⭐⭐⭐ **O snapshot da secção LIVE MESH** (o CATAVENTO, `docs/3D/02.2` rota B).

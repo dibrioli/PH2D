@@ -13,11 +13,14 @@
 //! desligado — senão os dois falam ao mesmo tempo. ⛔ Um mover próprio da navegação seria uma
 //! segunda lei de aceleração e de deslize, e a do #13 já foi medida contra o oráculo.
 //!
-//! # ⛔ Ainda NÃO registados (e a ausência é a lei da casa)
+//! # ⭐ Registados desde a W4, no MESMO commit que as secções do Inspector
 //!
-//! Um componente registado sem quem o escreva no Inspector é um campo que o artista não alcança
-//! (gate `every_registered_physics_component_has_a_ui_writer`). Eles entram no registo na W4, no
-//! mesmo commit que as secções do painel; até lá só as cenas os constroem.
+//! A lição da vida (plano 28, W3): a cópia de um molde leva **só o que está REGISTADO**, logo um
+//! componente por registar não é «ainda não gravável» — é invisível à fábrica, ao `Ctrl+Z` e ao
+//! ficheiro de uma vez. E registá-lo sem painel deixaria números no ficheiro que nenhuma linha deixa
+//! mexer (gate `every_registered_physics_component_has_a_ui_writer`). ⇒ os dois juntos.
+//!
+//! ⚠️ O [`NavNow`] **não** se regista, e a ausência é a lei: ele é DERIVADO da memória da ponte.
 
 use bevy_ecs::prelude::Component;
 use serde::{Deserialize, Serialize};
@@ -110,4 +113,25 @@ impl Default for NavAgent {
             on_stuck: String::new(),
         }
     }
+}
+
+/// ⭐⭐ **O agente AGORA** — o que a ponte publica no mundo no fim de cada `dispatch`, para quem não
+/// alcança a ponte: o Inspector (*«Moving · 3,2 m to go»*).
+///
+/// ⛔⛔ **DERIVADO e NÃO registado**, pelo precedente do `HealthNow`: a fonte é a memória da ponte,
+/// que vai no anel de checkpoints; registado, ele entraria no `.ph2dproj` e no `Ctrl+Z` como uma
+/// segunda resposta a *«onde está o agente no caminho?»*, e um undo devolveria o número de um
+/// instante com a ponte noutro.
+///
+/// ⚠️ **Ausente** antes do 1.º tique, e num agente que a ponte SALTA (sem corpo, sem mover, mover a
+/// ler o teclado) — *um número de outra corrida lido como o de agora é pior do que nenhum*, e é o
+/// Inspector que diz porquê.
+#[derive(Component, Clone, Copy, Debug, PartialEq)]
+pub struct NavNow {
+    /// O estado da condução.
+    pub status: ph2d_nav::Status,
+    /// O que falta andar pelo caminho, em metros.
+    pub remaining: f32,
+    /// O raio com que ele procura o caminho — o autorado, ou o DERIVADO do colisor quando é `0`.
+    pub radius: f32,
 }

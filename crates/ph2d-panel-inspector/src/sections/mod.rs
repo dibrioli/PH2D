@@ -86,6 +86,7 @@ pub(crate) mod lifecycle;
 mod material_blend;
 /// ⭐⭐⭐ A secção LIVE MESH — o CATAVENTO (`docs/3D/02.2`, rota B).
 pub(crate) mod mesh3d;
+pub(crate) mod nav;
 pub(crate) mod ordering;
 /// ⭐⭐⭐ A secção RAY SENSOR (suplente #21).
 pub(crate) mod parallax;

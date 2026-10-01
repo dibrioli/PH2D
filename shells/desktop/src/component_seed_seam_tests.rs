@@ -420,3 +420,58 @@ fn a_semente_nao_reescreve_um_corpo_que_o_artista_autorou() {
         "a semente reescreveu um corpo autorado"
     );
 }
+
+/// ⭐⭐⭐ **Escolher *Nav Agent* na paleta entrega um agente que ANDA** (plano 30, W4).
+///
+/// A cascata do catálogo traz o `TopDownPlayer` (que traz o `RigidBody`) e a semente do agente
+/// desliga o teclado do mover e solta a direcção — sem ela a ponte SALTA o agente (os dois falariam
+/// ao mesmo tempo) e o Inspector diria *«turn off its Default Controls»* sobre um gesto cujo único
+/// sentido é esse. ⚠️ **E a direcção de um mover já AUTORADO fica** (o CONTROLO).
+///
+/// **Mutações que devem sangrar:** tirar a entrada `NavAgent` da tabela · o catálogo deixar de pedir
+/// o mover · a semente reescrever um `FourWay` escolhido.
+#[test]
+fn escolher_um_agente_na_paleta_entrega_um_mover_que_o_ouve() {
+    use ph2d_topdown::direction::DirectionMode;
+    let mut sim = SimWorld::new();
+    let e = objecto_nu(&mut sim);
+    anexa(&mut sim, e, "ph2d::physics::NavAgent");
+    let m = sim
+        .world()
+        .get::<ph2d_physics_ecs::TopDownPlayer>(e)
+        .copied()
+        .expect("a cascata tem de ter trazido o mover");
+    assert!(
+        !m.default_controls,
+        "o mover de um agente não pode ouvir o teclado"
+    );
+    assert_eq!(
+        m.modes().0,
+        DirectionMode::Free,
+        "um caminho anda em qualquer ângulo"
+    );
+    assert_eq!(
+        tipo_do_corpo(&sim, e),
+        ph2d_physics_ecs::BodyKind::Kinematic
+    );
+    assert!(sim.world().get::<ph2d_physics_ecs::NavAgent>(e).is_some());
+
+    let mut sim = SimWorld::new();
+    let e = objecto_nu(&mut sim);
+    let quatro = ph2d_physics_ecs::TopDownPlayer {
+        direction_mode: ph2d_topdown::direction::to_wire(DirectionMode::FourWay),
+        ..Default::default()
+    };
+    sim.world_mut().entity_mut(e).insert(quatro);
+    anexa(&mut sim, e, "ph2d::physics::NavAgent");
+    let m = *sim
+        .world()
+        .get::<ph2d_physics_ecs::TopDownPlayer>(e)
+        .unwrap();
+    assert_eq!(
+        m.modes().0,
+        DirectionMode::FourWay,
+        "a semente reescreveu uma escolha do artista"
+    );
+    assert!(!m.default_controls, "…mas o teclado sai SEMPRE");
+}

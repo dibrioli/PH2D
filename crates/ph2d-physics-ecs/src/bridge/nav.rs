@@ -297,6 +297,91 @@ impl PhysicsBridge {
         out
     }
 
+    /// ⭐ **A ÁREA ANDÁVEL, como linhas** (plano 30, W4) — as paredes de cada malha construída, uma
+    /// por `(região, raio)`: a fronteira por onde o CENTRO de um agente daquele raio pode andar.
+    ///
+    /// ⚠️ **Uma malha por raio, logo um contorno por raio** — é isso que mostra porque o agente
+    /// GRANDE não passa a porta por onde o pequeno passa: o contorno dele fecha-a. E só há malha para
+    /// os raios que um agente pede, logo uma região sem agentes não desenha nada (*a área andável é
+    /// DE QUEM anda*).
+    #[must_use]
+    pub fn nav_mesh_marks(&self) -> Vec<crate::ProbeMark> {
+        let mut out = Vec::new();
+        for mesh in self.nav.meshes.values() {
+            for &(de, para) in mesh.walls() {
+                let a = mesh.vert(de);
+                let b = mesh.vert(para);
+                let a = [a[0] as f32, a[1] as f32];
+                let d = [b[0] as f32 - a[0], b[1] as f32 - a[1]];
+                let l = comprimento(d[0], d[1]);
+                if l <= 1e-6 {
+                    continue;
+                }
+                out.push(crate::ProbeMark {
+                    kind: crate::ProbeKind::NavEdge,
+                    state: crate::ProbeState::Idle,
+                    shape: crate::ProbeShape::Ray {
+                        origin: a,
+                        dir: [d[0] / l, d[1] / l],
+                        reach: l,
+                        hit: None,
+                        skin: 0.0,
+                    },
+                });
+            }
+        }
+        out
+    }
+
+    /// **Publica o agente AGORA no mundo** ([`crate::NavNow`]) — no fim de todo `dispatch`, pelas
+    /// quatro saídas dele, como a vida (o único ponto por onde todas passam).
+    ///
+    /// ⚠️ **Só escreve quando MUDA**, e quem a ponte não conduz perde o readout: um agente sem memória
+    /// (antes do 1.º tique, ou saltado por não ter mover) não tem número de agora.
+    pub(super) fn publica_navegacao(&self, sim: &mut SimWorld) {
+        let w = sim.world_mut();
+        let mut velhos: Vec<Entity> = Vec::new();
+        if let Some(mut q) = w.try_query::<(Entity, &crate::NavNow)>() {
+            velhos.extend(
+                q.iter(w)
+                    .filter(|(e, _)| !self.nav.agents.contains_key(e))
+                    .map(|(e, _)| e),
+            );
+        }
+        for e in velhos {
+            w.entity_mut(e).remove::<crate::NavNow>();
+        }
+        for (&e, rt) in &self.nav.agents {
+            let Some(b) = self.bodies.get(&e) else {
+                continue;
+            };
+            let Some(p) = self.world.body_pose(b.handle) else {
+                continue;
+            };
+            let pos = [f64::from(p.translation.x), f64::from(p.translation.y)];
+            let autorado = w.get::<NavAgent>(e).map_or(0.0, |a| a.radius);
+            let agora = crate::NavNow {
+                status: rt.status,
+                remaining: rt.remaining(pos) as f32,
+                radius: if autorado > 0.0 {
+                    autorado
+                } else {
+                    raio_que_envolve(&b.rest)
+                },
+            };
+            let Ok(mut em) = w.get_entity_mut(e) else {
+                continue;
+            };
+            match em.get_mut::<crate::NavNow>() {
+                Some(n) if *n == agora => {}
+                Some(mut n) => *n = agora,
+                None => {
+                    em.insert(agora);
+                }
+            }
+        }
+    }
+
     /// **As malhas andáveis construídas**, por região e raio (em metros) — o que o overlay desenha.
     pub fn nav_meshes(&self) -> impl Iterator<Item = (Entity, f32, &NavMesh)> {
         self.nav

@@ -122,7 +122,6 @@ pub(crate) mod inspector_instance;
 mod inspector_properties;
 mod inspector_slice;
 /// ⭐⭐⭐ O instantâneo e o dreno da secção STATE MACHINE (TOP-20 #15) — ver o cabeçalho.
-mod inspector_statemachine;
 /// ⭐⭐⭐ **A secção TAGS** (TOP-20 #9) — o snapshot e o commit, que é o único a tocar em DOIS
 /// documentos (o mundo e a árvore de tags).
 mod inspector_tags;
@@ -144,7 +143,6 @@ pub(crate) use ph2d_app_components::camera_2d::CameraSceneReport;
 #[path = "master_editing_for_tests.rs"]
 pub(crate) mod master_editing_for_tests;
 /// ⭐⭐⭐ **A ponte do cérebro autorável** (TOP-20 #15) — ver o cabeçalho dela.
-mod state_machine_tick;
 /// The joint-anchor point gizmo's publish rule — extracted from `snapshots` so
 /// "which entity gets a point handle" is gated headless.
 // ⭐ O `point_gizmo` MUDOU-SE para a crate da física (W2/L2 Fase C, handoff daquela fase): o laço

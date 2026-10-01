@@ -33,7 +33,7 @@ use super::*;
 /// ⚠️ `finish_section` lê `store.section_outline_color(<id da seção>)` para TODA seção viva, por
 /// isso uma seção ausente daqui tem um contorno que o passe de pintura está pronto a desenhar e
 /// gesto nenhum que o possa definir.
-pub const LIVE_SECTIONS: [(NodeId, NodeId); 43] = [
+pub const LIVE_SECTIONS: [(NodeId, NodeId); 45] = [
     (INSP_LIVE_NAME_SECTION, INSP_LIVE_NAME_GRIP),
     (INSP_LIVE_VISIBILITY_SECTION, INSP_LIVE_VISIBILITY_GRIP),
     (INSP_LIVE_TRANSFORM_SECTION, INSP_LIVE_TRANSFORM_GRIP),
@@ -121,6 +121,9 @@ pub const LIVE_SECTIONS: [(NodeId, NodeId); 43] = [
     // ⭐ A 43.ª — LIVE MESH (o CATAVENTO, `docs/3D/02.2` rota B), no mesmo commit que a secção,
     // pela lei do censo `architecture_every_live_section_is_in_the_table`.
     (INSP_LIVE_MESH3D_SECTION, INSP_LIVE_MESH3D_GRIP),
+    // ⭐ A 44.ª e a 45.ª — NAV REGION e NAV AGENT (plano 30, W4), no mesmo commit que as secções.
+    (INSP_LIVE_NAV_REGION_SECTION, INSP_LIVE_NAV_REGION_GRIP),
+    (INSP_LIVE_NAV_AGENT_SECTION, INSP_LIVE_NAV_AGENT_GRIP),
 ];
 
 /// Só os cabeçalhos — **projeção** de [`LIVE_SECTIONS`], nunca uma segunda lista.

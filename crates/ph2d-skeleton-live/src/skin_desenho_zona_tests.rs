@@ -486,3 +486,32 @@ fn com_a_junta_quase_recta_nao_sobra_meia_lua() {
         "sem o passe dos ganchos a união e a bola já o curam — o controlo deixou de medir o mecanismo"
     );
 }
+
+/// ⭐⭐ **GATE — com as duas juntas a dobrar NO MESMO SENTIDO não sobra a meia-lua** (F43-bis, report do
+/// dono de 2026-09-30 com foto: *«quase perfeito»*, uma meia-lua no lado de dentro, por cima da junta
+/// de cima). A varredura da F43 só dobrava a junta de cima ao CONTRÁRIO da de baixo; medida a outra
+/// metade (`60°`–`150°` × `−40°`–`10°`), o defeito vivia em `−10,5°` com a de baixo de `60°` a `84°` —
+/// a pose da foto. Ali a cúbica recua só no último `1,4 %` do parâmetro, abaixo da amostragem do
+/// passe, e quem o vê são as tangentes EXACTAS das pontas ([`ph2d_vec_boolean::gancho`]).
+///
+/// ⚠️ O CONTROLO: o desenho sem contacto vira `> 150°` em alguma pose da faixa.
+#[test]
+fn com_as_duas_juntas_no_mesmo_sentido_nao_sobra_meia_lua() {
+    let mut no_desenho = 0;
+    for primeira in [72.0_f32, 84.0] {
+        for passo in 14..=28_u16 {
+            let segunda = -0.5 * f32::from(passo);
+            let (sem, com) = braco_em(primeira, segunda);
+            no_desenho += usize::from(viragem_maxima(&sem) > 150.0);
+            let vira = viragem_maxima(&com);
+            assert!(
+                vira < ph2d_vec_boolean::overlap::PAREDE_MINIMA,
+                "({primeira}°, {segunda}°): um vértice da silhueta vira {vira:.1}° — sobrou a meia-lua"
+            );
+        }
+    }
+    assert!(
+        no_desenho >= 1,
+        "nenhuma pose dobra — a fixtura deixou de conter o fenómeno"
+    );
+}

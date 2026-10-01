@@ -79,10 +79,24 @@ fn hausdorff(a: &[P], b: &[P]) -> f64 {
     lado(a, b).max(lado(b, a))
 }
 
+/// A direcção de `a` para `b` — ou `None` se a distância for ruído que a PLACA não vê.
+///
+/// ⛔ **O limiar é a precisão do `f32` À ESCALA das coordenadas, nunca um epsilon absoluto:** quem
+/// desenha o traço é a placa, em `f32`, e uma alça a `1,2e-11` do nó (medido no assado, a `45°`, num
+/// desenho sem contacto) é o MESMO ponto para ela — o traçador usa a alça seguinte. Com o `1e-12` de
+/// antes, essa distância de arredondamento lia-se como uma tangente a apontar ao contrário, o passe
+/// «curava» um gancho que não existe e o desenho mudava fora do contacto
+/// (`numa_dobra_forte_o_desenho_nao_se_cruza`). O recuo real da F43-bis mede `8,8e-4`.
 fn dir(a: P, b: P) -> Option<P> {
     let (x, y) = (b[0] - a[0], b[1] - a[1]);
     let l = x.hypot(y);
-    (l > 1e-12).then(|| [x / l, y / l])
+    let escala = a[0]
+        .abs()
+        .max(a[1].abs())
+        .max(b[0].abs())
+        .max(b[1].abs())
+        .max(1.0);
+    (l > escala * f64::from(f32::EPSILON)).then(|| [x / l, y / l])
 }
 
 /// A Hermite de `p0` a `p3` com as tangentes unitárias `t0` (a sair) e `t3` (a chegar).
@@ -110,13 +124,26 @@ fn fim(c: &[P; 4]) -> Option<P> {
         .or_else(|| dir(c[0], c[3]))
 }
 
-/// **A cúbica DOBRA?** — a sequência «tangente de chegada ao nó de partida · os passos da cúbica
-/// amostrada · tangente de saída do nó de chegada» vira mais que [`VIRAGEM_DO_GANCHO`] em algum par
-/// seguido. `None` numa ponta = essa junção não conta (é quina do artista).
+/// **A cúbica DOBRA?** — a sequência «tangente de chegada ao nó de partida · a tangente EXACTA de
+/// partida · os passos da cúbica amostrada · a tangente EXACTA de chegada · tangente de saída do nó
+/// de chegada» vira mais que [`VIRAGEM_DO_GANCHO`] em algum par seguido. `None` numa ponta = essa
+/// junção não conta (é quina do artista).
+///
+/// ⛔⛔ **As tangentes exactas das pontas não são redundantes com as amostras** (F43-bis, report do
+/// dono de 2026-09-30, foto com a junta de cima a `10,5°` NO MESMO SENTIDO da de baixo): com a 2.ª
+/// alça EM CIMA do nó e a 1.ª `0,0009` ALÉM dele, a cúbica recua só no último `1,4 %` do parâmetro
+/// (`s < 0,0136`) — `32` amostras saltam-no, os passos leem-se todos no mesmo sentido, e o traço
+/// desenha a meia-lua sobre a tangente de chegada, que aponta ao CONTRÁRIO. Medido a `(84°, −10,5°)`.
 fn dobra(antes: Option<P>, c: &[P; 4], depois: Option<P>) -> bool {
     let pts = amostras(c);
     let passos = pts.windows(2).filter_map(|w| dir(w[0], w[1]));
-    let seq: Vec<P> = antes.into_iter().chain(passos).chain(depois).collect();
+    let seq: Vec<P> = antes
+        .into_iter()
+        .chain(inicio(c))
+        .chain(passos)
+        .chain(fim(c))
+        .chain(depois)
+        .collect();
     let limiar = VIRAGEM_DO_GANCHO.to_radians().cos();
     seq.windows(2)
         .any(|w| w[0][0] * w[1][0] + w[0][1] * w[1][1] < limiar)

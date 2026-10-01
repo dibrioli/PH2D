@@ -81,3 +81,44 @@ fn o_laco_dentro_da_cubica_sai() {
     ];
     assert!(!dobra(None, &c2, None), "o laço continua");
 }
+
+/// ⭐ **GATE — o recuo que só existe ABAIXO DA AMOSTRAGEM sai** (F43-bis, medido a `(84°, −10,5°)`, a
+/// foto do dono): a 2.ª alça em cima do nó e a 1.ª `0,0009` além dele — a cúbica recua só no fim do
+/// parâmetro (`s < 0,0054` aqui). O CONTROLO tem duas metades: o nó vira `180°`, e os passos das
+/// amostras NÃO o veem (nenhum par seguido vira mais que o limiar) — sem as tangentes exactas das
+/// pontas, o passe deixava-o ficar.
+#[test]
+fn o_recuo_mais_fino_que_a_amostragem_sai() {
+    let recuo = vec![
+        v([0.0, 0.0], [0.0, 0.0], [0.0, 0.0]),
+        v([1.0, 0.0], [1.0, 0.0], [1.0, 0.5009]),
+        v([1.0, 0.5], [1.0, 0.5], [1.0, 0.6]),
+        v([1.0, 1.0], [1.0, 0.9], [1.0, 1.0]),
+        v([0.0, 1.0], [0.0, 1.0], [0.0, 1.0]),
+    ];
+    assert!(
+        viragens(&recuo)[2] > 170.0,
+        "a fixtura deixou de ter o recuo"
+    );
+    let c = [
+        recuo[1].anchor,
+        recuo[1].out_handle,
+        recuo[2].in_handle,
+        recuo[2].anchor,
+    ];
+    let pts = amostras(&c);
+    let passos: Vec<P> = pts.windows(2).filter_map(|w| dir(w[0], w[1])).collect();
+    let limiar = VIRAGEM_DO_GANCHO.to_radians().cos();
+    assert!(
+        passos
+            .windows(2)
+            .all(|w| w[0][0] * w[1][0] + w[0][1] * w[1][1] >= limiar),
+        "as amostras já veem o recuo — a fixtura deixou de medir o que é mais fino que elas"
+    );
+    let curado = desfaz_os_ganchos(recuo, &[], 0.0035);
+    assert!(
+        viragens(&curado)[2] < 1.0,
+        "o recuo continua: {:?}",
+        viragens(&curado)
+    );
+}

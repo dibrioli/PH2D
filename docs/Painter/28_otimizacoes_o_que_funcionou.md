@@ -627,11 +627,19 @@ mudado, e **`~8,0` ms** depois (−35 %):
 | depósito nos planos | `4,4` | `2,0` | o acúmulo espera pela drenagem: o lote do quadro alcança a rota em BANDA |
 | Blur: mistura de volta | `1,66` | `0,11`–`0,17` | linhas disjuntas na equipa (ADR-0172, emenda) |
 | Blur: peso | `0,25` | `0,05`–`0,08` | idem |
-| Smear: campo | `~2,1` | `~2,1` | ⛔ fica: cada pingo lê o campo do anterior |
+| Smear: campo | `~2,1` | `~1,5` | as linhas de UM pingo em fatias de `4` na equipa (entre pingos a ordem fica) |
 
 ⚠️ *A rota em banda existia desde 2026-08-03 e era byte-idêntica — o que faltava era o LOTE*: a
 composição por quadro (2026-09-23) adiou a tela e deixou o depósito por evento, um pingo por camada,
 sempre abaixo do piso de uma divisão. Mecanismo e gates: ADR-0172 §«Emenda 2026-10-01».
+
+⭐ **E a segunda volta, pelo report *«não percebi melhorias»* (Size `0.5`):** a sonda corria em
+`--release` e o dono corre `--profile smoke`, onde a mesma pilha custava `14,4` ms contra `11,1` — o
+motor do pincel compilado em 16 pedaços. `[profile.smoke.package.ph2d-painter-brush] codegen-units =
+1` fecha o buraco, e o campo do esfregão passou a dividir as linhas de cada pingo (`810 → 152 µs` por
+pingo de raio `128,8`). Medido na APP com o rabisco automático (`PH2D_COMPOSITE_RABISCO=0.5` +
+`PH2D_PAINT_PERF=1`, tela virtual, `load ~10–20`): **`~40 → 52–55` fps**, pilha `~12` ms + `~5` do
+resto do quadro. ⏳ Faltam `~3` ms para os 60. Mecanismo: ADR-0172 §«Emenda 2026-10-01 (b)».
 
 ---
 

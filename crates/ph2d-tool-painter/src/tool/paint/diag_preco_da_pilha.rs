@@ -526,3 +526,71 @@ fn diag_preco_da_pilha() {
         }
     }
 }
+
+/// **ONDE VAI O QUADRO da pilha do dono num RABISCO** (30/09) — a composição por quadro do app
+/// (16 eventos por quadro), partida por fase e por operação. A pergunta: dos `~12,7 ms` por quadro,
+/// quanto é cada camada, e quanta ÁREA cada quadro compõe.
+#[test]
+#[ignore = "sonda de relógio: corre à mão, em --release e com a máquina calma"]
+fn diag_onde_vai_o_quadro_do_rabisco() {
+    use super::composite_acumulado::fases;
+    let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    println!("\n  ONDE VAI O QUADRO DO RABISCO   (load {})", carga.trim());
+    let dono = [
+        (CompositeOp::Blur, 1.0f32, 2.048f32),
+        (CompositeOp::Brush, 0.133, 0.574),
+        (CompositeOp::Brush, 0.204, 1.002),
+        (CompositeOp::Brush, 0.176, 1.221),
+        (CompositeOp::Smear, 0.596, 1.0),
+        (CompositeOp::Erase, 0.104, 1.0),
+    ];
+    let raio = super::brush_settings::size_norm_to_px(0.4);
+    let mut t = tela_de(SIZE, raio);
+    t.set_compor_por_quadro(true);
+    t.paint.composite_len = dono.len();
+    for (i, &(op, st, sz)) in dono.iter().enumerate() {
+        t.paint.composite[i] = CompositeLayer {
+            op,
+            strength: st,
+            size: sz,
+            ..CompositeLayer::default()
+        };
+    }
+    let _ = fases::take();
+    let _ = fases::take_ops();
+    let ini = std::time::Instant::now();
+    t.on_canvas_pointer(cp([512.0, 512.0], PointerPhase::Down));
+    let quadros = 30;
+    for i in 1..=quadros * 16 {
+        let s = i as f32 * 0.03;
+        t.on_canvas_pointer(cp(
+            [
+                512.0 + 300.0 * (1.3 * s).sin(),
+                512.0 + 260.0 * (0.9 * s).cos(),
+            ],
+            PointerPhase::Move,
+        ));
+        if i % 16 == 0 {
+            t.compoe_o_pendente();
+        }
+    }
+    t.on_canvas_pointer(cp([512.0, 512.0], PointerPhase::Up));
+    let total = ini.elapsed().as_secs_f64() * 1e3;
+    let (us, ev, area) = fases::take();
+    let ops = fases::take_ops();
+    let q = f64::from(quadros);
+    println!(
+        "  traço {total:.1} ms · {:.2} ms por quadro · {ev} composições",
+        total / q
+    );
+    for (i, nome) in ["pre", "acumular", "compor", "cópias"].iter().enumerate() {
+        println!("    {nome:10} {:7.2} ms/quadro", us[i] as f64 / 1e3 / q);
+    }
+    for (i, nome) in fases::OP_NOMES.iter().enumerate() {
+        println!(
+            "      compor/{nome:8} {:7.2} ms/quadro",
+            ops[i] as f64 / 1e3 / q
+        );
+    }
+    println!("    área composta média: {area:.0}");
+}

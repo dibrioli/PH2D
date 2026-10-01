@@ -53,6 +53,8 @@ pub struct ShapePass {
     handles: wgpu::Buffer,
     /// Os itens do eixo do traço de todas as geometrias ([`crate::eixo`]).
     eixo: wgpu::Buffer,
+    /// Os blocos de segmentos ([`crate::blocos`]), um por `SEGS_POR_BLOCO` de `segs`.
+    blocos: wgpu::Buffer,
     instances: Option<wgpu::Buffer>,
     /// As geometrias carregadas, pela ordem dos handles — o que a comparação de [`Self::set_geometries`] lê.
     carregadas: Vec<u32>,
@@ -121,6 +123,7 @@ impl ShapePass {
                 storage_entry(3),
                 storage_entry(4),
                 storage_entry(5),
+                storage_entry(6),
             ],
         });
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -168,6 +171,7 @@ impl ShapePass {
             segs: vazio("ph2d-shape-gpu segs"),
             handles: vazio("ph2d-shape-gpu handles"),
             eixo: vazio("ph2d-shape-gpu eixo"),
+            blocos: vazio("ph2d-shape-gpu blocos"),
             instances: None,
             carregadas: Vec::new(),
         }
@@ -191,7 +195,11 @@ impl ShapePass {
         let mut records: Vec<GeometryRecord> = Vec::with_capacity(v.len());
         let mut segs: Vec<[f32; 4]> = Vec::new();
         let mut eixo: Vec<crate::EixoItem> = Vec::new();
+        let mut blocos: Vec<crate::BlocoDeSegmentos> = Vec::new();
         for (_, g) in &v {
+            // ⚠️ O bloco `k` é `segs[8k..8k+8]` só se cada geometria começar num múltiplo de 8 —
+            // e começa, porque cada trecho dela foi completado ([`crate::blocos`]).
+            debug_assert!(segs.len().is_multiple_of(crate::SEGS_POR_BLOCO));
             let base = u32::try_from(segs.len()).expect("segmentos cabem em u32");
             let base_eixo = u32::try_from(eixo.len()).expect("itens do eixo cabem em u32");
             let mut r = g.record;
@@ -204,6 +212,7 @@ impl ShapePass {
             }
             records.push(r);
             segs.extend_from_slice(&g.segments);
+            blocos.extend_from_slice(&g.blocos);
             eixo.extend_from_slice(&g.eixo);
         }
         // ⛔ **Um item a mais quando não há eixo nenhum:** o mínimo do buffer é `16` bytes e um
@@ -217,6 +226,15 @@ impl ShapePass {
             gpu,
             "ph2d-shape-gpu eixo",
             bytemuck::cast_slice(&eixo),
+            wgpu::BufferUsages::STORAGE,
+        );
+        if blocos.is_empty() {
+            blocos.push(crate::BlocoDeSegmentos::default());
+        }
+        self.blocos = buffer_com(
+            gpu,
+            "ph2d-shape-gpu blocos",
+            bytemuck::cast_slice(&blocos),
             wgpu::BufferUsages::STORAGE,
         );
         self.records = buffer_com(
@@ -321,6 +339,10 @@ impl ShapePass {
                 wgpu::BindGroupEntry {
                     binding: 5,
                     resource: self.eixo.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: self.blocos.as_entire_binding(),
                 },
             ],
         });

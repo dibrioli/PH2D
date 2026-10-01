@@ -61,6 +61,17 @@ struct Eixo {
 @group(0) @binding(4) var<storage, read> handles: array<u32>;
 @group(0) @binding(5) var<storage, read> eixo: array<Eixo>;
 
+// Um bloco de `SEGS_POR_BLOCO` segmentos (`blocos.rs`): a caixa LOCAL e se é uma corrente ligada.
+struct Bloco {
+    caixa: vec4<f32>,
+    encadeado: u32,
+    _p0: u32,
+    _p1: u32,
+    _p2: u32,
+}
+const SEGS_POR_BLOCO: u32 = 8u;
+@group(0) @binding(6) var<storage, read> blocos: array<Bloco>;
+
 struct VsOut {
     @builtin(position) pos: vec4<f32>,
     // O afim local → pixel da cópia: (a, b, c, d) e a translação.
@@ -227,11 +238,40 @@ fn contribuicao(p0: vec2<f32>, p1: vec2<f32>, xy: vec2<f32>) -> f32 {
     return a * dy;
 }
 
+// A caixa no ECRÃ de uma caixa LOCAL `(x0, y0, x1, y1)`: o centro pelo afim e a meia-extensão
+// pelo valor absoluto dele — a mesma caixa que os quatro cantos dão, com uma transformação só.
+fn caixa_no_ecra(lin: vec4<f32>, t: vec2<f32>, c: vec4<f32>) -> vec4<f32> {
+    let m = aplica(lin, t, 0.5 * (c.xy + c.zw));
+    let h = 0.5 * (c.zw - c.xy);
+    let e = vec2<f32>(abs(lin.x) * h.x + abs(lin.z) * h.y, abs(lin.y) * h.x + abs(lin.w) * h.y);
+    return vec4<f32>(m - e, m + e);
+}
+
+// ⭐ doc 121 §9.3 — **a área por BLOCOS** (`blocos.rs`): um bloco acima, abaixo ou à direita do
+// pixel soma zero e salta-se; um todo à ESQUERDA e encadeado soma `clamp(y₀) − clamp(yₙ)` (a
+// contribuição de um segmento à esquerda é a faixa dele, e numa corrente ela telescopa); o resto,
+// segmento a segmento. `inicio` e `n` são múltiplos de `SEGS_POR_BLOCO`.
 fn area(inicio: u32, n: u32, lin: vec4<f32>, t: vec2<f32>, xy: vec2<f32>) -> f32 {
     var s = 0.0;
-    for (var i = 0u; i < n; i += 1u) {
-        let seg = segs[inicio + i];
-        s += contribuicao(aplica(lin, t, seg.xy), aplica(lin, t, seg.zw), xy);
+    let b0 = inicio / SEGS_POR_BLOCO;
+    let b1 = (inicio + n) / SEGS_POR_BLOCO;
+    for (var b = b0; b < b1; b += 1u) {
+        let bl = blocos[b];
+        let cx = caixa_no_ecra(lin, t, bl.caixa);
+        if cx.w <= xy.y || cx.y >= xy.y + 1.0 || cx.x >= xy.x + 1.0 {
+            continue;
+        }
+        let i0 = b * SEGS_POR_BLOCO;
+        if cx.z <= xy.x && bl.encadeado != 0u {
+            let p0 = aplica(lin, t, segs[i0].xy);
+            let p1 = aplica(lin, t, segs[i0 + SEGS_POR_BLOCO - 1u].zw);
+            s += clamp(p0.y - xy.y, 0.0, 1.0) - clamp(p1.y - xy.y, 0.0, 1.0);
+            continue;
+        }
+        for (var i = i0; i < i0 + SEGS_POR_BLOCO; i += 1u) {
+            let seg = segs[i];
+            s += contribuicao(aplica(lin, t, seg.xy), aplica(lin, t, seg.zw), xy);
+        }
     }
     return s;
 }
@@ -263,28 +303,40 @@ fn perp(u: vec2<f32>) -> vec2<f32> {
     return vec2<f32>(-u.y, u.x);
 }
 
-fn roda(v: vec2<f32>, ang: f32) -> vec2<f32> {
-    let c = cos(ang);
-    let s = sin(ang);
-    return vec2<f32>(c * v.x - s * v.y, s * v.x + c * v.y);
-}
-
-// Um leque de `centro` sobre o arco de `n0` a `alpha` radianos no sentido `dir`, com os passos que
-// mantêm a flecha do arco em `0,25 px` (a tolerância do Vello).
-fn leque(centro: vec2<f32>, n0: vec2<f32>, alpha: f32, dir: f32, r: f32, xy: vec2<f32>) -> f32 {
-    var passo_max = 3.14159265;
-    if r > 0.25 {
-        passo_max = 2.0 * acos(1.0 - 0.25 / r);
+// Um leque de `centro` sobre o arco de `n0` a `n_fim` (`cos_alpha` = o cosseno do ângulo entre
+// os dois, no sentido `dir`), com os passos que mantêm a flecha do arco em `0,25 px` (a tolerância
+// do Vello).
+//
+// ⭐ **Sem trigonometria no caso comum** (doc 121 §9.3): o passo máximo `2·acos(1 − 0,25/r)` cabe
+// num teste de COSSENO (`cos(2·acos q) = 2q² − 1`), e um arco que cabe num passo é o triângulo
+// `centro, n0, n_fim` — o fim já é conhecido, não se roda nada. Numa caneta de um pixel quase toda
+// junta é assim, e no proxy de telemóvel a junta redonda era o grosso do traço esticado. Quando o
+// arco pede `k > 1` passos, roda-se por UM par `cos/sin` (o passo) em vez de um por passo, e o
+// último ponto é `n_fim` exacto.
+fn leque(centro: vec2<f32>, n0: vec2<f32>, n_fim: vec2<f32>, cos_alpha: f32, dir: f32, r: f32, xy: vec2<f32>) -> f32 {
+    if r <= 0.25 {
+        return tri(centro, centro + n0, centro + n_fim, xy);
     }
+    let q = 1.0 - 0.25 / r;
+    if cos_alpha >= 2.0 * q * q - 1.0 {
+        return tri(centro, centro + n0, centro + n_fim, xy);
+    }
+    let alpha = acos(clamp(cos_alpha, -1.0, 1.0));
+    let passo_max = 2.0 * acos(q);
     let k = u32(clamp(ceil(alpha / max(passo_max, 1.0e-4)), 1.0, 64.0));
+    let ang = dir * alpha / f32(k);
+    let c = cos(ang);
+    let sn = sin(ang);
     var s = 0.0;
+    var v = n0;
     var p = centro + n0;
-    for (var j = 1u; j <= k; j += 1u) {
-        let q = centro + roda(n0, dir * alpha * f32(j) / f32(k));
-        s += tri(centro, p, q, xy);
-        p = q;
+    for (var j = 1u; j < k; j += 1u) {
+        v = vec2<f32>(c * v.x - sn * v.y, sn * v.x + c * v.y);
+        let w = centro + v;
+        s += tri(centro, p, w, xy);
+        p = w;
     }
-    return s;
+    return s + tri(centro, p, centro + n_fim, xy);
 }
 
 fn traco_do_eixo(inicio: u32, n: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32, xy: vec2<f32>) -> f32 {
@@ -304,13 +356,10 @@ fn traco_do_eixo(inicio: u32, n: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32,
         }
         let cab = eixo[inicio + i];
         let fim = i + 1u + cab._pad;
-        let c0 = aplica(lin, t, cab.a);
-        let c1 = aplica(lin, t, vec2<f32>(cab.b.x, cab.a.y));
-        let c2 = aplica(lin, t, vec2<f32>(cab.a.x, cab.b.y));
-        let c3 = aplica(lin, t, cab.b);
+        let cx = caixa_no_ecra(lin, t, vec4<f32>(cab.a, cab.b));
         let fb = cab.meia * caneta;
-        let blo = min(min(c0, c1), min(c2, c3)) - vec2<f32>(fb);
-        let bhi = max(max(c0, c1), max(c2, c3)) + vec2<f32>(fb);
+        let blo = cx.xy - vec2<f32>(fb);
+        let bhi = cx.zw + vec2<f32>(fb);
         if bhi.x < xa.x || blo.x > xb.x || bhi.y < xa.y || blo.y > xb.y {
             i = fim;
             continue;
@@ -385,7 +434,7 @@ fn peca_do_eixo(it: Eixo, lin: vec4<f32>, t: vec2<f32>, caneta: f32, xy: vec2<f3
             if dir == 0.0 {
                 dir = sign(n0.x * u.y - n0.y * u.x);
             }
-            return leque(b, n0, acos(dt), dir, r, xy);
+            return leque(b, n0, n1, dt, dir, r, xy);
         }
         return tri(b, b + n0, b + n1, xy);
     }
@@ -395,7 +444,7 @@ fn peca_do_eixo(it: Eixo, lin: vec4<f32>, t: vec2<f32>, caneta: f32, xy: vec2<f3
     }
     if it.ponta == 2u {
         let dir = sign(nr.x * u.y - nr.y * u.x);
-        return leque(b, nr, 3.14159265, dir, r, xy);
+        return leque(b, nr, -nr, -1.0, dir, r, xy);
     }
     return 0.0;
 }

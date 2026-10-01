@@ -395,8 +395,12 @@ fn sonda_relogio_das_estrelas_grandes() {
     let mut store = VecPathStore::default();
     let mut f = ph2d_vec_scene::star_rounded([0.0, 0.0], 0.5, 0.5, 8, 0.6, 0.08, 0.08);
     let modo = std::env::var("PH2D_SONDA_MODO").unwrap_or_default();
+    // `PH2D_SONDA_DENSO=1`: o arranjo DENSO da `=127` (estrela de `8 px`, contorno de `1 px`, o vão
+    // da cena) a encher o alvo — o regime em que o proxy de telemóvel ficou preso na placa (§9.3).
+    let denso = std::env::var("PH2D_SONDA_DENSO").is_ok_and(|v| v == "1");
     if modo != "fill" {
-        f.stroke = Some(StrokeSpec::new(Rgba8::new(20, 30, 90, 255), 0.06));
+        let w = if denso { 0.125 } else { 0.06 };
+        f.stroke = Some(StrokeSpec::new(Rgba8::new(20, 30, 90, 255), w));
     }
     let (ex, ey) = if modo == "conforme" {
         (1.04, 1.04)
@@ -405,17 +409,37 @@ fn sonda_relogio_das_estrelas_grandes() {
     };
     let h = store.push(f);
     let mut insts = Vec::new();
-    for i in 0..6 {
-        for j in 0..12 {
-            #[expect(clippy::cast_precision_loss, reason = "uma grelha pequena")]
-            let (x, y) = (-7.0 + 2.8 * i as f32, -7.5 + 1.3 * j as f32);
+    // denso: estrela de `0,25` unidades (`8 px` a `32 px`/unidade) e o vão da cena (`2 · 0,25 · 1,8`)
+    let (tam, vao, lado) = if denso {
+        (0.25_f32, 0.9_f32, 18)
+    } else {
+        (2.0, 0.0, 0)
+    };
+    let celulas: Vec<(f32, f32)> = if denso {
+        #[expect(clippy::cast_precision_loss, reason = "uma grelha pequena")]
+        (0..lado * lado)
+            .map(|k| {
+                (
+                    -7.8 + vao * (k % lado) as f32,
+                    -7.8 + vao * (k / lado) as f32,
+                )
+            })
+            .collect()
+    } else {
+        #[expect(clippy::cast_precision_loss, reason = "uma grelha pequena")]
+        (0..72)
+            .map(|k| (-7.0 + 2.8 * (k / 12) as f32, -7.5 + 1.3 * (k % 12) as f32))
+            .collect()
+    };
+    for (x, y) in celulas {
+        {
             insts.push(VectorInstance {
                 geometry_id: h,
                 texture_id: 0,
                 atlas_uv: [0.0, 0.0, 1.0, 1.0],
                 premultiplied: 0.0,
                 world_pos: [x, y],
-                size: [2.0 * ex, 2.0 * ey],
+                size: [tam * ex, tam * ey],
                 basis: [1.0, 0.0, 0.0, 1.0],
                 tint: [1.0, 0.8, 0.2, 1.0],
                 anchor: [0.0, 0.0],
@@ -439,6 +463,19 @@ fn sonda_relogio_das_estrelas_grandes() {
         quadro(&mut p, &mut geo);
     }
     let placa = t.elapsed().as_secs_f64() * 1e3 / f64::from(n);
+    // ⛔ doc 121 §9.3 — **um relógio sobre um passe que não desenhou é um número de NADA.** Com o
+    // shader partido (um erro de compilação só sai no registo do `wgpu`) esta sonda leu `0,005 ms`
+    // e saiu verde. ⇒ a camada cronometrada tem de ter tinta.
+    let tinta = le_a_camada(&gpu, &p)
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .filter(|px| px[3] > 0)
+        .count();
+    assert!(
+        tinta > 1000,
+        "o passe cronometrado nao desenhou ({tinta} px com tinta) -- o relogio mede nada"
+    );
     let mut cena = ph2d_vector::VectorScene::new();
     let janela = ph2d_vector::Rect::new(0.0, 0.0, f64::from(LADO), f64::from(LADO));
     crate::motion_shape_gen::encode(

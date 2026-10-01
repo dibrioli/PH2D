@@ -214,3 +214,49 @@ fn o_registo_tem_o_tamanho_do_shader() {
     assert_eq!(std::mem::size_of::<crate::ShapeInstance>(), 64);
     assert_eq!(std::mem::size_of::<crate::ShapeView>(), 32);
 }
+
+/// ⭐ doc 121 §9.3 — **Todo trecho começa e acaba num MÚLTIPLO do bloco, em todos os níveis.** O
+/// shader lê o bloco `k` como `segs[8k..8k+8]` e soma-o pelas PONTAS quando está todo à esquerda:
+/// um trecho desalinhado poria no mesmo bloco o fim do preenchimento e o começo do traço, e o
+/// preenchimento somaria segmentos do traço. As três espécies de trecho (preenchimento · marcas ·
+/// contorno) estão na fixtura, e há um bloco por cada `SEGS_POR_BLOCO` segmentos.
+#[test]
+fn todo_trecho_cai_em_blocos_inteiros() {
+    let bp = circulo();
+    let marca = circulo();
+    let st = Stroke::new(0.05);
+    let g = ShapeGeometry::prepare(&ShapeInput {
+        fill: Some((&bp, FillRule::NonZero)),
+        strokes: vec![StrokeInput {
+            path: &bp,
+            style: &st,
+            color: [0.0, 0.0, 0.0, 1.0],
+        }],
+        stroke_fills: vec![&marca],
+    })
+    .expect("desenha");
+    let b = crate::SEGS_POR_BLOCO as u32;
+    for nivel in 0..LEVELS {
+        let [fs, fc, ss, sc] = g.record.ranges[nivel];
+        let marcas = g.record.eixo[nivel][2];
+        for (nome, v) in [
+            ("inicio do preenchimento", fs),
+            ("preenchimento", fc),
+            ("inicio do traco", ss),
+            ("traco", sc),
+            ("marcas", marcas),
+        ] {
+            assert_eq!(
+                v % b,
+                0,
+                "nivel {nivel}: {nome} = {v} nao e' multiplo de {b}"
+            );
+        }
+        assert!(
+            fc > 0 && marcas > 0 && sc > marcas,
+            "controlo: as tres especies existem"
+        );
+    }
+    assert_eq!(g.segments.len() % crate::SEGS_POR_BLOCO, 0);
+    assert_eq!(g.blocos.len(), g.segments.len() / crate::SEGS_POR_BLOCO);
+}

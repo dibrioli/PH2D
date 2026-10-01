@@ -461,3 +461,90 @@ das estrelas alinhadas não voltou). Bate com as minhas fotos (`124`/`232` contr
 ⏳ **Por fazer:** W0 (a medição de partida, que a placa ocupada adiou) e W5 (medição de fecho em
 `release` + smoke do dono com formas e simulação com campos, fotografado antes) · os glifos do
 `source.text` · o tracejado no dispositivo.
+
+### §9.3 — A W5 mediu a escada e achou o PROXY DE TELEMÓVEL a perder (2026-09-30)
+
+A medição de fecho correu com [`mede_formas_na_placa.sh`](ferramentas/mede_formas_na_placa.sh): a
+MESMA build `release`, com e sem `PH2D_FORMAS_NA_PLACA`, numa tela virtual, cada célula só com
+`load < 4` (as três últimas janelas `[frame]` de 120 quadros). ⭐ **O A/B na mesma build É a W0:** a
+porta devolve as duas rotas ao caminho de antes da W1 byte a byte, logo a coluna «sem» é a partida.
+
+| placa | cena | objectos | quadro sem → com | CPU (encode) sem → com | Motion sem → com |
+|---|---|---:|---:|---:|---:|
+| RTX | escada, estrela | 4 096 | 16,65 → 16,65 | 4,61 → **3,69** | 1,35 → **0,94** |
+| RTX | escada, estrela | 16 384 | 16,68 → 16,65 | 6,08 → **3,30** | 2,55 → **0,82** |
+| RTX | escada, estrela | 32 768 | 16,67 → 16,63 | 9,49 → **2,88** | 4,32 → **0,64** |
+| RTX | `=127` densa | 16 384 | 16,67 → 16,67 | 6,37 → **3,24** | 1,77 → **0,80** |
+| iGPU | escada, estrela | 16 384 | 16,67 → 16,67 | 6,07 → **3,03** | 2,53 → **0,61** |
+| iGPU | escada, estrela | 32 768 | 18,34 → 16,68 | 14,28 → **2,71** | 6,46 → **0,56** |
+| iGPU | `=127` densa | 16 384 | **20,66 → 35,20** | 8,18 → 3,70 | 2,61 → 0,85 |
+
+⛔⛔ **A última linha é o achado: no proxy de telemóvel a cena densa ESTICADA ficou mais LENTA.** A
+CPU caiu para metade e o quadro subiu de `20,7` para `35,2 ms` — a decomposição do perfilador diz
+onde: `acquire(medido)` `12,1 → 31,3 ms`, ou seja a PLACA. ⚠️ (As células da escada a `4 096` na
+iGPU e a de `32 768` sem placa leram `load` a subir para `10`–`14` durante a corrida e ficam fora
+da tabela como sujas.)
+
+**A sonda isolou-o sem o app** (`sonda_relogio_das_estrelas_grandes`, agora com
+`PH2D_SONDA_DENSO=1` — o arranjo denso da `=127` num alvo de `512²`), e a pergunta seguinte
+alargou-o: **com estrelas GRANDES, na iGPU, até o preenchimento perdia.**
+
+| iGPU, ms (placa · Vello) | antes | blocos de segmentos | + leque sem trig. |
+|---|---|---|---|
+| 72 grandes, só preenchimento | `2,90` · `0,58` | `0,73` · `0,52` | `0,73` · `0,54` |
+| 72 grandes, contorno conforme | `6,31` · `0,99` | `1,67` · `0,91` | `1,70` · `0,90` |
+| 72 grandes, contorno esticado | `7,41` · `1,11` | `4,70` · `0,99` | idem |
+| 324 pequenas, contorno esticado | `2,51` · `2,16` | `2,21` · `2,18` | `2,08` · `2,25` |
+
+⭐ **A causa é a do §2: `pixels × segmentos`.** Numa forma pequena são poucos segmentos; numa
+grande são centenas em milhares de pixels, e o Vello não paga isso porque corta a forma em
+LADRILHOS. ⇒ **os blocos de segmentos** ([`blocos.rs`](../../crates/ph2d-shape-gpu/src/blocos.rs)):
+cada trecho (preenchimento · marcas · contorno) é completado até um múltiplo de `8` com segmentos
+de comprimento ZERO, e cada bloco de `8` leva a caixa local e se é uma CORRENTE ligada. No pixel:
+acima, abaixo ou à direita ⇒ soma zero, salta-se; **todo à esquerda e encadeado ⇒ a soma do bloco
+é `clamp(y₀) − clamp(yₙ)`** (a contribuição de um segmento à esquerda é a faixa dele, e numa
+corrente ela TELESCOPA) — duas leituras em vez de oito. A caixa no ecrã sai do centro e do valor
+absoluto do afim (uma transformação em vez de quatro), e o cabeçalho do eixo passou a usá-la.
+
+⭐ **E a junta redonda deixou de fazer trigonometria no caso comum:** o passo máximo do leque cabe
+num teste de COSSENO (`cos(2·acos q) = 2q² − 1`), e um arco de um passo é o triângulo
+`centro, n0, n1` — o fim já é conhecido. Numa caneta de um pixel quase toda junta é assim.
+
+⛔⛔ **RECUSA MEDIDA — a ÁRVORE de blocos no eixo** (cabeçalhos dentro de cabeçalhos, `≤ 8` no
+topo): **PIOROU** a estrela grande esticada na iGPU, `4,70 → 5,29 ms`. Um grupo de `64` peças
+consecutivas é um ARCO do contorno, e a caixa de um arco é gorda — cobre o interior da estrela, logo
+o pixel desce quase sempre e paga um nível de testes a mais. *A caixa de um bloco só poupa trabalho
+quando é FINA; agrupar blocos finos ao longo de uma curva dá caixas gordas.*
+
+**Gates:** [`blocos_tests`](../../crates/ph2d-shape-gpu/src/blocos_tests.rs) (o enchimento no
+último ponto · a caixa justa · a corrente partida lê `0`) · `todo_trecho_cai_em_blocos_inteiros`
+(as três espécies de trecho começam e acabam num múltiplo do bloco, em todos os níveis) · e o caso
+novo **«anéis even-odd»** na paridade com o Vello — a forma cujo preenchimento PARTE a corrente
+dentro de um bloco. ⚠️ A barra dele (`100`/`60`) é a das duas famílias de borda curva, e foi
+**medida igual ao último dígito com o laço ANTIGO** (alfa `61`, cor `53`, `4 239` px): o desvio é
+do aplanamento, não dos blocos. Com a corrente forçada a «ligada» o anel lê alfa **`245`**.
+
+**`SEGS_POR_BLOCO = 8` é MEDIDO na iGPU** (a varredura `8 · 16 · 32`, sonda, ms): estrelas grandes
+só preenchidas `0,73 · 0,75 · 1,35`, contorno conforme `1,67 · 1,91 · 3,82`, densas conformes
+`0,76 · 0,91 · 1,12` — acima de `8` a caixa engorda mais depressa do que os cabeçalhos poupam.
+
+⛔ **E a sonda de relógio mentia por omissão:** com o shader partido (um erro de compilação só sai
+no registo do `wgpu`) ela leu `0,005 ms` e saiu VERDE. Hoje ela lê a camada cronometrada de volta e
+reprova sem `> 1 000` px com tinta — *um relógio sobre um passe que não desenhou é um número de
+nada*.
+
+**Mutação `11` de `11` distintas** (arnês com pré-voo `12/12`, corridas LIMPAS verdes com `18` e `4`
+testes, restauro com `touch`): a corrente sempre «ligada» (o anel e o gate de unidade) · o salto
+pela direita e pela fileira apertados um pixel · o telescópio com o sinal trocado e a acabar no
+1.º segmento · a caixa no ecrã sem o valor absoluto · o preenchimento sem fechar o bloco (o gate dos
+trechos e a paridade) · o último bloco fora do laço · o leque num triângulo só, a rodar ao
+contrário, e a ponta redonda a fechar no ponto de partida. ⚠️ A `J1b` é a MESMA mutação da `J1`
+corrida sobre os gates da família do Motion e SOBREVIVE ali — nenhum deles tem uma junta redonda
+de ângulo grande; quem a mata é a paridade com o Vello.
+
+⏳ **ABERTO, com o número: na iGPU a forma GRANDE ainda perde para o Vello** — contorno conforme
+`1,67` contra `0,91 ms`, e **o contorno ESTICADO `4,7` contra `1,0`** (a eliminação por partes:
+`0,74` sem o eixo · `+1,42` os cabeçalhos dos blocos · `+1,09` as caixas das peças · `+1,44` a
+geometria delas). O custo por pixel continua `O(blocos)`, e a cura de fundo é a do Vello — cortar
+a cópia em LADRILHOS, uma passagem de cálculo antes do desenho. Na RTX a placa ganha em todas as
+células, e na cena densa do produto (`324` pequenas) a iGPU empata.

@@ -77,6 +77,17 @@ fn circulo() -> BezPath {
     Circle::new((0.0, 0.0), 0.5).to_path(0.1)
 }
 
+/// Um ANEL: dois círculos no mesmo caminho, lidos pela regra even-odd — o preenchimento tem DUAS
+/// correntes. ⚠️ doc 121 §9.3: os blocos de segmentos somam um bloco todo à esquerda do pixel pelas
+/// PONTAS da corrente, o que só vale se ela não partir dentro do bloco; o anel é a forma que parte.
+fn anel() -> BezPath {
+    let mut bp = Circle::new((0.0, 0.0), 0.5).to_path(0.1);
+    for el in Circle::new((0.0, 0.0), 0.28).to_path(0.1).elements() {
+        bp.push(*el);
+    }
+    bp
+}
+
 /// Uma cópia: posição, lado, ângulo e cor — e o ASPECTO (`altura / largura`), que é `1` numa cópia
 /// conforme e outra coisa sob escala NÃO uniforme (doc 121 W4).
 struct Copia {
@@ -516,6 +527,10 @@ fn barra(nome: &str) -> (u8, u8) {
     match nome {
         "circulos (curvas)" => (4, 60),
         "circulos isolados" => (100, 4),
+        // ⭐ doc 121 §9.3 — o anel junta as duas famílias de borda curva: o alfa dos isolados (a
+        // borda do furo é uma borda isolada) e a cor dos sobrepostos. MEDIDO igual ao último
+        // dígito com o laço ANTIGO (segmento a segmento): alfa `61`, cor `53`/`54`, `4 239` px.
+        "aneis even-odd (curvas)" => (100, 60),
         "estrela com traco" => (32, 8),
         // ⭐⭐ doc 121 W4 — o traço sob escala NÃO uniforme, contra a lei da casa. Ver `ESTICADO`.
         "circulo esticado com traco" | "zigue-zague esticado, redondo" => (100, 100),
@@ -548,7 +563,7 @@ const ESTICADO_FRACCAO_MAX: f64 = 0.05;
 #[test]
 #[ignore = "precisa de adapter de GPU"]
 fn o_passe_desenha_o_que_o_vello_desenha() {
-    let (est, pent, circ, zz) = (estrela(), pentagrama(), circulo(), zigue_zague());
+    let (est, pent, circ, zz, an) = (estrela(), pentagrama(), circulo(), zigue_zague(), anel());
     let casos: Vec<(&str, Forma<'_>, Vec<Copia>)> = vec![
         (
             "estrelas pequenas",
@@ -589,6 +604,16 @@ fn o_passe_desenha_o_que_o_vello_desenha() {
                 traco: None,
             },
             grelha_isolada(),
+        ),
+        (
+            "aneis even-odd (curvas)",
+            Forma {
+                bp: &an,
+                linha: None,
+                regra: FillRule::EvenOdd,
+                traco: None,
+            },
+            copias(60, 30.0, 400.0, 11),
         ),
         (
             "pentagrama even-odd",

@@ -90,8 +90,11 @@ pub struct GeometryRecord {
 /// Uma geometria pronta: o registo e os segmentos de todos os níveis, em espaço LOCAL.
 pub struct ShapeGeometry {
     pub record: GeometryRecord,
-    /// `[x0, y0, x1, y1]` por segmento.
+    /// `[x0, y0, x1, y1]` por segmento, cada trecho completado até um múltiplo de
+    /// [`crate::SEGS_POR_BLOCO`] ([`crate::blocos`]).
     pub segments: Vec<[f32; 4]>,
+    /// Um bloco por [`crate::SEGS_POR_BLOCO`] segmentos — o que o shader pergunta primeiro.
+    pub blocos: Vec<crate::BlocoDeSegmentos>,
     /// O eixo do traço de todos os níveis ([`crate::eixo`]).
     pub eixo: Vec<EixoItem>,
 }
@@ -122,6 +125,7 @@ impl ShapeGeometry {
             if let Some((bp, _)) = input.fill {
                 aplana_fechado(bp.iter(), tol, &mut segments, &mut caixa);
             }
+            crate::blocos::completa(&mut segments);
             let fill_count = conta(&segments) - fill_start;
             let stroke_start = conta(&segments);
             // As MARCAS primeiro: sob afim não conforme o shader lê-as sozinhas (o contorno
@@ -129,6 +133,7 @@ impl ShapeGeometry {
             for bp in &input.stroke_fills {
                 aplana_fechado(bp.iter(), tol, &mut segments, &mut caixa);
             }
+            crate::blocos::completa(&mut segments);
             let marcas = conta(&segments) - stroke_start;
             for s in &input.strokes {
                 // ⚠️ Metade do orçamento para a expansão e metade para o aplanamento: os dois
@@ -137,6 +142,7 @@ impl ShapeGeometry {
                     expand_stroke(s.path.iter(), s.style, &StrokeOpts::default(), tol * 0.5);
                 aplana_fechado(contorno.iter(), tol * 0.5, &mut segments, &mut caixa);
             }
+            crate::blocos::completa(&mut segments);
             let stroke_count = conta(&segments) - stroke_start;
             record.ranges[nivel] = [fill_start, fill_count, stroke_start, stroke_count];
             let eixo_start = conta_eixo(&itens);
@@ -175,6 +181,7 @@ impl ShapeGeometry {
         } | if tracejado { FLAG_SO_CONFORME } else { 0 };
         Some(Self {
             record,
+            blocos: crate::blocos::blocos_de(&segments),
             segments,
             eixo: itens,
         })

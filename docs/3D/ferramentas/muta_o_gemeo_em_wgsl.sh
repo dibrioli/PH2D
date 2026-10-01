@@ -88,9 +88,11 @@ muta shaders/tinta.wgsl \
 #    do registo), e elas sairam em 2026-09-24 COM a lei: o gemeo voltou a ler
 #    UM `lado` para a peca. Um plano graduado DESARMA na placa, e essa guarda
 #    tem gate puro (`um_plano_graduado_desarma`) e ancora no arnes da P2 (`P11`).
+# ⚠️ W2 re-ancorada em 01/10: o `f41733e31` (§7 do doc 29) partiu o `if` numa
+#    linha em quatro e a âncora antiga casava ZERO — quem o viu foi o pré-voo.
 muta shaders/tinta.wgsl \
-  'if (sub == 1u) { uv = vec2<f32>(bar.y, bar.y + bar.z); }' \
-  'if (false) { uv = vec2<f32>(bar.y, bar.y + bar.z); }' \
+  '        uv = vec2<f32>(bar.y, bar.y + bar.z);' \
+  '        uv = vec2<f32>(bar.y + bar.z, bar.z);' \
   'W2 as duas metades de um quad leem o mesmo (u,v)'
 
 muta shaders/tinta.wgsl \

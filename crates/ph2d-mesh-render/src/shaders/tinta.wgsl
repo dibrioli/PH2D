@@ -325,3 +325,53 @@ fn tinta_no_ponto4(pi: u32, p: vec3<f32>) -> TintaLida {
     t.g = t.g.x * gu + t.g.y * gv;
     return t;
 }
+
+// ⭐⭐⭐ **A NORMAL INCLINADA, e o HORIZONTE que ela não pode passar** — o gémeo
+// do `relevo_normal::inclina`, em espaço de VISTA e sem um único recurso: a
+// entrada da peça (`tinta_relevo_n`) só traz a normal e o gradiente para cá.
+//
+// ⛔⛔ **O horizonte é o report do dono de 01/10, 2.ª volta** (*«mesma ponta
+// vista de frente e inclinada»*): perto do contorno da peça a normal de base
+// já está quase de lado, e a ponta do traço inclina-a para FORA — passa o
+// horizonte (`z < 0`) e o `canvas_normal` vira-a INTEIRA (`n = -n`), que troca
+// também o lado para onde ela aponta no ecrã. A luz salta de uma borda do
+// matcap para a OPOSTA numa linha só: a meia-lua dura da foto. ⇒ a inclinação
+// é COMPRIMIDA antes do horizonte, de forma suave, e só quando desce abaixo da
+// base: quem não tem relevo (`corpo = 0`) sai sem um bit mudado.
+const TINTA_HORIZONTE_T: f32 = 0.25;
+const TINTA_HORIZONTE_K: f32 = 0.1;
+
+fn tinta_horizonte(n: vec3<f32>, nb: vec3<f32>) -> vec3<f32> {
+    var s = 1.0;
+    if (n.z < 0.0) {
+        s = -1.0;
+    }
+    let t = min(abs(n.z), TINTA_HORIZONTE_T);
+    let z = nb.z * s;
+    if (t <= 0.0 || z >= t) {
+        return nb;
+    }
+    let zmin = TINTA_HORIZONTE_K * t;
+    let zc = zmin + (t - zmin) * exp((z - t) / (t - zmin));
+    let r_old = length(nb.xy);
+    var xy = nb.xy;
+    if (r_old > 0.0) {
+        xy = nb.xy * (sqrt(max(1.0 - zc * zc, 0.0)) / r_old);
+    }
+    return vec3<f32>(xy, zc * s);
+}
+
+fn tinta_inclina(n_in: vec3<f32>, gv: vec3<f32>, corpo: f32) -> vec3<f32> {
+    let n = normalize(n_in);
+    let c = clamp(corpo, 0.0, 1.0);
+    if (c <= 0.0) {
+        return n;
+    }
+    let gs = gv - n * dot(n, gv);
+    let nb = n - c * gs;
+    let l = length(nb);
+    if (l <= 0.0) {
+        return n;
+    }
+    return tinta_horizonte(n, nb / l);
+}

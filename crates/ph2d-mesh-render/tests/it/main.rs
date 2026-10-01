@@ -22,6 +22,7 @@ mod measure_the_view_ruler_at_two_anchors;
 mod mede_o_que_a_composicao_ja_da_ao_catavento;
 mod probe_pick_round_trip;
 mod probe_wire_continuity;
+mod relevo_horizonte;
 mod tinta_no_device;
 mod tinta_paridade;
 mod tinta_relevo_no_device;

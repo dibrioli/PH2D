@@ -334,3 +334,62 @@ fn a_normal_do_relevo_nao_tira_derivadas_de_ecra() {
          a borda inclinada parte-se em estilhaços"
     );
 }
+
+/// As funções que `nome` chama, pelo IR (blocos aninhados incluídos).
+fn chamadas_de(module: &naga::Module, nome: &str) -> Vec<String> {
+    fn anda(b: &naga::Block, m: &naga::Module, out: &mut Vec<String>) {
+        for s in b.iter() {
+            match s {
+                naga::Statement::Call { function, .. } => {
+                    out.extend(m.functions[*function].name.clone());
+                }
+                naga::Statement::Block(x) => anda(x, m, out),
+                naga::Statement::If { accept, reject, .. } => {
+                    anda(accept, m, out);
+                    anda(reject, m, out);
+                }
+                naga::Statement::Loop {
+                    body, continuing, ..
+                } => {
+                    anda(body, m, out);
+                    anda(continuing, m, out);
+                }
+                _ => {}
+            }
+        }
+    }
+    let mut out = Vec::new();
+    if let Some((_, f)) = module
+        .functions
+        .iter()
+        .find(|(_, f)| f.name.as_deref() == Some(nome))
+    {
+        anda(&f.body, module, &mut out);
+    }
+    out
+}
+
+/// ⭐⭐ **GATE — a normal do relevo PASSA PELO HORIZONTE** (report do dono de
+/// 01/10, 2.ª volta: *«mesma ponta vista de frente e inclinada»*). A lei vive
+/// pura no `tinta_inclina`, conferida contra a CPU na placa; este é o ELO que
+/// a placa não vê — a entrada do produto chamá-la, e não refazer a conta à mão
+/// sem a compressão. O CONTROLO: a régua acha a chamada que o `fs_core_n`
+/// faz ao `canvas_normal`.
+#[test]
+fn a_normal_do_relevo_passa_pelo_horizonte() {
+    let src = crate::fonte::mesh_wgsl(true);
+    let module = naga::front::wgsl::parse_str(&src).expect("a fonte com tinta parsa");
+    assert!(
+        chamadas_de(&module, "fs_core_n").contains(&"canvas_normal".to_string()),
+        "CONTROLO: a régua não achou a chamada do fs_core_n ao canvas_normal"
+    );
+    assert!(
+        chamadas_de(&module, "tinta_relevo_n").contains(&"tinta_inclina".to_string()),
+        "o tinta_relevo_n deixou de chamar o tinta_inclina — a ponta vista de \
+         lado volta a virar a luz ao contrário"
+    );
+    assert!(
+        chamadas_de(&module, "tinta_inclina").contains(&"tinta_horizonte".to_string()),
+        "o tinta_inclina deixou de comprimir contra o horizonte"
+    );
+}

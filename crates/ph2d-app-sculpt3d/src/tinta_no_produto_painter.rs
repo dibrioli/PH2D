@@ -653,4 +653,13 @@ fn diag_o_relevo_visto_inclinado() {
         s.camera.pitch = pitch0 - dp;
         fotografa(&gpu, &mut s, dir.join(format!("{nome}.png")).as_os_str());
     }
+    // A 2.ª volta do report (*«mesma ponta vista de frente e inclinada»*): a
+    // vista RODADA de lado, que leva uma ponta do traço para junto do
+    // contorno da bola — é ali que a encosta passava o horizonte.
+    s.camera.pitch = pitch0;
+    let yaw0 = s.camera.yaw;
+    for (nome, dy) in [("relevo_ponta_dir", 1.0f32), ("relevo_ponta_esq", -1.0)] {
+        s.camera.yaw = yaw0 + dy;
+        fotografa(&gpu, &mut s, dir.join(format!("{nome}.png")).as_os_str());
+    }
 }

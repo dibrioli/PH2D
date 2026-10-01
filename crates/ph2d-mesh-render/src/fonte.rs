@@ -75,13 +75,9 @@ fn tinta_relevo_n(in: VsOut, g: vec3<f32>, corpo: f32) -> vec3<f32> {
         return n;
     }
     let gv = (m * vec4<f32>(g, 0.0)).xyz / escala;
-    let gs = gv - n * dot(n, gv);
-    let nb = n - clamp(corpo, 0.0, 1.0) * gs;
-    let l = length(nb);
-    if (l <= 0.0) {
-        return n;
-    }
-    return nb / l;
+    // ⚠️ A lei (gradiente de superfície + o HORIZONTE) mora no `tinta.wgsl`,
+    // pura e sem recursos: é por isso que a placa a confere contra a CPU.
+    return tinta_inclina(in.n_view, gv, corpo);
 }
 "#;
 

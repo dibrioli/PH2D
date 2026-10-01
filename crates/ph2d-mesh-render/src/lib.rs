@@ -41,6 +41,9 @@ mod pipeline;
 /// de topo (e não filho do `pipeline`) porque o GATE da paridade com o shader o
 /// lê por `include_str!` e o assunto é da MALHA, não do pipeline.
 mod pipeline_vertex_layout;
+/// ⭐ **A normal inclinada pelo relevo e o HORIZONTE** — o dono da lei que o
+/// `tinta.wgsl` repete; ver [`relevo_normal::inclina`].
+pub mod relevo_normal;
 mod shade;
 pub mod ssao;
 pub mod sss;

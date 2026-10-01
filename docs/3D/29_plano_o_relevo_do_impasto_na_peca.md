@@ -240,3 +240,55 @@ contínuo na nova: *uma régua cujo «defeito» inclui o desenho certo não deci
 encosta muito inclinada vêem-se as facetas da retícula como um traço em degraus —
 o mesmo detalhe que a cor tem a esse degrau. Curá-lo é interpolar gradientes por
 amostra (o análogo das normais por vértice), com o custo por medir.
+
+## 8. O HORIZONTE da normal inclinada (01/10, 2.ª volta, duas fotos)
+
+Report do dono: *«mesma ponta vista de frente e inclinada»* — de frente a ponta
+do traço é redonda e limpa; com a peça rodada até a ponta ficar junto ao
+contorno da bola, aparece uma meia-lua dura (escura por dentro, um fio claro por
+fora) exactamente na encosta da ponta.
+
+### 8.1 O mecanismo, lido no código antes da cura
+
+O `canvas_normal` do `mesh.wgsl` (`if (n.z < 0.0) { n = -n; }`) existe para uma
+casca vista por TRÁS acender como frente. Perto do contorno a normal de BASE já
+está quase de lado (`n.z` pequeno), e a encosta da ponta inclina-a para FORA da
+peça — passa o horizonte. O `canvas_normal` vira-a INTEIRA: o `z` volta positivo
+**e o `xy` troca de sinal**, ou seja a normal passa a apontar para o lado oposto
+no ecrã. O matcap e o rig lêem a luz do lado contrário numa linha só: é a
+meia-lua da foto. De frente a base tem `n.z ≈ 1` e nenhuma inclinação razoável
+chega ao horizonte — daí *«de frente bom, inclinado não»*. ⚠️ A cura da §7 tirou
+o ruído de ecrã e **deixou isto à vista**: os estilhaços de antes cobriam-no.
+
+### 8.2 A lei que fica
+
+`tinta_inclina` (WGSL, pura) = gradiente de superfície da §7 + `tinta_horizonte`,
+com o dono da lei em CPU em `ph2d_mesh_render::relevo_normal`:
+
+- o limiar sai da BASE: `t = min(|n.z|, T)`, `T = 0,25` (a ~14° do horizonte);
+- acima dele a normal inclinada passa INTACTA (o caminho da §7 ao bit);
+- abaixo, o `z` desce por `zc = zmin + (t − zmin)·exp((z − t)/(t − zmin))`, com
+  `zmin = K·t`, `K = 0,1` — toca o limiar com valor e declive iguais (sem vinco na
+  luz) e nunca atravessa `zmin > 0`; o `xy` reescala para comprimento 1 e
+  **mantém a direcção** no ecrã;
+- `corpo = 0` devolve a base inteira (sem o `nb/|nb|`, que erra um ULP e cairia
+  um ULP abaixo do limiar).
+
+⚠️ `T` e `K` não nomeiam recurso: são a FORMA da compressão, e dizê-lo é a única
+forma honesta (§0.0 do roteador).
+
+### 8.3 Gates e mutação
+
+| gate | o que afirma |
+|---|---|
+| `a_luz_nao_salta_na_ponta_vista_de_lado` | a régua do report: a encosta a crescer para fora sobre uma base quase de lado (`z = 0,05 · 0,15 · 0,3`), passos de `1e-3`; o maior salto da normal DEPOIS do `canvas_normal` fica `< 0,01`. CONTROLO: a lei da §7 salta `> 0,5` ali |
+| `a_normal_inclinada_nunca_passa_o_horizonte` | `200 000` entradas aleatórias, a saída fica do lado da base e unitária; CONTROLO: a lei da §7 cruza em mais de `2 %` delas |
+| `sem_corpo_ou_acima_do_limiar_nada_muda` | `corpo = 0` devolve a base AO BIT; acima do limiar a saída é a da §7 |
+| `a_compressao_toca_o_limiar_sem_vinco` | valor e declive contínuos em `z = t` |
+| `a_normal_do_relevo_passa_pelo_horizonte` (IR do `naga`) | o ELO: `tinta_relevo_n → tinta_inclina → tinta_horizonte`, com o CONTROLO de que a régua acha `fs_core_n → canvas_normal` |
+| `o_horizonte_le_o_mesmo_na_placa_e_na_cpu` (placa) | o gémeo em WGSL contra a CPU em `4 096` entradas, com o CONTROLO de que mais de `200` caem na compressão |
+
+Mutação: `6 de 6` sangram nos gates sem placa (o elo da entrada · o elo da
+compressão · a compressão desligada · o `corpo = 0` sem atalho · o declive do
+joelho · o chão negativo) e o CONTROLO sobrevive; a 7.ª (o `K` da placa diferente
+do da CPU) só a placa vê.

@@ -107,14 +107,17 @@ muta "$REN/fonte.rs" \
   '    let gv = (m * vec4<f32>(g, 0.0)).xyz / escala + 0.0 * dpdx(in.opos);' \
   'N5 a normal volta a tirar uma derivada de ECRÃ'
 
-muta "$REN/fonte.rs" \
-  '    let nb = n - clamp(corpo, 0.0, 1.0) * gs;' \
-  '    let nb = n - gs;' \
+# ⚠️ N6/N7 re-ancoradas em 01/10 (§8 do doc 29): a lei saiu do `fonte.rs` para
+#    o `tinta_inclina` do `tinta.wgsl`, e as âncoras antigas casavam ZERO — o
+#    pré-voo apanhou-as. O `corpo` lê-se agora numa linha só (`let c`).
+muta "$REN/shaders/tinta.wgsl" \
+  '    let c = clamp(corpo, 0.0, 1.0);' \
+  '    let c = 1.0;' \
   'N6 a espessura SEM tinta volta a acender (o anel do report anterior)'
 
-muta "$REN/fonte.rs" \
-  '    let nb = n - clamp(corpo, 0.0, 1.0) * gs;' \
-  '    let nb = n + clamp(corpo, 0.0, 1.0) * gs;' \
+muta "$REN/shaders/tinta.wgsl" \
+  '    let nb = n - c * gs;' \
+  '    let nb = n + c * gs;' \
   'N7 o relevo inclina a normal para o lado CONTRÁRIO'
 
 # ── O CONTROLO ───────────────────────────────────────────────────────────

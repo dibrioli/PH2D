@@ -6,7 +6,8 @@
 > **O que está VIVO aqui:** só o que ainda está **ABERTO** — os Bugs **#15**, **#11**, a **tinta
 > EMPURRADA** do #14, os dois achados abertos da varredura do #13, a **cegueira do #25** sob Simetria/Spray/Rough,
 > as **⛔ RECUSAS MEDIDAS do esfregão** (com a decisão do dono em aberto), e o **#24**, cujas duas causas
-> fecharam e cujo **resíduo do esfregão** continua atribuído e por curar. ⚠️ **O post-mortem do #24
+> fecharam e cujo **resíduo do esfregão** continua atribuído e por curar, e o **#29** (o impasto
+> pintado na peça 3D, fechado, aqui por ordem do dono de 2026-10-01). ⚠️ **O post-mortem do #24
 > fica AQUI e não no arquivo por ordem do dono** (*«precisamos de um doc para documentar essa
 > solução que me incomodava há muito tempo … documente com detalhes»*, 2026-09-21) — *ele é o único
 > desta lista cujas lições são sobre a RÉGUA e não sobre o produto, e são elas que a próxima caçada
@@ -50,6 +51,74 @@
 | 26 | O **Smudge da aquarela abria TRANSPARÊNCIA na borda da tela**: o arrasto da BASE (`smear_dab`) lia **transparente-zero** onde a origem `destino − passo` caía fora da tela, com o comentário *«é só a orla do dab, falloff ~0 — efeito nulo»* — verdade a meio da tela e **falso com o CENTRO do dab na borda**, onde o peso é cheio (`r = 24` da borda para dentro: `4 845` texels com alfa `< 255`, mínimo `178`). ⛔ **E o gate que existia AFIRMAVA o defeito:** o `wrapping_smear_…` usava o caminho sem Tiling como CONTROLO e escrevia *«(the bug)»* ao lado, exigindo o alfa a cair. Os outros dois arrastos da casa (o Smear digital e a camada Smear da pilha) já liam PRESO à borda (`bilinear_clamped`) e davam **zero** no mesmo traço — *a mesma pergunta tinha duas respostas em dois motores*. Cura: o eixo sem Tiling faz `clamp` (lê o pixel da borda); o gate do núcleo separa as duas leis pela **COR** (o alfa sozinho não distingue ler a borda de ler o lado oposto) e o do produto (`o_smudge_da_aquarela_nao_abre_transparencia_na_borda`) mede pela porta do pincel com controlo positivo. Mutação **2 de 2** por eixo. | 2026-09-24 |
 | 27 | **Composite Brush no Impasto: o corpo do traço NOVO sumia num RECTÂNGULO** depois de soltar, só por cima de tinta com volume e só com um `Smear` na pilha. O pen-up à mão livre (`commit_drag_preview`) **assentava o volume antes de compor a região pendente do quadro**, e o `Smear` dessa composição reescreve o relevo da camada a partir da cópia congelada no início do traço. ⚠️ **Enganou porque as sondas compunham por EVENTO** (sem pendente, a ordem não importa): seis sondas leram o volume idêntico ao número; o que o apanhou foi repetir o modo do APP (composição por quadro) e **desenhar o mapa** — um rectângulo a zero. Cura na porta: `commit_stroke_height` compõe o pendente primeiro. Gate `a_ultima_composicao_nao_apaga_o_corpo_assente`. | 2026-09-30 |
 | 28 | **Composite Brush, o Smear por cima de um Brush: RECTÂNGULOS de cor, e a cor arrastada sem corpo.** (a) O esfregão lê cada pixel de LONGE (`base(p − disp(p))`) e só a caixa do lote era reescrita: um pixel já esfregado fora dela continuava a mostrar a tinta que o Brush de baixo tinha ali antes (pior `255`). ⚠️ **Enganou porque uma nota no código dava o limite por seguro** (*«o `disp` só cresce enquanto o cursor está a menos de um raio»* — verdade sobre o deslocamento, falso sobre a ORIGEM, que muda quando o Brush pinta lá depois). Cura: reescreve-se quem LÊ da caixa (`quem_le_da_caixa`); a área tocada inteira também curava e custava `16,0 ms` por quadro num rabisco. (b) O corpo do traço vivia num envelope que o esfregão não tocava: a recomposição do 8b passou a lê-lo em `p − Plow·disp(p)`. A régua de CONTAGEM era cega (o corpo cobre a cor arrastada); quem o mostrou foi a IMAGEM. | 2026-09-30 |
+| 29 | **Impasto pintado na PEÇA 3D: quatro relatos, TRÊS mecanismos, nenhum era a altura** — (a) o halo era a espessura SEM tinta, que a luz 2D já pesava pelo CORPO e a peça não; (b) as ferramentas mexiam numa tela LISA, porque a semente apagava o relevo; (c) os estilhaços na vista inclinada eram derivadas de ECRÃ por bloco `2×2`; (d) a meia-lua na ponta junto ao contorno era a normal inclinada a passar o HORIZONTE e o `canvas_normal` a virá-la inteira. Post-mortem logo abaixo, no `## Bug #29`. | 2026-10-01 |
+
+---
+
+## Bug #29 — Impasto na peça 3D: o halo, as ferramentas, os estilhaços e a meia-lua (FECHADO 2026-10-01)
+
+> ⚠️ **Fica AQUI apesar de FECHADO, por ordem do dono** (*«Documente a solução dos problemas do
+> impasto nos docs de bugs do painter»*, 2026-10-01) — a terceira excepção viva, ao lado do #24 e
+> do #25. O mecanismo inteiro, com as tabelas e as sondas, vive em
+> [`docs/3D/29`](../3D/29_plano_o_relevo_do_impasto_na_peca.md) §6–§8; isto é a versão para quem
+> caça o próximo defeito do impasto **fora** do Painter 2D.
+
+**Contexto:** a etapa 3b do Painter na peça (`line/sculpt3d`, 30/09) levou o meio **Impasto** para
+a escultura 3D como **relevo de LUZ** (decisão do dono de 24/09): a tinta ganha espessura que pega
+luz e sombra, a forma da peça não muda. A espessura mora no plano de tinta fina, ao lado da cor, e
+o shader inclina a normal pelo gradiente dela. O smoke aprovou a 3b e trouxe **quatro relatos com
+foto**, todos no mesmo dia:
+
+| # | relato do dono | mecanismo | cura |
+|---|---|---|---|
+| a | *«o traço tem um relevo indesejado na borda»* (um anel cinzento em degraus à volta da cor) | o assentamento alisa a ALTURA e ela espalha-se `~6 px` além da COR; no Painter 2D a luz pesa o relevo pela cobertura (`impasto_light::paint_body`, a cura do halo de 2026-07-12) e na peça **não** — o barro nu acendia. Sonda: `1 894` píxeis com altura e sem cor, pico `4,94 px` | o relevo passa a ser um **PAR `[altura, corpo]`** por amostra, e o *bump* é escalado pelo corpo. Com corpo `1` o desenho é o de antes **ao bit**; no halo o corpo é `0` e a luz não o lê |
+| b | *«smooth, knife e outras tools não funcionam no relevo»* | cada pincelada SEMEIA a tela da vista com o retrato da cor, e a semente passa pelo `set_source`, que **apaga o relevo das camadas** ⇒ o alisar e a faca trabalhavam numa tela LISA. Sonda: sem semente o alisar não devolve nada e a faca devolve `21` píxeis sem espessura | a tela é semeada também com o RELEVO da peça (em píxeis, com o corpo como cobertura), e a pousada é a **DIFERENÇA**: `nova = antes + k·(tela − semente)` — tela intocada ⇒ zero; uma ferramenta que baixa a tela baixa a peça |
+| c | *«de cima parece bom, MAS inclinado aparece artefato de relevo»* (estilhaços rosa claros soltos na borda) | o gradiente da altura saía de **derivadas de ECRÃ** (`dpdx`/`dpdy`), que o hardware calcula por **bloco de `2×2` píxeis**: inclinada, a encosta cabe em 1–2 píxeis, um bloco atravessa a borda ou uma aresta de triângulo, e a normal desse bloco aponta para onde calhar | o gradiente passa a ser **EXACTO** e vir do OBJECTO: a altura é linear (triângulo) ou bilinear (quad) dentro de cada célula da retícula, e a derivada passa ao objecto pelos gradientes das baricêntricas; a luz lê-o pelo **gradiente de superfície** (Mikkelsen 2020). Zero derivadas de ecrã na leitura |
+| d | *«mesma ponta vista de frente e inclinada»* (uma meia-lua dura na ponta junto ao contorno) | o `canvas_normal` vira **inteira** uma normal com `z < 0` (`n = −n`, para uma casca vista por trás acender como frente). Perto do contorno a base já está quase de lado e a encosta da ponta inclina-a para FORA — passa o horizonte, e o `−n` troca **também o `xy`**: a luz salta para a borda OPOSTA do matcap numa linha só | a inclinação é **COMPRIMIDA** antes do horizonte (`tinta_horizonte`): abaixo de `t = min(|n.z|, 0,25)` o `z` desce por uma exponencial que toca o limiar com valor **e declive** iguais e nunca atravessa `0,1·t`; o `xy` mantém a direcção. Acima do limiar e com corpo `0`, nada muda |
+
+### As lições — as três que valem para o próximo
+
+1. ⭐⭐⭐ **Uma lei que o Painter 2D já pagou tem de ATRAVESSAR para o meio novo, e não atravessa
+   sozinha.** O (a) é a cura do halo de **2026-07-12** a faltar do outro lado: a luz 2D pesava o
+   relevo pela cobertura desde então, e a peça recebia a altura **sem** a cobertura. *Uma lei
+   escrita para um consumidor não viaja para o segundo* — a pergunta a fazer ao levar o impasto a
+   um meio novo é **«que pesos a luz 2D aplica que este meio não recebe?»**.
+2. ⭐⭐ **Curar o ruído destapa o defeito seguinte, e o dono reporta-o como se fosse o mesmo.** O
+   (d) existia antes do (c) e estava **coberto pelos estilhaços**: tirar as derivadas de ecrã
+   limpou a borda e deixou à vista a meia-lua. *Um defeito tapado por outro lê-se como «a cura não
+   pegou»* — antes de duvidar da cura, olhe para o que ela DESTAPOU.
+3. ⭐⭐ **A vista de FRENTE é a fixtura que esconde os defeitos de vista.** O (c) e o (d) não
+   existem de frente (a encosta ocupa muitos píxeis; a base tem `z ≈ 1`), e foi de frente que a 3b
+   foi medida. A sonda de produto `diag_o_relevo_visto_inclinado` (`ph2d-app-sculpt3d`) fotografa
+   agora **de frente, inclinada, rasante e rodada para as duas pontas** — *um relevo de luz
+   mede-se nas vistas em que a luz o lê de raspão*.
+
+### As réguas que mentiram (e porquê)
+
+- ⛔ **O halo «corpo exactamente zero» reprovava com `3/255` em `4` píxeis** — a cobertura e o
+  alfa de 8 bits não arredondam no mesmo sítio. A régua passou a ser **a grandeza que o produto
+  LÊ** (o relevo aceso, `altura × corpo` no halo `≤ 5 %` do cru, medido `1,2 %`).
+- ⛔ **Contar píxeis soltos em «relevo − liso» lia a lei nova PIOR** na vista rasante (`68` contra
+  `25`): contava como «solto» o traço contínuo de um píxel que uma encosta virada para a câmara
+  desenha. *Uma régua cujo «defeito» inclui o desenho certo não decide.*
+- ⚠️ **A semente guardada é a que a tela DEVOLVE, nunca a enviada:** a ida-e-volta pela
+  profundidade da camada custa um ULP, e um ULP em cada amostra não tocada viraria espessura.
+
+### Os gates que ficam
+
+`o_corpo_e_zero_onde_a_espessura_transborda_a_tinta` · `sobre_o_relevo_semeado_o_alisar_e_a_faca_trabalham`
+(Painter, com o CONTROLO sem semente) · `com_a_tela_semeada_o_que_nao_mudou_nao_mexe` ·
+`uma_ferramenta_que_baixa_a_tela_baixa_a_peca` (peça) · `a_normal_do_relevo_nao_tira_derivadas_de_ecra`
+e `a_normal_do_relevo_passa_pelo_horizonte` (IR do `naga`, sem placa) · `a_luz_nao_salta_na_ponta_vista_de_lado`
+e `a_normal_inclinada_nunca_passa_o_horizonte` (CPU, com o CONTROLO de que a lei anterior salta) ·
+`o_relevo_acende_como_a_geometria_que_ele_finge` e `o_horizonte_le_o_mesmo_na_placa_e_na_cpu` (placa).
+Arneses de mutação em `docs/3D/ferramentas/`: `muta_o_relevo_na_peca.sh` · `muta_a_normal_do_relevo.sh`
+· `muta_o_horizonte_do_relevo.sh`, todos com pré-voo de âncoras (`MUTA_SO_ANCORAS=1`).
+
+⏳ **ABERTO e nomeado:** a altura é contínua e o gradiente **não** (é por célula), logo numa encosta
+muito inclinada vê-se a faceta da retícula como um traço em degraus — o mesmo detalhe que a cor tem
+a esse degrau. A cura é interpolar gradientes por amostra (o análogo das normais por vértice), com
+o custo por medir.
 
 ---
 
@@ -482,7 +551,7 @@ na pista errada); fix trivial fica só no git. Sempre termine em **lições gene
 [arquivo](../archive/docs-2026-08-18/Painter/BUGS_painter.md) e sobra **uma linha no índice, com o
 MECANISMO** — o que se repete é o mecanismo, não o sintoma. Este doc vivo só carrega o que está ABERTO.
 
-⛔ **As DUAS excepções vivas são o `#24` e o `#25`, e as duas são ORDEM DO DONO** (2026-09-21), cada
-uma com a frase dele citada na abertura. *Uma excepção sem a ordem escrita ao lado lê-se como alguém
+⛔ **As TRÊS excepções vivas são o `#24`, o `#25` (2026-09-21) e o `#29` (2026-10-01), e as três são
+ORDEM DO DONO**, cada uma com a frase dele citada na abertura. *Uma excepção sem a ordem escrita ao lado lê-se como alguém
 que não conhecia a regra* — e, ao contrário das outras entradas fechadas, as lições destas duas são
 sobre a **RÉGUA** e sobre **recusas medidas**, que é precisamente o que se perde ao arquivar.

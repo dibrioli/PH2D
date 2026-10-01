@@ -100,11 +100,50 @@ fn o_braco_dobrado_de_volta_nao_deixa_dentes() {
     );
 }
 
+/// ⭐⭐ **GATE — a cunha onde os dois membros se TOCAM fecha** (F47, o último aberto da varredura:
+/// `(36°, −144°)`, `21°`). Os membros encostam e a união deixa entre eles uma cunha de `~20°`; a
+/// cúbica que chega ao fundo dela passa `~1` solda ALÉM do nó e volta pela mesma recta, e a quina
+/// verdadeira (`~160°`) fica escondida dentro da cúbica — a bola não a lê como vinco e o nó vira só
+/// `21°`. A cura é aparar a cúbica onde ela passa pelo nó ([`ph2d_vec_boolean::esporao`]).
+///
+/// ⚠️ O CONTROLO: a união com o desfazer dos ganchos e a bola, sem o aparar, deixa a quina na pose
+/// medida.
+#[test]
+fn a_cunha_onde_os_membros_se_tocam_fecha() {
+    let (sem, _) = braco_em(36.0, -144.0);
+    let d = diagonal(&sem);
+    let (raio, solda) = (
+        ph2d_vec_boolean::overlap::RAIO_DO_VINCO * d,
+        ph2d_vec_boolean::overlap::SOLDA_DA_QUINA * d,
+    );
+    let u = ph2d_vec_boolean::resolve_overlap(&sem).expect("os membros tocam-se");
+    let g = ph2d_vec_boolean::gancho::desfaz_os_ganchos(u.verts.clone(), &[], solda);
+    let so_bola = VecPath {
+        verts: ph2d_vec_boolean::bola::rola_a_bola(g, &[], raio, solda),
+        ..u
+    };
+    assert!(
+        viragem_maxima(&so_bola) > ph2d_vec_boolean::overlap::PAREDE_MINIMA,
+        "sem o aparar a cunha já fecha — o controlo deixou de medir"
+    );
+    for a in [35.0_f32, 36.0, 37.0] {
+        for b in [-145.0_f32, -144.0, -143.0] {
+            let (_, com) = braco_em(a, b);
+            let vira = viragem_maxima(&com);
+            assert!(
+                vira < ph2d_vec_boolean::overlap::PAREDE_MINIMA,
+                "({a}°, {b}°): um nó da silhueta vira {vira:.1}° — a cunha ficou aberta"
+            );
+        }
+    }
+}
+
 /// **Sonda — a VARREDURA da dobra** (F45, `#[ignore]`): as duas juntas do braço da cena em todas
 /// as poses, de `PASSO` em `PASSO` graus (`2` por omissão; a 2.ª nos DOIS sentidos, C e Z), e imprime
 /// cada pose em que um nó do contorno de fora ou de uma ilha vira acima da `PAREDE_MINIMA`. Medido
 /// em 2026-10-01 a passo `2`: `575` de `16 110` antes da F46, `574` deles com uma junta a `174°` ou
-/// mais (o braço dobrado de volta); depois dela `1`, a `(36°, −144°)`, isolada e anterior. ⚠️ `~10 min` a passo `2`; corra-a com a máquina calma.
+/// mais (o braço dobrado de volta); depois dela `1`, a `(36°, −144°)`, isolada e anterior; depois
+/// da F47 **`0`** (pior viragem `10,9°`). ⚠️ `~10 min` a passo `2`; corra-a com a máquina calma.
 #[test]
 #[ignore]
 fn diag_a_varredura_da_dobra() {

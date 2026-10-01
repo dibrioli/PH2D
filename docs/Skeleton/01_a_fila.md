@@ -66,6 +66,16 @@ diz onde ler o mecanismo:
 
 ---
 
+### F47 — ⭐ **A CUNHA ONDE OS MEMBROS SE TOCAM** (ordem do dono, 2026-10-01: *«Parece ok. siga»* — o último aberto da varredura)
+
+- **Medido** a `(36°, −144°)` (`21°`): os dois membros encostam e a união deixa entre eles uma cunha de `~20°`. A cúbica que chega ao fundo dela passa `~1` solda ALÉM do nó e volta pela mesma recta, e a quina VERDADEIRA (`~160°`) fica escondida DENTRO da cúbica — a bola não a lê como vinco (o nó vira `21°` pelas tangentes) e o desfazer dos ganchos não a pode trocar (a viragem real passa dos `150°` dele).
+- **Cura:** o esporão também DENTRO da cúbica ([`ph2d_vec_boolean::esporao`]) — a cúbica acaba onde passou pelo nó pela 1.ª vez se o resto dela for e voltar pelo MESMO caminho; nas duas pontas. Com a quina à vista a bola fecha a cunha.
+- ⛔ **E só quando a quina escondida passa do limiar do gancho (`150°`)** — a 1.ª versão aparava toda passagem dobrada e a varredura acusou uma pose NOVA, `(166°, −40°)` com `18°`: a quina escondida ali é MANSA, a bola arredondava-a com um arco, e aparar trocava o arco por um nó em bico. Abaixo do limiar quem resolve são a bola e o desfazer dos ganchos; o aparar é para o que nenhum dos dois vê.
+- ⛔⛔ **E a F46 cortava o que o artista DESENHOU:** o esporão de nó ignorava as quinas do artista — um bigode traçado em ida e volta sairia. Quem o apanhou foi o CONTROLO de um gate antigo (F42: *com as quinas lidas no deformado o gancho fica*), que deixou de reproduzir. ⇒ esporão e aparar respeitam a lista de quinas.
+- ⚠️ **A passagem pelo nó é procurada REFINADA**: uma cúbica rápida anda `~0,016` entre duas amostras, mais que a solda, e passa EXACTAMENTE pelo nó entre elas — a mutação que tirava o teste da dobra sobreviveu até isso. A cerca «passa PELO nó» (`0,1` solda) foi **retirada**: nenhuma fixtura a distinguia.
+- **Gates:** `a_cunha_onde_os_membros_se_tocam_fecha` (3×3 poses; CONTROLO: os ganchos + a bola sem o aparar deixam a quina) · `o_esporao_dentro_da_cubica_sai` (CONTROLOS: o regresso por outro caminho, o LAÇO que passa exactamente pelo nó e a quina escondida MANSA ficam ao bit) · `o_esporao_no_inicio_da_cubica_sai` · `a_ponta_desenhada_fica`. Mutação **6 de 6** (a 1.ª corrida deu `4 de 6`: as duas sobreviventes eram uma cerca sem fixtura, retirada, e um controlo mascarado por ela).
+- **Medido, varredura a passo `2` (`16 110` poses, C e Z) contra a F46:** a `(36°, −144°)` curada, **`0` pioradas**, **`0` poses acima da `PAREDE_MINIMA`** (pior viragem `10,9°`) — a varredura fecha. Mudaram mais `7` poses boas: seis andam `0,04`–`0,17` solda (ponto→segmento). ⭐ A sétima, `(0°, 148°)`, anda `20,7` solda e é **outro esporão escondido curado**: a recta chegava `0,026` além do nó da junção e voltava num caracol dentro da cúbica seguinte (viragem invisível às tangentes); sem ele a quina de `135°` fica à vista e a bola arredonda-a como a todas — a área muda `+0,05 %`.
+
 ### F46 — ⭐⭐ **O BRAÇO DOBRADO DE VOLTA** (ordem do dono, 2026-10-01: *«siga nas correções com cuidado para não danificar o que já temos»* — o aberto que a F45 deixou)
 
 - **Medido:** com uma junta a `174°`–`180°` a pele dos dois membros quase coincide, e a união deixa no contorno de fora **quatro** defeitos diferentes — a varredura da F45 tinha `574` poses más nesta família. Cada um tem a sua peça, e cada peça tem uma mutação que a prova:
@@ -76,7 +86,7 @@ diz onde ler o mecanismo:
 - **Medido, varredura a passo `2` (`16 110` poses, C e Z) contra o `HEAD`:** `574` curadas, **`0` pioradas**; sobra `1`, a `(36°, −144°)` com `21°`, **igual ao `HEAD`** (isolada, anterior). Das `1 222` poses boas que mudaram, **fora da família o contorno andou no máximo `0,40` solda** (ponto→segmento); dentro dela até `0,9 r`, que é a abertura a achatar o nó mais fino que a bola (visto na foto da diferença).
 - **Gates:** `o_braco_dobrado_de_volta_nao_deixa_dentes` (`~270` poses da família; CONTROLO: o fecho de antes deixa bico) · `o_esporao_sai_de_qualquer_tamanho` · `o_que_nao_e_esporao_fica_intacto` · `o_esporao_de_entrada_sai` · `uma_fenda_de_boca_estreita_e_fechada` (CONTROLO: a larga fica aberta) · `a_abertura_nao_come_a_ponta_desenhada` (CONTROLO: sem quinas as pontas arredondam). Mutação **6 de 6**.
 - **Cortes de LOC:** a geometria do toque saiu de `bola.rs` para `bola_toque.rs` (`778 → 672`); os gates do braço dobrado forte para `skin_desenho_dobra_tests.rs`.
-- ⏳ **ABERTO:** a pose isolada `(36°, −144°)`.
+- ✅ ~~**ABERTO:** a pose isolada `(36°, −144°)`~~ — fechada na F47.
 
 ### F45 — ⭐⭐ **O GANCHO QUE A UNIÃO DEIXA** (ordem do dono, 2026-10-01: *«siga nas correções com cuidado para não danificar o que já temos»* — a família que a F44 deixou aberta)
 

@@ -102,6 +102,7 @@ fn uma_copia(largura: f64, fonte: Copia) -> bool {
         bp: &est,
         linha: None,
         regra: FillRule::NonZero,
+        marcas: None,
         traco: Some((
             Stroke::new(largura).with_join(Join::Miter),
             [0.0, 0.0, 0.0, 1.0],

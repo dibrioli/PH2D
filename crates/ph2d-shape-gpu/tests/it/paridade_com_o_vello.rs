@@ -80,7 +80,7 @@ pub(super) fn circulo() -> BezPath {
 /// Um ANEL: dois círculos no mesmo caminho, lidos pela regra even-odd — o preenchimento tem DUAS
 /// correntes. ⚠️ doc 121 §9.3: os blocos de segmentos somam um bloco todo à esquerda do pixel pelas
 /// PONTAS da corrente, o que só vale se ela não partir dentro do bloco; o anel é a forma que parte.
-fn anel() -> BezPath {
+pub(super) fn anel() -> BezPath {
     let mut bp = Circle::new((0.0, 0.0), 0.5).to_path(0.1);
     for el in Circle::new((0.0, 0.0), 0.28).to_path(0.1).elements() {
         bp.push(*el);
@@ -121,7 +121,7 @@ fn grelha_isolada() -> Vec<Copia> {
 }
 
 /// Um gerador determinista (as cópias não podem mudar entre corridas).
-fn copias(n: usize, lado_min: f32, lado_max: f32, semente: u64) -> Vec<Copia> {
+pub(super) fn copias(n: usize, lado_min: f32, lado_max: f32, semente: u64) -> Vec<Copia> {
     let mut s = semente;
     let mut r = || {
         s = s
@@ -182,6 +182,8 @@ pub(super) struct Forma<'a> {
     pub(super) traco: Option<(Stroke, [f32; 4])>,
     /// A linha que o traço segue, quando não é o contorno do preenchimento (um caminho ABERTO).
     pub(super) linha: Option<&'a BezPath>,
+    /// As MARCAS do traço: um preenchimento com a cor dele (`ShapeInput::stroke_fills`).
+    pub(super) marcas: Option<&'a BezPath>,
 }
 
 /// Os bytes crus de uma textura (`px` bytes por pixel).
@@ -338,11 +340,23 @@ pub(super) fn pelo_passe(
     cs: &[Copia],
     format: wgpu::TextureFormat,
 ) -> Vec<u8> {
-    pelo_passe_com(gpu, forma, cs, format, true, 1)
+    // ⭐ doc 121 §9.6: o regime do PRODUTO — a capacidade já cresceu para o total medido e TODAS as
+    // cópias têm as arestas no ecrã. O 1.º quadro (a mistura com o caminho de sempre) é medido pelo
+    // gate `contorno_calculado`, par contra par.
+    let (img, com) = pelo_passe_com(gpu, forma, cs, format, true, QUADROS_DO_PRODUTO)
         .pop()
-        .expect("um quadro")
-        .0
+        .expect("um quadro");
+    assert_eq!(
+        com as usize,
+        cs.len(),
+        "o passe nao chegou ao regime do produto: nem todas as copias tem as arestas no ecra"
+    );
+    img
 }
+
+/// Quadros até ao regime do produto: o total medido é copiado no 1.º, mapeado no 2.º e colhido no
+/// 3.º, que já desenha com a capacidade nova (`contorno.rs`).
+const QUADROS_DO_PRODUTO: usize = 3;
 
 /// O passe com o CONTORNO CALCULADO ligado ou não (doc 121 §9.5), durante `quadros` quadros do
 /// MESMO passe: por quadro, a imagem e quantas cópias ganharam o contorno (lido de volta — as duas
@@ -367,7 +381,7 @@ pub(super) fn pelo_passe_com(
     let g = ShapeGeometry::prepare(&ShapeInput {
         fill: Some((forma.bp, forma.regra)),
         strokes: traco.into_iter().collect(),
-        stroke_fills: Vec::new(),
+        stroke_fills: forma.marcas.into_iter().collect(),
     })
     .expect("a forma prepara");
     let mut p = ShapePass::new(gpu, format);
@@ -615,6 +629,7 @@ fn o_passe_desenha_o_que_o_vello_desenha() {
                 bp: &est,
                 linha: None,
                 regra: FillRule::NonZero,
+                marcas: None,
                 traco: None,
             },
             copias(400, 6.0, 40.0, 1),
@@ -625,6 +640,7 @@ fn o_passe_desenha_o_que_o_vello_desenha() {
                 bp: &est,
                 linha: None,
                 regra: FillRule::NonZero,
+                marcas: None,
                 traco: None,
             },
             copias(12, 120.0, 900.0, 2),
@@ -635,6 +651,7 @@ fn o_passe_desenha_o_que_o_vello_desenha() {
                 bp: &circ,
                 linha: None,
                 regra: FillRule::NonZero,
+                marcas: None,
                 traco: None,
             },
             copias(200, 8.0, 300.0, 3),
@@ -645,6 +662,7 @@ fn o_passe_desenha_o_que_o_vello_desenha() {
                 bp: &circ,
                 linha: None,
                 regra: FillRule::NonZero,
+                marcas: None,
                 traco: None,
             },
             grelha_isolada(),
@@ -655,6 +673,7 @@ fn o_passe_desenha_o_que_o_vello_desenha() {
                 bp: &an,
                 linha: None,
                 regra: FillRule::EvenOdd,
+                marcas: None,
                 traco: None,
             },
             copias(60, 30.0, 400.0, 11),
@@ -665,6 +684,7 @@ fn o_passe_desenha_o_que_o_vello_desenha() {
                 bp: &pent,
                 linha: None,
                 regra: FillRule::EvenOdd,
+                marcas: None,
                 traco: None,
             },
             copias(40, 30.0, 200.0, 4),
@@ -675,6 +695,7 @@ fn o_passe_desenha_o_que_o_vello_desenha() {
                 bp: &est,
                 linha: None,
                 regra: FillRule::NonZero,
+                marcas: None,
                 traco: Some((
                     Stroke::new(0.06).with_join(Join::Miter),
                     [0.1, 0.1, 0.1, 1.0],
@@ -689,6 +710,7 @@ fn o_passe_desenha_o_que_o_vello_desenha() {
                 bp: &est,
                 linha: None,
                 regra: FillRule::NonZero,
+                marcas: None,
                 traco: Some((
                     Stroke::new(0.06).with_join(Join::Miter),
                     [0.1, 0.1, 0.1, 1.0],
@@ -702,6 +724,7 @@ fn o_passe_desenha_o_que_o_vello_desenha() {
                 bp: &circ,
                 linha: None,
                 regra: FillRule::NonZero,
+                marcas: None,
                 traco: Some((
                     Stroke::new(0.08).with_join(Join::Miter),
                     [0.9, 0.2, 0.1, 1.0],
@@ -715,6 +738,7 @@ fn o_passe_desenha_o_que_o_vello_desenha() {
                 bp: &zz,
                 linha: Some(&zz),
                 regra: FillRule::NonZero,
+                marcas: None,
                 traco: Some((
                     Stroke::new(0.07)
                         .with_join(Join::Bevel)
@@ -730,6 +754,7 @@ fn o_passe_desenha_o_que_o_vello_desenha() {
                 bp: &zz,
                 linha: Some(&zz),
                 regra: FillRule::NonZero,
+                marcas: None,
                 traco: Some((
                     Stroke::new(0.07)
                         .with_join(Join::Round)
@@ -745,6 +770,7 @@ fn o_passe_desenha_o_que_o_vello_desenha() {
                 bp: &est,
                 linha: None,
                 regra: FillRule::NonZero,
+                marcas: None,
                 traco: Some((
                     Stroke::new(0.01).with_join(Join::Miter),
                     [0.0, 0.0, 0.0, 1.0],
@@ -761,6 +787,7 @@ fn o_passe_desenha_o_que_o_vello_desenha() {
                 bp: &est,
                 linha: None,
                 regra: FillRule::NonZero,
+                marcas: None,
                 traco: Some((
                     Stroke::new(0.12).with_join(Join::Miter),
                     [0.1, 0.1, 0.1, 1.0],
@@ -774,6 +801,7 @@ fn o_passe_desenha_o_que_o_vello_desenha() {
                 bp: &est,
                 linha: None,
                 regra: FillRule::NonZero,
+                marcas: None,
                 traco: Some((
                     Stroke::new(0.06)
                         .with_join(Join::Miter)
@@ -857,6 +885,7 @@ fn uma_aresta_vertical_longe_do_pixel_nao_vira_nan() {
         bp: &cz,
         linha: None,
         regra: FillRule::NonZero,
+        marcas: None,
         traco: None,
     };
     let cs: Vec<Copia> = (0..4)

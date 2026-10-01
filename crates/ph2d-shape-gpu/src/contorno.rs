@@ -24,7 +24,7 @@ struct Contas {
     n: u32,
     cap: u32,
     sem_contorno: u32,
-    _p: u32,
+    cap_mascaras: u32,
 }
 
 /// Bytes de UMA aresta (`vec4<f32>`: os dois pontos no ecrã).
@@ -36,6 +36,12 @@ const BLOCO: u64 = crate::SEGS_POR_BLOCO as u64;
 /// leitura do total substitui-a dois quadros depois. Uma estrela aguda de cinco pontas com a faixa
 /// em todos os vértices escreve `20` (duas por troço); `32` cobre-a com um bloco de folga.
 const ARESTAS_POR_COPIA_INICIAL: u64 = 32;
+/// Palavras de registo por cópia na primeira capacidade — o mesmo papel do de cima: a leitura do
+/// total substitui-o. Uma estrela pequena (`~12` linhas, uma célula, menos de `32` blocos ⇒ `3 + 1`
+/// palavras por célula) pede `~48`.
+const MASCARAS_POR_COPIA_INICIAL: u64 = 48;
+/// Bytes de uma palavra de máscara (`u32`: um bit por bloco).
+const PALAVRA: u64 = 4;
 
 // Os estados da leitura do total (um `AtomicU8`, porque o fecho do `map_async` corre noutro sítio).
 const LIVRE: u8 = 0;
@@ -60,14 +66,21 @@ pub(crate) struct Contorno {
     blocos: wgpu::Buffer,
     copias: wgpu::Buffer,
     caixas: wgpu::Buffer,
+    /// As máscaras por linha (doc 121 §9.6): por cópia, por fileira de pixels, um bit por bloco.
+    mascaras: wgpu::Buffer,
     cap_copias: u64,
     cap_arestas: u64,
+    cap_mascaras: u64,
     /// O tecto do recurso, em arestas.
     tecto_arestas: u64,
+    /// O tecto do recurso, em palavras de máscara.
+    tecto_mascaras: u64,
     leitura_total: wgpu::Buffer,
     estado: Arc<AtomicU8>,
     /// O maior total medido (em arestas).
     total_visto: u64,
+    /// O maior total medido (em palavras de máscara).
+    total_visto_m: u64,
     /// `false` ⇒ nenhuma cópia ganha contorno (o caminho pixel a pixel, para os gates o compararem).
     pub(crate) ligado: bool,
 }
@@ -117,6 +130,7 @@ impl Contorno {
                 entrada(1, armazem(true), vf),
                 entrada(2, armazem(true), vf),
                 entrada(3, armazem(true), vf),
+                entrada(4, armazem(true), vf),
             ],
         });
         let c = wgpu::ShaderStages::COMPUTE;
@@ -137,6 +151,7 @@ impl Contorno {
                 entrada(3, armazem(false), c),
                 entrada(4, armazem(false), c),
                 entrada(5, armazem(false), c),
+                entrada(6, armazem(false), c),
             ],
         });
         // O grupo `1` do cálculo é o do DESENHO e fica vazio: um pipeline só tem de declarar o que
@@ -166,6 +181,7 @@ impl Contorno {
             })
         };
         let tecto_arestas = device.limits().max_storage_buffer_binding_size / ARESTA;
+        let tecto_mascaras = device.limits().max_storage_buffer_binding_size / PALAVRA;
         let armazens = wgpu::BufferUsages::STORAGE;
         Self {
             conta: pipeline("cs_conta"),
@@ -190,9 +206,12 @@ impl Contorno {
             blocos: buffer(gpu, "ph2d-shape-gpu blocos do contorno", 16, armazens),
             copias: buffer(gpu, "ph2d-shape-gpu copias do contorno", 16, armazens),
             caixas: buffer(gpu, "ph2d-shape-gpu caixas do contorno", 16, armazens),
+            mascaras: buffer(gpu, "ph2d-shape-gpu mascaras do contorno", 16, armazens),
             cap_copias: 0,
             cap_arestas: 0,
+            cap_mascaras: 0,
             tecto_arestas,
+            tecto_mascaras,
             leitura_total: buffer(
                 gpu,
                 "ph2d-shape-gpu total do contorno",
@@ -201,6 +220,7 @@ impl Contorno {
             ),
             estado: Arc::new(AtomicU8::new(LIVRE)),
             total_visto: 0,
+            total_visto_m: 0,
             ligado: true,
         }
     }
@@ -215,7 +235,9 @@ impl Contorno {
                 {
                     let dados = self.leitura_total.slice(..).get_mapped_range();
                     let total: u32 = bytemuck::pod_read_unaligned(&dados[..4]);
+                    let total_m: u32 = bytemuck::pod_read_unaligned(&dados[4..8]);
                     self.total_visto = self.total_visto.max(u64::from(total));
+                    self.total_visto_m = self.total_visto_m.max(u64::from(total_m));
                 }
                 self.leitura_total.unmap();
                 self.estado.store(LIVRE, Ordering::Release);
@@ -240,17 +262,18 @@ impl Contorno {
         if n > self.cap_copias {
             let cap = n.next_power_of_two();
             let armazens = wgpu::BufferUsages::STORAGE;
+            // Duas metades de `n + 1`: as arestas e as palavras de máscara.
             self.contagem = buffer(
                 gpu,
                 "ph2d-shape-gpu contagem",
-                (cap + 1) * 4,
+                2 * (cap + 1) * 4,
                 armazens | wgpu::BufferUsages::COPY_SRC,
             );
-            // `COPY_SRC`: o instrumento `copias_com_contorno` lê-o de volta.
+            // Três `vec4<u32>` por cópia. `COPY_SRC`: o instrumento `copias_com_contorno` lê-o.
             self.copias = buffer(
                 gpu,
                 "ph2d-shape-gpu copias do contorno",
-                cap * 16,
+                cap * 48,
                 armazens | wgpu::BufferUsages::COPY_SRC,
             );
             self.caixas = buffer(gpu, "ph2d-shape-gpu caixas do contorno", cap * 16, armazens);
@@ -276,6 +299,20 @@ impl Contorno {
             );
             self.cap_arestas = cap;
         }
+        let pedido_m = self
+            .total_visto_m
+            .max(n * MASCARAS_POR_COPIA_INICIAL)
+            .min(self.tecto_mascaras);
+        if pedido_m > self.cap_mascaras {
+            let cap = pedido_m.next_power_of_two().min(self.tecto_mascaras);
+            self.mascaras = buffer(
+                gpu,
+                "ph2d-shape-gpu mascaras do contorno",
+                cap * PALAVRA,
+                wgpu::BufferUsages::STORAGE,
+            );
+            self.cap_mascaras = cap;
+        }
     }
 
     /// Codifica os três passes para `count` cópias (o grupo `0` é o do desenho).
@@ -292,7 +329,7 @@ impl Contorno {
             n: count,
             cap: u32::try_from(self.cap_arestas).unwrap_or(u32::MAX),
             sem_contorno: u32::from(!self.ligado),
-            _p: 0,
+            cap_mascaras: u32::try_from(self.cap_mascaras).unwrap_or(u32::MAX),
         };
         gpu.queue
             .write_buffer(&self.contas, 0, bytemuck::bytes_of(&contas));
@@ -324,6 +361,10 @@ impl Contorno {
                     binding: 5,
                     resource: self.caixas.as_entire_binding(),
                 },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: self.mascaras.as_entire_binding(),
+                },
             ],
         });
         let grupos = count.div_ceil(64);
@@ -345,11 +386,19 @@ impl Contorno {
             pass.dispatch_workgroups(x, y, 1);
         }
         if self.estado.load(Ordering::Acquire) == LIVRE {
+            // Os dois totais: as arestas em `n` e as palavras de máscara em `2n + 1`.
             encoder.copy_buffer_to_buffer(
                 &self.contagem,
                 u64::from(count) * 4,
                 &self.leitura_total,
                 0,
+                4,
+            );
+            encoder.copy_buffer_to_buffer(
+                &self.contagem,
+                (2 * u64::from(count) + 1) * 4,
+                &self.leitura_total,
+                4,
                 4,
             );
             self.estado.store(COPIADO, Ordering::Release);
@@ -360,7 +409,7 @@ impl Contorno {
     /// Instrumento: um gate e uma sonda que perguntam se o caminho novo CORREU (as duas imagens são
     /// iguais, logo nenhuma régua de pixel o distingue do caminho de sempre).
     pub(crate) fn copias_com_contorno(&self, gpu: &GpuContext, n: u32) -> (u32, u64) {
-        let bytes = (u64::from(n) * 16).max(16);
+        let bytes = (u64::from(n) * 48).max(16);
         let leitura = buffer(
             gpu,
             "ph2d-shape-gpu contorno (sonda)",
@@ -370,13 +419,18 @@ impl Contorno {
         let mut enc = gpu
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
-        enc.copy_buffer_to_buffer(&self.copias, 0, &leitura, 0, u64::from(n) * 16);
+        enc.copy_buffer_to_buffer(&self.copias, 0, &leitura, 0, u64::from(n) * 48);
         gpu.queue.submit([enc.finish()]);
         leitura.slice(..).map_async(wgpu::MapMode::Read, |_| {});
         let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
         let dados = leitura.slice(..).get_mapped_range();
-        let copias: &[[u32; 4]] = bytemuck::cast_slice(&dados[..(u64::from(n) * 16) as usize]);
-        let com = copias.iter().filter(|c| c[1] > 0).count();
+        let copias: &[[u32; 4]] = bytemuck::cast_slice(&dados[..(u64::from(n) * 48) as usize]);
+        // O 1.º de cada trio: blocos do preenchimento, das marcas e do contorno.
+        let com = copias
+            .iter()
+            .step_by(3)
+            .filter(|c| c[1] + c[2] + c[3] > 0)
+            .count();
         (u32::try_from(com).unwrap_or(u32::MAX), self.cap_arestas)
     }
 
@@ -401,6 +455,10 @@ impl Contorno {
                 wgpu::BindGroupEntry {
                     binding: 3,
                     resource: self.caixas.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: self.mascaras.as_entire_binding(),
                 },
             ],
         })

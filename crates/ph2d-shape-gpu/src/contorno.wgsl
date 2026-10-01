@@ -27,17 +27,20 @@ struct Contas {
     cap: u32,
     // `1` ⇒ nenhuma cópia ganha contorno (o caminho de antes, para os gates o compararem).
     sem_contorno: u32,
-    _p: u32,
+    // Quantas palavras cabem em `cmascaras_rw`.
+    cap_mascaras: u32,
 }
 
 @group(2) @binding(0) var<uniform> contas: Contas;
-// Por cópia: quantas arestas (múltiplo de `SEGS_POR_BLOCO`) e, depois do `cs_soma`, onde começam.
-// Tem `n + 1` entradas: a última é o total.
+// Duas contagens por cópia, e depois do `cs_soma` onde cada uma começa: as ARESTAS (múltiplo de
+// `SEGS_POR_BLOCO`) nas `n + 1` primeiras entradas e as PALAVRAS DE MÁSCARA nas `n + 1` seguintes —
+// a última de cada metade é o total.
 @group(2) @binding(1) var<storage, read_write> contagem: array<u32>;
 @group(2) @binding(2) var<storage, read_write> contorno_rw: array<vec4<f32>>;
 @group(2) @binding(3) var<storage, read_write> cblocos_rw: array<vec4<f32>>;
 @group(2) @binding(4) var<storage, read_write> ccopias_rw: array<vec4<u32>>;
 @group(2) @binding(5) var<storage, read_write> ccaixas_rw: array<vec4<f32>>;
+@group(2) @binding(6) var<storage, read_write> cmascaras_rw: array<u32>;
 
 // O estado da emissão de UMA cópia (um fio por cópia).
 //
@@ -269,10 +272,75 @@ fn percorre(cp: Copia) {
     }
 }
 
+// ⭐ doc 121 §9.6 — **O QUE UMA CÓPIA ESCREVE**, decidido igual nas duas passagens: os segmentos
+// LOCAIS do preenchimento e das marcas (que se transformam um a um) e, com o eixo, o contorno
+// gerado; e as LINHAS de ecrã das máscaras, que saem da caixa ESTIMADA (a exacta só se conhece
+// depois de escrever, e a contagem tem de lhe chegar antes).
+struct Plano {
+    cp: Copia,
+    valido: bool,
+    // O preenchimento: o primeiro segmento em `segs` e quantos.
+    f0: u32,
+    nf: u32,
+    // As marcas — sob afim conforme, o traço inteiro (as marcas e o contorno expandido).
+    m0: u32,
+    nm: u32,
+    eixo: bool,
+    // A primeira linha do ecrã com máscara e quantas; a primeira coluna e quantas CÉLULAS por linha.
+    y0: f32,
+    linhas: u32,
+    x0: f32,
+    celulas: u32,
+}
+
+fn plano_de(ii: u32) -> Plano {
+    var p: Plano;
+    p.valido = false;
+    if contas.sem_contorno != 0u {
+        return p;
+    }
+    p.cp = copia_de(ii);
+    if p.cp.r == 0xffffffffu {
+        return p;
+    }
+    let rec = records[p.cp.r];
+    let rg = rec.ranges[p.cp.nivel];
+    p.f0 = rg.x;
+    p.nf = rg.y;
+    p.m0 = rg.z;
+    p.eixo = p.cp.eixo_rg.y > 0u;
+    p.nm = select(rg.w, p.cp.eixo_rg.z, p.eixo);
+    // ⚠️ Um pixel de folga de cada lado: a caixa estimada é a mesma que o quad do caminho de sempre
+    // usa, e a máscara não pode ficar curta da exacta por um arredondamento.
+    let cx = caixa_estimada(p.cp, rec);
+    let lo = floor(cx.xy) - vec2<f32>(1.0);
+    let hi = ceil(cx.zw) + vec2<f32>(1.0);
+    // Fora do ecrã nenhum pixel corre: a cópia não paga cálculo nenhum.
+    if hi.x <= 0.0 || lo.x >= view.alvo.x || hi.y <= 0.0 || lo.y >= view.alvo.y {
+        return p;
+    }
+    p.y0 = max(lo.y, 0.0);
+    p.linhas = u32(min(hi.y, ceil(view.alvo.y)) - p.y0);
+    p.x0 = max(lo.x, 0.0);
+    let x1 = min(hi.x, ceil(view.alvo.x));
+    p.celulas = u32(ceil((x1 - p.x0) / LARGURA_DA_CELULA));
+    p.valido = true;
+    return p;
+}
+
 // O índice da cópia: um despacho de `64` por grupo, em duas dimensões quando passa de `65 535`
 // grupos (o tecto de uma dimensão do despacho).
 fn indice(gid: vec3<u32>, nwg: vec3<u32>) -> u32 {
     return gid.x + gid.y * nwg.x * 64u;
+}
+
+fn palavras_por_linha(arestas: u32) -> u32 {
+    return (arestas / SEGS_POR_BLOCO + 31u) / 32u;
+}
+
+// Quantas palavras um REGISTO de célula ocupa: os três fundos (`f32`) e a máscara.
+fn registo_de_celula(arestas: u32) -> u32 {
+    return 3u + palavras_por_linha(arestas);
 }
 
 @compute @workgroup_size(64)
@@ -281,50 +349,84 @@ fn cs_conta(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgrou
     if ii >= contas.n {
         return;
     }
-    var n = 0u;
-    if contas.sem_contorno == 0u {
-        let cp = copia_de(ii);
-        if cp.r != 0xffffffffu && cp.eixo_rg.y > 0u {
+    var ne = 0u;
+    var nmask = 0u;
+    let p = plano_de(ii);
+    if p.valido {
+        var nc = 0u;
+        if p.eixo {
             escrever = false;
-            percorre(cp);
-            n = (cursor + cursor_b + SEGS_POR_BLOCO - 1u) / SEGS_POR_BLOCO * SEGS_POR_BLOCO;
+            percorre(p.cp);
+            nc = (cursor + cursor_b + SEGS_POR_BLOCO - 1u) / SEGS_POR_BLOCO * SEGS_POR_BLOCO;
+        }
+        ne = p.nf + p.nm + nc;
+        nmask = p.linhas * p.celulas * registo_de_celula(ne);
+        if nmask == 0u {
+            ne = 0u;
         }
     }
-    contagem[ii] = n;
+    contagem[ii] = ne;
+    contagem[contas.n + 1u + ii] = nmask;
 }
 
-// O prefixo exclusivo das contagens, num grupo só: cada fio soma um pedaço contíguo, o fio `0`
-// faz o prefixo dos `256` parciais, e cada fio reescreve o seu pedaço. ⚠️ Determinístico — a ordem
-// das somas não depende do escalonamento, e é isso que faz a mesma cena dar os mesmos sítios.
+// Os prefixos exclusivos das DUAS contagens, num grupo só: cada fio soma um pedaço contíguo, o fio
+// `0` faz o prefixo dos `256` parciais, e cada fio reescreve o seu pedaço. ⚠️ Determinístico — a
+// ordem das somas não depende do escalonamento, e é isso que faz a mesma cena dar os mesmos sítios.
 var<workgroup> parcial: array<u32, 256>;
+var<workgroup> parcial_m: array<u32, 256>;
 
 @compute @workgroup_size(256)
 fn cs_soma(@builtin(local_invocation_index) li: u32) {
     let n = contas.n;
+    let m0 = n + 1u;
     let pedaco = (n + 255u) / 256u;
     let i0 = min(li * pedaco, n);
     let i1 = min(i0 + pedaco, n);
     var s = 0u;
+    var sm = 0u;
     for (var i = i0; i < i1; i += 1u) {
         s += contagem[i];
+        sm += contagem[m0 + i];
     }
     parcial[li] = s;
+    parcial_m[li] = sm;
     workgroupBarrier();
     if li == 0u {
         var acc = 0u;
+        var acc_m = 0u;
         for (var k = 0u; k < 256u; k += 1u) {
             let v = parcial[k];
             parcial[k] = acc;
             acc += v;
+            let vm = parcial_m[k];
+            parcial_m[k] = acc_m;
+            acc_m += vm;
         }
         contagem[n] = acc;
+        contagem[m0 + n] = acc_m;
     }
     workgroupBarrier();
     var acc = parcial[li];
+    var acc_m = parcial_m[li];
     for (var i = i0; i < i1; i += 1u) {
         let v = contagem[i];
         contagem[i] = acc;
         acc += v;
+        let vm = contagem[m0 + i];
+        contagem[m0 + i] = acc_m;
+        acc_m += vm;
+    }
+}
+
+// Os segmentos LOCAIS `[s0, s0 + k)` pelo afim da cópia, para `[saida, saida + k)`.
+fn transforma(cp: Copia, s0: u32, k: u32, saida: u32) {
+    for (var i = 0u; i < k; i += 1u) {
+        let seg = segs[s0 + i];
+        let a = aplica(cp.lin, cp.t, seg.xy);
+        let b = aplica(cp.lin, cp.t, seg.zw);
+        contorno_rw[saida + i] = vec4<f32>(a, b);
+        cmin = min(cmin, min(a, b));
+        cmax = max(cmax, max(a, b));
     }
 }
 
@@ -334,56 +436,137 @@ fn cs_escreve(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgr
     if ii >= contas.n {
         return;
     }
-    ccopias_rw[ii] = vec4<u32>(0u);
+    ccopias_rw[3u * ii] = vec4<u32>(0u);
+    ccopias_rw[3u * ii + 1u] = vec4<u32>(0u);
+    ccopias_rw[3u * ii + 2u] = vec4<u32>(0u);
+    let m0 = contas.n + 1u;
     let base = contagem[ii];
-    let n = contagem[ii + 1u] - base;
+    let ne = contagem[ii + 1u] - base;
+    let mbase = contagem[m0 + ii];
+    let nmask = contagem[m0 + ii + 1u] - mbase;
     // ⚠️ Fora da capacidade, a cópia fica com o caminho de sempre — nunca um contorno truncado.
-    if n == 0u || base + n > contas.cap {
+    if ne == 0u || base + ne > contas.cap || mbase + nmask > contas.cap_mascaras {
         return;
     }
-    let cp = copia_de(ii);
-    escrever = true;
-    base_saida = base;
-    limite_saida = n;
+    let p = plano_de(ii);
+    let palavras = palavras_por_linha(ne);
+    let registo = 3u + palavras;
+    if !p.valido || p.nf + p.nm > ne || p.linhas * p.celulas * registo != nmask {
+        return;
+    }
     cmin = vec2<f32>(3.0e38);
     cmax = vec2<f32>(-3.0e38);
-    ultimo = vec2<f32>(0.0);
-    cabeca_b = vec2<f32>(0.0);
-    percorre(cp);
-    // ⚠️ A contagem e a escrita correm o MESMO código, e um compilador que os arredondasse
-    // diferente (dois pontos de entrada) daria outra decisão numa bissectriz no limiar. ⇒ uma
-    // escrita que não bate com a contagem é deitada fora e a cópia segue pelo caminho de sempre.
-    let total = cursor + cursor_b;
-    if total > n || total + SEGS_POR_BLOCO <= n {
-        return;
+    transforma(p.cp, p.f0, p.nf, base);
+    transforma(p.cp, p.m0, p.nm, base + p.nf);
+    let nc = ne - p.nf - p.nm;
+    if nc > 0u {
+        let bc = base + p.nf + p.nm;
+        escrever = true;
+        base_saida = bc;
+        limite_saida = nc;
+        ultimo = vec2<f32>(0.0);
+        cabeca_b = vec2<f32>(0.0);
+        percorre(p.cp);
+        // ⚠️ A contagem e a escrita correm o MESMO código, e um compilador que os arredondasse
+        // diferente (dois pontos de entrada) daria outra decisão numa bissectriz no limiar. ⇒ uma
+        // escrita que não bate com a contagem é deitada fora e a cópia segue pelo caminho de sempre.
+        let total = cursor + cursor_b;
+        if total > nc || total + SEGS_POR_BLOCO <= nc {
+            return;
+        }
+        // O enchimento, ENTRE as duas correntes: arestas de comprimento zero no último ponto da da
+        // frente (contribuem `0`, não alargam caixa nenhuma — no `(0, 0)` alargariam a do bloco até
+        // à origem do ecrã — e continuam a corrente; sem corrente da frente, no primeiro ponto da de
+        // trás).
+        let enche = select(cabeca_b, ultimo, cursor > 0u);
+        for (var i = cursor; i < nc - cursor_b; i += 1u) {
+            contorno_rw[bc + i] = vec4<f32>(enche, enche);
+        }
     }
-    // O enchimento, ENTRE as duas correntes: arestas de comprimento zero no último ponto da da
-    // frente (contribuem `0`, não alargam caixa nenhuma — no `(0, 0)` alargariam a do bloco até à
-    // origem do ecrã — e continuam a corrente; sem corrente da frente, no primeiro ponto da de trás).
-    let enche = select(cabeca_b, ultimo, cursor > 0u);
-    for (var i = cursor; i < n - cursor_b; i += 1u) {
-        contorno_rw[base + i] = vec4<f32>(enche, enche);
+    // Os registos começam vazios: fundos a `0,0` (os bits de `0.0` são `0`) e máscaras apagadas.
+    for (var k = 0u; k < nmask; k += 1u) {
+        cmascaras_rw[mbase + k] = 0u;
     }
+    let fim_f = p.nf / SEGS_POR_BLOCO;
+    let fim_m = (p.nf + p.nm) / SEGS_POR_BLOCO;
     // Por bloco, DOIS `vec4`: a caixa, e `(y₀, y₈, encadeado, 0)` — `encadeado` quando cada aresta
     // começa EXACTAMENTE onde a anterior acabou (a igualdade é de bits: a soma telescopa só então).
     let b0 = base / SEGS_POR_BLOCO;
-    let nb = n / SEGS_POR_BLOCO;
+    let nb = ne / SEGS_POR_BLOCO;
     for (var bl = 0u; bl < nb; bl += 1u) {
+        let e0 = base + bl * SEGS_POR_BLOCO;
         var lo = vec2<f32>(3.0e38);
         var hi = vec2<f32>(-3.0e38);
         var corrente = true;
-        var antes = contorno_rw[base + bl * SEGS_POR_BLOCO].xy;
+        var antes = contorno_rw[e0].xy;
         for (var j = 0u; j < SEGS_POR_BLOCO; j += 1u) {
-            let e = contorno_rw[base + bl * SEGS_POR_BLOCO + j];
+            let e = contorno_rw[e0 + j];
             lo = min(lo, min(e.xy, e.zw));
             hi = max(hi, max(e.xy, e.zw));
             corrente = corrente && all(e.xy == antes);
             antes = e.zw;
         }
-        let y0 = contorno_rw[base + bl * SEGS_POR_BLOCO].y;
+        let y0b = contorno_rw[e0].y;
+        let y8b = antes.y;
         cblocos_rw[2u * (b0 + bl)] = vec4<f32>(lo, hi);
-        cblocos_rw[2u * (b0 + bl) + 1u] = vec4<f32>(y0, antes.y, select(0.0, 1.0, corrente), 0.0);
+        cblocos_rw[2u * (b0 + bl) + 1u] = vec4<f32>(y0b, y8b, select(0.0, 1.0, corrente), 0.0);
+        // ⭐ A fileira de pixels `r` (do canto `y0 + r` ao `y0 + r + 1`) é tocada pelo bloco sse
+        // `lo.y < y0 + r + 1` e `hi.y > y0 + r` — de `floor(lo.y)` a `ceil(hi.y) − 1`, exactos em
+        // `f32`. Um bloco de altura zero (só arestas horizontais ou o enchimento) soma `0` em toda a
+        // parte e não acende nada.
+        if hi.y <= lo.y {
+            continue;
+        }
+        let ra = u32(clamp(floor(lo.y) - p.y0, 0.0, f32(p.linhas)));
+        let rb = u32(clamp(ceil(hi.y) - p.y0, 0.0, f32(p.linhas)));
+        // ⭐⭐ As CÉLULAS: a caixa toca as células `ka .. kb` da linha (a máscara) e fica TODA À
+        // ESQUERDA de todo pixel a partir da `kb` — lá a soma dela é o FUNDO, que não depende do
+        // `x` do pixel e se soma uma vez aqui em vez de uma vez por pixel (o `backdrop` do Vello).
+        let ka = u32(clamp(floor((lo.x - p.x0) / LARGURA_DA_CELULA), 0.0, f32(p.celulas)));
+        let kb = u32(clamp(ceil((hi.x - p.x0) / LARGURA_DA_CELULA), 0.0, f32(p.celulas)));
+        let bit = 1u << (bl % 32u);
+        let palavra = 3u + bl / 32u;
+        let cat = select(select(2u, 1u, bl < fim_m), 0u, bl < fim_f);
+        for (var r = ra; r < rb; r += 1u) {
+            let linha = mbase + r * p.celulas * registo;
+            for (var k = ka; k < kb; k += 1u) {
+                let i = linha + k * registo + palavra;
+                cmascaras_rw[i] = cmascaras_rw[i] | bit;
+            }
+            if kb < p.celulas {
+                let y = p.y0 + f32(r);
+                var v = 0.0;
+                if corrente {
+                    v = clamp(y0b - y, 0.0, 1.0) - clamp(y8b - y, 0.0, 1.0);
+                } else {
+                    for (var j = 0u; j < SEGS_POR_BLOCO; j += 1u) {
+                        let e = contorno_rw[e0 + j];
+                        v += clamp(e.y - y, 0.0, 1.0) - clamp(e.w - y, 0.0, 1.0);
+                    }
+                }
+                let i = linha + kb * registo + cat;
+                cmascaras_rw[i] = bitcast<u32>(bitcast<f32>(cmascaras_rw[i]) + v);
+            }
+        }
+    }
+    // O fundo de uma célula é o de TODOS os blocos que acabam antes dela: o prefixo ao longo da linha.
+    for (var r = 0u; r < p.linhas; r += 1u) {
+        let linha = mbase + r * p.celulas * registo;
+        var acc = vec3<f32>(0.0);
+        for (var k = 0u; k < p.celulas; k += 1u) {
+            let i = linha + k * registo;
+            acc += vec3<f32>(
+                bitcast<f32>(cmascaras_rw[i]),
+                bitcast<f32>(cmascaras_rw[i + 1u]),
+                bitcast<f32>(cmascaras_rw[i + 2u]),
+            );
+            cmascaras_rw[i] = bitcast<u32>(acc.x);
+            cmascaras_rw[i + 1u] = bitcast<u32>(acc.y);
+            cmascaras_rw[i + 2u] = bitcast<u32>(acc.z);
+        }
     }
     ccaixas_rw[ii] = vec4<f32>(cmin, cmax);
-    ccopias_rw[ii] = vec4<u32>(b0, nb, 0u, 0u);
+    ccopias_rw[3u * ii] = vec4<u32>(b0, p.nf / SEGS_POR_BLOCO, p.nm / SEGS_POR_BLOCO, nc / SEGS_POR_BLOCO);
+    ccopias_rw[3u * ii + 1u] = vec4<u32>(mbase, p.linhas, palavras, bitcast<u32>(p.y0));
+    ccopias_rw[3u * ii + 2u] = vec4<u32>(bitcast<u32>(p.x0), p.celulas, 0u, 0u);
 }

@@ -21,11 +21,16 @@
 //! ```
 
 use ph2d_shape_gpu::FillRule;
-use ph2d_vector::{Cap, Join, Stroke};
+use ph2d_vector::{BezPath, Cap, Circle, Join, Shape, Stroke};
 
 use super::paridade_com_o_vello::{
-    Copia, Forma, circulo, esticadas, estrela, gpu, pelo_passe_com, zigue_zague,
+    Copia, Forma, anel, circulo, copias, esticadas, estrela, gpu, pelo_passe_com, zigue_zague,
 };
+
+/// As MARCAS de um traço: um disco pequeno pintado com a cor dele, fora do contorno da estrela.
+fn marca() -> BezPath {
+    Circle::new((0.32, 0.0), 0.12).to_path(0.01)
+}
 
 /// O pior desvio de alfa entre as duas imagens, quantos pixels desviam mais de `1`, e quantos têm
 /// tinta (a população — uma fixtura que não desenha passa em qualquer barra).
@@ -53,7 +58,7 @@ fn o_contorno_calculado_desenha_o_que_o_eixo_desenha() {
         eprintln!("sem adaptador — nada a medir");
         return;
     };
-    let (est, circ, zz) = (estrela(), circulo(), zigue_zague());
+    let (est, circ, zz, an, mc) = (estrela(), circulo(), zigue_zague(), anel(), marca());
     let traco = |w: f64, j: Join| Stroke::new(w).with_join(j);
     let casos: Vec<(&str, Forma<'_>, Vec<Copia>)> = vec![
         (
@@ -62,6 +67,7 @@ fn o_contorno_calculado_desenha_o_que_o_eixo_desenha() {
                 bp: &est,
                 linha: None,
                 regra: FillRule::NonZero,
+                marcas: None,
                 traco: Some((traco(0.06, Join::Miter), [0.1, 0.1, 0.1, 1.0])),
             },
             esticadas(40, 40.0, 220.0, 6),
@@ -72,6 +78,7 @@ fn o_contorno_calculado_desenha_o_que_o_eixo_desenha() {
                 bp: &circ,
                 linha: None,
                 regra: FillRule::NonZero,
+                marcas: None,
                 traco: Some((traco(0.08, Join::Miter), [0.9, 0.2, 0.1, 1.0])),
             },
             esticadas(40, 30.0, 200.0, 7),
@@ -82,6 +89,7 @@ fn o_contorno_calculado_desenha_o_que_o_eixo_desenha() {
                 bp: &zz,
                 linha: Some(&zz),
                 regra: FillRule::NonZero,
+                marcas: None,
                 traco: Some((
                     traco(0.07, Join::Bevel).with_caps(Cap::Square),
                     [0.1, 0.5, 0.2, 1.0],
@@ -95,6 +103,7 @@ fn o_contorno_calculado_desenha_o_que_o_eixo_desenha() {
                 bp: &zz,
                 linha: Some(&zz),
                 regra: FillRule::NonZero,
+                marcas: None,
                 traco: Some((
                     traco(0.07, Join::Round).with_caps(Cap::Round),
                     [0.3, 0.1, 0.6, 1.0],
@@ -108,6 +117,7 @@ fn o_contorno_calculado_desenha_o_que_o_eixo_desenha() {
                 bp: &est,
                 linha: None,
                 regra: FillRule::NonZero,
+                marcas: None,
                 traco: Some((traco(0.01, Join::Miter), [0.0, 0.0, 0.0, 1.0])),
             },
             esticadas(60, 40.0, 220.0, 10),
@@ -118,6 +128,7 @@ fn o_contorno_calculado_desenha_o_que_o_eixo_desenha() {
                 bp: &est,
                 linha: None,
                 regra: FillRule::NonZero,
+                marcas: None,
                 traco: Some((traco(0.12, Join::Miter), [0.1, 0.1, 0.1, 1.0])),
             },
             esticadas(120, 10.0, 24.0, 12),
@@ -128,12 +139,93 @@ fn o_contorno_calculado_desenha_o_que_o_eixo_desenha() {
                 bp: &est,
                 linha: None,
                 regra: FillRule::NonZero,
+                marcas: None,
                 traco: Some((
                     traco(0.06, Join::Miter).with_miter_limit(2.0),
                     [0.1, 0.1, 0.1, 1.0],
                 )),
             },
             esticadas(40, 40.0, 220.0, 13),
+        ),
+        // ⭐⭐ doc 121 §9.6 — as arestas no ECRÃ deixaram de ser só o contorno do eixo: o
+        // preenchimento, as marcas e o traço CONFORME vão pelo mesmo cálculo, e as máscaras de
+        // linha passam de uma palavra (`> 32` blocos) nas cópias GRANDES.
+        (
+            "estrelas pequenas, so preenchimento",
+            Forma {
+                bp: &est,
+                linha: None,
+                regra: FillRule::NonZero,
+                marcas: None,
+                traco: None,
+            },
+            copias(400, 6.0, 40.0, 1),
+        ),
+        (
+            "aneis even-odd",
+            Forma {
+                bp: &an,
+                linha: None,
+                regra: FillRule::EvenOdd,
+                marcas: None,
+                traco: None,
+            },
+            copias(60, 30.0, 400.0, 11),
+        ),
+        (
+            "circulos com traco, conformes",
+            Forma {
+                bp: &circ,
+                linha: None,
+                regra: FillRule::NonZero,
+                marcas: None,
+                traco: Some((traco(0.08, Join::Miter), [0.9, 0.2, 0.1, 1.0])),
+            },
+            copias(60, 30.0, 300.0, 3),
+        ),
+        (
+            "circulos grandes com traco, conformes",
+            Forma {
+                bp: &circ,
+                linha: None,
+                regra: FillRule::NonZero,
+                marcas: None,
+                traco: Some((traco(0.04, Join::Round), [0.2, 0.2, 0.9, 1.0])),
+            },
+            copias(6, 400.0, 900.0, 14),
+        ),
+        (
+            "circulos grandes esticados, redondo",
+            Forma {
+                bp: &circ,
+                linha: None,
+                regra: FillRule::NonZero,
+                marcas: None,
+                traco: Some((traco(0.04, Join::Round), [0.2, 0.6, 0.3, 1.0])),
+            },
+            esticadas(6, 400.0, 900.0, 15),
+        ),
+        (
+            "estrela com traco e marcas, conforme",
+            Forma {
+                bp: &est,
+                linha: None,
+                regra: FillRule::NonZero,
+                marcas: Some(&mc),
+                traco: Some((traco(0.06, Join::Miter), [0.1, 0.1, 0.1, 1.0])),
+            },
+            copias(40, 40.0, 220.0, 16),
+        ),
+        (
+            "estrela esticada com traco e marcas",
+            Forma {
+                bp: &est,
+                linha: None,
+                regra: FillRule::NonZero,
+                marcas: Some(&mc),
+                traco: Some((traco(0.06, Join::Miter), [0.1, 0.1, 0.1, 1.0])),
+            },
+            esticadas(40, 40.0, 220.0, 17),
         ),
     ];
     let fmt = wgpu::TextureFormat::Rgba16Float;

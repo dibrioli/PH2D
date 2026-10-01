@@ -283,6 +283,16 @@ fn diag_o_ceu_no_tempo() {
             .zip(&ref_img)
             .map(|(a, b)| a.abs_diff(*b))
             .collect();
+        // ⭐ Os PONTOS CLAROS (report do dono de 2026-10-01: *«ruído ao rotacionar a view»*): um pixel
+        // mais de `16` níveis acima da exacta. ⚠️ Um ponto tem `~2` píxeis (o lado da célula), e a
+        // régua «acima dos OITO vizinhos» não o via (lia `1`–`4` sobre milhares).
+        let lum = |img: &[u8], i: usize| {
+            (u32::from(img[i]) + u32::from(img[i + 1]) + u32::from(img[i + 2])) / 3
+        };
+        let pontos = (0..(W * H) as usize)
+            .filter(|p| lum(&ultima, p * 4) > lum(&ref_img, p * 4) + 16)
+            .count();
+        println!("  (cena {cena}: pontos claros contra a exacta: {pontos})");
         let a2 = d.iter().filter(|x| **x > 2).count();
         let a8 = d.iter().filter(|x| **x > 8).count();
         let max = d.iter().copied().max().unwrap_or(0);

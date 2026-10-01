@@ -171,8 +171,18 @@ impl ChaveDoCeu {
 /// | `2²⁴` | `8` | `11`–`32` · `183`–`192` | `213`–`240` · `346`–`373` | `1` · `51` |
 ///
 /// ⇒ o joelho é `4` por pixel: o dobro disso compra `10`–`15 %` a aproximar e nada a girar.
-/// ⛔ Roubar as entradas velhas mais cedo (`VELHA = 16`) foi medido e não ajuda.
+/// ⚠️ A frase que aqui esteve — *«roubar as entradas velhas mais cedo (`VELHA = 16`) não ajuda»* —
+/// foi medida em gestos de `12` quadros, onde a tabela não chega a encher; num giro LONGO ela enche
+/// e é exactamente o despejo que cura (ver [`VELHA`]).
 pub const ENTRADAS_POR_PIXEL: u64 = 4;
+
+/// ⭐⭐⭐⭐ **O tecto da tabela em ENTRADAS: `2²⁴ − 2`** — o recurso é a CODIFICAÇÃO da lista de
+/// trabalho, que leva a entrada nos `24` bits de cima de uma palavra (`célula << 8 | fatia`), com
+/// `0xffffff` reservado para «sem célula». ⛔⛔ Até 2026-10-01 só o tamanho da ligação a limitava:
+/// numa vista `3840×2160` ela pedia `33 M` e as entradas acima de `2²⁴` eram ESCRITAS NOUTRAS — a
+/// soma de uma célula caía na de outra (medido a `16` por pixel em `1920×1080`: `499 623` pontos
+/// claros contra a exacta).
+pub const ENTRADAS_MAX: u64 = (1 << 24) - 2;
 
 /// ⭐ **As entradas de uma vista de `pixels`**, com o tecto do DISPOSITIVO: o maior buffer que ele
 /// deixa ligar a um shader (`limite`, em bytes). Numa placa no piso da `wgpu` (`128 MiB`) uma vista
@@ -181,7 +191,7 @@ pub const ENTRADAS_POR_PIXEL: u64 = 4;
 pub fn entradas_para(pixels: u64, limite: u64, palavras: u32) -> u32 {
     let quer = pixels.saturating_mul(ENTRADAS_POR_PIXEL);
     let cabe = limite / (u64::from(palavras) * 4);
-    u32::try_from(quer.min(cabe).max(1 << 16)).unwrap_or(u32::MAX)
+    u32::try_from(quer.min(cabe).clamp(1 << 16, ENTRADAS_MAX)).unwrap_or(u32::MAX)
 }
 
 /// ⭐ **Quanto as vizinhas de uma célula vazia podem discordar para ela as herdar** — em céu (`0..1`).
@@ -194,8 +204,8 @@ const CONCORDANCIA: f32 = 0.06;
 
 /// ⏱️ Os contadores do quadro de movimento, depois da lista (ver [`crate::cronometro`]): os itens
 /// pedidos de céu, de lâmpadas da peça, de lâmpadas do chão, e os que não couberam.
-const CONTADORES: u64 = 8;
-const ROTULOS_DOS_CONTADORES: [&str; 8] = [
+const CONTADORES: u64 = 9;
+const ROTULOS_DOS_CONTADORES: [&str; 9] = [
     "n-ceu",
     "n-luz-peca",
     "n-luz-chao",
@@ -204,13 +214,35 @@ const ROTULOS_DOS_CONTADORES: [&str; 8] = [
     "n-sem-vizinhas",
     "n-discordam",
     "n-do-nivel",
+    // ⭐ Os píxeis que não acharam LUGAR na tabela (a sondagem inteira ocupada por células vivas) —
+    // marcham uma fatia só para si e pintam-na: era o «ruído ao rotacionar» do dono (2026-10-01).
+    "n-sem-lugar",
 ];
 
 /// O tecto de grupos de um despacho numa dimensão (`maxComputeWorkgroupsPerDimension` do piso da `wgpu`).
 const MAX_GRUPOS_1D: u32 = 65_535;
 
-/// Quantos quadros sem ser lida uma entrada aguenta antes de outra célula a poder roubar.
-pub const VELHA: u32 = 120;
+/// ⭐⭐⭐⭐ **Quantos quadros sem ser lida uma entrada aguenta antes de outra célula a poder roubar.**
+///
+/// ⛔⛔ Era `120` (dois segundos), e num giro LONGO a tabela ENCHIA (report do dono, 2026-10-01, foto:
+/// *«ruído ao rotacionar a view»*): as células que saíam de vista não podiam ceder o lugar, a
+/// sondagem de `8` vagas achava-as todas vivas, e o pixel marchava UMA fatia só para si — um ponto
+/// claro do tamanho da célula na face escura de um tubo. A ocupação cresce com o ângulo rodado e a
+/// falha com a potência `8` dela: medido no nó a `0,4` do enquadramento, `3°` por quadro, pontos
+/// claros contra a exacta `16` · `29` · `363` · `4 106` · `23 300` a `4` · `12` · `24` · `40` · `80`
+/// quadros. A `80` quadros (pontos sem lugar por quadro · pontos claros · canais acima de `8`):
+///
+/// | `VELHA` | sem lugar | pontos | `> 8` |
+/// |---:|---:|---:|---:|
+/// | `120` | `15 362` | `23 298` | `150 989` |
+/// | `16` | `238` | `54` | `1 007` |
+/// | `4` | `25` | `100` | `839` |
+///
+/// e as fatias marchadas por quadro não sobem (`147 687` · `142 405` · `146 585`): quem está em vista
+/// é LIDO a cada quadro e nunca chega a velho. ⛔ Sondar `32` vagas em vez de `8` foi medido e cura
+/// menos (`653` sem lugar, `780` pontos): o defeito é a tabela cheia de células MORTAS, não a sonda
+/// curta.
+pub const VELHA: u32 = 16;
 
 /// As palavras de uma entrada sem lâmpadas: a impressão da chave, `Σ c·vis`, `Σ c` (as duas em ponto
 /// fixo), as fatias reclamadas e o quadro em que foi lida pela última vez.

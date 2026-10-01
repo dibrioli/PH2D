@@ -187,6 +187,8 @@ const LUZ_ESCALA: f32 = 1024.0;
 const LUZ_AMOSTRAS: u32 = 32u;
 // O item da lista de trabalho que marcha as lâmpadas de uma célula (as fatias do céu são `0..8`).
 const LAMPADAS: u32 = 0xfeu;
+// O item de um pixel SEM LUGAR na tabela: o céu inteiro só para ele (ver `ceu_tempo_pede`).
+const TODAS: u32 = 0xfdu;
 
 // ⭐⭐⭐⭐ **Quantas fatias uma célula recebe POR QUADRO de movimento** — metade das direcções (as
 // primeiras na ordem invertida em bits, logo espalhadas pela esfera), e a outra metade no quadro
@@ -364,12 +366,16 @@ fn ceu_tempo_pede(@builtin(global_invocation_id) g: vec3<u32>) {
         }
     }
     if (e == 0xffffffffu) {
-        // A tabela estava cheia à volta da chave: UMA fatia só para este pixel, e nada se guarda.
+        // A tabela estava cheia à volta da chave: o céu INTEIRO só para este pixel, e nada se guarda.
+        // ⛔⛔ Era UMA fatia (`6` dos `48` cones) — um ponto claro do tamanho da célula na face escura
+        // de um tubo (report do dono de 2026-10-01). Com o despejo de [`VELHA`] estes píxeis são
+        // raros, e um pixel raro paga as `8` fatias em vez de pintar ruído.
+        conta_item(8u);
         let vaga = atomicAdd(&w[0], 1u);
         if (vaga >= tab.vagas) { conta_item(3u); return; }
         conta_item(0u);
         atomicStore(&w[4u + vaga * 2u], i);
-        atomicStore(&w[5u + vaga * 2u], cel << 8u);
+        atomicStore(&w[5u + vaga * 2u], (cel << 8u) | TODAS);
         return;
     }
     // ⭐⭐⭐⭐ Até `FATIAS_POR_QUADRO` fatias por célula e por quadro — a reclamação é um
@@ -606,6 +612,11 @@ fn ceu_tempo_marcha(@builtin(global_invocation_id) g: vec3<u32>) {
         return;
     }
     let pn = ponto_do_pixel(i);
+    if (k == TODAS) {
+        // Sem lugar na tabela: os `48` cones, só para este pixel — a mesma lei do quadro exacto.
+        luz[i * passo_da_luz()] = ceu_por_cones(pn[0] + pn[1] * (s.hit_eps * 4.0), pn[1]);
+        return;
+    }
     // ⭐ A fatia reclamada em `k`-ésimo lugar é a de índice INVERTIDO em bits: as primeiras que uma
     // célula recebe ficam espalhadas pela esfera, e uma célula ainda a encher lê um conjunto de cones
     // uniforme em vez de metade do céu.
@@ -613,13 +624,7 @@ fn ceu_tempo_marcha(@builtin(global_invocation_id) g: vec3<u32>) {
     var fatia = k;
     if (tab.fatias == 8u) { fatia = ordem[k]; }
     let sp = ceu_fatia(pn[0] + pn[1] * (s.hit_eps * 4.0), pn[1], fatia, tab.fatias);
-    if (cel == 0xffffffu) {
-        // A tabela estava cheia à volta da chave: uma fatia só para este pixel, e nada se guarda.
-        var ceu = 1.0;
-        if (sp.y > 0.0) { ceu = sp.x / sp.y; }
-        luz[i * passo_da_luz()] = ceu;
-        return;
-    }
+    if (cel == 0xffffffu) { return; }
     atomicAdd(&t[cel * tab.palavras + 1u], u32(sp.x * FIXO));
     atomicAdd(&t[cel * tab.palavras + 2u], u32(sp.y * FIXO));
 }

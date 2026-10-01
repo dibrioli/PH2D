@@ -430,10 +430,16 @@ fn a_tabela_segue_a_vista_e_o_tecto_do_dispositivo() {
     let ceu = palavras_para(0);
     assert_eq!(ceu, 5, "sem lâmpadas, as cinco palavras do céu");
     assert_eq!(entradas_para(hd, grande, ceu), 4 * 1920 * 1080);
+    // ⛔⛔ Esta asserção DEFENDIA o defeito (2026-10-01): a 4K pedia `16 × 1920 × 1080 = 33 M`
+    // entradas, e a lista de trabalho só endereça `2²⁴` — as de cima escreviam nas somas de outras.
     assert_eq!(
-        entradas_para(4 * hd, grande, ceu),
-        16 * 1920 * 1080,
-        "a 4K a tabela cresce com a vista"
+        u64::from(entradas_para(4 * hd, grande, ceu)),
+        ph2d_field_gpu::ceu_tempo::ENTRADAS_MAX,
+        "a 4K a tabela pára no que a lista de trabalho consegue endereçar"
+    );
+    assert!(
+        u64::from(entradas_para(hd, grande, ceu)) < ph2d_field_gpu::ceu_tempo::ENTRADAS_MAX,
+        "CONTROLO: a `1920×1080` o tecto da lista não morde"
     );
     assert_eq!(
         entradas_para(hd, piso_wgpu, ceu),
@@ -538,5 +544,57 @@ fn a_resolucao_dinamica_nao_recomeca_a_tabela() {
         com_area <= 1,
         "com a área entregue fixa, mudar o tamanho TRAÇADO recomeçou a tabela {com_area} vezes — \
          a chave voltou a ler o tamanho traçado, e cada passo da resolução dinâmica paga o céu inteiro"
+    );
+}
+
+/// ⭐⭐⭐⭐ **UM GIRO LONGO NÃO ENCHE A TABELA** (report do dono, 2026-10-01, foto: *«ruído ao
+/// rotacionar a view»*). `80` quadros de `3°` no nó a `0,4` do enquadramento, e o último contra a
+/// oclusão EXACTA: os PONTOS CLAROS (`> 16` níveis acima dela) — o ruído da foto.
+///
+/// ⛔⛔ Com as células MORTAS a ocupar a tabela por `120` quadros ela enchia, e o pixel sem lugar
+/// marchava `6` dos `48` cones e pintava-os: `23 298` pontos. Com o despejo a `16` quadros e o céu
+/// inteiro para quem não acha lugar: `39`–`45`. ⇒ a barra `400` fica no VALE (`9×` o medido, `58×`
+/// abaixo do defeito). ⚠️ O gate de `12` quadros (`os_gestos_da_camara…`) não o podia ver: a tabela
+/// não chega a encher em `36°` — a contagem a `12` era `29`.
+#[test]
+#[ignore = "precisa de GPU"]
+fn um_giro_longo_nao_enche_a_tabela() {
+    let Some(t) = crate::gpu_frame::shared() else {
+        println!("sem adaptador — saltado");
+        return;
+    };
+    let doc = crate::smoke::scene(28);
+    let mut cam = ph2d_field_render::Orbit::default();
+    cam.half_extent *= 0.4;
+    // Aquecer o ricochete (§ do `parado_o_movimento…`) e GRAVAR a tabela, como o produto.
+    let _ = quadro(t, &doc, &cam, true, exacta());
+    if let Ok(mut g) = t.lock() {
+        g.esquece_o_ceu();
+    }
+    let _ = quadro(t, &doc, &cam, true, com_cache());
+    let mut ultima = Vec::new();
+    for _ in 0..80 {
+        cam.turn_world([0.0, 1.0, 0.0], 3f32.to_radians());
+        ultima = quadro(t, &doc, &cam, false, com_cache());
+    }
+    let certo = quadro(t, &doc, &cam, false, exacta());
+    let (algum, ..) = diferenca(&ultima, &certo);
+    assert!(
+        algum > 1_000,
+        "CONTROLO: o quadro do giro é a exacta ({algum} canais de diferença) — a tabela não foi lida"
+    );
+    let mut pontos = 0usize;
+    for y in 0..LH as usize {
+        for x in 0..LW as usize {
+            if lum(&ultima, x, y) > lum(&certo, x, y) + 16 {
+                pontos += 1;
+            }
+        }
+    }
+    println!("giro longo: {pontos} pontos claros contra a exacta");
+    assert!(
+        pontos <= 400,
+        "um giro de 240° encheu a tabela: {pontos} pontos claros contra a exacta (o ruído da foto do \
+         dono) — as células mortas não cedem o lugar, ou o pixel sem lugar marcha meio céu"
     );
 }

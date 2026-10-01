@@ -314,13 +314,93 @@ marcha) somam os contadores globais uns dos outros e reprovam — pré-existente
 esta wave mexeu. E o `scripts/cargo-test-narrow.sh` parava no 1.º binário vermelho (a flake
 `an_abandoned_march_returns_nothing_and_returns_fast`, `3/3` verde sozinha) e nunca chegava ao `it`.
 
+## §9 — ⭐⭐⭐⭐ *«Ruído ao rotacionar a view»* (report do dono, 3 fotos, 2026-10-01)
+
+Pontos CLAROS do tamanho de uma célula nas faces de baixo (escuras) dos tubos, a aparecer só
+depois de girar um bocado. Cena `=28`, Render, de perto.
+
+### §9.1 — O mecanismo (medido, não lido)
+
+A tabela do céu no tempo (`ceu_tempo`) tem `8` posições de sonda linear por chave. Uma célula que
+SAIU de vista guardava o lugar dela durante `VELHA = 120` quadros (`lida` = o último quadro em que
+alguém a leu). Num giro LONGO a vista varre células novas mais depressa do que as velhas expiram ⇒
+a tabela ENCHE, e um pixel sem lugar caía num ramo de recurso que marchava **`1` fatia** (`6` dos `48`
+cones) — uma estimativa da oclusão feita com um oitavo da hemisfera, que numa face virada para
+baixo tanto pode acertar o chão como o céu ⇒ **um ponto claro do tamanho da célula**.
+
+A régua que o viu é a sonda `device_probes_w9_ceu_tempo` com **pontos = píxeis com luminância acima
+da exacta `+16`** (⛔ a 1.ª régua contava só máximos locais estritos sobre os `8` vizinhos e lia
+`0`–`4` sobre milhares de pontos: um ponto de `2` píxeis não é máximo estrito de nenhum vizinho).
+Pontos contra o número de quadros girados (`3°` cada):
+
+| quadros | 4 | 12 | 24 | 40 | 80 |
+|---|---|---|---|---|---|
+| pontos | 16 | 29 | 363 | 4 106 | 23 300 |
+
+⇒ **ele cresce com o ângulo varrido**, que é a assinatura de uma tabela a encher e não de uma lei.
+⚠️ **O gate que existia (`a_tabela_segue_a_vista…`) gira `12` quadros** — exactamente onde o
+fenómeno ainda não existe (`29`). *Uma fixtura que pára antes da fronteira mede o planalto.*
+
+### §9.2 — Hipóteses REFUTADAS antes da certa (a `40` quadros, linha de base `4 106`)
+
+| hipótese | pontos |
+|---|---|
+| uma entrada recém-reivindicada podia ser roubada | 4 056 |
+| sem herança da célula vizinha | 4 083 |
+| baldes de normal mais finos | 4 290 |
+
+Nenhuma mexe — a contagem de **`n-sem-lugar`** (contador novo, nono, do `ceu_tempo`) é que acusa.
+
+### §9.3 — A cura: três metades
+
+1. **`VELHA` `120 → 16`.** Um lugar não lido há `16` quadros é de uma célula fora de vista; com `120`
+   a tabela fica cheia de mortos. A `80` quadros:
+
+   | `VELHA` | sem-lugar | pontos | canais `> 8` |
+   |---|---|---|---|
+   | 120 | 15 362 | 23 298 | 150 989 |
+   | **16** | **238** | **54** | **1 007** |
+   | 4 | 25 | 100 | 839 |
+
+   As fatias marchadas por quadro **não sobem** (o custo fica). `8` e `4` dão contagens parecidas mas
+   pior extremo (`max 78` contra `42`) ⇒ fica `16`. ⚠️ A nota antiga do `ENTRADAS_POR_PIXEL` dizia
+   *«`VELHA=16` não ajuda»* — medida sobre gestos de `12` quadros, onde nada enche; corrigida à vista.
+   ⛔ **Sondar `32` posições em vez de `8` foi medido e RECUSADO** (`653` sem-lugar, `780` pontos).
+2. **Sem lugar ⇒ marcha os `48` cones (`TODAS = 0xfd`), nunca `1` fatia.** O pixel sem lugar paga
+   a estimativa inteira no próprio quadro (`ceu_por_cones`), que é a mesma lei da referência ⇒ ele
+   pode ficar MAIS CARO, nunca ERRADO. A `80` quadros com as três metades: **`39` pontos**, `488`
+   canais `> 8`, máximo `42`.
+3. **`ENTRADAS_MAX = 2²⁴ − 2`** (defeito LATENTE achado a medir a §9.3.1). A lista de trabalho codifica
+   a célula em `24` bits (`cel << 8 | fatia`, com `0xffffff` = sem célula); uma tabela com mais de
+   `2²⁴` entradas **corrompe as somas de outras células em silêncio**. Pedir `16` entradas por pixel
+   deu **`499 623` pontos** — e a `4K` a `4`/px a tabela já pedia `33 M`. ⛔⛔ **E o gate
+   `a_tabela_segue_a_vista_e_o_tecto_do_dispositivo` DEFENDIA o defeito:** ele afirmava o tamanho
+   pedido a `4K` acima de `2²⁴`. Hoje afirma `ENTRADAS_MAX` ali, com o CONTROLO de que o tecto não
+   morde a `1920×1080`. O limite nomeia o recurso: **a largura da codificação da lista**, não a
+   memória.
+
+### §9.4 — Gates e prova
+
+- `preview_device_w9_ceu_tempo_tests::um_giro_longo_nao_enche_a_tabela` (GPU): cena `28`, `80`
+  quadros de `3°`, contra a exacta. CONTROLO: a cena tem de ter `> 1 000` píxeis de peça. Barra
+  `≤ 400` pontos; mede **`10`**.
+- `a_tabela_segue_a_vista_e_o_tecto_do_dispositivo`: a metade de `4K` reescrita (ver §9.3.3).
+- Mutação (`muta_perto.py`, pré-voo `17/17` âncoras): **`M14`** `VELHA` de volta a `120` ·
+  **`M15`** sem `ENTRADAS_MAX` · **`M16`** `TODAS → 0` (sem lugar volta a marchar uma fatia) —
+  **as três sangram**. ⚠️ A âncora da `M15` mudou com o `clamp` que o clippy pediu
+  (`quer.min(cabe).clamp(1 << 16, ENTRADAS_MAX)`) e foi re-corrida.
+- GPU `62 + 3`; `nextest` das três crates `642/642`; clippy `-D warnings` zero.
+
 ## §6 — Aberto
 
 - ⏳ **O nó em TODO quadro** (§7.5): o que sobra é a marcha primária (`centro`, `2,7`–`4,8 ms`), a
   re-amostragem das bordas (`1,8`–`2,2`), a sombra da peça por pixel e as `48` direcções das
   células novas — cada corte medido ou muda a imagem ou a paridade com a CPU.
 - ⏳ O relógio com a máquina CALMA (`load < 5`) para as tabelas do §3 e do §7.5.
-- ⏳ **Smoke do dono** (`PH2D_FIELD_SMOKE=28`, Render, girar e fazer zoom — e AGORA aproximar muito).
+- ⏳ **Smoke do dono** (`PH2D_FIELD_SMOKE=28`, Render, girar e fazer zoom — e AGORA aproximar muito,
+  e girar MUITO de seguida: os pontos claros do §9 só nasciam depois de ~`24` quadros de giro).
+- ⏳ O custo do pixel sem lugar (`48` cones no próprio quadro, §9.3.2) não foi varrido com a máquina
+  calma — a `80` quadros são `~238` píxeis por quadro, e o relógio fica para a tabela do §3.
 - ⏳ Os três primeiros quadros de um gesto de perto (`23`–`52 ms`, §8.4): o laço parte sem medição.
 - ⏳ A cauda a girar a `0,25` de perto (`17,9`–`25,8 ms` nos últimos quadros, §8.4) — por medir se é
   a peça a encher o ecrã ou o laço a subir de resolução cedo demais.

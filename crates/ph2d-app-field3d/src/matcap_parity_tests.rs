@@ -114,6 +114,7 @@ fn o_matcap_e_o_mesmo_nos_dois_motores() {
             stops: look.exposure_stops,
             view: ph2d_view_transform::wgsl::view_code(look.view),
             background: FUNDO,
+            entrega: None,
         },
         W,
         H,
@@ -208,6 +209,7 @@ fn o_matcap_marcha_no_kernel_magro() {
         stops: look.exposure_stops,
         view: ph2d_view_transform::wgsl::view_code(look.view),
         background: FUNDO,
+        entrega: None,
     };
     let (c, f, setup) = super::pedido(
         &doc,

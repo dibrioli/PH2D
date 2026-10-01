@@ -153,6 +153,9 @@ mod shell_frame_tests;
 #[cfg(test)]
 mod render_bounce_seam_tests;
 
+/// ⭐⭐⭐⭐ A ampliação na placa do quadro de movimento (a resolução dinâmica, 2026-10-01).
+#[cfg(test)]
+mod amplia_gpu_tests;
 /// O ricochete NO DISPOSITIVO: que ele chega à imagem, e quanto custa (`docs/Render3d/08` §12).
 #[cfg(test)]
 mod render_bounce_gpu_tests;

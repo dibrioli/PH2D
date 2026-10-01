@@ -65,6 +65,9 @@ pub struct Sonda {
     /// ⏱️ **Sem oclusão nenhuma** — o CHÃO do relógio de um quadro: o que ele custa se o céu fosse
     /// de graça. Só as sondas o ligam; é a régua do que a oclusão ainda pesa.
     pub sem_ceu: bool,
+    /// ⭐⭐⭐⭐ **O tamanho a ENTREGAR** — o da área, quando o traçado é mais pequeno (a resolução
+    /// dinâmica do movimento): a imagem sobe a ele NA PLACA ([`ph2d_field_gpu::amplia`]).
+    pub entrega: Option<(u32, u32)>,
 }
 
 impl Default for Sonda {
@@ -83,6 +86,7 @@ impl Default for Sonda {
             ceu_passo: crate::preview::o_passo_do_ceu_a_mexer(),
             ceu_no_tempo: crate::preview::o_ceu_vive_no_tempo(),
             sem_ceu: false,
+            entrega: None,
         }
     }
 }

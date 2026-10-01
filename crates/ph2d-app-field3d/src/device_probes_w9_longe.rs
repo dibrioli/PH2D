@@ -37,6 +37,7 @@ fn diag_a_grade_de_longe() {
         stops: olhar.exposure_stops,
         view: ph2d_view_transform::wgsl::view_code(olhar.view),
         background: [0, 0, 0, 0],
+        entrega: None,
     };
     let Some(t) = crate::gpu_frame::shared() else {
         println!("sem adaptador");

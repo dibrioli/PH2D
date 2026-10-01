@@ -30,22 +30,13 @@ pub(crate) struct ChaveDoChao {
     pub(super) altura: f32,
     pub(super) lampadas: Vec<ph2d_field_render::PointLamp>,
     pub(super) materiais: Vec<ph2d_material::Surface>,
-    /// ⭐⭐⭐⭐ **A PRECISÃO INTEIRA — o único eixo da câmera que chega ao campo, e ele chega.**
-    ///
-    /// ⛔⛔ **Até 2026-09-23 esta linha era `hit: f32`, e era METADE.** A assadura lê `sharp.hit`
-    /// (o critério de acerto da marcha) **e** `sharp.normal` (o estêncil, em
-    /// `ph2d_field_render::march`, dentro do `normals_into`) — e a chave levava só o primeiro.
-    ///
-    /// ⚠️⚠️ **Era seguro por uma relação NÃO ESCRITA entre duas constantes de outra crate:** o
-    /// `normal` só se solta do clamp com `lado_px > 10 000 × half_extent` e o `hit` com
-    /// `> 2 500 ×`, logo o `normal` nunca se movia sem o `hit` se mover. *Subir o `NORMAL_EPS` de
-    /// `1e-4` para `1e-3` inverte a ordem, e passa a existir um regime em que o `normal` muda, o
-    /// `hit` não, a chave não muda e a cache devolve um campo assado com outro `ε` — em silêncio.*
-    ///
-    /// ⇒ a chave leva a struct INTEIRA, e um campo novo na
-    /// [`ph2d_field_render::Sharpness`] entra nela **por construção**. *Uma auditoria achou isto; a
-    /// cura não é um gate sobre as duas constantes, é a chave deixar de poder ficar incompleta.*
-    pub(super) sharp: ph2d_field_render::Sharpness,
+    /// ⛔⛔ **A PRECISÃO DA CÂMARA SAIU DA CHAVE porque saiu da ASSADURA** (2026-10-01). Ela era
+    /// o único eixo da câmara que chegava ao campo (`sharp.hit` e `sharp.normal`), e de perto ela
+    /// segue o ZOOM: cada quadro de aproximar re-assava o campo na CPU (`~88 ms` no nó — o report
+    /// *«se aproximar ainda fica lento»*). Hoje a assadura usa a precisão do MUNDO
+    /// ([`ph2d_field_render::Sharpness::do_mundo`]), a que já usava em todo enquadramento de fábrica
+    /// para cima, e o gate `chao_sem_camara` (na `ph2d-field-render`) afirma que o campo é o mesmo a
+    /// qualquer zoom — *é ele, e não a chave, que impede a cache de devolver outro `ε`.*
     /// A grelha e as direcções, que são constantes hoje e entram porque uma delas subir sem a
     /// chave saber devolveria o campo da grelha antiga.
     pub(super) grelha: usize,
@@ -119,7 +110,6 @@ pub(super) fn campo_do_chao(
         altura: chao.height,
         lampadas: points.to_vec(),
         materiais: surfaces.all.to_vec(),
-        sharp: ph2d_field_render::Sharpness::for_frame(cam.half_extent, w.min(h) as usize),
         grelha: ph2d_field_render::ground_bounce::GROUND_BOUNCE_GRID,
         direccoes: ph2d_field_render::ground_bounce::GROUND_BOUNCE_DIRS,
     };

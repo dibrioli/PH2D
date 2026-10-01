@@ -241,6 +241,7 @@ fn placa(
                     stops: olhar.exposure_stops,
                     view: ph2d_view_transform::wgsl::view_code(olhar.view),
                     background: [0, 0, 0, 0],
+                    entrega: None,
                 },
                 w,
                 h,

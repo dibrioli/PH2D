@@ -58,11 +58,22 @@ pub(super) fn marcha_com(
         (!so_o_centro && setup.ao_rays > 0 && setup.ceu_tempo != crate::ceu_tempo::CeuTempo::Nao)
             .then(|| {
                 let l = device.limits();
+                // ⭐⭐⭐⭐ **A tabela é dimensionada pela ÁREA, não pelo traçado** (2026-10-01): com a
+                // resolução dinâmica o traçado muda de tamanho de um quadro para o outro, o tamanho
+                // da tabela está na chave, e cada mudança RECOMEÇAVA o céu do zero (`40`–`50 ms` em
+                // quadros alternados, medido no laço do produto). A área é a da entrega.
+                let tracado = u64::from(width) * u64::from(height);
+                let area = match &pintura {
+                    Pintura::Material(p) => p
+                        .entrega
+                        .map_or(tracado, |(w, h)| u64::from(w) * u64::from(h)),
+                    _ => tracado,
+                };
                 crate::ceu_tempo::ChaveDoCeu::de(
                     fita,
                     sculpts,
                     &setup,
-                    u64::from(width) * u64::from(height),
+                    tracado.max(area),
                     l.max_storage_buffer_binding_size.min(l.max_buffer_size),
                 )
             })
@@ -157,6 +168,23 @@ pub(super) fn marcha_com(
     let folga = longe.as_ref().map_or(0, crate::longe::Longe::valores);
     let assa = longe.as_ref().and_then(crate::longe::Longe::grade);
     let ub = uniforme_do_pedido(device, setup, width, height, longe_k);
+    // ⭐⭐⭐⭐ **O MESMO pedido com a precisão do MUNDO** — só a assadura das SONDAS o lê (ver
+    // [`crate::paint::Alvos::setup_mundo`]). ⛔ Sem ele as sondas guardadas entre quadros levavam a
+    // precisão do zoom em que foram assadas, e a mesma vista saía diferente conforme o caminho do zoom.
+    let ub_mundo = matches!(pintura, Pintura::Material(_)).then(|| {
+        let w = ph2d_field_render::Sharpness::do_mundo();
+        uniforme_do_pedido(
+            device,
+            MarchSetup {
+                hit_eps: w.hit,
+                normal_eps: w.normal,
+                ..setup
+            },
+            width,
+            height,
+            longe_k,
+        )
+    });
     let lei_do_dono = pintor.and_then(|p| p.owners?.to_wgsl(consts.len()));
     if let Some(l) = &lei_do_dono {
         consts.extend_from_slice(&l.consts);
@@ -373,6 +401,7 @@ pub(super) fn marcha_com(
             bgl: &bgl,
             grades: &b_grades,
             setup: &ub,
+            setup_mundo: ub_mundo.as_ref().unwrap_or(&ub),
             k: &kb,
             centro: &b_centro,
             luz: &b_luz,
@@ -445,6 +474,7 @@ pub(super) fn marcha_com(
             bgl: &bgl,
             grades: &b_grades,
             setup: &ub,
+            setup_mundo: ub_mundo.as_ref().unwrap_or(&ub),
             k: &kb,
             centro: &b_centro,
             luz: &b_luz,

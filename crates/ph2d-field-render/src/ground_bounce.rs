@@ -325,7 +325,10 @@ fn assa(
     };
 
     let shape = ph2d_field_eval::hybrid::Hybrid::new(doc, reg);
-    let scene = crate::probes::scene_solta(&shape, doc, reg, cam, lado_px);
+    let mut scene = crate::probes::scene_solta(&shape, doc, reg, cam, lado_px);
+    // ⭐⭐⭐⭐ **A precisão é a do MUNDO, não a da câmara** — ver [`crate::Sharpness::do_mundo`] e o
+    // gate `tests::chao_sem_camara`.
+    scene.sharp = crate::Sharpness::do_mundo();
     let base = crate::shade_render::ViewBasis::of(cam);
     let lift = scene.sharp.hit * crate::march::BIAS;
     // Até onde um raio procura: a diagonal do campo mais o diâmetro da peça.

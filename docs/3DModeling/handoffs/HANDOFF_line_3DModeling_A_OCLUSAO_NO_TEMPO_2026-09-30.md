@@ -200,10 +200,127 @@ divisor com histerese segura a resolução no pico isolado e baixa-a se o custo 
 - ⚠️ O SIGSEGV na SAÍDA do processo da sonda (depois de `test result: ok`, `3` em `~45` corridas,
   `0` em `6` a reproduzir) é o mesmo da §5.1 — desmontagem do driver.
 
+## §8 — ⭐⭐⭐⭐ *«quase perfeito! se aproximar do objeto ainda fica lento e perde resolução»* (report do dono, 2026-10-01)
+
+⚠️ **Conte o DELTA: `PROJECT_SCHEMA` 0, registos 0, `FIELD_DOC_VERSION` 0, zero contrato, zero ADR,
+zero pacote externo.** Ficheiros novos: [`amplia.rs`](../../../crates/ph2d-field-gpu/src/amplia.rs)
+(+ `amplia_tests.rs`), [`amplia_gpu_tests.rs`](../../../crates/ph2d-app-field3d/src/amplia_gpu_tests.rs),
+[`chao_sem_camara.rs`](../../../crates/ph2d-field-render/src/tests/chao_sem_camara.rs).
+
+### §8.1 — LENTO: a câmara estava em TRÊS chaves de caches do MUNDO
+
+Pelo relógio da placa (§7.2), o nó a `40 %` do enquadramento custava **`285 ms`** por quadro de zoom:
+`assa-sondas` `162,7 ms` + `~88 ms` de CPU a re-assar o chão. As duas assaduras são grelhas no
+MUNDO, e as chaves delas levavam a precisão de acerto da CÂMARA (`pixel/4`), que de perto muda a
+cada quadro de zoom. ⇒ três curas, a mesma lei:
+
+| chave | o que saiu | e a assadura passa a usar |
+|---|---|---|
+| `ChaveDoCeu` (W9, `abe1a7838`) | `hit_eps`/`normal_eps` | — (o céu é por pixel e temporal) |
+| `ChaveDasSondas` (`sondas_na_placa.rs`) | `hit_eps`/`normal_eps` | a precisão do MUNDO, nos DOIS lados: `paint::Alvos::setup_mundo` (um 2.º uniforme só para o passe `assa_sondas`) e `probes::bake_probes` |
+| `ChaveDoChao` (`gpu_frame_chao.rs`) | o `Sharpness` inteiro | `Sharpness::do_mundo()` dentro de `ground_bounce::assa` |
+
+⛔⛔ **A metade que tira só a chave é um defeito novo**: guardadas sem a câmara e assadas com ela, a
+MESMA vista saía diferente conforme o zoom em que o armazém nasceu (medido na placa: `pior 2` níveis
+— a mutação `M6`). ⚠️ **O preço é `≤ 0,91` byte no zoom mais apertado** (a tabela de 2026-09-21,
+mudada para o doc do `chao_sem_camara`): a precisão do mundo é a de todo enquadramento de fábrica.
+Depois: zoom a `0,4` `285 → 33,6 ms`.
+
+### §8.2 — PERDE RESOLUÇÃO: a escala era em três degraus e esticada em bilinear
+
+Mesmo sem céu, de perto o nó a ecrã cheio pede `23`–`35 ms`: não cabe nativo. ⇒ **resolução
+dinâmica contínua + ampliação na placa**:
+
+- [`preview::preview_size`]: escala contínua em passos de `1/32` (`ESCALA_PASSOS`), piso `1/3`, com
+  **histerese** (subir só com `SUBIR_COM_FOLGA = 0,85` do orçamento) — sem ela o laço escorregava
+  degraus (o gate `the_loop_settles_inside_the_budget`, cujo modelo de custo passou a interpolar
+  linearmente em píxeis entre as linhas medidas).
+- [`ph2d_field_gpu::amplia`]: **Catmull-Rom 16 amostras com ANTI-ANEL** (cada canal preso ao
+  mín/máx dos QUATRO texels mais perto) em bytes sRGB, os quatro canais; gémeo na CPU
+  (`amplia_cpu`). A imagem sai do dispositivo à área CHEIA e o ecrã desenha-a `1:1`.
+  ⛔ Sem a trava, uma aresta `64|192` toca abaixo de `63,5` (o controlo do gate do halo).
+- A medição do custo usa os píxeis TRAÇADOS (`Ready::tracado_px`), não os entregues.
+- ⭐ **E o MATCAP também** (o modo de omissão do modelador): `MatcapSetup::entrega` e a ampliação no
+  mesmo encoder do `matcap::pinta`. O tamanho que a thread diz ao ecrã sai de UMA porta com dois
+  chamadores (`smoke_draw_thread::tamanho_entregue`).
+
+### §8.3 — ⛔ E a resolução dinâmica RECOMEÇAVA a tabela do céu
+
+O tamanho traçado entrava na `ChaveDoCeu` (dimensiona a tabela) ⇒ cada passo da escala recomeçava-a:
+no laço do produto `4`–`8` recomeços em `16` quadros e picos de `40`–`50 ms`. ⇒ a tabela é
+dimensionada pela área ENTREGUE (`tracado.max(entrega)` em `trace_marcha_com.rs`). Depois: **`0`
+recomeços** em todas as células.
+
+### §8.4 — O relógio do laço do produto (`PH2D_SONDA_LACO=1`, `--release`, `1920×1080`, carga `~2–3`)
+
+| perto | gesto | larguras do laço | ms por quadro (depois do 3.º) |
+|---|---|---|---|
+| `1,0` | girar | `1920 → 1620 → 1920` | `12,5`–`15,7` |
+| `1,0` | aproximar `3 %` | `1920 → 1560` | `16,2`–`18,1` |
+| `0,4` | girar | `1140 → 900 → 1140` | `11,8`–`15,0` |
+| `0,4` | aproximar | `1260 → 1080 → 1140` | `12,6`–`15,5` |
+| `0,25` | girar | `1080 → 780 → 960` | `11,4`–`14,8` (cauda `17,9`–`25,8`) |
+| `0,25` | aproximar | `1200 → 960 → 1020` | `12,0`–`14,8` |
+
+⚠️ Os três primeiros quadros de um gesto ainda custam `23`–`52 ms` (o laço parte da largura cheia sem
+medição); no app a `Medicoes` herda a do gesto anterior.
+
+### §8.5 — ⛔ Gates com a PREMISSA MORTA (reescritos com a morte à vista)
+
+- `chao_ricochete::a_tolerancia_de_acerto_entra_na_chave_da_cache_do_chao` — **apagado**, com
+  lápide e a tabela dele levada para o `chao_sem_camara`.
+- `gpu_frame_tests::a_chave_do_chao_leva_a_precisao_inteira` → `…_nao_leva_a_camara_porque_a_assadura_nao_a_le`.
+- `preview_device_w9_chao_tests` (metade do zoom): *faltar* → **acertar**.
+- ⛔⛔ **E um gate media a ORDEM**: `parado_o_movimento_le_a_oclusao_do_assente` lia `35 169` canais
+  `> 8` SOZINHO e `27` na suíte — num processo novo os quadros de movimento saltam o ricochete até o
+  assente o compilar (§7.1), e a fixtura comparava quadros com e sem ele. Aquecido: `0` acima de `8`,
+  pior `2` (contra `24`/`13` do quadro que ele substitui). Defeito do arnês, anterior a esta wave.
+
+### §8.6 — Gates novos e prova
+
+- `amplia_tests` (`3`, CPU): identidade · sem halo junto da aresta (com o controlo da bicúbica crua) · rampa.
+- `amplia_gpu_tests::a_placa_amplia_o_quadro_pequeno_pela_lei_da_cpu`: tamanho, `≤ 1` nível contra a
+  CPU, determinismo como controlo.
+- `chao_sem_camara` (`2`): o campo do chão e as sondas IGUAIS AO BIT a `1,6` e `0,05`.
+- `preview_device_w9_sondas_tests::aproximar_nao_reassa_as_sondas_nem_muda_a_imagem`: `0` assaduras
+  e igualdade AO BIT contra assar de fresco ali (a mesma rotação ⇒ os mesmos bits).
+- `preview_device_w9_ceu_tempo_tests::a_resolucao_dinamica_nao_recomeca_a_tabela`: `≤ 1` recomeço
+  com a área fixa; CONTROLO sem ela: um por tamanho.
+- `amplia_gpu_tests::a_placa_amplia_o_matcap_pela_lei_da_cpu` (o irmão do matcap).
+- `preview_medicoes_tests::subir_de_resolucao_pede_folga_e_descer_nao` — a LEI da histerese.
+- `render_bounce_seam_tests::os_dois_caminhos_da_placa_pedem_e_entregam_a_area` — a costura da
+  thread (textual: ela não é alcançável de um teste).
+
+### §8.7 — Prova de mutação (`muta_perto.py`, pré-voo `14/14` âncoras, `1` cada)
+
+**`12` de `13` sangram + `1` NOMEADA + o CONTROLO sobrevive**: anti-anel na CPU (`M1`) e na placa
+(`M2`) · a entrega ignorada (`M3`) · o chão (`M4`) e as sondas da CPU (`M5`) com a precisão da câmara
+· as sondas da placa com o uniforme do quadro (`M6`, `pior 2`) · a tolerância de volta à chave das
+sondas (`M7`) · sem histerese (`M8`) · a tabela pelo tamanho traçado (`M9`) · o matcap a ignorar a
+entrega (`M11`) · a thread a devolver o tamanho traçado (`M12`) · o matcap sem pedir a área (`M13`).
+
+⛔⛔ **Duas SOBREVIVERAM na 1.ª corrida, e as duas eram buracos de régua:** a histerese (`M8`) era
+INVISÍVEL ao `the_loop_settles_inside_the_budget` — o modelo de custo dele interpola em píxeis e o
+laço converge com ou sem ela ⇒ gate da LEI; e a costura da thread (`M12`) casava a agulha `p.cheio`
+na CONDIÇÃO ⇒ os braços passam a ser lidos linha a linha. ⚠️ **NOMEADA (`M10`)**: o chão com a
+precisão da câmara visto pelo gate de CONTAGEM do dispositivo sobrevive por construção — a cache
+acerta pela CHAVE, que não lê a precisão; quem vê a mutação é o gate de VALOR (`M4`).
+
+### §8.8 — ⚠️ Um aviso para quem corre a suíte desta família
+
+O `tests/it` da `ph2d-field-render` só é verde **um processo por teste** (`cargo nextest`, `144/144`):
+com `cargo test` em threads, `7` gates de CONTAGEM (fitas compiladas, acertos de cache, amostras de
+marcha) somam os contadores globais uns dos outros e reprovam — pré-existente, nenhum toca no que
+esta wave mexeu. E o `scripts/cargo-test-narrow.sh` parava no 1.º binário vermelho (a flake
+`an_abandoned_march_returns_nothing_and_returns_fast`, `3/3` verde sozinha) e nunca chegava ao `it`.
+
 ## §6 — Aberto
 
 - ⏳ **O nó em TODO quadro** (§7.5): o que sobra é a marcha primária (`centro`, `2,7`–`4,8 ms`), a
   re-amostragem das bordas (`1,8`–`2,2`), a sombra da peça por pixel e as `48` direcções das
   células novas — cada corte medido ou muda a imagem ou a paridade com a CPU.
 - ⏳ O relógio com a máquina CALMA (`load < 5`) para as tabelas do §3 e do §7.5.
-- ⏳ **Smoke do dono** (`PH2D_FIELD_SMOKE=28`, Render, girar e fazer zoom).
+- ⏳ **Smoke do dono** (`PH2D_FIELD_SMOKE=28`, Render, girar e fazer zoom — e AGORA aproximar muito).
+- ⏳ Os três primeiros quadros de um gesto de perto (`23`–`52 ms`, §8.4): o laço parte sem medição.
+- ⏳ A cauda a girar a `0,25` de perto (`17,9`–`25,8 ms` nos últimos quadros, §8.4) — por medir se é
+  a peça a encher o ecrã ou o laço a subir de resolução cedo demais.

@@ -78,3 +78,45 @@ fn compara_por_pixel_e_nao_por_milissegundo() {
     m.regista(quadro(16.0));
     assert_eq!(m.para_o_divisor(), Some(quadro(16.0)));
 }
+
+/// ⭐⭐⭐ **A HISTERESE: subir de resolução pede FOLGA, descer não** (2026-10-01) — ver
+/// [`super::SUBIR_COM_FOLGA`]. Sem ela a escala contínua oscila um passo para cima e outro para baixo
+/// em quadros alternados: o custo por pixel SOBE quando a imagem encolhe, e a previsão de um tamanho
+/// maior feita a partir de um menor é otimista.
+///
+/// ⚠️ Esta é a régua da LEI e não a do laço: o `the_loop_settles_inside_the_budget` corre o laço
+/// num modelo de custo que interpola em píxeis, e ali a histerese é INVISÍVEL — a mutação que a
+/// apaga sobreviveu a ele (`muta_perto.py`, `M8`).
+#[test]
+fn subir_de_resolucao_pede_folga_e_descer_nao() {
+    // O quadro cheio custaria `B / 0,76²`: o orçamento pede a escala `0,76`, que arredonda para
+    // BAIXO a `24/32 = 0,75`; com a folga de `0,85` a `22/32 = 0,6875`.
+    let b = super::PREVIEW_BUDGET_MS;
+    let cheio_ms = f64::from(b) / (0.76f64 * 0.76);
+    let px_cheio = u64::from(CHEIO.0) * u64::from(CHEIO.1);
+    let medido_a = |escala: f64| {
+        #[allow(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            clippy::cast_precision_loss
+        )]
+        let px = (px_cheio as f64 * escala * escala).round() as u64;
+        #[allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
+        Measured {
+            pixels: px,
+            millis: (cheio_ms * px as f64 / px_cheio as f64) as f32,
+        }
+    };
+    // DESCER (medido no cheio): vai direto à escala do orçamento, sem folga nenhuma.
+    assert_eq!(
+        super::preview_size(CHEIO, Some(medido_a(1.0)), b, 64),
+        (1440, 810),
+        "descer de resolução pediu folga — o quadro fica acima do orçamento um quadro a mais"
+    );
+    // SUBIR (medido a metade da largura): só até onde cabe com a folga.
+    assert_eq!(
+        super::preview_size(CHEIO, Some(medido_a(0.5)), b, 64),
+        (1320, 743),
+        "subir de resolução não pediu folga — o laço oscila entre dois passos"
+    );
+}

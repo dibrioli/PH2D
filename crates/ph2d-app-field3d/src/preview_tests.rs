@@ -26,15 +26,26 @@ const MEASURED_MS: [(u32, f32, f32); 4] = [
 
 pub(super) const FULL: (u32, u32) = (1920, 1080);
 
-/// O custo que a máquina cobraria por um traçado deste tamanho — interpolado da tabela pelo divisor
-/// mais próximo.
+/// O custo que a máquina cobraria por um traçado deste tamanho — interpolado da tabela, LINEAR nos
+/// píxeis entre as duas linhas medidas que o cercam. ⚠️ Desde que a escala é contínua (2026-10-01)
+/// a interpolação é load-bearing: a 1.ª redacção tomava o divisor inteiro mais perto, um custo em
+/// DEGRAUS, e um laço contínuo sobre degraus desliza de um para o outro sem nunca assentar.
 fn measured_cost(size: (u32, u32), sculpture: bool) -> f32 {
-    let d = (FULL.0 as f32 / size.0 as f32).round().max(1.0) as u32;
-    let row = MEASURED_MS
-        .iter()
-        .min_by_key(|(rd, _, _)| rd.abs_diff(d))
-        .expect("a tabela não é vazia");
-    if sculpture { row.2 } else { row.1 }
+    let px = |d: u32| (FULL.0 / d) as f32 * (FULL.1 / d) as f32;
+    let alvo = size.0 as f32 * size.1 as f32;
+    let custo = |r: &(u32, f32, f32)| if sculpture { r.2 } else { r.1 };
+    for par in MEASURED_MS.windows(2) {
+        let (a, b) = (&par[0], &par[1]);
+        if alvo <= px(a.0) && alvo >= px(b.0) {
+            let t = (alvo - px(b.0)) / (px(a.0) - px(b.0));
+            return custo(b) + t * (custo(a) - custo(b));
+        }
+    }
+    if alvo > px(1) {
+        custo(&MEASURED_MS[0])
+    } else {
+        custo(&MEASURED_MS[3])
+    }
 }
 
 /// ⭐ **O LAÇO ASSENTA, e assenta DENTRO do orçamento.**

@@ -100,68 +100,36 @@ fn a_pergunta_da_curvatura_tem_uma_porta_e_so_uma() {
     }
 }
 
-/// ⭐⭐⭐⭐ **A CHAVE DA CACHE DO CHÃO LEVA A PRECISÃO INTEIRA, NÃO METADE DELA.**
+/// ⭐⭐⭐⭐ **A CHAVE DA CACHE DO CHÃO NÃO LEVA A CÂMARA — porque a ASSADURA não a lê.**
 ///
-/// ⛔⛔ **Este gate nasceu de uma auditoria (2026-09-23).** A chave levava `hit: f32` e a assadura
-/// lê `sharp.hit` **e** `sharp.normal` (o estêncil, no `ph2d_field_render::march::normals_into`).
+/// ⛔⛔ **A premissa do gate que aqui vivia MORREU (2026-10-01).** Ele afirmava *«a chave leva a
+/// precisão inteira»* (auditoria de 2026-09-23: a assadura lia `sharp.hit` e `sharp.normal`, e uma
+/// chave com metade devolvia um campo com outro `ε`). Certo — e foi essa precisão na chave que fez
+/// cada quadro de APROXIMAR re-assar o campo na CPU (`~88 ms` no nó, o report *«se aproximar ainda
+/// fica lento»*). Hoje a assadura usa a precisão do MUNDO ([`ph2d_field_render::Sharpness::do_mundo`])
+/// e a chave deixa a câmara de fora.
 ///
-/// ⚠️⚠️ **E era seguro por uma relação NÃO ESCRITA entre duas constantes de outra crate:** o
-/// `normal` só se solta do clamp com `lado_px > 10 000 × half_extent` e o `hit` com `> 2 500 ×`,
-/// logo o `normal` nunca se movia sem o `hit` se mover. *Subir o `NORMAL_EPS` de `1e-4` para `1e-3`
-/// inverte a ordem, e a cache devolve um campo assado com outro `ε` — em silêncio.*
-///
-/// ⛔ **Nenhum gate de produto o podia apanhar:** o `a_cache_do_chao_falta_quando_a_luz_muda` varre
-/// o zoom num regime onde as duas se movem JUNTAS. *A fixtura não contém o regime em que elas se
-/// separam, e hoje esse regime não é alcançável — o que é exactamente porque a cura tem de ser
-/// ESTRUTURAL e não uma barra.*
-///
-/// ⭐ Com a struct inteira na chave, um campo novo na [`ph2d_field_render::Sharpness`] entra nela
-/// por construção — e é isso que este gate afirma, variando **cada metade de cada vez**.
+/// ⚠️ **As duas metades, porque cada uma sozinha mente:** a chave sem câmara só é honesta se a
+/// assadura não a ler — a lei vive no `ph2d-field-render` (o gate de comportamento
+/// `chao_sem_camara`, que assa a dois zooms e exige o mesmo campo bit a bit) e a FIAÇÃO lê-se aqui.
 #[test]
-fn a_chave_do_chao_leva_a_precisao_inteira() {
-    use ph2d_field_render::Sharpness;
-    let base = Sharpness::for_frame(1.6, 1080);
-    let chave = |sharp: Sharpness| super::gpu_frame_chao::ChaveDoChao {
-        fita: "fn field(p: vec3<f32>) -> f32 { return 1.0; }".to_string(),
-        consts: vec![1.0, 2.0],
-        altura: -1.0,
-        lampadas: Vec::new(),
-        materiais: Vec::new(),
-        sharp,
-        grelha: 32,
-        direccoes: 128,
-    };
+fn a_chave_do_chao_nao_leva_a_camara_porque_a_assadura_nao_a_le() {
+    let chave = include_str!("gpu_frame_chao.rs");
+    let corpo = chave
+        .split("let chave = ChaveDoChao {")
+        .nth(1)
+        .and_then(|r| r.split("};").next())
+        .expect("a construção da chave");
     assert!(
-        chave(base) == chave(base),
-        "a mesma precisão tem de dar a mesma chave"
+        !corpo.contains("cam") && !corpo.contains("Sharpness"),
+        "a chave do campo do chão voltou a ler a câmara — cada quadro de zoom re-assa o campo"
     );
-    // ⭐ **Cada metade, de cada vez** — é isso que impede a chave de levar só uma delas.
-    for (nome, outra) in [
-        (
-            "hit",
-            Sharpness {
-                hit: base.hit * 0.5,
-                ..base
-            },
-        ),
-        (
-            "normal",
-            Sharpness {
-                normal: base.normal * 0.5,
-                ..base
-            },
-        ),
-    ] {
-        assert!(
-            base != outra,
-            "CONTROLO: a fixtura do `{nome}` não move a precisão — a metade abaixo mediria o nada"
-        );
-        assert!(
-            chave(base) != chave(outra),
-            "mudar só o `{nome}` da precisão deu a MESMA chave — a assadura lê as duas metades, e \
-             uma chave que leve uma só devolve um campo assado com outro ε, em silêncio"
-        );
-    }
+    let assadura = include_str!("../../ph2d-field-render/src/ground_bounce.rs");
+    assert!(
+        assadura.contains("scene.sharp = crate::Sharpness::do_mundo();"),
+        "a assadura do campo do chão voltou à precisão da câmara — a chave sem ela devolveria um \
+         campo assado com outro ε"
+    );
 }
 
 /// ⭐⭐⭐⭐ **O pedido do produto recorta o raio pela caixa da MARCHA DA CPU — e não assa grade.**

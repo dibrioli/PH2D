@@ -193,3 +193,87 @@ fn trocar_a_luz_ou_a_peca_reassa_as_sondas() {
         "sem ricochete as sondas não se assam"
     );
 }
+
+/// ⭐⭐⭐⭐ **APROXIMAR NÃO REASSA AS SONDAS — e a imagem é a mesma que assá-las ali de fresco**
+/// (2026-10-01, report do dono: *«se aproximar do objeto ainda fica lento e perde resolução»*).
+///
+/// ⛔ A tolerância de acerto da câmara (`pixel/4`) estava na chave: cada quadro de aproximar abaixo
+/// do clamp re-assava as sondas (`162,7 ms` no nó, pelo relógio da placa). Ela saiu da chave, e a
+/// assadura passou a ligar a precisão do MUNDO (`ph2d_field_gpu::paint::Alvos::setup_mundo`) —
+/// senão as sondas guardadas levavam a precisão do zoom em que nasceram, e a MESMA vista sairia
+/// diferente conforme o caminho do zoom.
+///
+/// ⭐ **A barra é a IGUALDADE AO BIT**, e pode sê-lo: as duas rotas têm a MESMA rotação (a única
+/// coisa da câmera que chega à assadura), logo as sondas são os mesmos bits. ⚠️ O CONTROLO primeiro:
+/// a tolerância da câmara de facto DESCE no zoom escolhido, senão o gate mediria o clamp.
+#[test]
+#[ignore = "precisa de GPU"]
+fn aproximar_nao_reassa_as_sondas_nem_muda_a_imagem() {
+    let Some(t) = crate::gpu_frame::shared() else {
+        println!("sem adaptador — saltado");
+        return;
+    };
+    let (doc, reg) = cena();
+    let perto = 0.005;
+    assert!(
+        ph2d_field_render::Sharpness::for_frame(perto, LH as usize).hit
+            < ph2d_field_render::Sharpness::for_frame(
+                ph2d_field_render::Orbit::default().half_extent,
+                LH as usize
+            )
+            .hit,
+        "CONTROLO: a `{perto}` de enquadramento a tolerância da câmara não desce — o gate mediria o clamp"
+    );
+    let materiais = [ph2d_material::OpenPbr::default().prepare()];
+    let surfaces = ph2d_field_render::Surfaces {
+        all: &materiais,
+        owners: None,
+    };
+    let pinta = |half_extent: f32| {
+        let cam = ph2d_field_render::Orbit {
+            rotation: ph2d_field_render::Orbit::from_yaw_pitch(0.4, 0.5).rotation,
+            half_extent,
+            ..ph2d_field_render::Orbit::default()
+        };
+        crate::gpu_frame::paint_com(
+            t,
+            &doc,
+            &reg,
+            &cam,
+            &LUZ_A,
+            &surfaces,
+            &ph2d_field_render::Presentation::of(ph2d_view_transform::Look::default()),
+            [0, 0, 0, 0],
+            None,
+            LW,
+            LH,
+            true,
+            crate::gpu_frame::Sonda::default(),
+        )
+        .expect("o pintor")
+        .rgba
+    };
+    t.lock().expect("o traçador").esquece_as_sondas();
+    let _ = pinta(ph2d_field_render::Orbit::default().half_extent);
+    let antes = assadas(t);
+    let morno = pinta(perto);
+    let ao_aproximar = assadas(t) - antes;
+    t.lock().expect("o traçador").esquece_as_sondas();
+    let frio = pinta(perto);
+    assert_eq!(
+        ao_aproximar, 0,
+        "aproximar reassou as sondas — a câmara voltou à chave, e cada quadro de zoom paga a placa"
+    );
+    let (acima, pior) = morno
+        .iter()
+        .zip(&frio)
+        .fold((0usize, 0u8), |(n, p), (a, b)| {
+            let d = a.abs_diff(*b);
+            (n + usize::from(d > 0), p.max(d))
+        });
+    assert_eq!(
+        acima, 0,
+        "as sondas assadas LONGE mudaram a imagem de PERTO (pior {pior}) — a assadura está a ler a \
+         precisão do QUADRO, e a mesma vista depende do caminho do zoom"
+    );
+}

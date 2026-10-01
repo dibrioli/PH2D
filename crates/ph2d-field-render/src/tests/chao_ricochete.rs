@@ -1048,9 +1048,9 @@ fn sonda_o_campo_do_chao_depende_da_camera() {
 /// ULP. A lei é invariante à rotação (os BSDF só leem produtos internos); o que sobra é rodar `n` e
 /// `v` em `f32`. ⇒ a barra é o [`BYTE_DE_RADIANCIA`], e a medição está **`50 000×`** abaixo dela.
 ///
-/// ⚠️ **O ZOOM não está aqui, e é de propósito:** ele entra por outra porta (a tolerância de
-/// acerto) e a medição diz que ele **É** chave — ver o gate irmão
-/// [`a_tolerancia_de_acerto_entra_na_chave_da_cache_do_chao`].
+/// ⚠️ **O ZOOM não está aqui, e é de propósito:** ele entrava por outra porta (a tolerância de
+/// acerto) e até 2026-10-01 era chave; hoje a assadura usa a precisão do MUNDO e o zoom deixou de
+/// mover o campo — ver [`super::chao_sem_camara`].
 ///
 /// ⭐ **O CONTROLO é o que dá direito à metade de cima:** trocar a LUZ tem de mover o campo. Sem
 /// ele, uma assadura que devolvesse o campo VAZIO passava tudo.
@@ -1145,114 +1145,10 @@ fn o_campo_do_chao_nao_muda_o_que_um_byte_ve_ao_orbitar() {
     );
 }
 
-/// ⭐⭐⭐⭐ **A METADE DA CHAVE QUE FICA: a TOLERÂNCIA DE ACERTO move o campo, logo é chave.**
-///
-/// ⛔⛔⛔ **Este gate existe porque um CONTROLO derrubou a premissa que eu ia usar.** O
-/// [`03` §W9](../../../../docs/Render3d/03_o_plano.md) escreve que o campo é *«byte-idêntico sob
-/// `4×` de zoom»* e conclui que *«a chave não leva a câmera de todo»*. Medido: naquela varredura o
-/// `hit` esteve **preso em `2e-4`** nas três leituras — a única porta por onde o zoom entra na
-/// assadura é a [`crate::Sharpness::for_frame`], que faz `hit = min(HIT_EPS, half_extent/(2·lado_px))`.
-/// *A régua media o CLAMP, não o eixo.*
-///
-/// ⚠️ **E o clamp solta-se DENTRO do produto:** ele pede `lado_px > 2500 × half_extent`, que a
-/// `0,2` de enquadramento são **`500` píxeis** — *um zoom apertado numa janela normal já está do
-/// outro lado*.
-///
-/// # A medição (2026-09-21, `lado_px = 1080` fixo, o campo contra o do `hit` de fábrica)
-///
-/// | `half_extent` | `hit` | `|Δ|` | em bytes | células iguais |
-/// |---:|---:|---:|---:|---:|
-/// | `1,6` · `0,8` | `2,0e-4` (preso) | `0` | `0,000` | `1024` de `1024` |
-/// | `0,4` | `1,85e-4` | `6,5e-6` | `0,021` | `137` |
-/// | `0,2` | `9,26e-5` | `5,1e-5` | `0,169` | `130` |
-/// | `0,05` | `2,31e-5` | `1,6e-4` | `0,527` | `130` |
-/// | `0,005` | `2,31e-6` | `2,8e-4` | **`0,910`** | `130` |
-///
-/// ⭐ **Ele CONVERGE** — os desvios saturam quando o `hit` desce —, que é a assinatura de a
-/// tolerância apertada estar a aproximar-se da verdade e não de ruído. ⇒ *o campo de fábrica está a
-/// quase um byte da resposta convergida*, o que é um facto sobre a assadura de hoje e não sobre a
-/// cache.
-///
-/// ⇒ **a chave leva o `hit` e não leva a orientação**, e é `46 000×` que separa os dois eixos
-/// (`2,8e-4` contra `6e-9`). *Uma cache que excluísse a câmera inteira — como o plano prescrevia —
-/// entregaria, num zoom apertado, um campo quase um byte errado.*
-#[test]
-fn a_tolerancia_de_acerto_entra_na_chave_da_cache_do_chao() {
-    let doc = bola();
-    let reg = Registry::new();
-    let mats = [vermelha().prepare()];
-    let surfaces = Surfaces {
-        all: &mats,
-        owners: None,
-    };
-    let assa = |he: f32| {
-        let cam = Orbit {
-            half_extent: he,
-            ..camara()
-        };
-        crate::ground_bounce::bake_ground_bounce(
-            &doc,
-            &reg,
-            &cam,
-            CHAO,
-            &surfaces,
-            &[LAMPADA],
-            crate::ground_bounce::GROUND_BOUNCE_GRID,
-            crate::ground_bounce::GROUND_BOUNCE_DIRS,
-            1080,
-        )
-    };
-    // ⚠️ **Pela CONSULTA e não pelos nós** — um nó é a média da célula dele e o pixel lê a B-spline
-    // de `4×4` nós; o que um byte VÊ é o que a consulta devolve. Medido (2026-09-24): o nó colado ao
-    // contacto da bola move `1,19` byte (os raios pré-filtrados passam a nascer também ali, onde a
-    // tolerância decide) e a consulta move `0,72`.
-    let pior = |a: &crate::ground_bounce::GroundBounce, b: &crate::ground_bounce::GroundBounce| {
-        let meia = a.step * (a.n - 1) as f32 * 0.5;
-        let mut m = 0.0f32;
-        for i in 0..400 {
-            for j in 0..400 {
-                let q = [
-                    a.origin[0] + 2.0 * meia * i as f32 / 399.0,
-                    CHAO.height,
-                    a.origin[1] + 2.0 * meia * j as f32 / 399.0,
-                ];
-                let (x, y) = (a.sample(q), b.sample(q));
-                m = (0..3).map(|k| (x[k] - y[k]).abs()).fold(m, f32::max);
-            }
-        }
-        m
-    };
-    let de_fabrica = assa(1.6);
-
-    // ── 1. O CONTROLO vem PRIMEIRO: com o clamp a morder, o zoom não move um bit ──────────────
-    //
-    // ⚠️ Sem ele, a metade de baixo lê-se como *«o zoom move o campo»* e alguém poria o
-    // `half_extent` na chave — invalidando a cache em todo arrasto de zoom, incluindo os que o
-    // clamp torna inofensivos.
-    assert_eq!(
-        assa(0.8).value,
-        de_fabrica.value,
-        "com a tolerância presa no tecto, o zoom não pode mover um bit — \
-         se move, a porta do zoom não é a que este gate julga"
-    );
-
-    // ── 2. E abaixo do clamp ele MOVE, e move o que um byte vê ────────────────────────────────
-    let apertado = assa(0.005);
-    let d = pior(&de_fabrica, &apertado);
-    assert!(
-        d > 0.5 * BYTE_DE_RADIANCIA,
-        "com o zoom apertado (hit {:e}) o campo moveu só {d:e} — se a tolerância não o move, \
-         ela não precisava de entrar na chave da cache",
-        crate::Sharpness::for_frame(0.005, 1080).hit
-    );
-
-    // ── 3. E a separação entre os DOIS eixos é o que decide a chave ───────────────────────────
-    //
-    // ⭐ A orientação move `6e-9` (o gate irmão) e a tolerância move `2,8e-4`: quatro ordens de
-    // grandeza. *É essa distância que faz um eixo ser chave e o outro não.*
-    assert!(
-        d < BYTE_DE_RADIANCIA,
-        "a tolerância move {d:e}, um byte inteiro — a `09` §6 dá o campo por convergido a `32²`, \
-         e isso deixaria de ser verdade"
-    );
-}
+// ⛔⛔⛔ **Aqui viveu `a_tolerancia_de_acerto_entra_na_chave_da_cache_do_chao`, e a premissa dele
+// MORREU em 2026-10-01** (report do dono: *«se aproximar do objeto ainda fica lento e perde
+// resolução»*). Ele afirmava que a tolerância de acerto da CÂMARA move o campo e por isso entra na
+// chave — verdade enquanto a assadura a lia, e era exactamente isso que, de perto, re-assava o campo
+// em todo quadro de zoom (`~88 ms` no nó). Hoje a assadura usa a precisão do MUNDO e a chave não
+// leva a câmara; a medição dele (o preço desta troca, `≤ 0,91` byte no zoom mais apertado) mudou-se
+// para o gate que o substitui, [`super::chao_sem_camara`].

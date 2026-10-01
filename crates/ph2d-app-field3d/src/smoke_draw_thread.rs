@@ -25,6 +25,9 @@ pub(crate) struct Pedido {
     pub cam: ph2d_field_render::Orbit,
     pub tw: u32,
     pub th: u32,
+    /// ⭐⭐⭐⭐ **O tamanho da ÁREA** — o traçado (`tw × th`) pode ser mais pequeno (a resolução
+    /// dinâmica), e a placa amplia a imagem a este tamanho antes de a entregar.
+    pub cheio: (u32, u32),
     /// ⭐ **A bandeira da W73** — *grosso a mexer, nítido ao assentar*.
     ///
     /// ⚠️⚠️ **Ela levava QUATRO passageiros e leva TRÊS desde a `W7c`** (2026-09-19,
@@ -64,6 +67,19 @@ pub(crate) struct Pedido {
 
 /// ⭐⭐⭐ **A resposta a um pedido** — corre fora da thread que desenha.
 #[allow(clippy::too_many_lines)] // é o quadro inteiro: o dispositivo, a CPU, os dois modos e o refinamento
+/// ⭐⭐⭐⭐ **O tamanho da imagem que a placa DEVOLVEU** — a ÁREA cheia quando ela a ampliou
+/// ([`Pedido::cheio`], `ph2d_field_gpu::amplia`), senão o tamanho traçado. Uma porta com DOIS
+/// chamadores (o matcap e o pintor de material): escrita duas vezes, a regra divergia no dia em que
+/// um dos dois deixasse de ampliar. ⚠️ A MEDIÇÃO do divisor continua a ser a dos píxeis TRAÇADOS
+/// (`Ready::tracado_px`).
+fn tamanho_entregue(p: &Pedido, bytes: usize) -> (u32, u32) {
+    if bytes as u64 == u64::from(p.cheio.0) * u64::from(p.cheio.1) * 4 {
+        p.cheio
+    } else {
+        (p.tw, p.th)
+    }
+}
+
 pub(crate) fn traca(p: &Pedido) {
     let t0 = std::time::Instant::now();
     // ⭐⭐⭐ **O DISPOSITIVO, quando ele pode.** As três condições vivem numa porta
@@ -142,6 +158,7 @@ pub(crate) fn traca(p: &Pedido) {
                 stops: p.look.exposure_stops,
                 view: ph2d_view_transform::wgsl::view_code(p.look.view),
                 background: BACKGROUND,
+                entrega: Some(p.cheio),
             },
             p.tw,
             p.th,
@@ -156,10 +173,12 @@ pub(crate) fn traca(p: &Pedido) {
             .iter()
             .filter(|px| px[3] > BACKGROUND[3])
             .count();
+        let (iw, ih) = tamanho_entregue(p, pintura.rgba.len());
         let _ = p.tx.try_send(Ready {
             rgba: pintura.rgba,
-            width: p.tw,
-            height: p.th,
+            width: iw,
+            height: ih,
+            tracado_px: u64::from(p.tw) * u64::from(p.th),
             hits,
             edges: pintura.edges,
             millis: t0.elapsed().as_secs_f64() * 1000.0,
@@ -183,7 +202,7 @@ pub(crate) fn traca(p: &Pedido) {
             }
         };
         p.gpu.as_ref().and_then(|t| {
-            crate::gpu_frame::paint(
+            crate::gpu_frame::paint_com(
                 t,
                 &p.doc,
                 &p.reg,
@@ -196,6 +215,11 @@ pub(crate) fn traca(p: &Pedido) {
                 p.tw,
                 p.th,
                 p.assente,
+                // ⭐⭐⭐⭐ A imagem sai no tamanho da ÁREA — ver [`Pedido::cheio`].
+                crate::gpu_frame::Sonda {
+                    entrega: Some(p.cheio),
+                    ..crate::gpu_frame::Sonda::default()
+                },
             )
         })
     } else {
@@ -213,10 +237,12 @@ pub(crate) fn traca(p: &Pedido) {
             .iter()
             .filter(|px| px[3] > BACKGROUND[3])
             .count();
+        let (iw, ih) = tamanho_entregue(p, pintura.rgba.len());
         let _ = p.tx.try_send(Ready {
             rgba: pintura.rgba,
-            width: p.tw,
-            height: p.th,
+            width: iw,
+            height: ih,
+            tracado_px: u64::from(p.tw) * u64::from(p.th),
             hits,
             edges: pintura.edges,
             millis: t0.elapsed().as_secs_f64() * 1000.0,
@@ -458,6 +484,7 @@ pub(crate) fn traca(p: &Pedido) {
                 rgba: pinta(sombras.as_ref()),
                 width: p.tw,
                 height: p.th,
+                tracado_px: u64::from(p.tw) * u64::from(p.th),
                 hits: g.hits(),
                 edges: g.edges.len(),
                 millis: t0.elapsed().as_secs_f64() * 1000.0,
@@ -512,6 +539,7 @@ pub(crate) fn traca(p: &Pedido) {
                         rgba: pinta(Some(sh)),
                         width: p.tw,
                         height: p.th,
+                        tracado_px: u64::from(p.tw) * u64::from(p.th),
                         hits: g.hits(),
                         edges: g.edges.len(),
                         millis: t0.elapsed().as_secs_f64() * 1000.0,
@@ -533,6 +561,7 @@ pub(crate) fn traca(p: &Pedido) {
         rgba,
         width: p.tw,
         height: p.th,
+        tracado_px: u64::from(p.tw) * u64::from(p.th),
         hits: g.hits(),
         edges: g.edges.len(),
         millis: t0.elapsed().as_secs_f64() * 1000.0,

@@ -53,9 +53,14 @@ impl ChaveDasSondas {
         }
         let bits = |v: &[f32]| v.iter().map(|f| f.to_bits()).collect::<Vec<u32>>();
         let n = setup.n_lamps as usize;
+        // ⛔⛔ **NADA DA CÂMARA ENTRA AQUI** (2026-10-01, report do dono: *«se aproximar ainda fica
+        // lento e perde resolução»*). Os dois limiares de PIXEL (`hit_eps`, `normal_eps`) estavam na
+        // chave, e de perto eles seguem o zoom (`pixel/4`): cada quadro de aproximar re-assava as
+        // sondas — `162,7 ms` no nó, medido pelo relógio da placa. Eles só deslocam a origem e a
+        // diferença finita de um raio de sonda na ordem de UM pixel, e a sonda é uma grelha no MUNDO
+        // com células de `diâmetro/PROBE_GRID` — o mesmo argumento da chave do céu
+        // (`crate::ceu_tempo::ChaveDoCeu`).
         let mut marcha = bits(&[
-            setup.hit_eps,
-            setup.normal_eps,
             setup.step,
             setup.ball_center[0],
             setup.ball_center[1],

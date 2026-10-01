@@ -102,6 +102,8 @@ pub fn luz_separada() -> bool {
 // dispositivo de facto entregou com o que a CPU entregou, como o divisor da pré-visualização já faz
 // com o orçamento. Está nomeada em `docs/Render3d/05` §43.10 e **ninguém a mediu**.
 
+/// ⭐⭐⭐⭐ A ampliação na placa — a resolução dinâmica do quadro de movimento.
+pub mod amplia;
 /// ⭐⭐⭐ **O BRILHO no dispositivo** — ver o módulo.
 pub mod brilho;
 /// ⭐⭐⭐⭐ **A oclusão no tempo** — o histórico do céu guardado na placa entre quadros.

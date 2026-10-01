@@ -648,6 +648,8 @@ pub struct Ready {
     pub(super) rgba: Vec<u8>,
     pub(super) width: u32,
     pub(super) height: u32,
+    /// Os píxeis TRAÇADOS — a imagem pode ter chegado ampliada (`Pedido::cheio`).
+    pub(super) tracado_px: u64,
     pub(super) hits: usize,
     pub(super) edges: usize,
     pub(super) millis: f64,

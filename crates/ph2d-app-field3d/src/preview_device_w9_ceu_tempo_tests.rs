@@ -178,6 +178,12 @@ fn parado_o_movimento_le_a_oclusao_do_assente() {
     };
     let doc = crate::smoke::scene(28);
     let cam = ph2d_field_render::Orbit::default();
+    // ⛔⛔ **AQUECER primeiro** (2026-10-01): um quadro de movimento SALTA o ricochete enquanto os
+    // pipelines dele não estão compilados (`PaintSetup::ricochete_sem_esperar`), e só o assente os
+    // compila. Num processo novo, `certo` e `antes` saíam SEM ricochete e o `herdado` (depois do
+    // `assenta`) COM ele — `35 169` canais acima de `8` medidos sozinho, contra `27` na suíte, onde
+    // outro gate já os tinha compilado. *Um gate que lê diferente sozinho e na suíte mede a ORDEM.*
+    let _ = quadro(t, &doc, &cam, true, exacta());
     let certo = quadro(t, &doc, &cam, false, exacta());
     let antes = quadro(t, &doc, &cam, false, a_passo());
     assenta(t, &doc);
@@ -449,5 +455,88 @@ fn a_tabela_segue_a_vista_e_o_tecto_do_dispositivo() {
         entradas_para(16, grande, ceu),
         1 << 16,
         "uma vista minúscula tem um piso"
+    );
+}
+
+/// ⭐⭐⭐⭐ **A RESOLUÇÃO DINÂMICA NÃO RECOMEÇA A TABELA** (2026-10-01, report do dono: *«se
+/// aproximar do objeto ainda fica lento e perde resolução»*). De perto o quadro de movimento é
+/// traçado MAIS PEQUENO e ampliado na placa até à área cheia (`crate::preview::preview_size` +
+/// `ph2d_field_gpu::amplia`), e o tamanho traçado muda de quadro para quadro. ⛔ A tabela era
+/// dimensionada pelo tamanho TRAÇADO, que entra na chave: cada passo da escala recomeçava-a — medido
+/// no laço do produto, `4`–`8` recomeços em `16` quadros e picos de `40`–`50 ms`. Hoje ela é
+/// dimensionada pela área ENTREGUE, que não muda enquanto a janela não muda.
+///
+/// ⚠️ O CONTROLO primeiro: sem a área entregue, os mesmos tamanhos recomeçam — senão o gate não
+/// conteria o fenómeno.
+#[test]
+#[ignore = "precisa de GPU"]
+fn a_resolucao_dinamica_nao_recomeca_a_tabela() {
+    let Some(t) = crate::gpu_frame::shared() else {
+        println!("sem adaptador — saltado");
+        return;
+    };
+    let doc = crate::smoke::scene(28);
+    let reg = crate::smoke::sampled_registry();
+    let materiais = [ph2d_material::OpenPbr::default().prepare()];
+    let surfaces = ph2d_field_render::Surfaces {
+        all: &materiais,
+        owners: None,
+    };
+    let pres = ph2d_field_render::Presentation::of(ph2d_view_transform::Look::default());
+    let cam = ph2d_field_render::Orbit::default();
+    let luz = [crate::gpu_frame::tests_lampada(&cam)];
+    let reinicios = || t.lock().map_or(0, |g| g.ceu_tempo_reinicios());
+    let tamanhos = [(LW, LH), (1536, 864), (1152, 648), (1344, 756)];
+    let percorre = |entrega: Option<(u32, u32)>| {
+        let r0 = reinicios();
+        for (w, h) in tamanhos {
+            let img = crate::gpu_frame::paint_com(
+                t,
+                &doc,
+                &reg,
+                &cam,
+                &luz,
+                &surfaces,
+                &pres,
+                [40, 40, 40, 255],
+                None,
+                w,
+                h,
+                false,
+                crate::gpu_frame::Sonda {
+                    entrega,
+                    ..com_cache()
+                },
+            )
+            .expect("o pintor")
+            .rgba;
+            if let Some((ew, eh)) = entrega {
+                assert_eq!(
+                    img.len(),
+                    (ew * eh * 4) as usize,
+                    "a placa não entregou a área cheia"
+                );
+            }
+        }
+        reinicios() - r0
+    };
+    if let Ok(mut g) = t.lock() {
+        g.esquece_o_ceu();
+    }
+    let sem_area = percorre(None);
+    assert!(
+        sem_area >= tamanhos.len() - 1,
+        "CONTROLO: sem a área entregue os {} tamanhos recomeçaram só {sem_area} vezes — o gate não \
+         contém o fenómeno",
+        tamanhos.len()
+    );
+    if let Ok(mut g) = t.lock() {
+        g.esquece_o_ceu();
+    }
+    let com_area = percorre(Some((LW, LH)));
+    assert!(
+        com_area <= 1,
+        "com a área entregue fixa, mudar o tamanho TRAÇADO recomeçou a tabela {com_area} vezes — \
+         a chave voltou a ler o tamanho traçado, e cada passo da resolução dinâmica paga o céu inteiro"
     );
 }

@@ -342,6 +342,7 @@ pub fn paint_com(
         // ⭐⭐⭐⭐ **O movimento não espera pelo compilador** — ver
         // [`ph2d_field_gpu::paint::PaintSetup::ricochete_sem_esperar`]. O assente compila.
         ricochete_sem_esperar: !assente,
+        entrega: sonda.entrega,
         // ⭐ O gémeo do `MarchSetup::mole`, do lado de quem COMPILA — os dois vêm da mesma decisão.
         mole: setup.mole.is_some(),
         // ⭐⭐⭐⭐ **A FITA DA PEÇA SÓ ENTRA NO SHADER DO PINTOR QUANDO ALGUÉM A LÊ**

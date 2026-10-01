@@ -7,6 +7,7 @@ use ph2d_field_eval::hybrid::Registry;
 mod banda;
 mod chao_grelha_gates;
 mod chao_ricochete;
+mod chao_sem_camara;
 mod chao_sem_reflexo;
 mod cornell;
 mod curvatura_gates;

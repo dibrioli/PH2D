@@ -264,6 +264,11 @@ report em que aprovou o smoke do chão colorido, e a ordem é o que decide a pos
   `a_tolerancia_de_acerto_entra_na_chave_da_cache_do_chao` — ⛔ o segundo tem o **controlo primeiro**
   (com o clamp a morder o zoom não move um bit), senão alguém lê a metade de baixo e põe o
   `half_extent` na chave, invalidando a cache em todo arrasto de zoom.
+  ⛔⛔ **E a premissa do segundo MORREU em 2026-10-01** (report do dono: *«se aproximar do objeto
+  ainda fica lento e perde resolução»*): com a tolerância na chave, cada quadro de aproximar abaixo
+  do clamp re-assava o chão na CPU (`~88 ms` no nó). A assadura passou a usar a precisão do MUNDO
+  (`Sharpness::do_mundo`, a de todo enquadramento de fábrica) e a chave deixou a câmara — o preço é
+  `≤ 0,91` byte no zoom mais apertado, e o gate que a substitui é o `tests::chao_sem_camara`.
   ⚠️ **Elas são medições de VALOR e não de relógio**, e é por isso que correram com a máquina
   ocupada: contenção não move bytes. *A coluna do relógio desta wave continua por tirar, e essa
   precisa da máquina calma.*

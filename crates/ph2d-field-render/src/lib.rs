@@ -100,7 +100,23 @@ impl Sharpness {
     /// lá seria a segunda resposta à pergunta *«a que distância o raio acertou?»*.
     #[must_use]
     pub fn for_frame(half_extent: f32, side_px: usize) -> Self {
-        let pixel = 2.0 * half_extent / (side_px.max(1) as f32);
+        Self::de_um_pixel(2.0 * half_extent / (side_px.max(1) as f32))
+    }
+
+    /// ⭐⭐⭐⭐ **A precisão de quem assa uma GRELHA NO MUNDO** (o campo do chão) — a que o
+    /// [`Self::for_frame`] dá em todo enquadramento de fábrica para cima (lá o pixel já é maior do
+    /// que os tectos). ⛔ A da câmara entrava ali e mudava com o ZOOM de perto: a chave do campo
+    /// tinha de a levar, e cada quadro de aproximar re-assava-o na CPU (`~88 ms` no nó, medido
+    /// 2026-10-01). Uma célula da grelha é muito maior do que um pixel; a precisão dela não é a dele.
+    #[must_use]
+    pub fn do_mundo() -> Self {
+        Self {
+            hit: HIT_EPS,
+            normal: NORMAL_EPS,
+        }
+    }
+
+    fn de_um_pixel(pixel: f32) -> Self {
         Self {
             hit: HIT_EPS.min(pixel * 0.25).max(PRECISION_FLOOR),
             normal: NORMAL_EPS.min(pixel * 0.5).max(PRECISION_FLOOR),

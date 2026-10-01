@@ -132,6 +132,13 @@ fn diag_o_ceu_no_tempo() {
             std::collections::BTreeMap::new();
         for _ in 0..repete {
             cam = ph2d_field_render::Orbit::default();
+            // `PH2D_SONDA_PERTO=<factor>` começa o gesto já PERTO (`0,3` = a peça a encher o ecrã).
+            if let Some(f) = std::env::var("PH2D_SONDA_PERTO")
+                .ok()
+                .and_then(|v| v.parse::<f32>().ok())
+            {
+                cam.half_extent *= f;
+            }
             if let Ok(mut g) = t.lock() {
                 g.esquece_o_ceu();
             }
@@ -150,6 +157,12 @@ fn diag_o_ceu_no_tempo() {
             };
             let _ = relogio();
             let mut tempos = Vec::new();
+            // `PH2D_SONDA_LACO=1` corre o LAÇO do produto: cada quadro escolhe o tamanho pela
+            // medição anterior ([`crate::preview::preview_size`] sobre as [`crate::preview::Medicoes`])
+            // e a placa entrega a imagem cheia — o que o dono vê.
+            let laco = std::env::var("PH2D_SONDA_LACO").is_ok_and(|v| v.trim() != "0");
+            let mut medicoes = crate::preview::Medicoes::default();
+            let mut larguras = Vec::new();
             let mut antes_ms = Vec::new();
             let quadros = std::env::var("PH2D_SONDA_QUADROS")
                 .ok()
@@ -168,9 +181,31 @@ fn diag_o_ceu_no_tempo() {
                     Some(z) => cam.half_extent *= z,
                     None => cam.turn_world([0.0, 1.0, 0.0], graus.to_radians()),
                 }
-                let (img, ms) = quadro(t, &doc, &reg, &cam, &luz, chao_da_cena, false, com, W, H);
+                let (w, h) = if laco {
+                    crate::preview::preview_size(
+                        (W, H),
+                        medicoes.para_o_divisor(),
+                        crate::preview::PREVIEW_BUDGET_MS,
+                        64,
+                    )
+                } else {
+                    (W, H)
+                };
+                let sonda = crate::gpu_frame::Sonda {
+                    entrega: Some((W, H)),
+                    ..com
+                };
+                let (img, ms) = quadro(t, &doc, &reg, &cam, &luz, chao_da_cena, false, sonda, w, h);
+                medicoes.regista(crate::preview::Measured {
+                    pixels: u64::from(w) * u64::from(h),
+                    millis: ms as f32,
+                });
+                larguras.push(w);
                 tempos.push(ms);
                 ultima = img;
+            }
+            if laco {
+                println!("  (cena {cena}: larguras do laço: {larguras:?})");
             }
             println!(
                 "  (cena {cena}: o histórico recomeçou {} vezes em {QUADROS} quadros; quadro a quadro ms: {})",

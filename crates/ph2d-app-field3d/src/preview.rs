@@ -227,17 +227,42 @@ pub fn preview_size(
         return full;
     }
     let per_pixel = f64::from(m.millis) / m.pixels as f64;
-    let mut chosen = full;
-    for d in 1..=MAX_PREVIEW_DIVISOR {
-        let size = ((full.0 / d).max(min), (full.1 / d).max(min));
-        chosen = size;
-        let predicted = per_pixel * f64::from(size.0) * f64::from(size.1);
-        if predicted <= f64::from(budget_ms) {
-            break;
-        }
+    let cheio = per_pixel * f64::from(full.0) * f64::from(full.1);
+    if cheio <= f64::from(budget_ms) {
+        return full;
     }
-    chosen
+    // ⭐⭐⭐⭐ **A ESCALA É CONTÍNUA** (2026-10-01, report do dono: *«se aproximar do objeto ainda
+    // fica lento e perde resolução»*). Eram três degraus (`1`, `½`, `⅓` da largura — `¼` e `1/9`
+    // dos píxeis): um quadro a `20 ms` caía para METADE da largura para poupar `17 %`. Hoje a
+    // largura desce só o que o orçamento pede, em passos de `1/ESCALA_PASSOS` arredondados para
+    // BAIXO (a direcção segura do laço), com o mesmo piso de `1/MAX_PREVIEW_DIVISOR`; e a imagem
+    // sobe ao tamanho cheio NA PLACA ([`ph2d_field_gpu::amplia`]), não esticada no ecrã.
+    let piso = 1.0 / f64::from(MAX_PREVIEW_DIVISOR);
+    let quantiza = |orcamento: f64| {
+        (((orcamento / cheio).sqrt() * ESCALA_PASSOS).floor() / ESCALA_PASSOS).clamp(piso, 1.0)
+    };
+    // ⚠️ **A HISTERESE: subir pede FOLGA, descer não** — sem ela um laço contínuo oscila um passo
+    // para cima e outro para baixo em quadros alternados (o custo por pixel sobe quando a imagem
+    // encolhe, e a previsão de um tamanho maior a partir de um menor é otimista).
+    #[allow(clippy::cast_precision_loss)]
+    let agora = (m.pixels as f64 / (f64::from(full.0) * f64::from(full.1))).sqrt();
+    let mut escala = quantiza(f64::from(budget_ms));
+    if escala > agora + 0.5 / ESCALA_PASSOS {
+        escala = quantiza(f64::from(budget_ms) * SUBIR_COM_FOLGA).max(agora.min(escala));
+    }
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let lado = |v: u32| ((f64::from(v) * escala).round() as u32).max(min);
+    (lado(full.0), lado(full.1))
 }
+
+/// ⭐ Em quantos passos a largura do quadro de movimento desce — ver [`preview_size`]. Um passo é
+/// `~3 %` da largura: fino o bastante para não deitar fora píxeis que cabiam, grosso o bastante
+/// para o tamanho não mudar a cada quadro por ruído do relógio.
+pub const ESCALA_PASSOS: f64 = 32.0;
+
+/// ⭐ A fracção do orçamento que um tamanho MAIOR tem de caber para o laço subir — ver
+/// [`preview_size`].
+pub const SUBIR_COM_FOLGA: f64 = 0.85;
 
 /// ⭐ **O que pedir a seguir** — `None` quando não há nada a fazer.
 ///

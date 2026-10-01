@@ -76,6 +76,10 @@ pub struct PaintSetup<'a> {
     /// inerte); o quadro ASSENTE compila-os e o movimento seguinte já os encontra — o idioma da
     /// indústria para a compilação de pipelines (desenhar o que já existe enquanto o novo compila).
     pub ricochete_sem_esperar: bool,
+    /// ⭐⭐⭐⭐ **O tamanho a ENTREGAR** quando o traçado é mais pequeno do que a área (a resolução
+    /// dinâmica): a imagem sobe a ele NA PLACA ([`crate::amplia`]) antes de sair. `None` (ou o mesmo
+    /// tamanho) = a imagem do traçado, como sempre.
+    pub entrega: Option<(u32, u32)>,
     /// ⭐⭐⭐ **Este quadro tem BORDA MOLE?** (`docs/Render3d/10` §12) — o gémeo do
     /// [`crate::trace::MarchSetup::mole`], do lado de quem COMPILA.
     ///
@@ -242,6 +246,11 @@ pub(crate) struct Alvos<'a> {
     /// As grades das esculturas — o pintor lê-as pela mesma lei que a marcha.
     pub grades: &'a wgpu::Buffer,
     pub setup: &'a wgpu::Buffer,
+    /// ⭐⭐⭐⭐ **O mesmo uniforme com a precisão do MUNDO** ([`ph2d_field_render::Sharpness::do_mundo`])
+    /// — só a assadura das sondas o liga. ⛔ As sondas são guardadas entre quadros SEM a câmera na
+    /// chave ([`crate::sondas_na_placa`]); assadas com a precisão do quadro, a mesma vista dependeria
+    /// do zoom em que o armazém nasceu. A CPU faz o mesmo em `ph2d_field_render::probes::bake_probes`.
+    pub setup_mundo: &'a wgpu::Buffer,
     pub k: &'a wgpu::Buffer,
     pub centro: &'a wgpu::Buffer,
     pub luz: &'a wgpu::Buffer,
@@ -445,6 +454,19 @@ pub(crate) fn pinta(
             recurso(alvos.grades, 6),
         ],
     });
+    let bg0_sondas = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: None,
+        layout: alvos.bgl,
+        entries: &[
+            recurso(alvos.setup_mundo, 0),
+            recurso(alvos.k, 1),
+            recurso(alvos.centro, 2),
+            recurso(alvos.luz, 3),
+            recurso(alvos.conta, 4),
+            recurso(alvos.borda, 5),
+            recurso(alvos.grades, 6),
+        ],
+    });
     // ⭐ As sondas: `PROBE_GRID³ × 28` floats. ⚠️ Ele existe mesmo sem ricochete (a bandeira `0`
     // é «fora», e o pintor só o lê quando o despacho das sondas correu).
     let n_sondas = ph2d_field_render::probes::PROBE_GRID.pow(3);
@@ -525,7 +547,7 @@ pub(crate) fn pinta(
             timestamp_writes: crono.as_mut().and_then(|c| c.marca("assa-sondas")),
         });
         cp.set_pipeline(p);
-        cp.set_bind_group(0, &bg0, &[]);
+        cp.set_bind_group(0, &bg0_sondas, &[]);
         cp.set_bind_group(1, &bg1, &[]);
         #[allow(clippy::cast_possible_truncation)]
         cp.dispatch_workgroups(n_sondas as u32, 1, 1);
@@ -607,13 +629,26 @@ pub(crate) fn pinta(
             view: pintor.view,
         },
     );
+    // ⭐⭐⭐⭐ A AMPLIAÇÃO — ver [`PaintSetup::entrega`].
+    let grande = pintor
+        .entrega
+        .filter(|d| *d != (width, height) && d.0 > 0 && d.1 > 0)
+        .map(|d| {
+            let b =
+                crate::amplia::amplia(device, cache, fita, &mut enc, &b_saida, (width, height), d);
+            (b, u64::from(d.0) * u64::from(d.1))
+        });
+    let (fonte_da_leitura, n) = match &grande {
+        Some((b, m)) => (b, *m),
+        None => (&b_saida, n),
+    };
     let leitura = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("leitura"),
         size: (n * 4).max(16),
         usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
         mapped_at_creation: false,
     });
-    enc.copy_buffer_to_buffer(&b_saida, 0, &leitura, 0, (n * 4).max(16));
+    enc.copy_buffer_to_buffer(fonte_da_leitura, 0, &leitura, 0, (n * 4).max(16));
     if let Some(c) = cache.cronometro.as_mut() {
         c.resolve(&mut enc);
         relogio_cpu = c.cpu("cpu-pinta", relogio_cpu);

@@ -11,6 +11,7 @@ fn um_setup<'a>(rgb: &'a [f32], side: u32) -> MatcapSetup<'a> {
         stops: 0.0,
         view: 0,
         background: [10, 20, 30, 40],
+        entrega: None,
     }
 }
 

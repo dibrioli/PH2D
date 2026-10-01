@@ -241,7 +241,8 @@ pub(crate) fn scene_solta<'a>(
         cam,
         basis: cam.basis(),
         // ⚠️ A tolerância de acerto é a do QUADRO (`w.min(h)`), a mesma que o dispositivo põe em
-        // `hit_eps` — a 1.ª redacção fixava `256` e a paridade mediria dois epsilons.
+        // `hit_eps` — a 1.ª redacção fixava `256` e a paridade mediria dois epsilons. ⚠️ As duas
+        // assaduras (sondas e chão) SOBRESCREVEM-na com a do mundo, que é o que as deixa sem câmera.
         sharp: crate::Sharpness::for_frame(cam.half_extent, lado_px),
         clip: None,
         step: ph2d_field_eval::safe_march_step(doc),
@@ -284,7 +285,12 @@ pub fn bake_probes(
         return grid;
     }
     let shape = ph2d_field_eval::hybrid::Hybrid::new(doc, reg);
-    let scene = scene_solta(&shape, doc, reg, cam, lado_px);
+    let mut scene = scene_solta(&shape, doc, reg, cam, lado_px);
+    // ⭐⭐⭐⭐ **A precisão é a do MUNDO, não a da câmara** (2026-10-01) — a sonda é uma grelha no
+    // mundo, e o dispositivo guarda-a entre quadros sem a câmera na chave: assada com a precisão do
+    // quadro, a mesma vista dependeria do zoom em que ela nasceu. O dispositivo liga o mesmo número
+    // (`ph2d_field_gpu::paint::Alvos::setup_mundo`); gate `tests::chao_sem_camara`.
+    scene.sharp = crate::Sharpness::do_mundo();
     let base = ViewBasis::of(cam);
     let lift = scene.sharp.hit * march::BIAS;
 

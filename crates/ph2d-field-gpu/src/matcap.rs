@@ -48,6 +48,10 @@ pub struct MatcapSetup<'a> {
     pub view: u32,
     /// Os bytes EXACTOS que um pixel de fundo recebe — copiados, nunca reconvertidos.
     pub background: [u8; 4],
+    /// ⭐⭐⭐⭐ **O tamanho em que a imagem SAI** — o irmão do `PaintSetup::entrega` do pintor de
+    /// material: com a resolução dinâmica o quadro é traçado mais pequeno e sobe ao tamanho cheio
+    /// NA PLACA ([`crate::amplia`]), não esticado em bilinear no ecrã. `None` = o tamanho traçado.
+    pub entrega: Option<(u32, u32)>,
 }
 
 /// ⭐⭐⭐ **AS TRÊS ENTRADAS DO GRUPO `1` DESTE PASSE, numa lista NOMEADA** — o uniforme, a saída e
@@ -241,13 +245,33 @@ pub(crate) fn pinta(
         cp.set_bind_group(1, &bg1, &[]);
         cp.dispatch_workgroups(n_bordas.div_ceil(64), 1, 1);
     }
+    // ⭐⭐⭐⭐ **A ampliação, no MESMO encoder** — a mesma porta do pintor de material.
+    let grande = mc
+        .entrega
+        .filter(|d| *d != (width, height) && d.0 > 0 && d.1 > 0)
+        .map(|d| {
+            let b = crate::amplia::amplia(
+                device,
+                cache,
+                alvos.fita,
+                &mut enc,
+                &b_saida,
+                (width, height),
+                d,
+            );
+            (b, u64::from(d.0) * u64::from(d.1))
+        });
+    let (fonte_da_leitura, n) = match &grande {
+        Some((b, m)) => (b, *m),
+        None => (&b_saida, n),
+    };
     let leitura = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("leitura"),
         size: (n * 4).max(16),
         usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
         mapped_at_creation: false,
     });
-    enc.copy_buffer_to_buffer(&b_saida, 0, &leitura, 0, (n * 4).max(16));
+    enc.copy_buffer_to_buffer(fonte_da_leitura, 0, &leitura, 0, (n * 4).max(16));
     queue.submit([enc.finish()]);
     leitura.slice(..).map_async(wgpu::MapMode::Read, |_| {});
     device.poll(wgpu::PollType::wait_indefinitely()).ok();

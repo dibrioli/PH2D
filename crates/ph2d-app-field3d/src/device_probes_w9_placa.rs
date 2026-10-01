@@ -124,6 +124,7 @@ fn diag_para_onde_vai_o_quadro() {
         stops: olhar.exposure_stops,
         view: ph2d_view_transform::wgsl::view_code(olhar.view),
         background: [0, 0, 0, 0],
+        entrega: None,
     };
     let Some(t) = crate::gpu_frame::shared() else {
         println!("sem adaptador");
@@ -250,6 +251,7 @@ fn diag_o_quadro_contra_a_resolucao() {
         stops: olhar.exposure_stops,
         view: ph2d_view_transform::wgsl::view_code(olhar.view),
         background: [0, 0, 0, 0],
+        entrega: None,
     };
     let Some(t) = crate::gpu_frame::shared() else {
         println!("sem adaptador");
@@ -332,6 +334,7 @@ fn diag_cpu_contra_relogio_do_quadro() {
         stops: olhar.exposure_stops,
         view: ph2d_view_transform::wgsl::view_code(olhar.view),
         background: [0, 0, 0, 0],
+        entrega: None,
     };
     let Some(t) = crate::gpu_frame::shared() else {
         println!("sem adaptador");
@@ -396,6 +399,7 @@ fn diag_a_marcha_magra_contra_o_produto() {
         stops: olhar.exposure_stops,
         view: ph2d_view_transform::wgsl::view_code(olhar.view),
         background: [0, 0, 0, 0],
+        entrega: None,
     };
     let Some(t) = crate::gpu_frame::shared() else {
         println!("sem adaptador");
@@ -486,6 +490,7 @@ fn diag_as_pecas_do_quadro_magro() {
         stops: olhar.exposure_stops,
         view: ph2d_view_transform::wgsl::view_code(olhar.view),
         background: [0, 0, 0, 0],
+        entrega: None,
     };
     let Some(t) = crate::gpu_frame::shared() else {
         println!("sem adaptador");
@@ -545,6 +550,7 @@ fn diag_o_render_contra_o_matcap() {
         stops: olhar.exposure_stops,
         view: ph2d_view_transform::wgsl::view_code(olhar.view),
         background: [0, 0, 0, 0],
+        entrega: None,
     };
     let Some(t) = crate::gpu_frame::shared() else {
         println!("sem adaptador");

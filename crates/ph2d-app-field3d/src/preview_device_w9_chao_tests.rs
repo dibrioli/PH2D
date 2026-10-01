@@ -194,21 +194,25 @@ fn a_cache_do_chao_falta_quando_a_luz_muda() {
         "CONTROLO: trocar a LUZ acertou na cache — ela entregaria a sombra de cor da luz antiga, e sem esta metade a cura lê-se como «reaproveita sempre»"
     );
 
-    // ⭐⭐⭐ **O ZOOM ABAIXO DO CLAMP tem de FALTAR.** A tolerância de acerto é
-    // `min(HIT_EPS, half_extent/(2·lado_px))` e só desce com `lado_px > 2500 × half_extent` — a
-    // `1080` píxeis isso é `half_extent < 0,432`. *Acima do clamp o zoom não é chave e abaixo é*, e
-    // foi um CONTROLO que derrubou a redacção que dava a câmera inteira por fora (ver os gates de
-    // `chao_ricochete.rs`).
+    // ⭐⭐⭐⭐ **O ZOOM ABAIXO DO CLAMP tem de ACERTAR** (2026-10-01, report do dono: *«se aproximar
+    // do objeto ainda fica lento e perde resolução»*). ⛔ Até aqui este gate exigia o CONTRÁRIO — a
+    // tolerância da câmara movia o campo até `0,91` byte e entrava na chave, e cada quadro de
+    // aproximar re-assava o chão na CPU (`~88 ms` no nó). Hoje a assadura usa a precisão do MUNDO
+    // (`ph2d_field_render::Sharpness::do_mundo`) e a chave não leva a câmara; o preço medido está no
+    // `ph2d_field_render::tests::chao_sem_camara`.
+    //
+    // ⚠️ O CONTROLO do controlo fica: abaixo do clamp a tolerância da CÂMARA de facto desce — senão
+    // a metade abaixo acertaria pelo clamp, e não pela cura.
     assert!(
         ph2d_field_render::Sharpness::for_frame(0.2, LH as usize).hit
             < ph2d_field_render::Sharpness::for_frame(padrao, LH as usize).hit,
-        "CONTROLO DO CONTROLO: a `0,2` de enquadramento o clamp não solta a {LH} píxeis — então a metade abaixo mede o nada"
+        "CONTROLO DO CONTROLO: a `0,2` de enquadramento o clamp não solta a {LH} píxeis — então a metade abaixo mede o clamp"
     );
     pinta(0.0, &luz_a);
     let ao_aproximar_muito = conta(&|| pinta_com(0.0, &luz_a, 0.2, None));
-    assert_eq!(
-        ao_aproximar_muito, 0,
-        "CONTROLO: um zoom ABAIXO do clamp da tolerância acertou na cache — a tolerância move o campo até 0,91 de um byte ali, e a chave tem de a levar"
+    assert!(
+        ao_aproximar_muito > 0,
+        "aproximar abaixo do clamp REASSOU o campo do chão — a câmara voltou a entrar na chave (ou na assadura), e cada quadro de zoom paga a CPU"
     );
 
     // ── E a CERCA: uma peça com LEI DO DONO não é cacheada ────────────────────────────────────

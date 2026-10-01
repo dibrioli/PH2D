@@ -45,3 +45,44 @@ fn o_refinamento_do_quadro_assente_recebe_a_cena() {
          silêncio"
     );
 }
+
+/// ⭐⭐⭐⭐ **A COSTURA da resolução dinâmica: os DOIS caminhos da placa pedem a ÁREA e entregam-na**
+/// (2026-10-01, report do dono: *«se aproximar do objeto ainda fica lento e perde resolução»*).
+///
+/// ⚠️ Textual pela mesma razão do gate de cima: a thread não é alcançável de um teste, e a lei
+/// (`ph2d_field_gpu::amplia`) é testada na porta dela (`amplia_gpu_tests`). O que sobra por provar é
+/// que a thread a USA — sem isto, um caminho que deixasse de pedir a área devolvia o quadro pequeno
+/// e o ecrã voltava a esticá-lo em bilinear, com todos os gates da ampliação VERDES.
+#[test]
+fn os_dois_caminhos_da_placa_pedem_e_entregam_a_area() {
+    let fonte = include_str!("smoke_draw_thread.rs");
+    let codigo: String = fonte
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("//"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert_eq!(
+        codigo.matches("entrega: Some(p.cheio)").count(),
+        2,
+        "o matcap e o pintor de material têm de pedir os DOIS a área cheia à placa"
+    );
+    assert_eq!(
+        codigo
+            .matches("tamanho_entregue(p, pintura.rgba.len())")
+            .count(),
+        2,
+        "os DOIS caminhos da placa têm de dizer ao ecrã o tamanho que a placa devolveu"
+    );
+    let corpo = codigo
+        .split_once("fn tamanho_entregue(")
+        .and_then(|(_, r)| r.split_once("\n}"))
+        .map(|(c, _)| c)
+        .expect("a porta `tamanho_entregue`");
+    assert!(
+        // ⚠️ Os BRAÇOS, linha a linha: a agulha `p.cheio` sozinha casava na CONDIÇÃO, e a mutação
+        // que devolve sempre o tamanho traçado sobreviveu a ela (`muta_perto.py`, `M12`).
+        corpo.lines().any(|l| l.trim() == "p.cheio")
+            && corpo.lines().any(|l| l.trim() == "(p.tw, p.th)"),
+        "a porta do tamanho entregue perdeu um dos braços: {corpo}"
+    );
+}

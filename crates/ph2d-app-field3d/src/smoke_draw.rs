@@ -299,7 +299,7 @@ fn viewport_pass(
                 // medido. O pedido seguinte sai daqui, e é por isso que este módulo não precisa
                 // de saber em que máquina corre.
                 let medida = crate::preview::Measured {
-                    pixels: u64::from(r.width) * u64::from(r.height),
+                    pixels: r.tracado_px,
                     millis: r.millis as f32,
                 };
                 // ⛔⛔ **O laço do MOVIMENTO só aprende com quadros de MOVIMENTO** (2026-09-24, o
@@ -357,6 +357,7 @@ fn viewport_pass(
         (area.w.round().max(1.0) as u32).max(MIN_TRACE),
         (area.h.round().max(1.0) as u32).max(MIN_TRACE),
     );
+    let cheio = (tw, th);
 
     smoke.vps[i].area = Some(area);
 
@@ -534,6 +535,7 @@ fn viewport_pass(
             cam,
             tw,
             th,
+            cheio,
             assente,
             shading,
             look,

@@ -328,6 +328,41 @@ fn plano_de(ii: u32) -> Plano {
     return p;
 }
 
+// ⭐ doc 121 §9.6 — **QUANTAS ARESTAS UMA PEÇA PODE EMITIR, sem a geometria dela.** A contagem
+// corria o `percorre` inteiro (bissectrizes, juntas, leques) só para saber um número, e a escrita
+// corria-o outra vez. ⇒ a contagem usa este LIMITE SUPERIOR — o pior caso de cada ramo de
+// `emite_peca`, que só depende do tipo e do raio no ecrã —, e a escrita arruma as duas correntes
+// no fim (`cs_escreve`). O leque de `k` passos emite no máximo `3k` arestas (a primeira, a de cada
+// passo, as duas de uma troca de sentido e a de fecho); a junta é o pior entre o quadrilátero (4) e
+// o leque; o troço são 4 mais a junta de quem chega.
+fn arestas_do_leque(r: f32) -> u32 {
+    if r <= 0.25 {
+        return 3u;
+    }
+    let q = 1.0 - 0.25 / r;
+    let passo_max = 2.0 * acos(q);
+    let k = u32(clamp(ceil(3.14159274 / max(passo_max, 1.0e-4)), 1.0, 64.0));
+    return 3u * k;
+}
+
+fn limite_de_arestas(cp: Copia) -> u32 {
+    let caneta = bitcast<f32>(cp.eixo_rg.w);
+    var n = 0u;
+    for (var i = cp.eixo_rg.x; i < cp.eixo_rg.x + cp.eixo_rg.y; i += 1u) {
+        let it = eixo[i];
+        let r = it.meia * caneta;
+        if it.tipo == 0u {
+            n += 4u;
+            if (it.ponta & 2u) != 0u {
+                n += max(4u, arestas_do_leque(r));
+            }
+        } else if it.tipo == 2u {
+            n += select(arestas_do_leque(r), 4u, it.ponta == 1u);
+        }
+    }
+    return n;
+}
+
 // O índice da cópia: um despacho de `64` por grupo, em duas dimensões quando passa de `65 535`
 // grupos (o tecto de uma dimensão do despacho).
 fn indice(gid: vec3<u32>, nwg: vec3<u32>) -> u32 {
@@ -355,9 +390,7 @@ fn cs_conta(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgrou
     if p.valido {
         var nc = 0u;
         if p.eixo {
-            escrever = false;
-            percorre(p.cp);
-            nc = (cursor + cursor_b + SEGS_POR_BLOCO - 1u) / SEGS_POR_BLOCO * SEGS_POR_BLOCO;
+            nc = (limite_de_arestas(p.cp) + SEGS_POR_BLOCO - 1u) / SEGS_POR_BLOCO * SEGS_POR_BLOCO;
         }
         ne = p.nf + p.nm + nc;
         nmask = p.linhas * p.celulas * registo_de_celula(ne);
@@ -441,38 +474,47 @@ fn cs_escreve(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgr
     ccopias_rw[3u * ii + 2u] = vec4<u32>(0u);
     let m0 = contas.n + 1u;
     let base = contagem[ii];
-    let ne = contagem[ii + 1u] - base;
+    // O que a contagem RESERVOU: com o eixo, o limite superior do contorno; o que se usa é ≤.
+    let reservado = contagem[ii + 1u] - base;
     let mbase = contagem[m0 + ii];
-    let nmask = contagem[m0 + ii + 1u] - mbase;
+    let nmask_reservado = contagem[m0 + ii + 1u] - mbase;
     // ⚠️ Fora da capacidade, a cópia fica com o caminho de sempre — nunca um contorno truncado.
-    if ne == 0u || base + ne > contas.cap || mbase + nmask > contas.cap_mascaras {
+    if reservado == 0u || base + reservado > contas.cap
+        || mbase + nmask_reservado > contas.cap_mascaras {
         return;
     }
     let p = plano_de(ii);
-    let palavras = palavras_por_linha(ne);
-    let registo = 3u + palavras;
-    if !p.valido || p.nf + p.nm > ne || p.linhas * p.celulas * registo != nmask {
+    if !p.valido || p.nf + p.nm > reservado
+        || p.linhas * p.celulas * registo_de_celula(reservado) != nmask_reservado {
         return;
     }
     cmin = vec2<f32>(3.0e38);
     cmax = vec2<f32>(-3.0e38);
     transforma(p.cp, p.f0, p.nf, base);
     transforma(p.cp, p.m0, p.nm, base + p.nf);
-    let nc = ne - p.nf - p.nm;
-    if nc > 0u {
+    let nc_reservado = reservado - p.nf - p.nm;
+    var nc = 0u;
+    if nc_reservado > 0u {
         let bc = base + p.nf + p.nm;
         escrever = true;
         base_saida = bc;
-        limite_saida = nc;
+        limite_saida = nc_reservado;
         ultimo = vec2<f32>(0.0);
         cabeca_b = vec2<f32>(0.0);
         percorre(p.cp);
-        // ⚠️ A contagem e a escrita correm o MESMO código, e um compilador que os arredondasse
-        // diferente (dois pontos de entrada) daria outra decisão numa bissectriz no limiar. ⇒ uma
-        // escrita que não bate com a contagem é deitada fora e a cópia segue pelo caminho de sempre.
+        // ⚠️ O limite da contagem é um pior caso: uma escrita que o passasse seria um contorno
+        // truncado. ⇒ é deitada fora e a cópia segue pelo caminho de sempre.
         let total = cursor + cursor_b;
-        if total > nc || total + SEGS_POR_BLOCO <= nc {
+        if total > nc_reservado {
             return;
+        }
+        nc = (total + SEGS_POR_BLOCO - 1u) / SEGS_POR_BLOCO * SEGS_POR_BLOCO;
+        // A corrente de trás foi escrita a partir do FIM da reserva: desce para o fim do que se
+        // usa (o destino nunca passa à frente da origem, logo a cópia em ordem crescente é segura).
+        let de = bc + nc_reservado - cursor_b;
+        let para = bc + nc - cursor_b;
+        for (var i = 0u; i < cursor_b; i += 1u) {
+            contorno_rw[para + i] = contorno_rw[de + i];
         }
         // O enchimento, ENTRE as duas correntes: arestas de comprimento zero no último ponto da da
         // frente (contribuem `0`, não alargam caixa nenhuma — no `(0, 0)` alargariam a do bloco até
@@ -483,6 +525,11 @@ fn cs_escreve(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgr
             contorno_rw[bc + i] = vec4<f32>(enche, enche);
         }
     }
+    // O que se usa: as arestas e o registo de célula do que foi DE FACTO escrito.
+    let ne = p.nf + p.nm + nc;
+    let palavras = palavras_por_linha(ne);
+    let registo = 3u + palavras;
+    let nmask = p.linhas * p.celulas * registo;
     // Os registos começam vazios: fundos a `0,0` (os bits de `0.0` são `0`) e máscaras apagadas.
     for (var k = 0u; k < nmask; k += 1u) {
         cmascaras_rw[mbase + k] = 0u;

@@ -62,9 +62,10 @@ const OUTSIDE_THE_DOOR: &[(&str, &str)] = &[
          achatar a unica superficie do app que e' de proposito um objeto",
     ),
     (
-        "crates/ph2d-panel-inspector/src/paint_frame.rs",
-        "o contorno de MARCADOR de uma seccao: mesma familia do post-it, mesma cor fixa, e este \
-         pintor tambem nao recebe tema",
+        "crates/ph2d-editor-core/src/widget/showcase/notes_chrome.rs",
+        "o contorno de MARCADOR de uma seccao (a porta partilhada desde 2026-10-01, que o tirou do \
+         paint_frame do Inspector): mesma familia do post-it, mesma cor fixa, e este pintor tambem \
+         nao recebe tema",
     ),
     (
         "crates/ph2d-editor-core/src/widget/showcase/status.rs",

@@ -17,11 +17,30 @@ use ph2d_a11y::NodeId;
 
 /// Down primário sobre `id`: se é a pega de uma nota, semeia o arrasto dela.
 pub(super) fn seed(store: &mut WidgetStore, id: NodeId, x: f32, y: f32) {
-    if let Some(index) = crate::ids::note_of_grip(id)
-        && let Some(panel) = store.panel_at(x, y)
+    if let Some(panel) = store.panel_at(x, y)
+        && let Some(index) = crate::ids::note_of_grip_in(panel, id)
         && index < store.notes_for_panel(panel).len()
     {
         store.begin_note_drag(panel, index, x, y);
+    }
+}
+
+/// ⭐ **Um Down primário numa face de nota que tem gesto PRÓPRIO** — a pega semeia o arrasto
+/// (2026-09-30); o botão de MINIMIZAR troca a nota (2026-10-01, ordem do dono: *«crie um botão nas
+/// notas que possibilite minimizar as notas»*). Devolve `true` quando o Down é dela: as duas correm
+/// ANTES da porta da focabilidade, senão o Down focava a caixa do título por baixo (a pega e o
+/// botão ficam POR CIMA dela, na mesma fileira).
+pub(super) fn premiu_a_nota(store: &mut WidgetStore, id: NodeId, x: f32, y: f32) -> bool {
+    match store.nota_de(id) {
+        Some((_, _, crate::ids::NoteFace::Grip)) => {
+            seed(store, id, x, y);
+            true
+        }
+        Some((painel, slot, crate::ids::NoteFace::Fold)) => {
+            store.note_toggle_minimized(painel, slot);
+            true
+        }
+        _ => false,
     }
 }
 
@@ -31,7 +50,8 @@ fn dentro(painel: Rect, r: Rect) -> bool {
 }
 
 /// ⭐ **Os cabeçalhos de secção à vista num painel, por ordem de `y`** — `(secção, topo)`.
-/// Vale para o Inspector (`LIVE_SECTION_IDS`) e para a Galeria (`SECTION_IDS`).
+/// Vale para QUALQUER painel de secções: o Inspector (`LIVE_SECTION_IDS`), a Galeria
+/// (`SECTION_IDS`) e todo laço que regista o cabeçalho no livro do quadro ([`HitIndex::sections`]).
 #[must_use]
 pub fn seccoes_do_painel(hit_index: &HitIndex, painel: Rect) -> Vec<(NodeId, f32)> {
     let mut out: Vec<(NodeId, f32)> = hit_index
@@ -42,8 +62,24 @@ pub fn seccoes_do_painel(hit_index: &HitIndex, painel: Rect) -> Vec<(NodeId, f32
         })
         .map(|(id, r)| (id, r.y))
         .collect();
+    // ⭐ E as secções de QUALQUER painel (2026-10-01): os laços de secções registam o cabeçalho no
+    //    livro do quadro ([`HitIndex::sections`]) — sem isto, uma nota largada na Física caía no
+    //    fim do painel em vez de na secção sob o cursor.
+    out.extend(
+        hit_index
+            .sections()
+            .filter(|(_, r)| dentro(painel, *r))
+            .map(|(id, r)| (id, r.y)),
+    );
     out.sort_by(|a, b| a.1.total_cmp(&b.1));
-    out.dedup_by_key(|(id, _)| *id);
+    // ⚠️ Um cabeçalho pode vir pelos DOIS livros (o registo e o das secções) com rects que diferem
+    //    no recorte — o 1.º, o mais alto, fica.
+    let mut vistos: Vec<NodeId> = Vec::with_capacity(out.len());
+    out.retain(|(id, _)| {
+        let novo = !vistos.contains(id);
+        vistos.push(*id);
+        novo
+    });
     out
 }
 
@@ -71,7 +107,7 @@ pub fn lugar_da_queda(
     let painel = store.panel_rect(drag.panel)?;
     let seccao = seccao_sob(&seccoes_do_painel(hit_index, painel), y);
     let notas = store.notes_for_panel(drag.panel);
-    let caixas = crate::ids::note_ids(drag.panel)?;
+    let caixas = crate::ids::note_ids(drag.panel);
     let rank = hit_index
         .iter_registrations()
         .filter(|(id, r)| {

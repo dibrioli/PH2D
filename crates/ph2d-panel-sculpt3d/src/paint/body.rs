@@ -110,6 +110,7 @@ pub(super) fn paint_sections(
     //    `end_section_cards` só pinta os que já fecharam.
     plano.corre(
         ctx,
+        ph2d_editor_core::ids::SCULPT3D_PANEL,
         painel,
         x,
         w,

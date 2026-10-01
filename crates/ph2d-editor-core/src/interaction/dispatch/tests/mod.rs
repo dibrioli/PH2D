@@ -287,6 +287,7 @@ mod field_hover;
 mod graph;
 mod harmony;
 mod inputs;
+mod note_body;
 mod number_drag;
 mod timeline;
 mod widgets;

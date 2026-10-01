@@ -92,11 +92,17 @@ impl BodyCtx<'_> {
                 let mut parte = VectorScene::new();
                 std::mem::swap(self.scene, &mut parte);
                 y = self.uma_seccao(y, tarefa);
+                if y > y0 {
+                    y = self.cromo(id, y0, y);
+                }
                 std::mem::swap(self.scene, &mut parte);
                 self.scene.inner_mut().append(parte.inner(), None);
                 fantasma = Some(parte);
             } else {
                 y = self.uma_seccao(y, tarefa);
+                if y > y0 {
+                    y = self.cromo(id, y0, y);
+                }
             }
             self.theme = painel;
             corredor.depois(y0, y);
@@ -118,6 +124,24 @@ impl BodyCtx<'_> {
             f.pinta(self.scene, self.store);
         }
         y
+    }
+
+    /// ⭐⭐ **O cromo de uma secção que pintou** — as notas dela e o contorno à volta das duas, pela
+    /// porta partilhada ([`ph2d_editor_core::widget::showcase::notes_chrome::fecha_seccao`],
+    /// 2026-10-01: até aqui o contorno escolhido no menu do título não se pintava neste painel).
+    fn cromo(&mut self, id: NodeId, y0: f32, y: f32) -> f32 {
+        ph2d_editor_core::widget::showcase::notes_chrome::fecha_seccao(
+            self.scene,
+            self.text_system,
+            self.hit_index,
+            self.store,
+            ph2d_editor_core::ids::VECTOR_PANEL,
+            id,
+            self.inner_x,
+            self.inner_w,
+            y0,
+            y,
+        )
     }
 
     /// Uma secção: abre e fecha a dobra dela pela mesma porta. ⚠️ **LIMPA ANTES, e não é

@@ -14,12 +14,13 @@
 //! caixas com ela ([`WidgetStore::permute_note_texts`]), senão a nota de baixo sobe e herda o texto
 //! da que foi apagada.
 //!
-//! ⭐ **Cada painel tem as SUAS ranhuras** ([`crate::ids::note_ids`], desde 2026-10-01): permutar as
-//! notas da Galeria não toca no texto das do Inspector. Até aí as doze caixas eram partilhadas, e
+//! ⭐ **Cada painel tem as SUAS ranhuras** ([`crate::ids::note_ids`], desde 2026-10-01 — e desde o
+//! mesmo dia QUALQUER painel tem notas): permutar as notas da Galeria não toca no texto das do
+//! Inspector. Até aí as doze caixas eram partilhadas, e
 //! a nota `0` de um painel lia o texto da nota `0` do outro.
 
 use super::{InteractiveState, WidgetStore};
-use crate::ids::{NOTES_PER_PANEL, note_ids};
+use crate::ids::{NOTES_PER_PANEL, NoteFace, note_ids};
 use crate::interaction::types::NoteData;
 use crate::widget::TextInputState;
 use ph2d_a11y::NodeId;
@@ -56,17 +57,83 @@ impl WidgetStore {
         color_idx: u8,
         section: Option<NodeId>,
     ) -> Option<usize> {
-        let list = self.notes_per_panel.entry(panel).or_default();
-        if list.len() >= NOTES_PER_PANEL {
+        if self.notes_for_panel(panel).len() >= NOTES_PER_PANEL {
             return None;
         }
+        self.ensure_note_boxes(panel);
+        let list = self.notes_per_panel.entry(panel).or_default();
         list.push(NoteData {
             color_idx,
             title: ph2d_i18n::tr_with("chrome.interaction.note_n", &[("n", &(list.len() + 1))]),
             body: String::new(),
             section,
+            minimized: false,
         });
         Some(list.len() - 1)
+    }
+
+    /// ⭐⭐ **Regista as caixas das notas de `panel` na PRIMEIRA nota dele** (2026-10-01).
+    ///
+    /// Até aqui o arranque registava as ranhuras do Inspector e da Galeria, os dois únicos painéis
+    /// que pintavam notas. Com notas em QUALQUER painel (ordem do dono), registar as de todos ao
+    /// abrir seria `5 × 12` ids por painel que nunca terão uma nota — regista-se quando a primeira
+    /// nasce. ⚠️ Idempotente e **não reescreve** uma caixa que já existe: o texto de uma ranhura
+    /// sobrevive a uma segunda chamada.
+    pub fn ensure_note_boxes(&mut self, panel: NodeId) {
+        let caixas = note_ids(panel);
+        for i in 0..NOTES_PER_PANEL {
+            for id in [caixas.slot[i], caixas.grip[i], caixas.fold[i]] {
+                if self.get(id).is_none() {
+                    self.register(id, InteractiveState::Plain);
+                }
+            }
+            if self.tooltip_for(caixas.grip[i]).is_none() {
+                self.set_tooltip(caixas.grip[i], ph2d_i18n::tr("chrome.note.grip_hint"));
+            }
+            if self.tooltip_for(caixas.fold[i]).is_none() {
+                self.set_tooltip(caixas.fold[i], ph2d_i18n::tr("chrome.note.fold_hint"));
+            }
+            for id in [caixas.title[i], caixas.body[i]] {
+                if self.get(id).is_none() {
+                    self.register(
+                        id,
+                        InteractiveState::TextInput {
+                            state: TextInputState::Normal,
+                            text: String::new(),
+                            caret: 0,
+                            selection_anchor: None,
+                        },
+                    );
+                }
+            }
+            self.mark_multiline_text(caixas.body[i]);
+        }
+    }
+
+    /// ⭐ **De que nota é este id?** — `(painel, ranhura, face)`, procurado nos painéis que TÊM
+    /// notas (as ranhuras de um painel sem notas não estão registadas, logo nada as pode clicar).
+    #[must_use]
+    pub fn nota_de(&self, id: NodeId) -> Option<(NodeId, usize, NoteFace)> {
+        self.notes_per_panel
+            .iter()
+            .filter(|(_, v)| !v.is_empty())
+            .find_map(|(p, v)| {
+                note_ids(*p)
+                    .find(id)
+                    .filter(|(i, _)| *i < v.len())
+                    .map(|(i, f)| (*p, i, f))
+            })
+    }
+
+    /// ⭐ **Minimiza ou expande a nota `index`** (o botão da fileira do título).
+    pub fn note_toggle_minimized(&mut self, panel: NodeId, index: usize) {
+        if let Some(note) = self
+            .notes_per_panel
+            .get_mut(&panel)
+            .and_then(|l| l.get_mut(index))
+        {
+            note.minimized = !note.minimized;
+        }
     }
 
     /// Update an existing note's color index.
@@ -134,15 +201,13 @@ impl WidgetStore {
     }
 
     /// ⛔ **A lei da permutação** (ver o cabeçalho): a ranhura `k` DE `panel` recebe o texto que
-    /// estava na ranhura `order[k]`; as ranhuras para lá de `order.len()` ficam vazias. Um painel que
-    /// não pinta notas não tem caixas, e não há o que permutar.
+    /// estava na ranhura `order[k]`; as ranhuras para lá de `order.len()` ficam vazias. ⚠️ Um painel
+    /// cujas caixas nunca foram registadas não tem texto a mover (o `get_mut` falha e nada muda).
     ///
     /// ⚠️ Um campo de nota com o teclado larga-o: o texto que ele segurava pode ter mudado de
     /// ranhura, e um cursor numa caixa cujo conteúdo trocou por baixo escreveria na nota errada.
     pub fn permute_note_texts(&mut self, panel: NodeId, order: &[usize]) {
-        let Some(caixas) = note_ids(panel) else {
-            return;
-        };
+        let caixas = note_ids(panel);
         let ler = |s: &Self, id: NodeId| match s.get(id) {
             Some(InteractiveState::TextInput { text, .. }) => text.clone(),
             _ => String::new(),
@@ -243,3 +308,10 @@ fn ordem_depois_de_mover(
 #[cfg(test)]
 #[path = "notes_ops_tests.rs"]
 mod tests;
+
+// ⭐ O CARTÃO de uma nota e o CROMO de uma secção (2026-10-01). ⚠️ Mora AQUI e não ao lado do
+//    `notes_chrome`: um teste no `widget` que escreve uma caixa conta como aresta `widget →
+//    interaction`, e essa é a catraca da fundação que só desce.
+#[cfg(test)]
+#[path = "notes_card_tests.rs"]
+mod notes_card_tests;

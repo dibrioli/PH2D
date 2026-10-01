@@ -405,3 +405,105 @@ Ordem do dono: *«smoke ok. siga»* — fecharam-se os dois ⏳ deste handoff.
 - `nextest-impacted` **19 138/19 138** · clippy `--all-targets -D warnings` zero nas 3 crates · `fmt` limpo.
 - ⚠️ **Superfície de colisão**: `permute_note_texts` e `paint_one_note` mudaram de assinatura (quem os
   chamar noutra linha não compila — falha ALTA, barata).
+
+## §10 — Adenda (2026-10-01, 2.ª): notas e contorno em QUALQUER painel; a nota minimiza, cresce e quebra linhas
+
+Report do dono sobre o smoke da §9 (com foto da *Color & Tint* + uma nota): *«a possibilidade de criar
+notas deve existir em quaisquer painéis de qualquer tipo. Outline também deve funcionar em qualquer
+painel. Em physics não está funcionando. … a outline não está englobando as notas da seção. faça
+englobar. crie um botão nas notas que possibilite minimizar as notas. O card das notas não cresce com o
+aumento do número de palavras e linhas e não há quebra automática de linha.»*
+
+⚠️ **Esta adenda REVERTE duas decisões da §9**, as duas por ordem do dono: a §9.3 respondia *«só onde
+uma nota se pinta»* com uma TABELA de dois painéis (`NOTE_HOSTS`), e a §9.2 registava as ranhuras de
+dois painéis no arranque. Hoje todo painel pinta notas, logo as duas morreram.
+
+### 10.1 As duas PORTAS (`widget::showcase::notes_chrome`, ficheiro novo)
+
+- **`fecha_seccao(scene, ts, hit, store, panel, section, inner_x, inner_w, y_before, y) -> f32`** — no
+  fim de cada secção que pintou: as notas presas a ela e, POR FORA das duas, o contorno. Quatro leitores
+  (todo laço de secções do app): `PlanoCtx::corre` (via `cromo`, **assinatura mudou: ganhou `panel`
+  como 2.º argumento** — 7 chamadores: Física · Escultura · Grade · Camadas do Painter · Wet Tuning ·
+  Editor de Áudio · Mixer), o laço próprio do Vector (`paint_body_plan::cromo`), o da Galeria
+  (`showcase/body.rs`) e o `finish_section` do Inspector (que deixou de pintar contorno e notas à mão).
+- **`pinta_as_que_sobram(.., panel, theme, inner_x, inner_w, y) -> f32`** — as notas que nenhuma secção
+  pintou (sem secção, ou com a secção fora de vista) e o fantasma da nota arrastada. Chamada pela porta
+  de rolagem `panel::scroll_area::close` (⇒ os **25** painéis que a usam têm notas, os sem secção
+  incluídos), pelo Inspector (fecha pela `widget::scroll_area::close_parts`) e pela Galeria (no corpo,
+  para a altura publicada contar com as notas). ⭐ **Idempotente por painel por quadro** (a 2.ª chamada
+  devolve o `y` intacto) — senão a Galeria pintaria o fantasma duas vezes. É ela que DECLARA o painel
+  anfitrião (`HitIndex::mark_note_host`).
+- ⚠️ **O livro das notas pintadas é do QUADRO** (`HitIndex::mark_note_painted`/`note_painted`, e o
+  `anfitrioes`, os dois limpos por quadro): uma nota pintada pela secção não volta a sê-lo no fim. Isto
+  substitui o `a_vista` do Inspector, que relia `iter_registrations` à procura de `LIVE_SECTION_IDS`.
+- ⛔ **Ficam de fora** a timeline, o grafo do Motion e a tira do Flip: o botão direito é DELES e não
+  usam a porta de rolagem. O comentário da guarda (*«cânone de 2026-05-24: notas só no Inspector e na
+  Galeria»*) foi reescrito — ele morreu com esta ordem.
+
+### 10.2 *Create Note* e a queda numa secção, em qualquer painel
+
+- O botão direito abre *Create Note* onde `hit_index.is_note_host(panel)` — **o livro do quadro, escrito
+  por quem pinta**, e não uma tabela. Gate renomeado: `create_note_opens_on_any_panel_that_hosts_notes`
+  (Inspector · Galeria · Vector · Física abrem; o CONTROLO é a Física sem a porta ter corrido).
+- `seccoes_do_painel` passa a somar o livro `HitIndex::sections()` (todo laço regista o cabeçalho por
+  `register_section`) — sem isto uma nota criada no corpo da Física nascia sem secção e uma largada lá
+  caía no fim. ⚠️ Um cabeçalho pode vir pelos DOIS livros com rects diferentes no recorte ⇒ o `dedup`
+  passou a ser por id e não por vizinhança.
+
+### 10.3 As ranhuras de TODO painel (`ids::notes`)
+
+- `note_ids(panel) -> NoteIds` é **TOTAL** (era `Option`): o Inspector guarda as tabelas de sempre e
+  todo outro painel deriva as dele por XOR com `sal_do_painel(panel)` (splitmix64 | 1). `NoteIds`
+  ganhou a 5.ª face, **`fold`** (o botão de minimizar); `NoteFace { Slot, Title, Body, Grip, Fold }`.
+- `NOTE_HOSTS`, `is_note_text`, `note_index_of` e `note_of_grip` **morreram**; as consultas pedem o
+  painel (`note_index_in(panel, id)`, `note_of_grip_in(panel, id)`) ou perguntam ao store
+  (`WidgetStore::nota_de(id) -> (painel, ranhura, face)`, procurado nos painéis que TÊM notas).
+- ⚠️ **O registo é preguiçoso:** `WidgetStore::ensure_note_boxes(panel)` na 1.ª nota de um painel
+  (idempotente, não reescreve uma caixa viva) — o `pre_populate_notes.rs` foi APAGADO. Registar as 5×12
+  caixas de todo painel no arranque seria pagar por painéis que nunca terão uma nota.
+- Gate `cada_painel_tem_as_suas_ranhuras` alargado a **13** painéis (sem uma colisão entre nenhum).
+
+### 10.4 A nota: minimizar, crescer, quebrar linhas
+
+- **Minimizar** — chevron à esquerda do título (`ChevronDown`/`ChevronRight`, `INLINE_ICON_PX`), dica
+  `chrome.note.fold_hint`. `NoteData::minimized` (campo novo). O Down primário vai por
+  `note_drag::premiu_a_nota` (pega OU botão), ANTES da porta da focabilidade — senão focava o título por
+  baixo. Minimizada, a nota é só a fileira do título (o corpo nem se regista).
+- **Quebra de linha** — `widget/showcase/notes_text.rs` (novo): `linhas_visuais(texto, largura, mede)`
+  (por palavras; uma palavra mais larga que a linha parte-se por caractere; partição exacta da linha
+  lógica), `linha_do_byte`, `texto_da_linha`, `linhas_do_corpo` (mínimo `LINHAS_MINIMAS = 3`). ⭐ **Uma
+  lei, três leitores:** o pintor do corpo, a ALTURA do cartão (`paint_one_note`) e o clique→caret
+  (`text_ops::byte_offset_from_click_xy`, braço `corpo_de_nota`). ⚠️ As setas ↑/↓ e Home/End continuam
+  por linhas LÓGICAS — o despacho de teclado não tem o `TextSystem` (declarado no cabeçalho).
+- Os pintores de texto recebem os VALORES da caixa (`CaixaLida`) e não o `WidgetStore` — é isso que
+  mantém a catraca `widget → interaction` em **43** (a 2.ª metade do corte: o `paint_panel_title_color_dot`
+  passou a importar os tipos num `use` só).
+
+### 10.5 Prova
+
+- Gates novos: `o_botao_direito_no_corpo_cria_uma_nota_na_seccao_sob_o_cursor` ·
+  `a_nota_pinta_se_no_fim_da_sua_seccao` · `o_contorno_escolhido_no_titulo_pinta_na_fisica` (Física, o
+  report) · `a_nota_pinta_se_no_fim_da_sua_seccao_no_vector` · `o_padding_cria_e_pinta_uma_nota`
+  (painel SEM secções) · `o_contorno_abraca_as_notas_da_seccao` (com o controlo do contorno curto) ·
+  `o_cartao_cresce_com_o_texto` · `minimizada_e_so_a_fileira_do_titulo` ·
+  `as_notas_do_fim_correm_uma_vez_por_quadro` · `o_botao_minimiza_e_volta_a_abrir` ·
+  `o_clique_na_segunda_linha_visual_poe_o_caret_nela` (pelo despacho real, com `TextSystem`).
+- ⚠️ Os testes do cartão vivem em `interaction/state/notes_card_tests.rs` e **não** ao lado do
+  `notes_chrome`: um teste no `widget` que escreve numa caixa conta como aresta `widget → interaction`.
+- A caixa do contorno é uma função pura (`caixa_do_contorno`), e o gate mede-a contra a nota que a porta
+  REGISTOU. ⚠️ Declarado: a fiação `fecha_seccao → caixa_do_contorno` não é observável na cena (o
+  contorno não regista hit); a prova de que ele pinta na Física é a contagem de geometria.
+- Mutação **11 de 11** + CONTROLO (no-op que sobrevive): porta sem `mark_note_host` · laço sem `cromo` ·
+  caixa até ao fim da secção · corpo de 3 linhas fixas · pintor a ignorar `minimized` · porta não
+  idempotente · botão sem braço · clique sem a quebra · `seccoes_do_painel` sem o livro · Vector sem
+  `cromo` · Inspector sem a porta. ⚠️ A 1.ª corrida leu a M11 como SOBREVIVE: o filtro era `/note/` e
+  os gates do Inspector chamam-se `a_nota_…` — *um filtro que não casa o nome lê-se como uma lei sem
+  régua*. Pré-voo das âncoras `12/12`.
+- Catracas tocadas sem subir: DAG `widget → interaction` **43** (duas curas, nenhuma isenção) ·
+  `pointer_down.rs` `707 → 694` (os gestos das faces de nota mudaram-se para o irmão `note_drag`) ·
+  a isenção do raio do contorno MUDOU DE ENDEREÇO (`paint_frame.rs` → `notes_chrome.rs`, a lei da
+  §5.0: a isenção viaja com o código) · `A11Y_OPT_OUT` + `showcase/notes_text.rs` (pintores de valores).
+- `nextest-impacted` **19 152/19 152** · clippy `--all-targets -D warnings` zero · censos da árvore
+  combinada **127/127** (controlo do filtro 12 de 12) · `fmt` limpo.
+- ⚠️ **Superfície de colisão**: `PlanoCtx::corre` (+`panel`), `note_ids` (deixou de ser `Option`),
+  `paint_note_editable_*` (recebem `CaixaLida`), e os 7 painéis do plano tocados numa linha cada.

@@ -6,6 +6,7 @@
 //! ganham o prefixo do módulo (`ficheiro::fn`); filtros por `test(nome)` continuam a casar.
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
+mod as_notas_vivem_num_painel_sem_seccoes; // notas em qualquer painel (2026-10-01)
 mod every_word_this_panel_shows_comes_from_the_string_table;
 mod populate_mapped_link;
 mod seam;

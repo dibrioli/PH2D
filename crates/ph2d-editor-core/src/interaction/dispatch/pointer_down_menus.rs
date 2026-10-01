@@ -63,7 +63,7 @@ pub(super) fn handle_down_menus(
         //    caíam, e o título e o corpo (registados por cima do fundo) ganhavam o clique de
         //    qualquer maneira ⇒ o menu da nota NUNCA abriu. A pertença lê-se pela tabela.
         let note_slot = hit_id
-            .and_then(crate::ids::note_index_of)
+            .and_then(|id| panel_under.and_then(|p| crate::ids::note_index_in(p, id)))
             .and_then(|i| u8::try_from(i).ok());
         // M14.6 F: right-click on a hierarchy row opens the
         // per-entity actions menu. Resolved BEFORE the broader
@@ -214,22 +214,20 @@ pub(super) fn handle_down_menus(
                     section: section_id,
                 },
             });
-        } else if let Some(panel) = panel_under.filter(|p| crate::ids::note_ids(*p).is_some()) {
-            // ⛔⛔ **Só onde uma nota se PINTA** (2026-10-01). Isto era uma lista de EXCLUSÃO (a
-            //    hierarquia, as ferramentas de imagem, as camadas, a timeline, a grade, os assets) e
-            //    todo painel novo ganhava *«Create note»* por omissão — mas só o Inspector e a
-            //    Galeria pintam notas, logo no Vector, na Física, no Áudio… a nota nascia no store e
-            //    NUNCA aparecia: um botão mudo. A pergunta passou a ser a tabela das ranhuras.
+        } else if let Some(panel) = panel_under.filter(|p| hit_index.is_note_host(*p)) {
+            // ⛔⛔ **Em TODO painel onde uma nota se PINTA** (2026-10-01, ordem do dono: *«a
+            //    possibilidade de criar notas deve existir em quaisquer painéis de qualquer tipo»*).
+            //    Isto era uma lista de EXCLUSÃO, e de manhã virou «só o Inspector e a Galeria» (os
+            //    únicos que pintavam notas — nos outros a nota nascia e nunca aparecia). Hoje TODA
+            //    porta de rolagem pinta as notas do painel dela, e é ELA que o declara no livro do
+            //    quadro ([`crate::interaction::HitIndex::mark_note_host`]): a pergunta é *«alguém vai
+            //    pintar esta nota?»*, respondida por quem a pinta.
             // ⭐ A secção sob o cursor resolve-se AQUI, pela régua do arrasto de nota
             //    ([`super::note_drag::seccao_sob`]) — a nota nasce no fim dela.
             //
-            // Hierarchy + image-tool panels (PAD/BGR/CEQ/UPS/EQS)
-            // + the timeline are excluded by design — these are
-            // transient operation surfaces, not annotation
-            // surfaces. UI canon post-2026-05-24: notes +
-            // outlines live in Inspector + Widget Gallery only.
-            // (The timeline also owns right-click for its own
-            // per-key preset menu, resolved above.)
+            // ⚠️ O cânone de 2026-05-24 (*«notas só no Inspector e na Galeria»*) MORREU com esta
+            //    ordem. Ficam de fora só as superfícies cujo botão direito é DELAS (a timeline, o
+            //    grafo do Motion, a tira do Flip — resolvidas acima ou sem porta de rolagem).
             store.open_context_menu(ContextMenuRequest {
                 x: event.x,
                 y: event.y,

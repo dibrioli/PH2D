@@ -437,13 +437,12 @@ pub(super) fn dispatch_down<'frame>(
         super::section_drag::seed(store, hit_index, id, event.x, event.y);
         return;
     }
-    // ⭐ A PEGA de uma NOTA (2026-09-30) — a mesma porta e a mesma razão. ⚠️ A pega fica por cima
-    //    do título da nota; sem este braço o Down focava a caixa de texto por baixo dela.
+    // ⭐ A PEGA e o botão de MINIMIZAR de uma NOTA — a mesma porta e a mesma razão (a lei vive no
+    //    irmão das notas: [`super::note_drag::premiu_a_nota`]).
     if let Some((id, _)) = hit
         && event.button == ph2d_host::PointerButton::Primary
-        && crate::ids::note_of_grip(id).is_some()
+        && super::note_drag::premiu_a_nota(store, id, event.x, event.y)
     {
-        super::note_drag::seed(store, id, event.x, event.y);
         return;
     }
 

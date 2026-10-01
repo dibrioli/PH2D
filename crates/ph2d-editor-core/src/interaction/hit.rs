@@ -27,6 +27,13 @@ pub struct HitIndex {
     /// ⭐⭐ **As secções que se arrastam e mudam de tema, pintadas NESTE quadro por qualquer painel**
     /// — `(secção, pega, cabeçalho já recortado)`. Ver [`HitIndex::register_section`].
     seccoes: SmallVec<[(NodeId, Option<NodeId>, Rect); 48]>,
+    /// ⭐ **As notas JÁ pintadas neste quadro** — `(painel, ranhura)`. A porta do fim do corpo
+    /// pinta as que sobram (sem secção, ou com a secção fora de vista) — ver
+    /// [`crate::widget::section_chrome`].
+    notas: SmallVec<[(NodeId, usize); 16]>,
+    /// ⭐ **Os painéis cuja porta pinta notas NESTE quadro** — o botão direito só oferece «Create
+    /// Note» onde ela vai aparecer. Ver [`HitIndex::mark_note_host`].
+    anfitrioes: SmallVec<[NodeId; 16]>,
 }
 
 impl HitIndex {
@@ -39,6 +46,8 @@ impl HitIndex {
     pub fn clear_for_frame(&mut self) {
         self.rects.clear();
         self.seccoes.clear();
+        self.notas.clear();
+        self.anfitrioes.clear();
         // ⚠️ **Um recorte por fechar não pode atravessar o quadro.** Se um pintor entrar em
         // pânico ou sair por um caminho que salta o `pop_clip`, o quadro SEGUINTE herdaria a
         // janela e o painel inteiro ficaria mudo sob o rato — um defeito que se cura sozinho
@@ -91,6 +100,30 @@ impl HitIndex {
         };
         self.rects.push((section, visible));
         self.seccoes.push((section, None, visible));
+    }
+
+    /// Declara que a porta de `panel` pinta as notas dele neste quadro.
+    pub fn mark_note_host(&mut self, panel: NodeId) {
+        if !self.anfitrioes.contains(&panel) {
+            self.anfitrioes.push(panel);
+        }
+    }
+
+    /// A porta de `panel` pintou notas neste quadro (logo uma nota nova vai aparecer)?
+    #[must_use]
+    pub fn is_note_host(&self, panel: NodeId) -> bool {
+        self.anfitrioes.contains(&panel)
+    }
+
+    /// Regista que a nota `slot` de `panel` foi pintada neste quadro.
+    pub fn mark_note_painted(&mut self, panel: NodeId, slot: usize) {
+        self.notas.push((panel, slot));
+    }
+
+    /// A nota `slot` de `panel` já foi pintada neste quadro?
+    #[must_use]
+    pub fn note_painted(&self, panel: NodeId, slot: usize) -> bool {
+        self.notas.contains(&(panel, slot))
     }
 
     /// `id` é o cabeçalho de uma secção registada por [`Self::register_section`] neste quadro.

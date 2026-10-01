@@ -1,24 +1,14 @@
 //! Gates das operações de nota — a lei da permutação (o texto viaja com a nota).
 
 use super::*;
-use crate::ids::{self, NOTE_BODY_IDS, NOTE_HOSTS, NOTE_TITLE_IDS};
+use crate::ids::{self, NOTE_BODY_IDS, NOTE_TITLE_IDS};
 
+/// Um store com as caixas do Inspector e da Galeria registadas — pela MESMA porta que a 1.ª nota de
+/// um painel usa ([`WidgetStore::ensure_note_boxes`]).
 fn store() -> WidgetStore {
     let mut s = WidgetStore::with_capacity(128);
-    for id in NOTE_HOSTS
-        .iter()
-        .flat_map(|(_, n)| n.title.iter().chain(n.body.iter()))
-    {
-        s.register(
-            *id,
-            InteractiveState::TextInput {
-                state: TextInputState::Normal,
-                text: String::new(),
-                caret: 0,
-                selection_anchor: None,
-            },
-        );
-    }
+    s.ensure_note_boxes(ids::INSP_PANEL);
+    s.ensure_note_boxes(ids::GAL_PANEL);
     s
 }
 
@@ -157,7 +147,7 @@ fn o_arrasto_de_nota_arma_depois_do_limiar() {
 fn as_notas_de_um_painel_nao_tocam_no_texto_do_outro() {
     let g = ids::GAL_PANEL;
     let mut s = tres(); // Inspector: n0 n1 n2
-    let gal = ids::note_ids(g).expect("a galeria pinta notas");
+    let gal = ids::note_ids(g);
     for i in 0..2 {
         assert_eq!(s.notes_push(g, 0, None), Some(i));
         escreve(&mut s, gal.title[i], &format!("g{i}"));

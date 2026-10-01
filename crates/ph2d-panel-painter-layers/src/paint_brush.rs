@@ -118,6 +118,7 @@ pub(crate) fn paint_brush_body(
     crate::paint_brush_sections::declara_aparencia(&mut plano, x, content_w, brush);
     plano.corre(
         ctx,
+        core_ids::PAINTER_LAYERS_PANEL,
         theme,
         x,
         content_w,

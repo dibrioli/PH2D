@@ -739,18 +739,22 @@ fn text_input_char_insert_advances_caret() {
     assert_eq!(store.text(NodeId(1)), Some("ab"));
 }
 
-/// ⭐⭐ **«Create Note» só abre nos painéis que PINTAM notas** (2026-10-01). Até aqui a pergunta era
-/// uma lista de EXCLUSÃO, e todo painel fora dela oferecia o menu — mas só o Inspector e a Galeria
-/// pintam notas, logo no Vector a nota nascia no store e nunca aparecia (um botão mudo). Agora a
-/// pergunta é a tabela das ranhuras ([`crate::ids::note_ids`]). *Mutação: voltar à exclusão ⇒ o
-/// botão direito no Vector abre o `CreateNote`.* O controlo é o Inspector, onde ele tem de abrir.
+/// ⭐⭐ **«Create Note» abre em QUALQUER painel que pinta notas NESTE quadro** (2026-10-01, ordem
+/// do dono: *«a possibilidade de criar notas deve existir em quaisquer painéis de qualquer tipo»*).
+/// A pergunta é o livro do quadro ([`HitIndex::mark_note_host`]), que a porta das notas do fim do
+/// corpo escreve — e não uma tabela de painéis: o Vector e a Física passam a oferecer o menu.
+/// *Mutação: ignorar o livro ⇒ o controlo (um painel cuja porta não correu) abre o menu e a nota
+/// nasceria sem nunca aparecer.*
 #[test]
-fn create_note_opens_only_on_a_panel_that_paints_notes() {
+fn create_note_opens_on_any_panel_that_hosts_notes() {
     use crate::ids;
     use crate::interaction::ContextMenuKind;
     let arena = Bump::new();
-    let hits = HitIndex::new();
-    let abre_em = |panel| {
+    let abre_em = |panel, anfitriao: bool| {
+        let mut hits = HitIndex::new();
+        if anfitriao {
+            hits.mark_note_host(panel);
+        }
         let mut store = WidgetStore::with_capacity(4);
         store.set_panel_rect(panel, Rect::new(0.0, 0.0, 300.0, 300.0));
         let _ = dispatch_pointer(
@@ -761,22 +765,20 @@ fn create_note_opens_only_on_a_panel_that_paints_notes() {
         );
         store.context_menu().map(|m| m.kind)
     };
-    assert!(
-        matches!(abre_em(ids::INSP_PANEL), Some(ContextMenuKind::CreateNote { panel, .. }) if panel == ids::INSP_PANEL),
-        "controlo: no Inspector o botao direito oferece criar nota"
-    );
-    assert!(
-        matches!(
-            abre_em(ids::GAL_PANEL),
-            Some(ContextMenuKind::CreateNote { .. })
-        ),
-        "e na Galeria tambem"
-    );
-    for mudo in [ids::VECTOR_PANEL, ids::PHYSICS_PANEL] {
-        assert_eq!(
-            abre_em(mudo),
-            None,
-            "um painel que nao pinta notas nao pode oferecer criar uma"
+    for painel in [
+        ids::INSP_PANEL,
+        ids::GAL_PANEL,
+        ids::VECTOR_PANEL,
+        ids::PHYSICS_PANEL,
+    ] {
+        assert!(
+            matches!(abre_em(painel, true), Some(ContextMenuKind::CreateNote { panel, .. }) if panel == painel),
+            "num painel que pinta notas o botao direito oferece criar uma"
         );
     }
+    assert_eq!(
+        abre_em(ids::PHYSICS_PANEL, false),
+        None,
+        "controlo: um painel cuja porta das notas nao correu nao pode oferecer criar uma"
+    );
 }

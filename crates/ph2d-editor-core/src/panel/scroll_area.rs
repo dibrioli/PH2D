@@ -35,11 +35,42 @@ pub fn open(ctx: &mut PaintCtx, panel: NodeId, bar: NodeId, body: Rect) -> Scrol
 /// o `PaintCtx` e mais nada.
 pub fn close(area: ScrollArea, ctx: &mut PaintCtx, content_h: f32) {
     let theme = ctx.host.theme();
+    let content_h = notas_do_fim(&area, ctx, content_h, theme);
     let pending = {
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
         crate::widget::scroll_area::close_parts(area, ctx.scene, hit_index, store, content_h, theme)
     };
     pending.publish(ctx.host.store_mut());
+}
+
+/// ⭐⭐ **As notas do fim do corpo** (2026-10-01, ordem do dono: *«a possibilidade de criar notas
+/// deve existir em quaisquer painéis de qualquer tipo»*) — pintadas DENTRO do recorte, a seguir ao
+/// conteúdo, e somadas à altura que a porta publica (senão uma nota comprida ficava fora da
+/// rolagem). Ver [`crate::widget::showcase::notes_chrome`]. Devolve a altura com elas.
+fn notas_do_fim(
+    area: &ScrollArea,
+    ctx: &mut PaintCtx,
+    content_h: f32,
+    theme: ph2d_tokens::Theme,
+) -> f32 {
+    let body = area.body();
+    let gap = ph2d_tokens::Spacing::Md.px();
+    let inner_x = body.x + gap;
+    let inner_w = (crate::widget::scrollbar_track_rect(body).x - gap - inner_x).max(0.0);
+    let y0 = area.top() + content_h + gap;
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    let y1 = crate::widget::showcase::notes_chrome::pinta_as_que_sobram(
+        ctx.scene,
+        ctx.text_system,
+        hit_index,
+        store,
+        area.panel(),
+        theme,
+        inner_x,
+        inner_w,
+        y0,
+    );
+    if y1 > y0 { y1 - area.top() } else { content_h }
 }
 
 /// Fecha o corpo da GALERIA de widgets — a porta, e depois o cromo dela por cima (os pontos dos

@@ -71,6 +71,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.menu.section_themes_reset" => "Reset All Card Themes",
         "chrome.menu.section_themes_save_custom" => "Save Custom Theme",
         "chrome.menu.section_themes_load_custom" => "Load Custom Theme",
+        "chrome.note.fold_hint" => "Minimize or expand this note.",
         "chrome.note.grip_hint" => {
             "Drag to move this note. Right-click it to recolor, duplicate or delete."
         }

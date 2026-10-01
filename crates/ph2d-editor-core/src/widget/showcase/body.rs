@@ -142,30 +142,6 @@ pub fn paint_showcase_body(
     // ⭐⭐ **A galeria também mostra o CARTÃO** — ela é a fonte de verdade do cromo (DIRETRIZ
     //    §5.2), logo um risco aqui seria a galeria a ensinar o que o app já não faz.
     crate::widget::section_cards::begin_section_cards(scene, theme, body_top_y);
-    // ⭐ As notas — lidas uma vez. Cada uma pinta-se no FIM da secção a que pertence (pela
-    //    identidade dela, `NoteData::section`, desde 2026-09-30); as de nenhuma secção da galeria
-    //    pintam-se no fim do corpo.
-    let all_notes = store.notes_for_panel(ids::GAL_PANEL).to_vec();
-    macro_rules! paint_pending_notes {
-        ($section_id:expr) => {
-            for (slot, note) in all_notes.iter().enumerate() {
-                if note.section == Some($section_id) {
-                    paint_one_note(
-                        scene,
-                        text_system,
-                        hit_index,
-                        store,
-                        inner_x,
-                        inner_w,
-                        &mut y,
-                        note,
-                        &crate::ids::GAL_NOTES,
-                        slot,
-                    );
-                }
-            }
-        };
-    }
     // ⭐⭐⭐ **O corpo é uma LISTA** (ordem do dono, 2026-09-30: *«siga com os outros painéis»*) —
     //    pintado pela ordem que o artista escolheu, cada secção no tema que ele lhe deu, com a marca
     //    de queda e o fantasma da lei partilhada ([`crate::widget::section_plan`]).
@@ -200,27 +176,25 @@ pub fn paint_showcase_body(
             inner_w,
             y,
         );
-        if let Some(color_idx) = store.section_outline_color(section_id) {
-            let rgba = crate::widget::panel_chrome::highlighter_rgba(color_idx);
-            let pad = Spacing::Xs.px();
-            let block = Rect::new(
-                inner_x - pad,
-                y_before - pad,
-                inner_w + pad * 2.0,
-                (new_y - y_before + pad * 2.0).max(0.0),
-            );
-            let outline_color = ph2d_vector::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]); // LITERAL-COLOR-OK: user-color — showcase preview outline from user-stored ColorValue
-            // FRAME-RAW-OK: a MARCA de realce que o utilizador escolheu (cor de marcador): conteudo autorado
-            crate::paint::stroke_rounded_rect(
+        // ⭐ As notas DESTA secção e o contorno POR FORA das duas, pela porta partilhada
+        //    (2026-10-01) — dentro da cena à parte quando ela é a arrastada, para o fantasma as
+        //    levar consigo.
+        y = if new_y > y_before {
+            super::notes_chrome::fecha_seccao(
                 scene,
-                block,
-                crate::paint::frame_radius(tema, Radius::Md.px()),
-                StrokeToken::Thick.px(),
-                outline_color,
-            );
-        }
-        y = new_y;
-        paint_pending_notes!(section_id);
+                text_system,
+                hit_index,
+                store,
+                ids::GAL_PANEL,
+                section_id,
+                inner_x,
+                inner_w,
+                y_before,
+                new_y,
+            )
+        } else {
+            new_y
+        };
         if a_parte {
             // ⭐ A arrastada pinta-se numa cena À PARTE, pousada no sítio de sempre e reusada como
             //    o FANTASMA que segue o cursor. ⚠️ Os alvos dela registam-se no sítio real.
@@ -234,23 +208,6 @@ pub fn paint_showcase_body(
         }
     }
     y = corredor.antes(scene, theme, inner_x, inner_w, y);
-    // As notas de nenhuma secção da galeria — no fim do corpo.
-    for (slot, note) in all_notes.iter().enumerate() {
-        if !note.section.is_some_and(|s| SECTION_IDS.contains(&s)) {
-            paint_one_note(
-                scene,
-                text_system,
-                hit_index,
-                store,
-                inner_x,
-                inner_w,
-                &mut y,
-                note,
-                &crate::ids::GAL_NOTES,
-                slot,
-            );
-        }
-    }
     crate::widget::section_plan::conclui(
         scene,
         store,
@@ -265,8 +222,21 @@ pub fn paint_showcase_body(
     {
         f.pinta(scene, store);
     }
-    // ⭐ A nota arrastada — o fantasma por cima de tudo o que o corpo pintou.
-    super::paint_note_drag_ghost(scene, text_system, hit_index, store, ids::GAL_PANEL, theme);
+    // ⭐ As notas que nenhuma secção pintou e o fantasma da nota arrastada, por cima de tudo o que
+    //    o corpo pintou — a porta partilhada. ⚠️ Chamada AQUI e não só na porta de rolagem, para a
+    //    altura publicada abaixo contar com elas; a chamada da porta é então um no-op (uma por
+    //    painel por quadro).
+    y = super::notes_chrome::pinta_as_que_sobram(
+        scene,
+        text_system,
+        hit_index,
+        store,
+        ids::GAL_PANEL,
+        theme,
+        inner_x,
+        inner_w,
+        y,
+    );
     // Publish content + visible heights so the host can clamp the
     // wheel-scroll bound and so the scrollbar's thumb sizes itself
     // correctly. Mirror of the live Inspector's `set_last_inspector_*`

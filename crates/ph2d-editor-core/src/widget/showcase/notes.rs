@@ -18,8 +18,7 @@ use crate::interaction::{
     HitIndex, NoteData, WidgetStore,
     dispatch::note_drag::{lugar_da_queda, seccoes_do_painel},
 };
-use crate::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
-use crate::widget::TextInputState;
+use crate::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
 use crate::widget::panel_chrome::highlighter_rgba;
 use crate::widget::section_grip::{grip_hit_rect, grip_rect, grip_slot_w_px, paint_grip};
 use crate::zones::Rect;
@@ -33,20 +32,19 @@ use ph2d_vector::VectorScene;
 /// dispatch math in `byte_offset_from_click_xy` (`rect.x + 12.0`) so
 /// click→caret + drag-select route to the byte under the visible
 /// cursor.
-fn note_text_pad_x() -> f32 {
+pub(super) fn note_text_pad_x() -> f32 {
     Spacing::Lg.px()
-}
-
-/// Vertical inset for multi-line note body painting. Mirrors the
-/// `TextArea` dispatch math (`text_start_y = rect.y + 8.0`).
-fn note_text_pad_y() -> f32 {
-    Spacing::Md.px()
 }
 
 /// Paint a single sticky-note. Editable: the title + body each
 /// have their own TextInput state in the store
 /// (`caixas.title[slot]` + `caixas.body[slot]`) — `caixas` são as ranhuras do PAINEL que pinta
 /// ([`crate::ids::note_ids`]; até 2026-10-01 eram partilhadas entre a Galeria e o Inspector).
+///
+/// ⭐⭐ **A fileira do título** (2026-10-01): o botão de MINIMIZAR à esquerda (a dobra das secções,
+/// em ponto pequeno), o título, e a pega de 10 pontos à direita. Minimizada, a nota é só esta
+/// fileira. ⭐ **O corpo CRESCE com o texto** — a altura são as linhas visuais da quebra
+/// ([`super::notes_text::linhas_do_corpo`]), nunca menos de três.
 #[allow(clippy::too_many_arguments)]
 pub fn paint_one_note(
     scene: &mut VectorScene,
@@ -64,7 +62,19 @@ pub fn paint_one_note(
     let title_font = TypeToken::Base.px();
     let body_font = TypeToken::Base.px();
     let title_h = title_font + Spacing::Md.px();
-    let body_h = note_text_pad_y() * 2.0 + (body_font + Spacing::Xs.px()) * 3.0; // LITERAL-PX-OK: 3 lines (line count)
+    let body_w = (w - pad * 2.0).max(0.0);
+    let body_h = if note.minimized {
+        0.0
+    } else {
+        let m = crate::widget::text_area_metrics(Rect::new(0.0, 0.0, body_w, 0.0));
+        let texto = caixas
+            .body
+            .get(slot)
+            .map_or("", |id| read_text_input(store, *id).1);
+        let n = super::notes_text::linhas_do_corpo(text_system, texto, m.inner_w, body_font);
+        // O recuo de cima e o de baixo do `TextArea` (a régua é a dele, a do despacho também).
+        m.inner_y * 2.0 + m.line_h * n as f32
+    };
     let note_h = title_h + body_h + pad * 2.0;
     let r = Rect::new(x, *y, w, note_h);
     if let Some(slot_id) = caixas.slot.get(slot) {
@@ -78,49 +88,61 @@ pub fn paint_one_note(
     fill_rounded_rect(scene, r, Radius::Md.px(), bg);
 
     let dark = ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0xFF); // LITERAL-COLOR-OK: note-text — dark glyph fixed across themes
-    // ⭐ **A PEGA da nota** (ordem do dono, 2026-09-30: *«Coloque os 10 pontinhos de arrastar
-    //    também nas notas»*) — a mesma pega das secções, na ponta direita da fila do título, e o
-    //    título encolhe para lhe dar o lugar. ⚠️ Regista-se DEPOIS do título: o hit-index resolve
-    //    o último primeiro, e a pega fica por cima da caixa de texto.
+    // Os pontos e a dobra na cor do texto da nota a meia força — a mesma do texto de espera.
+    let meio = ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x80); // LITERAL-COLOR-OK: note-grip — the placeholder glyph tone
     let fila = Rect::new(r.x, r.y + pad, r.w, title_h);
+    // ⭐ **O botão de MINIMIZAR** — o chevron da dobra das secções: para baixo aberta, para a
+    //    direita minimizada. ⚠️ Regista-se DEPOIS do título (o hit-index resolve o último primeiro).
+    let icon = ph2d_tokens::INLINE_ICON_PX;
+    let dobra = Rect::new(r.x + pad, fila.y + (title_h - icon) * 0.5, icon, icon);
+    let title_x = dobra.x + icon;
     let title_rect = Rect::new(
-        r.x + pad,
-        r.y + pad,
-        (r.w - pad - grip_slot_w_px()).max(0.0),
+        title_x,
+        fila.y,
+        (r.x + r.w - grip_slot_w_px() - title_x).max(0.0),
         title_h,
     );
     if let Some(title_id) = caixas.title.get(slot) {
         hit_index.register(*title_id, title_rect);
-        paint_note_editable_line(
+        super::notes_text::paint_note_editable_line(
             scene,
             text_system,
-            store,
-            *title_id,
+            read_text_input(store, *title_id),
             title_rect,
             title_font,
             dark,
             "Title",
         );
     }
+    if let Some(fold_id) = caixas.fold.get(slot) {
+        hit_index.register(*fold_id, dobra);
+        let glifo = if note.minimized {
+            crate::icons::IconId::ChevronRight
+        } else {
+            crate::icons::IconId::ChevronDown
+        };
+        crate::paint::paint_icon(scene, glifo, dobra, meio, StrokeToken::Default.px());
+    }
+    // ⭐ **A PEGA da nota** (ordem do dono, 2026-09-30: *«Coloque os 10 pontinhos de arrastar
+    //    também nas notas»*) — a mesma pega das secções, na ponta direita da fila do título.
     if let Some(grip_id) = caixas.grip.get(slot) {
         hit_index.register(*grip_id, grip_hit_rect(fila));
-        // Os pontos na cor do texto da nota a meia força — a mesma do texto de espera.
-        let pontos = ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x80); // LITERAL-COLOR-OK: note-grip — the placeholder glyph tone
-        paint_grip(scene, grip_rect(fila), pontos);
+        paint_grip(scene, grip_rect(fila), meio);
     }
-    let body_rect = Rect::new(r.x + pad, r.y + pad + title_h, r.w - pad * 2.0, body_h);
-    if let Some(body_id) = caixas.body.get(slot) {
-        hit_index.register(*body_id, body_rect);
-        paint_note_editable_multiline(
-            scene,
-            text_system,
-            store,
-            *body_id,
-            body_rect,
-            body_font,
-            dark,
-            "Notes…",
-        );
+    if !note.minimized {
+        let body_rect = Rect::new(r.x + pad, r.y + pad + title_h, body_w, body_h);
+        if let Some(body_id) = caixas.body.get(slot) {
+            hit_index.register(*body_id, body_rect);
+            super::notes_text::paint_note_editable_multiline(
+                scene,
+                text_system,
+                read_text_input(store, *body_id),
+                body_rect,
+                body_font,
+                dark,
+                "Notes…",
+            );
+        }
     }
     *y += note_h + Spacing::Md.px();
 }
@@ -144,13 +166,13 @@ pub fn paint_note_drag_ghost(
     let Some(d) = store.note_drag().filter(|d| d.active && d.panel == panel) else {
         return;
     };
-    let (Some(note), Some(painel), Some(caixas)) = (
+    let (Some(note), Some(painel)) = (
         store.notes_for_panel(panel).get(d.index).cloned(),
         store.panel_rect(panel),
-        crate::ids::note_ids(panel),
     ) else {
         return;
     };
+    let caixas = crate::ids::note_ids(panel);
     let dentro = |r: &Rect| painel.contains(r.x + r.w * 0.5, r.y + r.h * 0.5);
     let ranhura = |i: usize| {
         hit_index
@@ -207,7 +229,7 @@ pub fn paint_note_drag_ghost(
         original.w,
         &mut y,
         &note,
-        caixas,
+        &caixas,
         d.index,
     );
     crate::widget::paint_card_ghost(
@@ -219,176 +241,4 @@ pub fn paint_note_drag_ghost(
         (d.down_x, d.down_y),
         (d.cursor_x, d.cursor_y),
     );
-}
-
-#[allow(clippy::too_many_arguments)]
-fn paint_note_editable_line(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    store: &WidgetStore,
-    id: NodeId,
-    rect: Rect,
-    font_size: f32,
-    fg: ph2d_vector::Color,
-    placeholder: &str,
-) {
-    let (state, text, caret, anchor) = read_text_input(store, id);
-    let focused = state == TextInputState::Focused;
-    let text_x = rect.x + note_text_pad_x();
-    let text_w = (rect.w - note_text_pad_x()).max(0.0);
-    let text_y = rect.y + (rect.h - font_size) * 0.5;
-    if focused
-        && !text.is_empty()
-        && let Some(a) = anchor
-        && a != caret
-    {
-        let (s, e) = if a < caret { (a, caret) } else { (caret, a) };
-        let s = s.min(text.len());
-        let e = e.min(text.len());
-        let prefix_w = text_system.prefix_width(&text[..s], font_size);
-        let mid_w = if s == e {
-            0.0
-        } else {
-            text_system.prefix_width(&text[s..e], font_size)
-        };
-        let sel_x = text_x + prefix_w;
-        let sel_w = mid_w.min(text_x + text_w - sel_x).max(0.0);
-        if sel_w > 0.0 {
-            let sel = Rect::new(
-                sel_x,
-                rect.y + 2.0,
-                sel_w,
-                (rect.h - Spacing::Xs.px()).max(2.0),
-            );
-            let sel_color = ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x33); // LITERAL-COLOR-OK: note-selection
-            fill_rounded_rect(scene, sel, 1.0, sel_color);
-        }
-    }
-    let displayed: &str = if text.is_empty() && !focused {
-        placeholder
-    } else {
-        text
-    };
-    let display_color = if text.is_empty() && !focused {
-        ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x80) // LITERAL-COLOR-OK: note-placeholder
-    } else {
-        fg
-    };
-    paint_text(
-        text_system,
-        scene,
-        displayed,
-        text_x,
-        text_y,
-        font_size,
-        text_w,
-        display_color,
-    );
-    if focused {
-        let caret_byte = caret.min(text.len());
-        let prefix_w = text_system.prefix_width(&text[..caret_byte], font_size);
-        let caret_rect = Rect::new(
-            (text_x + prefix_w).min(text_x + text_w),
-            rect.y + 2.0,
-            StrokeToken::Default.px(),
-            (rect.h - Spacing::Xs.px()).max(2.0),
-        );
-        fill_rounded_rect(scene, caret_rect, 0.75, fg); // LITERAL-PX-OK: caret half-width radius
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn paint_note_editable_multiline(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    store: &WidgetStore,
-    id: NodeId,
-    rect: Rect,
-    font_size: f32,
-    fg: ph2d_vector::Color,
-    placeholder: &str,
-) {
-    let (state, text, caret, anchor) = read_text_input(store, id);
-    let focused = state == TextInputState::Focused;
-    let line_h = font_size + Spacing::Xs.px();
-    let text_x = rect.x + note_text_pad_x();
-    let text_y0 = rect.y + note_text_pad_y();
-    let text_w = (rect.w - note_text_pad_x()).max(0.0);
-    if text.is_empty() && !focused {
-        paint_text(
-            text_system,
-            scene,
-            placeholder,
-            text_x,
-            text_y0,
-            font_size,
-            text_w,
-            ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x80), // LITERAL-COLOR-OK: note-placeholder multiline
-        );
-        return;
-    }
-    if focused
-        && let Some(a) = anchor
-        && a != caret
-    {
-        let (s, e) = if a < caret { (a, caret) } else { (caret, a) };
-        let s = s.min(text.len());
-        let e = e.min(text.len());
-        let sel_color = ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x33); // LITERAL-COLOR-OK: note-selection multiline
-        let mut line_start = 0_usize;
-        for (i, line) in text.split('\n').enumerate() {
-            let line_end = line_start + line.len();
-            let seg_s = s.max(line_start);
-            let seg_e = e.min(line_end);
-            if seg_s < seg_e {
-                let local_s = seg_s - line_start;
-                let local_e = seg_e - line_start;
-                let prefix_w = text_system.prefix_width(&line[..local_s], font_size);
-                let mid_w = text_system.prefix_width(&line[local_s..local_e], font_size);
-                let sel_x = text_x + prefix_w;
-                let sel_w = mid_w.min(text_x + text_w - sel_x).max(0.0);
-                if sel_w > 0.0 {
-                    let sel = Rect::new(sel_x, text_y0 + i as f32 * line_h, sel_w, line_h);
-                    fill_rounded_rect(scene, sel, 1.0, sel_color);
-                }
-            }
-            line_start = line_end + 1;
-        }
-    }
-    for (i, line) in text.split('\n').enumerate() {
-        paint_text(
-            text_system,
-            scene,
-            line,
-            text_x,
-            text_y0 + i as f32 * line_h,
-            font_size,
-            text_w,
-            fg,
-        );
-    }
-    if focused {
-        let caret_byte = caret.min(text.len());
-        let mut line_start = 0_usize;
-        let mut line_idx = 0_usize;
-        let mut line_text: &str = "";
-        for line in text.split('\n') {
-            let line_end = line_start + line.len();
-            if caret_byte <= line_end {
-                line_text = line;
-                break;
-            }
-            line_start = line_end + 1;
-            line_idx += 1;
-        }
-        let local = caret_byte.saturating_sub(line_start).min(line_text.len());
-        let prefix_w = text_system.prefix_width(&line_text[..local], font_size);
-        let caret_rect = Rect::new(
-            (text_x + prefix_w).min(text_x + text_w),
-            text_y0 + line_idx as f32 * line_h,
-            StrokeToken::Default.px(),
-            (line_h - 2.0).max(2.0),
-        );
-        fill_rounded_rect(scene, caret_rect, 0.75, fg); // LITERAL-PX-OK: caret half-width radius
-    }
 }

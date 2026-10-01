@@ -116,9 +116,11 @@ impl<'s> PlanoCtx<'s> {
     /// um arrasto, a secção arrastada pinta-se numa cena à parte — pousada no sítio de sempre e
     /// reusada como o FANTASMA que segue o cursor, pintado no fim por cima do corpo. ⚠️ Os alvos
     /// dela registam-se no sítio real: o fantasma não é clicável.
+    #[allow(clippy::too_many_arguments)]
     pub fn corre(
         self,
         ctx: &mut PaintCtx<'_>,
+        panel: NodeId,
         painel: Theme,
         inner_x: f32,
         inner_w: f32,
@@ -155,6 +157,11 @@ impl<'s> PlanoCtx<'s> {
             y = corredor.antes(ctx.scene, painel, inner_x, inner_w, y);
             let y0 = y;
             y = tarefa(ctx, tema, y);
+            if let Especie::Fixa(id) = especie
+                && y > y0
+            {
+                y = cromo(ctx, panel, id, inner_x, inner_w, y0, y);
+            }
             corredor.depois(y0, y);
             if let Especie::Fixa(id) = especie
                 && y > y0
@@ -174,11 +181,17 @@ impl<'s> PlanoCtx<'s> {
                 let mut parte = VectorScene::new();
                 std::mem::swap(ctx.scene, &mut parte);
                 y = tarefa(ctx, tema, y);
+                if y > y0 {
+                    y = cromo(ctx, panel, id, inner_x, inner_w, y0, y);
+                }
                 std::mem::swap(ctx.scene, &mut parte);
                 ctx.scene.inner_mut().append(parte.inner(), None);
                 fantasma = Some(parte);
             } else {
                 y = tarefa(ctx, tema, y);
+                if y > y0 {
+                    y = cromo(ctx, panel, id, inner_x, inner_w, y0, y);
+                }
             }
             corredor.depois(y0, y);
             if y > y0 {
@@ -212,4 +225,31 @@ impl<'s> PlanoCtx<'s> {
         }
         y
     }
+}
+
+/// ⭐⭐ **O cromo de uma secção que pintou** — as notas dela e o contorno à volta das duas
+/// ([`crate::widget::showcase::notes_chrome::fecha_seccao`], 2026-10-01: até aqui estes painéis
+/// mudavam o tema e arrastavam, e o contorno escolhido no menu do título não se pintava).
+fn cromo(
+    ctx: &mut PaintCtx<'_>,
+    panel: NodeId,
+    section: NodeId,
+    inner_x: f32,
+    inner_w: f32,
+    y0: f32,
+    y: f32,
+) -> f32 {
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    crate::widget::showcase::notes_chrome::fecha_seccao(
+        ctx.scene,
+        ctx.text_system,
+        hit_index,
+        store,
+        panel,
+        section,
+        inner_x,
+        inner_w,
+        y0,
+        y,
+    )
 }

@@ -61,6 +61,13 @@ pub(super) fn nearest_char_boundary(s: &str, mut i: usize) -> usize {
     i
 }
 
+/// O id é o CORPO de uma nota? — o único `TextInput` cujo pintor quebra as linhas sozinho.
+fn corpo_de_nota(store: &WidgetStore, id: NodeId) -> bool {
+    store
+        .nota_de(id)
+        .is_some_and(|(_, _, face)| face == crate::ids::NoteFace::Body)
+}
+
 /// Resolve the byte offset of the caret that should follow a click
 /// at `(click_x, click_y)` on the widget identified by `id`.
 ///
@@ -95,7 +102,7 @@ pub(super) fn byte_offset_from_click_xy(
                 // Pela porta do widget: a etiqueta "Hex" e o recuo saem de `hex_field`.
                 let x = crate::widget::hex_field_text_origin_x(rect);
                 (text.as_str(), x, rect.y, font_sm, false)
-            } else if text.contains('\n') {
+            } else if text.contains('\n') || corpo_de_nota(store, id) {
                 // ⚠️ **Pela porta do WIDGET, e não por uma cópia dos números dele.** Estas três
                 // grandezas eram `rect.x + 12.0`, `rect.y + 8.0` e `font_size + 4.0` sob um
                 // comentário que dizia *"matches the painter"* — e eram os valores de FÁBRICA de
@@ -125,6 +132,27 @@ pub(super) fn byte_offset_from_click_xy(
         }
         _ => return 0,
     };
+    // ⭐⭐ **O corpo de uma NOTA quebra as linhas sozinho** (2026-10-01): a linha clicada é a
+    //    VISUAL, pela MESMA lei que o pintor desenha
+    //    ([`crate::widget::showcase::linhas_visuais`]) — com a lógica, um clique na 2.ª linha de
+    //    uma frase quebrada punha o caret na 1.ª.
+    if multiline
+        && corpo_de_nota(store, id)
+        && let Some(ts) = text_system
+    {
+        let m = crate::widget::text_area_metrics(rect);
+        let linhas = crate::widget::showcase::linhas_visuais(text, m.inner_w, |p| {
+            ts.prefix_width(p, font_size)
+        });
+        let rel_y = (click_y - text_start_y).max(0.0);
+        let k = ((rel_y / m.line_h).floor() as usize).min(linhas.len().saturating_sub(1));
+        let Some(&(a, b)) = linhas.get(k) else {
+            return text.len();
+        };
+        let visto = crate::widget::showcase::texto_da_linha(text, (a, b));
+        let local = nearest_byte_on_line(visto, font_size, text_start_x, click_x, Some(ts));
+        return a + local;
+    }
     if multiline {
         // Determine which `\n`-separated line was clicked from the
         // y-coordinate relative to the text-area inner top. Then

@@ -40,6 +40,10 @@ use std::path::{Path, PathBuf};
 /// Each entry: (relative path under `src/widget/`, justification).
 const A11Y_OPT_OUT: &[(&str, &str)] = &[
     (
+        "showcase/notes_text.rs",
+        "a lei da QUEBRA de linha e os pintores de TEXTO de uma nota (recebem valores, nao o store); o no' de cada caixa e' registado pelo `paint_one_note`, no irmao `notes.rs`.",
+    ),
+    (
         "panel_chrome/highlighter.rs",
         "a paleta de marcador (uma tabela de cores e a porta que a indexa); nao pinta nem emite no' — quem regista a a11y e' o menu de contexto que oferece cada cor e a nota que a veste.",
     ),

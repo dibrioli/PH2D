@@ -18,6 +18,7 @@
 
 #![doc(hidden)]
 
+use crate::interaction::{HitIndex, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_text_title, resolve, stroke_rounded_rect};
 use crate::zones::Rect;
 use ph2d_text::TextSystem;
@@ -339,8 +340,8 @@ pub fn panel_resize_handle_rect_bl(panel: Rect) -> Rect {
 pub fn paint_panel_title_color_dot(
     panel: Rect,
     color_id: ph2d_a11y::NodeId,
-    store: &crate::interaction::WidgetStore,
-    hit_index: &mut crate::interaction::HitIndex,
+    store: &WidgetStore,
+    hit_index: &mut HitIndex,
     scene: &mut VectorScene,
     theme: Theme,
 ) {

@@ -36,6 +36,10 @@ pub struct NoteData {
     /// reordenáveis (2026-09-29) e as opcionais intercaladas, o índice da posição onde o clique
     /// caiu não era o da ranhura que a pintava, e a nota nascia noutra secção.
     pub section: Option<NodeId>,
+    /// ⭐ **Minimizada** (2026-10-01, ordem do dono: *«crie um botão nas notas que possibilite
+    /// minimizar as notas»*) — só a fileira do título fica à vista. Viaja com a nota quando ela se
+    /// move, duplica ou sobe (é um campo dela, não da ranhura).
+    pub minimized: bool,
 }
 
 /// What a timeline preset pick applies to. Both variants are opaque here —

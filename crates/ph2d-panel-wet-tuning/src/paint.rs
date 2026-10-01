@@ -173,7 +173,7 @@ fn paint_body(
     });
     // ⚠️ O plano FECHA o cartão da última secção ele próprio (`Corredor::fecha_a_ultima`): o
     //    `end_section_cards` só pinta os que já fecharam.
-    plano.corre(ctx, theme, x, w, ROW_H_PX, y)
+    plano.corre(ctx, ids::WET_TUNING_PANEL, theme, x, w, ROW_H_PX, y)
 }
 
 /// Um grupo de botões do motor — `rows::SECTIONS[i]` —, no tema da secção.

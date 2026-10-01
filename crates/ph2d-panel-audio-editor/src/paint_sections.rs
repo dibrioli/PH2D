@@ -115,7 +115,7 @@ pub(crate) fn paint_body(
             paint_one(id, y, x, w, b, scene, text_system, tema, hit_index)
         });
     }
-    plano.corre(ctx, theme, x, w, chrome::section_h(), y)
+    plano.corre(ctx, crate::AEDIT_PANEL, theme, x, w, chrome::section_h(), y)
 }
 
 /// **A mesma pilha pela ordem NATURAL, sem plano** — o corpo dos gates de altura e de duplicados

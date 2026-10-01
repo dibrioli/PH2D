@@ -67,6 +67,7 @@ pub(super) fn paint_sections(
     //    remendo local aqui fechá-lo-ia duas vezes.
     plano.corre(
         ctx,
+        ph2d_editor_core::ids::PHYSICS_PANEL,
         painel,
         x,
         w,

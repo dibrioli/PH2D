@@ -276,30 +276,25 @@ fn paint_inspector(
     };
     let (fim, fantasma) = plano.run(&mut tela, store, theme, inner_x, inner_w, SECTION_HEAD_H, y);
     y = fim;
-    if snaps.any_section {
-        crate::paint_frame::paint_trailing_notes(
-            scene,
-            text_system,
-            hit_index,
-            store,
-            inner_x,
-            inner_w,
-            &mut y,
-        );
-    }
-    // ⭐ Os FANTASMAS — a secção ou a nota que a pega arrasta, por cima de tudo o que o corpo
-    //    pintou (2026-09-30). Nunca os dois: só há um arrasto de cada vez.
-    if let Some(f) = fantasma {
-        f.pinta(scene, store);
-    }
-    ph2d_editor_core::widget::showcase::paint_note_drag_ghost(
+    // ⭐ As notas que nenhuma secção pintou (sem secção, ou com a secção fora de vista), e o
+    //    fantasma da nota arrastada — pela porta partilhada de todos os painéis (2026-10-01). Ela
+    //    declara o Inspector anfitrião de notas: o botão direito oferece *Create Note* aqui.
+    y = ph2d_editor_core::widget::showcase::notes_chrome::pinta_as_que_sobram(
         scene,
         text_system,
         hit_index,
         store,
         ids::INSP_PANEL,
         theme,
+        inner_x,
+        inner_w,
+        y,
     );
+    // ⭐ O FANTASMA da secção que a pega arrasta, por cima de tudo o que o corpo pintou
+    //    (2026-09-30). Nunca junto com o da nota: só há um arrasto de cada vez.
+    if let Some(f) = fantasma {
+        f.pinta(scene, store);
+    }
     publish_and_finish(
         scene,
         text_system,

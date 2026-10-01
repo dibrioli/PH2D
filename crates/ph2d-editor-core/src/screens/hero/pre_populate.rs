@@ -243,8 +243,9 @@ fn populate_samples(store: &mut WidgetStore) {
     }
     let _ = (RADIO_GROUP_IDS, TAB_GROUP_IDS, TREE_LEAF_IDS); // imports keep namespaces aligned with event.rs
 
-    // As NOTAS (ranhura · pega · título · corpo) vivem no irmão — ver o doc dele.
-    super::pre_populate_notes::populate_notes(store);
+    // ⭐ As NOTAS já não se registam aqui (2026-10-01): toda caixa de nota nasce com a PRIMEIRA
+    //    nota do painel dela (`WidgetStore::ensure_note_boxes`), porque desde esse dia qualquer
+    //    painel tem notas e registar as de todos ao abrir seria registar ids que nunca se usam.
 
     for (id, text) in [
         (ids::INSP_SAMPLE_TEXT, tr("chrome.sample.textinput_sample")),

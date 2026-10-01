@@ -14,18 +14,16 @@
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
-use ph2d_editor_core::paint::stroke_rounded_rect;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{Radius, Spacing, StrokeToken};
+use ph2d_tokens::Spacing;
 use ph2d_vector::VectorScene;
 
 use ph2d_editor_core::paint::{paint_text_block, resolve};
 use ph2d_tokens::{ColorToken, TypeToken};
 
 use crate::state::{set_last_inspector_content_h, set_last_inspector_visible_h};
-use ph2d_editor_core::widget::showcase::paint_one_note;
 
 /// Record where a section starts and make its header clickable.
 #[allow(clippy::too_many_arguments)]
@@ -50,47 +48,6 @@ pub(crate) fn begin_section(
             grip,
             ph2d_editor_core::widget::section_grip::grip_hit_rect(head),
         );
-    }
-}
-
-/// As notas que não estão em secção nenhuma À VISTA — pintadas no fim do corpo.
-///
-/// ⭐ «À vista» lê-se no hit-index DESTE quadro: toda secção pintada registou o cabeçalho no
-/// `begin_section`. ⚠️ Uma nota cuja secção não existe neste objecto (o artista pô-la na Física de
-/// outro objecto) cai aqui em vez de desaparecer — até 2026-09-30 ela sumia em silêncio.
-///
-/// ⚠️ Saiu do `paint_inspector` por CAP: ela estava exactamente na catraca (387) e a §12 não
-/// cabia. Este bloco é o candidato óbvio — *não olha para seção nenhuma*.
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn paint_trailing_notes(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    inner_x: f32,
-    inner_w: f32,
-    y: &mut f32,
-) {
-    let a_vista: Vec<NodeId> = hit_index
-        .iter_registrations()
-        .map(|(id, _)| id)
-        .filter(|id| ids::LIVE_SECTION_IDS.contains(id))
-        .collect();
-    for (slot, note) in store.notes_for_panel(ids::INSP_PANEL).iter().enumerate() {
-        if !note.section.is_some_and(|s| a_vista.contains(&s)) {
-            paint_one_note(
-                scene,
-                text_system,
-                hit_index,
-                store,
-                inner_x,
-                inner_w,
-                y,
-                note,
-                &ids::INSP_NOTES,
-                slot,
-            );
-        }
     }
 }
 
@@ -201,49 +158,21 @@ pub(crate) fn finish_section(
     y_before: f32,
     new_y: f32,
 ) -> f32 {
-    let mut new_y = new_y;
-    if let Some(color_idx) = store.section_outline_color(section_id) {
-        let rgba = ph2d_editor_core::widget::panel_chrome::highlighter_rgba(color_idx);
-        let pad = Spacing::Xs.px();
-        let block = Rect::new(
-            inner_x - pad,
-            y_before - pad,
-            inner_w + pad * 2.0,
-            (new_y - y_before + pad * 2.0).max(0.0),
-        );
-        let outline_color = ph2d_vector::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]); // LITERAL-COLOR-OK: HIGHLIGHTER_RGBA palette
-        // FRAME-RAW-OK: a MARCA de realce que o utilizador escolheu (cor de marcador): o gemeo do showcase
-        stroke_rounded_rect(
-            scene,
-            block,
-            // ⛔ **FORA da porta do raio, e é a mesma família do post-it:** este contorno é o
-            //    MARCADOR do artista sobre uma secção — cor de highlighter fixa
-            //    (`HIGHLIGHTER_RGBA`), e este pintor não recebe tema nenhum. *Achatá-lo com
-            //    o cromo seria achatar a única marca que é de propósito um objeto do dono.*
-            Radius::Md.px(),
-            StrokeToken::Thick.px(),
-            outline_color,
-        );
-    }
-    // ⭐ As notas DESTA secção — pela identidade dela (`NoteData::section`, 2026-09-30), onde quer
-    //    que o artista a tenha arrastado. ⚠️ Ranhura = posição na lista do painel.
-    for (slot, note) in store.notes_for_panel(ids::INSP_PANEL).iter().enumerate() {
-        if note.section == Some(section_id) {
-            paint_one_note(
-                scene,
-                text_system,
-                hit_index,
-                store,
-                inner_x,
-                inner_w,
-                &mut new_y,
-                note,
-                &ids::INSP_NOTES,
-                slot,
-            );
-        }
-    }
-    new_y
+    // ⭐⭐ A porta partilhada (2026-10-01): as notas DESTA secção — pela identidade dela, onde quer
+    //    que o artista a tenha arrastado — e o contorno POR FORA das duas. Antes o contorno era
+    //    pintado primeiro e ficava curto, com as notas de fora.
+    ph2d_editor_core::widget::showcase::notes_chrome::fecha_seccao(
+        scene,
+        text_system,
+        hit_index,
+        store,
+        ids::INSP_PANEL,
+        section_id,
+        inner_x,
+        inner_w,
+        y_before,
+        new_y,
+    )
 }
 
 /// Is there anything at all to show, or is the Inspector empty?

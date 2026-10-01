@@ -81,6 +81,7 @@ pub(crate) fn paint_sections(
     // ⚠️ O cartão da última secção fecha-se DENTRO do `corre` (`Corredor::fecha_a_ultima`).
     plano.corre(
         ctx,
+        ph2d_editor_core::ids::GS_PANEL,
         painel,
         inner_x,
         inner_w,

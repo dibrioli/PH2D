@@ -243,7 +243,9 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
         y + row.altura()
     });
     crate::paint_master::declara(&mut plano, content_x, content_w, cols);
-    let final_y = plano.corre(ctx, theme, content_x, content_w, MUTE_H, strip_top);
+    let final_y = plano.corre(
+        ctx, AMIX_PANEL, theme, content_x, content_w, MUTE_H, strip_top,
+    );
     ph2d_editor_core::widget::section_cards::end_section_cards(ctx.scene);
 
     // Total scrollable height in body-local coords (undo the `- scroll` offset).

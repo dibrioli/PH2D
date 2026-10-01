@@ -94,6 +94,9 @@ cima. ⛔ Desenhar o passe por cima do alvo do Vello pintaria as formas **por ci
   autoradas. Só o traço TRACEJADO sob escala não-uniforme fica no Vello. Censo: `17` das `22`
   cenas com forma vão à placa.
   ✅ **Smoke do dono aprovado na `=127`** (§9.2): denso `raw 200` pela placa contra `100` sem ela.
+- ✅ **A FAIXA** (§9.4): o traço esticado sem peças de junta — no proxy de telemóvel a `=127` densa
+  passa de `30,6` para `25,4 ms` de passe; ⏳ ainda atrás do Vello lá (`30,3` contra `19,7 ms` de
+  placa).
 
 ## §6 — ✅ W1: a paridade de PIXEL, medida (2026-09-29, RTX, alvo de meio-float)
 
@@ -548,3 +551,79 @@ de ângulo grande; quem a mata é a paridade com o Vello.
 geometria delas). O custo por pixel continua `O(blocos)`, e a cura de fundo é a do Vello — cortar
 a cópia em LADRILHOS, uma passagem de cálculo antes do desenho. Na RTX a placa ganha em todas as
 células, e na cena densa do produto (`324` pequenas) a iGPU empata.
+
+### §9.4 — A FAIXA: o traço esticado sem peças de junta (2026-10-01)
+
+**O que mudou** ([`eixo.rs`](../../crates/ph2d-shape-gpu/src/eixo.rs) · `peca_do_eixo` no
+[`shape.wgsl`](../../crates/ph2d-shape-gpu/src/shape.wgsl)): até aqui cada vértice do eixo era uma
+peça PRÓPRIA (a junta), com caixa, três pontos e quatro arestas. ⇒ **o vértice passa a ser do
+troço que CHEGA a ele.** Os dois troços que lá se encontram acabam na MESMA bissectriz quando ela
+serve, e a aresta partilhada cancela-se na soma; quando não serve, quem chega põe a junta. A
+bissectriz serve:
+
+- num ponto **LISO** se a esquadria fica a `FAIXA_FOLGA = 0,1 px` do arco verdadeiro;
+- numa **QUINA** se a junta autorada É a esquadria dentro do limite — e então ela é exactamente a
+  junta (`2 ≤ (1 + cos θ)·limite²`, o teste do Vello);
+- nos dois casos, se a esquadria não recua mais de metade de um troço pelo lado de dentro (senão o
+  quadrilátero deixa de ser convexo).
+
+`EixoItem` ganha `d` (o vizinho de trás, `48 → 56` bytes) e os bits `FAIXA_INICIO`/`FAIXA_FIM`/
+`QUINA_INICIO`/`QUINA_FIM` no `ponta` do troço; `ITEM_JUNTA` sai (o tipo `1` fica vago, os outros
+números não se mexem). Os pontos deduplicam-se em **`f32`** — dois pontos distintos em `f64` que
+caem no mesmo `f32` dariam um troço de comprimento zero, e a faixa partia-se lá.
+
+**Medido no proxy de telemóvel** (Radeon integrada, `release`, dois rounds iguais):
+
+| sonda (`sonda_relogio_das_estrelas_grandes`), ms | antes | faixa | Vello |
+|---|---:|---:|---:|
+| `324` pequenas, contorno esticado (o arranjo da `=127`) | `2,21` | **`1,80`** | `2,08` |
+| `72` grandes, contorno esticado | `4,69` | **`3,26`** | `1,00` |
+| `72` grandes, contorno conforme (não passa pelo eixo) | `1,67` | `1,72` | `0,90` |
+
+| app, `=127` densa, iGPU, perfilador de placa | `render.formas` |
+|---|---:|
+| antes (só pontos lisos na faixa) | `30,4`–`30,9 ms` |
+| **faixa nas quinas** | **`25,3`–`25,6 ms`** |
+| a cena TODA pelo Vello (`PH2D_FORMAS_NA_PLACA=0`) | `19,7 ms` (o quadro de placa inteiro) |
+
+⚠️ **A `=127` usa estrelas de quinas VIVAS** (`source.shape` `Star`), e a 1.ª versão da faixa só
+cobria pontos lisos: a sonda (estrelas ARREDONDADAS) melhorou `19 %` e o app **não se mexeu**. *Uma
+sonda cuja forma não é a da cena mede outro programa* — foi a diferença entre as duas que levou a
+faixa às quinas.
+
+⭐⭐ **E a faixa é MAIS EXACTA que o Vello, com prova.** A paridade da estrela esticada subiu de alfa
+`40` para `73`, e a réplica da conta do shader em Python (`f32`, a mesma `contribuicao`) mostrou
+onde: nos pixels de BORDA do lado de dentro de uma quina. Lá os dois rectângulos sobrepõem-se, e uma
+rasterização por área que os SOMA conta a sobreposição duas vezes — é o que o Vello faz (o contorno
+do kurbo passa pelo vértice) e o que o passe fazia com uma peça por troço. Medido por
+supersamostragem `64²` no pior pixel: **área verdadeira `0,4756` · faixa `0,4755` · soma `0,772`**
+(e no traço fino `0,693` · `0,694` · `1,0`). ⇒ gate novo
+[`quina_exacta`](../../crates/ph2d-shape-gpu/tests/it/quina_exacta.rs): nas quinas côncavas das
+duas fixturas a faixa fica a `0,002` da área verdadeira, com o CONTROLO de que a soma sobreconta
+`0,296` e `0,169` (⚠️ uma `V` feita à mão não continha o fenómeno — a régua leu `0,03` e o controlo
+reprovou-a). As barras dessas duas famílias passam às das curvas (`100`), com o defeito (o passe sem
+eixo) a ler `255`.
+
+**Duas famílias novas na paridade exercitam as cercas que nenhuma estrela grande toca:** estrelas de
+`10`–`24 px` com traço grosso (a esquadria recua mais de metade do troço) e a estrela esticada com
+`limite 2` (a ponta passa do limite e cede ao chanfro). Antes → faixa: `79`·`20`·`887 px` →
+`71`·`28`·`1 497 px` e `51`·`18`·`17` → `61`·`32`·`93`.
+
+**Mutação `9` de `11`** ([arnês](ferramentas/mutacao_a_faixa_do_traco_2026-10-01.py), pré-voo
+`11/11`, corrida LIMPA verde com `21` testes): a faixa desligada · a quina lida como lisa · a junta
+de recurso sem o estilo · sem a cerca do recuo · sem o limite da esquadria · a caixa da peça sem a
+esquadria · sem os bits de quina · sem deduplicar em `f32` · o bloco sem a esquadria. **Sobrevivem,
+NOMEADAS:** `S6` (a folga de `0,1 px` num liso) e `S8` (a folga de `0,1 px` na caixa da peça) — as
+duas são cercas à escala de `0,1 px`, abaixo do ruído de `0,25 px` de aplanamento que as barras de
+curva toleram.
+
+⛔⛔ **RECUSA MEDIDA — HERDAR a bissectriz do troço anterior** (o vértice calculado uma vez por
+pixel em vez de duas, com o bit `FAIXA_CONTINUA` e o ponto/bissectriz passados pelo laço): saída
+idêntica ao bit, e **nenhum ganho** — sonda `1,84 → 1,81` (densa) e `3,28 → 3,36 ms` (grande), app
+`25,3–25,6 → 25,2–25,9 ms`. ⇒ *a conta geométrica por pixel NÃO é o custo*; revertido.
+
+⏳ **ABERTO, com o número: na `=127` densa o proxy de telemóvel continua atrás do Vello** — placa
+inteira `30,3` contra `19,7 ms` (era `35,2`), com a CPU a cair `8,2 → 6,2 ms`. Na RTX a placa ganha
+em todas as células. O que sobra é o custo POR PEÇA lida por pixel (caixas e arestas de ~`12`
+itens de `56` bytes por cópia), e a cura de fundo continua a do Vello: o contorno de cada cópia
+calculado UMA vez (uma passagem de cálculo antes do desenho) em vez de em cada pixel.

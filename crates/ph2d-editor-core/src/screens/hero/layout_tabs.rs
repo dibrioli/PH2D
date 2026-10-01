@@ -49,11 +49,6 @@ pub fn layout_for_tab(id: NodeId) -> Option<TaskLayout> {
     TaskLayout::ALL.into_iter().find(|l| tab_node_id(*l) == id)
 }
 
-/// Padding horizontal de cada aba. `fn` e não `const` porque `Spacing::px` não é `const fn`.
-fn tab_pad_x() -> f32 {
-    Spacing::Md.px()
-}
-
 /// ⭐ **A ÚNICA porta da geometria** — o pintor, o registo de hit e o despacho leem daqui.
 ///
 /// As abas são encostadas à **direita** da barra; a largura de cada uma é a do próprio título, como
@@ -68,7 +63,9 @@ pub fn tab_rects(
     let font = TypeToken::Sm.px();
     let widths: Vec<f32> = TaskLayout::ALL
         .iter()
-        .map(|l| text_system.prefix_width(l.spec().title.tr(), font) + tab_pad_x() * 2.0)
+        // ⚠️ Pela PORTA e não `texto + 2·recuo` à mão — a mesma volta de um ULP que cortava o
+        //    menu (2026-10-01: `Flip` → `F…` com o texto Grande).
+        .map(|l| crate::paint::rect_for_label(text_system.prefix_width(l.spec().title.tr(), font)))
         .collect();
     let total: f32 = widths.iter().sum();
     let mut x = bar.x + bar.w - total - Spacing::Sm.px();

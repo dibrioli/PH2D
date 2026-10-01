@@ -52,7 +52,12 @@ const ELIDEM_POR_LARGURA: &[(f32, usize)] = &[
     //    declarada). Os quatro são nomes de cartão a `220`, onde a coluna bate no piso da caixa (ordem
     //    do dono de 2026-05-24) — o cartão antigo dava-lhes `96 px` e apertava a caixa abaixo desse
     //    piso. ⭐ Acima do mínimo nenhum deles corta — as linhas de `245` para cima ficaram iguais.
-    (220.0, 11),
+    // ⚠️ **11 → 12 em 2026-10-01, e NÃO por regressão de produto: a RÉGUA passou a medir a fonte certa.**
+    //    Este gate usa `TextSystem::new()`, que até ali pedia `InterVariable` e caía na fonte do SISTEMA
+    //    (nesta máquina a `NotoSans-Medium` instalada) — o número antigo era da Noto e de mais nenhuma
+    //    máquina. Hoje as fontes embutidas registam-se com o nome forçado e a régua mede a Inter, a
+    //    mesma em toda máquina (`ph2d_tokens::UiFont::Inter` diz porquê).
+    (220.0, 12),
     (245.0, 1),
     // Amostra DATADA da largura do dono (lida em 2026-09-14).
     (273.3, 0),

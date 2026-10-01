@@ -148,6 +148,8 @@ pub fn paint_hero_screen(
     // Same pattern for the text-rendering strategy — read by
     // `paint_text*` via the `paint::text_rendering()` thread-local.
     crate::paint::set_text_rendering(hero.text_rendering);
+    // E o estilo do texto (fonte · peso · tamanho) — lido pela mesma porta que mede e pinta.
+    ph2d_text::set_active_text_style(hero.text_style);
     // ⭐⭐⭐ **A APARÊNCIA do app, uma vez por quadro** (Enio, 2026-09-03: *«por enquanto permanece
     // a antiga»*). ⚠️ Lida do ambiente **uma só vez** — `PH2D_UI_NEW=1` liga o redesenho, tudo o
     // resto é a UI de sempre. ⛔ Não é uma preferência gravada: um redesenho a meio não deve poder

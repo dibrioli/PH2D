@@ -46,7 +46,12 @@ use ph2d_tokens::{Spacing, TypeToken};
 const ELIDEM_POR_LARGURA: &[(f32, usize)] = &[
     // ⭐ O MÍNIMO do dock: aqui a coluna e o tecto do rótulo colidem, e o campo fica no piso que o
     //   dono declarou (`72`). *Nesta ponta o nome corta, e é a troca que ele escolheu em 2026-05-24.*
-    (220.0, 16),
+    // ⚠️ **16 → 18 em 2026-10-01, e NÃO por regressão de produto: a RÉGUA passou a medir a fonte certa.**
+    //    Este gate usa `TextSystem::new()`, que até ali pedia `InterVariable` e caía na fonte do SISTEMA
+    //    (nesta máquina a `NotoSans-Medium` instalada) — o número antigo era da Noto e de mais nenhuma
+    //    máquina. Hoje as fontes embutidas registam-se com o nome forçado e a régua mede a Inter, a
+    //    mesma em toda máquina (`ph2d_tokens::UiFont::Inter` diz porquê).
+    (220.0, 18),
     (245.0, 3),
     // ⭐ Amostra DATADA da largura do dono (`drawing_2d`, lida em 2026-09-14). ⛔ Não é uma cerca —
     //   se ele a mudar outra vez, o número muda e a escada continua a valer.

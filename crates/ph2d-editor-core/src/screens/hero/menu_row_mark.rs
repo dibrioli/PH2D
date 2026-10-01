@@ -168,6 +168,11 @@ pub(super) fn id_is_currently_selected(
     if id == text_id {
         return true;
     }
+    // ⭐ Os três eixos do texto — a MESMA tabela que o clique lê (`text_style_rows`), e o valor
+    //    publicado por quadro (`ph2d_text::active_text_style`), como a nitidez acima.
+    if crate::screens::hero::text_style_rows::is_current(id) {
+        return true;
+    }
     // Display submenu (VSync / Immediate) — store mirrors the last
     // value `settings_present::apply` published; default `true` matches
     // the shell's `Fifo` baseline.

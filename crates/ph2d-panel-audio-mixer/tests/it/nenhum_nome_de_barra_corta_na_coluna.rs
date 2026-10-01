@@ -97,10 +97,14 @@ fn a_coluna_literal_de_antes_cortava_dois_nomes_ja_em_ingles() {
         .map(|k| ph2d_i18n::tr_em(Idioma::Ingles, k))
         .filter(|t| ts.prefix_width(t, fonte) > ANTES)
         .collect();
+    // ⚠️ `["Depth", "Return"] → ["Return"]` em 2026-10-01: o `TextSystem::new()` media até ali a
+    //    fonte do SISTEMA (nesta máquina a `NotoSans-Medium`, onde `Depth` passava dos 32 px), e hoje
+    //    mede a Inter embutida, a mesma em toda máquina. O controlo continua a ser o que era: a coluna
+    //    literal de antes CORTA um nome em inglês, logo a lei que a substituiu é que a cura.
     assert_eq!(
         cortados,
-        vec!["Depth", "Return"],
-        "a fixtura desta wave é a coluna literal de 32 px a cortar DOIS nomes em inglês — se ela \
-         deixar de os cortar, os rótulos mudaram e a medição do cabeçalho tem de ser refeita"
+        vec!["Return"],
+        "a fixtura desta wave é a coluna literal de 32 px a cortar um nome em inglês — se ela \
+         deixar de o cortar, os rótulos mudaram e a medição do cabeçalho tem de ser refeita"
     );
 }

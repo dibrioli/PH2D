@@ -162,6 +162,12 @@ pub enum ContextMenuKind {
     /// (um toggle que se sobrepõe aos dois). Escolher escreve em `HeroScreen.motion`; a shell
     /// persiste ao notar a diferença (ver `shells/desktop/src/prefs.rs`).
     SettingsMotionSubmenu,
+    /// ⭐ Settings ▸ Interface font — a FONTE do texto da interface ([`ph2d_tokens::UiFont`]).
+    SettingsFontSubmenu,
+    /// ⭐ Settings ▸ Font weight — o PESO ([`ph2d_tokens::UiWeight`]).
+    SettingsWeightSubmenu,
+    /// ⭐ Settings ▸ Font size — o TAMANHO ([`ph2d_tokens::UiTextSize`]).
+    SettingsSizeSubmenu,
     /// Color-picker palette rename: a centered modal with the shared name `TextInput`
     /// (`BLENDER_PALETTE_NAME`) + a Rename button (`CTX_MENU_PALETTE_RENAME`). Opened by the
     /// picker's "R" button; Rename / Enter commit `blender_rename_active_palette`, outside-click
@@ -377,6 +383,9 @@ impl ContextMenuKind {
         Self::SettingsDisplaySubmenu,
         Self::SettingsTextSubmenu,
         Self::SettingsMotionSubmenu,
+        Self::SettingsFontSubmenu,
+        Self::SettingsWeightSubmenu,
+        Self::SettingsSizeSubmenu,
         Self::RenamePaletteDialog,
         Self::SceneList,
         Self::HierarchyRow { row: NodeId(1) },

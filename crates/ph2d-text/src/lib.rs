@@ -20,11 +20,13 @@
 //! produces a non-empty glyph layout for ASCII + CJK + emoji input.
 
 /// ⭐ **O que já foi moldado** — a cache de layouts, irmã do [`system`] por assunto.
+mod bundled;
 mod layout_cache;
 pub mod system;
 
+pub use bundled::{
+    active_text_style, displayed_font_px, inter_variable_ttf, set_active_text_style,
+};
 pub use layout_cache::LAYOUT_CACHE_CAP;
 pub use parley::{FontContext, FontWeight, Layout, LayoutContext, PositionedLayoutItem};
-pub use system::{
-    TextSystem, active_text_rendering, inter_variable_ttf, set_active_text_rendering,
-};
+pub use system::{TextSystem, active_text_rendering, set_active_text_rendering};

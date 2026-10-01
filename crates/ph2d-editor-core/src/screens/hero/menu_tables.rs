@@ -305,6 +305,10 @@ pub(super) const SETTINGS_MENU_ROWS: &[MenuRow] = &[
     menu_row(ids::CTX_MENU_SETTINGS_FILTER, "chrome.menu.image_filter"),
     menu_row(ids::CTX_MENU_SETTINGS_DISPLAY, "chrome.menu.display"),
     menu_row(ids::CTX_MENU_SETTINGS_TEXT, "chrome.menu.text_rendering"),
+    // ⭐ Os três eixos do texto, ao lado da nitidez (o Blender e a Godot separam os quatro).
+    menu_row(ids::CTX_MENU_SETTINGS_FONT, "chrome.menu.interface_font"),
+    menu_row(ids::CTX_MENU_SETTINGS_WEIGHT, "chrome.menu.font_weight"),
+    menu_row(ids::CTX_MENU_SETTINGS_SIZE, "chrome.menu.font_size"),
     menu_row(ids::CTX_MENU_SETTINGS_MOTION, "chrome.menu.motion"),
     // ⚠️ **Esta entrada NÃO é uma categoria** — ela abre a janela flutuante do Input Map,
     // não um submenu. Fica aqui porque é a casa que o Godot lhe dá (*Project Settings >
@@ -377,6 +381,26 @@ pub(super) const SETTINGS_TEXT_SUBMENU_ROWS: &[MenuRow] = &[
 // ⚠️ As duas primeiras linhas são um RÁDIO (o gosto) e a terceira é um TOGGLE (a garantia).
 // O bullet significa a mesma coisa nas três — *este é o estado corrente* — que é a
 // convenção de menu de plataforma, e é por isso que as três cabem numa tabela só.
+/// As linhas de `ContextMenuKind::SettingsFontSubmenu` — pela ordem de [`ph2d_tokens::UiFont::ALL`].
+pub(super) const SETTINGS_FONT_SUBMENU_ROWS: &[MenuRow] = &[
+    menu_row(ids::CTX_MENU_FONT_INTER, "chrome.menu.font_inter"),
+    menu_row(ids::CTX_MENU_FONT_NOTO_SANS, "chrome.menu.font_noto_sans"),
+    menu_row(ids::CTX_MENU_FONT_ATKINSON, "chrome.menu.font_atkinson"),
+];
+
+/// As linhas de `ContextMenuKind::SettingsWeightSubmenu`.
+pub(super) const SETTINGS_WEIGHT_SUBMENU_ROWS: &[MenuRow] = &[
+    menu_row(ids::CTX_MENU_WEIGHT_NORMAL, "chrome.menu.weight_normal"),
+    menu_row(ids::CTX_MENU_WEIGHT_STRONG, "chrome.menu.weight_strong"),
+];
+
+/// As linhas de `ContextMenuKind::SettingsSizeSubmenu`.
+pub(super) const SETTINGS_SIZE_SUBMENU_ROWS: &[MenuRow] = &[
+    menu_row(ids::CTX_MENU_SIZE_SMALL, "chrome.menu.size_small"),
+    menu_row(ids::CTX_MENU_SIZE_NORMAL, "chrome.menu.size_normal"),
+    menu_row(ids::CTX_MENU_SIZE_LARGE, "chrome.menu.size_large"),
+];
+
 /// As linhas de `ContextMenuKind::SettingsMotionSubmenu`.
 pub(super) const SETTINGS_MOTION_SUBMENU_ROWS: &[MenuRow] = &[
     menu_row(ids::CTX_MENU_MOTION_EXPRESSIVE, "chrome.menu.expressive"),

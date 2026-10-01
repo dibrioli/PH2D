@@ -113,7 +113,9 @@ pub fn metrics(rect: Rect) -> TextAreaMetrics {
         inner_x: rect.x + pad_x,
         inner_y: rect.y + pad_y,
         inner_w: (rect.w - pad_x * 2.0).max(0.0),
-        line_h: TypeToken::Base.px() + Spacing::Xs.px(),
+        // ⚠️ A altura da LETRA é a desenhada (o tamanho que o artista escolheu), e o vão entre
+        // linhas fica: a contagem de linhas, o cursor e o pintor leem todos esta linha.
+        line_h: ph2d_text::displayed_font_px(TypeToken::Base.px()) + Spacing::Xs.px(),
     }
 }
 

@@ -60,6 +60,9 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [crate::ids::MenuRow] {
         ContextMenuKind::SettingsDisplaySubmenu => menu_tables::SETTINGS_DISPLAY_SUBMENU_ROWS,
         ContextMenuKind::SettingsTextSubmenu => menu_tables::SETTINGS_TEXT_SUBMENU_ROWS,
         ContextMenuKind::SettingsMotionSubmenu => menu_tables::SETTINGS_MOTION_SUBMENU_ROWS,
+        ContextMenuKind::SettingsFontSubmenu => menu_tables::SETTINGS_FONT_SUBMENU_ROWS,
+        ContextMenuKind::SettingsWeightSubmenu => menu_tables::SETTINGS_WEIGHT_SUBMENU_ROWS,
+        ContextMenuKind::SettingsSizeSubmenu => menu_tables::SETTINGS_SIZE_SUBMENU_ROWS,
         // The SceneList kind is rendered by its dedicated branch
         // below — `items` stays empty so the simple-row loop is
         // skipped.
@@ -182,6 +185,9 @@ pub const TOPBAR_LEAF_MENUS: &[ContextMenuKind] = &[
     ContextMenuKind::SettingsDisplaySubmenu,
     ContextMenuKind::SettingsTextSubmenu,
     ContextMenuKind::SettingsMotionSubmenu,
+    ContextMenuKind::SettingsFontSubmenu,
+    ContextMenuKind::SettingsWeightSubmenu,
+    ContextMenuKind::SettingsSizeSubmenu,
 ];
 
 /// O nome humano do menu — o título do grupo na paleta.
@@ -201,6 +207,9 @@ pub fn menu_title(kind: ContextMenuKind) -> Option<&'static str> {
         ContextMenuKind::SettingsDisplaySubmenu => tr("chrome.menu.display"),
         ContextMenuKind::SettingsTextSubmenu => tr("chrome.menu.text_rendering"),
         ContextMenuKind::SettingsMotionSubmenu => tr("chrome.menu.motion"),
+        ContextMenuKind::SettingsFontSubmenu => tr("chrome.menu.interface_font"),
+        ContextMenuKind::SettingsWeightSubmenu => tr("chrome.menu.font_weight"),
+        ContextMenuKind::SettingsSizeSubmenu => tr("chrome.menu.font_size"),
         _ => return None,
     })
 }

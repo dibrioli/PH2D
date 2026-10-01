@@ -235,6 +235,7 @@ pub(crate) fn paint_text_lines(
     // routinely produce fractional Y from vertical centering math like
     // `rect.y + (rect.h - font_size) * 0.5`. Rounding here makes every
     // caller crisp without each one having to remember to align.
+    let y = centrado(y, font_size);
     let translate = Affine::translate((x.round() as f64, y.round() as f64));
     let params = rendering.params();
     let snap_x = params.snap_x;
@@ -334,6 +335,8 @@ pub fn paint_text_rotated_ccw(
     let layout =
         text_system.layout_for_rendering(text, font_size, max_width, FontWeight::MEDIUM, rendering);
     let inner = scene.inner_mut();
+    // ⚠️ Girado 90° para a esquerda, o «para baixo» do texto é o +x do ecrã: é o x que centra.
+    let anchor_x = centrado(anchor_x, font_size);
     // Rotate 90° CCW around the anchor, then translate to it.
     let transform = Affine::translate((anchor_x as f64, anchor_y as f64))
         * Affine::rotate(-std::f64::consts::FRAC_PI_2);
@@ -385,6 +388,16 @@ pub fn paint_text_rotated_ccw(
                 );
         }
     }
+}
+
+/// ⭐⭐ **O topo de um texto pedido a `font_size`, desenhado no tamanho que o artista escolheu**
+/// ([`ph2d_tokens::UiTextSize`], 2026-10-01).
+///
+/// ⚠️ Quem chama centra o texto na linha com o tamanho NOMINAL (`rect.y + (rect.h − font_size)/2`):
+/// com a letra maior ou menor, o topo sobe ou desce METADE da diferença para o meio do texto ficar
+/// onde quem chamou o pôs. No tamanho de fábrica a diferença é `0` e o `y` volta AO BIT.
+fn centrado(y: f32, font_size: f32) -> f32 {
+    y - (ph2d_text::displayed_font_px(font_size) - font_size) * 0.5
 }
 
 // ⚠️ **Os três pintores de texto CORTADO vieram do `text_elide`** (auditoria A10, 2026-09-12): a lei

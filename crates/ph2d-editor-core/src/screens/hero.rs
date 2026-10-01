@@ -48,6 +48,7 @@ pub(crate) mod menu_row_mark;
 pub mod panel_ids;
 /// O MODELO do menu radial (E4) — a vista de OITO direcções da mesma lista da paleta.
 pub mod radial;
+pub(crate) mod text_style_rows;
 /// ⭐ A tabela `id da linha ⇄ tema` do menu de tema (as duas famílias).
 pub mod theme_menu;
 pub use panel_ids::{PANEL_MOTION_GRAPH, PANEL_TIMELINE};
@@ -185,6 +186,8 @@ pub struct HeroScreen {
     /// de FontWeight por faixa de tamanho. Persistência: runtime-only
     /// (não save). Toggle via `Settings ▸ Text rendering ▸ ...`.
     pub text_rendering: ph2d_tokens::TextRendering,
+    /// Fonte · peso · tamanho do texto da interface (`text_style_rows`); gravado em `prefs.txt`.
+    pub text_style: ph2d_tokens::UiTextStyle,
     pub selection: Option<HeroSelection>,
     /// Per-widget interactive state (hover/press/focus). Pre-populated
     /// at construction; mutated in-place by [`HeroScreen::handle_pointer`].
@@ -424,6 +427,7 @@ impl HeroScreen {
             //    Godot 4.6, decisão do Enio 2026-09-04), o clássico continua a abrir no `forge`.
             theme: Theme::default_for(paint::ui_look_from_env()),
             text_rendering: ph2d_tokens::TextRendering::CrispHeavyPlus, // app default (Enio 2026-06-24)
+            text_style: ph2d_tokens::UiTextStyle::default(),
             selection: Some(fixture::default_selection()),
             store,
             hit_index: HitIndex::new(),

@@ -16,6 +16,9 @@ use std::collections::BTreeMap;
 /// is a `BTreeMap` key).
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct LayoutCacheKey {
+    /// A fonte da interface ([`ph2d_tokens::UiFont::index`]) — o mesmo texto noutra fonte é
+    /// outro layout.
+    pub(crate) font: usize,
     pub(crate) text: String,
     pub(crate) font_size_bits: u32,
     pub(crate) max_width_bits: u32,

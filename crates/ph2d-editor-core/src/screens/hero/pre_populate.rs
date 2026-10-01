@@ -452,6 +452,17 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         ids::CTX_MENU_MOTION_EXPRESSIVE,
         ids::CTX_MENU_MOTION_DISCRETE,
         ids::CTX_MENU_MOTION_REDUCED,
+        ids::CTX_MENU_SETTINGS_FONT,
+        ids::CTX_MENU_FONT_INTER,
+        ids::CTX_MENU_FONT_NOTO_SANS,
+        ids::CTX_MENU_FONT_ATKINSON,
+        ids::CTX_MENU_SETTINGS_WEIGHT,
+        ids::CTX_MENU_WEIGHT_NORMAL,
+        ids::CTX_MENU_WEIGHT_STRONG,
+        ids::CTX_MENU_SETTINGS_SIZE,
+        ids::CTX_MENU_SIZE_SMALL,
+        ids::CTX_MENU_SIZE_NORMAL,
+        ids::CTX_MENU_SIZE_LARGE,
         // Color-picker palette rename modal: its Rename button (same populate-register gotcha — a
         // menu button needs a Button state to be `is_focusable` → get `active` on Down → emit Click).
         ids::CTX_MENU_PALETTE_RENAME,

@@ -27,8 +27,12 @@ use ph2d_tokens::TypeToken;
 const CAIXAS: &[&str] = &["panel.wet_tuning.km_mixing", "panel.wet_tuning.km_glaze"];
 
 /// ⏳ **Quantos elidem, por largura de painel — e só ENCOLHE.**
+///
+/// ⚠️ `245: 1 → 2` em 2026-10-01, e NÃO por regressão de produto: este gate usa `TextSystem::new()`,
+/// que até ali caía na fonte do SISTEMA (nesta máquina a `NotoSans-Medium`); hoje mede a Inter
+/// embutida, a mesma em toda máquina (`ph2d_tokens::UiFont::Inter` diz porquê).
 const ELIDEM_POR_LARGURA: &[(f32, usize)] =
-    &[(220.0, 2), (245.0, 1), (273.3, 0), (304.0, 0), (720.0, 0)];
+    &[(220.0, 2), (245.0, 2), (273.3, 0), (304.0, 0), (720.0, 0)];
 
 /// A linha de uma caixa deste painel, à largura do painel.
 fn linha(painel: f32) -> f32 {

@@ -26,6 +26,7 @@ fn every_combination_of_the_axes_survives_a_round_trip() {
                     character,
                     reduced_motion,
                     ui_sound,
+                    ..Prefs::default()
                 };
                 assert_eq!(
                     parse(&serialize(&p)),
@@ -76,6 +77,7 @@ fn a_key_from_a_newer_build_is_skipped_and_the_rest_survives() {
             character: UiCharacter::Expressive,
             reduced_motion: true,
             ui_sound: false,
+            ..Prefs::default()
         },
         "as duas chaves conhecidas sobrevivem intactas ao lado de duas que este build nunca viu"
     );
@@ -104,6 +106,7 @@ fn the_first_observation_seeds_the_mirror_it_does_not_write() {
         character: UiCharacter::Expressive,
         reduced_motion: true,
         ui_sound: false,
+        ..Prefs::default()
     };
 
     assert!(
@@ -119,4 +122,28 @@ fn the_first_observation_seeds_the_mirror_it_does_not_write() {
         !should_save(Some(loaded), loaded),
         "e um evento de ponteiro que não mudou nada não toca no disco"
     );
+}
+
+/// ⭐ **O estilo do texto ATRAVESSA o ficheiro, em toda combinação dos três eixos** (2026-10-01) —
+/// com valores NÃO-default, senão um campo que não viaja lê-se igual a um que viaja (a lição do
+/// `the_preference_travels_both_ways`). *Mutação: um eixo fora do `serialize` ⇒ ele volta no
+/// default e a ida-e-volta parte.*
+#[test]
+fn every_text_style_survives_a_round_trip() {
+    use ph2d_tokens::{UiFont, UiTextSize, UiTextStyle, UiWeight};
+    for font in UiFont::ALL {
+        for weight in UiWeight::ALL {
+            for size in UiTextSize::ALL {
+                let p = Prefs {
+                    text: UiTextStyle { font, weight, size },
+                    ..Prefs::default()
+                };
+                assert_eq!(
+                    parse(&serialize(&p)),
+                    p,
+                    "{font:?} + {weight:?} + {size:?} tem de voltar igual"
+                );
+            }
+        }
+    }
 }

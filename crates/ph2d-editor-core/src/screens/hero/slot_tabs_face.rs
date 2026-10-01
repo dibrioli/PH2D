@@ -60,7 +60,26 @@ pub fn tab_icon_px() -> f32 {
 /// 2026-09-07 *«para o app todo»*) — ⛔ não do recuo, que é outra grandeza e mede o dobro.
 pub fn natural_w(title: &str, text_system: &mut TextSystem) -> f32 {
     let font = TypeToken::Sm.px();
-    text_system.prefix_width(title, font) + tab_icon_px() + icon_label_gap_px() + tab_pad_x() * 2.0
+    let text_w = text_system.prefix_width(title, font);
+    let mut w = text_w + tab_icon_px() + icon_label_gap_px() + tab_pad_x() * 2.0;
+    // ⛔⛔ **E ela confere-se contra o ORÇAMENTO que a [`face`] vai gastar, nunca contra a álgebra**
+    //    (2026-10-01, foto com a Atkinson: `Inspector` → `Inspect…`). A volta `(t + a) − a` fica um
+    //    ULP abaixo de `t` numa fracção do domínio, e a elisão compara `<=` — a mesma lei que o
+    //    [`crate::paint::rect_for_label`] já paga para as caixas sem glifo. Sobe-se ULP a ULP
+    //    porque a subtracção é monótona: em poucos passos o orçamento alcança o texto.
+    for _ in 0..8 {
+        if budget_of(w) >= text_w {
+            break;
+        }
+        w = w.next_up();
+    }
+    w
+}
+
+/// O que sobra para o NOME numa aba de largura `w`, depois do recuo, do glifo e do vão — a
+/// pergunta que a [`face`] faz e que a [`natural_w`] tem de satisfazer.
+fn budget_of(w: f32) -> f32 {
+    (w - tab_pad_x() * 2.0).max(0.0) - tab_icon_px() - icon_label_gap_px()
 }
 
 /// O que uma aba de largura `r.w` mostra: o glifo sempre, o nome quando ele ainda diz alguma coisa.
@@ -79,8 +98,7 @@ pub struct TabFace {
 pub fn face(r: Rect, title: &str, text_system: &mut TextSystem) -> TabFace {
     let font = TypeToken::Sm.px();
     let ico = tab_icon_px();
-    let inner = (r.w - tab_pad_x() * 2.0).max(0.0);
-    let budget = inner - ico - icon_label_gap_px();
+    let budget = budget_of(r.w);
 
     let shown = (budget > 0.0)
         .then(|| crate::text_elide::fit(text_system, title, font, budget))

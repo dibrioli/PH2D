@@ -43,7 +43,9 @@
 use super::HeroLayout;
 use crate::ids;
 use crate::interaction::{ContextMenuKind, HitIndex, InteractiveState, WidgetEvent, WidgetStore};
-use crate::paint::{fill_rounded_rect, paint_text_centered, rect_to_vello, resolve};
+use crate::paint::{
+    fill_rounded_rect, paint_text_centered, rect_for_label, rect_to_vello, resolve,
+};
 use crate::widget::ButtonState;
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
@@ -102,14 +104,6 @@ pub const OWN_ROWS: [NodeId; 8] = [
     ids::MENUBAR_VIEW_COLUMN_LEFT,
     ids::MENUBAR_VIEW_COLUMN_RIGHT,
 ];
-
-/// Padding horizontal de cada título dentro do seu alvo.
-///
-/// ⚠️ `fn` e não `const` porque `Spacing::px` não é `const fn` — a mesma razão por que
-/// `widget::tool_rail_width_px` é função. O valor continua a ser o TOKEN, que é o que importa.
-fn title_pad_x() -> f32 {
-    Spacing::Md.px()
-}
 
 /// Recuo da barra à esquerda, para o primeiro título não nascer colado à borda da janela.
 fn bar_inset_x() -> f32 {
@@ -312,11 +306,26 @@ pub fn menu_rects(
     std::array::from_fn(|i| {
         let (id, key, _) = MENUS[i];
         let title = key.tr();
-        let w = text_system.prefix_width(title, font) + title_pad_x() * 2.0;
+        // ⚠️ Pela PORTA da casa e nunca `texto + 2·recuo` à mão: a volta em vírgula flutuante fica
+        //    um ULP abaixo do texto em `2,65 %` do domínio, e o pintor elide com `<=` (2026-10-01:
+        //    `Window` → `Wind…` com a Inter de verdade). [`rect_for_label`] já paga esse ULP.
+        let w = rect_for_label(text_system.prefix_width(title, font));
         let r = Rect::new(x, bar.y, w, bar.h);
         x += w;
         (id, title, r)
     })
+}
+
+/// Pinta um título no rectângulo que o [`menu_rects`] mediu para ele — uma função só para o gate
+/// percorrer o MESMO caminho que a barra.
+fn pinta_titulo(
+    text_system: &mut TextSystem,
+    scene: &mut VectorScene,
+    title: &str,
+    r: Rect,
+    fg: ph2d_vector::Color,
+) {
+    paint_text_centered(text_system, scene, title, r, TypeToken::Sm.px(), fg);
 }
 
 /// Desenha a barra e regista os alvos dos títulos.
@@ -378,7 +387,7 @@ pub fn paint_menu_bar(
             ColorToken::Text1
         };
         let fg = crate::widget::chip_axis_color(t, ColorToken::Text2, ColorToken::Text1, fg, theme);
-        paint_text_centered(text_system, scene, title, r, TypeToken::Sm.px(), fg);
+        pinta_titulo(text_system, scene, title, r, fg);
         hit_index.register(id, r);
     }
     // ⭐⭐⭐ **AS ABAS DE LAYOUT ocupam o vazio à direita** (decisões D7 e D3) — ver `layout_tabs`.
@@ -432,3 +441,7 @@ pub fn close_on_row_click(hero: &mut super::HeroScreen, event: WidgetEvent) {
         hero.store.close_context_menu();
     }
 }
+
+#[cfg(test)]
+#[path = "menu_bar_tests.rs"]
+mod tests;

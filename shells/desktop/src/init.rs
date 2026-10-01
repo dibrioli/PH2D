@@ -362,6 +362,7 @@ fn boot_hero_screen(
         hero.motion.set_character(prefs.character);
         hero.motion.set_reduced_motion(prefs.reduced_motion);
         hero.ui_sound = prefs.ui_sound;
+        hero.text_style = prefs.text;
         // ⭐⭐ **A ARRUMAÇÃO do artista** (`~/.ph2d/layout.txt`, decisão D4): que painel está em
         // que encaixe e a largura das colunas. ⚠️ Antes do primeiro quadro, pela mesma razão das
         // preferências — instalar depois faria o primeiro quadro desenhar a arrumação de omissão e

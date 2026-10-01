@@ -34,6 +34,9 @@ pub struct Prefs {
     /// app de desenho vive em cima de música e de referências em vídeo, e um som que ninguém pediu
     /// desliga-se no primeiro minuto e leva a feature com ele.
     pub ui_sound: bool,
+    /// ⭐ **A fonte, o peso e o tamanho do texto da interface** (2026-10-01) — do artista, como o
+    /// carácter: abrir o projecto de um colega não muda as letras de quem lê.
+    pub text: ph2d_tokens::UiTextStyle,
 }
 
 /// `~/.ph2d/prefs.txt`, ou `None` com `$HOME` por definir (a persistência é então saltada).
@@ -47,10 +50,14 @@ fn prefs_file() -> Option<PathBuf> {
 #[must_use]
 pub fn serialize(p: &Prefs) -> String {
     format!(
-        "# PH2D prefs\nmotion_character={}\nreduced_motion={}\nui_sound={}\n",
+        "# PH2D prefs\nmotion_character={}\nreduced_motion={}\nui_sound={}\nui_font={}\n\
+         ui_font_weight={}\nui_text_size={}\n",
         p.character.wire(),
         u8::from(p.reduced_motion),
         u8::from(p.ui_sound),
+        p.text.font.wire(),
+        p.text.weight.wire(),
+        p.text.size.wire(),
     )
 }
 
@@ -78,6 +85,22 @@ pub fn parse(text: &str) -> Prefs {
             }
             "reduced_motion" => p.reduced_motion = value.trim() == "1",
             "ui_sound" => p.ui_sound = value.trim() == "1",
+            // ⚠️ Os nomes vêm de `from_wire` dos próprios tipos, pela razão do carácter acima.
+            "ui_font" => {
+                if let Some(f) = ph2d_tokens::UiFont::from_wire(value.trim()) {
+                    p.text.font = f;
+                }
+            }
+            "ui_font_weight" => {
+                if let Some(w) = ph2d_tokens::UiWeight::from_wire(value.trim()) {
+                    p.text.weight = w;
+                }
+            }
+            "ui_text_size" => {
+                if let Some(z) = ph2d_tokens::UiTextSize::from_wire(value.trim()) {
+                    p.text.size = z;
+                }
+            }
             _ => {}
         }
     }

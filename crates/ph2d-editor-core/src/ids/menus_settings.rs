@@ -99,3 +99,19 @@ pub const CTX_MENU_SETTINGS_MOTION: NodeId = hash_node_id("ctx_menu_settings_mot
 pub const CTX_MENU_MOTION_EXPRESSIVE: NodeId = hash_node_id("ctx_menu_motion_expressive");
 pub const CTX_MENU_MOTION_DISCRETE: NodeId = hash_node_id("ctx_menu_motion_discrete");
 pub const CTX_MENU_MOTION_REDUCED: NodeId = hash_node_id("ctx_menu_motion_reduced");
+
+/// ⭐ Os três eixos do TEXTO da interface ([`ph2d_tokens::UiTextStyle`], ordem do dono 2026-10-01) —
+/// três categorias do Settings, cada uma com o seu submenu de escolha. ⚠️ A ligação entre cada
+/// linha e o valor dela vive numa tabela só (`chrome/settings_font.rs`), lida pelo clique e pela
+/// marca do valor activo.
+pub const CTX_MENU_SETTINGS_FONT: NodeId = hash_node_id("ctx_menu_settings_font");
+pub const CTX_MENU_FONT_INTER: NodeId = hash_node_id("ctx_menu_font_inter");
+pub const CTX_MENU_FONT_NOTO_SANS: NodeId = hash_node_id("ctx_menu_font_noto_sans");
+pub const CTX_MENU_FONT_ATKINSON: NodeId = hash_node_id("ctx_menu_font_atkinson");
+pub const CTX_MENU_SETTINGS_WEIGHT: NodeId = hash_node_id("ctx_menu_settings_weight");
+pub const CTX_MENU_WEIGHT_NORMAL: NodeId = hash_node_id("ctx_menu_weight_normal");
+pub const CTX_MENU_WEIGHT_STRONG: NodeId = hash_node_id("ctx_menu_weight_strong");
+pub const CTX_MENU_SETTINGS_SIZE: NodeId = hash_node_id("ctx_menu_settings_size");
+pub const CTX_MENU_SIZE_SMALL: NodeId = hash_node_id("ctx_menu_size_small");
+pub const CTX_MENU_SIZE_NORMAL: NodeId = hash_node_id("ctx_menu_size_normal");
+pub const CTX_MENU_SIZE_LARGE: NodeId = hash_node_id("ctx_menu_size_large");

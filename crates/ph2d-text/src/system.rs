@@ -13,7 +13,6 @@
 //! sans-serif + emoji fallback).
 
 use std::borrow::Cow;
-use std::sync::Arc;
 
 // ⚠️ parley 0.11 deixou de re-exportar o `swash`: a 0.6 tinha `pub use swash;`
 // no `lib.rs` e a 0.11.1 não depende dele em lado nenhum (o shaper passou a ser
@@ -21,11 +20,12 @@ use std::sync::Arc;
 // era `u32` (`swash::tag_from_bytes`), hoje é `parley::setting::Tag`, um
 // `#[repr(transparent)] [u8; 4]` vindo do `parlance` — e `Tag::new` é `const fn`,
 // então as constantes abaixo continuam a ser constantes.
+use crate::bundled::{active_text_style, register_bundled};
 use crate::layout_cache::{LayoutCache, LayoutCacheKey};
 use parley::{
     Alignment, FontContext, FontFamily, FontVariation, FontVariations, FontWeight, Layout,
     LayoutContext, StyleProperty,
-    fontique::{Blob, Collection, CollectionOptions, FontInfoOverride, SourceCache},
+    fontique::{Collection, CollectionOptions, SourceCache},
     setting::Tag,
 };
 
@@ -46,28 +46,6 @@ const OPSZ_TAG: Tag = Tag::new(b"opsz");
 /// making FontWeight bumps invisible — exactly the "Crisp Heavy looks
 /// identical to Crisp" symptom seen on 2026-05-25.
 const WGHT_TAG: Tag = Tag::new(b"wght");
-
-/// Inter Variable (v4.0, SIL OFL) — bundled so chrome text rasterizes
-/// to the same glyphs everywhere, independent of installed system fonts.
-/// Inter was designed for screen rendering without LCD subpixel AA,
-/// which matches Vello's glyph pipeline (vs. system fonts like SF that
-/// are tuned for CoreText's subpixel rendering and look soft here).
-/// Source: <https://github.com/rsms/inter/releases/tag/v4.0> (LICENSE.txt
-/// in this directory).
-const INTER_VARIABLE_TTF: &[u8] = include_bytes!("../fonts/InterVariable.ttf");
-
-/// Os bytes da fonte embutida (InterVariable, OFL). Exposto para quem precisa dos
-/// contornos crus dos glyphs — ex. texto VETORIAL (skrifa → `VecPath`), que não passa
-/// pelo pipeline parley/vello de UI.
-#[must_use]
-pub fn inter_variable_ttf() -> &'static [u8] {
-    INTER_VARIABLE_TTF
-}
-
-/// Family name registered when bundled Inter loads successfully.
-/// Falls back to `sans-serif` if registration fails (corrupted bytes,
-/// future fontique breaking change, etc.) so we never panic at startup.
-const INTER_FAMILY: &str = "InterVariable";
 
 // Thread-local global text-rendering strategy. Lives here (not in
 // `ph2d-editor-core::paint`) so `TextSystem::prefix_width` can read it
@@ -102,9 +80,9 @@ pub fn active_text_rendering() -> ph2d_tokens::TextRendering {
 pub struct TextSystem {
     font_context: FontContext,
     layout_context: LayoutContext<()>,
-    /// Resolved primary stack — "InterVariable, sans-serif" when the
-    /// bundled font registered, plain "sans-serif" otherwise.
-    primary_stack: String,
+    /// A pilha de cada fonte embutida, pela ordem de [`ph2d_tokens::UiFont::ALL`] — `"<nome>,
+    /// sans-serif"` quando ela registou, `"sans-serif"` quando não.
+    stacks: [String; 3],
     /// Shaped-layout cache (perf): `layout_with_weight` rebuilt a parley
     /// `Layout` (shape + line-break + align) from scratch on EVERY call,
     /// every frame — the dominant per-frame cost under the continuous
@@ -124,14 +102,11 @@ impl TextSystem {
     /// registers bundled Inter Variable.
     pub fn new() -> Self {
         let mut font_context = FontContext::new();
-        let primary_stack = match register_inter(&mut font_context) {
-            Some(name) => format!("{name}, sans-serif"),
-            None => "sans-serif".to_string(),
-        };
+        let stacks = register_bundled(&mut font_context, ", sans-serif");
         Self {
             font_context,
             layout_context: LayoutContext::new(),
-            primary_stack,
+            stacks,
             cache: LayoutCache::default(),
         }
     }
@@ -154,30 +129,14 @@ impl TextSystem {
             collection,
             source_cache: SourceCache::default(),
         };
-        // Force the registered family name. Without a system-font
-        // fallback chain, parley resolves the FontFamily by exact
-        // family_by_name() lookup — so the in-collection name MUST
-        // match the string we put in `primary_stack`. The TTF's own
-        // name table reports "Inter" (not "InterVariable"), so without
-        // this override `family_by_name("InterVariable")` returns None
-        // and tests get zero glyphs.
-        let override_info = FontInfoOverride {
-            family_name: Some(INTER_FAMILY),
-            ..Default::default()
-        };
-        let blob = Blob::new(Arc::new(INTER_VARIABLE_TTF));
-        let registered = font_context
-            .collection
-            .register_fonts(blob, Some(override_info));
-        let primary_stack = if registered.is_empty() {
-            "sans-serif".to_string()
-        } else {
-            INTER_FAMILY.to_string()
-        };
+        // Without a system-font fallback chain, parley resolves the
+        // FontFamily by exact family_by_name() lookup — the stack is the
+        // registered name alone (a `sans-serif` here resolves to nothing).
+        let stacks = register_bundled(&mut font_context, "");
         Self {
             font_context,
             layout_context: LayoutContext::new(),
-            primary_stack,
+            stacks,
             cache: LayoutCache::default(),
         }
     }
@@ -255,7 +214,17 @@ impl TextSystem {
         weight: FontWeight,
         letter_spacing_px: f32,
     ) -> Layout<()> {
+        // ⭐⭐ **O estilo do artista entra AQUI, na porta por onde todo texto passa** — medir e
+        //    pintar saem daqui, então os dois veem a mesma fonte, o mesmo peso e o mesmo tamanho.
+        //    No valor de fábrica as três contas são a identidade AO BIT.
+        let style = active_text_style();
+        let font_size = font_size * style.size.scale();
+        let weight = FontWeight::new(
+            (weight.value() + f32::from(style.weight.boost())).clamp(WEIGHT_MIN, WEIGHT_MAX),
+        );
+        let font = style.font.index();
         let key = LayoutCacheKey {
+            font,
             text: text.to_string(),
             font_size_bits: font_size.to_bits(),
             max_width_bits: max_width.to_bits(),
@@ -280,7 +249,7 @@ impl TextSystem {
         // não de semântica: continua a ser "InterVariable, sans-serif" resolvido da
         // esquerda para a direita.
         builder.push_default(StyleProperty::FontFamily(FontFamily::Source(
-            Cow::Borrowed(self.primary_stack.as_str()),
+            Cow::Borrowed(self.stacks[font].as_str()),
         )));
         builder.push_default(StyleProperty::FontSize(font_size));
         // Inter at Regular 400 looks washed out at small UI sizes
@@ -420,19 +389,6 @@ impl Default for TextSystem {
     fn default() -> Self {
         Self::new()
     }
-}
-
-/// Register the bundled Inter Variable into `font_context.collection`.
-/// Returns the family name to reference in `FontFamily` on success,
-/// `None` if registration produced no usable family (e.g. fontique
-/// rejected the bytes). Callers fall back to `sans-serif`.
-fn register_inter(font_context: &mut FontContext) -> Option<&'static str> {
-    let blob = Blob::new(Arc::new(INTER_VARIABLE_TTF));
-    let registered = font_context.collection.register_fonts(blob, None);
-    if registered.is_empty() {
-        return None;
-    }
-    Some(INTER_FAMILY)
 }
 
 /// Min/max valid CSS font weights (parley/skrifa clamp to this range

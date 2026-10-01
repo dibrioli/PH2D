@@ -73,6 +73,7 @@ pub mod route;
 pub mod slider_style;
 pub mod spacing;
 pub mod stroke;
+pub mod text_style;
 pub mod theme;
 pub mod typography;
 /// ⭐ **A tabela de estados do widget** — a porta única de fundo / borda / raio por estado.
@@ -105,6 +106,7 @@ pub use spacing::{
     section_gap_px, tree_chevron_col_px,
 };
 pub use stroke::StrokeToken;
+pub use text_style::{UiFont, UiTextSize, UiTextStyle, UiWeight};
 pub use theme::{PanelLayout, Theme};
 pub use typography::{
     FONT_DISPLAY, FONT_MONO, FONT_SANS, FontWeight, LetterSpacing, LineHeight, SnapX,

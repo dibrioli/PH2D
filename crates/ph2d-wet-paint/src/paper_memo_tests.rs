@@ -72,7 +72,11 @@ fn a_memoria_esquece_a_mais_velha_depois_do_tecto() {
     }
     let antes = gerados();
     let _ = paper_tile(PaperPreset::Cold, 1, velha);
-    assert_eq!(gerados() - antes, 1, "a mais velha devia ter sido esquecida");
+    assert_eq!(
+        gerados() - antes,
+        1,
+        "a mais velha devia ter sido esquecida"
+    );
 }
 
 /// **Quem é USADO fica — o esquecimento é pelo uso e não pela chegada.** O papel de fábrica é pedido
@@ -89,7 +93,11 @@ fn quem_e_usado_nao_e_esquecido() {
     let _ = paper_tile(PaperPreset::Hot, 2, knobs(0.35));
     let antes = gerados();
     let _ = paper_tile(PaperPreset::Hot, 2, usada);
-    assert_eq!(gerados() - antes, 0, "a usada foi esquecida como se fosse a mais velha");
+    assert_eq!(
+        gerados() - antes,
+        0,
+        "a usada foi esquecida como se fosse a mais velha"
+    );
 }
 
 /// **A fiação: o motor coze o papel PELA memória.** Um segundo motor nascido na mesma thread não

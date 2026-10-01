@@ -10,7 +10,7 @@ SP=$(mktemp -d)
 ACC=crates/ph2d-tool-painter/src/tool/paint/watercolor_accum.rs
 MIS=crates/ph2d-tool-painter/src/tool/paint/watercolor_mistura.rs
 SMU=crates/ph2d-tool-painter/src/tool/paint/watercolor_smudge.rs
-SME=crates/ph2d-painter-brush/src/smear.rs
+SMEAR_RS=crates/ph2d-painter-brush/src/smear.rs
 ARR=crates/ph2d-tool-painter/src/tool/paint/watercolor_mistura_arrasto.rs
 COR=crates/ph2d-tool-painter/src/tool/paint/watercolor_accum_cor.rs
 AGU=crates/ph2d-tool-painter/src/tool/paint/watercolor_mistura_agua.rs
@@ -36,9 +36,9 @@ M=(
 "M5|$ARR|        self.captura(buf, fw, [x0, y0, x1, y1]);|"
 "M6|crates/ph2d-tool-painter/src/tool/paint/stroke_lifecycle.rs|self.paint.wet_mistura.ha_tinta_da_sessao = wet_session;|self.paint.wet_mistura.ha_tinta_da_sessao = true;"
 "M7|$COR|            pigment.max(arrasto.unwrap_or(0.0)),|            pigment,"
-"M8|$SME|            dst[c] = ((pd + (ps - pd) * w) / na).round().clamp(0.0, 255.0) as u8;|            dst[c] = (pd + (ps - pd) * w).round().clamp(0.0, 255.0) as u8;"
+"M8|$SMEAR_RS|            dst[c] = ((pd + (ps - pd) * w) / na).round().clamp(0.0, 255.0) as u8;|            dst[c] = (pd + (ps - pd) * w).round().clamp(0.0, 255.0) as u8;"
 "M9|$MIS|        self.capturado.iter_mut()|        self.capturado.iter_mut().take(0)"
-"M10|$SME|        mistura_premultiplicada,|        mistura_recta,"
+"M10|$SMEAR_RS|        mistura_premultiplicada,|        mistura_recta,"
 "M11|$COR|let prio_do_deposito = if pigment { 1.0 } else { prio };|let prio_do_deposito = 1.0;"
 "M12|$ARR|        let (Some(keep), Some(v)) = (guarda, antes_do_arrasto) else {|        let (Some(keep), Some(v)) = (None::<fn(usize) -> f32>, antes_do_arrasto) else {"
 "M13|$COR|if gated { Some(|if false { Some("

@@ -194,9 +194,7 @@ impl PainterTool {
             let y1 = (y + rh + MARGEM_DO_RELEVO).min(h);
             (x0, y0, x1.saturating_sub(x0), y1.saturating_sub(y0))
         });
-        let relief = self
-            .screen_canvas_heights_in(window)
-            .map(|px| ScreenCanvasRelief { px, window });
+        let relief = self.screen_canvas_relief_in(window);
         Some(ScreenCanvasFrame {
             rgba,
             w,
@@ -220,6 +218,26 @@ impl PainterTool {
         let id = self.layers.active()?;
         self.layer_height_px_in(id, janela)
     }
+
+    /// ⭐⭐ **O RELEVO da tela numa janela — a espessura E o corpo** (`docs/3D/29`
+    /// §6): a janela que a drenagem leva, e a que a peça lê de volta depois de
+    /// semear a tela ([`Self::seed_screen_canvas_relief`]), para a semente dela
+    /// ser os MESMOS números que a tela tem.
+    ///
+    /// ⚠️ O corpo sai a ZERO onde a camada tem espessura sem cobertura: é o que
+    /// o passe de luz 2D vê ali (luz nenhuma), e é o que a peça tem de ver.
+    #[must_use]
+    pub fn screen_canvas_relief_in(
+        &self,
+        window: (u32, u32, u32, u32),
+    ) -> Option<ScreenCanvasRelief> {
+        let px = self.screen_canvas_heights_in(window)?;
+        let id = self.layers.active()?;
+        let cover = self
+            .layer_cover_in(id, window)
+            .unwrap_or_else(|| vec![0.0; px.len()]);
+        Some(ScreenCanvasRelief { px, cover, window })
+    }
 }
 
 /// O que uma drenagem da tela da vista entrega.
@@ -241,6 +259,9 @@ pub struct ScreenCanvasFrame {
 pub struct ScreenCanvasRelief {
     /// `window.2 × window.3` alturas.
     pub px: Vec<f32>,
+    /// `window.2 × window.3` coberturas, `0..1` — QUANTA tinta está em cada
+    /// píxel (o corpo do passe de luz 2D).
+    pub cover: Vec<f32>,
     /// `(x, y, largura, altura)` da janela na tela.
     pub window: (u32, u32, u32, u32),
 }

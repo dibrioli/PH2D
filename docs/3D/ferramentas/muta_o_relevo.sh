@@ -81,17 +81,14 @@ open(p,"w").write(s.replace(a, b, 1))
 
 # ── O PLANO (ph2d-mesh-colors) ───────────────────────────────────────────
 muta "$COR/relevo.rs" \
-  '            .map(|(idx, peso)| a[idx] * peso)
-            .sum()
-    }
+  '        o[ALTURA] += a[idx][ALTURA] * peso;' \
+  '        o[ALTURA] += a[idx][ALTURA];' \
+  'R1 a altura de uma face ignora os pesos da cor'
 
-    /// A irmã para QUADS' \
-  '            .map(|(idx, _peso)| a[idx])
-            .sum()
-    }
-
-    /// A irmã para QUADS' \
-  'R1 a altura de um triangulo ignora os pesos da cor'
+muta "$COR/relevo.rs" \
+  '        o[CORPO] += a[idx][CORPO] * peso;' \
+  '        o[CORPO] += a[idx][CORPO];' \
+  'R1b o corpo de uma face ignora os pesos da cor'
 
 muta "$COR/relevo.rs" \
   '            .is_some_and(|a| a.len() != self.amostras().len())' \
@@ -104,30 +101,35 @@ muta "$COR/uniformiza.rs" \
   'R3 levar o plano a um degrau so larga o relevo'
 
 muta "$COR/lib.rs" \
-  '                .map_or(0, |a| a.capacity() * size_of::<f32>())' \
+  '                .map_or(0, |a| a.capacity() * size_of::<[f32; 2]>())' \
   '                .map_or(0, |_a| 0)' \
   'R4 o relevo nao conta no peso da peca'
 
 # ── A JANELA DO TRACO (ph2d-sculpt3d) ─────────────────────────────────────
 muta "$SCU/tinta_fina.rs" \
-  '        self.base_alt.push(self.tinta.altura(idx as usize));' \
-  '        self.base_alt.push(0.0);' \
+  '        self.base_alt.push(self.tinta.espessura(idx as usize));' \
+  '        self.base_alt.push([0.0; 2]);' \
   'R5 a altura de antes do traco e sempre zero'
 
 muta "$SCU/tinta_fina_relevo.rs" \
-  '            .any(|(&i, b)| a[i as usize].to_bits() != b.to_bits())' \
-  '            .any(|(&_i, _b)| true)' \
+  '            r[0].to_bits() != b[0].to_bits() || r[1].to_bits() != b[1].to_bits()' \
+  '            r[0].to_bits() != b[0].to_bits() || r[1].to_bits() != b[1].to_bits() || true' \
   'R6 toda pincelada de cor diz que mudou o relevo'
+
+muta "$SCU/tinta_fina_relevo.rs" \
+  '            r[0].to_bits() != b[0].to_bits() || r[1].to_bits() != b[1].to_bits()' \
+  '            r[0].to_bits() != b[0].to_bits()' \
+  'R6b um traco que so muda o CORPO diz que nao mudou o relevo'
 
 # ── O DESFAZER (ph2d-app-sculpt3d) ────────────────────────────────────────
 muta "$APP/history_tinta_fina.rs" \
-  '            .map(|a| super::swap_window(t.alturas_mut(), &self.amostras, a));' \
+  '            .map(|a| super::swap_window(t.relevo_mut(), &self.amostras, a));' \
   '            .map(|a| a.clone());' \
   'R7 o desfazer nao troca o relevo'
 
 muta "$APP/history_tinta_fina.rs" \
-  '            alturas: t.relevo_mudou().then(|| t.base_alturas().to_vec()),' \
-  '            alturas: None,' \
+  '            relevo: t.relevo_mudou().then(|| t.base_relevo().to_vec()),' \
+  '            relevo: None,' \
   'R8 a janela do traco nao guarda o relevo'
 
 # ── O CONTROLO ───────────────────────────────────────────────────────────

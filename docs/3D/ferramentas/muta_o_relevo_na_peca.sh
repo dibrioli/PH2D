@@ -2,7 +2,8 @@
 # Prova de mutação do RELEVO pousado na peça (a etapa 3b do Painter, W3 —
 # docs/3D/29): a luz 2D desligada na tela da vista, a espessura em píxeis na
 # janela, a leitura dela, a conversão de píxel para a peça e a lei
-# `nova = antes + altura`.
+# `nova = antes + k·(tela − semente)`, com o CORPO ao lado e a SEMENTE do
+# relevo (§6, report de 01/10).
 #
 # ⚠️ O arnês CONTROLA-SE A SI MESMO nos QUATRO pontos dos irmãos (âncora única ·
 # a mutação compila · N > 0 testes correram · a corrida limpa VERDE), e tem o
@@ -114,24 +115,60 @@ muta "$SCU/tela_relevo.rs" \
   'S2 o píxel mede-se perpendicular ao RAIO e não à imagem'
 
 muta "$SCU/tela_na_malha_pousa.rs" \
-  '            .is_some_and(|wpp| fina.eleva(idx, |antes| antes + hp * k * wpp));' \
-  '            .is_some_and(|_wpp| fina.eleva(idx, |antes| antes + hp * k));' \
+  '                    antes[0] + d[0] * k * wpp,' \
+  '                    antes[0] + d[0] * k,' \
   'S3 a espessura não se converte de píxel para a peça'
 
 muta "$SCU/tela_na_malha_pousa.rs" \
-  '            .is_some_and(|wpp| fina.eleva(idx, |antes| antes + hp * k * wpp));' \
-  '            .is_some_and(|wpp| fina.eleva(idx, |_antes| hp * k * wpp));' \
+  '                    antes[0] + d[0] * k * wpp,' \
+  '                    d[0] * k * wpp,' \
   'S4 o traço seguinte substitui a espessura em vez de somar'
 
 muta "$SCU/tela_na_malha_pousa.rs" \
-  '    if vazia && hp == 0.0 && !fina.tocou(idx)' \
+  '    if vazia && d == [0.0; 2] && !fina.tocou(idx)' \
   '    if vazia && !fina.tocou(idx)' \
   'S5 uma tela sem cor não leva a espessura'
 
+muta "$SCU/tela_na_malha_pousa.rs" \
+  '        [t[0] - sem[0], t[1] - sem[1]]' \
+  '        [t[0], t[1]]' \
+  'S6 a pousada esquece a SEMENTE: a tela semeada dobra a espessura'
+
+muta "$SCU/tela_na_malha_pousa.rs" \
+  '                    (antes[1] + d[1] * k).clamp(0.0, 1.0),' \
+  '                    antes[1] + d[1] * k,' \
+  'S7 o corpo não satura em 0..1'
+
+muta "$SCU/tela_na_malha_pousa.rs" \
+  '                    (antes[1] + d[1] * k).clamp(0.0, 1.0),' \
+  '                    antes[1],' \
+  'S8 o corpo da tela não chega à peça'
+
+muta "$SCU/tela_semente_relevo.rs" \
+  '                out.px[o] = if m > 0.0 { e[0] / m } else { 0.0 };' \
+  '                out.px[o] = e[0];' \
+  'S9 a semente não converte a altura da peça em píxeis'
+
+# ── A SEMENTE E O CORPO NO PAINTER (report de 01/10) ─────────────────────
+muta "$PNT/paint/impasto_screen_relief.rs" \
+  '                out.push(f32::from(c.max(l)) / 255.0);' \
+  '                out.push(1.0);' \
+  'P5 a janela leva corpo cheio onde a espessura transborda a tinta'
+
+muta "$PNT/paint/impasto_screen_relief.rs" \
+  '            .insert(id, Arc::new(px.iter().map(|&v| v / escala).collect()));' \
+  '            .insert(id, Arc::new(px.to_vec()));' \
+  'P6 a semente não desfaz a conversão da janela'
+
+muta "$PNT/paint/impasto_screen_relief.rs" \
+  '        self.covers.insert(id, Arc::new(cover.to_vec()));' \
+  '' \
+  'P7 a semente não leva a cobertura: o relevo semeado sai sem corpo'
+
 # ── O CONTROLO ───────────────────────────────────────────────────────────
 muta "$SCU/tela_relevo.rs" \
-  '/// A espessura numa janela da tela — em PÍXEIS, linha a linha.' \
-  '/// A espessura numa janela da tela, em PÍXEIS, linha a linha.' \
+  '/// O relevo numa janela da tela — a espessura em PÍXEIS e o corpo `0..1`,' \
+  '/// O relevo numa janela da tela, a espessura em PÍXEIS e o corpo `0..1`,' \
   'C1 CONTROLO: uma mutação INERTE (um comentário) não pode sangrar'
 
 echo

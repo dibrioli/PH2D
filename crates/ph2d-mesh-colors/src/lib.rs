@@ -166,11 +166,11 @@ pub struct Tinta {
     nivel: u8,
     topo: Topologia,
     amostras: Vec<[f32; 3]>,
-    /// ⭐ **O RELEVO de cada amostra** — a espessura da tinta, em unidades de
-    /// objecto ao longo da normal (o impasto do Painter na peça). Ver
-    /// [`relevo`]. ⚠️ `None` até à 1.ª escrita: uma peça que nunca levou
-    /// impasto não paga um byte.
-    alturas: Option<Vec<f32>>,
+    /// ⭐ **O RELEVO de cada amostra** — `[altura, corpo]`: a espessura da
+    /// tinta em unidades de objecto ao longo da normal, e QUANTA tinta está
+    /// lá (o impasto do Painter na peça). Ver [`relevo`]. ⚠️ `None` até à 1.ª
+    /// escrita: uma peça que nunca levou impasto não paga um byte.
+    relevo: Option<Vec<[f32; 2]>>,
 }
 
 // ⛔⛔⛔⛔ **E A LEI POR BAIXO (`niveis_por_area`) SAIU COM ELE.**
@@ -209,7 +209,7 @@ impl Tinta {
             nivel,
             topo,
             amostras: vec![BRANCO; n],
-            alturas: None,
+            relevo: None,
         }
     }
 
@@ -255,7 +255,7 @@ impl Tinta {
             nivel: pedido,
             topo,
             amostras: vec![BRANCO; n],
-            alturas: None,
+            relevo: None,
         })
     }
 
@@ -273,7 +273,7 @@ impl Tinta {
             nivel: 0,
             topo,
             amostras: cores.to_vec(),
-            alturas: None,
+            relevo: None,
         }
     }
 
@@ -363,9 +363,9 @@ impl Tinta {
     pub fn footprint_bytes(&self) -> usize {
         self.amostras.capacity() * size_of::<[f32; 3]>()
             + self
-                .alturas
+                .relevo
                 .as_ref()
-                .map_or(0, |a| a.capacity() * size_of::<f32>())
+                .map_or(0, |a| a.capacity() * size_of::<[f32; 2]>())
             + self.topo.footprint_bytes()
     }
 

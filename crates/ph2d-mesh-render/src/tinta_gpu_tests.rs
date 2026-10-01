@@ -66,8 +66,8 @@ fn sem_amostras_sujas_nao_ha_corrida_nenhuma() {
     );
 }
 
-/// ⭐⭐ **GATE — a corrida das ALTURAS é a MESMA faixa de amostras** — `4`
-/// bytes por amostra em vez de `12`. Um erro aqui escreve a espessura de uma
+/// ⭐⭐ **GATE — a corrida do RELEVO é a MESMA faixa de amostras** — `8`
+/// bytes por amostra (`[altura, corpo]`) em vez de `12`. Um erro aqui escreve a espessura de uma
 /// amostra na vizinha, com bytes válidos (`docs/3D/29`).
 #[test]
 fn a_corrida_das_alturas_e_a_mesma_faixa_de_amostras() {
@@ -75,10 +75,10 @@ fn a_corrida_das_alturas_e_a_mesma_faixa_de_amostras() {
     let mut out = Vec::new();
     corridas_das_sujas(&mut sujas, &mut out);
     let alturas: Vec<(usize, usize)> = out.iter().map(|&c| super::em_alturas(c)).collect();
-    assert_eq!(alturas, vec![(12, 24), (160, 164)], "de {out:?}");
+    assert_eq!(alturas, vec![(24, 48), (320, 328)], "de {out:?}");
     for ((de, ate), (ad, aa)) in out.iter().zip(&alturas) {
-        assert_eq!(de / 12, ad / 4, "o início não é a mesma amostra");
-        assert_eq!(ate / 12, aa / 4, "o fim não é a mesma amostra");
+        assert_eq!(de / 12, ad / 8, "o início não é a mesma amostra");
+        assert_eq!(ate / 12, aa / 8, "o fim não é a mesma amostra");
     }
 }
 
@@ -97,7 +97,7 @@ fn o_bit_do_relevo_e_o_mesmo_nas_duas_pontas() {
         1,
         "CONTROLO: sem relevo arma só a cor"
     );
-    t.alturas_mut()[0] = 0.25;
+    t.relevo_mut()[0] = [0.25, 1.0];
     assert_eq!(
         super::cfg_de(Some(&t))[3],
         1 | super::RELEVO,

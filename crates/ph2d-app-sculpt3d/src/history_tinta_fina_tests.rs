@@ -183,7 +183,7 @@ fn uma_janela_cujos_indices_nao_cabem_e_recusada_e_nao_estoura() {
         plano: IdDoPlano::de(&t),
         amostras: vec![fora],
         cores: vec![COR],
-        alturas: None,
+        relevo: None,
     };
     assert!(
         janela.troca(Some(&mut t)).is_none(),

@@ -41,7 +41,7 @@ use super::{SceneObject, Sculpt3dScene};
 /// não falha, devolve lixo bem-formado. O gate `the_shape_of_a_saved_scene_is_pinned`
 /// prende o tamanho codificado de uma cena-fixture justamente para transformar
 /// "lembre-se" em vermelho.
-pub(crate) const SCULPT_DOC_VERSION: u32 = 4;
+pub(crate) const SCULPT_DOC_VERSION: u32 = 5;
 
 /// A versão que ganhou o plano de tinta fina — e a primeira que este módulo
 /// teve de MIGRAR. Ver [`decode`].
@@ -54,6 +54,10 @@ const V_ANTES_DA_GRADUACAO: u32 = 2;
 /// A versão em que o plano não tinha RELEVO — antes do impasto do Painter na
 /// peça (`docs/3D/29`). Ver [`decode`].
 const V_ANTES_DO_RELEVO: u32 = 3;
+
+/// A versão em que o relevo era só a ALTURA — antes do CORPO (`docs/3D/29` §6,
+/// o anel na borda do traço). Ver [`decode`].
+const V_ANTES_DO_CORPO: u32 = 4;
 
 /// ⭐⭐⭐⭐ **O PLANO DE TINTA FINA de uma peça, como o arquivo o guarda.**
 ///
@@ -81,10 +85,37 @@ struct TintaDoc {
     /// ⚠️ **Vazio e não `Option`**: um plano uniforme é o caso comum e o
     /// postcard escreve um `Vec` vazio num byte.
     niveis: Vec<u8>,
-    /// ⭐ **O RELEVO do plano** (o impasto do Painter na peça, `docs/3D/29`),
-    /// nas mesmas corridas da cor. `None` = o plano nunca levou impasto, e custa
-    /// UM byte.
+    /// ⭐ **O RELEVO do plano, `[altura, corpo]`** (o impasto do Painter na
+    /// peça, `docs/3D/29`), nas mesmas corridas da cor. `None` = o plano nunca
+    /// levou impasto, e custa UM byte.
+    relevo: Option<doc_tinta::RelevoDoc>,
+}
+
+/// O plano de tinta de um documento **v4** — congelado, e lido só pela
+/// migração: o relevo era só a ALTURA (ver [`doc_tinta::relevo_de_alturas`]).
+#[derive(Deserialize)]
+struct TintaDocV4 {
+    nivel: u8,
+    amostras: doc_tinta::AmostrasDoc,
+    niveis: Vec<u8>,
     alturas: Option<doc_tinta::AlturasDoc>,
+}
+
+/// A peça de um documento **v4** — congelada, e lida só pela migração.
+#[derive(Deserialize)]
+struct ObjectDocV4 {
+    stack: StackData,
+    pose: PoseData,
+    tinta: Option<TintaDocV4>,
+}
+
+/// Um documento **v4** — congelado, e lido só pela migração.
+#[derive(Deserialize)]
+struct SculptDocV4 {
+    #[allow(dead_code)]
+    version: u32,
+    objects: Vec<ObjectDocV4>,
+    active: u32,
 }
 
 /// O plano de tinta de um documento **v3** — congelado, e lido só pela
@@ -261,6 +292,30 @@ pub fn decode(bytes: &[u8]) -> Result<(Vec<LoadedPiece>, usize), SculptDocError>
     let (versao, _) = postcard::take_from_bytes::<u32>(bytes).map_err(SculptDocError::Bytes)?;
     let doc = match versao {
         SCULPT_DOC_VERSION => postcard::from_bytes(bytes).map_err(SculptDocError::Bytes)?,
+        // ⭐ **A MIGRAÇÃO do corpo.** Um relevo gravado antes do corpo era só a
+        // altura, e a luz inclinava pela altura inteira ⇒ corpo `1` onde havia
+        // espessura descreve-o exactamente.
+        V_ANTES_DO_CORPO => {
+            let v4: SculptDocV4 = postcard::from_bytes(bytes).map_err(SculptDocError::Bytes)?;
+            SculptDoc {
+                version: SCULPT_DOC_VERSION,
+                objects: v4
+                    .objects
+                    .into_iter()
+                    .map(|o| ObjectDoc {
+                        stack: o.stack,
+                        pose: o.pose,
+                        tinta: o.tinta.map(|t| TintaDoc {
+                            nivel: t.nivel,
+                            amostras: t.amostras,
+                            niveis: t.niveis,
+                            relevo: t.alturas.map(doc_tinta::relevo_de_alturas),
+                        }),
+                    })
+                    .collect(),
+                active: v4.active,
+            }
+        }
         // ⭐ **A MIGRAÇÃO do relevo.** Um plano gravado antes do impasto na
         // peça não tinha relevo ⇒ `None` descreve-o exactamente.
         V_ANTES_DO_RELEVO => {
@@ -277,7 +332,7 @@ pub fn decode(bytes: &[u8]) -> Result<(Vec<LoadedPiece>, usize), SculptDocError>
                             nivel: t.nivel,
                             amostras: t.amostras,
                             niveis: t.niveis,
-                            alturas: None,
+                            relevo: None,
                         }),
                     })
                     .collect(),
@@ -303,7 +358,7 @@ pub fn decode(bytes: &[u8]) -> Result<(Vec<LoadedPiece>, usize), SculptDocError>
                             nivel: t.nivel,
                             amostras: t.amostras,
                             niveis: Vec::new(),
-                            alturas: None,
+                            relevo: None,
                         }),
                     })
                     .collect(),
@@ -383,11 +438,11 @@ fn tinta_de(stack: &Multires, doc: &TintaDoc, peca: usize) -> Result<Tinta, Scul
     // ⭐ O RELEVO entra ANTES da conversão de um plano graduado, que o leva
     //   com ele (a `uniformizada` lê-o pelos mesmos pesos da cor). ⛔ Um relevo
     //   que não soma as amostras é recusa, pela mesma razão da cor.
-    if let Some(a) = &doc.alturas {
-        let alturas = a
+    if let Some(a) = &doc.relevo {
+        let relevo = a
             .amostras(esperadas)
             .ok_or(SculptDocError::Tinta { peca, esperadas })?;
-        t.com_alturas(Some(alturas));
+        t.com_relevo(Some(relevo));
     }
     // ⭐⭐⭐⭐ **Um plano GRADUADO sai daqui UNIFORME** (2026-09-24, ordem do
     //   dono): o `Even Detail` que os criava foi retirado, e com ele o registo
@@ -436,7 +491,7 @@ pub fn encode(pieces: &[(StackData, PoseData, Option<&Tinta>)], active: usize) -
                     } else {
                         t.topologia().niveis().to_vec()
                     },
-                    alturas: t.alturas().map(doc_tinta::a_menor_forma),
+                    relevo: t.relevo().map(doc_tinta::a_menor_forma),
                 }),
             })
             .collect(),

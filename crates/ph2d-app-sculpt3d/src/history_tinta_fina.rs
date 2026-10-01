@@ -78,10 +78,11 @@ pub(crate) struct JanelaFina {
     amostras: Vec<u32>,
     /// A cor de cada uma ANTES do traço, na mesma ordem.
     cores: Vec<[f32; 3]>,
-    /// ⭐ **O RELEVO de cada uma ANTES do traço**, na mesma ordem — o impasto
-    /// do Painter na peça (`docs/3D/29`). `None` quando o traço não mudou o
-    /// relevo: uma pincelada de cor sobre uma peça com relevo não paga o canal.
-    alturas: Option<Vec<f32>>,
+    /// ⭐ **O RELEVO `[altura, corpo]` de cada uma ANTES do traço**, na mesma
+    /// ordem — o impasto do Painter na peça (`docs/3D/29`). `None` quando o
+    /// traço não mudou o relevo: uma pincelada de cor sobre uma peça com relevo
+    /// não paga o canal.
+    relevo: Option<Vec<[f32; 2]>>,
 }
 
 impl JanelaFina {
@@ -99,7 +100,7 @@ impl JanelaFina {
             plano: IdDoPlano::de(t.tinta()),
             amostras: t.tocadas().to_vec(),
             cores: t.base().to_vec(),
-            alturas: t.relevo_mudou().then(|| t.base_alturas().to_vec()),
+            relevo: t.relevo_mudou().then(|| t.base_relevo().to_vec()),
         })
     }
 
@@ -136,16 +137,16 @@ impl JanelaFina {
             return None;
         }
         let cores = super::swap_window(t.amostras_mut(), &self.amostras, &self.cores);
-        // ⚠️ O relevo troca-se com a cor, na mesma janela. `alturas_mut` CRIA o
+        // ⚠️ O relevo troca-se com a cor, na mesma janela. `relevo_mut` CRIA o
         // relevo se o plano de agora não o tiver — que é o caso de refazer um
         // traço de impasto depois de o plano ter sido reconstruído sem ele.
-        let alturas = self
-            .alturas
+        let relevo = self
+            .relevo
             .as_ref()
-            .map(|a| super::swap_window(t.alturas_mut(), &self.amostras, a));
+            .map(|a| super::swap_window(t.relevo_mut(), &self.amostras, a));
         Some(Self {
             cores,
-            alturas,
+            relevo,
             ..self
         })
     }
@@ -210,9 +211,9 @@ impl JanelaFina {
         self.amostras.capacity() * size_of::<u32>()
             + self.cores.capacity() * size_of::<[f32; 3]>()
             + self
-                .alturas
+                .relevo
                 .as_ref()
-                .map_or(0, |a| a.capacity() * size_of::<f32>())
+                .map_or(0, |a| a.capacity() * size_of::<[f32; 2]>())
     }
 }
 

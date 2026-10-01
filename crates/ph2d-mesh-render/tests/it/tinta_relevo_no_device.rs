@@ -12,6 +12,11 @@
 //! passaria com um relevo inerte. E o CONTROLO é a fixtura sem relevo — com
 //! ela as duas imagens têm de ser a MESMA, senão a diferença medida não é do
 //! relevo.
+//!
+//! ⭐⭐ **E a terceira metade é o report do dono de 01/10** (*«o traço tem um
+//! relevo indesejado na borda»*): a MESMA rampa com CORPO zero — a espessura
+//! que o alisamento do impasto espalha para fora da tinta — **não acende
+//! nada**, como no passe de luz 2D do Painter.
 
 use ph2d_light::LightRig;
 use ph2d_mesh::{Face, Mesh};
@@ -111,9 +116,26 @@ fn o_relevo_inclina_a_luz_so_onde_ha_degrau() {
 
     // (2) O RELEVO: a rampa só nas duas colunas do meio.
     for (i, p) in m.positions().iter().enumerate() {
-        plano.alturas_mut()[i] = altura_em(p[0]);
+        plano.relevo_mut()[i] = [altura_em(p[0]), 1.0];
     }
     let com = desenha(&device, &queue, &m, &plano);
+
+    // (3) ⭐⭐ A MESMA rampa sem CORPO não acende — o anel do report de 01/10.
+    //     ⚠️ A folga é a mesma do «fora»: o arredondamento de renormalizar,
+    //     nunca uma inclinação.
+    let mut sem_corpo = plano.clone();
+    for r in sem_corpo.relevo_mut() {
+        r[1] = 0.0;
+    }
+    let nu = desenha(&device, &queue, &m, &sem_corpo);
+    let pior_nu = (0..H)
+        .flat_map(|y| (0..W).map(move |x| (x, y)))
+        .map(|(x, y)| (lum(&nu, x, y) - lum(&liso, x, y)).abs())
+        .fold(0.0f32, f32::max);
+    assert!(
+        pior_nu <= 1.5,
+        "a espessura SEM tinta acendeu a peça: {pior_nu} — o anel do report de 01/10"
+    );
 
     let largura = (x1 - x0) as f32;
     let meio = (x0 + x1) as f32 / 2.0;

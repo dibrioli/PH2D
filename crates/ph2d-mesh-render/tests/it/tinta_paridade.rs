@@ -38,12 +38,15 @@ const ENTRADA: &str = r#"
 struct Sonda { pi: u32, _a: u32, _b: u32, _c: u32, p: vec4<f32> };
 @group(0) @binding(0) var<storage, read> sondas: array<Sonda>;
 @group(0) @binding(1) var<storage, read_write> saida: array<vec4<f32>>;
+// Duas palavras por sonda: a cor com a altura, e o CORPO (`docs/3D/29` §6).
 @compute @workgroup_size(64)
 fn cs(@builtin(global_invocation_id) gid: vec3<u32>) {
     let i = gid.x;
     if (i >= arrayLength(&sondas)) { return; }
     let s = sondas[i];
-    saida[i] = tinta_no_ponto4(s.pi, s.p.xyz);
+    let r = tinta_no_ponto4(s.pi, s.p.xyz);
+    saida[2u * i] = r.c;
+    saida[2u * i + 1u] = vec4<f32>(r.corpo, 0.0, 0.0, 0.0);
 }
 "#;
 
@@ -86,6 +89,8 @@ struct Sonda {
     esperado: [f32; 3],
     /// A altura do RELEVO no mesmo ponto (`docs/3D/29`), pela mesma lei.
     altura: f32,
+    /// O CORPO no mesmo ponto (`docs/3D/29` §6), pela mesma lei.
+    corpo: f32,
     onde: String,
 }
 
@@ -126,6 +131,7 @@ fn sondas_da_grelha(m: &Mesh, faces: &[Vec<u32>], t: &Tinta, origem: &[u32]) -> 
                 p: [a[0] + u, a[1] + v, 0.0],
                 esperado: t.cor_quad(fi, f, [u, v]),
                 altura: t.altura_quad(fi, f, [u, v]),
+                corpo: t.espessura_quad(fi, f, [u, v])[1],
                 onde: format!("grelha face {fi} sub {sub} ({u}, {v})"),
             });
         }
@@ -162,6 +168,7 @@ fn sondas_da_esfera(m: &Mesh, t: &Tinta, origem: &[u32]) -> Vec<Sonda> {
                 p,
                 esperado: t.cor_tri(fi, f, bar),
                 altura: t.altura_tri(fi, f, bar),
+                corpo: t.espessura_tri(fi, f, bar)[1],
                 onde: format!("esfera face {fi} {bar:?}"),
             });
         }
@@ -197,14 +204,15 @@ fn a_lei_da_reticula_le_o_mesmo_na_placa_e_na_cpu() {
             t.amostras_mut()[i] = cor_embaralhada(i);
         }
         // ⭐ **O RELEVO viaja pela MESMA leitura** (`docs/3D/29`), com uma
-        //   altura embaralhada DIFERENTE da cor — senão um endereço trocado
-        //   entre os dois canais leria certo. ⚠️ A grelha de nível `0` fica
+        //   altura e um corpo embaralhados DIFERENTES da cor e entre si —
+        //   senão um endereço trocado entre os canais leria certo. ⚠️ A grelha de nível `0` fica
         //   SEM relevo de propósito: é o CONTROLO de que o bit desligado lê
         //   zero, e de que a cor não depende de haver relevo.
         let com_relevo = nome != "grelha plana, nível 0";
         if com_relevo {
             for i in 0..t.amostras().len() {
-                t.alturas_mut()[i] = cor_embaralhada(i + 1_000_003)[0] - 0.5;
+                let e = cor_embaralhada(i + 1_000_003);
+                t.relevo_mut()[i] = [e[0] - 0.5, e[1]];
             }
         }
         assert_eq!(t.tem_relevo(), com_relevo);
@@ -231,7 +239,13 @@ fn a_lei_da_reticula_le_o_mesmo_na_placa_e_na_cpu() {
         let mut pior = 0.0f32;
         let mut pior_onde = String::new();
         for (s, got) in sondas.iter().zip(lido.iter()) {
-            let esp4 = [s.esperado[0], s.esperado[1], s.esperado[2], s.altura];
+            let esp4 = [
+                s.esperado[0],
+                s.esperado[1],
+                s.esperado[2],
+                s.altura,
+                s.corpo,
+            ];
             for (e, (g, esp)) in got.iter().zip(esp4.iter()).enumerate() {
                 let d = (g - esp).abs();
                 if d > pior {
@@ -263,7 +277,7 @@ fn corre_na_placa(
     tris: &[[u32; 3]],
     origem: &[u32],
     sondas: &[Sonda],
-) -> Vec<[f32; 4]> {
+) -> Vec<[f32; 5]> {
     use wgpu::util::DeviceExt as _;
 
     let amostras: Vec<f32> = t.amostras().iter().flat_map(|c| *c).collect();
@@ -301,19 +315,21 @@ fn corre_na_placa(
     let b_cfg = buf(bytemuck::cast_slice(&cfg), wgpu::BufferUsages::UNIFORM);
     // ⚠️ Sem relevo o buffer é um DUMMY de uma altura, como no produto: um
     //   binding de storage não pode ter tamanho zero.
-    let alturas: Vec<f32> = t.alturas().map_or_else(|| vec![0.0], <[f32]>::to_vec);
+    let alturas: Vec<[f32; 2]> = t
+        .relevo()
+        .map_or_else(|| vec![[0.0; 2]], <[[f32; 2]]>::to_vec);
     let b_alt = buf(bytemuck::cast_slice(&alturas), st);
     let b_sondas = buf(bytemuck::cast_slice(&entrada), st);
     let n = sondas.len();
     let b_saida = device.create_buffer(&wgpu::BufferDescriptor {
         label: None,
-        size: (n * 16) as u64,
+        size: (n * 32) as u64,
         usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
         mapped_at_creation: false,
     });
     let b_ler = device.create_buffer(&wgpu::BufferDescriptor {
         label: None,
-        size: (n * 16) as u64,
+        size: (n * 32) as u64,
         usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
         mapped_at_creation: false,
     });
@@ -420,7 +436,7 @@ fn corre_na_placa(
         cp.set_bind_group(1, &bg1, &[]);
         cp.dispatch_workgroups(n.div_ceil(64) as u32, 1, 1);
     }
-    enc.copy_buffer_to_buffer(&b_saida, 0, &b_ler, 0, (n * 16) as u64);
+    enc.copy_buffer_to_buffer(&b_saida, 0, &b_ler, 0, (n * 32) as u64);
     queue.submit([enc.finish()]);
 
     let fatia = b_ler.slice(..);
@@ -432,10 +448,10 @@ fn corre_na_placa(
     // ⛔ Esta crate PROÍBE `unsafe`; o `bytemuck` já é dependência dela.
     let quatro: &[f32] = bytemuck::cast_slice(&dados);
     let out = quatro
-        .as_chunks::<4>()
+        .as_chunks::<8>()
         .0
         .iter()
-        .map(|c| [c[0], c[1], c[2], c[3]])
+        .map(|c| [c[0], c[1], c[2], c[3], c[4]])
         .collect();
     drop(dados);
     b_ler.unmap();

@@ -41,9 +41,9 @@ fn fs_main_tinta(in: VsOut, @builtin(primitive_index) pi: u32) -> @location(0) v
     let t = tinta_no_ponto4(pi, in.opos);
     // ⚠️ Sem relevo, o caminho de sempre AO BIT: a normal nem é tocada.
     if ((tinta_cfg.armado & TINTA_RELEVO) == 0u) {
-        return fs_core(in, t.xyz);
+        return fs_core(in, t.c.xyz);
     }
-    return fs_core_n(in, t.xyz, tinta_relevo_n(in, t.w));
+    return fs_core_n(in, t.c.xyz, tinta_relevo_n(in, t.c.w, t.corpo));
 }
 
 // ⭐⭐⭐ **A NORMAL INCLINADA PELO RELEVO** — *bump mapping* sem parametrização
@@ -58,7 +58,13 @@ fn fs_main_tinta(in: VsOut, @builtin(primitive_index) pi: u32) -> @location(0) v
 // `tinta_no_ponto4` ramifica por `topo` (o valor que ele devolve pode vir de
 // um ramo, a CHAMADA de `dpdx` não pode), e os dois `if` de cima leem um
 // uniforme.
-fn tinta_relevo_n(in: VsOut, h: f32) -> vec3<f32> {
+//
+// ⭐⭐ **A inclinação é pesada pelo CORPO** (`docs/3D/29` §6) — a lei do passe
+// de luz 2D do Painter (`impasto_light::paint_body`: *relevo sob cobertura
+// zero não acende*). Sem ela a encosta que o alisamento do impasto espalha
+// para fora da tinta acendia o barro nu: o anel do report do dono de 01/10.
+// Com corpo `1` a normal é a de antes AO BIT (`1·grad` é `grad`).
+fn tinta_relevo_n(in: VsOut, h: f32, corpo: f32) -> vec3<f32> {
     let escala = length(obj.model[0].xyz);
     let p = (cam.view * obj.model * vec4<f32>(in.opos, 1.0)).xyz;
     let hs = h * escala;
@@ -70,7 +76,7 @@ fn tinta_relevo_n(in: VsOut, h: f32) -> vec3<f32> {
     let r1 = cross(sy, n);
     let r2 = cross(n, sx);
     let det = dot(sx, r1);
-    let grad = sign(det) * (dhx * r1 + dhy * r2);
+    let grad = clamp(corpo, 0.0, 1.0) * (sign(det) * (dhx * r1 + dhy * r2));
     let nb = abs(det) * n - grad;
     let l = length(nb);
     // Um triângulo degenerado no ecrã (det = 0) não tem gradiente a ler.

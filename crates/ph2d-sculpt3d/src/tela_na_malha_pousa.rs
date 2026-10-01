@@ -67,9 +67,18 @@ fn pousa_amostra(
     }
     let (mistura, vazia) = sessao.leitura(tela, s);
     // ⭐ A ESPESSURA conta como tinta: um verbo de relevo que não muda a cor
-    //   (o esculpir do impasto) também tem de chegar à peça.
-    let hp = relevo.map_or(0.0, |r| r.em(s[0], s[1]));
-    if vazia && hp == 0.0 && !fina.tocou(idx) && !na_cadeia(sessao, idx, mistura) {
+    //   (o esculpir do impasto) também tem de chegar à peça. ⭐⭐ E o que conta
+    //   é o que a tela MUDOU desde a semente de relevo dela (`docs/3D/29` §6):
+    //   com a tela semeada com o relevo da peça, o alisar e a faca trabalham
+    //   sobre ele, e o que o pincel não tocou tem diferença ZERO.
+    let d = relevo.map_or([0.0; 2], |r| {
+        let t = r.em(s[0], s[1]);
+        let sem = sessao
+            .semente_relevo()
+            .map_or([0.0; 2], |r| r.em(s[0], s[1]));
+        [t[0] - sem[0], t[1] - sem[1]]
+    });
+    if vazia && d == [0.0; 2] && !fina.tocou(idx) && !na_cadeia(sessao, idx, mistura) {
         return false;
     }
     if !sessao.ve_se_no_pixel(mesh, fi, s, idx, p) {
@@ -79,15 +88,20 @@ fn pousa_amostra(
     let cor = fina.repinta(idx, |pre| {
         pousa(base_de(sessao, idx, pre, p, mistura), mistura, k)
     });
-    // ⭐⭐ **`nova = antes + altura`** (`docs/3D/29`, D3), a altura convertida
-    //   de píxeis para a peça no próprio ponto e pesada pela máscara como a
-    //   cor. ⚠️ Sem relevo na tela nem se pergunta — o plano não ganha um
-    //   vector de alturas por uma pincelada de cor.
+    // ⭐⭐ **`nova = antes + k·(tela − semente)`** (`docs/3D/29` D3 e §6): a
+    //   altura convertida de píxeis para a peça no próprio ponto, e o corpo
+    //   preso a `0..1`, os dois pesados pela máscara como a cor. ⚠️ Sem relevo
+    //   na tela nem se pergunta — o plano não ganha um vector de relevo por uma
+    //   pincelada de cor.
     let alt = relevo.is_some()
-        && sessao
-            .vista
-            .mundo_por_pixel(p)
-            .is_some_and(|wpp| fina.eleva(idx, |antes| antes + hp * k * wpp));
+        && sessao.vista.mundo_por_pixel(p).is_some_and(|wpp| {
+            fina.eleva(idx, |antes| {
+                [
+                    antes[0] + d[0] * k * wpp,
+                    (antes[1] + d[1] * k).clamp(0.0, 1.0),
+                ]
+            })
+        });
     cor | alt
 }
 

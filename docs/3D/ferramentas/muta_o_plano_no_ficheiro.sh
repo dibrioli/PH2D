@@ -157,21 +157,26 @@ muta "$APP/tinta_da_peca.rs" \
   '    da_activa' \
   'P14 degrau: o recurso as OUTRAS pecas desaparece'
 
-# ── O RELEVO (docs/3D/29, v4) ────────────────────────────────────────────
+# ── O RELEVO (docs/3D/29, v4 a altura · v5 o par com o corpo) ────────────────────────────────────────────
 muta "$APP/doc_tinta.rs" \
-  '        self.to_bits() == outra.to_bits()' \
+  '        self[0].to_bits() == outra[0].to_bits() && self[1].to_bits() == outra[1].to_bits()' \
   '        *self == *outra' \
   'P16 relevo: a igualdade volta a ser == e o -0.0 da altura junta-se ao +0.0'
 
 muta "$APP/doc.rs" \
-  '                    alturas: t.alturas().map(doc_tinta::a_menor_forma),' \
-  '                    alturas: None,' \
+  '                    relevo: t.relevo().map(doc_tinta::a_menor_forma),' \
+  '                    relevo: None,' \
   'P17 relevo: o escritor nao grava o relevo'
 
 muta "$APP/doc.rs" \
-  '        t.com_alturas(Some(alturas));' \
-  '        let _ = alturas;' \
+  '        t.com_relevo(Some(relevo));' \
+  '        let _ = relevo;' \
   'P18 relevo: o leitor le o relevo e deita-o fora'
+
+muta "$APP/doc_tinta.rs" \
+  '    let par = |h: f32| [h, if h == 0.0 { 0.0 } else { 1.0 }];' \
+  '    let par = |h: f32| [h, 1.0];' \
+  'P19 corpo: a migracao do v4 da corpo a amostras sem altura'
 
 # ── O CONTROLO ───────────────────────────────────────────────────────────
 # ⚠️ Uma mutacao INERTE nao pode sangrar. Sem ela um arnes partido — um filtro

@@ -177,9 +177,10 @@ pub struct TintaDoTraco {
     slot: Vec<u32>,
     accum: Vec<f32>,
     base: Vec<[f32; 3]>,
-    /// O RELEVO de antes do traço, na ordem de [`Self::tocadas`] (ver o
-    /// filho `relevo`) — zero onde o plano não tinha relevo.
-    base_alt: Vec<f32>,
+    /// O RELEVO de antes do traço, `[altura, corpo]`, na ordem de
+    /// [`Self::tocadas`] (ver o filho `relevo`) — zeros onde o plano não tinha
+    /// relevo.
+    base_alt: Vec<[f32; 2]>,
     tocadas: Vec<u32>,
     /// ⭐⭐⭐⭐ **Que amostras mudaram desde o último upload** — paralelo a
     /// [`Self::tocadas`], e indexado por SLOT e não por amostra.
@@ -365,7 +366,7 @@ impl TintaDoTraco {
         self.slot[idx as usize] = u32::try_from(novo + 1).unwrap_or(u32::MAX);
         self.tocadas.push(idx);
         self.base.push(self.tinta.amostras()[idx as usize]);
-        self.base_alt.push(self.tinta.altura(idx as usize));
+        self.base_alt.push(self.tinta.espessura(idx as usize));
         self.accum.push(0.0);
         // Nasce suja: quem pede um slot é quem está prestes a escrever nele.
         self.suja.push(true);

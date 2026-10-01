@@ -27,9 +27,9 @@ pub(super) struct TintaGpu {
     idx: wgpu::Buffer,
     pos: wgpu::Buffer,
     cfg: wgpu::Buffer,
-    /// ⭐ **O RELEVO** (`docs/3D/29`) — uma altura por amostra, na MESMA ordem
-    /// das amostras. Um dummy de `16` B quando o plano não tem relevo, e o bit
-    /// [`RELEVO`] da configuração desligado.
+    /// ⭐ **O RELEVO** (`docs/3D/29`) — um par `[altura, corpo]` por amostra,
+    /// na MESMA ordem das amostras. Um dummy de `16` B quando o plano não tem
+    /// relevo, e o bit [`RELEVO`] da configuração desligado.
     alturas: wgpu::Buffer,
     cap_amostras: usize,
     cap_topo: usize,
@@ -341,7 +341,7 @@ impl MeshRenderer {
             // ⚠️ Sem relevo o buffer fica como está (o dummy, ou o relevo de
             //    uma subida anterior): o bit do `cfg` é quem diz ao shader que
             //    não o leia, logo não há bytes a apagar.
-            if let Some(a) = t.alturas() {
+            if let Some(a) = t.relevo() {
                 refez |= poe(
                     device,
                     queue,
@@ -411,7 +411,7 @@ impl MeshRenderer {
         let bytes: &[u8] = bytemuck::cast_slice(tinta.amostras());
         let mut corridas = Vec::new();
         corridas_das_sujas(sujas, &mut corridas);
-        let alturas: &[u8] = tinta.alturas().map_or(&[], bytemuck::cast_slice);
+        let alturas: &[u8] = tinta.relevo().map_or(&[], bytemuck::cast_slice);
         for (de, ate) in corridas {
             queue.write_buffer(&g.amostras, de as u64, &bytes[de..ate]);
             if !alturas.is_empty() {
@@ -473,13 +473,14 @@ pub(super) fn corridas_das_sujas(sujas: &mut Vec<u32>, out: &mut Vec<(usize, usi
     }
 }
 
-/// A corrida de BYTES das alturas que corresponde a uma corrida de BYTES das
-/// amostras: a mesma faixa de amostras, a `4` bytes cada em vez de `12`.
+/// A corrida de BYTES do relevo que corresponde a uma corrida de BYTES das
+/// amostras: a mesma faixa de amostras, a `8` bytes cada (`[altura, corpo]`)
+/// em vez de `12`.
 ///
 /// ⚠️ Escrita à parte, e com gate, pela mesma razão da [`corridas_das_sujas`]:
 /// é aritmética que põe bytes VÁLIDOS no sítio errado quando erra.
 pub(super) fn em_alturas((de, ate): (usize, usize)) -> (usize, usize) {
-    (de / 12 * 4, ate / 12 * 4)
+    (de / 12 * 8, ate / 12 * 8)
 }
 
 #[cfg(test)]

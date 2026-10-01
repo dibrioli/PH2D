@@ -69,6 +69,13 @@ impl Amostra for [f32; 3] {
     }
 }
 
+impl Amostra for [f32; 2] {
+    const BYTES: usize = 8;
+    fn mesmos_bits(&self, outra: &Self) -> bool {
+        self[0].to_bits() == outra[0].to_bits() && self[1].to_bits() == outra[1].to_bits()
+    }
+}
+
 impl Amostra for f32 {
     const BYTES: usize = 4;
     fn mesmos_bits(&self, outra: &Self) -> bool {
@@ -137,6 +144,23 @@ pub(super) type AmostrasDoc = Forma<[f32; 3]>;
 
 /// O RELEVO de um plano, como o ficheiro o guarda (`docs/3D/29`).
 pub(super) type AlturasDoc = Forma<f32>;
+
+/// ⭐ **O RELEVO de um plano, `[altura, corpo]`** (`docs/3D/29` §6) — o do
+/// documento v5. O [`AlturasDoc`] fica para o v4, que guardava só a altura.
+pub(super) type RelevoDoc = Forma<[f32; 2]>;
+
+/// ⭐ **A migração do relevo de um v4** — só a altura, e o corpo é DERIVADO:
+/// `1` onde havia espessura, `0` onde não havia. É exactamente como a peça se
+/// via quando foi gravada (a luz inclinava pela altura inteira), logo abrir um
+/// v4 não muda um píxel dela; o que muda é a pincelada seguinte, que já
+/// escreve o corpo verdadeiro.
+pub(super) fn relevo_de_alturas(a: AlturasDoc) -> RelevoDoc {
+    let par = |h: f32| [h, if h == 0.0 { 0.0 } else { 1.0 }];
+    match a {
+        Forma::Cruas(v) => Forma::Cruas(v.into_iter().map(par).collect()),
+        Forma::Corridas(c) => Forma::Corridas(c.into_iter().map(|(n, h)| (n, par(h))).collect()),
+    }
+}
 
 impl<T: Amostra> Forma<T> {
     /// **As amostras de volta** — `None` quando não somam o que a topologia

@@ -218,6 +218,13 @@ pub fn entrega(
         } else {
             scene.painter_limpa(painter);
         }
+        // ⭐⭐ **E o RELEVO da peça vai para a tela** (`docs/3D/29` §6) — DEPOIS
+        // da cor, cuja semente limpa o relevo da tela. Report do dono, 01/10:
+        // *«smooth, knife e outras tools não funcionam no relevo»* — eles
+        // trabalhavam sobre uma tela lisa.
+        if painter.stroke_shapes_relief() {
+            let _ = scene.painter_semeia_relevo(painter);
+        }
     }
     let consumed = painter.on_canvas_pointer(CanvasPointer {
         pos: [vx, vy],
@@ -442,6 +449,40 @@ impl Sculpt3dScene {
         false
     }
 
+    /// ⭐⭐⭐ **A tela começa com o RELEVO da peça** (`docs/3D/29` §6) — a
+    /// espessura em píxeis e o corpo, semeados na camada da tela, e a semente
+    /// da sessão LIDA DE VOLTA da tela: os mesmos números dos dois lados, senão
+    /// o que o pincel não tocou deixava de se anular na diferença.
+    ///
+    /// Devolve `false` — e a tela fica lisa, que é a lei de antes — sem
+    /// pincelada aberta, sem plano de tinta fina, ou com um plano sem relevo.
+    pub(crate) fn painter_semeia_relevo(&mut self, painter: &mut PainterTool) -> bool {
+        let Some(sessao) = self.painter_tela.as_mut() else {
+            return false;
+        };
+        let Some(fina) = self.stroke.tinta_fina.as_ref() else {
+            return false;
+        };
+        let mesh = self.objects[self.active].stack.mesh();
+        let Some(r) =
+            ph2d_sculpt3d::tela_semente_relevo::semente_relevo(mesh, fina.tinta(), sessao.vista())
+        else {
+            return false;
+        };
+        let cobertura: Vec<u8> = r
+            .corpo
+            .iter()
+            .map(|&c| (c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8)
+            .collect();
+        if !painter.seed_screen_canvas_relief(&r.px, &cobertura) {
+            return false;
+        }
+        let (w, h) = sessao.vista().tamanho();
+        painter
+            .screen_canvas_relief_in((0, 0, w, h))
+            .is_some_and(|lida| sessao.com_semente_relevo(lida.px, lida.cover))
+    }
+
     /// **A pintura simples começa numa tela TRANSPARENTE** — e ela só não o
     /// está quando um traço anterior a deixou molhada ([`TelaMolhada`]). A
     /// drenagem da limpeza deita-se fora, como a do retrato: ela não é uma
@@ -486,6 +527,7 @@ impl Sculpt3dScene {
             .as_ref()
             .map(|r| ph2d_sculpt3d::tela_na_malha::Relevo {
                 px: &r.px,
+                corpo: &r.cover,
                 janela: [r.window.0, r.window.1, r.window.2, r.window.3],
             });
         let (vertices, _) = self.stroke.pousa_a_tela_com_relevo(

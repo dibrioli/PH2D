@@ -554,6 +554,9 @@ pub(super) mod spans {
     }
 }
 
+#[path = "impasto_screen_relief.rs"]
+mod impasto_screen_relief;
+
 #[cfg(test)]
 #[path = "screen_canvas_relief_tests.rs"]
 mod screen_canvas_relief_tests;

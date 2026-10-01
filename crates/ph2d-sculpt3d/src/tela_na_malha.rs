@@ -227,6 +227,8 @@ pub struct TelaNaMalha {
     /// ⭐⭐ **A base da cadeia molhada** — só na tela semeada; ver
     /// [`BaseDaCadeia`].
     cadeia: BaseDaCadeia,
+    /// ⭐⭐ **O relevo com que a tela COMEÇOU** — ver o filho `relevo`.
+    semente_relevo: Option<relevo::SementeDoRelevo>,
 }
 
 impl TelaNaMalha {
@@ -283,6 +285,7 @@ impl TelaNaMalha {
             projetadas: 0,
             semente: None,
             cadeia: BaseDaCadeia::vazia(amostras),
+            semente_relevo: None,
         }
     }
 
@@ -328,6 +331,7 @@ impl TelaNaMalha {
     /// continuar.
     pub fn larga(&mut self) -> (Option<Vec<u8>>, BaseDaCadeia) {
         let vazia = BaseDaCadeia::vazia(self.visivel.len());
+        self.semente_relevo = None;
         (
             self.semente.take(),
             std::mem::replace(&mut self.cadeia, vazia),

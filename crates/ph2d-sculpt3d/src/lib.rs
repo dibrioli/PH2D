@@ -196,6 +196,9 @@ mod tela_relevo_tests;
 /// ⭐⭐ **O RETRATO DA PEÇA** — a imagem com que a tela do Painter começa nos
 /// modos que lêem a cor debaixo do pincel; ver o cabeçalho dele.
 pub mod tela_semente;
+/// ⭐⭐ **O RELEVO DA PEÇA visto da vista** — a semente de relevo com que a tela
+/// do Painter começa uma pincelada que molda a espessura; ver o cabeçalho dele.
+pub mod tela_semente_relevo;
 #[cfg(test)]
 #[path = "tela_semente_tests.rs"]
 mod tela_semente_tests;

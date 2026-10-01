@@ -1,8 +1,8 @@
 //! Os gates do [RELEVO](crate::relevo) — irmão (`#[path]`) do `lib.rs`.
 //!
-//! ⚠️ A régua da leitura é a COR: as duas passam pelos mesmos pesos, logo uma
-//! altura igual a um canal da cor tem de se ler IGUAL AO BIT a esse canal, em
-//! todo ponto. Uma segunda redacção da interpolação na altura divergia aqui.
+//! ⚠️ A régua da leitura é a COR: as três passam pelos mesmos pesos, logo uma
+//! altura (e um corpo) igual a um canal da cor tem de se ler IGUAL AO BIT a esse
+//! canal, em todo ponto. Uma segunda redacção da interpolação divergia aqui.
 //! A régua de ENDEREÇO (um nó da retícula lê a amostra que lá está) vem ao
 //! lado, porque a primeira sozinha aprovaria duas leituras erradas iguais.
 
@@ -32,16 +32,16 @@ fn grelha() -> (usize, Vec<Vec<u32>>) {
     (((N + 1) * (N + 1)) as usize, faces)
 }
 
-/// Um plano com cor e relevo: o relevo é o canal VERMELHO da cor, e os dois
-/// distintos por amostra.
+/// Um plano com cor e relevo: a altura é o canal VERMELHO da cor e o corpo o
+/// VERDE, os três distintos por amostra.
 fn com_relevo(nivel: u8) -> (Vec<Vec<u32>>, Tinta) {
     let (verts, faces) = grelha();
     let mut t = Tinta::nova(verts, faces.iter().map(|f| &f[..]), nivel);
     for (i, a) in t.amostras_mut().iter_mut().enumerate() {
         *a = [valor(i), valor(i + 7), valor(i + 13)];
     }
-    let vermelho: Vec<f32> = t.amostras().iter().map(|c| c[0]).collect();
-    t.alturas_mut().copy_from_slice(&vermelho);
+    let rg: Vec<[f32; 2]> = t.amostras().iter().map(|c| [c[0], c[1]]).collect();
+    t.relevo_mut().copy_from_slice(&rg);
     (faces, t)
 }
 
@@ -51,21 +51,24 @@ fn sem_relevo_nao_ha_alturas_e_nao_se_paga_nada() {
     let (verts, faces) = grelha();
     let mut t = Tinta::nova(verts, faces.iter().map(|f| &f[..]), 3);
     assert!(!t.tem_relevo());
-    assert!(t.alturas().is_none());
-    assert_eq!(t.altura(0), 0.0);
-    assert_eq!(t.altura_tri(6, &faces[6], [0.2, 0.3, 0.5]), 0.0);
+    assert!(t.relevo().is_none());
+    assert_eq!(t.espessura(0), [0.0; 2]);
+    assert_eq!(t.espessura_tri(6, &faces[6], [0.2, 0.3, 0.5]), [0.0; 2]);
     let sem = t.footprint_bytes();
     let n = t.amostras().len();
-    assert!(t.alturas_mut().iter().all(|&h| h == 0.0), "nasce a zero");
+    assert!(
+        t.relevo_mut().iter().all(|&h| h == [0.0; 2]),
+        "nasce a zero"
+    );
     assert!(t.tem_relevo());
     assert!(
-        t.footprint_bytes() >= sem + n * size_of::<f32>(),
+        t.footprint_bytes() >= sem + n * size_of::<[f32; 2]>(),
         "o relevo conta no peso da peça (a fila de desfazer soma bytes)"
     );
 }
 
-/// ⭐⭐⭐ **A altura lê-se pelos MESMOS pesos da cor, ao bit** — em pontos
-/// dentro das faces das duas formas e nos quatro degraus mais baixos.
+/// ⭐⭐⭐ **A altura e o corpo lêem-se pelos MESMOS pesos da cor, ao bit** — em
+/// pontos dentro das faces das duas formas e nos quatro degraus mais baixos.
 #[test]
 fn a_altura_le_com_os_pesos_da_cor_ao_bit() {
     for nivel in 0..=3 {
@@ -77,18 +80,24 @@ fn a_altura_le_com_os_pesos_da_cor_ao_bit() {
                 let b = ((s * 5 % 9) as f32 + 0.21) / 9.7;
                 if f.len() == 3 {
                     let bar = [a * (1.0 - b), b, (1.0 - a) * (1.0 - b)];
+                    let (e, c) = (t.espessura_tri(fi, f, bar), t.cor_tri(fi, f, bar));
+                    assert_eq!(e[0].to_bits(), c[0].to_bits(), "nível {nivel}, face {fi}");
                     assert_eq!(
-                        t.altura_tri(fi, f, bar).to_bits(),
-                        t.cor_tri(fi, f, bar)[0].to_bits(),
-                        "nível {nivel}, face {fi}"
+                        e[1].to_bits(),
+                        c[1].to_bits(),
+                        "corpo: nível {nivel}, face {fi}"
                     );
+                    assert_eq!(t.altura_tri(fi, f, bar).to_bits(), e[0].to_bits());
                 } else {
                     let uv = [a, b];
+                    let (e, c) = (t.espessura_quad(fi, f, uv), t.cor_quad(fi, f, uv));
+                    assert_eq!(e[0].to_bits(), c[0].to_bits(), "nível {nivel}, face {fi}");
                     assert_eq!(
-                        t.altura_quad(fi, f, uv).to_bits(),
-                        t.cor_quad(fi, f, uv)[0].to_bits(),
-                        "nível {nivel}, face {fi}"
+                        e[1].to_bits(),
+                        c[1].to_bits(),
+                        "corpo: nível {nivel}, face {fi}"
                     );
+                    assert_eq!(t.altura_quad(fi, f, uv).to_bits(), e[0].to_bits());
                 }
                 pontos += 1;
             }
@@ -103,7 +112,7 @@ fn a_altura_le_com_os_pesos_da_cor_ao_bit() {
 #[test]
 fn um_no_da_reticula_le_a_altura_que_la_esta() {
     let (faces, t) = com_relevo(2);
-    let a = t.alturas().expect("com relevo");
+    let a = t.relevo().expect("com relevo");
     for (fi, f) in faces.iter().enumerate() {
         let l = t.lado_da_face(fi);
         let lf = l as f32;
@@ -113,16 +122,23 @@ fn um_no_da_reticula_le_a_altura_que_la_esta() {
                     let k = l - i - j;
                     let idx = t.indice_de(fi, f, sitio_tri(l, i, j, k)) as usize;
                     let bar = [i as f32 / lf, j as f32 / lf, k as f32 / lf];
-                    let lida = t.altura_tri(fi, f, bar);
-                    assert!((lida - a[idx]).abs() <= 1e-6, "face {fi} ({i},{j},{k})");
+                    let lida = t.espessura_tri(fi, f, bar);
+                    for e in 0..2 {
+                        assert!(
+                            (lida[e] - a[idx][e]).abs() <= 1e-6,
+                            "face {fi} ({i},{j},{k})"
+                        );
+                    }
                 }
             }
         } else {
             for j in 0..=l {
                 for i in 0..=l {
                     let idx = t.indice_de(fi, f, sitio_quad(l, i, j)) as usize;
-                    let lida = t.altura_quad(fi, f, [i as f32 / lf, j as f32 / lf]);
-                    assert!((lida - a[idx]).abs() <= 1e-6, "face {fi} ({i},{j})");
+                    let lida = t.espessura_quad(fi, f, [i as f32 / lf, j as f32 / lf]);
+                    for e in 0..2 {
+                        assert!((lida[e] - a[idx][e]).abs() <= 1e-6, "face {fi} ({i},{j})");
+                    }
                 }
             }
         }
@@ -135,11 +151,12 @@ fn um_relevo_do_tamanho_errado_e_recusado() {
     let (_, mut t) = com_relevo(1);
     let antes = t.clone();
     let n = t.amostras().len();
-    assert!(!t.com_alturas(Some(vec![1.0; n + 1])));
+    assert!(!t.com_relevo(Some(vec![[1.0; 2]; n + 1])));
     assert_eq!(t, antes, "a recusa não mexeu em nada");
-    assert!(t.com_alturas(Some(vec![0.5; n])));
+    assert!(t.com_relevo(Some(vec![[0.5, 0.25]; n])));
     assert_eq!(t.altura(3), 0.5);
-    assert!(t.com_alturas(None), "retirar o relevo é sempre possível");
+    assert_eq!(t.corpo(3), 0.25);
+    assert!(t.com_relevo(None), "retirar o relevo é sempre possível");
     assert!(!t.tem_relevo());
 }
 
@@ -152,20 +169,21 @@ fn a_uniformizada_leva_o_relevo() {
     let mut t =
         Tinta::graduada(verts, faces.iter().map(|f| &f[..]), &ks, 2).expect("descreve a malha");
     for (i, a) in t.amostras_mut().iter_mut().enumerate() {
-        *a = [valor(i), 0.0, 0.0];
+        *a = [valor(i), valor(i + 3), 0.0];
     }
     let sem = t
         .uniformizada(faces.iter().map(|f| &f[..]))
         .expect("descreve");
     assert!(!sem.tem_relevo(), "sem relevo não se inventa um");
 
-    let vermelho: Vec<f32> = t.amostras().iter().map(|c| c[0]).collect();
-    t.alturas_mut().copy_from_slice(&vermelho);
+    let rg: Vec<[f32; 2]> = t.amostras().iter().map(|c| [c[0], c[1]]).collect();
+    t.relevo_mut().copy_from_slice(&rg);
     let u = t
         .uniformizada(faces.iter().map(|f| &f[..]))
         .expect("descreve");
-    let a = u.alturas().expect("o relevo foi com o plano");
+    let a = u.relevo().expect("o relevo foi com o plano");
     for (i, c) in u.amostras().iter().enumerate() {
-        assert_eq!(a[i].to_bits(), c[0].to_bits(), "amostra {i}");
+        assert_eq!(a[i][0].to_bits(), c[0].to_bits(), "amostra {i}");
+        assert_eq!(a[i][1].to_bits(), c[1].to_bits(), "corpo: amostra {i}");
     }
 }

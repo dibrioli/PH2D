@@ -77,7 +77,7 @@ impl Tinta {
                         let idx = indice(novo.topologia(), fi, sitio_tri(l, i, j, k), cantos);
                         novo.amostras_mut()[idx as usize] = self.cor_tri(fi, cantos, bar);
                         if relevo {
-                            novo.alturas_mut()[idx as usize] = self.altura_tri(fi, cantos, bar);
+                            novo.relevo_mut()[idx as usize] = self.espessura_tri(fi, cantos, bar);
                         }
                     }
                 }
@@ -88,7 +88,7 @@ impl Tinta {
                         let idx = indice(novo.topologia(), fi, sitio_quad(l, i, j), cantos);
                         novo.amostras_mut()[idx as usize] = self.cor_quad(fi, cantos, uv);
                         if relevo {
-                            novo.alturas_mut()[idx as usize] = self.altura_quad(fi, cantos, uv);
+                            novo.relevo_mut()[idx as usize] = self.espessura_quad(fi, cantos, uv);
                         }
                     }
                 }

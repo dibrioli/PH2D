@@ -131,3 +131,60 @@ ela**: ele é byte-idêntico ao de hoje por construção, com gate.
 (o critério de desistência do §4 fala de `> 1 ms`; a escrita é por corrida de
 amostras sujas, a `4` bytes cada, ao lado da cor) e a leitura a olho do relevo
 sob a luz de fábrica (`Pbr`).
+
+## 6. O CORPO e a SEMENTE do relevo (01/10, dois reports do dono)
+
+Smoke da 3b aprovado, com dois reports: *«o traço tem um relevo indesejado na
+borda»* (foto: um anel cinzento em degraus à volta de um traço vermelho) e
+*«smooth, knife e outras tools não funcionam no relevo»*.
+
+### 6.1 A causa, medida antes da cura
+
+- **O anel é a ESPESSURA SEM TINTA.** O assentamento do impasto alisa a altura e
+  ela espalha-se `~6 px` para fora da cor (medido: cor `22 px` de largura, altura
+  `33 px`, e na borda da cor a altura ainda vale `~5` de um pico de `15,5`). No
+  Painter 2D a luz pesa o relevo pela cobertura (`impasto_light::paint_body`, a
+  cura do halo de 2026-07-12) e o halo não acende; a tela da vista levava a
+  altura **sem** a cobertura, e a peça acendia o barro nu. Sonda: `1 894` píxeis
+  com altura e sem cor, pico `4,94 px`.
+- **As ferramentas trabalhavam numa tela LISA.** Cada pincelada começa por
+  semear a tela com o retrato da cor, e essa semente passa pelo `set_source`,
+  que apaga o relevo das camadas. Sonda: sem semente o alisar não devolve um
+  quadro e a faca devolve `21` sem espessura; com a espessura semeada os dois a
+  mudam (`9,7` e `2,8 px`).
+
+### 6.2 A lei que fica
+
+- **O relevo é um PAR `[altura, corpo]`** por amostra (`ph2d-mesh-colors`), lido
+  pelos mesmos pesos da cor. O corpo é a cobertura da tinta (`0..1`), e o
+  *bump* do shader é **escalado por ele** (`clamp(corpo, 0, 1) × gradiente`):
+  com corpo `1` o desenho é o de antes **ao bit**; onde a espessura transborda a
+  tinta o corpo é `0` e a luz não a lê. ⇒ o halo deixa de acender sem tocar na
+  altura.
+- **A tela é SEMEADA com o relevo da peça** (`tela_semente_relevo`, a mesma
+  rasterização do retrato de cor), em píxeis e com o corpo como cobertura, no
+  `entrega` e **só** para um traço que molda relevo.
+- **`nova = antes + k·(tela − semente)`**, nos dois canais, com o corpo preso a
+  `0..1`. Com a tela intocada a diferença é ZERO e o plano sai ao bit; o alisar
+  que BAIXA a tela baixa a peça. ⚠️ A semente que a escultura guarda é a que a
+  tela **DEVOLVE** depois de semeada, nunca a enviada: a ida-e-volta pela
+  profundidade da camada custa um ULP, e um ULP em cada amostra não tocada
+  viraria espessura.
+- **O documento sobe a `v5`, com degrau:** um `v4` lê-se com o corpo DERIVADO
+  (`1` onde há altura, `0` onde não há) — antes do corpo uma altura não nula só
+  nascia debaixo de tinta.
+
+### 6.3 Gates e mutação
+
+| onde | gate |
+|---|---|
+| Painter | `o_corpo_e_zero_onde_a_espessura_transborda_a_tinta` (a régua é o que a LUZ lê: `altura × corpo` no halo `≤ 5 %` do cru, medido `1,2 %`; e `≥ 99 %` do halo sem corpo, medido `1 890` de `1 894`) · `a_semente_do_relevo_volta_pela_janela` · `sobre_o_relevo_semeado_o_alisar_e_a_faca_trabalham` (com o CONTROLO sem semente) |
+| peça | `com_a_tela_semeada_o_que_nao_mudou_nao_mexe` (CONTROLO: sem semente a tela soma outra vez) · `uma_ferramenta_que_baixa_a_tela_baixa_a_peca` · `a_semente_de_relevo_e_o_relevo_da_peca_em_pixeis` |
+| placa | `tinta_relevo_no_device` parte (3): a mesma rampa com corpo `0` desenha o liso |
+| ficheiro | `um_documento_v4_abre_com_o_corpo_derivado_da_altura` |
+| fiação | `R1`/`R2` no censo da tinta fina (a semente pedida no `entrega` · a semente LIDA) |
+
+⚠️ **Uma barra que mudou de forma, com a razão:** a 1.ª redacção do gate do
+halo exigia corpo **exactamente zero** e reprovou com `3/255` em `4` píxeis — a
+cobertura e o alfa de 8 bits não arredondam no mesmo sítio. A régua passou a ser
+a grandeza que o produto LÊ (o relevo aceso), não um sucedâneo dela.

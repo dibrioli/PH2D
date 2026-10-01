@@ -118,6 +118,14 @@ const SAIDA_DO_CAMPO: &str = include_str!("../../ph2d-app-field3d/src/export.rs"
 /// construído na mesma, ou desceria sem o painel nem o artista saberem.
 const QUADRO: &str = include_str!("slots.rs");
 
+/// ⭐⭐⭐ **A SEMENTE DO RELEVO** (`docs/3D/29` §6, report do dono de 01/10:
+/// *«smooth, knife e outras tools não funcionam no relevo»*). A entrega e a
+/// semente pedem um `PainterTool` e uma cena com device, logo os elos são
+/// texto: sem o 1.º a tela começa lisa e o alisar não tem o que alisar; sem o
+/// 2.º a diferença guarda a semente ENVIADA e um ULP de ida-e-volta vira
+/// espessura em toda amostra que o pincel não tocou.
+const PAINTER_NA_MALHA: &str = include_str!("painter_na_malha.rs");
+
 /// Cada elo: o ficheiro, a agulha, e o nome da mutação que ela mata.
 fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
     vec![
@@ -473,6 +481,20 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
             "                        \"app.sculpt3d.tinta_fina.nao_cabe_na_placa\",".to_string(),
             QUADRO,
         ),
+        // ── A SEMENTE DO RELEVO (report de 01/10) ──
+        (
+            "painter_na_malha.rs",
+            "R1 a tela começa lisa: o relevo da peça não chega ao alisar nem à faca",
+            "            let _ = scene.painter_semeia_relevo(painter);".to_string(),
+            PAINTER_NA_MALHA,
+        ),
+        (
+            "painter_na_malha.rs",
+            "R2 a semente guardada é a ENVIADA e não a que a tela devolve",
+            "            .is_some_and(|lida| sessao.com_semente_relevo(lida.px, lida.cover))"
+                .to_string(),
+            PAINTER_NA_MALHA,
+        ),
     ]
 }
 
@@ -492,8 +514,8 @@ fn a_cura_da_tinta_fina_esta_ligada_nos_sitios_todos() {
     let elos = elos();
     assert_eq!(
         elos.len(),
-        31,
-        "a população deste censo são os trinta e um elos"
+        33,
+        "a população deste censo são os trinta e três elos"
     );
 
     for (ficheiro, mutacao, agulha, fonte) in elos {

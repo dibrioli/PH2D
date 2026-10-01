@@ -65,6 +65,19 @@ impl WidgetStore {
     pub fn section_themes_are_the_custom(&self) -> bool {
         self.section_prefs.custom.as_ref() == Some(&self.section_prefs.themes)
     }
+
+    /// ⭐⭐ **Esta linha de menu está INDISPONÍVEL agora?** — hoje só *Load Custom Theme* sem nada
+    /// gravado (o aberto da §6.2 do handoff de 30/09: a linha não fazia nada e não o dizia).
+    ///
+    /// ⚠️ **Uma porta, DOIS leitores**, e cada um sozinho mente: o pintor (a linha apagada e sem
+    /// realce) e o `click_belongs_to_the_open_menu` (o Down nela não é «clique fora», logo o menu
+    /// fica aberto). Sem o primeiro a linha parece viva e não faz nada; sem o segundo parece apagada
+    /// e fecha o menu. O despacho do clique não a lê: o próprio [`Self::load_custom_section_themes`]
+    /// já recusa sem gravação.
+    #[must_use]
+    pub fn menu_row_is_unavailable(&self, id: NodeId) -> bool {
+        id == crate::ids::CTX_MENU_SECTION_THEMES_LOAD_CUSTOM && self.section_prefs.custom.is_none()
+    }
 }
 
 /// Acrescenta ao texto do `sections.txt` as linhas do custom (nada se nunca foi gravado).
@@ -136,6 +149,24 @@ mod tests {
         assert_eq!(s.section_theme(A), Some(Theme::Oled));
         assert_eq!(s.section_theme(B), Some(Theme::Candy));
         assert!(s.take_section_prefs_dirty(), "o load grava");
+    }
+
+    /// ⭐⭐ **Load fica indisponível até haver o que pôr — e um custom VAZIO já conta.** *Mutação:
+    /// a porta a responder `false` sempre ⇒ a 1.ª asserção reprova; a responder pela COMBINAÇÃO em
+    /// vez de pela gravação ⇒ a do vazio reprova.*
+    #[test]
+    fn load_esta_indisponivel_ate_haver_o_que_por() {
+        use crate::ids;
+        let mut s = WidgetStore::with_capacity(4);
+        assert!(s.menu_row_is_unavailable(ids::CTX_MENU_SECTION_THEMES_LOAD_CUSTOM));
+        // as irmãs nunca estão
+        assert!(!s.menu_row_is_unavailable(ids::CTX_MENU_SECTION_THEMES_SAVE_CUSTOM));
+        assert!(!s.menu_row_is_unavailable(ids::CTX_MENU_SECTION_THEMES_RESET));
+        s.save_custom_section_themes(); // vazio: «todas no tema do app» é uma gravação
+        assert!(!s.menu_row_is_unavailable(ids::CTX_MENU_SECTION_THEMES_LOAD_CUSTOM));
+        // e o reset não a apaga
+        s.reset_section_themes();
+        assert!(!s.menu_row_is_unavailable(ids::CTX_MENU_SECTION_THEMES_LOAD_CUSTOM));
     }
 
     /// ⭐ **Um custom VAZIO é uma gravação**, e atravessa o ficheiro como tal. *Mutação: escrever o

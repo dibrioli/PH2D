@@ -12,7 +12,8 @@
 //! whole slot for the right-click background-color menu, plus
 //! title + body sub-rects for the TextInput focus + edit pipeline.
 
-use super::{NOTE_BODY_IDS, NOTE_GRIP_IDS, NOTE_SLOT_IDS, NOTE_TITLE_IDS, read_text_input};
+use super::read_text_input;
+use crate::ids::NoteIds;
 use crate::interaction::{
     HitIndex, NoteData, WidgetStore,
     dispatch::note_drag::{lugar_da_queda, seccoes_do_painel},
@@ -44,7 +45,8 @@ fn note_text_pad_y() -> f32 {
 
 /// Paint a single sticky-note. Editable: the title + body each
 /// have their own TextInput state in the store
-/// (`NOTE_TITLE_IDS[slot]` + `NOTE_BODY_IDS[slot]`).
+/// (`caixas.title[slot]` + `caixas.body[slot]`) — `caixas` são as ranhuras do PAINEL que pinta
+/// ([`crate::ids::note_ids`]; até 2026-10-01 eram partilhadas entre a Galeria e o Inspector).
 #[allow(clippy::too_many_arguments)]
 pub fn paint_one_note(
     scene: &mut VectorScene,
@@ -55,6 +57,7 @@ pub fn paint_one_note(
     w: f32,
     y: &mut f32,
     note: &NoteData,
+    caixas: &NoteIds,
     slot: usize,
 ) {
     let pad = Spacing::Md.px();
@@ -64,7 +67,7 @@ pub fn paint_one_note(
     let body_h = note_text_pad_y() * 2.0 + (body_font + Spacing::Xs.px()) * 3.0; // LITERAL-PX-OK: 3 lines (line count)
     let note_h = title_h + body_h + pad * 2.0;
     let r = Rect::new(x, *y, w, note_h);
-    if let Some(slot_id) = NOTE_SLOT_IDS.get(slot) {
+    if let Some(slot_id) = caixas.slot.get(slot) {
         hit_index.register(*slot_id, r);
     }
     let rgba = highlighter_rgba(note.color_idx);
@@ -86,7 +89,7 @@ pub fn paint_one_note(
         (r.w - pad - grip_slot_w_px()).max(0.0),
         title_h,
     );
-    if let Some(title_id) = NOTE_TITLE_IDS.get(slot) {
+    if let Some(title_id) = caixas.title.get(slot) {
         hit_index.register(*title_id, title_rect);
         paint_note_editable_line(
             scene,
@@ -99,14 +102,14 @@ pub fn paint_one_note(
             "Title",
         );
     }
-    if let Some(grip_id) = NOTE_GRIP_IDS.get(slot) {
+    if let Some(grip_id) = caixas.grip.get(slot) {
         hit_index.register(*grip_id, grip_hit_rect(fila));
         // Os pontos na cor do texto da nota a meia força — a mesma do texto de espera.
         let pontos = ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x80); // LITERAL-COLOR-OK: note-grip — the placeholder glyph tone
         paint_grip(scene, grip_rect(fila), pontos);
     }
     let body_rect = Rect::new(r.x + pad, r.y + pad + title_h, r.w - pad * 2.0, body_h);
-    if let Some(body_id) = NOTE_BODY_IDS.get(slot) {
+    if let Some(body_id) = caixas.body.get(slot) {
         hit_index.register(*body_id, body_rect);
         paint_note_editable_multiline(
             scene,
@@ -141,9 +144,10 @@ pub fn paint_note_drag_ghost(
     let Some(d) = store.note_drag().filter(|d| d.active && d.panel == panel) else {
         return;
     };
-    let (Some(note), Some(painel)) = (
+    let (Some(note), Some(painel), Some(caixas)) = (
         store.notes_for_panel(panel).get(d.index).cloned(),
         store.panel_rect(panel),
+        crate::ids::note_ids(panel),
     ) else {
         return;
     };
@@ -151,7 +155,7 @@ pub fn paint_note_drag_ghost(
     let ranhura = |i: usize| {
         hit_index
             .iter_registrations()
-            .find(|(id, r)| *id == NOTE_SLOT_IDS[i] && dentro(r))
+            .find(|(id, r)| *id == caixas.slot[i] && dentro(r))
             .map(|(_, r)| r)
     };
     let Some(original) = ranhura(d.index) else {
@@ -203,6 +207,7 @@ pub fn paint_note_drag_ghost(
         original.w,
         &mut y,
         &note,
+        caixas,
         d.index,
     );
     crate::widget::paint_card_ghost(

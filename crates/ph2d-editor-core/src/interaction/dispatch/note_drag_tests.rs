@@ -68,3 +68,33 @@ fn a_seccao_sob_um_y() {
     assert_eq!(seccao_sob(&heads, 301.0), Some(B));
     assert_eq!(seccao_sob(&[], 10.0), None);
 }
+
+/// ⭐⭐ **Na Galeria a queda conta as ranhuras DA GALERIA** (2026-10-01: cada painel tem as suas).
+/// A mesma cena da [`a_posicao_na_seccao_sai_do_meio_das_notas`], com as secções e as ranhuras da
+/// Galeria. *Mutação: o `lugar_da_queda` a ler as ranhuras do Inspector ⇒ nenhuma nota da Galeria
+/// conta e a posição fica `0` para todo `y`.*
+#[test]
+fn na_galeria_a_queda_conta_as_ranhuras_dela() {
+    let g = ids::GAL_PANEL;
+    let (a, b) = (ids::SECTION_IDS[0], ids::SECTION_IDS[1]);
+    let mut s = WidgetStore::with_capacity(8);
+    s.set_panel_rect(g, Rect::new(0.0, 0.0, 300.0, 600.0));
+    s.notes_push(g, 0, Some(a));
+    s.notes_push(g, 1, Some(a));
+    let mut hit = HitIndex::default();
+    hit.register(a, Rect::new(0.0, 100.0, 300.0, 20.0));
+    hit.register(b, Rect::new(0.0, 300.0, 300.0, 20.0));
+    hit.register(ids::GAL_NOTES.slot[0], Rect::new(0.0, 150.0, 300.0, 40.0));
+    hit.register(ids::GAL_NOTES.slot[1], Rect::new(0.0, 200.0, 300.0, 40.0));
+    let drag = NoteDrag {
+        panel: g,
+        index: 1,
+        down_x: 0.0,
+        down_y: 220.0,
+        cursor_x: 0.0,
+        cursor_y: 160.0,
+        active: true,
+    };
+    assert_eq!(lugar_da_queda(&s, &hit, &drag, 160.0), Some((Some(a), 0)));
+    assert_eq!(lugar_da_queda(&s, &hit, &drag, 175.0), Some((Some(a), 1)));
+}

@@ -87,6 +87,7 @@ pub(crate) fn paint_trailing_notes(
                 inner_w,
                 y,
                 note,
+                &ids::INSP_NOTES,
                 slot,
             );
         }
@@ -237,6 +238,7 @@ pub(crate) fn finish_section(
                 inner_w,
                 &mut new_y,
                 note,
+                &ids::INSP_NOTES,
                 slot,
             );
         }

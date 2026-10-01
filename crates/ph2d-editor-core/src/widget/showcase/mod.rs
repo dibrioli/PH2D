@@ -246,12 +246,13 @@ pub fn apply_showcase_event(store: &mut WidgetStore, event: WidgetEvent) -> bool
         if id == crate::ids::CTX_MENU_CREATE_NOTE {
             if let Some(req) = store.consume_last_context_menu()
                 && let ContextMenuKind::CreateNote { panel, section } = req.kind
+                && let Some(caixas) = crate::ids::note_ids(panel)
                 && let Some(novo) = store.notes_push(panel, 0, section)
             {
                 // ⭐ O título nasce do da própria nota (`chrome.interaction.note_n`, traduzido), e
                 //    o corpo vazio — as caixas são da RANHURA, e podem guardar texto de outra nota.
                 let titulo = store.notes_for_panel(panel)[novo].title.clone();
-                for (ids, texto) in [(&NOTE_TITLE_IDS, titulo), (&NOTE_BODY_IDS, String::new())] {
+                for (ids, texto) in [(&caixas.title, titulo), (&caixas.body, String::new())] {
                     if let Some(InteractiveState::TextInput { text, caret, .. }) =
                         store.get_mut(ids[novo])
                     {

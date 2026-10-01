@@ -71,16 +71,14 @@ pub fn lugar_da_queda(
     let painel = store.panel_rect(drag.panel)?;
     let seccao = seccao_sob(&seccoes_do_painel(hit_index, painel), y);
     let notas = store.notes_for_panel(drag.panel);
+    let caixas = crate::ids::note_ids(drag.panel)?;
     let rank = hit_index
         .iter_registrations()
         .filter(|(id, r)| {
             dentro(painel, *r)
-                && crate::ids::NOTE_SLOT_IDS
-                    .iter()
-                    .position(|s| s == id)
-                    .is_some_and(|i| {
-                        i != drag.index && notas.get(i).is_some_and(|n| n.section == seccao)
-                    })
+                && caixas.slot.iter().position(|s| s == id).is_some_and(|i| {
+                    i != drag.index && notas.get(i).is_some_and(|n| n.section == seccao)
+                })
         })
         .filter(|(_, r)| r.y + r.h * 0.5 < y)
         .count();

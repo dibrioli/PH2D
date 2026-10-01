@@ -1,11 +1,14 @@
 //! Gates das operações de nota — a lei da permutação (o texto viaja com a nota).
 
 use super::*;
-use crate::ids;
+use crate::ids::{self, NOTE_BODY_IDS, NOTE_HOSTS, NOTE_TITLE_IDS};
 
 fn store() -> WidgetStore {
-    let mut s = WidgetStore::with_capacity(64);
-    for id in NOTE_TITLE_IDS.iter().chain(NOTE_BODY_IDS.iter()) {
+    let mut s = WidgetStore::with_capacity(128);
+    for id in NOTE_HOSTS
+        .iter()
+        .flat_map(|(_, n)| n.title.iter().chain(n.body.iter()))
+    {
         s.register(
             *id,
             InteractiveState::TextInput {
@@ -143,4 +146,41 @@ fn o_arrasto_de_nota_arma_depois_do_limiar() {
     assert!(s.note_drag().unwrap().active);
     assert!(s.end_note_drag().is_some());
     assert!(s.note_drag().is_none());
+}
+
+/// ⭐⭐ **A Galeria e o Inspector têm caixas PRÓPRIAS** (2026-10-01): apagar a nota `0` da Galeria
+/// não toca no texto da nota `0` do Inspector, e as duas notas `0` lêem textos diferentes. Era a
+/// dívida da §1 do handoff de 30/09 (*«uma nota com o mesmo índice nos dois painéis lê o mesmo
+/// texto»*). *Mutação: a Galeria a devolver as ranhuras do Inspector em `note_ids` ⇒ o apagar da
+/// Galeria apaga o texto do Inspector.*
+#[test]
+fn as_notas_de_um_painel_nao_tocam_no_texto_do_outro() {
+    let g = ids::GAL_PANEL;
+    let mut s = tres(); // Inspector: n0 n1 n2
+    let gal = ids::note_ids(g).expect("a galeria pinta notas");
+    for i in 0..2 {
+        assert_eq!(s.notes_push(g, 0, None), Some(i));
+        escreve(&mut s, gal.title[i], &format!("g{i}"));
+    }
+    assert_eq!(le(&s, gal.title[0]), "g0");
+    assert_eq!(
+        le(&s, NOTE_TITLE_IDS[0]),
+        "n0",
+        "a nota 0 de cada painel lê o SEU texto"
+    );
+    s.note_delete(g, 0);
+    assert_eq!(le(&s, gal.title[0]), "g1", "na galeria a de baixo subiu");
+    assert_eq!(
+        titulos(&s),
+        vec!["n0", "n1", "n2"],
+        "o Inspector ficou intocado"
+    );
+}
+
+/// Um painel que não pinta notas não tem caixas: permutar nele é um no-op e não toca em nenhuma.
+#[test]
+fn permutar_num_painel_sem_notas_nao_toca_em_nada() {
+    let mut s = tres();
+    s.permute_note_texts(ids::HIER_PANEL, &[2, 1, 0]);
+    assert_eq!(titulos(&s), vec!["n0", "n1", "n2"]);
 }

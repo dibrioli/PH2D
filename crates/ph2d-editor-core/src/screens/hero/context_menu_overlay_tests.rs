@@ -130,3 +130,20 @@ fn expressive_and_reduced_light_together() {
     assert!(lit(ids::CTX_MENU_MOTION_REDUCED, &motion));
     assert!(!lit(ids::CTX_MENU_MOTION_DISCRETE, &motion));
 }
+
+/// ⭐ **O pintor pergunta à MESMA porta que o despacho** — a linha indisponível apaga-se no texto
+/// (`Text3`) e perde o realce de hover. ⚠️ Censo de TEXTO porque o pintor pede um `TextSystem` e
+/// uma cena; a prosa sai primeiro, senão o comentário que EXPLICA a cura satisfaz a agulha.
+/// *Mutação: o pintor deixar de ler a porta ⇒ a linha parece viva e não faz nada (o aberto de 30/09).*
+#[test]
+fn the_painter_reads_the_unavailable_door() {
+    let fonte = include_str!("context_menu_overlay.rs");
+    let codigo: String = fonte
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("//"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(codigo.contains("store.menu_row_is_unavailable(*id)"));
+    assert!(codigo.contains("&& !indisponivel"), "sem realce de hover");
+    assert!(codigo.contains("if indisponivel {\n                    ColorToken::Text3"));
+}

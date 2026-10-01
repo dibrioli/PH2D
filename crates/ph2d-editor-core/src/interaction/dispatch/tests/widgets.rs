@@ -738,3 +738,45 @@ fn text_input_char_insert_advances_caret() {
     assert!(matches!(evts2, [WidgetEvent::TextChanged(_)]));
     assert_eq!(store.text(NodeId(1)), Some("ab"));
 }
+
+/// ⭐⭐ **«Create Note» só abre nos painéis que PINTAM notas** (2026-10-01). Até aqui a pergunta era
+/// uma lista de EXCLUSÃO, e todo painel fora dela oferecia o menu — mas só o Inspector e a Galeria
+/// pintam notas, logo no Vector a nota nascia no store e nunca aparecia (um botão mudo). Agora a
+/// pergunta é a tabela das ranhuras ([`crate::ids::note_ids`]). *Mutação: voltar à exclusão ⇒ o
+/// botão direito no Vector abre o `CreateNote`.* O controlo é o Inspector, onde ele tem de abrir.
+#[test]
+fn create_note_opens_only_on_a_panel_that_paints_notes() {
+    use crate::ids;
+    use crate::interaction::ContextMenuKind;
+    let arena = Bump::new();
+    let hits = HitIndex::new();
+    let abre_em = |panel| {
+        let mut store = WidgetStore::with_capacity(4);
+        store.set_panel_rect(panel, Rect::new(0.0, 0.0, 300.0, 300.0));
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            secondary(PointerKind::Down, 150.0, 150.0),
+            &arena,
+        );
+        store.context_menu().map(|m| m.kind)
+    };
+    assert!(
+        matches!(abre_em(ids::INSP_PANEL), Some(ContextMenuKind::CreateNote { panel, .. }) if panel == ids::INSP_PANEL),
+        "controlo: no Inspector o botao direito oferece criar nota"
+    );
+    assert!(
+        matches!(
+            abre_em(ids::GAL_PANEL),
+            Some(ContextMenuKind::CreateNote { .. })
+        ),
+        "e na Galeria tambem"
+    );
+    for mudo in [ids::VECTOR_PANEL, ids::PHYSICS_PANEL] {
+        assert_eq!(
+            abre_em(mudo),
+            None,
+            "um painel que nao pinta notas nao pode oferecer criar uma"
+        );
+    }
+}

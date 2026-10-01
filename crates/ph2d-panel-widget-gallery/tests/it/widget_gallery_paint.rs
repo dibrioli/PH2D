@@ -142,7 +142,9 @@ fn gallery_create_note_targets_gal_panel() {
             y: cy,
             kind: ph2d_editor_core::interaction::ContextMenuKind::CreateNote {
                 panel: ids::GAL_PANEL,
-                section: None,
+                // ⚠️ Na 1.ª secção, que está à vista: uma nota sem secção pinta-se no FIM do
+                //    corpo, abaixo da dobra, e o hit-index recorta o que não se vê.
+                section: Some(ids::SECTION_IDS[0]),
             },
         });
     // Mirror the real Down-on-menu-item path that snapshots the
@@ -160,6 +162,55 @@ fn gallery_create_note_targets_gal_panel() {
         0,
         "INSP_PANEL should be untouched — the gallery's note must \
          not leak into the live Inspector"
+    );
+    // ⭐⭐ (2026-10-01) **E a nota da Galeria vive nas caixas DA GALERIA**: o título nasce na
+    // ranhura `GAL_NOTES`, a do Inspector fica vazia, e a pintura regista as faces da Galeria —
+    // até aqui as doze ranhuras eram partilhadas e a nota `0` dos dois painéis lia o mesmo texto.
+    // *Mutação: a galeria pintar com `INSP_NOTES` ⇒ a ranhura dela nunca chega ao hit-index.*
+    let titulo = |id| {
+        ph2d_editor_core::widget::showcase::read_text_input(&hero.store, id)
+            .1
+            .to_string()
+    };
+    assert!(
+        !titulo(ids::GAL_NOTES.title[0]).is_empty(),
+        "o titulo nasceu na galeria"
+    );
+    assert_eq!(titulo(ids::INSP_NOTES.title[0]), "", "e nao no Inspector");
+    paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
+    let dentro = |id| {
+        hero.hit_index
+            .iter_registrations()
+            .any(|(n, r)| n == id && gallery_rect.contains(r.x + r.w * 0.5, r.y + r.h * 0.5))
+    };
+    for face in [
+        ids::GAL_NOTES.slot[0],
+        ids::GAL_NOTES.title[0],
+        ids::GAL_NOTES.grip[0],
+    ] {
+        assert!(dentro(face), "a galeria pintou a nota com as ranhuras dela");
+    }
+    assert!(
+        !dentro(ids::INSP_NOTES.slot[0]),
+        "e nao com as do Inspector"
+    );
+    // ⚠️ A nota SEM secção tem o seu próprio pintor (no fim do corpo, abaixo da dobra): rola-se a
+    //    Galeria até ao fundo, pela altura que ela PUBLICA, para a nota chegar ao hit-index.
+    assert_eq!(hero.store.notes_push(ids::GAL_PANEL, 0, None), Some(1));
+    paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
+    let fundo = hero.store.panel_content_h(ids::GAL_PANEL).unwrap()
+        - hero.store.panel_visible_h(ids::GAL_PANEL).unwrap();
+    hero.store.set_panel_scroll(ids::GAL_PANEL, fundo);
+    hero.store.set_panel_scroll_live(ids::GAL_PANEL, fundo);
+    paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
+    let dentro = |id| {
+        hero.hit_index
+            .iter_registrations()
+            .any(|(n, r)| n == id && gallery_rect.contains(r.x + r.w * 0.5, r.y + r.h * 0.5))
+    };
+    assert!(
+        dentro(ids::GAL_NOTES.slot[1]),
+        "a nota sem seccao tambem usa as ranhuras da galeria"
     );
 }
 

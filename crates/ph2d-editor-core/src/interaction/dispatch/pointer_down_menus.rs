@@ -36,9 +36,9 @@ pub(super) fn handle_down_menus(
         // Secondary click INSIDE the BlenderColorPicker belongs to the picker's own
         // dispatch — right-click on a palette swatch REMOVES it (see `apply_blender_hit`).
         // The picker publishes its outer rect to `panel_rects`, so without this guard the
-        // CreateNote fallback below (which doesn't exclude the picker) swallows the click
-        // and `return true`s, and the swatch-remove never runs. Bail to the regular Down
-        // path. Tested directly against the picker rect (not `panel_at`, whose HashMap
+        // panel fallback below (which no longer offers CreateNote there, but still CLOSES the
+        // menu and `return true`s) swallows the click, and the swatch-remove never runs. Bail
+        // to the regular Down path. Tested directly against the picker rect (not `panel_at`, whose HashMap
         // order could surface a panel the picker overlaps).
         if store
             .panel_rect(crate::ids::INSP_BLENDER_PICKER)
@@ -214,21 +214,12 @@ pub(super) fn handle_down_menus(
                     section: section_id,
                 },
             });
-        } else if let Some(panel) = panel_under.filter(|p| {
-            *p != crate::ids::HIER_PANEL
-                && *p != crate::ids::PAD_PANEL
-                && *p != crate::ids::BGR_PANEL
-                && *p != crate::ids::CEQ_PANEL
-                && *p != crate::ids::UPS_PANEL
-                && *p != crate::ids::EQS_PANEL
-                && *p != crate::ids::PAINTER_LAYERS_PANEL
-                && *p != crate::ids::TIMELINE_PANEL
-                && *p != crate::ids::GS_PANEL
-                // ⭐ A biblioteca de assets pela mesma lei: é superfície de operação, não de
-                // anotação. Sem esta linha, o botão direito ao lado de um cartão oferecia
-                // *«Create note»* dentro do navegador.
-                && *p != crate::ids::ASSET_PANEL
-        }) {
+        } else if let Some(panel) = panel_under.filter(|p| crate::ids::note_ids(*p).is_some()) {
+            // ⛔⛔ **Só onde uma nota se PINTA** (2026-10-01). Isto era uma lista de EXCLUSÃO (a
+            //    hierarquia, as ferramentas de imagem, as camadas, a timeline, a grade, os assets) e
+            //    todo painel novo ganhava *«Create note»* por omissão — mas só o Inspector e a
+            //    Galeria pintam notas, logo no Vector, na Física, no Áudio… a nota nascia no store e
+            //    NUNCA aparecia: um botão mudo. A pergunta passou a ser a tabela das ranhuras.
             // ⭐ A secção sob o cursor resolve-se AQUI, pela régua do arrasto de nota
             //    ([`super::note_drag::seccao_sob`]) — a nota nasce no fim dela.
             //
@@ -333,6 +324,9 @@ pub(super) fn click_belongs_to_the_open_menu(
                     .iter()
                     .any(|(_, b)| *b == id)
         }
+        // ⭐ Uma linha INDISPONÍVEL (hoje: *Load Custom Theme* sem nada gravado) — o Down nela é
+        //   um clique no menu, não fora dele; o clique a seguir chega ao verbo, que recusa.
+        ContextMenuKind::SectionOutline { .. } => store.menu_row_is_unavailable(id),
         _ => false,
     }
 }

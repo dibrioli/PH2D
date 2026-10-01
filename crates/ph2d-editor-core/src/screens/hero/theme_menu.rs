@@ -285,4 +285,32 @@ mod tests {
         assert_eq!(store.section_theme(a), Some(Theme::Oled));
         assert_eq!(store.section_theme(b), Some(Theme::Sunset));
     }
+
+    /// ⭐⭐ **Load sem nada gravado: o clique é engolido, nada muda e o menu fica ABERTO** — o
+    /// comportamento de uma linha apagada. ⚠️ O despacho não precisa de guarda própria: o verbo já
+    /// recusa sem gravação e o clique nunca fecha o menu VIVO (quem o fecha é o Down, e o Down numa
+    /// linha indisponível não o fecha — gate `the_down_on_an_unavailable_row_keeps_the_menu_open`).
+    /// Uma guarda aqui foi escrita, medida por mutação e APAGADA: nenhum gesto a observava.
+    #[test]
+    fn load_sem_gravacao_nao_age_nem_fecha_o_menu() {
+        use crate::interaction::{ContextMenuKind, ContextMenuRequest, WidgetEvent, WidgetStore};
+        let seccao = ids::INSP_LIVE_TRANSFORM_SECTION;
+        let mut store = WidgetStore::with_capacity(8);
+        store.set_section_theme(seccao, Some(Theme::Candy));
+        store.open_context_menu(ContextMenuRequest {
+            x: 0.0,
+            y: 0.0,
+            kind: ContextMenuKind::SectionOutline { section: seccao },
+        });
+        assert!(apply_section_theme_click(
+            &mut store,
+            WidgetEvent::Click(ids::CTX_MENU_SECTION_THEMES_LOAD_CUSTOM)
+        ));
+        assert!(store.context_menu().is_some(), "o menu continua aberto");
+        assert_eq!(
+            store.section_theme(seccao),
+            Some(Theme::Candy),
+            "nada mudou"
+        );
+    }
 }

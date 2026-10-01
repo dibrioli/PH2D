@@ -159,6 +159,7 @@ pub fn paint_showcase_body(
                         inner_w,
                         &mut y,
                         note,
+                        &crate::ids::GAL_NOTES,
                         slot,
                     );
                 }
@@ -245,6 +246,7 @@ pub fn paint_showcase_body(
                 inner_w,
                 &mut y,
                 note,
+                &crate::ids::GAL_NOTES,
                 slot,
             );
         }

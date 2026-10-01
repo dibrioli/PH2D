@@ -66,3 +66,55 @@ fn clicking_outside_the_sheet_modal_closes_it() {
         "um clique fora do modal tem de o dispensar"
     );
 }
+
+/// Um store com o menu do título de uma secção aberto e a linha *Load Custom Theme* hit-indexada.
+fn section_menu_open() -> (WidgetStore, HitIndex) {
+    let mut store = WidgetStore::with_capacity(4);
+    let load = crate::ids::CTX_MENU_SECTION_THEMES_LOAD_CUSTOM;
+    store.register(load, InteractiveState::Plain);
+    store.open_context_menu(ContextMenuRequest {
+        x: 0.0,
+        y: 0.0,
+        kind: ContextMenuKind::SectionOutline {
+            section: crate::ids::INSP_LIVE_TRANSFORM_SECTION,
+        },
+    });
+    let mut hits = HitIndex::new();
+    hits.register(load, Rect::new(0.0, 0.0, 40.0, 20.0));
+    (store, hits)
+}
+
+/// ⭐⭐ **O Down numa linha INDISPONÍVEL não fecha o menu** — *Load Custom Theme* sem nada gravado
+/// pinta-se apagada, e um clique nela não pode dispensar o menu como um clique fora. Com o custom
+/// gravado a linha volta a ser um comando (o despacho do clique fecha o menu depois de agir), e o
+/// Down nela é o de sempre. *Mutação: tirar o braço `SectionOutline` do
+/// `click_belongs_to_the_open_menu` ⇒ a 1.ª metade reprova.*
+#[test]
+fn the_down_on_an_unavailable_row_keeps_the_menu_open() {
+    let (mut store, hits) = section_menu_open();
+    let arena = Bump::new();
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Down, 5.0, 5.0),
+        &arena,
+    );
+    assert!(
+        store.context_menu().is_some(),
+        "a linha apagada fechou o menu — lia-se como um clique fora"
+    );
+
+    // controlo: gravada, a linha deixa de ser excepção
+    let (mut store, hits) = section_menu_open();
+    store.save_custom_section_themes();
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Down, 5.0, 5.0),
+        &arena,
+    );
+    assert!(
+        store.context_menu().is_none(),
+        "com o custom gravado o Down na linha e' o de sempre"
+    );
+}

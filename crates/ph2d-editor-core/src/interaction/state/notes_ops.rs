@@ -14,12 +14,12 @@
 //! caixas com ela ([`WidgetStore::permute_note_texts`]), senão a nota de baixo sobe e herda o texto
 //! da que foi apagada.
 //!
-//! ⚠️ **As caixas são partilhadas entre a Galeria de widgets e o Inspector** (as mesmas doze
-//! ranhuras — pré-existente). Permutar as notas de um painel permuta também o texto das do outro
-//! nas mesmas ranhuras; a Galeria é superfície de demonstração, e a dívida fica nomeada no handoff.
+//! ⭐ **Cada painel tem as SUAS ranhuras** ([`crate::ids::note_ids`], desde 2026-10-01): permutar as
+//! notas da Galeria não toca no texto das do Inspector. Até aí as doze caixas eram partilhadas, e
+//! a nota `0` de um painel lia o texto da nota `0` do outro.
 
 use super::{InteractiveState, WidgetStore};
-use crate::ids::{NOTE_BODY_IDS, NOTE_TITLE_IDS, NOTES_PER_PANEL};
+use crate::ids::{NOTES_PER_PANEL, note_ids};
 use crate::interaction::types::NoteData;
 use crate::widget::TextInputState;
 use ph2d_a11y::NodeId;
@@ -90,7 +90,7 @@ impl WidgetStore {
         }
         list.remove(index);
         let order: Vec<usize> = (0..=list.len()).filter(|&i| i != index).collect();
-        self.permute_note_texts(&order);
+        self.permute_note_texts(panel, &order);
     }
 
     /// ⭐ **Duplica a nota `index`** — a cópia nasce logo a seguir, na mesma secção, com a mesma
@@ -104,7 +104,7 @@ impl WidgetStore {
         list.insert(index + 1, copia);
         let n = list.len();
         let order: Vec<usize> = (0..n).map(|k| if k <= index { k } else { k - 1 }).collect();
-        self.permute_note_texts(&order);
+        self.permute_note_texts(panel, &order);
         Some(index + 1)
     }
 
@@ -130,24 +130,28 @@ impl WidgetStore {
             nova[n].section = section;
         }
         self.notes_per_panel.insert(panel, nova);
-        self.permute_note_texts(&order);
+        self.permute_note_texts(panel, &order);
     }
 
-    /// ⛔ **A lei da permutação** (ver o cabeçalho): a ranhura `k` recebe o texto que estava na
-    /// ranhura `order[k]`; as ranhuras para lá de `order.len()` ficam vazias.
+    /// ⛔ **A lei da permutação** (ver o cabeçalho): a ranhura `k` DE `panel` recebe o texto que
+    /// estava na ranhura `order[k]`; as ranhuras para lá de `order.len()` ficam vazias. Um painel que
+    /// não pinta notas não tem caixas, e não há o que permutar.
     ///
     /// ⚠️ Um campo de nota com o teclado larga-o: o texto que ele segurava pode ter mudado de
     /// ranhura, e um cursor numa caixa cujo conteúdo trocou por baixo escreveria na nota errada.
-    pub fn permute_note_texts(&mut self, order: &[usize]) {
+    pub fn permute_note_texts(&mut self, panel: NodeId, order: &[usize]) {
+        let Some(caixas) = note_ids(panel) else {
+            return;
+        };
         let ler = |s: &Self, id: NodeId| match s.get(id) {
             Some(InteractiveState::TextInput { text, .. }) => text.clone(),
             _ => String::new(),
         };
-        let titulos: Vec<String> = NOTE_TITLE_IDS.iter().map(|id| ler(self, *id)).collect();
-        let corpos: Vec<String> = NOTE_BODY_IDS.iter().map(|id| ler(self, *id)).collect();
+        let titulos: Vec<String> = caixas.title.iter().map(|id| ler(self, *id)).collect();
+        let corpos: Vec<String> = caixas.body.iter().map(|id| ler(self, *id)).collect();
         for k in 0..NOTES_PER_PANEL {
             let origem = order.get(k).copied().filter(|&o| o < NOTES_PER_PANEL);
-            for (ids, antigos) in [(&NOTE_TITLE_IDS, &titulos), (&NOTE_BODY_IDS, &corpos)] {
+            for (ids, antigos) in [(&caixas.title, &titulos), (&caixas.body, &corpos)] {
                 let novo = origem.map(|o| antigos[o].clone()).unwrap_or_default();
                 if let Some(InteractiveState::TextInput {
                     state,
@@ -165,7 +169,7 @@ impl WidgetStore {
         }
         if self
             .focus_id()
-            .is_some_and(|f| NOTE_TITLE_IDS.contains(&f) || NOTE_BODY_IDS.contains(&f))
+            .is_some_and(|f| caixas.title.contains(&f) || caixas.body.contains(&f))
         {
             self.set_focus(None);
         }

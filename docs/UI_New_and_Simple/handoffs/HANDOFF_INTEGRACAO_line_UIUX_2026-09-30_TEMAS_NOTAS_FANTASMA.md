@@ -353,3 +353,55 @@ principais cores de cada theme. Depois siga com os outros painéis.»*
   observa (o arrasto acha a pega pelo livro do quadro e o hover pelo `HitIndex`); fica pela
   paridade com Inspector/Vector/Painter.
 - Clippy `--all-targets -D warnings` zero nas crates tocadas · `fmt` limpo.
+
+## §9 — Adenda (2026-10-01): os dois abertos desta frente fecharam, e um terceiro achado pelo caminho
+
+Ordem do dono: *«smoke ok. siga»* — fecharam-se os dois ⏳ deste handoff.
+
+### 9.1 *Load Custom Theme* sem nada gravado fica APAGADA (o ⏳ da §6.2)
+
+- Porta única `WidgetStore::menu_row_is_unavailable(id)` (`tema_custom.rs`) — hoje só a linha *Load* com
+  `custom == None`. ⚠️ Um custom VAZIO é gravação, logo a linha acende com ele.
+- **Dois leitores**: o pintor (`context_menu_overlay.rs` — texto `Text3`, sem realce de hover) e o
+  `click_belongs_to_the_open_menu` (braço `SectionOutline`: o Down numa linha indisponível NÃO é «clique
+  fora», o menu fica aberto). O clique a seguir chega ao verbo, que já recusa sem gravação.
+- ⛔ Uma 3.ª guarda no despacho do clique foi escrita, medida por mutação (**sobreviveu**) e APAGADA: o
+  verbo já recusa e o clique nunca fecha o menu VIVO (`consume_last_context_menu` só toca a fotografia).
+- Gates: `load_esta_indisponivel_ate_haver_o_que_por` · `load_sem_gravacao_nao_age_nem_fecha_o_menu` ·
+  `the_down_on_an_unavailable_row_keeps_the_menu_open` (com o controlo gravado) ·
+  `the_painter_reads_the_unavailable_door` (censo de texto, prosa cortada). Mutação **3 de 3**.
+
+### 9.2 As notas da Galeria e do Inspector têm caixas PRÓPRIAS (o ⏳ da §1, item 4)
+
+- `ids::notes`: `NoteIds { slot, title, body, grip }` · `INSP_NOTES` (as tabelas de sempre, nomes
+  `insp_note_*` intocados) · `GAL_NOTES` **derivadas** por XOR com `SAL_DA_GALERIA` (o idioma da
+  `grip_de`, bijecção, sem tabela à mão) · `NOTE_HOSTS` (a única lista de quem pinta notas) ·
+  `note_ids(panel)` · `is_note_text`. `note_index_of`/`note_of_grip` procuram nos dois hosts.
+- Consumidores: `permute_note_texts(panel, order)` (⚠️ **assinatura mudou** — ganhou o `panel`),
+  `populate_notes` regista os dois hosts, o `CreateNote` escreve nas caixas do painel do pedido,
+  `paint_one_note(.., caixas: &NoteIds, slot)` (⚠️ **assinatura pública mudou**, a Galeria passa
+  `GAL_NOTES` e o Inspector `INSP_NOTES`), `lugar_da_queda` e o fantasma lêem as ranhuras do painel.
+- ⚠️ O `seed` do arrasto ficou como estava (`note_of_grip` + `panel_at`): com ids distintos por painel a
+  versão «a pega tem de ser do painel» é **inobservável** e foi revertida.
+
+### 9.3 ⛔ *Create Note* era um botão MUDO em ~15 painéis (achado pelo caminho)
+
+- O botão direito decidia por uma lista de **EXCLUSÃO** (hierarquia, ferramentas de imagem, camadas,
+  timeline, grade, assets) e todo outro painel oferecia *Create Note* — mas **só o Inspector e a Galeria
+  pintam notas**. No Vector, na Física, no Áudio… a nota nascia no store e nunca aparecia.
+- Hoje a pergunta é `note_ids(panel).is_some()` — a MESMA tabela das ranhuras. ⚠️ Por construção isto
+  também deixa de oferecer o menu sobre o selector de cor, o overlay de áudio e janelas flutuantes (o
+  comentário da guarda do selector foi corrigido: o fallback continua a FECHAR o menu e a consumir).
+
+### 9.4 Prova
+
+- Gates novos: `os_noventa_e_seis_ids_das_notas_sao_distintos` · `as_notas_de_um_painel_nao_tocam_no_texto_do_outro`
+  · `permutar_num_painel_sem_notas_nao_toca_em_nada` · `na_galeria_a_queda_conta_as_ranhuras_dela` ·
+  `create_note_opens_only_on_a_panel_that_paints_notes` (controlo Inspector/Galeria; Vector e Física
+  mudos) · e o `gallery_create_note_targets_gal_panel` estendido (título na caixa da Galeria; pintura com
+  as ranhuras dela, nos DOIS pintores — o da nota sem secção só se vê rolando ao fundo pela altura publicada).
+- Mutação **8 de 8** (sal a zero · os dois pintores da Galeria com `INSP_NOTES` · *Create Note* em todo
+  painel · `GAL` a apontar `INSP` · permutação, queda e criação a ignorar o painel).
+- `nextest-impacted` **19 138/19 138** · clippy `--all-targets -D warnings` zero nas 3 crates · `fmt` limpo.
+- ⚠️ **Superfície de colisão**: `permute_note_texts` e `paint_one_note` mudaram de assinatura (quem os
+  chamar noutra linha não compila — falha ALTA, barata).

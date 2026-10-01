@@ -198,7 +198,10 @@ pub fn paint_context_menu_overlay(
             continue;
         };
         hit_index.register(*id, r);
-        if Some(*id) == store.hot_id() {
+        // ⭐ Uma linha INDISPONÍVEL pinta-se apagada e sem realce — a mesma porta que o despacho lê
+        //   para engolir o clique ([`WidgetStore::menu_row_is_unavailable`]).
+        let indisponivel = store.menu_row_is_unavailable(*id);
+        if Some(*id) == store.hot_id() && !indisponivel {
             fill_rounded_rect(
                 scene,
                 r,
@@ -284,7 +287,9 @@ pub fn paint_context_menu_overlay(
             TypeToken::Sm.px(),
             (r.x + r.w - text_x - pad_x).max(0.0),
             resolve(
-                if is_current {
+                if indisponivel {
+                    ColorToken::Text3
+                } else if is_current {
                     ColorToken::Text1
                 } else {
                     ColorToken::Text2

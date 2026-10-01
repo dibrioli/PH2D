@@ -31,6 +31,8 @@ pub mod scroll_area;
 pub mod seam_macro;
 /// ⭐⭐⭐ **As secções de um painel como uma lista** — ordem, tema, pega e fantasma, uma lei só.
 pub mod section_plan;
+/// O laço do plano das secções para os painéis que pintam por um `PaintCtx`.
+pub mod section_plan_ctx;
 
 pub use erased::ErasedPanel;
 pub use event_outcome::EventOutcome;

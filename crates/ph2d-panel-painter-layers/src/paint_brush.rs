@@ -14,10 +14,10 @@ use crate::state;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::panel::PaintCtx;
+use ph2d_editor_core::panel::section_plan_ctx::PlanoCtx;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::widget::panel_chrome::PANEL_HEAD_PAD;
-use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tool_painter::ids::{
@@ -74,38 +74,56 @@ pub(crate) fn paint_brush_body(
             .set_widget_color(core_ids::PAINTER_COLOR_THUMB, [r, g, b, 255]);
     }
 
-    let mut y = top_y;
-    use crate::paint_brush_top::paint_checkbox_row;
+    // ⭐⭐⭐ **O corpo é uma LISTA** (ordem do dono, 2026-09-30: *«siga com os outros painéis»*) — a
+    //    lei da ordem, do tema por secção, da marca de queda e do fantasma é a partilhada
+    //    ([`PlanoCtx`]); quem se arrasta e quem fica no lugar está em [`crate::plano_corpo`].
+    let mut plano = PlanoCtx::new();
 
-    // **Preset** dropdown at the very TOP — one-click media presets (Digital Basic / Watercolor Basic).
-    y = paint_preset_row(ctx, theme, x, content_w, y, brush);
+    // **Preset** dropdown at the very TOP — one-click media presets (Digital Basic / Watercolor
+    // Basic) — and "Sync with other tools" under it. Off (default) = this tool keeps its own
+    // settings; on = all paint tools share them (the panel where it's checked seeds the others).
+    plano.bloco(move |ctx, theme, y| {
+        let y = paint_preset_row(ctx, theme, x, content_w, y, brush);
+        crate::paint_brush_top::paint_checkbox_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_SYNC,
+            "panel.painter_layers.brush.sync_tools",
+            brush.link_shared,
+        )
+    });
 
-    // "Sync with other tools" — at the very TOP of every tool's panel. Off (default) = this tool keeps its
-    // own settings; on = all paint tools share them (the panel where it's checked seeds the others).
-    y = paint_checkbox_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        ph2d_tool_painter::ids::PAINTER_BRUSH_SYNC,
-        "panel.painter_layers.brush.sync_tools",
-        brush.link_shared,
+    // Mask section (Mask tool only): collapsible block at the TOP — sub-brush, canvas ops, overlay
+    // colour. FIXED: it reinterprets everything below it.
+    plano.fixa(
+        ph2d_tool_painter::ids::PAINTER_MASK_SECTION,
+        move |ctx, theme, y| {
+            if brush.is_mask {
+                crate::paint_mask::paint_mask_section(ctx, theme, x, content_w, y, brush)
+            } else {
+                y
+            }
+        },
     );
-
-    // Mask section (Mask tool only): collapsible block at the TOP — sub-brush, canvas ops, overlay colour.
-    if brush.is_mask {
-        y = crate::paint_mask::paint_mask_section(ctx, theme, x, content_w, y, brush);
-        y = close_section(ctx.scene, theme, x, content_w, y);
-    }
 
     // ⚠️ **Os básicos do topo saíram para uma porta própria** — não por tamanho, por assunto: acima
     // desta linha mora *quem é dono do corpo do painel* (os modos exclusivos, o readback do picker, o
     // Preset, o Sync), e abaixo *os controles que todo pincel tem*. O corte veio de a função ter
     // cruzado o teto de 200 LOC, e ele é onde o próprio comentário já dizia que um assunto acabava.
-    let y = paint_top_basics(ctx, theme, x, content_w, y, brush);
+    plano.bloco(move |ctx, theme, y| paint_top_basics(ctx, theme, x, content_w, y, brush));
 
-    crate::paint_brush_sections::paint_appearance_sections(ctx, theme, x, content_w, y, brush)
+    crate::paint_brush_sections::declara_aparencia(&mut plano, x, content_w, brush);
+    plano.corre(
+        ctx,
+        theme,
+        x,
+        content_w,
+        ph2d_editor_core::panel::rows::section_header_h(),
+        top_y,
+    )
 }
 
 /// Os controles que TODO pincel tem — Blend · Color · Size · Strength · Accumulate · Falloff, na

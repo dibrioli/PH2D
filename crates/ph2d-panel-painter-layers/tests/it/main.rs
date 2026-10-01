@@ -7,6 +7,7 @@
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
 mod a_pilha_de_ajustes_fala_a_tabela_e_mostra_o_numero;
+mod as_seccoes_arrastam_e_tem_tema; // o tema e o arrasto das secções do corpo do pincel
 mod cada_nome_deste_painel_cabe_na_coluna_da_seccao;
 mod curve_handle_menu_e2e;
 mod every_word_this_panel_shows_comes_from_the_string_table;

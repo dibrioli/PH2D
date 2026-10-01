@@ -89,6 +89,7 @@ mod paint_watercolor;
 mod paint_watercolor_paper;
 mod paint_wetpaint;
 mod paint_wetpaint_tilt; // doc 22: the TILT dial (polar pad) of the Wet Paint section
+mod plano_corpo; // quais secções do corpo se arrastam, quais ficam, e o cabeçalho de cada
 mod populate;
 mod populate_brush_chips;
 mod populate_composite_chips;

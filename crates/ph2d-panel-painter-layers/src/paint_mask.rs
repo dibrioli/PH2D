@@ -14,8 +14,8 @@ use crate::paint::register_button;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_centered, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
-    Button, ButtonState, ColorSwatch, SectionHeader, SwatchSize, SwatchState,
-    flat_button_surface_color, paint_button, paint_color_swatch, paint_section_header,
+    Button, ButtonState, ColorSwatch, SwatchSize, SwatchState, flat_button_surface_color,
+    paint_button, paint_color_swatch, paint_section_header,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -53,15 +53,10 @@ pub(crate) fn paint_mask_section(
         .host
         .store()
         .is_collapsed(ph2d_tool_painter::ids::PAINTER_MASK_SECTION);
-    let header = SectionHeader::new(
+    let header = crate::plano_corpo::cabecalho(
+        ctx,
         ph2d_tool_painter::ids::PAINTER_MASK_SECTION,
         tr("panel.painter_layers.mask.mask"),
-    )
-    .collapsible(!collapsed)
-    .open_t(
-        ctx.host
-            .store()
-            .section_open_live(ph2d_tool_painter::ids::PAINTER_MASK_SECTION),
     );
     let header_rect = Rect::new(x, y, content_w, header_h);
     {
@@ -69,9 +64,11 @@ pub(crate) fn paint_mask_section(
         let text_system = &mut *ctx.text_system;
         paint_section_header(&header, header_rect, scene, text_system, theme);
     }
-    ctx.host
-        .hit_index_mut()
-        .register(ph2d_tool_painter::ids::PAINTER_MASK_SECTION, header_rect);
+    crate::plano_corpo::regista(
+        ctx,
+        ph2d_tool_painter::ids::PAINTER_MASK_SECTION,
+        header_rect,
+    );
     let mut y = y + header_h + Spacing::Xs.px();
     if collapsed {
         return y;

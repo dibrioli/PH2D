@@ -26,7 +26,7 @@ pub struct HitIndex {
     clips: SmallVec<[Rect; 4]>,
     /// ⭐⭐ **As secções que se arrastam e mudam de tema, pintadas NESTE quadro por qualquer painel**
     /// — `(secção, pega, cabeçalho já recortado)`. Ver [`HitIndex::register_section`].
-    seccoes: SmallVec<[(NodeId, NodeId, Rect); 48]>,
+    seccoes: SmallVec<[(NodeId, Option<NodeId>, Rect); 48]>,
 }
 
 impl HitIndex {
@@ -79,7 +79,18 @@ impl HitIndex {
         };
         self.rects.push((section, visible));
         self.register(grip, grip_rect);
-        self.seccoes.push((section, grip, visible));
+        self.seccoes.push((section, Some(grip), visible));
+    }
+
+    /// ⭐ **Regista o cabeçalho de uma secção FIXA** — muda de TEMA pelo botão direito (está no
+    /// livro, logo o despacho abre-lhe o menu) e NÃO se arrasta (não tem pega, e não é alvo de
+    /// queda). É a secção que o painel prende no lugar dela: a Máscara do Painter, o meio da tinta.
+    pub fn register_fixed_section(&mut self, section: NodeId, head: Rect) {
+        let Some(visible) = self.clipped(head) else {
+            return;
+        };
+        self.rects.push((section, visible));
+        self.seccoes.push((section, None, visible));
     }
 
     /// `id` é o cabeçalho de uma secção registada por [`Self::register_section`] neste quadro.
@@ -93,13 +104,18 @@ impl HitIndex {
     pub fn section_of_grip(&self, grip: NodeId) -> Option<NodeId> {
         self.seccoes
             .iter()
-            .find(|(_, g, _)| *g == grip)
+            .find(|(_, g, _)| *g == Some(grip))
             .map(|(s, _, _)| *s)
     }
 
-    /// O livro das secções deste quadro — `(secção, cabeçalho)`, pela ordem em que foram pintadas.
+    /// O livro das secções que se ARRASTAM neste quadro — `(secção, cabeçalho)`, pela ordem em que
+    /// foram pintadas. ⚠️ As fixas ([`Self::register_fixed_section`]) ficam de fora: não são alvo de
+    /// queda.
     pub fn sections(&self) -> impl Iterator<Item = (NodeId, Rect)> + '_ {
-        self.seccoes.iter().map(|(s, _, r)| (*s, *r))
+        self.seccoes
+            .iter()
+            .filter(|(_, g, _)| g.is_some())
+            .map(|(s, _, r)| (*s, *r))
     }
 
     /// **Abre um RECORTE: daqui até ao [`Self::pop_clip`], o que for registado fora deste

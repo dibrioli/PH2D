@@ -63,6 +63,21 @@ pub fn cabecalho(store: &WidgetStore, id: NodeId, label: &str) -> SectionHeader 
     h.grip(arrastando || store.hot_id() == Some(crate::ids::grip_de(id)))
 }
 
+/// ⭐ **O cabeçalho de uma secção FIXA** — a dobra viva de sempre e nenhuma pega: ela muda de tema
+/// pelo botão direito e não se arrasta. Par de [`regista_cabecalho_fixo`].
+#[must_use]
+pub fn cabecalho_fixo(store: &WidgetStore, id: NodeId, label: &str) -> SectionHeader {
+    SectionHeader::new(id, label)
+        .collapsible(!store.is_collapsed(id))
+        .open_t(store.section_open_live(id))
+}
+
+/// ⭐ **Torna o cabeçalho de uma secção FIXA clicável** e escreve-a no livro do quadro, sem pega —
+/// o botão direito abre-lhe o menu de tema e ela não é alvo de queda.
+pub fn regista_cabecalho_fixo(hit_index: &mut HitIndex, id: NodeId, head: Rect) {
+    hit_index.register_fixed_section(id, head);
+}
+
 /// ⭐⭐ **Torna o cabeçalho clicável e a pega agarrável**, e escreve a secção no livro do quadro.
 /// ⚠️ A pega regista-se DEPOIS do cabeçalho — o hit-index resolve o último primeiro, e ela fica
 /// por cima do rect que dobra a secção.

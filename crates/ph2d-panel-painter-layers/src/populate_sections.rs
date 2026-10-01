@@ -29,6 +29,14 @@ pub(crate) fn register_collapsible_sections(store: &mut WidgetStore) {
     // collapse, because the id was not here. Same silence as the lamp chips, one row higher up
     // (`tests/seam_impasto_rig.rs`).
     store.mark_collapsible_section(ph2d_tool_painter::ids::PAINTER_IMPASTO_SECTION);
+    // ⭐⭐ **A PEGA de dez pontos das secções que se ARRASTAM** (2026-09-30, *«siga com os outros
+    //    painéis»*): `Plain` para o `is_focusable` responder e o rato a acender, com a mesma dica do
+    //    Inspector. ⚠️ Só as móveis — uma fixa não tem pega (`crate::plano_corpo`).
+    for &id in &crate::plano_corpo::SECCOES_MOVEIS {
+        let grip = ph2d_editor_core::ids::grip_de(id);
+        store.register(grip, ph2d_editor_core::interaction::InteractiveState::Plain);
+        store.set_tooltip(grip, ph2d_i18n::tr("chrome.section.grip_hint"));
+    }
     // ⭐ **A decisão do DONO, de 2026-06-24** — `Randomize Color`, `Color Ramp` e `Tiling` nascem
     //    recolhidas; `Texture` e `Stroke` nascem abertas. ⛔ Ela não se toca.
     for collapsed in [

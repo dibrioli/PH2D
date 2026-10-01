@@ -1,0 +1,343 @@
+# 30 — Plano: NAVEGAÇÃO (inimigos que acham o caminho sozinhos) (2026-10-01)
+
+> Ordem do dono: *«inimigos que acham o caminho sozinhos (navegação). Comece com pesquisa … Depois faça
+> planejamento detalhado.»* A pesquisa é o [doc 29](29_pesquisa_navegacao.md) (com o dossiê bruto em
+> [`pesquisa/dossie_navegacao_2026-10-01.md`](pesquisa/dossie_navegacao_2026-10-01.md)); o oráculo é o
+> **Godot 4.7.2 (MIT)** corrido sem interface ([`ferramentas/godot_nav_sonda/`](ferramentas/godot_nav_sonda/)).
+>
+> ⚠️ Este plano é o DESENHO e as PERGUNTAS. Cada wave abre com a medição que a pode desmentir, e o que ela
+> desmentir é reescrito aqui **com a morte à vista** (§0.0 do roteador). Os números de contador abaixo são
+> **estimativas de DELTA** contra o merge-base — ⛔ conte-os no código no dia (`PROJECT_SCHEMA` em
+> `shells/desktop/src/project_schema.rs`, hoje `177`; registo da física `40`; `LIVE_SECTIONS` `43`).
+
+---
+
+## §1 — O que se constrói, numa frase por peça
+
+| peça | mora | o que é |
+|---|---|---|
+| **`ph2d-navmesh`** | crate-folha nova; deps **só as que já estão no `Cargo.lock`**: `clipper2-rust 1.1.0` (BSL-1.0) e `spade 2.15.1` (MIT/Apache) | a LEI da construção: polígonos de entrada (contorno da região + obstáculos) → recuo pelo raio → união/diferença → triangulação com restrições → partição em convexos → `NavMesh` (polígonos convexos + adjacência por arestas-portal + ilhas) |
+| **`ph2d-nav`** | crate-folha nova, **zero dependências** (o molde da `ph2d-health`/`ph2d-topdown`) | a LEI da procura e da condução: localização de ponto · projecção do que está fora · **Polyanya** (caminho óptimo em qualquer ângulo) · o **corredor** mantido · a política de recálculo · a aceitação por `velocidade × dt` · os estados com voz |
+| **`ph2d-orca`** | crate-folha nova, **zero dependências** (W5) | a LEI do desvio entre agentes: ORCA (van den Berg et al. 2011) com as **arestas da navmesh como obstáculos estáticos** |
+| **`NavRegion`** | CONFIG, registada (`ph2d-physics-ecs`) | onde se anda: a caixa da região (e depois um contorno desenhado com a caneta) · a máscara de camadas dos obstáculos · mostrar a navegação |
+| **`NavAgent`** | CONFIG, registada (`ph2d-physics-ecs`) | quem persegue o quê: o modo de alvo (nome · a tag mais perto · ponto · patrulha) · o raio (**do corpo**, salvo se o artista o escrever) · as distâncias de chegada e de recálculo · o desvio · três nomes de sinal (*chegou · sem caminho · preso*) |
+| **`NavAgentRuntime`** | **NÃO** registado (a cerca é o TIPO — o molde do `CounterRuntime`) | o corredor vivo, o ponto actual, o relógio do recálculo, o detector de «preso» — **no anel da física** |
+| **a ponte** | `ph2d-physics-ecs/src/bridge/nav.rs`, **no tique da física** | reconstrói a malha quando a geometria estática muda · para cada agente: alvo → caminho → intenção → **escreve a intenção do `TopDownPlayer`** antes de ele correr · publica os sinais |
+
+---
+
+## §2 — ⭐⭐⭐ As decisões de arquitectura (e a medição por trás de cada uma)
+
+### §2.1 — O agente DECIDE; quem anda é o `TopDownPlayer`
+
+O desenho de três camadas da indústria tem um ponto em comum com a nossa casa: **a navegação não move o
+corpo** — o Godot devolve o próximo ponto e uma velocidade segura, o `landmass` *«devolve a velocidade
+desejada e nunca move o agente»* exactamente para conviver com uma física dona da pose (doc 29 §4). Na
+nossa casa o executor **já existe e já é bom**: o `TopDownPlayer` acelera, trava, roda e **desliza na
+parede à velocidade cheia** (o oráculo confirmou-o no #13), e com `default_controls = false` é *«um motor
+PURO, obediente a quem lhe escrever a intenção»* (`bridge/player_channel.rs:79`).
+
+⇒ o `NavAgent` **requer** o `TopDownPlayer` (no catálogo) e escreve-lhe a **intenção** `(drive, drive_y)` a
+cada tique. ⛔ **Um quarto mover está recusado** (duplicaria a aceleração, o deslize e o anel do #13). ⭐ De
+graça: mesmo que a navegação erre um canto, o corpo **não entra na parede real** — o `move_character_from`
+desliza; é a primeira metade da cura da queixa Q1.
+
+⚠️ **O modo de direcção importa e vai medido:** o `TopDownPlayer` nasce em **oito direcções**
+(`ph2d-topdown/src/lib.rs:125`), que **encaixa** a intenção ⇒ um caminho em qualquer ângulo vira ziguezague.
+A semente (o molde do `seed_kinematic_controller_body`) põe **`Free` + `default_controls = false`** quando o
+`NavAgent` chega; se o artista voltar a pôr 8/4 direcções, o painel **diz** o preço (W4), com a medição do
+ziguezague ao lado.
+
+### §2.2 — Tudo DENTRO do tique da física (a fita obriga)
+
+Medido no levantamento (doc 29 §5.4): a fita de entrada grava **UM** `PlayerInput` por tique e só o entrega
+aos corpos lidos pelo teclado (`tape.rs:111`, :346-372) ⇒ uma intenção escrita **de fora** para um corpo
+obediente **não é gravada** e um *scrub* não a repete. ⇒ a intenção do agente é **calculada dentro do
+tique, a partir do estado do mundo**, pela porta única `drive_controllers`
+(`bridge/controllers.rs:40`), **antes** do `drive_topdown`:
+
+```text
+drive_controllers:  drive_nav_agents → drive_players → drive_topdown → drive_projectiles   (os DOIS laços: frente e replay)
+```
+
+e o estado vivo do agente entra no **anel** com o par `record`/`seed` e a limpeza em `rebuild_from_rest`
+(as três armadilhas que esta família já pagou três vezes — o censo `controllers_one_door` passa a cobrir o
+quarto). ⭐ **Consequência que nenhum motor da pesquisa tem:** um *scrub* a meio de uma perseguição devolve o
+agente, o caminho e o relógio do recálculo **exactos daquele tique**.
+
+### §2.3 — A área andável é DERIVADA dos colisores; o raio é do CORPO
+
+- **O obstáculo É o colisor** (o estado da arte 2D — `vleue_navigator`, Godot 4.3+): todo colisor **estático**,
+  não-sensor, cuja camada está na máscara da região. Nada a sincronizar à mão; **nada gravado** (a malha é
+  derivada como um cozido: não vai ao ficheiro nem ao `Ctrl+Z`).
+- **O raio sai do colisor do PRÓPRIO agente** (`Ball` → raio; `Cuboid` → raio circunscrito; `Capsule` →
+  raio + meio-segmento circunscrito), com sobreposição opcional escrita pelo artista. ⇒ a queixa Q2 (*«o raio
+  não muda o caminho»*) **não se exprime**.
+- **Uma malha por raio, derivada sozinha** (uma cache `BTreeMap<raio quantizado, NavMesh>`), ⇒ a queixa Q3
+  (*«um mapa por tamanho»*) **não pede trabalho ao artista**. ⏳ A quantização do raio é **medida** na W1 (o
+  recurso é a memória das malhas contra a fidelidade da folga).
+- **Recuo REDONDO (soma de Minkowski com o disco), não em esquadria.** A sonda mostrou o Godot a deixar as
+  quinas do furo **vivas** (`(140,90)–(260,210)` para um quadrado `(150,100)–(250,200)` a raio `10`) — a folga
+  em esquadria é **mais** do que o disco precisa, e o caminho dá a volta mais larga. ⇒ **divergência
+  DECLARADA**, com o ganho medido na W1 e gate a **exigir que ela exista** (com o recuo em esquadria a nossa
+  lei tem de reproduzir o Godot; com o redondo, a área andável tem de ser **maior ou igual** e o caminho
+  **menor ou igual**). ⚠️ O arco vira segmentos: o número de segmentos por quarto de volta é **medido** pela
+  flecha contra o raio (a lei que o desenho vectorial desta casa já usa), nunca escolhido.
+
+### §2.4 — A malha reconstrói-se no tique em que a geometria muda — síncrona, se a medição deixar
+
+A queixa Q4 (*«caminho vazio no 1.º quadro»*) **foi medida no próprio oráculo**: com as iterações
+assíncronas de fábrica, o Godot devolve caminhos vazios **sem erro** até ao quadro 4–5 (doc 29 §6.1). ⇒ o
+nosso agente tem de ter caminho **no tique 1** — e isso só é honesto se a construção couber no tique. ⏳ **A
+W0 mede o custo** da construção com `10`, `100` e `1000` obstáculos (em `--release`, com o `loadavg` ao
+lado). Se não couber, a saída é **por mosaicos** (reconstruir só os tocados) — ⛔ **nunca** um corte silencioso
+(o agente fica sem caminho e não diz porquê): o *«aceita e mente»* que esta casa já pagou três vezes.
+
+**Quando a geometria «mudou»:** uma **assinatura** dos colisores estáticos (corpo, forma, pose em bits, camada)
+num `BTreeMap` — o custo por tique de a calcular é medido na W0; a alternativa é a ponte marcar «sujo» nos
+sítios onde já reconstrói corpos.
+
+### §2.5 — A procura é Polyanya, com DOIS oráculos
+
+- **Polyanya** (Cui, Harabor, Grastien, IJCAI 2017): o caminho **mais curto possível** em qualquer ângulo,
+  sem pré-processamento, sobre a navmesh. O A\*+funil do Godot é óptimo **só dentro do corredor que o A\*
+  escolheu** ⇒ o nosso caminho nunca pode ser mais longo que o dele.
+- **Oráculo 1 — o Godot corrido:** *o nosso comprimento ≤ o dele + tolerância medida* em todo o corpus.
+- **Oráculo 2 — o EXACTO, escrito por nós:** o caminho mais curto entre obstáculos poligonais é um teorema —
+  ele passa pelos **vértices** dos obstáculos —, logo o **grafo de visibilidade + Dijkstra** dá a resposta
+  **exacta** (cara, mas é teste). Gate: *Polyanya = o exacto* a meio ULP de comprimento. ⭐ É um oráculo de
+  graça, independente de qualquer app.
+- ⚠️ **Os custos por área (W7) quebram a optimalidade em qualquer ângulo do Polyanya** (ele supõe custo
+  uniforme). ⏳ A W7 abre com essa medição; a saída provável é o A\* sobre polígonos + funil **ponderado** só
+  quando há área de custo na cena, **declarado**.
+
+### §2.6 — Determinismo (o `physics_ecs_c9` compara os três sistemas)
+
+- `f32` com **só `sqrt`** (exacta em IEEE) nas leis do tique; ⛔ nada de `atan2`/`sin` sem `libm`.
+- `BTreeMap`, nunca `HashMap`, na ponte e nas leis.
+- ⚠️ **O `spade` usa `HashSet`/`HashMap`** (no `flood_fill_iterator.rs` e no `refinement.rs`; o
+  `clipper2-rust` não tem nenhum fora dos testes) ⇒ **a W0 mede que a saída é bit-idêntica entre duas corridas
+  em PROCESSOS diferentes** (as sementes de *hash* mudam por processo). ⛔ Se não for, a classificação das
+  faces (dentro/fora) é **nossa** (ponto-no-polígono pelo resultado par-ímpar do Clipper), e o `spade` fica só
+  com a triangulação; se nem a triangulação for, a partição é **nossa** (Hertel-Mehlhorn sobre uma triangulação
+  própria) e o `spade` sai.
+- O Clipper2 trabalha com **inteiros** (`Paths64`): o factor de escala metros→inteiros é um limite que diz de
+  que recurso é (a precisão do `f32` na extensão do mundo contra o alcance do `i64`) — **medido** na W1, com a
+  tabela ao lado.
+
+### §2.7 — O desvio entre agentes respeita a malha (W5)
+
+A queixa nº 1 da pesquisa (Q1) nasce de o desvio **ignorar a navmesh** no Godot e no RVO do Unreal. A nossa
+cura tem **duas** metades: o ORCA recebe as **arestas de fronteira da malha** como obstáculos estáticos (o
+RVO2 suporta obstáculos poligonais; o Godot não os liga à malha) **e** o corpo desliza na parede real. A Q7
+(*ORCA preso nos cantos*, Sunshine-Hill) é um **banco de cenários automático** — cada um é um gate.
+
+---
+
+## §3 — O tique de um agente (a ordem é a da indústria, e o oráculo decide os números)
+
+```text
+(1) alvo        → por nome · a tag mais perto · ponto · o próximo ponto da patrulha
+(2) malha       → a do raio deste agente (a cache; reconstrói se a geometria mudou)
+(3) localizar   → o agente e o alvo na malha (fora dela: projecta para o ponto mais perto e DIZ)
+(4) recalcular? → só se: alvo andou > distância de recálculo · o corredor ficou inválido · não há caminho
+                  (⛔ nunca por tique — Q6; o relógio é escalonado por agente, declarado)
+(5) caminho     → Polyanya → lista de cantos (o corredor)
+(6) avançar     → consome cantos alcançados com aceitação ≥ velocidade × dt (Q5)
+(7) intenção    → direcção para o próximo canto (travar perto do fim: distância de chegada)
+(8) desvio      → (W5) ORCA sobre a velocidade desejada, com as fronteiras da malha
+(9) entregar    → (drive, drive_y) do TopDownPlayer — e ele anda e desliza
+(10) estados    → chegou · sem caminho · alvo fora da malha · preso (o progresso parou durante T)
+                  — cada um é um sinal com NOME autorado (vazio = calado) e uma linha no painel
+```
+
+---
+
+## §4 — As waves
+
+| wave | entrega | abre com (a medição que a pode desmentir) | smoke |
+|---|---|---|---|
+| **W0** | o ORÁCULO e as medições: o corpus do Godot **com cabeçalho** (construção com raio · caminhos · ponto fora · desvio) e o oráculo EXACTO (grafo de visibilidade) | §5.0: a composição de hoje **não** persegue à volta de uma parede (o *homing* da arena, medido) · o custo da construção a 10/100/1000 obstáculos · o determinismo do `clipper2-rust`+`spade` entre processos · o custo da assinatura por tique | — |
+| **W1** | `ph2d-navmesh`: a construção, com paridade contra o Godot (recuo em esquadria) e a divergência declarada (recuo redondo) | o factor de escala inteiro · os segmentos por arco · a quantização do raio | — |
+| **W2** | `ph2d-nav`: localizar · projectar · **Polyanya** · ilhas (inalcançável ⇒ o ponto alcançável mais perto, **dito**) | o custo de uma consulta e de N consultas por tique (a tabela que decide o escalonamento do recálculo) · triângulos contra polígonos convexos fundidos | — |
+| **W3** | **`NavRegion` + `NavAgent` + a ponte no tique + o anel + os sinais + o traço do caminho** | as queixas Q2, Q4, Q5, Q6, Q8, Q12 escritas como gates **antes** da ponte | **`=1` o labirinto**: o herói ao teclado, um perseguidor que **contorna** e, ao lado, o **CONTROLO** (o morcego de *homing* que bate na parede) · e um perseguidor **GRANDE** que não cabe na passagem estreita e dá a volta longa |
+| **W4** | as secções **Nav Region** e **Nav Agent** do Inspector · *Show Navigation* (a malha e os caminhos no canvas) · a linha de estado com voz | o censo de que toda secção chega a pixel · o preço do 8-direcções medido | o artista monta um perseguidor **sem tabela nenhuma** |
+| **W5** | `ph2d-orca`: desvio entre agentes com as fronteiras da malha · corpos móveis não-agentes como obstáculos dinâmicos | paridade com o RVO2 do Godot (velocidades por tique) · o custo a 10/100/1000 agentes (a vizinhança por grelha) | **`=2` a porta**: oito perseguidores a passar uma porta sem se entalarem, com o CONTROLO sem desvio ao lado |
+| **W6** | o mundo que muda: reconstrução ao mudar a geometria · portas · verbos **`Start/Stop Navigation`** · alvos **a tag mais perto** e **patrulha por uma forma desenhada** · o exemplo patrulha→persegue com a `StateMachine` | o custo da reconstrução por mudança (síncrona ou por mosaicos) | **`=3`**: o guarda patrulha um caminho desenhado, vê o herói, persegue-o, e a porta fecha-se |
+| **W7** | **custo por área** (`NavCostArea`: lama lenta, lava proibida) · **atalhos** (`NavLink`: teleporte, porta de um sentido) com o sinal *atravessou* | o Polyanya com custos (§2.5) · o custo da procura ponderada | o inimigo **evita a lava** e usa o teleporte |
+| **W8** | a **arena** (`PH2D_VIDA_SMOKE=4`) com os morcegos a contornar as paredes · o **tutorial em PDF** `03_navegacao.pdf` + o gate dos rótulos | a foto da arena antes de a mandar | o dono monta uma perseguição do princípio ao fim |
+
+⚠️ **Cada wave fecha com:** prova de mutação (com os quatro controlos e o pré-voo de âncoras), a **foto da
+cena antes de a mandar** (`ferramentas/fotografa_cena.sh` — *uma cena que ensina o contrário é pior que uma
+ausente*), e o portão da linha.
+
+---
+
+## §5 — ⭐ Onde superamos a referência (cada linha com a fonte da vantagem)
+
+| | o que | contra | a fonte |
+|---|---|---|---|
+| S1 | **o caminho mais curto possível**, em qualquer ângulo | o A\*+funil do Godot, óptimo só no corredor | Polyanya (IJCAI 2017) + o oráculo exacto (§2.5) |
+| S2 | **o raio sai do corpo** e uma malha por raio deriva-se sozinha | Godot/Unity/Unreal: um mapa ou *bake* por tamanho, à mão | doc 29 §2.4 Q2/Q3; *«ninguém entrega raio por agente numa malha só»* (doc 29 §4) |
+| S3 | **a folga exacta de um disco** (recuo redondo) | o recuo em esquadria do Godot, medido nas quinas | §2.3, a sonda |
+| S4 | **caminho no tique 1** | o Godot devolve vazio até ao quadro 4–5, medido | §2.4, a sonda |
+| S5 | **o desvio não sai da área andável** | Godot #60354, aberto desde 2022 | §2.7 |
+| S6 | **estados com voz** (*sem região · alvo fora · inalcançável · preso*) | nenhum motor expõe «preso»; caminhos vazios calados | doc 29 §2.4 Q12, §6.6 do dossiê |
+| S7 | **o *scrub* devolve a perseguição exacta** | nenhum motor da pesquisa volta atrás no tempo | §2.2, o anel |
+| S8 | **a mesma corrida nos três sistemas** | — | §2.6, o `physics_ecs_c9` |
+| S9 | **a patrulha desenhada com a caneta** (W6) | os outros: pontos de passagem à mão | o `PathFollow`/`VecPath` desta casa |
+
+---
+
+## §6 — ⛔ Recusas antes de começar (com o motivo)
+
+- **A grelha** (o modo do Construct/GDevelop): é do **projecto Tilling** (ordem do dono); o A\* do
+  `ph2d-grid` continua no editor. ⚠️ E o doc dele (`square.rs:16-24`) promete um *callback* de custo que **não
+  existe** — corrigir a frase é dívida da W0 (uma linha, nenhum produto).
+- **Um quarto mover** (o agente mover o corpo ele próprio): duplicaria o `TopDownPlayer` (§2.1).
+- **Recalcular o caminho a cada tique**: anti-padrão documentado (o *«dançar»* do Godot; o aviso do
+  GDevelop) — Q6.
+- **`vleue_navigator`** (arrasta `bevy` inteiro), **`oxidized_navigation`** (descontinuado), **`rerecast`**
+  (voxel 3D para um problema 2D de geometria exacta), **FFI ao Recast/Detour em C++**.
+- **`landmass` e `polyanya` como DEPENDÊNCIAS:** os dois são bons e MIT/Apache, mas trazem um segundo modelo do
+  mundo (o *Archipelago* do `landmass` ao lado do ECS — duas fontes de verdade) e pacotes novos (`geo`, `rstar`,
+  um `glam` a mais). ⇒ a lei é **nossa**, a partir dos artigos, sobre a geometria que **já** está no
+  repositório; ⏳ os dois ficam como **oráculos adicionais** se a W2/W5 precisarem de um terceiro lado.
+- **Plataformas com saltos** (grafo de plataformas, saltos simulados — Pignole, Surfacer): outro problema, **plano
+  próprio** quando o dono o pedir.
+- **Campos de fluxo** (hordas a partilhar o destino): **só** se a tabela de custo da W5 mostrar que N consultas
+  não cabem no quadro.
+- **Esculpir a malha com obstáculos MÓVEIS** (o *carve* do Unity): a regra da própria Unity é *«em movimento →
+  desvio; parado → esculpir»*, e o nosso «parado» é a geometria estática, que já reconstrói (W6).
+- **Ler o fonte do Godot, do RVO2 ou do Detour**, mesmo sendo legal: o oráculo corre-se (§0.9); a lei sai dos
+  artigos.
+
+---
+
+## §7 — Os contadores (DELTA estimado — ⛔ conte no código no dia)
+
+| contador | delta | quando |
+|---|---|---|
+| `PROJECT_SCHEMA` | **+1** (W3: `NavRegion`+`NavAgent`) · **+1** (W7: `NavCostArea`+`NavLink`) | o postcard é posicional |
+| registo da **física** (`ph2d-physics-ecs`) | **+2** (W3) · **+2** (W7) | ⛔ os espelhos `ph2d-render`/`ph2d-script` **não** mexem (contam `ecs`) |
+| `LIVE_SECTIONS` | **+2** (W4) · **+2** (W7) | |
+| `SignalOrigin` | **+1** (`Navigation`, append-only) | W3 |
+| `SignalVerb::ALL` | **+2** (`Start Navigation`/`Stop Navigation`, apendados — a posição **é** a tag) | W6 |
+| `ComponentEdit` | **+2** (W4) · **+2** (W7) | |
+| crates novas | **3** folhas (`ph2d-navmesh`, `ph2d-nav`, `ph2d-orca`) | W1/W2/W5 |
+| pacotes externos novos | **0** (o `clipper2-rust` e o `spade` já estão resolvidos) | ⏳ a confirmar pelo `cargo deny`/`machete` na W1 |
+
+---
+
+## §8 — W0 em detalhe (o oráculo e as medições — nenhuma linha de produto)
+
+### §8.1 — A sonda §5.0: a composição de hoje NÃO contorna
+
+Um herói atrás de uma parede em `U` e um perseguidor feito com o que existe (o `ProjectileMotion` com
+*homing*, como os morcegos da arena): medir a distância ao herói ao fim de `10 s`. ⏳ Previsão (a confirmar):
+ela **não converge** (o perseguidor ricocheteia na parede). Esta sonda vira o **CONTROLO** da cena `=1`.
+
+### §8.2 — O corpus do Godot, com cabeçalho
+
+Em `crates/ph2d-navmesh/tests/fixtures/godot/` e `crates/ph2d-nav/tests/fixtures/godot/`, gerados por
+`ferramentas/godot_nav_oraculo/*.gd` (a sonda de triagem passa a arnês), com
+`region_set_use_async_iterations(reg, false)` antes do polígono (a armadilha do doc 29 §6.1):
+
+| família | cenas | o que se grava |
+|---|---|---|
+| **F1 construção** | rectângulo+quadrado · dois quadrados que se tocam · L · obstáculo na borda · obstáculos sobrepostos · **passagem mais estreita que `2r`** · círculo e cápsula (como o Godot os converte em polígono) · obstáculo rodado | vértices, polígonos, área, furos, ilhas — a raios `0`, `5`, `10`, `25` |
+| **F2 caminhos** | 8–12 pares início/fim por cena de F1, incluindo empates simétricos (o desempate do Godot é da decomposição — medido) | os cantos e o comprimento |
+| **F3 fora da malha** | início e/ou alvo dentro de um obstáculo · fora da região · numa ilha separada | a projecção (o ponto mais perto) e o caminho parcial |
+| **F4 desvio** (para a W5) | frente a frente (2) · cruzamento (4 cantos) · troca em círculo (8) · corredor · porta | posição e `velocity_computed` por quadro, a `--fixed-fps 60` |
+
+⚠️ As tolerâncias saem do **ruído medido do oráculo** (a sonda leu `49.999996185` por `50`), nunca de um número
+escolhido; e cada fixtura tem o gate *«o cabeçalho concorda com a tabela do teste»* (o molde da câmera).
+
+### §8.3 — O oráculo EXACTO
+
+Num módulo `test-support` da `ph2d-nav`: grafo de visibilidade sobre os vértices dos obstáculos já recuados +
+Dijkstra (`BTreeMap`). Controlo positivo dele próprio: num rectângulo sem obstáculo o caminho é o segmento; com
+um quadrado no meio, as duas voltas têm o mesmo comprimento.
+
+### §8.4 — As medições de custo e de determinismo
+
+| medição | régua | decide |
+|---|---|---|
+| construção a 10/100/1000 obstáculos | `--release`, mínimo de 5, `loadavg` ao lado (⛔ nada vale acima de `load ~5`) | síncrona no tique (§2.4) ou por mosaicos |
+| a assinatura dos estáticos por tique | idem | assinatura ou «sujo» marcado pela ponte |
+| `clipper2-rust` + `spade` bit-idênticos entre **dois processos** | `sha256` dos vértices e da topologia, 3 corridas | quem classifica as faces e quem triangula (§2.6) |
+
+---
+
+## §9 — W3 em detalhe (a primeira wave com produto)
+
+### §9.1 — Os campos (valores de fábrica a confirmar pelo oráculo onde ele tem um)
+
+**`NavRegion`:** `half_extents` (a caixa à volta do `Transform`) · `obstacle_layers` (máscara; de fábrica todas) ·
+`show_navigation` (vista — ⚠️ se for só vista, vive no `WidgetStore` e **não** no componente; decidir na W4 pela
+lei do *«interruptor de vista não é documento»* que o Sprite já pagou).
+
+**`NavAgent`:** `target` = `Named(stable_name_id)` · `NearestTagged(tag)` · `Point(x, y)` · `None` (W3 entrega os
+dois primeiros e o ponto; a patrulha é da W6) · `radius: Option<f32>` (`None` = o do corpo) ·
+`arrive_distance` (Godot `target_desired_distance = 10` px ⇒ convertido a metros pelo
+`pixels_per_meter`) · `repath_distance` (Godot `path_max_distance = 100` px, idem) · `stuck_after_s` ·
+três nomes de sinal (`on_arrived`, `on_no_path`, `on_stuck`; vazio = calado) · `active: bool`.
+
+### §9.2 — Os gates escritos ANTES da ponte (red-first)
+
+| gate | queixa | régua |
+|---|---|---|
+| o caminho existe **no tique 1** | Q4 | o agente anda no 1.º tique depois de nascer (com a construção síncrona medida) |
+| o raio sai do corpo · o grande não passa onde o pequeno passa | Q2/Q3 | dois agentes na mesma cena, a passagem `2r_pequeno < largura < 2r_grande` |
+| nenhum canto é ultrapassado | Q5 | a distância ao corredor nunca passa de `velocidade × dt` + a folga |
+| **não recalcula por tique** | Q6 | um contador `#[cfg(test)]` **por thread** (a lição do colisor do Motion) — com o alvo parado, `0` recálculos em `600` tiques |
+| o agente não é obstáculo de si mesmo | Q8 | o colisor dele fora da construção da malha do raio dele, por construção |
+| os quatro estados falam | Q12 | uma fixtura por estado, com o sinal **e** a linha do painel |
+| o *scrub* devolve a perseguição exacta | S7 | gravar 120 tiques, rebobinar a 60, refazer: posições **ao bit** |
+| a intenção nunca vem da fita | §2.2 | o censo da porta única `drive_controllers` cobre `drive_nav_agents` nos dois laços |
+| um agente nascido de uma `Factory` persegue | — | a cópia transitória com `NavAgent` anda no tique seguinte ao nascimento |
+| **o perseguidor contorna onde o *homing* bate** | §8.1 | a sonda da W0 com o `NavAgent`: a distância **converge** |
+
+### §9.3 — A cena `PH2D_NAV_SMOKE=1` (o labirinto)
+
+⭐ **O fenómeno com o uso real e o CONTROLO ao lado** (a lição de todas as cenas desta linha): um labirinto de
+paredes sólidas, o herói ao teclado (as setas — ⛔ o `W` do WASD abre o painel de mundo e o espaço é o *play* da timeline, os dois medidos), **três** inimigos com o
+mesmo `TopDownPlayer` e uma diferença cada — **(a)** o perseguidor com `NavAgent`, **(b)** o CONTROLO de *homing*
+que bate na parede, **(c)** o perseguidor **grande** que não cabe na passagem estreita e dá a volta longa —, o
+traço do caminho de cada agente desenhado, e o roteiro em passos numerados para o dono. ⚠️ A banda que sobra
+com a timeline aberta **não é centrada na origem** (medido no FIM DE JOGO e na ARMA): o labirinto mede-se pela
+**caixa**, com a foto a confirmar antes de mandar.
+
+---
+
+## §10 — Perigos conhecidos (as armadilhas que esta família já pagou)
+
+1. **O laço que esquece o mover novo** (três vezes): `drive_nav_agents` entra **na porta única** e o censo tem de
+   reprovar se só um laço o chamar.
+2. **O anel**: o par `record`/`seed` **e** a limpeza em `rebuild_from_rest` — o tipo `PlayerStates` faz esquecer
+   um deles não compilar; o `NavAgentRuntime` entra pelo mesmo tipo.
+3. **O BVH vê o mundo do ÚLTIMO passo** (`cast.rs:10-24`): a construção e as consultas de linha de vista do tique
+   veem a geometria do passo anterior — declarado e gateado.
+4. **O corpo nascido `Dynamic` cai** (`y = −492 m` em dez segundos, medido no #25): a semente do `NavAgent` passa
+   pela do controlador cinemático.
+5. **Um evento lido como estado**: o painel lê o **estado** do agente (`a perseguir`, `preso`), nunca o sinal do
+   tique.
+6. **O custo**: 1 000 movers de vista de cima custam `263 %` de um quadro (medido no #13) — a navegação soma-se a
+   isso; o tecto de agentes por cena é **medido** na W2/W5, nunca escolhido.
+7. **Um `Hide` vira documento ao fim de dois quadros** (a lei do `settle`, medida no FIM DE JOGO): uma porta que
+   abre e fecha na corrida é **condução**, e o que a corrida escreve a corrida desfaz (W6).
+8. **A catraca da shell** (`the_shell_only_shrinks`): a fiação da cena nova vai para a crate da família; a shell
+   leva só a linha do roteador.
+9. **Um `#[cfg(target_os)]` muda no Linux** (a 3.ª espécie do §5.0): nenhum previsto; se aparecer, cruza-se para
+   `aarch64-apple-darwin` antes de fechar.
+
+---
+
+## §11 — ⏳ Decisões do DONO (produto), com a recomendação
+
+1. **O inimigo evita sozinho as zonas que ferem** (a lava da Vida e Dano a virar custo automático na W7)? —
+   **recomendado sim**, com uma caixa no `NavAgent` para o desligar (um inimigo imune ao fogo deve poder
+   atravessá-la; a resistência do `Health` já sabe dizê-lo).
+2. **O desvio entre agentes nasce ligado ou desligado?** (o Godot nasce desligado) — **recomendado ligado** para
+   quem tem `NavAgent`, depois de a W5 medir o custo.
+3. **Navegação em PLATAFORMAS (saltos)** — plano próprio, quando pedir.

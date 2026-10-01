@@ -1089,4 +1089,8 @@ extend-exclude = [
     # `HealthModifier`. Corrigir a fixture seria reescrever o que o alvo imprimiu, e isentar a
     # palavra `conver` esconderia um erro real no repo inteiro — por isso exclui-se o FICHEIRO.
     "docs/Components/ferramentas/godot_health_tipos/saida.txt",
+    # `line/components`, plano 30 (2026-10-01): o dossiê BRUTO da pesquisa de navegação é VERBATIM
+    # (o doc 29 cita-o como fonte) e escreve `UE`/`UE5` — a sigla do Unreal Engine. Isentar a palavra
+    # `UE` esconderia um `USE` mal escrito no repo inteiro — por isso exclui-se o FICHEIRO.
+    "docs/Components/pesquisa/dossie_navegacao_2026-10-01.md",
 ]

@@ -142,18 +142,15 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
         _ => (TextInputState::Normal, String::new(), 0, None),
     };
 
-    let (scene, text_system) = (&mut *ctx.scene, &mut *ctx.text_system);
-    // Anything scrolled past the body's top/bottom is hidden (the door) — and, via
-    // `ClippedHits`, unclickable. ⚠️ O `ClippedHits` FICA: ele é mais estrito que o recorte
-    // da porta (larga INTEIRO o widget que cruza a borda, em vez de o aparar) e carrega o
-    // store que os pintores do corpo leem. Os dois recortes compõem.
-    // ⚠️ **O empréstimo CONJUNTO existe para isto** (`PanelHostInternal::store_and_hit_index_mut`,
-    // e o doc dele diz-o): sem ele o `hit_index_mut` tranca o host e o corpo fica sem forma de
-    // perguntar como um widget se pinta — que foi exactamente por que este painel nasceu inerte.
-    let (store, hits) = ctx.host.store_and_hit_index_mut();
-    let hit_index = &mut ClippedHits::new(store, hits, body_rect);
-
-    // The body is a stack of collapsible SECTIONS — see `paint_sections`.
+    // The body is a stack of collapsible SECTIONS — see `paint_sections`. Each section paints
+    // through a `ClippedHits` it builds from the context: anything scrolled past the body's
+    // top/bottom is hidden (the door) and, via `ClippedHits`, unclickable. ⚠️ O `ClippedHits`
+    // FICA: ele é mais estrito que o recorte da porta (larga INTEIRO o widget que cruza a borda,
+    // em vez de o aparar) e carrega o store que os pintores do corpo leem. Os dois recortes
+    // compõem. ⚠️ **O empréstimo CONJUNTO existe para isto**
+    // (`PanelHostInternal::store_and_hit_index_mut`, e o doc dele diz-o): sem ele o
+    // `hit_index_mut` tranca o host e o corpo fica sem forma de perguntar como um widget se pinta
+    // — que foi exactamente por que este painel nasceu inerte.
     let body = crate::paint_sections::Body {
         open,
         loaded,
@@ -175,8 +172,13 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
             anchor: name_anchor,
         },
     };
-    let final_y =
-        crate::paint_sections::paint_body(y, x, w, &body, scene, text_system, theme, hit_index);
+    // ⭐⭐ **O corpo pinta-se DENTRO de cartões** — o par abre depois do `push_clip` da porta de
+    //    propósito (a cena estacionada leva o recorte aberto). É o livro que o TEMA por secção
+    //    recolore (`section_cards::retheme`); o cartão da última secção fecha-o o
+    //    `end_section_cards`, como sempre.
+    ph2d_editor_core::widget::section_cards::begin_section_cards(ctx.scene, theme, y);
+    let final_y = crate::paint_sections::paint_body(ctx, y, x, w, &body, body_rect, theme);
+    ph2d_editor_core::widget::section_cards::end_section_cards(ctx.scene);
 
     // Total scrollable height in body-local coords (undo the `- scroll` offset).
     let content_h = (final_y + scroll) - body_top + bottom_pad;

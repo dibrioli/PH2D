@@ -113,6 +113,13 @@ pub fn populate(store: &mut WidgetStore) {
     //    cabeçalhos como oito COMANDOS.
     for id in rows::section_header_ids() {
         store.mark_collapsible_section(id);
+        // ⭐⭐ **A PEGA de dez pontos de cada secção** (2026-09-30, *«siga com os outros painéis»*):
+        //    `Plain` para o `is_focusable` responder e o rato a acender, com a mesma dica do
+        //    Inspector. As nove se arrastam (`paint::plano`), logo as nove têm pega — da MESMA lista
+        //    que o pintor declara, e não de uma segunda.
+        let grip = ph2d_editor_core::ids::grip_de(id);
+        store.register(grip, InteractiveState::Plain);
+        store.set_tooltip(grip, ph2d_i18n::tr("chrome.section.grip_hint"));
     }
 
     // The 36 matrix cells. Registered in a loop, which is exactly why the seam

@@ -6,7 +6,7 @@
 //! (*"sub-folder split is a follow-up"*) — e é o `command_palette.rs` + `command_palette/layout.rs`
 //! outra vez: arquivo irmão sob o mesmo módulo, então nenhum caminho de chamada muda.
 
-use crate::interaction::HitIndex;
+use crate::interaction::{HitIndex, WidgetStore};
 use crate::paint::{paint_text_centered, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
@@ -165,7 +165,7 @@ pub fn paint_segmented_group(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
-    store: &crate::interaction::WidgetStore,
+    store: &WidgetStore,
     hit_index: &mut HitIndex,
 ) {
     let n = segments.len();
@@ -216,7 +216,7 @@ pub fn paint_segmented_group_adaptive(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
-    store: &crate::interaction::WidgetStore,
+    store: &WidgetStore,
     hit_index: &mut HitIndex,
 ) -> f32 {
     let seg_state = |id: NodeId| store.button_visual(id);

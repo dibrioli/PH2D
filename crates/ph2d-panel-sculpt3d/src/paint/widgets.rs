@@ -10,7 +10,7 @@
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, SectionFold, SectionHeader, paint_button, paint_section_header,
+    Button, ButtonKind, ButtonState, SectionFold, paint_button, paint_section_header,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
@@ -31,19 +31,20 @@ pub(super) fn header(
     w: f32,
     y: f32,
 ) -> (Option<SectionFold>, f32) {
-    let theme = ctx.host.theme();
-    let h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: altura da faixa de cabeçalho
-    let collapsed = ctx.host.store().is_collapsed(id);
+    let theme = crate::paint::tema(ctx);
+    // ⚠️ A MESMA altura que o plano usa para a marca de queda (`section_header_h`) — duas contas
+    //    punham a marca num sítio e a secção noutro.
+    let h = ph2d_editor_core::panel::rows::section_header_h();
     let rect = Rect::new(x, y, w, h);
-    let head = SectionHeader::new(id, title)
-        .collapsible(!collapsed)
-        .open_t(ctx.host.store().section_open_live(id));
+    // ⭐⭐ O cabeçalho sai do LUGAR da secção (`super::plano`): a dobra viva de sempre e a pega se
+    //    ela se arrasta; o registo escreve-a no livro do quadro, que é o que abre o menu de tema no
+    //    botão direito. ⚠️ O título regista-se sob o MESMO id, e é por ele que o `event` dobra.
+    let head = super::plano::cabecalho(ctx, id, title);
     let body_top = y + h + Spacing::Sm.px();
+    paint_section_header(&head, rect, ctx.scene, ctx.text_system, theme);
+    super::plano::regista(ctx, id, rect);
     let scene = &mut *ctx.scene;
-    let text_system = &mut *ctx.text_system;
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-    paint_section_header(&head, rect, scene, text_system, theme);
-    hit_index.register(id, rect);
     let fold = SectionFold::begin(store, id, x, w, body_top, scene, hit_index);
     (fold, body_top)
 }
@@ -80,7 +81,7 @@ pub(super) fn labelled_seg(
     w: f32,
     y: f32,
 ) -> f32 {
-    let theme = ctx.host.theme();
+    let theme = crate::paint::tema(ctx);
     let segs: Vec<(&str, bool, ph2d_a11y::NodeId)> = options
         .iter()
         .zip(labels)
@@ -163,7 +164,7 @@ pub(super) fn toggle_na_celula(
 }
 
 fn toggle_em(ctx: &mut PaintCtx, id: ph2d_a11y::NodeId, label: &str, on: bool, rect: Rect) {
-    let theme = ctx.host.theme();
+    let theme = crate::paint::tema(ctx);
     let state = if on {
         (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
     } else {
@@ -218,7 +219,7 @@ pub(super) fn command_na_celula(
 }
 
 fn command_em(ctx: &mut PaintCtx, id: ph2d_a11y::NodeId, label: &str, rect: Rect) {
-    let theme = ctx.host.theme();
+    let theme = crate::paint::tema(ctx);
     let state = ctx.host.store().button_visual(id);
     let scene = &mut *ctx.scene;
     let text_system = &mut *ctx.text_system;
@@ -236,7 +237,7 @@ fn command_em(ctx: &mut PaintCtx, id: ph2d_a11y::NodeId, label: &str, rect: Rect
 /// Uma linha de texto. Hit-indexada por ninguém de propósito — é um FATO, não um
 /// controle, e uma affordance que ele não pode honrar seria pior que texto puro.
 pub(super) fn readout(ctx: &mut PaintCtx, text: &str, x: f32, w: f32, y: f32) -> f32 {
-    let theme = ctx.host.theme();
+    let theme = crate::paint::tema(ctx);
     let font = TypeToken::Sm.px();
     paint_text(
         ctx.text_system,

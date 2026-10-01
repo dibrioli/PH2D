@@ -29,6 +29,35 @@ fn button(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
     );
 }
 
+/// **As SECÇÕES do painel — o cabeçalho de cada uma e a pega das que se arrastam.**
+///
+/// Os cabeçalhos são interativos (o chevron os dobra), então são registrados
+/// como qualquer outro controle — um chevron pintado que ninguém registrou é
+/// uma affordance que não faz nada.
+///
+/// ⚠️ **A lista é a de [`rows::section_headers`], e é a MESMA que o
+/// `event::is_section_header` percorre.** Enquanto eram duas listas à mão,
+/// esta registrava quatro cabeçalhos de botão e aquela comparava três: o
+/// `SCULPT3D_SEC_BAKE` nascia registrado, focável e **sem braço** — a dobra
+/// pintada que não acontece.
+///
+/// ⭐⭐ **E a PEGA de dez pontos das secções que se ARRASTAM** (2026-09-30, *«siga com os outros
+/// painéis»*): `Plain` para o `is_focusable` responder e o rato a acender, com a mesma dica do
+/// Inspector. ⚠️ Só as móveis — a `Tool` é fixa e não tem pega (`crate::paint::plano`).
+///
+/// ⚠️ Fora do [`populate`] por RESPONSABILIDADE (o tecto de 200 LOC por função o pediu quando a
+/// pega chegou): é o registo do LIVRO das secções, não de um controlo das fileiras.
+fn register_sections(store: &mut WidgetStore) {
+    for id in rows::section_headers() {
+        button(store, id);
+    }
+    for id in crate::paint::plano::SECCOES_MOVEIS {
+        let grip = ph2d_editor_core::ids::grip_de(id);
+        store.register(grip, InteractiveState::Plain);
+        store.set_tooltip(grip, ph2d_i18n::tr("chrome.section.grip_hint"));
+    }
+}
+
 pub fn populate(store: &mut WidgetStore) {
     for row in rows::rows() {
         store.register(
@@ -168,18 +197,7 @@ pub fn populate(store: &mut WidgetStore) {
         }
     }
 
-    // Os cabeçalhos são interativos (o chevron os dobra), então são registrados
-    // como qualquer outro controle — um chevron pintado que ninguém registrou é
-    // uma affordance que não faz nada.
-    //
-    // ⚠️ **A lista é a de [`rows::section_headers`], e é a MESMA que o
-    // `event::is_section_header` percorre.** Enquanto eram duas listas à mão,
-    // esta registrava quatro cabeçalhos de botão e aquela comparava três: o
-    // `SCULPT3D_SEC_BAKE` nascia registrado, focável e **sem braço** — a dobra
-    // pintada que não acontece.
-    for id in rows::section_headers() {
-        button(store, id);
-    }
+    register_sections(store);
 
     // Comandos e toggles. Registrados como `Button` — inclusive os três eixos do
     // espelho e o dyntopo, que PARECEM checkbox e não são: um `Checkbox` emite

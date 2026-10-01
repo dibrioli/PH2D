@@ -60,6 +60,14 @@ pub fn populate(store: &mut WidgetStore) {
     button(store, ph2d_tool_painter::ids::WET_TUNING_KM_MIXING);
     button(store, ph2d_tool_painter::ids::WET_TUNING_KM_GLAZE);
     button(store, ph2d_tool_painter::ids::WET_TUNING_CLOSE);
+    // ⭐⭐ **A PEGA de dez pontos das secções que se ARRASTAM** (2026-09-30, *«siga com os outros
+    //    painéis»*): `Plain` para o `is_focusable` responder e o rato a acender, com a mesma dica
+    //    do Inspector. As seis se arrastam (`crate::plano`).
+    for id in crate::plano::seccoes_moveis() {
+        let grip = ids::grip_de(id);
+        store.register(grip, InteractiveState::Plain);
+        store.set_tooltip(grip, ph2d_i18n::tr("chrome.section.grip_hint"));
+    }
     // Drag + resize handles, parented to the panel's own NodeId — the same
     // panel-agnostic machinery the Inspector/Hierarchy chrome uses: Down on
     // one of these anchors the store's drag/resize state, Moves accumulate

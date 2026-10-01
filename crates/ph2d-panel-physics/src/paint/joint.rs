@@ -14,7 +14,7 @@
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_i18n::tr;
 use ph2d_physics_ecs::{InteractionSettings, JointTool};
-use ph2d_tokens::Spacing;
+use ph2d_tokens::{Spacing, Theme};
 
 use crate::interact::{IROWS, ISection};
 
@@ -22,6 +22,7 @@ use crate::interact::{IROWS, ISection};
 /// it ended at.
 pub(super) fn paint_joint(
     ctx: &mut PaintCtx,
+    theme: Theme,
     it: &InteractionSettings,
     x: f32,
     w: f32,
@@ -29,6 +30,7 @@ pub(super) fn paint_joint(
 ) -> f32 {
     let mut y = super::interact::seg_row(
         ctx,
+        theme,
         x,
         w,
         y_in,
@@ -46,6 +48,7 @@ pub(super) fn paint_joint(
     if it.joint == JointTool::Ik {
         y = super::interact::seg_row(
             ctx,
+            theme,
             x,
             w,
             y,
@@ -67,7 +70,7 @@ pub(super) fn paint_joint(
             continue;
         }
         let value = (row.get)(it);
-        let used = super::paint_irow(ctx, row, value, x, w, y);
+        let used = super::paint_irow(ctx, theme, row, value, x, w, y);
         y += used + row_gap;
     }
 
@@ -75,8 +78,8 @@ pub(super) fn paint_joint(
     // primeira diz o que ESTE modo faz; a segunda diz que o Alt sempre carrega o
     // rig inteiro — um fato que vale nos cinco modos e que, escondido dentro da
     // frase de um deles, seria lido como propriedade daquele modo.
-    y = super::paint_hint(ctx, hint_key(it.joint), x, w, y);
-    super::paint_hint(ctx, "panel.physics.joint_hint.alt", x, w, y)
+    y = super::paint_hint(ctx, theme, hint_key(it.joint), x, w, y);
+    super::paint_hint(ctx, theme, "panel.physics.joint_hint.alt", x, w, y)
 }
 
 fn label(t: JointTool) -> &'static str {

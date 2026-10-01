@@ -1,11 +1,13 @@
-//! **O CHROME das secções deste painel** — o cabeçalho dobrável, a dobra do corpo e a régua
-//! entre duas secções.
+//! **O CHROME das secções deste painel** — o cabeçalho dobrável (com a pega) e a dobra do corpo.
+//! ⚠️ A régua entre duas secções saiu daqui em 2026-09-30: é o corredor do plano
+//! ([`ph2d_editor_core::panel::section_plan::Corredor`]) que a pinta.
 //!
 //! Irmão (`#[path]`) do [`super::paint_sections`], e o corte é o que o cap de LOC do painel
 //! pediu — mas ele é honesto por conta própria: aqui mora *como uma secção SE DESENHA*, e lá
 //! *que secções existem e em que ordem*. Os dois crescem por motivos diferentes.
 
 use super::*;
+use ph2d_editor_core::panel::section_plan;
 
 /// Height of a section header band (matches the Sprite Inspector's).
 pub(super) fn section_h() -> f32 {
@@ -39,23 +41,28 @@ pub(super) fn section(
 ) -> (Option<SectionFold>, f32) {
     let h = section_h();
     let rect = Rect::new(x, y, w, h);
-    paint_section_header(
-        &SectionHeader::new(id, label)
+    // ⭐ **O cabeçalho é o do PLANO** (`section_plan::cabecalho`): a PEGA de dez pontos à direita,
+    //    acesa sob o rato e durante o arrasto. ⚠️ A dobra é a do PAR que o chamador fotografou —
+    //    o `cabecalho` lê-a do store, e reescrevê-la com o par mantém UMA resposta por secção.
+    let header = {
+        let (store, _) = hit_index.store_and_index_mut();
+        section_plan::cabecalho(store, id, label)
             .collapsible(fold.0)
-            .open_t(fold.1),
-        rect,
-        scene,
-        text_system,
-        theme,
-    );
-    hit_index.register(id, rect);
+            .open_t(fold.1)
+    };
+    paint_section_header(&header, rect, scene, text_system, theme);
+    // ⭐⭐ **O título e a pega vão para o LIVRO das secções do quadro** — é o que o despacho lê
+    //    para abrir o menu de tema no botão direito e resolver a queda de um arrasto. ⚠️ Pelo
+    //    `com_recorte`: um título rolado para fora do corpo não pode abrir menu nenhum.
+    hit_index.com_recorte(|_, hits| section_plan::regista_cabecalho(hits, id, rect));
 
     if let Some(text) = readout.filter(|t| !t.is_empty()) {
         // Right-aligned: the label grows from the left, so anything centred would sooner
         // or later collide with it. Measure, then place against the right edge.
         let font = TypeToken::Xs.px();
         let tw = text_system.layout(text, font, w).width();
-        let pad = Spacing::Md.px();
+        // ⚠️ À esquerda da PEGA, que mora na ponta direita do cabeçalho.
+        let pad = ph2d_editor_core::widget::section_grip::grip_slot_w_px();
         paint_text(
             text_system,
             scene,
@@ -84,14 +91,4 @@ pub(super) fn end_fold(
 ) -> f32 {
     let (store, hits) = hit_index.store_and_index_mut();
     fold.finish(store, scene, hits, y)
-}
-
-/// **A fronteira entre duas secções** — hoje a borda de um CARTÃO, não um risco.
-///
-/// Enio, 2026-09-06: *«vamos eliminar os nossos divisores azuis»*, depois de pôr o Blender ao
-/// lado. ⚠️ **A porta é a mesma para as duas famílias**: no clássico ela ainda desenha o risco
-/// de sempre — ver [`ph2d_editor_core::widget::section_cards`]. Este painel continua a não ter
-/// um `if` de tema, que era o que a nota anterior aqui defendia e continua a valer.
-pub(super) fn separator(y: f32, x: f32, w: f32, scene: &mut VectorScene, theme: Theme) -> f32 {
-    close_section(scene, theme, x, w, y)
 }

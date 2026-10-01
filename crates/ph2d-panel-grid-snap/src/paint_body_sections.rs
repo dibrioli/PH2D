@@ -5,6 +5,10 @@
 //! Target / Display / Inspect). Same recipe as the CEQ + BgRemoval
 //! splits: each helper takes `&mut PaintCtx`, the live `GridSnapState`,
 //! geometry params, and a `y_in: f32` cursor; returns `y_out: f32`.
+//!
+//! ⭐ Since 2026-09-30 every helper also takes the THEME it paints in — the one the artist chose
+//! for that section by right-clicking its title ([`crate::plano`]), never `ctx.host.theme()`,
+//! which would paint a re-themed card's widgets in the panel's colours.
 
 use crate::layout::{ROW_H, row_gap};
 use crate::paint_helpers::{
@@ -16,20 +20,20 @@ use crate::paint_rows::{
 };
 use crate::state::{length_unit, meters_to_display};
 use ph2d_editor_core::grid_snap::GridSnapState;
-use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::{SectionFold, SectionHeader, paint_section_header};
+use ph2d_editor_core::panel::{PaintCtx, section_plan};
+use ph2d_editor_core::widget::{SectionFold, paint_section_header};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 
 /// Grid Kind label + 3×3 button grid + per-kind config rows.
 fn paint_grid_kind_section_body(
     ctx: &mut PaintCtx<'_>,
+    theme: ph2d_tokens::Theme,
     state: &GridSnapState,
     inner_x: f32,
     inner_w: f32,
     mut y: f32,
 ) -> f32 {
-    let theme = ctx.host.theme();
     {
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
         y = paint_kind_button_grid(
@@ -66,12 +70,12 @@ fn paint_grid_kind_section_body(
 /// Subdivisions + Magnetism Radius number rows.
 fn paint_target_section_body(
     ctx: &mut PaintCtx<'_>,
+    theme: ph2d_tokens::Theme,
     state: &GridSnapState,
     inner_x: f32,
     inner_w: f32,
     mut y: f32,
 ) -> f32 {
-    let theme = ctx.host.theme();
     {
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
         y = paint_target_button_stack(
@@ -129,13 +133,12 @@ fn paint_target_section_body(
 /// Color swatch + Layer segmented (In front / Behind).
 fn paint_display_section_body(
     ctx: &mut PaintCtx<'_>,
+    theme: ph2d_tokens::Theme,
     state: &GridSnapState,
     inner_x: f32,
     inner_w: f32,
     mut y: f32,
 ) -> f32 {
-    let theme = ctx.host.theme();
-
     let overlay_row = Rect::new(inner_x, y, inner_w, ROW_H);
     {
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
@@ -221,12 +224,12 @@ fn paint_display_section_body(
 /// its header — the header is this panel's collapsible one ([`paint_inspect_section`]).
 fn paint_inspect_section_body(
     ctx: &mut PaintCtx<'_>,
+    theme: ph2d_tokens::Theme,
     state: &GridSnapState,
     inner_x: f32,
     inner_w: f32,
     y: f32,
 ) -> f32 {
-    let theme = ctx.host.theme();
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
     ph2d_editor_core::grid_snap::inspect::paint_body(
         inner_x,
@@ -244,8 +247,16 @@ fn paint_inspect_section_body(
 /// ⭐⭐ **As quatro secções do painel DOBRAM** (ordem do dono, 2026-09-24, com foto: *«no Grid as
 /// seções não fecham. Isso deve ser corrigido»*). Até esse dia cada uma pintava o título à mão
 /// (`paint_section_label`: `TypeToken::Md` + uma linha azul POR BAIXO) e não tinha dobra nenhuma; o
-/// título dela virou o estilo do [`SectionHeader`] da casa para o app inteiro, com a linha azul à
+/// título dela virou o estilo do `SectionHeader` da casa para o app inteiro, com a linha azul à
 /// DIREITA do nome — e as secções daqui passaram a usá-lo.
+///
+/// ⭐⭐ **E desde 2026-09-30 o cabeçalho é o do PLANO** (*«siga com os outros painéis»*): a pega de
+/// dez pontos à direita e o registo no livro do quadro, que é o que o botão direito no título lê
+/// para abrir o menu de tema e o arrasto da pega lê para resolver a queda. A ORDEM e o tema de cada
+/// secção moram em [`crate::plano`]; esta função pinta UMA, no `theme` que recebe.
+///
+/// ⚠️ **Sem vão no fim**: o `depois` que cada secção somava (`row_gap()·2` · `row_gap()` · `0`) era
+/// a fronteira entre secções; hoje ela é a borda do CARTÃO, e quem a pinta é o corredor do plano.
 ///
 /// ⚠️ **`Option<SectionFold>`, nunca um `bool`** — a lição da Física (F4b): o `is_collapsed` vira no
 /// quadro do clique enquanto o `t` da dobra ainda desce, e um corpo gateado nele sumiria de uma vez
@@ -253,42 +264,39 @@ fn paint_inspect_section_body(
 #[allow(clippy::too_many_arguments)]
 fn dobravel(
     ctx: &mut PaintCtx<'_>,
+    theme: ph2d_tokens::Theme,
     id: ph2d_a11y::NodeId,
     title: &str,
     x: f32,
     w: f32,
     y: f32,
-    depois: f32,
     corpo: impl FnOnce(&mut PaintCtx<'_>, f32) -> f32,
 ) -> f32 {
-    let theme = ctx.host.theme();
     let h = ph2d_editor_core::widget::section_title_px() + ph2d_tokens::Spacing::Md.px();
-    let collapsed = ctx.host.store().is_collapsed(id);
     let rect = Rect::new(x, y, w, h);
-    let header = SectionHeader::new(id, title)
-        .collapsible(!collapsed)
-        .open_t(ctx.host.store().section_open_live(id));
+    let header = section_plan::cabecalho(ctx.host.store(), id, title);
     let body_top = y + h + ph2d_tokens::Spacing::Sm.px();
     let fold = {
         let scene = &mut *ctx.scene;
         let text_system = &mut *ctx.text_system;
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
         paint_section_header(&header, rect, scene, text_system, theme);
-        hit_index.register(id, rect);
+        section_plan::regista_cabecalho(hit_index, id, rect);
         SectionFold::begin(store, id, x, w, body_top, scene, hit_index)
     };
     let Some(fold) = fold else {
-        return body_top + depois;
+        return body_top;
     };
     let fim = corpo(ctx, body_top);
     let scene = &mut *ctx.scene;
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-    fold.finish(store, scene, hit_index, fim) + depois
+    fold.finish(store, scene, hit_index, fim)
 }
 
 /// Grid Kind: collapsible header + 3×3 button grid + per-kind config rows.
 pub(crate) fn paint_grid_kind_section(
     ctx: &mut PaintCtx<'_>,
+    theme: ph2d_tokens::Theme,
     state: &GridSnapState,
     inner_x: f32,
     inner_w: f32,
@@ -296,19 +304,20 @@ pub(crate) fn paint_grid_kind_section(
 ) -> f32 {
     dobravel(
         ctx,
+        theme,
         crate::ids::GS_SEC_KIND,
         tr("panel.grid_snap.sections.grid_kind"),
         inner_x,
         inner_w,
         y,
-        row_gap() * 2.0,
-        |ctx, y| paint_grid_kind_section_body(ctx, state, inner_x, inner_w, y),
+        |ctx, y| paint_grid_kind_section_body(ctx, theme, state, inner_x, inner_w, y),
     )
 }
 
 /// Target: collapsible header + the target stack + Subdivisions / Magnetism rows.
 pub(crate) fn paint_target_section(
     ctx: &mut PaintCtx<'_>,
+    theme: ph2d_tokens::Theme,
     state: &GridSnapState,
     inner_x: f32,
     inner_w: f32,
@@ -316,19 +325,20 @@ pub(crate) fn paint_target_section(
 ) -> f32 {
     dobravel(
         ctx,
+        theme,
         crate::ids::GS_SEC_TARGET,
         tr("panel.grid_snap.sections.target"),
         inner_x,
         inner_w,
         y,
-        row_gap() * 2.0,
-        |ctx, y| paint_target_section_body(ctx, state, inner_x, inner_w, y),
+        |ctx, y| paint_target_section_body(ctx, theme, state, inner_x, inner_w, y),
     )
 }
 
 /// Display: collapsible header + Show Grid · Opacity · Layer.
 pub(crate) fn paint_display_section(
     ctx: &mut PaintCtx<'_>,
+    theme: ph2d_tokens::Theme,
     state: &GridSnapState,
     inner_x: f32,
     inner_w: f32,
@@ -336,19 +346,20 @@ pub(crate) fn paint_display_section(
 ) -> f32 {
     dobravel(
         ctx,
+        theme,
         crate::ids::GS_SEC_DISPLAY,
         tr("panel.grid_snap.sections.display"),
         inner_x,
         inner_w,
         y,
-        row_gap(),
-        |ctx, y| paint_display_section_body(ctx, state, inner_x, inner_w, y),
+        |ctx, y| paint_display_section_body(ctx, theme, state, inner_x, inner_w, y),
     )
 }
 
 /// Inspect: collapsible header + the shared inspector rows.
 pub(crate) fn paint_inspect_section(
     ctx: &mut PaintCtx<'_>,
+    theme: ph2d_tokens::Theme,
     state: &GridSnapState,
     inner_x: f32,
     inner_w: f32,
@@ -356,12 +367,12 @@ pub(crate) fn paint_inspect_section(
 ) -> f32 {
     dobravel(
         ctx,
+        theme,
         ph2d_editor_core::grid_snap::ids::GS_INSPECT_HEADER,
         ph2d_i18n::tr("chrome.grid_snap.inspect"),
         inner_x,
         inner_w,
         y,
-        0.0,
-        |ctx, y| paint_inspect_section_body(ctx, state, inner_x, inner_w, y),
+        |ctx, y| paint_inspect_section_body(ctx, theme, state, inner_x, inner_w, y),
     )
 }

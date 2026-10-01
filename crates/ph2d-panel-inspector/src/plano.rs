@@ -93,7 +93,8 @@ impl<'a> Plano<'a> {
         let mut faixas: Vec<Faixa> = Vec::with_capacity(ordem.len());
         let arrastada = store.section_drag().filter(|d| d.active).map(|d| d.section);
         let mut fantasma: Option<VectorScene> = None;
-        let mut corredor = section_plan::Corredor::default();
+        // ⚠️ O bloco do topo (os botões do objecto) já está pintado: a 1.ª secção fecha-o.
+        let mut corredor = section_plan::Corredor::com_conteudo_acima();
         for id in ordem {
             let Some(i) = self.tarefas.iter().position(|(t, _)| *t == id) else {
                 continue;

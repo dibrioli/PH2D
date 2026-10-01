@@ -4,6 +4,7 @@
 //! immediately to its LEFT ("na lateral do painel do painter").
 
 use ph2d_editor_core::ids;
+use ph2d_editor_core::panel::section_plan_ctx::PlanoCtx;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, clamp_panel_rect,
@@ -11,9 +12,10 @@ use ph2d_editor_core::widget::panel_chrome::{
     paint_panel_surface_floating, paint_panel_title, panel_close_button_rect,
     panel_drag_handle_rect, panel_resize_handle_rect, panel_resize_handle_rect_bl,
 };
+use ph2d_editor_core::widget::section_cards;
 use ph2d_editor_core::widget::{
-    Checkbox, CheckboxValue, IconButtonStyle, IconGlyph, SectionFold, SectionHeader,
-    WET_TUNING_SCROLLBAR_ID, paint_checkbox, paint_icon_button, paint_section_header,
+    Checkbox, CheckboxValue, IconButtonStyle, IconGlyph, SectionFold, WET_TUNING_SCROLLBAR_ID,
+    paint_checkbox, paint_icon_button, paint_section_header,
     paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
@@ -98,6 +100,10 @@ pub(crate) fn paint(_state: &mut WetTuningPanelState, ctx: &mut PaintCtx) {
         WET_TUNING_SCROLLBAR_ID,
         body_rect,
     );
+    // ⭐⭐ **O corpo pinta-se DENTRO de cartões** (2026-09-30) — adoptado com o plano das secções:
+    //    é o livro dos cartões que o `retheme` de cada secção recolore no tema dela. O par abre
+    //    DEPOIS do `open` da porta, para que o corpo devolvido caia dentro do recorte da rolagem.
+    section_cards::begin_section_cards(ctx.scene, theme, area.top());
     let y_after = paint_body(
         ctx,
         &brush,
@@ -106,6 +112,7 @@ pub(crate) fn paint(_state: &mut WetTuningPanelState, ctx: &mut PaintCtx) {
         area.top(),
         theme,
     );
+    section_cards::end_section_cards(ctx.scene);
     let content_h = (y_after + area.scroll()) - body_top + PANEL_HEAD_PAD;
     ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
 
@@ -139,108 +146,131 @@ pub(crate) fn paint(_state: &mut WetTuningPanelState, ctx: &mut PaintCtx) {
     );
 }
 
+/// ⭐⭐⭐ **O corpo é uma LISTA** (ordem do dono, 2026-09-30: *«siga com os outros painéis»*) — a
+/// lei da ordem, do tema por secção, da marca de queda e do fantasma é a partilhada
+/// ([`PlanoCtx`]); quem é o quê está em [`crate::plano`]. Cada secção pinta-se no TEMA que recebe
+/// — o que o artista lhe escolheu pelo botão direito no título, ou o do painel.
 fn paint_body(
     ctx: &mut PaintCtx,
     brush: &BrushSettings,
     x: f32,
     w: f32,
-    mut y: f32,
+    y: f32,
     theme: Theme,
 ) -> f32 {
     // While the artist's Paper SLOT drives the tooth, the engine's own tile
     // is not the source — its three physical knobs hide (lei 3: a knob that
     // does nothing is a dead control wearing a live one's clothes).
     let artist_paper_armed = brush.paper_kind != 0;
-    for section in rows::SECTIONS {
-        let open = !ctx.host.store().is_collapsed(section.header);
-        let fold = (open, ctx.host.store().section_open_live(section.header));
-        y = header_row(
-            ctx,
-            theme,
-            x,
-            w,
-            y,
-            section.header,
-            section.reset,
-            {
-                // The PAPER header carries the eye — the paperVisibility
-                // master's on/off face (the same authored fact as the basic
-                // section's Paper checkbox).
-                matches!(section.group, ph2d_wet_paint::tuning::KnobGroup::Paper).then_some((
-                    ph2d_tool_painter::ids::WET_TUNING_PAPER_EYE,
-                    brush.wet_paper_visual,
-                ))
-            },
-            tr(section.label),
-            fold,
-        );
-        // ⚠️ **A DOBRA do corpo (F4b)** — o escopo é aberto DEPOIS do cabeçalho (que já pintou)
-        //    e fechado logo abaixo; o `is_collapsed` deixa de gatear o corpo, porque ele vira no
-        //    quadro do clique enquanto o `t` ainda desce.
-        let Some(scope) = open_fold(ctx, section.header, x, w, y) else {
-            continue;
-        };
-        let mut inner = y;
-        for row in rows::rows().iter().filter(|r| r.group == section.group) {
-            if artist_paper_armed && rows::is_engine_paper_physical(row.key) {
-                continue;
-            }
-            let value = brush.wet_knobs.knobs[row.knob];
-            inner = paint_row(ctx, row, value, x, w, inner, theme);
-        }
-        y = close_fold(ctx, scope, inner);
+    let mut plano = PlanoCtx::new();
+    for i in 0..rows::SECTIONS.len() {
+        plano.seccao(rows::SECTIONS[i].header, move |ctx, tema, y| {
+            paint_group(ctx, tema, brush, i, artist_paper_armed, x, w, y)
+        });
     }
-    // EXPERIMENTAL — the two K–M checkboxes + the note.
-    y = header_row(
+    plano.seccao(crate::plano::EXPERIMENTAL, |ctx, tema, y| {
+        paint_experimental(ctx, tema, brush, x, w, y)
+    });
+    // ⚠️ O plano FECHA o cartão da última secção ele próprio (`Corredor::fecha_a_ultima`): o
+    //    `end_section_cards` só pinta os que já fecharam.
+    plano.corre(ctx, theme, x, w, ROW_H_PX, y)
+}
+
+/// Um grupo de botões do motor — `rows::SECTIONS[i]` —, no tema da secção.
+#[allow(clippy::too_many_arguments)]
+fn paint_group(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    brush: &BrushSettings,
+    i: usize,
+    artist_paper_armed: bool,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    let section = &rows::SECTIONS[i];
+    let y = header_row(
         ctx,
         theme,
         x,
         w,
         y,
-        ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[5],
-        ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[5], // no reset: the reset slot repeats the header (skipped)
-        None,
-        tr("panel.wet_tuning.group.experimental"),
-        (
-            !ctx.host
-                .store()
-                .is_collapsed(ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[5]),
-            ctx.host
-                .store()
-                .section_open_live(ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[5]),
-        ),
+        section.header,
+        section.reset,
+        {
+            // The PAPER header carries the eye — the paperVisibility
+            // master's on/off face (the same authored fact as the basic
+            // section's Paper checkbox).
+            matches!(section.group, ph2d_wet_paint::tuning::KnobGroup::Paper).then_some((
+                ph2d_tool_painter::ids::WET_TUNING_PAPER_EYE,
+                brush.wet_paper_visual,
+            ))
+        },
+        tr(section.label),
     );
-    if let Some(scope) = open_fold(
+    // ⚠️ **A DOBRA do corpo (F4b)** — o escopo é aberto DEPOIS do cabeçalho (que já pintou)
+    //    e fechado logo abaixo; o `is_collapsed` deixa de gatear o corpo, porque ele vira no
+    //    quadro do clique enquanto o `t` ainda desce.
+    let Some(scope) = open_fold(ctx, section.header, x, w, y) else {
+        return y;
+    };
+    let mut inner = y;
+    for row in rows::rows().iter().filter(|r| r.group == section.group) {
+        if artist_paper_armed && rows::is_engine_paper_physical(row.key) {
+            continue;
+        }
+        let value = brush.wet_knobs.knobs[row.knob];
+        inner = paint_row(ctx, row, value, x, w, inner, theme);
+    }
+    close_fold(ctx, scope, inner)
+}
+
+/// EXPERIMENTAL — the two K–M checkboxes + the note, in the section's theme.
+fn paint_experimental(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    brush: &BrushSettings,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    let id = crate::plano::EXPERIMENTAL;
+    let mut y = header_row(
         ctx,
-        ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[5],
+        theme,
         x,
         w,
         y,
-    ) {
-        y = checkbox_row(
-            ctx,
-            theme,
-            x,
-            w,
-            y,
-            ph2d_tool_painter::ids::WET_TUNING_KM_MIXING,
-            tr("panel.wet_tuning.km_mixing"),
-            brush.wet_km_mixing,
-        );
-        y = checkbox_row(
-            ctx,
-            theme,
-            x,
-            w,
-            y,
-            ph2d_tool_painter::ids::WET_TUNING_KM_GLAZE,
-            tr("panel.wet_tuning.km_glaze"),
-            brush.wet_km_glaze,
-        );
-        y = note_text(ctx, theme, x, w, y, tr("panel.wet_tuning.note"));
-        y = close_fold(ctx, scope, y);
-    }
-    y
+        id,
+        id, // no reset: the reset slot repeats the header (skipped)
+        None,
+        tr("panel.wet_tuning.group.experimental"),
+    );
+    let Some(scope) = open_fold(ctx, id, x, w, y) else {
+        return y;
+    };
+    y = checkbox_row(
+        ctx,
+        theme,
+        x,
+        w,
+        y,
+        ph2d_tool_painter::ids::WET_TUNING_KM_MIXING,
+        tr("panel.wet_tuning.km_mixing"),
+        brush.wet_km_mixing,
+    );
+    y = checkbox_row(
+        ctx,
+        theme,
+        x,
+        w,
+        y,
+        ph2d_tool_painter::ids::WET_TUNING_KM_GLAZE,
+        tr("panel.wet_tuning.km_glaze"),
+        brush.wet_km_glaze,
+    );
+    y = note_text(ctx, theme, x, w, y, tr("panel.wet_tuning.note"));
+    close_fold(ctx, scope, y)
 }
 
 /// **Abre a dobra do corpo de uma secção** (F4b) — `None` quando ela está fechada **e parada**,
@@ -321,8 +351,14 @@ fn paint_row(
     y + used + ph2d_tokens::control_gap_px()
 }
 
-/// Section header: chevron+label (collapse toggles on click), the group
-/// reset at the right, and — for PAPER — the visibility eye beside it.
+/// Section header: chevron+label (collapse toggles on click), the drag GRIP
+/// at the right edge, the group reset left of it, and — for PAPER — the
+/// visibility eye beside it.
+///
+/// ⭐ O cabeçalho sai da porta do plano ([`crate::plano`]): a dobra viva (o
+/// estado e o `t`, lidos do store pela MESMA porta — antes eram um par passado
+/// à mão) e a pega; o registo escreve a secção no livro do quadro, que é o que
+/// abre o menu de tema no botão direito e torna a pega agarrável.
 #[allow(clippy::too_many_arguments)]
 fn header_row(
     ctx: &mut PaintCtx,
@@ -334,19 +370,17 @@ fn header_row(
     reset: ph2d_a11y::NodeId,
     eye: Option<(ph2d_a11y::NodeId, bool)>,
     label: &str,
-    // ⚠️ **O PAR, num argumento só** — o estado semântico e o `t` VIVO da dobra; a lei que a wave
-    //    dos botões deixou (`visual: (ButtonState, f32)`). Com duas entradas separadas, um
-    //    chamador esquece a segunda e a secção fica silenciosamente discreta entre vizinhas que
-    //    rodam, com a suíte verde.
-    fold: (bool, f32),
 ) -> f32 {
     let rect = Rect::new(x, y, w, ROW_H_PX);
-    let hdr = SectionHeader::new(header, label)
-        .collapsible(fold.0)
-        .open_t(fold.1);
+    // ⚠️ O título reserva a largura dos controlos que este cabeçalho pinta à direita (o repor e o
+    //    olho), senão um nome comprido corria por baixo deles.
+    let botao = RESET_W + Spacing::Xs.px();
+    let reserva =
+        if reset != header { botao } else { 0.0 } + if eye.is_some() { botao } else { 0.0 };
+    let hdr = crate::plano::cabecalho(ctx, header, label).reserve_right(reserva);
     paint_section_header(&hdr, rect, ctx.scene, ctx.text_system, theme);
-    ctx.host.hit_index_mut().register(header, rect);
-    let mut right = x + w - RESET_W;
+    crate::plano::regista(ctx, header, rect);
+    let mut right = x + w - crate::plano::largura_da_pega() - RESET_W;
     if reset != header {
         let r = Rect::new(right, y, RESET_W, ROW_H_PX);
         let v = ctx.host.store().button_visual(reset);

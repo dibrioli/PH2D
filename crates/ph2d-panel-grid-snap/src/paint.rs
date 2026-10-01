@@ -18,7 +18,6 @@
 use crate::GridSnapPanel;
 use crate::ids;
 use crate::layout::{pad, row_gap};
-use crate::paint_helpers::paint_snap_top_toggle;
 use crate::state::{
     GridSnapPanelState, meters_to_display, set_current_display_unit, set_last_content_h,
     set_last_visible_h,
@@ -186,30 +185,16 @@ fn paint_body(ctx: &mut PaintCtx<'_>, rect: Rect, state: &GridSnapState) {
         GRID_SETTINGS_SCROLLBAR_ID,
         body_rect,
     );
-    let mut y = area.top();
-
-    // ─── Snap (BIG individual toggle) ───────────────────────────
-    {
-        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-        y = paint_snap_top_toggle(
-            inner_x,
-            inner_w,
-            y,
-            ctx.scene,
-            ctx.text_system,
-            theme,
-            hit_index,
-            store,
-            state,
-        );
-    }
-    y += row_gap() * 2.0;
-
-    // Wave 11 §2.2: 4 section helpers in `paint_body_sections.rs`.
-    y = crate::paint_body_sections::paint_grid_kind_section(ctx, state, inner_x, inner_w, y);
-    y = crate::paint_body_sections::paint_target_section(ctx, state, inner_x, inner_w, y);
-    y = crate::paint_body_sections::paint_display_section(ctx, state, inner_x, inner_w, y);
-    y = crate::paint_body_sections::paint_inspect_section(ctx, state, inner_x, inner_w, y);
+    // ⭐⭐ **O corpo pinta-se DENTRO de cartões** (2026-09-30, *«siga com os outros painéis»*) — o
+    //    livro que o tema por secção recolore. O par abre DEPOIS do `open` da rolagem, para o corpo
+    //    devolvido cair dentro do recorte dela; e o topo desce a folga do cartão, senão a borda de
+    //    cima do primeiro é cortada pelo recorte. ⚠️ O vão `row_gap()·2` que o *Snap* e cada
+    //    secção somavam depois de si era a fronteira entre eles; hoje ela é a borda do cartão.
+    let body_paint_top = area.top() + ph2d_tokens::card_pad_px();
+    ph2d_editor_core::widget::section_cards::begin_section_cards(ctx.scene, theme, body_paint_top);
+    // O *Snap* e as quatro secções — a ordem do artista e o tema de cada uma moram em `crate::plano`.
+    let y = crate::plano::paint_sections(ctx, theme, state, inner_x, inner_w, body_paint_top);
+    ph2d_editor_core::widget::section_cards::end_section_cards(ctx.scene);
 
     // Content / visible-height publication for `dispatch_wheel`
     // scroll bound: stash into thread-locals (the store half — both

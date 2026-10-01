@@ -260,3 +260,96 @@ tipo 1 com o tipo 4. Isso para todos os sliders do app.»*
   migração: o app inteiro passa ao `Tinted` no arranque.
 - Prova: `nextest-impacted` **19 090/19 090** · clippy `-D warnings` zero · `fmt` · censos
   **127/127** · foto do Widget Lab e do painel Vector com o desenho novo.
+
+## §8 — Adenda (mesmo dia): contraste da caixa, amostras de 4 cores, e o menu de tema + arrasto em TODOS os painéis de secções
+
+Ordem do dono, com três fotos: *«Veja como o checkbox tem pouco contraste em Light e Candy.
+Corrija! … em vez de uma única cor no retângulo do theme, melhor 4 retângulos pequenos com as
+principais cores de cada theme. Depois siga com os outros painéis.»*
+
+### 8.1 O contraste e as amostras (`a684a2591`)
+
+- `on_field_fill` afasta a marca da caixa até `CONTRASTE_DA_MARCA` (`36/255`) com UM ganho tirado do
+  repouso (o eixo do hover mantém a ordem). Só Light e Candy (`10/255`) se mexem; os outros temas
+  ficam byte-idênticos (gate com as duas metades e o controlo da lista).
+- A amostra das linhas de tema (selector do topo e menu da secção, App Theme incluído) passa a ser
+  quatro ladrilhos `2×2` tirados do tema: painel · cartão (pela porta do cartão) · acento · texto.
+  Os `24` hex das tabelas saíram (HR-15).
+
+### 8.2 A lei sai do Inspector e o LAÇO fica partilhado
+
+- `750c7b52a`: a lei (ordem · tema da secção · corredor · marca de queda · fantasma) muda-se para
+  `section_plan`; o `HitIndex` ganha o LIVRO das secções do quadro (`register_section`: secção ·
+  pega · cabeçalho recortado), lido pelo despacho do botão direito e do arrasto. A pega é
+  `ids::grip_de(secção)`. O `Corredor` só fecha o cartão anterior **se ele pintou**. Vector = 2.º.
+- `da18c1224`: o laço para os painéis de `PaintCtx` é `panel::section_plan_ctx::PlanoCtx`, com três
+  espécies — `seccao` (arrasta-se e muda de tema), `fixa` (muda de tema, sem pega, fora dos alvos
+  de queda: `register_fixed_section`) e `bloco` (linhas sem título). Fixas e blocos pintam-se
+  primeiro, pela ordem declarada.
+- `6b66f2b11`: a lei muda-se de `panel` para `widget` (a galeria é `widget` e `widget` não pode ler
+  `panel` — DAG); `panel::section_plan` fica como re-exportação.
+- ⛔⛔ **Nesta adenda, o `PlanoCtx` passou a FECHAR o cartão da ÚLTIMA secção** (`Corredor::fecha_a_ultima`,
+  só em tema moderno e dentro de cartões), e as fixas re-tematizam-se DEPOIS disso. O
+  `end_section_cards` pinta só cartões FECHADOS ⇒ a última secção ficava **sem cartão e sem o tema
+  que o artista lhe deu** (achado do agente da Física). ⚠️ A mensagem do `da18c1224` dizia o
+  contrário (*«o cartão da última fica aberto para o `end_section_cards`»*) — ela estava errada, e
+  a altura de abertura do Painter mostra-o (§8.4).
+
+### 8.3 Quem é o quê, por painel
+
+| Painel | Arrastam-se | Fixas | Blocos / fora |
+|---|---|---|---|
+| Inspector | as de sempre | Nome/Visibilidade | — |
+| Vector | todas as do corpo | — | — |
+| Painter (Brush) | as 8 da aparência | Máscara · o MEIO da tinta | topo, Digital, Mixing; a rampa do Grain é ANINHADA (fora do livro) |
+| Widget Gallery | as 11 (`SECCOES` ≡ `SECTION_IDS`, gate) | — | — |
+| Physics | as 9 (`SECTIONS` + as 4 pintadas à mão, `debug_assert` a prendê-las) | — | — |
+| Grid Snap | Kind · Target · Display · Inspect | — | Snap (bloco) |
+| Sculpt3d | Brush · Symmetry · Topology · Shading · Scene · Bake | **Tool** (decide que linhas as outras têm) | — |
+| Wet tuning | as 6 (Paint · Water · Physics · Tools · Paper · Experimental) | — | — |
+| Audio editor | as 8 | — | — |
+| Audio mixer | os 5 efeitos (EQ · Reverb · Delay · Comp · Ducking) | — | as fitas de canal; Play Test/loudness/Limiter |
+
+- ⛔ **`Authored` fica FORA de propósito:** as secções dele são a árvore que o ARTISTA autorou; a
+  ordem mora nela, e uma segunda ordem por cima seria duas respostas à mesma pergunta.
+- ⛔ **O `paint_card_params` do Motion graph não é corpo de painel** — são cartões de NÓ.
+- ⚠️ **Sculpt3d:** os pintores perguntavam o tema ao host (sempre o do painel) ⇒ `plano::tema(ctx)`
+  é a única porta (thread-local posto enquanto a secção pinta), com censo a recusar `host.theme()`
+  nos pintores de secção. Trocar as assinaturas eram ~100 sítios.
+- Cartões adoptados agora (não tinham): Physics · Grid Snap · Sculpt3d · Wet tuning · Audio mixer.
+
+### 8.4 Gates que mudaram, com a conta
+
+- `architecture_the_foundation_modules_form_a_dag`: `widget → interaction` **44 → 43** (as duas
+  importações do `segmented.rs` fundiram-se).
+- `ph2d-widget-sync`: `section_plan` em `PUB_MODULE_OVERRIDE` (o bloco gerado do `widget/mod.rs`).
+- `architecture_widget_showcase_coverage`: `section_plan` no `WIDGET_OPT_OUT` (é LEI, não widget).
+- `architecture_panel_loc_cap`: `sculpt3d::populate` (`208`) e `audio_mixer::populate` (`201`) curados
+  por CORTE (`register_sections` · `populate_sections`), nunca por isenção.
+- `a_altura_de_abertura_de_um_painel_so_encolhe` — ⚠️ **nenhuma secção nasceu aberta**; a conta de
+  cada número está escrita ao lado dele no ficheiro:
+  - `painter_layers` `1 596 → 1 605`: o cartão da última secção passou a existir (§8.2).
+  - `sculpt3d` `2 186 → 2 196` · `physics` `1 281 → 1 317` · `audio_mixer` `1 207 → 1 237`: os
+    painéis passaram a cartões; o corredor (`12`) e o fecho do último substituem os vãos à mão.
+  - ⛔⛔ `inspector` lia `822` contra `831` — **e era um DEFEITO do `750c7b52a`, não um ganho.**
+    Bissectado numa worktree à parte (`a684a2591` = `831`, `750c7b52a` = `822`) e localizado por uma
+    sonda que imprime o controlo mais fundo a cada passo: tudo até ao bloco do topo (os botões do
+    objecto) igual, e do campo do Nome para baixo **`−9 px`**. O plano antigo fechava SEMPRE antes da
+    1.ª secção, e isso punha o bloco do topo num cartão próprio; o `Corredor::default()` salta esse
+    fecho e o bloco caía DENTRO do cartão da 1.ª secção. ⚠️ A minha 1.ª hipótese (a regra «só fecha se
+    pintou») foi **refutada por mutação** antes desta — com ela desligada o Inspector continuava em
+    `822`. Cura: `Corredor::com_conteudo_acima()`, que reproduz o comportamento antigo nos DOIS temas
+    (no clássico o plano antigo também desenhava o separador ali). O número fica `831`.
+
+### 8.5 Prova
+
+- Testes das crates: Painter `208` (+1 ignorado) · Physics `29` · Grid Snap `35` · Galeria `10` ·
+  Sculpt3d `139` (+2) · Wet tuning `17` · Audio editor `96` · Audio mixer `37` · `architecture_`
+  `97/97` · `ph2d-panel-registry-init` `132` no âmbito de WORKSPACE (⚠️ com `-p` ele reprova por
+  ambiente: `painter_layers`, `flip`, `flip_frames` e `wet_tuning` só entram pela unificação de
+  features).
+- Mutação: Painter `2/2` · Galeria `2/2` · Physics+Grid `4/4` · Sculpt3d+Wet `6/6` · Audio `4/5` por
+  crate — a 5.ª (só o `register(.., Plain)` da pega) **sobrevive e é NOMEADA**: nenhum gesto a
+  observa (o arrasto acha a pega pelo livro do quadro e o hover pelo `HitIndex`); fica pela
+  paridade com Inspector/Vector/Painter.
+- Clippy `--all-targets -D warnings` zero nas crates tocadas · `fmt` limpo.

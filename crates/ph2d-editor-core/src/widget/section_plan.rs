@@ -102,6 +102,16 @@ pub struct Corredor {
 }
 
 impl Corredor {
+    /// ⭐ **O corredor de um corpo que JÁ pintou algo acima da primeira secção** — o bloco do topo
+    /// do Inspector (os botões do objecto). A primeira secção fecha-o num cartão PRÓPRIO, como o
+    /// plano do Inspector sempre fez: com o [`Default`] o bloco caía DENTRO do cartão da primeira
+    /// secção, e as linhas abaixo subiam `9 px` (medido 2026-09-30 pela altura de abertura, com a
+    /// sonda a nomear o primeiro controlo deslocado — o campo do Nome).
+    #[must_use]
+    pub fn com_conteudo_acima() -> Self {
+        Self { pendente: true }
+    }
+
     /// Antes de uma secção: fecha a anterior, se ela pintou. Devolve o `y` onde esta começa.
     pub fn antes(
         &mut self,
@@ -121,6 +131,31 @@ impl Corredor {
     /// Depois de uma secção que começou em `y0` e acabou em `y`.
     pub fn depois(&mut self, y0: f32, y: f32) {
         self.pendente |= y > y0;
+    }
+
+    /// ⭐ **Fecha o cartão da ÚLTIMA secção, se ela pintou** — e devolve o `y` com a folga de baixo
+    /// do cartão, sem o vão entre cartões (não há outro a seguir).
+    ///
+    /// ⛔ O `end_section_cards` NÃO fecha um cartão aberto: pinta só os que o livro já tem. Sem
+    /// este fecho a última secção ficava sem cartão e sem o tema que o artista lhe deu (achado do
+    /// agente da Física, 2026-09-30). ⚠️ No tema CLÁSSICO o fecho é um separador inteiro, e um
+    /// risco depois da última secção seria um risco a mais no fundo do painel — ali não fecha.
+    pub fn fecha_a_ultima(
+        &mut self,
+        scene: &mut VectorScene,
+        painel: Theme,
+        inner_x: f32,
+        inner_w: f32,
+        y: f32,
+    ) -> f32 {
+        if !std::mem::take(&mut self.pendente)
+            || !painel.is_modern()
+            || !crate::widget::section_cards::inside_cards()
+        {
+            return y;
+        }
+        let _ = crate::widget::section_cards::close_section(scene, painel, inner_x, inner_w, y);
+        y + ph2d_tokens::card_pad_px()
     }
 }
 

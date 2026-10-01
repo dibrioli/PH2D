@@ -57,7 +57,10 @@ const ARESTAS_TOLERADAS: &[(&str, &str, usize, &str)] = &[
         // 46 → 44 (2026-09-30): a galeria juntou num `use` só as importações que repetia a meio
         // do ficheiro, e as notas trouxeram UMA aresta nova (o fantasma lê a mesma lei de queda
         // que o `pointer_up` grava) dentro do `use` que já existia.
-        44,
+        // 44 → 43 (2026-09-30, mesma jornada): a lei das secções como lista mudou-se de `panel`
+        // para `widget` (a galeria também a lê) e trouxe UMA aresta (o `use` dela); o corte foi o
+        // `panel_chrome/segmented.rs` juntar no `use` as duas vezes que escrevia o caminho inteiro.
+        43,
         "o SUBSTRATO que os pintores recebem — `HitIndex`, `WidgetStore`, `InteractiveState`, \
          `WidgetEvent`. Cura: o estado de widget (os `*State` + `InteractiveState` + `HitIndex` + \
          `WidgetStore`) desce para um módulo ABAIXO dos pintores, e o `dispatch` fica em cima.",

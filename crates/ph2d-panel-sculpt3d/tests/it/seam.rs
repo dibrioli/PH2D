@@ -783,6 +783,11 @@ fn cada_botao_responde_no_proprio_centro(
         ph2d_panel_sculpt3d::ids::INSP_RESIZE_HANDLE_BL,
         ph2d_editor_core::widget::SCULPT3D_SCROLLBAR_ID,
     ]);
+    // ⭐ **A PEGA de cada secção** (2026-09-30) é dirigida por ARRASTO — o Down semeia o arrasto da
+    //    secção e nenhum `Click` sai dela. Quem prova que ela agarra e larga é o gesto REAL em
+    //    `as_seccoes_arrastam_e_tem_tema.rs`; derivada dos cabeçalhos, uma secção nova entra aqui
+    //    sozinha.
+    dragged.extend(rows::section_headers().map(ph2d_editor_core::ids::grip_de));
     let mut seen: Vec<ph2d_a11y::NodeId> = Vec::new();
     for &(id, rect) in painted {
         if dragged.contains(&id) || seen.contains(&id) {

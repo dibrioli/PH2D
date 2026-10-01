@@ -112,7 +112,7 @@ impl<'s> PlanoCtx<'s> {
     }
 
     /// ⭐⭐ **Pinta as secções pela ordem do artista**, cada uma no tema dela, e devolve o `y`
-    /// depois da última. O cartão da última fica ABERTO — fecha-o o `end_section_cards` de quem chama. Durante
+    /// depois do cartão da última — que fica FECHADO aqui. Durante
     /// um arrasto, a secção arrastada pinta-se numa cena à parte — pousada no sítio de sempre e
     /// reusada como o FANTASMA que segue o cursor, pintado no fim por cima do corpo. ⚠️ Os alvos
     /// dela registam-se no sítio real: o fantasma não é clicável.
@@ -146,6 +146,7 @@ impl<'s> PlanoCtx<'s> {
         let mut faixas: Vec<Faixa> = Vec::with_capacity(ordem.len());
         let mut fantasma: Option<VectorScene> = None;
         let mut corredor = section_plan::Corredor::default();
+        let mut fixas: Vec<Faixa> = Vec::new();
         for (especie, tarefa) in paradas {
             let tema = match especie {
                 Especie::Fixa(id) => section_plan::tema_da_seccao(ctx.host.store(), id, painel),
@@ -155,8 +156,10 @@ impl<'s> PlanoCtx<'s> {
             let y0 = y;
             y = tarefa(ctx, tema, y);
             corredor.depois(y0, y);
-            if y > y0 && tema != painel {
-                crate::widget::section_cards::retheme(y0, y, tema);
+            if let Especie::Fixa(id) = especie
+                && y > y0
+            {
+                fixas.push((id, y0, y, tema));
             }
         }
         for id in ordem {
@@ -182,9 +185,19 @@ impl<'s> PlanoCtx<'s> {
                 faixas.push((id, y0, y, tema));
             }
         }
-        // ⚠️ O cartão da ÚLTIMA fica aberto: quem fecha a pilha é o `end_section_cards` de quem
-        //    chama, como sempre foi — fechá-lo aqui acrescentava um vão de cartão ao fundo do
-        //    corpo, e a altura de abertura de um painel é gateada.
+        // ⛔⛔ **O cartão da ÚLTIMA fecha-se AQUI** (achado do agente da Física, 2026-09-30): o
+        //    `end_section_cards` só pinta os cartões que já foram FECHADOS — deixá-la aberta deixava
+        //    a última secção sem cartão e sem o tema que o artista lhe deu. É o que o plano do
+        //    Inspector e o do Vector já faziam.
+        y = corredor.fecha_a_ultima(ctx.scene, painel, inner_x, inner_w, y);
+        // ⚠️ O tema de uma FIXA só se aplica DEPOIS de o cartão dela existir — o `retheme` muda os
+        //    cartões já fechados, e o dela fecha-se no corredor da secção SEGUINTE. Por isso as fixas
+        //    re-tematizam-se aqui, com todos os cartões fechados.
+        for &(_, y0, y1, tema) in &fixas {
+            if tema != painel {
+                crate::widget::section_cards::retheme(y0, y1, tema);
+            }
+        }
         section_plan::conclui(
             ctx.scene,
             ctx.host.store(),

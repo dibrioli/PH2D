@@ -34,8 +34,12 @@ const PUB_MODULE_OVERRIDE: &[&str] = &[
     "panel_chrome",
     "scroll_area",
     "section_cards",
+    "section_plan",
     "showcase",
 ];
+// `section_plan` entra aqui (2026-09-30) porque a lei das secções como lista — ordem, tema, pega,
+// fantasma — e lida de FORA por cada painel com secções, e a galeria (que e `widget`) tambem a usa;
+// `widget` nao pode ler `panel` (DAG), logo ela mora aqui e o `panel` re-exporta-a.
 // `section_cards` entra aqui porque a porta do CARTAO de seccao (2026-09-06) e chamada de FORA:
 // cada crate de painel a invoca para embrulhar o proprio corpo. ⚠️ Um re-export achatado nao
 // serve — os chamadores precisam do TIPO (`SectionCards`) e da funcao (`with_section_cards`)

@@ -13,7 +13,6 @@ use ph2d_i18n::tr;
 use ph2d_sculpt3d::{
     ClothFilterKind, ClothFilterOrientation, FilterKind, RefMode, kelvinlet::Scales,
 };
-use ph2d_tokens::Spacing;
 
 use super::widgets::{self, command, header, labelled_seg, toggle};
 use crate::state::{Sculpt3dSnapshot, UiLevel};
@@ -76,7 +75,7 @@ pub(super) fn paint_tool(
     );
     y = paint_reference_row(ctx, snap, x, w, y);
     y = paint_filter_row(ctx, snap, x, w, y);
-    widgets::end_fold(ctx, fold, y + Spacing::Md.px())
+    widgets::end_fold(ctx, fold, y)
 }
 
 /// **O FILTRO** — uma LEI na malha INTEIRA, com o arrasto a dar a força.

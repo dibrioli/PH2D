@@ -29,6 +29,9 @@ ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 # A régua lexical do HR-15, para o gate por crate.
 ph2d-label-census = { path = "../ph2d-label-census" }
+# O gesto REAL do gate das secções (`tests/it/as_seccoes_arrastam_e_tem_tema.rs`): o botão
+# DIREITO no título só se exprime com um `PointerEvent` (o `click_at` do arnês é o primário).
+ph2d-host = { path = "../ph2d-host" }
 
 [lints]
 workspace = true

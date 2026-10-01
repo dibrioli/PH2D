@@ -105,7 +105,7 @@ pub(super) fn paint_scene(
         w,
         y,
     );
-    widgets::end_fold(ctx, fold, y + gap)
+    widgets::end_fold(ctx, fold, y)
 }
 
 /// **A ENTREGA** — a forma escrita num objeto da cena 2D (`docs/3D/02.2`, o
@@ -171,5 +171,5 @@ pub(super) fn paint_bake(
             y,
         );
     }
-    widgets::end_fold(ctx, fold, y + Spacing::Md.px())
+    widgets::end_fold(ctx, fold, y)
 }

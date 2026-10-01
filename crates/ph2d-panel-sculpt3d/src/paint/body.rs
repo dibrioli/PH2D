@@ -11,6 +11,7 @@
 //! fundo ele pode estar.
 
 use ph2d_editor_core::panel::PaintCtx;
+use ph2d_editor_core::panel::section_plan_ctx::PlanoCtx;
 use ph2d_i18n::tr;
 use ph2d_tokens::{ROW_H_PX, Spacing};
 
@@ -38,6 +39,14 @@ pub(super) const MASK_LABELS: [&str; 4] = [
 /// LOC de `fn` uma vez, e o corte que o gate pediu é o mesmo que a leitura pede:
 /// cada seção é um ASSUNTO, e o orquestrador aqui é a ORDEM em que a mão os
 /// procura.
+///
+/// ⭐⭐⭐ **E a ordem é a do ARTISTA desde 2026-09-30** (*«siga com os outros painéis»*): a lista é
+/// um [`PlanoCtx`] — a `Tool` fica no topo e as outras seis arrastam-se pela pega, cada uma no tema
+/// que o artista lhe escolher (ver [`super::plano`]). A ordem abaixo é a NATURAL, a de fábrica.
+///
+/// ⚠️ **O vão entre duas secções é o CORREDOR do plano** (o fecho do cartão, `section_gap_px`) —
+/// as secções deixaram de somar um `Spacing::Md` ao fim da dobra, que era o separador escrito à
+/// mão de antes dos cartões; somar os dois dava dois vãos.
 pub(super) fn paint_sections(
     ctx: &mut PaintCtx,
     snap: &Sculpt3dSnapshot,
@@ -45,31 +54,68 @@ pub(super) fn paint_sections(
     w: f32,
     y_in: f32,
 ) -> f32 {
-    let mut y = paint_tool(ctx, snap, x, w, y_in);
-    y = knob_section(
+    use super::plano::{SECCAO_FIXA, SECCOES_MOVEIS, no_tema};
+    // Fora de uma secção a porta devolve o tema do PAINEL.
+    let painel = super::plano::tema(ctx);
+    let mut plano = PlanoCtx::new();
+    plano.fixa(
+        SECCAO_FIXA,
+        no_tema(move |ctx, y| paint_tool(ctx, snap, x, w, y)),
+    );
+    let [brush, symmetry, topology, shading, scene, bake] = SECCOES_MOVEIS;
+    plano.seccao(
+        brush,
+        no_tema(move |ctx, y| {
+            knob_section(
+                ctx,
+                snap,
+                &rows::SECTIONS[0],
+                x,
+                w,
+                y,
+                paint_level_row,
+                paint_brush_tail,
+            )
+        }),
+    );
+    plano.seccao(
+        symmetry,
+        no_tema(move |ctx, y| paint_symmetry(ctx, snap, x, w, y)),
+    );
+    plano.seccao(
+        topology,
+        no_tema(move |ctx, y| paint_topology(ctx, snap, x, w, y)),
+    );
+    plano.seccao(
+        shading,
+        no_tema(move |ctx, y| {
+            knob_section(
+                ctx,
+                snap,
+                &rows::SECTIONS[1],
+                x,
+                w,
+                y,
+                no_head,
+                paint_shading_tail,
+            )
+        }),
+    );
+    plano.seccao(
+        scene,
+        no_tema(move |ctx, y| paint_scene(ctx, snap, x, w, y)),
+    );
+    plano.seccao(bake, no_tema(move |ctx, y| paint_bake(ctx, snap, x, w, y)));
+    // ⚠️ O plano FECHA o cartão da última secção ele próprio (`Corredor::fecha_a_ultima`): o
+    //    `end_section_cards` só pinta os que já fecharam.
+    plano.corre(
         ctx,
-        snap,
-        &rows::SECTIONS[0],
+        painel,
         x,
         w,
-        y,
-        paint_level_row,
-        paint_brush_tail,
-    );
-    y = paint_symmetry(ctx, snap, x, w, y);
-    y = paint_topology(ctx, snap, x, w, y);
-    y = knob_section(
-        ctx,
-        snap,
-        &rows::SECTIONS[1],
-        x,
-        w,
-        y,
-        no_head,
-        paint_shading_tail,
-    );
-    y = paint_scene(ctx, snap, x, w, y);
-    paint_bake(ctx, snap, x, w, y)
+        ph2d_editor_core::panel::rows::section_header_h(),
+        y_in,
+    )
 }
 
 // ⚠️ **Oito, e o oitavo é o irmão simétrico do `tail`.** A alternativa era
@@ -104,7 +150,7 @@ fn knob_section(
         y = paint_one_row(ctx, snap, row, x, w, y);
     }
     y = tail(ctx, snap, x, w, y);
-    widgets::end_fold(ctx, fold, y + Spacing::Md.px())
+    widgets::end_fold(ctx, fold, y)
 }
 
 /// Uma seção de knobs da tabela, com um sufixo opcional (o falloff, a máscara).
@@ -175,7 +221,7 @@ fn paint_symmetry(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
         let bx = (third + gap).mul_add(i as f32, x);
         toggle_na_celula(ctx, id, tr(key), on, bx, third, y);
     }
-    widgets::end_fold(ctx, fold, y + ROW_H_PX + Spacing::Md.px())
+    widgets::end_fold(ctx, fold, y + ROW_H_PX)
 }
 
 /// **COM QUE LUZ, e COM OU SEM A MALHA** — a cauda da seção de sombreamento.
@@ -473,5 +519,5 @@ fn paint_topology(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
     {
         y = paint_one_row(ctx, snap, row, x, w, y);
     }
-    widgets::end_fold(ctx, fold, y + Spacing::Md.px())
+    widgets::end_fold(ctx, fold, y)
 }

@@ -119,7 +119,7 @@ pub(super) fn paint_cor_do_pincel(
         return y;
     }
     let id = crate::ids::SCULPT3D_COLOR_SWATCH;
-    let theme = ctx.host.theme();
+    let theme = crate::paint::tema(ctx);
     let (nome, goteira) = colunas(x, w, y);
 
     let font = TypeToken::Sm.px();

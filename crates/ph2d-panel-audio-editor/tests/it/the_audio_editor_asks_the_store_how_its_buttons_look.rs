@@ -117,9 +117,15 @@ fn the_hot_colour_comes_from_the_shared_axis() {
 ///
 /// A metade do `store_and_hit_index_mut` é que é load-bearing: sem ela o corpo perde o store e
 /// todo botão volta a ser inerte, com os seis gates da lei de cor **verdes**.
+///
+/// ⚠️ **Desde 2026-09-30 o handle nasce no `paint_sections.rs`, uma vez por SECÇÃO e por um
+/// sítio só** — o corpo passou a ser um plano de secções (a ordem e o tema do artista), e o
+/// empréstimo conjunto não pode atravessar o laço do plano, que precisa do `ctx` inteiro entre
+/// duas secções. A pergunta do gate não mudou: *um* sítio constrói o recorte, do par do HOST, com
+/// o MESMO `clip` para as oito.
 #[test]
 fn the_body_builds_its_hit_handle_exactly_once() {
-    let src = read("src/paint.rs");
+    let src = read("src/paint_sections.rs");
     assert_eq!(
         src.matches("ClippedHits::new(").count(),
         1,

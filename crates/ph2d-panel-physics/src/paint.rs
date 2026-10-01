@@ -12,7 +12,7 @@ use ph2d_editor_core::widget::panel_chrome::{
 use ph2d_editor_core::widget::{PHYSICS_SCROLLBAR_ID, paint_slider_with_chip_layout_adaptive};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
 
 use crate::state::{self, PhysicsPanelState, set_last_content_h, set_last_visible_h};
 use crate::{PhysicsPanel, rows};
@@ -21,6 +21,7 @@ mod body;
 mod interact;
 mod joint;
 mod matrix;
+mod plano;
 
 pub(crate) fn paint(_state: &mut PhysicsPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(PhysicsPanel::ID) {
@@ -75,13 +76,21 @@ pub(crate) fn paint(_state: &mut PhysicsPanelState, ctx: &mut PaintCtx) {
         PHYSICS_SCROLLBAR_ID,
         body_rect,
     );
-    let y_after = body::paint_sections(
+    // ⭐⭐ **O corpo pinta-se DENTRO de cartões** (2026-09-30, *«siga com os outros painéis»*) — o
+    //    livro que o tema por secção recolore. O par abre DEPOIS do `open` da rolagem, para o corpo
+    //    devolvido cair dentro do recorte dela; e o topo desce a folga do cartão, senão a borda de
+    //    cima do primeiro é cortada pelo recorte.
+    let body_paint_top = area.top() + ph2d_tokens::card_pad_px();
+    ph2d_editor_core::widget::section_cards::begin_section_cards(ctx.scene, theme, body_paint_top);
+    let y_after = plano::paint_sections(
         ctx,
+        theme,
         &snapshot,
         rect.x + PANEL_HEAD_PAD,
         (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0),
-        area.top(),
+        body_paint_top,
     );
+    ph2d_editor_core::widget::section_cards::end_section_cards(ctx.scene);
     let content_h = (y_after + area.scroll()) - body_top + PANEL_HEAD_PAD;
     set_last_content_h(content_h);
     set_last_visible_h(body_h);
@@ -92,13 +101,13 @@ pub(crate) fn paint(_state: &mut PhysicsPanelState, ctx: &mut PaintCtx) {
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_row(
     ctx: &mut PaintCtx,
+    theme: Theme,
     row: &rows::Row,
     value: f32,
     x: f32,
     w: f32,
     y: f32,
 ) -> f32 {
-    let theme = ctx.host.theme();
     let scene = &mut *ctx.scene;
     let text_system = &mut *ctx.text_system;
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
@@ -135,13 +144,13 @@ pub(crate) fn paint_row(
 /// so this is a delegation rather than a second layout.
 pub(crate) fn paint_irow(
     ctx: &mut PaintCtx,
+    theme: Theme,
     row: &crate::interact::IRow,
     value: f32,
     x: f32,
     w: f32,
     y: f32,
 ) -> f32 {
-    let theme = ctx.host.theme();
     let scene = &mut *ctx.scene;
     let text_system = &mut *ctx.text_system;
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
@@ -176,9 +185,15 @@ pub(crate) fn paint_irow(
 /// seguinte por cima dela (foi exatamente o que o smoke da seção Joints mostrou).
 /// `paint_text_block` pinta e devolve a altura da MESMA passada de layout, então
 /// não há como as duas discordarem.
-pub(crate) fn paint_hint(ctx: &mut PaintCtx, key: &str, x: f32, w: f32, y: f32) -> f32 {
+pub(crate) fn paint_hint(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    key: &str,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
     let font = TypeToken::Sm.px();
-    let theme = ctx.host.theme();
     let used = paint_text_block(
         ctx.text_system,
         ctx.scene,

@@ -281,7 +281,7 @@ pub(crate) fn paint(
     use ph2d_tokens::Spacing;
     use ph2d_vector::ImageQuality;
 
-    let theme = ctx.host.theme();
+    let theme = crate::paint::tema(ctx);
     // ⚠️ **QUADRADO, e o lado sai da LARGURA disponível** — um preview de padrão
     // que não fosse quadrado mostraria mais features num eixo que no outro, e o
     // artista leria o recorte como anisotropia do padrão. Justamente com uma

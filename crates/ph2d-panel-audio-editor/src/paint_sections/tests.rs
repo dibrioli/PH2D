@@ -41,7 +41,7 @@ fn height(open: [bool; 8]) -> f32 {
     let mut hits = HitIndex::default();
     let clip = Rect::new(0.0, 0.0, 220.0, 40_000.0);
     let mut ch = ClippedHits::new(&store, &mut hits, clip);
-    paint_body(
+    paint_body_em_serie(
         0.0,
         0.0,
         220.0,
@@ -147,7 +147,7 @@ fn no_control_is_painted_twice() {
     {
         let clip = Rect::new(0.0, 0.0, 220.0, 40_000.0);
         let mut ch = ClippedHits::new(&store, &mut hits, clip);
-        paint_body(
+        paint_body_em_serie(
             0.0,
             0.0,
             220.0,

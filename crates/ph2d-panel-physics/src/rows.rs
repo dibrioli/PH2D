@@ -268,8 +268,9 @@ pub static SECTIONS: &[Section] = &[
 /// ele estava registado (logo focalizável) e o clique chegava (logo a costura passava).
 /// *Três cópias da mesma pergunta é como a quarta nasce sem resposta.*
 ///
-/// ⚠️ A ORDEM aqui é a ordem de pintura de [`super::paint::body::paint_sections`], e é a que o
-/// censo do seam usa para dizer qual cabeçalho falhou.
+/// ⚠️ A ORDEM aqui é a ordem NATURAL de pintura (`paint::plano::paint_sections`) — a que o artista
+/// vê enquanto não arrastar nenhuma secção pela pega (2026-09-30) — e é a que o censo do seam usa
+/// para dizer qual cabeçalho falhou.
 pub static HAND_PAINTED_SECTIONS: &[NodeId] = &[
     crate::ids::PHYSICS_SEC_INTERACT,
     crate::ids::PHYSICS_SEC_JOINT,

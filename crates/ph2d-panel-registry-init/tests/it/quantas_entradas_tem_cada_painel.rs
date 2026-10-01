@@ -2329,7 +2329,14 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    duas linhas que fecharam sem se ver (a UIUX mediu sem o cartão, a Painter nasceu antes
     //    deste gate). ⚠️ Recolhê-lo não cura: um cabeçalho de secção custa quase o mesmo que a
     //    fileira, e esconderia o controlo que o dono ainda vai smokar.
-    ("painter_layers", 1596.0),
+    // ⬆️ `1 596 → 1 605` em 2026-09-30, e NÃO é uma secção a nascer aberta: é o cartão da ÚLTIMA secção do corpo, que
+    //    NÃO era pintado — o `end_section_cards` só pinta cartões FECHADOS e o laço deixava o último
+    //    aberto (achado do agente da Física). Hoje o `Corredor::fecha_a_ultima` fecha-o: a folga
+    //    de baixo dele (`card_pad_px`) mais o arredondamento da fileira.
+
+    //    ⚠️ A política de dobra não mudou — o plano de secções (`PlanoCtx`) não toca no
+    //    `set_collapsed_if_unchosen` de ninguém.
+    ("painter_layers", 1605.0),
     // ⬇️ `2 097 → 2 021`, `1 349 → 1 262` e `1 293 → 1 281` em 2026-09-23: as escolhas destes três
     //    painéis passaram pela porta da ESCOLHA, e as que cabem numa fileira deixaram de gastar uma
     //    linha só para o nome POR CIMA — a altura desceu sem uma secção a menos.
@@ -2346,17 +2353,35 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    painel de Sculpt os parâmetros de iluminação»* — eram dois controlos VIVOS inalcançáveis),
     //    `2 × 25`. `41 + 44 + 50 = 135`. ⛔ Nenhuma secção nasceu aberta: são fileiras em secções
     //    que já existiam, e recolhê-las esconderia o que o dono pediu para ver.
-    ("sculpt3d", 2186.0),
+    // ⬆️ `2 186 → 2 196` em 2026-09-30, e NÃO é uma secção a nascer aberta: o painel passou a CARTÕES por secção (ordem do
+    //    dono: o menu de tema e o arrasto «nos outros painéis»), e o corredor entre cartões (`12`)
+    //    substitui o `Spacing::Md` (`8`) que cada secção somava à mão depois do corpo.
+
+    //    ⚠️ A política de dobra não mudou — o plano de secções (`PlanoCtx`) não toca no
+    //    `set_collapsed_if_unchosen` de ninguém.
+    ("sculpt3d", 2196.0),
     ("tokens", 2866.0),
     ("vector", 1262.0),
-    ("physics", 1281.0),
+    // ⬆️ `1 281 → 1 317` em 2026-09-30, e NÃO é uma secção a nascer aberta: o painel passou a CARTÕES por secção (era
+    //    um risco entre elas): cada fronteira à vista paga o vão entre cartões em vez do separador,
+    //    e o último cartão fecha-se com a folga dele.
+
+    //    ⚠️ A política de dobra não mudou — o plano de secções (`PlanoCtx`) não toca no
+    //    `set_collapsed_if_unchosen` de ninguém.
+    ("physics", 1317.0),
     // ⬇️ `1209 → 1207` em 2026-09-24 (o mixer no molde da Física): os quatro liga/desliga do master
     //    viraram caixas de marcar (passo da casa em vez de `MUTE_H + gap`), o *Play Test* passou pela
     //    `caixa_do_botao` (`ROW_H_PX`), e saiu o `+ Spacing::Sm` escrito à mão depois do *Limiter*.
     //    ⚠️ A escolha do barramento-chave do ducking CRESCEU: com as quatro peças à vista ela não
     //    cabe ao lado do nome e é PALETA (nome por cima — a lei da porta, decisão do dono de
     //    23/09); o número é a soma medida das duas coisas.
-    ("audio_mixer", 1207.0),
+    // ⬆️ `1 207 → 1 237` em 2026-09-30, e NÃO é uma secção a nascer aberta: o mixer passou a CARTÕES por secção de
+    //    efeito: sete corredores e o fecho do último substituem um `Spacing::Lg` e cinco
+    //    `control_gap` escritos à mão.
+
+    //    ⚠️ A política de dobra não mudou — o plano de secções (`PlanoCtx`) não toca no
+    //    `set_collapsed_if_unchosen` de ninguém.
+    ("audio_mixer", 1237.0),
 ];
 
 #[test]

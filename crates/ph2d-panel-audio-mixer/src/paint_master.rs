@@ -2,7 +2,8 @@
 //! Limiter, then the collapsible master-effect groups (EQ · Reverb · Delay ·
 //! Comp · Ducking). Split out of `paint.rs` to keep it under the panel LOC cap.
 //!
-//! Each effect group is a canonical collapsible [`SectionHeader`]: its id is
+//! Each effect group is a canonical collapsible
+//! [`SectionHeader`](ph2d_editor_core::widget::SectionHeader): its id is
 //! `mark_collapsible_section`-registered in `populate`, so the dispatch folds it
 //! on click (no `apply_event` arm needed); the body paints only when open.
 
@@ -18,7 +19,10 @@ use crate::{
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::paint::{paint_text_centered, resolve};
-use ph2d_editor_core::widget::{SectionFold, SectionHeader, paint_section_header};
+use ph2d_editor_core::panel::PaintCtx;
+use ph2d_editor_core::panel::section_plan;
+use ph2d_editor_core::panel::section_plan_ctx::PlanoCtx;
+use ph2d_editor_core::widget::{SectionFold, paint_section_header};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{TextKey, tr};
 use ph2d_text::TextSystem;
@@ -52,54 +56,106 @@ struct Ctx<'a> {
     caixas: ph2d_editor_core::widget::Seccao,
 }
 
-/// The master-section footer below the strips, top-down: Play Test · loudness ·
-/// Limiter · EQ · Reverb · Delay · Comp · Ducking. Returns the final `y` (the
-/// bottom of the painted content) so the caller can size the scroll region.
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn paint_master_section(
-    y0: f32,
-    content_x: f32,
-    content_w: f32,
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
+/// ⭐ **As duas colunas do bloco de efeitos do master, MEDIDAS uma vez por quadro** — antes do
+/// plano, porque precisam do sistema de texto e cada secção do plano toma-o emprestado por inteiro.
+/// Ver [`Ctx::col`] e [`Ctx::caixas`].
+#[derive(Clone, Copy)]
+pub(crate) struct Colunas {
+    col: f32,
+    caixas: ph2d_editor_core::widget::Seccao,
+}
+
+impl Colunas {
+    pub(crate) fn medidas(text_system: &mut TextSystem, content_w: f32) -> Self {
+        Self {
+            col: crate::paint_widgets::coluna_dos_nomes(text_system, content_w),
+            caixas: ph2d_editor_core::widget::Seccao::medida(
+                text_system,
+                1,
+                &[
+                    tr("panel.audio_mixer.master.limiter"),
+                    tr("panel.audio_mixer.master.reverb"),
+                    tr("panel.audio_mixer.master.delay"),
+                    tr("panel.audio_mixer.master.ducking"),
+                    tr("panel.audio_mixer.master.key"),
+                ],
+            ),
+        }
+    }
+}
+
+/// ⭐⭐⭐ **O bloco do master como entradas do plano das secções** (ordem do dono, 2026-09-30:
+/// *«siga com os outros painéis»*) — o topo (Play Test · loudness · Limiter) é um BLOCO sem título
+/// e as cinco secções de efeito (EQ · Reverb · Delay · Comp · Ducking) ARRASTAM-SE e mudam de
+/// tema pelo botão direito no título.
+///
+/// ⚠️ **As cinco são móveis e nenhuma é fixa:** nenhuma reinterpreta as outras — são cinco efeitos
+/// independentes do barramento master, e a cadeia de áudio não segue a ordem do painel.
+///
+/// ⚠️ **O vão de `control_gap` que fechava cada secção SAIU:** a fronteira entre duas é agora a
+/// borda de um CARTÃO, pintada pelo corredor do plano — com os dois, cada secção ganhava o vão
+/// duas vezes.
+pub(crate) fn declara(plano: &mut PlanoCtx<'_>, x: f32, w: f32, cols: Colunas) {
+    plano.bloco(move |pctx, tema, y| {
+        com_ctx(pctx, tema, x, w, cols, |ctx| {
+            let y = paint_play_test(ctx, y);
+            let y = paint_loudness(ctx, y);
+            paint_limiter(ctx, y)
+        })
+    });
+    for (id, pinta) in TABELA {
+        plano.seccao(id, move |pctx, tema, y| {
+            com_ctx(pctx, tema, x, w, cols, |ctx| pinta(ctx, y))
+        });
+    }
+}
+
+/// Quem pinta uma secção de efeito: recebe o contexto e o `y`, devolve o `y` seguinte.
+type Pintor = fn(&mut Ctx, f32) -> f32;
+
+/// ⭐ **As secções de efeito do master e quem pinta cada uma**, pela ordem natural — UMA lista,
+/// lida pelo plano ([`declara`]) e pelo `populate` (as pegas, via [`SECCOES`]).
+const TABELA: [(NodeId, Pintor); 5] = [
+    (AMIX_SEC_EQ, paint_eq),
+    (AMIX_SEC_REVERB, paint_reverb),
+    (AMIX_SEC_DELAY, paint_delay),
+    (AMIX_SEC_COMP, paint_comp),
+    (AMIX_SEC_DUCK, paint_ducking),
+];
+
+/// As secções que se ARRASTAM (e têm pega), pela ordem natural — derivadas da [`TABELA`].
+pub(crate) const SECCOES: [NodeId; 5] = {
+    let mut out = [TABELA[0].0; 5];
+    let mut i = 0;
+    while i < 5 {
+        out[i] = TABELA[i].0;
+        i += 1;
+    }
+    out
+};
+
+/// Monta o [`Ctx`] de uma entrada do plano a partir do contexto do painel, no TEMA dela.
+fn com_ctx<R>(
+    pctx: &mut PaintCtx<'_>,
     theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-) -> f32 {
-    // ⚠️ A coluna mede-se ANTES do `Ctx` nascer: ela precisa do sistema de texto, e o `Ctx`
-    //    toma-o emprestado por inteiro.
-    let col = crate::paint_widgets::coluna_dos_nomes(text_system, content_w);
-    let caixas = ph2d_editor_core::widget::Seccao::medida(
-        text_system,
-        1,
-        &[
-            tr("panel.audio_mixer.master.limiter"),
-            tr("panel.audio_mixer.master.reverb"),
-            tr("panel.audio_mixer.master.delay"),
-            tr("panel.audio_mixer.master.ducking"),
-            tr("panel.audio_mixer.master.key"),
-        ],
-    );
+    x: f32,
+    w: f32,
+    cols: Colunas,
+    f: impl FnOnce(&mut Ctx) -> R,
+) -> R {
+    let (store, hit_index) = pctx.host.store_and_hit_index_mut();
     let mut ctx = Ctx {
-        scene,
-        text_system,
+        scene: &mut *pctx.scene,
+        text_system: &mut *pctx.text_system,
         hit_index,
         store,
         theme,
-        x: content_x,
-        w: content_w,
-        col,
-        caixas,
+        x,
+        w,
+        col: cols.col,
+        caixas: cols.caixas,
     };
-    let mut y = y0;
-    y = paint_play_test(&mut ctx, y);
-    y = paint_loudness(&mut ctx, y);
-    y = paint_limiter(&mut ctx, y);
-    y = paint_eq(&mut ctx, y);
-    y = paint_reverb(&mut ctx, y);
-    y = paint_delay(&mut ctx, y);
-    y = paint_comp(&mut ctx, y);
-    paint_ducking(&mut ctx, y)
+    f(&mut ctx)
 }
 
 /// ⭐ **Um liga/desliga de efeito do master, pela porta da casa**
@@ -148,13 +204,12 @@ fn slider_row(ctx: &mut Ctx, y: f32, label: &str, id: NodeId, value: f32) -> f32
 /// VERDE porque a régua só conta uma palavra GRITADA a partir de TRÊS letras (senão `UV` e `RGBA16`
 /// seriam língua). ⇒ com este parâmetro, escrever `"EQ"` aqui deixa de compilar.
 fn section_header(ctx: &mut Ctx, y: f32, id: NodeId, label: TextKey) -> (Option<SectionFold>, f32) {
-    let open = !ctx.store.is_collapsed(id);
     let rect = Rect::new(ctx.x, y, ctx.w, MUTE_H);
-    let header = SectionHeader::new(id, label.tr())
-        .collapsible(open)
-        .open_t(ctx.store.section_open_live(id));
+    // ⭐ O cabeçalho do PLANO: a pega de dez pontos à direita; e o registo escreve a secção no
+    //    LIVRO do quadro — é o que o despacho lê para abrir o menu de tema e resolver a queda.
+    let header = section_plan::cabecalho(ctx.store, id, label.tr());
     paint_section_header(&header, rect, ctx.scene, ctx.text_system, ctx.theme);
-    ctx.hit_index.register(id, rect);
+    section_plan::regista_cabecalho(ctx.hit_index, id, rect);
     let body_top = y + MUTE_H + Spacing::Sm.px();
     let fold = SectionFold::begin(
         ctx.store,
@@ -289,7 +344,7 @@ fn paint_eq(ctx: &mut Ctx, y: f32) -> f32 {
         );
         y = end_fold(ctx, fold, y);
     }
-    y + ph2d_tokens::control_gap_px()
+    y
 }
 
 fn paint_reverb(ctx: &mut Ctx, y: f32) -> f32 {
@@ -324,7 +379,7 @@ fn paint_reverb(ctx: &mut Ctx, y: f32) -> f32 {
         y = sub_bus_rows(ctx, y, &SUB_SEND, snapshot::sub_send());
         y = end_fold(ctx, fold, y);
     }
-    y + ph2d_tokens::control_gap_px()
+    y
 }
 
 fn paint_delay(ctx: &mut Ctx, y: f32) -> f32 {
@@ -366,7 +421,7 @@ fn paint_delay(ctx: &mut Ctx, y: f32) -> f32 {
         y = sub_bus_rows(ctx, y, &SUB_DELAY_SEND, snapshot::sub_delay_send());
         y = end_fold(ctx, fold, y);
     }
-    y + ph2d_tokens::control_gap_px()
+    y
 }
 
 fn paint_comp(ctx: &mut Ctx, y: f32) -> f32 {
@@ -380,7 +435,7 @@ fn paint_comp(ctx: &mut Ctx, y: f32) -> f32 {
         y = sub_bus_rows(ctx, y, &SUB_COMP, snapshot::sub_comp());
         y = end_fold(ctx, fold, y);
     }
-    y + ph2d_tokens::control_gap_px()
+    y
 }
 
 fn paint_ducking(ctx: &mut Ctx, y: f32) -> f32 {
@@ -426,5 +481,5 @@ fn paint_ducking(ctx: &mut Ctx, y: f32) -> f32 {
         );
         y = end_fold(ctx, fold, y);
     }
-    y + ph2d_tokens::control_gap_px()
+    y
 }

@@ -29,6 +29,8 @@ ph2d-label-census = { path = "../ph2d-label-census" }
 # `event.rs` must ship a test that drives a REAL WidgetEvent and asserts the
 # observable effect. The debt list is empty; there is no exemption.
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+# Os eventos de ponteiro REAIS (botão direito, arrasto da pega) do gate de costura das secções.
+ph2d-host = { path = "../ph2d-host" }
 
 [lints]
 workspace = true

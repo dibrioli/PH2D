@@ -23,6 +23,8 @@ pub mod state;
 
 mod event;
 mod paint;
+/// Quais secções se arrastam e mudam de tema, e o cabeçalho de cada — ver o cabeçalho dele.
+mod plano;
 mod populate;
 
 pub use state::set_current_brush;

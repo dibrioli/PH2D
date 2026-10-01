@@ -10,7 +10,6 @@
 //! the panel is built from gallery widgets, not bespoke chrome.
 
 use crate::fader::{FADER_UNITY_POS, fader_db};
-use crate::paint_master::paint_master_section;
 use crate::paint_widgets::paint_toggle;
 use crate::state::AudioMixerState;
 use crate::{
@@ -21,6 +20,7 @@ use crate::{
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_centered, resolve};
+use ph2d_editor_core::panel::section_plan_ctx::PlanoCtx;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
@@ -143,7 +143,7 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
     let sub_soloed = snapshot::sub_soloed();
     let sub_clipped = snapshot::sub_clipped();
 
-    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    let store = ctx.host.store();
     // Fader values are slider *positions* (0..1); the dB taper maps them to gain.
     let master_gain = store
         .slider(AMIX_FADER)
@@ -213,46 +213,38 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
     let strip_top = area.top();
     let row = StripRow::new(rect, strips.len(), strip_top, ctx.text_system);
     let (content_x, content_w) = (row.content_x, row.content_w);
-    paint_strips(
-        &strips,
-        row,
-        ctx.scene,
-        ctx.text_system,
-        theme,
-        store,
-        hit_index,
-    );
+    let cols = crate::paint_master::Colunas::medidas(ctx.text_system, content_w);
 
-    // Master section below the strips. Strip stack (see `paint_strip`):
-    // label · pan · tone · low cut · fader/meter · dB readout · M/S.
-    let strips_bottom = strip_top
-        + TypeToken::Sm.px()
-        + Spacing::Sm.px()
-        + Spacing::Md.px()
-        + Spacing::Sm.px()
-        + Spacing::Md.px()
-        + Spacing::Sm.px()
-        + Spacing::Md.px()
-        + Spacing::Sm.px()
-        + STRIP_H
-        + Spacing::Sm.px()
-        + TypeToken::Xs.px()
-        + Spacing::Sm.px()
-        + row.mute_h();
-    let footer_y = strips_bottom + Spacing::Lg.px();
-
-    // Master section footer: Play Test · loudness · Limiter · collapsible EQ /
-    // Reverb / Delay / Comp / Ducking. Returns the bottom of the painted body.
-    let final_y = paint_master_section(
-        footer_y,
-        content_x,
-        content_w,
-        ctx.scene,
-        ctx.text_system,
-        theme,
-        hit_index,
-        store,
-    );
+    // ⭐⭐⭐ **O corpo é um PLANO de secções, dentro de CARTÕES** (ordem do dono, 2026-09-30:
+    //    *«siga com os outros painéis»*). As tiras e o topo do master são BLOCOS sem título (ficam
+    //    no lugar, no tema do painel); as cinco secções de efeito arrastam-se pela pega e mudam de
+    //    tema pelo botão direito no título — ver [`crate::paint_master::declara`].
+    //
+    //    ⚠️ **Este painel não tinha livro de cartões** e ganhou-o aqui: é o livro que o tema por
+    //    secção recolore (`section_cards::retheme`), e sem ele o tema escolhido não chegava a
+    //    pixel nenhum. O par abre depois do `push_clip` da porta de rolagem (a cena estacionada leva
+    //    o recorte aberto). ⚠️ E o `Spacing::Lg` à mão entre as tiras e o master saiu — a fronteira
+    //    entre os dois é a borda de um cartão, pintada pelo corredor do plano.
+    ph2d_editor_core::widget::section_cards::begin_section_cards(ctx.scene, theme, strip_top);
+    let strips = &strips;
+    let mut plano = PlanoCtx::new();
+    plano.bloco(move |pctx, tema, y| {
+        let row = StripRow { top: y, ..row };
+        let (store, hit_index) = pctx.host.store_and_hit_index_mut();
+        paint_strips(
+            strips,
+            row,
+            pctx.scene,
+            pctx.text_system,
+            tema,
+            store,
+            hit_index,
+        );
+        y + row.altura()
+    });
+    crate::paint_master::declara(&mut plano, content_x, content_w, cols);
+    let final_y = plano.corre(ctx, theme, content_x, content_w, MUTE_H, strip_top);
+    ph2d_editor_core::widget::section_cards::end_section_cards(ctx.scene);
 
     // Total scrollable height in body-local coords (undo the `- scroll` offset).
     let content_h = (final_y + scroll) - body_top + bottom_pad;
@@ -327,6 +319,24 @@ impl StripRow {
             top,
             ms_linhas,
         }
+    }
+
+    /// ⭐ **A altura da fileira de tiras**, do topo ao pé dos botões. A pilha de cada tira (ver
+    /// [`paint_strip`]): label · pan · tone · low cut · fader/meter · dB readout · M/S.
+    fn altura(&self) -> f32 {
+        TypeToken::Sm.px()
+            + Spacing::Sm.px()
+            + Spacing::Md.px()
+            + Spacing::Sm.px()
+            + Spacing::Md.px()
+            + Spacing::Sm.px()
+            + Spacing::Md.px()
+            + Spacing::Sm.px()
+            + STRIP_H
+            + Spacing::Sm.px()
+            + TypeToken::Xs.px()
+            + Spacing::Sm.px()
+            + self.mute_h()
     }
 
     /// A altura que a fileira de botoes consome — ver [`Self::ms_linhas`].

@@ -179,6 +179,14 @@ fn populate_sections(store: &mut WidgetStore) {
     ] {
         store.set_collapsed_if_unchosen(id, true);
     }
+    // ⭐⭐ **A PEGA de dez pontos de cada secção** (2026-09-30, *«siga com os outros painéis»*):
+    //    `Plain` para o `is_focusable` responder e o rato a acender, com a mesma dica do Inspector.
+    //    ⚠️ As oito ARRASTAM-SE (`paint_sections::paint_body` diz porquê nenhuma é fixa).
+    for id in crate::paint_sections::SECTIONS {
+        let grip = ph2d_editor_core::ids::grip_de(id);
+        store.register(grip, InteractiveState::Plain);
+        store.set_tooltip(grip, ph2d_i18n::tr("chrome.section.grip_hint"));
+    }
 }
 
 /// Register every plain **Button** on the panel.

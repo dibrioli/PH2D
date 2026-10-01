@@ -14,15 +14,20 @@ use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
 use ph2d_physics_ecs::{LayerMatrix, MAX_LAYERS};
-use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 
 /// Cell edge. Small enough that 8 columns plus the row label fit the dock, big
 /// enough to hit — the grid is 8 × this wide, and the dock is ~300 px.
 const CELL_PX: f32 = 22.0; // LITERAL-PX-OK: panel grid metric (matrix cell edge)
 
 /// Paint the triangular matrix. Returns the y it ended at.
-pub(super) fn paint(ctx: &mut PaintCtx, matrix: LayerMatrix, x: f32, y_in: f32) -> f32 {
-    let theme = ctx.host.theme();
+pub(super) fn paint(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    matrix: LayerMatrix,
+    x: f32,
+    y_in: f32,
+) -> f32 {
     let gap = Spacing::Xs.px();
     let step = CELL_PX + gap;
     let label_w = CELL_PX; // the row's own layer number, same width as a cell

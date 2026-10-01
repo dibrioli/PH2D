@@ -26,9 +26,9 @@ use crate::widget::{
     Avatar, AvatarShape, Button, ButtonKind, ButtonState, Card, Checkbox, CheckboxState,
     CheckboxValue, ColorSwatch, Combobox, ComboboxOption, ComboboxState, Dropdown, DropdownOption,
     DropdownState, LevelMeter, ListItem, ListItemState, NumberInput, ProgressBar, RadioGroup,
-    RadioOption, RadioOrientation, SliderState, Spinner, SwatchSize, TabItem, Tabs, TabsVariant,
-    Tag, TagState, TagTone, TextArea, TextInput, TextInputState, Toggle, ToggleState, TreeNode,
-    TreeView, paint_avatar, paint_button, paint_card, paint_checkbox, paint_color_swatch,
+    RadioOption, RadioOrientation, SectionHeader, SliderState, Spinner, SwatchSize, TabItem, Tabs,
+    TabsVariant, Tag, TagState, TagTone, TextArea, TextInput, TextInputState, Toggle, ToggleState,
+    TreeNode, TreeView, paint_avatar, paint_button, paint_card, paint_checkbox, paint_color_swatch,
     paint_combobox_with_state, paint_level_meter, paint_list_item, paint_number_input_with_buffer,
     paint_progress_bar, paint_radio_group_with_labels, paint_section_header,
     paint_slider_with_chip, paint_spinner, paint_tabs, paint_tag, paint_text_area_with_state,
@@ -119,7 +119,7 @@ pub(super) fn paint_collapsible_header(
     let is_collapsed = store.is_collapsed(id);
     // ⭐ Pela porta do plano (2026-09-30): a pega de dez pontos e o livro do quadro — o que faz o
     //    botão direito no título abrir o menu de tema e a pega arrastar a secção.
-    let header = crate::widget::section_plan::cabecalho(store, id, label);
+    let header: SectionHeader = crate::widget::section_plan::cabecalho(store, id, label);
     paint_section_header(&header, r, scene, text_system, theme);
     crate::widget::section_plan::regista_cabecalho(hit_index, id, r);
     (y + SECTION_HEAD_H + Spacing::Xs.px(), !is_collapsed)

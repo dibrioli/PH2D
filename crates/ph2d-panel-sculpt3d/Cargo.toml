@@ -44,6 +44,9 @@ ph2d-panel-model3d = { path = "../ph2d-panel-model3d" }
 # `architecture_interactive_crate_has_behavioral_test`: um painel com `event.rs`
 # tem de dirigir um `WidgetEvent` REAL e afirmar o efeito observável.
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+# `PointerEvent` — a costura das secções (`as_seccoes_arrastam_e_tem_tema`) dirige o botão DIREITO
+# e o arrasto da pega pelo MESMO despachante da shell; o `click_at` do arnês só tem o esquerdo.
+ph2d-host = { path = "../ph2d-host" }
 
 [lints]
 workspace = true

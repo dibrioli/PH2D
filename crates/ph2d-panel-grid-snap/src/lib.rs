@@ -27,6 +27,7 @@ mod paint_helpers;
 mod paint_kinds;
 mod paint_kinds_bounded;
 mod paint_rows;
+mod plano; // a ordem do artista e o tema de cada secção do corpo
 mod populate;
 pub mod state;
 

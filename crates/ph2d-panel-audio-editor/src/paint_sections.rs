@@ -2,7 +2,7 @@
 //! and the chrome that separates them.
 //!
 //! The panel had grown into one unbroken column of controls. The app's canonical answer
-//! is a [`SectionHeader`] (chevron + uppercase label, darker plate when folded) with
+//! is a [`SectionHeader`](ph2d_editor_core::widget::SectionHeader) (chevron + uppercase label, darker plate when folded) with
 //! `paint_section_separator` — the 1 px **accent-coloured** rule — between blocks. Both
 //! come from the Widget Gallery, which is the single source of truth for chrome
 //! (DIRETRIZ §5.2); this file exists so the panel wears the app's clothes rather than
@@ -10,6 +10,10 @@
 //!
 //! Split out of `paint.rs` to keep that file (and its `paint` fn) under the panel LOC
 //! caps.
+//!
+//! ⭐ Desde 2026-09-30 a fronteira entre dois blocos é a borda de um CARTÃO e quem a pinta é o
+//! plano das secções ([`paint_body`]), que também dá a cada uma a PEGA de arrasto e o TEMA que o
+//! artista lhe escolhe pelo botão direito no título.
 
 use crate::paint::{ClippedHits, button_in_group, fmt_time, toggle_in_group};
 use crate::{
@@ -19,12 +23,12 @@ use crate::{
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::paint::{paint_text, paint_text_centered, rect_to_vello, resolve};
-use ph2d_editor_core::widget::section_cards::{
-    close_section, skip_section_header, with_section_cards,
-};
+use ph2d_editor_core::panel::PaintCtx;
+use ph2d_editor_core::panel::section_plan_ctx::PlanoCtx;
+use ph2d_editor_core::widget::section_cards::skip_section_header;
 use ph2d_editor_core::widget::{
-    SectionFold, SectionHeader, TextInput, TextInputState, block_cells, grid_height,
-    paint_section_header, paint_text_input_with_buffer,
+    SectionFold, TextInput, TextInputState, block_cells, grid_height, paint_section_header,
+    paint_text_input_with_buffer,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -68,12 +72,62 @@ impl Body {
 mod chrome;
 #[cfg(test)]
 use chrome::section_h;
-use chrome::{end_fold, section, separator};
+use chrome::{end_fold, section};
 
-/// Walk the sections: header, then the block if it is open, then the accent separator.
-/// Returns the `y` at the bottom of the painted content.
+/// ⭐⭐⭐ **O corpo é uma LISTA** (ordem do dono, 2026-09-30: *«siga com os outros painéis»*,
+/// depois de o menu de tema no título e a pega de dez pontos nascerem no Inspector e chegarem ao
+/// Vector e ao Painter). As oito secções declaram-se pela ordem NATURAL de [`SECTIONS`] e o
+/// [`PlanoCtx`] pinta-as pela ordem do ARTISTA, cada uma no TEMA que ele lhe deu pelo botão direito
+/// no título — a lei da ordem, do tema, do corredor do cartão, da marca de queda e do fantasma é a
+/// partilhada; aqui só mora QUEM é o quê.
+///
+/// ⚠️ **As oito ARRASTAM-SE, nenhuma é fixa, e isso é uma decisão:** nenhuma reinterpreta as que
+/// estão abaixo dela (a razão por que a Máscara e o meio da tinta ficam presos no Painter). O
+/// Transporte é o primeiro por omissão — é o que se toca em todas as passagens — mas o `Load` dele
+/// não governa a pintura das outras: cada uma lê o `loaded` do retrato, esteja onde estiver.
+///
+/// ⚠️ **O separador entre secções saiu do passo e não se perdeu:** o [`PlanoCtx`] fecha o cartão
+/// da anterior ANTES de cada secção que se segue a uma que pintou
+/// ([`ph2d_editor_core::panel::section_plan::Corredor`]) — exactamente o que o `separator` fazia.
+///
+/// ⚠️ E o cartão da ÚLTIMA fecha-o o próprio plano — o `end_section_cards` de quem chama só pinta
+/// os cartões que o livro FECHOU, e antes do plano isso deixava a última secção aberta sem cartão.
+///
+/// ⚠️ Cada tarefa constrói o seu [`ClippedHits`] a partir do contexto: o recorte do corpo rolado é
+/// o mesmo `clip` para as oito, e o empréstimo store/hit não pode atravessar o laço do plano (ele
+/// precisa do `ctx` inteiro entre duas secções, para pintar a marca de queda e o fantasma).
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_body(
+    ctx: &mut PaintCtx<'_>,
+    y: f32,
+    x: f32,
+    w: f32,
+    b: &Body,
+    clip: Rect,
+    theme: Theme,
+) -> f32 {
+    let mut plano = PlanoCtx::new();
+    for id in SECTIONS {
+        plano.seccao(id, move |ctx, tema, y| {
+            let (scene, text_system) = (&mut *ctx.scene, &mut *ctx.text_system);
+            let (store, hits) = ctx.host.store_and_hit_index_mut();
+            let hit_index = &mut ClippedHits::new(store, hits, clip);
+            paint_one(id, y, x, w, b, scene, text_system, tema, hit_index)
+        });
+    }
+    plano.corre(ctx, theme, x, w, chrome::section_h(), y)
+}
+
+/// **A mesma pilha pela ordem NATURAL, sem plano** — o corpo dos gates de altura e de duplicados
+/// deste módulo, que não têm um `PaintCtx` à mão.
+///
+/// ⚠️ Não é um sucedâneo do produto: cada secção pinta-se pela MESMA [`paint_one`] e o corredor é
+/// o MESMO [`ph2d_editor_core::panel::section_plan::Corredor`] que o [`PlanoCtx`] usa — só a ORDEM
+/// fica a natural. Quem mede a ordem do artista, o tema e o arrasto é o gate de costura
+/// `tests/it/as_seccoes_arrastam_e_tem_tema.rs`, pelo painel inteiro.
+#[cfg(test)]
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_body_em_serie(
     y: f32,
     x: f32,
     w: f32,
@@ -83,200 +137,61 @@ pub(crate) fn paint_body(
     theme: Theme,
     hit_index: &mut ClippedHits,
 ) -> f32 {
-    with_section_cards(scene, theme, y, |scene| {
-        let ny = paint_sound_sections(y, x, w, b, scene, text_system, theme, hit_index);
-        paint_asset_sections(ny, x, w, b, scene, text_system, theme, hit_index)
+    ph2d_editor_core::widget::section_cards::with_section_cards(scene, theme, y, |scene| {
+        let mut corredor = ph2d_editor_core::panel::section_plan::Corredor::default();
+        let mut y = y;
+        for id in SECTIONS {
+            y = corredor.antes(scene, theme, x, w, y);
+            let y0 = y;
+            y = paint_one(id, y, x, w, b, scene, text_system, theme, hit_index);
+            corredor.depois(y0, y);
+        }
+        y
     })
 }
 
-/// **Working on the sound**: transport, the loop region, the edit ops, the effects rack.
-///
-/// The loop sits here, right under the transport, because it is a *playback* thing —
-/// Loop-on + Play is how you audition it (Enio, 2026-07-12). Only it starts folded, and
-/// only because an unset loop has nothing to show; its header still says so.
-#[allow(clippy::too_many_arguments)]
-fn paint_sound_sections(
-    mut y: f32,
-    x: f32,
-    w: f32,
-    b: &Body,
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut ClippedHits,
-) -> f32 {
-    let (fold, ny) = section(
-        y,
-        x,
-        w,
-        AEDIT_SEC_TRANSPORT,
-        tr("panel.audio_editor.transport.transport"),
-        None,
-        b.fold(AEDIT_SEC_TRANSPORT),
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    y = ny;
-    skip_section_header(y);
-    if let Some(fold) = fold {
-        y = paint_transport_section(
-            y,
-            x,
-            w,
-            b.transport,
-            &b.name,
-            scene,
-            text_system,
-            theme,
-            hit_index,
-        );
-        y = end_fold(fold, y, scene, hit_index);
+/// O rótulo e o resumo do cabeçalho da secção `id` — o resumo vive NO cabeçalho porque
+/// "Variations" e "3 clips" são um facto só, e uma secção dobrada ainda tem de dizer o que guarda.
+fn header_of(id: NodeId) -> (&'static str, Option<String>) {
+    match id {
+        AEDIT_SEC_LOOP => (
+            tr("panel.audio_editor.transport.loop"),
+            Some(crate::paint_loop::loop_readout()),
+        ),
+        AEDIT_SEC_EDIT => (tr("panel.audio_editor.transport.edit"), None),
+        AEDIT_SEC_SPECTRAL => (
+            tr("panel.audio_editor.transport.spectral"),
+            Some(crate::paint_spectral::spectral_readout().to_string()),
+        ),
+        AEDIT_SEC_FX => (tr("panel.audio_editor.transport.effects"), None),
+        AEDIT_SEC_MARKERS => (
+            tr("panel.audio_editor.transport.markers"),
+            Some(crate::paint_loop::markers_readout()),
+        ),
+        AEDIT_SEC_VARIATIONS => (
+            tr("panel.audio_editor.transport.variations"),
+            Some(crate::paint_variation::variation_readout()),
+        ),
+        AEDIT_SEC_DELIVERY => (
+            tr("panel.audio_editor.transport.delivery"),
+            Some(crate::paint_delivery::delivery_readout()),
+        ),
+        _ => (tr("panel.audio_editor.transport.transport"), None),
     }
-    y = separator(y, x, w, scene, theme);
-
-    let loop_read = crate::paint_loop::loop_readout();
-    let (fold, ny) = section(
-        y,
-        x,
-        w,
-        AEDIT_SEC_LOOP,
-        tr("panel.audio_editor.transport.loop"),
-        Some(&loop_read),
-        b.fold(AEDIT_SEC_LOOP),
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    y = ny;
-    skip_section_header(y);
-    if let Some(fold) = fold {
-        y = crate::paint_loop::paint_loop_section(
-            y,
-            x,
-            w,
-            b.loaded,
-            b.has_sel,
-            ROW_H,
-            scene,
-            text_system,
-            theme,
-            hit_index,
-        );
-        y = end_fold(fold, y, scene, hit_index);
-    }
-    y = separator(y, x, w, scene, theme);
-
-    let (fold, ny) = section(
-        y,
-        x,
-        w,
-        AEDIT_SEC_EDIT,
-        tr("panel.audio_editor.transport.edit"),
-        None,
-        b.fold(AEDIT_SEC_EDIT),
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    y = ny;
-    skip_section_header(y);
-    if let Some(fold) = fold {
-        y = crate::paint_edit::paint_edit_section(
-            y,
-            x,
-            w,
-            b.loaded,
-            b.undo_ok,
-            b.redo_ok,
-            b.has_sel,
-            scene,
-            text_system,
-            theme,
-            hit_index,
-        );
-        y = end_fold(fold, y, scene, hit_index);
-    }
-    y = separator(y, x, w, scene, theme);
-
-    // Spectral sits between Edit and Effects: it IS editing (destructive, undoable), it
-    // just edits in a domain the waveform cannot show. Reach for it after the cuts and
-    // before the rack.
-    let (fold, ny) = section(
-        y,
-        x,
-        w,
-        AEDIT_SEC_SPECTRAL,
-        tr("panel.audio_editor.transport.spectral"),
-        Some(crate::paint_spectral::spectral_readout()),
-        b.fold(AEDIT_SEC_SPECTRAL),
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    y = ny;
-    skip_section_header(y);
-    if let Some(fold) = fold {
-        y = crate::paint_spectral::paint_spectral_section(
-            y,
-            x,
-            w,
-            b.loaded,
-            b.has_sel,
-            ROW_H,
-            scene,
-            text_system,
-            theme,
-            hit_index,
-        );
-        y = end_fold(fold, y, scene, hit_index);
-    }
-    y = separator(y, x, w, scene, theme);
-
-    let (fold, ny) = section(
-        y,
-        x,
-        w,
-        AEDIT_SEC_FX,
-        tr("panel.audio_editor.transport.effects"),
-        None,
-        b.fold(AEDIT_SEC_FX),
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    y = ny;
-    skip_section_header(y);
-    if let Some(fold) = fold {
-        y = crate::paint_fx::paint_fx_section(
-            y,
-            x,
-            w,
-            b.loaded,
-            ROW_H,
-            scene,
-            text_system,
-            theme,
-            hit_index,
-        );
-        y = end_fold(fold, y, scene, hit_index);
-    }
-    y = separator(y, x, w, scene, theme);
-
-    y
 }
 
-/// **Preparing the asset**: cue markers, variation sets, delivery. Reached for once per
-/// asset rather than once per edit, so these start FOLDED — which is what keeps the panel
-/// a panel instead of a wall.
+/// **Uma secção inteira** — o cabeçalho (fora do cartão), e o bloco se ela está aberta. Devolve o
+/// `y` debaixo do que pintou; o corredor até à seguinte é do chamador.
+///
+/// ⭐ **O que cada uma é, pela ordem natural:** *trabalhar o som* — o transporte, o loop (logo
+/// debaixo dele: é uma coisa de AUDIÇÃO, Loop ligado + Play é como se ouve; Enio, 2026-07-12), a
+/// edição, o espectral (entre a edição e os efeitos: É edição, destrutiva e desfazível, num
+/// domínio que a onda não mostra) e o rack de efeitos; depois *preparar o asset* — marcadores,
+/// variações, entrega —, que se tocam uma vez por asset e por isso nascem DOBRADAS.
 #[allow(clippy::too_many_arguments)]
-fn paint_asset_sections(
-    mut y: f32,
+fn paint_one(
+    id: NodeId,
+    y: f32,
     x: f32,
     w: f32,
     b: &Body,
@@ -285,100 +200,54 @@ fn paint_asset_sections(
     theme: Theme,
     hit_index: &mut ClippedHits,
 ) -> f32 {
-    let mark_read = crate::paint_loop::markers_readout();
-    let (fold, ny) = section(
+    let (label, readout) = header_of(id);
+    let (fold, y) = section(
         y,
         x,
         w,
-        AEDIT_SEC_MARKERS,
-        tr("panel.audio_editor.transport.markers"),
-        Some(&mark_read),
-        b.fold(AEDIT_SEC_MARKERS),
+        id,
+        label,
+        readout.as_deref(),
+        b.fold(id),
         scene,
         text_system,
         theme,
         hit_index,
     );
-    y = ny;
+    // ⚠️ O título fica FORA do cartão — o cursor do livro salta-o.
     skip_section_header(y);
-    if let Some(fold) = fold {
-        y = crate::paint_loop::paint_markers_section(
-            y,
-            x,
-            w,
-            b.loaded,
-            ROW_H,
-            scene,
-            text_system,
-            theme,
-            hit_index,
-        );
-        y = end_fold(fold, y, scene, hit_index);
-    }
-    y = separator(y, x, w, scene, theme);
-
-    let var_read = crate::paint_variation::variation_readout();
-    let (fold, ny) = section(
-        y,
-        x,
-        w,
-        AEDIT_SEC_VARIATIONS,
-        tr("panel.audio_editor.transport.variations"),
-        Some(&var_read),
-        b.fold(AEDIT_SEC_VARIATIONS),
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    y = ny;
-    skip_section_header(y);
-    if let Some(fold) = fold {
-        y = crate::paint_variation::paint_variation_section(
-            y,
-            x,
-            w,
-            ROW_H,
-            scene,
-            text_system,
-            theme,
-            hit_index,
-        );
-        y = end_fold(fold, y, scene, hit_index);
-    }
-    y = separator(y, x, w, scene, theme);
-
-    let del_read = crate::paint_delivery::delivery_readout();
-    let (fold, ny) = section(
-        y,
-        x,
-        w,
-        AEDIT_SEC_DELIVERY,
-        tr("panel.audio_editor.transport.delivery"),
-        Some(&del_read),
-        b.fold(AEDIT_SEC_DELIVERY),
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    y = ny;
-    skip_section_header(y);
-    if let Some(fold) = fold {
-        y = crate::paint_delivery::paint_delivery_section(
-            y,
-            x,
-            w,
-            b.loaded,
-            ROW_H,
-            scene,
-            text_system,
-            theme,
-            hit_index,
-        );
-        y = end_fold(fold, y, scene, hit_index);
-    }
-    y
+    let Some(fold) = fold else {
+        return y;
+    };
+    let (ts, th) = (text_system, theme);
+    let y = match id {
+        AEDIT_SEC_TRANSPORT => {
+            paint_transport_section(y, x, w, b.transport, &b.name, scene, ts, th, hit_index)
+        }
+        AEDIT_SEC_LOOP => crate::paint_loop::paint_loop_section(
+            y, x, w, b.loaded, b.has_sel, ROW_H, scene, ts, th, hit_index,
+        ),
+        AEDIT_SEC_EDIT => crate::paint_edit::paint_edit_section(
+            y, x, w, b.loaded, b.undo_ok, b.redo_ok, b.has_sel, scene, ts, th, hit_index,
+        ),
+        AEDIT_SEC_SPECTRAL => crate::paint_spectral::paint_spectral_section(
+            y, x, w, b.loaded, b.has_sel, ROW_H, scene, ts, th, hit_index,
+        ),
+        AEDIT_SEC_FX => {
+            crate::paint_fx::paint_fx_section(y, x, w, b.loaded, ROW_H, scene, ts, th, hit_index)
+        }
+        AEDIT_SEC_MARKERS => crate::paint_loop::paint_markers_section(
+            y, x, w, b.loaded, ROW_H, scene, ts, th, hit_index,
+        ),
+        AEDIT_SEC_VARIATIONS => crate::paint_variation::paint_variation_section(
+            y, x, w, ROW_H, scene, ts, th, hit_index,
+        ),
+        AEDIT_SEC_DELIVERY => crate::paint_delivery::paint_delivery_section(
+            y, x, w, b.loaded, ROW_H, scene, ts, th, hit_index,
+        ),
+        _ => y,
+    };
+    end_fold(fold, y, scene, hit_index)
 }
 
 /// Every collapsible section, in paint order. The fold state is read from the store as

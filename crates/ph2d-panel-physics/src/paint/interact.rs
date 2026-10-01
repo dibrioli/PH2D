@@ -8,7 +8,7 @@
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_i18n::tr;
 use ph2d_physics_ecs::{HoldMode, InteractionSettings, InteractionTool};
-use ph2d_tokens::Spacing;
+use ph2d_tokens::{Spacing, Theme};
 
 use crate::interact::{IROWS, ISection};
 
@@ -16,6 +16,7 @@ use crate::interact::{IROWS, ISection};
 /// `y` it ended at.
 pub(super) fn paint_interact(
     ctx: &mut PaintCtx,
+    theme: Theme,
     it: &InteractionSettings,
     x: f32,
     w: f32,
@@ -27,6 +28,7 @@ pub(super) fn paint_interact(
     // model's order cannot drift.
     y = seg_row(
         ctx,
+        theme,
         x,
         w,
         y,
@@ -45,6 +47,7 @@ pub(super) fn paint_interact(
     if it.tool == InteractionTool::Hand {
         y = seg_row(
             ctx,
+            theme,
             x,
             w,
             y,
@@ -66,7 +69,7 @@ pub(super) fn paint_interact(
             continue;
         }
         let value = (row.get)(it);
-        let used = super::paint_irow(ctx, row, value, x, w, y);
+        let used = super::paint_irow(ctx, theme, row, value, x, w, y);
         y += used + row_gap;
     }
 
@@ -80,7 +83,7 @@ pub(super) fn paint_interact(
     // seção Joints (W-JointTools): a pergunta *"este gesto quer Play ou Pause?"*
     // passou a ser respondida pela SEÇÃO em que o controle mora, que é a forma de
     // não haver resposta a esquecer.
-    super::paint_hint(ctx, "panel.physics.interact_hint", x, w, y)
+    super::paint_hint(ctx, theme, "panel.physics.interact_hint", x, w, y)
 }
 
 fn tool_label(t: InteractionTool) -> &'static str {
@@ -112,6 +115,7 @@ fn hold_label(m: HoldMode) -> &'static str {
 #[allow(clippy::too_many_arguments)]
 pub(super) fn seg_row(
     ctx: &mut PaintCtx,
+    theme: Theme,
     x: f32,
     w: f32,
     y: f32,
@@ -120,7 +124,6 @@ pub(super) fn seg_row(
     labels: &[&str],
     selected: usize,
 ) -> f32 {
-    let theme = ctx.host.theme();
     let selected = selected.min(labels.len().saturating_sub(1));
     let segs: Vec<(&str, bool, ph2d_a11y::NodeId)> = options
         .iter()

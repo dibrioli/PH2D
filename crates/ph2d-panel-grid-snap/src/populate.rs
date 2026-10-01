@@ -54,6 +54,14 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     store.mark_collapsible_section(crate::ids::GS_SEC_TARGET);
     store.mark_collapsible_section(crate::ids::GS_SEC_DISPLAY);
     store.mark_collapsible_section(ph2d_editor_core::grid_snap::ids::GS_INSPECT_HEADER);
+    // ⭐⭐ **A PEGA de dez pontos de cada secção** (2026-09-30, *«siga com os outros painéis»*):
+    //    `Plain` para o `is_focusable` responder e o rato a acender, com a mesma dica do Inspector.
+    //    As quatro se arrastam (`crate::plano`), e a lista é a MESMA que o pintor declara.
+    for id in crate::plano::SECCOES {
+        let grip = ph2d_editor_core::ids::grip_de(id);
+        store.register(grip, InteractiveState::Plain);
+        store.set_tooltip(grip, ph2d_i18n::tr("chrome.section.grip_hint"));
+    }
     // Scrollbar thumb — must be in the store as `Plain` so dispatch's
     // `is_focusable` lets the Down handler seed the scrollbar drag.
     store.register(GRID_SETTINGS_SCROLLBAR_ID, InteractiveState::Plain);

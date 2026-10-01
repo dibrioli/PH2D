@@ -31,8 +31,13 @@ mod brush_fileiras;
 /// **O QUE SE FAZ COM UMA MÁSCARA PINTADA** — irmão do [`body`], cortado por
 /// assunto quando o transform cruzou o teto de LOC dele.
 mod mask_tools;
+/// ⭐⭐⭐ **AS SECÇÕES COMO UMA LISTA** — quais se arrastam, qual fica, e o tema em que cada uma
+/// se pinta; ver o cabeçalho dele.
+pub(crate) mod plano;
 /// A ferramenta e a referência que ela segue — ver o cabeçalho dele.
 mod tool;
+
+pub(crate) use plano::tema;
 /// **OS WIDGETS** do painel. ⚠️ Ele subiu de dentro do [`body`] para cá quando
 /// ganhou um SEGUNDO consumidor: o arquivo sempre morou em `paint/`, e a
 /// declaração é que estava um nível abaixo do lugar dele.
@@ -125,6 +130,10 @@ pub(crate) fn paint(_state: &mut Sculpt3dPanelState, ctx: &mut PaintCtx) {
         SCULPT3D_SCROLLBAR_ID,
         body_rect,
     );
+    // ⭐⭐ **O corpo pinta-se DENTRO de cartões** (2026-09-30) — adoptado com o plano das secções:
+    //    é o livro dos cartões que o `retheme` de cada secção recolore no tema dela. O par abre
+    //    DEPOIS do `open` da porta, para que o corpo devolvido caia dentro do recorte da rolagem.
+    ph2d_editor_core::widget::section_cards::begin_section_cards(ctx.scene, theme, area.top());
     let y_after = body::paint_sections(
         ctx,
         &snapshot,
@@ -132,6 +141,7 @@ pub(crate) fn paint(_state: &mut Sculpt3dPanelState, ctx: &mut PaintCtx) {
         (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0),
         area.top(),
     );
+    ph2d_editor_core::widget::section_cards::end_section_cards(ctx.scene);
     let content_h = (y_after + area.scroll()) - body_top + PANEL_HEAD_PAD;
     set_last_content_h(content_h);
     set_last_visible_h(body_h);
@@ -156,7 +166,8 @@ pub(crate) fn paint_row(
     w: f32,
     y: f32,
 ) -> f32 {
-    let theme = ctx.host.theme();
+    // ⚠️ O tema da SECÇÃO em curso, não o do painel — ver [`plano::tema`].
+    let theme = tema(ctx);
     let scene = &mut *ctx.scene;
     let text_system = &mut *ctx.text_system;
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();

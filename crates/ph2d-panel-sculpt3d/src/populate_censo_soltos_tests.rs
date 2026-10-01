@@ -71,6 +71,7 @@ const PAINT_BRUSH: &str = include_str!("paint/brush.rs");
 const PAINT_BRUSH_COR: &str = include_str!("paint/brush_cor.rs");
 const PAINT_BRUSH_FILEIRAS: &str = include_str!("paint/brush_fileiras.rs");
 const PAINT_MASK_TOOLS: &str = include_str!("paint/mask_tools.rs");
+const PAINT_PLANO: &str = include_str!("paint/plano.rs");
 const PAINT_TOOL: &str = include_str!("paint/tool.rs");
 const PAINT_WIDGETS: &str = include_str!("paint/widgets.rs");
 
@@ -89,6 +90,7 @@ const PINTORES: &[(&str, &str)] = &[
     ("brush_cor", PAINT_BRUSH_COR),
     ("brush_fileiras", PAINT_BRUSH_FILEIRAS),
     ("mask_tools", PAINT_MASK_TOOLS),
+    ("plano", PAINT_PLANO),
     ("tool", PAINT_TOOL),
     ("widgets", PAINT_WIDGETS),
 ];

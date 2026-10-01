@@ -544,7 +544,13 @@ fn diag_onde_vai_o_quadro_do_rabisco() {
         (CompositeOp::Smear, 0.596, 1.0),
         (CompositeOp::Erase, 0.104, 1.0),
     ];
-    let raio = super::brush_settings::size_norm_to_px(0.4);
+    // `PH2D_DIAG_SIZE` = o `Size` do painel (o report de 2026-10-01 foi a `0.5`).
+    let size = std::env::var("PH2D_DIAG_SIZE")
+        .ok()
+        .and_then(|v| v.parse::<f32>().ok())
+        .unwrap_or(0.4);
+    let raio = super::brush_settings::size_norm_to_px(size);
+    println!("  Size {size} ⇒ raio {raio:.1} px");
     let mut t = tela_de(SIZE, raio);
     t.set_compor_por_quadro(true);
     t.paint.composite_len = dono.len();

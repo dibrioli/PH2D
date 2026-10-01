@@ -254,41 +254,118 @@ pub(crate) fn walk_dab(
     dab: &HeightDab<'_>,
     mut f: impl FnMut(usize, f32, f32, f32),
 ) -> Option<crate::dab::DirtyRect> {
-    let n = (width as usize) * (height as usize);
-    if width == 0 || height == 0 {
-        return None;
-    }
-    // A mask that does not describe this canvas is not a mask — refuse it rather than index into it.
-    let mask = mask.filter(|m| m.len() >= n);
-    // The SAME fold the deposit and the colour both apply (see `accumulate_dab_sculpt`: it was measured,
-    // not read). It is also what makes Strength 0 cost nothing at all — the walk never starts, so nothing
-    // is written, so the layer's relief plane is never forked. Not an optimisation: a consequence.
-    let coverage =
-        dab.coverage.clamp(0.0, 1.0) * spec.flow.clamp(0.0, 1.0) * spec.strength.clamp(0.0, 1.0);
-    if coverage <= 0.0 {
-        return None;
-    }
-    let radius = dab.radius.max(0.5);
-    let (cx, cy) = (dab.center[0], dab.center[1]);
-    // The bbox covers the whole SWEPT body, not just the disc at the centre — otherwise the intensity
-    // would bead at every pointer event, at a rhythm chosen by the mouse's polling rate.
-    let reach = radius + crate::height::sweep_len(dab);
-    let x0 = (cx - reach).floor().max(0.0) as i64;
-    let y0 = (cy - reach).floor().max(0.0) as i64;
-    let x1 = ((cx + reach).ceil() as i64 + 1).min(width as i64);
-    let y1 = ((cy + reach).ceil() as i64 + 1).min(height as i64);
-    if x0 >= x1 || y0 >= y1 {
-        return None;
-    }
-    let inv_radius = 1.0 / radius;
-    let sweep = sweep_axis(dab);
+    let passeio = Passeio::de(mask, width, height, spec, dab)?;
     let mut touched = false;
-    for py in y0..y1 {
-        let dy = (py as f32 + 0.5) - cy;
-        for px in x0..x1 {
-            let dx = (px as f32 + 0.5) - cx;
-            let (rx, ry) = sweep_residual(dx, dy, sweep);
-            let t = dab.footprint.falloff_t(rx * inv_radius, ry * inv_radius);
+    for py in passeio.y0..passeio.y1 {
+        touched |= passeio.linha(py, &mut f);
+    }
+    touched.then(|| passeio.rect())
+}
+
+/// **O [`walk_dab`] resolvido uma vez e percorrido LINHA a LINHA** — a mesma lei, partida no sítio
+/// onde ela já era independente: cada linha da pegada só lê o dab e escreve os SEUS texels.
+///
+/// ⭐ Existe para o esfregão repartir um pingo por faixas de linhas ([`crate::smear_field`],
+/// 2026-10-01) sem uma segunda cópia da silhueta: o [`walk_dab`] é este passeio com as linhas em
+/// série, logo as duas rotas dão o mesmo `(índice, peso)` por construção.
+///
+/// `Sync` pela razão do [`crate::height_walk`]: só referências a dados imutáveis e escalares.
+pub(crate) struct Passeio<'a, 'b> {
+    mask: Option<&'a [u8]>,
+    width: usize,
+    spec: &'a crate::BrushSpec,
+    dab: &'a HeightDab<'b>,
+    coverage: f32,
+    radius: f32,
+    inv_radius: f32,
+    cx: f32,
+    cy: f32,
+    sweep: Option<([f32; 2], f32)>,
+    /// A caixa da pegada, meio-aberta: colunas `[x0, x1)`, linhas `[y0, y1)`.
+    pub(crate) x0: i64,
+    pub(crate) x1: i64,
+    pub(crate) y0: i64,
+    pub(crate) y1: i64,
+}
+
+impl<'a, 'b> Passeio<'a, 'b> {
+    /// Resolve o dab — `None` onde o [`walk_dab`] desistia antes de percorrer (tela vazia, força
+    /// nula, pegada fora da tela).
+    pub(crate) fn de(
+        mask: Option<&'a [u8]>,
+        width: u32,
+        height: u32,
+        spec: &'a crate::BrushSpec,
+        dab: &'a HeightDab<'b>,
+    ) -> Option<Self> {
+        let n = (width as usize) * (height as usize);
+        if width == 0 || height == 0 {
+            return None;
+        }
+        // A mask that does not describe this canvas is not a mask — refuse it rather than index into it.
+        let mask = mask.filter(|m| m.len() >= n);
+        // The SAME fold the deposit and the colour both apply (see `accumulate_dab_sculpt`: it was
+        // measured, not read). It is also what makes Strength 0 cost nothing at all — the walk never
+        // starts, so nothing is written, so the layer's relief plane is never forked. Not an
+        // optimisation: a consequence.
+        let coverage = dab.coverage.clamp(0.0, 1.0)
+            * spec.flow.clamp(0.0, 1.0)
+            * spec.strength.clamp(0.0, 1.0);
+        if coverage <= 0.0 {
+            return None;
+        }
+        let radius = dab.radius.max(0.5);
+        let (cx, cy) = (dab.center[0], dab.center[1]);
+        // The bbox covers the whole SWEPT body, not just the disc at the centre — otherwise the
+        // intensity would bead at every pointer event, at a rhythm chosen by the mouse's polling rate.
+        let reach = radius + crate::height::sweep_len(dab);
+        let x0 = (cx - reach).floor().max(0.0) as i64;
+        let y0 = (cy - reach).floor().max(0.0) as i64;
+        let x1 = ((cx + reach).ceil() as i64 + 1).min(width as i64);
+        let y1 = ((cy + reach).ceil() as i64 + 1).min(height as i64);
+        if x0 >= x1 || y0 >= y1 {
+            return None;
+        }
+        Some(Self {
+            mask,
+            width: width as usize,
+            spec,
+            dab,
+            coverage,
+            radius,
+            inv_radius: 1.0 / radius,
+            cx,
+            cy,
+            sweep: sweep_axis(dab),
+            x0,
+            x1,
+            y0,
+            y1,
+        })
+    }
+
+    /// A caixa inteira da pegada — o rect que o [`walk_dab`] devolve quando algum texel é tocado.
+    pub(crate) fn rect(&self) -> crate::dab::DirtyRect {
+        crate::dab::DirtyRect {
+            x: self.x0 as u32,
+            y: self.y0 as u32,
+            w: (self.x1 - self.x0) as u32,
+            h: (self.y1 - self.y0) as u32,
+        }
+    }
+
+    /// Percorre UMA linha `py` da pegada: `f(índice, dx, dy, peso)` em cada texel tocado. Devolve se
+    /// tocou algum.
+    pub(crate) fn linha(&self, py: i64, f: &mut impl FnMut(usize, f32, f32, f32)) -> bool {
+        let (spec, dab, radius) = (self.spec, self.dab, self.radius);
+        let dy = (py as f32 + 0.5) - self.cy;
+        let mut touched = false;
+        for px in self.x0..self.x1 {
+            let dx = (px as f32 + 0.5) - self.cx;
+            let (rx, ry) = sweep_residual(dx, dy, self.sweep);
+            let t = dab
+                .footprint
+                .falloff_t(rx * self.inv_radius, ry * self.inv_radius);
             let w = crate::dab::silhouette_at(spec, dab.shape, t, px, py, dab.center, radius);
             if w <= 0.0 {
                 continue;
@@ -307,29 +384,21 @@ pub(crate) fn walk_dab(
                 }
                 None => 1.0,
             };
-            let i = (py as usize) * (width as usize) + px as usize;
-            // The **Selection**, folded into THIS dab's contribution (see `accumulate_dab_sculpt`'s docs:
-            // attenuating the running total instead compounds once per pointer batch, and a Feather makes
-            // that visible).
-            let sel = match mask {
+            let i = (py as usize) * self.width + px as usize;
+            // The **Selection**, folded into THIS dab's contribution (see `accumulate_dab_sculpt`'s
+            // docs: attenuating the running total instead compounds once per pointer batch, and a
+            // Feather makes that visible).
+            let sel = match self.mask {
                 Some(m) => f32::from(m[i]) / 255.0,
                 None => 1.0,
             };
-            let add = w * g * coverage * sel;
+            let add = w * g * self.coverage * sel;
             if add <= 0.0 {
                 continue;
             }
             f(i, dx, dy, add);
             touched = true;
         }
+        touched
     }
-    if !touched {
-        return None;
-    }
-    Some(crate::dab::DirtyRect {
-        x: x0 as u32,
-        y: y0 as u32,
-        w: (x1 - x0) as u32,
-        h: (y1 - y0) as u32,
-    })
 }

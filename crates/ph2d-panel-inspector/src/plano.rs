@@ -16,22 +16,24 @@
 //!
 //! ## O que o plano faz por cada secção, e só ele
 //!
-//! 1. **Fecha o cartão anterior ANTES** — um corredor só; as molduras que ainda fecham dentro de si
-//!    batem num fecho vazio, que é um no-op ([`close_section`]).
+//! 1. **Fecha o cartão anterior ANTES, se ele pintou** — um corredor só
+//!    ([`section_plan::Corredor`]); fechar depois de uma secção vazia era um separador a mais no
+//!    tema clássico.
+//!
+//! ⭐ **A lei (ordem · tema · marca de queda · fantasma) mora em
+//! [`ph2d_editor_core::panel::section_plan`] desde 2026-09-30** — partilhada com o Vector e os
+//! painéis que vierem; aqui fica o laço da `Tela`.
 //! 2. **Resolve o TEMA da secção** — o que o artista lhe escolheu pelo botão direito no título, ou
 //!    o do painel — e passa-o à secção como o `theme` dela.
 //! 3. **Regista a faixa pintada**, e no fim pinta os cartões de cada faixa no tema dela
 //!    ([`retheme`]) e a marca de onde uma secção arrastada vai cair.
 
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::interaction::{
-    HitIndex, SECCOES_FIXAS, WidgetStore, alvo_da_queda, ordena_seccoes,
-};
-use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
-use ph2d_editor_core::widget::section_cards::{close_section, retheme};
-use ph2d_editor_core::zones::Rect;
+use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
+pub(crate) use ph2d_editor_core::panel::section_plan::Fantasma;
+use ph2d_editor_core::panel::section_plan::{self, Faixa};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, StrokeToken, Theme};
+use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
 
 /// ⭐ **Onde uma secção pinta** — os três mutáveis que toda moldura de secção pede.
@@ -48,9 +50,6 @@ type Tarefa<'a> = Box<dyn for<'c> FnOnce(&mut Tela<'c>, Theme, f32) -> f32 + 'a>
 pub(crate) struct Plano<'a> {
     tarefas: Vec<(NodeId, Tarefa<'a>)>,
 }
-
-/// A faixa que uma secção ocupou — `(secção, topo, fundo, tema)`.
-type Faixa = (NodeId, f32, f32, Theme);
 
 impl<'a> Plano<'a> {
     pub(crate) fn new() -> Self {
@@ -73,11 +72,7 @@ impl<'a> Plano<'a> {
     /// ordem do artista.
     pub(crate) fn ordem(&self, store: &WidgetStore) -> Vec<NodeId> {
         let natural: Vec<NodeId> = self.tarefas.iter().map(|(id, _)| *id).collect();
-        let (fixas, moveis): (Vec<NodeId>, Vec<NodeId>) =
-            natural.iter().partition(|id| SECCOES_FIXAS.contains(id));
-        let mut out = fixas;
-        out.extend(ordena_seccoes(&moveis, store.section_order()));
-        out
+        section_plan::ordem(&natural, store)
     }
 
     /// ⭐⭐ **Pinta todas as secções** e devolve o `y` depois da última — e, durante um arrasto, o
@@ -98,13 +93,14 @@ impl<'a> Plano<'a> {
         let mut faixas: Vec<Faixa> = Vec::with_capacity(ordem.len());
         let arrastada = store.section_drag().filter(|d| d.active).map(|d| d.section);
         let mut fantasma: Option<VectorScene> = None;
+        let mut corredor = section_plan::Corredor::default();
         for id in ordem {
             let Some(i) = self.tarefas.iter().position(|(t, _)| *t == id) else {
                 continue;
             };
             let (_, tarefa) = self.tarefas.swap_remove(i);
-            let tema = store.section_theme(id).unwrap_or(painel);
-            y = close_section(tela.scene, painel, inner_x, inner_w, y);
+            let tema = section_plan::tema_da_seccao(store, id, painel);
+            y = corredor.antes(tela.scene, painel, inner_x, inner_w, y);
             let y0 = y;
             if arrastada == Some(id) {
                 // ⭐⭐ **A secção arrastada pinta-se numa cena À PARTE** (2026-09-30): ela é pousada
@@ -123,65 +119,17 @@ impl<'a> Plano<'a> {
             } else {
                 y = tarefa(tela, tema, y);
             }
+            corredor.depois(y0, y);
             if y > y0 {
                 faixas.push((id, y0, y, tema));
             }
         }
-        y = close_section(tela.scene, painel, inner_x, inner_w, y);
-        for (_, y0, y1, tema) in &faixas {
-            if *tema != painel {
-                retheme(*y0, *y1, *tema);
-            }
-        }
-        paint_marca_da_queda(
+        y = corredor.antes(tela.scene, painel, inner_x, inner_w, y);
+        section_plan::conclui(
             tela.scene, store, painel, &faixas, inner_x, inner_w, header_h,
         );
-        let fantasma = fantasma.and_then(|conteudo| {
-            let &(_, y0, y1, tema) = faixas.iter().find(|f| Some(f.0) == arrastada)?;
-            let pad = ph2d_tokens::card_pad_px();
-            Some(Fantasma {
-                conteudo,
-                cartao: Rect::new(
-                    inner_x - pad,
-                    y0 - pad,
-                    inner_w + pad * 2.0,
-                    y1 - y0 + pad * 2.0,
-                ),
-                tema,
-            })
-        });
+        let fantasma = Fantasma::de(fantasma, &faixas, arrastada, inner_x, inner_w);
         (y, fantasma)
-    }
-}
-
-/// ⭐⭐ **O FANTASMA da secção arrastada** — o cartão dela, menor e meio transparente, com o
-/// ponto por onde a mão pegou debaixo do cursor (ordem do dono, 2026-09-30: *«permita ver o card
-/// sendo arrastado, menor e meio transparente»*). O fundo é o do cartão, no TEMA da secção.
-pub(crate) struct Fantasma {
-    conteudo: VectorScene,
-    cartao: Rect,
-    tema: Theme,
-}
-
-impl Fantasma {
-    /// Pinta-o — por último, sobre o corpo inteiro.
-    pub(crate) fn pinta(self, scene: &mut VectorScene, store: &WidgetStore) {
-        let Some(drag) = store.section_drag().filter(|d| d.active) else {
-            return;
-        };
-        let cor = resolve(
-            ph2d_editor_core::widget::section_cards::CardDepth::Section.token(),
-            self.tema,
-        );
-        ph2d_editor_core::widget::paint_card_ghost(
-            scene,
-            &self.conteudo,
-            self.cartao,
-            ph2d_editor_core::paint::frame_radius(self.tema, ph2d_tokens::Radius::Md.px()),
-            Some(cor),
-            (drag.down_x, drag.down_y),
-            (drag.cursor_x, drag.cursor_y),
-        );
     }
 }
 
@@ -205,70 +153,6 @@ pub(crate) fn emoldurada<'a>(
             c.scene, c.text, c.hit, store, inner_x, inner_w, id, y, novo,
         )
     });
-}
-
-/// ⭐ **A marca de onde a secção arrastada vai cair** — uma barra de acento no meio do vão entre
-/// dois cartões, e o contorno do cartão que se está a mover.
-///
-/// ⚠️ **A queda é a MESMA lei do despacho** ([`alvo_da_queda`]) sobre os mesmos meios de cabeçalho
-/// (o `begin_section` regista o cabeçalho com `header_h` a partir do topo da faixa). Duas contas
-/// punham a marca num sítio e a secção noutro.
-fn paint_marca_da_queda(
-    scene: &mut VectorScene,
-    store: &WidgetStore,
-    painel: Theme,
-    faixas: &[Faixa],
-    inner_x: f32,
-    inner_w: f32,
-    header_h: f32,
-) {
-    let Some(drag) = store.section_drag().filter(|d| d.active) else {
-        return;
-    };
-    let moveis: Vec<&Faixa> = faixas
-        .iter()
-        .filter(|f| !SECCOES_FIXAS.contains(&f.0))
-        .collect();
-    let heads: Vec<(NodeId, f32)> = moveis.iter().map(|f| (f.0, f.1 + header_h * 0.5)).collect();
-    let pad = ph2d_tokens::card_pad_px();
-    let meio_do_vao = pad + ph2d_tokens::card_gap_px() * 0.5;
-    let y = match alvo_da_queda(&heads, drag.section, drag.cursor_y) {
-        Some(alvo) => moveis
-            .iter()
-            .find(|f| f.0 == alvo)
-            .map(|f| f.1 - meio_do_vao),
-        None => moveis.last().map(|f| f.2 + meio_do_vao),
-    };
-    let acento = resolve(ColorToken::Accent, painel);
-    let espessura = StrokeToken::Thick.px();
-    if let Some(y) = y {
-        fill_rounded_rect(
-            scene,
-            Rect::new(
-                inner_x - pad,
-                y - espessura * 0.5,
-                inner_w + pad * 2.0,
-                espessura,
-            ),
-            espessura * 0.5,
-            acento,
-        );
-    }
-    if let Some(f) = moveis.iter().find(|f| f.0 == drag.section) {
-        // FRAME-RAW-OK: o contorno de ARRASTO — um estado do gesto, da cor do acento, como a marca.
-        ph2d_editor_core::paint::stroke_rounded_rect(
-            scene,
-            Rect::new(
-                inner_x - pad,
-                f.1 - pad,
-                inner_w + pad * 2.0,
-                f.2 - f.1 + pad * 2.0,
-            ),
-            ph2d_editor_core::paint::frame_radius(painel, ph2d_tokens::Radius::Md.px()),
-            espessura,
-            acento,
-        );
-    }
 }
 
 #[cfg(test)]

@@ -170,3 +170,19 @@ pub fn section_of_grip(grip: NodeId) -> Option<NodeId> {
         .find(|(_, g)| *g == grip)
         .map(|(s, _)| *s)
 }
+
+/// O sal que deriva a pega de uma secção que não está na [`LIVE_SECTIONS`]. Um `NodeId` é o hash
+/// de um nome, e um XOR por uma constante ímpar fixa é uma bijecção: a pega de uma secção nunca é
+/// outra secção do mesmo painel por acaso, e não há uma segunda tabela a escrever à mão.
+const SAL_DA_PEGA: u64 = 0x5EC7_10A1_6219_9E37;
+
+/// ⭐⭐ **A pega de QUALQUER secção** (2026-09-30, ordem do dono: *«siga com os outros painéis»*):
+/// a da tabela do Inspector quando ela a declara, senão a derivada pelo [`SAL_DA_PEGA`].
+///
+/// ⚠️ **A volta (pega → secção) de uma pega derivada NÃO se faz por aqui**: ela lê-se no hit-index
+/// do quadro ([`crate::interaction::HitIndex::section_of_grip`]), que só conhece as pegas que um
+/// painel de facto PINTOU — inverter o XOR aceitaria qualquer id como pega de alguma coisa.
+#[must_use]
+pub fn grip_de(section: NodeId) -> NodeId {
+    grip_of(section).unwrap_or(NodeId(section.0 ^ SAL_DA_PEGA))
+}

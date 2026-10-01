@@ -2,7 +2,8 @@
 //!
 //! Ordem do dono (2026-09-30): *«Ainda não temos um botão para resetar todos os themes dos cards e
 //! nem um botão para salvar o theme custom.»* Três verbos no menu do botão direito do título de uma
-//! secção, e os três agem sobre o PAINEL inteiro, não sobre a secção do pedido:
+//! secção, e os três agem sobre TODOS os cartões — de todos os painéis com secções (desde 2026-09-30
+//! o Vector também), não sobre a secção do pedido:
 //!
 //! - **Reset All Card Themes** — todas as secções voltam ao tema do app.
 //! - **Save Custom Theme** — a combinação de agora fica guardada.

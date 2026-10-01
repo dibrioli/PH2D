@@ -67,11 +67,6 @@ impl BodyCtx<'_> {
         self.segmented(label, &opts, y)
     }
 
-    /// A linha canônica ENTRE seções (nunca dentro de uma).
-    pub(crate) fn separator(&mut self, y: f32) -> f32 {
-        self.with_rows(|r| r.separator(y))
-    }
-
     /// **Uma linha de CHECKBOX** — caixa à esquerda, rótulo à direita.
     ///
     /// ⚠️ Este painel dizia booleano com um `segmented` Off/On (o *Clip* da moldura), e este é o

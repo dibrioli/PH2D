@@ -198,7 +198,10 @@ mod tests {
             assert_eq!(tema_da_linha(id, Theme::Dark), Some(t));
         }
         for (id, t) in SECTION_THEME_MENU {
-            assert_eq!(tema_da_linha(id, Theme::Candy), Some(t.unwrap_or(Theme::Candy)));
+            assert_eq!(
+                tema_da_linha(id, Theme::Candy),
+                Some(t.unwrap_or(Theme::Candy))
+            );
         }
         assert_eq!(tema_da_linha(ids::TOOL_UNDO, Theme::Dark), None);
     }

@@ -52,8 +52,11 @@ pub(super) fn handle_down_menus(
         //    menu de notas. Ela responde como o cabeçalho que move.
         let hit_id = hit
             .map(|(id, _)| id)
-            .map(|id| crate::ids::section_of_grip(id).unwrap_or(id));
-        let is_section = hit_id.map(is_section_header_id).unwrap_or(false);
+            .map(|id| super::section_drag::seccao_da_pega(hit_index, id).unwrap_or(id));
+        // ⭐⭐ As secções de QUALQUER painel que as registou neste quadro (2026-09-30) — o livro do
+        //    hit-index — além das duas tabelas do Inspector e da Galeria.
+        let is_section =
+            hit_id.is_some_and(|id| is_section_header_id(id) || hit_index.is_section(id));
         // ⭐⭐ **Botão direito sobre uma NOTA** — qualquer das quatro faces dela (fundo, título,
         //    corpo, pega) abre o menu da nota: cor, *Duplicate*, *Delete*.
         // ⛔ Até 2026-09-30 isto perguntava `800..=811`: os ids das notas são hashes e nunca lá

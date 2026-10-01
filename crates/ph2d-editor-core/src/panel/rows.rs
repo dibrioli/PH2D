@@ -32,8 +32,8 @@ use crate::widget::panel_chrome::SECTION_LABEL_TO_CONTROL_PX;
 use crate::widget::section_cards::close_section;
 use crate::widget::showcase::read_number_input;
 use crate::widget::{
-    Button, ButtonKind, NumberInput, SectionFold, SectionHeader, paint_button,
-    paint_number_input_with_buffer, paint_section_header,
+    Button, ButtonKind, NumberInput, SectionFold, paint_button, paint_number_input_with_buffer,
+    paint_section_header,
 };
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
@@ -102,6 +102,14 @@ pub struct RowCtx<'a> {
     pub open_fold: Option<SectionFold>,
 }
 
+/// ⭐ **A altura do cabeçalho de uma secção de linhas** — a que o [`RowCtx::section_header`] pinta
+/// e regista. O plano das secções ([`super::section_plan::conclui`]) mede a marca de queda pelo meio
+/// dela, e o despacho pelo meio do rect registado: as duas têm de sair da mesma conta.
+#[must_use]
+pub fn section_header_h() -> f32 {
+    TypeToken::Md.px() + Spacing::Md.px()
+}
+
 impl RowCtx<'_> {
     /// **O cabeçalho de uma secção.** Devolve `(y do corpo, está FECHADA E PARADA)`.
     ///
@@ -109,14 +117,15 @@ impl RowCtx<'_> {
     /// semântico vira neste quadro e o `t` ainda desce — um corpo gateado no flag sumiria de repente
     /// por baixo de um chevron a rodar.
     pub fn section_header(&mut self, id: NodeId, label: &str, y: f32) -> (f32, bool) {
-        let header_h = TypeToken::Md.px() + Spacing::Md.px();
-        let collapsed = self.store.is_collapsed(id);
-        let header = SectionHeader::new(id, label)
-            .collapsible(!collapsed)
-            .open_t(self.store.section_open_live(id));
+        let header_h = section_header_h();
+        // ⭐⭐ O cabeçalho com a PEGA, e a secção escrita no livro do quadro (2026-09-30): é o que
+        //    a faz abrir o menu de temas pelo botão direito e arrastar pelos dez pontos. ⚠️ Quem
+        //    pinta por aqui pinta o corpo pelo plano (`section_plan`) — senão a pega mudaria uma
+        //    ordem que ninguém lê.
+        let header = super::section_plan::cabecalho(self.store, id, label);
         let rect = Rect::new(self.inner_x, y, self.inner_w, header_h);
         paint_section_header(&header, rect, self.scene, self.text_system, self.theme);
-        self.hit_index.register(id, rect);
+        super::section_plan::regista_cabecalho(self.hit_index, id, rect);
         let body_top = y + header_h + SECTION_LABEL_TO_CONTROL_PX;
         self.open_fold = SectionFold::begin(
             self.store,

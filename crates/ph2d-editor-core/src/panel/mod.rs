@@ -29,6 +29,8 @@ pub mod registry;
 pub mod rows;
 pub mod scroll_area;
 pub mod seam_macro;
+/// ⭐⭐⭐ **As secções de um painel como uma lista** — ordem, tema, pega e fantasma, uma lei só.
+pub mod section_plan;
 
 pub use erased::ErasedPanel;
 pub use event_outcome::EventOutcome;

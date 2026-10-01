@@ -285,6 +285,11 @@ fn populate_connector(store: &mut WidgetStore) {
 fn populate_sections(store: &mut WidgetStore) {
     for &id in ids::VECTOR_SECTIONS {
         store.mark_collapsible_section(id);
+        // ⭐⭐ A PEGA de dez pontos (2026-09-30): `Plain` para o `is_focusable` responder e o rato a
+        //    acender, com a mesma dica do Inspector — ela ensina os dois gestos de uma vez.
+        let grip = ph2d_editor_core::ids::grip_de(id);
+        store.register(grip, ph2d_editor_core::interaction::InteractiveState::Plain);
+        store.set_tooltip(grip, ph2d_i18n::tr("chrome.section.grip_hint"));
     }
 }
 

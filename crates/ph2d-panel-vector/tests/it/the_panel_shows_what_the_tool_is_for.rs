@@ -158,12 +158,27 @@ fn the_tool_row_survives_every_scope() {
 
 /// ⭐⭐⭐ **O CENSO: toda seção do corpo DECLARA de quem é.**
 ///
-/// ⚠️ **Nem mais** — nenhuma chamada nua de `self.step` sobrevive dentro do `paint_body`; **nem
-/// menos** — as duas metades contam a mesma população. *Um `Always` implícito, repetido 38 vezes,
-/// foi o que pôs a grade de formas na ferramenta Select*: a tabela só serve se ninguém puder
-/// entrar sem passar por ela.
+/// ⚠️ **Nem mais** — nenhuma secção entra no corpo sem passar pela lista do plano (`p.seccao`, que
+/// leva o escopo na assinatura); **nem menos** — toda secção do painel está na lista. *Um `Always`
+/// implícito, repetido 38 vezes, foi o que pôs a grade de formas na ferramenta Select*: a tabela só
+/// serve se ninguém puder entrar sem passar por ela.
+///
+/// ⭐ Desde 2026-09-30 o corpo é uma LISTA pintada pela ordem do artista (`paint_body_plan.rs`), e
+/// a excepção da `path_section` (que fechava a dobra à mão por ser a última) **deixou de existir**:
+/// com a ordem a mudar não há «a última», e o plano fecha o cartão no fim.
 #[test]
 fn every_body_section_declares_which_tool_it_belongs_to() {
+    const PLANO: &str = include_str!("../../src/paint_body_plan.rs");
+    let ini = PLANO
+        .find("pub(crate) fn corpo")
+        .expect("a lista natural do corpo");
+    let corpo = &PLANO[ini..];
+    let declaradas = corpo.matches("p.seccao(VECTOR_SECTION_").count();
+    assert!(
+        declaradas >= 41,
+        "so' {declaradas} secoes declaram o escopo"
+    );
+    // ⚠️ A metade "nem mais": o corpo não chama secção nenhuma fora da lista.
     let ini = SRC
         .find("pub(crate) fn paint_body")
         .expect("o orquestrador do corpo");
@@ -171,34 +186,13 @@ fn every_body_section_declares_which_tool_it_belongs_to() {
         .find("fn close_fold")
         .expect("o fim do orquestrador")
         + ini;
-    let corpo = &SRC[ini..fim];
-
-    let declaradas = corpo.matches("self.step_in(y, snap.mode, ").count();
+    let orquestrador = &SRC[ini..fim];
     assert!(
-        declaradas >= 39,
-        "so' {declaradas} secoes declaram o escopo"
+        !orquestrador.contains("_section(") && !orquestrador.contains("_style("),
+        "o paint_body chama uma secao directamente, fora da lista do plano"
     );
-
-    // ⚠️ A metade "nem mais": um `self.step(` cru no corpo é uma seção que entrou sem dizer de
-    // quem é — e ela pintaria em toda ferramenta, que é exactamente o defeito.
-    assert_eq!(
-        corpo.matches("self.step(").count(),
-        0,
-        "uma secao do corpo ainda usa o passo CRU: ela pinta em toda ferramenta por omissao"
-    );
-
-    // ⚠️ **A ÚNICA excepção, nomeada**: a `path_section` não passa pelo `step` porque fecha a dobra
-    // à mão (ela é a última e não leva separador de rodapé). Um segundo nome aqui significa que
-    // alguém copiou esse contrato — e aí a excepção deixa de ser uma.
-    let fora: Vec<&str> = ["self.path_section(y)"]
-        .into_iter()
-        .filter(|n| corpo.contains(n))
-        .collect();
-    assert_eq!(
-        fora.len(),
-        1,
-        "a lista de secoes fora do passo mudou: {fora:?}"
-    );
+    // ⭐ A metade "nem menos" — toda secção do painel está na lista — é o gate unitário
+    //    `a_lista_do_corpo_e_toda_seccao_do_painel` (`paint_body_plan.rs`), que lê a lista viva.
 }
 
 /// ⚠️⚠️ **A OUTRA METADE DO MESMO REPORT, e ela não é sobre a ferramenta: é sobre a SELEÇÃO.**

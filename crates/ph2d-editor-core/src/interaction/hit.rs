@@ -24,6 +24,9 @@ pub struct HitIndex {
     rects: SmallVec<[(NodeId, Rect); INLINE_CAPACITY]>,
     /// Pilha de RECORTES abertos. Ver [`HitIndex::push_clip`].
     clips: SmallVec<[Rect; 4]>,
+    /// ⭐⭐ **As secções que se arrastam e mudam de tema, pintadas NESTE quadro por qualquer painel**
+    /// — `(secção, pega, cabeçalho já recortado)`. Ver [`HitIndex::register_section`].
+    seccoes: SmallVec<[(NodeId, NodeId, Rect); 48]>,
 }
 
 impl HitIndex {
@@ -35,6 +38,7 @@ impl HitIndex {
     /// per frame before the paint pass re-registers everything.
     pub fn clear_for_frame(&mut self) {
         self.rects.clear();
+        self.seccoes.clear();
         // ⚠️ **Um recorte por fechar não pode atravessar o quadro.** Se um pintor entrar em
         // pânico ou sair por um caminho que salta o `pop_clip`, o quadro SEGUINTE herdaria a
         // janela e o painel inteiro ficaria mudo sob o rato — um defeito que se cura sozinho
@@ -56,6 +60,46 @@ impl HitIndex {
             return;
         };
         self.rects.push((id, visible));
+    }
+
+    /// ⭐⭐ **Regista o cabeçalho de uma secção que se ARRASTA e muda de TEMA** — o rect do
+    /// cabeçalho com o id dela, a pega por cima (`grip_rect`, registada DEPOIS para ganhar o clique),
+    /// e a linha no livro das secções do quadro.
+    ///
+    /// Ordem do dono, 2026-09-30, depois de o menu de temas e a reordenação nascerem só no
+    /// Inspector: *«siga com os outros painéis»*. ⚠️ **O despacho lê ESTE livro e não uma tabela
+    /// por painel:** a pergunta *«isto é o título de uma secção?»* tem a resposta que o quadro
+    /// anterior PINTOU — uma tabela à mão por painel seria a lista que a próxima secção esquece.
+    ///
+    /// ⚠️ Um cabeçalho que o recorte esconde inteiro não entra no livro: uma secção rolada para
+    /// fora do painel não é um alvo de queda.
+    pub fn register_section(&mut self, section: NodeId, head: Rect, grip: NodeId, grip_rect: Rect) {
+        let Some(visible) = self.clipped(head) else {
+            return;
+        };
+        self.rects.push((section, visible));
+        self.register(grip, grip_rect);
+        self.seccoes.push((section, grip, visible));
+    }
+
+    /// `id` é o cabeçalho de uma secção registada por [`Self::register_section`] neste quadro.
+    #[must_use]
+    pub fn is_section(&self, id: NodeId) -> bool {
+        self.seccoes.iter().any(|(s, _, _)| *s == id)
+    }
+
+    /// A secção cuja pega é `grip`, entre as registadas neste quadro.
+    #[must_use]
+    pub fn section_of_grip(&self, grip: NodeId) -> Option<NodeId> {
+        self.seccoes
+            .iter()
+            .find(|(_, g, _)| *g == grip)
+            .map(|(s, _, _)| *s)
+    }
+
+    /// O livro das secções deste quadro — `(secção, cabeçalho)`, pela ordem em que foram pintadas.
+    pub fn sections(&self) -> impl Iterator<Item = (NodeId, Rect)> + '_ {
+        self.seccoes.iter().map(|(s, _, r)| (*s, *r))
     }
 
     /// **Abre um RECORTE: daqui até ao [`Self::pop_clip`], o que for registado fora deste

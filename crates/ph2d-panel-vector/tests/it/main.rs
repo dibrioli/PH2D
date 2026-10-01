@@ -7,6 +7,7 @@
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
 mod architecture_sections_read_the_document;
+mod as_seccoes_arrastam_e_tem_tema;
 mod bool_registration_parity;
 mod connector_section;
 mod every_chip_is_linked_to_its_slider;

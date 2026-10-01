@@ -432,9 +432,9 @@ pub(super) fn dispatch_down<'frame>(
     //    testes, que não corre aquele `pre_populate`. Uma pega não ganha foco nem buffer.
     if let Some((id, _)) = hit
         && event.button == ph2d_host::PointerButton::Primary
-        && crate::ids::section_of_grip(id).is_some()
+        && super::section_drag::seccao_da_pega(hit_index, id).is_some()
     {
-        super::section_drag::seed(store, id, event.x, event.y);
+        super::section_drag::seed(store, hit_index, id, event.x, event.y);
         return;
     }
     // ⭐ A PEGA de uma NOTA (2026-09-30) — a mesma porta e a mesma razão. ⚠️ A pega fica por cima

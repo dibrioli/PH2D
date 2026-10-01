@@ -769,16 +769,14 @@ fn every_player_control_carries_a_hover_hint() {
     // dela. ⇒ *a prova de que a conversão encurtou o painel não foi uma medição minha: foi uma
     // isenção a deixar de descrever alguma coisa.*
     // ⚠️ A pega TEM dica (o `pre_populate` dá-lha a todas); fica aqui como cromo porque é do
-    //    cabeçalho e não da §14. E a BARRA DE ROLAGEM do painel entra desde 2026-09-29: com os
-    //    cartões espaçados o corpo desta fixtura passou a transbordar, e a barra só aparece com a
-    //    secção — ela é do painel, não um controlo da §14.
-    let chrome: [(&str, ph2d_a11y::NodeId); 3] = [
+    //    cabeçalho e não da §14.
+    // ⚠️ A BARRA DE ROLAGEM do painel esteve aqui de 2026-09-29 a 2026-09-30 e SAIU pela metade
+    //    «stale» deste gate: o que fazia esta fixtura transbordar era o plano fechar um cartão
+    //    antes de CADA secção da lista — no tema clássico, um separador inteiro por secção vazia.
+    //    Com o `section_plan::Corredor` o corpo cabe, e a barra não aparece.
+    let chrome: [(&str, ph2d_a11y::NodeId); 2] = [
         ("o cabecalho da secao", ids::INSP_LIVE_PLAYER_SECTION),
         ("a pega de arrasto do cabecalho", ids::INSP_LIVE_PLAYER_GRIP),
-        (
-            "a barra de rolagem do painel",
-            ph2d_editor_core::widget::INSPECTOR_SCROLLBAR_ID,
-        ),
     ];
 
     let with_player = painted(player());

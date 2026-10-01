@@ -135,6 +135,8 @@ mod paint_align;
 mod paint_anchors;
 mod paint_appearance;
 mod paint_arrange;
+/// ⭐⭐⭐ O corpo como uma LISTA — ordem do artista e tema por secção (2026-09-30).
+mod paint_body_plan;
 mod paint_boolean;
 /// O catálogo de formas (categoria em dropdown + grade de thumbnails cozidos).
 mod paint_catalog;

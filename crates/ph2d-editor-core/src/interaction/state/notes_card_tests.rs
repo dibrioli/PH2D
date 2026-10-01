@@ -48,7 +48,7 @@ fn altura_da_nota(store: &WidgetStore) -> (f32, HitIndex) {
 
 /// ⭐⭐ **O contorno abraça a secção E as notas dela.** A nota pinta-se abaixo do fim da secção, e
 /// a caixa do contorno desce até ao fim dela. *Mutação: a caixa até ao fim da SECÇÃO (o de antes)
-/// ⇒ a nota fica de fora — é o controlo `pintou = false`.*
+/// ⇒ a nota fica de fora — é o controlo.*
 #[test]
 fn o_contorno_abraca_as_notas_da_seccao() {
     let mut store = WidgetStore::with_capacity(64);
@@ -58,7 +58,7 @@ fn o_contorno_abraca_as_notas_da_seccao() {
     let mut ts = TextSystem::without_system_fonts();
     let mut hit = HitIndex::new();
     let (topo, fim_da_seccao) = (100.0, 200.0);
-    let fim = fecha_seccao(
+    let fundo = fecha_seccao(
         &mut scene,
         &mut ts,
         &mut hit,
@@ -76,15 +76,57 @@ fn o_contorno_abraca_as_notas_da_seccao() {
         "a nota não entrou no livro do quadro"
     );
     assert!(nota.y >= fim_da_seccao, "a nota não ficou abaixo da secção");
-    let caixa = caixa_do_contorno(0.0, 300.0, topo, fim_da_seccao, fim, true);
+    assert!(
+        (fundo - (nota.y + nota.h)).abs() < 1e-3,
+        "o fundo devolvido ({fundo}) não é o fim da última nota ({nota:?}) — o cartão fecharia \
+         noutro sítio"
+    );
+    let caixa = caixa_do_contorno(0.0, 300.0, topo, fundo);
     assert!(
         caixa.y <= topo && caixa.y + caixa.h >= nota.y + nota.h,
         "o contorno ({caixa:?}) não abraça a nota ({nota:?})"
     );
-    let curta = caixa_do_contorno(0.0, 300.0, topo, fim_da_seccao, fim, false);
+    let curta = caixa_do_contorno(0.0, 300.0, topo, fim_da_seccao);
     assert!(
         curta.y + curta.h < nota.y + nota.h,
         "controlo: até ao fim da secção a nota fica de fora"
+    );
+}
+
+/// ⭐⭐ **O contorno COINCIDE com o cartão da secção** (report do dono, 2026-10-01, com foto: *«a
+/// linha do contorno deve coincidir com o card da seção»* — ele descia um vão abaixo dele). O
+/// cartão fecha no `y` que o [`fecha_seccao`] devolve, como no laço de um painel, e a caixa do
+/// contorno tem de ser a MESMA. *Mutação: o fundo devolvido com o vão até à nota seguinte ⇒ o
+/// cartão desce e as duas caixas separam-se; o contorno pintado no fim SEM descontar o vão ⇒
+/// idem. A caixa é a que o pintor DESENHOU, nunca uma conta refeita aqui.*
+#[test]
+fn o_contorno_coincide_com_o_cartao_da_seccao() {
+    use crate::widget::section_cards;
+    let mut store = WidgetStore::with_capacity(64);
+    assert_eq!(store.notes_push(P, 0, Some(S)), Some(0));
+    assert_eq!(store.notes_push(P, 0, Some(S)), Some(1));
+    store.set_section_outline_color(S, Some(0));
+    let tema = ph2d_tokens::Theme::MODERN[0];
+    let mut scene = VectorScene::new();
+    let mut ts = TextSystem::without_system_fonts();
+    let mut hit = HitIndex::new();
+    let (x, w, topo) = (8.0, 280.0, 100.0);
+    section_cards::begin_section_cards(&mut scene, tema, topo);
+    let fundo = fecha_seccao(
+        &mut scene, &mut ts, &mut hit, &store, P, S, x, w, topo, 200.0,
+    );
+    let _ = section_cards::close_section(&mut scene, tema, x, w, fundo);
+    let cartao = section_cards::last_card_rect().expect("o cartão da secção fechou");
+    let _ = section_cards::end_section_cards(&mut scene);
+    let caixa = crate::widget::showcase::notes_chrome::ultimo_contorno()
+        .expect("o contorno da secção foi pintado");
+    let perto = |a: f32, b: f32| (a - b).abs() < 1e-3;
+    assert!(
+        perto(caixa.x, cartao.x)
+            && perto(caixa.y, cartao.y)
+            && perto(caixa.w, cartao.w)
+            && perto(caixa.h, cartao.h),
+        "o contorno ({caixa:?}) não coincide com o cartão ({cartao:?})"
     );
 }
 

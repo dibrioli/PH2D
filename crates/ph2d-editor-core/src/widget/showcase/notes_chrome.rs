@@ -29,11 +29,12 @@ use crate::interaction::{HitIndex, WidgetStore};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{Radius, Spacing, StrokeToken, Theme};
+use ph2d_tokens::{Spacing, StrokeToken, Theme};
 use ph2d_vector::VectorScene;
 
 /// ⭐⭐ **Fecha uma secção**: as notas dela e o contorno à volta da secção E das notas. Devolve o
-/// `y` depois da última nota (o da secção, se ela não tem notas).
+/// FUNDO da última nota (o `y` da secção, se ela não tem notas) — sem o vão até uma nota seguinte,
+/// que não existe: é nesse `y` que o cartão da secção fecha, e o contorno traça o MESMO cartão.
 #[allow(clippy::too_many_arguments)]
 pub fn fecha_seccao(
     scene: &mut VectorScene,
@@ -68,46 +69,55 @@ pub fn fecha_seccao(
             pintou = true;
         }
     }
+    // ⚠️ O `paint_one_note` soma o vão até à nota SEGUINTE; depois da última ele não é desta.
+    let fundo = if pintou { fim - Spacing::Md.px() } else { y };
     if let Some(color_idx) = store.section_outline_color(section) {
-        let caixa = caixa_do_contorno(inner_x, inner_w, y_before, y, fim, pintou);
-        contorno(scene, color_idx, caixa);
+        contorno(
+            scene,
+            color_idx,
+            caixa_do_contorno(inner_x, inner_w, y_before, fundo),
+        );
     }
-    fim
+    fundo
 }
 
-/// ⭐⭐ **A caixa do contorno de uma secção** — do topo dela até ao fim da ÚLTIMA nota (`fim`, o `y`
-/// que o laço das notas devolveu), ou até ao fim da secção (`y`) quando ela não tem notas; com a
-/// folga `Xs` à volta. ⚠️ O `paint_one_note` soma o vão até à nota SEGUINTE, que não é desta — o
-/// fundo desconta-o. *Até 2026-10-01 o contorno era pintado ANTES das notas e acabava em `y`: as
-/// notas da secção ficavam de fora* (o report do dono).
+/// ⭐⭐ **A caixa do contorno de uma secção É a caixa do CARTÃO dela**
+/// ([`crate::widget::section_cards::card_rect`]) — do topo da secção até ao `fundo` que o
+/// [`fecha_seccao`] devolve, que é onde o cartão fecha. *Até 2026-10-01 o contorno era pintado
+/// ANTES das notas e acabava no fim da secção (as notas ficavam de fora); depois fazia a conta
+/// dele e descia um vão abaixo do cartão* (os dois reports do dono, o segundo com foto: *«a linha
+/// do contorno deve coincidir com o card da seção»*).
 #[must_use]
-pub fn caixa_do_contorno(
-    inner_x: f32,
-    inner_w: f32,
-    y_before: f32,
-    y: f32,
-    fim: f32,
-    pintou: bool,
-) -> Rect {
-    let fundo = if pintou { fim - Spacing::Md.px() } else { y };
-    let pad = Spacing::Xs.px();
-    Rect::new(
-        inner_x - pad,
-        y_before - pad,
-        inner_w + pad * 2.0,
-        (fundo - y_before + pad * 2.0).max(0.0),
-    )
+pub fn caixa_do_contorno(inner_x: f32, inner_w: f32, y_before: f32, fundo: f32) -> Rect {
+    crate::widget::section_cards::card_rect(inner_x, inner_w, y_before, fundo.max(y_before))
+}
+
+#[cfg(test)]
+thread_local! {
+    /// A caixa em que o último contorno foi PINTADO — para os gates medirem o que se desenhou, e
+    /// não uma conta refeita ao lado (a 1.ª redacção do gate refazia-a e a mutação sobrevivia).
+    static ULTIMO_CONTORNO: std::cell::Cell<Option<Rect>> = const { std::cell::Cell::new(None) };
+}
+
+/// A caixa do último contorno pintado nesta thread — para os gates.
+#[cfg(test)]
+#[must_use]
+pub(crate) fn ultimo_contorno() -> Option<Rect> {
+    ULTIMO_CONTORNO.with(std::cell::Cell::get)
 }
 
 /// O contorno de marcador de uma secção, na caixa dada.
 fn contorno(scene: &mut VectorScene, color_idx: u8, block: Rect) {
+    #[cfg(test)]
+    ULTIMO_CONTORNO.with(|c| c.set(Some(block)));
     let rgba = crate::widget::panel_chrome::highlighter_rgba(color_idx);
     let cor = ph2d_vector::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]); // LITERAL-COLOR-OK: HIGHLIGHTER_RGBA palette — a marca que o artista escolheu
     // FRAME-RAW-OK: a MARCA de realce que o utilizador escolheu (cor de marcador): conteúdo autorado.
     // ⛔ **FORA da porta do raio, e é a mesma família do post-it:** cor de highlighter fixa, e este
     //    pintor não recebe tema nenhum. *Achatá-lo com o cromo seria achatar a única marca que é de
     //    propósito um objecto do dono.*
-    crate::paint::stroke_rounded_rect(scene, block, Radius::Md.px(), StrokeToken::Thick.px(), cor);
+    let raio = crate::widget::section_cards::card_radius();
+    crate::paint::stroke_rounded_rect(scene, block, raio, StrokeToken::Thick.px(), cor);
 }
 
 /// ⭐⭐ **As notas que sobram no FIM do corpo de `panel`** — as que nenhuma secção pintou neste

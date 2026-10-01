@@ -62,12 +62,6 @@ const OUTSIDE_THE_DOOR: &[(&str, &str)] = &[
          achatar a unica superficie do app que e' de proposito um objeto",
     ),
     (
-        "crates/ph2d-editor-core/src/widget/showcase/notes_chrome.rs",
-        "o contorno de MARCADOR de uma seccao (a porta partilhada desde 2026-10-01, que o tirou do \
-         paint_frame do Inspector): mesma familia do post-it, mesma cor fixa, e este pintor tambem \
-         nao recebe tema",
-    ),
-    (
         "crates/ph2d-editor-core/src/widget/showcase/status.rs",
         "⚠️ NAO e' um raio: `Radius::Xl2` e' usado como o TAMANHO de um spinner (20 px). E' a \
          mesma especie do `chrome.section-gap` que a wave 19 renomeou, e a cura e' um token de \

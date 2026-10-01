@@ -152,15 +152,9 @@ impl SectionCards {
             self.cursor = next;
             return next;
         }
-        let pad = card_pad();
         if y > self.cursor {
-            let r = Rect::new(
-                x - pad,
-                self.cursor - pad,
-                w + pad * 2.0,
-                (y - self.cursor) + pad * 2.0,
-            );
-            self.rects.push((r, depth, self.theme));
+            self.rects
+                .push((card_rect(x, w, self.cursor, y), depth, self.theme));
         } else {
             // ⭐ **Fechar sem nada pintado desde o último fecho é um NO-OP** (2026-09-29): o
             //    Inspector passou a fechar ANTES de cada secção por um corredor só, e as molduras
@@ -179,7 +173,7 @@ impl SectionCards {
     }
 
     fn paint_into(&self, scene: &mut VectorScene) {
-        let radius = crate::paint::frame_radius(self.theme, Radius::Md.px());
+        let radius = radius_of(self.theme);
         for (rect, depth, theme) in &self.rects {
             fill_rounded_rect(scene, *rect, radius, depth.fill(*theme));
         }
@@ -294,6 +288,48 @@ fn close_with(
     };
     LEDGER.with(|l| l.borrow_mut().push((cards, parked)));
     next
+}
+
+/// ⭐⭐ **A caixa do cartão que envolve o conteúdo de `top` a `bottom`** — uma porta, dois
+/// leitores: o cartão e o CONTORNO de marcador da secção
+/// ([`crate::widget::showcase::notes_chrome::caixa_do_contorno`]). ⛔ Report do dono
+/// (2026-10-01, com foto): *«a linha do contorno deve coincidir com o card da seção»* — cada um
+/// fazia a sua conta, e o contorno descia um vão abaixo do cartão.
+#[must_use]
+pub fn card_rect(x: f32, w: f32, top: f32, bottom: f32) -> Rect {
+    let pad = card_pad();
+    Rect::new(
+        x - pad,
+        top - pad,
+        w + pad * 2.0,
+        (bottom - top) + pad * 2.0,
+    )
+}
+
+/// O raio de um cartão neste tema — a mesma porta para o cartão e para o contorno.
+fn radius_of(theme: Theme) -> f32 {
+    crate::paint::frame_radius(theme, Radius::Md.px())
+}
+
+/// ⭐ **O raio dos cartões do corpo que está a ser pintado agora** — o contorno de uma secção
+/// arredonda os cantos como o cartão que ele traça. Fora de um corpo com cartões o pintor é o
+/// CLÁSSICO (o [`begin_section_cards`] só abre o livro num tema moderno), e a porta devolve o raio
+/// clássico.
+#[must_use]
+pub fn card_radius() -> f32 {
+    let tema = LEDGER.with(|l| l.borrow().last().map(|(c, _)| c.theme));
+    radius_of(tema.unwrap_or(Theme::CLASSIC[0]))
+}
+
+/// O último cartão fechado do corpo aberto — para os gates.
+#[cfg(test)]
+#[must_use]
+pub(crate) fn last_card_rect() -> Option<Rect> {
+    LEDGER.with(|l| {
+        l.borrow()
+            .last()
+            .and_then(|(c, _)| c.rects.last().map(|(r, _, _)| *r))
+    })
 }
 
 /// ⭐ **Estamos dentro de um corpo com cartões?** — a pergunta do cabeçalho de secção, que deixa

@@ -22,15 +22,15 @@ use ph2d_shape_gpu::{
 };
 use ph2d_vector::{Affine, BezPath, Brush, Cap, Circle, Color, Fill, Join, Shape, Stroke};
 
-const LADO: u32 = 512;
+pub(super) const LADO: u32 = 512;
 
-fn gpu() -> Option<GpuContext> {
+pub(super) fn gpu() -> Option<GpuContext> {
     GpuContext::new(GpuContext::default_instance(), None).ok()
 }
 
 /// Uma estrela de cinco pontas como polígono (a `source.shape` de fábrica), em unidades de
 /// extensão `1`.
-fn estrela() -> BezPath {
+pub(super) fn estrela() -> BezPath {
     let mut bp = BezPath::new();
     for i in 0..10 {
         let r = if i % 2 == 0 { 0.5 } else { 0.2 };
@@ -90,12 +90,12 @@ fn anel() -> BezPath {
 
 /// Uma cópia: posição, lado, ângulo e cor — e o ASPECTO (`altura / largura`), que é `1` numa cópia
 /// conforme e outra coisa sob escala NÃO uniforme (doc 121 W4).
-struct Copia {
-    pos: [f32; 2],
-    lado: f32,
-    ang: f32,
-    tint: [f32; 4],
-    aspecto: f32,
+pub(super) struct Copia {
+    pub(super) pos: [f32; 2],
+    pub(super) lado: f32,
+    pub(super) ang: f32,
+    pub(super) tint: [f32; 4],
+    pub(super) aspecto: f32,
 }
 
 /// Uma GRELHA de cópias opacas que não se tocam, de lados crescentes — a fixtura em que o desvio
@@ -147,7 +147,7 @@ fn copias(n: usize, lado_min: f32, lado_max: f32, semente: u64) -> Vec<Copia> {
 }
 
 /// As mesmas cópias, ESTICADAS: o aspecto de cada uma entre `0,35` e `2,8`, nos dois sentidos.
-fn esticadas(n: usize, lado_min: f32, lado_max: f32, semente: u64) -> Vec<Copia> {
+pub(super) fn esticadas(n: usize, lado_min: f32, lado_max: f32, semente: u64) -> Vec<Copia> {
     let mut v = copias(n, lado_min, lado_max, semente);
     for (i, c) in v.iter_mut().enumerate() {
         #[expect(clippy::cast_precision_loss, reason = "uma fixtura pequena")]
@@ -157,7 +157,7 @@ fn esticadas(n: usize, lado_min: f32, lado_max: f32, semente: u64) -> Vec<Copia>
     v
 }
 
-fn basis(ang: f32) -> [f32; 4] {
+pub(super) fn basis(ang: f32) -> [f32; 4] {
     let (s, c) = ang.sin_cos();
     [c, s, -s, c]
 }
@@ -176,12 +176,12 @@ fn pose(c: &Copia) -> Affine {
     ])
 }
 
-struct Forma<'a> {
-    bp: &'a BezPath,
-    regra: FillRule,
-    traco: Option<(Stroke, [f32; 4])>,
+pub(super) struct Forma<'a> {
+    pub(super) bp: &'a BezPath,
+    pub(super) regra: FillRule,
+    pub(super) traco: Option<(Stroke, [f32; 4])>,
     /// A linha que o traço segue, quando não é o contorno do preenchimento (um caminho ABERTO).
-    linha: Option<&'a BezPath>,
+    pub(super) linha: Option<&'a BezPath>,
 }
 
 /// Os bytes crus de uma textura (`px` bytes por pixel).
@@ -332,7 +332,7 @@ fn separa(c: [f32; 4]) -> [u8; 4] {
 
 /// O passe: uma geometria, as cópias, uma chamada — sobre um alvo de `format`, devolvido com a
 /// cor SEPARADA, como o Vello a grava.
-fn pelo_passe(
+pub(super) fn pelo_passe(
     gpu: &GpuContext,
     forma: &Forma<'_>,
     cs: &[Copia],
@@ -534,6 +534,18 @@ fn barra(nome: &str) -> (u8, u8) {
         "estrela com traco" => (32, 8),
         // ⭐⭐ doc 121 W4 — o traço sob escala NÃO uniforme, contra a lei da casa. Ver `ESTICADO`.
         "circulo esticado com traco" | "zigue-zague esticado, redondo" => (100, 100),
+        // ⭐⭐ doc 121 §9.4 — a FAIXA fecha a quina interior com a área VERDADEIRA, e o Vello soma a
+        // sobreposição dos dois troços nos pixels de borda (`quina_exacta`: `0,296` de sobreconta,
+        // a faixa a `0,002` da verdade). Medido: `40`/`25` → `73`/`49`, e o defeito lê `255`/`228`.
+        "estrela esticada com traco" => (100, 60),
+        // O mesmo, com o traço FINO (`quina_exacta`: `0,693` verdadeiro · `0,694` faixa · `1,0` somado).
+        // Medido: `41`/`24` → `67`/`67`, e o defeito lê `255`/`241`.
+        "traco fino esticado" => (100, 100),
+        // As duas cercas da faixa (§9.4). Estrelas de `10`–`24 px` com traço grosso: o laço ANTIGO
+        // (uma peça por junta) já lia alfa `79` · cor `20` · `887` px aqui — é o regime em que o
+        // traço é do tamanho da forma; a faixa lê `71` · `28` · `1 497` (os cantos interiores que
+        // passam a ser a área verdadeira). A barra é a das curvas, e é a MUTAÇÃO que a justifica.
+        "estrelas pequenas esticadas, traco grosso" | "estrela esticada, limite 2" => (100, 60),
         n if n.contains("esticad") => (64, 40),
         _ => (2, 4),
     }
@@ -546,11 +558,11 @@ fn barra(nome: &str) -> (u8, u8) {
 ///
 /// | família | com o eixo: alfa · cor · px `> 1` | sem o eixo (o defeito) |
 /// |---|---|---|
-/// | estrela, esquadria | `40` · `25` · `29` | `255` · `228` · `26 526` |
+/// | estrela, esquadria | `73` · `49` · `133` (a faixa, §9.4 — antes `40` · `25` · `29`) | `255` · `228` · `26 526` |
 /// | círculo | `66` · `68` · `7 277` (`3,0 %`) | `255` · `216` · `23 637` (`9,8 %`) |
 /// | zigue-zague, chanfro + pontas quadradas | `22` · `8` · `2` | `255` · `211` · `37 119` |
 /// | zigue-zague, redondo | `52` · `39` · `762` | `255` · `224` · `30 742` |
-/// | traço FINO (`0,01`) | `41` · `23` · `211` | `255` · `241` · `28 754` |
+/// | traço FINO (`0,01`) | `67` · `67` · `382` (a faixa, §9.4 — antes `41` · `23` · `211`) | `255` · `241` · `28 754` |
 ///
 /// ⚠️ **O que sobra nas curvas e nas juntas redondas é a família dos círculos**: o Vello aplana o
 /// contorno no ecrã e deixa-o até `0,25 px` para DENTRO; o passe aplana o eixo no espaço local e os
@@ -707,6 +719,37 @@ fn o_passe_desenha_o_que_o_vello_desenha() {
                 )),
             },
             esticadas(60, 40.0, 220.0, 10),
+        ),
+        // ⭐ doc 121 §9.4 — as duas cercas da faixa numa QUINA que nenhuma estrela grande toca:
+        // traço GROSSO em estrelas PEQUENAS (a esquadria recua mais de metade do troço — a faixa
+        // cede à junta) e o LIMITE da esquadria abaixo da ponta (a faixa cede ao chanfro).
+        (
+            "estrelas pequenas esticadas, traco grosso",
+            Forma {
+                bp: &est,
+                linha: None,
+                regra: FillRule::NonZero,
+                traco: Some((
+                    Stroke::new(0.12).with_join(Join::Miter),
+                    [0.1, 0.1, 0.1, 1.0],
+                )),
+            },
+            esticadas(120, 10.0, 24.0, 12),
+        ),
+        (
+            "estrela esticada, limite 2",
+            Forma {
+                bp: &est,
+                linha: None,
+                regra: FillRule::NonZero,
+                traco: Some((
+                    Stroke::new(0.06)
+                        .with_join(Join::Miter)
+                        .with_miter_limit(2.0),
+                    [0.1, 0.1, 0.1, 1.0],
+                )),
+            },
+            esticadas(40, 40.0, 220.0, 13),
         ),
     ];
     let mut algum = false;

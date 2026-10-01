@@ -11,10 +11,10 @@ fn conta(v: &[EixoItem], tipo: u32) -> usize {
     v.iter().filter(|i| i.tipo == tipo).count()
 }
 
-/// Um caminho ABERTO com uma quina: dois troços, UMA junta com o estilo, e as DUAS pontas — e a
-/// extensão para fora é o limite da esquadria.
+/// Um caminho ABERTO com uma quina: dois troços que se encontram NELA (com os bits de quina dos dois
+/// lados) e as DUAS pontas — sem peça de junta — e a extensão para fora é o limite da esquadria.
 #[test]
-fn um_aberto_com_quina_leva_troços_junta_e_pontas() {
+fn um_aberto_com_quina_leva_troços_e_pontas() {
     let mut bp = BezPath::new();
     bp.move_to((0.0, 0.0));
     bp.line_to((1.0, 0.0));
@@ -24,11 +24,19 @@ fn um_aberto_com_quina_leva_troços_junta_e_pontas() {
         .with_caps(Cap::Square);
     let (v, ext) = itens(&bp, &st);
     assert_eq!(conta(&v, ITEM_TROCO), 2);
-    assert_eq!(conta(&v, ITEM_JUNTA), 1);
     assert_eq!(conta(&v, ITEM_PONTA), 2);
-    let j = v.iter().find(|i| i.tipo == ITEM_JUNTA).expect("a junta");
-    assert_eq!(j.junta, JUNTA_ESQUADRIA, "a quina leva o estilo");
-    assert_eq!(j.b, [1.0, 0.0]);
+    assert_eq!(v.len(), 4, "nenhuma peça de junta");
+    let t: Vec<_> = v.iter().filter(|i| i.tipo == ITEM_TROCO).collect();
+    assert_eq!(t[0].ponta, FAIXA_FIM | QUINA_FIM, "o 1.º chega à quina");
+    assert_eq!(t[1].ponta, FAIXA_INICIO | QUINA_INICIO, "o 2.º sai dela");
+    assert_eq!(t[0].b, [1.0, 0.0]);
+    assert_eq!(t[0].c, [1.0, 1.0], "quem chega lê o vizinho da frente");
+    assert_eq!(t[1].d, [0.0, 0.0], "quem sai lê o de trás");
+    assert!(
+        t.iter().all(|i| i.junta == JUNTA_ESQUADRIA),
+        "a quina leva o estilo"
+    );
+    assert!(t.iter().copied().all(alcanca_a_esquadria));
     assert!(
         v.iter()
             .filter(|i| i.tipo == ITEM_PONTA)
@@ -40,7 +48,8 @@ fn um_aberto_com_quina_leva_troços_junta_e_pontas() {
     assert!((v[0].meia_largura - 0.05).abs() < 1e-7);
 }
 
-/// Um quadrado FECHADO: quatro troços e quatro juntas (a do fecho incluída), nenhuma ponta.
+/// Um quadrado FECHADO: quatro troços, as quatro quinas marcadas nos dois lados (a do fecho
+/// incluída), nenhuma ponta.
 #[test]
 fn um_fechado_nao_tem_pontas_e_junta_o_fecho() {
     let mut bp = BezPath::new();
@@ -51,37 +60,117 @@ fn um_fechado_nao_tem_pontas_e_junta_o_fecho() {
     bp.close_path();
     let (v, _) = itens(&bp, &Stroke::new(0.1).with_join(Join::Bevel));
     assert_eq!(conta(&v, ITEM_TROCO), 4);
-    assert_eq!(conta(&v, ITEM_JUNTA), 4);
     assert_eq!(conta(&v, ITEM_PONTA), 0);
+    assert_eq!(v.len(), 4, "nenhuma peça de junta");
+    let tudo = FAIXA_INICIO | FAIXA_FIM | QUINA_INICIO | QUINA_FIM;
     assert!(
         v.iter()
-            .filter(|i| i.tipo == ITEM_JUNTA)
-            .all(|i| i.junta == JUNTA_CHANFRO),
-        "as quatro quinas levam o estilo"
+            .all(|i| i.ponta == tudo && i.junta == JUNTA_CHANFRO),
+        "as quatro quinas, nos dois lados, com o estilo"
     );
     assert!(
-        v.iter().any(|i| i.tipo == ITEM_JUNTA && i.b == [0.0, 0.0]),
-        "o fecho tem junta no ponto 0"
+        v.iter().any(|i| i.b == [0.0, 0.0] && i.c == [1.0, 0.0]),
+        "o fecho: quem chega ao ponto 0 lê o 1.º troço como vizinho"
+    );
+    assert!(
+        !v.iter().any(alcanca_a_esquadria),
+        "o chanfro não vai além da caneta"
     );
 }
 
-/// ⭐ **Dentro de uma curva a junta é REDONDA, seja qual for o estilo** — um círculo (quatro
-/// cúbicas lisas) não tem quina nenhuma, logo nenhuma junta leva a esquadria. ⚠️ Sem isto cada
-/// corda de uma curva ganharia uma esquadria, e a esquadria de um ângulo pequeno cresce até ao
-/// limite dela.
+/// ⭐ **Dentro de uma curva NÃO há junta: há FAIXA** (doc 121 §9.4). Um círculo (quatro cúbicas
+/// lisas) não tem quina nenhuma, logo nenhuma peça de junta — cada troço leva os DOIS vizinhos e os
+/// dois bits lisos, e o shader fá-lo acabar na bissectriz que o troço seguinte também usa.
+/// ⚠️ Sem isto cada corda de uma curva ganharia uma peça própria (era assim até 01/10: uma junta
+/// redonda por corda, o grosso do traço esticado no proxy de telemóvel).
 #[test]
-fn dentro_de_uma_curva_a_junta_e_redonda() {
+fn dentro_de_uma_curva_nao_ha_junta_ha_faixa() {
     let bp = Circle::new((0.0, 0.0), 0.5).to_path(0.1);
     let (v, ext) = itens(&bp, &Stroke::new(0.1).with_join(Join::Miter));
-    let juntas: Vec<_> = v.iter().filter(|i| i.tipo == ITEM_JUNTA).collect();
-    assert!(juntas.len() > 8, "o circulo aplana em muitas cordas");
-    assert!(juntas.iter().all(|i| i.junta == JUNTA_REDONDA));
-    assert_eq!(
-        conta(&v, ITEM_TROCO),
-        juntas.len(),
-        "fechado: uma junta por troço"
-    );
+    let troços: Vec<_> = v.iter().filter(|i| i.tipo == ITEM_TROCO).collect();
+    assert!(troços.len() > 8, "o circulo aplana em muitas cordas");
+    assert_eq!(v.len(), troços.len(), "só troços: sem quina e sem ponta");
+    let n = troços.len();
+    for (k, t) in troços.iter().enumerate() {
+        assert_eq!(
+            t.ponta,
+            FAIXA_INICIO | FAIXA_FIM,
+            "o troço {k} é liso dos dois lados"
+        );
+        assert_eq!(
+            t.c,
+            troços[(k + 1) % n].b,
+            "o vizinho da frente do troço {k}"
+        );
+        assert_eq!(
+            t.d,
+            troços[(k + n - 1) % n].a,
+            "o vizinho de trás do troço {k}"
+        );
+    }
     assert_eq!(ext, 1.0, "sem quina, nada vai além da caneta");
+}
+
+/// A faixa pára nas PONTAS e SABE das QUINAS: num aberto o 1.º troço não tem bit de início nem o
+/// último de fim (lá moram as pontas), e os dois lados de uma quina levam o bit de quina — o shader
+/// só a cobre com a bissectriz se a junta autorada for a esquadria.
+#[test]
+fn a_faixa_para_nas_pontas_e_sabe_das_quinas() {
+    let mut bp = BezPath::new();
+    bp.move_to((0.0, 0.0));
+    bp.quad_to((0.5, 0.4), (1.0, 0.0));
+    bp.line_to((1.0, -1.0));
+    let (v, _) = itens(&bp, &Stroke::new(0.05).with_join(Join::Bevel));
+    let troços: Vec<_> = v.iter().filter(|i| i.tipo == ITEM_TROCO).collect();
+    assert!(troços.len() >= 3, "a quadrática aplana em várias cordas");
+    let ultimo = troços.len() - 1;
+    assert_eq!(
+        troços[0].ponta & FAIXA_INICIO,
+        0,
+        "o 1.º troço começa numa ponta"
+    );
+    assert_eq!(
+        troços[ultimo].ponta & FAIXA_FIM,
+        0,
+        "o último acaba numa ponta"
+    );
+    let quina = troços
+        .iter()
+        .position(|t| t.b == [1.0, 0.0])
+        .expect("o troço que chega à quina");
+    assert_eq!(
+        troços[quina].ponta & QUINA_FIM,
+        QUINA_FIM,
+        "chega à quina e sabe-o"
+    );
+    assert_eq!(
+        troços[quina + 1].ponta & QUINA_INICIO,
+        QUINA_INICIO,
+        "sai da quina e sabe-o"
+    );
+    // CONTROLO: dentro da curva o vértice é liso — a régua não lê «quina» em todo lado.
+    assert_eq!(
+        troços[0].ponta, FAIXA_FIM,
+        "liso entre as cordas da curva, ponta atrás"
+    );
+}
+
+/// ⚠️ Dois pontos distintos em `f64` que caem no MESMO `f32` não dão um troço de comprimento zero
+/// (a faixa partir-se-ia lá): a deduplicação é sobre o que a placa lê.
+#[test]
+fn um_troço_nunca_tem_comprimento_zero_na_placa() {
+    let mut bp = BezPath::new();
+    bp.move_to((0.0, 0.0));
+    bp.line_to((1.0, 0.0));
+    bp.line_to((1.0 + 1.0e-12, 0.0));
+    bp.line_to((2.0, 0.5));
+    let (v, _) = itens(&bp, &Stroke::new(0.1));
+    assert!(
+        v.iter()
+            .filter(|i| i.tipo == ITEM_TROCO)
+            .all(|i| i.a != i.b),
+        "um troço de comprimento zero chegou à placa"
+    );
 }
 
 /// ⛔ **O tracejado marca a geometria e não dá eixo.**
@@ -134,7 +223,8 @@ fn os_blocos_guardam_as_pecas_e_cobrem_o_alcance_delas() {
     st.end_cap = Cap::Square;
     let mut bp = BezPath::new();
     bp.move_to((0.0, 0.0));
-    for k in 1..40 {
+    // `80` vértices: sem peças de junta (§9.4) são `79` troços e as duas pontas — dez blocos.
+    for k in 1..80 {
         bp.line_to((f64::from(k) * 0.1, if k % 2 == 0 { 0.0 } else { 0.3 }));
     }
     let (pecas, _) = itens(&bp, &st);
@@ -156,18 +246,14 @@ fn os_blocos_guardam_as_pecas_e_cobrem_o_alcance_delas() {
         let n = cab._pad as usize;
         assert!((1..=PECAS_POR_BLOCO).contains(&n), "um bloco com {n} peças");
         for it in &blocos[i + 1..i + 1 + n] {
-            let mut pts = vec![it.a, it.b];
-            if it.tipo == ITEM_JUNTA {
-                pts.push(it.c);
-            }
-            for q in pts {
+            for q in [it.a, it.b] {
                 assert!(
                     (0..2).all(|k| cab.a[k] <= q[k] && q[k] <= cab.b[k]),
                     "a caixa do bloco nao cobre {q:?}"
                 );
             }
             let fator = match it.tipo {
-                ITEM_JUNTA if it.junta == JUNTA_ESQUADRIA => it.limite_esquadria,
+                ITEM_TROCO if alcanca_a_esquadria(it) => it.limite_esquadria,
                 ITEM_PONTA if it.ponta == PONTA_QUADRADA => 1.5,
                 _ => 1.0,
             };

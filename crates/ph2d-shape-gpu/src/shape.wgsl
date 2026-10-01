@@ -45,6 +45,7 @@ struct Eixo {
     a: vec2<f32>,
     b: vec2<f32>,
     c: vec2<f32>,
+    d: vec2<f32>,
     meia: f32,
     limite: f32,
     tipo: u32,
@@ -357,7 +358,7 @@ fn traco_do_eixo(inicio: u32, n: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32,
         let cab = eixo[inicio + i];
         let fim = i + 1u + cab._pad;
         let cx = caixa_no_ecra(lin, t, vec4<f32>(cab.a, cab.b));
-        let fb = cab.meia * caneta;
+        let fb = cab.meia * caneta + FAIXA_FOLGA;
         let blo = cx.xy - vec2<f32>(fb);
         let bhi = cx.zw + vec2<f32>(fb);
         if bhi.x < xa.x || blo.x > xb.x || bhi.y < xa.y || blo.y > xb.y {
@@ -372,10 +373,11 @@ fn traco_do_eixo(inicio: u32, n: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32,
     return min(abs(s), 1.0);
 }
 
-// Quantas meias larguras a peça vai para FORA do eixo: a esquadria até ao limite (só numa quina em
-// esquadria), a ponta quadrada até `√2`, o resto até `1`.
+// Quantas meias larguras a peça vai para FORA do eixo: a esquadria até ao limite (só num troço que
+// chega a uma quina em esquadria), a ponta quadrada até `√2`, o resto até `1`. ⚠️ O mesmo teste que o
+// `eixo::alcanca_a_esquadria` faz para a caixa do bloco.
 fn alcance_da_peca(it: Eixo) -> f32 {
-    if it.tipo == 1u && it.junta == 0u {
+    if it.tipo == 0u && it.junta == 0u && (it.ponta & 12u) != 0u {
         return max(it.limite, 1.0);
     }
     if it.tipo == 2u && it.ponta == 1u {
@@ -384,18 +386,88 @@ fn alcance_da_peca(it: Eixo) -> f32 {
     return 1.0;
 }
 
+// Quanto a bissectriz de um vértice LISO pode sair do arco verdadeiro, em pixels: a faixa troca o
+// leque redondo pela esquadria só quando ela fica a esta distância do contorno exacto. É o que as
+// caixas das peças (`peca_do_eixo`) e dos blocos (`traco_do_eixo`) alargam além da caneta.
+const FAIXA_FOLGA: f32 = 0.1;
+
+// A BISSECTRIZ do vértice `p1` entre `p0 → p1` e `p1 → p2`, do lado `+perp(u)`, ou `z = 0` quando
+// ela não serve. Num ponto LISO (`quina = false`) serve se a esquadria fica a `FAIXA_FOLGA` do arco
+// verdadeiro; numa QUINA só se a junta autorada é a esquadria (`junta == 0`) dentro do `limite` — e
+// então ela É a junta, ao vértice. Nos dois casos não pode recuar mais de metade de um dos troços
+// pelo lado de dentro (o quadrilátero deixaria de ser convexo).
+//
+// ⚠️ Os DOIS troços que se encontram em `p1` chamam isto com os MESMOS argumentos, e é isso que faz a
+// aresta partilhada cancelar-se: a decisão e a bissectriz saem iguais nos dois lados, e uma junta
+// que um desse e o outro não ficaria como uma cunha por pintar.
+fn bissectriz(p0: vec2<f32>, p1: vec2<f32>, p2: vec2<f32>, r: f32, quina: bool, junta: u32, limite: f32) -> vec3<f32> {
+    let d0 = p1 - p0;
+    let d1 = p2 - p1;
+    let l0 = length(d0);
+    let l1 = length(d1);
+    if l0 <= 0.0 || l1 <= 0.0 {
+        return vec3<f32>(0.0);
+    }
+    let u0 = d0 / l0;
+    let u1 = d1 / l1;
+    let dt = dot(u0, u1);
+    if quina {
+        // A esquadria do Vello: `1 / cos(θ/2) ≤ limite` ⇔ `2 ≤ (1 + cos θ)·limite²`.
+        if junta != 0u || 2.0 > (1.0 + dt) * limite * limite {
+            return vec3<f32>(0.0);
+        }
+    } else if dt <= 0.0 {
+        return vec3<f32>(0.0);
+    }
+    let m = (perp(u0) + perp(u1)) * (r / (1.0 + dt));
+    let fora = r + FAIXA_FOLGA;
+    let recuo = r * sqrt(max(1.0 - dt, 0.0) / (1.0 + dt));
+    if (!quina && dot(m, m) > fora * fora) || recuo > 0.5 * min(l0, l1) {
+        return vec3<f32>(0.0);
+    }
+    return vec3<f32>(m, 1.0);
+}
+
+// A junta em `b` entre `b − u` e `b → c`, do lado de FORA, com o estilo `junta` (`0` esquadria ·
+// `1` chanfro · `2` redonda). Quem a chama é o troço que CHEGA a um vértice que a faixa não cobre.
+fn junta_em(u: vec2<f32>, b: vec2<f32>, c: vec2<f32>, r: f32, junta: u32, limite: f32, xy: vec2<f32>) -> f32 {
+    let dbc = c - b;
+    let lbc = length(dbc);
+    if lbc <= 0.0 {
+        return 0.0;
+    }
+    let v = dbc / lbc;
+    let cr = u.x * v.y - u.y * v.x;
+    let dt = clamp(dot(u, v), -1.0, 1.0);
+    if abs(cr) < 1.0e-7 && dt > 0.0 {
+        return 0.0;
+    }
+    // O lado de FORA é o oposto ao da viragem.
+    let lado = select(1.0, -1.0, cr > 0.0);
+    let n0 = perp(u) * r * lado;
+    let n1 = perp(v) * r * lado;
+    if junta == 0u && 2.0 <= (1.0 + dt) * limite * limite {
+        let m = b + (n0 + n1) / (1.0 + dt);
+        return quad(b, b + n0, m, b + n1, xy);
+    }
+    if junta == 2u {
+        var dir = sign(n0.x * n1.y - n0.y * n1.x);
+        if dir == 0.0 {
+            dir = sign(n0.x * u.y - n0.y * u.x);
+        }
+        return leque(b, n0, n1, dt, dir, r, xy);
+    }
+    return tri(b, b + n0, b + n1, xy);
+}
+
 // Uma peça do eixo, no ecrã: o quadrilátero de um troço, a junta de uma quina, a ponta de um extremo.
 fn peca_do_eixo(it: Eixo, lin: vec4<f32>, t: vec2<f32>, caneta: f32, xy: vec2<f32>) -> f32 {
     let r = it.meia * caneta;
     let a = aplica(lin, t, it.a);
     let b = aplica(lin, t, it.b);
-    var c = b;
-    if it.tipo == 1u {
-        c = aplica(lin, t, it.c);
-    }
-    let fp = r * alcance_da_peca(it);
-    let plo = min(min(a, b), c) - vec2<f32>(fp);
-    let phi = max(max(a, b), c) + vec2<f32>(fp);
+    let fp = r * alcance_da_peca(it) + FAIXA_FOLGA;
+    let plo = min(a, b) - vec2<f32>(fp);
+    let phi = max(a, b) + vec2<f32>(fp);
     if phi.x < xy.x || plo.x > xy.x + 1.0 || phi.y < xy.y || plo.y > xy.y + 1.0 {
         return 0.0;
     }
@@ -406,37 +478,30 @@ fn peca_do_eixo(it: Eixo, lin: vec4<f32>, t: vec2<f32>, caneta: f32, xy: vec2<f3
     }
     let u = dab / lab;
     if it.tipo == 0u {
+        // ⭐ A FAIXA: o troço acaba na bissectriz que o vizinho também usa, e a aresta partilhada
+        // cancela-se — sem peça de junta nenhuma. Onde ela não serve, a normal simples, e quem
+        // CHEGA ao vértice põe a junta: a autorada numa quina, a redonda num ponto liso.
         let nr = perp(u) * r;
-        return quad(a + nr, b + nr, b - nr, a - nr, xy);
-    }
-    if it.tipo == 1u {
-        let dbc = c - b;
-        let lbc = length(dbc);
-        if lbc <= 0.0 {
-            return 0.0;
-        }
-        let v = dbc / lbc;
-        let cr = u.x * v.y - u.y * v.x;
-        let dt = clamp(dot(u, v), -1.0, 1.0);
-        if abs(cr) < 1.0e-7 && dt > 0.0 {
-            return 0.0;
-        }
-        // O lado de FORA é o oposto ao da viragem.
-        let lado = select(1.0, -1.0, cr > 0.0);
-        let n0 = perp(u) * r * lado;
-        let n1 = perp(v) * r * lado;
-        if it.junta == 0u && 2.0 <= (1.0 + dt) * it.limite * it.limite {
-            let m = b + (n0 + n1) / (1.0 + dt);
-            return quad(b, b + n0, m, b + n1, xy);
-        }
-        if it.junta == 2u {
-            var dir = sign(n0.x * n1.y - n0.y * n1.x);
-            if dir == 0.0 {
-                dir = sign(n0.x * u.y - n0.y * u.x);
+        var m0 = nr;
+        var m1 = nr;
+        var s = 0.0;
+        if (it.ponta & 1u) != 0u {
+            let e = bissectriz(aplica(lin, t, it.d), a, b, r, (it.ponta & 4u) != 0u, it.junta, it.limite);
+            if e.z > 0.0 {
+                m0 = e.xy;
             }
-            return leque(b, n0, n1, dt, dir, r, xy);
         }
-        return tri(b, b + n0, b + n1, xy);
+        if (it.ponta & 2u) != 0u {
+            let quina = (it.ponta & 8u) != 0u;
+            let cf = aplica(lin, t, it.c);
+            let e = bissectriz(a, b, cf, r, quina, it.junta, it.limite);
+            if e.z > 0.0 {
+                m1 = e.xy;
+            } else {
+                s = junta_em(u, b, cf, r, select(2u, it.junta, quina), it.limite, xy);
+            }
+        }
+        return s + quad(a + m0, b + m1, b - m1, a - m0, xy);
     }
     let nr = perp(u) * r;
     if it.ponta == 1u {

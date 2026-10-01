@@ -26,10 +26,26 @@
 use bytemuck::{Pod, Zeroable};
 use ph2d_vector::{BezPath, Cap, Join, PathEl, Point, Stroke, flatten};
 
-/// Um troço do eixo: de `a` a `b`.
+/// Um troço do eixo: de `a` a `b`, com o vizinho de trás em `d` e o da frente em `c` (lidos só
+/// quando o bit [`FAIXA_INICIO`]/[`FAIXA_FIM`] de `ponta` está aceso).
+///
+/// ⭐ **Não há peça de junta** (doc 121 §9.4): o vértice entre dois troços é do troço que CHEGA a
+/// ele. Os dois acabam na mesma bissectriz quando ela serve — a aresta partilhada cancela-se na
+/// soma —, e quando não serve o que chega põe a junta (a autorada numa quina, a redonda num ponto
+/// liso). Até 01/10 cada vértice era uma peça própria, com caixa, três pontos e quatro arestas.
 pub const ITEM_TROCO: u32 = 0;
-/// Uma junta em `b`, entre o troço `a → b` e o troço `b → c`.
-pub const ITEM_JUNTA: u32 = 1;
+/// No `ponta` de um TROÇO: o vértice `a` é INTERIOR (tem o vizinho `d`) — o troço começa na
+/// bissectriz que o shader calcular, ou na normal se ela não servir.
+pub const FAIXA_INICIO: u32 = 1;
+/// No `ponta` de um TROÇO: o vértice `b` é INTERIOR (tem o vizinho `c`) — o troço acaba na
+/// bissectriz, ou na normal MAIS a junta.
+pub const FAIXA_FIM: u32 = 2;
+/// No `ponta` de um TROÇO: o vértice `a` é uma QUINA (as tangentes discordam). Ali a bissectriz só
+/// serve se a junta autorada for a ESQUADRIA dentro do limite — e é então exactamente ela.
+pub const QUINA_INICIO: u32 = 4;
+/// No `ponta` de um TROÇO: o vértice `b` é uma QUINA.
+pub const QUINA_FIM: u32 = 8;
+/// (O tipo `1` foi a JUNTA, retirada a 01/10 — os números dos outros ficam onde a placa os lê.)
 /// Uma ponta em `b`, no fim do troço `a → b` (a direcção `a → b` aponta para FORA).
 pub const ITEM_PONTA: u32 = 2;
 /// ⭐ O CABEÇALHO de um bloco de peças consecutivas: `a`/`b` são a caixa LOCAL dos pontos delas,
@@ -55,13 +71,15 @@ pub const PONTA_RENTE: u32 = 0;
 pub const PONTA_QUADRADA: u32 = 1;
 pub const PONTA_REDONDA: u32 = 2;
 
-/// Um item do eixo, como a placa o lê (`shape.wgsl`, `Eixo`): `48` bytes.
+/// Um item do eixo, como a placa o lê (`shape.wgsl`, `Eixo`): `56` bytes.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct EixoItem {
     pub a: [f32; 2],
     pub b: [f32; 2],
     pub c: [f32; 2],
+    /// O vizinho de TRÁS de um troço (o `c` é o da frente). Zero nos outros tipos.
+    pub d: [f32; 2],
     /// Metade da largura AUTORADA (unidades locais) — o shader multiplica-a por `√|det|`.
     pub meia_largura: f32,
     pub limite_esquadria: f32,
@@ -226,12 +244,7 @@ pub fn em_blocos(pecas: &[EixoItem]) -> Vec<EixoItem> {
         let (mut lo, mut hi) = ([f32::INFINITY; 2], [f32::NEG_INFINITY; 2]);
         let mut alcance: f32 = 0.0;
         for it in bloco {
-            let pontos: &[[f32; 2]] = if it.tipo == ITEM_JUNTA {
-                &[it.a, it.b, it.c]
-            } else {
-                &[it.a, it.b]
-            };
-            for q in pontos {
+            for q in [it.a, it.b] {
                 for k in 0..2 {
                     lo[k] = lo[k].min(q[k]);
                     hi[k] = hi[k].max(q[k]);
@@ -239,7 +252,7 @@ pub fn em_blocos(pecas: &[EixoItem]) -> Vec<EixoItem> {
             }
             // O mesmo alcance que o shader dá à peça (`alcance_da_peca`).
             let fator = match it.tipo {
-                ITEM_JUNTA if it.junta == JUNTA_ESQUADRIA => it.limite_esquadria.max(1.0),
+                ITEM_TROCO if alcanca_a_esquadria(it) => it.limite_esquadria.max(1.0),
                 ITEM_PONTA if it.ponta == PONTA_QUADRADA => 1.5,
                 _ => 1.0,
             };
@@ -257,6 +270,16 @@ pub fn em_blocos(pecas: &[EixoItem]) -> Vec<EixoItem> {
         out.extend_from_slice(bloco);
     }
     out
+}
+
+/// O troço pode acabar numa esquadria autorada (uma das pontas é quina e a junta é a esquadria) —
+/// então ele vai até `limite` meias larguras para fora do eixo, e não só `1`. O MESMO teste que o
+/// shader faz em `alcance_da_peca`.
+#[must_use]
+pub fn alcanca_a_esquadria(it: &EixoItem) -> bool {
+    it.tipo == ITEM_TROCO
+        && it.junta == JUNTA_ESQUADRIA
+        && it.ponta & (QUINA_INICIO | QUINA_FIM) != 0
 }
 
 fn f(p: Point) -> [f32; 2] {
@@ -278,8 +301,23 @@ pub fn eixo(path: &BezPath, style: &Stroke, tol: f64, out: &mut Vec<EixoItem>) -
     };
     let mut ext: f32 = 1.0;
     for s in sub_caminhos(path, tol) {
-        let mut p = s.pontos;
-        let mut q = s.quinas;
+        // ⚠️ Os pontos vão à placa em `f32`, e dois pontos distintos em `f64` podem coincidir lá:
+        // um troço de comprimento ZERO partiria a faixa (o shader não tem direcção para ele, e os
+        // vizinhos dele perderiam a bissectriz partilhada). ⇒ a deduplicação é sobre o que a placa
+        // LÊ, e uma quina absorvida passa ao ponto que fica.
+        let mut p: Vec<[f32; 2]> = Vec::with_capacity(s.pontos.len());
+        let mut q: Vec<bool> = Vec::with_capacity(s.pontos.len());
+        for (pt, &eh) in s.pontos.iter().zip(&s.quinas) {
+            let pf = f(*pt);
+            if p.last() == Some(&pf) {
+                if let Some(u) = q.last_mut() {
+                    *u |= eh;
+                }
+            } else {
+                p.push(pf);
+                q.push(eh);
+            }
+        }
         // Um fechado cujo último ponto É o primeiro: tira-se o repetido, e a junta do fecho fica
         // no ponto 0.
         if s.fechado && p.len() > 2 && p.first() == p.last() {
@@ -290,42 +328,44 @@ pub fn eixo(path: &BezPath, style: &Stroke, tol: f64, out: &mut Vec<EixoItem>) -
         if n < 2 {
             continue;
         }
-        let troços = if s.fechado { n } else { n - 1 };
-        for i in 0..troços {
-            out.push(EixoItem {
-                a: f(p[i]),
-                b: f(p[(i + 1) % n]),
-                tipo: ITEM_TROCO,
-                ..base
-            });
-        }
-        let junta_em = |i: usize, eh_quina: bool| EixoItem {
-            a: f(p[(i + n - 1) % n]),
-            b: f(p[i]),
-            c: f(p[(i + 1) % n]),
-            tipo: ITEM_JUNTA,
-            junta: if eh_quina { base.junta } else { JUNTA_REDONDA },
-            ..base
-        };
-        // As juntas INTERIORES: `1..n−1` num aberto; num fechado também a do último ponto (a do
-        // ponto `0` é a do fecho, abaixo).
-        let fim = if s.fechado { n } else { n - 1 };
-        for (i, &eh_quina) in q.iter().enumerate().take(fim).skip(1) {
-            out.push(junta_em(i, eh_quina));
-            if eh_quina && base.junta == JUNTA_ESQUADRIA {
-                ext = ext.max(limite);
-            }
-        }
+        // A quina de cada VÉRTICE: num fechado a do ponto `0` é a do fecho; num aberto os extremos
+        // não são vértices (lá moram as pontas).
         if s.fechado {
-            let eh_quina = match (s.t_fim, s.t_inicio) {
+            q[0] = match (s.t_fim, s.t_inicio) {
                 (Some(a), Some(b)) => quina(a, b),
                 _ => true,
             };
-            out.push(junta_em(0, eh_quina));
-            if eh_quina && base.junta == JUNTA_ESQUADRIA {
-                ext = ext.max(limite);
+        }
+        let interior = |i: usize| s.fechado || (i > 0 && i + 1 < n);
+        // ⭐ **A FAIXA** (doc 121 §9.4): a junta deixa de ser uma peça — os dois troços que se
+        // encontram num vértice acabam na MESMA bissectriz, e a aresta partilhada cancela-se na
+        // soma. O shader decide, no ecrã, se a bissectriz serve: num ponto liso quando a esquadria
+        // fica a `0,1 px` do arco, numa quina quando a junta autorada É a esquadria e cabe no
+        // limite. Quando não serve, o troço que CHEGA ao vértice põe a junta.
+        let troços = if s.fechado { n } else { n - 1 };
+        for i in 0..troços {
+            let j = (i + 1) % n;
+            let mut flags = 0;
+            if interior(i) {
+                flags |= FAIXA_INICIO | if q[i] { QUINA_INICIO } else { 0 };
             }
-        } else {
+            if interior(j) {
+                flags |= FAIXA_FIM | if q[j] { QUINA_FIM } else { 0 };
+                if q[j] && base.junta == JUNTA_ESQUADRIA {
+                    ext = ext.max(limite);
+                }
+            }
+            out.push(EixoItem {
+                a: p[i],
+                b: p[j],
+                c: p[(i + 2) % n],
+                d: p[(i + n - 1) % n],
+                tipo: ITEM_TROCO,
+                ponta: flags,
+                ..base
+            });
+        }
+        if !s.fechado {
             for (de, em, cap) in [
                 (p[1], p[0], style.start_cap),
                 (p[n - 2], p[n - 1], style.end_cap),
@@ -334,8 +374,8 @@ pub fn eixo(path: &BezPath, style: &Stroke, tol: f64, out: &mut Vec<EixoItem>) -
                     ext = ext.max(std::f32::consts::SQRT_2);
                 }
                 out.push(EixoItem {
-                    a: f(de),
-                    b: f(em),
+                    a: de,
+                    b: em,
                     tipo: ITEM_PONTA,
                     ponta: ponta_de(cap),
                     ..base

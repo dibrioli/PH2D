@@ -151,3 +151,26 @@ melhorias»*. A Size `0.5` (raio `128,8`) o campo do esfregão era a maior fatia
 3. **O instrumento do quadro INTEIRO:** `PH2D_COMPOSITE_RABISCO=<Size>` risca sozinho dentro da app
    e imprime o período; numa tela virtual com `PH2D_PAINT_PERF=1` a Size `0.5` leu `52`–`55` fps,
    com a pilha a `~12` ms e `~5` ms do resto do quadro.
+
+## Emenda 2026-10-01 (c) — o campo do esfregão AO LADO do acúmulo, e os 60 fps
+
+Ordem do dono: *«siga para os 60 fps»*. Três cortes, todos exactos (nenhum byte mudado):
+
+1. **O campo do esfregão corre noutra thread ENQUANTO as outras camadas acumulam**
+   (`composite_por_quadro::adianta_o_campo`): o laço dos pingos lê só o que leva consigo (pingos,
+   Selecção, imagens por `Arc`, o campo e o rascunho), e o acúmulo escreve só nos planos. É um
+   `std::thread::scope` com UMA thread, não paralelismo por pixel. A pergunta *«quem lê da caixa»*
+   lê o campo do quadro ANTERIOR, logo faz-se ANTES do empréstimo — esquecê-lo encolheu a região e
+   reabriu os rectângulos (`o_esfregao_nao_deixa_rectangulos_de_cor` leu `255`). E o esfregão passa a
+   ter o fluxo aleatório DELE (`rng_camada`), como toda camada que acumula — antes herdava o da última
+   camada acumulada. Gates `o_campo_ao_lado_do_acumulo_da_a_imagem_da_serie` e
+   `o_campo_ao_lado_com_grao_aleatorio_e_impasto_da_a_imagem_da_serie`; mutação 5 de 5 (força,
+   dureza, fluxo, campo deitado fora, a pergunta depois do empréstimo).
+2. **Uma quinta passagem por linha entra nesta excepção:** *quem lê da caixa* varria num núcleo a
+   área tocada INTEIRA a cada quadro (`1,18 → 0,18` ms); é uma caixa envolvente, logo as linhas
+   repartem-se sem mudar a resposta (gate contra o laço em série).
+3. **A composição devolve só a ORLA** em vez de copiar o miolo para fora e de volta.
+
+Medido (sonda do rabisco, Size `0.5`, `--profile smoke`, `load ~7`): **drenagem `10,4 → 7,5` ms por
+quadro**. Na APP (rabisco automático, tela virtual, `load 7 → 23` durante a corrida): **`60` fps**,
+período `16,7` ms (o vsync), contra `52`–`55` antes desta emenda.

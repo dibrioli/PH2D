@@ -193,6 +193,9 @@ pub(super) struct PilhaDoTraco {
     pub(super) por_quadro: bool,
     /// O estado do depósito de RELEVO de cada camada ao longo do traço ([`super::composite_relevo`]).
     pub(super) relevo: [super::composite_relevo::RelevoDaCamada; N_CAMADAS],
+    /// O campo do esfregão deste quadro, já calculado em PARALELO com o acúmulo das outras camadas
+    /// ([`super::composite_por_quadro`]) — a composição aplica-o em vez de o calcular.
+    pub(super) campo_adiantado: Option<super::smear_warp::CampoFeito>,
 }
 
 impl PilhaDoTraco {

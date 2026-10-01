@@ -90,6 +90,35 @@ impl PainterTool {
         out
     }
 
+    /// **Devolver só a ORLA** — os bytes de `pixels` (tirados por [`PainterTool::save_region`] sobre
+    /// `alvo`) que caem FORA de `miolo`; o miolo fica como está. É exactamente
+    /// `escreve_regiao(alvo, pixels)` seguido de repor o miolo, sem as duas cópias do miolo.
+    /// ⚠️ `miolo` tem de estar dentro de `alvo` (a composição cresce um do outro).
+    pub(super) fn escreve_a_orla(&mut self, alvo: Region, miolo: Region, pixels: &[u8]) {
+        let stride = self.source_size.0 as usize * 4;
+        let rw = alvo.w as usize * 4;
+        let buf = super::plane_fork::fork_canvas(
+            &mut self.canvas_rgba,
+            &self.undo.write_state,
+            self.source_size.0,
+            Some(alvo),
+        );
+        let (mx0, mx1) = (miolo.x - alvo.x, miolo.x + miolo.w - alvo.x);
+        let (my0, my1) = (miolo.y, miolo.y + miolo.h);
+        for row in 0..alvo.h as usize {
+            let y = alvo.y + row as u32;
+            let dst = y as usize * stride + alvo.x as usize * 4;
+            let src = &pixels[row * rw..row * rw + rw];
+            if y < my0 || y >= my1 {
+                buf[dst..dst + rw].copy_from_slice(src);
+            } else {
+                let (a, b) = (mx0 as usize * 4, mx1 as usize * 4);
+                buf[dst..dst + a].copy_from_slice(&src[..a]);
+                buf[dst + b..dst + rw].copy_from_slice(&src[b..]);
+            }
+        }
+    }
+
     /// Write `pixels` (from [`Self::save_region`]) back into `rect` and flag it dirty.
     ///
     /// **This is also where a live protection session's FREE plane is put back**, and it belongs here

@@ -137,7 +137,7 @@ pub(in crate::tool::paint) fn take_ops() -> [u64; 5] {
 
 /// **As SUB-fases** — o que mora dentro de `acumular` e dentro do Blur e do Smear da composição,
 /// medido para escolher onde cortar (sonda do rabisco, 2026-10-01).
-pub(in crate::tool::paint) const SUB_NOMES: [&str; 10] = [
+pub(in crate::tool::paint) const SUB_NOMES: [&str; 11] = [
     "acum/relevo",
     "acum/Brush",
     "acum/Erase",
@@ -148,10 +148,11 @@ pub(in crate::tool::paint) const SUB_NOMES: [&str; 10] = [
     "smear/dabs",
     "blur/mistura",
     "smear/render",
+    "smear/quem-lê",
 ];
 
 thread_local! {
-    static SUB: Cell<[u64; 10]> = const { Cell::new([0; 10]) };
+    static SUB: Cell<[u64; 11]> = const { Cell::new([0; 11]) };
 }
 
 pub(in crate::tool::paint) fn soma_sub(i: usize, t: std::time::Instant) {
@@ -163,7 +164,7 @@ pub(in crate::tool::paint) fn soma_sub(i: usize, t: std::time::Instant) {
 }
 
 /// As sub-fases desde a última leitura, em µs — e ZERA.
-pub(in crate::tool::paint) fn take_sub() -> [u64; 10] {
+pub(in crate::tool::paint) fn take_sub() -> [u64; 11] {
     SUB.with(Cell::take)
 }
 

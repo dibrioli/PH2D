@@ -234,7 +234,7 @@ fn o_passo_pelo_arco_nao_cura_a_perda() {
     // `cfg(not(test))`, que corrida de teste nenhuma percorre.
     let fonte = include_str!("smear_warp.rs");
     assert!(
-        fonte.contains("#[cfg(not(test))]\n        let espia_do_arco = || false;"),
+        fonte.contains("#[cfg(not(test))]\n        let arco_ligado = false;"),
         "o ramo do PRODUTO deixou de recusar o arco"
     );
 }

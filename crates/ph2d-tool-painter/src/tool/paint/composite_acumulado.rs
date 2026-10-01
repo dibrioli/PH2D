@@ -145,7 +145,7 @@ impl PainterTool {
         //    camada é a soma dos dabs dela EM ORDEM, e acumular este antes dos de trás trocava-a.
         self.compoe_o_pendente();
         self.acumula_as_camadas(&camadas);
-        self.compoe_a_regiao(caixa_nova, &camadas);
+        self.compoe_a_regiao(caixa_nova, &camadas, None);
     }
 
     /// **O passo 2 da lei: cada camada viva acumula a fila dela no plano dela**, pela ordem da
@@ -194,7 +194,12 @@ impl PainterTool {
     /// **Compor a caixa `caixa_nova` a partir do `pre` e dos planos** — os passos 3 e 4 da lei, e
     /// a porta que o [`Self::compoe_o_pendente`] também chama (a união de um quadro é uma caixa
     /// como outra qualquer: tudo o que ela lê já está nos planos).
-    pub(super) fn compoe_a_regiao(&mut self, caixa_nova: Region, camadas: &[Vec<Dab>; N_CAMADAS]) {
+    pub(super) fn compoe_a_regiao(
+        &mut self,
+        caixa_nova: Region,
+        camadas: &[Vec<Dab>; N_CAMADAS],
+        mudou_ja_medido: Option<Region>,
+    ) {
         let (w, h) = self.source_size;
         // 3. A região da composição. ⚠️ O apron do Blur é o que impede a convolução de ler, na orla,
         //    bytes que a composição ainda não escreveu — e é por isso que só o miolo sobrevive.
@@ -221,10 +226,9 @@ impl PainterTool {
         // fica velho na orla dela (`47` ⇒ `0`). Com o esfregão no fundo a base é o `pre` e não muda.
         // ⚠️ Sem borrão por baixo do esfregão a tinta que ele lê só muda na caixa do lote (com um,
         // `quem_le_da_caixa` devolve a área tocada inteira — ver lá porquê).
-        let mudou = match self.quem_le_da_caixa(caixa_nova) {
-            Some(d) => super::union_region(caixa_nova, d),
-            None => caixa_nova,
-        };
+        // ⚠️ Medido ANTES pelo chamador quando o campo do esfregão corre ao lado do acúmulo: aí o
+        // campo está emprestado ao trabalho, e esta pergunta lê-o (o campo do quadro ANTERIOR).
+        let mudou = mudou_ja_medido.unwrap_or_else(|| self.o_que_mudou(caixa_nova));
         #[cfg(test)]
         let mudou = if ESFREGAO_SO_O_LOTE.with(std::cell::Cell::get) {
             caixa_nova
@@ -256,9 +260,9 @@ impl PainterTool {
         fases::soma(fases::COMPOR, t_compor);
         #[cfg(test)]
         let t_copias2 = std::time::Instant::now();
-        let composto = self.save_region(&caixa_nova);
-        self.escreve_regiao(alvo, &guardado);
-        self.escreve_regiao(caixa_nova, &composto);
+        // Devolve a ORLA (o `alvo` fora da `caixa_nova`) e mais nada: a caixa já tem o composto, e
+        // copiá-lo para fora e de volta eram duas travessias da maior parte da região por quadro.
+        self.escreve_a_orla(alvo, caixa_nova, &guardado);
         #[cfg(test)]
         fases::soma(fases::COPIAS, t_copias2);
         #[cfg(test)]
@@ -519,31 +523,6 @@ impl PainterTool {
             }
         }
         self.paint.pilha.planos[pos] = plano;
-    }
-
-    /// **O ESFREGÃO** — inalterado: ele já era um campo por traço resolvido de uma vez, e a base
-    /// dele é refrescada com o que as camadas de BAIXO acabaram de deixar na região.
-    fn compoe_esfregao(&mut self, pos: usize, r: Region, dabs: &[Dab]) {
-        if dabs.is_empty() {
-            return;
-        }
-        #[cfg(test)]
-        let t_sub = std::time::Instant::now();
-        self.refresca_a_base_do_smear(r);
-        #[cfg(test)]
-        fases::soma_sub(6, t_sub);
-        #[cfg(test)]
-        let t_sub = std::time::Instant::now();
-        #[cfg(test)]
-        let limite =
-            (!super::composite_pilha::SMEAR_SEM_LIMITE.with(std::cell::Cell::get)).then_some(r);
-        #[cfg(not(test))]
-        let limite = Some(r);
-        self.paint.limite_do_smear = limite;
-        self.aplica_camada(pos, dabs);
-        #[cfg(test)]
-        fases::soma_sub(7, t_sub);
-        self.paint.limite_do_smear = None;
     }
 }
 

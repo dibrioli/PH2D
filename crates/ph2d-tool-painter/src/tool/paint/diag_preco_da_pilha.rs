@@ -568,6 +568,7 @@ fn diag_onde_vai_o_quadro_do_rabisco() {
     let ini = std::time::Instant::now();
     t.on_canvas_pointer(cp([512.0, 512.0], PointerPhase::Down));
     let quadros = 30;
+    let mut drenagem = 0.0f64;
     for i in 1..=quadros * 16 {
         let s = i as f32 * 0.03;
         t.on_canvas_pointer(cp(
@@ -578,11 +579,18 @@ fn diag_onde_vai_o_quadro_do_rabisco() {
             PointerPhase::Move,
         ));
         if i % 16 == 0 {
+            let td = std::time::Instant::now();
             t.compoe_o_pendente();
+            drenagem += td.elapsed().as_secs_f64() * 1e3;
         }
     }
     t.on_canvas_pointer(cp([512.0, 512.0], PointerPhase::Up));
     let total = ini.elapsed().as_secs_f64() * 1e3;
+    println!(
+        "  drenagem {:.2} ms/quadro · eventos {:.2} ms/quadro",
+        drenagem / f64::from(quadros),
+        (total - drenagem) / f64::from(quadros)
+    );
     let (us, ev, area) = fases::take();
     let ops = fases::take_ops();
     let q = f64::from(quadros);

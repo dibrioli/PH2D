@@ -7,8 +7,12 @@ use ph2d_painter_brush::ImageMask;
 
 /// An imported brush-texture image: owned grayscale luminance + dims, held in [`super::PaintState`]
 /// (heavy pixels can't live in the `Copy` `BrushSpec`); the engine borrows it as an [`ImageMask`].
+///
+/// ⚠️ A luminância vive num `Arc` (2026-10-01): o campo do esfregão corre noutra thread enquanto a
+/// pilha acumula as outras camadas com a MESMA imagem, e clonar tem de ser um contador.
+#[derive(Clone)]
 pub(super) struct BrushTextureImage {
-    lum: Vec<u8>,
+    lum: std::sync::Arc<Vec<u8>>,
     width: u32,
     height: u32,
 }
@@ -16,7 +20,11 @@ pub(super) struct BrushTextureImage {
 impl BrushTextureImage {
     /// Construct from owned luminance + dims (fields are private; `shape_settings` builds via this).
     pub(super) fn new(lum: Vec<u8>, width: u32, height: u32) -> Self {
-        Self { lum, width, height }
+        Self {
+            lum: std::sync::Arc::new(lum),
+            width,
+            height,
+        }
     }
     /// Borrow as `(luminance, w, h)` for the panel previews.
     pub(super) fn parts(&self) -> (&[u8], u32, u32) {

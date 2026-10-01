@@ -109,15 +109,96 @@ impl PainterTool {
             std::array::from_fn(|pos| std::mem::take(&mut self.paint.pilha.pendente_dabs[pos]));
         #[cfg(test)]
         conta_composicao();
+        let mut adiantado = None;
+        let mut mudou = None;
         if self.o_acumulo_esperou() {
-            self.acumula_as_camadas(&dabs);
+            // ⚠️ Quem lê da caixa pergunta ao campo do quadro ANTERIOR, e o adiantamento empresta-o
+            // ao trabalho — logo a pergunta faz-se ANTES. Esquecê-lo faz a região encolher e voltar
+            // os rectângulos (`o_esfregao_nao_deixa_rectangulos_de_cor` reprovou com `255`).
+            mudou = Some(self.o_que_mudou(caixa));
+            match self.adianta_o_campo(&dabs) {
+                // ⭐ O campo do esfregão corre noutra thread ENQUANTO as outras camadas acumulam:
+                // ele não lê nenhum plano nem a tela (só os seus pingos, a Selecção e o campo), e
+                // elas não leem o campo — ver [`Self::adianta_o_campo`].
+                Some((pos, trabalho)) => {
+                    let lista = &dabs[pos];
+                    let feito = std::thread::scope(|s| {
+                        let h = s.spawn(move || trabalho.corre(lista));
+                        self.acumula_as_camadas(&dabs);
+                        h.join().expect("o campo do esfregão entrou em pânico")
+                    });
+                    self.paint.pilha.campo_adiantado = Some(feito);
+                    adiantado = Some(pos);
+                    #[cfg(test)]
+                    ADIANTADOS.with(|c| c.set(c.get() + 1));
+                }
+                None => self.acumula_as_camadas(&dabs),
+            }
         }
-        self.compoe_a_regiao(caixa, &dabs);
+        self.compoe_a_regiao(caixa, &dabs, mudou);
+        // A composição consome o campo no braço do esfregão; um que sobrasse levaria o campo da
+        // sessão com ele, logo aplica-se aqui (não acontece: o braço corre para toda camada viva).
+        if let (Some(feito), Some(pos)) = (self.paint.pilha.campo_adiantado.take(), adiantado) {
+            debug_assert!(false, "o campo adiantado não foi consumido pela composição");
+            let lista = std::mem::take(&mut self.paint.pilha.pendente_dabs[pos]);
+            let _ = self.conclui_campo_do_esfregao(&lista, feito);
+            self.paint.pilha.pendente_dabs[pos] = lista;
+        }
         // As filas voltam vazias mas com a capacidade — um quadro não re-aloca.
         for (fila, mut usada) in self.paint.pilha.pendente_dabs.iter_mut().zip(dabs) {
             usada.clear();
             *fila = usada;
         }
+    }
+
+    /// **Pode o campo do esfregão deste quadro correr AO LADO do acúmulo?** Devolve a posição e o
+    /// trabalho já tirado da ferramenta, com o pincel no estado em que o braço do esfregão o poria
+    /// (força e dureza da camada — o [`Self::aplica_camada`]) e o fluxo aleatório DELA.
+    ///
+    /// Só quando:
+    /// * há UM esfregão vivo com pingos neste quadro (dois disputariam o mesmo campo adiantado).
+    ///
+    /// ⚠️ No 1.º quadro do traço a preparação ABRE a sessão, que fotografa a tela e o relevo ANTES
+    /// do acúmulo em vez de a meio da composição — e é o mesmo retrato: o acúmulo só escreve nos
+    /// planos das camadas (a tela entra e sai por troca de `Arc`), nunca no relevo assente (que só
+    /// o corpo escreve, DEPOIS da pilha), e a região composta é refrescada na base antes de o
+    /// esfregão a ler. Medido: com uma guarda «só com a sessão já aberta» e sem ela, a suíte inteira
+    /// da crate fica verde (`1 414`). ⛔ Numa 1.ª leitura eu atribuí-lhe dois vermelhos
+    /// (`o_esfregao_nao_deixa_rectangulos_de_cor` · `o_esfregao_arrasta_o_corpo_com_a_cor`) que
+    /// eram do campo EMPRESTADO lido pela pergunta de quem lê da caixa — ver o chamador.
+    ///
+    /// ⚠️ É exacto porque as duas metades não se leem: o acúmulo escreve nos planos e na tela
+    /// emprestada, e o laço dos pingos lê só o que o trabalho levou (pingos, Selecção, imagens,
+    /// campo). Gate `o_campo_ao_lado_do_acumulo_da_a_imagem_da_serie`.
+    fn adianta_o_campo(
+        &mut self,
+        dabs: &[Vec<Dab>; N_CAMADAS],
+    ) -> Option<(usize, super::smear_warp::TrabalhoDoCampo)> {
+        #[cfg(test)]
+        if CAMPO_EM_SERIE.with(std::cell::Cell::get) {
+            return None;
+        }
+        let mut vivos = (0..N_CAMADAS).filter(|&p| {
+            self.camada_viva(p)
+                && self.paint.composite[p].op == super::composite::CompositeOp::Smear
+        });
+        let pos = vivos.next()?;
+        if vivos.next().is_some() || dabs[pos].is_empty() {
+            return None;
+        }
+        let layer = self.paint.composite[pos];
+        let (saved_strength, saved_hardness) =
+            (self.paint.brush.strength, self.paint.brush.hardness);
+        let saved_rng = self.paint.tex_rng;
+        self.paint.brush.strength = layer.strength;
+        self.paint.brush.hardness = layer.hardness.unwrap_or(saved_hardness);
+        self.paint.tex_rng = self.paint.rng_camada[pos];
+        let (w, h) = self.source_size;
+        let trabalho = self.prepara_campo_do_esfregao(w, h);
+        self.paint.brush.strength = saved_strength;
+        self.paint.brush.hardness = saved_hardness;
+        self.paint.tex_rng = saved_rng;
+        trabalho.map(|t| (pos, t))
     }
 
     /// Esquecer o pendente sem o compor — só depois de um DESCASCAR (ver o cabeçalho).
@@ -127,6 +208,15 @@ impl PainterTool {
             fila.clear();
         }
     }
+}
+
+// `true` = o campo do esfregão corre em SÉRIE, depois do acúmulo (o código de antes de
+// 2026-10-01) — o CONTROLO do gate que prova que correr ao lado dá a mesma imagem.
+#[cfg(test)]
+thread_local! {
+    pub(super) static CAMPO_EM_SERIE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// Quantas vezes o campo correu AO LADO do acúmulo — o controlo de que o gate mede a rota.
+    pub(super) static ADIANTADOS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
 }
 
 // Quantas composições de pendente correram — a régua do gate que prova UMA por quadro.

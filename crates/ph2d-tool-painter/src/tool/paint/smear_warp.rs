@@ -24,6 +24,41 @@ use crate::tool::PainterTool;
 use ph2d_painter_brush::{BrushSpec, Dab};
 use std::sync::Arc;
 
+/// **O que o laço dos pingos do esfregão lê**, tirado da ferramenta — ver
+/// [`PainterTool::prepara_campo_do_esfregao`].
+pub(super) struct TrabalhoDoCampo {
+    w: u32,
+    h: u32,
+    spec_base: BrushSpec,
+    shape_image: Option<super::brush_settings::BrushTextureImage>,
+    grain_image: Option<super::brush_settings::BrushTextureImage>,
+    shape_ramp_lut: Option<Vec<f32>>,
+    shape_active: bool,
+    grain_active: bool,
+    groups: Vec<u32>,
+    rng: u64,
+    mask: Option<Arc<Vec<u8>>>,
+    tecto_em_raios: f32,
+    arco_ligado: bool,
+    tiling: [bool; 2],
+    source_size: (u32, u32),
+    disp: Vec<[f32; 2]>,
+    scratch: ph2d_painter_brush::smear_field::SmearScratch,
+    from: Option<([f32; 2], f32)>,
+}
+
+/// **O que o laço devolve** — o campo e o rascunho de volta, o último pingo, o fluxo aleatório no
+/// fim, a caixa tocada e a contagem de arcos (a sonda da recusa).
+pub(super) struct CampoFeito {
+    disp: Vec<[f32; 2]>,
+    scratch: ph2d_painter_brush::smear_field::SmearScratch,
+    from: Option<([f32; 2], f32)>,
+    rng: u64,
+    touched: Option<Region>,
+    arcos: (u32, u32),
+    n_dabs: usize,
+}
+
 impl PainterTool {
     /// Accumulate one batch of Smear dabs into the session displacement, then re-render what moved.
     ///
@@ -33,11 +68,32 @@ impl PainterTool {
         if dabs.is_empty() {
             return true;
         }
+        // ⭐ O campo deste lote pode já ter sido calculado em PARALELO com o acúmulo das outras
+        // camadas ([`super::composite_por_quadro`]); aí só falta aplicá-lo.
+        if let Some(feito) = self.paint.pilha.campo_adiantado.take() {
+            debug_assert_eq!(
+                feito.n_dabs,
+                dabs.len(),
+                "o campo adiantado é de outro lote"
+            );
+            return self.conclui_campo_do_esfregao(dabs, feito);
+        }
+        let Some(trabalho) = self.prepara_campo_do_esfregao(w, h) else {
+            return false;
+        };
+        let feito = trabalho.corre(dabs);
+        self.conclui_campo_do_esfregao(dabs, feito)
+    }
+
+    /// **Tirar da ferramenta tudo o que o laço dos pingos lê** — a sessão aberta, o pincel, as
+    /// imagens (por `Arc`), a Selecção, o fluxo aleatório, o campo e o rascunho. `None` quando não
+    /// há sessão onde acumular (tela sem tamanho).
+    pub(super) fn prepara_campo_do_esfregao(&mut self, w: u32, h: u32) -> Option<TrabalhoDoCampo> {
         // The knife's session opens on the first dab of the stroke and is closed by `close_stroke`.
         // `ensure_warp_session` is idempotent, so later batches in the same stroke reuse it — which is
         // precisely what makes the transport a sum across the whole gesture rather than per batch.
         if !self.ensure_warp_session() {
-            return false;
+            return None;
         }
         // The knife's Plow decides how much of the body comes along — through the ONE door, never a
         // second transport. Re-read every batch so the slider stays live within a stroke.
@@ -52,15 +108,17 @@ impl PainterTool {
         // Resolve each dab's frames exactly as the colour route does — same Shape basis, same Grain
         // frame, same order, same RNG discipline (a COPY: this pass must not advance the stream).
         self.ensure_shape_ramp_lut();
-        let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
-        let grain_image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
+        // ⚠️ Imagens por `Arc` (clonar é um contador): o trabalho pode correr noutra thread enquanto
+        // a pilha acumula as outras camadas com a MESMA imagem.
+        let shape_image = self.paint.shape_image.clone();
+        let grain_image = self.paint.texture_image.clone();
         let shape_ramp_lut = (self.paint.shape_color_ramp_enabled
             && self.paint.shape_color_ramp_bw)
             .then_some(self.paint.shape_ramp_lut.clone());
         let shape_active = base.shape_silhouette_active(shape_image.is_some());
         let grain_active = base.texture.is_active();
         let groups = self.paint.dab_groups.clone();
-        let mut dab_rng = super::tiling::DabRng::new(self.paint.tex_rng);
+        let rng = self.paint.tex_rng;
         // The Selection attenuates each dab AS IT LANDS (never the running total — see
         // `accumulate_dab_sculpt`: attenuating the total compounds once per pointer batch, and a Feather
         // makes that visible).
@@ -76,19 +134,38 @@ impl PainterTool {
         let tecto_em_raios = ph2d_painter_brush::SEM_TECTO;
         // ⛔ O arco NÃO shipa (recusa medida). Fora do teste não há como o ligar.
         #[cfg(test)]
-        let espia_do_arco = espia::arco_ligado;
+        let arco_ligado = espia::arco_ligado();
         #[cfg(not(test))]
-        let espia_do_arco = || false;
+        let arco_ligado = false;
         let tiling = self.paint.tiling;
-        let tiled = tiling[0] || tiling[1];
         let source_size = self.source_size;
 
         // ⚠️ O transporte do Smear não é um dab do Reshape, então a lista do ADR-0157 não o contém — e a
         // sessão passa a dizer isso em vez de deixar quem re-cozinhar da lista achar que ela basta.
         self.paint.warp.derived = false;
-        let mut disp = std::mem::take(Arc::make_mut(&mut self.paint.warp.disp));
-        let mut scratch = std::mem::take(&mut self.paint.smear_scratch);
-        let mut from = self.paint.last_smear_pos;
+        let disp = std::mem::take(Arc::make_mut(&mut self.paint.warp.disp));
+        let scratch = std::mem::take(&mut self.paint.smear_scratch);
+        let from = self.paint.last_smear_pos;
+        Some(TrabalhoDoCampo {
+            w,
+            h,
+            spec_base,
+            shape_image,
+            grain_image,
+            shape_ramp_lut,
+            shape_active,
+            grain_active,
+            groups,
+            rng,
+            mask,
+            tecto_em_raios,
+            arco_ligado,
+            tiling,
+            source_size,
+            disp,
+            scratch,
+            from,
+        })
         // ⭐⭐⭐ **O PASSO ANTERIOR, que é o que dá a CURVA do caminho.** Dois passos consecutivos
         // definem o círculo osculador, e é em torno dele que o retro-traçado tem de rodar — senão
         // ele anda pela CORDA e sai do traço (ver [`ph2d_painter_brush::Arco`]).
@@ -96,146 +173,38 @@ impl PainterTool {
         // ⚠️ Ele NÃO viaja entre lotes de propósito: o 1.º dab de um lote não tem passo anterior
         // fiável (a fronteira de sub-figura pode estar entre eles), e um arco errado é pior que
         // nenhum — sem ele o passo é o recto de sempre, que é o comportamento de ontem.
-        let mut passo_anterior: Option<[f32; 2]> = None;
-        let mut touched: Option<Region> = None;
-        for (di, d) in dabs.iter().enumerate() {
-            let tex_rng = dab_rng.enter(&groups, di);
-            // ⭐⭐ **A CORRENTE PARTE NA FRONTEIRA DE UMA SUB-FIGURA** (report do dono, 2026-09-21:
-            // *«2 círculos com o mesmo pincel e um está diferente do outro»*). Um lote do
-            // `restamp_shapes_preview` é a CONCATENAÇÃO das listas de todas as figuras — a activa
-            // mais cada parqueada, e um contorno por região no boolean —, e sem isto o último dab
-            // de uma esfrega até ao primeiro dab da outra, **atravessando a tela**. Medido: com
-            // uma 2.ª figura LONGE da 1.ª, a 1.ª perdia `14 %` do alfa dela.
-            //
-            // ⚠️ **A fronteira é DERIVADA e não um campo novo**, e a derivação vive na PORTA —
-            // com o porquê de ela não poder ser um limiar de salto, e o outro acumulador que a
-            // pergunta: [`super::arco_subfigura`]. *Esta regra esteve escrita à mão aqui durante
-            // um dia, e no dia seguinte o mesmo defeito apareceu na subamostragem da pilha, com a
-            // cura já escrita a três ficheiros de distância.*
-            let fonte = match from {
-                Some((_, arco)) if super::arco_subfigura::nasce_uma_subfigura(arco, d.arc_len) => {
-                    None
-                }
-                outro => outro,
-            };
-            if let Some((prev, _)) = fonte {
-                let spec = BrushSpec {
-                    radius_px: d.radius_px,
-                    ..spec_base
-                };
-                let rotor = spec.dab_rotor(d);
-                let fp = spec.dab_footprint(rotor);
-                let shape_basis = shape_active.then(|| {
-                    ph2d_painter_brush::texture::shape_basis(
-                        &spec.shape,
-                        &mut *tex_rng,
-                        [w as f32, h as f32],
-                        fp,
-                        ph2d_painter_brush::texture::ShapeFrame::Stroke {
-                            arc_len: d.arc_len,
-                            unit_px: d.stroke_radius_px,
-                        },
-                    )
-                });
-                let grain_basis = grain_active.then(|| {
-                    ph2d_painter_brush::texture::dab_basis(
-                        &spec.texture,
-                        &mut *tex_rng,
-                        [w as f32, h as f32],
-                        fp,
-                    )
-                });
-                // This dab's motion, in canvas px and NOT rounded to whole texels: a displacement is
-                // resampled bilinearly, so the integer quantisation the lift-and-blend kernel needed
-                // (it indexed source pixels directly) is pure loss here.
-                let step = [d.center[0] - prev[0], d.center[1] - prev[1]];
-                // ⛔⛔⛔ **O PASSO DE VOLTA PELO ARCO foi construído, MEDIDO e RECUSADO** — ver
-                // [`super::arco_do_caminho`]. O produto anda em LINHA RECTA, que é o que sempre
-                // fez; o cálculo fica porque é o instrumento da recusa, e sem ele a medição que
-                // a rejeitou não é repetível.
-                let arco = espia_do_arco()
-                    .then(|| {
-                        super::arco_do_caminho::osculador(
-                            passo_anterior,
-                            step,
-                            d.center,
-                            d.radius_px,
-                        )
-                    })
-                    .flatten();
-                passo_anterior = Some(step);
-                #[cfg(test)]
-                espia::conta_arco(arco.is_some());
-                // Tiling: the wrapped copies each accumulate at their own place, with the same step —
-                // the same offsets the colour blend used to walk.
-                let mut offs = [[0.0f32; 2]; 9];
-                let n = if tiled {
-                    super::tiling::tiled_offsets_into(
-                        d.center,
-                        d.radius_px,
-                        source_size,
-                        tiling,
-                        &mut offs,
-                    )
-                } else {
-                    1
-                };
-                for &off in &offs[..n] {
-                    let hd = ph2d_painter_brush::height::HeightDab {
-                        center: [d.center[0] + off[0], d.center[1] + off[1]],
-                        radius: d.radius_px,
-                        coverage: d.coverage,
-                        footprint: fp,
-                        // No sweep: like a sculpt dab, a smear dab marks where it IS. The field sums, so
-                        // consecutive dabs blend by construction and there is no bead-seam to hide.
-                        prev_center: None,
-                        shape: shape_basis
-                            .as_ref()
-                            .map(|sb| ph2d_painter_brush::ShapeInput {
-                                basis: sb,
-                                image: shape_image.as_ref(),
-                                ramp_lut: shape_ramp_lut.as_deref(),
-                            }),
-                        grain: grain_basis.as_ref(),
-                        grain_image: grain_image.as_ref(),
-                        // O smear TRANSPORTA o relevo que encontra; ele nao deposita uma forma capturada.
-                    };
-                    if let Some(r) = ph2d_painter_brush::accumulate_dab_smear(
-                        ph2d_painter_brush::SmearOut {
-                            disp: &mut disp,
-                            scratch: &mut scratch,
-                        },
-                        ph2d_painter_brush::Transporte {
-                            step,
-                            tecto_em_raios,
-                            arco,
-                        },
-                        mask.as_ref().map(|m| m.as_slice()),
-                        w,
-                        h,
-                        &spec,
-                        &hd,
-                    ) {
-                        let rect = Region {
-                            x: r.x,
-                            y: r.y,
-                            w: r.w,
-                            h: r.h,
-                        };
-                        touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
-                    }
-                }
-            }
-            from = Some((d.center, d.arc_len));
-        }
+    }
+
+    /// **Devolver à ferramenta o que o laço produziu, e re-renderizar o que se mexeu.**
+    pub(super) fn conclui_campo_do_esfregao(&mut self, dabs: &[Dab], feito: CampoFeito) -> bool {
+        let CampoFeito {
+            disp,
+            scratch,
+            from,
+            rng,
+            touched,
+            arcos,
+            n_dabs: _,
+        } = feito;
+        #[cfg(not(test))]
+        let _ = (dabs, arcos);
         #[cfg(test)]
         espia::guarda(&disp);
         #[cfg(test)]
         espia::guarda_dabs(dabs);
+        #[cfg(test)]
+        {
+            for _ in 0..arcos.0 {
+                espia::conta_arco(true);
+            }
+            for _ in 0..arcos.1 {
+                espia::conta_arco(false);
+            }
+        }
         *Arc::make_mut(&mut self.paint.warp.disp) = disp;
         self.paint.smear_scratch = scratch;
         self.paint.last_smear_pos = from;
-        self.paint.tex_rng = dab_rng.finish();
+        self.paint.tex_rng = rng;
         if let Some(rect) = touched {
             // ⚠️ O render é sobre TUDO que a sessão já deslocou, não só o que este batch deslocou. A
             // fonte deixou de ser imutável — a camada Brush do Composite deposita dentro dela para a
@@ -313,6 +282,182 @@ impl PainterTool {
     pub(super) fn end_smear_session(&mut self) {
         if self.paint.warp.active && self.paint.paint_mode != PaintMode::Deform {
             self.end_warp_session();
+        }
+    }
+}
+
+impl TrabalhoDoCampo {
+    /// **O laço dos pingos** — puro sobre o que o [`PainterTool::prepara_campo_do_esfregao`] tirou da
+    /// ferramenta, logo pode correr noutra thread enquanto a pilha acumula as outras camadas.
+    pub(super) fn corre(self, dabs: &[Dab]) -> CampoFeito {
+        let TrabalhoDoCampo {
+            w,
+            h,
+            spec_base,
+            shape_image,
+            grain_image,
+            shape_ramp_lut,
+            shape_active,
+            grain_active,
+            groups,
+            rng,
+            mask,
+            tecto_em_raios,
+            arco_ligado,
+            tiling,
+            source_size,
+            mut disp,
+            mut scratch,
+            mut from,
+        } = self;
+        let shape_mask = shape_image.as_ref().map(|i| i.as_mask());
+        let grain_mask = grain_image.as_ref().map(|i| i.as_mask());
+        let tiled = tiling[0] || tiling[1];
+        let mut dab_rng = super::tiling::DabRng::new(rng);
+        let mut arcos = (0u32, 0u32);
+        let mut passo_anterior: Option<[f32; 2]> = None;
+        let mut touched: Option<Region> = None;
+        for (di, d) in dabs.iter().enumerate() {
+            let tex_rng = dab_rng.enter(&groups, di);
+            // ⭐⭐ **A CORRENTE PARTE NA FRONTEIRA DE UMA SUB-FIGURA** (report do dono, 2026-09-21:
+            // *«2 círculos com o mesmo pincel e um está diferente do outro»*). Um lote do
+            // `restamp_shapes_preview` é a CONCATENAÇÃO das listas de todas as figuras — a activa
+            // mais cada parqueada, e um contorno por região no boolean —, e sem isto o último dab
+            // de uma esfrega até ao primeiro dab da outra, **atravessando a tela**. Medido: com
+            // uma 2.ª figura LONGE da 1.ª, a 1.ª perdia `14 %` do alfa dela.
+            //
+            // ⚠️ **A fronteira é DERIVADA e não um campo novo**, e a derivação vive na PORTA —
+            // com o porquê de ela não poder ser um limiar de salto, e o outro acumulador que a
+            // pergunta: [`super::arco_subfigura`]. *Esta regra esteve escrita à mão aqui durante
+            // um dia, e no dia seguinte o mesmo defeito apareceu na subamostragem da pilha, com a
+            // cura já escrita a três ficheiros de distância.*
+            let fonte = match from {
+                Some((_, arco)) if super::arco_subfigura::nasce_uma_subfigura(arco, d.arc_len) => {
+                    None
+                }
+                outro => outro,
+            };
+            if let Some((prev, _)) = fonte {
+                let spec = BrushSpec {
+                    radius_px: d.radius_px,
+                    ..spec_base
+                };
+                let rotor = spec.dab_rotor(d);
+                let fp = spec.dab_footprint(rotor);
+                let shape_basis = shape_active.then(|| {
+                    ph2d_painter_brush::texture::shape_basis(
+                        &spec.shape,
+                        &mut *tex_rng,
+                        [w as f32, h as f32],
+                        fp,
+                        ph2d_painter_brush::texture::ShapeFrame::Stroke {
+                            arc_len: d.arc_len,
+                            unit_px: d.stroke_radius_px,
+                        },
+                    )
+                });
+                let grain_basis = grain_active.then(|| {
+                    ph2d_painter_brush::texture::dab_basis(
+                        &spec.texture,
+                        &mut *tex_rng,
+                        [w as f32, h as f32],
+                        fp,
+                    )
+                });
+                // This dab's motion, in canvas px and NOT rounded to whole texels: a displacement is
+                // resampled bilinearly, so the integer quantisation the lift-and-blend kernel needed
+                // (it indexed source pixels directly) is pure loss here.
+                let step = [d.center[0] - prev[0], d.center[1] - prev[1]];
+                // ⛔⛔⛔ **O PASSO DE VOLTA PELO ARCO foi construído, MEDIDO e RECUSADO** — ver
+                // [`super::arco_do_caminho`]. O produto anda em LINHA RECTA, que é o que sempre
+                // fez; o cálculo fica porque é o instrumento da recusa, e sem ele a medição que
+                // a rejeitou não é repetível.
+                let arco = arco_ligado
+                    .then(|| {
+                        super::arco_do_caminho::osculador(
+                            passo_anterior,
+                            step,
+                            d.center,
+                            d.radius_px,
+                        )
+                    })
+                    .flatten();
+                passo_anterior = Some(step);
+                if arco.is_some() {
+                    arcos.0 += 1;
+                } else {
+                    arcos.1 += 1;
+                }
+                // Tiling: the wrapped copies each accumulate at their own place, with the same step —
+                // the same offsets the colour blend used to walk.
+                let mut offs = [[0.0f32; 2]; 9];
+                let n = if tiled {
+                    super::tiling::tiled_offsets_into(
+                        d.center,
+                        d.radius_px,
+                        source_size,
+                        tiling,
+                        &mut offs,
+                    )
+                } else {
+                    1
+                };
+                for &off in &offs[..n] {
+                    let hd = ph2d_painter_brush::height::HeightDab {
+                        center: [d.center[0] + off[0], d.center[1] + off[1]],
+                        radius: d.radius_px,
+                        coverage: d.coverage,
+                        footprint: fp,
+                        // No sweep: like a sculpt dab, a smear dab marks where it IS. The field sums, so
+                        // consecutive dabs blend by construction and there is no bead-seam to hide.
+                        prev_center: None,
+                        shape: shape_basis
+                            .as_ref()
+                            .map(|sb| ph2d_painter_brush::ShapeInput {
+                                basis: sb,
+                                image: shape_mask.as_ref(),
+                                ramp_lut: shape_ramp_lut.as_deref(),
+                            }),
+                        grain: grain_basis.as_ref(),
+                        grain_image: grain_mask.as_ref(),
+                        // O smear TRANSPORTA o relevo que encontra; ele nao deposita uma forma capturada.
+                    };
+                    if let Some(r) = ph2d_painter_brush::accumulate_dab_smear(
+                        ph2d_painter_brush::SmearOut {
+                            disp: &mut disp,
+                            scratch: &mut scratch,
+                        },
+                        ph2d_painter_brush::Transporte {
+                            step,
+                            tecto_em_raios,
+                            arco,
+                        },
+                        mask.as_ref().map(|m| m.as_slice()),
+                        w,
+                        h,
+                        &spec,
+                        &hd,
+                    ) {
+                        let rect = Region {
+                            x: r.x,
+                            y: r.y,
+                            w: r.w,
+                            h: r.h,
+                        };
+                        touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
+                    }
+                }
+            }
+            from = Some((d.center, d.arc_len));
+        }
+        CampoFeito {
+            disp,
+            scratch,
+            from,
+            rng: dab_rng.finish(),
+            touched,
+            arcos,
+            n_dabs: dabs.len(),
         }
     }
 }

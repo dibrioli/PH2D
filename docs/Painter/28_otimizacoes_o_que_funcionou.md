@@ -639,7 +639,13 @@ motor do pincel compilado em 16 pedaços. `[profile.smoke.package.ph2d-painter-b
 1` fecha o buraco, e o campo do esfregão passou a dividir as linhas de cada pingo (`810 → 152 µs` por
 pingo de raio `128,8`). Medido na APP com o rabisco automático (`PH2D_COMPOSITE_RABISCO=0.5` +
 `PH2D_PAINT_PERF=1`, tela virtual, `load ~10–20`): **`~40 → 52–55` fps**, pilha `~12` ms + `~5` do
-resto do quadro. ⏳ Faltam `~3` ms para os 60. Mecanismo: ADR-0172 §«Emenda 2026-10-01 (b)».
+resto do quadro. Mecanismo: ADR-0172 §«Emenda 2026-10-01 (b)».
+
+⭐⭐ **E a terceira volta chega aos 60 fps:** o campo do esfregão corre noutra thread enquanto as outras
+camadas acumulam, a pergunta *«quem lê da caixa»* reparte as linhas (`1,18 → 0,18` ms) e a composição
+devolve só a orla. Drenagem `10,4 → 7,5` ms; na app, **`60` fps** (período `16,7` ms) a Size `0.5`.
+⛔ O pool do rayon no lugar das threads abertas do depósito em banda foi medido e não ganha nada.
+Mecanismo: ADR-0172 §«Emenda 2026-10-01 (c)».
 
 ---
 

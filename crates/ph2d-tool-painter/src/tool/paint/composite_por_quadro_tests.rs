@@ -402,3 +402,180 @@ fn no_impasto_acumular_por_quadro_da_o_mesmo_relevo() {
         );
     }
 }
+
+/// ⭐ **A pergunta «quem lê da caixa» em PARALELO dá a caixa da SÉRIE** — a área tocada pelo
+/// esfregão a meio de um rabisco, sobre caixas que varrem a tela, contra o laço em série à letra.
+///
+/// ⚠️ O CONTROLO é que a pergunta responde ALGUMA coisa em parte das caixas: uma sessão vazia daria
+/// `None` nos dois lados e o gate passaria sem medir nada.
+#[test]
+fn quem_le_da_caixa_em_paralelo_da_a_caixa_da_serie() {
+    let mut t = pilha(true);
+    t.on_canvas_pointer(cp([X0, Y], PointerPhase::Down));
+    let mut x = X0;
+    let mut n = 0usize;
+    while x < X1 - 20.0 {
+        x += 3.0;
+        let y = Y + 30.0 * (x / 23.0).sin();
+        t.on_canvas_pointer(cp([x, y], PointerPhase::Move));
+        n += 1;
+        if n.is_multiple_of(8) {
+            let _ = t.take_preview_arc();
+        }
+    }
+    let _ = t.take_preview_arc();
+    let mut respondeu = 0usize;
+    for cy in (0..SIZE).step_by(24) {
+        for cx in (0..SIZE).step_by(24) {
+            let caixa = Region {
+                x: cx,
+                y: cy,
+                w: 40.min(SIZE - cx),
+                h: 40.min(SIZE - cy),
+            };
+            let (par, serie) = (
+                t.quem_le_da_caixa(caixa),
+                t.quem_le_da_caixa_em_serie(caixa),
+            );
+            assert_eq!(
+                par, serie,
+                "a caixa {caixa:?} deu outra resposta em paralelo"
+            );
+            respondeu += usize::from(par.is_some());
+        }
+    }
+    assert!(
+        respondeu > 10,
+        "CONTROLO: só {respondeu} caixas tiveram leitores — a fixtura não contém o fenómeno"
+    );
+}
+
+/// ⭐⭐ **O CAMPO DO ESFREGÃO AO LADO DO ACÚMULO DÁ A IMAGEM DA SÉRIE — AO BYTE** (2026-10-01).
+///
+/// A pilha do dono no rabisco, drenando a cada `1`, `4` e `16` eventos: a tela depois de CADA
+/// drenagem tem de ser a mesma com o campo a correr noutra thread enquanto as camadas acumulam e
+/// com ele em série depois delas (`CAMPO_EM_SERIE`, o código de antes).
+///
+/// ⚠️ CONTROLO: o campo tem de ter corrido ao lado, e NUNCA na rota de controlo — senão as duas
+/// colunas seriam a mesma corrida.
+#[test]
+fn o_campo_ao_lado_do_acumulo_da_a_imagem_da_serie() {
+    use super::composite_por_quadro::{ADIANTADOS, CAMPO_EM_SERIE};
+    for por_quadro in [1usize, 4, 16] {
+        CAMPO_EM_SERIE.with(|c| c.set(true));
+        ADIANTADOS.with(|c| c.set(0));
+        let serie = rabisco_com_quadros(3.0, por_quadro, false);
+        assert_eq!(
+            ADIANTADOS.with(std::cell::Cell::get),
+            0,
+            "CONTROLO: a rota em série adiantou o campo"
+        );
+        CAMPO_EM_SERIE.with(|c| c.set(false));
+        let lado = rabisco_com_quadros(3.0, por_quadro, false);
+        let adiantou = ADIANTADOS.with(std::cell::Cell::get);
+        assert!(
+            adiantou > 0,
+            "CONTROLO: o campo nunca correu ao lado (drenagem a cada {por_quadro})"
+        );
+        assert_eq!(serie.len(), lado.len());
+        for (k, (a, b)) in serie.iter().zip(&lado).enumerate() {
+            let (n, pior) = diferenca(a, b);
+            assert_eq!(
+                (n, pior),
+                (0, 0),
+                "drenagem a cada {por_quadro}, quadro {k}: {n} px diferentes, pior {pior}"
+            );
+        }
+        assert_ne!(serie[0], arte(), "CONTROLO: o traço não pintou nada");
+    }
+}
+
+/// O mesmo rabisco com o campo AO LADO ou em SÉRIE, sobre uma tela montada por `monta`. Devolve
+/// a tela depois de cada drenagem, o relevo assente no fim e quantas vezes o campo correu ao lado.
+fn campo_dos_dois_lados(
+    monta: &dyn Fn() -> PainterTool,
+    em_serie: bool,
+) -> (Vec<Vec<u8>>, Vec<u32>, u64) {
+    use super::composite_por_quadro::{ADIANTADOS, CAMPO_EM_SERIE};
+    CAMPO_EM_SERIE.with(|c| c.set(em_serie));
+    ADIANTADOS.with(|c| c.set(0));
+    let mut t = monta();
+    t.set_compor_por_quadro(true);
+    let mut quadros = Vec::new();
+    t.on_canvas_pointer(cp([20.0, 64.0], PointerPhase::Down));
+    let (mut x, mut n) = (20.0f32, 0usize);
+    while x < 108.0 {
+        x += 3.0;
+        t.on_canvas_pointer(cp([x, 64.0 + 12.0 * (x / 9.0).sin()], PointerPhase::Move));
+        n += 1;
+        if n.is_multiple_of(4) {
+            let _ = t.take_preview_arc();
+            quadros.push((*t.canvas_rgba).clone());
+        }
+    }
+    t.on_canvas_pointer(cp([108.0, 64.0], PointerPhase::Up));
+    quadros.push((*t.canvas_rgba).clone());
+    CAMPO_EM_SERIE.with(|c| c.set(false));
+    let h = t
+        .layers
+        .active()
+        .and_then(|l| t.heights.get(&l).cloned())
+        .unwrap_or_default();
+    (
+        quadros,
+        h.iter().map(|v| v.to_bits()).collect(),
+        ADIANTADOS.with(std::cell::Cell::get),
+    )
+}
+
+/// ⭐ **E as duas coisas que o gate irmão não contém, cada uma com a sua mutação** (2026-10-01):
+///
+/// * **o GRÃO aleatório e a DUREZA própria no esfregão** — o grão consome o fluxo aleatório da camada, e o campo ao lado
+///   tem de partir do MESMO fluxo que a série (`rng_camada` da camada; sem isso a mutação que o
+///   esquece sobrevivia à fixtura sem grão);
+/// * **o IMPASTO** — no 1.º quadro a preparação abre a sessão, que fotografa a tela e o relevo
+///   ANTES do acúmulo; o retrato e o corpo arrastado têm de sair os da série.
+#[test]
+fn o_campo_ao_lado_com_grao_aleatorio_e_impasto_da_a_imagem_da_serie() {
+    use CompositeOp::{Blur, Brush, Erase, Smear};
+    let grao = || {
+        let mut t = super::diag_o_relevo_da_pilha::tela(&[Blur, Brush, Brush, Smear, Erase]);
+        t.paint.brush.texture.kind = ph2d_painter_brush::TextureKind::Noise;
+        t.paint.brush.texture.mapping = ph2d_painter_brush::TextureMapping::Random;
+        t.paint.brush.texture.size = [0.25, 0.25];
+        t.paint.brush.grain_depth = 1.0;
+        // A DUREZA própria do esfregão (posição 3): o campo ao lado tem de a ver como o braço da
+        // composição a punha — sem isto a mutação que a esquece sobrevivia (`None` segue o pincel).
+        assert_eq!(t.paint.composite[3].op, Smear, "a fixtura mudou de ordem");
+        t.paint.composite[3].hardness = Some(0.15);
+        t
+    };
+    let impasto = || super::diag_o_relevo_da_pilha::tela(&[Blur, Brush, Brush, Smear, Erase]);
+    for (nome, monta) in [
+        ("grão aleatório", &grao as &dyn Fn() -> PainterTool),
+        ("impasto", &impasto as &dyn Fn() -> PainterTool),
+    ] {
+        let (serie, h_serie, nenhum) = campo_dos_dois_lados(monta, true);
+        let (lado, h_lado, adiantou) = campo_dos_dois_lados(monta, false);
+        assert_eq!(
+            nenhum, 0,
+            "CONTROLO {nome}: a rota em série adiantou o campo"
+        );
+        assert!(
+            adiantou > 0,
+            "CONTROLO {nome}: o campo nunca correu ao lado"
+        );
+        for (k, (a, b)) in serie.iter().zip(&lado).enumerate() {
+            let (n, pior) = diferenca(a, b);
+            assert_eq!(
+                (n, pior),
+                (0, 0),
+                "{nome}, quadro {k}: {n} px diferentes, pior {pior}"
+            );
+        }
+        assert_eq!(
+            h_serie, h_lado,
+            "{nome}: o relevo assente mudou com o campo ao lado"
+        );
+    }
+}

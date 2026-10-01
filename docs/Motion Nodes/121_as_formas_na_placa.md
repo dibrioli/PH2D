@@ -97,6 +97,9 @@ cima. ⛔ Desenhar o passe por cima do alvo do Vello pintaria as formas **por ci
 - ✅ **A FAIXA** (§9.4): o traço esticado sem peças de junta — no proxy de telemóvel a `=127` densa
   passa de `30,6` para `25,4 ms` de passe; ⏳ ainda atrás do Vello lá (`30,3` contra `19,7 ms` de
   placa).
+- ✅ **O CONTORNO CALCULADO** (§9.5): a geometria do traço esticado sai UMA vez por cópia num passe
+  de cálculo — a `=127` densa no proxy de telemóvel `27,8 → 22,3 ms` de placa (RTX `1,57 → 1,16`);
+  ⏳ ainda atrás do Vello no proxy (`19,4 ms`). `PH2D_CONTORNO_CALCULADO=0` bissecta.
 
 ## §6 — ✅ W1: a paridade de PIXEL, medida (2026-09-29, RTX, alvo de meio-float)
 
@@ -627,3 +630,81 @@ inteira `30,3` contra `19,7 ms` (era `35,2`), com a CPU a cair `8,2 → 6,2 ms`.
 em todas as células. O que sobra é o custo POR PEÇA lida por pixel (caixas e arestas de ~`12`
 itens de `56` bytes por cópia), e a cura de fundo continua a do Vello: o contorno de cada cópia
 calculado UMA vez (uma passagem de cálculo antes do desenho) em vez de em cada pixel.
+
+### §9.5 — O CONTORNO CALCULADO uma vez por cópia (2026-10-01)
+
+**O que mudou** ([`contorno.wgsl`](../../crates/ph2d-shape-gpu/src/contorno.wgsl) ·
+[`contorno.rs`](../../crates/ph2d-shape-gpu/src/contorno.rs)): antes do desenho, três passes de
+cálculo — `cs_conta` (quantas arestas cada cópia escreve), `cs_soma` (o prefixo, num grupo só e
+determinístico) e `cs_escreve` — percorrem as peças do eixo de cada cópia e escrevem as ARESTAS do
+contorno já no ECRÃ, em blocos de `8` com a caixa de cada bloco. O fragmento (`traco_do_contorno`)
+só soma arestas prontas. A geometria das peças (bissectrizes, juntas, leques, pontas) deixa de ser
+refeita em cada pixel.
+
+- ⭐ **As arestas que a FAIXA cancela não chegam a existir**: as duas metades de uma aresta
+  partilhada decidem com os MESMOS argumentos e saltam juntas.
+- ⭐ **DUAS correntes**: o lado que anda com o eixo escreve-se para a frente a partir do início da
+  cópia, o que anda contra ele para trás a partir do fim — lidas por ordem de memória, as duas são
+  correntes. Um bloco cujas oito arestas se tocam ponta a ponta (conferido AO BIT) e que fica todo à
+  esquerda do pixel soma `clamp(y₀) − clamp(y₈)`, guardados ao lado da caixa (`(y₀, y₈, encadeado)`
+  — **zero ligações novas**, o bloco passa a dois `vec4`).
+- ⚠️ **A capacidade é MEDIDA, nunca adivinhada:** o total sai do prefixo, é copiado e lido DOIS
+  quadros depois, e a capacidade cresce para ele (tecto = `max_storage_buffer_binding_size`). Até lá,
+  uma cópia que não cabe — ou cuja escrita não bate na contagem — é desenhada pelo caminho de
+  sempre, **por cópia**: nunca um contorno truncado.
+- `PH2D_CONTORNO_CALCULADO=0` bissecta (o caminho pixel a pixel do eixo, §9.4).
+
+**Gate** [`contorno_calculado`](../../crates/ph2d-shape-gpu/tests/it/contorno_calculado.rs) — as
+sete famílias do traço esticado pelos DOIS caminhos, `4` quadros do mesmo passe: alfa máx. **`1`**
+e **zero** pixels a desviar mais de `1` em todos os quadros; no 1.º quadro **três** famílias
+transbordam a capacidade de fábrica (círculos `12/40`, zigue-zague redondo `38/40`, estrelas pequenas
+de traço grosso `101/120`) e a MISTURA dos dois caminhos desenha a mesma imagem; a partir do 3.º
+todas as cópias ganham contorno; o CONTROLO desligado lê `0`. ⚠️ *A imagem sozinha não prova que o
+caminho novo correu* — o recurso desenha o mesmo —, por isso o gate lê de volta quantas cópias o
+ganharam.
+
+**Medido no proxy de telemóvel** (Radeon integrada, `release`, dois rounds iguais, sonda
+`sonda_relogio_das_estrelas_grandes` — ⚠️ a `=2` usa a estrela da CENA, §9.4):
+
+| sonda, ms de passe | eixo (§9.4) | contorno | contorno + correntes | Vello |
+|---|---:|---:|---:|---:|
+| `1225` estrelas da `=127` (vivas), contorno esticado | `3,56` | `2,42` | **`2,49`** | `2,69` |
+| `324` pequenas (arredondadas) | `1,92` | — | `2,05` | `2,16` |
+| `72` grandes (arredondadas) | `3,31` | `3,88` | **`3,57`** | `1,00` |
+| `72` grandes, conforme (CONTROLO, sem eixo) | `1,74` | — | `1,73` | `0,90` |
+
+| app, `=127` densa, perfilador de placa, quadro de placa INTEIRO (mínimo) | iGPU | RTX |
+|---|---:|---:|
+| eixo pixel a pixel (`PH2D_CONTORNO_CALCULADO=0`) | `27,8 ms` | `1,57 ms` |
+| **contorno calculado** | **`22,3 ms`** (formas `15,6` + cálculo `3,1`) | **`1,16 ms`** |
+| a cena TODA pelo Vello (`PH2D_FORMAS_NA_PLACA=0`) | `19,4 ms` | `1,99 ms` |
+
+⚠️ *O `render.vello` do perfilador CONTÉM o `render.formas` e o `render.contorno`* — é o quadro de
+placa inteiro, e é ele que se compara com a rota do Vello. Na RTX o quadro oscila `1,2`–`7,4 ms` pelo
+relógio da placa a esta carga, logo compara-se o MÍNIMO.
+
+**Mutação `5` de `5` + `1` NOMEADA** ([arnês](ferramentas/mutacao_o_contorno_calculado_2026-10-01.py),
+pré-voo `6/6`, corrida LIMPA verde): o contorno nunca escrito · sem a aresta de ponta da frente ·
+todo bloco lido como encadeado · o telescópio ao contrário · a capacidade sem crescer — as cinco
+sangram no gate. **Sobrevive, NOMEADA:** `M6` (o lado de baixo na corrente da frente) — quebra só as
+correntes, e as correntes são RELÓGIO: a soma é a mesma em qualquer ordem, logo nenhuma régua de
+imagem a vê.
+
+**A ablação que mandou para as correntes** (`abla2.sh`, iGPU): saltar os blocos à esquerda (só
+relógio, imagem errada) levava as `72` grandes de `3,88` a `3,17 ms` — o teto do que as correntes
+podiam comprar; elas compraram `3,57`.
+
+⛔⛔ **RECUSA MEDIDA — COSTURAR as correntes por um passo guloso** (no `cs_escreve`, pôr a seguir a
+cada aresta a que começa onde ela acaba, numa janela de `32`): **pior em todas as células** —
+`2,49 → 3,11` (densa), `2,05 → 2,62`, `3,57 → 4,00 ms` (grandes). O laço serial por cópia sobre a
+memória custa mais do que os blocos que encadeia. Revertido.
+
+⛔ **RECUSA MEDIDA — os testes de lado sem divisão por aresta** no `contribuicao` (`max(px) ≤ 0` ⇒
+faixa, `min(px) ≥ 1` ⇒ zero): sem efeito no relógio (a divergência da onda paga o caminho caro na
+mesma); mantidos por serem exactos e baratos.
+
+⏳ **ABERTO, com o número: no proxy de telemóvel a `=127` densa continua atrás do Vello**
+(`22,3` contra `19,4 ms` de placa; era `27,8`), e nas estrelas GRANDES o contorno ainda perde para o
+eixo (`3,57` contra `3,31`). O que sobra está no desenho (`15,6 ms`), não no cálculo (`3,1`): os blocos
+à direita/dentro pagam a conta do Vello aresta a aresta, e a cura seguinte é a do Vello — ladrilhos
+(as arestas de cada cópia ordenadas por faixa de ecrã) em vez de blocos por cópia.

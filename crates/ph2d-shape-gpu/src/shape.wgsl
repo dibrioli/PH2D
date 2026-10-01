@@ -86,7 +86,18 @@ struct VsOut {
     // doc 121 W4: a cópia é NÃO conforme e o traço dela sai do EIXO (x = início, y = contagem), com
     // as marcas (z) e a caneta `√|det|` (w, em bits). `y = 0` ⇒ o caminho conforme de sempre.
     @location(7) @interpolate(flat) eixo_rg: vec4<u32>,
+    // doc 121 §9.5: o CONTORNO calculado da cópia — x = o primeiro bloco, y = quantos; `y = 0` ⇒ o
+    // traço sai do eixo pixel a pixel (`traco_do_eixo`), como antes.
+    @location(8) @interpolate(flat) contorno_rg: vec2<u32>,
 }
+
+// ⭐ doc 121 §9.5 — **O CONTORNO DE CADA CÓPIA, CALCULADO UMA VEZ** (`contorno.wgsl` escreve-os, o
+// desenho só os lê): as arestas no ECRÃ, em blocos de `SEGS_POR_BLOCO`; a caixa de cada bloco; por
+// cópia `(primeiro bloco, blocos, 0, 0)`; e a caixa da cópia inteira.
+@group(1) @binding(0) var<storage, read> contorno: array<vec4<f32>>;
+@group(1) @binding(1) var<storage, read> cblocos: array<vec4<f32>>;
+@group(1) @binding(2) var<storage, read> ccopias: array<vec4<u32>>;
+@group(1) @binding(3) var<storage, read> ccaixas: array<vec4<f32>>;
 
 // O índice do registo de um handle, ou `0xffffffff` se a geometria não existe.
 fn registo_de(handle: u32) -> u32 {
@@ -111,17 +122,28 @@ fn aplica(lin: vec4<f32>, t: vec2<f32>, p: vec2<f32>) -> vec2<f32> {
     return vec2<f32>(lin.x * p.x + lin.z * p.y, lin.y * p.x + lin.w * p.y) + t;
 }
 
-@vertex
-fn vs_main(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> VsOut {
-    var out: VsOut;
+// ⭐ doc 121 §9.5 — **O QUE UMA CÓPIA É, NO ECRÃ**: o registo da geometria, o afim local → pixel, o
+// nível de aplanamento e o eixo do traço. Lido pelo shader de vértice E pelo cálculo do CONTORNO
+// (`contorno.wgsl`) — escrito duas vezes, os dois escolheriam níveis diferentes no dia em que um
+// mudasse, e o contorno calculado seria o de outra forma.
+struct Copia {
+    // `0xffffffff` ⇒ a geometria não existe.
+    r: u32,
+    nivel: u32,
+    lin: vec4<f32>,
+    t: vec2<f32>,
+    // x = início, y = contagem, z = marcas, w = a caneta `√|det|` em bits; `y = 0` ⇒ sem eixo.
+    eixo_rg: vec4<u32>,
+}
+
+fn copia_de(ii: u32) -> Copia {
+    var cp: Copia;
     let inst = instances[ii];
-    let r = registo_de(inst.geometry);
-    if r == 0xffffffffu {
-        // Sem geometria: um triângulo degenerado, fora de tudo.
-        out.pos = vec4<f32>(2.0, 2.0, 0.0, 1.0);
-        return out;
+    cp.r = registo_de(inst.geometry);
+    if cp.r == 0xffffffffu {
+        return cp;
     }
-    let rec = records[r];
+    let rec = records[cp.r];
     // mundo = pos + basis · (anchor + q · size) — a MESMA pose da sprite e do `instance_pose`.
     let b = inst.basis;
     let w_lin = vec4<f32>(b.x * inst.size.x, b.y * inst.size.x, b.z * inst.size.y, b.w * inst.size.y);
@@ -148,7 +170,6 @@ fn vs_main(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> 
             break;
         }
     }
-    let rg = rec.ranges[nivel];
     // ⭐ doc 121 W4 — **CONFORME?** A mesma pergunta do `stroke_uniform::is_conformal` da casa: as
     // duas colunas do afim com o mesmo comprimento e perpendiculares. Sob escala NÃO uniforme o
     // traço sai do eixo, com a caneta REDONDA de largura `w·√|det|` (bug #27).
@@ -162,6 +183,29 @@ fn vs_main(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> 
     if !conforme && ex.y > 0u && (rec.flags & 2u) == 0u {
         eixo_rg = vec4<u32>(ex.x, ex.y, ex.z, bitcast<u32>(caneta));
     }
+    cp.nivel = nivel;
+    cp.lin = lin;
+    cp.t = t;
+    cp.eixo_rg = eixo_rg;
+    return cp;
+}
+
+@vertex
+fn vs_main(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> VsOut {
+    var out: VsOut;
+    let cp = copia_de(ii);
+    if cp.r == 0xffffffffu {
+        // Sem geometria: um triângulo degenerado, fora de tudo.
+        out.pos = vec4<f32>(2.0, 2.0, 0.0, 1.0);
+        return out;
+    }
+    let inst = instances[ii];
+    let rec = records[cp.r];
+    let lin = cp.lin;
+    let t = cp.t;
+    let rg = rec.ranges[cp.nivel];
+    let eixo_rg = cp.eixo_rg;
+    let caneta = bitcast<f32>(eixo_rg.w);
     // O quad: a caixa da forma no ECRÃ, arredondada PARA FORA ao pixel inteiro.
     // ⚠️ **Sem margem, e é medido:** a caixa é a dos SEGMENTOS aplanados, e um pixel só tem
     // cobertura se um segmento (ou o interior entre eles) lhe toca — logo o `floor`/`ceil` já
@@ -173,7 +217,17 @@ fn vs_main(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> 
     let c3 = aplica(lin, t, rec.bbox.zw);
     var lo_f = min(min(c0, c1), min(c2, c3));
     var hi_f = max(max(c0, c1), max(c2, c3));
+    // ⭐ doc 121 §9.5: o contorno desta cópia já foi CALCULADO (`contorno.wgsl`) — a caixa dele é a
+    // exacta, e o fragmento lê as arestas prontas em vez de as refazer.
+    var contorno_rg = vec2<u32>(0u, 0u);
     if eixo_rg.y > 0u {
+        contorno_rg = ccopias[ii].xy;
+    }
+    if contorno_rg.y > 0u {
+        let cx = ccaixas[ii];
+        lo_f = min(lo_f, cx.xy);
+        hi_f = max(hi_f, cx.zw);
+    } else if eixo_rg.y > 0u {
         // O traço do eixo vai até `ext_fora × caneta` para FORA dos pontos do eixo, no ecrã — a caixa
         // local do contorno expandido não o cobre sob escala não uniforme.
         let e0 = aplica(lin, t, rec.eixo_bbox.xy);
@@ -200,6 +254,7 @@ fn vs_main(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> 
     out.stroke_color = rec.stroke_color;
     out.even_odd = rec.flags & 1u;
     out.eixo_rg = eixo_rg;
+    out.contorno_rg = contorno_rg;
     return out;
 }
 
@@ -212,6 +267,18 @@ fn contribuicao(p0: vec2<f32>, p1: vec2<f32>, xy: vec2<f32>) -> f32 {
     let y1 = clamp(y + delta.y, 0.0, 1.0);
     let dy = y0 - y1;
     if dy == 0.0 {
+        return 0.0;
+    }
+    // ⭐ doc 121 §9.5 — **os dois lados sem divisão**: com os DOIS pontos à esquerda do pixel o
+    // troço recortado também está (o `x` dele fica entre os dos pontos), e a contribuição é a faixa
+    // inteira — o mesmo `dy` que o ramo de baixo devolve, sem o recíproco; com os dois à DIREITA é
+    // zero (a fórmula de baixo daria `~1e-6/(xmax − 1)`, o resto do `−1e-6` do Vello).
+    let px0 = p0.x - xy.x;
+    let px1 = p1.x - xy.x;
+    if max(px0, px1) <= 0.0 {
+        return dy;
+    }
+    if min(px0, px1) >= 1.0 {
         return 0.0;
     }
     let vec_y_recip = 1.0 / delta.y;
@@ -338,6 +405,40 @@ fn leque(centro: vec2<f32>, n0: vec2<f32>, n_fim: vec2<f32>, cos_alpha: f32, dir
         p = w;
     }
     return s + tri(centro, p, centro + n_fim, xy);
+}
+
+// ⭐ doc 121 §9.5 — **o traço a partir do CONTORNO CALCULADO**: as arestas já estão no ecrã, logo
+// um bloco acima, abaixo ou à direita soma zero; um todo à ESQUERDA soma a faixa de cada aresta
+// (`clamp(y₀) − clamp(y₁)`, sem divisão); o resto, a conta do Vello aresta a aresta. ⚠️ As arestas
+// partilhadas da FAIXA não estão lá (as duas metades cancelavam-se), logo um bloco já não é FECHADO e
+// um à esquerda NÃO se pode saltar — por isso a faixa das arestas, que é barata, e num bloco
+// ENCADEADO (`cs_escreve`) ela telescopa em dois números já guardados ao lado da caixa.
+fn traco_do_contorno(b0: u32, nb: u32, xy: vec2<f32>) -> f32 {
+    var s = 0.0;
+    for (var b = b0; b < b0 + nb; b += 1u) {
+        let cx = cblocos[2u * b];
+        if cx.w <= xy.y || cx.y >= xy.y + 1.0 || cx.x >= xy.x + 1.0 {
+            continue;
+        }
+        let i0 = b * SEGS_POR_BLOCO;
+        if cx.z <= xy.x {
+            let ex = cblocos[2u * b + 1u];
+            if ex.z != 0.0 {
+                s += clamp(ex.x - xy.y, 0.0, 1.0) - clamp(ex.y - xy.y, 0.0, 1.0);
+                continue;
+            }
+            for (var i = i0; i < i0 + SEGS_POR_BLOCO; i += 1u) {
+                let e = contorno[i];
+                s += clamp(e.y - xy.y, 0.0, 1.0) - clamp(e.w - xy.y, 0.0, 1.0);
+            }
+            continue;
+        }
+        for (var i = i0; i < i0 + SEGS_POR_BLOCO; i += 1u) {
+            let e = contorno[i];
+            s += contribuicao(e.xy, e.zw, xy);
+        }
+    }
+    return min(abs(s), 1.0);
 }
 
 fn traco_do_eixo(inicio: u32, n: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32, xy: vec2<f32>) -> f32 {
@@ -529,7 +630,12 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     if in.eixo_rg.y > 0u {
         // Sob escala não uniforme: as MARCAS (as primeiras `z` peças do traço) mais o traço do eixo.
         let marcas = area(in.stroke.x, in.eixo_rg.z, in.lin, in.t, xy);
-        let eixo_cob = traco_do_eixo(in.eixo_rg.x, in.eixo_rg.y, in.lin, in.t, bitcast<f32>(in.eixo_rg.w), xy);
+        var eixo_cob = 0.0;
+        if in.contorno_rg.y > 0u {
+            eixo_cob = traco_do_contorno(in.contorno_rg.x, in.contorno_rg.y, xy);
+        } else {
+            eixo_cob = traco_do_eixo(in.eixo_rg.x, in.eixo_rg.y, in.lin, in.t, bitcast<f32>(in.eixo_rg.w), xy);
+        }
         as_ = min(min(abs(marcas), 1.0) + eixo_cob, 1.0);
     } else {
         as_ = min(abs(area(in.stroke.x, in.stroke.y, in.lin, in.t, xy)), 1.0);

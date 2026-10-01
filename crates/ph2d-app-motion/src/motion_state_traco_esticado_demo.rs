@@ -153,6 +153,47 @@ fn indice_da_estrela() -> f32 {
     }
 }
 
+/// **Os params do `source.shape` desta cena** — UMA lista, lida pelo [`build`] e pela sonda de
+/// relógio do passe de formas (`forma_da_cena`). ⚠️ Escrita duas vezes, a sonda mediria outra
+/// estrela: foi o que aconteceu no doc 121 §9.4 (a sonda com estrelas ARREDONDADAS, a cena com
+/// quinas vivas) e outra vez no §9.5.
+pub(crate) fn params_da_forma(arranjo: Arranjo) -> [(&'static str, f32); 12] {
+    use ph2d_node_motion_shape::param as p;
+    [
+        (p::KIND, indice_da_estrela()),
+        (p::SIZE, arranjo.tamanho()),
+        (p::FILL, 1.0),
+        (p::FILL_R, 1.0),
+        (p::FILL_G, 0.82),
+        (p::FILL_B, 0.25),
+        (p::FILL_A, 1.0),
+        (p::STROKE_WIDTH, arranjo.contorno()),
+        (p::STROKE_R, 0.06),
+        (p::STROKE_G, 0.10),
+        (p::STROKE_B, 0.35),
+        (p::STROKE_A, 1.0),
+    ]
+}
+
+/// **A estrela desta cena**, cozida pela MESMA porta da shell (`build_shape_path` sobre o
+/// `ShapeParams::read` dos params acima, com os defaults do nó para os que a cena não escreve).
+#[cfg(test)]
+pub(crate) fn forma_da_cena(arranjo: Arranjo) -> ph2d_vec_scene::VecPath {
+    let ps = params_da_forma(arranjo);
+    let get = |k: &str| {
+        ps.iter().find(|(c, _)| *c == k).map_or_else(
+            || {
+                ph2d_node_motion_shape::param::SPECS
+                    .iter()
+                    .find(|s| s.name == k)
+                    .map_or(0.0, |s| s.default)
+            },
+            |(_, v)| *v,
+        )
+    };
+    crate::motion_shape_gen::build_shape_path(&ph2d_node_motion_shape::ShapeParams::read(get))
+}
+
 /// Constrói o documento. `None` se algum tipo de nó não estiver registado.
 pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
     for tipo in [
@@ -188,22 +229,8 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 
     // ── A FORMA: uma estrela AMARELA com CONTORNO azul-escuro. ⚠️ Sem tracejado: o tracejado sob
     // escala não-uniforme continua no Vello (doc 121 §9) e a cena mostraria a rota errada.
-    use ph2d_node_motion_shape::param as p;
     let forma = no(g, "source.shape", 0.0, 220.0);
-    for (chave, valor) in [
-        (p::KIND, indice_da_estrela()),
-        (p::SIZE, arranjo.tamanho()),
-        (p::FILL, 1.0),
-        (p::FILL_R, 1.0),
-        (p::FILL_G, 0.82),
-        (p::FILL_B, 0.25),
-        (p::FILL_A, 1.0),
-        (p::STROKE_WIDTH, arranjo.contorno()),
-        (p::STROKE_R, 0.06),
-        (p::STROKE_G, 0.10),
-        (p::STROKE_B, 0.35),
-        (p::STROKE_A, 1.0),
-    ] {
+    for (chave, valor) in params_da_forma(arranjo) {
         g.set_param(forma, chave, valor);
     }
 

@@ -397,11 +397,25 @@ fn sonda_relogio_das_estrelas_grandes() {
     let modo = std::env::var("PH2D_SONDA_MODO").unwrap_or_default();
     // `PH2D_SONDA_DENSO=1`: o arranjo DENSO da `=127` (estrela de `8 px`, contorno de `1 px`, o vão
     // da cena) a encher o alvo — o regime em que o proxy de telemóvel ficou preso na placa (§9.3).
-    let denso = std::env::var("PH2D_SONDA_DENSO").is_ok_and(|v| v == "1");
+    //
+    // `PH2D_SONDA_DENSO=2`: o MESMO arranjo com o vão da CENA (`2 · 0,125 · 1,8 = 0,45` unidades,
+    // `14,4 px`) — a `=127` densa põe as estrelas a metade do vão do `=1`, e o custo por estrela do
+    // app só se reproduz com a densidade dele.
+    let nivel_denso = std::env::var("PH2D_SONDA_DENSO").unwrap_or_default();
+    let denso = nivel_denso == "1" || nivel_denso == "2";
     if modo != "fill" {
         let w = if denso { 0.125 } else { 0.06 };
         f.stroke = Some(StrokeSpec::new(Rgba8::new(20, 30, 90, 255), w));
     }
+    // `=2`: a ESTRELA DA CENA (quinas vivas), cozida pela porta da shell — e a escala das cópias
+    // põe-na nos MESMOS píxeis (a cena tem `55,5 px` por unidade, a sonda `32`).
+    let k_cena = if nivel_denso == "2" {
+        use crate::motion_state::traco_esticado_demo as cena;
+        f = cena::forma_da_cena(cena::DENSO);
+        crate::motion_state::carimbo_demo::PX_POR_UNIDADE / 32.0
+    } else {
+        1.0
+    };
     let (ex, ey) = if modo == "conforme" {
         (1.04, 1.04)
     } else {
@@ -410,18 +424,21 @@ fn sonda_relogio_das_estrelas_grandes() {
     let h = store.push(f);
     let mut insts = Vec::new();
     // denso: estrela de `0,25` unidades (`8 px` a `32 px`/unidade) e o vão da cena (`2 · 0,25 · 1,8`)
-    let (tam, vao, lado) = if denso {
+    let (tam, vao, lado) = if nivel_denso == "2" {
+        (0.25_f32, 0.45_f32, 35)
+    } else if denso {
         (0.25_f32, 0.9_f32, 18)
     } else {
         (2.0, 0.0, 0)
     };
+    let inicio = if nivel_denso == "2" { -7.65_f32 } else { -7.8 };
     let celulas: Vec<(f32, f32)> = if denso {
         #[expect(clippy::cast_precision_loss, reason = "uma grelha pequena")]
         (0..lado * lado)
             .map(|k| {
                 (
-                    -7.8 + vao * (k % lado) as f32,
-                    -7.8 + vao * (k / lado) as f32,
+                    inicio + vao * (k % lado) as f32,
+                    inicio + vao * (k / lado) as f32,
                 )
             })
             .collect()
@@ -439,7 +456,11 @@ fn sonda_relogio_das_estrelas_grandes() {
                 atlas_uv: [0.0, 0.0, 1.0, 1.0],
                 premultiplied: 0.0,
                 world_pos: [x, y],
-                size: [tam * ex, tam * ey],
+                size: if nivel_denso == "2" {
+                    [ex * k_cena, ey * k_cena]
+                } else {
+                    [tam * ex, tam * ey]
+                },
                 basis: [1.0, 0.0, 0.0, 1.0],
                 tint: [1.0, 0.8, 0.2, 1.0],
                 anchor: [0.0, 0.0],
@@ -451,6 +472,10 @@ fn sonda_relogio_das_estrelas_grandes() {
     }
     let n = 40u32;
     let mut p = PlacaDeFormas::default();
+    // `PH2D_SONDA_SEM_CONTORNO=1`: o traço do eixo pixel a pixel (o caminho antes do doc 121 §9.5).
+    if std::env::var("PH2D_SONDA_SEM_CONTORNO").is_ok_and(|v| v == "1") {
+        p.sem_contorno();
+    }
     let mut geo = GeometriasDaPlaca::default();
     let quadro = |p: &mut PlacaDeFormas, geo: &mut GeometriasDaPlaca| {
         assert!(p.decide(true, &insts, &store, geo, camara()));
@@ -463,6 +488,11 @@ fn sonda_relogio_das_estrelas_grandes() {
         quadro(&mut p, &mut geo);
     }
     let placa = t.elapsed().as_secs_f64() * 1e3 / f64::from(n);
+    let (com_contorno, cap) = p.copias_com_contorno(&gpu, u32::try_from(insts.len()).unwrap_or(0));
+    eprintln!(
+        "  contorno calculado em {com_contorno} de {} copias (capacidade {cap} arestas)",
+        insts.len()
+    );
     // ⛔ doc 121 §9.3 — **um relógio sobre um passe que não desenhou é um número de NADA.** Com o
     // shader partido (um erro de compilação só sai no registo do `wgpu`) esta sonda leu `0,005 ms`
     // e saiu verde. ⇒ a camada cronometrada tem de ter tinta.

@@ -63,7 +63,7 @@ fn pentagrama() -> BezPath {
 }
 
 /// Um caminho ABERTO com quinas nos dois sentidos — pontas e juntas.
-fn zigue_zague() -> BezPath {
+pub(super) fn zigue_zague() -> BezPath {
     let mut bp = BezPath::new();
     bp.move_to((-0.5, 0.2));
     bp.line_to((-0.2, -0.3));
@@ -73,7 +73,7 @@ fn zigue_zague() -> BezPath {
     bp
 }
 
-fn circulo() -> BezPath {
+pub(super) fn circulo() -> BezPath {
     Circle::new((0.0, 0.0), 0.5).to_path(0.1)
 }
 
@@ -338,6 +338,27 @@ pub(super) fn pelo_passe(
     cs: &[Copia],
     format: wgpu::TextureFormat,
 ) -> Vec<u8> {
+    pelo_passe_com(gpu, forma, cs, format, true, 1)
+        .pop()
+        .expect("um quadro")
+        .0
+}
+
+/// O passe com o CONTORNO CALCULADO ligado ou não (doc 121 §9.5), durante `quadros` quadros do
+/// MESMO passe: por quadro, a imagem e quantas cópias ganharam o contorno (lido de volta — as duas
+/// imagens são quase iguais, logo nenhuma régua de pixel distingue o caminho que correu).
+///
+/// ⚠️ **Quadros e não um:** a capacidade das arestas cresce para o total MEDIDO, lido de volta dois
+/// quadros depois (`contorno.rs`); no 1.º quadro uma cópia que não cabe cai no caminho de sempre.
+/// Cada quadro é submetido e esperado antes do seguinte — é o que o `draw` exige.
+pub(super) fn pelo_passe_com(
+    gpu: &GpuContext,
+    forma: &Forma<'_>,
+    cs: &[Copia],
+    format: wgpu::TextureFormat,
+    contorno: bool,
+    quadros: usize,
+) -> Vec<(Vec<u8>, u32)> {
     let traco = forma.traco.as_ref().map(|(s, cor)| StrokeInput {
         path: forma.linha.unwrap_or(forma.bp),
         style: s,
@@ -350,6 +371,7 @@ pub(super) fn pelo_passe(
     })
     .expect("a forma prepara");
     let mut p = ShapePass::new(gpu, format);
+    p.com_contorno(contorno);
     p.set_geometries(gpu, [(7u32, &g)]);
     let insts: Vec<ShapeInstance> = cs
         .iter()
@@ -364,50 +386,60 @@ pub(super) fn pelo_passe(
         })
         .collect();
     p.upload_instances(gpu, &insts);
+    // Um clone do handle: o `draw` muta o passe (o contorno, doc 121 §9.5).
+    let copias = p.uploaded().expect("carregou").clone();
     let tex = textura(gpu, wgpu::TextureUsages::RENDER_ATTACHMENT, format);
     let vista = tex.create_view(&wgpu::TextureViewDescriptor::default());
-    let mut enc = gpu
-        .device
-        .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
     #[expect(clippy::cast_precision_loss, reason = "LADO é 512")]
     let alvo = [LADO as f32, LADO as f32];
-    p.draw(
-        gpu,
-        &mut enc,
-        &vista,
-        wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-        ShapeView {
-            lin: [1.0, 0.0, 0.0, 1.0],
-            t: [0.0, 0.0],
-            alvo,
-        },
-        Copias {
-            buffer: p.uploaded().expect("carregou"),
-            count: u32::try_from(insts.len()).expect("cabem"),
-        },
-    );
-    gpu.queue.submit(Some(enc.finish()));
-    if format == wgpu::TextureFormat::Rgba16Float {
-        let b = bytes_de_textura(gpu, &tex, 8);
-        b.as_chunks::<8>()
-            .0
-            .iter()
-            .flat_map(|px| {
-                let h = |i: usize| f16(u16::from_le_bytes([px[2 * i], px[2 * i + 1]]));
-                separa([h(0), h(1), h(2), h(3)])
-            })
-            .collect()
-    } else {
-        bytes_de_textura(gpu, &tex, 4)
-            .as_chunks::<4>()
-            .0
-            .iter()
-            .flat_map(|px| {
-                let f = |i: usize| f32::from(px[i]) / 255.0;
-                separa([f(0), f(1), f(2), f(3)])
-            })
-            .collect()
+    let n = u32::try_from(insts.len()).expect("cabem");
+    let mut saida = Vec::with_capacity(quadros);
+    for _ in 0..quadros {
+        let mut enc = gpu
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+        p.draw(
+            gpu,
+            &mut enc,
+            &vista,
+            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+            ShapeView {
+                lin: [1.0, 0.0, 0.0, 1.0],
+                t: [0.0, 0.0],
+                alvo,
+            },
+            Copias {
+                buffer: &copias,
+                count: u32::try_from(insts.len()).expect("cabem"),
+            },
+        );
+        gpu.queue.submit(Some(enc.finish()));
+        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+        let (com, _) = p.copias_com_contorno(gpu, n);
+        let px = if format == wgpu::TextureFormat::Rgba16Float {
+            let b = bytes_de_textura(gpu, &tex, 8);
+            b.as_chunks::<8>()
+                .0
+                .iter()
+                .flat_map(|px| {
+                    let h = |i: usize| f16(u16::from_le_bytes([px[2 * i], px[2 * i + 1]]));
+                    separa([h(0), h(1), h(2), h(3)])
+                })
+                .collect()
+        } else {
+            bytes_de_textura(gpu, &tex, 4)
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .flat_map(|px| {
+                    let f = |i: usize| f32::from(px[i]) / 255.0;
+                    separa([f(0), f(1), f(2), f(3)])
+                })
+                .collect()
+        };
+        saida.push((px, com));
     }
+    saida
 }
 
 /// O que a comparação devolve: o pior desvio de alfa, o pior de cor (separada, onde `α ≥ 64`), e

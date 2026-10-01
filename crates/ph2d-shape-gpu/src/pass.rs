@@ -58,14 +58,21 @@ pub struct ShapePass {
     instances: Option<wgpu::Buffer>,
     /// As geometrias carregadas, pela ordem dos handles — o que a comparação de [`Self::set_geometries`] lê.
     carregadas: Vec<u32>,
+    /// O contorno de cada cópia calculado uma vez (doc 121 §9.5).
+    contorno: crate::contorno::Contorno,
 }
 
-const SHADER: &str = include_str!("shape.wgsl");
+/// O shader: o desenho e os passes de cálculo do contorno num MÓDULO só — os dois lêem a mesma
+/// `copia_de` e a mesma geometria do traço (`bissectriz`), e escritas duas vezes elas divergiriam.
+const SHADER: &str = concat!(include_str!("shape.wgsl"), include_str!("contorno.wgsl"));
 
 fn storage_entry(binding: u32) -> wgpu::BindGroupLayoutEntry {
     wgpu::BindGroupLayoutEntry {
         binding,
-        visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+        // ⚠️ COMPUTE também: os passes do contorno (`contorno.wgsl`) lêem as cópias e o eixo.
+        visibility: wgpu::ShaderStages::VERTEX
+            | wgpu::ShaderStages::FRAGMENT
+            | wgpu::ShaderStages::COMPUTE,
         ty: wgpu::BindingType::Buffer {
             ty: wgpu::BufferBindingType::Storage { read_only: true },
             has_dynamic_offset: false,
@@ -110,7 +117,9 @@ impl ShapePass {
             entries: &[
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                    visibility: wgpu::ShaderStages::VERTEX
+                        | wgpu::ShaderStages::FRAGMENT
+                        | wgpu::ShaderStages::COMPUTE,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
@@ -126,9 +135,10 @@ impl ShapePass {
                 storage_entry(6),
             ],
         });
+        let contorno = crate::contorno::Contorno::new(gpu, &module, &layout);
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("ph2d-shape-gpu"),
-            bind_group_layouts: &[Some(&layout)],
+            bind_group_layouts: &[Some(&layout), Some(&contorno.leitura)],
             immediate_size: 0,
         });
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -174,7 +184,21 @@ impl ShapePass {
             blocos: vazio("ph2d-shape-gpu blocos"),
             instances: None,
             carregadas: Vec::new(),
+            contorno,
         }
+    }
+
+    /// **Quantas das `n` cópias do último desenho ganharam o contorno calculado**, e a capacidade
+    /// de arestas — lido de volta da placa (bloqueia). Instrumento de gates e sondas.
+    #[must_use]
+    pub fn copias_com_contorno(&self, gpu: &GpuContext, n: u32) -> (u32, u64) {
+        self.contorno.copias_com_contorno(gpu, n)
+    }
+
+    /// `false` ⇒ nenhuma cópia ganha o contorno calculado e o traço sai pixel a pixel do eixo, como
+    /// antes do doc 121 §9.5 — a porta pela qual os gates comparam os dois caminhos.
+    pub fn com_contorno(&mut self, ligado: bool) {
+        self.contorno.ligado = ligado;
     }
 
     /// Carrega as geometrias deste quadro. ⚠️ **Só reconstrói se o CONJUNTO de handles mudou** —
@@ -297,8 +321,12 @@ impl ShapePass {
 
     /// Desenha `count` cópias de `instances` sobre `target`, por cima do que lá está (ou depois
     /// de o limpar, conforme `load`).
+    ///
+    /// ⚠️ **O `encoder` tem de ser SUBMETIDO antes do próximo `draw`:** o total de arestas do
+    /// contorno é copiado nele para um buffer de leitura que o desenho seguinte manda mapear
+    /// (`contorno.rs`), e mapear um buffer cuja cópia não foi submetida é um erro de validação.
     pub fn draw(
-        &self,
+        &mut self,
         gpu: &GpuContext,
         encoder: &mut wgpu::CommandEncoder,
         target: &wgpu::TextureView,
@@ -346,6 +374,11 @@ impl ShapePass {
                 },
             ],
         });
+        let desenha = count > 0 && !self.carregadas.is_empty();
+        if desenha {
+            self.contorno.calcula(gpu, encoder, &bg, count);
+        }
+        let leitura = self.contorno.grupo_de_leitura(gpu);
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("ph2d-shape-gpu"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -363,11 +396,12 @@ impl ShapePass {
             occlusion_query_set: None,
             multiview_mask: None,
         });
-        if count == 0 || self.carregadas.is_empty() {
+        if !desenha {
             return;
         }
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &bg, &[]);
+        pass.set_bind_group(1, &leitura, &[]);
         pass.draw(0..6, 0..count);
     }
 }

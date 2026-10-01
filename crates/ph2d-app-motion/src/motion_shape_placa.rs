@@ -192,6 +192,15 @@ pub fn por_ordem() -> bool {
     *LIGADA.get_or_init(|| std::env::var("PH2D_FORMAS_NA_PLACA").map_or(true, |v| v != "0"))
 }
 
+/// A porta de bissecção do CONTORNO CALCULADO (doc 121 §9.5): `PH2D_CONTORNO_CALCULADO=0` devolve o
+/// traço sob escala não-uniforme ao caminho pixel a pixel. ⚠️ A mesma imagem pelos dois caminhos
+/// (gate `o_contorno_calculado_desenha_o_que_o_eixo_desenha`); a porta existe para medir o RELÓGIO.
+#[must_use]
+pub fn contorno_por_ordem() -> bool {
+    static LIGADO: OnceLock<bool> = OnceLock::new();
+    *LIGADO.get_or_init(|| std::env::var("PH2D_CONTORNO_CALCULADO").map_or(true, |v| v != "0"))
+}
+
 /// O lado da placa: o passe e a camada, criados na primeira vez que um quadro vai lá.
 struct Gpu {
     passe: ShapePass,
@@ -239,6 +248,9 @@ pub struct PlacaDeFormas {
     anterior: Option<(bool, bool)>,
     /// O afim mundo→pixel do quadro — o MESMO que a cena Vello recebe.
     cam: Affine,
+    /// `true` ⇒ o traço do eixo sai pixel a pixel mesmo com a porta do contorno aberta — para os
+    /// gates e a sonda compararem os dois caminhos sem ler o ambiente.
+    sem_contorno: bool,
 }
 
 impl PlacaDeFormas {
@@ -396,13 +408,20 @@ impl PlacaDeFormas {
             g.tamanho = tamanho;
         }
         g.passe.set_geometries(gpu, geometrias.prontas());
+        g.passe
+            .com_contorno(contorno_por_ordem() && !self.sem_contorno);
         // ⚠️ A contagem do dispositivo sem o buffer dele é um quadro sem cópias: o presente só
         // passa o buffer com o cozimento vivo, e colar cópias velhas seria pior que não desenhar.
+        // ⚠️ Um clone do handle (o `wgpu::Buffer` é contado por referência): o `draw` muta o passe
+        // (o contorno, doc 121 §9.5) e não pode receber um empréstimo dele próprio.
         let (buffer, count) = match self.do_dispositivo {
-            Some(n) => (dispositivo?, n),
+            Some(n) => (dispositivo?.clone(), n),
             None => {
                 g.passe.upload_instances(gpu, &self.copias);
-                (g.passe.uploaded()?, u32::try_from(self.copias.len()).ok()?)
+                (
+                    g.passe.uploaded()?.clone(),
+                    u32::try_from(self.copias.len()).ok()?,
+                )
             }
         };
         let c = self.cam.as_coeffs();
@@ -422,7 +441,10 @@ impl PlacaDeFormas {
             &g.vista,
             wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
             vista,
-            Copias { buffer, count },
+            Copias {
+                buffer: &buffer,
+                count,
+            },
         );
         gpu.queue.submit([enc.finish()]);
         Some(&g.vista)
@@ -430,6 +452,20 @@ impl PlacaDeFormas {
 }
 
 impl PlacaDeFormas {
+    /// Desliga o contorno calculado (doc 121 §9.5) nesta placa — o caminho pixel a pixel.
+    #[cfg(test)]
+    pub(crate) fn sem_contorno(&mut self) {
+        self.sem_contorno = true;
+    }
+
+    /// Quantas das cópias do último desenho ganharam o contorno calculado (doc 121 §9.5).
+    #[cfg(test)]
+    pub(crate) fn copias_com_contorno(&self, gpu: &GpuContext, n: u32) -> (u32, u64) {
+        self.gpu
+            .as_ref()
+            .map_or((0, 0), |g| g.passe.copias_com_contorno(gpu, n))
+    }
+
     /// A textura da camada — para o gate de paridade a ler de volta.
     #[cfg(test)]
     pub(crate) fn textura_da_camada(&self) -> Option<&wgpu::Texture> {

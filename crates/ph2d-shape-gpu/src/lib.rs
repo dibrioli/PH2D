@@ -23,6 +23,7 @@
 //! vectorial — quem chama decide e manda esses ao Vello, como hoje (doc 121 §2.1).
 
 mod blocos;
+mod contorno;
 mod eixo;
 mod geometry;
 mod pass;

@@ -43,45 +43,43 @@ fn fs_main_tinta(in: VsOut, @builtin(primitive_index) pi: u32) -> @location(0) v
     if ((tinta_cfg.armado & TINTA_RELEVO) == 0u) {
         return fs_core(in, t.c.xyz);
     }
-    return fs_core_n(in, t.c.xyz, tinta_relevo_n(in, t.c.w, t.corpo));
+    return fs_core_n(in, t.c.xyz, tinta_relevo_n(in, t.g, t.corpo));
 }
 
-// ⭐⭐⭐ **A NORMAL INCLINADA PELO RELEVO** — *bump mapping* sem parametrização
-// (M. Mikkelsen, «Bump Mapping Unparametrized Surfaces on the GPU», 2010): a
-// normal da superfície `p + h·n` sai das derivadas de ECRÃ da posição e da
-// altura, sem tangentes e sem UV — que é o que uma malha esculpida não tem.
+// ⭐⭐⭐ **A NORMAL INCLINADA PELO RELEVO** — o *gradiente de superfície*
+// (M. Mikkelsen, «Surface Gradient-Based Bump Mapping Framework», 2020): a
+// normal da superfície `p + h·n` é `normalize(n − ∇ₛh)`, com `∇ₛh` o gradiente
+// da altura projectado no plano tangente.
+//
+// ⭐⭐ **O gradiente é EXACTO e vem do OBJECTO** (`TintaLida::g`, report do dono
+// de 01/10: *«de cima parece bom, inclinado aparece artefato de relevo»*). A
+// 1.ª redacção tirava-o por diferenças de ECRÃ (`dpdx`/`dpdy`, Mikkelsen 2010),
+// que são por bloco de `2×2` píxeis — de cima a encosta ocupa muitos píxeis e
+// ninguém o via; inclinada ela cabe em um ou dois, e a luz acendia-se em
+// tracinhos soltos ao longo da borda. ⇒ a altura é linear/bilinear em cada
+// célula da retícula e a derivada dela não depende de onde se olha.
 //
 // ⚠️ Tudo em espaço de VISTA, o espaço do `n_view`. A altura vem em unidades
-// de OBJECTO, logo é escalada pela escala do `obj.model` (a pose é uniforme).
-//
-// ⛔ As derivadas são chamadas aqui, fora de qualquer ramo divergente: o
-// `tinta_no_ponto4` ramifica por `topo` (o valor que ele devolve pode vir de
-// um ramo, a CHAMADA de `dpdx` não pode), e os dois `if` de cima leem um
-// uniforme.
+// de OBJECTO e o declive é ADIMENSIONAL, logo o gradiente só roda: a vista é
+// rígida e a pose é uniforme, e `M·g` traz a escala uma vez — que se divide.
 //
 // ⭐⭐ **A inclinação é pesada pelo CORPO** (`docs/3D/29` §6) — a lei do passe
 // de luz 2D do Painter (`impasto_light::paint_body`: *relevo sob cobertura
 // zero não acende*). Sem ela a encosta que o alisamento do impasto espalha
 // para fora da tinta acendia o barro nu: o anel do report do dono de 01/10.
-// Com corpo `1` a normal é a de antes AO BIT (`1·grad` é `grad`).
-fn tinta_relevo_n(in: VsOut, h: f32, corpo: f32) -> vec3<f32> {
+fn tinta_relevo_n(in: VsOut, g: vec3<f32>, corpo: f32) -> vec3<f32> {
+    let m = cam.view * obj.model;
     let escala = length(obj.model[0].xyz);
-    let p = (cam.view * obj.model * vec4<f32>(in.opos, 1.0)).xyz;
-    let hs = h * escala;
-    let sx = dpdx(p);
-    let sy = dpdy(p);
-    let dhx = dpdx(hs);
-    let dhy = dpdy(hs);
     let n = normalize(in.n_view);
-    let r1 = cross(sy, n);
-    let r2 = cross(n, sx);
-    let det = dot(sx, r1);
-    let grad = clamp(corpo, 0.0, 1.0) * (sign(det) * (dhx * r1 + dhy * r2));
-    let nb = abs(det) * n - grad;
+    if (escala <= 0.0) {
+        return n;
+    }
+    let gv = (m * vec4<f32>(g, 0.0)).xyz / escala;
+    let gs = gv - n * dot(n, gv);
+    let nb = n - clamp(corpo, 0.0, 1.0) * gs;
     let l = length(nb);
-    // Um triângulo degenerado no ecrã (det = 0) não tem gradiente a ler.
     if (l <= 0.0) {
-        return in.n_view;
+        return n;
     }
     return nb / l;
 }

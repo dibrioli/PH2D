@@ -325,6 +325,11 @@ fn diag_fotografa_a_pincelada_do_painter() {
         let descer: Vec<(f32, f32)> = (0..=30).map(|k| (x, 290.0 + 4.0 * k as f32)).collect();
         traco_por(&mut s, &mut p, &descer);
     }
+    fotografa(&gpu, &mut s, &caminho);
+}
+
+/// Desenha a cena num alvo de `900×700` e grava-a em PNG em `caminho`.
+fn fotografa(gpu: &ph2d_gpu::GpuContext, s: &mut crate::Sculpt3dScene, caminho: &std::ffi::OsStr) {
     let (w, h) = (900u32, 700u32);
     let tex = gpu.device.create_texture(&wgpu::TextureDescriptor {
         label: Some("sonda painter"),
@@ -341,7 +346,7 @@ fn diag_fotografa_a_pincelada_do_painter() {
         view_formats: &[],
     });
     let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
-    s.render(&gpu, &view, (w, h));
+    s.render(gpu, &view, (w, h));
     let bpr = (w * 8).next_multiple_of(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
     let buf = gpu.device.create_buffer(&wgpu::BufferDescriptor {
         label: None,
@@ -616,3 +621,36 @@ fn diag_de_que_e_feito_o_pen_down() {
 // A tinta molhada que ESCORRE depois do pen-up (etapa 3) — filho pelo tecto de LOC.
 #[path = "tinta_no_produto_escorre.rs"]
 mod escorre;
+
+/// 🔎 **SONDA (não é gate)** — o report de 01/10 da vista INCLINADA: um traço
+/// de IMPASTO a `8x`, fotografado de frente (`…_cima.png`) e com a câmara
+/// inclinada (`…_inclinado.png`), em `$PH2D_SONDA_DIR`.
+#[test]
+#[ignore = "sonda: precisa de adaptador e de PH2D_SONDA_DIR"]
+fn diag_o_relevo_visto_inclinado() {
+    let Some(dir) = std::env::var_os("PH2D_SONDA_DIR") else {
+        return;
+    };
+    let dir = std::path::PathBuf::from(dir);
+    let gpu = gpu_or_skip!();
+    let mut s = cena_52(&gpu.device);
+    s.sync_mesh(&gpu.device, &gpu.queue);
+    let mut p = painter_vermelho();
+    p.set_paint_media(ph2d_tool_painter::PaintMedia::Impasto);
+    p.set_brush_color_srgb8([230, 30, 30]);
+    p.set_brush_size_px(28.0);
+    let pontos: Vec<(f32, f32)> = (0..=40)
+        .map(|k| {
+            let t = k as f32 / 40.0;
+            (340.0 + 260.0 * t, 330.0 + 40.0 * (t * 5.0).sin())
+        })
+        .collect();
+    traco_por(&mut s, &mut p, &pontos);
+    s.sync_mesh(&gpu.device, &gpu.queue);
+    fotografa(&gpu, &mut s, dir.join("relevo_cima.png").as_os_str());
+    let pitch0 = s.camera.pitch;
+    for (nome, dp) in [("relevo_inclinado", 0.9f32), ("relevo_rasante", 1.25)] {
+        s.camera.pitch = pitch0 - dp;
+        fotografa(&gpu, &mut s, dir.join(format!("{nome}.png")).as_os_str());
+    }
+}

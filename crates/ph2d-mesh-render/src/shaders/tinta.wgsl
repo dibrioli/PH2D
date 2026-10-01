@@ -72,14 +72,24 @@ fn tinta_espessura(i: u32) -> vec2<f32> {
 // da interpolação é uma, como na `ph2d_mesh_colors` (`pesos_tri`/
 // `pesos_quad`). ⚠️ A cor sai ao bit como saía: cada componente acumula-se
 // independentemente.
+//
+// ⭐⭐⭐ **E o GRADIENTE da altura, EXACTO** (`g`, report do dono de 01/10: *«de
+// cima parece bom, inclinado aparece artefato de relevo»*). A altura é linear
+// (triângulos) ou bilinear (quads) dentro de cada célula da retícula, logo a
+// derivada dela é ANALÍTICA: as leituras devolvem-na nos parâmetros delas e o
+// [`tinta_no_ponto4`] passa-a para o OBJECTO pela geometria do triângulo. ⛔ A
+// leitura antiga tirava-a por diferenças de ECRÃ (`dpdx`), que são por BLOCO de
+// `2×2` píxeis: com a vista inclinada a encosta cabe em poucos píxeis e a luz
+// acendia-se em tracinhos soltos ao longo da borda.
 struct TintaLida {
     c: vec4<f32>,
     corpo: f32,
+    g: vec3<f32>,
 }
 
 fn tinta_soma(o: TintaLida, i: u32, w: f32) -> TintaLida {
     let e = tinta_espessura(i);
-    return TintaLida(o.c + vec4<f32>(tinta_amostra(i), e.x) * w, o.corpo + e.y * w);
+    return TintaLida(o.c + vec4<f32>(tinta_amostra(i), e.x) * w, o.corpo + e.y * w, o.g);
 }
 
 fn tinta_vert(v: u32) -> vec3<f32> {
@@ -174,13 +184,25 @@ fn tinta_le_tri(base: u32, bar: vec3<f32>) -> TintaLida {
         ijk2 = vec3<u32>(i + 1u, j + 1u, k);
         w = vec3<f32>(1.0) - f;
     }
-    var out = TintaLida(vec4<f32>(0.0), 0.0);
+    var out = TintaLida(vec4<f32>(0.0), 0.0, vec3<f32>(0.0));
     let s0 = tinta_sitio_tri(ijk0.x, ijk0.y, ijk0.z);
-    out = tinta_soma(out, tinta_indice(base, s0.x, s0.y, s0.z), w.x);
+    let i0 = tinta_indice(base, s0.x, s0.y, s0.z);
+    out = tinta_soma(out, i0, w.x);
     let s1 = tinta_sitio_tri(ijk1.x, ijk1.y, ijk1.z);
-    out = tinta_soma(out, tinta_indice(base, s1.x, s1.y, s1.z), w.y);
+    let i1 = tinta_indice(base, s1.x, s1.y, s1.z);
+    out = tinta_soma(out, i1, w.y);
     let s2 = tinta_sitio_tri(ijk2.x, ijk2.y, ijk2.z);
-    out = tinta_soma(out, tinta_indice(base, s2.x, s2.y, s2.z), w.z);
+    let i2 = tinta_indice(base, s2.x, s2.y, s2.z);
+    out = tinta_soma(out, i2, w.z);
+    // ⭐ O gradiente nas BARICÊNTRICAS: `w = b·L − p` (sub-triângulo direito)
+    //   ou `1 − (b·L − p)` (o invertido), logo `∂h/∂b = ±L·(h₀, h₁, h₂)`. No
+    //   canto (`l − soma = 0`) a célula é um ponto e a derivada é zero.
+    let hs = vec3<f32>(tinta_espessura(i0).x, tinta_espessura(i1).x, tinta_espessura(i2).x);
+    if (l - soma == 1u) {
+        out.g = lf * hs;
+    } else if (l - soma > 1u) {
+        out.g = -lf * hs;
+    }
     return out;
 }
 
@@ -207,15 +229,30 @@ fn tinta_le_quad(base: u32, uv: vec2<f32>) -> TintaLida {
     let j = min(u32(floor(c.y)), l - 1u);
     let fu = c.x - f32(i);
     let fv = c.y - f32(j);
-    var out = TintaLida(vec4<f32>(0.0), 0.0);
+    var out = TintaLida(vec4<f32>(0.0), 0.0, vec3<f32>(0.0));
     let a = tinta_sitio_quad(i, j);
-    out = tinta_soma(out, tinta_indice(base, a.x, a.y, a.z), (1.0 - fu) * (1.0 - fv));
+    let ia = tinta_indice(base, a.x, a.y, a.z);
+    out = tinta_soma(out, ia, (1.0 - fu) * (1.0 - fv));
     let b = tinta_sitio_quad(i + 1u, j);
-    out = tinta_soma(out, tinta_indice(base, b.x, b.y, b.z), fu * (1.0 - fv));
+    let ib = tinta_indice(base, b.x, b.y, b.z);
+    out = tinta_soma(out, ib, fu * (1.0 - fv));
     let d = tinta_sitio_quad(i + 1u, j + 1u);
-    out = tinta_soma(out, tinta_indice(base, d.x, d.y, d.z), fu * fv);
+    let id = tinta_indice(base, d.x, d.y, d.z);
+    out = tinta_soma(out, id, fu * fv);
     let e = tinta_sitio_quad(i, j + 1u);
-    out = tinta_soma(out, tinta_indice(base, e.x, e.y, e.z), (1.0 - fu) * fv);
+    let ie = tinta_indice(base, e.x, e.y, e.z);
+    out = tinta_soma(out, ie, (1.0 - fu) * fv);
+    // ⭐ O gradiente em `(u, v)` — a derivada da BILINEAR, vezes `L` porque a
+    //   célula mede `1/L` do quad.
+    let ha = tinta_espessura(ia).x;
+    let hb = tinta_espessura(ib).x;
+    let hd = tinta_espessura(id).x;
+    let he = tinta_espessura(ie).x;
+    out.g = vec3<f32>(
+        lf * ((1.0 - fv) * (hb - ha) + fv * (hd - he)),
+        lf * ((1.0 - fu) * (he - ha) + fu * (hd - hb)),
+        0.0,
+    );
     return out;
 }
 
@@ -255,18 +292,36 @@ fn tinta_no_ponto4(pi: u32, p: vec3<f32>) -> TintaLida {
     let n = cross(pb - pa, pc - pa);
     let dd = dot(n, n);
     var bar = vec3<f32>(1.0, 0.0, 0.0);
+    // ⭐ Os gradientes das baricêntricas no OBJECTO — constantes no triângulo
+    //   (`wa = (p − pb)·(n × (pc − pb))/|n|²`); são a ponte entre a derivada que
+    //   as leituras devolvem e a inclinação da peça.
+    var ga = vec3<f32>(0.0);
+    var gb = vec3<f32>(0.0);
     if (dd > 0.0) {
         let wa = dot(cross(pc - pb, p - pb), n) / dd;
         let wb = dot(cross(pa - pc, p - pc), n) / dd;
         bar = vec3<f32>(wa, wb, 1.0 - wa - wb);
+        ga = cross(n, pc - pb) / dd;
+        gb = cross(n, pa - pc) / dd;
     }
+    let gc = -ga - gb;
 
     if (tinta_topo[base + 9u] == 3u) {
-        return tinta_le_tri(base, bar);
+        var t = tinta_le_tri(base, bar);
+        t.g = t.g.x * ga + t.g.y * gb + t.g.z * gc;
+        return t;
     }
     // `sub = 0`: (a,b,c) ⇒ u = βb + βc, v = βc.
     // `sub = 1`: (a,c,d) ⇒ u = βc,      v = βc + βd.
     var uv = vec2<f32>(bar.y + bar.z, bar.z);
-    if (sub == 1u) { uv = vec2<f32>(bar.y, bar.y + bar.z); }
-    return tinta_le_quad(base, uv);
+    var gu = -ga;
+    var gv = gc;
+    if (sub == 1u) {
+        uv = vec2<f32>(bar.y, bar.y + bar.z);
+        gu = gb;
+        gv = -ga;
+    }
+    var t = tinta_le_quad(base, uv);
+    t.g = t.g.x * gu + t.g.y * gv;
+    return t;
 }

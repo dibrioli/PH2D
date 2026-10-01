@@ -276,3 +276,61 @@ fn o_fs_core_nunca_le_a_cor_bruta_do_vertice() {
         "um ramo do fs_core lê `in.vcolor`: a tinta fina morre nesse modo de luz (report de 29/09)"
     );
 }
+
+/// As funções do módulo que tiram alguma derivada de ECRÃ (`dpdx`, `dpdy`,
+/// `fwidth`, nas três precisões) — pelo IR do `naga`, nunca pelo texto, que
+/// casaria a prosa que explica a cura.
+fn com_derivada_de_ecra(module: &naga::Module) -> Vec<String> {
+    module
+        .functions
+        .iter()
+        .filter(|(_, f)| {
+            f.expressions
+                .iter()
+                .any(|(_, e)| matches!(e, naga::Expression::Derivative { .. }))
+        })
+        .filter_map(|(_, f)| f.name.clone())
+        .collect()
+}
+
+/// ⭐⭐⭐ **GATE — a normal do relevo NÃO depende da vista: nenhuma derivada de
+/// ECRÃ** (report do dono de 01/10: *«de cima parece bom, inclinado aparece
+/// artefato de relevo»*). A 1.ª lei tirava o gradiente da altura por `dpdx`/
+/// `dpdy`, que o hardware calcula por bloco de `2×2` píxeis: inclinada a
+/// encosta cabe em um ou dois, e a borda acendia-se em estilhaços soltos. Hoje
+/// o gradiente é EXACTO, da geometria do triângulo (`TintaLida::g`), e a
+/// paridade dele contra a CPU vive no gate da placa.
+///
+/// ⚠️ O CONTROLO vem primeiro: a régua TEM de achar a derivada numa função que
+/// a tire — senão um IR que a escrevesse noutra forma passaria por vácuo.
+#[test]
+fn a_normal_do_relevo_nao_tira_derivadas_de_ecra() {
+    let controlo = "fn f(x: f32) -> f32 { return dpdx(x); }\n\
+                    @fragment fn m(@location(0) x: f32) -> @location(0) vec4<f32> \
+                    { return vec4<f32>(f(x)); }";
+    let module = naga::front::wgsl::parse_str(controlo).expect("o controlo parsa");
+    assert_eq!(
+        com_derivada_de_ecra(&module),
+        vec!["f".to_string()],
+        "CONTROLO: a régua não achou o `dpdx`"
+    );
+
+    let src = crate::fonte::mesh_wgsl(true);
+    let module = naga::front::wgsl::parse_str(&src).expect("a fonte com tinta parsa");
+    assert!(
+        module
+            .functions
+            .iter()
+            .any(|(_, f)| f.name.as_deref() == Some("tinta_relevo_n")),
+        "a fixtura: a função da normal do relevo existe com este nome"
+    );
+    let culpadas: Vec<String> = com_derivada_de_ecra(&module)
+        .into_iter()
+        .filter(|n| n.starts_with("tinta_"))
+        .collect();
+    assert!(
+        culpadas.is_empty(),
+        "a leitura do relevo voltou a tirar derivadas de ecrã em {culpadas:?} — \
+         a borda inclinada parte-se em estilhaços"
+    );
+}

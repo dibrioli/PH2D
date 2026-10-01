@@ -188,3 +188,55 @@ borda»* (foto: um anel cinzento em degraus à volta de um traço vermelho) e
 halo exigia corpo **exactamente zero** e reprovou com `3/255` em `4` píxeis — a
 cobertura e o alfa de 8 bits não arredondam no mesmo sítio. A régua passou a ser
 a grandeza que o produto LÊ (o relevo aceso), não um sucedâneo dela.
+
+## 7. A normal do relevo deixa de depender da VISTA (01/10, report com foto)
+
+*«Olhando exatamente de cima parece bom! MAS quando se vê inclinado, aparece
+artefato de relevo»* — na foto, estilhaços cor-de-rosa claros soltos ao longo da
+borda do fim do traço, junto da silhueta.
+
+### 7.1 O mecanismo, reproduzido antes da cura
+
+A D5 tirava o gradiente da altura por **diferenças de ECRÃ** (`dpdx`/`dpdy`,
+Mikkelsen 2010). O hardware calcula-as por **bloco de `2×2` píxeis**: de cima a
+encosta do impasto ocupa muitos píxeis e o erro não se vê; inclinada ela cabe em
+um ou dois, um bloco atravessa a borda (ou uma aresta de triângulo) e a normal
+desse bloco aponta para onde calhar — a luz acende-se em **estilhaços**.
+
+Sonda pelo caminho do produto (`diag_o_relevo_visto_inclinado`, um traço de
+impasto a `8x` na cena `=52`, de frente e inclinado; `PH2D_SONDA_DIR`): com a lei
+antiga a borda inclinada tem fragmentos claros soltos — a foto do dono — e de
+cima aparecem riscos ao longo das ARESTAS da malha (blocos que atravessam dois
+triângulos); com a lei nova os dois somem.
+
+### 7.2 A lei que fica
+
+- **O gradiente é EXACTO** (`TintaLida::g`): dentro de cada célula da retícula a
+  altura é linear (triângulos) ou bilinear (quads), logo as leituras devolvem a
+  derivada nos parâmetros delas e o `tinta_no_ponto4` passa-a para o OBJECTO pelos
+  gradientes das baricêntricas (`∇βa = n × (pc − pb)/|n|²`) — a mesma geometria
+  de que já recuperava as baricêntricas.
+- **A luz lê-o pelo gradiente de SUPERFÍCIE** (Mikkelsen 2020):
+  `n' = normalize(n − corpo·(g − n(n·g)))`, em espaço de vista (o declive é
+  adimensional, só roda). ⛔ **Nenhuma derivada de ecrã** na leitura do relevo.
+
+### 7.3 Gates e mutação
+
+| gate | o que afirma |
+|---|---|
+| `a_lei_da_reticula_le_o_mesmo_na_placa_e_na_cpu` (3.ª palavra) | o gradiente da placa é o da LEI: diferenças centrais da `altura_*` na CPU, longe das fronteiras de célula, barra relativa `2e-3` |
+| `a_normal_do_relevo_nao_tira_derivadas_de_ecra` (sem placa) | o IR do `naga` não tem `Derivative` em nenhuma função `tinta_*`, com o CONTROLO de que a régua acha um `dpdx` |
+| `o_relevo_acende_como_a_geometria_que_ele_finge` | a rampa pintada como relevo muda a luz para o MESMO lado e com a mesma ordem de força que a malha LEVANTADA pela mesma rampa — sem ele, um sinal trocado passava no gate de «onde» |
+
+Arnês: `muta_a_normal_do_relevo.sh` (com a placa).
+
+⛔ **Uma régua RECUSADA, com a razão:** *contar píxeis soltos na diferença
+relevo − liso* lia a lei nova PIOR na vista rasante sintética (`68` contra `25`) —
+ela contava como «solto» o traço contínuo de um píxel que uma encosta virada para
+a câmara desenha a `69°`. Um recorte à mão mostrou estilhaços na antiga e um traço
+contínuo na nova: *uma régua cujo «defeito» inclui o desenho certo não decide*.
+
+⏳ **Fica nomeado:** a altura é contínua e o gradiente não (por célula), logo numa
+encosta muito inclinada vêem-se as facetas da retícula como um traço em degraus —
+o mesmo detalhe que a cor tem a esse degrau. Curá-lo é interpolar gradientes por
+amostra (o análogo das normais por vértice), com o custo por medir.

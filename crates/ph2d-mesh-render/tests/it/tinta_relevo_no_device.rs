@@ -30,14 +30,18 @@ use super::gpu_render::{FORMAT, H, W, camera_for, lum, render_using_rig_shade, r
 const N: usize = 8;
 
 fn grelha() -> Mesh {
+    grelha_com(|_| 0.0)
+}
+
+/// A mesma grelha com cada vértice levantado `z(x)` — a rampa como GEOMETRIA.
+fn grelha_com(z: impl Fn(f32) -> f32) -> Mesh {
     let lado = N + 1;
     let pos: Vec<[f32; 3]> = (0..lado)
-        .flat_map(|j| {
-            (0..lado).map(move |i| {
-                let x = -1.0 + 2.0 * i as f32 / N as f32;
-                let y = -1.0 + 2.0 * j as f32 / N as f32;
-                [x, y, 0.0]
-            })
+        .flat_map(|j| (0..lado).map(move |i| (i, j)))
+        .map(|(i, j)| {
+            let x = -1.0 + 2.0 * i as f32 / N as f32;
+            let y = -1.0 + 2.0 * j as f32 / N as f32;
+            [x, y, z(x)]
         })
         .collect();
     let v = |i: usize, j: usize| (j * lado + i) as u32;
@@ -168,5 +172,74 @@ fn o_relevo_inclina_a_luz_so_onde_ha_degrau() {
     assert!(
         pior_fora <= 1.5,
         "o relevo mudou a luz FORA do degrau: {pior_fora} em {onde_fora:?}"
+    );
+}
+
+/// ⭐⭐⭐ **GATE — o relevo acende como a GEOMETRIA que ele finge** (report do
+/// dono de 01/10, a vista inclinada). A normal do relevo deixou de vir de
+/// diferenças de ecrã e passou a ser o gradiente EXACTO da altura; a régua que
+/// prova que ela aponta para o lado certo é a própria malha levantada pela
+/// mesma rampa. Na faixa do degrau as duas imagens mudam a luz para o MESMO
+/// lado e com força da mesma ordem.
+///
+/// ⚠️ Sem esta régua um gradiente com o SINAL trocado passava no gate de cima,
+/// que só pergunta ONDE a luz muda. O CONTROLO é a fixtura ter a mudança:
+/// a geometria tem de acender a faixa por mais do que o arredondamento.
+#[test]
+#[ignore = "precisa de adaptador"]
+fn o_relevo_acende_como_a_geometria_que_ele_finge() {
+    let Some((device, queue)) = device() else {
+        panic!("sem adaptador — este gate não é verde por skip");
+    };
+    let m = grelha();
+    let faces: Vec<Vec<u32>> = m.faces().iter().map(|f| f.verts().to_vec()).collect();
+    let mut plano = Tinta::nova(m.vert_count(), faces.iter().map(|f| &f[..]), 0);
+    for a in plano.amostras_mut() {
+        *a = [0.8, 0.8, 0.8];
+    }
+    let liso = desenha(&device, &queue, &m, &plano);
+    let levantada = grelha_com(altura_em);
+    let geometria = desenha(&device, &queue, &levantada, &plano);
+    for (i, p) in m.positions().iter().enumerate() {
+        plano.relevo_mut()[i] = [altura_em(p[0]), 1.0];
+    }
+    let relevo = desenha(&device, &queue, &m, &plano);
+
+    // A faixa do degrau: as duas colunas do meio, sem as bordas delas, onde
+    // a malha levantada interpola a normal com a coluna vizinha.
+    let (mut x0, mut x1) = (W, 0);
+    for y in 0..H {
+        for x in 0..W {
+            if lum(&liso, x, y) > 0.0 {
+                x0 = x0.min(x);
+                x1 = x1.max(x);
+            }
+        }
+    }
+    let largura = (x1 - x0) as f32;
+    let meio = (x0 + x1) as f32 / 2.0;
+    let (mut soma_g, mut soma_r, mut n) = (0.0f32, 0.0f32, 0usize);
+    for y in H / 4..3 * H / 4 {
+        for x in 0..W {
+            if ((x as f32) - meio).abs() <= largura / 16.0 {
+                soma_g += lum(&geometria, x, y) - lum(&liso, x, y);
+                soma_r += lum(&relevo, x, y) - lum(&liso, x, y);
+                n += 1;
+            }
+        }
+    }
+    let (g, r) = (soma_g / n as f32, soma_r / n as f32);
+    assert!(
+        g.abs() > 4.0,
+        "CONTROLO: a rampa levantada não mudou a luz ({g})"
+    );
+    assert!(
+        g.signum() == r.signum(),
+        "o relevo acende para o lado CONTRÁRIO da geometria: {r} contra {g}"
+    );
+    let razao = r / g;
+    assert!(
+        (0.5..=2.0).contains(&razao),
+        "o relevo acende {razao}× a geometria que finge ({r} contra {g})"
     );
 }

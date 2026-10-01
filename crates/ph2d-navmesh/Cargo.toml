@@ -1,0 +1,33 @@
+[package]
+name = "ph2d-navmesh"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# A CONSTRUÇÃO da malha andável a partir dos obstáculos (plano 30 §1, W1). ⚠️ **Zero pacotes NOVOS no
+# `Cargo.lock`** — as duas bibliotecas já estavam resolvidas, por outros caminhos (medido na pesquisa
+# 29 §6.2):
+#
+# - `clipper2-rust` (BSL-1.0, a excepção do `deny.toml` já existe) — a união e a diferença dos
+#   polígonos, em INTEIROS (`Paths64`). ⛔ O `inflate_paths_64` dela NÃO é usado: o recuo redondo
+#   calcula o passo do arco com `f64::sin`/`cos` da plataforma, que não é o mesmo bit nos três
+#   sistemas; o nosso recuo é uma soma de Minkowski com um polígono cujos vértices saem só de `sqrt`.
+# - `spade` (MIT/Apache) — a triangulação de Delaunay COM RESTRIÇÕES, com predicados exactos.
+#   ⛔ A classificação dentro/fora das faces NÃO é a dele (o `flood_fill` usa um `HashSet`): é nossa,
+#   por paridade, sobre o índice das faces.
+[dependencies]
+ph2d-nav = { path = "../ph2d-nav" }
+clipper2-rust = "1.1.0"
+spade = "2.15.1"
+
+[dev-dependencies]
+ph2d-nav = { path = "../ph2d-nav", features = ["test-support"] }
+miniz_oxide = "0.8"
+
+[lints]
+workspace = true

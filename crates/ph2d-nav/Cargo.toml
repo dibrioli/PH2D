@@ -1,0 +1,30 @@
+[package]
+name = "ph2d-nav"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⛔ **ZERO dependências, e isso é o desenho** — o molde das irmãs `ph2d-health`, `ph2d-topdown` e
+# `ph2d-sweep`: esta folha é a LEI da navegação (a malha andável como DADOS, onde um ponto está nela,
+# o caminho mais curto e a condução de um agente) e mais nada. Quem CONSTRÓI a malha a partir dos
+# colisores é a `ph2d-navmesh` (que depende desta, nunca o contrário); quem a liga ao mundo é a ponte
+# da física.
+#
+# ⚠️ **Só `+ − × ÷ sqrt` em `f64`, e isso é a cerca (HR-5):** o IEEE 754 fixa as cinco ao bit em toda
+# máquina, logo um caminho pode entrar no hash determinístico que o CI compara nos três sistemas sem o
+# pin de `libm`. ⛔ Nada de `atan2`/`sin`/`cos` nesta crate.
+
+[dependencies]
+
+[features]
+# O ORÁCULO EXACTO (grafo de visibilidade + Dijkstra) — caro, e só para os gates de paridade das duas
+# crates. ⛔ Nunca no caminho do produto.
+test-support = []
+
+[lints]
+workspace = true

@@ -1,0 +1,7 @@
+//! Os gates de integração da construção + procura: a varredura contra o ORÁCULO EXACTO, o
+//! determinismo entre processos, e o corpus do Godot.
+
+mod cena;
+mod contra_o_exacto;
+mod determinismo;
+mod oraculo_do_godot;

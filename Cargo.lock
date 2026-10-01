@@ -6531,6 +6531,20 @@ name = "ph2d-motion-region"
 version = "0.0.0"
 
 [[package]]
+name = "ph2d-nav"
+version = "0.0.0"
+
+[[package]]
+name = "ph2d-navmesh"
+version = "0.0.0"
+dependencies = [
+ "clipper2-rust",
+ "miniz_oxide 0.8.9",
+ "ph2d-nav",
+ "spade",
+]
+
+[[package]]
 name = "ph2d-node-audio-bands"
 version = "0.0.0"
 dependencies = [

@@ -520,4 +520,31 @@ impl crate::App {
         self.playhead.rewind();
         self.playhead.play();
     }
+
+    /// ⭐⭐⭐ **A cena da NAVEGAÇÃO** (plano 30, W3) — `PH2D_NAV_SMOKE=1`. Ver
+    /// [`ph2d_app_components::nav_smoke`].
+    ///
+    /// ⚠️ **O overlay de física abre junto** (`show_colliders`): o caminho de cada agente é desenhado
+    /// por ele, e o roteiro manda olhar para a linha que dobra nos cantos.
+    pub(crate) fn nav_smoke(&mut self) {
+        if self.components.smokes.nav {
+            return;
+        }
+        let Some(v) = std::env::var_os("PH2D_NAV_SMOKE") else {
+            return;
+        };
+        let nivel = v.to_str().and_then(|s| s.parse().ok()).unwrap_or(1);
+        let Some(cx) = self.components_ctx() else {
+            return;
+        };
+        let _ = ph2d_app_components::nav_smoke::montar(cx.sim.world_mut(), nivel);
+        self.components.smokes.nav = true;
+        self.timeline.flags.simulate_physics = true;
+        self.show_colliders = true;
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            crate::components_scenes::abre_a_regua_da_corrida(hero);
+        }
+        self.playhead.rewind();
+        self.playhead.play();
+    }
 }

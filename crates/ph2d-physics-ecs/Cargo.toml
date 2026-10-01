@@ -51,6 +51,10 @@ ph2d-projectile = { path = "../ph2d-projectile" }
 # ⭐ A lei da VIDA (plano 28, W1) — folha pura, sem transcendental, ao bit contra o GDevelop.
 # A ponte a corre DEPOIS do passo, pelos dois laços (plano 28 §8.2).
 ph2d-health = { path = "../ph2d-health" }
+# ⭐ A NAVEGAÇÃO (plano 30, W3) — o caminho mais curto e a condução (folha sem dependências) e a
+# malha andável a partir dos colisores estáticos. A ponte corre-as DENTRO da porta dos controladores.
+ph2d-nav = { path = "../ph2d-nav" }
+ph2d-navmesh = { path = "../ph2d-navmesh" }
 # ⭐ O splitmix64 da casa (`ph2d_shake::baralha`), para o sorteio da ESQUIVA: a lei pede UM
 # sorteio por golpe, e o gerador tem de ser determinista e ir no anel com a vida.
 ph2d-shake = { path = "../ph2d-shake" }

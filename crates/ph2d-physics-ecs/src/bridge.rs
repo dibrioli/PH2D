@@ -40,6 +40,8 @@ pub mod joints;
 mod kinematic;
 /// ⭐ **As mortes anunciadas** — a porta que o dreno da shell lê (plano 28, W2).
 mod mortes;
+/// ⭐⭐⭐ **A NAVEGAÇÃO** (plano 30, W3) — ver o cabeçalho dele.
+pub mod nav;
 /// A TRADUÇÃO `PhysicsJoint` → `JointDesc` — irmão do `joints` pelo cap de 700
 /// LOC, cortado por responsabilidade (docs dele).
 /// A metade PEÇA do reconcile — os colliders extra de um corpo composto.
@@ -553,6 +555,9 @@ pub struct PhysicsBridge {
     /// mesmo tique. A sonda `mede_o_golpe_que_chega` mediu porque existe: uma bala nunca encosta no
     /// alvo, logo sem este canal o dano de uma bala nunca chegaria.
     toques_do_mover: Vec<health::ToqueDoMover>,
+    /// ⭐⭐⭐ **A NAVEGAÇÃO** (plano 30, W3) — as malhas derivadas, a memória de cada agente (que
+    /// entra no anel pelo [`tape::ControllerMemory`]) e os factos.
+    nav: nav::NavWorld,
     /// **A plataforma que cada player está ATRAVESSANDO agora** (W12).
     ///
     /// ⚠️ **Uma forma, não um relógio, e não "todas as one-way":** a descida

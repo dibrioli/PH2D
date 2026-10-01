@@ -247,6 +247,8 @@ mod area;
 /// ⭐⭐⭐ **VIDA e DANO** (plano 28, W2) — ver o cabeçalho dele.
 mod health;
 mod health_bar;
+/// ⭐⭐⭐ **A NAVEGAÇÃO** (plano 30, W3) — a região e o agente; ver o cabeçalho dele.
+mod nav;
 mod overrides;
 /// O componente do player de plataforma (docs dele).
 mod player;
@@ -267,6 +269,7 @@ pub use area::{
 };
 pub use health::{Damage, Health, HealthNow, OnHit, RESISTANCES_MAX, Resistance, kind_key};
 pub use health_bar::HealthBar;
+pub use nav::{NavAgent, NavRegion, NavTarget};
 pub use overrides::{
     Ccd, CombineRule, DampMode, DampingOverride, Dominance, GravityScale, InitialVelocity,
     LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine, OneWayPlatform,

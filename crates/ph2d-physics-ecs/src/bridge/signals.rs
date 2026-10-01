@@ -24,7 +24,9 @@ use ph2d_ecs::{Entity, SimWorld};
 
 use ph2d_platformer::{JumpKind, PlayerEvent};
 
-use crate::{Health, PlayerSignals, RaySignals, SignalOnHit, SignalOnLeave, SignalTagFilter};
+use crate::{
+    Health, NavAgent, PlayerSignals, RaySignals, SignalOnHit, SignalOnLeave, SignalTagFilter,
+};
 
 use super::PhysicsBridge;
 use super::contacts::ContactPhase;
@@ -206,6 +208,30 @@ impl PhysicsBridge {
                 name: nome.to_owned(),
                 source: ev.target,
                 other: ev.source,
+            });
+        }
+        // ── E A NAVEGAÇÃO (plano 30, W3) ─────────────────────────────────────
+        // ⚠️ **A SEXTA fonte da MESMA porta** — e é por isso que o plano não precisou de uma variante
+        // nova no `SignalOrigin`: chegar, ficar sem caminho e ficar preso são factos de UMA parte
+        // (o próprio agente), como os do player abaixo, e a tabela de acções já os sabe ouvir.
+        // Nome vazio é silêncio, o molde de toda a casa.
+        for ev in self.nav_events() {
+            let Some(agente) = sim.world().get::<NavAgent>(ev.agent) else {
+                continue;
+            };
+            let nome = match ev.kind {
+                ph2d_nav::Event::Arrived => &agente.on_arrived,
+                ph2d_nav::Event::NoPath => &agente.on_no_path,
+                ph2d_nav::Event::Stuck => &agente.on_stuck,
+            };
+            let nome = nome.trim();
+            if nome.is_empty() || !passa(ev.agent, ev.agent) {
+                continue;
+            }
+            out.push(SignalEvent {
+                name: nome.to_owned(),
+                source: ev.agent,
+                other: ev.agent,
             });
         }
         // ── E O PLAYER (`W-PlayerOut`, A3) ───────────────────────────────────

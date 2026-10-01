@@ -41,6 +41,9 @@ impl PhysicsBridge {
         // ⭐ O canal dos toques de mover é deste TIQUE: os três movers abaixo enchem-no, e a vida
         // lê-o depois do passo (plano 28 §8.1).
         self.toques_do_mover.clear();
+        // ⭐⭐⭐ Os AGENTES de navegação (plano 30, W3) PRIMEIRO: eles escrevem a intenção do mover de
+        // vista de cima, que corre logo abaixo no MESMO tique.
+        self.drive_nav_agents(sim);
         // Os PLAYERS (W2): o sensor pergunta ao BVH que o step ANTERIOR deixou e a mola escreve o
         // motor deste tique.
         self.drive_players(sim);
@@ -61,5 +64,7 @@ impl PhysicsBridge {
     /// fita por tique, e o replay tem de saber QUAL tique está a refazer.
     pub(super) fn depois_do_passo(&mut self, sim: &SimWorld, publicar: bool, tick: u64) {
         self.drive_health(sim, publicar, tick);
+        // ⭐ E os factos de NAVEGAÇÃO (plano 30, W3): nascem antes do passo e publicam-se aqui.
+        self.publish_nav_events(publicar);
     }
 }

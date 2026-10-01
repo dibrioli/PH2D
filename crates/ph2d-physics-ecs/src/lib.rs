@@ -45,6 +45,7 @@ pub use bridge::contacts::{
 };
 pub use bridge::health::{HealthEvent, HealthEventKind, PedidoDeVida};
 pub use bridge::joint_break::JointBreakEvent;
+pub use bridge::nav::NavEvent;
 pub use bridge::signals::SignalEvent;
 pub use bridge::triggers::TriggerEvent;
 pub use keyboard_driven::{for_each_keyboard_driven, reads_the_keyboard};
@@ -79,11 +80,12 @@ pub use components::{
     AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaForceWorldAxes, AreaFormDrag,
     AreaTorque, BodyKind, Ccd, Collider, ColliderShape, CombineRule, Damage, DampMode,
     DampingOverride, Dominance, GravityScale, Health, HealthBar, HealthNow, InitialVelocity,
-    LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine, NoWallCling, OnHit,
-    OneWayPlatform, PlatformLift, PlatformPlayer, PlayerMode, PlayerSignals, ProjectileMotion,
-    PulleyWheel, RESISTANCES_MAX, RayHit, RaySensor, RaySignals, Resistance, RigidBody, RopeStops,
-    SignalOnHit, SignalOnLeave, SignalTagFilter, TopDownPlayer, WalkSurface, WestonAxle, WrapSide,
-    kind_key, reseat_mounted_axle, reseat_wheel_geometry, rope_joint_of,
+    LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine, NavAgent, NavRegion,
+    NavTarget, NoWallCling, OnHit, OneWayPlatform, PlatformLift, PlatformPlayer, PlayerMode,
+    PlayerSignals, ProjectileMotion, PulleyWheel, RESISTANCES_MAX, RayHit, RaySensor, RaySignals,
+    Resistance, RigidBody, RopeStops, SignalOnHit, SignalOnLeave, SignalTagFilter, TopDownPlayer,
+    WalkSurface, WestonAxle, WrapSide, kind_key, reseat_mounted_axle, reseat_wheel_geometry,
+    rope_joint_of,
 };
 pub use interaction::{
     HoldMode, InteractionSettings, InteractionTool, MAX_ATTRACT_FORCE, MAX_BLAST_IMPULSE,

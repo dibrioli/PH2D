@@ -259,6 +259,7 @@ impl PhysicsBridge {
                 topdown: self.topdown_state.clone(),
                 projectile: self.projectile_state.clone(),
                 health: self.health_state.clone(),
+                nav: self.nav.agents.clone(),
             },
         );
         // A janela do ring é limitada; a nossa segue a dele pela borda de baixo
@@ -281,6 +282,7 @@ impl PhysicsBridge {
             self.topdown_state = m.topdown.clone();
             self.projectile_state = m.projectile.clone();
             self.health_state = m.health.clone();
+            self.nav.agents = m.nav.clone();
         }
     }
 
@@ -324,6 +326,9 @@ pub(super) struct ControllerMemory {
     /// ⭐⭐⭐ As VIDAS (plano 28, W2) — o quarto assunto, e ele não precisou de ninguém se lembrar:
     /// o tipo obrigou o `record` e o `seed` a recebê-lo.
     pub(super) health: BTreeMap<Entity, super::health::HealthState>,
+    /// ⭐⭐⭐ Os AGENTES de navegação (plano 30, W3) — o caminho, o ponto em curso e os relógios do
+    /// «preso»: sem eles um scrub devolvia o agente certo a seguir o caminho de outro tique.
+    pub(super) nav: BTreeMap<Entity, ph2d_nav::AgentRuntime>,
 }
 
 /// O tipo da tabela — uma memória por tique âncora.

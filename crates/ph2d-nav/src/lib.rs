@@ -18,6 +18,7 @@
 //! - **Toda recusa tem nome** ([`MeshError`], [`NoPath`]) — um caminho vazio calado é a queixa Q4 da
 //!   pesquisa, medida no próprio Godot.
 
+pub mod agent;
 pub mod geom;
 pub mod mesh;
 pub mod polyanya;
@@ -25,6 +26,7 @@ pub mod polyanya;
 #[cfg(any(test, feature = "test-support"))]
 pub mod oracle;
 
+pub use agent::{AgentConfig, AgentRuntime, Event, Status, Steer};
 pub use geom::V2;
 pub use mesh::{MeshError, NavMesh, Poly};
 pub use polyanya::{NoPath, Path, Polyanya, Stats};

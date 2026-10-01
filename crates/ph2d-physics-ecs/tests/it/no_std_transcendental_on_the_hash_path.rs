@@ -62,7 +62,18 @@ const BANNED: &[&str] = &[
 ];
 
 /// As crates cujo código pode alcançar o `physics_ecs_c9`.
-const CRATES: &[&str] = &["ph2d-platformer", "ph2d-physics", "ph2d-physics-ecs"];
+///
+/// ⭐ **E as duas da NAVEGAÇÃO** (plano 30, W3): elas correm DENTRO da porta dos controladores, logo
+/// no mesmo laço que o replay refaz — o caminho de um agente vira a pose dele. As duas declaram por
+/// escrito a cerca *«só `+ − × ÷ sqrt`»*; aqui ela passa a ser medida, e a 1.ª corrida deste gate
+/// depois da wave apanhou três `.hypot(` na ponte.
+const CRATES: &[&str] = &[
+    "ph2d-platformer",
+    "ph2d-physics",
+    "ph2d-physics-ecs",
+    "ph2d-nav",
+    "ph2d-navmesh",
+];
 
 /// **Os sítios que EXISTEM e não alcançam o hash** — cada um com o mecanismo.
 ///

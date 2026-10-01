@@ -96,6 +96,7 @@ impl PhysicsBridge {
             pedidos_de_vida: Vec::new(),
             fita_da_vida: BTreeMap::new(),
             toques_do_mover: Vec::new(),
+            nav: super::nav::NavWorld::default(),
             player_drop: BTreeMap::new(),
         }
     }
@@ -123,6 +124,8 @@ impl PhysicsBridge {
         // reciclados aqui — um pedido de ontem cairia noutra vida.
         self.pedidos_de_vida.clear();
         self.fita_da_vida.clear();
+        // ⭐ E a NAVEGAÇÃO (plano 30, W3): as malhas e as memórias são chaveadas por `Entity`.
+        self.nav.clear_all();
         // Entity bits are recycled here, so a held input would start driving
         // SOMEONE ELSE — the same trap that made joint anchors travel by NAME.
         self.clear_player_input();

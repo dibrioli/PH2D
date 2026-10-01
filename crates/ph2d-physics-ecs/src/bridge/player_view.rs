@@ -95,6 +95,11 @@ pub enum ProbeKind {
     /// [`PhysicsBridge::preview_ray_marks`](crate::PhysicsBridge::preview_ray_marks): *o solver
     /// está desarmado, logo eu sei para onde olho e não sei o que vejo.*
     Sensor,
+    /// ⭐ **Um troço do CAMINHO de um agente de navegação** (plano 30, W3) — de onde ele está até ao
+    /// próximo canto, e de canto em canto até ao alvo. ⚠️ É a pergunta *«para onde ele vai?»*, irmã
+    /// de *«para onde este raio olha?»*, e por isso o pintor é o mesmo: um segundo pintor de linhas
+    /// seria a segunda resposta a *como se desenha uma linha de física*.
+    Path,
 }
 
 /// **O que o sensor respondeu** — e *"não foi perguntado"* é uma resposta.

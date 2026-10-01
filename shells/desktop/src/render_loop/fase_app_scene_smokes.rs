@@ -38,6 +38,7 @@ impl crate::App {
         self.shake_smoke();
         self.dano_smoke();
         self.vida_smoke();
+        self.nav_smoke();
         self.ray_smoke();
         self.tween_smoke();
         self.path_follow_smoke();

@@ -192,6 +192,10 @@ impl PhysicsBridge {
         // ninguém: sem esta linha a 2.ª corrida começaria com os inimigos já feridos, e com a memória
         // do toque cheia (o golpe de quem nasce sobreposto deixaria de chegar).
         self.health_state.clear();
+        // ⭐⭐⭐ E os AGENTES de navegação (plano 30, W3), no commit em que nascem: no tique 0 nenhum
+        // caminho foi planeado e nenhum relógio de «preso» andou. ⚠️ As MALHAS ficam — elas são
+        // derivadas dos corpos ESTÁTICOS, que um rebobinar não move.
+        self.nav.agents.clear();
         // ⭐⭐⭐ E o que cada RAIO via (suplente #21) — o QUARTO mapa desta família, e ele entra no
         // mesmo commit em que nasce, de propósito: os três acima foram esquecidos aqui **um de cada
         // vez**, e o último custou um report do dono (*«o Rewind não está funcionando com os

@@ -133,6 +133,8 @@ impl PhysicsBridge {
         self.discard_projectile_deaths();
         // ⭐ E os factos da VIDA (plano 28, W2), que são do dispatch pela mesma razão.
         self.discard_health_events();
+        // ⭐ E os de NAVEGAÇÃO (plano 30, W3), pela mesma razão.
+        self.discard_nav_events();
         // ⭐ E as ARESTAS dos raios (suplente #21), que são **do dispatch** como as do contacto —
         // ⛔ e o `ray_hits` NÃO é limpo aqui: ele é a memória entre tiques, e um dispatch não é uma
         // descontinuidade. Quem o limpa é o `rebuild_from_rest`, que é uma.

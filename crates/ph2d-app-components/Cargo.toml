@@ -142,6 +142,9 @@ ph2d-label-census = { path = "../ph2d-label-census" }
 # tem um id por verbo e por linha do modelo (desceram da shell em 2026-09-24, plano 28 W4). ⚠️ Só
 # nos TESTES: é família → painel, aresta permitida pela lei das camadas, e o produto não a pede.
 ph2d-panel-inspector = { path = "../ph2d-panel-inspector" }
+# ⭐ O ESTADO de um agente de navegação (plano 30, W3) — o gate da cena lê `Status::Arrived`. Só nos
+# testes: o produto lê a navegação pela ponte da física, que já a reexporta onde precisa.
+ph2d-nav = { path = "../ph2d-nav" }
 
 [features]
 # ⚠️⚠️ **Um `#[cfg(test)]` da família é INVISÍVEL do outro lado da fronteira**

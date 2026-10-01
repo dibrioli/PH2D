@@ -130,6 +130,9 @@ pub mod instance_verbs;
 pub mod instance_verbs_walk;
 pub mod instantiate;
 pub mod master_editing;
+/// ⭐⭐⭐ **O mover de VISTA DE CIMA** (TOP-20 #13) — as duas cenas do dono.
+/// ⭐⭐⭐ A NAVEGAÇÃO (plano 30, W3) — `PH2D_NAV_SMOKE=1`.
+pub mod nav_smoke;
 /// ⭐⭐⭐ **A PARALAXE** (plano 24, W1) — um objecto guarda uma fracção do movimento do mundo; a
 /// lei, a referência e o caso do arrasto estão no cabeçalho.
 pub mod parallax_bridge;
@@ -189,7 +192,6 @@ pub mod tags_doc;
 /// ⭐⭐⭐ As duas cenas do TOP-20 #9 (`PH2D_TAGS_SMOKE=1|2`) — ver o cabeçalho do módulo.
 pub mod tags_smoke;
 pub mod timer_smoke;
-/// ⭐⭐⭐ **O mover de VISTA DE CIMA** (TOP-20 #13) — as duas cenas do dono.
 pub mod topdown_smoke;
 /// ⭐⭐⭐ **O GATILHO** (suplente #24) — a ponte PURA do teclado; ver o cabeçalho.
 pub mod trigger_bridge;
@@ -294,6 +296,8 @@ pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
         // ⭐⭐⭐ O mover de VISTA DE CIMA (TOP-20 #13): `=1` o corredor · `=2` a isometria com o
         // controlo ao lado. ⚠️ O `max_level` é **contado** no `match` do `montar`.
         r("PH2D_TOPDOWN_SMOKE", topdown_smoke::CENAS),
+        // ⭐⭐⭐ A NAVEGAÇÃO (plano 30, W3): `=1` o labirinto em S com o controlo ao lado.
+        r("PH2D_NAV_SMOKE", nav_smoke::CENAS),
         r("PH2D_PROJECTILE_SMOKE", projectile_smoke::CENAS),
         // ⭐⭐⭐ O CÉREBRO (TOP-20 #15): `=1` a porta com o CONTROLO ao lado.
         // ⚠️ O `max_level` é **contado** no `match` do `montar`.

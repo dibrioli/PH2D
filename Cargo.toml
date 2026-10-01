@@ -226,6 +226,16 @@ inherits = "release"
 codegen-units = 16
 lto = "off"
 incremental = true
+# ⭐ **O motor do pincel corre num só pedaço de compilação também no `smoke`** (2026-10-01,
+# report do dono *«pincel com size 0.5 fps cai para 40»* e depois *«não percebi melhorias»*). Os
+# laços por píxel do carimbo e do esfregão atravessam funções do mesmo módulo, e com 16 pedaços o
+# compilador não as junta: medido na sonda do rabisco do Composite a Size 0.5, a pilha custava
+# `14,4` ms por quadro no `smoke` contra `11,1` no `release`, e o buraco era todo o ACÚMULO
+# (`4,8` contra `2,7`). Com esta linha o `smoke` lê `11,2`–`11,5` contra `10,6`–`10,8`. ⚠️ Só esta
+# crate (pequena e quente): a shell continua a compilar em paralelo, que é a razão do perfil.
+[profile.smoke.package.ph2d-painter-brush]
+codegen-units = 1
+incremental = false
 
 # CI-tuned test profile. Used by the workflow's `cargo nextest run
 # --cargo-profile ci-test` and `cargo test --doc --profile ci-test`

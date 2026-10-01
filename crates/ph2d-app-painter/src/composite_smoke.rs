@@ -192,6 +192,92 @@ pub fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
     );
 }
 
+/// **O RABISCO AUTOMÁTICO** — `PH2D_COMPOSITE_RABISCO=<Size>` (com a cena ligada): a cada quadro
+/// a ponte entrega à ferramenta os eventos de um risco rápido, pela MESMA porta do rato
+/// (`on_canvas_pointer`), e o `PH2D_PAINT_PERF=1` mede o quadro INTEIRO da app — a pilha, a
+/// subida para a placa e o desenho — sem ninguém a riscar.
+///
+/// ⭐ Nasceu do report do dono de 2026-10-01 (*«pincel com size 0.5 fps cai para 40»* e, depois da
+/// 1.ª cura, *«não percebi melhorias»*): a sonda da crate da ferramenta mede só a PILHA, e o quadro
+/// da app tem mais coisas. ⚠️ Os eventos são escritos ANTES da drenagem, logo o custo deles cai na
+/// fase `preview` do relatório e não na `INPUT` (que é a do handler do rato).
+///
+/// O risco: `16` eventos por quadro (um rato de `1 kHz` a `60 Hz`) ao longo da MESMA curva da sonda
+/// `diag_onde_vai_o_quadro_do_rabisco`, traços de `3 s` com `0,5 s` de pausa, para a medição ver
+/// o traço e o descanso.
+pub fn rabisca(painter: &mut ph2d_tool_painter::PainterTool) {
+    use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase};
+    use std::sync::atomic::{AtomicU32, Ordering};
+    static QUADRO: AtomicU32 = AtomicU32::new(0);
+    static SIZE: std::sync::OnceLock<Option<f32>> = std::sync::OnceLock::new();
+    let Some(size) = *SIZE.get_or_init(|| {
+        if !enabled() {
+            return None;
+        }
+        std::env::var("PH2D_COMPOSITE_RABISCO")
+            .ok()
+            .and_then(|v| v.parse::<f32>().ok())
+    }) else {
+        return;
+    };
+    // Só depois de a cena armar a pilha (o documento ligado).
+    if painter.composite_len() == 0 {
+        return;
+    }
+    const POR_QUADRO: u32 = 16;
+    const TRACO: u32 = 180;
+    const PAUSA: u32 = 30;
+    let q = QUADRO.fetch_add(1, Ordering::Relaxed);
+    if q == 0 {
+        painter.set_brush_size_norm(size);
+        println!("PH2D_COMPOSITE_RABISCO: a riscar sozinho com o Size {size}.");
+    }
+    let fase = q % (TRACO + PAUSA);
+    let ev = |pos: [f32; 2], phase| CanvasPointer {
+        pos,
+        pressure: 1.0,
+        tilt: [0.0, 0.0],
+        phase,
+    };
+    let ponto = |i: u32| {
+        #[allow(clippy::cast_precision_loss)]
+        let s = i as f32 * 0.03;
+        [
+            512.0 + 300.0 * (1.3 * s).sin(),
+            512.0 + 260.0 * (0.9 * s).cos(),
+        ]
+    };
+    let base = q * POR_QUADRO;
+    if fase == 0 {
+        painter.on_canvas_pointer(ev(ponto(base), PointerPhase::Down));
+    }
+    if fase < TRACO {
+        for k in 1..=POR_QUADRO {
+            painter.on_canvas_pointer(ev(ponto(base + k), PointerPhase::Move));
+        }
+    }
+    if fase + 1 == TRACO {
+        painter.on_canvas_pointer(ev(ponto(base + POR_QUADRO), PointerPhase::Up));
+    }
+    // O PERÍODO do quadro durante o traço — o número que o dono SENTE (o `frame p50` do relatório
+    // mede o trabalho dentro do quadro, não o intervalo entre dois).
+    static INICIO: std::sync::Mutex<Option<std::time::Instant>> = std::sync::Mutex::new(None);
+    if let Ok(mut ini) = INICIO.lock() {
+        if fase == 0 {
+            *ini = Some(std::time::Instant::now());
+        } else if fase + 1 == TRACO
+            && let Some(t) = ini.take()
+        {
+            #[allow(clippy::cast_precision_loss)]
+            let ms = t.elapsed().as_secs_f64() * 1e3 / f64::from(TRACO - 1);
+            println!(
+                "PH2D_COMPOSITE_RABISCO: periodo {ms:.1} ms/quadro ({:.0} fps) durante o traco",
+                1e3 / ms
+            );
+        }
+    }
+}
+
 /// **A pilha da foto, montada pelas portas públicas do Painter** — sem ler o ambiente, para o gate
 /// a poder medir (um gate que lê o ambiente mede a máquina).
 ///

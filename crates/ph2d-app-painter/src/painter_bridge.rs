@@ -243,6 +243,7 @@ pub fn dispatch(
         // dois sítios não é duas respostas: é a mesma pergunta feita no momento em que ela decide algo
         // (antes do re-carimbo) e uma vez por quadro (para o soltar ser visto).
         painter.set_shape_draft_hold(pointer_held);
+        crate::composite_smoke::rabisca(painter);
         // Cmd/Ctrl+Enter Apply — bake the layer composite into the sprite this
         // same frame (the `drive_pending_commit` drain below picks it up).
         if commit_requested {

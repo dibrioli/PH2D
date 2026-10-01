@@ -15,7 +15,7 @@
 |---|---|
 | ramo | `line/sculpt3d` · worktree `Worktrees/line-sculpt3d` |
 | merge-base | `912a9652e` (= o `main` de agora: **0 commits atrás**, rebase **desnecessário**) |
-| commits | **15** (14 de produto + o deste handoff), `93` ficheiros, `+7 878 −283` antes deste doc |
+| commits | **16** (14 de produto + 2 deste handoff e do doc de bugs), `93` ficheiros, `+7 878 −283` antes deste doc |
 | smoke do dono | ✅ **aprovado em cada assunto** (a água 29–30/09; o relevo W1–W4 30/09; §6, §7 e §8 em 01/10) |
 | contrato congelado (§6) | **intocado** (`node.rs` · `tool.rs`) |
 | `PROJECT_SCHEMA` · `VEC_SCENE` · `FLIP` · `DOC_VERSION` · `FIELD_DOC_VERSION` | **0** (176 · 22 · 13 · 18 · 23, iguais à base) |
@@ -149,7 +149,13 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-sculpt3d && env PH2D_SCULP
 - **Água:** meio `Wet Paint`; pinte, rode a vista com o botão direito enquanto escorre — continua
   a escorrer, o Painter fica na mão, e o traço seguinte não deixa marca clara.
 
-SMOKE_AQUI
+Prova de que o binário do comando acima está COMPILADO nesta worktree (a 2.ª corrida, depois do
+`rm -rf target/*/incremental` e de uma 1.ª de `28,65 s`):
+
+```
+$ bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke
+    Finished `smoke` profile [optimized] target(s) in 0.23s
+```
 
 ## §8. A UMA linha que proponho para o `CLAUDE.md` §5 (3D / Sculpt)
 

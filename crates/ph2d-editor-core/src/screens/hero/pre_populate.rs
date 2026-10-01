@@ -235,6 +235,11 @@ fn populate_samples(store: &mut WidgetStore) {
 
     for id in ids::SECTION_IDS {
         store.register(id, InteractiveState::Plain);
+        // ⭐⭐ A PEGA de dez pontos da secção da galeria (2026-09-30): `Plain` para o `is_focusable`
+        //    responder e o rato a acender, com a mesma dica do Inspector.
+        let grip = ids::grip_de(id);
+        store.register(grip, InteractiveState::Plain);
+        store.set_tooltip(grip, ph2d_i18n::tr("chrome.section.grip_hint"));
     }
     let _ = (RADIO_GROUP_IDS, TAB_GROUP_IDS, TREE_LEAF_IDS); // imports keep namespaces aligned with event.rs
 

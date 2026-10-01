@@ -30,7 +30,9 @@ pub mod rows;
 pub mod scroll_area;
 pub mod seam_macro;
 /// ⭐⭐⭐ **As secções de um painel como uma lista** — ordem, tema, pega e fantasma, uma lei só.
-pub mod section_plan;
+/// ⚠️ A lei mora em [`crate::widget::section_plan`] (a galeria também a lê, e `widget` não pode ler
+/// `panel`); este caminho fica para os painéis que já a liam daqui.
+pub use crate::widget::section_plan;
 /// O laço do plano das secções para os painéis que pintam por um `PaintCtx`.
 pub mod section_plan_ctx;
 

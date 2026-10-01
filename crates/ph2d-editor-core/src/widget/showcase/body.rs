@@ -24,6 +24,26 @@ impl ShowcaseBody {
     }
 }
 
+/// Como uma secção da galeria se pinta — o tema que recebe é o DELA.
+type PintaSeccao =
+    fn(&mut VectorScene, &mut TextSystem, Theme, &mut HitIndex, &WidgetStore, f32, f32, f32) -> f32;
+
+/// ⭐ **As secções da galeria, pela ordem NATURAL** — o par `(id, pintor)`. ⚠️ Os ids são os de
+/// [`SECTION_IDS`], pela mesma ordem (há gate a amarrá-los).
+pub(crate) const SECCOES: [(NodeId, PintaSeccao); 11] = [
+    (ids::INSP_SECTION_INPUTS, paint_inputs_section),
+    (ids::INSP_SECTION_SLIDER, paint_slider_section),
+    (ids::INSP_SECTION_SWITCHES, paint_switches_section),
+    (ids::INSP_SECTION_LISTS, paint_lists_section),
+    (ids::INSP_SECTION_VECTOR, paint_vector_section),
+    (ids::INSP_SECTION_STATUS, paint_status_section),
+    (ids::INSP_SECTION_COLOR, paint_color_section),
+    (ids::INSP_SECTION_ACTIONS, paint_actions_section),
+    (ids::INSP_SECTION_IDENTITY, paint_identity_section),
+    (ids::INSP_SECTION_CARD, paint_card_section),
+    (ids::INSP_SECTION_W6, paint_inspector_w6_section),
+];
+
 pub fn paint_showcase_body(
     rect: Rect,
     scene: &mut VectorScene,
@@ -145,65 +165,74 @@ pub fn paint_showcase_body(
             }
         };
     }
-    // Section macro: paints the section, then the colored outline (if
-    // the user picked one via right-click → "Section outline"), then
-    // any notes anchored to THIS section (at the end of the section,
-    // BEFORE the separator — UI canon post-2026-05-24), then the
-    // separator.
+    // ⭐⭐⭐ **O corpo é uma LISTA** (ordem do dono, 2026-09-30: *«siga com os outros painéis»*) —
+    //    pintado pela ordem que o artista escolheu, cada secção no tema que ele lhe deu, com a marca
+    //    de queda e o fantasma da lei partilhada ([`crate::widget::section_plan`]).
     //
-    // Pre-canon, notes painted ABOVE the section header (separator
-    // between section and note). User complaint 2026-05-24: notes
-    // should belong VISUALLY to the section the user right-clicked,
-    // grouped INSIDE it before the separator that ends it.
-    macro_rules! section {
-        ($f:ident, $section_id:expr) => {
-            let y_before = y;
-            let new_y = $f(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                inner_x,
-                inner_w,
-                y,
-            );
-            if let Some(color_idx) = store.section_outline_color($section_id) {
-                let rgba = crate::widget::panel_chrome::highlighter_rgba(color_idx);
-                let pad = Spacing::Xs.px();
-                let block = Rect::new(
-                    inner_x - pad,
-                    y_before - pad,
-                    inner_w + pad * 2.0,
-                    (new_y - y_before + pad * 2.0).max(0.0),
-                );
-                let outline_color =
-                    ph2d_vector::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]); // LITERAL-COLOR-OK: user-color — showcase preview outline from user-stored ColorValue
-                // FRAME-RAW-OK: a MARCA de realce que o utilizador escolheu (cor de marcador): conteudo autorado
-                crate::paint::stroke_rounded_rect(
-                    scene,
-                    block,
-                    crate::paint::frame_radius(theme, Radius::Md.px()),
-                    StrokeToken::Thick.px(),
-                    outline_color,
-                );
-            }
-            y = new_y;
-            paint_pending_notes!($section_id);
-            y = crate::widget::section_cards::close_section(scene, theme, inner_x, inner_w, y);
+    // Por cada secção: a secção, depois o contorno colorido (se o utilizador escolheu um pelo botão
+    // direito → "Section outline"), depois as notas presas a ELA (no fim da secção, ANTES do fecho
+    // do cartão — cânone de 2026-05-24: as notas pertencem VISUALMENTE à secção onde nasceram).
+    let ordem = crate::widget::section_plan::ordem(&SECTION_IDS, store);
+    let arrastada = store.section_drag().filter(|d| d.active).map(|d| d.section);
+    let mut faixas: Vec<crate::widget::section_plan::Faixa> = Vec::with_capacity(ordem.len());
+    let mut fantasma: Option<VectorScene> = None;
+    let mut corredor = crate::widget::section_plan::Corredor::default();
+    for section_id in ordem {
+        let Some(&(_, pinta)) = SECCOES.iter().find(|(id, _)| *id == section_id) else {
+            continue;
         };
+        let tema = crate::widget::section_plan::tema_da_seccao(store, section_id, theme);
+        y = corredor.antes(scene, theme, inner_x, inner_w, y);
+        let y_before = y;
+        let mut parte = VectorScene::new();
+        let a_parte = arrastada == Some(section_id);
+        if a_parte {
+            std::mem::swap(scene, &mut parte);
+        }
+        let new_y = pinta(
+            scene,
+            text_system,
+            tema,
+            hit_index,
+            store,
+            inner_x,
+            inner_w,
+            y,
+        );
+        if let Some(color_idx) = store.section_outline_color(section_id) {
+            let rgba = crate::widget::panel_chrome::highlighter_rgba(color_idx);
+            let pad = Spacing::Xs.px();
+            let block = Rect::new(
+                inner_x - pad,
+                y_before - pad,
+                inner_w + pad * 2.0,
+                (new_y - y_before + pad * 2.0).max(0.0),
+            );
+            let outline_color = ph2d_vector::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]); // LITERAL-COLOR-OK: user-color — showcase preview outline from user-stored ColorValue
+            // FRAME-RAW-OK: a MARCA de realce que o utilizador escolheu (cor de marcador): conteudo autorado
+            crate::paint::stroke_rounded_rect(
+                scene,
+                block,
+                crate::paint::frame_radius(tema, Radius::Md.px()),
+                StrokeToken::Thick.px(),
+                outline_color,
+            );
+        }
+        y = new_y;
+        paint_pending_notes!(section_id);
+        if a_parte {
+            // ⭐ A arrastada pinta-se numa cena À PARTE, pousada no sítio de sempre e reusada como
+            //    o FANTASMA que segue o cursor. ⚠️ Os alvos dela registam-se no sítio real.
+            std::mem::swap(scene, &mut parte);
+            scene.inner_mut().append(parte.inner(), None);
+            fantasma = Some(parte);
+        }
+        corredor.depois(y_before, y);
+        if y > y_before {
+            faixas.push((section_id, y_before, y, tema));
+        }
     }
-    section!(paint_inputs_section, ids::INSP_SECTION_INPUTS);
-    section!(paint_slider_section, ids::INSP_SECTION_SLIDER);
-    section!(paint_switches_section, ids::INSP_SECTION_SWITCHES);
-    section!(paint_lists_section, ids::INSP_SECTION_LISTS);
-    section!(paint_vector_section, ids::INSP_SECTION_VECTOR);
-    section!(paint_status_section, ids::INSP_SECTION_STATUS);
-    section!(paint_color_section, ids::INSP_SECTION_COLOR);
-    section!(paint_actions_section, ids::INSP_SECTION_ACTIONS);
-    section!(paint_identity_section, ids::INSP_SECTION_IDENTITY);
-    section!(paint_card_section, ids::INSP_SECTION_CARD);
-    section!(paint_inspector_w6_section, ids::INSP_SECTION_W6);
+    y = corredor.antes(scene, theme, inner_x, inner_w, y);
     // As notas de nenhuma secção da galeria — no fim do corpo.
     for (slot, note) in all_notes.iter().enumerate() {
         if !note.section.is_some_and(|s| SECTION_IDS.contains(&s)) {
@@ -219,6 +248,20 @@ pub fn paint_showcase_body(
                 slot,
             );
         }
+    }
+    crate::widget::section_plan::conclui(
+        scene,
+        store,
+        theme,
+        &faixas,
+        inner_x,
+        inner_w,
+        SECTION_HEAD_H,
+    );
+    if let Some(f) =
+        crate::widget::section_plan::Fantasma::de(fantasma, &faixas, arrastada, inner_x, inner_w)
+    {
+        f.pinta(scene, store);
     }
     // ⭐ A nota arrastada — o fantasma por cima de tudo o que o corpo pintou.
     super::paint_note_drag_ghost(scene, text_system, hit_index, store, ids::GAL_PANEL, theme);
@@ -308,4 +351,17 @@ pub fn finish_chrome(rect: Rect, scene: &mut VectorScene, hit_index: &mut HitInd
         ids::GAL_CLOSE,
         crate::widget::panel_chrome::panel_close_button_rect(rect),
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// ⭐ **A lista de pintores é a lista de secções** — os mesmos ids, pela mesma ordem natural. Sem
+    /// isto uma secção nova no `SECTION_IDS` dobrava e recebia o menu e nunca era pintada.
+    #[test]
+    fn as_seccoes_pintadas_sao_as_do_section_ids() {
+        let pintadas: Vec<NodeId> = SECCOES.iter().map(|(id, _)| *id).collect();
+        assert_eq!(pintadas, SECTION_IDS.to_vec());
+    }
 }

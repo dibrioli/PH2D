@@ -49,6 +49,9 @@ mod scrollbar;
 mod scrollbar_ids;
 pub mod section_cards;
 mod section_header;
+/// ⭐⭐⭐ **As secções de um painel como uma lista** — ordem, tema, pega e fantasma, uma lei só.
+/// Mora em `widget` porque a galeria (que é `widget`) também a usa; o `panel` re-exporta-a.
+pub mod section_plan;
 mod segmented_adaptive;
 mod segmented_layout;
 pub mod showcase;

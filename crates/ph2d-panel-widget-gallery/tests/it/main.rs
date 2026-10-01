@@ -6,6 +6,7 @@
 //! ganham o prefixo do módulo (`ficheiro::fn`); filtros por `test(nome)` continuam a casar.
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
+mod as_seccoes_arrastam_e_tem_tema; // o tema e o arrasto das secções da galeria
 mod every_word_this_panel_shows_comes_from_the_string_table;
 mod seam;
 mod widget_gallery_paint;

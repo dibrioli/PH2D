@@ -292,10 +292,61 @@ pub fn on_field_fill(
         return classic.resolve(theme);
     }
     let w = ph2d_tokens::visuals::Widgets::of(theme);
-    match feel {
+    let cor = match feel {
         Feel::Hovered | Feel::Active => w.hovered.bg_fill,
         Feel::Disabled => w.noninteractive.bg_fill,
         _ => w.inactive.bg_fill,
+    };
+    amplia_a_marca(
+        cor,
+        chrome.field_fill,
+        ganho_da_marca(w.inactive.bg_fill, chrome.field_fill),
+    )
+}
+
+/// ⭐⭐ **O piso de contraste de uma marca desmarcada contra a caixa em que assenta**, em `/255`.
+///
+/// ⛔ Report do dono (2026-09-30, com foto): *«o checkbox tem pouco contraste em Light e Candy»*.
+/// Medido pela porta: a marca em repouso fica a `10/255` da caixa nos dois (Dark `38` · Gray `43` ·
+/// os coloridos `65`–`107`). ⇒ o piso sai do lado APROVADO: fica abaixo do menor tema de que o dono
+/// não se queixou (Dark, `38`), logo esses ficam byte-idênticos e só os dois do report se mexem.
+pub const CONTRASTE_DA_MARCA: f32 = 36.0;
+
+/// O ganho que leva a marca em REPOUSO ao [`CONTRASTE_DA_MARCA`] — `1` quando ela já lá está.
+///
+/// ⚠️ Um ganho só, tirado do repouso e aplicado a TODOS os estados, para o eixo do hover manter a
+/// ordem: empurrar cada estado ao piso por si poria o repouso e o quente na mesma cor.
+fn ganho_da_marca(repouso: ph2d_tokens::Color, campo: ph2d_tokens::Color) -> f32 {
+    let d = |a: u8, b: u8| (f32::from(a) - f32::from(b)).abs();
+    let dist = d(repouso.r, campo.r)
+        .max(d(repouso.g, campo.g))
+        .max(d(repouso.b, campo.b));
+    if dist <= 0.0 || dist >= CONTRASTE_DA_MARCA {
+        1.0
+    } else {
+        CONTRASTE_DA_MARCA / dist
+    }
+}
+
+/// A cor `c` afastada da caixa `campo` pelo `ganho`, canal a canal — a MESMA direcção que o tema
+/// escolheu (mais clara num tema claro), só mais longe. Com ganho `1` devolve `c` ao bit.
+fn amplia_a_marca(
+    c: ph2d_tokens::Color,
+    campo: ph2d_tokens::Color,
+    ganho: f32,
+) -> ph2d_tokens::Color {
+    if ganho == 1.0 {
+        return c;
+    }
+    let canal = |v: u8, f: u8| {
+        let delta = (f32::from(v) - f32::from(f)) * ganho;
+        (f32::from(f) + delta).round().clamp(0.0, 255.0) as u8
+    };
+    ph2d_tokens::Color {
+        r: canal(c.r, campo.r),
+        g: canal(c.g, campo.g),
+        b: canal(c.b, campo.b),
+        a: c.a,
     }
 }
 

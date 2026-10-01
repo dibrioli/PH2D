@@ -236,8 +236,18 @@ pub fn paint_context_menu_overlay(
         // Leading visual: color swatch for outline picks, "+" icon
         // for create-note. Painted to the right of the bullet column
         // so the bullet always lines up flush-left.
-        let has_glyph = swatch.is_some() || matches!(req.kind, ContextMenuKind::CreateNote { .. });
-        if let Some(rgba) = swatch {
+        let tema = super::theme_menu::tema_da_linha(*id, theme);
+        let has_glyph = tema.is_some()
+            || swatch.is_some()
+            || matches!(req.kind, ContextMenuKind::CreateNote { .. });
+        if let Some(t) = tema {
+            paint_theme_swatch(
+                scene,
+                Rect::new(glyph_x, icon_y, icon_size, icon_size),
+                t,
+                theme,
+            );
+        } else if let Some(rgba) = swatch {
             let sw = Rect::new(glyph_x, icon_y, icon_size, icon_size);
             fill_rounded_rect(
                 scene,
@@ -297,6 +307,34 @@ pub fn paint_context_menu_overlay(
             );
         }
     }
+}
+
+/// ⭐⭐ **A amostra de uma linha de TEMA: quatro ladrilhos `2×2` com as cores principais dele**
+/// ([`super::theme_menu::cores_do_tema`]) — no quadrado onde as outras linhas põem a cor única,
+/// para os rótulos continuarem alinhados.
+///
+/// ⚠️ Cada ladrilho arredonda **só o canto de fora**: o conjunto lê-se como UMA amostra com a quina
+/// do menu, e a moldura por cima é a da amostra de cor (um tema escuro sobre um menu escuro sumiria
+/// sem ela — o mesmo argumento da moldura da amostra de cor, ao lado).
+fn paint_theme_swatch(scene: &mut VectorScene, sw: Rect, tema: Theme, do_menu: Theme) {
+    let raio = 3.0; // LITERAL-PX-OK: o raio da amostra de cor do menu, o mesmo da linha vizinha
+    let (mw, mh) = (sw.w * 0.5, sw.h * 0.5);
+    let cores = super::theme_menu::cores_do_tema(tema);
+    // Ordem de leitura: painel · cartão em cima, acento · texto em baixo.
+    let ladrilhos = [
+        (Rect::new(sw.x, sw.y, mw, mh), (raio, 0.0, 0.0, 0.0)),
+        (Rect::new(sw.x + mw, sw.y, mw, mh), (0.0, raio, 0.0, 0.0)),
+        (Rect::new(sw.x, sw.y + mh, mw, mh), (0.0, 0.0, 0.0, raio)),
+        (
+            Rect::new(sw.x + mw, sw.y + mh, mw, mh),
+            (0.0, 0.0, raio, 0.0),
+        ),
+    ];
+    for ((r, raios), cor) in ladrilhos.into_iter().zip(cores) {
+        crate::paint::fill_rounded_rect_radii(scene, r, raios, cor);
+    }
+    // FRAME-RAW-OK: a moldura da AMOSTRA de um tema, pela mesma razão da amostra de cor.
+    stroke_rounded_rect(scene, sw, raio, 1.0, resolve(ColorToken::Border, do_menu)); // LITERAL-PX-OK: o traço de 1 px da amostra
 }
 
 /// Paint the Scene List popover.

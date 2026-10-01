@@ -74,8 +74,8 @@ pub(super) const NOTE_BACKGROUND_ROWS: &[MenuRow] = &[
     menu_row(ids::CTX_MENU_NOTE_DELETE, "chrome.menu.note_delete"),
 ];
 
-// Topbar theme cluster click: 4 themes + 3 radius presets. Theme entries get a small accent
-// swatch tinted with each theme's flavor so the user can recognize them at a glance.
+// Topbar theme cluster click: the themes + the radius presets. Theme entries carry NO colour here:
+// the overlay paints four tiles taken from the theme itself (`theme_menu::cores_do_tema`).
 // ⭐ **UMA família por aparência** (2026-09-04): o redesenho mostra os presets DERIVADOS
 //    (`ph2d_tokens::Theme::MODERN` — os quatro do Godot 4.6 e os quatro coloridos de 2026-09-30),
 //    o clássico os quatro de sempre.
@@ -84,46 +84,17 @@ pub(super) const NOTE_BACKGROUND_ROWS: &[MenuRow] = &[
 //    repor) são as mesmas nas duas.
 /// As linhas de `ContextMenuKind::ThemeSelector if crate::paint::ui_is_redesign()`.
 pub(super) const THEME_SELECTOR_REDESIGN_ROWS: &[MenuRow] = &[
-    menu_row_swatch(
-        ids::CTX_MENU_THEME_DARK,
-        "chrome.menu.dark",
-        [0x56, 0x9e, 0xff, 0xFF],
-    ),
-    menu_row_swatch(
-        ids::CTX_MENU_THEME_GRAY,
-        "chrome.menu.gray",
-        [0x70, 0xba, 0xfa, 0xFF],
-    ),
-    menu_row_swatch(
-        ids::CTX_MENU_THEME_LIGHT,
-        "chrome.menu.light",
-        [0x2e, 0x80, 0xff, 0xFF],
-    ),
-    menu_row_swatch(
-        ids::CTX_MENU_THEME_OLED,
-        "chrome.menu.black_oled",
-        [0x73, 0xbf, 0xff, 0xFF],
-    ),
-    menu_row_swatch(
-        ids::CTX_MENU_THEME_PLUMBER_RED,
-        "chrome.menu.plumber_red",
-        [0xb3, 0x20, 0x2a, 0xFF],
-    ),
-    menu_row_swatch(
+    menu_row(ids::CTX_MENU_THEME_DARK, "chrome.menu.dark"),
+    menu_row(ids::CTX_MENU_THEME_GRAY, "chrome.menu.gray"),
+    menu_row(ids::CTX_MENU_THEME_LIGHT, "chrome.menu.light"),
+    menu_row(ids::CTX_MENU_THEME_OLED, "chrome.menu.black_oled"),
+    menu_row(ids::CTX_MENU_THEME_PLUMBER_RED, "chrome.menu.plumber_red"),
+    menu_row(
         ids::CTX_MENU_THEME_PLUMBER_GREEN,
         "chrome.menu.plumber_green",
-        [0x17, 0x70, 0x2f, 0xFF],
     ),
-    menu_row_swatch(
-        ids::CTX_MENU_THEME_SUNSET,
-        "chrome.menu.sunset",
-        [0x4a, 0x21, 0x66, 0xFF],
-    ),
-    menu_row_swatch(
-        ids::CTX_MENU_THEME_CANDY,
-        "chrome.menu.candy",
-        [0xe3, 0xbd, 0xd1, 0xFF],
-    ),
+    menu_row(ids::CTX_MENU_THEME_SUNSET, "chrome.menu.sunset"),
+    menu_row(ids::CTX_MENU_THEME_CANDY, "chrome.menu.candy"),
     menu_row(ids::CTX_MENU_RADIUS_SHARP, "chrome.menu.corners_sharp"),
     menu_row(ids::CTX_MENU_RADIUS_DEFAULT, "chrome.menu.corners_default"),
     menu_row(ids::CTX_MENU_RADIUS_ROUND, "chrome.menu.corners_round"),
@@ -149,26 +120,10 @@ pub(super) const THEME_SELECTOR_REDESIGN_ROWS: &[MenuRow] = &[
 
 /// As linhas de `ContextMenuKind::ThemeSelector`.
 pub(super) const THEME_SELECTOR_ROWS: &[MenuRow] = &[
-    menu_row_swatch(
-        ids::CTX_MENU_THEME_FORGE,
-        "chrome.menu.forge_dark",
-        [0xc8, 0x4b, 0xa0, 0xFF],
-    ),
-    menu_row_swatch(
-        ids::CTX_MENU_THEME_PAINT,
-        "chrome.menu.workshop_dark",
-        [0x4b, 0xa0, 0xc8, 0xFF],
-    ),
-    menu_row_swatch(
-        ids::CTX_MENU_THEME_SUNSTONE,
-        "chrome.menu.sunstone_light",
-        [0xf0, 0xc0, 0x4f, 0xFF],
-    ),
-    menu_row_swatch(
-        ids::CTX_MENU_THEME_BLUEPRINT,
-        "chrome.menu.blueprint_light",
-        [0x6c, 0x8e, 0xc8, 0xFF],
-    ),
+    menu_row(ids::CTX_MENU_THEME_FORGE, "chrome.menu.forge_dark"),
+    menu_row(ids::CTX_MENU_THEME_PAINT, "chrome.menu.workshop_dark"),
+    menu_row(ids::CTX_MENU_THEME_SUNSTONE, "chrome.menu.sunstone_light"),
+    menu_row(ids::CTX_MENU_THEME_BLUEPRINT, "chrome.menu.blueprint_light"),
     menu_row(ids::CTX_MENU_RADIUS_SHARP, "chrome.menu.corners_sharp"),
     menu_row(ids::CTX_MENU_RADIUS_DEFAULT, "chrome.menu.corners_default"),
     menu_row(ids::CTX_MENU_RADIUS_ROUND, "chrome.menu.corners_round"),

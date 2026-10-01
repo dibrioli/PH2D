@@ -89,6 +89,33 @@ pub fn section_theme_of_menu_id(id: NodeId) -> Option<Option<Theme>> {
         .map(|(_, t)| *t)
 }
 
+/// ⭐⭐ **O tema que uma linha de menu MOSTRA** — o do seletor do topo, o de uma linha de secção, ou
+/// (na linha *«o tema do app»*) o `do_app`. `None` = a linha não é de tema.
+#[must_use]
+pub fn tema_da_linha(id: NodeId, do_app: Theme) -> Option<Theme> {
+    theme_of_menu_id(id).or_else(|| section_theme_of_menu_id(id).map(|t| t.unwrap_or(do_app)))
+}
+
+/// ⭐⭐ **As quatro cores que identificam um tema na amostra do menu** (ordem do dono, 2026-09-30:
+/// *«em vez de uma única cor no retângulo do theme, melhor 4 retângulos pequenos com as principais
+/// cores de cada theme»*) — painel · cartão · acento · texto, na ordem de leitura de um painel.
+///
+/// ⚠️ **Saem do TEMA, não de uma tabela de hex:** a amostra de uma cor só era uma cópia escrita à
+/// mão (e o Candy mudou de base na mesma semana — a cópia teve de ser emendada nos dois menus). O
+/// cartão sai da porta que o PINTA ([`crate::widget::section_cards::CardDepth::fill`]), senão no
+/// Black a amostra mostraria o cartão da cor do painel, que é o defeito que ela curou.
+#[must_use]
+pub fn cores_do_tema(tema: Theme) -> [ph2d_vector::Color; 4] {
+    use crate::paint::resolve;
+    use ph2d_tokens::ColorToken;
+    [
+        resolve(ColorToken::PanelBg, tema),
+        crate::widget::section_cards::CardDepth::Section.fill(tema),
+        resolve(ColorToken::Accent, tema),
+        resolve(ColorToken::Text1, tema),
+    ]
+}
+
 /// ⭐⭐ **O clique numa linha de tema de SECÇÃO** — a linha diz o tema, o pedido diz a secção.
 ///
 /// ⚠️ Mora aqui, ao lado da tabela, e não na galeria de widgets onde vive o do contorno: a galeria é
@@ -159,6 +186,40 @@ mod tests {
                 None,
                 "a linha de seccao mudaria o tema do APP"
             );
+        }
+    }
+
+    /// ⭐⭐ **Toda linha de tema mostra o tema DELA, e a «App Theme» mostra o do app.**
+    /// *Mutação: o braço do `section_theme_of_menu_id` a devolver o do app sempre ⇒ as linhas de
+    /// secção pintam todas as mesmas quatro cores.*
+    #[test]
+    fn cada_linha_de_tema_mostra_o_proprio_tema() {
+        for (id, t) in THEME_MENU {
+            assert_eq!(tema_da_linha(id, Theme::Dark), Some(t));
+        }
+        for (id, t) in SECTION_THEME_MENU {
+            assert_eq!(tema_da_linha(id, Theme::Candy), Some(t.unwrap_or(Theme::Candy)));
+        }
+        assert_eq!(tema_da_linha(ids::TOOL_UNDO, Theme::Dark), None);
+    }
+
+    /// ⭐⭐ **As quatro cores de um tema são QUATRO** — em todo tema moderno o painel, o cartão, o
+    /// acento e o texto são cores diferentes, o que é a razão de a amostra ter quatro ladrilhos.
+    /// ⚠️ O Black é o caso que pede o cartão da PORTA do cartão: pelo `Bg1` ele seria o preto do
+    /// painel. *Mutação: o 2.º ladrilho a ler `resolve(Bg1, ..)` ⇒ o Black repete o painel.*
+    #[test]
+    fn as_quatro_cores_de_um_tema_sao_quatro() {
+        for tema in Theme::MODERN {
+            let c = cores_do_tema(tema);
+            for i in 0..4 {
+                for j in (i + 1)..4 {
+                    assert_ne!(
+                        c[i].to_rgba8(),
+                        c[j].to_rgba8(),
+                        "{tema:?}: os ladrilhos {i} e {j} da amostra são a mesma cor"
+                    );
+                }
+            }
         }
     }
 

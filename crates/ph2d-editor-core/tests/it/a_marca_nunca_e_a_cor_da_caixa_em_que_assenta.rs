@@ -175,3 +175,48 @@ fn e_o_pintor_da_linha_de_marcar_usa_essa_porta() {
     }
     assert!(vistos >= 3, "a varredura mediu {vistos} tema(s)");
 }
+
+/// ⭐⭐ **A marca em REPOUSO lê-se a pelo menos [`CONTRASTE_DA_MARCA`] da caixa** — o report do dono
+/// de 2026-09-30 (*«o checkbox tem pouco contraste em Light e Candy»*), que estavam a `10/255`.
+///
+/// ⚠️ **As duas metades:** o piso vale em todo tema sem moldura, e os temas que já o passavam
+/// (Dark `38` · Gray `43` · os coloridos) ficam BYTE-IDÊNTICOS à tinta do tema — senão a cura
+/// mudaria o que ninguém reportou.
+///
+/// **Mutação que sangra:** devolver o `ganho_da_marca` a `1.0` sempre ⇒ Light e Candy a `10`.
+#[test]
+fn a_marca_desmarcada_tem_o_piso_de_contraste_e_os_outros_temas_ficam_iguais() {
+    use ph2d_editor_core::paint::CONTRASTE_DA_MARCA;
+    use ph2d_tokens::visuals::Widgets;
+    let mut amplificados = Vec::new();
+    for theme in Theme::ALL {
+        let chrome = Chrome::of(theme);
+        if chrome.field_border.is_visible() {
+            continue;
+        }
+        let marca = on_field_fill(theme, Feel::Rest, ColorToken::Bg1);
+        let d = dist(marca, chrome.field_fill);
+        assert!(
+            d + 0.51 >= CONTRASTE_DA_MARCA,
+            "{theme:?}: a marca desmarcada fica a {d:.0}/255 da caixa (piso {CONTRASTE_DA_MARCA})"
+        );
+        let do_tema = Widgets::of(theme).inactive.bg_fill;
+        if dist(do_tema, chrome.field_fill) >= CONTRASTE_DA_MARCA {
+            assert_eq!(
+                marca, do_tema,
+                "{theme:?}: ja' passava o piso e a cura mudou-lhe a tinta"
+            );
+        } else {
+            amplificados.push(theme);
+        }
+        // O eixo do hover sobrevive: o quente continua mais longe da caixa que o repouso.
+        let quente = on_field_fill(theme, Feel::Hovered, ColorToken::Bg2);
+        assert!(
+            quente != marca,
+            "{theme:?}: o repouso e o quente da marca ficaram a mesma cor"
+        );
+    }
+    // ⚠️ Controlo: os dois temas do report SÃO os que a cura move — se esta lista mudar, a
+    //    premissa (Light e Candy a 10/255) mudou e o cabeçalho tem de ser reconferido.
+    assert_eq!(amplificados, vec![Theme::Light, Theme::Candy]);
+}

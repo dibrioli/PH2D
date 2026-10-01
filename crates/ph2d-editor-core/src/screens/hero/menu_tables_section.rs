@@ -14,8 +14,9 @@ use crate::widget::panel_chrome::HIGHLIGHTER_RGBA;
 /// poderemos escolher o theme da seção entre os themes disponíveis para o app»*), depois o
 /// contorno de marcador que este menu já oferecia.
 ///
-/// ⭐ A swatch dos quatro COLORIDOS (2026-09-30) é a BASE deles e não o acento, ao contrário dos
-/// quatro do Godot: o que os distingue é a cor dos painéis, e é ela que se reconhece no menu.
+/// ⭐ **As linhas de tema não levam cor na tabela** (2026-09-30): a amostra são quatro ladrilhos
+/// TIRADOS do tema ao pintar ([`super::theme_menu::cores_do_tema`]) — a cor única escrita aqui era
+/// uma cópia à mão que já tinha divergido uma vez (a base do Candy).
 ///
 /// ⚠️ **Os temas oferecidos são os da FAMÍLIA do app** — a mesma lei do seletor do topo: misturar
 /// um tema tingido com um plano poria o artista a escolher entre dois sistemas sem o saber.
@@ -24,46 +25,20 @@ pub(super) const SECTION_MENU_REDESIGN_ROWS: &[MenuRow] = &[
         ids::CTX_MENU_SECTION_THEME_APP,
         "chrome.menu.section_theme_app",
     ),
-    menu_row_swatch(
-        ids::CTX_MENU_SECTION_THEME_DARK,
-        "chrome.menu.dark",
-        [0x56, 0x9e, 0xff, 0xFF],
-    ),
-    menu_row_swatch(
-        ids::CTX_MENU_SECTION_THEME_GRAY,
-        "chrome.menu.gray",
-        [0x70, 0xba, 0xfa, 0xFF],
-    ),
-    menu_row_swatch(
-        ids::CTX_MENU_SECTION_THEME_LIGHT,
-        "chrome.menu.light",
-        [0x2e, 0x80, 0xff, 0xFF],
-    ),
-    menu_row_swatch(
-        ids::CTX_MENU_SECTION_THEME_OLED,
-        "chrome.menu.black_oled",
-        [0x73, 0xbf, 0xff, 0xFF],
-    ),
-    menu_row_swatch(
+    menu_row(ids::CTX_MENU_SECTION_THEME_DARK, "chrome.menu.dark"),
+    menu_row(ids::CTX_MENU_SECTION_THEME_GRAY, "chrome.menu.gray"),
+    menu_row(ids::CTX_MENU_SECTION_THEME_LIGHT, "chrome.menu.light"),
+    menu_row(ids::CTX_MENU_SECTION_THEME_OLED, "chrome.menu.black_oled"),
+    menu_row(
         ids::CTX_MENU_SECTION_THEME_PLUMBER_RED,
         "chrome.menu.plumber_red",
-        [0xb3, 0x20, 0x2a, 0xFF],
     ),
-    menu_row_swatch(
+    menu_row(
         ids::CTX_MENU_SECTION_THEME_PLUMBER_GREEN,
         "chrome.menu.plumber_green",
-        [0x17, 0x70, 0x2f, 0xFF],
     ),
-    menu_row_swatch(
-        ids::CTX_MENU_SECTION_THEME_SUNSET,
-        "chrome.menu.sunset",
-        [0x4a, 0x21, 0x66, 0xFF],
-    ),
-    menu_row_swatch(
-        ids::CTX_MENU_SECTION_THEME_CANDY,
-        "chrome.menu.candy",
-        [0xe3, 0xbd, 0xd1, 0xFF],
-    ),
+    menu_row(ids::CTX_MENU_SECTION_THEME_SUNSET, "chrome.menu.sunset"),
+    menu_row(ids::CTX_MENU_SECTION_THEME_CANDY, "chrome.menu.candy"),
     menu_row(
         ids::CTX_MENU_SECTION_THEMES_RESET,
         "chrome.menu.section_themes_reset",
@@ -130,25 +105,18 @@ pub(super) const SECTION_MENU_CLASSIC_ROWS: &[MenuRow] = &[
         ids::CTX_MENU_SECTION_THEME_APP,
         "chrome.menu.section_theme_app",
     ),
-    menu_row_swatch(
-        ids::CTX_MENU_SECTION_THEME_FORGE,
-        "chrome.menu.forge_dark",
-        [0xc8, 0x4b, 0xa0, 0xFF],
-    ),
-    menu_row_swatch(
+    menu_row(ids::CTX_MENU_SECTION_THEME_FORGE, "chrome.menu.forge_dark"),
+    menu_row(
         ids::CTX_MENU_SECTION_THEME_PAINT,
         "chrome.menu.workshop_dark",
-        [0x4b, 0xa0, 0xc8, 0xFF],
     ),
-    menu_row_swatch(
+    menu_row(
         ids::CTX_MENU_SECTION_THEME_SUNSTONE,
         "chrome.menu.sunstone_light",
-        [0xf0, 0xc0, 0x4f, 0xFF],
     ),
-    menu_row_swatch(
+    menu_row(
         ids::CTX_MENU_SECTION_THEME_BLUEPRINT,
         "chrome.menu.blueprint_light",
-        [0x6c, 0x8e, 0xc8, 0xFF],
     ),
     menu_row(
         ids::CTX_MENU_SECTION_THEMES_RESET,

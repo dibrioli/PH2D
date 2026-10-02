@@ -1,5 +1,5 @@
 //! ⭐⭐⭐ **Smoke da NAVEGAÇÃO** (plano 30, W3). `PH2D_NAV_SMOKE=1` (e `=2`, o DESVIO da W5:
-//! [`crate::nav_smoke_porta`]).
+//! [`crate::nav_smoke_porta`]; e `=3`, O GUARDA da W6: [`crate::nav_smoke_guarda`]).
 //!
 //! # A cena: **o labirinto em S, e três perseguidores**
 //!
@@ -33,7 +33,7 @@ use ph2d_render::{Sprite, WHITE_TILE_KEY};
 use ph2d_topdown::{TopDownLaw, direction::DirectionMode};
 
 /// ⭐⭐ **Quantas cenas este roteador serve** — contado do `match` do [`montar`].
-pub const CENAS: u32 = 2;
+pub const CENAS: u32 = 3;
 
 const PAREDE_RGBA: [f32; 4] = [0.38, 0.40, 0.46, 1.0];
 const CHAO_RGBA: [f32; 4] = [0.16, 0.18, 0.22, 1.0];
@@ -71,6 +71,8 @@ pub struct Montada {
     pub escolhido: Entity,
     pub labirinto: Option<Labirinto>,
     pub porta: Option<crate::nav_smoke_porta::Porta>,
+    /// As peças da cena `=3` (W6).
+    pub guarda: Option<crate::nav_smoke_guarda::Guarda>,
 }
 
 /// As peças da cena `=1`.
@@ -285,6 +287,7 @@ fn cena_um(world: &mut World) -> Montada {
             heroi,
         }),
         porta: None,
+        guarda: None,
     }
 }
 
@@ -304,6 +307,7 @@ pub fn montar(world: &mut World, nivel: u32) -> Montada {
             escolhido: porta.vermelhos[0],
             labirinto: None,
             porta: Some(porta),
+            guarda: None,
         };
     }
     let m = cena_um(world);
@@ -316,6 +320,34 @@ pub fn montar(world: &mut World, nivel: u32) -> Montada {
          do Inspector diz o que ele esta' a fazer agora e porque espera"
     );
     m
+}
+
+/// ⭐ **Monta a cena `nivel` com o CONTEXTO inteiro** — a porta da shell. A `=3` desenha as formas da
+/// ronda e precisa da cena vectorial; as outras só do mundo.
+pub fn montar_cena(cx: &mut crate::scene_ctx::SceneCtx, nivel: u32) -> Montada {
+    if nivel == 3 {
+        return monta_tres(cx.sim, cx.vec_scene, cx.vec_entities);
+    }
+    montar(cx.sim.world_mut(), nivel)
+}
+
+/// A cena `=3` nos três empréstimos que ela usa (a porta dos gates).
+pub fn monta_tres(
+    sim: &mut ph2d_ecs::SimWorld,
+    cena: &mut ph2d_vec_scene::VecScene,
+    mapa: &mut ph2d_vec_entities::entities::VecEntityMap,
+) -> Montada {
+    let g = crate::nav_smoke_guarda::monta_em(sim, cena, mapa);
+    crate::nav_smoke_guarda::anuncia();
+    Montada {
+        nivel: 3,
+        // ⭐ O GUARDA escolhido: a secção Nav Agent diz «Patrol» e a forma; a leitura viva muda
+        // quando ele persegue.
+        escolhido: g.guarda,
+        labirinto: None,
+        porta: None,
+        guarda: Some(g),
+    }
 }
 
 #[cfg(test)]

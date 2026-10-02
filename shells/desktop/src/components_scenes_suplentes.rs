@@ -536,10 +536,10 @@ impl crate::App {
             return;
         };
         let nivel = v.to_str().and_then(|s| s.parse().ok()).unwrap_or(1);
-        let Some(cx) = self.components_ctx() else {
+        let Some(mut cx) = self.components_ctx() else {
             return;
         };
-        let montada = ph2d_app_components::nav_smoke::montar(cx.sim.world_mut(), nivel);
+        let montada = ph2d_app_components::nav_smoke::montar_cena(&mut cx, nivel);
         self.components.smokes.nav = true;
         self.components.smokes.nav_raise = crate::components_scenes::LEVANTA_O_INSPECTOR;
         self.timeline.flags.simulate_physics = true;

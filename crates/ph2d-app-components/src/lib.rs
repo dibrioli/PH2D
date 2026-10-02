@@ -136,6 +136,7 @@ pub mod nav_rota;
 /// ⭐⭐⭐ **O mover de VISTA DE CIMA** (TOP-20 #13) — as duas cenas do dono.
 /// ⭐⭐⭐ A NAVEGAÇÃO (plano 30, W3) — `PH2D_NAV_SMOKE=1`.
 pub mod nav_smoke;
+pub mod nav_smoke_guarda;
 pub mod nav_smoke_porta;
 /// ⭐⭐⭐ **A PARALAXE** (plano 24, W1) — um objecto guarda uma fracção do movimento do mundo; a
 /// lei, a referência e o caso do arrasto estão no cabeçalho.

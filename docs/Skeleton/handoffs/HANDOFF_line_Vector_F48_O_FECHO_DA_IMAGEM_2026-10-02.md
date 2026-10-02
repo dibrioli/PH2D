@@ -5,7 +5,7 @@
 
 ## 0. Onde está
 
-- Worktree `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector` · ramo `line/Vector` · HEAD `13285066c` (F49: a costura no lugar da bola da F48; o que a F48 descreve abaixo foi SUBSTITUÍDO, ver [fila §F49](../01_a_fila.md)).
+- Worktree `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector` · ramo `line/Vector` · HEAD `a14c2467d` (F49: a costura no lugar da bola da F48; o que a F48 descreve abaixo foi SUBSTITUÍDO, ver [fila §F49](../01_a_fila.md)).
 - Base: `main` `1ad60a1ce`, após `git reset --keep main` (a linha já estava integrada; só a F48 está à frente).
 - Antes de ler: `cd` + `pwd` + `git branch --show-current` (tem de dar `line/Vector`).
 
@@ -31,6 +31,8 @@
 3. **Forma com EFEITOS não passa pelo desenho fiel** — ABERTO; fica DEPOIS do F49 abaixo.
 
 ## 3b. ⛔ O smoke da F48 REPROVOU (dono, 2026-10-02, três fotos) — o próximo trabalho é o F49
+
+F49 fechada (costura) — mutação 12/12 após as guardas; o limite conhecido é a cúspide da arte junto à tampa (fila §F49).
 
 *«A dobra está inconsistente, ora redonda ora pontuda»* (fotos a `(36°, ~−130°)`, `~0,5°` uma da
 outra) e um degrau no encontro da tampa redonda com a borda de baixo (a `~(36°, −146°)`).

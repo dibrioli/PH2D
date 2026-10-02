@@ -106,6 +106,38 @@ impl DeviceField {
         self.tape.to_wgsl()
     }
 
+    /// ⏱️⭐⭐⭐⭐ **A MESMA fita, INTERPRETADA** — o *ubershader* da marcha: o texto não muda com a
+    /// peça (ver [`crate::interp::corpo_da_fita_interpretada`]), logo os pipelines que a levam
+    /// compilam UMA vez por sessão. `None` com escultura (o interpretador não sabe amostrar a
+    /// grade) ou acima do [`crate::interp::REGISTOS_DA_MARCHA`] — e aí serve a fita compilada.
+    #[must_use]
+    pub fn tape_interpretada(&self) -> Option<crate::wgsl::TapeWgsl> {
+        if !self.sculpts.is_empty() {
+            return None;
+        }
+        let b = crate::interp::codifica(self.tape.code()?, self.tape.root())?;
+        if b.registos > crate::interp::REGISTOS_DA_MARCHA {
+            return None;
+        }
+        let corpo = crate::interp::em_floats(&b.palavras);
+        let mut consts = Vec::with_capacity(corpo.len() + 2);
+        #[allow(clippy::cast_precision_loss)]
+        consts.push(corpo.len() as f32);
+        #[allow(clippy::cast_precision_loss)]
+        consts.push(b.raiz as f32);
+        consts.extend(corpo);
+        Some(crate::wgsl::TapeWgsl {
+            source: crate::interp::corpo_da_fita_interpretada(crate::interp::REGISTOS_DA_MARCHA),
+            consts,
+        })
+    }
+
+    /// ⏱️ Quantos registos a fita interpretada pede — só para as sondas.
+    #[must_use]
+    pub fn registos_da_fita(&self) -> Option<usize> {
+        crate::interp::codifica(self.tape.code()?, self.tape.root()).map(|b| b.registos)
+    }
+
     /// ⚠️ Só para o diagnóstico — ver [`crate::point_tape::PointTape::peak_kinds`].
     #[cfg(test)]
     pub(crate) fn peak_kinds(&self) -> Vec<(String, usize)> {

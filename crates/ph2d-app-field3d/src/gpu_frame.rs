@@ -507,7 +507,11 @@ pub(super) fn pedido(
     // excluiria um bom.* A nota com as tabelas está no lugar do `MAX_GUARDADOS`, na
     // [`ph2d_field_gpu`]; o que protege a faixa do produto é o gate
     // `na_faixa_do_produto_a_placa_ganha_com_margem`.
-    let fita = campo.tape_wgsl()?;
+    let fita = if sonda.fita_interpretada {
+        campo.tape_interpretada()?
+    } else {
+        campo.tape_wgsl()?
+    };
     let bola = ph2d_field_eval::bounds::bounding_ball(doc, reg)?;
     let (right, up, fwd) = cam.basis();
     let screen = ph2d_field_render::Screen::new(w, h, cam.half_extent);

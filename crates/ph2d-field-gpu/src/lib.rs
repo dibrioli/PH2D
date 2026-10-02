@@ -145,7 +145,7 @@ pub mod parity;
 pub mod probe;
 pub mod sculpt;
 /// ⭐ **As sondas do ricochete guardadas na placa entre quadros** — ver o módulo.
-mod sondas_na_placa;
+pub mod sondas_na_placa;
 pub mod trace;
 mod trace_grupo;
 mod trace_lampadas;
@@ -178,6 +178,12 @@ pub struct FieldPipelines {
     sondas: Option<sondas_na_placa::SondasNaPlaca>,
     /// Quantas vezes as sondas foram assadas — ver [`FieldPipelines::sondas_assadas`].
     assaduras_de_sondas: usize,
+    /// ⏱️ Em CÉLULAS da grade, quanto as sondas guardadas podem estar deslocadas para servirem a um
+    /// quadro que não pode esperar — ver [`FieldPipelines::sondas_a_mexer`]. Nasce no
+    /// [`sondas_na_placa::TOLERANCIA_EM_CELULAS`]; só uma sonda o muda.
+    pub tolerancia_das_sondas: f32,
+    /// ⏱️ Quantas RODADAS de compilação houve — ver [`FieldPipelines::rodadas_de_compilacao`].
+    rodadas: usize,
     /// ⭐⭐⭐⭐ **O histórico da oclusão** — ver [`ceu_tempo`].
     ceu_tempo: Option<ceu_tempo::Tabela>,
     /// Quantas vezes ele recomeçou do zero — ver [`FieldPipelines::ceu_tempo_reinicios`].
@@ -232,6 +238,8 @@ impl FieldPipelines {
             envios_foto: 0,
             sondas: None,
             assaduras_de_sondas: 0,
+            tolerancia_das_sondas: sondas_na_placa::TOLERANCIA_EM_CELULAS,
+            rodadas: 0,
             ceu_tempo: None,
             ceu_tempo_reinicios: 0,
             cronometro: None,
@@ -355,6 +363,15 @@ impl FieldPipelines {
         self.compilado_ms
     }
 
+    /// ⏱️⭐⭐⭐⭐ **Quantas RODADAS de compilação houve** — um lote paralelo conta UMA, um pipeline
+    /// compilado sozinho conta UMA. ⚠️ É a régua do lote único (§12 do handoff da oclusão no
+    /// tempo): contar PIPELINES não o via — o céu tirado do lote compila na mesma, mais tarde, no
+    /// lote dele, e a conta de pipelines sai igual (a mutação L7 sobreviveu por isso).
+    #[must_use]
+    pub fn rodadas_de_compilacao(&self) -> usize {
+        self.rodadas
+    }
+
     /// Quantos pipelines estão compilados — o número que um gate de *«um arrasto não recompila»*
     /// observa.
     #[must_use]
@@ -431,11 +448,27 @@ impl FieldPipelines {
         pedidos: &[(&str, &ph2d_field_eval::wgsl::TapeWgsl, &str)],
         layout: Option<&wgpu::PipelineLayout>,
     ) {
-        let mut faltas: Vec<(String, String, &str)> = Vec::new();
-        for (molde, field, entrada) in pedidos {
+        let lote: Vec<PedidoDeLote<'_>> = pedidos
+            .iter()
+            .map(|(molde, fita, entrada)| (*molde, *fita, *entrada, layout))
+            .collect();
+        self.precompila_lote(device, &lote);
+    }
+
+    /// ⭐⭐⭐⭐ **O lote com um LAYOUT POR PEDIDO** — os kernels de PASSES diferentes do mesmo quadro
+    /// (a marcha, o céu no tempo, as sondas do pintor) compilam-se juntos.
+    ///
+    /// ⛔⛔ **Ele existe por uma medição** (report do dono, 2026-10-01: *«melhor mas ainda com delay
+    /// de 1 ou 2 segundos»*): na cena do dono (quatro nós de toro) uma caixa nova compilava a marcha
+    /// (`309 ms`), DEPOIS o céu (`476 ms`) e no assente as sondas (`418 ms`) — três lotes em fila,
+    /// `~1,4 s` (`diag_o_preco_de_uma_forma_nova_ao_lado_do_no`). Eles não dependem uns dos outros:
+    /// juntos pagam o mais lento.
+    pub fn precompila_lote(&mut self, device: &wgpu::Device, pedidos: &[PedidoDeLote<'_>]) {
+        let mut faltas: Vec<(String, String, &str, Option<&wgpu::PipelineLayout>)> = Vec::new();
+        for (molde, field, entrada, layout) in pedidos {
             let (chave, src) = chave_do_pipeline(molde, field, entrada);
             if !self.por_texto.contains_key(&chave) && !faltas.iter().any(|f| f.0 == chave) {
-                faltas.push((chave, src, entrada));
+                faltas.push((chave, src, entrada, *layout));
             }
         }
         if faltas.len() < 2 {
@@ -460,7 +493,7 @@ impl FieldPipelines {
         let feitos: Vec<(String, wgpu::ComputePipeline)> = std::thread::scope(|s| {
             let maos: Vec<_> = faltas
                 .iter()
-                .map(|(chave, src, entrada)| {
+                .map(|(chave, src, entrada, layout)| {
                     let modulo = &modulos[textos
                         .iter()
                         .position(|t| *t == src.as_str())
@@ -468,7 +501,7 @@ impl FieldPipelines {
                     s.spawn(move || {
                         let p = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                             label: Some("campo"),
-                            layout,
+                            layout: *layout,
                             module: modulo,
                             entry_point: Some(entrada),
                             compilation_options: wgpu::PipelineCompilationOptions::default(),
@@ -486,6 +519,7 @@ impl FieldPipelines {
         }
         let ms = t0.elapsed().as_secs_f64() * 1e3;
         self.compilado_ms += ms;
+        self.rodadas += 1;
         if *PIPELINE_LOG.get_or_init(|| std::env::var_os("PH2D_PIPELINE_LOG").is_some()) {
             eprintln!("[pipeline] em paralelo · {n} entradas · {ms:>8.2} ms");
         }
@@ -508,6 +542,7 @@ impl FieldPipelines {
     ) -> &wgpu::ComputePipeline {
         let (chave, src) = chave_do_pipeline(molde, field, entrada);
         let compilado_ms = &mut self.compilado_ms;
+        let rodadas = &mut self.rodadas;
         self.por_texto.entry(chave).or_insert_with(|| {
             // ⏱️⭐⭐⭐ **O INSTRUMENTO que atribui o segundo e meio** (`docs/Render3d/03` §W9):
             // `PH2D_PIPELINE_LOG=1` imprime, por FALTA no cache, quanto custou cada metade. As duas
@@ -537,6 +572,7 @@ impl FieldPipelines {
             });
             let ms_pipeline = t1.elapsed().as_secs_f32() * 1e3;
             *compilado_ms += t0.elapsed().as_secs_f64() * 1e3;
+            *rodadas += 1;
             if *PIPELINE_LOG.get_or_init(|| std::env::var_os("PH2D_PIPELINE_LOG").is_some()) {
                 eprintln!(
                     "[pipeline] {entrada:<16} · {:>6} linhas · módulo {ms_modulo:>8.2} ms · \
@@ -551,6 +587,14 @@ impl FieldPipelines {
 
 /// ⏱️ A porta do [`FieldPipelines::entry_with_layout`] — lida **uma vez**, como o resto do módulo.
 static PIPELINE_LOG: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+
+/// Um pedido do [`FieldPipelines::precompila_lote`]: `(molde, fita, entrada, layout)`.
+pub type PedidoDeLote<'a> = (
+    &'a str,
+    &'a ph2d_field_eval::wgsl::TapeWgsl,
+    &'a str,
+    Option<&'a wgpu::PipelineLayout>,
+);
 
 /// A chave de um pipeline no cache — a entrada e o TEXTO inteiro do shader —, e o texto.
 fn chave_do_pipeline(

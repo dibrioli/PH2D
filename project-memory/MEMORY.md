@@ -76,6 +76,7 @@
 - ⛔ [um `tail` é uma JANELA, não um veredito (0 FAILED sobre 212 suites)](feedback_a_tail_is_a_window_not_a_verdict.md)
 - [TRÊS membros novos da família de flakes de carga (o 3.º passa 3/3 a `load 19` ⇒ o discriminador é o FAN-OUT, não o relógio)](reference_flip_fit_cache_ratio_is_a_load_flake.md)
 - [Cadência de processo + CI (19)](reference_topic_process_cadence.md)
+- ⛔ [`sccache` herdava o cadeado da placa — `9>&-`](feedback_a_daemon_born_under_the_gpu_door_inherits_its_lock.md)
 - 📚 [Ship / CI / integração: mais (22) lições](reference_topic_ship_ci_integration_lessons.md)
 
 ## Auditoria (famílias — 2 saltos)

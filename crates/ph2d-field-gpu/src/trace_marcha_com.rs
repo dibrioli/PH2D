@@ -101,61 +101,6 @@ pub(super) fn marcha_com(
     } else {
         "centro_e_luz"
     };
-    // ⭐⭐⭐⭐ **Os kernels deste quadro compilam-se JUNTOS** — ver
-    // [`crate::FieldPipelines::precompila`]. A lista é a dos pedidos que se seguem, com as MESMAS
-    // condições; um pedido que ela esqueça compila-se sozinho mais abaixo, que é o caminho de antes.
-    {
-        let mut lista = vec![entrada_do_centro];
-        if luz_a_parte {
-            lista.push("luz_so");
-        }
-        if quer_ceu {
-            lista.extend(["ceu_meia", "ceu_sobe"]);
-        }
-        if setup.antialias {
-            lista.extend(["bordas", "bordas_marcha"]);
-        }
-        let pedidos: Vec<_> = lista
-            .iter()
-            .map(|e| (molde_com_esculturas.as_str(), fita, *e))
-            .collect();
-        cache.precompila(device, &pedidos, Some(&layout));
-    }
-    let p_centro = cache
-        .entry_with_layout(
-            device,
-            &molde_com_esculturas,
-            fita,
-            entrada_do_centro,
-            Some(&layout),
-        )
-        .clone();
-    let p_luz = luz_a_parte.then(|| {
-        cache
-            .entry_with_layout(device, &molde_com_esculturas, fita, "luz_so", Some(&layout))
-            .clone()
-    });
-    // ⭐⭐⭐⭐ **A oclusão a passo** reconstrói-se DEPOIS de a luz estar escrita em toda a imagem: o
-    // `ceu_sobe` lê os representantes vizinhos.
-    // ⚠️ Com a oclusão NO TEMPO a mexer, quem a escreve é o `ceu_tempo_acumula` — o passo não corre.
-    let p_ceu = quer_ceu.then(|| {
-        let mut e = |nome| {
-            cache
-                .entry_with_layout(device, &molde_com_esculturas, fita, nome, Some(&layout))
-                .clone()
-        };
-        (e("ceu_meia"), e("ceu_sobe"))
-    });
-    // ⚠️ **Compilar é o caro** — o pipeline da borda só nasce quando ela vai de facto correr.
-    let p_bordas = setup.antialias.then(|| {
-        let mut e = |nome| {
-            cache
-                .entry_with_layout(device, &molde_com_esculturas, fita, nome, Some(&layout))
-                .clone()
-        };
-        (e("bordas"), e("bordas_marcha"))
-    });
-
     use wgpu::util::DeviceExt;
     // ⭐⭐⭐ **UM vector de constantes para os DOIS passes.** A fita da peça ocupa o princípio; a lei
     // do dono escreve a seguir, e a origem dela é **exactamente** `fita.consts.len()`.
@@ -233,6 +178,100 @@ pub(super) fn marcha_com(
         contents: &kb_bytes,
         usage: wgpu::BufferUsages::STORAGE,
     });
+    // ⭐⭐⭐⭐ **Os kernels deste quadro compilam-se JUNTOS** — ver
+    // [`crate::FieldPipelines::precompila`]. A lista é a dos pedidos que se seguem, com as MESMAS
+    // condições; um pedido que ela esqueça compila-se sozinho mais abaixo, que é o caminho de antes.
+    {
+        let mut lista = vec![entrada_do_centro];
+        if luz_a_parte {
+            lista.push("luz_so");
+        }
+        if quer_ceu {
+            lista.extend(["ceu_meia", "ceu_sobe"]);
+        }
+        if setup.antialias {
+            lista.extend(["bordas", "bordas_marcha"]);
+        }
+        let mut pedidos: Vec<crate::PedidoDeLote<'_>> = lista
+            .iter()
+            .map(|e| (molde_com_esculturas.as_str(), fita, *e, Some(&layout)))
+            .collect();
+        // ⭐⭐⭐⭐ **E os dos OUTROS passes que levam a fita** — o céu no tempo e as sondas do
+        // pintor (report do dono, 2026-10-01: *«ainda com delay de 1 ou 2 segundos»*). Na cena dele
+        // uma caixa nova compilava a marcha, DEPOIS o céu e, no assente, as sondas: três lotes em
+        // fila (`309 + 476 + 418 ms`, `diag_o_preco_de_uma_forma_nova_ao_lado_do_no`). Eles só
+        // dependem do TEXTO — as portas [`crate::ceu_tempo::fonte_do_ceu`] e
+        // [`crate::paint::layout_do_pintor`] são as mesmas que os despachos leem —, logo compilam
+        // aqui, juntos, e os pedidos lá em baixo acertam o cache.
+        // ⚠️ As sondas entram MESMO num quadro de movimento: é o que deixa o assente seguinte
+        // sem paragem, e o lote paga o mais lento, não a soma.
+        let fonte_ceu = ceu_tempo
+            .as_ref()
+            .map(|_| crate::ceu_tempo::fonte_do_ceu(&molde_com_esculturas));
+        let layout_ceu = fonte_ceu
+            .as_ref()
+            .map(|_| crate::ceu_tempo::layout_do_ceu(device, &bgl).1);
+        if let (Some(f), Some(l)) = (&fonte_ceu, &layout_ceu) {
+            pedidos.extend(
+                crate::ceu_tempo::ENTRADAS
+                    .iter()
+                    .map(|e| (f.as_str(), fita, *e, Some(l))),
+            );
+        }
+        let pintor_do_lote = pintor.filter(|p| p.ao_rays > 0 || p.le_o_campo);
+        let fonte_pintor = pintor_do_lote
+            .map(|p| crate::paint::fonte(p, lei_do_dono.as_ref(), &leis_com_esculturas));
+        let layout_pintor = pintor_do_lote.map(|_| crate::paint::layout_do_pintor(device, &bgl).1);
+        if let (Some(p), Some(f), Some(l)) = (pintor_do_lote, &fonte_pintor, &layout_pintor) {
+            if p.ao_rays > 0 {
+                pedidos.push((f.as_str(), fita, "assa_sondas", Some(l)));
+            }
+            // ⚠️ Quem lê a curvatura leva a fita real também no `pinta`/`pinta_bordas` (ver
+            // [`crate::paint_entradas`]): sem isto o estilo pagaria a compilação deles sozinho.
+            if p.le_o_campo {
+                pedidos.push((f.as_str(), fita, "pinta", Some(l)));
+                if setup.antialias {
+                    pedidos.push((f.as_str(), fita, "pinta_bordas", Some(l)));
+                }
+            }
+        }
+        cache.precompila_lote(device, &pedidos);
+    }
+    let p_centro = cache
+        .entry_with_layout(
+            device,
+            &molde_com_esculturas,
+            fita,
+            entrada_do_centro,
+            Some(&layout),
+        )
+        .clone();
+    let p_luz = luz_a_parte.then(|| {
+        cache
+            .entry_with_layout(device, &molde_com_esculturas, fita, "luz_so", Some(&layout))
+            .clone()
+    });
+    // ⭐⭐⭐⭐ **A oclusão a passo** reconstrói-se DEPOIS de a luz estar escrita em toda a imagem: o
+    // `ceu_sobe` lê os representantes vizinhos.
+    // ⚠️ Com a oclusão NO TEMPO a mexer, quem a escreve é o `ceu_tempo_acumula` — o passo não corre.
+    let p_ceu = quer_ceu.then(|| {
+        let mut e = |nome| {
+            cache
+                .entry_with_layout(device, &molde_com_esculturas, fita, nome, Some(&layout))
+                .clone()
+        };
+        (e("ceu_meia"), e("ceu_sobe"))
+    });
+    // ⚠️ **Compilar é o caro** — o pipeline da borda só nasce quando ela vai de facto correr.
+    let p_bordas = setup.antialias.then(|| {
+        let mut e = |nome| {
+            cache
+                .entry_with_layout(device, &molde_com_esculturas, fita, nome, Some(&layout))
+                .clone()
+        };
+        (e("bordas"), e("bordas_marcha"))
+    });
+
     let n = u64::from(width) * u64::from(height);
     let storage = wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC;
     let cria = |nome: &str, bytes: u64| {

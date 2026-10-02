@@ -307,6 +307,54 @@ pub(crate) fn herda(cache: &crate::FieldPipelines, chave: &ChaveDoCeu) -> bool {
     cache.ceu_tempo.as_ref().is_some_and(|t| &t.chave == chave)
 }
 
+/// ⭐⭐⭐⭐ **As SEIS entradas do céu no tempo** — compilam-se sempre juntas (uma forma nova pede as
+/// de GRAVAR num quadro e as de ACUMULAR no seguinte).
+pub(crate) const ENTRADAS: [&str; 6] = [
+    "ceu_tempo_pede",
+    "ceu_tempo_args",
+    "ceu_tempo_marcha",
+    "ceu_tempo_le",
+    "ceu_tempo_zera",
+    "ceu_tempo_grava",
+];
+
+/// ⭐⭐⭐⭐ **O TEXTO dos kernels do céu** — o molde da marcha mais o WGSL da tabela. ⚠️ Uma porta
+/// só, com dois leitores: o [`despacha`] e o lote do quadro
+/// ([`crate::trace_marcha_com`]), que o compila JUNTO com a marcha antes de marchar. Duas
+/// redacções dele dariam duas chaves de cache, e o lote compilaria um texto que ninguém pede.
+pub(crate) fn fonte_do_ceu(molde: &str) -> String {
+    format!(
+        "{molde}{}",
+        format!(
+            "{}{}",
+            crate::ceu_tempo_wgsl::WGSL,
+            crate::ceu_tempo_wgsl_heranca::WGSL
+        )
+        .replace("{FATIAS_POR_QUADRO}", &FATIAS_POR_QUADRO.to_string())
+    )
+}
+
+/// O layout dos kernels do céu — o grupo `0` da marcha e o grupo `1` da tabela.
+pub(crate) fn layout_do_ceu(
+    device: &wgpu::Device,
+    bgl0: &wgpu::BindGroupLayout,
+) -> (wgpu::BindGroupLayout, wgpu::PipelineLayout) {
+    let bgl1 = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("ceu-tempo"),
+        entries: &[
+            crate::trace::uniforme(0),
+            crate::trace::armazem(1, false),
+            crate::trace::armazem(2, false),
+        ],
+    });
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("ceu-tempo"),
+        bind_group_layouts: &[Some(bgl0), Some(&bgl1)],
+        immediate_size: 0,
+    });
+    (bgl1, layout)
+}
+
 /// ⭐⭐⭐⭐ **Despacha o kernel da tabela neste quadro**, no encoder da marcha e depois da luz.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn despacha(
@@ -406,43 +454,15 @@ pub(crate) fn despacha(
         contents: &u,
         usage: wgpu::BufferUsages::UNIFORM,
     });
-    let bgl1 = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        label: Some("ceu-tempo"),
-        entries: &[
-            crate::trace::uniforme(0),
-            crate::trace::armazem(1, false),
-            crate::trace::armazem(2, false),
-        ],
-    });
-    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("ceu-tempo"),
-        bind_group_layouts: &[Some(bgl0), Some(&bgl1)],
-        immediate_size: 0,
-    });
-    let fonte = format!(
-        "{molde}{}",
-        format!(
-            "{}{}",
-            crate::ceu_tempo_wgsl::WGSL,
-            crate::ceu_tempo_wgsl_heranca::WGSL
-        )
-        .replace("{FATIAS_POR_QUADRO}", &FATIAS_POR_QUADRO.to_string())
-    );
+    let (bgl1, layout) = layout_do_ceu(device, bgl0);
+    let fonte = fonte_do_ceu(molde);
     // ⭐⭐⭐⭐ **Os SEIS compilam-se juntos, mesmo os que este quadro não corre** — ver
     // [`crate::FieldPipelines::precompila`]. Uma forma nova pede os de GRAVAR no 1.º quadro (a peça
     // mudou, não há histórico a herdar) e os de ACUMULAR no seguinte: pedi-los um a um eram duas
     // paragens seguidas, e a segunda caía no quadro em que a mão já estava a girar.
     cache.precompila(
         device,
-        &[
-            "ceu_tempo_pede",
-            "ceu_tempo_args",
-            "ceu_tempo_marcha",
-            "ceu_tempo_le",
-            "ceu_tempo_zera",
-            "ceu_tempo_grava",
-        ]
-        .map(|e| (fonte.as_str(), fita, e)),
+        &ENTRADAS.map(|e| (fonte.as_str(), fita, e)),
         Some(&layout),
     );
     let mut kernel = |nome: &str| {

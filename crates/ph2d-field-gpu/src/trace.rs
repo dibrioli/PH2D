@@ -226,6 +226,12 @@ impl Tracer {
         self.cache.compiled()
     }
 
+    /// Ver [`crate::FieldPipelines::rodadas_de_compilacao`].
+    #[must_use]
+    pub fn rodadas_de_compilacao(&self) -> usize {
+        self.cache.rodadas_de_compilacao()
+    }
+
     /// Ver [`crate::FieldPipelines::sondas_assadas`].
     #[must_use]
     pub fn sondas_assadas(&self) -> usize {
@@ -246,6 +252,11 @@ impl Tracer {
     /// Ver [`crate::FieldPipelines::esquece_as_sondas`].
     pub fn esquece_as_sondas(&mut self) {
         self.cache.esquece_as_sondas();
+    }
+
+    /// ⏱️ Só as sondas: ver [`crate::FieldPipelines::tolerancia_das_sondas`].
+    pub fn tolerancia_das_sondas(&mut self, celulas: f32) {
+        self.cache.tolerancia_das_sondas = celulas;
     }
 
     /// Ver [`crate::FieldPipelines::entradas_compiladas`].

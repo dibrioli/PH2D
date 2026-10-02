@@ -290,3 +290,7 @@ fn o_laco_da_resolucao_desconta_a_compilacao() {
          em {n}"
     );
 }
+
+/// ⭐⭐⭐⭐ **Os gates do lote único e das sondas a mexer** — ver o cabeçalho do [`lote`].
+#[path = "preview_device_w9_lote_tests.rs"]
+mod lote;

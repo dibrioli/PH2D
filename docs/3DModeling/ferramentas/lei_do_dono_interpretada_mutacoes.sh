@@ -94,7 +94,7 @@ PY
   veredito "$modo" "$name" "$rc" "$log" | tee -a "$out"
 }
 
-GATES_PLACA='uma_forma_nova_recompila_as_sondas_e_nao_o_pintor a_primeira_cor_diferente_nao_compila_nada o_quadro_diz_quanto_foi_compilacao'
+GATES_PLACA='uma_forma_nova_recompila_as_sondas_e_nao_o_pintor a_primeira_cor_diferente_nao_compila_nada o_quadro_diz_quanto_foi_compilacao forma_nova::lote'
 
 # 4.º CONTROLO — a corrida LIMPA tem de estar verde, senão toda mutação se lê como MORTA.
 if [ "${MUTA_SO_ANCORAS:-0}" != 1 ]; then
@@ -199,5 +199,51 @@ mutate l6_sem_a_subtraccao_no_material \
             millis: t0.elapsed().as_secs_f64() * 1000.0,' \
   cpu ph2d-app-field3d 'test(o_laco_da_resolucao_desconta_a_compilacao)'
 
+# ── A 2.ª metade do report (*«ainda 1 ou 2 segundos»*): o lote ÚNICO e as sondas a mexer ──
+GATES_LOTE='forma_nova::lote'
+
+# L7 — o lote do quadro deixa de levar o céu no tempo.
+mutate l7_lote_sem_o_ceu \
+  crates/ph2d-field-gpu/src/trace_marcha_com.rs \
+  '            pedidos.extend(' \
+  '            let _ = &mut pedidos;
+            Vec::<crate::PedidoDeLote<'"'"'_>>::new().extend(' \
+  gpu ph2d-app-field3d "$GATES_LOTE"
+
+# L8 — o lote do quadro deixa de levar as sondas.
+mutate l8_lote_sem_as_sondas \
+  crates/ph2d-field-gpu/src/trace_marcha_com.rs \
+  '                pedidos.push((f.as_str(), fita, "assa_sondas", Some(l)));' \
+  '                let _ = (f, l);' \
+  gpu ph2d-app-field3d "$GATES_LOTE"
+
+# L9 — o quadro de movimento volta a ASSAR as sondas (ignora as guardadas).
+mutate l9_movimento_assa \
+  crates/ph2d-field-gpu/src/paint.rs \
+  '            Some(Some(guardadas)) => (guardadas, false),' \
+  '            Some(Some(_)) => cache.sondas(device, chave_sondas.clone(), bytes_sondas),' \
+  gpu ph2d-app-field3d "$GATES_LOTE"
+
+# L10 — as guardadas servem SEMPRE (a tolerância sai).
+mutate l10_sem_tolerancia \
+  crates/ph2d-field-gpu/src/sondas_na_placa.rs \
+  '            || guardadas.chave.deslocamento_em_celulas(c) <= self.tolerancia_das_sondas)' \
+  '            || guardadas.chave.deslocamento_em_celulas(c) >= -1.0)' \
+  gpu ph2d-app-field3d "$GATES_LOTE"
+
+# L11 — as guardadas NUNCA servem (só a mesma chave).
+mutate l11_nunca_servem \
+  crates/ph2d-field-gpu/src/sondas_na_placa.rs \
+  '            || guardadas.chave.deslocamento_em_celulas(c) <= self.tolerancia_das_sondas)' \
+  '            || guardadas.chave.deslocamento_em_celulas(c) < -1.0)' \
+  gpu ph2d-app-field3d "$GATES_LOTE"
+
+# L12 — sem sondas que sirvam, o movimento leva o ricochete na mesma (e assa).
+mutate l12_ricochete_sem_sondas \
+  crates/ph2d-field-gpu/src/paint_entradas.rs \
+  '        && !(sondas_servem' \
+  '        && !((sondas_servem || true)' \
+  gpu ph2d-app-field3d "$GATES_LOTE"
+
 echo "---"
-echo "esperado: L1–L4 e L6 MORTAS · L5 SOBREVIVE (controlo) · limpa_cpu/limpa_gpu SOBREVIVEM" | tee -a "$out"
+echo "esperado: L1–L4 e L6–L12 MORTAS · L5 SOBREVIVE (controlo) · limpa_cpu/limpa_gpu SOBREVIVEM" | tee -a "$out"

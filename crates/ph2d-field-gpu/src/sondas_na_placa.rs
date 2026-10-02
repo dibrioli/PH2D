@@ -22,6 +22,28 @@
 
 use crate::trace::MarchSetup;
 
+/// ⏱️⭐⭐⭐⭐ **Quantas CÉLULAS da grade as sondas guardadas podem estar deslocadas** e ainda servir a
+/// um quadro que não pode esperar — ver [`crate::FieldPipelines::sondas_a_mexer`].
+///
+/// ⭐ **O número sai do CRUZAMENTO das duas saídas** (`diag_as_sondas_velhas_a_mexer`, cinco toros
+/// com o do meio arrastado, `--release`, carga `~2,5`): contra a imagem do MESMO quadro com as
+/// sondas acabadas de assar, erro por canal em bytes, média / p99 —
+///
+/// | deslocamento (células) | sondas VELHAS | SEM ricochete |
+/// |---:|---:|---:|
+/// | `0,036` | `0,08 / 1` | `1,20 / 14` |
+/// | `0,232` | `0,25 / 3` | `1,18 / 13` |
+/// | `0,408` | `0,40 / 5` | `1,18 / 13` |
+/// | `0,656` | `0,63 / 11` | `1,22 / 14` |
+/// | `0,939` | `0,83 / 16` | `1,29 / 14` |
+/// | `1,617` | `1,08 / 14` | `1,51 / 16` |
+///
+/// As velhas erram LINEARMENTE com o deslocamento (`~1` byte de média por célula) e ir sem
+/// ricochete erra `~1,2` sempre; o p99 delas passa o da outra saída entre `0,66` e `0,94` (`≈ 0,83`
+/// interpolado) ⇒ `0,75`, abaixo do cruzamento. ⚠️ Medido numa cena; a peça do dono pode
+/// deslocar-se mais depressa por célula, e o que o número protege é a ORDEM das duas saídas.
+pub const TOLERANCIA_EM_CELULAS: f32 = 0.75;
+
 /// ⭐⭐⭐ **Tudo o que a assadura das sondas lê, menos a orientação da câmera.**
 ///
 /// ⚠️ **Comparada por IGUALDADE, nunca por hash** — uma colisão entregaria o ricochete de outra peça
@@ -43,6 +65,27 @@ pub(crate) struct ChaveDasSondas {
 }
 
 impl ChaveDasSondas {
+    /// ⭐⭐⭐⭐ **Quanto a GRADE destas sondas se deslocou da de `outra`, em CÉLULAS.**
+    ///
+    /// A grade é a bola da peça (centro e raio) — ver o `sonda_canto`/`sonda_passo` do
+    /// `paint_wgsl_sondas`: o canto é `centro − raio·margem` e o passo `2·raio·margem/(G − 1)`. O
+    /// ponto da grade que mais anda é um canto, e anda no máximo `max|Δcentro| + |Δraio|·margem`.
+    /// ⚠️ Num arrasto a bola muda SEMPRE (medido no gate `arrastar_nao_assa…`: `1,7e-4` no centro
+    /// a `dy = 0,03`) ⇒ a pergunta não pode ser de igualdade.
+    fn deslocamento_em_celulas(&self, outra: &Self) -> f32 {
+        // `marcha` = `[step, cx, cy, cz, raio, …]` — ver [`Self::de`].
+        let f = |k: &Self, i: usize| k.marcha.get(i).copied().map_or(f32::NAN, f32::from_bits);
+        let margem = ph2d_field_render::probes::PROBE_MARGIN;
+        let raio = f(self, 4).max(f(outra, 4)).max(1e-3) * margem;
+        #[allow(clippy::cast_precision_loss)]
+        let celula = 2.0 * raio / (ph2d_field_render::probes::PROBE_GRID - 1) as f32;
+        let dc = (1..4)
+            .map(|i| (f(self, i) - f(outra, i)).abs())
+            .fold(0.0f32, f32::max);
+        let dr = (f(self, 4) - f(outra, 4)).abs() * margem;
+        (dc + dr) / celula
+    }
+
     /// A chave deste quadro — `None` quando ele não pode ser guardado (há escultura).
     pub(crate) fn de(
         fita: &ph2d_field_eval::wgsl::TapeWgsl,
@@ -130,6 +173,24 @@ impl crate::FieldPipelines {
             });
         }
         (buffer, true)
+    }
+
+    /// ⏱️⭐⭐⭐⭐ **As sondas de um quadro que NÃO PODE ESPERAR** — o movimento (report do dono,
+    /// 2026-10-01: *«ainda com delay de 1 ou 2 segundos»* · §10.3 *«arrastar objetos tem um delay
+    /// absurdo»*). Medido na cena dele (`diag_o_preco_de_uma_forma_nova_ao_lado_do_no`): cada
+    /// quadro de ARRASTO de uma caixa re-assava as sondas — `129 ms` de placa num quadro de `171`,
+    /// contra `14` com elas guardadas.
+    ///
+    /// ⭐ **A lei W73 — grosso a mexer, nítido ao assentar — aplicada à luz que ricocheteia:** com a
+    /// mesma chave são as de sempre; com outra chave mas a MESMA [`ChaveDasSondas::grade`] servem
+    /// as guardadas (o ricochete fica a dever a última edição enquanto a mão mexe) e a chave NÃO é
+    /// reescrita — o assente seguinte vê-a diferente e re-assa. `None` quando não há sondas que
+    /// sirvam: o chamador desenha esse quadro sem ricochete.
+    pub(crate) fn sondas_a_mexer(&self, chave: Option<&ChaveDasSondas>) -> Option<wgpu::Buffer> {
+        let (c, guardadas) = (chave?, self.sondas.as_ref()?);
+        (guardadas.chave == *c
+            || guardadas.chave.deslocamento_em_celulas(c) <= self.tolerancia_das_sondas)
+            .then(|| guardadas.buffer.clone())
     }
 
     /// ⭐⭐ **Quantas vezes as sondas foram ASSADAS** — a régua da cache.

@@ -45,13 +45,18 @@ pub(crate) fn escolhe<'a>(
     pintor: &PaintSetup<'_>,
     bordas: u64,
     layout: &wgpu::PipelineLayout,
+    // ⏱️ Há sondas que este quadro pode ler sem as assar — ver
+    // [`crate::FieldPipelines::sondas_a_mexer`]. Num quadro que não pode esperar, sem elas o
+    // ricochete fica de fora (a assadura é do assente).
+    sondas_servem: bool,
 ) -> Fitas<'a> {
     let sondas = fita;
     let pintura = if pintor.le_o_campo { fita } else { inerte };
     // ⭐⭐⭐⭐ Ver [`PaintSetup::ricochete_sem_esperar`] — os QUATRO pipelines que o ricochete pede.
     let ao_rays = if pintor.ricochete_sem_esperar
         && pintor.ao_rays > 0
-        && !(cache.tem_entrada(fonte, sondas, "assa_sondas")
+        && !(sondas_servem
+            && cache.tem_entrada(fonte, sondas, "assa_sondas")
             && ["pinta", "pinta_ricochete", "borra_ricochete"]
                 .iter()
                 .all(|e| cache.tem_entrada(fonte, pintura, e)))

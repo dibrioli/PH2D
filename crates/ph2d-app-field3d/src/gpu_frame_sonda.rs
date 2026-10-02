@@ -68,6 +68,9 @@ pub struct Sonda {
     /// ⭐⭐⭐⭐ **O tamanho a ENTREGAR** — o da área, quando o traçado é mais pequeno (a resolução
     /// dinâmica do movimento): a imagem sobe a ele NA PLACA ([`ph2d_field_gpu::amplia`]).
     pub entrega: Option<(u32, u32)>,
+    /// ⏱️⭐⭐⭐⭐ **A marcha com a fita INTERPRETADA** — o *ubershader*, ver
+    /// [`ph2d_field_eval::device::DeviceField::tape_interpretada`]. Só a sonda o liga por ora.
+    pub fita_interpretada: bool,
 }
 
 impl Default for Sonda {
@@ -87,6 +90,7 @@ impl Default for Sonda {
             ceu_no_tempo: crate::preview::o_ceu_vive_no_tempo(),
             sem_ceu: false,
             entrega: None,
+            fita_interpretada: false,
         }
     }
 }

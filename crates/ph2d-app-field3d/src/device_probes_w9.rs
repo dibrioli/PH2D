@@ -545,3 +545,7 @@ mod perto;
 /// ⏱️⭐⭐⭐⭐ **O preço de uma forma nova no Render** — ver o cabeçalho do [`forma_nova`].
 #[path = "device_probes_w9_forma_nova.rs"]
 mod forma_nova;
+
+/// ⏱️⭐⭐⭐⭐ **O erro das sondas velhas a mexer** — ver o cabeçalho do [`sondas_a_mexer`].
+#[path = "device_probes_w9_sondas_a_mexer.rs"]
+mod sondas_a_mexer;

@@ -547,6 +547,104 @@ COMPILAÇÃO, e ela saiu.
   `precompila` (só relógio: a imagem e a contagem de compilações são as mesmas, logo nenhuma régua
   de valor o vê — o número está na tabela do §11.3).
 
+## §12 — ⭐⭐⭐⭐ *«Melhor mas ainda com delay de 1 ou 2 segundos»* (report do dono, 2026-10-01)
+
+### §12.1 — O que a minha sonda não via: a CENA dele
+
+A sonda do §11 acrescentava caixas a caixas; a cena do smoke (`=28`) são **quatro nós de toro**, e a
+fita da marcha leva a peça INTEIRA. Refeita na cena dele (`diag_o_preco_de_uma_forma_nova_ao_lado_do_no`,
+`PH2D_PIPELINE_LOG=1`): uma caixa nova compilava a marcha (`309 ms`), **depois** o céu no tempo
+(`476 ms`) e, no assente, as sondas (`418 ms`) — três lotes **em fila**, `820 + 606 ms ≈ 1,4 s`.
+⚠️ *Uma sonda feita na fixtura barata mede outro programa:* com caixas a mesma cura lia `193 ms`.
+
+### §12.2 — ⛔ Recusa MEDIDA: a marcha INTERPRETADA (o *ubershader*)
+
+A cura de fundo óbvia — o texto da marcha não depender da peça, como a lei do dono do §11 — foi
+construída ([`DeviceField::tape_interpretada`](../../../crates/ph2d-field-eval/src/device.rs),
+[`interp::corpo_da_fita_interpretada`](../../../crates/ph2d-field-eval/src/interp.rs)) e medida
+(`diag_o_preco_da_marcha_interpretada`, cena do dono, carga `~5`):
+
+| fita | quadro | 1.ª chamada | mínimo de 5 | píxeis diferentes |
+|---|---|---:|---:|---:|
+| compilada | movimento | `647 ms` | **`12,0 ms`** | — |
+| interpretada | movimento | `2 654 ms` | **`297,6 ms`** | `0` |
+| compilada | assente | `555 ms` | `59,4 ms` | — |
+| interpretada | assente | `13 431 ms` | `3 610,9 ms` | `0` |
+
+A imagem é a MESMA e uma caixa nova compila **zero** pipelines — e cada quadro custa `25×`: a fita
+destes nós pede **`125` registos**, e o vector privado derrama para a memória. ⛔ **Não serve nem
+como ponte** enquanto o compilado compila em fundo. Fica como INSTRUMENTO (o campo
+`Sonda::fita_interpretada`), com a tabela aqui; *quem a quiser reabrir mede a ocupação por registos
+primeiro*.
+
+### §12.3 — A cura: o lote ÚNICO e as sondas a mexer
+
+1. **O lote do quadro leva os OUTROS passes que levam a fita** —
+   [`FieldPipelines::precompila_lote`](../../../crates/ph2d-field-gpu/src/lib.rs) (um layout por
+   pedido) e, no [`trace_marcha_com`](../../../crates/ph2d-field-gpu/src/trace_marcha_com.rs), a
+   marcha + o céu no tempo + as sondas (+ o `pinta`/`pinta_bordas` quando o estilo lê a curvatura)
+   numa só rodada paralela, ANTES de marchar. ⚠️ O texto e o layout de cada passe saem de portas
+   com dois leitores ([`ceu_tempo::fonte_do_ceu`]/[`layout_do_ceu`], [`paint::layout_do_pintor`]/
+   [`paint::fonte`]) — duas redacções dariam chaves diferentes e o lote compilaria um texto que
+   ninguém pede. ⚠️ O `consts`/lei do dono subiram para antes do lote (a fonte do pintor precisa da
+   lei); a ORDEM do `k` não mudou.
+2. **Um quadro que não pode esperar não ASSA as sondas** —
+   [`FieldPipelines::sondas_a_mexer`](../../../crates/ph2d-field-gpu/src/sondas_na_placa.rs): lê
+   as guardadas se a grade delas se deslocou menos de
+   [`TOLERANCIA_EM_CELULAS`](../../../crates/ph2d-field-gpu/src/sondas_na_placa.rs) (`0,75`), vai
+   sem ricochete se não, e **não reescreve a chave** — o assente seguinte re-assa. É a lei W73
+   (*grosso a mexer, nítido ao assentar*) aplicada à luz que ricocheteia.
+
+⛔⛔ **A 1.ª redacção da 2.ª lei pedia a grade IGUAL, e o CONTROLO do gate reprovou-a:** num arrasto
+a bola da peça muda SEMPRE (`1,7e-4` no centro a `dy = 0,03`), logo a regra nunca armava no produto
+e o arrasto ia sempre sem ricochete — *a luz indirecta a desligar a mexer*, que o dono já reclamou
+(§7). A grandeza é o deslocamento **em células**, e o número saiu do CRUZAMENTO das duas saídas
+(`diag_as_sondas_velhas_a_mexer` — a tabela está no doc da constante): as velhas erram `~1` byte de
+média por célula, ir sem ricochete erra `~1,2` sempre, e o p99 cruza entre `0,66` e `0,94`.
+
+### §12.4 — O relógio (`--release`, a cena do dono, carga `~3`)
+
+| passo | antes do §12 | agora |
+|---|---:|---:|
+| caixa nova, 1.º quadro de movimento | `821 ms` | **`440 ms`** |
+| caixa nova, 2.º quadro de movimento | `13 ms` | `14 ms` |
+| caixa nova, assente | `606 ms` (compila as sondas) | **`192 ms`** (só a assadura) |
+| arrastar a caixa, por quadro de movimento | `171 ms` (re-assava) | **`36`–`42 ms`** |
+| a 1.ª entrada no Render da sessão (13 kernels num lote) | `539 + 723 ms` | `459 + 177 ms` |
+
+### §12.5 — Gates e prova
+
+- `uma_forma_nova_compila_num_lote_so` — CONTROLO: o movimento TEM de compilar; as sondas e o céu
+  sobem `+1` nesse quadro; o assente seguinte compila **zero**.
+- `arrastar_nao_assa_as_sondas_e_o_assente_re_assa` — a conta não sobe a mexer · a imagem DIFERE da
+  sem sondas guardadas (ele leu-as) · o assente sobe `+1`. CONTROLO da fixtura: dentro da tolerância.
+- `longe_de_mais_o_movimento_vai_sem_ricochete` — fora da tolerância: a conta não sobe e a imagem é
+  IGUAL à sem sondas guardadas. CONTROLO: fora da tolerância.
+- ⛔ **E a metade «a imagem difere» do 2.º gate estava VERDE POR VÁCUO na 1.ª redacção:** as duas
+  imagens partiam de estados de CÉU diferentes (o 2.º quadro de uma peça herda o histórico do 1.º),
+  logo diferiam pelo céu e não pelas sondas. Foi o 3.º gate, que exige IGUALDADE, que o apanhou;
+  os dois passaram a esquecer o céu antes de cada imagem comparada.
+- ⛔⛔ **E a L7 (tirar o céu do lote) SOBREVIVEU à 1.ª corrida, e o gate media a grandeza errada:**
+  ele contava PIPELINES depois do quadro, e o céu tirado do lote compila na mesma — mais tarde, num
+  lote dele —, logo a conta saía igual. *O defeito do report não é compilar a mais, é compilar EM
+  FILA.* ⇒ [`FieldPipelines::rodadas_de_compilacao`](../../../crates/ph2d-field-gpu/src/lib.rs)
+  (um lote conta UMA, um pipeline sozinho conta UMA) e o gate exige **exactamente uma rodada** no
+  quadro da forma nova.
+- Prova de mutação: L7–L12 no mesmo [arnês](../ferramentas/lei_do_dono_interpretada_mutacoes.sh).
+  **PLACAR: `11` de `11` mortas** (L1–L4, L6–L12), a **L5** (só prosa) **sobrevive** como deve, e as corridas limpas leram `1` + `6` testes verdes.
+
+### §12.6 — ⛔⛔ Achado de PORTA, fora do assunto: o cadeado da placa VAZAVA para o `sccache`
+
+A corrida do gate ficou `14 min` parada no `flock` com a máquina a `load 1`: o cadeado da placa
+(`/run/user/1000/ph2d-gpu.lock`) era segurado por um **servidor do `sccache`** dentro da fatia de
+OUTRA linha, cujo comando já tinha acabado — o `cargo` sob a porta arranca o servidor, ele
+**destaca-se e herda o fd 9**, e segura o `flock` até ao prazo do scope (`30 min`), com o `.dono` a
+nomear um comando morto. *Duas linhas paradas na placa sem ninguém a usá-la.* ⇒
+[`ph2d-run.sh`](../../../scripts/ph2d-run.sh) lança o comando com `9>&-` nos dois ramos (quem segura
+a placa é o bash da porta, que vive exactamente o tempo do comando). **Controlo:** com o fd 9 aberto
+no chamador, o comando lê `0 1 2 255` com a cura e `0 1 2 255 9` com ela apagada. ⚠️ É
+**foundational** (o script é de todas as linhas) e a mudança é só de herança de descritores.
+
 ## §6 — Aberto
 
 - ⏳ **O nó em TODO quadro** (§7.5): o que sobra é a marcha primária (`centro`, `2,7`–`4,8 ms`), a

@@ -293,3 +293,48 @@ pub fn interpretador_em_k_wgsl(nome: &str, registos: usize) -> String {
 "
     )
 }
+
+/// ⏱️⭐⭐⭐⭐ **O TECTO DE REGISTOS da marcha interpretada** — o tamanho do vector privado do corpo
+/// que o [`corpo_da_fita_interpretada`] escreve. ⚠️ Ele entra no TEXTO, logo é UM número para toda
+/// peça (um tecto por peça seria um shader por peça, que é o defeito que isto existe para curar).
+/// Uma fita que pede mais cai na fita compilada, que serve sempre.
+pub const REGISTOS_DA_MARCHA: usize = 128;
+
+/// ⭐⭐⭐⭐ **O `fn field(p)` que INTERPRETA a peça a partir do `k`** (a forma do
+/// [`crate::wgsl::TapeWgsl::source`], com a assinatura) — o *ubershader* da
+/// marcha: o texto não depende da peça, só do [`REGISTOS_DA_MARCHA`].
+///
+/// O formato no `k`, a começar no índice `0` (a fita é sempre a PRIMEIRA a entrar no vector das
+/// constantes — o pintor e a escultura apendam a seguir): `k[0]` = quantos floats de fita,
+/// `k[1]` = o registo da raiz, `k[2..]` = o [`em_floats`].
+#[must_use]
+pub fn corpo_da_fita_interpretada(registos: usize) -> String {
+    let casos = casos_das_operacoes();
+    let k = crate::wgsl::CONSTS;
+    format!(
+        "fn field(p: vec3<f32>) -> f32 {{
+  var r: array<f32, {registos}>;
+  var pc = 2u;
+  let fim = 2u + u32({k}[0]);
+  loop {{
+    if (pc >= fim) {{ break; }}
+    let w0 = u32({k}[pc]);
+    let w1 = u32({k}[pc + 1u]);
+    pc = pc + 2u;
+    let op = w0 & 0xffu;
+    let d = w0 >> 8u;
+    let a = w1 & 0xffu;
+    let b = w1 >> 8u;
+    switch op {{
+      case {OP_X}u: {{ r[d] = p.x; }}
+      case {OP_Y}u: {{ r[d] = p.y; }}
+      case {OP_Z}u: {{ r[d] = p.z; }}
+      case {OP_CONST}u: {{ r[d] = {k}[pc]; pc = pc + 1u; }}
+{casos}      default: {{ }}
+    }}
+  }}
+  return r[u32({k}[1])];
+}}
+"
+    )
+}

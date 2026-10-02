@@ -136,15 +136,21 @@ printf '▸ linha %s · CPU ≤ %s de %s núcleos · mem ≤ %s · prazo %ss%s\n
 # sempre. Ela é EXPORTADA, logo vale para tudo o que nascer dentro do comando.
 export PH2D_NA_PORTA=1
 
+# ⛔⛔ O COMANDO NÃO HERDA O CADEADO DA PLACA (`9>&-` nos dois ramos abaixo) — medido 01/10:
+# um `cargo` sob a porta arranca o servidor do `sccache`, que se DESTACA e vive para lá do
+# comando; ele herdava o fd 9 e segurava o `flock` até ao prazo da fatia (30 min), com o
+# `.dono` a nomear um comando que já tinha acabado e as outras linhas paradas no `flock -w`.
+# Quem segura a placa é ESTE bash (o `exec 9>` acima), e ele vive exactamente o tempo do
+# comando — que é o tempo que o cadeado deve durar.
 if [ "$temos_systemd" = "1" ]; then
   props=( -p MemoryMax="$mem" -p MemorySwapMax=0 )
   [ "$prazo" != "0" ] && props+=( -p RuntimeMaxSec="${prazo}s" )
   systemd-run --user --scope --quiet --collect \
     --slice="$fatia" \
     --description="ph2d-run[$linha]: $*" \
-    "${props[@]}" -- "$@"
+    "${props[@]}" -- "$@" 9>&-
 else
-  if [ "$prazo" != "0" ]; then timeout --kill-after=30s "${prazo}s" "$@"; else "$@"; fi
+  if [ "$prazo" != "0" ]; then timeout --kill-after=30s "${prazo}s" "$@" 9>&-; else "$@" 9>&-; fi
 fi
 saida=$?
 

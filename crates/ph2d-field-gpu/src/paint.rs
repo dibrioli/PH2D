@@ -269,7 +269,7 @@ const FITA_INERTE: &str = "fn field(p: vec3<f32>) -> f32 { return 1.0; }\n";
 /// ⭐ **A montagem do texto vive no irmão** — ver o cabeçalho do [`super::paint_fonte`].
 #[path = "paint_fonte.rs"]
 mod paint_fonte;
-use paint_fonte::fonte;
+pub(crate) use paint_fonte::fonte;
 
 #[path = "paint_entradas.rs"]
 mod paint_entradas;
@@ -283,6 +283,25 @@ mod paint_entradas;
 // inteiro a meio do quadro, com a placa parada enquanto a CPU montava a pintura (medido no nó:
 // `~0,6 ms` de espera mais `~0,6` de montagem). Hoje o passe da borda lê a contagem NA PLACA e é
 // despachado pelo `bordas` — o TECTO da lista —, com os grupos a mais a sair no primeiro `if`.
+/// O layout do pintor — o grupo `0` da marcha e o grupo `1` do pintor ([`entradas_do_pintor`]).
+/// ⚠️ Uma porta, com dois leitores: o [`pinta`] e o lote do quadro ([`crate::trace_marcha_com`]),
+/// que compila as sondas da peça nova JUNTO com a marcha.
+pub(crate) fn layout_do_pintor(
+    device: &wgpu::Device,
+    bgl0: &wgpu::BindGroupLayout,
+) -> (wgpu::BindGroupLayout, wgpu::PipelineLayout) {
+    let bgl1 = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("pintor"),
+        entries: &entradas_do_pintor(),
+    });
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("pintor"),
+        bind_group_layouts: &[Some(bgl0), Some(&bgl1)],
+        immediate_size: 0,
+    });
+    (bgl1, layout)
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn pinta(
     device: &wgpu::Device,
@@ -304,15 +323,7 @@ pub(crate) fn pinta(
     // armazéns CONTÁVEL.
     use wgpu::util::DeviceExt;
 
-    let bgl1 = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        label: Some("pintor"),
-        entries: &entradas_do_pintor(),
-    });
-    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("pintor"),
-        bind_group_layouts: &[Some(alvos.bgl), Some(&bgl1)],
-        immediate_size: 0,
-    });
+    let (bgl1, layout) = layout_do_pintor(device, alvos.bgl);
     // ⚠️ **O cache é o mesmo do traçado**, e a chave é o TEXTO: um arrasto de slider muda números e
     // não recompila nada, exactamente como na marcha.
     // ⭐⭐⭐⭐ **A FITA INERTE** — ver [`PaintSetup::le_o_campo`].
@@ -332,8 +343,21 @@ pub(crate) fn pinta(
     // ⭐⭐⭐⭐ **Que texto cada entrada leva, e a compilação delas em LOTE** — ver o irmão
     // [`paint_entradas`]. ⚠️ Ele decide também se o ricochete corre neste quadro
     // ([`PaintSetup::ricochete_sem_esperar`]), porque a resposta depende de que texto se pede.
+    // ⏱️⭐⭐⭐⭐ **As sondas de um quadro que não pode esperar** — ver
+    // [`crate::FieldPipelines::sondas_a_mexer`]: as guardadas, se servem, e nunca uma assadura.
+    let a_mexer = pintor
+        .ricochete_sem_esperar
+        .then(|| cache.sondas_a_mexer(chave_sondas.as_ref()));
     let fitas = paint_entradas::escolhe(
-        cache, device, &fonte, fita, &inerte, pintor, bordas, &layout,
+        cache,
+        device,
+        &fonte,
+        fita,
+        &inerte,
+        pintor,
+        bordas,
+        &layout,
+        a_mexer.as_ref().is_none_or(Option::is_some),
     );
     let (fita, fita_das_sondas, ao_rays) = (fitas.pintura, fitas.sondas, fitas.ao_rays);
     // ⚠️ **A fita é a MESMA da marcha, e tem de o ser:** o `k` que o grupo `0` liga já traz as
@@ -474,7 +498,10 @@ pub(crate) fn pinta(
     // as luzes, os materiais, a tolerância — nunca a orientação da câmera) o armazém é o de antes e
     // a assadura NÃO corre. ⚠️ Sem ricochete o armazém é só a rede que o binding exige.
     let (b_sondas, assar_sondas) = if p_assa.is_some() {
-        cache.sondas(device, chave_sondas, bytes_sondas)
+        match a_mexer {
+            Some(Some(guardadas)) => (guardadas, false),
+            _ => cache.sondas(device, chave_sondas, bytes_sondas),
+        }
     } else {
         (
             device.create_buffer(&wgpu::BufferDescriptor {

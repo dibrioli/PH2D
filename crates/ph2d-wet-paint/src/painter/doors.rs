@@ -319,11 +319,13 @@ impl Engine {
         f: &(dyn Fn(i64, i64) -> f64 + Sync),
         mode: crate::par::Rows,
     ) {
+        let k = self.paper_tooth();
         let g = &mut self.layers[self.active_layer].grid;
         let s = g.s;
         crate::par::walk_rows(mode, &mut g.paper[..g.rows * s], s, |y, row| {
             for (x, cell) in row.iter_mut().enumerate() {
-                *cell = (f(x as i64 - 1, y as i64 - 1) as f32).clamp(0.0, 1.0);
+                let h = (f(x as i64 - 1, y as i64 - 1) as f32).clamp(0.0, 1.0);
+                *cell = crate::paper::dente(h, k);
             }
         });
     }

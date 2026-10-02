@@ -12,6 +12,11 @@ impl PainterTool {
             knobs: w.knobs,
             tilt: (w.tilt_on, w.tilt_ring, w.tilt_spoke),
             km_mixing: w.km_mixing,
+            tooth: self
+                .paint
+                .brush
+                .paper_depth
+                .clamp(0.0, ph2d_painter_brush::PAPER_TOOTH_MAX),
         }
     }
 

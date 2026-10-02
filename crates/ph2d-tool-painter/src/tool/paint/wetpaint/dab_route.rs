@@ -74,10 +74,17 @@ impl PainterTool {
             if self.paint.tiling[0] { w as f32 } else { 0.0 },
             if self.paint.tiling[1] { h as f32 } else { 0.0 },
         ];
+        // O Tooth (BUGS #32) mora no MOTOR, que o aplica nas duas portas que escrevem o papel: o assado
+        // dele re-assa no `reconcile_facts` abaixo (papel sujo); um papel do artista re-semeia pela chave.
+        let tooth = brush
+            .paper_depth
+            .clamp(0.0, ph2d_painter_brush::PAPER_TOOTH_MAX);
+        sess.engine.set_paper_tooth(tooth);
         let want = brush.paper.is_active().then_some(PaperKey {
             tex: brush.paper,
             image_version: self.paint.paper_image_version,
             period,
+            tooth,
         });
         if sess.paper_key != want {
             if want.is_some() {

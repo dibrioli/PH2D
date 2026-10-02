@@ -13,6 +13,9 @@ pub(in crate::tool::paint) struct WetEngineFacts {
     pub(in crate::tool::paint) knobs: WetKnobs,
     pub(in crate::tool::paint) tilt: (bool, u8, u8),
     pub(in crate::tool::paint) km_mixing: bool,
+    /// O **Tooth** do Paper (BUGS #32) — chega ao motor também no tique, para o papel do PRÓPRIO motor
+    /// re-assar quando só ele mexe (o papel do artista re-semeia pela [`PaperKey`]).
+    pub(in crate::tool::paint) tooth: f32,
 }
 
 impl WetEngineFacts {
@@ -23,6 +26,7 @@ impl WetEngineFacts {
         knobs: WetKnobs::ENGINE_BOOT,
         tilt: (true, 4, 3),
         km_mixing: false,
+        tooth: 1.0,
     };
 }
 
@@ -122,6 +126,8 @@ pub(super) struct PaperKey {
     pub(super) tex: ph2d_painter_brush::TextureSettings,
     pub(super) image_version: u64,
     pub(super) period: [f32; 2],
+    /// O **Tooth** (`paper_depth`) — o seed escala o relevo por ele ([`ph2d_wet_paint::paper::dente`]).
+    pub(super) tooth: f32,
 }
 
 impl WetSession {
@@ -165,6 +171,9 @@ impl WetSession {
         }
         if f.km_mixing != a.km_mixing {
             e.sim.km_mixing = f.km_mixing;
+        }
+        if f.tooth != a.tooth {
+            e.set_paper_tooth(f.tooth);
         }
         if own_paper && e.paper_dirty() {
             e.rebake_paper();

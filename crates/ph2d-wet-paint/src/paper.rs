@@ -286,6 +286,28 @@ fn box_blur_wrap(src: &[f32], r: i32) -> Vec<f32> {
     out
 }
 
+/// **A lei do Tooth** — o relevo do papel escalado em torno de `½`: `½ + (h − ½)·k`, preso a `[0, 1]`. É a
+/// mesma escala da aquarela (`(½ − h)·tooth`, BUGS #30): o Tooth diz quanto o dente MORDE, e um papel
+/// mais fundo prende mais tinta nos vales e acende mais relevo no emboss. `k = 1` devolve `h` verbatim
+/// (o papel de sempre, ao byte).
+#[inline]
+pub fn dente(h: f32, k: f32) -> f32 {
+    if k == 1.0 {
+        h
+    } else {
+        (0.5 + (h - 0.5) * k).clamp(0.0, 1.0)
+    }
+}
+
+/// O ladrilho com o Tooth `k` aplicado — emprestado verbatim a `k = 1`.
+pub fn com_dente(tile: &[f32], k: f32) -> std::borrow::Cow<'_, [f32]> {
+    if k == 1.0 {
+        std::borrow::Cow::Borrowed(tile)
+    } else {
+        std::borrow::Cow::Owned(tile.iter().map(|&h| dente(h, k)).collect())
+    }
+}
+
 /// Bake a tile into the padded grid paper array, pad ring included, with
 /// integer wrap (nearest texel). Cell (x,y) maps to tile texel (x-1, y-1).
 pub fn bake_paper(grid: &mut Grid, tile: &[f32]) {

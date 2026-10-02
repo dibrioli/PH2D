@@ -37,6 +37,22 @@ impl Engine {
         }
     }
 
+    /// O **Tooth** do artista — quanto o dente do papel morde a tinta (`0..=2`, `1` = o papel como ele é).
+    /// Mexer nele pede o papel de novo: o assado do motor re-assa no próximo `reconcile`; um papel do
+    /// artista volta a semear porque o Tooth entra na chave dele.
+    pub fn set_paper_tooth(&mut self, k: f32) {
+        let k = k.max(0.0);
+        if k != self.paper_tooth {
+            self.paper_tooth = k;
+            self.paper_dirty = true;
+        }
+    }
+
+    /// O Tooth vigente (ver [`Self::set_paper_tooth`]).
+    pub fn paper_tooth(&self) -> f32 {
+        self.paper_tooth
+    }
+
     /// The shell calls this on slider release when a paper knob changed.
     pub fn paper_dirty(&self) -> bool {
         self.paper_dirty

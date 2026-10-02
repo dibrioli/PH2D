@@ -88,6 +88,8 @@ pub struct Engine {
     pub paper_sheet: u32,
     pub paper_tile: Vec<f32>,
     paper_dirty: bool,
+    /// O **Tooth** do artista (`BrushSpec::paper_depth`) — ver [`crate::paper::dente`].
+    paper_tooth: f32,
     brush_tex: Option<Vec<f32>>,
     pub trail: Trail,
     pub stroke: Stroke,
@@ -153,6 +155,7 @@ impl Engine {
             paper_sheet: 0,
             paper_tile: Vec::new(),
             paper_dirty: false,
+            paper_tooth: 1.0,
             brush_tex: None,
             trail: Trail::default(),
             lane_trails: Vec::new(),
@@ -221,8 +224,9 @@ impl Engine {
         // (cada Ctrl+Z, cada troca de modo) não o refaz — ao bit o que o gerador daria.
         self.paper_tile =
             crate::paper_memo::paper_tile(self.paper_preset, self.paper_sheet, self.paper_knobs());
+        let tile = crate::paper::com_dente(&self.paper_tile, self.paper_tooth);
         for l in &mut self.layers {
-            bake_paper(&mut l.grid, &self.paper_tile);
+            bake_paper(&mut l.grid, &tile);
             l.grid.paper_preset = self.paper_preset;
             l.grid.paper_sheet = self.paper_sheet;
         }

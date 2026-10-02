@@ -1,0 +1,267 @@
+//! Os gates do desenhista NA PLACA (ignorados por omissão: precisam de um aparelho) —
+//! `PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test -p ph2d-mesh-forward -- --ignored`.
+
+use crate::{Ambiente, Camera, Cena, Forward, Instancia, Malha};
+
+/// Um céu CHAPADO de radiância `L`, sem caixa — a fixtura em que a lei do material tem resposta
+/// conhecida na CPU (`Surface::indirect` com o mesmo ambiente).
+const L: f32 = 0.8;
+
+const CEU_CHAPADO: &str = r#"
+struct Ceu { l: vec4<f32>, };
+fn ceu_radiance_sem_caixa(dir: vec3<f32>, shrink: f32) -> vec3<f32> { return vec3<f32>(ceu.l.x); }
+fn ceu_radiance_da_caixa(dir: vec3<f32>, alpha: f32) -> vec3<f32> { return vec3<f32>(0.0); }
+fn ceu_irradiance_sem_caixa(n: vec3<f32>) -> vec3<f32> { return vec3<f32>(ceu.l.x); }
+fn ceu_irradiance_da_caixa(n: vec3<f32>) -> vec3<f32> { return vec3<f32>(0.0); }
+"#;
+
+struct Chapado;
+impl ph2d_material::Environment for Chapado {
+    fn radiance(&self, _: [f32; 3], _: f32) -> [f32; 3] {
+        [L; 3]
+    }
+    fn irradiance(&self, _: [f32; 3]) -> [f32; 3] {
+        [L; 3]
+    }
+}
+
+fn ambiente() -> Ambiente<'static> {
+    Ambiente {
+        wgsl: CEU_CHAPADO,
+        constantes: &[L, 0.0, 0.0, 0.0],
+        tabela: &[0.0],
+        piso_luz: 0.05,
+    }
+}
+
+/// Uma esfera UV de raio `r`.
+fn esfera(r: f32) -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<u32>) {
+    let (anel, gomo) = (48u32, 96u32);
+    let (mut p, mut n, mut idx) = (Vec::new(), Vec::new(), Vec::new());
+    for i in 0..=anel {
+        let t = std::f32::consts::PI * i as f32 / anel as f32;
+        for j in 0..=gomo {
+            let f = 2.0 * std::f32::consts::PI * j as f32 / gomo as f32;
+            let d = [t.sin() * f.cos(), t.cos(), t.sin() * f.sin()];
+            n.push(d);
+            p.push(d.map(|c| c * r));
+        }
+    }
+    let w = gomo + 1;
+    for i in 0..anel {
+        for j in 0..gomo {
+            let (a, b, c, d) = (i * w + j, i * w + j + 1, (i + 1) * w + j, (i + 1) * w + j + 1);
+            idx.extend_from_slice(&[a, c, b, b, c, d]);
+        }
+    }
+    (p, n, idx)
+}
+
+const ID: [[f32; 4]; 4] = [
+    [1.0, 0.0, 0.0, 0.0],
+    [0.0, 1.0, 0.0, 0.0],
+    [0.0, 0.0, 1.0, 0.0],
+    [0.0, 0.0, 0.0, 1.0],
+];
+
+/// Ortográfica a olhar para `−z`, meia-largura `s`, rodada `a` radianos em torno de `y`.
+fn camera(s: f32, a: f32) -> Camera {
+    let (c, si) = (a.cos(), a.sin());
+    // vista: roda o mundo por −a em y; recorte: x/s, y/s, z = 0,5 − 0,1·z_vista.
+    let vp = [
+        [c / s, 0.0, -(-si) * -0.1, 0.0],
+        [0.0, 1.0 / s, 0.0, 0.0],
+        [-si / s, 0.0, -c * 0.1, 0.0],
+        [0.0, 0.0, 0.5, 1.0],
+    ];
+    Camera {
+        view_proj: vp,
+        olho: [0.0; 3],
+        perspectiva: false,
+        dir_vista: [-si, 0.0, -c],
+    }
+}
+
+fn material_cinza() -> [f32; ph2d_material::wgsl::PACKED] {
+    let s = ph2d_material::OpenPbr::default().prepare();
+    ph2d_material::wgsl::pack(&s, ph2d_material::wgsl::EnvLobe::of(&s))
+}
+
+fn cena<'a>(objs: &'a [Instancia], mats: &'a [[f32; 48]], cam: Camera) -> Cena<'a> {
+    Cena {
+        objetos: objs,
+        materiais: mats,
+        camera: cam,
+        luzes: &[],
+        chao: None,
+        caixa_tan: None,
+        exposicao: 0.0,
+        vista: 0,
+        tamanho: (96, 96),
+    }
+}
+
+fn desenhista_com_esfera() -> Option<Forward> {
+    let Some(mut fw) = Forward::no_aparelho(&ambiente()) else {
+        eprintln!("sem aparelho — o gate não corre aqui");
+        return None;
+    };
+    let (p, n, idx) = esfera(0.5);
+    let ao = vec![1.0; p.len()];
+    let mat = vec![0u32; p.len()];
+    fw.sobe(
+        1,
+        &Malha {
+            posicoes: &p,
+            normais: &n,
+            ao: &ao,
+            material: &mat,
+            indices: &idx,
+        },
+    );
+    Some(fw)
+}
+
+/// ⭐ **Cabe no celular**: o desenhista nasce com `Features::empty()` e os limites do WebGL2, o
+/// shader valida, e o quadro tem a peça opaca no meio e o fundo transparente nos cantos.
+#[test]
+#[ignore = "precisa de aparelho"]
+fn cabe_no_celular() {
+    let Some(mut fw) = desenhista_com_esfera() else {
+        return;
+    };
+    assert_eq!(fw.device().features(), wgpu::Features::empty());
+    let objs = [Instancia { malha: 1, modelo: ID }];
+    let mats = [material_cinza()];
+    let img = fw.quadro(&cena(&objs, &mats, camera(1.0, 0.0))).expect("quadro");
+    let px = |x: usize, y: usize| &img[(y * 96 + x) * 4..(y * 96 + x) * 4 + 4];
+    assert_eq!(px(48, 48)[3], 255, "o meio é peça");
+    assert_eq!(px(2, 2)[3], 0, "o canto é fundo");
+}
+
+/// ⭐⭐ **O quadro está pronto na hora** — os quatro sintomas do dono (borrado, engasgo, granulado,
+/// espera) têm uma raiz: um quadro que depende dos ANTERIORES. Aqui: a mesma câmara depois de um
+/// giro dá o MESMO quadro, ao byte.
+#[test]
+#[ignore = "precisa de aparelho"]
+fn quadro_pronto_na_hora() {
+    let Some(mut fw) = desenhista_com_esfera() else {
+        return;
+    };
+    let objs = [Instancia { malha: 1, modelo: ID }];
+    let mats = [material_cinza()];
+    let a = fw.quadro(&cena(&objs, &mats, camera(1.0, 0.0))).expect("a");
+    let girado = fw.quadro(&cena(&objs, &mats, camera(1.0, 0.7))).expect("girado");
+    let b = fw.quadro(&cena(&objs, &mats, camera(1.0, 0.0))).expect("b");
+    assert_eq!(a, b, "a mesma câmara depois de um giro tem de dar o mesmo quadro");
+    assert_ne!(a, girado, "o controlo: a câmara girada é outra imagem");
+}
+
+/// ⭐⭐ **Nada compila ao editar** — mover, mudar a cor e acrescentar um objeto não criam pipeline.
+#[test]
+#[ignore = "precisa de aparelho"]
+fn nada_compila_ao_editar() {
+    let Some(mut fw) = desenhista_com_esfera() else {
+        return;
+    };
+    let antes = fw.pipelines_compilados();
+    let mut mats = vec![material_cinza()];
+    let mut objs = vec![Instancia { malha: 1, modelo: ID }];
+    let _ = fw.quadro(&cena(&objs, &mats, camera(1.0, 0.0)));
+    let mut vermelho = ph2d_material::OpenPbr::default();
+    vermelho.base_color = [0.9, 0.1, 0.1];
+    let s = vermelho.prepare();
+    mats.push(ph2d_material::wgsl::pack(&s, ph2d_material::wgsl::EnvLobe::of(&s)));
+    let mut movido = ID;
+    movido[3][0] = 0.3;
+    objs.push(Instancia {
+        malha: 1,
+        modelo: movido,
+    });
+    let _ = fw.quadro(&cena(&objs, &mats, camera(1.0, 0.0)));
+    assert_eq!(fw.pipelines_compilados(), antes);
+}
+
+/// ⭐⭐⭐ **A cor é a da lei da casa**: o pixel do meio da esfera sob um céu chapado é o
+/// `Surface::indirect` da CPU, pelo mesmo olhar, codificado como o `para_ecra` — a diferença máxima
+/// é a de arredondamento.
+#[test]
+#[ignore = "precisa de aparelho"]
+fn a_cor_e_a_lei_da_casa() {
+    let Some(mut fw) = desenhista_com_esfera() else {
+        return;
+    };
+    let objs = [Instancia { malha: 1, modelo: ID }];
+    let mats = [material_cinza()];
+    let img = fw.quadro(&cena(&objs, &mats, camera(1.0, 0.0))).expect("quadro");
+    let i = (48 * 96 + 48) * 4;
+    // No meio da esfera a normal e a vista são `+z`.
+    let s = ph2d_material::OpenPbr::default().prepare();
+    let c = s.indirect([0.0, 0.0, 1.0], [0.0, 0.0, 1.0], &Chapado);
+    let d = ph2d_view_transform::to_display(c, 0.0, ph2d_view_transform::ViewTransform::Standard);
+    for k in 0..3 {
+        let esperado = (srgb(d[k]) * 255.0 + 0.5).floor();
+        let lido = f32::from(img[i + k]);
+        assert!((lido - esperado).abs() <= 2.0, "canal {k}: placa {lido} contra CPU {esperado}");
+    }
+}
+
+fn srgb(x: f32) -> f32 {
+    let c = x.clamp(0.0, 1.0);
+    if c <= 0.003_130_8 { c * 12.92 } else { 1.055 * c.powf(1.0 / 2.4) - 0.055 }
+}
+
+/// ⭐ **O shader valida SEM aparelho, com capacidades VAZIAS** — corre em todo lado, CI incluída.
+#[test]
+fn o_shader_valida_sem_capacidades() {
+    for (nome, src) in [
+        ("forward", crate::fonte(&ambiente())),
+        ("ecra", crate::fonte::ECRA.to_string()),
+    ] {
+        let module = naga::front::wgsl::parse_str(&src)
+            .unwrap_or_else(|e| panic!("{nome}: nao parsa: {}", e.emit_to_string(&src)));
+        naga::valid::Validator::new(
+            naga::valid::ValidationFlags::all(),
+            naga::valid::Capabilities::empty(),
+        )
+        .validate(&module)
+        .unwrap_or_else(|e| panic!("{nome}: nao valida: {}", e.emit_to_string(&src)));
+    }
+}
+
+/// Nenhuma ranhura fica por preencher.
+#[test]
+fn nenhuma_ranhura_fica_por_preencher() {
+    let src = crate::fonte(&ambiente());
+    for marca in ["{MATERIAL}", "{AMBIENTE}", "{OLHAR}", "{MAX_LUZES", "{TAB_W}", "{PISO_LUZ}", "{ENV}"] {
+        assert!(!src.contains(marca), "a ranhura {marca} ficou no shader");
+    }
+}
+
+/// ⭐ **Cabe no GLES** — o backend do WebGL2 e dos Androids sem Vulkan. A mesma imagem do
+/// `cabe_no_celular`, ao byte no meio da peça, e o fundo transparente.
+#[test]
+#[ignore = "precisa de aparelho GL"]
+fn cabe_no_gles() {
+    let Some(mut gl) = Forward::no_backend(wgpu::Backends::GL, &ambiente()) else {
+        eprintln!("sem adaptador GL nesta máquina — o gate não corre aqui");
+        return;
+    };
+    let Some(mut nativo) = desenhista_com_esfera() else {
+        return;
+    };
+    let (p, n, idx) = esfera(0.5);
+    let ao = vec![1.0; p.len()];
+    let mat = vec![0u32; p.len()];
+    gl.sobe(1, &Malha { posicoes: &p, normais: &n, ao: &ao, material: &mat, indices: &idx });
+    let objs = [Instancia { malha: 1, modelo: ID }];
+    let mats = [material_cinza()];
+    let a = gl.quadro(&cena(&objs, &mats, camera(1.0, 0.0))).expect("gl");
+    let b = nativo.quadro(&cena(&objs, &mats, camera(1.0, 0.0))).expect("nativo");
+    let i = (48 * 96 + 48) * 4;
+    eprintln!("GLES formato {:?}: meio {:?} · nativo {:?}", gl.formato(), &a[i..i + 4], &b[i..i + 4]);
+    for k in 0..4 {
+        assert!(a[i + k].abs_diff(b[i + k]) <= 2, "GLES {:?} contra nativo {:?}", &a[i..i + 4], &b[i..i + 4]);
+    }
+    assert_eq!(a[3], 0, "o canto é fundo no GLES");
+}

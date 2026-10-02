@@ -4,6 +4,7 @@ const ARNES: &str = r#"
 // A ordem é a do `ph2d_field_gpu::probe::evaluate`: uniformes, depois storages, entrada e saída.
 @group(0) @binding(0) var<uniform> ceu: Ceu;
 @group(0) @binding(1) var<storage, read> tabela: array<f32>;
+fn tabela_ler(i: u32) -> f32 { return tabela[i]; }
 @group(0) @binding(2) var<storage, read> entrada: array<vec4<f32>>;
 @group(0) @binding(3) var<storage, read_write> saida: array<vec4<f32>>;
 
@@ -240,4 +241,73 @@ fn o_olhar_do_dispositivo_e_o_da_cpu() {
         "o olhar dos dois motores difere {:.3e} — um degrau da `Neutral` está noutro sítio",
         pior.0
     );
+}
+
+const ARNES_PARTES: &str = r#"
+@group(0) @binding(0) var<uniform> ceu: Ceu;
+@group(0) @binding(1) var<storage, read> tabela: array<f32>;
+fn tabela_ler(i: u32) -> f32 { return tabela[i]; }
+@group(0) @binding(2) var<storage, read> entrada: array<vec4<f32>>;
+@group(0) @binding(3) var<storage, read_write> saida: array<vec4<f32>>;
+
+@compute @workgroup_size(64, 1, 1)
+fn avalia(@builtin(global_invocation_id) g: vec3<u32>) {
+    let i = g.x;
+    if (i >= arrayLength(&entrada)) { return; }
+    let a = entrada[i];
+    let partes_r = ceu_radiance_sem_caixa(a.xyz, 1.0) + ceu_radiance_da_caixa(a.xyz, a.w);
+    let partes_i = ceu_irradiance_sem_caixa(a.xyz) + ceu_irradiance_da_caixa(a.xyz);
+    saida[i * 4u + 0u] = vec4<f32>(ceu_radiance(a.xyz, a.w, 1.0), 0.0);
+    saida[i * 4u + 1u] = vec4<f32>(partes_r, 0.0);
+    saida[i * 4u + 2u] = vec4<f32>(ceu_irradiance(a.xyz), 0.0);
+    saida[i * 4u + 3u] = vec4<f32>(partes_i, ceu_irradiance_da_caixa(a.xyz).x);
+}
+"#;
+
+/// ⭐⭐ **As duas partes do céu SOMAM o céu** — o Render por malha tapa a parte SEM caixa com a
+/// oclusão e a DA caixa com a sombra; a soma sem tapar nada tem de ser o céu do produto.
+#[test]
+#[ignore = "precisa de GPU"]
+fn as_duas_partes_somam_o_ceu() {
+    let Some(t) = crate::gpu_frame::shared() else {
+        println!("sem adaptador — saltado");
+        return;
+    };
+    let mut amostras: Vec<[f32; 4]> = Vec::new();
+    for iy in 0..33u8 {
+        let y = -1.0 + 2.0 * f32::from(iy) / 32.0;
+        let s = (1.0 - y * y).max(0.0).sqrt();
+        for alpha in [0.0_f32, 0.01, 0.09, 0.25, 0.64, 1.0] {
+            amostras.push([s, y, 0.0, alpha]);
+        }
+    }
+    let fonte = format!("{}\n{ARNES_PARTES}", crate::studio_wgsl::SOURCE);
+    let guarda = t.lock().expect("o traçador");
+    let (device, queue) = guarda.parts();
+    let saida = ph2d_field_gpu::probe::evaluate(
+        device,
+        queue,
+        &fonte,
+        "avalia",
+        &[&crate::studio_wgsl::constants()],
+        &[&crate::studio_wgsl::tables()],
+        &amostras,
+        4,
+    );
+    drop(guarda);
+    let mut pior = 0.0f32;
+    let mut caixa_acesa = 0usize;
+    for i in 0..amostras.len() {
+        for (todo, partes) in [(saida[i * 4], saida[i * 4 + 1]), (saida[i * 4 + 2], saida[i * 4 + 3])] {
+            for c in 0..3 {
+                pior = pior.max((todo[c] - partes[c]).abs() / todo[c].abs().max(1e-3));
+            }
+        }
+        if saida[i * 4 + 3][3] > 1e-3 {
+            caixa_acesa += 1;
+        }
+    }
+    println!("  partes do céu · pior desvio relativo {pior:.3e} · caixa acesa em {caixa_acesa}");
+    assert!(caixa_acesa > amostras.len() / 4, "a grelha não acende a caixa: {caixa_acesa}");
+    assert!(pior < 1e-5, "as partes não somam o céu: {pior:.3e}");
 }

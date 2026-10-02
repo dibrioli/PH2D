@@ -1,0 +1,121 @@
+//! ⭐⭐⭐ **O DESENHISTA DE JOGO** — triângulos numa passada, luz de custo FIXO por quadro, nada
+//! acumulado entre quadros (ordem do dono, 2026-10-02: *«quero o nível de Fortnite / Plants vs
+//! Zombies, e a nossa engine roda em mobile»*).
+//!
+//! # O que ele é, e o que ele NÃO é
+//!
+//! | | este | o Render traçado do modelador |
+//! |---|---|---|
+//! | o que desenha | triângulos (a placa do celular foi feita para isto) | o campo, raio a raio |
+//! | a luz do céu | a MESMA lei de material (`ph2d_material::wgsl`) com a oclusão ASSADA por vértice | a oclusão marchada a cada quadro |
+//! | a sombra da caixa | mapa de sombra com penumbra física (PCSS) | marcha de sombra |
+//! | quadros | cada um pronto na hora — o 1.º depois de um giro é o 10.º parado | acumula até assentar |
+//! | o que pede à placa | `Features::empty()` + `Limits::downlevel_webgl2_defaults()` | compute e armazenamento |
+//!
+//! ⭐ **Uma porta por pergunta:** o material é o `ph2d_material::wgsl` (há paridade com a CPU lá), o
+//! olhar é o `ph2d_view_transform::wgsl`, e o CÉU é de quem chama ([`Ambiente`]) — o modelador dá o
+//! estúdio dele, um jogo dará o seu.
+
+mod fonte;
+mod gpu;
+mod gpu_alvo;
+
+pub use fonte::fonte;
+pub use gpu::Forward;
+
+/// Quantas lâmpadas pontuais por quadro. ⚠️ É o recurso do bloco uniforme do quadro (o WebGL2 só
+/// garante `16 KiB` por bloco): `32` pares de `vec4` são `1 KiB`, folga larga para o resto.
+pub const MAX_LUZES: usize = 32;
+
+/// Largura da textura onde a tabela do céu viaja (o WebGL2 não tem armazenamento; `2048` é o lado
+/// mínimo garantido, e `1024` deixa a tabela do estúdio em `26` linhas).
+pub const TAB_W: u32 = 1024;
+
+/// Amostras por pixel. ⚠️ `4×` é o que todo GLES3 garante, e é o anti-serrilhado de jogo de celular:
+/// barato numa placa de ladrilhos, sem custo de banda na resolução.
+pub const MSAA: u32 = 4;
+
+/// O lado do mapa de sombra. ⚠️ `2048` é o `max_texture_dimension_2d` do WebGL2 — o teto é do
+/// aparelho mais pequeno que a engine promete servir.
+pub const SOMBRA_LADO: u32 = 2048;
+
+/// Quantos `vec4` um material ocupa — os `48` floats do `ph2d_material::wgsl::pack`.
+pub const MATERIAL_V4: u32 = (ph2d_material::wgsl::PACKED / 4) as u32;
+
+/// ⭐ **O céu da cena, dado por quem chama.** O WGSL tem de declarar `struct Ceu` (até `16` floats,
+/// em [`Ambiente::constantes`]) e as QUATRO funções das duas partes do céu:
+///
+/// ```wgsl
+/// fn ceu_radiance_sem_caixa(dir: vec3<f32>, shrink: f32) -> vec3<f32>
+/// fn ceu_radiance_da_caixa(dir: vec3<f32>, alpha: f32) -> vec3<f32>
+/// fn ceu_irradiance_sem_caixa(n: vec3<f32>) -> vec3<f32>
+/// fn ceu_irradiance_da_caixa(n: vec3<f32>) -> vec3<f32>
+/// ```
+///
+/// A parte SEM caixa é tapada pela oclusão assada; a DA caixa (a luz forte, de cima) pela sombra.
+/// A tabela chega pela função `tabela_ler(i: u32) -> f32`, que esta crate escreve.
+#[derive(Clone, Copy, Debug)]
+pub struct Ambiente<'a> {
+    pub wgsl: &'a str,
+    pub constantes: &'a [f32],
+    pub tabela: &'a [f32],
+    /// A distância mínima de uma lâmpada pontual (a lei do modelador, `POINT_LAMP_MIN_DISTANCE`).
+    pub piso_luz: f32,
+}
+
+/// Uma malha pronta para subir: triângulos indexados, um material por vértice.
+#[derive(Clone, Copy, Debug)]
+pub struct Malha<'a> {
+    pub posicoes: &'a [[f32; 3]],
+    pub normais: &'a [[f32; 3]],
+    /// A oclusão do céu assada no vértice: `1` = céu aberto.
+    pub ao: &'a [f32],
+    pub material: &'a [u32],
+    pub indices: &'a [u32],
+}
+
+/// A câmara do quadro.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Camera {
+    /// Mundo → recorte, coluna a coluna.
+    pub view_proj: [[f32; 4]; 4],
+    pub olho: [f32; 3],
+    /// `false` = ortográfica: a vista é [`Camera::dir_vista`] em todo o pixel.
+    pub perspectiva: bool,
+    pub dir_vista: [f32; 3],
+}
+
+/// Uma lâmpada pontual — a radiância a distância `1` (`ph2d_field_render::PointLamp`).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Luz {
+    pub posicao: [f32; 3],
+    pub radiancia_a_um: [f32; 3],
+}
+
+/// Um objeto no quadro: a malha subida e a matriz de modelo (coluna a coluna).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Instancia {
+    pub malha: u64,
+    pub modelo: [[f32; 4]; 4],
+}
+
+/// ⭐ **O quadro inteiro** — tudo o que muda de um quadro para o outro, e nada mais.
+#[derive(Clone, Copy, Debug)]
+pub struct Cena<'a> {
+    pub objetos: &'a [Instancia],
+    /// Os materiais empacotados (`ph2d_material::wgsl::pack`); o índice é o do vértice.
+    pub materiais: &'a [[f32; ph2d_material::wgsl::PACKED]],
+    pub camera: Camera,
+    pub luzes: &'a [Luz],
+    /// A altura do chão que só recebe; `None` = sem chão.
+    pub chao: Option<f32>,
+    /// A tangente do raio angular da caixa de luz (de cima, `+y`); `None` = sem sombra.
+    pub caixa_tan: Option<f32>,
+    pub exposicao: f32,
+    /// O código do `ph2d_view_transform::wgsl::view_code`.
+    pub vista: u32,
+    pub tamanho: (u32, u32),
+}
+
+#[cfg(test)]
+mod tests;

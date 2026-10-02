@@ -49,7 +49,9 @@ pub fn tables() -> Vec<f32> {
     v
 }
 
-/// O corpo. Ele espera `ceu: Ceu` no binding que o chamador declarar e `tabela: array<f32>`.
+/// O corpo. Ele espera `ceu: Ceu` no binding que o chamador declarar e `fn tabela_ler(i: u32) -> f32`
+/// — a LEITURA da tabela é do chamador: o pintor lê um `array<f32>` de armazenamento, e o Render por
+/// malha ([`ph2d_mesh_forward`]) uma textura, porque o WebGL2 do celular não tem armazenamento.
 pub const SOURCE: &str = r#"
 struct Ceu {
     base_ambient: vec4<f32>,   // ENV_BASE.rgb, AMBIENT
@@ -67,8 +69,8 @@ fn angle_axis(cos_psi: f32) -> f32 {
     return sqrt(max(1.0 - clamp(cos_psi, -1.0, 1.0), 0.0));
 }
 
-fn tabela_spec(ri: u32, ai: u32) -> f32 { return tabela[ri * ANGLE_N + ai]; }
-fn tabela_diff(ai: u32) -> f32 { return tabela[ROUGH_N * ANGLE_N + ai]; }
+fn tabela_spec(ri: u32, ai: u32) -> f32 { return tabela_ler(ri * ANGLE_N + ai); }
+fn tabela_diff(ai: u32) -> f32 { return tabela_ler(ROUGH_N * ANGLE_N + ai); }
 
 /// `BoxPrefilter::specular` — bilinear em (rugosidade, ângulo).
 fn softbox_specular(alpha: f32, cos_psi: f32) -> f32 {
@@ -112,6 +114,29 @@ fn ceu_irradiance(n: vec3<f32>) -> vec3<f32> {
     let rampa = ambient * (ceu.base_ambient.rgb + ceu.slope_share.rgb * n.y);
     let delta = ceu.amp.x * softbox_diffuse(n.y) - ceu.slope_share.a;
     return rampa + ambient * ceu.base_ambient.rgb * delta;
+}
+
+// ⭐⭐ AS DUAS PARTES DO MESMO CEU (o Render por malha, 02/10): a que so' a OCLUSAO tapa (o ceu sem a
+// caixa) e a que a SOMBRA tapa (a caixa). Somam o `ceu_radiance` / `ceu_irradiance` acima — a
+// partilha `share` sai da base e entra na caixa; ha' gate (`as_duas_partes_somam_o_ceu`).
+fn ceu_radiance_sem_caixa(dir: vec3<f32>, shrink: f32) -> vec3<f32> {
+    let ambient = ceu.base_ambient.a;
+    let base = 1.0 - ceu.slope_share.a;
+    return ambient * (ceu.base_ambient.rgb * base + RAW * ceu.slope_share.rgb * (shrink * dir.y));
+}
+
+fn ceu_radiance_da_caixa(dir: vec3<f32>, alpha: f32) -> vec3<f32> {
+    return ceu.base_ambient.a * ceu.base_ambient.rgb * (ceu.amp.x * softbox_specular(alpha, dir.y));
+}
+
+fn ceu_irradiance_sem_caixa(n: vec3<f32>) -> vec3<f32> {
+    let ambient = ceu.base_ambient.a;
+    let rampa = ambient * (ceu.base_ambient.rgb + ceu.slope_share.rgb * n.y);
+    return rampa - ambient * ceu.base_ambient.rgb * ceu.slope_share.a;
+}
+
+fn ceu_irradiance_da_caixa(n: vec3<f32>) -> vec3<f32> {
+    return ceu.base_ambient.a * ceu.base_ambient.rgb * (ceu.amp.x * softbox_diffuse(n.y));
 }
 "#;
 

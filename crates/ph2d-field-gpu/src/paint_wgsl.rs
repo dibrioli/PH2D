@@ -81,6 +81,7 @@ struct Pintor {
 @group(1) @binding(0) var<uniform> ceu: Ceu;
 @group(1) @binding(1) var<uniform> pintor: Pintor;
 @group(1) @binding(2) var<storage, read> tabela: array<f32>;
+fn tabela_ler(i: u32) -> f32 { return tabela[i]; }
 @group(1) @binding(3) var<storage, read> materiais: array<f32>;
 @group(1) @binding(4) var<storage, read_write> saida: array<u32>;
 // ⭐⭐⭐ **AS SONDAS** (`ph2d_field_render::probes`): `PROBE_GRID³` sondas × `SH_STRIDE` floats — os

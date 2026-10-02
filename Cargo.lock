@@ -6486,6 +6486,18 @@ name = "ph2d-mesh-colors"
 version = "0.0.0"
 
 [[package]]
+name = "ph2d-mesh-forward"
+version = "0.0.0"
+dependencies = [
+ "bytemuck",
+ "naga",
+ "ph2d-material",
+ "ph2d-view-transform",
+ "pollster",
+ "wgpu",
+]
+
+[[package]]
 name = "ph2d-mesh-render"
 version = "0.0.0"
 dependencies = [

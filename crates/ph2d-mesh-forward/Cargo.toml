@@ -1,0 +1,32 @@
+[package]
+name = "ph2d-mesh-forward"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⭐⭐⭐ O DESENHISTA DE JOGO (ordem do dono, 2026-10-02: «quero o nivel de Fortnite / Plants vs
+# Zombies, e a nossa engine roda em mobile»): triangulos numa passada, luz de custo FIXO por quadro,
+# nada acumulado entre quadros. Pede so' o que o WebGL2 / GLES3 do celular da' — `Features::empty()`
+# e `Limits::downlevel_webgl2_defaults()` (gate `cabe_no_celular`).
+
+[dependencies]
+# wgpu 29 em lockstep com ph2d-render/ph2d-gpu/ph2d-mesh-render (teto: ADR-0168).
+wgpu = "29.0.4"
+bytemuck = { version = "1", features = ["derive"] }
+# A MESMA lei de material do Render tracado, em WGSL (`ph2d_material::wgsl`) — uma porta so'.
+ph2d-material = { path = "../ph2d-material" }
+# O OLHAR (exposicao + view transform) em WGSL — a mesma lei do `to_display`.
+ph2d-view-transform = { path = "../ph2d-view-transform" }
+pollster = "0.4.0"
+
+[dev-dependencies]
+# O PARSE e a VALIDACAO do shader sem aparelho (o mesmo major do wgpu 29), com capacidades VAZIAS.
+naga = { version = "29.0.4", features = ["wgsl-in"] }
+
+[lints]
+workspace = true

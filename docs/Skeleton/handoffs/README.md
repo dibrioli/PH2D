@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**12 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **12** são handoffs (registro **morto**).
+**13 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **13** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -26,6 +26,7 @@
 | 2026-09-20 |   | [HANDOFF_INTEGRACAO_line_Vector_A_LINHA_2026-09-20.md](HANDOFF_INTEGRACAO_line_Vector_A_LINHA_2026-09-20.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/Vector` (o ESQUELETO), a linha inteira · 2026-09-20 |
 | 2026-09-24 |   | [HANDOFF_INTEGRACAO_line_Vector_O_CAMPO_E_A_PESQUISA_2026-09-24.md](HANDOFF_INTEGRACAO_line_Vector_O_CAMPO_E_A_PESQUISA_2026-09-24.md) | ⚠️ handoff (morto) | HANDOFF de INTEGRAÇÃO — `line/Vector`: o CAMPO do domínio, o bind SEM pontos novos, e a pesquisa do estado da … |
 | 2026-10-01 | ◆ | [HANDOFF_INTEGRACAO_line_Vector_A_SILHUETA_DA_PELE_2026-10-01.md](HANDOFF_INTEGRACAO_line_Vector_A_SILHUETA_DA_PELE_2026-10-01.md) | ⚠️ handoff (morto) | HANDOFF de INTEGRAÇÃO — `line/Vector`: o desenho FIEL da forma presa e a SILHUETA da pele (F37–F47, 2026-10-01… |
+| 2026-10-02 |   | [HANDOFF_line_Vector_CONTINUACAO_FORMAS_COM_EFEITOS_2026-10-02.md](HANDOFF_line_Vector_CONTINUACAO_FORMAS_COM_EFEITOS_2026-10-02.md) | ⚠️ handoff (morto) | HANDOFF (continuação, janela nova) — `line/Vector`: próximo trabalho = FORMAS VETORIAIS COM EFEITOS (2026-10-0… |
 | 2026-10-02 |   | [HANDOFF_line_Vector_F48_O_FECHO_DA_IMAGEM_2026-10-02.md](HANDOFF_line_Vector_F48_O_FECHO_DA_IMAGEM_2026-10-02.md) | ⚠️ handoff (morto) | HANDOFF (continuação) — `line/Vector` F48: o fecho da imagem presa (2026-10-02) |
 
 ---

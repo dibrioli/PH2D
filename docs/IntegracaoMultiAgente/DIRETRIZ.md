@@ -419,12 +419,23 @@ fecha a linha ([`CLAUDE.md §0.7`](../../CLAUDE.md)). Conteúdo mínimo (curto, 
    ⭐ Correr tudo por `bash scripts/ph2d-run.sh` torna isto quase sempre desnecessário: o prazo do
    scope mata a **árvore inteira**, que é a metade que um `timeout` não alcança (medido: `0` órfãos
    contra `1`). [`TETOS_DE_RECURSO_POR_LINHA.md`](../DevOps/TETOS_DE_RECURSO_POR_LINHA.md).
-8. ⚠️ **A NARRATIVA da jornada vai no HANDOFF; o `CLAUDE.md §5` recebe UMA LINHA.** O §5 é o
-   **roteador de estado** (o que o módulo é, o que está **aberto**, como smokar, onde ler) — o
-   *mecanismo* de cada wave é exatamente o que este handoff existe para guardar. Ao integrar,
-   edite a linha **Aberto** do módulo e, quando a wave muda o que o módulo *é*, a linha de estado;
-   **não acrescente um parágrafo de jornada.**
+8. ⛔⛔ **A NARRATIVA da jornada vai no HANDOFF; o `CLAUDE.md §5.1` não recebe texto novo — recebe um
+   LINK.** Cada módulo é **UMA linha de no máximo 700 bytes** (o que é · smoke principal · último
+   handoff de integração · docs · BUGS · história), e o **ABERTO vive no handoff** que ela aponta.
+   Ao integrar, **troque o link do último handoff** e, só se a wave mudou o que o módulo *é*, a frase
+   do que ele é. O handoff **não propõe parágrafo para o §5**: propõe, no máximo, a frase nova do que o
+   módulo é (≤ 300 caracteres) — ou nada. **Com régua:** o gate
+   `architecture_claude_md_cabe_no_orcamento` reprova o `CLAUDE.md` acima de **40 KB**, o §5 acima de
+   14 KB e qualquer entrada do §5.1 acima de 700 bytes ou partida em duas linhas.
 
+   > ⛔ **É a SEGUNDA vez (medido em 2026-10-02).** A redacção anterior desta regra dizia *«o §5
+   > recebe UMA LINHA»* — e uma linha de Markdown não tem tamanho. Sem gate, em seis semanas cada
+   > «linha» virou um parágrafo de 5 a 40 KB e o `CLAUDE.md` foi de 41 KB a **710 KB** (a entrada da
+   > Escultura sozinha, 338 KB). Medido nos transcripts de set/2026: **82 % do custo do Claude é
+   > reler o contexto a cada passo**, a média era **606 mil tokens por passo**, e este arquivo era
+   > ~metade disso; acima de 200 mil tokens nenhum subagente de modelo menor conseguia começar.
+   > História verbatim: [`docs/archive/estado-2026-10-02/`](../archive/estado-2026-10-02/README.md).
+   >
    > ⚠️ **Por que a regra existe (medido em 2026-08-18):** o §5 crescia por acréscimo e levou o
    > `CLAUDE.md` de **1,7 KB** (2026-05-08) a **917 KB** em 326 commits — 94,6% dele era o §5, com
    > **um único bullet de 155 KB**. O custo não é estético: este arquivo é injetado **por inteiro**
@@ -475,6 +486,14 @@ fecha a linha ([`CLAUDE.md §0.7`](../../CLAUDE.md)). Conteúdo mínimo (curto, 
     `docs/<Módulo>/ferramentas/`, nunca numa pasta não rastreada da worktree (`.cauda-*`): ela morre com a
     worktree, e o handoff fica a citar um caminho que não existe. Medido 13/09: três linhas tinham três
     cópias da prova de movimento fora do repo, e elas **já tinham divergido** — daí `scripts/moved-proof.py`.
+11. ⚠️ **O HANDOFF É CURTO e o PERFIL do loop vai nele.** Alvo **≤ 15 KB**: superfície de colisão
+    colada, contadores como DELTA, o que um merge pode partir, a prova de fecho, os smokes e o que fica
+    ABERTO — o *mecanismo* de cada wave vai no doc da wave, linkado. Cada handoff é lido pelo
+    integrador **e** por cada linha que funde depois; medido em 01/10, os oito da rodada tinham 12–18 KB
+    cada. E cole a saída de `bash scripts/agent-loop-profile.sh` (paralelismo · passos por sessão ·
+    `test:check` · % de edições pela ferramenta · contexto relido por passo): *uma regra sem instrumento é
+    uma nota que envelhece* — em 02/10 nenhuma das réguas batia o alvo, e a dos passos marcava ✓ fosse
+    qual fosse o número (a régua estava partida, ninguém a lia).
 
 Modelo de resumo no fim da linha: *"Linha `<módulo>` pronta (HEAD `<sha>`, N commits). Handoff
 de integração: <itens 2–6>. Smoke compilado: `<o comando exato>` (2ª corrida: Finished em `<N>`s,
@@ -993,7 +1012,7 @@ Acidentalmente trigou T2 workspace numa pasta isolada? Provavelmente staged junt
 - Setup caro em `OnceLock` lazy, compartilhado entre tests do mesmo binário.
 - Input minimal: 1 caso simples + 1 caso edge.
 - IO real → `#[ignore]` + `cargo test -- --ignored` no CI separado.
-- **Gate que compara dois RELÓGIOS ou conta ALOCAÇÕES** → entra na lane do `.config/nextest.toml` pelo nome (corre sozinho e no fim), ou nasce num ficheiro `measure_*.rs`; **a barra não se afrouxa** — sob 32 processos ela flaka por FOME, não por defeito (CLAUDE.md §5.0, a família com 23 membros).
+- **Gate que compara dois RELÓGIOS ou conta ALOCAÇÕES** → entra na faixa isolada do `.config/nextest.toml` **pelo nome** (corre sozinho e no fim) **e** numa linha da tabela de [`FLAKES_DE_CARGA.md`](../DevOps/FLAKES_DE_CARGA.md) — as duas escritas, com gate (`architecture_toda_flake_de_carga_corre_na_faixa_isolada`); **a barra não se afrouxa** — sob 32 processos ela flaka por FOME, não por defeito. ⚠️ A frase que aqui esteve oferecia um ficheiro `measure_*.rs` como atalho: a faixa nunca teve esse padrão, e oito membros promovidos só no `CLAUDE.md` ficaram fora dela até 2026-10-02.
 - **Tecto global desde 10/09:** 60 s avisa (`SLOW`), **180 s mata** e conta como falha. Um teste que precise de mais recebe `[[profile.default.overrides]]` com o número medido ao lado — nunca se sobe o global (hoje o mais lento da suíte leva 42 s).
 
 ---

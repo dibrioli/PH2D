@@ -9,7 +9,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**16 arquivos** · **2** citados pelo `CLAUDE.md` (marcados **◆**) · **1** são handoffs (registro **morto**).
+**16 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **1** são handoffs (registro **morto**).
 
 | # | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -27,7 +27,7 @@
 | 11 |   | [11_HANDOFF_AUDITORIA_EXPRESSOES.md](11_HANDOFF_AUDITORIA_EXPRESSOES.md) | ⚠️ handoff (morto) | AUDITORIA TOTAL do editor de Expressões |
 | 12 |   | [12_plano_reescrita_expressoes.md](12_plano_reescrita_expressoes.md) | plano | PLANO — REESCRITA COMPLETA da feature de Expressões |
 | 13 |   | [13_RESULTADO_AUDITORIA_EXPRESSOES.md](13_RESULTADO_AUDITORIA_EXPRESSOES.md) | auditoria | RESULTADO DA AUDITORIA — editor de Expressões |
-| 14 | ◆ | [14_a_autoria_de_expressoes_foi_retirada.md](14_a_autoria_de_expressoes_foi_retirada.md) | — | A AUTORIA de expressões foi RETIRADA — o MOTOR ficou |
+| 14 |   | [14_a_autoria_de_expressoes_foi_retirada.md](14_a_autoria_de_expressoes_foi_retirada.md) | — | A AUTORIA de expressões foi RETIRADA — o MOTOR ficou |
 | — | ◆ | [BUGS_timeline.md](BUGS_timeline.md) | bugs | BUGS da Timeline — os cuja CAUSA enganava |
 
 **Subpastas:** [`handoffs/`](handoffs/README.md)

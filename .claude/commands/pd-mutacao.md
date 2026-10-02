@@ -4,6 +4,13 @@ argument-hint: [Alvo]
 ---
 Prove por mutação os gates de $1.
 
+**Quando vale a prova (custo medido: 30 h de relógio e ~6 600 corridas em set/2026):** uma LEI cujo
+erro é silencioso e caro — perda de dados, imagem/número errado sem aviso, uma lei portada de um
+oráculo, um invariante de undo/ficheiro, ou um gate que já mentiu antes. Não em cada cura cosmética.
+Mutações **por lei, não por linha**: o bastante para cada cláusula sangrar (tipicamente 3–10).
+Delegue a execução ao agente `mutacao` (Sonnet) com a lista de mutações e as âncoras; a janela
+principal decide QUAIS mutações e lê o placar.
+
 Protocolo (rode SEMPRE por `bash scripts/cargo-test-narrow.sh <crate>` — ele põe o
 `check` na frente, e o exit `2` distingue *não compilou* de *o gate sangrou*, que é
 a distinção inteira desta prova):

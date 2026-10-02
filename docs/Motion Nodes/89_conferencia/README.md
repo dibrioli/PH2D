@@ -11,13 +11,13 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**17 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**).
+**17 arquivos** · **0** citados pelo `CLAUDE.md` (marcados **◆**).
 
 | # | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
 | 01 |   | [01_distribuicao_emissao.md](01_distribuicao_emissao.md) | folha | 89 · CONFERÊNCIA — Família 1: DISTRIBUIÇÃO + EMISSÃO (9 nós) |
 | 02 |   | [02_force.md](02_force.md) | folha | 89 · CONFERÊNCIA — Família 2: FORCE (6 nós) |
-| 03 | ◆ | [03_simulacao.md](03_simulacao.md) | folha | 89 · CONFERÊNCIA — Família 3: **SIMULAÇÃO** (6 nós) |
+| 03 |   | [03_simulacao.md](03_simulacao.md) | folha | 89 · CONFERÊNCIA — Família 3: **SIMULAÇÃO** (6 nós) |
 | 04 |   | [04_deformers.md](04_deformers.md) | folha | 89 · Conferência — Família 4: DEFORMERS (7 nós) |
 | 05 |   | [05_transform.md](05_transform.md) | folha | 89 · Conferência — FAMÍLIA 5: TRANSFORM (6 nós) |
 | 06 |   | [06_animadores.md](06_animadores.md) | folha | 89 · CONFERÊNCIA — Família 6: **ANIMADORES** (9 nós) |

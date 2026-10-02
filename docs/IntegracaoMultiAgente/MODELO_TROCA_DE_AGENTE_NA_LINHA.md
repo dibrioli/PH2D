@@ -78,7 +78,8 @@ FASE 1 — RETOMADA (obrigatória no início de CADA jornada, §1.5.2.3):
 
 FASE 2 — ESTADO (leia, nesta ordem, DENTRO da worktree):
 5. O handoff/tracker do SEU módulo (`ls -t docs/<Módulo>/handoffs/`, a
-   linha do módulo no CLAUDE.md §5 e `git log --oneline
+   linha do módulo no CLAUDE.md §5.1 — que aponta o último handoff de
+   integração, onde está o ABERTO — e `git log --oneline
    $(git merge-base main HEAD)..HEAD`) — é onde o agente anterior deixou o que já foi
    decidido, medido e REPROVADO. Ler antes evita reconstruir o que já
    foi tentado e re-litigar decisão fechada.

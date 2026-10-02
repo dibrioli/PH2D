@@ -9,11 +9,11 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**13 arquivos** · **3** citados pelo `CLAUDE.md` (marcados **◆**).
+**13 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**).
 
 | # | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
-| 00 | ◆ | [00_plano_waves.md](00_plano_waves.md) | plano | 00 · Plano de waves — o motor de física global (`line/physics`) |
+| 00 |   | [00_plano_waves.md](00_plano_waves.md) | plano | 00 · Plano de waves — o motor de física global (`line/physics`) |
 | 01 |   | [01_visao.md](01_visao.md) | porta de entrada | 01 · Visão — O motor de física global do PH2D (1 página) |
 | 02 |   | [02_plano_joints_ui_authoring.md](02_plano_joints_ui_authoring.md) | plano | 02 — Joints: UI, autoria de âncoras e os tipos que faltam (plano pós-pesquisa) |
 | 03 |   | [03_plano_ik.md](03_plano_ik.md) | plano | 03 — IK multibody: posar arrastando a ponta (W-IK) |
@@ -23,7 +23,7 @@
 | 06 |   | [06_plano_player_plataforma.md](06_plano_player_plataforma.md) | plano | Plano — o PLAYER DE PLATAFORMA (Dynamic) |
 | 07 |   | [07_plano_player_kinematico.md](07_plano_player_kinematico.md) | plano | Plano — o PLAYER CINEMÁTICO (o 2º modo) |
 | 08 |   | [08_plano_features_faltantes.md](08_plano_features_faltantes.md) | plano | Plano 08 — o que falta ao PLAYER, medido contra o catálogo (2026-08-10) |
-| 09 | ◆ | [09_auditoria_engines.md](09_auditoria_engines.md) | auditoria | Auditoria 09 — o Player medido contra Unity, Godot, Unreal e o tnua (2026-08-12) |
+| 09 |   | [09_auditoria_engines.md](09_auditoria_engines.md) | auditoria | Auditoria 09 — o Player medido contra Unity, Godot, Unreal e o tnua (2026-08-12) |
 | 10 |   | [10_plano_fila_da_auditoria.md](10_plano_fila_da_auditoria.md) | plano | Plano 10 — a fila da auditoria 09, desenhada (2026-08-12) |
 | — | ◆ | [BUGS_physics.md](BUGS_physics.md) | bugs | Bugs do módulo Physics — registro + soluções |
 

@@ -12,6 +12,13 @@
 > `str.replace()` que não casa é **no-op silencioso**) · **`check -p` no loop, `test -p` só no
 > gate red-first, na mutação e no fechamento** (a razão real era **4,3:1 na direção errada**;
 > `test` custa 2× a 20× o `check`). Sonda: `bash scripts/agent-loop-profile.sh`.
+>
+> ⛔ **Re-medido em 2026-10-02, com a régua corrigida — nenhuma das quatro bate o alvo** (paralelismo
+> **1,09**, só 5 % dos passos com 2+ chamadas · mediana de **1 691** respostas por sessão · `test:check`
+> **2,9:1** · só **28 %** das edições pela ferramenta) e o custo seguiu: 82 % da conta do
+> Claude é RELER o contexto a cada passo. Duas leis novas no `CLAUDE.md §2`, também carregado:
+> **delegue pelo tipo de trabalho** (`explorador` · `verificador` · `integrador` · `documentador` ·
+> `mutacao`, em `.claude/agents/`) e **uma janela nova por onda** de trabalho.
 
 ## 1 — Antes de codar
 - [ ] **Sabe seu MODO?** `bash scripts/hw-profile.sh` — `workstation` (Linux 128 GB) = **Modo L**:

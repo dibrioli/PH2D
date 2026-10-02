@@ -33,7 +33,10 @@ Você é o agente integrador. Munição: o handoff de cada linha.
    árvore vermelha. Duas linhas que fizeram a MESMA coisa de formas diferentes: fica um nome e
    um corpo. Mover corpos prova-se com `scripts/moved-proof.py`.
 3d. Vermelho sem uma linha de Rust mudada: reproduza sob contenção (N cópias `--exact`, com o
-   `loadavg` ao lado) ANTES de culpar o commit (CLAUDE.md §5.0, família de flakes).
+   `loadavg` ao lado) ANTES de culpar o commit ([`FLAKES_DE_CARGA.md`](../../docs/DevOps/FLAKES_DE_CARGA.md)).
+   Promover um membro novo são DUAS escritas: a linha da tabela desse doc **e** o nome na faixa
+   isolada do `.config/nextest.toml` (o gate `architecture_toda_flake_de_carga_corre_na_faixa_isolada`
+   exige as duas).
 4. Números que SOMAM entre linhas se CONTAM (PROJECT_SCHEMA, registro de componentes,
    número de ADR): o valor certo pode não estar em nenhum dos dois lados do conflito.
    ⭐ **O degrau do `PROJECT_SCHEMA` reconta-se por SCRIPT, não por juízo:**
@@ -54,7 +57,13 @@ Você é o agente integrador. Munição: o handoff de cada linha.
    [ANATOMIA](../../docs/archive/integracao-jornadas/ANATOMIA_DE_UMA_RODADA_2026-09-17.md).
 5. Gate da árvore combinada COMPLETO — inclusive os arch-gates de shell, que só correm
    na varredura impactada e já chegaram vermelhos ao tip de uma linha.
-6. §5 do CLAUDE.md: **uma linha por linha integrada**, nunca a narrativa (§1.5.9 item 8).
+6. §5.1 do CLAUDE.md: **troque o link do último handoff** do módulo (e, se o handoff a propõe, a
+   frase do que o módulo é) — **nada de texto novo** (§1.5.9 item 8; gate
+   `architecture_claude_md_cabe_no_orcamento`: entrada ≤ 700 bytes, arquivo ≤ 40 KB). Se o handoff
+   propuser um parágrafo, ele fica no handoff.
+   ⭐ A parte mecânica (rebase, conflitos por estágio, recontagens) pode ir ao agente `integrador`
+   (Sonnet); os portões ao `verificador`. ⛔ Não ponha `model:` neste comando: trocar o modelo da
+   janela reescreve o cache do contexto inteiro, na ida e na volta — delegar é o que fica barato.
    Os registos da rodada (blocos de abertura, briefings, handoffs de integração, estado)
    nascem em `docs/archive/integracao-jornadas/` — a `docs/IntegracaoMultiAgente/` é só
    processo, e o gate `the_live_process_folder_holds_no_dated_record` reprova um registo lá.

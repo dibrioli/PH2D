@@ -39,12 +39,15 @@ Feche a linha `$1`.
    - contratos/schemas tocados (ou a prova por grep de que NÃO foram)
    - números MEDIDOS, não estimados
    - os smokes com o comando exato de rodar
-4. A narrativa da jornada vai no HANDOFF. **A linha NÃO edita o `CLAUDE.md §5`** (DIRETRIZ §1.5.5:
-   só na integração, no primário — duas linhas a editá-lo nas worktrees dão conflito no ficheiro
-   que todo agente carrega): escreva no handoff a **UMA LINHA** que propõe para ele (o que está
-   ABERTO / o smoke novo); quem a aplica é o integrador. Nunca um parágrafo. Foi o append
-   por-jornada que levou o §5 a 868 KB, injetados em todo agente e toda worktree,
-   antes da primeira palavra do Enio (DIRETRIZ §1.5.9 item 8).
+4. A narrativa da jornada vai no HANDOFF. **A linha NÃO edita o `CLAUDE.md`** (só na integração,
+   no primário). O ABERTO fica no handoff — o §5.1 só passa a APONTAR para ele. No handoff, escreva
+   para o integrador **o link novo** e, só se o módulo mudou de natureza, **a frase nova do que ele
+   é (≤ 300 caracteres)**. ⛔ Nunca um parágrafo: cada entrada do §5.1 tem tecto de **700 bytes** e
+   o arquivo de **40 KB**, com gate (`architecture_claude_md_cabe_no_orcamento`). A regra em
+   «linhas» falhou duas vezes — 917 KB em agosto, 710 KB em outubro (DIRETRIZ §1.5.9 item 8).
+4b. **Handoff ≤ 15 KB** e com a saída de `bash scripts/agent-loop-profile.sh` colada (DIRETRIZ
+   §1.5.9 item 11). O agente `documentador` escreve-o a partir dos factos que lhe passar; os portões
+   do passo 2 podem ir ao `verificador` — a janela principal decide, os agentes executam.
 5. **`wc -c` no tracker/handoff do módulo. Passou de ~100 KB? CORTE-O agora:**
    `python3 scripts/doc-split.py <doc> --keep <faixas> --archive docs/archive/docs-<data>/<mod>/<doc>`
    depois `python3 scripts/archive-index.py docs/archive/docs-<data>`.

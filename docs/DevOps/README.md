@@ -11,12 +11,13 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**5 arquivos** · **4** citados pelo `CLAUDE.md` (marcados **◆**) · **1** são handoffs (registro **morto**).
+**6 arquivos** · **3** citados pelo `CLAUDE.md` (marcados **◆**) · **1** são handoffs (registro **morto**).
 
 | | Arquivo | Papel | Assunto |
 |---|---|---|---|
-| ◆ | [AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md](AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md) | auditoria | Auditoria — velocidade de desenvolvimento do PH2D (2026-09-10) |
-| ◆ | [BTRFS_METADATA_E_SWAP.md](BTRFS_METADATA_E_SWAP.md) | — | BTRFS na workstation — metadata faminta, swap cheio e checksum corrompido *(2026-08-22)* |
+|   | [AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md](AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md) | auditoria | Auditoria — velocidade de desenvolvimento do PH2D (2026-09-10) |
+|   | [BTRFS_METADATA_E_SWAP.md](BTRFS_METADATA_E_SWAP.md) | — | BTRFS na workstation — metadata faminta, swap cheio e checksum corrompido *(2026-08-22)* |
+| ◆ | [FLAKES_DE_CARGA.md](FLAKES_DE_CARGA.md) | — | Flakes de carga — a família, a assinatura e os membros conhecidos |
 |   | [HANDOFF_linux_bootstrap.md](HANDOFF_linux_bootstrap.md) | ⚠️ handoff (morto) | bootstrap da máquina Linux (dev rápido) |
 | ◆ | [MULTI_MACHINE_SETUP.md](MULTI_MACHINE_SETUP.md) | — | Multi-máquina — projeto idêntico em Mac · Linux · Windows |
 | ◆ | [TETOS_DE_RECURSO_POR_LINHA.md](TETOS_DE_RECURSO_POR_LINHA.md) | — | Tectos de recurso por linha — o que uma linha pode tomar da máquina |

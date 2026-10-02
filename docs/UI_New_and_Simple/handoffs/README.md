@@ -11,23 +11,23 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**17 arquivos** · **7** citados pelo `CLAUDE.md` (marcados **◆**) · **17** são handoffs (registro **morto**).
+**17 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **17** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
 | 2026-08-30 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-08-30.md](HANDOFF_INTEGRACAO_line_UIUX_2026-08-30.md) | ⚠️ handoff (morto) | HANDOFF de integração — `line/UIUX`, 2026-08-30 |
 | 2026-09-03 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-03.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-03.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-09-03 |
 | 2026-09-06 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-06.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-06.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX` — 2026-09-06 |
-| 2026-09-07 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-07.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-07.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX` — 2026-09-07 |
-| 2026-09-10 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-10.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-10.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-09-10 |
+| 2026-09-07 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-07.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-07.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX` — 2026-09-07 |
+| 2026-09-10 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-10.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-10.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-09-10 |
 | 2026-09-13 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-13.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-13.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-09-13 |
 | 2026-09-13 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-13_INSPECTOR.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-13_INSPECTOR.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-09-13 (2.ª volta: o INSPECTOR) |
-| 2026-09-14 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-14_LINHA_DE_PROPRIEDADE.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-14_LINHA_DE_PROPRIEDADE.md) | ⚠️ handoff (morto) | `line/UIUX` · 2026-09-14 · **A LINHA DE PROPRIEDADE TEM PORTA** |
+| 2026-09-14 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-14_LINHA_DE_PROPRIEDADE.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-14_LINHA_DE_PROPRIEDADE.md) | ⚠️ handoff (morto) | `line/UIUX` · 2026-09-14 · **A LINHA DE PROPRIEDADE TEM PORTA** |
 | 2026-09-14 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-14_VAOS.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-14_VAOS.md) | ⚠️ handoff (morto) | `line/UIUX` · 2026-09-14 · **O PASSO VERTICAL DE UMA PILHA PERGUNTA A PORTA** |
-| 2026-09-16 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_FECHO_2026-09-16.md](HANDOFF_INTEGRACAO_line_UIUX_FECHO_2026-09-16.md) | ⚠️ handoff (morto) | FECHO da `line/UIUX` — o guia do INTEGRADOR (2026-09-16) |
-| 2026-09-20 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-20.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-20.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-09-20 |
+| 2026-09-16 |   | [HANDOFF_INTEGRACAO_line_UIUX_FECHO_2026-09-16.md](HANDOFF_INTEGRACAO_line_UIUX_FECHO_2026-09-16.md) | ⚠️ handoff (morto) | FECHO da `line/UIUX` — o guia do INTEGRADOR (2026-09-16) |
+| 2026-09-20 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-20.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-20.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-09-20 |
 | 2026-09-20 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-20_A_PALETA.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-20_A_PALETA.md) | ⚠️ handoff (morto) | `line/UIUX` · 2026-09-20 (2.ª volta) · **O SELECTOR DE PINCÉIS SAI DO PAINEL, E UM MODAL É DONO DA ENTRADA** |
-| 2026-09-25 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-25_A_LINHA.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-25_A_LINHA.md) | ⚠️ handoff (morto) | `line/UIUX` · 2026-09-25 · **HANDOFF DO INTEGRADOR — a linha inteira desde `395da6a55`** |
+| 2026-09-25 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-25_A_LINHA.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-25_A_LINHA.md) | ⚠️ handoff (morto) | `line/UIUX` · 2026-09-25 · **HANDOFF DO INTEGRADOR — a linha inteira desde `395da6a55`** |
 | 2026-09-29 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-29_A_ROLAGEM.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-29_A_ROLAGEM.md) | ⚠️ handoff (morto) | `line/UIUX` · 2026-09-29 · **HANDOFF DO INTEGRADOR — a rolagem única, com inércia** |
 | 2026-09-30 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-30_OS_CARTOES.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-30_OS_CARTOES.md) | ⚠️ handoff (morto) | Handoff de integração — `line/UIUX`, 2026-09-30 — OS CARTÕES DE SECÇÃO, A PEGA E O TEMA POR SECÇÃO |
 | 2026-09-30 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-30_TEMAS_NOTAS_FANTASMA.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-30_TEMAS_NOTAS_FANTASMA.md) | ⚠️ handoff (morto) | Handoff de integração — `line/UIUX`, 2026-09-30 — OS QUATRO TEMAS COLORIDOS, AS CORES VIVAS, O FANTASMA DO ARR… |

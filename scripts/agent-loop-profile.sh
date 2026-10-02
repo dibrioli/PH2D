@@ -45,25 +45,45 @@ if N != 'all':
 if not paths:
     print("nenhum transcript encontrado em ~/.claude/projects/ — nada a medir"); sys.exit(0)
 
-turnos_tool = chamadas = 0
+# ⛔ 2026-10-02: a 1.ª versão contava cada LINHA `assistant` do transcript como um turno — e o
+# transcript grava cada BLOCO da resposta (pensamento · texto · cada chamada) numa linha própria.
+# Resultado: o paralelismo lia SEMPRE 1,00 (uma chamada por linha, por construção), os turnos
+# vinham inflados, e a linha dos turnos marcava ✓ fosse qual fosse o número (4 466 contra o
+# baseline de 991 lia-se como aprovado). Hoje a unidade é a RESPOSTA (o `message.id`), e cada
+# régua compara com o alvo. ⚠️ Os baselines de 2026-08-18 foram medidos pela régua antiga.
+#
+# ⭐ E duas réguas novas, porque são o CUSTO: 82 % da conta é RELER o contexto a cada passo.
+#   · contexto relido por passo (média de cache-read + cache-write + input por resposta)
+#   · contexto no INÍCIO da sessão (o 1.º passo: prompt de sistema + ferramentas + CLAUDE.md + memória)
+respostas = {}            # message.id -> conjunto de tool_use ids
+ctx_passo = []            # contexto de cada resposta
+ctx_inicio = []           # contexto do 1.º passo de cada sessão
 por_sessao = []
 cargo = collections.Counter()
 edits = collections.Counter()
 
 for fp in paths:
-    nt = 0
+    vistos = {}
+    primeiro = None
     for line in open(fp, encoding='utf-8', errors='replace'):
         try: r = json.loads(line)
         except Exception: continue
         if r.get('type') != 'assistant': continue
-        c0 = (r.get('message', {}) or {}).get('content')
+        m = r.get('message', {}) or {}
+        mid = m.get('id') or r.get('uuid')
+        u = m.get('usage') or {}
+        ctx = sum((u.get(k) or 0) for k in ('input_tokens', 'cache_read_input_tokens',
+                                           'cache_creation_input_tokens'))
+        if mid not in vistos:
+            vistos[mid] = set()
+            if ctx: ctx_passo.append(ctx)
+            if primeiro is None and ctx: primeiro = ctx
+        c0 = m.get('content')
         if not isinstance(c0, list): continue
-        nt += 1
-        usos = [c for c in c0 if isinstance(c, dict) and c.get('type') == 'tool_use']
-        if usos:
-            turnos_tool += 1
-            chamadas += len(usos)
-        for c in usos:
+        for c in c0:
+            if not (isinstance(c, dict) and c.get('type') == 'tool_use'): continue
+            if c.get('id') in vistos[mid]: continue
+            vistos[mid].add(c.get('id'))
             nome = c.get('name'); inp = c.get('input', {}) or {}
             if nome in ('Edit', 'Write', 'NotebookEdit'):
                 edits['ferramenta'] += 1
@@ -72,9 +92,13 @@ for fp in paths:
                 if re.search(r"open\([^)]*['\"][wa]['\"]|\.write\(|write_text\(", cmd) \
                    or re.search(r'\bsed -i\b|\bperl -i\b', cmd):
                     edits['script'] += 1
-                if re.search(r'cargo (test|nextest)\b', cmd):   cargo['test'] += 1
-                elif re.search(r'cargo check\b', cmd):          cargo['check'] += 1
-    if nt: por_sessao.append(nt)
+                if re.search(r'cargo (\+\S+ )?(test|nextest)\b|cargo-test-narrow|nextest-impacted', cmd):
+                    cargo['test'] += 1
+                elif re.search(r'cargo (\+\S+ )?check\b|cargo-check-narrow', cmd):
+                    cargo['check'] += 1
+    if vistos: por_sessao.append(len(vistos))
+    if primeiro: ctx_inicio.append(primeiro)
+    respostas.update({(fp, k): v for k, v in vistos.items()})
 
 def linha(rot, valor, alvo, ok, nota=''):
     marca = '✓' if ok else '✗'
@@ -84,13 +108,15 @@ print(f"\nPERFIL DO LOOP DO AGENTE — {len(paths)} sessao(oes)"
       f"{' (corpus inteiro)' if N=='all' else ' mais recentes'}")
 print("─" * 78)
 
-par = chamadas / turnos_tool if turnos_tool else 0
-linha("paralelismo de ferramenta", f"{par:.2f}/turno", ">= 1,5", par >= 1.5,
-      "  (baseline 2026-08-18: 1,00)")
+com = [len(v) for v in respostas.values() if v]
+par = sum(com) / len(com) if com else 0
+multi = 100 * sum(1 for n in com if n > 1) / len(com) if com else 0
+linha("paralelismo de ferramenta", f"{par:.2f}/passo", ">= 1,5", par >= 1.5,
+      f"  ({multi:.0f}% dos passos com 2+ chamadas)")
 
 med = st.median(por_sessao) if por_sessao else 0
-linha("turnos do assistente/sessao", f"{med:.0f}", "menor e' melhor", True,
-      "  (baseline: 991)")
+linha("respostas por sessao (mediana)", f"{med:.0f}", "<= 800", med <= 800,
+      "  (uma janela nova por onda de trabalho)")
 
 t, ck = cargo['test'], cargo['check']
 raz = t / ck if ck else float('inf')
@@ -101,6 +127,13 @@ ef, es = edits['ferramenta'], edits['script']
 pct = 100 * ef / (ef + es) if (ef + es) else 0
 linha("edicoes pela ferramenta Edit", f"{pct:.0f}%", ">= 80%", pct >= 80,
       f"  ({es} por script; baseline: 48%)")
+
+mc = st.mean(ctx_passo) if ctx_passo else 0
+linha("contexto relido por passo (media)", f"{mc/1000:.0f} mil", "<= 250 mil", mc <= 250_000,
+      "  (set/2026: 606 mil — 82% do custo)")
+mi = st.median(ctx_inicio) if ctx_inicio else 0
+linha("contexto no inicio da sessao", f"{mi/1000:.0f} mil", "<= 80 mil", mi <= 80_000,
+      "  (02/10: 380 mil, CLAUDE.md a 710 KB)")
 
 print("─" * 78)
 print("  As leis moram no CLAUDE.md §2 (sempre carregado); a DIRETIVA_IMPLEMENTACAO aponta pra la'.")

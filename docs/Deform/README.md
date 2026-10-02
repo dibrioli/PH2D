@@ -11,11 +11,11 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**6 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **1** são handoffs (registro **morto**).
+**6 arquivos** · **0** citados pelo `CLAUDE.md` (marcados **◆**) · **1** são handoffs (registro **morto**).
 
 | | Arquivo | Papel | Assunto |
 |---|---|---|---|
-| ◆ | [00_README.md](00_README.md) | porta de entrada | Deform — sistema de transformação & deformação do Painter |
+|   | [00_README.md](00_README.md) | porta de entrada | Deform — sistema de transformação & deformação do Painter |
 |   | [01_research.md](01_research.md) | pesquisa | 01 — Pesquisa: Procreate e além |
 |   | [02_design_and_architecture.md](02_design_and_architecture.md) | — | 02 — Design & arquitetura |
 |   | [03_ui_ux_panel_spec.md](03_ui_ux_panel_spec.md) | — | 03 — UI/UX do painel (inspector direito) |

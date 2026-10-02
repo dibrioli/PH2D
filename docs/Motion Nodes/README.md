@@ -9,7 +9,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**132 arquivos** · **14** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
+**132 arquivos** · **2** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
 
 | # | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -102,20 +102,20 @@
 | 86 |   | [86_plano_objetos_engine_render_e_preview.md](86_plano_objetos_engine_render_e_preview.md) | plano | 86 — Plano: objetos da engine no grafo, o Duplicator, a ponte de render, e o preview em moldura própria |
 | 87 |   | [87_plano_correcao_automatica_setup.md](87_plano_correcao_automatica_setup.md) | plano | 87 — Correção automática de setup do grafo (o app conserta quando o artista erra o lugar do nó) |
 | 88 |   | [88_plano_parametros_nos_unidades_e_slider.md](88_plano_parametros_nos_unidades_e_slider.md) | plano | Doc 88 — PLANO: os parâmetros dos nós ganham unidades, slider dual e o conjunto PRO |
-| 89 | ◆ | [89_plano_conferencia_dos_nos.md](89_plano_conferencia_dos_nos.md) | plano | 89 — PLANO DE CONFERÊNCIA DOS NÓS (o super-upgrade, nó a nó) |
-| 90 | ◆ | [90_caca_aos_knobs_mortos.md](90_caca_aos_knobs_mortos.md) | — | 90 · A CAÇA AOS KNOBS MORTOS — a tabela verificada |
-| 91 | ◆ | [91_os_tetos_que_ninguem_mediu.md](91_os_tetos_que_ninguem_mediu.md) | — | 91 · OS TETOS QUE NINGUÉM MEDIU — o bloco Z |
+| 89 |   | [89_plano_conferencia_dos_nos.md](89_plano_conferencia_dos_nos.md) | plano | 89 — PLANO DE CONFERÊNCIA DOS NÓS (o super-upgrade, nó a nó) |
+| 90 |   | [90_caca_aos_knobs_mortos.md](90_caca_aos_knobs_mortos.md) | — | 90 · A CAÇA AOS KNOBS MORTOS — a tabela verificada |
+| 91 |   | [91_os_tetos_que_ninguem_mediu.md](91_os_tetos_que_ninguem_mediu.md) | — | 91 · OS TETOS QUE NINGUÉM MEDIU — o bloco Z |
 | 92 |   | [92_o_que_o_mini_cavalry_tem_e_nos_nao.md](92_o_que_o_mini_cavalry_tem_e_nos_nao.md) | — | 92 — O que o Mini Cavalry tem e nós não |
 | 93 |   | [93_plano_lsystem_datasource_celanim.md](93_plano_lsystem_datasource_celanim.md) | plano | 93 — Plano: L-System · Data Source · Cel Animation |
 | 94 |   | [94_plano_fx_adjust.md](94_plano_fx_adjust.md) | plano | 94 — Plano: `fx.adjust`, a ponte para os 15 filtros raster que o app já tem |
 | 95 |   | [95_estudo_ramificacao_continua_e_instancias.md](95_estudo_ramificacao_continua_e_instancias.md) | pesquisa | 95 — Estudo: ramificação CONTÍNUA e instâncias por letra/fase no `source.lsystem` |
-| 96 | ◆ | [96_auditoria_do_lsystem_2026-08-31.md](96_auditoria_do_lsystem_2026-08-31.md) | auditoria | 96 — Auditoria de SEIS LENTES ao `source.lsystem` (2026-08-31) |
-| 97 | ◆ | [97_os_pequenos_pulos_e_a_lei_do_recem_nascido.md](97_os_pequenos_pulos_e_a_lei_do_recem_nascido.md) | — | 97 — Os pequenos pulos do L-System, e a lei do recém-nascido |
-| 98 | ◆ | [98_auditoria_de_performance_2026-09-01.md](98_auditoria_de_performance_2026-09-01.md) | auditoria | 98 — Auditoria de performance do módulo Motion, 2026-09-01 |
-| 99 | ◆ | [99_estudo_do_mini_cavalry_2026-09-02.md](99_estudo_do_mini_cavalry_2026-09-02.md) | pesquisa | 99 — Estudo sério do Mini Cavalry V2 |
-| 100 | ◆ | [100_estudo_dos_outputs_2026-09-04.md](100_estudo_dos_outputs_2026-09-04.md) | pesquisa | 100 — Estudo dos outputs: um nó com muitos pinos, ou muitos nós com um pino? |
-| 101 | ◆ | [101_pesquisa_cartoes_ricos_2026-09-04.md](101_pesquisa_cartoes_ricos_2026-09-04.md) | pesquisa | 101 — Pesquisa: CARTÕES RICOS — o upgrade do nó para superar Blender, Cavalry e Houdini |
-| 102 | ◆ | [102_o_outro_patamar_plano_dos_nos_2026-09-04.md](102_o_outro_patamar_plano_dos_nos_2026-09-04.md) | plano | 102 — O OUTRO PATAMAR: o plano dos nós além de Blender, Cavalry e Houdini |
+| 96 |   | [96_auditoria_do_lsystem_2026-08-31.md](96_auditoria_do_lsystem_2026-08-31.md) | auditoria | 96 — Auditoria de SEIS LENTES ao `source.lsystem` (2026-08-31) |
+| 97 |   | [97_os_pequenos_pulos_e_a_lei_do_recem_nascido.md](97_os_pequenos_pulos_e_a_lei_do_recem_nascido.md) | — | 97 — Os pequenos pulos do L-System, e a lei do recém-nascido |
+| 98 |   | [98_auditoria_de_performance_2026-09-01.md](98_auditoria_de_performance_2026-09-01.md) | auditoria | 98 — Auditoria de performance do módulo Motion, 2026-09-01 |
+| 99 |   | [99_estudo_do_mini_cavalry_2026-09-02.md](99_estudo_do_mini_cavalry_2026-09-02.md) | pesquisa | 99 — Estudo sério do Mini Cavalry V2 |
+| 100 |   | [100_estudo_dos_outputs_2026-09-04.md](100_estudo_dos_outputs_2026-09-04.md) | pesquisa | 100 — Estudo dos outputs: um nó com muitos pinos, ou muitos nós com um pino? |
+| 101 |   | [101_pesquisa_cartoes_ricos_2026-09-04.md](101_pesquisa_cartoes_ricos_2026-09-04.md) | pesquisa | 101 — Pesquisa: CARTÕES RICOS — o upgrade do nó para superar Blender, Cavalry e Houdini |
+| 102 |   | [102_o_outro_patamar_plano_dos_nos_2026-09-04.md](102_o_outro_patamar_plano_dos_nos_2026-09-04.md) | plano | 102 — O OUTRO PATAMAR: o plano dos nós além de Blender, Cavalry e Houdini |
 | 103 | ◆ | [103_dinamica_dos_ciclos.md](103_dinamica_dos_ciclos.md) | — | 103 — A DINÂMICA DOS CICLOS (o protocolo desta obra até ao fim) |
 | 104 |   | [104_ciclo_1_arranjo.md](104_ciclo_1_arranjo.md) | — | 104 — CICLO 1 · ARRANJO: pôr muitos objectos na tela |
 | 104 |   | [104_pedido_retirar_o_painel_lateral.md](104_pedido_retirar_o_painel_lateral.md) | — | PEDIDO À `line/motion-value`: RETIRAR o painel lateral de params |
@@ -129,13 +129,13 @@
 | 112 |   | [112_ciclo_7_aparencia.md](112_ciclo_7_aparencia.md) | — | 112 — CICLO 7: APARÊNCIA, a cor e o rasto |
 | 113 |   | [113_ciclo_8_fontes_e_dados.md](113_ciclo_8_fontes_e_dados.md) | — | 113 — CICLO 8: FONTES & DADOS, de onde vêm as coisas |
 | 114 |   | [114_ciclo_9_rig_e_corpos_moles.md](114_ciclo_9_rig_e_corpos_moles.md) | — | 114 — CICLO 9 · RIG & CORPOS MOLES — «Coisas que se seguram» |
-| 115 | ◆ | [115_o_colisor_sai_do_grafo.md](115_o_colisor_sai_do_grafo.md) | — | 115 — O COLISOR SAI DO GRAFO: a forma é do OBJECTO, e o app separa sozinho |
+| 115 |   | [115_o_colisor_sai_do_grafo.md](115_o_colisor_sai_do_grafo.md) | — | 115 — O COLISOR SAI DO GRAFO: a forma é do OBJECTO, e o app separa sozinho |
 | 116 |   | [116_ciclo_10_o_carimbo_no_dispositivo.md](116_ciclo_10_o_carimbo_no_dispositivo.md) | — | 116 — CICLO 10 · O CARIMBO NO DISPOSITIVO |
 | 117 |   | [117_o_que_falta_2026-09-22.md](117_o_que_falta_2026-09-22.md) | — | 117 — O QUE FALTA no módulo, medido (2026-09-22) |
 | 118 |   | [118_a_mistura_em_grupo.md](118_a_mistura_em_grupo.md) | — | 118 — A MISTURA EM GRUPO: três alcances, imagens e formas, no tom das formas (2026-09-23) |
 | 119 |   | [119_ciclo_11_a_placa_com_varias_saidas.md](119_ciclo_11_a_placa_com_varias_saidas.md) | — | 119 — CICLO 11: a placa com VÁRIAS saídas (2026-09-23) |
 | 120 |   | [120_ciclo_12_os_tectos_confortaveis.md](120_ciclo_12_os_tectos_confortaveis.md) | — | 120 — CICLO 12: os tectos confortáveis (2026-09-24) |
-| 121 | ◆ | [121_as_formas_na_placa.md](121_as_formas_na_placa.md) | — | 121 — AS FORMAS NA PLACA: toda forma do Motion desenhada pelo dispositivo, nítida e sem custo por cópia |
+| 121 |   | [121_as_formas_na_placa.md](121_as_formas_na_placa.md) | — | 121 — AS FORMAS NA PLACA: toda forma do Motion desenhada pelo dispositivo, nítida e sem custo por cópia |
 | — | ◆ | [BUGS_motion_nodes.md](BUGS_motion_nodes.md) | bugs | Bugs do módulo Motion Nodes — registro + soluções |
 | — |   | [referencia_catalogo_nodes_minicavalry.md](referencia_catalogo_nodes_minicavalry.md) | referência | Mini Cavalry — Referência de Nós (autor) |
 | — |   | [referencia_design_node_graph_ph2d_v1.md](referencia_design_node_graph_ph2d_v1.md) | referência | PH2D — Sistema de Nós — Design Canônico |

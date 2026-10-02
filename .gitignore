@@ -87,6 +87,11 @@ reference/
 !.claude/settings.json
 !.claude/hooks/
 !.claude/hooks/*.sh
+# ...E os AGENTES por tipo de trabalho (2026-10-02), pela mesma razão: cada um fixa o
+# MODELO e o esforço de uma operação (explorar, verificar, integrar, documentar, mutar),
+# e uma escolha de modelo que só existe numa máquina deixa as outras a pagar Opus por tudo.
+!.claude/agents/
+!.claude/agents/*.md
 
 # Wave 10 / slot-env.sh — per-session cargo target dirs (never committed)
 target-slots/

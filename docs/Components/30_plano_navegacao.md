@@ -333,13 +333,14 @@ com a timeline aberta **não é centrada na origem** (medido no FIM DE JOGO e na
 
 ---
 
-## §11 — ⏳ Decisões do DONO (produto), com a recomendação
+## §11 — Decisões do DONO (produto), com a recomendação
 
-1. **O inimigo evita sozinho as zonas que ferem** (a lava da Vida e Dano a virar custo automático na W7)? —
-   **recomendado sim**, com uma caixa no `NavAgent` para o desligar (um inimigo imune ao fogo deve poder
-   atravessá-la; a resistência do `Health` já sabe dizê-lo).
-2. **O desvio entre agentes nasce ligado ou desligado?** (o Godot nasce desligado) — **recomendado ligado** para
-   quem tem `NavAgent`, depois de a W5 medir o custo.
+1. ✅ **DECIDIDO pelo dono (02/10): SIM.** **O inimigo evita sozinho as zonas que ferem** (a lava da Vida e
+   Dano a virar custo automático na W7), com uma caixa no `NavAgent` para o desligar (um inimigo imune ao
+   fogo deve poder atravessá-la; a resistência do `Health` já sabe dizê-lo).
+2. ✅ **DECIDIDO pelo dono (02/10): LIGADO.** **O desvio entre agentes nasce ligado** para quem tem
+   `NavAgent` (o Godot nasce desligado), com o custo medido na W5 (§13.2) e a caixa *Avoid Others* para o
+   desligar.
 3. **Navegação em PLATAFORMAS (saltos)** — plano próprio, quando pedir.
 
 ---
@@ -409,7 +410,7 @@ O desvio entre agentes (W5) · o mundo que muda, as portas, os verbos `Start/Sto
 
 **O que se consegue fazer agora:** todo `NavAgent` desvia dos outros corpos que andam — os outros
 agentes, o herói, os corpos dinâmicos — sem sair da área andável, e a caixa **Avoid Others** do
-Inspector desliga-o (ligada de fábrica: §11.2, ⏳ a confirmar pelo dono). A cena `PH2D_NAV_SMOKE=2` põe
+Inspector desliga-o (ligada de fábrica: §11.2, ✅ decidido pelo dono em 02/10). A cena `PH2D_NAV_SMOKE=2` põe
 oito vermelhos a cruzar UMA porta nos dois sentidos e, por baixo, os mesmos oito sem o desvio (o
 CONTROLO): os vermelhos chegam todos (tique `500`), os cinzentos entalam-se e nenhum chega.
 
@@ -489,6 +490,6 @@ na ponte. Gates novos: o oráculo do Godot passo a passo · o banco de cenários
   sem perda; uma procura dos `k` mais perto por anéis de uma grelha fina tirá-lo-ia.
 - A leitura viva não diz *«a dar passagem»*: um agente travado pela multidão lê-se `Moving`. Um estado com
   voz (S6) para o aperto é candidato.
-- ⏳ **Decisão do dono (§11.2):** o desvio nasce LIGADO.
+- ✅ **Decisão do dono (§11.2, 02/10):** o desvio nasce LIGADO.
 - O mundo que muda, as portas, `Start/Stop Navigation`, a patrulha (W6) · custo por área e atalhos (W7) ·
   a arena e o tutorial (W8).

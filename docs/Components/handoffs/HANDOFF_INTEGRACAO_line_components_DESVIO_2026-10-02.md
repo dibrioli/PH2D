@@ -141,8 +141,8 @@ schema escreve o mesmo `179`: `python3 scripts/schema-recount.py`.
 
 ## §4 — ⏳ O que fica ABERTO
 
-- ⏳ **Decisão do dono (plano §11.2):** o desvio nasce LIGADO (a recomendação do plano, agora com o custo
-  medido). Dito no relatório ao dono.
+- ✅ **Decisão do dono (plano §11.2), tomada em 02/10:** o desvio nasce LIGADO — o código já está assim,
+  nada a mudar. E o §11.1 também: na W7 o inimigo evita sozinho as zonas que ferem, com caixa para desligar.
 - **A leitura viva não diz «a dar passagem»** — um agente travado pela multidão lê-se `Moving`. Candidato a
   estado com voz (S6).
 - **O custo que sobra a 1 000 agentes** (`2,44 ms`) é a VARRIDA dos candidatos (a célula da grelha é o

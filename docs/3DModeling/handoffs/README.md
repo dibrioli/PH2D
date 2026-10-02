@@ -13,7 +13,7 @@
 [`06_resultados_cena_e_gizmo.md`](../06_resultados_cena_e_gizmo.md) são uma wave cada, com a tabela
 medida e as provas de mutação ao lado. Esta pasta guarda o que atravessa a **fronteira da linha**.
 
-**19 handoffs.** ⚠️ *Esta contagem dizia «10» e a tabela não tinha o de 10/09 — um índice escrito à
+**22 handoffs.** ⚠️ *Esta contagem dizia «10» e a tabela não tinha o de 10/09 — um índice escrito à
 mão envelhece no dia do primeiro esquecimento.*
 
 | Data | Arquivo | Papel | Assunto |
@@ -40,6 +40,7 @@ mão envelhece no dia do primeiro esquecimento.*
 | 2026-09-29 | [HANDOFF_line_3DModeling_O_CONTORNO_PONTILHADO_2026-09-29.md](HANDOFF_line_3DModeling_O_CONTORNO_PONTILHADO_2026-09-29.md) | wave | **O CONTORNO PONTILHADO** da foto de 25/09: a luz de uma borda de centro falhado lia o pixel de FUNDO (`597 → 94` pontos claros na placa) · o gate de CPU pela régua da foto era VÁCUO e virou um gate de VENENO · as sondas de preço pediam valores acima do tecto do modelo |
 | 2026-09-30 | [HANDOFF_line_3DModeling_A_OCLUSAO_NO_TEMPO_2026-09-30.md](HANDOFF_line_3DModeling_A_OCLUSAO_NO_TEMPO_2026-09-30.md) | wave | **A OCLUSÃO NO TEMPO** (a `F1.3`): o céu guardado no MUNDO e herdado em movimento · o ZOOM recomeçava a tabela a cada quadro (o alcance vinha da câmara, agora é do mundo) · a tabela `2²¹` ENCHIA (hoje `4` por pixel com o tecto da placa) · nó a girar `28,5 → 18,3 ms`, a aproximar `66,3 → 29,5` (chão sem céu `21,0`) · mutação `10 de 10` |
 | 2026-10-01 | [HANDOFF_INTEGRACAO_line_3DModeling_O_RELOGIO_DO_RENDER_2026-10-01.md](HANDOFF_INTEGRACAO_line_3DModeling_O_RELOGIO_DO_RENDER_2026-10-01.md) | ⭐ **INTEGRAÇÃO** | **8 commits**, `85` ficheiros, `main` sem andar desde o fork: o Render em tempo real (oclusão no tempo · zoom de perto · ruído de girar · a caixa/cor nova sem os 5 s). Zero contadores, zero contrato, zero dependência. ⏳ *«ainda 1–2 s»* aberto. |
+| 2026-10-02 | [HANDOFF_line_3DModeling_O_RENDER_POR_MALHA_2026-10-02.md](HANDOFF_line_3DModeling_O_RENDER_POR_MALHA_2026-10-02.md) | wave | **O RENDER POR MALHA**: o modo Render desenha malhas extraídas do campo com luz de jogo (crate `ph2d-mesh-forward`, WebGL2-safe); quadro `1,2–2,4 ms`, entrada `0,03–0,44 s` · [ADR-0176](../../architecture/decisions/0176-o-render-do-modelador-e-uma-malha-de-jogo.md) (nº provisório) · ABERTO: Style/Bloom, GLES real, mobile real |
 
 ---
 

@@ -245,10 +245,36 @@ fn visibilidade_do_chao(p: vec3<f32>) -> vec2<f32> {
     // 2) a penumbra: o diametro do borrao e' 2 x tangente x distancia ao bloqueador.
     let w = tan_p * h;
     let b = textureSampleLevel(cobertura, liso, uv, clamp(log2(max(2.0 * w / texel, 1.0)), 0.0, topo));
-    // 3) o ceu: a cobertura numa janela de diametro 2h (o hemisferio visto de um ponto a altura h
-    //    do bloqueador cobre ~ esse disco).
-    let o = textureSampleLevel(cobertura, liso, uv, clamp(log2(max(2.0 * h / texel, 1.0)), 0.0, topo));
-    return vec2<f32>(1.0 - clamp(b.r, 0.0, 1.0), 1.0 - clamp(o.r, 0.0, 1.0));
+    return vec2<f32>(1.0 - clamp(b.r, 0.0, 1.0), ceu_do_chao(uv, c.z, texel, fundo, topo));
+}
+
+// ⭐⭐ O CEU QUE O CHAO VE — oclusao por HORIZONTE sobre o mapa de alturas visto de cima (o HBAO de
+// terreno): em cada uma de 8 direccoes, o angulo do horizonte (o topo mais alto visto dali); a
+// fraccao do ceu ponderada pelo cosseno que uma fatia ve e' cos^2 desse angulo.
+// ⛔ Medido (02/10): a cobertura media numa janela dava 5 % de escurecimento ao lado de uma esfera
+// pousada, onde a conta fisica da' ~25 %.
+const PASSOS_CEU: array<f32, 5> = array<f32, 5>(0.02, 0.05, 0.1, 0.2, 0.4);
+
+fn ceu_do_chao(uv: vec2<f32>, zc: f32, texel: f32, fundo: f32, topo: f32) -> f32 {
+    var vis = 0.0;
+    for (var d = 0u; d < 8u; d = d + 1u) {
+        let ang = f32(d) * 0.7853982;
+        let dir = vec2<f32>(cos(ang), sin(ang));
+        var horizonte = 0.0;
+        for (var k = 0u; k < 5u; k = k + 1u) {
+            let dist = PASSOS_CEU[k];
+            let q = uv + dir * (dist / (texel * f32(textureDimensions(cobertura, 0).x)));
+            let lod = clamp(log2(max(dist / texel * 0.25, 1.0)), 0.0, topo);
+            let a = textureSampleLevel(cobertura, liso, q, lod);
+            if (a.r > 0.5) {
+                let h = max(zc - a.g / a.r, 0.0) * fundo;
+                horizonte = max(horizonte, atan2(h, dist));
+            }
+        }
+        let c = cos(horizonte);
+        vis = vis + c * c;
+    }
+    return vis / 8.0;
 }
 
 // ── O CHAO QUE SO' RECEBE: aparece so' o quanto ele escurece ─────────────────────────────────────

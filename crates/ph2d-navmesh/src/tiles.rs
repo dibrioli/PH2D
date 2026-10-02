@@ -28,6 +28,7 @@
 //! entrada (a do chamador, que é a das entidades). Uma actualização incremental dá a MESMA malha, ao
 //! bit, que uma construção a frio da mesma entrada (gate `mosaicos::incremental_e_a_frio_dao_o_mesmo`).
 
+use std::borrow::Borrow;
 use std::collections::{BTreeMap, BTreeSet};
 
 use clipper2_rust::{FillRule, Path64, Paths64, Point64, difference_64, union_subjects_64};
@@ -100,14 +101,15 @@ impl TiledMesh {
     }
 
     /// ⭐ **Põe a malha em dia** com esta região (convexa) e estes obstáculos. Devolve `true` se a
-    /// malha MUDOU (quem a usa esquece os caminhos), `false` se nada do que ela lê mudou.
-    pub fn update(&mut self, region: &[V2], obstacles: &[Shape]) -> bool {
+    /// malha MUDOU (quem a usa esquece os caminhos), `false` se nenhum mosaico mudou — ⚠️ um
+    /// obstáculo que mexe FORA da região muda a entrada e não a malha, e não acorda ninguém.
+    pub fn update<S: Borrow<Shape>>(&mut self, region: &[V2], obstacles: &[S]) -> bool {
         let r = self.params.agent_radius.max(0.0);
         let anel = inflate::inset_region(region, r);
         let mut h = Fnv::new();
         anel.iter().for_each(|&p| h.p(p));
         let sig_regiao = h.0;
-        let assin: Vec<u64> = obstacles.iter().map(assinatura).collect();
+        let assin: Vec<u64> = obstacles.iter().map(|o| assinatura(o.borrow())).collect();
         assin.iter().for_each(|&a| h.u64(a));
         if self.sig == Some(h.0) {
             self.stats.rebuilt = 0;
@@ -118,6 +120,9 @@ impl TiledMesh {
         let mut stats = TileStats::default();
         let mut novos: BTreeMap<(i64, i64), Mosaico> = BTreeMap::new();
         if anel.len() >= 3 {
+            let (lo, hi) = caixa_de(&anel);
+            let (ix, iy) = self.indice(lo.0, lo.1);
+            let (jx, jy) = self.indice(hi.0, hi.1);
             // Que mosaicos cada obstáculo toca — pela caixa dele alargada por `2r` (por excesso: um
             // obstáculo posto num mosaico que não alcança é cortado para nada lá). ⚠️ `2r` e não `r`:
             // o canto em esquadria recua até ao limite `2` e o polígono do disco circunscreve-o
@@ -126,18 +131,16 @@ impl TiledMesh {
             let mut por_mosaico: BTreeMap<(i64, i64), Vec<usize>> = BTreeMap::new();
             let folga = (2.0 * r * SCALE).ceil() as i64 + 4;
             for (i, o) in obstacles.iter().enumerate() {
-                let (lo, hi) = caixa(o);
-                let (ix, iy) = self.indice(lo.0 - folga, lo.1 - folga);
-                let (jx, jy) = self.indice(hi.0 + folga, hi.1 + folga);
-                for x in ix..=jx {
-                    for y in iy..=jy {
+                let (a, b) = caixa(o.borrow());
+                let (ax, ay) = self.indice(a.0 - folga, a.1 - folga);
+                let (bx, by) = self.indice(b.0 + folga, b.1 + folga);
+                // Só os mosaicos da REGIÃO (um chão de 1 km não enche a tabela de vazios).
+                for x in ax.max(ix)..=bx.min(jx) {
+                    for y in ay.max(iy)..=by.min(jy) {
                         por_mosaico.entry((x, y)).or_default().push(i);
                     }
                 }
             }
-            let (lo, hi) = caixa_de(&anel);
-            let (ix, iy) = self.indice(lo.0, lo.1);
-            let (jx, jy) = self.indice(hi.0, hi.1);
             for x in ix..=jx {
                 for y in iy..=jy {
                     let quem = por_mosaico.get(&(x, y)).map_or(&[][..], Vec::as_slice);
@@ -150,7 +153,8 @@ impl TiledMesh {
                         Some(m) if m.sig == sig => m,
                         _ => {
                             stats.rebuilt += 1;
-                            let obs: Vec<&Shape> = quem.iter().map(|&i| &obstacles[i]).collect();
+                            let obs: Vec<&Shape> =
+                                quem.iter().map(|&i| obstacles[i].borrow()).collect();
                             let (m, falhou) = self.constroi(sig, &anel, (x, y), &obs);
                             stats.failed += usize::from(falhou);
                             m
@@ -160,10 +164,14 @@ impl TiledMesh {
                 }
             }
         }
+        // O que sobrou do mapa antigo saiu da região: também muda a malha.
+        let mudou = stats.rebuilt > 0 || !self.mosaicos.is_empty();
         self.mosaicos = novos;
-        self.mesh = monta(&self.mosaicos, self.lado);
+        if mudou {
+            self.mesh = monta(&self.mosaicos, self.lado);
+        }
         self.stats = stats;
-        true
+        mudou
     }
 
     /// O mosaico que contém o ponto da grelha `(x, y)`.

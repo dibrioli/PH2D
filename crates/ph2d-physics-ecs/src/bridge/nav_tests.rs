@@ -44,7 +44,7 @@ fn a_caixa_rodada_com_offset_cai_onde_o_solver_a_poe() {
         std::f32::consts::FRAC_PI_2,
         [1.0, 0.0],
     );
-    let Shape::Convex(pts) = forma(&d) else {
+    let ph2d_navmesh::Shape::Convex(pts) = malha::forma(&d, libm::sincosf(d.rotation)) else {
         panic!("uma caixa é convexa");
     };
     // Centro em (10, 1) — o offset `[1, 0]` rodado 90° é `[0, 1]`; meias-medidas trocadas.

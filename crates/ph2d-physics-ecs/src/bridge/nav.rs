@@ -16,11 +16,12 @@
 //!
 //! # ⚠️ A malha andável é DERIVADA e nunca gravada
 //!
-//! Ela sai dos corpos ESTÁTICOS (e das peças de corpos estáticos) que não são sensores e cuja camada
-//! está na máscara da região, recuados pelo raio do agente — **uma malha por `(região, raio)`**, com
-//! o raio arredondado PARA CIMA a `1/256 m` (dois agentes de raios quase iguais partilham a malha, e
-//! o arredondamento nunca dá menos folga do que o corpo pede). Uma ASSINATURA dos obstáculos e das
-//! regiões decide quando reconstruir; reconstruir esquece o caminho de todo agente.
+//! Ela sai dos corpos que não andam (os estáticos e os cinemáticos parados — [`malha`]) que não são
+//! sensores e cuja camada está na máscara da região, recuados pelo raio do agente — **uma malha por
+//! `(região, raio)`**, com o raio arredondado PARA CIMA a `1/256 m` (dois agentes de raios quase
+//! iguais partilham a malha, e o arredondamento nunca dá menos folga do que o corpo pede). Cada uma
+//! é por MOSAICOS: uma porta refaz só os que toca, e só os agentes da malha que mudou esquecem o
+//! caminho.
 //!
 //! # ⭐ O DESVIO entre corpos (plano 30, W5) é a última palavra antes do mover
 //!
@@ -40,15 +41,15 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_nav::{AgentConfig, AgentRuntime, Event, NavMesh, Polyanya, V2};
-use ph2d_navmesh::{Params, Shape};
-use ph2d_physics::{BodyDesc, ShapeDesc, capsule_vertices, ellipse_vertices};
+use ph2d_navmesh::TiledMesh;
+use ph2d_physics::{BodyDesc, ShapeDesc};
 
 use super::PhysicsBridge;
 use crate::PlayerInput;
-use crate::components::{BodyKind, NavAgent, NavRegion, NavTarget, PlatformPlayer, TopDownPlayer};
+use crate::components::{NavAgent, NavRegion, NavTarget, PlatformPlayer, TopDownPlayer};
 
 /// A resolução do raio na chave da malha: `1/256 m`.
-const RAIO_POR_METRO: f32 = 256.0;
+pub(super) const RAIO_POR_METRO: f32 = 256.0;
 
 /// **Um facto de navegação** — quem, e o quê.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -60,12 +61,10 @@ pub struct NavEvent {
 /// O estado da navegação na ponte: as malhas derivadas, a memória de cada agente, e os factos.
 pub(super) struct NavWorld {
     /// As malhas, por `(região, raio em 1/256 m)`.
-    meshes: BTreeMap<(Entity, u32), NavMesh>,
+    meshes: BTreeMap<(Entity, u32), TiledMesh>,
     /// As paredes de cada malha, como o desvio as lê — derivadas dela, com a mesma chave e a mesma
     /// vida (esquecidas quando ela é).
     walls: BTreeMap<(Entity, u32), ph2d_orca::Walls>,
-    /// A assinatura dos obstáculos e regiões com que as malhas foram construídas.
-    sig: Option<u64>,
     /// ⚠️ **A memória de cada agente** — entra no anel pelo [`super::tape::ControllerMemory`].
     pub(super) agents: BTreeMap<Entity, AgentRuntime>,
     /// Os buffers da procura (reaproveitados; nenhum estado entre consultas).
@@ -81,7 +80,6 @@ impl Default for NavWorld {
         Self {
             meshes: BTreeMap::new(),
             walls: BTreeMap::new(),
-            sig: None,
             agents: BTreeMap::new(),
             search: Polyanya::new(),
             tick_events: Vec::new(),
@@ -95,7 +93,6 @@ impl NavWorld {
     pub(super) fn clear_all(&mut self) {
         self.meshes.clear();
         self.walls.clear();
-        self.sig = None;
         self.agents.clear();
         self.tick_events.clear();
         self.events.clear();
@@ -115,12 +112,22 @@ struct Pedido {
     avoidance: bool,
 }
 
+/// Um agente que a ponte conduz neste tique: o pedido, a velocidade do mover, onde está, o raio e a
+/// malha que pede (`None` fora de toda região).
+struct Vez {
+    p: Pedido,
+    speed: f64,
+    pos: V2,
+    raio: f32,
+    chave: Option<(Entity, u32)>,
+}
+
 /// Uma região deste tique: a entidade, o rectângulo de mundo e a máscara de camadas.
 #[derive(Copy, Clone)]
-struct Regiao {
-    entity: Entity,
-    rect: [[f32; 2]; 2],
-    layers: u8,
+pub(super) struct Regiao {
+    pub(super) entity: Entity,
+    pub(super) rect: [[f32; 2]; 2],
+    pub(super) layers: u8,
 }
 
 impl PhysicsBridge {
@@ -146,27 +153,20 @@ impl PhysicsBridge {
         };
         if pedidos.is_empty() {
             self.nav.agents.clear();
+            self.nav.meshes.clear();
+            self.nav.walls.clear();
             return;
         }
         let vivos: BTreeSet<Entity> = pedidos.iter().map(|p| p.entity).collect();
         self.nav.agents.retain(|e, _| vivos.contains(e));
-
-        let regioes = regioes(sim);
-        let sig = self.assinatura(&regioes);
-        if self.nav.sig != Some(sig) {
-            self.nav.meshes.clear();
-            self.nav.walls.clear();
-            self.nav.sig = Some(sig);
-            for rt in self.nav.agents.values_mut() {
-                rt.forget_path();
-            }
-        }
         let dt = f64::from(self.world.dt());
         if !(dt.is_finite() && dt > 0.0) {
             return;
         }
+        let regioes = regioes(sim);
 
-        let mut pedidas: Vec<desvio::Pedida> = Vec::with_capacity(pedidos.len());
+        // 1.ª passagem: quem a ponte conduz, onde está, e que malha pede.
+        let mut vez: Vec<Vez> = Vec::with_capacity(pedidos.len());
         for p in pedidos {
             let Some(body) = self.bodies.get(&p.entity).copied() else {
                 continue;
@@ -180,8 +180,8 @@ impl PhysicsBridge {
             if mover.default_controls || world.get::<PlatformPlayer>(p.entity).is_some() {
                 continue;
             }
-            let mut rt = self.nav.agents.remove(&p.entity).unwrap_or_default();
             if !p.active {
+                let mut rt = self.nav.agents.remove(&p.entity).unwrap_or_default();
                 rt.forget_path();
                 rt.status = ph2d_nav::Status::Idle;
                 self.player_input.insert(p.entity, PlayerInput::default());
@@ -189,7 +189,7 @@ impl PhysicsBridge {
                 continue;
             }
             let Some(pose) = self.world.body_pose(body.handle) else {
-                self.nav.agents.insert(p.entity, rt);
+                self.nav.agents.entry(p.entity).or_default();
                 continue;
             };
             let pos: V2 = [f64::from(pose.translation.x), f64::from(pose.translation.y)];
@@ -199,12 +199,28 @@ impl PhysicsBridge {
                 raio_que_envolve(&body.rest)
             };
             let chave_raio = (raio * RAIO_POR_METRO).ceil().max(0.0) as u32;
-            let regiao = regioes.iter().copied().find(|r| contem(r.rect, pos));
-            if let Some(r) = regiao
-                && !self.nav.meshes.contains_key(&(r.entity, chave_raio))
-            {
-                let malha = self.constroi_malha(r, chave_raio as f32 / RAIO_POR_METRO);
-                self.nav.meshes.insert((r.entity, chave_raio), malha);
+            let chave = regioes
+                .iter()
+                .find(|r| contem(r.rect, pos))
+                .map(|r| (r.entity, chave_raio));
+            vez.push(Vez {
+                p,
+                speed: f64::from(mover.speed.max(0.0)),
+                pos,
+                raio,
+                chave,
+            });
+        }
+        let chaves: BTreeSet<(Entity, u32)> = vez.iter().filter_map(|v| v.chave).collect();
+        let mudou = self.malhas_em_dia(sim, &regioes, &chaves);
+
+        // 2.ª passagem: a condução, contra as malhas em dia.
+        let mut pedidas: Vec<desvio::Pedida> = Vec::with_capacity(vez.len());
+        for v in vez {
+            let p = v.p;
+            let mut rt = self.nav.agents.remove(&p.entity).unwrap_or_default();
+            if v.chave.is_some_and(|k| mudou.contains(&k)) {
+                rt.forget_path();
             }
             let quem = match p.target {
                 NavTarget::Named(id) => self.entidade_do_alvo(sim, id),
@@ -219,18 +235,18 @@ impl PhysicsBridge {
                 arrive_distance: f64::from(p.arrive.max(0.0)),
                 repath_distance: f64::from(p.repath.max(0.0)),
                 stuck_after_s: f64::from(p.stuck.max(0.0)),
-                speed: f64::from(mover.speed.max(0.0)),
+                speed: v.speed,
             };
             let NavWorld { meshes, search, .. } = &mut self.nav;
-            let malha = regiao.and_then(|r| meshes.get(&(r.entity, chave_raio)));
-            let steer = ph2d_nav::agent::step(&mut rt, malha, search, pos, alvo, &cfg, dt);
+            let malha = v.chave.and_then(|k| meshes.get(&k)).map(TiledMesh::mesh);
+            let steer = ph2d_nav::agent::step(&mut rt, malha, search, v.pos, alvo, &cfg, dt);
             pedidas.push(desvio::Pedida {
                 entity: p.entity,
-                pos,
+                pos: v.pos,
                 dir: steer.dir,
                 speed: cfg.speed,
-                raio: f64::from(raio),
-                malha: regiao.map(|r| (r.entity, chave_raio)),
+                raio: f64::from(v.raio),
+                malha: v.chave,
                 avoidance: p.avoidance,
                 alvo: quem,
             });
@@ -332,7 +348,7 @@ impl PhysicsBridge {
     #[must_use]
     pub fn nav_mesh_marks(&self) -> Vec<crate::ProbeMark> {
         let mut out = Vec::new();
-        for mesh in self.nav.meshes.values() {
+        for mesh in self.nav.meshes.values().map(TiledMesh::mesh) {
             for &(de, para) in mesh.walls() {
                 let a = mesh.vert(de);
                 let b = mesh.vert(para);
@@ -412,7 +428,7 @@ impl PhysicsBridge {
         self.nav
             .meshes
             .iter()
-            .map(|(&(e, r), m)| (e, r as f32 / RAIO_POR_METRO, m))
+            .map(|(&(e, r), m)| (e, r as f32 / RAIO_POR_METRO, m.mesh()))
     }
 
     /// Quem tem este `stable_name_id`.
@@ -435,79 +451,6 @@ impl PhysicsBridge {
         }
         let t = ph2d_ecs::world_transform(world, e)?;
         Some([f64::from(t.translation.x), f64::from(t.translation.y)])
-    }
-
-    /// A assinatura do que a malha lê: as regiões e os obstáculos estáticos (FNV-1a sobre os bits).
-    fn assinatura(&self, regioes: &[Regiao]) -> u64 {
-        let mut h = Fnv::new();
-        for r in regioes {
-            h.u64(r.entity.to_bits());
-            for c in r.rect.iter().flatten() {
-                h.u32(c.to_bits());
-            }
-            h.u32(u32::from(r.layers));
-        }
-        self.para_cada_obstaculo(|e, d| {
-            h.u64(e.to_bits());
-            h.desc(d);
-        });
-        h.0
-    }
-
-    /// Visita todo colisor ESTÁTICO e sólido — os corpos e as peças de corpos estáticos — com a
-    /// descrição em MUNDO (a pose da peça já composta com a do dono).
-    fn para_cada_obstaculo(&self, mut visita: impl FnMut(Entity, &BodyDesc)) {
-        for (&e, b) in &self.bodies {
-            if b.kind == BodyKind::Static && !b.rest.is_sensor {
-                visita(e, &b.rest);
-            }
-        }
-        for (&e, part) in &self.parts {
-            let Some(dono) = self.bodies.get(&part.owner) else {
-                continue;
-            };
-            if dono.kind != BodyKind::Static || part.rest.is_sensor {
-                continue;
-            }
-            let (s, c) = libm::sincosf(dono.rest.rotation);
-            let [lx, ly, lr] = part.local;
-            let mut d = part.rest;
-            d.x = dono.rest.x + c * lx - s * ly;
-            d.y = dono.rest.y + s * lx + c * ly;
-            d.rotation = dono.rest.rotation + lr;
-            visita(e, &d);
-        }
-    }
-
-    /// Constrói a malha de uma região para um raio.
-    fn constroi_malha(&self, r: Regiao, raio: f32) -> NavMesh {
-        let [lo, hi] = r.rect;
-        let regiao: Vec<V2> = [
-            [lo[0], lo[1]],
-            [hi[0], lo[1]],
-            [hi[0], hi[1]],
-            [lo[0], hi[1]],
-        ]
-        .iter()
-        .map(|p| [f64::from(p[0]), f64::from(p[1])])
-        .collect();
-        let mut obstaculos = Vec::new();
-        self.para_cada_obstaculo(|_, d| {
-            if d.layer < 8 && r.layers & (1u8 << d.layer) != 0 {
-                obstaculos.push(forma(d));
-            }
-        });
-        let params = Params {
-            agent_radius: f64::from(raio),
-            ..Params::default()
-        };
-        match ph2d_navmesh::build(&regiao, &obstaculos, &params) {
-            Ok(b) => b.mesh,
-            // ⚠️ Uma construção recusada dá uma malha VAZIA, e o agente diz «sem caminho» — o
-            // silêncio de um agente parado sem razão é a queixa Q12 da pesquisa.
-            Err(_) => NavMesh::from_polygons(Vec::new(), Vec::new())
-                .unwrap_or_else(|_| unreachable!("uma malha sem polígonos é sempre válida")),
-        }
     }
 }
 
@@ -567,121 +510,11 @@ fn raio_que_envolve(d: &BodyDesc) -> f32 {
     r.abs() + comprimento(d.offset[0], d.offset[1])
 }
 
-/// A forma de um obstáculo, em mundo, a partir da descrição do corpo.
-///
-/// ⚠️ **A elipse e o estádio usam os MESMOS vértices que o solver** ([`ellipse_vertices`],
-/// [`capsule_vertices`]): o colisor desses dois É aquele polígono, logo a malha recua a parede que o
-/// corpo de facto bate.
-fn forma(d: &BodyDesc) -> Shape {
-    let (s, c) = libm::sincosf(d.rotation);
-    let rot = |p: [f32; 2]| [c * p[0] - s * p[1], s * p[0] + c * p[1]];
-    let o = rot(d.offset);
-    let centro = [d.x + o[0], d.y + o[1]];
-    let mundo = |p: [f32; 2]| {
-        let q = rot(p);
-        [f64::from(centro[0] + q[0]), f64::from(centro[1] + q[1])]
-    };
-    match d.shape {
-        ShapeDesc::Ball { radius } => Shape::Circle {
-            center: mundo([0.0, 0.0]),
-            radius: f64::from(radius.abs()),
-        },
-        ShapeDesc::Cuboid { half_x, half_y } => Shape::Convex(
-            [
-                [-half_x, -half_y],
-                [half_x, -half_y],
-                [half_x, half_y],
-                [-half_x, half_y],
-            ]
-            .into_iter()
-            .map(mundo)
-            .collect(),
-        ),
-        ShapeDesc::Ellipse { rx, ry } => {
-            Shape::Convex(ellipse_vertices(rx, ry).into_iter().map(mundo).collect())
-        }
-        ShapeDesc::Capsule {
-            half_height,
-            radius,
-        } => Shape::Capsule {
-            a: mundo([0.0, -half_height]),
-            b: mundo([0.0, half_height]),
-            radius: f64::from(radius.abs()),
-        },
-        ShapeDesc::Stadium {
-            half_height,
-            rx,
-            ry,
-        } => Shape::Convex(
-            capsule_vertices(half_height, rx, ry)
-                .into_iter()
-                .map(mundo)
-                .collect(),
-        ),
-    }
-}
-
-/// FNV-1a de 64 bits — a assinatura não precisa de mais do que distinguir.
-struct Fnv(u64);
-
-impl Fnv {
-    fn new() -> Self {
-        Self(0xcbf2_9ce4_8422_2325)
-    }
-    fn byte(&mut self, b: u8) {
-        self.0 ^= u64::from(b);
-        self.0 = self.0.wrapping_mul(0x0100_0000_01b3);
-    }
-    fn u32(&mut self, v: u32) {
-        v.to_le_bytes().into_iter().for_each(|b| self.byte(b));
-    }
-    fn u64(&mut self, v: u64) {
-        v.to_le_bytes().into_iter().for_each(|b| self.byte(b));
-    }
-    fn desc(&mut self, d: &BodyDesc) {
-        for v in [d.x, d.y, d.rotation, d.offset[0], d.offset[1]] {
-            self.u32(v.to_bits());
-        }
-        self.byte(d.layer);
-        match d.shape {
-            ShapeDesc::Ball { radius } => {
-                self.byte(0);
-                self.u32(radius.to_bits());
-            }
-            ShapeDesc::Cuboid { half_x, half_y } => {
-                self.byte(1);
-                self.u32(half_x.to_bits());
-                self.u32(half_y.to_bits());
-            }
-            ShapeDesc::Ellipse { rx, ry } => {
-                self.byte(2);
-                self.u32(rx.to_bits());
-                self.u32(ry.to_bits());
-            }
-            ShapeDesc::Capsule {
-                half_height,
-                radius,
-            } => {
-                self.byte(3);
-                self.u32(half_height.to_bits());
-                self.u32(radius.to_bits());
-            }
-            ShapeDesc::Stadium {
-                half_height,
-                rx,
-                ry,
-            } => {
-                self.byte(4);
-                self.u32(half_height.to_bits());
-                self.u32(rx.to_bits());
-                self.u32(ry.to_bits());
-            }
-        }
-    }
-}
-
 #[path = "nav_desvio.rs"]
 mod desvio;
+
+#[path = "nav_malha.rs"]
+mod malha;
 
 #[cfg(test)]
 #[path = "nav_tests.rs"]

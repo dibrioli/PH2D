@@ -103,6 +103,12 @@ impl PhysicsWorld {
         rb.set_translation(next, true);
     }
 
+    /// A velocidade ANGULAR de um corpo (rad/s). `None` se o handle morreu.
+    #[must_use]
+    pub fn body_angvel(&self, handle: RigidBodyHandle) -> Option<f32> {
+        Some(self.bodies.get(handle)?.angvel())
+    }
+
     /// A velocidade linear de um corpo, em mundo. `None` se o handle morreu.
     #[must_use]
     pub fn body_velocity(&self, handle: RigidBodyHandle) -> Option<[f32; 2]> {

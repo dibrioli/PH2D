@@ -71,7 +71,11 @@ impl PhysicsBridge {
         for p in &pedidas {
             if let Some(chave) = p.malha
                 && !self.nav.walls.contains_key(&chave)
-                && let Some(m) = self.nav.meshes.get(&chave)
+                && let Some(m) = self
+                    .nav
+                    .meshes
+                    .get(&chave)
+                    .map(ph2d_navmesh::TiledMesh::mesh)
             {
                 let w = ph2d_orca::Walls::from_walkable_walls(m.verts(), m.walls());
                 self.nav.walls.insert(chave, w);

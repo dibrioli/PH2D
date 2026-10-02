@@ -1,0 +1,10 @@
+; O projecto mínimo do oráculo do DESVIO (desvio.gd) — existe só por estas duas linhas.
+; ⛔ Com o desvio em várias linhas de execução (o de fábrica) o servidor tem uma CORRIDA DE DADOS: um
+; agente lê o vizinho ora antes, ora depois, ora a meio da actualização dele, e duas corridas diferem
+; (medido em 2026-10-02). Numa linha só, duas corridas são iguais byte a byte.
+config_version=5
+
+[navigation]
+
+avoidance/thread_model/avoidance_use_multiple_threads=false
+avoidance/thread_model/avoidance_use_high_priority_threads=false

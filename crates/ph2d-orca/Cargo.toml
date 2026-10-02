@@ -1,0 +1,24 @@
+[package]
+name = "ph2d-orca"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⛔ **ZERO dependências, e isso é o desenho** — o molde das irmãs `ph2d-nav`, `ph2d-health` e
+# `ph2d-topdown`: esta folha é a LEI do desvio entre agentes (ORCA, van den Berg et al. 2011) e mais
+# nada. Quem a liga ao mundo — que corpos são agentes, que paredes são obstáculos, que velocidade cada
+# um quer — é a ponte da física.
+#
+# ⚠️ **Só `+ − × ÷ sqrt` em `f64`, e isso é a cerca (HR-5):** a velocidade segura entra na intenção do
+# mover, logo na pose, logo no hash determinístico que o CI compara nos três sistemas. ⛔ Nada de
+# `atan2`/`sin`/`cos` nesta crate.
+
+[dependencies]
+
+[lints]
+workspace = true

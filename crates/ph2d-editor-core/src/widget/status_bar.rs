@@ -85,17 +85,11 @@ impl StatusBar {
 
     /// Width estimate based on character count + padding per segment.
     /// Used by the hero composer to center the bar horizontally.
-    pub fn preferred_width(&self) -> f32 {
-        let pad = Spacing::Lg.px();
-        let dot_extra = Spacing::Lg.px();
-        let approx_advance = TypeToken::Sm.px() * 0.6; // LITERAL-PX-OK: proportional-font advance heuristic (60% of font size)
-        self.segments
-            .iter()
-            .map(|s| {
-                let w = s.text.chars().count() as f32 * approx_advance + pad * 2.0;
-                if s.leading_dot { w + dot_extra } else { w }
-            })
-            .sum()
+    /// ⭐ A largura em que todo segmento cabe inteiro — MEDIDA, pela mesma conta do pintor
+    /// ([`medidas`]). ⛔ Era `0,6 × fonte` por carácter: errava para baixo, e a barra espremia-se
+    /// numa janela que a levava (2026-10-02, a escala da interface).
+    pub fn preferred_width(&self, text_system: &mut TextSystem) -> f32 {
+        medidas(self, text_system).iter().map(|(f, t)| f + t).sum()
     }
 
     pub fn build_a11y(&self, x: f64, y: f64, w: f64, h: f64) -> Node {
@@ -139,30 +133,11 @@ pub fn paint_status_bar(
         return;
     }
     let pad = Spacing::Lg.px();
-    let dot_extra = Spacing::Lg.px();
     let font = TypeToken::Sm.px();
-    // Real text measurement per segment — the previous `chars × 0.6`
-    // heuristic miscounted proportional glyphs and made wide
-    // segments (e.g. `13101 / 16660`) shrink while narrow ones
-    // overflowed. See `docs/UI_Bugs/README.md` §3.3.
-    let widths: Vec<f32> = bar
-        .segments
-        .iter()
-        .map(|s| {
-            let measured = text_system.layout(&s.text, font, f32::INFINITY).width();
-            let mut w = measured + pad * 2.0;
-            if s.leading_dot {
-                w += dot_extra;
-            }
-            w
-        })
-        .collect();
-    let total: f32 = widths.iter().sum();
-    let scale = if total > 0.0 { rect.w / total } else { 1.0 };
-
+    let widths = larguras(bar, text_system, rect.w);
     let mut x = rect.x;
     for (i, segment) in bar.segments.iter().enumerate() {
-        let w = widths[i] * scale;
+        let w = widths[i];
         let seg_rect = Rect::new(x, rect.y, w, rect.h);
         if i > 0 {
             // 1 px inner divider in Border color, full segment height
@@ -174,7 +149,7 @@ pub fn paint_status_bar(
         let fg = resolve(fg_token, theme);
         let mut text_x = seg_rect.x + pad;
         if segment.leading_dot {
-            let r = 3.5; // LITERAL-PX-OK: status-bar dot radius (chrome-specific accent)
+            let r = RAIO_DO_PONTO;
             let cx = text_x + r;
             let cy = seg_rect.y + seg_rect.h * 0.5;
             let dot = Circle::new(Point::new(cx as f64, cy as f64), r as f64);
@@ -185,7 +160,7 @@ pub fn paint_status_bar(
                 None,
                 &dot,
             );
-            text_x += r * 2.0 + Spacing::Sm.px();
+            text_x += recuo_do_ponto();
         }
         let text_y = seg_rect.y + (seg_rect.h - font) * 0.5;
         let text_w = (seg_rect.x + seg_rect.w - text_x - pad).max(0.0);
@@ -201,6 +176,75 @@ pub fn paint_status_bar(
         );
         x += w;
     }
+}
+
+/// O raio do ponto de estado.
+const RAIO_DO_PONTO: f32 = 3.5; // LITERAL-PX-OK: status-bar dot radius (chrome-specific accent)
+
+/// Quanto o ponto empurra o texto — lido pela medida E pelo pintor. ⛔ A medida reservava
+/// `Spacing::Lg` e o pintor empurrava `2r + Sm`: o `EDIT` saía `E…` numa barra com folga.
+fn recuo_do_ponto() -> f32 {
+    RAIO_DO_PONTO * 2.0 + Spacing::Sm.px()
+}
+
+/// `(fixo, texto)` de cada segmento: o recuo (e o ponto) que não encolhe, e o texto MEDIDO no peso em
+/// que a elisão do `paint_text` o mede.
+fn medidas(bar: &StatusBar, text_system: &mut TextSystem) -> Vec<(f32, f32)> {
+    let pad = Spacing::Lg.px();
+    let font = TypeToken::Sm.px();
+    bar.segments
+        .iter()
+        .map(|s| {
+            let fixo = pad * 2.0 + if s.leading_dot { recuo_do_ponto() } else { 0.0 };
+            let texto =
+                text_system.prefix_width_weighted(&s.text, font, ph2d_text::FontWeight::MEDIUM);
+            (fixo, texto)
+        })
+        .collect()
+}
+
+/// ⭐⭐ **A largura de cada segmento numa barra de `largura`.** Com folga, os segmentos crescem na
+/// razão da medida. ⛔ **Apertada, só o TEXTO encolhe** (2026-10-02). Antes encolhia o segmento
+/// INTEIRO, recuo incluído, e o pintor descontava depois o recuo cheio. O texto ficava sem
+/// largura nenhuma e saía partido em duas linhas (`0` / `ent`) ou por cima do vizinho
+/// (`EDIT60 fps`). Gate: `apertada_cada_texto_cabe_no_seu_segmento`.
+fn larguras(bar: &StatusBar, text_system: &mut TextSystem, largura: f32) -> Vec<f32> {
+    let m = medidas(bar, text_system);
+    let fixo: f32 = m.iter().map(|(f, _)| f).sum();
+    let texto: f32 = m.iter().map(|(_, t)| t).sum();
+    if fixo + texto <= largura || texto <= 0.0 {
+        let k = if fixo + texto > 0.0 {
+            largura / (fixo + texto)
+        } else {
+            1.0
+        };
+        return m.iter().map(|(f, t)| (f + t) * k).collect();
+    }
+    if largura < fixo {
+        // Nem o recuo cabe: encolhe ele também, e o texto fica sem nada — a barra nunca vaza.
+        let k = largura.max(0.0) / fixo;
+        return m.iter().map(|(f, _)| f * k).collect();
+    }
+    let teto = teto_comum(m.iter().map(|(_, t)| *t), largura - fixo);
+    m.iter().map(|(f, t)| f + t.min(teto)).collect()
+}
+
+/// ⭐ **O teto comum que reparte `disponivel` pelos textos** — os curtos ficam INTEIROS e só os mais
+/// longos que o teto encolhem (`EDIT`, `0 ent`, `100%` não viram `…` para sobrar um píxel ao nome
+/// da cena). Encher por água: o menor leva o que pede se a parte justa o cobre, e o resto divide-se.
+fn teto_comum(textos: impl Iterator<Item = f32>, disponivel: f32) -> f32 {
+    let mut t: Vec<f32> = textos.collect();
+    t.sort_by(f32::total_cmp);
+    let mut resto = disponivel.max(0.0);
+    let n = t.len();
+    for (i, w) in t.iter().enumerate() {
+        let parte = resto / (n - i) as f32;
+        if *w > parte {
+            return parte;
+        }
+        resto -= w;
+    }
+    f32::INFINITY
 }
 
 #[cfg(test)]
@@ -232,7 +276,8 @@ mod tests {
     #[test]
     fn preferred_width_grows_with_segments() {
         let one = StatusBar::new(NodeId(1), "x", vec![StatusSegment::new("EDIT")]);
-        assert!(fixture().preferred_width() > one.preferred_width());
+        let mut ts = TextSystem::without_system_fonts();
+        assert!(fixture().preferred_width(&mut ts) > one.preferred_width(&mut ts));
     }
 
     #[test]
@@ -246,11 +291,73 @@ mod tests {
         let mut text = TextSystem::without_system_fonts();
         paint_status_bar(
             &bar,
-            Rect::new(0.0, 0.0, bar.preferred_width(), 34.0),
+            Rect::new(0.0, 0.0, bar.preferred_width(&mut text), 34.0),
             &mut scene,
             &mut text,
             theme,
         );
+    }
+
+    /// ⭐⭐ **Apertada, cada texto cabe no SEU segmento** (2026-10-02, a barra de estatísticas a 200 %
+    /// numa janela de portátil): a qualquer largura, do confortável ao absurdo, o que o pintor
+    /// pousa mede no máximo a largura que deu ao texto — e com folga nada é cortado. Régua: o que
+    /// foi PINTADO. *Mutação: encolher o segmento inteiro (o recuo incluído) ⇒ a largura do texto
+    /// cai a zero e esta régua reprova.*
+    #[test]
+    fn apertada_cada_texto_cabe_no_seu_segmento() {
+        let mut ts = TextSystem::without_system_fonts();
+        let bar = fixture();
+        let cheia = bar.preferred_width(&mut ts);
+        let mut w = cheia;
+        while w > 120.0 {
+            let mut scene = VectorScene::new();
+            let (_, medidos) = crate::text_elide::elisao::medindo(|| {
+                paint_status_bar(
+                    &bar,
+                    Rect::new(0.0, 0.0, w, 34.0),
+                    &mut scene,
+                    &mut ts,
+                    Theme::Forge,
+                );
+            });
+            assert_eq!(
+                medidos.len(),
+                bar.segments.len(),
+                "a {w}: um texto por segmento"
+            );
+            let fixo: f32 = medidas(&bar, &mut ts).iter().map(|(f, _)| f).sum();
+            let orcamento: f32 = medidos.iter().map(|m| m.largura).sum();
+            assert!(
+                orcamento + fixo.min(w) <= w + 0.5,
+                "a {w:.0}: os textos receberam {orcamento:.1} + {fixo:.1} de recuo, mais que a barra"
+            );
+            if w >= cheia {
+                assert!(
+                    medidos.iter().all(|m| m.coube()),
+                    "com folga nada se corta: {medidos:?}"
+                );
+            } else {
+                // Apertada: nenhum texto fica sem largura enquanto o recuo deixar sobra (o defeito
+                // da foto), e o MAIS CURTO fica inteiro enquanto a parte justa o cobrir.
+                assert!(
+                    w - fixo < 1.0 || medidos.iter().all(|m| m.largura > 0.0),
+                    "a {w:.0}: um texto ficou sem largura nenhuma: {medidos:?}"
+                );
+                let textos: Vec<f32> = medidas(&bar, &mut ts).iter().map(|(_, t)| *t).collect();
+                let (i, menor) = textos
+                    .iter()
+                    .enumerate()
+                    .min_by(|a, b| a.1.total_cmp(b.1))
+                    .expect("há segmentos");
+                if w - fixo >= menor * textos.len() as f32 {
+                    assert!(
+                        medidos[i].coube(),
+                        "a {w:.0}: o mais curto foi cortado: {medidos:?}"
+                    );
+                }
+            }
+            w -= 37.0;
+        }
     }
 
     #[test]

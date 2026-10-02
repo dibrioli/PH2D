@@ -141,7 +141,9 @@ pub fn paint_bottom_hud(
             StatusSegment::new(tr("chrome.hud.scene_name")).tone(SegmentTone::Muted),
         ],
     );
-    let pref_w = bar.preferred_width().min(layout.viewport.w - 40.0); // LITERAL-PX-OK: HUD viewport margin (chrome-specific)
+    let pref_w = bar
+        .preferred_width(text_system)
+        .min(layout.viewport.w - 40.0); // LITERAL-PX-OK: HUD viewport margin (chrome-specific)
     let rect = Rect::new(
         layout.viewport.x + (layout.viewport.w - pref_w) * 0.5,
         layout.bottom_hud.y,

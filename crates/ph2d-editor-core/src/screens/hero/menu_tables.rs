@@ -406,6 +406,8 @@ pub(super) const SETTINGS_SIZE_SUBMENU_ROWS: &[MenuRow] = &[
 
 /// As linhas de `ContextMenuKind::SettingsScaleSubmenu`.
 pub(super) const SETTINGS_SCALE_SUBMENU_ROWS: &[MenuRow] = &[
+    menu_row(ids::CTX_MENU_SCALE_80, "chrome.menu.scale_80"),
+    menu_row(ids::CTX_MENU_SCALE_90, "chrome.menu.scale_90"),
     menu_row(ids::CTX_MENU_SCALE_100, "chrome.menu.scale_100"),
     menu_row(ids::CTX_MENU_SCALE_125, "chrome.menu.scale_125"),
     menu_row(ids::CTX_MENU_SCALE_150, "chrome.menu.scale_150"),

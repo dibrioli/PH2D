@@ -29,7 +29,9 @@ pub(crate) const SIZES: [(NodeId, UiTextSize); 3] = [
 ];
 
 /// A linha de cada degrau da escala da interface inteira.
-pub(crate) const SCALES: [(NodeId, UiScale); 5] = [
+pub(crate) const SCALES: [(NodeId, UiScale); 7] = [
+    (ids::CTX_MENU_SCALE_80, UiScale::P80),
+    (ids::CTX_MENU_SCALE_90, UiScale::P90),
     (ids::CTX_MENU_SCALE_100, UiScale::P100),
     (ids::CTX_MENU_SCALE_125, UiScale::P125),
     (ids::CTX_MENU_SCALE_150, UiScale::P150),

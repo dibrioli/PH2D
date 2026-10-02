@@ -118,6 +118,8 @@ pub const CTX_MENU_SIZE_NORMAL: NodeId = hash_node_id("ctx_menu_size_normal");
 pub const CTX_MENU_SIZE_LARGE: NodeId = hash_node_id("ctx_menu_size_large");
 /// ⭐ A escala da interface INTEIRA ([`ph2d_tokens::UiScale`], ordem do dono 2026-10-02).
 pub const CTX_MENU_SETTINGS_SCALE: NodeId = hash_node_id("ctx_menu_settings_scale");
+pub const CTX_MENU_SCALE_80: NodeId = hash_node_id("ctx_menu_scale_80");
+pub const CTX_MENU_SCALE_90: NodeId = hash_node_id("ctx_menu_scale_90");
 pub const CTX_MENU_SCALE_100: NodeId = hash_node_id("ctx_menu_scale_100");
 pub const CTX_MENU_SCALE_125: NodeId = hash_node_id("ctx_menu_scale_125");
 pub const CTX_MENU_SCALE_150: NodeId = hash_node_id("ctx_menu_scale_150");

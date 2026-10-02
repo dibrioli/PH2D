@@ -82,7 +82,13 @@ fn as_vistas_do_mundo_caem_no_mesmo_pixel_em_toda_escala() {
         let r = h.hit_index.rect_for(id).expect("a alça foi registada");
         (r.x + r.w * 0.5, r.y + r.h * 0.5)
     };
-    for z in [UiScale::P125, UiScale::P150, UiScale::P200] {
+    for z in [
+        UiScale::P80,
+        UiScale::P90,
+        UiScale::P125,
+        UiScale::P150,
+        UiScale::P200,
+    ] {
         let (h, _) = pinta(z);
         let s = z.factor();
         assert_eq!(

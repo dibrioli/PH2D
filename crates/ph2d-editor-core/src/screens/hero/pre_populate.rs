@@ -465,6 +465,8 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         ids::CTX_MENU_SIZE_NORMAL,
         ids::CTX_MENU_SIZE_LARGE,
         ids::CTX_MENU_SETTINGS_SCALE,
+        ids::CTX_MENU_SCALE_80,
+        ids::CTX_MENU_SCALE_90,
         ids::CTX_MENU_SCALE_100,
         ids::CTX_MENU_SCALE_125,
         ids::CTX_MENU_SCALE_150,

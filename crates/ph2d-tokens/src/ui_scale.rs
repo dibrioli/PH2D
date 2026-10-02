@@ -2,11 +2,14 @@
 //! Blender, o `display_scale` da Godot. Spec: `docs/UI_New_and_Simple/spec/05_a_escala_da_interface.md`.
 //!
 //! Degraus como a Godot (corrida em 02/10: `Auto · 75 · 100 · 125 · 150 · 175 · 200 · Custom`): o
-//! artista escolhe, não arrasta. ⚠️ `100 %` é `1,0` EXACTO — a fábrica não mexe um píxel.
+//! artista escolhe, não arrasta. ⚠️ `100 %` é `1,0` EXACTO — a fábrica não mexe um píxel. Os dois
+//! degraus abaixo (`80`, `90`) são pedido do dono (02/10): mais área de trabalho num ecrã grande.
 
 /// Um degrau da escala da interface.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub enum UiScale {
+    P80,
+    P90,
     /// A de sempre.
     #[default]
     P100,
@@ -17,13 +20,23 @@ pub enum UiScale {
 }
 
 impl UiScale {
-    /// Os cinco, pela ordem do menu.
-    pub const ALL: [Self; 5] = [Self::P100, Self::P125, Self::P150, Self::P175, Self::P200];
+    /// Os sete, pela ordem do menu.
+    pub const ALL: [Self; 7] = [
+        Self::P80,
+        Self::P90,
+        Self::P100,
+        Self::P125,
+        Self::P150,
+        Self::P175,
+        Self::P200,
+    ];
 
     /// A percentagem, como o menu a escreve.
     #[must_use]
     pub const fn percent(self) -> u16 {
         match self {
+            Self::P80 => 80,
+            Self::P90 => 90,
             Self::P100 => 100,
             Self::P125 => 125,
             Self::P150 => 150,
@@ -42,6 +55,8 @@ impl UiScale {
     #[must_use]
     pub const fn wire(self) -> &'static str {
         match self {
+            Self::P80 => "80",
+            Self::P90 => "90",
             Self::P100 => "100",
             Self::P125 => "125",
             Self::P150 => "150",

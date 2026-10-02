@@ -194,6 +194,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.menu.size_normal" => "Normal",
         "chrome.menu.size_large" => "Large",
         "chrome.menu.interface_scale" => "Interface scale",
+        "chrome.menu.scale_80" => "80%",
+        "chrome.menu.scale_90" => "90%",
         "chrome.menu.scale_100" => "100%",
         "chrome.menu.scale_125" => "125%",
         "chrome.menu.scale_150" => "150%",

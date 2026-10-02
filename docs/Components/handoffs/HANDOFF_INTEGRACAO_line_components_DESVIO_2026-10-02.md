@@ -194,7 +194,7 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-components && env PH2D_NAV
 
 A porta de dois sentidos: em cima os VERMELHOS (com *Avoid Others*) cruzam-se na porta e chegam ao outro
 lado; em baixo os CINZENTOS (o controlo, sem o desvio) entalam-se. O `Red 1` vem escolhido: tirar-lhe o
-visto de *Avoid Others* no Inspector faz os outros desviarem-se dele. ⏳ **Por smokar pelo dono.** A cena
+visto de *Avoid Others* no Inspector faz os outros desviarem-se dele. ✅ **Smoke do dono aprovado (02/10).** A cena
 `=1` (o labirinto) continua igual, agora com o desvio ligado nos perseguidores.
 
 **O binário do smoke está COMPILADO na worktree** — a 2.ª corrida, colada no fim deste documento.

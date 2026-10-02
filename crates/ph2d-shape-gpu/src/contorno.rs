@@ -25,7 +25,16 @@ struct Contas {
     cap: u32,
     sem_contorno: u32,
     cap_mascaras: u32,
+    area_minima_conforme: f32,
+    _p: [u32; 3],
 }
+
+/// ⭐ doc 121 §9.6 — **a área no ecrã (px², da caixa estimada) a partir da qual uma cópia CONFORME vai
+/// pelas arestas no ecrã.** Uma cópia esticada vai sempre (é o caminho que a tira de refazer o eixo
+/// em cada pixel); uma conforme pequena já se desenha bem pelos segmentos locais, e o cálculo é
+/// pago POR CÓPIA — na escada de `32 768` estrelas pequenas ele custava `+3,9 ms` por zero ganho.
+/// ⚠️ O número sai da varredura do doc 121 §9.6.
+pub const AREA_MINIMA_CONFORME: f32 = 1024.0;
 
 /// Bytes de UMA aresta (`vec4<f32>`: os dois pontos no ecrã).
 const ARESTA: u64 = 16;
@@ -83,6 +92,8 @@ pub(crate) struct Contorno {
     total_visto_m: u64,
     /// `false` ⇒ nenhuma cópia ganha contorno (o caminho pixel a pixel, para os gates o compararem).
     pub(crate) ligado: bool,
+    /// [`AREA_MINIMA_CONFORME`], ou o que um gate pediu.
+    pub(crate) area_minima_conforme: f32,
 }
 
 fn entrada(
@@ -222,6 +233,10 @@ impl Contorno {
             total_visto: 0,
             total_visto_m: 0,
             ligado: true,
+            area_minima_conforme: std::env::var("PH2D_AREA_MINIMA_CONFORME")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(AREA_MINIMA_CONFORME),
         }
     }
 
@@ -330,6 +345,8 @@ impl Contorno {
             cap: u32::try_from(self.cap_arestas).unwrap_or(u32::MAX),
             sem_contorno: u32::from(!self.ligado),
             cap_mascaras: u32::try_from(self.cap_mascaras).unwrap_or(u32::MAX),
+            area_minima_conforme: self.area_minima_conforme,
+            _p: [0; 3],
         };
         gpu.queue
             .write_buffer(&self.contas, 0, bytemuck::bytes_of(&contas));

@@ -373,6 +373,21 @@ pub(super) fn pelo_passe_com(
     contorno: bool,
     quadros: usize,
 ) -> Vec<(Vec<u8>, u32)> {
+    // ⚠️ doc 121 §9.6: a régua de PIXEL mede o caminho novo em TODAS as cópias — também nas
+    // conformes pequenas, que o produto deixa no caminho de sempre (a rota tem gate próprio).
+    pelo_passe_rota(gpu, forma, cs, format, contorno, quadros, 0.0)
+}
+
+/// O passe com a área mínima de uma cópia CONFORME para ir pelas arestas no ecrã (doc 121 §9.6).
+pub(super) fn pelo_passe_rota(
+    gpu: &GpuContext,
+    forma: &Forma<'_>,
+    cs: &[Copia],
+    format: wgpu::TextureFormat,
+    contorno: bool,
+    quadros: usize,
+    area_minima_conforme: f32,
+) -> Vec<(Vec<u8>, u32)> {
     let traco = forma.traco.as_ref().map(|(s, cor)| StrokeInput {
         path: forma.linha.unwrap_or(forma.bp),
         style: s,
@@ -386,6 +401,7 @@ pub(super) fn pelo_passe_com(
     .expect("a forma prepara");
     let mut p = ShapePass::new(gpu, format);
     p.com_contorno(contorno);
+    p.area_minima_conforme(area_minima_conforme);
     p.set_geometries(gpu, [(7u32, &g)]);
     let insts: Vec<ShapeInstance> = cs
         .iter()

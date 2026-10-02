@@ -201,6 +201,12 @@ impl ShapePass {
         self.contorno.ligado = ligado;
     }
 
+    /// A área no ecrã (px²) a partir da qual uma cópia CONFORME vai pelas arestas no ecrã (doc 121
+    /// §9.6). `0` ⇒ TODAS as cópias — é como os gates medem o caminho novo nas formas pequenas.
+    pub fn area_minima_conforme(&mut self, px2: f32) {
+        self.contorno.area_minima_conforme = px2;
+    }
+
     /// Carrega as geometrias deste quadro. ⚠️ **Só reconstrói se o CONJUNTO de handles mudou** —
     /// uma geometria é imutável sob o seu handle (o `VecPathStore` nunca recicla um), logo o
     /// mesmo conjunto é o mesmo conteúdo.

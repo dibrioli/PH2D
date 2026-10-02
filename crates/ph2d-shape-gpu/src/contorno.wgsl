@@ -29,6 +29,12 @@ struct Contas {
     sem_contorno: u32,
     // Quantas palavras cabem em `cmascaras_rw`.
     cap_mascaras: u32,
+    // A área no ecrã (px², da caixa estimada) a partir da qual uma cópia CONFORME vai pelas arestas
+    // no ecrã (`contorno.rs`, `AREA_MINIMA_CONFORME`).
+    area_minima_conforme: f32,
+    _p0: u32,
+    _p1: u32,
+    _p2: u32,
 }
 
 @group(2) @binding(0) var<uniform> contas: Contas;
@@ -317,6 +323,13 @@ fn plano_de(ii: u32) -> Plano {
     let hi = ceil(cx.zw) + vec2<f32>(1.0);
     // Fora do ecrã nenhum pixel corre: a cópia não paga cálculo nenhum.
     if hi.x <= 0.0 || lo.x >= view.alvo.x || hi.y <= 0.0 || lo.y >= view.alvo.y {
+        return p;
+    }
+    // ⭐ Uma cópia CONFORME só paga o cálculo quando é GRANDE: o caminho de sempre já a desenha bem
+    // pequena (sem eixo, os segmentos locais por pixel), e o custo do cálculo é por cópia — medido
+    // na escada de `32 768` estrelas pequenas, `+3,9 ms` de cálculo por zero ganho no desenho.
+    let tam = cx.zw - cx.xy;
+    if !p.eixo && tam.x * tam.y < contas.area_minima_conforme {
         return p;
     }
     p.y0 = max(lo.y, 0.0);

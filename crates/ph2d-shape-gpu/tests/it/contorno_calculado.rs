@@ -24,7 +24,8 @@ use ph2d_shape_gpu::FillRule;
 use ph2d_vector::{BezPath, Cap, Circle, Join, Shape, Stroke};
 
 use super::paridade_com_o_vello::{
-    Copia, Forma, anel, circulo, copias, esticadas, estrela, gpu, pelo_passe_com, zigue_zague,
+    Copia, Forma, anel, circulo, copias, esticadas, estrela, gpu, pelo_passe_com, pelo_passe_rota,
+    zigue_zague,
 };
 
 /// As MARCAS de um traço: um disco pequeno pintado com a cor dele, fora do contorno da estrela.
@@ -280,3 +281,50 @@ const QUADROS: usize = 4;
 /// A barra: as duas rotas são a mesma lei, logo o que sobra é arredondamento de `f32` — as arestas
 /// no ecrã saem de um passe de cálculo e as do eixo de um de fragmento.
 const ALFA_MAX: u8 = 2;
+
+/// ⭐ doc 121 §9.6 — **A ROTA: uma cópia CONFORME pequena fica no caminho de sempre, uma grande e
+/// uma ESTICADA vão pelas arestas no ecrã.** O cálculo é pago por cópia, e na escada de `32 768`
+/// estrelas pequenas custava `+3,9 ms` por zero ganho no desenho. ⚠️ Com a área mínima a `0` as
+/// mesmas cópias pequenas vão TODAS — é o CONTROLO de que a rota é a área e não outra coisa.
+#[test]
+#[ignore = "precisa de adapter de GPU"]
+fn so_as_copias_conformes_grandes_pagam_o_calculo() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem adaptador — nada a medir");
+        return;
+    };
+    let est = estrela();
+    let forma = Forma {
+        bp: &est,
+        linha: None,
+        regra: FillRule::NonZero,
+        marcas: None,
+        traco: None,
+    };
+    let fmt = wgpu::TextureFormat::Rgba16Float;
+    let area = ph2d_shape_gpu::AREA_MINIMA_CONFORME;
+    let lado = |a: f32| a.sqrt();
+    // Pequenas: a caixa (a de uma estrela rodada cabe num quadrado do lado) bem abaixo da área.
+    let pequenas = copias(60, 0.3 * lado(area), 0.5 * lado(area), 21);
+    let grandes = copias(20, 1.5 * lado(area), 3.0 * lado(area), 22);
+    let esticadas_pequenas = esticadas(60, 0.3 * lado(area), 0.5 * lado(area), 23);
+    let com = |f: &Forma<'_>, cs: &[Copia], a: f32| {
+        pelo_passe_rota(&gpu, f, cs, fmt, true, 3, a)
+            .pop()
+            .expect("tres quadros")
+            .1
+    };
+    assert_eq!(com(&forma, &pequenas, area), 0, "as conformes pequenas pagaram o calculo");
+    assert_eq!(com(&forma, &pequenas, 0.0), 60, "CONTROLO: com a area a 0 vao todas");
+    assert_eq!(com(&forma, &grandes, area), 20, "as conformes grandes ficaram no caminho de sempre");
+    // Uma ESTICADA com traço vai sempre, pequena ou não: é ela que deixa de refazer o eixo por pixel.
+    let com_traco = Forma {
+        traco: Some((Stroke::new(0.06).with_join(Join::Miter), [0.1, 0.1, 0.1, 1.0])),
+        ..forma
+    };
+    assert_eq!(
+        com(&com_traco, &esticadas_pequenas, area),
+        60,
+        "as esticadas com traco ficaram no caminho de sempre"
+    );
+}

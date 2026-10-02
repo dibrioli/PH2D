@@ -24,8 +24,8 @@ use ph2d_shape_gpu::FillRule;
 use ph2d_vector::{BezPath, Cap, Circle, Join, Shape, Stroke};
 
 use super::paridade_com_o_vello::{
-    Copia, Forma, anel, circulo, copias, esticadas, estrela, gpu, pelo_passe_com, pelo_passe_listas,
-    pelo_passe_rota, zigue_zague,
+    Copia, Forma, anel, circulo, copias, esticadas, estrela, gpu, pelo_passe_com,
+    pelo_passe_em_etapas, pelo_passe_listas, pelo_passe_rota, zigue_zague,
 };
 
 /// As MARCAS de um traço: um disco pequeno pintado com a cor dele, fora do contorno da estrela.
@@ -434,6 +434,67 @@ fn as_fileiras_que_nao_cabem_nas_listas_desenham_o_mesmo() {
             pediu > cap,
             "{nome}: o tecto nao mordeu ({pediu} de {cap}) — o recurso por fileira nao foi medido"
         );
-        assert_eq!(com, n, "{nome}: as copias sairam das celulas — o recurso medido foi outro");
+        assert_eq!(
+            com, n,
+            "{nome}: as copias sairam das celulas — o recurso medido foi outro"
+        );
+    }
+}
+
+/// ⭐ doc 121 §9.8 — **UMA CENA QUE MUDA NÃO LÊ AS ARESTAS DO QUADRO ANTERIOR.** A contagem RESERVA para
+/// cada cópia um pior caso e a escrita usa só parte; os passes das células correm um fio por aresta
+/// RESERVADA, e só as escritas contam. Num passe novo o resto da reserva é zero e não soma nada — por
+/// isso nenhuma régua de quadro único o vê —, mas numa cena animada os buffers trazem o que o quadro
+/// anterior lá escreveu, noutro sítio. Aqui o MESMO passe desenha estrelas grandes de junta redonda e
+/// depois outras, menores e noutros sítios: cada quadro da 2.ª etapa tem de ser o de um passe novo.
+#[test]
+#[ignore = "precisa de adapter de GPU"]
+fn uma_cena_que_muda_nao_le_as_arestas_do_quadro_anterior() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem adaptador — nada a medir");
+        return;
+    };
+    let est = estrela();
+    let forma = Forma {
+        bp: &est,
+        linha: None,
+        regra: FillRule::NonZero,
+        marcas: None,
+        traco: Some((
+            Stroke::new(0.08).with_join(Join::Round),
+            [0.1, 0.1, 0.1, 1.0],
+        )),
+    };
+    let fmt = wgpu::TextureFormat::Rgba16Float;
+    let antes = esticadas(40, 60.0, 260.0, 41);
+    let depois = esticadas(60, 20.0, 140.0, 42);
+    let novo = pelo_passe_listas(&gpu, &forma, &depois, fmt, true, QUADROS, 0.0, u64::MAX)
+        .pop()
+        .expect("um quadro")
+        .0;
+    let seguido = pelo_passe_em_etapas(
+        &gpu,
+        &forma,
+        &[(&antes, QUADROS), (&depois, QUADROS)],
+        fmt,
+        true,
+        0.0,
+        u64::MAX,
+    );
+    let n = u32::try_from(depois.len()).expect("cabem");
+    for (q, (img, com, (pediu, cap))) in seguido[QUADROS..].iter().enumerate() {
+        let (pior, acima, tinta) = desvio(&novo, img);
+        eprintln!(
+            "  depois de outra cena, quadro {q}: contorno em {com}/{n} · listas {pediu}/{cap} · alfa max {pior} · px > 1: {acima} de {tinta}"
+        );
+        assert!(tinta > 1000, "a fixtura quase nao desenha");
+        assert_eq!(
+            *com, n,
+            "quadro {q}: nem todas as copias foram pelas celulas"
+        );
+        assert!(
+            pior <= ALFA_MAX && acima <= tinta / 1000,
+            "quadro {q}: depois de outra cena o desenho e outro (alfa {pior}, {acima} px > 1)"
+        );
     }
 }

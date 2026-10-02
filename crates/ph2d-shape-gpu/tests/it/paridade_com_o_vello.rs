@@ -398,7 +398,10 @@ pub(super) fn pelo_passe_rota(
 /// O passe com um TECTO nas listas das células (doc 121 §9.8): por quadro, a imagem, quantas cópias
 /// ganharam o contorno e `(arestas que as listas pediram, capacidade delas)` — pedido acima da
 /// capacidade ⇒ alguma fileira foi desenhada pelo caminho de sempre.
-#[expect(clippy::too_many_arguments, reason = "as portas do passe, uma por régua")]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "as portas do passe, uma por régua"
+)]
 pub(super) fn pelo_passe_listas(
     gpu: &GpuContext,
     forma: &Forma<'_>,
@@ -406,6 +409,29 @@ pub(super) fn pelo_passe_listas(
     format: wgpu::TextureFormat,
     contorno: bool,
     quadros: usize,
+    area_minima_conforme: f32,
+    listas_no_maximo: u64,
+) -> Vec<(Vec<u8>, u32, (u64, u64))> {
+    pelo_passe_em_etapas(
+        gpu,
+        forma,
+        &[(cs, quadros)],
+        format,
+        contorno,
+        area_minima_conforme,
+        listas_no_maximo,
+    )
+}
+
+/// O MESMO passe por várias ETAPAS — cada uma um conjunto de cópias desenhado durante uns quadros —,
+/// como numa cena animada, onde as cópias mudam de quadro para quadro e os buffers do passe ficam
+/// com o que o quadro anterior lá escreveu. Por quadro, o mesmo que [`pelo_passe_listas`].
+pub(super) fn pelo_passe_em_etapas(
+    gpu: &GpuContext,
+    forma: &Forma<'_>,
+    etapas: &[(&[Copia], usize)],
+    format: wgpu::TextureFormat,
+    contorno: bool,
     area_minima_conforme: f32,
     listas_no_maximo: u64,
 ) -> Vec<(Vec<u8>, u32, (u64, u64))> {
@@ -425,72 +451,74 @@ pub(super) fn pelo_passe_listas(
     p.area_minima_conforme(area_minima_conforme);
     p.limita_as_listas(listas_no_maximo);
     p.set_geometries(gpu, [(7u32, &g)]);
-    let insts: Vec<ShapeInstance> = cs
-        .iter()
-        .map(|c| ShapeInstance {
-            pos: c.pos,
-            size: [c.lado, c.lado * c.aspecto],
-            basis: basis(c.ang),
-            anchor: [0.0, 0.0],
-            geometry: 7,
-            _pad: 0,
-            tint: c.tint,
-        })
-        .collect();
-    p.upload_instances(gpu, &insts);
-    // Um clone do handle: o `draw` muta o passe (o contorno, doc 121 §9.5).
-    let copias = p.uploaded().expect("carregou").clone();
     let tex = textura(gpu, wgpu::TextureUsages::RENDER_ATTACHMENT, format);
     let vista = tex.create_view(&wgpu::TextureViewDescriptor::default());
     #[expect(clippy::cast_precision_loss, reason = "LADO é 512")]
     let alvo = [LADO as f32, LADO as f32];
-    let n = u32::try_from(insts.len()).expect("cabem");
-    let mut saida = Vec::with_capacity(quadros);
-    for _ in 0..quadros {
-        let mut enc = gpu
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
-        p.draw(
-            gpu,
-            &mut enc,
-            &vista,
-            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-            ShapeView {
-                lin: [1.0, 0.0, 0.0, 1.0],
-                t: [0.0, 0.0],
-                alvo,
-            },
-            Copias {
-                buffer: &copias,
-                count: u32::try_from(insts.len()).expect("cabem"),
-            },
-        );
-        gpu.queue.submit(Some(enc.finish()));
-        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-        let (com, _) = p.copias_com_contorno(gpu, n);
-        let listas = p.listas_do_ultimo_quadro(gpu);
-        let px = if format == wgpu::TextureFormat::Rgba16Float {
-            let b = bytes_de_textura(gpu, &tex, 8);
-            b.as_chunks::<8>()
-                .0
-                .iter()
-                .flat_map(|px| {
-                    let h = |i: usize| f16(u16::from_le_bytes([px[2 * i], px[2 * i + 1]]));
-                    separa([h(0), h(1), h(2), h(3)])
-                })
-                .collect()
-        } else {
-            bytes_de_textura(gpu, &tex, 4)
-                .as_chunks::<4>()
-                .0
-                .iter()
-                .flat_map(|px| {
-                    let f = |i: usize| f32::from(px[i]) / 255.0;
-                    separa([f(0), f(1), f(2), f(3)])
-                })
-                .collect()
-        };
-        saida.push((px, com, listas));
+    let mut saida = Vec::new();
+    for &(cs, quadros) in etapas {
+        let insts: Vec<ShapeInstance> = cs
+            .iter()
+            .map(|c| ShapeInstance {
+                pos: c.pos,
+                size: [c.lado, c.lado * c.aspecto],
+                basis: basis(c.ang),
+                anchor: [0.0, 0.0],
+                geometry: 7,
+                _pad: 0,
+                tint: c.tint,
+            })
+            .collect();
+        p.upload_instances(gpu, &insts);
+        // Um clone do handle: o `draw` muta o passe (o contorno, doc 121 §9.5).
+        let copias = p.uploaded().expect("carregou").clone();
+        let n = u32::try_from(insts.len()).expect("cabem");
+        for _ in 0..quadros {
+            let mut enc = gpu
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+            p.draw(
+                gpu,
+                &mut enc,
+                &vista,
+                wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                ShapeView {
+                    lin: [1.0, 0.0, 0.0, 1.0],
+                    t: [0.0, 0.0],
+                    alvo,
+                },
+                Copias {
+                    buffer: &copias,
+                    count: u32::try_from(insts.len()).expect("cabem"),
+                },
+            );
+            gpu.queue.submit(Some(enc.finish()));
+            let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+            let (com, _) = p.copias_com_contorno(gpu, n);
+            let listas = p.listas_do_ultimo_quadro(gpu);
+            let px = if format == wgpu::TextureFormat::Rgba16Float {
+                let b = bytes_de_textura(gpu, &tex, 8);
+                b.as_chunks::<8>()
+                    .0
+                    .iter()
+                    .flat_map(|px| {
+                        let h = |i: usize| f16(u16::from_le_bytes([px[2 * i], px[2 * i + 1]]));
+                        separa([h(0), h(1), h(2), h(3)])
+                    })
+                    .collect()
+            } else {
+                bytes_de_textura(gpu, &tex, 4)
+                    .as_chunks::<4>()
+                    .0
+                    .iter()
+                    .flat_map(|px| {
+                        let f = |i: usize| f32::from(px[i]) / 255.0;
+                        separa([f(0), f(1), f(2), f(3)])
+                    })
+                    .collect()
+            };
+            saida.push((px, com, listas));
+        }
     }
     saida
 }

@@ -470,7 +470,11 @@ fn sonda_relogio_das_estrelas_grandes() {
             });
         }
     }
-    let n = 40u32;
+    // `PH2D_FLUID_PROFILE=1`: o relógio da placa POR PASSE (o cálculo `render.contorno` e o desenho
+    // `render.formas`), impresso a cada `120` quadros — a decomposição que o relógio de parede não dá.
+    let perfil = std::env::var("PH2D_FLUID_PROFILE").is_ok_and(|v| v != "0");
+    ph2d_gpu::pass_profiler::init(&gpu.device, &gpu.queue);
+    let n = if perfil { 250u32 } else { 40 };
     let mut p = PlacaDeFormas::default();
     // `PH2D_SONDA_SEM_CONTORNO=1`: o traço do eixo pixel a pixel (o caminho antes do doc 121 §9.5).
     if std::env::var("PH2D_SONDA_SEM_CONTORNO").is_ok_and(|v| v == "1") {
@@ -481,6 +485,7 @@ fn sonda_relogio_das_estrelas_grandes() {
         assert!(p.decide(true, &insts, &store, geo, camara()));
         let _ = p.desenha(&gpu, (LADO, LADO), geo, None);
         let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+        ph2d_gpu::pass_profiler::end_frame(&gpu.device, &gpu.queue);
     };
     quadro(&mut p, &mut geo);
     let t = std::time::Instant::now();
@@ -489,8 +494,9 @@ fn sonda_relogio_das_estrelas_grandes() {
     }
     let placa = t.elapsed().as_secs_f64() * 1e3 / f64::from(n);
     let (com_contorno, cap) = p.copias_com_contorno(&gpu, u32::try_from(insts.len()).unwrap_or(0));
+    let (pediram, cap_listas) = p.listas_do_ultimo_quadro(&gpu);
     eprintln!(
-        "  contorno calculado em {com_contorno} de {} copias (capacidade {cap} arestas)",
+        "  contorno calculado em {com_contorno} de {} copias (capacidade {cap} arestas) · listas {pediram} de {cap_listas}",
         insts.len()
     );
     // ⛔ doc 121 §9.3 — **um relógio sobre um passe que não desenhou é um número de NADA.** Com o

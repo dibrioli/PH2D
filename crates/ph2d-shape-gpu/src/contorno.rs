@@ -24,9 +24,10 @@ struct Contas {
     n: u32,
     cap: u32,
     sem_contorno: u32,
-    cap_mascaras: u32,
+    cap_celulas: u32,
     area_minima_conforme: f32,
-    _p: [u32; 3],
+    cap_listas: u32,
+    _p: [u32; 2],
 }
 
 /// ⭐ doc 121 §9.6 — **a área no ecrã (px², da caixa estimada) a partir da qual uma cópia CONFORME vai
@@ -46,11 +47,23 @@ const BLOCO: u64 = crate::SEGS_POR_BLOCO as u64;
 /// em todos os vértices escreve `20` (duas por troço); `32` cobre-a com um bloco de folga.
 const ARESTAS_POR_COPIA_INICIAL: u64 = 32;
 /// Palavras de registo por cópia na primeira capacidade — o mesmo papel do de cima: a leitura do
-/// total substitui-o. Uma estrela pequena (`~12` linhas, uma célula, menos de `32` blocos ⇒ `3 + 1`
-/// palavras por célula) pede `~48`.
-const MASCARAS_POR_COPIA_INICIAL: u64 = 48;
-/// Bytes de uma palavra de máscara (`u32`: um bit por bloco).
+/// total substitui-o. Uma estrela pequena (`~12` linhas, uma célula, `7` palavras por célula —
+/// `REGISTO` no WGSL) pede `~84`.
+const CELULAS_POR_COPIA_INICIAL: u64 = 96;
+/// Bytes de uma palavra de registo de célula (`u32`).
 const PALAVRA: u64 = 4;
+// ⚠️ doc 121 §9.8 — **as listas das células crescem DOIS QUADROS DEPOIS das arestas**, e é de
+// propósito: elas só se contam depois de as arestas existirem, logo o total delas sai do 1.º quadro
+// com arestas no ecrã e é lido dois quadros depois. Até lá uma fileira que não cabe é desenhada
+// pelo caminho de sempre — a mesma imagem (gate `as_fileiras_que_nao_cabem_nas_listas_desenham_o_mesmo`).
+// ⛔ Recusa MEDIDA: estimar a capacidade pelo total das arestas (`2` por aresta) errou por `3,7×` na
+// estrela esticada do gate (`44 827` pedidas, `32 768` dadas) — o número de entradas é a variação
+// vertical do contorno em fileiras, que nenhum total conhecido antes o diz.
+
+/// Onde estão, no buffer do despacho, os argumentos de um fio por LINHA e de um fio por ARESTA
+/// (`despacha` no WGSL).
+const POR_LINHA: u64 = 0;
+const POR_ARESTA: u64 = 12;
 
 // Os estados da leitura do total (um `AtomicU8`, porque o fecho do `map_async` corre noutro sítio).
 const LIVRE: u8 = 0;
@@ -63,39 +76,53 @@ pub(crate) struct Contorno {
     conta: wgpu::ComputePipeline,
     soma: wgpu::ComputePipeline,
     escreve: wgpu::ComputePipeline,
-    /// doc 121 §9.7 — as células, um fio por LINHA, por despacho indirecto.
-    celulas: wgpu::ComputePipeline,
+    /// doc 121 §9.8 — as células e as listas, por despachos indirectos: um fio por LINHA apaga os
+    /// registos, um por ARESTA conta, um por LINHA reserva as listas, um por ARESTA escreve-as.
+    zera: wgpu::ComputePipeline,
+    conta_listas: wgpu::ComputePipeline,
+    lugar_das_listas: wgpu::ComputePipeline,
+    escreve_listas: wgpu::ComputePipeline,
     /// O grupo `1` do DESENHO (as quatro leituras).
     pub(crate) leitura: wgpu::BindGroupLayout,
     /// O grupo `2` do CÁLCULO (o uniforme e as cinco escritas).
     escrita: wgpu::BindGroupLayout,
-    /// O mesmo grupo SEM o `despacho` (o passe das células, que o lê como argumento indirecto).
+    /// O mesmo grupo SEM o `despacho` (os passes das células, que o lêem como argumento indirecto).
     escrita_celulas: wgpu::BindGroupLayout,
     /// O grupo `1` do CÁLCULO, vazio (ver `new`).
     vazio: wgpu::BindGroup,
     contas: wgpu::Buffer,
     contagem: wgpu::Buffer,
     arestas: wgpu::Buffer,
-    blocos: wgpu::Buffer,
     copias: wgpu::Buffer,
     caixas: wgpu::Buffer,
-    /// As máscaras por linha (doc 121 §9.6): por cópia, por fileira de pixels, um bit por bloco.
-    mascaras: wgpu::Buffer,
-    /// Os argumentos do despacho indirecto de `cs_celulas` (escritos pelo `cs_soma`).
+    /// Os registos de célula (doc 121 §9.8): por cópia, por fileira de pixels, por célula, os três
+    /// fundos e onde está a lista dela.
+    celulas_buf: wgpu::Buffer,
+    /// As listas de arestas das células (doc 121 §9.8).
+    listas: wgpu::Buffer,
+    /// O total de arestas que as listas PEDIRAM no último cálculo (um atómico).
+    lista_total: wgpu::Buffer,
+    /// Os argumentos dos despachos indirectos das células (escritos pelo `cs_soma`): `[0, 3)` por
+    /// linha, `[3, 6)` por aresta.
     despacho: wgpu::Buffer,
     cap_copias: u64,
     cap_arestas: u64,
-    cap_mascaras: u64,
-    /// O tecto do recurso, em arestas.
+    cap_celulas: u64,
+    cap_listas: u64,
+    /// O tecto do recurso, em arestas (as do contorno e as das listas).
     tecto_arestas: u64,
-    /// O tecto do recurso, em palavras de máscara.
-    tecto_mascaras: u64,
+    /// O tecto do recurso, em palavras de registo.
+    tecto_celulas: u64,
     leitura_total: wgpu::Buffer,
     estado: Arc<AtomicU8>,
     /// O maior total medido (em arestas).
     total_visto: u64,
-    /// O maior total medido (em palavras de máscara).
+    /// O maior total medido (em palavras de registo).
     total_visto_m: u64,
+    /// O maior total medido (em arestas de lista).
+    total_visto_l: u64,
+    /// O tecto que um gate impõe às listas (`ShapePass::limita_as_listas`) — sem ele, o do recurso.
+    pub(crate) listas_no_maximo: u64,
     /// `false` ⇒ nenhuma cópia ganha contorno (o caminho pixel a pixel, para os gates o compararem).
     pub(crate) ligado: bool,
     /// [`AREA_MINIMA_CONFORME`], ou o que um gate pediu.
@@ -147,7 +174,6 @@ impl Contorno {
                 entrada(1, armazem(true), vf),
                 entrada(2, armazem(true), vf),
                 entrada(3, armazem(true), vf),
-                entrada(4, armazem(true), vf),
             ],
         });
         let c = wgpu::ShaderStages::COMPUTE;
@@ -163,22 +189,23 @@ impl Contorno {
             ),
             entrada(1, armazem(false), c),
             entrada(2, armazem(false), c),
-            entrada(3, armazem(false), c),
             entrada(4, armazem(false), c),
             entrada(5, armazem(false), c),
             entrada(6, armazem(false), c),
+            entrada(8, armazem(false), c),
+            entrada(9, armazem(false), c),
             entrada(7, armazem(false), c),
         ];
         let escrita = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("ph2d-shape-gpu contorno (escrita)"),
             entries: &escritas,
         });
-        // ⚠️ doc 121 §9.7 — o passe das células tem o grupo SEM o `despacho` (ligação `7`): ele é o
-        // argumento do despacho indirecto desse passe, e o wgpu recusa o mesmo buffer como escrita e
-        // como argumento no mesmo despacho (usos exclusivos no mesmo âmbito).
+        // ⚠️ doc 121 §9.7 — os passes das células têm o grupo SEM o `despacho` (ligação `7`, a ÚLTIMA
+        // da lista): ele é o argumento do despacho indirecto deles, e o wgpu recusa o mesmo buffer como
+        // escrita e como argumento no mesmo despacho (usos exclusivos no mesmo âmbito).
         let escrita_celulas = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("ph2d-shape-gpu contorno (escrita, celulas)"),
-            entries: &escritas[..7],
+            entries: &escritas[..escritas.len() - 1],
         });
         // O grupo `1` do cálculo é o do DESENHO e fica vazio: um pipeline só tem de declarar o que
         // os pontos de entrada dele lêem, e os de cálculo não lêem as leituras.
@@ -213,13 +240,16 @@ impl Contorno {
         };
         let pipeline = |entry: &str| pipeline_em(entry, &pl);
         let tecto_arestas = device.limits().max_storage_buffer_binding_size / ARESTA;
-        let tecto_mascaras = device.limits().max_storage_buffer_binding_size / PALAVRA;
+        let tecto_celulas = device.limits().max_storage_buffer_binding_size / PALAVRA;
         let armazens = wgpu::BufferUsages::STORAGE;
         Self {
             conta: pipeline("cs_conta"),
             soma: pipeline("cs_soma"),
             escreve: pipeline("cs_escreve"),
-            celulas: pipeline_em("cs_celulas", &pl_celulas),
+            zera: pipeline_em("cs_zera", &pl_celulas),
+            conta_listas: pipeline_em("cs_conta_listas", &pl_celulas),
+            lugar_das_listas: pipeline_em("cs_lugar_das_listas", &pl_celulas),
+            escreve_listas: pipeline_em("cs_escreve_listas", &pl_celulas),
             leitura,
             escrita,
             escrita_celulas,
@@ -237,21 +267,28 @@ impl Contorno {
                 armazens | wgpu::BufferUsages::COPY_SRC,
             ),
             arestas: buffer(gpu, "ph2d-shape-gpu arestas", 16, armazens),
-            blocos: buffer(gpu, "ph2d-shape-gpu blocos do contorno", 16, armazens),
             copias: buffer(gpu, "ph2d-shape-gpu copias do contorno", 16, armazens),
             caixas: buffer(gpu, "ph2d-shape-gpu caixas do contorno", 16, armazens),
-            mascaras: buffer(gpu, "ph2d-shape-gpu mascaras do contorno", 16, armazens),
+            celulas_buf: buffer(gpu, "ph2d-shape-gpu celulas do contorno", 16, armazens),
+            listas: buffer(gpu, "ph2d-shape-gpu listas das celulas", 16, armazens),
+            lista_total: buffer(
+                gpu,
+                "ph2d-shape-gpu total das listas",
+                4,
+                armazens | wgpu::BufferUsages::COPY_SRC,
+            ),
             despacho: buffer(
                 gpu,
                 "ph2d-shape-gpu despacho das celulas",
-                12,
+                24,
                 armazens | wgpu::BufferUsages::INDIRECT,
             ),
             cap_copias: 0,
             cap_arestas: 0,
-            cap_mascaras: 0,
+            cap_celulas: 0,
+            cap_listas: 0,
             tecto_arestas,
-            tecto_mascaras,
+            tecto_celulas,
             leitura_total: buffer(
                 gpu,
                 "ph2d-shape-gpu total do contorno",
@@ -261,6 +298,8 @@ impl Contorno {
             estado: Arc::new(AtomicU8::new(LIVRE)),
             total_visto: 0,
             total_visto_m: 0,
+            total_visto_l: 0,
+            listas_no_maximo: u64::MAX,
             ligado: true,
             area_minima_conforme: std::env::var("PH2D_AREA_MINIMA_CONFORME")
                 .ok()
@@ -280,8 +319,10 @@ impl Contorno {
                     let dados = self.leitura_total.slice(..).get_mapped_range();
                     let total: u32 = bytemuck::pod_read_unaligned(&dados[..4]);
                     let total_m: u32 = bytemuck::pod_read_unaligned(&dados[4..8]);
+                    let total_l: u32 = bytemuck::pod_read_unaligned(&dados[8..12]);
                     self.total_visto = self.total_visto.max(u64::from(total));
                     self.total_visto_m = self.total_visto_m.max(u64::from(total_m));
+                    self.total_visto_l = self.total_visto_l.max(u64::from(total_l));
                 }
                 self.leitura_total.unmap();
                 self.estado.store(LIVRE, Ordering::Release);
@@ -306,7 +347,7 @@ impl Contorno {
         if n > self.cap_copias {
             let cap = n.next_power_of_two();
             let armazens = wgpu::BufferUsages::STORAGE;
-            // Três terços de `n + 1`: as arestas, as palavras de máscara e as linhas de ecrã.
+            // Três terços de `n + 1`: as arestas, as palavras de registo de célula e as linhas de ecrã.
             self.contagem = buffer(
                 gpu,
                 "ph2d-shape-gpu contagem",
@@ -334,28 +375,36 @@ impl Contorno {
                 .next_multiple_of(BLOCO);
             let armazens = wgpu::BufferUsages::STORAGE;
             self.arestas = buffer(gpu, "ph2d-shape-gpu arestas", cap * ARESTA, armazens);
-            self.blocos = buffer(
-                gpu,
-                "ph2d-shape-gpu blocos do contorno",
-                // Dois `vec4` por bloco: a caixa e `(y₀, y₈, encadeado, 0)`.
-                cap / BLOCO * 32,
-                armazens,
-            );
             self.cap_arestas = cap;
         }
         let pedido_m = self
             .total_visto_m
-            .max(n * MASCARAS_POR_COPIA_INICIAL)
-            .min(self.tecto_mascaras);
-        if pedido_m > self.cap_mascaras {
-            let cap = pedido_m.next_power_of_two().min(self.tecto_mascaras);
-            self.mascaras = buffer(
+            .max(n * CELULAS_POR_COPIA_INICIAL)
+            .min(self.tecto_celulas);
+        if pedido_m > self.cap_celulas {
+            let cap = pedido_m.next_power_of_two().min(self.tecto_celulas);
+            self.celulas_buf = buffer(
                 gpu,
-                "ph2d-shape-gpu mascaras do contorno",
+                "ph2d-shape-gpu celulas do contorno",
                 cap * PALAVRA,
                 wgpu::BufferUsages::STORAGE,
             );
-            self.cap_mascaras = cap;
+            self.cap_celulas = cap;
+        }
+        let tecto_l = self.tecto_arestas.min(self.listas_no_maximo);
+        let pedido_l = self
+            .total_visto_l
+            .max(n * ARESTAS_POR_COPIA_INICIAL)
+            .min(tecto_l);
+        if pedido_l > self.cap_listas {
+            let cap = pedido_l.next_power_of_two().min(tecto_l);
+            self.listas = buffer(
+                gpu,
+                "ph2d-shape-gpu listas das celulas",
+                cap * ARESTA,
+                wgpu::BufferUsages::STORAGE,
+            );
+            self.cap_listas = cap;
         }
     }
 
@@ -373,9 +422,10 @@ impl Contorno {
             n: count,
             cap: u32::try_from(self.cap_arestas).unwrap_or(u32::MAX),
             sem_contorno: u32::from(!self.ligado),
-            cap_mascaras: u32::try_from(self.cap_mascaras).unwrap_or(u32::MAX),
+            cap_celulas: u32::try_from(self.cap_celulas).unwrap_or(u32::MAX),
             area_minima_conforme: self.area_minima_conforme,
-            _p: [0; 3],
+            cap_listas: u32::try_from(self.cap_listas).unwrap_or(u32::MAX),
+            _p: [0; 2],
         };
         gpu.queue
             .write_buffer(&self.contas, 0, bytemuck::bytes_of(&contas));
@@ -393,10 +443,6 @@ impl Contorno {
                 resource: self.arestas.as_entire_binding(),
             },
             wgpu::BindGroupEntry {
-                binding: 3,
-                resource: self.blocos.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
                 binding: 4,
                 resource: self.copias.as_entire_binding(),
             },
@@ -406,7 +452,15 @@ impl Contorno {
             },
             wgpu::BindGroupEntry {
                 binding: 6,
-                resource: self.mascaras.as_entire_binding(),
+                resource: self.celulas_buf.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 8,
+                resource: self.listas.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 9,
+                resource: self.lista_total.as_entire_binding(),
             },
         ];
         // O grupo do passe das células: as mesmas ligações SEM o `despacho`.
@@ -427,28 +481,50 @@ impl Contorno {
         let grupos = count.div_ceil(64);
         let x = grupos.min(65_535);
         let y = grupos.div_ceil(x.max(1));
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("ph2d-shape-gpu contorno"),
-                timestamp_writes: ph2d_gpu::pass_profiler::compute_writes("render.contorno"),
-            });
+        // Três passes de cálculo, cada um com o seu relógio no perfilador (`PH2D_FLUID_PROFILE=1`):
+        // a contagem, a escrita das arestas (um fio por CÓPIA) e as células.
+        let passe = |encoder: &mut wgpu::CommandEncoder, relogio: &'static str| {
+            let mut pass = encoder
+                .begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some(relogio),
+                    timestamp_writes: ph2d_gpu::pass_profiler::compute_writes(relogio),
+                })
+                .forget_lifetime();
             pass.set_bind_group(0, grupo0, &[]);
             pass.set_bind_group(1, &self.vazio, &[]);
             pass.set_bind_group(2, &escrita, &[]);
+            pass
+        };
+        {
+            let mut pass = passe(encoder, "render.contorno.conta");
             pass.set_pipeline(&self.conta);
             pass.dispatch_workgroups(x, y, 1);
             pass.set_pipeline(&self.soma);
             pass.dispatch_workgroups(1, 1, 1);
+        }
+        {
+            let mut pass = passe(encoder, "render.contorno.escreve");
             pass.set_pipeline(&self.escreve);
             pass.dispatch_workgroups(x, y, 1);
-            // ⭐ doc 121 §9.7 — as células, um fio por linha de ecrã: o número de linhas só existe
-            // na placa (o `cs_soma` escreve os grupos), logo o despacho é INDIRECTO.
-            pass.set_pipeline(&self.celulas);
+        }
+        {
+            let mut pass = passe(encoder, "render.contorno.celulas");
+            // ⭐ doc 121 §9.8 — as células e as listas: os números de linhas e de arestas só existem
+            // na placa (o `cs_soma` escreve os grupos), logo os despachos são INDIRECTOS.
             pass.set_bind_group(2, &celulas, &[]);
-            pass.dispatch_workgroups_indirect(&self.despacho, 0);
+            for (pipeline, args) in [
+                (&self.zera, POR_LINHA),
+                (&self.conta_listas, POR_ARESTA),
+                (&self.lugar_das_listas, POR_LINHA),
+                (&self.escreve_listas, POR_ARESTA),
+            ] {
+                pass.set_pipeline(pipeline);
+                pass.dispatch_workgroups_indirect(&self.despacho, args);
+            }
         }
         if self.estado.load(Ordering::Acquire) == LIVRE {
-            // Os dois totais: as arestas em `n` e as palavras de máscara em `2n + 1`.
+            // Os três totais: as arestas em `n`, as palavras de registo em `2n + 1` e as arestas de
+            // lista no atómico.
             encoder.copy_buffer_to_buffer(
                 &self.contagem,
                 u64::from(count) * 4,
@@ -463,6 +539,7 @@ impl Contorno {
                 4,
                 4,
             );
+            encoder.copy_buffer_to_buffer(&self.lista_total, 0, &self.leitura_total, 8, 4);
             self.estado.store(COPIADO, Ordering::Release);
         }
     }
@@ -496,6 +573,28 @@ impl Contorno {
         (u32::try_from(com).unwrap_or(u32::MAX), self.cap_arestas)
     }
 
+    /// **Quantas arestas as listas das células PEDIRAM** no último cálculo, e a capacidade delas — lido
+    /// de volta, bloqueando (doc 121 §9.8). Pedido acima da capacidade ⇒ alguma fileira ficou
+    /// `SEM_LISTA` e foi desenhada pelo caminho de sempre. Instrumento de gates e sondas.
+    pub(crate) fn listas_do_ultimo_quadro(&self, gpu: &GpuContext) -> (u64, u64) {
+        let leitura = buffer(
+            gpu,
+            "ph2d-shape-gpu listas (sonda)",
+            16,
+            wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+        );
+        let mut enc = gpu
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+        enc.copy_buffer_to_buffer(&self.lista_total, 0, &leitura, 0, 4);
+        gpu.queue.submit([enc.finish()]);
+        leitura.slice(..).map_async(wgpu::MapMode::Read, |_| {});
+        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+        let dados = leitura.slice(..).get_mapped_range();
+        let pedido: u32 = bytemuck::pod_read_unaligned(&dados[..4]);
+        (u64::from(pedido), self.cap_listas)
+    }
+
     /// O grupo `1` do desenho: as leituras do que os passes escreveram.
     pub(crate) fn grupo_de_leitura(&self, gpu: &GpuContext) -> wgpu::BindGroup {
         gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -504,23 +603,19 @@ impl Contorno {
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: self.arestas.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: self.blocos.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
                     resource: self.copias.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
-                    binding: 3,
+                    binding: 1,
                     resource: self.caixas.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: self.mascaras.as_entire_binding(),
+                    binding: 2,
+                    resource: self.celulas_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: self.listas.as_entire_binding(),
                 },
             ],
         })

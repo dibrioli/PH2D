@@ -24,8 +24,8 @@ use ph2d_shape_gpu::FillRule;
 use ph2d_vector::{BezPath, Cap, Circle, Join, Shape, Stroke};
 
 use super::paridade_com_o_vello::{
-    Copia, Forma, anel, circulo, copias, esticadas, estrela, gpu, pelo_passe_com, pelo_passe_rota,
-    zigue_zague,
+    Copia, Forma, anel, circulo, copias, esticadas, estrela, gpu, pelo_passe_com, pelo_passe_listas,
+    pelo_passe_rota, zigue_zague,
 };
 
 /// As MARCAS de um traço: um disco pequeno pintado com a cor dele, fora do contorno da estrela.
@@ -234,7 +234,7 @@ fn o_contorno_calculado_desenha_o_que_o_eixo_desenha() {
     for (nome, forma, cs) in &casos {
         let n = u32::try_from(cs.len()).expect("cabem");
         let eixo = pelo_passe_com(&gpu, forma, cs, fmt, false, QUADROS);
-        let contorno = pelo_passe_com(&gpu, forma, cs, fmt, true, QUADROS);
+        let contorno = pelo_passe_listas(&gpu, forma, cs, fmt, true, QUADROS, 0.0, u64::MAX);
         // O CONTROLO: desligado, nenhuma cópia ganha contorno em quadro nenhum — senão a comparação
         // mede o caminho novo contra ele próprio.
         assert!(
@@ -242,7 +242,7 @@ fn o_contorno_calculado_desenha_o_que_o_eixo_desenha() {
             "{nome}: o caminho de sempre nao correu"
         );
         let referencia = &eixo[QUADROS - 1].0;
-        for (q, (img, com)) in contorno.iter().enumerate() {
+        for (q, (img, com, _)) in contorno.iter().enumerate() {
             let (pior, acima, tinta) = desvio(referencia, img);
             eprintln!(
                 "  {nome:<40} quadro {q}: contorno em {com}/{n} · alfa max {pior} · px > 1: {acima} de {tinta}"
@@ -263,6 +263,13 @@ fn o_contorno_calculado_desenha_o_que_o_eixo_desenha() {
             n,
             "{nome}: a capacidade nao cresceu para o total medido — o contorno nao correu em todas as copias"
         );
+        // ⭐ doc 121 §9.8 — e as LISTAS das células também: no regime do produto nenhuma fileira cai
+        // no caminho de sempre (senão a régua mede o recurso por fileira e não as listas).
+        let (pedido, cap) = contorno[QUADROS - 1].2;
+        assert!(
+            pedido > 0 && pedido <= cap,
+            "{nome}: as listas pediram {pedido} arestas com capacidade {cap} — alguma fileira nao correu pelas celulas"
+        );
     }
     // ⚠️ A metade que torna o 1.º quadro uma régua: alguma fixtura tem de TRANSBORDAR a capacidade
     // de fábrica (os círculos: `32` arestas por cópia não cobrem o leque de uma curva), senão o
@@ -274,9 +281,10 @@ fn o_contorno_calculado_desenha_o_que_o_eixo_desenha() {
     eprintln!("  transbordaram no 1.º quadro: {transbordou:?}");
 }
 
-/// Quadros por corrida: o total é copiado no 1.º, mapeado no 2.º e colhido no 3.º, que já desenha
-/// com a capacidade nova (`contorno.rs`). O 4.º confirma que ela FICA.
-const QUADROS: usize = 4;
+/// Quadros por corrida: o total das arestas é copiado no 1.º, mapeado no 2.º e colhido no 3.º, que
+/// já desenha as arestas no ecrã; o das LISTAS das células só existe a partir desse 3.º e é colhido
+/// no 5.º (`contorno.rs`, doc 121 §9.8). O 6.º confirma que a capacidade FICA.
+const QUADROS: usize = 6;
 
 /// A barra: as duas rotas são a mesma lei, logo o que sobra é arredondamento de `f32` — as arestas
 /// no ecrã saem de um passe de cálculo e as do eixo de um de fragmento.
@@ -342,4 +350,90 @@ fn so_as_copias_conformes_grandes_pagam_o_calculo() {
         60,
         "as esticadas com traco ficaram no caminho de sempre"
     );
+}
+
+/// ⭐ doc 121 §9.8 — **UMA FILEIRA QUE NÃO CABE NAS LISTAS DESENHA A MESMA IMAGEM.** A capacidade das
+/// listas cresce para o total medido dois quadros depois; até lá (e no tecto do recurso) uma fileira
+/// que não cabe fica `SEM_LISTA` e o desenho refaz-lhe os pixels pelo caminho de sempre. Aqui o tecto
+/// é METADE do que as listas pedem, em todos os quadros: as cópias continuam TODAS pelas arestas no
+/// ecrã (o recurso é por fileira, não por cópia) e a imagem é a do eixo à barra de arredondamento.
+#[test]
+#[ignore = "precisa de adapter de GPU"]
+fn as_fileiras_que_nao_cabem_nas_listas_desenham_o_mesmo() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem adaptador — nada a medir");
+        return;
+    };
+    let (est, circ, an) = (estrela(), circulo(), anel());
+    let casos: Vec<(&str, Forma<'_>, Vec<Copia>)> = vec![
+        (
+            "estrela esticada, esquadria",
+            Forma {
+                bp: &est,
+                linha: None,
+                regra: FillRule::NonZero,
+                marcas: None,
+                traco: Some((
+                    Stroke::new(0.06).with_join(Join::Miter),
+                    [0.1, 0.1, 0.1, 1.0],
+                )),
+            },
+            esticadas(40, 40.0, 220.0, 31),
+        ),
+        (
+            "circulos grandes esticados, redondo",
+            Forma {
+                bp: &circ,
+                linha: None,
+                regra: FillRule::NonZero,
+                marcas: None,
+                traco: Some((
+                    Stroke::new(0.04).with_join(Join::Round),
+                    [0.2, 0.6, 0.3, 1.0],
+                )),
+            },
+            esticadas(6, 400.0, 900.0, 32),
+        ),
+        (
+            "aneis even-odd",
+            Forma {
+                bp: &an,
+                linha: None,
+                regra: FillRule::EvenOdd,
+                marcas: None,
+                traco: None,
+            },
+            copias(60, 30.0, 400.0, 33),
+        ),
+    ];
+    let fmt = wgpu::TextureFormat::Rgba16Float;
+    for (nome, forma, cs) in &casos {
+        let n = u32::try_from(cs.len()).expect("cabem");
+        let eixo = pelo_passe_com(&gpu, forma, cs, fmt, false, 1)
+            .pop()
+            .expect("um quadro")
+            .0;
+        let livre = pelo_passe_listas(&gpu, forma, cs, fmt, true, QUADROS, 0.0, u64::MAX);
+        let pedido = livre[QUADROS - 1].2.0;
+        let metade = pelo_passe_listas(&gpu, forma, cs, fmt, true, QUADROS, 0.0, pedido / 2);
+        for (q, (img, com, (pediu, cap))) in metade.iter().enumerate() {
+            let (pior, acima, tinta) = desvio(&eixo, img);
+            eprintln!(
+                "  {nome:<40} quadro {q}: contorno em {com}/{n} · listas {pediu}/{cap} · alfa max {pior} · px > 1: {acima} de {tinta}"
+            );
+            assert!(tinta > 1000, "{nome}: a fixtura quase nao desenha");
+            assert!(
+                pior <= ALFA_MAX && acima <= tinta / 1000,
+                "{nome}, quadro {q}: com fileiras SEM_LISTA o desenho e outro (alfa {pior}, {acima} px > 1)"
+            );
+        }
+        // O CONTROLO: o tecto mordeu (fileiras caíram no caminho de sempre) e as cópias foram TODAS
+        // pelas células — senão o que se mediu foi o recurso por cópia.
+        let (_, com, (pediu, cap)) = metade[QUADROS - 1];
+        assert!(
+            pediu > cap,
+            "{nome}: o tecto nao mordeu ({pediu} de {cap}) — o recurso por fileira nao foi medido"
+        );
+        assert_eq!(com, n, "{nome}: as copias sairam das celulas — o recurso medido foi outro");
+    }
 }

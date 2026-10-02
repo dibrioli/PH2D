@@ -91,17 +91,15 @@ struct VsOut {
     @location(8) @interpolate(flat) tela: u32,
 }
 
-// ⭐ doc 121 §9.5–§9.6 — **AS ARESTAS DE CADA CÓPIA, NO ECRÃ, CALCULADAS UMA VEZ** (`contorno.wgsl`
-// escreve-as, o desenho só as lê): o preenchimento, as marcas e o contorno, em blocos de
-// `SEGS_POR_BLOCO` com a caixa de cada bloco; por cópia DOIS `vec4` — `(primeiro bloco, blocos do
-// preenchimento, das marcas, do contorno)` e `(primeira palavra das máscaras, linhas, palavras por
-// linha, a primeira linha em bits de f32)`; a caixa da cópia inteira; e as MÁSCARAS POR LINHA —
-// para cada fileira de pixels da cópia, um bit por bloco que lhe toca.
-@group(1) @binding(0) var<storage, read> contorno: array<vec4<f32>>;
-@group(1) @binding(1) var<storage, read> cblocos: array<vec4<f32>>;
-@group(1) @binding(2) var<storage, read> ccopias: array<vec4<u32>>;
-@group(1) @binding(3) var<storage, read> ccaixas: array<vec4<f32>>;
-@group(1) @binding(4) var<storage, read> cmascaras: array<u32>;
+// ⭐ doc 121 §9.5–§9.8 — **AS ARESTAS DE CADA CÓPIA, NO ECRÃ, CALCULADAS UMA VEZ** (`contorno.wgsl`
+// escreve-as, o desenho só as lê): por cópia TRÊS `vec4` — `(primeiro bloco, blocos do
+// preenchimento, das marcas, do contorno)`, `(primeiro registo de célula, linhas, 0, a primeira
+// linha em bits de f32)` e `(a primeira coluna em bits, células por linha, 0, 0)`; a caixa da cópia
+// inteira; os REGISTOS DE CÉLULA (`REGISTO`) e as LISTAS de arestas que eles apontam.
+@group(1) @binding(0) var<storage, read> ccopias: array<vec4<u32>>;
+@group(1) @binding(1) var<storage, read> ccaixas: array<vec4<f32>>;
+@group(1) @binding(2) var<storage, read> ccelulas: array<u32>;
+@group(1) @binding(3) var<storage, read> clistas: array<vec4<f32>>;
 
 // O índice do registo de um handle, ou `0xffffffff` se a geometria não existe.
 fn registo_de(handle: u32) -> u32 {
@@ -197,7 +195,7 @@ fn copia_de(ii: u32) -> Copia {
 // A caixa no ECRÃ que cobre tudo o que a cópia pode desenhar, sem a percorrer: a caixa LOCAL da
 // forma pelo afim e, com o traço do eixo, a caixa dos pontos do eixo alargada por `ext_fora × caneta`
 // (a caixa local do contorno expandido não o cobre sob escala não uniforme). Lida pelo quad do
-// caminho de sempre e pelas LINHAS das máscaras (`contorno.wgsl`) — as duas passagens de cálculo
+// caminho de sempre e pelas LINHAS das células (`contorno.wgsl`) — as duas passagens de cálculo
 // têm de chegar ao MESMO número de linhas.
 fn caixa_estimada(cp: Copia, rec: Record) -> vec4<f32> {
     let lin = cp.lin;
@@ -242,7 +240,7 @@ fn vs_main(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> 
     // apagava SOBREVIVEU à paridade de pixel: não era lei, era trabalho a mais.
     var caixa = caixa_estimada(cp, rec);
     // ⭐ doc 121 §9.6: as arestas desta cópia já estão no ECRÃ (`contorno.wgsl`) — a caixa delas é a
-    // exacta, e o fragmento lê-as pelas máscaras de linha em vez de as refazer.
+    // exacta, e o fragmento lê-as pelas células em vez de as refazer.
     var tela = 0u;
     let c0 = ccopias[3u * ii];
     if c0.y + c0.z + c0.w > 0u {
@@ -418,90 +416,67 @@ fn leque(centro: vec2<f32>, n0: vec2<f32>, n_fim: vec2<f32>, cos_alpha: f32, dir
     return s + tri(centro, p, centro + n_fim, xy);
 }
 
-// A soma de UM bloco de arestas JÁ NO ECRÃ (`contorno.wgsl`) para o pixel cujo canto é `xy` — a
-// máscara da linha já garantiu que ele toca a fileira do pixel. Todo à DIREITA soma zero; todo à
-// ESQUERDA soma a faixa de cada aresta (`clamp(y₀) − clamp(y₁)`, sem divisão), e num bloco ENCADEADO
-// ela telescopa em dois números guardados ao lado da caixa; o resto, a conta do Vello aresta a
-// aresta. ⚠️ Os blocos do contorno NÃO são fechados (as arestas que a FAIXA cancela não chegam a
-// existir), logo um à esquerda não se pode saltar.
-fn soma_do_bloco(b: u32, xy: vec2<f32>) -> f32 {
-    let cx = cblocos[2u * b];
-    if cx.x >= xy.x + 1.0 {
-        return 0.0;
-    }
-    let i0 = b * SEGS_POR_BLOCO;
-    var s = 0.0;
-    if cx.z <= xy.x {
-        let ex = cblocos[2u * b + 1u];
-        if ex.z != 0.0 {
-            return clamp(ex.x - xy.y, 0.0, 1.0) - clamp(ex.y - xy.y, 0.0, 1.0);
-        }
-        for (var i = i0; i < i0 + SEGS_POR_BLOCO; i += 1u) {
-            let e = contorno[i];
-            s += clamp(e.y - xy.y, 0.0, 1.0) - clamp(e.w - xy.y, 0.0, 1.0);
-        }
-        return s;
-    }
-    for (var i = i0; i < i0 + SEGS_POR_BLOCO; i += 1u) {
-        let e = contorno[i];
-        s += contribuicao(e.xy, e.zw, xy);
-    }
-    return s;
+// A largura de uma CÉLULA, em pixels (doc 121 §9.6). A altura é UMA fileira: mais alta piora em
+// monotonia (§9.7, recusa medida).
+const LARGURA_DA_CELULA: f32 = 32.0;
+// ⭐ doc 121 §9.8 — as palavras de um REGISTO de célula: os três FUNDOS (`f32` — preenchimento, marcas,
+// contorno) e, na lista de arestas da célula, o início e o fim de cada uma das três famílias
+// (`inicio, fim_f, fim_m, fim`).
+const REGISTO: u32 = 7u;
+// O `inicio` de uma célula cuja fileira não coube na capacidade das listas: o pixel refaz-se pelo
+// caminho de sempre (a mesma imagem, mais devagar — nunca uma cobertura truncada).
+const SEM_LISTA: u32 = 0xffffffffu;
+// ⭐ doc 121 §9.8 — **as somas das células em PONTO FIXO**: o fundo é somado por muitos fios ao mesmo
+// tempo (atómicos de inteiros) e a lista é arrumada por eles em qualquer ordem — em inteiros a soma
+// não depende da ordem, e a imagem não depende do escalonamento. `2¹⁶` por unidade de cobertura: cada
+// parcela erra `≤ 7,6e-6`, e um pixel soma dezenas, longe dos `1/255` de um passo de alfa.
+const ESCALA_FIXA: f32 = 65536.0;
+
+fn fixo(v: f32) -> i32 {
+    return i32(round(v * ESCALA_FIXA));
 }
 
-// A largura de uma CÉLULA das máscaras, em pixels (doc 121 §9.6).
-const LARGURA_DA_CELULA: f32 = 32.0;
-// ⭐ doc 121 §9.7 — e a ALTURA, em fileiras: os pixels de uma célula partilham a máscara (o mesmo
-// laço de blocos), cada fileira com o seu fundo.
-const ALTURA_DA_CELULA: u32 = 1u;
-
-// ⭐⭐ doc 121 §9.6 — **A COBERTURA PELAS CÉLULAS**: cada fileira da cópia é partida em células de
-// `LARGURA_DA_CELULA` px, e cada célula guarda o FUNDO (a soma dos blocos que acabam todos à
-// esquerda dela — o `backdrop` do Vello) e uma máscara com um bit por bloco que lhe toca. Um pixel
-// soma o fundo e só esses blocos: no MEIO de uma forma grande são zero. Devolve as três somas: o
-// preenchimento, as marcas (sob afim conforme, o traço inteiro) e o contorno do eixo.
-fn cobertura_de_ecra(ii: u32, xy: vec2<f32>) -> vec3<f32> {
-    let c0 = ccopias[3u * ii];
+// ⭐⭐ doc 121 §9.6–§9.8 — **A COBERTURA PELAS CÉLULAS**: cada fileira da cópia é partida em células
+// de `LARGURA_DA_CELULA` px; cada célula guarda o FUNDO (a soma das arestas que, NESTA fileira, ficam
+// todas à esquerda dela — o `backdrop` do Vello) e a LISTA das arestas que cruzam a fileira dentro
+// dela — o que o Vello guarda por ladrilho. Um pixel soma o fundo e só essas: no MEIO de uma forma
+// grande nenhuma, na borda as uma ou duas que de facto a cruzam (a máscara de blocos do §9.6 fazia-o
+// percorrer oito por bloco). Devolve as três somas — o preenchimento, as marcas (sob afim conforme, o
+// traço inteiro) e o contorno do eixo — e `w = 0` quando a fileira não coube (`SEM_LISTA`).
+fn cobertura_de_ecra(ii: u32, xy: vec2<f32>) -> vec4<f32> {
     let c1 = ccopias[3u * ii + 1u];
     let c2 = ccopias[3u * ii + 2u];
     let r = xy.y - bitcast<f32>(c1.w);
     let kx = floor((xy.x - bitcast<f32>(c2.x)) / LARGURA_DA_CELULA);
     if r < 0.0 || r >= f32(c1.y) || kx < 0.0 || kx >= f32(c2.y) {
-        return vec3<f32>(0.0);
+        return vec4<f32>(0.0, 0.0, 0.0, 1.0);
     }
-    let palavras = c1.z;
-    let fundos = 3u * ALTURA_DA_CELULA;
-    let registo = fundos + palavras;
-    let ri = u32(r);
-    let base = c1.x + ((ri / ALTURA_DA_CELULA) * c2.y + u32(kx)) * registo;
-    let f = base + 3u * (ri % ALTURA_DA_CELULA);
-    var s = vec3<f32>(
-        bitcast<f32>(cmascaras[f]),
-        bitcast<f32>(cmascaras[f + 1u]),
-        bitcast<f32>(cmascaras[f + 2u]),
+    let q = c1.x + (u32(r) * c2.y + u32(kx)) * REGISTO;
+    let inicio = ccelulas[q + 3u];
+    if inicio == SEM_LISTA {
+        return vec4<f32>(0.0);
+    }
+    var s = vec3<i32>(
+        bitcast<i32>(ccelulas[q]),
+        bitcast<i32>(ccelulas[q + 1u]),
+        bitcast<i32>(ccelulas[q + 2u]),
     );
-    let fim_f = c0.y;
-    let fim_m = c0.y + c0.z;
-    for (var w = 0u; w < palavras; w += 1u) {
-        var m = cmascaras[base + fundos + w];
-        loop {
-            if m == 0u {
-                break;
-            }
-            let k = firstTrailingBit(m);
-            m = m & (m - 1u);
-            let bi = w * 32u + k;
-            let v = soma_do_bloco(c0.x + bi, xy);
-            if bi < fim_f {
-                s.x += v;
-            } else if bi < fim_m {
-                s.y += v;
-            } else {
-                s.z += v;
-            }
-        }
+    let fim_f = ccelulas[q + 4u];
+    let fim_m = ccelulas[q + 5u];
+    let fim = ccelulas[q + 6u];
+    for (var i = inicio; i < fim_f; i += 1u) {
+        let e = clistas[i];
+        s.x += fixo(contribuicao(e.xy, e.zw, xy));
     }
-    return s;
+    for (var i = fim_f; i < fim_m; i += 1u) {
+        let e = clistas[i];
+        s.y += fixo(contribuicao(e.xy, e.zw, xy));
+    }
+    for (var i = fim_m; i < fim; i += 1u) {
+        let e = clistas[i];
+        s.z += fixo(contribuicao(e.xy, e.zw, xy));
+    }
+    return vec4<f32>(vec3<f32>(s) / ESCALA_FIXA, 1.0);
 }
 
 fn traco_do_eixo(inicio: u32, n: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32, xy: vec2<f32>) -> f32 {
@@ -684,13 +659,16 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     var af = 0.0;
     // O traço é sempre não-nulo: o contorno expandido é um preenchimento.
     var as_ = 0.0;
+    var de_sempre = in.tela == 0u;
     if in.tela > 0u {
-        // ⭐ doc 121 §9.6: as três somas pelas máscaras de linha. Sob afim conforme as «marcas» são
-        // o traço inteiro e o contorno do eixo é vazio — a mesma conta do ramo de baixo.
+        // ⭐ doc 121 §9.6: as três somas pelas células. Sob afim conforme as «marcas» são o traço
+        // inteiro e o contorno do eixo é vazio — a mesma conta do ramo de baixo.
         let s = cobertura_de_ecra(in.tela - 1u, xy);
         af = s.x;
         as_ = min(min(abs(s.y), 1.0) + min(abs(s.z), 1.0), 1.0);
-    } else {
+        de_sempre = s.w == 0.0;
+    }
+    if de_sempre {
         af = area(in.fill.x, in.fill.y, in.lin, in.t, xy);
         if in.eixo_rg.y > 0u {
             // Sob escala não uniforme: as MARCAS (as primeiras `z` peças do traço) mais o traço do eixo.

@@ -321,20 +321,34 @@ pub(super) fn pelo_passe(
     // ⭐ doc 121 §9.6: o regime do PRODUTO — a capacidade já cresceu para o total medido e TODAS as
     // cópias têm as arestas no ecrã. O 1.º quadro (a mistura com o caminho de sempre) é medido pelo
     // gate `contorno_calculado`, par contra par.
-    let (img, com) = pelo_passe_com(gpu, forma, cs, format, true, QUADROS_DO_PRODUTO)
-        .pop()
-        .expect("um quadro");
+    let (img, com, (pedido, cap)) = pelo_passe_listas(
+        gpu,
+        forma,
+        cs,
+        format,
+        true,
+        QUADROS_DO_PRODUTO,
+        0.0,
+        u64::MAX,
+    )
+    .pop()
+    .expect("um quadro");
     assert_eq!(
         com as usize,
         cs.len(),
         "o passe nao chegou ao regime do produto: nem todas as copias tem as arestas no ecra"
     );
+    assert!(
+        pedido <= cap,
+        "o passe nao chegou ao regime do produto: as listas pediram {pedido} com capacidade {cap}"
+    );
     img
 }
 
-/// Quadros até ao regime do produto: o total medido é copiado no 1.º, mapeado no 2.º e colhido no
-/// 3.º, que já desenha com a capacidade nova (`contorno.rs`).
-const QUADROS_DO_PRODUTO: usize = 3;
+/// Quadros até ao regime do produto: o total das arestas é copiado no 1.º, mapeado no 2.º e colhido
+/// no 3.º, que já desenha com a capacidade nova; o das LISTAS das células sai desse 3.º e é colhido
+/// no 5.º (`contorno.rs`, doc 121 §9.8).
+const QUADROS_DO_PRODUTO: usize = 5;
 
 /// O passe com o CONTORNO CALCULADO ligado ou não (doc 121 §9.5), durante `quadros` quadros do
 /// MESMO passe: por quadro, a imagem e quantas cópias ganharam o contorno (lido de volta — as duas
@@ -366,6 +380,35 @@ pub(super) fn pelo_passe_rota(
     quadros: usize,
     area_minima_conforme: f32,
 ) -> Vec<(Vec<u8>, u32)> {
+    pelo_passe_listas(
+        gpu,
+        forma,
+        cs,
+        format,
+        contorno,
+        quadros,
+        area_minima_conforme,
+        u64::MAX,
+    )
+    .into_iter()
+    .map(|(img, com, _)| (img, com))
+    .collect()
+}
+
+/// O passe com um TECTO nas listas das células (doc 121 §9.8): por quadro, a imagem, quantas cópias
+/// ganharam o contorno e `(arestas que as listas pediram, capacidade delas)` — pedido acima da
+/// capacidade ⇒ alguma fileira foi desenhada pelo caminho de sempre.
+#[expect(clippy::too_many_arguments, reason = "as portas do passe, uma por régua")]
+pub(super) fn pelo_passe_listas(
+    gpu: &GpuContext,
+    forma: &Forma<'_>,
+    cs: &[Copia],
+    format: wgpu::TextureFormat,
+    contorno: bool,
+    quadros: usize,
+    area_minima_conforme: f32,
+    listas_no_maximo: u64,
+) -> Vec<(Vec<u8>, u32, (u64, u64))> {
     let traco = forma.traco.as_ref().map(|(s, cor)| StrokeInput {
         path: forma.linha.unwrap_or(forma.bp),
         style: s,
@@ -380,6 +423,7 @@ pub(super) fn pelo_passe_rota(
     let mut p = ShapePass::new(gpu, format);
     p.com_contorno(contorno);
     p.area_minima_conforme(area_minima_conforme);
+    p.limita_as_listas(listas_no_maximo);
     p.set_geometries(gpu, [(7u32, &g)]);
     let insts: Vec<ShapeInstance> = cs
         .iter()
@@ -424,6 +468,7 @@ pub(super) fn pelo_passe_rota(
         gpu.queue.submit(Some(enc.finish()));
         let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
         let (com, _) = p.copias_com_contorno(gpu, n);
+        let listas = p.listas_do_ultimo_quadro(gpu);
         let px = if format == wgpu::TextureFormat::Rgba16Float {
             let b = bytes_de_textura(gpu, &tex, 8);
             b.as_chunks::<8>()
@@ -445,7 +490,7 @@ pub(super) fn pelo_passe_rota(
                 })
                 .collect()
         };
-        saida.push((px, com));
+        saida.push((px, com, listas));
     }
     saida
 }

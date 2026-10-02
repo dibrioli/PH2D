@@ -27,12 +27,13 @@ struct Contas {
     cap: u32,
     // `1` ⇒ nenhuma cópia ganha contorno (o caminho de antes, para os gates o compararem).
     sem_contorno: u32,
-    // Quantas palavras cabem em `cmascaras_rw`.
-    cap_mascaras: u32,
+    // Quantas palavras cabem em `ccelulas_rw`.
+    cap_celulas: u32,
     // A área no ecrã (px², da caixa estimada) a partir da qual uma cópia CONFORME vai pelas arestas
     // no ecrã (`contorno.rs`, `AREA_MINIMA_CONFORME`).
     area_minima_conforme: f32,
-    _p0: u32,
+    // Quantas arestas cabem em `listas_rw` (doc 121 §9.8).
+    cap_listas: u32,
     _p1: u32,
     _p2: u32,
 }
@@ -43,68 +44,45 @@ struct Contas {
 // as LINHAS de ecrã nas `n + 1` últimas — a última de cada terço é o total.
 @group(2) @binding(1) var<storage, read_write> contagem: array<u32>;
 @group(2) @binding(2) var<storage, read_write> contorno_rw: array<vec4<f32>>;
-@group(2) @binding(3) var<storage, read_write> cblocos_rw: array<vec4<f32>>;
 @group(2) @binding(4) var<storage, read_write> ccopias_rw: array<vec4<u32>>;
 @group(2) @binding(5) var<storage, read_write> ccaixas_rw: array<vec4<f32>>;
-@group(2) @binding(6) var<storage, read_write> cmascaras_rw: array<u32>;
-// ⭐ doc 121 §9.7 — os argumentos do despacho INDIRECTO de `cs_celulas` (`x, y, z` grupos), escritos
-// pelo `cs_soma`: o total de linhas só existe na placa, e lê-lo no CPU custaria dois quadros.
+// Os registos de célula (`REGISTO` palavras): atómicos, porque os passes por ARESTA (doc 121 §9.8)
+// somam-lhes fundos e contagens de muitos fios ao mesmo tempo.
+@group(2) @binding(6) var<storage, read_write> ccelulas_rw: array<atomic<u32>>;
+// ⭐ doc 121 §9.7–§9.8 — os argumentos dos despachos INDIRECTOS (`x, y, z` grupos), escritos pelo
+// `cs_soma`: `[0, 3)` um fio por LINHA de ecrã, `[3, 6)` um fio por ARESTA. Os totais só existem na
+// placa, e lê-los no CPU custaria dois quadros.
 @group(2) @binding(7) var<storage, read_write> despacho_rw: array<u32>;
+// ⭐ doc 121 §9.8 — as LISTAS de arestas das células (cópias das arestas, para o desenho as ler
+// seguidas) e o total pedido, que cada fileira reserva de uma vez. ⚠️ O total passa da capacidade
+// quando ela não chega: é esse número que o CPU lê para a fazer crescer (`contorno.rs`).
+@group(2) @binding(8) var<storage, read_write> listas_rw: array<vec4<f32>>;
+@group(2) @binding(9) var<storage, read_write> lista_total: array<atomic<u32>>;
 
-// O estado da emissão de UMA cópia (um fio por cópia).
-//
-// ⭐ **DUAS correntes, para um bloco à esquerda custar DOIS números e não oito arestas.** Os lados
-// longos dos troços de um eixo encadeiam-se: o de cima de um troço acaba onde o do seguinte começa
-// (a mesma bissectriz), e o de baixo também — mas no sentido CONTRÁRIO. ⇒ as arestas que andam com
-// o eixo escrevem-se para a FRENTE a partir do início da cópia (`cursor`), e as que andam contra ele
-// para TRÁS a partir do fim (`cursor_b`) — lidas por ordem de memória, as duas são correntes. Um
-// bloco cujas oito arestas se tocam ponta a ponta (conferido AO BIT em `cs_escreve`) e que fica todo
-// à esquerda do pixel soma `clamp(y₀) − clamp(y₈)`: a faixa telescopa.
+// O estado da emissão de UMA cópia (um fio por cópia). A ordem das arestas não importa a ninguém: as
+// células as tomam uma a uma (doc 121 §9.8).
 var<private> cursor: u32;
-var<private> cursor_b: u32;
-var<private> escrever: bool;
 var<private> base_saida: u32;
 var<private> limite_saida: u32;
 var<private> cmin: vec2<f32>;
 var<private> cmax: vec2<f32>;
-// O último ponto da corrente da frente e o primeiro da de trás (o enchimento põe-se entre as duas).
-var<private> ultimo: vec2<f32>;
-var<private> cabeca_b: vec2<f32>;
 
-fn emite_em(p0: vec2<f32>, p1: vec2<f32>, atras: bool) {
-    if escrever && cursor + cursor_b < limite_saida {
-        if atras {
-            contorno_rw[base_saida + limite_saida - 1u - cursor_b] = vec4<f32>(p0, p1);
-            cabeca_b = p0;
-        } else {
-            contorno_rw[base_saida + cursor] = vec4<f32>(p0, p1);
-            ultimo = p1;
-        }
+fn emite(p0: vec2<f32>, p1: vec2<f32>) {
+    if cursor < limite_saida {
+        contorno_rw[base_saida + cursor] = vec4<f32>(p0, p1);
         cmin = min(cmin, min(p0, p1));
         cmax = max(cmax, max(p0, p1));
     }
-    if atras {
-        cursor_b += 1u;
-    } else {
-        cursor += 1u;
-    }
-}
-
-fn emite(p0: vec2<f32>, p1: vec2<f32>) {
-    emite_em(p0, p1, false);
+    cursor += 1u;
 }
 
 // Uma aresta com o sentido da peça: o `orienta` da soma por pixel inverte a peça inteira quando
 // ela gira ao contrário, e inverter uma aresta inverte o sinal da contribuição dela.
 fn aresta(p0: vec2<f32>, p1: vec2<f32>, positivo: bool) {
-    aresta_em(p0, p1, positivo, false);
-}
-
-fn aresta_em(p0: vec2<f32>, p1: vec2<f32>, positivo: bool, atras: bool) {
     if positivo {
-        emite_em(p0, p1, atras);
+        emite(p0, p1);
     } else {
-        emite_em(p1, p0, atras);
+        emite(p1, p0);
     }
 }
 
@@ -238,10 +216,6 @@ fn emite_peca(it: Eixo, lin: vec4<f32>, t: vec2<f32>, caneta: f32) {
         }
         // O quadrilátero `a+m0 → b+m1 → b−m1 → a−m0`, sem as arestas de ponta que a faixa partilha
         // com o vizinho (o vizinho também não escreve a dele: as duas anulavam-se).
-        //
-        // ⚠️ A ORDEM é a das correntes: a ponta de trás chega ao início do lado que anda com o eixo,
-        // ele, e a ponta da frente sai do fim dele — as três encadeiam na frente. O lado que anda
-        // CONTRA o eixo vai para trás. Com `s` negativo os papéis trocam (`aresta` inverte cada uma).
         let q0 = a + m0;
         let q1 = b + m1;
         let q2 = b - m1;
@@ -250,8 +224,8 @@ fn emite_peca(it: Eixo, lin: vec4<f32>, t: vec2<f32>, caneta: f32) {
         if !faixa0 {
             aresta(q3, q0, s);
         }
-        aresta_em(q0, q1, s, !s);
-        aresta_em(q2, q3, s, s);
+        aresta(q0, q1, s);
+        aresta(q2, q3, s);
         if !faixa1 {
             aresta(q1, q2, s);
         }
@@ -270,7 +244,6 @@ fn emite_peca(it: Eixo, lin: vec4<f32>, t: vec2<f32>, caneta: f32) {
 // As peças do eixo de uma cópia (os cabeçalhos de bloco não desenham nada).
 fn percorre(cp: Copia) {
     cursor = 0u;
-    cursor_b = 0u;
     let caneta = bitcast<f32>(cp.eixo_rg.w);
     for (var i = cp.eixo_rg.x; i < cp.eixo_rg.x + cp.eixo_rg.y; i += 1u) {
         let it = eixo[i];
@@ -283,7 +256,7 @@ fn percorre(cp: Copia) {
 
 // ⭐ doc 121 §9.6 — **O QUE UMA CÓPIA ESCREVE**, decidido igual nas duas passagens: os segmentos
 // LOCAIS do preenchimento e das marcas (que se transformam um a um) e, com o eixo, o contorno
-// gerado; e as LINHAS de ecrã das máscaras, que saem da caixa ESTIMADA (a exacta só se conhece
+// gerado; e as LINHAS de ecrã das células, que saem da caixa ESTIMADA (a exacta só se conhece
 // depois de escrever, e a contagem tem de lhe chegar antes).
 struct Plano {
     cp: Copia,
@@ -295,7 +268,7 @@ struct Plano {
     m0: u32,
     nm: u32,
     eixo: bool,
-    // A primeira linha do ecrã com máscara e quantas; a primeira coluna e quantas CÉLULAS por linha.
+    // A primeira linha do ecrã com células e quantas; a primeira coluna e quantas CÉLULAS por linha.
     y0: f32,
     linhas: u32,
     x0: f32,
@@ -320,7 +293,7 @@ fn plano_de(ii: u32) -> Plano {
     p.eixo = p.cp.eixo_rg.y > 0u;
     p.nm = select(rg.w, p.cp.eixo_rg.z, p.eixo);
     // ⚠️ Um pixel de folga de cada lado: a caixa estimada é a mesma que o quad do caminho de sempre
-    // usa, e a máscara não pode ficar curta da exacta por um arredondamento.
+    // usa, e as células não podem ficar curtas da exacta por um arredondamento.
     let cx = caixa_estimada(p.cp, rec);
     let lo = floor(cx.xy) - vec2<f32>(1.0);
     let hi = ceil(cx.zw) + vec2<f32>(1.0);
@@ -347,8 +320,8 @@ fn plano_de(ii: u32) -> Plano {
 // ⭐ doc 121 §9.6 — **QUANTAS ARESTAS UMA PEÇA PODE EMITIR, sem a geometria dela.** A contagem
 // corria o `percorre` inteiro (bissectrizes, juntas, leques) só para saber um número, e a escrita
 // corria-o outra vez. ⇒ a contagem usa este LIMITE SUPERIOR — o pior caso de cada ramo de
-// `emite_peca`, que só depende do tipo e do raio no ecrã —, e a escrita arruma as duas correntes
-// no fim (`cs_escreve`). O leque de `k` passos emite no máximo `3k` arestas (a primeira, a de cada
+// `emite_peca`, que só depende do tipo e do raio no ecrã —, e a escrita usa só o que precisou
+// (`cs_escreve`). O leque de `k` passos emite no máximo `3k` arestas (a primeira, a de cada
 // passo, as duas de uma troca de sentido e a de fecho); a junta é o pior entre o quadrilátero (4) e
 // o leque; o troço são 4 mais a junta de quem chega.
 fn arestas_do_leque(r: f32) -> u32 {
@@ -385,21 +358,6 @@ fn indice(gid: vec3<u32>, nwg: vec3<u32>) -> u32 {
     return gid.x + gid.y * nwg.x * 64u;
 }
 
-fn palavras_por_linha(arestas: u32) -> u32 {
-    return (arestas / SEGS_POR_BLOCO + 31u) / 32u;
-}
-
-// Quantas palavras um REGISTO de célula ocupa: os três fundos (`f32`) de CADA uma das
-// `ALTURA_DA_CELULA` fileiras e a máscara (uma só, a união das fileiras — doc 121 §9.7).
-fn registo_de_celula(arestas: u32) -> u32 {
-    return 3u * ALTURA_DA_CELULA + palavras_por_linha(arestas);
-}
-
-// Quantas FAIXAS de `ALTURA_DA_CELULA` fileiras cobrem `linhas` fileiras.
-fn faixas_de(linhas: u32) -> u32 {
-    return (linhas + ALTURA_DA_CELULA - 1u) / ALTURA_DA_CELULA;
-}
-
 @compute @workgroup_size(64)
 fn cs_conta(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgroups) nwg: vec3<u32>) {
     let ii = indice(gid, nwg);
@@ -416,11 +374,11 @@ fn cs_conta(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgrou
             nc = (limite_de_arestas(p.cp) + SEGS_POR_BLOCO - 1u) / SEGS_POR_BLOCO * SEGS_POR_BLOCO;
         }
         ne = p.nf + p.nm + nc;
-        nmask = faixas_de(p.linhas) * p.celulas * registo_de_celula(ne);
+        nmask = p.linhas * p.celulas * REGISTO;
         if nmask == 0u {
             ne = 0u;
         } else {
-            linhas = faixas_de(p.linhas);
+            linhas = p.linhas;
         }
     }
     contagem[ii] = ne;
@@ -432,6 +390,16 @@ fn cs_conta(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgrou
 // `0` faz o prefixo dos `256` parciais, e cada fio reescreve o seu pedaço. ⚠️ Determinístico — a
 // ordem das somas não depende do escalonamento, e é isso que faz a mesma cena dar os mesmos sítios.
 var<workgroup> parcial: array<u32, 256>;
+
+// Os argumentos de um despacho indirecto de `fios` fios em grupos de `64`, a partir de `em`: em duas
+// dimensões quando passa de `65 535` grupos (o tecto de uma dimensão), como o de `indice`.
+fn despacha(em: u32, fios: u32) {
+    let grupos = (fios + 63u) / 64u;
+    let gx = min(grupos, 65535u);
+    despacho_rw[em] = gx;
+    despacho_rw[em + 1u] = select(1u, (grupos + gx - 1u) / max(gx, 1u), gx > 0u);
+    despacho_rw[em + 2u] = 1u;
+}
 var<workgroup> parcial_m: array<u32, 256>;
 var<workgroup> parcial_l: array<u32, 256>;
 
@@ -473,13 +441,11 @@ fn cs_soma(@builtin(local_invocation_index) li: u32) {
         contagem[n] = acc;
         contagem[m0 + n] = acc_m;
         contagem[l0 + n] = acc_l;
-        // ⭐ doc 121 §9.7 — o despacho de `cs_celulas`: um fio por LINHA, em duas dimensões quando
-        // passa de `65 535` grupos (o tecto de uma dimensão), como o de `indice`.
-        let grupos = (acc_l + 63u) / 64u;
-        let gx = min(grupos, 65535u);
-        despacho_rw[0] = gx;
-        despacho_rw[1] = select(1u, (grupos + gx - 1u) / max(gx, 1u), gx > 0u);
-        despacho_rw[2] = 1u;
+        // ⭐ doc 121 §9.7–§9.8 — os despachos das células: um fio por LINHA e um por ARESTA.
+        despacha(0u, acc_l);
+        despacha(3u, acc);
+        // O total das listas recomeça a cada quadro (o `cs_celulas` corre depois deste passe).
+        atomicStore(&lista_total[0], 0u);
     }
     workgroupBarrier();
     var acc = parcial[li];
@@ -527,12 +493,12 @@ fn cs_escreve(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgr
     let nmask_reservado = contagem[m0 + ii + 1u] - mbase;
     // ⚠️ Fora da capacidade, a cópia fica com o caminho de sempre — nunca um contorno truncado.
     if reservado == 0u || base + reservado > contas.cap
-        || mbase + nmask_reservado > contas.cap_mascaras {
+        || mbase + nmask_reservado > contas.cap_celulas {
         return;
     }
     let p = plano_de(ii);
     if !p.valido || p.nf + p.nm > reservado
-        || faixas_de(p.linhas) * p.celulas * registo_de_celula(reservado) != nmask_reservado {
+        || p.linhas * p.celulas * REGISTO != nmask_reservado {
         return;
     }
     cmin = vec2<f32>(3.0e38);
@@ -543,82 +509,89 @@ fn cs_escreve(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgr
     var nc = 0u;
     if nc_reservado > 0u {
         let bc = base + p.nf + p.nm;
-        escrever = true;
         base_saida = bc;
         limite_saida = nc_reservado;
-        ultimo = vec2<f32>(0.0);
-        cabeca_b = vec2<f32>(0.0);
         percorre(p.cp);
         // ⚠️ O limite da contagem é um pior caso: uma escrita que o passasse seria um contorno
         // truncado. ⇒ é deitada fora e a cópia segue pelo caminho de sempre.
-        let total = cursor + cursor_b;
-        if total > nc_reservado {
+        if cursor > nc_reservado {
             return;
         }
-        nc = (total + SEGS_POR_BLOCO - 1u) / SEGS_POR_BLOCO * SEGS_POR_BLOCO;
-        // A corrente de trás foi escrita a partir do FIM da reserva: desce para o fim do que se
-        // usa (o destino nunca passa à frente da origem, logo a cópia em ordem crescente é segura).
-        let de = bc + nc_reservado - cursor_b;
-        let para = bc + nc - cursor_b;
-        for (var i = 0u; i < cursor_b; i += 1u) {
-            contorno_rw[para + i] = contorno_rw[de + i];
-        }
-        // O enchimento, ENTRE as duas correntes: arestas de comprimento zero no último ponto da da
-        // frente (contribuem `0`, não alargam caixa nenhuma — no `(0, 0)` alargariam a do bloco até
-        // à origem do ecrã — e continuam a corrente; sem corrente da frente, no primeiro ponto da de
-        // trás).
-        let enche = select(cabeca_b, ultimo, cursor > 0u);
-        for (var i = cursor; i < nc - cursor_b; i += 1u) {
-            contorno_rw[bc + i] = vec4<f32>(enche, enche);
+        nc = (cursor + SEGS_POR_BLOCO - 1u) / SEGS_POR_BLOCO * SEGS_POR_BLOCO;
+        // O enchimento até ao bloco inteiro: arestas de comprimento zero (`dy = 0` em toda a fileira —
+        // as células não as vêem).
+        for (var i = cursor; i < nc; i += 1u) {
+            contorno_rw[bc + i] = vec4<f32>(0.0);
         }
     }
     // O que se usa: as arestas e o registo de célula do que foi DE FACTO escrito.
     let ne = p.nf + p.nm + nc;
-    let palavras = palavras_por_linha(ne);
-    // Por bloco, DOIS `vec4`: a caixa, e `(y₀, y₈, encadeado, 0)` — `encadeado` quando cada aresta
-    // começa EXACTAMENTE onde a anterior acabou (a igualdade é de bits: a soma telescopa só então).
-    let b0 = base / SEGS_POR_BLOCO;
-    let nb = ne / SEGS_POR_BLOCO;
-    for (var bl = 0u; bl < nb; bl += 1u) {
-        let e0 = base + bl * SEGS_POR_BLOCO;
-        var lo = vec2<f32>(3.0e38);
-        var hi = vec2<f32>(-3.0e38);
-        var corrente = true;
-        var antes = contorno_rw[e0].xy;
-        for (var j = 0u; j < SEGS_POR_BLOCO; j += 1u) {
-            let e = contorno_rw[e0 + j];
-            lo = min(lo, min(e.xy, e.zw));
-            hi = max(hi, max(e.xy, e.zw));
-            corrente = corrente && all(e.xy == antes);
-            antes = e.zw;
-        }
-        let y0b = contorno_rw[e0].y;
-        let y8b = antes.y;
-        cblocos_rw[2u * (b0 + bl)] = vec4<f32>(lo, hi);
-        cblocos_rw[2u * (b0 + bl) + 1u] = vec4<f32>(y0b, y8b, select(0.0, 1.0, corrente), 0.0);
-    }
     ccaixas_rw[ii] = vec4<f32>(cmin, cmax);
-    ccopias_rw[3u * ii] = vec4<u32>(b0, p.nf / SEGS_POR_BLOCO, p.nm / SEGS_POR_BLOCO, nc / SEGS_POR_BLOCO);
-    ccopias_rw[3u * ii + 1u] = vec4<u32>(mbase, p.linhas, palavras, bitcast<u32>(p.y0));
+    ccopias_rw[3u * ii] = vec4<u32>(base / SEGS_POR_BLOCO, p.nf / SEGS_POR_BLOCO, p.nm / SEGS_POR_BLOCO, nc / SEGS_POR_BLOCO);
+    ccopias_rw[3u * ii + 1u] = vec4<u32>(mbase, p.linhas, 0u, bitcast<u32>(p.y0));
     ccopias_rw[3u * ii + 2u] = vec4<u32>(bitcast<u32>(p.x0), p.celulas, 0u, 0u);
 }
 
-// ⭐⭐ doc 121 §9.7 — **AS CÉLULAS, UMA LINHA DE ECRÃ POR FIO.** No `cs_escreve` um fio por CÓPIA
-// percorria todas as linhas dela (`linhas × blocos` iterações em série): com `72` estrelas grandes a
-// placa tinha `72` fios a trabalhar e o resto parado (medido no proxy de telemóvel: `~0,42 ms` de
-// células). Aqui cada fio é UMA linha de UMA cópia — as cópias de linhas `[l, l + linhas)` no
-// prefixo de linhas do `cs_soma` —, e as linhas não se tocam: ⇒ nenhum atómico, e o fundo de cada
-// célula soma-se pela MESMA ordem dos blocos, logo os bits são os de antes.
+// ⭐⭐ doc 121 §9.8 — **AS CÉLULAS E AS LISTAS, EM QUATRO PASSES LARGOS.** Cada fileira de pixels de uma
+// cópia é partida em células de `LARGURA_DA_CELULA` px; cada célula guarda o FUNDO (as arestas que,
+// nessa fileira, ficam todas à esquerda dela — o `backdrop` do Vello) e a LISTA das que a tocam — a
+// lista de segmentos que o Vello guarda por ladrilho.
 //
-// ⚠️ Uma cópia que o `cs_escreve` recusou (capacidade, contagem que não bateu) tem `(0, 0, 0)` nos
-// blocos e é saltada: os registos dela não se lêem.
-@compute @workgroup_size(64)
-fn cs_celulas(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgroups) nwg: vec3<u32>) {
-    let g = indice(gid, nwg);
+// Um fio por FILEIRA, como no §9.7, eram `~2 900` fios na sonda das estrelas grandes, cada um a
+// percorrer em série centenas de arestas — a placa integrada ficava à espera da memória (`1,5 ms` de
+// cálculo). Aqui o trabalho é por ARESTA (`~70 000` fios, cada um com uma ou duas fileiras):
+//
+// 1. `cs_zera` — um fio por fileira apaga os registos dela;
+// 2. `cs_conta_listas` — um fio por aresta soma o fundo e conta a lista de cada célula (atómicos);
+// 3. `cs_lugar_das_listas` — um fio por fileira reserva o lugar das listas dela de uma vez, faz o
+//    prefixo do fundo e põe cada contagem como cursor;
+// 4. `cs_escreve_listas` — um fio por aresta escreve-a na lista de cada célula que toca.
+//
+// ⭐ **Determinístico por construção:** o fundo soma-se em PONTO FIXO (`ESCALA_FIXA`), e a soma de
+// inteiros não depende da ordem — e o fragmento soma a lista também em ponto fixo, logo a ORDEM em que
+// os atómicos arrumaram as arestas numa lista não muda um bit da imagem.
+//
+// ⚠️ Uma fileira que não cabe na capacidade fica `SEM_LISTA` e o desenho refaz-lhe os pixels pelo
+// caminho de sempre. Uma cópia que o `cs_escreve` recusou (capacidade, contagem que não bateu) tem
+// `(0, 0, 0)` nos blocos e é saltada: os registos dela não se lêem.
+
+// Uma aresta na fileira `[y, y + 1)`: `(dy, x mínimo, x máximo)`. `dy` é o da `contribuicao` (zero ⇒ a
+// aresta não soma nada a pixel nenhum da fileira); os `x` são os dos dois PONTOS, sem recortar à
+// fileira — um intervalo que contém o do pedaço. ⚠️ É exacto mesmo assim: um pixel cujo canto + 1 não
+// passa do `x` mínimo lê `0` da `contribuicao`, um cujo canto não fica antes do máximo lê `dy`, e entre
+// os dois a lista leva a aresta e o fragmento faz a conta inteira — numa aresta que atravessa várias
+// fileiras a lista só fica mais longa.
+fn na_fileira(e: vec4<f32>, y: f32) -> vec3<f32> {
+    let y0 = clamp(e.y - y, 0.0, 1.0);
+    let y1 = clamp(e.w - y, 0.0, 1.0);
+    return vec3<f32>(y0 - y1, min(e.x, e.z), max(e.x, e.z));
+}
+
+// As células `[ka, kb)` de uma fileira que um pedaço `[x mín, x máx]` toca: a partir da `kb` ele fica
+// todo à esquerda de todo pixel (o canto do pixel é `≥` o máximo) e é fundo; antes da `ka` todo à
+// direita (o canto + 1 é `≤` o mínimo) e soma zero.
+fn celulas_do_pedaco(f: vec3<f32>, x0: f32, celulas: u32) -> vec2<u32> {
+    let ka = u32(clamp(floor((f.y - x0) / LARGURA_DA_CELULA), 0.0, f32(celulas)));
+    let kb = u32(clamp(ceil((f.z - x0) / LARGURA_DA_CELULA), 0.0, f32(celulas)));
+    return vec2<u32>(ka, kb);
+}
+
+// O que um fio de FILEIRA sabe: a cópia, a fileira dentro dela e o primeiro registo dela.
+struct Fileira {
+    valida: bool,
+    ii: u32,
+    r: u32,
+    celulas: u32,
+    registo: u32,
+}
+
+fn fileira_de(g: u32) -> Fileira {
+    var f: Fileira;
+    f.valida = false;
     let n = contas.n;
     let l0 = 2u * (n + 1u);
     if g >= contagem[l0 + n] {
-        return;
+        return f;
     }
     // A cópia: a ÚLTIMA cujo início de linhas é `≤ g` (uma cópia sem linhas partilha o início da
     // seguinte e perde para ela, que é a que tem a linha).
@@ -632,100 +605,179 @@ fn cs_celulas(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgr
             b = m;
         }
     }
-    let ii = a;
-    // A faixa `q` da cópia: as fileiras `[q·H, min((q + 1)·H, linhas))`.
-    let q = g - contagem[l0 + ii];
-    let c0 = ccopias_rw[3u * ii];
-    if c0.y + c0.z + c0.w == 0u {
+    let c0 = ccopias_rw[3u * a];
+    let c1 = ccopias_rw[3u * a + 1u];
+    f.r = g - contagem[l0 + a];
+    if c0.y + c0.z + c0.w == 0u || f.r >= c1.y {
+        return f;
+    }
+    f.valida = true;
+    f.ii = a;
+    f.celulas = ccopias_rw[3u * a + 2u].y;
+    f.registo = c1.x + f.r * f.celulas * REGISTO;
+    return f;
+}
+
+// O que um fio de ARESTA sabe: a aresta (o índice dela é o do fio — as arestas de uma cópia começam
+// onde a reserva dela começa), a família e a geometria das fileiras da cópia.
+struct ArestaDoFio {
+    valida: bool,
+    e: vec4<f32>,
+    fam: u32,
+    y0: f32,
+    linhas: u32,
+    x0: f32,
+    celulas: u32,
+    registo0: u32,
+}
+
+fn aresta_de(g: u32) -> ArestaDoFio {
+    var a: ArestaDoFio;
+    a.valida = false;
+    let n = contas.n;
+    if g >= contagem[n] {
+        return a;
+    }
+    // A cópia: a ÚLTIMA cuja reserva começa em `≤ g`.
+    var lo = 0u;
+    var hi = n;
+    while hi - lo > 1u {
+        let m = (lo + hi) / 2u;
+        if contagem[m] <= g {
+            lo = m;
+        } else {
+            hi = m;
+        }
+    }
+    let c0 = ccopias_rw[3u * lo];
+    // ⚠️ A reserva é um pior caso: só as arestas DE FACTO escritas contam.
+    let bl = (g - contagem[lo]) / SEGS_POR_BLOCO;
+    if bl >= c0.y + c0.z + c0.w {
+        return a;
+    }
+    let c1 = ccopias_rw[3u * lo + 1u];
+    let c2 = ccopias_rw[3u * lo + 2u];
+    a.valida = true;
+    a.e = contorno_rw[g];
+    a.fam = select(select(2u, 1u, bl < c0.y + c0.z), 0u, bl < c0.y);
+    a.y0 = bitcast<f32>(c1.w);
+    a.linhas = c1.y;
+    a.x0 = bitcast<f32>(c2.x);
+    a.celulas = c2.y;
+    a.registo0 = c1.x;
+    return a;
+}
+
+// As fileiras da cópia que a aresta pode tocar: `[floor(y mín), ceil(y máx))`, recortadas às da cópia.
+fn fileiras_da_aresta(a: ArestaDoFio) -> vec2<u32> {
+    let ra = u32(clamp(floor(min(a.e.y, a.e.w)) - a.y0, 0.0, f32(a.linhas)));
+    let rb = u32(clamp(ceil(max(a.e.y, a.e.w)) - a.y0, 0.0, f32(a.linhas)));
+    return vec2<u32>(ra, rb);
+}
+
+@compute @workgroup_size(64)
+fn cs_zera(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgroups) nwg: vec3<u32>) {
+    let f = fileira_de(indice(gid, nwg));
+    if !f.valida {
         return;
     }
-    let c1 = ccopias_rw[3u * ii + 1u];
-    let c2 = ccopias_rw[3u * ii + 2u];
-    let mbase = c1.x;
-    let linhas = c1.y;
-    let r0 = q * ALTURA_DA_CELULA;
-    if r0 >= linhas {
+    for (var k = 0u; k < f.celulas * REGISTO; k += 1u) {
+        atomicStore(&ccelulas_rw[f.registo + k], 0u);
+    }
+}
+
+@compute @workgroup_size(64)
+fn cs_conta_listas(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgroups) nwg: vec3<u32>) {
+    let a = aresta_de(indice(gid, nwg));
+    if !a.valida {
         return;
     }
-    let r1 = min(r0 + ALTURA_DA_CELULA, linhas);
-    let fundos = 3u * ALTURA_DA_CELULA;
-    let registo = fundos + c1.z;
-    let y0 = bitcast<f32>(c1.w);
-    let x0 = bitcast<f32>(c2.x);
-    let celulas = c2.y;
-    let b0 = c0.x;
-    let fim_f = c0.y;
-    let fim_m = c0.y + c0.z;
-    let nb = c0.y + c0.z + c0.w;
-    let faixa = mbase + q * celulas * registo;
-    // A faixa começa vazia: fundos a `0,0` (os bits de `0.0` são `0`) e máscaras apagadas.
-    for (var k = 0u; k < celulas * registo; k += 1u) {
-        cmascaras_rw[faixa + k] = 0u;
-    }
-    for (var bl = 0u; bl < nb; bl += 1u) {
-        let cx = cblocos_rw[2u * (b0 + bl)];
-        let lo = cx.xy;
-        let hi = cx.zw;
-        // ⭐ A fileira de pixels `r` (do canto `y0 + r` ao `y0 + r + 1`) é tocada pelo bloco sse
-        // `lo.y < y0 + r + 1` e `hi.y > y0 + r` — de `floor(lo.y)` a `ceil(hi.y) − 1`, exactos em
-        // `f32`. Um bloco de altura zero (só arestas horizontais ou o enchimento) soma `0` em toda a
-        // parte e não acende nada.
-        if hi.y <= lo.y {
+    let rs = fileiras_da_aresta(a);
+    for (var r = rs.x; r < rs.y; r += 1u) {
+        let f = na_fileira(a.e, a.y0 + f32(r));
+        if f.x == 0.0 {
             continue;
         }
-        let ra = max(u32(clamp(floor(lo.y) - y0, 0.0, f32(linhas))), r0);
-        let rb = min(u32(clamp(ceil(hi.y) - y0, 0.0, f32(linhas))), r1);
-        if ra >= rb {
-            continue;
+        let ks = celulas_do_pedaco(f, a.x0, a.celulas);
+        let q0 = a.registo0 + r * a.celulas * REGISTO;
+        if ks.y < a.celulas {
+            atomicAdd(&ccelulas_rw[q0 + ks.y * REGISTO + a.fam], bitcast<u32>(fixo(f.x)));
         }
-        // ⭐⭐ As CÉLULAS: a caixa toca as células `ka .. kb` da faixa (a máscara, uma para as
-        // fileiras todas — numa fileira que o bloco não toca ele soma ZERO EXACTO, logo um bit a mais
-        // custa a leitura e não muda a soma) e fica TODA À ESQUERDA de todo pixel a partir da `kb` —
-        // lá a soma dela é o FUNDO de cada fileira, que não depende do `x` do pixel e se soma uma vez
-        // aqui em vez de uma vez por pixel (o `backdrop` do Vello).
-        let ka = u32(clamp(floor((lo.x - x0) / LARGURA_DA_CELULA), 0.0, f32(celulas)));
-        let kb = u32(clamp(ceil((hi.x - x0) / LARGURA_DA_CELULA), 0.0, f32(celulas)));
-        let bit = 1u << (bl % 32u);
-        let palavra = fundos + bl / 32u;
-        let cat = select(select(2u, 1u, bl < fim_m), 0u, bl < fim_f);
-        for (var k = ka; k < kb; k += 1u) {
-            let i = faixa + k * registo + palavra;
-            cmascaras_rw[i] = cmascaras_rw[i] | bit;
-        }
-        if kb < celulas {
-            let fim = cblocos_rw[2u * (b0 + bl) + 1u];
-            let e0 = (b0 + bl) * SEGS_POR_BLOCO;
-            for (var r = ra; r < rb; r += 1u) {
-                let y = y0 + f32(r);
-                var v = 0.0;
-                if fim.z > 0.5 {
-                    v = clamp(fim.x - y, 0.0, 1.0) - clamp(fim.y - y, 0.0, 1.0);
-                } else {
-                    for (var j = 0u; j < SEGS_POR_BLOCO; j += 1u) {
-                        let e = contorno_rw[e0 + j];
-                        v += clamp(e.y - y, 0.0, 1.0) - clamp(e.w - y, 0.0, 1.0);
-                    }
-                }
-                let i = faixa + kb * registo + 3u * (r - r0) + cat;
-                cmascaras_rw[i] = bitcast<u32>(bitcast<f32>(cmascaras_rw[i]) + v);
-            }
+        for (var k = ks.x; k < ks.y; k += 1u) {
+            atomicAdd(&ccelulas_rw[q0 + k * REGISTO + 4u + a.fam], 1u);
         }
     }
-    // O fundo de uma célula é o de TODOS os blocos que acabam antes dela: o prefixo ao longo de
-    // cada fileira da faixa.
-    for (var r = r0; r < r1; r += 1u) {
-        let f = 3u * (r - r0);
-        var acc = vec3<f32>(0.0);
-        for (var k = 0u; k < celulas; k += 1u) {
-            let i = faixa + k * registo + f;
-            acc += vec3<f32>(
-                bitcast<f32>(cmascaras_rw[i]),
-                bitcast<f32>(cmascaras_rw[i + 1u]),
-                bitcast<f32>(cmascaras_rw[i + 2u]),
-            );
-            cmascaras_rw[i] = bitcast<u32>(acc.x);
-            cmascaras_rw[i + 1u] = bitcast<u32>(acc.y);
-            cmascaras_rw[i + 2u] = bitcast<u32>(acc.z);
+}
+
+@compute @workgroup_size(64)
+fn cs_lugar_das_listas(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgroups) nwg: vec3<u32>) {
+    let f = fileira_de(indice(gid, nwg));
+    if !f.valida {
+        return;
+    }
+    var total = 0u;
+    for (var k = 0u; k < f.celulas; k += 1u) {
+        let q = f.registo + k * REGISTO;
+        total += atomicLoad(&ccelulas_rw[q + 4u]) + atomicLoad(&ccelulas_rw[q + 5u])
+            + atomicLoad(&ccelulas_rw[q + 6u]);
+    }
+    var inicio = 0u;
+    if total > 0u {
+        inicio = atomicAdd(&lista_total[0], total);
+    }
+    if inicio > contas.cap_listas || total > contas.cap_listas - inicio {
+        for (var k = 0u; k < f.celulas; k += 1u) {
+            atomicStore(&ccelulas_rw[f.registo + k * REGISTO + 3u], SEM_LISTA);
+        }
+        return;
+    }
+    // Os registos passam a `(fundos, inicio, cursor_f, cursor_m, cursor_c)`: cada cursor começa onde a
+    // sua família começa e, escritas as listas, acaba onde ela acaba — `(inicio, fim_f, fim_m, fim)`.
+    // O fundo de uma célula é o de TODAS as arestas que acabam antes dela: o prefixo ao longo da
+    // fileira, em inteiros.
+    var acc = inicio;
+    var fundo = vec3<i32>(0);
+    for (var k = 0u; k < f.celulas; k += 1u) {
+        let q = f.registo + k * REGISTO;
+        fundo += vec3<i32>(
+            bitcast<i32>(atomicLoad(&ccelulas_rw[q])),
+            bitcast<i32>(atomicLoad(&ccelulas_rw[q + 1u])),
+            bitcast<i32>(atomicLoad(&ccelulas_rw[q + 2u])),
+        );
+        atomicStore(&ccelulas_rw[q], bitcast<u32>(fundo.x));
+        atomicStore(&ccelulas_rw[q + 1u], bitcast<u32>(fundo.y));
+        atomicStore(&ccelulas_rw[q + 2u], bitcast<u32>(fundo.z));
+        let nf = atomicLoad(&ccelulas_rw[q + 4u]);
+        let nm = atomicLoad(&ccelulas_rw[q + 5u]);
+        let nc = atomicLoad(&ccelulas_rw[q + 6u]);
+        atomicStore(&ccelulas_rw[q + 3u], acc);
+        atomicStore(&ccelulas_rw[q + 4u], acc);
+        atomicStore(&ccelulas_rw[q + 5u], acc + nf);
+        atomicStore(&ccelulas_rw[q + 6u], acc + nf + nm);
+        acc += nf + nm + nc;
+    }
+}
+
+@compute @workgroup_size(64)
+fn cs_escreve_listas(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgroups) nwg: vec3<u32>) {
+    let a = aresta_de(indice(gid, nwg));
+    if !a.valida {
+        return;
+    }
+    let rs = fileiras_da_aresta(a);
+    for (var r = rs.x; r < rs.y; r += 1u) {
+        let f = na_fileira(a.e, a.y0 + f32(r));
+        if f.x == 0.0 {
+            continue;
+        }
+        let q0 = a.registo0 + r * a.celulas * REGISTO;
+        if atomicLoad(&ccelulas_rw[q0 + 3u]) == SEM_LISTA {
+            continue;
+        }
+        let ks = celulas_do_pedaco(f, a.x0, a.celulas);
+        for (var k = ks.x; k < ks.y; k += 1u) {
+            let i = atomicAdd(&ccelulas_rw[q0 + k * REGISTO + 4u + a.fam], 1u);
+            listas_rw[i] = a.e;
         }
     }
 }

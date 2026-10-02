@@ -43,6 +43,8 @@ pub struct Forward {
     tabela: wgpu::TextureView,
     mapa_sombra: wgpu::TextureView,
     compara: wgpu::Sampler,
+    liso: wgpu::Sampler,
+    cobertura: crate::gpu_cobertura::Cobertura,
     materiais: Option<(u32, wgpu::Texture, wgpu::TextureView)>,
     objetos: Option<(u64, wgpu::Buffer, wgpu::BindGroup)>,
     malhas: BTreeMap<u64, MalhaGpu>,
@@ -122,7 +124,8 @@ impl Forward {
         self.cor
     }
 
-    /// ⭐ **Quantos pipelines este desenhista já compilou** — fica em `4` para sempre.
+    /// ⭐ **Quantos pipelines este desenhista já compilou** — fica em `6` para sempre (objeto, chão,
+    /// sombra, cobertura, redução, codificação).
     #[must_use]
     pub fn pipelines_compilados(&self) -> usize {
         self.pipelines
@@ -163,6 +166,22 @@ impl Forward {
                     binding: 5,
                     visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 6,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 7,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                     count: None,
                 },
             ],
@@ -385,6 +404,17 @@ impl Forward {
             compare: Some(wgpu::CompareFunction::LessEqual),
             ..Default::default()
         });
+        let liso = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("ph2d-mesh-forward liso"),
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::MipmapFilterMode::Linear,
+            ..Default::default()
+        });
+        let cobertura = crate::gpu_cobertura::Cobertura::nova(&device, &modulo, &pl_sombra, &so_posicao);
         Self {
             device,
             queue,
@@ -402,11 +432,13 @@ impl Forward {
             tabela,
             mapa_sombra,
             compara,
+            liso,
+            cobertura,
             materiais: None,
             objetos: None,
             malhas: BTreeMap::new(),
             alvos: None,
-            pipelines: 4,
+            pipelines: 6,
         }
     }
 

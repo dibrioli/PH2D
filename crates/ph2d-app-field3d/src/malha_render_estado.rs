@@ -38,6 +38,10 @@ pub struct Estado {
     em_voo: Option<(Chave, BTreeMap<Entity, Xform>, Receiver<Vec<ObjetoRender>>)>,
     /// A matriz de modelo de cada objeto, na ordem de `objetos` (coluna a coluna).
     pub modelos: Vec<[[f32; 4]; 4]>,
+    /// A raiz da peça destes objetos. ⚠️ Outra raiz (outro documento) recomeça o estado NA HORA:
+    /// medido (02/10, a sonda de duas cenas seguidas), sem isto a 2.ª peça mostrava as malhas da 1.ª
+    /// até a extração dela chegar.
+    raiz: Option<Entity>,
 }
 
 thread_local! {
@@ -114,6 +118,13 @@ pub fn sync(sim: &mut ph2d_ecs::SimWorld, em_render: bool, gesto: bool) {
     ESTADO.with(|c| {
         let mut slot = c.borrow_mut();
         let st = slot.get_or_insert_with(Estado::default);
+        if st.raiz != Some(root) {
+            *st = Estado {
+                geracao: st.geracao,
+                raiz: Some(root),
+                ..Estado::default()
+            };
+        }
         st.colhe_o_voo(&chave);
         let mesmas = st.verificadas.len() == poses.len()
             && st
@@ -136,6 +147,12 @@ pub fn sync(sim: &mut ph2d_ecs::SimWorld, em_render: bool, gesto: bool) {
 }
 
 impl Estado {
+    /// Ainda não há objetos e a extração deles está a caminho: o quadro espera (mostra o anterior).
+    #[must_use]
+    pub fn esperando(&self) -> bool {
+        self.geracao == 0 || (self.objetos.is_empty() && self.em_voo.is_some())
+    }
+
     fn lanca(&mut self, entrada: Entrada, chave: Chave, poses: BTreeMap<Entity, Xform>) {
         let (tx, rx) = std::sync::mpsc::channel();
         std::thread::spawn(move || {
@@ -270,3 +287,7 @@ pub fn trava(world: &bevy_ecs::world::World, sel: &[Entity]) -> Option<&'static 
 #[cfg(test)]
 #[path = "malha_render_costura_tests.rs"]
 mod costura_tests;
+
+#[cfg(test)]
+#[path = "malha_render_sondas.rs"]
+mod sondas;

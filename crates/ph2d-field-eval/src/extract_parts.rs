@@ -33,7 +33,7 @@ pub fn extract_parts(
     let mut labeler = Labeler::new(m);
     let threads = crate::extract_planes::threads_for(m);
     let (positions, faces) =
-        crate::extract::sweep(doc, reg, depth, Some(&mut labeler), threads)?;
+        crate::extract::sweep(doc, reg, depth, Some(&mut labeler), threads, true)?;
     split(positions, faces, labeler)
 }
 

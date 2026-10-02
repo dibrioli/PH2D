@@ -23,8 +23,26 @@ use bevy_ecs::world::World;
 use ph2d_field::{Blend, FieldDoc, Node, NodeId, NodeKind, NodeShape, Op, Xform};
 use ph2d_field_ecs::{FieldMods, FieldNode, FieldVerb};
 
-/// A resolução de cada grupo: `2^DEPTH` células no diâmetro da bola dele.
-pub const DEPTH: u8 = 7;
+/// ⭐⭐ **A RESOLUÇÃO é medida, não escolhida.** Cada grupo começa com a célula de
+/// `diâmetro da peça / CELULAS_NA_PECA` e é REFEITO com o dobro enquanto mais de [`VIRADOS_MAX`] dos
+/// triângulos saírem virados contra o campo — o sintoma exacto dos espinhos de uma grade grossa
+/// demais para a parte mais fina da forma. Medido (02/10, nós da cena 28): prof `6` → `22,9 %`,
+/// `7` → `1,6 %` (serrilhado visível), `8` → `0,14 %` (liso).
+pub const CELULAS_NA_PECA: f32 = 256.0;
+/// A fração de triângulos virados acima da qual o grupo é refeito (entre o `1,6 %` serrilhado e o
+/// `0,14 %` liso da tabela de [`CELULAS_NA_PECA`]).
+pub const VIRADOS_MAX: f64 = 0.005;
+/// As profundidades possíveis. ⚠️ O tecto `8` (`257³` amostras, com a faixa estreita) é o que a
+/// entrada no Render paga em `~0,3 s` na peça mais cara medida; a `9` custaria `8×`.
+pub const PROF_MIN: u8 = 5;
+pub const PROF_MAX: u8 = 8;
+
+/// A profundidade de partida de um grupo de bola `g`, numa peça de bola `peca`.
+fn prof_inicial(g: ph2d_field_eval::bounds::Ball, peca: ph2d_field_eval::bounds::Ball) -> u8 {
+    let alvo = (2.0 * peca.radius / CELULAS_NA_PECA).max(1.0e-6);
+    let n = (2.0 * g.radius * 1.05 / alvo).max(1.0);
+    (n.log2().round() as i32).clamp(i32::from(PROF_MIN), i32::from(PROF_MAX)) as u8
+}
 
 /// ⭐ **As unidades MÓVEIS da peça**, na ordem da Hierarquia.
 #[must_use]
@@ -191,6 +209,11 @@ pub fn processa(e: &Entrada, reg: &ph2d_field_eval::hybrid::Registry) -> Vec<Obj
         })
         .collect();
     let grupos = agrupa(&bolas);
+    let peca = bolas
+        .iter()
+        .copied()
+        .reduce(ph2d_field_eval::bounds::Ball::merge)
+        .unwrap_or(ph2d_field_eval::bounds::Ball::EMPTY);
 
     let feitos: Vec<Vec<(Vec<usize>, crate::malha_render_tri::MalhaPronta)>> =
         std::thread::scope(|s| {
@@ -198,6 +221,11 @@ pub fn processa(e: &Entrada, reg: &ph2d_field_eval::hybrid::Registry) -> Vec<Obj
                 .iter()
                 .map(|g| {
                     let docs: Vec<FieldDoc> = g.iter().map(|&i| postos[i].1.clone()).collect();
+                    let bola_g = g
+                        .iter()
+                        .map(|&i| bolas[i])
+                        .reduce(ph2d_field_eval::bounds::Ball::merge)
+                        .unwrap_or(ph2d_field_eval::bounds::Ball::EMPTY);
                     // As folhas DESTE grupo: compilar as de fora seria pagar JIT por quem não
                     // pode ser dono de ponto nenhum aqui.
                     let mapa: Vec<usize> = (0..placed.len())
@@ -208,27 +236,36 @@ pub fn processa(e: &Entrada, reg: &ph2d_field_eval::hybrid::Registry) -> Vec<Obj
                         let Some(doc) = uniao(&docs) else {
                             return Vec::new();
                         };
-                        let cell = ph2d_field_eval::extract::cell_size(&doc, reg, DEPTH) as f32;
-                        let donos = ph2d_field_eval::owners::Owners::new(&sub, reg, cell);
-                        let Ok(partes) =
-                            ph2d_field_eval::extract::extract_parts(&doc, reg, DEPTH)
-                        else {
-                            return Vec::new();
-                        };
-                        let mut campo = ph2d_field_eval::hybrid::Hybrid::new(&doc, reg);
-                        partes
-                            .iter()
-                            .map(|m| {
-                                crate::malha_render_tri::prepara(
-                                    m,
-                                    &donos,
-                                    &mapa,
-                                    unidade_da_folha,
-                                    &mut campo,
-                                    cell,
-                                )
-                            })
-                            .collect()
+                        let mut prof = prof_inicial(bola_g, peca);
+                        loop {
+                            let cell = ph2d_field_eval::extract::cell_size(&doc, reg, prof) as f32;
+                            let donos = ph2d_field_eval::owners::Owners::new(&sub, reg, cell);
+                            let Ok(partes) =
+                                ph2d_field_eval::extract::extract_parts(&doc, reg, prof)
+                            else {
+                                return Vec::new();
+                            };
+                            let feitas: Vec<(Vec<usize>, crate::malha_render_tri::MalhaPronta)> = partes
+                                .iter()
+                                .map(|m| {
+                                    crate::malha_render_tri::prepara(
+                                        m,
+                                        &donos,
+                                        &mapa,
+                                        unidade_da_folha,
+                                        (&doc, reg),
+                                        cell,
+                                    )
+                                })
+                                .collect();
+                            let (v, t) = feitas
+                                .iter()
+                                .fold((0, 0), |(v, t), (_, m)| (v + m.virados, t + m.triangulos()));
+                            if prof >= PROF_MAX || (v as f64) <= VIRADOS_MAX * t as f64 {
+                                return feitas;
+                            }
+                            prof += 1;
+                        }
                     })
                 })
                 .collect();

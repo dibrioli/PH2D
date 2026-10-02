@@ -34,6 +34,8 @@ struct Objeto {
 @group(0) @binding(3) var materiais: texture_2d<f32>;
 @group(0) @binding(4) var mapa_sombra: texture_depth_2d;
 @group(0) @binding(5) var compara: sampler_comparison;
+@group(0) @binding(6) var cobertura: texture_2d<f32>;
+@group(0) @binding(7) var liso: sampler;
 @group(1) @binding(0) var<uniform> objeto: Objeto;
 
 fn tabela_ler(i: u32) -> f32 {
@@ -195,6 +197,60 @@ fn vs_sombra(@location(0) p: vec3<f32>) -> @builtin(position) vec4<f32> {
     return quadro.sombra_vp * (objeto.modelo * vec4<f32>(p, 1.0));
 }
 
+// ── A COBERTURA vista de cima: r = ha' objecto, g = a profundidade dele vezes a cobertura ──────────
+struct CobOut {
+    @builtin(position) clip: vec4<f32>,
+    @location(0) z: f32,
+};
+
+@vertex
+fn vs_cobertura(@location(0) p: vec3<f32>) -> CobOut {
+    var o: CobOut;
+    o.clip = quadro.sombra_vp * (objeto.modelo * vec4<f32>(p, 1.0));
+    o.z = o.clip.z;
+    return o;
+}
+
+@fragment
+fn fs_cobertura(i: CobOut) -> @location(0) vec4<f32> {
+    return vec4<f32>(1.0, clamp(i.z, 0.0, 1.0), 0.0, 1.0);
+}
+
+// ⭐⭐ A SOMBRA QUE POUSA NO CHAO: o nivel da cobertura cujo borrao tem o tamanho FISICO da penumbra
+// (`tangente da caixa x distancia ao bloqueador`) — duro onde a peca encosta, mole longe dela.
+// Devolve (visibilidade da caixa, visibilidade do ceu). ⭐ A do CEU e' o escurecimento de contacto:
+// a fraccao do ceu que um objecto a altura `h` tapa ~ a cobertura numa janela do tamanho de `h`.
+fn visibilidade_do_chao(p: vec3<f32>) -> vec2<f32> {
+    if (quadro.sombra.z < 0.5) {
+        return vec2<f32>(1.0);
+    }
+    let c = quadro.sombra_vp * vec4<f32>(p, 1.0);
+    let uv = vec2<f32>(c.x * 0.5 + 0.5, 0.5 - c.y * 0.5);
+    if (any(uv < vec2<f32>(0.0)) || any(uv > vec2<f32>(1.0))) {
+        return vec2<f32>(1.0);
+    }
+    let lado = f32(textureDimensions(cobertura, 0).x);
+    let topo = f32(textureNumLevels(cobertura)) - 1.0;
+    let texel = 2.0 * quadro.chao_xz.z / lado;
+    let tan_p = quadro.chao.z;
+    let fundo = quadro.sombra.x;
+    // 1) quem tapa, e a que altura: a caixa vista daqui ate' ao topo da cena.
+    let busca = tan_p * c.z * fundo;
+    let a = textureSampleLevel(cobertura, liso, uv, clamp(log2(max(2.0 * busca / texel, 1.0)), 0.0, topo));
+    if (a.r < 1.0e-3) {
+        return vec2<f32>(1.0);
+    }
+    let zb = a.g / a.r;
+    let h = max(c.z - zb, 0.0) * fundo;
+    // 2) a penumbra: o diametro do borrao e' 2 x tangente x distancia ao bloqueador.
+    let w = tan_p * h;
+    let b = textureSampleLevel(cobertura, liso, uv, clamp(log2(max(2.0 * w / texel, 1.0)), 0.0, topo));
+    // 3) o ceu: a cobertura numa janela de diametro 2h (o hemisferio visto de um ponto a altura h
+    //    do bloqueador cobre ~ esse disco).
+    let o = textureSampleLevel(cobertura, liso, uv, clamp(log2(max(2.0 * h / texel, 1.0)), 0.0, topo));
+    return vec2<f32>(1.0 - clamp(b.r, 0.0, 1.0), 1.0 - clamp(o.r, 0.0, 1.0));
+}
+
 // ── O CHAO QUE SO' RECEBE: aparece so' o quanto ele escurece ─────────────────────────────────────
 struct ChaoOut {
     @builtin(position) clip: vec4<f32>,
@@ -234,7 +290,8 @@ fn fs_chao(i: ChaoOut) -> @location(0) vec4<f32> {
         lamp = lamp + quadro.luzes[2u * j + 1u].xyz * cosl / (dist * dist);
     }
     let sem = dot(ceu_e + caixa_e + lamp, LUMA);
-    let com = dot(ceu_e + caixa_e * visibilidade_da_caixa(i.mundo) + lamp, LUMA);
+    let vis = visibilidade_do_chao(i.mundo);
+    let com = dot(ceu_e * vis.y + caixa_e * vis.x + lamp, LUMA);
     let escuro = clamp(1.0 - com / max(sem, 1.0e-6), 0.0, 1.0);
     return vec4<f32>(0.0, 0.0, 0.0, escuro);
 }

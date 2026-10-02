@@ -342,7 +342,7 @@ pub fn extract(
     depth: u8,
 ) -> Result<Mesh, MeshError> {
     let threads = crate::extract_planes::threads_for((1usize << depth) + 1);
-    let (positions, faces) = sweep(doc, reg, depth, None, threads)?;
+    let (positions, faces) = sweep(doc, reg, depth, None, threads, true)?;
     Mesh::from_parts(positions, faces).map_err(|e| MeshError::Rejected(format!("{e:?}")))
 }
 
@@ -356,6 +356,7 @@ pub(crate) fn sweep(
     depth: u8,
     mut labeler: Option<&mut crate::extract_parts::Labeler>,
     threads: usize,
+    faixa: bool,
 ) -> Result<(Vec<[f32; 3]>, Vec<Face>), MeshError> {
     let mut field = crate::hybrid::Hybrid::new(doc, reg);
     // ⭐ A caixa da grade sai da PEÇA (W33) — ver `Grid::new`.
@@ -365,7 +366,8 @@ pub(crate) fn sweep(
     );
     let m = grid.samples();
     // ⭐ As camadas chegam avaliadas em paralelo, pela ordem ([`crate::extract_planes`]).
-    let mut planes = crate::extract_planes::Planes::new(doc, reg, (grid.lo, grid.step, m), threads);
+    let mut planes =
+        crate::extract_planes::Planes::new(doc, reg, (grid.lo, grid.step, m), threads, faixa);
 
     let mut plane_lo = planes.next()?;
     let mut plane_hi;

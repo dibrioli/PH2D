@@ -211,6 +211,14 @@ impl Forward {
                     binding: 5,
                     resource: wgpu::BindingResource::Sampler(&self.compara),
                 },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: wgpu::BindingResource::TextureView(&self.cobertura.vista),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 7,
+                    resource: wgpu::BindingResource::Sampler(&self.liso),
+                },
             ],
         });
         let mut enc = self
@@ -256,6 +264,10 @@ impl Forward {
             pass.set_pipeline(&self.sombra);
             pass.set_bind_group(0, &g0s, &[]);
             desenha_objetos(&mut pass);
+            drop(pass);
+            if cena.chao.is_some() {
+                self.cobertura.grava(&mut enc, &g0s, &desenha_objetos);
+            }
         }
         {
             let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {

@@ -31,6 +31,7 @@ pub(crate) mod bounds_mods;
 pub mod device;
 pub mod extract;
 mod extract_parts;
+mod extract_band;
 mod extract_planes;
 pub mod hybrid;
 pub mod ops;
@@ -71,6 +72,7 @@ pub mod ops_thread;
 pub mod ops_triangle;
 /// ⭐⭐⭐ **De quem é este ponto** — ver [`owners`].
 pub mod owners;
+pub mod par;
 pub mod profile;
 /// ⭐⭐⭐ A lei do ARCO, numa porta só — ver [`profile_arc`].
 pub(crate) mod profile_arc;

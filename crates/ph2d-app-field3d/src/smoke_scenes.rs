@@ -132,7 +132,7 @@ pub fn leaf(p: Primitive, x: Xform) -> Node {
 /// ⚠️ Ele **conta-se lendo o `match` abaixo**, nunca de memória: o gate
 /// `the_router_answers_for_every_level_it_claims` mede-o pelas DUAS pontas — a cena `CENAS` tem de
 /// ser dela própria, e a `CENAS + 1` tem de cair no `_`.
-pub const CENAS: u32 = 36;
+pub const CENAS: u32 = 37;
 
 /// **As cenas PODADAS em 2026-09-11** — nenhum doc as citava pelo número e nenhum código as usava
 /// (ordem do Enio, briefing W2 §3.2). `952` linhas.
@@ -176,6 +176,9 @@ pub fn materiais_da_cena(n: u32) -> Option<Vec<ph2d_field_ecs::FieldMaterial>> {
     // ⭐⭐⭐ **A cena do BRILHO**: três luzes de forças diferentes mais a BARRA escura, que é o
     // controlo — ela não emite, logo não pode brilhar. ⚠️ O `Vec` é mais curto do que as folhas
     // **de propósito** (a barra fica no material de omissão), que é a lei escrita no doc acima.
+    if n == 37 {
+        return Some(malha::materiais());
+    }
     if n == 36 {
         // ⛔⛔ **A BARRA LEVA MATERIAL PRÓPRIO, e a FOTO é que o exigiu:** sem ele ela herdava a
         // omissão — o MESMO rosa das bolas —, e o roteiro chama-lhe *«a barra escura»*. *Uma cena
@@ -482,6 +485,8 @@ pub fn scene(n: u32) -> FieldDoc {
         35 => edge::cena_35(),
         // ⭐⭐⭐ O BRILHO da W7 — ver [`edge::cena_36`].
         36 => edge::cena_36(),
+        // ⭐⭐⭐ O RENDER POR MALHA (02/10) — ver [`malha::cena_37`].
+        37 => malha::cena_37(),
         _ => {
             // ⛔⛔ **O ROTEADOR DIZ QUANDO O NÚMERO NÃO EXISTE** (W2).
             //
@@ -552,6 +557,9 @@ pub(crate) mod edge;
 /// ⭐⭐ As cenas das formas por FÓRMULA e de VÉRTICES autorados — ver [`formula`].
 #[path = "smoke_scenes_formula.rs"]
 mod formula;
+/// ⭐⭐⭐ A cena do Render por MALHA (02/10) — ver [`malha`].
+#[path = "smoke_scenes_malha.rs"]
+mod malha;
 /// ⭐ As cenas do lote de formas e da torção — ver [`lote`].
 #[path = "smoke_scenes_lote.rs"]
 mod lote;

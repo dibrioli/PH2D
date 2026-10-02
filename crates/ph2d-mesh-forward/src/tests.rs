@@ -265,3 +265,63 @@ fn cabe_no_gles() {
     }
     assert_eq!(a[3], 0, "o canto é fundo no GLES");
 }
+
+/// Um céu com CAIXA: a parte sem caixa vale `L`, a da caixa vale `C` vinda de cima (`+y`).
+const CEU_COM_CAIXA: &str = r#"
+struct Ceu { l: vec4<f32>, };
+fn ceu_radiance_sem_caixa(dir: vec3<f32>, shrink: f32) -> vec3<f32> { return vec3<f32>(ceu.l.x); }
+fn ceu_radiance_da_caixa(dir: vec3<f32>, alpha: f32) -> vec3<f32> { return vec3<f32>(ceu.l.y * max(dir.y, 0.0)); }
+fn ceu_irradiance_sem_caixa(n: vec3<f32>) -> vec3<f32> { return vec3<f32>(ceu.l.x); }
+fn ceu_irradiance_da_caixa(n: vec3<f32>) -> vec3<f32> { return vec3<f32>(ceu.l.y * max(n.y, 0.0)); }
+"#;
+
+/// ⭐⭐ **A sombra da caixa POUSA no chão** — uma esfera a `0,1` acima do chão escurece o chão logo
+/// por baixo dela (vista de cima, o meio da esfera tapa; o anel à volta é a sombra), e o chão longe
+/// dela fica transparente (o chão que só recebe não aparece onde nada o tapa).
+#[test]
+#[ignore = "precisa de aparelho"]
+fn a_sombra_pousa_no_chao() {
+    let amb = Ambiente {
+        wgsl: CEU_COM_CAIXA,
+        constantes: &[0.2, 1.0, 0.0, 0.0],
+        tabela: &[0.0],
+        piso_luz: 0.05,
+    };
+    let Some(mut fw) = Forward::no_aparelho(&amb) else {
+        eprintln!("sem aparelho — saltado");
+        return;
+    };
+    let (p, n, idx) = esfera(0.3);
+    let ao = vec![1.0; p.len()];
+    let mat = vec![0u32; p.len()];
+    fw.sobe(1, &Malha { posicoes: &p, normais: &n, ao: &ao, material: &mat, indices: &idx });
+    // A esfera centrada a y = 0,4: o chão a y = 0 fica 0,1 abaixo dela.
+    let mut m = ID;
+    m[3][1] = 0.4;
+    let objs = [Instancia { malha: 1, modelo: m }];
+    let mats = [material_cinza()];
+    // A câmara olha de CIMA (−y): x → x, z → −y do ecrã.
+    let s = 1.0f32;
+    let cam = Camera {
+        view_proj: [
+            [1.0 / s, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.1, 0.0],
+            [0.0, -1.0 / s, 0.0, 0.0],
+            [0.0, 0.0, 0.5, 1.0],
+        ],
+        olho: [0.0; 3],
+        perspectiva: false,
+        dir_vista: [0.0, -1.0, 0.0],
+    };
+    let mut c = cena(&objs, &mats, cam);
+    c.chao = Some(0.0);
+    c.caixa_tan = Some(0.47);
+    let img = fw.quadro(&c).expect("quadro");
+    let alfa = |x: usize, y: usize| img[(y * 96 + x) * 4 + 3];
+    // O raio da esfera em pixels é 0,3·48 = 14,4: a 18 px do meio já é chão, e ele tem de escurecer.
+    let anel = alfa(48 + 18, 48);
+    let longe = alfa(2, 2);
+    eprintln!("chão: anel alfa {anel} · longe alfa {longe}");
+    assert!(anel > 20, "a sombra não pousou: alfa {anel} ao lado da esfera");
+    assert!(longe < 3, "o chão longe tem de ficar transparente: alfa {longe}");
+}

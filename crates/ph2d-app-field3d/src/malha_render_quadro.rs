@@ -145,12 +145,12 @@ pub(crate) fn desenha(
     doc: &FieldDoc,
     tem_quadro: bool,
 ) -> Feito {
-    let Some((geracao, objetos, modelos)) = crate::malha_render_estado::com(|e| {
-        (e.geracao, Arc::clone(&e.objetos), e.modelos.clone())
+    let Some((geracao, objetos, modelos, esperando)) = crate::malha_render_estado::com(|e| {
+        (e.geracao, Arc::clone(&e.objetos), e.modelos.clone(), e.esperando())
     }) else {
         return Feito::Espera;
     };
-    if geracao == 0 {
+    if esperando {
         return Feito::Espera;
     }
     let Some(desenhista) = desenhista() else {

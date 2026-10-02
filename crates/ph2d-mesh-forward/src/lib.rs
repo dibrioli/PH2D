@@ -19,9 +19,11 @@
 mod fonte;
 mod gpu;
 mod gpu_alvo;
+mod gpu_cobertura;
 
 pub use fonte::fonte;
 pub use gpu::Forward;
+pub use gpu_cobertura::COBERTURA_LADO;
 
 /// Quantas lâmpadas pontuais por quadro. ⚠️ É o recurso do bloco uniforme do quadro (o WebGL2 só
 /// garante `16 KiB` por bloco): `32` pares de `vec4` são `1 KiB`, folga larga para o resto.

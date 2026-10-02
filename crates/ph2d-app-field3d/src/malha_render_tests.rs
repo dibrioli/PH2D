@@ -129,7 +129,7 @@ fn the_mesh_sits_on_the_field_and_faces_outwards() {
     let cell = ph2d_field_eval::extract::cell_size(
         &doc,
         &crate::smoke::sampled_registry(),
-        super::DEPTH,
+        super::PROF_MAX,
     ) as f32;
     for (p, n) in m.posicoes.iter().zip(&m.normais) {
         let r = (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt();
@@ -214,4 +214,26 @@ fn sonda_entrar_no_render() {
         );
     }
 }
+
+
+
+/// ⭐ A cena 37 do smoke: seis objetos, e a caixa mordida é UM (com duas cores).
+#[test]
+fn scene_37_is_six_objects_and_the_bitten_box_is_one() {
+    let doc = crate::smoke::scenes::scene(37);
+    let (_, o) = objetos(&doc);
+    assert_eq!(o.len(), 6, "seis objetos soltos");
+    assert!(o.iter().all(|x| x.movel));
+    let mordida = o
+        .iter()
+        .find(|x| {
+            let mut m = x.malha.material.clone();
+            m.sort_unstable();
+            m.dedup();
+            m == vec![3, 4]
+        })
+        .expect("a caixa verde com o corte branco é um objeto de duas cores");
+    assert_eq!(mordida.unidades.len(), 1);
+}
+
 

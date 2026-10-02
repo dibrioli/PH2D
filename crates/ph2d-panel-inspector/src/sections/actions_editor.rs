@@ -304,6 +304,7 @@ pub(crate) const fn dica_do_parametro(
         ActionArgHint::TimerName => "panel.inspector.actions.timer_name_empty_all",
         ActionArgHint::Count => "panel.inspector.actions.count_empty_one",
         ActionArgHint::Amount => "panel.inspector.actions.amount_of_life",
+        ActionArgHint::ObjectName => "panel.inspector.actions.object_name_empty_own",
     }
 }
 
@@ -319,6 +320,7 @@ mod dica_tests {
             dica_do_parametro(ActionArgHint::TimerName),
             dica_do_parametro(ActionArgHint::Count),
             dica_do_parametro(ActionArgHint::Amount),
+            dica_do_parametro(ActionArgHint::ObjectName),
         ];
         for (i, a) in chaves.iter().enumerate() {
             assert_ne!(

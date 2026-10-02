@@ -12,24 +12,22 @@
 
 const FASE: &str = include_str!("../../src/render_loop/fase_tabela_de_accoes.rs");
 
-/// ⭐⭐ **O relatório da tabela é drenado para `pede_vida`, na MESMA fase que o produz.**
+/// ⭐⭐ **O relatório da tabela é drenado para a ponte, na MESMA fase que o produz.**
 ///
-/// ⚠️ **Duas metades:** o laço percorre `r.pedidos_de_vida` e cada par vai a `pede_vida` — e a
-/// `physics` é a do mesmo `FrameGfx` de onde sai o `sim` (uma ponte de outro sítio seria outra).
+/// ⚠️ **Duas metades:** os pedidos de vida E os de navegação (plano 30, W6) vão à porta da família
+/// que os entrega (`entrega_a_fisica`, cuja lei tem gate lá) — e a `physics` é a do mesmo
+/// `FrameGfx` de onde sai o `sim` (uma ponte de outro sítio seria outra).
 #[test]
 fn os_pedidos_da_tabela_vao_a_ponte_da_fisica() {
     let apply = FASE
         .find("apply(")
         .expect("a fase chama a ponte da tabela de acções");
-    let laco = FASE[apply..]
-        .find("in r.pedidos_de_vida")
-        .expect("e drena os pedidos de vida do relatório");
-    let entrega = FASE[apply + laco..]
-        .find("physics.pede_vida(alvo, pedido)")
-        .expect("e entrega cada pedido à ponte da física");
+    let entrega = FASE[apply..]
+        .find("entrega_a_fisica(r.pedidos_de_vida, r.pedidos_de_navegacao, physics)")
+        .expect("e entrega os pedidos de vida e de navegação à ponte da física");
     assert!(
-        entrega < 200,
-        "o laço tem de entregar ali mesmo — {entrega} bytes depois é outro bloco"
+        entrega < 1_500,
+        "a entrega tem de ser na fase da tabela — {entrega} bytes depois é outro bloco"
     );
     let destructura = FASE
         .find("FrameGfx {")

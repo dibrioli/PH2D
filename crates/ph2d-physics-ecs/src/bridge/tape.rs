@@ -260,6 +260,7 @@ impl PhysicsBridge {
                 projectile: self.projectile_state.clone(),
                 health: self.health_state.clone(),
                 nav: self.nav.agents.clone(),
+                nav_ordens: self.nav.ordens.em_vigor.clone(),
             },
         );
         // A janela do ring é limitada; a nossa segue a dele pela borda de baixo
@@ -283,6 +284,7 @@ impl PhysicsBridge {
             self.projectile_state = m.projectile.clone();
             self.health_state = m.health.clone();
             self.nav.agents = m.nav.clone();
+            self.nav.ordens.em_vigor = m.nav_ordens.clone();
         }
     }
 
@@ -329,6 +331,9 @@ pub(super) struct ControllerMemory {
     /// ⭐⭐⭐ Os AGENTES de navegação (plano 30, W3) — o caminho, o ponto em curso e os relógios do
     /// «preso»: sem eles um scrub devolvia o agente certo a seguir o caminho de outro tique.
     pub(super) nav: BTreeMap<Entity, ph2d_nav::AgentRuntime>,
+    /// ⭐ As ORDENS dos verbos de navegação (plano 30, W6): sem elas um scrub devolvia um guarda a
+    /// andar que um `Stop` tinha parado naquele tique.
+    pub(super) nav_ordens: BTreeMap<Entity, super::nav::OrdemDeNavegacao>,
 }
 
 /// O tipo da tabela — uma memória por tique âncora.

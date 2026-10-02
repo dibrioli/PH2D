@@ -63,6 +63,8 @@ pub enum ActionArgHint {
     Count,
     /// Quanta vida tirar ou dar.
     Amount,
+    /// O nome de um objecto (vazio = o alvo que o componente já tem).
+    ObjectName,
 }
 
 /// Uma linha da tabela, como o Inspector a lê.

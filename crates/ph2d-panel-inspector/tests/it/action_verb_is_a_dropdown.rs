@@ -89,6 +89,8 @@ fn actions() -> InspectorActionInfo {
             "Restart Run".into(),
             "Damage".into(),
             "Heal".into(),
+            "Start Navigation".into(),
+            "Stop Navigation".into(),
         ],
         selected_count: 1,
     }

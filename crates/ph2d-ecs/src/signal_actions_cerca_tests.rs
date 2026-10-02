@@ -357,7 +357,7 @@ fn uma_linha_reage_por_disparo_e_nao_por_nome() {
 #[test]
 fn a_tag_de_um_verbo_ja_gravado_nunca_se_mexe() {
     // ⚠️ **Escrita à mão de propósito**: derivá-la do `ALL` mediria o `ALL` contra si próprio.
-    const GRAVADAS: [(SignalVerb, u8); 12] = [
+    const GRAVADAS: [(SignalVerb, u8); 14] = [
         (SignalVerb::StartTimer, 0),
         (SignalVerb::StopTimer, 1),
         (SignalVerb::Show, 2),
@@ -371,6 +371,9 @@ fn a_tag_de_um_verbo_ja_gravado_nunca_se_mexe() {
         // ⭐ Os verbos da VIDA (plano 28, W2b).
         (SignalVerb::Damage, 10),
         (SignalVerb::Heal, 11),
+        // ⭐ Os verbos da NAVEGAÇÃO (plano 30, W6).
+        (SignalVerb::StartNavigation, 12),
+        (SignalVerb::StopNavigation, 13),
     ];
     for (v, tag) in GRAVADAS {
         assert_eq!(

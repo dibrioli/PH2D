@@ -218,7 +218,7 @@ fn os_outros_verbos_nao_pedem_recomeco() {
             source: autorado,
         })
         .collect();
-    assert_eq!(outros.len(), 11, "piso de populacao: os outros onze");
+    assert_eq!(outros.len(), 13, "piso de populacao: os outros treze");
     let r = apply(&mut sim, &outros, &mut drive, &mut mudo());
     assert!(
         !r.recomecar,
@@ -318,7 +318,77 @@ fn a_dica_do_argumento_diz_o_que_ele_e() {
         (SignalVerb::AddToCounter, ActionArgHint::Count),
         (SignalVerb::Damage, ActionArgHint::Amount),
         (SignalVerb::Heal, ActionArgHint::Amount),
+        (SignalVerb::StartNavigation, ActionArgHint::ObjectName),
     ] {
         assert_eq!(dica_do_argumento(v), esperado, "{}", v.label());
     }
+}
+
+/// ⭐⭐⭐ **O `Start/Stop Navigation` ANUNCIA um pedido** (plano 30, W6) — o idioma da vida: a
+/// navegação anda por TIQUE na ponte, e um verbo que escrevesse o `NavAgent` seria DOCUMENTO.
+/// O `arg` do `Start` é o NOME (com espaços à volta tolerados); vazio volta ao alvo autorado.
+///
+/// **Mutações que devem sangrar:** tirar o braço do `match` · trocar `Para` por `Anda` · o nome a
+/// não chegar ao pedido · aceitar um alvo sem `NavAgent`.
+#[test]
+fn os_verbos_da_navegacao_anunciam_um_pedido() {
+    use ph2d_physics_ecs::{NavAgent, PedidoDeNavegacao};
+    let (mut sim, autorado, outro) = cena();
+    sim.world_mut()
+        .entity_mut(autorado)
+        .insert(NavAgent::default());
+    let mut drive = PreviewDrive::default();
+    let nav = |verb, arg: &str, target| SignalEffect {
+        target,
+        verb,
+        arg: arg.to_string(),
+        source: target,
+    };
+    let antes = sim.world().get::<NavAgent>(autorado).cloned();
+    let r = apply(
+        &mut sim,
+        &[
+            nav(SignalVerb::StartNavigation, " Herói ", autorado),
+            nav(SignalVerb::StartNavigation, "", autorado),
+            nav(SignalVerb::StopNavigation, "", autorado),
+            nav(SignalVerb::StopNavigation, "", outro),
+        ],
+        &mut drive,
+        &mut mudo(),
+    );
+    assert_eq!(
+        r.pedidos_de_navegacao,
+        vec![
+            (
+                autorado,
+                PedidoDeNavegacao::Anda(ph2d_ecs::stable_name_id("Herói"))
+            ),
+            (autorado, PedidoDeNavegacao::Anda(0)),
+            (autorado, PedidoDeNavegacao::Para),
+        ]
+    );
+    assert_eq!((r.applied, r.inert), (3, 1), "o alvo sem agente é inerte");
+    assert_eq!(
+        sim.world().get::<NavAgent>(autorado).cloned(),
+        antes,
+        "o verbo tocou no componente — a ordem é corrida, nunca documento"
+    );
+}
+
+/// ⭐⭐ **A porta da entrega leva os DOIS anúncios à ponte** — a lei por trás da linha que a shell
+/// chama (o gate de texto da shell só prova que ela a chama).
+///
+/// **Mutação que deve sangrar:** esquecer o laço da navegação (ou o da vida).
+#[test]
+fn a_entrega_leva_a_vida_e_a_navegacao_a_ponte() {
+    use ph2d_physics_ecs::{PedidoDeNavegacao, PhysicsBridge};
+    let mut b = PhysicsBridge::new();
+    let (mut sim, quem, _) = cena();
+    super::entrega_a_fisica(Vec::new(), vec![(quem, PedidoDeNavegacao::Para)], &mut b);
+    b.dispatch(&mut sim, true, 1);
+    assert_eq!(
+        b.nav_ordem(quem).and_then(|o| o.ligado),
+        Some(false),
+        "o pedido de navegação não chegou à ponte"
+    );
 }

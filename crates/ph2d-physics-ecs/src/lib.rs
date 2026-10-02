@@ -45,7 +45,7 @@ pub use bridge::contacts::{
 };
 pub use bridge::health::{HealthEvent, HealthEventKind, PedidoDeVida};
 pub use bridge::joint_break::JointBreakEvent;
-pub use bridge::nav::NavEvent;
+pub use bridge::nav::{NavEvent, OrdemDeNavegacao, PedidoDeNavegacao};
 pub use bridge::signals::SignalEvent;
 pub use bridge::triggers::TriggerEvent;
 pub use keyboard_driven::{for_each_keyboard_driven, reads_the_keyboard};

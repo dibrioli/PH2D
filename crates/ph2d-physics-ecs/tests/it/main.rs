@@ -123,6 +123,7 @@ mod mede_o_que_a_composicao_ja_da_ao_raio;
 mod nav;
 mod nav_desvio;
 mod nav_mundo;
+mod nav_ordens;
 mod no_std_transcendental_on_the_hash_path;
 mod one_way;
 mod persistence;

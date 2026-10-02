@@ -169,6 +169,19 @@ pub enum SignalVerb {
     /// ⚠️ **Um morto não é curado** — a regra da casa (`morto_nao_e_final`): tirar alguém da morte
     /// é o *reviver*, que é outra porta.
     Heal,
+    /// ⭐⭐⭐ **Põe o agente de navegação do alvo a ANDAR** (plano 30, W6). O `arg` é o NOME do objecto
+    /// a perseguir a partir de agora; **vazio = o alvo que o `NavAgent` dele já tem**.
+    ///
+    /// ⚠️ **Ele liga mesmo um agente autorado DESLIGADO** — é assim que se autora *«o guarda só
+    /// começa quando o alarme toca»*: o `NavAgent` nasce com *Active* desligado e o verbo liga-o.
+    ///
+    /// ⚠️ **Anuncia**, pelo idioma da vida: a navegação anda por TIQUE na ponte da física, e é a
+    /// ponte que grava a ordem por tique — um scrub refá-la. ⛔ **Nada disto é documento**: um
+    /// `Ctrl+Z` ou um recomeço devolvem o agente ao que o artista autorou.
+    StartNavigation,
+    /// ⭐⭐⭐ **Pára o agente de navegação do alvo** (plano 30, W6) — fica onde está e esquece o caminho,
+    /// até um [`Self::StartNavigation`]. O alvo que um `Start` lhe deu fica guardado.
+    StopNavigation,
 }
 
 /// ⭐⭐ **O que o `arg` de um verbo significa** — ver [`SignalVerb::arg_kind`].
@@ -182,12 +195,14 @@ pub enum ArgKind {
     Count,
     /// Quanta VIDA tirar ou dar — obrigatório e `> 0`.
     Amount,
+    /// O NOME de um objecto — vazio = o que o componente do alvo já diz (plano 30, W6).
+    ObjectName,
 }
 
 impl SignalVerb {
     /// Todos, em ordem — **a fonte da iteração**. ⛔ Nunca escreva a lista uma segunda vez.
     /// ⚠️ **APPEND-ONLY**: a posição é a tag e ela viaja no ficheiro. Um verbo novo entra no FIM.
-    pub const ALL: [SignalVerb; 12] = [
+    pub const ALL: [SignalVerb; 14] = [
         SignalVerb::StartTimer,
         SignalVerb::StopTimer,
         SignalVerb::Show,
@@ -200,6 +215,8 @@ impl SignalVerb {
         SignalVerb::RestartRun,
         SignalVerb::Damage,
         SignalVerb::Heal,
+        SignalVerb::StartNavigation,
+        SignalVerb::StopNavigation,
     ];
 
     /// O rótulo que o artista lê, em INGLÊS — um ACESSÓRIO derivado da tabela desde 2026-09-19
@@ -227,6 +244,8 @@ impl SignalVerb {
             SignalVerb::RestartRun => "ecs.signal_verb.restart_run",
             SignalVerb::Damage => "ecs.signal_verb.damage",
             SignalVerb::Heal => "ecs.signal_verb.heal",
+            SignalVerb::StartNavigation => "ecs.signal_verb.start_navigation",
+            SignalVerb::StopNavigation => "ecs.signal_verb.stop_navigation",
         }
     }
 
@@ -252,13 +271,15 @@ impl SignalVerb {
             SignalVerb::StartTimer | SignalVerb::StopTimer => ArgKind::TimerName,
             SignalVerb::AddToCounter => ArgKind::Count,
             SignalVerb::Damage | SignalVerb::Heal => ArgKind::Amount,
+            SignalVerb::StartNavigation => ArgKind::ObjectName,
             SignalVerb::Show
             | SignalVerb::Hide
             | SignalVerb::ToggleVisibility
             | SignalVerb::PlaySound
             | SignalVerb::StopSound
             | SignalVerb::Destroy
-            | SignalVerb::RestartRun => ArgKind::None,
+            | SignalVerb::RestartRun
+            | SignalVerb::StopNavigation => ArgKind::None,
         }
     }
 

@@ -67,6 +67,8 @@ pub(super) struct NavWorld {
     walls: BTreeMap<(Entity, u32), ph2d_orca::Walls>,
     /// ⚠️ **A memória de cada agente** — entra no anel pelo [`super::tape::ControllerMemory`].
     pub(super) agents: BTreeMap<Entity, AgentRuntime>,
+    /// ⭐ As ORDENS dos verbos `Start/Stop Navigation` (W6) — ver [`ordens`].
+    pub(super) ordens: ordens::Ordens,
     /// Os buffers da procura (reaproveitados; nenhum estado entre consultas).
     search: Polyanya,
     /// Os factos DESTE tique, à espera da porta de depois do passo.
@@ -81,6 +83,7 @@ impl Default for NavWorld {
             meshes: BTreeMap::new(),
             walls: BTreeMap::new(),
             agents: BTreeMap::new(),
+            ordens: ordens::Ordens::default(),
             search: Polyanya::new(),
             tick_events: Vec::new(),
             events: Vec::new(),
@@ -94,6 +97,7 @@ impl NavWorld {
         self.meshes.clear();
         self.walls.clear();
         self.agents.clear();
+        self.ordens = ordens::Ordens::default();
         self.tick_events.clear();
         self.events.clear();
     }
@@ -116,6 +120,8 @@ struct Pedido {
 /// malha que pede (`None` fora de toda região).
 struct Vez {
     p: Pedido,
+    /// O alvo que vale neste tique: o de uma ordem `Start` com nome, ou o autorado.
+    target: NavTarget,
     speed: f64,
     pos: V2,
     raio: f32,
@@ -180,7 +186,15 @@ impl PhysicsBridge {
             if mover.default_controls || world.get::<PlatformPlayer>(p.entity).is_some() {
                 continue;
             }
-            if !p.active {
+            // ⭐ A ORDEM de um verbo manda mais que o autorado (W6), e nunca o reescreve.
+            let ordem = self
+                .nav
+                .ordens
+                .em_vigor
+                .get(&p.entity)
+                .copied()
+                .unwrap_or_default();
+            if !ordem.ligado.unwrap_or(p.active) {
                 let mut rt = self.nav.agents.remove(&p.entity).unwrap_or_default();
                 rt.forget_path();
                 rt.status = ph2d_nav::Status::Idle;
@@ -205,6 +219,11 @@ impl PhysicsBridge {
                 .map(|r| (r.entity, chave_raio));
             vez.push(Vez {
                 p,
+                target: if ordem.alvo != 0 {
+                    NavTarget::Named(ordem.alvo)
+                } else {
+                    p.target
+                },
                 speed: f64::from(mover.speed.max(0.0)),
                 pos,
                 raio,
@@ -222,11 +241,11 @@ impl PhysicsBridge {
             if v.chave.is_some_and(|k| mudou.contains(&k)) {
                 rt.forget_path();
             }
-            let quem = match p.target {
+            let quem = match v.target {
                 NavTarget::Named(id) => self.entidade_do_alvo(sim, id),
                 _ => None,
             };
-            let alvo = match p.target {
+            let alvo = match v.target {
                 NavTarget::None => None,
                 NavTarget::Point(q) => Some([f64::from(q[0]), f64::from(q[1])]),
                 NavTarget::Named(_) => quem.and_then(|e| self.posicao_de(sim, e)),
@@ -515,6 +534,10 @@ mod desvio;
 
 #[path = "nav_malha.rs"]
 mod malha;
+
+#[path = "nav_ordens.rs"]
+mod ordens;
+pub use ordens::{OrdemDeNavegacao, PedidoDeNavegacao};
 
 #[cfg(test)]
 #[path = "nav_tests.rs"]

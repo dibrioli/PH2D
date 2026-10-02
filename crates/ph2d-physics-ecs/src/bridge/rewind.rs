@@ -193,9 +193,12 @@ impl PhysicsBridge {
         // do toque cheia (o golpe de quem nasce sobreposto deixaria de chegar).
         self.health_state.clear();
         // ⭐⭐⭐ E os AGENTES de navegação (plano 30, W3), no commit em que nascem: no tique 0 nenhum
-        // caminho foi planeado e nenhum relógio de «preso» andou. ⚠️ As MALHAS ficam — elas são
-        // derivadas dos corpos ESTÁTICOS, que um rebobinar não move.
+        // caminho foi planeado e nenhum relógio de «preso» andou. ⚠️ As MALHAS ficam — cada tique
+        // compara-as com os obstáculos de AGORA (W6: uma porta rebobinada refaz os seus mosaicos).
         self.nav.agents.clear();
+        // ⭐ E as ORDENS dos verbos (W6): no tique 0 nenhum verbo falou. A FITA delas fica — é ela
+        // que o replay relê, como a da vida.
+        self.nav.ordens.em_vigor.clear();
         // ⭐⭐⭐ E o que cada RAIO via (suplente #21) — o QUARTO mapa desta família, e ele entra no
         // mesmo commit em que nasce, de propósito: os três acima foram esquecidos aqui **um de cada
         // vez**, e o último custou um report do dono (*«o Rewind não está funcionando com os

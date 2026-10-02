@@ -106,6 +106,25 @@ pub struct ActionReport {
     /// vida vive na ponte da física e anda por TIQUE, e é a ponte que grava o pedido na fita — a
     /// única forma de um scrub o refazer. A shell entrega-os ([`ph2d_physics_ecs::PhysicsBridge::pede_vida`]).
     pub pedidos_de_vida: Vec<(ph2d_ecs::Entity, ph2d_physics_ecs::PedidoDeVida)>,
+    /// ⭐⭐⭐ **O que os verbos `Start/Stop Navigation` pediram aos AGENTES** (plano 30, W6), pela ordem
+    /// da tabela — o idioma da vida: a ponte aplica-os por tique e grava-os na fita.
+    pub pedidos_de_navegacao: Vec<(ph2d_ecs::Entity, ph2d_physics_ecs::PedidoDeNavegacao)>,
+}
+
+/// ⭐⭐⭐ **Entrega à ponte da física o que a tabela ANUNCIOU** — os pedidos de vida e os de navegação,
+/// na fase que os produz. ⚠️ Uma porta só para os dois: a shell chama-a, e um terceiro anúncio
+/// entra aqui em vez de crescer a shell (`the_shell_only_shrinks`).
+pub fn entrega_a_fisica(
+    vida: Vec<(ph2d_ecs::Entity, ph2d_physics_ecs::PedidoDeVida)>,
+    navegacao: Vec<(ph2d_ecs::Entity, ph2d_physics_ecs::PedidoDeNavegacao)>,
+    physics: &mut ph2d_physics_ecs::PhysicsBridge,
+) {
+    for (alvo, pedido) in vida {
+        physics.pede_vida(alvo, pedido);
+    }
+    for (alvo, pedido) in navegacao {
+        physics.pede_navegacao(alvo, pedido);
+    }
 }
 
 /// ⭐⭐ **Aplica os efeitos deste quadro.**
@@ -174,6 +193,16 @@ pub fn apply(
                 }
                 None => false,
             },
+            // ⭐⭐⭐ **A NAVEGAÇÃO** (plano 30, W6) — anunciada, como a vida.
+            SignalVerb::StartNavigation | SignalVerb::StopNavigation => {
+                match pedido_de_navegacao(sim, fx) {
+                    Some(p) => {
+                        report.pedidos_de_navegacao.push((fx.target, p));
+                        true
+                    }
+                    None => false,
+                }
+            }
         };
         if ok {
             report.applied += 1;
@@ -200,8 +229,29 @@ pub fn dica_do_argumento(verb: SignalVerb) -> ph2d_editor_core::screens::hero::A
     match verb.arg_kind() {
         ph2d_ecs::ArgKind::Count => ActionArgHint::Count,
         ph2d_ecs::ArgKind::Amount => ActionArgHint::Amount,
+        ph2d_ecs::ArgKind::ObjectName => ActionArgHint::ObjectName,
         ph2d_ecs::ArgKind::TimerName | ph2d_ecs::ArgKind::None => ActionArgHint::TimerName,
     }
+}
+
+/// O pedido que um `Start/Stop Navigation` faz — ou `None` (INERTE) num alvo sem `NavAgent`. O
+/// `arg` do `Start` é o NOME de quem perseguir; vazio volta ao alvo autorado (`0`, «ninguém»).
+fn pedido_de_navegacao(
+    sim: &SimWorld,
+    fx: &SignalEffect,
+) -> Option<ph2d_physics_ecs::PedidoDeNavegacao> {
+    sim.world().get::<ph2d_physics_ecs::NavAgent>(fx.target)?;
+    Some(match fx.verb {
+        SignalVerb::StopNavigation => ph2d_physics_ecs::PedidoDeNavegacao::Para,
+        _ => {
+            let nome = fx.arg.trim();
+            ph2d_physics_ecs::PedidoDeNavegacao::Anda(if nome.is_empty() {
+                0
+            } else {
+                ph2d_ecs::stable_name_id(nome)
+            })
+        }
+    })
 }
 
 fn pedido_de_vida(sim: &SimWorld, fx: &SignalEffect) -> Option<ph2d_physics_ecs::PedidoDeVida> {

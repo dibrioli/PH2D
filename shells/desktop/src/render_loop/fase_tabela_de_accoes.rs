@@ -118,10 +118,8 @@ impl crate::App {
         // uma pergunta só, e quem a responde é o dreno da `fase_fabrica_e_morte`, que corre por
         // último.
         *recomecar |= r.recomecar;
-        // ⭐⭐⭐ **E os pedidos de VIDA vão à PONTE** (plano 28, W2b), que os aplica no próximo tique
-        // e os grava na fita por tique — a única forma de um scrub os refazer.
-        for (alvo, pedido) in r.pedidos_de_vida {
-            physics.pede_vida(alvo, pedido);
-        }
+        // ⭐⭐⭐ **E os pedidos de VIDA e de NAVEGAÇÃO vão à PONTE** (plano 28 W2b · plano 30 W6), que
+        // os aplica no próximo tique e os grava na fita por tique — a única forma de um scrub os refazer.
+        signal_actions::entrega_a_fisica(r.pedidos_de_vida, r.pedidos_de_navegacao, physics);
     }
 }

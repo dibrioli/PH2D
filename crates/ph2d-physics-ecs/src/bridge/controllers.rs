@@ -64,6 +64,8 @@ impl PhysicsBridge {
     /// fita por tique, e o replay tem de saber QUAL tique está a refazer.
     pub(super) fn depois_do_passo(&mut self, sim: &SimWorld, publicar: bool, tick: u64) {
         self.drive_health(sim, publicar, tick);
+        // ⭐ E as ORDENS de navegação (plano 30, W6): valem a partir do próximo tique, gravadas neste.
+        self.aplica_ordens_de_navegacao(publicar, tick);
         // ⭐ E os factos de NAVEGAÇÃO (plano 30, W3): nascem antes do passo e publicam-se aqui.
         self.publish_nav_events(publicar);
     }

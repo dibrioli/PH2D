@@ -89,7 +89,8 @@ impl StatusBar {
     /// ([`medidas`]). ⛔ Era `0,6 × fonte` por carácter: errava para baixo, e a barra espremia-se
     /// numa janela que a levava (2026-10-02, a escala da interface).
     pub fn preferred_width(&self, text_system: &mut TextSystem) -> f32 {
-        medidas(self, text_system).iter().map(|(f, t)| f + t).sum()
+        let (fixo, texto) = totais(&medidas(self, text_system));
+        fixo + texto
     }
 
     pub fn build_a11y(&self, x: f64, y: f64, w: f64, h: f64) -> Node {
@@ -137,7 +138,7 @@ pub fn paint_status_bar(
     let widths = larguras(bar, text_system, rect.w);
     let mut x = rect.x;
     for (i, segment) in bar.segments.iter().enumerate() {
-        let w = widths[i];
+        let (w, texto_w) = widths[i];
         let seg_rect = Rect::new(x, rect.y, w, rect.h);
         if i > 0 {
             // 1 px inner divider in Border color, full segment height
@@ -163,7 +164,7 @@ pub fn paint_status_bar(
             text_x += recuo_do_ponto();
         }
         let text_y = seg_rect.y + (seg_rect.h - font) * 0.5;
-        let text_w = (seg_rect.x + seg_rect.w - text_x - pad).max(0.0);
+        let text_w = texto_w;
         paint_text(
             text_system,
             scene,
@@ -208,25 +209,44 @@ fn medidas(bar: &StatusBar, text_system: &mut TextSystem) -> Vec<(f32, f32)> {
 /// INTEIRO, recuo incluído, e o pintor descontava depois o recuo cheio. O texto ficava sem
 /// largura nenhuma e saía partido em duas linhas (`0` / `ent`) ou por cima do vizinho
 /// (`EDIT60 fps`). Gate: `apertada_cada_texto_cabe_no_seu_segmento`.
-fn larguras(bar: &StatusBar, text_system: &mut TextSystem, largura: f32) -> Vec<f32> {
+///
+/// Devolve `(segmento, texto)`: a largura do TEXTO viaja calculada, nunca re-derivada pelo pintor
+/// como `segmento − recuo`. ⛔ `(t + a) − a` fica um ULP abaixo de `t` numa fracção do domínio, e a
+/// elisão compara `<=`: o `EDIT` saía `E…` com folga (foto a 80 %, 2026-10-02).
+fn larguras(bar: &StatusBar, text_system: &mut TextSystem, largura: f32) -> Vec<(f32, f32)> {
     let m = medidas(bar, text_system);
-    let fixo: f32 = m.iter().map(|(f, _)| f).sum();
-    let texto: f32 = m.iter().map(|(_, t)| t).sum();
+    let (fixo, texto) = totais(&m);
     if fixo + texto <= largura || texto <= 0.0 {
         let k = if fixo + texto > 0.0 {
             largura / (fixo + texto)
         } else {
             1.0
         };
-        return m.iter().map(|(f, t)| (f + t) * k).collect();
+        // `t·k + f·(k − 1)`: a `k = 1` o texto é `t` AO BIT.
+        return m
+            .iter()
+            .map(|(f, t)| ((f + t) * k, t * k + f * (k - 1.0)))
+            .collect();
     }
     if largura < fixo {
         // Nem o recuo cabe: encolhe ele também, e o texto fica sem nada — a barra nunca vaza.
         let k = largura.max(0.0) / fixo;
-        return m.iter().map(|(f, _)| f * k).collect();
+        return m.iter().map(|(f, _)| (f * k, 0.0)).collect();
     }
     let teto = teto_comum(m.iter().map(|(_, t)| *t), largura - fixo);
-    m.iter().map(|(f, t)| f + t.min(teto)).collect()
+    m.iter()
+        .map(|(f, t)| (f + t.min(teto), t.min(teto)))
+        .collect()
+}
+
+/// `(Σ recuo, Σ texto)` — a MESMA soma para a largura preferida e para a repartição: somar
+/// `(recuo + texto)` item a item dá outro arredondamento, e a barra na largura preferida caía, a
+/// um ULP, no ramo apertado (o `default-scene` saía `default-sce…`).
+fn totais(m: &[(f32, f32)]) -> (f32, f32) {
+    (
+        m.iter().map(|(f, _)| f).sum(),
+        m.iter().map(|(_, t)| t).sum(),
+    )
 }
 
 /// ⭐ **O teto comum que reparte `disponivel` pelos textos** — os curtos ficam INTEIROS e só os mais
@@ -358,6 +378,37 @@ mod tests {
             }
             w -= 37.0;
         }
+    }
+
+    /// ⭐ **Na largura preferida nada se corta, em estilo nenhum** — a régua do ULP: a 80 % o `EDIT`
+    /// saía `E…` porque o pintor re-derivava o texto como `segmento − recuo`. A largura exacta é o
+    /// caso de fronteira, e só a varredura de estilos o encontra.
+    #[test]
+    fn na_largura_preferida_nada_se_corta_em_estilo_nenhum() {
+        let acusados = crate::text_elide::em_todo_estilo(|ts| {
+            let bar = fixture();
+            let w = bar.preferred_width(ts);
+            let mut scene = VectorScene::new();
+            let (_, medidos) = crate::text_elide::elisao::medindo(|| {
+                paint_status_bar(
+                    &bar,
+                    Rect::new(0.0, 0.0, w, 34.0),
+                    &mut scene,
+                    ts,
+                    Theme::Forge,
+                );
+            });
+            medidos
+                .iter()
+                .filter(|m| !m.coube())
+                .map(|m| format!("«{}» -> «{}»", m.texto, m.pintado))
+                .collect()
+        });
+        assert!(
+            acusados.is_empty(),
+            "cortes na largura preferida:\n  {}",
+            acusados.join("\n  ")
+        );
     }
 
     #[test]

@@ -46,7 +46,10 @@ fn altura(p: [f32; 3]) -> f32 {
 
 /// A inclinação VERDADEIRA: `∇h` sem a componente da normal do plano.
 fn verdade(p: [f32; 3]) -> [f32; 3] {
-    let (s, c) = ((1.7 * p[0] + 0.4 * p[2]).sin(), (1.7 * p[0] + 0.4 * p[2]).cos());
+    let (s, c) = (
+        (1.7 * p[0] + 0.4 * p[2]).sin(),
+        (1.7 * p[0] + 0.4 * p[2]).cos(),
+    );
     let (sy, cy) = ((1.3 * p[1]).sin(), (1.3 * p[1]).cos());
     let g = [0.2 * 1.7 * c * cy, -0.2 * 1.3 * s * sy, 0.2 * 0.4 * c * cy];
     let (a, b) = (mapa([1.0, 0.0]), mapa([0.0, 1.0]));
@@ -70,11 +73,16 @@ fn plano(nivel: u8) -> (Vec<[f32; 3]>, Vec<Vec<u32>>, Tinta) {
         let p = |k: usize| pos[c[k] as usize];
         if c.len() == 3 {
             t.para_cada_amostra_tri(f, c, |i, ijk| {
-                alt[i as usize][0] = altura(crate::amostragem::posicao_tri(p(0), p(1), p(2), l, ijk));
+                alt[i as usize][0] =
+                    altura(crate::amostragem::posicao_tri(p(0), p(1), p(2), l, ijk));
             });
         } else {
             t.para_cada_amostra_quad(f, c, |i, ij| {
-                alt[i as usize][0] = altura(crate::amostragem::posicao_quad([p(0), p(1), p(2), p(3)], l, ij));
+                alt[i as usize][0] = altura(crate::amostragem::posicao_quad(
+                    [p(0), p(1), p(2), p(3)],
+                    l,
+                    ij,
+                ));
             });
         }
     }
@@ -92,7 +100,10 @@ fn por_celula(t: &Tinta, face: usize, c: &[u32], pos: &[[f32; 3]], uv: [f32; 2])
     let l = t.lado_da_face(face);
     let lf = l as f32;
     let (cu, cv) = (uv[0] * lf, uv[1] * lf);
-    let (i, j) = ((cu.floor() as u32).min(l - 1), (cv.floor() as u32).min(l - 1));
+    let (i, j) = (
+        (cu.floor() as u32).min(l - 1),
+        (cv.floor() as u32).min(l - 1),
+    );
     let (fu, fv) = (cu - i as f32, cv - j as f32);
     let h = |i, j| t.altura(t.indice_de(face, c, sitio_quad(l, i, j)) as usize);
     let (ha, hb, hd, he) = (h(i, j), h(i + 1, j), h(i + 1, j + 1), h(i, j + 1));
@@ -110,7 +121,11 @@ fn por_celula(t: &Tinta, face: usize, c: &[u32], pos: &[[f32; 3]], uv: [f32; 2])
     );
     let det = uu * vv - uv_ * uv_;
     let (a, b) = ((hu * vv - hv * uv_) / det, (hv * uu - hu * uv_) / det);
-    [a * du[0] + b * dv[0], a * du[1] + b * dv[1], a * du[2] + b * dv[2]]
+    [
+        a * du[0] + b * dv[0],
+        a * du[1] + b * dv[1],
+        a * du[2] + b * dv[2],
+    ]
 }
 
 /// ⭐⭐⭐ **GATE — a inclinação lida é CONTÍNUA ao atravessar as células, e a lei
@@ -130,18 +145,28 @@ fn a_inclinacao_lida_e_continua_e_a_lei_por_celula_reprova_a_mesma_regua() {
     let mut salto = (0.0f32, 0.0f32);
     for k in 0..4000 {
         let (a, b) = (ponto(k), ponto(k + 1));
-        let n = dist(t.inclinacao_quad(f, c, a, inc.por_amostra()), t.inclinacao_quad(f, c, b, inc.por_amostra()));
+        let n = dist(
+            t.inclinacao_quad(f, c, a, inc.por_amostra()),
+            t.inclinacao_quad(f, c, b, inc.por_amostra()),
+        );
         let o = dist(por_celula(&t, f, c, &pos, a), por_celula(&t, f, c, &pos, b));
         salto = (salto.0.max(n), salto.1.max(o));
     }
-    eprintln!("salto por amostra {:.3e} · por célula {:.3e}", salto.0, salto.1);
+    eprintln!(
+        "salto por amostra {:.3e} · por célula {:.3e}",
+        salto.0, salto.1
+    );
     assert!(
         salto.1 > 100.0 * salto.0,
         "a régua não separa as duas leis: por amostra {:.2e}, por célula {:.2e}",
         salto.0,
         salto.1
     );
-    assert!(salto.0 < 5e-4, "a lei por amostra salta {:.2e} num passo", salto.0);
+    assert!(
+        salto.0 < 5e-4,
+        "a lei por amostra salta {:.2e} num passo",
+        salto.0
+    );
 }
 
 /// ⭐⭐⭐ **GATE — a inclinação por amostra é a VERDADEIRA**, nos dois degraus e
@@ -170,12 +195,19 @@ fn a_inclinacao_por_amostra_e_a_da_superficie() {
                         }
                         let bar = [1.0 - x - y, x, y];
                         let w = |e: usize| bar[0] * p(0)[e] + bar[1] * p(1)[e] + bar[2] * p(2)[e];
-                        (t.inclinacao_tri(f, c, bar, inc.por_amostra()), [w(0), w(1), w(2)])
+                        (
+                            t.inclinacao_tri(f, c, bar, inc.por_amostra()),
+                            [w(0), w(1), w(2)],
+                        )
                     } else {
                         let w = |e: usize| {
-                            (p(0)[e] * (1.0 - x) + p(1)[e] * x) * (1.0 - y) + (p(3)[e] * (1.0 - x) + p(2)[e] * x) * y
+                            (p(0)[e] * (1.0 - x) + p(1)[e] * x) * (1.0 - y)
+                                + (p(3)[e] * (1.0 - x) + p(2)[e] * x) * y
                         };
-                        (t.inclinacao_quad(f, c, [x, y], inc.por_amostra()), [w(0), w(1), w(2)])
+                        (
+                            t.inclinacao_quad(f, c, [x, y], inc.por_amostra()),
+                            [w(0), w(1), w(2)],
+                        )
                     };
                     let v = verdade(onde);
                     pior = pior.max(dist(lida, v));
@@ -183,14 +215,20 @@ fn a_inclinacao_por_amostra_e_a_da_superficie() {
                 }
             }
         }
-        eprintln!("nível {nivel}: erro {pior:.4} · declive {maior:.4} · razão {:.4}", pior / maior);
+        eprintln!(
+            "nível {nivel}: erro {pior:.4} · declive {maior:.4} · razão {:.4}",
+            pior / maior
+        );
         assert!(
             pior < tecto * maior,
             "nível {nivel}: erro {pior:.4} contra o declive {maior:.4} (tecto {tecto})"
         );
         razoes.push(pior / maior);
     }
-    assert!(razoes[1] * 3.0 < razoes[0], "o erro não cai com a célula: {razoes:?}");
+    assert!(
+        razoes[1] * 3.0 < razoes[0],
+        "o erro não cai com a célula: {razoes:?}"
+    );
 }
 
 /// ⭐⭐ **GATE — os dois lados de uma aresta da malha lêem a MESMA inclinação**:
@@ -235,10 +273,21 @@ fn a_atualizacao_por_pedacos_da_a_inteira_e_diz_o_que_mudou() {
         let antes = inc.por_amostra().to_vec();
         inc.atualiza(&t, &cantos, &pos, &sujas, &mut mudadas);
         let inteira = Inclinacoes::nova(&t, cantos, &pos);
-        for (i, (a, b)) in inc.por_amostra().iter().zip(inteira.por_amostra()).enumerate() {
-            assert!(dist(*a, *b) < 1e-5, "ronda {ronda}, amostra {i}: {a:?} contra {b:?}");
+        for (i, (a, b)) in inc
+            .por_amostra()
+            .iter()
+            .zip(inteira.por_amostra())
+            .enumerate()
+        {
+            assert!(
+                dist(*a, *b) < 1e-5,
+                "ronda {ronda}, amostra {i}: {a:?} contra {b:?}"
+            );
             if dist(antes[i], *b) > 1e-6 {
-                assert!(mudadas.contains(&(i as u32)), "a amostra {i} mudou e não foi dita");
+                assert!(
+                    mudadas.contains(&(i as u32)),
+                    "a amostra {i} mudou e não foi dita"
+                );
             }
         }
     }
@@ -271,11 +320,19 @@ fn mover_vertices_e_atualizar_por_eles_da_a_inteira() {
     inc.atualiza(&t, &cantos, &pos, &[5, 10], &mut mudadas);
     let inteira = Inclinacoes::nova(&t, cantos, &pos);
     let mut mudou = 0;
-    for (i, (a, b)) in inc.por_amostra().iter().zip(inteira.por_amostra()).enumerate() {
+    for (i, (a, b)) in inc
+        .por_amostra()
+        .iter()
+        .zip(inteira.por_amostra())
+        .enumerate()
+    {
         assert!(dist(*a, *b) < 1e-5, "amostra {i}: {a:?} contra {b:?}");
         mudou += usize::from(mudadas.contains(&(i as u32)));
     }
-    assert!(mudou > 0, "o CONTROLO: mover vértices tinha de mudar inclinações");
+    assert!(
+        mudou > 0,
+        "o CONTROLO: mover vértices tinha de mudar inclinações"
+    );
 }
 
 /// ⭐⭐ **GATE — o plano com POUCA altura nasce só das faces que a têm, e dá o
@@ -294,11 +351,22 @@ fn um_plano_com_pouca_altura_nasce_igual_ao_inteiro() {
     let mut inteira = esparsa.clone();
     inteira.recalcula(&t, &cantos, &pos);
     let mut nao_nulas = 0;
-    for (i, (a, b)) in esparsa.por_amostra().iter().zip(inteira.por_amostra()).enumerate() {
-        assert!(dist(*a, *b) < 1e-5, "amostra {i} de {n}: {a:?} contra {b:?}");
+    for (i, (a, b)) in esparsa
+        .por_amostra()
+        .iter()
+        .zip(inteira.por_amostra())
+        .enumerate()
+    {
+        assert!(
+            dist(*a, *b) < 1e-5,
+            "amostra {i} de {n}: {a:?} contra {b:?}"
+        );
         nao_nulas += usize::from(*b != [0.0; 3]);
     }
-    assert!(nao_nulas > 0, "o CONTROLO: a fixtura tinha de ter inclinação");
+    assert!(
+        nao_nulas > 0,
+        "o CONTROLO: a fixtura tinha de ter inclinação"
+    );
 }
 
 /// ⭐⭐⭐ **GATE — as faces em PARALELO dão o mesmo AO BIT que numa thread só**:

@@ -372,7 +372,8 @@ impl MeshRenderer {
                     st,
                 );
                 let cantos = |f: usize| mesh.faces()[f].verts();
-                let mesma = g.inc.as_ref().is_some_and(|i| i.serve(t)) && g.inc_foto.descreve(&pay, mesh);
+                let mesma =
+                    g.inc.as_ref().is_some_and(|i| i.serve(t)) && g.inc_foto.descreve(&pay, mesh);
                 match g.inc.as_mut().filter(|_| mesma) {
                     // ⭐ A MESMA topologia: refaz só as amostras das faces cujas
                     //   posições ou alturas mudaram desde a foto.
@@ -485,8 +486,15 @@ impl MeshRenderer {
         //   logo as corridas em bytes são as mesmas contas.
         if let Some(inc) = g.inc.as_mut() {
             let mut mudadas = Vec::new();
-            inc.atualiza(tinta, &|f| mesh.faces()[f].verts(), mesh.positions(), sujas, &mut mudadas);
-            g.inc_foto.anota_alturas(sujas, tinta.relevo().unwrap_or(&[]));
+            inc.atualiza(
+                tinta,
+                &|f| mesh.faces()[f].verts(),
+                mesh.positions(),
+                sujas,
+                &mut mudadas,
+            );
+            g.inc_foto
+                .anota_alturas(sujas, tinta.relevo().unwrap_or(&[]));
             corridas_das_sujas(&mut mudadas, &mut corridas);
             let gb: &[u8] = bytemuck::cast_slice(inc.por_amostra());
             for &(de, ate) in &corridas {

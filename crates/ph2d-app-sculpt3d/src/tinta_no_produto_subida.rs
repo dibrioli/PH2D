@@ -31,7 +31,14 @@ fn diag_o_relogio_da_subida_com_relevo() {
         p.set_paint_media(meio);
         p.set_brush_size_px(28.0);
         quadro(Some(&mut s), Some(&mut p));
-        assert!(entrega(&mut s, &mut p, 420.0, 330.0, 1.0, PointerPhase::Down));
+        assert!(entrega(
+            &mut s,
+            &mut p,
+            420.0,
+            330.0,
+            1.0,
+            PointerPhase::Down
+        ));
         let mut fila = Vec::new();
         let mut poe = Vec::new();
         let mut sujas_por_quadro = Vec::new();
@@ -83,7 +90,10 @@ fn diag_o_relogio_da_subida_com_relevo() {
         ord(&mut fila);
         ord(&mut poe);
         let q = |v: &[f64], f: f64| v[((v.len() - 1) as f64 * f) as usize];
-        let n_total = s.objects[s.active].tinta.as_ref().map_or(0, |t| t.amostras().len());
+        let n_total = s.objects[s.active]
+            .tinta
+            .as_ref()
+            .map_or(0, |t| t.amostras().len());
         eprintln!(
             "{nome}: relevo={relevo} · {n_total} amostras · {} quadros medidos · sujas/quadro mediana {} máx {} · \
              escrever na fila mediana {:.3} ms p95 {:.3} máx {:.3} · submit+espera mediana {:.3} ms p95 {:.3} máx {:.3}",
@@ -127,7 +137,11 @@ fn diag_o_preco_de_refazer_as_inclinacoes() {
         let mut soma = 0.0f64;
         for _ in 0..5 {
             let t0 = Instant::now();
-            let inc = ph2d_mesh_colors::Inclinacoes::nova(t, |f| mesh.faces()[f].verts(), mesh.positions());
+            let inc = ph2d_mesh_colors::Inclinacoes::nova(
+                t,
+                |f| mesh.faces()[f].verts(),
+                mesh.positions(),
+            );
             let ms = t0.elapsed().as_secs_f64() * 1e3;
             std::hint::black_box(inc);
             pior = pior.max(ms);
@@ -156,7 +170,8 @@ fn diag_o_preco_de_refazer_as_inclinacoes() {
         let movida = mexe(&mut (0..40));
         let mut sobe = |m: &ph2d_mesh::Mesh| {
             let t0 = Instant::now();
-            s.renderer.upload_tinta_at(&gpu.device, &gpu.queue, 0, m, Some(&plano));
+            s.renderer
+                .upload_tinta_at(&gpu.device, &gpu.queue, 0, m, Some(&plano));
             t0.elapsed().as_secs_f64() * 1e3
         };
         let (nova, igual, dab, grande) = (sobe(&mesh), sobe(&mesh), sobe(&pincel), sobe(&movida));
@@ -165,7 +180,8 @@ fn diag_o_preco_de_refazer_as_inclinacoes() {
         let mut liso = plano.clone();
         liso.com_relevo(None);
         let t0 = Instant::now();
-        s.renderer.upload_tinta_at(&gpu.device, &gpu.queue, 0, &pincel, Some(&liso));
+        s.renderer
+            .upload_tinta_at(&gpu.device, &gpu.queue, 0, &pincel, Some(&liso));
         let sem_relevo = t0.elapsed().as_secs_f64() * 1e3;
         let media = soma / 5.0;
         let nv = perto.len();

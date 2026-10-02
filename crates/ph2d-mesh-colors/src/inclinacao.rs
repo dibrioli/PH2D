@@ -83,7 +83,8 @@ impl Tinta {
                     for j in 0..=l - i {
                         let k = l - i - j;
                         if i.min(j).min(k) <= 1 {
-                            tab[i as usize * w + j as usize] = indice(topo, face, sitio_tri(l, i, j, k), cantos);
+                            tab[i as usize * w + j as usize] =
+                                indice(topo, face, sitio_tri(l, i, j, k), cantos);
                         }
                     }
                 }
@@ -95,7 +96,10 @@ impl Tinta {
             let ([ga, gb, gc], area) = geometria(p(0), p(1), p(2));
             let a = area / (lf * lf);
             let mut celula = |c: [usize; 3], sinal: f32| {
-                let g = soma(soma(escala(ga, h(tab, c[0])), escala(gb, h(tab, c[1]))), escala(gc, h(tab, c[2])));
+                let g = soma(
+                    soma(escala(ga, h(tab, c[0])), escala(gb, h(tab, c[1]))),
+                    escala(gc, h(tab, c[2])),
+                );
                 let g = escala(g, sinal * lf);
                 for k in c {
                     acumula(&mut acc[k], g, a);
@@ -122,7 +126,8 @@ impl Tinta {
             for j in 0..=l {
                 for i in 0..=l {
                     if i.min(j).min(l - i).min(l - j) <= 1 {
-                        tab[j as usize * w + i as usize] = indice(topo, face, sitio_quad(l, i, j), cantos);
+                        tab[j as usize * w + i as usize] =
+                            indice(topo, face, sitio_quad(l, i, j), cantos);
                     }
                 }
             }
@@ -170,7 +175,13 @@ impl Tinta {
     /// gradientes das amostras pelos pesos da cor. O gémeo da leitura do
     /// `tinta.wgsl`.
     #[must_use]
-    pub fn inclinacao_tri(&self, face: usize, cantos: &[u32], bar: [f32; 3], g: &[[f32; 3]]) -> [f32; 3] {
+    pub fn inclinacao_tri(
+        &self,
+        face: usize,
+        cantos: &[u32],
+        bar: [f32; 3],
+        g: &[[f32; 3]],
+    ) -> [f32; 3] {
         let mut o = [0.0f32; 3];
         for (idx, peso) in self.pesos_tri(face, cantos, bar) {
             o = soma(o, escala(g[idx], peso));
@@ -180,7 +191,13 @@ impl Tinta {
 
     /// A irmã para QUADS.
     #[must_use]
-    pub fn inclinacao_quad(&self, face: usize, cantos: &[u32], uv: [f32; 2], g: &[[f32; 3]]) -> [f32; 3] {
+    pub fn inclinacao_quad(
+        &self,
+        face: usize,
+        cantos: &[u32],
+        uv: [f32; 2],
+        g: &[[f32; 3]],
+    ) -> [f32; 3] {
         let mut o = [0.0f32; 3];
         for (idx, peso) in self.pesos_quad(face, cantos, uv) {
             o = soma(o, escala(g[idx], peso));
@@ -222,7 +239,11 @@ impl Inclinacoes {
     /// face `f` (com ou sem o sentinela [`crate::TRI`]) e `pos` as posições dos
     /// vértices. Um plano sem relevo dá gradientes nulos.
     #[must_use]
-    pub fn nova<'a>(tinta: &Tinta, cantos_de: impl Fn(usize) -> &'a [u32] + Sync, pos: &[[f32; 3]]) -> Self {
+    pub fn nova<'a>(
+        tinta: &Tinta,
+        cantos_de: impl Fn(usize) -> &'a [u32] + Sync,
+        pos: &[[f32; 3]],
+    ) -> Self {
         Self::com_threads(tinta, cantos_de, pos, 0)
     }
 
@@ -280,7 +301,9 @@ impl Inclinacoes {
         //   nenhum canto tem gradiente nulo, e as amostras de fora delas ficam
         //   em zero — o 1.º toque de impasto não paga o plano inteiro.
         if let Some(alt) = tinta.relevo() {
-            let sujas: Vec<u32> = (0..n as u32).filter(|&i| alt[i as usize][ALTURA] != 0.0).collect();
+            let sujas: Vec<u32> = (0..n as u32)
+                .filter(|&i| alt[i as usize][ALTURA] != 0.0)
+                .collect();
             if sujas.len() * 2 > n {
                 me.recalcula(tinta, &cantos_de, pos);
             } else {
@@ -380,10 +403,13 @@ impl Inclinacoes {
             self.marca_face[f as usize] = ep_anel;
             anel.push(f);
         }
-        for k in 0..tocadas.len() {
-            let c = cantos_de(tocadas[k] as usize);
+        for &f in &tocadas {
+            let c = cantos_de(f as usize);
             for &v in &c[..n_cantos(c)] {
-                let (a, b) = (self.ini_v[v as usize] as usize, self.ini_v[v as usize + 1] as usize);
+                let (a, b) = (
+                    self.ini_v[v as usize] as usize,
+                    self.ini_v[v as usize + 1] as usize,
+                );
                 for &g in &self.faces_v[a..b] {
                     if self.marca_face[g as usize] != ep_anel {
                         self.marca_face[g as usize] = ep_anel;
@@ -456,7 +482,8 @@ impl Inclinacoes {
         }
         // As threads tiram faces de um contador; a que chama junta os
         // rascunhos PELA ORDEM, à medida que ficam prontos.
-        let prontos: Vec<Mutex<Option<Rascunho>>> = (0..faces.len()).map(|_| Mutex::new(None)).collect();
+        let prontos: Vec<Mutex<Option<Rascunho>>> =
+            (0..faces.len()).map(|_| Mutex::new(None)).collect();
         let sinal = Condvar::new();
         let proxima = AtomicUsize::new(0);
         std::thread::scope(|sc| {
@@ -469,15 +496,21 @@ impl Inclinacoes {
                         }
                         let mut r = Rascunho::default();
                         faz(k, &mut r);
-                        *prontos[k].lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(r);
+                        *prontos[k]
+                            .lock()
+                            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(r);
                         sinal.notify_all();
                     }
                 });
             }
             for celula in &prontos {
-                let mut guarda = celula.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+                let mut guarda = celula
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
                 while guarda.is_none() {
-                    guarda = sinal.wait(guarda).unwrap_or_else(std::sync::PoisonError::into_inner);
+                    guarda = sinal
+                        .wait(guarda)
+                        .unwrap_or_else(std::sync::PoisonError::into_inner);
                 }
                 if let Some(r) = guarda.take() {
                     drop(guarda);
@@ -492,14 +525,20 @@ impl Inclinacoes {
         let topo = tinta.topologia();
         let v = topo.verts() as u32;
         if s < v {
-            let (a, b) = (self.ini_v[s as usize] as usize, self.ini_v[s as usize + 1] as usize);
+            let (a, b) = (
+                self.ini_v[s as usize] as usize,
+                self.ini_v[s as usize + 1] as usize,
+            );
             self.faces_v[a..b].iter().for_each(|&g| f(g));
             return;
         }
         let e = s - v;
         if e < topo.arestas_amostras() {
             let id = topo.off_aresta.partition_point(|&o| o <= e) - 1;
-            self.faces_a[id].iter().filter(|&&g| g != u32::MAX).for_each(|&g| f(g));
+            self.faces_a[id]
+                .iter()
+                .filter(|&&g| g != u32::MAX)
+                .for_each(|&g| f(g));
             return;
         }
         let n = e - topo.arestas_amostras();
@@ -550,5 +589,9 @@ fn ponto(a: [f32; 3], b: [f32; 3]) -> f32 {
 }
 
 fn cruz(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
-    [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
+    [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+    ]
 }

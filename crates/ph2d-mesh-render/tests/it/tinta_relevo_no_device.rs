@@ -279,15 +279,36 @@ fn esculpir_com_relevo_desenha_o_que_uma_subida_do_zero_desenha() {
     let mut r = MeshRenderer::new(&device, FORMAT);
     r.upload_at(&device, &queue, 0, &m, &[]);
     r.upload_tinta_at(&device, &queue, 0, &m, Some(&plano));
-    let antes = render_using_rig_shade(&device, &queue, &mut r, &camera, &LightRig::default(), rig_shade());
+    let antes = render_using_rig_shade(
+        &device,
+        &queue,
+        &mut r,
+        &camera,
+        &LightRig::default(),
+        rig_shade(),
+    );
     r.upload_at(&device, &queue, 0, &esculpida, &[]);
     r.upload_tinta_at(&device, &queue, 0, &esculpida, Some(&plano));
-    let reaproveitada = render_using_rig_shade(&device, &queue, &mut r, &camera, &LightRig::default(), rig_shade());
+    let reaproveitada = render_using_rig_shade(
+        &device,
+        &queue,
+        &mut r,
+        &camera,
+        &LightRig::default(),
+        rig_shade(),
+    );
 
     let mut zero = MeshRenderer::new(&device, FORMAT);
     zero.upload_at(&device, &queue, 0, &esculpida, &[]);
     zero.upload_tinta_at(&device, &queue, 0, &esculpida, Some(&plano));
-    let do_zero = render_using_rig_shade(&device, &queue, &mut zero, &camera, &LightRig::default(), rig_shade());
+    let do_zero = render_using_rig_shade(
+        &device,
+        &queue,
+        &mut zero,
+        &camera,
+        &LightRig::default(),
+        rig_shade(),
+    );
 
     let pior = |a: &[u8], b: &[u8]| {
         (0..H)
@@ -303,7 +324,10 @@ fn esculpir_com_relevo_desenha_o_que_uma_subida_do_zero_desenha() {
     //   contra refeitas inteiras), que pode virar um byte — nunca a forma de
     //   antes, que muda dezenas.
     let d = pior(&reaproveitada, &do_zero);
-    assert!(d <= 1.5, "a subida que reaproveita a foto desenha {d} longe da do zero");
+    assert!(
+        d <= 1.5,
+        "a subida que reaproveita a foto desenha {d} longe da do zero"
+    );
 }
 
 /// ⭐⭐⭐ **GATE — um traço de impasto subido POR PEDAÇOS desenha o MESMO que
@@ -332,7 +356,14 @@ fn o_relevo_subido_por_pedacos_desenha_o_que_uma_subida_do_zero_desenha() {
     let mut r = MeshRenderer::new(&device, FORMAT);
     r.upload_at(&device, &queue, 0, &m, &[]);
     r.upload_tinta_at(&device, &queue, 0, &m, Some(&plano));
-    let liso = render_using_rig_shade(&device, &queue, &mut r, &camera, &LightRig::default(), rig_shade());
+    let liso = render_using_rig_shade(
+        &device,
+        &queue,
+        &mut r,
+        &camera,
+        &LightRig::default(),
+        rig_shade(),
+    );
 
     // O «traço»: um morro de altura nas amostras perto do centro, e só elas
     // vão como sujas.
@@ -355,12 +386,26 @@ fn o_relevo_subido_por_pedacos_desenha_o_que_uma_subida_do_zero_desenha() {
         r.upload_tinta_amostras_at(&queue, 0, &m, &plano, &mut sujas),
         "o slot armado com relevo tinha de aceitar o incremental"
     );
-    let por_pedacos = render_using_rig_shade(&device, &queue, &mut r, &camera, &LightRig::default(), rig_shade());
+    let por_pedacos = render_using_rig_shade(
+        &device,
+        &queue,
+        &mut r,
+        &camera,
+        &LightRig::default(),
+        rig_shade(),
+    );
 
     let mut zero = MeshRenderer::new(&device, FORMAT);
     zero.upload_at(&device, &queue, 0, &m, &[]);
     zero.upload_tinta_at(&device, &queue, 0, &m, Some(&plano));
-    let do_zero = render_using_rig_shade(&device, &queue, &mut zero, &camera, &LightRig::default(), rig_shade());
+    let do_zero = render_using_rig_shade(
+        &device,
+        &queue,
+        &mut zero,
+        &camera,
+        &LightRig::default(),
+        rig_shade(),
+    );
 
     let pior = |a: &[u8], b: &[u8]| {
         (0..H)
@@ -368,7 +413,13 @@ fn o_relevo_subido_por_pedacos_desenha_o_que_uma_subida_do_zero_desenha() {
             .map(|(x, y)| (lum(a, x, y) - lum(b, x, y)).abs())
             .fold(0.0f32, f32::max)
     };
-    assert!(pior(&liso, &do_zero) > 10.0, "o CONTROLO: o morro tinha de acender");
+    assert!(
+        pior(&liso, &do_zero) > 10.0,
+        "o CONTROLO: o morro tinha de acender"
+    );
     let d = pior(&por_pedacos, &do_zero);
-    assert!(d <= 1.5, "o incremental desenha {d} longe da subida do zero");
+    assert!(
+        d <= 1.5,
+        "o incremental desenha {d} longe da subida do zero"
+    );
 }

@@ -102,7 +102,13 @@ struct Sonda {
 }
 
 /// As sondas da grelha: `(u, v)` lido do MUNDO, sem uma linha do shader.
-fn sondas_da_grelha(m: &Mesh, faces: &[Vec<u32>], t: &Tinta, origem: &[u32], g: &[[f32; 3]]) -> Vec<Sonda> {
+fn sondas_da_grelha(
+    m: &Mesh,
+    faces: &[Vec<u32>],
+    t: &Tinta,
+    origem: &[u32],
+    g: &[[f32; 3]],
+) -> Vec<Sonda> {
     let mut out = Vec::new();
     for (fi, f) in faces.iter().enumerate() {
         let a = m.positions()[f[0] as usize];
@@ -351,7 +357,11 @@ fn corre_na_placa(
         .relevo()
         .map_or_else(|| vec![[0.0; 2]], <[[f32; 2]]>::to_vec);
     let b_alt = buf(bytemuck::cast_slice(&alturas), st);
-    let inclinacoes: Vec<[f32; 3]> = if t.tem_relevo() { g.to_vec() } else { vec![[0.0; 3]] };
+    let inclinacoes: Vec<[f32; 3]> = if t.tem_relevo() {
+        g.to_vec()
+    } else {
+        vec![[0.0; 3]]
+    };
     let b_inc = buf(bytemuck::cast_slice(&inclinacoes), st);
     let n = sondas.len();
     let mut io = entrada;
@@ -410,12 +420,10 @@ fn corre_na_placa(
     let bg0 = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: None,
         layout: &entrada_bgl,
-        entries: &[
-            wgpu::BindGroupEntry {
-                binding: 0,
-                resource: b_io.as_entire_binding(),
-            },
-        ],
+        entries: &[wgpu::BindGroupEntry {
+            binding: 0,
+            resource: b_io.as_entire_binding(),
+        }],
     });
     let bg1 = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: None,

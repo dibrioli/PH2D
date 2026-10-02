@@ -118,8 +118,8 @@ muta "$COL/inclinacao.rs" \
   'N9 a atualização esquece o ANEL (a média da fronteira mente)'
 
 muta "$COL/inclinacao.rs" \
-  '            let sujas: Vec<u32> = (0..n as u32).filter(|&i| alt[i as usize][ALTURA] != 0.0).collect();' \
-  '            let sujas: Vec<u32> = (0..n as u32).filter(|&i| alt[i as usize][ALTURA] > 0.0).collect();' \
+  '                .filter(|&i| alt[i as usize][ALTURA] != 0.0)' \
+  '                .filter(|&i| alt[i as usize][ALTURA] > 0.0)' \
   'N10 o plano esparso esquece as alturas NEGATIVAS'
 
 # ── AS PORTAS DE SUBIDA (tinta_gpu) ──────────────────────────────────────
@@ -129,8 +129,8 @@ muta "$REN/tinta_gpu.rs" \
   'N11 a subida inteira não vê os vértices que o esculpir moveu'
 
 muta "$REN/tinta_gpu.rs" \
-  '            g.inc_foto.anota_alturas(sujas, tinta.relevo().unwrap_or(&[]));' \
-  '            g.inc_foto.anota_alturas(sujas, tinta.relevo().unwrap_or(&[]));
+  '                .anota_alturas(sujas, tinta.relevo().unwrap_or(&[]));' \
+  '                .anota_alturas(sujas, tinta.relevo().unwrap_or(&[]));
             mudadas.clear();' \
   'N12 o incremental do traço não sobe as inclinações que refez'
 

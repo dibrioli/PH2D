@@ -95,6 +95,8 @@ impl crate::App {
         }
         // ⭐ **A árvore vai junto** (TOP-20 #9, W3c): o `SignalTagFilter` de uma armadilha decide
         // AQUI, onde o `other` existe. Sem filtro nenhum a saída é byte-idêntica.
+        // ⭐ E à NAVEGAÇÃO (plano 30, W6, *a tag mais perto*): vale a partir do próximo tique.
+        physics.set_tag_tree(tags);
         for sig in physics.signal_events(sim, tags) {
             self.signals.publish(ph2d_runtime::Signal::from_contact(
                 &sig.name,

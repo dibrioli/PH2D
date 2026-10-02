@@ -37,6 +37,13 @@ pub(crate) fn apply_nav_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
             push(host, bits, NavFieldEdit::AlvoModo(NavAlvoModo::ALL[i]));
             return true;
         }
+        // (W6) Uma opção da TAG — a lista é a MESMA que o pintor derivou.
+        if let Some(i) = crate::ids::INSP_NAV_TAG_OPT.iter().position(|&o| o == id) {
+            if let Some(o) = crate::sections::nav_tag_row::nav_tag_options().get(i) {
+                push(host, bits, NavFieldEdit::AlvoTag(o.value));
+            }
+            return true;
+        }
     }
 
     if let WidgetEvent::Toggled(id) = ev

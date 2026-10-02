@@ -305,3 +305,84 @@ fn o_desvio_vai_e_volta() {
         assert_eq!(agente_de(&sim, agente).avoidance, quer);
     }
 }
+
+/// ⭐⭐ **(W6) Os modos `Tag` e `Patrol` vão e voltam** — o modo escreve a variante dele, a tag
+/// escolhida chega ao componente, e o NOME escrito na patrulha é o da FORMA (o modo vem primeiro).
+///
+/// **Mutações que devem sangrar:** o nome a escrever `Named` em patrulha · o modo `Tag` a não
+/// preservar a tag · o braço do `AlvoTag` apagado.
+#[test]
+fn os_modos_da_w6_vao_e_voltam() {
+    let mut sim = SimWorld::new();
+    let (agente, _) = cena(&mut sim);
+    let alvo = |sim: &SimWorld| sim.world().get::<NavAgent>(agente).map(|a| a.target);
+    let w = sim.world_mut();
+    assert!(apply_nav_edit(
+        w,
+        agente.to_bits(),
+        &NavFieldEdit::AlvoModo(NavAlvoModo::Tag)
+    ));
+    assert_eq!(alvo(&sim), Some(NavTarget::NearestTagged(0)));
+    apply_nav_edit(
+        sim.world_mut(),
+        agente.to_bits(),
+        &NavFieldEdit::AlvoTag(42),
+    );
+    assert_eq!(alvo(&sim), Some(NavTarget::NearestTagged(42)));
+    apply_nav_edit(
+        sim.world_mut(),
+        agente.to_bits(),
+        &NavFieldEdit::AlvoModo(NavAlvoModo::Tag),
+    );
+    assert_eq!(
+        alvo(&sim),
+        Some(NavTarget::NearestTagged(42)),
+        "repetir o modo apagou a tag"
+    );
+    let a = agente_de(&sim, agente);
+    assert_eq!((a.alvo_modo, a.alvo_tag), (NavAlvoModo::Tag, 42));
+
+    apply_nav_edit(
+        sim.world_mut(),
+        agente.to_bits(),
+        &NavFieldEdit::AlvoModo(NavAlvoModo::Patrulha),
+    );
+    apply_nav_edit(
+        sim.world_mut(),
+        agente.to_bits(),
+        &NavFieldEdit::AlvoNome(" Ronda ".into()),
+    );
+    assert_eq!(
+        alvo(&sim),
+        Some(NavTarget::Patrol(stable_name_id("Ronda"))),
+        "na patrulha o nome é o da forma"
+    );
+}
+
+/// ⭐⭐ **(W6) A patrulha diz quando o nome não é de uma forma DESENHADA** — ninguém com esse nome, ou
+/// um objecto sem forma vectorial: as duas pedem a mesma cura.
+///
+/// **Mutação que deve sangrar:** aceitar um objecto sem `VecPathRef` como forma.
+#[test]
+fn a_patrulha_diz_quando_o_nome_nao_e_de_uma_forma() {
+    let mut sim = SimWorld::new();
+    let (agente, _) = cena(&mut sim);
+    // «Hero» existe mas não é uma forma desenhada.
+    sim.world_mut()
+        .get_mut::<NavAgent>(agente)
+        .expect("o agente")
+        .target = NavTarget::Patrol(stable_name_id("Hero"));
+    let a = agente_de(&sim, agente);
+    assert_eq!(a.alvo_nome, "Hero");
+    assert_eq!(a.queixa(), Some(AgentQueixa::SemForma));
+    // O CONTROLO: com uma forma, a queixa some.
+    sim.world_mut().spawn((
+        Name::new("Ronda"),
+        ph2d_ecs::VecPathRef(1),
+    ));
+    sim.world_mut()
+        .get_mut::<NavAgent>(agente)
+        .expect("o agente")
+        .target = NavTarget::Patrol(stable_name_id("Ronda"));
+    assert_eq!(agente_de(&sim, agente).queixa(), None);
+}

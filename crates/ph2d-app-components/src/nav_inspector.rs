@@ -54,12 +54,30 @@ fn dentro_de_alguma_regiao(world: &World, p: [f32; 2]) -> bool {
 
 fn info_do_agente(world: &World, e: Entity, a: &NavAgent) -> InspectorNavAgent {
     let (alvo_modo, alvo_nome, alvo_perdido, alvo_ponto) = match a.target {
-        NavTarget::None => (NavAlvoModo::Nenhum, String::new(), false, [0.0, 0.0]),
+        NavTarget::None | NavTarget::NearestTagged(_) => {
+            let m = if matches!(a.target, NavTarget::None) {
+                NavAlvoModo::Nenhum
+            } else {
+                NavAlvoModo::Tag
+            };
+            (m, String::new(), false, [0.0, 0.0])
+        }
         NavTarget::Named(id) => {
             let (nome, perdido) = crate::projectile_inspector::nome_do_alvo(world, id);
             (NavAlvoModo::Objecto, nome, perdido, [0.0, 0.0])
         }
         NavTarget::Point(p) => (NavAlvoModo::Ponto, String::new(), false, p),
+        // ⚠️ **Perdida = ninguém com esse nome OU um objecto que não é uma forma desenhada** — a
+        // mesma pergunta que a rota faz (`nav_rota::forma_chamada`).
+        NavTarget::Patrol(id) => {
+            let (nome, perdido) = crate::projectile_inspector::nome_do_alvo(world, id);
+            let forma = !perdido && forma_com_nome(world, id);
+            (NavAlvoModo::Patrulha, nome, id != 0 && !forma, [0.0, 0.0])
+        }
+    };
+    let alvo_tag = match a.target {
+        NavTarget::NearestTagged(t) => t,
+        _ => 0,
     };
     let mover = world.get::<TopDownPlayer>(e);
     let pos = world_transform(world, e).map_or([0.0, 0.0], |t| [t.translation.x, t.translation.y]);
@@ -67,6 +85,7 @@ fn info_do_agente(world: &World, e: Entity, a: &NavAgent) -> InspectorNavAgent {
         alvo_modo,
         alvo_nome,
         alvo_perdido,
+        alvo_tag,
         alvo_ponto,
         radius: a.radius,
         arrive: a.arrive_distance,
@@ -88,6 +107,16 @@ fn info_do_agente(world: &World, e: Entity, a: &NavAgent) -> InspectorNavAgent {
             raio: n.radius,
         }),
     }
+}
+
+/// Há uma forma DESENHADA com este nome?
+fn forma_com_nome(world: &World, id: u64) -> bool {
+    let Some(mut q) = world.try_query::<(Entity, &ph2d_ecs::Name)>() else {
+        return false;
+    };
+    q.iter(world)
+        .find(|(_, n)| stable_name_id(n.as_str()) == id)
+        .is_some_and(|(e, _)| world.get::<ph2d_ecs::VecPathRef>(e).is_some())
 }
 
 /// **O instantâneo.** `None` para quem não tem nenhum dos dois componentes (ADR-0166).
@@ -141,15 +170,21 @@ pub fn apply_nav_edit(world: &mut World, bits: u64, edit: &NavFieldEdit) -> bool
         }
         _ => {}
     }
-    // ⚠️ **O nome resolve-se ANTES do empréstimo mutável** (ele varre o mundo).
+    // ⚠️ **O nome resolve-se ANTES do empréstimo mutável** (ele varre o mundo). ⭐ (W6) E ele
+    // escreve no alvo que o agente JÁ tem: na patrulha é o nome da FORMA (o modo vem primeiro).
+    let em_patrulha = matches!(
+        world.get::<NavAgent>(e).map(|a| a.target),
+        Some(NavTarget::Patrol(_))
+    );
     let novo_alvo = match edit {
         NavFieldEdit::AlvoNome(nome) => {
             let t = nome.trim();
-            Some(NavTarget::Named(if t.is_empty() {
-                0
+            let id = if t.is_empty() { 0 } else { stable_name_id(t) };
+            Some(if em_patrulha {
+                NavTarget::Patrol(id)
             } else {
-                stable_name_id(t)
-            }))
+                NavTarget::Named(id)
+            })
         }
         _ => None,
     };
@@ -167,6 +202,10 @@ pub fn apply_nav_edit(world: &mut World, bits: u64, edit: &NavFieldEdit) -> bool
                 (NavAlvoModo::Objecto, _) => NavTarget::Named(0),
                 (NavAlvoModo::Ponto, t @ NavTarget::Point(_)) => t,
                 (NavAlvoModo::Ponto, _) => NavTarget::Point([0.0, 0.0]),
+                (NavAlvoModo::Tag, t @ NavTarget::NearestTagged(_)) => t,
+                (NavAlvoModo::Tag, _) => NavTarget::NearestTagged(0),
+                (NavAlvoModo::Patrulha, t @ NavTarget::Patrol(_)) => t,
+                (NavAlvoModo::Patrulha, _) => NavTarget::Patrol(0),
             };
         }
         NavFieldEdit::AlvoNome(_) => {
@@ -192,6 +231,7 @@ pub fn apply_nav_edit(world: &mut World, bits: u64, edit: &NavFieldEdit) -> bool
         NavFieldEdit::StuckAfter(v) => a.stuck_after_s = v.max(0.0),
         NavFieldEdit::Active(b) => a.active = *b,
         NavFieldEdit::Avoidance(b) => a.avoidance = *b,
+        NavFieldEdit::AlvoTag(t) => a.target = NavTarget::NearestTagged(*t),
         NavFieldEdit::OnArrived(s) => a.on_arrived.clone_from(s),
         NavFieldEdit::OnNoPath(s) => a.on_no_path.clone_from(s),
         NavFieldEdit::OnStuck(s) => a.on_stuck.clone_from(s),

@@ -55,6 +55,9 @@ struct Pista {
 /// `ArcPath` custa um `arclen` por segmento (Gauss-Legendre de 16 nós), e o doc dele avisa por
 /// escrito: *«um `ArcPath` por amostra transformaria um efeito linear em quadrático»*.
 pub fn a_escrever(sim: &mut SimWorld, cena: &VecScene) -> Vec<PoseDeCaminho> {
+    // ⭐ E as ROTAS da patrulha (plano 30, W6): a outra leitura de «um objecto que segue uma forma
+    // desenhada», na mesma passagem de quadro (a shell não ganha uma linha).
+    crate::nav_rota::escreve(sim, cena);
     let pedidos = ph2d_ecs::path_follow::a_seguir(sim.world_mut());
     if pedidos.is_empty() {
         return Vec::new();

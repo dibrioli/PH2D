@@ -69,6 +69,10 @@ pub(super) struct NavWorld {
     pub(super) agents: BTreeMap<Entity, AgentRuntime>,
     /// ⭐ As ORDENS dos verbos `Start/Stop Navigation` (W6) — ver [`ordens`].
     pub(super) ordens: ordens::Ordens,
+    /// ⭐ A RONDA de cada agente em patrulha (W6) — ⚠️ entra no anel. Ver [`alvo`].
+    pub(super) rondas: BTreeMap<Entity, alvo::Ronda>,
+    /// A árvore das tags do documento (para *a tag mais perto*), entregue pela shell.
+    arvore: ph2d_tags::TagTree,
     /// Os buffers da procura (reaproveitados; nenhum estado entre consultas).
     search: Polyanya,
     /// Os factos DESTE tique, à espera da porta de depois do passo.
@@ -84,6 +88,8 @@ impl Default for NavWorld {
             walls: BTreeMap::new(),
             agents: BTreeMap::new(),
             ordens: ordens::Ordens::default(),
+            rondas: BTreeMap::new(),
+            arvore: ph2d_tags::TagTree::default(),
             search: Polyanya::new(),
             tick_events: Vec::new(),
             events: Vec::new(),
@@ -98,6 +104,7 @@ impl NavWorld {
         self.walls.clear();
         self.agents.clear();
         self.ordens = ordens::Ordens::default();
+        self.rondas.clear();
         self.tick_events.clear();
         self.events.clear();
     }
@@ -235,21 +242,15 @@ impl PhysicsBridge {
 
         // 2.ª passagem: a condução, contra as malhas em dia.
         let mut pedidas: Vec<desvio::Pedida> = Vec::with_capacity(vez.len());
+        let mut por_tag = alvo::PorTag::new();
         for v in vez {
             let p = v.p;
             let mut rt = self.nav.agents.remove(&p.entity).unwrap_or_default();
             if v.chave.is_some_and(|k| mudou.contains(&k)) {
                 rt.forget_path();
             }
-            let quem = match v.target {
-                NavTarget::Named(id) => self.entidade_do_alvo(sim, id),
-                _ => None,
-            };
-            let alvo = match v.target {
-                NavTarget::None => None,
-                NavTarget::Point(q) => Some([f64::from(q[0]), f64::from(q[1])]),
-                NavTarget::Named(_) => quem.and_then(|e| self.posicao_de(sim, e)),
-            };
+            let chegada = f64::from(p.arrive.max(0.0));
+            let (quem, alvo) = self.alvo_de(sim, p.entity, v.target, v.pos, chegada, &mut por_tag);
             let cfg = AgentConfig {
                 arrive_distance: f64::from(p.arrive.max(0.0)),
                 repath_distance: f64::from(p.repath.max(0.0)),
@@ -537,6 +538,10 @@ mod malha;
 
 #[path = "nav_ordens.rs"]
 mod ordens;
+
+#[path = "nav_alvo.rs"]
+mod alvo;
+pub use alvo::Ronda;
 pub use ordens::{OrdemDeNavegacao, PedidoDeNavegacao};
 
 #[cfg(test)]

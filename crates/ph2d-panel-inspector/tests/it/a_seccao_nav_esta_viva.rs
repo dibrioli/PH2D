@@ -42,6 +42,7 @@ fn agente(modo: NavAlvoModo) -> InspectorNavAgent {
         alvo_modo: modo,
         alvo_nome: "Hero".into(),
         alvo_perdido: false,
+        alvo_tag: 0,
         alvo_ponto: [4.5, -2.0],
         radius: 0.65,
         arrive: 0.9,
@@ -354,4 +355,80 @@ fn escrever_num_nome_chega_ao_barramento_com_a_variante_dele() {
         assert_eq!(edicoes(&mut h), vec![e], "escrever em {id:?}");
         set_current_inspector_nav(None);
     }
+}
+
+/// ⭐⭐ **(W6) Cada modo novo pinta a SUA linha e não a dos outros** — `Tag` o chip da tag,
+/// `Patrol` o campo do nome (o da forma), e nenhum dos dois o ponto.
+///
+/// **Mutações que devem sangrar:** tirar um braço novo do pintor · pintar o chip em `Patrol`.
+#[test]
+fn os_modos_da_w6_pintam_a_sua_linha() {
+    for (modo, sim, nao) in [
+        (
+            NavAlvoModo::Tag,
+            ids::INSP_NAV_TAG_PICK,
+            [ids::INSP_NAV_TARGET_NAME, ids::INSP_NAV_TARGET_X],
+        ),
+        (
+            NavAlvoModo::Patrulha,
+            ids::INSP_NAV_TARGET_NAME,
+            [ids::INSP_NAV_TAG_PICK, ids::INSP_NAV_TARGET_X],
+        ),
+    ] {
+        let (mut h, mut st) = host(info(None, Some(agente(modo))));
+        let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+        assert!(
+            pintado(&rects, sim),
+            "{modo:?}: a linha dele não foi pintada"
+        );
+        for id in nao {
+            assert!(
+                !pintado(&rects, id),
+                "{modo:?}: pintou a linha de outro modo"
+            );
+        }
+        set_current_inspector_nav(None);
+    }
+}
+
+/// ⭐⭐⭐ **(W6) Escolher uma tag com o ponteiro REAL pede ESSA tag** — o chip abre a lista da árvore
+/// do projecto, e a opção clicada chega ao barramento com o id dela.
+///
+/// **Mutações que devem sangrar:** tirar as opções do `populate_nav` · tirar o braço do despacho ·
+/// o despacho ler a opção ao lado.
+#[test]
+fn escolher_uma_tag_com_o_ponteiro_pede_essa_tag() {
+    use ph2d_editor_core::screens::hero::InspectorTagRow;
+    let linha = |id: u64, path: &str, depth| InspectorTagRow {
+        id,
+        path: path.into(),
+        label: path.rsplit('/').next().unwrap_or(path).into(),
+        depth,
+    };
+    ph2d_panel_inspector::set_current_tag_tree(vec![
+        linha(3, "Enemy", 0),
+        linha(8, "Enemy/Flying", 1),
+        linha(5, "Coin", 0),
+    ]);
+    let mut a = agente(NavAlvoModo::Tag);
+    a.alvo_tag = 3;
+    let (mut h, mut st) = host(info(None, Some(a)));
+    let _ = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    h.set_dropdown_open(ids::INSP_NAV_TAG_PICK, true);
+    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    let r = rects
+        .iter()
+        .find(|(n, _)| *n == ids::INSP_NAV_TAG_OPT[1])
+        .map(|(_, r)| *r)
+        .expect("a lista aberta não pintou a 2.ª tag");
+    for ev in h.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5) {
+        let _ = h.apply_panel_event::<InspectorPanel>(&mut st, ev);
+    }
+    assert_eq!(
+        edicoes(&mut h),
+        vec![E::AlvoTag(8)],
+        "a 2.ª opção é «Enemy/Flying»"
+    );
+    set_current_inspector_nav(None);
+    ph2d_panel_inspector::set_current_tag_tree(Vec::new());
 }

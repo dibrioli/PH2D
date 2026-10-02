@@ -1136,6 +1136,7 @@ fn arma_o_top20() {
             alvo_modo: NavAlvoModo::Ponto,
             alvo_nome: String::new(),
             alvo_perdido: false,
+            alvo_tag: 0,
             alvo_ponto: [4.5, -2.25],
             radius: 0.0,
             arrive: 0.1,

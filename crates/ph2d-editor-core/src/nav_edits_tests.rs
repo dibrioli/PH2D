@@ -5,6 +5,7 @@ fn agente() -> InspectorNavAgent {
         alvo_modo: NavAlvoModo::Objecto,
         alvo_nome: "Hero".into(),
         alvo_perdido: false,
+        alvo_tag: 0,
         alvo_ponto: [0.0, 0.0],
         radius: 0.0,
         arrive: 0.1,
@@ -99,7 +100,7 @@ fn a_queixa_do_agente_vai_da_mais_especifica_para_a_mais_geral() {
             AgentQueixa::ComPlataforma => tudo.has_platformer = false,
             AgentQueixa::Desligado => tudo.active = true,
             AgentQueixa::SemAlvo => tudo.alvo_modo = NavAlvoModo::Ponto,
-            AgentQueixa::AlvoPerdido => unreachable!(),
+            AgentQueixa::AlvoPerdido | AgentQueixa::SemForma => unreachable!(),
             AgentQueixa::ForaDaRegiao => tudo.in_region = true,
         }
     }
@@ -125,6 +126,28 @@ fn o_alvo_por_nome_tem_duas_formas_de_faltar() {
     ponto.alvo_modo = NavAlvoModo::Ponto;
     ponto.alvo_nome = String::new();
     assert_eq!(ponto.queixa(), None);
+}
+
+/// ⭐ **(W6) A patrulha tem as MESMAS duas faltas do nome** — vazio é «sem alvo», perdido é «nenhuma
+/// forma desenhada tem esse nome», e o perdido vem primeiro; **a tag** por escolher é «sem alvo».
+///
+/// **Mutações que devem sangrar:** tirar qualquer dos três braços novos · trocar `SemForma` por
+/// `AlvoPerdido` (a cura é outra: escrever o nome de uma FORMA).
+#[test]
+fn a_patrulha_e_a_tag_dizem_o_que_lhes_falta() {
+    let mut patrulha = agente();
+    patrulha.alvo_modo = NavAlvoModo::Patrulha;
+    assert_eq!(patrulha.queixa(), None, "uma ronda com forma não se queixa");
+    patrulha.alvo_nome = String::new();
+    assert_eq!(patrulha.queixa(), Some(AgentQueixa::SemAlvo));
+    patrulha.alvo_perdido = true;
+    assert_eq!(patrulha.queixa(), Some(AgentQueixa::SemForma));
+
+    let mut tag = agente();
+    tag.alvo_modo = NavAlvoModo::Tag;
+    assert_eq!(tag.queixa(), Some(AgentQueixa::SemAlvo), "a tag por escolher");
+    tag.alvo_tag = 9;
+    assert_eq!(tag.queixa(), None);
 }
 
 /// A região: o tamanho antes das paredes — uma região sem tamanho não tem paredes a perguntar.

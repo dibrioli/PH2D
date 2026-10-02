@@ -72,6 +72,12 @@ pub enum NavTarget {
     Named(u64),
     /// Um ponto fixo do mundo, em metros.
     Point([f32; 2]),
+    /// ⭐ **O mais perto que pertence a esta tag** (o `TagId`, com a subárvore) — plano 30, W6.
+    /// Em linha recta; empate pela ordem da identidade; o próprio agente não conta.
+    NearestTagged(u64),
+    /// ⭐ **A PATRULHA pela forma com este `stable_name_id`** — plano 30, W6. Visita os pontos da
+    /// forma por ordem: fechada dá voltas, aberta vai e volta. ⚠️ O NOME da forma, nunca os bits.
+    Patrol(u64),
 }
 
 /// **Um agente que acha o caminho sozinho.** Ver o cabeçalho do módulo.
@@ -118,6 +124,19 @@ impl Default for NavAgent {
             avoidance: true,
         }
     }
+}
+
+/// ⭐⭐ **Os pontos da PATRULHA de um agente, em mundo** (plano 30, W6) — DERIVADOS da forma que o
+/// [`NavTarget::Patrol`] nomeia, pela família (que é quem vê a geometria vectorial: o ECS não a tem).
+///
+/// ⛔ **NÃO registado**, pela lei do [`NavNow`]: a fonte é a forma desenhada; registado, ele entraria
+/// no ficheiro como uma segunda resposta a *«por onde passa a ronda?»*.
+#[derive(Component, Clone, Debug, Default, PartialEq)]
+pub struct NavRoute {
+    /// Os pontos, por ordem, em metros.
+    pub points: Vec<[f32; 2]>,
+    /// A forma é fechada (a ronda dá voltas) ou aberta (vai e volta).
+    pub closed: bool,
 }
 
 /// ⭐⭐ **O agente AGORA** — o que a ponte publica no mundo no fim de cada `dispatch`, para quem não

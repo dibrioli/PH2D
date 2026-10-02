@@ -132,6 +132,7 @@ pub mod instantiate;
 pub mod master_editing;
 /// ⭐⭐⭐ As secções NAV REGION e NAV AGENT do Inspector — o instantâneo e o dreno (plano 30, W4).
 pub mod nav_inspector;
+pub mod nav_rota;
 /// ⭐⭐⭐ **O mover de VISTA DE CIMA** (TOP-20 #13) — as duas cenas do dono.
 /// ⭐⭐⭐ A NAVEGAÇÃO (plano 30, W3) — `PH2D_NAV_SMOKE=1`.
 pub mod nav_smoke;

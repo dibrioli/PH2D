@@ -36,6 +36,7 @@ const fn chave_do_agente(q: AgentQueixa) -> (&'static str, ColorToken) {
         AgentQueixa::SemAlvo => ("panel.inspector.nav.no_target", ColorToken::Text3),
         AgentQueixa::AlvoPerdido => ("panel.inspector.nav.target_lost", ColorToken::Warn),
         AgentQueixa::ForaDaRegiao => ("panel.inspector.nav.outside_regions", ColorToken::Warn),
+        AgentQueixa::SemForma => ("panel.inspector.nav.shape_lost", ColorToken::Warn),
     }
 }
 
@@ -288,6 +289,8 @@ pub(crate) fn paint_nav_agent_section(
         2,
         &[
             tr("panel.inspector.nav.target"),
+            tr("panel.inspector.nav.target_tag"),
+            tr("panel.inspector.nav.shape"),
             tr("panel.inspector.nav.radius"),
             tr("panel.inspector.nav.arrive_at"),
             tr("panel.inspector.nav.repath_after"),
@@ -301,6 +304,8 @@ pub(crate) fn paint_nav_agent_section(
         tr("panel.inspector.nav.target_none"),
         tr("panel.inspector.nav.target_object"),
         tr("panel.inspector.nav.target_point"),
+        tr("panel.inspector.nav.target_tag"),
+        tr("panel.inspector.nav.target_patrol"),
     ];
     let segmentos: Vec<(&str, bool, NodeId)> = NavAlvoModo::ALL
         .iter()
@@ -344,6 +349,39 @@ pub(crate) fn paint_nav_agent_section(
                 crate::ids::INSP_NAV_TARGET_NAME,
                 TextInput::new(crate::ids::INSP_NAV_TARGET_NAME, "")
                     .placeholder(tr("panel.inspector.nav.object_name_u")),
+                seccao,
+            );
+        }
+        NavAlvoModo::Tag => {
+            cur_y = super::nav_tag_row::tag_row(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                x,
+                w,
+                cur_y,
+                a.alvo_tag,
+                seccao,
+            );
+        }
+        // ⚠️ **O MESMO campo do nome**, com o rótulo da forma: o despacho escreve-o no alvo que o
+        // agente já tem (o modo vem primeiro), e dois campos seriam um morto em cada modo.
+        NavAlvoModo::Patrulha => {
+            cur_y = super::anim_rows::text_row(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                x,
+                w,
+                cur_y,
+                tr("panel.inspector.nav.shape"),
+                crate::ids::INSP_NAV_TARGET_NAME,
+                TextInput::new(crate::ids::INSP_NAV_TARGET_NAME, "")
+                    .placeholder(tr("panel.inspector.nav.shape_name_u")),
                 seccao,
             );
         }

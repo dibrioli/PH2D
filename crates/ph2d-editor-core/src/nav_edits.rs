@@ -20,6 +20,7 @@
 //! | `Desligado` | o artista desligou-o | ligar *Active* |
 //! | `SemAlvo` | ele não vai a lado nenhum | escolher um alvo |
 //! | `AlvoPerdido` | ninguém tem esse nome | escrever um nome que exista |
+//! | `SemForma` | (patrulha) nenhuma forma desenhada tem esse nome | escrever o nome de uma forma |
 //! | `ForaDaRegiao` | não há malha onde ele está | uma `NavRegion` à volta dele |
 //!
 //! ⚠️ **Da mais ESPECÍFICA para a mais geral** — a lei da recusa dos pincéis: dizer *«sem alvo»* a
@@ -88,11 +89,21 @@ pub enum NavAlvoModo {
     Objecto,
     /// Um ponto fixo do mundo.
     Ponto,
+    /// (W6) O mais perto que pertence a uma TAG.
+    Tag,
+    /// (W6) A PATRULHA pelos pontos de uma forma desenhada, pelo NOME dela.
+    Patrulha,
 }
 
 impl NavAlvoModo {
-    /// Os três, na ordem do segmentado.
-    pub const ALL: [Self; 3] = [Self::Nenhum, Self::Objecto, Self::Ponto];
+    /// Os cinco, na ordem do segmentado. ⚠️ Apendados no fim: a posição é a tag do clique.
+    pub const ALL: [Self; 5] = [
+        Self::Nenhum,
+        Self::Objecto,
+        Self::Ponto,
+        Self::Tag,
+        Self::Patrulha,
+    ];
 }
 
 /// O estado da condução, como o painel o lê.
@@ -124,10 +135,14 @@ pub struct NavAgora {
 #[derive(Clone, Debug, PartialEq)]
 pub struct InspectorNavAgent {
     pub alvo_modo: NavAlvoModo,
-    /// O nome do alvo (modo `Objecto`) — vazio quando ninguém tem o id guardado.
+    /// O nome do alvo (modo `Objecto`) ou da forma (modo `Patrulha`) — vazio quando ninguém tem o
+    /// id guardado.
     pub alvo_nome: String,
-    /// O id guardado não é o nome de ninguém (o alvo foi apagado ou renomeado).
+    /// O id guardado não é o nome de ninguém (o alvo foi apagado ou renomeado) — na `Patrulha`, de
+    /// nenhuma forma DESENHADA.
     pub alvo_perdido: bool,
+    /// (W6) A tag do modo `Tag` (`0` = por escolher).
+    pub alvo_tag: u64,
     /// O ponto do alvo (modo `Ponto`), em metros.
     pub alvo_ponto: [f32; 2],
     /// O raio autorado — ⚠️ `0` é DERIVADO do colisor.
@@ -179,6 +194,11 @@ impl InspectorNavAgent {
             NavAlvoModo::Objecto if self.alvo_nome.is_empty() => {
                 return Some(AgentQueixa::SemAlvo);
             }
+            NavAlvoModo::Patrulha if self.alvo_perdido => return Some(AgentQueixa::SemForma),
+            NavAlvoModo::Patrulha if self.alvo_nome.is_empty() => {
+                return Some(AgentQueixa::SemAlvo);
+            }
+            NavAlvoModo::Tag if self.alvo_tag == 0 => return Some(AgentQueixa::SemAlvo),
             _ => {}
         }
         if !self.in_region {
@@ -201,6 +221,8 @@ pub enum AgentQueixa {
     SemAlvo,
     AlvoPerdido,
     ForaDaRegiao,
+    /// (W6) Nenhuma forma desenhada tem o nome da patrulha.
+    SemForma,
 }
 
 /// Uma edição de um campo das secções NAV REGION ou NAV AGENT.
@@ -226,6 +248,8 @@ pub enum NavFieldEdit {
     OnStuck(String),
     /// (W5) Desviar dos outros — apendado.
     Avoidance(bool),
+    /// (W6) A tag do modo `Tag` — apendado.
+    AlvoTag(u64),
 }
 
 #[cfg(test)]

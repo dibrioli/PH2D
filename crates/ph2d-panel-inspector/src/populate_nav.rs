@@ -44,6 +44,7 @@ pub(crate) fn populate_nav(store: &mut WidgetStore) {
     for id in ids::INSP_NAV_LAYERS
         .into_iter()
         .chain(ids::INSP_NAV_TARGET_MODE)
+        .chain(ids::INSP_NAV_TAG_OPT)
     {
         store.register(
             id,
@@ -68,6 +69,15 @@ pub(crate) fn populate_nav(store: &mut WidgetStore) {
             },
         );
     }
+    // (W6) O chip da tag é um `Dropdown`; as opções (acima) são as linhas do popover.
+    store.register(
+        ids::INSP_NAV_TAG_PICK,
+        InteractiveState::Dropdown {
+            state: ph2d_editor_core::widget::DropdownState::Normal,
+            open: false,
+            selected_index: None,
+        },
+    );
     for (id, value, lo, hi, step) in NUMEROS {
         store.register(
             id,

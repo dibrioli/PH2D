@@ -261,6 +261,7 @@ impl PhysicsBridge {
                 health: self.health_state.clone(),
                 nav: self.nav.agents.clone(),
                 nav_ordens: self.nav.ordens.em_vigor.clone(),
+                nav_rondas: self.nav.rondas.clone(),
             },
         );
         // A janela do ring é limitada; a nossa segue a dele pela borda de baixo
@@ -285,6 +286,7 @@ impl PhysicsBridge {
             self.health_state = m.health.clone();
             self.nav.agents = m.nav.clone();
             self.nav.ordens.em_vigor = m.nav_ordens.clone();
+            self.nav.rondas = m.nav_rondas.clone();
         }
     }
 
@@ -334,6 +336,9 @@ pub(super) struct ControllerMemory {
     /// ⭐ As ORDENS dos verbos de navegação (plano 30, W6): sem elas um scrub devolvia um guarda a
     /// andar que um `Stop` tinha parado naquele tique.
     pub(super) nav_ordens: BTreeMap<Entity, super::nav::OrdemDeNavegacao>,
+    /// ⭐ As RONDAS da patrulha (plano 30, W6): sem elas um scrub devolvia o guarda a caminho de
+    /// outro ponto da ronda.
+    pub(super) nav_rondas: BTreeMap<Entity, super::nav::Ronda>,
 }
 
 /// O tipo da tabela — uma memória por tique âncora.

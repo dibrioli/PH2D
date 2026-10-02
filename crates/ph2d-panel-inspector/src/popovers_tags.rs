@@ -52,6 +52,26 @@ pub(super) fn paint_deferred_tag_popovers(
             hit_index,
         );
     }
+    // ⭐ **A TAG do NAV AGENT** (plano 30, W6) — quarto slot, opções próprias (a árvore inteira).
+    if let Some(chip) = state_popovers::take_pending_nav_tag_dd() {
+        let dd = Dropdown::new(
+            crate::ids::INSP_NAV_TAG_PICK,
+            "",
+            crate::sections::nav_tag_row::nav_tag_options(),
+        )
+        .placeholder(ph2d_i18n::tr("panel.tags.pick"))
+        .open(true);
+        paint_open_popover(
+            &dd,
+            chip,
+            region,
+            store,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+        );
+    }
     // ⭐⭐⭐ **A TAG ALVO de uma SIGNAL ACTION** (TOP-20 #9, W3b) — slot próprio, opções próprias.
     // ⚠️ Elas são a árvore INTEIRA (uma acção pode apontar a qualquer tag), ao contrário da secção
     // *Tags*, onde a lista tira as que o objecto já tem.

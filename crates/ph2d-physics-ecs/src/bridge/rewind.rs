@@ -199,6 +199,8 @@ impl PhysicsBridge {
         // ⭐ E as ORDENS dos verbos (W6): no tique 0 nenhum verbo falou. A FITA delas fica — é ela
         // que o replay relê, como a da vida.
         self.nav.ordens.em_vigor.clear();
+        // E as RONDAS da patrulha (W6): no tique 0 ninguém começou a ronda.
+        self.nav.rondas.clear();
         // ⭐⭐⭐ E o que cada RAIO via (suplente #21) — o QUARTO mapa desta família, e ele entra no
         // mesmo commit em que nasce, de propósito: os três acima foram esquecidos aqui **um de cada
         // vez**, e o último custou um report do dono (*«o Rewind não está funcionando com os

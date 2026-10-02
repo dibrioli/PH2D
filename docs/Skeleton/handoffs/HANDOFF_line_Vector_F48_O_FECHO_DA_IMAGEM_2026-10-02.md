@@ -5,7 +5,7 @@
 
 ## 0. Onde está
 
-- Worktree `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector` · ramo `line/Vector` · HEAD `7cf837a9a`.
+- Worktree `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector` · ramo `line/Vector` · HEAD `13285066c` (F49: a costura no lugar da bola da F48; o que a F48 descreve abaixo foi SUBSTITUÍDO, ver [fila §F49](../01_a_fila.md)).
 - Base: `main` `1ad60a1ce`, após `git reset --keep main` (a linha já estava integrada; só a F48 está à frente).
 - Antes de ler: `cd` + `pwd` + `git branch --show-current` (tem de dar `line/Vector`).
 
@@ -40,7 +40,8 @@ outra) e um degrau no encontro da tampa redonda com a borda de baixo (a `~(36°,
   e volta por ela) e o `triangulate` recusa-o. `skin_image_fecho::limpa_o_anel` tira os nós
   colineares/repetidos (área intacta). Gate `a_dobra_arredonda_em_toda_a_varredura` (`−128°…−132°`,
   passo `0,25°`), vermelho antes.
-- ⏳ **ABERTO — o salto grande, `(36°, −141,5°)…(36°, −148,5°)`** (menos `−143,5°`/`−144°`): o fecho
+- ✅ **Os dois ⏳ abaixo (o salto grande e o degrau da tampa) foram SUBSTITUÍDOS pela F49 (costura):** o fio entre membros fecha-se por uma lei própria, sem bola e sem contorno da arte; a `(36°, −144°)` o fio some. Mecanismo, medições e recusas: [fila §F49](../01_a_fila.md). O 3.º smoke do dono aprovou a ordem das faces e o FPS (*«Muito bom! Smoke ok.»*). O texto que segue fica como história.
+- ⏳ (SUBSTITUÍDO pela F49) **o salto grande, `(36°, −141,5°)…(36°, −148,5°)`** (menos `−143,5°`/`−144°`): o fecho
   não acrescenta NADA. Medido (sonda temporária na `bola`, já retirada): a união corre, a corrida
   apertada do bico existe (`giro 140,6°`) e a `procura` devolve `None` — a fenda entre o membro de
   baixo e o dobrado é mais estreita que a bola (`2r ≈ 0,09`) até à TAMPA do membro de cima, e ali a
@@ -48,7 +49,7 @@ outra) e um degrau no encontro da tampa redonda com a borda de baixo (a `~(36°,
   quinas protegidas (viragem de repouso `90°` > `PAREDE_MINIMA`) e são PAREDE para a procura. A
   `silhueta_da_pele` inteira falha igual (área = a da união, `40 ms`). Sonda que reproduz:
   `diag_varre_a_segunda_junta` (`PH2D_BONE_LOG=1 SONDA_DE=-141 SONDA_ATE=-149 SONDA_PASSO=0.5`).
-- ⏳ **ABERTO — o degrau da tampa** (foto 1): é a cúspide da ARTE (a tampa redonda vive DENTRO das
+- ⏳ (SUBSTITUÍDO pela F49) **o degrau da tampa** (foto 1): é a cúspide da ARTE (a tampa redonda vive DENTRO das
   células; a borda da malha ali é a escada) — o fecho sobre a borda da MALHA não a alcança por
   desenho.
 - ⭐ **A cura de raiz das duas é a MESMA, e é uma wave:** o fecho tem de correr sobre o **CONTORNO

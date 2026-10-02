@@ -66,7 +66,30 @@ diz onde ler o mecanismo:
 
 ---
 
+### F49 — ⭐⭐⭐ **A IMAGEM PRESA COSE O FIO entre membros que a corrente encosta** (no lugar da bola da F48)
+
+- **Reproduzido:** o 2.º smoke do dono reprovou a F48 (*«queda de FPS»*; *«ora redonda ora pontuda»*). Medido: a bola custava até `58 ms` por imagem por quadro (`279` nós crus a `(40°, 40°)`); de `(36°, −141,5°)` a `(36°, −148,5°)` não fechava (a escada da grelha na margem transparente era parede); a `(36°, −131,25°)` a subtracção devolvia um anel com fio de área zero.
+- **Mecanismo/lei:** `ph2d_skeleton_live::skin_image_fecho::costura`. Onde a borda posada ENCARA outra parte (cada borda do lado de fora da outra) a menos de `VAO_MAXIMO_EM_TEXELS = 2` (duas bordas suaves de ~1 texel: entre elas não há texel de fundo inteiro) e entre partes a mais de `OSSOS_DE_DISTANCIA = 1,25` osso (chave de osso = `Σwⱼ·j/Σwⱼ`, a da ordem das faces), cada amostra (uma por texel) liga-se ao ponto mais perto da outra parte por dois triângulos. As pontas de cada troço são INTERPOLADAS onde a distância passa o vão ⇒ contínua na pose. Um lado só (o segmento de índice menor); UV de cada lado = a da sua beira. NÃO arredonda os «V» das juntas (são forma, aprovada pelo dono).
+- **Peças:** anéis da borda (`aneis_da_borda`, `0,93 ms`) guardados por malha em `bordas_da` (chave = o `Rc` da gaveta `skin_bake_cache::desenhada_da_arte`, provado por `Weak`); saída rápida por faixas de ¼ de osso (caixas a menos de 2 vãos); grelha = vector ordenado por célula. Pedaço de 9-slice não cose (outra numeração). `PH2D_SKIN_COSTURA=0` desliga.
+- **Medido:**
+  - (a) Largura dos vãos, `diag_a_largura_dos_vaos` (`36°`, `−120°…−160°` de 4 em 4): risquinho `16` nós abaixo de 1,5 texel; resto `0`–`2` nós abaixo de 2; entre 2 e 3 texels `8`–`10` nós em todas (fundo dos «V»).
+  - (b) Distância em ossos dos pontos cosíveis: pontas de «V» a `(120°, 120°)` e `(36°, −131,25°)` `1,000`–`1,046`; risquinho `(36°, −144°)` `1,556`–`1,637`; `(36°, −146°)` `~2,0`.
+  - (c) Custo por imagem por quadro, placa (load alto durante a medição; a razão é lado-a-lado): sem costura `0,19 ms`; com ela e nada a coser `0,22 ms` (recta, `40°`, `−131°`) e `0,31 ms` (`120°`); com costura `0,70 ms` (o quadro posa na CPU). A 1.ª redacção, sem o filtro de ossos e sem saída rápida: `0,50 ms` em repouso e cosia `42` triângulos de pontas de «V» a `40°`.
+- **Fotografado** a `(36°, −144°)`: o fio some; resta um traço quase invisível na cúspide junto à tampa.
+- **Gates:** `nenhuma_pose_a_volta_do_report_deixa_o_fio` (`−150°…−138°`, meio grau, alcance 1 px) · `os_v_das_juntas_ficam_como_a_arte` (`40°` e `120°`: nada cosido, a placa posa) · `a_tinta_da_costura_e_a_das_beiras` (cada pedaço de 4 pontos com ≥2 texels de arte; a outra ponta pode cair na escada transparente da tampa, texel `(586,1)` alfa 0, fotografado: esmaece sem névoa) · `a_costura_nasce_ligada_e_o_zero_bissecta` · e os que ficam da F48: `o_vao_entre_os_membros_da_imagem_fecha`, `com_vao_a_placa_cede_a_cpu_e_o_vao_fecha_igual`, `sem_vao_a_malha_sai_ao_bit`, `onde_os_membros_se_sobrepoem_o_osso_de_fora_pinta_por_cima`. **Retirados com a lei:** `na_dobra_forte_os_bicos_do_v_arredondam`, `a_dobra_arredonda_em_toda_a_varredura`, `a_uniao_do_fecho_da_borda_nao_desloca_a_polilinha`. Mutação: ⏳ (a correr).
+- ⛔ **Recusas MEDIDAS (não reconstruir):**
+
+  | Recusado | Porquê (medido) |
+  |---|---|
+  | Bola sobre a borda crua da malha | `58 ms` por imagem por quadro; parede na escada da grelha |
+  | Fecho sobre o contorno da arte com `69` nós simplificados posados nas pontas | não dobra um lado recto de `300 px`; sonda apagada por enganar |
+  | Costura sem filtro de ossos | cose os «V» das juntas (forma aprovada) |
+
+- Commit `13285066c`. Handoff de continuação: [`HANDOFF_line_Vector_F48_O_FECHO_DA_IMAGEM_2026-10-02.md`](handoffs/HANDOFF_line_Vector_F48_O_FECHO_DA_IMAGEM_2026-10-02.md).
+
 ### F48 — ⭐⭐⭐ **A IMAGEM PRESA FECHA O VÃO ENTRE OS MEMBROS** (o aberto do handoff de 2026-10-01 §6: *«a IMAGEM presa mostra um risquinho no encontro dos membros»*)
+
+- ⛔ **SUBSTITUÍDA pela F49** (a bola sobre a borda da malha foi retirada; a ph2d-vec-boolean voltou ao main).
 
 - **Reproduzido:** cena `PH2D_VEC_BONE_SMOKE=4` a `(36°, −144°)` com `TRACO=0.3`. Foto: o pixel `(870, 658)` era a cor do FUNDO pura `(86, 93, 109)`, com laranja dos dois lados ⇒ **buraco**, não mistura de AA.
 - **Mecanismo (bissecção):** `PH2D_SKIN_GPU=0` dá o MESMO pixel ⇒ não é a placa. A sonda `diag_de_onde_vem_o_risquinho` ([`smoke_bone_par_fresta_tests.rs`](../../crates/ph2d-app-vec/src/smoke_bone_par_fresta_tests.rs)) mede `0` nós pendurados em `9 091` triângulos (a malha conforma); os triângulos dos dois lados de cada buraco ficam a `~350 px` no REPOUSO ⇒ é um **VÃO entre dois membros** (a borda de cima do membro de baixo e a do membro dobrado de volta), uma cunha de `~20 px²`. No desenho a bola da silhueta (F41/F44) fecha-a; a imagem não passava por lei nenhuma.

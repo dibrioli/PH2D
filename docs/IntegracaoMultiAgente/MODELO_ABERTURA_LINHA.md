@@ -113,6 +113,15 @@ E. Fechamento do módulo = `/pd-linha-fechar` (DIRETRIZ §1.5.9): gate
 F. Ship (ship.sh + push + babysit CI): NUNCA por conta própria. É ordem
    EXPLÍCITA do Enio, feita pelo integrador (DIRETRIZ §1.5.4 + §8).
    Integrar ou pushar sem ordem = violação do protocolo.
+F'. CUSTO (CLAUDE.md §2 — cada passo relê o contexto INTEIRO, e é isso que
+   se paga): várias chamadas independentes no MESMO passo; o mecânico vai
+   aos agentes de .claude/agents/ — `explorador` (procurar/ler em muitos
+   arquivos), `verificador` (check/testes/portões, devolve só as falhas),
+   `documentador` (handoff), `mutacao` (provas de mutação) —, a janela
+   decide e desenha. Uma ONDA de trabalho por janela: acabou a onda,
+   escreva o handoff de continuação e peça janela nova
+   (MODELO_TROCA_DE_AGENTE_NA_LINHA.md). Nunca acrescente narrativa ao
+   CLAUDE.md (tecto de 40 KB com gate) — ela vai no handoff.
 H. HANDOFF DE INTEGRAÇÃO (entregável obrigatório ao fechar): escreva o
    handoff que o Enio passa ao integrador (DIRETRIZ §1.5.9) — branch/HEAD/
    base; foundational tocado + por quê; ids/consts/variants novos com
@@ -123,6 +132,10 @@ H. HANDOFF DE INTEGRAÇÃO (entregável obrigatório ao fechar): escreva o
    usos do mesmo item deixam um `dead_code` que só a árvore combinada
    tem); o delta de linhas da `shells/desktop` (o tecto dela SOMA entre
    linhas); e as premissas deste briefing que a medição derrubou.
+   Alvo ≤ 15 KB (o mecanismo de cada wave vai no doc da wave, linkado), e
+   cole a saída de `bash scripts/agent-loop-profile.sh` (DIRETRIZ §1.5.9
+   item 11). Para o CLAUDE.md §5.1: só o link do handoff e, se o módulo
+   mudou de natureza, a frase do que ele é (≤ 300 caracteres).
    Reporte "linha pronta + handoff" e ESPERE.
 G. UI canônica sempre: zero hex, zero f32 literal de UI, tudo por
    tokens/i18n (CLAUDE.md §0.3). Contratos congelados (CLAUDE.md §6)

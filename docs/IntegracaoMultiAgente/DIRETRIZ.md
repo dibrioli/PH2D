@@ -30,7 +30,14 @@ O resto é por-tarefa.
   - **(B) Scaffold central (§3.B)** — painel/widget/chrome. O Coordenador faz scaffold + delega.
   - **(C) foundational ou contrato congelado (§3.C)** — Modo C: Coord-only, não paraleliza. Modo L: foundational **não-contrato** paraleliza pela sua linha (gate testado, §1.5/ADR-0107); só contrato congelado + mesmo-símbolo de tipo-núcleo ficam seriais (ADR / reporte ao Enio).
 - **Dois contratos congelados (§4)** com arch-gate ativo: nodes (ADR-0039) e tools (ADR-0040+0041). Mexer = (C).
-- **Enio é relay mecânico**, não decisor.
+- **O Enio é o DONO do produto:** decide produto, integração e ship, e testa pelo smoke. As decisões
+  **técnicas** são delegadas ao padrão-ouro (não lhe devolva uma escolha que a medição resolve), e a
+  resposta a ele é curta e sem jargão ([`CLAUDE.md §0.8`](../../CLAUDE.md)). ⚠️ Esta linha dizia
+  *«relay mecânico, não decisor»* — o papel do Modo C antigo, e o contrário do que vale hoje.
+- **Custo e velocidade:** o custo do Claude é RELER o contexto a cada passo (82 % medido em
+  set/2026). Contexto curto (o `CLAUDE.md` tem tecto de 40 KB, com gate), **uma janela nova por
+  onda**, **várias chamadas por passo**, e o trabalho mecânico delegado aos agentes de
+  [`.claude/agents/`](../../.claude/agents/) — leis em [`CLAUDE.md §2`](../../CLAUDE.md).
 - **Norte:** engine cresce por **duas famílias-irmãs** simétricas — `crates/ph2d-node-*` (declarativo, FBP) e `crates/ph2d-tool-*` (imperativo, manipulação direta). Ambas wireadas por codegen (`ph2d-{node,tool}-sync`). Adicionar conteúdo = drop-crate.
 
 ---

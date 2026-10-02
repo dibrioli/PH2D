@@ -94,7 +94,11 @@ Quando as linhas reportarem "pronta + handoff" e **você decidir integrar**:
    para isso. Os registos da rodada (blocos de abertura, briefings, handoffs de integração,
    estado) vivem em [`docs/archive/integracao-jornadas/`](../archive/integracao-jornadas/): esta
    pasta fica só com o que se lê para trabalhar, e há gate a mantê-la assim.
-3. Cada linha integrada segue viva pra próxima wave (ou "encerra a linha": o procedimento do
+3. Cada linha integrada segue viva pra próxima wave — ⚠️ **e a primeira coisa que ela faz é
+   `git rebase main`** (o bloco do [`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`](MODELO_TROCA_DE_AGENTE_NA_LINHA.md)
+   já o manda). Cada worktree carrega o **seu próprio** `CLAUDE.md`: uma linha que não rebaseia
+   continua a pagar, a cada passo, as instruções de antes da integração — em 02/10 isso eram 710 KB
+   contra os 23 KB do `main` (ou "encerra a linha": o procedimento do
    [`MODELO_ABERTURA_LINHA.md`](MODELO_ABERTURA_LINHA.md) §"Encerrar uma linha", que guarda antes
    o que o `git worktree remove` apagaria).
 4. **Ship é 1× por jornada, e SÓ quando você mandar** ("ship"/"push"). O integrador (ou uma
@@ -106,7 +110,7 @@ Quando as linhas reportarem "pronta + handoff" e **você decidir integrar**:
    Aí babysit o CI (`gh run watch`) até `success` — protocolo em DIRETRIZ §8.
    **Nenhum agente pusha sem sua ordem explícita.**
 
-## Higiene (as 4 que evitam 90% dos problemas)
+## Higiene (as 5 que evitam 90% dos problemas)
 
 1. **Uma janela por linha, sempre aberta na RAIZ** do repo. O agente cria/entra na worktree
    sozinho; todo o trabalho dele acontece dentro de `Worktrees/line-<módulo>/`.
@@ -125,6 +129,15 @@ Quando as linhas reportarem "pronta + handoff" e **você decidir integrar**:
    nvidia-smi --query-gpu=utilization.gpu,memory.used --format=csv
    ```
    Detalhe e as medições: [`docs/DevOps/TETOS_DE_RECURSO_POR_LINHA.md`](../DevOps/TETOS_DE_RECURSO_POR_LINHA.md).
+
+5. **Uma janela por ONDA de trabalho, não por linha inteira.** O Claude relê a conversa inteira a
+   cada passo, e é isso que se paga (82 % do custo, medido em set/2026): uma janela com milhares de
+   passos custa muito mais que três janelas curtas com o mesmo trabalho. Acabou uma onda (uma
+   feature, um bug, um smoke aprovado)? Peça o handoff de continuação e abra janela nova com o bloco
+   do [`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`](MODELO_TROCA_DE_AGENTE_NA_LINHA.md).
+   **Você não escolhe modelo por tarefa:** cada janela delega sozinha o trabalho mecânico (procurar,
+   testar, escrever relatório, provas de mutação) aos agentes de [`.claude/agents/`](../../.claude/agents/),
+   cada um com o modelo mais barato que serve.
 
 ## Modo L × Modo C (1 linha)
 

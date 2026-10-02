@@ -704,7 +704,10 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    DOBRADA, e esta varredura passou a abrir toda gaveta antes de medir (ver
     //    [`abre_as_gavetas`]). *População nova, não regressão* — o rótulo sempre foi cortado; o
     //    que mudou é que agora há quem o veja.
-    ("painter_layers", 5),
+    // ⚠️ `5 → 4` em 2026-10-02 (`line/PainterWatercolor`): a linha **Mapping** do Paper saiu do painel
+    //    (ordem do dono — não tinha leitor). Por ELIMINAÇÃO, medida: com o Grain de volta ao `View
+    //    Plane` a contagem continua `4`, e as linhas novas do Flow só podiam somar.
+    ("painter_layers", 4),
     // `["Glaze layering (K-M)", "Pigment mixing (K-M)"]`
     ("wet_tuning", 2),
 ];
@@ -767,7 +770,8 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    `View Plane` só existe com um padrão escolhido. Ver a nota lá.
     // ⚠️ `4 → 5` no mesmo dia: a varredura passou a ABRIR as gavetas, e o `Use Color Ramp` vive
     //    numa secção que este painel semeia dobrada. *População nova, não regressão.*
-    ("painter_layers", 5),
+    // ⚠️ `5 → 4` em 2026-10-02: a linha Mapping do Paper saiu do painel (ver a nota da irmã).
+    ("painter_layers", 4),
 ];
 
 /// ⭐⭐⭐ **E NENHUM PAINEL PASSA A COMER MAIS LETRAS** — as duas metades, como a irmã.

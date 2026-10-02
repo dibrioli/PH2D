@@ -256,7 +256,7 @@ pub(crate) fn paint_paper_section(
             y,
             tr("panel.painter_layers.paper.tooth"),
             ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_DEPTH,
-            brush.paper_depth.clamp(0.0, PAPER_TOOTH_MAX),
+            brush.paper_depth.clamp(0.0, PAPER_TOOTH_MAX), // CLAMP-OK: 0 e a const PAPER_TOOTH_MAX (2,0)
             0.0,
             PAPER_TOOTH_MAX,
             number_field::FINE_STEP,

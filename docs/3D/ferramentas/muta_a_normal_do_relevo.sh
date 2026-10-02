@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
-# Prova de mutação da NORMAL DO RELEVO sem derivadas de ecrã (docs/3D/29 §7,
-# report do dono de 01/10: «de cima parece bom, inclinado aparece artefato de
-# relevo»). O gradiente da altura sai EXACTO das leituras da retícula e passa
-# para o objecto pela geometria do triângulo; a luz lê-o pelo gradiente de
-# superfície.
+# Prova de mutação da NORMAL DO RELEVO (docs/3D/29 §7–§9): sem derivadas de
+# ecrã, e com a INCLINAÇÃO POR AMOSTRA (§9, 02/10) — o gradiente de cada célula
+# levado às amostras pela área, interpolado pelos pesos da cor, mantido por
+# pedaços durante o traço e ao esculpir. A luz lê-o pelo gradiente de superfície.
+#
+# ⚠️ Re-escrito em 02/10: as N1–N4 de 01/10 mutavam a lei POR CÉLULA do
+#    `tinta.wgsl`, que deixou de existir (o pré-voo apanhou as quatro mortas).
 #
 # ⚠️ O arnês CONTROLA-SE A SI MESMO nos QUATRO pontos dos irmãos (âncora única ·
 # a mutação compila · N > 0 testes correram · a corrida limpa VERDE), e tem o
 # PRÉ-VOO (`MUTA_SO_ANCORAS=1`).
 #
 # ⚠️ A POPULAÇÃO é de quem OBSERVA: a paridade e os gates de pixel são de PLACA
-# (`--run-ignored all`), e o censo do WGSL corre sem ela — a corrida é a crate
-# do renderizador com os dois.
+# (`--run-ignored all`), o censo do WGSL corre sem ela, e a LEI da inclinação é
+# gateada sem placa na `ph2d-mesh-colors` — a corrida são as duas crates.
 #
 # ⛔ Chame-o sempre pela porta de recursos, COM a placa:
 #   PH2D_GPU=1 bash scripts/ph2d-run.sh bash docs/3D/ferramentas/muta_a_normal_do_relevo.sh
@@ -19,19 +21,22 @@ set -u
 FILTRO="${MUTA_FILTRO:-}"
 SO_ANCORAS="${MUTA_SO_ANCORAS:-}"
 REN=crates/ph2d-mesh-render/src
+COL=crates/ph2d-mesh-colors/src
 BK=$(mktemp -d)
 cp -r "$REN" "$BK/ren"
+cp -r "$COL" "$BK/col"
 restore() {
-  rm -rf "$REN"
+  rm -rf "$REN" "$COL"
   cp -r "$BK/ren" "$REN"
+  cp -r "$BK/col" "$COL"
   # ⚠️ `cp -r` devolve o mtime ANTIGO e o cargo guarda o build DA MUTAÇÃO.
-  find "$REN" -type f -exec touch {} +
+  find "$REN" "$COL" -type f -exec touch {} +
 }
 trap restore EXIT
 
 corrida() {
-  cargo nextest run -p ph2d-mesh-render --run-ignored all \
-    -E 'test(tinta) | test(relevo) | test(derivadas_de_ecra)' 2>&1
+  cargo nextest run -p ph2d-mesh-render -p ph2d-mesh-colors --run-ignored all \
+    -E 'test(tinta) | test(relevo) | test(derivadas_de_ecra) | test(inclinacao) | test(esculpir) | test(paralelo) | test(pedacos) | test(vertices) | test(altura)' 2>&1
 }
 populacao() { grep -oP '\K[0-9]+(?= tests? run)' | awk '{s+=$1}END{print s+0}'; }
 
@@ -82,24 +87,52 @@ open(p,"w").write(s.replace(a, b, 1))
 
 # ── A LEITURA (o gémeo em WGSL) ─────────────────────────────────────────
 muta "$REN/shaders/tinta.wgsl" \
-  '        out.g = -lf * hs;' \
-  '        out.g = lf * hs;' \
-  'N1 o sub-triângulo INVERTIDO lê o gradiente com o sinal trocado'
+  '        o.g + tinta_inclinacao(i) * w,' \
+  '        o.g + tinta_inclinacao(i),' \
+  'N1 a inclinação das amostras soma-se SEM os pesos da cor'
 
 muta "$REN/shaders/tinta.wgsl" \
-  '        lf * ((1.0 - fv) * (hb - ha) + fv * (hd - he)),' \
-  '        ((1.0 - fv) * (hb - ha) + fv * (hd - he)),' \
-  'N2 a derivada da bilinear esquece que a célula mede 1/L'
+  '    return vec3<f32>(tinta_inclinacoes[b], tinta_inclinacoes[b + 1u], tinta_inclinacoes[b + 2u]);' \
+  '    return vec3<f32>(tinta_inclinacoes[b], tinta_inclinacoes[b + 1u], tinta_inclinacoes[b + 1u]);' \
+  'N2 a placa lê o z da inclinação no endereço do y'
 
-muta "$REN/shaders/tinta.wgsl" \
-  '        gu = gb;' \
-  '        gu = -ga;' \
-  'N3 a metade (a,c,d) do quad lê o u da outra metade'
+# ── A LEI (ph2d-mesh-colors) ─────────────────────────────────────────────
+muta "$COL/inclinacao.rs" \
+  '                        celula([ch(i, j + 1), ch(i + 1, j), ch(i + 1, j + 1)], -1.0);' \
+  '                        celula([ch(i, j + 1), ch(i + 1, j), ch(i + 1, j + 1)], 1.0);' \
+  'N3 a célula INVERTIDA do triângulo dá o gradiente com o sinal trocado'
 
-muta "$REN/shaders/tinta.wgsl" \
-  '    let gc = -ga - gb;' \
-  '    let gc = -ga;' \
-  'N4 o gradiente da 3.ª baricêntrica esquece a 2.ª'
+muta "$COL/inclinacao.rs" \
+  '        let (gu1, gv1) = (gb1, escala(ga1, -1.0));' \
+  '        let (gu1, gv1) = (escala(ga1, -1.0), gb1);' \
+  'N4 a metade (a,c,d) do quad troca o u com o v'
+
+muta "$COL/inclinacao.rs" \
+  '                    if k >= 1 && (!so_borda || i == 0 || j == 0 || k == 1) {' \
+  '                    if k >= 1 && (!so_borda || i == 0 || j == 0 || k == 2) {' \
+  'N8 a borda da face vizinha esquece as células invertidas do lado k'
+
+muta "$COL/inclinacao.rs" \
+  '        self.espalha(tinta, cantos_de, pos, alt, &anel, tocadas.len(), Some(ep));' \
+  '        self.espalha(tinta, cantos_de, pos, alt, &anel[..tocadas.len()], tocadas.len(), Some(ep));' \
+  'N9 a atualização esquece o ANEL (a média da fronteira mente)'
+
+muta "$COL/inclinacao.rs" \
+  '            let sujas: Vec<u32> = (0..n as u32).filter(|&i| alt[i as usize][ALTURA] != 0.0).collect();' \
+  '            let sujas: Vec<u32> = (0..n as u32).filter(|&i| alt[i as usize][ALTURA] > 0.0).collect();' \
+  'N10 o plano esparso esquece as alturas NEGATIVAS'
+
+# ── AS PORTAS DE SUBIDA (tinta_gpu) ──────────────────────────────────────
+muta "$REN/tinta_gpu.rs" \
+  '            if foto != agora {' \
+  '            if foto != agora && false {' \
+  'N11 a subida inteira não vê os vértices que o esculpir moveu'
+
+muta "$REN/tinta_gpu.rs" \
+  '            g.inc_foto.anota_alturas(sujas, tinta.relevo().unwrap_or(&[]));' \
+  '            g.inc_foto.anota_alturas(sujas, tinta.relevo().unwrap_or(&[]));
+            mudadas.clear();' \
+  'N12 o incremental do traço não sobe as inclinações que refez'
 
 # ── A LUZ ────────────────────────────────────────────────────────────────
 muta "$REN/fonte.rs" \

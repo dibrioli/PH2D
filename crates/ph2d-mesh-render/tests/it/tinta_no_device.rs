@@ -180,7 +180,7 @@ fn um_plano_da_malha_de_antes_desarma_em_vez_de_estourar() {
     r.upload_tinta_at(&device, &queue, 0, &quads, Some(&plano));
     let mut sujas = vec![0u32];
     assert!(
-        r.upload_tinta_amostras_at(&queue, 0, &plano, &mut sujas),
+        r.upload_tinta_amostras_at(&queue, 0, &quads, &plano, &mut sujas),
         "o CONTROLO falhou: o plano da própria malha tinha de deixar o slot armado"
     );
 
@@ -189,7 +189,7 @@ fn um_plano_da_malha_de_antes_desarma_em_vez_de_estourar() {
     r.upload_tinta_at(&device, &queue, 0, &tris, Some(&plano));
     let mut sujas = vec![0u32];
     assert!(
-        !r.upload_tinta_amostras_at(&queue, 0, &plano, &mut sujas),
+        !r.upload_tinta_amostras_at(&queue, 0, &tris, &plano, &mut sujas),
         "o plano descreve {} faces e a malha tem {} — o slot tinha de ficar DESARMADO",
         plano.topologia().faces(),
         tris.faces().len()
@@ -214,7 +214,7 @@ fn um_plano_da_malha_de_antes_desarma_em_vez_de_estourar() {
     r.upload_tinta_at(&device, &queue, 0, &com_orfao, Some(&plano));
     let mut sujas = vec![0u32];
     assert!(
-        !r.upload_tinta_amostras_at(&queue, 0, &plano, &mut sujas),
+        !r.upload_tinta_amostras_at(&queue, 0, &com_orfao, &plano, &mut sujas),
         "o plano descreve {} vértices e a malha tem {} — o slot tinha de ficar DESARMADO",
         plano.topologia().verts(),
         com_orfao.vert_count()

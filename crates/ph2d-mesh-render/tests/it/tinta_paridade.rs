@@ -30,25 +30,27 @@
 //! numa cor completamente diferente.
 
 use ph2d_mesh::{Mesh, shapes};
-use ph2d_mesh_colors::Tinta;
+use ph2d_mesh_colors::{Inclinacoes, Tinta};
 
 /// A entrada de compute que exercita a lei — o resto do módulo é o
 /// [`ph2d_mesh_render::fonte::TINTA_WGSL`], sem uma linha reescrita.
 const ENTRADA: &str = r#"
-struct Sonda { pi: u32, _a: u32, _b: u32, _c: u32, p: vec4<f32> };
-@group(0) @binding(0) var<storage, read> sondas: array<Sonda>;
-@group(0) @binding(1) var<storage, read_write> saida: array<vec4<f32>>;
-// Três palavras por sonda: a cor com a altura, o CORPO (`docs/3D/29` §6) e o
-// GRADIENTE da altura no objecto (o report de 01/10 da vista inclinada).
+// ⚠️ Entrada e saída num buffer SÓ: o plano tem oito buffers de armazenamento
+// e o piso do WebGPU é oito por estágio. As sondas ocupam `2n` palavras (o
+// triângulo em bits e o ponto), as respostas as `3n` seguintes.
+@group(0) @binding(0) var<storage, read_write> io: array<vec4<f32>>;
+// Três palavras por sonda: a cor com a altura, o CORPO (`docs/3D/29` §6) e a
+// INCLINAÇÃO interpolada das amostras (§9).
 @compute @workgroup_size(64)
 fn cs(@builtin(global_invocation_id) gid: vec3<u32>) {
     let i = gid.x;
-    if (i >= arrayLength(&sondas)) { return; }
-    let s = sondas[i];
-    let r = tinta_no_ponto4(s.pi, s.p.xyz);
-    saida[3u * i] = r.c;
-    saida[3u * i + 1u] = vec4<f32>(r.corpo, 0.0, 0.0, 0.0);
-    saida[3u * i + 2u] = vec4<f32>(r.g, 0.0);
+    let n = arrayLength(&io) / 5u;
+    if (i >= n) { return; }
+    let r = tinta_no_ponto4(bitcast<u32>(io[2u * i].x), io[2u * i + 1u].xyz);
+    let o = 2u * n + 3u * i;
+    io[o] = r.c;
+    io[o + 1u] = vec4<f32>(r.corpo, 0.0, 0.0, 0.0);
+    io[o + 2u] = vec4<f32>(r.g, 0.0);
 }
 "#;
 
@@ -85,39 +87,6 @@ fn grelha() -> (Mesh, Vec<Vec<u32>>) {
     )
 }
 
-/// O passo das diferenças centrais, em parâmetro da face.
-const PASSO: f32 = 1e-3;
-
-/// O ponto está a mais de dois passos de toda fronteira de célula? Dentro de
-/// uma célula a altura é linear/bilinear e a diferença central é EXACTA.
-fn longe_das_celulas(lado: u32, params: &[f32]) -> bool {
-    params.iter().all(|&x| {
-        let c = x * lado as f32;
-        (c - c.round()).abs() > 2.0 * PASSO * lado as f32
-    })
-}
-
-/// O gradiente da altura num TRIÂNGULO: as derivadas direccionais ao longo de
-/// duas arestas, resolvidas no plano dele.
-fn gradiente_tri(t: &Tinta, fi: usize, f: &[u32], bar: [f32; 3], p: [[f32; 3]; 3]) -> [f32; 3] {
-    let sub = |x: [f32; 3], y: [f32; 3]| [x[0] - y[0], x[1] - y[1], x[2] - y[2]];
-    let dot = |x: [f32; 3], y: [f32; 3]| x[0] * y[0] + x[1] * y[1] + x[2] * y[2];
-    let h = |db: f32, dc: f32| t.altura_tri(fi, f, [bar[0] - db - dc, bar[1] + db, bar[2] + dc]);
-    // `∇h·(pb − pa)` e `∇h·(pc − pa)`.
-    let s1 = (h(PASSO, 0.0) - h(-PASSO, 0.0)) / (2.0 * PASSO);
-    let s2 = (h(0.0, PASSO) - h(0.0, -PASSO)) / (2.0 * PASSO);
-    let (d1, d2) = (sub(p[1], p[0]), sub(p[2], p[0]));
-    let (g11, g12, g22) = (dot(d1, d1), dot(d1, d2), dot(d2, d2));
-    let det = g11 * g22 - g12 * g12;
-    let al = (s1 * g22 - s2 * g12) / det;
-    let be = (s2 * g11 - s1 * g12) / det;
-    [
-        al * d1[0] + be * d2[0],
-        al * d1[1] + be * d2[1],
-        al * d1[2] + be * d2[2],
-    ]
-}
-
 struct Sonda {
     pi: u32,
     p: [f32; 3],
@@ -126,15 +95,14 @@ struct Sonda {
     altura: f32,
     /// O CORPO no mesmo ponto (`docs/3D/29` §6), pela mesma lei.
     corpo: f32,
-    /// O GRADIENTE da altura no objecto, por diferenças CENTRAIS da lei da
-    /// CPU — `None` quando o ponto está a menos de um passo de uma fronteira
-    /// de célula, onde a altura tem um vinco e a diferença não mede nada.
-    gradiente: Option<[f32; 3]>,
+    /// A INCLINAÇÃO no mesmo ponto (`docs/3D/29` §9), pela lei da CPU
+    /// ([`Tinta::inclinacao_tri`]/[`Tinta::inclinacao_quad`]).
+    gradiente: [f32; 3],
     onde: String,
 }
 
 /// As sondas da grelha: `(u, v)` lido do MUNDO, sem uma linha do shader.
-fn sondas_da_grelha(m: &Mesh, faces: &[Vec<u32>], t: &Tinta, origem: &[u32]) -> Vec<Sonda> {
+fn sondas_da_grelha(m: &Mesh, faces: &[Vec<u32>], t: &Tinta, origem: &[u32], g: &[[f32; 3]]) -> Vec<Sonda> {
     let mut out = Vec::new();
     for (fi, f) in faces.iter().enumerate() {
         let a = m.positions()[f[0] as usize];
@@ -171,15 +139,7 @@ fn sondas_da_grelha(m: &Mesh, faces: &[Vec<u32>], t: &Tinta, origem: &[u32]) -> 
                 esperado: t.cor_quad(fi, f, [u, v]),
                 altura: t.altura_quad(fi, f, [u, v]),
                 corpo: t.espessura_quad(fi, f, [u, v])[1],
-                // ⭐ A célula é o quadrado unitário ⇒ `∇h = (∂h/∂u, ∂h/∂v, 0)`.
-                gradiente: longe_das_celulas(t.lado_da_face(fi), &[u, v]).then(|| {
-                    let h = |du: f32, dv: f32| t.altura_quad(fi, f, [u + du, v + dv]);
-                    [
-                        (h(PASSO, 0.0) - h(-PASSO, 0.0)) / (2.0 * PASSO),
-                        (h(0.0, PASSO) - h(0.0, -PASSO)) / (2.0 * PASSO),
-                        0.0,
-                    ]
-                }),
+                gradiente: t.inclinacao_quad(fi, f, [u, v], g),
                 onde: format!("grelha face {fi} sub {sub} ({u}, {v})"),
             });
         }
@@ -189,7 +149,7 @@ fn sondas_da_grelha(m: &Mesh, faces: &[Vec<u32>], t: &Tinta, origem: &[u32]) -> 
 
 /// As sondas da esfera: só as faces de TRIÂNGULO, onde a baricêntrica do ponto
 /// é a que o construiu — também sem convenção partilhada.
-fn sondas_da_esfera(m: &Mesh, t: &Tinta, origem: &[u32]) -> Vec<Sonda> {
+fn sondas_da_esfera(m: &Mesh, t: &Tinta, origem: &[u32], g: &[[f32; 3]]) -> Vec<Sonda> {
     let mut out = Vec::new();
     for (fi, face) in m.faces().iter().enumerate() {
         let f = face.verts();
@@ -217,8 +177,7 @@ fn sondas_da_esfera(m: &Mesh, t: &Tinta, origem: &[u32]) -> Vec<Sonda> {
                 esperado: t.cor_tri(fi, f, bar),
                 altura: t.altura_tri(fi, f, bar),
                 corpo: t.espessura_tri(fi, f, bar)[1],
-                gradiente: longe_das_celulas(t.lado_da_face(fi), &bar)
-                    .then(|| gradiente_tri(t, fi, f, bar, [a, b, c])),
+                gradiente: t.inclinacao_tri(fi, f, bar, g),
                 onde: format!("esfera face {fi} {bar:?}"),
             });
         }
@@ -276,24 +235,24 @@ fn a_lei_da_reticula_le_o_mesmo_na_placa_e_na_cpu() {
         let mut origem = Vec::new();
         m.triangle_indices_com_origem(&mut tris, Some(&mut origem));
 
+        let inc = Inclinacoes::nova(&t, |f| &faces[f][..], m.positions());
+        let g = inc.por_amostra();
         let sondas = if std::ptr::eq(m, &grade) {
-            sondas_da_grelha(m, faces, &t, &origem)
+            sondas_da_grelha(m, faces, &t, &origem, g)
         } else {
-            sondas_da_esfera(m, &t, &origem)
+            sondas_da_esfera(m, &t, &origem, g)
         };
         assert!(!sondas.is_empty(), "{nome}: nenhuma sonda");
         total_sondas += sondas.len();
 
-        let lido = corre_na_placa(&device, &queue, m, &t, &pay, &tris, &origem, &sondas);
+        let lido = corre_na_placa(&device, &queue, m, &t, g, &pay, &tris, &origem, &sondas);
 
         let mut pior = 0.0f32;
         let mut pior_onde = String::new();
         let mut pior_g = 0.0f32;
         let mut pior_g_onde = String::new();
-        let mut com_gradiente = 0usize;
         for (s, got) in sondas.iter().zip(lido.iter()) {
-            let Some(esp) = s.gradiente else { continue };
-            com_gradiente += 1;
+            let esp = s.gradiente;
             for e in 0..3 {
                 let g = got[5 + e];
                 let d = (g - esp[e]).abs() / (1.0 + esp[e].abs());
@@ -303,18 +262,12 @@ fn a_lei_da_reticula_le_o_mesmo_na_placa_e_na_cpu() {
                 }
             }
         }
-        // ⭐ O GRADIENTE da placa é o da LEI (report de 01/10, vista inclinada):
-        //   a CPU tira-o por diferença central da `altura_*`, sem uma linha do
-        //   shader. A barra é relativa — o declive vale `~L·Δh` e a diferença
-        //   em `f32` perde `ulp(h)/PASSO`.
+        // ⭐ A INCLINAÇÃO da placa é a da LEI (`docs/3D/29` §9), em TODO ponto
+        //   — a lei por amostra não tem vinco nas fronteiras de célula. A barra
+        //   é a das baricêntricas recuperadas em `f32`, relativa ao declive.
         assert!(
-            pior_g <= 2e-3,
-            "{nome}: o gradiente da placa e o da CPU divergem {pior_g:e} — {pior_g_onde}"
-        );
-        assert!(
-            com_gradiente * 2 >= sondas.len(),
-            "{nome}: só {com_gradiente} de {} sondas medem o gradiente",
-            sondas.len()
+            pior_g <= 1e-4,
+            "{nome}: a inclinação da placa e a da CPU divergem {pior_g:e} — {pior_g_onde}"
         );
         for (s, got) in sondas.iter().zip(lido.iter()) {
             let esp4 = [
@@ -351,6 +304,7 @@ fn corre_na_placa(
     queue: &wgpu::Queue,
     m: &Mesh,
     t: &Tinta,
+    g: &[[f32; 3]],
     pay: &[u32],
     tris: &[[u32; 3]],
     origem: &[u32],
@@ -397,14 +351,12 @@ fn corre_na_placa(
         .relevo()
         .map_or_else(|| vec![[0.0; 2]], <[[f32; 2]]>::to_vec);
     let b_alt = buf(bytemuck::cast_slice(&alturas), st);
-    let b_sondas = buf(bytemuck::cast_slice(&entrada), st);
+    let inclinacoes: Vec<[f32; 3]> = if t.tem_relevo() { g.to_vec() } else { vec![[0.0; 3]] };
+    let b_inc = buf(bytemuck::cast_slice(&inclinacoes), st);
     let n = sondas.len();
-    let b_saida = device.create_buffer(&wgpu::BufferDescriptor {
-        label: None,
-        size: (n * 48) as u64,
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-        mapped_at_creation: false,
-    });
+    let mut io = entrada;
+    io.resize(n * 20, 0.0);
+    let b_io = buf(bytemuck::cast_slice(&io), st | wgpu::BufferUsages::COPY_SRC);
     let b_ler = device.create_buffer(&wgpu::BufferDescriptor {
         label: None,
         size: (n * 48) as u64,
@@ -412,7 +364,7 @@ fn corre_na_placa(
         mapped_at_creation: false,
     });
 
-    let entrada_bgl = layout(device, &[(0, false), (1, true)]);
+    let entrada_bgl = layout(device, &[(0, true)]);
     let tinta_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: None,
         entries: &[
@@ -432,6 +384,7 @@ fn corre_na_placa(
                 count: None,
             },
             storage(7),
+            storage(8),
         ],
     });
 
@@ -460,11 +413,7 @@ fn corre_na_placa(
         entries: &[
             wgpu::BindGroupEntry {
                 binding: 0,
-                resource: b_sondas.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 1,
-                resource: b_saida.as_entire_binding(),
+                resource: b_io.as_entire_binding(),
             },
         ],
     });
@@ -500,6 +449,10 @@ fn corre_na_placa(
                 binding: 7,
                 resource: b_alt.as_entire_binding(),
             },
+            wgpu::BindGroupEntry {
+                binding: 8,
+                resource: b_inc.as_entire_binding(),
+            },
         ],
     });
 
@@ -514,7 +467,7 @@ fn corre_na_placa(
         cp.set_bind_group(1, &bg1, &[]);
         cp.dispatch_workgroups(n.div_ceil(64) as u32, 1, 1);
     }
-    enc.copy_buffer_to_buffer(&b_saida, 0, &b_ler, 0, (n * 48) as u64);
+    enc.copy_buffer_to_buffer(&b_io, (n * 32) as u64, &b_ler, 0, (n * 48) as u64);
     queue.submit([enc.finish()]);
 
     let fatia = b_ler.slice(..);

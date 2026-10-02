@@ -312,8 +312,13 @@ impl Sculpt3dScene {
                     Some(fina) => {
                         let sujas = &mut self.tinta_sujas;
                         fina.drena_sujas(sujas);
-                        self.renderer
-                            .upload_tinta_amostras_at(queue, k, fina.tinta(), sujas)
+                        self.renderer.upload_tinta_amostras_at(
+                            queue,
+                            k,
+                            self.objects[i].stack.mesh(),
+                            fina.tinta(),
+                            sujas,
+                        )
                     }
                     None => false,
                 };

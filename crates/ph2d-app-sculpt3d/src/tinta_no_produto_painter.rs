@@ -622,6 +622,10 @@ fn diag_de_que_e_feito_o_pen_down() {
 #[path = "tinta_no_produto_escorre.rs"]
 mod escorre;
 
+// O relógio da subida incremental com relevo (doc 29 §4) — filho pelo tecto de LOC.
+#[path = "tinta_no_produto_subida.rs"]
+mod subida;
+
 /// 🔎 **SONDA (não é gate)** — o report de 01/10 da vista INCLINADA: um traço
 /// de IMPASTO a `8x`, fotografado de frente (`…_cima.png`) e com a câmara
 /// inclinada (`…_inclinado.png`), em `$PH2D_SONDA_DIR`.

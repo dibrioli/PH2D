@@ -14,12 +14,12 @@
 //! `in.vcolor` de sempre, ao bit.
 
 use ph2d_mesh::Mesh;
-use ph2d_mesh_colors::Tinta;
+use ph2d_mesh_colors::{Inclinacoes, Tinta};
 use wgpu::util::DeviceExt as _;
 
 use crate::MeshRenderer;
 
-/// Os sete buffers, e o que cabe em cada um hoje.
+/// Os oito buffers, e o que cabe em cada um hoje.
 pub(super) struct TintaGpu {
     amostras: wgpu::Buffer,
     topo: wgpu::Buffer,
@@ -31,6 +31,19 @@ pub(super) struct TintaGpu {
     /// na MESMA ordem das amostras. Um dummy de `16` B quando o plano não tem
     /// relevo, e o bit [`RELEVO`] da configuração desligado.
     alturas: wgpu::Buffer,
+    /// ⭐ **A INCLINAÇÃO de cada amostra** (`docs/3D/29` §9) — três `f32` por
+    /// amostra, o gradiente da altura no objecto. Dummy e bit iguais aos das
+    /// alturas.
+    inclinacoes: wgpu::Buffer,
+    /// Quem mantém as inclinações em dia na CPU, por pedaços durante um traço.
+    /// `None` sem relevo.
+    inc: Option<Inclinacoes>,
+    /// ⭐ **A foto do que as inclinações descrevem** — o registo das faces, as
+    /// posições e as alturas da última vez. A subida inteira corre em todo
+    /// quadro em que a peça muda de FORMA, e refazer todas custava `80 ms` a
+    /// `64x` (doc 29 §9.3): com a foto ela refaz só o que MUDOU, sem pedir ao
+    /// chamador uma lista em que teria de acertar sempre.
+    inc_foto: FotoDasInclinacoes,
     cap_amostras: usize,
     cap_topo: usize,
     cap_tri: usize,
@@ -47,6 +60,7 @@ pub(super) struct TintaGpu {
     cap_idx: usize,
     cap_pos: usize,
     cap_alturas: usize,
+    cap_inclinacoes: usize,
     /// O espelho do bit [`RELEVO`] já escrito no device — o incremental recusa
     /// quando o plano ganhou (ou perdeu) relevo desde a última subida inteira.
     relevo: bool,
@@ -64,7 +78,7 @@ pub(super) struct TintaGpu {
     pub(super) n_amostras: usize,
 }
 
-const N: usize = 7;
+const N: usize = 8;
 
 /// ⭐ **O bit do RELEVO no `armado`** (`docs/3D/29`): `1` = há plano, `2` = e
 /// ele tem relevo. ⚠️ O `0` continua a querer dizer *nenhum plano*, e é por
@@ -108,6 +122,7 @@ pub(super) fn entradas_do_layout() -> [wgpu::BindGroupLayoutEntry; N] {
             count: None,
         },
         buffer_de_armazenamento(B0 + 6),
+        buffer_de_armazenamento(B0 + 7),
     ]
 }
 
@@ -172,6 +187,9 @@ impl TintaGpu {
             idx: um("ph2d-mesh tinta idx", zero4u, st),
             pos: um("ph2d-mesh tinta pos", zero4, st),
             alturas: um("ph2d-mesh tinta alturas", zero4, st),
+            inclinacoes: um("ph2d-mesh tinta inclinacoes", zero4, st),
+            inc: None,
+            inc_foto: FotoDasInclinacoes::default(),
             cfg: um(
                 "ph2d-mesh tinta cfg",
                 bytemuck::cast_slice(&cfg_de(None)),
@@ -189,6 +207,7 @@ impl TintaGpu {
             cap_idx: 16,
             cap_pos: 16,
             cap_alturas: 16,
+            cap_inclinacoes: 16,
             relevo: false,
             armado: false,
             n_amostras: 0,
@@ -211,6 +230,7 @@ impl TintaGpu {
             r(B0 + 4, &self.pos),
             r(B0 + 5, &self.cfg),
             r(B0 + 6, &self.alturas),
+            r(B0 + 7, &self.inclinacoes),
         ]
     }
 }
@@ -351,6 +371,42 @@ impl MeshRenderer {
                     "alturas",
                     st,
                 );
+                let cantos = |f: usize| mesh.faces()[f].verts();
+                let mesma = g.inc.as_ref().is_some_and(|i| i.serve(t)) && g.inc_foto.descreve(&pay, mesh);
+                match g.inc.as_mut().filter(|_| mesma) {
+                    // ⭐ A MESMA topologia: refaz só as amostras das faces cujas
+                    //   posições ou alturas mudaram desde a foto.
+                    Some(inc) => {
+                        let sujas = g.inc_foto.o_que_mudou(mesh.positions(), a);
+                        let mut mudadas = Vec::new();
+                        inc.atualiza(t, &cantos, mesh.positions(), &sujas, &mut mudadas);
+                        let mut corridas = Vec::new();
+                        corridas_das_sujas(&mut mudadas, &mut corridas);
+                        let gb: &[u8] = bytemuck::cast_slice(inc.por_amostra());
+                        for &(de, ate) in &corridas {
+                            queue.write_buffer(&g.inclinacoes, de as u64, &gb[de..ate]);
+                        }
+                    }
+                    // A adjacência é refeita com o plano: esta porta é também a
+                    // da topologia nova.
+                    None => {
+                        let inc = Inclinacoes::nova(t, cantos, mesh.positions());
+                        refez |= poe(
+                            device,
+                            queue,
+                            &mut g.inclinacoes,
+                            &mut g.cap_inclinacoes,
+                            bytemuck::cast_slice(inc.por_amostra()),
+                            "inclinacoes",
+                            st,
+                        );
+                        g.inc = Some(inc);
+                        g.inc_foto.tira(&pay, mesh.positions(), a);
+                    }
+                }
+            } else {
+                g.inc = None;
+                g.inc_foto = FotoDasInclinacoes::default();
             }
             queue.write_buffer(&g.cfg, 0, bytemuck::cast_slice(&cfg_de(Some(t))));
             g.relevo = t.tem_relevo();
@@ -391,18 +447,23 @@ impl MeshRenderer {
         &mut self,
         queue: &wgpu::Queue,
         index: usize,
+        mesh: &Mesh,
         tinta: &Tinta,
         sujas: &mut Vec<u32>,
     ) -> bool {
-        let Some(slot) = self.slots.get(index) else {
+        let Some(slot) = self.slots.get_mut(index) else {
             return false;
         };
-        let g = &slot.gpu.tinta;
+        let g = &mut slot.gpu.tinta;
         // ⚠️ O RELEVO também tem de ser o que o device tem: um plano que o
         //    ganhou a meio de um traço (o 1.º toque de impasto) precisa da
         //    subida inteira — o buffer das alturas ainda é o dummy de 16 B, e
         //    escrever nele por índice seria escrever fora dele.
         if !g.armado || g.n_amostras != tinta.amostras().len() || g.relevo != tinta.tem_relevo() {
+            return false;
+        }
+        // ⚠️ As inclinações por pedaços precisam da adjacência DESTE plano.
+        if g.relevo && !g.inc.as_ref().is_some_and(|i| i.serve(tinta)) {
             return false;
         }
         if sujas.is_empty() {
@@ -412,11 +473,24 @@ impl MeshRenderer {
         let mut corridas = Vec::new();
         corridas_das_sujas(sujas, &mut corridas);
         let alturas: &[u8] = tinta.relevo().map_or(&[], bytemuck::cast_slice);
-        for (de, ate) in corridas {
+        for &(de, ate) in &corridas {
             queue.write_buffer(&g.amostras, de as u64, &bytes[de..ate]);
             if !alturas.is_empty() {
                 let (ha, hb) = em_alturas((de, ate));
                 queue.write_buffer(&g.alturas, ha as u64, &alturas[ha..hb]);
+            }
+        }
+        // ⭐ Uma altura mudada muda a inclinação das amostras das células
+        //   dela — mais do que as sujas. Três `f32` por amostra, como a cor,
+        //   logo as corridas em bytes são as mesmas contas.
+        if let Some(inc) = g.inc.as_mut() {
+            let mut mudadas = Vec::new();
+            inc.atualiza(tinta, &|f| mesh.faces()[f].verts(), mesh.positions(), sujas, &mut mudadas);
+            g.inc_foto.anota_alturas(sujas, tinta.relevo().unwrap_or(&[]));
+            corridas_das_sujas(&mut mudadas, &mut corridas);
+            let gb: &[u8] = bytemuck::cast_slice(inc.por_amostra());
+            for &(de, ate) in &corridas {
+                queue.write_buffer(&g.inclinacoes, de as u64, &gb[de..ate]);
             }
         }
         true
@@ -470,6 +544,60 @@ pub(super) fn corridas_das_sujas(sujas: &mut Vec<u32>, out: &mut Vec<(usize, usi
         }
         out.push((inicio as usize * 12, (fim as usize + 1) * 12));
         i += 1;
+    }
+}
+
+/// ⭐ **A foto do que as [`Inclinacoes`] descrevem** — ver `TintaGpu::inc_foto`.
+#[derive(Default)]
+struct FotoDasInclinacoes {
+    pay: Vec<u32>,
+    pos: Vec<[f32; 3]>,
+    alturas: Vec<f32>,
+}
+
+impl FotoDasInclinacoes {
+    fn tira(&mut self, pay: &[u32], pos: &[[f32; 3]], relevo: &[[f32; 2]]) {
+        self.pay.clear();
+        self.pay.extend_from_slice(pay);
+        self.pos.clear();
+        self.pos.extend_from_slice(pos);
+        self.alturas.clear();
+        self.alturas.extend(relevo.iter().map(|r| r[0]));
+    }
+
+    /// A mesma topologia da foto — o registo face a face e a contagem de
+    /// vértices (o registo não vê um vértice órfão).
+    fn descreve(&self, pay: &[u32], mesh: &Mesh) -> bool {
+        self.pay == pay && self.pos.len() == mesh.positions().len()
+    }
+
+    /// As amostras sujas desde a foto — os VÉRTICES que se moveram (o índice
+    /// da amostra de um vértice é o dele) e as amostras de altura mudada —, e
+    /// a foto passa a ser a de agora.
+    fn o_que_mudou(&mut self, pos: &[[f32; 3]], relevo: &[[f32; 2]]) -> Vec<u32> {
+        let mut sujas = Vec::new();
+        for (v, (foto, agora)) in self.pos.iter_mut().zip(pos).enumerate() {
+            if foto != agora {
+                *foto = *agora;
+                sujas.push(v as u32);
+            }
+        }
+        for (i, (foto, agora)) in self.alturas.iter_mut().zip(relevo).enumerate() {
+            if foto.to_bits() != agora[0].to_bits() {
+                *foto = agora[0];
+                sujas.push(i as u32);
+            }
+        }
+        sujas
+    }
+
+    /// O incremental do traço já refez estas amostras: a foto acompanha.
+    fn anota_alturas(&mut self, sujas: &[u32], relevo: &[[f32; 2]]) {
+        for &i in sujas {
+            if let (Some(f), Some(r)) = (self.alturas.get_mut(i as usize), relevo.get(i as usize)) {
+                *f = r[0];
+            }
+        }
     }
 }
 

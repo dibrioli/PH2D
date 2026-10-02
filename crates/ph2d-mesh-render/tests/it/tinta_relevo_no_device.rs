@@ -143,9 +143,12 @@ fn o_relevo_inclina_a_luz_so_onde_ha_degrau() {
 
     let largura = (x1 - x0) as f32;
     let meio = (x0 + x1) as f32 / 2.0;
-    // As duas colunas ocupam `1/4` da largura; `+2` px de folga, porque a
-    // derivada de ecrã é tirada em quads de `2×2`.
-    let dentro = |x: u32| ((x as f32) - meio).abs() <= largura / 8.0 + 2.0;
+    // As duas colunas ocupam `1/4` da largura (`1/8` cada). ⚠️ A inclinação
+    // é POR AMOSTRA (`docs/3D/29` §9): a amostra da beira da rampa dá metade
+    // do declive à coluna vizinha, como uma normal por vértice — logo a faixa
+    // é a rampa e UMA coluna de cada lado, e além dela nada (`+2` px de folga
+    // da rasterização).
+    let dentro = |x: u32| ((x as f32) - meio).abs() <= largura / 4.0 + 2.0;
     let mut mudou_dentro = 0usize;
     let mut pior_fora = 0.0f32;
     let mut onde_fora = (0, 0);
@@ -242,4 +245,130 @@ fn o_relevo_acende_como_a_geometria_que_ele_finge() {
         (0.5..=2.0).contains(&razao),
         "o relevo acende {razao}× a geometria que finge ({r} contra {g})"
     );
+}
+
+/// ⭐⭐⭐ **GATE — esculpir a peça com relevo e subir de novo desenha o MESMO
+/// que uma subida do zero** (`docs/3D/29` §9). A subida inteira refaz só as
+/// inclinações das faces cujas posições mudaram desde a foto dela; se a foto
+/// mentir, a luz da peça esculpida fica com a inclinação da forma de ANTES.
+#[test]
+#[ignore = "precisa de adaptador"]
+fn esculpir_com_relevo_desenha_o_que_uma_subida_do_zero_desenha() {
+    let Some((device, queue)) = device() else {
+        panic!("sem adaptador — este gate não é verde por skip");
+    };
+    let m = grelha();
+    let faces: Vec<Vec<u32>> = m.faces().iter().map(|f| f.verts().to_vec()).collect();
+    let mut plano = Tinta::nova(m.vert_count(), faces.iter().map(|f| &f[..]), 0);
+    for a in plano.amostras_mut() {
+        *a = [0.8, 0.8, 0.8];
+    }
+    for (i, p) in m.positions().iter().enumerate() {
+        plano.relevo_mut()[i] = [altura_em(p[0]), 1.0];
+    }
+    // A peça esculpida: um calombo em `z` em cima da rampa, com a MESMA
+    // topologia — o caminho que reaproveita a foto.
+    let mut pos = m.positions().to_vec();
+    for p in &mut pos {
+        let d2 = p[0] * p[0] + (p[1] - 0.25) * (p[1] - 0.25);
+        p[2] += 0.3 * (-d2 / 0.08).exp();
+    }
+    let esculpida = Mesh::from_parts(pos, m.faces().to_vec()).expect("a mesma topologia");
+
+    let camera = camera_for(&m);
+    let mut r = MeshRenderer::new(&device, FORMAT);
+    r.upload_at(&device, &queue, 0, &m, &[]);
+    r.upload_tinta_at(&device, &queue, 0, &m, Some(&plano));
+    let antes = render_using_rig_shade(&device, &queue, &mut r, &camera, &LightRig::default(), rig_shade());
+    r.upload_at(&device, &queue, 0, &esculpida, &[]);
+    r.upload_tinta_at(&device, &queue, 0, &esculpida, Some(&plano));
+    let reaproveitada = render_using_rig_shade(&device, &queue, &mut r, &camera, &LightRig::default(), rig_shade());
+
+    let mut zero = MeshRenderer::new(&device, FORMAT);
+    zero.upload_at(&device, &queue, 0, &esculpida, &[]);
+    zero.upload_tinta_at(&device, &queue, 0, &esculpida, Some(&plano));
+    let do_zero = render_using_rig_shade(&device, &queue, &mut zero, &camera, &LightRig::default(), rig_shade());
+
+    let pior = |a: &[u8], b: &[u8]| {
+        (0..H)
+            .flat_map(|y| (0..W).map(move |x| (x, y)))
+            .map(|(x, y)| (lum(a, x, y) - lum(b, x, y)).abs())
+            .fold(0.0f32, f32::max)
+    };
+    assert!(
+        pior(&antes, &do_zero) > 10.0,
+        "o CONTROLO: esculpir tinha de mudar a luz da peça"
+    );
+    // ⚠️ A folga é a ordem de acumulação das médias (refeitas por pedaços
+    //   contra refeitas inteiras), que pode virar um byte — nunca a forma de
+    //   antes, que muda dezenas.
+    let d = pior(&reaproveitada, &do_zero);
+    assert!(d <= 1.5, "a subida que reaproveita a foto desenha {d} longe da do zero");
+}
+
+/// ⭐⭐⭐ **GATE — um traço de impasto subido POR PEDAÇOS desenha o MESMO que
+/// uma subida do zero** (`docs/3D/29` §9). Durante o traço só as amostras
+/// escritas sobem; as inclinações que mudam são MAIS do que elas (as das
+/// células vizinhas), e se o incremental as esquecer a luz fica com a encosta
+/// de antes.
+#[test]
+#[ignore = "precisa de adaptador"]
+fn o_relevo_subido_por_pedacos_desenha_o_que_uma_subida_do_zero_desenha() {
+    let Some((device, queue)) = device() else {
+        panic!("sem adaptador — este gate não é verde por skip");
+    };
+    let m = grelha();
+    let faces: Vec<Vec<u32>> = m.faces().iter().map(|f| f.verts().to_vec()).collect();
+    let mut plano = Tinta::nova(m.vert_count(), faces.iter().map(|f| &f[..]), 2);
+    for a in plano.amostras_mut() {
+        *a = [0.8, 0.8, 0.8];
+    }
+    // O relevo nasce com corpo em toda parte e altura nenhuma: o device fica
+    // com o bit e as inclinações nulas — o estado do pen-down.
+    for r in plano.relevo_mut() {
+        *r = [0.0, 1.0];
+    }
+    let camera = camera_for(&m);
+    let mut r = MeshRenderer::new(&device, FORMAT);
+    r.upload_at(&device, &queue, 0, &m, &[]);
+    r.upload_tinta_at(&device, &queue, 0, &m, Some(&plano));
+    let liso = render_using_rig_shade(&device, &queue, &mut r, &camera, &LightRig::default(), rig_shade());
+
+    // O «traço»: um morro de altura nas amostras perto do centro, e só elas
+    // vão como sujas.
+    let mut sujas = Vec::new();
+    for (f, c) in faces.iter().enumerate() {
+        let p = |k: usize| m.positions()[c[k] as usize];
+        let l = plano.lado_da_face(f);
+        let mut pontos = Vec::new();
+        plano.para_cada_amostra_quad(f, c, |i, ij| pontos.push((i, ij)));
+        for (i, ij) in pontos {
+            let q = ph2d_mesh_colors::amostragem::posicao_quad([p(0), p(1), p(2), p(3)], l, ij);
+            let d2 = q[0] * q[0] + q[1] * q[1];
+            if d2 < 0.36 {
+                plano.relevo_mut()[i as usize][0] = 0.2 * (1.0 - d2 / 0.36).powi(2);
+                sujas.push(i);
+            }
+        }
+    }
+    assert!(
+        r.upload_tinta_amostras_at(&queue, 0, &m, &plano, &mut sujas),
+        "o slot armado com relevo tinha de aceitar o incremental"
+    );
+    let por_pedacos = render_using_rig_shade(&device, &queue, &mut r, &camera, &LightRig::default(), rig_shade());
+
+    let mut zero = MeshRenderer::new(&device, FORMAT);
+    zero.upload_at(&device, &queue, 0, &m, &[]);
+    zero.upload_tinta_at(&device, &queue, 0, &m, Some(&plano));
+    let do_zero = render_using_rig_shade(&device, &queue, &mut zero, &camera, &LightRig::default(), rig_shade());
+
+    let pior = |a: &[u8], b: &[u8]| {
+        (0..H)
+            .flat_map(|y| (0..W).map(move |x| (x, y)))
+            .map(|(x, y)| (lum(a, x, y) - lum(b, x, y)).abs())
+            .fold(0.0f32, f32::max)
+    };
+    assert!(pior(&liso, &do_zero) > 10.0, "o CONTROLO: o morro tinha de acender");
+    let d = pior(&por_pedacos, &do_zero);
+    assert!(d <= 1.5, "o incremental desenha {d} longe da subida do zero");
 }

@@ -86,6 +86,7 @@
 pub mod amostragem;
 pub mod assar;
 pub mod enderecos;
+pub mod inclinacao;
 pub mod relevo;
 pub mod topo;
 mod uniformiza;
@@ -98,6 +99,9 @@ mod assar_tests;
 #[cfg(test)]
 #[path = "enderecos_tests.rs"]
 mod enderecos_tests;
+#[cfg(test)]
+#[path = "inclinacao_tests.rs"]
+mod inclinacao_tests;
 #[cfg(test)]
 #[path = "lib_tests.rs"]
 mod lib_tests;
@@ -119,6 +123,7 @@ mod vizinhanca_tests;
 
 pub use assar::{Assado, Recusa, Relatorio, assar};
 pub use enderecos::{Sitio, indice, sitio_quad, sitio_tri, total};
+pub use inclinacao::Inclinacoes;
 pub use topo::{TRI, Topologia, cantos, interior_por_face};
 
 /// A cor de quem ninguém pintou.

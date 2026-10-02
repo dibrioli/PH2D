@@ -30,6 +30,7 @@ pub(crate) mod bounds_mods;
 /// ⭐⭐⭐ **A peça para o DISPOSITIVO, com a escultura dentro** — ver [`device`].
 pub mod device;
 pub mod extract;
+mod extract_parts;
 pub mod hybrid;
 pub mod ops;
 /// ⭐ A família da SETA — ver [`ops_arrows`].

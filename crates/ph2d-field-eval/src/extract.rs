@@ -341,6 +341,34 @@ pub fn extract(
     reg: &crate::hybrid::Registry,
     depth: u8,
 ) -> Result<Mesh, MeshError> {
+    let (positions, faces) = sweep(doc, reg, depth, None)?;
+    Mesh::from_parts(positions, faces).map_err(|e| MeshError::Rejected(format!("{e:?}")))
+}
+
+/// ⭐ **As PEÇAS da extração** — uma malha por sólido conexo ([`crate::extract_parts`]). As peças
+/// PARTEM a malha do [`extract`]: mesmos vértices e faces, nenhum a mais nem a menos.
+///
+/// # Errors
+/// Os do [`extract`].
+pub fn extract_parts(
+    doc: &ph2d_field::FieldDoc,
+    reg: &crate::hybrid::Registry,
+    depth: u8,
+) -> Result<Vec<Mesh>, MeshError> {
+    let m = (1usize << depth) + 1;
+    let mut labeler = crate::extract_parts::Labeler::new(m);
+    let (positions, faces) = sweep(doc, reg, depth, Some(&mut labeler))?;
+    crate::extract_parts::split(positions, faces, labeler)
+}
+
+/// A varredura camada a camada — a extração inteira, com o rotulador das peças a bordo quando
+/// pedido.
+fn sweep(
+    doc: &ph2d_field::FieldDoc,
+    reg: &crate::hybrid::Registry,
+    depth: u8,
+    mut labeler: Option<&mut crate::extract_parts::Labeler>,
+) -> Result<(Vec<[f32; 3]>, Vec<Face>), MeshError> {
     let mut field = crate::hybrid::Hybrid::new(doc, reg);
     // ⭐ A caixa da grade sai da PEÇA (W33) — ver `Grid::new`.
     let grid = Grid::new(
@@ -369,6 +397,9 @@ pub fn extract(
     let mut plane_hi = Vec::new();
     plane_coords(0, &mut xs, &mut ys, &mut zs);
     plane_lo.extend_from_slice(field.eval(&xs, &ys, &zs)?);
+    if let Some(l) = labeler.as_deref_mut() {
+        l.plane(&plane_lo, true);
+    }
 
     let mut positions: Vec<[f32; 3]> = Vec::new();
     let mut faces: Vec<Face> = Vec::new();
@@ -386,6 +417,9 @@ pub fn extract(
         plane_coords(k + 1, &mut xs, &mut ys, &mut zs);
         plane_hi.clear();
         plane_hi.extend_from_slice(field.eval(&xs, &ys, &zs)?);
+        if let Some(l) = labeler.as_deref_mut() {
+            l.plane(&plane_hi, false);
+        }
 
         // — Passo 1: as travessias de cada célula da camada.
         cross.clear();
@@ -436,6 +470,9 @@ pub fn extract(
             let v = cell_vertex(&grid, [i, j, k], &cross[a..b], &grads[a..b]);
             vidx_cur[j * grid.n + i] = positions.len() as u32;
             positions.push([v[0] as f32, v[1] as f32, v[2] as f32]);
+            if let Some(l) = labeler.as_deref_mut() {
+                l.cell_vertex(i, j);
+            }
         }
 
         // — Passo 4: um quad por aresta da grade que troca de sinal.
@@ -451,9 +488,12 @@ pub fn extract(
 
         std::mem::swap(&mut plane_lo, &mut plane_hi);
         std::mem::swap(&mut vidx_prev, &mut vidx_cur);
+        if let Some(l) = labeler.as_deref_mut() {
+            l.advance();
+        }
     }
 
-    Mesh::from_parts(positions, faces).map_err(|e| MeshError::Rejected(format!("{e:?}")))
+    Ok((positions, faces))
 }
 
 /// O vértice de uma célula, das suas travessias e das normais nelas.

@@ -60,6 +60,7 @@ mod the_knot_that_two_counts_make;
 mod the_march_clip_does_not_touch_the_piece;
 mod the_march_reads_the_verb_of_each_shape;
 mod the_nine_shapes_of_the_symbol_lote;
+mod the_parts_are_the_pieces_that_touch;
 mod the_point_probe_is_the_same_answer;
 mod the_seam_characters;
 mod the_shape_that_bulges;

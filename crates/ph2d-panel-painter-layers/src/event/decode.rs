@@ -21,12 +21,6 @@ pub(super) fn decode_paper_kind_option(id: NodeId) -> Option<u8> {
     (0..TextureKind::COUNT).find(|&k| ph2d_tool_painter::ids::painter_paper_kind_option_id(k) == id)
 }
 
-/// Decode a Watercolor **Paper** mapping popover option id → its `TextureMapping` wire u8.
-pub(super) fn decode_paper_mapping_option(id: NodeId) -> Option<u8> {
-    (0..TextureMapping::COUNT)
-        .find(|&m| ph2d_tool_painter::ids::painter_paper_mapping_option_id(m) == id)
-}
-
 /// Decode a **Paint Mode** popover option id â its `PaintMedia` wire u8 (`0..PaintMedia::COUNT`).
 pub(super) fn decode_brush_media_option(id: NodeId) -> Option<u8> {
     (0..PaintMedia::COUNT).find(|&i| ph2d_tool_painter::ids::painter_brush_media_option_id(i) == id)

@@ -3,6 +3,7 @@
 //! `PaintState`'s module-private fields.
 
 use super::PainterTool;
+use super::watercolor_settings::{PAPER_PROCEDURAL_DEFAULT_SIZE, is_procedural_paper};
 use ph2d_painter_brush::{
     TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind,
     TextureMapping,
@@ -11,11 +12,27 @@ use ph2d_painter_brush::{
 impl PainterTool {
     /// Set the brush texture (Grain) kind from a wire discriminant (out-of-range → None). Picking
     /// [`TextureKind::Image`] requests a file pick from the shell (the engine has no I/O).
+    ///
+    /// Under **Tiled** (the default since 2026-10-02) the Size unit is the paper's `px·size/256`, so the
+    /// paper's scale-class default applies: a procedural at Size `1` is a 256-px blob and the stroke reads
+    /// flat (measured: Noise / Voronoi showed no grain inside a 28-px stroke). Only on a class change, so
+    /// a Size the artist tuned survives a switch between two procedurals.
     pub fn set_brush_texture_kind(&mut self, k: u8) {
-        let was_none = self.paint.brush.texture.kind == TextureKind::None;
+        let old = self.paint.brush.texture.kind;
+        let was_none = old == TextureKind::None;
         let kind = TextureKind::from_u8(k);
         self.paint.brush.texture.kind = kind;
         self.reset_texture_params();
+        if self.paint.brush.texture.mapping == TextureMapping::Tiled
+            && is_procedural_paper(kind) != is_procedural_paper(old)
+        {
+            let s = if is_procedural_paper(kind) {
+                PAPER_PROCEDURAL_DEFAULT_SIZE
+            } else {
+                1.0
+            };
+            self.paint.brush.texture.size = [s, s];
+        }
         if kind == TextureKind::Image {
             self.paint.texture_image_pending = true;
         }

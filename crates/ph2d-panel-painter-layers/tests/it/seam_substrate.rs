@@ -176,13 +176,13 @@ fn raising_the_relief_from_the_row_arms_a_paper() {
 
 /// **As rows que só a aguada consome NÃO vazaram para o Digital.**
 ///
-/// `Color` (o fundo que a óptica da aquarela vê), `Tooth` (quanto o grão morde o wash) e `Mapping` (que
-/// o substrato ignora por construção — ele força `Tiled`) não têm leitor nenhum fora da aguada. Abrir a
-/// seção a todo meio sem gateá-las shiparia três controles mortos de uma vez.
+/// `Color` (o fundo que a óptica da aquarela vê) e `Tooth` (quanto o grão morde o wash) não têm leitor
+/// nenhum fora da aguada. Abrir a seção a todo meio sem gateá-las shiparia controles mortos. (O
+/// `Mapping` era a terceira e saiu do painel em 2026-10-02: não tinha leitor em meio nenhum.)
 ///
-/// O positivo é a metade que impede o vácuo: as MESMAS três têm de estar lá na aquarela.
+/// O positivo é a metade que impede o vácuo: as MESMAS têm de estar lá na aquarela.
 ///
-/// **Mutação que tem de sangrar:** tirar o `if wash` de qualquer uma das três.
+/// **Mutação que tem de sangrar:** tirar o `if wash` de qualquer uma delas.
 #[test]
 fn the_wash_only_rows_do_not_leak_into_the_other_media() {
     let wash_only = [
@@ -193,10 +193,6 @@ fn the_wash_only_rows_do_not_leak_into_the_other_media() {
         (
             ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_DEPTH,
             "Tooth",
-        ),
-        (
-            ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_MAPPING,
-            "Mapping",
         ),
     ];
     // O papel tem de estar ARMADO nos dois lados, senão o portão de `None` esconde as três por outro

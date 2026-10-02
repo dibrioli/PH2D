@@ -533,8 +533,6 @@ pub struct BrushSettings {
     pub wet_preview: f32,
     /// **Paper** slot kind (`TextureKind` wire u8) — the substrate tooth (its own full section).
     pub paper_kind: u8,
-    /// **Paper** slot Mapping (`TextureMapping` wire u8).
-    pub paper_mapping: u8,
     /// **Paper** slot Angle in whole degrees (fibre orientation).
     pub paper_angle: u16,
     /// **Paper** slot Offset (x, y).

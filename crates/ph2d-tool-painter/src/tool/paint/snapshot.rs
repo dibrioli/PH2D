@@ -383,7 +383,6 @@ impl PainterTool {
             dry_time_s,
             wet_preview,
             paper_kind: b.paper.kind.to_u8(),
-            paper_mapping: b.paper.mapping.to_u8(),
             paper_angle: b.paper.angle_deg,
             paper_offset: b.paper.offset,
             paper_size: b.paper.size,

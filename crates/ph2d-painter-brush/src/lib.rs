@@ -170,7 +170,7 @@ pub use smear_field::{
     accumulate_dab_smear,
 };
 pub use spec::MAX_BRUSH_RADIUS_PX;
-pub use spec::{AIRBRUSH_RATE_MAX_S, AIRBRUSH_RATE_MIN_S, BrushSpec};
+pub use spec::{AIRBRUSH_RATE_MAX_S, AIRBRUSH_RATE_MIN_S, BrushSpec, PAPER_TOOTH_MAX};
 pub use stamp::{StampMask, blit_canvas_cached, blit_stamp, dab_write_bounds, render_stamp_mask};
 pub use stamp_color::{
     ColorStampMask, DynDab, FusedDab, accumulate_color_stamp_coverage,

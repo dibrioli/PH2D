@@ -181,16 +181,16 @@ fn the_paper_survives_a_change_of_paint_mode() {
 /// devolvia a 1 e a excursão caía de **166 para 75 níveis**, com o papel mudando debaixo da obra
 /// porque o artista pegou uma ferramenta.
 ///
-/// **Mutação que tem de sangrar:** tirar o `sync_paper_across_slots()` de qualquer um dos sete.
+/// **Mutação que tem de sangrar:** tirar o `sync_paper_across_slots()` de qualquer um deles (hoje seis:
+/// o do Mapping saiu com o dropdown, 2026-10-02).
 #[test]
 fn every_paper_knob_reaches_every_brush_slot() {
-    let knobs: [PaperKnob; 8] = [
+    let knobs: [PaperKnob; 7] = [
         ("Paper kind", |t| {
             t.set_brush_paper_kind(ph2d_painter_brush::TextureKind::PaperRough.to_u8());
         }),
         ("Paper Size", |t| t.set_brush_paper_size(0, 5.0)),
         ("Paper Angle", |t| t.set_brush_paper_angle(37.0)),
-        ("Paper Mapping", |t| t.set_brush_paper_mapping(0)),
         ("Paper Offset", |t| t.set_brush_paper_offset(0, 0.25)),
         ("Paper Contrast", |t| t.set_brush_paper_param(0, 0.9)),
         ("Paper reset", |t| t.reset_brush_paper()),

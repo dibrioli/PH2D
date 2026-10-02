@@ -126,7 +126,9 @@ impl WetStrokeStyle {
                 wet,
             ),
             paper: spec.paper,
-            paper_depth: spec.paper_depth.clamp(0.0, 1.0),
+            paper_depth: spec
+                .paper_depth
+                .clamp(0.0, ph2d_painter_brush::PAPER_TOOTH_MAX),
             granulation_use_paper: spec.granulation_use_paper,
             texture: spec.texture,
         }

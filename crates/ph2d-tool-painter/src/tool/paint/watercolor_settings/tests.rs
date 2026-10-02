@@ -168,16 +168,8 @@ fn panel_events_drive_watercolor_state() {
         "Same as Paper toggled off"
     );
 
-    // Full Paper slot: Mapping / Rake / Random / Offset / Depth / param.
-    t.handle_panel_event(PanelEvent::SelectOption(
-        crate::ids::PAINTER_WATERCOLOR_PAPER_MAPPING,
-        (TextureMapping::Random.to_u8()).to_string(),
-    ));
-    assert_eq!(
-        t.paint.brush.paper.mapping,
-        TextureMapping::Random,
-        "Paper mapping picked"
-    );
+    // Full Paper slot: Offset / Depth / param. (No Mapping row: the paper is canvas-anchored by
+    // construction — every reader samples it `Tiled` — so the dropdown was removed, Enio 2026-10-02.)
     // No Paper Rake: the paper is the canvas-anchored substrate under the paint, so a per-dab rotation has
     // nothing to rotate. The widgets never existed; the setters/ids that lingered "for the API" were dead
     // plumbing and were removed (2026-07-12) — an audit had already misread them as live knobs. Rake is

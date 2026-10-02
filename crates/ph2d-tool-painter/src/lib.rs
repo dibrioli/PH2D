@@ -100,6 +100,7 @@ pub use ph2d_painter_brush::{
     MAX_FALLOFF_POINTS,
     MAX_HANDLE_TYPES,
     MAX_TEX_PARAMS,
+    PAPER_TOOTH_MAX,
     ParamSpec,
     RampAlphaMode,
     StrokeMethod,

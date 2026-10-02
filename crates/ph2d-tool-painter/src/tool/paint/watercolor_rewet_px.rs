@@ -638,8 +638,12 @@ impl<'a> SubstrateSession<'a> {
         } else {
             None
         };
+        // ⚠️ The pigment settles into the VALLEYS (low `h`), the same side as the granulation gate
+        // `1 − k·h·γ`. Until 2026-10-02 this was `(h − 0.5)` (peaks), and with "Same as Paper" on both
+        // terms read the same paper and cancelled: at Granulation 1 / Tooth 1 the product ran
+        // 0,535..0,584 over an `h` of 0,19..0,54 — the paper vanished from the wash (BUGS_painter #30).
         let paper_component = if paper_active {
-            (paper_h - 0.5) * paper_depth
+            (0.5 - paper_h) * paper_depth
         } else {
             0.0
         };

@@ -12,7 +12,7 @@ use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::widget::DropdownOption;
 use ph2d_i18n::tr;
 use ph2d_tool_painter::{
-    BrushSettings, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TextureKind, TextureMapping,
+    BrushSettings, PAPER_TOOTH_MAX, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TextureKind,
 };
 
 /// ⭐⭐ **A COLUNA DESTA SECÇÃO — uma só, medida sobre os nomes que ela pinta.**
@@ -118,9 +118,12 @@ fn paint_substrate_rows(
 ///
 /// O que **não** se generalizou junto, porque só a aguada os consome (medido por `grep` nos leitores):
 /// a **Color** do papel (o fundo que a óptica da aquarela vê — `watercolor_backdrop`) e a **Tooth**
-/// (quanto o grão morde o wash — `watercolor_render`/`watercolor_field`), mais o **Mapping**, que o
-/// substrato ignora por construção (ele força `Tiled`: um papel que segue o dab não é um papel). As
-/// três seriam controles mortos no Digital, que é a espécie que esta casa extermina.
+/// (quanto o grão morde o wash — `watercolor_render`/`watercolor_field`). As duas seriam controles
+/// mortos no Digital, que é a espécie que esta casa extermina.
+///
+/// ⛔ **O Mapping saiu (Enio, 2026-10-02):** nenhum leitor do papel o decide — a aguada, o Wet Paint e
+/// o substrato amostram por `sample_tiled_rot_wrapped`, que é `Tiled` por construção (um papel que
+/// segue o dab não é um papel). Era um dropdown que só invalidava caches.
 pub(crate) fn paint_paper_section(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -192,26 +195,6 @@ pub(crate) fn paint_paper_section(
         paper_preview_view(&brush),
         state::current_brush_paper_image(),
     );
-    // ── Mapping (paper is a static substrate; per-dab Rake / Random-Angle were dropped from the UI —
-    //    no reference app rotates paper per-dab; the per-dab rake/random live on the Grain slot). ──
-    if wash {
-        let mapping = TextureMapping::from_u8(brush.paper_mapping);
-        let (ny, open) = paint_dropdown_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            "panel.painter_layers.paper.mapping",
-            ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_MAPPING,
-            brush.paper_mapping,
-            ph2d_i18n::tr(mapping.name_key()),
-        );
-        y = ny;
-        if let Some(r) = open {
-            state::set_pending_paper_mapping_dd(Some((r, brush.paper_mapping)));
-        }
-    }
     let sec = seccao_do_papel(ctx);
     y = number_field::paint_num_row(
         ctx,
@@ -273,9 +256,9 @@ pub(crate) fn paint_paper_section(
             y,
             tr("panel.painter_layers.paper.tooth"),
             ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_DEPTH,
-            brush.paper_depth.clamp(0.0, 1.0),
+            brush.paper_depth.clamp(0.0, PAPER_TOOTH_MAX),
             0.0,
-            1.0,
+            PAPER_TOOTH_MAX,
             number_field::FINE_STEP,
             2,
             sec,
@@ -389,7 +372,7 @@ pub(crate) fn paint_grain_watercolor_extras(
     )
 }
 
-/// Drain the Watercolor **Paper** kind + mapping dropdown popovers (called from `paint_brush_popovers`,
+/// Drain the Watercolor **Paper** kind dropdown popover (called from `paint_brush_popovers`,
 /// after the body clip is popped, so the open list is never clipped).
 pub(crate) fn paint_watercolor_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme) {
     if let Some((chip_rect, cur)) = state::take_pending_paper_kind_dd() {
@@ -406,25 +389,6 @@ pub(crate) fn paint_watercolor_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::
             ctx,
             theme,
             ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_KIND,
-            options,
-            chip_rect,
-            cur,
-        );
-    }
-    if let Some((chip_rect, cur)) = state::take_pending_paper_mapping_dd() {
-        let options: Vec<DropdownOption<u8>> = (0..TextureMapping::COUNT)
-            .map(|m| {
-                DropdownOption::new(
-                    ph2d_tool_painter::ids::painter_paper_mapping_option_id(m),
-                    m,
-                    ph2d_i18n::tr(TextureMapping::from_u8(m).name_key()),
-                )
-            })
-            .collect();
-        crate::paint_brush::paint_dropdown_popover(
-            ctx,
-            theme,
-            ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_MAPPING,
             options,
             chip_rect,
             cur,

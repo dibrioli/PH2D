@@ -393,13 +393,6 @@ impl Tool for PainterTool {
                 }
             }
             PanelEvent::SelectOption(id, value)
-                if id == crate::ids::PAINTER_WATERCOLOR_PAPER_MAPPING =>
-            {
-                if let Ok(m) = value.parse::<u8>() {
-                    self.set_brush_paper_mapping(m);
-                }
-            }
-            PanelEvent::SelectOption(id, value)
                 if id == crate::ids::PAINTER_BRUSH_TEXTURE_MAPPING =>
             {
                 if let Ok(m) = value.parse::<u8>() {

@@ -281,7 +281,6 @@ pub(crate) const LINE: &[&str] = &[
 pub(crate) const PAPER: &[&str] = &[
     "panel.painter_layers.paper.same_as_paper",
     "panel.painter_layers.paper.paper",
-    "panel.painter_layers.paper.mapping",
     "panel.painter_layers.paper.color",
     "panel.painter_layers.paper.amount",
     "panel.painter_layers.paper.angle",

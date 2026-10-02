@@ -28,6 +28,10 @@ pub const MAX_BRUSH_RADIUS_PX: f32 = 4096.0;
 pub const AIRBRUSH_RATE_MIN_S: f32 = 0.01;
 /// Airbrush **Rate** soft-range ceiling (slowest spray, ~1 Hz). See [`AIRBRUSH_RATE_MIN_S`].
 pub const AIRBRUSH_RATE_MAX_S: f32 = 1.0;
+/// Ceiling of the Paper **Tooth** ([`BrushSpec::paper_depth`]) — a product range (Enio, 2026-10-02:
+/// *«limites de tooth de 0 a 2»*), not a resource cap. The wash reads it as `1 + (h − 0.5)·tooth`,
+/// floored at `0`, so `2` lets a paper valley empty the pigment entirely.
+pub const PAPER_TOOTH_MAX: f32 = 2.0;
 
 /// Parameters of a single brush. Cheap to copy; the stroke engine reads it per dab.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -419,8 +423,9 @@ pub struct BrushSpec {
     /// ignored and only the [`Self::granulation`] amount applies. False → the Grain slot IS the granulation
     /// map. (Shown in the Grain section only in watercolor mode.)
     pub granulation_use_paper: bool,
-    /// **Paper Depth**, `0..1`: how strongly the [`Self::paper`] tooth textures the wash (the paper's
-    /// substrate bite, independent of the granulation amount). `0` = a flat wash; `1` = full tooth.
+    /// **Paper Depth** (the panel's *Tooth*), `0..=`[`PAPER_TOOTH_MAX`]: how strongly the
+    /// [`Self::paper`] tooth textures the wash (the paper's substrate bite, independent of the
+    /// granulation amount). `0` = a flat wash; `1` = the historical full tooth.
     pub paper_depth: f32,
     /// **Shape "Automatic"** (watercolor mode, Enio 2026-07-07): `true` (default) = the watercolor
     /// stamp uses its own built-in silhouette (the two-segment feather disc — byte-identical to the

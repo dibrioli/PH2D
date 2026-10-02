@@ -302,6 +302,9 @@ fn jitter_rotate_is_the_grains_random_spin_now_that_per_slot_random_angle_is_gon
     let run = |seed: u64| {
         let mut t = white_canvas(48, 8.0);
         t.paint.brush.texture.kind = TextureKind::Stripes; // a directional grain (a spin is visible)
+        // A VIEW grain is the one the stamp carries (a Tiled one is fixed to the canvas and never spins);
+        // explicit since the Grain default became Tiled (2026-10-02).
+        t.paint.brush.texture.mapping = ph2d_painter_brush::TextureMapping::ViewPlane;
         t.paint.brush.texture.size = [0.5, 0.5];
         t.paint.brush.stroke_method = StrokeMethod::Space;
         t.set_brush_jitter_rotate(1.0);

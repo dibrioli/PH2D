@@ -355,6 +355,9 @@ fn per_layer_color_grain_rake_flip_mid_stroke_reshapes_the_maps() {
     let mut t = per_layer_live_stroke();
     t.paint.brush.texture = ph2d_painter_brush::TextureSettings {
         kind: ph2d_painter_brush::TextureKind::Noise, // an active Grain, so Rake is meaningful
+        // A static VIEW grain is what keeps batch 1 on the cached route (a Tiled one is per-pixel);
+        // explicit since the Grain default became Tiled (2026-10-02).
+        mapping: ph2d_painter_brush::TextureMapping::ViewPlane,
         ..t.paint.brush.texture
     };
     t.stamp_dabs(&[live_dab(24.0)]); // batch 1 — cached route (1 B/px maps)

@@ -147,11 +147,6 @@ pub const PAINTER_WATERCOLOR_PAPER_SIZE_Y: NodeId =
 pub const PAINTER_WATERCOLOR_PAPER_ANGLE: NodeId =
     hash_node_id("painter_brush.watercolor_paper_angle");
 
-/// **Paper** Mapping dropdown chip. `SelectOption` → `set_brush_paper_mapping`. Options via
-/// [`painter_paper_mapping_option_id`].
-pub const PAINTER_WATERCOLOR_PAPER_MAPPING: NodeId =
-    hash_node_id("painter_brush.watercolor_paper_mapping");
-
 /// **Paper** Offset X. `SetValue` → `set_brush_paper_offset`(0).
 pub const PAINTER_WATERCOLOR_PAPER_OFFSET_X: NodeId =
     hash_node_id("painter_brush.watercolor_paper_offset_x");
@@ -173,12 +168,6 @@ pub const PAINTER_WATERCOLOR_PAPER_PARAMS: [NodeId; 6] = [
     hash_node_id("painter_brush.watercolor_paper_param4"),
     hash_node_id("painter_brush.watercolor_paper_param5"),
 ];
-
-/// Derive the stable [`NodeId`] for **Paper** mapping option `m` in the open Paper mapping popover.
-#[must_use]
-pub fn painter_paper_mapping_option_id(m: u8) -> NodeId {
-    hash_node_id_runtime(&format!("painter_brush.papermapopt.{m}"))
-}
 
 /// **Granulation** "Same as Paper" toggle — shown in the **Grain** section in watercolor mode (the Grain
 /// slot IS the granulation map). `Click` → `toggle_granulation_use_paper`.

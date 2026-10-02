@@ -6,10 +6,10 @@
 use super::decode::{
     decode_brush_blend_option, decode_brush_falloff_option, decode_brush_media_option,
     decode_brush_preset_option, decode_composite_add_option, decode_jitter_unit_option,
-    decode_line_type_option, decode_paper_kind_option, decode_paper_mapping_option,
-    decode_shape_follow_option, decode_shape_kind_option, decode_shape_ramp_alpha_option,
-    decode_shape_ramp_interp_option, decode_shape_ramp_mode_option, decode_stroke_method_option,
-    decode_texture_kind_option, decode_texture_mapping_option, decode_texture_ramp_alpha_option,
+    decode_line_type_option, decode_paper_kind_option, decode_shape_follow_option,
+    decode_shape_kind_option, decode_shape_ramp_alpha_option, decode_shape_ramp_interp_option,
+    decode_shape_ramp_mode_option, decode_stroke_method_option, decode_texture_kind_option,
+    decode_texture_mapping_option, decode_texture_ramp_alpha_option,
     decode_texture_ramp_interp_option, decode_texture_ramp_mode_option,
 };
 use ph2d_editor_core::action_bus::EditorAction;
@@ -27,7 +27,7 @@ pub(super) fn route_brush_dropdown_option(
     host: &mut dyn PanelHostInternal,
     id: ph2d_a11y::NodeId,
 ) -> Option<bool> {
-    let routes: [OptionRoute; 20] = [
+    let routes: [OptionRoute; 19] = [
         (
             decode_brush_preset_option,
             ph2d_tool_painter::ids::PAINTER_BRUSH_PRESET,
@@ -47,10 +47,6 @@ pub(super) fn route_brush_dropdown_option(
         (
             decode_paper_kind_option,
             ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_KIND,
-        ),
-        (
-            decode_paper_mapping_option,
-            ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_MAPPING,
         ),
         (
             decode_brush_blend_option,

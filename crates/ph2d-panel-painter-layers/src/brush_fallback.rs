@@ -200,9 +200,9 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     grid_offset: [0.0, 0.0],
     grid_fit: 0.5, // o meio do trilho: o carimbo enche a célula exatamente
     grid_show: true,
-    // Texture section (mirrors TextureSettings::default — no texture assigned).
+    // Texture section (mirrors BrushSpec::default().texture — no texture assigned, Tiled mapping).
     texture_kind: 0,    // None
-    texture_mapping: 0, // View Plane
+    texture_mapping: 1, // Tiled
     texture_angle_deg: 0,
     texture_rake: false,
     texture_offset: [0.0, 0.0],
@@ -302,7 +302,6 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     dry_time_s: 10.0, // LITERAL-PX-OK: ~10 s drying window (255 / CANVAS_WET_DRY_DEFAULT 25.5)
     wet_preview: 0.3, // LITERAL-PX-OK: default wetness-preview veil strength (mirrors WET_PREVIEW_DEFAULT)
     paper_kind: 0,    // None (TextureKind wire 0)
-    paper_mapping: 1, // Tiled (canvas-anchored)
     paper_angle: 0,
     paper_offset: [0.0, 0.0],
     paper_size: [1.0, 1.0], // LITERAL-PX-OK: default paper Size (one tile)

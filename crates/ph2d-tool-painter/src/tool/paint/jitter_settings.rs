@@ -397,7 +397,7 @@ impl PainterTool {
     /// Reset the **Texture** section to defaults — clears the assigned texture and its modulation
     /// (mapping / angle / Rake / Random / offset / size / params). The Color Ramp has its own reset.
     pub fn reset_brush_texture(&mut self) {
-        self.paint.brush.texture = TextureSettings::default();
+        self.paint.brush.texture = BrushSpec::default().texture;
     }
 
     /// Reset the **Shape** section: clear the Shape image (the silhouette reverts to the falloff) and

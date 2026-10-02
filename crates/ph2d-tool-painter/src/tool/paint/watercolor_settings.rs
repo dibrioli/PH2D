@@ -25,8 +25,9 @@ pub const PAPER_PROCEDURAL_DEFAULT_SIZE: f32 = 12.0;
 
 /// True when a Paper kind is a **procedural** pattern (canvas-Tiled, needs a fine default Size), as
 /// opposed to a baked 256² **preset** tile, a loaded **Image**, or **None** (all one full tile per 256 px
-/// ⇒ Size `1`). Used by [`PainterTool::set_brush_paper_kind`] to default the Size per scale class.
-fn is_procedural_paper(kind: TextureKind) -> bool {
+/// ⇒ Size `1`). Used by [`PainterTool::set_brush_paper_kind`] to default the Size per scale class, and
+/// by `set_brush_texture_kind` for a **Tiled** Grain, which shares the paper's `px·size/256` unit.
+pub(super) fn is_procedural_paper(kind: TextureKind) -> bool {
     !matches!(
         kind,
         TextureKind::None
@@ -372,12 +373,6 @@ impl PainterTool {
         self.sync_paper_across_slots();
     }
 
-    /// Set the **Paper** slot Mapping (`TextureMapping` wire u8).
-    pub fn set_brush_paper_mapping(&mut self, m: u8) {
-        self.paint.brush.paper.mapping = TextureMapping::from_u8(m);
-        self.sync_paper_across_slots();
-    }
-
     /// Set the **Paper** slot Offset on `axis` (0 = x, 1 = y), clamped to `[-1, 1]`.
     pub fn set_brush_paper_offset(&mut self, axis: usize, v: f32) {
         if axis < 2 {
@@ -386,9 +381,10 @@ impl PainterTool {
         self.sync_paper_across_slots();
     }
 
-    /// Set the **Paper Depth** (how strongly the paper tooth textures the wash), clamped to `[0, 1]`.
+    /// Set the **Paper Depth** (how strongly the paper tooth textures the wash), clamped to
+    /// `[0, PAPER_TOOTH_MAX]`.
     pub fn set_brush_paper_depth(&mut self, v: f32) {
-        self.paint.brush.paper_depth = v.clamp(0.0, 1.0);
+        self.paint.brush.paper_depth = v.clamp(0.0, ph2d_painter_brush::PAPER_TOOTH_MAX);
     }
 
     /// Set the **Paper** per-pattern param on `slot` (`0..6`; slots 0/1 = Contrast/Brightness), `[0, 1]`.

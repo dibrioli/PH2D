@@ -185,7 +185,9 @@ impl PainterTool {
             noise_tile,
         );
         let gran_img = self.paint.texture_image.as_ref().map(|i| i.as_mask());
-        let paper_depth = brush.paper_depth.clamp(0.0, 1.0);
+        let paper_depth = brush
+            .paper_depth
+            .clamp(0.0, ph2d_painter_brush::PAPER_TOOTH_MAX);
         // Fallback pigment when the colour buffer is faint (straight brush colour → sRGB bytes).
         let fallback = [
             (brush.color[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,

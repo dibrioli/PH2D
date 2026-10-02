@@ -105,7 +105,12 @@ impl Default for BrushSpec {
             edge_to_edge: false,
             // Off: no taper window, so `Taper::width` returns exactly 1.0 and no dab is touched.
             taper: crate::taper::Taper::default(),
-            texture: TextureSettings::default(),
+            // The Grain starts canvas-anchored (Enio, 2026-10-02: «padrão inicial de Grain Mapping:
+            // Tiled»). Inert until a kind is picked (`kind: None`), so the neutral brush is unchanged.
+            texture: TextureSettings {
+                mapping: crate::texture::TextureMapping::Tiled,
+                ..TextureSettings::default()
+            },
             grain_depth: 1.0,
             shape: TextureSettings::default(),
             // Nothing reads `Dab::dir` by default (no rake, no chisel), so the stroke need not warm up.

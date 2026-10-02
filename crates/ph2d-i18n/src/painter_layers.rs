@@ -487,7 +487,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.paper.relief" => "Relief",
         "panel.painter_layers.paper.roughness" => "Roughness",
         "panel.painter_layers.paper.paper" => "Paper",
-        "panel.painter_layers.paper.mapping" => "Mapping",
         "panel.painter_layers.paper.angle" => "Angle",
         "panel.painter_layers.paper.offset" => "Offset",
         "panel.painter_layers.paper.size" => "Size",

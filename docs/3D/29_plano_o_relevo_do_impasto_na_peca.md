@@ -292,3 +292,97 @@ Mutação: `6 de 6` sangram nos gates sem placa (o elo da entrada · o elo da
 compressão · a compressão desligada · o `corpo = 0` sem atalho · o declive do
 joelho · o chão negativo) e o CONTROLO sobrevive; a 7.ª (o `K` da placa diferente
 do da CPU) só a placa vê.
+
+## 9. A INCLINAÇÃO POR AMOSTRA — os degraus da retícula na encosta (02/10)
+
+O aberto da §7 (*«a altura é contínua e o gradiente não»*), conferido antes de
+mexer: o código ainda lia a derivada EXACTA por célula e nenhum commit lhe tocara
+depois de 01/10. A sonda `diag_o_relevo_visto_inclinado`, com o canal vermelho
+esticado, mostrava blocos do tamanho da célula ao longo do traço — de lado e
+também de cima (o brilho do tubo em escadinha).
+
+### 9.1 A lei que fica
+
+A cura nomeada na §7, a das normais por vértice:
+
+- cada célula dá o seu gradiente EXACTO (o da §7: constante no sub-triângulo,
+  a derivada da bilinear no CENTRO do quad) aos cantos, pesado pela ÁREA dela
+  no objecto; o gradiente de uma amostra é a média — `ph2d_mesh_colors::Inclinacoes`;
+- o fragmento interpola os gradientes das amostras pelos MESMOS pesos da cor
+  (`Tinta::inclinacao_tri`/`_quad`; no WGSL o `tinta_soma` acumula
+  `tinta_inclinacao(i)`, `@binding(8)`, três `f32` por amostra);
+- as amostras da fronteira são partilhadas, logo a inclinação é contínua
+  ATRAVÉS das arestas da malha — o que a lei por célula não era nem dentro da face.
+
+⚠️ É derivada: não entra no documento nem na fila de desfazer. Precisa das
+POSIÇÕES (é um vector do objecto), logo esculpir muda-a sem tocar numa altura.
+
+⚠️ A suavização espalha o declive UMA célula para fora da rampa (a amostra da
+beira dá metade à vizinha). Com o CORPO a zero fora da tinta isso não acende
+nada; o gate `o_relevo_inclina_a_luz_so_onde_ha_degrau` passou a medir a rampa
+mais uma coluna, e além dela nada.
+
+### 9.2 Como se mantém em dia
+
+| quando | o que corre |
+|---|---|
+| o traço (subida incremental) | `atualiza(sujas)`: as faces das amostras sujas são refeitas inteiras; o anel delas pelos vértices só na BORDA (as únicas células que dão às amostras partilhadas) |
+| a subida inteira, mesma topologia (esculpir) | a FOTO (`TintaGpu::inc_foto`: o registo das faces, as posições, as alturas) diz o que mudou — os vértices movidos entram como sujas (o índice da amostra de um vértice é o dele) |
+| a subida inteira, topologia nova | `Inclinacoes::nova`: adjacência + só as faces com altura (o 1.º toque não paga o plano) |
+
+Cada face soma num rascunho próprio e os rascunhos juntam-se pela ORDEM das
+faces; acima de `32 768` células as faces correm em paralelo (`std::thread::scope`,
+a crate continua sem dependências) e o resultado é o mesmo AO BIT com qualquer
+número de threads (gate).
+
+### 9.3 Medições (perfil `smoke`, `load < 4`, peça da cena `=52`)
+
+O critério da §4 (*«a subida incremental das alturas não pode custar mais de
+`1 ms` por quadro durante um traço na peça de fábrica»*), nunca medido até hoje:
+
+| traço de impasto a `8x` (59 quadros) | escrever na fila (CPU) | `submit` + espera |
+|---|---|---|
+| ANTES da §9 (só alturas) | mediana `0,039` · pior `0,064 ms` | p95 `0,079` · pior `0,190 ms` |
+| com as inclinações | mediana `0,10` · pior `0,20 ms` | p95 `0,16–0,29` · pior `0,6–0,9 ms` |
+
+⇒ a W2 fecha nessa forma, e a §9 também: o quadro paga `~0,1 ms` de CPU.
+
+| degrau | amostras | refazer TODAS (série → paralelo) | dab de pincel (11 vért.) | dab grande (40) | a mesma subida SEM relevo |
+|---|---|---|---|---|---|
+| `8x` | 47 k | `1,0 → 0,6 ms` | `0,23 ms` | `0,39 ms` | `0,06 ms` |
+| `16x` | 188 k | `4,7 → 1,6 ms` | `0,6 ms` | `1,2 ms` | `0,18 ms` |
+| `32x` | 754 k | `17 → 6,8 ms` | `2,1 ms` | `3,3 ms` | `0,7 ms` |
+| `64x` | 3,0 M | `68 → 27 ms` | `8,1 ms` | `12,2 ms` | `6,1 ms` |
+
+A coluna da direita é o que o quadro de esculpir já pagava: **a subida inteira
+corre em todo quadro em que a peça muda de forma com plano**, e a `64x` ela são
+`6 ms` de cópia do plano. ⏳ Esse é o próximo ganho do caminho de esculpir (subir só
+as faces dos vértices movidos), e é anterior a esta secção.
+
+`LIMIAR_PARALELO = 32 768` células: a `12 ns` por célula numa thread são `~0,4 ms`,
+a ordem do que custa lançar as threads; a `94 k` células (o `8x` inteiro) o
+paralelo já ganha (`1,03 → 0,6 ms`).
+
+### 9.4 Gates
+
+| gate | o que afirma |
+|---|---|
+| `a_inclinacao_lida_e_continua_e_a_lei_por_celula_reprova_a_mesma_regua` | o maior salto entre passos vizinhos numa linha de `4 000` passos: `1,1e-4` por amostra contra `4,2e-2` por célula (o CONTROLO, `380×`) |
+| `a_inclinacao_por_amostra_e_a_da_superficie` | contra a inclinação VERDADEIRA de uma altura lisa numa grelha NÃO alinhada aos eixos: `1,6 %` no nível 3, `0,4 %` no 4 — ordem dois |
+| `os_dois_lados_de_uma_aresta_leem_a_mesma_inclinacao` | quad\|quad e quad\|triângulo |
+| `a_atualizacao_por_pedacos_da_a_inteira_e_diz_o_que_mudou` · `mover_vertices_e_atualizar_por_eles_da_a_inteira` · `um_plano_com_pouca_altura_nasce_igual_ao_inteiro` | as três portas incrementais contra a inteira |
+| `as_faces_em_paralelo_dao_o_mesmo_ao_bit` | `1` contra `8` threads, inteira e atualização |
+| `a_lei_da_reticula_le_o_mesmo_na_placa_e_na_cpu` (3.ª palavra) | a placa contra `inclinacao_*` em TODO ponto (a lei antiga só se media longe das fronteiras de célula), barra `1e-4` |
+| `esculpir_com_relevo_desenha_o_que_uma_subida_do_zero_desenha` (placa) | a foto: a peça esculpida desenha igual a um renderizador novo |
+| `o_relevo_subido_por_pedacos_desenha_o_que_uma_subida_do_zero_desenha` (placa) | o incremental do traço sobe as inclinações VIZINHAS das sujas |
+
+Arnês: `muta_a_normal_do_relevo.sh`, re-escrito (as N1–N4 de 01/10 mutavam a lei
+por célula e o pré-voo apanhou-as mortas).
+
+### 9.5 ⛔ Recusas medidas
+
+| o que | porquê |
+|---|---|
+| curar só DENTRO da face (diferenças centrais na retícula da face, sem adjacência) | deixa um vinco ao longo de cada aresta da malha — a família dos «riscos ao longo das arestas» que a §7.1 já tinha fotografado |
+| deixar a lista de vértices movidos ao CHAMADOR | o `dirty` é limpo antes de o plano subir, e um desfazer troca as alturas sem mover nada: a foto é a única régua que não depende de o chamador acertar sempre |
+| um 9.º buffer de armazenamento na placa | o piso do WebGPU é `8` por estágio; o fragmento usa `7` (o arnês de paridade, que juntava `2`, passou a um buffer só de entrada e saída) |

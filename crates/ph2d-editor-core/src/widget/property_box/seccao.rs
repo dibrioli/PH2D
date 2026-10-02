@@ -134,6 +134,6 @@ pub fn colunas_da_linha(x: f32, w: f32, y: f32, h: f32, seccao: Seccao) -> Prope
     let gap = ph2d_tokens::control_gap_px();
     // ⭐⭐ **O que o CONTROLO precisa para não quebrar** — `n` caixas ao piso, com os vãos.
     let n = seccao.campos() as f32;
-    let precisa = n * super::super::NUMBER_INPUT_MIN_W_PX + (n - 1.0) * gap;
+    let precisa = n * super::super::number_input_min_w_px() + (n - 1.0) * gap;
     super::property_row_columns_for(x, w, y, h, seccao.nome_w(), Some(precisa))
 }

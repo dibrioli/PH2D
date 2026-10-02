@@ -279,7 +279,7 @@ pub(super) fn limites_da_seccao(
     // | `280` | `94,38` | `72` ✅ |
     //
     // ⇒ *toda a metade estreita do curso do dock pintava o campo abaixo do que o dono mandou.*
-    let control_min = super::super::NUMBER_INPUT_MIN_W_PX;
+    let control_min = super::super::number_input_min_w_px();
     // ⭐ O rótulo acaba um VÃO antes do meio da linha, para o controlo começar EXACTAMENTE nele.
     let metade = w * LABEL_COL_FRAC - gap;
     let tecto = (usable_w - gap - control_min).max(0.0);
@@ -372,7 +372,7 @@ pub fn property_fields_layout(
     lead: f32,
 ) -> (usize, usize, f32) {
     let n = n.max(1);
-    let celula_min = lead + super::super::NUMBER_INPUT_MIN_W_PX;
+    let celula_min = lead + super::super::number_input_min_w_px();
     let mut por_linha = 1usize;
     while por_linha < n {
         let k = (por_linha + 1) as f32;

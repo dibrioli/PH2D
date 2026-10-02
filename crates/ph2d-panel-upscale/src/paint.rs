@@ -75,7 +75,7 @@ pub(crate) fn paint(_state: &mut UpscalePanelState, ctx: &mut PaintCtx) {
     let row_gap = ph2d_tokens::control_gap_px();
     // Canonical chip width = NUMBER_INPUT_MIN_W_PX (72 px); user
     // 2026-05-24 reported old 32 px (`Spacing::Xl * 2`) was too narrow.
-    let chip_w = ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX;
+    let chip_w = ph2d_editor_core::widget::number_input_min_w_px();
 
     // Canonical panel title — reserve room for the X close button.
     let title_size = paint_panel_title(

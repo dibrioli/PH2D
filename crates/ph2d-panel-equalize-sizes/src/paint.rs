@@ -346,7 +346,7 @@ fn paint_mode_rows(
                 .number_value(ph2d_tool_equalize_sizes::ids::EQS_GRID_OFFSET_NUM)
                 .unwrap_or(snapshot.grid_offset as f64);
             // Canonical chip width — 72 px (was 32, user 2026-05-24).
-            let chip_w = ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX;
+            let chip_w = ph2d_editor_core::widget::number_input_min_w_px();
             let display = ph2d_i18n::tr_with(
                 "panel.equalize_sizes.size.px_value",
                 &[("px", &(chip_value.round() as i64))],

@@ -24,7 +24,7 @@
 
 use super::*;
 use ph2d_editor_core::widget::{
-    DEFAULT_CHIP_W, DEFAULT_LABEL_W, PropertyRow, Seccao, TextInputState, colunas_da_linha,
+    DEFAULT_LABEL_W, PropertyRow, Seccao, TextInputState, colunas_da_linha, default_chip_w,
     paint_property_label, paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_text::TextSystem;
@@ -147,7 +147,7 @@ pub(super) fn paint_barra(
         slider,
         chip_id,
         DEFAULT_LABEL_W,
-        DEFAULT_CHIP_W,
+        default_chip_w(),
         store,
         hit_index,
         scene,

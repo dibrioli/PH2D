@@ -25,7 +25,7 @@ use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
     paint_panel_surface, paint_panel_title, panel_close_button_rect,
 };
-use ph2d_editor_core::widget::{NUMBER_INPUT_MIN_W_PX, SCROLLBAR_W, VECTOR_SCROLLBAR_ID};
+use ph2d_editor_core::widget::{SCROLLBAR_W, VECTOR_SCROLLBAR_ID, number_input_min_w_px};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing, TypeToken};
 
@@ -359,7 +359,7 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
     let inner_w = (rect.w - PANEL_HEAD_PAD * 2.0 - scrollbar_reserve).max(0.0);
     let row_h = ROW_H_PX;
     let row_gap = Spacing::Xs.px();
-    let chip_w = NUMBER_INPUT_MIN_W_PX;
+    let chip_w = number_input_min_w_px();
     let font = TypeToken::Base.px();
 
     let body_top = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();

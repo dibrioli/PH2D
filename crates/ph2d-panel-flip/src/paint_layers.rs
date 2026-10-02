@@ -19,8 +19,8 @@ use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, paint_text, resolve
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::panel_chrome::SECTION_LABEL_TO_CONTROL_PX;
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, DEFAULT_CHIP_W, DROPDOWN_SCROLLBAR_ID, Dropdown,
-    DropdownOption, DropdownState, SliderOrientation, SliderState, TextInput, TextInputState,
+    Button, ButtonKind, ButtonState, DROPDOWN_SCROLLBAR_ID, Dropdown, DropdownOption,
+    DropdownState, SliderOrientation, SliderState, TextInput, TextInputState, default_chip_w,
     paint_button, paint_dropdown_chip, paint_dropdown_popover_scrolled,
     paint_slider_with_chip_layout_adaptive, paint_text_input_with_buffer, scrollbar_is_needed,
     scrollbar_track_rect, slider_with_chip_is_stacked,
@@ -232,7 +232,7 @@ fn paint_layer_block(
     let slider_h = if slider_with_chip_is_stacked(
         slider_content_w,
         ph2d_editor_core::widget::property_label_col_w(m.inner_x, slider_content_w),
-        DEFAULT_CHIP_W,
+        default_chip_w(),
     ) {
         m.row_h + SECTION_LABEL_TO_CONTROL_PX + m.row_h
     } else {
@@ -475,7 +475,7 @@ fn paint_labeled_slider_row(
         slider_id,
         chip_id,
         ph2d_editor_core::widget::property_label_col_w(rect.x, rect.w),
-        DEFAULT_CHIP_W,
+        default_chip_w(),
         store,
         hit_index,
         scene,

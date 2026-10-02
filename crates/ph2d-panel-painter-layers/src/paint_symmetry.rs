@@ -8,7 +8,7 @@
 
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, DEFAULT_CHIP_W, DEFAULT_LABEL_W, RadioGroup, RadioOption, RadioOrientation,
+    Button, ButtonKind, DEFAULT_LABEL_W, RadioGroup, RadioOption, RadioOrientation, default_chip_w,
     paint_button, paint_radio_group_with_labels, paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
@@ -185,7 +185,7 @@ fn paint_segments_row(
         ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS,
         ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS_CHIP,
         DEFAULT_LABEL_W,
-        DEFAULT_CHIP_W,
+        default_chip_w(),
         store,
         hit_index,
         scene,

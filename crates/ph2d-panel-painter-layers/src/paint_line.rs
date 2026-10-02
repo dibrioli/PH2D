@@ -12,7 +12,7 @@
 use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
-    Checkbox, CheckboxValue, DEFAULT_CHIP_W, DEFAULT_LABEL_W, DropdownOption, paint_checkbox,
+    Checkbox, CheckboxValue, DEFAULT_LABEL_W, DropdownOption, default_chip_w, paint_checkbox,
     paint_slider_with_chip_layout_adaptive, slider_with_chip_height,
 };
 use ph2d_editor_core::zones::Rect;
@@ -276,7 +276,7 @@ fn paint_barra(
         barra.slider,
         barra.chip,
         DEFAULT_LABEL_W,
-        DEFAULT_CHIP_W,
+        default_chip_w(),
         store,
         hit_index,
         scene,

@@ -28,8 +28,9 @@ use ph2d_editor_core::IconId;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, rect_for_label, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
-    Button, Checkbox, CheckboxValue, ColorSwatch, DEFAULT_CHIP_W, DEFAULT_LABEL_W, SwatchSize,
-    SwatchState, paint_button, paint_checkbox, paint_color_swatch, paint_slider_with_chip_layout,
+    Button, Checkbox, CheckboxValue, ColorSwatch, DEFAULT_LABEL_W, SwatchSize, SwatchState,
+    default_chip_w, paint_button, paint_checkbox, paint_color_swatch,
+    paint_slider_with_chip_layout,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -148,7 +149,7 @@ fn caixa_de_valor(
         slider_id,
         chip_id,
         DEFAULT_LABEL_W,
-        DEFAULT_CHIP_W,
+        default_chip_w(),
         store,
         hit_index,
         scene,

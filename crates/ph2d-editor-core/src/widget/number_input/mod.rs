@@ -158,6 +158,26 @@ impl NumberInput {
 /// "não permita que a caixa seja redimencionada para menor que isso".
 pub const MIN_W_PX: f32 = 72.0; // LITERAL-PX-OK: ~3-4 digits at Sm + Lg.px() left pad + 22 px stepper column; reduced 96→72 (user 2026-05-24: chips were too dominant visually)
 
+/// ⭐⭐⭐ **O piso VIVO de uma caixa de número — o [`MIN_W_PX`] que OBEDECE ao tamanho do texto.**
+///
+/// ⛔⛔ **Report do dono, 2026-10-01** (*«veja como os campos de input numérico e dropdowns
+/// obedecem às configurações»*): a fonte e o peso chegavam sozinhos (todo texto passa pelo
+/// `layout_inner`), e o TAMANHO chegava ao texto mas não à CAIXA — o piso era `72` px fixos, logo
+/// no `Large` uma linha de dois campos (`Position X / Y`) apertava cada um ao piso e a unidade
+/// saía (`-80 px` → `-80`), enquanto no `Normal` cabia.
+///
+/// ⭐ **A lei: a parte do piso que é do TEXTO cresce na mesma razão que o texto**; o recuo e a
+/// coluna das setas são do desenho e ficam. ⇒ no tamanho de fábrica o factor é `1,0` EXACTO
+/// (`Base/Base`) e a resposta é o [`MIN_W_PX`] **ao bit** — nenhuma linha de nenhum painel se
+/// move no caminho de omissão. ⚠️ Medido (2026-10-01): o `-1234.5` da casa pede `43,8` px em Inter
+/// Normal contra `44` reservados, e `50,6` em Inter Large contra `50,8` deste piso.
+#[must_use]
+pub fn min_w_px() -> f32 {
+    let host = Rect::new(0.0, 0.0, MIN_W_PX, ph2d_tokens::ROW_H_PX);
+    let texto = MIN_W_PX - crate::widget::field_pad_x() - stepper_width(host);
+    MIN_W_PX + texto * (ph2d_text::active_text_style().size.scale() - 1.0)
+}
+
 /// Width of the up/down stepper column carved out of the right edge
 /// of every NumberInput / chip hit rect. Sized 60% of the host height,
 /// clamped to 16-22 px so it stays clickable on dense rows but doesn't

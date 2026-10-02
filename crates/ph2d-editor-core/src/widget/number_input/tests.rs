@@ -248,3 +248,65 @@ fn a_unidade_sai_inteira_ou_nao_sai() {
          que é o mutante que este controlo positivo existe para apanhar"
     );
 }
+
+/// ⭐⭐⭐ **O piso da caixa de número OBEDECE ao tamanho do texto, e é a identidade na fábrica**
+/// (report do dono, 2026-10-01: no `Large` a unidade de `-80 px` saía de uma linha de dois campos).
+///
+/// Três metades, e cada uma apanha um defeito diferente:
+/// - **fábrica ao bit** — no `Normal` o piso é o [`MIN_W_PX`]: sem isto, toda linha de todo painel
+///   se moveria no caminho de omissão;
+/// - **ordem** — `Small < Normal < Large`: um piso que não se mexe (o defeito do report) reprova
+///   aqui;
+/// - **a LEI** — para cada fonte e peso, a folga do número de referência (`-1234.5`) é a MESMA
+///   fracção do texto em todo tamanho: o espaço cresce na razão em que o texto cresce. ⚠️ A régua
+///   é a medição real da fonte, não a conta do piso refeita.
+///
+/// *Mutação: o piso devolver sempre o `MIN_W_PX` ⇒ a 2.ª metade reprova; a parte do texto crescer
+/// pelo quadrado da escala ⇒ a 3.ª.*
+#[test]
+fn o_piso_da_caixa_obedece_ao_tamanho_do_texto() {
+    use ph2d_tokens::{UiFont, UiTextSize, UiTextStyle, UiWeight};
+    let piso_em = |size| {
+        ph2d_text::set_active_text_style(UiTextStyle {
+            size,
+            ..UiTextStyle::default()
+        });
+        min_w_px()
+    };
+    let (pequeno, normal, grande) = (
+        piso_em(UiTextSize::Small),
+        piso_em(UiTextSize::Normal),
+        piso_em(UiTextSize::Large),
+    );
+    assert_eq!(
+        normal.to_bits(),
+        MIN_W_PX.to_bits(),
+        "na fábrica o piso é o MIN_W_PX ao bit"
+    );
+    assert!(
+        pequeno < normal && normal < grande,
+        "{pequeno} < {normal} < {grande}"
+    );
+
+    let host = Rect::new(0.0, 0.0, MIN_W_PX, ph2d_tokens::ROW_H_PX);
+    let fixo = crate::widget::field_pad_x() + stepper_width(host);
+    for font in UiFont::ALL {
+        for weight in UiWeight::ALL {
+            let mut razoes = Vec::new();
+            for size in UiTextSize::ALL {
+                ph2d_text::set_active_text_style(UiTextStyle { font, weight, size });
+                let mut ts = TextSystem::without_system_fonts();
+                let texto = ts.prefix_width("-1234.5", TypeToken::Sm.px());
+                razoes.push((size, (min_w_px() - fixo) / texto));
+            }
+            let (_, base) = razoes[1];
+            for (size, r) in &razoes {
+                assert!(
+                    (r / base - 1.0).abs() < 0.02,
+                    "{font:?} {weight:?} {size:?}: espaço/texto {r:.3} contra {base:.3} no Normal"
+                );
+            }
+        }
+    }
+    ph2d_text::set_active_text_style(UiTextStyle::default());
+}

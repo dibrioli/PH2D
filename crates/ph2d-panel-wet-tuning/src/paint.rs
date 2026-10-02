@@ -322,7 +322,7 @@ fn paint_row(
             row.slider,
             row.chip,
             ph2d_editor_core::widget::property_label_col_w(x, row_w),
-            ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX,
+            ph2d_editor_core::widget::number_input_min_w_px(),
             store,
             hit_index,
             scene,

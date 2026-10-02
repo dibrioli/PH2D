@@ -75,7 +75,7 @@ pub(crate) fn paint(_state: &mut ColorEqualizationPanelState, ctx: &mut PaintCtx
         //   resto do app, e cada sítio estava certo sozinho.
         row_gap: ph2d_tokens::control_gap_px(),
         // Canonical chip width — 72 px (was 32, user 2026-05-24).
-        chip_w: ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX,
+        chip_w: ph2d_editor_core::widget::number_input_min_w_px(),
         // ⭐ **A coluna do rótulo também vem da PORTA** (2026-09-14) — ela era `84`, e a mesma
         //   pergunta tinha ONZE respostas no app. Uma largura FIXA está errada por construção:
         //   a coluna docada é arrastável, e um número afinado à largura de omissão come o

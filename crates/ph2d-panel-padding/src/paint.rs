@@ -80,7 +80,7 @@ pub(crate) fn paint(_state: &mut PaddingPanelState, ctx: &mut PaintCtx) {
     let row_gap = ph2d_tokens::control_gap_px();
     // Canonical chip width = NUMBER_INPUT_MIN_W_PX (72 px) — was 32
     // (`Spacing::Xl * 2`); user 2026-05-24: too narrow.
-    let chip_w = ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX;
+    let chip_w = ph2d_editor_core::widget::number_input_min_w_px();
 
     // Canonical panel title — reserve room on the right for the X
     // close button (UI canon post-2026-05-24).

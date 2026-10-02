@@ -14,7 +14,7 @@ use ph2d_editor_core::paint::{paint_text_elided, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::panel_chrome::paint_segmented_group_adaptive;
 use ph2d_editor_core::widget::{
-    NUMBER_INPUT_MIN_W_PX, number_text_origin, paint_slider_with_chip_layout_adaptive,
+    number_input_min_w_px, number_text_origin, paint_slider_with_chip_layout_adaptive,
     property_label_col_w, slider_with_chip_chip_rect, slider_with_chip_label_rect, stepper_width,
 };
 use ph2d_editor_core::zones::Rect;
@@ -51,8 +51,8 @@ pub(crate) fn colunas_da_fileira(x: f32, w: f32, y: f32) -> (Rect, Rect) {
     let linha = Rect::new(x, y, w, ROW_H_PX);
     let label_w = property_label_col_w(x, w);
     (
-        slider_with_chip_label_rect(linha, label_w, NUMBER_INPUT_MIN_W_PX),
-        slider_with_chip_chip_rect(linha, label_w, NUMBER_INPUT_MIN_W_PX),
+        slider_with_chip_label_rect(linha, label_w, number_input_min_w_px()),
+        slider_with_chip_chip_rect(linha, label_w, number_input_min_w_px()),
     )
 }
 
@@ -250,7 +250,7 @@ pub(crate) fn paint_row(
         slider,
         chip,
         ph2d_editor_core::widget::property_label_col_w(x, w),
-        NUMBER_INPUT_MIN_W_PX,
+        number_input_min_w_px(),
         store,
         hit_index,
         scene,

@@ -126,8 +126,9 @@ pub use list_item::{ListItem, ListItemState, paint_list_item};
 pub use list_rows::{RowHighlight, paint_row_highlight, paint_row_stripe};
 pub use modal::{Modal, paint_modal, pop_modal_body_clip, push_modal_body_clip};
 pub use number_input::{
-    MIN_W_PX as NUMBER_INPUT_MIN_W_PX, NumberInput, format_number, number_text_origin,
-    paint_number_input, paint_number_input_with_buffer, stepper_width,
+    MIN_W_PX as NUMBER_INPUT_MIN_W_PX, NumberInput, format_number,
+    min_w_px as number_input_min_w_px, number_text_origin, paint_number_input,
+    paint_number_input_with_buffer, stepper_width,
 };
 pub use numeric_input_with_unit::{
     NumericInputWithUnit, Unit, paint_numeric_input_with_unit, parse as parse_numeric_with_unit,
@@ -193,7 +194,7 @@ pub use skin::{
 };
 pub use slider::{Slider, SliderOrientation, SliderState, paint_slider, paint_slider_track};
 pub use slider_with_chip::{
-    DEFAULT_CHIP_W, DEFAULT_LABEL_W, paint_number_chip, paint_slider_with_chip,
+    DEFAULT_CHIP_W, DEFAULT_LABEL_W, default_chip_w, paint_number_chip, paint_slider_with_chip,
     paint_slider_with_chip_layout, paint_slider_with_chip_layout_adaptive,
     slider_with_chip_chip_rect, slider_with_chip_height, slider_with_chip_is_stacked,
     slider_with_chip_label_rect, slider_with_chip_min_w,

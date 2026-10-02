@@ -65,7 +65,7 @@ pub(crate) fn paint(_state: &mut BgRemovalPanelState, ctx: &mut PaintCtx) {
     // Canonical chip width — matches Widget Gallery + Inspector
     // (NUMBER_INPUT_MIN_W_PX = 72 px ≈ 7 digits + stepper). The old
     // `Spacing::Xl * 2 = 32 px` was too narrow (user 2026-05-24).
-    let chip_w = ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX;
+    let chip_w = ph2d_editor_core::widget::number_input_min_w_px();
 
     // Canonical panel title — reserve room for the X close button.
     let title_size = paint_panel_title(

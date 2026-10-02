@@ -48,6 +48,14 @@ pub const DEFAULT_LABEL_W: f32 = 70.0; // LITERAL-PX-OK: slider-with-chip defaul
 /// Sized to fit 7 digits at Sm font + padding + stepper column.
 pub const DEFAULT_CHIP_W: f32 = crate::widget::number_input::MIN_W_PX;
 
+/// ⭐ **A largura VIVA do chip** — o [`DEFAULT_CHIP_W`] que obedece ao tamanho do texto, pela mesma
+/// porta da caixa de número ([`crate::widget::number_input::min_w_px`]): o chip É uma caixa de
+/// número. ⚠️ O `const` fica como o valor de FÁBRICA (e para contextos `const`); quem pinta lê esta.
+#[must_use]
+pub fn default_chip_w() -> f32 {
+    crate::widget::number_input::min_w_px()
+}
+
 /// Paint a label + slider track + numeric chip composite using the
 /// canonical layout. Both `slider_id` and `chip_id` register in the
 /// hit index so the dispatch can route drag (slider) and click /
@@ -87,7 +95,7 @@ pub fn paint_slider_with_chip(
         slider_id,
         chip_id,
         DEFAULT_LABEL_W,
-        DEFAULT_CHIP_W,
+        default_chip_w(),
         store,
         hit_index,
         scene,
@@ -359,7 +367,7 @@ pub fn slider_with_chip_height(row_h: f32, content_w: f32) -> f32 {
     // linha antiga empilhava e gastava `2 × row_h`, e a altura é o recurso mais escasso de um
     // painel de tablet. ⚠️ Derivado do `is_stacked` de propósito — se um dia a caixa voltar a ter
     // um modo empilhado, esta função segue-o sem ninguém se lembrar dela.
-    if slider_with_chip_is_stacked(content_w, DEFAULT_LABEL_W, DEFAULT_CHIP_W) {
+    if slider_with_chip_is_stacked(content_w, DEFAULT_LABEL_W, default_chip_w()) {
         row_h + crate::widget::panel_chrome::SECTION_LABEL_TO_CONTROL_PX + row_h
     } else {
         row_h

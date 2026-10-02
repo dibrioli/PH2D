@@ -17,7 +17,7 @@ use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
     paint_panel_surface, paint_panel_title, panel_close_button_rect,
 };
-use ph2d_editor_core::widget::{FLIP_SCROLLBAR_ID, NUMBER_INPUT_MIN_W_PX, SCROLLBAR_W};
+use ph2d_editor_core::widget::{FLIP_SCROLLBAR_ID, SCROLLBAR_W, number_input_min_w_px};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing, TypeToken};
 
@@ -72,7 +72,7 @@ pub(crate) fn paint(state: &mut FlipPanelState, ctx: &mut PaintCtx) {
     // ⚠️ Era `Spacing::Xs.px()` a' mao — uma copia do vao de controlo escondida atras de um
     //    CAMPO, que nenhuma varredura por operador ve^ (a licao da wave 8, 4.ª ocorrencia).
     let row_gap = ph2d_tokens::control_gap_px();
-    let chip_w = NUMBER_INPUT_MIN_W_PX;
+    let chip_w = number_input_min_w_px();
     let font = TypeToken::Base.px();
 
     let body_top = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();

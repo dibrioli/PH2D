@@ -29,7 +29,7 @@
 use ph2d_editor_core::paint::{paint_text_elided, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
-    ColorSwatch, NUMBER_INPUT_MIN_W_PX, SwatchSize, SwatchState, paint_color_swatch,
+    ColorSwatch, SwatchSize, SwatchState, number_input_min_w_px, paint_color_swatch,
     property_label_col_w, slider_with_chip_chip_rect, slider_with_chip_label_rect,
 };
 use ph2d_editor_core::zones::Rect;
@@ -232,8 +232,8 @@ fn colunas(x: f32, w: f32, y: f32) -> (Rect, Rect) {
     let linha = Rect::new(x, y, w, ROW_H_PX);
     let label_w = property_label_col_w(x, w);
     (
-        slider_with_chip_label_rect(linha, label_w, NUMBER_INPUT_MIN_W_PX),
-        slider_with_chip_chip_rect(linha, label_w, NUMBER_INPUT_MIN_W_PX),
+        slider_with_chip_label_rect(linha, label_w, number_input_min_w_px()),
+        slider_with_chip_chip_rect(linha, label_w, number_input_min_w_px()),
     )
 }
 

@@ -14,7 +14,7 @@
 //! be a design bug wearing the costume of a feature.
 
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::{DEFAULT_CHIP_W, DEFAULT_LABEL_W};
+use ph2d_editor_core::widget::{DEFAULT_LABEL_W, default_chip_w};
 use ph2d_editor_core::widget::{
     SegmentedAdaptive, SegmentedOption, paint_segmented_adaptive,
     paint_slider_with_chip_layout_adaptive,
@@ -168,7 +168,7 @@ fn depth_row(
         ph2d_tool_painter::ids::PAINTER_SCULPT_DEPTH_SLIDER,
         ph2d_tool_painter::ids::PAINTER_SCULPT_DEPTH_CHIP,
         DEFAULT_LABEL_W,
-        DEFAULT_CHIP_W,
+        default_chip_w(),
         store,
         hit_index,
         scene,
@@ -202,7 +202,7 @@ fn angle_row(
         ph2d_tool_painter::ids::PAINTER_SCULPT_ANGLE_SLIDER,
         ph2d_tool_painter::ids::PAINTER_SCULPT_ANGLE_CHIP,
         DEFAULT_LABEL_W,
-        DEFAULT_CHIP_W,
+        default_chip_w(),
         store,
         hit_index,
         scene,
@@ -237,7 +237,7 @@ fn smooth_row(
         ph2d_tool_painter::ids::PAINTER_SCULPT_SMOOTH_SLIDER,
         ph2d_tool_painter::ids::PAINTER_SCULPT_SMOOTH_CHIP,
         DEFAULT_LABEL_W,
-        DEFAULT_CHIP_W,
+        default_chip_w(),
         store,
         hit_index,
         scene,
@@ -278,7 +278,7 @@ fn offset_row(
         ph2d_tool_painter::ids::PAINTER_SCULPT_OFFSET_SLIDER,
         ph2d_tool_painter::ids::PAINTER_SCULPT_OFFSET_CHIP,
         DEFAULT_LABEL_W,
-        DEFAULT_CHIP_W,
+        default_chip_w(),
         store,
         hit_index,
         scene,
@@ -317,7 +317,7 @@ fn radius_row(
         ph2d_tool_painter::ids::PAINTER_SCULPT_RADIUS_SLIDER,
         ph2d_tool_painter::ids::PAINTER_SCULPT_RADIUS_CHIP,
         DEFAULT_LABEL_W,
-        DEFAULT_CHIP_W,
+        default_chip_w(),
         store,
         hit_index,
         scene,

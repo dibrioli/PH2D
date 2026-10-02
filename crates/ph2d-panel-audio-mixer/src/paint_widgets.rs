@@ -143,7 +143,7 @@ pub(crate) fn paint_labeled_slider(
         id,
         NodeId(0),
         ph2d_editor_core::widget::DEFAULT_LABEL_W,
-        ph2d_editor_core::widget::DEFAULT_CHIP_W,
+        ph2d_editor_core::widget::default_chip_w(),
         store,
         hit_index,
         scene,

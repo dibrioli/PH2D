@@ -170,7 +170,7 @@ fn linha(
     //
     // ⛔ **Esconder o `Reset` esta FORA:** um controlo cortado e mau, um controlo
     // inalcancavel e pior — e a capacidade de repor um valor proprio nao tem segunda porta.
-    let piso_do_campo = ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX.min(control_w);
+    let piso_do_campo = ph2d_editor_core::widget::number_input_min_w_px().min(control_w);
     let reset_desce = p.own && control_w - reset_w - gap < piso_do_campo;
     let ctrl_w = if p.own && !reset_desce {
         control_w - reset_w - gap

@@ -319,7 +319,7 @@ pub fn paint_field_row(
 /// contas para «isto cabe?» divergem no dia em que uma das leis muda.*
 #[must_use]
 pub fn property_row_fits(w: f32, label_w: f32) -> bool {
-    let piso = crate::widget::NUMBER_INPUT_MIN_W_PX;
+    let piso = crate::widget::number_input_min_w_px();
     let row =
         crate::widget::property_row_columns_for(0.0, w, 0.0, ROW_H_PX, Some(label_w), Some(piso));
     row.label.w >= label_w - 0.01 && row.control.w >= piso - 0.01

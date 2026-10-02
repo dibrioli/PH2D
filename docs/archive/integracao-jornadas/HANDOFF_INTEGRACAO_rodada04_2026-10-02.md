@@ -116,3 +116,15 @@ alheio. O resto do que cada integrador anterior achou está nos commits e handof
 `text_path_smoke::perf::riding_the_path_costs_about_twice_the_straight_layout` (shell, gate de razão
 de dois relógios), a pedido da `line/components`: reprovou uma vez em `18 735` com outra linha na
 placa, 3/3 verde sozinho a `load 7,3`, zero linhas de diff daquela linha no módulo.
+
+## §6 — O SHIP
+
+1.º `ship.sh`: tudo verde (`27 623 / 27 623` testes) menos `cargo-deny` e `cargo-audit`, os dois por
+advisories **publicadas depois** das linhas fecharem e sem uma linha de código da rodada:
+`RUSTSEC-2026-0315`/`0316` (`wasmtime` 48.0.1, 24/09) e `RUSTSEC-2026-0319` (`anymap2`
+sem manutenção, publicado no próprio dia). Curas (`a53ed3686`): `cargo update -p wasmtime` dentro da
+série 48 (48.0.3, só versões de correcção; o `ph2d-spike`, único consumidor, compila); o `anymap2`
+aceite com motivo nos dois ficheiros (sem versão segura; dependência de BUILD da cadeia do
+`audio-ml`, desligada por omissão — a mesma cadeia da `RUSTSEC-2026-0217`); e a `RUSTSEC-2026-0151`
+**retirada** das duas listas, que o `cargo deny` já dava como `advisory-not-detected`. 2.º `ship.sh`:
+**CI-clean**.

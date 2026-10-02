@@ -105,6 +105,10 @@ cima. ⛔ Desenhar o passe por cima do alvo do Vello pintaria as formas **por ci
   densa no proxy de telemóvel **`22,3 → 18,76 ms`, À FRENTE do Vello (`19,42`)**; RTX `1,11` (Vello
   `2,03`). ⏳ As estrelas GRANDES ainda perdem no proxy (`2,32` contra `0,98`; conformes `1,36`
   contra `0,90`).
+- ✅ **AS LISTAS DAS CÉLULAS** (§9.8): cada célula guarda as arestas que a cruzam (o ladrilho do Vello),
+  montadas por ARESTA em ponto fixo — sonda calma no proxy: grandes esticadas `2,04 → 1,74`,
+  conformes `1,18 → 0,94` (EMPATA com o Vello, `0,92`), densas `2,13 → 1,71` (Vello `2,81`). ⏳ As
+  grandes ESTICADAS ainda perdem (`1,74` contra `1,05`).
 
 ## §6 — ✅ W1: a paridade de PIXEL, medida (2026-09-29, RTX, alvo de meio-float)
 
@@ -825,4 +829,110 @@ GPU `ph2d-shape-gpu --ignored` **5/5**. ⚠️ **Por ablação (dobrar o desenho
   monotonia; o registo cresce com a altura e cada pixel lê-o inteiro.
 - ⏳ **pré-calcular a cobertura 8 px por fio no compute** (para o desenho ler 2 palavras em vez do laço de
   blocos): o protótipo foi construído e reprovou **4 de 5** gates de paridade antes de ser diagnosticado ⇒
-  REVERTIDO, não refutado. É a próxima tentativa, e começa por achar o porquê das quatro reprovações.
+  REVERTIDO, não refutado. ➜ **Substituído pelo §9.8** (as listas das células): o protótipo não estava
+  guardado, e só dividia a leitura — a lista corta a conta.
+
+### §9.8 — AS LISTAS DAS CÉLULAS: o que o Vello guarda por ladrilho, montado por ARESTA (2026-10-02)
+
+**O porquê.** Depois do §9.7 quem mandava nas estrelas grandes era o DESENHO, e dentro dele o laço por
+pixel: a máscara da célula dizia que BLOCOS tocavam a fileira, e cada pixel de borda percorria os oito
+segmentos de cada um — quase sempre um só cruzava a fileira. ⇒ cada célula passa a guardar a **LISTA
+das arestas que cruzam a fileira dentro dela** (o `backdrop` continua: as que ficam todas à esquerda
+somam-se no fundo). É a lista de segmentos por ladrilho do rasterizador fino do Vello, com ladrilhos de
+`32 × 1 px`.
+
+**O protótipo do §9.7 («cobertura 8 px por fio no compute») NÃO foi reconstruído:** não estava guardado
+em lado nenhum, e só dividia a LEITURA por oito pixels — a conta por pixel×segmento ficava igual. A
+lista corta as duas.
+
+**O que mudou** ([`contorno.wgsl`](../../crates/ph2d-shape-gpu/src/contorno.wgsl) ·
+`cobertura_de_ecra` no [`shape.wgsl`](../../crates/ph2d-shape-gpu/src/shape.wgsl) ·
+[`contorno.rs`](../../crates/ph2d-shape-gpu/src/contorno.rs)):
+
+- O registo de célula é fixo: `REGISTO = 7` palavras — os três fundos e `(inicio, fim_f, fim_m, fim)`
+  da lista de cada família. As máscaras de blocos, as caixas dos blocos e as DUAS correntes da escrita
+  (que só existiam para as caixas serem finas) saíram.
+- A montagem é por **ARESTA**, em quatro despachos indirectos: `cs_zera` (fio por fileira) ·
+  `cs_conta_listas` (fio por aresta: fundo e contagem por atómicos) · `cs_lugar_das_listas` (fio por
+  fileira: reserva as listas dela de uma vez, prefixo do fundo, cursores) · `cs_escreve_listas` (fio por
+  aresta). Os argumentos saem do `cs_soma` (`despacha`: `[0,3)` por linha, `[3,6)` por aresta).
+- ⭐ **Determinístico por construção:** o fundo soma-se em PONTO FIXO (`ESCALA_FIXA = 2¹⁶`) e o
+  fragmento soma a lista também em ponto fixo — a ORDEM em que os atómicos arrumaram uma lista não muda
+  um bit. Cada parcela erra `≤ 7,6e-6`.
+- O intervalo de uma aresta numa fileira é o dos DOIS PONTOS, sem recortar (exacto: a `contribuicao`
+  é contínua no `x`; a lista só fica mais longa numa aresta que atravessa fileiras) — recortar custava
+  uma divisão por aresta e só valia `1,52 → 1,40 ms`.
+- ⚠️ **Uma fileira sem lugar fica `SEM_LISTA`** e o pixel refaz-se pelo caminho de sempre. As listas só
+  se contam DEPOIS de as arestas existirem ⇒ a capacidade delas chega **dois quadros depois** da das
+  arestas (5.º quadro numa cena nova); até lá a imagem é a mesma (gate). `ShapePass::limita_as_listas`
+  e `listas_do_ultimo_quadro` são as portas dos gates.
+- O cálculo tem agora TRÊS relógios no perfilador: `render.contorno.conta`, `.escreve`, `.celulas`.
+
+**Medido na sonda** (`sonda_relogio_das_estrelas_grandes`, que ganhou `PH2D_FLUID_PROFILE=1` — `250`
+quadros e o relógio da placa por passe; [`mede_sonda_das_estrelas.sh`](ferramentas/mede_sonda_das_estrelas.sh)
+corre os três arranjos só com `load < 4`). Proxy de telemóvel (iGPU), ms:
+
+| decomposição (iGPU, perfilador) | desenho | cálculo | total |
+|---|---:|---:|---:|
+| esticadas, §9.7 | `1,36` | `0,57` | `1,93` |
+| esticadas, listas montadas por FILEIRA (1.ª tentativa) | `0,81` | `1,52` | `2,33` |
+| esticadas, listas montadas por ARESTA | **`0,82`** | **`0,69`** | **`1,51`** |
+| conformes, §9.7 → por aresta | `0,875 → 0,47` | `0,22 → 0,29` | `1,10 → 0,76` |
+
+⛔ **RECUSA MEDIDA — montar as listas com um fio por FILEIRA** (o regime do §9.7): `~2 900` fios na sonda,
+cada um a percorrer centenas de arestas em série, DUAS vezes (contar e escrever) — a placa integrada
+ficava à espera da memória e o cálculo subia `0,57 → 1,52 ms`, comendo todo o ganho do desenho. Por
+aresta são `~70 000` fios de uma ou duas fileiras.
+
+**A largura da célula foi re-medida para as listas** (desenho + células, ms; esticadas · conformes ·
+densas): `16 → 1,34 · 0,79 · 1,61` · **`32 → 1,25 · 0,68 · 1,41`** · `64 → 1,60 · 0,85 · 1,60`. Fica `32`.
+
+**A tabela calma** (a mesma sonda, o binário de ANTES e o de DEPOIS, `load < 4` em cada corrida — `2`
+corridas por célula, a média; placa · Vello, ms):
+
+| arranjo | iGPU antes | iGPU depois | RTX antes | RTX depois |
+|---|---:|---:|---:|---:|
+| `72` grandes esticadas | `2,04` · `1,01` | **`1,74`** · `1,05` | `0,42` · `0,37` | **`0,36`** · `0,40` |
+| `72` grandes conformes | `1,18` · `0,92` | **`0,94`** · `0,92` | `0,17` · `0,37` | `0,18` · `0,37` |
+| `1225` densas da `=127` | `2,13` · `2,69` | **`1,71`** · `2,81` | `0,19` · `0,52` | `0,21` · `0,52` |
+
+⇒ no proxy de telemóvel as três descem (`−15 %`, `−20 %`, `−20 %`); as conformes grandes EMPATAM com o
+Vello e as densas ficam `1,6×` à frente; ⏳ as grandes ESTICADAS ainda perdem (`1,74` contra `1,05`). Na
+RTX as esticadas passam à FRENTE do Vello; ⚠️ as densas sobem `0,19 → 0,21 ms` (quatro despachos a
+mais, numa placa onde o cálculo era quase nada) — continuam `2,5×` à frente.
+
+**A W5 repetida, no APP, com a máquina calma** ([`mede_formas_na_placa.sh`](ferramentas/mede_formas_na_placa.sh),
+a MESMA build `release` com e sem `PH2D_FORMAS_NA_PLACA`, cada célula com `load < 4` antes e depois;
+as três últimas janelas `[frame]` de `120` quadros). Fecha o item «W0/W5 como tabela única» do handoff de
+01/10:
+
+| placa | cena | objectos | quadro sem → com | CPU (encode) sem → com | Motion sem → com |
+|---|---|---:|---:|---:|---:|
+| RTX | escada, estrela | 4 096 | 16,69 → 16,65 | 4,31 → **3,34** | 1,31 → **0,74** |
+| RTX | escada, estrela | 16 384 | 16,65 → 16,66 | 6,79 → **3,44** | 2,91 → **0,78** |
+| RTX | escada, estrela | 32 768 | 16,66 → 16,67 | 9,79 → **3,68** | 4,27 → **0,88** |
+| RTX | `=127` densa | 16 384 | 16,71 → 16,70 | 6,96 → **3,07** | 1,97 → **0,66** |
+| iGPU | escada, estrela | 4 096 | 16,70 → 16,70 | 4,33 → **4,26** | 1,41 → **0,80** |
+| iGPU | escada, estrela | 16 384 | 16,68 → 16,67 | 6,82 → **3,29** | 2,78 → **0,68** |
+| iGPU | escada, estrela | 32 768 | **18,04 → 16,71** | 11,14 → **3,00** | 6,12 → **0,62** |
+| iGPU | `=127` densa | 16 384 | **20,68 → 17,59** | 7,98 → **4,29** | 2,34 → **0,75** |
+
+⇒ ⭐ **o achado do §9.3 está curado no app:** no proxy de telemóvel a `=127` densa ia de `20,7` a
+**`35,2 ms`** pela placa; hoje vai a **`17,6 ms` (57 fps contra 48 sem ela)**. Todas as outras células
+batem no tecto de `60 Hz` nas duas rotas, com a CPU a metade ou menos. (O `acquire` da iGPU continua
+`~12–13 ms` com e sem placa: é a apresentação a `60 Hz`, não trabalho.)
+
+**Gates:** `as_fileiras_que_nao_cabem_nas_listas_desenham_o_mesmo` (tecto em METADE do pedido em todos os
+quadros; cópias TODAS pelas células, fileiras `SEM_LISTA`, imagem do eixo à barra; controlo: o tecto
+morde) · `uma_cena_que_muda_nao_le_as_arestas_do_quadro_anterior` (duas etapas no MESMO passe) · e o
+regime do produto passa a exigir as listas a caber (`QUADROS_DO_PRODUTO = 5`, `QUADROS = 6`). GPU RTX:
+`ph2d-shape-gpu` **7/7** · `ph2d-app-motion` placa **4/4** + ponte **1/1** · `ph2d-gpu-cook` formas **2/2**.
+
+**Mutação `14` de `14`** ([arnês](ferramentas/mutacao_as_listas_das_celulas_2026-10-02.py), pré-voo
+`14/14`, corrida LIMPA verde): fundo na `ka` · lista uma célula a mais à esquerda / a menos à direita ·
+o fragmento ignora `SEM_LISTA` · sem o prefixo do fundo · cursor das marcas no início · a escrita não
+salta `SEM_LISTA` · escala do ponto fixo dobrada · `min/max` trocados · `floor` na última fileira ·
+`cs_zera` mudo · sem a verificação da capacidade · marcas e contorno trocados · e a **M10** (sem a guarda
+das arestas reservadas e NÃO escritas), que SOBREVIVEU aos seis gates de então — num passe novo a
+reserva é zero e não soma nada. ⭐ *Uma régua de quadro único não vê o que um buffer traz do quadro
+anterior*: o gate da cena que muda foi escrito por ela, e é o único que a mata.

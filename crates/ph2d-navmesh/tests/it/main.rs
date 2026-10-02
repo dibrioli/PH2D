@@ -4,4 +4,5 @@
 mod cena;
 mod contra_o_exacto;
 mod determinismo;
+mod mosaicos;
 mod oraculo_do_godot;

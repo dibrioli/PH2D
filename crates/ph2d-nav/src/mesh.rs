@@ -5,8 +5,6 @@
 //! Quem a constrói a partir dos colisores é a `ph2d-navmesh`; ela chega aqui por
 //! [`NavMesh::from_polygons`], que é a ÚNICA porta e confere tudo o que a procura assume.
 
-use std::collections::BTreeMap;
-
 #[cfg(test)]
 use crate::geom::orient;
 use crate::geom::{EPS, V2, closest_on_segment, dist, side_dist};
@@ -61,7 +59,9 @@ struct Grid {
     cell: f64,
     nx: usize,
     ny: usize,
-    cells: Vec<Vec<u32>>,
+    /// As listas das células, contíguas: a célula `c` é `items[off[c]..off[c + 1]]`.
+    off: Vec<u32>,
+    items: Vec<u32>,
 }
 
 impl Grid {
@@ -79,6 +79,11 @@ impl Grid {
         let iy = fy.clamp(0.0, (self.ny - 1) as f64) as usize;
         Some((ix, iy))
     }
+
+    fn cell(&self, ix: usize, iy: usize) -> &[u32] {
+        let c = iy * self.nx + ix;
+        &self.items[self.off[c] as usize..self.off[c + 1] as usize]
+    }
 }
 
 /// A malha andável. Imutável depois de construída; a procura ([`crate::Polyanya`]) só a lê.
@@ -88,8 +93,10 @@ pub struct NavMesh {
     polys: Vec<Poly>,
     /// Um vértice que toca uma PAREDE — os únicos sítios onde um caminho mais curto pode virar.
     corner: Vec<bool>,
-    /// Os polígonos que têm cada vértice, por ordem de índice.
-    vert_polys: Vec<Vec<u32>>,
+    /// Os polígonos que têm cada vértice, por ordem de índice — contíguos: os do vértice `v` são
+    /// `vert_polys[vp_off[v]..vp_off[v + 1]]`.
+    vp_off: Vec<u32>,
+    vert_polys: Vec<u32>,
     /// A componente ligada de cada polígono (`0..islands`), numerada pela ordem do 1.º polígono.
     island: Vec<u32>,
     islands: u32,
@@ -136,28 +143,64 @@ impl NavMesh {
             }
         }
 
-        // A vizinhança pela aresta partilhada (u, w) ⇔ (w, u). `BTreeMap`: a ordem é a das chaves.
-        let mut edge_of: BTreeMap<(u32, u32), (u32, u32)> = BTreeMap::new();
+        // Os polígonos de cada vértice, contíguos e por ordem de índice (contagem, depois enchimento).
+        let mut vp_off = vec![0u32; nv + 1];
+        for p in &polys {
+            for &v in p {
+                vp_off[v as usize + 1] += 1;
+            }
+        }
+        for i in 0..nv {
+            vp_off[i + 1] += vp_off[i];
+        }
+        let mut cursor = vp_off.clone();
+        let mut vert_polys = vec![0u32; vp_off[nv] as usize];
+        for (pi, p) in polys.iter().enumerate() {
+            for &v in p {
+                vert_polys[cursor[v as usize] as usize] = pi as u32;
+                cursor[v as usize] += 1;
+            }
+        }
+        let at = |v: u32| &vert_polys[vp_off[v as usize] as usize..vp_off[v as usize + 1] as usize];
+        // Onde a aresta orientada `(u, w)` aparece, entre os polígonos que têm `u`.
+        let edge_in = |q: u32, u: u32, w: u32| -> Option<u32> {
+            let pv = &polys[q as usize];
+            let n = pv.len();
+            (0..n)
+                .find(|&j| pv[j] == u && pv[(j + 1) % n] == w)
+                .map(|j| j as u32)
+        };
+
+        // ⚠️ A mesma aresta orientada em dois polígonos sobrepõe a malha: conferido pela ordem dos
+        // polígonos e das arestas, reportando a 2.ª ocorrência (a resposta da tabela que aqui esteve).
         for (pi, p) in polys.iter().enumerate() {
             let n = p.len();
             for i in 0..n {
-                let key = (p[i], p[(i + 1) % n]);
-                if edge_of.insert(key, (pi as u32, i as u32)).is_some() {
-                    return Err(MeshError::NonManifold { a: key.0, b: key.1 });
+                let (u, w) = (p[i], p[(i + 1) % n]);
+                if at(u)
+                    .iter()
+                    .any(|&q| (q as usize) < pi && edge_in(q, u, w).is_some())
+                {
+                    return Err(MeshError::NonManifold { a: u, b: w });
                 }
             }
         }
-        let mut out: Vec<Poly> = Vec::with_capacity(polys.len());
+        // A vizinhança pela aresta partilhada (u, w) ⇔ (w, u): procurada entre os polígonos de `w`.
+        let mut lados: Vec<(Vec<Option<u32>>, Vec<u32>)> = Vec::with_capacity(polys.len());
         let mut corner = vec![false; nv];
         let mut walls = Vec::new();
-        for p in &polys {
+        for (pi, p) in polys.iter().enumerate() {
             let n = p.len();
             let mut nbrs = Vec::with_capacity(n);
             let mut twin = Vec::with_capacity(n);
             for i in 0..n {
                 let (u, w) = (p[i], p[(i + 1) % n]);
-                match edge_of.get(&(w, u)) {
-                    Some(&(q, j)) => {
+                let par = at(w)
+                    .iter()
+                    .filter(|&&q| q as usize != pi)
+                    .find_map(|&q| edge_in(q, w, u).map(|j| (q, j)));
+                match par {
+                    Some((q, j)) => {
                         nbrs.push(Some(q));
                         twin.push(j);
                     }
@@ -170,19 +213,14 @@ impl NavMesh {
                     }
                 }
             }
-            out.push(Poly {
-                verts: p.clone(),
-                nbrs,
-                twin,
-            });
+            lados.push((nbrs, twin));
         }
-
-        let mut vert_polys = vec![Vec::new(); nv];
-        for (pi, p) in out.iter().enumerate() {
-            for &v in &p.verts {
-                vert_polys[v as usize].push(pi as u32);
-            }
-        }
+        // Os anéis passam para os polígonos sem cópia (a vizinhança já está toda lida).
+        let out: Vec<Poly> = polys
+            .into_iter()
+            .zip(lados)
+            .map(|(verts, (nbrs, twin))| Poly { verts, nbrs, twin })
+            .collect();
 
         // As ilhas: componentes ligadas pela vizinhança, numeradas pela ordem do 1.º polígono.
         let mut island = vec![u32::MAX; out.len()];
@@ -211,6 +249,7 @@ impl NavMesh {
             verts,
             polys: out,
             corner,
+            vp_off,
             vert_polys,
             island,
             islands,
@@ -243,7 +282,7 @@ impl NavMesh {
 
     #[inline]
     pub fn polys_at_vertex(&self, v: u32) -> &[u32] {
-        &self.vert_polys[v as usize]
+        &self.vert_polys[self.vp_off[v as usize] as usize..self.vp_off[v as usize + 1] as usize]
     }
 
     #[inline]
@@ -312,7 +351,7 @@ impl NavMesh {
             }
         }
         for (ix, iy) in cells {
-            for &q in &self.grid.cells[iy * self.grid.nx + ix] {
+            for &q in self.grid.cell(ix, iy) {
                 if !out.contains(&q) && self.poly_contains(q, p) {
                     out.push(q);
                 }
@@ -354,7 +393,7 @@ impl NavMesh {
                 continue;
             }
             // De que polígono é esta parede? Do que a tem como aresta (u → w).
-            let owner = self.vert_polys[u as usize].iter().copied().find(|&q| {
+            let owner = self.polys_at_vertex(u).iter().copied().find(|&q| {
                 let pv = &self.polys[q as usize].verts;
                 let n = pv.len();
                 (0..n).any(|i| pv[i] == u && pv[(i + 1) % n] == w)
@@ -414,21 +453,45 @@ fn build_grid(verts: &[V2], polys: &[Poly], min: V2, max: V2) -> Grid {
         cell,
         nx,
         ny,
-        cells: vec![Vec::new(); nx * ny],
+        off: vec![0; nx * ny + 1],
+        items: Vec::new(),
     };
-    for (pi, p) in polys.iter().enumerate() {
-        let mut lo = [f64::INFINITY; 2];
-        let mut hi = [f64::NEG_INFINITY; 2];
-        for &v in &p.verts {
-            let q = verts[v as usize];
-            lo = [lo[0].min(q[0]), lo[1].min(q[1])];
-            hi = [hi[0].max(q[0]), hi[1].max(q[1])];
-        }
-        let (ax, ay) = grid.cell_of(lo).unwrap_or((0, 0));
-        let (bx, by) = grid.cell_of(hi).unwrap_or((nx - 1, ny - 1));
+    // As células de cada polígono pela caixa dele; duas passagens (contar, encher) e as listas
+    // contíguas, cada uma por ordem de índice.
+    let alcance: Vec<((usize, usize), (usize, usize))> = polys
+        .iter()
+        .map(|p| {
+            let mut lo = [f64::INFINITY; 2];
+            let mut hi = [f64::NEG_INFINITY; 2];
+            for &v in &p.verts {
+                let q = verts[v as usize];
+                lo = [lo[0].min(q[0]), lo[1].min(q[1])];
+                hi = [hi[0].max(q[0]), hi[1].max(q[1])];
+            }
+            (
+                grid.cell_of(lo).unwrap_or((0, 0)),
+                grid.cell_of(hi).unwrap_or((nx - 1, ny - 1)),
+            )
+        })
+        .collect();
+    for &((ax, ay), (bx, by)) in &alcance {
         for iy in ay..=by {
             for ix in ax..=bx {
-                grid.cells[iy * nx + ix].push(pi as u32);
+                grid.off[iy * nx + ix + 1] += 1;
+            }
+        }
+    }
+    for c in 0..nx * ny {
+        grid.off[c + 1] += grid.off[c];
+    }
+    let mut cursor = grid.off.clone();
+    grid.items = vec![0; grid.off[nx * ny] as usize];
+    for (pi, &((ax, ay), (bx, by))) in alcance.iter().enumerate() {
+        for iy in ay..=by {
+            for ix in ax..=bx {
+                let c = iy * nx + ix;
+                grid.items[cursor[c] as usize] = pi as u32;
+                cursor[c] += 1;
             }
         }
     }

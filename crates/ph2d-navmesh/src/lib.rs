@@ -24,10 +24,12 @@
 
 pub mod inflate;
 pub mod lattice;
+pub mod tiles;
 pub mod triangulate;
 
 pub use inflate::{Corner, Shape};
 use ph2d_nav::{MeshError, NavMesh, V2};
+pub use tiles::{TILE_M, TileStats, TiledMesh};
 pub use triangulate::TriError;
 
 use clipper2_rust::{FillRule, Path64, Paths64, Point64, difference_64, union_subjects_64};

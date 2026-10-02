@@ -350,7 +350,11 @@ pub(crate) fn bind(
     // ⚠️ `PH2D_VEC_BONE_DOBRA2` dobra a SEGUNDA junta à parte (F39): o vinco mais agudo nasce logo
     // DEPOIS do contacto, e com as duas juntas iguais ele fica escondido debaixo do traço — a
     // fotografia do dono tinha a de baixo forte e a de cima a mal tocar.
-    let g2 = segunda_dobra(nivel, g1, std::env::var("PH2D_VEC_BONE_DOBRA2").ok().as_deref());
+    let g2 = segunda_dobra(
+        nivel,
+        g1,
+        std::env::var("PH2D_VEC_BONE_DOBRA2").ok().as_deref(),
+    );
     for raiz in &raizes {
         dobra_duas(sim, *raiz, g1, g2);
     }

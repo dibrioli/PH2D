@@ -38,6 +38,9 @@ pub struct AreaMenu {
     pub label: String,
     /// A leitura do estado. Ver a tabela acima.
     pub face: String,
+    /// Toda face que o pulldown PODE mostrar (já traduzidas) — a fila dá-lhe a largura da mais
+    /// larga, para ele não mudar de tamanho quando o estado muda. Vazia ⇒ só a actual.
+    pub faces: Vec<String>,
     /// O corpo, com os ids do **painel dono** — ver [`crate::interaction::ContextMenuKind::AreaCommands`].
     pub rows: Vec<ToolRailEntry>,
 }

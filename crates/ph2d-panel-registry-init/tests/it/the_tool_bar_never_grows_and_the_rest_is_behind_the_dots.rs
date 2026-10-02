@@ -84,7 +84,13 @@ fn the_tool_bar_is_one_line_on_every_tablet() {
         for painter in [false, true] {
             let (hero, _) = hero(w, h);
             let area_w = w - 612.0; // as duas colunas, abertas
-            let (fits, over) = tool_bar::bar_split(&hero.store, painter, false, area_w);
+            let (fits, over) = tool_bar::bar_split(
+                &hero.store,
+                &mut TextSystem::without_system_fonts(),
+                painter,
+                false,
+                area_w,
+            );
             let lines = ph2d_editor_core::widget::horizontal_lines(
                 &fits,
                 area_w - 16.0,
@@ -110,8 +116,19 @@ fn nothing_is_dropped_between_the_bar_and_the_dots() {
         for painter in [false, true] {
             let (hero, _) = hero(w, h);
             let area_w = w - 612.0;
-            let full = tool_bar::bar_rail(&hero.store, painter, false);
-            let (fits, over) = tool_bar::bar_split(&hero.store, painter, false, area_w);
+            let full = tool_bar::bar_rail(
+                &hero.store,
+                &mut TextSystem::without_system_fonts(),
+                painter,
+                false,
+            );
+            let (fits, over) = tool_bar::bar_split(
+                &hero.store,
+                &mut TextSystem::without_system_fonts(),
+                painter,
+                false,
+                area_w,
+            );
             let ids_of = |r: &[ph2d_editor_core::widget::ToolRailEntry]| {
                 r.iter()
                     .filter_map(ph2d_editor_core::widget::ToolRailEntry::node_id)

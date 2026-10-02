@@ -75,6 +75,8 @@ type Row<'a> = (&'a [ModeChip], Family);
 struct MenuPlan<'a> {
     label: &'static str,
     face: &'static str,
+    /// Toda face que o pulldown PODE mostrar — a fila dá-lhe a largura da mais larga.
+    faces: &'static [&'static str],
     rows: Vec<Row<'a>>,
 }
 
@@ -112,6 +114,7 @@ fn menus(snap: &state::ModelSnapshot) -> Vec<MenuPlan<'_>> {
     let mut out = vec![MenuPlan {
         label: "panel.model3d.area.view",
         face: view_face(snap),
+        faces: &VIEW_FACES,
         rows: vec![
             (&snap.views[..], crate::ids::model3d_view_button as Family),
             (
@@ -135,6 +138,7 @@ fn menus(snap: &state::ModelSnapshot) -> Vec<MenuPlan<'_>> {
         out.push(MenuPlan {
             label: "panel.model3d.area.shading",
             face: shading_face(snap),
+            faces: &SHADING_FACES,
             rows: shading,
         });
     }
@@ -268,6 +272,7 @@ pub fn publish(store: &mut WidgetStore, armed: bool) {
         .map(|plan| AreaMenu {
             label: tr(plan.label).to_string(),
             face: tr(plan.face).to_string(),
+            faces: plan.faces.iter().map(|k| tr(k).to_string()).collect(),
             rows: entries(store, &plan.rows),
         })
         .collect();
@@ -346,3 +351,23 @@ fn active_key(chips: &[ModeChip]) -> Option<&'static str> {
 /// O que a face diz quando ainda não há retrato — o nome da vista livre, que é o que uma câmera
 /// acabada de nascer de facto é.
 const FALLBACK_FACE: &str = "viewport.model3d.view.user";
+
+/// ⭐ **Toda face do pulldown da VISTA** — a imagem do `ph2d_viewport3d::views::label_key` (as seis
+/// vistas nomeadas e a livre). ⚠️ Escrita aqui porque o painel não depende do viewport; o gate
+/// `the_view_pulldown_knows_every_face_the_camera_can_give` (em `ph2d-app-field3d`, que vê os
+/// dois) prende-a à fonte.
+pub const VIEW_FACES: [&str; 7] = [
+    "viewport.model3d.view.front",
+    "viewport.model3d.view.back",
+    "viewport.model3d.view.right",
+    "viewport.model3d.view.left",
+    "viewport.model3d.view.top",
+    "viewport.model3d.view.bottom",
+    FALLBACK_FACE,
+];
+
+/// Toda face do pulldown do SOMBREAMENTO — os dois modos do viewport (`docs/Render3d/05`).
+pub const SHADING_FACES: [&str; 2] = [
+    "panel.model3d.shading.matcap",
+    "panel.model3d.shading.render",
+];

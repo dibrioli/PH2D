@@ -228,8 +228,20 @@ fn the_painter_costs_no_screen_because_the_overflow_takes_it() {
             HeroLayout::for_viewport_bands(vp, false, bands, CenterSplit::None, DockSides::BOTH)
                 .draw_area
                 .w;
-        let (idle, idle_over) = tool_bar::bar_split(&h.store, false, false, area_w);
-        let (paint, paint_over) = tool_bar::bar_split(&h.store, true, false, area_w);
+        let (idle, idle_over) = tool_bar::bar_split(
+            &h.store,
+            &mut ph2d_text::TextSystem::without_system_fonts(),
+            false,
+            false,
+            area_w,
+        );
+        let (paint, paint_over) = tool_bar::bar_split(
+            &h.store,
+            &mut ph2d_text::TextSystem::without_system_fonts(),
+            true,
+            false,
+            area_w,
+        );
         println!(
             "{name:11} repouso: {:2} na fila + {:2} atras do dots  |  pincel: {:2} + {:2}",
             idle.entries.len(),

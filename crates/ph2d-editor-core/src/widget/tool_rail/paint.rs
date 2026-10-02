@@ -234,7 +234,7 @@ pub fn paint_tool_rail_axis(
                     scene,
                     face,
                     chip_rect,
-                    TypeToken::Xxs.px(),
+                    super::compound_face_font_px(),
                     resolve(face_color, theme),
                 );
                 scene.pop_layer();

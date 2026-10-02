@@ -480,23 +480,33 @@ pub fn rail_entries(store: &WidgetStore, painter_active: bool) -> Vec<ToolRailEn
     } else {
         tr("chrome.rail.global")
     };
-    rail_entries.push(ToolRailEntry::compound(
-        ids::TOOL_SPACE,
-        tr("chrome.rail.coordinate_space"),
-        space_face,
-        tr("chrome.rail.sub.space"),
-    ));
+    rail_entries.push(
+        ToolRailEntry::compound(
+            ids::TOOL_SPACE,
+            tr("chrome.rail.coordinate_space"),
+            space_face,
+            tr("chrome.rail.sub.space"),
+        )
+        .showing([tr("chrome.rail.global"), tr("chrome.rail.local")]),
+    );
     let view_face = match store.tool_view_mode() {
         1 => tr("chrome.rail.camera"),
         2 => tr("chrome.rail.all"),
         _ => tr("chrome.rail.selected"),
     };
-    rail_entries.push(ToolRailEntry::compound(
-        ids::TOOL_HOME,
-        tr("chrome.rail.frame_view"),
-        view_face,
-        tr("chrome.rail.sub.view"),
-    ));
+    rail_entries.push(
+        ToolRailEntry::compound(
+            ids::TOOL_HOME,
+            tr("chrome.rail.frame_view"),
+            view_face,
+            tr("chrome.rail.sub.view"),
+        )
+        .showing([
+            tr("chrome.rail.selected"),
+            tr("chrome.rail.camera"),
+            tr("chrome.rail.all"),
+        ]),
+    );
     rail_entries.push(ToolRailEntry::Divider);
     rail_entries.push(
         ToolRailEntry::icon(ids::TOOL_UNDO, tr("chrome.rail.undo"), IconId::Undo)

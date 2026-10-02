@@ -85,11 +85,12 @@ pub fn tool_bar_h(size: RailButtonSize, lines: usize) -> f32 {
 #[must_use]
 pub fn bar_split(
     store: &WidgetStore,
+    text_system: &mut TextSystem,
     painter_active: bool,
     image_tools_on: bool,
     area_w: f32,
 ) -> (ToolRail, Vec<crate::widget::ToolRailEntry>) {
-    let rail = bar_rail(store, painter_active, image_tools_on);
+    let rail = bar_rail(store, text_system, painter_active, image_tools_on);
     let size = store.rail_button_size();
     let content_w = (area_w - Spacing::Xs.px() * 2.0).max(0.0);
     let gap = Spacing::Xs.px();
@@ -103,7 +104,7 @@ pub fn bar_split(
     let mut over: Vec<crate::widget::ToolRailEntry> = Vec::new();
     let mut along = 0.0_f32;
     for entry in rail.entries {
-        let advance = crate::widget::entry_advance(&entry, chip);
+        let advance = crate::widget::entry_advance(&entry, chip, RailAxis::Horizontal);
         let next = if fits.is_empty() {
             advance
         } else {
@@ -170,7 +171,15 @@ pub fn content_rect(bar: Rect) -> Rect {
 /// shell exige para as ACTIVAR (`Some("image_tools") => hero.image_edit.mode_on`). Oferecer um
 /// chip que o gate a jusante recusa seria a terceira espécie de knob morto.
 #[must_use]
-pub fn bar_rail(store: &WidgetStore, painter_active: bool, image_tools_on: bool) -> ToolRail {
+///
+/// ⭐ Ela MEDE os pulldowns ([`crate::widget::size_row_pulldowns`]) — por isso pede o `TextSystem`:
+/// a largura de um pulldown na fila é a da face mais larga que ele pode mostrar.
+pub fn bar_rail(
+    store: &WidgetStore,
+    text_system: &mut TextSystem,
+    painter_active: bool,
+    image_tools_on: bool,
+) -> ToolRail {
     let mut entries = rail_entries(store, painter_active);
     if image_tools_on {
         let tools = super::topbar::image_tool_rail_entries(store);
@@ -196,15 +205,20 @@ pub fn bar_rail(store: &WidgetStore, painter_active: bool, image_tools_on: bool)
     if !store.area_menus().is_empty() {
         entries.push(crate::widget::ToolRailEntry::Divider);
         for (slot, menu) in store.area_menus().iter().enumerate() {
-            entries.push(crate::widget::ToolRailEntry::compound(
-                ids::area_menu_button(u32::try_from(slot).unwrap_or(ids::MAX_AREA_MENUS)),
-                menu.label.clone(),
-                menu.face.clone(),
-                "",
-            ));
+            entries.push(
+                crate::widget::ToolRailEntry::compound(
+                    ids::area_menu_button(u32::try_from(slot).unwrap_or(ids::MAX_AREA_MENUS)),
+                    menu.label.clone(),
+                    menu.face.clone(),
+                    "",
+                )
+                .showing(menu.faces.iter().cloned()),
+            );
         }
     }
-    ToolRail::new(NodeId(203), tr("chrome.rail.editor_tools"), entries)
+    let mut rail = ToolRail::new(NodeId(203), tr("chrome.rail.editor_tools"), entries);
+    crate::widget::size_row_pulldowns(&mut rail, text_system);
+    rail
 }
 
 /// Desenha a fila e regista os alvos.
@@ -226,7 +240,7 @@ pub fn paint_tool_bar(
     }
     // ⭐ **A porta ÚNICA** — o que cabe numa linha, com o `⋯` já no fim quando algo transbordou.
     // O menu do transbordo lê a MESMA função (`context_menu_overlay::paint_tool_bar_overflow`).
-    let (rail, _over) = bar_split(store, painter_active, image_tools_on, bar.w);
+    let (rail, _over) = bar_split(store, text_system, painter_active, image_tools_on, bar.w);
     // (a publicação do transbordo faz-se no `publish_overflow`, que o hero chama com `&mut store`)
     let size = store.rail_button_size();
     // A faixa inteira leva o fundo do trilho — é o mesmo chrome, deitado.
@@ -385,6 +399,7 @@ fn paint_flyout_below(
 /// `&mut`. A CONTA é a mesma ([`bar_split`]), e é essa a garantia que interessa.
 pub fn publish_overflow(
     store: &mut WidgetStore,
+    text_system: &mut TextSystem,
     layout: &HeroLayout,
     painter_active: bool,
     image_tools_on: bool,
@@ -394,6 +409,6 @@ pub fn publish_overflow(
         store.set_tool_overflow(Vec::new());
         return;
     }
-    let (_, over) = bar_split(store, painter_active, image_tools_on, bar.w);
+    let (_, over) = bar_split(store, text_system, painter_active, image_tools_on, bar.w);
     store.set_tool_overflow(over);
 }

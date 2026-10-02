@@ -196,3 +196,36 @@ fn the_viewport_label_follows_the_camera_and_not_the_quadrant() {
         "a chave da vista livre não traduz"
     );
 }
+
+/// ⭐ **O pulldown da vista conhece TODA face que a câmera pode dar** (2026-10-02) — a largura dele
+/// na fila é a da face mais larga, e uma vista nova esquecida na lista do painel teria a face
+/// cortada justamente quando a câmera chegasse lá.
+#[test]
+fn the_view_pulldown_knows_every_face_the_camera_can_give() {
+    let mut dadas: Vec<&str> = Standard::ALL
+        .into_iter()
+        .map(|s| {
+            label_key(&Orbit {
+                rotation: s.rotation(),
+                ..Orbit::default()
+            })
+        })
+        .collect();
+    // Uma câmera posta onde o artista quis — nenhuma das seis.
+    dadas.push(label_key(&Orbit {
+        rotation: Orbit::from_yaw_pitch(0.3, 0.4).rotation,
+        ..Orbit::default()
+    }));
+    for k in &dadas {
+        assert!(
+            ph2d_panel_model3d::VIEW_FACES.contains(k),
+            "a câmera dá «{k}» e o pulldown da vista não a conhece"
+        );
+    }
+    for k in ph2d_panel_model3d::VIEW_FACES {
+        assert!(
+            dadas.contains(&k),
+            "o pulldown lista «{k}», que nenhuma câmera dá"
+        );
+    }
+}

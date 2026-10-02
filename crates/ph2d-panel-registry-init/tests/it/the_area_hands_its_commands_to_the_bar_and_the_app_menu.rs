@@ -391,7 +391,13 @@ fn area_chips_and_lines(h: &HeroScreen, vp: Rect) -> (usize, usize) {
     )
     .draw_area
     .w;
-    let (rail, over) = tool_bar::bar_split(&h.store, false, false, area_w);
+    let (rail, over) = tool_bar::bar_split(
+        &h.store,
+        &mut TextSystem::without_system_fonts(),
+        false,
+        false,
+        area_w,
+    );
     let area_ids: Vec<_> = (0..ph2d_editor_core::ids::MAX_AREA_MENUS)
         .map(ph2d_editor_core::ids::area_menu_button)
         .collect();
@@ -733,7 +739,13 @@ fn the_area_costs_one_chip_and_the_bar_is_still_one_line() {
         )
         .draw_area
         .w;
-        let (rail, over) = tool_bar::bar_split(&h.store, false, false, area_w);
+        let (rail, over) = tool_bar::bar_split(
+            &h.store,
+            &mut TextSystem::without_system_fonts(),
+            false,
+            false,
+            area_w,
+        );
         let area_ids: Vec<_> = (0..ph2d_editor_core::ids::MAX_AREA_MENUS)
             .map(ph2d_editor_core::ids::area_menu_button)
             .collect();

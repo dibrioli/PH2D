@@ -544,6 +544,7 @@ pub fn paint_hero_screen(
         // porque o pintor toma `&hero.store` emprestado.
         super::tool_bar::publish_overflow(
             &mut hero.store,
+            text_system,
             &layout,
             painter_active,
             hero.image_edit.mode_on,

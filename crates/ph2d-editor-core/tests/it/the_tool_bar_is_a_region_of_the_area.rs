@@ -117,7 +117,7 @@ fn the_painted_bar_registers_every_chip_where_the_door_says() {
 
     // ⭐ **A MESMA porta que o pintor usou** — `bar_rail`, não uma lista remontada aqui. Uma
     // segunda montagem seria a tabela paralela que este ficheiro inteiro existe para proibir.
-    let rail = tool_bar::bar_rail(&h.store, false, h.image_edit.mode_on);
+    let rail = tool_bar::bar_rail(&h.store, &mut text, false, h.image_edit.mode_on);
     let content = tool_bar::content_rect(l.tool_bar);
     let mut seen = 0usize;
     for slot in entry_rects(

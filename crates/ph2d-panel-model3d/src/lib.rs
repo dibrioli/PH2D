@@ -38,6 +38,7 @@ mod paint_rows_swatch;
 mod populate;
 
 pub use area_bar::publish as publish_area_bar;
+pub use area_bar::{SHADING_FACES, VIEW_FACES};
 /// ⭐⭐⭐ **A porta que diz o id da amostra de cor de uma fileira** — ver
 /// [`paint_rows_swatch::swatch_id`].
 ///

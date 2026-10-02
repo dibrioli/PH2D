@@ -19,7 +19,7 @@ use crate::paint::{
 use crate::widget::ButtonState;
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
-use ph2d_text::TextSystem;
+use ph2d_text::{FontWeight, TextSystem};
 use ph2d_tokens::{
     ColorToken, DIVIDER_GAP_PX as CHROME_DIVIDER_GAP, Radius, Spacing, StrokeToken,
     TOOL_CHIP_PX as CHROME_TOOL_CHIP, Theme, TypeToken,
@@ -102,6 +102,11 @@ pub enum ToolRailEntry {
         label: String,
         face: String,
         sub: String,
+        /// Toda face que este chip PODE mostrar (a actual incluída) — a largura dele numa fila
+        /// é a da mais larga, para o chip não mudar de tamanho quando o estado muda.
+        faces: Vec<String>,
+        /// A largura na fila horizontal, medida por [`size_row_pulldowns`]; `0` ⇒ chip quadrado.
+        row_w: f32,
     },
     /// A colour-swatch chip: the chip is filled with `color` (a live colour box) instead of an icon,
     /// with the same state border + vertical sub-label as [`Self::Icon`]. Used by the painter rail's Fill
@@ -203,12 +208,29 @@ impl ToolRailEntry {
         face: impl Into<String>,
         sub: impl Into<String>,
     ) -> Self {
+        let face = face.into();
         Self::Compound {
             id,
             label: label.into(),
-            face: face.into(),
+            faces: vec![face.clone()],
+            face,
             sub: sub.into(),
+            row_w: 0.0,
         }
+    }
+
+    /// As faces que um [`Self::Compound`] pode mostrar, além da actual (que fica sempre).
+    #[must_use]
+    pub fn showing<S: Into<String>>(mut self, more: impl IntoIterator<Item = S>) -> Self {
+        if let Self::Compound { faces, .. } = &mut self {
+            for f in more {
+                let f = f.into();
+                if !faces.contains(&f) {
+                    faces.push(f);
+                }
+            }
+        }
+        self
     }
 
     /// Um chip cujo ícone é um caminho de manifesto (as ferramentas de imagem).
@@ -305,11 +327,43 @@ pub fn entry_gap_px() -> f32 {
 /// transbordo (`hero::tool_bar::bar_split`) tem de usar **a mesma** aritmética que o
 /// [`horizontal_lines`] e o [`entry_rects`]. Uma terceira cópia dela poria o `⋯` a discordar de
 /// onde os chips de facto caem.
+///
+/// ⭐ Numa FILA o pulldown ([`ToolRailEntry::Compound`]) é tão largo quanto a face mais larga que
+/// pode mostrar (`row_w`, de [`size_row_pulldowns`]); na COLUNA a largura é a da coluna e ele
+/// avança um chip.
 #[must_use]
-pub fn entry_advance(entry: &ToolRailEntry, chip_px: f32) -> f32 {
+pub fn entry_advance(entry: &ToolRailEntry, chip_px: f32, axis: RailAxis) -> f32 {
     match entry {
         ToolRailEntry::Divider => 1.0 + DIVIDER_GAP_PX * 2.0,
+        ToolRailEntry::Compound { row_w, .. } if axis == RailAxis::Horizontal => row_w.max(chip_px),
         _ => chip_px,
+    }
+}
+
+/// O tamanho de letra da face de um pulldown — o pintor e a medida lêem-no daqui.
+#[must_use]
+pub fn compound_face_font_px() -> f32 {
+    TypeToken::Xxs.px()
+}
+
+/// ⭐⭐ **Mede a largura de cada pulldown na FILA** — a caixa em que a face mais larga que ele
+/// pode mostrar cabe inteira (2026-10-02, escolha do dono: *botão mais largo*, como os pulldowns
+/// do cabeçalho do Blender).
+///
+/// ⛔ Antes o chip era quadrado (`36 px`) e a face saía `G…` (*Global*), `S…` (*Selected*) e, no
+/// tamanho de texto Large, `…`. A largura é a inversa exacta do orçamento do pintor
+/// ([`crate::paint::rect_for_label`]), medida no estilo de texto ACTIVO e no peso em que ele pinta.
+/// Gate: `nenhuma_face_de_pulldown_da_fila_e_cortada`.
+pub fn size_row_pulldowns(rail: &mut ToolRail, text_system: &mut TextSystem) {
+    let font = compound_face_font_px();
+    for entry in &mut rail.entries {
+        if let ToolRailEntry::Compound { faces, row_w, .. } = entry {
+            let widest = faces
+                .iter()
+                .map(|f| text_system.prefix_width_weighted(f, font, FontWeight::MEDIUM))
+                .fold(0.0_f32, f32::max);
+            *row_w = crate::paint::rect_for_label(widest);
+        }
     }
 }
 
@@ -336,7 +390,7 @@ pub fn horizontal_lines(rail: &ToolRail, width: f32, size: RailButtonSize) -> us
         if index > 0 {
             along += gap;
         }
-        let advance = entry_advance(entry, chip_px);
+        let advance = entry_advance(entry, chip_px, RailAxis::Horizontal);
         if along + advance > width && along > 0.0 {
             lines += 1;
             along = 0.0;
@@ -381,13 +435,13 @@ pub fn entry_rects(
         // ⚠️ Só o eixo HORIZONTAL quebra: a coluna corre no lado longo da janela e nunca teve
         // este problema, e fazê-la quebrar mudaria uma geometria que ninguém pediu.
         if axis == RailAxis::Horizontal {
-            let advance = entry_advance(entry, chip_px);
+            let advance = entry_advance(entry, chip_px, axis);
             if along + advance > rect.x + rect.w && along > rect.x {
                 along = rect.x;
                 cross += line_pitch(chip_px);
             }
         }
-        let advance = entry_advance(entry, chip_px);
+        let advance = entry_advance(entry, chip_px, axis);
         let r = match entry {
             ToolRailEntry::Divider => {
                 // O divisor é uma linha FINA no eixo, centrada no transversal — a mesma lei nos
@@ -410,7 +464,7 @@ pub fn entry_rects(
             }
             _ => match axis {
                 RailAxis::Vertical => Rect::new(cross, along, chip_px, chip_px),
-                RailAxis::Horizontal => Rect::new(along, cross, chip_px, chip_px),
+                RailAxis::Horizontal => Rect::new(along, cross, advance, chip_px),
             },
         };
         out.push(EntrySlot {

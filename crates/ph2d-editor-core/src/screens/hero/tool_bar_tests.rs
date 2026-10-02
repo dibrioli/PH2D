@@ -40,7 +40,7 @@ fn nenhuma_legenda_da_fila_de_ferramentas_e_cortada() {
             store.set_rail_button_size(size);
             for painter in [false, true] {
                 for image_tools in [false, true] {
-                    let rail = bar_rail(&store, painter, image_tools);
+                    let rail = bar_rail(&store, ts, painter, image_tools);
                     let legendas: Vec<&str> = rail.entries.iter().filter_map(legenda).collect();
                     assert!(
                         !legendas.is_empty(),
@@ -87,5 +87,81 @@ fn nenhuma_legenda_da_fila_de_ferramentas_e_cortada() {
             .cloned()
             .collect::<Vec<_>>()
             .join("\n  ")
+    );
+}
+
+/// ⭐⭐ **Nenhuma FACE de pulldown da fila sai cortada** (2026-10-02, escolha do dono: *botão mais
+/// largo*) — em todo estado (SPACE nos dois, VIEW nos três, pulldowns de área com o vocabulário do
+/// 3D), fonte, peso, tamanho de texto, nitidez e tamanho de botão.
+///
+/// ⛔ O defeito (foto): o chip era quadrado e `Global` saía `G…`, `Selected` `S…`; no Large, `…`.
+#[test]
+fn nenhuma_face_de_pulldown_da_fila_e_cortada() {
+    let tr = ph2d_i18n::tr;
+    // Fixtura: dois pulldowns de área com as faces REAIS do modelador (as mais largas incluídas).
+    let area = |face: &str, faces: &[&str]| crate::interaction::AreaMenu {
+        label: tr("panel.model3d.area.view").to_owned(),
+        face: tr(face).to_owned(),
+        faces: faces.iter().map(|k| tr(k).to_owned()).collect(),
+        rows: Vec::new(),
+    };
+    let acusados = em_todo_estilo(|ts| {
+        let mut fora = Vec::new();
+        for size in [
+            RailButtonSize::Small,
+            RailButtonSize::Medium,
+            RailButtonSize::Large,
+        ] {
+            for (local, view) in [(false, 0u8), (true, 1), (false, 2)] {
+                let mut store = WidgetStore::default();
+                store.set_rail_button_size(size);
+                store.set_tool_space_local(local);
+                store.set_tool_view_mode(view);
+                for face in ["viewport.model3d.view.front", "viewport.model3d.view.bottom"] {
+                    store.set_area_commands(
+                        vec![
+                            area(
+                                face,
+                                &["viewport.model3d.view.bottom", "viewport.model3d.view.user"],
+                            ),
+                            area(
+                                "panel.model3d.shading.matcap",
+                                &["panel.model3d.shading.render"],
+                            ),
+                        ],
+                        Vec::new(),
+                    );
+                    let rail = bar_rail(&store, ts, false, false);
+                    let faixa = Rect::new(0.0, 0.0, 4000.0, tool_bar_h(size, 1));
+                    let mut scene = VectorScene::new();
+                    let (_, medidos) = crate::text_elide::elisao::medindo(|| {
+                        paint_tool_rail_axis(
+                            &rail,
+                            faixa,
+                            &mut scene,
+                            ts,
+                            Theme::default(),
+                            &store,
+                            &|_| None,
+                            false,
+                            RailAxis::Horizontal,
+                        );
+                    });
+                    fora.extend(medidos.iter().filter(|m| !m.coube()).map(|m| {
+                        format!(
+                            "{size:?}: «{}» -> «{}» ({:.1} px)",
+                            m.texto, m.pintado, m.largura
+                        )
+                    }));
+                }
+            }
+        }
+        fora
+    });
+    assert!(
+        acusados.is_empty(),
+        "faces cortadas ({}):\n  {}",
+        acusados.len(),
+        acusados.iter().take(40).cloned().collect::<Vec<_>>().join("\n  ")
     );
 }

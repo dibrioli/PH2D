@@ -21,8 +21,22 @@
 //! é transparente e o enchimento não pinta nada: o «V» da ARTE fica, o vão entre bordas OPACAS fecha.
 //!
 //! ⚠️ **Um quadro com enchimento posa na CPU**: o enchimento nasce no espaço POSADO e a malha da placa
-//! traz o repouso. Sem enchimento a placa posa como sempre, ao bit. `PH2D_SKIN_CONTACTO=0` desliga
-//! — a mesma porta da forma vectorial, porque é a mesma lei.
+//! traz o repouso. Sem enchimento a placa posa como sempre, ao bit.
+//!
+//! ⛔⛔ **E o fecho nasce DESLIGADO** ([`lei_do_fecho_da_imagem_activa`], `PH2D_SKIN_FECHO_IMAGEM=1`
+//! liga) — o smoke do dono de 2026-10-02 reprovou-o: *«queda de FPS»* e *«ora redonda ora pontuda»*.
+//! Medido: a bola sobre a borda CRUA da malha (`279` nós, sem contacto, `(40°, 40°)`) custa `57 ms`
+//! por imagem por quadro, contra `0,19 ms` da malha sem ele; e a escada da grelha na margem
+//! transparente é parede para a bola (`(36°, −141,5°)…(36°, −148,5°)` sem fecho nenhum). A cura é o
+//! fecho sobre o CONTORNO DA ARTE, com orçamento medido — ver o handoff F48 §3b.
+//!
+//! # ⭐⭐ A ORDEM DAS FACES: o osso mais adiante na corrente pinta por cima
+//!
+//! Ordem do dono (2026-10-02): *«as faces influenciadas por um osso têm z-index aleatório, e ao se
+//! sobrepor às do outro osso misturam-se; melhor seria as do último osso por cima»*. A ordem dos
+//! triângulos É a ordem do desenho (as duas portas, placa e CPU), e a da grelha é a das CÉLULAS — na
+//! dobra forte os pedaços dos dois membros intercalavam-se. ⇒ [`ordena_pelo_osso`], UMA vez por bind,
+//! na gaveta da malha desenhada ([`crate::skin_bake_cache::assada_da_arte`]).
 
 use ph2d_poly2d::Mesh2d;
 use ph2d_render::SpriteMesh;
@@ -67,9 +81,51 @@ pub fn malha_desenhada(
         pesos,
         [anchor, size],
         correcoes,
-        crate::skin_desenho::lei_do_contacto_activa(),
+        lei_do_fecho_da_imagem_activa(),
         crate::skin_image_gpu::a_placa_posa(),
     )
+}
+
+/// `PH2D_SKIN_FECHO_IMAGEM=1` liga o fecho da imagem — ver o cabeçalho (nasce desligado).
+#[must_use]
+pub fn lei_do_fecho_da_imagem_activa() -> bool {
+    fecho_da_imagem_de(std::env::var("PH2D_SKIN_FECHO_IMAGEM").ok().as_deref())
+}
+
+/// A leitura da porta, PURA — desligada salvo `"1"`. ⚠️ É ela que o gate mede.
+#[must_use]
+pub fn fecho_da_imagem_de(valor: Option<&str>) -> bool {
+    valor == Some("1")
+}
+
+/// ⭐⭐ **Ordena os triângulos pelo OSSO que os move** — cada face desenha-se depois das de um osso
+/// anterior da corrente.
+///
+/// A chave de um vértice é a posição MÉDIA, pesada, dos ossos da tabela (`Σ wⱼ·j / Σ wⱼ`; as colunas
+/// vêm na ordem do [`crate::skin_live::skeleton_of`], que desce da raiz) e a de um triângulo é a média
+/// dos três. ⚠️ Uma média e não o osso dominante: a face de uma zona de mistura fica ENTRE os dois
+/// membros, e a ordem não dá um salto onde o peso cruza `0,5`. A ordenação é ESTÁVEL — faces do
+/// mesmo osso mantêm a ordem da grelha. Sem tabela (a lei derivada) a ordem fica como está.
+pub fn ordena_pelo_osso(tris: &mut [[u32; 3]], pesos: &[f64], vertices: usize) {
+    let ossos = pesos.len() / vertices.max(1);
+    if ossos < 2 || pesos.len() != ossos * vertices {
+        return;
+    }
+    let chave: Vec<f64> = pesos
+        .chunks_exact(ossos)
+        .map(|w| {
+            let soma: f64 = w.iter().sum();
+            #[expect(clippy::cast_precision_loss, reason = "índice de osso")]
+            let pos: f64 = w.iter().enumerate().map(|(j, p)| p * j as f64).sum();
+            if soma > 0.0 { pos / soma } else { 0.0 }
+        })
+        .collect();
+    let de = |t: &[u32; 3]| {
+        t.iter()
+            .map(|&v| chave.get(v as usize).copied().unwrap_or(0.0))
+            .sum::<f64>()
+    };
+    tris.sort_by(|a, b| de(a).total_cmp(&de(b)));
 }
 
 /// A [`malha_desenhada`] com as duas portas do ambiente escolhidas — a dos gates.

@@ -132,8 +132,11 @@ pub fn assada_do_bind(
 /// ao lado dos `~500 µs` que a deformação dela custa. *É mais uma coisa que o caminho da placa
 /// remove, e não uma razão para o memo não existir:* sem ele pagava-se a assadura inteira.
 ///
-/// `None` = *«desenhe a do bind»*, e ele tem duas causas legítimas: a porta está fechada, ou o
-/// campo de pesos desta arte já é linear em toda aresta.
+/// ⭐⭐ **E já na ORDEM DO OSSO** ([`crate::skin_image_fecho::ordena_pelo_osso`], ordem do dono de
+/// 2026-10-02: o osso mais adiante pinta por cima): a ordem é do BIND, logo ordena-se UMA vez,
+/// aqui. Medido: por quadro custava `0,56 ms` por imagem, `3×` a malha inteira sem ela. ⇒ a gaveta
+/// guarda sempre a malha que se DESENHA (a assada, ou a do bind quando a assadura não parte nada) e
+/// o `None` sobra só para quem não tem `SkinBind`.
 ///
 /// ⛔ Sem `SkinBind` não há fonte que prove a gaveta ⇒ `None`. Aquele componente é a razão de a
 /// entidade estar nesta lista, logo o caso não acontece; o que ele faz é impedir que a identidade do
@@ -150,8 +153,10 @@ pub fn assada_da_arte(
     // caminho de omissão continua byte-idêntico, e a gaveta que fica a dizer *«esta não tem
     // assada»* é o que evita voltar a perguntar no quadro seguinte.
     let assada = assada_do_bind(e.to_bits(), &skin.source, crua, |m| {
-        crate::skin_bake::assar_no_bind(&m.mesh, &m.pesos, m.ossos())
-            .map(|(mesh, pesos)| SkinnedMesh { mesh, pesos })
+        let mut d = crate::skin_bake::assar_no_bind(&m.mesh, &m.pesos, m.ossos())
+            .map_or_else(|| m.clone(), |(mesh, pesos)| SkinnedMesh { mesh, pesos });
+        crate::skin_image_fecho::ordena_pelo_osso(&mut d.mesh.tris, &d.pesos, d.mesh.rest.len());
+        Some(d)
     })?;
     Some((*assada).clone())
 }

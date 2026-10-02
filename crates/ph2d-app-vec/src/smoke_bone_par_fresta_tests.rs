@@ -24,6 +24,8 @@ struct Palco {
     pesos: Vec<f64>,
     quad: [[f32; 2]; 2],
     correcoes: Vec<ph2d_skeleton::Correccao>,
+    /// A malha do BIND, na ordem da grelha — o controlo da ordem dos ossos.
+    crua: ph2d_skeleton_live::skinned_mesh::SkinnedMesh,
 }
 
 fn palco((g1, g2): (f32, f32)) -> Palco {
@@ -50,7 +52,8 @@ fn palco((g1, g2): (f32, f32)) -> Palco {
     ));
     dobra_duas(&mut sim, raiz.expect("raiz"), g1, g2);
     let crua = ph2d_skeleton_live::skin_image::skinned_mesh_of(&sim, e).expect("malha");
-    let m = ph2d_skeleton_live::skin_bake_cache::assada_da_arte(&sim, e, &crua).unwrap_or(crua);
+    let m = ph2d_skeleton_live::skin_bake_cache::assada_da_arte(&sim, e, &crua)
+        .unwrap_or_else(|| crua.clone());
     let sprite = *sim.world().get::<Sprite>(e).expect("sprite");
     let anchor = sprite.resolve_anchor(PPM);
     let rect = [
@@ -72,6 +75,7 @@ fn palco((g1, g2): (f32, f32)) -> Palco {
         quad: [anchor, sprite.size],
         correcoes: skin.correcoes_resolvidas(),
         mesh: m.mesh,
+        crua,
     }
 }
 
@@ -236,6 +240,110 @@ fn a_dobra_arredonda_em_toda_a_varredura() {
         }
     }
     assert!(sem_bico.is_empty(), "o bico ficou em ponta a {sem_bico:?}");
+}
+
+/// As violações da ordem dos ossos em `m`: pontos (a `5 px`) cobertos por faces de chaves que
+/// diferem mais de `0,5` osso, onde a ÚLTIMA face desenhada não é a de chave máxima.
+fn ordem_violada(m: &SpriteMesh, pesos: &[f64]) -> usize {
+    let ossos = pesos.len() / m.local.len();
+    let chave_v: Vec<f64> = pesos
+        .chunks_exact(ossos)
+        .map(|w| {
+            w.iter().enumerate().map(|(j, p)| p * j as f64).sum::<f64>() / w.iter().sum::<f64>()
+        })
+        .collect();
+    let pos = |i: u32| {
+        [
+            f64::from(m.local[i as usize][0]),
+            f64::from(m.local[i as usize][1]),
+        ]
+    };
+    let tris: Vec<([[f64; 2]; 3], [f64; 4], f64)> = m
+        .tris
+        .iter()
+        .map(|t| {
+            let q = t.map(pos);
+            let c = [
+                q.iter().map(|p| p[0]).fold(f64::MAX, f64::min),
+                q.iter().map(|p| p[1]).fold(f64::MAX, f64::min),
+                q.iter().map(|p| p[0]).fold(f64::MIN, f64::max),
+                q.iter().map(|p| p[1]).fold(f64::MIN, f64::max),
+            ];
+            (
+                q,
+                c,
+                t.iter().map(|&v| chave_v[v as usize]).sum::<f64>() / 3.0,
+            )
+        })
+        .collect();
+    let caixa = tris
+        .iter()
+        .fold([f64::MAX, f64::MAX, f64::MIN, f64::MIN], |a, (_, c, _)| {
+            [
+                a[0].min(c[0]),
+                a[1].min(c[1]),
+                a[2].max(c[2]),
+                a[3].max(c[3]),
+            ]
+        });
+    let h = 5.0 / f64::from(PPM);
+    let mut n = 0;
+    let mut y = caixa[1];
+    while y <= caixa[3] {
+        let mut x = caixa[0];
+        while x <= caixa[2] {
+            let cobrem: Vec<f64> = tris
+                .iter()
+                .filter(|(q, c, _)| {
+                    x >= c[0]
+                        && x <= c[2]
+                        && y >= c[1]
+                        && y <= c[3]
+                        && dentro([x, y], q[0], q[1], q[2])
+                })
+                .map(|(_, _, k)| *k)
+                .collect();
+            if let (Some(&ultima), Some(max), Some(min)) = (
+                cobrem.last(),
+                cobrem.iter().copied().reduce(f64::max),
+                cobrem.iter().copied().reduce(f64::min),
+            ) && max - min > 0.5
+                && ultima < max - 1e-9
+            {
+                n += 1;
+            }
+            x += h;
+        }
+        y += h;
+    }
+    n
+}
+
+/// ⭐⭐⭐ **Onde dois membros se sobrepõem, o osso mais adiante pinta por cima** — ordem do dono de
+/// 2026-10-02 (foto da dobra forte: os pedaços dos dois membros intercalavam-se). O controlo é a
+/// ordem da GRELHA (a porta da CPU sem ordenar), que tem de violar — senão a pose não sobrepõe.
+#[test]
+fn onde_os_membros_se_sobrepoem_o_osso_de_fora_pinta_por_cima() {
+    for pose in [(DOBRA_FORTE, DOBRA_FORTE), POSE_DO_REPORT] {
+        let p = palco(pose);
+        let grelha = ph2d_skeleton_live::skin_image::posed_sprite_mesh_corrigida(
+            p.crua.mesh.clone(),
+            p.p2l,
+            &p.pele,
+            &p.crua.pesos,
+            p.quad[0],
+            p.quad[1],
+            &p.correcoes,
+        )
+        .expect("posa");
+        let antes = ordem_violada(&grelha, &p.crua.pesos);
+        assert!(antes > 0, "{pose:?}: o controlo não sobrepõe membros");
+        let depois = ordem_violada(&desenhada(&p, false, false), &p.pesos);
+        assert_eq!(
+            depois, 0,
+            "{pose:?}: {depois} pontos com o osso de trás por cima ({antes} na grelha)"
+        );
+    }
 }
 
 /// ⭐⭐ **Com a PLACA a posar, um quadro com vão desenha-se pela CPU** — o enchimento nasce no
@@ -470,5 +578,40 @@ fn diag_varre_a_segunda_junta() {
             "   acrescentou {} triangulos",
             com.tris.len() - sem.tris.len()
         );
+    }
+}
+
+/// ⏱️ **SONDA — quanto custa a malha desenhada por quadro**, por porta (fecho on/off × placa on/off)
+/// e por pose. `cargo test -p ph2d-app-vec --lib --profile smoke -- --ignored --nocapture diag_o_custo_da_malha_desenhada`
+#[test]
+#[ignore = "SONDA, nao gate"]
+fn diag_o_custo_da_malha_desenhada() {
+    for pose in [
+        (0.0, 0.0),
+        (40.0, 40.0),
+        (36.0, -131.25),
+        (36.0, -144.0),
+        (DOBRA_FORTE, DOBRA_FORTE),
+    ] {
+        let p = palco(pose);
+        for (contacto, placa) in [(false, true), (true, true), (false, false), (true, false)] {
+            let mut melhor = std::time::Duration::MAX;
+            for _ in 0..7 {
+                let t = std::time::Instant::now();
+                let m = ph2d_skeleton_live::skin_image_fecho::malha_desenhada_com(
+                    p.mesh.clone(),
+                    p.p2l,
+                    &p.pele,
+                    &p.pesos,
+                    p.quad,
+                    &p.correcoes,
+                    contacto,
+                    placa,
+                );
+                melhor = melhor.min(t.elapsed());
+                std::hint::black_box(m);
+            }
+            eprintln!("{pose:?} contacto {contacto} placa {placa}: {melhor:?}");
+        }
     }
 }

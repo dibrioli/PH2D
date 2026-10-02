@@ -61,6 +61,22 @@ outra) e um degrau no encontro da tampa redonda com a borda de baixo (a `~(36°,
   DESENHADA; (3) quinas = as da arte em repouso; (4) a UV do enchimento recua meio texel para dentro
   da arte (a beira do iso-alfa é meio transparente). ⚠️ Com isto a escada deixa de existir para o
   fecho, e as quinas protegidas da borda da malha saem.
+- ⛔⛔ **2.º smoke do dono (quatro fotos): *«queda de FPS»* — e o fecho foi DESLIGADO por omissão.**
+  Medido (`diag_o_custo_da_malha_desenhada`, por imagem por quadro): sem fecho `0,19 ms`; com ele
+  `1,26 ms` em repouso, `2`–`5 ms` com contacto e **`58,6 ms` a `(40°, 40°)`** — a `rola_a_bola`
+  sobre os `279` nós CRUS da borda (sem contacto, logo sem união) custa `57 ms`: cada nó côncavo da
+  dobra é uma corrida e cada procura é `esq × dir` amostras na janela de `32 r`. ⇒
+  `PH2D_SKIN_FECHO_IMAGEM=1` liga (`fecho_da_imagem_de`, gate `o_fecho_da_imagem_nasce_desligado`).
+  ⚠️ **Requisito do F49: orçamento MEDIDO por imagem por quadro** (a bola do vector não foi feita
+  para uma polilinha densa — o contorno da arte tem de chegar simplificado, ou o fecho tem de ser
+  outra lei para a imagem).
+- ✅ **A ordem das faces (ordem do dono: *«as faces do último osso por cima»*):**
+  `skin_image_fecho::ordena_pelo_osso` — chave = posição média pesada dos ossos (`Σ wⱼ·j / Σ wⱼ`,
+  colunas na ordem do `skeleton_of`, raiz → ponta), média dos três vértices, ordenação ESTÁVEL; feita
+  UMA vez por bind dentro da gaveta da `skin_bake_cache::assada_da_arte`, que passa a guardar SEMPRE a
+  malha desenhada (a assada ou a do bind). Por quadro ela custava `0,56 ms` (`0,19 → 0,75`); na
+  gaveta, `0`. Gate `onde_os_membros_se_sobrepoem_o_osso_de_fora_pinta_por_cima` (controlo: a malha
+  do bind na ordem da grelha viola). Sem tabela de pesos (a lei `Envelope`) a ordem fica a da grelha.
 - ⭐ **Textura da cena trocada (ordem do dono):** a imagem da `=4` tem agora uma grelha de pontos
   (`PONTO_PASSO = 20`, `PONTO_RAIO = 4`, cor do contorno) a `6 px` das bordas compridas — a tinta da
   beira continua a ser a `COR`.

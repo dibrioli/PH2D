@@ -3,10 +3,10 @@
 > **Leitor:** o agente INTEGRADOR (DIRETRIZ §1.5.3). ⛔ **NÃO integrado, NÃO enviado** (§0.7) — a
 > linha entrega isto e espera a ordem do dono.
 >
-> ⚠️ **A linha NÃO para aqui:** o dono pediu o handoff *antes de seguir* com o report seguinte
-> (*«melhor mas ainda com delay de 1 ou 2 segundos»*). Se commits novos aterrarem nesta branch
-> depois deste documento, o §1 deixa de os descrever — **integre pelo HEAD que o §1 nomeia**, ou
-> peça um handoff novo. A rodada anterior (a LINHA INTEIRA de 20–25/09) já está no `main`
+> ⚠️ **Actualizado em 01/10 para `36a1ea36e`:** o dono pediu o handoff *antes de seguir* com o
+> report seguinte (*«melhor mas ainda com delay de 1 ou 2 segundos»*), e a cura desse report
+> aterrou depois — o §1, o §2, o §3, o §5, o §6 e o §8 já a descrevem. Se commits novos aterrarem
+> nesta branch depois disto, **integre pelo HEAD que o §1 nomeia**, ou peça um handoff novo. A rodada anterior (a LINHA INTEIRA de 20–25/09) já está no `main`
 > ([`A_LINHA_2026-09-25`](HANDOFF_INTEGRACAO_line_3DModeling_A_LINHA_2026-09-25.md)).
 
 ---
@@ -18,9 +18,9 @@
 | branch | `line/3DModeling` |
 | worktree | `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-3DModeling` |
 | base (merge-base) | **`912a9652e`** = o `main` de hoje — **o `main` não andou desde o fork** (`git log HEAD..main` vazio) |
-| HEAD de trabalho | **`555dd6a6f`** (+ o commit deste handoff, só documentação) |
-| commits | **8** de trabalho |
-| ficheiros | `85` (`+7 221 / −661`), ver §3 |
+| HEAD de trabalho | **`36a1ea36e`** (+ o commit desta actualização, só documentação) |
+| commits | **9** de trabalho + `db67a1b35` (a 1.ª redacção deste handoff) |
+| ficheiros | `92` (`+8 603 / −708`) em `36a1ea36e`, ver §3 |
 | integração esperada | **`--ff-only` limpo**, se o `main` continuar em `912a9652e` |
 
 ---
@@ -40,7 +40,8 @@ dono, com o mecanismo no handoff de wave indicado.
 | `e44918f12` | de perto o quadro cabe e não perde resolução — a câmara sai das chaves das caches do MUNDO e a imagem sobe na placa | [idem §8](HANDOFF_line_3DModeling_A_OCLUSAO_NO_TEMPO_2026-09-30.md) | ✅ *«quase perfeito»* (01/10) |
 | `ee6966d17` | um giro longo enchia a tabela e o pixel sem lugar marchava 1 fatia (o **ruído ao girar**) | [idem §9](HANDOFF_line_3DModeling_A_OCLUSAO_NO_TEMPO_2026-09-30.md) | ⏳ |
 | `33546a80f` | girar várias vezes deixava pontos claros · a cor só mudava ao arrastar · arrasto sem quadro de movimento | [idem §10](HANDOFF_line_3DModeling_A_OCLUSAO_NO_TEMPO_2026-09-30.md) | ⏳ |
-| `555dd6a6f` | **uma caixa nova ou a 1.ª cor diferente já não demoram 5 s** — a lei do dono INTERPRETADA, a fita real só para quem a marcha, compilação em lote, e o laço da resolução a descontar a compilação | [idem §11](HANDOFF_line_3DModeling_A_OCLUSAO_NO_TEMPO_2026-09-30.md) | ⚠️ *«melhor mas ainda com delay de 1 ou 2 segundos»* (01/10) — ver §6 |
+| `555dd6a6f` | **uma caixa nova ou a 1.ª cor diferente já não demoram 5 s** — a lei do dono INTERPRETADA, a fita real só para quem a marcha, compilação em lote, e o laço da resolução a descontar a compilação | [idem §11](HANDOFF_line_3DModeling_A_OCLUSAO_NO_TEMPO_2026-09-30.md) | ⚠️ *«melhor mas ainda com delay de 1 ou 2 segundos»* (01/10) |
+| `36a1ea36e` | **o resto do atraso:** a marcha, o céu no tempo e as sondas compilam numa **rodada só** (eram três em fila), e arrastar já não re-assa as sondas (lê as guardadas até `0,75` célula de deslocamento) — caixa nova `821 → 440 ms`, arrastar `171 → 36–42 ms` por quadro. ⛔ a marcha interpretada foi medida e **recusada** (`25×` por quadro). + a cura do cadeado da placa no `ph2d-run.sh` | [idem §12](HANDOFF_line_3DModeling_A_OCLUSAO_NO_TEMPO_2026-09-30.md) | ⏳ |
 
 ---
 
@@ -48,7 +49,7 @@ dono, com o mecanismo no handoff de wave indicado.
 
 ```
 SUPERFÍCIE DE COLISÃO — line/3DModeling contra main
-  merge-base 912a9652e   ·   8 commit(s)   ·   85 arquivo(s)
+  merge-base 912a9652e   ·   10 commit(s)   ·   92 arquivo(s)
 ▸ SCHEMAS
     PROJECT_SCHEMA                        176   (base: 176)
       └ tripla do gate               (176, 13, 22)   (base: (176, 13, 22))
@@ -100,6 +101,8 @@ no diff que eu saiba, mas confirme com `git worktree list` + o `collision-surfac
 - `ph2d_field_eval::interp::{em_floats, interpretador_em_k_wgsl}`; `Field::tape_bytecode` deixou de ser `#[doc(hidden)]`.
 - `ph2d_field_eval::owners::wgsl::{Owners::interpretada, Owners::compilada, sem_donos, texto_interpretado, REGISTOS_DO_INTERPRETADOR}`.
 - `ph2d_field_gpu::FieldPipelines::{precompila, compilado_ms}` · `Pintado::compilado_ms` (campo novo numa struct pública — quem a constrói com literal de struct **não compila** sem ele; dentro da árvore são os dois sítios do `trace_marcha_com.rs`).
+- (`36a1ea36e`) `ph2d_field_gpu::{PedidoDeLote, FieldPipelines::{precompila_lote, rodadas_de_compilacao, tolerancia_das_sondas}, Tracer::{rodadas_de_compilacao, tolerancia_das_sondas}}` · `pub mod sondas_na_placa` (era privado; `TOLERANCIA_EM_CELULAS`) · `ph2d_field_eval::{DeviceField::{tape_interpretada, registos_da_fita}, interp::{REGISTOS_DA_MARCHA, corpo_da_fita_interpretada}}` · `Sonda::fita_interpretada` (campo novo, com `Default`). O `precompila` passou a delegar no `precompila_lote` — mesma assinatura.
+- ⚠️ **FOUNDATIONAL:** [`scripts/ph2d-run.sh`](../../../scripts/ph2d-run.sh) lança o comando com `9>&-` nos dois ramos — um servidor do `sccache` arrancado sob `PH2D_GPU=1` herdava o cadeado da placa e segurava-o até ao prazo do scope (30 min), parando as outras linhas no `flock` (mecanismo e controlo no §12.6 do handoff de wave). Só herança de descritores; nenhuma outra linha mexe nesse sítio do ficheiro, mas se mexer, o Mergiraf funde o resíduo.
 
 ---
 
@@ -123,6 +126,10 @@ no diff que eu saiba, mas confirme com `git worktree list` + o `collision-surfac
 | `cargo machete` (as 4 crates) | nenhuma dependência a mais |
 | `#[cfg(target_os` no diff | **zero** ⇒ sem risco da classe macOS/Windows |
 | prova de mutação da wave final | **5/5 mortas + controlo** ([arnês](../ferramentas/lei_do_dono_interpretada_mutacoes.sh)) |
+| (`36a1ea36e`) GPU `forma_nova::lote` | **3/3** (a forma nova numa rodada · o arrasto lê as sondas · longe de mais vai sem ricochete) |
+| (`36a1ea36e`) `nextest-impacted` · censos · clippy | **3 592/3 592** · **127/127** (controlo `12 de 12`) · zero |
+| (`36a1ea36e`) mutação | **11/11 mortas** (L1–L4, L6–L12) + a L5 de controlo a sobreviver — ⚠️ a L7 sobreviveu à 1.ª corrida e deu origem a `rodadas_de_compilacao` |
+| (`36a1ea36e`) gates do índice da memória | 3/3 (`21 992` de `22 000` bytes) |
 
 ⛔⛔ **O tecto de LOC vermelho era DESTA linha, não da soma:** o `ceu_tempo_wgsl.rs` ficou a `708`
 no commit `33546a80f` e nenhum portão de wave o apanhou (o `nextest-impacted` dessa wave não correu).
@@ -139,17 +146,17 @@ saída**, depois do `test result: ok` (handoff de wave §10.5). Leia o `test res
 
 ## §6 — Ordem, dependências e o que está ABERTO (item 6)
 
-**Ordem:** os 8 commits são lineares e cada um compila e passa sozinho; não há dependência com
+**Ordem:** os commits são lineares e cada um compila e passa sozinho; não há dependência com
 outra linha.
 
 **O report do dono que fica ABERTO e com que esta linha continua:**
 
-- ⏳⏳ *«Melhor mas ainda com delay de 1 ou 2 segundos»* (sobre a caixa nova e a cor, 01/10). O
-  medido na wave final é `~190 ms` no 1.º quadro de movimento de uma forma nova e `~160 ms` no
-  assente (só o `assa_sondas`), e `1,3–1,6 s` na **1.ª entrada no Render de cada sessão** (o pintor
-  compila). ⇒ ou o dono está a ver a entrada da sessão, ou há um custo que a sonda não reproduz
-  (a cena do dono, o perfil `smoke` em vez de `--release`, o cache do driver frio depois do corte do
-  WGSL). **A próxima wave mede no perfil e na cena dele antes de curar.**
+- ⏳ *«Melhor mas ainda com delay de 1 ou 2 segundos»* (01/10) — **curado em `36a1ea36e`, falta o
+  smoke do dono.** Na cena DELE a causa eram três compilações em fila (`~1,4 s`); hoje uma caixa nova
+  custa `440 ms` no 1.º quadro e `192 ms` no assente, e arrastar `36–42 ms`. ⚠️ **O que ainda se
+  verá:** a **1.ª entrada no Render de cada sessão** custa `~0,6 s` (`459 + 177 ms`, 13 kernels num
+  lote) — é compilação do driver, e a cura de fundo (a marcha interpretada) está medida e recusada
+  (§12.2 do handoff de wave).
 - O resto do §6 do [handoff de wave](HANDOFF_line_3DModeling_A_OCLUSAO_NO_TEMPO_2026-09-30.md):
   o nó em todo quadro, o relógio com a máquina calma, os três primeiros quadros de um gesto de
   perto, e a **pergunta de RUMO** (o campo como fonte, a malha gerada dele para o jogo) — **decisão
@@ -179,4 +186,4 @@ cor de um objecto, arrastar um objecto. O que tem de acontecer está no §6 do h
 
 Na entrada **3D Modeling (campo implícito)**, a seguir à linha de 25/09, UMA linha:
 
-> ⭐⭐⭐ **E O RENDER PASSOU A SER TEMPO REAL em 01/10 (8 commits): a oclusão guardada no MUNDO entre quadros, o zoom de perto sem perder resolução, o ruído de girar curado, e a caixa nova/cor nova sem os 5 s de compilação (a lei do dono INTERPRETADA); zero contadores, zero contrato; ⏳ *«ainda 1–2 s»* aberto** — [handoff do INTEGRADOR](docs/3DModeling/handoffs/HANDOFF_INTEGRACAO_line_3DModeling_O_RELOGIO_DO_RENDER_2026-10-01.md).
+> ⭐⭐⭐ **E O RENDER PASSOU A SER TEMPO REAL em 01/10 (9 commits): a oclusão guardada no MUNDO entre quadros, o zoom de perto sem perder resolução, o ruído de girar curado, e a caixa nova/cor nova sem os segundos de compilação (a lei do dono INTERPRETADA, os passes numa rodada só, o arrasto sem re-assar as sondas); zero contadores, zero contrato; ⚠️ o `ph2d-run.sh` deixou de vazar o cadeado da placa para o `sccache`** — [handoff do INTEGRADOR](docs/3DModeling/handoffs/HANDOFF_INTEGRACAO_line_3DModeling_O_RELOGIO_DO_RENDER_2026-10-01.md).

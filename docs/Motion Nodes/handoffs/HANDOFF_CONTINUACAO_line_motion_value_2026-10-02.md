@@ -24,6 +24,8 @@
   `2,81`. RTX: esticadas passam à frente do Vello (`0,36` · `0,40`).
 - **Item 1 — a W0/W5 como tabela única, máquina calma:** feita no app (doc 121 §9.8). A `=127` densa
   na iGPU: **`20,7 → 17,6 ms`** com a placa (era `35,2` no §9.3); o resto bate nos `60 Hz`.
+- ✅ **Smoke do dono aprovado em 02/10** — a `=127` densa (`PH2D_GPU_COOK_DEMO=127
+  PH2D_TRACO_ESTICADO_DENSO=1`, `--release`), com e sem `PH2D_FORMAS_NA_PLACA=0`.
 - O protótipo «cobertura 8 px por fio» do §9.7 **não foi reconstruído** (não estava guardado e só
   dividia a leitura); o §9.7 aponta agora para o §9.8.
 

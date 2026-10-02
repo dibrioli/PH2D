@@ -100,7 +100,7 @@ pub fn paint_tool_rail_axis(
     travels: bool,
     axis: RailAxis,
 ) {
-    let sub_font = (TypeToken::Xs.px() - 2.0).max(Spacing::Md.px());
+    let sub_font = sub_label_font_px();
     let slots = super::entry_rects(rail, rect, store.rail_button_size(), axis);
     for (slot, entry) in slots.iter().zip(rail.entries.iter()) {
         let slot_rect = slot.rect;
@@ -413,6 +413,12 @@ fn paint_sub_label(
 /// ⚠️ A banda que ele ocupa é a mesma [`LABEL_VISUAL_EXTENT_PX`] que a coluna reserva para o
 /// rodado — o mesmo número, o mesmo tipo de letra, medido do mesmo sítio. É o que faz a fila e a
 /// coluna terem chips do mesmo tamanho.
+///
+/// ⛔⛔ **A legenda é uma palavra SOLTA, não texto dentro de uma caixa com borda** (2026-10-02):
+/// medida pelo `label_budget` ela perdia o respiro de `2·Md` de uma moldura que não existe —
+/// `16` dos `36 px` — e saía `M…`, `S…`, `UN…` em toda fonte e tamanho (`9 208` cortes na
+/// varredura). A largura dela é o PASSO do chip: ele e o vão até ao vizinho, metade de cada lado.
+/// Gate: `nenhuma_legenda_da_fila_de_ferramentas_e_cortada`.
 fn paint_sub_label_above(
     text_system: &mut TextSystem,
     scene: &mut VectorScene,
@@ -424,13 +430,42 @@ fn paint_sub_label_above(
     if text.is_empty() {
         return;
     }
+    let vao = super::entry_gap_px();
     let band = Rect::new(
-        chip_rect.x,
+        chip_rect.x - vao * 0.5,
         chip_rect.y - LABEL_TO_CHIP_GAP_PX - LABEL_VISUAL_EXTENT_PX,
-        chip_rect.w,
+        chip_rect.w + vao,
         LABEL_VISUAL_EXTENT_PX,
     );
-    crate::paint::paint_text_centered(text_system, scene, text, band, font_size, color);
+    paint_caption(text_system, scene, text, band, font_size, color);
+}
+
+/// O tamanho de letra das legendas dos chips — o rail e a barra do topo lêem-no daqui.
+#[must_use]
+pub fn sub_label_font_px() -> f32 {
+    (TypeToken::Xs.px() - 2.0).max(Spacing::Md.px())
+}
+
+/// ⭐ **A legenda SOLTA de um chip, centrada na banda que é DELA** — o orçamento é a banda
+/// inteira, sem o respiro de moldura do [`crate::paint::label_budget`] (ela não tem moldura). A
+/// banda é o passo do chip, nunca mais larga: o vizinho tem a dele.
+pub fn paint_caption(
+    text_system: &mut TextSystem,
+    scene: &mut VectorScene,
+    text: &str,
+    band: Rect,
+    font_size: f32,
+    color: ph2d_vector::Color,
+) {
+    crate::paint::paint_text_centered_com_orcamento(
+        text_system,
+        scene,
+        text,
+        band,
+        band.w,
+        font_size,
+        color,
+    );
 }
 
 /// Helper — paint a short uppercase tag vertically (CCW-rotated)

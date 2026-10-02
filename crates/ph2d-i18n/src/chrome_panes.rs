@@ -91,7 +91,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.topbar.pill.model" => "MODEL",
         "chrome.topbar.pill.widget" => "WIDGET",
         "chrome.topbar.pill.grid" => "GRID",
-        "chrome.topbar.pill.settings" => "SETTINGS",
+        // ⚠️ `PREFS`, o nome do menu (*Edit ▸ Preferences…*): `SETTINGS` não cabe na coluna de
+        // 44 px em fonte nenhuma (gate `nenhuma_legenda_da_barra_do_topo_e_cortada`).
+        "chrome.topbar.pill.settings" => "PREFS",
         "chrome.hierarchy.scene_root" => "Scene Root",
         "chrome.inspector.gpu_compressed" => "GPU compressed",
         "chrome.inspector.region" => "Region",

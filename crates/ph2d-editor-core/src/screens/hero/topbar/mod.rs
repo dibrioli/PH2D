@@ -299,7 +299,7 @@ pub fn paint_top_bar(
     let clusters = fixture::topbar_clusters();
     let row_h = layout.top_bar.h;
     let mut x = layout.top_bar.x;
-    let gap = Spacing::Md.px();
+    let gap = cluster_painter::cluster_gap_px();
     // Left half now holds 7 clusters: Theme, Project (Level), Save,
     // Open, Image Tools, Physics, Audio Mixer (Project moved here 2026-05-24;
     // Audio Mixer added 2026-07-05; Physics added 2026-07-27).
@@ -480,6 +480,10 @@ pub(crate) use image_action_row::image_tool_rail_entries;
 use image_action_row::{image_action_pills, paint_image_action_row};
 
 #[cfg(test)]
+#[path = "legendas_tests.rs"]
+mod legendas_tests;
+
+#[cfg(test)]
 mod tooltip_placement_tests {
     use super::*;
 
@@ -578,6 +582,7 @@ mod tooltip_placement_tests {
                     IconGlyph::Builtin(IconId::Image),
                     ph2d_i18n::tr("chrome.topbar.image_chip"),
                     Rect::new(0.0, 0.0, 44.0, 48.0),
+                    super::cluster_painter::cluster_gap_px(),
                     0.0,
                     &mut scene,
                     &mut text,

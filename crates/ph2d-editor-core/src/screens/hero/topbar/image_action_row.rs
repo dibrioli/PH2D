@@ -141,6 +141,7 @@ pub(super) fn paint_image_action_row(
             glyph,
             label,
             col,
+            TOPBAR_INTER_CHIP_GAP,
             layout.viewport.y,
             scene,
             text_system,

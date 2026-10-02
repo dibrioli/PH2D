@@ -43,6 +43,12 @@ pub(super) const TOPBAR_RAIL_CHIP_W: f32 = 44.0; // LITERAL-PX-OK: chip column w
 /// é isso mesmo: coincidência.
 pub(super) const TOPBAR_INTER_CHIP_GAP: f32 = 2.0; // LITERAL-PX-OK: inter-chip gap (chrome-specific)
 
+/// O vão entre dois grupos da barra do topo — a disposição (`topbar::paint_top_bar`) e a banda da
+/// legenda de um chip avulso lêem-no daqui.
+pub(super) fn cluster_gap_px() -> f32 {
+    Spacing::Md.px()
+}
+
 pub(super) fn cluster_width(cluster: &fixture::TopBarCluster) -> f32 {
     use fixture::TopBarCluster;
     match cluster {
@@ -73,6 +79,7 @@ pub(super) fn paint_topbar_rail_chip(
     glyph: IconGlyph<'_>,
     label: &str,
     chip_col: Rect,
+    vao: f32,
     viewport_y: f32,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
@@ -86,9 +93,7 @@ pub(super) fn paint_topbar_rail_chip(
     // RailButtonSize preset (Small/Medium/Large) affects the topbar
     // too — they're meant to look identical.
     let chip_px = store.rail_button_size().chip_px();
-    // Label font: same formula as `paint_tool_rail` (line 232):
-    //   `(Xs.px() - 2.0).max(Md.px())` → 9 px under the default tokens.
-    let sub_font = (TypeToken::Xs.px() - 2.0).max(Spacing::Md.px());
+    let sub_font = crate::widget::sub_label_font_px();
     // ⚠️ LIDAS do rail, nunca copiadas — ver o doc de `LABEL_TO_CHIP_GAP_PX`.
     let label_band_h = crate::widget::LABEL_VISUAL_EXTENT_PX;
     let label_to_chip_gap = crate::widget::LABEL_TO_CHIP_GAP_PX;
@@ -177,7 +182,14 @@ pub(super) fn paint_topbar_rail_chip(
     );
     // --- Label band: sits directly above the chip (gap mirrors the
     // rail's `LABEL_TO_CHIP_GAP_PX`).
-    let label_rect = Rect::new(chip_col.x, stack_y, chip_col.w, label_band_h);
+    // ⭐ A banda é o PASSO da coluna: ela e o vão até ao vizinho, metade de cada lado — o mesmo
+    // desenho da fila de ferramentas (`widget::paint_caption`).
+    let label_rect = Rect::new(
+        chip_col.x - vao * 0.5,
+        stack_y,
+        chip_col.w + vao,
+        label_band_h,
+    );
     let label_clip = ph2d_vector::Rect::new(
         label_rect.x as f64,
         label_rect.y as f64,
@@ -191,12 +203,12 @@ pub(super) fn paint_topbar_rail_chip(
     // themselves (e.g. "Image Tools" → "IMG"); we hard-cap here so
     // any drift through i18n still fits.
     // Hard-cap labels at 8 chars (Enio 2026-05-25: bumped from 5 to
-    // accommodate SCRIPT / WIDGET / SETTINGS in full). Fixture labels
-    // longer than 8 must abbreviate themselves; anything beyond the
-    // chip column width also gets visually clipped by the push_clip
-    // below.
+    // accommodate SCRIPT / WIDGET in full). ⚠️ O tecto de caracteres não
+    // é o de LARGURA: `SETTINGS` (8) nunca coube nos 44 px e virou `PREFS`
+    // (2026-10-02) — quem decide é o gate `nenhuma_legenda_da_barra_do_topo_e_cortada`.
     let short: String = label.chars().take(8).collect::<String>().to_uppercase();
-    crate::paint::paint_text_centered(
+    // ⛔ Legenda SOLTA: a banda inteira é dela, sem respiro de moldura (ver `paint_caption`).
+    crate::widget::paint_caption(
         text_system,
         scene,
         &short,
@@ -313,6 +325,7 @@ pub(super) fn paint_top_bar_cluster(
                 IconGlyph::Builtin(*icon),
                 label,
                 rect,
+                cluster_gap_px(),
                 viewport_y,
                 scene,
                 text_system,
@@ -397,6 +410,7 @@ pub(super) fn paint_top_bar_cluster(
                     IconGlyph::Builtin(*icon),
                     label,
                     col,
+                    TOPBAR_INTER_CHIP_GAP,
                     viewport_y,
                     scene,
                     text_system,
@@ -437,6 +451,7 @@ pub(super) fn paint_top_bar_cluster(
                     IconGlyph::Builtin(*icon),
                     label,
                     col,
+                    TOPBAR_INTER_CHIP_GAP,
                     viewport_y,
                     scene,
                     text_system,

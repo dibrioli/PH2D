@@ -8,7 +8,9 @@ use ph2d_tokens::{TextRendering, UiFont, UiTextSize, UiTextStyle, UiWeight};
 
 /// Corre `f` uma vez por combinação de estilo (fonte × peso × tamanho) e nitidez, com o estilo
 /// publicado como o quadro o publica, e devolve o que cada corrida acusou.
-fn em_todo_estilo(mut f: impl FnMut(&mut TextSystem) -> Vec<String>) -> Vec<String> {
+pub(in crate::screens::hero) fn em_todo_estilo(
+    mut f: impl FnMut(&mut TextSystem) -> Vec<String>,
+) -> Vec<String> {
     let mut acusados = Vec::new();
     for rendering in [
         TextRendering::Default,

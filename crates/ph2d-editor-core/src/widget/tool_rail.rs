@@ -282,6 +282,13 @@ pub struct EntrySlot {
     pub rect: Rect,
 }
 
+/// **O vão entre duas entradas vizinhas** — a geometria ([`entry_rects`], [`horizontal_lines`]) e a
+/// legenda da fila (que ocupa o passo do chip) lêem-no daqui.
+#[must_use]
+pub fn entry_gap_px() -> f32 {
+    Spacing::Xs.px()
+}
+
 /// ⭐⭐ **A PORTA ÚNICA da geometria de um rail** — *onde cai cada entrada?*
 ///
 /// ⛔⛔ **Ela existe porque a resposta estava escrita TRÊS vezes**, e nada no repo ligava as
@@ -321,7 +328,7 @@ pub fn horizontal_lines(rail: &ToolRail, width: f32, size: RailButtonSize) -> us
     if width <= 0.0 {
         return 1;
     }
-    let gap = Spacing::Xs.px();
+    let gap = entry_gap_px();
     let chip_px = size.chip_px();
     let mut lines = 1usize;
     let mut along = 0.0_f32;
@@ -346,7 +353,7 @@ pub fn entry_rects(
     size: RailButtonSize,
     axis: RailAxis,
 ) -> Vec<EntrySlot> {
-    let gap = Spacing::Xs.px();
+    let gap = entry_gap_px();
     let chip_px = size.chip_px();
     // O deslocamento no eixo TRANSVERSAL: na coluna o chip afasta-se da borda esquerda para dar
     // sítio ao rótulo rodado; na fila ele desce para o rótulo caber por cima.
@@ -433,7 +440,7 @@ impl ToolRail {
     }
 
     pub fn preferred_height(&self, size: RailButtonSize) -> f32 {
-        let gap = Spacing::Xs.px();
+        let gap = entry_gap_px();
         let mut total = 0.0_f32;
         for (i, e) in self.entries.iter().enumerate() {
             if i > 0 {
@@ -486,7 +493,9 @@ impl ToolRail {
 
 #[path = "tool_rail/paint.rs"]
 mod paint;
-pub use paint::{paint_tool_rail, paint_tool_rail_axis, paint_tool_rail_t};
+pub use paint::{
+    paint_caption, paint_tool_rail, paint_tool_rail_axis, paint_tool_rail_t, sub_label_font_px,
+};
 
 #[cfg(test)]
 mod tests;

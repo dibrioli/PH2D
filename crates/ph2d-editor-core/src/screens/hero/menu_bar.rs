@@ -444,4 +444,4 @@ pub fn close_on_row_click(hero: &mut super::HeroScreen, event: WidgetEvent) {
 
 #[cfg(test)]
 #[path = "menu_bar_tests.rs"]
-mod tests;
+pub(super) mod tests;

@@ -376,10 +376,8 @@ fn a_patrulha_diz_quando_o_nome_nao_e_de_uma_forma() {
     assert_eq!(a.alvo_nome, "Hero");
     assert_eq!(a.queixa(), Some(AgentQueixa::SemForma));
     // O CONTROLO: com uma forma, a queixa some.
-    sim.world_mut().spawn((
-        Name::new("Ronda"),
-        ph2d_ecs::VecPathRef(1),
-    ));
+    sim.world_mut()
+        .spawn((Name::new("Ronda"), ph2d_ecs::VecPathRef(1)));
     sim.world_mut()
         .get_mut::<NavAgent>(agente)
         .expect("o agente")

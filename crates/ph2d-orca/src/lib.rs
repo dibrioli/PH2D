@@ -30,7 +30,7 @@ pub mod lp;
 pub mod v2;
 pub mod walls;
 
-pub use crowd::{Agent, Crowd, Params, SIDE_BIAS};
+pub use crowd::{Agent, Crowd, MAX_NEIGHBORS, Params, SIDE_BIAS};
 pub use lines::Line;
 pub use lp::Regime;
 pub use v2::V2;

@@ -1,0 +1,289 @@
+//! **O DESVIO entre agentes de ponta a ponta** (plano 30, W5) — vários agentes com um
+//! [`TopDownPlayer`] cada, pela porta do produto (`PhysicsBridge::dispatch`).
+//!
+//! A lei do ORCA tem gates próprios na folha (`ph2d-orca`: o Godot passo a passo e o banco de
+//! cenários); aqui mede-se o que só a COSTURA pode partir: a ponte vê os outros corpos, as paredes da
+//! malha do raio certo, a velocidade certa de cada um, escreve a intenção antes do mover — e o
+//! scrub devolve a mesma multidão. Cada gate tem o CONTROLO com o desvio desligado ao lado: sem ele
+//! não se sabe se é o desvio que faz passar.
+
+use ph2d_core::Vec2;
+use ph2d_ecs::{Entity, Name, SimWorld, Transform, stable_name_id};
+use ph2d_physics_ecs::{
+    BodyKind, Collider, ColliderShape, NavAgent, NavRegion, NavTarget, PhysicsBridge, RigidBody,
+    TopDownPlayer,
+};
+use ph2d_topdown::{TopDownLaw, direction::DirectionMode};
+
+const R: f32 = 0.3;
+
+fn parede(sim: &mut SimWorld, centro: (f32, f32), meio: (f32, f32)) {
+    sim.world_mut().spawn((
+        Name::new("Parede"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: meio.0,
+                half_y: meio.1,
+            },
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(centro.0, centro.1)),
+    ));
+}
+
+fn regiao(sim: &mut SimWorld) {
+    sim.world_mut().spawn((
+        Name::new("Região"),
+        NavRegion {
+            half_extents: [8.0, 6.0],
+            obstacle_layers: u8::MAX,
+        },
+        Transform::from_translation(Vec2::new(0.0, 0.0)),
+    ));
+}
+
+fn mover() -> TopDownPlayer {
+    TopDownPlayer::from_law(TopDownLaw {
+        default_controls: false,
+        direction: DirectionMode::Free,
+        ..TopDownLaw::default()
+    })
+}
+
+fn corpo() -> (RigidBody, Collider) {
+    (
+        RigidBody {
+            kind: BodyKind::Kinematic,
+        },
+        Collider {
+            shape: ColliderShape::Ball { radius: R },
+            ..Collider::default()
+        },
+    )
+}
+
+/// Um agente em `em` a ir para `alvo`, com ou sem desvio.
+fn agente(sim: &mut SimWorld, nome: &str, em: (f32, f32), alvo: NavTarget, desvio: bool) -> Entity {
+    let (rb, col) = corpo();
+    sim.world_mut()
+        .spawn((
+            Name::new(nome),
+            rb,
+            col,
+            mover(),
+            NavAgent {
+                target: alvo,
+                arrive_distance: 0.1,
+                avoidance: desvio,
+                ..NavAgent::default()
+            },
+            Transform::from_translation(Vec2::new(em.0, em.1)),
+        ))
+        .id()
+}
+
+fn pos(sim: &SimWorld, e: Entity) -> (f32, f32) {
+    let t = sim.world().get::<Transform>(e).expect("o corpo");
+    (t.translation.x, t.translation.y)
+}
+
+fn dist(a: (f32, f32), b: (f32, f32)) -> f32 {
+    ((a.0 - b.0) * (a.0 - b.0) + (a.1 - b.1) * (a.1 - b.1)).sqrt()
+}
+
+/// Corre `de..=ate` e devolve a posição de cada agente a cada tique.
+fn corre(
+    sim: &mut SimWorld,
+    bridge: &mut PhysicsBridge,
+    quem: &[Entity],
+    de: u64,
+    ate: u64,
+) -> Vec<Vec<(f32, f32)>> {
+    let mut out = Vec::new();
+    for t in de..=ate {
+        bridge.dispatch(sim, true, t);
+        out.push(quem.iter().map(|&e| pos(sim, e)).collect());
+    }
+    out
+}
+
+struct Desfecho {
+    /// O tique em que TODOS estavam a menos de `0,15 m` do alvo.
+    chegaram: Option<usize>,
+    /// A menor distância entre dois centros.
+    min_par: f32,
+}
+
+fn desfecho(corrida: &[Vec<(f32, f32)>], alvos: &[(f32, f32)]) -> Desfecho {
+    let mut d = Desfecho {
+        chegaram: None,
+        min_par: f32::INFINITY,
+    };
+    for (t, ps) in corrida.iter().enumerate() {
+        for i in 0..ps.len() {
+            for j in i + 1..ps.len() {
+                d.min_par = d.min_par.min(dist(ps[i], ps[j]));
+            }
+        }
+        if d.chegaram.is_none() && ps.iter().zip(alvos).all(|(&p, &a)| dist(p, a) < 0.15) {
+            d.chegaram = Some(t + 1);
+        }
+    }
+    d
+}
+
+/// Dois agentes frente a frente, no MESMO eixo — o empate que o Godot não desfaz.
+fn frente_a_frente(desvio: bool) -> Desfecho {
+    let mut sim = SimWorld::new();
+    regiao(&mut sim);
+    let alvos = [(4.0, 0.0), (-4.0, 0.0)];
+    let a = agente(&mut sim, "A", (-4.0, 0.0), NavTarget::Point([4.0, 0.0]), desvio);
+    let b = agente(&mut sim, "B", (4.0, 0.0), NavTarget::Point([-4.0, 0.0]), desvio);
+    let corrida = corre(&mut sim, &mut PhysicsBridge::new(), &[a, b], 1, 600);
+    desfecho(&corrida, &alvos)
+}
+
+/// ⚠️ **A folga de contacto**, em metros. O mover acelera em RAMPA e o desvio escolhe a velocidade
+/// como se ela fosse instantânea, logo podia haver invasão — e medido NÃO há: o par mais perto a
+/// `2r + 0,004` (frente a frente `+0,005`, porta `+0,004`) e o centro mais perto da parede a `r + 0,006`.
+/// `1e-3` é o arredondamento do `f32` a `~5 m`, com folga; sem o desvio a invasão é `0,06` (o CONTROLO).
+const FOLGA: f32 = 1e-3;
+
+/// ⭐⭐⭐ **Frente a frente, os dois cruzam-se e chegam** — e sem o desvio NÃO.
+#[test]
+fn frente_a_frente_os_dois_cruzam_se_e_chegam() {
+    let com = frente_a_frente(true);
+    let sem = frente_a_frente(false);
+    eprintln!(
+        "com desvio: chegaram {:?}, par mín {:.4} · sem: chegaram {:?}, par mín {:.4}",
+        com.chegaram, com.min_par, sem.chegaram, sem.min_par
+    );
+    assert!(com.chegaram.is_some(), "com desvio, não chegaram");
+    assert!(com.min_par >= 2.0 * R - FOLGA, "invadiram-se: {}", com.min_par);
+    // CONTROLO: sem o desvio, os dois corpos batem de frente e ficam.
+    assert_eq!(sem.chegaram, None, "sem desvio chegaram — a fixtura não contém o fenómeno");
+}
+
+/// Oito agentes à esquerda de uma parede com uma porta, cada um para o seu ponto à direita.
+fn a_porta(desvio: bool) -> (Desfecho, Vec<Vec<(f32, f32)>>) {
+    let mut sim = SimWorld::new();
+    regiao(&mut sim);
+    // A parede em `x = 0`, com uma porta de `1,6 m` (cabem dois corpos de `0,6`, folgados).
+    parede(&mut sim, (0.0, 3.4), (0.2, 2.6));
+    parede(&mut sim, (0.0, -3.4), (0.2, 2.6));
+    let mut quem = Vec::new();
+    let mut alvos = Vec::new();
+    for k in 0..8 {
+        let y = -2.8 + 0.8 * k as f32;
+        let x = -4.0 - 1.0 * (k % 2) as f32;
+        let alvo = (5.0, -2.8 + 0.8 * (7 - k) as f32);
+        alvos.push(alvo);
+        quem.push(agente(
+            &mut sim,
+            &format!("A{k}"),
+            (x, y),
+            NavTarget::Point([alvo.0, alvo.1]),
+            desvio,
+        ));
+    }
+    let corrida = corre(&mut sim, &mut PhysicsBridge::new(), &quem, 1, 1200);
+    (desfecho(&corrida, &alvos), corrida)
+}
+
+/// ⭐⭐⭐ **Oito pela porta: todos passam, sem se invadirem e sem entrar na parede** — o smoke `=2`.
+#[test]
+fn oito_pela_porta_passam_todos() {
+    let (com, corrida) = a_porta(true);
+    let (sem, _) = a_porta(false);
+    eprintln!(
+        "com desvio: chegaram {:?}, par mín {:.4} · sem: chegaram {:?}, par mín {:.4}",
+        com.chegaram, com.min_par, sem.chegaram, sem.min_par
+    );
+    assert!(com.chegaram.is_some(), "com desvio, nem todos passaram");
+    assert!(com.min_par >= 2.0 * R - FOLGA, "invadiram-se: {}", com.min_par);
+    // Nenhum centro a menos de `r` das paredes. ⚠️ A DISTÂNCIA ao rectângulo, nunca uma caixa
+    // alargada: a quina da área recuada é REDONDA (a 1.ª régua acusou um centro a `0,311 m` da quina
+    // — a lição da W4 a repetir-se).
+    let mut perto = f32::INFINITY;
+    for ps in &corrida {
+        for &(x, y) in ps {
+            let dx = (x.abs() - 0.2).max(0.0);
+            let dy = (0.8 - y.abs()).max(0.0);
+            perto = perto.min((dx * dx + dy * dy).sqrt());
+        }
+    }
+    eprintln!("o centro mais perto de uma parede: {perto:.4} m (r = {R})");
+    assert!(perto >= R - FOLGA, "um centro dentro da parede: {perto}");
+    // CONTROLO: sem o desvio, os corpos ATRAVESSAM-SE na porta (os movers cinemáticos não se
+    // bloqueiam uns aos outros a fundo) — é a invasão que o desvio evita.
+    assert!(sem.min_par < 2.0 * R - FOLGA, "sem desvio ninguém se invadiu: {}", sem.min_par);
+}
+
+/// ⭐⭐ **O scrub devolve a mesma MULTIDÃO** — o desvio lê a velocidade de todos, e ela vai no anel
+/// com o mover; um scrub que a esquecesse daria outra corrida.
+#[test]
+fn um_scrub_devolve_a_mesma_multidao() {
+    const MEIO: u64 = 150;
+    let mut sim = SimWorld::new();
+    regiao(&mut sim);
+    let quem: Vec<Entity> = [((-4.0, 0.0), (4.0, 0.2)), ((4.0, 0.0), (-4.0, -0.2)), ((0.0, -4.0), (0.0, 4.0)), ((0.2, 4.0), (0.0, -4.0))]
+        .iter()
+        .enumerate()
+        .map(|(k, &(de, para))| agente(&mut sim, &format!("A{k}"), de, NavTarget::Point([para.0, para.1]), true))
+        .collect();
+    let mut bridge = PhysicsBridge::new();
+    let primeira = corre(&mut sim, &mut bridge, &quem, 1, 300);
+    bridge.dispatch(&mut sim, false, MEIO);
+    let agora: Vec<(f32, f32)> = quem.iter().map(|&e| pos(&sim, e)).collect();
+    assert_eq!(agora, primeira[(MEIO - 1) as usize], "o scrub");
+    let resto = corre(&mut sim, &mut bridge, &quem, MEIO + 1, 300);
+    assert_eq!(resto, primeira[MEIO as usize..].to_vec(), "o resto da corrida");
+    // A fixtura contém o fenómeno: os quatro cruzam-se no meio (alguém chega a menos de 1 m).
+    let perto = primeira.iter().any(|ps| {
+        (0..4).any(|i| (i + 1..4).any(|j| dist(ps[i], ps[j]) < 1.0))
+    });
+    assert!(perto, "ninguém se cruzou — o desvio não correu");
+}
+
+/// ⭐⭐ **O perseguidor não se desvia do PRÓPRIO alvo** — chega a encostar no herói.
+#[test]
+fn o_perseguidor_chega_ao_heroi_que_nao_se_desvia() {
+    let mut sim = SimWorld::new();
+    regiao(&mut sim);
+    let (rb, col) = corpo();
+    let heroi = sim
+        .world_mut()
+        .spawn((Name::new("Hero"), rb, col, mover(), Transform::from_translation(Vec2::new(3.0, 0.0))))
+        .id();
+    let quem = sim
+        .world_mut()
+        .spawn((
+            Name::new("Perseguidor"),
+            corpo().0,
+            corpo().1,
+            mover(),
+            NavAgent {
+                target: NavTarget::Named(stable_name_id("Hero")),
+                arrive_distance: 2.0 * R + 0.02,
+                ..NavAgent::default()
+            },
+            Transform::from_translation(Vec2::new(-3.0, 0.0)),
+        ))
+        .id();
+    let corrida = corre(&mut sim, &mut PhysicsBridge::new(), &[quem, heroi], 1, 400);
+    let chegou = corrida
+        .iter()
+        .position(|ps| dist(ps[0], ps[1]) < 2.0 * R + 0.03)
+        .map(|t| t + 1);
+    let fim = corrida.last().expect("a corrida");
+    let encosto = dist(fim[0], fim[1]);
+    eprintln!("perseguidor chegou no tique {chegou:?}, acabou a {encosto:.4} m do herói");
+    assert!(chegou.is_some(), "não chegou ao herói");
+    // ⚠️ A régua é o ENCOSTO, MEDIDO com a mutação ao lado (a ponte sem o «ignora o alvo»): ele acaba
+    // a `2r + 0,006` a ignorar o herói e a `2r + 0,014` a desviar-se dele (chega no tique `81` contra
+    // `92`, perto demais para ser régua). A barra fica no meio.
+    assert!(encosto < 2.0 * R + 0.01, "desviou-se do próprio alvo: acabou a {encosto}");
+}

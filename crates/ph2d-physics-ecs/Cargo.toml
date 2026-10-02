@@ -55,6 +55,9 @@ ph2d-health = { path = "../ph2d-health" }
 # malha andável a partir dos colisores estáticos. A ponte corre-as DENTRO da porta dos controladores.
 ph2d-nav = { path = "../ph2d-nav" }
 ph2d-navmesh = { path = "../ph2d-navmesh" }
+# ⭐ O DESVIO entre agentes (plano 30, W5) — ORCA numa folha sem dependências, corrida DEPOIS da
+# condução e antes do mover, na mesma porta.
+ph2d-orca = { path = "../ph2d-orca" }
 # ⭐ O splitmix64 da casa (`ph2d_shake::baralha`), para o sorteio da ESQUIVA: a lei pede UM
 # sorteio por golpe, e o gerador tem de ser determinista e ir no anel com a vida.
 ph2d-shake = { path = "../ph2d-shake" }

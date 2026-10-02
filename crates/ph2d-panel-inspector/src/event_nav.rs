@@ -46,6 +46,13 @@ pub(crate) fn apply_nav_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
         push(host, bits, NavFieldEdit::Active(!a.active));
         return true;
     }
+    if let WidgetEvent::Toggled(id) = ev
+        && id == crate::ids::INSP_NAV_AVOIDANCE
+        && let Some(a) = info.agent.as_ref()
+    {
+        push(host, bits, NavFieldEdit::Avoidance(!a.avoidance));
+        return true;
+    }
 
     if let WidgetEvent::TextChanged(id) = ev {
         // ⚠️ **O texto CRU** — quem o apara é quem o lê.

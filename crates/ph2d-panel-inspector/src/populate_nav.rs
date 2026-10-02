@@ -31,13 +31,15 @@ pub(crate) const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 8] = [
 ];
 
 pub(crate) fn populate_nav(store: &mut WidgetStore) {
-    store.register(
-        ids::INSP_NAV_ACTIVE,
-        InteractiveState::Checkbox {
-            state: CheckboxState::Normal,
-            value: CheckboxValue::Checked,
-        },
-    );
+    for id in [ids::INSP_NAV_ACTIVE, ids::INSP_NAV_AVOIDANCE] {
+        store.register(
+            id,
+            InteractiveState::Checkbox {
+                state: CheckboxState::Normal,
+                value: CheckboxValue::Checked,
+            },
+        );
+    }
     // ⚠️ **As camadas e os modos são BOTÕES** — sem registo eles pintam e morrem sob o dedo.
     for id in ids::INSP_NAV_LAYERS
         .into_iter()

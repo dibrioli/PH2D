@@ -419,6 +419,22 @@ pub(crate) fn paint_nav_agent_section(
         ),
         seccao,
     );
+    cur_y = paint_check_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        (
+            crate::ids::INSP_NAV_AVOIDANCE,
+            tr("panel.inspector.nav.avoidance"),
+            a.avoidance,
+        ),
+        seccao,
+    );
     cur_y = sinais(
         scene,
         text_system,

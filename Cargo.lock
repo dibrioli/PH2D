@@ -8462,6 +8462,7 @@ dependencies = [
  "ph2d-label-fold",
  "ph2d-nav",
  "ph2d-navmesh",
+ "ph2d-orca",
  "ph2d-physics",
  "ph2d-platformer",
  "ph2d-projectile",

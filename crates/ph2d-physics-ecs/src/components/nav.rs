@@ -97,6 +97,10 @@ pub struct NavAgent {
     pub on_no_path: String,
     /// O sinal ao ficar PRESO (vazio = calado).
     pub on_stuck: String,
+    /// ⭐ **Desvia dos outros corpos que andam** (plano 30, W5): os outros agentes, o herói, os corpos
+    /// dinâmicos — sem sair da área andável. Desligado, ele vai a direito pelo caminho e os OUTROS
+    /// desviam-se dele por inteiro. ⚠️ Append-only (o postcard é posicional): é o último campo.
+    pub avoidance: bool,
 }
 
 impl Default for NavAgent {
@@ -111,6 +115,7 @@ impl Default for NavAgent {
             on_arrived: String::new(),
             on_no_path: String::new(),
             on_stuck: String::new(),
+            avoidance: true,
         }
     }
 }

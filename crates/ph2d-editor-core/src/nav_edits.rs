@@ -136,6 +136,8 @@ pub struct InspectorNavAgent {
     pub repath: f32,
     pub stuck_after: f32,
     pub active: bool,
+    /// Desvia dos outros corpos que andam (plano 30, W5).
+    pub avoidance: bool,
     pub on_arrived: String,
     pub on_no_path: String,
     pub on_stuck: String,
@@ -222,6 +224,8 @@ pub enum NavFieldEdit {
     OnArrived(String),
     OnNoPath(String),
     OnStuck(String),
+    /// (W5) Desviar dos outros — apendado.
+    Avoidance(bool),
 }
 
 #[cfg(test)]

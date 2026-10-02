@@ -73,6 +73,8 @@ const CRATES: &[&str] = &[
     "ph2d-physics-ecs",
     "ph2d-nav",
     "ph2d-navmesh",
+    // ⭐ E o DESVIO (W5): a velocidade segura vira a intenção do mover, logo a pose.
+    "ph2d-orca",
 ];
 
 /// **Os sítios que EXISTEM e não alcançam o hash** — cada um com o mecanismo.

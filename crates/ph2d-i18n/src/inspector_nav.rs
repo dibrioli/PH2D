@@ -29,6 +29,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.nav.repath_after" => "Repath At",
         "panel.inspector.nav.stuck_after" => "Stuck After",
         "panel.inspector.nav.active" => "Active",
+        "panel.inspector.nav.avoidance" => "Avoid Others",
         "panel.inspector.nav.on_arrive" => "On Arrive",
         "panel.inspector.nav.on_no_path" => "On No Path",
         "panel.inspector.nav.on_stuck" => "On Stuck",

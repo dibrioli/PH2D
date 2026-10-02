@@ -48,6 +48,7 @@ fn agente(modo: NavAlvoModo) -> InspectorNavAgent {
         repath: 1.25,
         stuck_after: 2.5,
         active: true,
+        avoidance: true,
         on_arrived: "chegou".into(),
         on_no_path: "longe".into(),
         on_stuck: "preso".into(),
@@ -114,7 +115,7 @@ fn todo_campo_das_duas_seccoes_e_pintado() {
         .chain(NOMES.iter().map(|(i, _)| *i))
         .chain(ids::INSP_NAV_LAYERS)
         .chain(ids::INSP_NAV_TARGET_MODE)
-        .chain([ids::INSP_NAV_ACTIVE]);
+        .chain([ids::INSP_NAV_ACTIVE, ids::INSP_NAV_AVOIDANCE]);
     for id in todos {
         assert!(
             pintado(&rects, id),
@@ -300,6 +301,32 @@ fn as_camadas_os_modos_e_o_interruptor_pedem_o_que_o_ecra_promete() {
         "o interruptor pede o CONTRÁRIO"
     );
     set_current_inspector_nav(None);
+}
+
+/// ⭐⭐⭐ **(W5) «Avoid Others» sob o DEDO pede o contrário do que o objecto tem** — o clique REAL no
+/// meio da caixa pintada, até ao barramento.
+///
+/// **Mutações que devem sangrar:** tirar o registo do `populate_nav` · tirar o braço do despacho ·
+/// o braço pedir o mesmo valor · trocar o id do `Active` pelo do desvio.
+#[test]
+fn clicar_em_avoid_others_pede_o_contrario() {
+    for tem in [true, false] {
+        let mut a = agente(NavAlvoModo::Objecto);
+        a.avoidance = tem;
+        let (mut h, mut st) = host(info(None, Some(a)));
+        let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+        let r = rects
+            .iter()
+            .find(|(n, _)| *n == ids::INSP_NAV_AVOIDANCE)
+            .map(|(_, r)| *r)
+            .expect("«Avoid Others» não foi pintado");
+        let evs = h.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5);
+        for ev in evs {
+            let _ = h.apply_panel_event::<InspectorPanel>(&mut st, ev);
+        }
+        assert_eq!(edicoes(&mut h), vec![E::Avoidance(!tem)], "com o desvio a {tem}");
+        set_current_inspector_nav(None);
+    }
 }
 
 /// ⭐⭐⭐ **O que se ESCREVE num nome chega ao BARRAMENTO, e com a variante DELE.**

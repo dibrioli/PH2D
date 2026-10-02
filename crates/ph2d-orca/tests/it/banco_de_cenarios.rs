@@ -174,6 +174,7 @@ fn corre(c: &Cena, side_bias: f64) -> Desfecho {
                 radius: R,
                 max_speed: VMAX,
                 avoids: true,
+                ignores: None,
             })
             .collect();
         let mut crowd = Crowd::new(agentes, params);

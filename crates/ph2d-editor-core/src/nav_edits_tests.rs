@@ -11,6 +11,7 @@ fn agente() -> InspectorNavAgent {
         repath: 0.5,
         stuck_after: 1.0,
         active: true,
+        avoidance: true,
         on_arrived: String::new(),
         on_no_path: String::new(),
         on_stuck: String::new(),

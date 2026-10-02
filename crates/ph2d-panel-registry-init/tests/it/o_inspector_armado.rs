@@ -1142,6 +1142,7 @@ fn arma_o_top20() {
             repath: 0.5,
             stuck_after: 1.0,
             active: true,
+            avoidance: true,
             on_arrived: "arrived".to_string(),
             on_no_path: "no_path".to_string(),
             on_stuck: "stuck".to_string(),

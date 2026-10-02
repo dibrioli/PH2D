@@ -23,6 +23,7 @@ fn agente(pos: V2, pref: V2) -> Agent {
         radius: 0.5,
         max_speed: 2.0,
         avoids: true,
+        ignores: None,
     }
 }
 
@@ -157,4 +158,16 @@ fn em_sequencia_cada_um_ve_a_velocidade_nova_dos_anteriores() {
     // CONTROLO: a velocidade nova do 1.º mudou, logo a régua de cima distingue as duas leituras.
     assert_ne!(v[0], base[0].vel);
     assert_ne!(v[1], Crowd::new(base, params()).velocity(1, None, DT));
+}
+
+#[test]
+fn o_alvo_ignorado_nao_desvia_ninguem() {
+    let a = agente([0.0, 0.0], [2.0, 0.0]);
+    let mut b = agente([3.0, 0.1], [-2.0, 0.0]);
+    b.avoids = false;
+    let mut a_ignora = a;
+    a_ignora.ignores = Some(1);
+    assert_eq!(Crowd::new(vec![a_ignora, b], params()).velocity(0, None, DT), [2.0, 0.0]);
+    // CONTROLO: sem o «ignora», o mesmo corpo desvia-o.
+    assert_ne!(Crowd::new(vec![a, b], params()).velocity(0, None, DT), [2.0, 0.0]);
 }

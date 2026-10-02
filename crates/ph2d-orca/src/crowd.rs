@@ -22,6 +22,9 @@ pub struct Agent {
     /// recíproco); um corpo que não desvia (o herói, um agente com o desvio desligado) é um obstáculo
     /// que ANDA — quem o encontra faz o desvio inteiro, e ele não é resolvido.
     pub avoids: bool,
+    /// O corpo (índice na fotografia) de que ele NÃO se desvia: o ALVO de um perseguidor — desviar
+    /// dele seria nunca lhe tocar.
+    pub ignores: Option<u32>,
 }
 
 /// Os números do desvio — em segundos e metros.
@@ -46,16 +49,32 @@ impl Params {
     /// - `τ = 1 s` contra corpos: o de fábrica do Godot (`agent_get_time_horizon_agents`, medido).
     /// - `τ = 1 s` contra paredes: o de fábrica do Godot é `0`, que DESLIGA as paredes; com `1 s` as seis
     ///   cenas do banco passam sem que um centro chegue à parede (`tests/it/banco_de_cenarios.rs`).
-    /// - os vizinhos ao alcance SEM PERDA, todos ([`lossless_range`]).
+    /// - os vizinhos ao alcance SEM PERDA ([`lossless_range`]), os [`MAX_NEIGHBORS`] mais perto.
     /// - [`SIDE_BIAS`].
     pub const PRODUCT: Self = Self {
         time_horizon: 1.0,
         time_horizon_walls: 1.0,
         neighbor_dist: None,
-        max_neighbors: None,
+        max_neighbors: Some(MAX_NEIGHBORS),
         side_bias: SIDE_BIAS,
     };
 }
+
+/// ⚠️ **O tecto de vizinhos é de TEMPO DE QUADRO** — medido em `--release` (`tests/it/custo.rs`,
+/// `load 2,6`), numa multidão DENSA a querer atravessar-se (o pior caso: todos se vêem):
+///
+/// | agentes | sem tecto | `6` | `10` | `16` | `40` |
+/// |---|---|---|---|---|---|
+/// | 100 | 0,21 ms | 0,059 | 0,067 | 0,075 | 0,124 |
+/// | 1 000 | **9,5 ms** (400 vizinhos cada, 57 % do quadro) | 2,41 | 2,44 | 2,56 | 3,01 |
+///
+/// O banco de cenários dá o MESMO desfecho a `6`, `10` e `16` (nenhum aperto lá tem mais de oito). A
+/// resposta numa multidão densa muda com o tecto e não tem joelho (`0,26`/`0,29`/`0,22`/`0,14 m/s` de
+/// diferença ao «sem tecto» a `10`/`16`/`24`/`40`): ali quase todos estão no regime APERTADO, onde o
+/// 3D depende de todos os semi-planos. ⇒ `10`, o do Godot — a paridade foi medida com ele. ⏳ O custo
+/// que sobra a `1 000` é a VARRIDA dos candidatos (a célula da grelha é o alcance sem perda): uma
+/// procura dos `k` mais perto por anéis de uma grelha fina tirá-lo-ia.
+pub const MAX_NEIGHBORS: usize = 10;
 
 /// ⭐ **O peso de passar pela direita**, MEDIDO no banco de cenários (em sequência; o quadro em que
 /// todos chegaram, somado sobre as seis cenas):
@@ -80,6 +99,9 @@ pub const SIDE_BIAS: f64 = 0.25;
 /// o vector `u` até ele mede `≥ (d − R)/τ − (s_a + s_b)`; o semi-plano só proíbe ao agente mudar de
 /// velocidade mais de `|u|/2` na direcção de `u`, e a mudança possível é `≤ 2·s_a`. Inactivo quando
 /// `(d − R)/τ ≥ 5·s_a + s_b` — com `s` = o maior entre a velocidade máxima e a de agora.
+///
+/// ⚠️ `s` é o da FOTOGRAFIA: em [`Crowd::solve_all`] a velocidade dos anteriores muda, mas a nova cabe
+/// sempre no disco da máxima, logo o alcance da fotografia continua a ser um majorante.
 #[must_use]
 pub fn lossless_range(a: &Agent, b: &Agent, tau: f64) -> f64 {
     a.radius + b.radius + tau * (5.0 * speed_bound(a) + speed_bound(b))
@@ -92,9 +114,13 @@ fn speed_bound(a: &Agent) -> f64 {
 /// A fotografia do tique, com a grelha da vizinhança.
 pub struct Crowd {
     agents: Vec<Agent>,
+    /// `(raio, 5·s, s)` de cada um, da fotografia — o alcance sem perda sem uma raiz por par.
+    bounds: Vec<(f64, f64, f64)>,
     params: Params,
     cell: f64,
     grid: BTreeMap<(i64, i64), Vec<u32>>,
+    /// O buffer da vizinhança (reaproveitado; nenhum estado entre consultas).
+    scratch: std::cell::RefCell<Vec<(f64, u32)>>,
 }
 
 impl Crowd {
@@ -115,11 +141,21 @@ impl Crowd {
                 grid.entry(cell_of(a.pos, cell)).or_default().push(i as u32);
             }
         }
+        let tau = params.time_horizon;
+        let bounds = agents
+            .iter()
+            .map(|a| {
+                let s = speed_bound(a);
+                (a.radius, 5.0 * s * tau, s * tau)
+            })
+            .collect();
         Self {
             agents,
+            bounds,
             params,
             cell,
             grid,
+            scratch: std::cell::RefCell::new(Vec::new()),
         }
     }
 
@@ -135,21 +171,27 @@ impl Crowd {
             return;
         }
         let me = &self.agents[i];
+        let (ri, ki, _) = self.bounds[i];
         let (cx, cy) = cell_of(me.pos, self.cell);
-        let mut found: Vec<(f64, u32)> = Vec::new();
+        let mut found = self.scratch.borrow_mut();
+        found.clear();
         for gx in cx - 1..=cx + 1 {
             for gy in cy - 1..=cy + 1 {
                 let Some(list) = self.grid.get(&(gx, gy)) else {
                     continue;
                 };
                 for &j in list {
-                    if j as usize == i {
+                    if j as usize == i || me.ignores == Some(j) {
                         continue;
                     }
                     let other = &self.agents[j as usize];
                     let range = match self.params.neighbor_dist {
                         Some(d) => d,
-                        None => lossless_range(me, other, self.params.time_horizon),
+                        // = [`lossless_range`], com os termos da fotografia.
+                        None => {
+                            let (rj, _, sj) = self.bounds[j as usize];
+                            ri + rj + ki + sj
+                        }
                     };
                     let d = abs_sq(sub(other.pos, me.pos));
                     if d < range * range {
@@ -158,11 +200,21 @@ impl Crowd {
                 }
             }
         }
-        found.sort_by(|x, y| x.0.total_cmp(&y.0).then(x.1.cmp(&y.1)));
-        if let Some(n) = self.params.max_neighbors {
-            found.truncate(n);
+        // A ordem é TOTAL (o índice desempata), logo a ordenação instável dá a mesma lista — e com um
+        // tecto, a selecção dos `n` mais perto (linear) antes de ordenar só esses.
+        let ordem = |x: &(f64, u32), y: &(f64, u32)| x.0.total_cmp(&y.0).then(x.1.cmp(&y.1));
+        if let Some(n) = self.params.max_neighbors
+            && found.len() > n
+        {
+            if n == 0 {
+                found.clear();
+            } else {
+                found.select_nth_unstable_by(n - 1, ordem);
+                found.truncate(n);
+            }
         }
-        out.extend(found.into_iter().map(|(_, j)| j));
+        found.sort_unstable_by(ordem);
+        out.extend(found.iter().map(|&(_, j)| j));
     }
 
     /// ⭐⭐ **Todos os agentes, EM SEQUÊNCIA pela ordem da fotografia** — cada um resolve com a

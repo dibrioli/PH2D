@@ -48,6 +48,8 @@ pub const INSP_NAV_REPATH: NodeId = hash_node_id("insp_nav_repath");
 pub const INSP_NAV_STUCK: NodeId = hash_node_id("insp_nav_stuck");
 /// Ligado / desligado.
 pub const INSP_NAV_ACTIVE: NodeId = hash_node_id("insp_nav_active");
+/// (W5) Desvia dos outros corpos que andam.
+pub const INSP_NAV_AVOIDANCE: NodeId = hash_node_id("insp_nav_avoidance");
 /// O sinal ao CHEGAR — vazio = calado.
 pub const INSP_NAV_ON_ARRIVED: NodeId = hash_node_id("insp_nav_on_arrived");
 /// O sinal quando não há caminho (ou só um parcial).

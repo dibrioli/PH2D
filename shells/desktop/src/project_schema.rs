@@ -340,4 +340,13 @@
 /// ⛔ **Sem degrau de migração**, pela mesma decisão — um v177 é recusado em voz alta.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
-pub(crate) const PROJECT_SCHEMA: u32 = 178;
+///
+/// # `178 → 179` — **o DESVIO entre agentes** (plano 30, W5, 2026-10-02)
+///
+/// `NavAgent` ganha `avoidance` (o último campo: desvia dos outros corpos que andam, sem sair da
+/// área andável). ⛔ **ZERO componentes registados novos** — é um CAMPO de um que já viaja, logo os
+/// três contadores NÃO se mexem. ⛔ Sem degrau de migração, pela mesma decisão: um v178 é recusado
+/// em voz alta — *o postcard é POSICIONAL*, e sem o degrau ele seria lido errado em silêncio.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
+pub(crate) const PROJECT_SCHEMA: u32 = 179;

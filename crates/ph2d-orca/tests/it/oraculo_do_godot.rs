@@ -132,6 +132,7 @@ fn vista_do_godot(c: &Cena, p: &Passo, i: usize) -> Vec<Agent> {
                 radius: c.raio,
                 max_speed: c.vmax,
                 avoids: true,
+                ignores: None,
             }
         })
         .collect()

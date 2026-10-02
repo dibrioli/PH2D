@@ -22,6 +22,15 @@
 //! o arredondamento nunca dá menos folga do que o corpo pede). Uma ASSINATURA dos obstáculos e das
 //! regiões decide quando reconstruir; reconstruir esquece o caminho de todo agente.
 //!
+//! # ⭐ O DESVIO entre corpos (plano 30, W5) é a última palavra antes do mover
+//!
+//! A condução de TODOS os agentes corre primeiro; depois [`ph2d_orca`] corrige a direcção de cada um
+//! contra os outros agentes, o herói e todo corpo sólido que anda — e contra as paredes da malha do
+//! raio dele (como ela já está recuada pelo raio do corpo, ele é um PONTO contra elas). Os agentes
+//! resolvem em sequência pela ordem das ENTIDADES: a mesma nos três sistemas e num replay. Um agente
+//! com o desvio desligado vai a direito, e os outros desviam-se dele por inteiro; ninguém se desvia
+//! do próprio ALVO (desviar dele seria nunca lhe tocar).
+//!
 //! # ⚠️ Os eventos saem por tique e só se PUBLICAM no laço da frente
 //!
 //! A condução acontece antes do passo e a publicação depois dele, na porta irmã — com
@@ -52,6 +61,9 @@ pub struct NavEvent {
 pub(super) struct NavWorld {
     /// As malhas, por `(região, raio em 1/256 m)`.
     meshes: BTreeMap<(Entity, u32), NavMesh>,
+    /// As paredes de cada malha, como o desvio as lê — derivadas dela, com a mesma chave e a mesma
+    /// vida (esquecidas quando ela é).
+    walls: BTreeMap<(Entity, u32), ph2d_orca::Walls>,
     /// A assinatura dos obstáculos e regiões com que as malhas foram construídas.
     sig: Option<u64>,
     /// ⚠️ **A memória de cada agente** — entra no anel pelo [`super::tape::ControllerMemory`].
@@ -68,6 +80,7 @@ impl Default for NavWorld {
     fn default() -> Self {
         Self {
             meshes: BTreeMap::new(),
+            walls: BTreeMap::new(),
             sig: None,
             agents: BTreeMap::new(),
             search: Polyanya::new(),
@@ -81,6 +94,7 @@ impl NavWorld {
     /// Esquece tudo o que é chaveado por `Entity` (os bits são reciclados num `rebuild`).
     pub(super) fn clear_all(&mut self) {
         self.meshes.clear();
+        self.walls.clear();
         self.sig = None;
         self.agents.clear();
         self.tick_events.clear();
@@ -98,6 +112,19 @@ struct Pedido {
     repath: f32,
     stuck: f32,
     active: bool,
+    avoidance: bool,
+}
+
+/// O que a condução pediu a um agente neste tique — a entrada do desvio.
+struct Pedida {
+    entity: Entity,
+    pos: V2,
+    dir: V2,
+    speed: f64,
+    raio: f64,
+    malha: Option<(Entity, u32)>,
+    avoidance: bool,
+    alvo: Option<Entity>,
 }
 
 /// Uma região deste tique: a entidade, o rectângulo de mundo e a máscara de camadas.
@@ -124,6 +151,7 @@ impl PhysicsBridge {
                     repath: a.repath_distance,
                     stuck: a.stuck_after_s,
                     active: a.active,
+                    avoidance: a.avoidance,
                 })
                 .collect(),
             None => Vec::new(),
@@ -139,6 +167,7 @@ impl PhysicsBridge {
         let sig = self.assinatura(&regioes);
         if self.nav.sig != Some(sig) {
             self.nav.meshes.clear();
+            self.nav.walls.clear();
             self.nav.sig = Some(sig);
             for rt in self.nav.agents.values_mut() {
                 rt.forget_path();
@@ -149,6 +178,7 @@ impl PhysicsBridge {
             return;
         }
 
+        let mut pedidas: Vec<Pedida> = Vec::with_capacity(pedidos.len());
         for p in pedidos {
             let Some(body) = self.bodies.get(&p.entity).copied() else {
                 continue;
@@ -188,10 +218,14 @@ impl PhysicsBridge {
                 let malha = self.constroi_malha(r, chave_raio as f32 / RAIO_POR_METRO);
                 self.nav.meshes.insert((r.entity, chave_raio), malha);
             }
+            let quem = match p.target {
+                NavTarget::Named(id) => self.entidade_do_alvo(sim, id),
+                _ => None,
+            };
             let alvo = match p.target {
                 NavTarget::None => None,
                 NavTarget::Point(q) => Some([f64::from(q[0]), f64::from(q[1])]),
-                NavTarget::Named(id) => self.posicao_do_alvo(sim, id),
+                NavTarget::Named(_) => quem.and_then(|e| self.posicao_de(sim, e)),
             };
             let cfg = AgentConfig {
                 arrive_distance: f64::from(p.arrive.max(0.0)),
@@ -202,14 +236,16 @@ impl PhysicsBridge {
             let NavWorld { meshes, search, .. } = &mut self.nav;
             let malha = regiao.and_then(|r| meshes.get(&(r.entity, chave_raio)));
             let steer = ph2d_nav::agent::step(&mut rt, malha, search, pos, alvo, &cfg, dt);
-            self.player_input.insert(
-                p.entity,
-                PlayerInput {
-                    drive: steer.dir[0] as f32,
-                    drive_y: steer.dir[1] as f32,
-                    ..PlayerInput::default()
-                },
-            );
+            pedidas.push(Pedida {
+                entity: p.entity,
+                pos,
+                dir: steer.dir,
+                speed: cfg.speed,
+                raio: f64::from(raio),
+                malha: regiao.map(|r| (r.entity, chave_raio)),
+                avoidance: p.avoidance,
+                alvo: quem,
+            });
             if let Some(kind) = steer.event {
                 self.nav.tick_events.push(NavEvent {
                     agent: p.entity,
@@ -218,6 +254,98 @@ impl PhysicsBridge {
             }
             self.nav.agents.insert(p.entity, rt);
         }
+        self.desvia(pedidas, dt);
+    }
+
+    /// ⭐ **O desvio** (ver o cabeçalho): da direcção que a condução pediu à intenção do mover.
+    fn desvia(&mut self, mut pedidas: Vec<Pedida>, dt: f64) {
+        // A ordem da sequência é a das ENTIDADES (a da consulta do ECS é a das tabelas).
+        pedidas.sort_by_key(|p| p.entity);
+        let mut corpos: Vec<ph2d_orca::Agent> = Vec::with_capacity(pedidas.len());
+        let mut indice: BTreeMap<Entity, u32> = BTreeMap::new();
+        for p in &pedidas {
+            indice.insert(p.entity, corpos.len() as u32);
+            corpos.push(ph2d_orca::Agent {
+                pos: p.pos,
+                vel: self.velocidade_de(p.entity),
+                pref: [p.dir[0] * p.speed, p.dir[1] * p.speed],
+                radius: p.raio,
+                max_speed: p.speed,
+                avoids: p.avoidance,
+                ignores: None,
+            });
+        }
+        // Todo corpo SÓLIDO que anda e não é agente: um obstáculo que se move, que não desvia.
+        for (&e, b) in &self.bodies {
+            if b.kind == BodyKind::Static || b.rest.is_sensor || indice.contains_key(&e) {
+                continue;
+            }
+            let Some(pose) = self.world.body_pose(b.handle) else {
+                continue;
+            };
+            let vel = self.velocidade_de(e);
+            indice.insert(e, corpos.len() as u32);
+            corpos.push(ph2d_orca::Agent {
+                pos: [f64::from(pose.translation.x), f64::from(pose.translation.y)],
+                vel,
+                pref: vel,
+                radius: f64::from(raio_que_envolve(&b.rest)),
+                max_speed: (vel[0] * vel[0] + vel[1] * vel[1]).sqrt(),
+                avoids: false,
+                ignores: None,
+            });
+        }
+        for (k, p) in pedidas.iter().enumerate() {
+            corpos[k].ignores = p.alvo.and_then(|a| indice.get(&a).copied());
+        }
+        for p in &pedidas {
+            if let Some(chave) = p.malha
+                && !self.nav.walls.contains_key(&chave)
+                && let Some(m) = self.nav.meshes.get(&chave)
+            {
+                let w = ph2d_orca::Walls::from_walkable_walls(m.verts(), m.walls());
+                self.nav.walls.insert(chave, w);
+            }
+        }
+        let paredes: Vec<Option<&ph2d_orca::Walls>> = pedidas
+            .iter()
+            .map(|p| p.malha.and_then(|k| self.nav.walls.get(&k)))
+            .collect();
+        let mut multidao = ph2d_orca::Crowd::new(corpos, ph2d_orca::Params::PRODUCT);
+        let seguras = multidao.solve_all(
+            |i| paredes.get(i).copied().flatten().map(|w| (w, 0.0)),
+            dt,
+        );
+        for (p, v) in pedidas.iter().zip(&seguras) {
+            // ⚠️ A intenção é a velocidade em FRACÇÃO da máxima: o mover em modo livre passa-a
+            // intacta (o comprimento incluído), logo um agente que trava para dar passagem anda
+            // mesmo mais devagar. Um agente sem desvio leva a direcção da condução, ao bit.
+            let dir = if p.avoidance && p.speed > 0.0 {
+                [v[0] / p.speed, v[1] / p.speed]
+            } else {
+                p.dir
+            };
+            self.player_input.insert(
+                p.entity,
+                PlayerInput {
+                    drive: dir[0] as f32,
+                    drive_y: dir[1] as f32,
+                    ..PlayerInput::default()
+                },
+            );
+        }
+    }
+
+    /// A velocidade de AGORA de um corpo: a do mover de vista de cima se ele tiver um (é a que ele
+    /// vai seguir), senão a do solver.
+    fn velocidade_de(&self, e: Entity) -> V2 {
+        if let Some(st) = self.topdown_state.get(&e) {
+            return [f64::from(st.velocity[0]), f64::from(st.velocity[1])];
+        }
+        self.bodies
+            .get(&e)
+            .and_then(|b| self.world.body_velocity(b.handle))
+            .map_or([0.0, 0.0], |v| [f64::from(v[0]), f64::from(v[1])])
     }
 
     /// **A metade de depois do passo**: os factos deste tique publicam-se só no laço da frente.
@@ -390,15 +518,19 @@ impl PhysicsBridge {
             .map(|(&(e, r), m)| (e, r as f32 / RAIO_POR_METRO, m))
     }
 
-    /// A posição do alvo com este `stable_name_id`: a do CORPO se ele tiver um (o solver é a verdade
-    /// num replay), senão a do `Transform` de mundo.
-    fn posicao_do_alvo(&self, sim: &SimWorld, nome: u64) -> Option<V2> {
+    /// Quem tem este `stable_name_id`.
+    fn entidade_do_alvo(&self, sim: &SimWorld, nome: u64) -> Option<Entity> {
         let world = sim.world();
         let mut q = world.try_query::<(Entity, &ph2d_ecs::Name)>()?;
-        let e = q
-            .iter(world)
+        q.iter(world)
             .find(|(_, n)| ph2d_ecs::stable_name_id(n.as_str()) == nome)
-            .map(|(e, _)| e)?;
+            .map(|(e, _)| e)
+    }
+
+    /// A posição de uma entidade: a do CORPO se ela tiver um (o solver é a verdade num replay),
+    /// senão a do `Transform` de mundo.
+    fn posicao_de(&self, sim: &SimWorld, e: Entity) -> Option<V2> {
+        let world = sim.world();
         if let Some(b) = self.bodies.get(&e)
             && let Some(p) = self.world.body_pose(b.handle)
         {

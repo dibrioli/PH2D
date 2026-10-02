@@ -421,6 +421,10 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   `the_cost_of_a_gated_stroke_follows_the_footprint_not_the_canvas` ([`ph2d-tool-painter`](crates/ph2d-tool-painter/),
   `mask_gate_tests` — 3/3 verde sozinho a `load ~7`, zero linhas de diff) · `the_pen_down_is_still_a_canvas_copy_and_this_is_its_number`
   (`measure_input_cost.rs`; §31.3 do diário arquivado da linha).
+  **Promovido pela integração de 2026-10-02** (a pedido da `line/motion-value`):
+  `tres_bonecos_tres_amplitudes_e_o_rapido_acende_a_lampada` ([`ph2d-app-components`](crates/ph2d-app-components/) —
+  reprovou com os bonecos parados a `load ~60`, 3/3 verde sozinho a `load 26`–`41`, zero linhas de diff; o prazo de um
+  quadro por gancho do Luau mede RELÓGIO e sob fan-out estoura).
   ⛔ **E um CONTADOR atrás de estado POR THREAD (memo, arena) também** — ele conta quantas threads o escalonador pôs a
   trabalhar: o gate da superfórmula leu `morno 0/4/8` sob fan-out e foi curado numa pool de UMA thread (13/09, ESTADO W2 §6).
 - ⛔⛔ **E há uma flake de GPU que NÃO é `#[ignore]` e só existe no LINUX do CI** (medido
@@ -484,6 +488,7 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   sub-passos × `damping` da `motion.verlet_rope`, **medida e não curada de propósito** · ⛔ a faixa de barras do
   `value.pattern` foi **revertida por veredito de produto sem mecanismo nomeado**: uma 2ª tentativa começa perguntando
   *o que ficou pior*, não reconstruindo (a árvore sobrevive em `ae35416bd`).
+  ⭐⭐⭐ **E AS FORMAS DO MOTION VÃO À PLACA (01/10, [doc 121](docs/Motion%20Nodes/121_as_formas_na_placa.md) + [handoff](docs/Motion%20Nodes/handoffs/HANDOFF_INTEGRACAO_line_motion_value_2026-10-01.md), smoke do dono aprovado):** crate nova `ph2d-shape-gpu` — um passe instanciado com a cobertura por área PORTADA do Vello, pelas rotas da CPU e do dispositivo, incluindo o traço sob escala não-uniforme (cena `=127`); no proxy de telemóvel a `=127` densa vai de `35,2` a **`18,76 ms`**, à frente do Vello; `PH2D_FORMAS_NA_PLACA=0` bissecta. ⚠️ `LOWER_COLUMNS` passa a `[_; 9]` (§2.1). ⏳ estrelas GRANDES no proxy (`2,02` contra `0,98 ms` do Vello depois das células em paralelo, doc 121 §9.7), glifos e tracejado esticado ficam no Vello.
   **Smokes:** `PH2D_GPU_COOK_DEMO=<n>` · `PH2D_SPLICE_SMOKE` · `PH2D_ADAPTER_SMOKE` · `PH2D_ATTR_SMOKE` ·
   `PH2D_PICKER_SMOKE` · `PH2D_GRADIENT_SMOKE` · `PH2D_AUTOFIX_SMOKE=1..8` · `PH2D_SHAPE_SMOKE` · `PH2D_LENS_SMOKE` ·
   `PH2D_MOTION_OBJ_SMOKE=<n>` (⚠️ o **`=9`** é o do sink — filtro, sub-UV e mídia mista; ⛔ **não** é um nível do

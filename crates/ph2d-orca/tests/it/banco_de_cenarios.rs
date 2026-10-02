@@ -55,13 +55,19 @@ fn cenas() -> Vec<Cena> {
     vec![
         Cena {
             nome: "frente",
-            agentes: vec![([50.0, 150.0], [350.0, 150.0]), ([350.0, 150.0], [50.0, 150.0])],
+            agentes: vec![
+                ([50.0, 150.0], [350.0, 150.0]),
+                ([350.0, 150.0], [50.0, 150.0]),
+            ],
             paredes: vec![],
             passagem: None,
         },
         Cena {
             nome: "frente_desviado",
-            agentes: vec![([50.0, 150.0], [350.0, 150.0]), ([350.0, 153.0], [50.0, 153.0])],
+            agentes: vec![
+                ([50.0, 150.0], [350.0, 150.0]),
+                ([350.0, 153.0], [50.0, 153.0]),
+            ],
             paredes: vec![],
             passagem: None,
         },
@@ -84,8 +90,14 @@ fn cenas() -> Vec<Cena> {
         },
         Cena {
             nome: "corredor",
-            agentes: vec![([60.0, 150.0], [340.0, 150.0]), ([340.0, 152.0], [60.0, 152.0])],
-            paredes: vec![caixa(100.0, 90.0, 300.0, 120.0), caixa(100.0, 180.0, 300.0, 210.0)],
+            agentes: vec![
+                ([60.0, 150.0], [340.0, 150.0]),
+                ([340.0, 152.0], [60.0, 152.0]),
+            ],
+            paredes: vec![
+                caixa(100.0, 90.0, 300.0, 120.0),
+                caixa(100.0, 180.0, 300.0, 210.0),
+            ],
             passagem: None,
         },
         Cena {
@@ -99,7 +111,10 @@ fn cenas() -> Vec<Cena> {
                 ([80.0, 180.0], [320.0, 175.0]),
                 ([50.0, 150.0], [345.0, 150.0]),
             ],
-            paredes: vec![caixa(190.0, 0.0, 210.0, 125.0), caixa(190.0, 175.0, 210.0, 300.0)],
+            paredes: vec![
+                caixa(190.0, 0.0, 210.0, 125.0),
+                caixa(190.0, 175.0, 210.0, 300.0),
+            ],
             passagem: Some([200.0, 150.0]),
         },
     ]
@@ -228,9 +243,23 @@ fn ninguem_se_sobrepoe_ninguem_entra_na_parede_e_todos_chegam() {
             2.0 * R,
             d.min_parede
         );
-        assert!(d.chegaram.is_some(), "{}: nem todos chegaram em {PASSOS} quadros", c.nome);
-        assert!(d.min_par >= 2.0 * R - FOLGA, "{}: sobreposição {}", c.nome, d.min_par);
-        assert!(d.min_parede >= R - FOLGA, "{}: dentro da parede {}", c.nome, d.min_parede);
+        assert!(
+            d.chegaram.is_some(),
+            "{}: nem todos chegaram em {PASSOS} quadros",
+            c.nome
+        );
+        assert!(
+            d.min_par >= 2.0 * R - FOLGA,
+            "{}: sobreposição {}",
+            c.nome,
+            d.min_par
+        );
+        assert!(
+            d.min_parede >= R - FOLGA,
+            "{}: dentro da parede {}",
+            c.nome,
+            d.min_parede
+        );
     }
 }
 
@@ -239,8 +268,15 @@ fn ninguem_se_sobrepoe_ninguem_entra_na_parede_e_todos_chegam() {
 /// régua de cima não provava que é o peso que desfaz o empate.
 #[test]
 fn sem_a_preferencia_de_lado_o_frente_a_frente_para_como_no_godot() {
-    let frente = cenas().into_iter().find(|c| c.nome == "frente").expect("a cena");
+    let frente = cenas()
+        .into_iter()
+        .find(|c| c.nome == "frente")
+        .expect("a cena");
     let d = corre(&frente, 0.0);
     assert_eq!(d.chegaram, None);
-    assert!(d.min_par >= 2.0 * R - FOLGA, "parados, mas sem se sobrepor: {}", d.min_par);
+    assert!(
+        d.min_par >= 2.0 * R - FOLGA,
+        "parados, mas sem se sobrepor: {}",
+        d.min_par
+    );
 }

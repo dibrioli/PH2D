@@ -324,7 +324,11 @@ fn clicar_em_avoid_others_pede_o_contrario() {
         for ev in evs {
             let _ = h.apply_panel_event::<InspectorPanel>(&mut st, ev);
         }
-        assert_eq!(edicoes(&mut h), vec![E::Avoidance(!tem)], "com o desvio a {tem}");
+        assert_eq!(
+            edicoes(&mut h),
+            vec![E::Avoidance(!tem)],
+            "com o desvio a {tem}"
+        );
         set_current_inspector_nav(None);
     }
 }

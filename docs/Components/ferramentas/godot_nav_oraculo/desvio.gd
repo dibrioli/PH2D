@@ -92,10 +92,10 @@ func comeca_cena():
 	var ag0 := NavigationServer2D.agent_create()
 	var nd := NavigationServer2D.agent_get_neighbor_distance(ag0)
 	var mn := NavigationServer2D.agent_get_max_neighbors(ag0)
-	var tha := NavigationServer2D.agent_get_time_horizon_agents(ag0)
+	var horizonte_agentes := NavigationServer2D.agent_get_time_horizon_agents(ag0)
 	NavigationServer2D.free_rid(ag0)
 	print("CENA %s" % c["nome"])
-	print("PARAM %.9f %.9f %.9f %d %.9f %.9f %.9f" % [R, VMAX, nd, mn, tha, c["th_o"], 1.0 / Engine.physics_ticks_per_second])
+	print("PARAM %.9f %.9f %.9f %d %.9f %.9f %.9f" % [R, VMAX, nd, mn, horizonte_agentes, c["th_o"], 1.0 / Engine.physics_ticks_per_second])
 	for o in c["obs"]:
 		var ob := NavigationServer2D.obstacle_create()
 		NavigationServer2D.obstacle_set_map(ob, map)

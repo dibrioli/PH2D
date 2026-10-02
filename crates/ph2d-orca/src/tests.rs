@@ -58,8 +58,15 @@ fn quem_nao_desvia_obriga_o_outro_a_fazer_o_desvio_inteiro() {
     b.avoids = false;
     let c = Crowd::new(vec![a, b], params());
     let inteiro = c.velocity(0, None, DT);
-    assert_eq!(c.velocity(1, None, DT), b.vel, "o corpo que não desvia não é resolvido");
-    assert!(inteiro[1] < metade[1] - 1e-3, "{inteiro:?} contra {metade:?}");
+    assert_eq!(
+        c.velocity(1, None, DT),
+        b.vel,
+        "o corpo que não desvia não é resolvido"
+    );
+    assert!(
+        inteiro[1] < metade[1] - 1e-3,
+        "{inteiro:?} contra {metade:?}"
+    );
 }
 
 #[test]
@@ -147,11 +154,17 @@ fn ao_longo_da_parede_anda_a_velocidade_inteira() {
 
 #[test]
 fn em_sequencia_cada_um_ve_a_velocidade_nova_dos_anteriores() {
-    let base = vec![agente([0.0, 0.0], [2.0, 0.0]), agente([3.0, 0.1], [-2.0, 0.0])];
+    let base = vec![
+        agente([0.0, 0.0], [2.0, 0.0]),
+        agente([3.0, 0.1], [-2.0, 0.0]),
+    ];
     let mut c = Crowd::new(base.clone(), params());
     let v = c.solve_all(|_| None, DT);
     // O 1.º resolve sobre a fotografia; o 2.º com a velocidade NOVA do 1.º.
-    assert_eq!(v[0], Crowd::new(base.clone(), params()).velocity(0, None, DT));
+    assert_eq!(
+        v[0],
+        Crowd::new(base.clone(), params()).velocity(0, None, DT)
+    );
     let mut vista = base.clone();
     vista[0].vel = v[0];
     assert_eq!(v[1], Crowd::new(vista, params()).velocity(1, None, DT));
@@ -167,9 +180,15 @@ fn o_alvo_ignorado_nao_desvia_ninguem() {
     b.avoids = false;
     let mut a_ignora = a;
     a_ignora.ignores = Some(1);
-    assert_eq!(Crowd::new(vec![a_ignora, b], params()).velocity(0, None, DT), [2.0, 0.0]);
+    assert_eq!(
+        Crowd::new(vec![a_ignora, b], params()).velocity(0, None, DT),
+        [2.0, 0.0]
+    );
     // CONTROLO: sem o «ignora», o mesmo corpo desvia-o.
-    assert_ne!(Crowd::new(vec![a, b], params()).velocity(0, None, DT), [2.0, 0.0]);
+    assert_ne!(
+        Crowd::new(vec![a, b], params()).velocity(0, None, DT),
+        [2.0, 0.0]
+    );
 }
 
 /// ⭐ **Passa pela DIREITA** — no empate exacto, o que anda para `+x` sai para `−y` (a direita dele

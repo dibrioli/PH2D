@@ -55,7 +55,11 @@ pub fn len(a: V2) -> f64 {
 #[inline]
 pub fn normalize(a: V2) -> V2 {
     let l = len(a);
-    if l > 0.0 { scale(a, 1.0 / l) } else { [0.0, 0.0] }
+    if l > 0.0 {
+        scale(a, 1.0 / l)
+    } else {
+        [0.0, 0.0]
+    }
 }
 
 /// A rotação de `+90°`: `(x, y) → (−y, x)`.

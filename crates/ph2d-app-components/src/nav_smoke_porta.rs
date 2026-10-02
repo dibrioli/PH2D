@@ -74,11 +74,7 @@ fn parede(world: &mut World, nome: &str, centro: Vec2, meio: Vec2) {
 }
 
 fn corpo(world: &mut World, nome: &str, em: [f32; 2], alvo: [f32; 2], desvio: bool) -> Entity {
-    let cor = if desvio {
-        VERMELHO_RGBA
-    } else {
-        CINZENTO_RGBA
-    };
+    let cor = if desvio { VERMELHO_RGBA } else { CINZENTO_RGBA };
     world
         .spawn((
             Name::new(nome),
@@ -136,10 +132,30 @@ pub fn montar(world: &mut World) -> Porta {
         Sprite::atlas(WHITE_TILE_KEY, [mx * 2.0, my * 2.0], CHAO_RGBA),
         Transform::from_translation(c),
     ));
-    parede(world, "Wall N", Vec2::new(cx, topo + e), Vec2::new(mx + 2.0 * e, e));
-    parede(world, "Wall S", Vec2::new(cx, chao - e), Vec2::new(mx + 2.0 * e, e));
-    parede(world, "Wall W", Vec2::new(cx - mx - e, cy), Vec2::new(e, my));
-    parede(world, "Wall E", Vec2::new(cx + mx + e, cy), Vec2::new(e, my));
+    parede(
+        world,
+        "Wall N",
+        Vec2::new(cx, topo + e),
+        Vec2::new(mx + 2.0 * e, e),
+    );
+    parede(
+        world,
+        "Wall S",
+        Vec2::new(cx, chao - e),
+        Vec2::new(mx + 2.0 * e, e),
+    );
+    parede(
+        world,
+        "Wall W",
+        Vec2::new(cx - mx - e, cy),
+        Vec2::new(e, my),
+    );
+    parede(
+        world,
+        "Wall E",
+        Vec2::new(cx + mx + e, cy),
+        Vec2::new(e, my),
+    );
     // A divisória que faz as duas faixas.
     parede(world, "Divider", c, Vec2::new(mx, e));
     // As duas faixas e a parede-com-porta de cada uma.
@@ -148,10 +164,22 @@ pub fn montar(world: &mut World) -> Porta {
     for (faixa, y0, y1) in [("top", cy + e, topo), ("bottom", chao, cy - e)] {
         let meio = (y0 + y1) * 0.5;
         let (a0, a1) = (meio - PORTA * 0.5, meio + PORTA * 0.5);
-        let (baixo_da_porta, cima_da_porta) =
-            (format!("Door Wall ({faixa}, below)"), format!("Door Wall ({faixa}, above)"));
-        parede(world, &baixo_da_porta, Vec2::new(cx, (y0 + a0) * 0.5), Vec2::new(e, (a0 - y0) * 0.5));
-        parede(world, &cima_da_porta, Vec2::new(cx, (a1 + y1) * 0.5), Vec2::new(e, (y1 - a1) * 0.5));
+        let (baixo_da_porta, cima_da_porta) = (
+            format!("Door Wall ({faixa}, below)"),
+            format!("Door Wall ({faixa}, above)"),
+        );
+        parede(
+            world,
+            &baixo_da_porta,
+            Vec2::new(cx, (y0 + a0) * 0.5),
+            Vec2::new(e, (a0 - y0) * 0.5),
+        );
+        parede(
+            world,
+            &cima_da_porta,
+            Vec2::new(cx, (a1 + y1) * 0.5),
+            Vec2::new(e, (y1 - a1) * 0.5),
+        );
     }
     world.spawn((
         Name::new("Nav Region"),

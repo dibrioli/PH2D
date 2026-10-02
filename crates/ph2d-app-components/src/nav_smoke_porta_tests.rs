@@ -28,19 +28,34 @@ fn corre(tiques: u64) -> (Faixa, Faixa) {
     assert_eq!(m.escolhido, p.vermelhos[0], "o Red 1 escolhido");
     let mut bridge = PhysicsBridge::new();
     let mut faixas = [
-        Faixa { todos: None, no_fim: 0, min_par: f32::INFINITY },
-        Faixa { todos: None, no_fim: 0, min_par: f32::INFINITY },
+        Faixa {
+            todos: None,
+            no_fim: 0,
+            min_par: f32::INFINITY,
+        },
+        Faixa {
+            todos: None,
+            no_fim: 0,
+            min_par: f32::INFINITY,
+        },
     ];
     for t in 1..=tiques {
         bridge.dispatch(&mut sim, true, t);
-        for (f, (grupo, alvos)) in faixas.iter_mut().zip([(&p.vermelhos, &p.alvos[0]), (&p.cinzentos, &p.alvos[1])]) {
+        for (f, (grupo, alvos)) in faixas
+            .iter_mut()
+            .zip([(&p.vermelhos, &p.alvos[0]), (&p.cinzentos, &p.alvos[1])])
+        {
             let ps: Vec<[f32; 2]> = grupo.iter().map(|&e| pos(&sim, e)).collect();
             for i in 0..8 {
                 for j in i + 1..8 {
                     f.min_par = f.min_par.min(dist(ps[i], ps[j]));
                 }
             }
-            let chegados = ps.iter().zip(alvos).filter(|(p, a)| dist(**p, **a) < 0.1).count();
+            let chegados = ps
+                .iter()
+                .zip(alvos)
+                .filter(|(p, a)| dist(**p, **a) < 0.1)
+                .count();
             if chegados == 8 && f.todos.is_none() {
                 f.todos = Some(t);
             }
@@ -64,7 +79,18 @@ fn a_cena_contem_o_fenomeno() {
         cima.todos, cima.no_fim, cima.min_par, baixo.todos, baixo.no_fim, baixo.min_par
     );
     assert!(cima.todos.is_some(), "nem todos os vermelhos chegaram");
-    assert!(cima.min_par >= 2.0 * RAIO - 1e-3, "vermelhos invadiram-se: {}", cima.min_par);
-    assert!(baixo.todos.is_none(), "os cinzentos passaram — o controlo não mostra nada");
-    assert!(baixo.no_fim <= 4, "os cinzentos não se entalaram: {} chegaram", baixo.no_fim);
+    assert!(
+        cima.min_par >= 2.0 * RAIO - 1e-3,
+        "vermelhos invadiram-se: {}",
+        cima.min_par
+    );
+    assert!(
+        baixo.todos.is_none(),
+        "os cinzentos passaram — o controlo não mostra nada"
+    );
+    assert!(
+        baixo.no_fim <= 4,
+        "os cinzentos não se entalaram: {} chegaram",
+        baixo.no_fim
+    );
 }

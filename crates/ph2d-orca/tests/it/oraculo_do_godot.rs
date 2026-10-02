@@ -36,7 +36,9 @@ struct Cena {
 }
 
 fn nums(t: &[&str]) -> Vec<f64> {
-    t.iter().map(|s| s.parse::<f64>().expect("número")).collect()
+    t.iter()
+        .map(|s| s.parse::<f64>().expect("número"))
+        .collect()
 }
 
 fn le() -> Vec<Cena> {
@@ -81,7 +83,12 @@ fn le() -> Vec<Cena> {
                     });
                 }
                 let p = c.passos.last_mut().expect("passo");
-                assert_eq!(p.entradas.len(), i, "agentes fora de ordem em {} q{q}", c.nome);
+                assert_eq!(
+                    p.entradas.len(),
+                    i,
+                    "agentes fora de ordem em {} q{q}",
+                    c.nome
+                );
                 p.entradas.push(([n[0], n[1]], [n[2], n[3]], [n[4], n[5]]));
                 p.saidas.push(None);
             }
@@ -93,7 +100,12 @@ fn le() -> Vec<Cena> {
                 let Some(p) = c.passos.iter_mut().rev().find(|p| p.quadro == q) else {
                     // O servidor responde aos agentes recém-criados no quadro 0, antes de qualquer
                     // entrada — e responde zero. Só esse quadro pode chegar aqui.
-                    assert_eq!((q, n.as_slice()), (0, [0.0, 0.0].as_slice()), "OUT sem IN em {}", c.nome);
+                    assert_eq!(
+                        (q, n.as_slice()),
+                        (0, [0.0, 0.0].as_slice()),
+                        "OUT sem IN em {}",
+                        c.nome
+                    );
                     continue;
                 };
                 p.saidas[i] = Some([n[0], n[1]]);
@@ -217,7 +229,15 @@ fn cada_passo_do_godot_e_re_resolvido_igual() {
     for (nome, p) in &r {
         eprintln!(
             "{nome:>16}: longe {:.6} px/s (q{} a{}) · toque {:.6} (q{} a{}) em {} · apertados {} · de {} passos",
-            p.longe.0, p.longe.1, p.longe.2, p.toque.0, p.toque.1, p.toque.2, p.n_toque, p.n_apertado, p.n
+            p.longe.0,
+            p.longe.1,
+            p.longe.2,
+            p.toque.0,
+            p.toque.1,
+            p.toque.2,
+            p.n_toque,
+            p.n_apertado,
+            p.n
         );
     }
     assert_eq!(r.len(), 6, "as seis cenas da fixtura");

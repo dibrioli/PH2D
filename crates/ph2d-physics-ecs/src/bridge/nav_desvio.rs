@@ -1,0 +1,118 @@
+//! ⭐ **O DESVIO na ponte da navegação** (plano 30, W5) — a metade do tique que vem DEPOIS da
+//! condução de todos os agentes: [`ph2d_orca`] corrige cada direcção contra os outros corpos que andam
+//! e contra as paredes da malha do raio de cada um, e só então se escreve a intenção do mover. Ver o
+//! cabeçalho de [`super`]. ⚠️ Módulo FILHO de `nav.rs` (não irmão): lê os campos privados da
+//! `NavWorld`, e saiu dele pelo tecto de LOC, nunca por fronteira de responsabilidade nova.
+
+use std::collections::BTreeMap;
+
+use ph2d_ecs::Entity;
+use ph2d_nav::V2;
+
+use super::raio_que_envolve;
+use crate::PlayerInput;
+use crate::bridge::PhysicsBridge;
+use crate::components::BodyKind;
+
+/// O que a condução pediu a um agente neste tique — a entrada do desvio.
+pub(super) struct Pedida {
+    pub(super) entity: Entity,
+    pub(super) pos: V2,
+    pub(super) dir: V2,
+    pub(super) speed: f64,
+    pub(super) raio: f64,
+    pub(super) malha: Option<(Entity, u32)>,
+    pub(super) avoidance: bool,
+    pub(super) alvo: Option<Entity>,
+}
+
+impl PhysicsBridge {
+    /// ⭐ **O desvio** (ver o cabeçalho): da direcção que a condução pediu à intenção do mover.
+    pub(super) fn desvia(&mut self, mut pedidas: Vec<Pedida>, dt: f64) {
+        // A ordem da sequência é a das ENTIDADES (a da consulta do ECS é a das tabelas).
+        pedidas.sort_by_key(|p| p.entity);
+        let mut corpos: Vec<ph2d_orca::Agent> = Vec::with_capacity(pedidas.len());
+        let mut indice: BTreeMap<Entity, u32> = BTreeMap::new();
+        for p in &pedidas {
+            indice.insert(p.entity, corpos.len() as u32);
+            corpos.push(ph2d_orca::Agent {
+                pos: p.pos,
+                vel: self.velocidade_de(p.entity),
+                pref: [p.dir[0] * p.speed, p.dir[1] * p.speed],
+                radius: p.raio,
+                max_speed: p.speed,
+                avoids: p.avoidance,
+                ignores: None,
+            });
+        }
+        // Todo corpo SÓLIDO que anda e não é agente: um obstáculo que se move, que não desvia.
+        for (&e, b) in &self.bodies {
+            if b.kind == BodyKind::Static || b.rest.is_sensor || indice.contains_key(&e) {
+                continue;
+            }
+            let Some(pose) = self.world.body_pose(b.handle) else {
+                continue;
+            };
+            let vel = self.velocidade_de(e);
+            indice.insert(e, corpos.len() as u32);
+            corpos.push(ph2d_orca::Agent {
+                pos: [f64::from(pose.translation.x), f64::from(pose.translation.y)],
+                vel,
+                pref: vel,
+                radius: f64::from(raio_que_envolve(&b.rest)),
+                max_speed: (vel[0] * vel[0] + vel[1] * vel[1]).sqrt(),
+                avoids: false,
+                ignores: None,
+            });
+        }
+        for (k, p) in pedidas.iter().enumerate() {
+            corpos[k].ignores = p.alvo.and_then(|a| indice.get(&a).copied());
+        }
+        for p in &pedidas {
+            if let Some(chave) = p.malha
+                && !self.nav.walls.contains_key(&chave)
+                && let Some(m) = self.nav.meshes.get(&chave)
+            {
+                let w = ph2d_orca::Walls::from_walkable_walls(m.verts(), m.walls());
+                self.nav.walls.insert(chave, w);
+            }
+        }
+        let paredes: Vec<Option<&ph2d_orca::Walls>> = pedidas
+            .iter()
+            .map(|p| p.malha.and_then(|k| self.nav.walls.get(&k)))
+            .collect();
+        let mut multidao = ph2d_orca::Crowd::new(corpos, ph2d_orca::Params::PRODUCT);
+        let seguras =
+            multidao.solve_all(|i| paredes.get(i).copied().flatten().map(|w| (w, 0.0)), dt);
+        for (p, v) in pedidas.iter().zip(&seguras) {
+            // ⚠️ A intenção é a velocidade em FRACÇÃO da máxima: o mover em modo livre passa-a
+            // intacta (o comprimento incluído), logo um agente que trava para dar passagem anda
+            // mesmo mais devagar. Um agente sem desvio leva a direcção da condução, ao bit.
+            let dir = if p.avoidance && p.speed > 0.0 {
+                [v[0] / p.speed, v[1] / p.speed]
+            } else {
+                p.dir
+            };
+            self.player_input.insert(
+                p.entity,
+                PlayerInput {
+                    drive: dir[0] as f32,
+                    drive_y: dir[1] as f32,
+                    ..PlayerInput::default()
+                },
+            );
+        }
+    }
+
+    /// A velocidade de AGORA de um corpo: a do mover de vista de cima se ele tiver um (é a que ele
+    /// vai seguir), senão a do solver.
+    fn velocidade_de(&self, e: Entity) -> V2 {
+        if let Some(st) = self.topdown_state.get(&e) {
+            return [f64::from(st.velocity[0]), f64::from(st.velocity[1])];
+        }
+        self.bodies
+            .get(&e)
+            .and_then(|b| self.world.body_velocity(b.handle))
+            .map_or([0.0, 0.0], |v| [f64::from(v[0]), f64::from(v[1])])
+    }
+}

@@ -39,7 +39,9 @@ fn multidao(n: usize) -> Vec<Agent> {
 fn custo_por_tique() {
     let load = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
     eprintln!("loadavg: {}", load.trim());
-    eprintln!("| agentes | ms por tique (mín de 5) | µs por agente | vizinhos médios | apertados |");
+    eprintln!(
+        "| agentes | ms por tique (mín de 5) | µs por agente | vizinhos médios | apertados |"
+    );
     for n in [10, 100, 1000] {
         let mut melhor = f64::INFINITY;
         let mut viz = 0.0;
@@ -79,7 +81,10 @@ fn o_preco_de_um_tecto_de_vizinhos() {
         let mut todos = Crowd::new(multidao(n), Params::PRODUCT);
         let base = todos.solve_all(|_| None, 1.0 / 60.0);
         for tecto in [6, 10, 16, 24, 40] {
-            let p = Params { max_neighbors: Some(tecto), ..Params::PRODUCT };
+            let p = Params {
+                max_neighbors: Some(tecto),
+                ..Params::PRODUCT
+            };
             let mut melhor = f64::INFINITY;
             let mut v = Vec::new();
             for _ in 0..5 {

@@ -265,7 +265,11 @@ impl Crowd {
             && self.params.time_horizon_walls > 0.0
         {
             let mut near = Vec::new();
-            w.near(a.pos, self.params.time_horizon_walls * a.max_speed + r, &mut near);
+            w.near(
+                a.pos,
+                self.params.time_horizon_walls * a.max_speed + r,
+                &mut near,
+            );
             wall_lines(&me, r, w, &near, self.params.time_horizon_walls, &mut lines);
         }
         let n_walls = lines.len();

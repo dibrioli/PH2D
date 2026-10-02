@@ -140,8 +140,20 @@ fn frente_a_frente(desvio: bool) -> Desfecho {
     let mut sim = SimWorld::new();
     regiao(&mut sim);
     let alvos = [(4.0, 0.0), (-4.0, 0.0)];
-    let a = agente(&mut sim, "A", (-4.0, 0.0), NavTarget::Point([4.0, 0.0]), desvio);
-    let b = agente(&mut sim, "B", (4.0, 0.0), NavTarget::Point([-4.0, 0.0]), desvio);
+    let a = agente(
+        &mut sim,
+        "A",
+        (-4.0, 0.0),
+        NavTarget::Point([4.0, 0.0]),
+        desvio,
+    );
+    let b = agente(
+        &mut sim,
+        "B",
+        (4.0, 0.0),
+        NavTarget::Point([-4.0, 0.0]),
+        desvio,
+    );
     let corrida = corre(&mut sim, &mut PhysicsBridge::new(), &[a, b], 1, 600);
     desfecho(&corrida, &alvos)
 }
@@ -162,9 +174,16 @@ fn frente_a_frente_os_dois_cruzam_se_e_chegam() {
         com.chegaram, com.min_par, sem.chegaram, sem.min_par
     );
     assert!(com.chegaram.is_some(), "com desvio, não chegaram");
-    assert!(com.min_par >= 2.0 * R - FOLGA, "invadiram-se: {}", com.min_par);
+    assert!(
+        com.min_par >= 2.0 * R - FOLGA,
+        "invadiram-se: {}",
+        com.min_par
+    );
     // CONTROLO: sem o desvio, os dois corpos batem de frente e ficam.
-    assert_eq!(sem.chegaram, None, "sem desvio chegaram — a fixtura não contém o fenómeno");
+    assert_eq!(
+        sem.chegaram, None,
+        "sem desvio chegaram — a fixtura não contém o fenómeno"
+    );
 }
 
 /// Oito agentes à esquerda de uma parede com uma porta, cada um para o seu ponto à direita.
@@ -203,7 +222,11 @@ fn oito_pela_porta_passam_todos() {
         com.chegaram, com.min_par, sem.chegaram, sem.min_par
     );
     assert!(com.chegaram.is_some(), "com desvio, nem todos passaram");
-    assert!(com.min_par >= 2.0 * R - FOLGA, "invadiram-se: {}", com.min_par);
+    assert!(
+        com.min_par >= 2.0 * R - FOLGA,
+        "invadiram-se: {}",
+        com.min_par
+    );
     // Nenhum centro a menos de `r` das paredes. ⚠️ A DISTÂNCIA ao rectângulo, nunca uma caixa
     // alargada: a quina da área recuada é REDONDA (a 1.ª régua acusou um centro a `0,311 m` da quina
     // — a lição da W4 a repetir-se).
@@ -219,7 +242,11 @@ fn oito_pela_porta_passam_todos() {
     assert!(perto >= R - FOLGA, "um centro dentro da parede: {perto}");
     // CONTROLO: sem o desvio, os corpos ATRAVESSAM-SE na porta (os movers cinemáticos não se
     // bloqueiam uns aos outros a fundo) — é a invasão que o desvio evita.
-    assert!(sem.min_par < 2.0 * R - FOLGA, "sem desvio ninguém se invadiu: {}", sem.min_par);
+    assert!(
+        sem.min_par < 2.0 * R - FOLGA,
+        "sem desvio ninguém se invadiu: {}",
+        sem.min_par
+    );
 }
 
 /// ⭐⭐ **O scrub devolve a mesma MULTIDÃO** — o desvio lê a velocidade de todos, e ela vai no anel
@@ -229,22 +256,39 @@ fn um_scrub_devolve_a_mesma_multidao() {
     const MEIO: u64 = 150;
     let mut sim = SimWorld::new();
     regiao(&mut sim);
-    let quem: Vec<Entity> = [((-4.0, 0.0), (4.0, 0.2)), ((4.0, 0.0), (-4.0, -0.2)), ((0.0, -4.0), (0.0, 4.0)), ((0.2, 4.0), (0.0, -4.0))]
-        .iter()
-        .enumerate()
-        .map(|(k, &(de, para))| agente(&mut sim, &format!("A{k}"), de, NavTarget::Point([para.0, para.1]), true))
-        .collect();
+    let quem: Vec<Entity> = [
+        ((-4.0, 0.0), (4.0, 0.2)),
+        ((4.0, 0.0), (-4.0, -0.2)),
+        ((0.0, -4.0), (0.0, 4.0)),
+        ((0.2, 4.0), (0.0, -4.0)),
+    ]
+    .iter()
+    .enumerate()
+    .map(|(k, &(de, para))| {
+        agente(
+            &mut sim,
+            &format!("A{k}"),
+            de,
+            NavTarget::Point([para.0, para.1]),
+            true,
+        )
+    })
+    .collect();
     let mut bridge = PhysicsBridge::new();
     let primeira = corre(&mut sim, &mut bridge, &quem, 1, 300);
     bridge.dispatch(&mut sim, false, MEIO);
     let agora: Vec<(f32, f32)> = quem.iter().map(|&e| pos(&sim, e)).collect();
     assert_eq!(agora, primeira[(MEIO - 1) as usize], "o scrub");
     let resto = corre(&mut sim, &mut bridge, &quem, MEIO + 1, 300);
-    assert_eq!(resto, primeira[MEIO as usize..].to_vec(), "o resto da corrida");
+    assert_eq!(
+        resto,
+        primeira[MEIO as usize..].to_vec(),
+        "o resto da corrida"
+    );
     // A fixtura contém o fenómeno: os quatro cruzam-se no meio (alguém chega a menos de 1 m).
-    let perto = primeira.iter().any(|ps| {
-        (0..4).any(|i| (i + 1..4).any(|j| dist(ps[i], ps[j]) < 1.0))
-    });
+    let perto = primeira
+        .iter()
+        .any(|ps| (0..4).any(|i| (i + 1..4).any(|j| dist(ps[i], ps[j]) < 1.0)));
     assert!(perto, "ninguém se cruzou — o desvio não correu");
 }
 
@@ -256,7 +300,13 @@ fn o_perseguidor_chega_ao_heroi_que_nao_se_desvia() {
     let (rb, col) = corpo();
     let heroi = sim
         .world_mut()
-        .spawn((Name::new("Hero"), rb, col, mover(), Transform::from_translation(Vec2::new(3.0, 0.0))))
+        .spawn((
+            Name::new("Hero"),
+            rb,
+            col,
+            mover(),
+            Transform::from_translation(Vec2::new(3.0, 0.0)),
+        ))
         .id();
     let quem = sim
         .world_mut()
@@ -285,7 +335,10 @@ fn o_perseguidor_chega_ao_heroi_que_nao_se_desvia() {
     // ⚠️ A régua é o ENCOSTO, MEDIDO com a mutação ao lado (a ponte sem o «ignora o alvo»): ele acaba
     // a `2r + 0,006` a ignorar o herói e a `2r + 0,014` a desviar-se dele (chega no tique `81` contra
     // `92`, perto demais para ser régua). A barra fica no meio.
-    assert!(encosto < 2.0 * R + 0.01, "desviou-se do próprio alvo: acabou a {encosto}");
+    assert!(
+        encosto < 2.0 * R + 0.01,
+        "desviou-se do próprio alvo: acabou a {encosto}"
+    );
 }
 
 /// ⭐⭐ **Um corpo que anda e NÃO é agente também se evita** — o herói parado no caminho de quem não o
@@ -298,11 +351,26 @@ fn um_corpo_que_nao_e_agente_tambem_se_evita() {
         let (rb, col) = corpo();
         let heroi = sim
             .world_mut()
-            .spawn((Name::new("Hero"), rb, col, mover(), Transform::from_translation(Vec2::new(0.0, 0.0))))
+            .spawn((
+                Name::new("Hero"),
+                rb,
+                col,
+                mover(),
+                Transform::from_translation(Vec2::new(0.0, 0.0)),
+            ))
             .id();
-        let quem = agente(&mut sim, "A", (-4.0, 0.0), NavTarget::Point([4.0, 0.0]), desvio);
+        let quem = agente(
+            &mut sim,
+            "A",
+            (-4.0, 0.0),
+            NavTarget::Point([4.0, 0.0]),
+            desvio,
+        );
         let c = corre(&mut sim, &mut PhysicsBridge::new(), &[quem, heroi], 1, 400);
-        let min = c.iter().map(|ps| dist(ps[0], ps[1])).fold(f32::INFINITY, f32::min);
+        let min = c
+            .iter()
+            .map(|ps| dist(ps[0], ps[1]))
+            .fold(f32::INFINITY, f32::min);
         // Quanto ele já saiu do eixo quando chega a `1,5 m` do herói — ANTES de lhe tocar.
         let antes = c
             .iter()
@@ -319,10 +387,16 @@ fn um_corpo_que_nao_e_agente_tambem_se_evita() {
     );
     assert!(com >= 2.0 * R - FOLGA, "invadiu o herói: {com}");
     assert!(chegou < 0.15, "não chegou: ficou a {chegou}");
-    assert!(com_antes > 0.05, "não contornou ANTES de tocar: {com_antes}");
+    assert!(
+        com_antes > 0.05,
+        "não contornou ANTES de tocar: {com_antes}"
+    );
     // CONTROLO: sem o desvio ele vai pelo eixo até bater (e o mover desliza à volta dele — parado,
     // o herói não é invadido nem assim).
-    assert!(sem_antes < 1e-3, "sem desvio saiu do eixo — a fixtura não contém o fenómeno: {sem_antes}");
+    assert!(
+        sem_antes < 1e-3,
+        "sem desvio saiu do eixo — a fixtura não contém o fenómeno: {sem_antes}"
+    );
 }
 
 /// ⭐⭐ **Um agente SEM desvio obriga o outro a fazer o desvio INTEIRO** — frente a frente, um com e
@@ -331,8 +405,20 @@ fn um_corpo_que_nao_e_agente_tambem_se_evita() {
 fn quem_nao_desvia_obriga_o_outro_a_desviar_por_inteiro() {
     let mut sim = SimWorld::new();
     regiao(&mut sim);
-    let a = agente(&mut sim, "A", (-4.0, 0.0), NavTarget::Point([4.0, 0.0]), true);
-    let b = agente(&mut sim, "B", (4.0, 0.05), NavTarget::Point([-4.0, 0.05]), false);
+    let a = agente(
+        &mut sim,
+        "A",
+        (-4.0, 0.0),
+        NavTarget::Point([4.0, 0.0]),
+        true,
+    );
+    let b = agente(
+        &mut sim,
+        "B",
+        (4.0, 0.05),
+        NavTarget::Point([-4.0, 0.05]),
+        false,
+    );
     let c = corre(&mut sim, &mut PhysicsBridge::new(), &[a, b], 1, 600);
     let d = desfecho(&c, &[(4.0, 0.0), (-4.0, 0.05)]);
     eprintln!("misto: chegaram {:?}, par mín {:.4}", d.chegaram, d.min_par);
@@ -355,8 +441,20 @@ fn o_desvio_nao_empurra_contra_a_parede() {
     // O chão: o topo em `y = −0,9`.
     parede(&mut sim, (0.0, -1.0), (6.0, 0.1));
     let y_a = -0.9 + R + 0.1;
-    let a = agente(&mut sim, "A", (-4.0, y_a), NavTarget::Point([4.0, y_a]), true);
-    let b = agente(&mut sim, "B", (4.0, y_a + 0.2), NavTarget::Point([-4.0, y_a + 0.2]), true);
+    let a = agente(
+        &mut sim,
+        "A",
+        (-4.0, y_a),
+        NavTarget::Point([4.0, y_a]),
+        true,
+    );
+    let b = agente(
+        &mut sim,
+        "B",
+        (4.0, y_a + 0.2),
+        NavTarget::Point([-4.0, y_a + 0.2]),
+        true,
+    );
     let c = corre(&mut sim, &mut PhysicsBridge::new(), &[a, b], 1, 600);
     let min = c
         .iter()
@@ -371,5 +469,8 @@ fn o_desvio_nao_empurra_contra_a_parede() {
     assert!(d.min_par >= 2.0 * R - FOLGA, "invadiram-se: {}", d.min_par);
     // ⚠️ MEDIDA com a mutação ao lado (as paredes da malha fora do desvio): `A` desce até `0,0060 m`
     // do chão, contra `0,0275` com elas. A barra fica entre as duas.
-    assert!(min >= 0.015, "o desvio empurrou A contra o chão: folga {min}");
+    assert!(
+        min >= 0.015,
+        "o desvio empurrou A contra o chão: folga {min}"
+    );
 }

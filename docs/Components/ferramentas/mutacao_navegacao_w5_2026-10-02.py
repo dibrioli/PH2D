@@ -20,6 +20,8 @@ G = {
 
 O = 'crates/ph2d-orca/src/'
 BR = 'crates/ph2d-physics-ecs/src/bridge/nav.rs'
+# ⚠️ O desvio saiu da `nav.rs` para o filho `nav_desvio.rs` no fecho (o tecto de LOC: 788/700).
+BD = 'crates/ph2d-physics-ecs/src/bridge/nav_desvio.rs'
 
 M = [
     ('M1 o recíproco ignorado', 'ORCA', O + 'lines.rs',
@@ -45,7 +47,7 @@ M = [
     # ⚠️ A 1.ª M10 (`verts[para]` → `verts[de]`) é EQUIVALENTE e foi trocada: com o `next`/`prev` a
     # acompanhar, ela dá as MESMAS arestas invertidas, só numeradas de outra forma (sobreviveu 0/14).
     # A mutação que vira as paredes do avesso é na PONTE, onde a malha entra no desvio.
-    ('M10 a parede da malha entra do avesso', 'ECS', BR,
+    ('M10 a parede da malha entra do avesso', 'ECS', BD,
      '                let w = ph2d_orca::Walls::from_walkable_walls(m.verts(), m.walls());',
      '                let w = ph2d_orca::Walls::from_walkable_walls(m.verts(), &m.walls().iter().map(|&(a, b)| (b, a)).collect::<Vec<_>>());'),
     ('M11 sem a preferência de lado', 'ORCA', O + 'crowd.rs',
@@ -65,21 +67,21 @@ M = [
      '            && self.params.time_horizon_walls > 0.0', '            && self.params.time_horizon_walls > 1e9'),
     ('M18 o desvio não corre', 'ECS', BR,
      '        self.desvia(pedidas, dt);\n', '        let _ = (pedidas, dt);\n'),
-    ('M19 a intenção ignora a velocidade segura', 'ECS', BR,
+    ('M19 a intenção ignora a velocidade segura', 'ECS', BD,
      '            let dir = if p.avoidance && p.speed > 0.0 {', '            let dir = if false && p.avoidance && p.speed > 0.0 {'),
-    ('M20 os corpos que não são agentes ficam de fora', 'ECS', BR,
+    ('M20 os corpos que não são agentes ficam de fora', 'ECS', BD,
      '            if b.kind == BodyKind::Static || b.rest.is_sensor || indice.contains_key(&e) {',
      '            if b.kind == BodyKind::Static || b.rest.is_sensor || indice.contains_key(&e) || true {'),
-    ('M21 a velocidade do mover é zero', 'ECS', BR,
+    ('M21 a velocidade do mover é zero', 'ECS', BD,
      '            return [f64::from(st.velocity[0]), f64::from(st.velocity[1])];',
      '            return [f64::from(st.velocity[0]) * 0.0, f64::from(st.velocity[1]) * 0.0];'),
-    ('M22 as paredes da malha não chegam ao desvio', 'ECS', BR,
-     '            |i| paredes.get(i).copied().flatten().map(|w| (w, 0.0)),',
-     '            |i| paredes.get(i).copied().flatten().map(|w| (w, 0.0)).filter(|_| false),'),
-    ('M23 a ponte não diz quem é o alvo', 'ECS', BR,
+    ('M22 as paredes da malha não chegam ao desvio', 'ECS', BD,
+     '|i| paredes.get(i).copied().flatten().map(|w| (w, 0.0)), dt);',
+     '|i| paredes.get(i).copied().flatten().map(|w| (w, 0.0)).filter(|_| false), dt);'),
+    ('M23 a ponte não diz quem é o alvo', 'ECS', BD,
      '        corpos[k].ignores = p.alvo.and_then(|a| indice.get(&a).copied());',
      '        corpos[k].ignores = p.alvo.and_then(|a| indice.get(&a).copied()).filter(|_| false);'),
-    ('M24 o desligado desvia na mesma', 'ECS', BR,
+    ('M24 o desligado desvia na mesma', 'ECS', BD,
      '                avoids: p.avoidance,', '                avoids: true || p.avoidance,'),
     ('M25 a aplicação não escreve', 'APPC', 'crates/ph2d-app-components/src/nav_inspector.rs',
      '        NavFieldEdit::Avoidance(b) => a.avoidance = *b,', '        NavFieldEdit::Avoidance(_) => {}'),

@@ -98,7 +98,14 @@ pub fn agent_line(
 ///
 /// Cada parede é a aresta `i → next(i)` de [`Walls`], com o espaço livre à DIREITA. `radius` é o do
 /// agente CONTRA estas paredes: `0` quando elas já são a fronteira recuada pelo raio dele (a malha).
-pub fn wall_lines(me: &Me, radius: f64, walls: &Walls, near: &[u32], tau_obst: f64, out: &mut Vec<Line>) {
+pub fn wall_lines(
+    me: &Me,
+    radius: f64,
+    walls: &Walls,
+    near: &[u32],
+    tau_obst: f64,
+    out: &mut Vec<Line>,
+) {
     let inv_tau = 1.0 / tau_obst;
     let r_sq = radius * radius;
     for &i in near {
@@ -158,11 +165,17 @@ pub fn wall_lines(me: &Me, radius: f64, walls: &Walls, near: &[u32], tau_obst: f
             o2 = o1;
             let leg = (d1 - r_sq).sqrt();
             left_leg = scale(
-                [rel1[0] * leg - rel1[1] * radius, rel1[0] * radius + rel1[1] * leg],
+                [
+                    rel1[0] * leg - rel1[1] * radius,
+                    rel1[0] * radius + rel1[1] * leg,
+                ],
                 1.0 / d1,
             );
             right_leg = scale(
-                [rel1[0] * leg + rel1[1] * radius, -rel1[0] * radius + rel1[1] * leg],
+                [
+                    rel1[0] * leg + rel1[1] * radius,
+                    -rel1[0] * radius + rel1[1] * leg,
+                ],
                 1.0 / d1,
             );
         } else if s > 1.0 && d_line <= r_sq {
@@ -173,18 +186,27 @@ pub fn wall_lines(me: &Me, radius: f64, walls: &Walls, near: &[u32], tau_obst: f
             o1 = o2;
             let leg = (d2 - r_sq).sqrt();
             left_leg = scale(
-                [rel2[0] * leg - rel2[1] * radius, rel2[0] * radius + rel2[1] * leg],
+                [
+                    rel2[0] * leg - rel2[1] * radius,
+                    rel2[0] * radius + rel2[1] * leg,
+                ],
                 1.0 / d2,
             );
             right_leg = scale(
-                [rel2[0] * leg + rel2[1] * radius, -rel2[0] * radius + rel2[1] * leg],
+                [
+                    rel2[0] * leg + rel2[1] * radius,
+                    -rel2[0] * radius + rel2[1] * leg,
+                ],
                 1.0 / d2,
             );
         } else {
             left_leg = if walls.convex(o1) {
                 let leg = (d1 - r_sq).sqrt();
                 scale(
-                    [rel1[0] * leg - rel1[1] * radius, rel1[0] * radius + rel1[1] * leg],
+                    [
+                        rel1[0] * leg - rel1[1] * radius,
+                        rel1[0] * radius + rel1[1] * leg,
+                    ],
                     1.0 / d1,
                 )
             } else {
@@ -194,7 +216,10 @@ pub fn wall_lines(me: &Me, radius: f64, walls: &Walls, near: &[u32], tau_obst: f
             right_leg = if walls.convex(o2) {
                 let leg = (d2 - r_sq).sqrt();
                 scale(
-                    [rel2[0] * leg + rel2[1] * radius, -rel2[0] * radius + rel2[1] * leg],
+                    [
+                        rel2[0] * leg + rel2[1] * radius,
+                        -rel2[0] * radius + rel2[1] * leg,
+                    ],
                     1.0 / d2,
                 )
             } else {

@@ -50,7 +50,8 @@ impl Walls {
         // A aresta invertida `para → de` é a entrada `k`, no ponto `para`.
         let n = walls.len();
         let mut w = Self::default();
-        let mut starting_at: std::collections::BTreeMap<u32, u32> = std::collections::BTreeMap::new();
+        let mut starting_at: std::collections::BTreeMap<u32, u32> =
+            std::collections::BTreeMap::new();
         let mut ending_at: std::collections::BTreeMap<u32, u32> = std::collections::BTreeMap::new();
         for (k, &(de, para)) in walls.iter().enumerate() {
             w.point.push(verts[para as usize]);

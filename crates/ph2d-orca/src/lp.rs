@@ -150,5 +150,12 @@ pub fn solve(lines: &[Line], n_walls: usize, max_speed: f64, pref: V2) -> (V2, R
         return (v, Regime::Dense);
     }
     let livre = lines.iter().all(|l| !violates(l, pref)) && abs_sq(pref) <= max_speed * max_speed;
-    (v, if livre { Regime::Free } else { Regime::Constrained })
+    (
+        v,
+        if livre {
+            Regime::Free
+        } else {
+            Regime::Constrained
+        },
+    )
 }

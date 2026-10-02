@@ -129,3 +129,36 @@ flake de carga **pré-existente** (3/3 verde sozinho a `load 24`). clippy `-D wa
   falta e a ordem proposta estão na conversa de 02/10 e no §5 (Bloom e tom de câmera; céu HDRI com
   reflexos; sol com sombras em cascata; texturas por projecção triplanar + mapas de normal;
   oclusão de contacto entre objetos; o chão em paridade com o traçado).
+
+## §8 — ⭐ A PRÓXIMA ONDA: a ordem APROVADA pelo dono (02/10) — «qualidade Unreal/Fortnite, em mobile»
+
+Pergunta do dono: *«o render parece rápido, mas temos a qualidade Unreal/Fortnite?»* Resposta: ainda
+não; a base (forward numa passada, mesma lei de material, sombra mole, ~1,2 ms a 1080p) é a certa.
+Ordem aprovada, **um item por vez, cada um com gate red-first, foto e smoke do dono**:
+
+1. **Brilho (Bloom) + tom de câmera.** O desenhista passa a escrever **cena-linear** (antes do
+   `vt_to_display`) num alvo `Rgba16Float` (já há fallback `Rgba8UnormSrgb` — ver
+   `gpu_alvo::formato_da_cor`); cadeia de brilho em **passes de desenho** (downsample/upsample, a
+   lei de `ph2d_bloom::BloomParams`: threshold, knee, clamp, source, saturation, tint, radius,
+   stretch/angle, operação Add/Screen, dirt) — ⛔ o brilho da casa (`ph2d-field-gpu/src/brilho.rs`)
+   é **compute + storage**, que o WebGL2 não tem: porta-se a LEI, com **paridade contra a CPU**
+   (`ph2d_field_render::brilho::campo_de_cena` / `soma_halo`). Depois o olhar (`vt_to_display`) e a
+   codificação (`ecra.wgsl`). Reabrir as fileiras **BLOOM** do painel no Render por malha
+   (`scene_panel.rs`: hoje `no_render && !malha_render_estado::ligado()`). ⚠️ O **Style**
+   (`ph2d_style::wgsl::st_apply`: rim, curvatura, zonas, saturação indirecta) entra na MESMA onda
+   ou logo a seguir: precisa da **curvatura assada por vértice** (`H·raio`, do campo, em
+   `malha_render_tri::prepara`) e reabre as fileiras STYLE. Fotos antes/depois.
+2. **Céu de verdade (HDRI)**: ambiente fotográfico pré-filtrado (irradiância em SH/cubemap pequeno +
+   radiância por rugosidade), refletido nas peças; as DUAS partes do céu (`ceu_*_sem_caixa` /
+   `_da_caixa`) continuam a porta — o HDRI dá a parte sem caixa e o sol a da caixa.
+3. **Sol direccional com sombras em cascata** (CSM, 2–4 cascatas, PCF) para cenas grandes ao ar livre.
+4. **Texturas**: projecção TRIPLANAR (as malhas do campo não têm UV) + mapas de normal/rugosidade.
+5. **Contacto entre peças** (oclusão de contacto barata) e o **chão em PARIDADE com o traçado**
+   (§5 d: alfa `19` medido contra `~60` da conta física — gate contra `ph2d_field_render::ground`).
+
+Ainda aberto do §5, sem ordem: dentes de 2–3 px na quina côncava; relógio da entrada com
+`load < 5`; GLES real; LOD; retirar o Render traçado quando o dono aprovar.
+
+Estado ao fechar a janela (02/10): HEAD `f79bf96c1`+ (este commit), árvore limpa, binário `smoke`
+compilado nesta worktree; **NÃO integrado, NÃO enviado**; o `incremental/` NÃO foi reclamado (a linha
+continua).

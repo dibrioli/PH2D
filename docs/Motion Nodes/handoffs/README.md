@@ -8,7 +8,7 @@
 > um handoff descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**66 handoffs** · **14** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
+**67 handoffs** · **14** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
 §5 aponta como o detalhe de mecanismo de uma integração).
 
 > ⚠️ **Reconciliado outra vez em 2026-09-16, e a diferença era SEIS** — as quatro fases da saída da
@@ -88,6 +88,7 @@
 | 2026-09-20 | ◆ | [HANDOFF_INTEGRACAO_line_motion_value_2026-09-20.md](HANDOFF_INTEGRACAO_line_motion_value_2026-09-20.md) | integração | **as POSIÇÕES ganham gizmo, o OSSO entra no catálogo, o CARTÃO DE LONGE** — e a crate `ph2d-panel-motion-params` é APAGADA (§2.1: remoções em seis ficheiros partilhados) |
 | 2026-09-24 | ◆ | [HANDOFF_INTEGRACAO_line_motion_value_2026-09-24.md](HANDOFF_INTEGRACAO_line_motion_value_2026-09-24.md) | integração | **os ciclos 10, 11 e 12 e a mistura em grupo** — o carimbo das IMAGENS na placa; o §2.1 lista as quatro mudanças NÃO aditivas de API |
 | 2026-10-01 | ◆ | [HANDOFF_INTEGRACAO_line_motion_value_2026-10-01.md](HANDOFF_INTEGRACAO_line_motion_value_2026-10-01.md) | integração | **AS FORMAS NA PLACA** (doc 121) — crate nova `ph2d-shape-gpu`, a cobertura do Vello portada, as rotas da CPU e do dispositivo; zero contadores partilhados; o §2.1 tem a única mudança não aditiva (`LOWER_COLUMNS` a `[_; 9]`) |
+| 2026-10-02 |   | [HANDOFF_CONTINUACAO_line_motion_value_2026-10-02.md](HANDOFF_CONTINUACAO_line_motion_value_2026-10-02.md) | continuação | **AS LISTAS DAS CÉLULAS** (doc 121 §9.8) — cada célula guarda as arestas que a cruzam, montadas por aresta em ponto fixo; a `=127` densa no proxy `20,7 → 17,6 ms`; abertos: grandes esticadas, tracejado esticado, glifos |
 
 ---
 *Índice gerado na arrumação de 2026-08-10 (DIRETRIZ §1.5.9). Handoff novo entra aqui, não na

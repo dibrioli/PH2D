@@ -505,44 +505,8 @@ pub fn dispatch(
             // (Brush UI) Publish the dock view-mode so the panel renders either
             // the Layers/Effects body or the Brush-properties body (header toggle).
             ph2d_panel_painter_layers::set_current_dock_shows_layers(painter.dock_shows_layers());
-            // (Texture preview) Publish the brush Image texture (lum + dims) for the panel's Texture
-            // preview — gated on the tool's image version so the heavy `Vec` is cloned only on change.
-            {
-                use std::sync::atomic::{AtomicU64, Ordering};
-                static LAST_TEX_IMG_VER: AtomicU64 = AtomicU64::new(u64::MAX);
-                let ver = painter.brush_texture_image_version();
-                if LAST_TEX_IMG_VER.swap(ver, Ordering::Relaxed) != ver {
-                    let img = painter
-                        .brush_texture_image()
-                        .map(|(lum, w, h)| (std::sync::Arc::new(lum.to_vec()), w, h));
-                    ph2d_panel_painter_layers::set_current_brush_texture_image(img);
-                }
-            }
-            // (Shape preview) Publish the brush Shape image (the silhouette tip) the same way — gated
-            // on the tool's shape-image version so the heavy `Vec` is cloned only on change.
-            {
-                use std::sync::atomic::{AtomicU64, Ordering};
-                static LAST_SHAPE_IMG_VER: AtomicU64 = AtomicU64::new(u64::MAX);
-                let ver = painter.brush_shape_image_version();
-                if LAST_SHAPE_IMG_VER.swap(ver, Ordering::Relaxed) != ver {
-                    let img = painter
-                        .brush_shape_image()
-                        .map(|(lum, w, h)| (std::sync::Arc::new(lum.to_vec()), w, h));
-                    ph2d_panel_painter_layers::set_current_brush_shape_image(img);
-                }
-            }
-            // (Paper preview) Publish the watercolor Paper slot image the same way — gated on its version.
-            {
-                use std::sync::atomic::{AtomicU64, Ordering};
-                static LAST_PAPER_IMG_VER: AtomicU64 = AtomicU64::new(u64::MAX);
-                let ver = painter.brush_paper_image_version();
-                if LAST_PAPER_IMG_VER.swap(ver, Ordering::Relaxed) != ver {
-                    let img = painter
-                        .brush_paper_image()
-                        .map(|(lum, w, h)| (std::sync::Arc::new(lum.to_vec()), w, h));
-                    ph2d_panel_painter_layers::set_current_brush_paper_image(img);
-                }
-            }
+            // (Previews) Grain · Shape · Paper · Flow, cada um só quando a versão muda.
+            crate::painter_bridge_previews::publica_previews(painter);
             // (Shape source linkage) If the multi-layer Shape was captured from the ACTIVE sprite, re-capture
             // it when that sprite changed (paint / opacity / visibility / undo) — keeping the per-layer
             // colours. Cheap revision compare per frame; re-captures only on a change. Before the preview

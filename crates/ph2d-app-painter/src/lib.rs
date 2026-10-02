@@ -77,6 +77,10 @@ pub mod painter_bridge_op_badges;
 /// `painter_bridge` for the HR-18 file-LOC cap.
 pub mod painter_bridge_overlays;
 pub mod painter_bridge_phases;
+/// Os previews do painel do pincel (Grain · Shape · Paper · Flow), cortados do `painter_bridge` —
+/// atrás da MESMA feature que o bloco de onde saíram (sem o painel não há a quem publicar).
+#[cfg(feature = "panel-painter-layers")]
+pub mod painter_bridge_previews;
 pub mod painter_bridge_queries;
 /// The isolated selection gizmos (ellipse / polygon / freehand), split from `painter_bridge_overlays`.
 pub mod painter_bridge_selection_gizmos;

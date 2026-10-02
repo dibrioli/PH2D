@@ -56,6 +56,9 @@ thread_local! {
     /// (`paper.kind == Image`, a tagged layer). Mirrors [`CURRENT_BRUSH_TEXTURE_IMAGE`].
     static CURRENT_BRUSH_PAPER_IMAGE: RefCell<Option<TextureImageSnapshot>> =
         const { RefCell::new(None) };
+    /// The watercolor **Flow** preview (tool-rendered, `PainterTool::edge_flow_preview`).
+    static CURRENT_BRUSH_FLOW_PREVIEW: RefCell<Option<TextureImageSnapshot>> =
+        const { RefCell::new(None) };
 
     /// The multi-layer **coloured Shape preview** `(premul RGBA, w, h)` — published when Per-Layer Color
     /// is on (the per-layer composite; only the tool has the pixels). `None` → grayscale silhouette.
@@ -480,6 +483,17 @@ pub fn set_current_brush_paper_image(image: Option<TextureImageSnapshot>) {
 /// Read the published Paper slot image (cheap `Arc` clone). `None` → the Image preview is black.
 pub(crate) fn current_brush_paper_image() -> Option<TextureImageSnapshot> {
     CURRENT_BRUSH_PAPER_IMAGE.with(|c| c.borrow().clone())
+}
+
+/// Publish the watercolor **Flow** preview `(luminance, w, h)` — the X channel of the Ragged Edge
+/// displacement, rendered by the tool (`PainterTool::edge_flow_preview`); `None` clears it.
+pub fn set_current_brush_flow_preview(image: Option<TextureImageSnapshot>) {
+    CURRENT_BRUSH_FLOW_PREVIEW.with(|c| *c.borrow_mut() = image);
+}
+
+/// Read the published Flow preview (cheap `Arc` clone). `None` → the preview row shows an empty frame.
+pub(crate) fn current_brush_flow_preview() -> Option<TextureImageSnapshot> {
+    CURRENT_BRUSH_FLOW_PREVIEW.with(|c| c.borrow().clone())
 }
 
 /// Publish the brush's **Shape** image `(luminance, w, h)` for the Shape preview. Called by the shell

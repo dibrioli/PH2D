@@ -28,8 +28,11 @@ use ph2d_panel_painter_layers::state::{PainterLayersPanelState, set_current_brus
 use ph2d_tool_painter::{PaintMedia, PainterTool};
 use ph2d_ui_testkit::MockPanelHost;
 
+/// ⚠️ `900 → 1400` de altura em 2026-10-02: o cartão Wash ganhou o Flow (o menu, a pré-visualização,
+/// o Size, o Angle e o Paper Edge) e o último widget do painel saiu dos 900 px — a varredura passou a
+/// medir MENOS tela, e o piso de população acusou-o. A cura é medir a tela inteira, não baixar o piso.
 fn viewport() -> Rect {
-    Rect::new(0.0, 0.0, 1600.0, 900.0)
+    Rect::new(0.0, 0.0, 1600.0, 1400.0)
 }
 
 fn tool_em(media: PaintMedia) -> PainterTool {

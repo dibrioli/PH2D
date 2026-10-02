@@ -1,19 +1,25 @@
 //! As linhas da **forma da borda** no cartão Wash (BUGS_painter #31): o padrão de **Flow** do Ragged
-//! Edge, o Size e o Angle dele (só com um padrão — o Classic não tem escala nem direção), e o **Paper
-//! Edge**. Irmão de `paint_watercolor.rs` pelo tecto de LOC do painel.
+//! Edge, a PRÉ-VISUALIZAÇÃO dele, o Size e o Angle (só com um padrão — o Classic não tem escala nem
+//! direção), e o **Paper Edge**. Irmão de `paint_watercolor.rs` pelo tecto de LOC do painel.
 
 use crate::card::card_row;
 use crate::paint_brush_rows::paint_dropdown_row;
 use crate::{number_field, state};
+use ph2d_editor_core::paint::resolve;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
+use ph2d_editor_core::zones::Rect;
+use ph2d_tokens::{ColorToken, Radius};
 use ph2d_tool_painter::{BrushSettings, FLOW_KINDS, FLOW_SIZE_MAX, FLOW_SIZE_MIN, TextureKind};
 
 const ANGLE_MAX: f32 = 360.0; // LITERAL-PX-OK: Flow Angle range (degrees)
 
+/// Quantas fileiras do cartão a pré-visualização ocupa (a moldura conta-a em fileiras inteiras).
+const LINHAS_DO_PREVIEW: usize = 3;
+
 /// Quantas linhas estas pintam — o `card_frame` dimensiona a moldura por este número.
 pub(crate) fn flow_row_count(brush: &BrushSettings) -> usize {
-    if classic(brush) { 2 } else { 4 }
+    LINHAS_DO_PREVIEW + if classic(brush) { 2 } else { 4 }
 }
 
 fn classic(brush: &BrushSettings) -> bool {
@@ -52,6 +58,7 @@ pub(crate) fn paint_flow_rows(
     if let Some(r) = open {
         state::set_pending_flow_kind_dd(Some((r, brush.flow_kind)));
     }
+    y = paint_flow_preview(ctx, theme, x, w, y);
     if !classic(brush) {
         y = card_row(
             ctx,
@@ -96,6 +103,50 @@ pub(crate) fn paint_flow_rows(
         number_field::FINE_STEP,
         2,
     )
+}
+
+/// **A pré-visualização do Flow** — a imagem que a ferramenta rende pela MESMA porta que desloca a
+/// borda (`PainterTool::edge_flow_preview`: o canal X do deslocamento, em cinza), centrada no espaço de
+/// [`LINHAS_DO_PREVIEW`] fileiras e no aspecto dela (um padrão `3 : 1`, a imagem do "Use as Flow" no
+/// seu). Sem nada publicado, a moldura fica vazia. Devolve o `y` seguinte.
+fn paint_flow_preview(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    let passo = ph2d_tokens::row_pitch_px();
+    let caixa_h = LINHAS_DO_PREVIEW as f32 * passo - ph2d_tokens::control_gap_px();
+    let mut rect = Rect::new(x, y, w, caixa_h);
+    if let Some((lum, iw, ih)) = state::current_brush_flow_preview() {
+        let escala = (w / iw.max(1) as f32).min(caixa_h / ih.max(1) as f32);
+        let (rw, rh) = (iw as f32 * escala, ih as f32 * escala);
+        rect = Rect::new(x + (w - rw) * 0.5, y + (caixa_h - rh) * 0.5, rw, rh);
+        let rgba: Vec<u8> = lum.iter().flat_map(|&l| [l, l, l, 255]).collect();
+        ctx.scene.draw_image_rgba(
+            &std::sync::Arc::new(rgba),
+            iw,
+            ih,
+            (
+                f64::from(rect.x),
+                f64::from(rect.y),
+                f64::from(rect.x + rect.w),
+                f64::from(rect.y + rect.h),
+            ),
+            ph2d_vector::ImageQuality::Medium,
+        );
+    }
+    ph2d_editor_core::paint::stroke_frame(
+        ctx.scene,
+        rect,
+        ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
+        1.0,
+        resolve(ColorToken::Border, theme),
+    );
+    y + LINHAS_DO_PREVIEW as f32 * passo
 }
 
 /// Drena o popover do Flow (chamado do passe dos popovers, depois do clip do corpo).

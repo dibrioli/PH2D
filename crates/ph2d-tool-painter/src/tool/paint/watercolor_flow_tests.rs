@@ -236,6 +236,79 @@ fn trocar_a_imagem_nao_herda_as_estatisticas_da_anterior() {
     );
 }
 
+/// ⭐ **O preview do Flow é o deslocamento que a borda LÊ** — pela mesma porta, ao byte: o Classic é o
+/// canal X do [`warp_offset`] na janela 1:1, um padrão é o [`Amostrador::unidade`] dele. A imagem do
+/// "Use as Flow" sai inteira, no aspecto dela.
+///
+/// **Mutação que tem de sangrar:** o preview de um padrão amostrar a textura crua
+/// (`sample_tiled_rot_wrapped` das settings do pincel) em vez da porta do motor.
+#[test]
+fn o_preview_do_flow_e_o_deslocamento_que_a_borda_le() {
+    let cinza = |u: f32| ((0.5 + 0.5 * u.clamp(-1.0, 1.0)) * 255.0 + 0.5) as u8;
+    let t = crate::tool::PainterTool::default();
+    let (lum, w, h) = t.edge_flow_preview();
+    assert_eq!((w, h), (PREVIEW_W, PREVIEW_H));
+    for (x, y) in [(0u32, 0u32), (37, 11), (150, 60)] {
+        let esperado = cinza(warp_offset(x as f32, y as f32, NoiseTile::NONE).0);
+        assert_eq!(lum[(y * w + x) as usize], esperado, "Classic em ({x}, {y})");
+    }
+    let mut t = crate::tool::PainterTool::default();
+    t.set_brush_edge_flow_kind(TextureKind::Wood.to_u8());
+    let (lum, w, _) = t.edge_flow_preview();
+    let imagens = Imagens::default();
+    let a = Amostrador::flow(t.paint.brush.edge_flow, &imagens, NoiseTile::NONE).expect("padrão");
+    let e = a.estat();
+    for (x, y) in [(3u32, 2u32), (99, 40), (180, 63)] {
+        let u = a
+            .unidade(&e, (x as f32 + 0.5) as i64, (y as f32 + 0.5) as i64)
+            .0;
+        assert_eq!(lum[(y * w + x) as usize], cinza(u), "Wood em ({x}, {y})");
+    }
+    let mut t = crate::tool::PainterTool::default();
+    t.use_layers_as(
+        crate::tool::UsoDaCamada::Fluxo,
+        vec![200; 128 * 64],
+        128,
+        64,
+    );
+    let (_, w, h) = t.edge_flow_preview();
+    assert_eq!(
+        (w, h),
+        (PREVIEW_W, PREVIEW_W / 2),
+        "a imagem 2:1 sai no aspecto dela"
+    );
+}
+
+/// A chave do preview muda com tudo o que o muda (e só com isso) — é ela que decide republicar.
+#[test]
+fn a_chave_do_preview_segue_o_flow() {
+    let mut t = crate::tool::PainterTool::default();
+    let k0 = t.edge_flow_preview_key();
+    assert_eq!(
+        k0,
+        crate::tool::PainterTool::default().edge_flow_preview_key()
+    );
+    t.set_brush_edge_flow_kind(TextureKind::Clouds.to_u8());
+    let k1 = t.edge_flow_preview_key();
+    t.set_brush_edge_flow_size(2.0);
+    let k2 = t.edge_flow_preview_key();
+    t.set_brush_edge_flow_angle(30.0);
+    let k3 = t.edge_flow_preview_key();
+    t.use_layers_as(crate::tool::UsoDaCamada::Fluxo, vec![9; 16], 4, 4);
+    let k4 = t.edge_flow_preview_key();
+    t.use_layers_as(crate::tool::UsoDaCamada::Fluxo, vec![9; 16], 4, 4);
+    let k5 = t.edge_flow_preview_key();
+    let ks = [k0, k1, k2, k3, k4, k5];
+    for i in 0..ks.len() {
+        for j in i + 1..ks.len() {
+            assert_ne!(
+                ks[i], ks[j],
+                "duas configurações do Flow com a mesma chave ({i} e {j})"
+            );
+        }
+    }
+}
+
 /// Sem Paper Edge, a janela do composite não cresce (o caminho de hoje, ao byte).
 #[test]
 fn sem_paper_edge_o_alcance_e_zero() {

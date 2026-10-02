@@ -30,6 +30,13 @@ fn aquarela(flow: TextureKind) -> PainterTool {
 
 fn painted(tool: &PainterTool) -> (MockPanelHost, PainterLayersPanelState, Vec<(NodeId, Rect)>) {
     set_current_brush(Some(tool.brush_settings()));
+    // O preview publicado como a ponte o publica — a tela tem de o pintar sem empurrar nada.
+    let (lum, w, h) = tool.edge_flow_preview();
+    ph2d_panel_painter_layers::set_current_brush_flow_preview(Some((
+        std::sync::Arc::new(lum),
+        w,
+        h,
+    )));
     let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
     let mut st = PainterLayersPanelState;
     let rects = host.paint::<PainterLayersPanel>(&mut st, Rect::new(0.0, 0.0, 1600.0, 900.0));
@@ -79,6 +86,15 @@ fn as_linhas_do_flow_aparecem_em_ordem_dentro_do_cartao() {
         assert!(
             suave.y > y + 0.5,
             "{flow:?}: o Smooth Edges ficou por cima das linhas do Flow"
+        );
+        // A pré-visualização mora entre o menu e a linha seguinte: 3 fileiras de espaço reservado.
+        let menu = rect_de(&rects, PAINTER_WATERCOLOR_FLOW_KIND).expect("Flow pintado");
+        let seguinte = rect_de(&rects, esperadas[1]).expect("a linha depois do preview");
+        let passo = ph2d_tokens::row_pitch_px();
+        assert!(
+            seguinte.y - menu.y >= 4.0 * passo - 0.5,
+            "{flow:?}: o preview do Flow não tem as 3 fileiras dele ({} px entre o menu e a linha seguinte)",
+            seguinte.y - menu.y
         );
         if flow == TextureKind::None {
             assert!(

@@ -142,7 +142,7 @@ sem graça. Tente melhorar um pouco os originais de modo que sejam interessantes
   o fundo do forge, e herdar a ameixa punha o acento ciano sobre roxo.
 - ⛔ **Um gate teve a premissa MORTA por esta ordem e foi reescrito com a morte à vista:**
   `the_dark_preset_is_godots_default` (as entradas do Godot, byte a byte) passou a
-  `o_dark_guarda_o_caracter_do_nome` (base e acento azuis, o mais escuro dos escuros com base
+  `o_dark_guarda_a_identidade_do_nome` (base e acento azuis, o mais escuro dos escuros com base
   não-preta, e os dois chegam ao app intactos).
 - ⚠️ **E uma régua lia só o VERDE:** `a_card_stands_off_its_panel` media o degrau cartão/painel no
   canal `g`, que numa base cinzenta é igual aos outros dois; com uma base tingida ele mede a matiz.

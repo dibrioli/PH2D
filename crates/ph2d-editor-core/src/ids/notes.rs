@@ -160,7 +160,7 @@ pub const INSP_NOTES: NoteIds = NoteIds {
 };
 
 /// ⭐ **O sal de um painel** — o *splitmix64* do id dele, forçado a ímpar (nunca zero ⇒ nunca as
-/// ranhuras do Inspector). Painéis diferentes dão sais diferentes salvo colisão do hash, que o gate
+/// ranhuras do Inspector). Painéis diferentes dão sementes diferentes salvo colisão do hash, que o gate
 /// `os_ids_das_notas_dos_paineis_registados_sao_distintos` mede sobre os painéis REAIS.
 const fn sal_do_painel(panel: NodeId) -> u64 {
     let mut z = panel.0.wrapping_add(0x9E37_79B9_7F4A_7C15);

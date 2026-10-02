@@ -72,7 +72,7 @@ fn the_timeline_slots_are_aliases_by_construction() {
 /// é o que o NOME promete: ele é o mais escuro dos três escuros com base não-preta, a base puxa ao
 /// azul, o acento é azul, e os dois chegam ao app intactos.
 #[test]
-fn o_dark_guarda_o_caracter_do_nome() {
+fn o_dark_guarda_a_identidade_do_nome() {
     let d = Inputs::of(Theme::Dark).expect("moderno");
     let base = d.base.color();
     let accent = d.accent.color();

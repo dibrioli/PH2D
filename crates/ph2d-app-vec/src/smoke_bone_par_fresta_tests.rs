@@ -220,6 +220,24 @@ fn na_dobra_forte_os_bicos_do_v_arredondam() {
     );
 }
 
+/// ⭐⭐⭐ **A dobra arredonda em TODA a varredura, sem saltar** — report do dono de 2026-10-02 com
+/// duas fotos a `~0,5°` uma da outra: *«a dobra está inconsistente, ora redonda ora pontuda»*.
+///
+/// ⛔ Medido: a `(36°, −131,25°)` o vão do bico existia (`0,54` texel, `17,9` texel²) e saía com
+/// `0` triângulos — a subtracção devolvia um anel com um FIO de área zero (sai por uma recta e
+/// volta por ela), e a triangulação recusa um anel assim. Os vizinhos a `0,25°` arredondavam.
+#[test]
+fn a_dobra_arredonda_em_toda_a_varredura() {
+    let mut sem_bico = Vec::new();
+    for k in 0..=16 {
+        let g2 = -128.0 - 0.25 * k as f32;
+        if acrescentados(&palco((36.0, g2))).is_empty() {
+            sem_bico.push(g2);
+        }
+    }
+    assert!(sem_bico.is_empty(), "o bico ficou em ponta a {sem_bico:?}");
+}
+
 /// ⭐⭐ **Com a PLACA a posar, um quadro com vão desenha-se pela CPU** — o enchimento nasce no
 /// espaço posado, e uma malha de repouso com ele colado desenharia o vão no sítio errado.
 #[test]
@@ -420,5 +438,37 @@ fn diag_de_onde_vem_o_risquinho() {
             x += h;
         }
         y += h;
+    }
+}
+
+/// ⏱️ **SONDA — a varredura da 2.ª junta**: por pose, os vãos do fecho (`PH2D_BONE_LOG=1` imprime
+/// cada um, com a espessura e o sítio) e os triângulos acrescentados.
+///
+/// `PH2D_BONE_LOG=1 SONDA_G1=36 SONDA_DE=-128 SONDA_ATE=-132 SONDA_PASSO=0.1 cargo test -p ph2d-app-vec --lib --profile smoke -- --ignored --nocapture diag_varre_a_segunda_junta`
+#[test]
+#[ignore = "SONDA, nao gate"]
+fn diag_varre_a_segunda_junta() {
+    let g = |k: &str, d: f32| {
+        std::env::var(k)
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(d)
+    };
+    let (g1, de, ate, passo) = (
+        g("SONDA_G1", 36.0),
+        g("SONDA_DE", -128.0),
+        g("SONDA_ATE", -132.0),
+        g("SONDA_PASSO", 0.1),
+    );
+    let n = ((ate - de) / passo).abs().round() as i32;
+    for k in 0..=n {
+        let g2 = de + (ate - de).signum() * passo * k as f32;
+        eprintln!("== pose ({g1}, {g2:.2})");
+        let p = palco((g1, g2));
+        let (sem, com) = (desenhada(&p, false, false), desenhada(&p, true, false));
+        eprintln!(
+            "   acrescentou {} triangulos",
+            com.tris.len() - sem.tris.len()
+        );
     }
 }

@@ -248,7 +248,7 @@ fn enchimento(
             avisa("um vao com um buraco dentro");
             continue;
         }
-        let anel = achata(&peca.verts);
+        let anel = limpa_o_anel(achata(&peca.verts));
         let perimetro: f64 = (0..anel.len())
             .map(|i| {
                 let (a, b) = (anel[i], anel[(i + 1) % anel.len()]);
@@ -259,15 +259,24 @@ fn enchimento(
             2.0 * ph2d_poly2d::signed_area(&anel).abs() / perimetro.max(f64::MIN_POSITIVE);
         // ⚠️ **O diagnóstico da família** (`PH2D_BONE_LOG=1`): cada vão, com a espessura em texels.
         if std::env::var_os("PH2D_BONE_LOG").is_some() {
+            #[expect(clippy::cast_precision_loss, reason = "um anel de poucos pontos")]
+            let n = anel.len() as f64;
             eprintln!(
-                "[bone] fecho da imagem: vao de {:.4} texel de espessura media",
-                espessura / texel
+                "[bone] fecho da imagem: vao de {:.4} texel de espessura media, {:.2} texel² em \
+                 ({:.3}, {:.3})",
+                espessura / texel,
+                ph2d_poly2d::signed_area(&anel).abs() / (texel * texel),
+                anel.iter().map(|p| p[0]).sum::<f64>() / n,
+                anel.iter().map(|p| p[1]).sum::<f64>() / n,
             );
         }
         if espessura < ESPESSURA_MINIMA_EM_TEXELS * texel {
             continue;
         }
         let Some(tris) = ph2d_poly2d::triangulate(&anel) else {
+            if std::env::var_os("PH2D_BONE_LOG").is_some() {
+                eprintln!("[bone] fecho da imagem: SEM triangulacao, anel {anel:?}");
+            }
             avisa("um vao sem triangulacao");
             continue;
         };
@@ -308,6 +317,34 @@ fn achata(verts: &[VecVertex]) -> Vec<[f64; 2]> {
         }
     }
     out
+}
+
+/// ⭐⭐ **O anel sem os nós de área ZERO** — repetidos, e os que ficam numa recta com os vizinhos,
+/// incluindo os que voltam por ela (um FIO que sai e regressa).
+///
+/// ⛔ Report do dono de 2026-10-02 (*«ora redonda ora pontuda»*): onde o enchimento encosta na borda,
+/// a subtracção pode devolver o vão com um fio pela aresta da malha; a triangulação recusa o anel e
+/// o bico saía em ponta naquela pose — a `(36°, −131,25°)`, com os vizinhos a `0,25°` redondos.
+/// ⚠️ A área não muda: um fio não tem largura.
+fn limpa_o_anel(mut anel: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
+    // Relativo ao comprimento dos dois lados: `1e-9` fica milhões de vezes abaixo de uma curva
+    // achatada (`1,6e-6` no anel medido) e acima do arredondamento da recta (`1e-18`).
+    const RECTA: f64 = 1e-9;
+    let mut i = 0;
+    while anel.len() > 3 && i < anel.len() {
+        let n = anel.len();
+        let (p, a, q) = (anel[(i + n - 1) % n], anel[i], anel[(i + 1) % n]);
+        let (u, v) = ([a[0] - p[0], a[1] - p[1]], [q[0] - a[0], q[1] - a[1]]);
+        let (lu, lv) = (u[0].hypot(u[1]), v[0].hypot(v[1]));
+        if lu == 0.0 || lv == 0.0 || (u[0] * v[1] - u[1] * v[0]).abs() <= RECTA * lu * lv {
+            anel.remove(i);
+            // ⚠️ Recua: tirar este nó pode pôr o anterior numa recta (o fio desfaz-se de fora para dentro).
+            i = i.saturating_sub(1);
+        } else {
+            i += 1;
+        }
+    }
+    anel
 }
 
 /// A UV do ponto da borda mais perto de `q` — a tinta da beira.

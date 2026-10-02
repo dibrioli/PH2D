@@ -182,11 +182,19 @@ pub(crate) fn origens(ppm: f32, nivel: u32) -> [[f64; 2]; 2] {
     [[cx, t / 2.0 - y0], [cx, -t / 2.0 - y1]]
 }
 
-/// A arte da imagem: a cápsula deitada, cor chapada, borda suave de um pixel.
+/// O passo da grelha de pontos da imagem, em pixels dela — `5` pontos na espessura da peça.
+const PONTO_PASSO: f64 = 20.0;
+/// O raio de cada ponto, em pixels — com o centro a `PONTO_PASSO / 2`, a borda dele fica a `6 px` da
+/// borda comprida da peça.
+const PONTO_RAIO: f64 = 4.0;
+
+/// A arte da imagem: a cápsula deitada, borda suave de um pixel, com uma GRELHA DE PONTOS.
 ///
-/// ⚠️ **Cor chapada e não listras**, ao contrário do braço da `=1`: aqui o que se compara é a
-/// SILHUETA com a do desenho, que também é chapado — *listras só de um lado seriam uma diferença que
-/// não é da deformação*.
+/// ⭐ **Os pontos são ordem do dono** (2026-10-02: *«a textura deveria ser listrada ou pontilhada
+/// para vermos melhor a deformação interna»*) — a cor chapada mostrava só a silhueta. Pontos e não
+/// listras: uma grelha mostra o esticão nos DOIS eixos. ⚠️ Eles ficam a [`PONTO_RAIO`] + `2 px` das
+/// bordas compridas, logo a tinta da BEIRA (a que o fecho da imagem estica para dentro de um vão)
+/// continua a ser a [`COR`].
 fn pixels() -> Vec<u8> {
     let (w, h) = (f64::from(IMG_W), f64::from(IMG_H));
     let raio = h / 2.0;
@@ -201,7 +209,25 @@ fn pixels() -> Vec<u8> {
                 continue;
             }
             let i = ((y * IMG_W + x) * 4) as usize;
-            px[i..i + 3].copy_from_slice(&COR);
+            // O ponto mais perto da grelha e a cobertura dele (borda suave de um pixel).
+            let centro = |c: f64| {
+                (c / PONTO_PASSO)
+                    .floor()
+                    .mul_add(PONTO_PASSO, PONTO_PASSO / 2.0)
+            };
+            let no_ponto = (PONTO_RAIO - (p[0] - centro(p[0])).hypot(p[1] - centro(p[1])) + 0.5)
+                .clamp(0.0, 1.0);
+            for k in 0..3 {
+                let mistura =
+                    f64::from(CONTORNO[k]).mul_add(no_ponto, f64::from(COR[k]) * (1.0 - no_ponto));
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss,
+                    reason = "um canal"
+                )]
+                let c = mistura.round() as u8;
+                px[i + k] = c;
+            }
             #[expect(
                 clippy::cast_possible_truncation,
                 clippy::cast_sign_loss,

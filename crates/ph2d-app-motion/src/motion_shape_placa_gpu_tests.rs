@@ -193,6 +193,28 @@ pub(crate) fn le_a_camada(gpu: &GpuContext, p: &PlacaDeFormas) -> Vec<u8> {
         .collect()
 }
 
+/// Com `PH2D_PARIDADE_DIR`, grava as duas imagens sobre branco (`<prefixo>_vello.ppm` ·
+/// `<prefixo>_placa.ppm`) — para OLHAR, não só medir.
+pub(crate) fn fotografa(prefixo: &str, vello: &[u8], placa: &[u8]) {
+    let Ok(dir) = std::env::var("PH2D_PARIDADE_DIR") else {
+        return;
+    };
+    for (rota, img) in [("vello", vello), ("placa", placa)] {
+        let mut ppm = format!("P6\n{LADO} {LADO}\n255\n").into_bytes();
+        for px in img.as_chunks::<4>().0 {
+            ppm.extend(px[..3].iter().map(|c| {
+                #[expect(clippy::cast_possible_truncation, reason = "um byte")]
+                let b = (u32::from(*c) * u32::from(px[3]) / 255 + (255 - u32::from(px[3]))) as u8;
+                b
+            }));
+        }
+        let _ = std::fs::write(
+            std::path::Path::new(&dir).join(format!("{prefixo}_{rota}.ppm")),
+            ppm,
+        );
+    }
+}
+
 /// O pior desvio de alfa, o pior de cor separada (`α ≥ 64`), e quantos pixels cada rota pinta.
 /// E, por último, quantos pixels desviam mais de `16` no alfa ou na cor — o que se VÊ.
 pub(crate) fn compara(v: &[u8], p: &[u8]) -> (u8, u8, usize, usize, usize) {
@@ -239,20 +261,7 @@ fn a_rota_da_placa_desenha_o_que_a_cena_vello_desenha() {
     let v = pelo_vello(&gpu, &insts, &store);
     let p = pela_placa(&gpu, &insts, &store);
     let (alfa, cor, nv, np, fora) = compara(&v, &p);
-    if let Ok(dir) = std::env::var("PH2D_PARIDADE_DIR") {
-        for (nome, img) in [("produto_vello", &v), ("produto_placa", &p)] {
-            let mut ppm = format!("P6\n{LADO} {LADO}\n255\n").into_bytes();
-            for px in img.as_chunks::<4>().0 {
-                ppm.extend(px[..3].iter().map(|c| {
-                    #[expect(clippy::cast_possible_truncation, reason = "um byte")]
-                    let b =
-                        (u32::from(*c) * u32::from(px[3]) / 255 + (255 - u32::from(px[3]))) as u8;
-                    b
-                }));
-            }
-            let _ = std::fs::write(std::path::Path::new(&dir).join(format!("{nome}.ppm")), ppm);
-        }
-    }
+    fotografa("produto", &v, &p);
     eprintln!(
         "  produto: alfa max {alfa} · cor max {cor} · {fora} px fora · vello {nv} px · placa {np} px"
     );
@@ -538,3 +547,6 @@ fn sonda_relogio_das_estrelas_grandes() {
         insts.len()
     );
 }
+
+#[path = "motion_shape_placa_gpu_letras_tests.rs"]
+mod letras;

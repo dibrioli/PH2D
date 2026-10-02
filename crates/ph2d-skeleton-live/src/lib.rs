@@ -67,6 +67,8 @@ pub mod skin_desenho;
 pub mod skin_image;
 /// ⭐ **PRENDER uma IMAGEM** — irmão do `skin_live` pelo tecto de LOC, cortado por assunto.
 pub mod skin_image_bind;
+/// ⭐⭐⭐ **O FECHO da imagem presa** — a lei da silhueta da pele na 2.ª mídia (2026-10-02).
+pub mod skin_image_fecho;
 /// ⭐⭐⭐ **A malha no formato que a PLACA posa** (F9 W2) — irmão do [`skin_image`] por
 /// responsabilidade e pelo tecto de LOC. Ver o cabeçalho dele.
 pub mod skin_image_gpu;

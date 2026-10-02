@@ -349,7 +349,13 @@ fn as_duas_midias_vivas_chegam_pela_porta_corrigida() {
         recook.contains("correcoes_resolvidas()"),
         "a gaveta deixou de ler as correcções à mão — a arte presa desenharia sem as manchas"
     );
-    let imagem = include_str!("skin_image.rs");
+    // ⚠️ **A escolha de quem posa mudou-se para a porta do FECHO** (2026-10-02): o quadro pede a
+    // malha à `malha_desenhada`, e é ela que nomeia os dois construtores.
+    assert!(
+        include_str!("skin_image.rs").contains("skin_image_fecho::malha_desenhada("),
+        "o quadro da imagem deixou de pedir a malha à porta do fecho"
+    );
+    let imagem = include_str!("skin_image_fecho.rs");
     for agulha in ["posed_sprite_mesh_corrigida", "sprite_mesh_para_a_placa"] {
         assert!(
             imagem.contains(agulha),

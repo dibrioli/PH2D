@@ -114,3 +114,18 @@ flake de carga **pré-existente** (3/3 verde sozinho a `load 24`). clippy `-D wa
 2. Clique em **MODEL**, depois em **Shading**, depois em **Render**.
 3. Deve acontecer: a cena aparece com luz e sombra de jogo; girar a vista é fluido, sem borrar nem granulado; mover uma peça move de verdade.
 4. Deu errado se: borra ao girar, engasga, ou demora mais de ~1 s a entrar no Render. Peça cortada/espelhada que não mexe deve mostrar uma frase explicando a trava.
+
+## §7 — Reports do dono depois do 1.º smoke (02/10)
+
+- ✅ **Smoke OK** (foto do dono: cena 37, sombra pousada visível debaixo do nó roxo).
+- ⛔→✅ **Dezenas de avisos «In Render you move whole objects…» empilhados** (`14a6e3d81`): o
+  `notice` não repete a última frase mas é LIMPO a cada quadro em que a peça coze; a trava dizia a
+  frase por quadro. Cura `malha_render_estado::anuncia` (só fala quando a seleção travada muda).
+  Gate `a_locked_selection_is_announced_once_not_every_frame` (5 → 1).
+- ⛔→✅ **Edições no Matcap não apareciam ao voltar ao Render** (`3795879e0`): sair apaga o estado e
+  a geração recomeçava em `1`, igual à já subida no desenhista GLOBAL ⇒ malhas velhas. Cura
+  `GERACOES` atómico do processo. Gate `leaving_and_coming_back_never_reuses_a_generation`.
+- ❓ **«Temos a qualidade Unreal/Fortnite?»** — resposta dada ao dono: ainda NÃO; a lista do que
+  falta e a ordem proposta estão na conversa de 02/10 e no §5 (Bloom e tom de câmera; céu HDRI com
+  reflexos; sol com sombras em cascata; texturas por projecção triplanar + mapas de normal;
+  oclusão de contacto entre objetos; o chão em paridade com o traçado).

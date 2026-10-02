@@ -79,7 +79,13 @@ fn palco((g1, g2): (f32, f32)) -> Palco {
     }
 }
 
-fn desenhada(p: &Palco, contacto: bool, placa: bool) -> SpriteMesh {
+/// A malha desenhada pela porta do produto — `costura` liga a costura (os anéis da borda).
+fn desenhada(p: &Palco, costura: bool, placa: bool) -> SpriteMesh {
+    let aneis = if costura {
+        ph2d_skeleton_live::skin_image_fecho::aneis_da_borda(&p.mesh.tris)
+    } else {
+        Vec::new()
+    };
     ph2d_skeleton_live::skin_image_fecho::malha_desenhada_com(
         p.mesh.clone(),
         p.p2l,
@@ -87,7 +93,7 @@ fn desenhada(p: &Palco, contacto: bool, placa: bool) -> SpriteMesh {
         &p.pesos,
         p.quad,
         &p.correcoes,
-        contacto,
+        &aneis,
         placa,
     )
     .expect("a malha desenha-se")
@@ -106,11 +112,9 @@ fn dentro(p: [f64; 2], a: [f64; 2], b: [f64; 2], c: [f64; 2]) -> bool {
 /// `1/4` px de ecrã que nenhum triângulo cobre e que têm malha a `≤ alcance_px` POR CIMA e POR
 /// BAIXO — o fundo a aparecer ENTRE peças; a borda de fora não conta.
 ///
-/// ⛔ **Só serve a um vão FECHADO** (o risquinho, a `4 px`). Junto de uma baía ABERTA ela conta a
-/// ponta do «V», que é mais estreita que `2·alcance` por geometria — a `120°`, com o enchimento
-/// certo, contou `25` amostras a `4 px` e `1` a `1,25 px` (a ponta redonda da bola). A guarda do fio
-/// junto da baía é o mecanismo, na `ph2d-vec-boolean`
-/// (`a_uniao_do_fecho_da_borda_nao_desloca_a_polilinha`).
+/// ⚠️ **O alcance é a pergunta.** Um vão FECHADO (o risquinho) lê-se a `4 px`; junto de uma baía
+/// ABERTA (um «V») só o alcance pequeno separa um fio da baía, cuja ponta é mais estreita que
+/// `2·alcance` por geometria (medido a `120°`: `25` amostras a `4 px` com a forma certa).
 fn buracos(m: &SpriteMesh, [x0, y0, x1, y1]: [f64; 4], alcance_px: f64) -> usize {
     assert!(m.skin.is_none(), "a régua lê posições POSADAS");
     let p = |i: u32| {
@@ -183,63 +187,73 @@ fn acrescentados(p: &Palco) -> Vec<([f32; 2], [f32; 2])> {
         .collect()
 }
 
-/// ⭐⭐⭐ **A TINTA do enchimento é a da BEIRA** — a UV de cada ponto acrescentado cai num texel com
-/// arte (alfa `> 0`). ⚠️ Não «opaco»: a ponta da cunha encosta na tampa redonda, e ali a beira é a
-/// borda suave da arte — medido, o texel `(557, 0)` com alfa `111`.
+/// ⭐⭐⭐ **A TINTA da costura é a das BEIRAS** — cada pedaço cosido (`4` pontos: dois da beira que
+/// cose, dois da outra) parte de uma beira com arte (pelo menos dois texels com alfa `> 0`).
 ///
-/// ⛔ Sem isto, uma UV errada (o canto da imagem, transparente) deixava o vão pintado de NADA e
-/// todos os gates de geometria verdes.
+/// ⚠️ Não «os quatro»: a outra ponta pode cair na ESCADA da grelha à volta da tampa redonda, que é
+/// margem transparente — medido na pose do report, o texel `(586, 1)` com alfa `0` —, e aí a costura
+/// esmaece até ela (fotografado: sem névoa). ⛔ Sem isto, uma UV errada (o canto da imagem,
+/// transparente) deixava o vão cosido com NADA e todos os gates de geometria verdes.
 #[test]
-fn a_tinta_do_enchimento_e_a_da_beira() {
+fn a_tinta_da_costura_e_a_das_beiras() {
     let px = pixels();
-    for pose in [POSE_DO_REPORT, (DOBRA_FORTE, DOBRA_FORTE)] {
-        let novos = acrescentados(&palco(pose));
-        assert!(!novos.is_empty(), "{pose:?}: o fecho não acrescentou nada");
-        for (q, uv) in novos {
-            #[expect(
-                clippy::cast_possible_truncation,
-                clippy::cast_sign_loss,
-                reason = "texel"
-            )]
-            let texel = |t: f32, n: u32| ((t * n as f32) as u32).min(n - 1);
-            let (x, y) = (texel(uv[0], IMG_W), texel(uv[1], IMG_H));
-            let alfa = px[((y * IMG_W + x) * 4 + 3) as usize];
-            assert!(
-                alfa > 0,
-                "{pose:?}: o ponto {q:?} pinta o texel ({x}, {y}) de alfa {alfa}"
-            );
-        }
+    let novos = acrescentados(&palco(POSE_DO_REPORT));
+    assert!(!novos.is_empty(), "a pose do report não coseu nada");
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "texel"
+    )]
+    let texel = |t: f32, n: u32| ((t * n as f32) as u32).min(n - 1);
+    for pedaco in novos.chunks(4) {
+        let com_arte = pedaco
+            .iter()
+            .filter(|(_, uv)| {
+                let (x, y) = (texel(uv[0], IMG_W), texel(uv[1], IMG_H));
+                px[((y * IMG_W + x) * 4 + 3) as usize] > 0
+            })
+            .count();
+        assert!(
+            com_arte >= 2,
+            "um pedaço cosido sem beira de arte: {pedaco:?}"
+        );
     }
 }
 
-/// ⭐⭐ **Na dobra forte os bicos do «V» arredondam** — a bola rola por fora do contorno da imagem
-/// como do desenho. ⚠️ Medido: `13,2 px²` em dois bicos (a `(36°, −144°)` o vão é uma ILHA, e
-/// fecha pela outra metade da lei; sem este gate a bola de fora não teria guarda).
+/// ⭐⭐⭐ **Nenhuma pose à volta do report deixa o fio** — e é a resposta ao *«ora redonda ora
+/// pontuda»* do dono: a costura é contínua na pose, logo a varredura fina não pode ter UMA pose com
+/// fundo entalado. Alcance `1 px`: só um vão mais fino que `2 px` conta (a costura cose até `2`
+/// texels, e a `100 %` um texel é um pixel); a baía de um «V» é mais larga e não conta.
 #[test]
-fn na_dobra_forte_os_bicos_do_v_arredondam() {
-    let novos = acrescentados(&palco((DOBRA_FORTE, DOBRA_FORTE)));
+fn nenhuma_pose_a_volta_do_report_deixa_o_fio() {
+    let mut com_fio = Vec::new();
+    for k in 0..=24 {
+        let g2 = -150.0 + 0.5 * k as f32;
+        let p = palco((36.0, g2));
+        let sem = buracos(&desenhada(&p, false, false), JANELA_DO_VAO, 1.0);
+        let com = buracos(&desenhada(&p, true, false), JANELA_DO_VAO, 1.0);
+        if com > 0 {
+            com_fio.push((g2, sem, com));
+        }
+    }
     assert!(
-        !novos.is_empty(),
-        "a dobra forte não arredondou nenhum bico"
+        com_fio.is_empty(),
+        "(pose, sem costura, com costura): {com_fio:?}"
     );
 }
 
-/// ⭐⭐⭐ **A dobra arredonda em TODA a varredura, sem saltar** — report do dono de 2026-10-02 com
-/// duas fotos a `~0,5°` uma da outra: *«a dobra está inconsistente, ora redonda ora pontuda»*.
-///
-/// ⛔ Medido: a `(36°, −131,25°)` o vão do bico existia (`0,54` texel, `17,9` texel²) e saía com
-/// `0` triângulos — a subtracção devolvia um anel com um FIO de área zero (sai por uma recta e
-/// volta por ela), e a triangulação recusa um anel assim. Os vizinhos a `0,25°` arredondavam.
+/// ⭐⭐ **Os «V» das juntas ficam como a arte** — entre membros VIZINHOS nada se cose (a
+/// `OSSOS_DE_DISTANCIA`), e a placa continua a posar.
 #[test]
-fn a_dobra_arredonda_em_toda_a_varredura() {
-    let mut sem_bico = Vec::new();
-    for k in 0..=16 {
-        let g2 = -128.0 - 0.25 * k as f32;
-        if acrescentados(&palco((36.0, g2))).is_empty() {
-            sem_bico.push(g2);
-        }
+fn os_v_das_juntas_ficam_como_a_arte() {
+    for pose in [(DOBRA, DOBRA), (DOBRA_FORTE, DOBRA_FORTE)] {
+        let p = palco(pose);
+        assert!(acrescentados(&p).is_empty(), "{pose:?}: coseu um «V»");
+        assert!(
+            desenhada(&p, true, true).skin.is_some(),
+            "{pose:?}: a placa deixou de posar"
+        );
     }
-    assert!(sem_bico.is_empty(), "o bico ficou em ponta a {sem_bico:?}");
 }
 
 /// As violações da ordem dos ossos em `m`: pontos (a `5 px`) cobertos por faces de chaves que
@@ -594,8 +608,12 @@ fn diag_o_custo_da_malha_desenhada() {
         (DOBRA_FORTE, DOBRA_FORTE),
     ] {
         let p = palco(pose);
-        for (contacto, placa) in [(false, true), (true, true), (false, false), (true, false)] {
+        // ⚠️ Os anéis fora do relógio: o produto guarda-os por malha (`bordas_da`).
+        let todos = ph2d_skeleton_live::skin_image_fecho::aneis_da_borda(&p.mesh.tris);
+        for (costura, placa) in [(false, true), (true, true), (false, false), (true, false)] {
+            let aneis: &[Vec<u32>] = if costura { &todos } else { &[] };
             let mut melhor = std::time::Duration::MAX;
+            let mut cosidos = 0;
             for _ in 0..7 {
                 let t = std::time::Instant::now();
                 let m = ph2d_skeleton_live::skin_image_fecho::malha_desenhada_com(
@@ -605,13 +623,178 @@ fn diag_o_custo_da_malha_desenhada() {
                     &p.pesos,
                     p.quad,
                     &p.correcoes,
-                    contacto,
+                    aneis,
                     placa,
                 );
                 melhor = melhor.min(t.elapsed());
+                cosidos = m.as_ref().map_or(0, |m| m.tris.len() - p.mesh.tris.len());
                 std::hint::black_box(m);
             }
-            eprintln!("{pose:?} contacto {contacto} placa {placa}: {melhor:?}");
+            eprintln!(
+                "{pose:?} costura {costura} placa {placa}: {melhor:?} (+{cosidos} triangulos)"
+            );
         }
+    }
+}
+
+/// ⏱️ **SONDA — a largura dos vãos entre partes da borda que se ENCARAM**, em texels, e o custo das
+/// peças (anéis, borda posada). Por nó da borda: a distância ao segmento mais perto de OUTRA parte
+/// (a mais de `SONDA_L` texels ao longo do anel), que fica do lado de FORA dos dois.
+#[test]
+#[ignore = "SONDA, nao gate"]
+fn diag_a_largura_dos_vaos() {
+    let g = |k: &str, d: f32| {
+        std::env::var(k)
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(d)
+    };
+    let (g1, de, ate, passo) = (
+        g("SONDA_G1", 36.0),
+        g("SONDA_DE", -120.0),
+        g("SONDA_ATE", -160.0),
+        g("SONDA_PASSO", 4.0),
+    );
+    let l_tx = f64::from(g("SONDA_L", 6.0));
+    let n = ((ate - de) / passo).abs().round() as i32;
+    for k in 0..=n {
+        let g2 = de + (ate - de).signum() * passo * k as f32;
+        let p = palco((g1, g2));
+        let t = std::time::Instant::now();
+        let aneis = ph2d_skeleton_live::skin_image_fecho::aneis_da_borda(&p.mesh.tris);
+        let t_aneis = t.elapsed();
+        let m = desenhada(&p, false, false);
+        let pos = |v: u32| {
+            [
+                f64::from(m.local[v as usize][0]),
+                f64::from(m.local[v as usize][1]),
+            ]
+        };
+        let [a, b, c, d, _, _] = p.p2l.0;
+        let texel = (a * d - b * c).abs().sqrt();
+        let area = |r: &[u32]| {
+            (0..r.len())
+                .map(|i| {
+                    let (p0, p1) = (pos(r[i]), pos(r[(i + 1) % r.len()]));
+                    p0[0] * p1[1] - p1[0] * p0[1]
+                })
+                .sum::<f64>()
+                / 2.0
+        };
+        let sinal = aneis
+            .iter()
+            .map(|r| area(r))
+            .max_by(|x, y| x.abs().total_cmp(&y.abs()))
+            .unwrap_or(1.0)
+            .signum();
+        // Segmentos: (anel, índice, p0, p1, s0 = arco acumulado no anel).
+        let mut segs = Vec::new();
+        for (ri, r) in aneis.iter().enumerate() {
+            let mut s = 0.0;
+            for i in 0..r.len() {
+                let (p0, p1) = (pos(r[i]), pos(r[(i + 1) % r.len()]));
+                segs.push((ri, i, p0, p1, s));
+                s += (p1[0] - p0[0]).hypot(p1[1] - p0[1]);
+            }
+        }
+        let perim: Vec<f64> = aneis
+            .iter()
+            .enumerate()
+            .map(|(ri, _)| {
+                segs.iter()
+                    .filter(|s| s.0 == ri)
+                    .map(|s| (s.3[0] - s.2[0]).hypot(s.3[1] - s.2[1]))
+                    .sum()
+            })
+            .collect();
+        let normal = |p0: [f64; 2], p1: [f64; 2]| {
+            let (tx, ty) = (p1[0] - p0[0], p1[1] - p0[1]);
+            let l = tx.hypot(ty).max(1e-30);
+            [ty / l * sinal, -tx / l * sinal]
+        };
+        let mut bins = [0usize; 6];
+        let mut perfil = Vec::new();
+        for (si, &(ri, _, p0, p1, s0)) in segs.iter().enumerate() {
+            let v = p0;
+            let nv = {
+                let prev = segs[if si == 0 { segs.len() - 1 } else { si - 1 }];
+                let a = normal(prev.2, prev.3);
+                let b = normal(p0, p1);
+                [a[0] + b[0], a[1] + b[1]]
+            };
+            let mut melhor = f64::INFINITY;
+            for &(rj, _, q0, q1, s1) in &segs {
+                if rj == ri {
+                    let ds = (s1 - s0).abs();
+                    if ds.min(perim[ri] - ds) < l_tx * texel {
+                        continue;
+                    }
+                }
+                let dd = [q1[0] - q0[0], q1[1] - q0[1]];
+                let l2 = dd[0] * dd[0] + dd[1] * dd[1];
+                let t = if l2 > 0.0 {
+                    (((v[0] - q0[0]) * dd[0] + (v[1] - q0[1]) * dd[1]) / l2).clamp(0.0, 1.0)
+                } else {
+                    0.0
+                };
+                let q = [q0[0] + t * dd[0], q0[1] + t * dd[1]];
+                let w = [q[0] - v[0], q[1] - v[1]];
+                let nq = normal(q0, q1);
+                if w[0] * nv[0] + w[1] * nv[1] <= 0.0 || -(w[0] * nq[0] + w[1] * nq[1]) <= 0.0 {
+                    continue;
+                }
+                melhor = melhor.min(w[0].hypot(w[1]) / texel);
+            }
+            let bin = [0.5, 1.0, 1.5, 2.0, 3.0, 6.0]
+                .iter()
+                .position(|&x| melhor < x);
+            if let Some(b) = bin {
+                bins[b] += 1;
+            }
+            if melhor < 6.0 {
+                perfil.push(format!("{melhor:.2}"));
+            }
+        }
+        let t = std::time::Instant::now();
+        let ids: Vec<u32> = aneis.iter().flatten().copied().collect();
+        let ossos = p.pesos.len() / p.mesh.rest.len();
+        let linhas: Vec<f64> = ids
+            .iter()
+            .flat_map(|&v| {
+                p.pesos[v as usize * ossos..(v as usize + 1) * ossos]
+                    .iter()
+                    .copied()
+            })
+            .collect();
+        let so = ph2d_poly2d::Mesh2d {
+            rest: ids.iter().map(|&v| p.mesh.rest[v as usize]).collect(),
+            tris: Vec::new(),
+            size: p.mesh.size,
+        };
+        let _ = ph2d_skeleton_live::skin_image::posed_sprite_mesh_corrigida(
+            so,
+            p.p2l,
+            &p.pele,
+            &linhas,
+            p.quad[0],
+            p.quad[1],
+            &p.correcoes,
+        );
+        let t_posa = t.elapsed();
+        eprintln!(
+            "({g1}, {g2:.1}) aneis {t_aneis:?} posa-borda {t_posa:?} ({} nos)  <0.5:{} <1:{} <1.5:{} <2:{} <3:{} <6:{}  {:?}",
+            ids.len(),
+            bins[0],
+            bins[1],
+            bins[2],
+            bins[3],
+            bins[4],
+            bins[5],
+            if perfil.len() < 40 {
+                perfil
+            } else {
+                vec![format!("{} nos", perfil.len())]
+            }
+        );
     }
 }

@@ -67,13 +67,13 @@ fn um_canto_partilhado_nao_rebenta() {
     }
 }
 
-/// ⭐ O fecho da imagem nasce DESLIGADO — só `"1"` o liga (o cabeçalho diz porquê, com a medição).
+/// ⭐ A costura nasce LIGADA — só `"0"` a desliga (para bissecar um report).
 #[test]
-fn o_fecho_da_imagem_nasce_desligado() {
-    assert!(!fecho_da_imagem_de(None));
-    assert!(!fecho_da_imagem_de(Some("0")));
-    assert!(!fecho_da_imagem_de(Some("")));
-    assert!(fecho_da_imagem_de(Some("1")));
+fn a_costura_nasce_ligada_e_o_zero_bissecta() {
+    assert!(costura_de(None));
+    assert!(costura_de(Some("1")));
+    assert!(costura_de(Some("")));
+    assert!(!costura_de(Some("0")));
 }
 
 /// ⭐⭐ A ordem pelo osso: cada face sai depois das de um osso ANTERIOR, e a ordenação é estável.

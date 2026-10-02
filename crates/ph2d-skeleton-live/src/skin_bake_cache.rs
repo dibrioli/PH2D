@@ -147,18 +147,28 @@ pub fn assada_da_arte(
     e: ph2d_ecs::Entity,
     crua: &SkinnedMesh,
 ) -> Option<SkinnedMesh> {
+    desenhada_da_arte(sim, e, crua).map(|m| (*m).clone())
+}
+
+/// A [`assada_da_arte`] sem a cópia — o `Rc` da gaveta, que é também a IDENTIDADE da malha para quem
+/// guarda coisas dela (os anéis da borda, [`crate::skin_image_fecho::bordas_da`]).
+#[must_use]
+pub fn desenhada_da_arte(
+    sim: &ph2d_ecs::SimWorld,
+    e: ph2d_ecs::Entity,
+    crua: &SkinnedMesh,
+) -> Option<Rc<SkinnedMesh>> {
     let skin = sim.world().get::<ph2d_skeleton_ecs::SkinBind>(e)?;
     // ⚠️ **A PORTA está AQUI** (`assar_no_bind`, `PH2D_SKIN_BAKE=1`) e não dentro do memo: ele
     // guarda o que a porta responde, e com ela fechada a resposta é `None` em toda a arte — o
     // caminho de omissão continua byte-idêntico, e a gaveta que fica a dizer *«esta não tem
     // assada»* é o que evita voltar a perguntar no quadro seguinte.
-    let assada = assada_do_bind(e.to_bits(), &skin.source, crua, |m| {
+    assada_do_bind(e.to_bits(), &skin.source, crua, |m| {
         let mut d = crate::skin_bake::assar_no_bind(&m.mesh, &m.pesos, m.ossos())
             .map_or_else(|| m.clone(), |(mesh, pesos)| SkinnedMesh { mesh, pesos });
         crate::skin_image_fecho::ordena_pelo_osso(&mut d.mesh.tris, &d.pesos, d.mesh.rest.len());
         Some(d)
-    })?;
-    Some((*assada).clone())
+    })
 }
 
 /// Esvazia o memo — para os gates, e para quem quiser medir a assadura a frio.

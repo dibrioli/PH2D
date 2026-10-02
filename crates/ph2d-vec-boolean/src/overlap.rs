@@ -67,17 +67,6 @@ pub const FECHO_EXACTO: f64 = 1e-12;
 /// sobrepõe, é aberto, ou o motor recusa (e aí quem chama desenha a forma como estava).
 #[must_use]
 pub fn resolve_overlap(path: &VecPath) -> Option<VecPath> {
-    resolve_overlap_soldando(path, true)
-}
-
-/// ⭐⭐ **A união da BORDA de uma malha** — a [`resolve_overlap`] SEM a solda dos segmentos curtos:
-/// uma polilinha exacta não tem restos do assado a soldar, e a solda deslocava-a (ver
-/// [`fecho_da_borda`]).
-pub(crate) fn uniao_da_borda(path: &VecPath) -> Option<VecPath> {
-    resolve_overlap_soldando(path, false)
-}
-
-fn resolve_overlap_soldando(path: &VecPath, soldar: bool) -> Option<VecPath> {
     if !path.closed || path.subpaths.iter().any(|c| !c.closed) {
         return None;
     }
@@ -99,13 +88,7 @@ fn resolve_overlap_soldando(path: &VecPath, soldar: bool) -> Option<VecPath> {
         .iter()
         .flatten()
         .filter_map(crate::verts_from_bez)
-        .map(|v| {
-            if soldar {
-                solda_os_segmentos_curtos(v, solda)
-            } else {
-                v
-            }
-        })
+        .map(|v| solda_os_segmentos_curtos(v, solda))
         .filter(|v| v.len() >= 3);
     let outer = contornos.next()?;
     let resto: Vec<Contour> = contornos.map(Contour::new_closed).collect();
@@ -189,75 +172,20 @@ pub fn silhueta_da_pele(path: &VecPath, quinas: &[([f64; 2], f64)]) -> Option<Ve
     // para os RESTOS da união, que já foram soldados antes; um pedaço curto RECORTADO de uma curva
     // lisa tem as tangentes dela, não uma arbitrária.
     out.verts = rolado;
-    fecha_as_ilhas(&mut out, path.fill_rule, quinas, raio, solda);
-    Some(out)
-}
-
-/// ⭐ F44: as ILHAS que a união deixa (um membro a fechar-se sobre outro) são buracos, e o vinco de
-/// um buraco é o canto dele — a bola rola por DENTRO de cada uma. Medido antes da cura: com o
-/// contorno de fora a `1,4°` no pior nó, as ilhas viravam até `153°`. ⚠️ Uma ilha onde a bola não
-/// cabe em sítio nenhum é cheia INTEIRA pelo fecho — sai ([`crate::ilha`]).
-///
-/// Uma porta para as duas mídias ([`silhueta_da_pele`] e [`fecho_da_borda`]).
-fn fecha_as_ilhas(
-    out: &mut VecPath,
-    regra_da_fonte: FillRule,
-    quinas: &[([f64; 2], f64)],
-    raio: f64,
-    solda: f64,
-) {
+    // ⭐ F44: as ILHAS que a união deixa (um membro a fechar-se sobre outro) são buracos, e o
+    // vinco de um buraco é o canto dele — a bola rola por DENTRO de cada uma. Medido antes da
+    // cura: com o contorno de fora a `1,4°` no pior nó, as ilhas viravam até `153°`. ⚠️ Uma ilha
+    // onde a bola não cabe em sítio nenhum é cheia INTEIRA pelo fecho — sai ([`crate::ilha`]).
     out.subpaths
         .retain(|c| crate::ilha::a_bola_cabe_dentro(&c.verts, raio));
     if out.subpaths.is_empty() {
-        out.fill_rule = regra_da_fonte;
+        out.fill_rule = path.fill_rule;
     }
     for c in &mut out.subpaths {
         c.verts =
             crate::bola::rola_a_bola_por_dentro(std::mem::take(&mut c.verts), quinas, raio, solda);
     }
-}
-
-/// ⭐⭐⭐ **O FECHO DA BORDA DE UMA MALHA posada** — a lei da [`silhueta_da_pele`] para a 2.ª mídia
-/// (a IMAGEM presa): a união quando o contorno se cruza, a bola de [`RAIO_DO_VINCO`] por fora e as
-/// ilhas onde ela não cabe cheias — com o raio e a solda da MESMA diagonal.
-///
-/// ⚠️ **Sem os passos que limpam o ASSADO** (ganchos, esporões, abertura): eles curam artefactos das
-/// cúbicas que o bake do desenho escreve, e a borda de uma malha é uma polilinha de nós que a
-/// deformação pôs — não há alça a soltar. Medido na cena `=4` a `(36°, −144°)` sobre os `279` nós
-/// da borda: `38 ms` com eles, `0,35 ms` sem eles, e o enchimento é o MESMO (`20,31 px²`, o vão
-/// entre os membros). A abertura só TIRA área, e a uma imagem só se pode ACRESCENTAR.
-///
-/// `quinas` são os nós da borda com a viragem que têm em REPOUSO (a lei da F42).
-///
-/// ⭐⭐ **Devolve o que o fecho ACRESCENTA** (fechado menos a união de onde a bola partiu), e a
-/// união é **SEM a solda** dos segmentos curtos: a borda de uma malha é uma polilinha exacta, e a
-/// solda deslocava-a até [`SOLDA_DA_QUINA`] da diagonal. ⛔ Medido na cena `=4` a `120°`: com a
-/// solda, o fecho contra a borda crua pintava uma tira de `2,5 m` com `0,26` texel de espessura
-/// (descia a borda do recorte `1,3 px`, com um degrau), e contra a união soldada deixava uma linha
-/// de fundo de `1 px` entre o arco e a malha.
-///
-/// Vazio quando nada muda.
-#[must_use]
-pub fn fecho_da_borda(path: &VecPath, quinas: &[([f64; 2], f64)]) -> Vec<VecPath> {
-    if !path.closed || path.subpaths.iter().any(|c| !c.closed) || path.verts.len() < 3 {
-        return Vec::new();
-    }
-    let caixa = crate::to_bez(path).bounding_box();
-    let diagonal = caixa.width().hypot(caixa.height());
-    if !diagonal.is_finite() || diagonal <= 0.0 {
-        return Vec::new();
-    }
-    let solda = SOLDA_DA_QUINA * diagonal;
-    let raio = RAIO_DO_VINCO * diagonal;
-    let unido = uniao_da_borda(path);
-    let base = unido.as_ref().unwrap_or(path);
-    let mut fechado = base.clone();
-    fechado.verts = crate::bola::rola_a_bola(base.verts.clone(), quinas, raio, solda);
-    fecha_as_ilhas(&mut fechado, path.fill_rule, quinas, raio, solda);
-    if fechado == *base {
-        return Vec::new();
-    }
-    crate::apply(&fechado, base, crate::BoolOp::Subtract)
+    Some(out)
 }
 
 /// ⭐⭐⭐ **A solda da QUINA, em fracção da diagonal da forma** — `1e-3`.

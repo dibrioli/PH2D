@@ -549,11 +549,11 @@ pub fn attach_skin_meshes(
     // de pesos é LINEAR, e ali partir uma aresta não muda um bit — a malha do bind já é a resposta.
     // ⚠️ **A assadura é por SPRITE e não por instância**: um 9-slice tem nove alvos e UMA arte, e
     // assar nove vezes pagaria nove vezes o que o memo existe para cobrar uma.
-    let assadas: BTreeMap<Entity, SkinnedMesh> = presas
+    let assadas: BTreeMap<Entity, std::rc::Rc<SkinnedMesh>> = presas
         .into_iter()
         .map(|(e, m)| {
-            let a = crate::skin_bake_cache::assada_da_arte(sim, e, &m).unwrap_or(m);
-            (e, a)
+            let a = crate::skin_bake_cache::desenhada_da_arte(sim, e, &m);
+            (e, a.unwrap_or_else(|| std::rc::Rc::new(m)))
         })
         .collect();
     let mut feitas = 0;
@@ -578,6 +578,11 @@ pub fn attach_skin_meshes(
         // DELE. ⚠️ Cortar no espaço da IMAGEM (e não recortar o quad) é a lei toda do 9-slice: o
         // pedaço do meio mostra a faixa central ESTICADA, logo a tinta que o mapa de repouso poria
         // ali não é a que se vê.
+        let aneis = if frac.is_none_or(|f| f == [0.0, 0.0, 1.0, 1.0]) {
+            crate::skin_image_fecho::bordas_da(assada)
+        } else {
+            std::rc::Rc::default()
+        };
         let (mesh, pesos, rect) = match frac {
             Some(f) if f != [0.0, 0.0, 1.0, 1.0] => {
                 let (w, h) = (
@@ -642,6 +647,7 @@ pub fn attach_skin_meshes(
             inst.anchor,
             inst.size,
             &correcoes,
+            &aneis,
         ) else {
             continue;
         };

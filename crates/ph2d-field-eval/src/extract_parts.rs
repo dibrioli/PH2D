@@ -19,6 +19,21 @@ use crate::MeshError;
 
 const NONE: u32 = u32::MAX;
 
+/// ⭐ **As PEÇAS da extração** — uma malha por sólido conexo. As peças PARTEM a malha do
+/// [`crate::extract::extract`]: mesmos vértices e faces, nenhum a mais nem a menos.
+///
+/// # Errors
+/// Os do [`crate::extract::extract`].
+pub fn extract_parts(
+    doc: &ph2d_field::FieldDoc,
+    reg: &crate::hybrid::Registry,
+    depth: u8,
+) -> Result<Vec<Mesh>, MeshError> {
+    let mut labeler = Labeler::new((1usize << depth) + 1);
+    let (positions, faces) = crate::extract::sweep(doc, reg, depth, Some(&mut labeler))?;
+    split(positions, faces, labeler)
+}
+
 /// União-busca sobre as amostras de dentro.
 #[derive(Default)]
 struct Uf {
@@ -62,11 +77,11 @@ pub(crate) struct Labeler {
     lo: Vec<u32>,
     hi: Vec<u32>,
     /// O rótulo (por resolver) de cada vértice emitido, na ordem dos vértices.
-    pub(crate) verts: Vec<u32>,
+    verts: Vec<u32>,
 }
 
 impl Labeler {
-    pub(crate) fn new(m: usize) -> Self {
+    fn new(m: usize) -> Self {
         Self {
             uf: Uf::default(),
             m,
@@ -150,7 +165,7 @@ impl Labeler {
 
 /// Parte a malha inteira em uma por peça. Uma face é da peça dos seus vértices (todos iguais por
 /// construção: o quad rodeia uma aresta da grade cujo canto de dentro é canto das quatro células).
-pub(crate) fn split(
+fn split(
     positions: Vec<[f32; 3]>,
     faces: Vec<Face>,
     labeler: Labeler,

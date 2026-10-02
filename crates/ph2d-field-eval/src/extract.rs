@@ -345,25 +345,11 @@ pub fn extract(
     Mesh::from_parts(positions, faces).map_err(|e| MeshError::Rejected(format!("{e:?}")))
 }
 
-/// ⭐ **As PEÇAS da extração** — uma malha por sólido conexo ([`crate::extract_parts`]). As peças
-/// PARTEM a malha do [`extract`]: mesmos vértices e faces, nenhum a mais nem a menos.
-///
-/// # Errors
-/// Os do [`extract`].
-pub fn extract_parts(
-    doc: &ph2d_field::FieldDoc,
-    reg: &crate::hybrid::Registry,
-    depth: u8,
-) -> Result<Vec<Mesh>, MeshError> {
-    let m = (1usize << depth) + 1;
-    let mut labeler = crate::extract_parts::Labeler::new(m);
-    let (positions, faces) = sweep(doc, reg, depth, Some(&mut labeler))?;
-    crate::extract_parts::split(positions, faces, labeler)
-}
+pub use crate::extract_parts::extract_parts;
 
 /// A varredura camada a camada — a extração inteira, com o rotulador das peças a bordo quando
 /// pedido.
-fn sweep(
+pub(crate) fn sweep(
     doc: &ph2d_field::FieldDoc,
     reg: &crate::hybrid::Registry,
     depth: u8,

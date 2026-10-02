@@ -149,7 +149,7 @@ de blocos no eixo (§9.3) · herdar a bissectriz (§9.4) · costurar as corrente
 
 | item | dono |
 |---|---|
-| **as estrelas GRANDES no proxy de telemóvel** perdem para o Vello (`2,32` contra `0,98 ms` esticadas; `1,35` contra `0,90` conformes) — o cálculo corre num fio por cópia e os pixels de borda lêem a célula inteira; a cura tem endereço (células construídas em paralelo por bloco + blocos partilhados na memória do grupo, como o rasterizador fino do Vello) | linha Motion |
+| **as estrelas GRANDES no proxy de telemóvel** ainda perdem para o Vello — depois do commit das células em paralelo (doc 121 §9.7) `2,02` contra `0,98 ms` esticadas e `1,17` contra `0,90` conformes; quem manda agora é o DESENHO (o laço de blocos por pixel, `~1,2 ms`). A metade que falta é a cobertura pré-calculada no compute — protótipo REVERTIDO com 4/5 gates vermelhos, por diagnosticar. ⛔ blocos de 4 e células mais altas estão RECUSADOS por medição (§9.7) | linha Motion |
 | os **glifos** do `source.text` continuam no Vello | linha Motion |
 | o **traço tracejado** sob escala não-uniforme fica no Vello (pede comprimento de arco por cópia) | linha Motion |
 | a **W0/W5 como tabela única** em máquina calma: o A/B na mesma build está no §9.3 do doc 121 e é a partida; falta repeti-la depois das células com `load < 4` | linha Motion |

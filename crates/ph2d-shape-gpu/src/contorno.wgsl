@@ -38,15 +38,18 @@ struct Contas {
 }
 
 @group(2) @binding(0) var<uniform> contas: Contas;
-// Duas contagens por cópia, e depois do `cs_soma` onde cada uma começa: as ARESTAS (múltiplo de
-// `SEGS_POR_BLOCO`) nas `n + 1` primeiras entradas e as PALAVRAS DE MÁSCARA nas `n + 1` seguintes —
-// a última de cada metade é o total.
+// Três contagens por cópia, e depois do `cs_soma` onde cada uma começa: as ARESTAS (múltiplo de
+// `SEGS_POR_BLOCO`) nas `n + 1` primeiras entradas, as PALAVRAS DE MÁSCARA nas `n + 1` seguintes e
+// as LINHAS de ecrã nas `n + 1` últimas — a última de cada terço é o total.
 @group(2) @binding(1) var<storage, read_write> contagem: array<u32>;
 @group(2) @binding(2) var<storage, read_write> contorno_rw: array<vec4<f32>>;
 @group(2) @binding(3) var<storage, read_write> cblocos_rw: array<vec4<f32>>;
 @group(2) @binding(4) var<storage, read_write> ccopias_rw: array<vec4<u32>>;
 @group(2) @binding(5) var<storage, read_write> ccaixas_rw: array<vec4<f32>>;
 @group(2) @binding(6) var<storage, read_write> cmascaras_rw: array<u32>;
+// ⭐ doc 121 §9.7 — os argumentos do despacho INDIRECTO de `cs_celulas` (`x, y, z` grupos), escritos
+// pelo `cs_soma`: o total de linhas só existe na placa, e lê-lo no CPU custaria dois quadros.
+@group(2) @binding(7) var<storage, read_write> despacho_rw: array<u32>;
 
 // O estado da emissão de UMA cópia (um fio por cópia).
 //
@@ -386,9 +389,15 @@ fn palavras_por_linha(arestas: u32) -> u32 {
     return (arestas / SEGS_POR_BLOCO + 31u) / 32u;
 }
 
-// Quantas palavras um REGISTO de célula ocupa: os três fundos (`f32`) e a máscara.
+// Quantas palavras um REGISTO de célula ocupa: os três fundos (`f32`) de CADA uma das
+// `ALTURA_DA_CELULA` fileiras e a máscara (uma só, a união das fileiras — doc 121 §9.7).
 fn registo_de_celula(arestas: u32) -> u32 {
-    return 3u + palavras_por_linha(arestas);
+    return 3u * ALTURA_DA_CELULA + palavras_por_linha(arestas);
+}
+
+// Quantas FAIXAS de `ALTURA_DA_CELULA` fileiras cobrem `linhas` fileiras.
+fn faixas_de(linhas: u32) -> u32 {
+    return (linhas + ALTURA_DA_CELULA - 1u) / ALTURA_DA_CELULA;
 }
 
 @compute @workgroup_size(64)
@@ -399,6 +408,7 @@ fn cs_conta(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgrou
     }
     var ne = 0u;
     var nmask = 0u;
+    var linhas = 0u;
     let p = plano_de(ii);
     if p.valido {
         var nc = 0u;
@@ -406,13 +416,16 @@ fn cs_conta(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgrou
             nc = (limite_de_arestas(p.cp) + SEGS_POR_BLOCO - 1u) / SEGS_POR_BLOCO * SEGS_POR_BLOCO;
         }
         ne = p.nf + p.nm + nc;
-        nmask = p.linhas * p.celulas * registo_de_celula(ne);
+        nmask = faixas_de(p.linhas) * p.celulas * registo_de_celula(ne);
         if nmask == 0u {
             ne = 0u;
+        } else {
+            linhas = faixas_de(p.linhas);
         }
     }
     contagem[ii] = ne;
     contagem[contas.n + 1u + ii] = nmask;
+    contagem[2u * (contas.n + 1u) + ii] = linhas;
 }
 
 // Os prefixos exclusivos das DUAS contagens, num grupo só: cada fio soma um pedaço contíguo, o fio
@@ -420,26 +433,32 @@ fn cs_conta(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgrou
 // ordem das somas não depende do escalonamento, e é isso que faz a mesma cena dar os mesmos sítios.
 var<workgroup> parcial: array<u32, 256>;
 var<workgroup> parcial_m: array<u32, 256>;
+var<workgroup> parcial_l: array<u32, 256>;
 
 @compute @workgroup_size(256)
 fn cs_soma(@builtin(local_invocation_index) li: u32) {
     let n = contas.n;
     let m0 = n + 1u;
+    let l0 = 2u * (n + 1u);
     let pedaco = (n + 255u) / 256u;
     let i0 = min(li * pedaco, n);
     let i1 = min(i0 + pedaco, n);
     var s = 0u;
     var sm = 0u;
+    var sl = 0u;
     for (var i = i0; i < i1; i += 1u) {
         s += contagem[i];
         sm += contagem[m0 + i];
+        sl += contagem[l0 + i];
     }
     parcial[li] = s;
     parcial_m[li] = sm;
+    parcial_l[li] = sl;
     workgroupBarrier();
     if li == 0u {
         var acc = 0u;
         var acc_m = 0u;
+        var acc_l = 0u;
         for (var k = 0u; k < 256u; k += 1u) {
             let v = parcial[k];
             parcial[k] = acc;
@@ -447,13 +466,25 @@ fn cs_soma(@builtin(local_invocation_index) li: u32) {
             let vm = parcial_m[k];
             parcial_m[k] = acc_m;
             acc_m += vm;
+            let vl = parcial_l[k];
+            parcial_l[k] = acc_l;
+            acc_l += vl;
         }
         contagem[n] = acc;
         contagem[m0 + n] = acc_m;
+        contagem[l0 + n] = acc_l;
+        // ⭐ doc 121 §9.7 — o despacho de `cs_celulas`: um fio por LINHA, em duas dimensões quando
+        // passa de `65 535` grupos (o tecto de uma dimensão), como o de `indice`.
+        let grupos = (acc_l + 63u) / 64u;
+        let gx = min(grupos, 65535u);
+        despacho_rw[0] = gx;
+        despacho_rw[1] = select(1u, (grupos + gx - 1u) / max(gx, 1u), gx > 0u);
+        despacho_rw[2] = 1u;
     }
     workgroupBarrier();
     var acc = parcial[li];
     var acc_m = parcial_m[li];
+    var acc_l = parcial_l[li];
     for (var i = i0; i < i1; i += 1u) {
         let v = contagem[i];
         contagem[i] = acc;
@@ -461,6 +492,9 @@ fn cs_soma(@builtin(local_invocation_index) li: u32) {
         let vm = contagem[m0 + i];
         contagem[m0 + i] = acc_m;
         acc_m += vm;
+        let vl = contagem[l0 + i];
+        contagem[l0 + i] = acc_l;
+        acc_l += vl;
     }
 }
 
@@ -498,7 +532,7 @@ fn cs_escreve(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgr
     }
     let p = plano_de(ii);
     if !p.valido || p.nf + p.nm > reservado
-        || p.linhas * p.celulas * registo_de_celula(reservado) != nmask_reservado {
+        || faixas_de(p.linhas) * p.celulas * registo_de_celula(reservado) != nmask_reservado {
         return;
     }
     cmin = vec2<f32>(3.0e38);
@@ -541,14 +575,6 @@ fn cs_escreve(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgr
     // O que se usa: as arestas e o registo de célula do que foi DE FACTO escrito.
     let ne = p.nf + p.nm + nc;
     let palavras = palavras_por_linha(ne);
-    let registo = 3u + palavras;
-    let nmask = p.linhas * p.celulas * registo;
-    // Os registos começam vazios: fundos a `0,0` (os bits de `0.0` são `0`) e máscaras apagadas.
-    for (var k = 0u; k < nmask; k += 1u) {
-        cmascaras_rw[mbase + k] = 0u;
-    }
-    let fim_f = p.nf / SEGS_POR_BLOCO;
-    let fim_m = (p.nf + p.nm) / SEGS_POR_BLOCO;
     // Por bloco, DOIS `vec4`: a caixa, e `(y₀, y₈, encadeado, 0)` — `encadeado` quando cada aresta
     // começa EXACTAMENTE onde a anterior acabou (a igualdade é de bits: a soma telescopa só então).
     let b0 = base / SEGS_POR_BLOCO;
@@ -570,6 +596,76 @@ fn cs_escreve(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgr
         let y8b = antes.y;
         cblocos_rw[2u * (b0 + bl)] = vec4<f32>(lo, hi);
         cblocos_rw[2u * (b0 + bl) + 1u] = vec4<f32>(y0b, y8b, select(0.0, 1.0, corrente), 0.0);
+    }
+    ccaixas_rw[ii] = vec4<f32>(cmin, cmax);
+    ccopias_rw[3u * ii] = vec4<u32>(b0, p.nf / SEGS_POR_BLOCO, p.nm / SEGS_POR_BLOCO, nc / SEGS_POR_BLOCO);
+    ccopias_rw[3u * ii + 1u] = vec4<u32>(mbase, p.linhas, palavras, bitcast<u32>(p.y0));
+    ccopias_rw[3u * ii + 2u] = vec4<u32>(bitcast<u32>(p.x0), p.celulas, 0u, 0u);
+}
+
+// ⭐⭐ doc 121 §9.7 — **AS CÉLULAS, UMA LINHA DE ECRÃ POR FIO.** No `cs_escreve` um fio por CÓPIA
+// percorria todas as linhas dela (`linhas × blocos` iterações em série): com `72` estrelas grandes a
+// placa tinha `72` fios a trabalhar e o resto parado (medido no proxy de telemóvel: `~0,42 ms` de
+// células). Aqui cada fio é UMA linha de UMA cópia — as cópias de linhas `[l, l + linhas)` no
+// prefixo de linhas do `cs_soma` —, e as linhas não se tocam: ⇒ nenhum atómico, e o fundo de cada
+// célula soma-se pela MESMA ordem dos blocos, logo os bits são os de antes.
+//
+// ⚠️ Uma cópia que o `cs_escreve` recusou (capacidade, contagem que não bateu) tem `(0, 0, 0)` nos
+// blocos e é saltada: os registos dela não se lêem.
+@compute @workgroup_size(64)
+fn cs_celulas(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgroups) nwg: vec3<u32>) {
+    let g = indice(gid, nwg);
+    let n = contas.n;
+    let l0 = 2u * (n + 1u);
+    if g >= contagem[l0 + n] {
+        return;
+    }
+    // A cópia: a ÚLTIMA cujo início de linhas é `≤ g` (uma cópia sem linhas partilha o início da
+    // seguinte e perde para ela, que é a que tem a linha).
+    var a = 0u;
+    var b = n;
+    while b - a > 1u {
+        let m = (a + b) / 2u;
+        if contagem[l0 + m] <= g {
+            a = m;
+        } else {
+            b = m;
+        }
+    }
+    let ii = a;
+    // A faixa `q` da cópia: as fileiras `[q·H, min((q + 1)·H, linhas))`.
+    let q = g - contagem[l0 + ii];
+    let c0 = ccopias_rw[3u * ii];
+    if c0.y + c0.z + c0.w == 0u {
+        return;
+    }
+    let c1 = ccopias_rw[3u * ii + 1u];
+    let c2 = ccopias_rw[3u * ii + 2u];
+    let mbase = c1.x;
+    let linhas = c1.y;
+    let r0 = q * ALTURA_DA_CELULA;
+    if r0 >= linhas {
+        return;
+    }
+    let r1 = min(r0 + ALTURA_DA_CELULA, linhas);
+    let fundos = 3u * ALTURA_DA_CELULA;
+    let registo = fundos + c1.z;
+    let y0 = bitcast<f32>(c1.w);
+    let x0 = bitcast<f32>(c2.x);
+    let celulas = c2.y;
+    let b0 = c0.x;
+    let fim_f = c0.y;
+    let fim_m = c0.y + c0.z;
+    let nb = c0.y + c0.z + c0.w;
+    let faixa = mbase + q * celulas * registo;
+    // A faixa começa vazia: fundos a `0,0` (os bits de `0.0` são `0`) e máscaras apagadas.
+    for (var k = 0u; k < celulas * registo; k += 1u) {
+        cmascaras_rw[faixa + k] = 0u;
+    }
+    for (var bl = 0u; bl < nb; bl += 1u) {
+        let cx = cblocos_rw[2u * (b0 + bl)];
+        let lo = cx.xy;
+        let hi = cx.zw;
         // ⭐ A fileira de pixels `r` (do canto `y0 + r` ao `y0 + r + 1`) é tocada pelo bloco sse
         // `lo.y < y0 + r + 1` e `hi.y > y0 + r` — de `floor(lo.y)` a `ceil(hi.y) − 1`, exactos em
         // `f32`. Um bloco de altura zero (só arestas horizontais ou o enchimento) soma `0` em toda a
@@ -577,44 +673,51 @@ fn cs_escreve(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgr
         if hi.y <= lo.y {
             continue;
         }
-        let ra = u32(clamp(floor(lo.y) - p.y0, 0.0, f32(p.linhas)));
-        let rb = u32(clamp(ceil(hi.y) - p.y0, 0.0, f32(p.linhas)));
-        // ⭐⭐ As CÉLULAS: a caixa toca as células `ka .. kb` da linha (a máscara) e fica TODA À
-        // ESQUERDA de todo pixel a partir da `kb` — lá a soma dela é o FUNDO, que não depende do
-        // `x` do pixel e se soma uma vez aqui em vez de uma vez por pixel (o `backdrop` do Vello).
-        let ka = u32(clamp(floor((lo.x - p.x0) / LARGURA_DA_CELULA), 0.0, f32(p.celulas)));
-        let kb = u32(clamp(ceil((hi.x - p.x0) / LARGURA_DA_CELULA), 0.0, f32(p.celulas)));
+        let ra = max(u32(clamp(floor(lo.y) - y0, 0.0, f32(linhas))), r0);
+        let rb = min(u32(clamp(ceil(hi.y) - y0, 0.0, f32(linhas))), r1);
+        if ra >= rb {
+            continue;
+        }
+        // ⭐⭐ As CÉLULAS: a caixa toca as células `ka .. kb` da faixa (a máscara, uma para as
+        // fileiras todas — numa fileira que o bloco não toca ele soma ZERO EXACTO, logo um bit a mais
+        // custa a leitura e não muda a soma) e fica TODA À ESQUERDA de todo pixel a partir da `kb` —
+        // lá a soma dela é o FUNDO de cada fileira, que não depende do `x` do pixel e se soma uma vez
+        // aqui em vez de uma vez por pixel (o `backdrop` do Vello).
+        let ka = u32(clamp(floor((lo.x - x0) / LARGURA_DA_CELULA), 0.0, f32(celulas)));
+        let kb = u32(clamp(ceil((hi.x - x0) / LARGURA_DA_CELULA), 0.0, f32(celulas)));
         let bit = 1u << (bl % 32u);
-        let palavra = 3u + bl / 32u;
+        let palavra = fundos + bl / 32u;
         let cat = select(select(2u, 1u, bl < fim_m), 0u, bl < fim_f);
-        for (var r = ra; r < rb; r += 1u) {
-            let linha = mbase + r * p.celulas * registo;
-            for (var k = ka; k < kb; k += 1u) {
-                let i = linha + k * registo + palavra;
-                cmascaras_rw[i] = cmascaras_rw[i] | bit;
-            }
-            if kb < p.celulas {
-                let y = p.y0 + f32(r);
+        for (var k = ka; k < kb; k += 1u) {
+            let i = faixa + k * registo + palavra;
+            cmascaras_rw[i] = cmascaras_rw[i] | bit;
+        }
+        if kb < celulas {
+            let fim = cblocos_rw[2u * (b0 + bl) + 1u];
+            let e0 = (b0 + bl) * SEGS_POR_BLOCO;
+            for (var r = ra; r < rb; r += 1u) {
+                let y = y0 + f32(r);
                 var v = 0.0;
-                if corrente {
-                    v = clamp(y0b - y, 0.0, 1.0) - clamp(y8b - y, 0.0, 1.0);
+                if fim.z > 0.5 {
+                    v = clamp(fim.x - y, 0.0, 1.0) - clamp(fim.y - y, 0.0, 1.0);
                 } else {
                     for (var j = 0u; j < SEGS_POR_BLOCO; j += 1u) {
                         let e = contorno_rw[e0 + j];
                         v += clamp(e.y - y, 0.0, 1.0) - clamp(e.w - y, 0.0, 1.0);
                     }
                 }
-                let i = linha + kb * registo + cat;
+                let i = faixa + kb * registo + 3u * (r - r0) + cat;
                 cmascaras_rw[i] = bitcast<u32>(bitcast<f32>(cmascaras_rw[i]) + v);
             }
         }
     }
-    // O fundo de uma célula é o de TODOS os blocos que acabam antes dela: o prefixo ao longo da linha.
-    for (var r = 0u; r < p.linhas; r += 1u) {
-        let linha = mbase + r * p.celulas * registo;
+    // O fundo de uma célula é o de TODOS os blocos que acabam antes dela: o prefixo ao longo de
+    // cada fileira da faixa.
+    for (var r = r0; r < r1; r += 1u) {
+        let f = 3u * (r - r0);
         var acc = vec3<f32>(0.0);
-        for (var k = 0u; k < p.celulas; k += 1u) {
-            let i = linha + k * registo;
+        for (var k = 0u; k < celulas; k += 1u) {
+            let i = faixa + k * registo + f;
             acc += vec3<f32>(
                 bitcast<f32>(cmascaras_rw[i]),
                 bitcast<f32>(cmascaras_rw[i + 1u]),
@@ -625,8 +728,4 @@ fn cs_escreve(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgr
             cmascaras_rw[i + 2u] = bitcast<u32>(acc.z);
         }
     }
-    ccaixas_rw[ii] = vec4<f32>(cmin, cmax);
-    ccopias_rw[3u * ii] = vec4<u32>(b0, p.nf / SEGS_POR_BLOCO, p.nm / SEGS_POR_BLOCO, nc / SEGS_POR_BLOCO);
-    ccopias_rw[3u * ii + 1u] = vec4<u32>(mbase, p.linhas, palavras, bitcast<u32>(p.y0));
-    ccopias_rw[3u * ii + 2u] = vec4<u32>(bitcast<u32>(p.x0), p.celulas, 0u, 0u);
 }

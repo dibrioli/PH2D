@@ -797,3 +797,32 @@ seguinte tem endereço: as células e as máscaras construídas EM PARALELO por 
 os pixels de uma célula a partilhar os blocos (memória do grupo), que é o que o rasterizador fino do
 Vello faz.
 
+
+### §9.7 — AS CÉLULAS EM PARALELO: um fio por FILEIRA do ecrã (2026-10-01)
+
+A cura nomeada no fim do §9.6, metade dela. O `cs_celulas` deixa de correr num fio por CÓPIA e passa a
+correr num fio por **fileira de ecrã** de cada cópia; a contagem (`contagem`) ganhou um terceiro terço
+`(n+1)` com as fileiras por cópia, o `cs_soma` faz o terceiro prefixo e escreve os argumentos do despacho
+**indirecto** (`despacho_rw`, binding 7). ⚠️ O `wgpu` recusa um buffer que é ao mesmo tempo armazenamento
+de escrita e argumento indirecto no MESMO despacho ⇒ o `cs_celulas` tem um grupo de ligação PRÓPRIO
+(`escrita_celulas`, sem o binding 7). Um fio acha a sua cópia por busca binária no prefixo, zera a faixa,
+escreve as máscaras e o fundo de cada bloco na fileira dele, e faz o prefixo do fundo ao longo da fileira.
+
+Medido no proxy de telemóvel (iGPU, `radeon_icd`, máquina calma, `sonda_relogio_das_estrelas_grandes`, ms):
+
+| cena | antes (§9.6) | fileiras em paralelo | Vello |
+|---|---|---|---|
+| estrelas grandes esticadas | `2,32` | **`2,02`** | `0,98` |
+| estrelas grandes conformes | `1,35` | **`1,17`** | `0,90` |
+| densas | `2,22` | **`2,11`** | — |
+
+GPU `ph2d-shape-gpu --ignored` **5/5**. ⚠️ **Por ablação (dobrar o desenho), quem manda agora é o DESENHO**
+(`~1,38 ms` nas esticadas), e dentro dele o laço de blocos por pixel (`~1,2 ms`) — é a outra metade da cura.
+
+⛔ **Recusas MEDIDAS (não reconstruir):**
+- **blocos de 4 arestas** em vez de 8 — resultado misto, e as esticadas PIORAM.
+- **células mais altas** (`ALTURA_DA_CELULA`): `H=1 2,02` · `2 2,17` · `4 2,30` · `8 2,69` — piora em
+  monotonia; o registo cresce com a altura e cada pixel lê-o inteiro.
+- ⏳ **pré-calcular a cobertura 8 px por fio no compute** (para o desenho ler 2 palavras em vez do laço de
+  blocos): o protótipo foi construído e reprovou **4 de 5** gates de paridade antes de ser diagnosticado ⇒
+  REVERTIDO, não refutado. É a próxima tentativa, e começa por achar o porquê das quatro reprovações.

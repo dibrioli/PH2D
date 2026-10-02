@@ -451,6 +451,9 @@ fn soma_do_bloco(b: u32, xy: vec2<f32>) -> f32 {
 
 // A largura de uma CÉLULA das máscaras, em pixels (doc 121 §9.6).
 const LARGURA_DA_CELULA: f32 = 32.0;
+// ⭐ doc 121 §9.7 — e a ALTURA, em fileiras: os pixels de uma célula partilham a máscara (o mesmo
+// laço de blocos), cada fileira com o seu fundo.
+const ALTURA_DA_CELULA: u32 = 1u;
 
 // ⭐⭐ doc 121 §9.6 — **A COBERTURA PELAS CÉLULAS**: cada fileira da cópia é partida em células de
 // `LARGURA_DA_CELULA` px, e cada célula guarda o FUNDO (a soma dos blocos que acabam todos à
@@ -467,17 +470,20 @@ fn cobertura_de_ecra(ii: u32, xy: vec2<f32>) -> vec3<f32> {
         return vec3<f32>(0.0);
     }
     let palavras = c1.z;
-    let registo = 3u + palavras;
-    let base = c1.x + (u32(r) * c2.y + u32(kx)) * registo;
+    let fundos = 3u * ALTURA_DA_CELULA;
+    let registo = fundos + palavras;
+    let ri = u32(r);
+    let base = c1.x + ((ri / ALTURA_DA_CELULA) * c2.y + u32(kx)) * registo;
+    let f = base + 3u * (ri % ALTURA_DA_CELULA);
     var s = vec3<f32>(
-        bitcast<f32>(cmascaras[base]),
-        bitcast<f32>(cmascaras[base + 1u]),
-        bitcast<f32>(cmascaras[base + 2u]),
+        bitcast<f32>(cmascaras[f]),
+        bitcast<f32>(cmascaras[f + 1u]),
+        bitcast<f32>(cmascaras[f + 2u]),
     );
     let fim_f = c0.y;
     let fim_m = c0.y + c0.z;
     for (var w = 0u; w < palavras; w += 1u) {
-        var m = cmascaras[base + 3u + w];
+        var m = cmascaras[base + fundos + w];
         loop {
             if m == 0u {
                 break;

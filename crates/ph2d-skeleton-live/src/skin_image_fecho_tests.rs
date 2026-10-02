@@ -89,3 +89,32 @@ fn as_faces_saem_pela_ordem_dos_ossos_e_estaveis() {
     ordena_pelo_osso(&mut iguais, &[], 4);
     assert_eq!(iguais, vec![[2, 3, 2], [0, 1, 0]]);
 }
+
+/// ⭐⭐ Os anéis guardados são os CALCULADOS, e a gaveta devolve o mesmo `Rc` enquanto a malha vive;
+/// outra malha (outro `Rc`) recebe os seus. ⛔ Uma mutação que devolvia vazio no acerto sobrevivia:
+/// os gates da cena calculam os anéis à mão.
+#[test]
+fn os_aneis_guardados_sao_os_calculados_e_ficam_por_malha() {
+    let malha = |fora: &[(u32, u32)]| {
+        let (rest, tris) = grelha(3, 3, fora);
+        std::rc::Rc::new(crate::skinned_mesh::SkinnedMesh {
+            mesh: ph2d_poly2d::Mesh2d {
+                rest,
+                tris,
+                size: [3, 3],
+            },
+            pesos: Vec::new(),
+        })
+    };
+    let a = malha(&[]);
+    let primeira = bordas_da(&a);
+    let segunda = bordas_da(&a);
+    assert!(
+        std::rc::Rc::ptr_eq(&primeira, &segunda),
+        "o acerto não veio da gaveta"
+    );
+    assert_eq!(*segunda, aneis_da_borda(&a.mesh.tris));
+    let b = malha(&[(1, 1)]);
+    assert_eq!(*bordas_da(&b), aneis_da_borda(&b.mesh.tris));
+    assert_eq!(bordas_da(&b).len(), 2, "a malha com buraco tem dois anéis");
+}

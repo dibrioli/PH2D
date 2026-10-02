@@ -513,19 +513,27 @@ fn costura(
         let dentro = |m: &Option<Encontro>| m.is_some_and(|(sj, _, d)| sj > si && d < vao);
         for par in amostras.windows(2) {
             let ((t0, m0), (t1, m1)) = (par[0], par[1]);
-            let (Some(e0), Some(e1)) = (m0, m1) else {
-                continue;
+            let (d0, d1) = (dentro(&m0), dentro(&m1));
+            // ⭐ A ponta de um troço é onde o vão REAL passa `vao` — bissecção sobre a distância, e
+            // não a amostra nem uma interpolação: é isto que faz a costura crescer e encolher
+            // CONTÍNUA com a pose. ⛔ A 1.ª redacção interpolava a distância linearmente entre as
+            // amostras, e quando o ponto mais perto muda de segmento entre elas a conta mente: medido,
+            // pedaços a coser vãos de `3,9` texels (a lei é `2`).
+            let fronteira = |mut t_in: f64, mut t_out: f64| {
+                for _ in 0..12 {
+                    let t = 0.5 * (t_in + t_out);
+                    if dentro(&encara(ponto(s, t), si)) {
+                        t_in = t;
+                    } else {
+                        t_out = t;
+                    }
+                }
+                t_in
             };
-            if !dentro(&m0) && !dentro(&m1) {
-                continue;
-            }
-            // ⭐ A ponta de um troço cai onde a distância passa `vao`, interpolada — e não na
-            // amostra: é isto que faz a costura crescer e encolher CONTÍNUA com a pose.
-            let corte = |de: f64, ate: f64| ((vao - de) / (ate - de)).clamp(0.0, 1.0);
-            let (ta, tb) = match (dentro(&m0), dentro(&m1)) {
+            let (ta, tb) = match (d0, d1) {
                 (true, true) => (t0, t1),
-                (true, false) => (t0, t0 + (t1 - t0) * corte(e0.2, e1.2)),
-                (false, true) => (t0 + (t1 - t0) * corte(e0.2, e1.2), t1),
+                (true, false) => (t0, fronteira(t0, t1)),
+                (false, true) => (fronteira(t1, t0), t1),
                 (false, false) => continue,
             };
             let (pa, pb) = (ponto(s, ta), ponto(s, tb));

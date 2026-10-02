@@ -116,6 +116,17 @@ fn dentro(p: [f64; 2], a: [f64; 2], b: [f64; 2], c: [f64; 2]) -> bool {
 /// ABERTA (um «V») só o alcance pequeno separa um fio da baía, cuja ponta é mais estreita que
 /// `2·alcance` por geometria (medido a `120°`: `25` amostras a `4 px` com a forma certa).
 fn buracos(m: &SpriteMesh, [x0, y0, x1, y1]: [f64; 4], alcance_px: f64) -> usize {
+    buracos_de(m, [x0, y0, x1, y1], alcance_px, false)
+}
+
+/// A [`buracos`] com a régua escolhida: `tinta` conta como coberto só onde há TINTA (alfa `≥ 128`).
+///
+/// ⚠️ **As duas réguas respondem a perguntas diferentes.** A geométrica (`false`) mede a LEI — o vão
+/// entre BORDAS da malha, que é o que a costura cose. A de tinta vê também a cúspide da ARTE onde a
+/// tampa redonda encosta tangente noutra borda (a tampa vive dentro das células; a borda da malha ali
+/// é a escada da grelha) — medido `24`–`35` amostras a `1 px` (`~2 px²`, a ponta tangente), com e
+/// sem costura: um limite conhecido da lei, quase invisível na foto.
+fn buracos_de(m: &SpriteMesh, [x0, y0, x1, y1]: [f64; 4], alcance_px: f64, tinta: bool) -> usize {
     assert!(m.skin.is_none(), "a régua lê posições POSADAS");
     let p = |i: u32| {
         let q = m.local[i as usize];
@@ -123,11 +134,11 @@ fn buracos(m: &SpriteMesh, [x0, y0, x1, y1]: [f64; 4], alcance_px: f64) -> usize
     };
     let alcance = alcance_px / f64::from(PPM);
     let (ex0, ey0, ex1, ey1) = (x0, y0 - alcance, x1, y1 + alcance);
-    let perto: Vec<[[f64; 2]; 3]> = m
+    let perto: Vec<([[f64; 2]; 3], [u32; 3])> = m
         .tris
         .iter()
-        .map(|t| [p(t[0]), p(t[1]), p(t[2])])
-        .filter(|t| {
+        .map(|t| ([p(t[0]), p(t[1]), p(t[2])], *t))
+        .filter(|(t, _)| {
             let (a, b) = (
                 t.iter()
                     .fold([f64::MAX; 2], |c, q| [c[0].min(q[0]), c[1].min(q[1])]),
@@ -137,7 +148,45 @@ fn buracos(m: &SpriteMesh, [x0, y0, x1, y1]: [f64; 4], alcance_px: f64) -> usize
             a[0] <= ex1 && b[0] >= ex0 && a[1] <= ey1 && b[1] >= ey0
         })
         .collect();
-    let coberto = |q: [f64; 2]| perto.iter().any(|t| dentro(q, t[0], t[1], t[2]));
+    // ⭐ «Coberto» é TINTA: o triângulo que cobre o ponto amostra ali um texel com alfa `≥ 128`. ⛔ A
+    // 1.ª régua contava qualquer triângulo, e a escada da grelha à volta de uma tampa (margem
+    // transparente) lia-se como borda — um «fio» que na tela é a baía inteira.
+    let alfa = alfa_da_arte();
+    let coberto = |q: [f64; 2]| {
+        perto.iter().any(|(t, i)| {
+            if !dentro(q, t[0], t[1], t[2]) {
+                return false;
+            }
+            if !tinta {
+                return true;
+            }
+            let area = (t[1][0] - t[0][0]) * (t[2][1] - t[0][1])
+                - (t[2][0] - t[0][0]) * (t[1][1] - t[0][1]);
+            if area == 0.0 {
+                return false;
+            }
+            let b1 = ((q[0] - t[0][0]) * (t[2][1] - t[0][1])
+                - (t[2][0] - t[0][0]) * (q[1] - t[0][1]))
+                / area;
+            let b2 = ((t[1][0] - t[0][0]) * (q[1] - t[0][1])
+                - (q[0] - t[0][0]) * (t[1][1] - t[0][1]))
+                / area;
+            let b0 = 1.0 - b1 - b2;
+            let uv = |k: usize| m.uv[i[k] as usize];
+            let u = b0 * f64::from(uv(0)[0]) + b1 * f64::from(uv(1)[0]) + b2 * f64::from(uv(2)[0]);
+            let v = b0 * f64::from(uv(0)[1]) + b1 * f64::from(uv(1)[1]) + b2 * f64::from(uv(2)[1]);
+            #[expect(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                reason = "texel"
+            )]
+            let (x, y) = (
+                ((u * f64::from(IMG_W)) as u32).min(IMG_W - 1),
+                ((v * f64::from(IMG_H)) as u32).min(IMG_H - 1),
+            );
+            alfa[(y * IMG_W + x) as usize] >= 128
+        })
+    };
     let h = 0.25 / f64::from(PPM);
     let mut n = 0;
     let mut y = y0;
@@ -149,6 +198,9 @@ fn buracos(m: &SpriteMesh, [x0, y0, x1, y1]: [f64; 4], alcance_px: f64) -> usize
                     |s: f64| (1..=16).any(|k| coberto([x, y + s * alcance * f64::from(k) / 16.0]));
                 if lado(1.0) && lado(-1.0) {
                     n += 1;
+                    if std::env::var_os("SONDA_ONDE").is_some() && n % 4 == 1 {
+                        eprintln!("   fio em ({x:.4}, {y:.4})");
+                    }
                 }
             }
             x += h;
@@ -156,6 +208,12 @@ fn buracos(m: &SpriteMesh, [x0, y0, x1, y1]: [f64; 4], alcance_px: f64) -> usize
         y += h;
     }
     n
+}
+
+/// O alfa da arte da cena, uma vez.
+fn alfa_da_arte() -> &'static [u8] {
+    static ALFA: std::sync::OnceLock<Vec<u8>> = std::sync::OnceLock::new();
+    ALFA.get_or_init(|| pixels().iter().skip(3).step_by(4).copied().collect())
 }
 
 /// A janela do vão medido pela sonda (`x −1,23…−0,98`, `y 0,467…0,480`), com folga.
@@ -185,6 +243,27 @@ fn acrescentados(p: &Palco) -> Vec<([f32; 2], [f32; 2])> {
     (sem.local.len()..com.local.len())
         .map(|i| (com.local[i], com.uv[i]))
         .collect()
+}
+
+/// A área que a costura acrescenta, em texel² (a `100 %` um texel é um pixel).
+fn area_cosida(p: &Palco) -> f64 {
+    let (sem, com) = (desenhada(p, false, false), desenhada(p, true, false));
+    let px2 = f64::from(PPM).powi(2);
+    com.tris[sem.tris.len()..]
+        .iter()
+        .map(|t| {
+            let q = t.map(|i| {
+                [
+                    f64::from(com.local[i as usize][0]),
+                    f64::from(com.local[i as usize][1]),
+                ]
+            });
+            ((q[1][0] - q[0][0]) * (q[2][1] - q[0][1]) - (q[2][0] - q[0][0]) * (q[1][1] - q[0][1]))
+                .abs()
+                / 2.0
+                * px2
+        })
+        .sum()
 }
 
 /// ⭐⭐⭐ **A TINTA da costura é a das BEIRAS** — cada pedaço cosido (`4` pontos: dois da beira que
@@ -240,6 +319,37 @@ fn nenhuma_pose_a_volta_do_report_deixa_o_fio() {
         com_fio.is_empty(),
         "(pose, sem costura, com costura): {com_fio:?}"
     );
+}
+
+/// ⭐⭐⭐ **A costura nunca cose mais que `VAO_MAXIMO_EM_TEXELS`** — as pontas de cada troço caem
+/// onde o vão REAL passa os dois texels (bissecção). ⛔ A interpolação linear da 1.ª redacção cosia
+/// vãos de `3,9` texels (medido, `(36°, −145,2°)`), quando o ponto mais perto mudava de segmento
+/// entre duas amostras; sem corte nenhum, `6,2`.
+#[test]
+fn a_costura_nunca_passa_dos_dois_texels() {
+    let lei = ph2d_skeleton_live::skin_image_fecho::VAO_MAXIMO_EM_TEXELS;
+    for k in 0..=24 {
+        let g2 = -150.0 + 0.5 * k as f32;
+        let v = maior_vao_cosido(&palco((36.0, g2)));
+        assert!(
+            v <= lei * (1.0 + 1e-3),
+            "(36°, {g2}°): coseu um vão de {v:.4} texels"
+        );
+    }
+}
+
+/// ⭐⭐ **Onde os membros se SOBREPÕEM nada se cose por cima da tinta** — a costura só liga bordas
+/// que se encaram de FORA. ⛔ Medido sem esse teste: `5`–`6` de `10` centros cosidos sobre tinta
+/// de `−150°` a `−160°`, e `83` de `150` a `−144°`.
+#[test]
+fn onde_os_membros_se_sobrepoem_nada_se_cose_por_cima() {
+    for g2 in [-144.0, -150.0, -155.0, -160.0] {
+        let (sobre, de) = cosidos_sobre_tinta(&palco((36.0, g2)));
+        assert_eq!(
+            sobre, 0,
+            "(36°, {g2}°): {sobre} de {de} centros cosidos sobre tinta"
+        );
+    }
 }
 
 /// ⭐⭐ **Os «V» das juntas ficam como a arte** — entre membros VIZINHOS nada se cose (a
@@ -797,4 +907,189 @@ fn diag_a_largura_dos_vaos() {
             }
         );
     }
+}
+
+/// ⏱️ **SONDA — a área cosida ao longo de uma varredura**, em texel².
+/// `SONDA_DE=-146 SONDA_ATE=-140 SONDA_PASSO=0.1 cargo test -p ph2d-app-vec --lib --profile smoke -- --ignored --nocapture diag_a_area_cosida`
+#[test]
+#[ignore = "SONDA, nao gate"]
+fn diag_a_area_cosida() {
+    let g = |k: &str, d: f32| {
+        std::env::var(k)
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(d)
+    };
+    let (g1, de, ate, passo) = (
+        g("SONDA_G1", 36.0),
+        g("SONDA_DE", -160.0),
+        g("SONDA_ATE", -138.0),
+        g("SONDA_PASSO", 1.0),
+    );
+    let n = ((ate - de) / passo).abs().round() as i32;
+    for k in 0..=n {
+        let g2 = de + (ate - de).signum() * passo * k as f32;
+        eprintln!("({g1}, {g2:.2}) {:.3}", area_cosida(&palco((g1, g2))));
+    }
+}
+
+/// ⏱️ **SONDA — o que se VÊ na janela do vão**, por pose: fundo entalado a `1 px` (o fio) e a `4 px`
+/// (a baía), com e sem costura.
+#[test]
+#[ignore = "SONDA, nao gate"]
+fn diag_o_que_se_ve_no_vao() {
+    let g = |k: &str, d: f32| {
+        std::env::var(k)
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(d)
+    };
+    let (g1, de, ate, passo) = (
+        g("SONDA_G1", 36.0),
+        g("SONDA_DE", -147.0),
+        g("SONDA_ATE", -142.0),
+        g("SONDA_PASSO", 0.05),
+    );
+    let n = ((ate - de) / passo).abs().round() as i32;
+    for k in 0..=n {
+        let g2 = de + (ate - de).signum() * passo * k as f32;
+        let p = palco((g1, g2));
+        let (sem, com) = (desenhada(&p, false, false), desenhada(&p, true, false));
+        let j = [
+            g("SONDA_X0", -1.8).into(),
+            g("SONDA_Y0", 0.3).into(),
+            g("SONDA_X1", -0.5).into(),
+            g("SONDA_Y1", 0.75).into(),
+        ];
+        eprintln!(
+            "({g1}, {g2:.2}) fio {}->{} baia {}->{}",
+            buracos_de(&sem, j, 1.0, true),
+            buracos_de(&com, j, 1.0, true),
+            buracos_de(&sem, j, 4.0, true),
+            buracos_de(&com, j, 4.0, true)
+        );
+    }
+}
+
+/// Quantos centros de triângulo COSIDOS caem em cima de tinta da malha sem costura — e de quantos.
+fn cosidos_sobre_tinta(p: &Palco) -> (usize, usize) {
+    let (sem, com) = (desenhada(p, false, false), desenhada(p, true, false));
+    let mut sobre = 0;
+    let novos = &com.tris[sem.tris.len()..];
+    for t in novos {
+        let c = t.iter().fold([0.0, 0.0], |a, &i| {
+            [
+                a[0] + f64::from(com.local[i as usize][0]) / 3.0,
+                a[1] + f64::from(com.local[i as usize][1]) / 3.0,
+            ]
+        });
+        let h = 1e-4;
+        if buracos(&sem, [c[0] - h, c[1] - h, c[0] + h, c[1] + h], 0.0) == 0 && tinta_em(&sem, c) {
+            sobre += 1;
+        }
+    }
+    (sobre, novos.len())
+}
+
+/// Há tinta da malha `m` no ponto `q`?
+fn tinta_em(m: &SpriteMesh, q: [f64; 2]) -> bool {
+    let p = |i: u32| {
+        [
+            f64::from(m.local[i as usize][0]),
+            f64::from(m.local[i as usize][1]),
+        ]
+    };
+    let alfa = alfa_da_arte();
+    m.tris.iter().any(|t| {
+        let (a, b, c) = (p(t[0]), p(t[1]), p(t[2]));
+        if !dentro(q, a, b, c) {
+            return false;
+        }
+        let area = (b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1]);
+        if area == 0.0 {
+            return false;
+        }
+        let b1 = ((q[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (q[1] - a[1])) / area;
+        let b2 = ((b[0] - a[0]) * (q[1] - a[1]) - (q[0] - a[0]) * (b[1] - a[1])) / area;
+        let w = [1.0 - b1 - b2, b1, b2];
+        let (mut u, mut v) = (0.0, 0.0);
+        for k in 0..3 {
+            u += w[k] * f64::from(m.uv[t[k] as usize][0]);
+            v += w[k] * f64::from(m.uv[t[k] as usize][1]);
+        }
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "texel"
+        )]
+        let (x, y) = (
+            ((u * f64::from(IMG_W)) as u32).min(IMG_W - 1),
+            ((v * f64::from(IMG_H)) as u32).min(IMG_H - 1),
+        );
+        alfa[(y * IMG_W + x) as usize] >= 128
+    })
+}
+
+/// ⏱️ **SONDA — continuidade e sobreposição**: a área cosida a passos de `SONDA_PASSO` e os centros
+/// cosidos que caem em tinta.
+#[test]
+#[ignore = "SONDA, nao gate"]
+fn diag_continuidade_e_sobreposicao() {
+    let g = |k: &str, d: f32| {
+        std::env::var(k)
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(d)
+    };
+    let (de, passo, n) = (
+        g("SONDA_DE", -146.0),
+        g("SONDA_PASSO", 0.0025),
+        g("SONDA_N", 20.0) as i32,
+    );
+    let mut antes: Option<f64> = None;
+    let mut pior = 0.0_f64;
+    for k in 0..=n {
+        let a = area_cosida(&palco((36.0, de + passo * k as f32)));
+        if let Some(b) = antes {
+            pior = pior.max((a - b).abs());
+        }
+        antes = Some(a);
+    }
+    eprintln!("continuidade: pior salto {pior:.4} texel2 em passos de {passo}°");
+    for g2 in [-150.0, -152.0, -155.0, -158.0, -160.0, -144.0, -143.0] {
+        let (s, t) = cosidos_sobre_tinta(&palco((36.0, g2)));
+        eprintln!("sobreposicao (36, {g2}): {s} de {t} centros cosidos sobre tinta");
+    }
+}
+
+/// O maior vão (em texels) que um pedaço cosido atravessa nas pontas — `|pa − qa|` e `|pb − qb|` dos
+/// quatro pontos `[pa, pb, qb, qa]` de cada pedaço.
+fn maior_vao_cosido(p: &Palco) -> f64 {
+    let (sem, com) = (desenhada(p, false, false), desenhada(p, true, false));
+    let [a, b, c, d, _, _] = p.p2l.0;
+    let texel = (a * d - b * c).abs().sqrt();
+    let q = |i: usize| [f64::from(com.local[i][0]), f64::from(com.local[i][1])];
+    (sem.local.len()..com.local.len())
+        .step_by(4)
+        .flat_map(|k| [(k, k + 3), (k + 1, k + 2)])
+        .map(|(i, j)| {
+            let (u, v) = (q(i), q(j));
+            (u[0] - v[0]).hypot(u[1] - v[1]) / texel
+        })
+        .fold(0.0, f64::max)
+}
+
+/// ⏱️ **SONDA — o maior vão cosido** numa varredura.
+#[test]
+#[ignore = "SONDA, nao gate"]
+fn diag_o_maior_vao_cosido() {
+    let mut pior = (0.0_f64, 0.0_f32);
+    for k in 0..=120 {
+        let g2 = -150.0 + 0.1 * k as f32;
+        let v = maior_vao_cosido(&palco((36.0, g2)));
+        if v > pior.0 {
+            pior = (v, g2);
+        }
+    }
+    eprintln!("maior vao cosido: {:.4} texel em (36, {})", pior.0, pior.1);
 }

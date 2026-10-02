@@ -585,6 +585,7 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   `painter_layers` de `1 529` para `1 596`** — é a SOMA das duas linhas, com a conta fechada no gate
   (`+67` = uma fileira com moldura). [Handoff da linha](docs/Painter/handoffs/HANDOFF_INTEGRACAO_line_PainterWatercolor_A_LINHA_2026-09-25.md)
   · [diário](docs/Painter/handoffs/HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-09-20.md).
+  ⭐ **E reabriu (26/09–01/10): a fila 44 fechou inteira (12/12) e a pilha do Composite a Size 0.5 vai de `~40` para `60` fps** (acumular por quadro · o Blur em linhas · o campo do esfregão em faixas e AO LADO do acúmulo · o motor do pincel num só pedaço no `smoke`). [Handoff](docs/Painter/handoffs/HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-10-01.md) · smoke `PH2D_COMPOSITE_RABISCO=<Size>` (risca sozinho e diz o período).
   **Smokes:** `PH2D_IMPASTO_SMOKE=1|2` · `PH2D_COMPOSITE_SMOKE=1` · `PH2D_WETPAINT_SMOKE` (+ `PH2D_FLUID_PROFILE=1`) · `PH2D_MASK_SMOKE` ·
   `PH2D_TAPER_SMOKE` · `PH2D_LINE_SMOKE` · `PH2D_SUBSTRATE_SMOKE`. Diagnóstico: `PH2D_PAINT_PERF=1` ·
   `PH2D_PREVIEW_DIAG` · `PH2D_PREVIEW_DUMP=<dir>`.

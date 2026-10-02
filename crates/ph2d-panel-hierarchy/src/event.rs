@@ -69,7 +69,8 @@ fn try_context_menu_row(
         || id == ids::CTX_MENU_HIER_USE_AS_BRUSH_TEXTURE
         || id == ids::CTX_MENU_HIER_USE_AS_BRUSH_SHAPE
         || id == ids::CTX_MENU_HIER_USE_AS_PAPER
-        || id == ids::CTX_MENU_HIER_USE_AS_GRANULATION)
+        || id == ids::CTX_MENU_HIER_USE_AS_GRANULATION
+        || id == ids::CTX_MENU_HIER_USE_AS_FLOW)
     {
         return false;
     }
@@ -94,6 +95,9 @@ fn try_context_menu_row(
                 .push(EditorAction::Hierarchy(HierRequest::UseAsGranulation {
                     row,
                 }));
+        } else if id == ids::CTX_MENU_HIER_USE_AS_FLOW {
+            host.bus_mut()
+                .push(EditorAction::Hierarchy(HierRequest::UseAsFlow { row }));
         } else if id == ids::CTX_MENU_HIER_DUPLICATE {
             host.bus_mut()
                 .push(EditorAction::Hierarchy(HierRequest::Duplicate { row }));

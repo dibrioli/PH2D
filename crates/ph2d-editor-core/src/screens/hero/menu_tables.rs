@@ -475,6 +475,7 @@ pub(super) const HIERARCHY_ROW_ROWS: &[MenuRow] = &[
         ids::CTX_MENU_HIER_USE_AS_GRANULATION,
         "chrome.menu.use_as_granulation",
     ),
+    menu_row(ids::CTX_MENU_HIER_USE_AS_FLOW, "chrome.menu.use_as_flow"),
     menu_row(
         ids::CTX_MENU_HIER_RESET_TRANSFORM,
         "chrome.menu.reset_transform",

@@ -249,6 +249,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.fase_use_as_paper.granulation" => "Granulation",
         "shell.fase_use_as_paper.watercolor_paper_set" => "Watercolor paper set from layer",
         "shell.fase_use_as_paper.watercolor_granulation" => "Watercolor granulation set from layer",
+        "shell.fase_use_as_paper.flow" => "Flow",
+        "shell.fase_use_as_paper.watercolor_flow_set" => "Ragged Edge flow set from layer",
         "shell.image_edit_import.import_failed" => "Import failed: {error}",
         "shell.image_edit_import.imported" => "Imported {label}",
         "shell.image_edit_import.skipped_not_an_image" => {

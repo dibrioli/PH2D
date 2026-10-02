@@ -189,6 +189,9 @@ pub enum HierRequest {
     /// "Use as Granulation" — shell resolves row → pixels → `use_layers_as_granulation`.
     UseAsGranulation { row: ph2d_a11y::NodeId },
 
+    /// "Use as Flow" — shell resolves row → pixels → `use_layers_as(UsoDaCamada::Fluxo, …)` (BUGS #31).
+    UseAsFlow { row: ph2d_a11y::NodeId },
+
     /// Sync `gizmo_selection` to the entity backing the clicked
     /// hierarchy row — cross-panel selection sync from the
     /// hierarchy panel to the canvas gizmo. Payload: the row's

@@ -140,11 +140,10 @@ impl PainterTool {
                 .iter()
                 .any(|s| s.paper_edge > 0.0)
         {
-            let img = self.paint.paper_image.as_ref().map(|i| i.as_mask());
             super::super::watercolor_flow::alcance_do_papel(
                 &self.paint.brush,
                 &self.paint.wet_styles.table,
-                img.as_ref(),
+                self.imagens_da_borda(),
                 super::super::watercolor_noise::NoiseTile::NONE,
             )
         } else {

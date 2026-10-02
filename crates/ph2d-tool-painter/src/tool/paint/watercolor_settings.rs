@@ -12,6 +12,39 @@ use ph2d_painter_brush::{
     TextureMapping, TextureSettings,
 };
 
+/// O que o menu "Use as …" da Hierarquia faz com uma linha — ver [`PainterTool::use_layers_as`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum UsoDaCamada {
+    /// "Use as Watercolor Paper" — o slot Paper.
+    Papel,
+    /// "Use as Granulation" — o mapa de granulação (o slot Grain).
+    Granulacao,
+    /// "Use as Flow" — o mapa do Flow do Ragged Edge.
+    Fluxo,
+}
+
+impl UsoDaCamada {
+    /// A chave do aviso de sucesso.
+    #[must_use]
+    pub fn chave_do_aviso(self) -> &'static str {
+        match self {
+            Self::Papel => "shell.fase_use_as_paper.watercolor_paper_set",
+            Self::Granulacao => "shell.fase_use_as_paper.watercolor_granulation",
+            Self::Fluxo => "shell.fase_use_as_paper.watercolor_flow_set",
+        }
+    }
+
+    /// A chave do NOME do slot, para o aviso «Use as {what}: escolha uma imagem».
+    #[must_use]
+    pub fn chave_do_nome(self) -> &'static str {
+        match self {
+            Self::Papel => "shell.fase_use_as_paper.watercolor_paper",
+            Self::Granulacao => "shell.fase_use_as_paper.granulation",
+            Self::Fluxo => "shell.fase_use_as_paper.flow",
+        }
+    }
+}
+
 /// Drying-Time slider bounds in SECONDS (doc 13 #11) — the wet-session fusion window. Canvas-level
 /// (not a brush param); mapped to `PaintState::dry_rate_per_s` as `255 / seconds`.
 pub const DRY_TIME_MIN_S: f32 = 2.0;
@@ -511,6 +544,32 @@ impl PainterTool {
     #[must_use]
     pub fn brush_paper_image_version(&self) -> u64 {
         self.paint.paper_image_version
+    }
+
+    /// **A porta do menu da Hierarquia** ("Use as …"): instala a luminância da linha no slot que o
+    /// [`UsoDaCamada`] nomeia. A shell só lê os pixels e entrega — QUAL slot e QUE aviso são desta família.
+    pub fn use_layers_as(&mut self, uso: UsoDaCamada, lum: Vec<u8>, width: u32, height: u32) {
+        match uso {
+            UsoDaCamada::Papel => self.use_layers_as_watercolor_paper(lum, width, height),
+            UsoDaCamada::Granulacao => self.use_layers_as_granulation(lum, width, height),
+            UsoDaCamada::Fluxo => self.use_layers_as_flow(lum, width, height),
+        }
+    }
+
+    /// Install a tagged layer/group as the **Flow** map of the Ragged Edge (BUGS #31) — the water's path
+    /// along the wash boundary follows the layer, like a Corel Painter flow map. Flow Size `1` maps the
+    /// image 1:1 onto the canvas (`watercolor_flow`); the Ragged Edge amplitude is kept.
+    pub fn use_layers_as_flow(&mut self, lum: Vec<u8>, width: u32, height: u32) {
+        self.paint
+            .flow_map
+            .instala(BrushTextureImage::new(lum, width, height));
+        let f = &mut self.paint.brush.edge_flow;
+        f.kind = TextureKind::Image;
+        f.mapping = TextureMapping::Tiled;
+        f.size = [1.0, 1.0];
+        f.angle_deg = 0;
+        f.offset = [0.0, 0.0];
+        self.paint.brush.watercolor = true;
     }
 
     /// Install a tagged layer/group into the **Granulation** map — the **Grain** slot (`brush.texture`),

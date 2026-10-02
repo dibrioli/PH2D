@@ -1,5 +1,7 @@
-//! **Fase do quadro: USAR COMO PAPEL / GRANULAÇÃO** — o menu da Hierarquia lê os pixels da linha como
-//! luminância e instala-os como o papel da aquarela (OBRA 2 da `line/render-loop`, 2026-09-12).
+//! **Fase do quadro: USAR COMO PAPEL / GRANULAÇÃO / FLOW** — o menu da Hierarquia lê os pixels da linha
+//! como luminância e entrega-os ao Painter com o USO escolhido (OBRA 2 da `line/render-loop`,
+//! 2026-09-12; o Flow em 2026-10-02). Qual slot e que aviso são do Painter
+//! (`PainterTool::use_layers_as`, `UsoDaCamada`): a shell só lê e entrega.
 //!
 //! PRECISION-READONLY: os pixels lidos pelo `read_sprite_source` viram a luminância do papel (o slot
 //! Grain do Painter, ancorado ao canvas); a sprite da linha nunca é escrita de volta, então os seus
@@ -12,8 +14,7 @@ impl crate::App {
     /// Ver o cabeçalho do módulo.
     pub(super) fn fase_use_as_paper(
         &mut self,
-        use_as_paper_row: Option<NodeId>,
-        use_as_granulation_row: Option<NodeId>,
+        use_as_layer: Option<(NodeId, ph2d_tool_painter::UsoDaCamada)>,
     ) {
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let Some(gfx) = self.gfx.as_mut() else {
@@ -29,14 +30,8 @@ impl crate::App {
             atlas_asset_map,
             ..
         } = FrameGfx::of(gfx);
-        // Hierarchy "Use as Watercolor Paper / Granulation" → read the row's pixels as luminance and
-        // install them as the watercolor paper (Grain slot, canvas-anchored), turning the render-path
-        // on so the wash granulates against the layer. Granulation wins if both fired in one frame.
         // Mirror of the "Use as Brush Grain" path above (`docs/Painter/10…` §5).
-        let use_as_paper_intent = use_as_granulation_row
-            .map(|r| (r, true))
-            .or(use_as_paper_row.map(|r| (r, false)));
-        if let Some((row, as_granulation)) = use_as_paper_intent
+        if let Some((row, uso)) = use_as_layer
             && let Some(live) = hero_live.as_ref()
             && let Some(bits) = live.bridge.entity_for(row)
         {
@@ -84,25 +79,12 @@ impl crate::App {
                         t.as_any_mut()
                             .downcast_mut::<ph2d_tool_painter::PainterTool>()
                     }) {
-                        if as_granulation {
-                            painter.use_layers_as_granulation(lum, w, h);
-                            toasts.push(ph2d_editor_core::Toast::success(tr(
-                                "shell.fase_use_as_paper.watercolor_granulation",
-                            )));
-                        } else {
-                            painter.use_layers_as_watercolor_paper(lum, w, h);
-                            toasts.push(ph2d_editor_core::Toast::success(tr(
-                                "shell.fase_use_as_paper.watercolor_paper_set",
-                            )));
-                        }
+                        painter.use_layers_as(uso, lum, w, h);
+                        toasts.push(ph2d_editor_core::Toast::success(tr(uso.chave_do_aviso())));
                     }
                 }
                 None => {
-                    let what = if as_granulation {
-                        tr("shell.fase_use_as_paper.granulation")
-                    } else {
-                        tr("shell.fase_use_as_paper.watercolor_paper")
-                    };
+                    let what = tr(uso.chave_do_nome());
                     toasts.push(ph2d_editor_core::Toast::warning(tr_with(
                         "shell.fase_use_as_paper.use_as_select_an_image",
                         &[("what", &what)],

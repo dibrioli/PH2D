@@ -38,7 +38,8 @@ fn todo_padrao_tem_a_forca_e_a_escala_do_classic() {
         for (i, p) in ph2d_painter_brush::param_specs(k).iter().enumerate() {
             s.params[i] = p.default;
         }
-        let (r, g) = reguas(&Amostrador::flow(s, NoiseTile::NONE));
+        let (r, g) =
+            reguas(&Amostrador::flow(s, &Imagens::default(), NoiseTile::NONE).expect("procedural"));
         assert!(
             (r / rc - 1.0).abs() < 0.25,
             "{k:?}: RMS {r:.3} contra o Classic {rc:.3}"
@@ -86,7 +87,7 @@ fn a_juncao_de_dois_flows_nao_degraua() {
         &b,
         &[a, b],
         Some(&owner),
-        None,
+        Imagens::default(),
         w,
         (0, 0, w, h),
         (0, 0, w, h),
@@ -184,15 +185,69 @@ fn a_lei_do_deslocamento_e_a_do_fedisplacementmap() {
     );
 }
 
+/// ⭐ **O memo das estatísticas conhece a IMAGEM, não só as settings.** Duas imagens de Flow com as
+/// MESMAS settings (`kind: Image`) e conteúdo deslocado `+20` níveis normalizam para o MESMO mapa — a
+/// média de cada uma é a dela. Com a chave antiga (só settings) a segunda herdava a média da
+/// primeira, e o mapa saía todo puxado para um lado.
+///
+/// **Mutação que tem de sangrar:** tirar o `id_img` da [`Amostrador::chave`].
+#[test]
+fn trocar_a_imagem_nao_herda_as_estatisticas_da_anterior() {
+    let (w, h) = (64u32, 64u32);
+    let a: Vec<u8> = (0..w * h)
+        .map(|i| (100.0 + 60.0 * (((i % w) as f32 + (i / w) as f32) / 7.0).sin()) as u8)
+        .collect();
+    let b: Vec<u8> = a.iter().map(|&v| v + 20).collect();
+    let s = TextureSettings {
+        kind: TextureKind::Image,
+        ..ph2d_painter_brush::BrushSpec::default().edge_flow
+    };
+    let ia = Imagens {
+        fluxo: Some(ImageMask {
+            lum: &a,
+            width: w,
+            height: h,
+        }),
+        fluxo_versao: 41,
+        ..Imagens::default()
+    };
+    let ib = Imagens {
+        fluxo: Some(ImageMask {
+            lum: &b,
+            width: w,
+            height: h,
+        }),
+        fluxo_versao: 42,
+        ..Imagens::default()
+    };
+    let fa = Amostrador::flow(s, &ia, NoiseTile::NONE).expect("imagem");
+    let fb = Amostrador::flow(s, &ib, NoiseTile::NONE).expect("imagem");
+    let (ea, eb) = (fa.estat(), fb.estat());
+    let mut pior = 0.0f32;
+    for p in 0..200i64 {
+        let (x, y) = (p * 7 % 61, p * 13 % 59);
+        let (ua, va) = fa.unidade(&ea, x, y);
+        let (ub, vb) = fb.unidade(&eb, x, y);
+        pior = pior.max((ua - ub).abs()).max((va - vb).abs());
+    }
+    assert!(
+        pior < 0.02,
+        "a 2.ª imagem herdou as estatísticas da 1.ª — desvio {pior:.3}"
+    );
+}
+
 /// Sem Paper Edge, a janela do composite não cresce (o caminho de hoje, ao byte).
 #[test]
 fn sem_paper_edge_o_alcance_e_zero() {
     let b = ph2d_painter_brush::BrushSpec::default();
-    assert_eq!(alcance_do_papel(&b, &[], None, NoiseTile::NONE), 0.0);
+    assert_eq!(
+        alcance_do_papel(&b, &[], Imagens::default(), NoiseTile::NONE),
+        0.0
+    );
     let com = ph2d_painter_brush::BrushSpec {
         paper_edge: 1.0,
         ..b
     };
-    let a = alcance_do_papel(&com, &[], None, NoiseTile::NONE);
+    let a = alcance_do_papel(&com, &[], Imagens::default(), NoiseTile::NONE);
     assert!(a > 0.5 && a < 32.0, "alcance do papel interno a 1: {a}");
 }

@@ -415,3 +415,45 @@ fn measure_what_the_edge_flow_costs() {
         println!("{nome:<26} {ms:>10.3} {:>10.3}", ms - base);
     }
 }
+
+/// Uma luminância de listras diagonais — um mapa de fluxo com DIREÇÃO, que se reconhece na borda.
+fn listras(w: u32, h: u32) -> Vec<u8> {
+    (0..w * h)
+        .map(|i| {
+            let (x, y) = ((i % w) as f32, (i / w) as f32);
+            (127.5 + 127.0 * ((x + y) / 9.0).sin()) as u8
+        })
+        .collect()
+}
+
+/// ⭐ **"Use as Flow"**: a porta do menu instala a camada como o mapa do Flow, e a borda passa a segui-lo.
+/// Sem a imagem carregada, um Flow `Image` cai no Classic AO BYTE (a régua gravada antes da wave).
+///
+/// **Mutação que tem de sangrar:** o `use_layers_as` mandar o `Fluxo` para o papel.
+#[test]
+fn usar_a_camada_como_flow_desenha_a_borda_por_ela() {
+    use crate::tool::UsoDaCamada;
+    let classic = traco(128, 64.0, |t| t.paint.brush.warp = 24.0);
+    let com_imagem = traco(128, 64.0, |t| {
+        t.paint.brush.warp = 24.0;
+        t.use_layers_as(UsoDaCamada::Fluxo, listras(128, 128), 128, 128);
+    });
+    assert_eq!(com_imagem.paint.brush.edge_flow.kind, TextureKind::Image);
+    assert!(
+        com_imagem.paint.flow_map.imagem.is_some(),
+        "a imagem do Flow não foi guardada"
+    );
+    assert_ne!(
+        com_imagem.canvas_rgba, classic.canvas_rgba,
+        "a borda ignorou o mapa"
+    );
+    let sem_imagem = traco(128, 64.0, |t| {
+        t.paint.brush.warp = 24.0;
+        t.paint.brush.edge_flow.kind = TextureKind::Image;
+    });
+    assert_eq!(
+        fnv(&sem_imagem.canvas_rgba),
+        BASE[1].1,
+        "um Flow Image sem imagem tem de ser o Classic ao byte"
+    );
+}

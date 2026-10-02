@@ -210,6 +210,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.menu.use_as_brush_grain" => "Use as Brush Grain",
         "chrome.menu.use_as_watercolor_paper" => "Use as Watercolor Paper",
         "chrome.menu.use_as_granulation" => "Use as Granulation",
+        "chrome.menu.use_as_flow" => "Use as Flow",
         "chrome.menu.reset_transform" => "Reset Transform",
         "chrome.menu.make_prefab" => "Make Prefab",
         "chrome.menu.edit_prefab" => "Edit Prefab",

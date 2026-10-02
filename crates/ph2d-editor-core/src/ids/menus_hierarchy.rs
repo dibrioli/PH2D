@@ -31,6 +31,10 @@ pub const CTX_MENU_HIER_USE_AS_PAPER: NodeId = hash_node_id("ctx_menu_hier_use_a
 pub const CTX_MENU_HIER_USE_AS_GRANULATION: NodeId =
     hash_node_id("ctx_menu_hier_use_as_granulation");
 
+/// Hierarchy row context menu: "Use as **Flow**" — install the layer's luminance as the watercolor
+/// Ragged Edge FLOW map (the path the water's edge follows, like a Corel Painter flow map; BUGS #31).
+pub const CTX_MENU_HIER_USE_AS_FLOW: NodeId = hash_node_id("ctx_menu_hier_use_as_flow");
+
 // M14.6 F: per-row Hierarchy context menu entries. Triggered by a
 // secondary (right-button) click on any hierarchy row in live mode;
 // `ContextMenuKind::HierarchyRow { row }` carries the target row's

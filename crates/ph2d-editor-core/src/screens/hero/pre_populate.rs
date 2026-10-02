@@ -514,6 +514,7 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         ids::CTX_MENU_HIER_USE_AS_BRUSH_SHAPE,
         ids::CTX_MENU_HIER_USE_AS_PAPER,
         ids::CTX_MENU_HIER_USE_AS_GRANULATION,
+        ids::CTX_MENU_HIER_USE_AS_FLOW,
         // New-image modal: só o Create, que não tem tabela. Os radios de Size/Background vêm das
         // TABELAS, logo abaixo — ver o porquê lá.
         ids::CTX_MENU_NEW_IMAGE_CREATE,

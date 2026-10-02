@@ -139,7 +139,8 @@ pub use tool::{
     N_COMPOSITE_ERASE_SCOPES, N_COMPOSITE_LAYERS, N_COMPOSITE_OPS, PANEL_RAMP_STOPS, PaintMedia,
     PainterTool, PolygonOverlay, SCREEN_CANVAS_DOC, ScreenCanvasFrame, ScreenCanvasRelief,
     SelectionGizmoView, StencilOverlay, StencilPreview, StrokeOpBadge, TangentHandles,
-    TransformGizmo, WetKnobs, WetTool, brush_falloff_weight_at, set_pending_select_mods,
+    TransformGizmo, UsoDaCamada, WetKnobs, WetTool, brush_falloff_weight_at,
+    set_pending_select_mods,
 };
 pub use undo::{DEFAULT_MAX_BYTES, MAX_HISTORY_STEPS, UndoController, history_budget_bytes};
 

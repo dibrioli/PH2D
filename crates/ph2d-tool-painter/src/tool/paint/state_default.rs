@@ -187,6 +187,7 @@ impl Default for PaintState {
             texture_image: None,
             paper_image: None,
             paper_image_version: 0,
+            flow_map: Default::default(),
             texture_image_pending: false,
             texture_image_version: 0,
             shape_image: None,

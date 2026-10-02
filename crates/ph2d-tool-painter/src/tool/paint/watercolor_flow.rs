@@ -50,6 +50,47 @@ struct Mapa {
     h: usize,
 }
 
+/// As imagens que a borda pode ler — o Paper e o Flow carregados pelo menu "Use as …" —, cada uma com a
+/// VERSÃO que identifica o conteúdo (o memo das estatísticas chaveia por ela: duas imagens com as mesmas
+/// settings são duas leis, ADR-0124).
+#[derive(Clone, Copy, Default)]
+pub(super) struct Imagens<'a> {
+    pub(super) papel: Option<ImageMask<'a>>,
+    pub(super) papel_versao: u64,
+    pub(super) fluxo: Option<ImageMask<'a>>,
+    pub(super) fluxo_versao: u64,
+}
+
+impl super::PainterTool {
+    /// As imagens da borda, emprestadas do estado do pincel.
+    pub(super) fn imagens_da_borda(&self) -> Imagens<'_> {
+        Imagens {
+            papel: self.paint.paper_image.as_ref().map(|i| i.as_mask()),
+            papel_versao: self.paint.paper_image_version,
+            fluxo: self.paint.flow_map.imagem.as_ref().map(|i| i.as_mask()),
+            fluxo_versao: self.paint.flow_map.versao,
+        }
+    }
+}
+
+/// O mapa do **Flow** carregado pelo "Use as Flow" (`edge_flow.kind == Image`) e a VERSÃO dele — sobe a
+/// cada instalação, e é por ela (nunca pelo endereço) que o memo das estatísticas o reconhece.
+#[derive(Default)]
+pub(super) struct MapaDoFluxo {
+    pub(super) imagem: Option<super::brush_settings::BrushTextureImage>,
+    pub(super) versao: u64,
+}
+
+impl MapaDoFluxo {
+    pub(super) fn instala(&mut self, imagem: super::brush_settings::BrushTextureImage) {
+        self.imagem = Some(imagem);
+        self.versao = self.versao.wrapping_add(1);
+    }
+}
+
+/// De que imagem um [`Amostrador`] lê (a outra metade da chave do memo).
+const SEM_IMAGEM: (u8, u64) = (0, 0);
+
 /// O deslocamento de UM [`Estilo`]: o fluxo (`None` = Classic, analítico) e o papel em px.
 struct Fonte {
     flow: Option<Mapa>,
@@ -81,7 +122,7 @@ impl EdgeFlow {
         cur: &WetStrokeStyle,
         table: &[WetStrokeStyle],
         owner: Option<&[u8]>,
-        paper_img: Option<&ImageMask<'_>>,
+        imagens: Imagens<'_>,
         fw: usize,
         caixa: (usize, usize, usize, usize),
         janela: (usize, usize, usize, usize),
@@ -104,9 +145,11 @@ impl EdgeFlow {
             .iter()
             .map(|e| Fonte {
                 flow: (e.flow.kind != TextureKind::None)
-                    .then(|| Amostrador::flow(e.flow, tile).mapa(caixa)),
+                    .then(|| Amostrador::flow(e.flow, &imagens, tile))
+                    .flatten()
+                    .map(|a| a.mapa(caixa)),
                 papel: e.papel.map(|(p, k)| {
-                    let a = Amostrador::papel(p, paper_img, tile);
+                    let a = Amostrador::papel(p, &imagens, tile);
                     let f = k.min(1.0) * a.estat().dobra;
                     (a.mapa(caixa), f)
                 }),
@@ -286,6 +329,8 @@ enum Amostrador<'a> {
         s: [TextureSettings; 2],
         rot: [[f32; 2]; 2],
         img: Option<&'a ImageMask<'a>>,
+        /// `(fonte, versão)` da imagem lida — [`SEM_IMAGEM`] para um procedural.
+        id_img: (u8, u64),
         period: [f32; 2],
     },
     PapelInterno(NoiseTile),
@@ -297,19 +342,37 @@ const PAPEL_INTERNO_CANAL_Y: (f32, f32) = (517.5, 291.25);
 
 impl<'a> Amostrador<'a> {
     /// Um padrão de Flow, com o Size do artista multiplicado pela escala que leva o gradiente do
-    /// padrão ao do Classic (o Flow Size `1` = a escala de detalhe do Classic).
-    fn flow(s: TextureSettings, tile: NoiseTile) -> Self {
+    /// padrão ao do Classic (o Flow Size `1` = a escala de detalhe do Classic). Uma IMAGEM ("Use as
+    /// Flow") não se normaliza na escala: a Size `1` ela cobre a tela 1:1, com a origem no canto (o
+    /// `sample_image` repete a cada 2 unidades de `rel`, i.e. `512/Size` px, centrado em `rel = 0`). Sem
+    /// a imagem carregada (`None`) o Flow cai no Classic.
+    fn flow(s: TextureSettings, imagens: &'a Imagens<'a>, tile: NoiseTile) -> Option<Self> {
+        if s.kind == TextureKind::Image {
+            let img = imagens.fluxo.as_ref()?;
+            let um = |n: u32| 2.0 * TEX_TILE_BASE_PX / n.max(1) as f32;
+            let s = TextureSettings {
+                size: [s.size[0] * um(img.width), s.size[1] * um(img.height)],
+                offset: [s.offset[0] - 1.0, s.offset[1] - 1.0],
+                ..s
+            };
+            return Some(Self::textura(s, Some(img), (2, imagens.fluxo_versao), tile));
+        }
         let base = escala_do_flow(&s);
         let s = TextureSettings {
             size: [s.size[0] * base, s.size[1] * base],
             ..s
         };
-        Self::textura(s, None, tile)
+        Some(Self::textura(s, None, SEM_IMAGEM, tile))
     }
 
-    fn papel(s: TextureSettings, img: Option<&'a ImageMask<'a>>, tile: NoiseTile) -> Self {
+    fn papel(s: TextureSettings, imagens: &'a Imagens<'a>, tile: NoiseTile) -> Self {
         if s.is_active() {
-            Self::textura(s, img, tile)
+            let id = if s.kind == TextureKind::Image {
+                (1, imagens.papel_versao)
+            } else {
+                SEM_IMAGEM
+            };
+            Self::textura(s, imagens.papel.as_ref(), id, tile)
         } else {
             Self::PapelInterno(tile)
         }
@@ -317,7 +380,12 @@ impl<'a> Amostrador<'a> {
 
     /// O canal Y é o padrão rodado 90° e meio ladrilho ao lado: um padrão de veios dá veios
     /// PERPENDICULARES, e o par desloca nas duas direções em vez de numa diagonal.
-    fn textura(s: TextureSettings, img: Option<&'a ImageMask<'a>>, tile: NoiseTile) -> Self {
+    fn textura(
+        s: TextureSettings,
+        img: Option<&'a ImageMask<'a>>,
+        id_img: (u8, u64),
+        tile: NoiseTile,
+    ) -> Self {
         let s0 = snap_slot_size(s, tile);
         let s1 = TextureSettings {
             angle_deg: (s0.angle_deg + 90) % 360,
@@ -328,6 +396,7 @@ impl<'a> Amostrador<'a> {
             rot: [angle_basis(s0.angle_deg), angle_basis(s1.angle_deg)],
             s: [s0, s1],
             img,
+            id_img,
             period: tile.slot_period(),
         }
     }
@@ -340,6 +409,7 @@ impl<'a> Amostrador<'a> {
                 rot,
                 img,
                 period,
+                ..
             } => (
                 sample_tiled_rot_wrapped(&s[0], x, y, *img, rot[0], *period),
                 sample_tiled_rot_wrapped(&s[1], x, y, *img, rot[1], *period),
@@ -388,11 +458,11 @@ impl<'a> Amostrador<'a> {
         }
     }
 
-    /// A chave do memo: as settings (o papel interno é uma só função do ladrilho).
-    fn chave(&self) -> Option<TextureSettings> {
+    /// A chave do memo: as settings E a imagem lida (o papel interno é uma só função do ladrilho).
+    fn chave(&self) -> (Option<TextureSettings>, (u8, u64)) {
         match self {
-            Self::Textura { s, .. } => Some(s[0]),
-            Self::PapelInterno(_) => None,
+            Self::Textura { s, id_img, .. } => (Some(s[0]), *id_img),
+            Self::PapelInterno(_) => (None, SEM_IMAGEM),
         }
     }
 
@@ -412,7 +482,8 @@ impl<'a> Amostrador<'a> {
     /// As estatísticas do mapa, medidas numa grelha fixa de duas repetições do padrão — memo da função
     /// pura das settings (cada medição são ~4·64² amostras, e uma composição por quadro não as paga).
     fn estat(&self) -> Estat {
-        static MEMO: Mutex<Vec<(Option<TextureSettings>, Estat)>> = Mutex::new(Vec::new());
+        type Chave = (Option<TextureSettings>, (u8, u64));
+        static MEMO: Mutex<Vec<(Chave, Estat)>> = Mutex::new(Vec::new());
         let k = self.chave();
         if let Ok(m) = MEMO.lock()
             && let Some((_, e)) = m.iter().find(|(c, _)| *c == k)
@@ -516,7 +587,9 @@ fn escala_do_flow(s: &TextureSettings) -> f32 {
         offset: [0.0, 0.0],
         ..*s
     };
-    let g = Amostrador::textura(um, None, NoiseTile::NONE).estat().dobra;
+    let g = Amostrador::textura(um, None, SEM_IMAGEM, NoiseTile::NONE)
+        .estat()
+        .dobra;
     // `dobra = 1/g`: base = g_C / g_P = dobra_P / dobra_C.
     if g > 0.0 { classic().1 * g } else { 1.0 }
 }
@@ -526,12 +599,12 @@ fn escala_do_flow(s: &TextureSettings) -> f32 {
 pub(super) fn alcance_do_papel(
     brush: &ph2d_painter_brush::BrushSpec,
     table: &[WetStrokeStyle],
-    paper_img: Option<&ImageMask<'_>>,
+    imagens: Imagens<'_>,
     tile: NoiseTile,
 ) -> f32 {
     let um = |p: TextureSettings, k: f32| {
         if k > 0.0 {
-            k.min(1.0) * Amostrador::papel(p, paper_img, tile).estat().dobra
+            k.min(1.0) * Amostrador::papel(p, &imagens, tile).estat().dobra
         } else {
             0.0
         }

@@ -449,3 +449,24 @@ fn the_menu_offers_group_and_ungroup_by_name() {
         "`Ungroup` deixou de ser a linha logo a seguir a `Group`"
     );
 }
+
+/// "Use as Flow" (BUGS #31) — o payload é a LINHA clicada, como nos irmãos "Use as Paper/Granulation";
+/// quem lê os pixels é a shell, e o que fazer com eles é do Painter (`UsoDaCamada::Fluxo`).
+#[test]
+fn hier_menu_use_as_flow_raises_use_as_flow_with_the_clicked_row() {
+    let mut hero = setup_hero();
+    let mut state = HierarchyState::default();
+    let row = NodeId(100_707);
+    stage_hierarchy_row_snapshot(&mut hero, row);
+    let consumed = dispatch(
+        &mut hero,
+        &mut state,
+        WidgetEvent::Click(ids::CTX_MENU_HIER_USE_AS_FLOW),
+    );
+    assert!(consumed);
+    let drained: Vec<_> = hero.bus.drain().collect();
+    assert_eq!(
+        drained,
+        vec![EditorAction::Hierarchy(HierRequest::UseAsFlow { row })]
+    );
+}

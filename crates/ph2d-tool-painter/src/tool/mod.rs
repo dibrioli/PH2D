@@ -438,8 +438,8 @@ pub use paint::{
     LightRig, LineCornerGizmo, LineDimensions, LineOverlay, MAX_COMPOSITE_LAYER_SIZE,
     MAX_IMPASTO_LIGHTS, MAX_SHAPE_LAYERS, MIN_ELEV_DEG, N_COMPOSITE_ERASE_SCOPES,
     N_COMPOSITE_LAYERS, N_COMPOSITE_OPS, PANEL_RAMP_STOPS, PolygonOverlay, SelectionGizmoView,
-    StencilOverlay, StencilPreview, StrokeOpBadge, TangentHandles, TransformGizmo, WetKnobs,
-    WetTool, brush_falloff_weight_at,
+    StencilOverlay, StencilPreview, StrokeOpBadge, TangentHandles, TransformGizmo, UsoDaCamada,
+    WetKnobs, WetTool, brush_falloff_weight_at,
 };
 mod runtime;
 mod screen_canvas;

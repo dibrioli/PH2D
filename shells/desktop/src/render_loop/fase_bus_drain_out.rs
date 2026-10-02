@@ -87,8 +87,8 @@ pub(in crate::render_loop) struct DrainOut {
     pub(in crate::render_loop) merge_to_layers_row: Option<NodeId>,
     pub(in crate::render_loop) use_as_brush_texture_row: Option<NodeId>,
     pub(in crate::render_loop) use_as_brush_shape_row: Option<NodeId>,
-    pub(in crate::render_loop) use_as_paper_row: Option<NodeId>,
-    pub(in crate::render_loop) use_as_granulation_row: Option<NodeId>,
+    /// "Use as Paper / Granulation / Flow" — a linha e o uso; o Painter decide o resto.
+    pub(in crate::render_loop) use_as_layer: Option<(NodeId, ph2d_tool_painter::UsoDaCamada)>,
     pub(in crate::render_loop) hierarchy_row_click: Option<NodeId>,
     pub(in crate::render_loop) hierarchy_select_intent: Option<hierarchy::HierarchySelectIntent>,
     pub(in crate::render_loop) rename_seed_row: Option<NodeId>,

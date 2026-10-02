@@ -145,7 +145,7 @@ impl crate::App {
             merge_to_layers_row: take(&mut pd.merge_to_layers_row),
         });
         self.fase_use_as_brush(pd.use_as_brush_texture_row, pd.use_as_brush_shape_row);
-        self.fase_use_as_paper(pd.use_as_paper_row, pd.use_as_granulation_row);
+        self.fase_use_as_paper(pd.use_as_layer);
         self.fase_image_edit_apply(
             fase_image_edit_apply::ImageEditIntents {
                 trim_entities: take(&mut pd.trim_entities),

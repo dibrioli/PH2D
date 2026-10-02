@@ -199,12 +199,20 @@ impl crate::App {
             EditorAction::Hierarchy(ph2d_editor_core::action_bus::HierRequest::UseAsPaper {
                 row,
             }) => {
-                pd.use_as_paper_row.get_or_insert(row);
+                pd.use_as_layer
+                    .get_or_insert((row, ph2d_tool_painter::UsoDaCamada::Papel));
             }
             EditorAction::Hierarchy(
                 ph2d_editor_core::action_bus::HierRequest::UseAsGranulation { row },
             ) => {
-                pd.use_as_granulation_row.get_or_insert(row);
+                pd.use_as_layer
+                    .get_or_insert((row, ph2d_tool_painter::UsoDaCamada::Granulacao));
+            }
+            EditorAction::Hierarchy(ph2d_editor_core::action_bus::HierRequest::UseAsFlow {
+                row,
+            }) => {
+                pd.use_as_layer
+                    .get_or_insert((row, ph2d_tool_painter::UsoDaCamada::Fluxo));
             }
             EditorAction::Hierarchy(ph2d_editor_core::action_bus::HierRequest::RowClick {
                 row,

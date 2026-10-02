@@ -264,7 +264,7 @@ impl PainterTool {
             &cur_style,
             style_table,
             has_style.then_some(&style_owner[..]),
-            paper_img.as_ref(),
+            self.imagens_da_borda(),
             fw,
             (x0, y0, bw, bh),
             (rx0, ry0, rw, rh),

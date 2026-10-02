@@ -342,12 +342,12 @@ pub(crate) struct PaintState {
     pub(super) stencil_preview_s: f32,
     /// Imported brush-**Grain** luminance (heavy → not in the `Copy` spec); borrowed as an `ImageMask`.
     pub(super) texture_image: Option<brush_settings::BrushTextureImage>,
-    /// Watercolor **Paper** slot luminance (a tagged layer used as the substrate; `paper.kind == Image`).
-    /// Heavy, so out of the `Copy` spec; borrowed as an `ImageMask` by the render-path ([`watercolor_render`]).
-    /// (The **Granulation** map is the Grain slot, so it reuses [`Self::texture_image`].)
+    /// Watercolor **Paper** slot luminance (a tagged layer; `paper.kind == Image`) — heavy, so out of the `Copy`
+    /// spec; borrowed as an `ImageMask` by [`watercolor_render`]. (Granulation = the Grain slot, [`Self::texture_image`].)
     pub(super) paper_image: Option<brush_settings::BrushTextureImage>,
     /// Bumped whenever [`Self::paper_image`] changes, so the shell re-publishes it for the Paper preview.
     pub(super) paper_image_version: u64,
+    pub(super) flow_map: super::watercolor_flow::MapaDoFluxo, // "Use as Flow" (BUGS #31)
     /// Set when the user picks the Image kind; the shell polls it to open a file picker.
     pub(super) texture_image_pending: bool,
     /// Bumped whenever [`texture_image`] changes, so the stamp cache re-renders the Image mask.

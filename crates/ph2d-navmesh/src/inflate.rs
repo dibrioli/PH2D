@@ -134,8 +134,8 @@ pub fn inset_region(region: &[V2], r: f64) -> Vec<P> {
                 continue;
             }
             // A normal de DENTRO (anti-horário ⇒ esquerda).
-            let nin = [-d[1] / l, d[0] / l];
-            poly = clip_half_plane(&poly, a, nin, r);
+            let normal_dentro = [-d[1] / l, d[0] / l];
+            poly = clip_half_plane(&poly, a, normal_dentro, r);
             if poly.is_empty() {
                 return Vec::new();
             }

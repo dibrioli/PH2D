@@ -89,7 +89,7 @@ pub(super) fn win(local: [f32; 2]) -> (f32, f32) {
 /// ⚠️ **Derivado, nunca escrito à mão.** A 1.ª versão destes gates tinha `[120.0, 150.0]` colado —
 /// e ao mudar a fixtura de duas bolas fixas para `balls(n)` as posições mexeram-se, o pixel caiu no
 /// fundo, e o gate reprovou por uma razão que não tinha nada a ver com o que ele afirma.
-pub(super) fn pixel_of(p: [f32; 3]) -> [f32; 2] {
+pub(crate) fn pixel_of(p: [f32; 3]) -> [f32; 2] {
     crate::smoke::with_smoke(|s| {
         let screen = ph2d_field_render::Screen::new(
             AREA.w.round() as u32,

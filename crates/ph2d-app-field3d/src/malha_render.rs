@@ -123,11 +123,66 @@ pub struct ObjetoRender {
 /// ⭐⭐⭐ **A PEÇA → OS OBJETOS DO RENDER.**
 #[must_use]
 pub fn extrair(world: &World, root: Entity, reg: &ph2d_field_eval::hybrid::Registry) -> Vec<ObjetoRender> {
-    let us = unidades(world, root);
-    let postos: Vec<(Entity, FieldDoc)> = us
-        .iter()
-        .filter_map(|&u| Some((u, ph2d_field_ecs::cook(world, u)?.ok()?)))
+    processa(&colhe(world, root), reg)
+}
+
+/// ⭐ **O que a extração precisa do mundo** — barato, colhido no quadro; o pesado ([`processa`])
+/// corre noutra thread com isto, sem o mundo.
+#[derive(Clone, Debug)]
+pub struct Entrada {
+    /// As unidades, cada uma cozida e POSTA no mundo.
+    pub postos: Vec<(Entity, FieldDoc)>,
+    /// A pose de MUNDO de cada unidade, na ordem de `postos`.
+    pub poses: Vec<Xform>,
+    placed: Vec<FieldDoc>,
+    unidade_da_folha: Vec<Option<usize>>,
+}
+
+impl Entrada {
+    /// ⭐ **A chave de FORMA**: cada unidade com a sua forma LOCAL (a pose de mundo tirada da raiz).
+    /// Mover uma unidade não a muda; editar uma forma, esconder, acrescentar ou apagar muda.
+    #[must_use]
+    pub fn chave(&self) -> Vec<(Entity, FieldDoc)> {
+        self.postos
+            .iter()
+            .map(|(e, d)| {
+                let mut nodes = d.nodes().to_vec();
+                let r = d.root().0 as usize;
+                nodes[r].xform = Xform::IDENTITY;
+                (*e, FieldDoc::new(nodes, d.root()).unwrap_or_else(|_| d.clone()))
+            })
+            .collect()
+    }
+}
+
+/// Colhe a [`Entrada`] do mundo.
+#[must_use]
+pub fn colhe(world: &World, root: Entity) -> Entrada {
+    let postos: Vec<(Entity, FieldDoc)> = unidades(world, root)
+        .into_iter()
+        .filter_map(|u| Some((u, ph2d_field_ecs::cook(world, u)?.ok()?)))
         .collect();
+    let poses = postos
+        .iter()
+        .map(|(u, _)| ph2d_field_ecs::world_xform(world, *u))
+        .collect();
+    let folhas = crate::materials::folhas(world, root);
+    let unidade_da_folha = folhas
+        .iter()
+        .map(|(e, _, _)| ancestral_em(world, *e, &postos))
+        .collect();
+    Entrada {
+        postos,
+        poses,
+        placed: folhas.into_iter().map(|(_, _, d)| d).collect(),
+        unidade_da_folha,
+    }
+}
+
+/// ⭐ **O pesado**: a [`Entrada`] → os objetos do Render.
+#[must_use]
+pub fn processa(e: &Entrada, reg: &ph2d_field_eval::hybrid::Registry) -> Vec<ObjetoRender> {
+    let (postos, placed, unidade_da_folha) = (&e.postos, &e.placed, &e.unidade_da_folha);
     let bolas: Vec<ph2d_field_eval::bounds::Ball> = postos
         .iter()
         .map(|(_, d)| {
@@ -137,20 +192,12 @@ pub fn extrair(world: &World, root: Entity, reg: &ph2d_field_eval::hybrid::Regis
         .collect();
     let grupos = agrupa(&bolas);
 
-    let folhas = crate::materials::folhas(world, root);
-    let unidade_da_folha: Vec<Option<usize>> = folhas
-        .iter()
-        .map(|(e, _, _)| ancestral_em(world, *e, &postos))
-        .collect();
-    let placed: Vec<FieldDoc> = folhas.iter().map(|(_, _, d)| d.clone()).collect();
-
     let feitos: Vec<Vec<(Vec<usize>, crate::malha_render_tri::MalhaPronta)>> =
         std::thread::scope(|s| {
             let tarefas: Vec<_> = grupos
                 .iter()
                 .map(|g| {
                     let docs: Vec<FieldDoc> = g.iter().map(|&i| postos[i].1.clone()).collect();
-                    let unidade_da_folha = &unidade_da_folha;
                     // As folhas DESTE grupo: compilar as de fora seria pagar JIT por quem não
                     // pode ser dono de ponto nenhum aqui.
                     let mapa: Vec<usize> = (0..placed.len())
@@ -204,7 +251,7 @@ pub fn extrair(world: &World, root: Entity, reg: &ph2d_field_eval::hybrid::Regis
         .filter(|(us, _)| !us.is_empty())
         .map(|(us, malha)| ObjetoRender {
             movel: us.iter().all(|&u| vezes[u] == 1),
-            pose_extraida: ph2d_field_ecs::world_xform(world, postos[us[0]].0),
+            pose_extraida: e.poses[us[0]],
             unidades: us.iter().map(|&u| postos[u].0).collect(),
             malha,
         })

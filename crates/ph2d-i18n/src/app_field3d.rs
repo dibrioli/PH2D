@@ -154,6 +154,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.field3d.shapes.round" => "Round",
         "app.field3d.shapes.blocks" => "Blocks",
         // ph2d-migrar-texto:end
+        // ⭐ O Render por MALHA (02/10): o gizmo travado diz porquê.
+        "app.field3d.malha_render.part_of_a_cut" => {
+            "This piece came from a cut or a mirror: move it in Modeling"
+        }
+        "app.field3d.malha_render.whole_objects_only" => {
+            "In Render you move whole objects: to move a part, go back to Modeling"
+        }
         _ => return None,
     })
 }

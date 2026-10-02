@@ -62,7 +62,22 @@ pub fn ecs_bridge(
         .collect();
     // ⭐ **O arrasto do gizmo entra AQUI**, antes do retrato e do cozimento, pela mesma razão que os
     // intents do painel: o mundo é a verdade e este é o único sítio que a escreve.
-    if let Some((bits, target, motion)) = pending {
+    // ⭐⭐⭐ **O RENDER POR MALHA** (02/10): move-se o objeto INTEIRO, e um objeto que não se pode
+    // mover sozinho trava o gizmo (e o teclado) com a frase do porquê.
+    let em_render = crate::malha_render_estado::ligado()
+        && with_smoke(|s| {
+            s.vps
+                .iter()
+                .any(|v| v.shading == crate::shading::Shading::Render)
+        })
+        .unwrap_or(false);
+    let travado = em_render
+        .then(|| crate::malha_render_estado::trava(sim.world(), &chosen))
+        .flatten();
+    let gesto = pending.is_some() && travado.is_none();
+    if let Some((bits, target, motion)) = pending
+        && travado.is_none()
+    {
         apply_motion(sim, bits, &chosen, target, motion);
     }
     let (cooked, born) = sync_scene_and_birth(sim, seed.as_ref(), &chosen, ms, scene);
@@ -76,7 +91,15 @@ pub fn ecs_bridge(
         .and_then(|(px, add)| resolve_pick(sim, cooked.as_ref(), px, add))
         // ⭐ O laço vem DEPOIS do clique na ordem, e os dois nunca coexistem: um gesto é clique ou
         // arrasto, nunca ambos.
-        .or_else(|| lasso.and_then(|(a, b)| resolve_lasso(sim, cooked.as_ref(), a, b, subtracts)));
+        .or_else(|| lasso.and_then(|(a, b)| resolve_lasso(sim, cooked.as_ref(), a, b, subtracts)))
+        // ⭐ No Render por malha um clique escolhe o OBJETO inteiro.
+        .map(|r| {
+            if em_render {
+                crate::malha_render_estado::selecao_por_objeto(sim.world(), r, &chosen)
+            } else {
+                r
+            }
+        });
     let anchor = anchor_for(sim, selected, &chosen);
     // ⭐⭐ **Os vértices saem da MESMA travessia que a âncora** (W133): os dois precisam do mundo, e
     // publicá-los em quadros diferentes deixaria a alça a marcar um ponto que a peça já não tem.
@@ -85,8 +108,11 @@ pub fn ecs_bridge(
     // só tem o estado do módulo. *Um passo que precisa das duas coisas corre entre elas, não dentro
     // de uma.*
     let mut mudou_o_doc = false;
+    if let Some(k) = travado {
+        crate::notice::say(ph2d_i18n::tr(k).into());
+    }
     with_smoke(|s| {
-        s.gizmo = anchor;
+        s.gizmo = if travado.is_some() { None } else { anchor };
         s.vertices = vertices;
         // ⚠️ Só se escreve quando MUDOU: atribuir todo quadro faria o documento parecer novo e
         // re-traçar para sempre, matando o "só se traça o que mudou".
@@ -107,6 +133,8 @@ pub fn ecs_bridge(
     crate::materials::sync(sim, mudou_o_doc);
     // ⭐⭐⭐ **E AS LUZES também** (ordem do dono, 14/09) — mesma altura, mesma razão.
     crate::lights::sync(sim);
+    // ⭐⭐⭐ **E O RENDER POR MALHA** (02/10) — a peça em objetos, e a pose de cada um.
+    crate::malha_render_estado::sync(sim, em_render, gesto);
     picked.or(born)
 }
 

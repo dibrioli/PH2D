@@ -76,6 +76,8 @@ pub mod materials;
 /// ⭐⭐⭐ O Render por MALHA (02/10): a peça vira objetos de triângulos — um por sólido conexo.
 pub mod malha_render;
 pub mod malha_render_tri;
+pub mod malha_render_estado;
+pub mod malha_render_quadro;
 /// ADR-0161 W25 — a VOZ do módulo: uma peça que não cozinha diz porquê, e diz uma vez.
 pub mod mode;
 pub mod notice;

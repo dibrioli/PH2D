@@ -4944,6 +4944,7 @@ dependencies = [
  "ph2d-light",
  "ph2d-material",
  "ph2d-mesh",
+ "ph2d-mesh-forward",
  "ph2d-mesh-render",
  "ph2d-panel-model3d",
  "ph2d-quadchain",

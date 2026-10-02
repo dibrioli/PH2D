@@ -18,6 +18,13 @@ pub fn apply(gizmo: &mut ph2d_editor_core::screens::hero::GizmoStateGroup, req: 
     match req {
         SelectRequest::Entity(bits) => gizmo.replace_selection(Some(bits)),
         SelectRequest::Clear => gizmo.clear_all_selection(),
+        // ⭐ **SUBSTITUI por vários** — o objeto do Render por malha (02/10) é feito de unidades.
+        SelectRequest::Many(all) => {
+            gizmo.clear_all_selection();
+            for bits in all {
+                gizmo.add_to_selection(bits);
+            }
+        }
         SelectRequest::Toggle(bits) => gizmo.toggle_in_selection(bits),
         // ⭐ **ACRESCENTA**, nunca alterna — ver [`SelectRequest::AddMany`].
         SelectRequest::AddMany(all) => {
@@ -42,6 +49,8 @@ pub enum SelectRequest {
     /// O clique caiu no fundo. ⚠️ Limpar é a resposta certa e é o que todo modelador faz — a
     /// alternativa (manter a seleção) deixaria o gizmo aceso em cima de nada.
     Clear,
+    /// ⭐ **A seleção passa a ser ESTES** — um objeto do Render por malha (02/10) inteiro.
+    Many(Vec<u64>),
     /// ⭐⭐ **Alternar um objeto na seleção** (W58) — o clique com `Shift`/`Ctrl`, o mesmo verbo que
     /// o canvas 2D já usa.
     Toggle(u64),

@@ -32,6 +32,8 @@ ph2d-field-mesh    = { path = "../ph2d-field-mesh" }
 ph2d-field-profile = { path = "../ph2d-field-profile" }
 ph2d-bloom         = { path = "../ph2d-bloom" }
 ph2d-field-render  = { path = "../ph2d-field-render" }
+# ⭐⭐⭐ O desenhista de JOGO do Render por malha (02/10): triangulos, luz de custo fixo, WebGL2.
+ph2d-mesh-forward  = { path = "../ph2d-mesh-forward" }
 # ⭐ A TRAVESSIA sRGB ↔ linear da cor base (`materials::base_color_srgb8`). O documento guarda a cor
 # em linear e o selector da casa fala sRGB8; a curva é uma só, e é esta — uma cópia local seria uma
 # segunda curva a divergir na terceira casa.

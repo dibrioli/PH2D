@@ -294,6 +294,10 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     depth: 1.2,       // LITERAL-PX-OK: default Beer–Lambert depth (mirrors BrushSpec::default)
     opacity: 0.4, // LITERAL-PX-OK: default pigment body / hiding power (mirrors BrushSpec::default)
     warp: 6.0,    // LITERAL-PX-OK: default boundary warp px (mirrors BrushSpec::default)
+    flow_kind: 0,    // Classic (mirrors BrushSpec::default().edge_flow)
+    flow_size: 1.0,  // LITERAL-PX-OK: TextureSettings::default size (mirrors BrushSpec::default)
+    flow_angle: 0,
+    paper_edge: 0.0, // LITERAL-PX-OK: the boundary ignores the paper (mirrors BrushSpec::default)
     wet_smudge: 0.0, // LITERAL-PX-OK: Wet Mix off by default (mirrors BrushSpec::default)
     wet_rewet: 0.0, // LITERAL-PX-OK: wet-on-wet off (mirrors BrushSpec::default)
     wet_charge: 1.0, // LITERAL-PX-OK: full fresh paint → mixer off (mirrors BrushSpec::default)

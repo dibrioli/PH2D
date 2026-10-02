@@ -225,6 +225,8 @@ impl PainterTool {
             paper_depth,
             granulation_use_paper: brush.granulation_use_paper,
             texture: gran_tex,
+            edge_flow: brush.edge_flow,
+            paper_edge: brush.paper_edge.clamp(0.0, 1.0),
         };
         // #13 (doc 14): per-owner SUBSTRATE. Single-substrate sessions resolve to the globals
         // (byte-identical + cache live); a multi-substrate session (paper/grain changed mid-session)
@@ -273,6 +275,17 @@ impl PainterTool {
             );
         }
         let substrate = &self.paint.wet_substrate;
+        // A FORMA DA BORDA (BUGS #31): o fluxo do Ragged Edge e o papel na borda — [`watercolor_flow`].
+        let (flow, paper_edge_any) = watercolor_flow::EdgeFlow::build(
+            &cur_style,
+            style_table,
+            has_style.then_some(&style_owner[..]),
+            paper_img.as_ref(),
+            fw,
+            (x0, y0, bw, bh),
+            (rx0, ry0, rw, rh),
+            noise_tile,
+        );
         // Selection + protection gates (final enforcement): the splats already stop the wash
         // from FORMING on gated-out texels, but warp/dissolve sampling can still REACH them —
         // the keep-LERP on the final bytes below is the exact restore semantics of the canvas
@@ -309,6 +322,7 @@ impl PainterTool {
                     // fields; global for the full-canvas colour buffer (same displacement + window origin).
                     // Per-stroke style: warp AMPLITUDE by the pixel's owner (read PRE-warp —
                     // the displacement needs the amp first); owner 0 = current brush, old path.
+                    let o_pre = if has_style { style_owner[gy * fw + gx] } else { 0 };
                     let st_warp =
                         style_at(has_style, style_owner, style_table, cur_style, gy * fw + gx).warp;
                     // #18: smooth the Warp amplitude across the owner boundary (else the new stroke's
@@ -316,9 +330,9 @@ impl PainterTool {
                     let st_warp = style_field
                         .as_ref()
                         .map_or(st_warp, |sf| sf.sample_warp(lx, ly, st_warp));
-                    let (sx, sy) = if st_warp > 0.0 {
-                        let (wx, wy) = warp_offset(gx as f32, gy as f32, noise_tile);
-                        (lx + wx * st_warp, ly + wy * st_warp)
+                    let (sx, sy) = if st_warp > 0.0 || paper_edge_any {
+                        let (dx, dy) = flow.desloca(o_pre, lx, ly, gx as f32, gy as f32, st_warp);
+                        (lx + dx, ly + dy)
                     } else {
                         (lx, ly)
                     };
@@ -341,10 +355,10 @@ impl PainterTool {
                                 // O centro JÁ é `(sx, sy)` — exacto (`lx + 0.0 == lx`, lx ≥ 0).
                                 if ox == 0.0 && oy == 0.0 {
                                     (sx, sy)
-                                } else if st_warp > 0.0 {
-                                    let (wx, wy) =
-                                        warp_offset(gx as f32 + ox, gy as f32 + oy, noise_tile);
-                                    (lx + ox + wx * st_warp, ly + oy + wy * st_warp)
+                                } else if st_warp > 0.0 || paper_edge_any {
+                                    let (x, y) = (gx as f32 + ox, gy as f32 + oy);
+                                    let (dx, dy) = flow.desloca(o_pre, lx, ly, x, y, st_warp);
+                                    (lx + ox + dx, ly + oy + dy)
                                 } else {
                                     (lx + ox, ly + oy)
                                 }
@@ -454,7 +468,7 @@ impl PainterTool {
                         fill_px = st_fill
                             * (1.0 - (WET_THIN * st_wet_px * st.spread_thin * inner).min(0.95));
                         let ragged =
-                            (1.0 + (paper_h - 0.5) * 2.0 * WET_RAGGED * st_wet_px).max(0.0);
+                            (1.0 + (0.5 - paper_h) * 2.0 * WET_RAGGED * st_wet_px).max(0.0);
                         edge = (edge * (1.0 + WET_EDGE_BOOST * st_wet_px) * ragged).min(1.5); // LITERAL-PX-OK: wet edge may overshoot the dry clamp; signed (EDGE-3) keeps the pale lobe
                     }
                     // Tip density at the warped position (nearest, like the colour buffer).

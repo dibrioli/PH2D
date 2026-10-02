@@ -74,6 +74,28 @@ pub const PAINTER_WATERCOLOR_OPACITY: NodeId = hash_node_id("painter_brush.water
 /// `set_brush_warp`.
 pub const PAINTER_WATERCOLOR_WARP: NodeId = hash_node_id("painter_brush.watercolor_warp");
 
+/// **Flow** dropdown chip — the pattern the Ragged Edge follows (BUGS #31). `SelectOption` →
+/// `set_brush_edge_flow_kind`. Options via [`painter_flow_kind_option_id`].
+pub const PAINTER_WATERCOLOR_FLOW_KIND: NodeId = hash_node_id("painter_brush.watercolor_flow_kind");
+
+/// **Flow Size** (the pattern's scale). `SetValue` → `set_brush_edge_flow_size`.
+pub const PAINTER_WATERCOLOR_FLOW_SIZE: NodeId = hash_node_id("painter_brush.watercolor_flow_size");
+
+/// **Flow Angle** (degrees — the direction of a veined pattern). `SetValue` → `set_brush_edge_flow_angle`.
+pub const PAINTER_WATERCOLOR_FLOW_ANGLE: NodeId =
+    hash_node_id("painter_brush.watercolor_flow_angle");
+
+/// **Paper Edge** — how much the boundary follows the paper tooth, `0..1`. `SetValue` →
+/// `set_brush_paper_edge`.
+pub const PAINTER_WATERCOLOR_PAPER_EDGE: NodeId =
+    hash_node_id("painter_brush.watercolor_paper_edge");
+
+/// Derive the stable [`NodeId`] for **Flow** option `k` (`TextureKind` wire u8) in the open popover.
+#[must_use]
+pub fn painter_flow_kind_option_id(k: u8) -> NodeId {
+    hash_node_id_runtime(&format!("painter_brush.flowopt.{k}"))
+}
+
 /// **Smudge** — TRUE-smear strength `0..1` (drags the painted paint). `SetValue` → `set_brush_wet_smudge`.
 pub const PAINTER_WATERCOLOR_SMUDGE: NodeId = hash_node_id("painter_brush.watercolor_smudge");
 
@@ -221,7 +243,7 @@ pub const PAINTER_WATERCOLOR_CLICKS: [NodeId; 6] = [
 /// `seam::watercolor_sliders_forward_setvalue` **não o podia ver**, porque varre esta mesma lista;
 /// quem o apanha é o censo DERIVADO DA TELA em
 /// `seam_watercolor_cards::cada_campo_que_a_aquarela_acrescenta_a_tela_chega_a_ferramenta`.
-pub const PAINTER_WATERCOLOR_FIELDS: [NodeId; 27] = [
+pub const PAINTER_WATERCOLOR_FIELDS: [NodeId; 30] = [
     PAINTER_WATERCOLOR_DRY_TIME,
     PAINTER_WATERCOLOR_WET_PREVIEW,
     PAINTER_WATERCOLOR_EDGE,
@@ -232,6 +254,9 @@ pub const PAINTER_WATERCOLOR_FIELDS: [NodeId; 27] = [
     PAINTER_WATERCOLOR_DEPTH,
     PAINTER_WATERCOLOR_OPACITY,
     PAINTER_WATERCOLOR_WARP,
+    PAINTER_WATERCOLOR_FLOW_SIZE,
+    PAINTER_WATERCOLOR_FLOW_ANGLE,
+    PAINTER_WATERCOLOR_PAPER_EDGE,
     PAINTER_WATERCOLOR_SMUDGE,
     PAINTER_WATERCOLOR_WET,
     PAINTER_WATERCOLOR_CHARGE,

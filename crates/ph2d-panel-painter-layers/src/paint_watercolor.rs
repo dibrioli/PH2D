@@ -200,7 +200,7 @@ fn paint_wash_card(
         content_w,
         y,
         tr("panel.painter_layers.watercolor.wash"),
-        7,
+        7 + crate::paint_watercolor_flow::flow_row_count(brush),
     );
     ry = card_row(
         ctx,
@@ -286,6 +286,7 @@ fn paint_wash_card(
         number_field::SIZE_STEP,
         1,
     );
+    ry = crate::paint_watercolor_flow::paint_flow_rows(ctx, theme, ix, iw, ry, brush);
     // Smooth Edges (BUGS #16): screen-space AA of the silhouette — the default look; off restores
     // the pre-AA hard/serrated edge as a deliberate style.
     let _ = crate::paint_brush_top::paint_checkbox_row(

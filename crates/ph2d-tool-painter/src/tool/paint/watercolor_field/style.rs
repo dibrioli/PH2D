@@ -44,6 +44,10 @@ pub(in crate::tool::paint) struct WetStrokeStyle {
     pub(in crate::tool::paint) paper_depth: f32,
     pub(in crate::tool::paint) granulation_use_paper: bool,
     pub(in crate::tool::paint) texture: ph2d_painter_brush::TextureSettings,
+    /// Per-owner **Flow** + **Paper Edge** (BUGS #31): the shape a baked wash's boundary took is ITS own
+    /// — choosing another Flow for the next stroke must not reshape the pool below.
+    pub(in crate::tool::paint) edge_flow: ph2d_painter_brush::TextureSettings,
+    pub(in crate::tool::paint) paper_edge: f32,
 }
 
 /// **A DILUICAO E QUANTA TINTA, NUNCA ONDE A LAVAGEM ESTA** (o arco palido, Enio 2026-08-11).
@@ -131,6 +135,8 @@ impl WetStrokeStyle {
                 .clamp(0.0, ph2d_painter_brush::PAPER_TOOTH_MAX),
             granulation_use_paper: spec.granulation_use_paper,
             texture: spec.texture,
+            edge_flow: spec.edge_flow,
+            paper_edge: spec.paper_edge.clamp(0.0, 1.0),
         }
     }
 }

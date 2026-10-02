@@ -86,6 +86,7 @@ mod paint_texture;
 mod paint_texture_ramp;
 mod paint_texture_tiling; // the Grain's Offset / Size / Depth rows
 mod paint_watercolor;
+mod paint_watercolor_flow;
 mod paint_watercolor_paper;
 mod paint_wetpaint;
 mod paint_wetpaint_tilt; // doc 22: the TILT dial (polar pad) of the Wet Paint section

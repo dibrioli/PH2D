@@ -515,6 +515,12 @@ pub struct BrushSettings {
     pub opacity: f32,
     /// **Warp** (canvas px) — organic-boundary displacement of the coverage sampling (render-path).
     pub warp: f32,
+    /// **Flow** pattern of the Ragged Edge (`TextureKind` wire u8; `0` = Classic) + its Size / Angle.
+    pub flow_kind: u8,
+    pub flow_size: f32,
+    pub flow_angle: u16,
+    /// **Paper Edge** (`0..1`) — how much the boundary follows the paper tooth.
+    pub paper_edge: f32,
     /// **Smudge** (`0..1`) — Wet Mix amount (mixer-brush lift+carry vs fresh pigment).
     pub wet_smudge: f32,
     /// **Wet** (`0..1`) — wet-on-wet rewetting: lift + dissolve + pool, per-pixel in the composite.

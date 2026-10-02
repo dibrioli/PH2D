@@ -103,7 +103,7 @@ pub(super) fn apply_wet_lift(sb: &mut [f32; 3], ground_lin: &[f32; 3], lift: f32
 /// DELIBERADAMENTE menor que o gap do guard de não-contato (A/B a 10 px em
 /// `watercolor_session_brush_changes_do_not_touch_baked_washes`): um box kernel não é geodésico —
 /// raio ≥ gap vazaria molhado entre washes que nem se tocam.
-const WET_FIELD_BLUR_PX: usize = 8; // LITERAL-PX-OK: raio de suavização do campo (vide doc acima)
+pub(super) const WET_FIELD_BLUR_PX: usize = 8; // LITERAL-PX-OK: raio de suavização do campo (vide doc acima)
 
 /// Take 10: MOLHADO É CAMPO, NÃO ESTILO — o `st.wet` do dono entrava BINÁRIO nos termos
 /// wet-driven, e com Rewet DIFERENTE entre traços da sessão a fronteira de dono (recency por

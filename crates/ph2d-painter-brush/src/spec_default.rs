@@ -145,6 +145,12 @@ impl Default for BrushSpec {
             // over white). Inert unless `watercolor` is on → a plain brush is byte-identical regardless.
             opacity: 0.4,
             warp: 6.0,
+            // Classic (`kind: None`) and no paper in the edge ⇒ the pre-Flow wash, byte for byte.
+            edge_flow: TextureSettings {
+                mapping: crate::texture::TextureMapping::Tiled,
+                ..TextureSettings::default()
+            },
+            paper_edge: 0.0,
             wet_smudge: 0.0,   // off → byte-identical (the smear path is skipped)
             wet_rewet: 0.0,    // off → byte-identical (the rewet path is skipped)
             wet_charge: 1.0,   // full fresh paint → mixer skipped → byte-identical

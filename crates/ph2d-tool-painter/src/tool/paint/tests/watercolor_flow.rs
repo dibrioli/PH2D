@@ -88,3 +88,4 @@ const BASE: [(&str, u64); 6] = [
     ("ladrilho", 0x8b25_8d8a_18ec_fef2),
     ("dois donos", 0xb52d_61bf_7582_3c3b),
 ];
+

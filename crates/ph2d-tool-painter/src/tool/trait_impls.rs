@@ -393,6 +393,13 @@ impl Tool for PainterTool {
                 }
             }
             PanelEvent::SelectOption(id, value)
+                if id == crate::ids::PAINTER_WATERCOLOR_FLOW_KIND =>
+            {
+                if let Ok(k) = value.parse::<u8>() {
+                    self.set_brush_edge_flow_kind(k);
+                }
+            }
+            PanelEvent::SelectOption(id, value)
                 if id == crate::ids::PAINTER_BRUSH_TEXTURE_MAPPING =>
             {
                 if let Ok(m) = value.parse::<u8>() {

@@ -108,6 +108,18 @@ impl PainterTool {
                         self.set_brush_warp(v);
                         true
                     }
+                    x if x == crate::ids::PAINTER_WATERCOLOR_FLOW_SIZE => {
+                        self.set_brush_edge_flow_size(v);
+                        true
+                    }
+                    x if x == crate::ids::PAINTER_WATERCOLOR_FLOW_ANGLE => {
+                        self.set_brush_edge_flow_angle(v);
+                        true
+                    }
+                    x if x == crate::ids::PAINTER_WATERCOLOR_PAPER_EDGE => {
+                        self.set_brush_paper_edge(v);
+                        true
+                    }
                     x if x == crate::ids::PAINTER_WATERCOLOR_SMUDGE => {
                         self.set_brush_wet_smudge(v);
                         true
@@ -260,6 +272,41 @@ impl PainterTool {
     /// Set the render-path **Warp** (organic-boundary displacement, canvas px), clamped to `0..=48`.
     pub fn set_brush_warp(&mut self, v: f32) {
         self.paint.brush.warp = v.clamp(0.0, 48.0);
+    }
+
+    /// Set the Ragged Edge **Flow** pattern (`TextureKind` wire u8; `None` = Classic). Only the
+    /// [`ph2d_painter_brush::FLOW_KINDS`] are offered — anything else is a programming error (the
+    /// dropdown can only send those) and trips a `debug_assert`. The Size is NOT reset: Flow Size `1` is
+    /// the Classic's scale of detail for every pattern (`watercolor_flow::escala_do_flow`), so a tuned
+    /// Size means the same thing after a switch.
+    pub fn set_brush_edge_flow_kind(&mut self, k: u8) {
+        let kind = TextureKind::from_u8(k);
+        if !ph2d_painter_brush::FLOW_KINDS.contains(&kind) {
+            debug_assert!(false, "Flow kind {k} is not in FLOW_KINDS");
+            return;
+        }
+        let f = &mut self.paint.brush.edge_flow;
+        f.kind = kind;
+        f.params = [0.5; ph2d_painter_brush::MAX_TEX_PARAMS];
+        for (i, s) in ph2d_painter_brush::param_specs(kind).iter().enumerate() {
+            f.params[i] = s.default;
+        }
+    }
+
+    /// Set the **Flow Size** (both axes), clamped to `[FLOW_SIZE_MIN, FLOW_SIZE_MAX]`.
+    pub fn set_brush_edge_flow_size(&mut self, v: f32) {
+        let s = v.clamp(ph2d_painter_brush::FLOW_SIZE_MIN, ph2d_painter_brush::FLOW_SIZE_MAX);
+        self.paint.brush.edge_flow.size = [s, s];
+    }
+
+    /// Set the **Flow Angle** (whole degrees, wrapped to `0..360`).
+    pub fn set_brush_edge_flow_angle(&mut self, deg: f32) {
+        self.paint.brush.edge_flow.angle_deg = deg.rem_euclid(360.0) as u16;
+    }
+
+    /// Set the **Paper Edge** (how much the boundary follows the paper tooth), clamped to `0..=1`.
+    pub fn set_brush_paper_edge(&mut self, v: f32) {
+        self.paint.brush.paper_edge = v.clamp(0.0, 1.0);
     }
 
     /// Set the **Wet Mix / smudge** amount (mixer-brush lift+carry vs fresh pigment), clamped to `0..=1`.

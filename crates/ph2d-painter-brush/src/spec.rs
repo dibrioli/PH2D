@@ -32,6 +32,28 @@ pub const AIRBRUSH_RATE_MAX_S: f32 = 1.0;
 /// *«limites de tooth de 0 a 2»*), not a resource cap. The wash reads it as `1 + (h − 0.5)·tooth`,
 /// floored at `0`, so `2` lets a paper valley empty the pigment entirely.
 pub const PAPER_TOOTH_MAX: f32 = 2.0;
+/// **Flow Size** range — a multiple of the Classic's scale of detail (`1` = the Classic's; the pattern
+/// is normalized to it). `4×` either way spans a wash's edge from one slow meander to a fine fray; past
+/// it a feature is either wider than any stroke or finer than the AA's sub-texel taps.
+pub const FLOW_SIZE_MIN: f32 = 0.25;
+/// See [`FLOW_SIZE_MIN`].
+pub const FLOW_SIZE_MAX: f32 = 4.0;
+/// The patterns the watercolor **Flow** dropdown offers, in menu order. `None` is **Classic**. The
+/// organic procedurals only: a lattice pattern (Bricks, Grid, Dots…) is a drawing, not a way water runs.
+pub const FLOW_KINDS: [crate::texture::TextureKind; 9] = {
+    use crate::texture::TextureKind as K;
+    [
+        K::None,
+        K::Clouds,
+        K::Noise,
+        K::Marble,
+        K::Wood,
+        K::Voronoi,
+        K::DistortedNoise,
+        K::Musgrave,
+        K::Stucci,
+    ]
+};
 
 /// Parameters of a single brush. Cheap to copy; the stroke engine reads it per dab.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -374,6 +396,14 @@ pub struct BrushSpec {
     /// coverage sampling so the wash boundary is organic (ragged), not a clean disc. `0` = a crisp edge.
     /// Only read by the render-path.
     pub warp: f32,
+    /// **Flow** — the pattern the [`Self::warp`] displacement follows. `kind: None` = **Classic** (the
+    /// built-in two-octave value noise, byte-identical to the pre-Flow wash); any other kind is a
+    /// canvas-anchored height map the water runs DOWN ([`FLOW_KINDS`] are the offered ones). Its
+    /// Size / Angle shape the pattern; the amplitude stays [`Self::warp`].
+    pub edge_flow: crate::texture::TextureSettings,
+    /// **Paper Edge**, `0..=1`: how much the wash boundary follows the [`Self::paper`] tooth — the edge
+    /// creeps into the valleys and retreats from the peaks. `0` = the boundary ignores the paper.
+    pub paper_edge: f32,
     /// **Smudge** amount `0..1`: the TRUE-SMEAR strength — each dab physically DRAGS the pre-stroke
     /// base's paint from the previous dab centre to its own (Krita Color Smudge "Smearing" / Blender
     /// `paint_2d_lift_smear`), and the wash composites over the smeared base. `0` (default) skips the

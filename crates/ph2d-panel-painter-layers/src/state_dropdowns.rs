@@ -27,6 +27,16 @@ pub(crate) fn take_pending_paper_kind_dd() -> Option<(Rect, u8)> {
     state::PENDING_PAPER_KIND_DD.with(|c| c.take())
 }
 
+/// Stash the open Watercolor Flow dropdown for the deferred popover pass.
+pub(crate) fn set_pending_flow_kind_dd(v: Option<(Rect, u8)>) {
+    state::PENDING_FLOW_KIND_DD.with(|c| c.set(v));
+}
+
+/// Take (and clear) the pending Watercolor Flow dropdown.
+pub(crate) fn take_pending_flow_kind_dd() -> Option<(Rect, u8)> {
+    state::PENDING_FLOW_KIND_DD.with(|c| c.take())
+}
+
 /// Stash the open **Paint Mode** (medium) dropdown for the deferred popover pass.
 pub(crate) fn set_pending_brush_media_dd(v: Option<(Rect, u8)>) {
     state::PENDING_BRUSH_MEDIA_DD.with(|c| c.set(v));

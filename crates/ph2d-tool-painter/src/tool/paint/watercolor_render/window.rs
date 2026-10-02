@@ -131,7 +131,21 @@ impl PainterTool {
         } else {
             reach
         };
-        let pad = reach + warp_any.ceil() as usize + 2;
+        // O Paper Edge (BUGS #31) empurra a borda até `Paper Edge · dobra` px além do Ragged.
+        let papel = if self.paint.brush.paper_edge > 0.0
+            || self.paint.wet_styles.table.iter().any(|s| s.paper_edge > 0.0)
+        {
+            let img = self.paint.paper_image.as_ref().map(|i| i.as_mask());
+            super::super::watercolor_flow::alcance_do_papel(
+                &self.paint.brush,
+                &self.paint.wet_styles.table,
+                img.as_ref(),
+                super::super::watercolor_noise::NoiseTile::NONE,
+            )
+        } else {
+            0.0
+        };
+        let pad = reach + (warp_any + papel).ceil() as usize + 2;
         let x0 = (dirty.x as usize).saturating_sub(pad);
         let y0 = (dirty.y as usize).saturating_sub(pad);
         let x1 = ((dirty.x as usize) + (dirty.w as usize) + pad).min(fw);

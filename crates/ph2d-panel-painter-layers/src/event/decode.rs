@@ -16,6 +16,14 @@ pub(super) fn decode_brush_preset_option(id: NodeId) -> Option<u8> {
         .find(|&i| ph2d_tool_painter::ids::painter_brush_preset_option_id(i) == id)
 }
 
+/// Decode a Watercolor **Flow** popover option id → its `TextureKind` wire u8 (only the offered ones).
+pub(super) fn decode_flow_kind_option(id: NodeId) -> Option<u8> {
+    ph2d_tool_painter::FLOW_KINDS
+        .iter()
+        .map(|k| k.to_u8())
+        .find(|&k| ph2d_tool_painter::ids::painter_flow_kind_option_id(k) == id)
+}
+
 /// Decode a Watercolor **Paper** kind popover option id → its `TextureKind` wire u8.
 pub(super) fn decode_paper_kind_option(id: NodeId) -> Option<u8> {
     (0..TextureKind::COUNT).find(|&k| ph2d_tool_painter::ids::painter_paper_kind_option_id(k) == id)

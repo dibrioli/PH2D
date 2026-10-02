@@ -116,6 +116,11 @@ impl crate::App {
             // para alguém esquecer. Um painel flutuante no meio do canvas não move o gizmo — a
             // lei só conta quem toca a **aresta** da área.
             obstacles.extend(hero.store.panel_rects());
+            // ⚠️ Os rects do chrome são LÓGICOS e a área 3D é da janela (`ui_scale`).
+            let escala = hero.escala();
+            for r in &mut obstacles {
+                *r = escala.rect_to_physical(*r);
+            }
             // ⭐⭐ **A ÁREA é a de DESENHO, não a janela** (2026-08-30). Ela era o viewport
             // inteiro, e por isso as colunas docadas tocavam-lhe a aresta e **empurravam** o
             // gizmo — o remédio do sintoma que a D1 manda retirar quando os painéis passam a

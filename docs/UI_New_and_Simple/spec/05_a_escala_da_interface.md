@@ -14,10 +14,9 @@
 | Godot 4.7.2 | `interface/editor/display_scale`, enumerado | `Auto (%d%%) · 75 · 100 · 125 · 150 · 175 · 200 · Custom` | tabela de opções no binário (`strings $(which godot)`) |
 
 ⇒ **Degraus como o Godot** (o artista escolhe, não arrasta): `100 · 125 · 150 · 175 · 200 %`.
-⚠️ O tecto não é escolhido: **a interface tem de caber na janela**. A `200 %` uma janela de
-`1366` px tem `683` px lógicos e as duas colunas abertas não cabem. ⇒ medir o mínimo lógico do
-layout e **desactivar** (não esconder) os degraus que a janela actual não leva, com a razão escrita
-na linha do menu.
+⚠️ O tecto não é escolhido: **a interface tem de caber na janela**. Medido em 02/10 (§3b): a
+`200 %` numa janela de `1366` px (`683` lógicos) o layout ainda degrada com graça, e por isso
+nenhum degrau é desactivado.
 
 ## 2. O mapa medido (02/10, conferido no código)
 
@@ -60,6 +59,27 @@ que não escala.
   escala nas vistas 2D) ou se o canvas desfaz `s`.
 - **Os passes físicos.** Cada um dos rects do §2 com um gate: o rect pintado a `s = 1,5` é
   `1,5×` o lógico.
+
+## 3b. O que se mediu ao construir (02/10)
+
+- ⛔ **Recusa MEDIDA: escalar os TOKENS** (o `EDSCALE` da Godot). Há `1 647` literais
+  `LITERAL-PX-OK` (269 no `ph2d-editor-core`, 1 378 nos painéis) e `~80` constantes de compilação
+  (`ROW_H_PX` em 73, `MENU_BAR_H`, `TAB_BAR_H`, `DOCK_W_*`, `MIN_W_PX`). Uma escala nos tokens
+  deixaria essas medidas fixas: as linhas cresceriam e as colunas não.
+- **A arte NÃO acompanha a escala.** Os passes do mundo (sprites, câmera, 3D) ficam físicos.
+  A grade, as réguas e os gizmos que o chrome pinta são projectados com a janela LÓGICA. A
+  projecção é linear na janela, por isso caem no píxel físico da arte. As alças crescem com a
+  interface, e as réguas marcam o mesmo número de unidades por píxel a 100 % e a 200 %.
+- **O chrome pinta-se em espaço lógico; o resto da cena fica físico.** Várias fases da shell
+  pintam na mesma cena em coordenadas do mundo: a selecção, a física, as guias do vetor e o anel
+  do pincel. Por isso a escala não se aplica à cena inteira. O chrome pinta numa cena lógica, que
+  é colada sob `Affine::scale(s)` no seu ponto da ordem de pintura (`ui_scale::pintar_no_chrome`).
+  Os toasts e a forma de onda do áudio são chrome e entram na mesma porta.
+- **Nenhum degrau é desactivado.** Medido a 200 % numa janela de 1366×768 (683 lógicos): as
+  colunas encolhem, a fila manda o resto para o `⋯` e o canvas fica estreito, mas usável.
+  ⚠️ **Defeito anterior que a medição expôs:** a barra de estatísticas estreita quebra itens em
+  duas linhas (`0` / `ent`) e encosta outros (`EDIT60 fps`). Acontece em qualquer janela dessa
+  largura lógica, mesmo a 100 %.
 
 ## 4. Gates (red-first)
 

@@ -43,7 +43,7 @@ impl crate::App {
         // coordenadas de mundo e nada as impede de cair debaixo do Inspector; sem esta porta,
         // clicar num campo da §12 arrancaria um arrasto por trás dele. É a mesma guarda que o
         // arrasto da âncora de joint faz.
-        if hero.store.panel_at(sx, sy).is_some() {
+        if hero.chrome_panel_at(sx, sy).is_some() {
             return false;
         }
         let Some(bits) = hero.gizmo.selection else {

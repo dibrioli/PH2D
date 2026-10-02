@@ -147,3 +147,17 @@ fn every_text_style_survives_a_round_trip() {
         }
     }
 }
+
+/// ⭐ **A escala da interface ATRAVESSA o ficheiro, em todo degrau** (2026-10-02); um valor
+/// desconhecido cai na fábrica. *Mutação: a chave fora do `serialize` ⇒ volta `100` e parte.*
+#[test]
+fn every_ui_scale_survives_a_round_trip() {
+    for ui_scale in ph2d_tokens::UiScale::ALL {
+        let p = Prefs {
+            ui_scale,
+            ..Prefs::default()
+        };
+        assert_eq!(parse(&serialize(&p)), p, "{ui_scale:?} tem de voltar igual");
+    }
+    assert_eq!(parse("ui_scale=133\n").ui_scale, ph2d_tokens::UiScale::P100);
+}

@@ -264,8 +264,7 @@ impl crate::App {
         use winit::window::CursorIcon;
         let (x, y) = self.last_pointer;
         let (_, kind) = hero
-            .hit_index
-            .hit(x, y)
+            .chrome_hit(x, y)
             .and_then(|id| hero.store.timeline_surface_at_id(id))?;
         Some(match kind {
             // The names column widens sideways; the graph band grows downward.
@@ -285,8 +284,7 @@ impl crate::App {
     /// cursor and the gesture agree on the grab band.
     pub(super) fn over_motion_split_divider(&self, hero: &ph2d_editor_core::HeroScreen) -> bool {
         let (x, y) = self.last_pointer;
-        hero.hit_index
-            .hit(x, y)
+        hero.chrome_hit(x, y)
             .and_then(|id| hero.store.graph_surface_at_id(id))
             .is_some_and(|(_, kind)| {
                 matches!(

@@ -500,7 +500,7 @@ use frame_prof::*;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::paint::PaintCtx;
 use ph2d_editor_core::zones::Rect as EditorRect;
-use ph2d_editor_core::{Layout as EditorLayout, RequestedSpriteStrategy, Toast, paint_hero_screen};
+use ph2d_editor_core::{Layout as EditorLayout, RequestedSpriteStrategy, Toast};
 use std::time::Instant;
 
 // The mixer panel is UI-only (no `ph2d-audio` dep); its sub-bus strips are

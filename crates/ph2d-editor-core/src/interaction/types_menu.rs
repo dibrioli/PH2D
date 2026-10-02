@@ -168,6 +168,8 @@ pub enum ContextMenuKind {
     SettingsWeightSubmenu,
     /// ⭐ Settings ▸ Font size — o TAMANHO ([`ph2d_tokens::UiTextSize`]).
     SettingsSizeSubmenu,
+    /// ⭐ Settings ▸ Interface scale — a escala da interface INTEIRA ([`ph2d_tokens::UiScale`]).
+    SettingsScaleSubmenu,
     /// Color-picker palette rename: a centered modal with the shared name `TextInput`
     /// (`BLENDER_PALETTE_NAME`) + a Rename button (`CTX_MENU_PALETTE_RENAME`). Opened by the
     /// picker's "R" button; Rename / Enter commit `blender_rename_active_palette`, outside-click
@@ -386,6 +388,7 @@ impl ContextMenuKind {
         Self::SettingsFontSubmenu,
         Self::SettingsWeightSubmenu,
         Self::SettingsSizeSubmenu,
+        Self::SettingsScaleSubmenu,
         Self::RenamePaletteDialog,
         Self::SceneList,
         Self::HierarchyRow { row: NodeId(1) },

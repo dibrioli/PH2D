@@ -76,6 +76,7 @@ pub mod stroke;
 pub mod text_style;
 pub mod theme;
 pub mod typography;
+pub mod ui_scale;
 /// ⭐ **A tabela de estados do widget** — a porta única de fundo / borda / raio por estado.
 pub mod visuals;
 
@@ -112,3 +113,4 @@ pub use typography::{
     FONT_DISPLAY, FONT_MONO, FONT_SANS, FontWeight, LetterSpacing, LineHeight, SnapX,
     TextRendering, TextRenderingParams, TypeToken, crisp_weight_boost_for,
 };
+pub use ui_scale::UiScale;

@@ -71,15 +71,15 @@ pub fn pointer_over_chrome(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
     let Some(hero) = gfx.and_then(|g| g.hero_screen.as_ref()) else {
         return false;
     };
-    let hit = hero.hit_index.hit(x, y);
-    let claimed = chrome_claims(hero.store.panel_at(x, y), hit, |id| {
+    let hit = hero.chrome_hit(x, y);
+    let claimed = chrome_claims(hero.chrome_panel_at(x, y), hit, |id| {
         ph2d_editor_core::gizmo::is_gizmo_id(id) || hero.gizmo.gizmo_hit_map.contains_key(&id)
     });
     if claimed && std::env::var("PH2D_CHROME_DIAG").is_ok() {
         eprintln!(
             "[chrome] refusing the canvas at ({x:.0},{y:.0}): panel={:?} widget={:?} \
              (gizmo_id={} keyed={})",
-            hero.store.panel_at(x, y),
+            hero.chrome_panel_at(x, y),
             hit,
             hit.is_some_and(ph2d_editor_core::gizmo::is_gizmo_id),
             hit.is_some_and(|id| hero.gizmo.gizmo_hit_map.contains_key(&id)),

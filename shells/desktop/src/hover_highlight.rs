@@ -142,7 +142,7 @@ impl crate::App {
         let (over_panel, hot, ppm) = {
             let hero = self.gfx.as_ref()?.hero_screen.as_ref()?;
             (
-                hero.store.panel_at(pointer.0, pointer.1).is_some(),
+                hero.chrome_panel_at(pointer.0, pointer.1).is_some(),
                 hero.store.hot_id(),
                 hero.project.pixels_per_meter,
             )

@@ -182,13 +182,13 @@ pub struct HeroSelection {
 pub struct HeroScreen {
     pub id: NodeId,
     pub theme: Theme,
-    /// Text rendering strategy — orthogonal to `theme`. `Default`
-    /// preserva o visual histórico; `Crisp` aplica snap-X + boost
-    /// de FontWeight por faixa de tamanho. Persistência: runtime-only
-    /// (não save). Toggle via `Settings ▸ Text rendering ▸ ...`.
+    /// Nitidez do texto (`Settings ▸ Text rendering`), ortogonal ao `theme`: `Crisp` aplica snap-X
+    /// + boost de peso por faixa de tamanho. Runtime-only (não grava).
     pub text_rendering: ph2d_tokens::TextRendering,
-    /// Fonte · peso · tamanho do texto da interface (`text_style_rows`); gravado em `prefs.txt`.
+    /// Fonte · peso · tamanho do texto (`text_style_rows`) e a escala da interface inteira
+    /// (`crate::ui_scale`) — os dois gravados em `prefs.txt`.
     pub text_style: ph2d_tokens::UiTextStyle,
+    pub ui_scale: ph2d_tokens::UiScale,
     pub selection: Option<HeroSelection>,
     /// Per-widget interactive state (hover/press/focus). Pre-populated
     /// at construction; mutated in-place by [`HeroScreen::handle_pointer`].
@@ -424,11 +424,11 @@ impl HeroScreen {
             ui_sound: false,
             tether: crate::tether::Tether::default(),
             id,
-            // ⭐ O tema de arranque segue a APARÊNCIA: o redesenho abre no `dark` (o *Default* do
-            //    Godot 4.6, decisão do Enio 2026-09-04), o clássico continua a abrir no `forge`.
+            // ⭐ O tema de arranque segue a APARÊNCIA: redesenho `dark` (Enio 09-04), clássico `forge`.
             theme: Theme::default_for(paint::ui_look_from_env()),
             text_rendering: ph2d_tokens::TextRendering::CrispHeavyPlus, // app default (Enio 2026-06-24)
             text_style: ph2d_tokens::UiTextStyle::default(),
+            ui_scale: ph2d_tokens::UiScale::P100,
             selection: Some(fixture::default_selection()),
             store,
             hit_index: HitIndex::new(),

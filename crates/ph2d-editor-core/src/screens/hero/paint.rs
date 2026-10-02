@@ -1,5 +1,8 @@
 use super::*;
 use crate::ids;
+#[path = "na_escala.rs"]
+mod na_escala;
+pub use na_escala::paint_hero_screen_na_escala;
 
 /// **Todo painel que o passeio de z-order alcança**, mesmo que o store ainda não o tenha visto.
 ///
@@ -150,6 +153,8 @@ pub fn paint_hero_screen(
     crate::paint::set_text_rendering(hero.text_rendering);
     // E o estilo do texto (fonte · peso · tamanho) — lido pela mesma porta que mede e pinta.
     ph2d_text::set_active_text_style(hero.text_style);
+    // E a escala da interface inteira — a marca do menu lê-a (`crate::ui_scale`).
+    crate::ui_scale::publish(hero.ui_scale);
     // ⭐⭐⭐ **A APARÊNCIA do app, uma vez por quadro** (Enio, 2026-09-03: *«por enquanto permanece
     // a antiga»*). ⚠️ Lida do ambiente **uma só vez** — `PH2D_UI_NEW=1` liga o redesenho, tudo o
     // resto é a UI de sempre. ⛔ Não é uma preferência gravada: um redesenho a meio não deve poder

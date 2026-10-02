@@ -388,7 +388,7 @@ pub fn gizmo_down(
         return false;
     }
     let active_layer = state.active_layer;
-    let Some(hit_id) = hero.hit_index.hit(x, y) else {
+    let Some(hit_id) = hero.chrome_hit(x, y) else {
         return false;
     };
     let Some(hit) = hero.gizmo.gizmo_hit_map.get(&hit_id).copied() else {

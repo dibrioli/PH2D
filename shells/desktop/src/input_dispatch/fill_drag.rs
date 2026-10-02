@@ -111,7 +111,7 @@ impl App {
             .gfx
             .as_ref()
             .and_then(|g| g.hero_screen.as_ref())
-            .and_then(|h| h.hit_index.hit(px, py))
+            .and_then(|h| h.chrome_hit(px, py))
             == Some(ids::PAINTER_RAIL_FILL);
         if !on_button {
             return false;
@@ -205,7 +205,8 @@ impl App {
             if let Some(threshold) = self.painter_active_fill_threshold()
                 && let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut())
             {
-                hero.store.open_fill_modal(px, py, threshold);
+                let (x, y) = hero.escala().to_logical((px, py));
+                hero.store.open_fill_modal(x, y, threshold);
             }
         } else {
             // Plain click → open the paint-colour picker. If a drag had entered momentary Fill but never
@@ -272,7 +273,7 @@ impl App {
             .gfx
             .as_ref()
             .and_then(|g| g.hero_screen.as_ref())
-            .and_then(|h| h.hit_index.hit(px, py))
+            .and_then(|h| h.chrome_hit(px, py))
             == Some(ids::PAINTER_FILL_MODAL_HANDLE);
         if !on_handle {
             return false;
@@ -289,7 +290,8 @@ impl App {
         };
         FILL_MODAL_DRAG.with(|c| c.set(Some((px, py))));
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            hero.store.move_fill_modal(px - lx, py - ly);
+            let (dx, dy) = hero.escala().to_logical((px - lx, py - ly));
+            hero.store.move_fill_modal(dx, dy);
         }
         true
     }

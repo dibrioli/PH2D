@@ -35,7 +35,7 @@ impl crate::App {
         // precedente uma linha ao lado: o `Focused(false)` existe porque *«o `Up` de uma tecla
         // presa nunca chega quando a janela vai embora»*, e o mesmo é verdade de um botão.
         hero.store.end_asset_drag();
-        let Some(id) = hero.hit_index.hit(x, y) else {
+        let Some(id) = hero.chrome_hit(x, y) else {
             return;
         };
         if !hero.store.is_asset_cell(id) {
@@ -50,7 +50,9 @@ impl crate::App {
         let Some(payload) = ph2d_panel_asset_browser::payload_at(index) else {
             return;
         };
-        hero.store.begin_asset_drag(payload, x, y);
+        // ⚠️ O fantasma pinta-se no chrome (LÓGICO, `ui_scale`); a queda pergunta pela porta física.
+        let (gx, gy) = hero.escala().to_logical((x, y));
+        hero.store.begin_asset_drag(payload, gx, gy);
     }
 
     /// **`Move`** — anda com o arrasto (e arma-o depois do limiar).
@@ -58,7 +60,8 @@ impl crate::App {
         if let Some(gfx) = self.gfx.as_mut()
             && let Some(hero) = gfx.hero_screen.as_mut()
         {
-            hero.store.update_asset_drag(x, y);
+            let (gx, gy) = hero.escala().to_logical((x, y));
+            hero.store.update_asset_drag(gx, gy);
         }
         // ⭐⭐⭐ **A VOZ DO ARRASTO** (wave B4): o fantasma passa a dizer se o sítio aceita, ANTES
         // de a mão largar. ⚠️ Pela MESMA porta e pela MESMA lei que a queda usa — é isso que
@@ -138,13 +141,13 @@ impl crate::App {
         let (panel, on_canvas, world) = {
             let gfx = self.gfx.as_ref()?;
             let hero = gfx.hero_screen.as_ref()?;
-            let panel = hero.store.panel_at(x, y);
+            let panel = hero.chrome_panel_at(x, y);
             // ⛔⛔ **A pergunta «estou sobre a TELA?» tem DUAS metades, e a 1.ª versão só fazia
             // uma.** O `panel_at` só conhece os 28 painéis que publicam rect; o **rail de
             // ferramentas**, a **barra de cima**, o HUD e os menus registam só rect de acerto. ⇒
             // largar sobre a barra de cima caía no ramo do canvas e **re-texturava a sprite
             // escondida por trás dela**, em silêncio.
-            let on_canvas = panel.is_none() && hero.hit_index.hit(x, y).is_none();
+            let on_canvas = panel.is_none() && hero.chrome_hit(x, y).is_none();
             let world = gfx.camera.screen_to_world((x, y), gfx.scene_window());
             (panel, on_canvas, world)
         };
@@ -174,7 +177,7 @@ impl crate::App {
     /// a linha *Unassigned*).
     fn catalog_row_under(&self, x: f32, y: f32) -> Option<Option<u128>> {
         let hero = self.gfx.as_ref()?.hero_screen.as_ref()?;
-        let id = hero.hit_index.hit(x, y)?;
+        let id = hero.chrome_hit(x, y)?;
         match ph2d_panel_asset_browser::catalog_row_pick(id)? {
             ph2d_panel_asset_browser::CatalogPick::One(c) => Some(Some(c.0)),
             ph2d_panel_asset_browser::CatalogPick::Unassigned => Some(None),
@@ -192,7 +195,7 @@ impl crate::App {
     /// conhecer o literal do id seria conhecer a tabela de outro painel.
     fn inspector_slot_under(&self, x: f32, y: f32) -> Option<u64> {
         let hero = self.gfx.as_ref()?.hero_screen.as_ref()?;
-        ph2d_panel_inspector::texture_slot_pick(hero.hit_index.hit(x, y)?)
+        ph2d_panel_inspector::texture_slot_pick(hero.chrome_hit(x, y)?)
     }
 
     /// O objecto debaixo do cursor, no resumo de que a lei precisa.

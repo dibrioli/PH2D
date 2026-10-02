@@ -15,11 +15,11 @@
 use crate::ids;
 use crate::interaction::{ContextMenuKind, ContextMenuRequest, WidgetEvent};
 use crate::screens::hero::HeroScreen;
-use crate::screens::hero::text_style_rows::{FONTS, SIZES, WEIGHTS};
+use crate::screens::hero::text_style_rows::{FONTS, SCALES, SIZES, WEIGHTS};
 use ph2d_a11y::NodeId;
 
 /// As três categorias do Settings e o submenu que cada uma abre.
-const CATEGORIES: [(NodeId, ContextMenuKind); 3] = [
+const CATEGORIES: [(NodeId, ContextMenuKind); 4] = [
     (
         ids::CTX_MENU_SETTINGS_FONT,
         ContextMenuKind::SettingsFontSubmenu,
@@ -32,6 +32,10 @@ const CATEGORIES: [(NodeId, ContextMenuKind); 3] = [
         ids::CTX_MENU_SETTINGS_SIZE,
         ContextMenuKind::SettingsSizeSubmenu,
     ),
+    (
+        ids::CTX_MENU_SETTINGS_SCALE,
+        ContextMenuKind::SettingsScaleSubmenu,
+    ),
 ];
 
 pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
@@ -42,6 +46,11 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         let (x, y) = super::cascade_anchor(hero, id);
         hero.store
             .open_context_menu(ContextMenuRequest { x, y, kind: *kind });
+        return true;
+    }
+    if let Some((_, z)) = SCALES.iter().find(|(r, _)| *r == id) {
+        hero.ui_scale = *z;
+        hero.store.close_context_menu();
         return true;
     }
     let style = &mut hero.text_style;

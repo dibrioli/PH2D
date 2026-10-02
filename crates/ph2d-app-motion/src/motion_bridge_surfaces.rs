@@ -42,8 +42,7 @@ pub(super) fn open_and_close(
     // last frame's paint (stable); `None` off the graph → the scene owns keys.
     let over_graph = motion_active
         && hero
-            .store
-            .panel_rect(ph2d_editor_core::ids::MOTION_GRAPH_PANEL)
+            .panel_rect_fisico(ph2d_editor_core::ids::MOTION_GRAPH_PANEL)
             .is_some_and(|r| r.contains(cursor.0, cursor.1));
     hero.store
         .set_graph_focused(over_graph.then_some(ph2d_editor_core::ids::MOTION_GRAPH_PANEL));

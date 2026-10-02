@@ -257,6 +257,14 @@ impl VectorScene {
         self.mundo_por_baixo
     }
 
+    /// ⭐ **Cola `other` por cima desta cena, sob `transform`** — e herda a marca do mundo por
+    /// baixo dela. É a porta da escala da interface (`ph2d_editor_core::ui_scale`): o chrome
+    /// pinta-se numa cena LÓGICA e entra aqui sob `Affine::scale(s)`.
+    pub fn append_transformed(&mut self, other: &VectorScene, transform: Affine) {
+        self.inner.append(&other.inner, Some(transform));
+        self.mundo_por_baixo |= other.mundo_por_baixo;
+    }
+
     pub fn inner(&self) -> &Scene {
         &self.inner
     }

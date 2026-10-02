@@ -446,7 +446,7 @@ impl App {
             .as_ref()
             .and_then(|g| g.hero_screen.as_ref())
             .map(|h| {
-                h.store.panel_at(evt.x, evt.y).is_none() && h.hit_index.hit(evt.x, evt.y).is_none()
+                h.chrome_panel_at(evt.x, evt.y).is_none() && h.chrome_hit(evt.x, evt.y).is_none()
             })
             .unwrap_or(false);
         if self.ramo_preview_e_fechos(kind, mapped_button, evt, menu_open_before) {

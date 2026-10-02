@@ -237,12 +237,17 @@ impl App {
             return;
         };
         let panel = tool.build_panel();
-        let viewport = EditorRect::new(
+        // ⚠️ O painel vive no espaço LÓGICO do chrome (`ph2d_editor_core::ui_scale`): a janela e o
+        //    ponteiro entram lá juntos.
+        let mapa = gfx.hero_screen.as_ref().map(|h| h.escala());
+        let (px, py) = mapa.map_or((px, py), |m| m.to_logical((px, py)));
+        let fisico = EditorRect::new(
             0.0,
             0.0,
             gfx.surface.size().width as f32,
             gfx.surface.size().height as f32,
         );
+        let viewport = mapa.map_or(fisico, |m| m.rect_to_logical(fisico));
         let widget_rects = panel.control_widget_rects(viewport);
 
         // Existing drag → re-emit SetValue against the same node. Done

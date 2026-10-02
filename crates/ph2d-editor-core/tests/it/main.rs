@@ -32,6 +32,7 @@ mod a_panel_scrolls_by_dragging_its_body;
 mod a_ring_painted_as_a_fill_is_still_a_frame;
 mod a_rolagem_esquece_o_que_o_quadro_nao_publicou;
 mod a_row_of_many_fields_never_starves_them;
+mod a_shell_pergunta_ao_chrome_pelas_portas_fisicas;
 mod an_action_button_asks_the_door_where_it_goes;
 mod arch_color_space_typed;
 mod arch_mode_has_reconcile;

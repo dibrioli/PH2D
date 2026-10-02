@@ -17,7 +17,8 @@ use ph2d_editor_core::zones::Rect;
 pub fn visible(hero: &ph2d_editor_core::screens::hero::HeroScreen, viewport: Rect) -> Rect {
     let published = hero.last_content;
     if published.w > 0.0 && published.h > 0.0 {
-        Rect::new(published.x, published.y, published.w, published.h)
+        // ⚠️ Publicada no espaço LÓGICO do chrome; quem pergunta (câmera, palco, 3D) vive na janela.
+        hero.escala().rect_to_physical(published)
     } else {
         viewport
     }

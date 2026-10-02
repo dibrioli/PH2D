@@ -2176,6 +2176,7 @@ fn every_choice_submenu_marks_the_active_pick() {
         K::SettingsFontSubmenu,
         K::SettingsWeightSubmenu,
         K::SettingsSizeSubmenu,
+        K::SettingsScaleSubmenu,
     ];
     let store = crate::interaction::WidgetStore::default();
     let project = crate::project::ProjectSettings::default();
@@ -2237,6 +2238,7 @@ fn every_settings_submenu_is_classified_as_choice_or_action() {
         K::SettingsFontSubmenu,
         K::SettingsWeightSubmenu,
         K::SettingsSizeSubmenu,
+        K::SettingsScaleSubmenu,
     ]
     .into_iter()
     .chain(NAO_ESCOLHEM.iter().map(|(k, _)| *k))

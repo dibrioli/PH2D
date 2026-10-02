@@ -157,7 +157,7 @@ impl crate::App {
         let mut found = None;
         'scan: for y in (0..1000).step_by(4) {
             for x in (0..120).step_by(4) {
-                if hero.hit_index.hit(x as f32, y as f32) == Some(id) {
+                if hero.chrome_hit(x as f32, y as f32) == Some(id) {
                     found = Some((x as f32, y as f32));
                     break 'scan;
                 }
@@ -188,7 +188,7 @@ impl crate::App {
         let win = self.gfx.as_ref().map(|g| g.surface.size())?;
         for y in (0..win.height).step_by(3) {
             for x in (0..win.width).step_by(3) {
-                if hero.hit_index.hit(x as f32, y as f32) == Some(id) {
+                if hero.chrome_hit(x as f32, y as f32) == Some(id) {
                     return Some((x as f32, y as f32));
                 }
             }

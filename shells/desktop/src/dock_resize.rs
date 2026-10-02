@@ -42,7 +42,15 @@ pub(crate) struct SeamDrag {
 }
 
 impl crate::App {
-    /// O layout que o último quadro resolveu, se já houve um.
+    /// Um ponto da janela (físico) no espaço do chrome (lógico) — `ph2d_editor_core::ui_scale`.
+    pub(crate) fn ponto_do_chrome(&self, p: (f32, f32)) -> (f32, f32) {
+        self.gfx
+            .as_ref()
+            .and_then(|g| g.hero_screen.as_ref())
+            .map_or(p, |h| h.escala().to_logical(p))
+    }
+
+    /// O layout que o último quadro resolveu, se já houve um (no espaço LÓGICO do chrome).
     fn hero_layout(&self) -> Option<ph2d_editor_core::screens::layout::HeroLayout> {
         self.gfx
             .as_ref()
@@ -59,6 +67,7 @@ impl crate::App {
         if self.dock_seam_drag.is_some() {
             return Some(winit::window::CursorIcon::EwResize);
         }
+        let (x, y) = self.ponto_do_chrome((x, y));
         let layout = self.hero_layout()?;
         // ⚠️ **A alça de uma coluna FECHADA promete o mesmo gesto** — puxar a borda — logo tem de
         //    mostrar a mesma seta. Um cursor diferente diria que é outra coisa, e o que muda é só
@@ -73,6 +82,7 @@ impl crate::App {
 
     /// Press: começa o arrasto se o ponto estiver na costura. `true` = a tecla foi consumida.
     pub(crate) fn dock_seam_down(&mut self, x: f32, y: f32) -> bool {
+        let (x, y) = self.ponto_do_chrome((x, y));
         // ⭐⭐⭐ **A ALÇA vem PRIMEIRO** — ela e a costura nunca coexistem no mesmo lado (uma exige
         //    a coluna aberta, a outra fechada), mas perguntar por ela primeiro deixa a lei escrita
         //    numa ordem em vez de depender dessa exclusão continuar verdadeira.
@@ -107,6 +117,7 @@ impl crate::App {
         let Some(layout) = self.hero_layout() else {
             return false;
         };
+        let (x, _) = self.ponto_do_chrome((x, 0.0));
         let w = layout.dock_width_for(drag.side, x);
         // ⭐⭐⭐ **A porta do ARRASTO, e não a porta crua** — um gesto que aterra na largura de
         //    fábrica APAGA a excepção em vez de a gravar. Ver o doc dela: com a janela estreita a

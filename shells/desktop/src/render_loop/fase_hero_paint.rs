@@ -36,7 +36,21 @@ impl crate::App {
         dock_log(hero, viewport);
         // Frame profiler: panel/chrome Vello encode (includes the painter panel's Paper preview).
         let hero_t0 = frame_prof_on().then(Instant::now);
-        paint_hero_screen(hero, viewport, vector_scene, paint_ctx.text);
+        // ⭐ Na ESCALA da interface (`ph2d_editor_core::ui_scale`): o chrome numa cena lógica,
+        //    colada sob `Affine::scale(s)`; a `100 %` o caminho de sempre. A forma de onda do Audio
+        //    Editor é chrome — pinta-se na MESMA cena, com o viewport lógico.
+        ph2d_editor_core::screens::hero::paint_hero_screen_na_escala(
+            hero,
+            viewport,
+            vector_scene,
+            paint_ctx.text,
+            |_hero, _vp, _scene, _text| {
+                #[cfg(feature = "panel-audio-editor")]
+                if let Some(audio) = self.audio.as_mut() {
+                    audio_overlay::draw_audio_overlay(_hero, audio, _vp, _scene, _text);
+                }
+            },
+        );
         // ⭐⭐ **A ARRUMAÇÃO é detectada no QUADRO, não no hook de ponteiro** (decisão D4).
         //
         // ⛔⛔ Ela viveu no `forward_to_hero` durante uma entrega, com os outros dois
@@ -49,20 +63,6 @@ impl crate::App {
         crate::layout_persist::save_sections_if_changed(&mut hero.store);
         if let Some(t0) = hero_t0 {
             FRAME_PROF_HERO_US.with(|c| c.set(t0.elapsed().as_micros() as u64));
-        }
-        // Audio Editor floating waveform overlay (docs/Audio/, W1) — painted
-        // after the hero chrome, in the Hierarchy↔Inspector gap. Reads the
-        // loaded clip from the audio system; no-op when the panel is closed
-        // or no clip is loaded.
-        #[cfg(feature = "panel-audio-editor")]
-        if let Some(audio) = self.audio.as_mut() {
-            audio_overlay::draw_audio_overlay(
-                hero,
-                audio,
-                ph2d_editor_core::zones::Rect::new(viewport.x, viewport.y, viewport.w, viewport.h),
-                vector_scene,
-                paint_ctx.text,
-            );
         }
         // Fase 0f: overlay the active rubber-band rect on top of
         // everything (panels, gizmo, hero chrome). Pure shell

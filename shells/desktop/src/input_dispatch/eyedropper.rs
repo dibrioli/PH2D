@@ -122,7 +122,7 @@ impl App {
         let Some(hero) = gfx.hero_screen.as_ref() else {
             return false;
         };
-        let Some(hit_id) = hero.hit_index.hit(px, py) else {
+        let Some(hit_id) = hero.chrome_hit(px, py) else {
             return false;
         };
         let Some(idx) = ph2d_editor_core::ids::bgr_swatch_index(hit_id) else {

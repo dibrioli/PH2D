@@ -376,10 +376,7 @@ impl crate::App {
         self.gfx
             .as_ref()
             .and_then(|g| g.hero_screen.as_ref())
-            .and_then(|h| {
-                h.store
-                    .panel_rect(ph2d_editor_core::ids::MOTION_GRAPH_PANEL)
-            })
+            .and_then(|h| h.panel_rect_fisico(ph2d_editor_core::ids::MOTION_GRAPH_PANEL))
             .is_some_and(|r| r.contains(self.last_pointer.0, self.last_pointer.1))
     }
 
@@ -391,7 +388,7 @@ impl crate::App {
         self.gfx
             .as_ref()
             .and_then(|g| g.hero_screen.as_ref())
-            .and_then(|h| h.store.panel_rect(ph2d_editor_core::ids::TIMELINE_PANEL))
+            .and_then(|h| h.panel_rect_fisico(ph2d_editor_core::ids::TIMELINE_PANEL))
             .is_some_and(|r| r.contains(self.last_pointer.0, self.last_pointer.1))
     }
     /// ADR-0108 Fase 1: while a shape drag is live, resize it to the cursor.

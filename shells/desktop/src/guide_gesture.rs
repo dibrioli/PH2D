@@ -137,7 +137,7 @@ impl App {
         let hero = self.gfx.as_ref()?.hero_screen.as_ref()?;
         let view = hero.grid.view?;
         Some(ph2d_editor_core::GridView {
-            canvas: hero.last_canvas,
+            canvas: hero.escala().rect_to_physical(hero.last_canvas),
             ..view
         })
     }

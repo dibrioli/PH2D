@@ -48,7 +48,7 @@ pub fn draw_flip_cursor(
     };
     let (cx, cy) = cursor;
     // Sobre um painel, o cursor é do painel: não desenha.
-    if hero.store.panel_at(cx, cy).is_some() {
+    if hero.chrome_panel_at(cx, cy).is_some() {
         return;
     }
 

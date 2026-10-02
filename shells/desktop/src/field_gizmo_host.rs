@@ -47,7 +47,7 @@ impl crate::App {
             let Some(hero) = gfx.hero_screen.as_ref() else {
                 return false;
             };
-            let Some(hit_id) = hero.hit_index.hit(x, y) else {
+            let Some(hit_id) = hero.chrome_hit(x, y) else {
                 return false;
             };
             let Some(hit) = hero.gizmo.gizmo_hit_map.get(&hit_id).copied() else {

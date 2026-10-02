@@ -105,12 +105,12 @@ impl crate::App {
             .gfx
             .as_ref()
             .and_then(|g| g.hero_screen.as_ref())
-            .map(|h| h.store.panel_at(tela.0, tela.1).is_some());
+            .map(|h| h.chrome_panel_at(tela.0, tela.1).is_some());
         let widget = self
             .gfx
             .as_ref()
             .and_then(|g| g.hero_screen.as_ref())
-            .map(|h| h.hit_index.hit(tela.0, tela.1).is_some());
+            .map(|h| h.chrome_hit(tela.0, tela.1).is_some());
         let on_canvas = painel == Some(false) && widget == Some(false);
         // ⚠️ A VOLTA: se `screen_to_world(world_to_screen(p)) == p`, então o espaço do PICK e o
         // espaço que esta sonda usa são o mesmo — e uma discordância com o que a FOTO mostra passa

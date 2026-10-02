@@ -168,7 +168,7 @@ fn measure_where_the_bridge_phases_spend_a_frame() {
         // The two store-touching calls the PANEL phase makes every frame.
         println!(
             "  store.panel_at()     {:.4}",
-            med(200, || hero.store.panel_at(cursor.0, cursor.1))
+            med(200, || hero.chrome_panel_at(cursor.0, cursor.1))
         );
         // The env read the PANEL phase does EVERY frame (PH2D_PREVIEW_DIAG), before any sub-mark.
         println!(

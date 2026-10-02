@@ -58,8 +58,9 @@ fn wheel_fn_body() -> String {
 fn the_wheel_asks_the_published_panel_table_and_keeps_no_list() {
     let body = wheel_fn_body();
     assert!(
-        body.contains(".panel_at("),
-        "cursor_over_hero_panel no longer asks `panel_at` — the wheel must derive from the rects \
+        // ⚠️ Pela porta FÍSICA desde 2026-10-02 (`HeroScreen::chrome_panel_at`, a escala da UI).
+        body.contains(".chrome_panel_at("),
+        "cursor_over_hero_panel no longer asks `chrome_panel_at` — the wheel must derive from the rects \
          the panels publish, never from a list someone has to remember:\n{body}"
     );
     assert!(

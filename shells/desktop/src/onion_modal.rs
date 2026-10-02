@@ -86,7 +86,7 @@ impl App {
             .gfx
             .as_ref()
             .and_then(|g| g.hero_screen.as_ref())
-            .and_then(|h| h.hit_index.hit(px, py))
+            .and_then(|h| h.chrome_hit(px, py))
             == Some(ids::TIMELINE_ONION_MODAL_HANDLE);
         if !on_handle {
             return false;
@@ -103,7 +103,8 @@ impl App {
         };
         ONION_MODAL_DRAG.with(|c| c.set(Some((px, py))));
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            hero.store.move_onion_modal(px - lx, py - ly);
+            let (dx, dy) = hero.escala().to_logical((px - lx, py - ly));
+            hero.store.move_onion_modal(dx, dy);
         }
         true
     }

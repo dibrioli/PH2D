@@ -35,7 +35,7 @@ pub(super) fn draw_brush_ring(
     // canvas this frame, like the rubber-band / bgremoval ring).
     if let Some(bits) = hero.gizmo.selection {
         let (cx, cy) = cursor;
-        if hero.store.panel_at(cx, cy).is_none() {
+        if hero.chrome_panel_at(cx, cy).is_none() {
             let bs = painter.brush_settings();
             let (iw, ih) = painter.canvas_size();
             let entity = ph2d_ecs::Entity::from_bits(bits);

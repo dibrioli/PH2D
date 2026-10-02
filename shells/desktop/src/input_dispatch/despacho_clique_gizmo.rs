@@ -218,7 +218,7 @@ impl crate::App {
                 if self.ramo_gizmo_alca(evt, gkind, entity_bits, effective_target) {
                     return true;
                 }
-            } else if hero.store.panel_at(evt.x, evt.y).is_none()
+            } else if hero.chrome_panel_at(evt.x, evt.y).is_none()
                 && !menu_open_before
                 && (hit_id.is_none()
                     || matches!(gizmo_kind, Some(ph2d_editor_core::GizmoDragKind::Translate))
@@ -253,7 +253,7 @@ impl crate::App {
                 == Some(ph2d_editor_core::widget::ButtonState::Pressed);
             let mut began_pivot = false;
             if pivot_tool_active
-                && hero.store.panel_at(evt.x, evt.y).is_none()
+                && hero.chrome_panel_at(evt.x, evt.y).is_none()
                 && !menu_open_before
                 && let Some(entity_bits) = hero.gizmo.selection
             {
@@ -352,7 +352,7 @@ impl crate::App {
             });
             let mut began_joint_anchor = false;
             if let Some((joint, kind)) = anchor_hit
-                && hero.store.panel_at(evt.x, evt.y).is_none()
+                && hero.chrome_panel_at(evt.x, evt.y).is_none()
                 && !menu_open_before
             {
                 let opened = ph2d_app_physics::joint_anchor_drag::open_drag(
@@ -386,7 +386,7 @@ impl crate::App {
                 && !began_joint_anchor
                 && anchor_hit.is_none()
                 && self.show_colliders
-                && hero.store.panel_at(evt.x, evt.y).is_none()
+                && hero.chrome_panel_at(evt.x, evt.y).is_none()
                 && !menu_open_before
                 && select_wheel_at(
                     &gfx.physics,
@@ -426,7 +426,7 @@ impl crate::App {
             let shift_held_early = self.modifiers.shift_key();
             let cmd_held_early = self.modifiers.super_key() || self.modifiers.control_key();
             if (shift_held_early || cmd_held_early)
-                && hero.store.panel_at(evt.x, evt.y).is_none()
+                && hero.chrome_panel_at(evt.x, evt.y).is_none()
                 && !menu_open_before
             {
                 // ⭐ **A porta ÚNICA do pick de objecto** — vetor, depois Flip, depois
@@ -474,7 +474,7 @@ impl crate::App {
                 // existing cascade so a Shift-drag can still
                 // open an additive rubber-band.
             }
-            let hit_id = hero.hit_index.hit(evt.x, evt.y);
+            let hit_id = hero.chrome_hit(evt.x, evt.y);
             let gizmo_kind = hit_id.and_then(ph2d_editor_core::gizmo_kind_for_id);
             // Onda 2C: hit_map fills in for handles whose ids
             // aren't canonical — extras + global. The primary

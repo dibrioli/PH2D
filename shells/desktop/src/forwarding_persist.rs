@@ -51,6 +51,7 @@ pub(super) fn prefs_if_changed(hero: &ph2d_editor_core::HeroScreen) {
         reduced_motion: hero.motion.reduced_motion(),
         ui_sound: hero.ui_sound,
         text: hero.text_style,
+        ui_scale: hero.ui_scale,
     };
     let previous = LAST_PREFS.with(|c| c.replace(Some(now)));
     if crate::prefs::should_save(previous, now) {

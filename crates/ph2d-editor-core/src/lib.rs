@@ -82,6 +82,7 @@ pub mod screens;
 pub mod tether;
 pub mod text_elide;
 pub mod toast;
+pub mod ui_scale;
 
 /// Test-only helpers exposed for integration tests + downstream
 /// crate tests that construct `HeroScreen`. Not part of the stable

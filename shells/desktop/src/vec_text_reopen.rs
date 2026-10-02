@@ -116,10 +116,10 @@ impl crate::app_state::App {
         let Some(hero) = self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref()) else {
             return false;
         };
-        if hero.store.panel_at(x, y).is_some() {
+        if hero.chrome_panel_at(x, y).is_some() {
             return false;
         }
-        match hero.hit_index.hit(x, y) {
+        match hero.chrome_hit(x, y) {
             None => true, // canvas cru
             Some(id) => {
                 ph2d_editor_core::gizmo_kind_for_id(id).is_some()

@@ -94,10 +94,11 @@ impl App {
         if let Some(gfx) = self.gfx.as_mut()
             && let Some(hero) = gfx.hero_screen.as_mut()
         {
+            let (x, y) = hero.escala().to_logical((px, py));
             hero.store
                 .open_context_menu(ph2d_editor_core::interaction::ContextMenuRequest {
-                    x: px,
-                    y: py,
+                    x,
+                    y,
                     kind: ph2d_editor_core::interaction::ContextMenuKind::FalloffPointHandle,
                 });
         }

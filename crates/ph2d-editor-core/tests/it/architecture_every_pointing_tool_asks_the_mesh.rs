@@ -581,7 +581,8 @@ fn the_eyedropper_reads_the_screen_and_the_screen_has_two_halves() {
     let src = fonte(F);
     // Controlo positivo: é ESTE o sítio que drena a escolha do conta-gotas.
     assert!(
-        src.contains("WidgetEvent::EyedropperPick { parent, px, py }"),
+        // ⚠️ Desde 2026-10-02 o ponto vem do clique FÍSICO (`ui_scale`), não do evento.
+        src.contains("WidgetEvent::EyedropperPick { parent, .. }"),
         "{F} deixou de tratar a escolha do conta-gotas — este gate perdeu o sujeito"
     );
     assert!(

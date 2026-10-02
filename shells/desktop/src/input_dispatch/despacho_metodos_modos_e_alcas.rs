@@ -288,6 +288,7 @@ impl crate::App {
         let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) else {
             return false;
         };
+        let (x, y) = hero.escala().to_logical((x, y));
         hero.store
             .open_context_menu(ph2d_editor_core::interaction::ContextMenuRequest {
                 x,

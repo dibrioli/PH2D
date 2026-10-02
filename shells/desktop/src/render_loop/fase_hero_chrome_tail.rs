@@ -23,13 +23,13 @@ impl crate::App {
             vector_scene,
             text_system,
             hero_arena,
+            hero_screen,
             ..
         } = FrameGfx::of(gfx);
-        let mut paint_ctx = PaintCtx {
-            theme: *theme,
-            viewport,
-            text: text_system,
-        };
+        // ⭐ Os toasts e as barras são chrome: pintam-se na escala da interface (`ui_scale`).
+        let escala = hero_screen
+            .as_ref()
+            .map_or_else(Default::default, |h| h.ui_scale);
         // Legacy `FloatingPanel` Procreate-style paint was retired
         // here (2026-05-17). The pink/magenta tab-strip + Accent
         // toggle decoration was inconsistent with the canonical
@@ -40,12 +40,19 @@ impl crate::App {
         // follow-up wave (BgRemoval especially needs its preview
         // panel re-painted; Move/Brush were stubs anyway).
         let _ = tools;
-        toasts.paint(vector_scene, &mut paint_ctx);
-        // The job bars share the toasts' column and stack UNDER them, so they are handed
-        // the number of rows already spoken for. The count, not the geometry: the column's
-        // ruler lives in `progress::column_row` and neither the shell nor the toast painter
-        // gets to have an opinion about where row N is.
-        jobs.paint_below(toasts.len(), vector_scene, &mut paint_ctx);
+        ph2d_editor_core::ui_scale::pintar_no_chrome(escala, viewport, vector_scene, |vp, cena| {
+            let mut paint_ctx = PaintCtx {
+                theme: *theme,
+                viewport: vp,
+                text: text_system,
+            };
+            toasts.paint(cena, &mut paint_ctx);
+            // The job bars share the toasts' column and stack UNDER them, so they are handed
+            // the number of rows already spoken for. The count, not the geometry: the column's
+            // ruler lives in `progress::column_row` and neither the shell nor the toast painter
+            // gets to have an opinion about where row N is.
+            jobs.paint_below(toasts.len(), cena, &mut paint_ctx);
+        });
         // Drain frame-local arena AFTER the dispatch + paint pass
         // so any events emitted earlier this frame are still alive
         // for downstream consumers — wired in Phase A+ (currently

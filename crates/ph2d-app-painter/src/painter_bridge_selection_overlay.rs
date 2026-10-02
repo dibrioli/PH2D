@@ -37,7 +37,7 @@ pub(super) fn draw_selection_overlay(
     // selecting rather than the brush ring.
     if painter.is_selection_mode() {
         let (cx, cy) = cursor;
-        if hero.store.panel_at(cx, cy).is_none() {
+        if hero.chrome_panel_at(cx, cy).is_none() {
             draw_crosshair(vector_scene, cx, cy);
         }
     }

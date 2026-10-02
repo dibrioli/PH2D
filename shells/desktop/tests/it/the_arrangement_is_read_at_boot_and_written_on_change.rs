@@ -69,7 +69,8 @@ fn the_arrangement_is_detected_on_the_frame_and_not_on_the_pointer_hook() {
          passam pelo hook de ponteiro, e voltam ao zero ao reabrir o app"
     );
     assert!(
-        frame.contains("paint_hero_screen("),
+        // ⚠️ Na escala da interface desde 2026-10-02 (`paint_hero_screen_na_escala`).
+        frame.contains("paint_hero_screen_na_escala("),
         "controlo positivo: o quadro mudou de ficheiro e este gate mediria outro sítio"
     );
 

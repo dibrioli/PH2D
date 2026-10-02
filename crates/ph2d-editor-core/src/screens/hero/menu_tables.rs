@@ -309,6 +309,8 @@ pub(super) const SETTINGS_MENU_ROWS: &[MenuRow] = &[
     menu_row(ids::CTX_MENU_SETTINGS_FONT, "chrome.menu.interface_font"),
     menu_row(ids::CTX_MENU_SETTINGS_WEIGHT, "chrome.menu.font_weight"),
     menu_row(ids::CTX_MENU_SETTINGS_SIZE, "chrome.menu.font_size"),
+    // ⭐ E a interface INTEIRA (2026-10-02), ao lado do tamanho do texto.
+    menu_row(ids::CTX_MENU_SETTINGS_SCALE, "chrome.menu.interface_scale"),
     menu_row(ids::CTX_MENU_SETTINGS_MOTION, "chrome.menu.motion"),
     // ⚠️ **Esta entrada NÃO é uma categoria** — ela abre a janela flutuante do Input Map,
     // não um submenu. Fica aqui porque é a casa que o Godot lhe dá (*Project Settings >
@@ -400,6 +402,15 @@ pub(super) const SETTINGS_SIZE_SUBMENU_ROWS: &[MenuRow] = &[
     menu_row(ids::CTX_MENU_SIZE_SMALL, "chrome.menu.size_small"),
     menu_row(ids::CTX_MENU_SIZE_NORMAL, "chrome.menu.size_normal"),
     menu_row(ids::CTX_MENU_SIZE_LARGE, "chrome.menu.size_large"),
+];
+
+/// As linhas de `ContextMenuKind::SettingsScaleSubmenu`.
+pub(super) const SETTINGS_SCALE_SUBMENU_ROWS: &[MenuRow] = &[
+    menu_row(ids::CTX_MENU_SCALE_100, "chrome.menu.scale_100"),
+    menu_row(ids::CTX_MENU_SCALE_125, "chrome.menu.scale_125"),
+    menu_row(ids::CTX_MENU_SCALE_150, "chrome.menu.scale_150"),
+    menu_row(ids::CTX_MENU_SCALE_175, "chrome.menu.scale_175"),
+    menu_row(ids::CTX_MENU_SCALE_200, "chrome.menu.scale_200"),
 ];
 
 /// As linhas de `ContextMenuKind::SettingsMotionSubmenu`.

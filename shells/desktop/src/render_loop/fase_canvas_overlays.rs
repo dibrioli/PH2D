@@ -38,8 +38,7 @@ impl crate::App {
             use ph2d_vector::{Affine, Brush, Color, Stroke};
             let (px, py) = self.last_pointer;
             let over_panel = hero
-                .store
-                .panel_rect(ph2d_editor_core::ids::SCULPT3D_PANEL)
+                .panel_rect_fisico(ph2d_editor_core::ids::SCULPT3D_PANEL)
                 .is_some_and(|r| r.contains(px, py));
             // ⚠️ `Affine::IDENTITY` em todos: no Vello o transform do `stroke`
             // MULTIPLICA a largura — os caminhos já estão em pixels.

@@ -5,7 +5,7 @@
 
 use crate::ids;
 use ph2d_a11y::NodeId;
-use ph2d_tokens::{UiFont, UiTextSize, UiWeight};
+use ph2d_tokens::{UiFont, UiScale, UiTextSize, UiWeight};
 
 /// A linha de cada fonte.
 pub(crate) const FONTS: [(NodeId, UiFont); 3] = [
@@ -28,6 +28,15 @@ pub(crate) const SIZES: [(NodeId, UiTextSize); 3] = [
     (ids::CTX_MENU_SIZE_LARGE, UiTextSize::Large),
 ];
 
+/// A linha de cada degrau da escala da interface inteira.
+pub(crate) const SCALES: [(NodeId, UiScale); 5] = [
+    (ids::CTX_MENU_SCALE_100, UiScale::P100),
+    (ids::CTX_MENU_SCALE_125, UiScale::P125),
+    (ids::CTX_MENU_SCALE_150, UiScale::P150),
+    (ids::CTX_MENU_SCALE_175, UiScale::P175),
+    (ids::CTX_MENU_SCALE_200, UiScale::P200),
+];
+
 /// ⭐ **A linha `id` é o valor activo?** — lido do estilo PUBLICADO neste quadro.
 #[must_use]
 pub(crate) fn is_current(id: NodeId) -> bool {
@@ -35,6 +44,9 @@ pub(crate) fn is_current(id: NodeId) -> bool {
     FONTS.iter().any(|(r, f)| *r == id && *f == s.font)
         || WEIGHTS.iter().any(|(r, w)| *r == id && *w == s.weight)
         || SIZES.iter().any(|(r, z)| *r == id && *z == s.size)
+        || SCALES
+            .iter()
+            .any(|(r, z)| *r == id && *z == crate::ui_scale::active())
 }
 
 #[cfg(test)]
@@ -48,5 +60,6 @@ mod tests {
         assert_eq!(FONTS.map(|(_, f)| f), UiFont::ALL);
         assert_eq!(WEIGHTS.map(|(_, w)| w), UiWeight::ALL);
         assert_eq!(SIZES.map(|(_, z)| z), UiTextSize::ALL);
+        assert_eq!(SCALES.map(|(_, z)| z), UiScale::ALL);
     }
 }

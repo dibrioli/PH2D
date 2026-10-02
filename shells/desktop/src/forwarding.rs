@@ -51,7 +51,7 @@ pub fn forward_to_hero(
     // snaps to the nearest glyph boundary (real measurement) instead
     // of the dispatch's char-count heuristic.
     let snapshot: Vec<WidgetEvent> = hero
-        .handle_pointer_with_text(event, &mut gfx.text_system, &gfx.hero_arena)
+        .handle_pointer_fisico(event, &mut gfx.text_system, &gfx.hero_arena)
         .to_vec();
     let mut reparent = None;
     for e in snapshot {
@@ -61,11 +61,14 @@ pub fn forward_to_hero(
         // active and the click lands on the selected sprite, sample the painted layer COMPOSITE
         // instead (`PainterTool::sample_composite_at_uv`) so the eyedropper reads the real colour;
         // otherwise fall back to the rendered-overlay pixel.
-        if let WidgetEvent::EyedropperPick { parent, px, py } = e {
+        if let WidgetEvent::EyedropperPick { parent, .. } = e {
+            // ⚠️ O ponto do evento é LÓGICO (o hero viu o clique na escala da interface); a cor lê-se
+            // na JANELA, então o ponto é o do clique físico que o fez nascer.
+            let (px, py) = (event.x.max(0.0) as u32, event.y.max(0.0) as u32);
             // Disjoint-field borrows (`hero` already holds `&mut gfx.hero_screen`): read the selection
             // + panel hit from `hero` first, then pass the render fields by value/ref to the helper.
             let selection = hero.gizmo.selection;
-            let on_panel = hero.store.panel_at(px as f32, py as f32).is_some();
+            let on_panel = hero.chrome_panel_at(px as f32, py as f32).is_some();
             let autorada = painter_eyedropper_sample(
                 &mut gfx.tools,
                 &gfx.sim,
@@ -241,7 +244,7 @@ pub fn forward_wheel_to_hero(gfx: Option<&mut AppGfx>, event: ph2d_host::WheelEv
     let Some(hero) = gfx.hero_screen.as_mut() else {
         return;
     };
-    let _ = hero.handle_wheel(event, &gfx.hero_arena);
+    let _ = hero.handle_wheel_fisico(event, &gfx.hero_arena);
 }
 
 /// Forward a single printable character into the hero text-input
@@ -279,7 +282,7 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
     let Some(hero) = gfx.hero_screen.as_ref() else {
         return false;
     };
-    hero.store.panel_at(x, y).is_some()
+    hero.chrome_panel_at(x, y).is_some()
 }
 
 /// **Os fundos que a MOLDURA do app pinta** — os obstáculos que o gizmo de navegação contorna.

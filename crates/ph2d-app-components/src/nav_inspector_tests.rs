@@ -285,3 +285,23 @@ fn a_leitura_viva_sai_do_nav_now() {
         })
     );
 }
+
+/// ⭐ **(W5) «Avoid Others» vai e volta** — o componente nasce com o desvio, a edição desliga-o no
+/// COMPONENTE, e o retrato do painel lê o que o componente tem.
+///
+/// **Mutações que devem sangrar:** o braço da aplicação não escrever · o retrato ler uma constante.
+#[test]
+fn o_desvio_vai_e_volta() {
+    let mut sim = SimWorld::new();
+    let (agente, _) = cena(&mut sim);
+    assert!(agente_de(&sim, agente).avoidance, "nasce com o desvio");
+    for quer in [false, true] {
+        assert!(apply_nav_edit(
+            sim.world_mut(),
+            agente.to_bits(),
+            &NavFieldEdit::Avoidance(quer)
+        ));
+        assert_eq!(sim.world().get::<NavAgent>(agente).unwrap().avoidance, quer);
+        assert_eq!(agente_de(&sim, agente).avoidance, quer);
+    }
+}

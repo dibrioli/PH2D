@@ -5,11 +5,12 @@ use ph2d_ecs::SimWorld;
 use ph2d_nav::Status;
 use ph2d_physics_ecs::PhysicsBridge;
 
-fn monta() -> (SimWorld, Montada) {
+fn monta() -> (SimWorld, Labirinto) {
     let mut sim = SimWorld::new();
     let m = montar(sim.world_mut(), 1);
     assert_eq!(m.nivel, 1);
-    (sim, m)
+    assert_eq!(Some(m.escolhido), m.labirinto.as_ref().map(|l| l.roxo));
+    (sim, m.labirinto.expect("a cena =1 é o labirinto"))
 }
 
 fn nomes(sim: &SimWorld) -> Vec<String> {

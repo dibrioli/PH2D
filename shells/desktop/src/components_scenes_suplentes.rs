@@ -547,9 +547,9 @@ impl crate::App {
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
             hero.panel_visibility.insert("inspector", true);
             crate::components_scenes::abre_a_regua_da_corrida(hero);
-            // ⭐ O ROXO escolhido (W4): a leitura viva dele — *«can't reach it»* — é o que explica a
-            // espera atrás da parede, e a secção é o passo do roteiro.
-            hero.gizmo.selection = Some(montada.roxo.to_bits());
+            // ⭐ Quem a cena escolhe (o ROXO do labirinto, o Red 1 da porta): a secção dele é o
+            // passo do roteiro.
+            hero.gizmo.selection = Some(montada.escolhido.to_bits());
             hero.gizmo.extra_selection.clear();
             // ⚠️ E ABERTA: a política do Inspector fecha toda secção viva menos o Transform, e a
             // 1.ª foto mostrou a Nav Agent dobrada — o passo do roteiro ficava atrás de um clique.

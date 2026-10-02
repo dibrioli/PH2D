@@ -171,3 +171,54 @@ fn o_alvo_ignorado_nao_desvia_ninguem() {
     // CONTROLO: sem o «ignora», o mesmo corpo desvia-o.
     assert_ne!(Crowd::new(vec![a, b], params()).velocity(0, None, DT), [2.0, 0.0]);
 }
+
+/// ⭐ **Passa pela DIREITA** — no empate exacto, o que anda para `+x` sai para `−y` (a direita dele
+/// com o `y` para cima), e o outro em espelho. Sem esta régua a preferência podia trocar de lado sem
+/// que o banco de cenários o visse (passar pela esquerda também desfaz o empate).
+///
+/// ⚠️ **A `4,5 m`, no regime do CORTE do cone:** é aí que o empate PRENDE (o semi-plano é
+/// perpendicular ao caminho e a resposta é só travar) — a velocidade relativa `4` cai no círculo do
+/// corte, a `|4 − 4,5| = 0,5 < R/τ = 1` do centro. Perto, no regime das PERNAS, o próprio ORCA escolhe
+/// um lado (a 1.ª redacção pôs os dois a `2 m` e o CONTROLO saiu do eixo sem peso nenhum); a `6 m`
+/// ninguém está ainda em rota de colisão no horizonte (a 2.ª).
+#[test]
+fn no_empate_cada_um_sai_pela_sua_direita() {
+    let mut a = agente([0.0, 0.0], [2.0, 0.0]);
+    let mut b = agente([4.5, 0.0], [-2.0, 0.0]);
+    a.vel = [2.0, 0.0];
+    b.vel = [-2.0, 0.0];
+    let p = Params {
+        side_bias: crate::SIDE_BIAS,
+        ..params()
+    };
+    let mut c = Crowd::new(vec![a, b], p);
+    let v = c.solve_all(|_| None, DT);
+    assert!(v[0][1] < -1e-3, "o que vai para +x sai para −y: {:?}", v[0]);
+    assert!(v[1][1] > 1e-3, "o que vai para −x sai para +y: {:?}", v[1]);
+    // CONTROLO: sem o peso, nenhum sai do eixo (o empate do Godot).
+    let mut c = Crowd::new(vec![a, b], params());
+    let v = c.solve_all(|_| None, DT);
+    assert_eq!((v[0][1], v[1][1]), (0.0, 0.0), "{v:?}");
+}
+
+/// ⭐ **O tecto de vizinhos corta pelos MAIS PERTO** — vinte numa fila, e só os `MAX_NEIGHBORS` mais
+/// perto entram, por ordem. Sem esta régua tirar o tecto não mudava teste nenhum (nenhuma cena do
+/// banco tem mais de oito).
+#[test]
+fn o_tecto_guarda_os_mais_perto() {
+    let mut todos = vec![agente([0.0, 0.0], [0.0, 0.0])];
+    for k in 1..=20 {
+        todos.push(agente([0.7 * k as f64, 0.0], [0.0, 0.0]));
+    }
+    let c = Crowd::new(
+        todos,
+        Params {
+            max_neighbors: Some(crate::MAX_NEIGHBORS),
+            ..params()
+        },
+    );
+    let mut nb = Vec::new();
+    c.neighbors(0, &mut nb);
+    let esperado: Vec<u32> = (1..=crate::MAX_NEIGHBORS as u32).collect();
+    assert_eq!(nb, esperado);
+}

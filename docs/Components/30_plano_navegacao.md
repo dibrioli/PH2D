@@ -402,3 +402,93 @@ linhas (`o_inspector_armado`).
 
 O desvio entre agentes (W5) · o mundo que muda, as portas, os verbos `Start/Stop Navigation`, o alvo
 *a tag mais perto* e a patrulha (W6) · custo por área e atalhos (W7) · a arena e o tutorial (W8).
+
+---
+
+## §13 — W5 FEITA (2026-10-02): oito passam uma porta de dois sentidos sem se entalarem
+
+**O que se consegue fazer agora:** todo `NavAgent` desvia dos outros corpos que andam — os outros
+agentes, o herói, os corpos dinâmicos — sem sair da área andável, e a caixa **Avoid Others** do
+Inspector desliga-o (ligada de fábrica: §11.2, ⏳ a confirmar pelo dono). A cena `PH2D_NAV_SMOKE=2` põe
+oito vermelhos a cruzar UMA porta nos dois sentidos e, por baixo, os mesmos oito sem o desvio (o
+CONTROLO): os vermelhos chegam todos (tique `500`), os cinzentos entalam-se e nenhum chega.
+
+Commits: `d97a1fd99` (a lei + o oráculo) · `bc80e3e17` (a ponte, o componente, o Inspector) · o da cena.
+
+### §13.1 — O oráculo: o Godot corrido em MALHA FECHADA, passo a passo
+
+[`ferramentas/godot_nav_oraculo/desvio.gd`](ferramentas/godot_nav_oraculo/desvio.gd) — seis cenas
+(frente a frente exacto e desviado · cruzamento de 4 · círculo de 8 · corredor · porta), 240 quadros. O
+script é o dono do estado: a cada quadro entrega posição, velocidade de agora e velocidade preferida
+(`IN`) e grava a segura que o servidor devolve (`OUT`) ⇒ cada passo re-resolve-se ISOLADO.
+
+| medido | consequência |
+|---|---|
+| ⛔ com o desvio em várias linhas de execução (o de fábrica) o agente `1` lê o `0` ora antes, ora depois, ora a MEIO da actualização dele (quadros 52, 85, 169 da `frente`): **uma corrida de dados**, e duas corridas diferem | o projecto [`desvio_projeto/project.godot`](ferramentas/godot_nav_oraculo/desvio_projeto/project.godot) liga-o numa linha só ⇒ duas corridas iguais **byte a byte** |
+| o Godot resolve **EM SEQUÊNCIA** pela ordem de criação (cada agente vê os anteriores já andados) | a paridade reproduz a ordem dele; com a fotografia comum o pior passo errava `0,74 px/s` no quadro 25 |
+| paridade sobre `5 670` passos: **`0,00068 px/s`** longe do toque · `0,046 px/s` na faixa de toque (`0,5 %` de `R`, onde `√(d² − R²)` amplifica o `f32` dele) · os passos APERTADOS (o 3D) a `0,00012` | a lei (semi-planos + os três programas lineares) é a dele |
+| ⛔ dois frente a frente no MESMO eixo **param a 25 px** e ficam (o empate Q7) | ver §13.2 |
+| a ordem dos vértices de um obstáculo decide de que lado ele empurra (a 1.ª corrida pôs os quatro da `porta` DENTRO das paredes) | `Walls::from_polygons` exige área positiva, dito no doc |
+
+### §13.2 — As decisões, cada uma com a medição
+
+| decisão | porquê (medido) |
+|---|---|
+| a parede do desvio é a **da malha do raio do agente**, contra a qual ele é um PONTO (raio `0`) | a malha já está recuada pelo raio do corpo: a mesma folga não se conta duas vezes; é a cura da Q1 (o Godot desvia ignorando a malha — #60354) |
+| **em sequência pela ordem das ENTIDADES**, não a fotografia comum do artigo | ⛔ a fotografia comum prende o círculo de 8 num anel à volta do centro com QUALQUER peso de lado (cada um encostado aos dois vizinhos, os empurrões anulam-se); em sequência as seis cenas do banco passam. A ordem das entidades é a mesma nos três sistemas e num replay |
+| **preferência de lado** (`SIDE_BIAS = 0,25`): o pedido ganha uma componente à DIREITA do tamanho do que o aperto tirou | o empate só PRENDE no regime do CORTE do cone (longe: o semi-plano é perpendicular ao caminho e a resposta é travar); qualquer peso o desfaz; de `0,05` a `0,5` o desfecho do banco é plano (soma `1 149`–`1 158` quadros) e a `1` a porta paga `+70 %`. Precedente: o `weightSide` do DetourCrowd |
+| **10 vizinhos** (`MAX_NEIGHBORS`, o do Godot) dentro do alcance SEM PERDA | ⚠️ é de TEMPO DE QUADRO: 1 000 agentes densos `9,5 ms` sem tecto (400 vizinhos cada) → `2,44 ms`; 100 agentes `0,067 ms`. O banco dá o mesmo desfecho a 6/10/16. O custo era a PROCURA de vizinhos (`9,1` de `12,3 ms`), não o programa linear |
+| ninguém se desvia do PRÓPRIO alvo | desviar dele seria nunca lhe tocar: medido com a mutação, o perseguidor acaba a `2r + 0,006` contra `2r + 0,014` |
+| um corpo SÓLIDO que anda e não é agente entra como obstáculo que não desvia (o agente faz o desvio inteiro) | parado, o mover já desliza à volta dele; com o desvio ele contorna ANTES de tocar (`0,39 m` fora do eixo a `1,5 m` do herói, contra `0`) |
+| a intenção é a velocidade segura em FRACÇÃO da máxima | o `TopDownPlayer` em modo livre passa-a intacta (o comprimento incluído) ⇒ quem trava para dar passagem anda mesmo mais devagar |
+| `NavAgent::avoidance` é o ÚLTIMO campo; `PROJECT_SCHEMA` `178 → 179`, sem migração | o postcard é posicional; zero componentes registados novos |
+| sem estado novo no anel | o ORCA não tem memória: lê a velocidade do mover, que já vai no anel (gate `um_scrub_devolve_a_mesma_multidao`) |
+
+### §13.3 — O que a medição derrubou
+
+- **A cena de UM sentido não ensinava nada**: sem o desvio, oito corpos também passam uma porta no mesmo
+  sentido (`349` tiques contra `343`, só mais roçados). É o FRENTE-A-FRENTE que entala ⇒ a cena `=2` é de
+  dois sentidos.
+- **A régua da parede tratou a quina como canto vivo** (a lição da W4 a repetir-se): a área recuada tem a
+  quina REDONDA, e um centro a `0,311 m` da quina foi acusado. A régua é a distância ao rectângulo.
+- **A 1.ª régua do perseguidor não distinguia nada** (chega no tique `78` contra `84` sem o «ignora o
+  alvo»): a régua é o ENCOSTO.
+- **A régua do lado direito**: a `2 m` o próprio ORCA escolhe um lado (regime das pernas) e o controlo
+  saía do eixo sem peso; a `6 m` ninguém está em rota de colisão. A `4,5 m` (regime do corte) mede.
+- **Contra um corpo PARADO o controlo não invade** (o mover desliza): a régua é contornar ANTES de tocar.
+- **A prova de mutação achou DUAS leis sem régua** (e um mutante equivalente): as paredes da malha fora
+  do desvio (M22) e um agente sem desvio contado como se fizesse metade (M24) passavam a suíte inteira.
+  As réguas novas foram MEDIDAS com a mutação ao lado: `A` rente ao chão desce a `0,0060 m` sem as
+  paredes contra `0,0275` com elas; no encontro misto os dois ENCOSTAM-SE (`2r + 0,0040`, o offset de
+  fábrica do controlador) contra `2r + 0,0096` — o quanto `A` sai do eixo não distingue (`0,549`/`0,566`).
+
+### §13.4-bis — A prova
+
+Mutação **30 de 30** a sangrar, zero defeitos de arnês
+([`mutacao_navegacao_w5_2026-10-02.py`](ferramentas/mutacao_navegacao_w5_2026-10-02.py), os quatro
+controlos): 17 na lei, 7 na ponte, 3 na família (a aplicação, o retrato, o controlo da cena) e 3 no
+painel. ⚠️ A 1.ª M10 (`verts[para]` → `verts[de]` em `from_walkable_walls`) é EQUIVALENTE — com o
+`next`/`prev` a acompanhar dá as mesmas arestas invertidas — e foi trocada pela que vira a malha do avesso
+na ponte. Gates novos: o oráculo do Godot passo a passo · o banco de cenários (+ o CONTROLO sem peso) ·
+11 leis da folha · 8 de costura (`nav_desvio`) · `o_desvio_vai_e_volta` · `clicar_em_avoid_others_pede_o_contrario`
+(clique real) · `nav_smoke_porta::a_cena_contem_o_fenomeno`. Fotos da `=2` aos `5,2 s` e aos `11,2 s`
+(ecrã virtual), antes de a mandar.
+
+### §13.4 — ⛔ Recusas MEDIDAS
+
+| recusado | medição |
+|---|---|
+| a fotografia comum (Jacobi) | o círculo de 8 nunca chega, com qualquer peso de lado (0,05 a 1) |
+| uma perturbação fixa por agente (o remédio dos exemplos do RVO2, sem acaso) | a `1e-6`–`1e-2` rad: o cruzamento de 4 prende-se |
+| o alcance SEM PERDA sem tecto | `9,5 ms` a 1 000 agentes densos (57 % do quadro) |
+| o Godot com as linhas de execução de fábrica como oráculo | uma corrida de dados: não é determinístico |
+
+### §13.5 — ⏳ O que fica para as waves seguintes
+
+- O custo que sobra a 1 000 agentes (`2,44 ms`) é a VARRIDA dos candidatos — a célula da grelha é o alcance
+  sem perda; uma procura dos `k` mais perto por anéis de uma grelha fina tirá-lo-ia.
+- A leitura viva não diz *«a dar passagem»*: um agente travado pela multidão lê-se `Moving`. Um estado com
+  voz (S6) para o aperto é candidato.
+- ⏳ **Decisão do dono (§11.2):** o desvio nasce LIGADO.
+- O mundo que muda, as portas, `Start/Stop Navigation`, a patrulha (W6) · custo por área e atalhos (W7) ·
+  a arena e o tutorial (W8).

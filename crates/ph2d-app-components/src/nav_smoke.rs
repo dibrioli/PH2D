@@ -1,4 +1,5 @@
-//! ⭐⭐⭐ **Smoke da NAVEGAÇÃO** (plano 30, W3). `PH2D_NAV_SMOKE=1`.
+//! ⭐⭐⭐ **Smoke da NAVEGAÇÃO** (plano 30, W3). `PH2D_NAV_SMOKE=1` (e `=2`, o DESVIO da W5:
+//! [`crate::nav_smoke_porta`]).
 //!
 //! # A cena: **o labirinto em S, e três perseguidores**
 //!
@@ -32,7 +33,7 @@ use ph2d_render::{Sprite, WHITE_TILE_KEY};
 use ph2d_topdown::{TopDownLaw, direction::DirectionMode};
 
 /// ⭐⭐ **Quantas cenas este roteador serve** — contado do `match` do [`montar`].
-pub const CENAS: u32 = 1;
+pub const CENAS: u32 = 2;
 
 const PAREDE_RGBA: [f32; 4] = [0.38, 0.40, 0.46, 1.0];
 const CHAO_RGBA: [f32; 4] = [0.16, 0.18, 0.22, 1.0];
@@ -64,9 +65,16 @@ pub const Y_CHAO: f32 = CENTRO[1] - MEIO_RECINTO[1];
 
 const _: () = assert!(2.0 * RAIO_PEQUENO < PORTA && 2.0 * RAIO_GRANDE > PORTA);
 
-/// O que o roteador montou — o nível e quem fica escolhido.
+/// O que o roteador montou — o nível, quem fica ESCOLHIDO (o Inspector mostra-o) e as peças da cena.
 pub struct Montada {
     pub nivel: u32,
+    pub escolhido: Entity,
+    pub labirinto: Option<Labirinto>,
+    pub porta: Option<crate::nav_smoke_porta::Porta>,
+}
+
+/// As peças da cena `=1`.
+pub struct Labirinto {
     pub vermelho: Entity,
     pub roxo: Entity,
     pub controlo: Entity,
@@ -267,17 +275,37 @@ fn cena_um(world: &mut World) -> Montada {
         .id();
     Montada {
         nivel: 1,
-        vermelho,
-        roxo,
-        controlo,
-        heroi,
+        // ⭐ O ROXO escolhido (W4): a leitura viva dele — *«can't reach it»* — é o que explica a
+        // espera atrás da parede, e a secção é o passo do roteiro.
+        escolhido: roxo,
+        labirinto: Some(Labirinto {
+            vermelho,
+            roxo,
+            controlo,
+            heroi,
+        }),
+        porta: None,
     }
 }
 
 /// **Monta a cena `nivel`** — o roteador.
 pub fn montar(world: &mut World, nivel: u32) -> Montada {
-    // Uma cena só (`CENAS = 1`): todo nível pede a `=1`.
-    let _ = nivel;
+    if nivel == 2 {
+        let porta = crate::nav_smoke_porta::montar(world);
+        println!(
+            "[nav-smoke] =2 a PORTA de dois sentidos. Em cima, os VERMELHOS (com Avoid Others): quatro \
+             vao para a direita e quatro para a esquerda pela MESMA porta, e cruzam-se nela - cada um \
+             passa pela sua direita. Em baixo, os CINZENTOS (o controlo): os mesmos, SEM o desvio - \
+             entalam-se na porta de frente uns para os outros. O Red 1 esta' escolhido: tire-lhe o \
+             visto de Avoid Others no Inspector e veja os outros desviarem-se dele"
+        );
+        return Montada {
+            nivel: 2,
+            escolhido: porta.vermelhos[0],
+            labirinto: None,
+            porta: Some(porta),
+        };
+    }
     let m = cena_um(world);
     println!(
         "[nav-smoke] =1 setas para andar com o AMARELO. O VERMELHO da' a volta as paredes para te \

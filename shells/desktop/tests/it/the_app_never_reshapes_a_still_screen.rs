@@ -36,6 +36,12 @@ const VIEWPORT: Rect = Rect {
 fn a_still_frame_with_every_panel_open_shapes_no_text() {
     let _ = ph2d_panel_registry_init::register_all_panels();
     let mut h = HeroScreen::new(ph2d_editor_core::NodeId(1));
+    // ⚠️ **O chrome legado (`F9`) também, e a razão é o controlo de vacuidade abaixo** (2026-10-02):
+    //    quando as legendas da fila deixaram de ser cortadas (`M…`, `S…`), a elisão deixou de moldar
+    //    os prefixos de cada uma e o app caiu de >`1 024` para `1 021` textos — abaixo do tecto que
+    //    esta fixtura existe para passar. O chrome legado é conteúdo REAL do app (a barra do topo e
+    //    o trilho), não enchimento.
+    h.view.legacy_chrome = true;
     ph2d_editor_core::panel::with_registry_ref(|reg| {
         for p in reg.panels() {
             h.panel_visibility.insert(p.manifest.id, true);

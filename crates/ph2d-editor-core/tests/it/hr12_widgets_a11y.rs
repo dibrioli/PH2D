@@ -257,6 +257,21 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
         "tool_rail/paint.rs",
         "paint only; parent owns the Toolbar a11y tree",
     ),
+    // Os dois irmãos do `paint.rs`, cortados pelo mesmo tecto (2026-10-02): a aritmética de onde
+    // cada entrada cai e a tinta da legenda. Nenhum dos dois cria nó; o pai tem a árvore.
+    (
+        "tool_rail/geometry.rs",
+        "geometry only (where each entry lands); parent owns the Toolbar a11y tree",
+    ),
+    (
+        "tool_rail/caption.rs",
+        "caption paint only; the chip's a11y node carries the full label",
+    ),
+    // A lei das CASAS do número (2026-10-02) — uma função de texto; o nó é o da caixa que a chama.
+    (
+        "number_input/casas.rs",
+        "text rule only (fewer decimals); the NumberInput owns the a11y node",
+    ),
     // Unit tests for `skin` (na pasta pelo MESMO motivo do `command_palette`: um `*_tests.rs`
     // solto vira um "widget" para o gerador de `mod`) — o pai delega ao pintor real do catálogo,
     // que é quem tem a11y.

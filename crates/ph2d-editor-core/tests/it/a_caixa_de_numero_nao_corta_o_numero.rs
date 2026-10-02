@@ -22,8 +22,9 @@
 //! vertical para a selecção. Orçamento `24,0 → 32,0`, e os três números passam a ler-se inteiros.
 //!
 //! ⚠️ **O que NÃO muda:** a caixa continua do mesmo tamanho, o stepper continua na coluna dele, e
-//! um valor genuinamente longo (`-141.881`, `42,6 px`) continua elidido — *a reticência é mais
-//! honesta que um recorte a meio de um dígito, que se lê como outro número*.
+//! um valor cuja parte INTEIRA não cabe continua elidido — *a reticência é mais honesta que um
+//! recorte a meio de um dígito, que se lê como outro número*. ⭐ Desde 2026-10-02 um DECIMAL que não
+//! cabe perde casas antes (`-141.881` → `-141.9`, escolha do dono).
 
 use ph2d_editor_core::text_elide::elisao;
 use ph2d_editor_core::widget::paint_number_chip;
@@ -79,16 +80,18 @@ fn a_caixa_de_numero_mostra_o_numero_todo() {
     }
 }
 
-/// ⛔ **E o CONTROLO: um valor genuinamente longo continua a ser elidido.**
+/// ⛔ **E o CONTROLO: um valor cuja PARTE INTEIRA não cabe continua a ser elidido.**
 ///
 /// Sem esta metade, um orçamento infinito passaria o gate acima e o número transbordaria para a
-/// coluna das setas — *uma cura que apaga a lei não é uma cura*.
+/// coluna das setas — *uma cura que apaga a lei não é uma cura*. ⚠️ Desde 2026-10-02 um número
+/// DECIMAL que não cabe perde casas (`widget::numero_que_cabe`, escolha do dono) — `-141.881` sai
+/// `-141.9` —, logo o controlo é um número cujas casas já não o salvam.
 /// ⚠️ **Uma pintura centrada deixa DOIS registos** — o corte contra o orçamento da caixa e a
 /// re-medição do que sobrou contra a largura do rect —, logo a régua procura o corte em vez de
 /// assumir que há um registo só.
 #[test]
 fn um_valor_longo_de_mais_continua_a_avisar_que_foi_cortado() {
-    let medidos = pinta("-141.881");
+    let medidos = pinta("-141881.5");
     let cortes: Vec<_> = medidos.iter().filter(|m| !m.coube()).collect();
     assert_eq!(cortes.len(), 1, "{medidos:?}");
     assert!(
@@ -97,20 +100,18 @@ fn um_valor_longo_de_mais_continua_a_avisar_que_foi_cortado() {
     );
 }
 
-/// ⛔⛔ **A FRONTEIRA que fica, com o número: um valor NEGATIVO de três decimais não cabe numa
-/// caixa de `56 px`, nem depois da cura.**
-///
-/// `-0.500` mede `36,1 px` contra um orçamento de `32,0` — e a alavanca aqui **não** é o respiro
-/// (já está no mínimo honesto): é a **largura da caixa**, que é do painel que a escolhe. Esta
-/// metade existe para o dia em que alguém a alargar: ela reprova, e a cura é apagá-la.
+/// ⭐⭐ **Um número DECIMAL que não cabe perde CASAS, arredondado — nunca `…`** (escolha do dono,
+/// 2026-10-02). Era a fronteira desta caixa: `-0.500` (`36,1 px`) e `-141.881` (`42,6`) contra
+/// `32,0` saíam `-0.…`/`-141.…`; agora saem `-0.50` e `-141.9`, inteiros.
 #[test]
-fn um_valor_negativo_de_tres_decimais_ainda_nao_cabe_em_56px() {
-    let medidos = pinta("-0.500");
-    assert!(
-        medidos.iter().any(|m| !m.coube()),
-        "`-0.500` passou a caber — a caixa alargou, e esta fronteira já não descreve nada: \
-         {medidos:?}"
-    );
+fn um_decimal_que_nao_cabe_sai_arredondado_e_inteiro() {
+    for (display, esperado) in [("-0.500", "-0.50"), ("-141.881", "-141.9")] {
+        let medidos = pinta(display);
+        assert!(
+            medidos.iter().all(|m| m.coube() && m.texto == esperado),
+            "{display:?} devia sair {esperado:?}, inteiro: {medidos:?}"
+        );
+    }
 }
 
 /// ⭐⭐ **A conta da cura, escrita como ela é lida:** a área de texto menos UMA borda.

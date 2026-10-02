@@ -7,7 +7,7 @@ use super::cluster_painter::{
 use super::image_action_row::{PillIcon, image_action_pills};
 use crate::interaction::{HitIndex, WidgetStore};
 use crate::screens::hero::fixture::topbar_clusters;
-use crate::screens::hero::menu_bar::tests::em_todo_estilo;
+use crate::text_elide::em_todo_estilo;
 use crate::widget::IconGlyph;
 use crate::widget::RailButtonSize;
 use crate::zones::Rect;

@@ -694,11 +694,6 @@ mod tests;
 #[path = "hero/context_menu_overlay_tests.rs"]
 mod context_menu_overlay_tests;
 
-// As legendas da fila de ferramentas — irmão pela mesma razão.
-#[cfg(test)]
-#[path = "hero/tool_bar_tests.rs"]
-mod tool_bar_tests;
-
 // A FICHA do arrasto (C3) — irmão pela mesma razão: `tests.rs` está em 2114 LOC.
 #[cfg(test)]
 #[path = "hero/readout_paint_tests.rs"]

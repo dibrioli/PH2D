@@ -4,36 +4,7 @@
 use super::*;
 use crate::screens::hero::{layout_tabs, slot_tabs_face};
 use crate::screens::task_layout::TaskLayout;
-use ph2d_tokens::{TextRendering, UiFont, UiTextSize, UiTextStyle, UiWeight};
-
-/// Corre `f` uma vez por combinação de estilo (fonte × peso × tamanho) e nitidez, com o estilo
-/// publicado como o quadro o publica, e devolve o que cada corrida acusou.
-pub(in crate::screens::hero) fn em_todo_estilo(
-    mut f: impl FnMut(&mut TextSystem) -> Vec<String>,
-) -> Vec<String> {
-    let mut acusados = Vec::new();
-    for rendering in [
-        TextRendering::Default,
-        TextRendering::CrispHeavy,
-        TextRendering::CrispHeavyPlus,
-    ] {
-        for font in UiFont::ALL {
-            for weight in UiWeight::ALL {
-                for size in UiTextSize::ALL {
-                    ph2d_text::set_active_text_rendering(rendering);
-                    ph2d_text::set_active_text_style(UiTextStyle { font, weight, size });
-                    let mut ts = TextSystem::without_system_fonts();
-                    for a in f(&mut ts) {
-                        acusados.push(format!("{rendering:?} {font:?} {weight:?} {size:?}: {a}"));
-                    }
-                }
-            }
-        }
-    }
-    ph2d_text::set_active_text_rendering(TextRendering::Default);
-    ph2d_text::set_active_text_style(UiTextStyle::default());
-    acusados
-}
+use crate::text_elide::em_todo_estilo;
 
 fn branco() -> ph2d_vector::Color {
     ph2d_vector::Color::from_rgba8(255, 255, 255, 255) // LITERAL-COLOR-OK: cor de teste

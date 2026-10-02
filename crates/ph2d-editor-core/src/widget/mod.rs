@@ -127,7 +127,7 @@ pub use list_rows::{RowHighlight, paint_row_highlight, paint_row_stripe};
 pub use modal::{Modal, paint_modal, pop_modal_body_clip, push_modal_body_clip};
 pub use number_input::{
     MIN_W_PX as NUMBER_INPUT_MIN_W_PX, NumberInput, format_number,
-    min_w_px as number_input_min_w_px, number_text_origin, paint_number_input,
+    min_w_px as number_input_min_w_px, number_text_origin, numero_que_cabe, paint_number_input,
     paint_number_input_with_buffer, stepper_width,
 };
 pub use numeric_input_with_unit::{

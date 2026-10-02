@@ -412,3 +412,7 @@ pub fn publish_overflow(
     let (_, over) = bar_split(store, text_system, painter_active, image_tools_on, bar.w);
     store.set_tool_overflow(over);
 }
+
+#[cfg(test)]
+#[path = "tool_bar_tests.rs"]
+mod tests;

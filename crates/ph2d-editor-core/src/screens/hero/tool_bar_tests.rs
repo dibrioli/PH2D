@@ -1,8 +1,8 @@
 //! Gates das LEGENDAS da fila de ferramentas — a palavra curta por cima de cada chip.
 
-use super::menu_bar::tests::em_todo_estilo;
-use super::tool_bar::{bar_rail, tool_bar_h};
+use super::{bar_rail, tool_bar_h};
 use crate::interaction::WidgetStore;
+use crate::text_elide::em_todo_estilo;
 use crate::widget::{RailAxis, RailButtonSize, ToolRailEntry, paint_tool_rail_axis};
 use crate::zones::Rect;
 use ph2d_tokens::Theme;
@@ -117,7 +117,10 @@ fn nenhuma_face_de_pulldown_da_fila_e_cortada() {
                 store.set_rail_button_size(size);
                 store.set_tool_space_local(local);
                 store.set_tool_view_mode(view);
-                for face in ["viewport.model3d.view.front", "viewport.model3d.view.bottom"] {
+                for face in [
+                    "viewport.model3d.view.front",
+                    "viewport.model3d.view.bottom",
+                ] {
                     store.set_area_commands(
                         vec![
                             area(
@@ -162,6 +165,11 @@ fn nenhuma_face_de_pulldown_da_fila_e_cortada() {
         acusados.is_empty(),
         "faces cortadas ({}):\n  {}",
         acusados.len(),
-        acusados.iter().take(40).cloned().collect::<Vec<_>>().join("\n  ")
+        acusados
+            .iter()
+            .take(40)
+            .cloned()
+            .collect::<Vec<_>>()
+            .join("\n  ")
     );
 }

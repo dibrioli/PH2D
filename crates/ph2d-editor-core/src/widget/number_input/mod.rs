@@ -291,6 +291,15 @@ pub fn paint_number_input_with_buffer(
     // `-pad_x` on the right created an unnecessary blank gap between
     // the cropped number and the arrows).
     let inner_w = (rect.w - pad_x - chip_w).max(0.0);
+    // ⭐ Fora da edição, o número que não cabe perde CASAS (arredondado), nunca dígitos — ver
+    //    [`numero_que_cabe`]. A edição mostra o buffer inteiro.
+    let editando = input.state == TextInputState::Focused && buffer.is_some();
+    let value_text = if editando {
+        std::borrow::Cow::Borrowed(value_text)
+    } else {
+        numero_que_cabe(text_system, value_text, font_size, inner_w)
+    };
+    let value_text: &str = &value_text;
     let label_color = if input.state == TextInputState::Disabled {
         ColorToken::TextDisabled
     } else {
@@ -447,6 +456,9 @@ pub fn format_number(v: f64) -> String {
         format!("{v:.3}")
     }
 }
+
+mod casas;
+pub use casas::numero_que_cabe;
 
 #[cfg(test)]
 mod tests;

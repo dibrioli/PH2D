@@ -157,6 +157,15 @@ fn paint_number_chip_inner(
     let text_area_w = (rect.w - chip_stepper_w).max(0.0);
     let text_area_right = rect.x + text_area_w;
     let font_size = TypeToken::Xs.px();
+    let orcamento = (text_area_w - Spacing::Md.px()).max(1.0);
+    // ⭐ Fora da edição, o número que não cabe perde CASAS (arredondado), nunca dígitos — a mesma
+    //    porta da caixa ([`crate::widget::numero_que_cabe`]).
+    let display = if focused {
+        std::borrow::Cow::Borrowed(display)
+    } else {
+        crate::widget::numero_que_cabe(text_system, display, font_size, orcamento)
+    };
+    let display: &str = &display;
     let total_w = if display.is_empty() {
         0.0
     } else {
@@ -213,7 +222,6 @@ fn paint_number_chip_inner(
     // número e `0.500` (que mede `31,0`) saía **`0.…`**. ⇒ conta-se **uma** borda; com o texto
     // centrado sobra `Md/2 = Xs` de cada lado, que é o recuo que esta caixa já usa na vertical.
     let text_area_rect = Rect::new(rect.x, rect.y, text_area_w, rect.h);
-    let orcamento = (text_area_w - Spacing::Md.px()).max(1.0);
     crate::paint::paint_text_centered_com_orcamento(
         text_system,
         scene,

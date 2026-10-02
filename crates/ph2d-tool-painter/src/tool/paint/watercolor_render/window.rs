@@ -133,7 +133,12 @@ impl PainterTool {
         };
         // O Paper Edge (BUGS #31) empurra a borda até `Paper Edge · dobra` px além do Ragged.
         let papel = if self.paint.brush.paper_edge > 0.0
-            || self.paint.wet_styles.table.iter().any(|s| s.paper_edge > 0.0)
+            || self
+                .paint
+                .wet_styles
+                .table
+                .iter()
+                .any(|s| s.paper_edge > 0.0)
         {
             let img = self.paint.paper_image.as_ref().map(|i| i.as_mask());
             super::super::watercolor_flow::alcance_do_papel(

@@ -295,7 +295,10 @@ impl PainterTool {
 
     /// Set the **Flow Size** (both axes), clamped to `[FLOW_SIZE_MIN, FLOW_SIZE_MAX]`.
     pub fn set_brush_edge_flow_size(&mut self, v: f32) {
-        let s = v.clamp(ph2d_painter_brush::FLOW_SIZE_MIN, ph2d_painter_brush::FLOW_SIZE_MAX);
+        let s = v.clamp(
+            ph2d_painter_brush::FLOW_SIZE_MIN,
+            ph2d_painter_brush::FLOW_SIZE_MAX,
+        );
         self.paint.brush.edge_flow.size = [s, s];
     }
 

@@ -32,4 +32,5 @@ mod seam_substrate;
 mod seam_taper;
 mod seam_texture_colors;
 mod seam_watercolor_cards;
+mod seam_watercolor_flow; // as linhas da forma da borda: Flow, Size, Angle, Paper Edge (BUGS #31)
 mod seam_wetpaint;

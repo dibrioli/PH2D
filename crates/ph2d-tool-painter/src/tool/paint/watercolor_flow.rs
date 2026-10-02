@@ -58,13 +58,15 @@ struct Fonte {
 }
 
 /// **O FLUXO da composição** — uma [`Fonte`] por estilo DISTINTO entre os donos (quase sempre uma) e,
-/// com duas ou mais, o peso de cada uma suavizado na junção pela lei do campo de estilo da #18
-/// (`blur(m_k)/blur(m)`), senão a junção de dois estilos degrauava o deslocamento.
+/// com duas ou mais, o peso de cada uma suavizado na junção com o raio do campo de estilo da #18,
+/// senão a junção de dois estilos degrauava o deslocamento.
 pub(super) struct EdgeFlow {
     fontes: Vec<Fonte>,
     /// `dono → índice da fonte` (`0` = sem dono = o pincel vivo).
     do_dono: Vec<u8>,
-    pesos: Option<(Vec<Vec<f32>>, Vec<f32>)>,
+    /// Com 2+ fontes: o peso de cada uma por texel da janela (a soma é `1` — todo texel tem um dono
+    /// mais próximo).
+    pesos: Option<Vec<Vec<f32>>>,
     rw: usize,
     rh: usize,
     tile: NoiseTile,
@@ -111,24 +113,35 @@ impl EdgeFlow {
             })
             .collect();
         let (rx0, ry0, rw, rh) = janela;
-        let pesos = (distintos.len() > 1).then_some(()).and(owner).map(|owner| {
-            let n = rw * rh;
-            let mut planos = vec![vec![0.0f32; n]; distintos.len()];
-            let mut massa = vec![0.0f32; n];
-            for wy in 0..rh {
-                let base = (ry0 + wy) * fw + rx0;
-                for (wx, &o) in owner[base..base + rw].iter().enumerate() {
-                    if o != 0 {
-                        let k = do_dono[(o as usize).min(do_dono.len() - 1)] as usize;
-                        planos[k][wy * rw + wx] = 1.0;
-                        massa[wy * rw + wx] = 1.0;
-                    }
+        // ⚠️ Os pesos saem do dono MAIS PRÓXIMO, não do dono do texel: o Ragged puxa a cobertura de até
+        // `warp` px para fora da pegada, e esses texels SEM dono caíam no estilo do pincel vivo — trocar o
+        // Flow para o traço seguinte reformava a orla do anterior (medido: 15 linhas do traço de cima).
+        let pesos = (distintos.len() > 1)
+            .then_some(())
+            .and(owner)
+            .and_then(|owner| {
+                let mut local = vec![0u8; rw * rh];
+                for wy in 0..rh {
+                    let base = (ry0 + wy) * fw + rx0;
+                    local[wy * rw..(wy + 1) * rw].copy_from_slice(&owner[base..base + rw]);
                 }
-            }
-            let r = super::watercolor_rewet_px::WET_FIELD_BLUR_PX;
-            let planos = planos.iter().map(|p| box_blur(p, rw, rh, r)).collect();
-            (planos, box_blur(&massa, rw, rh, r))
-        });
+                let perto = dono_mais_proximo(&local, rw, rh)?;
+                let r = super::watercolor_rewet_px::WET_FIELD_BLUR_PX;
+                let planos: Vec<Vec<f32>> = (0..distintos.len())
+                    .map(|k| {
+                        let p: Vec<f32> = perto
+                            .iter()
+                            .map(|&o| {
+                                f32::from(
+                                    do_dono[(o as usize).min(do_dono.len() - 1)] as usize == k,
+                                )
+                            })
+                            .collect();
+                        box_blur(&p, rw, rh, r)
+                    })
+                    .collect();
+                Some(planos)
+            });
         let fluxo = Self {
             fontes,
             do_dono,
@@ -144,25 +157,85 @@ impl EdgeFlow {
     /// texel na janela de leitura; `(x, y)` a amostra em texels do canvas (o centro ou uma das 9 do AA);
     /// `amp` a amplitude do Ragged Edge (já suavizada na junção).
     #[inline]
-    pub(super) fn desloca(&self, dono: u8, lx: f32, ly: f32, x: f32, y: f32, amp: f32) -> (f32, f32) {
-        if let Some((planos, massa)) = &self.pesos {
-            let m = sample_bilinear(massa, self.rw, self.rh, lx, ly);
-            if m > 1e-4 {
-                let (mut dx, mut dy) = (0.0, 0.0);
-                for (fonte, plano) in self.fontes.iter().zip(planos) {
-                    let w = sample_bilinear(plano, self.rw, self.rh, lx, ly) / m;
-                    if w > 0.0 {
-                        let (a, b) = fonte.desloca(x, y, amp, self.tile);
-                        dx += w * a;
-                        dy += w * b;
-                    }
+    pub(super) fn desloca(
+        &self,
+        dono: u8,
+        lx: f32,
+        ly: f32,
+        x: f32,
+        y: f32,
+        amp: f32,
+    ) -> (f32, f32) {
+        if let Some(planos) = &self.pesos {
+            let (mut dx, mut dy) = (0.0, 0.0);
+            for (fonte, plano) in self.fontes.iter().zip(planos) {
+                let w = sample_bilinear(plano, self.rw, self.rh, lx, ly);
+                if w > 0.0 {
+                    let (a, b) = fonte.desloca(x, y, amp, self.tile);
+                    dx += w * a;
+                    dy += w * b;
                 }
-                return (dx, dy);
             }
+            return (dx, dy);
         }
         let k = self.do_dono[(dono as usize).min(self.do_dono.len() - 1)] as usize;
         self.fontes[k].desloca(x, y, amp, self.tile)
     }
+}
+
+/// O dono MAIS PRÓXIMO de cada texel (transformada de distância chanfrada 3-4, duas passagens — exacta
+/// ao inteiro e determinística). `None` quando nenhum texel da janela tem dono.
+fn dono_mais_proximo(owner: &[u8], w: usize, h: usize) -> Option<Vec<u8>> {
+    const INF: u32 = u32::MAX / 2;
+    let mut dist: Vec<u32> = owner
+        .iter()
+        .map(|&o| if o != 0 { 0 } else { INF })
+        .collect();
+    if dist.iter().all(|&d| d == INF) {
+        return None;
+    }
+    let mut perto = owner.to_vec();
+    let relaxa = |i: usize, j: usize, custo: u32, dist: &mut [u32], perto: &mut [u8]| {
+        if dist[j] + custo < dist[i] {
+            dist[i] = dist[j] + custo;
+            perto[i] = perto[j];
+        }
+    };
+    for y in 0..h {
+        for x in 0..w {
+            let i = y * w + x;
+            if x > 0 {
+                relaxa(i, i - 1, 3, &mut dist, &mut perto);
+            }
+            if y > 0 {
+                relaxa(i, i - w, 3, &mut dist, &mut perto);
+                if x > 0 {
+                    relaxa(i, i - w - 1, 4, &mut dist, &mut perto);
+                }
+                if x + 1 < w {
+                    relaxa(i, i - w + 1, 4, &mut dist, &mut perto);
+                }
+            }
+        }
+    }
+    for y in (0..h).rev() {
+        for x in (0..w).rev() {
+            let i = y * w + x;
+            if x + 1 < w {
+                relaxa(i, i + 1, 3, &mut dist, &mut perto);
+            }
+            if y + 1 < h {
+                relaxa(i, i + w, 3, &mut dist, &mut perto);
+                if x + 1 < w {
+                    relaxa(i, i + w + 1, 4, &mut dist, &mut perto);
+                }
+                if x > 0 {
+                    relaxa(i, i + w - 1, 4, &mut dist, &mut perto);
+                }
+            }
+        }
+    }
+    Some(perto)
 }
 
 impl Fonte {
@@ -262,14 +335,22 @@ impl<'a> Amostrador<'a> {
     #[inline]
     fn cru(&self, x: i64, y: i64) -> (f32, f32) {
         match self {
-            Self::Textura { s, rot, img, period } => (
+            Self::Textura {
+                s,
+                rot,
+                img,
+                period,
+            } => (
                 sample_tiled_rot_wrapped(&s[0], x, y, *img, rot[0], *period),
                 sample_tiled_rot_wrapped(&s[1], x, y, *img, rot[1], *period),
             ),
             Self::PapelInterno(tile) => {
                 let (fx, fy) = (x as f32, y as f32);
                 let (ox, oy) = PAPEL_INTERNO_CANAL_Y;
-                (paper_height(fx, fy, *tile), paper_height(fx + ox, fy + oy, *tile))
+                (
+                    paper_height(fx, fy, *tile),
+                    paper_height(fx + ox, fy + oy, *tile),
+                )
             }
         }
     }
@@ -289,12 +370,14 @@ impl<'a> Amostrador<'a> {
         let mut d = vec![[0.0f32; 2]; w * h];
         {
             use rayon::prelude::*;
-            d.par_chunks_mut(w.max(1)).enumerate().for_each(|(j, linha)| {
-                for (i, v) in linha.iter_mut().enumerate() {
-                    let (a, b) = self.unidade(&e, mx0 + i as i64, my0 + j as i64);
-                    *v = [a, b];
-                }
-            });
+            d.par_chunks_mut(w.max(1))
+                .enumerate()
+                .for_each(|(j, linha)| {
+                    for (i, v) in linha.iter_mut().enumerate() {
+                        let (a, b) = self.unidade(&e, mx0 + i as i64, my0 + j as i64);
+                        *v = [a, b];
+                    }
+                });
         }
         Mapa {
             d,
@@ -313,6 +396,19 @@ impl<'a> Amostrador<'a> {
         }
     }
 
+    /// A grelha das medições: `N × N` pontos sobre duas repetições do padrão (um ladrilho = 256/Size
+    /// px) — o papel interno, sem ladrilho, sobre 64 px (≈ 13 células da oitava larga de 5 px).
+    fn grelha(&self) -> impl Fn(usize) -> i64 {
+        let lado = match self {
+            Self::Textura { s, .. } => {
+                2.0 * TEX_TILE_BASE_PX / s[0].size[0].max(s[0].size[1]).max(1e-3)
+            }
+            Self::PapelInterno(_) => 64.0,
+        };
+        let passo = (lado / N as f32).max(1.0);
+        move |i: usize| ((i as f32 + 0.5) * passo) as i64
+    }
+
     /// As estatísticas do mapa, medidas numa grelha fixa de duas repetições do padrão — memo da função
     /// pura das settings (cada medição são ~4·64² amostras, e uma composição por quadro não as paga).
     fn estat(&self) -> Estat {
@@ -323,13 +419,7 @@ impl<'a> Amostrador<'a> {
         {
             return *e;
         }
-        let lado = match self {
-            Self::Textura { s, .. } => 2.0 * TEX_TILE_BASE_PX / s[0].size[0].max(s[0].size[1]).max(1e-3),
-            Self::PapelInterno(_) => 64.0,
-        };
-        const N: usize = 64;
-        let passo = (lado / N as f32).max(1.0);
-        let ponto = |i: usize| ((i as f32 + 0.5) * passo) as i64;
+        let ponto = self.grelha();
         let (mut s1, mut s2) = (0.0f64, 0.0f64);
         for j in 0..N {
             for i in 0..N {
@@ -343,7 +433,11 @@ impl<'a> Amostrador<'a> {
         let n = (2 * N * N) as f64;
         let mu = (s1 / n) as f32;
         let sigma = ((s2 / n - (s1 / n).powi(2)).max(0.0).sqrt() as f32).max(1e-6);
-        let parcial = Estat { mu, sigma, dobra: 0.0 };
+        let parcial = Estat {
+            mu,
+            sigma,
+            dobra: 0.0,
+        };
         // A dobra: a amplitude em px a que o gradiente do deslocamento tem RMS 1.
         let mut g = 0.0f64;
         for j in 0..N {
@@ -373,6 +467,9 @@ impl<'a> Amostrador<'a> {
     }
 }
 
+/// O lado da grelha das medições ([`Amostrador::grelha`]).
+const N: usize = 64;
+
 #[derive(Clone, Copy)]
 struct Estat {
     mu: f32,
@@ -386,7 +483,6 @@ struct Estat {
 fn classic() -> (f32, f32) {
     static R: OnceLock<(f32, f32)> = OnceLock::new();
     *R.get_or_init(|| {
-        const N: usize = 64;
         let passo = 22.0 * 16.0 / N as f32;
         let w = |x: f32, y: f32| warp_offset(x, y, NoiseTile::NONE);
         let (mut soma, mut g) = (0.0f64, 0.0f64);
@@ -442,5 +538,11 @@ pub(super) fn alcance_do_papel(
     };
     table
         .iter()
-        .fold(um(brush.paper, brush.paper_edge), |m, s| m.max(um(s.paper, s.paper_edge)))
+        .fold(um(brush.paper, brush.paper_edge), |m, s| {
+            m.max(um(s.paper, s.paper_edge))
+        })
 }
+
+#[cfg(test)]
+#[path = "watercolor_flow_tests.rs"]
+mod tests;

@@ -185,15 +185,6 @@ impl PainterTool {
             noise_tile,
         );
         let gran_img = self.paint.texture_image.as_ref().map(|i| i.as_mask());
-        let paper_depth = brush
-            .paper_depth
-            .clamp(0.0, ph2d_painter_brush::PAPER_TOOTH_MAX);
-        // Fallback pigment when the colour buffer is faint (straight brush colour → sRGB bytes).
-        let fallback = [
-            (brush.color[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
-            (brush.color[1].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
-            (brush.color[2].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
-        ];
         let has_color = self.paint.stroke_color.len() == n * 4;
         // Manual textured tip (doc 13 #1 round 3): the per-stroke tip-density buffer scales the
         // interior fill (`cw·fill·dens`) — the tip's texture reads as pigment variation INSIDE a
@@ -216,13 +207,15 @@ impl PainterTool {
             granulation,
             warp: warp_amp,
             pigment_mix,
-            color: fallback,
+            color: watercolor_field::cor_em_bytes(brush.color), // o pigmento quando o buffer é fraco
             spread_thin,
             core_r: core_r as u16,
             spread_px: spread as u16,
             reserve_r: watercolor_reserve::reserve_radius(brush.radius_px, core_r, spread, wet),
             paper: paper_tex,
-            paper_depth,
+            paper_depth: brush
+                .paper_depth
+                .clamp(0.0, ph2d_painter_brush::PAPER_TOOTH_MAX),
             granulation_use_paper: brush.granulation_use_paper,
             texture: gran_tex,
             edge_flow: brush.edge_flow,
@@ -255,25 +248,16 @@ impl PainterTool {
         let rc = self.paint.wet_reserve_cache.take();
         let reserve = self.reserve_fields((fw, n, (rx0, ry0), (rw, rh)), &cur_style, changed, rc);
         let color_buf = &self.paint.stroke_color;
-        // Substrate memoisation (perf, byte-identical): `paper_h` is canvas-anchored, so compute
-        // once per canvas pixel ([`paper_h_px`], the loop's exact former expression) and reuse
-        // across frames + the bake; pre-pass fills misses serially so the parallel loop reads
-        // immutably. Un-sized cache (defensive) ⇒ the loop falls back to the direct call. Multi-
-        // substrate ⇒ the cache is invalid (it assumes ONE paper); disable it so the loop resolves
-        // paper/grain per owner (see `SubstrateSession`).
-        let use_substrate_cache = self.paint.wet_substrate.len() == n && !substrate_session.multi();
-        if use_substrate_cache {
-            watercolor_rewet_px::fill_substrate_cache(
-                &mut self.paint.wet_substrate,
-                paper_active,
-                &paper_tex,
-                paper_img.as_ref(),
-                paper_rot,
-                (x0, y0, bw, bh),
-                fw,
-                noise_tile,
-            );
-        }
+        // O memo do `paper_h` por texel do canvas — [`watercolor_rewet_px::memo_do_substrato`].
+        let use_substrate_cache = watercolor_rewet_px::memo_do_substrato(
+            &mut self.paint.wet_substrate,
+            n,
+            substrate_session.multi(),
+            (paper_active, &paper_tex, paper_img.as_ref(), paper_rot),
+            (x0, y0, bw, bh),
+            fw,
+            noise_tile,
+        );
         let substrate = &self.paint.wet_substrate;
         // A FORMA DA BORDA (BUGS #31): o fluxo do Ragged Edge e o papel na borda — [`watercolor_flow`].
         let (flow, paper_edge_any) = watercolor_flow::EdgeFlow::build(
@@ -322,7 +306,11 @@ impl PainterTool {
                     // fields; global for the full-canvas colour buffer (same displacement + window origin).
                     // Per-stroke style: warp AMPLITUDE by the pixel's owner (read PRE-warp —
                     // the displacement needs the amp first); owner 0 = current brush, old path.
-                    let o_pre = if has_style { style_owner[gy * fw + gx] } else { 0 };
+                    let o_pre = if has_style {
+                        style_owner[gy * fw + gx]
+                    } else {
+                        0
+                    };
                     let st_warp =
                         style_at(has_style, style_owner, style_table, cur_style, gy * fw + gx).warp;
                     // #18: smooth the Warp amplitude across the owner boundary (else the new stroke's

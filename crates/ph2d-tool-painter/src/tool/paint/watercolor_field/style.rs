@@ -94,6 +94,13 @@ pub(in crate::tool::paint) fn wash_flow(spec: &ph2d_painter_brush::BrushSpec) ->
     (1.0 - spec.wet_dilution).clamp(0.0, 1.0)
 }
 
+/// A cor do pincel em bytes sRGB — a ÚNICA conta, que o estilo por traço e o composite partilham (eram
+/// duas cópias da mesma expressão, uma em cada lado da fronteira de dono).
+#[inline]
+pub(in crate::tool::paint) fn cor_em_bytes(c: [f32; 3]) -> [u8; 3] {
+    c.map(|v| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8)
+}
+
 impl WetStrokeStyle {
     /// Capture the current brush's wash params — the composite's exact clamps, verbatim. `forced_wet`
     /// is the **Wet the layer** floor (#3): the captured Rewet is `max(brush Rewet, forced)`, so strokes
@@ -114,11 +121,7 @@ impl WetStrokeStyle {
             granulation: spec.granulation.clamp(0.0, 1.0),
             warp: spec.warp.max(0.0),
             pigment_mix: spec.effective_pigment_mix(),
-            color: [
-                (spec.color[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
-                (spec.color[1].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
-                (spec.color[2].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
-            ],
+            color: cor_em_bytes(spec.color),
             spread_thin: (1.0 + (spread_px as f32 - SPREAD_THIN_REF).max(0.0) / SPREAD_THIN_REF)
                 .min(SPREAD_THIN_MAX),
             core_r: core_r as u16,

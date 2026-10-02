@@ -26,6 +26,41 @@ impl PainterTool {
     }
 }
 
+/// Substrate memoisation (perf, byte-identical): `paper_h` is canvas-anchored, so compute once per
+/// canvas pixel ([`paper_h_px`], the loop's exact former expression) and reuse across frames + the
+/// bake; the pre-pass fills misses so the parallel loop reads immutably. Un-sized cache (defensive) ⇒
+/// `false`, the loop falls back to the direct call. Multi-substrate ⇒ the cache is invalid (it assumes
+/// ONE paper): `false`, so the loop resolves paper/grain per owner (see `SubstrateSession`).
+pub(super) fn memo_do_substrato(
+    substrate: &mut [f32],
+    n: usize,
+    multi: bool,
+    (paper_active, paper_tex, paper_img, paper_rot): (
+        bool,
+        &TextureSettings,
+        Option<&ImageMask>,
+        [f32; 2],
+    ),
+    region: (usize, usize, usize, usize),
+    fw: usize,
+    tile: NoiseTile,
+) -> bool {
+    let usa = substrate.len() == n && !multi;
+    if usa {
+        fill_substrate_cache(
+            substrate,
+            paper_active,
+            paper_tex,
+            paper_img,
+            paper_rot,
+            region,
+            fw,
+            tile,
+        );
+    }
+    usa
+}
+
 /// Fill the canvas-anchored `paper_h` cache for the region's MISSES (`NaN`), serially, so the parallel
 /// composite reads it immutably (perf memo; single-substrate only — the caller gates on `!multi()`).
 /// A FREE fn, not a method: it borrows only the `substrate` slice, disjoint from the composite's live

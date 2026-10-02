@@ -314,12 +314,27 @@ fn so_as_copias_conformes_grandes_pagam_o_calculo() {
             .expect("tres quadros")
             .1
     };
-    assert_eq!(com(&forma, &pequenas, area), 0, "as conformes pequenas pagaram o calculo");
-    assert_eq!(com(&forma, &pequenas, 0.0), 60, "CONTROLO: com a area a 0 vao todas");
-    assert_eq!(com(&forma, &grandes, area), 20, "as conformes grandes ficaram no caminho de sempre");
+    assert_eq!(
+        com(&forma, &pequenas, area),
+        0,
+        "as conformes pequenas pagaram o calculo"
+    );
+    assert_eq!(
+        com(&forma, &pequenas, 0.0),
+        60,
+        "CONTROLO: com a area a 0 vao todas"
+    );
+    assert_eq!(
+        com(&forma, &grandes, area),
+        20,
+        "as conformes grandes ficaram no caminho de sempre"
+    );
     // Uma ESTICADA com traço vai sempre, pequena ou não: é ela que deixa de refazer o eixo por pixel.
     let com_traco = Forma {
-        traco: Some((Stroke::new(0.06).with_join(Join::Miter), [0.1, 0.1, 0.1, 1.0])),
+        traco: Some((
+            Stroke::new(0.06).with_join(Join::Miter),
+            [0.1, 0.1, 0.1, 1.0],
+        )),
         ..forma
     };
     assert_eq!(

@@ -8644,6 +8644,7 @@ version = "0.0.0"
 dependencies = [
  "bytemuck",
  "ph2d-gpu",
+ "ph2d-render",
  "ph2d-vector",
  "pollster",
  "vello",

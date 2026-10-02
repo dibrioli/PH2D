@@ -20,6 +20,10 @@ bytemuck = { version = "1", features = ["derive"] }
 [dev-dependencies]
 # Os gates de paridade de PIXEL rasterizam as MESMAS cópias pelo Vello e comparam.
 vello = { version = "0.10.0", default-features = false, features = ["wgpu"] }
+# ⛔ E pelo renderer do PRODUTO — o dono da escolha de anti-aliasing (o gate
+# `the_pass_aa_is_never_chosen_by_a_text_preference` proíbe nomeá-la fora dele).
+# `ph2d-render` não depende desta crate ⇒ sem ciclo.
+ph2d-render = { path = "../ph2d-render" }
 pollster = "0.4.0"
 
 [lints]

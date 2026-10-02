@@ -16,16 +16,19 @@ RS = R + "/crates/ph2d-shape-gpu/src/contorno.rs"
 
 MUTS = [
     ("M1 o contorno nunca e' escrito", W,
-     "    if total > n || total + SEGS_POR_BLOCO <= n {",
-     "    if true {", "sangra"),
+     # ⚠️ Re-ancorada no fecho de 01/10: a §9.6 trocou a verificação pela do limite superior
+     # (`total > nc_reservado`) e a âncora antiga casava ZERO vezes — o arnês só abortava.
+     "        if total > nc_reservado {",
+     "        if true {", "sangra"),
     ("M2 sem a aresta de ponta da frente", W,
      "        if !faixa1 {\n            aresta(q1, q2, s);\n        }",
      "", "sangra"),
     ("M3 todo bloco lido como encadeado", W,
      "select(0.0, 1.0, corrente)", "1.0", "sangra"),
     ("M4 o telescopio ao contrario", S,
-     "s += clamp(ex.x - xy.y, 0.0, 1.0) - clamp(ex.y - xy.y, 0.0, 1.0);",
-     "s += clamp(ex.y - xy.y, 0.0, 1.0) - clamp(ex.x - xy.y, 0.0, 1.0);", "sangra"),
+     # Re-ancorada no fecho de 01/10: o telescópio vive hoje no `soma_do_bloco` da §9.6.
+     "return clamp(ex.x - xy.y, 0.0, 1.0) - clamp(ex.y - xy.y, 0.0, 1.0);",
+     "return clamp(ex.y - xy.y, 0.0, 1.0) - clamp(ex.x - xy.y, 0.0, 1.0);", "sangra"),
     ("M5 a capacidade nao cresce", RS,
      "self.total_visto = self.total_visto.max(u64::from(total));",
      "let _ = total;", "sangra"),

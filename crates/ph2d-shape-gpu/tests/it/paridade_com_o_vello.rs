@@ -273,36 +273,14 @@ fn pelo_vello(gpu: &GpuContext, forma: &Forma<'_>, cs: &[Copia]) -> Vec<u8> {
             }
         }
     }
-    let mut r = vello::Renderer::new(
-        &gpu.device,
-        vello::RendererOptions {
-            use_cpu: false,
-            antialiasing_support: vello::AaSupport::area_only(),
-            num_init_threads: None,
-            pipeline_cache: None,
-        },
-    )
-    .expect("o Vello cria o renderer");
-    let tex = textura(
-        gpu,
-        wgpu::TextureUsages::STORAGE_BINDING,
-        wgpu::TextureFormat::Rgba8Unorm,
-    );
-    let vista = tex.create_view(&wgpu::TextureViewDescriptor::default());
-    r.render_to_texture(
-        &gpu.device,
-        &gpu.queue,
-        &cena,
-        &vista,
-        &vello::RenderParams {
-            base_color: Color::TRANSPARENT,
-            width: LADO,
-            height: LADO,
-            antialiasing_method: vello::AaConfig::Area,
-        },
-    )
-    .expect("o Vello desenha");
-    bytes_de_textura(gpu, &tex, 4)
+    // ⛔ O `VelloPass` do PRODUTO e não um `vello::Renderer` montado aqui: a escolha do
+    // anti-aliasing pertence a quem possui o renderer (`ph2d-render`), e um gate que a nomeasse
+    // mediria contra uma escolha que o produto pode deixar de fazer (gate
+    // `the_pass_aa_is_never_chosen_by_a_text_preference`, que apanhou a 1.ª redacção no fecho).
+    let mut r = ph2d_render::VelloPass::new(gpu, wgpu::TextureFormat::Rgba8Unorm, (LADO, LADO))
+        .expect("o VelloPass do produto nasce");
+    r.render_and_readback(gpu, &cena, (LADO, LADO))
+        .expect("o Vello desenha")
 }
 
 /// Meio-flutuante → `f32` (a leitura de um alvo `Rgba16Float`, sem trazer a crate `half`).

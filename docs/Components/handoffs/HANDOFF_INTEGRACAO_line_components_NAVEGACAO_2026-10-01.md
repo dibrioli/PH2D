@@ -198,3 +198,15 @@ deste documento.
 > ⭐⭐⭐ **E A VIDA E DANO FECHOU (30/09, plano 28 W6–W7 — [handoff](docs/Components/handoffs/HANDOFF_INTEGRACAO_line_components_VIDA_W6_W7_2026-09-30.md)):** TIPOS de dano com resistências (imune · fraco · absorve, contra o addon MIT do Godot) e o dano que DURA; a arena `=4` junta tudo num jogo pequeno e o tutorial [`02_vida_e_dano.pdf`](docs/Components/tutoriais/02_vida_e_dano.pdf) ensina-o; ⚠️ **conte o DELTA:** `PROJECT_SCHEMA` **+1**, registos **0**, catracas do Inspector `+4/+2/+2`; ⏳ a lava renovar a queimadura a cada tique é decisão do dono. **Smokes:** `PH2D_VIDA_SMOKE=3|4`.
 
 > ⭐⭐⭐ **E A NAVEGAÇÃO EXISTE (01/10, plano 30 W0–W4 — [handoff](docs/Components/handoffs/HANDOFF_INTEGRACAO_line_components_NAVEGACAO_2026-10-01.md)):** um inimigo acha o caminho sozinho — malha andável derivada dos colisores com o raio do CORPO (`ph2d-navmesh`), caminho mais curto exacto (Polyanya, `ph2d-nav`), o agente PEDE e o `TopDownPlayer` ANDA; *Add Component → Nav Agent* basta, e o Inspector diz o que ele faz e porquê; ⚠️ **conte o DELTA:** `PROJECT_SCHEMA` **+1**, registo da FÍSICA **+2** (o `collision-surface.sh` não o mostra), `LIVE_SECTIONS` **+2**; ⛔ a máquina de estados **mudou-se** da shell para a `ph2d-app-components`. **Smoke:** `PH2D_NAV_SMOKE=1`.
+
+---
+
+### O smoke compilado (a 2.ª corrida, colada)
+
+Depois de `rm -rf target/*/incremental` (`35 G` de `debug` + `4,6 G` de `smoke` reclamados), a 2.ª corrida
+de `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke` — zero linhas `Compiling`:
+
+```
+▸ linha line_components · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+    Finished `smoke` profile [optimized] target(s) in 0.26s
+```

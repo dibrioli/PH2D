@@ -86,3 +86,66 @@ fn the_render_frame_has_the_ball_where_the_camera_puts_it() {
         );
     });
 }
+
+/// ⛔⛔ **A frase da trava é dita UMA vez, não a cada quadro** (report do dono, 02/10, foto: dezenas de
+/// avisos «In Render you move whole objects…» empilhados). O canal não repete a última frase, mas
+/// é LIMPO a cada quadro em que a peça coze — logo uma frase dita por quadro voltava como nova.
+#[test]
+fn a_locked_selection_is_announced_once_not_every_frame() {
+    // Uma bola mordida por outra: a mordida é UM objeto; seleccionar só a bola de dentro trava.
+    let doc = ph2d_field::FieldDoc::new(
+        vec![
+            ph2d_field::Node::new(
+                ph2d_field::Xform::at(-0.3, 0.0, 0.0),
+                ph2d_field::NodeKind::Leaf(ph2d_field::Primitive::Sphere { radius: 0.3 }),
+            ),
+            ph2d_field::Node::new(
+                ph2d_field::Xform::at(-0.1, 0.0, 0.0),
+                ph2d_field::NodeKind::Leaf(ph2d_field::Primitive::Sphere { radius: 0.15 }),
+            ),
+            ph2d_field::Node::new(
+                ph2d_field::Xform::IDENTITY,
+                ph2d_field::NodeKind::Combine {
+                    op: ph2d_field::Op::Difference(ph2d_field::Blend::Sharp),
+                    children: vec![ph2d_field::NodeId(0), ph2d_field::NodeId(1)],
+                },
+            ),
+            ph2d_field::Node::new(
+                ph2d_field::Xform::at(0.6, 0.0, 0.0),
+                ph2d_field::NodeKind::Leaf(ph2d_field::Primitive::Sphere { radius: 0.2 }),
+            ),
+            ph2d_field::Node::new(
+                ph2d_field::Xform::IDENTITY,
+                ph2d_field::NodeKind::Combine {
+                    op: ph2d_field::Op::Union(ph2d_field::Blend::Sharp),
+                    children: vec![ph2d_field::NodeId(2), ph2d_field::NodeId(3)],
+                },
+            ),
+        ],
+        ph2d_field::NodeId(4),
+    )
+    .expect("doc");
+    armed_with(&doc, |sim| {
+        liga_o_render(sim);
+        let world = sim.world_mut();
+        let mut q = world.query::<(bevy_ecs::entity::Entity, &ph2d_field_ecs::FieldObject)>();
+        let root = q.iter(world).next().map(|(e, _)| e).expect("a peça");
+        // A bola de DENTRO da mordida (a 2.ª folha): não é um objeto inteiro.
+        let folha = crate::materials::folhas(sim.world(), root)[1].0;
+        let _ = crate::notice::drain();
+        crate::notice::forget_last();
+        let mut ditas = 0;
+        for _ in 0..5 {
+            crate::scene::ecs_bridge(sim, Some(folha.to_bits()), &[], &crate::scene::no_drawing());
+            ditas += crate::notice::drain()
+                .iter()
+                .filter(|m| m.contains("whole objects"))
+                .count();
+        }
+        assert_eq!(ditas, 1, "a trava foi dita {ditas} vezes em 5 quadros");
+        assert!(
+            crate::smoke::with_smoke(|s| s.gizmo.is_none()).unwrap_or(false),
+            "o gizmo trava"
+        );
+    });
+}

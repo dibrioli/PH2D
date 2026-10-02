@@ -49,6 +49,29 @@ pub struct Estado {
 
 thread_local! {
     static ESTADO: RefCell<Option<Estado>> = const { RefCell::new(None) };
+    /// A seleção travada que já foi ANUNCIADA (e porquê).
+    static ANUNCIADA: RefCell<Option<(Vec<Entity>, &'static str)>> = const { RefCell::new(None) };
+}
+
+/// ⭐ **A trava diz-se UMA vez** — `true` só quando a seleção travada (ou o porquê) MUDOU.
+///
+/// ⛔ Medido (report do dono, 02/10, foto com dezenas de avisos empilhados): o canal de avisos não
+/// repete a última frase, mas é LIMPO a cada quadro em que a peça coze, e uma frase dita por quadro
+/// voltava como nova. `None` (nada travado) esquece o anúncio.
+pub fn anuncia(sel: &[Entity], porque: Option<&'static str>) -> bool {
+    ANUNCIADA.with(|a| {
+        let mut a = a.borrow_mut();
+        let Some(k) = porque else {
+            *a = None;
+            return false;
+        };
+        let agora = (sel.to_vec(), k);
+        if a.as_ref() == Some(&agora) {
+            return false;
+        }
+        *a = Some(agora);
+        true
+    })
 }
 
 /// ⭐ **O Render por malha está ligado?** `PH2D_FIELD_RENDER_TRACADO=1` volta ao traçado (bissecção).

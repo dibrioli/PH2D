@@ -108,7 +108,9 @@ pub fn ecs_bridge(
     // só tem o estado do módulo. *Um passo que precisa das duas coisas corre entre elas, não dentro
     // de uma.*
     let mut mudou_o_doc = false;
-    if let Some(k) = travado {
+    if crate::malha_render_estado::anuncia(&chosen, travado)
+        && let Some(k) = travado
+    {
         crate::notice::say(ph2d_i18n::tr(k).into());
     }
     with_smoke(|s| {

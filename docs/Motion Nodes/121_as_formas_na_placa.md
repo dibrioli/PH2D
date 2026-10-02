@@ -100,6 +100,11 @@ cima. ⛔ Desenhar o passe por cima do alvo do Vello pintaria as formas **por ci
 - ✅ **O CONTORNO CALCULADO** (§9.5): a geometria do traço esticado sai UMA vez por cópia num passe
   de cálculo — a `=127` densa no proxy de telemóvel `27,8 → 22,3 ms` de placa (RTX `1,57 → 1,16`);
   ⏳ ainda atrás do Vello no proxy (`19,4 ms`). `PH2D_CONTORNO_CALCULADO=0` bissecta.
+- ✅ **AS CÉLULAS E O FUNDO** (§9.6): o preenchimento, as marcas e o traço conforme GRANDE também vão
+  pelas arestas no ecrã, cada fileira partida em células de `32 px` com o fundo pré-somado — a `=127`
+  densa no proxy de telemóvel **`22,3 → 18,76 ms`, À FRENTE do Vello (`19,42`)**; RTX `1,11` (Vello
+  `2,03`). ⏳ As estrelas GRANDES ainda perdem no proxy (`2,32` contra `0,98`; conformes `1,36`
+  contra `0,90`).
 
 ## §6 — ✅ W1: a paridade de PIXEL, medida (2026-09-29, RTX, alvo de meio-float)
 
@@ -708,3 +713,87 @@ mesma); mantidos por serem exactos e baratos.
 eixo (`3,57` contra `3,31`). O que sobra está no desenho (`15,6 ms`), não no cálculo (`3,1`): os blocos
 à direita/dentro pagam a conta do Vello aresta a aresta, e a cura seguinte é a do Vello — ladrilhos
 (as arestas de cada cópia ordenadas por faixa de ecrã) em vez de blocos por cópia.
+
+### §9.6 — AS CÉLULAS E O FUNDO: toda a cópia no ecrã (2026-10-01)
+
+**O que mudou** ([`contorno.wgsl`](../../crates/ph2d-shape-gpu/src/contorno.wgsl) ·
+`cobertura_de_ecra` no [`shape.wgsl`](../../crates/ph2d-shape-gpu/src/shape.wgsl) ·
+[`contorno.rs`](../../crates/ph2d-shape-gpu/src/contorno.rs)):
+
+- ⭐ **As três famílias no ecrã.** O cálculo de §9.5 escrevia só o contorno do eixo; o preenchimento e
+  as marcas continuavam a ser transformados EM CADA PIXEL (a ablação na sonda densa: `~1/3` do
+  passe). Agora `cs_escreve` transforma-os uma vez por cópia e escreve-os à frente do contorno, cada
+  família completada até um múltiplo de `8` (os blocos não atravessam um trecho). Sob afim conforme
+  as «marcas» são o traço INTEIRO (as marcas e o contorno expandido), e a soma do pixel é a mesma
+  `min(min(|marcas|, 1) + min(|contorno|, 1), 1)` do caminho de sempre.
+- ⭐⭐ **As CÉLULAS e o FUNDO** (o `backdrop` do Vello): cada fileira de pixels da cópia é partida em
+  células de `LARGURA_DA_CELULA = 32 px`; cada célula guarda três fundos (a soma, NESSA fileira, dos
+  blocos que acabam todos à esquerda dela — não depende do `x` do pixel) e uma máscara com um bit por
+  bloco que lhe toca. O pixel soma o fundo e só esses blocos. A fileira de um bloco é exacta em
+  `f32` (`floor(lo.y)` a `ceil(hi.y) − 1`); o fundo soma-se na primeira célula toda à direita do
+  bloco e depois faz-se o prefixo ao longo da linha.
+- ⭐ **A contagem sem a geometria.** `cs_conta` corria o `percorre` inteiro só para contar; agora usa
+  o pior caso de cada ramo de `emite_peca` (o leque de `k` passos emite no máximo `3k`), e
+  `cs_escreve` desce a corrente de trás para o fim do que de facto usou. O cálculo da `=127` densa no
+  proxy: `4,08 → 2,93 ms`.
+- ⭐ **A ROTA:** uma cópia esticada com traço vai sempre; uma CONFORME só a partir de
+  `AREA_MINIMA_CONFORME = 1024 px²` de caixa estimada (abaixo disso o caminho de sempre já a desenha
+  bem, e o cálculo é pago por cópia). `ShapePass::area_minima_conforme` deixa os gates de pixel medirem
+  o caminho novo em todas as cópias; `PH2D_AREA_MINIMA_CONFORME` é o instrumento da varredura.
+
+**Medido no proxy de telemóvel** (Radeon integrada, `release`; a placa leu estável sob carga — o
+caminho de sempre deu os números de §9.5 ao dígito na mesma corrida):
+
+| sonda, ms de passe | §9.5 | arestas no ecrã | + células e fundo | + contagem barata | Vello |
+|---|---:|---:|---:|---:|---:|
+| `1225` estrelas da `=127` | `2,49` | `2,33`–`2,45` | `2,57` | **`2,22`** | `2,6` |
+| `324` pequenas | `2,05` | `1,77`–`1,82` | `1,82` | **`1,67`** | `2,08` |
+| `72` grandes esticadas | `3,57` | `2,69` | `2,38` | **`2,32`** | `0,98` |
+| `72` grandes conformes | `1,73` | `1,39` | `1,38` | **`1,35`** | `0,90` |
+
+| app, `=127` densa, quadro de placa (mínimo) | iGPU | RTX |
+|---|---:|---:|
+| §9.5 (contorno calculado) | `22,3 ms` | `1,16 ms` |
+| arestas no ecrã + células (formas `11,89` + cálculo `4,08`) | `19,87 ms` | `1,11 ms` |
+| **+ contagem barata** (formas `11,84` + cálculo `2,93`) | **`18,76 ms`** | — |
+| a cena toda pelo Vello | `19,42 ms` | `2,03 ms` |
+
+**A varredura da rota** (cena `17`, escada de `32 768` estrelas pequenas conformes, iGPU, quadro de
+placa MEDIANO; a cena anima, logo o mínimo não serve): caminho de sempre `9,70` · área mínima `0`
+(todas pelo cálculo) **`13,53`** · `256`, `1024`, `4096`, `16384` → `9,58`–`9,59`. E as `72` grandes
+conformes: `0`/`1024` → `1,36 ms`, `4096` → `1,74` (perde o ganho). ⇒ a janela é `[256, 4096)`, e o
+`1024` está dentro dela.
+
+**A largura da célula é medida** (sonda, iGPU, ms): grandes esticadas `8 → 2,81` · `16 → 2,50` ·
+**`32 → 2,33`** · `64 → 2,40`; grandes conformes `2,13 · 1,58 ·` **`1,36`** `· 1,45`; a `=127`
+`32` e `64` empatam (`2,22`).
+
+**Gates:** [`contorno_calculado`](../../crates/ph2d-shape-gpu/tests/it/contorno_calculado.rs) ganha
+SETE famílias — estrelas pequenas só preenchidas · anéis even-odd · círculos com traço conformes ·
+círculos GRANDES com traço (conformes e esticados — as máscaras passam de uma palavra, `> 32` blocos)
+· estrela com traço e MARCAS (conforme e esticada) — todas a alfa máx. `≤ 1` e zero pixels a
+desviar mais de `1`, catorze famílias a transbordar no 1.º quadro e todas as cópias no ecrã no
+último. A paridade com o Vello passa a medir o REGIME DO PRODUTO (`3` quadros, exige todas as cópias
+no ecrã). E `so_as_copias_conformes_grandes_pagam_o_calculo`: pequenas ficam, grandes vão, esticadas
+com traço vão sempre, com o CONTROLO a área `0`.
+
+**Mutação `10` de `10`** ([arnês](ferramentas/mutacao_as_celulas_do_ecra_2026-10-01.py), pré-voo
+`10/10`, corrida LIMPA verde): o fundo sem o prefixo · a máscara só com a 1.ª palavra (sangra nos
+círculos GRANDES — a família que a exerce) · o fundo na célula que o bloco ainda toca · o pixel sem o
+fundo · todos os blocos no preenchimento · a corrente de trás sem descer · o limite da contagem sem a
+junta (sangra pela capacidade que não cresce) · a rota ao contrário · a 1.ª linha de um bloco
+arredondada para cima · a célula do pixel uma à direita.
+
+⛔ **RECUSA MEDIDA — PARTIR as arestas longas em pedaços de `32 px`** (para cada bloco ficar local,
+como o Vello recorta por ladrilho): sem efeito — grandes conformes `1,35 → 1,39 ms`. A estrela da sonda
+tem cantos arredondados e as arestas JÁ são curtas; o custo dos pixels de borda não é aresta longa.
+Revertido.
+
+⏳ **ABERTO, com o número: as estrelas GRANDES no proxy de telemóvel** — `2,32` contra `0,98` ms
+(esticadas) e `1,35` contra `0,90` (conformes). A eliminação por partes (esticadas): o cálculo
+(`~0,3` contagem + `~0,36` escrita + `~0,42` células) corre num FIO por cópia, e com `72` cópias a
+placa fica quase parada; os pixels de BORDA (`~1,2`) lêem os blocos inteiros da célula. A cura
+seguinte tem endereço: as células e as máscaras construídas EM PARALELO por bloco (não por cópia), e
+os pixels de uma célula a partilhar os blocos (memória do grupo), que é o que o rasterizador fino do
+Vello faz.
+

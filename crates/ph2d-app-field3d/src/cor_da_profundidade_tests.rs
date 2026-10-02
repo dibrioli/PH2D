@@ -604,9 +604,10 @@ fn a_cena_da_cor_declara_o_material_da_medicao() {
     //
     // ⚠️ E a lista é de PARES, não um `!=`: um censo escrito como *«só a 34 e a 36»* aceitaria a
     // 36 a semear o material da 34.
-    const QUEM_SEMEIA: [(u32, &str); 2] = [
+    const QUEM_SEMEIA: [(u32, &str); 3] = [
         (34, "a cor que a profundidade deixa"),
         (36, "as três luzes do brilho"),
+        (37, "as seis cores dos objetos do Render por malha"),
     ];
     for n in 1..=crate::smoke::scenes::CENAS {
         let esperado = QUEM_SEMEIA.iter().find(|(k, _)| *k == n);

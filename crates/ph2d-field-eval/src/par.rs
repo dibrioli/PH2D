@@ -45,7 +45,10 @@ fn em_paralelo<T: Send + Clone + Default>(
             })
             .collect();
         hs.into_iter()
-            .map(|h| h.join().unwrap_or_else(|_| Err(MeshError::Rejected("avaliação em pânico".into()))))
+            .map(|h| {
+                h.join()
+                    .unwrap_or_else(|_| Err(MeshError::Rejected("avaliação em pânico".into())))
+            })
             .collect()
     });
     let mut out = Vec::with_capacity(pts.len());
@@ -76,7 +79,9 @@ pub fn gradientes(
     pts: &[[f32; 3]],
     eps: f32,
 ) -> Result<Vec<[f32; 3]>, MeshError> {
-    em_paralelo(doc, reg, pts, |h, xs, ys, zs, out| h.gradients(xs, ys, zs, eps, out))
+    em_paralelo(doc, reg, pts, |h, xs, ys, zs, out| {
+        h.gradients(xs, ys, zs, eps, out)
+    })
 }
 
 /// `(f, ∇f)` em cada ponto, numa passada.
@@ -130,7 +135,13 @@ mod tests {
         let mut gserie = Vec::new();
         h.gradients(&xs, &ys, &zs, 1e-4, &mut gserie).expect("grad");
         assert_eq!(super::valores(&doc, &reg, &pts).expect("par"), serie);
-        assert_eq!(super::gradientes(&doc, &reg, &pts, 1e-4).expect("par"), gserie);
-        assert!(super::pedacos(pts.len()) > 1 || std::thread::available_parallelism().map_or(1, |n| n.get()) == 1);
+        assert_eq!(
+            super::gradientes(&doc, &reg, &pts, 1e-4).expect("par"),
+            gserie
+        );
+        assert!(
+            super::pedacos(pts.len()) > 1
+                || std::thread::available_parallelism().map_or(1, |n| n.get()) == 1
+        );
     }
 }

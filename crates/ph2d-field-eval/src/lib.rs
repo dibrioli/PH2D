@@ -30,8 +30,8 @@ pub(crate) mod bounds_mods;
 /// ⭐⭐⭐ **A peça para o DISPOSITIVO, com a escultura dentro** — ver [`device`].
 pub mod device;
 pub mod extract;
-mod extract_parts;
 mod extract_band;
+mod extract_parts;
 mod extract_planes;
 pub mod hybrid;
 pub mod ops;

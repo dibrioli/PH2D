@@ -35,7 +35,9 @@ impl Faixa {
             return None;
         }
         let nb = n / BLOCO;
-        let centro = |b: usize, eixo: usize| ((b * BLOCO) as f64 + BLOCO as f64 * 0.5).mul_add(step, lo[eixo]);
+        let centro = |b: usize, eixo: usize| {
+            ((b * BLOCO) as f64 + BLOCO as f64 * 0.5).mul_add(step, lo[eixo])
+        };
         let (mut xs, mut ys, mut zs) = (Vec::new(), Vec::new(), Vec::new());
         for bk in 0..nb {
             for bj in 0..nb {
@@ -89,14 +91,20 @@ impl Faixa {
                 }
             }
         }
-        let avaliados = if xs.is_empty() { &[][..] } else { h.eval(&xs, &ys, &zs)? };
+        let avaliados = if xs.is_empty() {
+            &[][..]
+        } else {
+            h.eval(&xs, &ys, &zs)?
+        };
         let mut a = avaliados.iter();
         let mut out = Vec::with_capacity(m * m);
         for j in 0..m {
             for i in 0..m {
                 let b = self.bloco(i, j, k);
                 out.push(if self.ativo[b] {
-                    *a.next().ok_or_else(|| crate::MeshError::Rejected("faixa: avaliação curta".into()))?
+                    *a.next().ok_or_else(|| {
+                        crate::MeshError::Rejected("faixa: avaliação curta".into())
+                    })?
                 } else {
                     self.valor[b]
                 });

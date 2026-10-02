@@ -39,7 +39,10 @@ pub fn formato_da_cor(adapter: &wgpu::Adapter) -> wgpu::TextureFormat {
     let f = adapter.get_texture_format_features(wgpu::TextureFormat::Rgba16Float);
     let precisa = wgpu::TextureFormatFeatureFlags::MULTISAMPLE_X4
         | wgpu::TextureFormatFeatureFlags::MULTISAMPLE_RESOLVE;
-    if f.allowed_usages.contains(wgpu::TextureUsages::RENDER_ATTACHMENT) && f.flags.contains(precisa) {
+    if f.allowed_usages
+        .contains(wgpu::TextureUsages::RENDER_ATTACHMENT)
+        && f.flags.contains(precisa)
+    {
         wgpu::TextureFormat::Rgba16Float
     } else {
         wgpu::TextureFormat::Rgba8UnormSrgb
@@ -101,7 +104,13 @@ impl Alvos {
             1,
             ra | wgpu::TextureUsages::TEXTURE_BINDING,
         ));
-        let saida = textura(device, tamanho, SAIDA, 1, ra | wgpu::TextureUsages::COPY_SRC);
+        let saida = textura(
+            device,
+            tamanho,
+            SAIDA,
+            1,
+            ra | wgpu::TextureUsages::COPY_SRC,
+        );
         let saida_vista = v(&saida);
         let ecra_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("ph2d-mesh-forward ecra"),

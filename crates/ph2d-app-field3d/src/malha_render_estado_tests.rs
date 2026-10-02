@@ -5,7 +5,12 @@ use ph2d_ecs::SimWorld;
 use ph2d_field::{Blend, FieldDoc, Node, NodeId, NodeKind, Op, Primitive, Xform};
 
 fn duas_bolas() -> (SimWorld, Vec<Entity>) {
-    let ball = |x: f32| Node::new(Xform::at(x, 0.0, 0.0), NodeKind::Leaf(Primitive::Sphere { radius: 0.3 }));
+    let ball = |x: f32| {
+        Node::new(
+            Xform::at(x, 0.0, 0.0),
+            NodeKind::Leaf(Primitive::Sphere { radius: 0.3 }),
+        )
+    };
     let doc = FieldDoc::new(
         vec![
             ball(-0.8),
@@ -35,7 +40,8 @@ fn ate_assentar(sim: &mut SimWorld, gesto: bool) {
     let t = std::time::Instant::now();
     loop {
         super::sync(sim, true, gesto);
-        let voando = super::ESTADO.with(|c| c.borrow().as_ref().is_some_and(|e| e.em_voo.is_some()));
+        let voando =
+            super::ESTADO.with(|c| c.borrow().as_ref().is_some_and(|e| e.em_voo.is_some()));
         if !voando || t.elapsed().as_secs() > 20 {
             return;
         }
@@ -73,11 +79,18 @@ fn moving_does_not_extract_and_the_check_does_not_flicker_and_touching_fuses() {
     })
     .flatten()
     .expect("o objeto da primeira bola");
-    assert!((movido - 0.25).abs() < 1e-5, "a matriz não levou o gesto: {movido}");
+    assert!(
+        (movido - 0.25).abs() < 1e-5,
+        "a matriz não levou o gesto: {movido}"
+    );
 
     // 2) Fim do gesto: a verificação corre e, com a mesma partição, NÃO troca as malhas.
     ate_assentar(&mut sim, false);
-    assert_eq!(geracao(), 1, "a verificação trocou malhas iguais — o quadro piscaria");
+    assert_eq!(
+        geracao(),
+        1,
+        "a verificação trocou malhas iguais — o quadro piscaria"
+    );
 
     // 3) Encostar as duas bolas funde-as num objeto só.
     ph2d_field_ecs::translate_world(sim.world_mut(), us[0], [1.3, -0.25, 0.0]);

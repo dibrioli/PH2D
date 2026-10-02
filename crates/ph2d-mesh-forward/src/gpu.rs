@@ -281,7 +281,11 @@ impl Forward {
                 targets: &opaco,
             }),
             primitive: prim,
-            depth_stencil: profundidade(true, wgpu::CompareFunction::Less, wgpu::DepthBiasState::default()),
+            depth_stencil: profundidade(
+                true,
+                wgpu::CompareFunction::Less,
+                wgpu::DepthBiasState::default(),
+            ),
             multisample: msaa,
             multiview_mask: None,
             cache: None,
@@ -304,7 +308,11 @@ impl Forward {
                 targets: &sobre,
             }),
             primitive: prim,
-            depth_stencil: profundidade(false, wgpu::CompareFunction::Always, wgpu::DepthBiasState::default()),
+            depth_stencil: profundidade(
+                false,
+                wgpu::CompareFunction::Always,
+                wgpu::DepthBiasState::default(),
+            ),
             multisample: msaa,
             multiview_mask: None,
             cache: None,
@@ -389,7 +397,8 @@ impl Forward {
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
                 format: PROFUNDIDADE,
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                    | wgpu::TextureUsages::TEXTURE_BINDING,
                 view_formats: &[],
             })
             .create_view(&wgpu::TextureViewDescriptor::default());
@@ -414,7 +423,8 @@ impl Forward {
             mipmap_filter: wgpu::MipmapFilterMode::Linear,
             ..Default::default()
         });
-        let cobertura = crate::gpu_cobertura::Cobertura::nova(&device, &modulo, &pl_sombra, &so_posicao);
+        let cobertura =
+            crate::gpu_cobertura::Cobertura::nova(&device, &modulo, &pl_sombra, &so_posicao);
         Self {
             device,
             queue,
@@ -466,7 +476,11 @@ impl Forward {
             self.queue.write_buffer(&b, 0, conteudo);
             b
         };
-        let vertices = buf("ph2d-mesh-forward vertices", &bytes, wgpu::BufferUsages::VERTEX);
+        let vertices = buf(
+            "ph2d-mesh-forward vertices",
+            &bytes,
+            wgpu::BufferUsages::VERTEX,
+        );
         let indices = buf(
             "ph2d-mesh-forward indices",
             bytemuck::cast_slice(m.indices),
@@ -506,11 +520,16 @@ impl Forward {
             self.alvos = Some(Alvos::novos(&self.device, (w, h), self.cor, &self.ecra_bgl));
         }
         self.sobe_materiais(cena.materiais);
-        let enquadra = quadro_impl::enquadra_sombra(cena, |id| self.malhas.get(&id).map(|m| m.caixa));
+        let enquadra =
+            quadro_impl::enquadra_sombra(cena, |id| self.malhas.get(&id).map(|m| m.caixa));
         let dados = quadro_impl::uniforme_do_quadro(cena, &enquadra);
-        self.queue.write_buffer(&self.quadro, 0, bytemuck::cast_slice(&dados));
-        let visiveis: Vec<&crate::Instancia> =
-            cena.objetos.iter().filter(|o| self.malhas.contains_key(&o.malha)).collect();
+        self.queue
+            .write_buffer(&self.quadro, 0, bytemuck::cast_slice(&dados));
+        let visiveis: Vec<&crate::Instancia> = cena
+            .objetos
+            .iter()
+            .filter(|o| self.malhas.contains_key(&o.malha))
+            .collect();
         self.sobe_objetos(&visiveis);
         self.desenha(cena, &visiveis, enquadra.ha_sombra);
         self.le((w, h))
@@ -558,4 +577,3 @@ fn textura_de_floats(device: &wgpu::Device, queue: &wgpu::Queue, v: &[f32]) -> w
     );
     t.create_view(&wgpu::TextureViewDescriptor::default())
 }
-

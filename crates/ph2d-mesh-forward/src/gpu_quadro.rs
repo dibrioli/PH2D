@@ -75,7 +75,12 @@ pub(super) fn uniforme_do_quadro(cena: &Cena<'_>, e: &Enquadra) -> Vec<f32> {
         u.extend_from_slice(col);
     }
     let c = &cena.camera;
-    u.extend_from_slice(&[c.olho[0], c.olho[1], c.olho[2], f32::from(u8::from(c.perspectiva))]);
+    u.extend_from_slice(&[
+        c.olho[0],
+        c.olho[1],
+        c.olho[2],
+        f32::from(u8::from(c.perspectiva)),
+    ]);
     u.extend_from_slice(&[c.dir_vista[0], c.dir_vista[1], c.dir_vista[2], 0.0]);
     u.extend_from_slice(&[
         cena.chao.unwrap_or(0.0),
@@ -84,12 +89,22 @@ pub(super) fn uniforme_do_quadro(cena: &Cena<'_>, e: &Enquadra) -> Vec<f32> {
         e.texel,
     ]);
     u.extend_from_slice(&e.chao_xz);
-    u.extend_from_slice(&[e.fundo, 1.5 * e.texel / e.fundo, f32::from(u8::from(e.ha_sombra)), 0.0]);
+    u.extend_from_slice(&[
+        e.fundo,
+        1.5 * e.texel / e.fundo,
+        f32::from(u8::from(e.ha_sombra)),
+        0.0,
+    ]);
     let n = cena.luzes.len().min(crate::MAX_LUZES);
     u.extend_from_slice(&[cena.exposicao, cena.vista as f32, n as f32, 0.0]);
     for l in &cena.luzes[..n] {
         u.extend_from_slice(&[l.posicao[0], l.posicao[1], l.posicao[2], 0.0]);
-        u.extend_from_slice(&[l.radiancia_a_um[0], l.radiancia_a_um[1], l.radiancia_a_um[2], 0.0]);
+        u.extend_from_slice(&[
+            l.radiancia_a_um[0],
+            l.radiancia_a_um[1],
+            l.radiancia_a_um[2],
+            0.0,
+        ]);
     }
     u.resize(QUADRO, 0.0);
     u
@@ -143,7 +158,11 @@ impl Forward {
 
     pub(super) fn sobe_objetos(&mut self, objs: &[&crate::Instancia]) {
         let precisa = (objs.len() as u64).max(1);
-        if self.objetos.as_ref().is_none_or(|(cap, _, _)| *cap < precisa) {
+        if self
+            .objetos
+            .as_ref()
+            .is_none_or(|(cap, _, _)| *cap < precisa)
+        {
             let cap = precisa.next_power_of_two();
             let b = self.device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some("ph2d-mesh-forward objetos"),
@@ -266,7 +285,7 @@ impl Forward {
             desenha_objetos(&mut pass);
             drop(pass);
             if cena.chao.is_some() {
-                self.cobertura.grava(&mut enc, &g0s, &desenha_objetos);
+                self.cobertura.grava(&mut enc, &g0s, desenha_objetos);
             }
         }
         {

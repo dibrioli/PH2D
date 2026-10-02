@@ -34,10 +34,14 @@ pub fn publish_snapshot(
     //
     // ⚠️ **Só no modo Render**, e a ausência é a lei — ver o [`crate::estilo::rows`]: no matcap o
     // estilo não corre, e *uma affordance que não pode ser honrada é pior do que nenhuma*.
+    //
+    // ⛔ **E não no Render por MALHA** (02/10): o desenhista de jogo ainda não tem o estilo nem o
+    // brilho (o brilho da casa é *compute*, e o WebGL2 do celular não o tem). Mostrar as fileiras
+    // seria pôr botões que não fazem nada — elas voltam quando o porte chegar (handoff, §ABERTO).
     let no_render = matches!(
         with_smoke(|s| s.vp().shading),
         Some(crate::shading::Shading::Render)
-    );
+    ) && !crate::malha_render_estado::ligado();
     rows.extend(crate::estilo::rows(
         with_smoke(|s| s.style).unwrap_or_default(),
         no_render,

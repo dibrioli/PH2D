@@ -9,8 +9,8 @@
 
 use ph2d_field::FieldDoc;
 use ph2d_field_eval::hybrid::Registry;
-use ph2d_field_eval::par;
 use ph2d_field_eval::owners::Owners;
+use ph2d_field_eval::par;
 
 /// O ângulo acima do qual a aresta é viva.
 pub const AUTO_SMOOTH_DEG: f32 = 30.0;
@@ -60,7 +60,11 @@ fn dot(u: [f32; 3], v: [f32; 3]) -> f32 {
 
 fn unit(v: [f32; 3]) -> [f32; 3] {
     let l = dot(v, v).sqrt();
-    if l > 0.0 { v.map(|c| c / l) } else { [0.0, 1.0, 0.0] }
+    if l > 0.0 {
+        v.map(|c| c / l)
+    } else {
+        [0.0, 1.0, 0.0]
+    }
 }
 
 /// ⭐ **Prepara uma peça.** Devolve as unidades (índices globais) cuja superfície ela tem, e a
@@ -167,7 +171,11 @@ pub fn prepara(
     for (v, lista) in emitidos.iter().enumerate() {
         for e in lista {
             let l = dot(e.normal, e.normal).sqrt();
-            out.normais[e.indice as usize] = if l > 0.0 { e.normal.map(|c| c / l) } else { e.semente };
+            out.normais[e.indice as usize] = if l > 0.0 {
+                e.normal.map(|c| c / l)
+            } else {
+                e.semente
+            };
             escala[e.indice as usize] = (e.modulos / e.n).clamp(0.05, 1.0);
         }
         // ⭐ A QUINA: o vértice vai ao encontro dos planos dos seus lados.
@@ -234,7 +242,11 @@ fn na_quina(v: [f32; 3], lados: &[Lado], cos_lim: f32, cell: f32) -> Option<[f32
     if !l.is_finite() {
         return None;
     }
-    Some(if l > cell { [0, 1, 2].map(|a| v[a] + delta[a] * cell / l) } else { x })
+    Some(if l > cell {
+        [0, 1, 2].map(|a| v[a] + delta[a] * cell / l)
+    } else {
+        x
+    })
 }
 
 /// Quantos passos de Newton levam o vértice à superfície, e quanto cada um pode andar (em células).
@@ -250,7 +262,12 @@ pub const NEWTON_PASSO_MAX: f32 = 0.5;
 /// procura a superfície raio a raio) nunca mostrou. O Newton não sabe da grade: converge para o
 /// zero do campo VERDADEIRO. ⚠️ O passo preso impede o salto para outro tubo vizinho, e onde o
 /// gradiente some o vértice fica onde estava.
-fn projeta_na_superficie(doc: &FieldDoc, reg: &Registry, pos: &[[f32; 3]], cell: f32) -> Vec<[f32; 3]> {
+fn projeta_na_superficie(
+    doc: &FieldDoc,
+    reg: &Registry,
+    pos: &[[f32; 3]],
+    cell: f32,
+) -> Vec<[f32; 3]> {
     let mut p = pos.to_vec();
     let (max, tol) = (NEWTON_PASSO_MAX * cell, 1.0e-4 * cell);
     let mut vivos: Vec<usize> = (0..p.len()).collect();
@@ -265,7 +282,7 @@ fn projeta_na_superficie(doc: &FieldDoc, reg: &Registry, pos: &[[f32; 3]], cell:
         let mut seguem = Vec::with_capacity(vivos.len());
         for (&i, &(f, g)) in vivos.iter().zip(&fg) {
             let g2 = dot(g, g);
-            if !f.is_finite() || f.abs() <= tol || !(g2 > 1.0e-12) {
+            if !f.is_finite() || f.abs() <= tol || g2.is_nan() || g2 <= 1.0e-12 {
                 continue;
             }
             let mut passo = g.map(|c| c * f / g2);
@@ -330,7 +347,13 @@ fn gradientes_dos_cantos(
 /// ⚠️ **`d = f / |∇f|`, e não `f`**: o AO do Quilez assume um campo que é DISTÂNCIA, e um que a
 /// subestima (o nó de toro, `|∇f| ≈ 0,5`) lia-se «tapado» onde não está — uma faixa escura ao longo
 /// de todo o tubo (foto de 02/10). `escala` é o `|∇f|` no vértice.
-fn ao(doc: &FieldDoc, reg: &Registry, pos: &[[f32; 3]], nrm: &[[f32; 3]], escala: &[f32]) -> Vec<f32> {
+fn ao(
+    doc: &FieldDoc,
+    reg: &Registry,
+    pos: &[[f32; 3]],
+    nrm: &[[f32; 3]],
+    escala: &[f32],
+) -> Vec<f32> {
     let mut pts = Vec::with_capacity(pos.len() * AO_PASSOS.len());
     for (p, n) in pos.iter().zip(nrm) {
         for &h in &AO_PASSOS {

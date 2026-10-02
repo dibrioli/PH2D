@@ -14,7 +14,7 @@ const FUNDO: [f32; 3] = [0.16, 0.16, 0.17];
 
 fn grava_ppm(caminho: &std::path::Path, rgba: &[u8], (w, h): (u32, u32)) {
     let mut out = format!("P6\n{w} {h}\n255\n").into_bytes();
-    for px in rgba.chunks_exact(4) {
+    for px in rgba.as_chunks::<4>().0 {
         let a = f32::from(px[3]) / 255.0;
         for k in 0..3 {
             // Premultiplicado em sRGB, como o vello compõe: c + fundo·(1 − a).
@@ -28,7 +28,8 @@ fn grava_ppm(caminho: &std::path::Path, rgba: &[u8], (w, h): (u32, u32)) {
 #[test]
 #[ignore = "sonda: placa + release, à mão"]
 fn sonda_do_render_por_malha() {
-    let dir = std::env::var("PH2D_SONDA_DIR").unwrap_or_else(|_| std::env::temp_dir().display().to_string());
+    let dir = std::env::var("PH2D_SONDA_DIR")
+        .unwrap_or_else(|_| std::env::temp_dir().display().to_string());
     let cenas: Vec<u32> = std::env::var("PH2D_SONDA_CENAS")
         .ok()
         .map(|v| v.split(',').filter_map(|x| x.trim().parse().ok()).collect())
@@ -48,7 +49,8 @@ fn sonda_do_render_por_malha() {
             // As cores da cena — o smoke real semeia-as ao abrir (`seed_materials`).
             if let Some(mats) = crate::smoke::scenes::materiais_da_cena(n) {
                 let world = sim.world_mut();
-                let mut q = world.query::<(bevy_ecs::entity::Entity, &ph2d_field_ecs::FieldObject)>();
+                let mut q =
+                    world.query::<(bevy_ecs::entity::Entity, &ph2d_field_ecs::FieldObject)>();
                 let root = q.iter(world).next().map(|(e, _)| e).expect("a peça");
                 let folhas = crate::materials::folhas(world, root);
                 for ((e, _, _), m) in folhas.iter().zip(mats) {
@@ -62,20 +64,26 @@ fn sonda_do_render_por_malha() {
             let t0 = std::time::Instant::now();
             loop {
                 crate::scene::ecs_bridge(sim, None, &[], &crate::scene::no_drawing());
-                if crate::malha_render_estado::com(|e| !e.esperando()).unwrap_or(false) || t0.elapsed().as_secs() > 30 {
+                if crate::malha_render_estado::com(|e| !e.esperando()).unwrap_or(false)
+                    || t0.elapsed().as_secs() > 30
+                {
                     break;
                 }
                 std::thread::sleep(std::time::Duration::from_millis(2));
             }
             let entrar = t0.elapsed().as_secs_f64() * 1e3;
-            let doc = crate::smoke::with_smoke(|s| s.doc.clone()).flatten().expect("doc");
+            let doc = crate::smoke::with_smoke(|s| s.doc.clone())
+                .flatten()
+                .expect("doc");
             let mut tempos = Vec::new();
             let mut primeira = None;
             for k in 0..61 {
                 let t = std::time::Instant::now();
                 let feito = crate::smoke::with_smoke(|s| {
                     if k > 0 {
-                        s.vp_mut().cam.turn_world([0.0, 1.0, 0.0], 3.0_f32.to_radians());
+                        s.vp_mut()
+                            .cam
+                            .turn_world([0.0, 1.0, 0.0], 3.0_f32.to_radians());
                     }
                     crate::malha_render_quadro::desenha(s, s.active, tamanho, &doc, false)
                 })
@@ -93,7 +101,13 @@ fn sonda_do_render_por_malha() {
             }
             tempos.sort_by(f64::total_cmp);
             let (objs, tris) = crate::malha_render_estado::com(|e| {
-                (e.objetos.len(), e.objetos.iter().map(|o| o.malha.triangulos()).sum::<usize>())
+                (
+                    e.objetos.len(),
+                    e.objetos
+                        .iter()
+                        .map(|o| o.malha.triangulos())
+                        .sum::<usize>(),
+                )
             })
             .unwrap_or_default();
             let caminho = std::path::Path::new(&dir).join(format!("render_malha_cena_{n}.ppm"));

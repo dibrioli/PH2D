@@ -26,6 +26,9 @@ use crate::malha_render::{Entrada, ObjetoRender};
 
 type Chave = Vec<(Entity, FieldDoc)>;
 
+/// Uma extração em voo: a chave e as poses com que partiu, e por onde ela chega.
+type EmVoo = (Chave, BTreeMap<Entity, Xform>, Receiver<Vec<ObjetoRender>>);
+
 /// ⭐ O que o quadro desenha.
 #[derive(Default)]
 pub struct Estado {
@@ -35,7 +38,7 @@ pub struct Estado {
     chave: Option<Chave>,
     /// As poses (por unidade) que a última extração adoptada ou verificada viu.
     verificadas: BTreeMap<Entity, Xform>,
-    em_voo: Option<(Chave, BTreeMap<Entity, Xform>, Receiver<Vec<ObjetoRender>>)>,
+    em_voo: Option<EmVoo>,
     /// A matriz de modelo de cada objeto, na ordem de `objetos` (coluna a coluna).
     pub modelos: Vec<[[f32; 4]; 4]>,
     /// A raiz da peça destes objetos. ⚠️ Outra raiz (outro documento) recomeça o estado NA HORA:
@@ -139,7 +142,10 @@ pub fn sync(sim: &mut ph2d_ecs::SimWorld, em_render: bool, gesto: bool) {
             .objetos
             .iter()
             .map(|o| {
-                let agora = poses.get(&o.unidades[0]).copied().unwrap_or(o.pose_extraida);
+                let agora = poses
+                    .get(&o.unidades[0])
+                    .copied()
+                    .unwrap_or(o.pose_extraida);
                 matriz(crate::malha_render::delta(agora, o.pose_extraida))
             })
             .collect();
@@ -168,7 +174,10 @@ impl Estado {
             return;
         };
         let Ok(objs) = rx.try_recv() else {
-            if matches!(rx.try_recv(), Err(std::sync::mpsc::TryRecvError::Disconnected)) {
+            if matches!(
+                rx.try_recv(),
+                Err(std::sync::mpsc::TryRecvError::Disconnected)
+            ) {
                 self.em_voo = None;
             }
             return;
@@ -180,7 +189,8 @@ impl Estado {
             return;
         }
         let forma_nova = self.chave.as_ref() != Some(&chave);
-        if forma_nova || particao(&objs) != particao(&self.objetos) || self.algum_se_partiu(&poses) {
+        if forma_nova || particao(&objs) != particao(&self.objetos) || self.algum_se_partiu(&poses)
+        {
             self.objetos = Arc::new(objs);
             self.geracao += 1;
             self.chave = Some(chave);
@@ -250,7 +260,9 @@ pub fn selecao_por_objeto(
         out
     };
     match req {
-        R::Entity(b) => objeto_de(world, Entity::from_bits(b)).map_or(R::Entity(b), |(us, _)| R::Many(bits(us))),
+        R::Entity(b) => {
+            objeto_de(world, Entity::from_bits(b)).map_or(R::Entity(b), |(us, _)| R::Many(bits(us)))
+        }
         R::Toggle(b) => match objeto_de(world, Entity::from_bits(b)) {
             Some((us, _)) if us.iter().all(|u| atual.contains(u)) => R::RemoveMany(bits(us)),
             Some((us, _)) => R::AddMany(bits(us)),

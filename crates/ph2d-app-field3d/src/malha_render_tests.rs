@@ -6,7 +6,10 @@ use ph2d_ecs::SimWorld;
 use ph2d_field::{Blend, FieldDoc, Node, NodeId, NodeKind, Op, Primitive, Xform};
 
 fn ball(x: f32, y: f32, r: f32) -> Node {
-    Node::new(Xform::at(x, y, 0.0), NodeKind::Leaf(Primitive::Sphere { radius: r }))
+    Node::new(
+        Xform::at(x, y, 0.0),
+        NodeKind::Leaf(Primitive::Sphere { radius: r }),
+    )
 }
 
 fn op(o: Op, kids: &[u32]) -> Node {
@@ -133,11 +136,17 @@ fn the_mesh_sits_on_the_field_and_faces_outwards() {
     ) as f32;
     for (p, n) in m.posicoes.iter().zip(&m.normais) {
         let r = (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt();
-        assert!((r - 0.5).abs() < 0.05 * cell, "vértice fora da superfície: {r}");
+        assert!(
+            (r - 0.5).abs() < 0.05 * cell,
+            "vértice fora da superfície: {r}"
+        );
         let d = (p[0] * n[0] + p[1] * n[1] + p[2] * n[2]) / r;
         assert!(d > 0.99, "normal para dentro ou torta: {d}");
     }
-    assert!(m.ao.iter().all(|a| *a > 0.95), "uma bola sozinha não se tapa");
+    assert!(
+        m.ao.iter().all(|a| *a > 0.95),
+        "uma bola sozinha não se tapa"
+    );
 }
 
 /// A quina de uma caixa é VIVA: o vértice dela parte-se em três normais.
@@ -182,10 +191,12 @@ fn the_draw_pose_is_the_move_since_extraction() {
     let movido = d.apply(em_antes);
     let esperado = depois.apply(p_local);
     for k in 0..3 {
-        assert!((movido[k] - esperado[k]).abs() < 1e-5, "{movido:?} vs {esperado:?}");
+        assert!(
+            (movido[k] - esperado[k]).abs() < 1e-5,
+            "{movido:?} vs {esperado:?}"
+        );
     }
 }
-
 
 /// ⏱ SONDA (ignorada): o preço de ENTRAR no Render — extrair a peça em objetos — e quantos triângulos
 /// saem. `cargo test --release -p ph2d-app-field3d --lib sonda_entrar_no_render -- --ignored --nocapture`
@@ -215,8 +226,6 @@ fn sonda_entrar_no_render() {
     }
 }
 
-
-
 /// ⭐ A cena 37 do smoke: seis objetos, e a caixa mordida é UM (com duas cores).
 #[test]
 fn scene_37_is_six_objects_and_the_bitten_box_is_one() {
@@ -235,5 +244,3 @@ fn scene_37_is_six_objects_and_the_bitten_box_is_one() {
         .expect("a caixa verde com o corte branco é um objeto de duas cores");
     assert_eq!(mordida.unidades.len(), 1);
 }
-
-

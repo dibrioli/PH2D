@@ -112,11 +112,13 @@ impl Cobertura {
         let prim = wgpu::PrimitiveState::default();
         let reduz = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("ph2d-mesh-forward reduz"),
-            layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("ph2d-mesh-forward reduz"),
-                bind_group_layouts: &[Some(&bgl)],
-                immediate_size: 0,
-            })),
+            layout: Some(
+                &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("ph2d-mesh-forward reduz"),
+                    bind_group_layouts: &[Some(&bgl)],
+                    immediate_size: 0,
+                }),
+            ),
             vertex: wgpu::VertexState {
                 module: &modulo_reduz,
                 entry_point: Some("vs_reduz"),

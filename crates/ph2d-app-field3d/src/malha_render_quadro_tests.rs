@@ -22,13 +22,21 @@ fn a_projecao_e_a_do_orbit() {
                 cam.half_extent = 1.3;
                 let m = super::camera(&cam, tamanho).view_proj;
                 let screen = Screen::new(tamanho.0, tamanho.1, cam.half_extent);
-                for p in [[0.0, 0.0, 0.0], [0.5, 0.3, -0.4], [-0.7, 0.1, 0.6], [0.2, -0.6, 0.0]] {
+                for p in [
+                    [0.0, 0.0, 0.0],
+                    [0.5, 0.3, -0.4],
+                    [-0.7, 0.1, 0.6],
+                    [0.2, -0.6, 0.0],
+                ] {
                     let Some((px, _)) = cam.project(p, screen) else {
                         continue;
                     };
                     let (q, z) = projeta(&m, p, tamanho);
                     pior = pior.max((q[0] - px[0]).abs()).max((q[1] - px[1]).abs());
-                    assert!((0.0..=1.0).contains(&z), "profundidade fora: {z} ({lens:?})");
+                    assert!(
+                        (0.0..=1.0).contains(&z),
+                        "profundidade fora: {z} ({lens:?})"
+                    );
                 }
             }
         }

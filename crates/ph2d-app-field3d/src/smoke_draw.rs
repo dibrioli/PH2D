@@ -383,14 +383,19 @@ fn viewport_pass(
     // **zero** — senão re-traçaria o mesmo quadro para sempre, queimando um núcleo por nada.
     // ⭐⭐⭐ **O RENDER POR MALHA** (02/10): desenhado na hora, em resolução cheia — nada de fila
     // nem de traçado. Só volta ao traçado sem aparelho (ou com `PH2D_FIELD_RENDER_TRACADO=1`).
-    if smoke.vps[i].shading == crate::shading::Shading::Render && crate::malha_render_estado::ligado() {
+    if smoke.vps[i].shading == crate::shading::Shading::Render
+        && crate::malha_render_estado::ligado()
+    {
         let tem = smoke.vps[i].frame.is_some();
         match crate::malha_render_quadro::desenha(smoke, i, cheio, doc, tem) {
             crate::malha_render_quadro::Feito::SemAparelho => {}
             feito => {
                 if let crate::malha_render_quadro::Feito::Novo(rgba) = feito {
-                    smoke.vps[i].frame =
-                        ph2d_vector::StableImage::from_rgba_premultiplied(Arc::new(rgba), cheio.0, cheio.1);
+                    smoke.vps[i].frame = ph2d_vector::StableImage::from_rgba_premultiplied(
+                        Arc::new(rgba),
+                        cheio.0,
+                        cheio.1,
+                    );
                     // ⚠️ Voltar ao Matcap tem de voltar a traçar: o pedido guardado é o de antes.
                     smoke.vps[i].requested = None;
                 }

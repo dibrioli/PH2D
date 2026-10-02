@@ -185,7 +185,9 @@ fn split(
     for f in faces {
         let part = label[f.0[0] as usize] as usize;
         debug_assert!(
-            f.verts().iter().all(|&v| label[v as usize] as usize == part),
+            f.verts()
+                .iter()
+                .all(|&v| label[v as usize] as usize == part),
             "face partilhada entre duas peças"
         );
         let mut g = f;

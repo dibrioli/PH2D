@@ -28,7 +28,10 @@ fn liga_o_render(sim: &mut ph2d_ecs::SimWorld) {
 #[test]
 fn the_render_chip_turns_the_part_into_objects_and_a_click_picks_a_whole_object() {
     armed_with(&two_balls(), |sim| {
-        assert!(crate::malha_render_estado::com(|_| ()).is_none(), "em Matcap não há estado");
+        assert!(
+            crate::malha_render_estado::com(|_| ()).is_none(),
+            "em Matcap não há estado"
+        );
         liga_o_render(sim);
         let n = crate::malha_render_estado::com(|e| e.objetos.len()).unwrap_or(0);
         assert_eq!(n, 2, "as duas bolas soltas são dois objetos");
@@ -58,7 +61,9 @@ fn the_render_chip_turns_the_part_into_objects_and_a_click_picks_a_whole_object(
 fn the_render_frame_has_the_ball_where_the_camera_puts_it() {
     armed_with(&two_balls(), |sim| {
         liga_o_render(sim);
-        let doc = crate::smoke::with_smoke(|s| s.doc.clone()).flatten().expect("o documento");
+        let doc = crate::smoke::with_smoke(|s| s.doc.clone())
+            .flatten()
+            .expect("o documento");
         let tamanho = (AREA.w.round() as u32, AREA.h.round() as u32);
         let feito = crate::smoke::with_smoke(|s| {
             crate::malha_render_quadro::desenha(s, s.active, tamanho, &doc, false)
@@ -68,11 +73,16 @@ fn the_render_frame_has_the_ball_where_the_camera_puts_it() {
             println!("sem aparelho — saltado ({feito:?})");
             return;
         };
-        let alfa = |p: [f32; 2]| rgba[((p[1] as usize) * tamanho.0 as usize + p[0] as usize) * 4 + 3];
+        let alfa =
+            |p: [f32; 2]| rgba[((p[1] as usize) * tamanho.0 as usize + p[0] as usize) * 4 + 3];
         assert_eq!(alfa(pixel_of([-0.6, 0.0, 0.0])), 255, "a bola da esquerda");
         assert_eq!(alfa(pixel_of([0.6, 0.0, 0.0])), 255, "a bola da direita");
         // Entre as duas, acima do chão: só fundo (ou a sombra, que é preta e meio transparente).
         let meio = pixel_of([0.0, 0.3, 0.0]);
-        assert!(alfa(meio) < 255, "o meio tem de ser fundo: alfa {}", alfa(meio));
+        assert!(
+            alfa(meio) < 255,
+            "o meio tem de ser fundo: alfa {}",
+            alfa(meio)
+        );
     });
 }

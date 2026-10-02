@@ -175,8 +175,13 @@ fn boot() -> Option<Smoke> {
         // é o estado em que ela não existe.
         vps: vec![{
             let mut vp = crate::smoke::state::Viewport::new(v.cam, v.manual);
-            // ⭐ O modo de pintar volta com a vista (`docs/Render3d/05`).
-            vp.shading = v.shading;
+            // ⭐ O modo de pintar volta com a vista (`docs/Render3d/05`). `PH2D_FIELD_SHADING=render`
+            // abre já no Render — para FOTOGRAFAR (a tela virtual não clica); o dono vai pelo chip.
+            vp.shading = if std::env::var("PH2D_FIELD_SHADING").as_deref() == Ok("render") {
+                crate::shading::Shading::Render
+            } else {
+                v.shading
+            };
             vp
         }],
         active: 0,

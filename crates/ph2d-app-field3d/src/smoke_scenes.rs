@@ -557,9 +557,9 @@ pub(crate) mod edge;
 /// ⭐⭐ As cenas das formas por FÓRMULA e de VÉRTICES autorados — ver [`formula`].
 #[path = "smoke_scenes_formula.rs"]
 mod formula;
-/// ⭐⭐⭐ A cena do Render por MALHA (02/10) — ver [`malha`].
-#[path = "smoke_scenes_malha.rs"]
-mod malha;
 /// ⭐ As cenas do lote de formas e da torção — ver [`lote`].
 #[path = "smoke_scenes_lote.rs"]
 mod lote;
+/// ⭐⭐⭐ A cena do Render por MALHA (02/10) — ver [`malha`].
+#[path = "smoke_scenes_malha.rs"]
+mod malha;

@@ -12,7 +12,11 @@ pub(crate) const ECRA: &str = include_str!("ecra.wgsl");
 
 fn f(x: f32) -> String {
     let s = format!("{x:?}");
-    if s.contains('.') || s.contains('e') { s } else { format!("{s}.0") }
+    if s.contains('.') || s.contains('e') {
+        s
+    } else {
+        format!("{s}.0")
+    }
 }
 
 /// ⭐ **O shader dos objetos, do chão e da sombra**, com o céu de quem chama.

@@ -298,7 +298,10 @@ fn as_duas_partes_somam_o_ceu() {
     let mut pior = 0.0f32;
     let mut caixa_acesa = 0usize;
     for i in 0..amostras.len() {
-        for (todo, partes) in [(saida[i * 4], saida[i * 4 + 1]), (saida[i * 4 + 2], saida[i * 4 + 3])] {
+        for (todo, partes) in [
+            (saida[i * 4], saida[i * 4 + 1]),
+            (saida[i * 4 + 2], saida[i * 4 + 3]),
+        ] {
             for c in 0..3 {
                 pior = pior.max((todo[c] - partes[c]).abs() / todo[c].abs().max(1e-3));
             }
@@ -308,6 +311,9 @@ fn as_duas_partes_somam_o_ceu() {
         }
     }
     println!("  partes do céu · pior desvio relativo {pior:.3e} · caixa acesa em {caixa_acesa}");
-    assert!(caixa_acesa > amostras.len() / 4, "a grelha não acende a caixa: {caixa_acesa}");
+    assert!(
+        caixa_acesa > amostras.len() / 4,
+        "a grelha não acende a caixa: {caixa_acesa}"
+    );
     assert!(pior < 1e-5, "as partes não somam o céu: {pior:.3e}");
 }

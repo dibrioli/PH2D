@@ -67,7 +67,10 @@ fn abre(world: &World, e: Entity) -> Option<Vec<Entity>> {
     if !matches!(node.shape, NodeShape::Combine(Op::Union(Blend::Sharp))) {
         return None;
     }
-    if world.get::<FieldMods>(e).is_some_and(|m| !m.stack.is_empty()) {
+    if world
+        .get::<FieldMods>(e)
+        .is_some_and(|m| !m.stack.is_empty())
+    {
         return None;
     }
     let kids: Vec<Entity> = world
@@ -140,7 +143,11 @@ pub struct ObjetoRender {
 
 /// ⭐⭐⭐ **A PEÇA → OS OBJETOS DO RENDER.**
 #[must_use]
-pub fn extrair(world: &World, root: Entity, reg: &ph2d_field_eval::hybrid::Registry) -> Vec<ObjetoRender> {
+pub fn extrair(
+    world: &World,
+    root: Entity,
+    reg: &ph2d_field_eval::hybrid::Registry,
+) -> Vec<ObjetoRender> {
     processa(&colhe(world, root), reg)
 }
 
@@ -167,7 +174,10 @@ impl Entrada {
                 let mut nodes = d.nodes().to_vec();
                 let r = d.root().0 as usize;
                 nodes[r].xform = Xform::IDENTITY;
-                (*e, FieldDoc::new(nodes, d.root()).unwrap_or_else(|_| d.clone()))
+                (
+                    *e,
+                    FieldDoc::new(nodes, d.root()).unwrap_or_else(|_| d.clone()),
+                )
             })
             .collect()
     }
@@ -245,19 +255,20 @@ pub fn processa(e: &Entrada, reg: &ph2d_field_eval::hybrid::Registry) -> Vec<Obj
                             else {
                                 return Vec::new();
                             };
-                            let feitas: Vec<(Vec<usize>, crate::malha_render_tri::MalhaPronta)> = partes
-                                .iter()
-                                .map(|m| {
-                                    crate::malha_render_tri::prepara(
-                                        m,
-                                        &donos,
-                                        &mapa,
-                                        unidade_da_folha,
-                                        (&doc, reg),
-                                        cell,
-                                    )
-                                })
-                                .collect();
+                            let feitas: Vec<(Vec<usize>, crate::malha_render_tri::MalhaPronta)> =
+                                partes
+                                    .iter()
+                                    .map(|m| {
+                                        crate::malha_render_tri::prepara(
+                                            m,
+                                            &donos,
+                                            &mapa,
+                                            unidade_da_folha,
+                                            (&doc, reg),
+                                            cell,
+                                        )
+                                    })
+                                    .collect();
                             let (v, t) = feitas
                                 .iter()
                                 .fold((0, 0), |(v, t), (_, m)| (v + m.virados, t + m.triangulos()));
@@ -275,8 +286,11 @@ pub fn processa(e: &Entrada, reg: &ph2d_field_eval::hybrid::Registry) -> Vec<Obj
                 .collect()
         });
 
-    let todos: Vec<(Vec<usize>, crate::malha_render_tri::MalhaPronta)> =
-        feitos.into_iter().flatten().filter(|(_, m)| !m.indices.is_empty()).collect();
+    let todos: Vec<(Vec<usize>, crate::malha_render_tri::MalhaPronta)> = feitos
+        .into_iter()
+        .flatten()
+        .filter(|(_, m)| !m.indices.is_empty())
+        .collect();
     let mut vezes = vec![0usize; postos.len()];
     for (us, _) in &todos {
         for &u in us {

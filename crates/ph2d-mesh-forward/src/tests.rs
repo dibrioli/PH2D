@@ -50,7 +50,12 @@ fn esfera(r: f32) -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<u32>) {
     let w = gomo + 1;
     for i in 0..anel {
         for j in 0..gomo {
-            let (a, b, c, d) = (i * w + j, i * w + j + 1, (i + 1) * w + j, (i + 1) * w + j + 1);
+            let (a, b, c, d) = (
+                i * w + j,
+                i * w + j + 1,
+                (i + 1) * w + j,
+                (i + 1) * w + j + 1,
+            );
             idx.extend_from_slice(&[a, c, b, b, c, d]);
         }
     }
@@ -131,9 +136,14 @@ fn cabe_no_celular() {
         return;
     };
     assert_eq!(fw.device().features(), wgpu::Features::empty());
-    let objs = [Instancia { malha: 1, modelo: ID }];
+    let objs = [Instancia {
+        malha: 1,
+        modelo: ID,
+    }];
     let mats = [material_cinza()];
-    let img = fw.quadro(&cena(&objs, &mats, camera(1.0, 0.0))).expect("quadro");
+    let img = fw
+        .quadro(&cena(&objs, &mats, camera(1.0, 0.0)))
+        .expect("quadro");
     let px = |x: usize, y: usize| &img[(y * 96 + x) * 4..(y * 96 + x) * 4 + 4];
     assert_eq!(px(48, 48)[3], 255, "o meio é peça");
     assert_eq!(px(2, 2)[3], 0, "o canto é fundo");
@@ -148,12 +158,20 @@ fn quadro_pronto_na_hora() {
     let Some(mut fw) = desenhista_com_esfera() else {
         return;
     };
-    let objs = [Instancia { malha: 1, modelo: ID }];
+    let objs = [Instancia {
+        malha: 1,
+        modelo: ID,
+    }];
     let mats = [material_cinza()];
     let a = fw.quadro(&cena(&objs, &mats, camera(1.0, 0.0))).expect("a");
-    let girado = fw.quadro(&cena(&objs, &mats, camera(1.0, 0.7))).expect("girado");
+    let girado = fw
+        .quadro(&cena(&objs, &mats, camera(1.0, 0.7)))
+        .expect("girado");
     let b = fw.quadro(&cena(&objs, &mats, camera(1.0, 0.0))).expect("b");
-    assert_eq!(a, b, "a mesma câmara depois de um giro tem de dar o mesmo quadro");
+    assert_eq!(
+        a, b,
+        "a mesma câmara depois de um giro tem de dar o mesmo quadro"
+    );
     assert_ne!(a, girado, "o controlo: a câmara girada é outra imagem");
 }
 
@@ -166,12 +184,20 @@ fn nada_compila_ao_editar() {
     };
     let antes = fw.pipelines_compilados();
     let mut mats = vec![material_cinza()];
-    let mut objs = vec![Instancia { malha: 1, modelo: ID }];
+    let mut objs = vec![Instancia {
+        malha: 1,
+        modelo: ID,
+    }];
     let _ = fw.quadro(&cena(&objs, &mats, camera(1.0, 0.0)));
-    let mut vermelho = ph2d_material::OpenPbr::default();
-    vermelho.base_color = [0.9, 0.1, 0.1];
+    let vermelho = ph2d_material::OpenPbr {
+        base_color: [0.9, 0.1, 0.1],
+        ..ph2d_material::OpenPbr::default()
+    };
     let s = vermelho.prepare();
-    mats.push(ph2d_material::wgsl::pack(&s, ph2d_material::wgsl::EnvLobe::of(&s)));
+    mats.push(ph2d_material::wgsl::pack(
+        &s,
+        ph2d_material::wgsl::EnvLobe::of(&s),
+    ));
     let mut movido = ID;
     movido[3][0] = 0.3;
     objs.push(Instancia {
@@ -191,9 +217,14 @@ fn a_cor_e_a_lei_da_casa() {
     let Some(mut fw) = desenhista_com_esfera() else {
         return;
     };
-    let objs = [Instancia { malha: 1, modelo: ID }];
+    let objs = [Instancia {
+        malha: 1,
+        modelo: ID,
+    }];
     let mats = [material_cinza()];
-    let img = fw.quadro(&cena(&objs, &mats, camera(1.0, 0.0))).expect("quadro");
+    let img = fw
+        .quadro(&cena(&objs, &mats, camera(1.0, 0.0)))
+        .expect("quadro");
     let i = (48 * 96 + 48) * 4;
     // No meio da esfera a normal e a vista são `+z`.
     let s = ph2d_material::OpenPbr::default().prepare();
@@ -202,13 +233,20 @@ fn a_cor_e_a_lei_da_casa() {
     for k in 0..3 {
         let esperado = (srgb(d[k]) * 255.0 + 0.5).floor();
         let lido = f32::from(img[i + k]);
-        assert!((lido - esperado).abs() <= 2.0, "canal {k}: placa {lido} contra CPU {esperado}");
+        assert!(
+            (lido - esperado).abs() <= 2.0,
+            "canal {k}: placa {lido} contra CPU {esperado}"
+        );
     }
 }
 
 fn srgb(x: f32) -> f32 {
     let c = x.clamp(0.0, 1.0);
-    if c <= 0.003_130_8 { c * 12.92 } else { 1.055 * c.powf(1.0 / 2.4) - 0.055 }
+    if c <= 0.003_130_8 {
+        c * 12.92
+    } else {
+        1.055 * c.powf(1.0 / 2.4) - 0.055
+    }
 }
 
 /// ⭐ **O shader valida SEM aparelho, com capacidades VAZIAS** — corre em todo lado, CI incluída.
@@ -233,7 +271,15 @@ fn o_shader_valida_sem_capacidades() {
 #[test]
 fn nenhuma_ranhura_fica_por_preencher() {
     let src = crate::fonte(&ambiente());
-    for marca in ["{MATERIAL}", "{AMBIENTE}", "{OLHAR}", "{MAX_LUZES", "{TAB_W}", "{PISO_LUZ}", "{ENV}"] {
+    for marca in [
+        "{MATERIAL}",
+        "{AMBIENTE}",
+        "{OLHAR}",
+        "{MAX_LUZES",
+        "{TAB_W}",
+        "{PISO_LUZ}",
+        "{ENV}",
+    ] {
         assert!(!src.contains(marca), "a ranhura {marca} ficou no shader");
     }
 }
@@ -253,15 +299,41 @@ fn cabe_no_gles() {
     let (p, n, idx) = esfera(0.5);
     let ao = vec![1.0; p.len()];
     let mat = vec![0u32; p.len()];
-    gl.sobe(1, &Malha { posicoes: &p, normais: &n, ao: &ao, material: &mat, indices: &idx });
-    let objs = [Instancia { malha: 1, modelo: ID }];
+    gl.sobe(
+        1,
+        &Malha {
+            posicoes: &p,
+            normais: &n,
+            ao: &ao,
+            material: &mat,
+            indices: &idx,
+        },
+    );
+    let objs = [Instancia {
+        malha: 1,
+        modelo: ID,
+    }];
     let mats = [material_cinza()];
-    let a = gl.quadro(&cena(&objs, &mats, camera(1.0, 0.0))).expect("gl");
-    let b = nativo.quadro(&cena(&objs, &mats, camera(1.0, 0.0))).expect("nativo");
+    let a = gl
+        .quadro(&cena(&objs, &mats, camera(1.0, 0.0)))
+        .expect("gl");
+    let b = nativo
+        .quadro(&cena(&objs, &mats, camera(1.0, 0.0)))
+        .expect("nativo");
     let i = (48 * 96 + 48) * 4;
-    eprintln!("GLES formato {:?}: meio {:?} · nativo {:?}", gl.formato(), &a[i..i + 4], &b[i..i + 4]);
+    eprintln!(
+        "GLES formato {:?}: meio {:?} · nativo {:?}",
+        gl.formato(),
+        &a[i..i + 4],
+        &b[i..i + 4]
+    );
     for k in 0..4 {
-        assert!(a[i + k].abs_diff(b[i + k]) <= 2, "GLES {:?} contra nativo {:?}", &a[i..i + 4], &b[i..i + 4]);
+        assert!(
+            a[i + k].abs_diff(b[i + k]) <= 2,
+            "GLES {:?} contra nativo {:?}",
+            &a[i..i + 4],
+            &b[i..i + 4]
+        );
     }
     assert_eq!(a[3], 0, "o canto é fundo no GLES");
 }
@@ -294,11 +366,23 @@ fn a_sombra_pousa_no_chao() {
     let (p, n, idx) = esfera(0.3);
     let ao = vec![1.0; p.len()];
     let mat = vec![0u32; p.len()];
-    fw.sobe(1, &Malha { posicoes: &p, normais: &n, ao: &ao, material: &mat, indices: &idx });
+    fw.sobe(
+        1,
+        &Malha {
+            posicoes: &p,
+            normais: &n,
+            ao: &ao,
+            material: &mat,
+            indices: &idx,
+        },
+    );
     // A esfera centrada a y = 0,4: o chão a y = 0 fica 0,1 abaixo dela.
     let mut m = ID;
     m[3][1] = 0.4;
-    let objs = [Instancia { malha: 1, modelo: m }];
+    let objs = [Instancia {
+        malha: 1,
+        modelo: m,
+    }];
     let mats = [material_cinza()];
     // A câmara olha de CIMA (−y): x → x, z → −y do ecrã.
     let s = 1.0f32;
@@ -322,6 +406,12 @@ fn a_sombra_pousa_no_chao() {
     let anel = alfa(48 + 18, 48);
     let longe = alfa(2, 2);
     eprintln!("chão: anel alfa {anel} · longe alfa {longe}");
-    assert!(anel > 20, "a sombra não pousou: alfa {anel} ao lado da esfera");
-    assert!(longe < 3, "o chão longe tem de ficar transparente: alfa {longe}");
+    assert!(
+        anel > 20,
+        "a sombra não pousou: alfa {anel} ao lado da esfera"
+    );
+    assert!(
+        longe < 3,
+        "o chão longe tem de ficar transparente: alfa {longe}"
+    );
 }

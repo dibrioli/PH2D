@@ -89,31 +89,52 @@ pub fn camera(cam: &Orbit, (w, h): (u32, u32)) -> Camera {
     let he = cam.half_extent.max(1.0e-6);
     let (sx, sy) = (2.0 * meio / (he * w as f32), 2.0 * meio / (he * h as f32));
     // Linhas da matriz (recorte = L · [p, 1]); depois transpostas para colunas.
-    let (lx, ly, lz, lw): ([f32; 4], [f32; 4], [f32; 4], [f32; 4]) = match (cam.lens, cam.eye_distance()) {
-        (Lens::Perspective { .. }, Some(d)) => {
-            let lw = [-fwd[0], -fwd[1], -fwd[2], d + dot(t, fwd)];
-            let (n, f) = (d * 1.0e-3, d + 200.0 * he);
-            let a = f / (f - n);
-            (
-                [sx * d * right[0], sx * d * right[1], sx * d * right[2], -sx * d * dot(t, right)],
-                [sy * d * up[0], sy * d * up[1], sy * d * up[2], -sy * d * dot(t, up)],
-                [a * lw[0], a * lw[1], a * lw[2], a * lw[3] - a * n],
-                lw,
-            )
-        }
-        _ => {
-            // Ortográfica: o raio parte de `alvo + frente·ORTHO_START`; a profundidade é a distância
-            // a esse começo, sobre um alcance largo.
-            let start = ph2d_field_render::ORTHO_START;
-            let f = 2.0 * start + 200.0 * he;
-            (
-                [sx * right[0], sx * right[1], sx * right[2], -sx * dot(t, right)],
-                [sy * up[0], sy * up[1], sy * up[2], -sy * dot(t, up)],
-                [-fwd[0] / f, -fwd[1] / f, -fwd[2] / f, (start + dot(t, fwd)) / f],
-                [0.0, 0.0, 0.0, 1.0],
-            )
-        }
-    };
+    let (lx, ly, lz, lw): ([f32; 4], [f32; 4], [f32; 4], [f32; 4]) =
+        match (cam.lens, cam.eye_distance()) {
+            (Lens::Perspective { .. }, Some(d)) => {
+                let lw = [-fwd[0], -fwd[1], -fwd[2], d + dot(t, fwd)];
+                let (n, f) = (d * 1.0e-3, d + 200.0 * he);
+                let a = f / (f - n);
+                (
+                    [
+                        sx * d * right[0],
+                        sx * d * right[1],
+                        sx * d * right[2],
+                        -sx * d * dot(t, right),
+                    ],
+                    [
+                        sy * d * up[0],
+                        sy * d * up[1],
+                        sy * d * up[2],
+                        -sy * d * dot(t, up),
+                    ],
+                    [a * lw[0], a * lw[1], a * lw[2], a * lw[3] - a * n],
+                    lw,
+                )
+            }
+            _ => {
+                // Ortográfica: o raio parte de `alvo + frente·ORTHO_START`; a profundidade é a distância
+                // a esse começo, sobre um alcance largo.
+                let start = ph2d_field_render::ORTHO_START;
+                let f = 2.0 * start + 200.0 * he;
+                (
+                    [
+                        sx * right[0],
+                        sx * right[1],
+                        sx * right[2],
+                        -sx * dot(t, right),
+                    ],
+                    [sy * up[0], sy * up[1], sy * up[2], -sy * dot(t, up)],
+                    [
+                        -fwd[0] / f,
+                        -fwd[1] / f,
+                        -fwd[2] / f,
+                        (start + dot(t, fwd)) / f,
+                    ],
+                    [0.0, 0.0, 0.0, 1.0],
+                )
+            }
+        };
     let col = |k: usize| [lx[k], ly[k], lz[k], lw[k]];
     Camera {
         view_proj: [col(0), col(1), col(2), col(3)],
@@ -146,7 +167,12 @@ pub(crate) fn desenha(
     tem_quadro: bool,
 ) -> Feito {
     let Some((geracao, objetos, modelos, esperando)) = crate::malha_render_estado::com(|e| {
-        (e.geracao, Arc::clone(&e.objetos), e.modelos.clone(), e.esperando())
+        (
+            e.geracao,
+            Arc::clone(&e.objetos),
+            e.modelos.clone(),
+            e.esperando(),
+        )
     }) else {
         return Feito::Espera;
     };

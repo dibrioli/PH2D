@@ -193,7 +193,11 @@ mod band_tests {
             FieldDoc::new(vec![no], NodeId(0)).expect("nó"),
             FieldDoc::new(vec![caixa.clone()], NodeId(0)).expect("caixa"),
             FieldDoc::new(
-                vec![caixa, bola, combine(Op::Union(Blend::Exact { radius: 0.1 }), &[0, 1])],
+                vec![
+                    caixa,
+                    bola,
+                    combine(Op::Union(Blend::Exact { radius: 0.1 }), &[0, 1]),
+                ],
                 NodeId(2),
             )
             .expect("suave"),
@@ -203,7 +207,10 @@ mod band_tests {
             let cheia = crate::extract::sweep(doc, &reg, 7, None, 4, false).expect("cheia");
             let faixa = crate::extract::sweep(doc, &reg, 7, None, 4, true).expect("faixa");
             assert!(!cheia.1.is_empty(), "peça {i} sem faces");
-            assert_eq!(cheia.0, faixa.0, "peça {i}: os vértices mudaram com a faixa");
+            assert_eq!(
+                cheia.0, faixa.0,
+                "peça {i}: os vértices mudaram com a faixa"
+            );
             assert_eq!(cheia.1, faixa.1, "peça {i}: as faces mudaram com a faixa");
             // O controlo: a faixa existe e deixa blocos de fora.
             let mut h = crate::hybrid::Hybrid::new(doc, &reg);
@@ -211,7 +218,10 @@ mod band_tests {
             let half = f64::from(ball.radius) * 1.05;
             let lo = ball.center.map(|c| f64::from(c) - half);
             let f = crate::extract_band::Faixa::nova(&mut h, doc, (lo, 2.0 * half / 128.0, 129));
-            assert!(f.is_some_and(|f| f.inativos() > 0), "peça {i}: a faixa não saltou nada");
+            assert!(
+                f.is_some_and(|f| f.inativos() > 0),
+                "peça {i}: a faixa não saltou nada"
+            );
         }
     }
 }

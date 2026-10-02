@@ -120,14 +120,10 @@ ignore = [
     # only at proc-macro expansion (no runtime risk). Accepted
     # until the rapier upstream chain migrates.
     "RUSTSEC-2024-0436",
-    # `jxl-grid` OOB write via integer overflow (RUSTSEC-2026-0151) is
-    # 32-bit-ONLY. PH2D ships exclusively 64-bit (Mac ARM64, desktop x64,
-    # iPad ARM64) — the overflow path is unreachable on every target.
-    # Pulled transitively by jxl-oxide (JPEG-XL decode in ph2d-imageio-jxl).
-    # Ignored until jxl-oxide ships a patched jxl-grid; revisit if PH2D ever
-    # adds a 32-bit target. (Solo Coord 2026-05-29 — flagged to Enio;
-    # bump-vs-ignore is his to override.)
-    "RUSTSEC-2026-0151",
+    # RETIRADA 2026-10-02 (integração da rodada 04): RUSTSEC-2026-0151, o
+    # `jxl-grid` OOB write (32-bit-only). O `cargo deny` passou a dizer
+    # `advisory-not-detected` — o grafo já traz o `jxl-grid` 0.6.2, fora da faixa
+    # afectada — e a lei escrita mais abaixo manda apagar nesse dia.
     # `ttf-parser` unmaintained (RUSTSEC-2026-0192) — author archived it,
     # recommends `skrifa` (already in our tree via vello/fontations). No CVE;
     # informational. Pulled transitively ONLY on Linux/Wayland:
@@ -166,6 +162,16 @@ ignore = [
     # far only asserted it. Revisit when the audio-ml feature ships ON by default
     # or when deep_filter upstream moves to a tract >= 0.21.16.
     "RUSTSEC-2026-0217",
+    # `anymap2` unmaintained (RUSTSEC-2026-0319, published 2026-10-02) — no CVE,
+    # «No safe upgrade is available». Pulled ONLY as a BUILD dependency of the W7
+    # ML denoise, the same chain as RUSTSEC-2026-0217 above: anymap2 <- liquid-core
+    # <- liquid <- (build) tract-linalg <- tract-core <- deep_filter (VENDORED,
+    # ADR-0123) <- ph2d-audio-ml, `optional = true`, feature `audio-ml` OFF by
+    # default. `liquid` is a template engine run at build time over in-repo kernels;
+    # nothing reaches it at runtime. Revisit with the tract bump that RUSTSEC-2026-0217
+    # already waits for. (Integração rodada 04, 2026-10-02 — advisory landed the
+    # day of the ship.)
+    "RUSTSEC-2026-0319",
 ]
 
 # ----------------------------------------------------------------------------

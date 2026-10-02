@@ -31,6 +31,7 @@ pub(crate) mod bounds_mods;
 pub mod device;
 pub mod extract;
 mod extract_parts;
+mod extract_planes;
 pub mod hybrid;
 pub mod ops;
 /// ⭐ A família da SETA — ver [`ops_arrows`].

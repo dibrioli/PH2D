@@ -29,8 +29,11 @@ pub fn extract_parts(
     reg: &crate::hybrid::Registry,
     depth: u8,
 ) -> Result<Vec<Mesh>, MeshError> {
-    let mut labeler = Labeler::new((1usize << depth) + 1);
-    let (positions, faces) = crate::extract::sweep(doc, reg, depth, Some(&mut labeler))?;
+    let m = (1usize << depth) + 1;
+    let mut labeler = Labeler::new(m);
+    let threads = crate::extract_planes::threads_for(m);
+    let (positions, faces) =
+        crate::extract::sweep(doc, reg, depth, Some(&mut labeler), threads)?;
     split(positions, faces, labeler)
 }
 

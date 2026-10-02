@@ -237,6 +237,19 @@ fn leaves(
     world: &bevy_ecs::world::World,
     root: bevy_ecs::entity::Entity,
 ) -> (Vec<FieldMaterial>, Vec<FieldDoc>) {
+    folhas(world, root)
+        .into_iter()
+        .map(|(_, m, d)| (m, d))
+        .unzip()
+}
+
+/// ⭐ **As folhas da peça, com a ENTIDADE de cada uma** — a ordem é a do índice de material e a das
+/// [`ph2d_field_eval::owners::Owners`]; o Render por malha precisa da entidade para saber de que
+/// objeto é cada triângulo ([`crate::malha_render`]). Uma porta só para a ordem das folhas.
+pub(crate) fn folhas(
+    world: &bevy_ecs::world::World,
+    root: bevy_ecs::entity::Entity,
+) -> Vec<(bevy_ecs::entity::Entity, FieldMaterial, FieldDoc)> {
     ph2d_field_ecs::walk(world, root)
         .into_iter()
         .filter_map(|(e, _)| {
@@ -258,11 +271,12 @@ fn leaves(
             .ok()?;
             // ⚠️ **A ausência do componente é o material de OMISSÃO** — ver [`FieldMaterial`].
             Some((
+                e,
                 world.get::<FieldMaterial>(e).copied().unwrap_or_default(),
                 placed,
             ))
         })
-        .unzip()
+        .collect()
 }
 
 impl Table {

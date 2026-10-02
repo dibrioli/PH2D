@@ -341,7 +341,8 @@ pub fn extract(
     reg: &crate::hybrid::Registry,
     depth: u8,
 ) -> Result<Mesh, MeshError> {
-    let (positions, faces) = sweep(doc, reg, depth, None)?;
+    let threads = crate::extract_planes::threads_for((1usize << depth) + 1);
+    let (positions, faces) = sweep(doc, reg, depth, None, threads)?;
     Mesh::from_parts(positions, faces).map_err(|e| MeshError::Rejected(format!("{e:?}")))
 }
 
@@ -354,6 +355,7 @@ pub(crate) fn sweep(
     reg: &crate::hybrid::Registry,
     depth: u8,
     mut labeler: Option<&mut crate::extract_parts::Labeler>,
+    threads: usize,
 ) -> Result<(Vec<[f32; 3]>, Vec<Face>), MeshError> {
     let mut field = crate::hybrid::Hybrid::new(doc, reg);
     // ⭐ A caixa da grade sai da PEÇA (W33) — ver `Grid::new`.
@@ -362,27 +364,11 @@ pub(crate) fn sweep(
         crate::bounds::bounding_ball(doc, reg).unwrap_or(crate::bounds::Ball::new([0.0; 3], 1.0)),
     );
     let m = grid.samples();
+    // ⭐ As camadas chegam avaliadas em paralelo, pela ordem ([`crate::extract_planes`]).
+    let mut planes = crate::extract_planes::Planes::new(doc, reg, (grid.lo, grid.step, m), threads);
 
-    let (mut xs, mut ys, mut zs) = (Vec::new(), Vec::new(), Vec::new());
-    let plane_coords = |k: usize, xs: &mut Vec<f32>, ys: &mut Vec<f32>, zs: &mut Vec<f32>| {
-        xs.clear();
-        ys.clear();
-        zs.clear();
-        let z = grid.coord(2, k) as f32;
-        for j in 0..m {
-            let y = grid.coord(1, j) as f32;
-            for i in 0..m {
-                xs.push(grid.coord(0, i) as f32);
-                ys.push(y);
-                zs.push(z);
-            }
-        }
-    };
-
-    let mut plane_lo = Vec::new();
-    let mut plane_hi = Vec::new();
-    plane_coords(0, &mut xs, &mut ys, &mut zs);
-    plane_lo.extend_from_slice(field.eval(&xs, &ys, &zs)?);
+    let mut plane_lo = planes.next()?;
+    let mut plane_hi;
     if let Some(l) = labeler.as_deref_mut() {
         l.plane(&plane_lo, true);
     }
@@ -400,9 +386,7 @@ pub(crate) fn sweep(
     let mut grads: Vec<[f32; 3]> = Vec::new();
 
     for k in 0..grid.n {
-        plane_coords(k + 1, &mut xs, &mut ys, &mut zs);
-        plane_hi.clear();
-        plane_hi.extend_from_slice(field.eval(&xs, &ys, &zs)?);
+        plane_hi = planes.next()?;
         if let Some(l) = labeler.as_deref_mut() {
             l.plane(&plane_hi, false);
         }

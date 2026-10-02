@@ -51,7 +51,7 @@ fn palco((g1, g2): (f32, f32)) -> Palco {
     dobra_duas(&mut sim, raiz.expect("raiz"), g1, g2);
     let crua = ph2d_skeleton_live::skin_image::skinned_mesh_of(&sim, e).expect("malha");
     let m = ph2d_skeleton_live::skin_bake_cache::assada_da_arte(&sim, e, &crua).unwrap_or(crua);
-    let sprite = sim.world().get::<Sprite>(e).expect("sprite").clone();
+    let sprite = *sim.world().get::<Sprite>(e).expect("sprite");
     let anchor = sprite.resolve_anchor(PPM);
     let rect = [
         0.0,

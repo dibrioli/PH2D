@@ -189,11 +189,13 @@
 | [0173](0173-as-passagens-da-aquarela-correm-na-equipa-e-o-rascunho-vive-entre-quadros.md) | Accepted | As passagens da aquarela correm na equipa de threads, e o rascunho vive entre quadros |
 | [0174](0174-o-produto-compila-para-x86-64-v2.md) | Accepted | O produto compila para `x86-64-v2` |
 | [0175](0175-o-deposito-do-dab-do-wet-paint-corre-em-linhas-disjuntas.md) | Accepted | O depósito de um dab do Wet Paint corre em linhas disjuntas, e o bico do transfer também |
+| [0176](0176-o-render-do-modelador-e-uma-malha-de-jogo.md) | Aceito (2026-10-02, ordem do dono). | O modo Render do modelador desenha MALHAS com luz de jogo; o campo continua a FONTE |
 | [0177](0177-as-camadas-do-painter-juntam-se-em-tons-de-ecra.md) | Accepted | As camadas do Painter juntam-se em tons de ecrã (sRGB codificado), não em luz |
+| [0178](0178-os-mosaicos-da-malha-andavel-constroem-se-em-paralelo.md) | Accepted (decisão técnica delegada — `feedback_architecture_decisions_are_delegated… | Os mosaicos da malha andável constroem-se em paralelo: exceção `rayon` na `ph2d-navmesh` |
 
 ---
 
-**181 ADRs** · **59** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
+**183 ADRs** · **59** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
 
 ⚠️ **⛔ diz «o ADR NNNN alega supersedê-lo»**, e a alegação pode ser PARCIAL: o ADR-0085
 supersede uma *regra* dentro do ADR-0049, não o ADR inteiro. O índice reporta a alegação

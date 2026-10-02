@@ -63,7 +63,8 @@ fn moving_does_not_extract_and_the_check_does_not_flicker_and_touching_fuses() {
     let (mut sim, us) = duas_bolas();
     ate_assentar(&mut sim, false);
     assert_eq!(n_objetos(), 2);
-    assert_eq!(geracao(), 1);
+    let g0 = geracao();
+    assert!(g0 > 0);
 
     // 1) Durante o gesto: nada se extrai, e a matriz do objeto movido leva o deslocamento.
     ph2d_field_ecs::translate_world(sim.world_mut(), us[0], [0.0, 0.25, 0.0]);
@@ -88,7 +89,7 @@ fn moving_does_not_extract_and_the_check_does_not_flicker_and_touching_fuses() {
     ate_assentar(&mut sim, false);
     assert_eq!(
         geracao(),
-        1,
+        g0,
         "a verificação trocou malhas iguais — o quadro piscaria"
     );
 
@@ -96,7 +97,7 @@ fn moving_does_not_extract_and_the_check_does_not_flicker_and_touching_fuses() {
     ph2d_field_ecs::translate_world(sim.world_mut(), us[0], [1.3, -0.25, 0.0]);
     ate_assentar(&mut sim, false);
     assert_eq!(n_objetos(), 1, "duas bolas sobrepostas são UM objeto");
-    assert_eq!(geracao(), 2);
+    assert!(geracao() > g0, "a fusão é uma geração nova");
 }
 
 #[test]
@@ -106,4 +107,27 @@ fn leaving_the_render_drops_the_state() {
     assert!(super::com(|_| ()).is_some());
     super::sync(&mut sim, false, false);
     assert!(super::com(|_| ()).is_none());
+}
+
+/// ⛔⛔ **Sair do Render, editar e voltar mostra a forma NOVA** (report do dono, 02/10): o estado
+/// recomeçava a geração do zero ao sair, e o desenhista (global) via «geração 1 = geração 1 já
+/// subida» e mostrava as malhas VELHAS. A geração tem de ser única no processo.
+#[test]
+fn leaving_and_coming_back_never_reuses_a_generation() {
+    let (mut sim, us) = duas_bolas();
+    ate_assentar(&mut sim, false);
+    let antes = geracao();
+    assert!(antes > 0);
+    super::sync(&mut sim, false, false); // sai do Render
+    // Uma edição de FORMA, como a do painel: a bola encolhe.
+    sim.world_mut()
+        .get_mut::<ph2d_field_ecs::FieldNode>(us[0])
+        .expect("a folha")
+        .shape = ph2d_field::NodeShape::Leaf(Primitive::Sphere { radius: 0.2 });
+    ate_assentar(&mut sim, false); // volta
+    let depois = geracao();
+    assert_ne!(
+        depois, antes,
+        "a geração repetiu-se: o desenhista mostraria as malhas velhas"
+    );
 }

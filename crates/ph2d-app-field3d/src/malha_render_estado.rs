@@ -47,6 +47,12 @@ pub struct Estado {
     raiz: Option<Entity>,
 }
 
+/// ⭐ **As gerações são únicas no PROCESSO**, não no estado: o desenhista é global e guarda a geração
+/// que subiu. ⛔ Medido (report do dono, 02/10): com o contador no estado, sair do Render (que apaga
+/// o estado), editar no Matcap e voltar dava de novo a geração `1` — igual à já subida — e o quadro
+/// mostrava as malhas VELHAS. Gate `leaving_and_coming_back_never_reuses_a_generation`.
+static GERACOES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 thread_local! {
     static ESTADO: RefCell<Option<Estado>> = const { RefCell::new(None) };
     /// A seleção travada que já foi ANUNCIADA (e porquê).
@@ -215,7 +221,7 @@ impl Estado {
         if forma_nova || particao(&objs) != particao(&self.objetos) || self.algum_se_partiu(&poses)
         {
             self.objetos = Arc::new(objs);
-            self.geracao += 1;
+            self.geracao = GERACOES.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
             self.chave = Some(chave);
         }
         self.verificadas = poses;

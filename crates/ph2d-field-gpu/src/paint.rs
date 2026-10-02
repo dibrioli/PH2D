@@ -271,6 +271,9 @@ const FITA_INERTE: &str = "fn field(p: vec3<f32>) -> f32 { return 1.0; }\n";
 mod paint_fonte;
 use paint_fonte::fonte;
 
+#[path = "paint_entradas.rs"]
+mod paint_entradas;
+
 /// ⭐⭐⭐ **A imagem, pintada onde os dados estão.**
 // O dispositivo, a fila, o cache, o pedido, a lei do dono, os alvos da marcha, a tela, o TECTO de
 // bordas e o encoder da marcha — coisas independentes, e uma struct só as renomearia.
@@ -326,23 +329,13 @@ pub(crate) fn pinta(
         consts: fita.consts.clone(),
     };
     let fonte = fonte(pintor, lei_do_dono, leis);
-    // ⭐⭐⭐⭐ Ver [`PaintSetup::ricochete_sem_esperar`] — os QUATRO pipelines que o ricochete pede,
-    // com a fita da peça.
-    let ao_rays = if pintor.ricochete_sem_esperar
-        && pintor.ao_rays > 0
-        && !["pinta", "pinta_ricochete", "assa_sondas", "borra_ricochete"]
-            .iter()
-            .all(|e| cache.tem_entrada(&fonte, fita, e))
-    {
-        0
-    } else {
-        pintor.ao_rays
-    };
-    let fita = if pintor.le_o_campo || ao_rays > 0 {
-        fita
-    } else {
-        &inerte
-    };
+    // ⭐⭐⭐⭐ **Que texto cada entrada leva, e a compilação delas em LOTE** — ver o irmão
+    // [`paint_entradas`]. ⚠️ Ele decide também se o ricochete corre neste quadro
+    // ([`PaintSetup::ricochete_sem_esperar`]), porque a resposta depende de que texto se pede.
+    let fitas = paint_entradas::escolhe(
+        cache, device, &fonte, fita, &inerte, pintor, bordas, &layout,
+    );
+    let (fita, fita_das_sondas, ao_rays) = (fitas.pintura, fitas.sondas, fitas.ao_rays);
     // ⚠️ **A fita é a MESMA da marcha, e tem de o ser:** o `k` que o grupo `0` liga já traz as
     // constantes dela, e um texto gerado de outra fita indexaria aquele armazém por outra
     // aritmética. *Era a fita VAZIA enquanto o pintor não marchava.*
@@ -359,7 +352,13 @@ pub(crate) fn pinta(
     // ⭐⭐⭐ As SONDAS assam-se antes do ricochete as ler (`ph2d_field_render::probes`).
     let p_assa = (ao_rays > 0).then(|| {
         cache
-            .entry_with_layout(device, &fonte, fita, "assa_sondas", Some(&layout))
+            .entry_with_layout(
+                device,
+                &fonte,
+                fita_das_sondas,
+                "assa_sondas",
+                Some(&layout),
+            )
             .clone()
     });
     // ⭐ A PRIMEIRA das duas passagens de borrão — a segunda é a recolha que o pintor faz ao ler.

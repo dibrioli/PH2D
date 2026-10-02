@@ -469,6 +469,84 @@ DEPOIS do `ok` — na saída do processo, ao largar a placa —, e o `os_gestos_
 esta wave, morre igual ⇒ pré-existente. Corra-os com
 `cargo test --release -p ph2d-app-field3d --lib ceu_tempo -- --ignored --test-threads=1`.
 
+## §11 — ⭐⭐⭐⭐ *«ao acrescentar um box ele demora uns 5 segundos para aparecer e a resolução cai ao rotacionar … tb 5 seg para mudar de cor»* (report do dono, 2026-10-01)
+
+### §11.1 — O mecanismo (medido pelo `PH2D_PIPELINE_LOG`, não lido)
+
+**Os 5 s eram COMPILAÇÃO do driver, nunca desenho.** O cache de pipelines tem por chave o TEXTO do
+shader, e o texto do PINTOR levava duas coisas que mudam com a peça:
+
+1. **a lei do dono COMPILADA** — uma fita por folha (`dono_folha_0..N`) mais um `switch` ⇒ toda forma
+   nova, e a PRIMEIRA cor diferente (a passagem do stub de uma folha para a lei inteira), era um texto
+   novo: `pinta` `0,5`–`1,2 s` + `pinta_bordas` `1,3`–`3,8 s` no driver;
+2. **a fita da peça em TODAS as entradas** assim que o ricochete ligava (o quadro assente) — mas o
+   censo `censo_de_quem_toca_a_fita` já dizia que só o `assa_sondas` a marcha: o `pinta`/`pinta_bordas`
+   só a leem pela curvatura.
+
+E a compilação **contaminava o laço da resolução**: o quadro que compila mede `2`–`5 s`, e o primeiro
+assente depois de ligar o Render (o que compila o pintor) SEMEIA a medição do movimento ⇒ o primeiro
+giro saía no tamanho mais grosso — os reports *«a resolução cai»* e *«o primeiro movimento tem um
+delay»* têm esta metade.
+
+### §11.2 — A cura: quatro metades
+
+1. **A lei do dono INTERPRETADA** (`ph2d_field_eval::owners::wgsl`): cada folha vai em bytecode para o
+   fim do `k` (`interp::em_floats` — inteiros pequenos escritos como VALOR, nunca bits: um `u32` lido
+   por `bitcast` de um `array<f32>` pode ser um subnormal esvaziado), e o texto
+   (`texto_interpretado`) é UM para toda peça, com ou sem donos (`sem_donos`). ⚠️ **O contrato do
+   bloco:** a origem dele é o ÚLTIMO elemento do `k` (o `arrayLength` encontra-a) ⇒ ele tem de ser o
+   último a entrar no vector (`trace_marcha_com`, e o arnês de paridade, que passa só o bloco).
+   Tecto `REGISTOS_DO_INTERPRETADOR = 80` (o rascunho por thread; o catálogo inteiro cabe, o pior é a
+   engrenagem com `75`, gate `toda_forma_do_catalogo_cabe_no_interpretador`); uma folha acima cai na
+   lei COMPILADA (`Owners::compilada`), certa e lenta de compilar.
+2. **A fita por ENTRADA** (`ph2d_field_gpu::paint_entradas`, corte do `paint.rs` por tecto de LOC):
+   só o `assa_sondas` leva a fita real; o resto leva a inerte, cujo texto não muda.
+3. **A compilação em PARALELO** (`FieldPipelines::precompila`): os kernels que um quadro vai pedir
+   compilam-se juntos — os módulos uma vez por texto, os pipelines cada um na sua thread. A marcha
+   (`6` entradas) `~270 → 56 ms`; os seis do céu no tempo juntos (a forma nova pedia os de GRAVAR no
+   1.º quadro e os de ACUMULAR no 2.º — duas paragens seguidas, a segunda já com a mão a girar).
+4. **O quadro diz quanto foi COMPILAÇÃO** (`FieldPipelines::compilado_ms` → `Pintado::compilado_ms`) e
+   a thread de desenho desconta-o da medição que decide o tamanho seguinte.
+
+⚠️ **A chave das sondas** passou a levar os NÚMEROS da lei (o texto já não distingue peças). Hoje é
+redundante com a fita e as gémeas foscas — fica como precaução, e a mutação que o tira é NOMEADA.
+
+### §11.3 — O relógio (`--release`, `diag_o_preco_de_uma_forma_nova`, carga `~4`)
+
+| passo | antes | depois |
+|---|---:|---:|
+| 1.ª entrada no Render da sessão (pintor por compilar) | `2 485 ms` | `1 560 ms` (uma vez; o driver guarda-o em disco) |
+| 4.ª caixa, quadro de movimento | `~2 300`–`5 000 ms` | **`193 ms`** |
+| 4.ª caixa, 2.º quadro de movimento | (o céu ACUMULA por compilar) | **`3,4 ms`** |
+| 4.ª caixa, quadro assente (só o `assa_sondas`) | `+2–4 s` | **`158 ms`** |
+| arrasto (mesma estrutura) | `13 ms` | `13 ms` |
+| a primeira cor diferente | `~2,5–5 s` | **`0`** compilações |
+
+⭐ **E o preço por quadro da lei interpretada é ruído:** `1,4`–`4,5 ms` a `1280×720` com e sem ela,
+de 2 a 8 folhas (`diag_o_preco_do_dono_por_quadro`); construí-la na CPU `0,03`–`0,2 ms`
+(`diag_o_preco_de_construir_os_donos`) — o «tape compilado por folha a cada arrasto» do §10.3 era a
+COMPILAÇÃO, e ela saiu.
+
+### §11.4 — Gates e prova
+
+- `o_texto_da_lei_do_dono_nao_depende_da_peca` (CPU, `ph2d-field-eval`) — duas peças e a sem donos
+  dão o MESMO texto, os números diferem, e o contrato da origem no fim.
+- `toda_forma_do_catalogo_cabe_no_interpretador` (CPU) — com piso de população.
+- `uma_forma_nova_recompila_as_sondas_e_nao_o_pintor` (GPU) — CONTROLO: o `assa_sondas` TEM de crescer.
+- `a_primeira_cor_diferente_nao_compila_nada` (GPU) — CONTROLO: a imagem TEM de mudar.
+- `o_quadro_diz_quanto_foi_compilacao` (GPU) — as duas metades (`> 0` ao compilar, `= 0` repetido).
+- `o_laco_da_resolucao_desconta_a_compilacao` (censo, os dois quadros da placa).
+- A paridade `a_lei_do_dono_do_dispositivo_e_a_da_cpu` passou a medir a lei INTERPRETADA (pior
+  `|Δt| 2,1e-6`, `1 041` decididas).
+- Prova de mutação: [`lei_do_dono_interpretada_mutacoes.sh`](../ferramentas/lei_do_dono_interpretada_mutacoes.sh)
+  (com a corrida LIMPA como 4.º controlo e `MUTA_SO_ANCORAS=1` como pré-voo). ⚠️ As duas
+  subtracções do laço são **texto idêntico** — a agulha da L6 leva o comentário que só o ramo do
+  material tem, senão casaria duas vezes. **PLACAR: `5` de `5` mortas** (L1 no gate do texto · L2 na forma nova · L3 na 1.ª cor · L4 no quadro que diz a compilação · L6 no censo do laço), a **L5** (só prosa) **sobrevive** como deve, e a corrida limpa leu `1` + `3` testes verdes.
+- ⛔ **Sobreviventes NOMEADAS, sem mutação de propósito:** tirar a fita-e-consts da chave das
+  sondas (redundante hoje com a fita e as gémeas foscas — fica como precaução) e desligar o
+  `precompila` (só relógio: a imagem e a contagem de compilações são as mesmas, logo nenhuma régua
+  de valor o vê — o número está na tabela do §11.3).
+
 ## §6 — Aberto
 
 - ⏳ **O nó em TODO quadro** (§7.5): o que sobra é a marcha primária (`centro`, `2,7`–`4,8 ms`), a
@@ -482,12 +560,11 @@ esta wave, morre igual ⇒ pré-existente. Corra-os com
 - ⏳ Os três primeiros quadros de um gesto de perto (`23`–`52 ms`, §8.4): o laço parte sem medição.
 - ⏳ A cauda a girar a `0,25` de perto (`17,9`–`25,8 ms` nos últimos quadros, §8.4) — por medir se é
   a peça a encher o ecrã ou o laço a subir de resolução cedo demais.
-- ⏳ **Reports do dono de 2026-10-01 ainda abertos:** *«ao colocar em render, o primeiro movimento de
-  rotação ainda apresenta um delay»* (suspeita: os passes do MOVIMENTO só compilam no 1.º quadro de
-  movimento — a sonda aquece-os com DOIS quadros `com` por isso) · *«ao acrescentar novos objetos o
-  render fica lento»* e *«com 3 objetos rotacionar faz cair a resolução»* (o custo do quadro sobe por
-  objecto; com materiais distintos a lei do dono compila uma fita por folha — §10.3) · a outra metade
-  do arrasto lento (§10.3).
+- ⏳ **O que sobra do §11:** a 1.ª entrada no Render de uma SESSÃO compila o pintor (`~1,3–1,6 s`,
+  uma vez — e o driver guarda-o em disco, logo a sessão seguinte paga milissegundos) · uma forma NOVA
+  ainda custa `~190 ms` de marcha + `~160 ms` de sondas (o kernel mais lento de cada lote manda) ·
+  compilar FORA do cadeado do traçador (o quadro de movimento não esperaria por um assente que
+  compila) é a cura de fundo e é wave própria.
 - ⏳ **Pergunta de RUMO devolvida ao dono** (*«tem certeza que esse sistema de modelagem pode
   funcionar em uma game engine?»*): o campo como FONTE de edição, e o jogo/editor a desenhar uma
   MALHA gerada dele — a recomendação está escrita na conversa; a decisão é dele.

@@ -541,3 +541,7 @@ mod grade;
 /// ⏱️⭐⭐⭐⭐ **Onde os passos da marcha acontecem** — ver o cabeçalho do [`perto`].
 #[path = "device_probes_w9_perto.rs"]
 mod perto;
+
+/// ⏱️⭐⭐⭐⭐ **O preço de uma forma nova no Render** — ver o cabeçalho do [`forma_nova`].
+#[path = "device_probes_w9_forma_nova.rs"]
+mod forma_nova;

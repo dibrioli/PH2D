@@ -65,9 +65,9 @@ impl Field {
         self.tape.to_wgsl()
     }
 
-    /// ⏱️ A fita em bytecode para o interpretador — ver [`crate::interp`]. A última palavra é o
-    /// registo da raiz (o interpretador lê-a no fim).
-    #[doc(hidden)]
+    /// ⭐ A fita em bytecode para o interpretador — ver [`crate::interp`]. A última palavra é o
+    /// registo da raiz (o interpretador lê-a no fim). ⚠️ Desde 2026-10-01 ela é PRODUTO: é a forma
+    /// em que cada folha viaja para a lei do dono interpretada ([`crate::owners::wgsl`]).
     #[must_use]
     pub fn tape_bytecode(&self) -> Option<crate::interp::Bytecode> {
         let mut b = crate::interp::codifica(self.tape.code()?, self.tape.root())?;

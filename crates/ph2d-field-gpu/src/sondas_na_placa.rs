@@ -36,7 +36,10 @@ pub(crate) struct ChaveDasSondas {
     longe: Option<crate::longe::Longe>,
     radiancia: Vec<u32>,
     foscas: Vec<u32>,
-    dono: Option<String>,
+    /// ⚠️ **O texto E os números da lei do dono.** Desde 2026-10-01 o texto é o MESMO para toda
+    /// peça (a lei interpretada), logo é nos números que mora *«de que cor é cada folha»*: só o
+    /// texto deixaria as sondas assadas com os donos de outra peça.
+    dono: Option<(String, Vec<u32>)>,
 }
 
 impl ChaveDasSondas {
@@ -84,7 +87,7 @@ impl ChaveDasSondas {
                 .flat_map(|r| bits(r))
                 .collect(),
             foscas: bits(pintor.matte),
-            dono: lei_do_dono.map(|l| l.source.clone()),
+            dono: lei_do_dono.map(|l| (l.source.clone(), bits(&l.consts))),
         })
     }
 }

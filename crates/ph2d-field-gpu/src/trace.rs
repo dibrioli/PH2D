@@ -296,6 +296,7 @@ impl Tracer {
         width: u32,
         height: u32,
     ) -> Pintado {
+        let antes = self.cache.compilado_ms();
         match marcha_com(
             &self.device,
             &self.queue,
@@ -307,7 +308,10 @@ impl Tracer {
             height,
             Pintura::Material(pintor),
         ) {
-            Saida::Imagem(p) => p,
+            Saida::Imagem(mut p) => {
+                p.compilado_ms = self.cache.compilado_ms() - antes;
+                p
+            }
             Saida::Gbuffer(_) => unreachable!("com pintor a marcha devolve a imagem"),
         }
     }
@@ -326,6 +330,7 @@ impl Tracer {
         width: u32,
         height: u32,
     ) -> Pintado {
+        let antes = self.cache.compilado_ms();
         match marcha_com(
             &self.device,
             &self.queue,
@@ -337,7 +342,10 @@ impl Tracer {
             height,
             Pintura::Matcap(mc),
         ) {
-            Saida::Imagem(p) => p,
+            Saida::Imagem(mut p) => {
+                p.compilado_ms = self.cache.compilado_ms() - antes;
+                p
+            }
             Saida::Gbuffer(_) => unreachable!("com matcap a marcha devolve a imagem"),
         }
     }
@@ -462,6 +470,9 @@ pub struct Pintado {
     pub rgba: Vec<u8>,
     /// Quantos pixels de borda foram re-amostrados — `0` sem anti-serrilhado.
     pub edges: usize,
+    /// ⏱️⭐⭐⭐ **Quanto deste quadro foi COMPILAÇÃO** — ver [`crate::FieldPipelines::compilado_ms`].
+    /// Quem mede o quadro para decidir o tamanho do seguinte desconta-o.
+    pub compilado_ms: f64,
 }
 
 /// ⭐ **Uma entrada de layout, uniforme** — partilhada pelo traçado e pelo pintor.

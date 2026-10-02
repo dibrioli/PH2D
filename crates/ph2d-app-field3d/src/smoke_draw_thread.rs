@@ -181,7 +181,9 @@ pub(crate) fn traca(p: &Pedido) {
             tracado_px: u64::from(p.tw) * u64::from(p.th),
             hits,
             edges: pintura.edges,
-            millis: t0.elapsed().as_secs_f64() * 1000.0,
+            // ⏱️⭐⭐⭐ **Sem a COMPILAÇÃO** — ver [`ph2d_field_gpu::FieldPipelines::compilado_ms`]:
+            // este número decide o tamanho do quadro seguinte, que não a paga.
+            millis: (t0.elapsed().as_secs_f64() * 1000.0 - pintura.compilado_ms).max(0.0),
             passagem: 0,
             mais: false,
             assente: p.assente,
@@ -245,7 +247,9 @@ pub(crate) fn traca(p: &Pedido) {
             tracado_px: u64::from(p.tw) * u64::from(p.th),
             hits,
             edges: pintura.edges,
-            millis: t0.elapsed().as_secs_f64() * 1000.0,
+            // ⏱️⭐⭐⭐ **Sem a COMPILAÇÃO** — ver [`ph2d_field_gpu::FieldPipelines::compilado_ms`]:
+            // este número decide o tamanho do quadro seguinte, que não a paga.
+            millis: (t0.elapsed().as_secs_f64() * 1000.0 - pintura.compilado_ms).max(0.0),
             passagem: 0,
             mais: false,
             assente: p.assente,

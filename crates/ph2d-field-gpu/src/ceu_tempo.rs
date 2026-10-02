@@ -421,7 +421,29 @@ pub(crate) fn despacha(
     });
     let fonte = format!(
         "{molde}{}",
-        crate::ceu_tempo_wgsl::WGSL.replace("{FATIAS_POR_QUADRO}", &FATIAS_POR_QUADRO.to_string())
+        format!(
+            "{}{}",
+            crate::ceu_tempo_wgsl::WGSL,
+            crate::ceu_tempo_wgsl_heranca::WGSL
+        )
+        .replace("{FATIAS_POR_QUADRO}", &FATIAS_POR_QUADRO.to_string())
+    );
+    // ⭐⭐⭐⭐ **Os SEIS compilam-se juntos, mesmo os que este quadro não corre** — ver
+    // [`crate::FieldPipelines::precompila`]. Uma forma nova pede os de GRAVAR no 1.º quadro (a peça
+    // mudou, não há histórico a herdar) e os de ACUMULAR no seguinte: pedi-los um a um eram duas
+    // paragens seguidas, e a segunda caía no quadro em que a mão já estava a girar.
+    cache.precompila(
+        device,
+        &[
+            "ceu_tempo_pede",
+            "ceu_tempo_args",
+            "ceu_tempo_marcha",
+            "ceu_tempo_le",
+            "ceu_tempo_zera",
+            "ceu_tempo_grava",
+        ]
+        .map(|e| (fonte.as_str(), fita, e)),
+        Some(&layout),
     );
     let mut kernel = |nome: &str| {
         cache

@@ -667,3 +667,7 @@ mod ceu_passo;
 /// ⭐⭐⭐⭐ **Os gates da oclusão no tempo** — ver o cabeçalho do [`ceu_tempo`].
 #[path = "preview_device_w9_ceu_tempo_tests.rs"]
 mod ceu_tempo;
+
+/// ⭐⭐⭐⭐ **Os gates da forma nova e da cor nova** — ver o cabeçalho do [`forma_nova`].
+#[path = "preview_device_w9_forma_nova_tests.rs"]
+mod forma_nova;

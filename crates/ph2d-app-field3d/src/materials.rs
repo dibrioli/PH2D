@@ -283,12 +283,16 @@ impl Table {
         // ⭐ **Uma folha só não precisa de dono**, e não perguntar é exactamente o custo zero — é
         // isto que faz o quadro de uma peça simples continuar a ser o de sempre.
         //
-        // ⭐⭐⭐⭐ **E N folhas com o MESMO material também não precisam, e isso vale `300×`**
-        // (`docs/Render3d/03` §W9, 2026-09-22). A lei do dono emite **uma fita inteira por folha**
-        // ([`ph2d_field_eval::owners_wgsl`]: `dono_folha_0`, `dono_folha_1`, …), e essas fitas
-        // entram no TEXTO do shader do pintor ⇒ *toda forma acrescentada é um texto novo e uma
-        // compilação inteira do driver*. Medido: com lei do dono, acrescentar uma forma custa
-        // `2 310 ms`; sem ela, **`7,85 ms`**.
+        // ⭐⭐⭐⭐ **E N folhas com o MESMO material também não precisam.** ⚠️ A razão MUDOU em
+        // 2026-10-01 e a regra ficou: até aí a lei do dono punha **uma fita inteira por folha** no
+        // TEXTO do pintor, e acrescentar uma forma custava `2 310 ms` contra `7,85` sem ela
+        // (`docs/Render3d/03` §W9). Hoje a lei é INTERPRETADA e o texto é o mesmo com e sem donos
+        // ([`ph2d_field_eval::owners::wgsl::texto_interpretado`]) — logo a regra deixou de comprar
+        // compilação. O que ela compra hoje é pouco e medido: construir os donos custa
+        // `0,03`–`0,2 ms` de CPU por mudança do documento (2 a 16 folhas,
+        // `diag_o_preco_de_construir_os_donos`) e pintar com eles é ruído
+        // (`diag_o_preco_do_dono_por_quadro`). Fica porque é a resposta certa (sem cores distintas
+        // não há de quem ser) e porque não custa nada.
         //
         // ⚠️⚠️ **A saída é byte-idêntica por CONSTRUÇÃO, e não por promessa:** com todos os
         // materiais iguais, o `dono_mix` devolve `(a, b, t)` cujos `ler_mat(a)` e `ler_mat(b)` dão

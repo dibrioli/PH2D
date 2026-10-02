@@ -175,3 +175,7 @@ mod subsuperficie_terminador_tests;
 /// (pergunta do dono, 18/09: *«SS Anisotropy está morto?»*).
 #[cfg(test)]
 mod censo_dos_knobs_do_material_tests;
+
+#[cfg(test)]
+#[path = "owners_interp_censo_tests.rs"]
+mod owners_interp_censo_tests;

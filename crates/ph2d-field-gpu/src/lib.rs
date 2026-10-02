@@ -109,6 +109,7 @@ pub mod brilho;
 /// ⭐⭐⭐⭐ **A oclusão no tempo** — o histórico do céu guardado na placa entre quadros.
 pub mod ceu_tempo;
 mod ceu_tempo_wgsl;
+mod ceu_tempo_wgsl_heranca;
 /// ⏱️ O relógio por passe na placa — só as sondas o ligam. Ver [`cronometro`].
 pub mod cronometro;
 /// ⭐ **Os bytes que o compositor lê, em WGSL** — ver o módulo.
@@ -183,6 +184,8 @@ pub struct FieldPipelines {
     ceu_tempo_reinicios: usize,
     /// ⏱️ **O relógio por passe** — `None` fora das sondas. Ver [`cronometro`].
     pub(crate) cronometro: Option<cronometro::Cronometro>,
+    /// ⏱️⭐⭐⭐ **Quanto tempo este cache já gastou a COMPILAR** — ver [`FieldPipelines::compilado_ms`].
+    compilado_ms: f64,
 }
 
 /// ⭐⭐⭐ **A fotografia residente** — ver [`FieldPipelines::matcap_buffer`].
@@ -232,6 +235,7 @@ impl FieldPipelines {
             ceu_tempo: None,
             ceu_tempo_reinicios: 0,
             cronometro: None,
+            compilado_ms: 0.0,
         }
     }
 
@@ -338,6 +342,19 @@ impl FieldPipelines {
         self.envios
     }
 
+    /// ⏱️⭐⭐⭐ **Os milissegundos que este cache passou a COMPILAR, somados desde que nasceu.**
+    ///
+    /// ⛔⛔ **Ele existe porque o relógio de um quadro misturava DUAS grandezas** (report do dono,
+    /// 2026-10-01: *«a resolução cai ao rotacionar»* · *«o primeiro movimento no Render tem um
+    /// delay»*): o laço da resolução dinâmica lê o custo por pixel de um quadro, e um quadro que
+    /// compilou um pipeline mede `2`–`5 s` de COMPILAÇÃO — um custo que o quadro seguinte não paga.
+    /// Lido como custo de desenhar, ele mandava o movimento para o tamanho mais grosso. ⇒ quem mede
+    /// um quadro lê este número antes e depois e desconta a diferença.
+    #[must_use]
+    pub fn compilado_ms(&self) -> f64 {
+        self.compilado_ms
+    }
+
     /// Quantos pipelines estão compilados — o número que um gate de *«um arrasto não recompila»*
     /// observa.
     #[must_use]
@@ -395,6 +412,85 @@ impl FieldPipelines {
             .contains_key(&chave_do_pipeline(molde, field, entrada).0)
     }
 
+    /// ⭐⭐⭐⭐ **COMPILA EM PARALELO as entradas que faltam** — e devolve sem fazer nada quando falta
+    /// uma ou nenhuma.
+    ///
+    /// ⛔⛔ **Ela existe por uma medição** (report do dono, 2026-10-01: *«ao acrescentar um box ele
+    /// demora para aparecer»*): uma forma nova muda a fita, logo o texto de TODOS os kernels da
+    /// marcha, e o quadro pedia-os um a um — oito compilações do driver de `35`–`55 ms` em fila
+    /// (`PH2D_PIPELINE_LOG`), `~270 ms` de imagem parada. Elas não dependem umas das outras: os
+    /// módulos criam-se uma vez por texto (a tradução, `~2 ms`, na thread de quem chama) e os
+    /// pipelines — o compilador do driver, que é o caro — cada um na sua thread.
+    ///
+    /// ⚠️ **A chave é a MESMA porta de quem compila** ([`chave_do_pipeline`]), logo os pedidos
+    /// seguintes ao [`Self::entry_with_layout`] acertam o cache; e um pipeline que falhe aqui não
+    /// entra, e é pedido outra vez pelo caminho de sempre, que falha da maneira de sempre.
+    pub fn precompila(
+        &mut self,
+        device: &wgpu::Device,
+        pedidos: &[(&str, &ph2d_field_eval::wgsl::TapeWgsl, &str)],
+        layout: Option<&wgpu::PipelineLayout>,
+    ) {
+        let mut faltas: Vec<(String, String, &str)> = Vec::new();
+        for (molde, field, entrada) in pedidos {
+            let (chave, src) = chave_do_pipeline(molde, field, entrada);
+            if !self.por_texto.contains_key(&chave) && !faltas.iter().any(|f| f.0 == chave) {
+                faltas.push((chave, src, entrada));
+            }
+        }
+        if faltas.len() < 2 {
+            return;
+        }
+        let t0 = std::time::Instant::now();
+        let mut textos: Vec<&str> = Vec::new();
+        for f in &faltas {
+            if !textos.contains(&f.1.as_str()) {
+                textos.push(&f.1);
+            }
+        }
+        let modulos: Vec<wgpu::ShaderModule> = textos
+            .iter()
+            .map(|src| {
+                device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("campo"),
+                    source: wgpu::ShaderSource::Wgsl((*src).into()),
+                })
+            })
+            .collect();
+        let feitos: Vec<(String, wgpu::ComputePipeline)> = std::thread::scope(|s| {
+            let maos: Vec<_> = faltas
+                .iter()
+                .map(|(chave, src, entrada)| {
+                    let modulo = &modulos[textos
+                        .iter()
+                        .position(|t| *t == src.as_str())
+                        .expect("o texto acabou de entrar na lista")];
+                    s.spawn(move || {
+                        let p = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                            label: Some("campo"),
+                            layout,
+                            module: modulo,
+                            entry_point: Some(entrada),
+                            compilation_options: wgpu::PipelineCompilationOptions::default(),
+                            cache: None,
+                        });
+                        (chave.clone(), p)
+                    })
+                })
+                .collect();
+            maos.into_iter().filter_map(|m| m.join().ok()).collect()
+        });
+        let n = feitos.len();
+        for (chave, p) in feitos {
+            self.por_texto.insert(chave, p);
+        }
+        let ms = t0.elapsed().as_secs_f64() * 1e3;
+        self.compilado_ms += ms;
+        if *PIPELINE_LOG.get_or_init(|| std::env::var_os("PH2D_PIPELINE_LOG").is_some()) {
+            eprintln!("[pipeline] em paralelo · {n} entradas · {ms:>8.2} ms");
+        }
+    }
+
     /// ⭐⭐ **O mesmo, com o layout de propósito** — e ele é obrigatório quando o molde tem DUAS
     /// entradas que usam bindings diferentes.
     ///
@@ -411,6 +507,7 @@ impl FieldPipelines {
         layout: Option<&wgpu::PipelineLayout>,
     ) -> &wgpu::ComputePipeline {
         let (chave, src) = chave_do_pipeline(molde, field, entrada);
+        let compilado_ms = &mut self.compilado_ms;
         self.por_texto.entry(chave).or_insert_with(|| {
             // ⏱️⭐⭐⭐ **O INSTRUMENTO que atribui o segundo e meio** (`docs/Render3d/03` §W9):
             // `PH2D_PIPELINE_LOG=1` imprime, por FALTA no cache, quanto custou cada metade. As duas
@@ -439,6 +536,7 @@ impl FieldPipelines {
                 cache: None,
             });
             let ms_pipeline = t1.elapsed().as_secs_f32() * 1e3;
+            *compilado_ms += t0.elapsed().as_secs_f64() * 1e3;
             if *PIPELINE_LOG.get_or_init(|| std::env::var_os("PH2D_PIPELINE_LOG").is_some()) {
                 eprintln!(
                     "[pipeline] {entrada:<16} · {:>6} linhas · módulo {ms_modulo:>8.2} ms · \

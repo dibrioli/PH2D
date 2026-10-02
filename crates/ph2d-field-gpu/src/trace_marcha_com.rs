@@ -92,16 +92,41 @@ pub(super) fn marcha_com(
         setup.ceu_tempo = crate::ceu_tempo::CeuTempo::Grava;
     }
     let luz_a_parte = !so_o_centro && crate::luz_separada();
+    let quer_ceu = !so_o_centro
+        && setup.ao_rays > 0
+        && setup.ceu_passo > 1
+        && setup.ceu_tempo != crate::ceu_tempo::CeuTempo::Acumula;
+    let entrada_do_centro = if so_o_centro || luz_a_parte {
+        "centro_so"
+    } else {
+        "centro_e_luz"
+    };
+    // ⭐⭐⭐⭐ **Os kernels deste quadro compilam-se JUNTOS** — ver
+    // [`crate::FieldPipelines::precompila`]. A lista é a dos pedidos que se seguem, com as MESMAS
+    // condições; um pedido que ela esqueça compila-se sozinho mais abaixo, que é o caminho de antes.
+    {
+        let mut lista = vec![entrada_do_centro];
+        if luz_a_parte {
+            lista.push("luz_so");
+        }
+        if quer_ceu {
+            lista.extend(["ceu_meia", "ceu_sobe"]);
+        }
+        if setup.antialias {
+            lista.extend(["bordas", "bordas_marcha"]);
+        }
+        let pedidos: Vec<_> = lista
+            .iter()
+            .map(|e| (molde_com_esculturas.as_str(), fita, *e))
+            .collect();
+        cache.precompila(device, &pedidos, Some(&layout));
+    }
     let p_centro = cache
         .entry_with_layout(
             device,
             &molde_com_esculturas,
             fita,
-            if so_o_centro || luz_a_parte {
-                "centro_so"
-            } else {
-                "centro_e_luz"
-            },
+            entrada_do_centro,
             Some(&layout),
         )
         .clone();
@@ -113,18 +138,14 @@ pub(super) fn marcha_com(
     // ⭐⭐⭐⭐ **A oclusão a passo** reconstrói-se DEPOIS de a luz estar escrita em toda a imagem: o
     // `ceu_sobe` lê os representantes vizinhos.
     // ⚠️ Com a oclusão NO TEMPO a mexer, quem a escreve é o `ceu_tempo_acumula` — o passo não corre.
-    let p_ceu = (!so_o_centro
-        && setup.ao_rays > 0
-        && setup.ceu_passo > 1
-        && setup.ceu_tempo != crate::ceu_tempo::CeuTempo::Acumula)
-        .then(|| {
-            let mut e = |nome| {
-                cache
-                    .entry_with_layout(device, &molde_com_esculturas, fita, nome, Some(&layout))
-                    .clone()
-            };
-            (e("ceu_meia"), e("ceu_sobe"))
-        });
+    let p_ceu = quer_ceu.then(|| {
+        let mut e = |nome| {
+            cache
+                .entry_with_layout(device, &molde_com_esculturas, fita, nome, Some(&layout))
+                .clone()
+        };
+        (e("ceu_meia"), e("ceu_sobe"))
+    });
     // ⚠️ **Compilar é o caro** — o pipeline da borda só nasce quando ela vai de facto correr.
     let p_bordas = setup.antialias.then(|| {
         let mut e = |nome| {
@@ -185,7 +206,18 @@ pub(super) fn marcha_com(
             longe_k,
         )
     });
-    let lei_do_dono = pintor.and_then(|p| p.owners?.to_wgsl(consts.len()));
+    // ⭐⭐⭐⭐ **Toda peça PINTADA leva a lei do dono, e com o MESMO texto** (report do dono,
+    // 2026-10-01: *«5 segundos para aparecer um box, 5 segundos para mudar de cor»*). A lei
+    // interpretada ([`ph2d_field_eval::owners::wgsl::texto_interpretado`]) não depende das folhas;
+    // sem donos ela vai com ZERO folhas no bloco, que devolve a resposta do stub. ⇒ ganhar o
+    // primeiro material diferente, ou uma forma nova, deixa de mudar o texto do pintor — e de o
+    // recompilar (`1`–`3,8 s` no driver, medido pelo `PH2D_PIPELINE_LOG`).
+    // ⚠️ O bloco é o ÚLTIMO a entrar no `consts`: a origem dele é o último elemento do `k`.
+    let lei_do_dono = pintor.and_then(|p| {
+        p.owners
+            .and_then(|o| o.to_wgsl(consts.len()))
+            .or_else(|| ph2d_field_eval::owners::wgsl::sem_donos(consts.len()))
+    });
     if let Some(l) = &lei_do_dono {
         consts.extend_from_slice(&l.consts);
     }
@@ -436,7 +468,11 @@ pub(super) fn marcha_com(
         let quantas = u64::from(u32::from_le_bytes([d[0], d[1], d[2], d[3]]));
         #[allow(clippy::cast_possible_truncation)]
         let edges = quantas.min(tecto) as usize;
-        return Saida::Imagem(Pintado { edges, rgba });
+        return Saida::Imagem(Pintado {
+            edges,
+            rgba,
+            compilado_ms: 0.0,
+        });
     }
     if let Some(c) = cache.cronometro.as_mut() {
         c.resolve(&mut enc);
@@ -489,7 +525,11 @@ pub(super) fn marcha_com(
                 unreachable!("o material pinta acima e o `pinta` exclui o nenhum")
             }
         };
-        return Saida::Imagem(Pintado { edges, rgba });
+        return Saida::Imagem(Pintado {
+            edges,
+            rgba,
+            compilado_ms: 0.0,
+        });
     }
     let d_centro = r_centro.as_ref().expect("sem pintor o centro volta");
     let d_centro = d_centro.slice(..).get_mapped_range();

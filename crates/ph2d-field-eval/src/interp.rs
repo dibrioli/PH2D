@@ -5,7 +5,11 @@
 //! **milhares** de fitas diferentes por quadro (o nó: `4 218`), e cada compilação custa `6`–`49 ms`
 //! ⇒ ela só serve com um INTERPRETADOR no dispositivo. O ganho é
 //! `razão da poda × (custo de uma instrução interpretada ÷ compilada)`, e é esse segundo factor que
-//! este módulo existe para medir. ⛔ **Hoje é instrumento**: nada no produto o chama.
+//! este módulo existe para medir. ⚠️ **Para a poda continua instrumento** (recusada: o
+//! interpretador come o ganho dez vezes, `docs/Render3d/03` §W9) — mas desde 2026-10-01 **o produto
+//! chama-o noutro sítio**: a lei do dono ([`crate::owners::wgsl`]) interpreta UMA folha por ponto
+//! pintado, onde o custo é ruído e o que se compra é o texto do pintor deixar de mudar com a peça
+//! ([`em_floats`] + [`interpretador_em_k_wgsl`]).
 //!
 //! ⭐ **Os casos do `switch` saem do MESMO emissor** ([`crate::wgsl`]): cada operação é escrita
 //! pelas funções `unary`/`binary` com os operandos `r[a]`/`r[b]` — *uma segunda tabela de semântica
@@ -166,12 +170,10 @@ pub(crate) fn codifica(code: &[Instr], raiz: u32) -> Option<Bytecode> {
     })
 }
 
-/// ⭐ O interpretador: `fn field(p) -> f32` que percorre o armazém `codigo`.
-///
-/// ⚠️ `registos` entra no TEXTO (o tamanho do vector privado), logo fitas com registos diferentes
-/// são shaders diferentes — um produto arredondaria para uma potência de dois.
-#[must_use]
-pub fn interpretador_wgsl(registos: usize) -> String {
+/// Os casos do `switch` das operações — UMA lista para os dois interpretadores, e escrita pelo
+/// MESMO emissor da fita compilada (`crate::wgsl::unary`/`binary`). *Duas tabelas de semântica
+/// seriam duas respostas a «o que faz um `Mod`?»*.
+fn casos_das_operacoes() -> String {
     let mut casos = String::new();
     for (i, op) in UNARIAS.iter().enumerate() {
         casos += &format!(
@@ -187,6 +189,16 @@ pub fn interpretador_wgsl(registos: usize) -> String {
             crate::wgsl::binary(*op, "r[a]", "r[b]")
         );
     }
+    casos
+}
+
+/// ⭐ O interpretador: `fn field(p) -> f32` que percorre o armazém `codigo`.
+///
+/// ⚠️ `registos` entra no TEXTO (o tamanho do vector privado), logo fitas com registos diferentes
+/// são shaders diferentes — um produto arredondaria para uma potência de dois.
+#[must_use]
+pub fn interpretador_wgsl(registos: usize) -> String {
+    let casos = casos_das_operacoes();
     format!(
         "fn field(p: vec3<f32>) -> f32 {{
   var r: array<f32, {registos}>;
@@ -209,6 +221,74 @@ pub fn interpretador_wgsl(registos: usize) -> String {
     }}
   }}
   return r[codigo[n]];
+}}
+"
+    )
+}
+
+/// ⭐⭐⭐ **A FITA ESCRITA EM FLOATS** — o formato que viaja no armazém de constantes `k`.
+///
+/// ⚠️⚠️ **Floats e não bits**, e a razão é a placa: um `u32` arbitrário guardado num `array<f32>`
+/// e relido por `bitcast` passa por um registo de vírgula flutuante, e um padrão que seja um
+/// SUBNORMAL pode ser esvaziado a zero (a casa já o mediu num gate de estilo). Aqui cada palavra é
+/// um INTEIRO pequeno escrito como valor — `op | destino << 8` e `a | b << 8`, os dois `< 2¹⁶`,
+/// exactos em `f32` —, e uma constante vai como o próprio valor.
+///
+/// `palavras` é a fita do [`codifica`] **sem** a palavra final da raiz.
+#[must_use]
+#[allow(clippy::cast_precision_loss)]
+pub fn em_floats(palavras: &[u32]) -> Vec<f32> {
+    let mut out = Vec::with_capacity(palavras.len() * 2);
+    let mut i = 0;
+    while i < palavras.len() {
+        let w = palavras[i];
+        i += 1;
+        let op = w & 0xff;
+        let d = (w >> 8) & 0xff;
+        let a = (w >> 16) & 0xff;
+        let b = w >> 24;
+        out.push((op | d << 8) as f32);
+        out.push((a | b << 8) as f32);
+        if op == OP_CONST {
+            out.push(f32::from_bits(palavras.get(i).copied().unwrap_or(0)));
+            i += 1;
+        }
+    }
+    out
+}
+
+/// ⭐⭐⭐ **O INTERPRETADOR QUE LÊ DO `k`** — `fn {nome}(p, ini, fim, raiz) -> f32`.
+///
+/// O irmão do [`interpretador_wgsl`] para o formato do [`em_floats`]: a fita vive entre `ini` e
+/// `fim` (índices absolutos no `k`) e o valor acaba no registo `raiz`. ⭐ **O texto não depende da
+/// fita** — só de `registos`, que é um TECTO escolhido pelo chamador —, e é isso que o torna útil:
+/// um shader que o leve compila UMA vez, por mais folhas e formas que a peça ganhe.
+#[must_use]
+pub fn interpretador_em_k_wgsl(nome: &str, registos: usize) -> String {
+    let casos = casos_das_operacoes();
+    let k = crate::wgsl::CONSTS;
+    format!(
+        "fn {nome}(p: vec3<f32>, ini: u32, fim: u32, raiz: u32) -> f32 {{
+  var r: array<f32, {registos}>;
+  var pc = ini;
+  loop {{
+    if (pc >= fim) {{ break; }}
+    let w0 = u32({k}[pc]);
+    let w1 = u32({k}[pc + 1u]);
+    pc = pc + 2u;
+    let op = w0 & 0xffu;
+    let d = w0 >> 8u;
+    let a = w1 & 0xffu;
+    let b = w1 >> 8u;
+    switch op {{
+      case {OP_X}u: {{ r[d] = p.x; }}
+      case {OP_Y}u: {{ r[d] = p.y; }}
+      case {OP_Z}u: {{ r[d] = p.z; }}
+      case {OP_CONST}u: {{ r[d] = {k}[pc]; pc = pc + 1u; }}
+{casos}      default: {{ }}
+    }}
+  }}
+  return r[raiz];
 }}
 "
     )

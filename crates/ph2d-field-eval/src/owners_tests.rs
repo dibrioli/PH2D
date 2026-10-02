@@ -338,3 +338,78 @@ fn the_ramp_reaches_zero_while_the_rival_is_still_in_play() {
          presa em `½` passa neste gate"
     );
 }
+
+/// ⭐⭐⭐⭐ **O TEXTO DA LEI DO DONO NÃO DEPENDE DA PEÇA** — o report de 2026-10-01 (*«5 segundos
+/// para aparecer um box, 5 segundos para mudar de cor»*). A lei compilada punha uma fita por folha
+/// no texto do pintor, e cada forma nova — ou a primeira cor diferente — era um texto novo e uma
+/// compilação inteira do driver.
+///
+/// ⛔ **As TRÊS metades:** duas peças de estrutura diferente dão o MESMO texto · a peça SEM donos
+/// também (é a passagem da primeira cor) · e os NÚMEROS diferem, senão o texto igual seria o de uma
+/// lei que ignora a peça. Mais o CONTRATO do bloco: o último número é a origem dele.
+#[test]
+fn o_texto_da_lei_do_dono_nao_depende_da_peca() {
+    use crate::owners::wgsl::{sem_donos, texto_interpretado};
+    let bolas = Owners::new(
+        &[
+            leaf_doc(ph2d_field::Primitive::Sphere { radius: 0.3 }, -0.3),
+            leaf_doc(ph2d_field::Primitive::Sphere { radius: 0.3 }, 0.3),
+        ],
+        &Registry::new(),
+        1e-3,
+    );
+    let caixas = Owners::new(
+        &[
+            leaf_doc(
+                ph2d_field::Primitive::Box {
+                    half: [0.2; 3],
+                    round: 0.0,
+                    chamfer: 0.0,
+                },
+                -0.4,
+            ),
+            leaf_doc(
+                ph2d_field::Primitive::Torus {
+                    major: 0.2,
+                    minor: 0.05,
+                },
+                0.0,
+            ),
+            leaf_doc(ph2d_field::Primitive::Sphere { radius: 0.2 }, 0.4),
+        ],
+        &Registry::new(),
+        1e-3,
+    );
+    let a = bolas.to_wgsl(17).expect("as bolas têm fita");
+    let b = caixas.to_wgsl(240).expect("as caixas têm fita");
+    let vazia = sem_donos(5).expect("o bloco vazio");
+    assert_eq!(
+        a.source, b.source,
+        "duas peças, dois textos — cada forma nova recompila o pintor"
+    );
+    assert_eq!(
+        a.source, vazia.source,
+        "ganhar donos muda o texto — a primeira cor recompila"
+    );
+    assert_eq!(a.source, texto_interpretado());
+    assert_ne!(
+        a.consts, b.consts,
+        "os números não dependem da peça — a lei não a lê"
+    );
+    // O CONTRATO: o último número do bloco é a origem dele, que o shader lê com `arrayLength`.
+    assert_eq!(a.consts.last().copied(), Some(17.0));
+    assert_eq!(b.consts.last().copied(), Some(240.0));
+    assert_eq!(
+        vazia.consts,
+        vec![0.0, 0.0, 5.0],
+        "zero folhas, margem, origem"
+    );
+}
+
+fn leaf_doc(p: ph2d_field::Primitive, x: f32) -> ph2d_field::FieldDoc {
+    ph2d_field::FieldDoc::new(
+        vec![crate::leaf(p, ph2d_field::Xform::at(x, 0.0, 0.0))],
+        ph2d_field::NodeId(0),
+    )
+    .expect("a folha")
+}

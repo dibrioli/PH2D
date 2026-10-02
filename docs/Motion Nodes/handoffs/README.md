@@ -8,7 +8,7 @@
 > um handoff descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**61 handoffs** · **8** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
+**66 handoffs** · **14** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
 §5 aponta como o detalhe de mecanismo de uma integração).
 
 > ⚠️ **Reconciliado outra vez em 2026-09-16, e a diferença era SEIS** — as quatro fases da saída da
@@ -84,6 +84,10 @@
 | 2026-09-12 | ◆ | [HANDOFF_INTEGRACAO_line_app_motion_FASE_C_2026-09-12.md](HANDOFF_INTEGRACAO_line_app_motion_FASE_C_2026-09-12.md) | integração | **A família SAI da shell, inteira**: 454 ficheiros para `ph2d-app-motion`, a shell −29,8 %, e `"motion"` mata a catraca dos roteadores |
 | 2026-09-16 | ◆ | [HANDOFF_INTEGRACAO_line_motion_value_2026-09-16.md](HANDOFF_INTEGRACAO_line_motion_value_2026-09-16.md) | integração | **Os ciclos 6, 7 e 8 fechados** (valor & pulso `=117` · aparência `=118` · fontes & dados `=119`) + o **colisor na SHAPE** (doc 109). ⭐⭐⭐ A costura de uma fonte deixou de ser taxa por quadro (`9,62 → 1,62 ms` a um milhão) e a **VISTA entra no grafo**. O §6 tem o teto de LOC que só o mapa de colisão vê e os **8 vermelhos de GPU com veredito um a um** |
 | 2026-09-18 | ◆ | [HANDOFF_INTEGRACAO_line_motion_value_2026-09-18.md](HANDOFF_INTEGRACAO_line_motion_value_2026-09-18.md) | integração | **O ciclo 9 (rig & corpos moles) + O COLISOR SAI DO GRAFO** (doc 115, ordem do dono). O nó sai da **LISTA** e o **motor FICA** (`88×` no dispositivo, medido); o app **separa sozinho** por um interruptor no sink, com o `falloff` honrado. ⭐⭐ **ZERO contadores partilhados movidos** e rebase sem um conflito. O §4 tem as sete leituras que o diff inverte, o §5 as **cinco** premissas minhas que a medição derrubou — e a forma NOVA de o arnês de mutação mentir (`SOBREVIVEU (0 correram)` porque um pacote corre VÁRIOS alvos) |
+| 2026-09-19 |   | [HANDOFF_CONTINUACAO_line_motion_value_2026-09-19.md](HANDOFF_CONTINUACAO_line_motion_value_2026-09-19.md) | continuação | a continuação da linha entre as integrações de 18/09 e 20/09 |
+| 2026-09-20 | ◆ | [HANDOFF_INTEGRACAO_line_motion_value_2026-09-20.md](HANDOFF_INTEGRACAO_line_motion_value_2026-09-20.md) | integração | **as POSIÇÕES ganham gizmo, o OSSO entra no catálogo, o CARTÃO DE LONGE** — e a crate `ph2d-panel-motion-params` é APAGADA (§2.1: remoções em seis ficheiros partilhados) |
+| 2026-09-24 | ◆ | [HANDOFF_INTEGRACAO_line_motion_value_2026-09-24.md](HANDOFF_INTEGRACAO_line_motion_value_2026-09-24.md) | integração | **os ciclos 10, 11 e 12 e a mistura em grupo** — o carimbo das IMAGENS na placa; o §2.1 lista as quatro mudanças NÃO aditivas de API |
+| 2026-10-01 | ◆ | [HANDOFF_INTEGRACAO_line_motion_value_2026-10-01.md](HANDOFF_INTEGRACAO_line_motion_value_2026-10-01.md) | integração | **AS FORMAS NA PLACA** (doc 121) — crate nova `ph2d-shape-gpu`, a cobertura do Vello portada, as rotas da CPU e do dispositivo; zero contadores partilhados; o §2.1 tem a única mudança não aditiva (`LOWER_COLUMNS` a `[_; 9]`) |
 
 ---
 *Índice gerado na arrumação de 2026-08-10 (DIRETRIZ §1.5.9). Handoff novo entra aqui, não na

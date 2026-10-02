@@ -86,7 +86,7 @@ fn compara_por_pixel_e_nao_por_milissegundo() {
 ///
 /// ⚠️ Esta é a régua da LEI e não a do laço: o `the_loop_settles_inside_the_budget` corre o laço
 /// num modelo de custo que interpola em píxeis, e ali a histerese é INVISÍVEL — a mutação que a
-/// apaga sobreviveu a ele (`muta_perto.py`, `M8`).
+/// apaga sobreviveu a ele (o arnês `muta_perto`, `M8`).
 #[test]
 fn subir_de_resolucao_pede_folga_e_descer_nao() {
     // O quadro cheio custaria `B / 0,76²`: o orçamento pede a escala `0,76`, que arredonda para

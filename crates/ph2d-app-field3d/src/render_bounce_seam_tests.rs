@@ -80,7 +80,7 @@ fn os_dois_caminhos_da_placa_pedem_e_entregam_a_area() {
         .expect("a porta `tamanho_entregue`");
     assert!(
         // ⚠️ Os BRAÇOS, linha a linha: a agulha `p.cheio` sozinha casava na CONDIÇÃO, e a mutação
-        // que devolve sempre o tamanho traçado sobreviveu a ela (`muta_perto.py`, `M12`).
+        // que devolve sempre o tamanho traçado sobreviveu a ela (o arnês `muta_perto`, `M12`).
         corpo.lines().any(|l| l.trim() == "p.cheio")
             && corpo.lines().any(|l| l.trim() == "(p.tw, p.th)"),
         "a porta do tamanho entregue perdeu um dos braços: {corpo}"

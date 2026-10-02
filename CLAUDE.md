@@ -1602,6 +1602,14 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   do Grid (corpo `Md`, sem caixa alta, separador à direita) e a grade `Behind` vai atrás de verdade
   pelo acumulador das faixas. A fronteira dos motores, a escada das elisões e o balão (20/09) estão no
   [handoff de 20/09](docs/UI_New_and_Simple/handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-09-20.md).
+  ⭐⭐⭐ **A ROLAGEM É UMA, AS SECÇÕES SÃO CARTÕES E O TEXTO TEM FONTE, PESO E TAMANHO** (01/10,
+  [handoff do integrador](docs/UI_New_and_Simple/handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-10-01_A_LINHA.md)):
+  toda lista rola pela porta `panel::scroll_area` (⛔ barra registada à mão fica morta sob o dedo);
+  secções em cartões com pega, tema e notas em todo painel; *Edit ▸ Preferences…* escolhe fonte
+  (Inter · Noto Sans · Atkinson), peso (Light · Normal · Strong) e tamanho (Small · Normal · Large),
+  lidos UMA vez no `layout_inner`. ⛔⛔ **Até 01/10 o app desenhava a Noto do SISTEMA e os testes a
+  Inter** (nome de família errado) — a fábrica é a Inter; o piso de um campo é a porta
+  `number_input_min_w_px()`, nunca o `const`.
   ⏳ **Aberto:** partir o `DrawMode` nos dois eixos · a pose 2D/3D e os 9 toggles de módulo → Layout (as três
   **decisão do dono**) · as caixas do `painter_layers` registadas como botão (só instrumento) · o painel da
   escultura (território da `line/sculpt3d`) · o **«travou por um minuto»** de 09/09 segue **sem reprodução**.

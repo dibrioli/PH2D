@@ -638,6 +638,8 @@ num braço de `match`) não compilava e foi trocada.
 
 ## §15 — W7 FEITA (2026-10-03): o inimigo evita a lava sozinho, a lama custa, e o portal leva-o
 
+✅ **Smoke do dono APROVADO (03/10)** — a cena `=4`.
+
 **O que se consegue fazer agora:** *Add Component → Nav Cost Area* num objecto com colisor faz dele uma
 **lama** (custo: o agente dá a volta se a volta custar menos) ou uma zona **proibida** (um furo para todos).
 Uma **lava** da Vida e Dano (um `Damage` parado) é EVITADA sozinha por todo inimigo cuja vida a sente — a

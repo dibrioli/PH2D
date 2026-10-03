@@ -172,7 +172,7 @@ um sentido, com `on_crossed` vindo do atalho; cena `=4`.
   no mesmo tique · a porta que anda é um círculo para o desvio · o Inspector diz *«Switched off»* de um agente
   desligado que um `Start` pôs a andar · a leitura viva não diz «a dar passagem» · a cena `=1` apertada ·
   o defeito G · o flake `text_path_smoke::perf::riding_the_path_costs_about_twice_the_straight_layout`.
-- **Smoke do dono: PENDENTE** (ainda não corrido — ver §6).
+- ✅ **Smoke do dono APROVADO (03/10)** — ver §6.
 - Waves seguintes: **W8** (a arena `PH2D_VIDA_SMOKE=4` com morcegos que evitam paredes · o tutorial
   `03_navegacao.pdf`).
 
@@ -229,7 +229,7 @@ dele desce. Desligar o Avoid Harm no vermelho faz com que ele também atravesse;
 com que dê a volta pelo vão de cima. Errado = o vermelho pisar a lava com o Avoid Harm ligado, ou o cinzento
 não perder vida. As cenas `=1`..`=3` continuam iguais.
 
-⏳ **Smoke do dono: PENDENTE** (ainda não corrido).
+✅ **Smoke do dono APROVADO (03/10).**
 
 O perfil do laço do agente (`bash scripts/agent-loop-profile.sh`), no fecho:
 

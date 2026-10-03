@@ -493,3 +493,134 @@ na ponte. Gates novos: o oráculo do Godot passo a passo · o banco de cenários
 - ✅ **Decisão do dono (§11.2, 02/10):** o desvio nasce LIGADO.
 - O mundo que muda, as portas, `Start/Stop Navigation`, a patrulha (W6) · custo por área e atalhos (W7) ·
   a arena e o tutorial (W8).
+
+---
+
+## §14 — W6 FEITA (2026-10-02): o guarda patrulha, vê, persegue, e a porta fecha-se
+
+**O que se consegue fazer agora:** uma porta que desliza e PÁRA vira parede para os agentes no tique em
+que pára (e deixa de o ser quando volta a andar); os verbos **Start Navigation** (com o nome de quem
+perseguir, ou vazio = o alvo autorado) e **Stop Navigation** na tabela de acções; dois alvos novos no
+Inspector — **Tag** (o mais perto que pertence a uma tag, com a subárvore) e **Patrol** (os pontos de uma
+forma desenhada com a caneta: fechada dá voltas, aberta vai e volta). A cena `PH2D_NAV_SMOKE=3` monta o
+exemplo patrulha → persegue com a `StateMachine`, e a porta que se fecha na cara do guarda.
+
+Commits: `47efb64d0` (mosaicos) · `b76d23c39` (a ponte e a porta) · `f35e4b440` (os verbos) · `c36582a72`
+(os alvos e o Inspector) · `500e8a24d` (a cena `=3`) · `d9c99b5d4` (o custo medido na ponte) ·
+`6c57e7405` (as réguas que faltavam).
+
+### §14.1 — A medição que abriu a wave (e a que a fechou)
+
+`examples/medir_mudanca.rs` (ph2d-navmesh) e `examples/medir_nav_tique.rs` (ph2d-physics-ecs), `--release`,
+`loadavg < 5`, mínimo de 5 (ou de 10 janelas):
+
+| construção INTEIRA, `100 × 100 m`, raio `0,4` | total | recuo | união | diferença | triangulação | fusão | `NavMesh` |
+|---|---|---|---|---|---|---|---|
+| 100 obstáculos | `4,2 ms` | `0,17` | `0,54` | `0,49` | `1,61` | `0,92` | `0,38` |
+| 1 000 obstáculos | `61,4 ms` | `1,61` | **`32,0`** | `9,95` | `9,14` | `5,65` | `2,54` |
+
+⇒ a construção síncrona **não cabe** no tique a 1 000 obstáculos (`61 ms` = quatro quadros), e metade é a
+UNIÃO, que cresce mais depressa que a cena ⇒ **mosaicos** (§2.4).
+
+| `TiledMesh`, 1 000 obstáculos | `T = 5` | `10` | **`15`** | `20` | `25` | `33,4` | `50` |
+|---|---|---|---|---|---|---|---|
+| a frio (ms) | `32,7` | `29,6` | `30,4` | `31,7` | `33,4` | `36,1` | `42,1` |
+| uma porta (ms) | `4,1` | `4,2` | **`3,5`** | `4,0` | `10,7` | `6,7` | `42,5` |
+| procura (µs; inteira `~636`), posição A | `1 123` | `1 050` | `665` | `597` | `1 189` | `764` | `819` |
+| procura, posição B (a cena `+3,7 m`) | `680` | `774` | `584` | `624` | `598` | `910` | `657` |
+
+⚠️ A procura paga as costuras conforme ONDE elas cortam a geometria (até `1,8×`, e o mesmo `T` muda de
+posição para posição) — `15` e `20 m` ficaram `≤ 1,07×` nas duas; `15` paga menos por porta ⇒ `TILE_M = 15`.
+
+| a PONTE, uma porta a mudar (o pior tique da janela) | 100 obst. | 1 000 obst. |
+|---|---|---|
+| a malha inteira (`TILE_M = 1 000`) | `4,0 ms` | `44,1 ms` |
+| **mosaicos de 15 m** | **`0,81 ms`** | **`7,3 ms`** |
+| o CONTROLO (a mesma janela, sem mexer) | `0,03 ms` | `0,50 ms` |
+| o tique sem mudança (olhar e ver que está em dia) | `+12 µs` | `+0,2 ms` |
+
+A 1 000 obstáculos, o que sobra da porta: **montar** `5,2 ms` (a montagem é O(malha): `~2,6` são a `NavMesh`)
++ **recalcular** o agente `2,1` (um caminho de `100 m`) — as paredes do desvio eram `3,0 ms` e passaram a
+`0,12` (dois `BTreeMap` → vectores indexados pelo vértice). ⚠️ Uma porta muda a malha DUAS vezes: quando
+começa a andar (deixa de recortar) e quando pára.
+
+### §14.2 — As decisões, cada uma com a medição
+
+| decisão | porquê (medido) |
+|---|---|
+| a malha de cada `(região, raio)` é uma grelha FIXA de mosaicos (ancorada na grelha inteira) com a assinatura de cada um; uma actualização refaz só os mosaicos cuja assinatura mudou | §14.1; incremental = a frio AO BIT (gate) |
+| o corte é CANÓNICO: o ponto onde uma aresta cruza a costura sai da aresta ORIGINAL, com os extremos por ordem fixa e o arredondamento inteiro | os dois lados escrevem o mesmo ponto (gate de unidade); com o corte de Sutherland–Hodgman cru, o pedaço já cortado por outra linha arredondava outro ponto |
+| a montagem REPARA as junções em T das costuras (todo vértice numa linha de costura entra nas arestas de costura que o atravessam) e só esses vértices passam pelo índice | a área por mosaicos fica numa faixa de UMA unidade da grelha nas costuras (medido `0,016` da faixa); o caminho muda `2e-10 m`; a procura sobre a malha montada = o EXACTO |
+| o obstáculo é o colisor de um corpo que NÃO anda: estático (pose autorada) e **cinemático PARADO** (velocidade linear E angular do solver a zero, pose de agora) | é o *«carve only stationary»* do `NavMeshObstacle` do Unity, sem o relógio de espera dele (um número inventado); a velocidade vai no anel ⇒ a mesma num replay |
+| ⛔ um cinemático com MOVER (`TopDownPlayer`/`PlatformPlayer`/`ProjectileMotion`) nunca é obstáculo | um herói parado punha o alvo de todos dentro de um furo, e um agente parado seria obstáculo de si mesmo (Q8) — gate com o CONTROLO da caixa sem mover |
+| só os agentes da malha que MUDOU esquecem o caminho; uma malha que ninguém pede é esquecida | gate com duas regiões; o recálculo é o terço do custo de uma porta a 1 000 |
+| os verbos ANUNCIAM e a ponte grava a ordem por tique (o idioma da vida); a ordem vive no anel e nunca toca no `NavAgent` | o que a corrida escreve a corrida desfaz (§10.7); o scrub refá-la ao bit (gate); tocar por cima depois de um scrub apaga a fita futura, como a da vida |
+| `Start Navigation` lê o NOME de quem perseguir (vazio = o alvo autorado) e liga um agente autorado desligado | é o que torna o exemplo patrulha → persegue autorável SEM um verbo por alvo: perseguir é `Start «Hero»`, voltar à ronda é `Start «»` |
+| a patrulha visita os pontos da forma COZIDA, em mundo; a curva parte-se ao meio até a flecha caber na `arrive_distance` do agente; o ponto avança a essa mesma distância | a régua é a do executor (detalhe mais fino ele não distingue) e o `On Arrived` não fala durante a ronda (gate) |
+| *a tag mais perto* = em linha recta, com a subárvore, o próprio agente fora, empate pela identidade; a árvore chega por `set_tag_tree` a partir da fase dos sinais | sem a árvore ninguém (falha fechado, gate); a fase dos sinais já tem a árvore e a ponte — a shell não cresce (+2 linhas, menos 2 da entrega) — e a árvore vale um tique depois de editada |
+| o `NavRoute` (os pontos da ronda) é DERIVADO e não registado, escrito pela família na passagem do seguidor de caminho | a geometria não entra no ECS (a doutrina do `VecPathRef`); a lei do `NavNow` |
+
+### §14.3 — O que a medição derrubou
+
+- **A folga do balde era o raio** (`1,01·r`): o canto em esquadria recua até `2r` e o polígono do disco
+  circunscreve-o — um obstáculo ficava fora de um mosaico que tapava (`6e-4 m²` de área a mais). ⇒ `2r`.
+- **A minha régua da área** (`1e-6 m²`) era um palpite: a costura move-se no máximo uma unidade da grelha,
+  logo a régua é a faixa dessa largura ao longo de todas as costuras.
+- **O mapa dizia que mudou sem mudar** (um obstáculo fora da região mudava a assinatura global): ⇒ só
+  muda quando um mosaico se refez ou saiu.
+- **A sonda da porta lia `0,43 ms` por `11 ms`**: o 1.º movimento punha a porta onde ela já estava e o
+  mínimo escolhia esse caso. ⇒ o 1.º movimento é real e há o CONTROLO sem movimento.
+- **A cena `=3`**: um ALARME de tempo fixo (`2,5 s`) deixava o guarda passar a porta; a ronda a `2,2 m`
+  do vão também; a zona verde junto à porta disparava com o herói dentro do vão. As rondas nasceram
+  POR BAIXO do chão (a `sync` dá à forma o 1.º lugar livre da pilha — apanhado na 1.ª foto). O relógio
+  de fábrica ARRANCA sozinho e a porta abria a cena fechada.
+- **O meu arnês da cena** deitava fora o que um cérebro emite: na shell, a emissão chega aos OUTROS
+  cérebros no quadro seguinte (o barramento) e à tabela no mesmo.
+- **Duas leis sem régua** antes da prova de mutação: a porta a RODAR no sítio (a angular conta para
+  «parado») e o próprio guarda como *a tag mais perto*.
+
+### §14.4 — ⛔ Recusas MEDIDAS
+
+| recusado | medição |
+|---|---|
+| a construção síncrona inteira por mudança | `61 ms` a 1 000 obstáculos (`44 ms` na ponte, com as paredes rápidas) |
+| o mosaico de `5`/`10`/`25 m` | a procura paga até `1,8×` conforme onde a costura corta; `25 m` paga `10,7 ms` por porta |
+| um relógio de espera para «parado» (o `carve` do Unity) | um número inventado; a velocidade do solver diz-o ao tique e vai no anel |
+| o alarme de tempo fixo na cena | o guarda (`2,2 m/s`) chega à porta em `~1,1 s` |
+| o oráculo do Godot para a reconstrução | a lei que importa é *por mosaicos = inteira = o EXACTO* e *incremental = a frio ao bit*: um oráculo mais forte que o do Godot (que nem constrói por mosaicos na 2D), e gateado |
+
+### §14.5 — A prova
+
+Gates novos: `mosaicos` (3) + 4 de unidade do corte · `nav_mundo` (5: a porta fecha e abre ao bit, a
+porta a andar e a RODAR não recortam, o personagem parado não é parede, só a malha que mudou) ·
+`nav_ordens` (4) · `nav_alvos` (3) + 4 leis da ronda · a rota (3) · os verbos (o anúncio, a entrega, os
+controlos à mão do `arg_kind`/tags) · o painel (cada modo a sua linha; a tag escolhida com o ponteiro
+REAL) · a família (os modos vão e voltam; a forma perdida) · a queixa · a cena `=3` jogada inteira sem
+ecrã. Fotos da `=3` aos `6 s` e `9 s` (ecrã virtual).
+
+Mutação **45 de 45** a sangrar, zero defeitos de arnês
+([`mutacao_navegacao_w6_2026-10-02.py`](ferramentas/mutacao_navegacao_w6_2026-10-02.py), os quatro
+controlos, 8 grupos). A 1.ª corrida deu **37 de 45** e achou SETE leis sem régua, cada uma curada com a
+régua MEDIDA ao lado da mutação: a ordem fixa dos extremos no corte era **equivalente** (os dois mosaicos
+cortam o mesmo anel no mesmo sentido — saiu do código); o corte pela aresta ORIGINAL só decide quando
+uma aresta atravessa um mosaico de ponta a ponta (o caso achado por busca: `x = −2` contra `−3`); a
+reparação das junções em T (um losango com a ponta a meio de uma costura — a 1.ª fixtura punha-a no
+canto de quatro mosaicos, onde o vizinho já tem o vértice); a recusa da malha sobreposta; a
+continuação de menor índice das paredes do desvio; a FITA das ordens (os alvos do scrub saíam de
+checkpoints que já tinham a ordem); e o recomeço do zero a esquecer as ordens. Uma mutação (um `if false`
+num braço de `match`) não compilava e foi trocada.
+
+### §14.6 — ⏳ O que fica
+
+- **A montagem é O(malha)** (`~5 ms` a 1 000 obstáculos, `~2,6` são a `NavMesh`): uma `NavMesh` por
+  mosaicos (a procura a atravessar mosaicos) tirá-la-ia — é a próxima alavanca do custo de uma porta.
+- **Todos os agentes da malha que mudou recalculam no mesmo tique** (`~2 ms` cada a 1 000 obstáculos):
+  um agente cujo corredor não toca nenhum mosaico refeito podia guardar o caminho QUANDO a porta fecha
+  (abrir encurta caminhos de qualquer um).
+- **Enquanto anda, uma porta é para o desvio um círculo** (o raio que a envolve) — uma porta comprida a
+  deslizar desvia os agentes de longe.
+- **O Inspector diz *«Switched off»*** de um agente autorado desligado que um `Start` pôs a andar (a
+  queixa lê o autorado; a leitura viva diz *Moving*).
+- A árvore das tags chega à ponte um tique depois de editada.
+- As waves seguintes: W7 (custo por área — com a decisão do dono §11.1: o inimigo evita a lava, com caixa
+  para desligar —, atalhos) · W8 (a arena, o tutorial `03_navegacao.pdf`).

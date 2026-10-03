@@ -16,8 +16,9 @@
 //!
 //! 1. **O corte é CANÓNICO** ([`corta`]): cada obstáculo recuado é cortado pelo rectângulo do mosaico
 //!    ANTES da união, e o ponto onde uma aresta cruza a linha da costura é calculado a partir da
-//!    aresta ORIGINAL (nunca de um pedaço já cortado por outra linha), com os extremos por ordem fixa
-//!    e arredondamento inteiro ⇒ os dois lados escrevem o MESMO ponto.
+//!    aresta ORIGINAL (nunca de um pedaço já cortado por outra linha), com arredondamento inteiro ⇒
+//!    os dois lados escrevem o MESMO ponto. ⚠️ A ORDEM dos extremos não entra: os dois mosaicos
+//!    cortam o MESMO anel no mesmo sentido (a prova de mutação da W6 mostrou-a equivalente, e saiu).
 //! 2. **A montagem repara as junções em T** ([`monta`]): todo vértice que cai numa linha de costura
 //!    entra nas arestas de costura que o atravessam. Um polígono convexo com um ponto colinear a mais
 //!    continua convexo (a `ph2d-nav` aceita os `180°`), e a vizinhança casa aresta a aresta.
@@ -383,14 +384,13 @@ fn corta(poly: &[P], lo: P, hi: P) -> Vec<P> {
     v
 }
 
-/// Onde a aresta `a → b` (sobre `s`) cruza a recta `eixo = c` — da aresta ORIGINAL, com os extremos
-/// por ordem fixa e o arredondamento inteiro ao mais perto (metade para longe do zero).
+/// Onde a aresta `a → b` (sobre `s`) cruza a recta `eixo = c` — da aresta ORIGINAL, com o
+/// arredondamento inteiro ao mais perto (metade para longe do zero).
 fn cruza(s: Apoio, a: P, b: P, eixo: u8, c: i64) -> P {
     let (p, q) = match s {
         Apoio::Original(p, q) => (p, q),
         Apoio::Eixo => (a, b),
     };
-    let (p, q) = if p <= q { (p, q) } else { (q, p) };
     let (pu, pv, qu, qv) = if eixo == 0 {
         (p.0, p.1, q.0, q.1)
     } else {

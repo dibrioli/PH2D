@@ -186,3 +186,33 @@ fn a_porta_fecha_e_abre() {
         "reabrir devolve o caminho ao bit"
     );
 }
+
+/// ⭐ **A junção em T é reparada** (a prova de mutação mostrou a reparação sem régua): com raio `0`, um
+/// losango cuja ponta toca EXACTAMENTE a costura `x = 4` (a meio dela) dá ao mosaico da esquerda um vértice na
+/// linha que o da direita não tem. Sem a reparação a costura vira parede ali; com ela, nenhuma
+/// parede da malha montada fica deitada sobre a costura.
+#[test]
+fn a_juncao_em_t_da_costura_e_reparada() {
+    let reg = retangulo(8.0, 8.0);
+    // ⚠️ A ponta a MEIO da costura (`y = 5`): em `y = 4` ela caía no canto de quatro mosaicos, onde
+    // o vizinho já tem o vértice, e o gate passava sem a reparação (a mutação apanhou-o).
+    let losango = Shape::Convex(vec![[3.0, 5.0], [3.5, 4.5], [4.0, 5.0], [3.5, 5.5]]);
+    let p = Params {
+        agent_radius: 0.0,
+        ..Params::default()
+    };
+    let mut t = TiledMesh::new(p, 4.0);
+    t.update(&reg, &[losango]);
+    let m = t.mesh();
+    let na_costura: Vec<_> = m
+        .walls()
+        .iter()
+        .filter(|&&(a, b)| m.vert(a)[0] == 4.0 && m.vert(b)[0] == 4.0)
+        .collect();
+    assert!(
+        na_costura.is_empty(),
+        "paredes deitadas na costura: {na_costura:?}"
+    );
+    // O CONTROLO: a fixtura tem MESMO o vértice na costura (a ponta do losango).
+    assert!(m.verts().iter().any(|v| *v == [4.0, 5.0]));
+}

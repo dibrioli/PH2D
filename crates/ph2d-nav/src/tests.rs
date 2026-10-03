@@ -167,3 +167,15 @@ fn todo_par_do_anel_bate_o_oraculo() {
         }
     }
 }
+
+/// ⚠️ **A mesma aresta orientada em dois polígonos é recusada em voz alta** (a malha sobrepõe-se) — a
+/// prova de mutação da W6 achou a recusa sem régua depois de a vizinhança ser reescrita.
+#[test]
+fn dois_poligonos_sobrepostos_sao_recusados() {
+    let verts = vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]];
+    let r = NavMesh::from_polygons(verts, vec![vec![0, 1, 2], vec![0, 1, 2]]);
+    assert!(
+        matches!(r, Err(MeshError::NonManifold { .. })),
+        "aceitou dois polígonos em cima um do outro: {r:?}"
+    );
+}

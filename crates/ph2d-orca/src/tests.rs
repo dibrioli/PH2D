@@ -241,3 +241,23 @@ fn o_tecto_guarda_os_mais_perto() {
     let esperado: Vec<u32> = (1..=crate::MAX_NEIGHBORS as u32).collect();
     assert_eq!(nb, esperado);
 }
+
+/// ⚠️ **Num vértice onde a fronteira se toca a si própria, fica a continuação de MENOR índice** — a
+/// ordem é a da malha, igual nos três sistemas (a prova de mutação da W6 achou-a sem régua).
+#[test]
+fn no_vertice_que_se_toca_fica_a_continuacao_de_menor_indice() {
+    // Duas voltas que partilham o vértice 0 (um laço em oito).
+    let verts: Vec<V2> = vec![
+        [0.0, 0.0],
+        [1.0, 0.0],
+        [1.0, 1.0],
+        [-1.0, 0.0],
+        [-1.0, -1.0],
+    ];
+    let walls = [(0, 1), (1, 2), (2, 0), (0, 3), (3, 4), (4, 0)];
+    let w = Walls::from_walkable_walls(&verts, &walls);
+    // A entrada 0 vai de 1 a 0; a seguinte começa em 0 — há duas (as entradas 2 e 5): fica a 2.
+    assert_eq!(w.next(0), 2);
+    // A entrada 2 acaba... a anterior da entrada 2 (que começa em 0) acaba em 0: as entradas 0 e 3.
+    assert_eq!(w.prev(2), 0);
+}

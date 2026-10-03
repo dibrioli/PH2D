@@ -167,3 +167,47 @@ fn um_scrub_refaz_as_ordens_ao_bit() {
         "sem a ordem do tique 70 o guarda fica parado"
     );
 }
+
+/// ⭐⭐ **A FITA refaz a ordem que cai ENTRE um checkpoint e o alvo do scrub** — o caso que o gate de
+/// cima não alcança (os dois alvos dele saem de checkpoints que já têm a ordem no anel; a prova de
+/// mutação deixou a fita por gravar e ele ficou verde). ⚠️ Varre todo alvo à volta da ordem: um deles
+/// tem o checkpoint antes dela, seja qual for o passo do anel.
+#[test]
+fn a_fita_refaz_a_ordem_entre_o_checkpoint_e_o_alvo() {
+    let (mut sim, mut b, quem) = cena(true);
+    let mut primeira = Vec::new();
+    for t in 1..=90u64 {
+        if t == 41 {
+            b.pede_navegacao(quem, PedidoDeNavegacao::Para);
+        }
+        b.dispatch(&mut sim, true, t);
+        primeira.push(pos(&sim, quem));
+    }
+    for alvo in (42..=75u64).rev() {
+        b.dispatch(&mut sim, false, alvo);
+        assert_eq!(
+            pos(&sim, quem),
+            primeira[(alvo - 1) as usize],
+            "o scrub a {alvo} (a ordem é do tique 41)"
+        );
+    }
+}
+
+/// ⭐ **O recomeço do zero não traz ordens da corrida anterior** — o `rebuild_from_rest` limpa-as
+/// (no tique 0 nenhum verbo falou). Sem isso o guarda parado por um `Stop` voltava parado.
+#[test]
+fn o_recomeco_do_zero_esquece_as_ordens() {
+    let (mut sim, mut b, quem) = cena(true);
+    for t in 1..=20u64 {
+        if t == 5 {
+            b.pede_navegacao(quem, PedidoDeNavegacao::Para);
+        }
+        b.dispatch(&mut sim, true, t);
+    }
+    assert!(b.nav_ordem(quem).is_some());
+    b.dispatch(&mut sim, false, 0);
+    assert_eq!(b.nav_ordem(quem), None, "o recomeço guardou a ordem");
+    // E a corrida nova anda (o tique 5 da fita é reescrito vazio por ela).
+    corre(&mut sim, &mut b, quem, 1, 20);
+    assert!(pos(&sim, quem).0 > -5.5, "a corrida nova nasceu parada");
+}

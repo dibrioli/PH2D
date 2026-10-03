@@ -33,6 +33,27 @@ fn o_cruzamento_sai_da_aresta_original_e_nao_do_pedaco() {
     assert_eq!(em_y(&a).len(), 1);
 }
 
+/// ⭐ **O caso que a aresta ORIGINAL decide** (achado por busca, depois de a prova de mutação o
+/// mostrar sem régua): dois mosaicos EMPILHADOS, e uma aresta que atravessa o de baixo de ponta a
+/// ponta. No de baixo, o corte por `y = −10` vem ANTES do de `y = 60`; do pedaço, o ponto em `y = 60`
+/// arredondava para `x = −3`, e o de cima (que só corta por `y = 60`) escreve `x = −2`.
+#[test]
+fn a_costura_de_mosaicos_empilhados_concorda_quando_a_aresta_atravessa_um_inteiro() {
+    let tri: Vec<P> = vec![(-9, -51), (0, 102), (-40, 20)];
+    let baixo = corta(&tri, (-100, -10), (100, 60));
+    let cima = corta(&tri, (-100, 60), (100, 130));
+    let em_60 = |v: &[P]| {
+        let mut l: Vec<P> = v.iter().copied().filter(|p| p.1 == 60).collect();
+        l.sort_unstable();
+        l
+    };
+    assert_eq!(em_60(&baixo), em_60(&cima));
+    assert!(
+        em_60(&baixo).contains(&(-2, 60)),
+        "o ponto é o da aresta ORIGINAL"
+    );
+}
+
 #[test]
 fn a_divisao_arredonda_ao_mais_perto() {
     assert_eq!(divide_ao_mais_perto(7, 2), 4);

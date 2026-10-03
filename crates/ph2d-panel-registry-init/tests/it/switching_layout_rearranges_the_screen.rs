@@ -188,11 +188,18 @@ fn every_layout_hands_the_canvas_over_and_none_inherits_it() {
     for l in TaskLayout::ALL {
         let _ = h.bus.drain().count();
         layout_switch::apply(&mut h, l);
-        let asked: Vec<&'static str> = h
-            .bus
-            .drain()
+        let drained: Vec<EditorAction> = h.bus.drain().collect();
+        let asked: Vec<&'static str> = drained
+            .iter()
             .filter_map(|a| match a {
-                EditorAction::ActivateTool { tool_id } => Some(tool_id),
+                EditorAction::ActivateTool { tool_id } => Some(*tool_id),
+                _ => None,
+            })
+            .collect();
+        let modes: Vec<_> = drained
+            .iter()
+            .filter_map(|a| match a {
+                EditorAction::ObjectMode(r) => Some(*r),
                 _ => None,
             })
             .collect();
@@ -211,6 +218,18 @@ fn every_layout_hands_the_canvas_over_and_none_inherits_it() {
                  ({asked:?}) — a ponte leria isso como *«outro tomou o canvas»* e fecharia o \
                  painel que a abriu"
             ),
+            // ⭐ Um layout que pede um MODO (spec/06 §3.3) não pede ferramenta: quem a pega é o
+            // modo, e só se o activo o tiver.
+            CanvasOwner::Mode(m) => {
+                assert!(asked.is_empty(), "{l:?} pede o modo {m:?} e também {asked:?}");
+                assert_eq!(
+                    modes,
+                    vec![ph2d_editor_core::object_mode::ModeRequest::Open(m)],
+                    "{l:?} declara o modo {m:?} e não o pediu"
+                );
+                asked_by.push(vec!["<modo>"]);
+                continue;
+            }
         }
         asked_by.push(asked);
     }

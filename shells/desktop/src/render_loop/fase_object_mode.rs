@@ -56,6 +56,7 @@ impl crate::App {
         let Some(hero) = hero_screen.as_mut() else {
             return;
         };
+        let request = request.or_else(|| ph2d_app_painter::paint_mode::smoke_step(sim, hero));
         if drive(sim.world(), tools, hero, toasts, request) {
             self.title_dirty = true;
         }

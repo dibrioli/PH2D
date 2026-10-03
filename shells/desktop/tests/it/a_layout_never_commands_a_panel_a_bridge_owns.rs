@@ -301,6 +301,8 @@ fn a_layout_names_the_inspector_exactly_when_its_canvas_owner_does_not_take_it_o
             CanvasOwner::Tool(id) => takeover.iter().any(|t| t == id),
             // O modelador não é uma ferramenta e não tem ponte a substituir o inspector.
             CanvasOwner::Model3d => false,
+            // O modo Paint abre o Painter, que NÃO toma o inspector (o *Draw* nomeia-o).
+            CanvasOwner::Mode(_) => false,
         };
         assert_eq!(
             names,

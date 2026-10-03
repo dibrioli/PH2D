@@ -9,7 +9,7 @@
 > da F0, *«pode seguir implementando»*.
 
 - **Branch** `line/UIUX` · **base (merge-base = `main`)** `1ad60a1ce` · **HEAD** = o commit deste
-  ficheiro. `git cherry main HEAD` = **26 `+`** (com este ficheiro), nenhum integrado. Rebase: no-op (o `main`
+  ficheiro. `git cherry main HEAD` = **27 `+`** (com o commit que colou a 2.ª corrida do smoke), nenhum integrado. Rebase: no-op (o `main`
   não andou).
 
 ## §0 — Para o `CLAUDE.md` §5.1 (UI/UX)
@@ -208,5 +208,6 @@ LOC LIDAS: ~300
 ## §9 — Binário de smoke (último passo: `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`, 2.ª corrida)
 
 ```
-__SMOKE__
+▸ linha line_uiux · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+    Finished `smoke` profile [optimized] target(s) in 0.28s
 ```

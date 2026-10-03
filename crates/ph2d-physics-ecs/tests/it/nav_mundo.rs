@@ -177,6 +177,46 @@ fn a_porta_que_desliza_e_para_fecha_o_caminho_e_abrir_devolve_o() {
     assert!(pela_porta(&b, quem), "reaberta, o caminho volta ao vão");
 }
 
+/// ⚠️ **Parado é a velocidade LINEAR e a ANGULAR a zero**: uma porta que RODA no sítio (um
+/// torniquete) anda, e não recorta. O CONTROLO é a mesma porta quando pára de rodar.
+#[test]
+fn uma_porta_a_rodar_no_sitio_nao_recorta() {
+    let (mut sim, mut b, porta, _) = duas_salas();
+    poe(&mut sim, porta, (0.0, 0.0));
+    for t in 1..=6 {
+        b.dispatch(&mut sim, true, t);
+    }
+    let parada = area(&b);
+    // Sem a porta (escondida na parede) a área é maior: ela recorta o vão.
+    poe(&mut sim, porta, (0.0, 4.0));
+    for t in 7..=12 {
+        b.dispatch(&mut sim, true, t);
+    }
+    let aberta = area(&b);
+    assert!(parada < aberta - 1.0, "o CONTROLO: parada no vão, recorta");
+    poe(&mut sim, porta, (0.0, 0.0));
+    for t in 13..=18 {
+        b.dispatch(&mut sim, true, t);
+    }
+    // Agora roda no sítio, um pouco a cada tique.
+    for t in 19..=40u64 {
+        let mut tr = sim
+            .world_mut()
+            .get_mut::<Transform>(porta)
+            .expect("a porta");
+        tr.rotation = 0.05 * (t - 18) as f32;
+        drop(tr);
+        b.dispatch(&mut sim, true, t);
+        if t > 20 {
+            assert_eq!(
+                area(&b),
+                aberta,
+                "tique {t}: a porta a RODAR recortou a malha"
+            );
+        }
+    }
+}
+
 #[test]
 fn uma_porta_a_andar_nao_recorta() {
     let (mut sim, mut b, porta, _) = duas_salas();

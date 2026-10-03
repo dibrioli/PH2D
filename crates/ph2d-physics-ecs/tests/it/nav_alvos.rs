@@ -85,6 +85,10 @@ fn a_tag_mais_perto_com_a_subarvore_e_muda_quando_outro_fica_mais_perto() {
     // O CONTROLO: o mais perto de todos tem OUTRA tag e não conta.
     marcado(&mut sim, "Moeda", (-1.0, 0.0), Tags::from_ids([outra]));
     let quem = agente(&mut sim, (0.0, 0.0), NavTarget::NearestTagged(inimigo.0));
+    // ⚠️ O PRÓPRIO guarda também é da tag — e está a distância zero de si mesmo: não conta.
+    sim.world_mut()
+        .entity_mut(quem)
+        .insert(Tags::from_ids([inimigo]));
     let mut b = PhysicsBridge::new();
     // Sem a árvore, a tag não alcança ninguém (falha FECHADO).
     b.dispatch(&mut sim, true, 1);

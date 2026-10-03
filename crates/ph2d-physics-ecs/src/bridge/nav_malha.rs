@@ -72,8 +72,9 @@ impl PhysicsBridge {
                 .filter(|(camada, _)| *camada < 8 && r.layers & (1u8 << *camada) != 0)
                 .map(|(_, s)| s)
                 .collect();
-            // Uma malha NOVA também conta como mudança: o caminho que o agente traz é de outra.
-            let nova = !self.nav.meshes.contains_key(&chave);
+            // ⚠️ Uma malha NOVA refaz todos os mosaicos dela, logo o `update` diz que mudou (o agente que
+            // vem de outra esquece o caminho); a região vazia não tem polígonos e a condução diz
+            // «sem caminho» sozinha.
             let malha = self.nav.meshes.entry(chave).or_insert_with(|| {
                 TiledMesh::new(
                     Params {
@@ -83,7 +84,7 @@ impl PhysicsBridge {
                     TILE_M,
                 )
             });
-            if malha.update(&poligono, &dela) || nova {
+            if malha.update(&poligono, &dela) {
                 self.nav.walls.remove(&chave);
                 mudou.insert(chave);
             }

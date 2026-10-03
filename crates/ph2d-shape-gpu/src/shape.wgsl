@@ -690,8 +690,14 @@ const SUB_FECHADO: u32 = 32u;
 // perde a placa), não uma escolha de desenho: `2¹⁶` traços num troço é um traço abaixo do pixel.
 const TRACOS_POR_TROCO_MAX: f32 = 65536.0;
 
+// ⭐ doc 121 §9.10 — **a variante ENXUTA**: com `TRACEJADO = false` o driver apaga todo o ramo do
+// tracejado. Inline, ele dobrava os registos do fragmento e do `cs_escreve` (iGPU: `56 → 128` VGPRs,
+// `18 → 8` ondas por SIMD) e toda a cena pagava, com ou sem tracejado. O passe escolhe a variante
+// pelo eixo carregado (`EixoItem::tracejado`).
+override TRACEJADO: bool = true;
+
 fn tracejado(it: Eixo) -> bool {
-    return it.traco + it.vao > 0.0;
+    return TRACEJADO && it.traco + it.vao > 0.0;
 }
 
 fn comprimento(lin: vec4<f32>, t: vec2<f32>, a: vec2<f32>, b: vec2<f32>) -> f32 {

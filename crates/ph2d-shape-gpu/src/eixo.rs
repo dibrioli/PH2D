@@ -113,6 +113,14 @@ pub struct EixoItem {
     pub flecha: [f32; 2],
 }
 
+impl EixoItem {
+    /// O troço é TRACEJADO — o mesmo predicado do `tracejado` do `shape.wgsl`.
+    #[must_use]
+    pub fn tracejado(&self) -> bool {
+        self.traco + self.vao > 0.0
+    }
+}
+
 /// O tracejado que o eixo sabe percorrer: `[traço, vão]` com fase `0` — o que o `kurbo_stroke` da
 /// casa produz. `None` para um traço contínuo e para um padrão que o eixo não exprime (outra
 /// contagem, fase, período nulo): esse fica com a [`crate::geometry::FLAG_SO_CONFORME`].
@@ -309,7 +317,7 @@ pub fn em_blocos(pecas: &[EixoItem]) -> Vec<EixoItem> {
             };
             alcance = alcance.max(it.meia_largura * fator);
         }
-        let tracejado = bloco.iter().any(|it| it.traco + it.vao > 0.0);
+        let tracejado = bloco.iter().any(EixoItem::tracejado);
         out.push(EixoItem {
             a: lo,
             b: hi,

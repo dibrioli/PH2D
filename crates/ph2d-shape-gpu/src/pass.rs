@@ -45,7 +45,10 @@ pub struct Copias<'a> {
 
 /// O passe: um pipeline por formato de alvo, e as geometrias carregadas.
 pub struct ShapePass {
-    pipeline: wgpu::RenderPipeline,
+    /// As duas variantes do tracejado (doc 121 §9.10, [`crate::contorno::Variantes`]).
+    pipeline: crate::contorno::Variantes<wgpu::RenderPipeline>,
+    /// Algum troço do eixo carregado é tracejado ⇒ a variante COMPLETA (o mesmo buffer que o shader lê).
+    tracejado: bool,
     layout: wgpu::BindGroupLayout,
     view_buf: wgpu::Buffer,
     records: wgpu::Buffer,
@@ -141,30 +144,32 @@ impl ShapePass {
             bind_group_layouts: &[Some(&layout), Some(&contorno.leitura)],
             immediate_size: 0,
         });
-        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("ph2d-shape-gpu"),
-            layout: Some(&pl),
-            vertex: wgpu::VertexState {
-                module: &module,
-                entry_point: Some("vs_main"),
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-                buffers: &[],
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &module,
-                entry_point: Some("fs_main"),
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format,
-                    blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            primitive: wgpu::PrimitiveState::default(),
-            depth_stencil: None,
-            multisample: wgpu::MultisampleState::default(),
-            multiview_mask: None,
-            cache: None,
+        let pipeline = crate::contorno::Variantes::cria(|compilation_options| {
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("ph2d-shape-gpu"),
+                layout: Some(&pl),
+                vertex: wgpu::VertexState {
+                    module: &module,
+                    entry_point: Some("vs_main"),
+                    compilation_options: compilation_options.clone(),
+                    buffers: &[],
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module: &module,
+                    entry_point: Some("fs_main"),
+                    compilation_options,
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format,
+                        blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                }),
+                primitive: wgpu::PrimitiveState::default(),
+                depth_stencil: None,
+                multisample: wgpu::MultisampleState::default(),
+                multiview_mask: None,
+                cache: None,
+            })
         });
         let view_buf = buffer_com(
             gpu,
@@ -175,6 +180,7 @@ impl ShapePass {
         let vazio = |l| buffer_com(gpu, l, &[], wgpu::BufferUsages::STORAGE);
         Self {
             pipeline,
+            tracejado: false,
             layout,
             view_buf,
             records: vazio("ph2d-shape-gpu records"),
@@ -186,6 +192,13 @@ impl ShapePass {
             carregadas: Vec::new(),
             contorno,
         }
+    }
+
+    /// **As geometrias carregadas têm algum troço tracejado** — o passe desenha com a variante
+    /// COMPLETA; sem nenhum, com a ENXUTA (doc 121 §9.10). Instrumento de gates.
+    #[must_use]
+    pub fn usa_o_tracejado(&self) -> bool {
+        self.tracejado
     }
 
     /// **Quantas das `n` cópias do último desenho ganharam o contorno calculado**, e a capacidade
@@ -266,6 +279,7 @@ impl ShapePass {
         if eixo.is_empty() {
             eixo.push(crate::EixoItem::default());
         }
+        self.tracejado = eixo.iter().any(crate::EixoItem::tracejado);
         self.eixo = buffer_com(
             gpu,
             "ph2d-shape-gpu eixo",
@@ -396,7 +410,8 @@ impl ShapePass {
         });
         let desenha = count > 0 && !self.carregadas.is_empty();
         if desenha {
-            self.contorno.calcula(gpu, encoder, &bg, count);
+            self.contorno
+                .calcula(gpu, encoder, &bg, count, self.tracejado);
         }
         let leitura = self.contorno.grupo_de_leitura(gpu);
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -419,7 +434,7 @@ impl ShapePass {
         if !desenha {
             return;
         }
-        pass.set_pipeline(&self.pipeline);
+        pass.set_pipeline(self.pipeline.de(self.tracejado));
         pass.set_bind_group(0, &bg, &[]);
         pass.set_bind_group(1, &leitura, &[]);
         pass.draw(0..6, 0..count);

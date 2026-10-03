@@ -6,7 +6,7 @@
 //! cargo test -p ph2d-shape-gpu --test it -- --ignored --nocapture tracejado
 //! ```
 
-use ph2d_shape_gpu::FillRule;
+use ph2d_shape_gpu::{EixoItem, FillRule, ShapeGeometry, ShapeInput, ShapePass, StrokeInput};
 use ph2d_vector::{BezPath, Cap, Join, Stroke};
 
 use super::paridade_com_o_vello::{
@@ -232,4 +232,45 @@ fn o_tracejado_calculado_desenha_o_que_o_pixel_desenha() {
         falhas.is_empty(),
         "os dois caminhos tracejam diferente: {falhas:#?}"
     );
+}
+
+/// ⭐ doc 121 §9.10 — **só um eixo com troço TRACEJADO pede a variante COMPLETA.** Inline, o ramo do
+/// tracejado dobrava os registos do fragmento e do `cs_escreve` em TODA a cena (iGPU `56 → 128`
+/// VGPRs, as estrelas esticadas `1,74 → 2,45 ms`). Os gates de pixel só provam que a cena tracejada
+/// escolhe a completa: escolhê-la sempre desenha a mesma imagem, mais devagar — esta régua é a que vê.
+#[test]
+#[ignore = "precisa de adapter de GPU"]
+fn so_um_eixo_tracejado_pede_a_variante_completa() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem adaptador — nada a medir");
+        return;
+    };
+    let est = estrela();
+    let prepara = |s: &Stroke| {
+        ShapeGeometry::prepare(&ShapeInput {
+            fill: Some((&est, FillRule::NonZero)),
+            strokes: vec![StrokeInput {
+                path: &est,
+                style: s,
+                color: [0.1, 0.1, 0.1, 1.0],
+            }],
+            stroke_fills: vec![],
+        })
+        .expect("a forma prepara")
+    };
+    let continua = prepara(&Stroke::new(0.06));
+    let tracejada = prepara(&Stroke::new(0.06).with_dashes(0.0, [0.12, 0.08]));
+    // CONTROLO: a contínua TEM eixo — sem ele, a enxuta seria escolhida por não haver nada a percorrer.
+    assert!(!continua.eixo.is_empty() && !continua.eixo.iter().any(EixoItem::tracejado));
+    assert!(tracejada.eixo.iter().any(EixoItem::tracejado));
+    let mut p = ShapePass::new(&gpu, wgpu::TextureFormat::Rgba16Float);
+    p.set_geometries(&gpu, [(1u32, &continua)]);
+    assert!(!p.usa_o_tracejado(), "sem tracejado, a variante ENXUTA");
+    p.set_geometries(&gpu, [(1u32, &continua), (2u32, &tracejada)]);
+    assert!(
+        p.usa_o_tracejado(),
+        "uma geometria tracejada no conjunto pede a COMPLETA"
+    );
+    p.set_geometries(&gpu, [(1u32, &continua)]);
+    assert!(!p.usa_o_tracejado(), "sem ela, volta à ENXUTA");
 }

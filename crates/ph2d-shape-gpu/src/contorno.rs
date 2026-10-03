@@ -73,9 +73,10 @@ const PRONTO: u8 = 3;
 
 /// Os buffers e os pipelines do contorno.
 pub(crate) struct Contorno {
-    conta: wgpu::ComputePipeline,
+    /// A contagem e a escrita percorrem o eixo: têm as duas variantes do tracejado ([`Variantes`]).
+    conta: Variantes<wgpu::ComputePipeline>,
     soma: wgpu::ComputePipeline,
-    escreve: wgpu::ComputePipeline,
+    escreve: Variantes<wgpu::ComputePipeline>,
     /// doc 121 §9.8 — as células e as listas, por despachos indirectos: um fio por LINHA apaga os
     /// registos, um por ARESTA conta, um por LINHA reserva as listas, um por ARESTA escreve-as.
     zera: wgpu::ComputePipeline,
@@ -127,6 +128,42 @@ pub(crate) struct Contorno {
     pub(crate) ligado: bool,
     /// [`AREA_MINIMA_CONFORME`], ou o que um gate pediu.
     pub(crate) area_minima_conforme: f32,
+}
+
+/// doc 121 §9.10 — um pipeline nas duas variantes do `override TRACEJADO` (`shape.wgsl`): a ENXUTA,
+/// sem o ramo do tracejado, e a COMPLETA. Inline, o ramo dobra os registos de quem o tem (iGPU:
+/// fragmento `56 → 128` VGPRs, `18 → 8` ondas por SIMD) mesmo quando nenhum troço é tracejado.
+pub(crate) struct Variantes<T> {
+    enxuta: T,
+    completa: T,
+}
+
+impl<T> Variantes<T> {
+    /// As duas, criadas com as opções de cada uma ([`opcoes`]).
+    pub(crate) fn cria(f: impl Fn(wgpu::PipelineCompilationOptions<'static>) -> T) -> Self {
+        Self {
+            enxuta: f(opcoes(false)),
+            completa: f(opcoes(true)),
+        }
+    }
+
+    pub(crate) fn de(&self, tracejado: bool) -> &T {
+        if tracejado {
+            &self.completa
+        } else {
+            &self.enxuta
+        }
+    }
+}
+
+/// As opções de compilação de uma variante: o valor do `override TRACEJADO`.
+fn opcoes(tracejado: bool) -> wgpu::PipelineCompilationOptions<'static> {
+    const ENXUTA: &[(&str, f64)] = &[("TRACEJADO", 0.0)];
+    const COMPLETA: &[(&str, f64)] = &[("TRACEJADO", 1.0)];
+    wgpu::PipelineCompilationOptions {
+        constants: if tracejado { COMPLETA } else { ENXUTA },
+        ..Default::default()
+    }
 }
 
 fn entrada(
@@ -228,24 +265,31 @@ impl Contorno {
             bind_group_layouts: &[Some(grupo0), Some(&vazio), Some(&escrita_celulas)],
             immediate_size: 0,
         });
+        let compila =
+            |entry: &str,
+             pl: &wgpu::PipelineLayout,
+             compilation_options: wgpu::PipelineCompilationOptions<'_>| {
+                device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("ph2d-shape-gpu contorno"),
+                    layout: Some(pl),
+                    module,
+                    entry_point: Some(entry),
+                    compilation_options,
+                    cache: None,
+                })
+            };
         let pipeline_em = |entry: &str, pl: &wgpu::PipelineLayout| {
-            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("ph2d-shape-gpu contorno"),
-                layout: Some(pl),
-                module,
-                entry_point: Some(entry),
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-                cache: None,
-            })
+            compila(entry, pl, wgpu::PipelineCompilationOptions::default())
         };
         let pipeline = |entry: &str| pipeline_em(entry, &pl);
+        let variantes = |entry: &str| Variantes::cria(|o| compila(entry, &pl, o));
         let tecto_arestas = device.limits().max_storage_buffer_binding_size / ARESTA;
         let tecto_celulas = device.limits().max_storage_buffer_binding_size / PALAVRA;
         let armazens = wgpu::BufferUsages::STORAGE;
         Self {
-            conta: pipeline("cs_conta"),
+            conta: variantes("cs_conta"),
             soma: pipeline("cs_soma"),
-            escreve: pipeline("cs_escreve"),
+            escreve: variantes("cs_escreve"),
             zera: pipeline_em("cs_zera", &pl_celulas),
             conta_listas: pipeline_em("cs_conta_listas", &pl_celulas),
             lugar_das_listas: pipeline_em("cs_lugar_das_listas", &pl_celulas),
@@ -408,13 +452,15 @@ impl Contorno {
         }
     }
 
-    /// Codifica os quatro passes para `count` cópias (o grupo `0` é o do desenho).
+    /// Codifica os quatro passes para `count` cópias (o grupo `0` é o do desenho), na variante do
+    /// eixo carregado (`tracejado`, [`Variantes`]).
     pub(crate) fn calcula(
         &mut self,
         gpu: &GpuContext,
         encoder: &mut wgpu::CommandEncoder,
         grupo0: &wgpu::BindGroup,
         count: u32,
+        tracejado: bool,
     ) {
         self.colhe();
         self.garante(gpu, u64::from(count));
@@ -497,14 +543,14 @@ impl Contorno {
         };
         {
             let mut pass = passe(encoder, "render.contorno.conta");
-            pass.set_pipeline(&self.conta);
+            pass.set_pipeline(self.conta.de(tracejado));
             pass.dispatch_workgroups(x, y, 1);
             pass.set_pipeline(&self.soma);
             pass.dispatch_workgroups(1, 1, 1);
         }
         {
             let mut pass = passe(encoder, "render.contorno.escreve");
-            pass.set_pipeline(&self.escreve);
+            pass.set_pipeline(self.escreve.de(tracejado));
             pass.dispatch_workgroups(x, y, 1);
         }
         {

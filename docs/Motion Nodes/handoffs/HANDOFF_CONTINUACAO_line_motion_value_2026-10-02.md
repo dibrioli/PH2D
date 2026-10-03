@@ -34,9 +34,12 @@
 - **Os glifos** do `source.text` já iam à placa desde a W3; o que faltava era um gate de pixel com
   glifo — `7a58e7aaf` (alfa `63` · cor `62`).
 - **O tracejado esticado na placa** ([doc 121 §9.9](../121_as_formas_na_placa.md)): rota do PRODUTO
-  `87` · `69`, mutação `17` de `17`, a `=76` passa à placa, censo `19` das `23`. Fica por curar o ajuste
-  do tracejado sob escala não uniforme (§4).
+  `87` · `69`, mutação `17` de `17`, a `=76` passa à placa, censo `19` das `23`.
 - **A variante `=127` tracejada** para o smoke: `PH2D_TRACO_ESTICADO_TRACEJADO=1` (`4aa06e738`).
+  ✅ **Smoke do dono aprovado em 02/10** («smoke parece ok»).
+- **O ajuste da emenda no ECRÃ** (`042327a6a`): a `dash_fit` media o contorno no local; agora a casa
+  (`ajusta_no_ecra`) e a placa (`ajuste_do_tracejado`) ajustam ao contorno do ecrã, com a folga `1e-4` que
+  fixa o lado da emenda. Produto `85` · `58`, mutação `21` de `21`.
 
 ## §2 — Gates e provas (corridos nesta árvore)
 
@@ -77,7 +80,7 @@
 | **as grandes ESTICADAS no proxy** ainda perdem (`1,74` contra `1,05`) | decomposição iGPU: desenho `0,82` · células `0,43` (contar `0,16` · escrever `0,16` · lugar `0,08` · zerar `0,04`) · escrita das arestas `0,20` (um fio por CÓPIA) · contagem `0,06`. O desenho é o maior; o próximo degrau é o do Vello inteiro (rasterizar fino em cálculo, `4 px` por fio) e pede a ordem entre cópias — desenho próprio, não um ajuste |
 | ~~o **traço TRACEJADO** sob escala não-uniforme fica no Vello~~ | ✅ fechado — [doc 121 §9.9](../121_as_formas_na_placa.md) |
 | ~~os **glifos** do `source.text` ficam no Vello~~ | ✅ já iam à placa; gate das letras novo (§9.9) |
-| ⛔ o **ajuste do tracejado** (`dash_fit`) sob escala não uniforme | mede o contorno no LOCAL e o padrão é escalado por `√|det|`: a emenda volta, nas DUAS rotas (lei da casa, também em `ph2d-vec-render`). Cura: ajustar no ecrã, `n = round(L_ecrã/(k·P))`; ⚠️ o ajuste exacto põe o fim de um fechado na fronteira traço/vão — fixar o lado (`f64` kurbo × `f32` placa) |
+| ~~⛔ o **ajuste do tracejado** (`dash_fit`) sob escala não uniforme~~ | ✅ **curado** (`042327a6a`, doc 121 §9.9): ajuste no ECRÃ nas duas rotas, folga `1e-4` no fechado, mutação `21` de `21` |
 | ⚠️ a **mordida** do traço rente depois de uma quina | divergência DECLARADA (o traçador da casa morde, a placa desenha a união): sem acção, documentada no §9.9 |
 | `M6`/`S6`/`S8` (§9.5/§9.4) e o `fx.glow` que lê o `pump` anterior | nomeados no handoff de 01/10, sem mudança |
 | `fk.rs` duplicado em seis crates (bug #11) | wave própria |

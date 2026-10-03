@@ -111,7 +111,7 @@ cima. ⛔ Desenhar o passe por cima do alvo do Vello pintaria as formas **por ci
   conformes `1,18 → 0,94` (EMPATA com o Vello, `0,92`), densas `2,13 → 1,71` (Vello `2,81`). ⏳ As
   grandes ESTICADAS ainda perdem (`1,74` contra `1,05`).
 - ✅ **O TRACEJADO NO ECRÃ** (§9.9): o traço tracejado sob escala não uniforme vai à placa, pontas e
-  emenda incluídas; a `=76` deixa a CPU; censo `19` das `23`. Mutação `17` de `17`.
+  emenda incluídas; a `=76` deixa a CPU; censo `19` das `23`. Mutação `17` de `17`. E o ajuste da emenda passou ao ECRÃ nas duas rotas (`042327a6a`), mutação `21` de `21`.
 - ✅ **Os glifos do `source.text`** já iam à placa desde a W3; o gate das LETRAS (§9.9) é novo.
 
 ## §6 — ✅ W1: a paridade de PIXEL, medida (2026-09-29, RTX, alvo de meio-float)
@@ -1017,12 +1017,32 @@ gates usam ponta quadrada nessas famílias. Mesma família da quina exacta do §
 **⚠️ A régua tem defeitos próprios.** Com traço grosso numa volta apertada o Vello abre uma rachadura de
 um pixel dentro do traço (alfa `0`–`136` onde a placa pinta `255`); as fixturas evitam-na (largura `0,07`).
 
-**⛔ Achado NÃO curado, nomeado.** O ajuste do tracejado (`dash_fit`, a cura da emenda de 22/08) mede o
-contorno no espaço LOCAL e o padrão é depois escalado por `√|det|`; sob escala não uniforme o comprimento
-no ecrã não é `√|det|·L`, e a emenda volta — nas DUAS rotas (é a lei da casa; também no vetor de
-documento, `ph2d-vec-render`). A cura é ajustar no ecrã (`n = round(L_ecrã/(k·P))`), nas duas rotas.
-⚠️ Um ajuste EXACTO põe o fim de um fechado exactamente na fronteira traço/vão, onde o `f64` do kurbo e o
-`f32` da placa podem decidir a emenda de lados diferentes — a lei tem de fixar o lado.
+**✅ O AJUSTE DA EMENDA NO ECRÃ (`042327a6a`, curado na mesma jornada).** O ajuste do tracejado (`dash_fit`,
+a cura da emenda de 22/08) media o contorno no espaço LOCAL e o padrão era depois escalado por `√|det|`;
+sob escala não uniforme o comprimento no ecrã não é `√|det|·L`, e a emenda voltava — nas DUAS rotas (e no
+vetor de documento). Agora, no ramo NÃO conforme:
+
+- **a casa** (`ph2d_vec_render::ajusta_no_ecra`, chamada por `stroke_uniform` e `stroke_uniform_image`)
+  ajusta o padrão da caneta (já `× √|det|`) ao sub-caminho mais LONGO da geometria JÁ transformada, pela
+  mesma `dash_fit::fit` (`n` períodos num fechado; `n` mais um traço num aberto). Sob afim conforme o ecrã
+  é o local escalado e nada muda (esse caminho nem passa lá). Gates `o_tracejado_esticado_fecha_no_contorno_do_ecra`
+  (com CONTROLO: o ajuste local deixava a emenda a `0,7` de período) e `…_aberto_acaba_com_traco_inteiro`;
+- **a placa** (`ajuste_do_tracejado`, por cópia) faz a MESMA conta — `floor(x + 0,5)`, porque o `round` do
+  WGSL arredonda as metades para o par e o `f64::round` para longe do zero;
+- ⭐ **a folga** `FOLGA_DO_AJUSTE = 1e-4`: o ajuste exacto punha o fim de um fechado EXACTAMENTE na
+  fronteira traço/vão, onde o `f64` do kurbo e o `f32` da placa decidiam a emenda por arredondamento;
+  alongado o período, o fim cai sempre DENTRO do último vão (`≤ 0,3 px` numa volta de `3 000 px`). As
+  mutações «sem a folga» SANGRAM nas duas rotas (placa: alfa `204`–`255`; casa: `255`) — a ambiguidade
+  era real, não teórica;
+- ⚠️ consequência: o contorno mais LONGO nunca mais emenda; a emenda só acontece num sub-caminho mais
+  curto (um furo). As mutações da emenda (`T2`, `T13`) SOBREVIVERAM até à família «estrela com furo»
+  (furo HEXAGONAL: numa ponta de estrela a faixa nunca serve e o recuo da emenda não decide nada);
+- a régua da crate passou a CHAMAR `pen_for` + `ajusta_no_ecra` (dev-dep `ph2d-vec-render`) em vez de
+  copiar a lei.
+
+Medido (RTX): famílias esticadas alfa `≤ 84` · cor `≤ 63`; estrela com furo `63` · `57`; produto `85` ·
+`58`. **Mutação `21` de `21`** (as `17` de cima com as âncoras novas, mais «placa sem o ajuste» · «placa
+sem a folga» · «casa sem o ajuste» · «casa sem a folga»).
 
 **Smoke.** `=127` com `PH2D_TRACO_ESTICADO_TRACEJADO=1` (o `Dash 2` e `Dash Gap 1,5` do cartão postos à
 partida); fotografado na tela virtual: `1024` cópias pela PLACA (do dispositivo).

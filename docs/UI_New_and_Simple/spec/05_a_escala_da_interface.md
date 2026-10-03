@@ -14,6 +14,12 @@
 | Godot 4.7.2 | `interface/editor/display_scale`, enumerado | `Auto (%d%%) · 75 · 100 · 125 · 150 · 175 · 200 · Custom` | tabela de opções no binário (`strings $(which godot)`) |
 
 ⇒ **Degraus como o Godot** (o artista escolhe, não arrasta): `100 · 125 · 150 · 175 · 200 %`.
+
+**HiDPI (corrido em 02/10, [`oraculos/hidpi_2026-10-02.md`](oraculos/hidpi_2026-10-02.md)):** o
+Blender faz `efectivo = sistema × utilizador` e a arte fica física (1 px da imagem = 1 px do ecrã a
+1:1); o `Auto` da Godot é o factor do sistema, e um valor manual SUBSTITUI-O. ⇒ PH2D: `s =
+scale_factor × UiScale` (o nosso `100 %` é o `Auto` da Godot; os degraus são relativos ao ecrã,
+como no Blender) e a arte continua física, como no Blender.
 ⚠️ O tecto não é escolhido: **a interface tem de caber na janela**. Medido em 02/10 (§3b): a
 `200 %` numa janela de `1366` px (`683` lógicos) o layout ainda degrada com graça, e por isso
 nenhum degrau é desactivado.

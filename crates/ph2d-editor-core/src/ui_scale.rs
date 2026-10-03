@@ -75,9 +75,10 @@ impl UiScaleMap {
         Self::no_ecra(scale, 1.0)
     }
 
-    /// ⭐ **HiDPI: `s` = factor do ECRÃ × a preferência.** `ecra` é o `scale_factor` do winit (o
-    /// Blender e a Godot multiplicam os dois: `docs/UI_New_and_Simple/spec/oraculos/`). Um factor
-    /// que não é finito e positivo não vem do winit — vale `1,0`.
+    /// ⭐ **HiDPI: `s` = factor do ECRÃ × a preferência.** `ecra` é o `scale_factor` do winit. O
+    /// Blender multiplica os dois; o `Auto` da Godot é o factor do ecrã, que é o nosso `100 %`
+    /// (`docs/UI_New_and_Simple/spec/oraculos/hidpi_2026-10-02.md`). Um factor que não é finito e
+    /// positivo não vem do winit — vale `1,0`.
     #[must_use]
     pub fn no_ecra(scale: UiScale, ecra: f32) -> Self {
         debug_assert!(ecra.is_finite() && ecra > 0.0, "factor do ecrã {ecra}");

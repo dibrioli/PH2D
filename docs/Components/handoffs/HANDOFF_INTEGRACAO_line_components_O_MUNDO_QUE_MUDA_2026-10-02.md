@@ -89,6 +89,7 @@ SUPERFÍCIE DE COLISÃO — line/components contra main
 | `crates/ph2d-physics/src/world/player.rs` | `PhysicsWorld::body_angvel` | fn nova |
 | `crates/ph2d-physics-ecs/src/bridge/nav.rs` + filhos NOVOS `nav_malha.rs`, `nav_ordens.rs`, `nav_alvo.rs` (+`nav_alvo_tests.rs`) · `tape.rs` · `rewind.rs` · `controllers.rs` · `components/nav.rs` · `lib.rs` | a malha por mosaicos e o obstáculo cinemático parado; as ordens; os alvos; `NavRoute`; os campos do anel | `nav.rs` **688 → 549** LOC (a malha e a forma saíram para o filho); ⚠️ o tique da navegação passou a duas passagens — ver §3 |
 | `crates/ph2d-ecs/src/signal_actions.rs` (+ testes) | os 2 verbos, `ArgKind::ObjectName` | apendados |
+| `crates/ph2d-ecs/src/rewind_runtime.rs` (+ `tests/it/rewind_runtime.rs`) | ⚠️ **muda o comportamento de TODO cérebro no rebobinar**: quem já está no estado inicial e já o anunciou NÃO renasce (a porta corre a cada quadro parado, e cada quadro anunciava a entrada outra vez — o report do dono de 02/10, «milhões de mensagens»); o recomeço não muda | ⚠️ uma linha que dependa de um cérebro re-anunciar o inicial a cada quadro parado deixa de o ter (nenhum gate do repo dependia: `ph2d-ecs` 539/539, `ph2d-app-components` 820/820) |
 | `crates/ph2d-editor-core/src/{nav_edits.rs, screens/hero/inspector_model_action.rs}` | `NavAlvoModo` +2, `alvo_tag`, `SemForma`, `AlvoTag`; `ActionArgHint::ObjectName` | apendados; ⚠️ `InspectorNavAgent` ganhou o campo `alvo_tag` (todo literal do struct precisa dele — 3 fixturas no repo, conferidas por `grep -rln 'InspectorNavAgent {'`) |
 | `crates/ph2d-panel-inspector/src/{ids/inspector_nav.rs, ids/inspector_action.rs, populate_nav.rs, event_nav.rs, sections/nav.rs, sections/nav_tag_row.rs (NOVO), sections/mod.rs, state_popovers.rs, popovers_tags.rs, sections/actions_editor.rs}` | os modos, o chip da tag, o 14.º verbo | linhas a mais |
 | `crates/ph2d-i18n/src/{ecs_scene,inspector,inspector_nav}.rs` | as 10 chaves | sim |
@@ -126,6 +127,8 @@ O plano §14 tem tudo (o que se consegue fazer, as medições, as decisões). Em
    physics)`: uma linha que tenha acrescentado um terceiro anúncio ao laço antigo da shell tem de o pôr
    nesta porta.
 6. `PROJECT_SCHEMA` — o `+1` é da W5 (contar com `python3 scripts/schema-recount.py`).
+7. **`rewind_runtime_state`** (o bloco dos cérebros) ganhou a idempotência no rebobinar: uma linha que
+   tenha acrescentado outro estado vivo a esse bloco conflitua ali.
 
 ---
 
@@ -151,7 +154,7 @@ Tudo corrido **1× sobre o diff acumulado**, régua no merge-base (`1ad60a1ce`),
 
 | portão | resultado |
 |---|---|
-| `BASE=$(git merge-base main HEAD) bash scripts/nextest-impacted.sh` | **`19 442 / 19 442`** verdes (`11 503` saltados) — a 2.ª corrida, depois das curas; a 1.ª deu `19 440 / 19 441` (o `architecture_panel_loc_cap`: `paint_nav_agent_section` `221 > 200` ⇒ a linha do alvo saiu para `linha_do_alvo`) |
+| `BASE=$(git merge-base main HEAD) bash scripts/nextest-impacted.sh` | **`19 443 / 19 443`** verdes (`11 503` saltados) — a 3.ª corrida, depois das curas do Rewind (report do dono); a 2.ª deu `19 442 / 19 442`; a 1.ª deu `19 440 / 19 441` (o `architecture_panel_loc_cap`: `paint_nav_agent_section` `221 > 200` ⇒ a linha do alvo saiu para `linha_do_alvo`) |
 | `CARGO_BUILD_WARNINGS=deny cargo check --workspace --all-targets` | verde |
 | `cargo clippy --all-targets --all-features -D warnings` nas 12 crates tocadas (`ph2d-navmesh` · `ph2d-nav` · `ph2d-orca` · `ph2d-physics` · `ph2d-physics-ecs` · `ph2d-ecs` · `ph2d-i18n` · `ph2d-editor-core` · `ph2d-panel-inspector` · `ph2d-panel-registry-init` · `ph2d-app-components` · `ph2d-host-desktop`) | **zero** — depois de 5 curas (`is_multiple_of`/`contains` nos mosaicos, a `entry` do `por_tag`, um `drop` de um `Mut`) |
 | `file_loc_caps` (shell, 4/4) · `arch_safe_clamp_only` · `the_shell_only_shrinks` · `architecture_workspace_file_loc_cap` | verdes |
@@ -191,8 +194,9 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-components && env PH2D_NAV
 ```
 
 O guarda VERMELHO faz a ronda pelo rectângulo desenhado de cima, o CINZENTO (o controlo, sem cérebro) pelo de
-baixo. Setas: entrar pela porta e pisar a zona AMARELA — o vermelho persegue; voltar à zona VERDE — a porta
-desce atrás do herói, o vermelho desiste e volta à ronda. Tecla `B`: o contorno claro da área andável fecha o
+baixo. Setas: entrar pela porta e pisar a zona AMARELA — o vermelho persegue; voltar à zona VERDE — nasce a
+porta atrás do herói (uma fábrica no vão), o vermelho desiste e volta à ronda; o Rewind abre-a (o que nasceu
+na corrida é varrido) sem enxurrada de mensagens. Tecla `B`: o contorno claro da área andável fecha o
 vão quando a porta pára. O guarda vem escolhido (Nav Agent: *Patrol* · *Patrol Route*). Fotografada aos `6 s`
 e `9 s` (ecrã virtual). As cenas `=1` e `=2` continuam iguais.
 
@@ -216,10 +220,10 @@ PERFIL DO LOOP DO AGENTE — 20 sessao(oes) mais recentes
 
 ### O smoke compilado (a 2.ª corrida, colada)
 
-Depois de `rm -rf target/*/incremental` (`31 G` de `debug` + `2,3 G` de `smoke` reclamados), a 2.ª corrida de
-`bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke` — zero linhas `Compiling`:
+Depois de `rm -rf target/*/incremental`, a 2.ª corrida de `bash scripts/ph2d-run.sh cargo build -p
+ph2d-host-desktop --profile smoke` (a árvore das curas do Rewind) — zero linhas `Compiling`:
 
 ```
 ▸ linha line_components · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
-    Finished `smoke` profile [optimized] target(s) in 0.32s
+    Finished `smoke` profile [optimized] target(s) in 0.21s
 ```

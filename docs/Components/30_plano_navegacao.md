@@ -574,6 +574,13 @@ começa a andar (deixa de recortar) e quando pára.
   do vão também; a zona verde junto à porta disparava com o herói dentro do vão. As rondas nasceram
   POR BAIXO do chão (a `sync` dá à forma o 1.º lugar livre da pilha — apanhado na 1.ª foto). O relógio
   de fábrica ARRANCA sozinho e a porta abria a cena fechada.
+- ⛔⛔ **O REWIND, report do dono (02/10): «milhões de mensagens e a porta não volta aberta».** (1) A
+  porta do rebobinar corre a CADA quadro parado no início e renascia cada cérebro com `started =
+  false` — o guarda anunciava «patrulhar» a cada quadro (29 em 30). ⇒ no rebobinar ela é idempotente
+  (quem já está no inicial e já o anunciou fica). (2) A porta da cena era um cinemático que um TWEEN
+  descia: o Rewind renasce o relógio, o tween larga e a pose fechada vira DOCUMENTO (a lei do
+  `settle`); um tween de volta não corre parado no início. ⇒ a porta é uma FÁBRICA no vão (nasce uma
+  parede estática), e o Rewind VARRE o que nasceu. O gate da cena joga agora 30 quadros parados.
 - **O meu arnês da cena** deitava fora o que um cérebro emite: na shell, a emissão chega aos OUTROS
   cérebros no quadro seguinte (o barramento) e à tabela no mesmo.
 - **Duas leis sem régua** antes da prova de mutação: a porta a RODAR no sítio (a angular conta para
@@ -587,6 +594,7 @@ começa a andar (deixa de recortar) e quando pára.
 | o mosaico de `5`/`10`/`25 m` | a procura paga até `1,8×` conforme onde a costura corta; `25 m` paga `10,7 ms` por porta |
 | um relógio de espera para «parado» (o `carve` do Unity) | um número inventado; a velocidade do solver diz-o ao tique e vai no anel |
 | o alarme de tempo fixo na cena | o guarda (`2,2 m/s`) chega à porta em `~1,1 s` |
+| a porta da cena como cinemático conduzido por um tween | o Rewind não a abria (a pose vira documento quando o tween larga) — o report do dono de 02/10 |
 | o oráculo do Godot para a reconstrução | a lei que importa é *por mosaicos = inteira = o EXACTO* e *incremental = a frio ao bit*: um oráculo mais forte que o do Godot (que nem constrói por mosaicos na 2D), e gateado |
 
 ### §14.5 — A prova

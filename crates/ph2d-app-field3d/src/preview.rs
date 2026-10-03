@@ -517,4 +517,3 @@ pub fn re_amostra_a_silhueta() -> bool {
     static LIGADO: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *LIGADO.get_or_init(|| std::env::var("PH2D_FIELD_BORDA").as_deref() != Ok("0"))
 }
-

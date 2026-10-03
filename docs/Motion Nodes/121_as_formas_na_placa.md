@@ -1281,7 +1281,20 @@ mesma imagem, os gates `10/10` e `5/5` re-corridos). Re-medido:
 | escada, `4 096` · `16 384` · `32 768` | `0` (as conformes pequenas não vão às células) | — | `60 fps` nas três | `~3,1` · `4,1`–`17,8` |
 | `=127` densa, `16 384` | `107 520` (`6,6` por cópia) | `131 072` · **`66 MB`** | **`16,6`** · `20,8` ms | `3,1` · `8,2` ms |
 
-⇒ no proxy de telemóvel a `=127` densa passa a `60 fps` (as listas davam `17,6 ms`). ⚠️ Os `66 MB` são
-`528 B` por célula; uma estrela de `~14 px` ocupa uma célula de `32` por fileira (mais de metade é
-grelha fora da forma) — a alavanca da memória E do custo das células nas densas é a LARGURA da célula,
-re-medida a seguir.
+⇒ no proxy de telemóvel a `=127` densa passa a `60 fps` (as listas davam `17,6 ms`). Os `66 MB` são
+`528 B` por célula de `32 px` (`16,5 B` por pixel de grelha) e a potência de dois.
+
+⛔ **RECUSA MEDIDA — estreitar a célula para a acumulação** (a hipótese era que a grelha de `32` de uma
+estrela de `~14 px` fosse mais de metade fora da forma). Sonda intercalada, `PH2D_FLUID_PROFILE=1`, `2`
+corridas, soma dos passes · células · pixels de grelha:
+
+| largura | iGPU esticadas | iGPU conformes | iGPU densas | RTX (os três) | grelha esticadas · densas |
+|---|---:|---:|---:|---:|---:|
+| **`32`** | **`0,88`** · `0,50` | **`0,59`** · `0,37` | `1,00` · `0,78` | `0,22` · `0,09` · `0,10` | `331 k` · `470 k` px |
+| `16` | `0,87` · `0,49` | `0,60` · `0,38` | `1,00` · `0,78` | `0,22` · `0,09` · `0,09` | `301 k` · `470 k` |
+| `8` | `0,97`–`1,06` · `0,59`–`0,67` | `0,73` · `0,52` | `0,94` · `0,71` | `0,22` · `0,10` · `0,09` | `294 k` · `353 k` |
+
+⇒ `16` empata (a grelha das densas nem muda: a caixa estimada com a folga já cabe em `16`); `8` só ganha
+`0,06 ms` nas densas e perde `0,09`–`0,18` nas esticadas. Fica `32`, como no §9.8. A memória não se
+cura pela largura: as alavancas que ficam são a cobertura gravada NO LUGAR do 1.º acumulador
+(`−4 B` por pixel, `−24 %`) e um arredondamento da capacidade mais fino que a potência de dois.

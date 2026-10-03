@@ -37,9 +37,12 @@ use ph2d_nav::{NavMesh, V2};
 use crate::lattice::{P, SCALE, to_lattice, to_world};
 use crate::{Params, Shape, inflate, triangulate};
 
-/// ⭐ **O lado de um mosaico, em metros** — o MEDIDO (plano 30 §14.1): o custo de uma mudança é o
-/// dos mosaicos que ela toca mais a montagem, e a montagem cresce com os polígonos a mais nas costuras.
-pub const TILE_M: f64 = 10.0;
+/// ⭐ **O lado de um mosaico, em metros** — o MEDIDO (plano 30 §14.1, `examples/medir_mudanca.rs`,
+/// `1 000` obstáculos em `100 × 100 m`, em duas posições da cena contra a grelha): uma porta custa os
+/// mosaicos que toca mais a montagem (`3,5 ms` a `15 m`, `4,0` a `20`, `4,2` a `10`, `10,7` a `25`),
+/// e a PROCURA paga as costuras conforme onde elas cortam a geometria — até `1,8×` a `5`, `10`, `25`
+/// e `33` m numa das posições, e `≤ 1,07×` a `15` e `20` m nas duas.
+pub const TILE_M: f64 = 15.0;
 
 /// Um mosaico construído: a assinatura do que o construiu e os polígonos, na grelha inteira.
 #[derive(Clone, Debug, Default)]

@@ -50,19 +50,25 @@ impl Walls {
         // A aresta invertida `para → de` é a entrada `k`, no ponto `para`.
         let n = walls.len();
         let mut w = Self::default();
-        let mut starting_at: std::collections::BTreeMap<u32, u32> =
-            std::collections::BTreeMap::new();
-        let mut ending_at: std::collections::BTreeMap<u32, u32> = std::collections::BTreeMap::new();
+        // ⚠️ Indexados pelo VÉRTICE (a 1.ª entrada que lá começa / acaba; `u32::MAX` = nenhuma) — eram
+        // dois `BTreeMap` e custavam `3 ms` a cada mudança de uma malha de `11 000` polígonos (W6).
+        let mut starting_at = vec![u32::MAX; verts.len()];
+        let mut ending_at = vec![u32::MAX; verts.len()];
         for (k, &(de, para)) in walls.iter().enumerate() {
             w.point.push(verts[para as usize]);
-            starting_at.entry(para).or_insert(k as u32);
-            ending_at.entry(de).or_insert(k as u32);
+            if starting_at[para as usize] == u32::MAX {
+                starting_at[para as usize] = k as u32;
+            }
+            if ending_at[de as usize] == u32::MAX {
+                ending_at[de as usize] = k as u32;
+            }
         }
         for &(de, para) in walls {
             // A entrada `k` vai de `para` a `de`; a seguinte começa em `de`, a anterior acaba em `para`.
             let k = w.next.len() as u32;
-            w.next.push(starting_at.get(&de).copied().unwrap_or(k));
-            w.prev.push(ending_at.get(&para).copied().unwrap_or(k));
+            let ou = |v: u32| if v == u32::MAX { k } else { v };
+            w.next.push(ou(starting_at[de as usize]));
+            w.prev.push(ou(ending_at[para as usize]));
         }
         debug_assert_eq!(w.next.len(), n);
         w.finish();

@@ -154,7 +154,7 @@ fn main() {
             [51.2, 50.6],
             [50.2, 50.6],
         ]));
-        for &tm in &[5.0f64, 10.0, 20.0, 25.0] {
+        for &tm in &[5.0f64, 10.0, 15.0, 20.0, 25.0, 33.4, 50.0] {
             let mut frio = f64::INFINITY;
             for _ in 0..5 {
                 let mut t = TiledMesh::new(p, tm);

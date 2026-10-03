@@ -1100,3 +1100,55 @@ Rust aceita todo troço (só o gate novo) — e a **V9** (o `override` fora do p
 saltaria uma leitura encadeada antes da do registo). Decomposição iGPU, esticadas, `PH2D_FLUID_PROFILE=1`,
 `load < 4`: desenho `0,81 → 0,80 ms` (critério escrito ANTES: `≥ 10 %`). A cadeia cópia → registo → lista
 não é o que custa no desenho.
+
+### §9.11 — A ABLAÇÃO DO DESENHO: `84 %` é o laço das listas (2026-10-03) — e o desenho seguinte
+
+**A tabela calma de base** (cura = `8cb0ab9e1`; `load < 4` antes e depois de cada corrida, todas abaixo de
+`1`; [`mede_sonda_das_estrelas.sh`](ferramentas/mede_sonda_das_estrelas.sh) com os binários intercalados;
+placa · Vello, ms, média de `2`):
+
+| arranjo | iGPU antes do §9.9 | iGPU cura | RTX antes do §9.9 | RTX cura |
+|---|---:|---:|---:|---:|
+| `72` grandes esticadas | `1,74` · `1,00` | **`1,74`** · `1,01` | `0,35` · `0,37` | **`0,33`** · `0,36` |
+| `72` grandes conformes | `0,93` · `0,94` | **`0,93`** · `0,92` | `0,19` · `0,37` | **`0,17`** · `0,34` |
+| `1225` densas da `=127` | `1,69` · `2,69` | **`1,69`** · `2,70` | `0,22` · `0,49` | **`0,20`** · `0,49` |
+
+**A ablação** (iGPU, `PH2D_FLUID_PROFILE=1`, o relógio do passe `render.formas`, ms; os binários
+mutilados não vão a commit — A1: o fragmento devolve uma cor constante; A2: lê o registo da célula e
+devolve só o FUNDO, sem o laço das listas):
+
+| arranjo | desenho inteiro | A2 (registo + fundo) | A1 (piso: vértice, rasterização, mistura) |
+|---|---:|---:|---:|
+| esticadas | `0,81` | `0,13` | `0,09` |
+| conformes | `0,47` | `0,13` | `0,09` |
+| densas | `0,88` | `0,11` | `0,07` |
+
+⇒ **o laço das listas é `0,68` dos `0,81 ms`** (e `0,77` dos `0,88` nas densas): cada pixel de uma célula
+de `32 px` percorre a lista INTEIRA da célula, e a aresta que só cruza um pixel é lida e avaliada pelos
+`32`. O piso do hardware é `0,09`; o registo, `0,04`. O resto do quadro é o cálculo: células `0,43` ·
+escrita `0,17` · contagem `0,07`.
+
+**O desenho seguinte (⏳ por construir — janela nova).** Não o rasterizador fino inteiro no cálculo que o
+handoff de 02/10 previa: esse pedia a ORDEM entre cópias, porque a mistura passava ao cálculo. Basta tirar
+do fragmento a SOMA, e deixar-lhe a mistura (o hardware já a faz na ordem certa):
+
+- **o buffer de ACUMULAÇÃO por pixel** da grelha de células de cada cópia (o `accumulation buffer` dos
+  rasterizadores de linhas de varrimento): cada aresta, na fileira, deposita a área do pixel que cruza e o
+  RESTO (`dy − área`) no pixel seguinte — por atómicos em ponto fixo (`ESCALA_FIXA`), logo a ordem dos
+  fios não muda um bit, como hoje. Uma aresta paga os pixels que CRUZA, não `32` por célula;
+- **a varredura por célula** (um fio por célula): o fundo da célula (o prefixo que o `cs_lugar_das_listas`
+  já faz) mais o prefixo dos depósitos dela dá a cobertura de cada pixel; as três famílias acabadas
+  (`af` com a regra, `as_` com a soma do contorno e das marcas) gravam-se numa palavra;
+- **o fragmento**: uma leitura, e a mistura de sempre; a fileira que não coube continua a refazer-se pelo
+  caminho de sempre (o `SEM_LISTA` de agora, a mesma capacidade medida dois quadros depois).
+
+⚠️ A lista por célula sai do caminho das células (as `68 276` entradas das esticadas viram depósitos);
+recontar a capacidade e as guardas do §9.8 (a cena que muda, as fileiras que não cabem) na mesma
+jornada.
+
+**Kill-criterion (DIRETIVA §5, escrito ANTES):** na iGPU, `PH2D_FLUID_PROFILE=1`, `load < 4`, as `72`
+esticadas com o quadro da placa (soma dos passes) **≤ `1,0 ms`** (o Vello inteiro) depois da 2.ª
+tentativa, e nenhuma das outras duas pior que hoje (`0,76` · `1,50` de soma dos passes); na RTX nenhum
+arranjo mais de `10 %` pior. Falhou ⇒ fica a lista, e o desenho entra aqui como recusa medida. É a 3.ª
+topologia do caminho das células (§9.6 máscaras → §9.8 listas → acumulação): a prova do modelo é esta
+ablação — o fragmento só com o registo custa `0,13` — e o que falta provar é o PREÇO do cálculo novo.

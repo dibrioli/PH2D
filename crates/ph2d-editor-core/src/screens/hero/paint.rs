@@ -175,7 +175,7 @@ pub fn paint_hero_screen(
     // quadro anterior, que é o que o artista estava a ver quando largou.
     super::slot_tabs::resolve_tab_drop(hero);
 
-    let mut layout = super::frame_layout::frame_layout(hero, viewport);
+    let mut layout = super::frame_layout::frame_layout(hero, viewport, text_system);
     // ⭐⭐ **AS COLUNAS LATERAIS SÃO ANCORADAS** (Enio, 2026-08-30, com foto: *«só fica legal
     // depois de fixar os painéis nas laterais»*). O rect que o [`HeroLayout`] calculou **é** o
     // rect que elas ocupam — não há offset de arrasto entre os dois.

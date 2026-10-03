@@ -12,7 +12,11 @@ use crate::screens::layout::HeroLayout;
 use crate::zones::Rect;
 
 /// Resolve o layout deste quadro a partir do estado do hero.
-pub(super) fn frame_layout(hero: &HeroScreen, viewport: Rect) -> HeroLayout {
+pub(super) fn frame_layout(
+    hero: &HeroScreen,
+    viewport: Rect,
+    text_system: &mut ph2d_text::TextSystem,
+) -> HeroLayout {
     // Rail width follows the user's Themes-menu rail-button-size
     // preset (Small / Medium / Large; default Small). Switching size
     // shifts Inspector/Hierarchy x-positions accordingly.
@@ -36,7 +40,14 @@ pub(super) fn frame_layout(hero: &HeroScreen, viewport: Rect) -> HeroLayout {
         ..crate::screens::layout::ChromeBands::DEFAULT
     };
     if hero.view.legacy_chrome {
-        bands.rail_w = hero.store.rail_button_size().rail_width_px();
+        // ⭐ A coluna é tão larga quanto o pulldown mais largo que ela mostra (`column_width_px`).
+        let mut rail = crate::widget::ToolRail::new(
+            hero.id,
+            "",
+            super::left_rail::rail_entries(&hero.store, false),
+        );
+        crate::widget::size_row_pulldowns(&mut rail, text_system);
+        bands.rail_w = crate::widget::column_width_px(&rail, hero.store.rail_button_size());
     } else {
         bands.rail_w = 0.0;
         // ⭐ **A banda de topo fica, e muda de INQUILINO**: a barra de menus ocupa a faixa que os

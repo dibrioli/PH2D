@@ -82,6 +82,26 @@ pub fn size_row_pulldowns(rail: &mut ToolRail, text_system: &mut TextSystem) {
     }
 }
 
+/// ⭐⭐ **A largura da COLUNA vertical (`F9`)**: o chip, ou o pulldown mais largo que ela mostra
+/// (`row_w`, de [`size_row_pulldowns`]) — escolha do dono (02/10): *coluna mais larga*. Sem
+/// pulldown mais largo que o chip é o [`RailButtonSize::rail_width_px`] de sempre.
+/// Gate: `nenhuma_face_de_pulldown_da_coluna_e_cortada`.
+#[must_use]
+pub fn column_width_px(rail: &ToolRail, size: RailButtonSize) -> f32 {
+    CHIP_X_OFFSET_PX + widest_pulldown(rail, size.chip_px()) + Spacing::Xs.px()
+}
+
+/// O pulldown mais largo do rail, nunca menos que um chip.
+fn widest_pulldown(rail: &ToolRail, chip_px: f32) -> f32 {
+    rail.entries
+        .iter()
+        .filter_map(|e| match e {
+            ToolRailEntry::Compound { row_w, .. } => Some(*row_w),
+            _ => None,
+        })
+        .fold(chip_px, f32::max)
+}
+
 /// A distância entre duas LINHAS de uma fila horizontal — rótulo, folga, chip, e o respiro.
 #[must_use]
 pub fn line_pitch(chip_px: f32) -> f32 {
@@ -176,6 +196,12 @@ pub fn entry_rects(
                         len,
                     ),
                 }
+            }
+            // Na COLUNA todo pulldown tem a largura do mais largo ([`column_width_px`]). ⚠️ Ela
+            // VIAJA medida: re-derivá-la como `rect.w − recuos` perdia um ULP e `Selected` saía
+            // `Select…` (o texto media `42,700977` num orçamento de `42,700974`).
+            ToolRailEntry::Compound { .. } if axis == RailAxis::Vertical => {
+                Rect::new(cross, along, widest_pulldown(rail, chip_px), chip_px)
             }
             _ => match axis {
                 RailAxis::Vertical => Rect::new(cross, along, chip_px, chip_px),

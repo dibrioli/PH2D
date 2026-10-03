@@ -360,11 +360,12 @@ pub fn paint_left_rail(
     painter_active: bool,
     motion: &crate::motion::UiMotion,
 ) {
-    let rail = ToolRail::new(
+    let mut rail = ToolRail::new(
         NodeId(200),
         tr("chrome.rail.editor_tools"),
         rail_entries(store, painter_active),
     );
+    crate::widget::size_row_pulldowns(&mut rail, text_system);
     paint_rail(
         layout,
         scene,

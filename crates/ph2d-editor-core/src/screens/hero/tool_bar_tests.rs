@@ -173,3 +173,86 @@ fn nenhuma_face_de_pulldown_da_fila_e_cortada() {
             .join("\n  ")
     );
 }
+
+/// ⭐⭐ **Nenhuma face de pulldown da COLUNA vertical (`F9`) é cortada** — o ecrã inteiro com o
+/// chrome legado, em todo estilo de texto, tamanho de botão e face. Escolha do dono (02/10):
+/// *coluna mais larga* ([`crate::widget::column_width_px`]).
+///
+/// ⛔ O defeito (sonda): a coluna tinha `57/61/65 px` e o pulldown pedia `57,9`: `Global` saía
+/// `Gl…`, `Selected` `S…`/`Sel…`, `Camera` `C…`/`Ca…`.
+#[test]
+fn nenhuma_face_de_pulldown_da_coluna_e_cortada() {
+    let tr = ph2d_i18n::tr;
+    let faces: Vec<&str> = [
+        "chrome.rail.global",
+        "chrome.rail.local",
+        "chrome.rail.selected",
+        "chrome.rail.camera",
+        "chrome.rail.all",
+    ]
+    .map(tr)
+    .to_vec();
+    let acusados = em_todo_estilo(|ts| {
+        let mut fora = Vec::new();
+        let mut vistas = 0;
+        for size in [
+            RailButtonSize::Small,
+            RailButtonSize::Medium,
+            RailButtonSize::Large,
+        ] {
+            for (local, view) in [(false, 0u8), (true, 1), (false, 2)] {
+                let mut hero = crate::screens::hero::HeroScreen::new(ph2d_a11y::NodeId(1));
+                hero.view.legacy_chrome = true;
+                // ⚠️ O hero publica o estilo DELE ao pintar: sem isto só a fábrica era varrida.
+                hero.text_style = ph2d_text::active_text_style();
+                hero.text_rendering = ph2d_text::active_text_rendering();
+                hero.store.set_rail_button_size(size);
+                hero.store.set_tool_space_local(local);
+                hero.store.set_tool_view_mode(view);
+                let mut scene = VectorScene::new();
+                let (_, medidos) = crate::text_elide::elisao::medindo(|| {
+                    crate::screens::hero::paint_hero_screen(
+                        &mut hero,
+                        Rect::new(0.0, 0.0, 1366.0, 768.0),
+                        &mut scene,
+                        ts,
+                    );
+                });
+                // ⚠️ E o pulldown cabe DENTRO da coluna: sem isto uma coluna estreita passava, com o
+                // chip a transbordar sobre o canvas (controlo de 02/10: a mutação sobreviveu).
+                let coluna = hero.last_layout.expect("layout do quadro").left_rail;
+                for id in [crate::ids::TOOL_SPACE, crate::ids::TOOL_HOME] {
+                    let r = hero
+                        .hit_index
+                        .rect_for(id)
+                        .expect("o pulldown foi registado");
+                    if r.x + r.w > coluna.x + coluna.w {
+                        fora.push(format!(
+                            "{size:?}: {id:?} sai da coluna ({r:?} ⊄ {coluna:?})"
+                        ));
+                    }
+                }
+                for m in medidos.iter().filter(|m| faces.contains(&m.texto.as_str())) {
+                    vistas += 1;
+                    if !m.coube() {
+                        fora.push(format!(
+                            "{size:?}: «{}» -> «{}» ({:.1} px) {}",
+                            m.texto, m.pintado, m.largura, m.onde
+                        ));
+                    }
+                }
+            }
+        }
+        assert!(
+            vistas >= 18,
+            "a régua só viu {vistas} faces — a coluna não pintou"
+        );
+        fora
+    });
+    assert!(
+        acusados.is_empty(),
+        "faces cortadas na coluna ({}):\n  {}",
+        acusados.len(),
+        acusados.join("\n  ")
+    );
+}

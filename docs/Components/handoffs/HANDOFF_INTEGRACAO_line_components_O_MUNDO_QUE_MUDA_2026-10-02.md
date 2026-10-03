@@ -216,4 +216,10 @@ PERFIL DO LOOP DO AGENTE — 20 sessao(oes) mais recentes
 
 ### O smoke compilado (a 2.ª corrida, colada)
 
-<<SMOKE>>
+Depois de `rm -rf target/*/incremental` (`31 G` de `debug` + `2,3 G` de `smoke` reclamados), a 2.ª corrida de
+`bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke` — zero linhas `Compiling`:
+
+```
+▸ linha line_components · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+    Finished `smoke` profile [optimized] target(s) in 0.32s
+```

@@ -34,6 +34,15 @@ fn rect_around(g: &Grid, x: f64, y: f64, r: f64) -> TouchedRect {
     }
 }
 
+/// O [`rect_around`] de quem o usa ANTES de pintar (a fotografia da Blow e da Smear): `None` quando o
+/// carimbo cai inteiro fora do interior. Os dois cantos prendem-se por lados opostos, e aí o
+/// rectângulo sai INVERTIDO — a largura negativa feita `usize` era um pânico em debug e um pedido de
+/// memória astronómico em release (o rato fora da tela; gate `a_dab_outside_the_grid_touches_nothing_…`).
+fn rect_around_nao_vazio(g: &Grid, x: f64, y: f64, r: f64) -> Option<TouchedRect> {
+    let rr = rect_around(g, x, y, r);
+    (rr.x1 >= rr.x0 && rr.y1 >= rr.y0).then_some(rr)
+}
+
 fn expand_to(g: &mut Grid, r: &TouchedRect) {
     g.expand_bbox(r.x0, r.y0, r.x1, r.y1);
 }
@@ -319,12 +328,12 @@ pub fn apply_blow(
     // Snapshot the wetness in the affected region so the drag reads
     // pre-write values (sampling live bytes would compound the drag within
     // one dab).
-    let r = rect_around(
+    let r = rect_around_nao_vazio(
         g,
         dab.x,
         dab.y,
         dab.r + off_x.abs().max(off_y.abs()) as f64 + 1.0,
-    );
+    )?;
     let snap_w = (r.x1 - r.x0 + 1) as usize;
     let snap_h = (r.y1 - r.y0 + 1) as usize;
     let mut snap = vec![0u8; snap_w * snap_h];
@@ -447,7 +456,7 @@ pub fn apply_smear(
     // Snapshot the affected region (+10 px pad): sampling live arrays would
     // compound the drag within one dab.
     let pad = 10.0 + reach;
-    let r = rect_around(g, dab.x, dab.y, dab.r + pad);
+    let r = rect_around_nao_vazio(g, dab.x, dab.y, dab.r + pad)?;
     let snap_w = (r.x1 - r.x0 + 1) as usize;
     let snap_h = (r.y1 - r.y0 + 1) as usize;
     let n = snap_w * snap_h;

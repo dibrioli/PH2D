@@ -290,3 +290,32 @@ fn the_glaze_stacks_the_film_over_the_dried_paint() {
         "glaze must change the film-over-dried-paint stacking"
     );
 }
+
+/// ⛔ **Um carimbo FORA da grade não toca em nada — e não rebenta.** O traço do artista começa onde o
+/// rato está, e o rato sai da tela (o censo dos controlos do Painter, 2026-10-03: a ferramenta Blow
+/// com o 1.º carimbo em `x = −8` entrava em pânico em `snap_w * snap_h`, `tools.rs:330`). O
+/// `rect_around` prende os dois cantos ao interior por lados opostos, e com o carimbo inteiro do lado
+/// de fora o rectângulo sai INVERTIDO; quem o fotografava ANTES de pintar (Blow e Smear) convertia a
+/// largura negativa em `usize` — pânico em debug, e em release um pedido de memória astronómico.
+///
+/// **Mutação que tem de sangrar:** tirar a guarda do rectângulo vazio de `apply_blow` (ou da Smear).
+#[test]
+fn a_dab_outside_the_grid_touches_nothing_in_any_tool() {
+    // As quatro da porta directa. Paint, Blend e Erase têm portas próprias e só pedem o rectângulo
+    // DEPOIS de tocar numa célula (`if touched`), quando ele já não pode sair invertido.
+    for tool in [Tool::Wet, Tool::Dry, Tool::Blow, Tool::Smear] {
+        for (x, y) in [
+            (-8.0, 48.0),
+            (-40.0, 48.0),
+            (48.0, -30.0),
+            (W as f64 + 30.0, 48.0),
+        ] {
+            let virgem = seeded_engine([220.0, 45.0, 40.0]);
+            let mut e = seeded_engine([220.0, 45.0, 40.0]);
+            let prev = [x - 6.0, y - 4.0];
+            e.dispatch_pressure_dab_tool(tool, prev[0], prev[1], 1.0, 0.0, 0.0, 2.0, None);
+            e.dispatch_pressure_dab_tool(tool, x, y, 1.0, 1.0, 0.0, 2.0, Some(prev));
+            assert_grids_identical(&virgem, &e, &format!("{tool:?} em ({x}, {y})"));
+        }
+    }
+}

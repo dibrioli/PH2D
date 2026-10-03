@@ -115,3 +115,92 @@ fn the_menu_offers_every_compiled_family() {
         assert!(ids.contains(&e.id()), "{} fora do menu", e.key.key());
     }
 }
+
+fn capture(
+    sim: &mut ph2d_ecs::SimWorld,
+    vec: &ph2d_vec_scene::VecScene,
+    flip: &ph2d_flip::FlipDoc,
+    reg: &ph2d_ecs::scene::ComponentRegistry,
+) -> crate::undo::ProjectState {
+    crate::undo::ProjectState::capture(
+        &ph2d_preview_drive::PreviewDrive::default(),
+        sim,
+        vec,
+        flip,
+        &ph2d_guides::GuideSet::default(),
+        &ph2d_ui_state::StateSets::default(),
+        &crate::project_library::LibraryDoc::default(),
+        &[],
+        reg,
+        &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
+        None,
+    )
+}
+
+/// ⭐⭐ **Criar pelo menu e desfazer devolve o projecto ao BIT** — o vazio, um objecto de jogo, uma
+/// forma vetorial, um desenho Flip e o Model, pela porta de cada família e pelo `ProjectState`
+/// que o `post_frame_undo` usa (o mundo, a cena vetorial e o documento Flip juntos).
+///
+/// ⚠️ A escultura fica de fora: a cena dela vive na placa e tem undo próprio (`StrokeUndo`).
+///
+/// (Mutação: o `restore` devolver uma `VecScene` vazia ⇒ a forma que já existia some ⇒ RED.)
+#[test]
+fn creating_then_undoing_returns_the_project_to_the_bit() {
+    let reg = ph2d_app_components::test_support::registo();
+    for which in ["empty", "camera", "vector", "flip", "model"] {
+        let mut sim = ph2d_ecs::SimWorld::new();
+        let mut vec_scene = ph2d_vec_scene::VecScene::new();
+        let mut flip = ph2d_flip::FlipDoc::new();
+        let mut vec = ph2d_app_vec::state::VecState::default();
+        let mut fmap = ph2d_flip_entities::entities::FlipEntityMap::new();
+        // ⚠️ **O projecto NÃO começa vazio:** um undo que apagasse tudo passaria sobre um vazio.
+        ph2d_app_components::object_add::spawn_empty_root(&mut sim, "Pre");
+        vec_scene.push_path(ph2d_vec_scene::rectangle([0.0, 0.0], [2.0, 2.0]));
+        ph2d_vec_entities::entities::sync(&mut sim, &mut vec_scene, &mut vec.entities);
+        let before = capture(&mut sim, &vec_scene, &flip, &reg);
+        let born = match which {
+            "empty" => Ok(ph2d_app_components::object_add::spawn_empty_root(
+                &mut sim, "Empty",
+            )),
+            "camera" => ph2d_app_components::object_add::add(
+                ph2d_app_components::object_add::CAMERA,
+                &mut sim,
+                &reg,
+                &[],
+            )
+            .expect("é de jogo"),
+            "vector" => ph2d_app_vec::object_add::add(
+                ph2d_app_vec::object_add::STAR,
+                &mut sim,
+                &mut vec_scene,
+                &mut vec,
+                [0.0, 0.0],
+                1.0,
+                800.0,
+            )
+            .expect("é do vetor")
+            .map_err(String::from),
+            "flip" => ph2d_app_flip::object_add::add(
+                ph2d_app_flip::object_add::FLIP,
+                &mut sim,
+                &mut flip,
+                &mut fmap,
+            )
+            .expect("é do Flip")
+            .map_err(String::from),
+            _ => ph2d_app_field3d::object_add::add(&mut sim).map_err(String::from),
+        };
+        born.unwrap_or_else(|e| panic!("{which}: {e}"));
+        let after = capture(&mut sim, &vec_scene, &flip, &reg);
+        assert_ne!(
+            after, before,
+            "{which}: criar não mudou o projecto que o undo vê"
+        );
+        let (rvec, _vmap, rflip, _fmap) = before.restore(&mut sim, &reg);
+        assert_eq!(
+            capture(&mut sim, &rvec, &rflip, &reg),
+            before,
+            "{which}: o Ctrl+Z não devolveu o projecto ao bit"
+        );
+    }
+}

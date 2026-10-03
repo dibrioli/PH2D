@@ -7,7 +7,7 @@ fn registry() -> ComponentRegistry {
 /// ⭐ **Cada objecto de jogo nasce com o componente que lhe dá o nome** — pela porta do `+` do
 /// Inspector, e na raiz.
 ///
-/// (Mutação: trocar o nome canónico de uma entrada ⇒ RED.)
+/// (Mutação: o som anexar `ph2d::ecs::GameCamera` ⇒ RED — sobrevivia antes do lado independente.)
 #[test]
 fn every_game_object_is_born_with_its_component() {
     let reg = registry();
@@ -26,6 +26,18 @@ fn every_game_object_is_born_with_its_component() {
             "{} nasceu sem {name}",
             entry.key.key()
         );
+        // ⚠️ **O lado INDEPENDENTE:** o tipo concreto que cada entrada promete, escrito aqui e não
+        // lido do `component_of` — a 1.ª redacção lia-o de lá e a mutação «o som anexa uma
+        // câmara» sobreviveu (03/10).
+        let w = sim.world();
+        let concrete = match entry.key.key() {
+            "object_add.game.camera" => w.get::<ph2d_ecs::GameCamera>(e).is_some(),
+            "object_add.game.body" => w.get::<ph2d_physics_ecs::RigidBody>(e).is_some(),
+            "object_add.game.sound" => w.get::<ph2d_ecs::AudioSource2D>(e).is_some(),
+            "object_add.game.hud" => w.get::<ph2d_ecs::UiCanvas>(e).is_some(),
+            other => panic!("entrada de jogo sem tipo esperado: {other}"),
+        };
+        assert!(concrete, "{} nasceu sem o seu componente", entry.key.key());
         assert!(sim.world().get::<ph2d_ecs::ChildOf>(e).is_none());
         assert_eq!(
             sim.world().get::<Name>(e).map(|n| n.0.as_str()),

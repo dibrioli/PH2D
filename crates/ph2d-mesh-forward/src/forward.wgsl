@@ -172,7 +172,7 @@ fn ceu_de_baixo() -> vec3<f32> {
 fn env_radiance_da_cena(dir: vec3<f32>, alpha: f32, shrink: f32) -> vec3<f32> {
     var ceu = ceu_rad_sem(dir, alpha, shrink);
     if (chao_tapa_ligado) {
-        ceu = ceu * (1.0 - chao_reflexo(ponto, dir, alpha));
+        ceu = ceu * (1.0 - chao_reflexo_no_pixel(ponto, dir, alpha));
     }
     return ceu * peso_ceu + caixa_rad(dir, alpha) * peso_caixa;
 }
@@ -180,7 +180,7 @@ fn env_radiance_da_cena(dir: vec3<f32>, alpha: f32, shrink: f32) -> vec3<f32> {
 fn env_irradiance_da_cena(n: vec3<f32>) -> vec3<f32> {
     var ceu = ceu_irr_sem(n);
     if (chao_tapa_ligado) {
-        ceu = max(ceu - ceu_de_baixo() * chao_tapa(ponto, n), vec3<f32>(0.0));
+        ceu = max(ceu - ceu_de_baixo() * chao_tapa_no_pixel(ponto, n), vec3<f32>(0.0));
     }
     return ceu * peso_ceu + caixa_irr(n) * peso_caixa;
 }

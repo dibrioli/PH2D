@@ -168,7 +168,7 @@ pub fn wgsl() -> String {
         .collect();
     let q = QUANTIS.map(|q| format!("{:?}", (q / (1.0 - q)).sqrt()));
     format!(
-        "{CEU_DO_CHAO}\n{RAIO}\nfn chao_tapa(p: vec3<f32>, n: vec3<f32>) -> f32 {{\n{ABRE}{raios}{FECHA}}}\n\n\
+        "{CEU_DO_CHAO}\n{MEMO}\n{RAIO}\nfn chao_tapa(p: vec3<f32>, n: vec3<f32>) -> f32 {{\n{ABRE}{raios}{FECHA}}}\n\n\
          {TAP}\nfn chao_reflexo(p: vec3<f32>, r: vec3<f32>, alpha: f32) -> f32 {{\n\
          \x20   let h = max(p.y - quadro.chao.x, 0.0);\n\
          \x20   let c0 = 2.0 * atan(alpha * {q0});\n\
@@ -177,6 +177,28 @@ pub fn wgsl() -> String {
         q1 = q[1],
     )
 }
+
+/// ⭐ A MESMA pergunta no mesmo pixel tem a mesma resposta: o material avalia o lobo dielétrico e o
+/// metálico com a mesma reflectida e a mesma rugosidade, e cada um refazia as leituras do chão.
+const MEMO: &str = r"var<private> memo_n: vec4<f32> = vec4<f32>(0.0, 0.0, 0.0, -1.0);
+var<private> memo_r: vec4<f32> = vec4<f32>(0.0, 0.0, 0.0, -1.0);
+var<private> memo_ra: f32 = -1.0;
+
+fn chao_tapa_no_pixel(p: vec3<f32>, n: vec3<f32>) -> f32 {
+    if (memo_n.w < 0.0 || any(memo_n.xyz != n)) {
+        memo_n = vec4<f32>(n, chao_tapa(p, n));
+    }
+    return memo_n.w;
+}
+
+fn chao_reflexo_no_pixel(p: vec3<f32>, r: vec3<f32>, alpha: f32) -> f32 {
+    if (memo_r.w < 0.0 || any(memo_r.xyz != r) || memo_ra != alpha) {
+        memo_r = vec4<f32>(r, chao_reflexo(p, r, alpha));
+        memo_ra = alpha;
+    }
+    return memo_r.w;
+}
+";
 
 const BASE: &str = "    let c = vec2<f32>(-r.z, r.x);
     let l = length(c);

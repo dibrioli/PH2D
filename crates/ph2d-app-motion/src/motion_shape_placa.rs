@@ -459,12 +459,12 @@ impl PlacaDeFormas {
             .map_or((0, 0), |g| g.passe.copias_com_contorno(gpu, n))
     }
 
-    /// As arestas que as listas das células pediram no último desenho, e a capacidade (doc 121 §9.8).
+    /// As células que o último desenho pediu, e a capacidade (doc 121 §9.12).
     #[cfg(test)]
-    pub(crate) fn listas_do_ultimo_quadro(&self, gpu: &GpuContext) -> (u64, u64) {
+    pub(crate) fn celulas_do_ultimo_quadro(&self, gpu: &GpuContext) -> (u64, u64) {
         self.gpu
             .as_ref()
-            .map_or((0, 0), |g| g.passe.listas_do_ultimo_quadro(gpu))
+            .map_or((0, 0), |g| g.passe.celulas_do_ultimo_quadro(gpu))
     }
 
     /// A textura da camada — para o gate de paridade a ler de volta.

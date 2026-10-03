@@ -503,9 +503,9 @@ fn sonda_relogio_das_estrelas_grandes() {
     }
     let placa = t.elapsed().as_secs_f64() * 1e3 / f64::from(n);
     let (com_contorno, cap) = p.copias_com_contorno(&gpu, u32::try_from(insts.len()).unwrap_or(0));
-    let (pediram, cap_listas) = p.listas_do_ultimo_quadro(&gpu);
+    let (pediram, cap_celulas) = p.celulas_do_ultimo_quadro(&gpu);
     eprintln!(
-        "  contorno calculado em {com_contorno} de {} copias (capacidade {cap} arestas) · listas {pediram} de {cap_listas}",
+        "  contorno calculado em {com_contorno} de {} copias (capacidade {cap} arestas) · celulas {pediram} de {cap_celulas}",
         insts.len()
     );
     // ⛔ doc 121 §9.3 — **um relógio sobre um passe que não desenhou é um número de NADA.** Com o

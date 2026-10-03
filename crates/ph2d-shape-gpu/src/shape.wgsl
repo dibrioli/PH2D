@@ -96,15 +96,14 @@ struct VsOut {
     @location(8) @interpolate(flat) tela: u32,
 }
 
-// ⭐ doc 121 §9.5–§9.8 — **AS ARESTAS DE CADA CÓPIA, NO ECRÃ, CALCULADAS UMA VEZ** (`contorno.wgsl`
+// ⭐ doc 121 §9.5–§9.12 — **AS ARESTAS DE CADA CÓPIA, NO ECRÃ, CALCULADAS UMA VEZ** (`contorno.wgsl`
 // escreve-as, o desenho só as lê): por cópia TRÊS `vec4` — `(primeiro bloco, blocos do
-// preenchimento, das marcas, do contorno)`, `(primeiro registo de célula, linhas, 0, a primeira
-// linha em bits de f32)` e `(a primeira coluna em bits, células por linha, 0, 0)`; a caixa da cópia
-// inteira; os REGISTOS DE CÉLULA (`REGISTO`) e as LISTAS de arestas que eles apontam.
+// preenchimento, das marcas, do contorno)`, `(primeira célula, linhas, 0, a primeira linha em bits
+// de f32)` e `(a primeira coluna em bits, células por linha, a regra, 0)`; a caixa da cópia inteira;
+// e a COBERTURA acabada de cada pixel das células (`pack2x16unorm` do preenchimento e do traço).
 @group(1) @binding(0) var<storage, read> ccopias: array<vec4<u32>>;
 @group(1) @binding(1) var<storage, read> ccaixas: array<vec4<f32>>;
-@group(1) @binding(2) var<storage, read> ccelulas: array<u32>;
-@group(1) @binding(3) var<storage, read> clistas: array<vec4<f32>>;
+@group(1) @binding(2) var<storage, read> ccobertura: array<u32>;
 
 // O índice do registo de um handle, ou `0xffffffff` se a geometria não existe.
 fn registo_de(handle: u32) -> u32 {
@@ -421,67 +420,38 @@ fn leque(centro: vec2<f32>, n0: vec2<f32>, n_fim: vec2<f32>, cos_alpha: f32, dir
     return s + tri(centro, p, centro + n_fim, xy);
 }
 
-// A largura de uma CÉLULA, em pixels (doc 121 §9.6). A altura é UMA fileira: mais alta piora em
-// monotonia (§9.7, recusa medida).
-const LARGURA_DA_CELULA: f32 = 32.0;
-// ⭐ doc 121 §9.8 — as palavras de um REGISTO de célula: os três FUNDOS (`f32` — preenchimento, marcas,
-// contorno) e, na lista de arestas da célula, o início e o fim de cada uma das três famílias
-// (`inicio, fim_f, fim_m, fim`).
-const REGISTO: u32 = 7u;
-// O `inicio` de uma célula cuja fileira não coube na capacidade das listas: o pixel refaz-se pelo
-// caminho de sempre (a mesma imagem, mais devagar — nunca uma cobertura truncada).
-const SEM_LISTA: u32 = 0xffffffffu;
-// ⭐ doc 121 §9.8 — **as somas das células em PONTO FIXO**: o fundo é somado por muitos fios ao mesmo
-// tempo (atómicos de inteiros) e a lista é arrumada por eles em qualquer ordem — em inteiros a soma
-// não depende da ordem, e a imagem não depende do escalonamento. `2¹⁶` por unidade de cobertura: cada
-// parcela erra `≤ 7,6e-6`, e um pixel soma dezenas, longe dos `1/255` de um passo de alfa.
+// A largura de uma CÉLULA, em pixels (doc 121 §9.6; re-medida para as listas no §9.8). A altura é UMA
+// fileira: mais alta piora em monotonia (§9.7, recusa medida).
+const PIXELS_DA_CELULA: u32 = 32u;
+const LARGURA_DA_CELULA: f32 = f32(PIXELS_DA_CELULA);
+// ⭐ doc 121 §9.12 — as palavras de um REGISTO de célula: os três FUNDOS (preenchimento, marcas,
+// contorno, em ponto fixo) e a regra da cópia.
+const REGISTO: u32 = 4u;
+// As palavras de ACUMULAÇÃO de uma célula: as três famílias, cada uma com um depósito por pixel.
+const ACUMULA: u32 = 3u * PIXELS_DA_CELULA;
+// ⭐ doc 121 §9.8 — **as somas das células em PONTO FIXO**: o fundo e os depósitos são somados por muitos
+// fios ao mesmo tempo (atómicos de inteiros) — em inteiros a soma não depende da ordem, e a imagem não
+// depende do escalonamento. `2¹⁶` por unidade de cobertura: cada parcela erra `≤ 7,6e-6`, e um pixel
+// soma dezenas, longe dos `1/255` de um passo de alfa.
 const ESCALA_FIXA: f32 = 65536.0;
 
 fn fixo(v: f32) -> i32 {
     return i32(round(v * ESCALA_FIXA));
 }
 
-// ⭐⭐ doc 121 §9.6–§9.8 — **A COBERTURA PELAS CÉLULAS**: cada fileira da cópia é partida em células
-// de `LARGURA_DA_CELULA` px; cada célula guarda o FUNDO (a soma das arestas que, NESTA fileira, ficam
-// todas à esquerda dela — o `backdrop` do Vello) e a LISTA das arestas que cruzam a fileira dentro
-// dela — o que o Vello guarda por ladrilho. Um pixel soma o fundo e só essas: no MEIO de uma forma
-// grande nenhuma, na borda as uma ou duas que de facto a cruzam (a máscara de blocos do §9.6 fazia-o
-// percorrer oito por bloco). Devolve as três somas — o preenchimento, as marcas (sob afim conforme, o
-// traço inteiro) e o contorno do eixo — e `w = 0` quando a fileira não coube (`SEM_LISTA`).
-fn cobertura_de_ecra(ii: u32, xy: vec2<f32>) -> vec4<f32> {
+// ⭐⭐ doc 121 §9.6–§9.12 — **A COBERTURA PELAS CÉLULAS**: cada fileira da cópia é partida em células
+// de `PIXELS_DA_CELULA` px, e o cálculo (`contorno.wgsl`) deixou em cada pixel delas a cobertura
+// ACABADA — o preenchimento com a regra da cópia e o traço (as marcas mais o contorno do eixo). O pixel
+// faz UMA leitura; a mistura continua aqui, no hardware, na ordem das cópias.
+fn cobertura_de_ecra(ii: u32, xy: vec2<f32>) -> vec2<f32> {
     let c1 = ccopias[3u * ii + 1u];
     let c2 = ccopias[3u * ii + 2u];
     let r = xy.y - bitcast<f32>(c1.w);
-    let kx = floor((xy.x - bitcast<f32>(c2.x)) / LARGURA_DA_CELULA);
-    if r < 0.0 || r >= f32(c1.y) || kx < 0.0 || kx >= f32(c2.y) {
-        return vec4<f32>(0.0, 0.0, 0.0, 1.0);
+    let x = xy.x - bitcast<f32>(c2.x);
+    if r < 0.0 || r >= f32(c1.y) || x < 0.0 || x >= f32(c2.y) * LARGURA_DA_CELULA {
+        return vec2<f32>(0.0);
     }
-    let q = c1.x + (u32(r) * c2.y + u32(kx)) * REGISTO;
-    let inicio = ccelulas[q + 3u];
-    if inicio == SEM_LISTA {
-        return vec4<f32>(0.0);
-    }
-    var s = vec3<i32>(
-        bitcast<i32>(ccelulas[q]),
-        bitcast<i32>(ccelulas[q + 1u]),
-        bitcast<i32>(ccelulas[q + 2u]),
-    );
-    let fim_f = ccelulas[q + 4u];
-    let fim_m = ccelulas[q + 5u];
-    let fim = ccelulas[q + 6u];
-    for (var i = inicio; i < fim_f; i += 1u) {
-        let e = clistas[i];
-        s.x += fixo(contribuicao(e.xy, e.zw, xy));
-    }
-    for (var i = fim_f; i < fim_m; i += 1u) {
-        let e = clistas[i];
-        s.y += fixo(contribuicao(e.xy, e.zw, xy));
-    }
-    for (var i = fim_m; i < fim; i += 1u) {
-        let e = clistas[i];
-        s.z += fixo(contribuicao(e.xy, e.zw, xy));
-    }
-    return vec4<f32>(vec3<f32>(s) / ESCALA_FIXA, 1.0);
+    return unpack2x16unorm(ccobertura[(c1.x + u32(r) * c2.y) * PIXELS_DA_CELULA + u32(x)]);
 }
 
 fn traco_do_eixo(inicio: u32, n: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32, xy: vec2<f32>) -> f32 {
@@ -981,16 +951,13 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     var af = 0.0;
     // O traço é sempre não-nulo: o contorno expandido é um preenchimento.
     var as_ = 0.0;
-    var de_sempre = in.tela == 0u;
     if in.tela > 0u {
-        // ⭐ doc 121 §9.6: as três somas pelas células. Sob afim conforme as «marcas» são o traço
-        // inteiro e o contorno do eixo é vazio — a mesma conta do ramo de baixo.
+        // ⭐ doc 121 §9.12: a cobertura acabada pelas células — a mesma conta do ramo de baixo, com as
+        // regras já aplicadas.
         let s = cobertura_de_ecra(in.tela - 1u, xy);
         af = s.x;
-        as_ = min(min(abs(s.y), 1.0) + min(abs(s.z), 1.0), 1.0);
-        de_sempre = s.w == 0.0;
-    }
-    if de_sempre {
+        as_ = s.y;
+    } else {
         af = area(in.fill.x, in.fill.y, in.lin, in.t, xy);
         if in.eixo_rg.y > 0u {
             // Sob escala não uniforme: as MARCAS (as primeiras `z` peças do traço) mais o traço do eixo.
@@ -1000,12 +967,12 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
         } else {
             as_ = min(abs(area(in.stroke.x, in.stroke.y, in.lin, in.t, xy)), 1.0);
         }
-    }
-    // As duas regras, à letra do Vello.
-    if in.even_odd != 0u {
-        af = abs(af - 2.0 * round(0.5 * af));
-    } else {
-        af = min(abs(af), 1.0);
+        // As duas regras, à letra do Vello (o `cs_varre` aplica as mesmas às células).
+        if in.even_odd != 0u {
+            af = abs(af - 2.0 * round(0.5 * af));
+        } else {
+            af = min(abs(af), 1.0);
+        }
     }
     let f = vec4<f32>(in.tint.rgb * in.tint.a, in.tint.a) * af;
     let s = vec4<f32>(in.stroke_color.rgb * in.stroke_color.a, in.stroke_color.a) * as_;

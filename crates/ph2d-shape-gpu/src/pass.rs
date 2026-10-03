@@ -208,18 +208,18 @@ impl ShapePass {
         self.contorno.copias_com_contorno(gpu, n)
     }
 
-    /// **Quantas arestas as listas das células pediram no último desenho, e a capacidade delas**
-    /// (doc 121 §9.8) — lido de volta da placa (bloqueia). Pedido acima da capacidade ⇒ alguma
-    /// fileira foi desenhada pelo caminho de sempre. Instrumento de gates e sondas.
+    /// **Quantas células o último desenho pediu, e a capacidade delas** (doc 121 §9.12) — lido de
+    /// volta da placa (bloqueia). Pedido acima da capacidade ⇒ alguma cópia foi desenhada pelo
+    /// caminho de sempre. Instrumento de gates e sondas.
     #[must_use]
-    pub fn listas_do_ultimo_quadro(&self, gpu: &GpuContext) -> (u64, u64) {
-        self.contorno.listas_do_ultimo_quadro(gpu)
+    pub fn celulas_do_ultimo_quadro(&self, gpu: &GpuContext) -> (u64, u64) {
+        self.contorno.celulas_do_ultimo_quadro(gpu)
     }
 
-    /// Um TECTO para a capacidade das listas das células, em arestas — a porta pela qual um gate
-    /// faz fileiras transbordarem e mede que o recurso por fileira desenha a mesma imagem.
-    pub fn limita_as_listas(&mut self, arestas: u64) {
-        self.contorno.listas_no_maximo = arestas;
+    /// Um TECTO para a capacidade das células — a porta pela qual um gate faz cópias transbordarem
+    /// e mede que o recurso por cópia desenha a mesma imagem ao lado das que ficam nas células.
+    pub fn limita_as_celulas(&mut self, celulas: u64) {
+        self.contorno.celulas_no_maximo = celulas;
     }
 
     /// `false` ⇒ nenhuma cópia ganha o contorno calculado e o traço sai pixel a pixel do eixo, como

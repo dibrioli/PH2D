@@ -25,7 +25,7 @@ use ph2d_vector::{BezPath, Cap, Circle, Join, Shape, Stroke};
 
 use super::paridade_com_o_vello::{
     Copia, Forma, anel, circulo, copias, esticadas, estrela, gpu, pelo_passe_com,
-    pelo_passe_em_etapas, pelo_passe_listas, pelo_passe_rota, zigue_zague,
+    pelo_passe_em_etapas, pelo_passe_celulas, pelo_passe_rota, zigue_zague,
 };
 
 /// As MARCAS de um traço: um disco pequeno pintado com a cor dele, fora do contorno da estrela.
@@ -234,7 +234,7 @@ fn o_contorno_calculado_desenha_o_que_o_eixo_desenha() {
     for (nome, forma, cs) in &casos {
         let n = u32::try_from(cs.len()).expect("cabem");
         let eixo = pelo_passe_com(&gpu, forma, cs, fmt, false, QUADROS);
-        let contorno = pelo_passe_listas(&gpu, forma, cs, fmt, true, QUADROS, 0.0, u64::MAX);
+        let contorno = pelo_passe_celulas(&gpu, forma, cs, fmt, true, QUADROS, 0.0, u64::MAX);
         // O CONTROLO: desligado, nenhuma cópia ganha contorno em quadro nenhum — senão a comparação
         // mede o caminho novo contra ele próprio.
         assert!(
@@ -263,12 +263,12 @@ fn o_contorno_calculado_desenha_o_que_o_eixo_desenha() {
             n,
             "{nome}: a capacidade nao cresceu para o total medido — o contorno nao correu em todas as copias"
         );
-        // ⭐ doc 121 §9.8 — e as LISTAS das células também: no regime do produto nenhuma fileira cai
-        // no caminho de sempre (senão a régua mede o recurso por fileira e não as listas).
+        // ⭐ doc 121 §9.12 — e as CÉLULAS também: no regime do produto todas cabem (senão a régua mede o
+        // recurso por cópia e não a acumulação).
         let (pedido, cap) = contorno[QUADROS - 1].2;
         assert!(
             pedido > 0 && pedido <= cap,
-            "{nome}: as listas pediram {pedido} arestas com capacidade {cap} — alguma fileira nao correu pelas celulas"
+            "{nome}: as celulas pediram {pedido} com capacidade {cap} — alguma copia nao correu pelas celulas"
         );
     }
     // ⚠️ A metade que torna o 1.º quadro uma régua: alguma fixtura tem de TRANSBORDAR a capacidade
@@ -281,10 +281,10 @@ fn o_contorno_calculado_desenha_o_que_o_eixo_desenha() {
     eprintln!("  transbordaram no 1.º quadro: {transbordou:?}");
 }
 
-/// Quadros por corrida: o total das arestas é copiado no 1.º, mapeado no 2.º e colhido no 3.º, que
-/// já desenha as arestas no ecrã; o das LISTAS das células só existe a partir desse 3.º e é colhido
-/// no 5.º (`contorno.rs`, doc 121 §9.8). O 6.º confirma que a capacidade FICA.
-const QUADROS: usize = 6;
+/// Quadros por corrida: os totais das arestas e das células são copiados no 1.º, mapeados no 2.º e
+/// colhidos no 3.º, que já desenha tudo pelas células (`contorno.rs`, doc 121 §9.12). O 4.º confirma
+/// que a capacidade FICA.
+const QUADROS: usize = 4;
 
 /// A barra: as duas rotas são a mesma lei, logo o que sobra é arredondamento de `f32` — as arestas
 /// no ecrã saem de um passe de cálculo e as do eixo de um de fragmento.
@@ -352,14 +352,14 @@ fn so_as_copias_conformes_grandes_pagam_o_calculo() {
     );
 }
 
-/// ⭐ doc 121 §9.8 — **UMA FILEIRA QUE NÃO CABE NAS LISTAS DESENHA A MESMA IMAGEM.** A capacidade das
-/// listas cresce para o total medido dois quadros depois; até lá (e no tecto do recurso) uma fileira
-/// que não cabe fica `SEM_LISTA` e o desenho refaz-lhe os pixels pelo caminho de sempre. Aqui o tecto
-/// é METADE do que as listas pedem, em todos os quadros: as cópias continuam TODAS pelas arestas no
-/// ecrã (o recurso é por fileira, não por cópia) e a imagem é a do eixo à barra de arredondamento.
+/// ⭐ doc 121 §9.12 — **UMA CÓPIA QUE NÃO CABE NAS CÉLULAS DESENHA A MESMA IMAGEM.** A capacidade das
+/// células cresce para o total medido dois quadros depois; até lá (e no tecto do recurso) uma cópia
+/// que não cabe vai INTEIRA pelo caminho de sempre. Aqui o tecto é METADE das células pedidas, em todos
+/// os quadros: parte das cópias pelas células, o resto pelo caminho de sempre, e a imagem é a do eixo
+/// à barra de arredondamento — a acumulação de uma não pode tocar na de outra.
 #[test]
 #[ignore = "precisa de adapter de GPU"]
-fn as_fileiras_que_nao_cabem_nas_listas_desenham_o_mesmo() {
+fn as_copias_que_nao_cabem_nas_celulas_desenham_o_mesmo() {
     let Some(gpu) = gpu() else {
         eprintln!("sem adaptador — nada a medir");
         return;
@@ -413,30 +413,30 @@ fn as_fileiras_que_nao_cabem_nas_listas_desenham_o_mesmo() {
             .pop()
             .expect("um quadro")
             .0;
-        let livre = pelo_passe_listas(&gpu, forma, cs, fmt, true, QUADROS, 0.0, u64::MAX);
+        let livre = pelo_passe_celulas(&gpu, forma, cs, fmt, true, QUADROS, 0.0, u64::MAX);
         let pedido = livre[QUADROS - 1].2.0;
-        let metade = pelo_passe_listas(&gpu, forma, cs, fmt, true, QUADROS, 0.0, pedido / 2);
+        let metade = pelo_passe_celulas(&gpu, forma, cs, fmt, true, QUADROS, 0.0, pedido / 2);
         for (q, (img, com, (pediu, cap))) in metade.iter().enumerate() {
             let (pior, acima, tinta) = desvio(&eixo, img);
             eprintln!(
-                "  {nome:<40} quadro {q}: contorno em {com}/{n} · listas {pediu}/{cap} · alfa max {pior} · px > 1: {acima} de {tinta}"
+                "  {nome:<40} quadro {q}: contorno em {com}/{n} · celulas {pediu}/{cap} · alfa max {pior} · px > 1: {acima} de {tinta}"
             );
             assert!(tinta > 1000, "{nome}: a fixtura quase nao desenha");
             assert!(
                 pior <= ALFA_MAX && acima <= tinta / 1000,
-                "{nome}, quadro {q}: com fileiras SEM_LISTA o desenho e outro (alfa {pior}, {acima} px > 1)"
+                "{nome}, quadro {q}: com copias fora das celulas o desenho e outro (alfa {pior}, {acima} px > 1)"
             );
         }
-        // O CONTROLO: o tecto mordeu (fileiras caíram no caminho de sempre) e as cópias foram TODAS
-        // pelas células — senão o que se mediu foi o recurso por cópia.
+        // O CONTROLO: o tecto mordeu (cópias caíram no caminho de sempre) e outras continuaram nas
+        // células — senão o que se mediu foi só um dos dois caminhos.
         let (_, com, (pediu, cap)) = metade[QUADROS - 1];
         assert!(
             pediu > cap,
-            "{nome}: o tecto nao mordeu ({pediu} de {cap}) — o recurso por fileira nao foi medido"
+            "{nome}: o tecto nao mordeu ({pediu} de {cap}) — o recurso por copia nao foi medido"
         );
-        assert_eq!(
-            com, n,
-            "{nome}: as copias sairam das celulas — o recurso medido foi outro"
+        assert!(
+            com > 0 && com < n,
+            "{nome}: {com} de {n} copias nas celulas — a mistura dos dois caminhos nao foi medida"
         );
     }
 }
@@ -445,7 +445,8 @@ fn as_fileiras_que_nao_cabem_nas_listas_desenham_o_mesmo() {
 /// cada cópia um pior caso e a escrita usa só parte; os passes das células correm um fio por aresta
 /// RESERVADA, e só as escritas contam. Num passe novo o resto da reserva é zero e não soma nada — por
 /// isso nenhuma régua de quadro único o vê —, mas numa cena animada os buffers trazem o que o quadro
-/// anterior lá escreveu, noutro sítio. Aqui o MESMO passe desenha estrelas grandes de junta redonda e
+/// anterior lá escreveu, noutro sítio (e a ACUMULAÇÃO do §9.12, os depósitos dele, se o `cs_zera` não
+/// os apagar). Aqui o MESMO passe desenha estrelas grandes de junta redonda e
 /// depois outras, menores e noutros sítios: cada quadro da 2.ª etapa tem de ser o de um passe novo.
 #[test]
 #[ignore = "precisa de adapter de GPU"]
@@ -468,7 +469,7 @@ fn uma_cena_que_muda_nao_le_as_arestas_do_quadro_anterior() {
     let fmt = wgpu::TextureFormat::Rgba16Float;
     let antes = esticadas(40, 60.0, 260.0, 41);
     let depois = esticadas(60, 20.0, 140.0, 42);
-    let novo = pelo_passe_listas(&gpu, &forma, &depois, fmt, true, QUADROS, 0.0, u64::MAX)
+    let novo = pelo_passe_celulas(&gpu, &forma, &depois, fmt, true, QUADROS, 0.0, u64::MAX)
         .pop()
         .expect("um quadro")
         .0;
@@ -485,7 +486,7 @@ fn uma_cena_que_muda_nao_le_as_arestas_do_quadro_anterior() {
     for (q, (img, com, (pediu, cap))) in seguido[QUADROS..].iter().enumerate() {
         let (pior, acima, tinta) = desvio(&novo, img);
         eprintln!(
-            "  depois de outra cena, quadro {q}: contorno em {com}/{n} · listas {pediu}/{cap} · alfa max {pior} · px > 1: {acima} de {tinta}"
+            "  depois de outra cena, quadro {q}: contorno em {com}/{n} · celulas {pediu}/{cap} · alfa max {pior} · px > 1: {acima} de {tinta}"
         );
         assert!(tinta > 1000, "a fixtura quase nao desenha");
         assert_eq!(

@@ -114,10 +114,10 @@ fn a_lei_do_chao_que_tapa_e_o_integral() {
 }
 
 /// O resto de uma linha do oráculo: a difusa com o chão e o metal (`espelho_sem`, `espelho_com`,
-/// `aspero_sem`, `aspero_com`).
+/// `aspero_sem`, `aspero_com`, `verniz_sem`, `verniz_com`).
 struct Linha {
     com: f32,
-    brilho: [f32; 4],
+    brilho: [f32; 6],
 }
 
 /// O lobo do pré-filtro com `n = v = r`, denso: `∫ (1 − V) D(h) (r·l) dl / ∫ D(h) (r·l) dl`.
@@ -203,7 +203,7 @@ fn oraculo() -> (Vec<Ponto>, Vec<Linha>) {
                 n: norm([c[6], c[7], c[8]]),
                 vis: c[9],
             };
-            let brilho = [c[12], c[13], c[14], c[15]];
+            let brilho = [c[12], c[13], c[14], c[15], c[16], c[17]];
             (p, Linha { com: c[10], brilho })
         })
         .unzip()
@@ -225,6 +225,20 @@ fn metal(r: f32) -> [f32; ph2d_material::wgsl::PACKED] {
         base_color: [1.0; 3],
         base_metalness: 1.0,
         specular_roughness: r,
+        ..ph2d_material::OpenPbr::default()
+    })
+}
+
+/// O metal áspero (`0,5`) com verniz NÍTIDO de índice `1,5` — o Principled do oráculo. Duas perguntas de
+/// reflexo com rugosidades diferentes no mesmo pixel: é o que põe à prova a memória por pixel.
+fn envernizado() -> [f32; ph2d_material::wgsl::PACKED] {
+    empacota(ph2d_material::OpenPbr {
+        base_color: [1.0; 3],
+        base_metalness: 1.0,
+        specular_roughness: 0.5,
+        coat_weight: 1.0,
+        coat_roughness: 0.0,
+        coat_ior: 1.5,
         ..ph2d_material::OpenPbr::default()
     })
 }
@@ -359,14 +373,15 @@ fn o_reflexo_do_chao_e_o_do_cycles() {
     let base = desenha(&mut fw, false);
     let borda = bordas(&pontos, &base);
     // Medido (03/10): nítido médio `0,0030`, onde o chão escurece `0,0082` (sem a lei `0,0801`); áspero
-    // `0,0155` / `0,0268` (sem a lei `0,0883`).
-    for (k, rug, barra) in [
-        (0usize, 0.0f32, (0.005f32, 0.012f32)),
-        (1, 0.5, (0.02, 0.035)),
+    // `0,0155` / `0,0268` (sem a lei `0,0883`); com verniz nítido `0,0147` / `0,0265` (sem a lei `0,0881`).
+    for (k, nome, mat, barra) in [
+        (0usize, "metal nítido", metal(0.0), (0.005f32, 0.012f32)),
+        (1, "metal áspero", metal(0.5), (0.02, 0.035)),
+        (2, "metal áspero com verniz", envernizado(), (0.02, 0.035)),
     ] {
         let (com, sem) = (
-            desenha_de(&mut fw, true, metal(rug)),
-            desenha_de(&mut fw, false, metal(rug)),
+            desenha_de(&mut fw, true, mat),
+            desenha_de(&mut fw, false, mat),
         );
         let (mut n, mut s, mut s_ctl, mut nb, mut sb) = (0usize, 0.0f32, 0.0f32, 0usize, 0.0f32);
         for (p, l) in pontos.iter().zip(&linhas) {
@@ -388,7 +403,7 @@ fn o_reflexo_do_chao_e_o_do_cycles() {
         }
         let (nf, nbf) = (n as f32, nb as f32);
         eprintln!(
-            "metal de rugosidade {rug}: {n} px · |Δ| da razão médio {:.4} · onde o chão escurece ({nb} px) {:.4} · \
+            "{nome}: {n} px · |Δ| da razão médio {:.4} · onde o chão escurece ({nb} px) {:.4} · \
              SEM a lei {:.4}",
             s / nf,
             sb / nbf,

@@ -14,7 +14,8 @@
 #             exactamente `(1 + n.y)/2` do céu (o semi-espaço de baixo apagado).
 # E o REFLEXO: as peças, para a câmara, passam a um metal branco (Glossy GGX) — `espelho` (rugosidade
 # 0) e `aspero` (rugosidade 0,5, α = 0,25), cada um sem e com o chão branco: o reflexo do chão escuro
-# do contacto.
+# do contacto. E o VERNIZ: Principled metal branco de rugosidade 0,5 com verniz (Coat) nítido de
+# índice 1,5 — duas perguntas de reflexo com rugosidades diferentes no MESMO pixel.
 #
 # Corra (o arnês põe o Cycles na fatia da linha):
 #   cd <worktree> && bash scripts/ph2d-run.sh blender -b -X --python \
@@ -196,7 +197,19 @@ for nome, rug in (("espelho", 0.0), ("aspero", 0.5)):
     brilho[nome + "_sem"] = canal(corre(nome + "_sem", AMOSTRAS_PRETO), "Combined.R")
     chao.hide_render = False
     brilho[nome + "_com"] = canal(corre(nome + "_com", AMOSTRAS_PRETO), "Combined.R")
-BRILHO = ("espelho_sem", "espelho_com", "aspero_sem", "aspero_com")
+verniz = nt.nodes.new("ShaderNodeBsdfPrincipled")
+verniz.inputs["Base Color"].default_value = (1.0, 1.0, 1.0, 1.0)
+verniz.inputs["Metallic"].default_value = 1.0
+verniz.inputs["Roughness"].default_value = 0.5
+verniz.inputs["Coat Weight"].default_value = 1.0
+verniz.inputs["Coat Roughness"].default_value = 0.0
+verniz.inputs["Coat IOR"].default_value = 1.5
+nt.links.new(verniz.outputs["BSDF"], mix.inputs[2])
+chao.hide_render = True
+brilho["verniz_sem"] = canal(corre("verniz_sem", AMOSTRAS_PRETO), "Combined.R")
+chao.hide_render = False
+brilho["verniz_com"] = canal(corre("verniz_com", AMOSTRAS_PRETO), "Combined.R")
+BRILHO = ("espelho_sem", "espelho_com", "aspero_sem", "aspero_com", "verniz_sem", "verniz_com")
 
 sem = canal(p_sem, "Combined.R")
 com = canal(p_com, "Combined.R")
@@ -232,7 +245,8 @@ with open(saida, "w") as f:
     f.write(f"# CONTROLO da forma fechada: nos {len(controlo)} px que nada tapa, |preto − (1 + n.y)/2| médio "
             f"{ctl:.4f}.\n")
     f.write("# obj: 1 = caixa, 2.. = as esferas pela ordem; p e n no MUNDO nosso; sem/com/preto = E/π da "
-            "difusa; espelho_*/aspero_* = o metal branco de rugosidade 0 / 0,5, sem e com o chão.\n")
+            "difusa; espelho_*/aspero_* = o metal branco de rugosidade 0 / 0,5, sem e com o chão; verniz_* = o "
+            "metal 0,5 com verniz nítido.\n")
     f.write("i,j,obj,x,y,z,nx,ny,nz,sem,com,preto," + ",".join(BRILHO) + "\n")
     f.write("\n".join(linhas) + "\n")
 print(f"ORACULO: {len(linhas)} linhas em {saida} · controlo {ctl:.4f} sobre {len(controlo)} px")

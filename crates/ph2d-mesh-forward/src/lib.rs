@@ -183,11 +183,11 @@ mod tests_contacto;
 #[cfg(test)]
 mod tests_custo_chao;
 #[cfg(test)]
-mod tests_custo_chao_tapa;
-#[cfg(test)]
 mod tests_custo_contacto;
 #[cfg(test)]
 mod tests_custo_textura;
+#[cfg(test)]
+mod tests_passe_chao_tapa;
 #[cfg(test)]
 mod tests_sol;
 #[cfg(test)]

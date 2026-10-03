@@ -1,12 +1,9 @@
-//! **Fase do quadro: O MODO DO OBJECTO ACTIVO** (spec/06 F2) — só a lista das famílias que declaram
-//! modos; o quadro é `ph2d_editor_core::screens::hero::mode_drive`.
+//! **Fase do quadro: O MODO DO OBJECTO ACTIVO** (spec/06 F2/F3) — só a lista das famílias que
+//! declaram modos, cada uma com o que empresta; o quadro é `ph2d_editor_core::screens::hero::mode_drive`.
 
 use super::*;
 use ph2d_editor_core::object_mode::ModeRequest;
 use ph2d_editor_core::screens::hero::mode_drive::ModeFamily;
-
-/// ⭐ **As famílias que declaram modos**, compiladas.
-pub(crate) const MODE_FAMILIES: &[ModeFamily] = &[ph2d_app_painter::paint_mode::FAMILY];
 
 impl crate::App {
     /// Ver o cabeçalho do módulo.
@@ -19,21 +16,27 @@ impl crate::App {
             tools,
             toasts,
             hero_screen,
+            #[cfg(feature = "sculpt3d")]
+            sculpt3d,
             ..
         } = FrameGfx::of(gfx);
         let Some(hero) = hero_screen.as_mut() else {
             return;
         };
         let request = request.or_else(|| ph2d_app_painter::paint_mode::smoke_step(sim, hero));
+        #[cfg(feature = "sculpt3d")]
+        ph2d_app_sculpt3d::sculpt_mode::smoke_step(sim, hero);
+        // ⭐ **As famílias que declaram modos**, compiladas.
+        let mut paint = ph2d_app_painter::paint_mode::Family;
+        #[cfg(feature = "sculpt3d")]
+        let mut sculpt = ph2d_app_sculpt3d::sculpt_mode::Family::new(sim, sculpt3d.as_mut());
+        let families: &mut [&mut dyn ModeFamily] = &mut [
+            &mut paint,
+            #[cfg(feature = "sculpt3d")]
+            &mut sculpt,
+        ];
         let world = sim.world();
-        if ph2d_app_components::object_mode::drive(
-            world,
-            MODE_FAMILIES,
-            tools,
-            hero,
-            toasts,
-            request,
-        ) {
+        if ph2d_app_components::object_mode::drive(world, families, tools, hero, toasts, request) {
             self.title_dirty = true;
         }
     }

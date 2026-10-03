@@ -29,6 +29,7 @@ ph2d-app-host = { path = "../ph2d-app-host" }
 # alias `field3d_*` da shell poderem MORRER: os 46 usos desta família passam a nomeá-la.
 ph2d-viewport3d = { path = "../ph2d-viewport3d" }
 
+ph2d-component-desc = { path = "../ph2d-component-desc" }
 ph2d-core = { path = "../ph2d-core" }
 ph2d-color = { path = "../ph2d-color" }
 ph2d-crossfield = { path = "../ph2d-crossfield" }

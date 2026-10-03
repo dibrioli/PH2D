@@ -78,7 +78,6 @@ mod rail_panels;
 mod rail_size;
 mod rail_tools;
 mod scene_picker;
-mod sculpt3d_toggle;
 mod settings_angle;
 mod settings_filter;
 mod settings_font;
@@ -201,7 +200,6 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || falloff_handle::apply(hero, event)
         || vector_toggle::apply(hero, event)
         || flip_toggle::apply(hero, event)
-        || sculpt3d_toggle::apply(hero, event)
         || model3d_toggle::apply(hero, event)
         || motion_toggle::apply(hero, event)
         || timeline_segment::apply(hero, event)

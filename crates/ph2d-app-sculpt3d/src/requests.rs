@@ -28,12 +28,6 @@ pub struct Sculpt3dRequests {
     /// [`Self::bake_request`]: ler os pixels de um sprite precisa do mundo, do renderizador e
     /// do mapa de atlas, e os três só estão em escopo dentro do laço de quadro.
     pub alpha_request: bool,
-    /// **O pill SCULPT pediu para ENTRAR ou SAIR do modo escultura** (ADR-0150).
-    ///
-    /// ⚠️ Aqui a razão de ser um pedido é a mais forte das quatro: entrar pode ter de **criar
-    /// a cena**, o que exige o `device` e o tamanho da superfície — os dois só existem depois
-    /// de a janela nascer.
-    pub toggle_request: bool,
 }
 
 impl Sculpt3dRequests {
@@ -49,11 +43,6 @@ impl Sculpt3dRequests {
     /// Lê e desarma o pedido do alpha. Irmão do [`Self::take_bake`], mesma razão.
     pub fn take_alpha(&mut self) -> bool {
         std::mem::take(&mut self.alpha_request)
-    }
-
-    /// Lê e desarma o pedido do pill. Irmão do [`Self::take_bake`], mesma razão.
-    pub fn take_toggle(&mut self) -> bool {
-        std::mem::take(&mut self.toggle_request)
     }
 }
 
@@ -90,7 +79,7 @@ mod tests {
     #[test]
     fn nothing_is_requested_before_anyone_asks() {
         let r = Sculpt3dRequests::default();
-        assert!(!r.canvas_done && !r.bake_request && !r.alpha_request && !r.toggle_request);
+        assert!(!r.canvas_done && !r.bake_request && !r.alpha_request);
     }
 
     /// **Um pedido cumpre-se UMA vez.** ⚠️ O controlo é a segunda leitura: um `take` que
@@ -101,12 +90,11 @@ mod tests {
         let mut r = Sculpt3dRequests {
             bake_request: true,
             alpha_request: true,
-            toggle_request: true,
             ..Default::default()
         };
-        assert!(r.take_bake() && r.take_alpha() && r.take_toggle());
+        assert!(r.take_bake() && r.take_alpha());
         assert!(
-            !r.take_bake() && !r.take_alpha() && !r.take_toggle(),
+            !r.take_bake() && !r.take_alpha(),
             "um pedido lido sem ser desarmado cumpre-se a cada quadro"
         );
     }

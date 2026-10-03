@@ -391,7 +391,14 @@ impl Sculpt3dScene {
     /// em que ele COMEÇOU, então trocar de objeto no meio escreve índices de uma
     /// malha noutra — e com a peça nova maior que a velha isso é um **pânico**,
     /// não um desenho errado. É a mesma lei do NÍVEL, um degrau acima.
+    ///
+    /// ⭐ **Com uma peça PRESA pelo modo** ([`Self::preso`], spec/06 F3) a mira só vê ELA — o raio
+    /// é o da peça activa, e as outras ficam intocadas mesmo à frente dela (o Sculpt do Blender).
     pub(super) fn aim(&mut self, x: f32, y: f32) -> bool {
+        if let Some(i) = self.preso.and_then(|p| self.index_of(p)) {
+            self.active = i;
+            return self.pick_active(x, y).is_some();
+        }
         match self.pick(x, y) {
             Some((object, _)) => {
                 self.active = object;

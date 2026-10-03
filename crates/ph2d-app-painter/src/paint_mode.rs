@@ -15,13 +15,24 @@ use ph2d_editor_core::screens::hero::mode_drive::ModeFamily;
 use ph2d_editor_core::{ToolId, ToolRegistry};
 use ph2d_tool_painter::PainterTool;
 
-/// ⭐ **O modo que esta família declara, e as portas dele** — a shell junta-a às outras.
-pub const FAMILY: ModeFamily = ModeFamily {
-    modes: &[(ObjectKind::Image, ObjectMode::Paint)],
-    holds: |_, tools| holds_an_image(tools),
-    enter: |_, tools| enter(tools),
-    leave: |_, tools| leave(tools),
-};
+/// ⭐ **O modo que esta família declara, e as portas dele** — a shell junta-a às outras. Só
+/// precisa do registo de ferramentas: o Painter já guarda o documento da selecção.
+pub struct Family;
+
+impl ModeFamily for Family {
+    fn modes(&self) -> &'static [(ObjectKind, ObjectMode)] {
+        &[(ObjectKind::Image, ObjectMode::Paint)]
+    }
+    fn holds(&mut self, _: ObjectMode, _: u64, tools: &mut ToolRegistry) -> bool {
+        holds_an_image(tools)
+    }
+    fn enter(&mut self, _: ObjectMode, _: u64, tools: &mut ToolRegistry) -> bool {
+        enter(tools)
+    }
+    fn leave(&mut self, _: ObjectMode, _: u64, tools: &mut ToolRegistry) {
+        leave(tools);
+    }
+}
 
 /// O id do Painter no registo de ferramentas.
 const PAINTER: &str = "painter";

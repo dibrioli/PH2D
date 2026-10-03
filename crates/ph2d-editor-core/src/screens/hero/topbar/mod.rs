@@ -52,9 +52,6 @@ pub fn populate(store: &mut WidgetStore) {
         ids::TOPBAR_TAGS,
         ids::TOPBAR_TOKENS,
         ids::TOPBAR_AUTHORED,
-        // Sculpt 3D (ADR-0150) — mesma exigência de paridade dos pills acima: sem registro AQUI
-        // ele desenha e nasce morto sob o mouse.
-        ids::TOPBAR_SCULPT3D,
         // Modelagem 3D (ADR-0161) — mesma exigência: sem registro AQUI o pill desenha e
         // nasce morto sob o mouse.
         ids::TOPBAR_MODEL3D,

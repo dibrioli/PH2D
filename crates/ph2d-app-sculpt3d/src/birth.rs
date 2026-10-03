@@ -139,6 +139,9 @@ impl Sculpt3dScene {
             redo: Vec::new(),
             edits: 0,
             role: FormRole::Clay,
+            preso: None,
+            // A cena nasce com a primeira peça, e uma peça nascida entra em Sculpt.
+            pede_o_modo: true,
             clay_was_on: false,
             // ⚠️ **O rig com que ela NASCE**, e não um valor neutro: a cena acabou de existir e não
             // mexeu em lâmpada nenhuma. Semear isto com um default faria o primeiro frame parecer

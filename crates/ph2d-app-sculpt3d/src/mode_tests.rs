@@ -1,18 +1,13 @@
-//! **O pill SCULPT: entrar, sair, e DIZER onde se está** (ADR-0150).
+//! **O barro: entrar, sair, e o `D` que nunca entra** (ADR-0150; spec/06 F3).
 //!
 //! Módulo irmão de teste do [`super`] (`#[path]`, `cfg(test)`), no molde do
 //! `transform_tests`: as travessias de papel exigem uma cena, e uma cena exige um device,
-//! então elas são `#[ignore]` + `gpu_or_skip!`. O que NÃO exige device (o sync do pill sem cena)
-//! roda sempre.
+//! então elas são `#[ignore]` + `gpu_or_skip!`.
 //!
 //! ```text
 //! cargo test -p ph2d-app-sculpt3d --release --lib sculpt3d::mode::tests -- --ignored --nocapture
 //! ```
 
-use ph2d_editor_core::ids;
-use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::screens::hero::HeroScreen;
-use ph2d_editor_core::widget::ButtonState;
 use ph2d_mesh::shapes::uv_sphere;
 
 use super::super::Sculpt3dScene;
@@ -29,13 +24,6 @@ macro_rules! gpu_or_skip {
             }
         }
     };
-}
-
-fn pill_state(hero: &HeroScreen) -> Option<ButtonState> {
-    match hero.store.get(ids::TOPBAR_SCULPT3D) {
-        Some(InteractiveState::Button { state }) => Some(*state),
-        _ => None,
-    }
 }
 
 /// **SAIR devolve o PONTEIRO** — a queixa inteira do Enio numa asserção.
@@ -95,78 +83,24 @@ fn entering_from_the_middle_position_comes_back_to_the_clay() {
     );
 }
 
-/// **O pill SEGUE a tecla `D`** — a razão de o estado ser escrito por frame.
+/// ⭐⭐ **O `D` NUNCA entra no barro** (spec/06 F3) — entrar é o modo Sculpt; o `D` sai do barro para
+/// a luz e, fora dele, alterna luz ⇄ desligada.
 ///
-/// ⚠️ **A mutação que este gate mata é a barata:** escrever o *pressed* só no clique (o que o
-/// `physics_toggle` faz, e ali está certo, porque lá o clique é a única porta). Aqui o `D` move o
-/// papel sem passar pelo pill, e um estado guardado passaria a dizer *dentro* sobre uma cena que
-/// saiu da tela — em silêncio.
+/// ⚠️ Sem este gate a mutação *«o `D` é `role.next()`»* passa em todo o resto: ela só difere na
+/// travessia `Off → Clay`, que é a que poria o barro na tela sem o modo o dizer.
 #[test]
 #[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
-fn the_pill_follows_the_key_that_the_pill_never_sees() {
+fn the_d_key_never_enters_the_clay() {
     let gpu = gpu_or_skip!();
-    // ⚠️ `HeroScreen::new` já popula o store — ao contrário do `MockPanelHost::new`, que o pula e
-    // que já deixou um gate verde sobre chips mortos sob o mouse.
-    let mut hero = HeroScreen::new(ph2d_editor_core::NodeId(1));
     let mut scene = Sculpt3dScene::new(&gpu.device, uv_sphere(12, 24, 1.0), 1.0);
-
-    super::sync_pill(&mut hero, Some(&scene));
-    assert_eq!(
-        pill_state(&hero),
-        Some(ButtonState::Pressed),
-        "com o barro na tela o pill tem de estar aceso"
-    );
-
-    // O artista aperta `D` — o pill nunca soube.
-    scene.cycle_role();
-    super::sync_pill(&mut hero, Some(&scene));
-    assert_eq!(
-        pill_state(&hero),
-        Some(ButtonState::Normal),
-        "o `D` tirou o barro da tela e o pill continuou aceso: ele guarda um bool proprio, e ele \
-         ja' discorda da cena"
-    );
-}
-
-/// **Sem cena o pill fica SOLTO** — o estado honesto de *entrar*.
-///
-/// Não precisa de device (é o caso `None`), então roda sempre — e é ele que prova que o sync mora
-/// ANTES do early-return da ponte.
-#[test]
-fn with_no_scene_the_pill_is_the_invitation_to_enter() {
-    let mut hero = HeroScreen::new(ph2d_editor_core::NodeId(1));
-    super::sync_pill(&mut hero, None);
-    assert_eq!(
-        pill_state(&hero),
-        Some(ButtonState::Normal),
-        "sem escultura nenhuma o pill nao pode estar aceso"
-    );
-}
-
-/// **O pedido é CONSUMIDO mesmo quando não há o que fazer.**
-///
-/// ⚠️ Guardá-lo faria a escultura nascer sozinha no frame em que a janela aparecesse — muito depois
-/// do clique, e sem nada na tela explicando por quê.
-#[test]
-fn a_request_with_no_gpu_is_spent_not_stored() {
-    // ⭐ **Sem `App` desde 2026-09-11 (W2/L3-B), e o gate ficou MAIS FORTE.** Ele construía uma
-    // `App` inteira para exercitar uma lei de três linhas — hoje a ausência de GPU é um
-    // parâmetro (`None`), e o que se afirma é a lei, não um passeio pela shell. *Uma fixture
-    // que precisa do mundo inteiro esconde de que a lei depende.*
-    let mut req = crate::Sculpt3dRequests {
-        toggle_request: true,
-        ..Default::default()
-    };
-    let mut slot = None;
-    crate::mode::apply_toggle(&mut slot, &mut req, None);
+    assert!(scene.shows_clay(), "premissa: a cena nasce no barro");
+    let labels: Vec<_> = (0..4).map(|_| scene.cycle_role()).collect();
     assert!(
-        !req.toggle_request,
-        "o pedido sobreviveu ao frame: a cena nasceria sozinha quando a janela aparecesse"
+        labels.iter().all(|l| !l.starts_with("BARRO")),
+        "o `D` voltou ao barro: {labels:?}"
     );
-    assert!(
-        slot.is_none(),
-        "controlo positivo: sem device não pode ter nascido cena nenhuma"
-    );
+    assert!(labels[0].starts_with("LUZ") && labels[1].starts_with("DESLIGADA"));
+    assert!(labels[2].starts_with("LUZ"), "fora do barro o `D` não alterna: {labels:?}");
 }
 
 /// **O painel do modo acompanha o modo — nas BORDAS, e só nelas.**

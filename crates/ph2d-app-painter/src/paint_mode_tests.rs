@@ -1,5 +1,5 @@
 //! Os gates de Image ▸ Paint com o Painter DE VERDADE, pelo mesmo quadro que a shell corre
-//! (`ph2d_editor_core::screens::hero::mode_drive::drive` sobre a [`FAMILY`]).
+//! (`ph2d_editor_core::screens::hero::mode_drive::drive` sobre a [`Family`]).
 
 use super::*;
 use ph2d_ecs::{SimWorld, Transform};
@@ -83,7 +83,7 @@ impl Cena {
         };
         let name_of = |_| String::new();
         drive(
-            &[FAMILY],
+            &mut [&mut Family],
             &kind_of,
             &name_of,
             &mut self.tools,

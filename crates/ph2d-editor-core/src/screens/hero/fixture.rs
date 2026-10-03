@@ -108,21 +108,8 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
             ids::TOPBAR_FLIP,
             TopBarCluster::single(tr("chrome.topbar.pill.flip"), IconId::Flip),
         ),
-        // A escultura 3D (ADR-0150) — **entra e sai** do modo. Ao lado dos três de cima porque a
-        // espécie é a mesma do ponto de vista do artista: clico, e o canvas passa a ser de outra
-        // coisa. ⚠️ Ele NÃO é uma tool (a navegação 3D mora no shell, ADR-0150), então o clique
-        // não passa pelo `ActivateTool` dos vizinhos — ver `chrome::sculpt3d_toggle`.
-        //
-        // ⚠️ **Depois do FLIP, e não ao lado do PHYS**, por uma razão de layout que o `split` do
-        // `paint_top_bar` torna concreta: os sete primeiros clusters são o grupo da ESQUERDA, e
-        // entrar entre eles empurraria o vizinho de baixo para o outro lado da tela — o mesmo
-        // acidente que o comentário do `split` já registra.
-        (
-            ids::TOPBAR_SCULPT3D,
-            TopBarCluster::single(tr("chrome.topbar.pill.sculpt"), IconId::Cube),
-        ),
-        // Modelagem 3D por campo implícito (ADR-0161) — o vizinho do SCULPT de propósito: quem
-        // procura "3D" tem de encontrar os dois e ver que são módulos diferentes.
+        // Modelagem 3D por campo implícito (ADR-0161). ⚠️ O vizinho SCULPT saiu (spec/06 F3): a
+        // escultura abre-se pelo MODO da peça (Sculpt Mode), não por um pill.
         (
             ids::TOPBAR_MODEL3D,
             TopBarCluster::single(tr("chrome.topbar.pill.model"), IconId::Cube),

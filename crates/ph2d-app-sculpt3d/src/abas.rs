@@ -6,9 +6,10 @@
 //! `ph2d_editor_core::screens::hero::slot_tabs_ferramenta`. Esta é a que a torna ALCANÇÁVEL e
 //! legível:
 //!
-//! 1. **Com a peça no ecrã e o modo IMG ligado, a aba do Painter fica**, mesmo com ele fora da
-//!    mão — sem ela o «vice-versa» não tinha onde clicar (a ponte do Painter esconde a aba em todo
-//!    quadro em que ele não está activo). Ela nasce ATRÁS da da escultura.
+//! 1. **Com a peça no ecrã (Sculpt ▸ Sculpt), a aba do Painter fica**, mesmo com ele fora da mão —
+//!    é a porta do Sculpt ▸ Paint, e sem ela o «vice-versa» não tinha onde clicar (a ponte do
+//!    Painter esconde a aba em todo quadro em que ele não está activo). Ela nasce ATRÁS da da
+//!    escultura. ⚠️ Desde a F3 do Sculpt (spec/06) o IMG deixou de ser condição: o modo é a porta.
 //! 2. **O Painter sai da mão ⇒ a aba da escultura vem à frente** — o gémeo da ponte do Painter, que
 //!    já traz a aba dele à frente quando ele entra. Sem isto o painel da frente dizia «Painter» com
 //!    a mão a esculpir.
@@ -36,7 +37,7 @@ fn decide(hero: &mut HeroScreen, barro: bool, painter_na_mao: bool, estava: bool
     if !barro {
         return;
     }
-    if !painter_na_mao && hero.image_edit.mode_on {
+    if !painter_na_mao {
         // A ordem z só guarda os painéis visíveis no quadro anterior: estar lá é «já estava à vista».
         let ja_a_vista = hero.store.panel_z_order().contains(&PAINTER_LAYERS_PANEL);
         hero.panel_visibility.insert("painter_layers", true);

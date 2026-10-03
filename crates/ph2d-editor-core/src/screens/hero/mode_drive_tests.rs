@@ -39,20 +39,66 @@ fn in_hand(t: &ToolRegistry, id: &str) -> bool {
     t.active().is_some_and(|a| a.id() == ToolId::new(id))
 }
 
-const FAMILY: ModeFamily = ModeFamily {
-    modes: &[(ObjectKind::Image, ObjectMode::Paint)],
-    holds: |_, t| in_hand(t, PAINT),
-    enter: |_, t| t.set_active(&ToolId::new(PAINT)),
-    leave: |_, t| {
+/// A família da imagem: Image ▸ Paint põe a ferramenta `fake_paint` em mãos.
+struct ImageFamily;
+
+impl ModeFamily for ImageFamily {
+    fn modes(&self) -> &'static [(ObjectKind, ObjectMode)] {
+        &[(ObjectKind::Image, ObjectMode::Paint)]
+    }
+    fn holds(&mut self, _: ObjectMode, _: u64, t: &mut ToolRegistry) -> bool {
+        in_hand(t, PAINT)
+    }
+    fn enter(&mut self, _: ObjectMode, _: u64, t: &mut ToolRegistry) -> bool {
+        t.set_active(&ToolId::new(PAINT))
+    }
+    fn leave(&mut self, _: ObjectMode, _: u64, t: &mut ToolRegistry) {
         t.activate_default();
-    },
-};
+    }
+}
+
+/// Uma escultura FALSA: Sculpt3D ▸ Sculpt · Paint, com o documento dela (a peça em mãos e o modo),
+/// e um objecto que nasce a pedir o Sculpt.
+#[derive(Default)]
+struct SculptFamily {
+    held: Option<(u64, ObjectMode)>,
+    born: Option<u64>,
+    followed: Vec<Option<ActiveMode>>,
+}
+
+impl ModeFamily for SculptFamily {
+    fn modes(&self) -> &'static [(ObjectKind, ObjectMode)] {
+        &[
+            (ObjectKind::Sculpt3D, ObjectMode::Sculpt),
+            (ObjectKind::Sculpt3D, ObjectMode::Paint),
+        ]
+    }
+    fn holds(&mut self, m: ObjectMode, e: u64, _: &mut ToolRegistry) -> bool {
+        self.held == Some((e, m))
+    }
+    fn enter(&mut self, m: ObjectMode, e: u64, _: &mut ToolRegistry) -> bool {
+        self.held = Some((e, m));
+        true
+    }
+    fn leave(&mut self, _: ObjectMode, _: u64, _: &mut ToolRegistry) {
+        self.held = None;
+    }
+    fn follow(&mut self, current: Option<ActiveMode>, _: &mut ToolRegistry) {
+        self.followed.push(current);
+    }
+    fn wants(&mut self) -> Option<(u64, ObjectMode)> {
+        self.born.take().map(|e| (e, ObjectMode::Sculpt))
+    }
+}
+
+const PIECE: u64 = 30;
+const PIECE2: u64 = 31;
 
 fn kind_of(bits: u64) -> ObjectKind {
-    if bits == EMPTY {
-        ObjectKind::Empty
-    } else {
-        ObjectKind::Image
+    match bits {
+        EMPTY => ObjectKind::Empty,
+        PIECE | PIECE2 => ObjectKind::Sculpt3D,
+        _ => ObjectKind::Image,
     }
 }
 
@@ -60,6 +106,7 @@ struct Cena {
     tools: ToolRegistry,
     hero: HeroScreen,
     toasts: ToastQueue,
+    sculpt: SculptFamily,
 }
 
 fn cena() -> Cena {
@@ -72,13 +119,14 @@ fn cena() -> Cena {
         tools,
         hero: HeroScreen::new(NodeId(1)),
         toasts: ToastQueue::new(),
+        sculpt: SculptFamily::default(),
     }
 }
 
 impl Cena {
     fn quadro(&mut self, req: Option<ModeRequest>) {
         drive(
-            &[FAMILY],
+            &mut [&mut ImageFamily, &mut self.sculpt],
             &kind_of,
             &|_| "Obj".to_string(),
             &mut self.tools,
@@ -240,4 +288,72 @@ fn the_right_click_adds_only_in_object_mode() {
     let _ = c.hero.bus.drain().count();
     assert!(!right_click_on_canvas(&mut c.hero));
     assert!(!asks_add(&mut c.hero));
+}
+
+/// ⭐⭐ GATE — `Paint` declarado por DOIS tipos: o quadro procura a família por (tipo, modo). Paint
+/// sobre a peça abre a ESCULTURA e não a ferramenta da imagem; sobre a imagem, o contrário.
+#[test]
+fn paint_declared_by_two_types_opens_the_family_of_the_type() {
+    let mut c = cena();
+    c.hero.gizmo.replace_selection(Some(PIECE));
+    c.quadro(None);
+    assert_eq!(
+        c.hero.store.area_menus()[0].faces,
+        ["Object Mode", "Sculpt Mode", "Paint Mode"],
+        "o seletor da peça não segue a ordem que a família declara"
+    );
+    c.quadro(Some(ModeRequest::Enter(ObjectMode::Paint)));
+    assert_eq!(c.sculpt.held, Some((PIECE, ObjectMode::Paint)));
+    assert!(!c.paint_in_hand(), "Paint da peça abriu a ferramenta da imagem");
+    c.quadro(Some(ModeRequest::Enter(ObjectMode::Object)));
+    c.hero.gizmo.replace_selection(Some(IMG));
+    c.quadro(Some(ModeRequest::Enter(ObjectMode::Paint)));
+    assert!(c.paint_in_hand());
+    assert_eq!(c.sculpt.held, None, "Paint da imagem mexeu na escultura");
+}
+
+/// ⭐⭐ GATE (spec/06 §4 F3) — duas peças do mesmo tipo, o modo numa: a outra fica intocada, e a
+/// troca entre os modos da família fica na MESMA peça.
+#[test]
+fn two_pieces_the_mode_on_one_leaves_the_other_untouched() {
+    let mut c = cena();
+    c.hero.gizmo.replace_selection(Some(PIECE2));
+    c.quadro(Some(ModeRequest::Enter(ObjectMode::Sculpt)));
+    assert_eq!(c.sculpt.held, Some((PIECE2, ObjectMode::Sculpt)));
+    c.quadro(Some(ModeRequest::Enter(ObjectMode::Paint)));
+    assert_eq!(c.sculpt.held, Some((PIECE2, ObjectMode::Paint)));
+    assert!(refused(&c.hero, Some(PIECE), false, &mut c.toasts));
+    c.quadro(None);
+    assert_eq!(c.hero.gizmo.mode.locked_entity(), Some(PIECE2));
+    assert_eq!(c.sculpt.held, Some((PIECE2, ObjectMode::Paint)));
+}
+
+/// ⭐⭐ GATE — um objecto que NASCE num modo (a peça do menu Add, escolha do dono 03/10) fica
+/// seleccionado e entra nele; o pedido corre UMA vez.
+#[test]
+fn a_born_object_is_selected_and_enters_its_mode_once() {
+    let mut c = cena();
+    c.hero.gizmo.replace_selection(Some(IMG));
+    c.sculpt.born = Some(PIECE);
+    c.quadro(None);
+    assert_eq!(c.hero.gizmo.selection, Some(PIECE));
+    assert_eq!(c.hero.gizmo.mode.current(), ObjectMode::Sculpt);
+    c.quadro(Some(ModeRequest::Toggle));
+    c.quadro(None);
+    assert_eq!(
+        c.hero.gizmo.mode.current(),
+        ObjectMode::Object,
+        "o pedido do nascimento repetiu-se"
+    );
+}
+
+/// ⭐ GATE — cada família vê o modo que FICOU depois do pedido, em todo quadro.
+#[test]
+fn every_family_follows_the_mode_that_stayed() {
+    let mut c = cena();
+    c.hero.gizmo.replace_selection(Some(PIECE));
+    c.quadro(Some(ModeRequest::Enter(ObjectMode::Sculpt)));
+    c.quadro(Some(ModeRequest::Toggle));
+    let seen: Vec<_> = c.sculpt.followed.iter().map(|a| a.map(|a| a.mode)).collect();
+    assert_eq!(seen, [Some(ObjectMode::Sculpt), None]);
 }

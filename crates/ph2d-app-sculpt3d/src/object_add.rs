@@ -4,8 +4,11 @@
 //! dona da geometria, a entidade da identidade. Quem cria a peça devolve o id dela; a shell corre a
 //! sincronia e pergunta pela entidade com [`entity_of_piece`].
 //!
-//! ⚠️ **Sem cena, o menu CRIA uma com a peça escolhida** — pela mesma porta do pill
-//! ([`crate::mode::new_scene`]), e com o barro na tela, como o pill.
+//! ⚠️ **Sem cena, o menu CRIA uma com a peça escolhida** — pela porta única de nascer
+//! ([`crate::mode::new_scene`]).
+//!
+//! ⭐ **A peça nascida entra em Sculpt** (escolha do dono, 03/10): a cena nova já nasce a pedi-lo, e
+//! a peça acrescentada a uma cena que existe pede-o aqui ([`crate::sculpt_mode`]).
 
 use std::sync::Arc;
 
@@ -37,8 +40,7 @@ fn primitive_of(entry: AddEntry) -> Option<Primitive> {
 
 /// ⭐ **Cria a peça** desta entrada e devolve o id dela — `None` se a entrada não é desta família.
 ///
-/// `gpu` é o dispositivo e o tamanho da janela: sem eles não há cena a criar (a mesma ausência
-/// que o pill trata).
+/// `gpu` é o dispositivo e o tamanho da janela: sem eles não há cena a criar.
 pub fn add(
     entry: AddEntry,
     slot: &mut Option<Sculpt3dScene>,
@@ -48,6 +50,7 @@ pub fn add(
     Some(match slot.as_mut() {
         Some(scene) => {
             let i = scene.add_primitive(kind);
+            scene.pede_o_modo = true;
             Ok(scene.objects[i].id.0)
         }
         None => match gpu {

@@ -7,49 +7,68 @@
 //! quem chama (`kind_of`): a fundação não conhece os marcadores.
 
 use super::HeroScreen;
-use crate::object_mode::{self, ModeRequest, ObjectMode, Step};
+use crate::object_mode::{self, ActiveMode, ModeRequest, ObjectMode, Step};
 use crate::toast::{Toast, ToastQueue};
 use crate::tool::ToolRegistry;
 use ph2d_component_desc::ObjectKind;
 use ph2d_i18n::tr_with;
 
-/// ⭐ **Um modo que uma família abre** — os pares (tipo, modo) que ela declara e as três portas do
-/// módulo dela. Uma família sem modo de criação não declara nada.
-#[derive(Copy, Clone)]
-pub struct ModeFamily {
+/// ⭐ **Uma família que abre modos** — os pares (tipo, modo) que ela declara e as portas do módulo
+/// dela. Uma família sem modo de criação não declara nada.
+///
+/// ⚠️ **Um trait, e não uma tabela de `fn`:** cada família abre o modo com os recursos DELA (o
+/// Painter só precisa do registo de ferramentas; a escultura, da cena e do mapa peça↔entidade). A
+/// shell constrói as famílias em cada quadro com o que cada uma empresta — a assinatura comum de
+/// recursos seria uma mentira (o mesmo desvio do `object_add`, spec/06 F1).
+pub trait ModeFamily {
     /// Os modos que ela abre, por tipo (D6).
-    pub modes: &'static [(ObjectKind, ObjectMode)],
-    /// O módulo tem a entidade em mãos?
-    pub holds: fn(ObjectMode, &mut ToolRegistry) -> bool,
-    /// Abre o módulo (a selecção já foi colapsada ao activo). `false` = recusou.
-    pub enter: fn(ObjectMode, &mut ToolRegistry) -> bool,
+    fn modes(&self) -> &'static [(ObjectKind, ObjectMode)];
+    /// O módulo tem `entity` em mãos, neste modo?
+    fn holds(&mut self, mode: ObjectMode, entity: u64, tools: &mut ToolRegistry) -> bool;
+    /// Abre o módulo sobre `entity` (a selecção já foi colapsada a ela). `false` = recusou.
+    fn enter(&mut self, mode: ObjectMode, entity: u64, tools: &mut ToolRegistry) -> bool;
     /// Larga o módulo.
-    pub leave: fn(ObjectMode, &mut ToolRegistry),
+    fn leave(&mut self, mode: ObjectMode, entity: u64, tools: &mut ToolRegistry);
+    /// ⭐ **O módulo SEGUE o modo**, em todo quadro, depois do pedido: o que ele tem em mãos sem o
+    /// modo o declarar é largado aqui (a outra metade da rede `still_holds`).
+    fn follow(&mut self, _current: Option<ActiveMode>, _tools: &mut ToolRegistry) {}
+    /// ⭐ **Um objecto que NASCEU num modo** pede-o uma vez: `(entidade, modo)`. O quadro selecciona
+    /// a entidade e entra.
+    fn wants(&mut self) -> Option<(u64, ObjectMode)> {
+        None
+    }
 }
 
-fn family(families: &[ModeFamily], kind: ObjectKind, mode: ObjectMode) -> Option<&ModeFamily> {
-    families.iter().find(|f| f.modes.contains(&(kind, mode)))
+fn family<'a>(
+    families: &'a mut [&mut dyn ModeFamily],
+    kind: ObjectKind,
+    mode: ObjectMode,
+) -> Option<&'a mut dyn ModeFamily> {
+    families
+        .iter_mut()
+        .find(|f| f.modes().contains(&(kind, mode)))
+        .map(|f| &mut **f as &mut dyn ModeFamily)
 }
 
 /// Volta a Object e larga o módulo do modo que estava (se ele ainda o tem).
 fn leave_current(
-    families: &[ModeFamily],
+    families: &mut [&mut dyn ModeFamily],
     kind_of: &dyn Fn(u64) -> ObjectKind,
     tools: &mut ToolRegistry,
     hero: &mut HeroScreen,
 ) {
     if let Some(prev) = hero.gizmo.mode.leave()
         && let Some(f) = family(families, kind_of(prev.entity), prev.mode)
-        && (f.holds)(prev.mode, tools)
+        && f.holds(prev.mode, prev.entity, tools)
     {
-        (f.leave)(prev.mode, tools);
+        f.leave(prev.mode, prev.entity, tools);
     }
 }
 
 /// ⭐⭐ **O quadro do modo.** `kind_of`/`name_of` respondem pelos bits de uma entidade. Devolve se o
 /// modo mudou.
 pub fn drive(
-    families: &[ModeFamily],
+    families: &mut [&mut dyn ModeFamily],
     kind_of: &dyn Fn(u64) -> ObjectKind,
     name_of: &dyn Fn(u64) -> String,
     tools: &mut ToolRegistry,
@@ -58,11 +77,17 @@ pub fn drive(
     request: Option<ModeRequest>,
 ) -> bool {
     let mut changed = false;
+    // 0. Um objecto que nasceu num modo pede-o (só sem pedido do artista neste quadro).
+    let request = request.or_else(|| {
+        let (bits, mode) = families.iter_mut().find_map(|f| f.wants())?;
+        hero.gizmo.replace_selection(Some(bits));
+        Some(ModeRequest::Enter(mode))
+    });
     // 1. O activo e os modos que o TIPO dele declara.
     let active = object_mode::active_of(hero.gizmo.selection, &hero.gizmo.extra_selection);
     let modes: Vec<ObjectMode> = active.map_or_else(Vec::new, |bits| {
         let kind = kind_of(bits);
-        let declared = families.iter().flat_map(|f| f.modes.iter());
+        let declared = families.iter().flat_map(|f| f.modes().iter());
         declared
             .filter(|(k, _)| *k == kind)
             .map(|(_, m)| *m)
@@ -72,7 +97,7 @@ pub fn drive(
     // 2. A rede de segurança: quem perdeu a entidade (por qualquer porta) volta a Object.
     if let Some(current) = hero.gizmo.mode.active() {
         let held = family(families, kind_of(current.entity), current.mode)
-            .is_some_and(|f| (f.holds)(current.mode, tools));
+            .is_some_and(|f| f.holds(current.mode, current.entity, tools));
         let (sel, extras) = (hero.gizmo.selection, hero.gizmo.extra_selection.len());
         if !hero.gizmo.mode.still_holds(sel, extras, held) {
             leave_current(families, kind_of, tools, hero);
@@ -91,7 +116,7 @@ pub fn drive(
                     // ⚠️ Colapsar ANTES de abrir: o módulo lê a selecção ao abrir (o Sculpt do
                     // Blender toma só o activo, e o Painter o documento seleccionado).
                     hero.gizmo.replace_selection(Some(bits));
-                    if (f.enter)(m, tools) {
+                    if f.enter(m, bits, tools) {
                         hero.gizmo.mode.enter(bits, m);
                         let label = m.label_key().tr();
                         toasts.push(Toast::info(tr_with(
@@ -118,7 +143,12 @@ pub fn drive(
         }
         changed = true;
     }
-    // 4. O seletor — em todo quadro, vazio incluído.
+    // 4. Cada módulo segue o modo que ficou.
+    let current = hero.gizmo.mode.active();
+    for f in families.iter_mut() {
+        f.follow(current, tools);
+    }
+    // 5. O seletor — em todo quadro, vazio incluído.
     let menu = hero.gizmo.mode.menu(&mut hero.store);
     hero.store.publish_mode_menu(menu);
     changed

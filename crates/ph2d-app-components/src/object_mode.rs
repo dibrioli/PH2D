@@ -12,7 +12,7 @@ use ph2d_editor_core::toast::ToastQueue;
 /// Corre o quadro do modo sobre `world`. Devolve se o modo mudou.
 pub fn drive(
     world: &ph2d_ecs::World,
-    families: &[ModeFamily],
+    families: &mut [&mut dyn ModeFamily],
     tools: &mut ToolRegistry,
     hero: &mut HeroScreen,
     toasts: &mut ToastQueue,

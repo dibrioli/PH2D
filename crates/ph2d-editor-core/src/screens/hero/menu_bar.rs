@@ -151,9 +151,7 @@ pub fn populate(store: &mut WidgetStore) {
 /// tinha ninguém a publicá-la.
 pub fn publish_toggle_state(hero: &mut super::HeroScreen) {
     for (id, truth) in MODULE_TRUTHS {
-        let Some(on) = truth.resolve(hero) else {
-            continue; // o dono é outro — ver `ModuleTruth::ShellOwned`
-        };
+        let on = truth.resolve(hero);
         if let Some(InteractiveState::Button { state }) = hero.store.get_mut(id) {
             *state = if on {
                 ButtonState::Pressed
@@ -190,11 +188,6 @@ pub enum ModuleTruth {
     ImageMode,
     /// O interruptor das réguas (`ViewState::rulers_visible`).
     Rulers,
-    /// ⚠️ **Quem publica é a SHELL, e não escrevemos por cima.** O `sculpt3d` não tem flag: a
-    /// verdade dele é *«há barro no ecrã»*, que só a shell vê (`sculpt3d_mode::sync`), e o
-    /// doc-comment do handler explica porque ler o estado do botão ali daria a resposta errada
-    /// entre uma tecla `D` e o sync seguinte.
-    ShellOwned,
     /// ⭐⭐ **Uma COLUNA lateral está aberta?** — a verdade das duas linhas que o menu *View*
     /// ganhou em 2026-09-19.
     ///
@@ -209,23 +202,22 @@ pub enum ModuleTruth {
 }
 
 impl ModuleTruth {
-    /// `None` quando o dono é outro.
+    /// A linha está ligada?
     #[must_use]
-    pub fn resolve(self, hero: &super::HeroScreen) -> Option<bool> {
-        Some(match self {
+    pub fn resolve(self, hero: &super::HeroScreen) -> bool {
+        match self {
             Self::Panel(name) => hero.is_panel_visible(name),
             Self::Tool(id) => hero.image_edit.active_tool_id == Some(id),
             Self::ImageMode => hero.image_edit.mode_on,
             Self::Rulers => hero.view.rulers_visible,
-            Self::ShellOwned => return None,
             Self::Column(side) => !super::dock_columns::is_closed(hero, side),
-        })
+        }
     }
 }
 
 /// A tabela. ⚠️ **Toda linha de alternância dos menus tem de estar aqui**, e há censo a exigi-lo
 /// (`every_toggle_row_of_the_bar_is_marked_by_its_own_state`).
-pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 22] = [
+pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 21] = [
     (ids::TOPBAR_VECTOR, ModuleTruth::Tool("vector")),
     (ids::TOPBAR_MOTION, ModuleTruth::Tool("motion")),
     (ids::TOPBAR_FLIP, ModuleTruth::Tool("flip")),
@@ -234,7 +226,6 @@ pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 22] = [
     // `ph2d-panel-skeleton` — esta camada é chrome e não depende de painel nenhum, que é a mesma
     // cerca das linhas à volta.
     (ids::TOPBAR_SKELETON, ModuleTruth::Panel("skeleton")),
-    (ids::TOPBAR_SCULPT3D, ModuleTruth::ShellOwned),
     (ids::TOPBAR_MODEL3D, ModuleTruth::Panel("model3d")),
     // ⭐⭐⭐ **AS TAGS** (TOP-20 #9, W4). ⚠️ O literal é o `Panel::ID` da `ph2d-panel-tags` —
     // esta camada é chrome e não depende de painel nenhum, que é a mesma cerca das vizinhas.
@@ -280,7 +271,7 @@ pub fn module_is_on(hero: &super::HeroScreen, id: NodeId) -> Option<bool> {
     MODULE_TRUTHS
         .iter()
         .find(|(mid, _)| *mid == id)
-        .and_then(|(_, truth)| truth.resolve(hero))
+        .map(|(_, truth)| truth.resolve(hero))
 }
 
 /// **Esta linha mostra o próprio estado pelo `ButtonState`?**

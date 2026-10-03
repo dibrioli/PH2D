@@ -616,7 +616,6 @@ fn every_topbar_verb_has_a_door_that_is_not_the_legacy_key() {
 /// | verdade | porque não se mede aqui |
 /// |---|---|
 /// | `Tool(_)` | o clique empurra `ActivateTool` para o **barramento**, e quem o drena é a shell |
-/// | `ShellOwned` | o `sculpt3d` não tem flag — a verdade dele é *«há barro no ecrã»* |
 /// | clique **não consumido** | o handler vive numa **crate de painel** (mixer, editor de áudio, galeria, grelha) |
 ///
 /// ⇒ os quatro do último caso têm o gate deles em
@@ -635,7 +634,7 @@ fn clicking_a_toggle_row_moves_its_mark() {
             .find(|(mid, _)| mid == id)
             .map(|(_, t)| *t)
             .unwrap_or_else(|| panic!("{label}: linha do menu Window fora da tabela de verdades"));
-        if matches!(truth, ModuleTruth::Tool(_) | ModuleTruth::ShellOwned) {
+        if matches!(truth, ModuleTruth::Tool(_)) {
             continue; // conduzido pela shell — ver a tabela do doc
         }
         let mut h = hero();

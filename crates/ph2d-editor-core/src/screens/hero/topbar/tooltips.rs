@@ -43,11 +43,6 @@ pub(super) fn seed_tooltips(store: &mut WidgetStore) {
         (ids::TOPBAR_PHYSICS, tr("chrome.topbar.tip.physics_w")),
         (ids::TOPBAR_TOKENS, tr("chrome.topbar.tip.tokens_t")),
         (ids::TOPBAR_AUTHORED, tr("chrome.topbar.tip.authored_ui")),
-        // ⚠️ Nomeia a tecla da OUTRA pergunta: o pill entra e sai, o `D` percorre as três posições.
-        (
-            ids::TOPBAR_SCULPT3D,
-            tr("chrome.topbar.tip.sculpt_3d_d_cycles"),
-        ),
         (
             ids::TOPBAR_MODEL3D,
             tr("chrome.topbar.tip.n3d_model_implicit_field"),

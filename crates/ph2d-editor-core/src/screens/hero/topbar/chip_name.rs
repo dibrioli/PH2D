@@ -27,7 +27,6 @@ pub(super) fn topbar_chip_name(id: NodeId) -> Option<&'static str> {
         x if x == ids::TOPBAR_PHYSICS => tr("chrome.topbar.name.physics"),
         x if x == ids::TOPBAR_TOKENS => tr("chrome.topbar.name.tokens"),
         x if x == ids::TOPBAR_AUTHORED => tr("chrome.topbar.name.authored_ui"),
-        x if x == ids::TOPBAR_SCULPT3D => tr("chrome.topbar.name.sculpt_3d"),
         x if x == ids::TOPBAR_MODEL3D => tr("chrome.topbar.name.n3d_model"),
         x if x == ids::TOPBAR_GRID_SETTINGS => tr("chrome.topbar.name.grid_settings"),
         x if x == ids::TOPBAR_SETTINGS => tr("chrome.topbar.name.settings"),

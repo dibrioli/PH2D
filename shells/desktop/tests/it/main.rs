@@ -233,7 +233,6 @@ mod the_sculpt_gesture_is_wired;
 mod the_sculpt_keyboard_yields_to_the_module_in_use;
 mod the_sculpt_mesh_edits_are_wired;
 mod the_sculpt_pen_down_arms_what_the_drag_needs;
-mod the_sculpt_pill_enters_and_leaves_the_mode;
 mod the_sculpture_bytes_cross_a_build_that_never_reads_them;
 mod the_shape_art_picker_is_wired;
 mod the_shape_fields_are_seeded_by_the_pair;

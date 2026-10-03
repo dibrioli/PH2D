@@ -63,6 +63,8 @@ pub const MAX_AREA_MENUS: u32 = 4;
 pub const OBJECT_MODE_OBJECT: NodeId = hash_node_id("object_mode.row.object");
 /// Ver [`OBJECT_MODE_OBJECT`].
 pub const OBJECT_MODE_PAINT: NodeId = hash_node_id("object_mode.row.paint");
+/// Ver [`OBJECT_MODE_OBJECT`].
+pub const OBJECT_MODE_SCULPT: NodeId = hash_node_id("object_mode.row.sculpt");
 
 pub const TOOL_UNDO: NodeId = hash_node_id("tool_undo");
 pub const TOOL_REDO: NodeId = hash_node_id("tool_redo");

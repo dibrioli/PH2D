@@ -252,6 +252,22 @@ sozinho (§6.5).
     divergem).
   - **Gate por módulo:** dois objectos do mesmo tipo, entrar em modo num, e o outro fica
     intocado.
+  - **Sculpt** — ✅ **entregue em 03/10** (handoff `HANDOFF_INTEGRACAO_line_UIUX_2026-10-03_O_SCULPT.md`):
+    `ObjectMode::Sculpt` e `ph2d_app_sculpt3d::sculpt_mode::Family` — `(Sculpt3D, Sculpt)` e
+    `(Sculpt3D, Paint)`. Sculpt = o barro na tela com a peça da entidade PRESA (a mira do pen-down
+    só vê ela, `Sculpt3dScene::preso`); Paint = o mesmo com o Painter em mãos (a tela da vista,
+    `painter_na_malha`); Object = o barro sai (para a LUZ).
+    - **Desvio do desenho:** a `ModeFamily` deixou de ser uma tabela de `fn(…, &mut ToolRegistry)` e
+      passou a **trait**, construída por quadro com o que cada família empresta (a escultura precisa
+      da cena e do mapa peça↔entidade) — a mesma razão do `spawn` da F1. Ganhou duas portas:
+      `follow` (o módulo segue o modo: o barro fora de um modo desta família sai) e `wants` (um
+      objecto que NASCE num modo pede-o).
+    - **Escolhas do dono (03/10):** o pill SCULPT **saiu** (o modo e o menu Add são as portas); a
+      peça nova **nasce em Sculpt** — fora de Sculpt/Paint a peça não se desenha no canvas (o barro
+      e a luz são exclusivos por construção, ADR-0150). A marca é da CENA ao nascer
+      (`Sculpt3dScene::pede_o_modo`), logo cobre as cinco portas de nascer (Add, load, import, smoke).
+    - O `D` deixou de entrar no barro (luz ⇄ desligada fora dele); as abas Sculpt/Painter ao lado
+      pedem o modo (`slot_tabs_ferramenta`), sem o IMG.
 - **F4 — Layouts:** o campo opcional *«modo ao abrir»* (§3.3) e a limpeza dos toggles de módulo
   que viraram modos.
 

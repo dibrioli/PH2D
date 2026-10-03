@@ -114,11 +114,6 @@ impl crate::App {
                     self.title_dirty = true;
                 }
             }
-            // O pill SCULPT (ADR-0150). ⚠️ **Um pedido, drenado no topo do frame
-            // SEGUINTE** — a mesma rota do `Shift+B` e do padrão do sprite, e pelo mesmo
-            // motivo, que aqui é mais forte: entrar pode ter de CRIAR a cena, e o `device`
-            // está emprestado neste ponto do laço.
-            EditorAction::ToggleSculpt3d => self.sculpt3d_req.toggle_request = true,
             EditorAction::UndoImageEdit => pd.undo_image_edit = true,
             // Os botões Undo/Redo da barra: MESMO caminho do Ctrl+Z. O despacho
             // espera o fim do frame (`post_frame_undo`) porque `undo_or_redo`

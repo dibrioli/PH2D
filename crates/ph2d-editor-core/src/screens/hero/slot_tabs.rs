@@ -599,11 +599,11 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     };
     if let Some(node) = panel_for_tab(id) {
         hero.store.bump_panel_z(node);
-        // ⭐ Escolher a aba da escultura ou a do Painter troca a ferramenta (report de 29/09).
+        // ⭐ Escolher a aba da escultura ou a do Painter troca o modo da peça (report de 29/09).
         if let Some(pedido) = super::slot_tabs_ferramenta::intencao_da_aba(
             node,
+            &hero.gizmo.mode,
             hero.image_edit.active_tool_id,
-            hero.image_edit.mode_on,
         ) {
             hero.bus.push(pedido);
         }

@@ -49,12 +49,6 @@ pub fn dispatch(
     scene: Option<&mut Sculpt3dScene>,
     lei_do_alvo: Option<usize>,
 ) -> Vec<crate::Sculpt3dFrameRequest> {
-    // ── 0. O pill SCULPT diz o que a forma É. ──
-    // ⚠️ **ANTES do early-return**, e é a metade que o torna correto: sem cena o pill tem de ficar
-    // SOLTO (o estado honesto de *entrar*), e um sync que morasse depois do `let Some` deixaria o
-    // botão preso em *pressed* para sempre no frame em que a cena fosse largada.
-    crate::sync_pill(hero, scene.as_deref());
-
     let Some(scene) = scene else {
         // Sem cena não há retrato — e é isso que faz o `paint` do painel sair no
         // primeiro `if`. Publicar um retrato vazio seria pior: seis seções de

@@ -22,13 +22,15 @@ use std::collections::BTreeMap;
 pub enum ObjectMode {
     /// Mover, rodar, escalar — o gizmo de transformação.
     Object,
-    /// Pintar a imagem com o Painter (Image ▸ Paint, D6).
+    /// Pintar com o Painter: a imagem (Image ▸ Paint) ou a peça esculpida (Sculpt ▸ Paint, D6).
     Paint,
+    /// Esculpir a peça com o barro na tela (Sculpt ▸ Sculpt, D6).
+    Sculpt,
 }
 
 impl ObjectMode {
     /// Todos, em ordem — a fonte da iteração (⛔ nunca escreva a lista uma segunda vez).
-    pub const ALL: [ObjectMode; 2] = [ObjectMode::Object, ObjectMode::Paint];
+    pub const ALL: [ObjectMode; 3] = [ObjectMode::Object, ObjectMode::Paint, ObjectMode::Sculpt];
 
     /// O nome que o artista lê.
     #[must_use]
@@ -36,6 +38,7 @@ impl ObjectMode {
         TextKey::new(match self {
             ObjectMode::Object => "object_mode.object",
             ObjectMode::Paint => "object_mode.paint",
+            ObjectMode::Sculpt => "object_mode.sculpt",
         })
     }
 
@@ -45,6 +48,7 @@ impl ObjectMode {
         match self {
             ObjectMode::Object => crate::ids::OBJECT_MODE_OBJECT,
             ObjectMode::Paint => crate::ids::OBJECT_MODE_PAINT,
+            ObjectMode::Sculpt => crate::ids::OBJECT_MODE_SCULPT,
         }
     }
 

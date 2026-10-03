@@ -96,9 +96,6 @@ pub enum EditorAction {
     /// panels' Cancel buttons (BgRemoval + Padding).
     CancelActiveTool,
 
-    /// ⭐ **Ligar/desligar o módulo 3D.** Porquê e o que ele arma: `docs/3D/` + ADR-0150.
-    ToggleSculpt3d,
-
     /// Re-decode the entity's sprite source asset at the current
     /// `ProjectSettings::pixels_per_meter` and write the recomputed
     /// world size back to `Sprite.size`. Payload: `entity.to_bits()`.

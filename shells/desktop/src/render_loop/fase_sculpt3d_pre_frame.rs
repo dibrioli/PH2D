@@ -1,8 +1,9 @@
-//! **Fase do quadro: O PRÉ-QUADRO DO SCULPT3D** — o puxão do Grab, a escultura pendente do Ctrl+O, o
-//! pill SCULPT, a doação da forma e a ponte com a Hierarquia (OBRA 2 da `line/render-loop`, 2026-09-12).
+//! **Fase do quadro: O PRÉ-QUADRO DO SCULPT3D** — o puxão do Grab, a escultura pendente do Ctrl+O, a
+//! doação da forma e a ponte com a Hierarquia (OBRA 2 da `line/render-loop`, 2026-09-12).
 //!
-//! ⚠️ **A ordem interna é lei escrita em cada comentário** (o toggle antes da doação; a ponte depois do
-//! toggle e antes de a Hierarquia ser desenhada). Sem a `feature` `sculpt3d` o corpo é vazio.
+//! ⚠️ **A ordem interna é lei escrita em cada comentário** (a ponte antes de a Hierarquia ser
+//! desenhada). Quem põe e tira o barro é o modo do objecto (`fase_object_mode`, spec/06 F3). Sem a
+//! `feature` `sculpt3d` o corpo é vazio.
 
 impl crate::App {
     /// Ver o cabeçalho do módulo.
@@ -23,21 +24,14 @@ impl crate::App {
         // load não tinha (ADR-0150 W8.3).
         #[cfg(feature = "sculpt3d")]
         self.sculpt3d_install_pending();
-        // O pill SCULPT: entrar (criando a cena se não houver) ou sair. ⚠️ **Aqui e não no dreno
-        // da ação**, pela razão que o `install_pending` acima já enfrenta: criar uma cena precisa
-        // do `device` e do tamanho da superfície, e ali eles estão emprestados pelo laço.
-        // ⚠️ E ANTES do `donate_form`: o papel que este toggle escreve é justamente o que decide se
-        // a forma doa, e rodar depois deixaria a doação um frame atrás do que o artista vê.
-        #[cfg(feature = "sculpt3d")]
-        self.sculpt3d_apply_toggle();
         // A DOAÇÃO: rasteriza a forma no tamanho que o Painter publicou no frame anterior e deixa o
         // plano no canal. Quase sempre não faz nada — sem cena armada sai no primeiro `if`.
         #[cfg(feature = "sculpt3d")]
         self.sculpt3d_donate_form();
         // ⭐⭐⭐ **A PONTE com a Hierarquia** (uma peça ⟺ uma entidade) — ver
-        // [`ph2d_app_sculpt3d::entities`]. ⚠️ **Depois do `apply_toggle`**, para uma cena criada
-        // pelo pill NESTE quadro já entrar na lista, e **antes** de a Hierarquia ser desenhada,
-        // para o quadro ver um estado consistente. Sem cena armada é um `return` imediato.
+        // [`ph2d_app_sculpt3d::entities`]. ⚠️ **Depois do `install_pending`**, para uma cena
+        // instalada NESTE quadro já entrar na lista (e a peça nascida ter a entidade com que pede o
+        // modo), e **antes** de a Hierarquia ser desenhada. Sem cena armada é um `return` imediato.
         #[cfg(feature = "sculpt3d")]
         self.sculpt3d_entities_sync();
     }

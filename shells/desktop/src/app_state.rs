@@ -286,7 +286,7 @@ pub(crate) struct App {
     /// Eram **cinco** campos soltos aqui (`sculpt3d_canvas_done`, `sculpt3d_bake_request`,
     /// `sculpt3d_alpha_request`, `sculpt3d_toggle_request`, `sculpt_doc`), cada um com a mesma
     /// razão escrita ao lado: *armar tem a cena emprestada, cumprir precisa do laço*. Hoje são
-    /// [`ph2d_app_sculpt3d::Sculpt3dRequests`], e os três `take_*` dele tornam **inexprimível**
+    /// [`ph2d_app_sculpt3d::Sculpt3dRequests`] (o do pill saiu com ele, spec/06 F3), e os `take_*` dele tornam **inexprimível**
     /// o defeito que um `bool` público convida — ler o pedido sem o desarmar, que se cumpre a
     /// cada quadro e se lê como *«o botão assou sozinho»*.
     ///

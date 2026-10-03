@@ -504,8 +504,14 @@ impl Sculpt3dScene {
     }
 
     /// O interruptor avança uma posição. Devolve o rótulo do estado novo.
+    ///
+    /// ⭐ **Ele nunca ENTRA no barro** (spec/06 F3): entrar é o modo Sculpt. Do barro sai para a
+    /// luz (o modo, que deixa de o ter, volta a Object); fora dele alterna luz ⇄ desligada.
     pub(super) fn cycle_role(&mut self) -> &'static str {
-        self.role = self.role.next();
+        self.role = match self.role.next() {
+            FormRole::Clay => FormRole::Light,
+            next => next,
+        };
         self.role.label()
     }
 

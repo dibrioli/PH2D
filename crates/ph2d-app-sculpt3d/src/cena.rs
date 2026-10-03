@@ -467,6 +467,12 @@ pub struct Sculpt3dScene {
     /// primeira coisa que se faz com uma escultura é esculpi-la; a doação é o
     /// passo seguinte, e o `D` o dá.
     pub(crate) role: FormRole,
+    /// ⭐ **A peça PRESA pelo modo** (Sculpt/Paint, spec/06 F3) — a mira do pen-down não sai dela;
+    /// `None` em Object. Quem a escreve é o modo ([`crate::sculpt_mode`]), em todo quadro.
+    pub(crate) preso: Option<crate::objects::ObjectId>,
+    /// ⭐ **Uma peça NASCEU e pede o modo Sculpt** (escolha do dono, 03/10) — consumido pelo quadro
+    /// do modo quando a entidade dela existe ([`crate::sculpt_mode`]).
+    pub(crate) pede_o_modo: bool,
     /// **A posição ANTERIOR do barro**, a testemunha de que o modo VIROU — ver
     /// [`Sculpt3dScene::take_clay_edge`], a porta única que a lê.
     ///

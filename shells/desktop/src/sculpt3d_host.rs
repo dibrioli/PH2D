@@ -208,25 +208,6 @@ impl App {
         ph2d_app_sculpt3d::keys_view::quad_key(scene, code, mods)
     }
 
-    /// O pill SCULPT entra ou sai do barro.
-    pub(crate) fn sculpt3d_apply_toggle(&mut self) {
-        let App {
-            gfx, sculpt3d_req, ..
-        } = self;
-        match gfx.as_mut() {
-            Some(gfx) => {
-                let size = gfx.surface.size();
-                let device = std::sync::Arc::clone(&gfx.surface.gpu().device);
-                ph2d_app_sculpt3d::mode::apply_toggle(
-                    &mut gfx.sculpt3d,
-                    sculpt3d_req,
-                    Some((&device, (size.width, size.height))),
-                )
-            }
-            None => ph2d_app_sculpt3d::mode::apply_toggle(&mut None, sculpt3d_req, None),
-        }
-    }
-
     /// Instala a escultura que um load deixou pendente.
     pub(crate) fn sculpt3d_install_pending(&mut self) {
         let App { gfx, sculpt3d, .. } = self;

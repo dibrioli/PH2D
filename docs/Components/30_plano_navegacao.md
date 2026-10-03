@@ -732,3 +732,58 @@ e uma lama a mexer refaz em `~11 ms` (a montagem O(malha), o aberto da W6).
   quem tem lama (a lava é furo, a procura é a uniforme) e só quando o caminho uniforme a toca.
 - A construção INTEIRA com áreas é lenta a escala (`1,2 s` a 100 lamas e 1 000 obstáculos); a ponte usa
   mosaicos (`71 ms` a frio). Os abertos da W6 continuam.
+
+---
+
+## §16 — W8 FEITA (2026-10-03): a arena navega, e o tutorial 03
+
+**O que se consegue fazer agora:** na arena (`PH2D_VIDA_SMOKE=4`) os morcegos dão a volta a um **muro**
+(só se passa por baixo dele) e, com o herói dentro da lava, **esperam na borda** — a lava queima-os. O
+tutorial [`tutoriais/03_navegacao.pdf`](tutoriais/03_navegacao.pdf) leva o dono do mapa (`Nav Region`) ao
+agente (`Nav Agent`) e acaba com ele a **montar uma perseguição**: *Add Component → Nav Agent* na
+Salamandra, *Target → Object → Heroi* — ela dá a volta ao muro e, imune ao fogo, **entra na lava** atrás do
+herói. Fonte em [`tutoriais/src/03_navegacao.html`](tutoriais/src/03_navegacao.html), gerado por
+`scripts/tutorial-pdf.sh`.
+
+### §16.1 — As decisões
+
+| decisão | porquê |
+|---|---|
+| o morcego é `NavAgent` + `TopDownPlayer` (sai o `ProjectileMotion` teleguiado) | o §5.0 mediu que o teleguiado não contorna; o gate `um_morcego_da_a_volta_ao_muro` tem-no como CONTROLO (fica do lado de cá do muro, não morde em 10 s) |
+| a chegada do morcego é a de fábrica (`0,1` m entre centros) | os corpos encostam a `0,525` m: ele empurra até MORDER. A chegada da cena `=1` (encostar com folga) pará-lo-ia ao lado do herói (mutação M7) |
+| **a lava é EVITADA pelos morcegos, e é o que a cena ensina** | o `Damage::magoa` diz que ela os fere (sem equipa, fogo, sem resistência) — é a decisão do dono do §11.1; o tutorial mostra o outro lado com a Salamandra imune |
+| o muro mora logo à direita da coluna dos avisos, do alto (`6 m`, fora da banda) até `0,5 m` | entre o ninho e o herói, sem tocar no que o roteiro manda ver; a passagem de baixo (`1,69 m` até ao `FUNDO`) deixa passar a Salamandra (meia diagonal `0,71`) — `const` asserts |
+| a Salamandra é **cinemática**, não estática | a semente do mover **nunca rebaixa um `Static`** que o artista pôs (`physics_seed.rs`), logo com `Static` o gesto do tutorial pedia um terceiro passo (mudar o corpo); parada, a malha conta-a igual (o cinemático parado é obstáculo) |
+| a região andável cobre o CANVAS (`REGIAO_FUNDO = −2,5`), não o `FUNDO` (`−1,19`) | a 1.ª foto da W8 mostrou chão visível abaixo da região onde nenhum morcego entrava |
+| o gate do tutorial (`o_tutorial_da_navegacao_nomeia_rotulos_que_existem`) é o 3.º irmão, com as portas partilhadas do 01 | uma porta, três gates; 5 tabelas (a `inspector.rs` traz o `Add Component`) e 8 pintores (as secções da navegação, a do `Top-Down Player`, a da vida, o cabeçalho, os verbos) |
+
+### §16.2 — O que a medição (e a foto) derrubou
+
+- **A foto achou a região curta**: o `FUNDO` da família (medido noutra cena) não é o fundo do canvas desta
+  foto (`1930×1040`, px `765` ↔ `−2,6 m`).
+- **O gate `um_tiro_mata_um_morcego` punha o herói do lado de lá do muro** — a bala acertava no muro. O
+  herói do caso passa para `x = 0,5` (lado do ninho).
+- O 1.º texto do tutorial dizia «o muro também pára as balas» — afirmação sem régua; saiu.
+
+### §16.3 — A prova
+
+Gates novos ([`vida_arena_nav_tests.rs`](../../crates/ph2d-app-components/src/vida_arena_nav_tests.rs), pelo
+arnês do quadro inteiro da arena): `um_morcego_da_a_volta_ao_muro` (passa por baixo, centro nunca a menos de
+um raio do muro, morde; CONTROLO teleguiado) · `os_morcegos_esperam_na_borda_da_lava` (chegam a `≤ r + 0,3`
+da borda e não a pisam — a régua é a DISTÂNCIA ao rectângulo; CONTROLO sem `Avoid Harm` entra e chega a
+`< 1 m` do herói) · `a_salamandra_posta_a_perseguir_atravessa_a_lava` (o estado depois do gesto + o alvo
+pela porta do Inspector `nav_inspector::apply_nav_edit`; entra na lava, zero dano). A cascata do gesto já
+tinha gate na shell (`escolher_um_agente_na_paleta_entrega_um_mover_que_o_ouve`).
+Mutação **10 / 10** a sangrar, zero defeitos de arnês
+([`mutacao_navegacao_w8_2026-10-03.py`](ferramentas/mutacao_navegacao_w8_2026-10-03.py), quatro controlos,
+grupos APPC · PANEL). ⛔ **A 1.ª corrida deu 9/10: a M10 (o botão `Object` renomeado) SOBREVIVEU** — o
+`contains` da porta partilhada dos três gates de tutorial lia o fonte inteiro e `Object` casava dentro dos
+identificadores `NavAlvoModo::Objecto` e `ArgKind::ObjectName`. Cura na PORTA (`literais_de` ·
+`pintores_de`): o rótulo só vive num LITERAL de texto; os gates 01 e 02 passam por ela e continuam verdes.
+
+### §16.4 — ⏳ O que fica
+
+- O tutorial pede edições numa CÓPIA a correr (a Salamandra nascida da fábrica); o recomeço apaga-as — o
+  tutorial di-lo. A foto não clica (o XTest é ignorado na Xwayland virtual): os passos 7–8 provam-se pelos
+  gates, e o smoke do dono é a 1.ª corrida com rato.
+- Os abertos da W5–W7 continuam (§15.6 e o handoff da W7 §4).

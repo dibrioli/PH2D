@@ -13,7 +13,7 @@
 //! ⛔ Como o irmão, ele **não** mede que o rótulo chega a pixel.
 
 use super::o_tutorial_nomeia_rotulos_que_existem::{
-    chaves_e_textos_de, desescapa, rotulos_citados_de, sem_prosa,
+    chaves_e_textos_de, pintores_de, rotulos_citados_de,
 };
 
 /// A fonte do tutorial, tal como o gerador de PDF a lê.
@@ -52,7 +52,7 @@ const TABELAS: [&str; 4] = [
 #[test]
 fn o_tutorial_da_vida_so_cita_rotulos_que_o_painel_pinta() {
     // ⚠️ SEM a prosa: um comentário que nomeia um rótulo não o pinta.
-    let pintores: Vec<String> = PINTORES.iter().map(|s| desescapa(&sem_prosa(s))).collect();
+    let pintores = pintores_de(&PINTORES);
     let citados = rotulos_citados_de(TUTORIAL);
     // ⚠️ PISO DE POPULAÇÃO — uma marca renomeada faria o gate varrer ZERO e ficar verde.
     assert!(

@@ -125,6 +125,44 @@ pub(crate) fn sem_prosa(fonte: &str) -> String {
         .join("\n")
 }
 
+/// ⭐⭐ **Só os LITERAIS de texto do pintor** — o conteúdo de cada `"…"`, um por linha.
+///
+/// ⛔ **Uma mutação SOBREVIVENTE achou-o** (plano 30, W8, M10): o `contains("Object")` sobre o fonte
+/// inteiro casava dentro dos IDENTIFICADORES `NavAlvoModo::Objecto` e `ArgKind::ObjectName`, logo
+/// trocar o texto do botão `Object` deixava os três gates verdes. *Um rótulo de uma palavra é
+/// substring de metade do código*; o que o artista lê só pode vir de um literal.
+pub(crate) fn literais_de(fonte: &str) -> String {
+    let b = fonte.as_bytes();
+    let mut out = String::new();
+    let mut i = 0;
+    while i < b.len() {
+        // ⚠️ O carácter `'"'` não abre literal nenhum.
+        let e_char = i > 0 && b[i - 1] == b'\'' && b.get(i + 1) == Some(&b'\'');
+        if b[i] != b'"' || e_char {
+            i += 1;
+            continue;
+        }
+        let ini = i + 1;
+        let mut j = ini;
+        while j < b.len() && b[j] != b'"' {
+            j += if b[j] == b'\\' { 2 } else { 1 };
+        }
+        out.push_str(&fonte[ini..j.min(b.len())]);
+        out.push('\n');
+        i = j + 1;
+    }
+    out
+}
+
+/// ⭐ **Os pintores como o gate os mede** — sem a prosa, com os escapes traduzidos, e só os
+/// literais. Uma porta para os três gates.
+pub(crate) fn pintores_de(fontes: &[&str]) -> Vec<String> {
+    fontes
+        .iter()
+        .map(|s| literais_de(&desescapa(&sem_prosa(s))))
+        .collect()
+}
+
 /// **Traduz os escapes `\u{XXXX}` do fonte Rust para o caracter real.**
 ///
 /// ⚠️ Sem isto o gate comparava `The clock is stopped — it…` (o que o artista l&ecirc;) com
@@ -189,7 +227,7 @@ pub(crate) fn rotulos_citados_de(html: &str) -> Vec<String> {
 /// existe, e hoje isso reprova.
 #[test]
 fn o_tutorial_so_cita_rotulos_que_o_painel_pinta() {
-    let pintores: Vec<String> = PINTORES.iter().map(|s| desescapa(&sem_prosa(s))).collect();
+    let pintores = pintores_de(&PINTORES);
     let citados = rotulos_citados();
     // ⚠️ **PISO DE POPULAÇÃO** — sem ele, uma marca renomeada faz o gate varrer ZERO e ficar
     // verde a medir nada (a falha MUDA que a W2 mediu ao mover ficheiros).

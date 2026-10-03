@@ -123,13 +123,13 @@ fn parede_v(world: &mut World, nome: &str, x: f32, y0: f32, y1: f32) {
 }
 
 /// Um perseguidor: o mover de vista de cima com os controlos DESLIGADOS (quem escreve a intenção é
-/// a navegação) e o agente.
+/// a navegação) e o agente. `(raio, raio_do_alvo)`: o corpo dele e o de quem persegue (a chegada é
+/// encostar, com folga).
 pub(crate) fn perseguidor(
     world: &mut World,
     nome: &str,
     em: Vec2,
-    raio: f32,
-    raio_do_alvo: f32,
+    (raio, raio_do_alvo): (f32, f32),
     velocidade: f32,
     cor: [f32; 4],
     sinais: (&str, &str),
@@ -246,8 +246,7 @@ fn cena_um(world: &mut World) -> Montada {
         world,
         "Chaser",
         Vec2::new(-4.5, -1.2),
-        LAB_RAIO_PEQUENO,
-        LAB_RAIO_HEROI,
+        (LAB_RAIO_PEQUENO, LAB_RAIO_HEROI),
         2.5,
         VERMELHO_RGBA,
         ("caught you", ""),
@@ -256,8 +255,7 @@ fn cena_um(world: &mut World) -> Montada {
         world,
         "Big Chaser",
         Vec2::new(-4.5, 1.0),
-        RAIO_GRANDE,
-        LAB_RAIO_HEROI,
+        (RAIO_GRANDE, LAB_RAIO_HEROI),
         2.0,
         ROXO_RGBA,
         ("", "too big for the door"),

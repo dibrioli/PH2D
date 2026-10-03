@@ -786,4 +786,8 @@ identificadores `NavAlvoModo::Objecto` e `ArgKind::ObjectName`. Cura na PORTA (`
 - O tutorial pede edições numa CÓPIA a correr (a Salamandra nascida da fábrica); o recomeço apaga-as — o
   tutorial di-lo. A foto não clica (o XTest é ignorado na Xwayland virtual): os passos 7–8 provam-se pelos
   gates, e o smoke do dono é a 1.ª corrida com rato.
-- Os abertos da W5–W7 continuam (§15.6 e o handoff da W7 §4).
+- ✅ **Curados depois do fecho (03/10, ordem do dono):** o *«Switched off»* de quem um `Start` pôs a andar
+  (o painel lê a ORDEM da ponte), o *«Giving way»* (só quando um VIZINHO cortou o pedido — só pela rapidez,
+  o agente sozinho acusava `58/369` tiques nas quinas) e a cena `=1` apertada (corpos e paredes escalados).
+  Detalhe e gates: o handoff da W8 §2-bis.
+- Os outros abertos da W5–W7 continuam (§15.6 e o handoff da W7 §4).

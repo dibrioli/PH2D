@@ -63,15 +63,29 @@ por ela.
 **Achado pela foto:** a região andável acabava no `FUNDO` da família (`−1,19`, medido noutra cena) e via-se
 chão abaixo dela onde nenhum morcego entrava ⇒ `REGIAO_FUNDO = −2,5` (o fundo do canvas na foto `1930×1040`).
 
+## §2-bis — Três abertos de W3/W5/W6 CURADOS depois do fecho da W8 (ordem do dono, 03/10)
+
+| defeito | cura | gate (visto VERMELHO na versão antiga) |
+|---|---|---|
+| o Inspector dizia *«Switched off»* de um agente desligado que um `Start` pôs a andar (W6) | `NavNow` `+ordem` `+alvo_da_ordem` (da ordem em vigor na ponte); `InspectorNavAgent` `+ordem` `+alvo_da_ordem`; a queixa lê a ordem — `Stop` ⇒ `AgentQueixa::ParadoPorAccao` (apendada), `Start` com nome ⇒ as faltas do alvo autorado não valem; a linha *«Started by an action [— after X]»* | `a_ordem_de_um_verbo_manda_na_queixa` (editor-core) · `o_painel_le_a_ordem_que_a_ponte_guarda` (pela ponte inteira) · `as_frases_da_ordem_e_da_passagem_aparecem_quando_valem` |
+| a leitura viva não dizia *«a dar passagem»* (W5) | `ph2d_orca::Crowd::solve_all_why` (por agente: um semi-plano de VIZINHO exclui a velocidade pedida — `solve` inalterado); `NavNow` `+avanco` (a fracção da rapidez pelo caminho quando OUTRO cortou o pedido); `NavAgora` `+dando_passagem` (`avanco < AVANCO_DE_QUEM_DA_PASSAGEM = 0,5`, a tabela medida ao lado da const); *«Giving way · X m to go»*. ⚠️ Só pela rapidez o agente SOZINHO no labirinto acusava `58 / 369` tiques (a quina trava); com a pergunta do vizinho, `0` | `quem_da_passagem_na_porta_diz_que_da` (porta `> 0`, sozinho `= 0`) · o gate das frases |
+| a cena `=1` apertada (W3, o dono: *«não sei se intencionalmente»*) | corpos, porta e paredes escalados (paredes `0,5 → 0,24 m`, roxo `1,3 → 0,9 m`, os outros `0,7 → 0,5 m`, porta `1,0 → 0,7 m`); `LAB_RAIO_PEQUENO`/`LAB_RAIO_HEROI` novos, `RAIO_PEQUENO`/`RAIO_HEROI` ficam das cenas `=3`/`=4`; `perseguidor(…, raio_do_alvo, …)` | os gates da cena `=1` iguais; fotos antes/depois |
+
+**Superfície nova destes três** (somar ao §1): `NavNow` +3 campos (literais fora da ponte não compilam —
+só o `nav_inspector_tests`) · `NavAgora` +1 · `InspectorNavAgent` +2 (os 5 literais do repo atualizados) ·
+`AgentQueixa::ParadoPorAccao` apendada (todo `match` exaustivo: só `sections/nav.rs`) · i18n +4 chaves
+(`stopped_by_an_action`, `started_by_an_action`, `started_by_an_action_after_x`, `giving_way_x_m_to_go`) ·
+`ph2d_orca::Crowd::solve_all_why` (pública) · `nav_smoke::perseguidor` +1 parâmetro. Zero schema, zero
+registo, zero shell. O tutorial 03 ensina as frases novas (secções 6 e 10).
+
 ## §3 — ⏳ O que fica ABERTO
 
 - Os passos 7–8 do tutorial (o gesto numa CÓPIA a correr) provam-se pelos gates — a foto não clica (o XTest
   é ignorado na Xwayland virtual); o smoke do dono é a 1.ª corrida com rato. As edições numa cópia somem no
   recomeço (o tutorial di-lo).
-- Os abertos da W5–W7 continuam (handoff da W7 §4): a procura ponderada `~11×` com muita lama, a construção
-  inteira com áreas lenta a escala, a montagem O(malha), todos os agentes da malha que mudou recalculam no
-  mesmo tique, a porta que anda é um círculo para o desvio, o *«Switched off»* de um agente que um `Start`
-  pôs a andar.
+- Os abertos da W5–W7 que continuam (handoff da W7 §4): a procura ponderada `~11×` com muita lama, a
+  construção inteira com áreas lenta a escala, a montagem O(malha), todos os agentes da malha que mudou
+  recalculam no mesmo tique, a porta que anda é um círculo para o desvio, o defeito G (a bala só-sensor).
 - **A família de navegação está COMPLETA no plano 30** (W0–W8). Plataformas (saltos) é plano próprio (§11.3).
 
 ## §4 — A prova de fecho

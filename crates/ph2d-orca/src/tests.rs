@@ -261,3 +261,34 @@ fn no_vertice_que_se_toca_fica_a_continuacao_de_menor_indice() {
     // A entrada 2 acaba... a anterior da entrada 2 (que começa em 0) acaba em 0: as entradas 0 e 3.
     assert_eq!(w.prev(2), 0);
 }
+
+/// (W9) As PAREDES sozinhas sem ponto em comum (um agente entalado entre duas): o 2D esvazia numa
+/// parede, e o 3D começa ANTES do primeiro vizinho. Partia num `[n_walls..i]` ao contrário — achado
+/// pela sonda `medir_replaneio` da ponte, com 200 agentes.
+#[test]
+fn entalado_entre_duas_paredes_o_3d_nao_parte() {
+    use crate::lines::Line;
+    use crate::lp::{Regime, solve};
+    let linhas = [
+        // vy ≥ 1, e vy ≤ −1: as duas paredes excluem-se.
+        Line {
+            point: [0.0, 1.0],
+            dir: [1.0, 0.0],
+        },
+        Line {
+            point: [0.0, -1.0],
+            dir: [-1.0, 0.0],
+        },
+        // Um vizinho à direita.
+        Line {
+            point: [1.0, 0.0],
+            dir: [0.0, 1.0],
+        },
+    ];
+    let (v, regime) = solve(&linhas, 2, 2.0, [0.5, 0.0]);
+    assert_eq!(regime, Regime::Dense);
+    assert!(
+        v[0].is_finite() && v[1].is_finite() && len(v) <= 2.0 + 1e-9,
+        "{v:?}"
+    );
+}

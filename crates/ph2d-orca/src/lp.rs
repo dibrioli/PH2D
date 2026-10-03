@@ -99,7 +99,10 @@ pub fn program3(lines: &[Line], n_walls: usize, begin: usize, radius: f64, out: 
         // A velocidade viola o semi-plano `i` mais do que a pior violação até agora.
         proj.clear();
         proj.extend_from_slice(&lines[..n_walls]);
-        for lj in &lines[n_walls..i] {
+        // ⚠️ (W9) `i` pode ser uma PAREDE (`begin < n_walls`: as paredes sozinhas já não têm ponto em
+        // comum dentro do disco — um agente entalado): então não há vizinho antes dele. Medido: 200
+        // agentes na sonda `medir_replaneio` partiam aqui (`[6..5]`).
+        for lj in &lines[n_walls.min(i)..i] {
             let den = det(li.dir, lj.dir);
             let point = if den.abs() <= EPS {
                 if dot(li.dir, lj.dir) > 0.0 {

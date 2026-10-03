@@ -54,7 +54,7 @@ pub struct FlipComposite {
 impl FlipComposite {
     fn new(gpu: &GpuContext) -> Self {
         Self {
-            compositor: LayerCompositor::new(gpu),
+            compositor: ph2d_flip_render::compositor_do_flip(gpu),
             dummy: Vec::new(),
             tess: TessCache::default(),
             stage: crate::pass_stage::StageMemo::default(),

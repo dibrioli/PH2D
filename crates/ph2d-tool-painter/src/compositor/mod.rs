@@ -132,6 +132,8 @@ mod oraculo_ajustes_tests;
 #[cfg(test)]
 mod oraculo_gimp_tests;
 #[cfg(test)]
+mod oraculo_vizinhanca_tests;
+#[cfg(test)]
 mod tests;
 pub use cache::CompositorCache;
 pub use compose::{composite, composite_below, composite_region, composite_with_cache};

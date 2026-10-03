@@ -342,7 +342,7 @@ impl FlipObjectBake {
             .get_or_insert_with(|| FlipCompose::new(&gpu.device, SCRATCH_HDR));
         let compositor = self
             .compositor
-            .get_or_insert_with(|| LayerCompositor::new(gpu));
+            .get_or_insert_with(|| ph2d_flip_render::compositor_do_flip(gpu));
         compose.set_walk_engine(&gpu.device, new_engine_armed());
 
         // The op-list (bottom-to-top), built before the loop because inject/composite

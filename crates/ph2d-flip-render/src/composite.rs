@@ -28,6 +28,17 @@ use crate::pipeline::{CameraRaw, FlipRenderer, no_msaa, premult_over, tri_list};
 /// família (`remove_srgb_suffix() == Rgba8Unorm`).
 pub const SLICE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
+/// O compositor das camadas do Flip — a ÚNICA porta (o passe do Flip e o bake do Flip no Motion).
+///
+/// ⭐ As camadas do Flip juntam-se em **LUZ**: o rasterizador junta os traços de UMA camada em
+/// linear 16F (premult-over), e uma camada por cima tem de se juntar como um traço na mesma
+/// camada (o idioma do Grease Pencil). O Painter junta em tons de ecrã (ADR-0177) — o espaço é
+/// do produto que chama, nunca do compositor (gate `a_camada_de_cima_junta_se_como_um_traco_na_mesma_camada`).
+#[must_use]
+pub fn compositor_do_flip(gpu: &ph2d_gpu::GpuContext) -> ph2d_render::LayerCompositor {
+    ph2d_render::LayerCompositor::with_space(gpu, ph2d_render::CompositeSpace::Light)
+}
+
 /// As duas passagens de espaço-de-cor + os scratch reusados. Uma por (device,
 /// formato do `game_rt`).
 pub struct FlipCompose {

@@ -1700,9 +1700,9 @@ fn gaussian_blur_spreads_an_impulse() {
     assert!(acc[centre][0] < 1.0, "centre energy spread out");
     let neighbour = (4 * n + 5) as usize;
     assert!(acc[neighbour][0] > 0.0, "energy reached the neighbour");
-    // Energy is conserved IN LIGHT, the kernel's space (separable, normalised, no
-    // clamping of a positive field).
-    let total: f32 = acc.iter().map(|p| srgb_to_linear_f32(p[0])).sum();
+    // Energy is conserved in DISPLAY TONES, the kernel's space since ADR-0177 P4
+    // (separable, normalised, no clamping of a positive field).
+    let total: f32 = acc.iter().map(|p| p[0]).sum();
     assert!((total - 1.0).abs() < 1e-3, "blur conserves energy: {total}");
 }
 

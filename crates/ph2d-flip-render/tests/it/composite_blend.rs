@@ -13,27 +13,25 @@
 use ph2d_core::Vec2;
 use ph2d_flip::{Fill, FlipDrawing, FlipStroke, Point, Rgba, StrokeTip};
 use ph2d_flip_render::{
-    CameraRaw, DEFAULT_TILE, FlipCompose, FlipRenderer, ScreenSpace, bin_segments, pack_drawing,
-    walk_pixel,
+    CameraRaw, DEFAULT_TILE, FlipCompose, FlipRenderer, ScreenSpace, bin_segments,
+    compositor_do_flip, pack_drawing, walk_pixel,
 };
 use ph2d_gpu::GpuContext;
 use ph2d_painter_effects::BlendMode;
-use ph2d_render::layer_compositor::{
-    LayerCompositor, LayerOp, LayerPixelProvider, LayerPixels, Region,
-};
+use ph2d_render::layer_compositor::{LayerOp, LayerPixelProvider, LayerPixels, Region};
 
-const W: u32 = 64;
-const H: u32 = 64;
+pub(super) const W: u32 = 64;
+pub(super) const H: u32 = 64;
 /// O formato HDR do `game_rt` (o alvo real do blit).
-const GAME_RT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+pub(super) const GAME_RT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
 /// `GpuContext` real (mesmo device do app), ou `None` sem adapter (CI).
-fn gpu() -> Option<GpuContext> {
+pub(super) fn gpu() -> Option<GpuContext> {
     GpuContext::new(wgpu::Instance::default(), None).ok()
 }
 
 /// Câmera px 1:1 (mundo `[0,W]×[0,H]`, y para baixo) — igual `gpu_render.rs`.
-fn pixel_camera() -> CameraRaw {
+pub(super) fn pixel_camera() -> CameraRaw {
     let sx = 2.0 / W as f32;
     let sy = -2.0 / H as f32;
     let world_to_clip = [
@@ -69,8 +67,8 @@ fn filled_square(min: Vec2, max: Vec2, color: Rgba) -> FlipDrawing {
 }
 
 /// Provider dummy (o seam usa `inject`; o dummy só passa o filtro de tamanho).
-struct Dummy<'a> {
-    px: &'a [u8],
+pub(super) struct Dummy<'a> {
+    pub(super) px: &'a [u8],
 }
 impl LayerPixelProvider for Dummy<'_> {
     fn layer_pixels(&self, _k: u64) -> Option<LayerPixels<'_>> {
@@ -98,7 +96,7 @@ fn half_to_f32(h: u16) -> f32 {
 }
 
 /// Lê o alvo 16F de volta como `W*H*4` floats lineares.
-fn readback(gpu: &GpuContext, tex: &wgpu::Texture) -> Vec<f32> {
+pub(super) fn readback(gpu: &GpuContext, tex: &wgpu::Texture) -> Vec<f32> {
     let bytes_per_row = W * 8; // 4 halves = 8 bytes; 64*8 = 512 (256-alinhado)
     let size = (bytes_per_row * H) as u64;
     let buf = gpu.device.create_buffer(&wgpu::BufferDescriptor {
@@ -142,7 +140,7 @@ fn readback(gpu: &GpuContext, tex: &wgpu::Texture) -> Vec<f32> {
 }
 
 /// Alvo 16F limpo (transparente) — o `game_rt` antes do Flip.
-fn cleared_target(gpu: &GpuContext) -> (wgpu::Texture, wgpu::TextureView) {
+pub(super) fn cleared_target(gpu: &GpuContext) -> (wgpu::Texture, wgpu::TextureView) {
     let tex = gpu.device.create_texture(&wgpu::TextureDescriptor {
         label: Some("flip e2e target"),
         size: wgpu::Extent3d {
@@ -190,7 +188,7 @@ fn two_layers_multiply_composites_like_painter() {
     };
     let mut fr = FlipRenderer::new(&gpu.device, GAME_RT);
     let mut fc = FlipCompose::new(&gpu.device, GAME_RT);
-    let mut comp = LayerCompositor::new(&gpu);
+    let mut comp = compositor_do_flip(&gpu); // a porta do Flip: as camadas juntam-se em luz
 
     // Fundo cinza 0.6 em [8,40]; topo cinza 0.5 em [24,56], Multiply. A
     // sobreposição ≈ [24,40]. Cores LINEARES (o compositor decodifica p/ linear
@@ -288,7 +286,7 @@ fn top_layer_opacity_fades_toward_backdrop() {
     };
     let mut fr = FlipRenderer::new(&gpu.device, GAME_RT);
     let mut fc = FlipCompose::new(&gpu.device, GAME_RT);
-    let mut comp = LayerCompositor::new(&gpu);
+    let mut comp = compositor_do_flip(&gpu); // a porta do Flip: as camadas juntam-se em luz
 
     // Fundo preto opaco cobrindo tudo; topo branco Normal @ opacity 0.5 sobre ele
     // → cinza ~0.5 linear na sobreposição (metade do caminho fundo→topo).

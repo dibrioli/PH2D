@@ -109,22 +109,40 @@ fn gpu_op_field_order_matches_the_wgsl_struct() {
 }
 
 /// The decode table the shader binds must be the CPU `compositor::decode` for every byte —
-/// `b as f32 / 255.0`, the same bits — so the GPU read of a texel is the CPU's (ADR-0177).
+/// `b as f32 / 255.0`, the same bits — so the GPU read of a texel is the CPU's (ADR-0177). In
+/// light (the Flip) the colour half is `srgb_to_linear_byte`; the alpha half is coverage, `b/255`,
+/// in both spaces.
 #[test]
 fn decode_lut_is_the_cpu_decode() {
-    let lut = build_decode_lut();
-    assert_eq!(lut.len(), 256);
+    use ph2d_color::srgb::srgb_to_linear_byte;
+    let ecra = build_decode_lut(CompositeSpace::DisplayTones);
+    let luz = build_decode_lut(CompositeSpace::Light);
+    assert_eq!(ecra.len(), 512);
     for b in 0..=255u8 {
+        let (i, a) = (b as usize, 256 + b as usize);
+        let byte = (f32::from(b) / 255.0).to_bits();
         assert_eq!(
-            lut[b as usize].to_bits(),
-            (f32::from(b) / 255.0).to_bits(),
-            "decode[{b}] is not the CPU's byte / 255",
+            ecra[i].to_bits(),
+            byte,
+            "decode[{b}] is not the CPU's byte / 255"
+        );
+        assert_eq!(
+            luz[i].to_bits(),
+            srgb_to_linear_byte(b).to_bits(),
+            "light decode[{b}]"
+        );
+        assert_eq!(ecra[a].to_bits(), byte, "alpha[{b}] (tones of the screen)");
+        assert_eq!(
+            luz[a].to_bits(),
+            byte,
+            "alpha[{b}] (light) is coverage, never decoded"
         );
     }
     // The shader recovers the byte index via `round(raw * 255)`; assert the
     // WGSL still indexes the table that way (guards a refactor that breaks
-    // the unorm→byte recovery).
+    // the unorm→byte recovery) — the alpha from the second half.
     assert!(composite_source().contains("decode_lut[u32(raw.r * 255.0 + 0.5)]"));
+    assert!(composite_source().contains("decode_lut[256u + u32(raw.a * 255.0 + 0.5)]"));
 }
 
 #[test]

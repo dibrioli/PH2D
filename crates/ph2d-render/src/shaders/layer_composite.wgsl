@@ -147,10 +147,16 @@ struct Globals {
 @group(0) @binding(2) var layers: texture_2d_array<f32>;
 // Region-sized straight sRGB8 output (rgba8unorm storage, write-only).
 @group(0) @binding(3) var out_tex: texture_storage_2d<rgba8unorm, write>;
-// 256-entry decode table — `decode_lut[b] = b as f32 / 255.0`, computed on the
-// CPU and uploaded once: the exact f32 the CPU compositor reads a byte as
-// (ADR-0177). Gate `decode_lut_is_the_cpu_decode`.
-@group(0) @binding(4) var<storage, read> decode_lut: array<f32, 256>;
+// Decode table, computed on the CPU and uploaded once: `[b]` the colour of byte
+// `b`, `[256 + b]` its alpha (`b / 255`). Tones of the screen (the Painter,
+// ADR-0177): the colour is `b as f32 / 255.0`, the exact f32 the CPU compositor
+// reads; light (the Flip, `LIGHT_SPACE`): `srgb_to_linear_byte(b)`. Gate
+// `decode_lut_is_the_cpu_decode`.
+@group(0) @binding(4) var<storage, read> decode_lut: array<f32, 512>;
+// The space the layers join in — a pipeline constant set by the caller's
+// `CompositeSpace` (the decode table carries the other half). Light: layers
+// only (the Rust side refuses adjustments), encoded back by the sRGB transfer.
+override LIGHT_SPACE: bool = false;
 // Per-adjustment params, indexed by an OP_ADJUSTMENT op's `layer_slot`.
 @group(0) @binding(5) var<storage, read> adj_params: array<AdjParams>;
 // W4 — display-space transfer LUTs for Curves (3×256 R/G/B) and Levels (1×256).
@@ -222,7 +228,7 @@ fn decode_layer(slot: u32, coord: vec2<i32>) -> vec4<f32> {
         decode_lut[u32(raw.r * 255.0 + 0.5)],
         decode_lut[u32(raw.g * 255.0 + 0.5)],
         decode_lut[u32(raw.b * 255.0 + 0.5)],
-        decode_lut[u32(raw.a * 255.0 + 0.5)],
+        decode_lut[256u + u32(raw.a * 255.0 + 0.5)],
     );
 }
 
@@ -305,7 +311,11 @@ fn adjustment_strength(op: Op, coord: vec2<i32>) -> f32 {
 // (NOT the unorm-store's round-half-even) on all four channels. Dividing the
 // integer back by 255 makes the `rgba8unorm` store re-quantize to the same byte.
 fn encode_final(acc: vec4<f32>) -> vec4<f32> {
-    return floor(clamp(acc, vec4<f32>(0.0), vec4<f32>(1.0)) * 255.0 + 0.5) / 255.0;
+    var c = acc;
+    if LIGHT_SPACE {
+        c = vec4<f32>(linear_to_srgb(acc.r), linear_to_srgb(acc.g), linear_to_srgb(acc.b), acc.a);
+    }
+    return floor(clamp(c, vec4<f32>(0.0), vec4<f32>(1.0)) * 255.0 + 0.5) / 255.0;
 }
 
 // The boundary of what is defined in light (ADR-0177): encoded ↔ linear on the
@@ -745,10 +755,11 @@ fn cs_grouped(@builtin(global_invocation_id) gid: vec3<u32>) {
 // into an Rgba32Float texture → cs_blur_h/cs_blur_v run the separable kernel
 // through a ping-pong pair → cs_combine blends the result back over the base →
 // cs_segment continues the layers above → cs_encode writes straight sRGB8. The
-// materialised textures hold the ENCODED accumulator (ADR-0177); the kernels are
-// defined in light, so each FIRST reader of the base converts it (`em_luz`) and
-// each combine hands the result back encoded and blends in the accumulator's
-// space — the CPU `compose` Adjustment arm, pass for pass. These entry points share every helper above (apply_blend,
+// materialised textures hold the ENCODED accumulator (ADR-0177); the blurs, the
+// sharpen and the chroma gather run in premultiplied display tones — the
+// accumulator's own space (P4, Krita 8-bit) —, while Bloom is optical: its
+// bright-pass and its combine cross into light (`em_luz`) and back. Every combine
+// blends in the accumulator's space — the CPU `compose` Adjustment arm, pass for pass. These entry points share every helper above (apply_blend,
 // decode_layer, apply_adjustment, encode_final) — no duplicated math.
 //
 // Bindings 7–20 are this graph's; the single-pass path (0–6) is untouched. Each
@@ -892,13 +903,13 @@ struct BlurGlobals {
 @group(0) @binding(13) var<storage, read> blur_weights: array<f32>;
 
 // Read a tap, premultiplying on the first pass (see the premul note above). The
-// first pass reads the ENCODED base, so it also crosses into light there; later
-// passes (and the luma/glow fields, `premul_read = 0`) are already in the kernel's space.
+// kernels run in premultiplied DISPLAY tones (ADR-0177 P4, Krita 8-bit): the first
+// pass premultiplies the encoded base as it is; later passes (and the luma/glow
+// fields, `premul_read = 0`) are already in the kernel's space.
 fn load_blur_tap(p: vec2<i32>) -> vec4<f32> {
     let t = textureLoad(blur_src, p, 0);
     if blur_g.premul_read != 0.0 {
-        let l = em_luz(t);
-        return vec4<f32>(l.rgb * l.a, l.a);
+        return vec4<f32>(t.rgb * t.a, t.a);
     }
     return t;
 }
@@ -1010,29 +1021,28 @@ fn cs_combine(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     let p = vec2<i32>(i32(x), i32(y));
     let acc_enc = textureLoad(comb_base, p, 0); // straight encoded base (materialise output)
-    let acc = em_luz(acc_enc); // the kernel's space
-    var adj: vec4<f32>;
-    if comb_g.combine_mode == 2u { // COMBINE_BLOOM — additive premultiplied glow
+    var result: vec4<f32>;
+    if comb_g.combine_mode == 2u { // COMBINE_BLOOM — additive premultiplied glow, in LIGHT
+        let acc = em_luz(acc_enc); // Bloom is optical: its space is light
         let glow_pm = textureLoad(comb_blurred, p, 0); // blurred bright-pass (premul)
         let base_pm = vec4<f32>(acc.rgb * acc.a, acc.a);
         let bloomed_pm = vec4<f32>(
             base_pm.rgb + comb_g.amount * glow_pm.rgb,
             clamp(base_pm.a + comb_g.amount * glow_pm.a, 0.0, 1.0),
         );
-        adj = unpremultiply(bloomed_pm);
-    } else {
+        result = em_tons_de_ecra(unpremultiply(bloomed_pm));
+    } else { // the blurs run in display tones: the accumulator's own space
         let blurred = unpremultiply(textureLoad(comb_blurred, p, 0));
-        adj = blurred;
+        result = blurred;
         if comb_g.combine_mode == 1u { // COMBINE_SHARPEN — unsharp mask (4 channels)
-            adj = clamp(
-                acc + comb_g.amount * (acc - blurred),
+            result = clamp(
+                acc_enc + comb_g.amount * (acc_enc - blurred),
                 vec4<f32>(0.0),
                 vec4<f32>(1.0),
             );
         }
     }
-    // Back to the accumulator's space; the blend-back and the lerp run there.
-    var result = em_tons_de_ecra(adj);
+    // The blend-back and the lerp run in the accumulator's space.
     if comb_g.blend_mode != 0u { // not Normal → blend the adjusted over the base
         result = apply_blend(comb_g.blend_mode, acc_enc, result);
     }
@@ -1105,9 +1115,9 @@ fn cs_chroma(@builtin(global_invocation_id) gid: vec3<u32>) {
     // so a transparent shifted texel contributes zero colour (no blue speckle).
     // Coverage (alpha) is sampled UNSHIFTED — the lens shifts colour, not coverage.
     // Output is premultiplied (combine un-premultiplies); opaque base ⇒ identity.
-    let tr = em_luz(textureLoad(chroma_src, sr, 0));
-    let tg = em_luz(textureLoad(chroma_src, sg, 0));
-    let tb = em_luz(textureLoad(chroma_src, sb, 0));
+    let tr = textureLoad(chroma_src, sr, 0); // display tones, like the blurs (P4)
+    let tg = textureLoad(chroma_src, sg, 0);
+    let tb = textureLoad(chroma_src, sb, 0);
     let a = textureLoad(chroma_src, p, 0).a; // coverage from the unshifted centre
     textureStore(chroma_dst, p, vec4<f32>(tr.r * tr.a, tg.g * tg.a, tb.b * tb.a, a));
 }

@@ -22,8 +22,10 @@
 //!
 //! All inputs/outputs are **straight, ENCODED f32 RGBA** (the compositor's
 //! accumulator, ADR-0177), matching [`apply_adjustment`](super::apply_adjustment).
-//! The spatial blurs/gathers run internally in **premultiplied LIGHT** — their
-//! boundary is [`premultiply`] / [`unpremultiply`] —, so colour AND coverage
+//! The spatial blurs/gathers run internally in **premultiplied display tones**,
+//! like Krita at 8 bits (P4, measured) — their boundary is [`premultiply`] /
+//! [`unpremultiply`]; Bloom alone is optical and crosses into light
+//! ([`premultiply_em_luz`]) —, so colour AND coverage
 //! feather together and transparent texels contribute nothing — fixing both the
 //! clipped-to-silhouette blur and the transparent-edge colour speckle. The
 //! compositor combine then uses the kernel's feathered alpha for spatial kinds
@@ -203,14 +205,31 @@ fn sample_clamp(buf: &[[f32; 4]], w: i32, h: i32, x: i32, y: i32) -> [f32; 4] {
     buf[(yc * w + xc) as usize]
 }
 
-/// The blurs' boundary (ADR-0177): encoded straight → premultiplied LIGHT, in
-/// place — the kernels are defined in light. The blurs MUST run premultiplied: a transparent texel then contributes `(0,0,0,0)` — not
-/// a stale/black colour — at an alpha edge (no dark halo), and **coverage (alpha)
+/// The blurs' boundary (ADR-0177 P4): encoded straight → premultiplied ENCODED,
+/// in place. The kernels run in display tones like Krita at 8 bits (its Gaussian
+/// of radius R is ours to the byte — doc Painter 45 §8, P4). They MUST run
+/// premultiplied: a transparent texel then contributes `(0,0,0,0)` — not a
+/// stale/black colour — at an alpha edge (no dark halo), and **coverage (alpha)
 /// feathers outward with the colour** instead of staying clipped to the original
-/// opaque silhouette. (The straight-RGB blur the spike shipped left the alpha
-/// untouched, so a blurred transparent layer kept a hard edge — Enio's report.)
+/// opaque silhouette.
 #[inline]
 fn premultiply(buf: &mut [[f32; 4]]) {
+    for px in buf.iter_mut() {
+        let a = px[3].clamp(0.0, 1.0);
+        *px = [px[0] * a, px[1] * a, px[2] * a, a];
+    }
+}
+
+/// Inverse of [`premultiply`] (premultiplied encoded → encoded straight). A fully
+/// feathered-out (near-zero alpha) texel collapses to transparent black.
+#[inline]
+fn unpremultiply(buf: &mut [[f32; 4]]) {
+    unpremultiply_with(buf, |v| v.clamp(0.0, 1.0));
+}
+
+/// Bloom's boundary: it is optical (light added), so it premultiplies in LIGHT.
+#[inline]
+fn premultiply_em_luz(buf: &mut [[f32; 4]]) {
     for px in buf.iter_mut() {
         let a = px[3].clamp(0.0, 1.0);
         let l = em_luz(px);
@@ -218,16 +237,20 @@ fn premultiply(buf: &mut [[f32; 4]]) {
     }
 }
 
-/// Inverse of [`premultiply`] (premultiplied light → encoded straight). A fully
-/// feathered-out (near-zero alpha) texel collapses to transparent black.
+/// Inverse of [`premultiply_em_luz`] (premultiplied light → encoded straight).
 #[inline]
-fn unpremultiply(buf: &mut [[f32; 4]]) {
+fn unpremultiply_em_luz(buf: &mut [[f32; 4]]) {
+    unpremultiply_with(buf, linear_to_srgb_f32);
+}
+
+#[inline]
+fn unpremultiply_with(buf: &mut [[f32; 4]], encode: impl Fn(f32) -> f32) {
     for px in buf.iter_mut() {
         let a = px[3].clamp(0.0, 1.0);
         if a > 1e-6 {
-            px[0] = linear_to_srgb_f32(px[0] / a);
-            px[1] = linear_to_srgb_f32(px[1] / a);
-            px[2] = linear_to_srgb_f32(px[2] / a);
+            px[0] = encode(px[0] / a);
+            px[1] = encode(px[1] / a);
+            px[2] = encode(px[2] / a);
             px[3] = a;
         } else {
             *px = [0.0, 0.0, 0.0, 0.0];
@@ -235,7 +258,7 @@ fn unpremultiply(buf: &mut [[f32; 4]]) {
     }
 }
 
-/// Separable Gaussian blur in **premultiplied** linear RGBA — colour AND coverage
+/// Separable Gaussian blur in **premultiplied** display tones — colour AND coverage
 /// feather together, so a blurred layer's transparency spreads outward (soft
 /// edges) instead of staying clipped to the opaque silhouette. The canonical CPU
 /// reference + the CPU-fallback production kernel.
@@ -358,7 +381,7 @@ fn separable_blur_premul(radius: f32, acc: &mut [[f32; 4]], win: AdjustWindow) {
     });
 }
 
-/// Unsharp-mask sharpen in premultiplied linear: `out = base + amount·(base −
+/// Unsharp-mask sharpen in premultiplied display tones: `out = base + amount·(base −
 /// blur(base))` across ALL 4 channels, so the alpha edge sharpens with the colour
 /// (and stays alpha-correct). `mask_edges` is DEFERRED (a future high-gradient
 /// gate — semantics noted to the Coord). Negatives clamp at 0; encode clamps top.
@@ -379,7 +402,7 @@ pub fn apply_sharpen(p: &SharpenParams, acc: &mut [[f32; 4]], win: AdjustWindow)
 }
 
 /// Directional (motion) blur — a uniform box of `2·half+1` nearest taps along
-/// `angle` (radians), in **premultiplied** linear (colour + coverage smear).
+/// `angle` (radians), in **premultiplied** display tones (colour + coverage smear).
 pub fn apply_motion_blur(p: &MotionBlurParams, acc: &mut [[f32; 4]], win: AdjustWindow) {
     if p.distance <= 0.0 {
         return;
@@ -411,8 +434,8 @@ pub fn apply_motion_blur(p: &MotionBlurParams, acc: &mut [[f32; 4]], win: Adjust
     unpremultiply(acc);
 }
 
-/// Chromatic aberration — a per-channel radial GATHER, in **premultiplied** linear
-/// RGBA. Each output channel `c` samples the below-composite at `centre + (p −
+/// Chromatic aberration — a per-channel radial GATHER, in **premultiplied** display
+/// tones. Each output channel `c` samples the below-composite at `centre + (p −
 /// centre)·scale_c`, where `scale_c = 1 + shift_c / corner_dist` (so `shift_c` px
 /// of fringe at the canvas corner, 0 at the centre — the linear-radial model).
 /// Alpha is gathered UNSHIFTED (the lens shifts colour channels, not the overall

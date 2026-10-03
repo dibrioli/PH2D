@@ -34,7 +34,7 @@ mod walk_gpu;
 pub use binning::{
     BinSeg, DEFAULT_TILE, MIN_WIDTH_PX, ScreenSpace, TileBins, bin_segments, walk_pixel,
 };
-pub use composite::{FlipCompose, SLICE_FORMAT};
+pub use composite::{FlipCompose, SLICE_FORMAT, compositor_do_flip};
 pub use fill::{FillVertex, triangulate};
 pub use pack::{
     FLAG_CLOSED, FLAG_END_FLAT, FLAG_START_FLAT, FlipGpuData, GpuPoint, GpuSegRef, GpuStroke,

@@ -28,10 +28,22 @@ struct ShTonal {
 }
 
 impl LayerCompositor {
-    /// Build the compute pipeline. Cheap — no GPU textures until the first
+    /// Build the compute pipeline, joining layers in tones of the screen (the
+    /// Painter's law, ADR-0177). Cheap — no GPU textures until the first
     /// [`Self::composite`].
     #[must_use]
     pub fn new(gpu: &GpuContext) -> Self {
+        Self::with_space(gpu, CompositeSpace::DisplayTones)
+    }
+
+    /// [`Self::new`] in the caller's [`CompositeSpace`] — the space is a pipeline
+    /// constant (`LIGHT_SPACE`) plus the decode table: zero cost per pixel.
+    #[must_use]
+    pub fn with_space(gpu: &GpuContext, space: CompositeSpace) -> Self {
+        let constants = [(
+            "LIGHT_SPACE",
+            f64::from(u8::from(space == CompositeSpace::Light)),
+        )];
         let shader = gpu
             .device
             .create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -145,7 +157,10 @@ impl LayerCompositor {
                     layout: Some(&layout),
                     module: &shader,
                     entry_point: Some(entry),
-                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    compilation_options: wgpu::PipelineCompilationOptions {
+                        constants: &constants,
+                        ..Default::default()
+                    },
                     cache: None,
                 })
         };
@@ -312,7 +327,10 @@ impl LayerCompositor {
                     layout: Some(&layout),
                     module: &shader,
                     entry_point: Some(entry),
-                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    compilation_options: wgpu::PipelineCompilationOptions {
+                        constants: &constants,
+                        ..Default::default()
+                    },
                     cache: None,
                 })
         };
@@ -436,7 +454,7 @@ impl LayerCompositor {
             mapped_at_creation: false,
         });
 
-        let lut = build_decode_lut();
+        let lut = build_decode_lut(space);
         let decode_lut_buffer = gpu.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("ph2d-render layer_composite decode table"),
             size: (DECODE_LUT_LEN * 4) as u64,
@@ -461,6 +479,7 @@ impl LayerCompositor {
             scratch_ops: GpuOpScratch::new(),
             op_buffer: None,
             globals_buffer,
+            space,
             decode_lut_buffer,
             adj_params_buffer: None,
             adj_luts_buffer: None,

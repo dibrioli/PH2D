@@ -596,6 +596,8 @@ mod psd_export; // the frozen PSD interop mapping, ADR-0045 §2.8 (LOC cap: sibl
 mod spatial;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod vizinhanca_tests; // ADR-0177 P4: the space of each neighbourhood kernel (LOC cap: sibling)
 pub use compute::{
     DISPLAY_LUT_N, SELCOLOR_BUCKETS, add_gradient_stop, adjustment_segment_params,
     adjustment_slider_params, adjustment_toggle_params, apply_adjustment,

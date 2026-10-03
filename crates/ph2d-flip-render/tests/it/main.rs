@@ -8,6 +8,7 @@
 
 mod architecture_toll;
 mod composite_blend;
+mod composite_em_luz;
 mod gpu_colorize_look;
 mod gpu_fill_fit;
 mod gpu_render;

@@ -10,8 +10,6 @@
 //! Run all of them with:
 //!   cargo test -p ph2d-render --test layer_compositor_gpu -- --ignored
 
-use ph2d_color::srgb::{linear_to_srgb_unit, srgb_to_linear_unit};
-
 // ── The law the shader mirrors (ADR-0177): layers join in TONES OF THE SCREEN ──
 /// A layer byte as the compositor reads it: `byte / 255`.
 fn dec(b: u8) -> f32 {
@@ -20,27 +18,6 @@ fn dec(b: u8) -> f32 {
 /// An encoded channel back to a byte (`round`, the shader's `floor(x + 0.5)`).
 fn enc(v: f32) -> u8 {
     (v.clamp(0.0, 1.0) * 255.0).round() as u8
-}
-/// The boundary of what is defined in light: encoded → linear, alpha untouched.
-fn em_luz(p: [f32; 4]) -> [f32; 4] {
-    [
-        srgb_to_linear_unit(p[0]),
-        srgb_to_linear_unit(p[1]),
-        srgb_to_linear_unit(p[2]),
-        p[3],
-    ]
-}
-/// … and back.
-fn em_ecra(p: [f32; 4]) -> [f32; 4] {
-    [
-        linear_to_srgb_unit(p[0]),
-        linear_to_srgb_unit(p[1]),
-        linear_to_srgb_unit(p[2]),
-        p[3],
-    ]
-}
-fn luz(buf: &[[f32; 4]]) -> Vec<[f32; 4]> {
-    buf.iter().map(|&p| em_luz(p)).collect()
 }
 use ph2d_gpu::GpuContext;
 use ph2d_painter_effects::adjustments::{
@@ -1054,7 +1031,7 @@ fn cpu_decode_px(b: &[u8], i: usize) -> [f32; 4] {
 /// Composite a run of `Layer`/`Adjustment` ops over the full canvas into an
 /// encoded RGBA buffer, starting each pixel from `base` (or zero). Mirror of `cs_segment`
 /// for the test's group-free op runs.
-fn cpu_seg_linear(
+fn cpu_seg(
     ops: &[LayerOp],
     prov: &MapProvider,
     w: u32,
@@ -1097,9 +1074,9 @@ fn cpu_seg_linear(
     out
 }
 
-/// Separable Gaussian over a full-canvas linear buffer (H then V, clamp-to-edge),
+/// Separable Gaussian over a full-canvas encoded buffer (H then V, clamp-to-edge),
 /// using the symmetric `weights[0..=half]`. Mirror of `cs_blur_h`/`cs_blur_v`.
-fn cpu_blur_linear(src: &[[f32; 4]], w: u32, h: u32, weights: &[f32], half: u32) -> Vec<[f32; 4]> {
+fn cpu_blur(src: &[[f32; 4]], w: u32, h: u32, weights: &[f32], half: u32) -> Vec<[f32; 4]> {
     let wi = w as i32;
     let hi = h as i32;
     let pass = |inp: &[[f32; 4]], dx: i32, dy: i32| -> Vec<[f32; 4]> {
@@ -1131,12 +1108,12 @@ fn cpu_blur_linear(src: &[[f32; 4]], w: u32, h: u32, weights: &[f32], half: u32)
     pass(&tmp, 0, 1)
 }
 
-/// Derive the kernel result from the ENCODED base + the blurred (in light), blend
-/// it over the base per `blend`/`opacity`, preserving coverage. Mirror of
-/// `cs_combine`: the kernel result is computed in light and handed back encoded.
+/// Derive the kernel result from the ENCODED base + the blurred (both in display
+/// tones, ADR-0177 P4), blend it over the base per `blend`/`opacity`, preserving
+/// coverage. Mirror of `cs_combine` for the blurs (Bloom has its own reference).
 /// `sharpen` = `None` → Gaussian (passthrough blurred); `Some(amount)` → unsharp
 /// mask (`base + amount·(base − blurred)`, clamped).
-fn cpu_combine_linear(
+fn cpu_combine(
     base: &[[f32; 4]],
     blurred: &[[f32; 4]],
     blend: u8,
@@ -1146,17 +1123,15 @@ fn cpu_combine_linear(
     base.iter()
         .zip(blurred)
         .map(|(acc, bl)| {
-            let lin = em_luz(*acc);
             let adj = match sharpen {
                 None => [bl[0], bl[1], bl[2], acc[3]],
                 Some(a) => [
-                    (lin[0] + a * (lin[0] - bl[0])).clamp(0.0, 1.0),
-                    (lin[1] + a * (lin[1] - bl[1])).clamp(0.0, 1.0),
-                    (lin[2] + a * (lin[2] - bl[2])).clamp(0.0, 1.0),
+                    (acc[0] + a * (acc[0] - bl[0])).clamp(0.0, 1.0),
+                    (acc[1] + a * (acc[1] - bl[1])).clamp(0.0, 1.0),
+                    (acc[2] + a * (acc[2] - bl[2])).clamp(0.0, 1.0),
                     acc[3],
                 ],
             };
-            let adj = em_ecra(adj);
             let src_px = [adj[0], adj[1], adj[2], acc[3]];
             let blended = apply_blend(BlendMode::from_u8(blend), *acc, src_px);
             let t = opacity.clamp(0.0, 1.0);
@@ -1244,10 +1219,10 @@ fn gpu_gaussian_matches_cpu_reference() {
     ];
 
     // CPU full-canvas reference.
-    let mat = cpu_seg_linear(&below, &prov, w, h, None);
-    let blurred = cpu_blur_linear(&luz(&mat), w, h, &weights, half);
-    let combined = cpu_combine_linear(&mat, &blurred, 0, 1.0, None);
-    let above_lin = cpu_seg_linear(&above, &prov, w, h, Some(&combined));
+    let mat = cpu_seg(&below, &prov, w, h, None);
+    let blurred = cpu_blur(&mat, w, h, &weights, half);
+    let combined = cpu_combine(&mat, &blurred, 0, 1.0, None);
+    let above_lin = cpu_seg(&above, &prov, w, h, Some(&combined));
     let want_full = cpu_encode_full(&above_lin);
 
     let mut comp = LayerCompositor::new(&gpu);
@@ -1330,10 +1305,10 @@ fn gpu_sharpen_matches_cpu_reference() {
     ];
 
     // CPU full-canvas reference: materialise → blur(base) → unsharp combine → above.
-    let mat = cpu_seg_linear(&below, &prov, w, h, None);
-    let blurred = cpu_blur_linear(&luz(&mat), w, h, &weights, half);
-    let combined = cpu_combine_linear(&mat, &blurred, 0, 1.0, Some(amount));
-    let above_lin = cpu_seg_linear(&above, &prov, w, h, Some(&combined));
+    let mat = cpu_seg(&below, &prov, w, h, None);
+    let blurred = cpu_blur(&mat, w, h, &weights, half);
+    let combined = cpu_combine(&mat, &blurred, 0, 1.0, Some(amount));
+    let above_lin = cpu_seg(&above, &prov, w, h, Some(&combined));
     let want_full = cpu_encode_full(&above_lin);
 
     let mut comp = LayerCompositor::new(&gpu);
@@ -1365,10 +1340,10 @@ fn gpu_sharpen_matches_cpu_reference() {
     );
 }
 
-/// Directional (motion) blur over a full-canvas linear buffer — a single 1-D
+/// Directional (motion) blur over a full-canvas encoded buffer — a single 1-D
 /// pass averaging `2·half+1` taps along `dir`, nearest sampling at floor(x+0.5),
 /// clamp-to-edge. Mirror of `cs_blur_dir`.
-fn cpu_motion_blur_linear(
+fn cpu_motion_blur(
     src: &[[f32; 4]],
     w: u32,
     h: u32,
@@ -1458,10 +1433,10 @@ fn gpu_motion_matches_cpu_reference() {
     ];
 
     // CPU full-canvas reference.
-    let mat = cpu_seg_linear(&below, &prov, w, h, None);
-    let blurred = cpu_motion_blur_linear(&luz(&mat), w, h, &weights, half, dir);
-    let combined = cpu_combine_linear(&mat, &blurred, 0, 1.0, None);
-    let above_lin = cpu_seg_linear(&above, &prov, w, h, Some(&combined));
+    let mat = cpu_seg(&below, &prov, w, h, None);
+    let blurred = cpu_motion_blur(&mat, w, h, &weights, half, dir);
+    let combined = cpu_combine(&mat, &blurred, 0, 1.0, None);
+    let above_lin = cpu_seg(&above, &prov, w, h, Some(&combined));
     let want_full = cpu_encode_full(&above_lin);
 
     let mut comp = LayerCompositor::new(&gpu);
@@ -1493,7 +1468,7 @@ fn gpu_motion_matches_cpu_reference() {
     );
 }
 
-/// Chromatic-aberration gather over a full-canvas linear buffer — per-channel
+/// Chromatic-aberration gather over a full-canvas encoded buffer — per-channel
 /// radial resample, nearest at floor(x+0.5), clamp-to-edge. Mirror of `cs_chroma`
 /// (full canvas ⇒ work origin = 0, centre = canvas centre). The per-channel
 /// scale = shift / half_diag is precomputed exactly as the orchestrator does.
@@ -1582,10 +1557,10 @@ fn gpu_chroma_matches_cpu_reference() {
     ];
 
     // CPU full-canvas reference: materialise → chroma gather → passthrough → above.
-    let mat = cpu_seg_linear(&below, &prov, w, h, None);
-    let gathered = cpu_chroma_gather(&luz(&mat), w, h, shifts);
-    let combined = cpu_combine_linear(&mat, &gathered, 0, 1.0, None);
-    let above_lin = cpu_seg_linear(&above, &prov, w, h, Some(&combined));
+    let mat = cpu_seg(&below, &prov, w, h, None);
+    let gathered = cpu_chroma_gather(&mat, w, h, shifts);
+    let combined = cpu_combine(&mat, &gathered, 0, 1.0, None);
+    let above_lin = cpu_seg(&above, &prov, w, h, Some(&combined));
     let want_full = cpu_encode_full(&above_lin);
 
     let mut comp = LayerCompositor::new(&gpu);
@@ -1760,10 +1735,10 @@ fn gpu_bloom_matches_cpu_reference() {
     ];
 
     // CPU full-canvas reference: materialise → apply_bloom → above.
-    let mat = cpu_seg_linear(&below, &prov, w, h, None);
+    let mat = cpu_seg(&below, &prov, w, h, None);
     let mut bloomed = mat.clone(); // the kernels take the encoded accumulator
     apply_bloom(&bp, &mut bloomed, AdjustWindow::full(w, h));
-    let above_lin = cpu_seg_linear(&above, &prov, w, h, Some(&bloomed));
+    let above_lin = cpu_seg(&above, &prov, w, h, Some(&bloomed));
     let want_full = cpu_encode_full(&above_lin);
 
     let mut comp = LayerCompositor::new(&gpu);
@@ -1856,7 +1831,7 @@ fn gpu_bloom_haloes_into_transparency() {
         },
     ];
 
-    let mat = cpu_seg_linear(&below, &prov, w, h, None);
+    let mat = cpu_seg(&below, &prov, w, h, None);
     let mut bloomed = mat.clone(); // the kernels take the encoded accumulator
     apply_bloom(&bp, &mut bloomed, AdjustWindow::full(w, h));
     let want = cpu_encode_full(&bloomed);
@@ -1961,10 +1936,10 @@ fn gpu_shadows_highlights_matches_cpu_reference() {
     ];
 
     // CPU full-canvas reference: materialise → apply_shadows_highlights → above.
-    let mat = cpu_seg_linear(&below, &prov, w, h, None);
+    let mat = cpu_seg(&below, &prov, w, h, None);
     let mut corrected = mat.clone(); // the kernels take the encoded accumulator
     apply_shadows_highlights(&shp, &mut corrected, AdjustWindow::full(w, h));
-    let above_lin = cpu_seg_linear(&above, &prov, w, h, Some(&corrected));
+    let above_lin = cpu_seg(&above, &prov, w, h, Some(&corrected));
     let want_full = cpu_encode_full(&above_lin);
 
     let mut comp = LayerCompositor::new(&gpu);
@@ -2066,7 +2041,7 @@ fn gpu_noise_matches_cpu_reference() {
                 opacity: 1.0,
             },
         ];
-        let mat = cpu_seg_linear(&below, &prov, w, h, None);
+        let mat = cpu_seg(&below, &prov, w, h, None);
         let mut noised = mat.clone(); // the kernels take the encoded accumulator
         apply_noise(&np, &mut noised, AdjustWindow::full(w, h));
         let want_full = cpu_encode_full(&noised);
@@ -2145,7 +2120,7 @@ fn gpu_halftone_matches_cpu_reference() {
             opacity: 1.0,
         },
     ];
-    let mat = cpu_seg_linear(&below, &prov, w, h, None);
+    let mat = cpu_seg(&below, &prov, w, h, None);
     let mut halftoned = mat.clone(); // the kernels take the encoded accumulator
     apply_halftone(&hp, &mut halftoned, AdjustWindow::full(w, h));
     let want = cpu_encode_full(&halftoned);
@@ -2239,7 +2214,7 @@ fn gpu_color_lookup_matches_cpu_reference() {
             intensity,
             profile: LutProfile::Srgb,
         };
-        let mat = cpu_seg_linear(&below, &prov, w, h, None);
+        let mat = cpu_seg(&below, &prov, w, h, None);
         let mut graded = mat.clone(); // the kernels take the encoded accumulator
         apply_color_lookup(&clp, &mut graded);
         let want = cpu_encode_full(&graded);

@@ -75,15 +75,38 @@ pub(crate) fn composite_source() -> String {
 /// Workgroup edge (mirrors the `@workgroup_size(8, 8, 1)` in the shader).
 const WORKGROUP_EDGE: u32 = 8;
 
-/// Decode table length (one entry per 8-bit byte value).
-const DECODE_LUT_LEN: usize = 256;
+/// Decode table length: the colour's 256 bytes, then the alpha's 256.
+const DECODE_LUT_LEN: usize = 512;
 
-/// Build the 256-entry decode table the shader binds: `[b] = b as f32 / 255.0`, the exact f32 the
-/// CPU compositor reads a byte as (layers join in tones of the screen, ADR-0177). A table and not the
-/// texture's unorm conversion, because WGSL does not promise that conversion is the correctly-rounded
-/// division on every driver. Pinned by `decode_lut_is_the_cpu_decode`.
-fn build_decode_lut() -> [f32; DECODE_LUT_LEN] {
-    core::array::from_fn(|b| b as f32 / 255.0)
+/// The space a [`LayerCompositor`]'s layers join in — the CALLER's product decides it.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub enum CompositeSpace {
+    /// Tones of the screen (`decode = b/255`, `encode = round`): the Painter (ADR-0177), whose
+    /// brush mixes in the encoded space too — the CPU `compositor` is this law's reference.
+    #[default]
+    DisplayTones,
+    /// Light (sRGB decode, mix, sRGB encode): the Flip, whose rasteriser joins the strokes of a
+    /// layer in linear 16F — the layers above must join like the strokes on the same layer
+    /// (Grease Pencil). Layers only: an adjustment is refused
+    /// ([`LayerCompositeError::AdjustmentInLightSpace`]) — the adjustments are defined against
+    /// the encoded accumulator.
+    Light,
+}
+
+/// Build the decode table the shader binds: `[b]` the colour of byte `b`, `[256 + b]` its alpha
+/// (`b / 255`, coverage, in both spaces). In [`CompositeSpace::DisplayTones`] the colour is
+/// `b as f32 / 255.0`, the exact f32 the CPU compositor reads (ADR-0177); in
+/// [`CompositeSpace::Light`] it is `srgb_to_linear_byte(b)`. A table and not the texture's unorm
+/// conversion, because WGSL does not promise that conversion is the correctly-rounded division on
+/// every driver. Pinned by `decode_lut_is_the_cpu_decode`.
+fn build_decode_lut(space: CompositeSpace) -> [f32; DECODE_LUT_LEN] {
+    core::array::from_fn(|i| {
+        let b = (i % 256) as u8;
+        match space {
+            CompositeSpace::Light if i < 256 => ph2d_color::srgb::srgb_to_linear_byte(b),
+            _ => f32::from(b) / 255.0,
+        }
+    })
 }
 
 /// VRAM the layer texture-array cache may hold on a **shared-memory** device
@@ -248,6 +271,8 @@ pub enum LayerCompositeError {
     MalformedOpList,
     /// The canvas dimensions were zero or exceeded the device limit.
     InvalidCanvas { width: u32, height: u32 },
+    /// An adjustment op reached a [`CompositeSpace::Light`] compositor (layers only).
+    AdjustmentInLightSpace,
 }
 
 impl core::fmt::Display for LayerCompositeError {
@@ -269,6 +294,10 @@ impl core::fmt::Display for LayerCompositeError {
             Self::InvalidCanvas { width, height } => {
                 write!(f, "layer compositor: invalid canvas {width}x{height}")
             }
+            Self::AdjustmentInLightSpace => write!(
+                f,
+                "layer compositor: an adjustment op in a light-space compositor (layers only)"
+            ),
         }
     }
 }
@@ -379,8 +408,9 @@ struct SegGlobals {
 }
 
 /// Globals for the blur passes (32 bytes; mirrors WGSL `BlurGlobals`). A
-/// convolution over a `width × height` texture (premultiplied light, the blur's
-/// space — its first reader converts) with the symmetric kernel
+/// convolution over a `width × height` texture (premultiplied display tones, the
+/// blur's space — its first reader premultiplies; Bloom's glow arrives already in
+/// premultiplied light) with the symmetric kernel
 /// `weights[0..=half]` (clamp-to-edge). `cs_blur_h`/`cs_blur_v` ignore the
 /// direction (axis-aligned); `cs_blur_dir` samples taps along `(dir_x, dir_y)`.
 #[repr(C)]
@@ -559,7 +589,9 @@ pub struct LayerCompositor {
     op_buffer: Option<(wgpu::Buffer, u64)>,
     /// Persistent globals uniform buffer.
     globals_buffer: wgpu::Buffer,
-    /// Immutable byte decode table `b/255` (uploaded once at construction).
+    /// The space the layers join in, fixed at construction ([`CompositeSpace`]).
+    space: CompositeSpace,
+    /// Immutable byte decode table of `space` (uploaded once at construction).
     decode_lut_buffer: wgpu::Buffer,
     /// Persistent adjustment-params storage buffer (grown as needed; always
     /// holds ≥1 element so binding 5 is never zero-sized).

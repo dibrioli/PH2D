@@ -27,13 +27,14 @@ bytemuck = { version = "1", features = ["derive"] }
 # pela shell — o que é produção aqui é só a conversão da câmera.
 ph2d-host = { path = "../ph2d-host" }
 ph2d-render = { path = "../ph2d-render" }
+# O `GpuContext` da porta `compositor_do_flip` (o compositor das camadas em LUZ, ADR-0177 P4).
+ph2d-gpu = { path = "../ph2d-gpu" }
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 
 [dev-dependencies]
 # block_on para os testes GPU headless (`--ignored`), como os testes do ph2d-gpu.
 # ⛔ TETO: ver `ph2d-gpu/Cargo.toml` (segurado pelo rfd).
 pollster = "0.4.0"
-ph2d-gpu = { path = "../ph2d-gpu" }
 # O wire u8 dos 22 modos (Normal/Multiply) para montar a op-list do teste.
 ph2d-painter-effects = { path = "../ph2d-painter-effects" }
 # SÓ diagnóstico (`--ignored`): grava o alvo offscreen num PNG para OLHAR o pixel —

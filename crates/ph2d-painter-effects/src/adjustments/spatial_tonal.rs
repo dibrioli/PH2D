@@ -115,7 +115,7 @@ pub fn apply_bloom(p: &BloomParams, acc: &mut [[f32; 4]], win: AdjustWindow) {
         small // upsampled on read below
     };
     // Add the glow onto the premultiplied base, then back to straight (parallel).
-    premultiply(acc);
+    premultiply_em_luz(acc);
     let intensity = p.intensity;
     let glow = &glow;
     if factor == 1 {
@@ -147,7 +147,7 @@ pub fn apply_bloom(p: &BloomParams, acc: &mut [[f32; 4]], win: AdjustWindow) {
             }
         });
     }
-    unpremultiply(acc);
+    unpremultiply_em_luz(acc);
 }
 
 /// Box-downsample a `w×h` premultiplied buffer to `dw×dh` by averaging each

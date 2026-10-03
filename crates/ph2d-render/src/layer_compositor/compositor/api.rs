@@ -1,6 +1,22 @@
 use super::super::*;
 
 impl LayerCompositor {
+    /// A [`CompositeSpace::Light`] compositor joins LAYERS only: the adjustments
+    /// are defined against the encoded accumulator (ADR-0177), so one here would be
+    /// wrong in silence — it is refused loudly instead.
+    fn refuse_adjustments_in_light(&self, ops: &[LayerOp]) -> Result<(), LayerCompositeError> {
+        let adjusts = |op: &LayerOp| {
+            matches!(
+                op,
+                LayerOp::Adjustment { .. } | LayerOp::SpatialAdjustment { .. }
+            )
+        };
+        if self.space == CompositeSpace::Light && ops.iter().any(adjusts) {
+            return Err(LayerCompositeError::AdjustmentInLightSpace);
+        }
+        Ok(())
+    }
+
     /// Make every key `ops` references resident: layer pixels **and** masks.
     ///
     /// The two are resolved by the same `ensure_slice` and live in the same
@@ -87,6 +103,7 @@ impl LayerCompositor {
             });
         }
         validate_op_list(ops)?;
+        self.refuse_adjustments_in_light(ops)?;
 
         self.clock += 1;
         let epoch = self.clock;
@@ -181,6 +198,7 @@ impl LayerCompositor {
             });
         }
         validate_op_list(ops)?;
+        self.refuse_adjustments_in_light(ops)?;
 
         self.clock += 1;
         let epoch = self.clock;
@@ -261,6 +279,7 @@ impl LayerCompositor {
             return Err(LayerCompositeError::InvalidCanvas { width, height });
         }
         validate_op_list(ops)?;
+        self.refuse_adjustments_in_light(ops)?;
         // Clamp the copy rect to the canvas (defensive — a stale envelope must not
         // read/write past the textures); an empty rect after clamping is a no-op.
         let (rx, ry, rx_hi, ry_hi) = (

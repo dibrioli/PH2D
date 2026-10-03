@@ -129,7 +129,7 @@ pub use individual::{IndividualTextureError, IndividualTextureStore};
 pub use instance_buffer::InstanceBuffer;
 pub use ktx2_format::{CompressionFeatureSet, FormatError, wgpu_format_from_ktx2_format};
 pub use layer_compositor::{
-    GpuOpScratch, HARD_CAP_LAYERS, LAYER_CACHE_BUDGET_DISCRETE_BYTES,
+    CompositeSpace, GpuOpScratch, HARD_CAP_LAYERS, LAYER_CACHE_BUDGET_DISCRETE_BYTES,
     LAYER_CACHE_BUDGET_SHARED_BYTES, LayerCompositeError, LayerCompositor, LayerMask, LayerOp,
     LayerPixelProvider, LayerPixels, MAX_BLUR_HALF, Region, SPATIAL_BLOOM, SPATIAL_CHROMA,
     SPATIAL_GAUSSIAN, SPATIAL_MOTION, SPATIAL_SHADOWS_HIGHLIGHTS, SPATIAL_SHARPEN,

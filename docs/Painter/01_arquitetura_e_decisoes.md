@@ -155,10 +155,15 @@ Engine pura (`ph2d-painter-brush` spec/falloff/dab/stroke) pode ser escrita **em
 
 ## 7. Corretude de espaço de cor (DIRETIVA §4 — não fecha sem paridade)
 
-- `canvas_rgba` é RGBA8 **straight, sRGB-encoded**. O compositor decodifica sRGB→linear, blenda
-  em linear, re-encoda. **O dab deve fazer o mesmo:** decode sRGB8→linear (LUT canônica
-  `ph2d-color`, a mesma já bit-idêntica CPU↔GPU pelo gate `srgb_lut_matches_cpu_transfer`),
-  blend em linear via `ph2d-painter-effects::blend::apply`, encode linear→sRGB8.
+- `canvas_rgba` é RGBA8 **straight, sRGB-encoded**. ⛔ **Corrigido pelo [ADR-0177](../architecture/decisions/0177-as-camadas-do-painter-juntam-se-em-tons-de-ecra.md)
+  (03/10):** esta secção prescrevia o contrário — o compositor em luz e *«o dab deve fazer o
+  mesmo»* — e o pincel nunca o fez (mistura no espaço codificado, como o Blender a 8 bits). As duas
+  leis eram o defeito do report «o traço numa camada nova é pior que na base». A lei é UMA: **tudo
+  em tons de ecrã** — o dab (`byte/255`, mistura, `round`), as camadas (`decode = b/255`, W3C,
+  `encode = round`) e os desfoques de ajuste (pré-multiplicados em tons de ecrã, como o Krita a
+  8 bits). Só o que é óptico por definição (Exposure, HSB/OKLab, Vibrance, o brilho do Bloom, a
+  Beer–Lambert da aquarela) converte para luz NA SUA fronteira e volta. Medição e ondas:
+  [doc 45 §8](45_plano_as_camadas_juntam_se_em_tons_de_ecra.md).
 - **Asserção-vermelha de paridade (Fase 1):** um dab "Normal", flow=1, cor opaca sobre fundo
   opaco ⟹ resultado **bit-idêntico** a `blend::apply(Normal, Cs, Cb)`. Brush blend modes ⊆ os 22
   de `ph2d-painter-effects` (não inventar math nova). Sem este teste, não fecha.

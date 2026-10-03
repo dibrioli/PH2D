@@ -3,7 +3,9 @@
 # compositor de referência, o des-premultiplicar da aquarela, o gémeo na placa (a tabela do decode,
 # o encode final, o grafo de vizinhança) e — P3 — a fronteira DE CADA AJUSTE (os de luz convertem
 # dentro deles, os de ecrã não convertem), a porta dos blurs, a mistura de volta (a cor muda, a
-# cobertura não) e o corte do Threshold, na CPU e na placa.
+# cobertura não) e o corte do Threshold, na CPU e na placa — e P4: os desfoques em tons de ecrã
+# pré-multiplicados (a porta dos blurs e os pontos da placa), o Bloom na sua porta de LUZ, e o
+# compositor do Flip em luz (a tabela de 512, a constante `LIGHT_SPACE`, a porta `compositor_do_flip`).
 #
 # Corre-se pela fatia da linha e com a placa (a corrida `placa` pede-a; ~40 min ⇒ prazo maior):
 #   PH2D_PRAZO=5400 PH2D_GPU=1 bash scripts/ph2d-run.sh bash docs/Painter/ferramentas/muta_as_camadas_em_ecra.sh
@@ -16,7 +18,7 @@
 set -u
 SO_ANCORAS="${MUTA_SO_ANCORAS:-}"
 FILTRO="${MUTA_FILTRO:-}"
-SRCS=(crates/ph2d-tool-painter/src crates/ph2d-render/src crates/ph2d-painter-effects/src)
+SRCS=(crates/ph2d-tool-painter/src crates/ph2d-render/src crates/ph2d-painter-effects/src crates/ph2d-flip-render/src)
 BK=$(mktemp -d)
 for s in "${SRCS[@]}"; do mkdir -p "$BK/$s"; cp -r "$s/." "$BK/$s/"; done
 restore() {
@@ -35,12 +37,13 @@ corre() {
     tabela) cargo test -p ph2d-render --lib -- decode_lut_is_the_cpu_decode 2>&1 ;;
     placa) cargo test -p ph2d-render --test it -- --ignored --test-threads=1 layer_compositor \
              --skip perf --skip 4k --skip 50_layers --skip too_many 2>&1 ;;
+    flip) cargo test -p ph2d-flip-render --test it -- --ignored --test-threads=1 composite_ 2>&1 ;;
   esac
 }
 contados() { grep -oP 'test result: \w+\. \K[0-9]+(?= passed)|[0-9]+(?= failed)' | awk '{s+=$1}END{print s+0}'; }
 
 if [ -z "$SO_ANCORAS" ]; then
-  for c in cpu efeitos tabela placa; do
+  for c in cpu efeitos tabela placa flip; do
     out=$(corre "$c"); rc=$?
     n=$(echo "$out" | contados)
     echo "CONTROLO [$c]: rc=$rc, $n testes"
@@ -96,18 +99,33 @@ muta $P/tool/paint/watercolor_render.rs 'let ground_enc = ground_enc.map(|g| g /
   'C6 a aquarela des-premultiplica sobre o chão em luz' cpu
 
 # ── a placa ──
-muta $R/layer_compositor/mod.rs 'core::array::from_fn(|b| b as f32 / 255.0)' 'core::array::from_fn(|b| ph2d_color::srgb::srgb_to_linear_byte(b as u8))' \
-  'G1 a tabela do decode volta à luz' tabela
+muta $R/layer_compositor/mod.rs 'CompositeSpace::Light if i < 256 =>' '_ if i < 256 =>' \
+  'G1 a tabela do decode volta à luz (também no Painter)' tabela
+muta $R/layer_compositor/mod.rs 'CompositeSpace::Light if i < 256 =>' 'CompositeSpace::Light =>' \
+  'G1b a tabela em luz descodifica também o alfa' tabela
+muta $R/shaders/layer_composite.wgsl 'decode_lut[256u + u32(raw.a * 255.0 + 0.5)],' 'decode_lut[u32(raw.a * 255.0 + 0.5)],' \
+  'G1c o alfa lê a metade da cor (no Flip, a cobertura sai descodificada)' flip
+muta $R/shaders/layer_composite.wgsl '    if LIGHT_SPACE {
+        c = vec4<f32>(' '    if false {
+        c = vec4<f32>(' \
+  'G1d o encode final do Flip esquece a luz' flip
+muta $R/layer_compositor/compositor/api.rs 'if self.space == CompositeSpace::Light && ops.iter().any(adjusts)' 'if false && ops.iter().any(adjusts)' \
+  'G1e a porta em luz aceita um ajuste em silêncio' flip
+muta crates/ph2d-flip-render/src/composite.rs 'LayerCompositor::with_space(gpu, ph2d_render::CompositeSpace::Light)' 'LayerCompositor::with_space(gpu, ph2d_render::CompositeSpace::DisplayTones)' \
+  'F1 o Flip junta as camadas em tons de ecrã (a P1 em silêncio)' flip
 muta $R/shaders/layer_composite.wgsl 'vec4<f32>(1.0)) * 255.0 + 0.5) / 255.0;' 'vec4<f32>(1.0)) * 255.0) / 255.0;' \
   'G2 o encode final trunca' placa
-muta $R/shaders/layer_composite.wgsl '        let l = em_luz(t);' '        let l = t;' \
-  'G5 o 1.º passe do blur lê o codificado como luz' placa
-muta $R/shaders/layer_composite.wgsl '    var result = em_tons_de_ecra(adj);' '    var result = adj;' \
-  'G6 o combine devolve luz' placa
-muta $R/shaders/layer_composite.wgsl '    let acc = em_luz(acc_enc); // the kernel'"'"'s space' '    let acc = acc_enc;' \
-  'G7 o combine calcula o kernel sobre o codificado' placa
-muta $R/shaders/layer_composite.wgsl '    let tr = em_luz(textureLoad(chroma_src, sr, 0));' '    let tr = textureLoad(chroma_src, sr, 0);' \
-  'G8 o chroma lê o vermelho codificado como luz' placa
+muta $R/shaders/layer_composite.wgsl '        return vec4<f32>(t.rgb * t.a, t.a);' '        let l = em_luz(t);
+        return vec4<f32>(l.rgb * l.a, l.a);' \
+  'G5 o 1.º passe do blur volta à luz (P4)' placa
+muta $R/shaders/layer_composite.wgsl '        result = em_tons_de_ecra(unpremultiply(bloomed_pm));' '        result = unpremultiply(bloomed_pm);' \
+  'G6 o combine do bloom devolve luz' placa
+muta $R/shaders/layer_composite.wgsl '        let acc = em_luz(acc_enc); // Bloom is optical: its space is light' '        let acc = acc_enc;' \
+  'G7 o bloom soma o brilho ao codificado' placa
+muta $R/shaders/layer_composite.wgsl '                acc_enc + comb_g.amount * (acc_enc - blurred),' '                em_luz(acc_enc) + comb_g.amount * (em_luz(acc_enc) - blurred),' \
+  'G7b o sharpen da placa parte da base em luz' placa
+muta $R/shaders/layer_composite.wgsl '    let tr = textureLoad(chroma_src, sr, 0); // display tones, like the blurs (P4)' '    let tr = em_luz(textureLoad(chroma_src, sr, 0));' \
+  'G8 o chroma junta o vermelho em luz (P4)' placa
 muta $R/shaders/layer_composite.wgsl 'vec4<f32>(em_luz3(enc.rgb) * k, k)); // the glow is light' 'vec4<f32>(enc.rgb * k, k));' \
   'G9 o brilho do bloom é o codificado em vez da luz' placa
 muta $R/shaders/layer_composite.wgsl 'vec4<f32>(display_luma(base.rgb), 0.0, 0.0, 0.0));' 'vec4<f32>(display_luma(em_luz(base).rgb), 0.0, 0.0, 0.0));' \
@@ -177,11 +195,23 @@ muta $E/compute/selective_color.rs '        px[0] = nr.clamp(0.0, 1.0);' '      
   'E15 a Cor Seletiva devolve o vermelho em luz' efeitos
 muta $E/compute/gradient_map.rs 'let lut = gradient_map_lut(p).map(|c| c.map(linear_to_srgb_f32));' 'let lut = gradient_map_lut(p);' \
   'E16 o Mapa de Gradiente devolve a cor da tabela em luz' efeitos
-muta $E/spatial.rs '        let l = em_luz(px);
-        *px = [l[0] * a, l[1] * a, l[2] * a, a];' '        *px = [px[0] * a, px[1] * a, px[2] * a, a];' \
-  'E17 a porta dos blurs não passa à luz' efeitos
-muta $E/spatial.rs '            px[0] = linear_to_srgb_f32(px[0] / a);' '            px[0] /= a;' \
-  'E18 a porta dos blurs devolve o vermelho em luz' efeitos
+muta $E/spatial.rs '        *px = [px[0] * a, px[1] * a, px[2] * a, a];
+    }
+}
+
+/// Inverse of [`premultiply`]' '        let l = em_luz(px);
+        *px = [l[0] * a, l[1] * a, l[2] * a, a];
+    }
+}
+
+/// Inverse of [`premultiply`]' \
+  'E17 a porta dos blurs volta à luz (P4)' efeitos
+muta $E/spatial.rs 'unpremultiply_with(buf, |v| v.clamp(0.0, 1.0));' 'unpremultiply_with(buf, linear_to_srgb_f32);' \
+  'E18 a porta dos blurs devolve luz (P4)' efeitos
+muta $E/spatial_tonal.rs '    premultiply_em_luz(acc);' '    premultiply(acc);' \
+  'E23 o bloom soma o brilho à base codificada (CPU)' efeitos
+muta $E/spatial_tonal.rs '    unpremultiply_em_luz(acc);' '    unpremultiply(acc);' \
+  'E24 o bloom devolve a luz como se fosse codificado (CPU)' efeitos
 muta $E/spatial.rs '                px[c] = (px[c] + p.amount * n * NOISE_SCALE).clamp(0.0, 1.0);' '                px[c] = super::compute::srgb_to_linear_f32((linear_to_srgb_f32(px[c]) + p.amount * n * NOISE_SCALE).clamp(0.0, 1.0));' \
   'E19 o Ruído trata o codificado como luz' placa
 muta $E/lut.rs '            px[c] = d[c] + (clamp01(graded[c]) - d[c]) * amount;' '            px[c] = (d[c] + (clamp01(graded[c]) - d[c]) * amount).powf(2.2);' \

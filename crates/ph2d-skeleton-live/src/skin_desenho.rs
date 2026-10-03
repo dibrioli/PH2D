@@ -630,17 +630,30 @@ fn quinas_do_artista(fonte: &VecPath, nos: Vec<[f64; 2]>) -> Vec<([f64; 2], f64)
 }
 
 /// Quantos segmentos a forma tem, somados os contornos.
+///
+/// ⭐⭐ **Só os contornos FECHADOS contam, quando os há** (F50-i, foto do dono de 2026-10-03:
+/// *«Hatch linhas saindo da forma»*). O orçamento [`AMOSTRAS_POR_FORMA`] é o de UMA curva — o
+/// contorno —, e as `58` riscas abertas de um *Hatch* repartiam-no: o contorno ficava com `16`
+/// amostras por segmento e cortava caminho na dobra (`0,034`/`0,067`/`0,12` do ideal a
+/// `60°`/`90°`/`120°`), com as pontas das riscas, exactas, a sobrar por fora dele.
 fn segmentos(p: &VecPath) -> usize {
-    (0..p.contour_count())
-        .filter_map(|c| p.contour(c))
-        .map(|(v, fechado)| {
-            if fechado {
-                v.len()
-            } else {
-                v.len().saturating_sub(1)
-            }
-        })
-        .sum()
+    let conta = |so_fechados: bool| -> usize {
+        (0..p.contour_count())
+            .filter_map(|c| p.contour(c))
+            .filter(|(_, fechado)| *fechado || !so_fechados)
+            .map(|(v, fechado)| {
+                if fechado {
+                    v.len()
+                } else {
+                    v.len().saturating_sub(1)
+                }
+            })
+            .sum()
+    };
+    match conta(true) {
+        0 => conta(false),
+        n => n,
+    }
 }
 
 /// A diagonal da caixa das âncoras e alças — a régua da tolerância.

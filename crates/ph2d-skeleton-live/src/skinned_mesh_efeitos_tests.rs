@@ -616,3 +616,45 @@ fn um_bloat_positivo_forte_nao_solta_linhas_ao_dobrar() {
         );
     }
 }
+
+/// ⭐⭐⭐ **GATE — as riscas de um HATCH não saem da forma ao dobrar** (F50-i, foto do dono de
+/// 2026-10-03: *«Hatch linhas saindo da forma»*).
+///
+/// As pontas das riscas eram EXACTAS (`0,0000` do ideal); quem saía do sítio era o CONTORNO — as
+/// `58` riscas repartiam o orçamento de amostras e o contorno cortava caminho na dobra (`0,034`/
+/// `0,067`/`0,12` a `60°`/`90°`/`120°`). ⛔ O CONTROLO é a ponta contra o ideal (tem de ficar
+/// exacta); o produto é a ponta contra o contorno DESENHADO.
+#[test]
+fn as_riscas_de_um_hatch_nao_saem_da_forma_ao_dobrar() {
+    let pilha = vec![FxEntry::new(PathEffect::Hatch(
+        ph2d_vec_scene::fx_hatch::HatchSpec {
+            angle: 80.0,
+            spacing: 3.0,
+            cross: false,
+        },
+    ))];
+    let mut p = b_palco(false);
+    caminho_mut(&mut p.scene, p.id).effects = pilha;
+    for graus in [60.0_f32, 90.0, 120.0] {
+        p.dobra_em_s(graus);
+        let d = crate::skin_live::recook_leis(&p.sim, &mut p.scene.clone(), so_o_bake())
+            .remove(&p.id)
+            .expect("desenho");
+        let contorno = {
+            let mut c = d.clone();
+            c.subpaths.clear();
+            b_amostra_com(&c, 64)
+        };
+        let riscas: Vec<_> = d.subpaths.iter().filter(|c| !c.closed).collect();
+        assert!(riscas.len() > 20, "o CONTROLO: o Hatch tem riscas");
+        let pior = riscas
+            .iter()
+            .flat_map(|c| [c.verts[0].anchor, c.verts[c.verts.len() - 1].anchor])
+            .map(|q| b_dist(q, &contorno))
+            .fold(0.0, f64::max);
+        assert!(
+            pior < 0.01,
+            "a {graus}° a ponta de uma risca fica a {pior} do contorno — sai da forma"
+        );
+    }
+}

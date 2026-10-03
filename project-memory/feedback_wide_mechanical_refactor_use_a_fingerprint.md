@@ -38,3 +38,11 @@ digital como juiz — não "os testes passam".
 
 Parente de [[feedback_mutate_the_code_not_just_the_test]] e do padrão oráculo-lento-julga-o-rápido
 (`lpc.rs::solve` vs Levinson, `convolve.rs::direct` vs FFT, `ops_oracle.rs` vs o splice novo).
+
+**Variação 03/10 (a retirada do Render traçado, `−40 589` linhas):** (1) o «antes» pode vir DEPOIS do
+corte — `git worktree add --detach <tmp> <commit-de-antes>` com o alvo PRÓPRIO da cópia (nunca
+partilhado; o `sccache` compila-a em ~1 min) — e foi assim que a placa ocupada por outra linha não
+travou o corte; 54/54 impressões do Matcap iguais ao byte. (2) ⛔ **Um mapa «só X usa isto» vindo de
+um subagente explorador é palpite**: três mapas erraram pontos decisivos (um módulo de sondas da
+MARCHA dado como «do Render», o céu do desenhista de malha idem). Apague pela raiz e deixe o
+compilador nomear cada dependente; depois prove o que fica com a impressão digital.

@@ -6,6 +6,9 @@
   já ocupa o **0160** sem ter integrado. Número de ADR é leitura, não reserva — se outra linha
   reivindicar o 0161 na mesma janela, **renumera na integração**
   ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
+- **Emendas:** [ADR-0176](0176-o-render-do-modelador-e-uma-malha-de-jogo.md) (número provisório) —
+  o modo **Render** desenha uma MALHA extraída do campo (02/10), e o Render traçado foi **retirado**
+  em 03/10. O que o artista vê no **Matcap** continua a ser o campo traçado; o campo continua a fonte.
 - **Data:** 2026-08-19
 - **Linha:** `line/3DModeling`
 - **Cofre do módulo:** [`docs/3DModeling/`](../../3DModeling/README.md)

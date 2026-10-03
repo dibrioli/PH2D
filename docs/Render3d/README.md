@@ -1,5 +1,15 @@
 # Render 3D — shading, luz e materiais
 
+> ⛔⛔ **O Render TRAÇADO deste estudo foi RETIRADO em 2026-10-03** (ordem do dono: *«buscamos o
+> padrão Unreal/Fortnite ou Plants vs Zombies. Pode apagar o render antigo»*). O modo Render do
+> modelador é uma **malha com luz de jogo** ([ADR-0176](../architecture/decisions/0176-o-render-do-modelador-e-uma-malha-de-jogo.md),
+> `ph2d-mesh-forward`, cofre em [`docs/3DModeling/`](../3DModeling/README.md)). O que aqui está é
+> **história e recusas medidas** — consulte-as antes de propor uma lei de luz. As LEIS que nasceram
+> aqui continuam vivas nas crates delas (`ph2d-material`, `ph2d-style`, `ph2d-bloom`, o estúdio
+> do `ph2d-app-field3d`), e o código citado nos docs abaixo (`shade_render`, `ph2d_field_gpu::paint`,
+> `refine_hemisphere`, `ground_bounce`, `sss_shadow`, as sondas…) **já não existe**: está no git
+> antes do commit `2c829e8b9`.
+
 > **Pedido do Enio, 2026-09-09:** *«Faça um estudo/pesquisa de como podemos chegar ao estado da arte.
 > Talvez até superar a Unreal. Descubra o suprasumo do render/shaders/light para games e descubra
 > como podemos alcançá-lo. Queremos um sistema intuitivo para artistas, de fácil uso mas grande

@@ -34,8 +34,8 @@ Decisões do dono (a ordem é dele, não derivada):
   jogo (forward, numa passada, mapa de sombra, oclusão assada). A malha é **derivada, de vista, não
   gravada**: o campo é a fonte, `PROJECT_SCHEMA` **intacto**.
 - O ponto de entrada de dados é o mesmo (`FieldDoc`); o que muda é o que a vista ensina ao ecrã.
-- `PH2D_FIELD_RENDER_TRACADO=1` volta ao traçado enquanto o dono não aprova; `PH2D_FIELD_SHADING=render`
-  abre já no Render.
+- `PH2D_FIELD_SHADING=render` abre já no Render. ~~`PH2D_FIELD_RENDER_TRACADO=1` volta ao
+  traçado~~ — **saiu em 03/10** com o Render traçado (ver abaixo).
 
 ## Estado da arte (o que cada um faz, e o que isso nos deixa)
 
@@ -69,4 +69,10 @@ Decisões do dono (a ordem é dele, não derivada):
   Medido: quadro **1,2–2,4 ms**, entrada **0,03–0,44 s** (a de 0,44 s a `load` 6–20 — re-medir calmo).
 - A malha tem de **concordar com o campo** (pose, partição, material): a lei vive nos gates do
   handoff §4, não aqui.
-- O Render traçado é **código a retirar** quando o dono aprovar (handoff §5-f).
+- ⭐ **O Render traçado SAIU em 2026-10-03** (ordem do dono: *«lembre-se que buscamos o padrão
+  Unreal/Fortnite ou Plants vs Zombies. Pode apagar o render antigo»*): o sombreamento de CPU
+  (`shade_render` e a sua luz, sombra, oclusão, ricochete, chão, SSS e sondas), o pintor de material
+  da placa (`ph2d-field-gpu::paint*`, céu no tempo, sondas) e a luz/céu/chão do shader da marcha.
+  Sem placa, o modo Render mostra o **Matcap**; nenhum caminho de produto chega ao traçado (gate
+  `render_sem_tracado_tests`). O Matcap continua **traçado** (ADR-0161). Ver o
+  [handoff O_RENDER_ANTIGO_SAI](../../3DModeling/handoffs/HANDOFF_line_3DModeling_O_RENDER_ANTIGO_SAI_2026-10-03.md).

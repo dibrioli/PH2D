@@ -35,8 +35,8 @@ pub fn publish_snapshot(
     // ⚠️ **Só no modo Render**, e a ausência é a lei — ver o [`crate::estilo::rows`]: no matcap o
     // estilo não corre, e *uma affordance que não pode ser honrada é pior do que nenhuma*.
     //
-    // ⛔ **E não no Render por MALHA** (02/10): o desenhista de jogo ainda não tem o estilo. Mostrar
-    // as fileiras seria pôr botões que não fazem nada — elas voltam quando o porte chegar (handoff).
+    // ⭐ **E no Render por MALHA desde 02/10** — a mesma lei (`ph2d_style::wgsl`) no desenhista de
+    // jogo, com a curvatura assada por vértice ao passo da suavidade.
     let render = matches!(
         with_smoke(|s| s.vp().shading),
         Some(crate::shading::Shading::Render)
@@ -44,7 +44,7 @@ pub fn publish_snapshot(
     let malha = crate::malha_render_estado::ligado();
     rows.extend(crate::estilo::rows(
         with_smoke(|s| s.style).unwrap_or_default(),
-        render && !malha,
+        render,
     ));
     // ⭐⭐⭐ **E AS FILEIRAS DO BRILHO** (`docs/Render3d/12`, a `W7`) — a seguir às do estilo, que é
     // a ordem do pipeline: o estilo é por pixel, o brilho é o passe que vem depois dele.

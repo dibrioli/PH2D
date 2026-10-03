@@ -36,6 +36,10 @@ struct Assinatura {
     chao: Option<f32>,
     look: ph2d_view_transform::Look,
     brilho: ph2d_bloom::Bloom,
+    estilo: ph2d_style::Style,
+    raio: f32,
+    /// A chave das curvaturas com que este quadro foi desenhado.
+    curv: Option<crate::malha_render_estado::ChaveCurv>,
     tamanho: (u32, u32),
 }
 
@@ -43,6 +47,8 @@ struct Assinatura {
 struct Desenhista {
     fw: Forward,
     subida: (u64, usize),
+    /// A chave das curvaturas subidas (`None` = as malhas acabaram de subir, com zeros).
+    curv_subida: Option<crate::malha_render_estado::ChaveCurv>,
 }
 
 /// ⛔ **GLOBAL, e não `thread_local`** — medido (02/10): um `Forward` numa `thread_local` é largado
@@ -79,7 +85,11 @@ fn desenhista() -> Option<&'static Mutex<Desenhista>> {
             })
             .map(|fw| {
                 let _ = TEM_BRILHO.set(fw.tem_brilho());
-                Mutex::new(Desenhista { fw, subida: (0, 0) })
+                Mutex::new(Desenhista {
+                    fw,
+                    subida: (0, 0),
+                    curv_subida: None,
+                })
             })
         })
         .as_ref()
@@ -208,6 +218,43 @@ pub(crate) fn desenha(
             radiancia_a_um: l.radiance_at_one,
         })
         .collect();
+    // ⭐ O raio da PEÇA e os dois passos da curvatura — as MESMAS portas do Render traçado
+    // (`smoke_draw_thread`: a bola do documento; `curvatura::assar_canais`: os passos).
+    let raio = ph2d_field_eval::bounds::bounding_ball(doc, &reg).map_or(1.0, |b| b.radius);
+    let pres = ph2d_field_render::Presentation {
+        piece_radius: raio,
+        style: smoke.style,
+        ..ph2d_field_render::Presentation::of(smoke.look)
+    };
+    let material_le = smoke.materials.as_ref().is_some_and(|t| {
+        ph2d_field_render::curvatura::material_le(&ph2d_field_render::Surfaces {
+            all: &t.surfaces,
+            owners: None,
+        })
+    });
+    let pedida = crate::malha_render_estado::ChaveCurv {
+        geracao,
+        eps_material: if material_le {
+            ph2d_field_render::curvatura::eps_para(raio)
+        } else {
+            0.0
+        },
+        eps_estilo: if pres.reads_curvature() {
+            pres.curvature_eps()
+        } else {
+            0.0
+        },
+    };
+    let curv = if pedida.eps_material > 0.0 || pedida.eps_estilo > 0.0 {
+        let c = crate::malha_render_estado::curvatura(pedida).filter(|c| c.0.geracao == geracao);
+        if c.is_none() {
+            // A 1.ª curvatura destes objetos ainda vem a caminho: sem ela a tinta sairia lisa.
+            return Feito::Espera;
+        }
+        c
+    } else {
+        None
+    };
     let assinatura = Assinatura {
         geracao,
         modelos,
@@ -217,6 +264,9 @@ pub(crate) fn desenha(
         chao,
         look: smoke.look,
         brilho: smoke.bloom.sanitized(),
+        estilo: smoke.style.sanitized(),
+        raio,
+        curv: curv.as_ref().map(|c| c.0),
         tamanho,
     };
     let igual = ULTIMA.with(|u| {
@@ -256,6 +306,15 @@ pub(crate) fn desenha(
                 fw.esquece(k as u64);
             }
             d.subida = (geracao, objetos.len());
+            d.curv_subida = None;
+        }
+        if let Some((chave, ks)) = &curv
+            && d.curv_subida != Some(*chave)
+        {
+            for (k, v) in ks.iter().enumerate() {
+                d.fw.sobe_curvatura(k as u64, v);
+            }
+            d.curv_subida = Some(*chave);
         }
         let fw = &mut d.fw;
         let instancias: Vec<Instancia> = assinatura
@@ -278,6 +337,8 @@ pub(crate) fn desenha(
             vista: ph2d_view_transform::wgsl::view_code(assinatura.look.view),
             tamanho,
             brilho: assinatura.brilho,
+            estilo: assinatura.estilo,
+            raio_da_peca: assinatura.raio,
         })
     };
     rgba.map_or(Feito::Espera, Feito::Novo)

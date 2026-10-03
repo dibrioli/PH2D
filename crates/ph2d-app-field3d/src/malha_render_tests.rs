@@ -244,3 +244,70 @@ fn scene_37_is_six_objects_and_the_bitten_box_is_one() {
         .expect("a caixa verde com o corte branco é um objeto de duas cores");
     assert_eq!(mordida.unidades.len(), 1);
 }
+
+/// ⭐⭐ **A curvatura assada por VÉRTICE, interpolada no triângulo, é a do CAMPO** — o estilo lê
+/// `H · raio` por pixel no Render traçado; aqui lê a interpolação linear dos três vértices. Medido
+/// na cena do estilo (`=35`: covas, aresta, e a caixa encostada) ao passo de fábrica, no CENTRO de
+/// cada triângulo, contra a mesma conta feita ali — e a régua é a TINTA em bytes, não o `H·R`
+/// (em `H·R` o p99 é `0,048`, do tamanho da nitidez de aresta; mas é onde a tinta já saturou).
+#[test]
+fn the_vertex_curvature_interpolates_to_the_fields() {
+    let doc = crate::smoke::scenes::scene(35);
+    let reg = crate::smoke::sampled_registry();
+    let (_sim, objs) = objetos(&doc);
+    let raio = ph2d_field_eval::bounds::bounding_ball(&doc, &reg).map_or(1.0, |b| b.radius);
+    let eps = raio * ph2d_style::Curvature::SOFTNESS;
+    let mut erros = Vec::new();
+    for o in &objs {
+        let m = &o.malha;
+        let k = crate::malha_render_tri::curvaturas(&o.campo, &reg, &m.posicoes, (0.0, eps));
+        let centros: Vec<[f32; 3]> = m
+            .indices
+            .chunks(3)
+            .map(|t| {
+                let p = t.iter().map(|&i| m.posicoes[i as usize]);
+                p.fold([0.0; 3], |a, q| {
+                    [a[0] + q[0] / 3.0, a[1] + q[1] / 3.0, a[2] + q[2] / 3.0]
+                })
+            })
+            .collect();
+        let verdade = crate::malha_render_tri::curvaturas(&o.campo, &reg, &centros, (0.0, eps));
+        for (t, v) in m.indices.chunks(3).zip(&verdade) {
+            let interp = t.iter().map(|&i| k[i as usize][1]).sum::<f32>() / 3.0;
+            // ⭐ A régua é a TINTA (em bytes sRGB), não o `H·R`: um erro onde a tinta já saturou
+            // não se vê. O estilo da foto da `=35`: aresta quente, cova fria.
+            let mut st = ph2d_style::Style::default();
+            st.curvature.convex = [1.0, 0.55, 0.25];
+            st.curvature.concave = [0.25, 0.45, 1.0];
+            let byte = |h: f32| {
+                let c = st.apply(
+                    [0.8; 3],
+                    ph2d_style::Point {
+                        facing: 1.0,
+                        curvature: h * raio,
+                    },
+                );
+                c.map(ph2d_color::srgb::linear_to_srgb_byte)
+            };
+            let (a, b) = (byte(interp), byte(v[1]));
+            erros.push((0..3).map(|i| a[i].abs_diff(b[i])).max().unwrap_or(0) as f32);
+        }
+    }
+    erros.sort_by(f32::total_cmp);
+    let q = |f: f64| erros[((erros.len() - 1) as f64 * f) as usize];
+    println!(
+        "tinta (bytes) da curvatura interpolada × campo, {} triângulos: p50 {} · p99 {} · p99,9 {} · máx {}",
+        erros.len(),
+        q(0.5),
+        q(0.99),
+        q(0.999),
+        q(1.0)
+    );
+    // Medido (02/10): p50 `0` · p99 `1` · p99,9 `2` · máx `11` bytes sobre `262 600` triângulos. A
+    // barra é a dos outros passes da casa (`2` bytes), no p99,9: o máximo vive numa quina.
+    assert!(
+        q(0.999) <= 2.0,
+        "a curvatura por vértice afasta-se do campo: p99,9 {} bytes",
+        q(0.999)
+    );
+}

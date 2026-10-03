@@ -97,6 +97,8 @@ pub(super) fn uniforme_do_quadro(cena: &Cena<'_>, e: &Enquadra) -> Vec<f32> {
     ]);
     let n = cena.luzes.len().min(crate::MAX_LUZES);
     u.extend_from_slice(&[cena.exposicao, cena.vista as f32, n as f32, 0.0]);
+    u.extend_from_slice(&ph2d_style::wgsl::pack(&cena.estilo));
+    u.extend_from_slice(&[cena.raio_da_peca, 0.0, 0.0, 0.0]);
     for l in &cena.luzes[..n] {
         u.extend_from_slice(&[l.posicao[0], l.posicao[1], l.posicao[2], 0.0]);
         u.extend_from_slice(&[
@@ -290,6 +292,7 @@ impl Forward {
                 };
                 pass.set_bind_group(1, g1, &[(i as u64 * SLOT) as u32]);
                 pass.set_vertex_buffer(0, m.vertices.slice(..));
+                pass.set_vertex_buffer(1, m.curvatura.slice(..));
                 pass.set_index_buffer(m.indices.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..m.n, 0, 0..1);
             }

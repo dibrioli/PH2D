@@ -16,10 +16,15 @@ const VERTICE: u64 = 32;
 /// O alinhamento do deslocamento dinâmico de um uniforme (o mínimo que todo aparelho aceita).
 pub(crate) const SLOT: u64 = 256;
 /// O tamanho do uniforme do quadro — o `Quadro` do WGSL.
-pub(crate) const QUADRO: usize = 2 * 16 + 6 * 4 + 2 * crate::MAX_LUZES * 4;
+pub(crate) const QUADRO: usize =
+    2 * 16 + 6 * 4 + ph2d_style::wgsl::PACKED + 4 + 2 * crate::MAX_LUZES * 4;
 
 struct MalhaGpu {
     vertices: wgpu::Buffer,
+    /// As duas curvaturas (`[material, estilo]`) por vértice, num buffer à parte: assadas depois da
+    /// malha e refeitas quando a suavidade muda, sem resubir a malha ([`Forward::sobe_curvatura`]).
+    curvatura: wgpu::Buffer,
+    n_vertices: usize,
     indices: wgpu::Buffer,
     n: u32,
     /// A caixa local `(min, max)` — o mapa de sombra enquadra o mundo de todos os objetos.
@@ -107,6 +112,12 @@ fn atributos() -> [wgpu::VertexAttribute; 4] {
         },
     ]
 }
+
+const CURVATURAS: [wgpu::VertexAttribute; 1] = [wgpu::VertexAttribute {
+    format: wgpu::VertexFormat::Float32x2,
+    offset: 0,
+    shader_location: 4,
+}];
 
 impl Forward {
     /// ⭐ Cria o desenhista NO aparelho do celular ([`crate::gpu_alvo::aparelho_em`]).
@@ -235,11 +246,18 @@ impl Forward {
             })
         };
         let atr = atributos();
-        let vertice = [wgpu::VertexBufferLayout {
-            array_stride: VERTICE,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &atr,
-        }];
+        let vertice = [
+            wgpu::VertexBufferLayout {
+                array_stride: VERTICE,
+                step_mode: wgpu::VertexStepMode::Vertex,
+                attributes: &atr,
+            },
+            wgpu::VertexBufferLayout {
+                array_stride: 8,
+                step_mode: wgpu::VertexStepMode::Vertex,
+                attributes: &CURVATURAS,
+            },
+        ];
         let so_posicao = [wgpu::VertexBufferLayout {
             array_stride: VERTICE,
             step_mode: wgpu::VertexStepMode::Vertex,
@@ -517,15 +535,41 @@ impl Forward {
             bytemuck::cast_slice(m.indices),
             wgpu::BufferUsages::INDEX,
         );
+        let n_vertices = m.posicoes.len();
+        let curvatura = buf(
+            "ph2d-mesh-forward curvatura",
+            &vec![0u8; n_vertices * 8],
+            wgpu::BufferUsages::VERTEX,
+        );
         self.malhas.insert(
             id,
             MalhaGpu {
                 vertices,
+                curvatura,
+                n_vertices,
                 indices,
                 n: m.indices.len() as u32,
                 caixa: (lo, hi),
             },
         );
+    }
+
+    /// ⭐ **As curvaturas da malha `id`** — `[material, estilo]` por vértice, `H` com sinal
+    /// (`1/mundo`): a do MATERIAL ao passo de precisão (a subsuperfície maciça lê o módulo), a do
+    /// ESTILO ao passo da suavidade. Nascem a zero com a malha; mudar a suavidade sobe SÓ isto. Um
+    /// tamanho que não bate com os vértices é recusado (`false`).
+    pub fn sobe_curvatura(&mut self, id: u64, k: &[[f32; 2]]) -> bool {
+        let Some(m) = self.malhas.get(&id) else {
+            return false;
+        };
+        if k.len() != m.n_vertices {
+            return false;
+        }
+        if !k.is_empty() {
+            self.queue
+                .write_buffer(&m.curvatura, 0, bytemuck::cast_slice(k));
+        }
+        true
     }
 
     /// Esquece a malha `id`.

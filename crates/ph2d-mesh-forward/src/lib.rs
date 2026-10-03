@@ -122,6 +122,12 @@ pub struct Cena<'a> {
     /// em cena-linear, é somado depois do olhar e com a mesma regra sobre a peça e o fundo
     /// (`ph2d_field_render::soma_halo`). Onde a placa não o tem ([`Forward::tem_brilho`]) é ignorado.
     pub brilho: ph2d_bloom::Bloom,
+    /// ⭐ **O estilo** — a MESMA camada do Render traçado (`ph2d_style`): saturação do indirecto
+    /// antes das lâmpadas, e tinta de curvatura, contorno e zonas entre a física e o olhar. A
+    /// curvatura que ele lê é a de [`Forward::sobe_curvatura`], medida ao passo do estilo.
+    pub estilo: ph2d_style::Style,
+    /// O raio da bola que envolve a PEÇA — torna a curvatura adimensional (`H · raio`).
+    pub raio_da_peca: f32,
 }
 
 #[cfg(test)]

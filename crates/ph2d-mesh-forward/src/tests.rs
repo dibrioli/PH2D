@@ -104,6 +104,8 @@ fn cena<'a>(objs: &'a [Instancia], mats: &'a [[f32; 48]], cam: Camera) -> Cena<'
         vista: 0,
         tamanho: (96, 96),
         brilho: ph2d_bloom::Bloom::default(),
+        estilo: ph2d_style::Style::default(),
+        raio_da_peca: 0.5,
     }
 }
 
@@ -349,6 +351,128 @@ fn a_cor_e_a_lei_da_casa() {
     );
 }
 
+/// ⭐⭐⭐ **O estilo é a lei da casa** — o pixel do meio da esfera com a tinta de ARESTA, as zonas e
+/// a saturação do indirecto, contra a CPU: `saturate_indirect` sobre o indirecto, depois
+/// `Style::apply` com `|N·V| = 1` e a curvatura `H · raio` (esfera de raio `0,5`: `H = 2`, peça de
+/// raio `0,5` ⇒ `1`). A curvatura chega pela porta própria ([`Forward::sobe_curvatura`]).
+///
+/// ⚠️ O controlo: a MESMA cena com a curvatura a zero é OUTRA cor (a tinta lê a curvatura subida).
+#[test]
+#[ignore = "precisa de aparelho"]
+fn o_estilo_e_a_lei_da_casa() {
+    let Some(mut fw) = desenhista_com_esfera() else {
+        return;
+    };
+    let objs = [Instancia {
+        malha: 1,
+        modelo: ID,
+    }];
+    // ⚠️ Um material COLORIDO: sob o céu cinzento um cinzento não tem croma, e a saturação do
+    // indirecto seria invisível (uma mutação que a apagava SOBREVIVEU com a fixtura cinzenta).
+    let pbr = ph2d_material::OpenPbr {
+        base_color: [0.8, 0.3, 0.15],
+        ..ph2d_material::OpenPbr::default()
+    };
+    let s = pbr.prepare();
+    let mats = [ph2d_material::wgsl::pack(
+        &s,
+        ph2d_material::wgsl::EnvLobe::of(&s),
+    )];
+    let mut estilo = ph2d_style::Style::default();
+    estilo.curvature.convex = [1.0, 0.35, 0.2];
+    estilo.curvature.edge_sharpness = 0.5;
+    estilo.zones.shadow = [0.6, 0.7, 1.0];
+    estilo.zones.highlight = [1.0, 0.95, 0.8];
+    estilo.indirect_saturation = 0.4;
+    let com = |fw: &mut Forward| {
+        fw.quadro(&Cena {
+            estilo,
+            ..cena(&objs, &mats, camera(1.0, 0.0))
+        })
+        .expect("quadro")
+    };
+    let n = esfera(0.5).0.len();
+    assert!(fw.sobe_curvatura(1, &vec![[0.0, 0.0]; n]));
+    let plano = com(&mut fw);
+    assert!(fw.sobe_curvatura(1, &vec![[0.0, 2.0]; n]));
+    assert!(
+        !fw.sobe_curvatura(1, &[[0.0, 2.0]]),
+        "um tamanho que não bate é recusado"
+    );
+    let img = com(&mut fw);
+    let i = (48 * 96 + 48) * 4;
+    let c = s.indirect([0.0, 0.0, 1.0], [0.0, 0.0, 1.0], &Chapado);
+    let c = estilo.sanitized().saturate_indirect(c);
+    let c = estilo.sanitized().apply(
+        c,
+        ph2d_style::Point {
+            facing: 1.0,
+            curvature: 1.0,
+        },
+    );
+    let d = ph2d_view_transform::to_display(c, 0.0, ph2d_view_transform::ViewTransform::Standard);
+    for k in 0..3 {
+        let esperado = (srgb(d[k]) * 255.0 + 0.5).floor();
+        let lido = f32::from(img[i + k]);
+        assert!(
+            (lido - esperado).abs() <= 2.0,
+            "canal {k}: placa {lido} contra CPU {esperado}"
+        );
+    }
+    assert_ne!(
+        plano[i..i + 3],
+        img[i..i + 3],
+        "o controlo: a curvatura subida tem de mudar a tinta"
+    );
+}
+
+/// ⭐⭐ **A subsuperfície MACIÇA lê a curvatura do material** — a mesma esfera sob uma lâmpada, com a
+/// curvatura do material a zero e a `2` (`1/raio`): o pixel tem de mudar. Antes deste porte o canal
+/// ia sempre a zero (o `pack` deixa-o vazio de propósito: é do PIXEL), e a peça translúcida lia-se
+/// como plana.
+#[test]
+#[ignore = "precisa de aparelho"]
+fn a_subsuperficie_le_a_curvatura_do_material() {
+    let Some(mut fw) = desenhista_com_esfera() else {
+        return;
+    };
+    let objs = [Instancia {
+        malha: 1,
+        modelo: ID,
+    }];
+    let pbr = ph2d_material::OpenPbr {
+        subsurface_weight: 1.0,
+        subsurface_color: [0.9, 0.4, 0.3],
+        ..ph2d_material::OpenPbr::default()
+    };
+    let s = pbr.prepare();
+    let mats = [ph2d_material::wgsl::pack(
+        &s,
+        ph2d_material::wgsl::EnvLobe::of(&s),
+    )];
+    let luzes = [crate::Luz {
+        posicao: [0.6, 0.4, 1.5],
+        radiancia_a_um: [3.0, 3.0, 3.0],
+    }];
+    let n = esfera(0.5).0.len();
+    let mut com = |k: f32| {
+        assert!(fw.sobe_curvatura(1, &vec![[k, 0.0]; n]));
+        fw.quadro(&Cena {
+            luzes: &luzes,
+            ..cena(&objs, &mats, camera(1.0, 0.0))
+        })
+        .expect("quadro")
+    };
+    let plano = com(0.0);
+    let curvo = com(2.0);
+    let i = (48 * 96 + 60) * 4;
+    assert_ne!(
+        plano[i..i + 3],
+        curvo[i..i + 3],
+        "a curvatura do material não chegou à subsuperfície"
+    );
+}
+
 fn srgb(x: f32) -> f32 {
     let c = x.clamp(0.0, 1.0);
     if c <= 0.003_130_8 {
@@ -385,6 +509,7 @@ fn nenhuma_ranhura_fica_por_preencher() {
         "{MATERIAL}",
         "{AMBIENTE}",
         "{OLHAR}",
+        "{ESTILO}",
         "{MAX_LUZES",
         "{TAB_W}",
         "{PISO_LUZ}",

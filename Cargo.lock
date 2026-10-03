@@ -6495,6 +6495,7 @@ dependencies = [
  "naga",
  "ph2d-bloom",
  "ph2d-material",
+ "ph2d-style",
  "ph2d-view-transform",
  "pollster",
  "wgpu",

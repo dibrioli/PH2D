@@ -24,6 +24,8 @@ ph2d-material = { path = "../ph2d-material" }
 ph2d-view-transform = { path = "../ph2d-view-transform" }
 # A LEI do brilho (a mesma do Motion e do Render tracado) e a da composicao, em WGSL — uma porta.
 ph2d-bloom = { path = "../ph2d-bloom" }
+# A camada de ESTILO (a mesma do Render tracado), em WGSL — uma porta.
+ph2d-style = { path = "../ph2d-style" }
 # A porta de paridade sobe imagens `Rgba16Float` (o `half` ja' esta' no lock, pelo naga).
 half = { version = "2", features = ["bytemuck"] }
 pollster = "0.4.0"

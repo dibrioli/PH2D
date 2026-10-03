@@ -6,6 +6,8 @@
 // tomada por `env_radiance`/`env_irradiance` abaixo), o ceu de quem chama, e o olhar. ⚠️ Nunca
 // escreva o NOME de uma ranhura num comentario: a substituicao nao sabe o que e' comentario.
 
+{ESTILO}
+
 struct Quadro {
     view_proj: mat4x4<f32>,
     sombra_vp: mat4x4<f32>,
@@ -20,6 +22,10 @@ struct Quadro {
     sombra: vec4<f32>,
     // x = exposicao (stops) · y = codigo da vista · z = numero de luzes · w = _
     olhar: vec4<f32>,
+    // A camada de estilo (a arrumacao do `ph2d_style::wgsl::pack`).
+    estilo: Estilo,
+    // x = o raio da bola da PECA (a curvatura viaja em `H * raio`) · yzw = _
+    peca: vec4<f32>,
     // pares (posicao, radiancia a 1), ate' `MAX_LUZES` luzes
     luzes: array<vec4<f32>, {MAX_LUZES2}>,
 };
@@ -159,6 +165,9 @@ struct VsOut {
     @location(1) normal: vec3<f32>,
     @location(2) ao: f32,
     @location(3) @interpolate(flat, either) material: u32,
+    // A curvatura media `H` (com sinal) ao passo do MATERIAL e ao do ESTILO.
+    @location(4) k_mat: f32,
+    @location(5) k_estilo: f32,
 };
 
 @vertex
@@ -167,6 +176,7 @@ fn vs_objeto(
     @location(1) n: vec3<f32>,
     @location(2) ao: f32,
     @location(3) m: u32,
+    @location(4) k: vec2<f32>,
 ) -> VsOut {
     var o: VsOut;
     let w = objeto.modelo * vec4<f32>(p, 1.0);
@@ -175,20 +185,33 @@ fn vs_objeto(
     o.normal = (objeto.modelo * vec4<f32>(n, 0.0)).xyz;
     o.ao = ao;
     o.material = m;
+    o.k_mat = k.x;
+    o.k_estilo = k.y;
     return o;
 }
 
-// A luz que o pixel devolve ao olho, em CENA-linear (antes da exposicao e do olhar).
+// A subsuperficie MACICA le a curvatura do PIXEL (o modulo), escrita antes de compor — o gemeo do
+// `Surface::at_curvature` da CPU e do `com_a_curvatura` do Render tracado.
+fn com_a_curvatura(m_in: Mat, k: f32) -> Mat {
+    var m = m_in;
+    if (m.ss_color_weight.a <= 0.0 || m.ss_brdf_thin.a > 0.5) { return m; }
+    m.ss_btdf_curv.a = abs(k);
+    return m;
+}
+
+// A luz que o pixel devolve ao olho, em CENA-linear (antes da exposicao e do olhar) — a ordem do
+// Render tracado: o indirecto, a SATURACAO dele (antes das lampadas: saturar no fim saturaria o
+// realce do sol), as lampadas, e o ESTILO entre a fisica e o olhar, com a emissao.
 fn luz_de_cena(i: VsOut) -> vec3<f32> {
-    let m = material(i.material);
+    let m = com_a_curvatura(material(i.material), i.k_mat);
     let n = normalize(i.normal);
     let v = vista(i.mundo);
     peso_ceu = i.ao;
     peso_caixa = visibilidade_da_caixa(i.mundo);
     var c = mx_indirect(m, n, v);
+    c = st_saturate_indirect(quadro.estilo, c);
     c = c + luz_das_lampadas(m, n, v, i.mundo);
-    c = c + mx_emission(m, n, v);
-    return c;
+    return st_apply(quadro.estilo, c + mx_emission(m, n, v), abs(dot(n, v)), i.k_estilo * quadro.peca.x);
 }
 
 @fragment

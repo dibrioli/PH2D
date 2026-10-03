@@ -62,9 +62,17 @@ fn sonda_do_render_por_malha() {
             }
             // `PH2D_SONDA_BRILHO=1` liga o brilho de fábrica — o que o artista tem ao clicar «On».
             let brilho = std::env::var("PH2D_SONDA_BRILHO").is_ok_and(|v| v == "1");
+            // `PH2D_SONDA_ESTILO=1`: tinta quente nas ARESTAS e fria nas COVAS (o roteiro da `=35`).
+            let estilo = std::env::var("PH2D_SONDA_ESTILO").is_ok_and(|v| v == "1");
             crate::smoke::with_smoke(|s| {
                 s.vp_mut().cam = ph2d_field_render::Orbit::from_yaw_pitch(0.72, 0.52);
                 crate::input::frame_the_part(s);
+                if estilo {
+                    let mut st = s.style;
+                    st.curvature.convex = [1.0, 0.55, 0.25];
+                    st.curvature.concave = [0.25, 0.45, 1.0];
+                    s.set_style(st);
+                }
                 if brilho {
                     s.set_bloom(ph2d_field_render::Bloom {
                         enabled: true,
@@ -86,6 +94,17 @@ fn sonda_do_render_por_malha() {
             let doc = crate::smoke::with_smoke(|s| s.doc.clone())
                 .flatten()
                 .expect("doc");
+            // A 1.ª curvatura (com o estilo a lê-la) vem de outra thread: espera-se FORA do relógio.
+            let t1 = std::time::Instant::now();
+            while matches!(
+                crate::smoke::with_smoke(|s| {
+                    crate::malha_render_quadro::desenha(s, s.active, tamanho, &doc, false)
+                }),
+                Some(crate::malha_render_quadro::Feito::Espera)
+            ) && t1.elapsed().as_secs() < 30
+            {
+                std::thread::sleep(std::time::Duration::from_millis(2));
+            }
             let mut tempos = Vec::new();
             let mut primeira = None;
             for k in 0..61 {
@@ -121,7 +140,11 @@ fn sonda_do_render_por_malha() {
                 )
             })
             .unwrap_or_default();
-            let sufixo = if brilho { "_brilho" } else { "" };
+            let sufixo = format!(
+                "{}{}",
+                if brilho { "_brilho" } else { "" },
+                if estilo { "_estilo" } else { "" }
+            );
             let caminho =
                 std::path::Path::new(&dir).join(format!("render_malha_cena_{n}{sufixo}.ppm"));
             grava_ppm(&caminho, &primeira.expect("quadro"), tamanho);

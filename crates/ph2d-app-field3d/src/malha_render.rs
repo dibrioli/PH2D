@@ -139,6 +139,10 @@ pub struct ObjetoRender {
     /// A pose de MUNDO de `unidades[0]` quando a malha foi extraída: o quadro desenha com
     /// `pose_agora ∘ pose_extraida⁻¹`.
     pub pose_extraida: Xform,
+    /// ⭐ O campo do GRUPO de que a malha foi extraída, no mesmo espaço dela — a curvatura por
+    /// vértice é assada a partir dele depois da malha, e refeita quando a suavidade do estilo muda
+    /// (`malha_render_estado`), sem extrair de novo.
+    pub campo: std::sync::Arc<FieldDoc>,
 }
 
 /// ⭐⭐⭐ **A PEÇA → OS OBJETOS DO RENDER.**
@@ -225,82 +229,90 @@ pub fn processa(e: &Entrada, reg: &ph2d_field_eval::hybrid::Registry) -> Vec<Obj
         .reduce(ph2d_field_eval::bounds::Ball::merge)
         .unwrap_or(ph2d_field_eval::bounds::Ball::EMPTY);
 
-    let feitos: Vec<Vec<(Vec<usize>, crate::malha_render_tri::MalhaPronta)>> =
-        std::thread::scope(|s| {
-            let tarefas: Vec<_> = grupos
-                .iter()
-                .map(|g| {
-                    let docs: Vec<FieldDoc> = g.iter().map(|&i| postos[i].1.clone()).collect();
-                    let bola_g = g
-                        .iter()
-                        .map(|&i| bolas[i])
-                        .reduce(ph2d_field_eval::bounds::Ball::merge)
-                        .unwrap_or(ph2d_field_eval::bounds::Ball::EMPTY);
-                    // As folhas DESTE grupo: compilar as de fora seria pagar JIT por quem não
-                    // pode ser dono de ponto nenhum aqui.
-                    let mapa: Vec<usize> = (0..placed.len())
-                        .filter(|&i| unidade_da_folha[i].is_some_and(|u| g.contains(&u)))
-                        .collect();
-                    let sub: Vec<FieldDoc> = mapa.iter().map(|&i| placed[i].clone()).collect();
-                    s.spawn(move || {
-                        let Some(doc) = uniao(&docs) else {
+    type Feito = (
+        Vec<usize>,
+        crate::malha_render_tri::MalhaPronta,
+        std::sync::Arc<FieldDoc>,
+    );
+    let feitos: Vec<Vec<Feito>> = std::thread::scope(|s| {
+        let tarefas: Vec<_> = grupos
+            .iter()
+            .map(|g| {
+                let docs: Vec<FieldDoc> = g.iter().map(|&i| postos[i].1.clone()).collect();
+                let bola_g = g
+                    .iter()
+                    .map(|&i| bolas[i])
+                    .reduce(ph2d_field_eval::bounds::Ball::merge)
+                    .unwrap_or(ph2d_field_eval::bounds::Ball::EMPTY);
+                // As folhas DESTE grupo: compilar as de fora seria pagar JIT por quem não
+                // pode ser dono de ponto nenhum aqui.
+                let mapa: Vec<usize> = (0..placed.len())
+                    .filter(|&i| unidade_da_folha[i].is_some_and(|u| g.contains(&u)))
+                    .collect();
+                let sub: Vec<FieldDoc> = mapa.iter().map(|&i| placed[i].clone()).collect();
+                s.spawn(move || {
+                    let Some(doc) = uniao(&docs) else {
+                        return Vec::new();
+                    };
+                    let mut prof = prof_inicial(bola_g, peca);
+                    loop {
+                        let cell = ph2d_field_eval::extract::cell_size(&doc, reg, prof) as f32;
+                        let donos = ph2d_field_eval::owners::Owners::new(&sub, reg, cell);
+                        let Ok(partes) = ph2d_field_eval::extract::extract_parts(&doc, reg, prof)
+                        else {
                             return Vec::new();
                         };
-                        let mut prof = prof_inicial(bola_g, peca);
-                        loop {
-                            let cell = ph2d_field_eval::extract::cell_size(&doc, reg, prof) as f32;
-                            let donos = ph2d_field_eval::owners::Owners::new(&sub, reg, cell);
-                            let Ok(partes) =
-                                ph2d_field_eval::extract::extract_parts(&doc, reg, prof)
-                            else {
-                                return Vec::new();
-                            };
-                            let feitas: Vec<(Vec<usize>, crate::malha_render_tri::MalhaPronta)> =
-                                partes
-                                    .iter()
-                                    .map(|m| {
-                                        crate::malha_render_tri::prepara(
-                                            m,
-                                            &donos,
-                                            &mapa,
-                                            unidade_da_folha,
-                                            (&doc, reg),
-                                            cell,
-                                        )
-                                    })
-                                    .collect();
-                            let (v, t) = feitas
+                        let feitas: Vec<(Vec<usize>, crate::malha_render_tri::MalhaPronta)> =
+                            partes
                                 .iter()
-                                .fold((0, 0), |(v, t), (_, m)| (v + m.virados, t + m.triangulos()));
-                            if prof >= PROF_MAX || (v as f64) <= VIRADOS_MAX * t as f64 {
-                                return feitas;
-                            }
-                            prof += 1;
+                                .map(|m| {
+                                    crate::malha_render_tri::prepara(
+                                        m,
+                                        &donos,
+                                        &mapa,
+                                        unidade_da_folha,
+                                        (&doc, reg),
+                                        cell,
+                                    )
+                                })
+                                .collect();
+                        let (v, t) = feitas
+                            .iter()
+                            .fold((0, 0), |(v, t), (_, m)| (v + m.virados, t + m.triangulos()));
+                        if prof >= PROF_MAX || (v as f64) <= VIRADOS_MAX * t as f64 {
+                            let campo = std::sync::Arc::new(doc);
+                            return feitas
+                                .into_iter()
+                                .map(|(u, m)| (u, m, std::sync::Arc::clone(&campo)))
+                                .collect();
                         }
-                    })
+                        prof += 1;
+                    }
                 })
-                .collect();
-            tarefas
-                .into_iter()
-                .map(|t| t.join().unwrap_or_default())
-                .collect()
-        });
+            })
+            .collect();
+        tarefas
+            .into_iter()
+            .map(|t| t.join().unwrap_or_default())
+            .collect()
+    });
 
-    let todos: Vec<(Vec<usize>, crate::malha_render_tri::MalhaPronta)> = feitos
+    let todos: Vec<Feito> = feitos
         .into_iter()
         .flatten()
-        .filter(|(_, m)| !m.indices.is_empty())
+        .filter(|(_, m, _)| !m.indices.is_empty())
         .collect();
     let mut vezes = vec![0usize; postos.len()];
-    for (us, _) in &todos {
+    for (us, _, _) in &todos {
         for &u in us {
             vezes[u] += 1;
         }
     }
     todos
         .into_iter()
-        .filter(|(us, _)| !us.is_empty())
-        .map(|(us, malha)| ObjetoRender {
+        .filter(|(us, _, _)| !us.is_empty())
+        .map(|(us, malha, campo)| ObjetoRender {
+            campo,
             movel: us.iter().all(|&u| vezes[u] == 1),
             pose_extraida: e.poses[us[0]],
             unidades: us.iter().map(|&u| postos[u].0).collect(),

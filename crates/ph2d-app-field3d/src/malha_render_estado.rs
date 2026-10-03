@@ -45,6 +45,33 @@ pub struct Estado {
     /// medido (02/10, a sonda de duas cenas seguidas), sem isto a 2.ª peça mostrava as malhas da 1.ª
     /// até a extração dela chegar.
     raiz: Option<Entity>,
+    /// ⭐ As curvaturas assadas (`[material, estilo]` por vértice, por objeto) e a chave delas.
+    pub curvatura: Option<(ChaveCurv, Arc<Curvaturas>)>,
+    curv_em_voo: Option<(ChaveCurv, Receiver<Curvaturas>)>,
+}
+
+/// As curvaturas `[material, estilo]` de cada vértice, objeto a objeto (a ordem de `objetos`).
+pub type Curvaturas = Vec<Vec<[f32; 2]>>;
+
+/// ⭐ **A chave da curvatura assada**: a geração dos objetos e os dois passos — o do MATERIAL
+/// (`eps_para(raio)`) e o do ESTILO (`suavidade · raio`); `0` = ninguém o lê.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct ChaveCurv {
+    pub geracao: u64,
+    pub eps_material: f32,
+    pub eps_estilo: f32,
+}
+
+/// ⭐⭐ **Pede as curvaturas com esta chave** e devolve as que existem AGORA (talvez de outra
+/// chave: durante um arrasto da suavidade o quadro mostra a anterior até a nova chegar, e a
+/// geração diz se ainda servem a estes objetos). O trabalho corre noutra thread, um de cada vez.
+pub fn curvatura(pedida: ChaveCurv) -> Option<(ChaveCurv, Arc<Curvaturas>)> {
+    ESTADO.with(|c| {
+        let mut slot = c.borrow_mut();
+        let st = slot.as_mut()?;
+        st.pede_curvatura(pedida);
+        st.curvatura.clone()
+    })
 }
 
 /// ⭐ **As gerações são únicas no PROCESSO**, não no estado: o desenhista é global e guarda a geração
@@ -182,6 +209,45 @@ pub fn sync(sim: &mut ph2d_ecs::SimWorld, em_render: bool, gesto: bool) {
 }
 
 impl Estado {
+    fn pede_curvatura(&mut self, pedida: ChaveCurv) {
+        if let Some((k, rx)) = &self.curv_em_voo {
+            match rx.try_recv() {
+                Ok(v) => {
+                    if k.geracao == self.geracao {
+                        self.curvatura = Some((*k, Arc::new(v)));
+                    }
+                    self.curv_em_voo = None;
+                }
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => self.curv_em_voo = None,
+                Err(std::sync::mpsc::TryRecvError::Empty) => return,
+            }
+        }
+        if self.curvatura.as_ref().map(|c| c.0) == Some(pedida)
+            || pedida.geracao != self.geracao
+            || self.objetos.is_empty()
+        {
+            return;
+        }
+        let (tx, rx) = std::sync::mpsc::channel();
+        let objetos = Arc::clone(&self.objetos);
+        std::thread::spawn(move || {
+            let reg = crate::smoke::sampled_registry();
+            let v: Curvaturas = objetos
+                .iter()
+                .map(|o| {
+                    crate::malha_render_tri::curvaturas(
+                        &o.campo,
+                        &reg,
+                        &o.malha.posicoes,
+                        (pedida.eps_material, pedida.eps_estilo),
+                    )
+                })
+                .collect();
+            let _ = tx.send(v);
+        });
+        self.curv_em_voo = Some((pedida, rx));
+    }
+
     /// Ainda não há objetos e a extração deles está a caminho: o quadro espera (mostra o anterior).
     #[must_use]
     pub fn esperando(&self) -> bool {

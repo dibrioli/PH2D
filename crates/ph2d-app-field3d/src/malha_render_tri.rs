@@ -377,3 +377,26 @@ fn ao(
         })
         .collect()
 }
+
+/// ⭐⭐ **As duas curvaturas de cada vértice** — `[material, estilo]`, `H` com sinal (`1/mundo`),
+/// pela MESMA conta do Render traçado ([`ph2d_field_render::curvatura::curvaturas_por`]) com o
+/// avaliador paralelo. Um passo `≤ 0` = ninguém lê aquela: fica `0` sem pagar amostra.
+#[must_use]
+pub fn curvaturas(
+    doc: &FieldDoc,
+    reg: &Registry,
+    pos: &[[f32; 3]],
+    (eps_material, eps_estilo): (f32, f32),
+) -> Vec<[f32; 2]> {
+    let mede = |eps: f32| {
+        if eps <= 0.0 {
+            return vec![0.0; pos.len()];
+        }
+        ph2d_field_render::curvatura::curvaturas_por(pos, eps, |xs, ys, zs| {
+            let pts: Vec<[f32; 3]> = (0..xs.len()).map(|i| [xs[i], ys[i], zs[i]]).collect();
+            par::valores(doc, reg, &pts).ok()
+        })
+    };
+    let (m, e) = (mede(eps_material), mede(eps_estilo));
+    m.into_iter().zip(e).map(|(a, b)| [a, b]).collect()
+}

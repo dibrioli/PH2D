@@ -151,8 +151,7 @@ fn a_locked_selection_is_announced_once_not_every_frame() {
 }
 
 /// ⭐⭐⭐ **O BRILHO NO RENDER POR MALHA, pela rota do produto** — no Render por malha o painel
-/// oferece as fileiras do brilho (onde a placa o tem) e não as do Estilo (que o desenhista de jogo
-/// ainda não tem); e ligá-lo PELO PAINEL acende o fundo à volta das bolas no quadro do desenhista.
+/// oferece as fileiras do brilho (onde a placa o tem) e as do Estilo; e ligar o brilho PELO PAINEL acende o fundo à volta das bolas no quadro do desenhista.
 ///
 /// ⚠️ A metade da placa só corre com aparelho; a do painel corre em todo lado.
 #[test]
@@ -164,7 +163,10 @@ fn in_the_mesh_render_the_panel_offers_the_bloom_and_switching_it_on_lights_the_
         let conta = |f: fn(&ph2d_field::Param) -> bool| rows.iter().filter(|r| f(&r.param)).count();
         let brilho = conta(|p| matches!(p, ph2d_field::Param::Bloom(_)));
         let estilo = conta(|p| matches!(p, ph2d_field::Param::Style(_)));
-        assert_eq!(estilo, 0, "o Estilo ainda não chegou ao desenhista de jogo");
+        assert!(
+            estilo > 0,
+            "o Estilo corre no desenhista de jogo: as fileiras têm de estar no painel"
+        );
         let tem = crate::malha_render_quadro::tem_brilho();
         if !tem {
             assert_eq!(brilho, 0, "sem brilho nesta placa, nada de fileiras mortas");
@@ -217,6 +219,85 @@ fn in_the_mesh_render_the_panel_offers_the_bloom_and_switching_it_on_lights_the_
         assert!(
             acesos > 500,
             "o halo não chegou ao fundo à volta das bolas: {acesos} píxeis"
+        );
+    });
+}
+
+/// ⭐⭐⭐ **O ESTILO NO RENDER POR MALHA, pela rota do produto** — numa peça com ARESTAS (a cena dos
+/// nós), a tinta de aresta mudada PELO PAINEL muda o quadro do desenhista; e mexer na SUAVIDADE
+/// (a escala a que a curvatura é medida) muda-o outra vez, depois de a curvatura ser re-assada por
+/// vértice noutra thread — sem extrair a malha de novo.
+#[test]
+fn in_the_mesh_render_the_style_tint_and_its_softness_reach_the_frame() {
+    armed_with(&crate::smoke::scenes::scene(28), |sim| {
+        liga_o_render(sim);
+        let doc = crate::smoke::with_smoke(|s| s.doc.clone())
+            .flatten()
+            .expect("o documento");
+        let tamanho = (AREA.w.round() as u32, AREA.h.round() as u32);
+        // Desenha até sair um quadro NOVO (a 1.ª curvatura vem de outra thread: até lá, espera).
+        let quadro = || {
+            let t = std::time::Instant::now();
+            loop {
+                let feito = crate::smoke::with_smoke(|s| {
+                    crate::malha_render_quadro::desenha(s, s.active, tamanho, &doc, false)
+                })
+                .expect("armado");
+                match feito {
+                    crate::malha_render_quadro::Feito::Novo(rgba) => return Some(rgba),
+                    crate::malha_render_quadro::Feito::SemAparelho => return None,
+                    _ if t.elapsed().as_secs() > 30 => panic!("o quadro nunca chegou"),
+                    _ => std::thread::sleep(std::time::Duration::from_millis(5)),
+                }
+            }
+        };
+        let geracao = crate::malha_render_estado::com(|e| e.geracao);
+        let Some(liso) = quadro() else {
+            println!("sem aparelho — saltado");
+            return;
+        };
+        // A tinta de ARESTA (a cor da posição 4 da arrumação) e a nitidez dela, pelo painel.
+        ph2d_panel_model3d::state::push_intent_for_test(
+            ph2d_panel_model3d::ModelIntent::SetColor {
+                entity: 0,
+                anchor: ph2d_field::Param::Style(4),
+                srgb: [255, 40, 20],
+            },
+        );
+        crate::scene::apply_intents_for_test(sim.world_mut(), &[]);
+        let tingido = quadro().expect("quadro");
+        let muda = |a: &[u8], b: &[u8]| a.iter().zip(b).filter(|(x, y)| x != y).count();
+        assert!(
+            muda(&liso, &tingido) > 500,
+            "a tinta de aresta não chegou ao quadro: {} canais",
+            muda(&liso, &tingido)
+        );
+        // A SUAVIDADE (posição 21): a curvatura re-assa, e o quadro muda quando ela chega.
+        ph2d_panel_model3d::state::push_intent_for_test(
+            ph2d_panel_model3d::ModelIntent::SetParam {
+                entity: 0,
+                param: ph2d_field::Param::Style(21),
+                value: ph2d_style::Curvature::MAX_SOFTNESS,
+            },
+        );
+        crate::scene::apply_intents_for_test(sim.world_mut(), &[]);
+        let t = std::time::Instant::now();
+        let suave = loop {
+            let q = quadro().expect("quadro");
+            if q != tingido || t.elapsed().as_secs() > 30 {
+                break q;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        };
+        assert!(
+            muda(&tingido, &suave) > 500,
+            "a suavidade não mudou a tinta: {} canais",
+            muda(&tingido, &suave)
+        );
+        assert_eq!(
+            crate::malha_render_estado::com(|e| e.geracao),
+            geracao,
+            "o estilo não pode re-extrair a malha"
         );
     });
 }

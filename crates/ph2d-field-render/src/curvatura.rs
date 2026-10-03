@@ -131,6 +131,18 @@ pub fn eps_para(escala: f32) -> f32 {
 /// superfície quase plana*, e não um `NaN` a atravessar o material.
 #[must_use]
 pub fn curvaturas(eval: &mut Hybrid, pontos: &[[f32; 3]], eps: f32) -> Vec<f32> {
+    curvaturas_por(pontos, eps, move |xs, ys, zs| eval.eval(xs, ys, zs).ok())
+}
+
+/// ⭐ **A MESMA conta, com o avaliador de quem chama** — `avalia(xs, ys, zs)` devolve o campo em
+/// cada ponto (ou `None`). É a porta do Render por malha, que assa a curvatura por vértice com o
+/// avaliador PARALELO (`ph2d_field_eval::par`, bit a bit o em série): a lei fica num sítio só.
+#[must_use]
+pub fn curvaturas_por<R: AsRef<[f32]>>(
+    pontos: &[[f32; 3]],
+    eps: f32,
+    avalia: impl FnOnce(&[f32], &[f32], &[f32]) -> Option<R>,
+) -> Vec<f32> {
     // ⚠️ O `is_nan` é explícito: a intenção é **recusar o NaN**, e um `<=` sozinho não o apanha.
     if pontos.is_empty() || eps.is_nan() || eps <= 0.0 {
         return vec![0.0; pontos.len()];
@@ -151,9 +163,13 @@ pub fn curvaturas(eval: &mut Hybrid, pontos: &[[f32; 3]], eps: f32) -> Vec<f32> 
         ys.push(p[1]);
         zs.push(p[2]);
     }
-    let Ok(v) = eval.eval(&xs, &ys, &zs) else {
+    let Some(r) = avalia(&xs, &ys, &zs) else {
         return vec![0.0; n];
     };
+    let v = r.as_ref();
+    if v.len() < n * 5 {
+        return vec![0.0; n];
+    }
     let denom = 2.0 * eps * eps;
     (0..n)
         .map(|i| {

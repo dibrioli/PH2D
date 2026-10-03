@@ -56,7 +56,8 @@ pub(crate) fn esfera(r: f32) -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<u32>) {
                 (i + 1) * w + j,
                 (i + 1) * w + j + 1,
             );
-            idx.extend_from_slice(&[a, c, b, b, c, d]);
+            // CCW visto de FORA, como as malhas do campo (o mapa de sombra descarta pela orientação).
+            idx.extend_from_slice(&[a, b, c, b, d, c]);
         }
     }
     (p, n, idx)

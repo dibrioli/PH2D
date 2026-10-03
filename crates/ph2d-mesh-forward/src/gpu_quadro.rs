@@ -5,7 +5,7 @@ use super::{Forward, QUADRO, SLOT};
 use crate::Cena;
 
 /// O inverso de uma matriz `4×4` (coluna a coluna), em `f64` — a identidade se for singular.
-fn inversa(m: &[[f32; 4]; 4]) -> [[f32; 4]; 4] {
+pub(super) fn inversa(m: &[[f32; 4]; 4]) -> [[f32; 4]; 4] {
     let a: Vec<f64> = m.iter().flatten().map(|x| f64::from(*x)).collect();
     // Gauss-Jordan sobre [A | I] (a ordem coluna-a-coluna é a transposta; inverter a transposta
     // dá a transposta da inversa — a mesma arrumação).

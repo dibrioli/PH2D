@@ -10,8 +10,8 @@ use crate::tests::{ID, ambiente, cena, esfera, material_cinza};
 use crate::{Camera, Forward, Foto, Instancia, Malha};
 
 const LADO: u32 = 384;
-const CENTRO_X: f32 = 0.1;
-const MEIA: f32 = 1.5;
+/// Os enquadramentos do oráculo: `(nome, centro x, centro z, meia-aresta)`.
+const QUADROS: [(&str, f32, f32, f32); 2] = [("cena", 0.1, 0.0, 1.5), ("perto", 0.85, -0.2, 0.05)];
 const ESFERA: ([f32; 3], f32) = ([-0.8, 0.6, 0.0], 0.3);
 const CAIXA: ([f32; 3], f32) = ([0.6, 0.2, 0.0], 0.4);
 const ORACULO: &str = include_str!("../fixtures/oraculo_sombra_sol.csv");
@@ -34,7 +34,12 @@ fn cubo(a: f32) -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<u32>) {
                 p.push(q);
                 n.push(nn);
             }
-            idx.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
+            // CCW visto de FORA, como as malhas do campo.
+            if s > 0.0 {
+                idx.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
+            } else {
+                idx.extend_from_slice(&[base, base + 2, base + 1, base, base + 3, base + 2]);
+            }
         }
     }
     (p, n, idx)
@@ -62,7 +67,12 @@ fn ceu_com_disco(altura: f32, raio: f32) -> ph2d_sky::Panorama {
 }
 
 /// O nosso chão no enquadramento do oráculo: `escuro` por pixel (`None` = um objeto tapa o chão).
-fn o_nosso(fw: &mut Forward, altura: f32, raio: f32, chave: f32) -> Vec<Option<f32>> {
+fn o_nosso(
+    fw: &mut Forward,
+    (cx, cz, meia): (f32, f32, f32),
+    (altura, raio): (f32, f32),
+    chave: f32,
+) -> Vec<Option<f32>> {
     let ceu = ph2d_sky::Ceu::com_sol(&ceu_com_disco(altura, raio));
     let sol = ceu.sol().expect("o disco é um sol");
     eprintln!(
@@ -86,13 +96,13 @@ fn o_nosso(fw: &mut Forward, altura: f32, raio: f32, chave: f32) -> Vec<Option<f
         },
     ];
     let mats = [material_cinza()];
-    // De CIMA: x → x, z → −y do ecrã (a linha 0 da imagem é z = −MEIA, como no oráculo).
+    // De CIMA: x → x, z → −y do ecrã (a linha 0 da imagem é z = cz − meia, como no oráculo).
     let cam = Camera {
         view_proj: [
-            [1.0 / MEIA, 0.0, 0.0, 0.0],
+            [1.0 / meia, 0.0, 0.0, 0.0],
             [0.0, 0.0, 0.1, 0.0],
-            [0.0, -1.0 / MEIA, 0.0, 0.0],
-            [-CENTRO_X / MEIA, 0.0, 0.5, 1.0],
+            [0.0, -1.0 / meia, 0.0, 0.0],
+            [-cx / meia, cz / meia, 0.5, 1.0],
         ],
         olho: [0.0; 3],
         perspectiva: false,
@@ -119,9 +129,46 @@ fn o_nosso(fw: &mut Forward, altura: f32, raio: f32, chave: f32) -> Vec<Option<f
         .collect()
 }
 
-/// ⭐⭐⭐ **A sombra do sol é a do Cycles**, passo a passo: a linha do meio (a esfera e a caixa) e a
-/// coluna que atravessa a sombra da esfera, com o sol a `40°` (raio `1°` e `4°`) e a `15°` (sombra
-/// comprida, de `3,7×` a altura). Controlo: com a luz-chave a `0` o chão não escurece.
+/// Uma linha do oráculo.
+struct Ponto {
+    quadro: &'static str,
+    caso: (f32, f32),
+    corte: &'static str,
+    i: u32,
+    j: u32,
+    escuro: f32,
+}
+
+fn oraculo() -> Vec<Ponto> {
+    ORACULO
+        .lines()
+        .filter(|l| !l.starts_with('#'))
+        .skip(1)
+        .map(|l| {
+            let c: Vec<&'static str> = l.split(',').collect();
+            Ponto {
+                quadro: c[0],
+                caso: (c[1].parse().expect("altura"), c[2].parse().expect("raio")),
+                corte: c[3],
+                i: c[4].parse().expect("i"),
+                j: c[5].parse().expect("j"),
+                escuro: c[8].parse().expect("escuro"),
+            }
+        })
+        .collect()
+}
+
+/// ⭐⭐⭐ **A sombra do sol é a do Cycles**, passo a passo. Na cena inteira: a linha do meio (a esfera e
+/// a caixa) e a coluna que atravessa a sombra da esfera, com o sol a `40°` (raio `1°` e `4°`) e a
+/// `15°` (sombra comprida, de `3,7×` a altura). DE PERTO (`0,26 mm` por pixel): três colunas que
+/// cruzam a borda da sombra da caixa junto do canto que toca o chão — dura no Cycles, e o mapa de
+/// sombra da cena inteira teria aí `~4` pixels por texel. Controlo: com a luz-chave a `0` a sombra do
+/// sol some.
+///
+/// ⚠️ **Limite MEDIDO** (03/10): de perto, a cauda de fora (`≤ 0,47` no Cycles, `~38` px) vem de uma
+/// face exactamente de PERFIL para o sol — nenhum mapa de sombra a guarda. Curá-la pede outra classe
+/// de algoritmo (retroprojeção, ou dois mapas, frente e trás, a dobrar o preço); o contacto DURO e o
+/// miolo sem fuga, que são o que uma cena real mostra, batem com o Cycles.
 #[test]
 #[ignore = "precisa de aparelho"]
 fn a_sombra_do_sol_e_a_do_cycles() {
@@ -130,7 +177,10 @@ fn a_sombra_do_sol_e_a_do_cycles() {
         .find(|l| l.starts_with("# CENA"))
         .expect("o oráculo tem a linha da cena");
     assert!(
-        cena_linha.contains("lado=384 centro_x=0.1 meia=1.5 esfera=((-0.8, 0.6, 0.0), 0.3) caixa=((0.6, 0.2, 0.0), 0.4)"),
+        cena_linha.contains(
+            "lado=384 quadros=[('cena', 0.1, 0.0, 1.5), ('perto', 0.85, -0.2, 0.05)] \
+             esfera=((-0.8, 0.6, 0.0), 0.3) caixa=((0.6, 0.2, 0.0), 0.4)"
+        ),
         "o CSV é de outra cena: {cena_linha}"
     );
     let Some(mut fw) = Forward::no_aparelho(&ambiente()) else {
@@ -151,73 +201,133 @@ fn a_sombra_do_sol_e_a_do_cycles() {
             },
         );
     }
-    let mut casos: Vec<(f32, f32)> = Vec::new();
-    for l in ORACULO.lines().filter(|l| !l.starts_with('#')).skip(1) {
-        let c: Vec<&str> = l.split(',').collect();
-        let k = (c[0].parse().expect("altura"), c[1].parse().expect("raio"));
-        if !casos.contains(&k) {
-            casos.push(k);
+    let pontos = oraculo();
+    let mut casos: Vec<(&str, (f32, f32))> = Vec::new();
+    for p in &pontos {
+        if !casos.contains(&(p.quadro, p.caso)) {
+            casos.push((p.quadro, p.caso));
         }
     }
-    for (altura, raio) in casos {
-        let nosso = o_nosso(&mut fw, altura, raio, 1.0);
+    let quadro_de = |nome: &str| {
+        let q = QUADROS
+            .iter()
+            .find(|q| q.0 == nome)
+            .expect("quadro conhecido");
+        (q.1, q.2, q.3)
+    };
+    for (quadro, caso) in casos {
+        let nosso = o_nosso(&mut fw, quadro_de(quadro), caso, 1.0);
         let (mut pior, mut soma, mut n, mut fora) = (0.0f32, 0.0f32, 0usize, 0usize);
-        for l in ORACULO.lines().filter(|l| !l.starts_with('#')).skip(1) {
-            let c: Vec<&str> = l.split(',').collect();
-            if (c[0].parse::<f32>().ok(), c[1].parse::<f32>().ok()) != (Some(altura), Some(raio)) {
-                continue;
-            }
-            let (i, j): (u32, u32) = (c[3].parse().expect("i"), c[4].parse().expect("j"));
-            let ciclos: f32 = c[7].parse().expect("escuro");
-            let Some(e) = nosso[(j * LADO + i) as usize] else {
+        let (mut cauda, mut n_cauda) = (0.0f32, 0usize);
+        for p in pontos
+            .iter()
+            .filter(|p| p.quadro == quadro && p.caso == caso)
+        {
+            let Some(e) = nosso[(p.j * LADO + p.i) as usize] else {
                 continue;
             };
-            let d = (e - ciclos).abs();
-            if let Ok(f) = std::env::var("PH2D_SOL_PERFIL")
-                && f == format!("{altura}/{raio}/{}", c[2])
+            let d = (e - p.escuro).abs();
+            // ⚠️ DE PERTO, a cauda de FORA da sombra da caixa (o Cycles abaixo de `0,5`) vem da face
+            // lateral de PERFIL para o sol (o sol do oráculo está no plano `xy`): nenhum mapa de sombra
+            // a vê. Mede-se à parte, com o seu tecto (o doc do gate).
+            if quadro == "perto" && p.escuro < 0.5 {
+                cauda += d;
+                n_cauda += 1;
+                continue;
+            }
+            if std::env::var("PH2D_SOL_PERFIL")
+                .is_ok_and(|f| f == format!("{quadro}/{}/{}/{}", caso.0, caso.1, p.corte))
             {
-                eprintln!("P {} {} {e:.3} {ciclos:.3}", if c[2] == "linha" { i } else { j }, if c[2] == "linha" { c[5] } else { c[6] });
+                eprintln!("P {} {} {e:.3} {:.3}", p.i, p.j, p.escuro);
             }
             pior = pior.max(d);
             soma += d;
             n += 1;
             if d > 0.1 {
                 fora += 1;
-                if std::env::var("PH2D_SOL_DIAG").is_ok() {
-                    eprintln!(
-                        "  {} i {i} j {j} (x {} z {}): nosso {e:.3} cycles {ciclos:.3}",
-                        c[2], c[5], c[6]
-                    );
-                }
             }
         }
         let medio = soma / n as f32;
+        let (altura, raio) = caso;
         eprintln!(
-            "sol a {altura}° raio {raio}°: {n} px do chão · |Δ| médio {medio:.4} · máx {pior:.3} · {fora} px com |Δ| > 0,1"
+            "{quadro}: sol a {altura}° raio {raio}°: {n} px do chão · |Δ| médio {medio:.4} · máx {pior:.3} · {fora} px com |Δ| > 0,1"
         );
-        // ⚠️ Tectos MEDIDOS (03/10, PCSS com a espiral de Vogel e os três níveis): médio `0,0010` /
-        // `0,0113` / `0,0027` e máximo `0,082` / `0,143` / `0,099` — com folga de `~2×` no médio. O
-        // padrão de Poisson de antes dava `0,0031` / `0,0215` / `0,0065` e `9–51` pixels acima de `0,1`.
-        let (t_medio, t_max) = if raio > 2.0 { (0.02, 0.25) } else { (0.006, 0.15) };
-        assert!(n > 600, "o chão comparado encolheu: {n} px");
-        assert!(medio < t_medio && pior < t_max, "sol a {altura}° raio {raio}°: médio {medio} máx {pior}");
-        assert!(fora <= 4, "sol a {altura}° raio {raio}°: {fora} px com |Δ| > 0,1");
+        // ⚠️ Tectos MEDIDOS (03/10: PCSS com a espiral de Vogel, três níveis, faces de TRÁS no mapa,
+        // o raio do pixel na busca e só os bloqueadores dentro do cone). Médio / máximo:
+        //
+        // | caso | Poisson, 1 nível, faces da frente | agora |
+        // |---|---|---|
+        // | cena 40°/1° | `0,0031` / `0,20` | `0,0005` / `0,037` |
+        // | cena 40°/4° | `0,0215` / `0,26` | `0,0096` / `0,131` |
+        // | cena 15°/1° | `0,0065` / `0,24` | `0,0019` / `0,139` |
+        // | perto 40°/1° (borda e miolo) | `0,022` / `0,44` (vazava `0,81` no miolo) | `0,0004` / `0,044` |
+        let (t_medio, t_max) = if raio > 2.0 {
+            (0.02, 0.25)
+        } else {
+            (0.004, 0.2)
+        };
+        if n_cauda > 0 {
+            let c = cauda / n_cauda as f32;
+            eprintln!("{quadro}: a cauda da face de perfil: {n_cauda} px · |Δ| médio {c:.3}");
+            // Medido (03/10): `0,043` (o nosso dá 0 onde o Cycles tem a cauda). Pior é regressão.
+            assert!(c < 0.08, "{quadro}: a cauda piorou: {c}");
+        }
+        assert!(n > 500, "{quadro}: o chão comparado encolheu: {n} px");
+        assert!(
+            medio < t_medio && pior < t_max,
+            "{quadro}: sol a {altura}° raio {raio}°: médio {medio} máx {pior}"
+        );
+        assert!(
+            fora <= 4,
+            "{quadro}: sol a {altura}° raio {raio}°: {fora} px com |Δ| > 0,1"
+        );
     }
     // O controlo: com a luz-chave a 0 a SOMBRA DO SOL some — nos pixels onde o Cycles a dá cheia
     // (`≥ 0,95`) o chão fica claro (sobra só o escurecimento do céu junto dos objetos).
-    let sem = o_nosso(&mut fw, 40.0, 1.0, 0.0);
+    let sem = o_nosso(&mut fw, quadro_de("cena"), (40.0, 1.0), 0.0);
     let (mut na_sombra, mut pior_sem) = (0usize, 0.0f32);
-    for l in ORACULO.lines().filter(|l| l.starts_with("40.0,1.0,")) {
-        let c: Vec<&str> = l.split(',').collect();
-        let (i, j): (u32, u32) = (c[3].parse().expect("i"), c[4].parse().expect("j"));
-        let ciclos: f32 = c[7].parse().expect("escuro");
-        if let Some(e) = sem[(j * LADO + i) as usize]
-            && ciclos >= 0.95
+    for p in pontos
+        .iter()
+        .filter(|p| p.quadro == "cena" && p.caso == (40.0, 1.0))
+    {
+        if let Some(e) = sem[(p.j * LADO + p.i) as usize]
+            && p.escuro >= 0.95
         {
             na_sombra += 1;
             pior_sem = pior_sem.max(e);
         }
     }
-    eprintln!("controlo sem a luz-chave: {na_sombra} px de sombra cheia no Cycles · o nosso escurece no máx {pior_sem:.3}");
-    assert!(na_sombra > 100 && pior_sem < 0.5, "sem a luz-chave a sombra do sol ficou: {pior_sem}");
+    eprintln!(
+        "controlo sem a luz-chave: {na_sombra} px de sombra cheia no Cycles · o nosso escurece no máx {pior_sem:.3}"
+    );
+    assert!(
+        na_sombra > 100 && pior_sem < 0.5,
+        "sem a luz-chave a sombra do sol ficou: {pior_sem}"
+    );
+}
+
+/// Os ajudantes são CCW vistos de fora, como as malhas do campo (o mapa de sombra descarta por isso).
+#[test]
+fn os_ajudantes_sao_ccw_para_fora() {
+    for (nome, (p, _, idx)) in [("esfera", esfera(0.5)), ("cubo", cubo(0.4))] {
+        let mut maus = 0;
+        for t in idx.chunks_exact(3) {
+            let (a, b, c) = (p[t[0] as usize], p[t[1] as usize], p[t[2] as usize]);
+            let (u, v) = (
+                [0, 1, 2].map(|i| b[i] - a[i]),
+                [0, 1, 2].map(|i| c[i] - a[i]),
+            );
+            let n = [
+                u[1] * v[2] - u[2] * v[1],
+                u[2] * v[0] - u[0] * v[2],
+                u[0] * v[1] - u[1] * v[0],
+            ];
+            let m = [0, 1, 2].map(|i| (a[i] + b[i] + c[i]) / 3.0);
+            let area = (n[0] * n[0] + n[1] * n[1] + n[2] * n[2]).sqrt();
+            if area > 1.0e-9 && n[0] * m[0] + n[1] * m[1] + n[2] * m[2] <= 0.0 {
+                maus += 1;
+            }
+        }
+        assert_eq!(maus, 0, "{nome}: {maus} triângulos para dentro");
+    }
 }

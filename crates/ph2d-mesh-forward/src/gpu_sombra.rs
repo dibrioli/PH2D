@@ -139,6 +139,7 @@ fn mapa(
     l: [f32; 3],
     tan: f32,
     fundo_min: f32,
+    vista: Option<&[[f32; 3]]>,
 ) -> ([[f32; 4]; 4], [f32; 2], f32, f32) {
     let r = {
         let c = cruz(l, [0.0, 0.0, 1.0]);
@@ -157,6 +158,24 @@ fn mapa(
             hi[i] = hi[i].max(q[i]);
         }
     }
+    // ⭐ Só o que a câmara VÊ precisa de texels: o recorte é a caixa (em x, y da luz) da parte da vista
+    // onde a cena está. Com a cena toda à vista o recorte contém-na e nada muda.
+    if let Some(v) = vista {
+        let (mut vlo, mut vhi) = ([f32::INFINITY; 2], [f32::NEG_INFINITY; 2]);
+        for p in v {
+            let q = [dot(*p, r), dot(*p, u)];
+            for i in 0..2 {
+                vlo[i] = vlo[i].min(q[i]);
+                vhi[i] = vhi[i].max(q[i]);
+            }
+        }
+        if (0..2).all(|i| vlo[i].max(lo[i]) < vhi[i].min(hi[i])) {
+            for i in 0..2 {
+                lo[i] = lo[i].max(vlo[i]);
+                hi[i] = hi[i].min(vhi[i]);
+            }
+        }
+    }
     let altura = (hi[2] - lo[2]).max(1.0e-3);
     let topo = hi[2] + 0.01 * altura;
     let base = fundo_min.min(lo[2]) - 0.01 * altura;
@@ -171,6 +190,40 @@ fn mapa(
         [-ca / meia, -cb / meia, topo / fundo, 1.0],
     ];
     (m, [ca, cb], meia, fundo)
+}
+
+/// ⭐ **A parte da vista onde a cena está** — os `8` cantos do tronco da câmara entre a profundidade
+/// do ponto da cena mais perto e a do mais longe (`pontos`), ao longo de cada um dos `4` raios dos
+/// cantos do ecrã. Ortográfica e perspectiva pela mesma conta (o raio é uma recta nas duas).
+///
+/// ⭐⭐ É o que as cascatas dão a um modelador: o mapa de sombra enquadra o que se VÊ. Medido (03/10):
+/// com a cena toda à vista o texel (`~1 mm` numa cena de `3`) já é mais fino que o pixel a `1080p`
+/// (`~1,6 mm`), e ao aproximar `16×` um texel do mapa da cena inteira cobria `~10` pixels.
+fn vista_da_camera(cena: &Cena<'_>, pontos: &[[f32; 3]]) -> Vec<[f32; 3]> {
+    let inv = super::quadro_impl::inversa(&cena.camera.view_proj);
+    let ndc = |x: f32, y: f32, z: f32| {
+        let p = [0, 1, 2, 3].map(|i| inv[0][i] * x + inv[1][i] * y + inv[2][i] * z + inv[3][i]);
+        let w = if p[3].abs() > 1.0e-30 { p[3] } else { 1.0e-30 };
+        [p[0] / w, p[1] / w, p[2] / w]
+    };
+    let (o, d) = (cena.camera.olho, cena.camera.dir_vista);
+    let prof = |p: [f32; 3]| (p[0] - o[0]) * d[0] + (p[1] - o[1]) * d[1] + (p[2] - o[2]) * d[2];
+    let (zn, zf) = pontos
+        .iter()
+        .fold((f32::INFINITY, f32::NEG_INFINITY), |(a, b), p| {
+            let s = prof(*p);
+            (a.min(s), b.max(s))
+        });
+    let mut v = Vec::with_capacity(8);
+    for (x, y) in [(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)] {
+        let (pn, pf) = (ndc(x, y, 0.0), ndc(x, y, 1.0));
+        let (sn, sf) = (prof(pn), prof(pf));
+        for z in [zn, zf] {
+            let t = ((z - sn) / (sf - sn)).clamp(0.0, 1.0);
+            v.push([0, 1, 2].map(|i| pn[i] + (pf[i] - pn[i]) * t));
+        }
+    }
+    v
 }
 
 /// ⭐⭐ **Os dois mapas do quadro.**
@@ -201,15 +254,20 @@ pub(super) fn enquadra(
     let chao = cena.chao.unwrap_or(lo_y);
     // A cobertura: de cima, com a margem da caixa de quem chama — o mapa de sempre.
     let tan_ceu = cena.caixa_tan.unwrap_or(0.0);
-    let (ceu_vp, [cx, cz], meia_ceu, fundo_ceu) = mapa(&cantos, [0.0, 1.0, 0.0], tan_ceu, chao);
+    let (ceu_vp, [cx, cz], meia_ceu, fundo_ceu) =
+        mapa(&cantos, [0.0, 1.0, 0.0], tan_ceu, chao, None);
     let vertical = chave.is_none_or(|k| k.l == [0.0, 1.0, 0.0]);
     let Some(k) = chave.filter(|_| !vertical) else {
+        let mut cena_pts = cantos.clone();
+        cena_pts.extend(cantos.iter().map(|p| [p[0], chao, p[2]]));
+        let vis = vista_da_camera(cena, &cena_pts);
+        let (sombra_vp, _, meia, fundo) = mapa(&cantos, [0.0, 1.0, 0.0], tan_ceu, chao, Some(&vis));
         return Enquadra {
             ha_sombra: tem && chave.is_some(),
             ha_chao: tem && cena.caixa_tan.is_some(),
-            sombra_vp: ceu_vp,
-            fundo: fundo_ceu,
-            texel: 2.0 * meia_ceu / crate::SOMBRA_LADO as f32,
+            sombra_vp,
+            fundo,
+            texel: 2.0 * meia / crate::SOMBRA_LADO as f32,
             tan: tan_ceu,
             ceu_vp,
             ceu: [meia_ceu, fundo_ceu, tan_ceu, 1.0],
@@ -249,7 +307,10 @@ pub(super) fn enquadra(
     } else {
         mais_fundo
     };
-    let (sombra_vp, _, meia, fundo) = mapa(&cantos, k.l, k.tan, fundo_min);
+    let mut cena_pts = cantos.clone();
+    cena_pts.extend_from_slice(&no_chao);
+    let vis = vista_da_camera(cena, &cena_pts);
+    let (sombra_vp, _, meia, fundo) = mapa(&cantos, k.l, k.tan, fundo_min, Some(&vis));
     // O chão: a cobertura e as sombras do sol (com a penumbra delas).
     let (mut lx, mut hx) = (cx - meia_ceu, cx + meia_ceu);
     let (mut lz, mut hz) = (cz - meia_ceu, cz + meia_ceu);

@@ -423,15 +423,20 @@ impl Forward {
                 buffers: &so_posicao,
             },
             fragment: None,
-            primitive: prim,
+            // ⭐ O mapa guarda as faces de TRÁS (as que não olham a luz): o raio SAI do sólido aí, e é
+            // essa a distância que dá a penumbra junto do contacto (as malhas do campo são fechadas e
+            // CCW para fora). Na projecção da luz as faces que a olham saem CW, logo `Back` descarta-as.
+            primitive: wgpu::PrimitiveState {
+                cull_mode: Some(wgpu::Face::Back),
+                ..prim
+            },
+            // ⚠️ SEM viés na placa: ele existia contra a «acne» das faces que olham a luz, que este mapa
+            // já não guarda — e o viés por inclinação empurrava a face de trás de uma caixa (rasante
+            // ao sol) para lá do chão, que saía aceso logo atrás dela (medido no oráculo, 03/10).
             depth_stencil: profundidade(
                 true,
                 wgpu::CompareFunction::Less,
-                wgpu::DepthBiasState {
-                    constant: 2,
-                    slope_scale: 2.0,
-                    clamp: 0.0,
-                },
+                wgpu::DepthBiasState::default(),
             ),
             multisample: wgpu::MultisampleState::default(),
             multiview_mask: None,

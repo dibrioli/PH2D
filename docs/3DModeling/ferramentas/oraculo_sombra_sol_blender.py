@@ -22,8 +22,9 @@ import bpy
 from mathutils import Vector
 
 LADO = 384  # pixels do enquadramento quadrado
-CENTRO_X = 0.1  # o centro do enquadramento em x (nosso)
-MEIA = 1.5  # meia-aresta do enquadramento (mundo)
+# Os enquadramentos (nome, centro x, centro z, meia-aresta — nosso): a cena inteira, e DE PERTO a borda
+# da sombra da caixa junto do canto onde ela toca o chão (aí a sombra verdadeira é dura).
+QUADROS = [("cena", 0.1, 0.0, 1.5), ("perto", 0.85, -0.2, 0.05)]
 ESFERA = ((-0.8, 0.6, 0.0), 0.3)  # (centro nosso, raio) — flutua 0,3 acima do chão
 CAIXA = ((0.6, 0.2, 0.0), 0.4)  # (centro nosso, aresta) — pousada
 CASOS = [(40.0, 1.0), (40.0, 4.0), (15.0, 1.0)]  # (altura do sol em graus, raio angular em graus)
@@ -37,7 +38,8 @@ def nosso_para_blender(p):
     return (p[0], -p[2], p[1])
 
 
-def cena(altura, raio):
+def cena(altura, raio, quadro):
+    (_, cx, cz, meia) = quadro
     bpy.ops.wm.read_factory_settings(use_empty=True)
     s = bpy.context.scene
     s.render.engine = "CYCLES"
@@ -83,18 +85,19 @@ def cena(altura, raio):
     bpy.context.active_object.visible_camera = False
     cam_d = bpy.data.cameras.new("cam")
     cam_d.type = "ORTHO"
-    cam_d.ortho_scale = 2.0 * MEIA
+    cam_d.ortho_scale = 2.0 * meia
     cam = bpy.data.objects.new("cam", cam_d)
-    cam.location = (CENTRO_X, 0.0, 10.0)  # olha −Z; o cima da imagem é +Y_b = −z nosso
+    cam.location = (cx, -cz, 10.0)  # olha −Z; o cima da imagem é +Y_b = −z nosso
     s.collection.objects.link(cam)
     s.camera = cam
     return s
 
 
 linhas = []
-for altura, raio in CASOS:
-    s = cena(altura, raio)
-    exr = os.path.join(os.path.dirname(os.path.abspath(saida)), f"_oraculo_sol_{altura}_{raio}.exr")
+for quadro, altura, raio in [(QUADROS[0], h, r) for h, r in CASOS] + [(QUADROS[1], 40.0, 1.0)]:
+    (nome, cx, cz, meia) = quadro
+    s = cena(altura, raio, quadro)
+    exr = os.path.join(os.path.dirname(os.path.abspath(saida)), f"_oraculo_sol_{nome}_{altura}_{raio}.exr")
     s.render.filepath = exr
     bpy.ops.render.render(write_still=True)
     # O passe do Shadow Catcher vem numa camada própria do multilayer; o Blender traz o OIIO.
@@ -121,27 +124,34 @@ for altura, raio in CASOS:
         return 1.0 - float(px[j][i][k[0]])
 
     def mundo(i, j):
-        return (CENTRO_X + ((i + 0.5) / LADO * 2.0 - 1.0) * MEIA, ((j + 0.5) / LADO * 2.0 - 1.0) * MEIA)
+        return (cx + ((i + 0.5) / LADO * 2.0 - 1.0) * meia, cz + ((j + 0.5) / LADO * 2.0 - 1.0) * meia)
 
-    # A linha do meio (z ≈ 0) e a coluna que atravessa a sombra da esfera.
-    j0 = LADO // 2
-    xs = CENTRO_X - MEIA
-    sx = ESFERA[0][0] + (ESFERA[0][1]) / math.tan(math.radians(altura))
-    i0 = min(LADO - 1, max(0, int((sx - xs) / (2.0 * MEIA) * LADO)))
-    for i in range(LADO):
-        x, z = mundo(i, j0)
-        linhas.append(f"{altura},{raio},linha,{i},{j0},{x:.6f},{z:.6f},{escuro(i, j0):.6f}")
-    for j in range(LADO):
-        x, z = mundo(i0, j)
-        linhas.append(f"{altura},{raio},coluna,{i0},{j},{x:.6f},{z:.6f},{escuro(i0, j):.6f}")
+    def guarda(corte, i, j):
+        x, z = mundo(i, j)
+        linhas.append(f"{nome},{altura},{raio},{corte},{i},{j},{x:.6f},{z:.6f},{escuro(i, j):.6f}")
+
+    if nome == "cena":
+        # A linha do meio (z ≈ 0) e a coluna que atravessa a sombra da esfera.
+        j0 = LADO // 2
+        sx = ESFERA[0][0] + (ESFERA[0][1]) / math.tan(math.radians(altura))
+        i0 = min(LADO - 1, max(0, int((sx - (cx - meia)) / (2.0 * meia) * LADO)))
+        for i in range(LADO):
+            guarda("linha", i, j0)
+        for j in range(LADO):
+            guarda("coluna", i0, j)
+    else:
+        # Três colunas que cruzam a borda da sombra, cada vez mais longe do canto.
+        for i0 in (LADO // 4, LADO // 2, 3 * LADO // 4):
+            for j in range(LADO):
+                guarda("coluna", i0, j)
 
 with open(saida, "w") as f:
     f.write(f"# ORÁCULO: Blender {bpy.app.version_string} Cycles CPU, {AMOSTRAS} amostras, sem denoise, "
             f"luz directa só (max_bounces 0), filtro 0,01 px.\n")
     f.write("# Gerado por docs/3DModeling/ferramentas/oraculo_sombra_sol_blender.py — NÃO editar à mão.\n")
-    f.write(f"# CENA lado={LADO} centro_x={CENTRO_X} meia={MEIA} esfera={ESFERA} caixa={CAIXA} "
+    f.write(f"# CENA lado={LADO} quadros={QUADROS} esfera={ESFERA} caixa={CAIXA} "
             f"sol=disco de luz SUN, L=(-cos h, sen h, 0) nosso\n")
     f.write("# escuro = 1 - passe Shadow Catcher (o chão a y=0, objetos invisíveis à câmara).\n")
-    f.write("altura,raio,corte,i,j,x,z,escuro\n")
+    f.write("quadro,altura,raio,corte,i,j,x,z,escuro\n")
     f.write("\n".join(linhas) + "\n")
 print(f"ORACULO: {len(linhas)} linhas em {saida}")

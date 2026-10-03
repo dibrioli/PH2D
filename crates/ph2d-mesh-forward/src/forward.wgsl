@@ -209,6 +209,10 @@ fn prof_no_nivel(k: u32, q: vec2<i32>) -> f32 {
     return textureLoad(mapa_sombra_2, q, 0);
 }
 
+fn textureLoad_centro(k: u32, uv: vec2<f32>, dims: vec2<f32>) -> f32 {
+    return prof_no_nivel(k, vec2<i32>(clamp(uv * dims, vec2<f32>(0.0), dims - vec2<f32>(1.0))));
+}
+
 fn compara_no_nivel(k: u32, uv: vec2<f32>, z: f32) -> f32 {
     if (k == 0u) {
         return textureSampleCompareLevel(mapa_sombra, compara, uv, z);
@@ -246,12 +250,25 @@ fn visibilidade_da_caixa(p: vec3<f32>) -> f32 {
     let dims_s = dims0 / es;
     let busca = clamp(busca0 / es, 1.0, PCSS_MAX);
     let vies_s = quadro.sombra.y * es;
+    // ⭐ O proprio raio do pixel conta primeiro: o bloqueador que esta' sobre ele esta' sempre dentro do
+    // cone, por menor que seja (junto do contacto o cone tem milimetros e nenhuma amostra da janela
+    // cai nele — medido no oraculo, 03/10: o chao saia aceso logo atras da caixa).
+    let centro = textureLoad_centro(ks, uv, dims_s);
     var soma = 0.0;
     var n = 0.0;
+    if (centro < zr - vies_s) {
+        soma = centro;
+        n = 1.0;
+    }
     for (var i = 0u; i < 16u; i = i + 1u) {
         let q = clamp(uv * dims_s + DISCO[i] * busca, vec2<f32>(0.0), dims_s - vec2<f32>(1.0));
         let d = prof_no_nivel(ks, vec2<i32>(q));
-        if (d < zr - vies_s) {
+        // ⭐ So' tapa quem cai DENTRO do cone do disco visto daqui: a distancia lateral ate' ele (no
+        // mundo) <= tan x a distancia ao longo do raio (mais um texel do nivel). ⛔ Medido (03/10,
+        // oraculo DE PERTO): contando todos, o topo da caixa (perto no mapa, longe no raio) puxava a
+        // media e a sombra junto da base vazava luz (0,81 onde o Cycles da' 1).
+        let lateral = length(DISCO[i]) * busca * texel * es;
+        if (d < zr - vies_s && lateral <= tan_p * (zr - d) * fundo + texel * es) {
             soma = soma + d;
             n = n + 1.0;
         }

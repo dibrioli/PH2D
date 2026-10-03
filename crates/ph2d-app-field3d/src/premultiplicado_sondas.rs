@@ -15,21 +15,15 @@
 //! ⇒ a régua que fica é a **invariante do formato**, que não precisa de saber que lei produziu o
 //! pixel.
 //!
-//! # ⚠️ E ela só vale onde NÃO há luz aditiva
-//!
-//! Um pixel pode legitimamente ter `rgb > alfa`: é a luz que a peça devolve ao chão, que **soma sem
-//! tapar**. ⇒ a sonda corre **sem chão** (`ground = None`), e é isso que torna a banda da silhueta
-//! uma população de cobertura pura.
+//! ⚠️ Ela corre o MATCAP na placa (até 03/10 corria o pintor de material do Render traçado, sem
+//! chão): o matcap não tem luz aditiva, logo a banda da silhueta é uma população de cobertura pura.
 
 use super::borda_tests::{banda, camara, quadro};
 use super::device_tests::{LH, LW, cpu_ociosa_pct};
 
 /// A cena do report: as três bolas e a barra escura.
 ///
-/// ⚠️ **`pub(super)` porque o irmão [`super::rebordo_sondas`] a lê** — os dois ficheiros nasceram do
-/// mesmo report e medem a MESMA cena; duas constantes seriam duas respostas à mesma pergunta, e a
-/// que envelhece é a que ninguém está a olhar.
-pub(super) const CENA: u32 = 36;
+const CENA: u32 = 36;
 
 /// ⭐⭐⭐ **QUANTOS CANAIS PASSAM DO ALFA, E POR QUANTO** — a assinatura do rebordo, em bytes.
 #[test]
@@ -46,7 +40,6 @@ fn quantos_canais_passam_do_alfa() {
         &doc,
         &reg,
         &camara(0.0),
-        true,
         crate::gpu_frame::Sonda::default(),
     ) else {
         println!("a placa recusa esta peça — saltado");
@@ -125,7 +118,6 @@ fn desenha_as_duas_leis_sobre_o_mesmo_cinzento() {
         &doc,
         &reg,
         &camara(0.0),
-        true,
         crate::gpu_frame::Sonda::default(),
     ) else {
         println!("a placa recusa esta peça — saltado");
@@ -208,7 +200,6 @@ fn nenhum_canal_da_silhueta_passa_do_alfa() {
         &doc,
         &reg,
         &camara(0.0),
-        true,
         crate::gpu_frame::Sonda::default(),
     ) else {
         println!("a placa recusa esta peça — saltado");

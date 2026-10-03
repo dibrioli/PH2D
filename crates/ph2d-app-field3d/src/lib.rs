@@ -91,7 +91,6 @@ pub mod profile;
 pub mod profile_live;
 /// ADR-0161 W23 — o REGRESSO: um projeto carregado regenera cada escultura do arquivo que a nomeia.
 pub mod reload;
-pub mod render_light;
 pub mod scene;
 pub mod shading;
 /// ADR-0161 W100 — a PALETA de formas: o catálogo grande entra pelo modal genérico da casa.
@@ -159,27 +158,9 @@ mod censo_de_ficheiros;
 #[cfg(test)]
 mod shell_frame_tests;
 
-/// A costura do quadro ASSENTE: o refinamento do hemisfério recebe a cena (`docs/Render3d/08`).
-#[cfg(test)]
-mod render_bounce_seam_tests;
-
 /// ⭐⭐⭐⭐ A ampliação na placa do quadro de movimento (a resolução dinâmica, 2026-10-01).
 #[cfg(test)]
 mod amplia_gpu_tests;
-/// O ricochete NO DISPOSITIVO: que ele chega à imagem, e quanto custa (`docs/Render3d/08` §12).
-#[cfg(test)]
-mod render_bounce_gpu_tests;
-
-/// ⭐ **A segunda metade daquele report** — as sondas na face do cubo, com a fixtura própria delas.
-/// ⛔ Irmão por assunto e por tecto de LOC, nunca isenção.
-#[cfg(test)]
-mod render_bounce_cubo_tests;
-/// ⭐ A régua dos TERRAÇOS na peça que o dono fotografou, com a luz do produto (`08` §13).
-#[cfg(test)]
-mod render_bounce_vaso_tests;
-/// ⭐ A régua do TERMINADOR — o report de 18/09 sobre a linha dura no `Thin Walled: Solid`.
-#[cfg(test)]
-mod subsuperficie_terminador_tests;
 
 /// ⭐⭐⭐ O CENSO dos botões do material — *«qual deles chega a um consumidor, e em que caminho»*
 /// (pergunta do dono, 18/09: *«SS Anisotropy está morto?»*).

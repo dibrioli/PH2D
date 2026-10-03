@@ -117,7 +117,7 @@ fn o_censo_separa_a_sonda_do_produto() {
     for n in [
         "borda_sondas.rs",
         "borda_tests.rs",
-        "device_probes.rs",
+        "premultiplicado_sondas.rs",
         "preview_device_tests.rs",
     ] {
         assert!(

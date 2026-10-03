@@ -12,10 +12,10 @@
 //! `119`–`123 ms`) — *mais lento do que a CPU inteira*. O que ganha é **PINTAR** no dispositivo, e
 //! é isso que este passe faz.
 //!
-//! # ⭐⭐⭐ Porque ele é um passe PRÓPRIO e não um modo do [`crate::paint`]
+//! # ⭐⭐⭐ Porque ele é um passe PRÓPRIO
 //!
-//! Ver a nota do [`crate::matcap_wgsl`]: os **armazéns** (`9` contra o piso de `8` do WebGPU), o
-//! matcap **não ler o campo da peça**, e compilar ser o caro.
+//! Ver a nota do [`crate::matcap_wgsl`]: os **armazéns** (cabe no piso de `8` do WebGPU), o matcap
+//! **não ler o campo da peça**, e compilar ser o caro.
 //!
 //! # ⚠️ A FOTOGRAFIA sobe UMA VEZ
 //!
@@ -48,8 +48,7 @@ pub struct MatcapSetup<'a> {
     pub view: u32,
     /// Os bytes EXACTOS que um pixel de fundo recebe — copiados, nunca reconvertidos.
     pub background: [u8; 4],
-    /// ⭐⭐⭐⭐ **O tamanho em que a imagem SAI** — o irmão do `PaintSetup::entrega` do pintor de
-    /// material: com a resolução dinâmica o quadro é traçado mais pequeno e sobe ao tamanho cheio
+    /// ⭐⭐⭐⭐ **O tamanho em que a imagem SAI**: com a resolução dinâmica o quadro é traçado mais pequeno e sobe ao tamanho cheio
     /// NA PLACA ([`crate::amplia`]), não esticado em bilinear no ecrã. `None` = o tamanho traçado.
     pub entrega: Option<(u32, u32)>,
 }
@@ -65,9 +64,9 @@ pub(crate) fn entradas() -> [wgpu::BindGroupLayoutEntry; 3] {
 /// ⭐⭐⭐⭐ **QUANTOS ARMAZÉNS ESTE PASSE LIGA — CONTADOS** dos grupos que ele de facto liga: os do
 /// grupo `0` da marcha mais os deste.
 ///
-/// ⛔⛔ **Ele é uma FUNÇÃO e não um `const`, e a razão é um defeito medido:** o irmão
-/// ([`crate::paint::armazens`]) era um literal que esteve **`3` abaixo** do real por três waves, e
-/// o guarda que ele alimenta passou a aceitar placas onde a `wgpu` recusa o layout a meio de um
+/// ⛔⛔ **Ele é uma FUNÇÃO e não um `const`, e a razão é um defeito medido:** o irmão do pintor de
+/// material (retirado em 03/10) era um literal que esteve **`3` abaixo** do real por três waves, e
+/// o guarda que ele alimentava passou a aceitar placas onde a `wgpu` recusa o layout a meio de um
 /// quadro. ⇒ *«número que soma se CONTA, nunca se escolhe»*.
 ///
 /// ⚠️⚠️ **E é por isso que a lei dele é um GATE e não um `const _: () = assert!`:** uma asserção de
@@ -136,15 +135,14 @@ fn arruma(mc: &MatcapSetup<'_>, n_bordas: u32) -> Vec<u8> {
 
 /// ⭐⭐⭐ **A imagem, pintada.** RGBA8 pré-multiplicado em ecrã, pronto para a tela.
 // O dispositivo, a fila, o cache, a fotografia, os alvos, a tela e a contagem de bordas — sete
-// coisas independentes, e uma struct só as renomearia (a mesma nota que o irmão `paint::pinta`
-// carrega).
+// coisas independentes, e uma struct só as renomearia.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn pinta(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     cache: &mut crate::FieldPipelines,
     mc: &MatcapSetup<'_>,
-    alvos: &crate::paint::Alvos<'_>,
+    alvos: &crate::trace::Alvos<'_>,
     width: u32,
     height: u32,
     bordas: u64,
@@ -211,7 +209,6 @@ pub(crate) fn pinta(
         alvos.setup,
         alvos.k,
         alvos.centro,
-        alvos.luz,
         alvos.conta,
         alvos.borda,
         alvos.grades,

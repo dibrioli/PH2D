@@ -553,7 +553,7 @@ fn no_material_a_gesture_can_produce_returns_negative_light() {
         let s = crate::materials::surface_of(m);
         let luz = {
             let d = s.direct(n, v, [0.4, 0.6, 0.692_820_3], [3.0; 3]);
-            let i = s.indirect(n, v, &crate::render_light::StudioSky);
+            let i = s.indirect(n, v, &crate::studio::StudioSky);
             let e = s.emission(n, v);
             [0, 1, 2].map(|c| d[c] + i[c] + e[c])
         };

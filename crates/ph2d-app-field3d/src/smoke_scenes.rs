@@ -564,6 +564,9 @@ pub fn scene(n: u32) -> FieldDoc {
     doc.expect("as cenas do smoke são documentos válidos")
 }
 
+#[cfg(test)]
+#[path = "smoke_scenes_materiais_tests.rs"]
+mod materiais_tests;
 /// ⭐⭐ **Os gates do roteador** — nenhum existia até à W97. Ver
 /// [`field3d_smoke_scene_tests`](self::scene_tests).
 #[cfg(test)]

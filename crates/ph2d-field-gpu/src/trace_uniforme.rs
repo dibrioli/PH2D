@@ -4,9 +4,7 @@
 //! não há decisão nenhuma, só a tradução de um pedido para bytes. *O sítio onde a ORDEM de uma
 //! struct de shader é escrita à mão merece um ficheiro que se possa ler ao lado do WGSL.*
 //!
-//! ⛔⛔ **A ordem e o enchimento são o contrato**: um `vec3` alinha a `16 B`, e um `array<vec4, N>`
-//! de uniforme tem tamanho fixo — escrever menos do que ele deixa a cauda com o lixo do que lá
-//! estivesse.
+//! ⛔⛔ **A ordem e o enchimento são o contrato**: um `vec3` alinha a `16 B`.
 
 use crate::trace::MarchSetup;
 
@@ -22,20 +20,8 @@ pub(super) fn uniforme_do_pedido(
     longe: u32,
 ) -> wgpu::Buffer {
     use wgpu::util::DeviceExt;
-    // O uniforme, campo a campo — a mesma ordem da `struct Setup`. ⚠️ Um `vec3` alinha a 16 B.
-    let mut u: Vec<u8> = Vec::with_capacity(256);
-    for v in [
-        width,
-        height,
-        setup.budget,
-        setup.ao_rays,
-        setup.n_lamps,
-        // ⭐ **Há chão?** — a altura vai no `f32` do grupo de baixo. Ver `MarchSetup::ground`.
-        u32::from(setup.ground.is_some()),
-        // ⭐ **Há borda mole?** — o raio dela vai no `vec3` do grupo de baixo. Ver `MarchSetup::mole`.
-        u32::from(setup.mole.is_some()),
-        longe,
-    ] {
+    let mut u: Vec<u8> = Vec::with_capacity(112);
+    for v in [width, height, setup.budget, longe] {
         u.extend_from_slice(&v.to_le_bytes());
     }
     for f in [
@@ -47,41 +33,21 @@ pub(super) fn uniforme_do_pedido(
         setup.normal_eps,
         setup.step,
         setup.t_max,
-        setup.ball_radius,
-        setup.ao_reach,
-        setup.edge_cos,
-        setup.ground.unwrap_or(0.0),
     ] {
         u.extend_from_slice(&f.to_le_bytes());
     }
-    // ⚠️ O quarto `u32` de cada `vec3` é enchimento — menos o do `ball_center`, onde mora o
-    // `ceu_passo` (um `u32` a seguir a um `vec3` ocupa os bytes que sobram dele).
+    // Cada `vec3` leva a cauda que mora no enchimento dele (o `edge_cos` atrás do `alvo`).
     for (v, cauda) in [
-        (setup.target, 0),
-        (setup.right, 0),
-        (setup.up, 0),
-        (setup.fwd, 0),
-        (setup.ball_center, setup.ceu_passo),
-        // ⚠️ **Sem borda mole ele vai a ZERO e ninguém o lê** — o `s.mole` é que decide, e um raio
-        // aqui sem a bandeira não acorda passagem nenhuma.
-        //
-        // ⭐⭐⭐⭐ E o `ceu_tempo` mora no enchimento do `mole_raio` — a mesma arrumação do `ceu_passo`.
-        (setup.mole.unwrap_or([0.0; 3]), setup.ceu_tempo.codigo()),
+        (setup.target, setup.edge_cos),
+        (setup.right, 0.0),
+        (setup.up, 0.0),
+        (setup.fwd, 0.0),
     ] {
         for f in v {
             u.extend_from_slice(&f.to_le_bytes());
         }
         u.extend_from_slice(&cauda.to_le_bytes());
     }
-    // ⚠️ **O array vai INTEIRO**, e não só as válidas: um `array<vec4, 8>` de uniforme tem tamanho
-    // fixo, e escrever menos deixaria a cauda com o lixo do que lá estivesse.
-    for v in setup.lamps {
-        for f in v {
-            u.extend_from_slice(&f.to_le_bytes());
-        }
-        u.extend_from_slice(&0f32.to_le_bytes());
-    }
-
     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("setup"),
         contents: &u,

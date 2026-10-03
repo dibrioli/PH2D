@@ -1,7 +1,7 @@
 //! ⭐⭐⭐ **O BRILHO na placa do celular** — a cadeia do `ph2d_bloom::halo` em passes de DESENHO.
 //!
-//! O brilho do Render traçado (`ph2d-field-gpu/src/brilho.rs`) é compute + armazenamento, que o
-//! WebGL2 não tem; o do Motion (`ph2d-render/src/shaders/bloom.wgsl`) desenha, mas amostra pelo
+//! O brilho do Render traçado (o `ph2d-field-gpu/src/brilho.rs`, retirado em 03/10) era compute +
+//! armazenamento, que o WebGL2 não tem; o do Motion (`ph2d-render/src/shaders/bloom.wgsl`) desenha, mas amostra pelo
 //! *sampler* da placa e compõe ANTES do olhar. Daqui sai a MESMA lei do modelador — a
 //! `ph2d_bloom::wgsl`, com a bilinear escrita à mão — e a composição dele, depois do olhar.
 //!

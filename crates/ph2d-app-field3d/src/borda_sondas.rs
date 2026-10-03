@@ -17,17 +17,14 @@
 //! nota* (`CLAUDE.md` §0.0): o brilho acabou de atravessar para o dispositivo por essa mesma razão,
 //! e esta passagem é a vizinha dele.
 //!
-//! # ⛔⛔ DUAS sondas de preço, e só UMA decide
+//! # ⚠️ A sonda de preço
 //!
-//! - [`quanto_custa_a_borda_no_pintor`] é a que decide: ela corre o **caminho do produto**, onde só
-//!   a imagem volta (`8,3 MB`), e isola a passagem desligando os outros dois passageiros da bandeira
-//!   pela [`crate::gpu_frame::Sonda`].
-//! - [`quanto_custa_a_borda_no_dispositivo`] mede a marcha **sozinha** pelo
-//!   [`crate::gpu_frame::march`]. ⚠️ Ali o G-buffer inteiro (`49,8 MB`) atravessa o barramento **e a
-//!   lista de bordas com ele** — uma travessia que o pintor não paga —, e a diferença **afoga-se no
-//!   ruído** (`0,93×`–`1,03×`, com `±6 ms` de dispersão). *Ela fica pela coluna que a carga da
-//!   máquina não alcança: a OCUPAÇÃO* — quantos pixels são re-amostrados é uma contagem, e ela é a
-//!   mesma numa máquina a `load 50` e numa parada.
+//! [`quanto_custa_a_borda_no_dispositivo`] mede a marcha **sozinha** pelo
+//! [`crate::gpu_frame::march`]. ⚠️ Ali o G-buffer inteiro atravessa o barramento **e a lista de
+//! bordas com ele**, e a diferença **afoga-se no ruído** (`0,93×`–`1,03×`, com `±6 ms` de
+//! dispersão). *Ela fica pela coluna que a carga da máquina não alcança: a OCUPAÇÃO* — quantos
+//! pixels são re-amostrados é uma contagem. (A sonda que decidia, no pintor de material do Render
+//! traçado, saiu com ele em 03/10.)
 
 use super::borda_tests::{banda, camara, luz, parcial, quadro};
 use super::device_tests::{LH, LW, contexto};
@@ -81,9 +78,9 @@ fn a_regua_do_fervilhar() {
             ("mexe agora", true, false, cheia),
             ("assente", false, true, cheia),
         ];
-        for (nome, movimento, assente, sonda) in arranjos {
+        for (nome, movimento, _assente, sonda) in arranjos {
             let doc = crate::preview::coarse_doc(&real, movimento).unwrap_or_else(|| real.clone());
-            let Some(p0) = quadro(t, &doc, &reg, &camara(0.0), assente, sonda) else {
+            let Some(p0) = quadro(t, &doc, &reg, &camara(0.0), sonda) else {
                 println!("  {n:>4} · {nome:<14} · (a placa recusa)");
                 continue;
             };
@@ -94,7 +91,7 @@ fn a_regua_do_fervilhar() {
             }
             let cobertura = parcial(&p0.rgba, &b);
             for d in [0.0005f32, 0.002] {
-                let Some(p1) = quadro(t, &doc, &reg, &camara(d), assente, sonda) else {
+                let Some(p1) = quadro(t, &doc, &reg, &camara(d), sonda) else {
                     continue;
                 };
                 let mut saltos: Vec<f32> = b
@@ -139,11 +136,9 @@ fn quanto_custa_a_borda_no_dispositivo() {
         let reg = crate::smoke::sampled_registry();
         let doc = crate::preview::coarse_doc(&real, true).unwrap_or_else(|| real.clone());
         let cam = camara(0.0);
-        let luzes = [crate::gpu_frame::tests_lampada(&cam).world];
-        let marcha = |antialias: bool| {
-            crate::gpu_frame::march(t, &doc, &reg, &cam, &luzes, None, LW, LH, antialias)
-        };
-        let Some((g, _)) = marcha(true) else {
+        let marcha =
+            |antialias: bool| crate::gpu_frame::march(t, &doc, &reg, &cam, LW, LH, antialias);
+        let Some(g) = marcha(true) else {
             println!("  {n:>4} · (a placa recusa)");
             continue;
         };
@@ -160,7 +155,7 @@ fn quanto_custa_a_borda_no_dispositivo() {
                 let r = marcha(antialias);
                 #[allow(clippy::cast_possible_truncation)]
                 let ms = t0.elapsed().as_secs_f32() * 1e3;
-                std::hint::black_box(r.map(|(g, _)| g.edges.len()));
+                std::hint::black_box(r.map(|g| g.edges.len()));
                 if antialias {
                     com = com.min(ms);
                 } else {
@@ -172,82 +167,6 @@ fn quanto_custa_a_borda_no_dispositivo() {
             "  {n:>4} · {bordas:>7} · {ocupacao:>5.2} % · {sem:>9.2} · {com:>9.2} · {:>+6.2} · {:>5.2}×",
             com - sem,
             com / sem
-        );
-    }
-}
-
-/// ⭐⭐⭐ **O PREÇO NO CAMINHO DO PRODUTO** — o PINTOR, a `1920×1080`, com os outros dois passageiros
-/// da bandeira desligados pela [`crate::gpu_frame::Sonda`].
-///
-/// ⚠️ **É esta a coluna que decide a wave**, e não a do [`quanto_custa_a_borda_no_dispositivo`]: ali
-/// o G-buffer inteiro (`49,8 MB`) atravessa o barramento e afoga a diferença no ruído; aqui só a
-/// imagem volta (`8,3 MB`), que é o que o produto faz.
-///
-/// | coluna | o quadro |
-/// |---|---|
-/// | `hoje` | o de MOVIMENTO como ele ship: sem borda, sem ricochete, sem campo do chão |
-/// | `+borda` | o mesmo, **só** com a segunda passagem da silhueta ligada |
-/// | `assente` | o de parar: tudo ligado — o que o artista já paga ao largar o rato |
-#[test]
-#[ignore = "medição — precisa de GPU"]
-fn quanto_custa_a_borda_no_pintor() {
-    let Some(t) = crate::gpu_frame::shared() else {
-        println!("sem adaptador — saltado");
-        return;
-    };
-    // ⚠️ **`bordas: true` com os outros dois em baixo** — é assim que a segunda passagem se mede
-    // SOZINHA, que foi a pergunta da `W7c`.
-    let so_a_borda = crate::gpu_frame::Sonda {
-        chao_recebe_cor: false,
-        ricochete: false,
-        ..crate::gpu_frame::Sonda::default()
-    };
-    println!(
-        "\n  cena · hoje · +borda · delta · razão · assente · {}",
-        contexto()
-    );
-    for &n in CENAS {
-        let real = crate::smoke::scene(n);
-        let reg = crate::smoke::sampled_registry();
-        let doc = crate::preview::coarse_doc(&real, true).unwrap_or_else(|| real.clone());
-        let cam = camara(0.0);
-        let arranjos = [
-            (
-                false,
-                crate::gpu_frame::Sonda {
-                    bordas: false,
-                    ..crate::gpu_frame::Sonda::default()
-                },
-            ),
-            (false, so_a_borda),
-            (true, crate::gpu_frame::Sonda::default()),
-        ];
-        // Aquecimento fora da conta: a primeira corrida de cada arranjo compila o pipeline dele.
-        for (assente, sonda) in arranjos {
-            if quadro(t, &doc, &reg, &cam, assente, sonda).is_none() {
-                println!("  {n:>4} · (a placa recusa)");
-                return;
-            }
-        }
-        let mut ms = [f32::INFINITY; 3];
-        // ⚠️ **INTERCALADO** — os três arranjos em cada repetição, e não três séries seguidas.
-        for _ in 0..5 {
-            for (k, (assente, sonda)) in arranjos.into_iter().enumerate() {
-                let t0 = std::time::Instant::now();
-                let p = quadro(t, &doc, &reg, &cam, assente, sonda);
-                #[allow(clippy::cast_possible_truncation)]
-                let dt = t0.elapsed().as_secs_f32() * 1e3;
-                std::hint::black_box(p.map(|p| p.edges));
-                ms[k] = ms[k].min(dt);
-            }
-        }
-        println!(
-            "  {n:>4} · {:>7.2} · {:>7.2} · {:>+6.2} · {:>5.2}× · {:>7.2}",
-            ms[0],
-            ms[1],
-            ms[1] - ms[0],
-            ms[1] / ms[0],
-            ms[2]
         );
     }
 }

@@ -1,8 +1,8 @@
 //! ⭐⭐⭐ **A LEI DO LÓBULO, contra o ORÁCULO** — a forma fechada do [`super::lobe_shrink`] medida
 //! contra a quadratura que a define.
 //!
-//! ⚠️ **Este ficheiro VIAJOU com a função** (de `ph2d-app-field3d/src/render_light_lobe_tests.rs`), e
-//! o corte é o que a HOWTO manda: o que fica lá é o que exercita o **CÉU** daquele módulo (a lei de
+//! ⚠️ **Este ficheiro VIAJOU com a função** (de `ph2d-app-field3d/src/render_light_lobe_tests.rs`,
+//! retirado com o Render traçado em 03/10), e o corte é o que a HOWTO manda: o que fica lá é o que exercita o **CÉU** daquele módulo (a lei de
 //! ler a rampa na direcção média, que é de lá); o que veio é o que exercita o **COEFICIENTE**, que é
 //! de cá.
 

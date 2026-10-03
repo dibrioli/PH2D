@@ -105,39 +105,24 @@ pub(super) fn anel(n: u32) -> ph2d_field::Profile {
     ph2d_field::Profile::new(vec![pts], ph2d_field::FillRule::NonZero, 1.0e-4).expect("o anel")
 }
 
-/// ⭐⭐⭐ **O QUADRO INTEIRO NA CPU** — o que o dispositivo de facto SUBSTITUI.
+/// ⭐⭐⭐ **O QUADRO INTEIRO NA CPU** — o que o dispositivo de facto SUBSTITUI: o MATCAP traçado e
+/// pintado na CPU ([`crate::smoke_draw_thread`], o recuo sem placa), com a fotografia lisa das réguas.
 ///
-/// ⛔⛔ **A 1.ª redacção destas sondas media só o `trace` do lado da CPU** e o quadro **PINTADO** do
-/// lado do dispositivo. ⇒ pedia-se à placa o G-buffer **mais** a sombra, o sombreamento e as bordas,
-/// e à CPU só o G-buffer — *a travessia saía cedo demais, e o tecto derivado dela era conservador
-/// pelo motivo errado*.
-///
-/// O quadro de CPU do produto são **três** passos ([`crate::smoke_draw_thread`]): traçar, a sombra
-/// directa, e pintar. É esse que se mede aqui. ⚠️ Do lado do dispositivo a sombra sai da MESMA
-/// marcha, e é por isso que ela não aparece lá como um passo separado.
+/// ⚠️ Até 03/10 este era o quadro do Render traçado (traçar, a sombra directa e pintar), que saiu.
 pub(super) fn quadro_na_cpu(
     doc: &ph2d_field::FieldDoc,
     reg: &ph2d_field_eval::hybrid::Registry,
     cam: &ph2d_field_render::Orbit,
-    luz: &[ph2d_field_render::PointLamp],
-    surfaces: &ph2d_field_render::Surfaces<'_>,
-    olhar: ph2d_view_transform::Look,
 ) -> usize {
-    let mundos: Vec<[f32; 3]> = luz.iter().map(|l| l.world).collect();
     let g = ph2d_field_render::trace(doc, reg, cam, LW, LH);
-    let sh = ph2d_field_render::shadow_pass(doc, reg, cam, &g, &mundos);
-    let sem_ecra: [ph2d_field_render::Lamp; 0] = [];
-    ph2d_field_render::shade_render(
+    let foto = [0.8_f32; 3];
+    ph2d_field_render::shade_with(
         &g,
-        cam,
-        surfaces,
-        &ph2d_field_render::Lighting {
-            lamps: &sem_ecra,
-            points: luz,
-            sky: &crate::render_light::StudioSky,
-            shadows: Some(&sh),
+        &ph2d_field_render::Matcap {
+            side: 1,
+            rgb_linear: &foto,
         },
-        &ph2d_field_render::Presentation::of(olhar),
+        ph2d_view_transform::Look::default(),
         FUNDO,
     )
     .len()
@@ -190,9 +175,12 @@ fn com_o_dispositivo_a_maioria_das_cenas_e_nitida_em_movimento() {
         println!("sem adaptador — saltado");
         return;
     };
-    let materiais = [ph2d_material::OpenPbr::default().prepare()];
-    let olhar = ph2d_view_transform::Look::default();
-    const BG: [u8; 4] = [0, 0, 0, 0];
+    // ⚠️ **`bordas: false`** — é o quadro de MOVIMENTO, e a lei da W73 manda-o saltar a borda
+    // re-amostrada.
+    let mexer = crate::gpu_frame::Sonda {
+        bordas: false,
+        ..crate::gpu_frame::Sonda::default()
+    };
 
     // ⚠️⚠️ **ESTE GATE DIVIDE UM RELÓGIO POR UM ORÇAMENTO, logo é da família das flakes de carga**
     // (`CLAUDE.md` §5.0). Medido 2026-09-15: com a CPU a **`0 %`** ociosa ele lê `2 de 18` e com a
@@ -218,11 +206,6 @@ fn com_o_dispositivo_a_maioria_das_cenas_e_nitida_em_movimento() {
         let doc = crate::smoke::scene(n);
         let reg = crate::smoke::sampled_registry();
         let cam = ph2d_field_render::Orbit::default();
-        let luz = [crate::gpu_frame::tests_lampada(&cam)];
-        let surfaces = ph2d_field_render::Surfaces {
-            all: &materiais,
-            owners: None,
-        };
         // ⚠️ **`antialias = false`** — é o quadro de MOVIMENTO, e a lei da W73 manda-o saltar a
         // borda re-amostrada. Medir o assente aqui daria um número que este laço nunca vê.
         // ⚠️ **COM o tecto** — esta tabela mede o que o PRODUTO faz, e o produto tem a cerca.
@@ -231,20 +214,7 @@ fn com_o_dispositivo_a_maioria_das_cenas_e_nitida_em_movimento() {
         // `continue` e o denominador do gate encolhia em silêncio: a cena `5` saiu da tabela no dia
         // em que o tecto desceu, e a linha *«13 de 17»* leu-se como se a peça tivesse melhorado.
         // *Uma população que muda por baixo de uma razão é a catraca que vira licença.*
-        let Some(_) = crate::gpu_frame::paint(
-            t,
-            &doc,
-            &reg,
-            &cam,
-            &luz,
-            &surfaces,
-            &ph2d_field_render::Presentation::of(olhar),
-            BG,
-            None,
-            LW,
-            LH,
-            false,
-        ) else {
+        let Some(_) = crate::gpu_frame::matcap_liso(t, &doc, &reg, &cam, LW, LH, mexer) else {
             let guardados = ph2d_field_eval::device::DeviceField::new(&doc, &reg)
                 .and_then(|c| c.tape_shape())
                 .map_or(0, |s| s.guardados);
@@ -268,21 +238,8 @@ fn com_o_dispositivo_a_maioria_das_cenas_e_nitida_em_movimento() {
         let mut tempos = Vec::with_capacity(QUADROS_MEDIDOS);
         for _ in 0..QUADROS_MEDIDOS {
             let t0 = std::time::Instant::now();
-            let _ = crate::gpu_frame::paint(
-                t,
-                &doc,
-                &reg,
-                &cam,
-                &luz,
-                &surfaces,
-                &ph2d_field_render::Presentation::of(olhar),
-                BG,
-                None,
-                LW,
-                LH,
-                false,
-            )
-            .expect("o pintor");
+            let _ = crate::gpu_frame::matcap_liso(t, &doc, &reg, &cam, LW, LH, mexer)
+                .expect("o matcap");
             #[allow(clippy::cast_possible_truncation)]
             tempos.push(t0.elapsed().as_secs_f32() * 1e3);
         }
@@ -477,13 +434,6 @@ fn na_faixa_do_produto_a_placa_ganha_com_margem() {
     };
     let reg = ph2d_field_eval::hybrid::Registry::new();
     let cam = ph2d_field_render::Orbit::default();
-    let luz = [crate::gpu_frame::tests_lampada(&cam)];
-    let materiais = [ph2d_material::OpenPbr::default().prepare()];
-    let surfaces = ph2d_field_render::Surfaces {
-        all: &materiais,
-        owners: None,
-    };
-    let olhar = ph2d_view_transform::Look::default();
 
     println!("\n  arestas · placa · CPU · razão · {}", contexto());
     let mut pior = f32::INFINITY;
@@ -503,40 +453,12 @@ fn na_faixa_do_produto_a_placa_ganha_com_margem() {
         .expect("a peça extrudada");
         let sonda = crate::gpu_frame::Sonda::default();
         // Aquecimento fora da conta: a primeira compila o pipeline.
-        let _ = crate::gpu_frame::paint_com(
-            t,
-            &doc,
-            &reg,
-            &cam,
-            &luz,
-            &surfaces,
-            &ph2d_field_render::Presentation::of(olhar),
-            FUNDO,
-            None,
-            LW,
-            LH,
-            false,
-            sonda,
-        );
+        let _ = crate::gpu_frame::matcap_liso(t, &doc, &reg, &cam, LW, LH, sonda);
         let mut v: Vec<f32> = Vec::new();
         for _ in 0..3 {
             let t0 = std::time::Instant::now();
-            let p = crate::gpu_frame::paint_com(
-                t,
-                &doc,
-                &reg,
-                &cam,
-                &luz,
-                &surfaces,
-                &ph2d_field_render::Presentation::of(olhar),
-                FUNDO,
-                None,
-                LW,
-                LH,
-                false,
-                sonda,
-            )
-            .expect("o pintor");
+            let p = crate::gpu_frame::matcap_liso(t, &doc, &reg, &cam, LW, LH, sonda)
+                .expect("o matcap");
             std::hint::black_box(p.rgba.len());
             #[allow(clippy::cast_possible_truncation)]
             v.push(t0.elapsed().as_secs_f32() * 1e3);
@@ -545,7 +467,7 @@ fn na_faixa_do_produto_a_placa_ganha_com_margem() {
         let mut c: Vec<f32> = Vec::new();
         for _ in 0..2 {
             let t0 = std::time::Instant::now();
-            std::hint::black_box(quadro_na_cpu(&doc, &reg, &cam, &luz, &surfaces, olhar));
+            std::hint::black_box(quadro_na_cpu(&doc, &reg, &cam));
             #[allow(clippy::cast_possible_truncation)]
             c.push(t0.elapsed().as_secs_f32() * 1e3);
         }
@@ -554,8 +476,8 @@ fn na_faixa_do_produto_a_placa_ganha_com_margem() {
         println!("  {n:>7} · {:>8.2} · {:>8.2} · {razao:>5.2}×", v[0], c[0]);
         pior = pior.min(razao);
     }
-    // ⭐ **O CONTROLO primeiro:** sem ele, um `paint_com` que devolvesse sempre a mesma imagem
-    // vazia em microssegundos passaria com razões enormes.
+    // ⭐ **O CONTROLO primeiro:** sem ele, um quadro que devolvesse sempre a mesma imagem vazia em
+    // microssegundos passaria com razões enormes.
     assert!(pior.is_finite(), "a sonda não mediu nada");
     assert!(
         pior > 2.0,

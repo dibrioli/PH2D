@@ -56,15 +56,6 @@ pub fn supports(doc: &FieldDoc, reg: &ph2d_field_eval::hybrid::Registry) -> bool
     })
 }
 
-/// ⭐⭐⭐⭐ **A LUZ MARCHA NUM KERNEL PRÓPRIO** — o `centro_so` e depois o `luz_so`, em vez do
-/// `centro_e_luz` (`docs/Render3d/03` §W9). `PH2D_FIELD_LUZ_SEPARADA=0` volta ao kernel único, para
-/// bissectar.
-#[must_use]
-pub fn luz_separada() -> bool {
-    static V: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *V.get_or_init(|| std::env::var("PH2D_FIELD_LUZ_SEPARADA").map_or(true, |v| v.trim() != "0"))
-}
-
 // ⛔⛔⛔ **AQUI VIVIA UM TECTO, E ELE SAIU PORQUE A GRANDEZA DELE NÃO ORDENA OS RESULTADOS**
 // (2026-09-15). `MAX_VIVOS = 743` → `358` → `MAX_GUARDADOS = 3 463` → `13 789` → **nada**.
 //
@@ -104,12 +95,6 @@ pub fn luz_separada() -> bool {
 
 /// ⭐⭐⭐⭐ A ampliação na placa — a resolução dinâmica do quadro de movimento.
 pub mod amplia;
-/// ⭐⭐⭐ **O BRILHO no dispositivo** — ver o módulo.
-pub mod brilho;
-/// ⭐⭐⭐⭐ **A oclusão no tempo** — o histórico do céu guardado na placa entre quadros.
-pub mod ceu_tempo;
-mod ceu_tempo_wgsl;
-mod ceu_tempo_wgsl_heranca;
 /// ⏱️ O relógio por passe na placa — só as sondas o ligam. Ver [`cronometro`].
 pub mod cronometro;
 /// ⭐ **Os bytes que o compositor lê, em WGSL** — ver o módulo.
@@ -124,31 +109,11 @@ pub mod matcap;
 mod matcap_wgsl;
 pub mod material_parity;
 pub mod owners_parity;
-pub mod paint;
-/// ⭐ **O corpo do shader do pintor** — irmão por responsabilidade do [`paint`]: ali monta-se, aqui
-/// compila-se. ⛔ Corte por tecto de LOC, nunca isenção (`CLAUDE.md` §5.0).
-///
-/// ⚠️ **Ele é `pub` por UMA coisa só: a [`paint_wgsl::CURVATURA`]**, que tem um segundo leitor — o
-/// instrumento que mede a curvatura nos dois motores. ⛔ O resto do módulo continua `pub(crate)`
-/// (`PINTOR` e `PINTOR_SONDAS` são marcas por preencher, e um texto com `{…}` lá fora é uma forma
-/// de alguém esquecer uma). *Uma lei com dois leitores exporta-se; um corpo de shader por montar,
-/// não.*
-/// ⭐ **Os bytes do uniforme do pintor** — ver o módulo.
-mod paint_uniforme;
-pub mod paint_wgsl;
-/// ⭐ **O chão que só recebe, em WGSL** — o factor da sombra e a luz que a peça lhe devolve.
-mod paint_wgsl_chao;
-/// ⭐ **A segunda metade do shader do pintor** — o hemisfério que ele integra.
-mod paint_wgsl_mole;
-mod paint_wgsl_sondas;
 pub mod parity;
 pub mod probe;
 pub mod sculpt;
-/// ⭐ **As sondas do ricochete guardadas na placa entre quadros** — ver o módulo.
-pub mod sondas_na_placa;
 pub mod trace;
 mod trace_grupo;
-mod trace_lampadas;
 mod trace_leitura;
 mod trace_to_cpu;
 mod trace_uniforme;
@@ -174,20 +139,8 @@ pub struct FieldPipelines {
     foto: Option<FotoNaPlaca>,
     /// Quantas vezes uma fotografia subiu — ver [`FieldPipelines::matcaps_enviados`].
     envios_foto: usize,
-    /// ⭐⭐⭐⭐ **As sondas do ricochete que já estão na placa** — ver [`sondas_na_placa`].
-    sondas: Option<sondas_na_placa::SondasNaPlaca>,
-    /// Quantas vezes as sondas foram assadas — ver [`FieldPipelines::sondas_assadas`].
-    assaduras_de_sondas: usize,
-    /// ⏱️ Em CÉLULAS da grade, quanto as sondas guardadas podem estar deslocadas para servirem a um
-    /// quadro que não pode esperar — ver [`FieldPipelines::sondas_a_mexer`]. Nasce no
-    /// [`sondas_na_placa::TOLERANCIA_EM_CELULAS`]; só uma sonda o muda.
-    pub tolerancia_das_sondas: f32,
     /// ⏱️ Quantas RODADAS de compilação houve — ver [`FieldPipelines::rodadas_de_compilacao`].
     rodadas: usize,
-    /// ⭐⭐⭐⭐ **O histórico da oclusão** — ver [`ceu_tempo`].
-    ceu_tempo: Option<ceu_tempo::Tabela>,
-    /// Quantas vezes ele recomeçou do zero — ver [`FieldPipelines::ceu_tempo_reinicios`].
-    ceu_tempo_reinicios: usize,
     /// ⏱️ **O relógio por passe** — `None` fora das sondas. Ver [`cronometro`].
     pub(crate) cronometro: Option<cronometro::Cronometro>,
     /// ⏱️⭐⭐⭐ **Quanto tempo este cache já gastou a COMPILAR** — ver [`FieldPipelines::compilado_ms`].
@@ -236,12 +189,7 @@ impl FieldPipelines {
             envios: 0,
             foto: None,
             envios_foto: 0,
-            sondas: None,
-            assaduras_de_sondas: 0,
-            tolerancia_das_sondas: sondas_na_placa::TOLERANCIA_EM_CELULAS,
             rodadas: 0,
-            ceu_tempo: None,
-            ceu_tempo_reinicios: 0,
             cronometro: None,
             compilado_ms: 0.0,
         }
@@ -456,7 +404,7 @@ impl FieldPipelines {
     }
 
     /// ⭐⭐⭐⭐ **O lote com um LAYOUT POR PEDIDO** — os kernels de PASSES diferentes do mesmo quadro
-    /// (a marcha, o céu no tempo, as sondas do pintor) compilam-se juntos.
+    /// (a marcha e as bordas) compilam-se juntos.
     ///
     /// ⛔⛔ **Ele existe por uma medição** (report do dono, 2026-10-01: *«melhor mas ainda com delay
     /// de 1 ou 2 segundos»*): na cena do dono (quatro nós de toro) uma caixa nova compilava a marcha

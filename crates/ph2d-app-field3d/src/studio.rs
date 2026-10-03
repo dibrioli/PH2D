@@ -427,11 +427,23 @@ impl ph2d_material::Environment for Studio<'_> {
     }
 }
 
+/// **O céu de estúdio como `Environment`** — a porta pela qual os gates de material medem a lei do
+/// OpenPBR sob o MESMO céu que o desenhista de jogo lê (`crate::studio_wgsl`). Só os testes a usam:
+/// o sombreamento traçado do Render, que a chamava no produto, saiu em 03/10.
+#[cfg(test)]
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct StudioSky;
+
+#[cfg(test)]
+impl ph2d_material::Environment for StudioSky {
+    fn radiance(&self, dir: [f32; 3], alpha: f32) -> [f32; 3] {
+        Studio::of_the_product().radiance(dir, alpha)
+    }
+    fn irradiance(&self, n: [f32; 3]) -> [f32; 3] {
+        Studio::of_the_product().irradiance(n)
+    }
+}
+
 #[cfg(test)]
 #[path = "studio_tests.rs"]
 mod tests;
-
-/// ⏱️ As SONDAS vivem no irmão, por assunto e pelo tecto de LOC — ver [`probes`].
-#[cfg(test)]
-#[path = "studio_probe_tests.rs"]
-mod probes;

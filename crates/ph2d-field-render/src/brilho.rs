@@ -1,12 +1,5 @@
-//! ⭐⭐⭐ **O BRILHO chega à imagem** — o passe da `W7` (`docs/Render3d/12`).
-//!
-//! # ⚠️ Porque é um ficheiro irmão do [`super::shade_render`]
-//!
-//! ⛔ **Corte por RESPONSABILIDADE, forçado pelo tecto de `700` linhas** e melhor por isso: o irmão
-//! responde *«que luz é que este pixel devolve ao olho»* e isto responde *«e que luz é que os
-//! VIZINHOS dele derramam por cima»*. São perguntas de granularidade diferente — uma é por pixel,
-//! a outra é do quadro —, e é exactamente essa diferença que faz o brilho não caber na
-//! [`ph2d_style`] (§4 daquele doc).
+//! ⭐⭐⭐ **O BRILHO chega à imagem** — a composição do halo sobre os bytes (`docs/Render3d/12`).
+//! O gémeo em WGSL é o `ph2d_bloom::wgsl`, que o desenhista de jogo corre.
 //!
 //! # ⭐⭐ A REGRA DA COMPOSIÇÃO é UMA SÓ, e a alternativa está refutada por medição
 //!
@@ -24,65 +17,7 @@
 //! saída que a desfaz — um olhar **invertível** para trazer o fundo à cena — fica NOMEADA e por
 //! medir.
 
-use crate::{Gbuffer, Lighting, Orbit, Presentation, Surfaces};
-
-/// ⭐⭐⭐ **O QUADRO EM CENA-LINEAR** — o que o brilho lê.
-///
-/// ⚠️ **Só os píxeis da PEÇA entram.** O fundo é uma cor de bytes que nunca passou pelo olhar, e
-/// pô-lo aqui seria inventar uma luz de cena que ninguém autorou. ⛔ E isso **não** abre a fronteira
-/// que o cabeçalho recusa: quem não entra contribui com `0` para o borrão, que é o que «não há luz
-/// aqui» significa — a descontinuidade fica no que é DERRAMADO, nunca em como é somado.
-///
-/// ⚠️⚠️ **Ele re-avalia o sombreamento dos píxeis da peça, e isso é dívida MEDIDA e NOMEADA:** o
-/// laço do byte não pode escrever aqui sem partir o corpo dele em dois despachos, e o preço de o
-/// fazer mal (dois programas a pintar a mesma imagem) é maior do que o de o correr duas vezes numa
-/// rota que o artista LIGOU. *A fusão dos dois é uma optimização com endereço, não um defeito.*
-#[must_use]
-pub(crate) fn campo_de_cena(
-    g: &Gbuffer,
-    cam: &Orbit,
-    surfaces: &Surfaces<'_>,
-    light: &Lighting<'_>,
-    pres: &Presentation,
-) -> Vec<[f32; 3]> {
-    use rayon::prelude::{IndexedParallelIterator, ParallelIterator, ParallelSliceMut};
-
-    let (w, h) = (g.width as usize, g.height as usize);
-    let mut out = vec![[0.0f32; 3]; w * h];
-    if w == 0 || h == 0 {
-        return out;
-    }
-    let screen = crate::camera::Screen::new(g.width, g.height, cam.half_extent);
-    let basis = crate::shade_render::ViewBasis::of(cam);
-    #[allow(clippy::cast_possible_truncation)]
-    let pixel_world = crate::shade_render::boundary_world(cam.half_extent, w.min(h) as u32);
-
-    out.par_chunks_mut(w).enumerate().for_each(|(y, row)| {
-        for (x, px) in row.iter_mut().enumerate() {
-            let i = y * w + x;
-            if !g.hit[i] {
-                continue;
-            }
-            let v = crate::shade_render::view_direction(cam, &screen, x, y);
-            *px = crate::shade_render::mixed_radiance_scene(
-                surfaces,
-                crate::shade_render::PixelGeom {
-                    i,
-                    p: g.point[i],
-                    n: g.normal[i],
-                    v,
-                    k: g.curvature.get(i).copied().unwrap_or(0.0),
-                    k_estilo: g.curvature_style.get(i).copied().unwrap_or(0.0),
-                    basis,
-                },
-                pixel_world,
-                light,
-                pres,
-            );
-        }
-    });
-    out
-}
+use crate::Presentation;
 
 /// ⭐⭐⭐ **SOMA O HALO À IMAGEM JÁ PINTADA**, em bytes.
 ///

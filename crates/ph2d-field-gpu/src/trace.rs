@@ -1,19 +1,9 @@
 //! ⭐⭐⭐ **A MARCHA NO DISPOSITIVO** — o G-buffer do quadro, feito na GPU.
 //!
-//! # O que vai e o que fica
-//!
-//! Medido (`docs/Render3d/05` §34), o quadro assente a `1920×1080` reparte-se assim:
-//!
-//! | | CPU | |
-//! |---|---:|---|
-//! | traçado | `30,04 ms` | ⇒ **vai** |
-//! | sombra directa | `61,73 ms` | ⇒ **vai** |
-//! | **pintura** | **`10,87 ms`** | ⇒ **FICA** |
-//!
-//! ⭐⭐ **A pintura fica, e isso é a decisão importante.** Eu supunha que ela custava `~45 ms` e
-//! teria escrito o material em WGSL por causa disso — uma **segunda** implementação do OpenPBR,
-//! com tudo o que este repositório sabe sobre duas respostas para a mesma pergunta. Medida, ela
-//! custa `10,87 ms` e cabe. *A lei do material continua a viver num sítio só.*
+//! Ela serve o MATCAP (o pintor de [`crate::matcap`] lê o `centro` e as bordas sem os trazer à
+//! CPU) e a leitura de volta que as paridades com a CPU medem ([`Tracer::frame`]). ⚠️ A luz, o céu,
+//! o chão e o pintor de material do Render traçado viviam aqui e saíram em 03/10: o modo Render
+//! desenha por malha (`ph2d-mesh-forward`).
 //!
 //! # ⚠️ A câmera é a ÚNICA coisa escrita duas vezes, e é deliberado
 //!
@@ -35,27 +25,6 @@ pub struct DeviceGbuffer {
     pub t: Vec<f32>,
     /// A normal em espaço de **VISTA** — a mesma convenção do G-buffer da CPU.
     pub normal: Vec<[f32; 3]>,
-    /// ⭐ Quanto de cada lâmpada chega a cada pixel — a [`ph2d_field_render::Shadows`] da CPU.
-    ///
-    /// ⚠️ **Uma LÂMPADA de cada vez, não um pixel de cada vez:** o bloco `l` ocupa
-    /// `l * pixels .. (l+1) * pixels`, que é exactamente a forma que o `Shadows::set_lamp` recebe.
-    /// *O formato que o consumidor pede é o formato que se escreve.*
-    pub shadow: Vec<f32>,
-    /// Quantas lâmpadas há em [`Self::shadow`].
-    pub lamps: usize,
-    /// ⭐ Quanto do céu chega a cada pixel — a oclusão.
-    pub ambient: Vec<f32>,
-    /// ⭐⭐⭐ **A luz que a CENA devolve a cada pixel** — o ricochete (`docs/Render3d/08`).
-    ///
-    /// ⚠️⚠️ **Por ESTE caminho ele vem a ZERO, e é um facto e não um esquecimento:** quem enche o
-    /// canal é a passagem do PINTOR, que precisa da tabela de materiais — e este caminho existe
-    /// justamente para quando o pintor do dispositivo não corre. *Zero é ausência de luz, que é o
-    /// quadro de sempre ao bit.*
-    pub bounce: Vec<[f32; 3]>,
-    /// ⭐ **O chão com que este quadro foi marchado** — ver [`MarchSetup::ground`]. Ele viaja no
-    /// G-buffer porque é ele que diz ao pintor da CPU (o [`DeviceGbuffer::to_cpu`]) de que altura
-    /// são os canais de fundo que vêm no [`Self::shadow`].
-    pub ground: Option<f32>,
     /// ⭐⭐⭐ **Os pixels de BORDA, re-amostrados no padrão 4-rook** — a `Gbuffer::edges` da CPU.
     ///
     /// ⚠️ Sem eles a silhueta sai serrilhada, e ligar o dispositivo ao produto seria trocar um
@@ -78,8 +47,6 @@ impl DeviceGbuffer {
     }
 }
 
-pub use crate::trace_lampadas::{MAX_LAMPS, lamps_that_fit};
-
 /// Tudo o que a marcha precisa de saber e que **não** sai da fita — os mesmos números que a
 /// [`ph2d_field_render::Scene`] carrega.
 #[derive(Clone, Copy, Debug)]
@@ -101,31 +68,6 @@ pub struct MarchSetup {
     pub step: f32,
     pub budget: u32,
     pub t_max: f32,
-    /// ⭐⭐⭐ **AS LÂMPADAS, no MUNDO** — `n_lamps` entradas válidas. A sombra de cada uma usa a
-    /// mesma cerca da CPU: a distância à luz, cortada na saída da bola que contém a peça.
-    pub lamps: [[f32; 3]; MAX_LAMPS],
-    /// Quantas entradas de [`Self::lamps`] valem. ⛔ Acima de [`MAX_LAMPS`] o chamador cai na CPU.
-    pub n_lamps: u32,
-    /// O raio da bola que contém a peça, e o centro dela.
-    pub ball_center: [f32; 3],
-    pub ball_radius: f32,
-    /// ⭐ Quantos raios de oclusão por pixel — o [`ph2d_field_render::OCCLUSION_PASSES`].
-    pub ao_rays: u32,
-    /// O alcance da oclusão em unidades de mundo.
-    pub ao_reach: f32,
-    /// ⭐⭐⭐⭐ **A OCLUSÃO A PASSO** (`docs/Render3d/03` §W9): os cones marcham-se num pixel de cada
-    /// `ceu_passo × ceu_passo` e os outros reconstroem-na guiados pela forma, marchando eles
-    /// próprios onde nenhum vizinho está na mesma superfície. `0` e `1` são a oclusão em todo
-    /// pixel, **ao bit** — e é o que todo caminho que a CPU mede pede.
-    pub ceu_passo: u32,
-    /// ⭐⭐⭐⭐ **A OCLUSÃO NO TEMPO** — ver [`crate::ceu_tempo`]. `Nao` é o quadro de sempre, ao bit.
-    pub ceu_tempo: crate::ceu_tempo::CeuTempo,
-    /// ⭐⭐⭐ **O CHÃO QUE SÓ RECEBE** (`docs/Render3d/07`) — a altura dele no MUNDO, ou `None`.
-    ///
-    /// Com ele, um pixel que **falha** a peça e vê o chão guarda nos canais de luz a sombra e o céu
-    /// que chegam **ao chão**, e o pintor escurece o fundo por essa razão. ⚠️ `None` é o caminho de
-    /// sempre, ao bit: os canais de um pixel de fundo ficam todos a `1,0`.
-    pub ground: Option<f32>,
     /// O cosseno abaixo do qual duas normais vizinhas são ARESTA — o `EDGE_COS` da CPU.
     /// ⭐⭐⭐ **A bandeira da W73 — *grosso a mexer, nítido ao assentar*.**
     ///
@@ -135,21 +77,6 @@ pub struct MarchSetup {
     /// pagar um passe que a lei do módulo manda não pagar — *dois motores, uma lei*.
     pub antialias: bool,
     pub edge_cos: f32,
-    /// ⭐⭐⭐ **A BORDA MOLE DA SOMBRA** (`docs/Render3d/10` §12) — o raio por CANAL, em PÍXEIS de
-    /// ecrã, ou `None`.
-    ///
-    /// Com ele, o passe que pinta corre as duas passagens separáveis do
-    /// [`ph2d_field_render::sss_shadow`] sobre a visibilidade de cada lâmpada, e a closure de
-    /// subsuperfície lê a MÉDIA da vizinhança em vez da visibilidade dura deste pixel. ⚠️ `None` é
-    /// o caminho de sempre **ao bit**: o passo do buffer não cresce e o pintor sai pelo braço curto
-    /// do `mx_direct_sss`.
-    ///
-    /// ⛔⛔ **Ele é UM raio para o quadro inteiro, e o chamador RECUSA quando a cena tem dois.** A
-    /// lei da CPU escolhe o raio **por material** ([`ph2d_field_render::sss_shadow::blur_por_material`]),
-    /// e a selecção por pixel pede o dono do ponto dentro do borrão — que arrastaria o campo e a
-    /// tabela de donos para um passe que só precisa da normal. *Com dois raios o chamador cai na
-    /// CPU, que tem a lei inteira: nenhuma imagem errada, em sítio nenhum.*
-    pub mole: Option<[f32; 3]>,
     /// ⭐⭐⭐⭐ **A GRADE DE LONGE** — ver [`crate::longe`]: o raio atravessa o vazio por uma grade
     /// assada na placa e toca a peça pela árvore exacta. `None` é a marcha de sempre, **ao bit**.
     pub longe: Option<crate::longe::Longe>,
@@ -232,33 +159,6 @@ impl Tracer {
         self.cache.rodadas_de_compilacao()
     }
 
-    /// Ver [`crate::FieldPipelines::sondas_assadas`].
-    #[must_use]
-    pub fn sondas_assadas(&self) -> usize {
-        self.cache.sondas_assadas()
-    }
-
-    /// Ver [`crate::FieldPipelines::ceu_tempo_reinicios`].
-    #[must_use]
-    pub fn ceu_tempo_reinicios(&self) -> usize {
-        self.cache.ceu_tempo_reinicios()
-    }
-
-    /// Ver [`crate::FieldPipelines::esquece_o_ceu`].
-    pub fn esquece_o_ceu(&mut self) {
-        self.cache.esquece_o_ceu();
-    }
-
-    /// Ver [`crate::FieldPipelines::esquece_as_sondas`].
-    pub fn esquece_as_sondas(&mut self) {
-        self.cache.esquece_as_sondas();
-    }
-
-    /// ⏱️ Só as sondas: ver [`crate::FieldPipelines::tolerancia_das_sondas`].
-    pub fn tolerancia_das_sondas(&mut self, celulas: f32) {
-        self.cache.tolerancia_das_sondas = celulas;
-    }
-
     /// Ver [`crate::FieldPipelines::entradas_compiladas`].
     #[must_use]
     pub fn entradas_compiladas(&self) -> Vec<String> {
@@ -267,8 +167,8 @@ impl Tracer {
 
     /// ⭐ **Um quadro, devolvido como G-BUFFER.** O shader compila-se na primeira estrutura e fica.
     ///
-    /// ⚠️ É a porta da PARIDADE e do caminho que ainda pinta na CPU. Quem quer a imagem chama o
-    /// [`Self::painted_frame`], que não traz o G-buffer de volta.
+    /// ⚠️ É a porta da PARIDADE com a CPU. Quem quer a imagem chama o [`Self::matcap_frame`], que
+    /// não traz o G-buffer de volta.
     pub fn frame(
         &mut self,
         fita: &TapeWgsl,
@@ -290,40 +190,6 @@ impl Tracer {
         ) {
             Saida::Gbuffer(g) => g,
             Saida::Imagem(_) => unreachable!("sem pintor a marcha devolve o G-buffer"),
-        }
-    }
-
-    /// ⭐⭐⭐ **Um quadro, devolvido como IMAGEM** — RGBA8 pré-multiplicado, pronto para a tela.
-    ///
-    /// ⛔⛔ **E é aqui que o barramento encolhe:** a `frame` traz `49,8 MB` a `1920×1080` (o centro
-    /// e a luz de cada pixel) para a CPU os transformar em `8,3` de imagem. Esta traz os `8,3`, e a
-    /// transformação corre onde os dados estão.
-    pub fn painted_frame(
-        &mut self,
-        fita: &TapeWgsl,
-        sculpts: &[ph2d_field_eval::device::DeviceSculpt],
-        setup: MarchSetup,
-        pintor: &crate::paint::PaintSetup<'_>,
-        width: u32,
-        height: u32,
-    ) -> Pintado {
-        let antes = self.cache.compilado_ms();
-        match marcha_com(
-            &self.device,
-            &self.queue,
-            &mut self.cache,
-            fita,
-            sculpts,
-            setup,
-            width,
-            height,
-            Pintura::Material(pintor),
-        ) {
-            Saida::Imagem(mut p) => {
-                p.compilado_ms = self.cache.compilado_ms() - antes;
-                p
-            }
-            Saida::Gbuffer(_) => unreachable!("com pintor a marcha devolve a imagem"),
         }
     }
 
@@ -368,16 +234,6 @@ impl Tracer {
     #[must_use]
     pub fn parts(&self) -> (&wgpu::Device, &wgpu::Queue) {
         (&self.device, &self.queue)
-    }
-
-    /// ⭐ **O maior buffer que esta placa deixa LIGAR a um shader** — a entrada do
-    /// [`lamps_that_fit`].
-    ///
-    /// ⚠️ **Perguntado à placa e não escrito à mão:** a `wgpu` garante `128 MiB` como mínimo, e uma
-    /// placa que ofereça mais fica com mais lâmpadas sem ninguém mexer num número.
-    #[must_use]
-    pub fn binding_limit(&self) -> u64 {
-        self.device.limits().max_storage_buffer_binding_size
     }
 
     /// ⭐ **Quantos armazéns esta placa deixa um shader ligar de uma vez.**
@@ -455,18 +311,23 @@ pub(crate) enum Saida {
     Imagem(Pintado),
 }
 
-/// ⭐⭐⭐ **COM QUE LEI ESTE QUADRO É PINTADO** — uma pergunta, três respostas.
-///
-/// ⚠️⚠️ **Ela é um enum e não dois `Option`** de propósito: com dois, *«material E matcap ao mesmo
-/// tempo»* seria exprimível, e o que ela significa é *«despacha os dois passes sobre a mesma
-/// saída»* — o segundo a correr ganharia, e a imagem sairia certa ou errada conforme a ordem em que
-/// alguém escreveu duas linhas. *Um estado que não se pode escrever não precisa de um gate que o
-/// proíba.*
+/// ⭐⭐⭐ **OS ALVOS DA MARCHA, vivos no dispositivo** — o que o pintor de Matcap liga no grupo `0`
+/// para ler o `centro` e as bordas sem os trazer de volta.
+pub(crate) struct Alvos<'a> {
+    pub fita: &'a ph2d_field_eval::wgsl::TapeWgsl,
+    pub bgl: &'a wgpu::BindGroupLayout,
+    pub grades: &'a wgpu::Buffer,
+    pub setup: &'a wgpu::Buffer,
+    pub k: &'a wgpu::Buffer,
+    pub centro: &'a wgpu::Buffer,
+    pub conta: &'a wgpu::Buffer,
+    pub borda: &'a wgpu::Buffer,
+}
+
+/// ⭐⭐⭐ **O QUE ESTE QUADRO DEVOLVE** — o G-buffer (a paridade) ou a imagem do Matcap.
 pub(crate) enum Pintura<'a> {
-    /// O G-buffer volta para a CPU — a porta da PARIDADE e do caminho que ainda pinta lá.
+    /// O G-buffer volta para a CPU — a porta da PARIDADE.
     Nenhuma,
-    /// O material sob as lâmpadas e o céu — ver [`crate::paint`].
-    Material(&'a crate::paint::PaintSetup<'a>),
     /// ⭐⭐⭐ **A luz do OLHO** — ver [`crate::matcap`], e é este o modo de **omissão** do modelador.
     Matcap(&'a crate::matcap::MatcapSetup<'a>),
 }
@@ -516,14 +377,14 @@ pub(crate) fn armazem(b: u32, so_leitura: bool) -> wgpu::BindGroupLayoutEntry {
     }
 }
 
-/// ⭐⭐⭐ **O layout do grupo `0`** — o uniforme, as constantes e os quatro alvos da marcha.
+/// ⭐⭐⭐ **O layout do grupo `0`** — o uniforme, as constantes e os alvos da marcha.
 ///
 /// ⛔⛔ **Ele é EXPLÍCITO e tem de ser** (ver [`crate::FieldPipelines::entry_with_layout`]): o
 /// layout auto-derivado só declara os bindings que **aquela entrada** usa, e a passagem do centro
 /// não toca na lista de bordas — o grupo de seis seria recusado em tempo de execução.
 ///
-/// ⚠️ **E o pintor lê o MESMO grupo** ([`crate::paint`]): ele precisa do centro, da luz e da lista
-/// de bordas, e uma segunda declaração deles seria a segunda resposta à mesma pergunta.
+/// ⚠️ **E o pintor de Matcap lê o MESMO grupo** ([`crate::matcap`]): ele precisa do centro e da
+/// lista de bordas, e uma segunda declaração deles seria a segunda resposta à mesma pergunta.
 pub(crate) fn bgl_marcha(device: &wgpu::Device) -> wgpu::BindGroupLayout {
     device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some("campo"),
@@ -531,25 +392,16 @@ pub(crate) fn bgl_marcha(device: &wgpu::Device) -> wgpu::BindGroupLayout {
     })
 }
 
-/// ⭐⭐⭐ **AS SETE ENTRADAS DO GRUPO `0`, numa lista NOMEADA** — para que a contagem de armazéns
-/// deste repo possa ser **CONTADA** em vez de escrita à mão.
-///
-/// ⛔⛔ **A razão é um defeito medido (2026-09-23):** o [`crate::paint::ARMAZENS`] era um literal
-/// `9` com o doc a dizer *«seis do grupo 0 e três do grupo 1»* — e o grupo `1` tem **SEIS**. A
-/// contagem envelheceu quando o passe ganhou as sondas, o campo do chão e a cena do brilho, e o
-/// guarda que ela alimenta (*«a placa liga tantos armazéns?»*) passou a aceitar placas que anunciam
-/// `9`, `10` ou `11` ranhuras — onde a `wgpu` recusa o layout **a meio de um quadro**, que é
-/// exactamente o que aquele número existe para impedir.
-///
-/// ⇒ *«Número que soma se CONTA, nunca se escolhe»* (`CLAUDE.md` §5.0), aqui aplicado a uma soma
-/// entre dois grupos de ligação.
+/// ⭐⭐⭐ **AS SEIS ENTRADAS DO GRUPO `0`, numa lista NOMEADA** — para que a contagem de armazéns
+/// deste repo possa ser **CONTADA** em vez de escrita à mão (*«número que soma se CONTA, nunca se
+/// escolhe»*, `CLAUDE.md` §5.0). ⚠️ O binding `3` era a LUZ do Render traçado, que saiu em 03/10;
+/// os outros números ficaram para o texto do pintor de Matcap não mudar.
 #[must_use]
-pub(crate) fn entradas_da_marcha() -> [wgpu::BindGroupLayoutEntry; 7] {
+pub(crate) fn entradas_da_marcha() -> [wgpu::BindGroupLayoutEntry; 6] {
     [
         uniforme(0),
         armazem(1, true),
         armazem(2, false),
-        armazem(3, false),
         armazem(4, false),
         armazem(5, false),
         armazem(6, true),

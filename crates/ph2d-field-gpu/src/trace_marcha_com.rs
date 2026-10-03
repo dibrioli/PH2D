@@ -1,4 +1,4 @@
-//! ⭐⭐⭐ **O FLUXO DE UM QUADRO: marchar, e opcionalmente PINTAR** — o despacho que o
+//! ⭐⭐⭐ **O FLUXO DE UM QUADRO: marchar, e opcionalmente PINTAR o Matcap** — o despacho que o
 //! [`super::trace::Tracer`] serve.
 //!
 //! ⚠️ **Ele saiu do [`super::trace`] por um TECTO DE LOC** (`763` contra `700`, 2026-09-22) — e a
@@ -7,9 +7,9 @@
 
 use super::*;
 
-// O dispositivo, a fila, o cache, a fita, o pedido, a tela e o pintor — sete coisas
+// O dispositivo, a fila, o cache, a fita, o pedido, a tela e a pintura — sete coisas
 // independentes, e uma struct só as renomearia. E o corpo é longo porque são seis bindings,
-// dois despachos e duas travessias do barramento.
+// três despachos e duas travessias do barramento.
 #[allow(clippy::too_many_lines, clippy::too_many_arguments)]
 pub(super) fn marcha_com(
     device: &wgpu::Device,
@@ -23,11 +23,6 @@ pub(super) fn marcha_com(
     pintura: Pintura<'_>,
 ) -> Saida {
     let mut relogio_cpu = std::time::Instant::now();
-    // ⭐ O pintor de MATERIAL, quando é ele — as leis do dono e a fita são só dele.
-    let pintor = match &pintura {
-        Pintura::Material(p) => Some(*p),
-        Pintura::Nenhuma | Pintura::Matcap(_) => None,
-    };
     let bgl = bgl_marcha(device);
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("campo"),
@@ -36,78 +31,15 @@ pub(super) fn marcha_com(
     });
 
     // ⭐⭐⭐ **A ORDEM DO `k` É O CONTRATO**, e ela é uma só: a fita da peça, depois os cabeçalhos
-    // das esculturas, depois a lei do dono. Cada emissor recebe a origem dele **desta** aritmética,
-    // e é por isso que ela vive aqui e não em três sítios.
+    // das esculturas, depois o da grade de longe. Cada emissor recebe a origem dele **desta**
+    // aritmética, e é por isso que ela vive aqui e não em vários sítios.
     let escultura = crate::sculpt::emit(sculpts, fita.consts.len());
     let esculturas = escultura.as_ref().map_or("", |e| e.source.as_str());
     let molde_com_esculturas = molde().replace("{ESCULTURAS}", esculturas);
-    // ⭐ **As mesmas leis, para o pintor** (`docs/Render3d/08` §12) — ele marcha o ricochete, e
-    // marchar é isto. ⚠️ Elas saem da MESMA substituição: uma segunda chamada ao
-    // `crate::sculpt::emit` daria outra aritmética de origens para o mesmo `k`.
+    // ⚠️ As leis saem da MESMA substituição para a assadura da grade de longe: uma segunda chamada
+    // ao `crate::sculpt::emit` daria outra aritmética de origens para o mesmo `k`.
     let leis_com_esculturas = crate::trace_wgsl::leis().replace("{ESCULTURAS}", esculturas);
-    // ⭐⭐⭐⭐ **O MATCAP MARCHA NUM KERNEL MAGRO** (`docs/Render3d/03` §W9, «o kernel que hospeda a
-    // marcha»). Ele só lê a NORMAL, e o `centro_e_luz` traz o chão, as lâmpadas, a visibilidade e o
-    // ricochete — código que o matcap nunca corre e que o compilador da placa paga em REGISTOS, logo
-    // em raios a correr ao mesmo tempo. Medido a `1920×1080`: a mesma marcha num kernel que só marcha
-    // custa `18×`–`31×` menos do que o quadro que a hospedava (o nó, `2,76` contra `86,34 ms`).
-    let so_o_centro = matches!(pintura, Pintura::Matcap(_));
-    // ⭐⭐⭐⭐ **A OCLUSÃO NO TEMPO** — ver [`crate::ceu_tempo`]. Sem chave (uma escultura) ou sem
-    // oclusão, o quadro é o de sempre: o modo desce a `Nao` ANTES de o uniforme ser escrito.
-    let mut setup = setup;
-    let ceu_tempo =
-        (!so_o_centro && setup.ao_rays > 0 && setup.ceu_tempo != crate::ceu_tempo::CeuTempo::Nao)
-            .then(|| {
-                let l = device.limits();
-                // ⭐⭐⭐⭐ **A tabela é dimensionada pela ÁREA, não pelo traçado** (2026-10-01): com a
-                // resolução dinâmica o traçado muda de tamanho de um quadro para o outro, o tamanho
-                // da tabela está na chave, e cada mudança RECOMEÇAVA o céu do zero (`40`–`50 ms` em
-                // quadros alternados, medido no laço do produto). A área é a da entrega.
-                let tracado = u64::from(width) * u64::from(height);
-                let area = match &pintura {
-                    Pintura::Material(p) => p
-                        .entrega
-                        .map_or(tracado, |(w, h)| u64::from(w) * u64::from(h)),
-                    _ => tracado,
-                };
-                crate::ceu_tempo::ChaveDoCeu::de(
-                    fita,
-                    sculpts,
-                    &setup,
-                    tracado.max(area),
-                    l.max_storage_buffer_binding_size.min(l.max_buffer_size),
-                )
-            })
-            .flatten();
-    if ceu_tempo.is_none() {
-        setup.ceu_tempo = crate::ceu_tempo::CeuTempo::Nao;
-    }
-    // ⚠️ Um quadro de movimento cuja PEÇA mudou (a mão a arrastar um parâmetro) não tem histórico a
-    // herdar — a tabela vai recomeçar do zero, e acumular ali daria a cada pixel UMA fatia de cones.
-    // Esse quadro faz a oclusão de sempre e GRAVA-a, e o seguinte (se a peça parar) já herda.
-    if setup.ceu_tempo == crate::ceu_tempo::CeuTempo::Acumula
-        && !ceu_tempo
-            .as_ref()
-            .is_some_and(|c| crate::ceu_tempo::herda(cache, c))
-    {
-        setup.ceu_tempo = crate::ceu_tempo::CeuTempo::Grava;
-    }
-    let luz_a_parte = !so_o_centro && crate::luz_separada();
-    let quer_ceu = !so_o_centro
-        && setup.ao_rays > 0
-        && setup.ceu_passo > 1
-        && setup.ceu_tempo != crate::ceu_tempo::CeuTempo::Acumula;
-    let entrada_do_centro = if so_o_centro || luz_a_parte {
-        "centro_so"
-    } else {
-        "centro_e_luz"
-    };
     use wgpu::util::DeviceExt;
-    // ⭐⭐⭐ **UM vector de constantes para os DOIS passes.** A fita da peça ocupa o princípio; a lei
-    // do dono escreve a seguir, e a origem dela é **exactamente** `fita.consts.len()`.
-    //
-    // ⚠️⚠️ **É por isso que quem a EMITE é este sítio e não o chamador:** a origem que o texto
-    // indexa e a ordem com que os vectores se concatenam são a MESMA decisão, e duas respostas
-    // pintam cada folha com os números da vizinha **sem erro nenhum**.
     let mut consts = fita.consts.clone();
     if let Some(e) = &escultura {
         consts.extend_from_slice(&e.consts);
@@ -134,38 +66,6 @@ pub(super) fn marcha_com(
     let folga = longe.as_ref().map_or(0, crate::longe::Longe::valores);
     let assa = longe.as_ref().and_then(crate::longe::Longe::grade);
     let ub = uniforme_do_pedido(device, setup, width, height, longe_k);
-    // ⭐⭐⭐⭐ **O MESMO pedido com a precisão do MUNDO** — só a assadura das SONDAS o lê (ver
-    // [`crate::paint::Alvos::setup_mundo`]). ⛔ Sem ele as sondas guardadas entre quadros levavam a
-    // precisão do zoom em que foram assadas, e a mesma vista saía diferente conforme o caminho do zoom.
-    let ub_mundo = matches!(pintura, Pintura::Material(_)).then(|| {
-        let w = ph2d_field_render::Sharpness::do_mundo();
-        uniforme_do_pedido(
-            device,
-            MarchSetup {
-                hit_eps: w.hit,
-                normal_eps: w.normal,
-                ..setup
-            },
-            width,
-            height,
-            longe_k,
-        )
-    });
-    // ⭐⭐⭐⭐ **Toda peça PINTADA leva a lei do dono, e com o MESMO texto** (report do dono,
-    // 2026-10-01: *«5 segundos para aparecer um box, 5 segundos para mudar de cor»*). A lei
-    // interpretada ([`ph2d_field_eval::owners::wgsl::texto_interpretado`]) não depende das folhas;
-    // sem donos ela vai com ZERO folhas no bloco, que devolve a resposta do stub. ⇒ ganhar o
-    // primeiro material diferente, ou uma forma nova, deixa de mudar o texto do pintor — e de o
-    // recompilar (`1`–`3,8 s` no driver, medido pelo `PH2D_PIPELINE_LOG`).
-    // ⚠️ O bloco é o ÚLTIMO a entrar no `consts`: a origem dele é o último elemento do `k`.
-    let lei_do_dono = pintor.and_then(|p| {
-        p.owners
-            .and_then(|o| o.to_wgsl(consts.len()))
-            .or_else(|| ph2d_field_eval::owners::wgsl::sem_donos(consts.len()))
-    });
-    if let Some(l) = &lei_do_dono {
-        consts.extend_from_slice(&l.consts);
-    }
     if consts.is_empty() {
         consts.push(0.0);
     }
@@ -182,59 +82,14 @@ pub(super) fn marcha_com(
     // [`crate::FieldPipelines::precompila`]. A lista é a dos pedidos que se seguem, com as MESMAS
     // condições; um pedido que ela esqueça compila-se sozinho mais abaixo, que é o caminho de antes.
     {
-        let mut lista = vec![entrada_do_centro];
-        if luz_a_parte {
-            lista.push("luz_so");
-        }
-        if quer_ceu {
-            lista.extend(["ceu_meia", "ceu_sobe"]);
-        }
+        let mut lista = vec!["centro_so"];
         if setup.antialias {
             lista.extend(["bordas", "bordas_marcha"]);
         }
-        let mut pedidos: Vec<crate::PedidoDeLote<'_>> = lista
+        let pedidos: Vec<crate::PedidoDeLote<'_>> = lista
             .iter()
             .map(|e| (molde_com_esculturas.as_str(), fita, *e, Some(&layout)))
             .collect();
-        // ⭐⭐⭐⭐ **E os dos OUTROS passes que levam a fita** — o céu no tempo e as sondas do
-        // pintor (report do dono, 2026-10-01: *«ainda com delay de 1 ou 2 segundos»*). Na cena dele
-        // uma caixa nova compilava a marcha, DEPOIS o céu e, no assente, as sondas: três lotes em
-        // fila (`309 + 476 + 418 ms`, `diag_o_preco_de_uma_forma_nova_ao_lado_do_no`). Eles só
-        // dependem do TEXTO — as portas [`crate::ceu_tempo::fonte_do_ceu`] e
-        // [`crate::paint::layout_do_pintor`] são as mesmas que os despachos leem —, logo compilam
-        // aqui, juntos, e os pedidos lá em baixo acertam o cache.
-        // ⚠️ As sondas entram MESMO num quadro de movimento: é o que deixa o assente seguinte
-        // sem paragem, e o lote paga o mais lento, não a soma.
-        let fonte_ceu = ceu_tempo
-            .as_ref()
-            .map(|_| crate::ceu_tempo::fonte_do_ceu(&molde_com_esculturas));
-        let layout_ceu = fonte_ceu
-            .as_ref()
-            .map(|_| crate::ceu_tempo::layout_do_ceu(device, &bgl).1);
-        if let (Some(f), Some(l)) = (&fonte_ceu, &layout_ceu) {
-            pedidos.extend(
-                crate::ceu_tempo::ENTRADAS
-                    .iter()
-                    .map(|e| (f.as_str(), fita, *e, Some(l))),
-            );
-        }
-        let pintor_do_lote = pintor.filter(|p| p.ao_rays > 0 || p.le_o_campo);
-        let fonte_pintor = pintor_do_lote
-            .map(|p| crate::paint::fonte(p, lei_do_dono.as_ref(), &leis_com_esculturas));
-        let layout_pintor = pintor_do_lote.map(|_| crate::paint::layout_do_pintor(device, &bgl).1);
-        if let (Some(p), Some(f), Some(l)) = (pintor_do_lote, &fonte_pintor, &layout_pintor) {
-            if p.ao_rays > 0 {
-                pedidos.push((f.as_str(), fita, "assa_sondas", Some(l)));
-            }
-            // ⚠️ Quem lê a curvatura leva a fita real também no `pinta`/`pinta_bordas` (ver
-            // [`crate::paint_entradas`]): sem isto o estilo pagaria a compilação deles sozinho.
-            if p.le_o_campo {
-                pedidos.push((f.as_str(), fita, "pinta", Some(l)));
-                if setup.antialias {
-                    pedidos.push((f.as_str(), fita, "pinta_bordas", Some(l)));
-                }
-            }
-        }
         cache.precompila_lote(device, &pedidos);
     }
     let p_centro = cache
@@ -242,26 +97,10 @@ pub(super) fn marcha_com(
             device,
             &molde_com_esculturas,
             fita,
-            entrada_do_centro,
+            "centro_so",
             Some(&layout),
         )
         .clone();
-    let p_luz = luz_a_parte.then(|| {
-        cache
-            .entry_with_layout(device, &molde_com_esculturas, fita, "luz_so", Some(&layout))
-            .clone()
-    });
-    // ⭐⭐⭐⭐ **A oclusão a passo** reconstrói-se DEPOIS de a luz estar escrita em toda a imagem: o
-    // `ceu_sobe` lê os representantes vizinhos.
-    // ⚠️ Com a oclusão NO TEMPO a mexer, quem a escreve é o `ceu_tempo_acumula` — o passo não corre.
-    let p_ceu = quer_ceu.then(|| {
-        let mut e = |nome| {
-            cache
-                .entry_with_layout(device, &molde_com_esculturas, fita, nome, Some(&layout))
-                .clone()
-        };
-        (e("ceu_meia"), e("ceu_sobe"))
-    });
     // ⚠️ **Compilar é o caro** — o pipeline da borda só nasce quando ela vai de facto correr.
     let p_bordas = setup.antialias.then(|| {
         let mut e = |nome| {
@@ -289,14 +128,6 @@ pub(super) fn marcha_com(
     // empréstimo do cache impediria a compilação do pipeline mais abaixo de lhe tocar.
     let b_grades = cache.grades(device, sculpts, folga).clone();
     let b_centro = cria("centro", n * 16);
-    // ⭐ O passo é `1 + n_lamps + 6`: o céu, uma visibilidade por lâmpada e o RICOCHETE
-    // (`docs/Render3d/08`) — mais **SEIS por lâmpada** quando há BORDA MOLE (o intermediário da
-    // passagem horizontal e o resultado, `docs/Render3d/10` §25). ⚠️ Ele é a mesma conta do
-    // `passo_da_luz()` do WGSL, e as duas têm de andar juntas: um buffer curto faz o shader
-    // escrever fora e a `wgpu` recusa o despacho.
-    let passo_luz = u64::from(setup.n_lamps) * (1 + 6 * u64::from(setup.mole.is_some())) + 1 + 6;
-    // ⚠️ O `centro_so` não escreve a luz — o buffer fica no mínimo que o layout aceita.
-    let b_luz = cria("luz", if so_o_centro { 16 } else { n * passo_luz * 4 });
     // ⛔⛔ **O TECTO da lista de bordas era `6 %` e ESTOUROU** — o gate da paridade apanhou-o: na
     // ROSCA a GPU devolveu exactamente `1 296` bordas, que **é** o tecto, contra `1 745` da CPU, e
     // a sobreposição das listas caiu para `72,6 %`.
@@ -319,7 +150,7 @@ pub(super) fn marcha_com(
 
     let bind = |_p: &wgpu::ComputePipeline| {
         crate::trace_grupo::grupo_da_marcha(
-            device, &bgl, &ub, &kb, &b_centro, &b_luz, &b_conta, &b_borda, &b_grades,
+            device, &bgl, &ub, &kb, &b_centro, &b_conta, &b_borda, &b_grades,
         )
     };
     let bg_centro = bind(&p_centro);
@@ -383,7 +214,6 @@ pub(super) fn marcha_com(
     // ⚠️ **DOIS despachos, e a ordem é a lei**: a borda pergunta pelos VIZINHOS, logo o centro tem
     // de estar escrito para toda a imagem antes de ela correr.
     // ⭐ E a re-amostragem é um TERCEIRO, depois de a lista estar escrita — ver o `bordas_marcha`.
-    // ⚠️ Cada despacho leva o SEU tamanho: o `ceu_meia` corre na grelha grossa dos representantes.
     let inteira = (width.div_ceil(8), height.div_ceil(8));
     let mut despachos: Vec<(
         &wgpu::ComputePipeline,
@@ -391,18 +221,6 @@ pub(super) fn marcha_com(
         (u32, u32),
         &'static str,
     )> = vec![(&p_centro, &bg_centro, inteira, "centro")];
-    if let Some(p) = &p_luz {
-        despachos.push((p, &bg_centro, inteira, "luz"));
-    }
-    if let Some((meia, sobe)) = &p_ceu {
-        let passo = setup.ceu_passo.max(1);
-        let grossa = (
-            width.div_ceil(passo).div_ceil(8),
-            height.div_ceil(passo).div_ceil(8),
-        );
-        despachos.push((meia, &bg_centro, grossa, "ceu-meia"));
-        despachos.push((sobe, &bg_centro, inteira, "ceu-sobe"));
-    }
     if let (Some((p, pm)), Some(bg)) = (p_bordas.as_ref(), bg_bordas.as_ref()) {
         despachos.push((p, bg, inteira, "bordas-lista"));
         despachos.push((pm, bg, inteira, "bordas-marcha"));
@@ -418,22 +236,6 @@ pub(super) fn marcha_com(
         cp.dispatch_workgroups(gx, gy, 1);
     }
     cache.cronometro = crono;
-    // ⭐⭐⭐⭐ O histórico da oclusão — DEPOIS da luz, que é quem deixa o canal do céu de cada pixel.
-    if let Some(chave) = ceu_tempo {
-        crate::ceu_tempo::despacha(
-            device,
-            &mut enc,
-            cache,
-            &molde_com_esculturas,
-            fita,
-            &bgl,
-            &bg_centro,
-            chave,
-            &setup,
-            width,
-            height,
-        );
-    }
 
     let ler = |enc: &mut wgpu::CommandEncoder, b: &wgpu::Buffer, bytes: u64| {
         let r = device.create_buffer(&wgpu::BufferDescriptor {
@@ -445,81 +247,18 @@ pub(super) fn marcha_com(
         enc.copy_buffer_to_buffer(b, 0, &r, 0, bytes.max(16));
         r
     };
-    // ⭐⭐⭐ **QUANDO O PINTOR CORRE, O G-BUFFER NÃO ATRAVESSA O BARRAMENTO.** Ele fica no
+    // ⭐⭐⭐ **QUANDO O MATCAP PINTA, O G-BUFFER NÃO ATRAVESSA O BARRAMENTO.** Ele fica no
     // dispositivo, que é onde o passe seguinte o lê — e o que volta é a IMAGEM.
-    //
-    // Medido a `1920×1080`: o centro e a luz são `49,8 MB` por quadro e a imagem são `8,3`.
-    // ⚠️ **As DUAS leis de pintura deixam o G-buffer no dispositivo** — o que volta é a imagem.
-    // *É essa a propriedade que o matcap partilha com o material, e a única que este ponto lê.*
     let pinta = !matches!(pintura, Pintura::Nenhuma);
-    let (r_centro, r_luz) = if pinta {
-        (None, None)
-    } else {
-        (
-            Some(ler(&mut enc, &b_centro, n * 16)),
-            Some(ler(&mut enc, &b_luz, n * passo_luz * 4)),
-        )
-    };
+    let r_centro = (!pinta).then(|| ler(&mut enc, &b_centro, n * 16));
     let r_conta = ler(&mut enc, &b_conta, 16);
-    // ⭐⭐⭐⭐ **O MATERIAL pinta no MESMO encoder** — ver [`crate::paint::pinta`]: um envio só.
-    if let Pintura::Material(pintor) = pintura {
-        if let Some(c) = cache.cronometro.as_mut() {
-            c.cpu("cpu-marcha", relogio_cpu);
-        }
-        let alvos = crate::paint::Alvos {
-            leis: &leis_com_esculturas,
-            fita,
-            bgl: &bgl,
-            grades: &b_grades,
-            setup: &ub,
-            setup_mundo: ub_mundo.as_ref().unwrap_or(&ub),
-            k: &kb,
-            centro: &b_centro,
-            luz: &b_luz,
-            conta: &b_conta,
-            borda: &b_borda,
-        };
-        let tecto = if setup.antialias { max_bordas } else { 0 };
-        let rgba = crate::paint::pinta(
-            device,
-            queue,
-            cache,
-            pintor,
-            lei_do_dono.as_ref(),
-            &alvos,
-            width,
-            height,
-            tecto,
-            // ⭐⭐⭐⭐ **A chave das sondas** — ver [`crate::sondas_na_placa`].
-            crate::sondas_na_placa::ChaveDasSondas::de(
-                fita,
-                sculpts,
-                &setup,
-                pintor,
-                lei_do_dono.as_ref(),
-            ),
-            enc,
-        );
-        // A contagem volta DEPOIS da imagem, no mesmo envio — ela só diz quantas bordas houve.
-        r_conta.slice(..).map_async(wgpu::MapMode::Read, |_| {});
-        device.poll(wgpu::PollType::wait_indefinitely()).ok();
-        let d = r_conta.slice(..).get_mapped_range();
-        let quantas = u64::from(u32::from_le_bytes([d[0], d[1], d[2], d[3]]));
-        #[allow(clippy::cast_possible_truncation)]
-        let edges = quantas.min(tecto) as usize;
-        return Saida::Imagem(Pintado {
-            edges,
-            rgba,
-            compilado_ms: 0.0,
-        });
-    }
     if let Some(c) = cache.cronometro.as_mut() {
         c.resolve(&mut enc);
         relogio_cpu = c.cpu("cpu-marcha", relogio_cpu);
     }
     queue.submit([enc.finish()]);
 
-    for b in r_centro.iter().chain(r_luz.iter()).chain([&r_conta]) {
+    for b in r_centro.iter().chain([&r_conta]) {
         b.slice(..).map_async(wgpu::MapMode::Read, |_| {});
     }
     device.poll(wgpu::PollType::wait_indefinitely()).ok();
@@ -531,10 +270,9 @@ pub(super) fn marcha_com(
 
     let d_conta = r_conta.slice(..).get_mapped_range();
     let quantas = u32::from_le_bytes([d_conta[0], d_conta[1], d_conta[2], d_conta[3]]) as u64;
-    if pinta {
-        // ⚠️ **A contagem de bordas tinha de voltar primeiro** — no MATCAP, que ainda pinta num
-        // segundo envio: quantos workgroups o passe da borda precisa é um número que o dispositivo
-        // escreveu.
+    if let Pintura::Matcap(mc) = pintura {
+        // ⚠️ **A contagem de bordas tinha de voltar primeiro** — o Matcap pinta num segundo envio:
+        // quantos workgroups o passe da borda precisa é um número que o dispositivo escreveu.
         let usadas = if setup.antialias {
             quantas.min(max_bordas)
         } else {
@@ -543,37 +281,25 @@ pub(super) fn marcha_com(
         drop(d_conta);
         #[allow(clippy::cast_possible_truncation)]
         let edges = usadas as usize;
-        let alvos = crate::paint::Alvos {
-            leis: &leis_com_esculturas,
+        let alvos = Alvos {
             fita,
             bgl: &bgl,
             grades: &b_grades,
             setup: &ub,
-            setup_mundo: ub_mundo.as_ref().unwrap_or(&ub),
             k: &kb,
             centro: &b_centro,
-            luz: &b_luz,
             conta: &b_conta,
             borda: &b_borda,
         };
-        let rgba = match pintura {
-            Pintura::Matcap(mc) => {
-                crate::matcap::pinta(device, queue, cache, mc, &alvos, width, height, usadas)
-            }
-            Pintura::Material(_) | Pintura::Nenhuma => {
-                unreachable!("o material pinta acima e o `pinta` exclui o nenhum")
-            }
-        };
+        let rgba = crate::matcap::pinta(device, queue, cache, mc, &alvos, width, height, usadas);
         return Saida::Imagem(Pintado {
             edges,
             rgba,
             compilado_ms: 0.0,
         });
     }
-    let d_centro = r_centro.as_ref().expect("sem pintor o centro volta");
+    let d_centro = r_centro.as_ref().expect("sem pintura o centro volta");
     let d_centro = d_centro.slice(..).get_mapped_range();
-    let d_luz = r_luz.as_ref().expect("sem pintor a luz volta");
-    let d_luz = d_luz.slice(..).get_mapped_range();
 
     // ⛔⛔ **A LISTA DE BORDAS LÊ-SE PELO QUE FOI ESCRITO, e não pelo tecto** — e é a diferença
     // entre `35 ms` e o que a máquina de facto faz. O tecto é `25 %` dos pixels (`41 MB` a
@@ -604,11 +330,9 @@ pub(super) fn marcha_com(
         None
     };
 
-    let (t, normal, shadow, ambient, bounce, edges) =
-        lida(&d_centro, &d_luz, passo_luz, usadas, d_borda.as_deref());
+    let (t, normal, edges) = lida(&d_centro, usadas, d_borda.as_deref());
 
     drop(d_centro);
-    drop(d_luz);
     drop(d_conta);
     drop(d_borda);
 
@@ -617,16 +341,6 @@ pub(super) fn marcha_com(
         height,
         t,
         normal,
-        shadow,
-        // ⚠️ **Menos os TRÊS do ricochete** — o passo deixou de ser `1 + n_lamps`
-        // (`docs/Render3d/08`), e sem este desconto os canais dele leriam-se como lâmpadas
-        // fantasma. *O modo de falha foi o bom: um índice fora do `shadow`, alto e no primeiro
-        // quadro.*
-        #[allow(clippy::cast_possible_truncation)]
-        lamps: (passo_luz - 1 - 6) as usize,
-        ambient,
-        bounce,
-        ground: setup.ground,
         edges,
     })
 }

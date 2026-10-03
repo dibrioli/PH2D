@@ -55,10 +55,6 @@
 //!
 //! [ADR-0161]: ../../../docs/architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md
 
-/// ⭐⭐⭐ A banda clara na silhueta, o 3.º report — ver [`banda_sondas`].
-#[cfg(test)]
-#[path = "banda_sondas.rs"]
-mod banda_sondas;
 /// ⭐⭐⭐ A borda que ferve, medida — ver [`borda_sondas`].
 #[cfg(test)]
 #[path = "borda_sondas.rs"]
@@ -67,10 +63,6 @@ mod borda_sondas;
 #[cfg(test)]
 #[path = "borda_tests.rs"]
 mod borda_tests;
-/// ⭐⭐⭐ As sondas que comparam os dois motores — ver [`device_probes`].
-#[cfg(test)]
-#[path = "device_probes.rs"]
-mod device_probes;
 /// ⭐⭐⭐ **O divisor depois do dispositivo** — ver [`device_tests`].
 #[cfg(test)]
 #[path = "preview_device_tests.rs"]
@@ -79,10 +71,6 @@ mod device_tests;
 #[cfg(test)]
 #[path = "premultiplicado_sondas.rs"]
 mod premultiplicado_sondas;
-/// ⭐⭐⭐ O rebordo claro de um pixel, o 2.º report — ver [`rebordo_sondas`].
-#[cfg(test)]
-#[path = "rebordo_sondas.rs"]
-mod rebordo_sondas;
 /// ⭐⭐⭐ O vaso sem facetas no modo MODEL — ver [`vaso_sem_facetas_tests`].
 #[cfg(test)]
 #[path = "vaso_sem_facetas_tests.rs"]
@@ -478,26 +466,6 @@ pub const MOVING_NORMAL_ERR_DEG: f32 = 1.0;
 /// arquivo, que é onde ele não é desperdício — ver o gate
 /// `the_export_never_goes_through_the_preview_coarsening`.
 pub const SETTLED_NORMAL_ERR_DEG: f32 = 0.5;
-/// ⭐⭐⭐⭐ **O CAMPO DO CHÃO É REAPROVEITADO ENTRE QUADROS** — a porta que bisecta.
-///
-/// Ver [`crate::gpu_frame::campo_do_chao`] e a `ChaveDoChao`. A assadura custa `+4,98 ms` por
-/// quadro assente e o campo não depende de para onde a câmera olha — que é o gesto que a paga.
-/// `PH2D_FIELD_CHAO_CACHE=0` devolve a assadura por quadro.
-///
-/// ⚠️ **Ela nasce LIGADA, ao contrário da lei da casa** (*«tudo o que é novo shipa desligado»*), e a
-/// razão é a mesma da irmã [`a_fita_sai_do_pintor`]: **ela não é uma feature.** O campo devolvido é
-/// o MESMO objecto que a assadura daquele quadro produziria — há gate de PIXEL a afirmá-lo
-/// (`o_campo_do_chao_reaproveitado_nao_muda_um_byte`, `0` de `2 073 600` píxeis) e a chave leva tudo
-/// o que a assadura lê. *Uma porta cuja saída é byte-idêntica não tem lado para o artista escolher;
-/// o que ela tem é um lado para BISSECTAR.*
-///
-/// ⛔ **A auditoria de 2026-09-23 apanhou esta justificação a FALTAR** enquanto a da irmã estava
-/// escrita — *duas portas com a mesma razão e só uma a dizê-la é como a razão se perde.*
-#[must_use]
-pub fn o_campo_do_chao_e_reaproveitado() -> bool {
-    static LIGADO: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *LIGADO.get_or_init(|| std::env::var("PH2D_FIELD_CHAO_CACHE").as_deref() != Ok("0"))
-}
 
 /// ⭐⭐⭐⭐ **A GRADE DE LONGE: a resolução dela, e a porta que a bisecta** — ver
 /// [`ph2d_field_gpu::longe`].
@@ -544,154 +512,9 @@ pub const LONGE_RES: Option<u32> = Some(0);
 /// [`ph2d_field_gpu::longe::Longe::perto`].
 pub const LONGE_PERTO: f32 = 1.0;
 
-/// ⭐⭐⭐⭐ **A FITA DA PEÇA SAI DO SHADER DO PINTOR QUANDO NINGUÉM A LÊ** — a porta que bisecta.
-///
-/// Ver [`ph2d_field_gpu::paint::PaintSetup::le_o_campo`] para o mecanismo e o grafo de chamadas que
-/// o decidiu. **Medido 2026-09-21: acrescentar uma forma à peça passa de `1 406 ms` para `74 ms`**,
-/// porque o `pinta` e o `pinta_bordas` deixam de ter a peça no texto e o cache de pipelines — que
-/// tem por chave o TEXTO — passa a acertar.
-///
-/// ⚠️ **Ela nasce LIGADA**, ao contrário da lei da casa, e a razão é que ela não é uma feature: a
-/// imagem é byte-idêntica por construção, e o que ela tira do caminho é uma espera que o dono
-/// aprovou como defeito no smoke de 2026-09-21. `PH2D_FIELD_FITA_INERTE=0` devolve o caminho
-/// antigo, e é por ela que o gate da CONTA mede os dois lados.
-#[must_use]
-pub fn a_fita_sai_do_pintor() -> bool {
-    static LIGADO: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *LIGADO.get_or_init(|| std::env::var("PH2D_FIELD_FITA_INERTE").as_deref() != Ok("0"))
-}
-
-/// ⭐⭐⭐ **A SILHUETA É RE-AMOSTRADA EM TODO QUADRO** (`W7c`, 2026-09-19).
-///
-/// # ⛔⛔⛔ Ela era o quarto passageiro da bandeira da W73, e saiu por MEDIÇÃO
-///
-/// O report do dono era *«a peça ferve na borda enquanto orbito»*. Medido no caminho do produto a
-/// `1920×1080` (`borda_sondas::a_regua_do_fervilhar`), o quadro que a mão arrasta não tem **um
-/// único** pixel de cobertura parcial na silhueta — ela é uma escada binária —, e uma rotação de
-/// `0,0005 rad` faz um pixel saltar **`212`–`222` de `255`**. Com a segunda passagem ligada, `28`–
-/// `39 %` da banda leva cobertura parcial e o pior salto cai para `128`–`137`.
-///
-/// **O preço, medido no pintor** (`borda_sondas::quanto_custa_a_borda_no_pintor`, mínimo de 5
-/// intercalado, duas corridas a concordar):
-///
-/// | cena | hoje | +borda | delta | razão |
-/// |---|---:|---:|---:|---:|
-/// | `0` | `11,14` | `11,52` | `+0,38` | `1,03×` |
-/// | `5` | `29,82` | `32,48` | `+2,66` | `1,09×` |
-/// | `11` | `16,91` | `18,47` | `+1,56` | `1,09×` |
-/// | `33` | `6,08` | `6,26` | `+0,18` | `1,03×` |
-/// | `36` | `4,58` | `4,83` | `+0,25` | `1,05×` |
-///
-/// ⚠️ **A tabela que a tinha posto fora do quadro de movimento dizia `1,30×`–`1,40×`** e foi lida
-/// **na CPU, a `640×360`, antes de o quadro inteiro ir para a placa**
-/// ([`ph2d_field_render::trace_cancellable`]). *Quem move o número que tornava algo inalcançável
-/// tem de reconferir a nota* (`CLAUDE.md` §0.0).
-///
-/// ⭐ **E o que a tirou da bandeira foi a COMPANHIA, não o preço dela:** os outros passageiros
-/// custam `+284 ms` na cena `5` (o ricochete e o campo do chão). *Uma bandeira que junta passageiros
-/// com preços a duas ordens de grandeza de distância é como o barato fica invisível.*
-///
-/// ⚠️ Quem a desliga **num teste** é a [`crate::gpu_frame::Sonda::bordas`], que não é caminho de
-/// produto. Quem a desliga **no app** é `PH2D_FIELD_BORDA=0`, e ela existe pela mesma razão que a
-/// `PH2D_FIELD_TAPE_CACHE=0`: *um report de «piorou» não diz QUAL mudança o causou, e duas corridas
-/// dizem.* ⭐ Aqui ela tem um segundo uso, que é o smoke: com `=0` a fervura **volta**, e é assim
-/// que o dono vê o antes e o depois sem ter de acreditar numa tabela.
-/// ⭐⭐⭐⭐ **A OCLUSÃO DO QUADRO DE MOVIMENTO, a passo** (`docs/Render3d/03` §W9) — os cones marcham
-/// num pixel de cada `n × n` e os outros reconstroem-na guiados pela forma.
-///
-/// ⚠️ Medido (`diag_o_ceu_a_passo`): a oclusão era `60`–`80 %` do Render a mexer, e é ela que obriga
-/// o laço do movimento a encolher a tela. `PH2D_FIELD_CEU_PASSO=1` volta à oclusão em todo pixel e
-/// é a porta de bissecção; o número de fábrica mora aqui ao lado da medição que o escolheu.
-#[must_use]
-pub fn o_passo_do_ceu_a_mexer() -> u32 {
-    static PASSO: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
-    *PASSO.get_or_init(|| {
-        std::env::var("PH2D_FIELD_CEU_PASSO")
-            .ok()
-            .and_then(|v| v.trim().parse().ok())
-            .unwrap_or(PASSO_DO_CEU_A_MEXER)
-            .clamp(1, 8)
-    })
-}
-
-/// ⭐⭐⭐⭐ **A oclusão vive NO TEMPO** (`ph2d_field_gpu::ceu_tempo`, ordem do dono de 2026-09-29:
-/// *«somos uma game engine»*) — o céu de um ponto não depende da câmara, logo o quadro de movimento
-/// herda o do quadro anterior e só marcha onde o ponto é novo. `PH2D_FIELD_CEU_TEMPO=0` bissecta.
-#[must_use]
-pub fn o_ceu_vive_no_tempo() -> bool {
-    static LIGADO: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *LIGADO.get_or_init(|| std::env::var("PH2D_FIELD_CEU_TEMPO").map_or(true, |v| v.trim() != "0"))
-}
-
-/// O passo de fábrica — ver [`o_passo_do_ceu_a_mexer`].
-pub const PASSO_DO_CEU_A_MEXER: u32 = 2;
-
 #[must_use]
 pub fn re_amostra_a_silhueta() -> bool {
     static LIGADO: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *LIGADO.get_or_init(|| std::env::var("PH2D_FIELD_BORDA").as_deref() != Ok("0"))
 }
 
-/// ⭐⭐⭐ **Este quadro assente vai REFINAR a oclusão?** (`docs/Render3d/05` §30)
-///
-/// Duas condições, e a segunda quase me escapou:
-///
-/// 1. **o quadro é o ASSENTE** (`assente`, a bandeira da W73) — a mesma que já governa o contorno
-///    engrossado, a sombra directa e o ricochete. ⚠️ **Ela chamava-se `antialias` e o
-///    anti-serrilhado saiu dela** em 2026-09-19 (`W7c`): a silhueta é re-amostrada em todo quadro,
-///    e o nome passou a dizer o que a bandeira ainda decide;
-/// 2. **o prato está PARADO** (`manual`).
-///
-/// # ⛔⛔ Porque a segunda não é opcional
-///
-/// O prato só avança quando **não há trabalho em voo** (`smoke_draw`) — é isso que impede a peça de
-/// dar vinte voltas depois de a janela ter estado minimizada. Um refinamento dura **`3,5 s`** a
-/// `1920×1080` (medido, `measure_the_settle_clock`), logo com ele em voo o prato passaria a avançar
-/// **um passo a cada `3,6 s`**: a auto-demonstração que existe para provar que a peça é 3D ficaria
-/// congelada, e o artista leria isso como o app a travar.
-///
-/// ⇒ *um prato a girar é MOVIMENTO*, e o refinamento é do assente — a lei do módulo aplicada ao pé
-/// da letra. Tocar no canvas pára o prato (a lei do [`crate::smoke::Viewport::manual`]) e o
-/// refinamento passa a correr, que é exactamente quando o artista está a olhar para a peça.
-#[must_use]
-pub fn refines_occlusion(assente: bool, plate_parked: bool) -> bool {
-    assente && plate_parked && cpu_occlusion_enabled()
-}
-
-/// ⛔⛔⛔ **O REFINAMENTO DE CPU NASCE DESLIGADO — por veredito do dono e por medição.**
-///
-/// # Os dois reports, no mesmo dia
-///
-/// 1. *«funciona mas com aspecto ruim, muito demorado e em etapas estranhas. Bastante inferior a
-///    app como Unreal»*;
-/// 2. *«mover os objetos ficou muito lento»* — e essa é uma **regressão medida**: cada passagem
-///    repinta a imagem inteira, e o [`ph2d_field_render::shade_render`] corre em **todos os
-///    núcleos** (`par_chunks_mut`). O refinamento roubava a máquina ao quadro que a mão arrastava.
-///
-/// # ⭐⭐⭐ E a medição diz que a cura não é afinar isto — é o DISPOSITIVO
-///
-/// Medido nesta máquina (`cargo run --release -p ph2d-gpu --example field_march_ceiling`,
-/// **RTX 5060 Ti**), a mesma peça, a mesma lei de marcha, o mesmo orçamento de passos:
-///
-/// | | CPU | **GPU** | ganho |
-/// |---|---:|---:|---:|
-/// | só o traçado, `1920×1080` | `29,18 ms` | `0,67 ms` | `43,6×` |
-/// | traçado + oclusão INTEIRA (16 raios) | `1 998 ms` | **`5,00 ms`** | **`399,5×`** |
-///
-/// ⇒ *o que aqui custa DOIS SEGUNDOS em dezasseis etapas visíveis cabe num QUADRO no dispositivo*
-/// — sem etapas, sem espera, sem lei de acumulação nenhuma. O `CLAUDE.md` §0.0 escreve-o com estas
-/// palavras: **«nunca deixe o fallback definir o produto… o caminho mais lento definiu o teto do
-/// mais rápido, no módulo cuja razão de existir é o mais rápido»**. Eu medi a CPU, vi que não cabia,
-/// e deixei a CPU desenhar o produto.
-///
-/// # ⚠️ O código FICA, e não é indecisão
-///
-/// Ele é a **referência de CPU** que o traçador de GPU tem de reproduzir — o molde de *dois motores,
-/// uma lei* que este repositório já usa no Flip e no tecido. `PH2D_FIELD_AO=1` liga-o para bissecar
-/// ou para comparar imagens. ⛔ O que não pode é ele ser o que o artista recebe: *uma feature pode
-/// ser PIOR do que não existir*, e catorze gates verdes defendiam um desenho que o dono reprovou em
-/// dois segundos.
-fn cpu_occlusion_enabled() -> bool {
-    static LIGADO: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *LIGADO.get_or_init(|| std::env::var("PH2D_FIELD_AO").is_ok_and(|v| v != "0"))
-}

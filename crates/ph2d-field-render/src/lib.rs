@@ -124,37 +124,27 @@ impl Sharpness {
     }
 }
 
-/// A apresentação da cena — o irmão do [`shade_render`] por tecto de LOC.
+/// A apresentação da cena — o olhar, o estilo, o brilho e a escala da peça.
 mod apresentacao;
-/// ⭐⭐⭐ **O RICOCHETE** — a luz que a cena devolve (a `W5`). Irmão da [`occlusion`]: elas são as
-/// duas metades do mesmo integral do hemisfério.
-pub mod banda;
-pub mod bounce;
+/// A composição do brilho sobre os bytes (a CPU da lei que a placa também corre).
 mod brilho;
 mod camera;
-/// ⭐⭐⭐ **A curvatura da superfície** — a grandeza que a subsuperfície MACIÇA lê, e que esta casa
-/// tira do CAMPO em vez de derivadas de ecrã (`docs/Render3d/10`).
+/// ⭐⭐⭐ **A curvatura da superfície** — tirada do CAMPO em vez de derivadas de ecrã
+/// (`docs/Render3d/10`); o estilo e a malha leem-na.
 pub mod curvatura;
 mod edges;
-/// ⭐⭐⭐ **O chão que só recebe** — a metade da `W4` que esperava o dono (`docs/Render3d/07`).
+/// ⭐ **O chão que só recebe** — o plano e a altura onde a peça pousa.
 mod ground;
-pub mod ground_bounce;
-mod ground_shade;
+/// A lâmpada da cena (um ponto no mundo).
+mod lampada;
 mod march;
-/// ⭐⭐⭐ **A oclusão** — a sombra do céu. Irmã do [`shadow`], com a fronteira escrita lá.
-mod occlusion;
 /// ⭐⭐⭐ O alfa desta imagem é pré-multiplicado em ECRÃ — ver [`premultiplicado`].
 mod premultiplicado;
+/// As portas das sondas da MARCHA (`#[doc(hidden)]`) — os instrumentos de medição dela.
 mod probe_doors;
-pub mod probes;
-/// ⭐⭐⭐ **O refinamento do quadro assente** — o laço que avança as DUAS metades do hemisfério com
-/// o mesmo `k`.
-pub mod refine;
 mod shade;
-mod shade_render;
-mod shadow;
-/// ⭐⭐⭐ A sombra com a borda MOLE, que um material translúcido lê — ver [`sss_shadow`].
-pub mod sss_shadow;
+/// Os materiais da peça e de quem é cada ponto.
+mod superficies;
 mod tape_cache;
 mod tiles;
 use edges::resample_edges;
@@ -165,22 +155,15 @@ use tiles::{SLABS, TILE, tiled_trace};
 /// nomeia continua a escrever `ph2d_field_render::Presentation`. *Um corte que obrigasse 30 sítios a
 /// mudar de import seria o tecto a mandar na API.*
 pub use apresentacao::Presentation;
-pub use bounce::{BOUNCE_BLUR_PASSES, BounceSlice, blur_bounce, bounce_pass, bounce_slice};
 /// ⭐ A COMPOSIÇÃO do halo sobre os bytes — pública porque o desenhista de jogo
 /// (`ph2d-mesh-forward`) responde a ELA no gate de paridade do modelador.
 pub use brilho::soma_halo;
 pub use camera::{DEFAULT_HALF_FOV, Lens, ORTHO_START, Orbit, Rays, Screen};
-pub use ground::{
-    GROUND_SKY_FALLOFF, GROUND_SKY_SAMPLES, GROUND_SKY_SPREAD, GROUND_SKY_STRENGTH, Ground,
-    LOWEST_SIDE, LUMA as GROUND_LUMA, UP as GROUND_UP, catcher_surface, ground_at, lowest_point,
-};
+pub use ground::{Ground, LOWEST_SIDE, lowest_point};
+pub use lampada::{POINT_LAMP_MIN_DISTANCE, PointLamp};
 pub use march::{
     EXHAUSTED, FORKED, HIST, MARCH_RAYS, NORMAL_SAMPLES, SLAB_SAMPLES, SLABS_COUNTED, STEP_HIST,
     STEP_SAMPLES, Stencil,
-};
-pub use occlusion::{
-    ConeSlice, OCCLUSION_BLUR_COS, OCCLUSION_PASSES, OCCLUSION_REACH, blur_occlusion, cone_dir,
-    occlusion, occlusion_reach, occlusion_slice, occlusion_slice_with_reach, occlusion_with_reach,
 };
 /// ⭐ Os botões do BRILHO, re-exportados — quem monta uma [`Presentation`] não tem de declarar
 /// a dependência, que é a mesma cortesia que o `Presentation` já faz pelo `Look`.
@@ -188,14 +171,10 @@ pub use occlusion::{
 // [`ph2d_bloom::BloomParams`] — os dois motores autoram-se com uma estrutura só.
 pub use ph2d_bloom::{Bloom, BloomParams};
 pub use probe_doors::*;
-pub use refine::refine_hemisphere;
 #[doc(hidden)]
 pub use shade::Matcap;
 pub use shade::{shade, shade_with};
-pub use shade_render::{
-    Lamp, Lighting, POINT_LAMP_MIN_DISTANCE, PointLamp, Surfaces, boundary_world, shade_render,
-};
-pub use shadow::{HARDNESS, Shadows, shadow_pass, shadow_pass_on};
+pub use superficies::Surfaces;
 pub use tape_cache::{
     EVICT_NS, GET_NS, Growth, INFLATE, PAD_OF_REACH, TAPE_DROPPED, TAPE_EVICTIONS, TAPE_HITS,
     TapeCache,
@@ -258,37 +237,6 @@ pub struct Gbuffer {
     /// ⚠️ **Ele NÃO é uma cor** — a fronteira desta struct continua de pé. É geometria, como a
     /// normal: *onde* a superfície está, e não *que aspecto* ela tem.
     pub point: Vec<[f32; 3]>,
-    /// ⭐⭐⭐ **A CURVATURA de cada pixel** (`|H|`, `1/unidade de mundo`) — **vazio** quando nenhum
-    /// material da cena a lê, que é a omissão.
-    ///
-    /// # ⚠️ Ela é GEOMETRIA, e é por isso que mora aqui
-    ///
-    /// A fronteira desta struct está declarada no [`Gbuffer::point`]: *onde* a superfície está, e
-    /// não *que aspecto* ela tem. A curvatura é do primeiro tipo — ela responde **como a peça se
-    /// dobra neste ponto**, e a única coisa que a lê é a subsuperfície maciça do material.
-    ///
-    /// ⚠️ **Vazio não é zero por preguiça:** quem sombreia lê `get(i).unwrap_or(0)`, e `0` é
-    /// exactamente o que o piso do GLSL (`max(κ, 0,01)`) transforma num raio de `100` — a leitura
-    /// certa para *«ninguém perguntou»*. ⇒ o quadro de omissão não paga uma amostra de campo.
-    pub curvature: Vec<f32>,
-    /// ⭐⭐⭐ **A CURVATURA À ESCALA DO ARTISTA** — a mesma grandeza, medida a OUTRA distância, e é
-    /// ela que a camada de estilo lê. **Vazio** quando o estilo não a lê, que é a omissão.
-    ///
-    /// # ⛔⛔ Porque são DUAS e não uma
-    ///
-    /// Auditoria de 2026-09-19 (`docs/Render3d/11` §10): o campo de curvatura é **constante por
-    /// troço**, logo a única maneira de a tinta ter um gradiente é **medi-la a uma distância maior**
-    /// — e essa distância é uma escolha ARTÍSTICA ([`ph2d_style::Curvature::softness`]).
-    ///
-    /// ⚠️ **O [`Gbuffer::curvature`] ao lado NÃO pode segui-la:** ele serve a subsuperfície maciça,
-    /// cujo `ε` é o **óptimo de PRECISÃO** medido pela [`crate::curvatura::eps_para`] (o vale do
-    /// erro, no mesmo sítio em três raios). *Um número a servir duas perguntas é a forma de defeito
-    /// que esta casa já nomeou como «dois sliders, uma régua».*
-    ///
-    /// ⇒ **o preço é a segunda assadura, e ela só se paga quando os DOIS consumidores estão vivos**
-    /// (`5` avaliações de campo por pixel acertado). Com um só — a omissão, e a cena do artista —
-    /// este vector fica vazio ou é o único, e não custa nada.
-    pub curvature_style: Vec<f32>,
     /// Os pixels onde a imagem tem **aresta** — de silhueta ou de quina —, com quatro amostras cada.
     ///
     /// Vazio quando o traçado corre sem anti-serrilhado. Ordenado por `pixel`, sempre: é o que faz
@@ -564,9 +512,7 @@ fn trace_inner_tiles(
         normal,
         point,
         // ⚠️ Vazio: quem a quiser assa-a com a `curvatura::do_gbuffer` — ver o campo.
-        curvature: Vec::new(),
         // ⚠️ E a do ESTILO é a MESMA lei a outra distância — vazia pela mesma razão.
-        curvature_style: Vec::new(),
         edges,
     }
 }

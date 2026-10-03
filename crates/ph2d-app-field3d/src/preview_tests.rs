@@ -558,45 +558,6 @@ fn the_export_never_goes_through_the_preview_coarsening() {
     );
 }
 
-/// ⭐⭐⭐ **UM PRATO A GIRAR É MOVIMENTO: ele não refina.**
-///
-/// ⛔ O prato só avança quando não há trabalho em voo, e um refinamento dura `3,5 s` a `1920×1080`
-/// — sem esta condição a auto-demonstração passaria a dar **um passo a cada `3,6 s`**, e isso
-/// lê-se como o app travado. Ver [`super::refines_occlusion`].
-#[test]
-fn um_prato_a_girar_nao_refina_a_oclusao() {
-    use super::refines_occlusion;
-
-    // O quadro de MOVIMENTO nunca refina, o prato esteja como estiver.
-    assert!(!refines_occlusion(false, true));
-    assert!(!refines_occlusion(false, false));
-
-    // ⭐ E o quadro ASSENTE só refina com o prato parado.
-    assert!(
-        !refines_occlusion(true, false),
-        "com o prato a girar o refinamento congelaria a rotação — ver o doc da porta"
-    );
-}
-
-/// ⛔⛔⛔ **A OCLUSÃO DE CPU NASCE DESLIGADA** (report do dono, 2026-09-14).
-///
-/// ⚠️ **Este gate afirma uma AUSÊNCIA, e é de propósito:** *uma feature pode ser pior do que não
-/// existir*, e esta era — *«aspecto ruim, muito demorado e em etapas estranhas»* mais uma regressão
-/// medida no arrasto (o `shade_render` de cada passagem corre em todos os núcleos). A cura não é
-/// afinar: a mesma coisa custa `5,00 ms` no dispositivo contra `1 998 ms` aqui (`399,5×`).
-///
-/// ⛔ Sem ele, um dia alguém lê o `refines_occlusion` e "corrige" a condição que o desliga.
-#[test]
-fn a_oclusao_de_cpu_nao_chega_ao_artista_por_omissao() {
-    use super::refines_occlusion;
-    assert!(
-        !refines_occlusion(true, true),
-        "o refinamento de CPU voltou ao caminho de omissão — ele foi REPROVADO pelo dono, e a \
-         medição da GPU (400×) diz que a cura é o dispositivo, não uma afinação. \
-         `PH2D_FIELD_AO=1` é a porta de bissecção."
-    );
-}
-
 /// ⭐⭐⭐⭐ **O DEGRAU ASSENTE DA PLACA só começa depois de a mão estar parada o que ele custa** —
 /// a regra do aluguer de esquis ([`super::Assentar::pode_comecar`]).
 ///

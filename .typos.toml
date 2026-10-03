@@ -362,10 +362,10 @@ extend-ignore-identifiers-re = [
     # `FACTORES` — pt-PT de «fatores», no cabeçalho da sonda da parede fina do `ph2d-sculpt3d`: a
     # TABELA de factores de espalhamento. O `typos` quer `FACTORS`.
     "^FACTORES$",
-    # `contendor` / `CONTENDOR` — português, *quem contende*: o ficheiro
-    # `unreal_contendor_tests.rs` pergunta se a Unreal é o padrão-ouro, e a resposta medida é que
-    # ela é um CONTENDOR e não a verdade (o oráculo é um traçado convergido). O `typos` oferece o
-    # inglês `contender`, que é a mesma palavra noutra língua — e isto é um nome de FICHEIRO.
+    # `contendor` / `CONTENDOR` — português, *quem contende*: o `docs/Render3d/10` pergunta se a
+    # Unreal é o padrão-ouro, e a resposta medida é que ela é um CONTENDOR e não a verdade (o oráculo
+    # é um traçado convergido). O `typos` oferece o inglês `contender`, que é a mesma palavra noutra
+    # língua. (A sonda `unreal_contendor_tests.rs` saiu com o Render traçado em 03/10.)
     "^(contendor|CONTENDOR)$",
     # `tradicional` — português, no cabeçalho de duas ferramentas de mutação do Motion. O `typos`
     # quer `traditional`.

@@ -2,96 +2,37 @@
 //!
 //! # ⚠️ Porque ele é DOIS pedaços e não um
 //!
-//! O passe que **pinta** ([`crate::paint`]) não marcha nada: ele lê o que a marcha escreveu. Mas
-//! precisa das MESMAS três coisas — a `struct Setup`, os bindings do grupo `0` e a reconstrução do
-//! raio de cada pixel. ⇒ o [`COMUM`] é o que os dois leem e o [`MARCHA`] é o que só a marcha tem.
+//! O passe que **pinta** o Matcap ([`crate::matcap`]) não marcha nada: ele lê o que a marcha
+//! escreveu. Mas precisa das MESMAS três coisas — a `struct Setup`, os bindings do grupo `0` e a
+//! reconstrução do raio de cada pixel. ⇒ o [`COMUM`] é o que os dois leem e as [`LEIS`] e os
+//! [`KERNELS`] são o que só a marcha tem. ⛔ Uma segunda cópia do `ray_at_plane` seria a segunda
+//! resposta a *«que raio sai daqui?»*.
 //!
-//! ⛔⛔ **Uma segunda cópia do `ray_at_plane` seria a segunda resposta à mesma pergunta**, e a nota
-//! do topo do [`crate::trace`] já avisa contra ela por escrito: *«duas respostas para «que raio sai
-//! daqui?»»*. A imagem que o pintor entrega é feita do ponto que a marcha achou — se os dois
-//! reconstruírem o raio de maneiras diferentes, o material é lido num sítio e a luz noutro.
+//! ⚠️ A luz, o céu, o chão e a borda mole do Render traçado viviam aqui e saíram em 03/10 com ele:
+//! o modo Render desenha por malha (`ph2d-mesh-forward`).
 
-/// A parte que o traçado e o pintor partilham: o uniforme, os bindings do grupo `0` e o raio.
+/// A parte que a marcha e o pintor de Matcap partilham: o uniforme, os bindings do grupo `0` e o raio.
 pub(crate) const COMUM: &str = r"
 struct Setup {
-    w: u32, h: u32, budget: u32, ao_rays: u32,
-    // ⭐ `chao`: `1` quando o quadro tem CHÃO (`docs/Render3d/07`), e a altura dele é o `chao_y`.
-    // ⭐⭐⭐ `mole`: `1` quando este quadro tem o canal da BORDA MOLE (`docs/Render3d/10` §12) — o
-    // raio dele, por canal e em PÍXEIS, vive no `mole_raio`. `0` é o passo de sempre, ao bit.
     // ⭐⭐⭐ `longe`: o índice do cabeçalho da GRADE DE LONGE no `k`, MAIS UM — `0` é a marcha de
     // sempre, ao bit (`crate::longe`).
-    n_lamps: u32, chao: u32, mole: u32, longe: u32,
+    w: u32, h: u32, budget: u32, longe: u32,
     half_extent: f32, half_px: f32, ortho_start: f32, eye_distance: f32,
     hit_eps: f32, normal_eps: f32, step: f32, t_max: f32,
-    ball_radius: f32, ao_reach: f32, edge_cos: f32, chao_y: f32,
-    alvo: vec3<f32>, right: vec3<f32>, up: vec3<f32>, fwd: vec3<f32>,
-    ball_center: vec3<f32>,
-    // ⭐⭐⭐⭐ **O PASSO DA OCLUSÃO** — ela é marchada num pixel de cada `ceu_passo × ceu_passo` e os
-    // outros reconstroem-na (`ceu_sobe`). `0` e `1` são a oclusão em todo pixel, a de sempre, ao
-    // bit. ⚠️ Ele mora no enchimento do `vec3` de cima: um `u32` a seguir a um `vec3` ocupa os
-    // quatro bytes que sobram, e o resto da struct não se mexe.
-    ceu_passo: u32,
-    // ⭐⭐⭐ **O RAIO DA BORDA MOLE, por canal e em PÍXEIS** — o `sss_shadow::raio_em_pixeis` da CPU.
-    // ⚠️ Ele é por CANAL porque a distância de espalhamento é por canal, e é isso que faz a borda
-    // ficar avermelhada num jade: o vermelho viaja mais e entra mais fundo na sombra.
-    mole_raio: vec3<f32>,
-    // ⭐⭐⭐⭐ **A OCLUSÃO NO TEMPO** (`crate::ceu_tempo`): `0` a de sempre, `1` o quadro ASSENTE grava
-    // o histórico, `2` o quadro de MOVIMENTO acumula-o — e aí NENHUM pixel marcha os cones na luz.
-    // ⚠️ Mora no enchimento do `vec3` de cima, como o `ceu_passo`.
-    ceu_tempo: u32,
-    // ⭐⭐⭐ **AS LÂMPADAS, e não uma** — `xyz` é a posição no MUNDO. Ver `MAX_LAMPS`.
-    lamps: array<vec4<f32>, {MAX_LAMPS}>,
+    // ⚠️ O `edge_cos` mora no enchimento do `vec3` de cima: um `f32` a seguir a um `vec3` ocupa os
+    // quatro bytes que sobram.
+    alvo: vec3<f32>, edge_cos: f32,
+    right: vec3<f32>, up: vec3<f32>, fwd: vec3<f32>,
 };
 @group(0) @binding(0) var<uniform> s: Setup;
 @group(0) @binding(1) var<storage, read> k: array<f32>;
 @group(0) @binding(2) var<storage, read_write> centro: array<vec4<f32>>;
-// ⭐⭐⭐ **A LUZ POR PIXEL, com passo `1 + n_lamps`**: o slot `0` é o CÉU e os seguintes são a
-// visibilidade de cada lâmpada.
-//
-// ⛔⛔ **Era um `vec2` — o céu e UMA sombra — e isso era o tecto de uma lâmpada.** Com duas, a
-// segunda ficava sem sombra **em silêncio**, e por isso o chamador caía na CPU inteira em vez de a
-// ignorar. *Um formato que não tem onde pôr a segunda resposta é um tecto escrito em bytes.*
-@group(0) @binding(3) var<storage, read_write> luz: array<f32>;
 @group(0) @binding(4) var<storage, read_write> conta: atomic<u32>;
 @group(0) @binding(5) var<storage, read_write> borda: array<vec4<f32>>;
 // ⭐⭐⭐ **AS GRADES DAS ESCULTURAS, concatenadas** — o cabeçalho de cada uma vive no `k` e diz onde
 // ela começa aqui. ⚠️ Ela sobe UMA VEZ e fica: `128³` são `8 MB`, e reenviá-la por quadro custaria
 // mais barramento do que a imagem inteira que este passe veio poupar.
 @group(0) @binding(6) var<storage, read> grades: array<f32>;
-
-/// O passo de [`luz`] — o céu, uma visibilidade por lâmpada, e os TRÊS do ricochete.
-///
-/// ⭐⭐⭐ **O ricochete mora AQUI e não num canal ao lado** (`docs/Render3d/08`), e a razão é a que o
-/// `ph2d_field_render::Shadows` já escreve: *«é a MESMA pergunta que as lâmpadas respondem —
-/// quanto desta fonte chega a este pixel? Um segundo canal ao lado faria o pintor perguntar duas
-/// vezes a mesma coisa, e é assim que dois canais divergem.»*
-///
-/// ⭐⭐ **E o ricochete ocupa SEIS e não três** — o CRU e o de uma passagem de borrão. Ver
-/// `ph2d_field_render::BOUNCE_BLUR_PASSES`: a lei mede **duas** passagens de `3×3`, e o pintor só
-/// consegue fazer uma delas ao ler (a outra tem de ser um despacho, com destino próprio — escrever
-/// no mesmo sítio de onde os vizinhos estão a ler é uma corrida).
-/// ⭐⭐⭐ **E a BORDA MOLE ocupa SEIS por lâmpada quando existe** (`docs/Render3d/10` §12): três do
-/// intermediário da passagem HORIZONTAL e três do resultado, que é o que o pintor lê.
-///
-/// ⛔ Os dois não podem ser o mesmo sítio: a segunda passagem lê os vizinhos do que a primeira
-/// escreveu, e escrever onde eles estão a ler é uma corrida — a mesma razão que os slots do
-/// ricochete liso já pagam, um bloco acima.
-///
-/// ⚠️ **Com `mole = 0` o passo é o de sempre, ao bit**, e nenhuma cena de hoje paga um byte.
-fn passo_da_luz() -> u32 { return 1u + s.n_lamps + 6u + s.mole * 6u * s.n_lamps; }
-
-/// Onde começam os TRÊS do intermediário da lâmpada `l` — o que a `borra_mole_h` escreve.
-fn base_do_mole_tmp(i: u32, l: u32) -> u32 { return i * passo_da_luz() + 7u + s.n_lamps + l * 3u; }
-
-/// Onde começam os TRÊS da borda mole da lâmpada `l` — o que a `borra_mole_v` escreve e o pintor lê.
-fn base_do_mole(i: u32, l: u32) -> u32 { return base_do_mole_tmp(i, s.n_lamps) + l * 3u; }
-
-/// Onde começam os três `f32` do ricochete CRU deste pixel — o que a `pinta_ricochete` escreve.
-fn base_do_ricochete(i: u32) -> u32 { return i * passo_da_luz() + 1u + s.n_lamps; }
-
-/// Onde começam os três do ricochete já com UMA passagem de borrão — o que a `borra_ricochete`
-/// escreve e a `ricochete_no_pixel` lê (e volta a borrar, o que dá as duas da lei).
-fn base_do_ricochete_liso(i: u32) -> u32 { return base_do_ricochete(i) + 3u; }
 
 // ⚠️ **A MESMA lei de marcha da CPU**, e ela é uma função porque as quatro amostras do
 // anti-serrilhado a repetem: uma segunda cópia seria a segunda resposta à mesma pergunta.
@@ -101,14 +42,6 @@ fn raio(px: f32, py: f32) -> vec2<f32> {
     return vec2<f32>(u, v);
 }
 struct Raio { o: vec3<f32>, d: vec3<f32> };
-// ⭐⭐ **Onde o raio toca o CHÃO** (`xyz`), e `w = 1` quando toca — a `Ground::hit` da CPU, linha a
-// linha: só de CIMA, e o `y` é a ALTURA escrita, nunca `o.y + d.y·t`.
-fn chao_em(r: Raio) -> vec4<f32> {
-    if (s.chao == 0u || !(r.d.y < 0.0)) { return vec4<f32>(0.0); }
-    let t = (s.chao_y - r.o.y) / r.d.y;
-    if (t <= 0.0) { return vec4<f32>(0.0); }
-    return vec4<f32>(r.o.x + r.d.x * t, s.chao_y, r.o.z + r.d.z * t, 1.0);
-}
 fn ray_at_plane(uv: vec2<f32>) -> Raio {
     let on_plane = s.alvo + s.right * uv.x + s.up * uv.y;
     var r: Raio;
@@ -125,7 +58,7 @@ fn ray_at_plane(uv: vec2<f32>) -> Raio {
     return r;
 }";
 
-/// O que só a marcha tem: a fita da peça, a marcha, a visibilidade e as duas passagens.
+/// O que só a marcha tem: a fita da peça e a marcha.
 pub(crate) const LEIS: &str = r"
 {TRILINEAR}
 {LONGE}
@@ -133,18 +66,9 @@ pub(crate) const LEIS: &str = r"
 {FIELD}
 
 // Devolve `vec4(t, normal em VISTA)`, com `t < 0` quando não acerta.
-//
-// ⚠️ **O alcance é ARGUMENTO desde o ricochete** (`docs/Render3d/08`): um raio de câmera anda até
-// `s.t_max` e um raio de hemisfério anda até sair da bola que contém a peça. *Uma segunda marcha
-// para a segunda pergunta seria a segunda resposta a «onde este raio para?», que é precisamente o
-// que a nota do topo do `trace` proíbe.*
 fn marcha(r: Raio) -> vec4<f32> {
-    return marcha_ate(r, s.t_max);
-}
-
-fn marcha_ate(r: Raio, t_max: f32) -> vec4<f32> {
     var t = 0.0;
-    var fim = t_max;
+    var fim = s.t_max;
     var acertou = false;
     // ⭐⭐⭐ **A GRADE DE LONGE** (`crate::longe`) — com `s.longe = 0` nada disto corre e a marcha
     // é a de sempre, ao bit.
@@ -154,7 +78,7 @@ fn marcha_ate(r: Raio, t_max: f32) -> vec4<f32> {
         let c = longe_caixa(r);
         if (c.x > c.y || c.y <= 0.0) { return vec4<f32>(-1.0, 0.0, 0.0, 0.0); }
         t = max(c.x, 0.0);
-        fim = min(t_max, c.y);
+        fim = min(s.t_max, c.y);
     }
     // ⚠️ **O orçamento conta só as avaliações da ÁRVORE** — é ela que o `budget` foi medido a
     // pagar. Os saltos têm tecto próprio, e cada um anda pelo menos `longe_perto()`.
@@ -163,7 +87,7 @@ fn marcha_ate(r: Raio, t_max: f32) -> vec4<f32> {
     // ⚠️ **Decidido UMA vez por raio, fora do laço:** com o recorte sem grade (`res = 0`) a
     // pergunta à grade devolve sempre `0`, e fazê-la em todo passo custava uma leitura do `k` e um
     // ramo por passo — medido na cena `=1` (campo barato), `9,47 → 10,96 ms` só por isso.
-    let com_grade = s.longe != 0u && longe_tem_grade() && !longe_so_ceu();
+    let com_grade = s.longe != 0u && longe_tem_grade();
     loop {
         if (n >= s.budget || saltos >= {SALTOS_MAX}u || t >= fim) { break; }
         let p = r.o + r.d * t;
@@ -194,358 +118,18 @@ fn marcha_ate(r: Raio, t_max: f32) -> vec4<f32> {
     let nrm = world / len;
     return vec4<f32>(t, dot(nrm, s.right), dot(nrm, s.up), dot(nrm, s.fwd));
 }
-
-// ⭐ **A MARCHA DE VISIBILIDADE** — a da sombra e a da oclusão são a mesma, e diferem só na cerca
-// e na dureza. `INFINITY` para a oclusão (a pergunta é binária); `8` para a sombra (penumbra).
-// ⭐⭐⭐⭐ **O raio da SOMBRA acaba NA CERCA, e não no passo que a ultrapassa** (report do dono,
-// 2026-09-24: a luz encostada à peça desenhava ANÉIS duros no chão). Parar no primeiro passo que
-// passa a cerca deixa a última amostra num sítio que depende da FASE dos passos, e perto da luz é
-// ali que o raio passa rente aos tubos — cada salto de fase é um anel. ⇒ o último passo é encurtado
-// até à cerca e amostrado lá, que é o mesmo sítio para todos os raios. A lei gémea da CPU é a
-// `march::march_visibility` com `ate_a_cerca`.
-fn visivel(origem: vec3<f32>, dir: vec3<f32>, t_max: f32, dureza: f32) -> f32 {
-    var vis = 1.0;
-    var t = s.hit_eps * 4.0;
-    var ultimo = false;
-    for (var n: u32 = 0u; n < s.budget; n = n + 1u) {
-        let d = field(origem + dir * t);
-        if (d < s.hit_eps) { return 0.0; }
-        vis = min(vis, dureza * d / t);
-        if (ultimo) { break; }
-        t = t + d * s.step;
-        if (t >= t_max) {
-            t = t_max;
-            ultimo = true;
-        }
-    }
-    return vis;
-}
-
-// ⭐⭐⭐⭐ **A MESMA visibilidade, sobre o campo dos CONES** — ver `campo_do_ceu` na lei da grade de
-// longe. ⚠️ Uma função irmã e não um argumento: o WGSL não passa funções, e um `if` dentro do laço
-// da `visivel` pagaria a pergunta em todo passo de toda sombra.
-fn visivel_ceu(origem: vec3<f32>, dir: vec3<f32>, t_max: f32, dureza: f32) -> f32 {
-    var vis = 1.0;
-    var t = s.hit_eps * 4.0;
-    for (var n: u32 = 0u; n < s.budget; n = n + 1u) {
-        let d = campo_do_ceu(origem + dir * t);
-        if (d < s.hit_eps) { return 0.0; }
-        vis = min(vis, dureza * d / t);
-        t = t + d * s.step;
-        if (t >= t_max) { break; }
-    }
-    return vis;
-}
-
-// ⭐⭐⭐ A direcção `k` do conjunto de cones — o `ph2d_field_render::cone_dir`, linha a linha.
-// Reticulado de Fibonacci esférico em coordenadas de MUNDO: nem o pixel nem a câmera entram.
-fn direccao_do_cone(k: u32, total: u32) -> vec3<f32> {
-    let n = f32(max(total, 1u));
-    let ki = f32(k);
-    let z = 1.0 - (2.0 * ki + 1.0) / n;
-    let r = sqrt(max(1.0 - z * z, 0.0));
-    let phi = 6.283185307 * fract(ki * 0.618034);
-    return vec3<f32>(r * cos(phi), r * sin(phi), z);
-}
-
-// A saída da bola, que é o DOMÍNIO da pergunta — ver `ph2d_field_render::shadow`.
-fn cerca_da_bola(p: vec3<f32>, dir: vec3<f32>, ate: f32) -> f32 {
-    return cerca_com(p, dir, ate, 0.0);
-}
-
-// A mesma, com a bola ALARGADA por `folga` — a cerca de um raio que parte do CHÃO usa
-// `folga = distância à luz / dureza`. Ver `ph2d_field_render::shadow::cerca_com`: sem ela a penumbra
-// era cortada numa elipse dura à volta da sombra.
-fn cerca_com(p: vec3<f32>, dir: vec3<f32>, ate: f32, folga: f32) -> f32 {
-    let raio = s.ball_radius + folga;
-    let oc = p - s.ball_center;
-    let b = dot(oc, dir);
-    let c = dot(oc, oc) - raio * raio;
-    let disc = b * b - c;
-    if (disc <= 0.0) { return 0.0; }
-    return clamp(-b + sqrt(disc), 0.0, ate);
-}
-
-// ⭐⭐⭐ **QUANTO DO CÉU CHEGA A UM PONTO DO CHÃO** — a `ph2d_field_render::ground::ground_sky`, com as
-// mesmas constantes (elas são LIDAS do ficheiro que as declara) e a mesma ordem de soma.
-fn ceu_do_chao(q: vec3<f32>) -> f32 {
-    var soma = 0.0;
-    var soma_w = 0.0;
-    var w = 1.0;
-    for (var k: u32 = 1u; k <= {CHAO_N}u; k = k + 1u) {
-        let h = s.ao_reach * f32(k) / {CHAO_N}.0;
-        let p = vec3<f32>(q.x, q.y + h, q.z);
-        soma_w = soma_w + w;
-        // A cerca: fora dela o termo é zero num campo de distância exacto.
-        // ⭐⭐⭐ E a distância é o MAIOR dos dois limites inferiores — o campo e a distância à bola —,
-        // que é o que torna a cerca CONTÍNUA num campo que não é exacto (ver `ground::ground_sky`).
-        let fora_da_bola = length(p - s.ball_center) - s.ball_radius;
-        if (fora_da_bola < {CHAO_ESPALHA} * h) {
-            let t = clamp(1.0 - max(field(p), fora_da_bola) / ({CHAO_ESPALHA} * h), 0.0, 1.0);
-            soma = soma + w * t;
-        }
-        w = w * {CHAO_QUEDA};
-    }
-    return clamp(1.0 - {CHAO_FORCA} * (soma / soma_w), 0.0, 1.0);
-}
 ";
 
-/// ⭐⭐⭐ **OS DOIS KERNELS DA MARCHA** — o que só o traçado despacha.
-///
-/// ⚠️⚠️ **Eles saíram das [`LEIS`] quando o pintor passou a precisar das leis** (`docs/Render3d/08`
-/// §12): o ricochete marcha a partir da superfície, logo o passe que PINTA precisa do campo, da
-/// marcha e da visibilidade — e **não** precisa de declarar outra vez as duas entradas que escrevem
-/// no `centro`, na `luz` e na lista de bordas. *Um segundo ponto de entrada num módulo que ninguém
-/// despacha é código que não se apaga porque compila.*
+/// ⭐⭐⭐ **OS KERNELS DA MARCHA** — o centro e as duas passagens da borda. Eles vivem à parte das
+/// [`LEIS`] porque o pintor de Matcap só precisa do [`COMUM`], e um ponto de entrada num módulo que
+/// ninguém despacha é código que não se apaga porque compila.
 pub(crate) const KERNELS: &str = r"
-// ⭐⭐⭐⭐ **SÓ O CENTRO** — a marcha e a normal, e nada mais. É a entrada do MATCAP, que não lê a
-// luz: ver a nota do `marcha_com`. ⚠️ Ela escreve o `centro` pela MESMA `marcha` que o
-// `centro_e_luz`, logo os dois dão o mesmo G-buffer ao bit — só a luz fica por escrever.
+// ⭐⭐⭐⭐ **O CENTRO** — a marcha e a normal de cada pixel; é tudo o que o MATCAP lê.
 @compute @workgroup_size(8, 8, 1)
 fn centro_so(@builtin(global_invocation_id) g: vec3<u32>) {
     if (g.x >= s.w || g.y >= s.h) { return; }
     let i = g.y * s.w + g.x;
     centro[i] = marcha(ray_at_plane(raio(f32(g.x) + 0.5, f32(g.y) + 0.5)));
-}
-
-@compute @workgroup_size(8, 8, 1)
-fn centro_e_luz(@builtin(global_invocation_id) g: vec3<u32>) {
-    if (g.x >= s.w || g.y >= s.h) { return; }
-    let i = g.y * s.w + g.x;
-    let r = ray_at_plane(raio(f32(g.x) + 0.5, f32(g.y) + 0.5));
-    let c = marcha(r);
-    centro[i] = c;
-    escreve_a_luz(i, r, c);
-}
-
-// ⭐⭐⭐⭐ **SÓ A LUZ** — a metade do `centro_e_luz` que vem DEPOIS da marcha, sobre o `centro` que o
-// `centro_so` já escreveu (`docs/Render3d/03` §W9). ⚠️ O raio é recalculado pela MESMA aritmética,
-// logo o ponto e a normal que a luz lê são os mesmos ao bit.
-@compute @workgroup_size(8, 8, 1)
-fn luz_so(@builtin(global_invocation_id) g: vec3<u32>) {
-    if (g.x >= s.w || g.y >= s.h) { return; }
-    let i = g.y * s.w + g.x;
-    escreve_a_luz(i, ray_at_plane(raio(f32(g.x) + 0.5, f32(g.y) + 0.5)), centro[i]);
-}
-
-fn escreve_a_luz(i: u32, r: Raio, c: vec4<f32>) {
-    let base = i * passo_da_luz();
-    if (c.x < 0.0) {
-        // ⚠️ Um pixel que não acerta recebe **luz inteira** nos canais de SOMBRA — é o que a CPU
-        // devolve (`vis` nasce a `1.0` e o laço salta quem não acerta).
-        //
-        // ⛔⛔ **Mas NÃO no ricochete, e a lei é a OPOSTA:** uma sombra que não foi calculada é
-        // *ausência de sombra* (`1`); uma luz que não foi calculada é **ausência de luz** (`0`).
-        // *Inventar luz é a única das duas que acende o que devia estar escuro.*
-        for (var l: u32 = 0u; l <= s.n_lamps; l = l + 1u) { luz[base + l] = 1.0; }
-        for (var c: u32 = 0u; c < 6u; c = c + 1u) { luz[base_do_ricochete(i) + c] = 0.0; }
-        // ⭐⭐⭐ **O CHÃO QUE SÓ RECEBE**: o que este pixel mostra é o chão, e os canais passam a dizer
-        // quanto de cada fonte chega A ELE. Ver `docs/Render3d/07`.
-        let q = chao_em(r);
-        if (q.w == 0.0) { return; }
-        // ⭐⭐⭐⭐ Com as lâmpadas na TABELA do mundo, quem escreve a sombra e o céu do chão LONGE da
-        // peça num quadro de movimento é o `ceu_tempo_le` — aqui ficam a `1` (ver `crate::ceu_tempo`).
-        if (lampadas_na_tabela() && !chao_perto_da_peca(q.xyz)) {
-            luz[base] = 1.0;
-            return;
-        }
-        for (var l: u32 = 0u; l < s.n_lamps; l = l + 1u) {
-            luz[base + 1u + l] = sombra_da_lampada(q.xyz, vec3<f32>(0.0, 1.0, 0.0), true, l);
-        }
-        luz[base] = ceu_do_chao(q.xyz);
-        return;
-    }
-
-    let p = r.o + r.d * c.x;
-    // A normal volta ao MUNDO — a base é ortonormal, logo a transposta é a inversa.
-    let n = s.right * c.y + s.up * c.z + s.fwd * c.w;
-    let erguido = p + n * (s.hit_eps * 4.0);
-
-    // ⭐⭐⭐ **A SOMBRA, UMA POR LÂMPADA** — só quem VÊ a luz recebe raio.
-    //
-    // ⚠️ **O custo é LINEAR nas lâmpadas e é a parte cara do passe**: um raio de sombra custa
-    // `29,3` amostras contra `8,7` de um raio de câmera. O tecto de `MAX_LAMPS` sai daí.
-    for (var l: u32 = 0u; l < s.n_lamps; l = l + 1u) {
-        luz[base + 1u + l] = sombra_da_lampada(p, n, false, l);
-    }
-
-    // ⚠️ **O ricochete nasce a ZERO e é o passe do PINTOR que o enche** — ele precisa dos
-    // materiais, que vivem no grupo `1` daquele passe. Sem esse passe o canal fica vazio, e um
-    // canal vazio é o quadro de sempre **ao bit**.
-    //
-    // ⛔⛔ **SEIS e não três, e a diferença é o quadro de MOVIMENTO:** o pintor lê sempre os slots
-    // LISOS, e quem os escreve é a `borra_ricochete`, que só é despachada com `ao_rays > 0`. Com
-    // três, um quadro de movimento lia slots **nunca escritos** e ficava a depender de o buffer
-    // nascer a zero — *uma propriedade do driver a segurar uma lei do produto*.
-    for (var c: u32 = 0u; c < 6u; c = c + 1u) { luz[base_do_ricochete(i) + c] = 0.0; }
-
-    // ⭐⭐⭐⭐ **Com a oclusão a passo (`ceu_passo > 1`) NENHUM pixel marcha os cones aqui** — os
-    // representantes marcham-nos no `ceu_meia`, uma thread cada, e os outros são reconstruídos no
-    // `ceu_sobe`. ⛔⛔ Marchá-los AQUI só nos representantes não poupa nada, e está MEDIDO: as 32
-    // threads de um warp andam juntas, e com um representante em cada quatro o warp espera sempre
-    // pelos 48 cones (nó `107 → 90 ms`, contra `30` sem oclusão nenhuma).
-    var ceu = 1.0;
-    if (s.ao_rays > 0u && s.ceu_passo <= 1u && s.ceu_tempo != 2u) {
-        ceu = ceu_por_cones(erguido, n);
-    }
-    luz[base] = ceu;
-}
-
-// ⭐⭐⭐⭐ **A SOMBRA DE UMA LÂMPADA num ponto** — da peça (`chao = false`, normal `n`) ou do CHÃO que
-// só recebe (normal `+y`). É a lei que o `escreve_a_luz` corre por pixel e que a tabela do mundo
-// (`crate::ceu_tempo`) corre por CÉLULA: uma função só, para as duas darem o mesmo número.
-fn sombra_da_lampada(p: vec3<f32>, n: vec3<f32>, chao: bool, l: u32) -> f32 {
-    let d = s.lamps[l].xyz - p;
-    let dist = length(d);
-    if (chao) {
-        // A normal do chão é `+y`: `N·L > 0` é a lâmpada estar ACIMA dele.
-        if (dist <= 1e-6 || d.y <= 0.0) { return 1.0; }
-        let dir = d / dist;
-        let ate = cerca_com(p, dir, dist, dist / 8.0);
-        // ⚠️ **Um raio que nem toca a bola alargada não marcha** — a CPU salta-o também, e um
-        // raio marchado com cerca `0` ainda avaliaria o campo uma vez.
-        if (ate <= 0.0) { return 1.0; }
-        return visivel(p + n * (s.hit_eps * 4.0), dir, ate, 8.0);
-    }
-    if (dist <= 1e-6) { return 1.0; }
-    let dir = d / dist;
-    if (dot(n, dir) <= 0.0) { return 1.0; }
-    let erguido = p + n * (s.hit_eps * 4.0);
-    return visivel(erguido, dir, cerca_da_bola(erguido, dir, dist), 8.0);
-}
-
-// O tamanho de um pixel da câmara ACTUAL no ponto `p`, em unidades de mundo.
-fn pixel_no_mundo(p: vec3<f32>) -> f32 {
-    var escala = 1.0;
-    if (s.eye_distance != 0.0) {
-        let eye = s.alvo + s.fwd * s.eye_distance;
-        escala = max(dot(p - eye, -s.fwd), 0.0) / s.eye_distance;
-    }
-    return s.half_extent / s.half_px * escala;
-}
-
-// O tamanho da PEGADA de um pixel no chão — a secção do raio sobre o `cos` do raspão (parado em
-// `1/16`). É o lado das células do chão na tabela do mundo.
-fn pegada_no_chao(q: vec3<f32>) -> f32 {
-    var olho = s.fwd;
-    if (s.eye_distance != 0.0) { olho = normalize(s.alvo + s.fwd * s.eye_distance - q); }
-    return pixel_no_mundo(q) / max(abs(olho.y), 0.0625);
-}
-
-// ⭐⭐⭐⭐ **Um ponto do chão PERTO da peça não usa a tabela** — a penumbra de uma lâmpada no chão
-// tem a largura da distância ao oclusor sobre a dureza (`8`), e perto da peça ela é mais fina do
-// que a célula: a sombra de CONTACTO saía em degraus do tamanho da célula (medido na rosca a
-// afastar). A distância é o CAMPO no ponto — uma avaliação, e só dentro da bola alargada.
-fn chao_perto_da_peca(q: vec3<f32>) -> bool {
-    let limite = {CHAO_PERTO} * pegada_no_chao(q);
-    if (length(q - s.ball_center) - s.ball_radius >= limite) { return false; }
-    return field(q) < limite;
-}
-
-// ⭐⭐⭐⭐ **As lâmpadas vivem na tabela do mundo neste quadro?** — um quadro de MOVIMENTO
-// (`ceu_tempo == 2`) com poucas lâmpadas: a regra é a MESMA que dá o tamanho da entrada na CPU
-// (`crate::ceu_tempo::palavras_para`).
-fn lampadas_na_tabela() -> bool {
-    return s.ceu_tempo == 2u && s.n_lamps > 0u && s.n_lamps <= {LAMPADAS_NA_TABELA}u;
-}
-
-// ⭐⭐⭐⭐ **OS REPRESENTANTES, compactos: uma thread por célula** — o despacho é a grelha GROSSA
-// (`⌈w/passo⌉ × ⌈h/passo⌉`), logo todas as threads de um warp marcham cones. ⚠️ O ponto e a normal
-// saem da MESMA aritmética do `escreve_a_luz`, logo um representante lê exactamente o que o passo
-// `1` lhe daria.
-@compute @workgroup_size(8, 8, 1)
-fn ceu_meia(@builtin(global_invocation_id) g: vec3<u32>) {
-    let passo = max(s.ceu_passo, 1u);
-    let x = g.x * passo;
-    let y = g.y * passo;
-    if (x >= s.w || y >= s.h) { return; }
-    let i = y * s.w + x;
-    let c = centro[i];
-    if (c.x < 0.0) { return; }
-    let r = ray_at_plane(raio(f32(x) + 0.5, f32(y) + 0.5));
-    let p = r.o + r.d * c.x;
-    let n = s.right * c.y + s.up * c.z + s.fwd * c.w;
-    luz[i * passo_da_luz()] = ceu_por_cones(p + n * (s.hit_eps * 4.0), n);
-}
-
-// ⭐⭐⭐ **A OCLUSÃO POR CONES** — `ao_rays` direcções FIXAS de mundo, pesadas pelo cosseno.
-//
-// A dureza de cada cone é `1/(n·d)`: é o cone que ROÇA o plano tangente, e é ele que faz um
-// corpo CONVEXO ler exactamente `1,0`. Ver `ph2d_field_render::cone_dir` para o porquê de o
-// conjunto ser de MUNDO e não de um referencial tangente.
-fn ceu_por_cones(erguido: vec3<f32>, n: vec3<f32>) -> f32 {
-    var soma = 0.0;
-    var peso = 0.0;
-    for (var j: u32 = 0u; j < s.ao_rays; j = j + 1u) {
-        let dd = direccao_do_cone(j, s.ao_rays);
-        let c = dot(n, dd);
-        if (c <= 0.0) { continue; }
-        peso = peso + c;
-        let ate = min(s.ao_reach, cerca_da_bola(erguido, dd, s.ao_reach));
-        soma = soma + c * visivel_ceu(erguido, dd, ate, 1.0 / c);
-    }
-    if (peso > 0.0) { return soma / peso; }
-    return 1.0;
-}
-
-// ⭐ **Este pixel marcha a oclusão?** — todos, com o passo de sempre; um em cada
-// `ceu_passo × ceu_passo`, com a oclusão a passo.
-fn representa(i: u32) -> bool {
-    let p = max(s.ceu_passo, 1u);
-    return (i % s.w) % p == 0u && (i / s.w) % p == 0u;
-}
-
-// ⭐⭐⭐⭐ **A OCLUSÃO RECONSTRUÍDA, guiada pela FORMA** (`docs/Render3d/03` §W9, a alavanca que o
-// `ph2d_field_render::OCCLUSION_PASSES` nomeava). Cada pixel que não representa a célula lê os
-// QUATRO representantes à volta dele, com o peso bilinear, e só aceita os que estão na MESMA
-// superfície: a normal parecida (a regra do borrão da oclusão, `{CEU_COS}`) e o ponto deles no
-// plano tangente deste (a distância ao plano abaixo de `{CEU_PLANO}` da distância entre os dois).
-//
-// ⛔⛔ **Sem nenhum aceite, o pixel MARCHA os cones ele próprio** — a descontinuidade de profundidade
-// é onde uma reconstrução desenha o HALO (a oclusão da parede de trás escorre para a aresta da
-// frente), e é ali que o pixel deixa de a reconstruir. *Nenhum pixel recebe a oclusão de uma
-// superfície que não é a dele.*
-@compute @workgroup_size(8, 8, 1)
-fn ceu_sobe(@builtin(global_invocation_id) g: vec3<u32>) {
-    if (g.x >= s.w || g.y >= s.h) { return; }
-    let i = g.y * s.w + g.x;
-    if (representa(i)) { return; }
-    let c = centro[i];
-    // Quem não acerta a peça já tem o céu do CHÃO (ou `1`), escrito pela luz.
-    if (c.x < 0.0) { return; }
-    let r = ray_at_plane(raio(f32(g.x) + 0.5, f32(g.y) + 0.5));
-    let p = r.o + r.d * c.x;
-    let n = s.right * c.y + s.up * c.z + s.fwd * c.w;
-    let passo = max(s.ceu_passo, 1u);
-    let x0 = (g.x / passo) * passo;
-    let y0 = (g.y / passo) * passo;
-    let fx = f32(g.x - x0) / f32(passo);
-    let fy = f32(g.y - y0) / f32(passo);
-    var soma = 0.0;
-    var peso = 0.0;
-    for (var dy: u32 = 0u; dy < 2u; dy = dy + 1u) {
-        for (var dx: u32 = 0u; dx < 2u; dx = dx + 1u) {
-            let xr = x0 + dx * passo;
-            let yr = y0 + dy * passo;
-            if (xr >= s.w || yr >= s.h) { continue; }
-            let wb = select(1.0 - fx, fx, dx == 1u) * select(1.0 - fy, fy, dy == 1u);
-            if (wb <= 0.0) { continue; }
-            let j = yr * s.w + xr;
-            let cr = centro[j];
-            if (cr.x < 0.0) { continue; }
-            if (dot(c.yzw, cr.yzw) < {CEU_COS}) { continue; }
-            let rr = ray_at_plane(raio(f32(xr) + 0.5, f32(yr) + 0.5));
-            let dp = rr.o + rr.d * cr.x - p;
-            if (abs(dot(n, dp)) > {CEU_PLANO} * length(dp)) { continue; }
-            soma = soma + wb * luz[j * passo_da_luz()];
-            peso = peso + wb;
-        }
-    }
-    if (peso > 1e-4) {
-        luz[i * passo_da_luz()] = soma / peso;
-    } else {
-        luz[i * passo_da_luz()] = ceu_por_cones(p + n * (s.hit_eps * 4.0), n);
-    }
 }
 
 // ⭐⭐⭐ **A SEGUNDA PASSAGEM: a borda re-amostrada.** Ela precisa dos VIZINHOS, logo não pode
@@ -613,70 +197,18 @@ fn difere(a: u32, b: u32) -> bool {
 /// ⚠️ Ele é uma função e não uma constante porque o `concat!` só junta LITERAIS. O custo é uma
 /// alocação por quadro, ao lado do `replace` do `{FIELD}` que o cache de pipelines já faz.
 pub(crate) fn molde() -> String {
-    let kernels = KERNELS
-        .replace("{CEU_COS}", &numero(ph2d_field_render::OCCLUSION_BLUR_COS))
-        .replace("{CEU_PLANO}", &numero(CEU_PLANO))
-        .replace(
-            "{LAMPADAS_NA_TABELA}",
-            &crate::ceu_tempo::LAMPADAS_NA_TABELA.to_string(),
-        )
-        .replace("{CHAO_PERTO}", &numero(crate::ceu_tempo::CHAO_PERTO));
-    format!("{}{}{kernels}", comum(), leis())
+    format!("{COMUM}{}{KERNELS}", leis())
 }
 
-/// ⭐⭐⭐ **Quão fora do plano tangente um representante pode estar** — o seno do ângulo entre o
-/// segmento que os une e esse plano. Numa superfície lisa o representante está a `~1` célula e o
-/// afastamento é `O(célula²·curvatura)`, logo o quociente é pequeno; num degrau de profundidade o
-/// segmento sobe pela parede e ele vai para `~1`. ⚠️ Com a normal PARECIDA dos dois lados (duas
-/// placas empilhadas) é esta a única pergunta que separa as superfícies.
-pub(crate) const CEU_PLANO: f32 = 0.35;
-
-/// ⭐⭐⭐ **AS LEIS DA MARCHA, sem os kernels** — o campo, a marcha, a visibilidade, o conjunto de
-/// cones e as cercas.
-///
-/// ⚠️ **Ela é `pub(crate)` porque o passe que PINTA passou a precisar delas** (`docs/Render3d/08`
-/// §12): o ricochete marcha a partir da superfície, e marchar é isto. *O pintor recebe as leis e
-/// não os kernels — declarar outra vez as duas entradas que escrevem no `centro` e na `luz` daria
-/// um módulo com pontos de entrada que ninguém despacha.*
+/// ⭐⭐⭐ **AS LEIS DA MARCHA, sem os kernels** — o campo (com as esculturas e a grade de longe) e
+/// a marcha.
 pub(crate) fn leis() -> String {
-    // ⚠️ **As constantes do chão são LIDAS do ficheiro que as declara** — transcritas aqui, elas
-    // divergiriam no dia em que a varredura que as ajustou fosse refeita.
     LEIS.replace("{TRILINEAR}", crate::sculpt::TRILINEAR)
         .replace("{LONGE}", crate::longe::LEI)
         .replace("{SALTOS_MAX}", &crate::longe::SALTOS_MAX.to_string())
-        .replace(
-            "{CHAO_N}",
-            &ph2d_field_render::GROUND_SKY_SAMPLES.to_string(),
-        )
-        .replace(
-            "{CHAO_ESPALHA}",
-            &numero(ph2d_field_render::GROUND_SKY_SPREAD),
-        )
-        .replace(
-            "{CHAO_QUEDA}",
-            &numero(ph2d_field_render::GROUND_SKY_FALLOFF),
-        )
-        .replace(
-            "{CHAO_FORCA}",
-            &numero(ph2d_field_render::GROUND_SKY_STRENGTH),
-        )
 }
 
-/// Um `f32` que o WGSL leia como `f32` — o irmão do `paint::formata`, e pela mesma razão.
-pub(crate) fn numero(v: f32) -> String {
-    let s = format!("{v:?}");
-    if s.contains('.') || s.contains('e') {
-        s
-    } else {
-        format!("{s}.0")
-    }
-}
-
-/// ⭐ **O [`COMUM`] com o tecto de lâmpadas preenchido.**
-///
-/// ⚠️ **O `8` do `array<vec4, N>` é o [`crate::trace::MAX_LAMPS`]**, e não um literal ao lado dele:
-/// escrito duas vezes, um dos dois envelhece na wave que mexer no outro — e o sintoma seria o
-/// uniforme a ler lixo a partir da lâmpada `N+1`, sem erro nenhum.
+/// O [`COMUM`] — uma função para os chamadores que o compõem com outros textos.
 pub(crate) fn comum() -> String {
-    COMUM.replace("{MAX_LAMPS}", &crate::trace::MAX_LAMPS.to_string())
+    COMUM.to_string()
 }

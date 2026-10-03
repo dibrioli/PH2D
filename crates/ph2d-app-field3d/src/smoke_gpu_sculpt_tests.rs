@@ -78,8 +78,6 @@ mod escultura_posta {
             let campo = ph2d_field_eval::device::DeviceField::new(&doc, &reg)
                 .expect("a escultura compila para o dispositivo");
             let fita = campo.tape_wgsl().expect("a fita");
-            let bola = ph2d_field_eval::bounds::bounding_ball(&doc, &reg)
-                .unwrap_or(ph2d_field_eval::bounds::Ball::EMPTY);
             let passo = ph2d_field_eval::safe_march_step(&doc);
             let shrink = ph2d_field_eval::field_shrink(&doc, &reg);
             let sharp = ph2d_field_render::Sharpness::for_frame(cam.half_extent, W.min(H) as usize);
@@ -94,18 +92,8 @@ mod escultura_posta {
                 eye_distance: cam.eye_distance().unwrap_or(0.0),
                 hit_eps: sharp.hit,
                 normal_eps: sharp.normal,
-                lamps: [[0.0; 3]; ph2d_field_gpu::trace::MAX_LAMPS],
-                n_lamps: 0,
-                ball_center: bola.center,
-                ball_radius: bola.radius,
-                ao_rays: 0,
-                ao_reach: ph2d_field_render::occlusion_reach(bola.radius),
-                ceu_passo: 1,
-                ceu_tempo: ph2d_field_gpu::ceu_tempo::CeuTempo::Nao,
-                ground: None,
                 antialias: false,
                 edge_cos: ph2d_field_render::EDGE_COS,
-                mole: None,
                 longe: None,
                 step: passo,
                 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
@@ -156,12 +144,12 @@ mod escultura_posta {
         }
     }
 
-    /// ⭐⭐⭐ **E A ESCULTURA PINTA-SE NO DISPOSITIVO** — a imagem inteira, não só a geometria.
+    /// ⭐⭐⭐ **E A ESCULTURA PINTA-SE NO DISPOSITIVO** — a imagem do MATCAP, não só a geometria.
     ///
     /// ⚠️ **É um gate à parte do de cima, e o de cima não o cobre:** aquele compara o G-BUFFER, e
     /// uma grade ligada ao passe da marcha e **não** ao do pintor daria silhueta certa e imagem
     /// preta. *O pintor lê a mesma grade por um `BindGroup` diferente, e um binding em falta ali é
-    /// mudo para quem só olha a forma.*
+    /// mudo para quem só olha a forma.* (Até 03/10 o pintor era o de material do Render traçado.)
     #[test]
     #[ignore = "precisa de GPU"]
     fn a_escultura_pinta_se_no_dispositivo() {
@@ -173,70 +161,40 @@ mod escultura_posta {
         };
         let doc = peca(1.2);
         let cam = Orbit::default();
-        let luz = [ph2d_field_render::PointLamp {
-            world: {
-                let (right, up, toward_eye) = cam.basis();
-                let e = [-0.55f32, 0.66, 0.5];
-                let r = 2.0 * cam.half_extent;
-                [0, 1, 2].map(|i| {
-                    cam.target[i] + r * (e[0] * right[i] + e[1] * up[i] + e[2] * toward_eye[i])
-                })
-            },
-            radiance_at_one: [3.0, 3.0, 3.0],
-        }];
-        let materiais = [ph2d_material::OpenPbr {
-            base_color: [0.70, 0.55, 0.35],
-            ..ph2d_material::OpenPbr::default()
-        }
-        .prepare()];
-        let surfaces = ph2d_field_render::Surfaces {
-            all: &materiais,
-            owners: None,
-        };
+        let (lado, foto) = crate::smoke::matcap_para_sonda();
         let olhar = ph2d_view_transform::Look::default();
         const BG: [u8; 4] = [0, 0, 0, 0];
 
-        let mundos: Vec<[f32; 3]> = luz.iter().map(|l| l.world).collect();
-        let (g, mut sh) = crate::gpu_frame::march(t, &doc, &reg, &cam, &mundos, None, W, H, true)
+        // ⭐ A REFERÊNCIA: a lei da CPU sobre a marcha do dispositivo.
+        let g = crate::gpu_frame::march(t, &doc, &reg, &cam, W, H, true)
             .expect("a marcha da escultura");
-        // ⭐⭐⭐ **O RICOCHETE entra na REFERÊNCIA** (`docs/Render3d/08` §12), porque o pintor do
-        // dispositivo o calcula. ⚠️ Ele NÃO vem do `march`: por aquele caminho o canal chega vazio
-        // — quem o enche é a passagem do pintor. *Sem esta linha o gate compara dois programas
-        // diferentes e chama à diferença um defeito de paridade.*
-        // ⭐ A lei são as SONDAS (`ph2d_field_render::probes`) — a mesma da paridade do pintor.
-        sh.set_bounce(ph2d_field_render::blur_bounce(
+        let cpu = ph2d_field_render::shade_with(
             &g,
-            &ph2d_field_render::probes::probe_bounce(&doc, &reg, &cam, &g, &surfaces, &luz),
-        ));
-        let sem_ecra: [ph2d_field_render::Lamp; 0] = [];
-        let cpu = ph2d_field_render::shade_render(
-            &g,
-            &cam,
-            &surfaces,
-            &ph2d_field_render::Lighting {
-                lamps: &sem_ecra,
-                points: &luz,
-                sky: &crate::render_light::StudioSky,
-                shadows: Some(&sh),
+            &ph2d_field_render::Matcap {
+                side: lado,
+                rgb_linear: &foto,
             },
-            &ph2d_field_render::Presentation::of(olhar),
+            olhar,
             BG,
         );
-        let gpu = crate::gpu_frame::paint(
+        let gpu = crate::gpu_frame::pinta_matcap(
             t,
             &doc,
             &reg,
             &cam,
-            &luz,
-            &surfaces,
-            &ph2d_field_render::Presentation::of(olhar),
-            BG,
-            None,
+            &ph2d_field_gpu::matcap::MatcapSetup {
+                rgb_linear: &foto,
+                side: lado,
+                chave: 0x5C17,
+                stops: olhar.exposure_stops,
+                view: ph2d_view_transform::wgsl::view_code(olhar.view),
+                background: BG,
+                entrega: None,
+            },
             W,
             H,
-            true,
         )
-        .expect("o pintor da escultura")
+        .expect("o matcap da escultura")
         .rgba;
 
         // ⭐ A população primeiro: sem ela duas imagens pretas leriam zero de desvio.
@@ -300,8 +258,6 @@ mod grade_residente {
         };
         let t = &std::sync::Arc::new(std::sync::Mutex::new(proprio));
         let base = ph2d_field_render::Orbit::default();
-        let luz = [crate::gpu_frame::tests_lampada(&base)];
-        let mundos: Vec<[f32; 3]> = luz.iter().map(|l| l.world).collect();
 
         let mut enviadas = Vec::new();
         for i in 0..QUADROS {
@@ -314,7 +270,7 @@ mod grade_residente {
                 lens: base.lens,
                 ..ph2d_field_render::Orbit::from_yaw_pitch(0.05 * i as f32, 0.1)
             };
-            crate::gpu_frame::march(t, &doc, &reg, &cam, &mundos, None, 96, 54, false)
+            crate::gpu_frame::march(t, &doc, &reg, &cam, 96, 54, false)
                 .expect("a marcha da escultura");
             enviadas.push(t.lock().expect("o traçador").grades_enviadas());
         }
@@ -338,103 +294,4 @@ mod grade_residente {
 /// ⚠️ **Ela imprime o `/proc/loadavg` ao lado de cada número**, e o mínimo de sete corridas: nenhuma
 /// leitura de relógio desta máquina vale nada acima de `load ~5`.
 #[cfg(test)]
-mod relogio_da_escultura {
-    #[test]
-    #[ignore = "medição — precisa de GPU e de máquina calma"]
-    fn mede_a_ponte_nos_dois_motores() {
-        const LW: u32 = 1920;
-        const LH: u32 = 1080;
-        const CORRIDAS: usize = 7;
-
-        let doc = crate::smoke::scene(6);
-        let reg = crate::smoke::sampled_registry();
-        let Some(t) = crate::gpu_frame::shared() else {
-            println!("sem adaptador — saltado");
-            return;
-        };
-        let cam = ph2d_field_render::Orbit::default();
-        let luz = [crate::gpu_frame::tests_lampada(&cam)];
-        let mundos: Vec<[f32; 3]> = luz.iter().map(|l| l.world).collect();
-        let materiais = [ph2d_material::OpenPbr::default().prepare()];
-        let surfaces = ph2d_field_render::Surfaces {
-            all: &materiais,
-            owners: None,
-        };
-        let olhar = ph2d_view_transform::Look::default();
-        const BG: [u8; 4] = [0, 0, 0, 0];
-
-        let mede = |mut f: Box<dyn FnMut()>| -> (f64, f64) {
-            let mut v: Vec<f64> = Vec::with_capacity(CORRIDAS);
-            for _ in 0..CORRIDAS {
-                let t0 = std::time::Instant::now();
-                f();
-                v.push(t0.elapsed().as_secs_f64() * 1e3);
-            }
-            v.sort_by(f64::total_cmp);
-            (v[0], v[CORRIDAS / 2])
-        };
-        // ⚠️ Uma corrida de aquecimento fora da conta: a primeira compila o pipeline e sobe a grade.
-        let _ = crate::gpu_frame::paint(
-            t,
-            &doc,
-            &reg,
-            &cam,
-            &luz,
-            &surfaces,
-            &ph2d_field_render::Presentation::of(olhar),
-            BG,
-            None,
-            LW,
-            LH,
-            true,
-        );
-
-        let sem_ecra: [ph2d_field_render::Lamp; 0] = [];
-        let (cpu_min, cpu_med) = mede(Box::new(|| {
-            let g = ph2d_field_render::trace(&doc, &reg, &cam, LW, LH);
-            let sh = ph2d_field_render::shadow_pass(&doc, &reg, &cam, &g, &mundos);
-            let px = ph2d_field_render::shade_render(
-                &g,
-                &cam,
-                &surfaces,
-                &ph2d_field_render::Lighting {
-                    lamps: &sem_ecra,
-                    points: &luz,
-                    sky: &crate::render_light::StudioSky,
-                    shadows: Some(&sh),
-                },
-                &ph2d_field_render::Presentation::of(olhar),
-                BG,
-            );
-            std::hint::black_box(px.len());
-        }));
-        let (gpu_min, gpu_med) = mede(Box::new(|| {
-            let p = crate::gpu_frame::paint(
-                t,
-                &doc,
-                &reg,
-                &cam,
-                &luz,
-                &surfaces,
-                &ph2d_field_render::Presentation::of(olhar),
-                BG,
-                None,
-                LW,
-                LH,
-                true,
-            )
-            .expect("o pintor da escultura");
-            std::hint::black_box(p.rgba.len());
-        }));
-        println!(
-            "\n  A PONTE · {LW}×{LH} · load {}",
-            std::fs::read_to_string("/proc/loadavg")
-                .unwrap_or_default()
-                .trim()
-        );
-        println!("  caminho                 min    mediana");
-        println!("  CPU inteira         {cpu_min:7.1}  {cpu_med:7.1} ms");
-        println!("  dispositivo         {gpu_min:7.2}  {gpu_med:7.2} ms");
-        println!("  ganho               {:7.1}×", cpu_min / gpu_min);
-    }
-}
+mod relogio_da_escultura {}

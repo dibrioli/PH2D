@@ -1,15 +1,10 @@
-//! ⭐⭐⭐ **O G-BUFFER DO DISPOSITIVO NO VOCABULÁRIO DA CPU** — para a pintura correr onde já
-//! corre, sem saber que a marcha mudou de sítio.
-//!
-//! ⚠️ **Este é o caminho que o [`crate::paint`] SUBSTITUI.** Ele fica por duas razões, e nenhuma é
-//! inércia: é ele que o gate de paridade do G-buffer compara com o traçado de CPU, e é ele que
-//! serve uma peça que o pintor do dispositivo ainda não saiba pintar.
+//! ⭐⭐⭐ **O G-BUFFER DO DISPOSITIVO NO VOCABULÁRIO DA CPU** — a porta que os gates de paridade
+//! comparam com o traçado de CPU (o produto pinta o Matcap na placa, sem o trazer de volta).
 
 use crate::trace::DeviceGbuffer;
 
 impl DeviceGbuffer {
-    /// ⭐⭐⭐ **O G-buffer do dispositivo no vocabulário da CPU** — para a pintura correr onde já
-    /// corre, sem saber que a marcha mudou de sítio.
+    /// ⭐⭐⭐ **O G-buffer do dispositivo no vocabulário da CPU**.
     ///
     /// ⚠️ **O `point` RECONSTRÓI-SE do `t`**, e é por isso que ele não atravessa o barramento: são
     /// mais `12 B` por pixel (`25 MB` a `1920×1080`) para uma conta que a CPU faz em microssegundos.
@@ -19,7 +14,7 @@ impl DeviceGbuffer {
         &self,
         cam: &ph2d_field_render::Orbit,
         screen: ph2d_field_render::Screen,
-    ) -> (ph2d_field_render::Gbuffer, ph2d_field_render::Shadows) {
+    ) -> ph2d_field_render::Gbuffer {
         let n = self.t.len();
         let mut hit = Vec::with_capacity(n);
         let mut point = Vec::with_capacity(n);
@@ -48,41 +43,13 @@ impl DeviceGbuffer {
                 normal: e.normal,
             })
             .collect();
-        let g = ph2d_field_render::Gbuffer {
+        ph2d_field_render::Gbuffer {
             width: self.width,
             height: self.height,
             hit,
             normal: self.normal.clone(),
             point,
-            // ⚠️ Esta ponte serve à paridade e à leitura, e nenhuma delas sombreia com
-            // subsuperfície maciça — quem a quiser assa-a com a `curvatura::do_gbuffer`.
-            curvature: Vec::new(),
-            curvature_style: Vec::new(),
             edges,
-        };
-        let mut sh = ph2d_field_render::Shadows::default();
-        // ⭐ **Uma chamada por lâmpada** — o `Shadows` guarda um canal por cada, e a fatia `l` do
-        // `shadow` é exactamente esse canal.
-        for l in 0..self.lamps {
-            sh.set_lamp(l, self.shadow[l * n..(l + 1) * n].to_vec());
         }
-        // ⚠️ **A suavização é aplicada AQUI**, como o refinamento da CPU a aplica no publicar — ela
-        // faz parte do que a oclusão entrega, e não do que ela calcula.
-        sh.set_ambient(ph2d_field_render::blur_occlusion(&g, &self.ambient));
-        // ⭐⭐⭐ **E o RICOCHETE, pela mesma lei** (`docs/Render3d/08`): a suavização faz parte do que
-        // o canal ENTREGA, e não do que ele calcula.
-        //
-        // ⚠️⚠️ **Ele vem VAZIO por este caminho, e isso é um facto e não um esquecimento:** quem
-        // enche o canal é a passagem do PINTOR (ela precisa dos materiais), e este caminho é o que
-        // existe justamente para quando o pintor do dispositivo não corre. *Um canal vazio é
-        // ausência de luz — o quadro de sempre, ao bit.*
-        sh.set_bounce(ph2d_field_render::blur_bounce(&g, &self.bounce));
-        // ⭐ **De que chão são os canais de fundo** — sem isto o pintor da CPU leria «não há chão» e
-        // o quadro do dispositivo sairia sem a sombra que ele acabou de calcular.
-        sh.set_ground(
-            self.ground
-                .map(|height| ph2d_field_render::Ground { height }),
-        );
-        (g, sh)
     }
 }

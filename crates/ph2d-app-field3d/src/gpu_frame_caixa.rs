@@ -1,7 +1,5 @@
-//! ⭐⭐⭐⭐ **AS CAIXAS DO PEDIDO** — o recorte do raio primário e a grade que os cones do céu podem
-//! marchar. Saiu do [`super`] por tecto de LOC, pela fronteira *qual caixa* / *o que o quadro pede*.
-
-use super::Sonda;
+//! ⭐⭐⭐⭐ **A CAIXA DO PEDIDO** — o recorte do raio primário pela caixa da peça. Saiu do [`super`]
+//! por tecto de LOC, pela fronteira *qual caixa* / *o que o quadro pede*.
 
 /// ⭐⭐⭐⭐ **O RECORTE DO RAIO PELA CAIXA DA PEÇA** — a porta que o produto e os gates perguntam.
 ///
@@ -28,29 +26,5 @@ pub fn a_caixa_da_marcha(
         hi,
         res,
         perto: crate::preview::LONGE_PERTO,
-        so_ceu: false,
-        grade_caixa: None,
     })
-}
-
-/// ⭐⭐⭐⭐ **A caixa que o pedido leva**, pela [`Sonda`]: o recorte de sempre, ou — com
-/// [`Sonda::ceu_na_grade`] — o recorte mais uma grade que SÓ os cones do céu leem, assada na caixa
-/// da ESFERA da peça (a cerca dos cones), nunca na justa (`docs/Render3d/03` §W9, «a oclusão na
-/// grade»).
-#[must_use]
-pub fn a_caixa_do_pedido(
-    bola: ph2d_field_eval::bounds::Ball,
-    sonda: Sonda,
-) -> Option<ph2d_field_gpu::longe::Longe> {
-    match sonda.ceu_na_grade {
-        Some(res) => a_caixa_da_marcha(bola, Some(res)).map(|l| ph2d_field_gpu::longe::Longe {
-            so_ceu: true,
-            grade_caixa: Some((
-                bola.center.map(|c| c - bola.radius),
-                bola.center.map(|c| c + bola.radius),
-            )),
-            ..l
-        }),
-        None => a_caixa_da_marcha(bola, sonda.longe),
-    }
 }

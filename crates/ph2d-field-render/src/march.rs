@@ -533,13 +533,3 @@ fn normals_into(
         }
     }
 }
-
-/// ⭐⭐⭐ **A MARCHA DE VISIBILIDADE vive no irmão** — a sombra e o cone. ⛔ Corte por tecto de LOC
-/// (`710` contra `700`, 2026-09-24) e pela fronteira *onde o raio pára* / *se alguma coisa está
-/// pelo caminho*.
-#[path = "march_visibilidade.rs"]
-mod visibilidade;
-#[allow(unused_imports)]
-pub(crate) use visibilidade::{
-    BIAS, march_cone_to, march_shadow, march_shadow_counted, march_shadow_to,
-};

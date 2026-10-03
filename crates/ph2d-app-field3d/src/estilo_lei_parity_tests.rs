@@ -29,6 +29,30 @@
 
 use ph2d_style::{Curvature, Rim, Style, Zones};
 
+/// Um estilo bem longe da fábrica — todos os botões fora do neutro, e nenhum deles subtil.
+pub(crate) fn vestido() -> Style {
+    Style {
+        rim: Rim {
+            color: [0.2, 0.7, 1.0],
+            strength: 1.5,
+            width: 2.5,
+        },
+        curvature: Curvature {
+            convex: [1.0, 0.55, 0.35],
+            concave: [0.30, 0.45, 1.0],
+            edge_sharpness: 2.0,
+            cavity_sharpness: 2.0,
+            ..Curvature::default()
+        },
+        zones: Zones {
+            shadow: [0.55, 0.70, 1.0],
+            highlight: [1.0, 0.85, 0.55],
+            pivot: 0.18,
+        },
+        indirect_saturation: 1.8,
+    }
+}
+
 /// A ordem dos bindings é a do [`ph2d_field_gpu::probe::evaluate`]: uniformes, storages, entrada,
 /// saída. ⚠️ **A `struct Estilo` e as duas funções vêm da [`ph2d_style::wgsl::source`]**, nunca
 /// transcritas — é a mesma lei que o produto compila.
@@ -58,7 +82,7 @@ fn avalia(@builtin(global_invocation_id) g: vec3<u32>) {
 /// metades têm de varrer a **mesma** população, senão a tabela da lei e a do pixel deixam de se
 /// poder ler lado a lado no dia em que alguém acrescentar um botão a uma delas.
 pub(crate) fn baterias() -> Vec<(&'static str, Style)> {
-    let v = crate::gpu_frame::estilo_tests::vestido();
+    let v = vestido();
     let mut out = vec![
         ("a fábrica", Style::default()),
         (

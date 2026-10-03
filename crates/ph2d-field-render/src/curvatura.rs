@@ -183,24 +183,6 @@ pub fn curvaturas_por<R: AsRef<[f32]>>(
         .collect()
 }
 
-/// ⭐⭐ **A curvatura de cada pixel que acertou** — `0` nos que não acertaram.
-///
-/// ⚠️ **Ela corre só quando algum material da cena a LÊ**, e quem decide é o chamador: com a
-/// subsuperfície maciça desligada (a omissão) o vector fica **vazio** e o sombreamento lê `0` sem
-/// pagar amostra nenhuma. *Uma grandeza que ninguém lê não se calcula* — é a mesma bandeira que a
-/// assadura do chão já respeita.
-#[must_use]
-pub fn do_gbuffer(eval: &mut Hybrid, g: &crate::Gbuffer, eps: f32) -> Vec<f32> {
-    let vivos: Vec<usize> = (0..g.hit.len()).filter(|&i| g.hit[i]).collect();
-    let pontos: Vec<[f32; 3]> = vivos.iter().map(|&i| g.point[i]).collect();
-    let k = curvaturas(eval, &pontos, eps);
-    let mut out = vec![0.0f32; g.hit.len()];
-    for (slot, &i) in k.iter().zip(&vivos) {
-        out[i] = *slot;
-    }
-    out
-}
-
 /// ⭐⭐⭐⭐ **ALGUM MATERIAL DESTA CENA LÊ A CURVATURA?**
 ///
 /// ⚠️ Ela é a metade que o [`assar_canais`] recebe por argumento, e existe como PORTA porque tem
@@ -213,61 +195,4 @@ pub fn material_le(surfaces: &crate::Surfaces<'_>) -> bool {
         .all
         .iter()
         .any(ph2d_material::Surface::reads_curvature)
-}
-
-/// ⭐⭐⭐⭐ **ALGUÉM NESTE QUADRO LÊ A CURVATURA? — a união, e ela é UMA porta.**
-///
-/// ⛔⛔ **Ela nasceu de uma AUDITORIA (2026-09-23) que achou a união escrita DUAS vezes** — uma no
-/// caminho de referência (`smoke_draw_thread`) e outra no do dispositivo (`gpu_frame`) — com o
-/// comentário do segundo a afirmar que era *«o MESMO predicado»*. Era o mesmo como EXPRESSÃO e não
-/// como mecanismo: *uma lei escrita em dois sítios ainda não é uma lei — só uma porta é.*
-///
-/// ⚠️ **O modo de falha que isto impede é MUDO:** no dia em que nascer um terceiro leitor da
-/// curvatura, se o lado do dispositivo ficar atrás, a fita inerte entra, o `curvatura_em` do shader
-/// lê uma constante, e a imagem sai plausível e errada. O gate que existia
-/// (`quem_le_o_campo_continua_a_leva_lo_no_shader`) entra por **um** dos dois sítios e a fixtura
-/// dele usa a única propriedade que os dois já conheciam.
-#[must_use]
-pub fn alguem_le(surfaces: &crate::Surfaces<'_>, pres: &crate::Presentation) -> bool {
-    material_le(surfaces) || pres.reads_curvature()
-}
-
-/// ⭐⭐⭐ **A PORTA QUE ASSA OS DOIS CANAIS DE CURVATURA** — a decisão inteira, num sítio só.
-///
-/// # ⛔⛔ Porque ela existe, e porque ela é uma PORTA e não uma conveniência
-///
-/// Desde a auditoria de 2026-09-19 (`docs/Render3d/11` §10) o quadro tem **duas** curvaturas, porque
-/// são **duas perguntas**: o material pede o **óptimo de PRECISÃO** ([`eps_para`], o vale do erro da
-/// segunda diferença) e o estilo pede a **ESCALA ARTÍSTICA** ([`crate::Presentation::curvature_eps`]),
-/// que é a única alavanca sobre a dureza da borda da tinta.
-///
-/// ⚠️⚠️ **E isso são QUATRO decisões acopladas** — quem lê o quê, com que passo, e se vale a pena
-/// pagar. Escritas em linha em cada chamador, elas divergem: foi exactamente o que aconteceu no dia
-/// em que esta lei nasceu — o produto assava os dois canais e o arnês dos gates assava **um**, logo
-/// a tinta de aresta media `0` e o gate acusou um botão VIVO de não chegar ao pixel.
-///
-/// ⇒ *um arnês que monta o estado à mão mede outro programa*, e a cura é ele entrar pela mesma
-/// porta. Hoje são **dois** consumidores (o quadro do produto e os gates), e o terceiro chega de
-/// graça.
-///
-/// # ⭐ O preço, e porque ele é zero no caminho de omissão
-///
-/// Cada canal só é assado se o consumidor **dele** estiver vivo. Com o estilo de fábrica (tintas
-/// brancas) e sem subsuperfície maciça, **nenhum** corre e o quadro não paga uma amostra de campo.
-/// Com um só, uma assadura. Com os dois, duas — `5` avaliações de campo por pixel acertado cada.
-pub fn assar_canais(
-    eval: &mut Hybrid,
-    g: &mut crate::Gbuffer,
-    material_le: bool,
-    pres: &crate::Presentation,
-) {
-    if pres.piece_radius <= 0.0 {
-        return;
-    }
-    if material_le {
-        g.curvature = do_gbuffer(eval, g, eps_para(pres.piece_radius));
-    }
-    if pres.reads_curvature() {
-        g.curvature_style = do_gbuffer(eval, g, pres.curvature_eps());
-    }
 }

@@ -8,7 +8,7 @@
 //! **um** consumidor isso era dívida; com **dois** é a lei escrita em dois sítios, que é a forma que
 //! esta casa já pagou meia dúzia de vezes.
 //!
-//! ⚠️ **E há uma recusa escrita a dizer o contrário**, no `ph2d-app-field3d/src/render_light.rs`:
+//! ⚠️ **E há uma recusa escrita a dizer o contrário**, no `ph2d-app-field3d/src/render_light.rs` (retirado com o Render traçado em 03/10):
 //! *«a cura mora AQUI, e não na `ph2d-material` … "avaliar na direcção média" só é exacto porque
 //! ESTE céu é linear»*. ⭐ **Ela continua verdadeira, e é sobre OUTRA coisa:** a recusa é sobre a
 //! **aplicação** (*ler o céu na direcção média*), que de facto só é exacta para um céu linear e fica

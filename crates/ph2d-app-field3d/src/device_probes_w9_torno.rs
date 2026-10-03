@@ -74,11 +74,7 @@ fn diag_o_tecto_da_wave_do_torno() {
         println!("sem adaptador — saltado");
         return;
     };
-    let materiais = [ph2d_material::OpenPbr::default().prepare()];
-    let olhar = ph2d_view_transform::Look::default();
-    const BG: [u8; 4] = [0, 0, 0, 0];
     let cam = ph2d_field_render::Orbit::default();
-    let luz = [crate::gpu_frame::tests_lampada(&cam)];
     let reg = crate::smoke::sampled_registry();
 
     println!(
@@ -112,24 +108,15 @@ fn diag_o_tecto_da_wave_do_torno() {
     }
 
     for (nome, doc) in &casos {
-        let surfaces = ph2d_field_render::Surfaces {
-            all: &materiais,
-            owners: None,
-        };
         let pinta = || {
-            crate::gpu_frame::paint(
+            crate::gpu_frame::matcap_liso(
                 t,
                 doc,
                 &reg,
                 &cam,
-                &luz,
-                &surfaces,
-                &ph2d_field_render::Presentation::of(olhar),
-                BG,
-                None,
                 super::super::LW,
                 super::super::LH,
-                false,
+                crate::gpu_frame::Sonda::default(),
             )
         };
         if pinta().is_none() {
@@ -139,7 +126,7 @@ fn diag_o_tecto_da_wave_do_torno() {
         let mut tempos = Vec::with_capacity(super::super::QUADROS_MEDIDOS);
         for _ in 0..super::super::QUADROS_MEDIDOS {
             let t0 = std::time::Instant::now();
-            let _ = pinta().expect("o pintor");
+            let _ = pinta().expect("o matcap");
             #[allow(clippy::cast_possible_truncation)]
             tempos.push(t0.elapsed().as_secs_f32() * 1e3);
         }

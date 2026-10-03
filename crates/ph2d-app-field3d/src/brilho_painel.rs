@@ -248,14 +248,3 @@ pub fn with_number(bloom: Bloom, slot: u8, value: f32) -> Bloom {
 #[cfg(test)]
 #[path = "brilho_painel_tests.rs"]
 mod tests;
-
-/// ⭐⭐⭐ **E a metade que mede PÍXEIS na cena do dono** — irmão por responsabilidade e por tecto de
-/// LOC, nunca por isenção.
-#[cfg(test)]
-#[path = "brilho_cena_tests.rs"]
-mod cena_tests;
-
-/// ⏱️ **E as SONDAS** — as que imprimem e não afirmam. Ver o módulo.
-#[cfg(test)]
-#[path = "brilho_sondas_tests.rs"]
-mod sondas_tests;

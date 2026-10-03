@@ -1,7 +1,7 @@
 //! ⏱️ **A SONDA DO CACHE DE PIPELINES EM DISCO** — o que MEDE, separado do que despacha.
 //!
 //! ⚠️ **Ela saiu do [`super::trace`] por um TECTO DE LOC** (2026-09-22), e é a mesma fronteira que
-//! o `ph2d-app-field3d/src/device_probes.rs` já pagou: *uma sonda responde «quanto» e um gate
+//! o `ph2d-app-field3d/src/device_probes.rs` (retirado com o Render traçado em 03/10) já pagou: *uma sonda responde «quanto» e um gate
 //! responde «ainda é verdade»*, e os dois têm leitores diferentes.
 
 #[cfg(test)]

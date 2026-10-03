@@ -12,7 +12,86 @@
 //! da AMOSTRA ficaria escondida atrás da de geometria — que já tem gate próprio
 //! (`o_gbuffer_do_dispositivo_e_o_da_cpu`).
 
-use super::paint_parity_tests::{FUNDO, H, W, fixtura};
+use ph2d_field::{FieldDoc, Node, NodeId, NodeKind, Op, Primitive, Xform};
+use ph2d_material::{OpenPbr, Surface};
+
+// ⚠️ A fixtura de TRÊS folhas mudou-se do `paint_parity_tests` (o pintor de material do Render
+// traçado, retirado em 03/10) para aqui, que é quem a lê.
+pub(crate) const W: u32 = 192;
+pub(crate) const H: u32 = 108;
+pub(crate) const FUNDO: [u8; 4] = [0, 0, 0, 0];
+
+pub(crate) fn combina(op: Op, filhos: Vec<NodeId>) -> Node {
+    Node::new(
+        Xform::IDENTITY,
+        NodeKind::Combine {
+            op,
+            children: filhos,
+        },
+    )
+}
+
+/// ⭐⭐ **A peça de TRÊS folhas, cada uma com o seu material** — e é assim que uma peça real é.
+///
+/// ⚠️ **Duas folhas não bastavam:** com duas, a rede do filtro de bolas (*«ninguém contém o
+/// ponto»*) e o filtro a sério dão a mesma resposta, e o ramo que a terceira exercita nunca corre.
+pub(crate) fn fixtura() -> (FieldDoc, Vec<FieldDoc>, Vec<Surface>) {
+    let folhas = [
+        ph2d_field_eval::leaf(
+            Primitive::Sphere { radius: 0.45 },
+            Xform::at(-0.30, 0.0, 0.0),
+        ),
+        ph2d_field_eval::leaf(
+            Primitive::Sphere { radius: 0.40 },
+            Xform::at(0.30, 0.10, 0.0),
+        ),
+        ph2d_field_eval::leaf(
+            Primitive::Box {
+                half: [0.60, 0.12, 0.30],
+                round: 0.04,
+                chamfer: 0.0,
+            },
+            Xform::at(0.0, -0.45, 0.0),
+        ),
+    ];
+    let mut nos: Vec<Node> = folhas.to_vec();
+    nos.push(combina(
+        Op::Union(ph2d_field::Blend::Sharp),
+        vec![NodeId(0), NodeId(1), NodeId(2)],
+    ));
+    let doc = FieldDoc::new(nos, NodeId(3)).expect("a peça de três folhas");
+    // ⚠️ **Cada folha é um DOCUMENTO posto no mundo** — é isso que a `Owners` recebe, e aqui não há
+    // grupo nenhum, logo a pose local já é a do mundo.
+    let postas = folhas
+        .iter()
+        .map(|n| FieldDoc::new(vec![n.clone()], NodeId(0)).expect("a folha posta"))
+        .collect();
+    // ⭐ Três materiais BEM diferentes: um difuso vermelho, um metal e um verniz sobre azul. Sem a
+    // diferença, trocar o dono pintaria exactamente o mesmo pixel.
+    let materiais = vec![
+        OpenPbr {
+            base_color: [0.80, 0.12, 0.10],
+            base_diffuse_roughness: 0.4,
+            ..OpenPbr::default()
+        }
+        .prepare(),
+        OpenPbr {
+            base_color: [0.95, 0.75, 0.30],
+            base_metalness: 1.0,
+            specular_roughness: 0.22,
+            ..OpenPbr::default()
+        }
+        .prepare(),
+        OpenPbr {
+            base_color: [0.10, 0.20, 0.85],
+            coat_weight: 1.0,
+            coat_roughness: 0.05,
+            ..OpenPbr::default()
+        }
+        .prepare(),
+    ];
+    (doc, postas, materiais)
+}
 
 /// O lado da fotografia de teste. ⚠️ **Ímpar de propósito**: com um lado par e uma normal simétrica
 /// as coordenadas caem nos centros dos texels e a bilinear degenera no vizinho-mais-próximo —
@@ -83,12 +162,8 @@ fn o_matcap_e_o_mesmo_nos_dois_motores() {
     let (lado, rgb) = fotografia();
     let look = ph2d_view_transform::Look::default();
 
-    // ⚠️ **UMA lâmpada para o `march`**, que a exige (ver o `exige_luz` do
-    // [`crate::gpu_frame::pedido`]) — e o matcap **não a lê**: ela existe só para o G-buffer de
-    // referência atravessar o barramento. *É por isso que o lado do dispositivo passa `&[]`.*
-    let mundos = [[2.0f32, 3.0, 4.0]];
-    let (g, _sh) = crate::gpu_frame::march(t, &doc, &reg, &cam, &mundos, None, W, H, true)
-        .expect("a marcha do dispositivo");
+    let g =
+        crate::gpu_frame::march(t, &doc, &reg, &cam, W, H, true).expect("a marcha do dispositivo");
 
     // ⭐ **A REFERÊNCIA: a lei da CPU sobre a marcha do dispositivo.**
     let cpu = ph2d_field_render::shade_with(
@@ -181,15 +256,13 @@ fn o_matcap_e_o_mesmo_nos_dois_motores() {
     );
 }
 
-/// ⭐⭐⭐⭐ **O MATCAP MARCHA NO KERNEL MAGRO — e nunca no do Render.**
+/// ⭐⭐⭐⭐ **O MATCAP MARCHA NO KERNEL MAGRO.**
 ///
-/// Medido (`docs/Render3d/03` §W9, «o kernel que hospeda a marcha»): o `centro_e_luz` traz o chão,
-/// as lâmpadas e o ricochete, que o matcap nunca lê, e hospedar a marcha nele custava `4×`–`9×` o
-/// quadro (o nó, `86` contra `10 ms` a `1920×1080`). ⚠️ **Nenhuma paridade o vê** — as duas
-/// entradas dão o MESMO centro ao bit —, logo o gate afirma a ESCOLHA: um traçador novo que só
-/// pintou matcap compilou a entrada magra e não a pesada. ⭐ E o CONTROLO: a marcha do G-buffer
-/// (o modo Render) compila a pesada no mesmo traçador, senão o nome procurado podia simplesmente
-/// não existir e a segunda metade ficaria verde por vácuo.
+/// Medido (`docs/Render3d/03` §W9, «o kernel que hospeda a marcha»): o kernel que trazia o chão, as
+/// lâmpadas e o ricochete do Render traçado, que o matcap nunca lê, custava `4×`–`9×` o quadro (o
+/// nó, `86` contra `10 ms` a `1920×1080`). Esse kernel saiu em 03/10 com o Render traçado; o gate
+/// afirma que nenhuma entrada de luz ou de céu volta a ser compilada — nem pelo matcap nem pela
+/// marcha do G-buffer.
 #[test]
 #[ignore = "precisa de adaptador de GPU"]
 fn o_matcap_marcha_no_kernel_magro() {
@@ -211,20 +284,8 @@ fn o_matcap_marcha_no_kernel_magro() {
         background: FUNDO,
         entrega: None,
     };
-    let (c, f, setup) = super::pedido(
-        &doc,
-        &reg,
-        &cam,
-        &[],
-        None,
-        ph2d_field_gpu::trace::MAX_LAMPS,
-        super::Sonda::default(),
-        W,
-        H,
-        None,
-        false,
-    )
-    .expect("o pedido");
+    let (c, f, setup) =
+        super::pedido(&doc, &reg, &cam, super::Sonda::default(), W, H).expect("o pedido");
     let _ = t.matcap_frame(&f, c.sculpts(), setup, &mc, W, H);
     let depois_do_matcap = t.entradas_compiladas();
     assert!(
@@ -234,9 +295,9 @@ fn o_matcap_marcha_no_kernel_magro() {
     assert!(
         !depois_do_matcap
             .iter()
-            .any(|e| e == "centro_e_luz" || e == "luz_so"),
-        "o matcap compilou uma entrada de LUZ — a marcha voltou a pagar o que ele não lê: \
-         {depois_do_matcap:?}"
+            .any(|e| e.contains("luz") || e.contains("ceu")),
+        "o matcap compilou uma entrada de LUZ ou de CÉU — a marcha voltou a pagar o que ele não \
+         lê: {depois_do_matcap:?}"
     );
     // ⭐⭐⭐ **A borda re-amostra-se COMPACTA** (`docs/Render3d/03` §W9, «a borda que esperava pelas
     // vizinhas»): a detecção e a re-amostragem são dois despachos, e o segundo é uma thread por
@@ -245,17 +306,12 @@ fn o_matcap_marcha_no_kernel_magro() {
         setup.antialias && depois_do_matcap.iter().any(|e| e == "bordas_marcha"),
         "a borda não foi re-amostrada pelo despacho compacto: {depois_do_matcap:?}"
     );
-    // CONTROLO: o G-buffer (o modo Render) escreve a luz — hoje num kernel PRÓPRIO, a seguir ao
-    // magro (`ph2d_field_gpu::luz_separada`), e o pesado só volta pela porta de bissecção.
+    // CONTROLO: a marcha do G-buffer (a porta das paridades) usa o MESMO kernel magro — a luz do
+    // Render traçado saiu em 03/10 e com ela o kernel pesado.
     let _ = t.frame(&f, c.sculpts(), setup, W, H);
-    let depois_do_render = t.entradas_compiladas();
-    let luz = if ph2d_field_gpu::luz_separada() {
-        "luz_so"
-    } else {
-        "centro_e_luz"
-    };
+    let depois_da_marcha = t.entradas_compiladas();
     assert!(
-        depois_do_render.iter().any(|e| e == luz),
-        "CONTROLO: a marcha do G-buffer tem de compilar o `{luz}`: {depois_do_render:?}"
+        depois_da_marcha.iter().all(|e| !e.contains("luz")),
+        "CONTROLO: a marcha do G-buffer compilou uma entrada de luz: {depois_da_marcha:?}"
     );
 }

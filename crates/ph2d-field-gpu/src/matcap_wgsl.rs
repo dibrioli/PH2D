@@ -1,23 +1,20 @@
 //! ⭐⭐⭐ **O PINTOR DE MATCAP, em WGSL** — o gémeo exacto do
 //! [`ph2d_field_render::shade_with`], e o passe mais barato deste módulo.
 //!
-//! # ⭐⭐⭐ Porque ele é um passe PRÓPRIO e não um modo do pintor de material
+//! # ⭐⭐⭐ Porque ele é um passe PRÓPRIO e não um modo de um pintor de material
 //!
 //! Três razões, todas medidas:
 //!
-//! 1. **ARMAZÉNS.** O [`crate::paint`] liga **`9`** (`crate::paint::ARMAZENS`) e o piso garantido
-//!    do WebGPU é **`8`** — numa placa que fique no piso o caminho de render **não corre**. Este
-//!    passe liga **`8`** (os seis do grupo `0`, a saída e a fotografia), logo **cabe no piso**.
-//!    ⚠️ *É esta a diferença entre «o melhor render» e «o melhor render onde há folga»:* o modo de
-//!    omissão do modelador passa a correr na placa em toda placa conforme, e o de material não.
+//! 1. **ARMAZÉNS.** O piso garantido do WebGPU é **`8`**. Este passe liga **`7`** (os cinco do
+//!    grupo `0`, a saída e a fotografia), logo **cabe no piso**: o modo de omissão do modelador
+//!    corre na placa em toda placa conforme. (O pintor de material do Render traçado ligava `12`.)
 //! 2. **UM MATCAP NÃO LÊ O CAMPO DA PEÇA.** A lei dele é `uv = n.xy·0,5 + 0,5` sobre uma
 //!    fotografia: ele quer o **NORMAL** e mais nada — nem o ponto, nem o material, nem o céu, nem a
 //!    curvatura. ⇒ o texto deste shader **não tem [`crate::FIELD_SLOT`]**, e o cache de pipelines,
 //!    cuja chave é o TEXTO, acerta para sempre: *acrescentar uma forma não recompila o modo de
 //!    omissão do modelador.* Há gate ([`o_passe_do_matcap_nao_le_o_campo_da_peca`]).
-//! 3. **COMPILAR É O CARO** (`docs/Render3d/03` §W9). Arrastar o pintor de material para o caminho
-//!    de omissão traria o OpenPBR, as sondas, o estilo e a lei do dono para um quadro que não lê
-//!    nenhum deles.
+//! 3. **COMPILAR É O CARO** (`docs/Render3d/03` §W9): o texto deste passe só leva o que o matcap
+//!    lê.
 //!
 //! # ⚠️ O normal já chega em espaço de VISTA
 //!

@@ -39,8 +39,7 @@ use ph2d_field_render::PointLamp;
 /// para a queda `1/r²` ser um gesto que se vê.
 ///
 /// ⛔ **O eixo é o do CANVAS, virado uma vez.** O rig é autorado em espaço de tela (`y` para baixo)
-/// e o mundo tem `y` para cima — a mesma negação que a [`crate::render_light::lamps`] faz, e que a
-/// casa já pagou uma vez (*«sem esta negação a mesma lâmpada acende a pintura por cima e a escultura
+/// e o mundo tem `y` para cima — uma negação que a casa já pagou uma vez (*«sem esta negação a mesma lâmpada acende a pintura por cima e a escultura
 /// por baixo»*).
 /// ⚠️⚠️ **E é uma FUNÇÃO da câmera, não uma constante.** A direcção do rig é de **ECRÃ**; a luz é um
 /// objecto de **MUNDO**. Onde «superior-esquerda» cai no mundo depende de para onde a câmera olha —
@@ -49,10 +48,11 @@ use ph2d_field_render::PointLamp;
 /// é a mesma classe de erro que o sinal de `y` desta casa já pagou.*
 #[must_use]
 pub fn opening_place(cam: &ph2d_field_render::Orbit) -> [f32; 3] {
-    // A lâmpada do rig, em espaço de VISTA — pela porta, nunca por um literal.
-    let ecra = crate::render_light::lamps(&ph2d_light::LightRig::default())
-        .first()
-        .map_or([0.0, 0.0, 1.0], |l| l.to_light);
+    // A lâmpada do rig, em espaço de VISTA (o `y` do canvas virado) — pela porta, nunca por um
+    // literal.
+    let ecra = ph2d_light::resolve(&ph2d_light::LightRig::default())
+        .and_then(|r| r.lamps().first().map(|l| [l.dir[0], -l.dir[1], l.dir[2]]))
+        .unwrap_or([0.0, 0.0, 1.0]);
     let (right, up, toward_eye) = cam.basis();
     let r = opening_distance(cam);
     [0, 1, 2].map(|i| {
@@ -178,8 +178,7 @@ pub fn of_the_world(world: &mut bevy_ecs::world::World) -> Vec<SceneLight> {
 
 /// **A radiância que uma luz entrega a UMA unidade de distância.**
 ///
-/// ⚠️ **O `π` é o mesmo da [`crate::render_light::lamps`]**, e por isso mora ao lado dela em espírito:
-/// o rig da casa promete que *«uma superfície plana de frente para uma luz de intensidade `1`
+/// ⚠️ **O `π`:** o rig da casa promete que *«uma superfície plana de frente para uma luz de intensidade `1`
 /// devolve `1`»*, e o MaterialX recebe a **radiância que chega**, que para uma difusa branca é
 /// `L/π`. *Uma segunda tradução do `π` aqui seria a segunda resposta à mesma pergunta.*
 #[must_use]

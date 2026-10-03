@@ -74,18 +74,6 @@ impl Presentation {
         }
     }
 
-    /// A curvatura deste pixel **em unidades da peça**, que é o que o estilo lê.
-    ///
-    /// ⚠️ **O sinal ATRAVESSA** — é ele que separa uma aresta de uma cova, e é a razão de a
-    /// [`crate::curvatura`] ter deixado de o deitar fora.
-    ///
-    /// ⚠️ **`pub(crate)` e não `pub`**: ela é a conversão que o sombreador faz por pixel, e expô-la
-    /// à workspace convidaria um segundo chamador a normalizar a curvatura por conta própria —
-    /// *duas respostas à mesma pergunta, e a que o artista vê é a que envelhece.*
-    pub(crate) fn styled_curvature(&self, k: f32) -> f32 {
-        k * self.piece_radius
-    }
-
     /// ⭐⭐⭐ **A DISTÂNCIA a que a curvatura do ESTILO é medida** — a porta da queixa do dono.
     ///
     /// # ⛔⛔ Ela NÃO é a [`crate::curvatura::eps_para`], e a diferença é a wave inteira

@@ -7,7 +7,7 @@
 //! ⭐ **As RÉGUAS vivem aqui e a sonda consome-as** — a banda da silhueta e a luminância composta
 //! são a mesma lei nos dois sítios, e duas cópias divergiriam no dia em que uma fosse afinada.
 
-use super::device_tests::{FUNDO, LH, LW};
+use super::device_tests::{LH, LW};
 
 /// A cena dos portões: a **lâmina e a esfera**, que põem uma silhueta recta e uma curva na mesma
 /// imagem — as duas formas em que a escada se lê de maneiras diferentes.
@@ -67,35 +67,18 @@ pub(super) fn camara(d: f32) -> ph2d_field_render::Orbit {
     }
 }
 
-/// Um quadro pintado no dispositivo, com o documento, a bandeira e a sonda que o chamador escolhe.
+/// Um quadro do MATCAP pintado no dispositivo — a porta do produto —, com o documento e a sonda que o
+/// chamador escolhe. ⚠️ A fotografia é uma cor só: estas réguas leem a COBERTURA da silhueta (o
+/// alfa), que a fotografia não move. (Até 03/10 o quadro era o do pintor de material do Render
+/// traçado; a borda é a mesma marcha, logo a régua é a mesma.)
 pub(super) fn quadro(
     t: &crate::gpu_frame::SharedTracer,
     doc: &ph2d_field::FieldDoc,
     reg: &ph2d_field_eval::hybrid::Registry,
     cam: &ph2d_field_render::Orbit,
-    assente: bool,
     sonda: crate::gpu_frame::Sonda,
 ) -> Option<ph2d_field_gpu::trace::Pintado> {
-    let materiais = [ph2d_material::OpenPbr::default().prepare()];
-    let surfaces = ph2d_field_render::Surfaces {
-        all: &materiais,
-        owners: None,
-    };
-    crate::gpu_frame::paint_com(
-        t,
-        doc,
-        reg,
-        cam,
-        &[crate::gpu_frame::tests_lampada(cam)],
-        &surfaces,
-        &ph2d_field_render::Presentation::of(ph2d_view_transform::Look::default()),
-        FUNDO,
-        None,
-        LW,
-        LH,
-        assente,
-        sonda,
-    )
+    crate::gpu_frame::matcap_liso(t, doc, reg, cam, LW, LH, sonda)
 }
 
 /// O documento como o quadro de MOVIMENTO o vê — com o contorno engrossado, se ele morder.
@@ -128,7 +111,7 @@ fn o_quadro_que_a_mao_arrasta_leva_cobertura_parcial() {
         bordas: false,
         ..crate::gpu_frame::Sonda::default()
     };
-    let Some(antes) = quadro(t, &doc, &reg, &cam, false, sem) else {
+    let Some(antes) = quadro(t, &doc, &reg, &cam, sem) else {
         println!("a placa recusa esta peça — saltado");
         return;
     };
@@ -147,15 +130,8 @@ fn o_quadro_que_a_mao_arrasta_leva_cobertura_parcial() {
         antes_pct * 100.0
     );
 
-    let agora = quadro(
-        t,
-        &doc,
-        &reg,
-        &cam,
-        false,
-        crate::gpu_frame::Sonda::default(),
-    )
-    .expect("a mesma peça tem de pintar com a segunda passagem");
+    let agora = quadro(t, &doc, &reg, &cam, crate::gpu_frame::Sonda::default())
+        .expect("a mesma peça tem de pintar com a segunda passagem");
     let agora_pct = parcial(&agora.rgba, &banda(&agora.rgba, w, h));
     // A barra sai do MEDIDO (`28`–`39 %` em cinco cenas) com a folga de uma cena que tenha menos
     // contorno curvo — ⛔ e não de um número confortável.
@@ -191,26 +167,12 @@ fn a_borda_que_a_mao_arrasta_e_a_de_parar() {
     let real = crate::smoke::scene(CENA);
     let mexe = crate::preview::coarse_doc(&real, true).unwrap_or_else(|| real.clone());
     let para = crate::preview::coarse_doc(&real, false).unwrap_or(real);
-    let Some(a) = quadro(
-        t,
-        &mexe,
-        &reg,
-        &cam,
-        false,
-        crate::gpu_frame::Sonda::default(),
-    ) else {
+    let Some(a) = quadro(t, &mexe, &reg, &cam, crate::gpu_frame::Sonda::default()) else {
         println!("a placa recusa esta peça — saltado");
         return;
     };
-    let b = quadro(
-        t,
-        &para,
-        &reg,
-        &cam,
-        true,
-        crate::gpu_frame::Sonda::default(),
-    )
-    .expect("a mesma peça tem de pintar o quadro assente");
+    let b = quadro(t, &para, &reg, &cam, crate::gpu_frame::Sonda::default())
+        .expect("a mesma peça tem de pintar o quadro assente");
     let alfa = |p: &ph2d_field_gpu::trace::Pintado| -> Vec<u8> {
         p.rgba.as_chunks::<4>().0.iter().map(|px| px[3]).collect()
     };
@@ -230,18 +192,18 @@ fn a_borda_que_a_mao_arrasta_e_a_de_parar() {
     );
 }
 
-/// ⭐⭐ **OS TRÊS CAMINHOS DE UM QUADRO LÊEM A MESMA PORTA** — o pintor, o recuo pelo `march` e o
-/// recuo pela CPU.
+/// ⭐⭐ **OS DOIS CAMINHOS DE UM QUADRO LÊEM A MESMA PORTA** — o Matcap na placa (pela
+/// `Sonda::default`) e o recuo pela CPU. (Eram três até 03/10: o Render traçado tinha um recuo
+/// pelo `march`.)
 ///
-/// ⚠️ **Dois deles não são alcançáveis de um teste**: eles só correm quando a placa recusa a peça
-/// ou quando não há adaptador nenhum. ⇒ o censo é do TEXTO, e o que ele mede é que ninguém escreveu
-/// um `true` à mão ao lado da porta — *uma lei escrita em três sítios viaja para os dois de que
-/// alguém se lembrou.*
+/// ⚠️ **O recuo não é alcançável de um teste**: ele só corre quando a placa recusa a peça ou quando
+/// não há adaptador nenhum. ⇒ o censo é do TEXTO, e o que ele mede é que ninguém escreveu um `true`
+/// à mão ao lado da porta — *uma lei escrita em dois sítios viaja para o de que alguém se lembrou.*
 #[test]
-fn os_tres_caminhos_de_um_quadro_leem_a_mesma_porta() {
+fn os_dois_caminhos_de_um_quadro_leem_a_mesma_porta() {
     let thread = include_str!("smoke_draw_thread.rs");
     // ⚠️ A `Sonda::default` mudou-se para o irmão `gpu_frame_sonda.rs` por tecto de LOC
-    // (2026-09-30): o pintor lê a porta ALI, e os dois ficheiros contam como um só.
+    // (2026-09-30): o Matcap lê a porta ALI, e os dois ficheiros contam como um só.
     let gpu = [
         include_str!("gpu_frame.rs"),
         include_str!("gpu_frame_sonda.rs"),
@@ -254,10 +216,10 @@ fn os_tres_caminhos_de_um_quadro_leem_a_mesma_porta() {
             .matches("crate::preview::re_amostra_a_silhueta()")
             .count();
     assert_eq!(
-        leitores, 3,
+        leitores, 2,
         "a porta `re_amostra_a_silhueta` tem {leitores} leitores e os caminhos de um quadro são \
-         TRÊS (o pintor pela `Sonda::default`, o recuo pelo `march` e o recuo pela CPU) — um \
-         caminho que não a leia é uma silhueta que volta a ferver sem nada acusar"
+         DOIS (o Matcap na placa pela `Sonda::default` e o recuo pela CPU) — um caminho que não a \
+         leia é uma silhueta que volta a ferver sem nada acusar"
     );
     let preview = include_str!("preview.rs");
     assert!(

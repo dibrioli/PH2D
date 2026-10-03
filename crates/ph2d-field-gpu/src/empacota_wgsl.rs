@@ -1,26 +1,13 @@
 //! ⭐⭐⭐ **OS BYTES QUE O COMPOSITOR LÊ, em WGSL** — a curva sRGB, o arredondamento e o
 //! pré-multiplicado **em ECRÃ**, num texto só.
 //!
-//! # ⛔⛔⛔ Porque isto é um `const` e não uma segunda cópia
-//!
-//! Esta casa tem **três** implementações desta lei: a CPU
-//! ([`ph2d_field_render::premultiplicado`], com a medição feita no compositor), o pintor de
-//! material ([`crate::paint_wgsl_sondas`]) e o pintor de **matcap** ([`crate::matcap_wgsl`]). As
-//! duas do dispositivo têm de ser o **MESMO TEXTO**, e não «a mesma conta» — medido nesta crate em
-//! 2026-09-19: *a placa contrai `a*b + c` num `fma` de outra maneira quando o TEXTO da função
-//! muda*, e uma divergência de última casa amplificada por um consumidor não-linear já custou
-//! `2`–`3` bytes sobre `4 519` píxeis do miolo.
-//!
-//! ⇒ o corpo é este, e ele é **verbatim** o que o [`crate::paint_wgsl_sondas`] declara. ⚠️ O texto
-//! do pintor **não foi movido de propósito** — mover bytes de um shader que tem paridade medida a
-//! `100,000 %` é exactamente a mudança que aquela nota condena. O que os ata é um gate de
-//! CONTENÇÃO ([`o_matcap_empacota_com_o_MESMO_texto_do_pintor`]): quem editar uma das duas cópias
-//! reprova até mirrorar a outra.
-//!
-//! ⚠️ *Duas cópias com um gate de igualdade não são a mesma coisa que duas cópias.* O que torna
-//! isto honesto é o gate falhar **alto**, e não a promessa deste parágrafo.
+//! A lei tem duas implementações: a CPU ([`ph2d_field_render::premultiplicado`], com a medição feita
+//! no compositor) e esta, que o pintor de **matcap** ([`crate::matcap_wgsl`]) usa. ⚠️ Medido nesta
+//! crate em 2026-09-19: *a placa contrai `a*b + c` num `fma` de outra maneira quando o TEXTO da
+//! função muda* — por isso o texto vive num `const` só. (O pintor de material do Render traçado
+//! tinha uma cópia verbatim, atada por um gate de contenção; saiu com ele em 03/10.)
 
-/// A curva, o arredondamento e o pré-multiplicado em ecrã — verbatim o do pintor de material.
+/// A curva, o arredondamento e o pré-multiplicado em ecrã.
 pub(crate) const EMPACOTA: &str = r"
 // A curva do `ph2d_color::srgb::linear_to_srgb_unit`.
 fn srgb_unit(linear: f32) -> f32 {

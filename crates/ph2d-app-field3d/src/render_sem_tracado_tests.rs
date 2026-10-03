@@ -29,7 +29,10 @@ fn quadro_assente() -> Vec<u8> {
         if let Some(rgba) = pronto {
             return rgba;
         }
-        assert!(t.elapsed().as_secs() < 120, "o quadro não assentou em 120 s");
+        assert!(
+            t.elapsed().as_secs() < 120,
+            "o quadro não assentou em 120 s"
+        );
         std::thread::sleep(std::time::Duration::from_millis(5));
     }
 }
@@ -52,7 +55,10 @@ fn escolhe(sim: &mut ph2d_ecs::SimWorld, modo: Shading) {
         if pronto {
             break;
         }
-        assert!(t.elapsed().as_secs() < 60, "a malha do Render não ficou pronta em 60 s");
+        assert!(
+            t.elapsed().as_secs() < 60,
+            "a malha do Render não ficou pronta em 60 s"
+        );
         std::thread::sleep(std::time::Duration::from_millis(5));
     }
     crate::smoke::with_smoke(|s| {
@@ -114,6 +120,9 @@ fn ninguem_le_a_porta_do_render_tracado() {
             }
         }
     }
-    assert!(vistos > 1000, "a varredura não viu o repositório ({vistos} ficheiros)");
+    assert!(
+        vistos > 1000,
+        "a varredura não viu o repositório ({vistos} ficheiros)"
+    );
     assert!(leitores.is_empty(), "ainda lêem {agulha}: {leitores:#?}");
 }

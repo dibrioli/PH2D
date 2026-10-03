@@ -5,7 +5,7 @@
 //! MATERIAL (que precisa dos materiais, do céu, do olhar e das lâmpadas) e este a do matcap, que
 //! precisa da normal de vista e de uma fotografia. ⛔ Corte por responsabilidade, nunca isenção.
 
-use super::{SharedTracer, Sonda, lamps_that_fit, pedido};
+use super::{SharedTracer, Sonda, pedido};
 
 /// ⭐⭐⭐⭐ **O MATCAP, pintado no dispositivo** — o modo de **OMISSÃO** do modelador.
 ///
@@ -21,14 +21,9 @@ use super::{SharedTracer, Sonda, lamps_that_fit, pedido};
 /// **mais lento do que a CPU inteira**. *O ganho nunca foi a marcha estar na placa — é a IMAGEM não
 /// atravessar o barramento.*
 ///
-/// # ⭐⭐ Porque ele não passa pelo [`paint`]
-///
-/// Ver a nota do [`ph2d_field_gpu::matcap`]: o pintor de material liga **`9`** armazéns contra o
-/// piso de **`8`** do WebGPU, e este liga **`8`** ⇒ *o modo de omissão corre em toda placa
-/// conforme*. Mais: um matcap **não lê o campo da peça**, logo o texto do shader não muda quando o
-/// artista acrescenta uma forma.
-///
-/// ⚠️ **Zero lâmpadas é o caso NORMAL aqui** — ver o `exige_luz` do [`pedido`].
+/// Ver a nota do [`ph2d_field_gpu::matcap`]: este passe liga **`7`** armazéns contra o piso de
+/// **`8`** do WebGPU ⇒ *o modo de omissão corre em toda placa conforme*. Mais: um matcap **não lê o
+/// campo da peça**, logo o texto do shader não muda quando o artista acrescenta uma forma.
 #[must_use]
 // A peça, o registo, a vista, a fotografia, o olhar, o fundo e a tela — sete coisas independentes.
 #[allow(clippy::too_many_arguments)]
@@ -75,8 +70,42 @@ pub fn pinta_matcap_com(
     {
         return None;
     }
-    let cabem = lamps_that_fit(tracer, w, h);
-    let (campo, fita, setup) = pedido(doc, reg, cam, &[], None, cabem, sonda, w, h, None, false)?;
+    let (campo, fita, setup) = pedido(doc, reg, cam, sonda, w, h)?;
     let mut guarda = tracer.lock().ok()?;
     Some(guarda.matcap_frame(&fita, campo.sculpts(), setup, mc, w, h))
+}
+
+/// ⭐ **Um quadro do MATCAP com uma fotografia LISA** — a porta das sondas e dos gates que medem a
+/// marcha, a borda ou o relógio da placa pelo caminho do produto (a cor da fotografia não move o
+/// alfa nem o tempo). `None` pelas mesmas razões do [`pinta_matcap_com`].
+#[cfg(test)]
+pub(crate) fn matcap_liso(
+    tracer: &SharedTracer,
+    doc: &ph2d_field::FieldDoc,
+    reg: &ph2d_field_eval::hybrid::Registry,
+    cam: &ph2d_field_render::Orbit,
+    w: u32,
+    h: u32,
+    sonda: Sonda,
+) -> Option<ph2d_field_gpu::trace::Pintado> {
+    let foto = [0.8_f32; 3];
+    let look = ph2d_view_transform::Look::default();
+    pinta_matcap_com(
+        tracer,
+        doc,
+        reg,
+        cam,
+        &ph2d_field_gpu::matcap::MatcapSetup {
+            rgb_linear: &foto,
+            side: 1,
+            chave: 0xB0DA,
+            stops: look.exposure_stops,
+            view: ph2d_view_transform::wgsl::view_code(look.view),
+            background: [0, 0, 0, 0],
+            entrega: None,
+        },
+        w,
+        h,
+        sonda,
+    )
 }

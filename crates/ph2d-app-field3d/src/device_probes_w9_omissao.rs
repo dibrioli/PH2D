@@ -54,37 +54,22 @@ fn diag_o_arrasto_no_modo_de_omissao() {
             crate::preview::PREVIEW_BUDGET_MS,
             16,
         );
-        // ⭐⭐⭐ **E O QUE A PLACA CUSTA NA ROTA DO PRODUTO** — o [`crate::gpu_frame::paint`], que
-        // devolve a IMAGEM.
-        //
-        // ⚠️⚠️ **A 1.ª redacção media o [`crate::gpu_frame::march`] e isso era outra rota:** ele
-        // traz o G-BUFFER de volta pelo barramento (`~50 MB` a `1920×1080`) e o Render só o pede
-        // quando REFINA. Medido, ele lia `119`–`123 ms` onde o pintor lê `16,6` — *uma coluna de
-        // uma rota que o produto não toma lê-se como o preço da placa.*
-        let materiais = [ph2d_material::OpenPbr::default().prepare()];
-        let surfaces = ph2d_field_render::Surfaces {
-            all: &materiais,
-            owners: None,
-        };
-        let olhar = ph2d_view_transform::Look::default();
+        // ⭐⭐⭐ **E O QUE A PLACA CUSTA NA ROTA DO PRODUTO** — o Matcap na placa, que devolve a
+        // IMAGEM. ⚠️ Não o [`crate::gpu_frame::march`]: ele traz o G-BUFFER de volta pelo barramento
+        // (`~50 MB` a `1920×1080`) — *uma coluna de uma rota que o produto não toma lê-se como o
+        // preço da placa.* (Até 03/10 esta coluna media o pintor de material do Render traçado.)
         let placa = crate::gpu_frame::shared().and_then(|t| {
-            let luz = [crate::gpu_frame::tests_lampada(&cam)];
             let mut melhor = f32::INFINITY;
             for _ in 0..super::super::QUADROS_MEDIDOS {
                 let t0 = std::time::Instant::now();
-                crate::gpu_frame::paint(
+                crate::gpu_frame::matcap_liso(
                     t,
                     &doc,
                     &reg,
                     &cam,
-                    &luz,
-                    &surfaces,
-                    &ph2d_field_render::Presentation::of(olhar),
-                    [0, 0, 0, 0],
-                    None,
                     w,
                     h,
-                    false,
+                    crate::gpu_frame::Sonda::default(),
                 )?;
                 #[allow(clippy::cast_possible_truncation)]
                 let ms = t0.elapsed().as_secs_f32() * 1e3;

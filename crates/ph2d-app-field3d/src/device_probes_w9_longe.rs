@@ -139,8 +139,6 @@ fn diag_a_grade_de_longe_contra_a_referencia() {
         // A do meio separa o que a GRADE muda do que mudar o PONTO DE PARTIDA do raio muda.
         for res in [u32::MAX, 0, 64] {
             let longe = crate::gpu_frame::a_caixa_da_marcha(bola, (res != u32::MAX).then_some(res));
-            let mut lamps = [[0.0f32; 3]; ph2d_field_gpu::trace::MAX_LAMPS];
-            lamps[0] = [0.4, 0.8, 0.45];
             let setup = ph2d_field_gpu::trace::MarchSetup {
                 half_extent: cam.half_extent,
                 half_px: screen.half(),
@@ -152,18 +150,8 @@ fn diag_a_grade_de_longe_contra_a_referencia() {
                 eye_distance: cam.eye_distance().unwrap_or(0.0),
                 hit_eps: sharp.hit,
                 normal_eps: sharp.normal,
-                lamps,
-                n_lamps: 1,
-                ball_center: bola.center,
-                ball_radius: bola.radius,
-                ao_rays: ph2d_field_render::OCCLUSION_PASSES,
-                ao_reach: ph2d_field_render::occlusion_reach(bola.radius),
-                ceu_passo: 1,
-                ceu_tempo: ph2d_field_gpu::ceu_tempo::CeuTempo::Nao,
-                ground: None,
                 antialias: true,
                 edge_cos: ph2d_field_render::EDGE_COS,
-                mole: None,
                 longe,
                 step: passo,
                 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
@@ -233,8 +221,6 @@ fn diag_a_desigualdade_do_salto_na_cpu() {
             hi,
             res: 64,
             perto: crate::preview::LONGE_PERTO,
-            so_ceu: false,
-            grade_caixa: None,
         };
         let g = l.grade().expect("a grade");
         let [dx, dy, dz] = g.dims.map(|d| d as usize);
@@ -388,8 +374,6 @@ fn diag_a_desigualdade_do_salto_no_dispositivo() {
             hi,
             res: 64,
             perto: crate::preview::LONGE_PERTO,
-            so_ceu: false,
-            grade_caixa: None,
         };
         let g = l.grade().expect("a grade");
         let [dx, dy, dz] = g.dims.map(|d| d as usize);

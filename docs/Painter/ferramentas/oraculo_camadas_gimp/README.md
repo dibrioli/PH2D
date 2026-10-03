@@ -15,11 +15,14 @@ krita` ⇒ **GPL3** — os dois só se CORREM, caixa-preta. O fonte não foi lid
 | `krita_6.0.4.bin` | a fixtura do Krita, mesmo formato (56 corridas) |
 | [`oraculo_ajustes.py`](oraculo_ajustes.py) · [`corre_ajustes.sh`](corre_ajustes.sh) | P3: a mesma grelha composta em «perceptual» e um AJUSTE do GIMP sobre o visível — Invert (`linear` sim/não), Curves e Levels (`gimp:curves`/`gimp:levels` por `Gimp.DrawableFilter`, `trc` perceptual/linear), Posterize, Threshold |
 | `gimp_3.2.6_ajustes.bin` | a fixtura dos ajustes (8 corridas, `RUN <ajuste> <espaço> <o que o GIMP aceitou>`) |
+| [`oraculo_vizinhanca.py`](oraculo_vizinhanca.py) · [`oraculo_vizinhanca_krita.py`](oraculo_vizinhanca_krita.py) · [`corre_vizinhanca.sh`](corre_vizinhanca.sh) | P4: os efeitos de VIZINHANÇA (Gaussian, Motion, Sharpen, Bloom) sobre a entrada `entrada_vizinhanca` (faixas com alfa e cor escondida, e um impulso) numa camada só, nos DOIS programas |
+| `gimp_3.2.6_vizinhanca.bin` · `krita_6.0.4_vizinhanca.bin` | as fixturas (10 e 4 corridas; formato `ENTRADA` + `RUN <efeito> <filtro> <precisão> <o que aceitou>`) |
 
 ```
 bash docs/Painter/ferramentas/oraculo_camadas_gimp/corre.sh        # ~2 s
 bash docs/Painter/ferramentas/oraculo_camadas_gimp/corre_krita.sh  # ~2 s
 bash docs/Painter/ferramentas/oraculo_camadas_gimp/corre_ajustes.sh # ~3 s
+bash docs/Painter/ferramentas/oraculo_camadas_gimp/corre_vizinhanca.sh # ~4 s (GIMP + Krita)
 ```
 
 As duas corridas são deterministas: regenerar o GIMP deu o corpo igual byte a byte (só o cabeçalho
@@ -44,7 +47,20 @@ sondas: `oraculo_gimp_tests` (`diag_que_formula_cada_oraculo_usa`). Por modo: AD
 `0`/`1`/`2`/`0`/`0`; o «linear» (controlo) é o mesmo ajuste em luz e fica a `60`–`120` do nosso. Gate:
 `compositor::oraculo_ajustes_tests`. Detalhe: doc 45 §8 (P3).
 
+**Os efeitos de vizinhança (P4, 03/10):** o Krita a 8 bits borra em tons de ecrã pré-multiplicados —
+o Gaussian dele de raio 9 é o nosso `gaussian_weights(9)` ao byte (0 de 10 800 canais), o Motion a ≤1;
+o GIMP borra em luz (sem `trc` nestes filtros) e é o controlo. Gate:
+`compositor::oraculo_vizinhanca_tests`. Detalhe: doc 45 §8 (P4).
+
 ⚠️ **Armadilhas medidas:**
+- os enums do `Gimp.DrawableFilter` (`filter`, `abyss-policy` do `gegl:gaussian-blur`) vão por TEXTO
+  (`'fir'`, `'clamp'`): um inteiro é ignorado em SILÊNCIO e o filtro fica em `auto` (IIR aproximado);
+- o `unsharp` do Krita pelo API devolve o desfoque SIMPLES com qualquer `amount`/`lightnessOnly`/
+  `threshold` (4 configurações, a mesma saída) — o `sharpen` (núcleo fixo) responde;
+- a resposta ao impulso de um sharpen corta os lóbulos negativos a 0: não dá o núcleo;
+- o `gegl:motion-blur-linear` é de UM lado só (do píxel para a frente); o do Krita é simétrico;
+- o Gaussian do Krita a raio pequeno (4) não é o nosso núcleo (12 degraus no miolo, e em luz 69 — é o
+  núcleo, não o espaço); a raio 9 é o nosso ao byte;
 - nos ajustes, o PDB não tem o espaço das Curves e dos Levels — o `Gimp.DrawableFilter` sim (`trc`);
   por omissão o filtro dos Levels vem em LINEAR e o das Curves em PERCEPTUAL: ponha-o sempre;
 - o Threshold do GIMP é o intervalo `[low, high]` com `high ≤ 1`: o branco puro cai FORA (sai preto);

@@ -74,7 +74,10 @@ encode(v) = round(clamp(v, 0, 1) · 255)
 - Os ajustes definidos em luz ou OKLab (HSB, Exposure, Vibrance, …) convertem NA FRONTEIRA deles; os
   que já são de ecrã (Curves, Levels, Posterize, Threshold, Invert, ColorBalance, SelectiveColor,
   ChannelMixer) deixam de converter. Cada um medido: ajuste neutro = no-op ao bit.
-- O espaço do kernel de cada efeito de vizinhança decide-se pelo oráculo, efeito a efeito.
+- O espaço do kernel de cada efeito de vizinhança decide-se pelo oráculo, efeito a efeito (P4:
+  tons de ecrã pré-multiplicados; o Bloom, óptico, em luz).
+- A lei é do PAINTER: o compositor partilhado (`ph2d-render` `LayerCompositor`) recebe o espaço do
+  produto que o chama (`CompositeSpace`) — o Flip junta as camadas em luz, como os traços dele.
 
 ## Alternativas rejeitadas
 
@@ -114,6 +117,19 @@ a ser o ajuste em luz (a `60`–`120` degraus do nosso). O oráculo expôs dois 
 CPU e na placa: a mistura de volta aplicava só parte de um ajuste a 100 % sobre um píxel translúcido,
 e o Threshold mandava para o preto o cinzento exacto no limiar.
 
+**P4 (03/10):** os efeitos de vizinhança, pelo oráculo
+([`corre_vizinhanca.sh`](../../Painter/ferramentas/oraculo_camadas_gimp/corre_vizinhanca.sh)): o Krita
+a 8 bits borra em tons de ecrã pré-multiplicados — o Gaussian dele de raio 9 é o nosso
+`gaussian_weights(9)` **ao byte** (0 de 10 800 canais), o Motion a ≤1 —; o GIMP borra em luz (o
+controlo: o nosso núcleo em luz fecha-o a ≤1 no miolo, o produto fica a ≥60). Gaussian, Sharpen, Motion
+e Chroma passam a tons de ecrã (CPU e placa); o Bloom, óptico, fica em luz na porta dele. Os
+consumidores conferidos no código: o Painter 2D e a peça herdam; o Wet Paint, o Composite, o Impasto e o
+bake de sprites não compõem o de baixo. **O Flip foi partido pela P1 em silêncio** (o rasterizador junta
+os traços de uma camada em luz; as camadas passaram a tons de ecrã — `0,216` onde a mesma camada dá
+`0,5`): o espaço passou a ser do PRODUTO que chama (`ph2d_render::CompositeSpace`; o Flip em luz pela
+porta `ph2d_flip_render::compositor_do_flip`). O FX do Vector fica em luz (abaixo). Detalhe:
+[doc 45 §8 (P4)](../../Painter/45_plano_as_camadas_juntam_se_em_tons_de_ecra.md).
+
 | ⛔ Recusa MEDIDA | porquê |
 |---|---|
 | trocar o `lum` por Rec.709 linear | o oposto desta decisão (acima) |
@@ -123,6 +139,11 @@ e o Threshold mandava para o preto o cinzento exacto no limiar.
 | misturar a cor ajustada de volta por `over` com o alfa da base | um ajuste a 100 % aplicava-se só em parte num píxel translúcido: `79` degraus do GIMP; uma camada de ajuste muda a cor, nunca a cobertura (gates `um_ajuste_de_ecra_e_o_do_gimp_perceptual`, `gpu_um_ajuste_cheio_sobre_um_pixel_translucido_aplica_se_inteiro`) |
 | cortar o Threshold em `t/255` | o cinzento exacto no limiar saía preto; a regra é o byte da luma `≥ t` (Photoshop; = o `low = 0,5` do GIMP) |
 | o Posterize do GIMP que quantiza o alfa · o Threshold dele que deixa o branco de fora | convenções dele, não espaço; um ajuste não toca a cobertura e o branco passa o limiar (gateadas como divergências nomeadas) |
+| borrar em luz (o GIMP, e o nosso até à P3) | o Krita a 8 bits — e o Photoshop/Procreate que o dono nomeou — borram no espaço do documento; o Krita é o nosso ao byte (gate `the_gaussian_is_kritas_8_bit_blur_to_the_byte`); em luz a meia-sombra de um degrau preto↔branco clareia 73 degraus |
+| o Bloom em tons de ecrã com os outros desfoques | é óptico (luz somada) — a mesma família do Exposure; o brilho já era de luz (gate `the_bloom_stays_a_glow_of_light`, sobre cinzento: 0 e 1 são pontos fixos da curva) |
+| a lei do Painter no FX raster do Vector | o mundo vetorial compõe em luz de ponta a ponta (o Vello: âmbar a meia cobertura `(173,128,41)` = `encode(0,5·linear)`, em tons de ecrã `(118,88,30)`) — a lei aqui abriria lá a costura do report |
+| o Flip a herdar o compositor em tons de ecrã | o rasterizador dele junta os traços de uma camada em linear 16F: a camada de cima tem de se juntar como um traço na mesma (gate `a_camada_de_cima_junta_se_como_um_traco_na_mesma_camada`; `0,216` contra `0,5`) |
+| um compositor em luz que aceite ajustes | os ajustes são definidos contra o acumulador codificado (P3) — seriam errados em silêncio; recusa-se (`LayerCompositeError::AdjustmentInLightSpace`) |
 
 ## Critério de desistência
 

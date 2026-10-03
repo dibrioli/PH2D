@@ -10,7 +10,8 @@
 //
 // As transferências sRGB são **byte-idênticas** às de `ph2d-render`
 // (`layer_composite.wgsl` / `ph2d_color::srgb`): a fatia que escrevo aqui é
-// re-decodificada pela LUT do compositor, então os literais precisam casar.
+// re-decodificada pela tabela EM LUZ do compositor do Flip (`compositor_do_flip`,
+// `CompositeSpace::Light` — ADR-0177 P4), então os literais precisam casar.
 
 struct VsOut {
     @builtin(position) pos: vec4<f32>,

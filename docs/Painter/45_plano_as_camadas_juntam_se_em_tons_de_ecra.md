@@ -86,7 +86,7 @@ Mutação: um arnês por porta (decode/encode, a mistura, cada fronteira de ajus
   smoke do dono tem de o MOSTRAR (um documento antigo aberto antes e depois), não esconder.
 - O custo baixa (sai o `pow`/LUT de decode por píxel); medir no fecho, não prometer.
 
-## 8. Execução (P0–P2, 03/10) — o que cada onda mediu
+## 8. Execução (P0–P4, 03/10) — o que cada onda mediu
 
 **P0 — a régua** ([ADR-0177](../architecture/decisions/0177-as-camadas-do-painter-juntam-se-em-tons-de-ecra.md),
 [oráculo](ferramentas/oraculo_camadas_gimp/README.md)). GIMP 3.2.6 por `python-fu-eval`: 84 corridas.
@@ -189,8 +189,63 @@ novos `vibrance_desaturates_to_the_oklab_lightness_of_the_light`,
 do corte: só um cinzento entre `127,5` e `128` distingue); a 4.ª não compilava (o arnês). `MUTA_FILTRO`
 re-corre só algumas.
 
-**Fica para a P4 (janela nova):** o espaço do kernel de cada efeito de vizinhança pelo oráculo (hoje:
-luz, pela porta dos blurs), e os outros consumidores: `ph2d-flip-render` (`composite_blend`), o FX
-raster do Vector (`BLEND_MODES_WGSL`), o bake de sprites, Wet Paint / Composite (a aquarela já está),
-o doc 01 §7 e a tabela ⛔ Recusas MEDIDAS. A tabela de 256 do Levels (2 degraus junto do ponto preto)
-fica nomeada.
+A tabela de 256 do Levels (2 degraus junto do ponto preto) fica nomeada.
+
+**P4 — os efeitos de vizinhança e os outros consumidores (03/10).**
+
+*O oráculo* ([`corre_vizinhanca.sh`](ferramentas/oraculo_camadas_gimp/corre_vizinhanca.sh)): uma entrada
+NOSSA própria (`entradas.py` `entrada_vizinhanca`, 48×75 — a grelha dos modos tem linhas de 1 px e
+nunca chega a alfa 0): faixas preto|branco, vermelho|azul, laranja|TRANSPARENTE de cor escondida azul,
+branco a 140|preto, e um impulso. GIMP 3.2.6 por `Gimp.DrawableFilter` (gaussian FIR σ 1,5 e 3,
+motion-linear 9, unsharp, bloom; imagem 8 bits e float — a mesma saída) e Krita 6.0.4 a 8 bits
+(gaussian raio 4 e 9, motion 9, sharpen). Cada saída contra os dois modelos pré-multiplicados:
+
+| efeito | GIMP × luz | GIMP × ecrã | Krita × luz | Krita × ecrã |
+|---|---|---|---|---|
+| Gaussian (σ 3 = o nosso raio 9) | **≤1** no miolo (12 canais de borda a ≤7: o GIMP trunca o núcleo mais longe que 3σ) | 73 | 73 | **0 — o nosso `gaussian_weights(9)` ao byte, imagem inteira (0 de 10 800 canais), alfa e cor escondida incluídos** |
+| Motion 9 (núcleo do próprio impulso) | 31 (o impulso quantizado) | 100 | 72 | **≤1** |
+| Sharpen | 15 (faixa cromática 2) | 35 | — | — |
+
+⇒ **Gaussian, Sharpen, Motion e Chroma borram em tons de ecrã pré-multiplicados**, como o Krita a 8
+bits — e como o Photoshop e o Procreate que o dono nomeou (proprietários, sem porta: não corridos). O
+GIMP borra sempre em luz (não tem `trc` nestes filtros) e é o CONTROLO: o nosso núcleo em luz fecha-o, o
+produto fica a ≥60. O **Bloom fica em luz**, na sua própria porta (`premultiply_em_luz`): é óptico (luz
+somada), o brilho dele já era de luz desde a P3, e o único oráculo com Bloom (GIMP) é luz. O **Chroma**
+não tem oráculo (nenhum dos dois o tem): segue a família — é uma recolha, e só difere da luz onde a
+cobertura da origem difere da do destino. O Sharpen é a máscara de nitidez do Gaussian: herda-lhe o espaço.
+
+⚠️ Armadilhas do oráculo (no README): os enums do `Gimp.DrawableFilter` vão por TEXTO (`'fir'`,
+`'clamp'`; o inteiro é ignorado em silêncio e a 1.ª corrida ficou em `auto`); o `unsharp` do Krita
+pelo API devolve o desfoque simples com qualquer força (4 configurações, a mesma saída); a resposta ao
+impulso de um sharpen corta os lóbulos negativos (não dá o núcleo); o motion-linear do GIMP é de um lado
+só; o Gaussian do Krita a raio 4 não é o nosso núcleo (12 no miolo — o dele a raio pequeno é outro, e
+em luz seria 69: não é espaço).
+
+*A mudança:* a porta dos blurs na CPU (`spatial.rs` `premultiply`/`unpremultiply`, agora sem conversão;
+o Bloom com `premultiply_em_luz`/`unpremultiply_em_luz`); na placa o 1.º leitor (`load_blur_tap`), o
+`cs_combine` (só o braço do Bloom passa à luz e volta) e o `cs_chroma`. Gates: `vizinhanca_tests` (5 —
+um valor EXACTO no espaço de cada efeito; o do Bloom sobre cinzento 0,2, porque 0 e 1 são pontos fixos
+da curva), `oraculo_vizinhanca_tests` (o Krita ao byte; o GIMP como controlo), e na placa
+`gpu_os_desfoques_borram_em_tons_de_ecra` / `gpu_o_chroma_junta_em_tons_de_ecra` (leis absolutas ±1,
+não contra o espelho). Re-pinados: `gaussian_blur_spreads_an_impulse` (a energia conserva-se em tons de
+ecrã) e os espelhos `cpu_combine`/`cpu_blur`/`cpu_motion_blur` do `layer_compositor_gpu.rs` (os nomes
+`*_linear` passaram a mentir e saíram).
+
+*Os consumidores* (cada um conferido no código):
+
+| consumidor | veredito |
+|---|---|
+| pré-visualização e Apply do Painter 2D (`painter_gpu_preview.rs` → `LayerCompositor`; `tool/runtime.rs` → `composite_region`) · a peça 3D (`pilha_da_peca.rs` → `composite_region`; `composto_na_placa.rs` → `LayerCompositor`) | herdam a lei |
+| bake de sprites da peça (`bake.rs`) | não compõe camadas: lê o sprite já composto |
+| Composite brush (`tool/paint/composite.rs`) | uma pilha de operações dentro de UMA camada |
+| Wet Paint (`ph2d-wet-paint`) · Impasto (`impasto_light.wgsl`) | não leem o composto de baixo: o Wet Paint pinta o papel dentro da camada (K–M/Beer em luz é óptica do meio), o Impasto ilumina o relevo. O único que lia o composto de baixo e o des-premultiplicava era a aquarela (P1) |
+| ⭐ **o Flip** (`ph2d-flip-render`, `ph2d-app-flip` `pass.rs`, o bake do Flip no Motion) | **NÃO herda — foi partido pela P1 em silêncio.** O rasterizador do Flip junta os traços de UMA camada em linear 16F (premult-over, o idioma do Grease Pencil); as camadas dele passavam pelo compositor partilhado, que a P1 mudou para tons de ecrã ⇒ branco a 50 % numa camada por cima de preto dava `0,216` linear, na mesma camada `0,5` (a costura do report, ao contrário). O gate que o via (`composite_blend::top_layer_opacity_fades_toward_backdrop`) é de placa e nenhuma corrida da linha o executava. **Cura:** o espaço é do PRODUTO que chama — `CompositeSpace::{DisplayTones, Light}` no `LayerCompositor` (tabela de decode de 512, cor + alfa; constante de pipeline `LIGHT_SPACE` no encode final: zero custo por píxel; um ajuste num compositor em luz é RECUSADO, `AdjustmentInLightSpace`), e uma porta só, `ph2d_flip_render::compositor_do_flip`. Gate novo `composite_em_luz::a_camada_de_cima_junta_se_como_um_traco_na_mesma_camada` |
+| o FX raster do Vector (`fx_stack_shader.rs` `fx_blend`) | ⛔ **fica em luz** — outro produto, coerente consigo: o mundo vetorial compõe em luz de ponta a ponta (o Vello escreve por uma vista sRGB; o âmbar `(235,175,60)` a meia cobertura fica `(173,128,41)` = `encode(0,5·linear(cor))` ao byte, em tons de ecrã seria `(118,88,30)`). Trazer a lei do Painter abria nele a costura que o report achou no Painter |
+
+⚠️ **Premissas do briefing que a medição derrubou:** (1) «o Flip entrega as camadas ao
+`LayerCompositor` sem mistura própria ⇒ herda» — herdar ERA o defeito; (2) «o FX do Vector mistura em
+luz: decidir se a lei se aplica» — não se aplica, medido; (3) Wet Paint e Composite não são
+consumidores da lei; (4) o Bloom não é «um kernel a decidir pelo oráculo» como os outros: é óptico.
+
+*Mutação:* [`muta_as_camadas_em_ecra.sh`](ferramentas/muta_as_camadas_em_ecra.sh) com a corrida `flip`
+e 50 pontos (as fronteiras da P4 na CPU, na placa, na tabela de 512, na constante e na porta do Flip).

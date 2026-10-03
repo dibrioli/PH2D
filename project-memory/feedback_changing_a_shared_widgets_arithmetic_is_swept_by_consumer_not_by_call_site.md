@@ -36,6 +36,21 @@ indistinguível de um «não medi», e o leitor seguinte não consegue separá-l
 ⚠️ **E um defeito atrás de uma dobra FECHADA sobrevive a um smoke aprovado** — a `Cull Mask` nasce
 recolhida, e o dono aprovou a wave anterior sem nunca a abrir.
 
+## 2.º caso — a LEI de um compositor partilhado (2026-10-03, `line/sculpt3d`, ADR-0177)
+
+A P1 mudou o `LayerCompositor` (`ph2d-render`) de luz para tons de ecrã, por decisão do dono PARA O
+PAINTER. O Flip usa o mesmo compositor para as camadas dele — e junta os traços de UMA camada em
+linear 16F. Herdar a lei nova abriu no Flip a costura do report, ao contrário: branco a 50 % numa
+camada por cima de preto `0,216` linear, na mesma camada `0,5`. **Três ondas passaram sem o ver:** o
+gate que o media (`composite_blend::top_layer_opacity_fades_toward_backdrop`) é de PLACA e de OUTRA
+crate, e a lista de gates da linha só corria a placa do `ph2d-render`. O levantamento automático dos
+consumidores classificou o Flip como «herda — sem mistura própria»: verdade sobre o código, falso sobre
+a lei (a mistura própria dele está DENTRO da camada, no rasterizador).
+
+⇒ a pergunta por consumidor não é «ele chama a porta?», é **«a lei da porta tem de concordar com
+alguma lei DELE?»**. Cura: o espaço passou a ser do produto que chama (`CompositeSpace`), com uma
+porta só no Flip (`compositor_do_flip`).
+
 **How to apply:** ao mudar a aritmética de um widget partilhado, (1) liste os **consumidores** e a
 largura que cada um lhe passa, (2) meça a resposta da porta em cada uma, (3) só então escreva o
 âmbito — e se deixar algum de fora, ponha o **número** ao lado da razão. Ver

@@ -52,15 +52,21 @@
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 
+use crate::cost::cost_of;
 use crate::geom::{EPS, V2, dist, dist_to_segment, lerp, ord_key, orient, same, side_dist, sub};
 use crate::mesh::NavMesh;
 
+#[path = "polyanya_custo.rs"]
+mod custo;
+
 /// Um caminho: os pontos por onde ele passa (o primeiro é a partida, o último o alvo, os do meio são
-/// CANTOS da malha) e o comprimento dele.
+/// CANTOS da malha — e, com áreas de custo, os pontos onde ele atravessa uma fronteira), o
+/// comprimento dele e o CUSTO (`∑ custo da área × comprimento`; sem áreas, igual ao comprimento).
 #[derive(Clone, Debug, PartialEq)]
 pub struct Path {
     pub points: Vec<V2>,
     pub length: f64,
+    pub cost: f64,
 }
 
 /// Porque [`Polyanya::find_path`] não devolveu um caminho. Cada um tem cura diferente, e por isso são
@@ -83,6 +89,10 @@ pub struct Stats {
     pub expanded: u64,
     pub turns: u64,
     pub pruned_turns: u64,
+    /// (W7) Raízes nascidas onde um intervalo atravessou uma fronteira de custo.
+    pub refractions: u64,
+    /// (W7) Raízes de fronteira que não nasceram por estarem dominadas.
+    pub pruned_refractions: u64,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -90,6 +100,11 @@ struct Root {
     p: V2,
     g: f64,
     prev: u32,
+    /// O custo da região do troço que CHEGA a esta raiz (vindo de `prev`).
+    w_in: f64,
+    /// (W7) Uma raiz de fronteira: o pedaço `[L, R]` da aresta onde ela pode deslizar no polimento
+    /// (o que a raiz anterior VÊ pela região de `w_in`).
+    range: Option<(V2, V2)>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -102,6 +117,10 @@ enum Kind {
     },
     Final {
         via: Option<V2>,
+    },
+    /// (W7) Uma raiz de fronteira PROMETIDA — materializa-se quando sai do heap (`polyanya_custo.rs`).
+    Pending {
+        idx: u32,
     },
 }
 
@@ -116,6 +135,8 @@ enum Side {
 struct Node {
     root: u32,
     kind: Kind,
+    /// O custo da região onde estão os troços da raiz até ao intervalo (`1` sem áreas).
+    w: f64,
 }
 
 const NONE: u32 = u32::MAX;
@@ -132,6 +153,15 @@ pub struct Polyanya {
     touched: Vec<u32>,
     target_polys: Vec<u32>,
     seq: u64,
+    /// (W7) A tabela de custos desta consulta, o menor deles (o heurístico escala por ele) e as
+    /// podas das raízes de fronteira — ver `polyanya_custo.rs`.
+    costs: Vec<f64>,
+    wmin: f64,
+    steiner_g: std::collections::BTreeMap<(u32, u32, u32, u32), f64>,
+    ponta_g: std::collections::BTreeMap<(u32, u32, u32), Vec<(f64, f64)>>,
+    fan_g: Vec<f64>,
+    pendentes: Vec<custo::Pendente>,
+    steiner_override: Option<f64>,
     pub stats: Stats,
 }
 
@@ -146,20 +176,73 @@ impl Polyanya {
         self.roots.clear();
         if self.root_g.len() != mesh.verts().len() {
             self.root_g = vec![f64::INFINITY; mesh.verts().len()];
+            self.fan_g = vec![f64::INFINITY; mesh.verts().len()];
             self.touched.clear();
         } else {
             for &v in &self.touched {
                 self.root_g[v as usize] = f64::INFINITY;
+                self.fan_g[v as usize] = f64::INFINITY;
             }
             self.touched.clear();
         }
+        self.steiner_g.clear();
+        self.ponta_g.clear();
+        self.pendentes.clear();
         self.seq = 0;
     }
 
     /// O caminho mais curto de `s` a `t`, os dois DENTRO da malha (fechada).
     pub fn find_path(&mut self, mesh: &NavMesh, s: V2, t: V2) -> Result<Path, NoPath> {
-        self.reset(mesh);
+        self.find_path_costs(mesh, &[], s, t)
+    }
+
+    /// ⭐ (W7) O caminho mais BARATO de `s` a `t` com a tabela de custos das áreas (ver
+    /// [`crate::cost`]; vazia = tudo a `1`). Onde o custo não muda é o Polyanya de sempre — ao bit;
+    /// onde um intervalo atravessa uma fronteira de custo, o caminho refracta (`polyanya_custo.rs`).
+    ///
+    /// ⭐⭐ **O atalho EXACTO** (medido: a cena grande, `medir_custo` §4): nenhum caminho custa menos
+    /// que `w_min × comprimento`, e nenhum comprimento é menor que o do mais curto UNIFORME ⇒ se o
+    /// Polyanya de sempre devolve um caminho que custa `w_min × comprimento` (não toca nada mais caro
+    /// que o mínimo), ele É o óptimo ponderado. Quando toca, a resposta é o melhor dos dois — o que
+    /// também cobre uma travessia que a grelha não representasse. ⛔ Medido e recusado: usar o custo
+    /// dele como TECTO da procura ponderada (podar nós acima dele) piorava a precisão (máx `1,0189`
+    /// contra `1,0000` a peso 4): a discretização de um caminho custa um pouco acima do tecto antes
+    /// de o polimento o trazer abaixo.
+    pub fn find_path_costs(
+        &mut self,
+        mesh: &NavMesh,
+        costs: &[f64],
+        s: V2,
+        t: V2,
+    ) -> Result<Path, NoPath> {
         self.stats.searches += 1;
+        let wmin = costs.iter().copied().fold(1.0, f64::min);
+        let uniforme =
+            (0..mesh.polys().len() as u32).all(|p| cost_of(costs, mesh.area_id(p)) == wmin);
+        if uniforme {
+            return self.search(mesh, costs, s, t);
+        }
+        let p0 = self.search(mesh, &[], s, t)?;
+        let c0 = crate::cost::path_cost(mesh, costs, &p0.points).unwrap_or(f64::INFINITY);
+        let geral = Path {
+            cost: c0,
+            ..p0.clone()
+        };
+        if c0 <= wmin * p0.length * (1.0 + 1e-12) + EPS {
+            return Ok(geral);
+        }
+        Ok(match self.search(mesh, costs, s, t) {
+            Ok(p) if p.cost < c0 => p,
+            _ => geral,
+        })
+    }
+
+    /// A procura (uniforme quando `costs` não distingue nada).
+    fn search(&mut self, mesh: &NavMesh, costs: &[f64], s: V2, t: V2) -> Result<Path, NoPath> {
+        self.reset(mesh);
+        self.costs.clear();
+        self.costs.extend_from_slice(costs);
+        self.wmin = costs.iter().copied().fold(1.0, f64::min);
         let mut ps = Vec::new();
         mesh.locate_all(s, &mut ps);
         if ps.is_empty() {
@@ -169,20 +252,29 @@ impl Polyanya {
         if self.target_polys.is_empty() {
             return Err(NoPath::TargetOff);
         }
-        if ps
+        // No mesmo polígono: a direito (convexo), ao custo do mais barato que tem os dois. ⚠️ (W7) Só
+        // é a resposta se nenhuma área custa MENOS: dentro da lama, sair e contornar pode ser mais
+        // barato (medido) — então a recta é uma candidata no heap, como qualquer outra.
+        let directo = ps
             .iter()
-            .any(|p| self.target_polys.binary_search(p).is_ok())
+            .filter(|p| self.target_polys.binary_search(p).is_ok())
+            .map(|&p| self.cost(mesh, p))
+            .reduce(f64::min);
+        if let Some(c) = directo
+            && c <= self.wmin
         {
             return Ok(Path {
                 points: vec![s, t],
                 length: dist(s, t),
+                cost: c * dist(s, t),
             });
         }
-        let same_island = ps.iter().any(|&a| {
-            self.target_polys
-                .iter()
-                .any(|&b| mesh.island(a) == mesh.island(b))
-        });
+        let same_island = directo.is_some()
+            || ps.iter().any(|&a| {
+                self.target_polys
+                    .iter()
+                    .any(|&b| mesh.island(a) == mesh.island(b))
+            });
         if !same_island {
             return Err(NoPath::Unreachable);
         }
@@ -191,14 +283,28 @@ impl Polyanya {
             p: s,
             g: 0.0,
             prev: NONE,
+            w_in: 0.0,
+            range: None,
         });
+        if let Some(c) = directo {
+            self.push(
+                c * dist(s, t),
+                Node {
+                    root: 0,
+                    kind: Kind::Final { via: None },
+                    w: c,
+                },
+            );
+        }
         for &p in &ps {
             self.push_from_point(mesh, 0, p, None, t);
         }
         while let Some(Reverse((_, _, ni))) = self.open.pop() {
             let node = self.nodes[ni as usize];
             match node.kind {
-                Kind::Final { via } => return Ok(self.reconstruct(node.root, via, t)),
+                Kind::Final { via } => {
+                    return Ok(self.reconstruct(mesh, node.root, via, node.w, t));
+                }
                 Kind::Interval {
                     poly,
                     entry,
@@ -206,8 +312,9 @@ impl Polyanya {
                     right,
                 } => {
                     self.stats.expanded += 1;
-                    self.expand(mesh, node.root, poly, entry, left, right, t);
+                    self.expand(mesh, node.root, poly, entry, left, right, node.w, t);
                 }
+                Kind::Pending { idx } => self.materialize(mesh, idx, t),
             }
         }
         Err(NoPath::Unreachable)
@@ -221,8 +328,27 @@ impl Polyanya {
         self.open.push(Reverse((ord_key(f), self.seq, idx)));
     }
 
+    /// Um vértice onde um caminho que anda numa região de custo `cw` pode DOBRAR: um canto de parede
+    /// ou (W7) um vértice onde há algo MAIS CARO que `cw` — contornar a lama encostado à fronteira
+    /// dobra no vértice dela como numa parede (medido: sem isto o caminho atravessava a lama a `2,5×`
+    /// o óptimo). Contornar uma área mais BARATA nunca ajuda (entrar nela é a refracção). Sem áreas,
+    /// só as paredes.
+    fn is_corner(&self, mesh: &NavMesh, v: u32, cw: f64) -> bool {
+        mesh.is_corner(v)
+            || mesh
+                .polys_at_vertex(v)
+                .iter()
+                .any(|&q| self.cost(mesh, q) > cw)
+    }
+
+    /// O custo da área do polígono `p` nesta consulta.
+    #[inline]
+    fn cost(&self, mesh: &NavMesh, p: u32) -> f64 {
+        cost_of(&self.costs, mesh.area_id(p))
+    }
+
     /// Os nós de tudo o que se vê de um PONTO dentro (ou no bordo) do polígono `p`: cada aresta com
-    /// vizinho que não contém o ponto, inteira. É o nó inicial e é a volta num canto.
+    /// vizinho que não contém o ponto, inteira. É o nó inicial, e (W7) a raiz de uma fronteira.
     fn push_from_point(
         &mut self,
         mesh: &NavMesh,
@@ -233,13 +359,16 @@ impl Polyanya {
     ) {
         let rp = self.roots[root as usize].p;
         let g = self.roots[root as usize].g;
-        if at_vertex.is_some() && self.target_polys.binary_search(&p).is_ok() {
-            // O alvo está num polígono que tem o canto como vértice: vê-se a direito (convexo).
+        let c = self.cost(mesh, p);
+        // O alvo num polígono que tem a raiz: vê-se a direito (convexo). A partida (raiz `0`) já
+        // saiu pelo atalho do mesmo polígono.
+        if root != 0 && self.target_polys.binary_search(&p).is_ok() {
             self.push(
-                g + dist(rp, t),
+                g + c * dist(rp, t),
                 Node {
                     root,
                     kind: Kind::Final { via: None },
+                    w: c,
                 },
             );
         }
@@ -260,13 +389,24 @@ impl Polyanya {
                 continue;
             }
             // No vizinho a aresta é `w → u` (anti-horário dele): visto de cá, `w` à esquerda.
-            self.push_interval(root, q, poly.twin[i], pw, pu, t);
+            self.push_interval(root, q, poly.twin[i], pw, pu, c, t);
         }
     }
 
-    fn push_interval(&mut self, root: u32, poly: u32, entry: u32, left: V2, right: V2, t: V2) {
+    /// ⚠️ O heurístico escala pelo MENOR custo da tabela (admissível); sem áreas é `× 1`, ao bit.
+    #[allow(clippy::too_many_arguments)]
+    fn push_interval(
+        &mut self,
+        root: u32,
+        poly: u32,
+        entry: u32,
+        left: V2,
+        right: V2,
+        w: f64,
+        t: V2,
+    ) {
         let r = self.roots[root as usize];
-        let f = r.g + heuristic(r.p, left, right, t);
+        let f = r.g + self.wmin * heuristic(r.p, left, right, t);
         self.push(
             f,
             Node {
@@ -277,6 +417,7 @@ impl Polyanya {
                     left,
                     right,
                 },
+                w,
             },
         );
     }
@@ -290,8 +431,14 @@ impl Polyanya {
         entry: u32,
         left: V2,
         right: V2,
+        cw: f64,
         t: V2,
     ) {
+        // (W7) O custo muda nesta aresta: o troço recto não continua — o caminho refracta.
+        if self.cost(mesh, p) != cw {
+            self.refract(mesh, root, p, entry, left, right, cw, t);
+            return;
+        }
         let poly = &mesh.polys()[p as usize];
         let n = poly.len();
         let k = entry as usize;
@@ -303,20 +450,21 @@ impl Polyanya {
         if self.target_polys.binary_search(&p).is_ok() {
             let (h, via) = final_cost(rho, left, right, t);
             self.push(
-                r.g + h,
+                r.g + cw * h,
                 Node {
                     root,
                     kind: Kind::Final { via },
+                    w: cw,
                 },
             );
         }
 
         // A volta nos cantos — só quando o extremo do intervalo É o vértice da aresta.
-        if same(right, mesh.vert(b)) && mesh.is_corner(b) {
-            self.turn(mesh, root, p, k, Side::Right, t);
+        if same(right, mesh.vert(b)) && self.is_corner(mesh, b, cw) {
+            self.turn(mesh, root, p, k, Side::Right, cw, t);
         }
-        if same(left, mesh.vert(a)) && mesh.is_corner(a) {
-            self.turn(mesh, root, p, k, Side::Left, t);
+        if same(left, mesh.vert(a)) && self.is_corner(mesh, a, cw) {
+            self.turn(mesh, root, p, k, Side::Left, cw, t);
         }
 
         // Os observáveis: o cone ρ→R … ρ→L sobre as outras arestas de P.
@@ -343,14 +491,15 @@ impl Polyanya {
                 -side_dist(rho, left, pu),
                 -side_dist(rho, left, pw),
             );
-            self.push_portion(root, q, poly.twin[e], pu, pw, lo, hi, t);
+            self.push_portion(root, q, poly.twin[e], pu, pw, lo, hi, cw, t);
         }
     }
 
     /// O caminho vira no canto da aresta de entrada de `P` (o `b` à direita, o `a` à esquerda): uma
     /// raiz nova, e os nós da SOMBRA — o pedaço de `P` do lado de fora do raio que passa pelo canto,
     /// mais o leque do canto do mesmo lado, até à parede.
-    fn turn(&mut self, mesh: &NavMesh, root: u32, p: u32, k: usize, side: Side, t: V2) {
+    #[allow(clippy::too_many_arguments)]
+    fn turn(&mut self, mesh: &NavMesh, root: u32, p: u32, k: usize, side: Side, cw: f64, t: V2) {
         let poly = &mesh.polys()[p as usize];
         let n = poly.len();
         let v = match side {
@@ -359,7 +508,7 @@ impl Polyanya {
         };
         let r = self.roots[root as usize];
         let pv = mesh.vert(v);
-        let gv = r.g + dist(r.p, pv);
+        let gv = r.g + cw * dist(r.p, pv);
         if self.root_g[v as usize] < gv - EPS {
             self.stats.pruned_turns += 1;
             return;
@@ -374,6 +523,8 @@ impl Polyanya {
             p: pv,
             g: gv,
             prev: root,
+            w_in: cw,
+            range: None,
         });
         let rho = r.p;
 
@@ -405,7 +556,7 @@ impl Polyanya {
                 Side::Right => clip(&mut lo, &mut hi, -su, -sw),
                 Side::Left => clip(&mut lo, &mut hi, su, sw),
             }
-            self.push_portion(ri, q, poly.twin[e], pu, pw, lo, hi, t);
+            self.push_portion(ri, q, poly.twin[e], pu, pw, lo, hi, cw, t);
         }
     }
 
@@ -416,19 +567,29 @@ impl Polyanya {
     fn walk_fan(&mut self, mesh: &NavMesh, ri: u32, p: u32, e: usize, v: u32, side: Side, t: V2) {
         let mut cur_poly = p;
         let mut cur_edge = e;
+        let cp = self.cost(mesh, p);
         // O leque de um vértice tem tantos polígonos quantos o tocam: é o tecto do laço (uma malha
         // bem-formada pára antes, na parede; o tecto só impede um laço numa malha partida).
         for _ in 0..mesh.polys_at_vertex(v).len() {
             let poly = &mesh.polys()[cur_poly as usize];
             let Some(q) = poly.nbrs[cur_edge] else { return };
             let tw = poly.twin[cur_edge] as usize;
+            // ⚠️ (W7) Uma fronteira de CUSTO é a parede do leque: entrar na área cara a partir do
+            // canto é a refracção (a raiz-vértice emite o leque todo, uma vez). Medido sem isto: num
+            // canto sem parede o leque dava a volta inteira e cada volta re-inundava a vizinhança, de
+            // canto em canto (6,8 milhões de voltas numa cena de 200 polígonos).
+            let cq = self.cost(mesh, q);
+            if cq != cp {
+                return;
+            }
             if self.target_polys.binary_search(&q).is_ok() {
                 let r = self.roots[ri as usize];
                 self.push(
-                    r.g + dist(r.p, t),
+                    r.g + cq * dist(r.p, t),
                     Node {
                         root: ri,
                         kind: Kind::Final { via: None },
+                        w: cq,
                     },
                 );
             }
@@ -449,7 +610,7 @@ impl Polyanya {
                 let u = qp.verts[i];
                 let w = qp.verts[(i + 1) % m];
                 // No vizinho a aresta é `w → u`: visto de `v`, `w` à esquerda.
-                self.push_interval(ri, nq, qp.twin[i], mesh.vert(w), mesh.vert(u), t);
+                self.push_interval(ri, nq, qp.twin[i], mesh.vert(w), mesh.vert(u), cq, t);
             }
             cur_poly = q;
             cur_edge = next;
@@ -468,6 +629,7 @@ impl Polyanya {
         pw: V2,
         lo: f64,
         hi: f64,
+        w: f64,
         t: V2,
     ) {
         if hi <= lo {
@@ -488,34 +650,63 @@ impl Polyanya {
             lerp(pu, pw, hi)
         };
         // No vizinho a aresta é `w → u`: o lado de `w` é a esquerda.
-        self.push_interval(root, q, twin, near_w, near_u, t);
+        self.push_interval(root, q, twin, near_w, near_u, w, t);
     }
 
-    fn reconstruct(&self, mut root: u32, via: Option<V2>, t: V2) -> Path {
-        let mut pts = vec![t];
+    /// O caminho a partir da raiz do nó final: os pontos, o comprimento e o custo. (W7) Com raízes de
+    /// fronteira, o polimento de Snell desliza-as antes ([`custo`]).
+    fn reconstruct(&self, mesh: &NavMesh, mut root: u32, via: Option<V2>, w: f64, t: V2) -> Path {
+        // (ponto, custo do troço que chega a ele, a gama de deslize de uma raiz de fronteira)
+        let mut pts: Vec<(V2, f64, Option<(V2, V2)>)> = vec![(t, w, None)];
         if let Some(v) = via
             && !same(v, t)
         {
-            pts.push(v);
+            pts.push((v, w, None));
         }
         while root != NONE {
             let r = self.roots[root as usize];
-            if !same(*pts.last().unwrap_or(&t), r.p) {
-                pts.push(r.p);
+            if !same(pts.last().map_or(t, |p| p.0), r.p) {
+                pts.push((r.p, r.w_in, r.range));
+            } else if let Some(last) = pts.last_mut() {
+                // O mesmo ponto: o troço de comprimento zero não conta, e o que chega a ele é o
+                // desta raiz. A gama não passa (o alvo nunca desliza).
+                last.1 = r.w_in;
             }
             root = r.prev;
         }
         pts.reverse();
-        let length = pts.windows(2).map(|w| dist(w[0], w[1])).sum();
+        let length = |pts: &[(V2, f64, Option<(V2, V2)>)]| -> f64 {
+            pts.windows(2).map(|w| dist(w[0].0, w[1].0)).sum()
+        };
+        let mut cost: f64 = pts.windows(2).map(|w| w[1].1 * dist(w[0].0, w[1].0)).sum();
+        if pts.iter().any(|p| p.2.is_some()) {
+            custo::polish(mesh, &self.costs, &mut pts);
+            // Uma travessia que ficou COLINEAR com os vizinhos não dobra nada (a recta através da
+            // lama): sai, e o troço que a substitui leva o custo... do que o andar real disser.
+            let mut i = 1;
+            while i + 1 < pts.len() {
+                let (a, x, b) = (pts[i - 1].0, pts[i].0, pts[i + 1].0);
+                if pts[i].2.is_some() && crate::geom::dist_to_segment(a, b, x) <= EPS {
+                    pts.remove(i);
+                } else {
+                    i += 1;
+                }
+            }
+            // Depois de deslizar, o custo é o REAL (a caminhada), não o do modelo de cada troço.
+            let xs: Vec<V2> = pts.iter().map(|p| p.0).collect();
+            cost = crate::cost::path_cost(mesh, &self.costs, &xs).unwrap_or(cost);
+        }
+        let length = length(&pts);
         Path {
-            points: pts,
+            points: pts.into_iter().map(|p| p.0).collect(),
             length,
+            cost,
         }
     }
 }
 
 /// Mantém de `[lo, hi]` só os `t` com `f(t) = f0 + t·(f1 − f0) ≥ 0` (à tolerância [`EPS`]).
-fn clip(lo: &mut f64, hi: &mut f64, f0: f64, f1: f64) {
+pub(crate) fn clip(lo: &mut f64, hi: &mut f64, f0: f64, f1: f64) {
     if f0 >= -EPS && f1 >= -EPS {
         return;
     }

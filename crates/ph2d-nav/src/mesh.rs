@@ -50,6 +50,8 @@ pub enum MeshError {
     NotConvex { poly: usize, at: usize },
     /// A mesma aresta orientada em dois polígonos (a malha sobrepõe-se).
     NonManifold { a: u32, b: u32 },
+    /// A lista das áreas não tem um valor por polígono.
+    AreaCount { polys: usize, areas: usize },
 }
 
 /// A grelha de localização: cada célula lista os polígonos cuja caixa a toca, por ordem de índice.
@@ -100,6 +102,9 @@ pub struct NavMesh {
     /// A componente ligada de cada polígono (`0..islands`), numerada pela ordem do 1.º polígono.
     island: Vec<u32>,
     islands: u32,
+    /// A ÁREA de cada polígono (`0` = o chão comum). A malha diz ONDE; quanto custa atravessar cada
+    /// área é da consulta (W7) — dois agentes com tabelas diferentes partilham a mesma malha.
+    area: Vec<u16>,
     /// As arestas de parede, `(de, para)` no sentido do polígono que as tem.
     walls: Vec<(u32, u32)>,
     grid: Grid,
@@ -111,6 +116,23 @@ impl NavMesh {
     /// A ÚNICA porta: confere cada polígono (≥ 3 vértices, anti-horário, convexo), liga
     /// os vizinhos pelas arestas partilhadas, marca os cantos, numera as ilhas e monta a grelha.
     pub fn from_polygons(verts: Vec<V2>, polys: Vec<Vec<u32>>) -> Result<NavMesh, MeshError> {
+        let area = vec![0; polys.len()];
+        Self::from_polygons_with_areas(verts, polys, area)
+    }
+
+    /// [`Self::from_polygons`] com a área de cada polígono. ⚠️ Uma aresta entre áreas diferentes
+    /// continua a ser PASSAGEM (vizinhança), nunca parede: a área muda o custo, não a topologia.
+    pub fn from_polygons_with_areas(
+        verts: Vec<V2>,
+        polys: Vec<Vec<u32>>,
+        area: Vec<u16>,
+    ) -> Result<NavMesh, MeshError> {
+        if area.len() != polys.len() {
+            return Err(MeshError::AreaCount {
+                polys: polys.len(),
+                areas: area.len(),
+            });
+        }
         let nv = verts.len();
         for (pi, p) in polys.iter().enumerate() {
             if p.len() < 3 {
@@ -253,6 +275,7 @@ impl NavMesh {
             vert_polys,
             island,
             islands,
+            area,
             walls,
             grid,
             min,
@@ -293,6 +316,17 @@ impl NavMesh {
     #[inline]
     pub fn island_count(&self) -> u32 {
         self.islands
+    }
+
+    /// A área de custo do polígono (`0` = o chão comum). ⚠️ Não confundir com [`Self::area`], os m².
+    #[inline]
+    pub fn area_id(&self, poly: u32) -> u16 {
+        self.area[poly as usize]
+    }
+
+    /// Há algum polígono fora do chão comum? (Sem nenhum, a procura uniforme é a resposta exacta.)
+    pub fn has_areas(&self) -> bool {
+        self.area.iter().any(|&a| a != 0)
     }
 
     #[inline]

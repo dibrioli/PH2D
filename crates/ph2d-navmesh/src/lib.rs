@@ -32,7 +32,9 @@ use ph2d_nav::{MeshError, NavMesh, V2};
 pub use tiles::{TILE_M, TileStats, TiledMesh};
 pub use triangulate::TriError;
 
-use clipper2_rust::{FillRule, Path64, Paths64, Point64, difference_64, union_subjects_64};
+use clipper2_rust::{
+    FillRule, Path64, Paths64, Point64, difference_64, intersect_64, union_64, union_subjects_64,
+};
 
 /// Os lados do polígono que circunscreve o disco, por omissão (medido na W1: `0,48 %` do raio de
 /// excesso nos cantos — ver [`inflate`]).
@@ -79,6 +81,14 @@ pub struct BuildStats {
     pub polygons: usize,
 }
 
+/// (W7) Uma ÁREA DE CUSTO: a forma (recuada pelo raio do agente, como um obstáculo — o corpo sente-a
+/// quando lhe toca) e o número que a malha guarda em cada polígono dela (`0` é o chão comum).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Area {
+    pub shape: Shape,
+    pub id: u16,
+}
+
 /// A malha e o que custou.
 #[derive(Clone, Debug)]
 pub struct Built {
@@ -90,6 +100,18 @@ pub struct Built {
 /// `obstacles` o que não se atravessa. Uma região vazia (ou toda tapada) dá uma malha SEM polígonos
 /// — não é erro: é a resposta, e o agente diz *«sem região»*.
 pub fn build(region: &[V2], obstacles: &[Shape], params: &Params) -> Result<Built, BuildError> {
+    build_with_areas(region, obstacles, &[], params)
+}
+
+/// ⭐ (W7) [`build`] com ÁREAS DE CUSTO: a fronteira de cada área vira aresta da malha e cada polígono
+/// guarda o `id` da área onde está ([`NavMesh::area_id`]). Onde duas áreas se sobrepõem manda a que
+/// vem PRIMEIRO na lista (o chamador ordena-as). Sem áreas, é a construção de sempre, ao bit.
+pub fn build_with_areas(
+    region: &[V2],
+    obstacles: &[Shape],
+    areas: &[Area],
+    params: &Params,
+) -> Result<Built, BuildError> {
     let n = params.disk_sides.max(4).next_power_of_two();
     let r = params.agent_radius.max(0.0);
     let mut stats = BuildStats {
@@ -99,7 +121,7 @@ pub fn build(region: &[V2], obstacles: &[Shape], params: &Params) -> Result<Buil
 
     let reg = inflate::inset_region(region, r);
     if reg.len() < 3 {
-        return finish(Vec::new(), Vec::new(), stats);
+        return finish(Vec::new(), Vec::new(), Vec::new(), stats);
     }
     let holes: Paths64 = obstacles
         .iter()
@@ -113,26 +135,56 @@ pub fn build(region: &[V2], obstacles: &[Shape], params: &Params) -> Result<Buil
         let merged = union_subjects_64(&holes, FillRule::NonZero);
         difference_64(&vec![to_path(&reg)], &merged, FillRule::NonZero)
     };
-    let rings: Vec<Vec<lattice::P>> = walk
-        .iter()
-        .map(|p| p.iter().map(|q| (q.x, q.y)).collect())
-        .collect();
-    stats.rings = rings.len();
-    stats.ring_verts = rings.iter().map(Vec::len).sum();
-
-    let (pts, tris) = triangulate::triangulate(&rings).map_err(BuildError::Triangulation)?;
-    stats.triangles = tris.len();
-    let polys: Vec<Vec<u32>> = if params.merge {
-        triangulate::merge_convex(&pts, &tris)
+    // Os PEDAÇOS: o chão comum e, por área, o que dela cai no chão e nenhuma anterior reclamou.
+    let mut pieces: Vec<(Paths64, u16)> = Vec::new();
+    let mut reclamado: Paths64 = Vec::new();
+    for a in areas {
+        let ring = inflate::inflate(&a.shape, r, params.corner, n);
+        if ring.len() < 3 {
+            continue;
+        }
+        let forma = vec![to_path(&ring)];
+        let mut piece = intersect_64(&walk, &forma, FillRule::NonZero);
+        if !reclamado.is_empty() {
+            piece = difference_64(&piece, &reclamado, FillRule::NonZero);
+        }
+        reclamado = union_64(&reclamado, &forma, FillRule::NonZero);
+        pieces.push((piece, a.id));
+    }
+    let chao = if reclamado.is_empty() {
+        walk
     } else {
-        tris.iter().map(|t| t.to_vec()).collect()
+        difference_64(&walk, &reclamado, FillRule::NonZero)
     };
-    finish(pts, polys, stats)
+    pieces.insert(0, (chao, 0));
+    let aneis: Vec<Vec<Vec<lattice::P>>> = pieces
+        .iter()
+        .map(|(paths, _)| {
+            paths
+                .iter()
+                .map(|p| p.iter().map(|q| (q.x, q.y)).collect())
+                .collect()
+        })
+        .collect();
+    stats.rings = aneis.iter().map(Vec::len).sum();
+    stats.ring_verts = aneis.iter().flatten().map(Vec::len).sum();
+
+    let (pts, tris, pedaco) =
+        triangulate::triangulate_pieces(&aneis).map_err(BuildError::Triangulation)?;
+    stats.triangles = tris.len();
+    let (polys, pedaco) = if params.merge {
+        triangulate::merge_convex_labeled(&pts, &tris, &pedaco)
+    } else {
+        (tris.iter().map(|t| t.to_vec()).collect(), pedaco)
+    };
+    let ids = pedaco.iter().map(|&k| pieces[k as usize].1).collect();
+    finish(pts, polys, ids, stats)
 }
 
 fn finish(
     pts: Vec<lattice::P>,
     polys: Vec<Vec<u32>>,
+    ids: Vec<u16>,
     mut stats: BuildStats,
 ) -> Result<Built, BuildError> {
     stats.polygons = polys.len();
@@ -153,7 +205,7 @@ fn finish(
                 .collect()
         })
         .collect();
-    let mesh = NavMesh::from_polygons(verts, polys).map_err(BuildError::Mesh)?;
+    let mesh = NavMesh::from_polygons_with_areas(verts, polys, ids).map_err(BuildError::Mesh)?;
     Ok(Built { mesh, stats })
 }
 

@@ -19,6 +19,7 @@
 //!   pesquisa, medida no próprio Godot.
 
 pub mod agent;
+pub mod cost;
 pub mod geom;
 pub mod mesh;
 pub mod polyanya;

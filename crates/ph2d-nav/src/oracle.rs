@@ -105,3 +105,157 @@ pub fn shortest(mesh: &NavMesh, s: V2, t: V2) -> Option<(Vec<V2>, f64)> {
     pts.reverse();
     Some((pts, best[1]))
 }
+
+/// ⭐ **O ORÁCULO PONDERADO** (W7) — o caminho mais BARATO quando cada área tem um custo (`costs`, ver
+/// [`crate::cost`]).
+///
+/// O caminho óptimo entre regiões pesadas (Mitchell & Papadimitriou 1991) é RECTO dentro de cada área,
+/// DOBRA só nos cantos das paredes e REFRACTA nas fronteiras entre áreas. ⇒ os nós são a partida, o
+/// alvo, os cantos da malha e pontos de Steiner SÓ nas arestas entre áreas diferentes (de `spacing`
+/// em `spacing` metros, as pontas incluídas); entre cada par de nós cujo segmento fica na malha há
+/// uma aresta com o custo EXACTO dele ([`crate::cost::segment_cost`]). Dijkstra.
+///
+/// ⚠️ Não é exacto: converge para o óptimo por cima quando `spacing` desce (o único erro é onde o
+/// caminho atravessa uma fronteira). A régua é a CONVERGÊNCIA medida, nunca um `spacing` escolhido.
+/// ⛔ A 1.ª redacção punha Steiner em TODAS as arestas (Lanthier et al. 1997) com troços só dentro de
+/// cada polígono: convergia LINEARMENTE (`+9,8 %` a 8 pontos por aresta, `+5,3 %` a 16) — a recta
+/// dentro de uma área uniforme virava ziguezague pelos pontos das arestas interiores.
+pub struct WeightedOracle<'a> {
+    mesh: &'a NavMesh,
+    costs: Vec<f64>,
+    nodes: Vec<V2>,
+    adj: Vec<Vec<(u32, f64)>>,
+}
+
+impl<'a> WeightedOracle<'a> {
+    /// O grafo entre os cantos e os pontos das fronteiras (caro: `O(nós²)` caminhadas — uma vez por
+    /// malha e tabela; as consultas só ligam a partida e o alvo).
+    pub fn new(mesh: &'a NavMesh, costs: &[f64], spacing: f64) -> Self {
+        use crate::cost::segment_cost;
+        let mut seen = std::collections::BTreeSet::new();
+        let mut nodes: Vec<V2> = Vec::new();
+        for v in 0..mesh.verts().len() as u32 {
+            if mesh.is_corner(v) {
+                seen.insert(v);
+                nodes.push(mesh.vert(v));
+            }
+        }
+        let polys = mesh.polys();
+        for (pi, p) in polys.iter().enumerate() {
+            let n = p.len();
+            for i in 0..n {
+                let Some(q) = p.nbrs[i] else { continue };
+                if (q as usize) < pi || mesh.area_id(q) == mesh.area_id(pi as u32) {
+                    continue;
+                }
+                let (u, w) = (p.verts[i], p.verts[(i + 1) % n]);
+                for v in [u, w] {
+                    if seen.insert(v) {
+                        nodes.push(mesh.vert(v));
+                    }
+                }
+                let (a, b) = (mesh.vert(u), mesh.vert(w));
+                let k = (dist(a, b) / spacing).ceil().max(1.0) as usize;
+                nodes.extend((1..k).map(|j| lerp(a, b, j as f64 / k as f64)));
+            }
+        }
+        let n = nodes.len();
+        let mut adj = vec![Vec::new(); n];
+        for i in 0..n {
+            for j in (i + 1)..n {
+                if let Some(c) = segment_cost(mesh, costs, nodes[i], nodes[j]) {
+                    adj[i].push((j as u32, c));
+                    adj[j].push((i as u32, c));
+                }
+            }
+        }
+        Self {
+            mesh,
+            costs: costs.to_vec(),
+            nodes,
+            adj,
+        }
+    }
+
+    /// Quantos nós o grafo tem (a sonda imprime-o ao lado da convergência).
+    pub fn node_count(&self) -> usize {
+        self.nodes.len()
+    }
+
+    /// O caminho mais barato de `s` a `t` (os dois na malha) e o custo, ou `None`.
+    pub fn shortest(&self, s: V2, t: V2) -> Option<(Vec<V2>, f64)> {
+        use crate::cost::segment_cost;
+        let (m, costs) = (self.mesh, &self.costs[..]);
+        m.locate(s)?;
+        m.locate(t)?;
+        let n = self.nodes.len();
+        // Os nós n e n+1 são a partida e o alvo.
+        let de_s: Vec<Option<f64>> = self
+            .nodes
+            .iter()
+            .map(|&q| segment_cost(m, costs, s, q))
+            .collect();
+        let ate_t: Vec<Option<f64>> = self
+            .nodes
+            .iter()
+            .map(|&q| segment_cost(m, costs, q, t))
+            .collect();
+        let directo = segment_cost(m, costs, s, t);
+        let mut best = vec![f64::INFINITY; n + 2];
+        let mut prev = vec![usize::MAX; n + 2];
+        let mut done = vec![false; n + 2];
+        let mut heap = BinaryHeap::new();
+        best[n] = 0.0;
+        heap.push(Reverse((ord_key(0.0), n)));
+        while let Some(Reverse((_, i))) = heap.pop() {
+            if done[i] {
+                continue;
+            }
+            done[i] = true;
+            if i == n + 1 {
+                break;
+            }
+            let mut relax = |j: usize, c: f64, heap: &mut BinaryHeap<_>| {
+                let d = best[i] + c;
+                if d < best[j] {
+                    best[j] = d;
+                    prev[j] = i;
+                    heap.push(Reverse((ord_key(d), j)));
+                }
+            };
+            if i == n {
+                for (j, c) in de_s.iter().enumerate() {
+                    if let Some(c) = *c {
+                        relax(j, c, &mut heap);
+                    }
+                }
+                if let Some(c) = directo {
+                    relax(n + 1, c, &mut heap);
+                }
+                continue;
+            }
+            for &(j, c) in &self.adj[i] {
+                relax(j as usize, c, &mut heap);
+            }
+            if let Some(c) = ate_t[i] {
+                relax(n + 1, c, &mut heap);
+            }
+        }
+        if best[n + 1].is_infinite() {
+            return None;
+        }
+        let ponto = |k: usize| match k {
+            k if k == n => s,
+            k if k == n + 1 => t,
+            k => self.nodes[k],
+        };
+        let mut pts = vec![t];
+        let mut c = n + 1;
+        while prev[c] != usize::MAX {
+            c = prev[c];
+            pts.push(ponto(c));
+        }
+        pts.reverse();
+        Some((pts, best[n + 1]))
+    }
+}

@@ -343,6 +343,10 @@ mod tinta_no_produto_tests;
 /// de tinta fina, composta pelo compositor dele (`docs/3D/30`).
 mod pilha_da_peca;
 
+/// **A PEÇA COMPOSTA NA PLACA** — a pilha pelo compositor de GPU do Painter
+/// (`docs/3D/30` §13, W1b); a CPU fica a referência.
+mod composto_na_placa;
+
 /// **O OBJETO MISTO (O2)** — a forma acende um SPRITE da cena, e continua
 /// acendendo depois de a malha sair. Filho e irmão da [`donation`]:
 /// lá a forma acende a tela do Painter, aqui um objeto da cena — duas perguntas

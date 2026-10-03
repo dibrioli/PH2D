@@ -335,3 +335,47 @@ quase tudo é recompor a peça inteira na CPU (a subida à placa é `7 %`). Pelo
   (herdado da W2): o painel só é visível no Painter; a recusa do pen-down cobre o Painter.
 - Grupos, camadas de textura, Lock e Ref na peça; o relevo por camada é a W4; os ajustes de
   vizinhança a W6.
+
+## 13. W1b — compor na placa: a 1.ª tentativa, MEDIDA e PARADA no critério (03/10)
+
+**O que existe (commit da medição, nada ligado ao produto):** o tradutor pilha → operações do
+compositor de GPU saiu de `ph2d-app-painter` para a crate nova `ph2d-painter-layer-ops`
+(`flatten_for_gpu`; o Painter reexporta-o em `painter_gpu_flatten`) — o `ph2d-render` só conhece a
+`LayerStack` nos testes e uma crate de app não depende de outra. `composto_na_placa::CompostoNaPlaca`
+compõe a `PilhaDaPeca` pelo `LayerCompositor` do Painter; cada `PlanoDaCamada` leva `NaPlaca`
+(versão única no processo + linhas sujas da dobra desde a última subida; todo escritor de `rgba8`
+marca-a). Gates/sondas em `composto_na_placa_no_produto_tests.rs` (`tinta_no_produto_tests::placa::`).
+
+**O preço — passa o critério com folga** (`diag_o_preco_de_compor_na_placa`, perfil `smoke`, `load 3,4`,
+peça da lição, 3 camadas + HSB, 20 passos; o passo = metadado pela porta + composição + `poll` à espera):
+
+| degrau | amostras | 1.ª composição (sobe as camadas) | um passo do arrasto, mediana · pior | CPU (§12) |
+|---|---|---|---|---|
+| `8x` | 47 k | `0,35 ms` | `0,047` · `0,091 ms` | `2,44 ms` |
+| `16x` | 188 k | `0,46 ms` | `0,054` · `0,071 ms` | `2,47 ms` |
+| `32x` | 754 k | `1,11 ms` | `0,091` · `0,113 ms` | `7,52 ms` |
+| `64x` | 3,0 M | `3,70 ms` | **`0,248` · `0,744 ms`** | `36,4 ms` |
+
+**A paridade — NÃO fecha ao bit** (`a_placa_compoe_a_pilha_rica_como_a_cpu`, VERMELHO de propósito):
+na pilha rica a `8x`, **23 de 188 424 bytes** diferem da CPU, todos por **1**. A ablação
+(`diag_que_ingrediente_difere_da_cpu`, base + UM ingrediente):
+
+| | nada · normal 1,0 · screen · softlight · HSB · invert · curves | normal 0,55 | multiply 0,7 | multiply + máscara | overlay recortado | color 0,8 |
+|---|---|---|---|---|---|---|
+| base opaca | `0` | `0` | `0` | `1` | `0` | `0` |
+| base `0,85` | `0` | `6` | `3` | `1` | `5` | `2` |
+
+⇒ **não é `pow`/`sqrt`** (HSB, SoftLight, Curves dão zero): é a **divisão** — `premul / ao` no
+`over` e `(0,299·r + …) / 255` na máscara (`layer_composite.wgsl`), as mesmas fórmulas da CPU, mas
+o `/` do WGSL tem `2,5 ULP` e o da CPU é arredondado exacto; um valor na fronteira de um degrau sai
+`±1`. É o contrato que o Painter 2D já vive (`layer_compositor/mod.rs`: *«the GPU↔CPU parity gate
+asserts agreement within ±1 byte»*). Uma 2.ª tentativa ao bit pediria divisão correctamente
+arredondada no shader com `fma` exacto, que o WGSL não garante (nem impede a contracção) — dependente
+do driver.
+
+**Achado do caminho, ANTERIOR à W1b** (`diag_uma_pilha_translucida_recomposta_anda`): com a pilha
+TRANSLÚCIDA (base a `0,5`, pintada) cada `recompoe` sem nada mudar ANDA a cor — `50`, `37`, `27`
+degraus de sRGB8. O fundo é a `semente`, que lê a cor por vértice, e a `recompoe` reescreve a cor
+por vértice com o composto: um laço. Cada passo de arrasto, desfazer do painel ou balde empurra-a.
+
+**Parado aqui** pelo critério do §7 — a decisão vai ao dono antes da 2.ª tentativa.

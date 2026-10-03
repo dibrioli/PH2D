@@ -63,6 +63,54 @@ pub(crate) struct PlanoDaCamada {
     /// O RELEVO da camada, `[altura, corpo]` por amostra (`N`), ou `None` se
     /// ela nunca levou impasto.
     relevo: Option<Vec<[f32; 2]>>,
+    /// O que a placa ainda não tem destes píxeis (`composto_na_placa`).
+    pub(crate) na_placa: NaPlaca,
+}
+
+/// ⭐⭐ **A versão dos píxeis de uma camada e as linhas da dobra que mudaram
+/// desde a última subida à placa** — o compositor de GPU só volta a subir uma
+/// camada cuja versão mudou, e só as linhas sujas (`LayerPixels::dirty`).
+///
+/// ⛔ Todo escritor de `rgba8` chama [`NaPlaca::mudou`]: um que não chame
+/// deixa a placa a compor a camada de antes (gate
+/// `composto_na_placa_tests::cada_escritor_da_camada_muda_a_versao`). É estado
+/// da SESSÃO: duas camadas com os mesmos píxeis são iguais (`PartialEq`).
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct NaPlaca {
+    pub(crate) versao: u64,
+    /// `None` = nada por subir; `Some((a, b))` = as linhas `a..=b`.
+    pub(crate) linhas: Option<(u32, u32)>,
+}
+
+impl PartialEq for NaPlaca {
+    fn eq(&self, _: &Self) -> bool {
+        true
+    }
+}
+
+/// A próxima versão de píxeis — única no processo, logo uma camada que volta
+/// do desfazer com a sua versão antiga nunca se confunde com a que a placa tem.
+fn proxima_versao() -> u64 {
+    static VERSAO: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+    VERSAO.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+}
+
+impl NaPlaca {
+    fn nova(altura: u32) -> Self {
+        Self {
+            versao: proxima_versao(),
+            linhas: Some((0, altura.saturating_sub(1))),
+        }
+    }
+
+    /// Os píxeis das linhas `a..=b` mudaram.
+    pub(crate) fn mudou(&mut self, a: u32, b: u32) {
+        self.versao = proxima_versao();
+        self.linhas = Some(match self.linhas {
+            Some((x, y)) => (x.min(a), y.max(b)),
+            None => (a, b),
+        });
+    }
 }
 
 impl PlanoDaCamada {
@@ -71,7 +119,25 @@ impl PlanoDaCamada {
         Self {
             rgba8: vec![0; l as usize * h as usize * 4],
             relevo: None,
+            na_placa: NaPlaca::nova(h),
         }
+    }
+
+    /// A camada inteira mudou.
+    pub(crate) fn mudou_toda(&mut self) {
+        let h = self.rgba8.len() / (LARGURA_DA_DOBRA as usize * 4);
+        self.na_placa.mudou(0, (h as u32).saturating_sub(1));
+    }
+
+    /// A amostra `i` mudou.
+    pub(crate) fn mudou_amostra(&mut self, i: usize) {
+        let y = (i / LARGURA_DA_DOBRA as usize) as u32;
+        self.na_placa.mudou(y, y);
+    }
+
+    /// Os píxeis da dobra inteira (com a cauda) — o que a placa sobe.
+    pub(crate) fn dobrado(&self) -> &[u8] {
+        &self.rgba8
     }
 
     /// Escreve as `px.len()` primeiras amostras e o relevo (a leitura do
@@ -81,6 +147,7 @@ impl PlanoDaCamada {
             d.copy_from_slice(s);
         }
         self.relevo = relevo;
+        self.mudou_toda();
     }
 
     /// As amostras, sem a cauda da dobra.
@@ -201,6 +268,16 @@ impl PilhaDaPeca {
         }
     }
 
+    /// ⭐ **As camadas `ids` subiram à placa** — as linhas sujas delas ficam
+    /// limpas (`composto_na_placa`); a versão fica, é ela que a placa guarda.
+    pub(crate) fn subiu_a_placa(&mut self, ids: impl IntoIterator<Item = LayerId>) {
+        for id in ids {
+            if let Some(p) = self.planos.get_mut(&id) {
+                p.na_placa.linhas = None;
+            }
+        }
+    }
+
     /// O plano de uma camada, para os gates escreverem a fixtura.
     #[cfg(test)]
     pub(crate) fn plano_mut(&mut self, id: LayerId) -> Option<&mut PlanoDaCamada> {
@@ -294,6 +371,7 @@ impl PilhaDaPeca {
             .ok_or(RecusaDaPilha::Desconhecida)?;
         let mut plano = PlanoDaCamada::transparente(self.amostras);
         plano.rgba8[..self.amostras * 4].fill(255);
+        plano.mudou_toda();
         self.planos.insert(id, plano);
         Ok(id)
     }

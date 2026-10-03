@@ -24,6 +24,8 @@ ph2d-ecs = { path = "../ph2d-ecs" }
 # que a régua do fecho conta como âncora. Aqui escreve-se o nome verdadeiro.
 ph2d-image-import = { path = "../ph2d-image-import" }
 ph2d-render = { path = "../ph2d-render" }
+# A pilha de camadas → as operações do compositor de GPU (a pré-visualização; `painter_gpu_flatten`).
+ph2d-painter-layer-ops = { path = "../ph2d-painter-layer-ops" }
 # O MOTOR de pintura. Os `arm_brush_once` dos roteadores recebem um `&mut PainterTool` —
 # eles preparam a cena, nunca escolhem o meio (gate `no_painter_smoke_forces_a_medium`).
 ph2d-tool-painter = { path = "../ph2d-tool-painter" }

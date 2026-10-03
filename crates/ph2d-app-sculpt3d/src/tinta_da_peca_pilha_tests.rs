@@ -71,3 +71,45 @@ fn a_pilha_estaciona_e_volta_com_o_plano() {
             .is_some()
     );
 }
+
+/// 🔎 **SONDA — uma pilha TRANSLÚCIDA recomposta várias vezes fica igual?** O
+/// fundo dela é a `semente`, que lê a cor por vértice — e a [`recompoe`]
+/// reescreve a cor por vértice com o composto. Imprime quanto o plano anda
+/// entre recomposições sem nada mudar na pilha.
+#[test]
+#[ignore = "sonda: imprime"]
+fn diag_uma_pilha_translucida_recomposta_anda() {
+    use crate::objects::{ObjectId, SceneObject};
+    let mesh = crate::scenes::tinta_fina::peca();
+    let mut obj = SceneObject::new(ObjectId(1), mesh, ph2d_mesh::Pose::default());
+    obj.tinta = Some(semente(obj.stack.mesh(), 3));
+    acompanha(obj.tinta.as_mut(), &mut obj.pilha);
+    let p = obj.pilha.as_mut().expect("pilha");
+    let base = p.base().expect("base");
+    p.define_opacidade(base, 0.5);
+    let n = p.amostras();
+    // A base PINTADA de vermelho (a que nasceu da semente compõe-se nela mesma).
+    p.plano_mut(base)
+        .expect("plano")
+        .escreve(&vec![[230, 20, 20, 255]; n], None);
+    let mut antes = Vec::new();
+    for vez in 0..4 {
+        recompoe(&mut obj);
+        let agora = obj.tinta.as_ref().expect("plano").amostras().to_vec();
+        if vez > 0 {
+            let pior = antes
+                .iter()
+                .zip(&agora)
+                .map(|(a, b): (&[f32; 3], &[f32; 3])| {
+                    (0..3).map(|c| (a[c] - b[c]).abs()).fold(0.0f32, f32::max)
+                })
+                .fold(0.0f32, f32::max);
+            eprintln!(
+                "recomposição {vez}: a maior mudança de uma amostra = {:.4} ({:.1} degraus de sRGB8)",
+                pior,
+                pior * 255.0
+            );
+        }
+        antes = agora;
+    }
+}

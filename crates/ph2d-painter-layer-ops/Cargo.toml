@@ -1,0 +1,26 @@
+[package]
+name = "ph2d-painter-layer-ops"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# A pilha de camadas do Painter (`LayerStack`) → a lista de operações do compositor de GPU
+# (`ph2d_render::layer_compositor::LayerOp`). Saiu de `ph2d-app-painter` quando ganhou o SEGUNDO
+# consumidor — a pilha da peça 3D (`ph2d-app-sculpt3d`, `docs/3D/30` §13): uma lei, uma porta.
+#
+# ⚠️ Crate própria de propósito: o `ph2d-render` só conhece a pilha do Painter nos TESTES (a produção
+# fala códigos `u8`), e uma crate de app não depende de outra. Sem ciclo: nenhuma das três abaixo
+# depende desta.
+
+[dependencies]
+ph2d-render = { path = "../ph2d-render" }
+ph2d-tool-painter = { path = "../ph2d-tool-painter" }
+ph2d-painter-effects = { path = "../ph2d-painter-effects" }
+
+[lints]
+workspace = true

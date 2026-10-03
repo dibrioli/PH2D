@@ -113,6 +113,7 @@ impl PilhaDaPeca {
                 if i < n {
                     let px = para_bytes(w.amostras()[i], w.opacidade(i));
                     plano.rgba8[i * 4..i * 4 + 4].copy_from_slice(&px);
+                    plano.mudou_amostra(i);
                 }
             }
         }
@@ -200,6 +201,7 @@ impl PilhaDaPeca {
                         plano.rgba8[o + 3],
                     ];
                     plano.rgba8[o..o + 4].copy_from_slice(novo);
+                    plano.mudou_amostra(i as usize);
                     antes
                 })
                 .collect(),
@@ -231,6 +233,7 @@ impl PilhaDaPeca {
             return None;
         }
         std::mem::swap(&mut plano.rgba8, &mut rgba8);
+        plano.mudou_toda();
         Some(rgba8)
     }
 

@@ -666,3 +666,7 @@ mod camadas;
 /// ⭐ O PAINEL de Layers sobre a peça (`docs/3D/30` §4, W3) — a costura inteira, com a placa.
 #[path = "camadas_painel_no_produto_tests.rs"]
 mod painel;
+
+/// ⭐ A pilha COMPOSTA NA PLACA (`docs/3D/30` §13, W1b) — a paridade com a CPU e o preço.
+#[path = "composto_na_placa_no_produto_tests.rs"]
+mod placa;

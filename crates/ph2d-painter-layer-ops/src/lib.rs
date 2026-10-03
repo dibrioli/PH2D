@@ -1,0 +1,458 @@
+//! Flatten a painter `LayerStack` → `Vec<LayerOp>` for the GPU
+//! `ph2d_render::LayerCompositor` (Painter GPU preview, ADR-0045 Phase 3).
+//!
+//! ⭐ **Two consumers, one door**: the Painter 2D preview
+//! (`ph2d_app_painter::painter_gpu_flatten`, a re-export) and the 3D piece's
+//! layer stack (`ph2d_app_sculpt3d::composto_na_placa`, `docs/3D/30` §13). It
+//! moved out of `ph2d-app-painter` into its own crate when the second one
+//! arrived (`ph2d-render` speaks raw codes and knows the `LayerStack` only in
+//! tests; an app crate does not depend on another).
+//!
+//! This is the **GPU-vs-CPU gate** (handoff §3). When the stack is not
+//! representable, [`flatten_for_gpu`] returns `None` and the bridge falls back to
+//! the CPU `take_preview_arc` path — correct, just **107× slower on a composite
+//! and up to 885× on an adjustment drag** (measured: `docs/Painter/25_avaliacao_gpu.md`).
+//! That price is why this list is a routing decision, not a comment.
+//!
+//! What is refused today, and only this:
+//!
+//! | refusal | why |
+//! |---|---|
+//! | a **masked or clipped GROUP** | the CPU reference's Group arm reads neither flag; honouring it here would make the picture depend on which producer won the frame |
+//! | a **masked SPATIAL adjustment** | the pass-graph's combine step has no mask input yet |
+//! | six **adjustment kinds** | `ColorBalance`, `GradientMap`, `PhotoFilter`, `SelectiveColor`, `ChannelMixer`, `BlackAndWhite` — neither a `gpu_code()` nor a `gpu_spatial_code()` |
+//!
+//! ⚠️ **Three things this list used to refuse and no longer does.** A per-layer
+//! **mask** and **clipping** are ops now (`LayerOp::Layer`'s coverage modifiers);
+//! a **reference layer** never belonged here at all — the flag is ColorDrop
+//! geometry (§2.9) and no compositor reads it. And the list once claimed *"Bloom /
+//! Noise / Halftone / ColorLookup / ShadowsHighlights"* had no GPU op: all five
+//! do (`gpu_code` 9/10/11, `gpu_spatial_code` 4/5). Each of those was a whole
+//! document routed to the slow producer over a flag or a stale sentence.
+//!
+//! The walk MIRRORS `ph2d_tool_painter::compositor::composite_into` EXACTLY —
+//! `root().iter().rev()` (panel order is top-first, so iterate bottom-to-top),
+//! group recursion, skip invisible / zero-opacity / mask layers. Any divergence
+//! from that reference is a correctness bug; keep them in lock-step.
+
+use ph2d_painter_effects::BlendMode;
+use ph2d_painter_effects::adjustments::{
+    AdjustmentParams, curves_display_luts, levels_display_lut,
+};
+use ph2d_render::layer_compositor::{LayerMask, LayerOp};
+use ph2d_tool_painter::{LayerId, LayerKind, LayerStack};
+
+/// Flatten `stack` into a GPU op-list, or `None` if it is not GPU-representable
+/// (mask / clipping / masked adjustment / non-ported adjustment kind) — the
+/// caller then uses the CPU compositor. A **reference layer is representable**;
+/// see the module doc for why it ever was not.
+// Consumed by the GPU preview path in `painter_bridge` (Phase 3 step 2): the
+// GPU-vs-CPU decision (a representable stack → GPU compositor, else CPU).
+pub fn flatten_for_gpu(stack: &LayerStack) -> Option<(Vec<LayerOp>, Vec<f32>)> {
+    let mut ops = Vec::new();
+    let mut adj_luts = Vec::new();
+    flatten_ids(stack, stack.root(), &mut ops, &mut adj_luts)?;
+    Some((ops, adj_luts))
+}
+
+/// Resolve an attached mask id to the op-list's [`LayerMask`], or `None`.
+///
+/// **One door**, asked by both arms that can carry a mask (a raster layer and a
+/// per-pixel adjustment), because the resolution has two failure modes that a
+/// second copy would get subtly different:
+///
+/// * the id must still exist — a dangling mask id is *no mask*, exactly as the
+///   CPU's `stack.get(mid)?` makes it;
+/// * `inverted` lives on the MASK layer, not on the layer wearing it. Reading it
+///   from the wrong end inverts every mask in the document, and the picture is
+///   still plausible, which is why it needs to be written once.
+fn layer_mask(stack: &LayerStack, mask_id: Option<LayerId>) -> Option<LayerMask> {
+    let id = mask_id?;
+    match &stack.get(id)?.kind {
+        LayerKind::Mask(m) => Some(LayerMask {
+            key: id.0,
+            inverted: m.inverted,
+        }),
+        // An id that is not a Mask layer is not a mask — the CPU's `match` arm
+        // falls through to `None` the same way.
+        _ => None,
+    }
+}
+
+fn flatten_ids(
+    stack: &LayerStack,
+    ids: &[LayerId],
+    ops: &mut Vec<LayerOp>,
+    adj_luts: &mut Vec<f32>,
+) -> Option<()> {
+    // Bottom-to-top, mirror of `composite_into`'s `ids.iter().rev()`.
+    for &id in ids.iter().rev() {
+        let Some(layer) = stack.get(id) else { continue };
+        // Mask layers compose via their parent — never their own op.
+        if matches!(layer.kind, LayerKind::Mask(_)) {
+            continue;
+        }
+        if !layer.visible || layer.opacity <= 0.0 {
+            continue;
+        }
+        // ⚠️ `is_reference` used to bail here. A reference layer is the *geometry source
+        // for ColorDrop* (`layers/mod.rs` §2.9) — the CPU compositor never reads the flag
+        // (zero occurrences in `ph2d_tool_painter::compositor`), so refusing on it sent the
+        // whole document to a producer up to 885× slower for a flag that changes no pixel.
+        // Pinned by `a_reference_layer_composites_like_any_other_and_stays_on_the_gpu`.
+        //
+        // Mask and clipping are no longer refusals either — they are ops now. What each
+        // KIND may carry is decided in its own arm below, because the answer differs by
+        // kind and a single guard up here is how it stopped matching the reference.
+        let opacity = layer.opacity.clamp(0.0, 1.0);
+        let blend_mode = layer.blend_mode.to_u8();
+        match &layer.kind {
+            // A Texture layer is raster-backed (its pixels are pre-rendered into the same per-layer
+            // buffer the provider uploads by `key`), so it flattens to the identical `Layer` op — the
+            // GPU composites the texture buffer exactly like a painted raster. Lock-step with
+            // `composite_into`'s merged `Raster | Texture` arm — which is also the arm that
+            // reads `layer.mask` and `layer.clipping`, so both ride along.
+            LayerKind::Raster(_) | LayerKind::Texture(_) => ops.push(LayerOp::Layer {
+                key: id.0,
+                blend_mode,
+                opacity,
+                mask: layer_mask(stack, layer.mask),
+                clipping: layer.clipping,
+            }),
+            LayerKind::Group(g) => {
+                // ⚠️ A masked or clipped GROUP is refused, and that is not an oversight to
+                // fix here. The CPU reference's Group arm reads NEITHER `layer.mask` nor
+                // `layer.clipping` — it composites the children and blends the
+                // sub-accumulator with blend + opacity, nothing else. Honouring either on
+                // the GPU would make the same document look different depending on which
+                // producer won the frame, and that routing is invisible to the artist: the
+                // worst outcome available.
+                //
+                // (`LayerStack::add_mask` only accepts a Raster parent, so the mask half is
+                // unreachable through the UI — it guards a forged/deserialised stack. The
+                // clip half IS reachable. Both are markers for whoever closes the CPU gap:
+                // fix it THERE first, then delete this and give `PopGroup` the modifiers.)
+                if layer.mask.is_some() || layer.clipping {
+                    return None;
+                }
+                ops.push(LayerOp::PushGroup);
+                flatten_ids(stack, &g.children, ops, adj_luts)?;
+                ops.push(LayerOp::PopGroup {
+                    blend_mode,
+                    opacity,
+                });
+            }
+            LayerKind::Adjustment(adj) => {
+                if !adj.visible || adj.opacity <= 0.0 {
+                    continue;
+                }
+                // A per-pixel adjustment carries its mask as an op (the mask multiplies its
+                // STRENGTH, which is where the CPU puts it too). A SPATIAL one cannot yet:
+                // the pass-graph's combine step has no mask input, so honouring it would
+                // mean the GPU quietly ignoring a mask the CPU applies — refused below,
+                // next to the spatial emit, so the two stay visibly adjacent.
+                let mask = layer_mask(stack, adj.mask.map(LayerId));
+                // Spatial (neighbourhood) kinds run on the pass-graph as a
+                // `SpatialAdjustment` (Gaussian/Sharpen/Motion/Chroma/Bloom/S-H).
+                // `kernel` is the `SPATIAL_*` code; `params` the kernel's 8 scalars
+                // (the tail is zero except S/H) — kept in lock-step with `ph2d-render`
+                // by the spatial parity gates.
+                if let Some(kernel) = adj.kind.gpu_spatial_code() {
+                    if mask.is_some() {
+                        return None;
+                    }
+                    ops.push(LayerOp::SpatialAdjustment {
+                        kernel,
+                        params: adj.params.spatial_params().unwrap_or([0.0; 8]),
+                        blend_mode: BlendMode::to_u8(adj.blend_mode),
+                        opacity: adj.opacity.clamp(0.0, 1.0),
+                    });
+                    continue;
+                }
+                let kind = adj.kind.gpu_code()?;
+                // Curves(7)/Levels(8) are GPU display-space transfer LUTs: build
+                // the table from the SAME exporter the CPU compositor reads, append
+                // it to `adj_luts`, and pass its base float offset in `params[0]`
+                // (the WGSL `apply_adjustment` reads `adj_luts[base + c*256 + idx]`).
+                let params = match kind {
+                    7 => {
+                        let AdjustmentParams::Curves(cp) = &adj.params else {
+                            return None;
+                        };
+                        let base = adj_luts.len();
+                        for channel in curves_display_luts(cp) {
+                            adj_luts.extend_from_slice(&channel);
+                        }
+                        [base as f32, 0.0, 0.0]
+                    }
+                    8 => {
+                        let AdjustmentParams::Levels(lp) = &adj.params else {
+                            return None;
+                        };
+                        let base = adj_luts.len();
+                        adj_luts.extend_from_slice(&levels_display_lut(lp));
+                        [base as f32, 0.0, 0.0]
+                    }
+                    _ => adj.params.gpu_params(),
+                };
+                ops.push(LayerOp::Adjustment {
+                    kind,
+                    params,
+                    mask,
+                    blend_mode: BlendMode::to_u8(adj.blend_mode),
+                    opacity: adj.opacity.clamp(0.0, 1.0),
+                });
+            }
+            LayerKind::Mask(_) => unreachable!("masks skipped above"),
+        }
+    }
+    Some(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ph2d_painter_effects::adjustments::AdjustmentKind;
+    use ph2d_tool_painter::LayerStack;
+
+    #[test]
+    fn base_plus_ported_adjustment_is_gpu_representable() {
+        let mut s = LayerStack::new();
+        let base = s.add_raster("base", 4, 4).unwrap();
+        let _adj = s
+            .add_adjustment(AdjustmentKind::HueSaturationBrightness)
+            .unwrap();
+        let (ops, _luts) = flatten_for_gpu(&s).expect("base + HSB adjustment is GPU-representable");
+        // Reversed walk (root is top-first [adj, base]) → base first, then adj.
+        assert!(matches!(ops[0], LayerOp::Layer { key, .. } if key == base.0));
+        assert!(matches!(ops[1], LayerOp::Adjustment { .. }));
+        assert_eq!(ops.len(), 2);
+    }
+
+    #[test]
+    fn curves_and_levels_emit_display_luts_with_base_offset() {
+        // Curves(7) emits a 3×256 table block, Levels(8) a 1×256 block; each op's
+        // params[0] is its base float offset into the concatenated `adj_luts`.
+        let mut s = LayerStack::new();
+        let _base = s.add_raster("base", 4, 4).unwrap();
+        let _curves = s.add_adjustment(AdjustmentKind::Curves).unwrap();
+        let _levels = s.add_adjustment(AdjustmentKind::Levels).unwrap();
+        let (ops, luts) =
+            flatten_for_gpu(&s).expect("base + Curves + Levels is GPU-representable (W4 §2)");
+        assert_eq!(luts.len(), 3 * 256 + 256, "Curves 3×256 + Levels 1×256");
+        let mut bases: Vec<(u8, f32)> = ops
+            .iter()
+            .filter_map(|o| match o {
+                LayerOp::Adjustment { kind, params, .. } if *kind == 7 || *kind == 8 => {
+                    Some((*kind, params[0]))
+                }
+                _ => None,
+            })
+            .collect();
+        bases.sort_by_key(|&(_, base)| base as u32);
+        // Two LUT ops at distinct, in-range base offsets (0 and one of 256/768).
+        assert_eq!(bases.len(), 2, "one Curves + one Levels LUT op");
+        assert_eq!(bases[0].1, 0.0, "first LUT op starts at base 0");
+        assert!(
+            (bases[1].1 as usize) < luts.len(),
+            "second LUT op's base is in range"
+        );
+    }
+
+    #[test]
+    fn texture_layer_is_gpu_representable_like_a_raster() {
+        // A Texture layer is raster-backed → it must flatten to a plain `Layer` op (the GPU uploads
+        // its pre-rendered buffer by key), never force the CPU fallback.
+        let mut s = LayerStack::new();
+        let _base = s.add_raster("base", 4, 4).unwrap();
+        let tex = s
+            .add_texture(ph2d_tool_painter::TextureLayer::default())
+            .unwrap();
+        let (ops, _luts) = flatten_for_gpu(&s).expect("a texture layer flattens to a GPU Layer op");
+        assert!(
+            ops.iter()
+                .any(|o| matches!(o, LayerOp::Layer { key, .. } if *key == tex.0)),
+            "the texture layer emits a Layer op like a raster: {ops:?}"
+        );
+    }
+
+    #[test]
+    fn group_emits_push_pop_around_children() {
+        let mut s = LayerStack::new();
+        let _base = s.add_raster("base", 4, 4).unwrap();
+        let child = s.add_raster("child", 4, 4).unwrap();
+        let g = s.add_group("group").unwrap();
+        s.move_into_group(child, g);
+        let (ops, _luts) = flatten_for_gpu(&s).expect("plain group is GPU-representable");
+        // Somewhere: PushGroup, Layer(child), PopGroup.
+        let push = ops.iter().position(|o| matches!(o, LayerOp::PushGroup));
+        let pop = ops
+            .iter()
+            .position(|o| matches!(o, LayerOp::PopGroup { .. }));
+        assert!(
+            push.is_some() && pop.is_some() && push < pop,
+            "group brackets its child"
+        );
+    }
+
+    #[test]
+    fn non_ported_adjustment_falls_back_to_cpu() {
+        let mut s = LayerStack::new();
+        let _base = s.add_raster("base", 4, 4).unwrap();
+        // PhotoFilter has neither a per-pixel `gpu_code()` nor a `gpu_spatial_code()`
+        // (its WGSL case hasn't landed) → not representable, forces the CPU path.
+        let _adj = s.add_adjustment(AdjustmentKind::PhotoFilter).unwrap();
+        assert!(
+            flatten_for_gpu(&s).is_none(),
+            "a non-ported adjustment kind must force the CPU fallback"
+        );
+    }
+
+    #[test]
+    fn spatial_adjustment_emits_pass_graph_op() {
+        // Spatial kinds emit `SpatialAdjustment` (the GPU pass-graph), NOT a CPU
+        // fallback — Gaussian (kernel 0) and Bloom (kernel 4), the latter the 5
+        // GPU-accel kinds the W4 escalation closed.
+        for (kind, want_kernel) in [
+            (AdjustmentKind::GaussianBlur, 0u8),
+            (AdjustmentKind::Bloom, 4u8),
+        ] {
+            let mut s = LayerStack::new();
+            let _base = s.add_raster("base", 4, 4).unwrap();
+            let _adj = s.add_adjustment(kind).unwrap();
+            let (ops, _luts) =
+                flatten_for_gpu(&s).unwrap_or_else(|| panic!("{kind:?} must be GPU-representable"));
+            assert!(
+                ops.iter().any(|o| matches!(
+                    o,
+                    LayerOp::SpatialAdjustment { kernel, .. } if *kernel == want_kernel
+                )),
+                "{kind:?} must flatten to a SpatialAdjustment(kernel {want_kernel}): {ops:?}"
+            );
+        }
+    }
+
+    /// Clipping is an OP now, not a refusal. The assertion is on the op's CONTENT, not
+    /// merely on `is_some()`: a flatten that accepted the stack and dropped the flag would
+    /// be the worst version of this change — fast, silent, and wrong.
+    #[test]
+    fn a_clipping_layer_is_an_op_not_a_cpu_fallback() {
+        let mut s = LayerStack::new();
+        let base = s.add_raster("base", 4, 4).unwrap();
+        let top = s.add_raster("top", 4, 4).unwrap();
+        s.set_clipping(top, true);
+        let (ops, _) = flatten_for_gpu(&s).expect("clipping is representable");
+        // Bottom-to-top: base first (not clipped, becomes the clip base), then top.
+        assert!(
+            matches!(ops[0], LayerOp::Layer { key, clipping: false, .. } if key == base.0),
+            "the base must NOT be marked clipping: {ops:?}"
+        );
+        assert!(
+            matches!(ops[1], LayerOp::Layer { key, clipping: true, .. } if key == top.0),
+            "the clipped layer must carry the flag: {ops:?}"
+        );
+    }
+
+    /// A per-layer mask is an op, carrying the mask's KEY and its `inverted` — and
+    /// `inverted` is read off the MASK layer, not off the layer wearing it. Getting that
+    /// end wrong inverts every mask in the document into a still-plausible picture.
+    #[test]
+    fn a_masked_layer_carries_its_mask_key_and_inversion() {
+        let mut s = LayerStack::new();
+        let base = s.add_raster("base", 4, 4).unwrap();
+        let mask = s.add_mask(base).unwrap();
+        let (ops, _) = flatten_for_gpu(&s).expect("a per-layer mask is representable");
+        assert_eq!(ops.len(), 1, "the mask is not its own op: {ops:?}");
+        assert!(
+            matches!(
+                ops[0],
+                LayerOp::Layer {
+                    key,
+                    mask: Some(m),
+                    ..
+                } if key == base.0 && m.key == mask.0 && !m.inverted
+            ),
+            "expected base wearing mask {mask:?}, uninverted: {ops:?}"
+        );
+
+        s.set_mask_inverted(mask, true);
+        let (ops, _) = flatten_for_gpu(&s).expect("still representable");
+        assert!(
+            matches!(ops[0], LayerOp::Layer { mask: Some(m), .. } if m.inverted),
+            "inversion must come from the MASK layer: {ops:?}"
+        );
+    }
+
+    /// A masked or clipped GROUP stays a refusal — deliberately, because the CPU reference
+    /// ignores both there and two producers must not disagree about a picture. This is a
+    /// Chesterton fence with its reason written on it, not an unfinished port.
+    #[test]
+    fn a_clipped_group_still_falls_back_because_the_cpu_ignores_it() {
+        let mut s = LayerStack::new();
+        let _base = s.add_raster("base", 4, 4).unwrap();
+        let g = s.add_group("g").unwrap();
+        s.set_clipping(g, true);
+        assert!(
+            flatten_for_gpu(&s).is_none(),
+            "a clipped group must stay on the CPU while the CPU ignores the flag"
+        );
+    }
+
+    /// A reference layer used to force the whole document onto the CPU producer, and the
+    /// flag changes **nothing about the composite** — it is the ColorDrop geometry source
+    /// (`layers/mod.rs` §2.9), read by zero lines of `ph2d_tool_painter::compositor`.
+    ///
+    /// The oracle is deliberately in TWO halves, because either alone is weak:
+    ///
+    /// * the routing half (this flatten now says yes) would pass just as happily if the
+    ///   flag DID change pixels and we were now composing it wrong;
+    /// * so the CPU half asserts the premise the routing rests on — the reference stack
+    ///   and the plain one composite **byte-identically** through the canonical CPU
+    ///   compositor, which is the thing the GPU op-list has to reproduce.
+    ///
+    /// Mutation: restoring `|| layer.is_reference` to the refusal turns the first half
+    /// red; making `is_reference` alter the composite would turn the second half red.
+    #[test]
+    fn a_reference_layer_composites_like_any_other_and_stays_on_the_gpu() {
+        use ph2d_tool_painter::compositor::{LayerPixelSource, composite};
+
+        /// Serves no pixels: what is pinned here is that the two WALKS agree, and they can
+        /// only disagree if something starts reading the flag.
+        struct NoPixels;
+        impl LayerPixelSource for NoPixels {
+            fn layer_rgba(&self, _id: ph2d_tool_painter::LayerId) -> Option<&[u8]> {
+                None
+            }
+        }
+
+        let build = |reference: bool| {
+            let mut s = LayerStack::new();
+            let base = s.add_raster("base", 4, 4).unwrap();
+            let top = s.add_raster("top", 4, 4).unwrap();
+            if reference {
+                s.set_reference(top, true);
+            }
+            (s, base, top)
+        };
+
+        // Half 1 — the routing: a reference layer is GPU-representable, and it flattens to
+        // exactly the ops the plain stack does (same keys, same order, same count).
+        let (plain, _, _) = build(false);
+        let (referenced, _, _) = build(true);
+        let (plain_ops, _) = flatten_for_gpu(&plain).expect("plain stack is representable");
+        let (ref_ops, _) =
+            flatten_for_gpu(&referenced).expect("a reference layer must NOT force the CPU path");
+        assert_eq!(
+            format!("{plain_ops:?}"),
+            format!("{ref_ops:?}"),
+            "the reference flag must not change a single op"
+        );
+
+        // Half 2 — the premise: the canonical CPU compositor produces the same bytes for
+        // both stacks.
+        let src = NoPixels;
+        let a = composite(&plain, &src, 4, 4);
+        let b = composite(&referenced, &src, 4, 4);
+        assert_eq!(a, b, "is_reference must be inert in the composite");
+    }
+}

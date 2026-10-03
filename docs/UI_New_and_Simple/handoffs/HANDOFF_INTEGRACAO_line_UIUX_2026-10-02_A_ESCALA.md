@@ -3,8 +3,8 @@
 > Leitor: o agente integrador (DIRETRIZ §1.5.3–1.5.4), e só por ordem do Enio. A linha FECHOU e
 > PAROU: não integrou nem fez push.
 >
-> **Branch `line/UIUX` · base (merge-base = `main`) `1ad60a1ce` · 15 commits sobre a base** — o
-> HEAD é o commit que traz este ficheiro. `git cherry main HEAD` = 15 `+`; o `main` não andou
+> **Branch `line/UIUX` · base (merge-base = `main`) `1ad60a1ce` · 18 commits sobre a base** (os
+> 15 do §1 e os três deste handoff) — o HEAD é o último commit deste ficheiro. `git cherry main HEAD` = 18 `+`; o `main` não andou
 > durante a jornada (não houve rebase).
 > O mecanismo de cada mudança está na mensagem do seu commit. A spec é
 > [`../spec/05_a_escala_da_interface.md`](../spec/05_a_escala_da_interface.md), e o estado de

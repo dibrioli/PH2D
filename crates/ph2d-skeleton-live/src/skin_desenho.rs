@@ -238,7 +238,7 @@ pub struct CozidoFx {
     /// vê, pontas do efeito incluídas, é o domínio, como o *Puppet* do After Effects tira a malha
     /// do que a camada desenha. `None` quando o solver não responde (um contorno que se cruza, o
     /// *Repeat* sobreposto): aí vale o campo da fonte.
-    campo: Option<(CampoDoDominio, Option<IndiceDoCampo>)>,
+    campo: Option<Rc<CampoFx>>,
     /// ⭐⭐ **A união do contacto é NEUTRA no repouso deste cozido?** Um efeito pode desenhar
     /// contornos que se cruzam DE PROPÓSITO (as cópias de um *Repeat*, a agulha de um *Bloat*
     /// forte), e a união reescrevê-los-ia já em repouso. ⛔ *Uma lei de contacto que muda o
@@ -246,10 +246,20 @@ pub struct CozidoFx {
     contacto: bool,
 }
 
+/// O campo do contorno cozido e o índice dele.
+pub type CampoFx = (CampoDoDominio, Option<IndiceDoCampo>);
+
+/// O último campo RESOLVIDO para esta forma: a pilha para que foi pedido e a resposta do solver
+/// (`None` quando ele não respondeu — vale o campo da fonte).
+type Resolvido = (Vec<FxEntry>, Option<Rc<CampoFx>>);
+
 struct Ultimo {
     pele: Skin,
     leis: Leis,
     estilo: Estilo,
+    /// O cozido com que este quadro foi calculado — a chegada de um campo novo muda-o sem mudar
+    /// pose, leis nem estilo.
+    fx: Option<Rc<CozidoFx>>,
     quadro: Quadro,
 }
 
@@ -257,6 +267,8 @@ struct Gaveta {
     bind: SkinBind,
     preparado: Option<Rc<Preparado>>,
     efeitos: Option<Rc<CozidoFx>>,
+    resolvido: Option<Resolvido>,
+    a_caminho: Option<(Vec<FxEntry>, std::sync::mpsc::Receiver<Option<CampoFx>>)>,
     ultimo: Option<Ultimo>,
     visto: u64,
 }
@@ -299,23 +311,25 @@ pub fn quadro(
     eixos: &dyn Fn() -> Vec<Handle>,
 ) -> Option<Quadro> {
     com_a_gaveta(bits, skin, |g| {
+        let prep = Rc::clone(g.preparado.as_ref()?);
+        let fx = match estilo {
+            Estilo::Efeitos(pilha) if leis.efeitos && leis.desenho => {
+                efeitos_da_gaveta(g, &prep.guardado, pilha, eixos)
+            }
+            _ => None,
+        };
         if let Some(u) = &g.ultimo
             && u.pele == *pele
             && u.leis == leis
             && u.estilo == *estilo
+            && match (&u.fx, &fx) {
+                (None, None) => true,
+                (Some(a), Some(b)) => Rc::ptr_eq(a, b),
+                _ => false,
+            }
         {
             return Some(u.quadro.clone());
         }
-        let prep = Rc::clone(g.preparado.as_ref()?);
-        let fx = match estilo {
-            Estilo::Efeitos(pilha) if leis.efeitos && leis.desenho => {
-                if g.efeitos.as_ref().is_none_or(|c| c.pilha != *pilha) {
-                    g.efeitos = cozido_com_efeitos(&prep.guardado, pilha, &eixos()).map(Rc::new);
-                }
-                g.efeitos.clone()
-            }
-            _ => None,
-        };
         // ⚠️ Uma forma com efeito e sem cozido (sem campo, ou a lei desligada) desenha-se como
         // ontem: o efeito sobre os nós deformados.
         let serve = match estilo {
@@ -328,6 +342,7 @@ pub fn quadro(
             pele: pele.clone(),
             leis,
             estilo: estilo.clone(),
+            fx,
             quadro: q.clone(),
         });
         Some(q)
@@ -386,6 +401,8 @@ fn com_a_gaveta<R>(
                     bind: skin.clone(),
                     preparado,
                     efeitos: None,
+                    resolvido: None,
+                    a_caminho: None,
                     ultimo: None,
                     visto: agora,
                 },
@@ -451,22 +468,15 @@ fn cozido_para_o_bake(g: &SkinnedPath) -> Option<(VecPath, Vec<f64>)> {
 /// ⚠️ O `FxCtx` de cada efeito (caixa, centro, `ref_size`) sai assim da forma EM REPOUSO, e o
 /// tamanho do efeito deixa de depender da pose. ⛔ Sem campo não há de onde amostrar a tabela ⇒
 /// `None`, e a forma desenha-se pela lei antiga.
-fn cozido_com_efeitos(g: &SkinnedPath, pilha: &[FxEntry], eixos: &[Handle]) -> Option<CozidoFx> {
+fn cozido_com_efeitos(
+    g: &SkinnedPath,
+    pilha: &[FxEntry],
+    campo: Option<Rc<CampoFx>>,
+) -> Option<CozidoFx> {
     let da_fonte = g.campo.as_ref()?;
-    let mut fonte = g.path.clone();
-    fonte.effects = pilha.to_vec();
-    // ⭐⭐ F50-h: as voltas apertadas do efeito viram NÓS — ver [`crate::skin_desenho_voltas`].
-    let caminho = crate::skin_desenho_voltas::parte_nas_voltas(fonte.cooked().into_owned());
-    let campo = ph2d_vec_skin::pesos::campo_do_caminho(&caminho, eixos)
-        .filter(|c| c.ossos() == da_fonte.ossos())
-        .map(|c| {
-            let i = IndiceDoCampo::novo(&c.malha);
-            (c, i)
-        });
-    let tabela = ph2d_vec_skin::pesos::pesos_dos_pontos(
-        &caminho,
-        campo.as_ref().map_or(da_fonte, |(c, _)| c),
-    );
+    let caminho = geometria_cozida(g, pilha);
+    let tabela =
+        ph2d_vec_skin::pesos::pesos_dos_pontos(&caminho, campo.as_ref().map_or(da_fonte, |c| &c.0));
     let contacto = uniao_dos_fechados(&caminho).is_none();
     Some(CozidoFx {
         pilha: pilha.to_vec(),
@@ -475,6 +485,98 @@ fn cozido_com_efeitos(g: &SkinnedPath, pilha: &[FxEntry], eixos: &[Handle]) -> O
         campo,
         contacto,
     })
+}
+
+/// A fonte com a pilha cozida em repouso, as voltas apertadas já em nós.
+fn geometria_cozida(g: &SkinnedPath, pilha: &[FxEntry]) -> VecPath {
+    let mut fonte = g.path.clone();
+    fonte.effects = pilha.to_vec();
+    // ⭐⭐ F50-h: as voltas apertadas do efeito viram NÓS — ver [`crate::skin_desenho_voltas`].
+    crate::skin_desenho_voltas::parte_nas_voltas(fonte.cooked().into_owned())
+}
+
+/// O solver do campo sobre o contorno cozido — o que corre FORA do quadro (F50-j).
+fn resolve_o_campo(caminho: &VecPath, eixos: &[Handle], ossos: usize) -> Option<CampoFx> {
+    ph2d_vec_skin::pesos::campo_do_caminho(caminho, eixos)
+        .filter(|c| c.ossos() == ossos)
+        .map(|c| {
+            let i = IndiceDoCampo::novo(&c.malha);
+            (c, i)
+        })
+}
+
+thread_local! {
+    /// ⚠️ Só os gates mexem nisto: nos testes da crate o solver corre no quadro (síncrono), e o
+    /// gate do solver em fundo liga-o aqui.
+    static EM_FUNDO_NO_TESTE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// O solver de um campo NOVO corre numa thread? — no produto sim; nos testes da crate só quando
+/// o gate o pede ([`EM_FUNDO_NO_TESTE`]).
+fn em_fundo() -> bool {
+    !cfg!(test) || EM_FUNDO_NO_TESTE.with(std::cell::Cell::get)
+}
+
+/// Liga o solver em fundo nesta thread de teste.
+#[cfg(test)]
+pub(crate) fn solver_em_fundo_no_teste(v: bool) {
+    EM_FUNDO_NO_TESTE.with(|c| c.set(v));
+}
+
+/// ⭐⭐⭐ **O COZIDO desta pilha, com o melhor campo que há** (F50-j).
+///
+/// O campo do contorno cozido custa um solver (`20`–`100 ms`) e arrastar o controlo de um efeito
+/// muda a pilha a cada quadro. ⇒ a 1.ª vez (nenhum campo resolvido) o solver corre no quadro — a
+/// forma nunca aparece rasgada ao abrir o projecto —; daí em diante corre numa THREAD, UM de cada
+/// vez, e entretanto a geometria nova usa o último campo resolvido (de uma pilha vizinha). Quando o
+/// campo chega, o cozido refaz-se com ele e o quadro também ([`Ultimo::fx`]).
+fn efeitos_da_gaveta(
+    g: &mut Gaveta,
+    guardado: &SkinnedPath,
+    pilha: &[FxEntry],
+    eixos: &dyn Fn() -> Vec<Handle>,
+) -> Option<Rc<CozidoFx>> {
+    let ossos = guardado.campo.as_ref()?.ossos();
+    if let Some((pedida, rx)) = &g.a_caminho {
+        match rx.try_recv() {
+            Ok(res) => {
+                g.resolvido = Some((pedida.clone(), res.map(Rc::new)));
+                g.a_caminho = None;
+            }
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => g.a_caminho = None,
+            Err(std::sync::mpsc::TryRecvError::Empty) => {}
+        }
+    }
+    let exacto = g.resolvido.as_ref().is_some_and(|(p, _)| p == pilha);
+    if !exacto {
+        let pedida = g.a_caminho.as_ref().is_some_and(|(p, _)| p == pilha);
+        if g.resolvido.is_none() || !em_fundo() {
+            let caminho = geometria_cozida(guardado, pilha);
+            let res = resolve_o_campo(&caminho, &eixos(), ossos).map(Rc::new);
+            g.resolvido = Some((pilha.to_vec(), res));
+        } else if g.a_caminho.is_none() && !pedida {
+            let caminho = geometria_cozida(guardado, pilha);
+            let eixos = eixos();
+            let (tx, rx) = std::sync::mpsc::channel();
+            std::thread::spawn(move || {
+                let _ = tx.send(resolve_o_campo(&caminho, &eixos, ossos));
+            });
+            g.a_caminho = Some((pilha.to_vec(), rx));
+        }
+    }
+    let campo = g.resolvido.as_ref().and_then(|(_, c)| c.clone());
+    let actual = g.efeitos.as_ref().is_some_and(|c| {
+        c.pilha == pilha
+            && match (&c.campo, &campo) {
+                (None, None) => true,
+                (Some(a), Some(b)) => Rc::ptr_eq(a, b),
+                _ => false,
+            }
+    });
+    if !actual {
+        g.efeitos = cozido_com_efeitos(guardado, pilha, campo).map(Rc::new);
+    }
+    g.efeitos.clone()
 }
 
 /// ⭐⭐ **A UNIÃO só dos contornos FECHADOS**, com os abertos devolvidos como estavam — as riscas de
@@ -528,7 +630,7 @@ fn calcula(
         suave: suave.as_ref(),
     };
     // ⭐⭐⭐ O bake de uma forma com efeito lê o campo do CONTORNO COZIDO ([`CozidoFx::campo`]).
-    let campo_fx = fx.and_then(|c| c.campo.as_ref()).filter(|_| leis.campo);
+    let campo_fx = fx.and_then(|c| c.campo.as_deref()).filter(|_| leis.campo);
     let suave_fx = campo_fx
         .filter(|_| leis.c1)
         .and_then(|(c, _)| ph2d_vec_skin::pesos_suave::CampoSuave::novo(c));

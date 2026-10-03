@@ -268,6 +268,27 @@ sozinho (§6.5).
       (`Sculpt3dScene::pede_o_modo`), logo cobre as cinco portas de nascer (Add, load, import, smoke).
     - O `D` deixou de entrar no barro (luz ⇄ desligada fora dele); as abas Sculpt/Painter ao lado
       pedem o modo (`slot_tabs_ferramenta`), sem o IMG.
+  - **Flip** — ✅ **entregue em 03/10** (handoff `HANDOFF_INTEGRACAO_line_UIUX_2026-10-03_O_FLIP.md`):
+    `ObjectMode::{Draw, Edit}` e `ph2d_app_flip::flip_mode::Family` — `(Flip, Draw)` e
+    `(Flip, Edit)`. Draw = a ferramenta Flip na mão com uma das de pôr/tirar tinta
+    (`FlipMode::DRAW_TOOLS`: Draw · Erase · Fill · Colorize · Trace); Edit = com uma das que mexem
+    no traço que existe (`EDIT_TOOLS`: Edit · Reshape, lidas «Select · Sculpt»); Object = a
+    ferramenta sai. O painel só mostra as do modo em curso.
+    - **O ALVO** (`ph2d_flip::FlipTarget`: o desenho em edição + a camada activa nele) substitui o
+      `active_layer` solto; as 14 leituras de «o 1.º objecto» e 10 cópias da regra da camada de
+      reserva passam por ele. ⛔ Ele não mora no `FlipDoc` (que é `PartialEq` para o diff do undo:
+      entrar num modo seria um passo de histórico).
+    - **Medido antes (as três perguntas do briefing):** o pill FLIP tinha 4 portas (pill, *Window*,
+      a aba Flip, o layout gravado) e criava um objecto ao activar com o documento vazio; o
+      `FlipMode` tinha 8 variantes = `Select` (o Object) + 5 de desenhar + 2 de editar (a confusão
+      do `DrawMode` do vetor, D3, em pequeno); os `Pairs` são uma sessão do tween, não um modo.
+    - **Desvio do desenho:** `ModeFamily::wants` recebe o registo — a ferramenta Flip que chega à
+      mão SEM o modo (as ~20 cenas `PH2D_FLIP_*_SMOKE`) pede o modo do grupo dela, e a que troca de
+      grupo pede o outro; a ferramenta só sai quando um modo do Flip ACABOU (`releases`). Assim
+      nenhuma cena antiga teve de ser editada.
+    - **Escolhas do dono (03/10):** o pill FLIP **saiu** (e a linha *Window ▸ Flip*); o desenho
+      novo **nasce em Draw** (`FlipState::born`). A aba Flip de cima pede o Draw
+      (`CanvasOwner::Mode`), e sem activo compatível fica em Object — ⛔ já não cria um desenho.
 - **F4 — Layouts:** o campo opcional *«modo ao abrir»* (§3.3) e a limpeza dos toggles de módulo
   que viraram modos.
 

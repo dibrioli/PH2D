@@ -85,10 +85,36 @@ pub(crate) fn monta(
         delayed: false,
     })
     .ok()?;
-    // ── O FIO: um Number por cima do cartão do Vortex, ligado ao `Strength`.
+    // ── O FIO: um Number ligado ao `Strength` do Vortex.
     let numero = no(g, "value.number", 160.0, -400.0);
     g.set_param(numero, "value", FIO_INICIAL);
     g.drive_param(vortex, "strength", (numero, 0)).ok()?;
+    // ── O DESENHO: o Number e o Vortex na fila de BAIXO. O enquadramento automático do grafo tem
+    // zoom mínimo (`ZOOM_FIT_MIN`) e o topo do retângulo dele fica tapado pela tela no 1.º quadro:
+    // com a cadeia a `y = −220` e o Number a `−400` (o desenho da `=127`) os dois abriam FORA de
+    // vista, e com a fila das forças em cima também — as duas fotos apanharam-no.
+    for (tipo, x, y) in [
+        ("motion.grid", 0.0, 0.0),
+        ("motion.integrate", 220.0, 0.0),
+        ("source.shape", 440.0, 60.0),
+        ("motion.duplicator", 660.0, 0.0),
+        ("motion.output", 880.0, 0.0),
+        ("value.number", -220.0, 160.0),
+        ("motion.falloff", 0.0, 160.0),
+        ("force.vortex", 220.0, 160.0),
+        ("force.attractor", 440.0, 160.0),
+        ("force.curl", 660.0, 160.0),
+    ] {
+        let ids: Vec<NodeId> = g
+            .nodes()
+            .iter()
+            .filter(|n| n.type_name == tipo)
+            .map(|n| n.id)
+            .collect();
+        for id in ids {
+            g.set_pos(id, Pos { x, y });
+        }
+    }
     Some((vec![saida], numero, vortex))
 }
 
@@ -98,11 +124,12 @@ pub(super) fn announce() {
     let f = FIO_INICIAL;
     eprintln!(
         "\n[number no vortex] {n} ESTRELAS AMARELAS que GIRAM como uma galaxia: e' uma SIMULACAO com\n\
-         campos de forca. O REDEMOINHO e' o cartao `Vortex`; por cima dele ha' um cartao `Number`\n\
+         campos de forca. O REDEMOINHO e' o cartao `Vortex`; a' esquerda dele ha' um cartao `Number`\n\
          ligado por um FIO a' linha `Strength` do Vortex.\n\
          \n\
-         (1) Olhe o cartao `Vortex`: a linha `Strength` mostra {f} (o numero que o fio traz, numa\n    \
-         cor diferente), e nao o 2 que estava escrito no cartao.\n\
+         (1) No grafo (em baixo), a fila de BAIXO tem `Number`, `Falloff`, `Vortex`... Ponha o rato\n    \
+         sobre o `Vortex` e role a roda para APROXIMAR ate' ler as linhas dele: a linha `Strength`\n    \
+         mostra {f} (o numero que o fio traz, numa cor diferente), e nao o 2 escrito no cartao.\n\
          (2) No cartao `Number`, arraste o numero para a DIREITA (ate' perto de 10): a galaxia gira\n    \
          MAIS DEPRESSA (e abre-se devagar: gira mais do que o ima segura), e o\n    \
          `Strength` do Vortex acompanha o numero.\n\

@@ -538,6 +538,32 @@ pub(super) fn cook_gpu(
                     scopes,
                 );
             }
+            // The clocks this frame owes the suffix. A hybrid plan CAN drive a loop since
+            // ADR-0136 §5 — but only when every boundary is STATIC (a temporal one still
+            // retreats at plan time, because that would be two sims of one state). A static
+            // boundary is a constant, so the SAME hand-off serves every marched tick, and the
+            // loop keeps its sequence exactly like the FullyGpu arm: rewind if owed, then march.
+            // A stateless hybrid has one clock and nothing to sequence.
+            // ⚠️ Sem hand-off nada coze (abaixo), e o `rewind_for` não pode correr sozinho: ele
+            // RESTAURA um ponto de controlo na placa.
+            let ha_entrega = !motion.pump.boundary_streams().is_empty();
+            let relogios: Vec<(f64, Option<u64>)> = if !ha_entrega {
+                Vec::new()
+            } else if plan.drives_a_loop() {
+                let ticks: Vec<u64> = (motion.gpu_cook.rewind_for(target)..=target).collect();
+                substep_clocks(&ticks, sub, fixed_dt, true)
+            } else {
+                vec![(target as f64 * fixed_dt, None)]
+            };
+            // ⛔⛔⛔ **OS VALORES DIRIGIDOS, POR TIQUE — a lei do FullyGpu, que este ramo não tinha**
+            // (report do Enio, 2026-10-03: *«o Vortex continua com o valor do cartão»*). O plano
+            // encenava o nó com fio e o cozedor resolvia o `strength` sem o mapa, caindo no
+            // override. ⚠️ Derivados ANTES do empréstimo abaixo: `valores_dirigidos` coze o
+            // condutor na bomba, e o `handed` empresta-a.
+            let dirigidos: Vec<ph2d_gpu_cook::DrivenParams> = relogios
+                .iter()
+                .map(|&(playhead, _)| valores_dirigidos(motion, playhead))
+                .collect();
             // Borrow-splitting: the cook takes `&motion.gpu_cook` mutably while the
             // streams live in `motion.pump`, so the hand-off is materialised first.
             let handed: Vec<(NodeId, &ph2d_nodegraph::attr::Stream)> = motion
@@ -553,16 +579,11 @@ pub(super) fn cook_gpu(
             // lives in one place, and duplicating it here would be a second
             // opinion about what a complete hand-off is.
             if !handed.is_empty() {
-                if plan.drives_a_loop() {
-                    // A hybrid plan CAN drive a loop since ADR-0136 §5 — but only
-                    // when every boundary is STATIC (a temporal one still retreats
-                    // at plan time, because that would be two sims of one state).
-                    // A static boundary is a constant, so the SAME hand-off serves
-                    // every marched tick, and the loop keeps its sequence exactly
-                    // like the FullyGpu arm: rewind if owed, then march.
-                    let ticks: Vec<u64> = (motion.gpu_cook.rewind_for(target)..=target).collect();
-                    let ticks = substep_clocks(&ticks, sub, fixed_dt, true);
-                    motion.gpu_live = ticks.iter().all(|&(playhead, tick)| {
+                motion.gpu_live = relogios
+                    .iter()
+                    .zip(dirigidos)
+                    .all(|(&(playhead, tick), d)| {
+                        motion.gpu_cook.set_driven(d);
                         let feito = motion.gpu_cook.cook_many(
                             gpu,
                             &motion.doc.graph,
@@ -577,23 +598,6 @@ pub(super) fn cook_gpu(
                         );
                         forma::anota_a_mistura(&mut motion.formas_pedem_o_vello, feito)
                     });
-                } else {
-                    let feito = motion.gpu_cook.cook_many(
-                        gpu,
-                        &motion.doc.graph,
-                        &motion.registry,
-                        &motion.registry,
-                        &plan,
-                        &handed,
-                        // A stateless hybrid: nothing to sequence.
-                        ph2d_gpu_cook::CookClock::at(target as f64 * fixed_dt),
-                        motion.default_uv_rect,
-                        motion.default_size,
-                        &estilos,
-                    );
-                    motion.gpu_live =
-                        forma::anota_a_mistura(&mut motion.formas_pedem_o_vello, feito);
-                }
             }
             // The pump was marched to the boundary this frame regardless of the
             // GPU result — do NOT also run the sink loop (it would early-return on

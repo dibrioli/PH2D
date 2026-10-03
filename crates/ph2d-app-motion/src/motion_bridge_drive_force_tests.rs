@@ -335,3 +335,151 @@ fn sonda_127_fio_a_meio() {
         }
     }
 }
+
+/// O `P` do integrador da `=127` com o Number em `valor` (`None` = sem fio), ligado desde o tique 0,
+/// pela rota pedida — e o que a rota disse.
+fn galaxia_127(
+    gpu: Option<&ph2d_gpu::GpuContext>,
+    valor: Option<f32>,
+) -> (Vec<[f32; 2]>, Option<&'static str>) {
+    use crate::motion_state::traco_esticado_demo as d;
+    let mut m = MotionState::new();
+    m.sinks = d::monta(&mut m.doc, &m.registry, d::arranjo_por(None), false).expect("monta");
+    m.gpu_enabled = gpu.is_some();
+    m.gpu_cook.retain_streams_for_debug(true);
+    let tipo = |m: &MotionState, t: &str| {
+        m.doc
+            .graph
+            .nodes()
+            .iter()
+            .find(|n| n.type_name == t)
+            .map(|n| n.id)
+            .expect("o nó existe")
+    };
+    let (ig, vx) = (tipo(&m, "motion.integrate"), tipo(&m, "force.vortex"));
+    if let Some(v) = valor {
+        let num = m.doc.graph.add_node("value.number".to_string());
+        m.doc.graph.set_param(num, "value", v);
+        let mut toasts = ph2d_editor_core::ToastQueue::new();
+        super::super::subgraph::drive(&mut m, &mut toasts, (num, 0), vx, "strength");
+    }
+    let scopes = ph2d_nodegraph::cook::TimeScopes::new();
+    for t in 0..=60u64 {
+        crate::motion_externals::publish_all(&mut m, t as f64 / 60.0);
+        match gpu {
+            Some(g) => {
+                let _ = super::super::gpu::cook_gpu(&mut m, g, t, 1.0 / 60.0, &scopes);
+            }
+            None => {
+                let s = m.sinks.clone();
+                let _ = m.pump.advance_or_scrub_scoped(
+                    &m.doc.graph,
+                    &m.registry,
+                    &s,
+                    t,
+                    |t| t as f64 / 60.0,
+                    m.default_uv_rect,
+                    m.default_size,
+                    &scopes,
+                );
+            }
+        }
+    }
+    let p = match gpu {
+        Some(g) => m.gpu_cook.read_column_vec2(g, ig, "P").unwrap_or_default(),
+        None => match m
+            .pump
+            .cook
+            .peek(ig)
+            .map(|v| v[0].as_stream().get("P").cloned())
+        {
+            Some(Some(ph2d_nodegraph::attr::Column::Vec2(p))) => p,
+            _ => Vec::new(),
+        },
+    };
+    (p, m.route_said)
+}
+
+/// ⛔⛔⛔ **A ROTA HÍBRIDA LÊ O FIO** — o defeito REAL do report de 03/10. Na `=127` (formas +
+/// galáxia) a placa corre a simulação como SUFIXO de um prefixo na CPU, e esse ramo do
+/// `cook_gpu` nunca entregava os valores dirigidos ao cozedor: o plano encenava o Vortex com fio, e
+/// o `strength` caía no override do cartão — Number `1`, `30` e sem fio davam o MESMO campo, ao
+/// bit (medido). CONTROLO: Number `30` tem de mudar o campo; e a rota tem de ser a HÍBRIDA, senão
+/// este gate mediria o ramo que já estava certo.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_hybrid_route_reads_the_wire_like_the_cpu() {
+    let Some(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None).ok()
+    else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let (sem_fio, rota) = galaxia_127(Some(&gpu), None);
+    assert!(
+        rota.is_some_and(|r| r.contains("HIBRIDO")),
+        "a =127 tem de ir pelo ramo híbrido, e foi {rota:?}"
+    );
+    let (placa, _) = galaxia_127(Some(&gpu), Some(30.0));
+    let (cpu, _) = galaxia_127(None, Some(30.0));
+    assert_eq!(placa.len(), cpu.len(), "as duas rotas dão as mesmas peças");
+    let dist = |a: &[[f32; 2]], b: &[[f32; 2]]| {
+        a.iter()
+            .zip(b)
+            .map(|(p, q)| (p[0] - q[0]).hypot(p[1] - q[1]))
+            .fold(0.0_f32, f32::max)
+    };
+    let mudou = dist(&placa, &sem_fio);
+    assert!(
+        mudou > 0.1,
+        "o Number 30 tem de mudar o campo na placa, e mudou {mudou} — o fio é ignorado"
+    );
+    let pior = dist(&placa, &cpu);
+    assert!(pior < 2e-3, "a placa e a CPU divergem em {pior} com o fio");
+}
+
+/// ⭐⭐ **O RAMO IRMÃO: a rota TODA na placa lê o fio** — os dois ramos do `cook_gpu` têm cada um o
+/// seu laço, e o híbrido esqueceu a lei que este tinha; este gate fixa o que já estava certo para
+/// os dois não voltarem a divergir. CONTROLO: a rota é a `fully-GPU`, e o fio muda o campo.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_fully_gpu_route_reads_the_wire_like_the_cpu() {
+    let Some(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None).ok()
+    else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let corre = |fio, cartao| {
+        let (mut m, ig) = cena(fio, cartao);
+        m.gpu_cook.retain_streams_for_debug(true);
+        let scopes = ph2d_nodegraph::cook::TimeScopes::new();
+        for t in 0..=60u64 {
+            let _ = super::super::gpu::cook_gpu(&mut m, &gpu, t, 1.0 / 60.0, &scopes);
+        }
+        let rota = m.route_said;
+        (
+            m.gpu_cook
+                .read_column_vec2(&gpu, ig, "P")
+                .unwrap_or_default(),
+            rota,
+        )
+    };
+    let (com_fio, rota) = corre(Some(20.0), 4.0);
+    assert!(
+        rota.is_some_and(|r| r.contains("fully-GPU")),
+        "a cena simples tem de ir toda à placa, e foi {rota:?}"
+    );
+    let (cartao, _) = corre(None, 20.0);
+    let (sem, _) = corre(None, 4.0);
+    let dist = |a: &[[f32; 2]], b: &[[f32; 2]]| {
+        a.iter()
+            .zip(b)
+            .map(|(p, q)| (p[0] - q[0]).hypot(p[1] - q[1]))
+            .fold(0.0_f32, f32::max)
+    };
+    assert!(dist(&com_fio, &sem) > 0.1, "o fio muda o campo");
+    assert!(
+        dist(&com_fio, &cartao) < 2e-3,
+        "fio 20 tem de ser cartão 20 na placa: {}",
+        dist(&com_fio, &cartao)
+    );
+}

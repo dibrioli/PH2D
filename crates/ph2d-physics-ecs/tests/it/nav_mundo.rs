@@ -331,3 +331,217 @@ fn so_os_agentes_da_malha_que_mudou_refazem_o_caminho() {
         "a malha da direita não mudou e o agente dela refez o caminho"
     );
 }
+
+// ── (W9) A FILA DO REPLANEIO ────────────────────────────────────────────────────────────────────
+
+/// Uma parede em `x = 0` com dois vãos: o de cima (`4 < y < 6`, o caminho LONGO) sempre aberto, e o
+/// do meio (`|y| < 1`, o CURTO) com uma porta. Oito guardas à esquerda com alvos à direita.
+fn atalho(porta_fechada: bool) -> (SimWorld, Entity, Vec<Entity>) {
+    let mut sim = SimWorld::new();
+    regiao(&mut sim, (0.0, 0.0));
+    corpo(&mut sim, "Baixo", BodyKind::Static, (0.0, -3.5), (0.3, 2.5));
+    corpo(&mut sim, "Cima", BodyKind::Static, (0.0, 2.5), (0.3, 1.5));
+    let porta = corpo(
+        &mut sim,
+        "Porta",
+        BodyKind::Kinematic,
+        if porta_fechada {
+            (0.0, 0.0)
+        } else {
+            (30.0, 30.0)
+        },
+        (0.3, 1.2),
+    );
+    let guardas = (0..8)
+        .map(|i| {
+            let (x, y) = (-7.0 + 1.0 * (i % 4) as f32, -5.0 + 1.2 * (i / 4) as f32);
+            agente(
+                &mut sim,
+                &format!("Guarda {i}"),
+                (x, y),
+                NavTarget::Point([6.0, -4.0 + 0.8 * i as f32]),
+            )
+        })
+        .collect();
+    (sim, porta, guardas)
+}
+
+/// As procuras de cada um.
+fn procuras_de(b: &PhysicsBridge, quem: &[Entity]) -> Vec<u64> {
+    quem.iter()
+        .map(|&e| b.nav_agent(e).map_or(0, |r| r.searches))
+        .collect()
+}
+
+/// A porta como uma CURVA da cena (o que a timeline faz): em `de` até ao tique `4`, em `para` a partir
+/// do `5` — um replay põe-na onde ela estava em cada tique.
+struct PortaQueMuda {
+    porta: Entity,
+    de: (f32, f32),
+    para: (f32, f32),
+}
+
+impl ph2d_physics_ecs::SceneAtTick for PortaQueMuda {
+    fn put(&mut self, sim: &mut SimWorld, tick: u64) -> bool {
+        poe(sim, self.porta, if tick < 5 { self.de } else { self.para });
+        true
+    }
+}
+
+/// Corre até `fim`, a porta muda de sítio no tique `5`; devolve as procuras de cada um em cada tique.
+fn com_a_porta_a_mudar(
+    sim: &mut SimWorld,
+    b: &mut PhysicsBridge,
+    cena: &mut PortaQueMuda,
+    quem: &[Entity],
+    fim: u64,
+) -> Vec<Vec<u64>> {
+    (1..=fim)
+        .map(|t| {
+            b.dispatch_with_scene(sim, true, t, cena);
+            procuras_de(b, quem)
+        })
+        .collect()
+}
+
+/// O tique (índice + 1) em que cada um procurou pela 1.ª vez depois do tique `5`.
+fn servido_em(por_tique: &[Vec<u64>], i: usize) -> Option<usize> {
+    let base = por_tique[4][i];
+    (5..por_tique.len())
+        .find(|&k| por_tique[k][i] > base)
+        .map(|k| k + 1)
+}
+
+/// ⭐ Uma porta que ABRE o atalho não põe os oito a procurar no mesmo tique: com um orçamento que só
+/// paga um, a fila serve um por tique, pela ordem das entidades (ninguém tem o caminho partido — o
+/// longo continua a andar-se). CONTROLO: sem fila (`u64::MAX`), os oito no mesmo tique.
+#[test]
+fn a_porta_que_abre_um_atalho_serve_os_agentes_um_por_tique() {
+    let servidos = |orc: u64| {
+        let (mut sim, porta, quem) = atalho(true);
+        let mut b = PhysicsBridge::new();
+        b.set_nav_replan_budget(orc);
+        let mut cena = PortaQueMuda {
+            porta,
+            de: (0.0, 0.0),
+            para: (30.0, 30.0),
+        };
+        let pt = com_a_porta_a_mudar(&mut sim, &mut b, &mut cena, &quem, 30);
+        // E todos acabam pelo atalho.
+        assert!(quem.iter().all(|&e| pela_porta(&b, e)), "orçamento {orc}");
+        // O tique de cada um, pela ordem das ENTIDADES (a da ponte — a do `Ord` delas).
+        let mut por_ordem: Vec<(Entity, usize)> = quem
+            .iter()
+            .enumerate()
+            .map(|(i, &e)| (e, servido_em(&pt, i).expect("cada um acaba por procurar")))
+            .collect();
+        por_ordem.sort();
+        por_ordem.into_iter().map(|(_, t)| t).collect::<Vec<_>>()
+    };
+    let fila = servidos(1);
+    let primeiro = fila[0];
+    assert_eq!(
+        fila,
+        (0..8).map(|i| primeiro + i).collect::<Vec<_>>(),
+        "um por tique, pela ordem das entidades"
+    );
+    let todos = servidos(u64::MAX);
+    assert!(
+        todos.iter().all(|&t| t == todos[0]),
+        "o CONTROLO: sem fila os oito procuram no mesmo tique ({todos:?})"
+    );
+}
+
+/// ⭐ Quem tem o caminho PARTIDO passa à frente na fila: a porta FECHA o atalho por onde os oito iam;
+/// um VIGIA cujo caminho não passa pela porta — e que é o PRIMEIRO na ordem das entidades — é servido
+/// DEPOIS deles todos.
+#[test]
+fn o_caminho_partido_passa_a_frente_na_fila() {
+    let (mut sim, porta, guardas) = atalho(false);
+    let vigia = agente(
+        &mut sim,
+        "Vigia",
+        (-7.0, 5.0),
+        NavTarget::Point([-2.0, 5.0]),
+    );
+    // A fixtura tem de conter o fenómeno: sem a prioridade, a ordem das entidades servia-o primeiro.
+    assert!(
+        guardas.iter().all(|&g| vigia < g),
+        "o vigia tem de vir antes dos guardas na ordem das entidades"
+    );
+    let mut b = PhysicsBridge::new();
+    b.set_nav_replan_budget(1);
+    let mut quem = vec![vigia];
+    quem.extend(&guardas);
+    let mut cena = PortaQueMuda {
+        porta,
+        de: (30.0, 30.0),
+        para: (0.0, 0.0),
+    };
+    let pt = com_a_porta_a_mudar(&mut sim, &mut b, &mut cena, &quem, 30);
+    let vigia_em = servido_em(&pt, 0).expect("o vigia acaba por ser servido");
+    for i in 1..quem.len() {
+        let g = servido_em(&pt, i).expect("cada guarda procura");
+        assert!(
+            g < vigia_em,
+            "o guarda {i} (caminho partido) servido no tique {g}, o vigia no {vigia_em}"
+        );
+    }
+}
+
+/// ⭐⭐ **Um scrub para o MEIO da fila devolve a mesma corrida** — a dívida (`owed`) vai no anel com a
+/// memória do agente; sem ela, o replay serviria outra fila e cada guarda tomaria o atalho noutro
+/// tique.
+#[test]
+fn um_scrub_para_o_meio_da_fila_devolve_a_mesma_corrida() {
+    const FIM: u64 = 60;
+    let (mut sim, porta, quem) = atalho(true);
+    let mut b = PhysicsBridge::new();
+    b.set_nav_replan_budget(1);
+    let mut cena = PortaQueMuda {
+        porta,
+        de: (0.0, 0.0),
+        para: (30.0, 30.0),
+    };
+    let posicoes = |sim: &mut SimWorld| -> Vec<(f32, f32)> {
+        quem.iter()
+            .map(|&e| {
+                let t = sim.world_mut().get::<Transform>(e).expect("o corpo");
+                (t.translation.x, t.translation.y)
+            })
+            .collect()
+    };
+    let mut primeira = Vec::new();
+    for t in 1..=FIM {
+        b.dispatch_with_scene(&mut sim, true, t, &mut cena);
+        primeira.push(posicoes(&mut sim));
+    }
+    // O meio da fila: o 1.º servido é ≥ 5, e há oito — o tique 9 está no meio.
+    const MEIO: u64 = 9;
+    let antes = quem
+        .iter()
+        .filter(|&&e| b.nav_agent(e).is_some_and(|r| r.owed > 0))
+        .count();
+    assert_eq!(antes, 0, "no fim a fila está vazia");
+    b.dispatch_with_scene(&mut sim, false, MEIO, &mut cena);
+    assert_eq!(posicoes(&mut sim), primeira[(MEIO - 1) as usize], "o scrub");
+    let devidos = quem
+        .iter()
+        .filter(|&&e| b.nav_agent(e).is_some_and(|r| r.owed > 0))
+        .count();
+    assert!(
+        devidos > 0,
+        "o scrub para o MEIO da fila devolve a fila a meio ({devidos} devidos)"
+    );
+    let resto: Vec<_> = ((MEIO + 1)..=FIM)
+        .map(|t| {
+            b.dispatch_with_scene(&mut sim, true, t, &mut cena);
+            posicoes(&mut sim)
+        })
+        .collect();
+    assert_eq!(
+        resto,
+        primeira[MEIO as usize..].to_vec(),
+        "o resto da corrida"
+    );
+}

@@ -91,6 +91,13 @@ pub struct AgentRuntime {
     /// (W7) «Chegou» já foi anunciado para esta aproximação — ver [`step_with`] (a chegada que se
     /// anuncia UMA vez).
     pub arrival_told: bool,
+    /// (W9) Há quantos tiques a malha mudou debaixo de um caminho que este agente continua a andar
+    /// (`0` = em dia) — a fila do replaneio ([`crate::refresh`]).
+    pub owed: u32,
+    /// (W9) O caminho em curso já não se anda na malha nova: passa à frente na fila.
+    pub broken: bool,
+    /// (W9) Os nós que a última procura expandiu — a estimativa do que a próxima custa.
+    pub last_nodes: u64,
 }
 
 /// A resposta de um tique.
@@ -207,7 +214,12 @@ pub fn step_with(
         rt.best_remaining = f64::INFINITY;
         rt.searches += 1;
         rt.planned_for = Some(t);
-        match plan(mesh, search, q, pos, t) {
+        // (W9) Um caminho novo, por qualquer motivo, salda a dívida da fila.
+        (rt.owed, rt.broken) = (0, false);
+        let nos = search.stats.expanded;
+        let planeado = plan(mesh, search, q, pos, t);
+        rt.last_nodes = search.stats.expanded - nos;
+        match planeado {
             Some((path, hops, partial)) => {
                 rt.path = path;
                 rt.hops = hops;

@@ -88,6 +88,8 @@ pub(super) struct NavWorld {
     tick_events: Vec<NavEvent>,
     /// Os factos DESTE dispatch, publicados.
     events: Vec<NavEvent>,
+    /// (W9) O orçamento de nós por tique da fila do replaneio — ver [`fila`].
+    orcamento: u64,
 }
 
 impl Default for NavWorld {
@@ -104,6 +106,7 @@ impl Default for NavWorld {
             search: Polyanya::new(),
             tick_events: Vec::new(),
             events: Vec::new(),
+            orcamento: fila::ORCAMENTO_DE_NOS_POR_TIQUE,
         }
     }
 }
@@ -268,13 +271,16 @@ impl PhysicsBridge {
             links: &links,
         };
 
+        // ⭐ (W9) Quem a malha que mudou põe a procurar NESTE tique: a fila, não todos.
+        let servir = self.fila_do_replaneio(&vez, &mudou);
+
         // 2.ª passagem: a condução, contra as malhas em dia.
         let mut pedidas: Vec<desvio::Pedida> = Vec::with_capacity(vez.len());
         let mut por_tag = alvo::PorTag::new();
         for v in vez {
             let p = v.p;
             let mut rt = self.nav.agents.remove(&p.entity).unwrap_or_default();
-            if v.chave.is_some_and(|k| mudou.contains(&k)) {
+            if servir.contains(&p.entity) {
                 rt.forget_path();
             }
             let chegada = f64::from(p.arrive.max(0.0));
@@ -605,6 +611,9 @@ mod alvo;
 
 #[path = "nav_custo.rs"]
 mod custo;
+
+#[path = "nav_fila.rs"]
+mod fila;
 pub use alvo::Ronda;
 pub use ordens::{OrdemDeNavegacao, PedidoDeNavegacao};
 

@@ -24,6 +24,7 @@ pub mod geom;
 pub mod link;
 pub mod mesh;
 pub mod polyanya;
+pub mod refresh;
 
 #[cfg(any(test, feature = "test-support"))]
 pub mod oracle;

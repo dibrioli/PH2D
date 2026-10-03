@@ -15,7 +15,7 @@
 | ramo | `line/sculpt3d` · worktree `Worktrees/line-sculpt3d` |
 | merge-base | `1ad60a1ce` (= o `main` de agora: **0 commits atrás**, rebase **desnecessário**) |
 | commits | **3** — `9f26085a1` (a feature) · `c79e53b7b` (doc 29 §9) · `b88d9462d` (fmt + clippy + âncoras do arnês); **13** ficheiros, `~+1 569 −182` antes do fmt |
-| smoke do dono | ⏳ **por fazer** (§7) |
+| smoke do dono | ✅ **APROVADO** pelo dono a 03/10 (§7: a encosta lê-se lisa) |
 | contrato congelado (§6) | **intocado** |
 | `PROJECT_SCHEMA` · `VEC_SCENE` · `FLIP` · `DOC_VERSION` · `FIELD_DOC_VERSION` · registos de componentes | **0** (`collision-surface.sh`) |
 | `SCULPT_DOC_VERSION` | **0** (continua `5`): a inclinação é DERIVADA — não vai ao documento nem ao undo |

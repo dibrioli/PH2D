@@ -16,7 +16,7 @@
 | `SCULPT_DOC_VERSION` | **5 → 6** (degrau: um v5 abre ao bit; regravado é UMA camada opaca, cor a ≤ ½ degrau sRGB8, relevo ao bit) |
 | `PROJECT_SCHEMA` · contratos §6 | intocados |
 | fora da família | `ph2d-painter-effects` (`AdjustmentKind::reads_the_image_layout` + gate) · `ph2d-tool-painter` (`has_spatial_adjustment` lê essa pergunta — mesmo conjunto, comportamento idêntico) · `Cargo.toml` da família ganha `ph2d-color` |
-| smoke do dono | ⏳ o da §9 do relevo (handoff A_INCLINACAO §7) continua PENDENTE; a W1 não tem smoke próprio — nada muda na tela |
+| smoke do dono | ✅ o da §9 do relevo (handoff A_INCLINACAO §7) APROVADO a 03/10; a W1 não tem smoke próprio — nada muda na tela |
 
 ## §1. Ficheiros da W1
 

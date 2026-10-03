@@ -13,10 +13,13 @@ krita` ⇒ **GPL3** — os dois só se CORREM, caixa-preta. O fonte não foi lid
 | `gimp_3.2.6.bin` | a fixtura: cabeçalho de texto até `#FIM`, depois as entradas e 84 corridas em bytes |
 | [`oraculo_krita.py`](oraculo_krita.py) · [`corre_krita.sh`](corre_krita.sh) | a 2.ª opinião: `kritarunner` com Qt *offscreen*, documento RGBA U8 sRGB (o Krita a 8 bits compõe em codificado) |
 | `krita_6.0.4.bin` | a fixtura do Krita, mesmo formato (56 corridas) |
+| [`oraculo_ajustes.py`](oraculo_ajustes.py) · [`corre_ajustes.sh`](corre_ajustes.sh) | P3: a mesma grelha composta em «perceptual» e um AJUSTE do GIMP sobre o visível — Invert (`linear` sim/não), Curves e Levels (`gimp:curves`/`gimp:levels` por `Gimp.DrawableFilter`, `trc` perceptual/linear), Posterize, Threshold |
+| `gimp_3.2.6_ajustes.bin` | a fixtura dos ajustes (8 corridas, `RUN <ajuste> <espaço> <o que o GIMP aceitou>`) |
 
 ```
 bash docs/Painter/ferramentas/oraculo_camadas_gimp/corre.sh        # ~2 s
 bash docs/Painter/ferramentas/oraculo_camadas_gimp/corre_krita.sh  # ~2 s
+bash docs/Painter/ferramentas/oraculo_camadas_gimp/corre_ajustes.sh # ~3 s
 ```
 
 As duas corridas são deterministas: regenerar o GIMP deu o corpo igual byte a byte (só o cabeçalho
@@ -37,7 +40,17 @@ arredondamento inteiro dele). As divergências do GIMP são fórmulas NOMEADAS, 
 corte a `[0, 1]` (Add, ColorBurn, ColorDodge, LinearBurn, LinearLight) e o Soft Light Pegtop. Gates e
 sondas: `oraculo_gimp_tests` (`diag_que_formula_cada_oraculo_usa`). Por modo: ADR-0177.
 
+**Os ajustes (P3, 03/10):** contra o «perceptual» Invert/Curves/Levels/Posterize/Threshold a
+`0`/`1`/`2`/`0`/`0`; o «linear» (controlo) é o mesmo ajuste em luz e fica a `60`–`120` do nosso. Gate:
+`compositor::oraculo_ajustes_tests`. Detalhe: doc 45 §8 (P3).
+
 ⚠️ **Armadilhas medidas:**
+- nos ajustes, o PDB não tem o espaço das Curves e dos Levels — o `Gimp.DrawableFilter` sim (`trc`);
+  por omissão o filtro dos Levels vem em LINEAR e o das Curves em PERCEPTUAL: ponha-o sempre;
+- o Threshold do GIMP é o intervalo `[low, high]` com `high ≤ 1`: o branco puro cai FORA (sai preto);
+- o Posterize do GIMP posteriza também o ALFA (140 → 170 com 4 níveis): compare só a cor;
+- uma curva cujas pontas dão bytes `x,5` (ex. `0,1 → 0,9`: `25,5 + 0,8·k`) mede o ruído de vírgula
+  flutuante de cada programa, não o espaço — escolha pontas sem empate;
 - num modo sem função de mistura (Normal, Darken, Lighten, os HSL, Erase) o GIMP deixa o *blend
   space* em `auto` — a fixtura grava o que ele ACEITOU (`blend=` na linha `RUN`);
 - `BEHIND` é modo só de pincel: o GIMP devolve a camada a `NORMAL` em silêncio (o arnês recusa-o e

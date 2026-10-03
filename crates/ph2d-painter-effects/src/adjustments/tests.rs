@@ -342,6 +342,49 @@ fn vibrance_full_desaturation_is_grayscale() {
 }
 
 #[test]
+fn vibrance_desaturates_to_the_oklab_lightness_of_the_light() {
+    // Vibrance is defined in OKLab FROM LIGHT (ADR-0177: it converts at its own
+    // boundary): full desaturation of an encoded colour is the gray of the OKLab
+    // lightness of its DECODED value — not of the encoded numbers taken as light.
+    let px = [0.8, 0.35, 0.2, 1.0];
+    let out = run(
+        AdjustmentKind::Vibrance,
+        AdjustmentParams::Vibrance(VibranceParams {
+            vibrance: 0.0,
+            saturation: -1.0,
+        }),
+        px,
+    );
+    let d = |v: f32| srgb_to_linear_f32(v);
+    let l = OklabColor::from_linear(LinearRgba::new(d(px[0]), d(px[1]), d(px[2]), 1.0)).l;
+    let gray = linear_to_srgb_f32(OklabColor::new(l, 0.0, 0.0, 1.0).to_linear().r());
+    for (c, v) in out.iter().take(3).enumerate() {
+        assert!(
+            (v - gray).abs() < 1e-4,
+            "channel {c}: {v} vs {gray} ({out:?})"
+        );
+    }
+}
+
+#[test]
+fn contrast_pivots_on_the_mid_gray_of_the_light() {
+    // Brightness/Contrast is defined in LIGHT: its pivot 0.214 is mid-gray in
+    // light, i.e. the encoded ~0.5 — strong contrast leaves that gray in place
+    // (on the encoded numbers 0.5 would be pushed to ~0.79) and spreads the rest.
+    let mid = linear_to_srgb_f32(0.214_041_14);
+    let bc = |px: f32| apply_bc(0.0, 0.8, [px, px, px, 1.0])[0];
+    assert!(
+        (bc(mid) - mid).abs() < 1e-3,
+        "the pivot stays: {} vs {mid}",
+        bc(mid)
+    );
+    assert!(
+        bc(0.6) > 0.6 + 0.05 && bc(0.4) < 0.4 - 0.05,
+        "contrast spreads around it"
+    );
+}
+
+#[test]
 fn posterize_two_levels_snaps_to_black_or_white() {
     // levels = 2 → each channel rounds to display 0 or 1.
     for &c in &[0.05_f32, 0.3, 0.7, 0.95] {

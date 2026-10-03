@@ -48,9 +48,11 @@ fn gpu_um_ajuste_cheio_sobre_um_pixel_translucido_aplica_se_inteiro() {
     );
 }
 
-/// ⭐ O Threshold é a regra de 8 bits do Photoshop — o BYTE da luma `≥ threshold`: o cinzento `128`
-/// no limiar `128` sai branco, o `127` preto. O corte em `threshold/255` mandava o `128` para o
-/// preto (os pesos Rec.601 somam um nadinha abaixo de 1 em `f32`).
+/// ⭐ O Threshold é a regra de 8 bits do Photoshop — o BYTE da luma `≥ threshold`, i.e. a luma
+/// contínua `≥ (t − ½)/255`: no limiar `128` o cinzento `128` sai branco, o `127` preto, e o
+/// `127,75` (um `127` sob um `128` a alfa `191`) BRANCO — o corte em `t/255` punha-o no preto. Só
+/// o `127,75` distingue as duas regras na placa: ali a luma do `128` exacto não cai abaixo do corte
+/// (a mutação G16 sobreviveu ao gate que só tinha `128` e `127`).
 #[test]
 #[ignore = "needs a GPU device"]
 fn gpu_o_threshold_e_o_byte_da_luma_contra_o_limiar() {
@@ -58,22 +60,28 @@ fn gpu_o_threshold_e_o_byte_da_luma_contra_o_limiar() {
         eprintln!("no GPU — skipping");
         return;
     };
-    let (w, h) = (16u32, 8u32);
-    let mut tela = Vec::new();
-    for i in 0..w * h {
-        let v = if i % 2 == 0 { 128u8 } else { 127 };
-        tela.extend_from_slice(&[v, v, v, 255]);
+    let (w, h) = (15u32, 8u32);
+    let n = (w * h) as usize;
+    // Por píxel, o alfa do `128` sobre o `127`: opaco → 128, nada → 127, 191 → 127,749.
+    const ALFAS: [u8; 3] = [255, 0, 191];
+    const QUER: [u8; 3] = [255, 0, 255];
+    let mut topo = Vec::with_capacity(n * 4);
+    for i in 0..n {
+        topo.extend_from_slice(&[128, 128, 128, ALFAS[i % 3]]);
     }
     let mut prov = MapProvider::default();
-    prov.insert(1, 1, tela.clone());
+    prov.insert(0, 1, [127u8, 127, 127, 255].repeat(n));
+    prov.insert(1, 1, topo);
+    let camada = |key| LayerOp::Layer {
+        mask: None,
+        clipping: false,
+        key,
+        blend_mode: 0,
+        opacity: 1.0,
+    };
     let ops = vec![
-        LayerOp::Layer {
-            mask: None,
-            clipping: false,
-            key: 1,
-            blend_mode: 0,
-            opacity: 1.0,
-        },
+        camada(0),
+        camada(1),
         LayerOp::Adjustment {
             mask: None,
             kind: 4, // Threshold, p0 = 128/255 (o `gpu_params` do CPU)
@@ -86,14 +94,13 @@ fn gpu_o_threshold_e_o_byte_da_luma_contra_o_limiar() {
     comp.composite(&gpu, &ops, &prov, w, h, Region::full(w, h))
         .expect("composite");
     let got = comp.read_output(&gpu).expect("readback");
-    for (i, (p, e)) in got
-        .as_chunks::<4>()
-        .0
-        .iter()
-        .zip(tela.as_chunks::<4>().0)
-        .enumerate()
-    {
-        let quer = if e[0] == 128 { 255 } else { 0 };
-        assert_eq!(*p, [quer, quer, quer, 255], "píxel {i} (cinzento {})", e[0]);
+    for (i, p) in got.as_chunks::<4>().0.iter().enumerate() {
+        let q = QUER[i % 3];
+        assert_eq!(
+            *p,
+            [q, q, q, 255],
+            "píxel {i} (alfa do 128: {})",
+            ALFAS[i % 3]
+        );
     }
 }

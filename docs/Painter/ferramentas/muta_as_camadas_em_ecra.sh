@@ -8,12 +8,14 @@
 # Corre-se pela fatia da linha e com a placa (a corrida `placa` pede-a; ~40 min ⇒ prazo maior):
 #   PH2D_PRAZO=5400 PH2D_GPU=1 bash scripts/ph2d-run.sh bash docs/Painter/ferramentas/muta_as_camadas_em_ecra.sh
 # Pré-voo das âncoras (zero testes): MUTA_SO_ANCORAS=1 bash <este ficheiro>
+# Só algumas (regex sobre o nome, ex. 'G16|E3 '): MUTA_FILTRO='…' (os controlos correm na mesma)
 #
 # ⚠️ O arnês CONTROLA-SE A SI MESMO (o idioma dos irmãos): a âncora casa EXACTAMENTE uma vez, a
 # mutação COMPILA, e a corrida corre N > 0 testes (`passed + failed`). Cada corrida tem o seu
 # CONTROLO verde antes.
 set -u
 SO_ANCORAS="${MUTA_SO_ANCORAS:-}"
+FILTRO="${MUTA_FILTRO:-}"
 SRCS=(crates/ph2d-tool-painter/src crates/ph2d-render/src crates/ph2d-painter-effects/src)
 BK=$(mktemp -d)
 for s in "${SRCS[@]}"; do mkdir -p "$BK/$s"; cp -r "$s/." "$BK/$s/"; done
@@ -49,6 +51,7 @@ fi
 sangram=0; total=0
 muta() { # ficheiro  agulha  substituto  nome  corrida
   local f="$1" agulha="$2" subst="$3" nome="$4" c="$5"
+  if [ -n "$FILTRO" ] && ! echo "$nome" | grep -qE "$FILTRO"; then return; fi
   total=$((total+1))
   local n; n=$(python3 -c 'import sys;print(open(sys.argv[1]).read().count(sys.argv[2]))' "$f" "$agulha")
   if [ -n "$SO_ANCORAS" ]; then
@@ -179,7 +182,7 @@ muta $E/spatial.rs '        let l = em_luz(px);
   'E17 a porta dos blurs não passa à luz' efeitos
 muta $E/spatial.rs '            px[0] = linear_to_srgb_f32(px[0] / a);' '            px[0] /= a;' \
   'E18 a porta dos blurs devolve o vermelho em luz' efeitos
-muta $E/spatial.rs '                px[c] = (px[c] + p.amount * n * NOISE_SCALE).clamp(0.0, 1.0);' '                px[c] = srgb_to_linear_f32((linear_to_srgb_f32(px[c]) + p.amount * n * NOISE_SCALE).clamp(0.0, 1.0));' \
+muta $E/spatial.rs '                px[c] = (px[c] + p.amount * n * NOISE_SCALE).clamp(0.0, 1.0);' '                px[c] = super::compute::srgb_to_linear_f32((linear_to_srgb_f32(px[c]) + p.amount * n * NOISE_SCALE).clamp(0.0, 1.0));' \
   'E19 o Ruído trata o codificado como luz' placa
 muta $E/lut.rs '            px[c] = d[c] + (clamp01(graded[c]) - d[c]) * amount;' '            px[c] = (d[c] + (clamp01(graded[c]) - d[c]) * amount).powf(2.2);' \
   'E20 o Color Lookup devolve luz' placa

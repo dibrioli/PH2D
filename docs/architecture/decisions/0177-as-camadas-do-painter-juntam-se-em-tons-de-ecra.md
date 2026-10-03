@@ -97,7 +97,7 @@ encode(v) = round(clamp(v, 0, 1) · 255)
   o achatar sobre o fundo não muda), o bake de sprites, `ph2d-flip-render` (`composite_blend`), o FX
   raster do Vector (`BLEND_MODES_WGSL`), as camadas Wet Paint / Watercolor / Composite.
 
-## Execução (P0–P2, 03/10)
+## Execução (P0–P3, 03/10)
 
 Medido e gateado — detalhe e premissas derrubadas no [doc 45 §8](../../Painter/45_plano_as_camadas_juntam_se_em_tons_de_ecra.md):
 o oráculo «perceptual» fecha a `≤1` (era `73`); o traço numa camada nova da peça 3D é o da base **ao
@@ -106,12 +106,23 @@ espaço); CPU↔placa a um degrau em `0,006 %` dos bytes (a divisão do WGSL —
 ajustes com ponto neutro são no-op ao bit; o Krita a 8 bits é o compositor novo nos 22 modos, e as
 divergências do GIMP são fórmulas nomeadas (`B` sem corte, Soft Light Pegtop).
 
+**P3 (03/10):** cada ajuste recebe o acumulador CODIFICADO e converte na sua fronteira (tabela por
+tipo no doc 45 §8); os blurs atravessam uma porta só (`premultiply`/`unpremultiply`). O composto
+fica igual ao byte em 47 de 48 sondas (o Invert passa a ser o `1 − x` exacto). Contra o GIMP
+«perceptual», Invert/Curves/Levels/Posterize/Threshold a `0`/`1`/`2`/`0`/`0`, com o controlo «linear»
+a ser o ajuste em luz (a `60`–`120` degraus do nosso). O oráculo expôs dois defeitos, corrigidos na
+CPU e na placa: a mistura de volta aplicava só parte de um ajuste a 100 % sobre um píxel translúcido,
+e o Threshold mandava para o preto o cinzento exacto no limiar.
+
 | ⛔ Recusa MEDIDA | porquê |
 |---|---|
 | trocar o `lum` por Rec.709 linear | o oposto desta decisão (acima) |
 | copiar o `B` sem corte do GIMP | é a vírgula flutuante dele; o W3C, o Photoshop e o Krita cortam (gate `as_divergencias_do_gimp_sao_as_formulas_nomeadas`) |
 | o Soft Light Pegtop do GIMP | o W3C/SVG é o do Krita `soft_light_svg` e o nosso |
 | ler o texel pela conversão `unorm` da textura | o WGSL não a promete correctamente arredondada; a tabela `b/255` sim |
+| misturar a cor ajustada de volta por `over` com o alfa da base | um ajuste a 100 % aplicava-se só em parte num píxel translúcido: `79` degraus do GIMP; uma camada de ajuste muda a cor, nunca a cobertura (gates `um_ajuste_de_ecra_e_o_do_gimp_perceptual`, `gpu_um_ajuste_cheio_sobre_um_pixel_translucido_aplica_se_inteiro`) |
+| cortar o Threshold em `t/255` | o cinzento exacto no limiar saía preto; a regra é o byte da luma `≥ t` (Photoshop; = o `low = 0,5` do GIMP) |
+| o Posterize do GIMP que quantiza o alfa · o Threshold dele que deixa o branco de fora | convenções dele, não espaço; um ajuste não toca a cobertura e o branco passa o limiar (gateadas como divergências nomeadas) |
 
 ## Critério de desistência
 

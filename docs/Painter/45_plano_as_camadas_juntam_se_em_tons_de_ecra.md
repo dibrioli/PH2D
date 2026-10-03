@@ -138,11 +138,59 @@ ColorBurn, ColorDodge, LinearBurn, LinearLight) e o Soft Light Pegtop; os «HSL�
 (decode, encode, as duas fronteiras, a aquarela; na placa a tabela, o encode final, a fronteira por
 píxel e a do grafo).
 
-**Fica para a P3/P4 (janela nova):** P3 — o contrato do módulo de ajustes passa a receber o
-acumulador CODIFICADO; os de ecrã (Curves, Levels, Posterize, Threshold, Invert, ColorBalance,
-SelectiveColor, ChannelMixer, Noise, Color Lookup…) deixam a ida-e-volta, os de luz (HSB, Exposure,
-Vibrance, Brightness/Contrast, Photo Filter…) convertem dentro deles; o único chamador é o compositor
-(+ o shader e os espelhos de teste). P4 — o espaço do kernel de cada efeito de vizinhança pelo
-oráculo (hoje: luz, pela fronteira), e os outros consumidores: `ph2d-flip-render`
-(`composite_blend`), o FX raster do Vector (`BLEND_MODES_WGSL`), o bake de sprites, Wet Paint /
-Composite (a aquarela já está), o doc 01 §7 e a tabela ⛔ Recusas MEDIDAS.
+**P3 — cada ajuste na SUA fronteira (03/10).** O contrato de `ph2d_painter_effects::adjustments`
+(`apply_adjustment`, `apply_adjustment_windowed` e cada kernel público) é o acumulador CODIFICADO;
+a fronteira saiu do compositor e do `apply_adjustment_op` da placa para dentro de cada tipo
+(conferido tipo a tipo no código):
+
+| espaço | tipos | como |
+|---|---|---|
+| ecrã (sem conversão) | Curves, Levels, Posterize, Threshold, Invert, Color Balance, Selective Color, Channel Mixer, Color Lookup, Black & White, Noise, Halftone, **Shadows/Highlights** | os valores como estão; o S/H era «de luz» na lista do plano e é de ecrã de ponta a ponta (luma, retoque e o blur escalar da luma) |
+| luz / OKLab | HSB, Vibrance, Photo Filter (por píxel) · Exposure, Brightness/Contrast (função 1-D com a fronteira dobrada numa tabela: zero transcendentais por píxel) · o tinte do B&W · o brilho do Bloom | `shared::{em_luz, em_tons_de_ecra, build_lut_em_luz}` |
+| misto | Gradient Map | a luma lê o codificado; o gradiente interpola em luz (a tabela), codificada por entrada |
+| kernel de vizinhança | Gaussian, Sharpen, Motion, Chroma, Bloom | UMA porta, `premultiply`/`unpremultiply`, passa a luz e volta — é ali que a P4 decide |
+
+Medido (sonda `diag_o_composto_de_cada_ajuste_nao_neutro`, 24 tipos × base opaca/translúcida, cada
+ajuste a mover ~9 000 de 12 288 bytes): **47 de 48 compostos iguais ao byte**; o Invert sobre base
+opaca muda 12 bytes por 1 — o novo é o `1 − x` exacto (`invert_is_the_exact_display_negative_at_every_byte`).
+
+**O oráculo dos ajustes** ([`oraculo_ajustes.py`](ferramentas/oraculo_camadas_gimp/oraculo_ajustes.py),
+8 corridas): a grelha dos modos composta em «perceptual», o ajuste do GIMP sobre o visível. Curves e
+Levels expõem `trc` (via `Gimp.DrawableFilter`), o Invert `linear` — três controlos reais.
+
+| ajuste | nosso × GIMP «perceptual» | controlo: GIMP «linear» × o ajuste em luz | nosso × «linear» |
+|---|---|---|---|
+| Invert | `0` | `0` | `120` |
+| Curves (recta `0,1037 → 0,9113`) | `1` (3 de 4 896 canais) | `1` | `65` |
+| Levels | `2` (a tabela de 256 junto do ponto preto; a função exacta dá `0`) | `0` | `60` |
+| Posterize 4 | `0` (cor) | — | — |
+| Threshold 128 | `0` (cinzentos) | — | — |
+
+Divergências NOMEADAS do GIMP (gateadas para avisar se mudarem): o Threshold dele deixa o branco puro
+FORA do intervalo `[low, high]` (`high` não passa de 1); o Posterize dele quantiza também o ALFA.
+⚠️ Armadilha medida: uma curva `0,1 + 0,8·x` cai em empates de meio degrau (`25,5 + 0,8·k`) e o byte
+decide-se pelo ruído de vírgula flutuante de cada programa (87 canais a 1) — pontas sem empate.
+
+⚠️ **Dois defeitos que o oráculo expôs (CPU e placa):**
+1. **A mistura de volta do ajuste era um `over` com o alfa da base** — um ajuste a 100 % sobre um
+   píxel translúcido aplicava-se só em parte (`a = 0,5` ⇒ ⅔): 79 degraus do GIMP. Hoje a cor ajustada
+   mistura-se com a da base como se as duas fossem opacas e a cobertura fica (o combine do S/H na placa
+   já o fazia no Normal). Muda a aparência dos ajustes sobre zonas translúcidas — a funcionalidade.
+2. **O Threshold cortava em `t/255`**: um cinzento EXACTO no limiar saía preto (os pesos Rec.601 somam
+   um nadinha abaixo de 1 em `f32`). Hoje é a regra de 8 bits do Photoshop, o byte da luma `≥ t`.
+
+Mutação: [`muta_as_camadas_em_ecra.sh`](ferramentas/muta_as_camadas_em_ecra.sh) reescrito para as
+fronteiras da P3 — 42 mutações (cada tipo na CPU e na placa, a porta dos blurs, a mistura de volta,
+o corte do Threshold): **42/42**. A 1.ª corrida deu 38: três sobreviveram a gates RELACIONAIS
+(«cinzento fica cinzento», «o contraste espalha») ou a um ponto que não separa as regras — gates
+novos `vibrance_desaturates_to_the_oklab_lightness_of_the_light`,
+`contrast_pivots_on_the_mid_gray_of_the_light` e o `127,75` no
+`gpu_o_threshold_e_o_byte_da_luma_contra_o_limiar` (na placa a luma do `128` exacto não cai abaixo
+do corte: só um cinzento entre `127,5` e `128` distingue); a 4.ª não compilava (o arnês). `MUTA_FILTRO`
+re-corre só algumas.
+
+**Fica para a P4 (janela nova):** o espaço do kernel de cada efeito de vizinhança pelo oráculo (hoje:
+luz, pela porta dos blurs), e os outros consumidores: `ph2d-flip-render` (`composite_blend`), o FX
+raster do Vector (`BLEND_MODES_WGSL`), o bake de sprites, Wet Paint / Composite (a aquarela já está),
+o doc 01 §7 e a tabela ⛔ Recusas MEDIDAS. A tabela de 256 do Levels (2 degraus junto do ponto preto)
+fica nomeada.

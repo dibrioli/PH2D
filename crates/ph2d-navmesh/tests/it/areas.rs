@@ -46,7 +46,7 @@ fn impressao(m: &NavMesh) -> Vec<u64> {
         .iter()
         .flat_map(|p| [p[0].to_bits(), p[1].to_bits()])
         .collect();
-    for (i, p) in m.polys().iter().enumerate() {
+    for (i, p) in m.polys().enumerate() {
         v.push(u64::from(m.area_id(i as u32)) << 32 | p.verts.len() as u64);
         v.extend(p.verts.iter().map(|&x| u64::from(x)));
     }
@@ -170,10 +170,10 @@ fn a_fronteira_de_uma_area_e_passagem_e_nunca_parede() {
         (perimetro - 60.0).abs() < 1e-6,
         "as paredes medem {perimetro} m — a fronteira da área virou parede?"
     );
-    let area3: f64 = (0..m.polys().len() as u32)
+    let area3: f64 = (0..m.poly_count() as u32)
         .filter(|&p| m.area_id(p) == 3)
         .map(|p| {
-            let v = &m.polys()[p as usize].verts;
+            let v = m.poly(p).verts;
             let n = v.len();
             (0..n)
                 .map(|i| {

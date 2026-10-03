@@ -139,7 +139,11 @@ fn incremental_e_a_frio_dao_o_mesmo() {
         fria.update(&reg, &obs);
         let (a, b) = (viva.mesh(), fria.mesh());
         assert_eq!(a.verts(), b.verts(), "passo {passo}: os vértices diferem");
-        assert_eq!(a.polys(), b.polys(), "passo {passo}: os polígonos diferem");
+        assert_eq!(
+            a.polys().collect::<Vec<_>>(),
+            b.polys().collect::<Vec<_>>(),
+            "passo {passo}: os polígonos diferem"
+        );
     }
     // O CONTROLO de «só os tocados»: tem de haver actualizações que NÃO refizeram tudo.
     assert!(
@@ -219,10 +223,10 @@ fn a_juncao_em_t_da_costura_e_reparada() {
 
 /// (W7) Os m² de cada área numa malha.
 fn area_por_id(m: &NavMesh, id: u16) -> f64 {
-    (0..m.polys().len() as u32)
+    (0..m.poly_count() as u32)
         .filter(|&p| m.area_id(p) == id)
         .map(|p| {
-            let v = &m.polys()[p as usize].verts;
+            let v = m.poly(p).verts;
             let n = v.len();
             (0..n)
                 .map(|i| {
@@ -321,9 +325,13 @@ fn com_areas_incremental_e_a_frio_dao_o_mesmo() {
         frio.update_with_areas(&retangulo(16.0, 12.0), &obs, &ars);
         let (a, b) = (t.mesh(), frio.mesh());
         assert_eq!(a.verts(), b.verts(), "semente {seed}: os vértices");
-        assert_eq!(a.polys(), b.polys(), "semente {seed}: os polígonos");
+        assert_eq!(
+            a.polys().collect::<Vec<_>>(),
+            b.polys().collect::<Vec<_>>(),
+            "semente {seed}: os polígonos"
+        );
         assert!(
-            (0..a.polys().len() as u32).all(|q| a.area_id(q) == b.area_id(q)),
+            (0..a.poly_count() as u32).all(|q| a.area_id(q) == b.area_id(q)),
             "semente {seed}: as áreas"
         );
         // CONTROLO: sem mudança, nada se refaz.

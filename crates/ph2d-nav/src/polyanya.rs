@@ -322,7 +322,7 @@ impl Polyanya {
                 },
             );
         }
-        let poly = &mesh.polys()[p as usize];
+        let poly = mesh.poly(p);
         let n = poly.len();
         for i in 0..n {
             let Some(q) = poly.nbrs[i] else { continue };
@@ -398,7 +398,7 @@ impl Polyanya {
         } else {
             (left, right)
         };
-        let poly = &mesh.polys()[p as usize];
+        let poly = mesh.poly(p);
         let n = poly.len();
         let k = entry as usize;
         let a = poly.verts[k];
@@ -427,7 +427,7 @@ impl Polyanya {
         }
 
         // Os observáveis: o cone ρ→R … ρ→L sobre as outras arestas de P.
-        let poly = &mesh.polys()[p as usize];
+        let poly = mesh.poly(p);
         for step in 1..n {
             let e = (k + step) % n;
             let Some(q) = poly.nbrs[e] else { continue };
@@ -459,7 +459,7 @@ impl Polyanya {
     /// mais o leque do canto do mesmo lado, até à parede.
     #[allow(clippy::too_many_arguments)]
     fn turn(&mut self, mesh: &NavMesh, root: u32, p: u32, k: usize, side: Side, cw: f64, t: V2) {
-        let poly = &mesh.polys()[p as usize];
+        let poly = mesh.poly(p);
         let n = poly.len();
         let v = match side {
             Side::Right => poly.verts[(k + 1) % n],
@@ -488,7 +488,7 @@ impl Polyanya {
         let rho = r.p;
 
         // A sombra em P: do lado de FORA do raio ρ → v (à direita do direito, à esquerda do esquerdo).
-        let poly = &mesh.polys()[p as usize];
+        let poly = mesh.poly(p);
         for step in 1..n {
             let e = (k + step) % n;
             let u = poly.verts[e];
@@ -530,7 +530,7 @@ impl Polyanya {
         // O leque de um vértice tem tantos polígonos quantos o tocam: é o tecto do laço (uma malha
         // bem-formada pára antes, na parede; o tecto só impede um laço numa malha partida).
         for _ in 0..mesh.polys_at_vertex(v).len() {
-            let poly = &mesh.polys()[cur_poly as usize];
+            let poly = mesh.poly(cur_poly);
             let Some(q) = poly.nbrs[cur_edge] else { return };
             let tw = poly.twin[cur_edge] as usize;
             // ⚠️ (W7) Uma fronteira de CUSTO é a parede do leque: entrar na área cara a partir do
@@ -552,7 +552,7 @@ impl Polyanya {
                     },
                 );
             }
-            let qp = &mesh.polys()[q as usize];
+            let qp = mesh.poly(q);
             let m = qp.len();
             // Em Q a aresta atravessada é `tw`; a outra que toca `v` é a seguinte (à direita: v é o
             // fim de `tw`) ou a anterior (à esquerda: v é o início de `tw`).

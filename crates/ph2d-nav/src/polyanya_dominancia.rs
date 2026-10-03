@@ -57,12 +57,12 @@ pub(super) struct Frentes {
 
 impl Frentes {
     pub(super) fn clear(&mut self, mesh: &NavMesh) {
-        if self.head.len() == mesh.polys().len() {
+        if self.head.len() == mesh.poly_count() {
             for &p in &self.touched {
                 self.head[p as usize] = NONE;
             }
         } else {
-            self.head = vec![NONE; mesh.polys().len()];
+            self.head = vec![NONE; mesh.poly_count()];
         }
         self.touched.clear();
         self.pool.clear();
@@ -93,7 +93,7 @@ impl Polyanya {
         right: V2,
     ) -> Option<(V2, V2)> {
         let f = &mut self.frentes;
-        if f.head.len() != mesh.polys().len() {
+        if f.head.len() != mesh.poly_count() {
             f.clear(mesh);
         }
         let (mut l, mut r) = (left, right);

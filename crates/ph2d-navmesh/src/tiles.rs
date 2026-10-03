@@ -294,63 +294,55 @@ fn monta(mosaicos: &BTreeMap<(i64, i64), Mosaico>, lado: i64) -> NavMesh {
     let mut verticais: BTreeMap<i64, BTreeSet<i64>> = BTreeMap::new();
     let mut horizontais: BTreeMap<i64, BTreeSet<i64>> = BTreeMap::new();
     let mut pts: Vec<P> = Vec::new();
-    let mut polys: Vec<Vec<u32>> = Vec::new();
+    // Os anéis CONTÍGUOS, como a `NavMesh` os guarda (nenhuma lista por polígono — W9).
+    let mut cru_off: Vec<u32> = vec![0];
+    let mut cru: Vec<u32> = Vec::new();
     let mut ids: Vec<u16> = Vec::new();
+    let mut mapa: Vec<u32> = Vec::new();
     for m in mosaicos.values() {
         ids.extend_from_slice(&m.ids);
-        let mapa: Vec<u32> = m
-            .pts
-            .iter()
-            .map(|&p| {
-                let (vx, hy) = (p.0.rem_euclid(lado) == 0, p.1.rem_euclid(lado) == 0);
-                if !(vx || hy) {
-                    pts.push(p);
-                    return (pts.len() - 1) as u32;
-                }
-                *indice.entry(p).or_insert_with(|| {
-                    if vx {
-                        verticais.entry(p.0).or_default().insert(p.1);
-                    }
-                    if hy {
-                        horizontais.entry(p.1).or_default().insert(p.0);
-                    }
-                    pts.push(p);
-                    (pts.len() - 1) as u32
-                })
-            })
-            .collect();
-        polys.extend(
-            m.polys
-                .iter()
-                .map(|p| p.iter().map(|&v| mapa[v as usize]).collect()),
-        );
-    }
-    let polys: Vec<Vec<u32>> = polys
-        .into_iter()
-        .map(|p| {
-            let n = p.len();
-            let mut out = Vec::with_capacity(n + 2);
-            for i in 0..n {
-                let (a, b) = (pts[p[i] as usize], pts[p[(i + 1) % n] as usize]);
-                out.push(p[i]);
-                let meio: Vec<P> = if a.0 == b.0 && a.0.rem_euclid(lado) == 0 {
-                    entre(verticais.get(&a.0), a.1, b.1)
-                        .map(|y| (a.0, y))
-                        .collect()
-                } else if a.1 == b.1 && a.1.rem_euclid(lado) == 0 {
-                    entre(horizontais.get(&a.1), a.0, b.0)
-                        .map(|x| (x, a.1))
-                        .collect()
-                } else {
-                    Vec::new()
-                };
-                out.extend(meio.iter().map(|q| indice[q]));
+        mapa.clear();
+        mapa.extend(m.pts.iter().map(|&p| {
+            let (vx, hy) = (p.0.rem_euclid(lado) == 0, p.1.rem_euclid(lado) == 0);
+            if !(vx || hy) {
+                pts.push(p);
+                return (pts.len() - 1) as u32;
             }
-            out
-        })
-        .collect();
+            *indice.entry(p).or_insert_with(|| {
+                if vx {
+                    verticais.entry(p.0).or_default().insert(p.1);
+                }
+                if hy {
+                    horizontais.entry(p.1).or_default().insert(p.0);
+                }
+                pts.push(p);
+                (pts.len() - 1) as u32
+            })
+        }));
+        for p in &m.polys {
+            cru.extend(p.iter().map(|&v| mapa[v as usize]));
+            cru_off.push(cru.len() as u32);
+        }
+    }
+    let mut ring_off: Vec<u32> = Vec::with_capacity(cru_off.len());
+    ring_off.push(0);
+    let mut ring: Vec<u32> = Vec::with_capacity(cru.len());
+    for w in cru_off.windows(2) {
+        let p = &cru[w[0] as usize..w[1] as usize];
+        let n = p.len();
+        for i in 0..n {
+            let (a, b) = (pts[p[i] as usize], pts[p[(i + 1) % n] as usize]);
+            ring.push(p[i]);
+            if a.0 == b.0 && a.0.rem_euclid(lado) == 0 {
+                ring.extend(entre(verticais.get(&a.0), a.1, b.1).map(|y| indice[&(a.0, y)]));
+            } else if a.1 == b.1 && a.1.rem_euclid(lado) == 0 {
+                ring.extend(entre(horizontais.get(&a.1), a.0, b.0).map(|x| indice[&(x, a.1)]));
+            }
+        }
+        ring_off.push(ring.len() as u32);
+    }
     let verts: Vec<V2> = pts.iter().map(|&p| to_world(p)).collect();
-    NavMesh::from_polygons_with_areas(verts, polys, ids).unwrap_or_else(|_| vazia())
+    NavMesh::from_rings(verts, ring_off, ring, ids).unwrap_or_else(|_| vazia())
 }
 
 /// Os valores de `linha` estritamente entre `de` e `para`, pela ordem de `de` para `para`.

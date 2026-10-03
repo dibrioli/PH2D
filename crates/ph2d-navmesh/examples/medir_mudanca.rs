@@ -197,7 +197,7 @@ fn main() {
             println!(
                 "{n:>8} | {tm:>3} | {:>8} | {frio:>7.2} | {porta:>8.3} | {refeitos:>8} | {:>5} | {:>4.0} | {:>12.0}",
                 t.stats().tiles,
-                t.mesh().polys().len(),
+                t.mesh().poly_count(),
                 q(t.mesh()),
                 q(&inteira)
             );

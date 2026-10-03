@@ -36,7 +36,7 @@ fn impressao() -> u64 {
         }
         for p in b.mesh.polys() {
             mix(p.verts.len() as u64);
-            for &v in &p.verts {
+            for &v in p.verts {
                 mix(v as u64);
             }
         }

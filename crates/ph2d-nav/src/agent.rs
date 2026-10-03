@@ -171,7 +171,7 @@ pub fn step_with(
         rt.forget_path();
         return halt(rt, prev, Status::Idle, None);
     };
-    let Some(mesh) = mesh.filter(|m| !m.polys().is_empty()) else {
+    let Some(mesh) = mesh.filter(|m| m.poly_count() != 0) else {
         rt.forget_path();
         return halt(rt, prev, Status::NoPath, None);
     };

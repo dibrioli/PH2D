@@ -104,7 +104,7 @@ fn detour_like(mesh: &NavMesh, costs: &[f64], s: V2, t: V2) -> Option<Vec<V2>> {
         return Some(vec![s, t]);
     }
     let wmin = costs.iter().copied().fold(f64::INFINITY, f64::min).min(1.0);
-    let np = mesh.polys().len();
+    let np = mesh.poly_count();
     let mut g = vec![f64::INFINITY; np];
     let mut pos = vec![[0.0; 2]; np];
     let mut parent = vec![u32::MAX; np];
@@ -121,7 +121,7 @@ fn detour_like(mesh: &NavMesh, costs: &[f64], s: V2, t: V2) -> Option<Vec<V2>> {
         if p == pt {
             break;
         }
-        let poly = &mesh.polys()[p as usize];
+        let poly = mesh.poly(p);
         let n = poly.len();
         let c = cost_of(costs, mesh.area_id(p));
         for i in 0..n {
@@ -160,7 +160,7 @@ fn detour_like(mesh: &NavMesh, costs: &[f64], s: V2, t: V2) -> Option<Vec<V2>> {
     // Os portais (esquerda, direita) de quem sai de cada polígono para o seguinte.
     let mut portais = vec![(s, s)];
     for w in corredor.windows(2) {
-        let poly = &mesh.polys()[w[0] as usize];
+        let poly = mesh.poly(w[0]);
         let n = poly.len();
         let i = (0..n).find(|&i| poly.nbrs[i] == Some(w[1]))?;
         let (u, v) = (poly.verts[i], poly.verts[(i + 1) % n]);
@@ -271,7 +271,7 @@ fn main() {
             "C2 {:?}\nstats {:?}\n{dt:.0} µs, {} polígonos",
             p,
             s.stats,
-            m.polys().len()
+            m.poly_count()
         );
         let orc = oracle::WeightedOracle::new(m, &costs, 0.1);
         let (op, oc) = orc.shortest(a, z).unwrap();
@@ -469,13 +469,15 @@ fn grande(s: &mut Polyanya, params: &Params) {
     println!(
         "   construção {:.1} ms · {} polígonos",
         i0.elapsed().as_secs_f64() * 1e3,
-        b.mesh.polys().len()
+        b.mesh.poly_count()
     );
-    // A ponte usa MOSAICOS: a frio, e uma lama que se mexe (o mínimo de 5).
+    // A ponte usa MOSAICOS: a frio, uma lama que se mexe e uma PORTA (um obstáculo) que se mexe — o
+    // mínimo de 5 (W9: a montagem sem uma lista por polígono).
     for com_areas in [false, true] {
         let ars: &[Area] = if com_areas { &areas } else { &[] };
         let mut frio = f64::INFINITY;
         let mut mexe = f64::INFINITY;
+        let mut porta = f64::INFINITY;
         for k in 0..5 {
             let mut tm = ph2d_navmesh::TiledMesh::new(params, ph2d_navmesh::TILE_M);
             let i0 = Instant::now();
@@ -492,9 +494,16 @@ fn grande(s: &mut Polyanya, params: &Params) {
             let i0 = Instant::now();
             tm.update_with_areas(&big, &obs, &a2);
             mexe = mexe.min(i0.elapsed().as_secs_f64() * 1e3);
+            let mut o2 = obs.clone();
+            if let Shape::Circle { center, .. } = &mut o2[3] {
+                center[0] += 0.3 + 0.01 * f64::from(k);
+            }
+            let i0 = Instant::now();
+            tm.update_with_areas(&big, &o2, &a2);
+            porta = porta.min(i0.elapsed().as_secs_f64() * 1e3);
         }
         println!(
-            "   mosaicos {}: a frio {frio:.1} ms · uma lama a mexer {mexe:.2} ms",
+            "   mosaicos {}: a frio {frio:.1} ms · uma lama a mexer {mexe:.2} ms · uma porta {porta:.2} ms",
             if com_areas {
                 "com 100 lamas"
             } else {

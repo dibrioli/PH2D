@@ -140,8 +140,7 @@ impl<'a> WeightedOracle<'a> {
                 nodes.push(mesh.vert(v));
             }
         }
-        let polys = mesh.polys();
-        for (pi, p) in polys.iter().enumerate() {
+        for (pi, p) in mesh.polys().enumerate() {
             let n = p.len();
             for i in 0..n {
                 let Some(q) = p.nbrs[i] else { continue };

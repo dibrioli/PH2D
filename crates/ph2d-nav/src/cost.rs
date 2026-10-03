@@ -26,7 +26,7 @@ pub fn cost_of(costs: &[f64], a: u16) -> f64 {
 /// O pedaço `[t0, t1]` do segmento `a → b` que está dentro do polígono `poly` (fechado, à tolerância
 /// [`EPS`] em metros), ou `None`.
 fn inside_range(mesh: &NavMesh, poly: u32, a: V2, b: V2) -> Option<(f64, f64)> {
-    let pv = &mesh.polys()[poly as usize].verts;
+    let pv = mesh.poly(poly).verts;
     let n = pv.len();
     let (mut lo, mut hi) = (0.0, 1.0);
     for i in 0..n {
@@ -58,7 +58,7 @@ pub fn segment_cost(mesh: &NavMesh, costs: &[f64], a: V2, b: V2) -> Option<f64> 
     let mut t = 0.0;
     let mut total = 0.0;
     // O tecto do laço: cada passo avança para outro polígono (uma malha partida não prende aqui).
-    for _ in 0..=2 * mesh.polys().len() {
+    for _ in 0..=2 * mesh.poly_count() {
         if t >= 1.0 - tol {
             return Some(total);
         }

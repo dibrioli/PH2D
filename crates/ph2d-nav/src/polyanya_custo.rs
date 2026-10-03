@@ -123,7 +123,7 @@ impl Polyanya {
         w: f64,
         t: V2,
     ) {
-        let poly = &mesh.polys()[p as usize];
+        let poly = mesh.poly(p);
         let n = poly.len();
         let k = entry as usize;
         let (va, vb) = (poly.verts[k], poly.verts[(k + 1) % n]);
@@ -357,7 +357,7 @@ impl Polyanya {
         // As arestas de fronteira que tocam `v` (cada uma vista dos dois polígonos: uma vez).
         let mut arestas: Vec<(u32, u32, u32)> = Vec::new();
         for &q in mesh.polys_at_vertex(v) {
-            let poly = &mesh.polys()[q as usize];
+            let poly = mesh.poly(q);
             let n = poly.len();
             for i in 0..n {
                 let (a, b) = (poly.verts[i], poly.verts[(i + 1) % n]);
@@ -432,7 +432,7 @@ impl Polyanya {
         self.stats.searches += 1;
         let wmin = costs.iter().copied().fold(1.0, f64::min);
         let uniforme =
-            (0..mesh.polys().len() as u32).all(|p| cost_of(costs, mesh.area_id(p)) == wmin);
+            (0..mesh.poly_count() as u32).all(|p| cost_of(costs, mesh.area_id(p)) == wmin);
         if uniforme {
             return self.search(mesh, costs, s, t);
         }

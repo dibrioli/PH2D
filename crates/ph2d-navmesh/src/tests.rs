@@ -168,7 +168,7 @@ fn a_regiao_toda_tapada_da_uma_malha_vazia_e_nao_um_erro() {
         &Params::default(),
     )
     .expect("constrói");
-    assert_eq!(b.mesh.polys().len(), 0);
+    assert_eq!(b.mesh.poly_count(), 0);
     let b = build(
         &reg,
         &[],
@@ -179,7 +179,7 @@ fn a_regiao_toda_tapada_da_uma_malha_vazia_e_nao_um_erro() {
     )
     .expect("constrói");
     assert_eq!(
-        b.mesh.polys().len(),
+        b.mesh.poly_count(),
         0,
         "a região mais estreita que o diâmetro some"
     );

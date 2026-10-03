@@ -40,7 +40,11 @@ impl Default for Ceu {
             forca: 0.0,
             caixa: 1.0,
             fundo: true,
-            desfoque: 0.0,
+            // ⚠️ **Desfocado de fábrica** (02/10, a foto da cena 38): um céu `1K` atrás da peça a
+            // 1080p é ampliado `~6×` e uma borda de alto contraste da foto fica em degraus; o
+            // Blender abre a pré-visualização com o fundo desfocado pela mesma razão. `0` = nítido.
+            // Fotografado: `0` degraus · `0,3` já apaga a foto (um lóbulo de `~7°`) · `0,15` lê-se.
+            desfoque: 0.15,
         }
     }
 }
@@ -175,7 +179,13 @@ pub fn pronto(e: Embarcado) -> Option<Arc<ph2d_sky::Ceu>> {
 /// `PH2D_FIELD_BLOOM=1`): o nome é o id do [`Embarcado::chave`]; o céu aparece atrás.
 #[must_use]
 pub fn do_ambiente(v: Ceu) -> Ceu {
-    let Ok(nome) = std::env::var("PH2D_FIELD_SKY") else {
+    do_ambiente_em(v, std::env::var("PH2D_FIELD_SKY").ok().as_deref())
+}
+
+/// O mesmo, com o nome DADO (a sonda lê outra chave).
+#[must_use]
+pub fn do_ambiente_em(v: Ceu, nome: Option<&str>) -> Ceu {
+    let Some(nome) = nome else {
         return v;
     };
     Embarcado::TODOS

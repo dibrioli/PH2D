@@ -79,6 +79,11 @@ fn sonda_do_render_por_malha() {
                         ..s.bloom
                     });
                 }
+                // `PH2D_SONDA_CEU=<nome>` (o `ph2d_sky::Embarcado::chave`): aquele céu, com fundo.
+                s.set_ceu(crate::ceu_foto::do_ambiente_em(
+                    s.ceu,
+                    std::env::var("PH2D_SONDA_CEU").ok().as_deref(),
+                ));
             });
             let t0 = std::time::Instant::now();
             loop {
@@ -140,8 +145,9 @@ fn sonda_do_render_por_malha() {
                 )
             })
             .unwrap_or_default();
+            let ceu = std::env::var("PH2D_SONDA_CEU").map(|c| format!("_{c}")).unwrap_or_default();
             let sufixo = format!(
-                "{}{}",
+                "{}{}{ceu}",
                 if brilho { "_brilho" } else { "" },
                 if estilo { "_estilo" } else { "" }
             );

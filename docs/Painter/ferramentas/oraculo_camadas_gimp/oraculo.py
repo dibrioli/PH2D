@@ -13,12 +13,9 @@ gi.require_version('Gimp', '3.0')
 gi.require_version('Gegl', '0.4')
 from gi.repository import Gimp, Gegl
 
-ALFAS = [0, 16, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176, 192, 208, 224, 240, 255]
-BASE_ALFAS = [255, 140]
-BASES = [(0, 0, 0), (255, 255, 255), (128, 128, 128), (51, 51, 51), (230, 60, 30), (40, 90, 200)]
-TOPOS = [(0, 0, 0), (255, 255, 255), (191, 191, 191), (70, 70, 70), (30, 200, 80), (240, 180, 20)]
-W = len(ALFAS)
-H = len(BASE_ALFAS) * len(BASES) * len(TOPOS)
+import sys
+sys.path.insert(0, os.getcwd())
+from entradas import ALFAS, BASE_ALFAS, BASES, TOPOS, W, H, entradas  # noqa: E402
 
 # O nome NOSSO (ph2d_blend_mode::BlendMode, a ordem do enum) -> o modo do GIMP de nome igual.
 # Os 4 HSL e o Soft Light tem FORMULA diferente no GIMP: a comparacao deles e' a P2 (doc 45 §6).
@@ -34,18 +31,6 @@ MODOS = [
 ]
 ESPACOS = [('perceptual', 'RGB_PERCEPTUAL'), ('linear', 'RGB_LINEAR')]
 OPACIDADES = [100, 60]
-
-
-def entradas():
-    base = bytearray()
-    topo = bytearray()
-    for ba in BASE_ALFAS:
-        for b in BASES:
-            for t in TOPOS:
-                for a in ALFAS:
-                    base += bytes([b[0], b[1], b[2], ba])
-                    topo += bytes([t[0], t[1], t[2], a])
-    return bytes(base), bytes(topo)
 
 
 def camada(img, nome, dados, modo, espaco, opacidade, pos):

@@ -70,3 +70,16 @@ a `8x`) passa 26×. ⏳ O pen-down custa a cópia da camada: `0,30 ms` a `8x`, *
 - Os censos de fiação (`tinta_fiacao_tests`, `a_voz_da_tinta_fina_e_armada_pela_porta`) e os arneses
   procuram TEXTO: mudar a linha que eles citam é reapontá-los no mesmo commit (foram 6 aqui).
 - Uma agulha de censo que cite uma linha partida pelo `fmt` tem de citar a linha como o `fmt` a deixa.
+
+## §6. Smoke e binário
+
+Clippy `-D warnings --all-targets` limpo nas cinco crates tocadas. O binário do smoke está compilado
+nesta worktree no HEAD da onda (`34a98497c`):
+
+```
+$ bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke
+    Finished `smoke` profile [optimized] target(s) in 0.27s
+```
+
+Smoke da W2 ao dono (nada novo na tela — sem o painel não se cria camada): a pintura fina, o Painter
+na peça, o impasto e o `Ctrl+Z` têm de se comportar EXACTAMENTE como antes (cena `52`).

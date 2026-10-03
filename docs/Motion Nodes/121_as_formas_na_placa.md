@@ -1051,3 +1051,52 @@ partida); fotografado na tela virtual: `1024` cópias pela PLACA (do dispositivo
 `7` cenas com texto na placa, e a 7.ª era a `=76` pelo tracejado; mas nenhum gate de pixel tinha um
 glifo. Gate das LETRAS: alfa `63` · cor `62` · `2 990` px `> 16` sobre `81 229`; as mutações «sem
 furos» (`38 006` px) e «aplanamento 8×» (`8 121` px) reprovam.
+
+### §9.10 — A VARIANTE ENXUTA: o tracejado inline dobrara os registos de TODA a cena (2026-10-03)
+
+Commit `8cb0ab9e1`.
+
+**O achado.** O handoff de 02/10 pedia re-medir a linha de base porque o `EixoItem` crescera `56 → 72 B`
+no §9.9. A sonda intercalada (o binário de `7a58e7aaf`, antes do §9.9, e o de HEAD na MESMA janela calma,
+`load < 4`, [`mede_sonda_das_estrelas.sh`](ferramentas/mede_sonda_das_estrelas.sh) com várias cópias)
+achou uma regressão de **`+33 %` a `+41 %` na iGPU nos TRÊS arranjos** — e as conformes nem lêem o eixo.
+⇒ não era o eixo maior.
+
+**O mecanismo — medido sem relógio** ([`registos_dos_shaders.sh`](ferramentas/registos_dos_shaders.sh):
+`RADV_DEBUG=shaderstats,nocache`, a mesma sonda). O ramo do tracejado (`tracejado_px`, `emite_tracejado`,
+`ajuste_do_tracejado`) é código grande atrás de um `if` de dados; o compilador aloca os registos do PIOR
+caminho para o shader inteiro:
+
+| shader (iGPU, RADV) | antes do §9.9 | HEAD (§9.9) | enxuta | completa |
+|---|---|---|---|---|
+| fragmento do desenho | `56` VGPRs · `18` ondas/SIMD · `16 620 B` | **`128` · `8`** · `35 704 B` | `56` · `18` · `16 620 B` | `128` · `8` |
+| `cs_escreve` (um fio por cópia) | `64` · `16` | **`128` · `8`** | `64` · `16` | `128` · `8` |
+| `cs_conta` | `40` · `24` | `48` · `20` | `40` · `24` | `48` · `20` |
+
+Nada em scratch; os outros kernels nossos e os do Vello idênticos. Ocupação `18 → 8` ondas no fragmento: a
+iGPU deixa de esconder a latência das leituras encadeadas (cópia → registo → lista).
+
+**A cura.** `override TRACEJADO: bool` no `shape.wgsl`, dentro do predicado `tracejado(it)` (os três
+chamadores: o pixel a pixel, o `percorre` e o `limite_de_arestas`). O passe compila as duas variantes do
+desenho, do `cs_conta` e do `cs_escreve` na criação (`contorno::Variantes`) e escolhe pelo eixo CARREGADO
+(`EixoItem::tracejado`, o mesmo predicado, no mesmo buffer que o shader lê). A enxuta é byte a byte o
+fragmento de antes (`16 620 B`). Uma cena com tracejado continua a pagar a completa.
+
+**Gate:** `so_um_eixo_tracejado_pede_a_variante_completa` (com CONTROLO: a geometria contínua TEM eixo).
+Os gates de pixel não vêem «completa sempre» — a mesma imagem, mais devagar; vêem «enxuta sempre» (a cena
+tracejada perde os traços). ⚠️ «O `override` fora do predicado» não muda um pixel nem a escolha: só o
+`registos_dos_shaders.sh` o vê — corra-o depois de mexer em qualquer ramo raro de um shader quente.
+
+⭐ *Um ramo raro inline num shader quente cobra o seu preço a quem nunca o toma*: o relógio do §9.9 foi
+tirado na RTX (que tem registos de sobra: `0,33 → 0,36 ms`), e a iGPU — o proxy de telemóvel — pagou `+41 %`.
+
+**Mutação `8` de `9`** ([arnês](ferramentas/mutacao_a_variante_enxuta_2026-10-03.py), pré-voo `9/9`, corrida
+LIMPA `16` verdes): escolhe sempre a completa (só o gate novo a mata) · sempre a enxuta · `Variantes::de`
+trocada · opções de compilação trocadas · contagem / escrita / desenho sempre na enxuta · o predicado do
+Rust aceita todo troço (só o gate novo) — e a **V9** (o `override` fora do predicado do WGSL)
+**SOBREVIVE, como declarado**: só o `registos_dos_shaders.sh` a vê.
+
+⛔ **Recusa MEDIDA — a origem das células como interpolante `flat`** (o vértice já lê a cópia; o fragmento
+saltaria uma leitura encadeada antes da do registo). Decomposição iGPU, esticadas, `PH2D_FLUID_PROFILE=1`,
+`load < 4`: desenho `0,81 → 0,80 ms` (critério escrito ANTES: `≥ 10 %`). A cadeia cópia → registo → lista
+não é o que custa no desenho.

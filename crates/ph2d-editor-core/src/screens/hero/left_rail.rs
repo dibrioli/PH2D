@@ -193,6 +193,7 @@ pub fn populate(store: &mut WidgetStore) {
     // morto no quadro em que o módulo abre. É a lei do `populate` de todo painel desta casa: cunha
     // a família inteira, e quem corta é quem pinta.
     .chain((0..ids::MAX_AREA_MENUS).map(ids::area_menu_button))
+    .chain(crate::object_mode::ObjectMode::ALL.map(crate::object_mode::ObjectMode::row_id))
     {
         store.register(
             id,

@@ -118,14 +118,27 @@ impl App {
         }
 
         match code {
-            KeyCode::Tab if gfx.zen.try_toggle() => {
-                let msg = if gfx.zen.is_active() {
-                    tr("shell.input_handlers.zen_mode_on_zones")
-                } else {
-                    tr("shell.input_handlers.zen_mode_off_zones")
-                };
-                gfx.toasts.push(Toast::info(msg));
-                self.title_dirty = true;
+            // ⭐ `Tab` alterna Object ↔ o último modo do objecto, como no Blender (spec/06 F2,
+            // escolha do dono 03/10); o zen passou ao `Ctrl+Space` (o «maximizar a área» do Blender).
+            KeyCode::Tab if !cmd_chord => {
+                if let Some(hero) = gfx.hero_screen.as_mut() {
+                    hero.bus
+                        .push(ph2d_editor_core::action_bus::EditorAction::ObjectMode(
+                            ph2d_editor_core::object_mode::ModeRequest::Toggle,
+                        ));
+                }
+            }
+            // ⚠️ Consumido mesmo dentro do intervalo do zen: cair adiante tocaria a linha do tempo.
+            KeyCode::Space if cmd_chord => {
+                if gfx.zen.try_toggle() {
+                    let msg = if gfx.zen.is_active() {
+                        tr("shell.input_handlers.zen_mode_on_zones")
+                    } else {
+                        tr("shell.input_handlers.zen_mode_off_zones")
+                    };
+                    gfx.toasts.push(Toast::info(msg));
+                    self.title_dirty = true;
+                }
             }
             // ⚠️ **ANTES do `KeyCode::KeyK` de baixo, e a ordem é a lei.** O arm do `K` não olha
             // para os modificadores, então hoje `Ctrl+K` insere um keyframe por acidente — nada o

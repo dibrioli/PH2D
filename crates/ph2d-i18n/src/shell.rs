@@ -96,7 +96,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.hier_group.grouped_objects" => "Grouped {members} objects",
         "shell.init.ph2d_editor" => "PH2D — editor",
         "shell.init_subsystems.press_1_brush_2_move_3" => {
-            "Press 1=Brush, 2=Move, 3=Bg Removal, Tab=Zen"
+            "Press 1=Brush, 2=Move, 3=Bg Removal, Tab=Mode, Ctrl+Space=Zen"
         }
         "shell.init_subsystems.editor_data_layer" => "Editor data layer wired (M12)",
         "shell.despacho_clique_gizmo.ent" => "ENT",

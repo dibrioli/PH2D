@@ -44,9 +44,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.painter.painter_gpu_preview.gpu_preview_failed" => {
             "Painter: the GPU preview failed ({e}). Falling back to the CPU path."
         }
-        "app.painter.painter_lock.leave_the_painter_to_select_another_sprite" => {
-            "Leave the Painter to select another sprite"
-        }
         // ph2d-migrar-texto:end
         "app.painter.skin_suspend.editing_pixels_flattens_this_image" => {
             "Editing pixels flattens this image \u{2014} the bone deformation returns when you leave the tool."

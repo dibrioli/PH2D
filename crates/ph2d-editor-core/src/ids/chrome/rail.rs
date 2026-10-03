@@ -58,6 +58,12 @@ pub fn area_menu_button(slot: u32) -> NodeId {
 /// Quantos pulldowns de área o `left_rail` regista às cegas — ver [`area_menu_button`].
 pub const MAX_AREA_MENUS: u32 = 4;
 
+/// ⭐ **As linhas do seletor de modo** (spec/06 F2) — uma por [`crate::object_mode::ObjectMode`];
+/// a tabela id↔modo é `ObjectMode::row_id`.
+pub const OBJECT_MODE_OBJECT: NodeId = hash_node_id("object_mode.row.object");
+/// Ver [`OBJECT_MODE_OBJECT`].
+pub const OBJECT_MODE_PAINT: NodeId = hash_node_id("object_mode.row.paint");
+
 pub const TOOL_UNDO: NodeId = hash_node_id("tool_undo");
 pub const TOOL_REDO: NodeId = hash_node_id("tool_redo");
 /// Show/Hide toggles for the side panels — top of the left rail.

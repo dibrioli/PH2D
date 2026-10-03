@@ -143,6 +143,9 @@ pub struct GizmoStateGroup {
     /// full selection via [`Self::iter_selected`]. Empty in single-
     /// select flows, which remain the default.
     pub extra_selection: Vec<u64>,
+    /// ⭐⭐ **O modo de edição do activo** (spec/06 F2) — ao lado da selecção que ele tranca. Ver
+    /// [`crate::object_mode`].
+    pub mode: crate::object_mode::ModeState,
     /// M14.7 B: per-frame projection input for the gizmo painter.
     /// Host computes from `selection_bbox_world(present, selection)`
     /// plus current camera/window and pushes here just before

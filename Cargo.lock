@@ -5104,6 +5104,7 @@ dependencies = [
  "image",
  "ph2d-app-host",
  "ph2d-asset",
+ "ph2d-component-desc",
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-editor-core",

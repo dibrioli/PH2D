@@ -44,3 +44,42 @@ pub struct AreaMenu {
     /// O corpo, com os ids do **painel dono** — ver [`crate::interaction::ContextMenuKind::AreaCommands`].
     pub rows: Vec<ToolRailEntry>,
 }
+
+/// ⭐⭐ **A FILA dos pulldowns da área, com DOIS escritores** — o seletor de modo à frente
+/// ([`crate::object_mode`], spec/06 F2) e os do módulo que tem o canvas atrás dele.
+///
+/// ⚠️ **Cada escritor só reescreve a SUA parte**, e por isso a ordem em que escrevem no quadro não
+/// importa: o módulo publica em todo quadro (vazio incluído) e não sabe que o seletor existe, e o
+/// seletor idem. ⛔ Duas listas lidas em sequência pelos leitores dariam dois `slot` para o mesmo
+/// chip; aqui o `slot` continua a ser a POSIÇÃO numa lista só.
+#[derive(Clone, Debug, Default)]
+pub struct AreaMenus {
+    list: Vec<AreaMenu>,
+    /// Quantos da frente são do seletor de modo (0 ou 1).
+    leading: usize,
+}
+
+impl AreaMenus {
+    /// Os pulldowns, na ordem da fila.
+    #[must_use]
+    pub fn all(&self) -> &[AreaMenu] {
+        &self.list
+    }
+
+    /// Reescreve a parte do MÓDULO, e deixa a do seletor.
+    pub fn set_module(&mut self, menus: Vec<AreaMenu>) {
+        self.list.truncate(self.leading);
+        self.list.extend(menus);
+    }
+
+    /// Reescreve a parte do SELETOR DE MODO, e deixa a do módulo.
+    pub fn set_leading(&mut self, menu: Option<AreaMenu>) {
+        if self.leading == 1 {
+            self.list.remove(0);
+        }
+        self.leading = usize::from(menu.is_some());
+        if let Some(m) = menu {
+            self.list.insert(0, m);
+        }
+    }
+}

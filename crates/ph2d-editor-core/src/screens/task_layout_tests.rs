@@ -83,6 +83,13 @@ fn no_two_layouts_hand_the_canvas_to_the_same_owner() {
                     "dois layouts entregam o canvas ao modelador"
                 );
             }
+            CanvasOwner::Mode(m) => {
+                modal += 1;
+                assert!(
+                    seen.insert(m.label_key().key()),
+                    "dois layouts pedem o modo {m:?}"
+                );
+            }
         }
     }
     assert!(

@@ -67,6 +67,7 @@ mod model3d_toggle;
 mod motion_path_handle;
 mod motion_toggle;
 mod new_image;
+mod object_mode_menu;
 mod onion_modal;
 mod palette_rename;
 mod physics_toggle;
@@ -166,6 +167,7 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || rail_size::apply(hero, event)
         || view_toggles::apply(hero, event)
         || tool_bar_overflow::apply(hero, event)
+        || object_mode_menu::apply(hero, event)
         || rail_tools::apply(hero, event)
         || rail_painter_tools::apply(hero, event)
         || rail_panels::apply(hero, event)

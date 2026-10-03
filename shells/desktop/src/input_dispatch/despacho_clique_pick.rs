@@ -193,25 +193,25 @@ impl crate::App {
             // (group translate via the clicked sprite as
             // pivot, Onda 1).
             let is_modifier_click = picked.is_some() && (shift_held || cmd_held);
-            // **A TRAVA DO PAINTER, na porta do CANVAS** (Enio, 2026-08-19). Enquanto
-            // ele tem um documento aberto, um clique noutra sprite não a troca debaixo
-            // do pincel — e um clique com modificador não abre uma segunda seleção.
+            // **O CADEADO DO MODO, na porta do CANVAS** (Enio, 2026-08-19; do modo desde a
+            // F2 do spec/06). Num modo de criação, um clique noutro objecto não o troca —
+            // e um clique com modificador não abre uma segunda seleção.
             //
             // ⚠️ Sai por `picked = None` em vez de por um `return`: o resto deste ramo
             // é o caminho do **clique vazio**, que limpa e não seleciona outra — a lei
             // permite-o de propósito (recusar faria o `Esc` e o canvas parecerem
             // partidos). *Recusar a troca não é recusar o clique.*
-            let painter_locked = ph2d_app_painter::painter_lock::locked_entity(&gfx.tools, hero);
             let picked = match picked {
                 Some(bits)
-                    if ph2d_app_painter::painter_lock::decide(
-                        painter_locked,
+                    if ph2d_editor_core::object_mode::decide(
+                        hero.gizmo.mode.locked_entity(),
                         Some(bits),
                         cmd_held || shift_held,
-                    ) == ph2d_app_painter::painter_lock::Decision::Refuse =>
+                    ) == ph2d_editor_core::object_mode::Decision::Refuse =>
                 {
-                    gfx.toasts
-                        .push(Toast::warning(ph2d_app_painter::painter_lock::REFUSAL.tr()));
+                    gfx.toasts.push(Toast::warning(ph2d_editor_core::object_mode::refusal(
+                        &hero.gizmo.mode,
+                    )));
                     self.pending_ui_sound = Some(crate::ui_sound::UiSound::Refuse);
                     None
                 }

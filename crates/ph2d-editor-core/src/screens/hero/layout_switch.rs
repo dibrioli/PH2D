@@ -37,8 +37,12 @@ use crate::tool_activation::activation_gate;
 /// ferramenta é a lei do `field3d_mode` no shell, acordada pelo painel que a lista de abertos acabou
 /// de abrir.
 pub fn apply(hero: &mut HeroScreen, layout: TaskLayout) {
-    if let CanvasOwner::Tool(tool_id) = arrange(hero, layout) {
-        hero.bus.push(EditorAction::ActivateTool { tool_id });
+    match arrange(hero, layout) {
+        CanvasOwner::Tool(tool_id) => hero.bus.push(EditorAction::ActivateTool { tool_id }),
+        CanvasOwner::Mode(mode) => hero.bus.push(EditorAction::ObjectMode(
+            crate::object_mode::ModeRequest::Open(mode),
+        )),
+        CanvasOwner::Model3d => {}
     }
 }
 
@@ -54,6 +58,10 @@ pub fn apply(hero: &mut HeroScreen, layout: TaskLayout) {
 ///
 /// ⚠️ **A mesma lei do dreno** ([`crate::tool_activation::activation_gate`]), sem a alternância: no
 /// arranque ninguém clicou, e pedir a ferramenta que já está activa não é um gesto de a largar.
+///
+/// ⚠️ Um `CanvasOwner::Mode` não pede nada aqui: no arranque não há objecto activo, e a resposta
+/// do [`crate::object_mode::ModeRequest::Open`] sem activo é Object com a ferramenta de omissão —
+/// a que o registo já tem.
 pub fn install_at_startup(hero: &mut HeroScreen, tools: &mut ToolRegistry, layout: TaskLayout) {
     if let CanvasOwner::Tool(tool_id) = arrange(hero, layout)
         && activation_gate(tool_id, hero.image_edit.mode_on).gate_on

@@ -49,6 +49,10 @@ pub enum EditorAction {
         tool_id: &'static str,
     },
 
+    /// ⭐ Um pedido de MODO de edição (spec/06 F2): o seletor, o `Tab` ou uma aba de cima. A lei
+    /// é [`crate::object_mode::ModeState::resolve`]; a composição drena e a família abre o módulo.
+    ObjectMode(crate::object_mode::ModeRequest),
+
     /// Apply a one-shot or stateful-bake image edit on `entity_bits`,
     /// dispatched by `tool_id` (the manifest id). Generic image-edit
     /// variant (ADR-0040 TG-A): replaces the per-tool `Trim` /

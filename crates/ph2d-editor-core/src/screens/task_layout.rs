@@ -85,6 +85,10 @@ pub enum CanvasOwner {
     /// *Window*). Pedir o `move` aqui faria a ponte ler a nossa própria mão como *«outro tomou o
     /// canvas»* e fechar o painel que a abriu.
     Model3d,
+    /// ⭐ **Um MODO do objecto activo** — o `Mode:` do Workspace do Blender (spec/06 §3.3). Entra
+    /// nele se o activo o tiver; senão fica em Object com a ferramenta de omissão, e ⛔ não cria
+    /// objecto nenhum (§6.5). Ver [`crate::object_mode::ModeRequest::Open`].
+    Mode(crate::object_mode::ObjectMode),
 }
 
 /// O que um layout arruma.
@@ -151,7 +155,8 @@ impl TaskLayout {
                 // nomeia aqui — ver o cabeçalho.
                 open: &["hierarchy", "inspector"],
                 slots: &[],
-                canvas: CanvasOwner::Tool("painter"),
+                // ⭐ Pintar é o MODO Paint da imagem (spec/06 F2): sem imagem activa, fica em Object.
+                canvas: CanvasOwner::Mode(crate::object_mode::ObjectMode::Paint),
             },
             Self::Vector => LayoutSpec {
                 title: TextKey::new("chrome.layout.vector"),

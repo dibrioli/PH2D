@@ -56,6 +56,8 @@ pub mod motion;
 /// consumidora do `Role::Decoration`, que foi reservado e nunca teve uma.
 pub mod motion_burst;
 pub mod object_add;
+/// ⭐⭐ O modo de edição do objecto activo e o cadeado da selecção (spec/06 F2).
+pub mod object_mode;
 pub mod paint;
 /// Batched paint primitives (many shapes, one draw call) — see the module docs.
 pub mod paint_batch;

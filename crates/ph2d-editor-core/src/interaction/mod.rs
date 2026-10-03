@@ -79,6 +79,6 @@ pub use types::{
     TimelineHitKind, TimelineInterpPick, TimelineInterpScope, TimelineWheel,
 };
 // `ContextMenuKind`/`Request` live with `TrackMenuKind` (the menu-kind vocabulary).
-pub use area_menu::AreaMenu;
+pub use area_menu::{AreaMenu, AreaMenus};
 pub use types_menu::{ContextMenuKind, ContextMenuRequest, TrackMenuKind};
 pub use util::{format_number, hsv_to_color_value};

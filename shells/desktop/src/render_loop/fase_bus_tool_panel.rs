@@ -26,6 +26,7 @@ impl crate::App {
             EditorAction::ActivateTool { tool_id } => {
                 pd.pending_image_tool_activation = Some(tool_id);
             }
+            EditorAction::ObjectMode(req) => pd.object_mode_request = Some(req),
             // ADR-0040 TG-B: generic panel→tool channel. Route the
             // event to the active tool's `handle_panel_event` —
             // semantic mapping (slider id → typed UI edit) lives on

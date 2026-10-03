@@ -204,6 +204,7 @@ mod fase_chrome_clock;
 /// Fase do quadro: a paleta de componentes.
 mod fase_component_palette;
 mod fase_object_add;
+mod fase_object_mode;
 /// Fase do quadro: os verbos de componente.
 mod fase_component_verbs;
 /// Fase do quadro: o composto, os encaixes e as reguas.

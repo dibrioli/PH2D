@@ -146,14 +146,15 @@ impl crate::App {
                         rmin,
                         rmax,
                     ));
-                    // ⚠️ **A TRAVA DO PAINTER também fecha o LAÇO.** O guarda do pick
+                    // ⚠️ **O CADEADO DO MODO também fecha o LAÇO.** O guarda do pick
                     // trata do clique; a borracha é a outra porta por onde a multi-seleção
                     // entra, e o Enio nomeou-a: *"não permita a seleção de múltiplas
                     // imagens se o painter está ativo"*. Uma trava que só cobre o gesto
                     // óbvio ensina o artista a usar o outro.
-                    if ph2d_app_painter::painter_lock::locked_entity(&gfx.tools, hero).is_some() {
-                        gfx.toasts
-                            .push(Toast::warning(ph2d_app_painter::painter_lock::REFUSAL.tr()));
+                    if hero.gizmo.mode.locked_entity().is_some() {
+                        gfx.toasts.push(Toast::warning(ph2d_editor_core::object_mode::refusal(
+                            &hero.gizmo.mode,
+                        )));
                         self.pending_ui_sound = Some(crate::ui_sound::UiSound::Refuse);
                     } else {
                         if !rb.add_mode {

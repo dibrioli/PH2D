@@ -99,6 +99,8 @@ pub mod painter_bridge_upload;
 pub mod painter_bridge_wetness;
 pub mod painter_gpu_preview;
 pub mod painter_lock;
+/// ⭐⭐ Image ▸ Paint — o modo que esta família declara (spec/06 F2).
+pub mod paint_mode;
 /// Display gates, producer-handoff half (upload-plan refusals + the CPU→GPU→CPU dance on real
 /// hardware) — split from the pipeline tests for the HR-18 file-LOC cap.
 #[cfg(test)]

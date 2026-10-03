@@ -23,60 +23,13 @@
 //!
 //! ⚠️ **Limpar a seleção NÃO é selecionar outra**, e por isso é permitido: recusar um clique no
 //! vazio faria o `Esc` e o canvas parecerem partidos, e o pedido é sobre *trocar de imagem*.
+//!
+//! ⭐⭐ **Desde a F2 do spec/06 a trava é do MODO, não do Painter** — a lei (`decide`) e a
+//! entidade trancada moram em `ph2d_editor_core::object_mode` (o Painter abre-se pelo modo Paint
+//! da imagem, e o Sculpt e o Flip herdam a mesma trava na F3). Aqui fica o colapso que o Painter
+//! pede ao ENTRAR, que é dele.
 
 use ph2d_editor_core::screens::hero::HeroScreen;
-
-/// O id do tool, tal como o registry e a chrome o escrevem.
-const PAINTER: &str = "painter";
-
-/// O que fazer com uma tentativa de mudar a seleção.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Decision {
-    /// Deixa passar.
-    Allow,
-    /// Recusa, e diz porquê — a mensagem é para o artista, não para o log.
-    Refuse,
-}
-
-/// **A lei, pura.** `locked` é a sprite que o Painter tem aberta (`None` = Painter inativo).
-///
-/// - Painter inativo ⇒ nada muda de comportamento;
-/// - alvo é a MESMA sprite ⇒ passa (re-selecionar o que já está selecionado é um no-op, e recusá-lo
-///   faria um clique inofensivo produzir um aviso);
-/// - **acrescentar** (multi-seleção) ⇒ recusa, mesmo que o alvo seja a própria: uma segunda sprite
-///   selecionada é o estado que o Painter não sabe representar;
-/// - limpar (alvo `None`) ⇒ passa, vide o cabeçalho;
-/// - qualquer outra sprite ⇒ recusa.
-pub fn decide(locked: Option<u64>, target: Option<u64>, additive: bool) -> Decision {
-    let Some(locked) = locked else {
-        return Decision::Allow;
-    };
-    if additive {
-        return Decision::Refuse;
-    }
-    match target {
-        None => Decision::Allow,
-        Some(t) if t == locked => Decision::Allow,
-        Some(_) => Decision::Refuse,
-    }
-}
-
-/// A mensagem que a recusa mostra. Uma só, e nomeia **a saída** — um aviso que diz apenas *"não
-/// pode"* deixa o artista sem o passo seguinte.
-pub const REFUSAL: ph2d_i18n::TextKey =
-    ph2d_i18n::TextKey::new("app.painter.painter_lock.leave_the_painter_to_select_another_sprite");
-
-/// A sprite que o Painter tem aberta, ou `None` quando ele não está ativo.
-pub fn locked_entity(
-    tools: &ph2d_editor_core::tool::ToolRegistry,
-    hero: &HeroScreen,
-) -> Option<u64> {
-    let active = tools.active()?;
-    if active.id() != ph2d_editor_core::ToolId::new(PAINTER) {
-        return None;
-    }
-    hero.gizmo.selection
-}
 
 /// **Colapsa uma seleção múltipla à ÚLTIMA escolhida**, devolvendo quantas saíram.
 ///
@@ -96,39 +49,6 @@ pub fn collapse_to_last(hero: &mut HeroScreen) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn without_the_painter_nothing_changes() {
-        assert_eq!(decide(None, Some(7), false), Decision::Allow);
-        assert_eq!(decide(None, Some(7), true), Decision::Allow);
-        assert_eq!(decide(None, None, false), Decision::Allow);
-    }
-
-    #[test]
-    fn another_sprite_is_refused() {
-        assert_eq!(decide(Some(1), Some(2), false), Decision::Refuse);
-    }
-
-    /// ⚠️ Re-selecionar a MESMA passa — senão um clique inofensivo na sprite que já está a ser
-    /// pintada produziria um aviso, e o artista aprenderia a ignorar os avisos.
-    #[test]
-    fn reselecting_the_same_sprite_passes() {
-        assert_eq!(decide(Some(1), Some(1), false), Decision::Allow);
-    }
-
-    /// ⚠️ **Acrescentar é recusado mesmo sobre a própria sprite:** o que o Painter não sabe
-    /// representar é o ESTADO de duas selecionadas, não a identidade da segunda.
-    #[test]
-    fn adding_is_refused_even_for_the_locked_sprite() {
-        assert_eq!(decide(Some(1), Some(1), true), Decision::Refuse);
-        assert_eq!(decide(Some(1), Some(2), true), Decision::Refuse);
-    }
-
-    /// Limpar não é selecionar outra — vide o cabeçalho.
-    #[test]
-    fn clearing_passes() {
-        assert_eq!(decide(Some(1), None, false), Decision::Allow);
-    }
 
     fn hero_with(primary: u64, extras: &[u64]) -> HeroScreen {
         ph2d_editor_core::test_support::ensure_panel_registry();

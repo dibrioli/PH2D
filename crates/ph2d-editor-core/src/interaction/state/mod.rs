@@ -509,7 +509,7 @@ pub struct WidgetStore {
     /// [`crate::interaction::AreaMenu`]). ⛔ Não é uma lista só: a face de um pulldown é o que ele
     /// **diz** fechado, e uma lista de 14 linhas com uma face só volta a ser o depósito da foto 3,
     /// mudado de sítio. O orçamento medido é `3` chips ([`crate::ids::area_menu_button`]).
-    pub(super) area_menus: Vec<crate::interaction::AreaMenu>,
+    pub(super) area_menus: crate::interaction::AreaMenus,
     /// ⭐⭐⭐ **O QUE O MÓDULO ACRESCENTA A UM MENU QUE JÁ EXISTE** — a metade 1 da **D2**.
     ///
     /// O corte da D2 é por **âmbito**: *vale em todo o app ⇒ barra global; vale só naquele editor

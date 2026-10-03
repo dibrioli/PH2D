@@ -22,6 +22,9 @@ use super::{
 };
 use crate::interaction::{HitIndex, WidgetStore};
 
+/// O manifesto que a fila salta — ver [`image_action_pills`].
+const PAINTER_IS_A_MODE: &str = "painter";
+
 /// Drawing source for one Image Tools action pill's glyph. When the
 /// pill came from a manifest the manifest's `icon_fn` already produced
 /// a 24×24 [`ph2d_vector::BezPath`]; when the pill came from the
@@ -56,12 +59,16 @@ pub(super) struct ImageActionPill {
 ///
 /// ⚠️ **Esta é a PORTA ÚNICA da fila.** Quem pinta, quem regista no store e quem calcula
 /// geometria chamam-na — de propósito, para que não possam divergir sem uma edição que os separe.
+///
+/// ⛔ **O Painter NÃO é um botão desta fila** desde a F2 do spec/06: pintar é o MODO Paint da
+/// imagem, e a porta dele é o seletor *Mode* (dois caminhos para o mesmo módulo divergem, §5).
 pub(super) fn image_action_pills() -> Vec<ImageActionPill> {
     use ph2d_tool_registry::hash_node_id;
     if let Some(reg) = crate::installed_registry() {
         return reg
             .cluster("image_tools")
             .iter()
+            .filter(|m| m.id != PAINTER_IS_A_MODE)
             .map(|m| ImageActionPill {
                 id: hash_node_id(m.id),
                 icon: PillIcon::FromManifest((m.icon_fn)()),

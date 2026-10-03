@@ -36,7 +36,7 @@ fn every_word_this_family_shows_comes_from_the_string_table() {
         "texto com cara de língua escrito no fonte da ponte do Painter (HR-15):\n  {}\n\n\
          A cura é uma chave `app.painter.<ficheiro>.<frase>` em `{TABLE}` e um `tr(\"…\")` no sítio \
          (uma frase com peças do código: `tr_with`). ⚠️ Um `const` não pode chamar `tr`: ele guarda \
-         uma `ph2d_i18n::TextKey` e quem pinta escreve `.tr()` — ver `painter_lock::REFUSAL`.",
+         uma `ph2d_i18n::TextKey` e quem pinta escreve `.tr()` — ver `ph2d_editor_core::object_mode::REFUSAL`.",
         intrusos.join("\n  ")
     );
 }

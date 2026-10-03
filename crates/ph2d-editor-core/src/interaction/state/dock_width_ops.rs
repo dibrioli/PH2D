@@ -362,14 +362,20 @@ impl WidgetStore {
             Vec<crate::widget::ToolRailEntry>,
         )>,
     ) {
-        self.area_menus = menus;
+        self.area_menus.set_module(menus);
         self.menu_contrib = contrib;
+    }
+
+    /// ⭐ **Publica o seletor de modo** (`None` = nenhum objecto activo) — o 1.º pulldown da fila,
+    /// à frente dos do módulo. Ver [`crate::interaction::AreaMenus`] e [`crate::object_mode`].
+    pub fn set_mode_menu(&mut self, menu: Option<crate::interaction::AreaMenu>) {
+        self.area_menus.set_leading(menu);
     }
 
     /// Os pulldowns que a área contribui neste quadro — um chip por cada, na ordem.
     #[must_use]
     pub fn area_menus(&self) -> &[crate::interaction::AreaMenu] {
-        &self.area_menus
+        self.area_menus.all()
     }
 
     /// O corpo do pulldown `slot`, ou vazio se não há tal pulldown neste quadro.
@@ -379,6 +385,7 @@ impl WidgetStore {
     #[must_use]
     pub fn area_menu_rows(&self, slot: u8) -> &[crate::widget::ToolRailEntry] {
         self.area_menus
+            .all()
             .get(usize::from(slot))
             .map_or(&[], |m| &m.rows)
     }

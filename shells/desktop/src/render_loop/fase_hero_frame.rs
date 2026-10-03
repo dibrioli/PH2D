@@ -51,6 +51,7 @@ impl crate::App {
         self.fase_image_tool_activation(fase_image_tool_activation::ImageToolActivationIntents {
             pending_image_tool_activation: take(&mut pd.pending_image_tool_activation),
         });
+        self.fase_object_mode(take(&mut pd.object_mode_request));
         self.fase_image_tools_mode_and_pills();
         let image_apply = self.fase_image_tool_bridges(window_size)?;
         let painter_apply_committed = self.fase_painter_dispatch(window_size, viewport)?;

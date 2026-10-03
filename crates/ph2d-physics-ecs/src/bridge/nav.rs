@@ -51,6 +51,10 @@ use crate::components::{NavAgent, NavRegion, NavTarget, PlatformPlayer, TopDownP
 /// A resolução do raio na chave da malha: `1/256 m`.
 pub(super) const RAIO_POR_METRO: f32 = 256.0;
 
+/// A chave de uma malha: a região, o raio em `1/256 m` e (W7) a assinatura das zonas que o agente
+/// evita (`0` = nenhuma) — ver `nav_custo.rs`.
+pub(super) type ChaveMalha = (Entity, u32, u64);
+
 /// **Um facto de navegação** — quem, e o quê.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct NavEvent {
@@ -60,11 +64,11 @@ pub struct NavEvent {
 
 /// O estado da navegação na ponte: as malhas derivadas, a memória de cada agente, e os factos.
 pub(super) struct NavWorld {
-    /// As malhas, por `(região, raio em 1/256 m)`.
-    meshes: BTreeMap<(Entity, u32), TiledMesh>,
+    /// As malhas, por `(região, raio em 1/256 m, zonas evitadas)`.
+    meshes: BTreeMap<ChaveMalha, TiledMesh>,
     /// As paredes de cada malha, como o desvio as lê — derivadas dela, com a mesma chave e a mesma
     /// vida (esquecidas quando ela é).
-    walls: BTreeMap<(Entity, u32), ph2d_orca::Walls>,
+    walls: BTreeMap<ChaveMalha, ph2d_orca::Walls>,
     /// ⚠️ **A memória de cada agente** — entra no anel pelo [`super::tape::ControllerMemory`].
     pub(super) agents: BTreeMap<Entity, AgentRuntime>,
     /// ⭐ As ORDENS dos verbos `Start/Stop Navigation` (W6) — ver [`ordens`].
@@ -73,6 +77,8 @@ pub(super) struct NavWorld {
     pub(super) rondas: BTreeMap<Entity, alvo::Ronda>,
     /// A árvore das tags do documento (para *a tag mais perto*), entregue pela shell.
     arvore: ph2d_tags::TagTree,
+    /// (W7) Quem é cada atalho pelo `id` que a lei devolve (o índice da entidade) — do último tique.
+    pub(super) atalhos: BTreeMap<u32, Entity>,
     /// Os buffers da procura (reaproveitados; nenhum estado entre consultas).
     search: Polyanya,
     /// Os factos DESTE tique, à espera da porta de depois do passo.
@@ -90,6 +96,7 @@ impl Default for NavWorld {
             ordens: ordens::Ordens::default(),
             rondas: BTreeMap::new(),
             arvore: ph2d_tags::TagTree::default(),
+            atalhos: BTreeMap::new(),
             search: Polyanya::new(),
             tick_events: Vec::new(),
             events: Vec::new(),
@@ -105,6 +112,7 @@ impl NavWorld {
         self.agents.clear();
         self.ordens = ordens::Ordens::default();
         self.rondas.clear();
+        self.atalhos.clear();
         self.tick_events.clear();
         self.events.clear();
     }
@@ -121,6 +129,7 @@ struct Pedido {
     stuck: f32,
     active: bool,
     avoidance: bool,
+    avoid_harm: bool,
 }
 
 /// Um agente que a ponte conduz neste tique: o pedido, a velocidade do mover, onde está, o raio e a
@@ -132,7 +141,7 @@ struct Vez {
     speed: f64,
     pos: V2,
     raio: f32,
-    chave: Option<(Entity, u32)>,
+    chave: Option<ChaveMalha>,
 }
 
 /// Uma região deste tique: a entidade, o rectângulo de mundo e a máscara de camadas.
@@ -160,6 +169,7 @@ impl PhysicsBridge {
                     stuck: a.stuck_after_s,
                     active: a.active,
                     avoidance: a.avoidance,
+                    avoid_harm: a.avoid_harm,
                 })
                 .collect(),
             None => Vec::new(),
@@ -177,6 +187,11 @@ impl PhysicsBridge {
             return;
         }
         let regioes = regioes(sim);
+        // (W7) O que custa, o que fere e os atalhos deste tique.
+        let custos = self.custos_deste_tique(sim);
+        let (links, quem_atalho) = self.atalhos_deste_tique(sim);
+        self.nav.atalhos = quem_atalho;
+        let mut evita_por: BTreeMap<ChaveMalha, Vec<usize>> = BTreeMap::new();
 
         // 1.ª passagem: quem a ponte conduz, onde está, e que malha pede.
         let mut vez: Vec<Vez> = Vec::with_capacity(pedidos.len());
@@ -220,10 +235,15 @@ impl PhysicsBridge {
                 raio_que_envolve(&body.rest)
             };
             let chave_raio = (raio * RAIO_POR_METRO).ceil().max(0.0) as u32;
+            let evita = self.zonas_que_evita(sim, p.entity, p.avoid_harm, &custos);
+            let quem: Vec<Entity> = evita.iter().map(|&i| custos.ferem[i].0).collect();
             let chave = regioes
                 .iter()
                 .find(|r| contem(r.rect, pos))
-                .map(|r| (r.entity, chave_raio));
+                .map(|r| (r.entity, chave_raio, custo::assinatura(&quem)));
+            if let Some(k) = chave {
+                evita_por.insert(k, evita);
+            }
             vez.push(Vez {
                 p,
                 target: if ordem.alvo != 0 {
@@ -237,8 +257,11 @@ impl PhysicsBridge {
                 chave,
             });
         }
-        let chaves: BTreeSet<(Entity, u32)> = vez.iter().filter_map(|v| v.chave).collect();
-        let mudou = self.malhas_em_dia(sim, &regioes, &chaves);
+        let mudou = self.malhas_em_dia(sim, &regioes, &evita_por, &custos);
+        let q = ph2d_nav::Query {
+            costs: &custos.tabela,
+            links: &links,
+        };
 
         // 2.ª passagem: a condução, contra as malhas em dia.
         let mut pedidas: Vec<desvio::Pedida> = Vec::with_capacity(vez.len());
@@ -259,7 +282,24 @@ impl PhysicsBridge {
             };
             let NavWorld { meshes, search, .. } = &mut self.nav;
             let malha = v.chave.and_then(|k| meshes.get(&k)).map(TiledMesh::mesh);
-            let steer = ph2d_nav::agent::step(&mut rt, malha, search, v.pos, alvo, &cfg, dt);
+            let steer =
+                ph2d_nav::agent::step_with(&mut rt, malha, search, &q, v.pos, alvo, &cfg, dt);
+            // (W7) Um TELEPORTE: o corpo vai já para a saída (velocidade a zero), dentro do tique —
+            // o replay corre a mesma lei e salta no mesmo tique.
+            if let Some(p2) = steer.teleport
+                && let Some(b) = self.bodies.get(&p.entity)
+                && let Some(pose) = self.world.body_pose(b.handle)
+            {
+                let rot = libm::atan2f(pose.rotation.im, pose.rotation.re);
+                self.world
+                    .set_body_pose(b.handle, p2[0] as f32, p2[1] as f32, rot, true);
+            }
+            if let Some(id) = steer.crossed {
+                self.nav.tick_events.push(NavEvent {
+                    agent: p.entity,
+                    kind: Event::Crossed(id),
+                });
+            }
             pedidas.push(desvio::Pedida {
                 entity: p.entity,
                 pos: v.pos,
@@ -305,6 +345,12 @@ impl PhysicsBridge {
     #[must_use]
     pub fn nav_events(&self) -> &[NavEvent] {
         &self.nav.events
+    }
+
+    /// (W7) Quem é o atalho com este `id` (o que a lei devolve no `Event::Crossed`).
+    #[must_use]
+    pub fn nav_atalho(&self, id: u32) -> Option<&Entity> {
+        self.nav.atalhos.get(&id)
     }
 
     /// **A memória de um agente, agora** — o caminho, o ponto em curso e o estado. `None` se ele
@@ -448,7 +494,7 @@ impl PhysicsBridge {
         self.nav
             .meshes
             .iter()
-            .map(|(&(e, r), m)| (e, r as f32 / RAIO_POR_METRO, m.mesh()))
+            .map(|(&(e, r, _), m)| (e, r as f32 / RAIO_POR_METRO, m.mesh()))
     }
 
     /// Quem tem este `stable_name_id`.
@@ -541,6 +587,9 @@ mod ordens;
 
 #[path = "nav_alvo.rs"]
 mod alvo;
+
+#[path = "nav_custo.rs"]
+mod custo;
 pub use alvo::Ronda;
 pub use ordens::{OrdemDeNavegacao, PedidoDeNavegacao};
 

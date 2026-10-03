@@ -63,6 +63,9 @@ pub enum Event {
     /// tique. ⚠️ «Preso» é um ACONTECIMENTO e não um estado: o agente recalcula e volta a `Moving`, e
     /// um estado `Stuck` que ninguém pode ver seria uma variante inalcançável.
     Stuck,
+    /// (W7) Atravessou o atalho com este `id` (o da ponte). A lei devolve-o em
+    /// [`Steer::crossed`]; a ponte fá-lo facto com os outros.
+    Crossed(u32),
 }
 
 /// A memória de um agente entre tiques. ⚠️ Vive na ponte e entra no anel de checkpoints: um *scrub*

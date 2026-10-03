@@ -105,8 +105,13 @@ pub struct NavAgent {
     pub on_stuck: String,
     /// ⭐ **Desvia dos outros corpos que andam** (plano 30, W5): os outros agentes, o herói, os corpos
     /// dinâmicos — sem sair da área andável. Desligado, ele vai a direito pelo caminho e os OUTROS
-    /// desviam-se dele por inteiro. ⚠️ Append-only (o postcard é posicional): é o último campo.
+    /// desviam-se dele por inteiro. ⚠️ Append-only (o postcard é posicional).
     pub avoidance: bool,
+    /// ⭐ (W7) **Evita as zonas que o FEREM** (decisão do dono, plano 30 §11.1): um `Damage` parado
+    /// que o `Health` deste agente sente (a resistência ao tipo do dano não o anula) é um FURO no
+    /// caminho dele. Desligado — ou imune ao fogo — ele atravessa a lava. ⚠️ Append-only: é o
+    /// último campo.
+    pub avoid_harm: bool,
 }
 
 impl Default for NavAgent {
@@ -122,6 +127,61 @@ impl Default for NavAgent {
             on_no_path: String::new(),
             on_stuck: String::new(),
             avoidance: true,
+            avoid_harm: true,
+        }
+    }
+}
+
+/// ⭐ (W7) **Uma ÁREA DE CUSTO** — a lama que atrasa, a zona que nenhum agente pisa. A forma é o
+/// colisor desta entidade (sensor ou não), recuada pelo raio de cada agente como um obstáculo.
+///
+/// ⚠️ **Proibida não é um custo infinito, é um FURO** na malha: as ilhas, o ponto alcançável mais
+/// perto e as paredes do desvio leem a malha, e com um custo infinito todos eles mentiriam.
+#[derive(Component, Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct NavCostArea {
+    /// Quanto custa atravessar, em múltiplos do chão (`1` = o chão; `3` = cada metro aqui vale três,
+    /// e o agente dá a volta se a volta custar menos). Abaixo de `1`, um caminho que ele PREFERE.
+    pub cost: f32,
+    /// Proibida: nenhum agente a pisa.
+    pub forbidden: bool,
+}
+
+impl Default for NavCostArea {
+    fn default() -> Self {
+        Self {
+            cost: 3.0,
+            forbidden: false,
+        }
+    }
+}
+
+/// ⭐ (W7) **Um ATALHO** desta entidade (a entrada) até à que tem o nome [`to`](Self::to) (a saída):
+/// um teleporte, ou uma porta por onde só se passa num sentido.
+///
+/// ⚠️ A porta de um sentido é DOIS componentes: uma [`NavCostArea`] proibida no vão (ninguém o usa
+/// para voltar) e um atalho a andar (`teleport = false`) através dele.
+#[derive(Component, Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct NavLink {
+    /// A saída: quem tem este `stable_name_id`. ⚠️ O NOME e nunca os bits (o undo respawna o mundo).
+    pub to: u64,
+    /// Também da saída para a entrada.
+    pub two_way: bool,
+    /// O corpo SALTA para a saída. Desligado, o agente ANDA a direito até ela.
+    pub teleport: bool,
+    /// O custo a mais de o atravessar, em metros de chão (`0` = só o que ele é).
+    pub cost: f32,
+    /// O sinal quando um agente o atravessa (vazio = calado).
+    pub on_crossed: String,
+}
+
+impl Default for NavLink {
+    fn default() -> Self {
+        Self {
+            to: 0,
+            two_way: false,
+            teleport: true,
+            cost: 0.0,
+            on_crossed: String::new(),
         }
     }
 }

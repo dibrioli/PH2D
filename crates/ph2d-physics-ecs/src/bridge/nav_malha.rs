@@ -22,14 +22,15 @@
 //! (medido, plano 30 §14.1). Uma malha que MUDOU devolve-se a quem chama, que faz os agentes dela
 //! esquecerem o caminho; as outras não acordam ninguém.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_nav::V2;
 use ph2d_navmesh::{Params, Shape, TILE_M, TiledMesh};
 use ph2d_physics::{BodyDesc, ShapeDesc, capsule_vertices, ellipse_vertices};
 
-use super::{RAIO_POR_METRO, Regiao};
+use super::custo::Custos;
+use super::{ChaveMalha, RAIO_POR_METRO, Regiao};
 use crate::bridge::PhysicsBridge;
 use crate::components::{BodyKind, PlatformPlayer, ProjectileMotion, TopDownPlayer};
 
@@ -39,21 +40,25 @@ type Rot = (f32, f32);
 impl PhysicsBridge {
     /// ⭐ **Põe em dia as malhas que os agentes pedem neste tique** — e só essas: uma chave que
     /// ninguém pede é esquecida (*a área andável é DE QUEM anda*). Devolve as que MUDARAM.
+    ///
+    /// (W7) Cada malha recebe as áreas de custo, os furos proibidos e os das zonas que ESSA chave
+    /// evita (`evita[chave]`, índices em `custos.ferem` — ver `nav_custo.rs`).
     pub(super) fn malhas_em_dia(
         &mut self,
         sim: &SimWorld,
         regioes: &[Regiao],
-        chaves: &BTreeSet<(Entity, u32)>,
-    ) -> BTreeSet<(Entity, u32)> {
-        self.nav.meshes.retain(|k, _| chaves.contains(k));
-        self.nav.walls.retain(|k, _| chaves.contains(k));
+        chaves: &BTreeMap<ChaveMalha, Vec<usize>>,
+        custos: &Custos,
+    ) -> BTreeSet<ChaveMalha> {
+        self.nav.meshes.retain(|k, _| chaves.contains_key(k));
+        self.nav.walls.retain(|k, _| chaves.contains_key(k));
         let mut mudou = BTreeSet::new();
         if chaves.is_empty() {
             return mudou;
         }
         let obstaculos = self.obstaculos(&quem_anda(sim));
-        for &chave in chaves {
-            let (regiao, raio) = chave;
+        for (&chave, evita) in chaves {
+            let (regiao, raio, _) = chave;
             let Some(r) = regioes.iter().find(|r| r.entity == regiao) else {
                 continue;
             };
@@ -71,6 +76,8 @@ impl PhysicsBridge {
                 .iter()
                 .filter(|(camada, _)| *camada < 8 && r.layers & (1u8 << *camada) != 0)
                 .map(|(_, s)| s)
+                .chain(custos.proibidas.iter())
+                .chain(evita.iter().map(|&i| &custos.ferem[i].1))
                 .collect();
             // ⚠️ Uma malha NOVA refaz todos os mosaicos dela, logo o `update` diz que mudou (o agente que
             // vem de outra esquece o caminho); a região vazia não tem polígonos e a condução diz
@@ -84,7 +91,7 @@ impl PhysicsBridge {
                     TILE_M,
                 )
             });
-            if malha.update(&poligono, &dela) {
+            if malha.update_with_areas(&poligono, &dela, &custos.areas) {
                 self.nav.walls.remove(&chave);
                 mudou.insert(chave);
             }
@@ -134,7 +141,7 @@ impl PhysicsBridge {
     }
 
     /// A pose de um corpo COMO OBSTÁCULO — `None` se ele não o é neste tique (anda, ou é dinâmico).
-    fn pose_de_obstaculo(
+    pub(super) fn pose_de_obstaculo(
         &self,
         kind: BodyKind,
         handle: ph2d_physics::RigidBodyHandle,
@@ -160,7 +167,7 @@ impl PhysicsBridge {
 }
 
 /// Quem tem um MOVER (personagens e projécteis) — ver o cabeçalho.
-fn quem_anda(sim: &SimWorld) -> BTreeSet<Entity> {
+pub(super) fn quem_anda(sim: &SimWorld) -> BTreeSet<Entity> {
     let world = sim.world();
     let mut out = BTreeSet::new();
     if let Some(mut q) = world.try_query::<(Entity, &TopDownPlayer)>() {

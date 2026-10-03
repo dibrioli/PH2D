@@ -324,6 +324,17 @@ impl Damage {
             _ => true,
         }
     }
+
+    /// ⭐ (plano 30, W7) **Este dano MAGOA esta vida?** — fere (a equipa), tira alguma coisa (o golpe
+    /// ou a aflição que dura) e o tipo dele CHEGA a ela (a resistência não o anula nem o torna cura).
+    /// É a pergunta da navegação: um agente evita a zona que o magoa — o imune ao fogo atravessa a
+    /// lava (a decisão do dono, plano 30 §11.1).
+    #[must_use]
+    pub fn magoa(&self, alvo: &Health) -> bool {
+        let tira = self.amount > 0.0 || self.over_time_per_s > 0.0;
+        let taxa = alvo.taxa(&self.kind);
+        tira && self.fere(alvo) && taxa.fator() > 0.0 && !taxa.absorve
+    }
 }
 
 /// ⭐⭐ **A vida AGORA** — o que a ponte publica no mundo no fim de cada `dispatch`, para quem não

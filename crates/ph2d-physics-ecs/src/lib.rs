@@ -82,12 +82,12 @@ pub use components::{
     AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaForceWorldAxes, AreaFormDrag,
     AreaTorque, BodyKind, Ccd, Collider, ColliderShape, CombineRule, Damage, DampMode,
     DampingOverride, Dominance, GravityScale, Health, HealthBar, HealthNow, InitialVelocity,
-    LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine, NavAgent, NavNow,
-    NavRegion, NavRoute, NavTarget, NoWallCling, OnHit, OneWayPlatform, PlatformLift,
-    PlatformPlayer, PlayerMode, PlayerSignals, ProjectileMotion, PulleyWheel, RESISTANCES_MAX,
-    RayHit, RaySensor, RaySignals, Resistance, RigidBody, RopeStops, SignalOnHit, SignalOnLeave,
-    SignalTagFilter, TopDownPlayer, WalkSurface, WestonAxle, WrapSide, kind_key,
-    reseat_mounted_axle, reseat_wheel_geometry, rope_joint_of,
+    LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine, NavAgent,
+    NavCostArea, NavLink, NavNow, NavRegion, NavRoute, NavTarget, NoWallCling, OnHit,
+    OneWayPlatform, PlatformLift, PlatformPlayer, PlayerMode, PlayerSignals, ProjectileMotion,
+    PulleyWheel, RESISTANCES_MAX, RayHit, RaySensor, RaySignals, Resistance, RigidBody, RopeStops,
+    SignalOnHit, SignalOnLeave, SignalTagFilter, TopDownPlayer, WalkSurface, WestonAxle, WrapSide,
+    kind_key, reseat_mounted_axle, reseat_wheel_geometry, rope_joint_of,
 };
 pub use interaction::{
     HoldMode, InteractionSettings, InteractionTool, MAX_ATTRACT_FORCE, MAX_BLAST_IMPULSE,
@@ -240,6 +240,9 @@ pub fn register_physics_components(reg: &mut ComponentRegistry) {
     // fábrica nascia sem agente e toda região evaporava ao gravar. ⛔ O `NavNow` NÃO: é derivado.
     reg.register_default::<NavRegion>("ph2d::physics::NavRegion");
     reg.register_default::<NavAgent>("ph2d::physics::NavAgent");
+    // ⭐ (plano 30, W7) a área de custo e o atalho — no MESMO commit que as secções, pela mesma lição.
+    reg.register_default::<NavCostArea>("ph2d::physics::NavCostArea");
+    reg.register_default::<NavLink>("ph2d::physics::NavLink");
     reg.register_default::<PlayerMode>("ph2d::physics::PlayerMode");
     reg.register_default::<WalkSurface>("ph2d::physics::WalkSurface");
     reg.register_default::<NoWallCling>("ph2d::physics::NoWallCling");
@@ -272,7 +275,11 @@ mod tests {
         // **+8**.
         // ⭐ **+2 (plano 30, W4: `NavRegion` e `NavAgent`)** ⇒ `40 -> 42`, e o delta contra o `main`
         // passa a **+10**. Dois tipos e UM degrau de `PROJECT_SCHEMA`, como o raio e a vida.
-        assert_eq!(reg.len(), 42);
+        // ⭐ **+2 (plano 30, W7: `NavCostArea` e `NavLink`)** ⇒ `42 -> 44`, e o delta contra o
+        // `main` desta linha é **+2** (o `main` de 02/10 tem 42). Dois tipos e UM degrau.
+        assert_eq!(reg.len(), 44);
+        assert!(reg.get_by_name("ph2d::physics::NavCostArea").is_some());
+        assert!(reg.get_by_name("ph2d::physics::NavLink").is_some());
         assert!(reg.get_by_name("ph2d::physics::NavRegion").is_some());
         assert!(reg.get_by_name("ph2d::physics::NavAgent").is_some());
         assert!(reg.get_by_name("ph2d::physics::HealthBar").is_some());

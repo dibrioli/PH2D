@@ -216,6 +216,24 @@ impl PhysicsBridge {
         // (o próprio agente), como os do player abaixo, e a tabela de acções já os sabe ouvir.
         // Nome vazio é silêncio, o molde de toda a casa.
         for ev in self.nav_events() {
+            // (W7) «Atravessou» é um facto do ATALHO (a fonte) com o agente como o outro.
+            if let ph2d_nav::Event::Crossed(id) = ev.kind {
+                let Some(&atalho) = self.nav_atalho(id) else {
+                    continue;
+                };
+                let Some(l) = sim.world().get::<crate::NavLink>(atalho) else {
+                    continue;
+                };
+                let nome = l.on_crossed.trim();
+                if !nome.is_empty() && passa(atalho, ev.agent) {
+                    out.push(SignalEvent {
+                        name: nome.to_owned(),
+                        source: atalho,
+                        other: ev.agent,
+                    });
+                }
+                continue;
+            }
             let Some(agente) = sim.world().get::<NavAgent>(ev.agent) else {
                 continue;
             };
@@ -223,6 +241,7 @@ impl PhysicsBridge {
                 ph2d_nav::Event::Arrived => &agente.on_arrived,
                 ph2d_nav::Event::NoPath => &agente.on_no_path,
                 ph2d_nav::Event::Stuck => &agente.on_stuck,
+                ph2d_nav::Event::Crossed(_) => continue,
             };
             let nome = nome.trim();
             if nome.is_empty() || !passa(ev.agent, ev.agent) {

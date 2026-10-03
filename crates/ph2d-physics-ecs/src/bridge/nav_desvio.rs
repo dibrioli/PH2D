@@ -21,7 +21,7 @@ pub(super) struct Pedida {
     pub(super) dir: V2,
     pub(super) speed: f64,
     pub(super) raio: f64,
-    pub(super) malha: Option<(Entity, u32)>,
+    pub(super) malha: Option<super::ChaveMalha>,
     pub(super) avoidance: bool,
     pub(super) alvo: Option<Entity>,
 }

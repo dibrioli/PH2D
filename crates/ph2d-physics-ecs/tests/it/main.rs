@@ -122,6 +122,7 @@ mod mede_o_que_a_composicao_ja_da;
 mod mede_o_que_a_composicao_ja_da_ao_raio;
 mod nav;
 mod nav_alvos;
+mod nav_custo;
 mod nav_desvio;
 mod nav_mundo;
 mod nav_ordens;

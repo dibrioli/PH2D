@@ -36,3 +36,14 @@ fn os_dois_tempos_despacham_o_par() {
         "a cena do PAR deixou de ser alcancavel dos DOIS tempos"
     );
 }
+
+/// ⭐ **E OS EFEITOS também** (`=5`), pela mesma razão.
+#[test]
+fn os_dois_tempos_despacham_os_efeitos() {
+    const FONTE: &str = include_str!("smoke_bone.rs");
+    assert_eq!(
+        FONTE.matches("crate::smoke_bone_efeitos::").count(),
+        2,
+        "a cena dos EFEITOS deixou de ser alcancavel dos DOIS tempos"
+    );
+}

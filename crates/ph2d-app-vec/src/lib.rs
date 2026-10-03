@@ -174,6 +174,8 @@ pub mod pick;
 pub mod shape_live;
 pub mod smoke_appearance;
 pub mod smoke_bone;
+/// ⭐⭐⭐ Seis barras presas COM EFEITO — `PH2D_VEC_BONE_SMOKE=5` (F50).
+pub mod smoke_bone_efeitos;
 pub mod smoke_bone_envelope;
 /// ⭐⭐⭐ Um canvas do Painter PRESO a ossos e dobrado — a cena que faltava à cura das guias chatas.
 pub mod smoke_bone_media;

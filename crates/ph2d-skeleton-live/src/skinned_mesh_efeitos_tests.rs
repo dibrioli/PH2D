@@ -15,9 +15,11 @@ const POR_SEG: usize = 12;
 
 /// Os efeitos da fixtura: os que lêem a CAIXA da forma (`FxCtx`) e um que lê a contagem de nós.
 fn efeitos() -> Vec<(&'static str, PathEffect)> {
-    let mut zz = ph2d_vec_scene::fx_zigzag::ZigZagSpec::default();
-    zz.amplitude = 6.0;
-    zz.ridges = 24.0;
+    let zz = ph2d_vec_scene::fx_zigzag::ZigZagSpec {
+        amplitude: 6.0,
+        ridges: 24.0,
+        ..Default::default()
+    };
     let mut warp = ph2d_vec_scene::fx_warp_presets::WarpSpec::new(
         ph2d_vec_scene::fx_warp_presets::WarpStyle::Arc,
     );
@@ -205,9 +207,11 @@ fn mudar_o_efeito_depois_do_bind_chega_ao_desenho() {
         ..Leis::do_ambiente()
     };
     let desenho = |p: &mut BPalco, amplitude: f64| {
-        let mut zz = ph2d_vec_scene::fx_zigzag::ZigZagSpec::default();
-        zz.amplitude = amplitude;
-        zz.ridges = 24.0;
+        let zz = ph2d_vec_scene::fx_zigzag::ZigZagSpec {
+            amplitude,
+            ridges: 24.0,
+            ..Default::default()
+        };
         caminho_mut(&mut p.scene, p.id).effects = vec![FxEntry::new(PathEffect::ZigZag(zz))];
         crate::skin_live::recook_leis(&p.sim, &mut p.scene, leis)
             .remove(&p.id)

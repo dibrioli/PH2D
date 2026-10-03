@@ -17,7 +17,7 @@
 |---|---|
 | worktree | `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value` |
 | ramo | `line/motion-value` |
-| HEAD | `311413f1e` + este handoff · ⚠️ e, DEPOIS dele (03/10, após o smoke aprovado): `87e605534` (a capacidade só MEDIDA das células, código) e `9b133f887` (recusa da largura, doc) — ver §6.1; e `9d1058a40` · `650128529` · os docs (a memória das células `66 → 43 MB`) — ver §6.2 |
+| HEAD | `311413f1e` + este handoff · ⚠️ e, DEPOIS dele (03/10, após o smoke aprovado): `87e605534` (a capacidade só MEDIDA das células, código) e `9b133f887` (recusa da largura, doc) — ver §6.1; e `9d1058a40` · `650128529` · os docs (a memória das células `66 → 43 MB`) — ver §6.2; e `a6e067f45` · `1c8f25d1e` · `757c5356a` · `64120d51a` · `2062db7d8` + docs (o Number no Strength do Vortex) — ver §6.3 |
 | base / merge-base | `main` @ `1ad60a1ce` — **0** commits do `main` por trazer; `--ff-only` possível |
 | commits | **18** (2026-10-02 → 03) · `36` ficheiros (+3 621 / −685) |
 
@@ -205,6 +205,62 @@ integrador — releia a ORDEM das fases do quadro só se outra linha mexer em `f
   --all-targets` com `-D warnings` · clippy das três crates · machete · os dois censos.
 - Foundational: nenhum. Ids/consts novos: nenhum (sai o `COBERTURA`; a ligação `9` do grupo `2` fica livre).
 
+### §6.3 — Os dois reports do smoke de 03/10: o Number no Strength do Vortex (mesma linha)
+
+Reports do Enio: *«ligar um Number ao Strength de um Vortex: o fio aparece, mas o valor não tem efeito
+(o Vortex continua com o valor do cartão)»* e *«Number não aceita valores negativos»*. Mecanismo, as
+hipóteses que caíram e a conclusão intermédia errada: [BUGS #12](../BUGS_motion_nodes.md).
+
+| commit | o quê |
+|---|---|
+| `a6e067f45` | a row LIGADA do cartão lê o número do fio pela porta do painel (`params_stream::driven_value`); doc do `CardParam::value` corrigido; sondas + gate CPU; paridade CPU↔placa de um Number no Strength do Vortex dentro da sim (`gpu_cpu_parity_driven.rs`, ao nível do `GpuCook`) |
+| `1c8f25d1e` | `strength` `0..40 → ±40` no Vortex, Attractor, Curl e Wind; leis «negativo = o outro sentido ao bit»; figura `params_sim.html` regenerada |
+| `757c5356a` | a caixa de número do cartão aplica a faixa digitável (`safe_clamp_f64`, nova, aditiva, em `ph2d-editor-core::math`); `MockPanelHost::type_keys_then_enter` (testkit, aditivo) |
+| `64120d51a` | cena `=128` + gates do roteiro; BUGS #12 (1.ª redacção) |
+| `2062db7d8` | ⭐ **o ramo HÍBRIDO do `cook_gpu` entrega os valores do fio**; gates por ramo na placa; cena `=128` re-arrumada (as fotos apanharam o Number e o Vortex fora de vista) |
+| (o commit deste handoff) | BUGS #12 reescrito; esta §6.3 e o smoke §7.1 |
+
+- ⛔⛔ **O defeito do efeito era o ramo HÍBRIDO** (`motion_bridge_gpu.rs`, `GpuRoute::Hybrid`): ele nunca
+  chamava `set_driven`, e o `strength` caía no override. A `=127` do dono (formas + galáxia) vai por
+  ele; medido ANTES: Number `1`, `30` e sem fio dão o mesmo `P` ao bit; DEPOIS: `p[0]` com Number 30 =
+  `[-17.4267, 9.4171]` na placa e na CPU (a `1 ULP`). O ramo `FullyGpu` sempre esteve certo, e a minha
+  cena de reprodução simples ia por ele — por isso a 1.ª redacção do BUGS #12 declarou o motor
+  inocente. ⚠️ **Os valores derivam-se ANTES do `handed`** (o empréstimo dos fluxos da fronteira segura a
+  bomba que os coze), e o `rewind_for` só corre quando há entrega (era assim antes).
+- **O cartão mentia nos dois ramos:** desenhava o override (`2`) com o fio a pôr `30`. O gate
+  `the_card_shows_and_drags_the_same_numbers_the_panel_does` era cego por POPULAÇÃO (só nós soltos).
+- **Negativos:** a digitação já passava (medido pelo teclado real: `-1` chega, solto e ligado); o que
+  parava no zero era o ARRASTO do Number ligado, que veste a faixa do destino (`FromWire`). Densidade e
+  arrasto ficam `≥ 0` (controlo no gate).
+- ⛔ **Achado vizinho, pela mutação M10 (que sobreviveu por ser equivalente):** a caixa do cartão não
+  aplicava faixa digitável NENHUMA (`999999` num tecto de `100` entrava) e o doc dela afirmava o
+  contrário. Curado no `commit`.
+- **Gates novos, cada um vermelho antes (ou medido vermelho pela sonda), com controlo:**
+  `the_hybrid_route_reads_the_wire_like_the_cpu` (placa; *«mudou 0»* antes) ·
+  `the_fully_gpu_route_reads_the_wire_like_the_cpu` (placa; fixa o ramo irmão) ·
+  `a_driven_row_on_the_card_shows_the_number_the_wire_puts_in` · `a_number_wired_to_a_field_strength_drags_below_zero`
+  · `a_negative_strength_is_the_other_turn_to_the_bit` (vortex) · `a_negative_strength_is_repel_to_the_bit`
+  (attractor) · `a_negative_number_typed_over_the_seed_reaches_the_document` · `a_typed_number_outside_the_typed_range_stops_at_the_limit`
+  · `a_number_on_the_vortex_strength_moves_the_sim_like_the_card_would` · os dois da cena `=128` ·
+  `a_number_driving_the_vortex_strength_inside_the_sim_agrees_on_both_routes` (placa, `GpuCook`).
+- **Mutação `12/13` + 1 equivalente:** M1–M9 (cartão, as 4 faixas, o controlo do arrasto, as 2 leis do
+  sinal, o `-` no teclado), M11 (faixa digitável), M12 (`set_driven` do híbrido) e M13 (`set_driven` do
+  `FullyGpu`) sangram; M10 (estreitar a faixa do `store` no `open_box`) é EQUIVALENTE — nada a lê ao
+  comitar (o `NumberInput` só clampa ligado a slider).
+- **Gate de fecho:** nextest-impacted `17 540/17 540` (inclui `arch_safe_clamp_only`, `file_loc_caps`,
+  `architecture_workspace_file_loc_cap`, `the_shell_only_shrinks`) · clippy `--all-targets --all-features
+  -D warnings` nas 9 crates · `fmt --check` · censos `12/12` (`127` testes) · machete · 2 lentes de
+  auditoria (consumidores do `CardParam::value`: rows ligadas estão fora de todo gesto; faixas com sinal:
+  kernels e CPU multiplicam o `strength` sem `max(0)`/`sqrt`) — sem achados além da figura. Depois da
+  cura do híbrido (só `ph2d-app-motion`): nextest da crate `1 344/1 344`, clippy e fmt limpos; gates de
+  placa (`--ignored`): os 2 por ramo + os 2 de `gpu_cpu_parity_driven` verdes.
+- **Foundational tocado (aditivo):** `ph2d-editor-core::math::safe_clamp_f64` (função nova) ·
+  `ph2d-ui-testkit` (método novo). Contratos congelados: nenhum (`NodeManifest` dos nós de força
+  intacto — só `ParamUiHint`, registry de UI). Cenas: `MAX_DEMO_LEVEL 127 → 128`.
+- ⚠️ **Para quem lê o diff:** a figura `params_sim.html` regenerada traz também atrasos ANTIGOS dela
+  (Pivot Offset, Bone/Rope Segment, Bounciness `0 a 1`) — é o que o código já dizia.
+- Smoke ao dono: §7.1.
+
 ## §7 — OS SMOKES
 
 ✅ **Smoke do dono APROVADO em 03/10** (a `=127` pelo comando abaixo); e de novo depois da §6.2, a memória das células).
@@ -235,6 +291,21 @@ Olhar: as estrelas iguais às de antes e, no proxy de telemóvel, o quadro não 
 do worktree, com adaptador): `cargo test -p ph2d-shape-gpu --test it -- --ignored` ·
 `cargo test -p ph2d-app-motion --lib motion_shape_placa::gpu_tests -- --ignored` ·
 `cargo test -p ph2d-gpu-cook formas -- --ignored`.
+
+### §7.1 — Smoke da §6.3 (a cena `=128`: o Number no Strength do Vortex)
+
+1. No terminal:
+   ```
+   cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && env PH2D_GPU_COOK_DEMO=128 cargo run -p ph2d-host-desktop --profile smoke
+   ```
+2. Espere a janela abrir: estrelas amarelas a girar como uma galáxia. No grafo (em baixo), a fila de
+   BAIXO tem `Number · Falloff · Vortex · Attractor · Curl Noise`. Ponha o rato sobre o `Vortex` e role a
+   roda para aproximar até ler as linhas dele (fotografada a 1930×1040: os cartões abrem como pílulas).
+3. Tem de acontecer: a linha `Strength` do Vortex mostra `4` (o número do fio), não o `2` escrito nele;
+   arrastar o Number para ~10 faz a galáxia girar mais depressa (e abrir-se devagar); em `0` ela pára;
+   abaixo de zero (~−4) gira AO CONTRÁRIO; clicar no número do Number, escrever `-2` e Enter deixa `-2`.
+4. Deu errado se: o `Strength` do Vortex ficar em `2`; a velocidade não mudar; o arrasto parar no `0`;
+   ou o `-2` não entrar. Bissecção: repetir com `PH2D_GPU_COOK=0` antes do comando (a CPU).
 
 ## §8 — A UMA LINHA proposta para o `CLAUDE.md` §5 (o integrador aplica; ≤ 700 B)
 

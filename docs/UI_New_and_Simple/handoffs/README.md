@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**17 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **17** são handoffs (registro **morto**).
+**19 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **19** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -32,6 +32,8 @@
 | 2026-09-30 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-30_OS_CARTOES.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-30_OS_CARTOES.md) | ⚠️ handoff (morto) | Handoff de integração — `line/UIUX`, 2026-09-30 — OS CARTÕES DE SECÇÃO, A PEGA E O TEMA POR SECÇÃO |
 | 2026-09-30 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-30_TEMAS_NOTAS_FANTASMA.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-30_TEMAS_NOTAS_FANTASMA.md) | ⚠️ handoff (morto) | Handoff de integração — `line/UIUX`, 2026-09-30 — OS QUATRO TEMAS COLORIDOS, AS CORES VIVAS, O FANTASMA DO ARR… |
 | 2026-10-01 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-01_A_LINHA.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-01_A_LINHA.md) | ⚠️ handoff (morto) | Handoff de integração — `line/UIUX`, 2026-10-01 — A LINHA INTEIRA (rolagem · cartões · temas e notas · fonte, … |
+| 2026-10-02 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-02.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-02.md) | ⚠️ handoff (morto) | Continuação — `line/UIUX`, 2026-10-02 (a linha NÃO fechou) |
+| 2026-10-02 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-02_A_ESCALA.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-02_A_ESCALA.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-02 — a escala da interface (e o HiDPI) |
 
 ---
 

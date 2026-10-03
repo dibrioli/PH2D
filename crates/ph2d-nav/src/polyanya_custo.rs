@@ -35,8 +35,8 @@
 //!
 //! ⚠️ Onde o custo não muda nada disto corre: sem áreas é o Polyanya de sempre, AO BIT (gate).
 
-use super::{Kind, Node, Polyanya, Root};
-use crate::cost::segment_cost;
+use super::{Kind, NONE, NoPath, Node, Path, Polyanya, Root};
+use crate::cost::{cost_of, segment_cost};
 use crate::geom::{EPS, V2, dist, dot, lerp, same, sub};
 use crate::mesh::NavMesh;
 
@@ -396,6 +396,124 @@ impl Polyanya {
                 let gy = g + c_e * dist(x, y);
                 self.boundary_root(mesh, ri, ar, y, Some(j), gy, c_e, lado, false, t);
             }
+        }
+    }
+
+    /// ⭐ (W7) O caminho mais BARATO de `s` a `t` com a tabela de custos das áreas (ver
+    /// [`crate::cost`]; vazia = tudo a `1`). Onde o custo não muda é o Polyanya de sempre — ao bit;
+    /// onde um intervalo atravessa uma fronteira de custo, o caminho refracta (`polyanya_custo.rs`).
+    ///
+    /// ⭐⭐ **O atalho EXACTO** (medido: a cena grande, `medir_custo` §4): nenhum caminho custa menos
+    /// que `w_min × comprimento`, e nenhum comprimento é menor que o do mais curto UNIFORME ⇒ se o
+    /// Polyanya de sempre devolve um caminho que custa `w_min × comprimento` (não toca nada mais caro
+    /// que o mínimo), ele É o óptimo ponderado. Quando toca, a resposta é o melhor dos dois — o que
+    /// também cobre uma travessia que a grelha não representasse. ⛔ Medido e recusado: usar o custo
+    /// dele como TECTO da procura ponderada (podar nós acima dele) piorava a precisão (máx `1,0189`
+    /// contra `1,0000` a peso 4): a discretização de um caminho custa um pouco acima do tecto antes
+    /// de o polimento o trazer abaixo.
+    pub fn find_path_costs(
+        &mut self,
+        mesh: &NavMesh,
+        costs: &[f64],
+        s: V2,
+        t: V2,
+    ) -> Result<Path, NoPath> {
+        self.stats.searches += 1;
+        let wmin = costs.iter().copied().fold(1.0, f64::min);
+        let uniforme =
+            (0..mesh.polys().len() as u32).all(|p| cost_of(costs, mesh.area_id(p)) == wmin);
+        if uniforme {
+            return self.search(mesh, costs, s, t);
+        }
+        let p0 = self.search(mesh, &[], s, t)?;
+        let c0 = crate::cost::path_cost(mesh, costs, &p0.points).unwrap_or(f64::INFINITY);
+        let geral = Path {
+            cost: c0,
+            ..p0.clone()
+        };
+        if c0 <= wmin * p0.length * (1.0 + 1e-12) + EPS {
+            return Ok(geral);
+        }
+        Ok(match self.search(mesh, costs, s, t) {
+            Ok(p) if p.cost < c0 => p,
+            _ => geral,
+        })
+    }
+
+    /// Um vértice onde um caminho que anda numa região de custo `cw` pode DOBRAR: um canto de parede
+    /// ou (W7) um vértice onde há algo MAIS CARO que `cw` — contornar a lama encostado à fronteira
+    /// dobra no vértice dela como numa parede (medido: sem isto o caminho atravessava a lama a `2,5×`
+    /// o óptimo). Contornar uma área mais BARATA nunca ajuda (entrar nela é a refracção). Sem áreas,
+    /// só as paredes.
+    pub(super) fn is_corner(&self, mesh: &NavMesh, v: u32, cw: f64) -> bool {
+        mesh.is_corner(v)
+            || mesh
+                .polys_at_vertex(v)
+                .iter()
+                .any(|&q| self.cost(mesh, q) > cw)
+    }
+
+    /// O custo da área do polígono `p` nesta consulta.
+    #[inline]
+    pub(super) fn cost(&self, mesh: &NavMesh, p: u32) -> f64 {
+        cost_of(&self.costs, mesh.area_id(p))
+    }
+
+    /// O caminho a partir da raiz do nó final: os pontos, o comprimento e o custo. (W7) Com raízes de
+    /// fronteira, o polimento de Snell desliza-as antes ([`custo`]).
+    pub(super) fn reconstruct(
+        &self,
+        mesh: &NavMesh,
+        mut root: u32,
+        via: Option<V2>,
+        w: f64,
+        t: V2,
+    ) -> Path {
+        // (ponto, custo do troço que chega a ele, a gama de deslize de uma raiz de fronteira)
+        let mut pts: Vec<(V2, f64, Option<(V2, V2)>)> = vec![(t, w, None)];
+        if let Some(v) = via
+            && !same(v, t)
+        {
+            pts.push((v, w, None));
+        }
+        while root != NONE {
+            let r = self.roots[root as usize];
+            if !same(pts.last().map_or(t, |p| p.0), r.p) {
+                pts.push((r.p, r.w_in, r.range));
+            } else if let Some(last) = pts.last_mut() {
+                // O mesmo ponto: o troço de comprimento zero não conta, e o que chega a ele é o
+                // desta raiz. A gama não passa (o alvo nunca desliza).
+                last.1 = r.w_in;
+            }
+            root = r.prev;
+        }
+        pts.reverse();
+        let length = |pts: &[(V2, f64, Option<(V2, V2)>)]| -> f64 {
+            pts.windows(2).map(|w| dist(w[0].0, w[1].0)).sum()
+        };
+        let mut cost: f64 = pts.windows(2).map(|w| w[1].1 * dist(w[0].0, w[1].0)).sum();
+        if pts.iter().any(|p| p.2.is_some()) {
+            polish(mesh, &self.costs, &mut pts);
+            // Uma travessia que ficou COLINEAR com os vizinhos não dobra nada (a recta através da
+            // lama): sai, e o troço que a substitui leva o custo... do que o andar real disser.
+            let mut i = 1;
+            while i + 1 < pts.len() {
+                let (a, x, b) = (pts[i - 1].0, pts[i].0, pts[i + 1].0);
+                if pts[i].2.is_some() && crate::geom::dist_to_segment(a, b, x) <= EPS {
+                    pts.remove(i);
+                } else {
+                    i += 1;
+                }
+            }
+            // Depois de deslizar, o custo é o REAL (a caminhada), não o do modelo de cada troço.
+            let xs: Vec<V2> = pts.iter().map(|p| p.0).collect();
+            cost = crate::cost::path_cost(mesh, &self.costs, &xs).unwrap_or(cost);
+        }
+        let length = length(&pts);
+        Path {
+            points: pts.into_iter().map(|p| p.0).collect(),
+            length,
+            cost,
         }
     }
 

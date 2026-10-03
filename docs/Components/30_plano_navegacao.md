@@ -788,6 +788,7 @@ identificadores `NavAlvoModo::Objecto` e `ArgKind::ObjectName`. Cura na PORTA (`
   gates, e o smoke do dono é a 1.ª corrida com rato.
 - ✅ **Curados depois do fecho (03/10, ordem do dono):** o *«Switched off»* de quem um `Start` pôs a andar
   (o painel lê a ORDEM da ponte), o *«Giving way»* (só quando um VIZINHO cortou o pedido — só pela rapidez,
-  o agente sozinho acusava `58/369` tiques nas quinas) e a cena `=1` apertada (corpos e paredes escalados).
+  o agente sozinho acusava `58/369` tiques nas quinas), a cena `=1` apertada (corpos e paredes escalados),
+  a porta que anda (discos ao longo da forma: `1,55 m → 0,02 m` fora do caminho) e o defeito G da vida.
   Detalhe e gates: o handoff da W8 §2-bis.
 - Os outros abertos da W5–W7 continuam (§15.6 e o handoff da W7 §4).

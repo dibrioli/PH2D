@@ -69,14 +69,17 @@ chão abaixo dela onde nenhum morcego entrava ⇒ `REGIAO_FUNDO = −2,5` (o fun
 |---|---|---|
 | o Inspector dizia *«Switched off»* de um agente desligado que um `Start` pôs a andar (W6) | `NavNow` `+ordem` `+alvo_da_ordem` (da ordem em vigor na ponte); `InspectorNavAgent` `+ordem` `+alvo_da_ordem`; a queixa lê a ordem — `Stop` ⇒ `AgentQueixa::ParadoPorAccao` (apendada), `Start` com nome ⇒ as faltas do alvo autorado não valem; a linha *«Started by an action [— after X]»* | `a_ordem_de_um_verbo_manda_na_queixa` (editor-core) · `o_painel_le_a_ordem_que_a_ponte_guarda` (pela ponte inteira) · `as_frases_da_ordem_e_da_passagem_aparecem_quando_valem` |
 | a leitura viva não dizia *«a dar passagem»* (W5) | `ph2d_orca::Crowd::solve_all_why` (por agente: um semi-plano de VIZINHO exclui a velocidade pedida — `solve` inalterado); `NavNow` `+avanco` (a fracção da rapidez pelo caminho quando OUTRO cortou o pedido); `NavAgora` `+dando_passagem` (`avanco < AVANCO_DE_QUEM_DA_PASSAGEM = 0,5`, a tabela medida ao lado da const); *«Giving way · X m to go»*. ⚠️ Só pela rapidez o agente SOZINHO no labirinto acusava `58 / 369` tiques (a quina trava); com a pergunta do vizinho, `0` | `quem_da_passagem_na_porta_diz_que_da` (porta `> 0`, sozinho `= 0`) · o gate das frases |
+| a porta que anda era um CÍRCULO para o desvio (W6) | `bridge/nav_desvio.rs::discos`: um corpo sólido que anda e não é agente entra no ORCA como discos ao longo da forma (`n = ⌈a/b⌉` células, cada disco o circunscrito da sua, `≤ b·√2`), cada um com a velocidade do SEU ponto (`v + ω × r`); o ALVO de alguém fica um disco só (o `ignores` nomeia um índice) | `uma_porta_comprida_a_andar_desvia_se_pela_forma` (`1,55 m` fora do caminho antes, `0,02 m` depois) |
+| o defeito G — a bala SÓ-SENSOR ficava parada onde nascia (plano 28) | `ph2d-physics` `move_character_from`: um corpo só de sensores anda o que pediu (nada nele é parede); sem forma nenhuma continua parado. ⚠️ **foundational partilhado** (todo mover passa aqui) — só muda o caso que devolvia zero | `uma_hitbox_so_sensor_anda_livre_e_perfura` · `uma_bala_so_sensor_atravessa_a_parede_e_fere` (CONTROLO sólido; também a `240 m/s`) |
 | a cena `=1` apertada (W3, o dono: *«não sei se intencionalmente»*) | corpos, porta e paredes escalados (paredes `0,5 → 0,24 m`, roxo `1,3 → 0,9 m`, os outros `0,7 → 0,5 m`, porta `1,0 → 0,7 m`); `LAB_RAIO_PEQUENO`/`LAB_RAIO_HEROI` novos, `RAIO_PEQUENO`/`RAIO_HEROI` ficam das cenas `=3`/`=4`; `perseguidor(…, raio_do_alvo, …)` | os gates da cena `=1` iguais; fotos antes/depois |
 
 **Superfície nova destes três** (somar ao §1): `NavNow` +3 campos (literais fora da ponte não compilam —
 só o `nav_inspector_tests`) · `NavAgora` +1 · `InspectorNavAgent` +2 (os 5 literais do repo atualizados) ·
 `AgentQueixa::ParadoPorAccao` apendada (todo `match` exaustivo: só `sections/nav.rs`) · i18n +4 chaves
 (`stopped_by_an_action`, `started_by_an_action`, `started_by_an_action_after_x`, `giving_way_x_m_to_go`) ·
-`ph2d_orca::Crowd::solve_all_why` (pública) · `nav_smoke::perseguidor` +1 parâmetro. Zero schema, zero
-registo, zero shell. O tutorial 03 ensina as frases novas (secções 6 e 10).
+`ph2d_orca::Crowd::solve_all_why` (pública) · `nav_smoke::perseguidor` +1 parâmetro (um par de raios) ·
+`ph2d-physics/src/world/character.rs` (um braço novo do `match`) · teste novo `tests/it/bala_so_sensor.rs`.
+Zero schema, zero registo, zero shell. O tutorial 03 ensina as frases novas (secções 6 e 10).
 
 ## §3 — ⏳ O que fica ABERTO
 
@@ -85,7 +88,7 @@ registo, zero shell. O tutorial 03 ensina as frases novas (secções 6 e 10).
   recomeço (o tutorial di-lo).
 - Os abertos da W5–W7 que continuam (handoff da W7 §4): a procura ponderada `~11×` com muita lama, a
   construção inteira com áreas lenta a escala, a montagem O(malha), todos os agentes da malha que mudou
-  recalculam no mesmo tique, a porta que anda é um círculo para o desvio, o defeito G (a bala só-sensor).
+  recalculam no mesmo tique.
 - **A família de navegação está COMPLETA no plano 30** (W0–W8). Plataformas (saltos) é plano próprio (§11.3).
 
 ## §4 — A prova de fecho

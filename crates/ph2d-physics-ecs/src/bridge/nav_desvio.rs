@@ -4,10 +4,11 @@
 //! cabeçalho de [`super`]. ⚠️ Módulo FILHO de `nav.rs` (não irmão): lê os campos privados da
 //! `NavWorld`, e saiu dele pelo tecto de LOC, nunca por fronteira de responsabilidade nova.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use ph2d_ecs::Entity;
 use ph2d_nav::V2;
+use ph2d_physics::{BodyDesc, ShapeDesc};
 
 use super::raio_que_envolve;
 use crate::PlayerInput;
@@ -45,7 +46,10 @@ impl PhysicsBridge {
                 ignores: None,
             });
         }
-        // Todo corpo SÓLIDO que anda e não é agente: um obstáculo que se move, que não desvia.
+        // Todo corpo SÓLIDO que anda e não é agente: um obstáculo que se move, que não desvia — pela
+        // FORMA, em discos (ver [`discos`]). ⚠️ O ALVO de alguém fica um disco só: quem o persegue
+        // ignora-o por um índice, e um disco é o que esse índice nomeia.
+        let alvos: BTreeSet<Entity> = pedidas.iter().filter_map(|p| p.alvo).collect();
         for (&e, b) in &self.bodies {
             if b.kind == BodyKind::Static || b.rest.is_sensor || indice.contains_key(&e) {
                 continue;
@@ -53,17 +57,29 @@ impl PhysicsBridge {
             let Some(pose) = self.world.body_pose(b.handle) else {
                 continue;
             };
+            let c = [f64::from(pose.translation.x), f64::from(pose.translation.y)];
             let vel = self.velocidade_de(e);
+            let w = f64::from(self.world.body_angvel(b.handle).unwrap_or(0.0));
+            let (sin, cos) = f64::from(pose.rotation.angle()).sin_cos();
             indice.insert(e, corpos.len() as u32);
-            corpos.push(ph2d_orca::Agent {
-                pos: [f64::from(pose.translation.x), f64::from(pose.translation.y)],
-                vel,
-                pref: vel,
-                radius: f64::from(raio_que_envolve(&b.rest)),
-                max_speed: (vel[0] * vel[0] + vel[1] * vel[1]).sqrt(),
-                avoids: false,
-                ignores: None,
-            });
+            let forma = if alvos.contains(&e) {
+                vec![([0.0, 0.0], f64::from(raio_que_envolve(&b.rest)))]
+            } else {
+                discos(&b.rest)
+            };
+            for ([lx, ly], raio) in forma {
+                let r = [cos * lx - sin * ly, sin * lx + cos * ly];
+                let v = [vel[0] - w * r[1], vel[1] + w * r[0]];
+                corpos.push(ph2d_orca::Agent {
+                    pos: [c[0] + r[0], c[1] + r[1]],
+                    vel: v,
+                    pref: v,
+                    radius: raio,
+                    max_speed: (v[0] * v[0] + v[1] * v[1]).sqrt(),
+                    avoids: false,
+                    ignores: None,
+                });
+            }
         }
         for (k, p) in pedidas.iter().enumerate() {
             corpos[k].ignores = p.alvo.and_then(|a| indice.get(&a).copied());
@@ -125,4 +141,53 @@ impl PhysicsBridge {
             .and_then(|b| self.world.body_velocity(b.handle))
             .map_or([0.0, 0.0], |v| [f64::from(v[0]), f64::from(v[1])])
     }
+}
+
+/// ⭐ (o aberto da W6) **Um corpo que ANDA como o desvio o vê: discos ao longo da forma**, no
+/// referencial dele — `(centro, raio)`. Um disco só, o que envolve a forma, fazia de uma porta de
+/// `4 m` um círculo de `2 m` de raio, e ela desviava os agentes de longe (gate
+/// `uma_porta_comprida_a_andar_desvia_se_pela_forma`: `1,55 m` fora do caminho).
+///
+/// A forma alongada (meio-comprimento `a`, meia-espessura `b`) parte-se em `n = ⌈a/b⌉` células de
+/// `s = 2a/n` ≤ `2b`, e cada disco é o CIRCUNSCRITO da sua célula (`√(b² + (s/2)²)` ≤ `b·√2`) —
+/// a união cobre a forma sem a encolher. A cápsula e o estádio deitam-se em `y` (o de fábrica).
+fn discos(d: &BodyDesc) -> Vec<([f64; 2], f64)> {
+    let (a, b, em_x) = match d.shape {
+        ShapeDesc::Cuboid { half_x, half_y } => {
+            (half_x.max(half_y), half_x.min(half_y), half_x >= half_y)
+        }
+        ShapeDesc::Ellipse { rx, ry } => (rx.max(ry), rx.min(ry), rx >= ry),
+        ShapeDesc::Capsule {
+            half_height,
+            radius,
+        } => (half_height + radius, radius, false),
+        ShapeDesc::Stadium {
+            half_height,
+            rx,
+            ry,
+        } => (half_height + ry, rx, false),
+        ShapeDesc::Ball { radius } => (radius, radius, true),
+    };
+    let (a, b) = (f64::from(a.abs()), f64::from(b.abs()));
+    let o = [f64::from(d.offset[0]), f64::from(d.offset[1])];
+    if b <= 0.0 || a <= b {
+        return vec![(
+            o,
+            f64::from(raio_que_envolve(d)) - (o[0] * o[0] + o[1] * o[1]).sqrt(),
+        )];
+    }
+    let n = (a / b).ceil();
+    let s = 2.0 * a / n;
+    let raio = (b * b + s * s / 4.0).sqrt();
+    (0..n as u32)
+        .map(|k| {
+            let t = -a + s * (f64::from(k) + 0.5);
+            let c = if em_x {
+                [o[0] + t, o[1]]
+            } else {
+                [o[0], o[1] + t]
+            };
+            (c, raio)
+        })
+        .collect()
 }

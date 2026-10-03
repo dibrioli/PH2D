@@ -474,3 +474,53 @@ fn o_desvio_nao_empurra_contra_a_parede() {
         "o desvio empurrou A contra o chão: folga {min}"
     );
 }
+
+/// ⭐⭐ **Uma porta COMPRIDA a andar desvia-se pela FORMA, não por um círculo à volta dela** (o aberto
+/// da W6): um agente passa rente a uma porta de `4 m × 0,2 m` que desliza devagar ao lado dele. Com
+/// o círculo que a envolvia (`r ≈ 2 m`) ele era atirado para longe; com a fileira de discos ao
+/// longo dela, segue quase a direito.
+///
+/// **Mutação que deve sangrar:** o corpo que anda voltar a ser um disco só.
+#[test]
+fn uma_porta_comprida_a_andar_desvia_se_pela_forma() {
+    let mut sim = SimWorld::new();
+    regiao(&mut sim);
+    let porta = sim
+        .world_mut()
+        .spawn((
+            Name::new("Porta"),
+            RigidBody {
+                kind: BodyKind::Kinematic,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 2.0,
+                    half_y: 0.1,
+                },
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(-1.0, 0.0)),
+        ))
+        .id();
+    let y = 0.1 + R + 0.35;
+    let quem = agente(&mut sim, "A", (-4.0, y), NavTarget::Point([4.0, y]), true);
+    let mut bridge = PhysicsBridge::new();
+    let mut fora = 0.0_f32;
+    for t in 1..=300_u64 {
+        // A porta desliza a `0,5 m/s` para a direita: um corpo que ANDA, não uma parede da malha.
+        sim.world_mut()
+            .get_mut::<Transform>(porta)
+            .expect("a porta")
+            .translation
+            .x = -1.0 + 0.5 * t as f32 / 60.0;
+        bridge.dispatch(&mut sim, true, t);
+        fora = fora.max((pos(&sim, quem).1 - y).abs());
+    }
+    let fim = pos(&sim, quem);
+    eprintln!("porta comprida: o mais longe do eixo {fora:.3} m, acaba em {fim:?}");
+    assert!(
+        fora < 0.25,
+        "a porta desviou-o {fora} m — um círculo à volta dela, não a forma"
+    );
+    assert!(dist(fim, (4.0, y)) < 0.15, "não chegou: {fim:?}");
+}

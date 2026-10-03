@@ -528,8 +528,8 @@ pub(crate) fn solver_em_fundo_no_teste(v: bool) {
 /// O campo do contorno cozido custa um solver (`20`–`100 ms`) e arrastar o controlo de um efeito
 /// muda a pilha a cada quadro. ⇒ a 1.ª vez (nenhum campo resolvido) o solver corre no quadro — a
 /// forma nunca aparece rasgada ao abrir o projecto —; daí em diante corre numa THREAD, UM de cada
-/// vez, e entretanto a geometria nova usa o último campo resolvido (de uma pilha vizinha). Quando o
-/// campo chega, o cozido refaz-se com ele e o quadro também ([`Ultimo::fx`]).
+/// vez, e entretanto fica à vista o último desenho RESOLVIDO (pilha e campo dela). Quando o campo
+/// chega, o cozido refaz-se com ele e o quadro também ([`Ultimo::fx`]).
 fn efeitos_da_gaveta(
     g: &mut Gaveta,
     guardado: &SkinnedPath,
@@ -564,9 +564,15 @@ fn efeitos_da_gaveta(
             g.a_caminho = Some((pilha.to_vec(), rx));
         }
     }
-    let campo = g.resolvido.as_ref().and_then(|(_, c)| c.clone());
+    // ⛔⛔ **O que se mostra é SEMPRE um par exacto: a pilha resolvida com o campo DELA** (report do
+    // dono de 2026-10-03: *«quanto mais veloz se arrasta o valor de twist mais deformações
+    // bizarras»*). A 1.ª redacção desenhava a geometria NOVA com o campo de uma pilha anterior —
+    // num *Twist* rápido a forma nova sai do domínio velho e rasga. ⇒ enquanto o campo da pilha
+    // pedida não chega, fica à vista o último desenho resolvido: o arrasto anda aos degraus do
+    // solver, nunca por uma forma que nenhuma pilha desenha.
+    let (pilha_r, campo) = g.resolvido.clone()?;
     let actual = g.efeitos.as_ref().is_some_and(|c| {
-        c.pilha == pilha
+        c.pilha == pilha_r
             && match (&c.campo, &campo) {
                 (None, None) => true,
                 (Some(a), Some(b)) => Rc::ptr_eq(a, b),
@@ -574,7 +580,7 @@ fn efeitos_da_gaveta(
             }
     });
     if !actual {
-        g.efeitos = cozido_com_efeitos(guardado, pilha, campo).map(Rc::new);
+        g.efeitos = cozido_com_efeitos(guardado, &pilha_r, campo).map(Rc::new);
     }
     g.efeitos.clone()
 }

@@ -103,10 +103,6 @@ mod model3d;
 /// ⭐⭐⭐ **O vocabulário do BRILHO da cena 3D** (`docs/Render3d/12`, a `W7`) — irmão do
 /// [`model3d_render`] por RESPONSABILIDADE e para o não deixar chegar ao tecto de LOC.
 mod model3d_bloom;
-/// ⭐⭐⭐ **O vocabulário do CÉU fotográfico** do Render por malha — irmão do [`model3d_bloom`].
-mod model3d_sky;
-/// ⭐⭐⭐ **O vocabulário da TEXTURA** das formas — irmão do [`model3d_sky`].
-mod model3d_texture;
 /// ⭐ **As RAZÕES de uma fileira apagada** (18/09) — irmão de ASSUNTO do [`model3d`], e não de
 /// painel: o corte foi imposto pelo tecto de LOC dele e separa *nomes de coisas* de *frases para o
 /// artista*.
@@ -115,6 +111,10 @@ mod model3d_inert;
 /// (`docs/Render3d/03` e `05`). ⚠️ Ele NÃO entra na cadeia do [`tr`]: quem o alcança é o braço
 /// final do [`model3d`], que lhe delega — *a tabela do documento aponta para a da apresentação.*
 mod model3d_render;
+/// ⭐⭐⭐ **O vocabulário do CÉU fotográfico** do Render por malha — irmão do [`model3d_bloom`].
+mod model3d_sky;
+/// ⭐⭐⭐ **O vocabulário da TEXTURA** das formas — irmão do [`model3d_sky`].
+mod model3d_texture;
 /// Os nomes dos nós — a 3.ª fatia da fronteira dos motores.
 mod node_catalog;
 /// ⭐⭐ **Os nomes das SECÇÕES** do painel de params de um nó — 38 palavras sobre 229 sítios.

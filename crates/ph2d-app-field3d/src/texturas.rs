@@ -48,11 +48,13 @@ pub struct DaFolha {
 pub fn fonte_de(t: &FieldTexture) -> Option<Fonte> {
     match t.source {
         0 => None,
-        s if s == ph2d_field::TEXTURE_FROM_FILE => (!t.color_file.is_empty()).then(|| Fonte::Ficheiros {
-            cor: t.color_file.clone(),
-            normal: t.normal_file.clone(),
-            rugosidade: t.roughness_file.clone(),
-        }),
+        s if s == ph2d_field::TEXTURE_FROM_FILE => {
+            (!t.color_file.is_empty()).then(|| Fonte::Ficheiros {
+                cor: t.color_file.clone(),
+                normal: t.normal_file.clone(),
+                rugosidade: t.roughness_file.clone(),
+            })
+        }
         s => {
             let i = usize::from(s) - 1;
             (i < Embarcada::TODAS.len()).then_some(Fonte::Embarcada(i))
@@ -206,7 +208,11 @@ fn carrega(f: &Fonte) -> Result<(Mapas, f32), String> {
             let c = le(cor)?;
             let aspecto = c.1 as f32 / c.0.max(1) as f32;
             let plana: ph2d_triplanar::Imagem = (1, 1, vec![[128, 128, 255, 255]]);
-            let n = if normal.is_empty() { plana } else { le(normal)? };
+            let n = if normal.is_empty() {
+                plana
+            } else {
+                le(normal)?
+            };
             let r = if rugosidade.is_empty() {
                 None
             } else {
@@ -231,7 +237,8 @@ pub type ASubir = (u32, Arc<Mapas>);
 /// ⭐⭐ **As texturas do quadro, no formato do desenhista** (o índice é o do material) e as camadas
 /// que elas leem — `None` enquanto alguma ainda decodifica (o quadro espera, como o céu).
 #[must_use]
-pub fn para_o_desenhista() -> Option<(Vec<Option<ph2d_mesh_forward::TexturaMaterial>>, Vec<ASubir>)> {
+pub fn para_o_desenhista() -> Option<(Vec<Option<ph2d_mesh_forward::TexturaMaterial>>, Vec<ASubir>)>
+{
     let mut subir: Vec<ASubir> = Vec::new();
     let mut fora = Vec::new();
     for f in folhas() {
@@ -357,10 +364,8 @@ pub fn atende_pedido(toasts: &mut ph2d_editor_core::ToastQueue) {
     let Some((entity, canal)) = take_pedido() else {
         return;
     };
-    let dialog = rfd::FileDialog::new().add_filter(
-        ph2d_i18n::tr("app.field3d.texture.images"),
-        &EXTENSOES,
-    );
+    let dialog =
+        rfd::FileDialog::new().add_filter(ph2d_i18n::tr("app.field3d.texture.images"), &EXTENSOES);
     let Some(path) = ph2d_app_host::modal::pick_file(dialog) else {
         return;
     };

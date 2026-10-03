@@ -97,15 +97,15 @@ pub mod shading;
 pub mod shape_palette;
 /// ADR-0161 W100 — o CATÁLOGO de formas: rótulo, família e construtor, uma linha por forma.
 pub mod shapes;
-/// ADR-0161 — o smoke do módulo (`PH2D_FIELD_SMOKE=1..38`): o **campo traçado** na tela, que é o
+/// ADR-0161 — o smoke do módulo (`PH2D_FIELD_SMOKE=1..39`): o **campo traçado** na tela, que é o
 /// caminho pelo qual o artista vê a peça (a malha é só para exportar).
 pub mod smoke;
 /// `docs/Render3d/03` W3 — o ESTÚDIO: o céu ganha uma FONTE COM FORMA, pré-filtrada em forma
 /// fechada, e a energia total dele não se mexe.
 pub mod studio;
 pub mod studio_wgsl;
-pub mod texturas;
 pub(crate) mod textura_painel;
+pub mod texturas;
 /// ADR-0161 W26 — o NUMERO digitado no meio do gesto do gizmo (o `G X 0,5` do Blender).
 pub mod typed;
 

@@ -145,7 +145,9 @@ fn sonda_do_render_por_malha() {
                 )
             })
             .unwrap_or_default();
-            let ceu = std::env::var("PH2D_SONDA_CEU").map(|c| format!("_{c}")).unwrap_or_default();
+            let ceu = std::env::var("PH2D_SONDA_CEU")
+                .map(|c| format!("_{c}"))
+                .unwrap_or_default();
             let sufixo = format!(
                 "{}{}{ceu}",
                 if brilho { "_brilho" } else { "" },

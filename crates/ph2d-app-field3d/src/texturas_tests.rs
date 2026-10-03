@@ -4,7 +4,10 @@ use super::*;
 use crate::materials::colour_row_tests::three_balls;
 
 fn fixtura(n: &str) -> String {
-    format!("{}/../ph2d-triplanar/fixtures/{n}", env!("CARGO_MANIFEST_DIR"))
+    format!(
+        "{}/../ph2d-triplanar/fixtures/{n}",
+        env!("CARGO_MANIFEST_DIR")
+    )
 }
 
 /// ⭐ **A matriz leva o mundo de volta à folha** (giro, escala e deslocamento).
@@ -40,12 +43,19 @@ fn a_ordem_e_a_dos_materiais() {
     assert!(v[0].is_none() && v[2].is_none());
     let f = v[1].as_ref().expect("a do meio");
     assert_eq!(f.fonte, Fonte::Embarcada(2));
-    assert!((f.tile - 1.8).abs() < 1e-6, "o ladrilho 0 é o tamanho real da pedra");
+    assert!(
+        (f.tile - 1.8).abs() < 1e-6,
+        "o ladrilho 0 é o tamanho real da pedra"
+    );
     let sem_cor = FieldTexture {
         source: ph2d_field::TEXTURE_FROM_FILE,
         ..FieldTexture::default()
     };
-    assert_eq!(fonte_de(&sem_cor), None, "de ficheiro sem a cor não é textura");
+    assert_eq!(
+        fonte_de(&sem_cor),
+        None,
+        "de ficheiro sem a cor não é textura"
+    );
 }
 
 /// ⭐ **Um ficheiro importado vira mapas `1024²`**; um que não existe diz porquê.
@@ -65,7 +75,10 @@ fn os_ficheiros_viram_mapas_ou_dizem_porque() {
         normal: String::new(),
         rugosidade: String::new(),
     });
-    assert!(erro.is_err(), "um ficheiro que sumiu não pode virar textura");
+    assert!(
+        erro.is_err(),
+        "um ficheiro que sumiu não pode virar textura"
+    );
 }
 
 /// ⭐ **A semente da cena planta-se uma vez e gasta-se.**
@@ -81,8 +94,13 @@ fn a_semente_planta_e_gasta() {
     ]));
     planta(sim.world_mut(), grupo);
     assert!(sim.world().get::<FieldTexture>(folhas[0]).is_none());
-    assert_eq!(sim.world().get::<FieldTexture>(folhas[1]).map(|t| t.source), Some(1));
-    sim.world_mut().entity_mut(folhas[1]).remove::<FieldTexture>();
+    assert_eq!(
+        sim.world().get::<FieldTexture>(folhas[1]).map(|t| t.source),
+        Some(1)
+    );
+    sim.world_mut()
+        .entity_mut(folhas[1])
+        .remove::<FieldTexture>();
     planta(sim.world_mut(), grupo);
     assert!(
         sim.world().get::<FieldTexture>(folhas[1]).is_none(),

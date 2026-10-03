@@ -171,8 +171,8 @@ pub struct TexturaMaterial {
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
-mod tests_sol;
-#[cfg(test)]
 mod tests_custo_textura;
+#[cfg(test)]
+mod tests_sol;
 #[cfg(test)]
 mod tests_textura;

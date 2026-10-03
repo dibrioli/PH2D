@@ -317,7 +317,10 @@ fn in_the_mesh_render_the_panel_offers_the_sky_and_choosing_one_changes_the_fram
             .iter()
             .filter(|r| matches!(r.param, ph2d_field::Param::Sky(_)))
             .count();
-        assert_eq!(ceu, 6, "o céu corre no desenhista de jogo: as seis fileiras no painel");
+        assert_eq!(
+            ceu, 6,
+            "o céu corre no desenhista de jogo: as seis fileiras no painel"
+        );
 
         let doc = crate::smoke::with_smoke(|s| s.doc.clone())
             .flatten()
@@ -369,12 +372,22 @@ fn in_the_mesh_render_the_panel_offers_the_sky_and_choosing_one_changes_the_fram
                 .count()
         };
         let fundo = opacos(&estudio, &por);
-        assert!(fundo > 1000, "o céu não apareceu atrás das bolas: {fundo} píxeis");
+        assert!(
+            fundo > 1000,
+            "o céu não apareceu atrás das bolas: {fundo} píxeis"
+        );
         // E desligar o fundo pelo painel devolve a transparência — o céu continua a iluminar.
         painel(4, 0.0);
         crate::scene::apply_intents_for_test(sim.world_mut(), &[]);
         let sem_fundo = quadro().expect("o quadro sem fundo");
-        assert_eq!(opacos(&estudio, &sem_fundo), 0, "o fundo desligado deixou céu atrás");
-        assert_ne!(sem_fundo, estudio, "o céu do pôr do sol tem de iluminar as bolas");
+        assert_eq!(
+            opacos(&estudio, &sem_fundo),
+            0,
+            "o fundo desligado deixou céu atrás"
+        );
+        assert_ne!(
+            sem_fundo, estudio,
+            "o céu do pôr do sol tem de iluminar as bolas"
+        );
     });
 }

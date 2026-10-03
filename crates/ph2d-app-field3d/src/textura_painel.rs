@@ -98,18 +98,63 @@ pub(crate) fn junta(world: &bevy_ecs::world::World, ligado: bool, rows: &mut Vec
         subject: None,
     };
     let mut novas = vec![
-        linha(0, "panel.model3d.texture.choice", f32::from(t.source), 0.0, Bound::Hard(f32::from(ph2d_field::TEXTURE_SOURCES - 1)), &FONTES),
-        linha(1, "panel.model3d.texture.tile", tile, 0.0, Bound::Soft(4.0), &[]),
-        linha(2, "panel.model3d.texture.blend", t.blend, 0.0, Bound::Hard(1.0), &[]),
-        linha(3, "panel.model3d.texture.bump", t.bump, 0.0, Bound::Soft(2.0), &[]),
-        linha(4, "panel.model3d.texture.normal_map", f32::from(u8::from(!t.normal_file.is_empty())), 0.0, Bound::Hard(1.0), &MAPA),
-        linha(5, "panel.model3d.texture.roughness_map", f32::from(u8::from(!t.roughness_file.is_empty())), 0.0, Bound::Hard(1.0), &MAPA),
+        linha(
+            0,
+            "panel.model3d.texture.choice",
+            f32::from(t.source),
+            0.0,
+            Bound::Hard(f32::from(ph2d_field::TEXTURE_SOURCES - 1)),
+            &FONTES,
+        ),
+        linha(
+            1,
+            "panel.model3d.texture.tile",
+            tile,
+            0.0,
+            Bound::Soft(4.0),
+            &[],
+        ),
+        linha(
+            2,
+            "panel.model3d.texture.blend",
+            t.blend,
+            0.0,
+            Bound::Hard(1.0),
+            &[],
+        ),
+        linha(
+            3,
+            "panel.model3d.texture.bump",
+            t.bump,
+            0.0,
+            Bound::Soft(2.0),
+            &[],
+        ),
+        linha(
+            4,
+            "panel.model3d.texture.normal_map",
+            f32::from(u8::from(!t.normal_file.is_empty())),
+            0.0,
+            Bound::Hard(1.0),
+            &MAPA,
+        ),
+        linha(
+            5,
+            "panel.model3d.texture.roughness_map",
+            f32::from(u8::from(!t.roughness_file.is_empty())),
+            0.0,
+            Bound::Hard(1.0),
+            &MAPA,
+        ),
     ];
     if t.source == ph2d_field::TEXTURE_FROM_FILE {
         let nome = std::path::Path::new(&t.color_file)
             .file_name()
             .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
-        novas[0].subject = Some(format!("{}: {nome}", ph2d_i18n::tr("panel.model3d.texture.file")));
+        novas[0].subject = Some(format!(
+            "{}: {nome}",
+            ph2d_i18n::tr("panel.model3d.texture.file")
+        ));
     }
     let fim = rows[ultima + 1..]
         .iter()
@@ -123,7 +168,9 @@ pub(crate) fn junta(world: &bevy_ecs::world::World, ligado: bool, rows: &mut Vec
 #[must_use]
 pub(crate) fn pede_ficheiro(slot: u8, value: f32) -> Option<crate::texturas::Canal> {
     match slot {
-        0 if value.round() as u8 == ph2d_field::TEXTURE_FROM_FILE => Some(crate::texturas::Canal::Cor),
+        0 if value.round() as u8 == ph2d_field::TEXTURE_FROM_FILE => {
+            Some(crate::texturas::Canal::Cor)
+        }
         4 if value >= 0.5 => Some(crate::texturas::Canal::Normal),
         5 if value >= 0.5 => Some(crate::texturas::Canal::Rugosidade),
         _ => None,

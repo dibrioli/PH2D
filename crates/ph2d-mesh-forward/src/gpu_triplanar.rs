@@ -104,7 +104,10 @@ impl TexturasGpu {
             return;
         }
         let cap = (camada + 1).next_power_of_two();
-        let (cor, nrh) = (matriz(device, lado, cap, true), matriz(device, lado, cap, false));
+        let (cor, nrh) = (
+            matriz(device, lado, cap, true),
+            matriz(device, lado, cap, false),
+        );
         if self.capacidade > 0 && lado == self.lado {
             let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("ph2d-mesh-forward triplanar cresce"),

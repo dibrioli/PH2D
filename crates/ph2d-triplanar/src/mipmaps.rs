@@ -166,7 +166,12 @@ impl Mipmaps {
         let (fx, fy) = (x - x0, y - y0);
         let w = |a: f32| a.rem_euclid(sf) as u32 % s;
         let (i0, i1, j0, j1) = (w(x0), w(x0 + 1.0), w(y0), w(y0 + 1.0));
-        let (a, b, c, d) = (ler(k, i0, j0), ler(k, i1, j0), ler(k, i0, j1), ler(k, i1, j1));
+        let (a, b, c, d) = (
+            ler(k, i0, j0),
+            ler(k, i1, j0),
+            ler(k, i0, j1),
+            ler(k, i1, j1),
+        );
         std::array::from_fn(|q| {
             let baixo = a[q] + (b[q] - a[q]) * fx;
             let cima = c[q] + (d[q] - c[q]) * fx;

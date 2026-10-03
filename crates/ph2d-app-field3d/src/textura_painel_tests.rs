@@ -28,7 +28,10 @@ fn os_nomes_seguem_o_pacote() {
         .iter()
         .map(|e| e.chave())
         .collect();
-    assert_eq!(chaves, esperado, "a ordem do pacote mudou: as chaves do painel apontam para outra");
+    assert_eq!(
+        chaves, esperado,
+        "a ordem do pacote mudou: as chaves do painel apontam para outra"
+    );
     assert_eq!(FONTES.len(), usize::from(ph2d_field::TEXTURE_SOURCES));
     assert_eq!(FONTES[0], "panel.model3d.texture.none");
     assert_eq!(FONTES[8], "panel.model3d.texture.from_file");
@@ -69,9 +72,21 @@ fn as_fileiras_seguem_o_material_e_apagam_a_rugosidade() {
     let mut rows = linhas_do_material(e.to_bits());
     junta(sim.world(), true, &mut rows);
     assert_eq!(rows.len(), 9, "seis fileiras depois das três do material");
-    assert!(rows[3..].iter().enumerate().all(|(i, r)| r.param == Param::Texture(i as u8)));
-    assert!(rows[4..].iter().all(|r| r.inert == Some("field.inert.no_texture")));
-    assert_eq!(rows[1].inert, None, "sem textura a rugosidade é do material");
+    assert!(
+        rows[3..]
+            .iter()
+            .enumerate()
+            .all(|(i, r)| r.param == Param::Texture(i as u8))
+    );
+    assert!(
+        rows[4..]
+            .iter()
+            .all(|r| r.inert == Some("field.inert.no_texture"))
+    );
+    assert_eq!(
+        rows[1].inert, None,
+        "sem textura a rugosidade é do material"
+    );
 
     sim.world_mut().entity_mut(e).insert(FieldTexture {
         source: 1,
@@ -81,8 +96,14 @@ fn as_fileiras_seguem_o_material_e_apagam_a_rugosidade() {
     junta(sim.world(), true, &mut rows);
     assert_eq!(rows[1].inert, Some("field.inert.roughness_from_texture"));
     assert_eq!(rows[6].inert, None, "o relevo do pacote é vivo");
-    assert_eq!(rows[7].inert, Some("field.inert.pack_texture_brings_its_maps"));
-    assert!((rows[4].value - 1.4).abs() < 1e-6, "o ladrilho 0 mostra o tamanho real do tijolo");
+    assert_eq!(
+        rows[7].inert,
+        Some("field.inert.pack_texture_brings_its_maps")
+    );
+    assert!(
+        (rows[4].value - 1.4).abs() < 1e-6,
+        "o ladrilho 0 mostra o tamanho real do tijolo"
+    );
 }
 
 /// ⭐⭐⭐ **A escolha espalha-se pela selecção, pelo dreno real**, como o material.
@@ -97,7 +118,11 @@ fn a_textura_espalha_pela_seleccao() {
     });
     sincroniza(&mut sim, &folhas);
     for &f in &folhas {
-        assert_eq!(fonte(&sim, f), Some(2), "a madeira não chegou a todas as formas escolhidas");
+        assert_eq!(
+            fonte(&sim, f),
+            Some(2),
+            "a madeira não chegou a todas as formas escolhidas"
+        );
     }
 }
 
@@ -113,17 +138,31 @@ fn de_ficheiro_pede_o_dialogo_e_o_escolhido_chega_ao_mundo() {
         value: f32::from(ph2d_field::TEXTURE_FROM_FILE),
     });
     sincroniza(&mut sim, &folhas);
-    assert_eq!(fonte(&sim, folhas[0]), None, "a escolha sozinha não escreve nada");
+    assert_eq!(
+        fonte(&sim, folhas[0]),
+        None,
+        "a escolha sozinha não escreve nada"
+    );
     assert_eq!(
         crate::texturas::take_pedido(),
         Some((folhas[0].to_bits(), crate::texturas::Canal::Cor)),
         "o pedido do diálogo não saiu"
     );
-    crate::texturas::escolhe(folhas[0].to_bits(), crate::texturas::Canal::Cor, "x.png".into());
+    crate::texturas::escolhe(
+        folhas[0].to_bits(),
+        crate::texturas::Canal::Cor,
+        "x.png".into(),
+    );
     sincroniza(&mut sim, &folhas);
     for &f in &folhas {
-        let t = sim.world().get::<FieldTexture>(f).expect("a textura chegou");
-        assert_eq!((t.source, t.color_file.as_str()), (ph2d_field::TEXTURE_FROM_FILE, "x.png"));
+        let t = sim
+            .world()
+            .get::<FieldTexture>(f)
+            .expect("a textura chegou");
+        assert_eq!(
+            (t.source, t.color_file.as_str()),
+            (ph2d_field::TEXTURE_FROM_FILE, "x.png")
+        );
     }
     assert_eq!(pede_ficheiro(4, 1.0), Some(crate::texturas::Canal::Normal));
     assert_eq!(pede_ficheiro(5, 0.0), None, "«None» apaga e não abre nada");

@@ -544,7 +544,10 @@ impl FieldTexture {
     pub fn set(&mut self, k: u8, v: f32) -> bool {
         match k {
             0 => {
-                let s = v.round().clamp(0.0, f32::from(ph2d_field::TEXTURE_SOURCES - 1)) as u8;
+                let s = v
+                    .round()
+                    .clamp(0.0, f32::from(ph2d_field::TEXTURE_SOURCES - 1))
+                    as u8;
                 if s == ph2d_field::TEXTURE_FROM_FILE && self.color_file.is_empty() {
                     return false;
                 }

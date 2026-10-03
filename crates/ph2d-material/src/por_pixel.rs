@@ -14,7 +14,10 @@ pub const SHRINK_N: usize = 65;
 /// (`coat_roughness⁴ = coat_alpha²`).
 fn main_alpha_de(r: f32, coat_alpha: f32, coat_weight: f32) -> f32 {
     let r2 = r * r;
-    let coat_affected = (2.0 * (coat_alpha * coat_alpha) + r2 * r2).min(1.0).sqrt().sqrt();
+    let coat_affected = (2.0 * (coat_alpha * coat_alpha) + r2 * r2)
+        .min(1.0)
+        .sqrt()
+        .sqrt();
     let e = bsdf::mix(r, coat_affected, coat_weight);
     e * e
 }

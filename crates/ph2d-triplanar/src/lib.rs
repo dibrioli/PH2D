@@ -158,7 +158,10 @@ fn uv(w: &Vista, p: V3, eu: f32, ev: f32, k: f32) -> (f32, f32) {
 pub fn nivel(w: &Vista, dx: V3, dy: V3, eu: f32, ev: f32, lado: f32) -> f32 {
     let (ax, bx) = uv(w, dx, eu * lado, ev * lado, 0.0);
     let (ay, by) = uv(w, dy, eu * lado, ev * lado, 0.0);
-    0.5 * (ax * ax + bx * bx).max(ay * ay + by * by).max(1.0e-12).log2()
+    0.5 * (ax * ax + bx * bx)
+        .max(ay * ay + by * by)
+        .max(1.0e-12)
+        .log2()
 }
 
 /// ⭐⭐⭐ **A TRIPLANAR num ponto**: `p` e `n` (unitária) no espaço da folha; `dx`/`dy` = a variação
@@ -192,8 +195,8 @@ pub fn avalia(m: &Mapas, t: &Triplanar, p: V3, n: V3, dx: V3, dy: V3) -> Resulta
         // Whiteout (Golus 2017) na base (t, b, a) desta vista.
         let (nt, nb, na) = (dot(n, vi.t), dot(n, vi.b), dot(n, vi.a));
         let (x, y, z) = (tn[0] + nt, tn[1] + nb, tn[2] * na);
-        for q in 0..3 {
-            soma_n[q] += (vi.t[q] * x + vi.b[q] * y + vi.a[q] * z) * we;
+        for (q, s) in soma_n.iter_mut().enumerate() {
+            *s += (vi.t[q] * x + vi.b[q] * y + vi.a[q] * z) * we;
         }
     }
     let normal = if m.tem_normal && t.relevo != 0.0 {

@@ -124,7 +124,9 @@ pub fn materiais() -> Vec<FieldMaterial> {
 /// # Errors
 /// Só se uma das formas violar uma cerca do documento.
 pub fn cena_38() -> Result<FieldDoc, ph2d_field::FieldError> {
-    println!("[field-smoke] cena 38 — O CEU: quatro bolas e um no' que mostram o ceu de jeitos diferentes.");
+    println!(
+        "[field-smoke] cena 38 — O CEU: quatro bolas e um no' que mostram o ceu de jeitos diferentes."
+    );
     println!(
         "[field-smoke]            (1) MODEL · painel do topo, Shading · Render. No painel, secao Sky, \
          escolha Sunset: o por do sol aparece ATRAS das pecas e a bola de CROMO espelha-o."

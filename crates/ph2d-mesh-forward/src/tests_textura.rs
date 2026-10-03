@@ -19,13 +19,21 @@ fn png(b: &[u8]) -> ph2d_triplanar::Imagem {
     else {
         panic!("png plano");
     };
-    (img.width, img.height, img.pixels.iter().map(|p| p.0).collect())
+    (
+        img.width,
+        img.height,
+        img.pixels.iter().map(|p| p.0).collect(),
+    )
 }
 
 /// A textura de teste COLORIDA, a normal de teste e uma rugosidade (o verde da colorida).
 fn mapas() -> Mapas {
-    let cor = png(include_bytes!("../../ph2d-triplanar/fixtures/teste_colorida.png"));
-    let nor = png(include_bytes!("../../ph2d-triplanar/fixtures/teste_normal.png"));
+    let cor = png(include_bytes!(
+        "../../ph2d-triplanar/fixtures/teste_colorida.png"
+    ));
+    let nor = png(include_bytes!(
+        "../../ph2d-triplanar/fixtures/teste_normal.png"
+    ));
     let rug = (cor.0, cor.1, cor.2.iter().map(|c| [c[1]; 4]).collect());
     Mapas {
         cor: Mipmaps::de_rgba8(cor.0, cor.1, &cor.2, cor.0, true),
@@ -164,7 +172,12 @@ fn a_textura_e_a_lei_da_casa() {
     let (mut p, mut n, mut mat, mut idx) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
     for (k, q) in qs.iter().enumerate() {
         let o = p.len() as u32;
-        for (x, y) in [(q.x.0, q.y.0), (q.x.1, q.y.0), (q.x.1, q.y.1), (q.x.0, q.y.1)] {
+        for (x, y) in [
+            (q.x.0, q.y.0),
+            (q.x.1, q.y.0),
+            (q.x.1, q.y.1),
+            (q.x.0, q.y.1),
+        ] {
             p.push([x, y, q.z(x, y)]);
             n.push(q.n);
             mat.push(k as u32);
@@ -231,7 +244,10 @@ fn a_textura_e_a_lei_da_casa() {
             let wx = (xx as f32 + 0.5) / 96.0 * 2.0 - 1.0;
             let wy = 1.0 - (yy as f32 + 0.5) / 96.0 * 2.0;
             let Some(k) = qs.iter().position(|q| {
-                wx > q.x.0 + 2.0 * h && wx < q.x.1 - 2.0 * h && wy > q.y.0 + 2.0 * h && wy < q.y.1 - 2.0 * h
+                wx > q.x.0 + 2.0 * h
+                    && wx < q.x.1 - 2.0 * h
+                    && wy > q.y.0 + 2.0 * h
+                    && wy < q.y.1 - 2.0 * h
             }) else {
                 continue;
             };
@@ -279,8 +295,14 @@ fn a_textura_e_a_lei_da_casa() {
             mexe[k]
         );
         assert!(d.len() > 300, "quadrado {k}: pixels de sobra");
-        assert!(mexe[k] * 2 > d.len(), "o controlo: a textura muda o quadrado {k}");
-        assert!(q(0.5) <= 1.0 && q(0.99) <= 1.0, "quadrado {k}: a placa diverge da CPU");
+        assert!(
+            mexe[k] * 2 > d.len(),
+            "o controlo: a textura muda o quadrado {k}"
+        );
+        assert!(
+            q(0.5) <= 1.0 && q(0.99) <= 1.0,
+            "quadrado {k}: a placa diverge da CPU"
+        );
     }
 }
 
@@ -315,7 +337,10 @@ fn trocar_de_textura_nao_compila_nem_acumula() {
         modelo: ID,
     }];
     let s = ph2d_material::OpenPbr::default().prepare();
-    let mats = [ph2d_material::wgsl::pack(&s, ph2d_material::wgsl::EnvLobe::of(&s))];
+    let mats = [ph2d_material::wgsl::pack(
+        &s,
+        ph2d_material::wgsl::EnvLobe::of(&s),
+    )];
     let tex = |camada, tamanho| {
         [Some(TexturaMaterial {
             camada,
@@ -349,8 +374,18 @@ fn trocar_de_textura_nao_compila_nem_acumula() {
     let b = quadro(&mut fw, &tex(1, 0.7));
     let sem = quadro(&mut fw, &[]);
     let a2 = quadro(&mut fw, &tex(0, 0.3));
-    assert_eq!(fw.pipelines_compilados(), antes, "trocar de textura compilou");
-    assert_eq!(a, a2, "a camada 0 voltou diferente depois de a matriz crescer");
-    assert_ne!(a, b, "o controlo: outra camada e outro ladrilho são outra imagem");
+    assert_eq!(
+        fw.pipelines_compilados(),
+        antes,
+        "trocar de textura compilou"
+    );
+    assert_eq!(
+        a, a2,
+        "a camada 0 voltou diferente depois de a matriz crescer"
+    );
+    assert_ne!(
+        a, b,
+        "o controlo: outra camada e outro ladrilho são outra imagem"
+    );
     assert_ne!(a, sem, "o controlo: a textura muda a imagem");
 }

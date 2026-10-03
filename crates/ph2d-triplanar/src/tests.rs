@@ -81,7 +81,10 @@ fn erro(a: V3, b: V3) -> f32 {
 /// sinal de um `t`, o `k` de uma vista, a ordem dos eixos do Blender no [`pesos`], o regime de três.
 #[test]
 fn os_pesos_e_as_vistas_sao_os_do_blender() {
-    let linhas: Vec<Linha> = oraculo().into_iter().filter(|l| l.caso == "pesos").collect();
+    let linhas: Vec<Linha> = oraculo()
+        .into_iter()
+        .filter(|l| l.caso == "pesos")
+        .collect();
     assert!(linhas.len() > 2000, "a fixtura tem as duas peças");
     let mut pior = 0.0f32;
     for l in &linhas {
@@ -131,10 +134,19 @@ fn a_cor_e_a_do_blender() {
     }
     div.sort_by(f32::total_cmp);
     let (p50, max) = (div[div.len() / 2], div[div.len() - 1]);
-    eprintln!("cor: {} pontos, Cycles pior {pior:e} · produto p50 {p50} máx {max}", linhas.len());
-    assert!(pior <= 2.0e-4, "a geometria da cor diverge do Blender: {pior}");
+    eprintln!(
+        "cor: {} pontos, Cycles pior {pior:e} · produto p50 {p50} máx {max}",
+        linhas.len()
+    );
+    assert!(
+        pior <= 2.0e-4,
+        "a geometria da cor diverge do Blender: {pior}"
+    );
     assert!(max > 0.01, "o controlo: filtrar em linear É outra conta");
-    assert!(p50 <= 0.01 && max <= 0.35, "a divergência declarada cresceu: {p50} / {max}");
+    assert!(
+        p50 <= 0.01 && max <= 0.35,
+        "a divergência declarada cresceu: {p50} / {max}"
+    );
     let _ = linhas.iter().filter(|l| l.objecto == "caixa").count();
 }
 
@@ -162,7 +174,14 @@ fn o_mapa_plano_devolve_a_normal_da_forma() {
                 blend,
                 relevo: 1.0,
             };
-            let r = avalia(&m, &t, [0.3, -0.2, 0.7], n, [1e-3, 0.0, 0.0], [0.0, 1e-3, 0.0]);
+            let r = avalia(
+                &m,
+                &t,
+                [0.3, -0.2, 0.7],
+                n,
+                [1e-3, 0.0, 0.0],
+                [0.0, 1e-3, 0.0],
+            );
             // 128/255 não é 0,5 exacto: a inclinação do texel plano é 1/255.
             pior = pior.max(erro(r.normal, n));
             let s: f32 = pesos(n, blend).iter().sum();
@@ -175,12 +194,21 @@ fn o_mapa_plano_devolve_a_normal_da_forma() {
 /// ⭐ **O mip de uma cor é a média em LINEAR** (preto + branco → 50 % de luz = sRGB `188`).
 #[test]
 fn o_mip_da_cor_faz_a_media_em_linear() {
-    let px = [[0, 0, 0, 255], [255, 255, 255, 255], [255, 255, 255, 255], [0, 0, 0, 255]];
+    let px = [
+        [0, 0, 0, 255],
+        [255, 255, 255, 255],
+        [255, 255, 255, 255],
+        [0, 0, 0, 255],
+    ];
     let m = Mipmaps::de_rgba8(2, 2, &px, 2, true);
     assert_eq!(m.contagem(), 2);
     assert_eq!(m.nivel(1)[0], [188, 188, 188, 255]);
     let n = Mipmaps::de_rgba8(2, 2, &px, 2, false);
-    assert_eq!(n.nivel(1)[0], [128, 128, 128, 255], "um mapa de números faz a média crua");
+    assert_eq!(
+        n.nivel(1)[0],
+        [128, 128, 128, 255],
+        "um mapa de números faz a média crua"
+    );
 }
 
 /// ⭐ **O pacote decodifica** — sete texturas `1024²` com os onze níveis.
@@ -233,8 +261,15 @@ fn o_mapa_de_normal_e_lido_como_o_blender() {
         blend: 0.0,
         relevo: 1.0,
     };
-    let linhas: Vec<Linha> = oraculo().into_iter().filter(|l| l.caso == "normal").collect();
-    assert!(linhas.len() > 300, "a fixtura tem a caixa: {}", linhas.len());
+    let linhas: Vec<Linha> = oraculo()
+        .into_iter()
+        .filter(|l| l.caso == "normal")
+        .collect();
+    assert!(
+        linhas.len() > 300,
+        "a fixtura tem a caixa: {}",
+        linhas.len()
+    );
     let (mut pior, mut longe) = (0.0f32, 0.0f32);
     for l in &linhas {
         let c = mapeada(l.p, 1.3, [0.17, 0.31, 0.05]);
@@ -242,7 +277,10 @@ fn o_mapa_de_normal_e_lido_como_o_blender() {
         pior = pior.max(erro(r.normal, l.rgb));
         longe = longe.max(erro(l.n, l.rgb));
     }
-    eprintln!("normal: {} pontos, pior {pior:e} (o mapa afasta até {longe})", linhas.len());
+    eprintln!(
+        "normal: {} pontos, pior {pior:e} (o mapa afasta até {longe})",
+        linhas.len()
+    );
     assert!(longe > 0.2, "o controlo: o mapa inclina a normal");
     assert!(pior <= 2.0e-4, "a normal diverge do Blender: {pior}");
 }

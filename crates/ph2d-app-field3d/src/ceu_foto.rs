@@ -97,7 +97,8 @@ impl Ceu {
     /// ⚠️ **A cerca da porta**: a partir daqui os números viajam para o desenhista, que não tem cerca.
     #[must_use]
     pub fn sanitized(self) -> Self {
-        let fin = |x: f32, lo: f32, hi: f32, d: f32| if x.is_finite() { x.clamp(lo, hi) } else { d };
+        let fin =
+            |x: f32, lo: f32, hi: f32, d: f32| if x.is_finite() { x.clamp(lo, hi) } else { d };
         Self {
             qual: self.qual.min(Embarcado::TODOS.len() as u8),
             giro: fin(self.giro, 0.0, GIRO_MAX, 0.0),

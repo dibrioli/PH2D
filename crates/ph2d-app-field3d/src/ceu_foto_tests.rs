@@ -44,8 +44,7 @@ fn a_forca_zero_poe_o_ceu_a_luz_do_estudio() {
     use ph2d_material::Environment;
     let st = crate::studio::Studio::of_the_product();
     let ns = normais(4000);
-    let estudio: f32 =
-        ns.iter().map(|n| luma(st.irradiance(*n))).sum::<f32>() / ns.len() as f32;
+    let estudio: f32 = ns.iter().map(|n| luma(st.irradiance(*n))).sum::<f32>() / ns.len() as f32;
     for e in [ph2d_sky::Embarcado::Por, ph2d_sky::Embarcado::Interior] {
         let ceu = ph2d_sky::Ceu::com_sol(&e.panorama());
         assert!(ceu.sol().is_some(), "{e:?} tem sol");
@@ -55,10 +54,12 @@ fn a_forca_zero_poe_o_ceu_a_luz_do_estudio() {
             forca: normalizacao(&ceu),
             sol: 1.0,
         };
-        let media: f32 =
-            ns.iter().map(|n| luma(env.irradiance(*n))).sum::<f32>() / ns.len() as f32;
+        let media: f32 = ns.iter().map(|n| luma(env.irradiance(*n))).sum::<f32>() / ns.len() as f32;
         let rel = (media - estudio).abs() / estudio;
-        eprintln!("{e:?}: céu {media:.5} · estúdio {estudio:.5} · {:.2} %", 100.0 * rel);
+        eprintln!(
+            "{e:?}: céu {media:.5} · estúdio {estudio:.5} · {:.2} %",
+            100.0 * rel
+        );
         assert!(rel < 0.02, "{e:?}: {media} contra {estudio}");
     }
 }

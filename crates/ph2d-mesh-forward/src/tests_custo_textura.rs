@@ -107,8 +107,7 @@ fn mede(
 #[test]
 #[ignore = "instrumento: precisa de aparelho"]
 fn instrumento_custo_triplanar() {
-    let Some((device, queue, adapter)) = crate::gpu_alvo::aparelho_em(wgpu::Backends::all())
-    else {
+    let Some((device, queue, adapter)) = crate::gpu_alvo::aparelho_em(wgpu::Backends::all()) else {
         eprintln!("sem aparelho");
         return;
     };
@@ -249,8 +248,8 @@ fn instrumento_custo_triplanar() {
                 let mut dados = ruido((l * l * bpp * 3) as usize);
                 if bpp == 8 {
                     // meios-floats finitos em [0, 1): expoente baixo.
-                    for par in dados.chunks_exact_mut(2) {
-                        par[1] &= 0x3B;
+                    for alto in dados.iter_mut().skip(1).step_by(2) {
+                        *alto &= 0x3B;
                     }
                 }
                 queue.write_texture(

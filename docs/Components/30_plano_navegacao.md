@@ -108,8 +108,8 @@ sítios onde já reconstrói corpos.
   **exacta** (cara, mas é teste). Gate: *Polyanya = o exacto* a meio ULP de comprimento. ⭐ É um oráculo de
   graça, independente de qualquer app.
 - ⚠️ **Os custos por área (W7) quebram a optimalidade em qualquer ângulo do Polyanya** (ele supõe custo
-  uniforme). ⏳ A W7 abre com essa medição; a saída provável é o A\* sobre polígonos + funil **ponderado** só
-  quando há área de custo na cena, **declarado**.
+  uniforme). ✅ A W7 abriu com essa medição e ela **DERRUBOU** a saída prevista (o A\* sobre polígonos + funil,
+  o idioma do Detour/Godot, erra 27–43 % no p95): o produto é o **Polyanya que refracta** — §15.
 
 ### §2.6 — Determinismo (o `physics_ecs_c9` compara os três sistemas)
 
@@ -633,3 +633,98 @@ num braço de `match`) não compilava e foi trocada.
   queixa lê o autorado; a leitura viva diz *Moving*).
 - As waves seguintes: W7 (custo por área — com a decisão do dono §11.1: o inimigo evita a lava, com caixa
   para desligar —, atalhos) · W8 (a arena, o tutorial `03_navegacao.pdf`).
+
+---
+
+## §15 — W7 FEITA (2026-10-03): o inimigo evita a lava sozinho, a lama custa, e o portal leva-o
+
+**O que se consegue fazer agora:** *Add Component → Nav Cost Area* num objecto com colisor faz dele uma
+**lama** (custo: o agente dá a volta se a volta custar menos) ou uma zona **proibida** (um furo para todos).
+Uma **lava** da Vida e Dano (um `Damage` parado) é EVITADA sozinha por todo inimigo cuja vida a sente — a
+decisão do dono (§11.1) —, e a caixa **Avoid Harm** do Nav Agent desliga-o; o imune ao fogo (a resistência
+`0`) e o que não tem vida atravessam. *Nav Link* num objecto liga-o ao objecto com o nome escolhido: um
+**teleporte** (o corpo salta) ou uma **porta de um sentido** (anda a direito; a porta é uma zona proibida
+mais o atalho), com o sinal *atravessou* (`on_crossed`, do atalho, com o agente como o outro). A cena
+`PH2D_NAV_SMOKE=4` monta o rio de lava com dois portais e o CONTROLO.
+
+### §15.1 — A medição que abriu a wave (e a derrubou)
+
+[`examples/medir_custo.rs`](../../crates/ph2d-navmesh/examples/medir_custo.rs) (ph2d-navmesh), `--release`,
+8 cenas `30 × 20` m com 10 obstáculos e 4 lamas, 20 pares cada. A régua é o **oráculo ponderado**
+(`ph2d_nav::oracle::WeightedOracle`: cantos + Steiner SÓ nas fronteiras, custo exacto por segmento), com a
+convergência medida: a `0,1` m de passo erra no máximo `+0,23 %` contra `0,05` (mediana `0`).
+
+| custo do caminho / oráculo (média · p95 · máx) | peso 1,5 | peso 4 | peso 10 |
+|---|---|---|---|
+| C0 — o Polyanya que ignora o custo | `1,022 · 1,147 · 1,377` | `1,197 · 2,029 · 3,282` | `1,578 · 4,091 · 7,854` |
+| C1 — A\* pelo meio das arestas + funil (Detour/Godot) | `1,045 · 1,272 · 2,082` | `1,055 · 1,278 · 1,953` | `1,088 · 1,433 · 3,517` |
+| **C2 — o Polyanya que refracta, grelha `0,25` m** | **`1,000 · 1,000 · 1,005`** | **`1,000 · 1,000 · 1,000`** | **`1,000 · 1,000 · 1,005`** |
+
+| C2 por passo da grelha (peso 2 · peso 10): custo/oráculo máx · µs | `0,5` m | **`0,25` m** | `0,1` m |
+|---|---|---|---|
+| | `1,011 · 74` · `1,094 · 245` | **`1,011 · 100` · `1,005 · 351`** | `1,000 · 218` · `1,000 · 803` |
+
+⇒ **`STEINER_M = 0,25`**: o mesmo caminho em média, ~1 % no pior, a 2,3× menos que `0,1` (a `0,5` a grelha já
+escolhe o corredor errado). Abaixo de `1,0` é o oráculo a errar.
+
+**A cena GRANDE** (`100 × 100` m, `1 000` obstáculos, `100` lamas a peso 4 — `~25 %` do chão; load alto,
+só a ordem de grandeza): o uniforme `0,36 ms` de mediana e `5 650` nós expandidos por consulta; o
+ponderado `~5,7 ms` e `87 000` (15×). Os mosaicos com as 100 lamas constroem a frio em `~71 ms` (39 sem),
+e uma lama a mexer refaz em `~11 ms` (a montagem O(malha), o aberto da W6).
+
+### §15.2 — As decisões, cada uma com a medição
+
+| decisão | porquê (medido) |
+|---|---|
+| a malha guarda a ÁREA de cada polígono; o custo vai na CONSULTA (o modelo do Detour) | dois agentes com tabelas diferentes partilham a malha; mexer num custo não refaz nada |
+| ⛔ **proibida = um FURO**, nunca um custo infinito | as ilhas, o ponto alcançável mais perto e as paredes do desvio leem a malha — com custo infinito todos mentiriam |
+| a lava que MAGOA este agente é um furo só na malha dele: a chave da malha ganha a assinatura das zonas evitadas | `Damage::magoa` (a equipa, e o tipo que a vida dele sente) numa porta só; o imune ao fogo tem outra malha |
+| a construção parte o chão em PEDAÇOS disjuntos pelo Clipper (o comum + uma peça por área, a mais cara manda), UMA triangulação, a paridade generalizada a «em que pedaço estou» | sem áreas a construção de sempre ao bit (gate); a fusão em convexos só dentro do pedaço |
+| junções em T a menos de **2 unidades** da grelha entram na aresta | o Clipper arredonda o mesmo cruzamento de formas diferentes: medido um vértice a `1,016` unidades (o pior caso é `√2`) |
+| onde a troca por dono é ambígua (`[0, 0, 2, 5]` — quatro pedaços num ponto), ponto-no-polígono EXACTO do baricentro | a troca por dono etiquetava um triângulo de fora |
+| **o Polyanya que refracta**: três movimentos numa aresta onde o custo muda — atravessar (raízes na grelha e nas pontas do intervalo), **deslizar** em cima da fronteira para o lado de TRÁS caro, **dobrar** num vértice com algo mais caro à volta — e o polimento de Snell | cada movimento achado por uma cena que o oráculo resolvia e a procura não (abaixo) |
+| as raízes de fronteira entram no heap como PROMESSAS (`g + w_min·|x − t|`) | 3,3× mais rápido, o mesmo custo (2 815 → 132 raízes materializadas num caso pesado) |
+| **o atalho exacto**: se o caminho UNIFORME custa `w_min × comprimento`, ele É o óptimo ponderado; senão a resposta é o melhor dos dois | nenhum caminho custa menos que `w_min × comprimento` ≥ `w_min ×` o mais curto — prova de duas linhas |
+| o atalho é um grafo pequeno sobre a procura: {partida, alvo, pontas}, arestas = procuras reais preguiçosas | o mais curto com atalhos é exacto (cada troço já é o óptimo da malha) |
+| o teleporte põe o corpo na saída DENTRO do tique (`set_body_pose`) | o replay corre a mesma lei e salta no mesmo tique (gate do scrub depois do salto) |
+| a meio de uma porta de um sentido não se replaneia | ali o agente está fora da malha (a porta é proibida); replanear levava-o para trás |
+
+### §15.3 — O que a medição derrubou
+
+- **A saída prevista (A\* + funil)**: o idioma da indústria erra 27–43 % no p95 (C1) e a peso 1,5 é PIOR
+  que ignorar o custo.
+- **O oráculo de Steiner em TODAS as arestas** convergia linearmente (`+9,8 %` a 8 pontos por aresta): a
+  recta dentro de uma área uniforme virava ziguezague. ⇒ Steiner só nas fronteiras, custo exacto por
+  segmento.
+- **Os três movimentos que faltavam**, cada um pela sonda `DBG_CASO` (o caminho do oráculo troço a troço):
+  (1) o caminho que contorna a lama dobra no vértice DELA, que não é canto de parede; (2) dentro da lama o
+  atalho «mesmo polígono ⇒ a direito» só é óptimo com custo uniforme (com custos é uma candidata no heap);
+  (3) o óptimo SAI da lama, corre em cima da fronteira e volta a entrar — no ângulo crítico de Snell
+  (`5 + 2d·√(w² − 1)`, gate analítico a `1e-9`).
+- **A explosão**: com a poda estrita (`<`), duplicados de custo igual multiplicavam-se de canto em canto
+  (35 milhões de nós numa cena de 200 polígonos); e num canto de custo o leque da volta dava a volta
+  inteira (6,8 milhões de voltas). ⇒ igual também se poda (uma raiz de fronteira emite o polígono
+  inteiro), e a fronteira de custo é a parede do leque.
+- **A dominância com o menor dos dois lados** era falsa para o lado caro — exactamente o do deslize.
+- **Os meus controlos dos gates** (duas vezes): «a peso 1,5 sair não compensa» e «a 1,02 também não» — as
+  saídas a olho eram perpendiculares; a lei é a do ângulo crítico, e a procura acertava.
+
+### §15.4 — ⛔ Recusas MEDIDAS
+
+| recusado | medição |
+|---|---|
+| o A\* sobre polígonos + funil (Detour/Godot) | 27–43 % acima do óptimo no p95 |
+| ignorar o custo (o Polyanya puro) | até 7,9× o óptimo a peso 10 |
+| a proibida como custo infinito | as ilhas, o mais perto e as paredes do desvio mentiriam |
+| o custo do caminho uniforme como TECTO da procura ponderada | piorava a precisão (máx `1,0189` contra `1,0000` a peso 4): o polimento traz para baixo do tecto o que a discretização punha acima |
+| a grelha a `0,5` m | escolhe o corredor errado (9 % a peso 10) |
+| deslizar para a FRENTE | redundante (desigualdade triangular), e não mudava o custo |
+
+### §15.6 — ⏳ O que fica
+
+- **A procura ponderada numa cena com muita lama custa ~15× a uniforme** (`100` lamas e `1 000` obstáculos:
+  `87 000` nós contra `5 650`): várias raízes na MESMA fronteira abrem frentes paralelas que só se podam
+  nos cantos e nas fronteiras seguintes. A próxima alavanca: uma dominância entre as frentes. Só a paga
+  quem tem lama (a lava é furo, a procura é a uniforme) e só quando o caminho uniforme a toca.
+- A construção INTEIRA com áreas é lenta a escala (`1,2 s` a 100 lamas e 1 000 obstáculos); a ponte usa
+  mosaicos (`71 ms` a frio). Os abertos da W6 continuam.

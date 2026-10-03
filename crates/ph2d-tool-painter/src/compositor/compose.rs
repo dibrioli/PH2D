@@ -259,23 +259,10 @@ fn parallel_threads(area: usize, rows: usize) -> usize {
 /// at a pixel depends on NEIGHBOURING pixels, so row-band compositing would seam at the band edges.
 /// Per-pixel kinds (Curves / HSB / Levels / Noise / …) are band-safe.
 fn has_spatial_adjustment(stack: &LayerStack, ids: &[LayerId]) -> bool {
-    use ph2d_painter_effects::adjustments::AdjustmentKind as K;
     ids.iter()
         .any(|&id| match stack.get(id).map(|l| (&l.kind, l.visible)) {
             Some((LayerKind::Group(g), true)) => has_spatial_adjustment(stack, &g.children),
-            Some((LayerKind::Adjustment(a), true)) => {
-                a.visible
-                    && matches!(
-                        a.kind,
-                        K::GaussianBlur
-                            | K::Sharpen
-                            | K::MotionBlur
-                            | K::ChromaticAberration
-                            | K::Halftone
-                            | K::Bloom
-                            | K::ShadowsHighlights
-                    )
-            }
+            Some((LayerKind::Adjustment(a), true)) => a.visible && a.kind.reads_the_image_layout(),
             _ => false,
         })
 }

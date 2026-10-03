@@ -104,4 +104,17 @@ impl AdjustmentKind {
                 | Self::Bloom
         )
     }
+
+    /// Does this kind read the IMAGE'S LAYOUT — its neighbours (the six kernels of
+    /// [`Self::gpu_spatial_code`]) or its pixel coordinates as a pattern (`Halftone`)?
+    ///
+    /// The one answer two consumers ask: the CPU compositor (a band edge would seam such a
+    /// kind, so its stack composites serially) and the 3D piece, whose «image» is a list of
+    /// surface samples folded into rows — a kind that reads the layout there would blur along
+    /// the sample ORDER, not the surface (`docs/3D/30` §2). `Noise` hashes its coordinate
+    /// per pixel and reads nothing around it, so it is not in the set.
+    #[must_use]
+    pub fn reads_the_image_layout(self) -> bool {
+        self.gpu_spatial_code().is_some() || matches!(self, Self::Halftone)
+    }
 }

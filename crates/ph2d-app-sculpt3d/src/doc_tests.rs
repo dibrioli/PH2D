@@ -26,6 +26,31 @@ fn doc_bytes(pieces: &[(Multires, Pose)], active: usize) -> Vec<u8> {
     encode(&data, active)
 }
 
+/// Os bytes de um documento **v5** com uma peça e o plano dela — o escritor de
+/// antes das camadas, pela forma congelada (o v5 é o degrau que mais ficheiros
+/// do dono têm).
+pub(super) fn encode_v5(stack: &Multires, pose: &Pose, t: &ph2d_mesh_colors::Tinta) -> Vec<u8> {
+    postcard::to_allocvec(&SculptDocV5 {
+        version: V_ANTES_DAS_CAMADAS,
+        objects: vec![ObjectDocV5 {
+            stack: stack.to_data(),
+            pose: pose.to_data(),
+            tinta: Some(TintaDocV5 {
+                nivel: t.nivel(),
+                amostras: super::doc_tinta::a_menor_forma(t.amostras()),
+                niveis: if t.lado_uniforme().is_some() {
+                    Vec::new()
+                } else {
+                    t.topologia().niveis().to_vec()
+                },
+                relevo: t.relevo().map(super::doc_tinta::a_menor_forma),
+            }),
+        }],
+        active: 0,
+    })
+    .expect("os bytes v5")
+}
+
 /// **O que a cena escreve é o que o load devolve** — as peças, a ordem, quem
 /// estava em mãos, e o trabalho de cada nível.
 #[test]
@@ -243,7 +268,11 @@ fn peca_com_plano(nivel: u8) -> (Multires, Pose, ph2d_mesh_colors::Tinta) {
     (stack, Pose::new([1.0, 0.0, 0.0], 1.5), t)
 }
 
-/// ⭐⭐⭐⭐ **GATE — O PLANO DE TINTA FINA ATRAVESSA O FICHEIRO, AO BIT.**
+/// ⭐⭐⭐⭐ **GATE — O PLANO DE TINTA FINA ATRAVESSA O FICHEIRO, A MEIO DEGRAU.**
+///
+/// ⚠️ **Era «ao bit» até ao v6** (`docs/3D/30` §3): a cor da peça passou a ser
+/// a composição de camadas RGBA8 — a precisão das camadas do Painter —, logo
+/// cada amostra volta a no máximo meio degrau de sRGB8 do que era.
 ///
 /// ⚠️ **E a metade que importa é o CONTROLO:** o plano é re-semeado da cor por
 /// vértice quando ele não existe, e a cor por vértice viaja ao lado. Sem a
@@ -251,7 +280,7 @@ fn peca_com_plano(nivel: u8) -> (Multires, Pose, ph2d_mesh_colors::Tinta) {
 /// passaria — *e o artista veria exactamente o que ele vê hoje: a tinta a
 /// voltar à resolução da malha*.
 #[test]
-fn o_plano_de_tinta_fina_atravessa_o_ficheiro_ao_bit() {
+fn o_plano_de_tinta_fina_atravessa_o_ficheiro_a_meio_degrau() {
     let (stack, pose, t) = peca_com_plano(2);
     let semente = {
         let m = stack.mesh();
@@ -275,15 +304,22 @@ fn o_plano_de_tinta_fina_atravessa_o_ficheiro_ao_bit() {
         t.amostras().len(),
         "a contagem de amostras — a topologia é DERIVADA da malha lida"
     );
-    let bits = |a: &[[f32; 3]]| -> Vec<[u32; 3]> {
-        a.iter()
-            .map(|c| [c[0].to_bits(), c[1].to_bits(), c[2].to_bits()])
-            .collect()
-    };
-    assert_eq!(
-        bits(volta.amostras()),
-        bits(t.amostras()),
-        "as amostras não voltaram AO BIT"
+    let pior = volta
+        .amostras()
+        .iter()
+        .zip(t.amostras())
+        .flat_map(|(a, b)| (0..3).map(move |c| (a[c] - b[c]).abs()))
+        .fold(0.0f32, f32::max);
+    assert!(
+        pior <= 0.5 / 255.0 + 1e-6,
+        "as amostras voltaram a {pior} — mais de meio degrau"
+    );
+    let n = t.amostras().len();
+    assert!(
+        volta.amostras()[n / 4..n / 3]
+            .iter()
+            .all(|c| (c[0] - 0.9).abs() < 2.0 / 255.0 && (c[2] - 0.05).abs() < 2.0 / 255.0),
+        "a MANCHA não voltou"
     );
 }
 
@@ -353,7 +389,7 @@ fn um_documento_da_versao_anterior_abre_e_vem_sem_plano() {
 /// escritor mudar leva as duas a medir a mesma metade, em silêncio.
 #[test]
 fn um_plano_que_nao_descreve_a_malha_recusa_o_load() {
-    use super::doc_tinta::AmostrasDoc;
+    use super::doc_tinta::Forma;
 
     let (stack, pose, junto) = peca_com_plano(2);
     let distinto = {
@@ -362,7 +398,7 @@ fn um_plano_que_nao_descreve_a_malha_recusa_o_load() {
         let mut t = ph2d_mesh_colors::Tinta::nova(m.vert_count(), faces(), 2);
         let n = t.amostras().len();
         for i in 0..n {
-            t.amostras_mut()[i] = [i as f32, -(i as f32), 0.5];
+            t.amostras_mut()[i] = [(i % 256) as f32 / 255.0, 0.0, 0.5];
         }
         t
     };
@@ -379,16 +415,18 @@ fn um_plano_que_nao_descreve_a_malha_recusa_o_load() {
             .tinta
             .as_mut()
             .expect("a fixtura tem plano")
-            .amostras;
+            .camadas
+            .planos[0]
+            .rgba;
         assert_eq!(
-            matches!(amostras, AmostrasDoc::Corridas(_)),
+            matches!(amostras, Forma::Corridas(_)),
             corridas_esperadas,
             "{nome}: a fixtura deixou de tomar a forma que este caso existe \
              para exercer — as duas células passariam a medir a MESMA metade"
         );
         match amostras {
-            AmostrasDoc::Corridas(c) => c.push((1, [0.0, 0.0, 0.0])),
-            AmostrasDoc::Cruas(v) => v.push([0.0, 0.0, 0.0]),
+            Forma::Corridas(c) => c.push((1, [0; 4])),
+            Forma::Cruas(v) => v.push([0; 4]),
         }
         let forjado = postcard::to_allocvec(&doc).expect("serializa");
 
@@ -427,8 +465,11 @@ fn as_duas_formas_das_amostras_fazem_o_que_prometem() {
     // (a) ⭐ O plano de uma peça NUNCA PINTADA cabe em nada. É o caso do
     //     artista que acabou de armar o degrau, e é o que tira `75 MB` de cima
     //     de um `Ctrl+S` na peça de fábrica.
-    let nova = ph2d_mesh_colors::Tinta::nova(m.vert_count(), faces(), 3);
-    let cru = nova.amostras().len() * 12;
+    // ⚠️ Desde o v6 a amostra crua é um píxel RGBA8 de camada: `4` bytes.
+    //     ⚠️ E o degrau é `5`: o metadado da camada (~`45 B`) é fixo, e a `3`
+    //     o octaedro só tem `258` amostras — o custo fixo pesaria mais que o plano.
+    let nova = ph2d_mesh_colors::Tinta::nova(m.vert_count(), faces(), 5);
+    let cru = nova.amostras().len() * 4;
     let a = custo(&nova);
     assert!(
         a * 50 < cru,
@@ -439,13 +480,17 @@ fn as_duas_formas_das_amostras_fazem_o_que_prometem() {
     // (b) ⛔ E o plano de uma peça com cor VARIADA nunca custa MAIS que cru.
     //     É isto que a segunda forma compra: sem ela a medição lê `1,083×`,
     //     porque cada corrida de uma amostra paga o variante a mais.
-    let n = m.vert_count();
-    let variadas: Vec<[f32; 3]> = (0..n).map(|i| [i as f32 / n as f32, 0.4, 0.6]).collect();
-    let semeada = ph2d_mesh_colors::Tinta::semeada(&variadas, faces(), 3);
-    let cru = semeada.amostras().len() * 12;
+    //     ⚠️ Desde o v6 «distintas» é nos BYTES: uma semente interpolada cai
+    //     em degraus iguais de sRGB8, então a fixtura escreve-os à mão. E o
+    //     custo fixo da pilha (o metadado da camada) é o da metade (a).
+    let mut semeada = ph2d_mesh_colors::Tinta::nova(m.vert_count(), faces(), 3);
+    for (i, c) in semeada.amostras_mut().iter_mut().enumerate() {
+        *c = [(i % 256) as f32 / 255.0, 0.4, 0.6];
+    }
+    let cru = semeada.amostras().len() * 4;
     let b = custo(&semeada);
     assert!(
-        b <= cru + 16,
+        b <= cru + a + 16,
         "um plano de amostras todas distintas custou {b} B contra {cru} B crus: \
          o escritor deixou de escolher a forma MENOR"
     );
@@ -524,7 +569,8 @@ fn um_plano_graduado_de_um_ficheiro_antigo_abre_uniforme_com_a_tinta_dele() {
         "o CONTROLO: o plano da fixtura não é uniforme"
     );
 
-    let bytes = encode(&[(stack.to_data(), pose.to_data(), Some(&t))], 0);
+    // ⚠️ Um plano GRADUADO só existe em ficheiros até ao v5: é dali que ele vem.
+    let bytes = encode_v5(&stack, &pose, &t);
     let (lidas, _) = decode(&bytes).expect("um ficheiro antigo continua a abrir");
     let volta = lidas[0].tinta.as_ref().expect("a peça tinha plano");
 

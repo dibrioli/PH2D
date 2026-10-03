@@ -41,7 +41,7 @@ use super::{SceneObject, Sculpt3dScene};
 /// não falha, devolve lixo bem-formado. O gate `the_shape_of_a_saved_scene_is_pinned`
 /// prende o tamanho codificado de uma cena-fixture justamente para transformar
 /// "lembre-se" em vermelho.
-pub(crate) const SCULPT_DOC_VERSION: u32 = 5;
+pub(crate) const SCULPT_DOC_VERSION: u32 = 6;
 
 /// A versão que ganhou o plano de tinta fina — e a primeira que este módulo
 /// teve de MIGRAR. Ver [`decode`].
@@ -59,7 +59,27 @@ const V_ANTES_DO_RELEVO: u32 = 3;
 /// o anel na borda do traço). Ver [`decode`].
 const V_ANTES_DO_CORPO: u32 = 4;
 
-/// ⭐⭐⭐⭐ **O PLANO DE TINTA FINA de uma peça, como o arquivo o guarda.**
+/// A versão em que o plano era UMA imagem de cor `f32` — antes das camadas do
+/// Painter na peça (`docs/3D/30`). Ver [`decode`].
+const V_ANTES_DAS_CAMADAS: u32 = 5;
+
+/// ⭐⭐⭐⭐ **O PLANO DE TINTA FINA de uma peça, como o arquivo o guarda** (v6):
+/// a topologia (o degrau e, num plano antigo, o nível de cada face) e a PILHA
+/// de camadas — a cor da peça é a composição dela, e não se grava.
+///
+/// ⚠️ **A cor de cada camada é RGBA8** (a precisão das camadas do Painter): um
+/// plano `v5` (cor `f32`) abre como UMA camada e regrava-se a no máximo meio
+/// degrau de sRGB8 do que era. O relevo continua `f32`, ao bit.
+#[derive(Serialize, Deserialize)]
+struct TintaDoc {
+    nivel: u8,
+    /// O nível de cada face — vazio = UNIFORME (ver o [`TintaDocV5`]).
+    niveis: Vec<u8>,
+    camadas: doc_camadas::CamadasDoc,
+}
+
+/// ⭐⭐⭐⭐ **O PLANO DE TINTA FINA de um documento v5** — congelado, e lido só
+/// pela migração.
 ///
 /// ⭐ **Só o NÍVEL e as AMOSTRAS.** A [`ph2d_mesh_colors::Topologia`] é
 /// **derivada** das faces da malha que viaja ao lado — guardá-la seria guardar
@@ -69,8 +89,9 @@ const V_ANTES_DO_CORPO: u32 = 4;
 /// ⚠️ **As amostras vão em CORRIDAS** e o porquê tem números: ver o cabeçalho
 /// do [`doc_tinta`]. Em resumo — o `8x` da peça de fábrica são `75,5 MB` crus e
 /// `~0` quando o plano ainda não foi pintado.
-#[derive(Serialize, Deserialize)]
-struct TintaDoc {
+#[derive(Deserialize)]
+#[cfg_attr(test, derive(Serialize))]
+struct TintaDocV5 {
     nivel: u8,
     amostras: doc_tinta::AmostrasDoc,
     /// ⭐⭐⭐⭐ **O nível de CADA FACE — vazio quer dizer UNIFORME.**
@@ -89,6 +110,26 @@ struct TintaDoc {
     /// peça, `docs/3D/29`), nas mesmas corridas da cor. `None` = o plano nunca
     /// levou impasto, e custa UM byte.
     relevo: Option<doc_tinta::RelevoDoc>,
+}
+
+/// A peça de um documento **v5** — congelada, e lida só pela migração.
+#[derive(Deserialize)]
+#[cfg_attr(test, derive(Serialize))]
+struct ObjectDocV5 {
+    stack: StackData,
+    pose: PoseData,
+    tinta: Option<TintaDocV5>,
+}
+
+/// Um documento **v5** — congelado, e lido só pela migração (e escrito pelos
+/// gates dela).
+#[derive(Deserialize)]
+#[cfg_attr(test, derive(Serialize))]
+struct SculptDocV5 {
+    #[allow(dead_code)]
+    version: u32,
+    objects: Vec<ObjectDocV5>,
+    active: u32,
 }
 
 /// O plano de tinta de um documento **v4** — congelado, e lido só pela
@@ -290,22 +331,71 @@ pub fn decode(bytes: &[u8]) -> Result<(Vec<LoadedPiece>, usize), SculptDocError>
     // um v1 falha a parsar como v2, e o postcard é POSICIONAL: *ele devolve
     // lixo bem-formado*.
     let (versao, _) = postcard::take_from_bytes::<u32>(bytes).map_err(SculptDocError::Bytes)?;
-    let doc = match versao {
-        SCULPT_DOC_VERSION => postcard::from_bytes(bytes).map_err(SculptDocError::Bytes)?,
+    let (objetos, active) = if versao == SCULPT_DOC_VERSION {
+        let doc: SculptDoc = postcard::from_bytes(bytes).map_err(SculptDocError::Bytes)?;
+        let objetos = doc
+            .objects
+            .into_iter()
+            .map(|o| (o.stack, o.pose, o.tinta.map(TintaGravada::Camadas)));
+        (objetos.collect::<Vec<_>>(), doc.active)
+    } else {
+        let doc = ate_v5(versao, bytes)?;
+        let objetos = doc
+            .objects
+            .into_iter()
+            .map(|o| (o.stack, o.pose, o.tinta.map(TintaGravada::Plano)));
+        (objetos.collect::<Vec<_>>(), doc.active)
+    };
+    let mut pieces = Vec::with_capacity(objetos.len());
+    for (i, (stack, pose, tinta)) in objetos.into_iter().enumerate() {
+        let stack = Multires::from_data(stack).map_err(SculptDocError::Content)?;
+        // ⚠️ **O plano é montado DEPOIS da malha e a partir dela**: a topologia
+        // é derivada das faces que acabaram de ser lidas, e é isso que faz o
+        // documento não precisar de a guardar.
+        let tinta = match tinta {
+            None => None,
+            Some(TintaGravada::Plano(t)) => Some(tinta_de(&stack, &t, i)?),
+            Some(TintaGravada::Camadas(t)) => Some(tinta_das_camadas(&stack, t, i)?),
+        };
+        pieces.push(LoadedPiece {
+            stack,
+            pose: Pose::from_data(pose),
+            tinta,
+        });
+    }
+    // Clamp e não erro: a lista pode estar vazia (documento de projeto sem
+    // escultura), e "quem estava em mãos" é conforto de sessão — recusar o
+    // arquivo inteiro por causa dele seria desproporcional.
+    let active = (active as usize).min(pieces.len().saturating_sub(1));
+    Ok((pieces, active))
+}
+
+/// O plano de uma peça como o ficheiro o trouxe: a imagem `f32` de um
+/// documento até ao v5, ou a pilha de camadas do v6.
+enum TintaGravada {
+    Plano(TintaDocV5),
+    Camadas(TintaDoc),
+}
+
+/// **Um documento ANTERIOR às camadas, lido até à forma v5** — a cadeia de
+/// migrações de cada degrau. ⛔ Uma versão que nenhum degrau conhece é recusa.
+fn ate_v5(versao: u32, bytes: &[u8]) -> Result<SculptDocV5, SculptDocError> {
+    Ok(match versao {
+        V_ANTES_DAS_CAMADAS => postcard::from_bytes(bytes).map_err(SculptDocError::Bytes)?,
         // ⭐ **A MIGRAÇÃO do corpo.** Um relevo gravado antes do corpo era só a
         // altura, e a luz inclinava pela altura inteira ⇒ corpo `1` onde havia
         // espessura descreve-o exactamente.
         V_ANTES_DO_CORPO => {
             let v4: SculptDocV4 = postcard::from_bytes(bytes).map_err(SculptDocError::Bytes)?;
-            SculptDoc {
-                version: SCULPT_DOC_VERSION,
+            SculptDocV5 {
+                version: V_ANTES_DAS_CAMADAS,
                 objects: v4
                     .objects
                     .into_iter()
-                    .map(|o| ObjectDoc {
+                    .map(|o| ObjectDocV5 {
                         stack: o.stack,
                         pose: o.pose,
-                        tinta: o.tinta.map(|t| TintaDoc {
+                        tinta: o.tinta.map(|t| TintaDocV5 {
                             nivel: t.nivel,
                             amostras: t.amostras,
                             niveis: t.niveis,
@@ -320,15 +410,15 @@ pub fn decode(bytes: &[u8]) -> Result<(Vec<LoadedPiece>, usize), SculptDocError>
         // peça não tinha relevo ⇒ `None` descreve-o exactamente.
         V_ANTES_DO_RELEVO => {
             let v3: SculptDocV3 = postcard::from_bytes(bytes).map_err(SculptDocError::Bytes)?;
-            SculptDoc {
-                version: SCULPT_DOC_VERSION,
+            SculptDocV5 {
+                version: V_ANTES_DAS_CAMADAS,
                 objects: v3
                     .objects
                     .into_iter()
-                    .map(|o| ObjectDoc {
+                    .map(|o| ObjectDocV5 {
                         stack: o.stack,
                         pose: o.pose,
-                        tinta: o.tinta.map(|t| TintaDoc {
+                        tinta: o.tinta.map(|t| TintaDocV5 {
                             nivel: t.nivel,
                             amostras: t.amostras,
                             niveis: t.niveis,
@@ -346,15 +436,15 @@ pub fn decode(bytes: &[u8]) -> Result<(Vec<LoadedPiece>, usize), SculptDocError>
         // exactamente, e o load não muda um bit da tinta.
         V_ANTES_DA_GRADUACAO => {
             let v2: SculptDocV2 = postcard::from_bytes(bytes).map_err(SculptDocError::Bytes)?;
-            SculptDoc {
-                version: SCULPT_DOC_VERSION,
+            SculptDocV5 {
+                version: V_ANTES_DAS_CAMADAS,
                 objects: v2
                     .objects
                     .into_iter()
-                    .map(|o| ObjectDoc {
+                    .map(|o| ObjectDocV5 {
                         stack: o.stack,
                         pose: o.pose,
-                        tinta: o.tinta.map(|t| TintaDoc {
+                        tinta: o.tinta.map(|t| TintaDocV5 {
                             nivel: t.nivel,
                             amostras: t.amostras,
                             niveis: Vec::new(),
@@ -367,12 +457,12 @@ pub fn decode(bytes: &[u8]) -> Result<(Vec<LoadedPiece>, usize), SculptDocError>
         }
         V_ANTES_DA_TINTA => {
             let v1: SculptDocV1 = postcard::from_bytes(bytes).map_err(SculptDocError::Bytes)?;
-            SculptDoc {
-                version: SCULPT_DOC_VERSION,
+            SculptDocV5 {
+                version: V_ANTES_DAS_CAMADAS,
                 objects: v1
                     .objects
                     .into_iter()
-                    .map(|o| ObjectDoc {
+                    .map(|o| ObjectDocV5 {
                         stack: o.stack,
                         pose: o.pose,
                         tinta: None,
@@ -387,48 +477,13 @@ pub fn decode(bytes: &[u8]) -> Result<(Vec<LoadedPiece>, usize), SculptDocError>
                 expected: SCULPT_DOC_VERSION,
             });
         }
-    };
-    let mut pieces = Vec::with_capacity(doc.objects.len());
-    for (i, o) in doc.objects.into_iter().enumerate() {
-        let stack = Multires::from_data(o.stack).map_err(SculptDocError::Content)?;
-        // ⚠️ **O plano é montado DEPOIS da malha e a partir dela**: a topologia
-        // é derivada das faces que acabaram de ser lidas, e é isso que faz o
-        // documento não precisar de a guardar.
-        let tinta = match o.tinta {
-            None => None,
-            Some(t) => Some(tinta_de(&stack, &t, i)?),
-        };
-        pieces.push(LoadedPiece {
-            stack,
-            pose: Pose::from_data(o.pose),
-            tinta,
-        });
-    }
-    // Clamp e não erro: a lista pode estar vazia (documento de projeto sem
-    // escultura), e "quem estava em mãos" é conforto de sessão — recusar o
-    // arquivo inteiro por causa dele seria desproporcional.
-    let active = (doc.active as usize).min(pieces.len().saturating_sub(1));
-    Ok((pieces, active))
+    })
 }
 
 /// **O plano de uma peça, reconstruído contra a malha que acabou de ser lida.**
-fn tinta_de(stack: &Multires, doc: &TintaDoc, peca: usize) -> Result<Tinta, SculptDocError> {
+fn tinta_de(stack: &Multires, doc: &TintaDocV5, peca: usize) -> Result<Tinta, SculptDocError> {
     let mesh = stack.mesh();
-    let faces = || mesh.faces().iter().map(ph2d_mesh::Face::verts);
-    // ⭐⭐ **A lista vazia é o plano UNIFORME**, que é o que todo documento
-    // anterior à P2 tem. ⛔ E uma lista que não descreve esta malha é RECUSA e
-    // não um plano uniforme de consolação: *as amostras estão guardadas por
-    // ÍNDICE, e um índice contra outra disposição é tinta no sítio errado*.
-    let mut t = if doc.niveis.is_empty() {
-        Tinta::nova(mesh.vert_count(), faces(), doc.nivel)
-    } else {
-        Tinta::graduada(mesh.vert_count(), faces(), &doc.niveis, doc.nivel).ok_or(
-            SculptDocError::Tinta {
-                peca,
-                esperadas: doc.niveis.len(),
-            },
-        )?
-    };
+    let mut t = plano_vazio(mesh, doc.nivel, &doc.niveis, peca)?;
     let esperadas = t.amostras().len();
     let amostras = doc
         .amostras
@@ -444,6 +499,68 @@ fn tinta_de(stack: &Multires, doc: &TintaDoc, peca: usize) -> Result<Tinta, Scul
             .ok_or(SculptDocError::Tinta { peca, esperadas })?;
         t.com_relevo(Some(relevo));
     }
+    uniforme(t, mesh, peca)
+}
+
+/// ⭐⭐⭐ **O plano de uma peça de um documento v6: a COMPOSIÇÃO da pilha.**
+///
+/// ⚠️ O fundo (a semente da cor por vértice) só se constrói se alguma amostra
+/// do composto não é opaca — a pilha de um plano v5 migrado é opaca.
+fn tinta_das_camadas(
+    stack: &Multires,
+    doc: TintaDoc,
+    peca: usize,
+) -> Result<Tinta, SculptDocError> {
+    let mesh = stack.mesh();
+    let mut t = plano_vazio(mesh, doc.nivel, &doc.niveis, peca)?;
+    let esperadas = t.amostras().len();
+    let pilha = doc
+        .camadas
+        .pilha(esperadas)
+        .ok_or(SculptDocError::Tinta { peca, esperadas })?;
+    let fundo = || {
+        let faces = || mesh.faces().iter().map(ph2d_mesh::Face::verts);
+        let semente = if doc.niveis.is_empty() {
+            Some(crate::tinta_da_peca::semente(mesh, doc.nivel))
+        } else {
+            match mesh.colors() {
+                Some(c) => Tinta::semeada_graduada(c, faces(), &doc.niveis, doc.nivel),
+                None => Tinta::graduada(mesh.vert_count(), faces(), &doc.niveis, doc.nivel),
+            }
+        };
+        semente.map(|s| s.amostras().to_vec()).unwrap_or_default()
+    };
+    pilha.pinta_tinta(&mut t, fundo);
+    uniforme(t, mesh, peca)
+}
+
+/// **O plano em branco que a topologia gravada descreve.**
+///
+/// ⭐⭐ **A lista vazia é o plano UNIFORME**, que é o que todo documento
+/// anterior à P2 tem. ⛔ E uma lista que não descreve esta malha é RECUSA e
+/// não um plano uniforme de consolação: *as amostras estão guardadas por
+/// ÍNDICE, e um índice contra outra disposição é tinta no sítio errado*.
+fn plano_vazio(
+    mesh: &ph2d_mesh::Mesh,
+    nivel: u8,
+    niveis: &[u8],
+    peca: usize,
+) -> Result<Tinta, SculptDocError> {
+    let faces = || mesh.faces().iter().map(ph2d_mesh::Face::verts);
+    if niveis.is_empty() {
+        Ok(Tinta::nova(mesh.vert_count(), faces(), nivel))
+    } else {
+        Tinta::graduada(mesh.vert_count(), faces(), niveis, nivel).ok_or(SculptDocError::Tinta {
+            peca,
+            esperadas: niveis.len(),
+        })
+    }
+}
+
+/// O plano lido, UNIFORME — ver o porquê abaixo.
+fn uniforme(mut t: Tinta, mesh: &ph2d_mesh::Mesh, peca: usize) -> Result<Tinta, SculptDocError> {
+    let faces = || mesh.faces().iter().map(ph2d_mesh::Face::verts);
+    let esperadas = t.amostras().len();
     // ⭐⭐⭐⭐ **Um plano GRADUADO sai daqui UNIFORME** (2026-09-24, ordem do
     //   dono): o `Even Detail` que os criava foi retirado, e com ele o registo
     //   de `19` palavras que deixava a placa desenhá-los. A conversão LÊ cada
@@ -482,7 +599,6 @@ pub fn encode(pieces: &[(StackData, PoseData, Option<&Tinta>)], active: usize) -
                 pose: *pose,
                 tinta: tinta.map(|t| TintaDoc {
                     nivel: t.nivel(),
-                    amostras: doc_tinta::a_menor_forma(t.amostras()),
                     // ⭐ **Um plano UNIFORME grava a lista VAZIA**, e isso não é
                     //   uma optimização: é o que faz um documento sem graduação
                     //   sair byte a byte como saía antes da P2.
@@ -491,7 +607,11 @@ pub fn encode(pieces: &[(StackData, PoseData, Option<&Tinta>)], active: usize) -
                     } else {
                         t.topologia().niveis().to_vec()
                     },
-                    relevo: t.relevo().map(doc_tinta::a_menor_forma),
+                    // ⚠️ Até à W2 (`docs/3D/30` §7) a peça não segura uma pilha:
+                    //   o plano É a camada de base, e a pilha dele é UMA camada.
+                    camadas: doc_camadas::CamadasDoc::da_pilha(
+                        &crate::pilha_da_peca::PilhaDaPeca::de_tinta(t),
+                    ),
                 }),
             })
             .collect(),
@@ -634,6 +754,10 @@ pub fn install_pending(
 #[path = "doc_tinta.rs"]
 mod doc_tinta;
 
+/// ⭐ **Como a pilha de camadas de um plano cabe num ficheiro** (v6).
+#[path = "doc_camadas.rs"]
+mod doc_camadas;
+
 #[cfg(test)]
 #[path = "doc_tests.rs"]
 mod tests;
@@ -641,3 +765,7 @@ mod tests;
 #[cfg(test)]
 #[path = "doc_relevo_tests.rs"]
 mod relevo_tests;
+
+#[cfg(test)]
+#[path = "doc_camadas_tests.rs"]
+mod camadas_tests;

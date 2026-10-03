@@ -76,6 +76,15 @@ impl Amostra for [f32; 2] {
     }
 }
 
+/// O píxel RGBA8 de uma camada (documento v6, `docs/3D/30` §3) — inteiros, a
+/// igualdade dos bits é a de `==`.
+impl Amostra for [u8; 4] {
+    const BYTES: usize = 4;
+    fn mesmos_bits(&self, outra: &Self) -> bool {
+        self == outra
+    }
+}
+
 impl Amostra for f32 {
     const BYTES: usize = 4;
     fn mesmos_bits(&self, outra: &Self) -> bool {

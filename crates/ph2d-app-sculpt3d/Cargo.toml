@@ -30,6 +30,7 @@ ph2d-app-host = { path = "../ph2d-app-host" }
 ph2d-viewport3d = { path = "../ph2d-viewport3d" }
 
 ph2d-core = { path = "../ph2d-core" }
+ph2d-color = { path = "../ph2d-color" }
 ph2d-crossfield = { path = "../ph2d-crossfield" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }

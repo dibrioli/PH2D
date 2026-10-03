@@ -484,19 +484,23 @@ pub(crate) fn garante_no_orcamento(
     //    sobrescreve aquele que se ia buscar.
     let antigo = tinta.take();
     let mudou = antigo.is_some() || k.is_some();
-    *tinta = k.map(|k| {
-        desparqueia(parque, mesh, k).unwrap_or_else(|| {
-            let faces = || mesh.faces().iter().map(ph2d_mesh::Face::verts);
-            match mesh.colors() {
-                Some(c) => Tinta::semeada(c, faces(), k),
-                None => Tinta::nova(mesh.vert_count(), faces(), k),
-            }
-        })
-    });
+    *tinta = k.map(|k| desparqueia(parque, mesh, k).unwrap_or_else(|| semente(mesh, k)));
     if let Some(t) = antigo {
         *parque = Some(t);
     }
     mudou
+}
+
+/// ⭐⭐ **A SEMENTE de um plano no degrau `k`** — a cor por vértice
+/// interpolada (ou branco, numa malha sem cor): o que a peça mostra sem tinta
+/// fina. É onde um plano novo nasce, e é o FUNDO por baixo da pilha de
+/// camadas onde ela não é opaca (`crate::pilha_da_peca::achata`).
+pub(crate) fn semente(mesh: &Mesh, k: u8) -> Tinta {
+    let faces = || mesh.faces().iter().map(ph2d_mesh::Face::verts);
+    match mesh.colors() {
+        Some(c) => Tinta::semeada(c, faces(), k),
+        None => Tinta::nova(mesh.vert_count(), faces(), k),
+    }
 }
 
 /// ⭐⭐⭐ **O plano parqueado serve este degrau?** — e ele só sai do parque se

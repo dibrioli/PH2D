@@ -2438,3 +2438,32 @@ fn the_gpu_code_sets_are_what_the_routing_believes_they_are() {
         "S/H blurs only an internal luma map; it must not adopt kernel alpha"
     );
 }
+
+/// The set that reads the image's LAYOUT is pinned by name: the CPU compositor serialises a
+/// stack with one of these, and the 3D piece refuses them until it has a surface neighbourhood
+/// (`docs/3D/30` §2). A kind moving in or out changes both, so it has to be a decision.
+#[test]
+fn the_kinds_that_read_the_image_layout_are_the_six_kernels_and_halftone() {
+    use AdjustmentKind::*;
+    let lidos: Vec<_> = ALL_KINDS
+        .iter()
+        .copied()
+        .filter(|k| k.reads_the_image_layout())
+        .collect();
+    assert_eq!(
+        lidos,
+        vec![
+            GaussianBlur,
+            MotionBlur,
+            Bloom,
+            Sharpen,
+            Halftone,
+            ChromaticAberration,
+            ShadowsHighlights
+        ]
+    );
+    assert!(
+        !Noise.reads_the_image_layout(),
+        "Noise hashes its own coordinate and reads no neighbour"
+    );
+}

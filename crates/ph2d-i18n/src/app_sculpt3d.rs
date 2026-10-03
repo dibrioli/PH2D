@@ -176,6 +176,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.sculpt3d.trim_aplica.pilha_montada_j_reverte" => {
             "a multiresolution stack is mounted -- J reverts it and the cut comes back"
         }
+        "app.sculpt3d.pilha_da_peca.camada_de_base" => "Layer 1",
         _ => return None,
     })
 }

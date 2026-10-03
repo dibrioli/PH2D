@@ -65,9 +65,17 @@ fn um_plano_sem_relevo_custa_um_byte() {
         com_relevo > com_none + 8,
         "o CONTROLO: o relevo ocupa bytes"
     );
-    // O v3 escrevia o mesmo documento sem o campo: um byte a menos.
-    let v3 = v3_bytes(&stack, &pose, &t);
-    assert_eq!(com_none, v3.len() + 1, "o `None` é um byte, e mais nada");
+    // ⚠️ Desde o v6 o relevo é de cada CAMADA: a camada sem ele custa o
+    //    byte do `None` sobre o que ela custaria sem o campo, e mais nada.
+    let camadas =
+        super::doc_camadas::CamadasDoc::da_pilha(&crate::pilha_da_peca::PilhaDaPeca::de_tinta(&t));
+    let plano = &camadas.planos[0];
+    assert!(plano.relevo.is_none(), "a fixtura não tem relevo");
+    let com = postcard::to_allocvec(plano).expect("serializa").len();
+    let sem = postcard::to_allocvec(&(plano.id, &plano.rgba))
+        .expect("serializa")
+        .len();
+    assert_eq!(com, sem + 1, "o `None` é um byte, e mais nada");
 }
 
 #[derive(serde::Serialize)]
@@ -171,7 +179,7 @@ fn um_relevo_que_nao_descreve_o_plano_recusa_o_load() {
     let n = t.amostras().len();
     let com = |n: usize| {
         forja(
-            SCULPT_DOC_VERSION,
+            V_ANTES_DAS_CAMADAS,
             &t,
             Some(super::doc_tinta::a_menor_forma(&vec![[0.01f32, 1.0]; n])),
         )

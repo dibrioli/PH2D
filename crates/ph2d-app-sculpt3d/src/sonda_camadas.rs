@@ -8,8 +8,8 @@
 //! amostras do tamanho do que um quadro de traço suja.
 
 use ph2d_tool_painter::{
-    AdjustmentParams, BlendMode, HsbParams, LayerImage, LayerStack, MapPixelSource, Region, composite,
-    composite_region,
+    AdjustmentParams, BlendMode, HsbParams, LayerImage, LayerStack, MapPixelSource, Region,
+    composite, composite_region,
 };
 use std::time::Instant;
 
@@ -17,7 +17,12 @@ fn camada(n: usize, semente: u32) -> LayerImage {
     let mut rgba8 = vec![0u8; n * 4];
     for (i, px) in rgba8.chunks_exact_mut(4).enumerate() {
         let h = (i as u32).wrapping_mul(2_654_435_761) ^ semente;
-        px.copy_from_slice(&[(h >> 8) as u8, (h >> 16) as u8, (h >> 24) as u8, (h & 0xff) as u8]);
+        px.copy_from_slice(&[
+            (h >> 8) as u8,
+            (h >> 16) as u8,
+            (h >> 24) as u8,
+            (h & 0xff) as u8,
+        ]);
     }
     LayerImage {
         width: n as u32,
@@ -32,8 +37,13 @@ fn diag_o_compositor_do_painter_sobre_o_plano_da_peca() {
     for n in [47_106usize, 188_418, 753_666, 3_014_658] {
         let mut pilha = LayerStack::new();
         let mut fonte = MapPixelSource::default();
-        for (k, modo) in [BlendMode::Normal, BlendMode::Multiply, BlendMode::Overlay].into_iter().enumerate() {
-            let id = pilha.add_raster(format!("c{k}"), n as u32, 1).expect("camada");
+        for (k, modo) in [BlendMode::Normal, BlendMode::Multiply, BlendMode::Overlay]
+            .into_iter()
+            .enumerate()
+        {
+            let id = pilha
+                .add_raster(format!("c{k}"), n as u32, 1)
+                .expect("camada");
             pilha.get_mut(id).expect("camada").blend_mode = modo;
             fonte.images.insert(id, camada(n, k as u32 * 77));
         }
@@ -41,7 +51,11 @@ fn diag_o_compositor_do_painter_sobre_o_plano_da_peca() {
             .add_adjustment(ph2d_tool_painter::AdjustmentKind::HueSaturationBrightness)
             .expect("ajuste");
         pilha.adjustment_mut(ajuste).expect("ajuste").params =
-            AdjustmentParams::HueSaturationBrightness(HsbParams { h: 30.0, s: 0.2, b: 0.1 });
+            AdjustmentParams::HueSaturationBrightness(HsbParams {
+                h: 30.0,
+                s: 0.2,
+                b: 0.1,
+            });
         let mut pior = 0.0f64;
         let mut soma = 0.0f64;
         for _ in 0..5 {
@@ -72,12 +86,21 @@ fn diag_o_compositor_do_painter_sobre_o_plano_da_peca() {
         for (id, img) in &fonte.images {
             let mut rgba8 = img.rgba8.clone();
             rgba8.resize((largura * altura * 4) as usize, 0);
-            dobrada.images.insert(*id, LayerImage { width: largura, height: altura, rgba8 });
+            dobrada.images.insert(
+                *id,
+                LayerImage {
+                    width: largura,
+                    height: altura,
+                    rgba8,
+                },
+            );
         }
         let mut pilha_d = pilha.clone();
         let ids: Vec<_> = pilha_d.all_ids().collect();
         for id in ids {
-            if let Some(ph2d_tool_painter::LayerKind::Raster(r)) = pilha_d.get_mut(id).map(|l| &mut l.kind) {
+            if let Some(ph2d_tool_painter::LayerKind::Raster(r)) =
+                pilha_d.get_mut(id).map(|l| &mut l.kind)
+            {
                 r.width = largura;
                 r.height = altura;
             }

@@ -207,7 +207,7 @@ integrador — releia a ORDEM das fases do quadro só se outra linha mexer em `f
 
 ## §7 — OS SMOKES
 
-✅ **Smoke do dono APROVADO em 03/10** (a `=127` pelo comando abaixo).
+✅ **Smoke do dono APROVADO em 03/10** (a `=127` pelo comando abaixo); e de novo depois da §6.2, a memória das células).
 
 Do dono (passos; binário já compilado — `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`
 corrido 2× DEPOIS do `f2b830bcf` e do `rm -rf target/*/incremental`, a 2.ª saída: `Finished smoke profile [optimized] target(s) in 0.26s`, zero `Compiling`; a `=127` re-fotografada depois da §6.2):

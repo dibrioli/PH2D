@@ -5,8 +5,7 @@
 > `1ad60a1ce` (main não andou). Commits: `f6c128d26` o céu do chão · `886033b8d` os gates dele ·
 > `83866949c` a crate `ph2d-contacto` · `71c0d2be6` o contacto na placa · `14490aa71` a oclusão própria
 > (cones, depois trocada) · `6fc671bd4` o app assa do campo DO OBJETO · `2526730db` o custo por pixel ·
-> `b8b47730b` a cena 40 · `628928ecd` a costura · `4f5409497` raios no campo cru. **Smoke do dono:
-> pendente.**
+> `b8b47730b` a cena 40 · `628928ecd` a costura · `4f5409497` raios no campo cru · `20d7aac4f` as mutações. **Smoke do dono: OK (03/10).**
 
 ## ⛔ A premissa do briefing que a medição derrubou
 
@@ -184,7 +183,7 @@ diz como se corre).
 
 ## §7 — Reports do dono
 
-- (pendente)
+- ✅ Smoke OK (03/10): *«smoke ok»*.
 
 ## §8 — A PRÓXIMA ONDA
 

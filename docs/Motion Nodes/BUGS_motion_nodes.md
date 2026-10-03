@@ -17,6 +17,7 @@
 | [4](#bug-4--o-multiply-não-desobedecia-à-alfa-ele-a-invertia-e-o-gate-media-o-único-ponto-em-que-os-modos-concordam) | **"Shadow multiply não obedece o alpha"** (cena `=84`) | `fx.drop_shadow` (acusado, **inocente**) + o par de fatores do `Multiply` em `ph2d-render` | ✅ **FECHADO — smoke aprovado** (cena `=84`, linha ALFA) — resposta invertida, num gate verde há anos | 2026-08-23 |
 | [5](#bug-5--o-editor-de-curva-era-oferecido-numa-onda-que-não-o-lê--e-o-censo-que-o-teria-apanhado-não-podia-vê-lo) | **"Wave curve dos osciladores não está funcionando"** (com foto) | `motion.oscillator` (o MOTOR, **inocente**) + a tabela de gates dele — e mais DOIS nós pelo mesmo mecanismo | ✅ **CURADO** (aguarda smoke, cena `=94`) — o editor aparecia em toda onda e só era lido na `Custom` | 2026-08-24 |
 | [11](#bug-11--a-seta-diferente-era-a-única-certa-a-família-do-rig-escreve-o-ângulo-local-na-coluna-que-o-desenho-lê-como-mundo) | **"Em skeleton o último objeto tem direção diferente"** (com foto) | a família do **RIG** (7 nós, 6 cópias do `fk.rs`) — e a seta acusada é a ÚNICA certa | ✅ **CURADO** (aguarda smoke) — `rot` passa a levar o MUNDO, `lrot` o local; 6 provas de mutação | 2026-09-19 |
+| [12](#bug-12--o-fio-agia-e-o-cartão-dizia-que-não-a-row-ligada-desenhava-o-número-morto) | **"Number no Strength do Vortex não tem efeito"** + **"Number não aceita negativos"** | o CARTÃO (a row ligada desenhava o override) + a faixa `0..40` das forças com sentido — o cook era **inocente** nas duas rotas | ✅ **CURADO** (aguarda smoke, cena `=128`) | 2026-10-03 |
 
 ---
 
@@ -1218,3 +1219,66 @@ escrita no script para ninguém a ler como buraco.*
   três. A cura tocou nas seis cópias à mão; uma folha partilhada é wave própria.
 - O `rig.skeleton` **não** ganhou o interruptor que o L-System tem (`orient_world`). Ninguém o
   pediu, e o dono viu o mundo como a resposta certa — *fica nomeado, não construído*.
+
+---
+
+## Bug #12 — o fio AGIA e o cartão dizia que não: a row ligada desenhava o número MORTO
+
+**Estado:** ✅ **CURADO** em 2026-10-03 (aguarda smoke, cena `=128`) · handoff
+[03/10 §6.3](handoffs/HANDOFF_INTEGRACAO_line_motion_value_2026-10-03.md).
+
+### Sintoma
+
+Report do Enio no smoke de 03/10: *«ligar a saída de um Number à entrada Strength de um Vortex: o
+fio aparece, mas o valor não tem efeito (o Vortex continua com o valor do cartão)»* — e, no mesmo
+gesto, *«Number não aceita valores negativos»*.
+
+### As hipóteses que CAÍRAM (medidas, nesta ordem)
+
+| hipótese | medição | resultado |
+|---|---|---|
+| a CPU ignora o fio | marcha real da bomba (`advance_or_scrub_scoped`), `cartão 4 + fio 20` contra `cartão 20` | **iguais ao bit**; `fio −20` é o espelho |
+| a PLACA ignora o fio / o kernel lê o `strength` por outra porta | `cook_gpu` (a rota do produto), a mesma cena | `fully-GPU`, `fio 20` = `cartão 20` a `1 ULP` da CPU |
+| o fio ligado a MEIO da corrida, pelo gesto (`subgraph::drive`), não entra | 30 tiques sem fio, liga, mais 30 | o campo muda; editar o Number depois também |
+| a cena do dono (`=127`, galáxia em modo alvo) é diferente | `=127` + fio a meio | Number 30 move a órbita, Number 1 ligeiramente |
+
+### O mecanismo
+
+**Dois canais respondiam à mesma pergunta com leis diferentes.** O painel lateral mostra numa row
+ligada o número que o fio PÕE (`params_stream::driven_value`, doc 58); o CARTÃO — que vai
+substituir o painel — desenhava o override AUTORADO, e o doc do `CardParam::value` justificava-o
+(*«um param dirigido só tem valor durante o cozimento, e desenhá-lo faria a row tremer»*) — falso: a
+porta do painel lê a memória do quadro anterior, estável no quadro, e na rota da placa o condutor é
+cozido na CPU (`valores_dirigidos`), então a memória existe nas duas rotas. O artista via `2` na
+linha do Vortex enquanto a força usava o número do fio, e concluía que o fio não agia.
+
+E o «não aceita negativos» era o MESMO desenho visto do outro lado: um Number ligado veste a faixa
+do param que conduz (`ParamUnit::FromWire`), e o `Strength` das forças com SENTIDO declarava `0..40`
+— o arrasto parava no zero. (A digitação passava: medido pelo teclado real, `-1` chega.)
+
+### O gate que estava VERDE, e porquê
+
+`the_card_shows_and_drags_the_same_numbers_the_panel_does` compara cartão e painel em **todo** tipo
+de nó do registry — sobre nós SOLTOS. Um param ligado nunca entrou na população dele. *Uma régua
+por catálogo é cega a todo estado que o catálogo não monta.*
+
+### A cura
+
+- O cartão lê o valor pela MESMA porta do painel (`motion_bridge_card_params.rs`), e o doc do
+  `CardParam::value` diz a lei verdadeira.
+- `strength` a `±40` no Vortex, no Attractor, no Curl e no Wind — negativo é o outro sentido **ao
+  bit** (`-s` horário ≡ `s` anti-horário; `-s` ≡ `repel`), e é o único modo de um fio ABRANDAR,
+  PARAR e INVERTER. Densidade e arrasto ficam `≥ 0`: ali o negativo é outra física.
+- ⛔ Achado vizinho, pela mutação: a caixa de número do cartão **não aplicava faixa digitável
+  nenhuma** (`999999` num tecto de `100` entrava) e o doc dela dizia que o `NumberInput` clampava —
+  ele só clampa ligado a um slider. A faixa aplica-se agora no `commit`.
+
+### Lições generalizáveis
+
+1. ⛔ **Um report de «não tem efeito» pode ser um MOSTRADOR a mentir.** Medir o motor primeiro
+   derrubou as três hipóteses do briefing; a pergunta seguinte é *o que o artista OLHOU para
+   concluir isso?*
+2. ⛔ **Quando um canal vai substituir outro, a lei do antigo é o contrato do novo** — linha a linha,
+   e no ESTADO em que ela importa (ligado, não solto).
+3. ⛔ **Um doc que justifica uma divergência com um custo («faria tremer») tem de nomear a medição** —
+   este não tinha nenhuma, e a porta irmã já provava o contrário.

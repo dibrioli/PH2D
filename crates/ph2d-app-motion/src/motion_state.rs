@@ -121,6 +121,10 @@ pub(crate) mod carimbo_demo;
 #[path = "motion_state_traco_esticado_demo.rs"]
 pub(crate) mod traco_esticado_demo;
 
+/// A cena `=128` — um Number no `Strength` do Vortex (report de 2026-10-03). Ver o cabeçalho dela.
+#[path = "motion_state_fio_vortex_demo.rs"]
+mod fio_vortex_demo;
+
 /// A cena `=122` — o passe sobre uma SIMULAÇÃO a correr (doc 115 §15.2).
 #[path = "motion_state_passe_sim_demo.rs"]
 mod passe_sim_demo;

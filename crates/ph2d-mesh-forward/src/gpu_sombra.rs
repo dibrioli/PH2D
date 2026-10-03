@@ -70,7 +70,7 @@ pub(super) fn chave(
     match cena.foto.filter(|_| tem_ceu) {
         Some(f) => {
             let s = sol?;
-            if !(f.caixa > 0.0) {
+            if f.caixa.is_nan() || f.caixa <= 0.0 {
                 return None;
             }
             // O inverso do `ph2d_sky::gira` (o céu → o mundo).

@@ -89,7 +89,10 @@ fn sky_sol_cos(d: vec3<f32>, s: vec3<f32>) -> f32 {
 ";
 
 fn lista(v: &[u32]) -> String {
-    v.iter().map(|x| format!("{x}u")).collect::<Vec<_>>().join(", ")
+    v.iter()
+        .map(|x| format!("{x}u"))
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 /// ⭐ A fonte, com as constantes do atlas escritas a partir das da CPU (nunca à mão).

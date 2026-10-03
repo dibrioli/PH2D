@@ -123,8 +123,10 @@ fn o_nosso(
     // sol é RGB 0 e passaria por chão.
     c.chao = None;
     let sem_chao = fw.quadro(&c).expect("quadro sem chão");
-    img.chunks_exact(4)
-        .zip(sem_chao.chunks_exact(4))
+    img.as_chunks::<4>()
+        .0
+        .iter()
+        .zip(sem_chao.as_chunks::<4>().0)
         .map(|(px, obj)| (obj[3] == 0).then(|| f32::from(px[3]) / 255.0))
         .collect()
 }
@@ -327,7 +329,7 @@ fn a_sombra_do_sol_e_a_do_cycles() {
 fn os_ajudantes_sao_ccw_para_fora() {
     for (nome, (p, _, idx)) in [("esfera", esfera(0.5)), ("cubo", cubo(0.4))] {
         let mut maus = 0;
-        for t in idx.chunks_exact(3) {
+        for t in idx.as_chunks::<3>().0 {
             let (a, b, c) = (p[t[0] as usize], p[t[1] as usize], p[t[2] as usize]);
             let (u, v) = (
                 [0, 1, 2].map(|i| b[i] - a[i]),

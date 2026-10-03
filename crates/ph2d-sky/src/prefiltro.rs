@@ -101,7 +101,11 @@ fn base(n: [f64; 3]) -> ([f64; 3], [f64; 3]) {
 pub(crate) fn lobo(pir: &[Panorama], r: [f32; 3], alpha: f32, m: u32, filtrada: bool) -> Rgb {
     let rn = {
         let l = f64::from(r[0] * r[0] + r[1] * r[1] + r[2] * r[2]).sqrt();
-        [f64::from(r[0]) / l, f64::from(r[1]) / l, f64::from(r[2]) / l]
+        [
+            f64::from(r[0]) / l,
+            f64::from(r[1]) / l,
+            f64::from(r[2]) / l,
+        ]
     };
     let (t, b) = base(rn);
     let a2 = f64::from(alpha) * f64::from(alpha);
@@ -186,7 +190,12 @@ pub(crate) fn fontes_conv(pir: &[Panorama], alpha: f32) -> Vec<([f64; 3], [f64; 
             let n = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
             v.push((
                 d.map(|k| k / n),
-                [f64::from(c[0]) * om, f64::from(c[1]) * om, f64::from(c[2]) * om, om],
+                [
+                    f64::from(c[0]) * om,
+                    f64::from(c[1]) * om,
+                    f64::from(c[2]) * om,
+                    om,
+                ],
             ));
         }
     }

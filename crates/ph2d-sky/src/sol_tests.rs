@@ -71,7 +71,10 @@ fn o_sol_e_achado_e_so_ele() {
             let d = p.direcao(x, y).map(f64::from);
             let (a, b) = (p.rgb[i], sem.rgb[i]);
             if angulo(d, forte) <= 1.0f64.to_radians() {
-                assert!((luma(b) - limiar).abs() < 1.0e-3 * limiar, "não preso ao limiar");
+                assert!(
+                    (luma(b) - limiar).abs() < 1.0e-3 * limiar,
+                    "não preso ao limiar"
+                );
                 let r = |c: [f32; 3]| c[0] / c[2];
                 assert!((r(a) - r(b)).abs() < 1.0e-5, "a cor mudou");
             } else {
@@ -82,9 +85,9 @@ fn o_sol_e_achado_e_so_ele() {
             }
         }
     }
-    for k in 0..3 {
-        let rel = (f64::from(sol.energia[k]) - energia[k]).abs() / energia[k];
-        assert!(rel < 1.0e-4, "energia do canal {k}: {} contra {}", sol.energia[k], energia[k]);
+    for (k, (s, e)) in sol.energia.iter().zip(energia).enumerate() {
+        let rel = (f64::from(*s) - e).abs() / e;
+        assert!(rel < 1.0e-4, "energia do canal {k}: {s} contra {e}");
     }
 }
 
@@ -124,7 +127,11 @@ fn a_tabela_conserva_a_energia() {
             // representa a `≤ 5 %` — o regime do texel de `0,35°` do próprio atlas.
             let resolvido = p.suporte.max(2.0 * f64::from(a)) >= 8.0 * super::PASSO;
             let tecto = if resolvido { 0.003 } else { 0.06 };
-            assert!(rel < tecto, "raio {raio_graus}°, α {a:.5}: ∫T = {s:.6e} contra Ω {om:.6e} ({:.2} %)", 100.0 * rel);
+            assert!(
+                rel < tecto,
+                "raio {raio_graus}°, α {a:.5}: ∫T = {s:.6e} contra Ω {om:.6e} ({:.2} %)",
+                100.0 * rel
+            );
         }
     }
 }
@@ -191,10 +198,24 @@ fn o_ceu_sem_sol_mais_o_sol_e_o_ceu() {
             (v[v.len() / 2], v[(v.len() - 1) * 99 / 100], v[v.len() - 1])
         };
         let (sp, ip, cp) = (q(&|e| e.0), q(&|e| e.1), q(&|e| e.2));
-        eprintln!("{e:?}: separado p50 {:.3} p99 {:.3} máx {:.3} | atlas inteiro p50 {:.3} p99 {:.3} máx {:.3} | sem o sol máx {:.3}", sp.0, sp.1, sp.2, ip.0, ip.1, ip.2, cp.2);
-        assert!(sp.1 <= ip.1 && sp.2 <= ip.2, "{e:?}: a separação erra mais que o atlas inteiro");
-        assert!(sp.2 < 0.02, "{e:?}: céu sem sol + sol erra {:.2} %", 100.0 * sp.2);
-        assert!(cp.2 > 0.2, "{e:?}: o controlo (sem o sol) devia errar muito: {:.2} %", 100.0 * cp.2);
+        eprintln!(
+            "{e:?}: separado p50 {:.3} p99 {:.3} máx {:.3} | atlas inteiro p50 {:.3} p99 {:.3} máx {:.3} | sem o sol máx {:.3}",
+            sp.0, sp.1, sp.2, ip.0, ip.1, ip.2, cp.2
+        );
+        assert!(
+            sp.1 <= ip.1 && sp.2 <= ip.2,
+            "{e:?}: a separação erra mais que o atlas inteiro"
+        );
+        assert!(
+            sp.2 < 0.02,
+            "{e:?}: céu sem sol + sol erra {:.2} %",
+            100.0 * sp.2
+        );
+        assert!(
+            cp.2 > 0.2,
+            "{e:?}: o controlo (sem o sol) devia errar muito: {:.2} %",
+            100.0 * cp.2
+        );
     }
 }
 
@@ -218,7 +239,9 @@ fn o_bordo_tem_dois_passos_da_tabela() {
 }
 
 fn angulo(a: [f64; 3], b: [f64; 3]) -> f64 {
-    (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]).clamp(-1.0, 1.0).acos()
+    (a[0] * b[0] + a[1] * b[1] + a[2] * b[2])
+        .clamp(-1.0, 1.0)
+        .acos()
 }
 
 /// ⚙️ **O instrumento do sol** — por céu: a luz média, o pico, e para cada limiar (em múltiplos da

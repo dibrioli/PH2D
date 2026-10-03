@@ -107,7 +107,9 @@ impl Panorama {
             rgb: b
                 .pixels
                 .iter()
-                .map(|p| [p.r(), p.g(), p.b()].map(|c| if c.is_finite() { c.max(0.0) } else { 0.0 }))
+                .map(|p| {
+                    [p.r(), p.g(), p.b()].map(|c| if c.is_finite() { c.max(0.0) } else { 0.0 })
+                })
                 .collect(),
         })
     }
@@ -127,7 +129,9 @@ impl Panorama {
     /// é o polo `+y`.
     #[must_use]
     pub fn ponto(&self, d: [f32; 3]) -> (f32, f32) {
-        let len = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt().max(1.0e-20);
+        let len = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2])
+            .sqrt()
+            .max(1.0e-20);
         let u = 0.5 + d[2].atan2(d[0]) / core::f32::consts::TAU;
         let v = (d[1] / len).clamp(-1.0, 1.0).acos() / core::f32::consts::PI;
         (u * self.largura as f32, v * self.altura as f32)

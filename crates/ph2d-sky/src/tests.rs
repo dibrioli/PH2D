@@ -39,7 +39,10 @@ fn os_embarcados_decodificam() {
     for e in Embarcado::TODOS {
         let p = e.panorama();
         assert_eq!((p.largura, p.altura), (1024, 512), "{e:?}");
-        assert!(p.rgb.iter().flatten().all(|c| c.is_finite() && *c >= 0.0), "{e:?}");
+        assert!(
+            p.rgb.iter().flatten().all(|c| c.is_finite() && *c >= 0.0),
+            "{e:?}"
+        );
         assert!(luma(p.media()) > 0.0, "{e:?}");
     }
 }
@@ -125,7 +128,10 @@ fn o_pre_filtro_e_a_convolucao() {
             let (p50, p99, max) = quantis(erros);
             eprintln!("{e:?} α={a}: p50 {p50:.4} p99 {p99:.4} max {max:.4}  (atlas em {ms} ms)");
             let (b50, bmax) = if a >= 0.09 { (0.01, 0.08) } else { (0.02, 0.4) };
-            assert!(p50 <= b50 && max <= bmax, "{e:?} α={a}: p50 {p50} max {max}");
+            assert!(
+                p50 <= b50 && max <= bmax,
+                "{e:?} α={a}: p50 {p50} max {max}"
+            );
         }
     }
 }
@@ -246,11 +252,13 @@ fn a_orientacao_e_a_do_blender() {
     for (i, t) in controlos.into_iter().enumerate() {
         for (ceu, tipo, p50, max) in erro_contra_oraculo(t) {
             eprintln!("CONTROLO {i} {ceu}/{tipo}: p50 {p50:.4} max {max:.4}");
-            assert!(p50 >= 0.2, "o controlo {i} {ceu}/{tipo} tem de reprovar: p50 {p50}");
+            assert!(
+                p50 >= 0.2,
+                "o controlo {i} {ceu}/{tipo} tem de reprovar: p50 {p50}"
+            );
         }
     }
 }
-
 
 /// ⚙️ **Instrumento** (não é gate): o erro do atlas contra a convolução, decomposto por nível —
 /// (A) no centro dos texels ao `α` do nível: só a amostragem; (B) em direcções quaisquer: + a leitura
@@ -271,13 +279,31 @@ fn instrumento_decomposicao() {
             let centros: Vec<[f32; 3]> = (0..40u32)
                 .map(|i| crate::prefiltro::centro(1 + (i * 37) % n, 1 + (i * 53 + 7) % n, n))
                 .collect();
-            let ea = quantis(centros.par_iter().map(|d| rel(c.radiance(*d, a), verdade(&p, *d, a), piso)).collect());
+            let ea = quantis(
+                centros
+                    .par_iter()
+                    .map(|d| rel(c.radiance(*d, a), verdade(&p, *d, a), piso))
+                    .collect(),
+            );
             // (B) direcções quaisquer, ao α do nível: amostragem + bilinear.
-            let eb = quantis(direcoes(40).par_iter().map(|d| rel(c.radiance(*d, a), verdade(&p, *d, a), piso)).collect());
+            let eb = quantis(
+                direcoes(40)
+                    .par_iter()
+                    .map(|d| rel(c.radiance(*d, a), verdade(&p, *d, a), piso))
+                    .collect(),
+            );
             // (C) entre este nível e o anterior: + interpolação em √α.
             let am = ((k as f32 - 0.5) / (crate::NIVEIS - 1) as f32).powi(2);
-            let ec = quantis(direcoes(40).par_iter().map(|d| rel(c.radiance(*d, am), verdade(&p, *d, am), piso)).collect());
-            eprintln!("{e:?} k={k} α={a:.4} lado {n}: A p50 {:.4} max {:.4} | B p50 {:.4} max {:.4} | C(α={am:.4}) p50 {:.4} max {:.4}", ea.0, ea.2, eb.0, eb.2, ec.0, ec.2);
+            let ec = quantis(
+                direcoes(40)
+                    .par_iter()
+                    .map(|d| rel(c.radiance(*d, am), verdade(&p, *d, am), piso))
+                    .collect(),
+            );
+            eprintln!(
+                "{e:?} k={k} α={a:.4} lado {n}: A p50 {:.4} max {:.4} | B p50 {:.4} max {:.4} | C(α={am:.4}) p50 {:.4} max {:.4}",
+                ea.0, ea.2, eb.0, eb.2, ec.0, ec.2
+            );
         }
     }
 }

@@ -231,7 +231,10 @@ impl Sol {
         let r = alpha.clamp(0.0, 1.0).sqrt() * (RUGOSIDADES - 1) as f32;
         let a = (1.0 - cos_psi.clamp(-1.0, 1.0)).max(0.0).sqrt() / core::f32::consts::SQRT_2
             * (ANGULOS - 1) as f32;
-        let (r0, a0) = ((r as usize).min(RUGOSIDADES - 2), (a as usize).min(ANGULOS - 2));
+        let (r0, a0) = (
+            (r as usize).min(RUGOSIDADES - 2),
+            (a as usize).min(ANGULOS - 2),
+        );
         let (fr, fa) = (r - r0 as f32, a - a0 as f32);
         let l = |ri: usize, ai: usize| self.tabela[ri * ANGULOS + ai];
         let baixo = l(r0, a0) + (l(r0, a0 + 1) - l(r0, a0)) * fa;
@@ -261,7 +264,9 @@ impl Sol {
 }
 
 fn cosseno(a: [f32; 3], b: [f32; 3]) -> f32 {
-    let la = (a[0] * a[0] + a[1] * a[1] + a[2] * a[2]).sqrt().max(1.0e-20);
+    let la = (a[0] * a[0] + a[1] * a[1] + a[2] * a[2])
+        .sqrt()
+        .max(1.0e-20);
     (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]) / la
 }
 
@@ -277,7 +282,7 @@ impl Panorama {
         let Some((pico, &lp)) = lum.iter().enumerate().max_by(|a, b| a.1.total_cmp(b.1)) else {
             return (self.clone(), None);
         };
-        if !(lp > limiar) || !(media > 0.0) {
+        if lp.is_nan() || lp <= limiar || media.is_nan() || media <= 0.0 {
             return (self.clone(), None);
         }
         // O componente do pico (8-vizinhança, `x` dá a volta).
@@ -334,7 +339,9 @@ impl Panorama {
             let (x, y) = ((i % w) as u32, (i / w) as u32);
             let we = (lum[i] - limiar) * self.angulo_solido(y);
             let d = self.direcao(x, y).map(f64::from);
-            let psi = (d[0] * dir[0] + d[1] * dir[1] + d[2] * dir[2]).clamp(-1.0, 1.0).acos();
+            let psi = (d[0] * dir[0] + d[1] * dir[1] + d[2] * dir[2])
+                .clamp(-1.0, 1.0)
+                .acos();
             let dy = pi / h as f64;
             let dx = std::f64::consts::TAU / w as f64 * (1.0 - d[1] * d[1]).max(0.0).sqrt();
             m2 += we * (psi * psi + (dx * dx + dy * dy) / 12.0);

@@ -289,6 +289,33 @@ sozinho (§6.5).
     - **Escolhas do dono (03/10):** o pill FLIP **saiu** (e a linha *Window ▸ Flip*); o desenho
       novo **nasce em Draw** (`FlipState::born`). A aba Flip de cima pede o Draw
       (`CanvasOwner::Mode`), e sem activo compatível fica em Object — ⛔ já não cria um desenho.
+  - **Model** — ✅ **entregue em 03/10** (handoff `HANDOFF_INTEGRACAO_line_UIUX_2026-10-03_O_MODEL.md`):
+    `ph2d_app_field3d::model_mode::Family` — `(Model3D, Edit)`. Edit = o painel `model3d` aberto
+    (é ele que arma o módulo) com a peça da entidade EM MÃOS (`model_mode::target`); Object = o
+    painel fecha.
+    - **Medido antes (as três perguntas do briefing):** o pill MODEL tinha 5 portas (pill,
+      *Window*, a aba Modeling — que abria o painel e, sem peça, PLANTAVA a demo —, o layout
+      gravado, `PH2D_FIELD_SMOKE`); o gizmo do módulo (`scene_gizmo.rs`) move as FORMAS
+      seleccionadas, não a peça, e o `Transform` 2D da raiz não entra no cozimento; **N peças
+      custam pouco** — o documento já é recozido do MUNDO a cada quadro, e as perguntas «que peça?»
+      eram quatro `q.iter().next()` (cozer, gizmo, enquadrar, materiais), hoje
+      `scene::root_in_hand`. Um documento por raiz (traçar N campos) não foi preciso: fora do Edit a
+      peça não se desenha (como a escultura).
+    - **Desvio do desenho — o modo de PARTES:** no Model, editar é seleccionar as formas de DENTRO
+      da peça, e cada uma é uma linha da Hierarquia. O cadeado exigia a selecção EXACTA, e o Edit
+      cairia no 1.º clique. ⇒ `ModeFamily::parts` (o que se edita dentro da entidade) e
+      `::owner_of` (uma parte responde pelo dono): em Edit a selecção anda pelas formas e pelas
+      luzes da cena (uma, várias, nenhuma), outra peça é recusada; sair devolve a selecção à peça
+      inteira (o `Tab` seguinte volta ao Edit). O Paint/Sculpt/Draw não declaram partes e mantêm
+      a lei exacta.
+    - **N peças:** o menu Add planta a 2.ª, 3.ª… ao lado (`scene::plant`, nome único, ⛔ uma luz por
+      CENA); o rótulo «um por cena» saiu. As luzes da cena são parte do Edit de QUALQUER peça.
+    - **Escolhas do dono (03/10):** o pill MODEL **saiu** (e *Window ▸ Model 3D*); a peça nova
+      **nasce em Edit** (`model_mode::born`). A aba Modeling de cima pede o Edit (`CanvasOwner::Mode`;
+      o `CanvasOwner::Model3d` saiu) e já não abre o painel sem peça.
+    - ⏳ **Fica de fora, nomeado:** em Object a peça não se desenha no canvas 2D (D9: o 3D como
+      camada entre camadas é outra obra), e o gizmo do objecto move um `Transform` que o traçado não
+      lê.
 - **F4 — Layouts:** o campo opcional *«modo ao abrir»* (§3.3) e a limpeza dos toggles de módulo
   que viraram modos.
 

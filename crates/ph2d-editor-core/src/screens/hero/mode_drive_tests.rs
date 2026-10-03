@@ -432,7 +432,7 @@ fn model_kind(bits: u64) -> ObjectKind {
 fn a_mode_of_parts_lets_the_selection_move_inside_the_piece() {
     let mut c = cena();
     let mut model = ModelFamily::default();
-    let mut quadro = |c: &mut Cena, model: &mut ModelFamily, req| {
+    let quadro = |c: &mut Cena, model: &mut ModelFamily, req| {
         drive(
             &mut [model],
             &model_kind,

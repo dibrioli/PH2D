@@ -112,3 +112,4 @@ torna a morte visível depois. ⭐ Aqui o defeito foi apanhado por uma régua no
 - ⛔⛔ [Apagar um item deixa o `#[cfg]` dele a gatear o VIZINHO — e com a feature ligada por omissão nenhuma build da CI o vê](feedback_an_orphaned_cfg_attaches_to_the_next_item_and_the_default_build_is_blind.md)
 - ⛔⛔ [Luz com alfa 0 morre num tonemap que divide pela cobertura — o `fx.glow` com formas na placa não brilhava desde a W2](feedback_light_with_zero_alpha_dies_in_a_divide_by_alpha_tonemap.md)
 - ⛔⛔ [Despacho dimensionado pela RESERVA paga um fio morto por lugar não escrito — `15,5×` nas tracejadas, que escreviam MENOS arestas](feedback_a_dispatch_sized_by_a_worst_case_reservation_pays_dead_threads.md)
+- ⛔⛔ [Sob escala fracionária, `.round()` no espaço LÓGICO cai entre píxeis do ecrã — texto 43 % mais macio a 125 %; arredonde por `ui_scale::ao_pixel`](feedback_rounding_in_logical_space_under_a_fractional_scale_blurs.md)

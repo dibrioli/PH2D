@@ -51,3 +51,12 @@ guarda perguntar ao **cargo** se ele relinkou (`--message-format`) em vez de com
 saltar o que só é compilado sob `cfg(test)`. ⚠️ Ela erra para o lado **seguro** e por isso não
 corrompe medição nenhuma — mas custa uma decisão manual a cada sonda nova, e uma decisão manual
 repetida é onde alguém acaba por tocar no binário sem conferir.
+
+## HiDPI na tela virtual (medido 02/10, `line/UIUX`)
+
+- ⛔ `kwin_wayland --virtual --scale 2` SOZINHO não é HiDPI: dá um `Virtual-0` com o dobro dos
+  píxeis e `wl_output.scale: 1`. Para um ecrã de escala `S`, semeie `$XDG_CONFIG_HOME/kwinoutputconfig.json`
+  (isolado) com `"scale": S` e o modo físico; confira com `wayland-info` (receita completa em
+  `docs/UI_New_and_Simple/spec/oraculos/hidpi_2026-10-02.md`).
+- ⭐ Para o NOSSO app pela `fotografa_cena.sh` (X11 na Xwayland da sessão) basta
+  `WINIT_X11_SCALE_FACTOR=2` no 1.º argumento: o log diz `resize: … @ 2.00x scale`.

@@ -53,7 +53,7 @@ a flutuar `4 cm` (`y 0,19`) `z 0,45` · caixa cinzenta meia-aresta `0,15` pousad
 |---|---|
 | consts | `RAIOS_CHAO = 16` · `TAPS_ANEL = 4` · `QUANTIS = [0,25; 0,75]` |
 | `smoke::scenes::CENAS` | `40 → 41` (o integrador **reconta**); notas `1..41` em `smoke.rs` e `lib.rs`; `QUEM_SEMEIA` `(41, …)` |
-| bindings / pipelines | **nenhum novo** (o céu do chão já está na `15`); `Objeto`/`Quadro` uniformes iguais |
+| bindings / pipelines | **nenhum novo** (o céu do chão já está na `15`); `Quadro` igual; `Objeto` igual em tamanho (`80 B`) — `extra.yzw` passa a levar a PEGADA da peça (`chao_tapa::pegada`: centro `x, z` e raio) |
 | `PROJECT_SCHEMA` · shell | intacto · `0` linhas |
 | fixtura | `ph2d-mesh-forward/fixtures/oraculo_chao_tapa.csv` (`13 924` linhas, `1 817 920` B ≈ `1,8 MB`) |
 | instrumento | `docs/3DModeling/ferramentas/oraculo_chao_tapa_blender.py` · `instrumento_custo_chao_tapa` |
@@ -99,6 +99,8 @@ o resíduo da cena de 3 peças vem dos vizinhos).
 | Direcções desenroladas | mesmo custo do laço, shader maior |
 | O cinzento por omissão no gate difuso | o especular dele lê o chão escuro; o Cycles do oráculo é difuso |
 | ⛔⛔ Texels inválidos (DENTRO de uma peça pousada) lidos como `1` pela lei | **REVOGADO pelo report do dono**: o reflexo do cromo via a base das vizinhas ACESA e a base de cada peça (que só vê o chão debaixo dela) não escurecia — vista de baixo, base `0,3701` (máx `1,0`) contra o Cycles. A lei lê agora `ceu_do_chao_tapado` (`V × validade` cru: dentro = `0`, às escuras); a sombra do chão continua a ler `1` dentro (`ceu_do_chao`). Base `0,0107` |
+| O reflexo a ler o chão TODO (as sombras das vizinhas incluídas) | **report 2 do dono**: *«reflete a sombra do objeto mas não o objeto, e o objeto está sobre a sombra»* — o reflexo sabe céu e chão, não as outras peças. Agora `sombra_propria`: só a zona da peça (inteira até `1,5` raios, a nada aos `3`). Fora da zona `0` de `4 012` px escurecem (sem a máscara `949`) |
+| A grelha do contacto da PRÓPRIA peça como sombra dela no chão (em vez da distância) | imprecisa rente à peça, onde o chão está: base de baixo `0,073` contra `0,0081`, e `334` sombras órfãs fora da zona |
 | A régua ABSOLUTA (`com/solo`) a afirmar o reflexo de cima | dominada pelo contacto suave, que não faz reflexos nítidos das vizinhas (áspero `0,060` contra `0,021` na razão); imprime-se, não afirma |
 | Não pintar o chão visto de baixo (guarda em `escuro_do_chao`) | código morto: o chão desenha-se PRIMEIRO sem escrever profundidade e as peças pintam por cima — a mutação sobreviveu; saiu |
 
@@ -135,12 +137,21 @@ peças lido aceso `0,1306` / base `0,3701` (VERMELHO). De cima: difusa `0,0095` 
 nossa razão e uma no Cycles), verniz `0,0195` / `0,0298`. Suíte `ph2d-mesh-forward` `33/33` com placa;
 costura do app `3 460` px `> 5 %`, `× 0,472`, nenhum clareia.
 
+**Depois do report 2** (a zona da peça no reflexo): de cima, a comparação com o Cycles só na zona (fora
+dela o Cycles mostra as vizinhas e as sombras delas): nítido `0,0182` / onde o chão escurece `0,0550` (sem
+a lei `0,1045`), áspero `0,0323` / `0,0652` (sem `0,0883`), verniz `0,0320` / `0,0657`; de baixo espelho
+`0,0097`, base `0,0081`. Difusa inalterada. Suíte `33/33`; costura do app `3 223` px `> 5 %`, `× 0,472`.
+
 ## §5 — ABERTO
 
 - **Contagem dupla** onde um vizinho está sobre o seu próprio chão escuro (máx `0,066`).
-- ⚠️ **O cromo não reflete as OUTRAS peças**, só céu e chão: onde ele devia ver a bola pequena vê a sombra
-  dela no chão — uma faixa escura estreita junto ao horizonte do reflexo (era cinzenta clara antes do report).
-  É o limite de todo reflexo por sonda sem reflexos em espaço de ecrã; candidato a item próprio.
+- ⭐ **O cromo não reflete as OUTRAS peças** (nem, desde o report 2, as sombras delas): só céu, chão e a
+  sombra da própria peça. O PRÓXIMO item recomendado ao dono: **capturas de reflexo** por peça brilhante
+  (o cubo 360° que o Fortnite móvel usa — 6 faces pequenas com o mesmo desenhista, refeitas só quando a
+  chave muda, pré-filtradas por rugosidade; cabe no WebGL2). Elas trazem as vizinhas E as sombras delas
+  de uma vez, e a máscara `sombra_propria` sai.
+- A zona `1,5–3` raios é medida pela forma fechada da esfera pousada (`(1/√10)³ ≈ 3 %` aos `3`), não por
+  oráculo de produto; numa cena compacta a sombra de uma vizinha DENTRO da zona ainda aparece.
 - O resíduo do reflexo áspero é o pré-filtro `n=v=r` (o alongamento rasante não está modelado).
 - A direcção de `ceu_de_baixo` é INVISÍVEL ao oráculo de céu uniforme (`L_baixo = L` em todo o lado) —
   declarado; um oráculo de céu em rampa a gateava.
@@ -178,7 +189,11 @@ dele e das vizinhas, e a bola grande fecha escura onde encosta.
   pegada de uma peça pousada como aceso (§3). Gate red-first `o_chao_visto_de_baixo_e_o_do_cycles` (base
   `0,3701 → 0,0107`). Fotos da sonda de cima (`PITCH 0.25`) e de baixo (`−0.35`): base da caixa preta inteira,
   sem cruz; no cromo a mancha virou a sombra escura da bola pequena (§5).
-- pendente: o smoke do dono depois da cura.
+- ⛔ **Report 2 (03/10)**, 1 foto: *«esses reflexos não fazem sentido. Reflete a sombra do objeto mas não o
+  objeto. Contudo, o objeto está sobre a sombra»* — as manchas escuras no cromo eram as sombras das vizinhas
+  sem as vizinhas. Cura: a zona da peça (§3). Foto da sonda (`PITCH 0.25`): o cromo sem manchas, com o
+  escurecimento suave do contacto e a sombra dele em baixo.
+- pendente: o smoke do dono depois das duas curas.
 
 ## §8 — A PRÓXIMA ONDA
 

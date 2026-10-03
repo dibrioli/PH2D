@@ -156,6 +156,17 @@ pub fn entry_of_pick(families: &[&[AddEntry]], id: NodeId) -> Option<AddEntry> {
         .copied()
 }
 
+/// ⭐ **O smoke do menu**: `PH2D_OBJECT_ADD_SMOKE=1` abre-o UMA vez, no primeiro quadro — é como a
+/// foto do passo do smoke o apanha aberto, já que o clique sintético não chega à tela virtual
+/// (`docs/Components/ferramentas/fotografa_cena.sh`).
+#[must_use]
+pub fn take_smoke_open() -> bool {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static TAKEN: AtomicBool = AtomicBool::new(false);
+    !TAKEN.swap(true, Ordering::Relaxed)
+        && std::env::var("PH2D_OBJECT_ADD_SMOKE").is_ok_and(|v| v == "1")
+}
+
 #[cfg(test)]
 #[path = "object_add_tests.rs"]
 mod tests;

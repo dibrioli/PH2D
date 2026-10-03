@@ -112,7 +112,9 @@ impl crate::App {
             joint_pivot_commit,
         );
         self.fase_component_palette(pd.add_component_for);
-        self.fase_object_add(take(&mut pd.add_root));
+        self.fase_object_add(
+            take(&mut pd.add_root) || ph2d_editor_core::object_add::take_smoke_open(),
+        );
         self.fase_criar_accao_do_mapa(take(&mut pd.create_input_actions));
         self.fase_sprite_precision_emissive(fase_sprite_precision_emissive::SpriteRowIntents {
             remove_from_sheet_row: take(&mut pd.remove_from_sheet_row),

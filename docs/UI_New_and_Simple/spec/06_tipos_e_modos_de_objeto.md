@@ -71,16 +71,34 @@ tipo, com presets), e não a árvore da Godot: a nossa lista tem ~10 tipos, não
 - **O `+` da Hierarchy** cria um Empty: `shells/desktop/src/render_loop/hierarchy_add_root.rs`
   (`spawn_empty_root`). O **Ctrl+N** cria a imagem: `render_loop/fase_new_image_modal.rs`
   (`spawn_blank_canvas`).
-- **Os módulos editam um documento do MÓDULO, não «o objecto seleccionado»:** um `FlipDoc` com
-  vários objectos dentro (`FlipObjectRef(ObjectId)`), o estado do sculpt
-  (`Sculpt3dShellState`), a árvore de campo do modelador e o `VecState` do vetor.
-  ⚠️ **Não confirmado ponto a ponto:** a F0 mede-o, módulo a módulo, antes de qualquer código.
+- **Os módulos editam um documento do MÓDULO, não «o objecto seleccionado»** — medido na F0
+  (03/10), módulo a módulo, no §2.1.
 - **O `DrawMode` do vetor mistura os eixos:** 14 variantes, que são 2 modos (`Select` = Object,
   `Node` = Edit) e 12 ferramentas (D3, medido em 30/08).
 - **Já existe o sítio do selector de modo:** os pulldowns do cabeçalho da área (`AreaMenu`,
   `set_area_commands`). O 3D Model publica ali a vista e o sombreamento, e desde 02/10 o pulldown
   é tão largo quanto a face mais larga que pode mostrar. ⇒ o selector *«Object Mode ▾»* é **um
   pulldown a mais** nessa fila, como no cabeçalho do Blender.
+
+### §2.1 — A F0, MEDIDA (03/10): quem guarda «o que estou a editar»
+
+| módulo | quem guarda | N objectos? | activo de outro tipo | pode ser «o desta entidade»? |
+|---|---|---|---|---|
+| **Painter** | `PainterTool::bound_doc` = bits da entidade seleccionada (`ph2d-tool-painter/src/tool/mod.rs:313`), `doc_cache` por entidade (`:316`) | sim | recusa: sem `Sprite` não pinta (`painter_canvas_input.rs:358`) | **já é** |
+| **Model** | `Smoke::doc` thread-local, cozido da 1.ª raiz `FieldObject` (`ph2d-app-field3d/src/scene.rs:296`) | ⛔ **não**: uma 2.ª raiz nunca é cozida | ignora | não — a ponte tem de cozer a raiz da entidade activa |
+| **Sculpt** | `Sculpt3dScene::active` (índice, `cena.rs:37`); peças com `ObjectId` estável e entidade-espelho `Sculpt3dPieceRef` (`entities.rs`) | sim | o raycast só acerta peças | quase: o activo passa a vir da entidade (`world_map`) |
+| **Flip** | `FlipDoc` global; o traço cai SEMPRE no 1.º objecto (`autokey.rs:54`) | sim, mas só o 1.º recebe | descarta o traço em silêncio | sim: o `FlipEntityMap` já liga entidade↔objecto |
+| **Vector** | `PenTool::selected_paths` (`ph2d-vec-edit/src/lib.rs:142`) | sim | a caneta cria um path novo sem olhar o activo | o mais caro: é a partição do `DrawMode` (D3) |
+
+⚠️ **Duas premissas derrubadas pela medição:**
+- o explorador da F0 deu o Model como «por entidade», e a leitura do `sync_scene_and_birth`
+  mostrou o contrário (`q.iter(world).next()`). O menu Add oferece **um** Model por cena e di-lo
+  no rótulo, até à F3;
+- `ObjectKind::Sculpt3D` apontava para o `BakedForm` (a sprite ASSADA, que é uma imagem); a peça
+  viva leva o `Sculpt3dPieceRef`, e lia-se como vazia. Corrigido na F1.
+- E o `kind_of` (a derivação do tipo, `component_attach.rs`) conhecia 3 dos 6 marcadores.
+
+⇒ **A ordem da F3 pela medição:** Image (Painter já é) → Sculpt → Flip → Model → Vector.
 
 ## §3 — O desenho
 
@@ -181,7 +199,14 @@ sozinho (§6.5).
   - o que faz hoje o módulo com um activo de outro tipo.
 
   O resultado decide a ordem da F3. ⚠️ É o item caro do plano, e não se adivinha.
-- **F1 — Tipos e o menu Add:**
+- **F1 — Tipos e o menu Add** — ✅ **entregue em 03/10** (`161e4cfd5`): `ph2d_editor_core::object_add`
+  + um `object_add.rs` por família + a fase `render_loop/fase_object_add.rs`. O desvio do desenho:
+  a `ObjectTypeDecl` não leva `spawn: fn(&mut World, …)` — cada família precisa de recursos
+  DIFERENTES (a `VecScene` e a `ShapeTool`, o `FlipDoc`, a cena GPU do Sculpt), e a assinatura
+  comum seria uma mentira. Cada família expõe `ENTRIES` e um `add(entry, <os seus recursos>)`
+  que devolve `None` para entradas alheias; os `modes` entram na F2, com quem os lê.
+  ⏳ **O botão direito do canvas passa para a F2:** ele já tem donos (o vetor cancela a forma, o
+  Motion e o Painter abrem menus próprios), e só o modo Object diz quando ele é do menu Add.
   - a tabela `ObjectTypeDecl` e o registo por família;
   - o `+` da Hierarchy e o Shift+A abrem a **paleta** (`command_palette`) com o modelo dos tipos;
   - o Ctrl+N passa a ser atalho da entrada *Image* (§6.2).

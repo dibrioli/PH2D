@@ -8780,6 +8780,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-sky"
+version = "0.0.0"
+dependencies = [
+ "half",
+ "ph2d-imageio",
+ "ph2d-imageio-exr",
+ "ph2d-material",
+ "rayon",
+]
+
+[[package]]
 name = "ph2d-spike"
 version = "0.0.0"
 dependencies = [

@@ -219,14 +219,31 @@ sozinho (§6.5).
     - o clique real (seam `ph2d-ui-testkit`) em cada entrada cria a entidade.
   - **Foto:** a paleta aberta pelo `+`, ao lado da do *Add shape…* (têm de ler-se como a
     mesma janela).
-- **F2 — O modo:**
-  - `ObjectMode`, `ModoActivo`, o selector no cabeçalho, Tab e o cadeado;
-  - ainda sem módulos ligados: só Object, e o Edit de um tipo que já o tenha.
-  - **Gates:**
-    - as faces do selector = os modos do tipo do activo;
-    - um modo indisponível não aparece;
-    - o cadeado recusa a troca de activo;
-    - Tab ida e volta.
+- **F2 — O modo:** ✅ **entregue em 03/10, JUNTO com a F3 da Imagem** (`004a8c683` · `c50f43b3c` ·
+  `c5cee174a`; handoff `HANDOFF_INTEGRACAO_line_UIUX_2026-10-03_OS_MODOS.md`). Um modo que aparece
+  e não abre nada é controlo morto (D6), logo o 1.º modo veio com o módulo dele: **Image ▸ Paint**.
+  - `ph2d_editor_core::object_mode` — `ObjectMode {Object, Paint}` (o vocabulário fecha com o que
+    funciona), `ModeState` (a ENTIDADE, nunca o tipo), as leis puras `resolve`/`still_holds`/
+    `decide` e o seletor. O quadro é `screens::hero::mode_drive::drive`; cada família declara uma
+    `ModeFamily` (tipo→modo + as portas `holds`/`enter`/`leave`) — a do Painter é
+    `ph2d_app_painter::paint_mode::FAMILY`; a shell só lista `MODE_FAMILIES`.
+  - O seletor *«Object Mode ▾»* é o 1.º pulldown da área (`AreaMenus`: o seletor à frente, os do
+    módulo atrás, cada escritor só reescreve a sua parte).
+  - **Tab** = Object ↔ o último modo do objecto; o **zen** passou ao `Ctrl+Space` (escolha do dono,
+    03/10). ⏳ O `Ctrl+Tab` (a lista) não entrou.
+  - **O cadeado** já existia para o Painter (3 portas: clique, laço, linha da Hierarquia); passou a
+    ser do MODO (`mode_drive::refused`). As outras ~60 portas que trocam a selecção (criar,
+    duplicar, apagar, desfazer, largar ficheiro) não se ensinam uma a uma: a rede
+    `still_holds` devolve o modo a Object quando a entidade se perde.
+  - O botão do Painter saiu da barra IMG (`object_mode::TOOLS_OPENED_BY_A_MODE`); a aba **Draw**
+    pede o modo (`CanvasOwner::Mode(Paint)` — o campo do §3.3, puxado da F4).
+  - O botão direito no canvas livre, em Object, abre o menu Add (`mode_drive::right_click_on_canvas`).
+  - ⚠️ **A pintura da peça 3D continua pelo caminho antigo** (IMG + a aba do Painter ao lado da
+    escultura): é o Paint do Sculpt, na F3 dele. `paint_mode::holds_an_image` distingue-a (tela
+    do ecrã) do modo da imagem.
+  - **Gates:** as faces do selector = os modos do tipo do activo; um modo indisponível não aparece;
+    o cadeado recusa a troca de activo; Tab ida e volta; duas imagens, Paint numa, a outra intocada;
+    o clique real no seletor com todos os painéis.
 - **F3 — Ligar os módulos, UM de cada vez**, na ordem que a F0 medir. A proposta é **Sculpt**
   primeiro (o exemplo do dono: Object · Sculpt · Paint), depois Flip, Vector (a partição do
   `DrawMode`, o item difícil da D3), Image e Model.

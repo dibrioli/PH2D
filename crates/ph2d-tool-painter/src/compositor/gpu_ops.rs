@@ -34,12 +34,12 @@
 //! group recursion, skip invisible / zero-opacity / mask layers. Any divergence
 //! from that reference is a correctness bug; keep them in lock-step.
 
+use crate::{LayerId, LayerKind, LayerStack};
+use ph2d_layer_ops::{LayerMask, LayerOp};
 use ph2d_painter_effects::BlendMode;
 use ph2d_painter_effects::adjustments::{
     AdjustmentParams, curves_display_luts, levels_display_lut,
 };
-use crate::{LayerId, LayerKind, LayerStack};
-use ph2d_layer_ops::{LayerMask, LayerOp};
 
 /// Flatten `stack` into a GPU op-list, or `None` if it is not GPU-representable
 /// (mask / clipping / masked adjustment / non-ported adjustment kind) — the
@@ -263,9 +263,7 @@ mod tests {
         // its pre-rendered buffer by key), never force the CPU fallback.
         let mut s = LayerStack::new();
         let _base = s.add_raster("base", 4, 4).unwrap();
-        let tex = s
-            .add_texture(crate::TextureLayer::default())
-            .unwrap();
+        let tex = s.add_texture(crate::TextureLayer::default()).unwrap();
         let (ops, _luts) = flatten_for_gpu(&s).expect("a texture layer flattens to a GPU Layer op");
         assert!(
             ops.iter()

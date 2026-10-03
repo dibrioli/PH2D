@@ -396,10 +396,8 @@ fn uma_pilha_que_a_placa_recusa_compoe_na_cpu() {
     });
     let a = s.active;
     assert!(
-        ph2d_tool_painter::flatten_for_gpu(
-            s.objects[a].pilha.as_ref().expect("pilha").pilha()
-        )
-        .is_none(),
+        ph2d_tool_painter::flatten_for_gpu(s.objects[a].pilha.as_ref().expect("pilha").pilha())
+            .is_none(),
         "CONTROLO: a placa não exprime o ColorBalance"
     );
     crate::tinta_da_peca::pilha::recompoe(&mut s.objects[a]);

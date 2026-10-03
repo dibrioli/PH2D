@@ -87,7 +87,7 @@ muta $A/pilha_da_peca.rs '                    x: x as u32,
                     y: y as u32,
                     w: w as u32,
                     h: 1,' 'M1 compor_faixa lê a faixa deslocada de uma amostra' app
-muta $A/pilha_da_peca.rs '(n as u64).div_ceil(u64::from(LARGURA_DA_DOBRA))' '((n as u64) / u64::from(LARGURA_DA_DOBRA))' \
+muta $A/pilha_da_peca.rs '    let altura = n.div_ceil(largura).max(1);' '    let altura = (n / largura).max(1);' \
   'M2 a dobra perde a última linha parcial' app
 muta $A/pilha_da_peca.rs '            .partition(|(k, _)| vivas.contains(k));' '            .partition(|_| true);' \
   'M3 apagar uma camada deixa o plano órfão' app

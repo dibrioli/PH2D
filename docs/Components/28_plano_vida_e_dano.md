@@ -646,7 +646,10 @@ amostras de cor e a tabela dos inimigos como `struct`) · fmt · censos da árvo
   conduz, e o golpe não a disputa;
 - os números não têm **acumulação** (dez golpes de uma rajada são dez números, não um que soma) —
   decisão de produto por tomar;
-- a bala **só-sensor** (defeito G) continua aberta.
+- a bala **só-sensor** (defeito G) continua aberta — ✅ **curada em 03/10** (`line/components`, depois da
+  W8 da navegação): o `move_character_from` deixa andar livre um corpo só de sensores (a hitbox que
+  perfura); gates `uma_hitbox_so_sensor_anda_livre_e_perfura` (ph2d-physics) e
+  `uma_bala_so_sensor_atravessa_a_parede_e_fere` (com o CONTROLO sólido).
 
 ## §13 — ✅ *«Não vejo a bala»* (smoke da W5, cena `=2`): a SIMULAÇÃO estava certa, a CENA não
 

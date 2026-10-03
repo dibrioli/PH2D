@@ -258,3 +258,30 @@ fn um_offset_degenerado_nao_move_nada() {
         assert_eq!(m.translation, [0.0, 0.0], "offset {mau:?}");
     }
 }
+
+/// ⭐⭐ **Uma hitbox SÓ-SENSOR anda livre e PERFURA** (o defeito G do plano 28): nada nela é parede
+/// para os outros, logo o chão não a pára — e não há contacto sólido a relatar (o toque é o do
+/// sensor). Antes ela ficava parada onde nasceu, a qualquer velocidade.
+///
+/// **Mutação que deve sangrar:** o ramo do só-sensor devolver o deslocamento nulo.
+#[test]
+fn uma_hitbox_so_sensor_anda_livre_e_perfura() {
+    let mut w = PhysicsWorld::new();
+    w.add_static_cuboid(0.0, 0.0, 10.0, 0.5);
+    let me = w.spawn_body(desc(
+        RigidBodyType::KinematicPositionBased,
+        0.0,
+        1.5,
+        capsule(),
+        true,
+    ));
+    w.step();
+    let mut hits = Vec::new();
+    let got = w.move_character(me, [0.3, -3.0], params(), None, 0, &mut hits);
+    assert_eq!(
+        got.translation,
+        [0.3, -3.0],
+        "a hitbox atravessa o chão inteira"
+    );
+    assert!(!got.grounded && hits.is_empty());
+}

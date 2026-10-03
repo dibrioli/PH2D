@@ -8,7 +8,9 @@
 //!
 //! ⛔ E a G achou um defeito do #14: um corpo **só-sensor** não anda com mover nenhum
 //! (`move_character_from` devolve `none` quando não há forma SÓLIDA), logo uma bala-sensor fica
-//! parada onde nasceu, em silêncio.
+//! parada onde nasceu, em silêncio. ✅ **Curado em 03/10** (a hitbox só-sensor anda livre; gate
+//! `bala_so_sensor`): a G passa a medir a entrada no sensor a cada velocidade — `[26] [6] [3] [2]
+//! [1]` de 6 a 240 m/s, sem saltar o alvo.
 //!
 //! Cada caso responde a UMA pergunta sobre os canais que a ponte já tem, pela API pública:
 //! o golpe chega no 1.º tique, a meio da corrida, e numa bala rápida?

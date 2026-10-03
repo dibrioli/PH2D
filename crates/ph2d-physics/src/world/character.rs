@@ -264,6 +264,19 @@ impl PhysicsWorld {
             })
             .collect();
         let (shape, pos): (SharedShape, Pose) = match shapes.as_slice() {
+            // ⭐ **Só sensores: a hitbox que PERFURA anda livre** (o defeito G do plano 28) — nada nela
+            // é parede para os outros, logo nada é parede para ela; o toque sai pelos sensores.
+            // Um corpo SEM forma nenhuma continua a não andar.
+            [] if body
+                .colliders()
+                .iter()
+                .any(|h| self.colliders.get(*h).is_some_and(|c| c.is_sensor())) =>
+            {
+                return CharacterMove {
+                    translation: wanted,
+                    grounded: false,
+                };
+            }
             [] => return none,
             [one] => {
                 let c = &self.colliders[*one];

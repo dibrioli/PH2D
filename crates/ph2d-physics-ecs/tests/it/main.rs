@@ -13,6 +13,7 @@ mod area_torque;
 mod authoring;
 mod bake;
 mod bake_player;
+mod bala_so_sensor;
 mod ccd;
 mod child_bodies;
 mod collider_offset;

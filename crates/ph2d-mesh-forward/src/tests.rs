@@ -1,7 +1,7 @@
 //! Os gates do desenhista NA PLACA (ignorados por omissão: precisam de um aparelho) —
 //! `PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test -p ph2d-mesh-forward -- --ignored`.
 
-use crate::{Ambiente, Camera, Cena, Forward, Instancia, Malha};
+use crate::{Ambiente, Camera, Cena, Forward, Foto, Instancia, Malha};
 
 /// Um céu CHAPADO de radiância `L`, sem caixa — a fixtura em que a lei do material tem resposta
 /// conhecida na CPU (`Surface::indirect` com o mesmo ambiente).
@@ -106,6 +106,7 @@ fn cena<'a>(objs: &'a [Instancia], mats: &'a [[f32; 48]], cam: Camera) -> Cena<'
         brilho: ph2d_bloom::Bloom::default(),
         estilo: ph2d_style::Style::default(),
         raio_da_peca: 0.5,
+        foto: None,
     }
 }
 
@@ -297,6 +298,230 @@ fn nada_compila_ao_editar() {
         });
     }
     assert_eq!(fw.pipelines_compilados(), antes);
+    // ⭐ E o CÉU FOTOGRÁFICO: subir, trocar, girar, ligar o fundo e desligar — nada compila.
+    for (i, e) in [ph2d_sky::Embarcado::Por, ph2d_sky::Embarcado::Floresta]
+        .into_iter()
+        .enumerate()
+    {
+        fw.sobe_ceu(&ceu_de(e));
+        for fundo in [None, Some(0.0), Some(0.3)] {
+            let _ = fw.quadro(&Cena {
+                foto: Some(Foto {
+                    giro: [(i as f32).cos(), (i as f32).sin()],
+                    forca: 0.5,
+                    caixa: 1.0,
+                    fundo,
+                }),
+                ..cena(&objs, &mats, camera(1.0, 0.0))
+            });
+        }
+    }
+    let _ = fw.quadro(&cena(&objs, &mats, camera(1.0, 0.0)));
+    assert_eq!(fw.pipelines_compilados(), antes);
+}
+
+/// Os céus dos gates, pré-filtrados UMA vez por corrida (⚠️ em `--release`: o atlas é trabalho de CPU).
+fn ceu_de(e: ph2d_sky::Embarcado) -> &'static ph2d_sky::Ceu {
+    use std::collections::BTreeMap;
+    use std::sync::{Mutex, OnceLock};
+    static CEUS: OnceLock<Mutex<BTreeMap<ph2d_sky::Embarcado, &'static ph2d_sky::Ceu>>> =
+        OnceLock::new();
+    let mut m = CEUS.get_or_init(|| Mutex::new(BTreeMap::new())).lock().expect("trava");
+    m.entry(e)
+        .or_insert_with(|| Box::leak(Box::new(ph2d_sky::Ceu::novo(&e.panorama()))))
+}
+
+/// Os materiais COLORIDOS do gate do céu (⛔ uma fixtura cinzenta esconde efeitos de cor — a lição
+/// do estilo): ouro rugoso, azul brilhante com verniz, vermelho fosco.
+fn materiais_do_ceu() -> Vec<ph2d_material::OpenPbr> {
+    vec![
+        ph2d_material::OpenPbr {
+            base_color: [1.0, 0.78, 0.34],
+            base_metalness: 1.0,
+            specular_roughness: 0.3,
+            ..ph2d_material::OpenPbr::default()
+        },
+        ph2d_material::OpenPbr {
+            base_color: [0.1, 0.25, 0.9],
+            specular_roughness: 0.08,
+            coat_weight: 1.0,
+            coat_roughness: 0.02,
+            ..ph2d_material::OpenPbr::default()
+        },
+        ph2d_material::OpenPbr {
+            base_color: [0.8, 0.12, 0.08],
+            specular_roughness: 0.7,
+            ..ph2d_material::OpenPbr::default()
+        },
+    ]
+}
+
+/// ⭐⭐⭐ **O céu fotográfico é a lei da casa** — cada pixel da esfera sob o pôr do sol (girado, com
+/// força), para três materiais coloridos, contra o `Surface::indirect` da CPU com o
+/// [`ph2d_sky::Orientado`] na normal EXACTA da esfera, pelo mesmo olhar.
+///
+/// ⚠️ A malha é uma esfera UV (`48 × 96`): a normal interpolada difere da exacta entre vértices, e
+/// num reflexo nítido isso move bytes — o centro (normal exacta) tem de bater a `≤ 1`.
+#[test]
+#[ignore = "precisa de aparelho"]
+fn o_ceu_foto_e_a_lei_da_casa() {
+    let Some(mut fw) = desenhista_com_esfera() else {
+        return;
+    };
+    let ceu = ceu_de(ph2d_sky::Embarcado::Por);
+    fw.sobe_ceu(ceu);
+    let objs = [Instancia {
+        malha: 1,
+        modelo: ID,
+    }];
+    let (th, forca) = (1.1f32, 0.6f32);
+    let foto = Foto {
+        giro: [th.cos(), th.sin()],
+        forca,
+        caixa: 1.0,
+        fundo: None,
+    };
+    let env = ph2d_sky::Orientado {
+        ceu,
+        giro: foto.giro,
+        forca,
+    };
+    let vista = ph2d_view_transform::ViewTransform::Standard;
+    for (k, m) in materiais_do_ceu().iter().enumerate() {
+        let s = m.prepare();
+        let mats = [ph2d_material::wgsl::pack(&s, ph2d_material::wgsl::EnvLobe::of(&s))];
+        let img = fw
+            .quadro(&Cena {
+                foto: Some(foto),
+                ..cena(&objs, &mats, camera(1.0, 0.0))
+            })
+            .expect("quadro");
+        let mut dif = Vec::new();
+        let mut centro = 0.0f32;
+        for y in (0..96).step_by(2) {
+            for x in (0..96).step_by(2) {
+                let (wx, wy) = (
+                    ((x as f32 + 0.5) / 96.0) * 2.0 - 1.0,
+                    1.0 - ((y as f32 + 0.5) / 96.0) * 2.0,
+                );
+                let r2 = wx * wx + wy * wy;
+                if r2 > (0.85f32 * 0.5).powi(2) {
+                    continue;
+                }
+                let n = [wx / 0.5, wy / 0.5, (0.25 - r2).sqrt() / 0.5];
+                let c = s.indirect(n, [0.0, 0.0, 1.0], &env);
+                let d = ph2d_view_transform::to_display(c, 0.0, vista);
+                let i = (y * 96 + x) * 4;
+                let pior = (0..3)
+                    .map(|q| (f32::from(img[i + q]) - (srgb(d[q]) * 255.0 + 0.5).floor()).abs())
+                    .fold(0.0, f32::max);
+                if (x, y) == (48, 48) {
+                    centro = pior;
+                }
+                dif.push(pior);
+            }
+        }
+        dif.sort_by(f32::total_cmp);
+        let q = |p: f32| dif[((dif.len() - 1) as f32 * p) as usize];
+        eprintln!(
+            "material {k}: {} px · p50 {} p99 {} max {} · centro {centro}",
+            dif.len(),
+            q(0.5),
+            q(0.99),
+            dif.last().copied().unwrap_or(0.0)
+        );
+        assert!(centro <= 1.0, "material {k}: o centro (normal exacta) erra {centro} B");
+        assert!(q(0.5) <= 1.0 && q(0.99) <= 3.0, "material {k}: p50 {} p99 {}", q(0.5), q(0.99));
+    }
+    // O controlo: sem o céu fotográfico, a esfera é OUTRA imagem.
+    let s = materiais_do_ceu()[0].prepare();
+    let mats = [ph2d_material::wgsl::pack(&s, ph2d_material::wgsl::EnvLobe::of(&s))];
+    let com = fw
+        .quadro(&Cena {
+            foto: Some(foto),
+            ..cena(&objs, &mats, camera(1.0, 0.0))
+        })
+        .expect("com");
+    let sem = fw.quadro(&cena(&objs, &mats, camera(1.0, 0.0))).expect("sem");
+    assert_ne!(com, sem, "o controlo: o céu fotográfico tem de mudar a imagem");
+}
+
+/// Multiplica duas matrizes coluna a coluna.
+fn mul(a: &[[f32; 4]; 4], b: &[[f32; 4]; 4]) -> [[f32; 4]; 4] {
+    let mut o = [[0.0f32; 4]; 4];
+    for (c, col) in o.iter_mut().enumerate() {
+        for (r, v) in col.iter_mut().enumerate() {
+            *v = (0..4).map(|k| a[k][r] * b[c][k]).sum();
+        }
+    }
+    o
+}
+
+/// ⭐⭐ **O fundo É o céu** — em perspectiva, cada pixel fora da peça é a radiância do céu na
+/// direcção daquele pixel (filtrada ao `α` do fundo, girada, com força), pelo olhar. Sem fundo, o
+/// canto é transparente (o controlo).
+#[test]
+#[ignore = "precisa de aparelho"]
+fn o_fundo_e_o_ceu() {
+    let Some(mut fw) = desenhista_com_esfera() else {
+        return;
+    };
+    let ceu = ceu_de(ph2d_sky::Embarcado::Por);
+    fw.sobe_ceu(ceu);
+    // Olho em `(0, 0, 3)` a olhar `−z`, `60°`, perto `0,1`, longe `100` (profundidade `0..1`).
+    let (f, n, l) = (1.0 / 30f32.to_radians().tan(), 0.1f32, 100.0f32);
+    let proj = [
+        [f, 0.0, 0.0, 0.0],
+        [0.0, f, 0.0, 0.0],
+        [0.0, 0.0, l / (n - l), -1.0],
+        [0.0, 0.0, n * l / (n - l), 0.0],
+    ];
+    let mut vista_m = ID;
+    vista_m[3][2] = -3.0;
+    let cam = Camera {
+        view_proj: mul(&proj, &vista_m),
+        olho: [0.0, 0.0, 3.0],
+        perspectiva: true,
+        dir_vista: [0.0, 0.0, -1.0],
+    };
+    let objs = [Instancia {
+        malha: 1,
+        modelo: ID,
+    }];
+    let mats = [material_cinza()];
+    let (th, forca) = (2.3f32, 0.8f32);
+    for alfa in [0.0f32, 0.3] {
+        let img = fw
+            .quadro(&Cena {
+                foto: Some(Foto {
+                    giro: [th.cos(), th.sin()],
+                    forca,
+                    caixa: 1.0,
+                    fundo: Some(alfa),
+                }),
+                ..cena(&objs, &mats, cam)
+            })
+            .expect("quadro");
+        let mut pior = 0.0f32;
+        for (x, y) in [(2usize, 2usize), (93, 5), (7, 90), (90, 88), (48, 3), (3, 48)] {
+            let ndc = [((x as f32 + 0.5) / 96.0) * 2.0 - 1.0, 1.0 - ((y as f32 + 0.5) / 96.0) * 2.0];
+            // O raio do olho pelo pixel: `(ndc.x / f, ndc.y / f, −1)`.
+            let dir = [ndc[0] / f, ndc[1] / f, -1.0];
+            let c = ceu
+                .radiance(ph2d_sky::gira(dir, [th.cos(), th.sin()]), alfa)
+                .map(|v| v * forca);
+            let d = ph2d_view_transform::to_display(c, 0.0, ph2d_view_transform::ViewTransform::Standard);
+            let i = (y * 96 + x) * 4;
+            assert_eq!(img[i + 3], 255, "o fundo é opaco em ({x}, {y})");
+            for q in 0..3 {
+                pior = pior.max((f32::from(img[i + q]) - (srgb(d[q]) * 255.0 + 0.5).floor()).abs());
+            }
+        }
+        eprintln!("fundo α={alfa}: pior {pior} B");
+        assert!(pior <= 2.0, "fundo α={alfa}: {pior} B");
+    }
+    let sem = fw.quadro(&cena(&objs, &mats, cam)).expect("sem");
+    assert_eq!(sem[3], 0, "o controlo: sem fundo, o canto é transparente");
 }
 
 /// ⭐⭐⭐ **A cor é a da lei da casa**: o pixel do meio da esfera sob um céu chapado é o

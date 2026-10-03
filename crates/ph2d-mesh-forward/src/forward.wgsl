@@ -26,6 +26,12 @@ struct Quadro {
     estilo: Estilo,
     // x = o raio da bola da PECA (a curvatura viaja em `H * raio`) · yzw = _
     peca: vec4<f32>,
+    // O CEU FOTOGRAFICO: xy = (cos, sin) do giro · z = forca · w = ligado (0/1)
+    foto: vec4<f32>,
+    // x = peso da caixa sob o ceu fotografico · y = alfa do fundo · z = ha' fundo (0/1) · w = _
+    foto_fundo: vec4<f32>,
+    // O inverso do `view_proj` (o fundo pergunta a direccao de cada pixel).
+    inv_view_proj: mat4x4<f32>,
     // pares (posicao, radiancia a 1), ate' `MAX_LUZES` luzes
     luzes: array<vec4<f32>, {MAX_LUZES2}>,
 };
@@ -42,6 +48,7 @@ struct Objeto {
 @group(0) @binding(5) var compara: sampler_comparison;
 @group(0) @binding(6) var cobertura: texture_2d<f32>;
 @group(0) @binding(7) var liso: sampler;
+@group(0) @binding(8) var ceu_foto: texture_2d<f32>;
 @group(1) @binding(0) var<uniform> objeto: Objeto;
 
 fn tabela_ler(i: u32) -> f32 {
@@ -50,6 +57,35 @@ fn tabela_ler(i: u32) -> f32 {
 
 {AMBIENTE}
 
+fn sky_atlas(x: u32, y: u32) -> vec3<f32> {
+    return textureLoad(ceu_foto, vec2<i32>(i32(x), i32(y)), 0).rgb;
+}
+
+{CEU_FOTO}
+
+// ⭐⭐ A parte SEM caixa: o ceu fotografico (girado, com a forca) quando ligado, o de quem chama senao.
+fn foto_ligada() -> bool {
+    return quadro.foto.w > 0.5;
+}
+
+fn ceu_rad_sem(dir: vec3<f32>, alpha: f32, shrink: f32) -> vec3<f32> {
+    if (foto_ligada()) {
+        return sky_radiance(sky_gira(dir, quadro.foto.xy), alpha) * quadro.foto.z;
+    }
+    return ceu_radiance_sem_caixa(dir, shrink);
+}
+
+fn ceu_irr_sem(n: vec3<f32>) -> vec3<f32> {
+    if (foto_ligada()) {
+        return sky_irradiance(sky_gira(n, quadro.foto.xy)) * quadro.foto.z;
+    }
+    return ceu_irradiance_sem_caixa(n);
+}
+
+fn peso_da_caixa() -> f32 {
+    return select(1.0, quadro.foto_fundo.x, foto_ligada());
+}
+
 // ⭐ O ambiente da lei do material = as DUAS partes do ceu, cada uma com o seu peso por pixel: a
 // oclusao assada tapa o ceu, a sombra tapa a caixa. A lei e' LINEAR no ambiente, logo isto e'
 // exactamente a soma de duas avaliacoes — por metade do preco.
@@ -57,11 +93,12 @@ var<private> peso_ceu: f32 = 1.0;
 var<private> peso_caixa: f32 = 1.0;
 
 fn env_radiance_da_cena(dir: vec3<f32>, alpha: f32, shrink: f32) -> vec3<f32> {
-    return ceu_radiance_sem_caixa(dir, shrink) * peso_ceu + ceu_radiance_da_caixa(dir, alpha) * peso_caixa;
+    return ceu_rad_sem(dir, alpha, shrink) * peso_ceu
+        + ceu_radiance_da_caixa(dir, alpha) * (peso_caixa * peso_da_caixa());
 }
 
 fn env_irradiance_da_cena(n: vec3<f32>) -> vec3<f32> {
-    return ceu_irradiance_sem_caixa(n) * peso_ceu + ceu_irradiance_da_caixa(n) * peso_caixa;
+    return ceu_irr_sem(n) * peso_ceu + ceu_irradiance_da_caixa(n) * (peso_caixa * peso_da_caixa());
 }
 
 {MATERIAL}
@@ -362,8 +399,8 @@ fn fs_chao_brilho(i: ChaoOut) -> DoisAlvos {
 
 fn escuro_do_chao(i: ChaoOut) -> vec4<f32> {
     let up = vec3<f32>(0.0, 1.0, 0.0);
-    let ceu_e = ceu_irradiance_sem_caixa(up);
-    let caixa_e = ceu_irradiance_da_caixa(up);
+    let ceu_e = ceu_irr_sem(up);
+    let caixa_e = ceu_irradiance_da_caixa(up) * peso_da_caixa();
     var lamp = vec3<f32>(0.0);
     let k = u32(quadro.olhar.z);
     for (var j = 0u; j < k; j = j + 1u) {
@@ -379,3 +416,39 @@ fn escuro_do_chao(i: ChaoOut) -> vec4<f32> {
     return vec4<f32>(0.0, 0.0, 0.0, escuro);
 }
 
+// ── O CEU ATRAS DA PECA (so' com o ceu fotografico e o fundo ligado) ─────────────────────────────
+struct FundoOut {
+    @builtin(position) clip: vec4<f32>,
+    @location(0) ndc: vec2<f32>,
+};
+
+@vertex
+fn vs_fundo(@builtin(vertex_index) k: u32) -> FundoOut {
+    let p = vec2<f32>(f32((k << 1u) & 2u) * 2.0 - 1.0, f32(k & 2u) * 2.0 - 1.0);
+    var o: FundoOut;
+    o.clip = vec4<f32>(p, 1.0, 1.0);
+    o.ndc = p;
+    return o;
+}
+
+// A luz do ceu na direccao do pixel, filtrada a `alfa do fundo`, em cena-linear.
+fn luz_do_fundo(ndc: vec2<f32>) -> vec3<f32> {
+    let perto = quadro.inv_view_proj * vec4<f32>(ndc, 0.0, 1.0);
+    let longe = quadro.inv_view_proj * vec4<f32>(ndc, 1.0, 1.0);
+    let dir = longe.xyz / longe.w - perto.xyz / perto.w;
+    return sky_radiance(sky_gira(dir, quadro.foto.xy), quadro.foto_fundo.y) * quadro.foto.z;
+}
+
+@fragment
+fn fs_fundo(i: FundoOut) -> @location(0) vec4<f32> {
+    return vec4<f32>(vt_to_display(luz_do_fundo(i.ndc), quadro.olhar.x, u32(quadro.olhar.y)), 1.0);
+}
+
+// ⚠️ O fundo NAO entra no brilho (a lei da CPU: so' os pixeis da PECA), como o chao.
+@fragment
+fn fs_fundo_brilho(i: FundoOut) -> DoisAlvos {
+    var o: DoisAlvos;
+    o.olhar = vec4<f32>(vt_to_display(luz_do_fundo(i.ndc), quadro.olhar.x, u32(quadro.olhar.y)), 1.0);
+    o.cena = vec4<f32>(0.0);
+    return o;
+}

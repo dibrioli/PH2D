@@ -4,7 +4,7 @@
 //! | pergunta | o que o atlas guarda | a régua |
 //! |---|---|---|
 //! | a radiância pela direcção `R`, já filtrada pelo lóbulo GGX de `α` (com `N = V = R`) | [`NIVEIS`] mapas octaédricos, um por `√α = k/(NIVEIS−1)` | a quadratura do lóbulo sobre o panorama cru |
-//! | a irradiância normalizada `E(n)/π` | um mapa octaédrico de [`LADO_IRR`] | a soma sobre o panorama, e o Cycles (oráculo) |
+//! | a irradiância normalizada `E(n)/π` | o ÚLTIMO nível (`α = 1`) — ver [`Ceu::irradiance`] | a soma sobre o panorama, e o Cycles (oráculo) |
 //!
 //! ⭐ **Uma porta por lei:** a CPU ([`Ceu::radiance`], [`Ceu::irradiance`]) e o WGSL ([`wgsl`]) fazem a
 //! MESMA leitura bilinear do MESMO atlas, na mesma ordem de contas — quem desenha sobe o
@@ -39,23 +39,20 @@ pub const LADOS: [u32; NIVEIS] = [
     512, 512, 256, 128, 128, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
 ];
 
-/// O lado do mapa da irradiância (`E(n)/π` é suave: o lóbulo cosseno tem `180°`).
-pub const LADO_IRR: u32 = 32;
-
 /// A largura do atlas: dois espelhos lado a lado. ⚠️ O WebGL2 garante `2048`.
 pub const ATLAS_W: u32 = 2 * (LADOS[0] + 2);
 
-/// O lado (com margem) do mapa `k`; o `NIVEIS` é a irradiância.
+/// O lado (com margem) do mapa `k`.
 const fn lado_com_margem(k: usize) -> u32 {
-    if k < NIVEIS { LADOS[k] + 2 } else { LADO_IRR + 2 }
+    LADOS[k] + 2
 }
 
 /// Arrumação em PRATELEIRAS (os lados não crescem): `(x0, y0)` de cada mapa e a altura do atlas.
-const fn prateleiras() -> ([u32; NIVEIS + 1], [u32; NIVEIS + 1], u32) {
-    let (mut xs, mut ys) = ([0u32; NIVEIS + 1], [0u32; NIVEIS + 1]);
+const fn prateleiras() -> ([u32; NIVEIS], [u32; NIVEIS], u32) {
+    let (mut xs, mut ys) = ([0u32; NIVEIS], [0u32; NIVEIS]);
     let (mut x, mut y, mut h) = (0u32, 0u32, 0u32);
     let mut k = 0;
-    while k <= NIVEIS {
+    while k < NIVEIS {
         let s = lado_com_margem(k);
         if x + s > ATLAS_W {
             y += h;
@@ -73,10 +70,10 @@ const fn prateleiras() -> ([u32; NIVEIS + 1], [u32; NIVEIS + 1], u32) {
     (xs, ys, y + h)
 }
 
-/// A coluna do canto de cada mapa no atlas; o índice `NIVEIS` é o da irradiância.
-pub const X0: [u32; NIVEIS + 1] = prateleiras().0;
-/// A linha do canto de cada mapa no atlas; o índice `NIVEIS` é o da irradiância.
-pub const Y0: [u32; NIVEIS + 1] = prateleiras().1;
+/// A coluna do canto de cada nível no atlas.
+pub const X0: [u32; NIVEIS] = prateleiras().0;
+/// A linha do canto de cada nível no atlas.
+pub const Y0: [u32; NIVEIS] = prateleiras().1;
 /// A altura do atlas.
 pub const ATLAS_H: u32 = prateleiras().2;
 const _: () = assert!(ATLAS_H <= 2048, "o WebGL2 só garante 2048");
@@ -288,7 +285,7 @@ impl Ceu {
         [t[0].to_f32(), t[1].to_f32(), t[2].to_f32()]
     }
 
-    /// A leitura bilinear do mapa `k` (o `NIVEIS` é a irradiância), no ponto octaédrico `(a, b)`.
+    /// A leitura bilinear do nível `k`, no ponto octaédrico `(a, b)`.
     /// ⚠️ A MESMA ordem de contas do `sky_bilinear` do [`wgsl`].
     fn bilinear(&self, k: usize, (a, b): (f32, f32)) -> Rgb {
         let n = lado_com_margem(k) - 2;
@@ -323,10 +320,16 @@ impl Ceu {
         [0, 1, 2].map(|i| a[i] + (b[i] - a[i]) * t)
     }
 
-    /// ⭐ **A irradiância normalizada** `E(n)/π` (no referencial do céu).
+    /// ⭐ **A irradiância normalizada** `E(n)/π` (no referencial do céu) — o ÚLTIMO nível.
+    ///
+    /// ⭐⭐ **Não é um atalho, é a mesma integral:** com `α = 1` a NDF do GGX é constante (`1/π`), logo
+    /// o núcleo do pré-filtro `(R·l)·D(h)` vira `(R·l)/π` — a média pesada pelo cosseno, que é
+    /// `E(n)/π`. Foi a prova de mutação que o mostrou (02/10): trocar a irradiância pela radiância a
+    /// `α = 1` deixava o gate verde ao byte. O mapa próprio que aqui esteve era redundante e menos
+    /// fiel (máximo `7,2 %` contra a soma crua; o nível exacto dá `≤ 2,6 %`).
     #[must_use]
     pub fn irradiance(&self, n: [f32; 3]) -> Rgb {
-        self.bilinear(NIVEIS, oct(n))
+        self.bilinear(NIVEIS - 1, oct(n))
     }
 }
 

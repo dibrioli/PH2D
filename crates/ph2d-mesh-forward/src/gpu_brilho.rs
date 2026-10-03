@@ -25,6 +25,7 @@ pub(crate) const ECRA: u64 = 64;
 pub(crate) struct Brilho {
     pub objeto: wgpu::RenderPipeline,
     pub chao: wgpu::RenderPipeline,
+    pub fundo: wgpu::RenderPipeline,
     desce: wgpu::RenderPipeline,
     sobe: wgpu::RenderPipeline,
     bgl: wgpu::BindGroupLayout,
@@ -301,6 +302,7 @@ impl Brilho {
         cor: wgpu::TextureFormat,
         objeto: &wgpu::RenderPipelineDescriptor<'_>,
         chao: &wgpu::RenderPipelineDescriptor<'_>,
+        fundo: &wgpu::RenderPipelineDescriptor<'_>,
     ) -> Self {
         let dois = |blend, mascara| {
             [
@@ -347,6 +349,7 @@ impl Brilho {
                 wgpu::ColorWrites::empty(),
             ),
         );
+        let fu = com_cena(fundo, "fs_fundo_brilho", &dois(None, wgpu::ColorWrites::ALL));
         let tex = |binding| wgpu::BindGroupLayoutEntry {
             binding,
             visibility: wgpu::ShaderStages::FRAGMENT,
@@ -413,6 +416,7 @@ impl Brilho {
         Self {
             objeto: obj,
             chao: ch,
+            fundo: fu,
             desce: degrau("fs_desce"),
             sobe: degrau("fs_sobe"),
             bgl,

@@ -69,7 +69,54 @@ pub(super) fn enquadra_sombra(
     }
 }
 
-pub(super) fn uniforme_do_quadro(cena: &Cena<'_>, e: &Enquadra) -> Vec<f32> {
+/// O inverso de uma matriz `4×4` (coluna a coluna), em `f64` — a identidade se for singular.
+fn inversa(m: &[[f32; 4]; 4]) -> [[f32; 4]; 4] {
+    let a: Vec<f64> = m.iter().flatten().map(|x| f64::from(*x)).collect();
+    // Gauss-Jordan sobre [A | I] (a ordem coluna-a-coluna é a transposta; inverter a transposta
+    // dá a transposta da inversa — a mesma arrumação).
+    let mut t = [[0.0f64; 8]; 4];
+    for (i, linha) in t.iter_mut().enumerate() {
+        for j in 0..4 {
+            linha[j] = a[i * 4 + j];
+        }
+        linha[4 + i] = 1.0;
+    }
+    for c in 0..4 {
+        let p = (c..4)
+            .max_by(|&x, &y| t[x][c].abs().total_cmp(&t[y][c].abs()))
+            .unwrap_or(c);
+        if t[p][c].abs() < 1.0e-30 {
+            let mut id = [[0.0f32; 4]; 4];
+            for (i, l) in id.iter_mut().enumerate() {
+                l[i] = 1.0;
+            }
+            return id;
+        }
+        t.swap(c, p);
+        let piv = t[c][c];
+        for v in &mut t[c] {
+            *v /= piv;
+        }
+        for r in 0..4 {
+            if r != c {
+                let f = t[r][c];
+                let fonte = t[c];
+                for (v, s) in t[r].iter_mut().zip(fonte) {
+                    *v -= f * s;
+                }
+            }
+        }
+    }
+    let mut out = [[0.0f32; 4]; 4];
+    for (i, l) in out.iter_mut().enumerate() {
+        for (j, v) in l.iter_mut().enumerate() {
+            *v = t[i][4 + j] as f32;
+        }
+    }
+    out
+}
+
+pub(super) fn uniforme_do_quadro(cena: &Cena<'_>, e: &Enquadra, tem_ceu: bool) -> Vec<f32> {
     let mut u = Vec::with_capacity(QUADRO);
     for col in cena.camera.view_proj.iter().chain(e.sombra_vp.iter()) {
         u.extend_from_slice(col);
@@ -99,6 +146,22 @@ pub(super) fn uniforme_do_quadro(cena: &Cena<'_>, e: &Enquadra) -> Vec<f32> {
     u.extend_from_slice(&[cena.exposicao, cena.vista as f32, n as f32, 0.0]);
     u.extend_from_slice(&ph2d_style::wgsl::pack(&cena.estilo));
     u.extend_from_slice(&[cena.raio_da_peca, 0.0, 0.0, 0.0]);
+    let foto = cena.foto.filter(|_| tem_ceu);
+    match foto {
+        Some(f) => {
+            u.extend_from_slice(&[f.giro[0], f.giro[1], f.forca, 1.0]);
+            u.extend_from_slice(&[
+                f.caixa,
+                f.fundo.unwrap_or(0.0),
+                f32::from(u8::from(f.fundo.is_some())),
+                0.0,
+            ]);
+        }
+        None => u.extend_from_slice(&[1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0]),
+    }
+    for col in inversa(&cena.camera.view_proj) {
+        u.extend_from_slice(&col);
+    }
     for l in &cena.luzes[..n] {
         u.extend_from_slice(&[l.posicao[0], l.posicao[1], l.posicao[2], 0.0]);
         u.extend_from_slice(&[
@@ -278,6 +341,12 @@ impl Forward {
                     binding: 7,
                     resource: wgpu::BindingResource::Sampler(&self.liso),
                 },
+                wgpu::BindGroupEntry {
+                    binding: 8,
+                    resource: wgpu::BindingResource::TextureView(
+                        self.foto.as_ref().map_or(&self.foto_vazia, |(_, v)| v),
+                    ),
+                },
             ],
         });
         let mut enc = self
@@ -370,10 +439,14 @@ impl Forward {
                 multiview_mask: None,
             });
             pass.set_bind_group(0, &g0, &[]);
-            let (chao, objeto) = match com_brilho {
-                Some((b, _)) => (&b.chao, &b.objeto),
-                None => (&self.chao, &self.objeto),
+            let (chao, objeto, fundo) = match com_brilho {
+                Some((b, _)) => (&b.chao, &b.objeto, &b.fundo),
+                None => (&self.chao, &self.objeto, &self.fundo),
             };
+            if self.foto.is_some() && cena.foto.is_some_and(|f| f.fundo.is_some()) {
+                pass.set_pipeline(fundo);
+                pass.draw(0..3, 0..1);
+            }
             if ha_sombra && cena.chao.is_some() {
                 pass.set_pipeline(chao);
                 pass.draw(0..6, 0..1);

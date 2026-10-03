@@ -9,14 +9,13 @@
 //!   - abaixo: amostragem de Hammersley FILTRADA (Colbert & Křivánek, GPU Gems 3, cap. 20) — cada
 //!     amostra lê o nível cujo texel tem o ângulo sólido dela. ⛔ Medido (02/10): com o viés `+1`
 //!     de quem a publicou o erro dobrava sobre o equiretangular; aqui é `0`.
-//! - Irradiância: `E(n)/π` somada sobre o panorama inteiro (reduzido a `≤ 128` de largura, com
-//!   pesos de ângulo sólido — a energia conserva-se), sem truncar em harmónicos.
+//! - Irradiância: NÃO tem mapa próprio — é o nível `α = 1` (ver `Ceu::irradiance`).
 //!
 //! O erro de cada passo contra a quadratura crua mede-se nos gates (`crate::tests`).
 
 use rayon::prelude::*;
 
-use crate::{ATLAS_H, ATLAS_W, LADO_IRR, LADOS, NIVEIS, Panorama, Rgb, X0, Y0, de_oct};
+use crate::{ATLAS_H, ATLAS_W, LADOS, NIVEIS, Panorama, Rgb, X0, Y0, de_oct};
 
 /// Amostras do lóbulo por texel nos níveis amostrados, por `α`: um lóbulo de `0,3°` cabe num texel do
 /// panorama e `64` amostras já o cobrem; os largos pedem mais. ⛔ Medido (02/10, floresta): `256` dava
@@ -36,7 +35,8 @@ pub(crate) fn amostras(alpha: f32) -> u32 {
 /// deixava escapar as lâmpadas pequenas — `68 %` de erro máximo a `α = 0,14`.
 pub(crate) const ALFA_EXACTA: f32 = 0.09;
 
-/// A largura máxima do panorama sobre o qual a irradiância é somada.
+/// A largura máxima do panorama sobre o qual a irradiância da régua é somada.
+#[cfg(test)]
 const LARGURA_IRR: u32 = 128;
 
 /// A pirâmide do panorama: cada nível é o anterior reduzido `2×2`, pesado pelo ângulo sólido.
@@ -193,7 +193,8 @@ pub(crate) fn fontes_conv(pir: &[Panorama], alpha: f32) -> Vec<([f64; 3], [f64; 
     v
 }
 
-/// As amostras da irradiância: direcção e `L·Ω/π` de cada texel do panorama reduzido.
+/// A RÉGUA da irradiância (os gates): direcção e `L·Ω/π` de cada texel do panorama reduzido.
+#[cfg(test)]
 pub(crate) fn fontes_irr(pir: &[Panorama]) -> Vec<([f32; 3], [f64; 3])> {
     let p = pir
         .iter()
@@ -211,6 +212,7 @@ pub(crate) fn fontes_irr(pir: &[Panorama]) -> Vec<([f32; 3], [f64; 3])> {
 }
 
 /// `E(n)/π` sobre as fontes.
+#[cfg(test)]
 pub(crate) fn irradiancia(fontes: &[([f32; 3], [f64; 3])], n: [f32; 3]) -> Rgb {
     let mut s = [0.0f64; 3];
     for (d, c) in fontes {
@@ -233,22 +235,19 @@ pub(crate) fn centro(i: u32, j: u32, n: u32) -> [f32; 3] {
 /// ⭐ O atlas inteiro.
 pub(crate) fn atlas(p: &Panorama) -> Vec<[f32; 4]> {
     let pir = piramide(p);
-    let fontes = fontes_irr(&pir);
     let mut atlas = vec![[0.0, 0.0, 0.0, 1.0]; (ATLAS_W * ATLAS_H) as usize];
-    for k in 0..=NIVEIS {
-        let n = if k < NIVEIS { LADOS[k] } else { LADO_IRR };
+    for k in 0..NIVEIS {
+        let n = LADOS[k];
         let r = k as f32 / (NIVEIS - 1) as f32;
         let alpha = r * r;
-        let conv = (k > 0 && k < NIVEIS && alpha >= ALFA_EXACTA).then(|| fontes_conv(&pir, alpha));
+        let conv = (k > 0 && alpha >= ALFA_EXACTA).then(|| fontes_conv(&pir, alpha));
         let linhas: Vec<Vec<Rgb>> = (0..n + 2)
             .into_par_iter()
             .map(|j| {
                 (0..n + 2)
                     .map(|i| {
                         let d = centro(i, j, n);
-                        if k == NIVEIS {
-                            irradiancia(&fontes, d)
-                        } else if k == 0 {
+                        if k == 0 {
                             pir[0].radiancia(d)
                         } else if let Some(f) = &conv {
                             convolucao(f, d, alpha)

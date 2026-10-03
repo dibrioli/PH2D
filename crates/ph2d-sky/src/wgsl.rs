@@ -9,7 +9,7 @@
 //! e recebe `sky_gira`, `sky_radiance(dir, alpha)` e `sky_irradiance(n)` — no referencial do céu,
 //! sem força (o giro e a força são do chamador, como no [`crate::Orientado`]).
 
-use crate::{LADO_IRR, LADOS, NIVEIS, X0, Y0};
+use crate::{LADOS, NIVEIS, X0, Y0};
 
 const CORPO: &str = r"
 fn sky_gira(d: vec3<f32>, giro: vec2<f32>) -> vec3<f32> {
@@ -61,7 +61,7 @@ fn sky_radiance(dir: vec3<f32>, alpha: f32) -> vec3<f32> {
 }
 
 fn sky_irradiance(n: vec3<f32>) -> vec3<f32> {
-    return sky_bilinear(SKY_NIVEIS, sky_oct(n));
+    return sky_bilinear(SKY_NIVEIS - 1u, sky_oct(n));
 }
 ";
 
@@ -72,16 +72,14 @@ fn lista(v: &[u32]) -> String {
 /// ⭐ A fonte, com as constantes do atlas escritas a partir das da CPU (nunca à mão).
 #[must_use]
 pub fn fonte() -> String {
-    let mut lados = LADOS.to_vec();
-    lados.push(LADO_IRR);
     format!(
         "const SKY_NIVEIS: u32 = {NIVEIS}u;\n\
          const SKY_LADOS: array<u32, {m}> = array<u32, {m}>({});\n\
          const SKY_X0: array<u32, {m}> = array<u32, {m}>({});\n\
          const SKY_Y0: array<u32, {m}> = array<u32, {m}>({});\n{CORPO}",
-        lista(&lados),
+        lista(&LADOS),
         lista(&X0),
         lista(&Y0),
-        m = NIVEIS + 1,
+        m = NIVEIS,
     )
 }

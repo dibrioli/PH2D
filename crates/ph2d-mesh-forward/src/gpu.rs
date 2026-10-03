@@ -17,7 +17,7 @@ const VERTICE: u64 = 32;
 pub(crate) const SLOT: u64 = 256;
 /// O tamanho do uniforme do quadro — o `Quadro` do WGSL.
 pub(crate) const QUADRO: usize =
-    2 * 16 + 6 * 4 + ph2d_style::wgsl::PACKED + 4 + 2 * crate::MAX_LUZES * 4;
+    2 * 16 + 6 * 4 + ph2d_style::wgsl::PACKED + 4 + 4 + 4 + 16 + 2 * crate::MAX_LUZES * 4;
 
 struct MalhaGpu {
     vertices: wgpu::Buffer,
@@ -40,6 +40,8 @@ pub struct Forward {
     chao: wgpu::RenderPipeline,
     sombra: wgpu::RenderPipeline,
     ecra: wgpu::RenderPipeline,
+    /// O céu fotográfico atrás da peça.
+    fundo: wgpu::RenderPipeline,
     /// Os pipelines do brilho — `None` onde a placa não desenha `Rgba16Float` com `4×` (ali não há
     /// cena-linear para ler, e o painel esconde as fileiras: [`Forward::tem_brilho`]).
     brilho: Option<crate::gpu_brilho::Brilho>,
@@ -51,6 +53,10 @@ pub struct Forward {
     quadro: wgpu::Buffer,
     ceu: wgpu::Buffer,
     tabela: wgpu::TextureView,
+    /// O atlas do céu fotográfico ([`Forward::sobe_ceu`]); `None` até ao 1.º céu — a ligação lê
+    /// então um texel vazio, e a cena ignora a [`crate::Foto`].
+    foto: Option<(wgpu::Texture, wgpu::TextureView)>,
+    foto_vazia: wgpu::TextureView,
     mapa_sombra: wgpu::TextureView,
     compara: wgpu::Sampler,
     liso: wgpu::Sampler,
@@ -140,9 +146,10 @@ impl Forward {
         self.cor
     }
 
-    /// ⭐ **Quantos pipelines este desenhista já compilou** — fixo desde que nasce: `6` (objeto,
-    /// chão, sombra, cobertura, redução, codificação) e `+4` do brilho onde a placa o tem (objeto e
-    /// chão com a cena-linear, descer, subir). Ligar, desligar ou mexer no brilho não compila nada.
+    /// ⭐ **Quantos pipelines este desenhista já compilou** — fixo desde que nasce: `7` (objeto,
+    /// chão, fundo, sombra, cobertura, redução, codificação) e `+5` do brilho onde a placa o tem
+    /// (objeto, chão e fundo com a cena-linear, descer, subir). Ligar, desligar ou mexer no brilho,
+    /// ou trocar de céu, não compila nada.
     #[must_use]
     pub fn pipelines_compilados(&self) -> usize {
         self.pipelines
@@ -154,6 +161,42 @@ impl Forward {
     #[must_use]
     pub fn tem_brilho(&self) -> bool {
         self.brilho.is_some()
+    }
+
+    /// ⭐ **Há um céu fotográfico subido?** — sem ele a [`crate::Foto`] da cena é ignorada.
+    #[must_use]
+    pub fn tem_ceu(&self) -> bool {
+        self.foto.is_some()
+    }
+
+    /// ⭐⭐ **Sobe (ou troca) o céu fotográfico** — o atlas `f16` do [`ph2d_sky::Ceu`] numa textura
+    /// `Rgba16Float` (só da 1.ª vez se cria; trocar de céu só escreve). Nada compila.
+    pub fn sobe_ceu(&mut self, ceu: &ph2d_sky::Ceu) {
+        let (w, h) = (ph2d_sky::ATLAS_W, ph2d_sky::ATLAS_H);
+        let (t, _) = self.foto.get_or_insert_with(|| {
+            let t = self.device.create_texture(&textura_meia("ph2d-mesh-forward ceu foto", w, h));
+            let v = t.create_view(&wgpu::TextureViewDescriptor::default());
+            (t, v)
+        });
+        self.queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: t,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            bytemuck::cast_slice(ceu.atlas()),
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(w * 8),
+                rows_per_image: Some(h),
+            },
+            wgpu::Extent3d {
+                width: w,
+                height: h,
+                depth_or_array_layers: 1,
+            },
+        );
     }
 
     #[must_use]
@@ -209,6 +252,7 @@ impl Forward {
                     ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                     count: None,
                 },
+                textura_float(8),
             ],
         });
         // ⚠️ O passe de sombra ESCREVE o mapa: não o pode ter ligado para leitura. Só o quadro.
@@ -355,8 +399,27 @@ impl Forward {
             cache: None,
         };
         let chao = device.create_render_pipeline(&chao_d);
-        let brilho = (cor == crate::gpu_brilho::LINEAR)
-            .then(|| crate::gpu_brilho::Brilho::novo(&device, cor, &objeto_d, &chao_d));
+        // O fundo vem antes do chão, opaco, sem profundidade (está no infinito).
+        let fundo_d = wgpu::RenderPipelineDescriptor {
+            label: Some("ph2d-mesh-forward fundo"),
+            vertex: wgpu::VertexState {
+                module: &modulo,
+                entry_point: Some("vs_fundo"),
+                compilation_options: opts(),
+                buffers: &[],
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &modulo,
+                entry_point: Some("fs_fundo"),
+                compilation_options: opts(),
+                targets: &opaco,
+            }),
+            ..chao_d.clone()
+        };
+        let fundo = device.create_render_pipeline(&fundo_d);
+        let brilho = (cor == crate::gpu_brilho::LINEAR).then(|| {
+            crate::gpu_brilho::Brilho::novo(&device, cor, &objeto_d, &chao_d, &fundo_d)
+        });
         let sombra = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("ph2d-mesh-forward sombra"),
             layout: Some(&pl_sombra),
@@ -425,6 +488,29 @@ impl Forward {
         });
         queue.write_buffer(&ceu, 0, bytemuck::cast_slice(&ceu_dados));
         let tabela = textura_de_floats(&device, &queue, ambiente.tabela);
+        let foto_vazia = {
+            let t = device.create_texture(&textura_meia("ph2d-mesh-forward ceu vazio", 1, 1));
+            queue.write_texture(
+                wgpu::TexelCopyTextureInfo {
+                    texture: &t,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                &[0u8; 8],
+                wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(8),
+                    rows_per_image: Some(1),
+                },
+                wgpu::Extent3d {
+                    width: 1,
+                    height: 1,
+                    depth_or_array_layers: 1,
+                },
+            );
+            t.create_view(&wgpu::TextureViewDescriptor::default())
+        };
         let mapa_sombra = device
             .create_texture(&wgpu::TextureDescriptor {
                 label: Some("ph2d-mesh-forward mapa de sombra"),
@@ -469,7 +555,7 @@ impl Forward {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        let pipelines = if brilho.is_some() { 10 } else { 6 };
+        let pipelines = if brilho.is_some() { 12 } else { 7 };
         let cobertura =
             crate::gpu_cobertura::Cobertura::nova(&device, &modulo, &pl_sombra, &so_posicao);
         Self {
@@ -480,6 +566,7 @@ impl Forward {
             chao,
             sombra,
             ecra,
+            fundo,
             brilho,
             ecra_ub,
             g0_bgl,
@@ -489,6 +576,8 @@ impl Forward {
             quadro,
             ceu,
             tabela,
+            foto: None,
+            foto_vazia,
             mapa_sombra,
             compara,
             liso,
@@ -605,7 +694,7 @@ impl Forward {
         self.sobe_materiais(cena.materiais);
         let enquadra =
             quadro_impl::enquadra_sombra(cena, |id| self.malhas.get(&id).map(|m| m.caixa));
-        let dados = quadro_impl::uniforme_do_quadro(cena, &enquadra);
+        let dados = quadro_impl::uniforme_do_quadro(cena, &enquadra, self.foto.is_some());
         self.queue
             .write_buffer(&self.quadro, 0, bytemuck::cast_slice(&dados));
         let visiveis: Vec<&crate::Instancia> = cena
@@ -697,6 +786,24 @@ fn sobe_meia(queue: &wgpu::Queue, t: &wgpu::Texture, v: &[[f32; 4]], (w, h): (u3
             depth_or_array_layers: 1,
         },
     );
+}
+
+/// Uma textura `Rgba16Float` `w × h` para ler por `textureLoad`.
+fn textura_meia(label: &'static str, w: u32, h: u32) -> wgpu::TextureDescriptor<'static> {
+    wgpu::TextureDescriptor {
+        label: Some(label),
+        size: wgpu::Extent3d {
+            width: w,
+            height: h,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba16Float,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    }
 }
 
 /// Uma lista de floats numa textura `R32Float` de [`crate::TAB_W`] colunas.

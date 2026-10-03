@@ -49,6 +49,7 @@ pub fn fonte(ambiente: &crate::Ambiente<'_>) -> String {
         .replace("{AMBIENTE}", ambiente.wgsl)
         .replace("{OLHAR}", ph2d_view_transform::wgsl::SOURCE)
         .replace("{ESTILO}", &ph2d_style::wgsl::source())
+        .replace("{CEU_FOTO}", &ph2d_sky::wgsl::fonte())
         .replace("{MAX_LUZES2}", &(2 * crate::MAX_LUZES).to_string())
         .replace("{MAX_LUZES}", &crate::MAX_LUZES.to_string())
         .replace("{TAB_W}", &crate::TAB_W.to_string())

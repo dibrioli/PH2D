@@ -352,4 +352,44 @@ mod tests {
             "o «depois» do par não corre depois — a cena mostraria duas barras iguais"
         );
     }
+
+    /// ⭐⭐⭐ **A CENA DO BOTÃO, DE PONTA A PONTA:** antes de prender as barras não estão presas e o
+    /// cartão não oferece a ordem; presas, a da esquerda mostra «antes» e a da direita «depois» —
+    /// pela MESMA pergunta ([`crate::fx_bridge::is_bound`]) e a MESMA tradução
+    /// ([`crate::fx_bridge::stack_view`]) que a shell publica no painel.
+    #[test]
+    fn a_cena_do_botao_prende_e_o_cartao_mostra_a_ordem_de_cada_barra() {
+        use ph2d_panel_vector::FxBones;
+        let mut sim = SimWorld::default();
+        let mut scene = VecScene::new();
+        let mut st = crate::state::VecState::default();
+        build(&mut scene, &mut sim, &mut st, 6);
+        ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut st.entities);
+        let ids: Vec<_> = st
+            .bone_smoke_pend
+            .as_ref()
+            .expect("o 1.º tempo deixa as barras pendentes")
+            .iter()
+            .map(|(id, _)| *id)
+            .collect();
+        let cartao = |sim: &SimWorld, st: &crate::state::VecState, scene: &VecScene| {
+            ids.iter()
+                .map(|id| {
+                    let presa = crate::fx_bridge::is_bound(sim, &st.entities, *id);
+                    crate::fx_bridge::stack_view(scene, *id, presa)[0].bones
+                })
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            cartao(&sim, &st, &scene),
+            [FxBones::Unbound, FxBones::Unbound],
+            "soltas, a escolha não é oferecida"
+        );
+        bind(&mut scene, &mut sim, &mut st, 6);
+        assert_eq!(
+            cartao(&sim, &st, &scene),
+            [FxBones::Before, FxBones::After],
+            "presas, cada barra mostra a SUA ordem"
+        );
+    }
 }

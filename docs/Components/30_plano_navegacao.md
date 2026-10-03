@@ -930,6 +930,8 @@ Mutação **15 / 15** a sangrar, zero defeitos de arnês
 
 ### §17.7 — (depois do smoke) O tique à escala: o desvio varria as paredes da malha inteira
 
+✅ **Smoke do dono APROVADO (03/10)** — as cenas `=3` e `=4` com a grelha e os troços.
+
 O CONTROLO da `medir_replaneio` (200 agentes, nada a mudar) era `37,6 ms`. Medido por fase (cronómetros
 provisórios na ponte, `FASES=200`, load `~7` — as proporções valem): **o desvio era `97 %`** do tique
 (`35,0` de `36,3 ms`); a condução `0,4`, os movers `0,2`, o passo da física `0,2`. E crescia LINEAR nos

@@ -10,7 +10,8 @@
 > a superfície foundational inteira e o §3 «o que um merge pode partir»), a W8
 > ([`A_ARENA_E_O_TUTORIAL_2026-10-03`](HANDOFF_INTEGRACAO_line_components_A_ARENA_E_O_TUTORIAL_2026-10-03.md),
 > com os cinco defeitos do §2-bis) e esta W9. ✅ **Smoke do dono APROVADO na W5, W6, W7, W8 e W9 (03/10)** — as
-> cenas `PH2D_NAV_SMOKE=3`, `=4` e `PH2D_VIDA_SMOKE=4` (§5).
+> cenas `PH2D_NAV_SMOKE=3`, `=4` e `PH2D_VIDA_SMOKE=4` (§5) — e de novo depois da grelha das paredes e dos
+> troços (`=3`, `=4`).
 
 ## §0 — O `--ff-only` deve passar limpo
 

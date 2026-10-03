@@ -909,8 +909,9 @@ sonda, `≤ 1,0001` do oráculo) · `a_fila_serve_os_partidos_depois_os_mais_ant
 · `uma_malha_que_nao_para_de_mudar_serve_todos_a_vez` · `entalado_entre_duas_paredes_o_3d_nao_parte`
 (visto VERMELHO, o mesmo panic, sem a cura). Os gates de sempre (incremental = a frio, por mosaicos = a
 inteira, o oráculo exacto, o hash c9) passam sobre a malha contígua.
-Mutação: [`mutacao_navegacao_w9_2026-10-03.py`](ferramentas/mutacao_navegacao_w9_2026-10-03.py) —
-resultado no handoff.
+Mutação **15 / 15** a sangrar, zero defeitos de arnês
+([`mutacao_navegacao_w9_2026-10-03.py`](ferramentas/mutacao_navegacao_w9_2026-10-03.py)); a 1.ª corrida deu
+13/16 e as três sobreviventes estão no §17.3.
 
 ### §17.6 — ⏳ O que fica
 

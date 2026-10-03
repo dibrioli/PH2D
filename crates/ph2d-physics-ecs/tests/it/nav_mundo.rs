@@ -579,7 +579,11 @@ struct PedraInquieta {
 
 impl ph2d_physics_ecs::SceneAtTick for PedraInquieta {
     fn put(&mut self, sim: &mut SimWorld, tick: u64) -> bool {
-        let y = if (tick / 2) % 2 == 0 { 5.3 } else { 4.6 };
+        let y = if (tick / 2).is_multiple_of(2) {
+            5.3
+        } else {
+            4.6
+        };
         poe(sim, self.pedra, (-7.6, y));
         true
     }

@@ -262,8 +262,11 @@ impl NavMesh {
         let mut twin = vec![u32::MAX; ring.len()];
         let mut corner = vec![false; nv];
         let mut walls = Vec::new();
-        for pi in 0..np {
-            let (o, p) = (ring_off[pi] as usize, anel(pi));
+        for (pi, fatia) in ring_off.windows(2).enumerate() {
+            let (o, p) = (
+                fatia[0] as usize,
+                &ring[fatia[0] as usize..fatia[1] as usize],
+            );
             let n = p.len();
             for i in 0..n {
                 let (u, w) = (p[i], p[(i + 1) % n]);

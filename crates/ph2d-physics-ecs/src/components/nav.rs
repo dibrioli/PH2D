@@ -218,4 +218,10 @@ pub struct NavNow {
     pub remaining: f32,
     /// O raio com que ele procura o caminho — o autorado, ou o DERIVADO do colisor quando é `0`.
     pub radius: f32,
+    /// ⭐ A ordem de um verbo nesta corrida — `None` = nenhum falou (vale o *Active* autorado);
+    /// `Some(true)` = um `Start`; `Some(false)` = um `Stop`. Sem ela o Inspector dizia *«Switched
+    /// off»* de um agente desligado que um `Start` pôs a andar.
+    pub ordem: Option<bool>,
+    /// O alvo que um `Start` com nome lhe deu (`stable_name_id`; `0` = o autorado).
+    pub alvo_da_ordem: u64,
 }

@@ -1125,7 +1125,7 @@ fn arma_o_top20() {
     // que pinta MAIS linhas: a região com a queixa mais longa · o agente em `Ponto` (duas
     // linhas de alvo contra uma do `Objecto`), com o mover a ler o teclado (a queixa mais
     // longa da escada), a leitura PARCIAL (a frase mais longa) com o raio DERIVADO (a linha
-    // a mais) e o relógio PARADO (a última linha condicional).
+    // a mais), a ORDEM de um `Start` com nome e o relógio PARADO (a última linha condicional).
     insp::set_current_inspector_nav(Some(InspectorNavInfo {
         entity_bits: BITS,
         region: Some(InspectorNavRegion {
@@ -1161,6 +1161,9 @@ fn arma_o_top20() {
                 restante: 12.5,
                 raio: 0.35,
             }),
+            // Um `Start` com nome pô-lo a andar atrás de outro: a frase da ordem é mais uma linha.
+            ordem: Some(true),
+            alvo_da_ordem: "Guarda da torre".to_string(),
         }),
         // (W7) A área sem forma e NÃO proibida (a queixa mais longa e a linha do custo) · o atalho
         // com a saída PERDIDA (a queixa que pesa mais).

@@ -24,6 +24,8 @@ fn agente() -> InspectorNavAgent {
         has_platformer: false,
         in_region: true,
         agora: None,
+        ordem: None,
+        alvo_da_ordem: String::new(),
     }
 }
 
@@ -114,7 +116,9 @@ fn a_queixa_do_agente_vai_da_mais_especifica_para_a_mais_geral() {
             AgentQueixa::ComPlataforma => tudo.has_platformer = false,
             AgentQueixa::Desligado => tudo.active = true,
             AgentQueixa::SemAlvo => tudo.alvo_modo = NavAlvoModo::Ponto,
-            AgentQueixa::AlvoPerdido | AgentQueixa::SemForma => unreachable!(),
+            AgentQueixa::AlvoPerdido | AgentQueixa::SemForma | AgentQueixa::ParadoPorAccao => {
+                unreachable!()
+            }
             AgentQueixa::ForaDaRegiao => tudo.in_region = true,
         }
     }
@@ -245,4 +249,36 @@ fn evitar_dano_sem_vida_nao_muda_nada() {
     assert!(a.evitar_dano_nao_muda_nada());
     a.avoid_harm = false;
     assert!(!a.evitar_dano_nao_muda_nada(), "desligado não promete nada");
+}
+
+/// ⭐⭐ **A ORDEM de um verbo manda na queixa** — a caixa *Active* é o que o artista escreveu; um
+/// `Start` pô-lo a andar e um `Stop` parou-o, e o painel diz o que CORRE.
+///
+/// **Mutações que devem sangrar:** a queixa ler só o `active`; o `Start` com nome continuar a
+/// acusar as faltas do alvo autorado.
+#[test]
+fn a_ordem_de_um_verbo_manda_na_queixa() {
+    let mut a = agente();
+    a.active = false;
+    assert_eq!(a.queixa(), Some(AgentQueixa::Desligado));
+    assert_eq!(a.posto_a_andar_por_accao(), None);
+    a.ordem = Some(true);
+    assert_eq!(a.queixa(), None, "um Start pô-lo a andar: não está desligado");
+    assert_eq!(a.posto_a_andar_por_accao(), Some(""));
+
+    let mut b = agente();
+    b.ordem = Some(false);
+    assert_eq!(b.queixa(), Some(AgentQueixa::ParadoPorAccao));
+    b.ordem = Some(true);
+    assert_eq!(b.posto_a_andar_por_accao(), None, "ligado e com o alvo autorado: nada a dizer");
+
+    let mut c = agente();
+    c.alvo_modo = NavAlvoModo::Nenhum;
+    assert_eq!(c.queixa(), Some(AgentQueixa::SemAlvo));
+    c.ordem = Some(true);
+    c.alvo_da_ordem = "Hero".to_string();
+    assert_eq!(c.queixa(), None, "o Start deu-lhe um alvo");
+    assert_eq!(c.posto_a_andar_por_accao(), Some("Hero"));
+    c.in_region = false;
+    assert_eq!(c.queixa(), Some(AgentQueixa::ForaDaRegiao));
 }

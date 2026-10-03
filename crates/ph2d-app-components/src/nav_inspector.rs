@@ -106,6 +106,12 @@ fn info_do_agente(world: &World, e: Entity, a: &NavAgent) -> InspectorNavAgent {
         mover_reads_keys: mover.is_some_and(|m| m.default_controls),
         has_platformer: world.get::<PlatformPlayer>(e).is_some(),
         in_region: dentro_de_alguma_regiao(world, pos),
+        ordem: world.get::<NavNow>(e).and_then(|n| n.ordem),
+        alvo_da_ordem: world
+            .get::<NavNow>(e)
+            .filter(|n| n.alvo_da_ordem != 0)
+            .map(|n| crate::projectile_inspector::nome_do_alvo(world, n.alvo_da_ordem).0)
+            .unwrap_or_default(),
         agora: world.get::<NavNow>(e).map(|n| NavAgora {
             estado: estado(n.status),
             restante: n.remaining,

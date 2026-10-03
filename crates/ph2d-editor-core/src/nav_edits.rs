@@ -21,6 +21,7 @@
 //! | `MoverLeTeclado` | o mover ouve as setas, e os dois falariam ao mesmo tempo | desligar *Default Controls* |
 //! | `ComPlataforma` | um `PlatformPlayer` ganha a pose | tirar um dos dois |
 //! | `Desligado` | o artista desligou-o | ligar *Active* |
+//! | `ParadoPorAccao` | um `Stop Navigation` parou-o nesta corrida | um `Start`, ou recomeçar |
 //! | `SemAlvo` | ele não vai a lado nenhum | escolher um alvo |
 //! | `AlvoPerdido` | ninguém tem esse nome | escrever um nome que exista |
 //! | `SemForma` | (patrulha) nenhuma forma desenhada tem esse nome | escrever o nome de uma forma |
@@ -175,6 +176,12 @@ pub struct InspectorNavAgent {
     /// Alguma `NavRegion` contém o agente.
     pub in_region: bool,
     pub agora: Option<NavAgora>,
+    /// ⭐ A ORDEM de um verbo nesta corrida (`None` = nenhum falou; vale o *Active*) — ela manda
+    /// mais que o autorado, e a queixa lê-a: sem ela o painel dizia *«Switched off»* de um agente
+    /// desligado que um `Start` pôs a andar.
+    pub ordem: Option<bool>,
+    /// O nome do alvo que um `Start` lhe deu — vazio = o autorado.
+    pub alvo_da_ordem: String,
 }
 
 impl InspectorNavAgent {
@@ -196,8 +203,14 @@ impl InspectorNavAgent {
         if self.has_platformer {
             return Some(AgentQueixa::ComPlataforma);
         }
-        if !self.active {
-            return Some(AgentQueixa::Desligado);
+        match self.ordem {
+            Some(false) => return Some(AgentQueixa::ParadoPorAccao),
+            None if !self.active => return Some(AgentQueixa::Desligado),
+            _ => {}
+        }
+        // ⚠️ Um `Start` com nome deu-lhe OUTRO alvo: as faltas do autorado não são as de agora.
+        if self.ordem == Some(true) && !self.alvo_da_ordem.is_empty() {
+            return (!self.in_region).then_some(AgentQueixa::ForaDaRegiao);
         }
         match self.alvo_modo {
             NavAlvoModo::Nenhum => return Some(AgentQueixa::SemAlvo),
@@ -216,6 +229,15 @@ impl InspectorNavAgent {
             return Some(AgentQueixa::ForaDaRegiao);
         }
         None
+    }
+
+    /// ⭐ **Um `Start` pô-lo a andar CONTRA o autorado** (a caixa *Active* desmarcada, ou outro alvo)
+    /// — `Some(nome do alvo da ordem)`, vazio quando o alvo é o autorado. O painel di-lo: a caixa e o
+    /// campo do alvo mostram o que o artista escreveu, não o que corre.
+    #[must_use]
+    pub fn posto_a_andar_por_accao(&self) -> Option<&str> {
+        (self.ordem == Some(true) && (!self.active || !self.alvo_da_ordem.is_empty()))
+            .then_some(self.alvo_da_ordem.as_str())
     }
 
     /// ⭐ (W7) *Avoid Harm* ligado num agente SEM `Health`: nada o fere, logo ele não evita nada —
@@ -241,6 +263,8 @@ pub enum AgentQueixa {
     ForaDaRegiao,
     /// (W6) Nenhuma forma desenhada tem o nome da patrulha.
     SemForma,
+    /// Um `Stop Navigation` parou-o nesta corrida (um `Start` volta a pô-lo a andar).
+    ParadoPorAccao,
 }
 
 /// Uma edição de um campo das secções NAV REGION ou NAV AGENT.

@@ -64,6 +64,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "A Platform Player on this object wins \u{2014} remove one of the two."
         }
         "panel.inspector.nav.switched_off" => "Switched off \u{2014} it stands still.",
+        // ⭐ A ORDEM de um verbo manda mais que a caixa — o painel diz quem manda AGORA.
+        "panel.inspector.nav.stopped_by_an_action" => {
+            "Stopped by an action \u{2014} a Start sets it going again."
+        }
+        "panel.inspector.nav.started_by_an_action" => "Started by an action.",
+        "panel.inspector.nav.started_by_an_action_after_x" => {
+            "Started by an action \u{2014} after {name}."
+        }
         "panel.inspector.nav.no_target" => "No target \u{2014} it stands still.",
         "panel.inspector.nav.target_lost" => {
             "Nobody has that name any more \u{2014} write the name of an object in the scene."

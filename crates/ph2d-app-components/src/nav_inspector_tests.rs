@@ -275,6 +275,8 @@ fn a_leitura_viva_sai_do_nav_now() {
         status: NavStatus::MovingPartial,
         remaining: 3.25,
         radius: 0.65,
+        ordem: None,
+        alvo_da_ordem: 0,
     });
     assert_eq!(
         agente_de(&sim, agente).agora,
@@ -543,4 +545,47 @@ fn as_perguntas_da_area_e_do_atalho_chegam_ao_painel() {
         .expect("o atalho")
         .to = stable_name_id("Ninguem");
     assert_eq!(atalho(&sim).queixa(), Some(LinkQueixa::SaidaPerdida));
+}
+
+/// ⭐⭐⭐ **O painel lê a ORDEM que a ponte guarda** — um agente autorado DESLIGADO que um `Start`
+/// pôs a andar não se diz *«Switched off»*; e um ligado que um `Stop` parou diz que foi uma acção.
+/// Pela ponte inteira: `pede_navegacao` → o tique → o `NavNow` → `build_info`.
+///
+/// **Mutações que devem sangrar:** o `NavNow` sem a ordem; a queixa a ler só o `active`.
+#[test]
+fn o_painel_le_a_ordem_que_a_ponte_guarda() {
+    use ph2d_physics_ecs::{Collider, ColliderShape, PedidoDeNavegacao, PhysicsBridge};
+    let mut sim = SimWorld::new();
+    let (agente, _) = cena(&mut sim);
+    sim.world_mut().entity_mut(agente).insert(Collider {
+        shape: ColliderShape::Ball { radius: 0.3 },
+        ..Collider::default()
+    });
+    sim.world_mut()
+        .get_mut::<NavAgent>(agente)
+        .expect("é um agente")
+        .active = false;
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    let mut ponte = PhysicsBridge::new();
+    ponte.dispatch(&mut sim, true, 0);
+    assert_eq!(agente_de(&sim, agente).queixa(), Some(AgentQueixa::Desligado));
+
+    ponte.pede_navegacao(agente, PedidoDeNavegacao::Anda(0));
+    ponte.dispatch(&mut sim, true, 1);
+    ponte.dispatch(&mut sim, true, 2);
+    let a = agente_de(&sim, agente);
+    assert_eq!(a.queixa(), None, "um Start pô-lo a andar e o painel diz «desligado»");
+    assert_eq!(a.posto_a_andar_por_accao(), Some(""));
+    assert_eq!(a.agora.map(|n| n.estado), Some(NavEstado::AAndar));
+
+    sim.world_mut()
+        .get_mut::<NavAgent>(agente)
+        .expect("é um agente")
+        .active = true;
+    ponte.pede_navegacao(agente, PedidoDeNavegacao::Para);
+    ponte.dispatch(&mut sim, true, 3);
+    assert_eq!(
+        agente_de(&sim, agente).queixa(),
+        Some(AgentQueixa::ParadoPorAccao)
+    );
 }

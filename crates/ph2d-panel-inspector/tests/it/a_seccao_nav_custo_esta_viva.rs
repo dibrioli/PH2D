@@ -45,6 +45,8 @@ fn agente(avoid_harm: bool, has_health: bool) -> InspectorNavAgent {
         has_platformer: false,
         in_region: true,
         agora: None,
+        ordem: None,
+        alvo_da_ordem: String::new(),
     }
 }
 

@@ -61,6 +61,8 @@ fn agente(modo: NavAlvoModo) -> InspectorNavAgent {
         has_platformer: false,
         in_region: true,
         agora: None,
+        ordem: None,
+        alvo_da_ordem: String::new(),
     }
 }
 

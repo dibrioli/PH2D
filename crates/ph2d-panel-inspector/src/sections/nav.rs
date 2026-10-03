@@ -37,6 +37,7 @@ const fn chave_do_agente(q: AgentQueixa) -> (&'static str, ColorToken) {
         AgentQueixa::AlvoPerdido => ("panel.inspector.nav.target_lost", ColorToken::Warn),
         AgentQueixa::ForaDaRegiao => ("panel.inspector.nav.outside_regions", ColorToken::Warn),
         AgentQueixa::SemForma => ("panel.inspector.nav.shape_lost", ColorToken::Warn),
+        AgentQueixa::ParadoPorAccao => ("panel.inspector.nav.stopped_by_an_action", ColorToken::Text3),
     }
 }
 
@@ -236,6 +237,14 @@ fn avisos(
     if let Some(q) = a.queixa() {
         let (chave, cor) = chave_do_agente(q);
         cur_y = super::rows::aviso(scene, text_system, theme, x, w, cur_y, tr(chave), cor);
+    }
+    if let Some(nome) = a.posto_a_andar_por_accao() {
+        let frase = if nome.is_empty() {
+            tr("panel.inspector.nav.started_by_an_action").to_owned()
+        } else {
+            tr("panel.inspector.nav.started_by_an_action_after_x").replace("{name}", nome)
+        };
+        cur_y = super::rows::aviso(scene, text_system, theme, x, w, cur_y, &frase, ColorToken::Text3);
     }
     cur_y = leitura(scene, text_system, theme, x, w, cur_y, a);
     if !clock_playing {

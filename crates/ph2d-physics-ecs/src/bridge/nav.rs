@@ -467,7 +467,16 @@ impl PhysicsBridge {
             };
             let pos = [f64::from(p.translation.x), f64::from(p.translation.y)];
             let autorado = w.get::<NavAgent>(e).map_or(0.0, |a| a.radius);
+            let ordem = self
+                .nav
+                .ordens
+                .em_vigor
+                .get(&e)
+                .copied()
+                .unwrap_or_default();
             let agora = crate::NavNow {
+                ordem: ordem.ligado,
+                alvo_da_ordem: ordem.alvo,
                 status: rt.status,
                 remaining: rt.remaining(pos) as f32,
                 radius: if autorado > 0.0 {

@@ -210,5 +210,6 @@ falhas, zero flakes):**
 ## §8 — Binário de smoke (último passo: `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`, 2.ª corrida)
 
 ```
-SMOKE_BUILD_OUTPUT
+▸ linha line_uiux · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+    Finished `smoke` profile [optimized] target(s) in 0.24s
 ```

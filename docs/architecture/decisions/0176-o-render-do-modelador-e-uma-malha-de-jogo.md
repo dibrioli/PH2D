@@ -58,8 +58,9 @@ Decisões do dono (a ordem é dele, não derivada):
 
 - Crate nova **`ph2d-mesh-forward`**: `Features::empty()` + `Limits::downlevel_webgl2_defaults`;
   **texturas em vez de storage**; **6 pipelines compilados UMA vez** (nada compila ao editar).
-- **Style e Bloom ainda não foram portados** ao desenhista de jogo: as fileiras deles **escondem-se**
-  no Render por malha. **ABERTO** (handoff §5).
+- **Style e Bloom foram portados em 02/10** ao desenhista de jogo: o Bloom pela lei `ph2d_bloom::wgsl`
+  em passes de desenho; o Style por `ph2d_style::wgsl` por pixel, com a curvatura assada por vértice.
+  Ver [handoff O_BRILHO_E_O_ESTILO](../../3DModeling/handoffs/HANDOFF_line_3DModeling_O_BRILHO_E_O_ESTILO_2026-10-02.md).
 - **Kill-criterion escrito ANTES de medir:** quadro **≤ 8 ms** a 1080p e entrada no Render **≤ 1 s**.
   Medido: quadro **1,2–2,4 ms**, entrada **0,03–0,44 s** (a de 0,44 s a `load` 6–20 — re-medir calmo).
 - A malha tem de **concordar com o campo** (pose, partição, material): a lei vive nos gates do

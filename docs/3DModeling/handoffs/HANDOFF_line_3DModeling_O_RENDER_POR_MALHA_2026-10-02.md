@@ -132,6 +132,8 @@ flake de carga **pré-existente** (3/3 verde sozinho a `load 24`). clippy `-D wa
 
 ## §8 — ⭐ A PRÓXIMA ONDA: a ordem APROVADA pelo dono (02/10) — «qualidade Unreal/Fortnite, em mobile»
 
+✅ Item 1 (brilho + tom + estilo) FEITO em 02/10 — ver [HANDOFF … O_BRILHO_E_O_ESTILO](HANDOFF_line_3DModeling_O_BRILHO_E_O_ESTILO_2026-10-02.md).
+
 Pergunta do dono: *«o render parece rápido, mas temos a qualidade Unreal/Fortnite?»* Resposta: ainda
 não; a base (forward numa passada, mesma lei de material, sombra mole, ~1,2 ms a 1080p) é a certa.
 Ordem aprovada, **um item por vez, cada um com gate red-first, foto e smoke do dono**:

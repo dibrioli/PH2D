@@ -11,6 +11,7 @@ uma continua a ser um ficheiro próprio; o que mudou foi o endereço.
 
 *Pergunta-mãe da família: **o número que eu li mede o que eu penso que mede?***
 
+- [[feedback_a_same_look_between_two_8bit_paths_closes_per_dab_not_per_stroke]] — «a mesma aparência» entre dois caminhos de 8 bits fecha por DAB; o traço tem 2s raros de quantização
 - ⭐⭐⭐ [Régua GEOMÉTRICA × régua do PIXEL: num LOD só a do pixel decide (e a barra de uma tile não é o lado dela)](feedback_a_geometric_ruler_and_a_pixel_ruler_decides.md)
 - ⭐⭐⭐ [Sonda que mede UMA peça de uma cura não mede a cura — medi 0,17 ms e o produto pagava 8 ms; quem acusou foi a FOTO](feedback_a_probe_that_measures_one_piece_of_a_cure_does_not_measure_the_cure.md)
 - ⭐⭐⭐ [Tecto sobre um PRODUTO deforma (um `512×512` vira 32 linhas de 512); sobre cada LADO preserva — e nenhum gate mede a FORMA de uma grelha](feedback_a_cap_on_a_product_deforms_what_a_cap_on_each_side_preserves.md)

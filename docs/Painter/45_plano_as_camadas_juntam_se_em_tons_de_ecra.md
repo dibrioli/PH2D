@@ -85,3 +85,64 @@ Mutação: um arnês por porta (decode/encode, a mistura, cada fronteira de ajus
 - **A aparência de documentos 2D existentes muda** onde há translucidez entre camadas ou modos — o
   smoke do dono tem de o MOSTRAR (um documento antigo aberto antes e depois), não esconder.
 - O custo baixa (sai o `pow`/LUT de decode por píxel); medir no fecho, não prometer.
+
+## 8. Execução (P0–P2, 03/10) — o que cada onda mediu
+
+**P0 — a régua** ([ADR-0177](../architecture/decisions/0177-as-camadas-do-painter-juntam-se-em-tons-de-ecra.md),
+[oráculo](ferramentas/oraculo_camadas_gimp/README.md)). GIMP 3.2.6 por `python-fu-eval`: 84 corridas.
+O CONTROLO passa — o «linear» do GIMP é o compositor de então a `0`/`≤1` nos 10 modos de fórmula
+partilhada (Normal, Multiply, Darken, Lighten, Screen, Overlay, HardLight, VividLight, Difference,
+Exclusion) — e a W3C em tons de ecrã fecha o «perceptual» a `≤1` nesses 10. Hoje × «perceptual»:
+`73` degraus no Normal, o número do report.
+
+**P1 — a lei, CPU e placa.** `decode = b/255`, `encode = round`; os ajustes e os efeitos de
+vizinhança, definidos em luz, recebem `luz(acc)` e devolvem `ecrã(resultado)` (a fronteira; a mistura
+de volta corre em ecrã) — na CPU no braço do ajuste, na placa no `apply_adjustment_op` e nos 1.ºs
+leitores/combines do grafo.
+
+| gate | antes | depois |
+|---|---|---|
+| (a) compositor × GIMP «perceptual», 10 modos | `73` | `≤1` |
+| (b) peça 3D, cena 52: traço numa camada nova × o traço na base | `0,286` (73 degraus) | **`0,000`** |
+| (b) gémeo 2D (`o_traco_numa_camada_nova_e_o_traco_na_base`) | `42` | um dab `≤1`; um traço `≤2`, raro |
+| (c) CPU↔placa, pilha rica `8x` | `23` de `188 424` bytes a 1 | `11`–`12`; pior `31` de `141 318` canais; nunca 2 |
+| ajuste NEUTRO (18 tipos com neutro) | — | `0` bytes, base opaca e translúcida |
+
+⚠️ **Premissas do plano que a medição derrubou:**
+
+1. **«o traço numa camada nova = o traço na base, ±1»** só vale por DAB. Num traço os dabs
+   sobrepõem-se e cada um arredonda a 8 bits — a base guarda a COR, a camada guarda o ALFA, e os
+   erros propagam-se diferente. O modelo só das duas recursões arredondadas (sem lei de composição
+   nenhuma) reproduz o produto: 1 dab `≤1` sempre; 2+ dabs, 2s em `0,006–0,03 %`, nunca 3. É a
+   quantização de qualquer pintor a 8 bits, não o espaço (o critério de desistência não se aplica:
+   o espaço fechou, e na peça 3D fecha ao bit).
+2. **«a ligação do LUT de decode sai»** — FICA, com o conteúdo novo (`b/255` calculado na CPU): o
+   WGSL não promete que a conversão `rgba8unorm → f32` seja a divisão correctamente arredondada em
+   todo driver; a tabela promete.
+3. **«sem `pow` no caminho a paridade pode fechar ao bit»** — não fecha: a divisão do `over` (`2,5
+   ULP` no WGSL) continua. Desce para metade; o `FRACCAO_A_UM_DEGRAU` da W1b fica.
+4. **A aquarela assumia LUZ no compositor** (era item da P4, chegou na P1 por um gate vermelho,
+   `watercolor_ground_is_the_real_backdrop`, 73 degraus): o «base sobre o chão», a franja de AA e o
+   des-premultiplicar `L = (aparência − chão·(1−a))/a` imitam o compositor e passaram a tons de ecrã;
+   a óptica Beer–Lambert continua em luz. Com base opaca o caminho velho `l2s_byte(s2l[b])` nem era a
+   identidade (descia 1 em 7 bytes escuros): pino `watercolor_aa` movido (405 bytes, todos por 1).
+
+**P2 — os modos, dois oráculos.** O Krita 6.0.4 a 8 bits (codificado; `kritarunner` sem interface)
+é o compositor novo nos **22** modos — os HSL do W3C, Soft Light SVG, Behind e Erase=Clear incluídos
+— a `≤4` degraus em `≤93` canais de `4 896` (o arredondamento inteiro dele). As divergências do GIMP
+são fórmulas nomeadas, com desvio `0`: `B` SEM corte a `[0, 1]` em vírgula flutuante (Add,
+ColorBurn, ColorDodge, LinearBurn, LinearLight) e o Soft Light Pegtop; os «HSL» dele são HSV/HSL.
+**Nenhuma fórmula nossa muda** (W3C = Photoshop = Krita). Gates: `oraculo_gimp_tests`.
+
+**Mutação:** [`muta_as_camadas_em_ecra.sh`](ferramentas/muta_as_camadas_em_ecra.sh), 17 mutações
+(decode, encode, as duas fronteiras, a aquarela; na placa a tabela, o encode final, a fronteira por
+píxel e a do grafo).
+
+**Fica para a P3/P4 (janela nova):** P3 — o contrato do módulo de ajustes passa a receber o
+acumulador CODIFICADO; os de ecrã (Curves, Levels, Posterize, Threshold, Invert, ColorBalance,
+SelectiveColor, ChannelMixer, Noise, Color Lookup…) deixam a ida-e-volta, os de luz (HSB, Exposure,
+Vibrance, Brightness/Contrast, Photo Filter…) convertem dentro deles; o único chamador é o compositor
+(+ o shader e os espelhos de teste). P4 — o espaço do kernel de cada efeito de vizinhança pelo
+oráculo (hoje: luz, pela fronteira), e os outros consumidores: `ph2d-flip-render`
+(`composite_blend`), o FX raster do Vector (`BLEND_MODES_WGSL`), o bake de sprites, Wet Paint /
+Composite (a aquarela já está), o doc 01 §7 e a tabela ⛔ Recusas MEDIDAS.

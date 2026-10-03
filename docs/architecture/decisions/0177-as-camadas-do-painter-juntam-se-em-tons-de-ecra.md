@@ -97,6 +97,22 @@ encode(v) = round(clamp(v, 0, 1) · 255)
   o achatar sobre o fundo não muda), o bake de sprites, `ph2d-flip-render` (`composite_blend`), o FX
   raster do Vector (`BLEND_MODES_WGSL`), as camadas Wet Paint / Watercolor / Composite.
 
+## Execução (P0–P2, 03/10)
+
+Medido e gateado — detalhe e premissas derrubadas no [doc 45 §8](../../Painter/45_plano_as_camadas_juntam_se_em_tons_de_ecra.md):
+o oráculo «perceptual» fecha a `≤1` (era `73`); o traço numa camada nova da peça 3D é o da base **ao
+bit** (era `0,286`); no 2D um dab `≤1` e um traço `≤2` raro (quantização de 8 bits por dab, não o
+espaço); CPU↔placa a um degrau em `0,006 %` dos bytes (a divisão do WGSL — não fecha ao bit); os 18
+ajustes com ponto neutro são no-op ao bit; o Krita a 8 bits é o compositor novo nos 22 modos, e as
+divergências do GIMP são fórmulas nomeadas (`B` sem corte, Soft Light Pegtop).
+
+| ⛔ Recusa MEDIDA | porquê |
+|---|---|
+| trocar o `lum` por Rec.709 linear | o oposto desta decisão (acima) |
+| copiar o `B` sem corte do GIMP | é a vírgula flutuante dele; o W3C, o Photoshop e o Krita cortam (gate `as_divergencias_do_gimp_sao_as_formulas_nomeadas`) |
+| o Soft Light Pegtop do GIMP | o W3C/SVG é o do Krita `soft_light_svg` e o nosso |
+| ler o texel pela conversão `unorm` da textura | o WGSL não a promete correctamente arredondada; a tabela `b/255` sim |
+
 ## Critério de desistência
 
 Se o seam do report (o traço numa camada nova = o mesmo traço na base, ±1) não fechar na P1, o

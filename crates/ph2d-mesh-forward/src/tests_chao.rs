@@ -19,13 +19,26 @@ const ORACULO: &str = include_str!("../fixtures/oraculo_ceu_do_chao.csv");
 /// `48 × 96` não é a de `256 × 128` do Blender.
 const BORDA: i32 = 2;
 
-/// O quadro visto de cima no enquadramento do oráculo, com a caixa em `caixa` e o chão ou sem ele.
-fn de_cima(fw: &mut Forward, caixa: [f32; 3], chao: bool) -> Vec<u8> {
-    let (cx, cz, meia) = QUADRO;
-    let mut me = ID;
-    me[3][..3].copy_from_slice(&ESFERA.0);
-    let mut mc = ID;
-    mc[3][..3].copy_from_slice(&caixa);
+/// A pose que só desloca para `p`.
+fn em(p: [f32; 3]) -> [[f32; 4]; 4] {
+    let mut m = ID;
+    m[3][..3].copy_from_slice(&p);
+    m
+}
+
+/// O quadro visto de cima no enquadramento do oráculo, com a malha `2` na pose `mc` e o chão ou sem
+/// ele.
+fn de_cima(fw: &mut Forward, mc: [[f32; 4]; 4], chao: bool) -> Vec<u8> {
+    de_cima_em(fw, mc, chao, QUADRO)
+}
+
+fn de_cima_em(
+    fw: &mut Forward,
+    mc: [[f32; 4]; 4],
+    chao: bool,
+    (cx, cz, meia): (f32, f32, f32),
+) -> Vec<u8> {
+    let me = em(ESFERA.0);
     let objs = [
         Instancia {
             malha: 1,
@@ -58,8 +71,8 @@ fn de_cima(fw: &mut Forward, caixa: [f32; 3], chao: bool) -> Vec<u8> {
 /// O nosso chão no enquadramento do oráculo: `escuro` por pixel (`None` = uma peça tapa o chão, ou
 /// está a menos de [`BORDA`] dele).
 fn o_nosso(fw: &mut Forward) -> Vec<Option<f32>> {
-    let img = de_cima(fw, CAIXA.0, true);
-    let sem_chao = de_cima(fw, CAIXA.0, false);
+    let img = de_cima(fw, em(CAIXA.0), true);
+    let sem_chao = de_cima(fw, em(CAIXA.0), false);
     let peca = |x: i32, y: i32| {
         (x >= 0 && y >= 0 && x < LADO as i32 && y < LADO as i32)
             && sem_chao[((y as u32 * LADO + x as u32) * 4 + 3) as usize] != 0
@@ -163,6 +176,7 @@ fn o_ceu_do_chao_e_o_do_cycles() {
     for corte in cortes {
         let (mut pior, mut soma, mut n) = (0.0f32, 0.0f32, 0usize);
         let mut cauda = 0.0f32;
+        let mut apagados = 0usize;
         for p in pontos.iter().filter(|p| p.corte == corte) {
             let Some(e) = nosso[(p.j * LADO + p.i) as usize] else {
                 continue;
@@ -174,48 +188,113 @@ fn o_ceu_do_chao_e_o_do_cycles() {
             if p.escuro < 0.1 {
                 cauda = cauda.max(d);
             }
+            // O céu tapado não pode SUMIR longe das peças (o Cycles ainda escurece ali).
+            if p.escuro >= 0.02 && e == 0.0 {
+                apagados += 1;
+            }
             pior = pior.max(d);
             soma += d;
             n += 1;
         }
         let medio = soma / n as f32;
         eprintln!(
-            "{corte}: {n} px do chão · |Δ| médio {medio:.4} · máx {pior:.3} · na cauda {cauda:.3}"
+            "{corte}: {n} px do chão · |Δ| médio {medio:.4} · máx {pior:.3} · na cauda {cauda:.3} · \
+             {apagados} apagados"
         );
-        if n < 100 || medio > BARRA.0 || pior > BARRA.1 || cauda > BARRA.2 {
+        if n < 100 || medio > BARRA.0 || pior > BARRA.1 || cauda > BARRA.2 || apagados > 0 {
             falhas.push(format!(
-                "{corte}: {n} px · médio {medio:.4} · máx {pior:.3} · cauda {cauda:.3}"
+                "{corte}: {n} px · médio {medio:.4} · máx {pior:.3} · cauda {cauda:.3} · \
+                 {apagados} apagados"
             ));
         }
     }
     assert!(falhas.is_empty(), "o chão afastou-se do Cycles: {falhas:?}");
 }
 
+/// ⭐ **A cauda do céu do chão não tem degrau** — longe das peças o escurecimento cai como `(r/D)³` e
+/// não pode SUMIR de repente onde a busca da luz-chave deixa de achar peça (`~1,3` do centro dela).
+/// Na linha `z = 0` de um enquadramento de `±3`, até `1,6` de distância da esfera (a forma fechada
+/// dá ali `0,0063`, `~1,6` byte) o chão tem de escurecer, e na cauda (abaixo de `25` bytes) dois
+/// vizinhos nunca diferem mais de `3`.
+#[test]
+#[ignore = "precisa de aparelho"]
+fn a_cauda_do_ceu_do_chao_nao_tem_degrau() {
+    let Some(mut fw) = desenhista() else {
+        return;
+    };
+    let meia = 3.0;
+    let img = de_cima_em(&mut fw, em(CAIXA.0), true, (0.0, 0.0, meia));
+    let y = LADO / 2;
+    let alfa = |i: u32| img[((y * LADO + i) * 4 + 3) as usize];
+    let x = |i: u32| (i as f32 + 0.5) / LADO as f32 * 2.0 * meia - meia;
+    let mut degraus = Vec::new();
+    for i in 1..LADO {
+        // Só na CAUDA (os dois abaixo de `25`): junto da peça o escurecimento é íngreme de verdade.
+        let d = alfa(i).abs_diff(alfa(i - 1));
+        if d > 3 && alfa(i).max(alfa(i - 1)) < 25 {
+            degraus.push((x(i), alfa(i - 1), alfa(i)));
+        }
+    }
+    let apagados: Vec<f32> = (0..LADO)
+        .filter(|&i| (x(i) - ESFERA.0[0]).abs() <= 1.6 && x(i) < ESFERA.0[0] && alfa(i) == 0)
+        .map(x)
+        .collect();
+    assert!(degraus.is_empty(), "degraus no chão: {degraus:?}");
+    assert!(
+        apagados.is_empty(),
+        "o céu do chão sumiu a menos de 1,6 da esfera em x = {apagados:?}"
+    );
+}
+
 /// ⭐⭐ **O céu do chão segue as peças** — ele só se refaz quando a chave muda; aqui, a chave tem de
-/// mudar com a POSE e com a FORMA. Mover a caixa e trocar a malha dela (o MESMO id, outra forma) dão,
-/// ao byte, o quadro de um desenhista novo que nunca viu a cena antiga. Controlo: mover muda o chão.
+/// mudar com a POSE e com a FORMA. Mover a caixa, trocar a malha dela (o MESMO id, outra forma) e
+/// GIRAR uma peça sem mudar o enquadramento (a caixa dela é a mesma) dão, ao byte, o quadro de um
+/// desenhista novo que nunca viu a cena antiga. Controlo: cada mudança muda o chão.
 #[test]
 #[ignore = "precisa de aparelho"]
 fn o_ceu_do_chao_segue_as_pecas() {
     let (Some(mut fw), Some(mut novo)) = (desenhista(), desenhista()) else {
         return;
     };
-    let antes = de_cima(&mut fw, CAIXA.0, true);
-    let movida = [0.4, 0.2, 0.3];
+    let antes = de_cima(&mut fw, em(CAIXA.0), true);
+    let movida = em([0.4, 0.2, 0.3]);
     let depois = de_cima(&mut fw, movida, true);
     assert_ne!(antes, depois, "o controlo: mover a caixa muda o chão");
     assert!(
         depois == de_cima(&mut novo, movida, true),
         "o céu do chão ficou o da pose antiga"
     );
-    let (p, n, idx) = esfera(0.2);
+    // Uma esfera fora do centro da sua caixa (um triângulo degenerado em `+x` alarga-a): meia volta
+    // em `y` deixa a caixa — e o enquadramento — iguais e muda o chão.
+    let (mut p, mut n, mut idx) = esfera(0.2);
+    for v in &mut p {
+        v[0] -= 0.1;
+    }
+    let k = p.len() as u32;
+    p.extend([[0.3, 0.0, 0.0]; 3]);
+    n.extend([[1.0, 0.0, 0.0]; 3]);
+    idx.extend([k, k + 1, k + 2]);
     sobe(&mut fw, 2, &p, &n, &idx);
-    let (Some(mut outro), trocada) = (desenhista(), de_cima(&mut fw, movida, true)) else {
+    let trocada = de_cima(&mut fw, movida, true);
+    let mut girada = movida;
+    girada[0][0] = -1.0;
+    girada[2][2] = -1.0;
+    let virada = de_cima(&mut fw, girada, true);
+    assert_ne!(trocada, virada, "o controlo: girar a peça muda o chão");
+    let Some(mut outro) = desenhista() else {
         return;
     };
     sobe(&mut outro, 2, &p, &n, &idx);
     assert!(
         trocada == de_cima(&mut outro, movida, true),
         "o céu do chão ficou o da forma antiga"
+    );
+    let Some(mut outro) = desenhista() else {
+        return;
+    };
+    sobe(&mut outro, 2, &p, &n, &idx);
+    assert!(
+        virada == de_cima(&mut outro, girada, true),
+        "o céu do chão ficou o da peça antes de girar"
     );
 }

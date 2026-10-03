@@ -191,16 +191,23 @@ fn uma_peca_convexa_nao_se_tapa() {
     }
 }
 
-/// ⭐⭐ **A oclusão própria é do OBJETO, não do grupo** — duas bolas a `1 cm` uma da outra caem no
-/// mesmo grupo de extração (as bolas de bordo tocam-se) mas são dois objetos: cada uma, convexa, vê o
-/// céu todo SOZINHA. A vizinha tapa-a pela grelha dela, com a pose de agora — se a bake lesse o
+/// ⭐⭐ **A oclusão própria é do OBJETO, não do grupo** — duas caixas a `1 cm` uma da outra caem no
+/// mesmo grupo de extração (as bolas de bordo sobrepõem-se) mas são dois objetos: cada uma, convexa,
+/// vê o céu todo SOZINHA. A vizinha tapa-a pela grelha dela, com a pose de agora — se a bake lesse o
 /// campo do grupo, a vizinha contava duas vezes e ficava presa à pose da extracção.
 #[test]
 fn a_oclusao_propria_nao_conta_a_vizinha() {
     let reg = crate::smoke::sampled_registry();
+    // ⚠️ CAIXAS e não bolas: as bolas de bordo de duas esferas a `1 cm` não se tocam (grupos
+    // diferentes, e o gate não distinguia o campo do grupo do do objeto — a mutação sobrevivia); as
+    // de duas caixas (meia-diagonal `0,35`) sobrepõem-se.
     let bola = |x: f32| {
         ph2d_field_eval::leaf(
-            ph2d_field::Primitive::Sphere { radius: 0.2 },
+            ph2d_field::Primitive::Box {
+                half: [0.2; 3],
+                round: 0.0,
+                chamfer: 0.0,
+            },
             ph2d_field::Xform::at(x, 0.2, 0.0),
         )
     };
@@ -227,7 +234,7 @@ fn a_oclusao_propria_nao_conta_a_vizinha() {
         q.iter(world).next().map(|(e, _)| e).expect("a peça")
     };
     let objs = crate::malha_render::extrair(sim.world(), root, &reg);
-    assert_eq!(objs.len(), 2, "duas bolas soltas são dois objetos");
+    assert_eq!(objs.len(), 2, "duas caixas soltas são dois objetos");
     for (k, o) in objs.iter().enumerate() {
         let min = o.malha.ao.iter().copied().fold(1.0f32, f32::min);
         assert!(o.contacto.is_some(), "objeto {k}: sem grelha");

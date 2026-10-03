@@ -65,8 +65,8 @@ pub struct Grade {
 impl Grade {
     /// ⭐ Marcha os [`RAIOS`] de cada ponto no `vol` da peça (bola `centro`, `raio`).
     ///
-    /// ⚠️ Um ponto DENTRO da peça é empurrado para a superfície ao longo da normal: um vizinho que
-    /// encosta lê pontos dos dois lados dela, e por dentro todas as direcções estariam tapadas.
+    /// ⛔ Empurrar os pontos de DENTRO da peça para a superfície foi escrito e retirado por mutação:
+    /// não mudou nenhuma resposta (nem a do Cycles, nem a da placa) na quarta casa.
     #[must_use]
     pub fn constroi(vol: &Volume, centro: [f32; 3], raio: f32) -> Self {
         let meia = raio.max(1.0e-6) * (1.0 + MARGEM);
@@ -86,14 +86,7 @@ impl Grade {
                 let ijk = [idx % LADO, (idx / LADO) % LADO, idx / (LADO * LADO)];
                 let v: [f32; 3] =
                     std::array::from_fn(|e| lo[e] + 2.0 * meia * ijk[e] as f32 / (LADO - 1) as f32);
-                let d0 = vol.distancia(v);
-                let tau = 0.1 * h;
-                let q = if d0 < tau {
-                    let g = vol.normal(v);
-                    std::array::from_fn(|e| v[e] - g[e] * (d0 - tau))
-                } else {
-                    v
-                };
+                let q = v;
                 let longe = diag
                     + (0..3)
                         .map(|e| (q[e] - 0.5 * (vol.lo[e] + vol.hi[e])).powi(2))

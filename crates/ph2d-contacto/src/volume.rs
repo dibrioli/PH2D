@@ -52,25 +52,6 @@ impl Volume {
         if fora > 0.0 { fora.max(dq - fora) } else { dq }
     }
 
-    /// O gradiente (diferenças centrais de meio passo), normalizado.
-    #[must_use]
-    pub fn normal(&self, p: [f32; 3]) -> [f32; 3] {
-        let h = 0.5 * self.passo();
-        let mut g = [0.0f32; 3];
-        for (e, ge) in g.iter_mut().enumerate() {
-            let (mut a, mut b) = (p, p);
-            a[e] += h;
-            b[e] -= h;
-            *ge = self.distancia(a) - self.distancia(b);
-        }
-        let l = (g[0] * g[0] + g[1] * g[1] + g[2] * g[2]).sqrt();
-        if l > 1.0e-12 {
-            g.map(|c| c / l)
-        } else {
-            [0.0, 1.0, 0.0]
-        }
-    }
-
     fn trilinear(&self, p: [f32; 3]) -> f32 {
         let n = self.n;
         let mut i0 = [0usize; 3];

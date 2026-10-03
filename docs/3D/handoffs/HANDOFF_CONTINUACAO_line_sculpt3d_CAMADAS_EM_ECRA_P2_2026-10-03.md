@@ -106,5 +106,5 @@ $ bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke
 `bash scripts/agent-loop-profile.sh` (20 sessões): paralelismo `1,14` · respostas/sessão `196` ·
 `test:check` `2,4` · edições pela `Edit` `37 %` · contexto por passo `365 mil` · início `63 mil`.
 
-Smoke ao dono (o report de 03/10): ver a mensagem final da janela — cena `52`, o mesmo traço preto
-na `Layer 1` e numa `Layer 2` nova, as bordas iguais.
+Smoke ao dono (o report de 03/10), cena `52`: o mesmo traço preto na `Layer 1` e numa `Layer 2`
+nova, as bordas iguais. ✅ **O dono aprovou (03/10): «smoke OK».**

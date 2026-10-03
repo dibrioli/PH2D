@@ -501,7 +501,7 @@ fn o_desenho_nao_volta_para_tras_onde_a_arte_nao_volta() {
 fn a_uniao_numa_forma_com_efeito_nao_deixa_lascas_nem_mexe_no_repouso() {
     let anel = |v: &[ph2d_vec_scene::VecVertex]| {
         ph2d_vec_boolean::area(&VecPath {
-            verts: v.iter().copied().collect(),
+            verts: v.to_vec(),
             closed: true,
             ..VecPath::default()
         })

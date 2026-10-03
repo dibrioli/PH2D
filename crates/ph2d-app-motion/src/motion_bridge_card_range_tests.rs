@@ -99,6 +99,119 @@ fn the_card_shows_and_drags_the_same_numbers_the_panel_does() {
     );
 }
 
+/// ⛔⛔ **UMA ROW LIGADA MOSTRA O NÚMERO DO FIO, e não o do cartão** — report do Enio, 2026-10-03:
+/// *«ligar um Number ao Strength do Vortex: o fio aparece, mas o Vortex continua com o valor do
+/// cartão»*.
+///
+/// O cook obedece ao fio nas duas rotas (as sondas de `drive_force_tests`); quem mentia era a row:
+/// o cartão desenhava o override autorado, e o painel — a mesma pergunta — o número do fio
+/// (`params_stream::driven_value`). O gate de cima é cego a isto por POPULAÇÃO: ele monta cada tipo
+/// de nó SOLTO, e um param ligado nunca entra nela.
+#[test]
+fn a_driven_row_on_the_card_shows_the_number_the_wire_puts_in() {
+    use crate::ParamRow;
+    // (fio, o que a row tem de ler). `None` é o CONTROLO: sem fio, a row lê o override do cartão.
+    for (fio, esperado) in [(Some(30.0f32), 30.0f32), (Some(-12.5), -12.5), (None, 2.0)] {
+        let mut m = MotionState::new();
+        let vx = m.doc.graph.add_node("force.vortex".to_string());
+        m.doc.graph.set_param(vx, "strength", 2.0);
+        if let Some(v) = fio {
+            let num = m.doc.graph.add_node("value.number".to_string());
+            m.doc.graph.set_param(num, "value", v);
+            m.doc
+                .graph
+                .drive_param(vx, "strength", (num, 0))
+                .expect("o fio liga");
+            // O quadro anterior: o condutor na memória do cozimento, que é de onde as duas rows leem.
+            m.pump
+                .cook
+                .cook(&m.doc.graph, &m.registry, num, 0.0)
+                .expect("o Number coze");
+        }
+        ph2d_panel_motion_graph::set_graph_selection(vec![vx.0]);
+        let painel = build_params_snapshot(&m, ph2d_editor_core::ProjectSettings::default())
+            .expect("o painel do Vortex");
+        let Some(ParamRow::Scalar(r)) = painel
+            .rows
+            .iter()
+            .find(|r| matches!(r, ParamRow::Scalar(s) if s.name == "strength"))
+        else {
+            panic!("o painel mostra o Strength");
+        };
+        let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
+        stamp_card_params(&m, ph2d_editor_core::ProjectSettings::default(), &mut snap);
+        let c = snap
+            .nodes
+            .iter()
+            .find(|v| v.id == vx.0)
+            .and_then(|v| v.params.iter().find(|c| c.hint.param == "strength"))
+            .expect("o cartão mostra o Strength");
+        ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+        assert_eq!(c.driven, fio.is_some(), "a row sabe que tem fio");
+        assert!(
+            (r.value - f64::from(esperado)).abs() < 1e-6,
+            "o painel le {} com fio {fio:?}",
+            r.value
+        );
+        assert!(
+            (c.value - esperado).abs() < 1e-6,
+            "o cartao le {} com fio {fio:?} — o numero que o Vortex usa e' {esperado}",
+            c.value
+        );
+    }
+}
+
+/// ⛔⛔ **UM NUMBER LIGADO À FORÇA DE UM CAMPO ARRASTA ABAIXO DE ZERO** — report do Enio,
+/// 2026-10-03: *«Number não aceita valores negativos»*. O Number veste a faixa do param que
+/// conduz (`ParamUnit::FromWire`), e o `Strength` das quatro forças com SENTIDO declarava
+/// `0..40`: o arrasto parava no zero, e o giro ao contrário só se dizia por um interruptor —
+/// que um fio não consegue animar suavemente (abrandar, parar, inverter).
+///
+/// CONTROLO: a densidade e o arrasto ficam `≥ 0` — ali o negativo não é «ao contrário», é outra
+/// física (densidade negativa; um arrasto que injecta energia).
+#[test]
+fn a_number_wired_to_a_field_strength_drags_below_zero() {
+    for (tipo, param, com_sinal) in [
+        ("force.vortex", "strength", true),
+        ("force.attractor", "strength", true),
+        ("force.curl", "strength", true),
+        ("force.wind", "strength", true),
+        ("force.buoyancy", "density", false),
+        ("force.drag", "coefficient", false),
+    ] {
+        let mut m = MotionState::new();
+        let alvo = m.doc.graph.add_node(tipo.to_string());
+        let num = m.doc.graph.add_node("value.number".to_string());
+        m.doc
+            .graph
+            .drive_param(alvo, param, (num, 0))
+            .expect("o fio liga");
+        let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
+        stamp_card_params(&m, ph2d_editor_core::ProjectSettings::default(), &mut snap);
+        let c = snap
+            .nodes
+            .iter()
+            .find(|v| v.id == num.0)
+            .and_then(|v| v.params.iter().find(|c| c.hint.param == "value"))
+            .expect("o cartão do Number mostra o Value");
+        if com_sinal {
+            assert!(
+                c.min < 0.0 && (c.min + c.max).abs() < 1e-6,
+                "{tipo}::{param}: o Number ligado arrasta em [{}, {}] — o sentido contrário tem de \
+                 estar a um arrasto, e simétrico",
+                c.min,
+                c.max
+            );
+        } else {
+            assert!(
+                c.min >= 0.0,
+                "{tipo}::{param}: o Number ligado arrasta desde {} — negativo aqui é outra física",
+                c.min
+            );
+        }
+    }
+}
+
 /// **O CENSO DA FACE — quantos params o painel mostra numa unidade que o cartão ainda não veste.**
 ///
 /// O painel converte uma LENGTH de metros para px (`RowDisplay::scale`) e põe o sufixo; o cartão

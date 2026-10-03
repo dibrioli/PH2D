@@ -46,9 +46,10 @@ pub struct CardSection {
 pub struct CardParam {
     /// Rótulo, faixa, passo e widget — tal como o registry os declara (`register_param_ui`).
     pub hint: ParamUiHint,
-    /// O valor **AUTORADO** (override do grafo, senão o default do manifesto). ⚠️ Não é o
-    /// valor do cook: um param dirigido por fio só tem valor DURANTE o cozimento, e desenhar
-    /// esse faria a row tremer a meio de um quadro.
+    /// O valor que o nó USA: o número que o fio põe (lido da memória do cozimento do quadro
+    /// anterior — estável no quadro, nunca uma segunda avaliação), senão o override, senão o
+    /// default do manifesto. ⛔ Desenhar o override de uma row ligada foi o report do Enio de
+    /// 2026-10-03: o cartão dizia `2` e o Vortex usava `30`.
     pub value: f32,
     /// Um fio (doc 58) dirige este param: a row mostra a proveniência e **não se arrasta** —
     /// o número vem de fora.

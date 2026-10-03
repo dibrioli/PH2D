@@ -600,6 +600,10 @@ mod duplicator_tests;
 #[path = "motion_bridge_drive_param_tests.rs"]
 mod drive_param_tests;
 
+#[cfg(test)]
+#[path = "motion_bridge_drive_force_tests.rs"]
+mod drive_force_tests;
+
 /// A tee contra o nó fundido (doc 100) — a sonda que mede se `value.lfo → motion.drive` é o
 /// `motion.oscillator` ao bit, se os dois chegam ao device, e o que cada um custa.
 #[cfg(test)]

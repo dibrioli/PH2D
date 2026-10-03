@@ -78,6 +78,11 @@ type FioDeParam = (NodeId, Vec<(String, (NodeId, u16))>);
 /// ⚠️ Uma segunda leitura do mesmo valor (um «ler o param do lfo à mão») seria a forma clássica de
 /// este gate concordar consigo próprio em vez de com o produto.
 fn valores(g: &Graph, reg: &NodeRegistry, cook: &mut Cook) -> DrivenParams {
+    valores_em(g, reg, cook, PLAYHEAD)
+}
+
+/// O mesmo, num instante dado — a produção re-deriva os valores POR TIQUE.
+fn valores_em(g: &Graph, reg: &NodeRegistry, cook: &mut Cook, playhead: f64) -> DrivenParams {
     let mut fora = DrivenParams::new();
     let fios: Vec<FioDeParam> = g
         .all_param_sources()
@@ -86,7 +91,7 @@ fn valores(g: &Graph, reg: &NodeRegistry, cook: &mut Cook) -> DrivenParams {
         .collect();
     for (node, params) in fios {
         for (param, (src, port)) in params {
-            let saida = cook.cook(g, reg, src, PLAYHEAD).expect("o condutor coze");
+            let saida = cook.cook(g, reg, src, playhead).expect("o condutor coze");
             let v = saida
                 .get(port as usize)
                 .and_then(ph2d_nodegraph::param_source::driven_value);
@@ -171,5 +176,142 @@ fn the_device_reads_the_driven_param_and_agrees_with_the_cpu() {
         mudou > 1e-2,
         "mudar o valor dirigido tem de mudar o campo, e mudou {mudou} -- o device esta' a \
          ignorar o fio e a usar o default"
+    );
+}
+
+/// O passo da marcha da galáxia abaixo — o mesmo do produto.
+const FIXED_DT: f64 = 1.0 / 60.0;
+/// Tiques marchados: o bastante para o redemoinho dar a volta a uma parte do campo.
+const TIQUES: u64 = 40;
+/// O tecto da paridade de uma SIMULAÇÃO, herdado do `gpu_cpu_parity_sim` (o ε realimenta-se).
+const EPS_SIM: f32 = 2e-3;
+
+/// `grid → integrate ⇢pre⇢ vortex → integrate.forces`, com o `strength` do Vortex DIRIGIDO por um
+/// `value.number` que vale `forca` — o grafo do report do Enio de 2026-10-03 (*«liguei um Number
+/// ao Strength do Vortex e não teve efeito»*). Devolve `(grafo, saída, vortex)`.
+fn galaxia(reg: &NodeRegistry, forca: f32) -> (Graph, NodeId, NodeId) {
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    g.set_param(grid, "rows", 6.0);
+    g.set_param(grid, "cols", 6.0);
+    g.set_param(grid, "gap_x", 1.0);
+    g.set_param(grid, "gap_y", 1.0);
+    let ig = g.add_node("motion.integrate");
+    let out = g.add_node("motion.output");
+    let vx = g.add_node("force.vortex");
+    g.set_param(vx, "strength", 4.0);
+    g.set_param(vx, "radius", 6.0);
+    let num = g.add_node("value.number");
+    g.set_param(num, "value", forca);
+    for (a, b, porta, laco) in [
+        (grid, ig, 0, false),
+        (ig, vx, 0, true),
+        (vx, ig, 1, false),
+        (ig, out, 0, false),
+    ] {
+        g.connect(Edge {
+            from: (a, 0),
+            to: (b, porta),
+            delayed: laco,
+        })
+        .unwrap();
+    }
+    g.drive_param(vx, "strength", (num, 0)).unwrap();
+    g.validate(reg).expect("a galáxia é bem tipada");
+    (g, out, vx)
+}
+
+/// Marcha as DUAS rotas `TIQUES` tiques e devolve o `P` final de cada uma.
+fn galaxia_nas_duas(
+    gpu: &GpuContext,
+    reg: &NodeRegistry,
+    forca: f32,
+) -> (Vec<[f32; 2]>, Vec<[f32; 2]>) {
+    let (g, out, vx) = galaxia(reg, forca);
+    let mut cpu = Cook::new();
+    let mut p_cpu = Vec::new();
+    for t in 0..=TIQUES {
+        let ph = t as f64 * FIXED_DT;
+        let saida = cpu.cook(&g, reg, out, ph).expect("cpu cook");
+        if let Some(Column::Vec2(v)) = saida[0].as_stream().get("P") {
+            p_cpu.clone_from(v);
+        }
+        cpu.advance_tick(&g, reg, ph).expect("cpu tick");
+    }
+    // O condutor coze-se num `Cook` próprio, como a produção (`valores_dirigidos`), POR TIQUE.
+    let mut condutor = Cook::new();
+    let driven = valores_em(&g, reg, &mut condutor, 0.0);
+    assert_eq!(
+        driven.get(&vx).and_then(|m| m["strength"]),
+        Some(forca),
+        "a fixture entrega o número do Number"
+    );
+    let plan = ph2d_gpu_cook::plan_driven(&g, reg, reg, out, &driven);
+    assert!(
+        plan.is_fully_gpu(),
+        "a galáxia é do dispositivo: {:?}",
+        plan.boundaries
+    );
+    assert!(plan.drives_a_loop(), "o estado vive na placa");
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    gc.retain_streams_for_debug(true);
+    for t in 0..=TIQUES {
+        let ph = t as f64 * FIXED_DT;
+        gc.set_driven(valores_em(&g, reg, &mut condutor, ph));
+        gc.cook(
+            gpu,
+            &g,
+            reg,
+            reg,
+            &plan,
+            &[],
+            CookClock {
+                playhead: ph,
+                tick: Some(t),
+            },
+            DEFAULT_UV,
+            DEFAULT_SIZE,
+            SinkStyle::PLAIN,
+        )
+        .expect("gpu cook");
+    }
+    let p_gpu = gc
+        .read_column_vec2(gpu, out, "P")
+        .expect("P volta do device");
+    (p_cpu, p_gpu)
+}
+
+fn maior_distancia(a: &[[f32; 2]], b: &[[f32; 2]]) -> f32 {
+    a.iter()
+        .zip(b)
+        .map(|(p, q)| (p[0] - q[0]).hypot(p[1] - q[1]))
+        .fold(0.0_f32, f32::max)
+}
+
+/// ⭐⭐⭐ **UM NUMBER NO STRENGTH DO VORTEX, DENTRO DO LAÇO DA SIMULAÇÃO** — o caso que o gate de
+/// cima não cobria (ele dirige um `motion.move` sem estado). As duas rotas marcham a galáxia e
+/// concordam; e `+20` contra `−20` (o giro ao contrário) dão campos DIFERENTES — o controlo que
+/// impede o gate de aprovar duas rotas que ignorem o fio juntas.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn a_number_driving_the_vortex_strength_inside_the_sim_agrees_on_both_routes() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let mut reg = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut reg).expect("todo nó registra");
+    let (cpu_pos, dev_pos) = galaxia_nas_duas(&gpu, &reg, 20.0);
+    let (cpu_neg, dev_neg) = galaxia_nas_duas(&gpu, &reg, -20.0);
+    assert_eq!(cpu_pos.len(), 36, "36 peças");
+    assert_eq!(cpu_pos.len(), dev_pos.len());
+    for (sinal, cpu, dev) in [("+20", &cpu_pos, &dev_pos), ("-20", &cpu_neg, &dev_neg)] {
+        let pior = maior_distancia(cpu, dev);
+        assert!(pior < EPS_SIM, "{sinal}: as duas rotas divergem em {pior}");
+    }
+    let mudou = maior_distancia(&dev_pos, &dev_neg);
+    assert!(
+        mudou > 50.0 * EPS_SIM,
+        "o sentido do fio tem de mudar o campo, e mudou {mudou} — o device ignora o fio"
     );
 }

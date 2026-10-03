@@ -177,7 +177,13 @@ pub fn stamp_card_params(
                         label: ph2d_i18n::tr(h.label),
                         ..*h
                     },
-                    value: vestir(param_value(motion, nid, h.param)),
+                    // ⛔ **Uma row LIGADA mostra o número do FIO** — a MESMA porta do painel
+                    // (`params_stream::driven_value`, a memória do cozimento). Com o override, o
+                    // cartão dizia `2` enquanto o Vortex usava `30` (report do Enio, 03/10).
+                    value: vestir(
+                        params_stream::driven_value(motion, nid, h.param)
+                            .map_or_else(|| param_value(motion, nid, h.param), |(v, _)| v),
+                    ),
                     min: vestir(min),
                     max: vestir(max),
                     step: vestir(step),

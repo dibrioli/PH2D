@@ -16,8 +16,8 @@ pub fn cena_41() -> Result<FieldDoc, ph2d_field::FieldError> {
         "[field-smoke] cena 41 — O CHAO QUE TAPA: a parte de baixo das pecas ve o chao, nao o ceu."
     );
     println!(
-        "[field-smoke]            (1) MODEL · painel do topo, Shading · Render. Arraste para girar a \
-         camara ATE' FICAR BAIXA, quase rente ao chao, para ver por baixo das bolas."
+        "[field-smoke]            (1) MODEL · painel do topo, Shading · Render. A camara abre de LADO, \
+         rente ao chao: arraste um pouco para CIMA (uns 5 a 10 graus) para ver o chao e a parte de baixo."
     );
     println!(
         "[field-smoke]            (2) a bola BRANCA pousada escurece na barriga, mais onde encosta; a de \

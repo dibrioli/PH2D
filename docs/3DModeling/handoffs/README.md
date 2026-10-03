@@ -13,7 +13,7 @@
 [`06_resultados_cena_e_gizmo.md`](../06_resultados_cena_e_gizmo.md) são uma wave cada, com a tabela
 medida e as provas de mutação ao lado. Esta pasta guarda o que atravessa a **fronteira da linha**.
 
-**22 handoffs.** ⚠️ *Esta contagem dizia «10» e a tabela não tinha o de 10/09 — um índice escrito à
+**28 handoffs.** ⚠️ *Esta contagem dizia «10» e a tabela não tinha o de 10/09 — um índice escrito à
 mão envelhece no dia do primeiro esquecimento.*
 
 | Data | Arquivo | Papel | Assunto |
@@ -46,6 +46,7 @@ mão envelhece no dia do primeiro esquecimento.*
 | 2026-10-03 | [HANDOFF_line_3DModeling_O_SOL_E_A_SOMBRA_2026-10-03.md](HANDOFF_line_3DModeling_O_SOL_E_A_SOMBRA_2026-10-03.md) | wave | **O SOL E A SOMBRA no render por malha**: o sol tirado do HDRI (excesso acima de 16× a média, conservação contra a soma exacta) como a luz-chave, sombra na direcção dele (faces de trás, PCSS em 3 níveis com Vogel, o mapa enquadra o que se vê) — contra o Cycles `|Δ|` médio `0,0005–0,015`; céu nublado sem sol · PRÓXIMO: texturas triplanares |
 | 2026-10-03 | [HANDOFF_line_3DModeling_AS_TEXTURAS_2026-10-03.md](HANDOFF_line_3DModeling_AS_TEXTURAS_2026-10-03.md) | wave | **AS TEXTURAS no render por malha**: projecção triplanar (a «Box» + Blend do Blender medida por oráculo: pesos 9e-7, cor 7e-5, normal 4,4e-5), crate `ph2d-triplanar`, pacote CC0 de 7 + ficheiros importados por caminho, rugosidade por pixel, paridade placa × CPU p99 1 B, `FieldTexture` + schema 179, cena 39 · smoke OK · PRÓXIMO: contacto + chão (item 5) |
 | 2026-10-03 | [HANDOFF_line_3DModeling_O_CONTACTO_2026-10-03.md](HANDOFF_line_3DModeling_O_CONTACTO_2026-10-03.md) | wave | **O CONTACTO no render por malha**: o chão em paridade com o **Cycles** (o traçado não bate: escuro e largo) — cobertura de cima E de baixo, passe do céu do chão `512²` entrelaçado, médio `0,063 → 0,006`; crate `ph2d-contacto`: a grelha de harmónicos que cada peça tapa às vizinhas (placa × Cycles `0,009`, anda com a pose) e a oclusão própria por `128` raios no campo do OBJETO (sai a Quilez: `0,05–0,15 → 0,004–0,016`); cena 40 · smoke OK · a ordem 1–5 do dono FECHADA |
+| 2026-10-03 | [HANDOFF_line_3DModeling_O_CHAO_QUE_TAPA_2026-10-03.md](HANDOFF_line_3DModeling_O_CHAO_QUE_TAPA_2026-10-03.md) | wave | **O CHÃO QUE TAPA as peças no render por malha**: a barriga de uma peça pousada deixa de ver o céu de baixo do estúdio — lei difusa (`16` direcções) e reflexo (`2` anéis × `4` taps) contra o **Cycles** (difuso médio `0,0098`, sem a lei `0,0721`); o céu do chão passa a até `2` intervalos por fatia (viés da barriga `−0,052 → +0,0075`); cena 41, `+0,30 ms` a 1080p (celular não medido) · ⛔ o traçado também nunca deixou o chão tapar: é física nova |
 
 ---
 

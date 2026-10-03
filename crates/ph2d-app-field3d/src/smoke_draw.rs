@@ -547,3 +547,8 @@ fn viewport_pass(
 #[cfg(test)]
 #[path = "render_sem_tracado_tests.rs"]
 mod render_sem_tracado_tests;
+
+/// ⭐⭐⭐ O instrumento «Matcap intacto» (a retirada do Render traçado, 03/10).
+#[cfg(test)]
+#[path = "matcap_intacto_sondas.rs"]
+mod matcap_intacto_sondas;

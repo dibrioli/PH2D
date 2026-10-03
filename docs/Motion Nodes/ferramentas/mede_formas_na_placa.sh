@@ -9,7 +9,8 @@
 #
 # uso (dentro da worktree, com o `release` já construído):
 #   bash "docs/Motion Nodes/ferramentas/mede_formas_na_placa.sh" <dir-de-saida>
-# Ambiente: CELULAS (lista «placa:cena:n», ver abaixo) · BARRA=4 · SEGUIDAS=3 · ESPERA=40 · HORAS=6
+# Ambiente: CELULAS (lista «placa:cena:n», ver abaixo) · BARRA=4 · SEGUIDAS=3 · ESPERA=40 · HORAS=6 ·
+#           FORMAS="0 1" (só "1" re-mede o lado da placa contra um «sem» já medido na mesma sessão)
 #
 # ⚠️ Cada célula lê as TRÊS últimas janelas `[frame]` (120 quadros cada) depois de a população
 # encher — a régua do doc 120 §3. ⚠️ A carga ANTES e DEPOIS vai ao lado de cada célula.
@@ -34,7 +35,7 @@ calma() {
 }
 for cel in $CELULAS; do
   IFS=: read -r placa cena n <<< "$cel"
-  for formas in 0 1; do
+  for formas in ${FORMAS:-0 1}; do
     kv="PH2D_FLUID_PROFILE=1 PH2D_FORMAS_NA_PLACA=$formas"
     if [ "$cena" = 17 ]; then
       kv="$kv PH2D_MOTION_OBJ_SMOKE=17 PH2D_TECTO_FORMA=1 PH2D_TECTO_N=$n"

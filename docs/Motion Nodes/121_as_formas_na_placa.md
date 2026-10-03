@@ -1266,3 +1266,22 @@ sem a verificação da capacidade · o passo da fileira no fragmento · preenchi
 a `kb` por `floor` · o depósito sem a diferença. As duas do `cs_zera` morrem no gate da cena que muda
 (o análogo da M10 do §9.8) e no da metade das células. O arnês das listas (`14/14`) foi aposentado com
 o código que mutava.
+
+**A memória no APP — medida, e o defeito que a medição achou** (W5, `mede_formas_na_placa.sh`, o relato
+`[formas] celulas:` sob `PH2D_FLUID_PROFILE=1`, janela `1930 × 1040`). ⛔ A 1.ª corrida pediu `132 MB`
+na `=127` densa e `264 MB` na escada de `32 768` — e as «pedidas» eram EXACTAMENTE `16 ×` as cópias: era
+o palpite de fábrica por cópia (`CELULAS_POR_COPIA_INICIAL = 16`), que entrava num `max` e nunca mais
+saía (o comentário dizia «a leitura do total substitui-o»; o código guardava o maior dos dois). Com as
+listas o mesmo palpite custava `~384 B` por cópia; com a acumulação, `8,4 KB`. ✅ **Cura:** as células
+só têm a capacidade MEDIDA (os dois primeiros quadros de uma cena nova vão pelo caminho de sempre — a
+mesma imagem, os gates `10/10` e `5/5` re-corridos). Re-medido:
+
+| cena (app) | células pedidas | capacidade | quadro iGPU com · sem placa | CPU (encode) com · sem |
+|---|---:|---:|---:|---:|
+| escada, `4 096` · `16 384` · `32 768` | `0` (as conformes pequenas não vão às células) | — | `60 fps` nas três | `~3,1` · `4,1`–`17,8` |
+| `=127` densa, `16 384` | `107 520` (`6,6` por cópia) | `131 072` · **`66 MB`** | **`16,6`** · `20,8` ms | `3,1` · `8,2` ms |
+
+⇒ no proxy de telemóvel a `=127` densa passa a `60 fps` (as listas davam `17,6 ms`). ⚠️ Os `66 MB` são
+`528 B` por célula; uma estrela de `~14 px` ocupa uma célula de `32` por fileira (mais de metade é
+grelha fora da forma) — a alavanca da memória E do custo das células nas densas é a LARGURA da célula,
+re-medida a seguir.

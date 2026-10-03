@@ -45,9 +45,10 @@ const BLOCO: u64 = crate::SEGS_POR_BLOCO as u64;
 /// leitura do total substitui-a dois quadros depois. Uma estrela aguda de cinco pontas com a faixa
 /// em todos os vértices escreve `20` (duas por troço); `32` cobre-a com um bloco de folga.
 const ARESTAS_POR_COPIA_INICIAL: u64 = 32;
-/// Células por cópia na primeira capacidade — o mesmo papel do de cima: a leitura do total
-/// substitui-o. Uma estrela pequena (`~12` linhas, uma célula) pede `~12`.
-const CELULAS_POR_COPIA_INICIAL: u64 = 16;
+// ⛔ doc 121 §9.12 — **as células NÃO têm palpite de fábrica por cópia**: só a capacidade MEDIDA (dois
+// quadros depois; até lá as cópias vão pelo caminho de sempre, a mesma imagem). Um palpite entra no
+// `max` e nunca mais sai: com `16` por cópia (`528 B` cada) a `=127` densa ficava com `132 MB` e a
+// escada de `32 768` com `264 MB`, pedidas pelo PALPITE e não pela cena (medido no app, W5 de 03/10).
 /// Pixels de uma célula (`PIXELS_DA_CELULA` no WGSL).
 const PIXELS_DA_CELULA: u64 = 32;
 /// Bytes de uma célula em cada buffer (doc 121 §9.12): o REGISTO (os três fundos e a regra), a
@@ -124,6 +125,9 @@ pub(crate) struct Contorno {
     pub(crate) ligado: bool,
     /// [`AREA_MINIMA_CONFORME`], ou o que um gate pediu.
     pub(crate) area_minima_conforme: f32,
+    /// `PH2D_FLUID_PROFILE=1` ⇒ cada crescimento das células diz quanto passaram a ocupar (doc 121
+    /// §9.12: a memória delas na cena do app é medida, não estimada).
+    relata: bool,
 }
 
 /// doc 121 §9.10 — um pipeline nas duas variantes do `override TRACEJADO` (`shape.wgsl`): a ENXUTA,
@@ -338,6 +342,7 @@ impl Contorno {
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(AREA_MINIMA_CONFORME),
+            relata: std::env::var("PH2D_FLUID_PROFILE").is_ok_and(|v| v != "0"),
         }
     }
 
@@ -409,10 +414,7 @@ impl Contorno {
             self.cap_arestas = cap;
         }
         let tecto_m = self.tecto_celulas.min(self.celulas_no_maximo);
-        let pedido_m = self
-            .total_visto_m
-            .max(n * CELULAS_POR_COPIA_INICIAL)
-            .min(tecto_m);
+        let pedido_m = self.total_visto_m.min(tecto_m);
         if pedido_m > self.cap_celulas {
             let cap = pedido_m.next_power_of_two().min(tecto_m);
             let armazens = wgpu::BufferUsages::STORAGE;
@@ -420,6 +422,12 @@ impl Contorno {
             self.acumula = buffer(gpu, "ph2d-shape-gpu acumulacao das celulas", cap * ACUMULA, armazens);
             self.cobertura = buffer(gpu, "ph2d-shape-gpu cobertura das celulas", cap * COBERTURA, armazens);
             self.cap_celulas = cap;
+            if self.relata {
+                let mb = cap * (REGISTO + ACUMULA + COBERTURA) / (1024 * 1024);
+                eprintln!(
+                    "[formas] celulas: capacidade {cap} ({mb} MB) para {pedido_m} pedidas por {n} copias"
+                );
+            }
         }
     }
 

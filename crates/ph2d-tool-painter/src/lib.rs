@@ -140,7 +140,7 @@ pub use tool::{
     PainterTool, PolygonOverlay, SCREEN_CANVAS_DOC, ScreenCanvasFrame, ScreenCanvasRelief,
     SelectionGizmoView, StencilOverlay, StencilPreview, StrokeOpBadge, TangentHandles,
     TransformGizmo, UsoDaCamada, WetKnobs, WetTool, brush_falloff_weight_at,
-    set_pending_select_mods,
+    render_classic_flow_preview, set_pending_select_mods,
 };
 pub use undo::{DEFAULT_MAX_BYTES, MAX_HISTORY_STEPS, UndoController, history_budget_bytes};
 

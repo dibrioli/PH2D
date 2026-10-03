@@ -1,6 +1,6 @@
 //! As linhas da **forma da borda** no cartão Wash (BUGS_painter #31): o padrão de **Flow** do Ragged
-//! Edge, a PRÉ-VISUALIZAÇÃO dele (a faixa partilhada das outras texturas), o Size e o Angle (só com um
-//! padrão — o Classic não tem textura, escala nem direção), e o **Paper Edge**. Irmão de `paint_watercolor.rs` pelo tecto de LOC do painel.
+//! Edge, a PRÉ-VISUALIZAÇÃO dele (a faixa partilhada das outras texturas), o Size, o Angle e o **Paper
+//! Edge**. O Classic é um padrão como os outros (dono, 2026-10-02): tem escala, direção e preview. Irmão de `paint_watercolor.rs` pelo tecto de LOC do painel.
 
 use crate::card::card_row;
 use crate::paint_brush_rows::paint_dropdown_row;
@@ -11,20 +11,16 @@ use ph2d_tool_painter::{BrushSettings, FLOW_KINDS, FLOW_SIZE_MAX, FLOW_SIZE_MIN,
 
 const ANGLE_MAX: f32 = 360.0; // LITERAL-PX-OK: Flow Angle range (degrees)
 
-/// Quantas linhas estas pintam — o `card_frame` dimensiona a moldura por este número.
-pub(crate) fn flow_row_count(brush: &BrushSettings) -> usize {
-    if classic(brush) { 2 } else { 4 }
+/// Quantas linhas estas pintam — o `card_frame` dimensiona a moldura por este número: Flow · Size ·
+/// Angle · Paper Edge (o Classic é um padrão como os outros, com escala e direção — dono, 2026-10-02).
+pub(crate) fn flow_row_count(_brush: &BrushSettings) -> usize {
+    4
 }
 
 /// A altura que a pré-visualização do Flow soma ao cartão — a MESMA faixa das outras pré-visualizações
-/// do painel ([`crate::paint_texture::altura_do_preview`] + o intervalo). O Classic não tem textura, e
-/// não tem pré-visualização (como o Paper e o Grain em `None`).
-pub(crate) fn altura_extra_do_preview(brush: &BrushSettings, iw: f32) -> f32 {
-    if classic(brush) {
-        0.0
-    } else {
-        crate::paint_texture::altura_do_preview(iw) + ph2d_tokens::control_gap_px()
-    }
+/// do painel ([`crate::paint_texture::altura_do_preview`] + o intervalo).
+pub(crate) fn altura_extra_do_preview(_brush: &BrushSettings, iw: f32) -> f32 {
+    crate::paint_texture::altura_do_preview(iw) + ph2d_tokens::control_gap_px()
 }
 
 /// O padrão do Flow como a pré-visualização partilhada o lê: o slot Grain do snapshot sobrescrito pelo
@@ -76,49 +72,54 @@ pub(crate) fn paint_flow_rows(
     if let Some(r) = open {
         state::set_pending_flow_kind_dd(Some((r, brush.flow_kind)));
     }
-    if !classic(brush) {
-        // ── A pré-visualização: a faixa partilhada (como a do Shape, do Grain e do Paper) ──
-        let imagem = (TextureKind::from_u8(brush.flow_kind) == TextureKind::Image)
-            .then(state::current_brush_flow_image)
-            .flatten();
-        y = crate::paint_texture::paint_texture_preview(
-            ctx,
-            theme,
-            x,
-            w,
-            y,
-            flow_preview_view(brush),
-            imagem,
-        );
-        y = card_row(
-            ctx,
-            theme,
-            x,
-            w,
-            y,
-            "panel.painter_layers.watercolor.flow_size",
-            ph2d_tool_painter::ids::PAINTER_WATERCOLOR_FLOW_SIZE,
-            brush.flow_size,
-            FLOW_SIZE_MIN,
-            FLOW_SIZE_MAX,
-            number_field::FINE_STEP,
-            2,
-        );
-        y = card_row(
-            ctx,
-            theme,
-            x,
-            w,
-            y,
-            "panel.painter_layers.watercolor.flow_angle",
-            ph2d_tool_painter::ids::PAINTER_WATERCOLOR_FLOW_ANGLE,
-            f32::from(brush.flow_angle),
-            0.0,
-            ANGLE_MAX,
-            number_field::ANGLE_STEP,
-            0,
-        );
-    }
+    // ── A pré-visualização: a faixa partilhada (como a do Shape, do Grain e do Paper); o Classic
+    //    desenha-se pela porta do motor, `render_classic_flow_preview`. ──
+    let kind = TextureKind::from_u8(brush.flow_kind);
+    let imagem = (kind == TextureKind::Image)
+        .then(state::current_brush_flow_image)
+        .flatten();
+    let (size, angulo) = (brush.flow_size, brush.flow_angle);
+    let classico = move |buf: &mut [u8], bw: u32, bh: u32| {
+        ph2d_tool_painter::render_classic_flow_preview(size, angulo, buf, bw, bh);
+    };
+    y = crate::paint_texture::paint_texture_preview_com(
+        ctx,
+        theme,
+        x,
+        w,
+        y,
+        flow_preview_view(brush),
+        imagem,
+        classic(brush).then_some(&classico as crate::paint_texture::Desenhista<'_>),
+    );
+    y = card_row(
+        ctx,
+        theme,
+        x,
+        w,
+        y,
+        "panel.painter_layers.watercolor.flow_size",
+        ph2d_tool_painter::ids::PAINTER_WATERCOLOR_FLOW_SIZE,
+        brush.flow_size,
+        FLOW_SIZE_MIN,
+        FLOW_SIZE_MAX,
+        number_field::FINE_STEP,
+        2,
+    );
+    y = card_row(
+        ctx,
+        theme,
+        x,
+        w,
+        y,
+        "panel.painter_layers.watercolor.flow_angle",
+        ph2d_tool_painter::ids::PAINTER_WATERCOLOR_FLOW_ANGLE,
+        f32::from(brush.flow_angle),
+        0.0,
+        ANGLE_MAX,
+        number_field::ANGLE_STEP,
+        0,
+    );
     card_row(
         ctx,
         theme,

@@ -49,15 +49,21 @@ fn rect_de(rects: &[(NodeId, Rect)], id: NodeId) -> Option<Rect> {
         .map(|(_, r)| *r)
 }
 
-/// ⭐ Com Classic aparecem o Flow e o Paper Edge; com um padrão, também o Size e o Angle — e as linhas
-/// descem em ORDEM entre o Ragged Edge e o Smooth Edges, sem se sobreporem (o `card_frame` conta-as pelo
-/// `flow_row_count`; uma conta errada empurra o Smooth Edges para fora do cartão ou por cima de uma delas).
+/// ⭐ Com QUALQUER Flow — o Classic também, que é um padrão como os outros (dono, 2026-10-02) — aparecem o
+/// menu, a pré-visualização, o Size, o Angle e o Paper Edge, e as linhas descem em ORDEM entre o Ragged
+/// Edge e o Smooth Edges, sem se sobreporem (o `card_frame` conta-as pelo `flow_row_count`; uma conta
+/// errada empurra o Smooth Edges para fora do cartão ou por cima de uma delas).
 #[test]
 fn as_linhas_do_flow_aparecem_em_ordem_dentro_do_cartao() {
     for (flow, esperadas) in [
         (
             TextureKind::None,
-            vec![PAINTER_WATERCOLOR_FLOW_KIND, PAINTER_WATERCOLOR_PAPER_EDGE],
+            vec![
+                PAINTER_WATERCOLOR_FLOW_KIND,
+                PAINTER_WATERCOLOR_FLOW_SIZE,
+                PAINTER_WATERCOLOR_FLOW_ANGLE,
+                PAINTER_WATERCOLOR_PAPER_EDGE,
+            ],
         ),
         (
             TextureKind::Clouds,
@@ -86,16 +92,12 @@ fn as_linhas_do_flow_aparecem_em_ordem_dentro_do_cartao() {
             suave.y > y + 0.5,
             "{flow:?}: o Smooth Edges ficou por cima das linhas do Flow"
         );
-        // A pré-visualização (só com um padrão) mora entre o menu e a linha seguinte, com a altura das
+        // A pré-visualização mora entre o menu e a linha seguinte, com a altura das
         // pré-visualizações da casa (a do Shape, do Grain e do Paper): nunca menos que o mínimo dela.
         let menu = rect_de(&rects, PAINTER_WATERCOLOR_FLOW_KIND).expect("Flow pintado");
         let seguinte = rect_de(&rects, esperadas[1]).expect("a linha depois do menu");
         let passo = ph2d_tokens::row_pitch_px();
-        let (minimo, maximo) = if flow == TextureKind::None {
-            (passo - 0.5, passo + 0.5)
-        } else {
-            (passo + 56.0 - 0.5, passo + 120.0 + 2.0 * passo)
-        };
+        let (minimo, maximo) = (passo + 56.0 - 0.5, passo + 120.0 + 2.0 * passo);
         // ⚠️ E a MOLDURA cobre-a: um cartão curto demais não move nenhum retângulo de clique dele (o
         //    censo das linhas não o vê — o Wash delega), mas empurra o cartão SEGUINTE para cima do
         //    último controle deste. O 1.º controle do cartão Brush tem de nascer abaixo do Smooth Edges.
@@ -112,16 +114,6 @@ fn as_linhas_do_flow_aparecem_em_ordem_dentro_do_cartao() {
             vao >= minimo && vao <= maximo,
             "{flow:?}: {vao} px entre o menu e a linha seguinte (esperado {minimo}..{maximo})"
         );
-        if flow == TextureKind::None {
-            assert!(
-                rect_de(&rects, PAINTER_WATERCOLOR_FLOW_SIZE).is_none(),
-                "Classic não tem Size"
-            );
-            assert!(
-                rect_de(&rects, PAINTER_WATERCOLOR_FLOW_ANGLE).is_none(),
-                "Classic não tem Angle"
-            );
-        }
     }
 }
 

@@ -24,6 +24,11 @@ use ph2d_painter_brush::texture::{ImageMask, angle_basis, sample_tiled_rot_wrapp
 use ph2d_painter_brush::{TEX_TILE_BASE_PX, TextureKind, TextureSettings};
 use std::sync::{Mutex, OnceLock};
 
+#[path = "watercolor_flow_classico.rs"]
+mod classico; // o Classic com Flow Size / Angle e a pré-visualização dele
+use classico::Classico;
+pub use classico::render_classic_flow_preview;
+
 /// O que dá a forma da borda de um dono — a chave que separa as fontes e os pesos da junção.
 #[derive(Clone, Copy, PartialEq)]
 struct Estilo {
@@ -125,6 +130,9 @@ const SEM_IMAGEM: (u8, u64) = (0, 0);
 /// O deslocamento de UM [`Estilo`]: o fluxo (`None` = Classic, analítico) e o papel em px.
 struct Fonte {
     flow: Option<Mapa>,
+    /// O Classic com Flow Size / Angle fora do neutro (`None` com um padrão, ou no neutro: o
+    /// [`warp_offset`] verbatim).
+    classico: Option<Classico>,
     /// O mapa do papel e o fator `Paper Edge · amplitude da dobra` (px por unidade do mapa).
     papel: Option<(Mapa, f32)>,
 }
@@ -179,6 +187,7 @@ impl EdgeFlow {
                     .then(|| Amostrador::flow(e.flow, &imagens, tile))
                     .flatten()
                     .map(|a| a.mapa(caixa)),
+                classico: Classico::de(&e.flow, tile),
                 papel: e.papel.map(|(p, k)| {
                     let a = Amostrador::papel(p, &imagens, tile);
                     let f = k.min(1.0) * a.estat().dobra;
@@ -316,9 +325,10 @@ impl Fonte {
     #[inline]
     fn desloca(&self, x: f32, y: f32, amp: f32, tile: NoiseTile) -> (f32, f32) {
         let (wx, wy) = if amp > 0.0 {
-            match &self.flow {
-                None => warp_offset(x, y, tile),
-                Some(m) => m.le(x, y),
+            match (&self.flow, &self.classico) {
+                (Some(m), _) => m.le(x, y),
+                (None, Some(c)) => c.le(x, y),
+                (None, None) => warp_offset(x, y, tile),
             }
         } else {
             (0.0, 0.0)

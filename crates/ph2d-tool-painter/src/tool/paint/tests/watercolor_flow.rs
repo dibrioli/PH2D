@@ -457,3 +457,31 @@ fn usar_a_camada_como_flow_desenha_a_borda_por_ela() {
         "um Flow Image sem imagem tem de ser o Classic ao byte"
     );
 }
+
+/// O Flow Size e o Flow Angle do Classic chegam à BORDA (o Classic é um padrão como os outros), e o
+/// neutro continua a ser o byte de hoje (`BASE[1]`, o Ragged 24 gravado antes da wave).
+#[test]
+fn o_size_e_o_angle_do_classic_chegam_a_borda() {
+    let com = |size: f32, angulo: f32| {
+        traco(128, 64.0, |t| {
+            t.paint.brush.warp = 24.0;
+            t.set_brush_edge_flow_size(size);
+            t.set_brush_edge_flow_angle(angulo);
+        })
+    };
+    assert_eq!(
+        fnv(&com(1.0, 0.0).canvas_rgba),
+        BASE[1].1,
+        "o neutro mudou de byte"
+    );
+    assert_ne!(
+        fnv(&com(2.0, 0.0).canvas_rgba),
+        BASE[1].1,
+        "o Size do Classic não chegou à borda"
+    );
+    assert_ne!(
+        fnv(&com(1.0, 45.0).canvas_rgba),
+        BASE[1].1,
+        "o Angle do Classic não chegou à borda"
+    );
+}

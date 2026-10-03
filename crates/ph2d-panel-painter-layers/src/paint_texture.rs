@@ -336,6 +336,26 @@ pub(crate) fn paint_texture_preview(
     brush: BrushSettings,
     image: Option<(std::sync::Arc<Vec<u8>>, u32, u32)>,
 ) -> f32 {
+    paint_texture_preview_com(ctx, theme, x, content_w, y, brush, image, None)
+}
+
+/// Um desenhista de pré-visualização no lugar do `render_texture_preview` — `(buffer RGBA, w, h)`.
+pub(crate) type Desenhista<'a> = &'a dyn Fn(&mut [u8], u32, u32);
+
+/// A [`paint_texture_preview`] com o padrão desenhado por `desenha` em vez do `render_texture_preview`
+/// — a MESMA faixa, moldura e resolução, para um padrão que o `TextureKind` não exprime (o Classic do
+/// Flow, BUGS #31). `None` é a `paint_texture_preview`.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_texture_preview_com(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+    image: Option<(std::sync::Arc<Vec<u8>>, u32, u32)>,
+    desenha: Option<Desenhista<'_>>,
+) -> f32 {
     let ph = altura_do_preview(content_w);
     let rect = Rect::new(x, y, content_w, ph);
     // When the Color Ramp is on, bake the EXACT 256-entry sRGB-RGBA LUT the tool paints with (rebuild
@@ -406,6 +426,8 @@ pub(crate) fn paint_texture_preview(
             let si = ((sy * sw) * 4) as usize;
             buf[di..di + (sw * 4) as usize].copy_from_slice(&sub[si..si + (sw * 4) as usize]);
         }
+    } else if let Some(desenha) = desenha {
+        desenha(&mut buf, bw, bh);
     } else {
         render_texture_preview(
             kind,

@@ -258,6 +258,58 @@ fn o_size_do_preview_e_o_que_o_motor_amostra() {
     assert_eq!(size_efetivo_do_flow(&s), s.size, "o Classic");
 }
 
+/// ⭐ **O Classic é um padrão como os outros**: o Flow Size escala e o Flow Angle roda as coordenadas
+/// do ruído, pela lei das texturas (`R(−θ)·p·Size`). No neutro não há transformação nenhuma — o
+/// [`warp_offset`] verbatim (a régua do Classic ao byte, gravada antes da wave, continua a passar).
+///
+/// **Mutação que tem de sangrar:** o `Classico::le` ignorar o Size (ou o Angle).
+#[test]
+fn o_classic_tem_size_e_angle() {
+    let mut f = ph2d_painter_brush::BrushSpec::default().edge_flow;
+    assert!(
+        Classico::de(&f, NoiseTile::NONE).is_none(),
+        "o neutro é o warp_offset verbatim"
+    );
+    f.size = [2.0, 2.0];
+    let c = Classico::de(&f, NoiseTile::NONE).expect("Size 2");
+    for (x, y) in [(3.0f32, 5.0f32), (40.5, 17.25), (101.0, 63.0)] {
+        assert_eq!(
+            c.le(x, y),
+            warp_offset(2.0 * x, 2.0 * y, NoiseTile::NONE),
+            "Size 2 em ({x}, {y})"
+        );
+    }
+    f.size = [1.0, 1.0];
+    f.angle_deg = 90;
+    let c = Classico::de(&f, NoiseTile::NONE).expect("Angle 90");
+    let [cs, sn] = angle_basis(90);
+    for (x, y) in [(3.0f32, 5.0f32), (40.5, 17.25)] {
+        let (qx, qy) = (x * cs + y * sn, -x * sn + y * cs);
+        assert_eq!(
+            c.le(x, y),
+            warp_offset(qx, qy, NoiseTile::NONE),
+            "Angle 90 em ({x}, {y})"
+        );
+    }
+}
+
+/// A pré-visualização do Classic é o ruído do motor no enquadramento da faixa partilhada (~3 ladrilhos
+/// de 256 px na largura): o pixel `(px, py)` mostra o canal X em `q = base·256·Size`.
+#[test]
+fn o_preview_do_classic_e_o_ruido_do_motor() {
+    let (w, h) = (140u32, 70u32);
+    let mut buf = vec![0u8; (w * h * 4) as usize];
+    render_classic_flow_preview(2.0, 0, &mut buf, w, h);
+    let step = 3.0 / w as f32;
+    for (px, py) in [(0u32, 0u32), (71, 33), (139, 69)] {
+        let (bu, bv) = ((px as f32 + 0.5) * step, (py as f32 + 0.5) * step);
+        let q = TEX_TILE_BASE_PX * 2.0;
+        let x = warp_offset(bu * q, bv * q, NoiseTile::NONE).0;
+        let g = ((0.5 + 0.5 * x).clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+        assert_eq!(buf[((py * w + px) * 4) as usize], g, "({px}, {py})");
+    }
+}
+
 /// Sem Paper Edge, a janela do composite não cresce (o caminho de hoje, ao byte).
 #[test]
 fn sem_paper_edge_o_alcance_e_zero() {

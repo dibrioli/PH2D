@@ -45,6 +45,7 @@ mod taper_media_tests;
 /// **A forma SÓLIDA** — o caminho acumulado do gesto vira região preenchida (plano 38 §1.1).
 mod thread_deposit;
 pub use self::stroke_multi::StrokeOpBadge;
+pub use self::watercolor_flow::render_classic_flow_preview;
 pub use self::watercolor_settings::UsoDaCamada;
 pub use self::wetpaint_settings::{WetKnobs, WetTool};
 mod impasto; // Impasto: the height channel (paint thickness) — the dab pipeline's SECOND output

@@ -66,6 +66,16 @@ impl NoiseTile {
         }
     }
 
+    /// O mesmo ladrilho em coordenadas escaladas por `s` (o Classic com Flow Size, BUGS #31): o período
+    /// em px escala junto, e a costura continua a cair numa célula inteira.
+    #[inline]
+    pub(super) fn escalado(self, s: f32) -> Self {
+        Self {
+            period: [self.period[0] * s, self.period[1] * s],
+            on: self.on,
+        }
+    }
+
     /// The per-axis sprite PERIOD (px) for a slot-texture snap ([`snap_slot_size`], doc 13 #2b); `0` =
     /// that axis isn't tiled (no snap).
     #[inline]

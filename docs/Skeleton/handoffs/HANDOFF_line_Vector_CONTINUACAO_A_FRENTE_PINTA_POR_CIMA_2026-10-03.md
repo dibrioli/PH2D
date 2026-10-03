@@ -1,4 +1,4 @@
-# HANDOFF (continuação, janela nova) — `line/Vector`: próximo = O PESO VIAJA COM O DESENHO (decisão do dono), depois A PARTE DA FRENTE PINTA POR CIMA (2026-10-03)
+# HANDOFF (continuação, janela nova) — `line/Vector`: próximo = o BOTÃO «antes/depois dos ossos» por efeito (ordem do dono), depois A PARTE DA FRENTE PINTA POR CIMA (2026-10-03)
 
 > Para o agente que assume a linha numa janela NOVA (`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`). Não é
 > handoff de integração: o último de integração continua a ser o de
@@ -24,7 +24,45 @@ curou na origem o gancho da F43 (F50-e); a união sem lascas e só dos fechados 
 (F50-i); o solver do campo numa thread (F50-j). Cena **`PH2D_VEC_BONE_SMOKE=5`** (seis barras).
 Os abertos de 01/10 foram auditados contra o código: três eram notas envelhecidas (fila §F50).
 
-## 2. ⭐⭐⭐ O PRÓXIMO (decisão do dono, 2026-10-03): o peso VIAJA COM O DESENHO — cada pedaço segue o osso de onde VEIO
+## 2. ⭐⭐⭐⭐ O PRÓXIMO (ordem do dono, 2026-10-03): um BOTÃO por efeito — «Antes dos ossos | Depois dos ossos»
+
+**A conversa que o pediu:** o dono perguntou *«os efeitos são aplicados ao desenho vetorial após
+sua deformação causada pelo osso?»* — não: desde a F50 o efeito coze em REPOUSO e o desenho dobra
+(«antes»). Explicadas as duas ordens (antes: o efeito gruda e dobra, o *Hatch* curva com a barra;
+depois: o efeito é refeito sobre a forma já dobrada, um *Twist* fica sempre bem formado), a ordem
+dele: *«vamos colocar um botão de seleção para a ordem em que o efeito entra, se antes ou
+depois»*. É o modelo do Blender (a posição do modificador em relação ao `Armature`, por efeito).
+
+**Mapa (conferido por explorador nesta janela, file:line da worktree):**
+- **Dado:** `FxEntry { effect, enabled }` em `crates/ph2d-vec-scene/src/effect.rs:148`. Postcard
+  POSICIONAL ⇒ campo novo no FIM, `VEC_SCENE_SCHEMA_VERSION` (`schema.rs:80`, hoje `22`) `+1` e
+  `PROJECT_SCHEMA` (`shells/desktop/src/project_schema.rs:343`, hoje `178`) `+1` — conte o degrau com
+  `python3 scripts/schema-recount.py` (CLAUDE.md §1). Precedente exacto: o próprio `enabled`
+  (commit `c80ad95`, `VEC_SCENE 9→10`, `PROJECT_SCHEMA 19→20`) — leia o diff dele antes.
+- **UI (copie a cadeia do «olho» `enabled`):** pintura+hit em `crates/ph2d-panel-vector/src/paint_effects.rs:203–245`
+  (id `vector_fx_hide_id(row)` em `ph2d-editor-core/src/ids/chrome/vector.rs`) → classificação em
+  `crates/ph2d-app-vec/src/fx_bridge_dispatch.rs:62` → aplicação `:109` → mutação
+  `fx_bridge.rs:162` (`toggle_enabled`) → estado `ph2d-panel-vector/src/state_effects.rs:45`
+  (`FxRowView`) → undo provado por `shells/desktop/src/fx_undo_smoke.rs:75`. Texto em
+  `crates/ph2d-i18n/src/vector.rs` (`panel.vector.fx.*`). ⚠️ DIRETIVA §2: as 7 pontas no mesmo
+  passo, com o teste de costura que DIRIGE o clique. O botão só faz sentido numa forma PRESA — se
+  ela não está presa, ele não muda nada: mostre-o desligado com a razão, ou esconda-o (régua §5.0
+  «controlo morto»).
+- **Lei «depois»** (`crates/ph2d-skeleton-live/src/skin_desenho.rs`): a pilha parte-se em duas pela
+  ordem de cada entrada — as «antes» cozem em repouso como hoje (`geometria_cozida`,
+  `cozido_com_efeitos`, campo do cozido); o bake dobra; as «depois» correm sobre o DESENHADO com o
+  `FxCtx` do REPOUSO (um `run_stack` com contexto dado — hoje `effect::run_stack` calcula-o da
+  entrada, `effect.rs:469`) para o tamanho do efeito não depender da pose. ⚠️ Um *Falloff* modula o
+  efeito SEGUINTE — vai na fase dele. ⚠️ Com «depois», a união do contacto corre ANTES do efeito
+  (sobre a forma dobrada) e o efeito depois — meça a ordem com fotos.
+- **Cena:** a `=5` ganha o par lado a lado (o mesmo *Twist* forte antes e depois) — o número da
+  cena conta-se no roteador `ph2d-app-vec/src/smoke_bone.rs` (`NIVEIS = 5`).
+
+## 2-b. ⏸️ EM ESPERA: o peso VIAJA COM O DESENHO — cada pedaço segue o osso de onde VEIO
+
+⚠️ O dono escolheu esta lei ANTES de saber que podia pôr o efeito «depois»; com o botão, o *Twist*
+forte em «depois» fica sempre bem formado. **Pergunte-lhe de novo depois do smoke do botão** — esta
+secção pode já não ser precisa.
 
 **O report:** *«quanto mais veloz se arrasta o valor de twist mais deformações bizarras… com alguns
 valores após parar fica bom, com outros fica ruim»*. O arrasto foi curado (F50-k: mostra-se sempre

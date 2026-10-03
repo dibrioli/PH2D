@@ -12,7 +12,7 @@
 | worktree | `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value` |
 | ramo | `line/motion-value` |
 | base | `main` @ `1ad60a1ce` (a linha foi alinhada por `git reset --keep main` — `cherry` dava `0`) |
-| commits desta jornada | `5febba023` (as listas) · `22e7d069f` (gate da cena que muda + mutação 14/14) · `0d94bdfbc` (doc 121) · este handoff |
+| commits desta jornada | `5febba023` (as listas) · `22e7d069f` (gate da cena que muda + mutação 14/14) · `0d94bdfbc` (doc 121) · `7a58e7aaf` (gate das letras) · `3abf99b77` (o tracejado na placa) · `4aa06e738` (a variante tracejada da `=127`) · este handoff |
 | ⚠️ o nome | o Enio chamou-a «linha `Nodes`»; não existe `line/Nodes` — a linha do Motion Nodes é esta |
 
 ## §1 — O que esta jornada fechou (itens 1 e 2 do handoff de 01/10)
@@ -29,7 +29,23 @@
 - O protótipo «cobertura 8 px por fio» do §9.7 **não foi reconstruído** (não estava guardado e só
   dividia a leitura); o §9.7 aponta agora para o §9.8.
 
+## §1b — O que a 2.ª janela fechou (02/10, noite)
+
+- **Os glifos** do `source.text` já iam à placa desde a W3; o que faltava era um gate de pixel com
+  glifo — `7a58e7aaf` (alfa `63` · cor `62`).
+- **O tracejado esticado na placa** ([doc 121 §9.9](../121_as_formas_na_placa.md)): rota do PRODUTO
+  `87` · `69`, mutação `17` de `17`, a `=76` passa à placa, censo `19` das `23`. Fica por curar o ajuste
+  do tracejado sob escala não uniforme (§4).
+- **A variante `=127` tracejada** para o smoke: `PH2D_TRACO_ESTICADO_TRACEJADO=1` (`4aa06e738`).
+
 ## §2 — Gates e provas (corridos nesta árvore)
+
+- Novos (§1b): `tracejado::o_tracejado_esticado_desenha_o_que_o_vello_desenha` ·
+  `tracejado::o_tracejado_calculado_desenha_o_que_o_pixel_desenha` ·
+  `motion_shape_placa::gpu_tests::tracejado::a_rota_da_placa_traceja_o_esticado_como_a_casa` ·
+  `…::letras::a_rota_da_placa_desenha_as_letras_como_a_cena_vello` ·
+  `a_variante_tracejada_poe_o_dash_na_forma`. Clippy `-D warnings` ✅ em `ph2d-shape-gpu`,
+  `ph2d-app-motion`, `ph2d-vector`. ⚠️ O gate batched de FECHO continua SEM correr.
 
 - GPU RTX: `ph2d-shape-gpu` **7/7** (+ `as_fileiras_que_nao_cabem_nas_listas_desenham_o_mesmo` e
   `uma_cena_que_muda_nao_le_as_arestas_do_quadro_anterior`, novos) · `ph2d-app-motion` placa **4/4** +
@@ -51,19 +67,25 @@
    o cálculo era quase nada) — continua `2,5×` à frente do Vello. Nomeado, não curado.
 4. O perfilador separa agora o cálculo em `render.contorno.conta` · `.escreve` · `.celulas` (era um
    relógio só, `render.contorno`).
+5. `ph2d-vector` re-exporta `ParamCurve`, `ParamCurveNearest`, `PathSeg` (foundational, append-only).
+6. `EixoItem` cresceu `56 → 72 B` (gate `o_registo_tem_o_tamanho_do_shader`).
 
 ## §4 — ⏳ O QUE FICA ABERTO, na ordem proposta
 
 | item | o número / o endereço |
 |---|---|
 | **as grandes ESTICADAS no proxy** ainda perdem (`1,74` contra `1,05`) | decomposição iGPU: desenho `0,82` · células `0,43` (contar `0,16` · escrever `0,16` · lugar `0,08` · zerar `0,04`) · escrita das arestas `0,20` (um fio por CÓPIA) · contagem `0,06`. O desenho é o maior; o próximo degrau é o do Vello inteiro (rasterizar fino em cálculo, `4 px` por fio) e pede a ordem entre cópias — desenho próprio, não um ajuste |
-| o **traço TRACEJADO** sob escala não-uniforme fica no Vello | pede o comprimento de arco por cópia no eixo (`eixo.rs`) |
-| os **glifos** do `source.text` ficam no Vello | — |
+| ~~o **traço TRACEJADO** sob escala não-uniforme fica no Vello~~ | ✅ fechado — [doc 121 §9.9](../121_as_formas_na_placa.md) |
+| ~~os **glifos** do `source.text` ficam no Vello~~ | ✅ já iam à placa; gate das letras novo (§9.9) |
+| ⛔ o **ajuste do tracejado** (`dash_fit`) sob escala não uniforme | mede o contorno no LOCAL e o padrão é escalado por `√|det|`: a emenda volta, nas DUAS rotas (lei da casa, também em `ph2d-vec-render`). Cura: ajustar no ecrã, `n = round(L_ecrã/(k·P))`; ⚠️ o ajuste exacto põe o fim de um fechado na fronteira traço/vão — fixar o lado (`f64` kurbo × `f32` placa) |
+| ⚠️ a **mordida** do traço rente depois de uma quina | divergência DECLARADA (o traçador da casa morde, a placa desenha a união): sem acção, documentada no §9.9 |
 | `M6`/`S6`/`S8` (§9.5/§9.4) e o `fx.glow` que lê o `pump` anterior | nomeados no handoff de 01/10, sem mudança |
 | `fk.rs` duplicado em seis crates (bug #11) | wave própria |
 
 ## §5 — Instrumentos (versionados)
 
+- [`mutacao_o_tracejado_no_ecra_2026-10-02.py`](../ferramentas/mutacao_o_tracejado_no_ecra_2026-10-02.py)
+  — a mutação `17` de `17` do tracejado.
 - [`mede_sonda_das_estrelas.sh`](../ferramentas/mede_sonda_das_estrelas.sh) — a sonda nos três arranjos,
   nas duas placas, só com `load < 4`, a placa pela porta da casa só durante a corrida. COPIE o binário
   antes (o próximo build do mesmo perfil sobrescreve o nome).

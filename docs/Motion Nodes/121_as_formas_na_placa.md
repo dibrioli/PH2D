@@ -59,7 +59,7 @@ a caneta no MUNDO; o traço expandido no espaço LOCAL daria uma caneta elíptic
 constroem o traço **no ecrã a partir do eixo** (W4, §9: caneta redonda `w·√|det|`, juntas e pontas
 AUTORADAS — ⛔ a redacção de 29/09 dizia *«juntas redondas em vez de esquadria»* e a W4 não o
 aceitou). Tudo o resto — o preenchimento, e o traço de toda cópia conforme — é a conta do Vello.
-⛔ O traço **tracejado** sob afim não conforme continua no Vello (§9).
+~~⛔ O traço **tracejado** sob afim não conforme continua no Vello (§9).~~ **Superada pelo §9.9.**
 
 ## §3 — A ORDEM no quadro não muda
 
@@ -92,7 +92,8 @@ cima. ⛔ Desenhar o passe por cima do alvo do Vello pintaria as formas **por ci
 - ✅ **W4 — o traço sob afim NÃO conforme vai à placa** (§9): o passe constrói o traço de cada
   cópia no ECRÃ a partir do EIXO aplanado, com a caneta redonda da casa e as juntas e pontas
   autoradas. Só o traço TRACEJADO sob escala não-uniforme fica no Vello. Censo: `17` das `22`
-  cenas com forma vão à placa.
+  cenas com forma vão à placa. *(Histórico: o §9.9 levou o tracejado à placa; o censo é hoje `19`
+  das `23`.)*
   ✅ **Smoke do dono aprovado na `=127`** (§9.2): denso `raw 200` pela placa contra `100` sem ela.
 - ✅ **A FAIXA** (§9.4): o traço esticado sem peças de junta — no proxy de telemóvel a `=127` densa
   passa de `30,6` para `25,4 ms` de passe; ⏳ ainda atrás do Vello lá (`30,3` contra `19,7 ms` de
@@ -109,6 +110,9 @@ cima. ⛔ Desenhar o passe por cima do alvo do Vello pintaria as formas **por ci
   montadas por ARESTA em ponto fixo — sonda calma no proxy: grandes esticadas `2,04 → 1,74`,
   conformes `1,18 → 0,94` (EMPATA com o Vello, `0,92`), densas `2,13 → 1,71` (Vello `2,81`). ⏳ As
   grandes ESTICADAS ainda perdem (`1,74` contra `1,05`).
+- ✅ **O TRACEJADO NO ECRÃ** (§9.9): o traço tracejado sob escala não uniforme vai à placa, pontas e
+  emenda incluídas; a `=76` deixa a CPU; censo `19` das `23`. Mutação `17` de `17`.
+- ✅ **Os glifos do `source.text`** já iam à placa desde a W3; o gate das LETRAS (§9.9) é novo.
 
 ## §6 — ✅ W1: a paridade de PIXEL, medida (2026-09-29, RTX, alvo de meio-float)
 
@@ -330,8 +334,8 @@ forma): **`17` de `22` vão à PLACA**. As `5` que ficam, cada uma com a recusa 
 (`=70`) · passagem (`=120`) · colisor lido pelo grafo (`=114`, `=115`) · traço tracejado (`=76`).
 
 **Divergências DECLARADAS:**
-- **Tracejado sob escala não-uniforme fica no Vello** (CPU e dispositivo) — o tracejado no
-  dispositivo pede o comprimento de arco por cópia, que é wave própria.
+- ~~**Tracejado sob escala não-uniforme fica no Vello** (CPU e dispositivo) — o tracejado no
+  dispositivo pede o comprimento de arco por cópia, que é wave própria.~~ **Curada no §9.9.**
 - **O teste de conformidade** do passe é em `f32` a `1e-5` e o da CPU a `1e-4`: uma cópia entre os
   dois cai no contorno pré-expandido numa rota e no eixo na outra — as duas desenham a mesma caneta
   redonda, e a diferença é a de arredondamento.
@@ -936,3 +940,94 @@ salta `SEM_LISTA` · escala do ponto fixo dobrada · `min/max` trocados · `floo
 das arestas reservadas e NÃO escritas), que SOBREVIVEU aos seis gates de então — num passe novo a
 reserva é zero e não soma nada. ⭐ *Uma régua de quadro único não vê o que um buffer traz do quadro
 anterior*: o gate da cena que muda foi escrito por ela, e é o único que a mata.
+
+### §9.9 — O TRACEJADO NO ECRÃ: o traço tracejado sob escala não uniforme vai à placa (2026-10-02)
+
+Commits `3abf99b77` (o tracejado) e `4aa06e738` (a variante da `=127`); antes, `7a58e7aaf` (gate das
+LETRAS, abaixo).
+
+**O porquê.** Até aqui o tracejado sob afim não conforme ficava no Vello (cerca `FLAG_SO_CONFORME` →
+`RECUSA_FORMA_TRACEJADA` no dispositivo, `so_conforme` na rota da CPU); a cena `=76` (as bolas com
+contorno tracejado) ia INTEIRA à CPU só por ter tracejado, mesmo conforme.
+
+**A lei da casa (fonte).** `stroke_uniform::pen_for` traceja a geometria JÁ transformada com caneta
+`w·√|det|` e padrão `× √|det|`; o Vello (`vello::Scene::stroke`) corta pelo `kurbo::dash` (CPU) e o
+traçador da placa dele desenha as pontas. Semântica do `kurbo::dash` 0.13.1 portada: a fase recomeça em
+cada sub-caminho; cada traço tem `start_cap` no início e `end_cap` no fim; num FECHADO o último traço
+EMENDA no primeiro (junta, sem pontas) só quando atravessa o início; um traço que acaba exactamente num
+vértice não liga.
+
+**O que mudou.**
+
+| onde | o quê |
+|---|---|
+| `EixoItem` `56 → 72 B` | `traco`, `vao` (locais, `[traço, vão]` com fase 0 — `tracejado_do_eixo`; outro padrão mantém `FLAG_SO_CONFORME`) · `flecha` (a flecha de cada corda: o ponto da curva no meio dela menos o meio da corda, por `PathSeg::nearest`) |
+| bits no `ponta` do troço | `SUB_INICIO = 16` (o `_pad` do primeiro troço = quantos troços) · `SUB_FECHADO = 32` · pontas do início em `TAMPA_INICIO_BIT = 6` e do fim em `TAMPA_FIM_BIT = 8` |
+| cabeçalho de bloco | `BLOCO_TRACEJADO` (o pixel a pixel não o salta pela caixa) |
+| itens de ponta | nenhum num sub-caminho tracejado |
+| `shape.wgsl` (partilhado pelas duas passagens) | `sub_tracejado` (pré-passo de um fechado: comprimento total e se emenda) · `troco_tracejado` · `pedaco` (o traço `n` ocupa `[n·período, n·período + traço]`, é do troço onde COMEÇA, `[s0, fim)`) · `tracejado_px` (pixel a pixel) |
+| `contorno.wgsl` (o contorno calculado) | `emite_tracejado` / `emite_pedaco` |
+
+O arco de cada troço no ecrã é `corda + 8h²/3c` (`arco`, `h` = a flecha levada pelo afim); as decisões de
+faixa ficam nas CORDAS (os dois lados de um vértice recalculam-nas com os mesmos argumentos) e o recuo da
+bissectriz é limitado pela metade do menor dos dois PEDAÇOS que se tocam (`bissectriz_ate`).
+`TRACOS_POR_TROCO_MAX = 65536` é o tecto do vigia do dispositivo (um laço sem fim perde a placa), não
+escolha de desenho.
+
+**Na Motion.** A cerca saiu das duas rotas (`RECUSA_FORMA_TRACEJADA` e o `so_conforme` apagados); uma
+geometria com `FLAG_SO_CONFORME` (que o `kurbo_stroke` da casa nunca produz) passa a `Entrada::Recusada`
+→ `RECUSA_FORMA_DO_VELLO`. **Censo de rota:** a `=76` vai à PLACA, **`19` das `23`** cenas com forma; as
+`4` que ficam: `fx.glow` (`=70`) · passagem (`=120`) · colisor lido (`=114`, `=115`).
+
+**Medido** (RTX, meio-float; gate `ph2d-shape-gpu --test it tracejado`, contra o Vello; alfa · cor):
+
+| família | alfa | cor |
+|---|---:|---:|
+| estrela esticada | `71` | `47` |
+| traços longos (faixa e junta dentro do traço, emenda) | `84` | `45` |
+| círculo, pontas redondas (era `70` · `89` antes da flecha) | `66` | `64` |
+| zigue-zague, pontas diferentes (redonda/quadrada) | `50` | `47` |
+| zigue-zague, chanfro e pontas quadradas | `4` | `3` |
+| controlo conforme (o caminho pré-expandido, intocado) | `75` | `80` |
+
+Contorno calculado contra pixel a pixel: alfa `≤ 1`, todas as cópias com contorno. **Rota do PRODUTO**
+(`motion_shape_placa::gpu_tests::tracejado`, `StrokeSpec` com o tracejado AJUSTADO, a câmara): `87` · `69`,
+`2 070` px `> 16` sobre `190 140`; sem a flecha lia `134`.
+
+**A barra.** O vale é no ALFA — limpo `≤ 84`, mutações `126`–`255` ⇒ `100`/`100`. ⚠️ A fracção de pixels
+com alfa `> 1` NÃO separa no tracejado (o controlo conforme lê `5,7 %` — cada traço com pontas redondas é
+borda curva — e a emenda que falta `2,4 %`), por isso o gate do tracejado não a usa.
+
+**Mutação `17` de `17`** ([arnês](ferramentas/mutacao_o_tracejado_no_ecra_2026-10-02.py), sobre os `9`
+gates GPU de `ph2d-shape-gpu` e os `6` de paridade do produto): padrão sem a caneta · nunca emenda ·
+emenda sempre · nunca liga atrás · nunca liga à frente · faixa sem o recuo dos pedaços · fase por troço ·
+pontas de início e fim trocadas · sem a ponta do início · arco no LOCAL × caneta · arco = corda (só o
+gate do PRODUTO a mata) · pixel a pixel sem a junta dentro do traço · calculado sem a ponta do fim · recuo
+da emenda de um troço do meio · pixel a pixel salta blocos tracejados · fechado não marcado (Rust) ·
+contagem de troços a menos (Rust). ⭐ A T8 (pontas trocadas) SOBREVIVEU à 1.ª corrida — todas as famílias
+tinham as duas pontas iguais; a família «pontas diferentes» foi escrita por ela.
+
+**⚠️ Divergência DECLARADA — a mordida.** Um traço RENTE que acaba a menos de meia largura depois de uma
+quina sai do traçador da casa com uma MORDIDA no lado de dentro (a junta interior passa pelo pivô e o
+pedaço curto cruza-se; a régua EXACTA — `kurbo::stroke` a expandir e o Vello só a preencher — tem a mesma
+mordida, alfa `52` do traço do Vello); a placa desenha a união verdadeira. Medido numa cópia (pedaço de
+`9,75 px`, raio `11,4`): `140` de alfa num pixel; na rota do produto, estrela com pontas rentes, `203`. Os
+gates usam ponta quadrada nessas famílias. Mesma família da quina exacta do §9.4.
+
+**⚠️ A régua tem defeitos próprios.** Com traço grosso numa volta apertada o Vello abre uma rachadura de
+um pixel dentro do traço (alfa `0`–`136` onde a placa pinta `255`); as fixturas evitam-na (largura `0,07`).
+
+**⛔ Achado NÃO curado, nomeado.** O ajuste do tracejado (`dash_fit`, a cura da emenda de 22/08) mede o
+contorno no espaço LOCAL e o padrão é depois escalado por `√|det|`; sob escala não uniforme o comprimento
+no ecrã não é `√|det|·L`, e a emenda volta — nas DUAS rotas (é a lei da casa; também no vetor de
+documento, `ph2d-vec-render`). A cura é ajustar no ecrã (`n = round(L_ecrã/(k·P))`), nas duas rotas.
+⚠️ Um ajuste EXACTO põe o fim de um fechado exactamente na fronteira traço/vão, onde o `f64` do kurbo e o
+`f32` da placa podem decidir a emenda de lados diferentes — a lei tem de fixar o lado.
+
+**Smoke.** `=127` com `PH2D_TRACO_ESTICADO_TRACEJADO=1` (o `Dash 2` e `Dash Gap 1,5` do cartão postos à
+partida); fotografado na tela virtual: `1024` cópias pela PLACA (do dispositivo).
+
+**Os glifos (`7a58e7aaf`).** Os glifos do `source.text` já iam à placa desde a W3 — o censo dava `6` das
+`7` cenas com texto na placa, e a 7.ª era a `=76` pelo tracejado; mas nenhum gate de pixel tinha um
+glifo. Gate das LETRAS: alfa `63` · cor `62` · `2 990` px `> 16` sobre `81 229`; as mutações «sem
+furos» (`38 006` px) e «aplanamento 8×» (`8 121` px) reprovam.

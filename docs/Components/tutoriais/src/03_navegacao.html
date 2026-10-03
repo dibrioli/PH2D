@@ -1,0 +1,325 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>PH2D · Navegação</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm; }
+  :root {
+    --bg: #0f0e12; --card: #17161c; --line: #2a2830;
+    --t1: #ece9f2; --t2: #a9a3b8; --t3: #6f6a7d;
+    --acc: #c9a6ff; --ok: #7ee0b0; --warn: #ffcf7a;
+    --red: #e0573a; --ice: #73d9ff; --lava: #f2731a; --heart: #fa73a6; --bat: #9e61d9;
+    --hero: #59a0f2; --bar: #5cc770; --wall: #616675; --path: #8fb8e8;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--t1);
+         font:14px/1.55 "Inter","Segoe UI",system-ui,sans-serif; }
+  h1 { font-size:30px; line-height:1.15; margin:0 0 4px; letter-spacing:-.02em; }
+  h1 small { display:block; font-size:14px; font-weight:400; color:var(--t2); margin-top:6px; }
+  h2 { font-size:19px; margin:26px 0 10px; padding-top:12px; border-top:1px solid var(--line); }
+  h3 { font-size:15px; margin:18px 0 6px; color:var(--acc); }
+  p { margin:8px 0; }
+  code, kbd { font-family:"JetBrains Mono",ui-monospace,monospace; font-size:12px; }
+  kbd { background:#22202a; border:1px solid var(--line); border-bottom-width:2px;
+        border-radius:5px; padding:1px 6px; color:var(--t1); }
+  .cmd { background:#080810; border:1px solid var(--line); border-left:3px solid var(--acc);
+         border-radius:8px; padding:11px 13px; color:var(--ok); font-family:ui-monospace,monospace;
+         font-size:11.5px; overflow-wrap:anywhere; margin:10px 0; }
+  .steps { counter-reset:s; list-style:none; padding:0; margin:0; }
+  .steps > li { counter-increment:s; position:relative; padding:0 0 0 40px; margin:0 0 16px;
+                break-inside:avoid; }
+  .steps > li::before { content:counter(s); position:absolute; left:0; top:-1px;
+      width:26px; height:26px; border-radius:50%; background:var(--acc); color:#1a1420;
+      font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; }
+  .steps b { color:var(--t1); }
+  .out { color:var(--t2); }
+  .out::before { content:"\2192 "; color:var(--acc); }
+  .bad { color:var(--warn); }
+  .bad::before { content:"\26A0 "; }
+  table { border-collapse:collapse; width:100%; margin:6px 0 14px; font-size:11.5px; }
+  th, td { text-align:left; padding:5px 8px; border-bottom:1px solid var(--line);
+           vertical-align:top; }
+  th { color:var(--t3); font-weight:600; font-size:10.5px; text-transform:uppercase;
+       letter-spacing:.05em; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:3px solid var(--acc);
+          border-radius:8px; padding:10px 13px; margin:12px 0; font-size:13px; break-inside:avoid; }
+  .note b { color:var(--acc); }
+  .two { display:grid; grid-template-columns:262px 1fr; gap:18px; align-items:start;
+         break-inside:avoid; margin:8px 0; }
+  .panel { background:var(--card); border:1px solid var(--line); border-radius:9px;
+           overflow:hidden; font-size:11px; }
+  .panel .h { padding:6px 10px; font-weight:600; font-size:11.5px; color:var(--acc);
+              border-bottom:1px solid var(--line); }
+  .panel .body { padding:8px; display:grid; gap:4px; }
+  .panel .now { background:#241f33; border-left:2px solid var(--acc); border-radius:4px;
+                padding:4px 8px; color:var(--acc); }
+  .panel .warnrow { background:#2e1e1c; border-left:2px solid var(--red); border-radius:4px;
+                padding:4px 8px; color:#ffb3a6; }
+  .panel .list { background:#0b0a0e; border:1px solid var(--line); border-radius:5px;
+                 padding:3px; display:grid; gap:2px; }
+  .panel .li { padding:3px 7px; border-radius:3px; color:var(--t2); }
+  .panel .li.sel { background:#2a2438; color:var(--t1); }
+  .panel .btns { display:flex; gap:4px; }
+  .panel .btn { flex:1; background:#22202a; border:1px solid var(--line); border-radius:5px;
+                padding:3px 0; text-align:center; color:var(--t1); font-size:10.5px; }
+  .panel .f { display:flex; justify-content:space-between; background:#0b0a0e;
+              border-radius:4px; padding:3px 7px; }
+  .panel .f .k { color:var(--t2); } .panel .f .v { color:var(--t1); }
+  .panel .ph { color:var(--t3); font-style:italic; }
+  code.ui { color:var(--t1); }
+  .cal { font-size:11.5px; color:var(--t2); }
+  .cal li { margin:4px 0; }
+  .cal b { color:var(--t1); }
+  .sw { display:inline-block; width:10px; height:10px; border-radius:2px; vertical-align:-1px;
+        margin-right:4px; }
+  footer { margin-top:26px; padding-top:10px; border-top:1px solid var(--line);
+           color:var(--t3); font-size:11px; }
+</style>
+
+<h1>Navegação
+  <small>PH2D · Componentes · inimigos que acham o caminho sozinhos — onde se anda, quem persegue,
+  o que se evita, e como montar uma perseguição do princípio ao fim</small></h1>
+
+<p>Este tutorial usa a mesma <b>arena</b> da Vida e Dano, agora com um <b>muro</b>. Os morcegos
+deixaram de voar em linha reta para cima do herói: eles <b>acham o caminho</b> à volta do muro e
+<b>evitam a lava</b>, porque ela os queima. No fim, <b>você</b> põe a Salamandra a perseguir o herói
+com um componente e um nome. Nenhuma linha de programa: tudo está em <b>duas peças</b>.</p>
+
+<table>
+  <tr><th>peça</th><th>quem a tem</th><th>o que diz</th></tr>
+  <tr><td><b><code class="ui">Nav Region</code></b></td><td>um objeto invisível, o <b>mapa</b></td>
+      <td>a área onde se pode andar; as paredes que estão dentro dela viram buracos no mapa</td></tr>
+  <tr><td><b><code class="ui">Nav Agent</code></b></td><td>quem <b>persegue</b></td>
+      <td>atrás de quem vai, a que distância diz que chegou, se desvia dos outros e do que o fere</td></tr>
+</table>
+
+<div class="note"><b>As figuras deste tutorial são desenhos</b>, não fotografias da tela. Os nomes
+em <code>código</code> são exatamente os que aparecem na tela.</div>
+
+<h2>1 · Abrir a arena</h2>
+<p>Cole isto inteiro num terminal.</p>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-components &amp;&amp; env PH2D_VIDA_SMOKE=4 cargo run -p ph2d-host-desktop --profile smoke</div>
+<p class="out">A cena abre já a <b>tocar</b>: a régua de tempo embaixo anda sozinha. Com o relógio
+parado ninguém anda.</p>
+<p class="bad">Se não aparecer a linha <code>[vida-smoke] cena=4</code> no terminal, pare: a cena
+não montou.</p>
+
+<div style="break-inside:avoid">
+<h2>2 · O que mudou na arena</h2>
+<svg viewBox="0 0 640 340" style="width:100%;margin:6px 0;background:#17161c;border-radius:8px">
+  <g font-family="Inter,system-ui" font-size="11">
+    <rect x="3" y="3" width="634" height="334" rx="6" fill="none" stroke="#6f6a7d" stroke-dasharray="5 4"/>
+    <text x="10" y="330" fill="#6f6a7d">a borda tracejada: a Nav Region (o mapa)</text>
+    <rect x="20" y="12" width="200" height="14" rx="3" fill="#5cc770"/>
+    <text x="226" y="23" fill="#a9a3b8">o placar</text>
+    <rect x="410" y="0" width="15" height="180" fill="#616675"/>
+    <text x="370" y="18" fill="#a9a3b8">o muro</text>
+    <rect x="49" y="181" width="132" height="83" rx="11" fill="none" stroke="#a9a3b8" stroke-width="1"/>
+    <rect x="60" y="192" width="110" height="60" fill="#f2731a"/>
+    <text x="115" y="226" fill="#1a1420" text-anchor="middle" font-weight="700">lava</text>
+    <text x="115" y="280" fill="#a9a3b8" text-anchor="middle">o contorno claro: onde o morcego não pisa</text>
+    <rect x="155" y="125" width="20" height="20" fill="#fa73a6"/>
+    <circle cx="45" cy="60" r="11" fill="#9e61d9"/>
+    <text x="62" y="64" fill="#a9a3b8">o ninho</text>
+    <path d="M45 60 L399 191 L436 191 L452 112" fill="none" stroke="#8fb8e8" stroke-width="2" stroke-dasharray="6 4"/>
+    <text x="250" y="126" fill="#8fb8e8" transform="rotate(20 250 126)">o caminho do morcego</text>
+    <rect x="435" y="90" width="45" height="20" rx="4" fill="#59a0f2"/>
+    <text x="488" y="104" fill="#a9a3b8">o herói</text>
+    <rect x="570" y="75" width="50" height="50" fill="#e0573a"/>
+    <text x="595" y="142" fill="#a9a3b8" text-anchor="middle">Salamandra</text>
+    <rect x="290" y="216" width="50" height="50" fill="none" stroke="#7ee0b0"/>
+    <text x="315" y="284" fill="#6f6a7d" text-anchor="middle">os moldes</text>
+  </g>
+</svg>
+</div>
+<table>
+  <tr><th>na tela</th><th>é</th><th>o que ensina</th></tr>
+  <tr><td><span class="sw" style="background:var(--wall)"></span><b>barra cinzenta</b>, à esquerda do herói</td>
+      <td>o <b>muro</b></td><td>só se passa por <b>baixo</b> dele</td></tr>
+  <tr><td><span class="sw" style="background:var(--bat)"></span><b>roxos</b></td>
+      <td>os <b>morcegos</b>, um de 3 em 3 s</td><td>descem até a ponta do muro, dão a volta e sobem até o herói</td></tr>
+  <tr><td><span class="sw" style="background:var(--path)"></span><b>linha azul</b> que sai de cada morcego</td>
+      <td>o <b>caminho</b> que ele planejou</td><td>dobra na ponta do muro, e muda quando o herói foge</td></tr>
+  <tr><td><b>contornos claros</b></td><td>por onde o <b>centro</b> de um morcego pode andar</td>
+      <td>afastados das paredes um raio de morcego; e há um à volta da <b>lava</b></td></tr>
+</table>
+<p class="out">A tecla <kbd>B</kbd> mostra e esconde as linhas e os contornos.</p>
+
+<h2>3 · Ver os morcegos darem a volta</h2>
+<ol class="steps">
+  <li><b>Não mexa em nada por uns segundos.</b>
+      <div class="out">Um morcego nasce no canto de cima à esquerda, atravessa o meio da tela,
+      desce até a ponta de baixo do muro, contorna-a e sobe até o herói. Quando encosta, morde
+      15 e some.</div></li>
+  <li><b>Fuja com as setas</b> para o outro lado do muro.
+      <div class="out">A linha azul de cada morcego muda na hora: ele dá a volta pelo outro lado.
+      Ele é mais lento que o herói — fugir funciona.</div></li>
+  <li><b>Mate um com um tiro</b> (<kbd>Q</kbd> ou <kbd>J</kbd>, virado para ele).
+      <div class="out">Um tiro basta.</div></li>
+</ol>
+
+<h2>4 · A lava: os morcegos esperam na borda</h2>
+<ol class="steps">
+  <li><b>Leve o herói por baixo do muro até dentro da lava</b> (o retângulo laranja).
+      <div class="out">Os morcegos vêm atrás e <b>param na borda</b>. A lava queima quem não é
+      imune ao fogo — os morcegos também —, e um inimigo <b>evita sozinho o que o fere</b>. O
+      herói continua a perder 3 a cada meio segundo: ali dentro ninguém o morde, mas a lava
+      queima.</div></li>
+  <li><b>Saia da lava.</b>
+      <div class="out">Eles voltam a vir atrás de você.</div></li>
+</ol>
+
+<h2>5 · Onde se anda — <code class="ui">Nav Region</code></h2>
+<p><b>Na lista da esquerda (Hierarchy), clique em <code>Regiao</code>.</b> No Inspector, abra a
+seção <b><code class="ui">Nav Region</code></b> (clique no título).</p>
+<div class="two">
+  <div class="panel">
+    <div class="h">Nav Region</div>
+    <div class="body">
+      <div class="f"><span class="k">Half Size</span><span class="v">6.39 · 3.30</span></div>
+      <div class="f"><span class="k">Wall Layers</span><span class="v">1 2 3 4 5 6 7 8</span></div>
+    </div>
+  </div>
+  <ul class="cal">
+    <li><b><code class="ui">Half Size</code></b>: metade da largura e metade da altura do mapa, a
+        partir do centro do objeto. Quem está fora dele não tem mapa e fica parado.</li>
+    <li><b><code class="ui">Wall Layers</code></b>: que camadas de física contam como parede. Tudo o
+        que é sólido e está parado (o muro, a Salamandra parada) vira um buraco no mapa.</li>
+    <li>O mapa é de <b>quem anda</b>: cada tamanho de corpo tem o seu, afastado das paredes pelo raio
+        dele. Por isso a passagem por baixo do muro é larga — a Salamandra, maior, também cabe.</li>
+  </ul>
+</div>
+
+<h2>6 · Quem persegue — <code class="ui">Nav Agent</code></h2>
+<p><b>Clique num morcego</b> (um roxo que esteja voando, não o molde do meio). No Inspector, abra a
+seção <b><code class="ui">Nav Agent</code></b>.</p>
+<div class="two">
+  <div class="panel">
+    <div class="h">Nav Agent</div>
+    <div class="body">
+      <div class="now">Moving · 4.20 m to go</div>
+      <div class="btns"><div class="btn">None</div><div class="btn" style="border-color:var(--acc)">Object</div><div class="btn">Point</div><div class="btn">Tag</div><div class="btn">Patrol</div></div>
+      <div class="f"><span class="k">Object</span><span class="v">Heroi</span></div>
+      <div class="f"><span class="k">Radius</span><span class="v">0</span></div>
+      <div class="f"><span class="k">Arrive At</span><span class="v">0.1</span></div>
+      <div class="f"><span class="k">Repath At</span><span class="v">0.5</span></div>
+      <div class="f"><span class="k">Stuck After</span><span class="v">1</span></div>
+      <div class="f"><span class="k">Active</span><span class="v">&#10003;</span></div>
+      <div class="f"><span class="k">Avoid Others</span><span class="v">&#10003;</span></div>
+      <div class="f"><span class="k">Avoid Harm</span><span class="v">&#10003;</span></div>
+      <div class="f"><span class="k">On Arrive</span><span class="ph">signal when it arrives…</span></div>
+    </div>
+  </div>
+  <ul class="cal">
+    <li>A primeira linha diz o que ele está fazendo <b>agora</b>: <code class="ui">Moving</code>,
+        <code class="ui">going to the nearest point</code> (o herói está onde ele não pode ir — na
+        lava, por exemplo), <code class="ui">Arrived.</code></li>
+    <li><b><code class="ui">Target</code></b>: atrás de quem vai. <code class="ui">Object</code> é um
+        objeto pelo <b>nome</b>; <code class="ui">Point</code> um ponto fixo; <code class="ui">Tag</code>
+        o mais perto de um grupo; <code class="ui">Patrol</code> uma ronda por uma forma desenhada.</li>
+    <li><b><code class="ui">Radius</code></b> <code>0</code> quer dizer «o do meu corpo».
+        <b><code class="ui">Arrive At</code></b> é a distância entre os centros a que ele dá por
+        chegado: num morcego é pequena de propósito, para ele <b>encostar</b> e morder.</li>
+    <li><b><code class="ui">Active</code></b> liga e desliga a perseguição.
+        <b><code class="ui">Avoid Others</code></b> faz os morcegos desviarem uns dos outros.</li>
+    <li><b><code class="ui">Avoid Harm</code></b>: não pisar o que o fere. É o que o faz esperar na
+        borda da lava.</li>
+    <li><b><code class="ui">On Arrive</code></b>, <code class="ui">On No Path</code> e
+        <code class="ui">On Stuck</code> são nomes que ele <b>grita</b> ao chegar, quando não há
+        caminho, e quando fica preso — para uma tabela de ações ouvir.</li>
+  </ul>
+</div>
+<p class="out">O morcego também tem um <code class="ui">Top-Down Player</code>: o Nav Agent
+<b>decide</b> para onde ir, e quem <b>anda</b> é ele — com a velocidade e a aceleração dele.</p>
+
+<h2>7 · Monte você mesmo uma perseguição</h2>
+<p>Agora a Salamandra, que até aqui ficava parada, vai perseguir o herói. Faça os passos depressa:
+se o herói morrer, tudo recomeça e a Salamandra volta como era.</p>
+<ol class="steps">
+  <li><b>Clique na Salamandra</b> — o quadrado vermelho da direita, não o molde do meio.</li>
+  <li><b>Clique em <code class="ui">Add Component</code></b>, no alto do Inspector, e escolha
+      <b><code class="ui">Nav Agent</code></b>.
+      <div class="out">Aparecem duas seções novas, <code class="ui">Top-Down Player</code> e
+      <code class="ui">Nav Agent</code>. Ela continua parada, e a primeira linha do Nav Agent diz
+      porquê: <code class="ui">No target</code>.</div></li>
+  <li><b>Em <code class="ui">Target</code>, clique em <code class="ui">Object</code></b>, clique no campo
+      que diz <code class="ui">object name…</code>, escreva <code>Heroi</code> e aperte
+      <kbd>Enter</kbd>.
+      <div class="out">Ela começa a andar até o herói, e a primeira linha passa a
+      <code class="ui">Moving</code>.</div></li>
+  <li><b>Leve o herói por baixo do muro até dentro da lava.</b>
+      <div class="out">Os morcegos param na borda. A Salamandra dá a volta ao muro pelo mesmo
+      caminho e <b>entra na lava</b> atrás de você, sem perder vida: ela é imune ao fogo, então para
+      ela a lava não fere — o <code class="ui">Avoid Harm</code> dela está ligado, mas não há nada a
+      evitar.</div></li>
+</ol>
+<p class="bad">É uma cópia: no recomeço ela renasce do molde, parada. Para que toda Salamandra
+persiga, faça os mesmos passos no <b>molde</b> (o quadrado de contorno verde do meio).</p>
+
+<h2>8 · Mexer e ver acontecer</h2>
+<ol class="steps">
+  <li><b>Com o herói dentro da lava, clique num morcego parado na borda</b> e tire o visto de
+      <b><code class="ui">Avoid Harm</code></b>.
+      <div class="out">Ele entra na lava atrás de você e morde. É por isso que a caixa nasce
+      ligada: um inimigo que corre para o fogo não é esperto.</div></li>
+  <li><b>Em outro morcego, tire o visto de <code class="ui">Active</code>.</b>
+      <div class="out">Ele para onde está, e a primeira linha diz
+      <code class="ui">Switched off</code>.</div></li>
+  <li><b>Na Salamandra que persegue, apague o nome</b> no campo do <code class="ui">Object</code>.
+      <div class="out">Ela para, e a primeira linha diz o que falta.</div></li>
+</ol>
+
+<h2>9 · As outras cenas de navegação</h2>
+<p>Cada uma mostra uma coisa, com um <b>controle</b> ao lado — o mesmo inimigo sem a peça que se
+quer ver. Troque o número no fim do comando: <code>PH2D_NAV_SMOKE=1</code> a <code>4</code>.</p>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-components &amp;&amp; env PH2D_NAV_SMOKE=1 cargo run -p ph2d-host-desktop --profile smoke</div>
+<table>
+  <tr><th>número</th><th>o que mostra</th></tr>
+  <tr><td><code>1</code></td><td>o <b>labirinto</b>: o vermelho dá a volta às paredes; o roxo,
+      grande demais para a porta de baixo, espera do lado de cá; o cinzento (sem navegação) bate na
+      parede</td></tr>
+  <tr><td><code>2</code></td><td>a <b>porta de dois sentidos</b>: oito passam a mesma porta sem se
+      entalarem (<code class="ui">Avoid Others</code>)</td></tr>
+  <tr><td><code>3</code></td><td>o <b>guarda</b>: patrulha uma forma desenhada, vê o herói e
+      persegue-o, e uma porta se fecha (<code class="ui">Start Navigation</code> e
+      <code class="ui">Stop Navigation</code> numa tabela de ações)</td></tr>
+  <tr><td><code>4</code></td><td>o <b>rio de lava</b> e dois portais: <code class="ui">Nav Link</code>
+      leva o inimigo de um portal ao outro; <code class="ui">Nav Cost Area</code> faz uma lama que
+      custa mais atravessar, ou uma zona onde ninguém entra (<code class="ui">Forbidden</code>)</td></tr>
+</table>
+
+<h2>10 · Os avisos, e o que cada um quer dizer</h2>
+<table>
+  <tr><th>o painel diz</th><th>quer dizer</th><th>o que fazer</th></tr>
+  <tr><td><code class="ui">No target</code></td><td>o Target está em None</td>
+      <td>escolha <code class="ui">Object</code> e escreva um nome</td></tr>
+  <tr><td><code class="ui">Nobody has that name any more</code></td>
+      <td>ninguém na cena tem o nome escrito</td><td>confira o nome (maiúsculas contam)</td></tr>
+  <tr><td><code class="ui">Not inside any Nav Region</code></td>
+      <td>ele está fora do mapa</td><td>aumente o <code class="ui">Half Size</code> da região</td></tr>
+  <tr><td><code class="ui">No mover</code></td><td>falta quem ande</td>
+      <td><code class="ui">Add Component</code> &rarr; <code class="ui">Top-Down Player</code></td></tr>
+  <tr><td><code class="ui">also reads the keys</code></td>
+      <td>o Top-Down Player ainda obedece às setas</td>
+      <td>desligue o <code class="ui">Default Controls</code> dele</td></tr>
+  <tr><td><code class="ui">The clock is stopped</code></td><td>o relógio está parado</td>
+      <td>aperte <kbd>Espaço</kbd></td></tr>
+  <tr><td><code class="ui">nothing hurts it, so it avoids nothing</code></td>
+      <td>sem <code class="ui">Health</code>, nada o fere, e o Avoid Harm não tem o que evitar</td>
+      <td>nada — é só informação</td></tr>
+</table>
+
+<h2>11 · Como saber que deu errado</h2>
+<ul class="cal">
+  <li><b>Um morcego fica preso contra o muro</b>, ou passa através dele.</li>
+  <li><b>Um morcego pisa a lava</b> com o <code class="ui">Avoid Harm</code> ligado — ou, com ele
+      desligado, continua esperando na borda.</li>
+  <li><b>A Salamandra não anda</b> depois de escrever <code>Heroi</code>, ou não entra na lava atrás
+      do herói, ou perde vida lá dentro.</li>
+  <li><b>Os morcegos não seguem o herói</b>, ou um que morde não some.</li>
+  <li><b>Depois de o herói morrer</b>, os morcegos novos não dão a volta ao muro.</li>
+</ul>
+
+<footer>PH2D · Componentes · plano 30, Navegação · cena de teste <code>PH2D_VIDA_SMOKE=4</code> ·
+as cenas da família: <code>PH2D_NAV_SMOKE=1</code> o labirinto · <code>=2</code> a porta ·
+<code>=3</code> o guarda · <code>=4</code> o rio de lava</footer>
+

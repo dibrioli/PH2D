@@ -250,14 +250,14 @@ fn a_salamandra_so_cai_ao_gelo() {
 
 /// ⭐⭐⭐ **Um morcego PERSEGUE o herói, morde `15` e SOME** — com o herói parado a `7,9` m do ninho.
 ///
-/// **Mutações que devem sangrar:** o morcego perseguir ninguém (`homing_target = 0`); o dano do
+/// **Mutações que devem sangrar:** o morcego perseguir ninguém (`NavTarget::None`); o dano do
 /// morcego não o gastar (`OnHit::Stay`).
 #[test]
 fn um_morcego_persegue_morde_e_some() {
     let mut j = Jogo::da_cena();
     j.quadro(&[SINAL_MORCEGO]);
     let morcego = *j.copias("Morcego").first().expect("o morcego não nasceu");
-    // A 2,2 m/s o caminho do ninho ao herói leva ~3,6 s.
+    // A 2,2 m/s o caminho do ninho ao herói, à volta do muro (W8), leva ~4,4 s.
     let mut evs = Vec::new();
     for _ in 0..420 {
         evs.extend(j.quadro(&[]).eventos);
@@ -293,7 +293,8 @@ fn um_morcego_persegue_morde_e_some() {
 /// **Mutação que deve sangrar:** o morcego nascer sem corpo sólido (a bala só vê formas sólidas).
 #[test]
 fn um_tiro_mata_um_morcego() {
-    let mut j = Jogo::novo([HEROI_XY[0], NINHO_XY[1]], std::f32::consts::PI);
+    // ⚠️ (W8) À ESQUERDA do muro — do lado do herói a bala acertava nele.
+    let mut j = Jogo::novo([0.5, NINHO_XY[1]], std::f32::consts::PI);
     j.quadro(&[SINAL_MORCEGO]);
     let morcego = *j.copias("Morcego").first().expect("o morcego não nasceu");
     j.corre(5);
@@ -592,3 +593,6 @@ fn cada_nivel_ate_cenas_monta_a_sua_cena() {
         "a cena =4 nasce com o herói que tem a tabela do recomeço"
     );
 }
+
+#[path = "vida_arena_nav_tests.rs"]
+mod nav;

@@ -13,7 +13,8 @@
 //! | o **placar** (canto de cima à esquerda) | a barra da vida do herói, de longe | W4 |
 //! | as **duas armas** (`Q` fogo · `J` gelo) | o fogo deixa QUEIMADURA | W6 |
 //! | a **Salamandra** (vermelha, à direita) | vida `60`, **imune** ao fogo, **fraca** ao gelo (`×2`) | W6 |
-//! | os **morcegos** (roxos) | nascem de 3 em 3 s e PERSEGUEM o herói; batem `15` e somem | #14 · W2 |
+//! | os **morcegos** (roxos) | nascem de 3 em 3 s e PERSEGUEM o herói à volta do muro; batem `15` e somem | #14 · W2 · nav W8 |
+//! | o **muro** (cinzento, à esquerda do herói) | só se passa por BAIXO dele | nav W8 |
 //! | a **lava** (laranja, em baixo à esquerda) | não golpeia: QUEIMA enquanto se pisa, e ainda depois | W6 |
 //! | o **coração** (rosa) | nasce de 6 em 6 s e CURA `25` — o herói absorve o tipo `cura` | W6 |
 //! | a **morte do herói** | um segundo e meio depois a corrida RECOMEÇA sozinha | `RestartRun` |
@@ -34,6 +35,15 @@
 //! em nenhum monstro — e o herói, que não é monstro, apanha-o. ⚠️ **O coração some mesmo com a vida
 //! cheia** (a lei do `Vanish` é o toque, não o efeito) — o roteiro di-lo.
 //!
+//! # ⭐⭐ (plano 30, W8) Os morcegos NAVEGAM — e a lava, que os queima, eles EVITAM
+//!
+//! Um morcego é um `NavAgent` sobre um `TopDownPlayer` (a cópia da fábrica leva os dois: estão
+//! registados). Ele tem vida e a lava, sem equipa e do tipo fogo, fere-o ⇒ pela regra do
+//! `Damage::magoa` («tira» inclui a queimadura que dura) a lava é um furo na malha DELE, e um herói
+//! que se refugia nela vê os morcegos ESPERAR na borda. **É o que a cena ensina, de propósito**: é a
+//! decisão do dono (plano 30 §11.1), e o tutorial 03 mostra o outro lado — a Salamandra, imune ao
+//! fogo, posta a perseguir, atravessa-a.
+//!
 //! # ⛔ Onde as peças moram
 //!
 //! Tudo o que o roteiro manda ver fica FORA da coluna dos avisos de sinal
@@ -50,8 +60,8 @@ use ph2d_ecs::{
     Visibility, World, stable_name_id,
 };
 use ph2d_physics_ecs::{
-    BodyKind, Collider, ColliderShape, Damage, Health, HealthBar, OnHit, ProjectileMotion,
-    Resistance, RigidBody,
+    BodyKind, Collider, ColliderShape, Damage, Health, HealthBar, NavAgent, NavRegion, NavTarget,
+    OnHit, ProjectileMotion, Resistance, RigidBody, TopDownPlayer,
 };
 use ph2d_projectile::ProjectileLaw;
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
@@ -104,8 +114,6 @@ pub const MORCEGO_CADA_US: u64 = 3_000_000;
 pub const MORCEGOS_MAX: u32 = 3;
 /// ⭐ A rapidez máxima de um morcego — **mais lenta** que a do herói (`4 m/s`): fugir funciona.
 pub const MORCEGO_RAPIDEZ: f32 = 2.2;
-/// A aceleração da perseguição.
-pub const MORCEGO_PERSEGUE: f32 = 5.0;
 
 /// ⭐ **A queimadura da LAVA** — pontos por segundo e o intervalo dos pulsos.
 pub const LAVA_POR_S: f32 = 6.0;
@@ -124,8 +132,20 @@ pub const CORACAO_CADA_US: u64 = 6_000_000;
 pub const CURA_TIPO: &str = "cura";
 
 // ── A geometria (metros de mundo) ───────────────────────────────────────────
-/// Onde o herói nasce — à DIREITA da coluna dos avisos, à altura da Salamandra, virado para ela.
-pub const HEROI_XY: [f32; 2] = [2.45, 2.1];
+/// Onde o herói nasce — à DIREITA do muro, à altura da Salamandra, virado para ela.
+pub const HEROI_XY: [f32; 2] = [2.85, 2.1];
+/// ⭐ (plano 30, W8) **O MURO**: vertical, logo à direita da coluna dos avisos, do alto até
+/// [`MURO_BAIXO`] — a única passagem entre o ninho e o herói é por BAIXO dele.
+pub const MURO_X: f32 = 2.05;
+/// A meia largura do muro.
+pub const MURO_MEIO: f32 = 0.15;
+/// Onde o muro acaba em baixo.
+pub const MURO_BAIXO: f32 = 0.5;
+/// Onde o muro acaba em cima — acima da banda visível, para ninguém o contornar por cima.
+pub const MURO_CIMA: f32 = 6.0;
+/// ⚠️ O fundo da região andável — o do CANVAS (px `765` ↔ `−2,6` m na foto da W8 a `1930×1040`),
+/// e não o [`FUNDO`]: com ele o chão de baixo via-se e nenhum morcego lá entrava.
+pub const REGIAO_FUNDO: f32 = -2.5;
 /// Onde a Salamandra nasce.
 pub const SALAMANDRA_XY: [f32; 2] = [5.6, 2.1];
 /// O lado da Salamandra.
@@ -166,6 +186,12 @@ const _: () = assert!(CORACAO_XY[1] + LADO_DO_CORACAO / 2.0 < NINHO_XY[1] - LADO
 const _: () = assert!(SALAMANDRA_XY[1] + BARRA_Y + BARRA_H / 2.0 <= TOPO);
 // O morcego é mais lento que o herói — fugir tem de funcionar.
 const _: () = assert!(MORCEGO_RAPIDEZ < RAPIDEZ_DO_HEROI);
+// O muro fica fora da coluna, o herói (meia largura `0,45`) à direita dele, e a passagem de baixo
+// deixa passar a Salamandra (o maior corpo que o tutorial põe a andar: meia diagonal `0,71`).
+const _: () = assert!(MURO_X - MURO_MEIO >= COLUNA_DOS_AVISOS_X[1] + 0.1);
+const _: () = assert!(HEROI_XY[0] - 0.45 >= MURO_X + MURO_MEIO + 0.1);
+const _: () = assert!(MURO_BAIXO - FUNDO > 2.0 * 0.71 + 0.2 && REGIAO_FUNDO < FUNDO);
+const _: () = assert!(MURO_BAIXO < HEROI_XY[1] - 1.0 && MURO_CIMA > TOPO);
 
 /// A rapidez do herói (a do molde das três cenas desta família).
 pub const RAPIDEZ_DO_HEROI: f32 = 4.0;
@@ -180,10 +206,15 @@ const SALAMANDRA_RGBA: [f32; 4] = [0.88, 0.30, 0.22, 1.0];
 const MORCEGO_RGBA: [f32; 4] = [0.62, 0.38, 0.85, 1.0];
 const LAVA_RGBA: [f32; 4] = [0.95, 0.45, 0.10, 1.0];
 const CORACAO_RGBA: [f32; 4] = [0.98, 0.45, 0.65, 1.0];
+const MURO_RGBA: [f32; 4] = [0.38, 0.40, 0.46, 1.0];
 const FOGO_RGBA: [f32; 4] = [1.0, 0.45, 0.15, 1.0];
 const GELO_RGBA: [f32; 4] = [0.45, 0.85, 1.0, 1.0];
 
 /// **A receita da Salamandra** — a da cena `=3`, com mais vida e o grito da vitória.
+///
+/// ⚠️ (W8) **O corpo é CINEMÁTICO, não estático**: parada é a mesma parede para os morcegos (a malha
+/// conta o cinemático parado), e o tutorial 03 fá-la perseguir com UM gesto — *Add Component → Nav
+/// Agent* — porque a semente do mover nunca rebaixa um `Static` que o artista pôs.
 fn receita_da_salamandra(world: &mut World) -> Entity {
     world
         .spawn((
@@ -197,7 +228,7 @@ fn receita_da_salamandra(world: &mut World) -> Entity {
                 SALAMANDRA_RGBA,
             ),
             RigidBody {
-                kind: BodyKind::Static,
+                kind: BodyKind::Kinematic,
             },
             Collider {
                 shape: ColliderShape::Cuboid {
@@ -235,11 +266,13 @@ fn receita_da_salamandra(world: &mut World) -> Entity {
         .id()
 }
 
-/// **A receita de um MORCEGO** — um projéctil que PERSEGUE o herói pelo nome, com uma vida (um
-/// tiro mata-o) e um dano que o gasta ao morder.
+/// **A receita de um MORCEGO** — um agente de navegação que PERSEGUE o herói pelo nome à volta do
+/// muro, com uma vida (um tiro mata-o) e um dano que o gasta ao morder.
 ///
-/// ⚠️ **Os ricochetes são muitos de propósito:** `max_bounces = 0` acaba o voo no primeiro toque, e
-/// dois morcegos que se encostam parariam de vez no ar.
+/// ⚠️ (W8) **Era um projéctil teleguiado, e batia no muro** (o CONTROLO do gate
+/// `um_morcego_da_a_volta_ao_muro`). ⚠️ A chegada é a de fábrica (`0,1` m entre CENTROS): os corpos
+/// encostam muito antes, logo ele empurra até morder — com a chegada da cena `=1` (encostar com
+/// folga) ele parava ao lado do herói e nunca mordia.
 fn receita_do_morcego(world: &mut World) -> Entity {
     world
         .spawn((
@@ -261,17 +294,16 @@ fn receita_do_morcego(world: &mut World) -> Entity {
                 },
                 ..Collider::default()
             },
-            ProjectileMotion::from_law(
-                ProjectileLaw {
-                    initial_speed: 1.0,
-                    max_speed: MORCEGO_RAPIDEZ,
-                    homing_accel: MORCEGO_PERSEGUE,
-                    bounciness: 0.6,
-                    max_bounces: u8::MAX,
-                    ..ProjectileLaw::default()
-                },
-                stable_name_id(HEROI),
-            ),
+            TopDownPlayer::from_law(TopDownLaw {
+                speed: MORCEGO_RAPIDEZ,
+                direction: DirectionMode::Free,
+                default_controls: false,
+                ..TopDownLaw::default()
+            }),
+            NavAgent {
+                target: NavTarget::Named(stable_name_id(HEROI)),
+                ..NavAgent::default()
+            },
             Health {
                 max: VIDA_DO_MORCEGO,
                 start: VIDA_DO_MORCEGO,
@@ -454,6 +486,41 @@ pub fn cena_quatro(world: &mut World) -> Entity {
             ..Damage::default()
         },
     ));
+    // ⭐ (W8) O muro e a região andável — a banda visível inteira; a malha recua-se pelo raio de
+    // cada agente e a lava, que magoa um morcego, é um furo SÓ na malha dele.
+    world.spawn((
+        Name::new("Muro"),
+        Sprite::atlas(
+            WHITE_TILE_KEY,
+            [MURO_MEIO * 2.0, MURO_CIMA - MURO_BAIXO],
+            MURO_RGBA,
+        ),
+        Transform::from_translation(Vec2::new(MURO_X, (MURO_CIMA + MURO_BAIXO) / 2.0)),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: MURO_MEIO,
+                half_y: (MURO_CIMA - MURO_BAIXO) / 2.0,
+            },
+            ..Collider::default()
+        },
+    ));
+    world.spawn((
+        Name::new("Regiao"),
+        NavRegion {
+            half_extents: [
+                (BORDA_DIREITA - BORDA_ESQUERDA) / 2.0,
+                (TOPO - REGIAO_FUNDO) / 2.0,
+            ],
+            obstacle_layers: u8::MAX,
+        },
+        Transform::from_translation(Vec2::new(
+            (BORDA_DIREITA + BORDA_ESQUERDA) / 2.0,
+            (TOPO + REGIAO_FUNDO) / 2.0,
+        )),
+    ));
     relogio(world, "Arranque", COMECAR, 250_000, false);
     relogio(
         world,
@@ -596,11 +663,14 @@ pub fn roteiro() {
          imune ao fogo. Carregue no {TECLA_GELO_NOME} (bala AZUL-CLARA, gelo): sobe o numero 20 e a \
          barra dela desce. Mais duas balas de gelo e ela morre: aparece `{VENCEU}`\n\
          (3) de 3 em 3 segundos nasce um MORCEGO roxo no canto de cima a' esquerda e vem atras do \
-         heroi (no maximo tres). Se tocar no heroi, some, tira 15 (o numero sobe por cima do \
-         heroi), o PLACAR desce e o heroi PISCA. Mate-o com um tiro de qualquer arma (vire-se para \
-         ele com as setas). Ele e' mais lento que o heroi: fugir funciona\n\
+         heroi (no maximo tres): o MURO cinzento so' se passa por BAIXO, e ele da' a volta. Se \
+         tocar no heroi, some, tira 15 (o numero sobe por cima do heroi), o PLACAR desce e o heroi \
+         PISCA. Mate-o com um tiro de qualquer arma (vire-se para ele com as setas). Ele e' mais \
+         lento que o heroi: fugir funciona. A tecla B mostra o caminho que cada um planeou\n\
          (4) leve o heroi para a LAVA (o retangulo LARANJA em baixo a' esquerda): enquanto a pisa, \
-         a cada meio segundo sobe um 3 e o placar desce. Saia dela: ainda queima mais dois segundos\n\
+         a cada meio segundo sobe um 3 e o placar desce. Saia dela: ainda queima mais dois \
+         segundos. Enquanto estiver la' dentro os morcegos ESPERAM na borda: a lava queima-os, e \
+         eles evitam-na sozinhos\n\
          (5) de 6 em 6 segundos nasce um CORACAO rosa a' esquerda (so' um de cada vez). Passe por \
          cima dele com o heroi ferido: ele some e o PLACAR sobe 25. Com a vida cheia ele some na \
          mesma (quem apanha, gasta)\n\
@@ -612,7 +682,8 @@ pub fn roteiro() {
          linhas do recomeco. Clique na LAVA: a seccao `Damage` mostra o dano a zero e a \
          queimadura por segundo\n\
          (8) deu errado se: o fogo fere a Salamandra · o gelo nao a mata ao 3.o tiro · os \
-         morcegos nao seguem o heroi · um morcego que morde nao some · a lava nao queima ou nao \
+         morcegos nao seguem o heroi, ficam presos no muro ou entram na lava · um morcego que \
+         morde nao some · a lava nao queima ou nao \
          continua depois de sair · o coracao nao cura · o heroi morre e nada recomeca · ou, depois \
          do recomeco, o heroi nasce ferido ou a queimar"
     );

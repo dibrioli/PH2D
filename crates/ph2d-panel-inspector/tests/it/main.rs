@@ -49,6 +49,7 @@ mod no_row_paints_its_name_above_its_control;
 mod o_chip_da_vigia_mostra_um_sinal;
 mod o_chip_de_uma_tag_cabe_na_pilula;
 mod o_segmentado_do_fit_tem_um_id_por_modo;
+mod o_tutorial_da_navegacao_nomeia_rotulos_que_existem;
 mod o_tutorial_da_vida_nomeia_rotulos_que_existem;
 mod o_tutorial_nomeia_rotulos_que_existem;
 mod seam;

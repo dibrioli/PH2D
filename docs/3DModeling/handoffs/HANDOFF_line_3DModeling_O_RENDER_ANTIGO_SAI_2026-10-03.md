@@ -98,7 +98,31 @@ nenhuma entrada de luz/céu compila). `smoke_gpu_tests::o_gbuffer…` compara s�
 `render_sem_tracado_tests` (filho do `smoke_draw`, porque os campos do viewport são `pub(super)`):
 `o_render_sem_aparelho_mostra_o_matcap_e_nao_o_tracado` (gancho de teste
 `malha_render_quadro::SEM_APARELHO`) e `ninguem_le_a_porta_do_render_tracado` (varre `crates/` e
-`shells/`, piso `> 1000` ficheiros). Mutação: ver o §4b (preenchido no fecho desta wave).
+`shells/`, piso `> 1000` ficheiros). Re-ancorados: `o_modo_de_omissao_e_pintado_no_dispositivo` (o
+ramo da placa passa pela porta, pinta, e o recuo da CPU vem depois) e o controlo de
+`a_borda_que_a_mao_arrasta_e_a_de_parar` (era «as cores diferem» — o ricochete do assente; passou a
+ser a silhueta ter cobertura parcial).
+
+**Mutações (agente `mutacao`, controlos verdes antes, árvore restaurada): 4 de 5 sangram.**
+
+| mutação | gate | resultado |
+|---|---|---|
+| `SemAparelho => return` (o Render sem placa não desenha) | G1 | VERMELHO (o quadro não assenta, 120 s) |
+| leitor `std::env::var("PH2D_FIELD_RENDER_TRACADO")` em `malha_render_estado` | G2 | VERMELHO |
+| o mesmo montado por `concat!` | G2 | sobrevive — limite declarado de uma régua textual |
+| `SEM_APARELHO` ignorado (com placa) | G1 | VERMELHO (o quadro não assenta) |
+| `if false && takes_the_frame(…)` na thread | G3 | VERMELHO |
+| `None.or_else(\|\| pinta_matcap(…))` | G3 | sobrevive — equivalente semântico |
+
+⚠️ As duas do G1 sangram por **tempo** (o quadro deixa de assentar) e não por pixels; a
+sensibilidade aos pixels está provada pelo vermelho inicial (`57 995` px).
+
+**Suítes** (verificador, load `4–8`): `ph2d-field-render` lib `53` ✓, `tests/it` `24` ✓ em série (`8`
+de orçamento reprovam só em `cargo test` paralelo — contadores globais do processo; sob o `nextest`,
+um processo por teste, não se tocam; não vêm desta onda) · `ph2d-field-gpu` `10` + `4` com placa ✓ ·
+`ph2d-mesh-forward` `6` + `27` com placa ✓ · `ph2d-viewport3d` `27` ✓ · `ph2d-material` `22` ✓ ·
+`ph2d-app-field3d` lib `480` ✓ (+ os 2 re-ancorados, verdes), `tests/it` `4` ✓ (as duas frases de erro
+das texturas da onda AS_TEXTURAS estavam fora da tabela — corrigido), gates de placa reapontados ✓.
 
 ## §5 — ABERTO
 

@@ -385,6 +385,7 @@ fn o_ceu_foto_e_a_lei_da_casa() {
         ceu,
         giro: foto.giro,
         forca,
+        sol: 1.0,
     };
     let vista = ph2d_view_transform::ViewTransform::Standard;
     for (k, m) in materiais_do_ceu().iter().enumerate() {

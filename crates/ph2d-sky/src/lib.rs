@@ -17,9 +17,11 @@
 
 mod embarcados;
 mod prefiltro;
+pub mod sol;
 pub mod wgsl;
 
 pub use embarcados::Embarcado;
+pub use sol::Sol;
 
 /// Uma cor linear.
 pub type Rgb = [f32; 3];
@@ -253,6 +255,8 @@ pub struct Ceu {
     /// `ATLAS_W × ATLAS_H` texels RGBA (o `a` é `1`), linha a linha.
     atlas: Vec<[half::f16; 4]>,
     media: Rgb,
+    /// O sol tirado do panorama ([`Ceu::com_sol`]); o atlas é então o do céu SEM ele.
+    sol: Option<Sol>,
 }
 
 impl Ceu {
@@ -265,7 +269,26 @@ impl Ceu {
                 .map(|t| t.map(half::f16::from_f32))
                 .collect(),
             media: p.media(),
+            sol: None,
         }
+    }
+
+    /// ⭐⭐ **O céu com o sol À PARTE** — o atlas é o do panorama sem o disco ([`Panorama::separa_sol`])
+    /// e o sol vem em [`Ceu::sol`]: `atlas + sol` é o panorama inteiro. A média é a do panorama INTEIRO.
+    #[must_use]
+    pub fn com_sol(p: &Panorama) -> Self {
+        let (sem, sol) = p.separa_sol();
+        Self {
+            sol,
+            media: p.media(),
+            ..Self::novo(&sem)
+        }
+    }
+
+    /// O sol, se este céu foi montado com ele à parte.
+    #[must_use]
+    pub fn sol(&self) -> Option<&Sol> {
+        self.sol.as_ref()
     }
 
     /// Os texels do atlas, `ATLAS_W × ATLAS_H` RGBA `f16` — o que sobe para a placa.
@@ -348,16 +371,22 @@ pub struct Orientado<'a> {
     /// `(cos θ, sin θ)` do giro em torno de `+y`.
     pub giro: [f32; 2],
     pub forca: f32,
+    /// O peso do [`Ceu::sol`] (`1` = o panorama inteiro; `0` = o céu sem o disco).
+    pub sol: f32,
 }
 
 impl ph2d_material::Environment for Orientado<'_> {
     fn radiance(&self, dir: [f32; 3], alpha: f32) -> Rgb {
-        self.ceu
-            .radiance(gira(dir, self.giro), alpha)
-            .map(|c| c * self.forca)
+        let d = gira(dir, self.giro);
+        let c = self.ceu.radiance(d, alpha);
+        let s = self.ceu.sol().map_or([0.0; 3], |s| s.radiance(d, alpha));
+        [0, 1, 2].map(|i| (c[i] + s[i] * self.sol) * self.forca)
     }
     fn irradiance(&self, n: [f32; 3]) -> Rgb {
-        self.ceu.irradiance(gira(n, self.giro)).map(|c| c * self.forca)
+        let d = gira(n, self.giro);
+        let c = self.ceu.irradiance(d);
+        let s = self.ceu.sol().map_or([0.0; 3], |s| s.irradiance(d));
+        [0, 1, 2].map(|i| (c[i] + s[i] * self.sol) * self.forca)
     }
 }
 

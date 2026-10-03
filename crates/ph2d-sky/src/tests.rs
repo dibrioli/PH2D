@@ -71,7 +71,7 @@ fn um_ceu_chapado_devolve_l() {
 ///
 /// ⛔ Medido (02/10): a quadratura POR AMOSTRAS não serve de régua num céu com lâmpadas pequenas —
 /// no interior, `16 384` e `65 536` amostras discordavam `8 %` na mediana a `α = 0,7`.
-fn verdade(p: &Panorama, r: [f32; 3], alpha: f32) -> Rgb {
+pub(crate) fn verdade(p: &Panorama, r: [f32; 3], alpha: f32) -> Rgb {
     let l = (r[0] * r[0] + r[1] * r[1] + r[2] * r[2]).sqrt();
     let r = r.map(|c| f64::from(c / l));
     let a2 = f64::from(alpha) * f64::from(alpha);

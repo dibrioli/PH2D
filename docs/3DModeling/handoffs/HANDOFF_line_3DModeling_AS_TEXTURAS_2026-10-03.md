@@ -6,7 +6,7 @@
 > `ea5071a79` o oráculo · `c805f099a` a crate `ph2d-triplanar` · `da7db1c0d` o passo da normal ·
 > `050a98a0b` a rugosidade do pixel (`ph2d-material`) · `50b87df92` o desenhista · `d36a58b4e` a
 > paridade · `4b643d956` o documento (`FieldTexture`, schema 179) · `69f78d5b4` o modelador, o painel e
-> a cena 39 · `a33208159` os gates do modelador · `bfe5b35b1` trocar não compila. **Smoke do dono: ⏳.**
+> a cena 39 · `a33208159` os gates do modelador · `bfe5b35b1` trocar não compila · `67ed8a4cd` o fecho da bateria · `7b791efb8` o mip com tom médio. **Smoke do dono: OK (03/10).**
 
 ## Decisão de PRODUTO (dono, 03/10)
 
@@ -196,7 +196,7 @@ Oráculo: `bash scripts/ph2d-run.sh blender -b -X --python docs/3DModeling/ferra
 
 ## §7 — Reports do dono
 
-- ⏳ smoke.
+- ✅ Smoke OK (03/10): *«smoke OK. Muito bom!»*
 
 ## §8 — A PRÓXIMA ONDA: item 5 — **contacto entre peças + chão em paridade com o Render traçado**
 

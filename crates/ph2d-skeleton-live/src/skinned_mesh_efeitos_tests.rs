@@ -542,3 +542,37 @@ fn a_uniao_numa_forma_com_efeito_nao_deixa_lascas_nem_mexe_no_repouso() {
         "a união não correu em pose nenhuma — o gate não mede nada"
     );
 }
+
+/// ⭐⭐ **GATE — o contorno de um HATCH também se une, e as riscas ficam** (F50-f, FOTOGRAFADO a
+/// `110°`: o contorno cruzava-se por dentro da junta porque as riscas, abertas, faziam a união
+/// recusar a forma inteira).
+#[test]
+fn o_contorno_de_um_hatch_tambem_se_une_e_as_riscas_ficam() {
+    let pilha = vec![FxEntry::new(PathEffect::Hatch(
+        ph2d_vec_scene::fx_hatch::HatchSpec {
+            angle: 45.0,
+            spacing: 8.0,
+            cross: false,
+        },
+    ))];
+    let abertos = |p: &VecPath| p.subpaths.iter().filter(|c| !c.closed).count();
+    let mut p = b_palco(false);
+    caminho_mut(&mut p.scene, p.id).effects = pilha;
+    p.dobra_em_s(120.0);
+    let desenho = |leis| {
+        crate::skin_live::recook_leis(&p.sim, &mut p.scene.clone(), leis)
+            .remove(&p.id)
+            .expect("desenho")
+    };
+    let (com, sem) = (desenho(Leis::do_ambiente()), desenho(so_o_bake()));
+    assert!(abertos(&sem) > 0, "o CONTROLO: o Hatch tem riscas");
+    assert_ne!(
+        com.verts, sem.verts,
+        "a 120° o contorno do Hatch não se uniu — as riscas abertas recusaram a forma inteira"
+    );
+    assert_eq!(
+        abertos(&com),
+        abertos(&sem),
+        "a união levou riscas do Hatch"
+    );
+}

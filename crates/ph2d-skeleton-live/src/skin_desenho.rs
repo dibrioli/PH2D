@@ -466,7 +466,7 @@ fn cozido_com_efeitos(g: &SkinnedPath, pilha: &[FxEntry], eixos: &[Handle]) -> O
         &caminho,
         campo.as_ref().map_or(da_fonte, |(c, _)| c),
     );
-    let contacto = ph2d_vec_boolean::resolve_overlap(&caminho).is_none();
+    let contacto = uniao_dos_fechados(&caminho).is_none();
     Some(CozidoFx {
         pilha: pilha.to_vec(),
         caminho,
@@ -474,6 +474,19 @@ fn cozido_com_efeitos(g: &SkinnedPath, pilha: &[FxEntry], eixos: &[Handle]) -> O
         campo,
         contacto,
     })
+}
+
+/// ⭐⭐ **A UNIÃO só dos contornos FECHADOS**, com os abertos devolvidos como estavam — as riscas de
+/// um *Hatch* são contornos abertos (sem interior), e a [`ph2d_vec_boolean::resolve_overlap`]
+/// recusa a forma inteira por causa delas: o contorno da barra cruzava-se por dentro de uma dobra
+/// forte (FOTOGRAFADO a `110°`, F50-f). `None` quando nada se cruza.
+fn uniao_dos_fechados(d: &VecPath) -> Option<VecPath> {
+    let (abertos, fechados): (Vec<_>, Vec<_>) = d.subpaths.iter().cloned().partition(|c| !c.closed);
+    let mut so = d.clone();
+    so.subpaths = fechados;
+    let mut u = ph2d_vec_boolean::resolve_overlap(&so)?;
+    u.subpaths.extend(abertos);
+    Some(u)
 }
 
 /// A lei sobre a fonte preparada — o corpo que o [`crate::skin_live`] corria por forma.
@@ -588,7 +601,7 @@ fn calcula(
                 d
             } else if let Some(c) = fx {
                 if c.contacto {
-                    ph2d_vec_boolean::resolve_overlap(&d).unwrap_or(d)
+                    uniao_dos_fechados(&d).unwrap_or(d)
                 } else {
                     d
                 }

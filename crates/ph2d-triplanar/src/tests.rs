@@ -141,7 +141,7 @@ fn a_cor_e_a_do_blender() {
 /// ⭐ **Um mapa PLANO não mexe na normal** (Whiteout reconstrói `n`), e relevo `0` também não.
 #[test]
 fn o_mapa_plano_devolve_a_normal_da_forma() {
-    let plano = [128u8, 128, 128, 255];
+    let plano = [128u8, 128, 255, 128];
     let cor = Mipmaps::de_rgba8(4, 4, &[[200, 100, 50, 255]; 16], 4, true);
     let nrh = Mipmaps::de_rgba8(4, 4, &[plano; 16], 4, false);
     let m = Mapas {
@@ -163,7 +163,7 @@ fn o_mapa_plano_devolve_a_normal_da_forma() {
                 relevo: 1.0,
             };
             let r = avalia(&m, &t, [0.3, -0.2, 0.7], n, [1e-3, 0.0, 0.0], [0.0, 1e-3, 0.0]);
-            // 128/255 não é 0,5 exacto: a inclinação de um texel cinzento é 1/255.
+            // 128/255 não é 0,5 exacto: a inclinação do texel plano é 1/255.
             pior = pior.max(erro(r.normal, n));
             let s: f32 = pesos(n, blend).iter().sum();
             assert!((s - 1.0).abs() < 1e-5, "os pesos somam 1: {s}");
@@ -198,4 +198,51 @@ fn o_pacote_embutido_decodifica() {
             "{e:?}: a normal média {topo:?}"
         );
     }
+}
+
+fn png(b: &[u8], srgb: bool) -> Mipmaps {
+    use ph2d_imageio::ImageImporter;
+    let ph2d_imageio::DecodedImage::Flat(img) = ph2d_imageio_png::PngImporter
+        .import(b, &ph2d_imageio::ImportOpts::default())
+        .expect("png")
+    else {
+        panic!("png plano");
+    };
+    let px: Vec<[u8; 4]> = img.pixels.iter().map(|p| p.0).collect();
+    Mipmaps::de_rgba8(img.width, img.height, &px, img.width, srgb)
+}
+
+/// ⭐⭐⭐ **Passo 3 — o MAPA DE NORMAL é lido como o Blender o lê** (OpenGL, verde = `+v`): nas faces
+/// planas da caixa a Whiteout é a normal de tangente com a base `(t, b, a)` da vista, e o Blender dá
+/// a verdade pelo Normal Map (MikkTSpace sobre uma UV igual à projecção do passo 1).
+///
+/// Medido `4,4e-5`. ⛔ Reconstruir o `z` de `xy` filtrados dava `0,078`: o `z` viaja no azul.
+/// **Mutações que sangram:** o verde invertido (DirectX), trocar `t` e `b` na soma.
+#[test]
+fn o_mapa_de_normal_e_lido_como_o_blender() {
+    let nrh = png(include_bytes!("../fixtures/teste_normal.png"), false);
+    let m = Mapas {
+        cor: Mipmaps::de_rgba8(1, 1, &[[255; 4]], 1, true),
+        nrh,
+        tem_normal: true,
+        tem_rugosidade: false,
+    };
+    let t = Triplanar {
+        tamanho: 1.0,
+        aspecto: 1.0,
+        blend: 0.0,
+        relevo: 1.0,
+    };
+    let linhas: Vec<Linha> = oraculo().into_iter().filter(|l| l.caso == "normal").collect();
+    assert!(linhas.len() > 300, "a fixtura tem a caixa: {}", linhas.len());
+    let (mut pior, mut longe) = (0.0f32, 0.0f32);
+    for l in &linhas {
+        let c = mapeada(l.p, 1.3, [0.17, 0.31, 0.05]);
+        let r = avalia(&m, &t, c, l.n, [1e-6, 0.0, 0.0], [0.0, 1e-6, 0.0]);
+        pior = pior.max(erro(r.normal, l.rgb));
+        longe = longe.max(erro(l.n, l.rgb));
+    }
+    eprintln!("normal: {} pontos, pior {pior:e} (o mapa afasta até {longe})", linhas.len());
+    assert!(longe > 0.2, "o controlo: o mapa inclina a normal");
+    assert!(pior <= 2.0e-4, "a normal diverge do Blender: {pior}");
 }

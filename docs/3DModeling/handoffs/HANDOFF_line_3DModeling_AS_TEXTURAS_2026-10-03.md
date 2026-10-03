@@ -42,6 +42,9 @@ giradas, coordenadas do OBJECTO):
   (`Rgba8UnormSrgb`) decodifica primeiro e filtra em linear (o Eevee, o correcto). A diferença entre
   as duas: p50 `0,0024`, máx `0,26` (só em texel ampliado com borda dura). ⇒ o produto filtra em
   LINEAR; o gate prova a geometria com o passo «filtrar como o Cycles» e mede a divergência.
+- **Normal** (só a caixa: UV = a projecção do passo 1, nó Normal Map em tangente MikkTSpace): a
+  Whiteout na base `(t, b, a)` da vista bate a **4,4e-5**, com o `z` do texel GUARDADO (`nrh` =
+  normal rgb + rugosidade no alfa). Relevo `k`: `(k·x, k·y, 1 + (z−1)·k)`.
 
 ## Desenho (decidido — técnico)
 
@@ -63,4 +66,5 @@ giradas, coordenadas do OBJECTO):
 | `Rgba16Float` para cor/normal | até 1,5× o custo e 2× a memória; 8 bits chega para cor e normal |
 | Lado 2048 | +40 % no pior caso (cache) e 4× a memória; 1024 custa o mesmo que 512 |
 | 3 mapas por material | +40 % sobre 2 mapas; normal xy + rugosidade cabem num RGBA8 |
+| Reconstruir o `z` da normal de `xy` (rugosidade no azul) | `0,078` contra o Blender (filtrar `xy` encurta-os); o `z` guardado dá `4,4e-5` ao mesmo custo |
 | Filtrar nos bytes sRGB (o Cycles) | errado fisicamente e não é o que a placa faz; divergência medida acima |

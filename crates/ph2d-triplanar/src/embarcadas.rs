@@ -113,8 +113,8 @@ fn jpg(b: &[u8]) -> Result<Imagem, String> {
     }
 }
 
-/// ⭐ O mapa `nrh` a partir de uma normal (r, g) e de uma rugosidade (o r dela, cinzenta), cada uma
-/// do seu tamanho. Sem rugosidade, `b = 0`; sem normal (`nor` plano) quem chama passa a plana.
+/// ⭐ O mapa `nrh` a partir de uma normal (rgb) e de uma rugosidade (o r dela, cinzenta), cada uma
+/// do seu tamanho. Sem rugosidade, `a = 0`; sem normal quem chama passa a plana `(128, 128, 255)`.
 #[must_use]
 pub fn junta_nrh(nor: &Imagem, rug: Option<&Imagem>, lado: u32) -> Mipmaps {
     let n = Mipmaps::de_rgba8(nor.0, nor.1, &nor.2, lado, false);
@@ -123,7 +123,7 @@ pub fn junta_nrh(nor: &Imagem, rug: Option<&Imagem>, lado: u32) -> Mipmaps {
         .nivel(0)
         .iter()
         .enumerate()
-        .map(|(i, c)| [c[0], c[1], r.as_ref().map_or(0, |r| r.nivel(0)[i][0]), 255])
+        .map(|(i, c)| [c[0], c[1], c[2], r.as_ref().map_or(0, |r| r.nivel(0)[i][0])])
         .collect();
     // Os mips refazem-se dos bytes juntos (média de números, sem curva), já virados: desvira-se
     // para entrar pela mesma porta.

@@ -14,7 +14,7 @@
 #   cd <worktree> && bash scripts/ph2d-run.sh blender -b -X --python \
 #       docs/3DModeling/ferramentas/oraculo_triplanar_blender.py -- \
 #       crates/ph2d-triplanar/fixtures/oraculo_triplanar.csv \
-#       crates/ph2d-triplanar/fixtures/teste_colorida.png
+#       crates/ph2d-triplanar/fixtures/teste_colorida.png crates/ph2d-triplanar/fixtures/teste_normal.png
 #
 # Convenção: o Blender é Z-para-cima; o produto é Y-para-cima. (x, y, z)_nosso = (x, z, -y)_blender.
 # A linha 0 de uma imagem no Blender é a de BAIXO: v = 0 é a última linha do PNG.
@@ -37,7 +37,31 @@ GIRO = (0.31, -0.52, 0.77)  # rad, XYZ do Blender
 VISTAS = ((1.0, -1.2, 0.9), (-1.0, 1.2, -0.9))  # de onde a câmara olha para a origem (Blender)
 
 argv = sys.argv[sys.argv.index("--") + 1 :]
-saida, png = argv[0], argv[1]
+saida, png, png_normal = argv[0], argv[1], argv[2]
+
+
+def uv_da_caixa(ob):
+    """3. «normal» (só a caixa): cada face recebe por UV a MESMA projecção que o passo 1 mediu, e o
+    nó Normal Map (tangente MikkTSpace dessa UV) dá a verdade de como o Blender lê um mapa OpenGL."""
+    me = ob.data
+    # ⚠️ O cubo nasce com um UV dele: a imagem leria esse e a tangente o nosso.
+    while me.uv_layers:
+        me.uv_layers.remove(me.uv_layers[0])
+    uvl = me.uv_layers.new(name="caixa")
+    for poly in me.polygons:
+        nrm = poly.normal
+        eixo = max(range(3), key=lambda i: abs(nrm[i]))
+        pos = nrm[eixo] >= 0.0
+        for li in poly.loop_indices:
+            co = me.vertices[me.loops[li].vertex_index].co
+            c = [co[i] * TEXTURA_ESCALA + TEXTURA_DESLOCA[i] for i in range(3)]
+            if eixo == 0:
+                u, v = (c[1] if pos else 1 - c[1]), c[2]
+            elif eixo == 1:
+                u, v = (1 - c[0] if pos else c[0]), c[2]
+            else:
+                u, v = (1 - c[1] if pos else c[1]), c[0]
+            uvl.data[li].uv = (u, v)
 
 
 def cena_limpa():
@@ -110,6 +134,30 @@ def material(ob, saida_de, caso, blend):
         fonte = tc.outputs["Object"] if saida_de == "posicao" else tc.outputs["Normal"]
         nt.links.new(fonte, mp.inputs["Vector"])
         nt.links.new(mp.outputs["Vector"], em.inputs["Color"])
+    elif caso == "normal":
+        uv_da_caixa(ob)
+        tx = nt.nodes.new("ShaderNodeTexImage")
+        img = bpy.data.images.load(png_normal)
+        img.colorspace_settings.name = "Non-Color"
+        tx.image = img
+        tx.interpolation = "Linear"
+        tx.extension = "REPEAT"
+        nm = nt.nodes.new("ShaderNodeNormalMap")
+        nm.space = "TANGENT"
+        nm.uv_map = "caixa"
+        nm.inputs["Strength"].default_value = 1.0
+        vt = nt.nodes.new("ShaderNodeVectorTransform")
+        vt.vector_type = "NORMAL"
+        vt.convert_from = "WORLD"
+        vt.convert_to = "OBJECT"
+        mp = nt.nodes.new("ShaderNodeMapping")
+        mp.inputs["Scale"].default_value = (0.25, 0.25, 0.25)
+        mp.inputs["Location"].default_value = (0.5, 0.5, 0.5)
+        nt.links.new(tc.outputs["UV"], tx.inputs["Vector"])
+        nt.links.new(tx.outputs["Color"], nm.inputs["Color"])
+        nt.links.new(nm.outputs["Normal"], vt.inputs["Vector"])
+        nt.links.new(vt.outputs["Vector"], mp.inputs["Vector"])
+        nt.links.new(mp.outputs["Vector"], em.inputs["Color"])
     else:
         mp = nt.nodes.new("ShaderNodeMapping")
         tx = nt.nodes.new("ShaderNodeTexImage")
@@ -172,7 +220,8 @@ linhas = []
 for qual in OBJECTOS:
     for vi, de in enumerate(VISTAS):
         imgs = {}
-        for chave in ("posicao", "normal") + tuple(f"{c}:{b}" for c, b in CASOS):
+        casos = CASOS + ([("normal", 0.0)] if qual == "caixa" else [])
+        for chave in ("posicao", "normal") + tuple(f"{c}:{b}" for c, b in casos):
             s = cena_limpa()
             ob = objecto(s, qual)
             camara(s, de)
@@ -192,12 +241,16 @@ for qual in OBJECTOS:
                 ln = math.sqrt(sum(x * x for x in n))
                 n = [x / ln for x in n]
                 pn, nn = nosso(p), nosso(n)
-                for c, b in CASOS:
-                    t = imgs[f"{c}:{b}"]
+                for c, b in casos:
+                    im = imgs[f"{c}:{b}"]
+                    t = [im[k], im[k + 1], im[k + 2]]
+                    if c == "normal":
+                        # A normal do Normal Map, do objecto, nos NOSSOS eixos.
+                        t = nosso([(x - 0.5) * 4.0 for x in t])
                     linhas.append(
                         f"{qual},{c},{b},{pn[0]:.6f},{pn[1]:.6f},{pn[2]:.6f},"
                         f"{nn[0]:.6f},{nn[1]:.6f},{nn[2]:.6f},"
-                        f"{t[k]:.7g},{t[k + 1]:.7g},{t[k + 2]:.7g}"
+                        f"{t[0]:.7g},{t[1]:.7g},{t[2]:.7g}"
                     )
 
 with open(saida, "w") as f:
@@ -207,6 +260,8 @@ with open(saida, "w") as f:
     f.write("# Image Texture, projecção BOX, interpolação Linear; vector = coordenadas do OBJECTO (Blender)\n")
     f.write(f"#   pesos: rampa float {N_RAMPA}² (r = u, g = v, b = u·v, Non-Color), vector·0,25 + 0,5, EXTEND\n")
     f.write(f"#   cor:   teste_colorida.png (sRGB 8 bits, 64²), vector·{TEXTURA_ESCALA} + {TEXTURA_DESLOCA}, REPEAT\n")
+    f.write("#   normal (só a caixa): UV = a projecção do passo 1 por face; teste_normal.png (Non-Color, "
+            "OpenGL) → Normal Map TANGENT (MikkTSpace) → do objecto; rgb = a normal nos NOSSOS eixos\n")
     f.write(f"# Objectos girados {GIRO} rad (XYZ Blender): esfera r=1 (suave), caixa 1,6x1,0x0,6 (plana).\n")
     f.write("# p e n em Y-para-cima, do OBJECTO: (x, z, -y) do Blender. rgb = linear (cena).\n")
     f.write("objecto,caso,blend,x,y,z,nx,ny,nz,r,g,b\n")

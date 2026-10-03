@@ -99,7 +99,8 @@ fn tri_nivel(w: TriVista, dx: vec3<f32>, dy: vec3<f32>, eu: f32, ev: f32, lado: 
 fn tri_normal_do_mapa(h: vec4<f32>, k: f32) -> vec3<f32> {
     let x = (h.x * 2.0 - 1.0) * k;
     let y = (h.y * 2.0 - 1.0) * k;
-    return vec3<f32>(x, y, sqrt(1.0 - min(x * x + y * y, 1.0)));
+    let z = h.z * 2.0 - 1.0;
+    return vec3<f32>(x, y, max(1.0 + (z - 1.0) * k, 0.0));
 }
 
 fn tri_avalia(par: TriParams, p: vec3<f32>, n: vec3<f32>, dx: vec3<f32>, dy: vec3<f32>) -> TriResultado {
@@ -120,7 +121,7 @@ fn tri_avalia(par: TriParams, p: vec3<f32>, n: vec3<f32>, dx: vec3<f32>, dy: vec
         cor = cor + tri_cor_ler(par.camada, uv, lod).rgb * we;
         if (!usa_nrh) { continue; }
         let h = tri_nrh_ler(par.camada, uv, lod);
-        rug = rug + h.z * we;
+        rug = rug + h.w * we;
         let tn = tri_normal_do_mapa(h, relevo);
         let x = tn.x + dot(n, vi.t);
         let y = tn.y + dot(n, vi.b);

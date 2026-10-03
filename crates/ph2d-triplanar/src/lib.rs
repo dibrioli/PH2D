@@ -138,8 +138,8 @@ pub struct Resultado {
     pub normal: V3,
 }
 
-/// ⭐ **Os dois mapas de um material**: a cor (sRGB) e `nrh` (r, g = a normal xy no padrão OpenGL,
-/// b = a rugosidade).
+/// ⭐ **Os dois mapas de um material**: a cor (sRGB) e `nrh` (rgb = a normal de tangente no padrão
+/// OpenGL, a = a rugosidade).
 #[derive(Clone, Debug, PartialEq)]
 pub struct Mapas {
     pub cor: Mipmaps,
@@ -187,7 +187,7 @@ pub fn avalia(m: &Mapas, t: &Triplanar, p: V3, n: V3, dx: V3, dy: V3) -> Resulta
             continue;
         }
         let h = m.nrh.amostra(false, u, v, lod);
-        rug += h[2] * we;
+        rug += h[3] * we;
         let tn = normal_do_mapa(h, if m.tem_normal { t.relevo } else { 0.0 });
         // Whiteout (Golus 2017) na base (t, b, a) desta vista.
         let (nt, nb, na) = (dot(n, vi.t), dot(n, vi.b), dot(n, vi.a));
@@ -208,12 +208,16 @@ pub fn avalia(m: &Mapas, t: &Triplanar, p: V3, n: V3, dx: V3, dy: V3) -> Resulta
     }
 }
 
-/// A normal de tangente de um texel `nrh` com a força `k`: `xy·k`, e o `z` que a fecha.
+/// A normal de tangente de um texel `nrh` com a força `k`: `(k·x, k·y, 1 + (z − 1)·k)` — o texel
+/// em `k = 1` (o Normal Map do Blender, ao `4,6e-5`) e a normal da forma em `k = 0`.
+///
+/// ⛔ Reconstruir `z` de `xy` filtrados desviava `0,078` do Blender (o azul guardado é o que ele lê).
 #[must_use]
 pub fn normal_do_mapa(h: [f32; 4], k: f32) -> V3 {
     let x = (h[0] * 2.0 - 1.0) * k;
     let y = (h[1] * 2.0 - 1.0) * k;
-    [x, y, (1.0 - (x * x + y * y).min(1.0)).sqrt()]
+    let z = h[2] * 2.0 - 1.0;
+    [x, y, (1.0 + (z - 1.0) * k).max(0.0)]
 }
 
 fn normaliza(v: V3) -> V3 {

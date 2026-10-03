@@ -6,6 +6,7 @@
 use std::collections::BTreeMap;
 
 use crate::gpu_alvo::{Alvos, PROFUNDIDADE, SAIDA};
+use crate::gpu_ligacoes::{textura_float, uniforme};
 use crate::{Ambiente, Cena, Malha};
 
 #[path = "gpu_quadro.rs"]
@@ -79,50 +80,12 @@ pub struct Forward {
     compara: wgpu::Sampler,
     liso: wgpu::Sampler,
     cobertura: crate::gpu_cobertura::Cobertura,
+    contacto: crate::gpu_contacto::Contacto,
     materiais: Option<(u32, wgpu::Texture, wgpu::TextureView)>,
     objetos: Option<(u64, wgpu::Buffer, wgpu::BindGroup)>,
     malhas: BTreeMap<u64, MalhaGpu>,
     alvos: Option<Alvos>,
     pipelines: usize,
-}
-
-fn uniforme(binding: u32, dinamico: bool, vis: wgpu::ShaderStages) -> wgpu::BindGroupLayoutEntry {
-    wgpu::BindGroupLayoutEntry {
-        binding,
-        visibility: vis,
-        ty: wgpu::BindingType::Buffer {
-            ty: wgpu::BufferBindingType::Uniform,
-            has_dynamic_offset: dinamico,
-            min_binding_size: None,
-        },
-        count: None,
-    }
-}
-
-fn textura_float(binding: u32) -> wgpu::BindGroupLayoutEntry {
-    wgpu::BindGroupLayoutEntry {
-        binding,
-        visibility: wgpu::ShaderStages::FRAGMENT,
-        ty: wgpu::BindingType::Texture {
-            sample_type: wgpu::TextureSampleType::Float { filterable: false },
-            view_dimension: wgpu::TextureViewDimension::D2,
-            multisampled: false,
-        },
-        count: None,
-    }
-}
-
-fn textura_prof(binding: u32) -> wgpu::BindGroupLayoutEntry {
-    wgpu::BindGroupLayoutEntry {
-        binding,
-        visibility: wgpu::ShaderStages::FRAGMENT,
-        ty: wgpu::BindingType::Texture {
-            sample_type: wgpu::TextureSampleType::Depth,
-            view_dimension: wgpu::TextureViewDimension::D2,
-            multisampled: false,
-        },
-        count: None,
-    }
 }
 
 fn atributos() -> [wgpu::VertexAttribute; 4] {
@@ -215,47 +178,7 @@ impl Forward {
         ambiente: &Ambiente<'_>,
     ) -> Self {
         let vf = wgpu::ShaderStages::VERTEX_FRAGMENT;
-        let tri = crate::gpu_triplanar::entradas();
-        let g0_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("ph2d-mesh-forward g0"),
-            entries: &[
-                uniforme(0, false, vf),
-                uniforme(1, false, wgpu::ShaderStages::FRAGMENT),
-                textura_float(2),
-                textura_float(3),
-                textura_prof(4),
-                wgpu::BindGroupLayoutEntry {
-                    binding: 5,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 6,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        multisampled: false,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 7,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                    count: None,
-                },
-                textura_float(8),
-                textura_float(9),
-                textura_prof(10),
-                textura_prof(11),
-                tri[0],
-                tri[1],
-                tri[2],
-                crate::gpu_ceu_chao::entrada(15),
-            ],
-        });
+        let g0_bgl = crate::gpu_ligacoes::g0(&device);
         // ⚠️ O passe de sombra ESCREVE o mapa: não o pode ter ligado para leitura. Só o quadro.
         let g0_sombra_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("ph2d-mesh-forward g0 sombra"),
@@ -263,7 +186,7 @@ impl Forward {
         });
         let g1_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("ph2d-mesh-forward g1"),
-            entries: &[uniforme(0, true, wgpu::ShaderStages::VERTEX)],
+            entries: &[uniforme(0, true, vf)],
         });
         let ecra_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("ph2d-mesh-forward ecra"),
@@ -525,6 +448,7 @@ impl Forward {
             mapped_at_creation: false,
         });
         let pipelines = if brilho.is_some() { 15 } else { 10 };
+        let contacto = crate::gpu_contacto::Contacto::novo(&device);
         let cobertura =
             crate::gpu_cobertura::Cobertura::nova(&device, &modulo, &pl_sombra, &so_posicao);
         Self {
@@ -554,6 +478,7 @@ impl Forward {
             compara,
             liso,
             cobertura,
+            contacto,
             materiais: None,
             objetos: None,
             malhas: BTreeMap::new(),
@@ -635,7 +560,14 @@ impl Forward {
     }
 
     /// Esquece a malha `id`.
+    /// ⭐ **Sobe a grelha do contacto da malha `id`** ([`ph2d_contacto::Grade`], no referencial
+    /// da malha): o céu que ela tapa às outras peças. Uma malha sem grelha não tapa ninguém.
+    pub fn sobe_contacto(&mut self, id: u64, g: &ph2d_contacto::Grade) {
+        (self.contacto).sobe(&self.device, &self.queue, id, g);
+    }
+
     pub fn esquece(&mut self, id: u64) {
+        self.contacto.esquece(id);
         self.cobertura.ceu.malha_mudou();
         self.malhas.remove(&id);
     }
@@ -686,6 +618,7 @@ impl Forward {
             .filter(|o| self.malhas.contains_key(&o.malha))
             .collect();
         self.sobe_objetos(&visiveis);
+        self.contacto.prepara(&self.queue, &visiveis);
         self.desenha(
             cena,
             &visiveis,

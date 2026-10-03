@@ -218,7 +218,7 @@ impl Forward {
                     resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
                         buffer: &b,
                         offset: 0,
-                        size: std::num::NonZeroU64::new(64),
+                        size: std::num::NonZeroU64::new(80),
                     }),
                 }],
             });
@@ -228,6 +228,8 @@ impl Forward {
         for (i, o) in objs.iter().enumerate() {
             let at = i * SLOT as usize;
             dados[at..at + 64].copy_from_slice(bytemuck::cast_slice(&o.modelo));
+            // O índice da instância na lista do quadro: o contacto não a deixa tapar-se a si.
+            dados[at + 64..at + 68].copy_from_slice(&(i as f32).to_le_bytes());
         }
         if let Some((_, b, _)) = &self.objetos
             && !dados.is_empty()
@@ -327,6 +329,22 @@ impl Forward {
                 wgpu::BindGroupEntry {
                     binding: 15,
                     resource: wgpu::BindingResource::TextureView(&self.cobertura.ceu.vista),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 16,
+                    resource: self.contacto.tabela.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 17,
+                    resource: wgpu::BindingResource::TextureView(self.contacto.vista(0)),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 18,
+                    resource: wgpu::BindingResource::TextureView(self.contacto.vista(1)),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 19,
+                    resource: wgpu::BindingResource::TextureView(self.contacto.vista(2)),
                 },
                 wgpu::BindGroupEntry {
                     binding: 8,

@@ -22,6 +22,8 @@ mod gpu_alvo;
 mod gpu_brilho;
 mod gpu_ceu_chao;
 mod gpu_cobertura;
+mod gpu_contacto;
+mod gpu_ligacoes;
 mod gpu_triplanar;
 
 pub use fonte::fonte;
@@ -173,6 +175,8 @@ pub struct TexturaMaterial {
 mod tests;
 #[cfg(test)]
 mod tests_chao;
+#[cfg(test)]
+mod tests_contacto;
 #[cfg(test)]
 mod tests_custo_chao;
 #[cfg(test)]

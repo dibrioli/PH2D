@@ -48,6 +48,12 @@ pub fn fonte(ambiente: &crate::Ambiente<'_>) -> String {
     FORWARD
         .replace("{MATERIAL}", &material)
         .replace("{TRIPLANAR}", ph2d_triplanar::wgsl::fonte())
+        .replace("{CONTACTO}", &ph2d_contacto::wgsl::fonte())
+        .replace(
+            "{MAX_CONTACTO}",
+            &crate::gpu_contacto::MAX_CONTACTO.to_string(),
+        )
+        .replace("{LADO_CONTACTO}", &ph2d_contacto::LADO.to_string())
         .replace("{COL_TEX}", &crate::MATERIAL_V4.to_string())
         .replace("{AMBIENTE}", ambiente.wgsl)
         .replace("{OLHAR}", ph2d_view_transform::wgsl::SOURCE)

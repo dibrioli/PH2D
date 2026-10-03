@@ -47,6 +47,22 @@ struct Quadro {
 
 struct Objeto {
     modelo: mat4x4<f32>,
+    // x = o indice da instancia na lista do quadro (o contacto nao a deixa tapar-se a si).
+    extra: vec4<f32>,
+};
+
+// A tabela do contacto (`gpu_contacto.rs`): por instancia com grelha, as linhas da afim mundo -> grelha
+// e (telha x, telha y, indice da instancia, _) em texels do atlas.
+struct EntradaContacto {
+    a0: vec4<f32>,
+    a1: vec4<f32>,
+    a2: vec4<f32>,
+    t: vec4<f32>,
+};
+struct TabelaContacto {
+    // x = quantas entradas · y = o lado do atlas em texels (x e y)
+    n: vec4<f32>,
+    e: array<EntradaContacto, {MAX_CONTACTO}>,
 };
 
 @group(0) @binding(0) var<uniform> quadro: Quadro;
@@ -68,6 +84,10 @@ struct Objeto {
 @group(0) @binding(14) var tri_amostrador: sampler;
 // O ceu que o chao ve (`gpu_ceu_chao.rs`).
 @group(0) @binding(15) var ceu_chao: texture_2d<f32>;
+@group(0) @binding(16) var<uniform> contacto_tab: TabelaContacto;
+@group(0) @binding(17) var contacto_0: texture_3d<f32>;
+@group(0) @binding(18) var contacto_1: texture_3d<f32>;
+@group(0) @binding(19) var contacto_2: texture_3d<f32>;
 @group(1) @binding(0) var<uniform> objeto: Objeto;
 
 fn tri_cor_ler(camada: i32, uv: vec2<f32>, lod: f32) -> vec4<f32> {
@@ -394,6 +414,34 @@ fn com_a_curvatura(m_in: Mat, k: f32) -> Mat {
     return m;
 }
 
+{CONTACTO}
+
+// ⭐⭐ O CEU QUE AS OUTRAS PECAS TAPAM a este ponto (`ph2d_contacto`): o produto das visibilidades,
+// cada uma lida na grelha da peca no referencial dela. A propria instancia nao entra.
+fn contacto(p: vec3<f32>, n: vec3<f32>) -> f32 {
+    var vis = 1.0;
+    let k = u32(contacto_tab.n.x);
+    let atlas = vec3<f32>(contacto_tab.n.y, contacto_tab.n.y, f32({LADO_CONTACTO}));
+    for (var j = 0u; j < k; j = j + 1u) {
+        let e = contacto_tab.e[j];
+        if (e.t.z == objeto.extra.x) {
+            continue;
+        }
+        let u = vec3<f32>(dot(e.a0.xyz, p) + e.a0.w, dot(e.a1.xyz, p) + e.a1.w, dot(e.a2.xyz, p) + e.a2.w);
+        let b = ct_borda(u);
+        if (b.w <= 0.0) {
+            continue;
+        }
+        let nl = normalize(vec3<f32>(dot(e.a0.xyz, n), dot(e.a1.xyz, n), dot(e.a2.xyz, n)));
+        let tc = (vec3<f32>(e.t.xy, 0.0) + b.xyz * f32({LADO_CONTACTO} - 1) + vec3<f32>(0.5)) / atlas;
+        let c0 = textureSampleLevel(contacto_0, liso, tc, 0.0);
+        let c1 = textureSampleLevel(contacto_1, liso, tc, 0.0);
+        let c2 = textureSampleLevel(contacto_2, liso, tc, 0.0);
+        vis = vis * (1.0 - b.w * ct_oclusao(c0, c1, c2, nl));
+    }
+    return vis;
+}
+
 // A luz que o pixel devolve ao olho, em CENA-linear (antes da exposicao e do olhar) — a ordem do
 // Render tracado: o indirecto, a SATURACAO dele (antes das lampadas: saturar no fim saturaria o
 // realce do sol), as lampadas, e o ESTILO entre a fisica e o olhar, com a emissao.
@@ -416,7 +464,7 @@ fn luz_de_cena(i: VsOut) -> vec3<f32> {
         }
     }
     let v = vista(i.mundo);
-    peso_ceu = i.ao;
+    peso_ceu = i.ao * contacto(i.mundo, n);
     peso_caixa = visibilidade_da_caixa(i.mundo);
     var c = mx_indirect(m, n, v);
     c = st_saturate_indirect(quadro.estilo, c);

@@ -37,28 +37,26 @@ fn normais(n: usize) -> Vec<[f32; 3]> {
 }
 
 /// ⭐⭐ **Força `0` = a luz média do estúdio** — a irradiância média (sobre todas as normais) do céu
-/// normalizado é a da parte SEM caixa do estúdio, medida na LEI do estúdio
-/// ([`crate::studio::Studio::irradiance`] menos a caixa) e não na conta fechada da normalização.
+/// normalizado, COM o sol, é a do estúdio inteiro, medida na LEI do estúdio
+/// ([`crate::studio::Studio::irradiance`]) e não na conta fechada da normalização.
 #[test]
 fn a_forca_zero_poe_o_ceu_a_luz_do_estudio() {
+    use ph2d_material::Environment;
     let st = crate::studio::Studio::of_the_product();
-    let t = st.softbox.expect("o estúdio do produto tem caixa");
-    let (_, _, _, amp) = t.tables();
     let ns = normais(4000);
-    let estudio: f32 = ns
-        .iter()
-        .map(|n| {
-            let e = st.irradiance(*n);
-            let caixa = ph2d_light::AMBIENT * amp * t.diffuse(n[1]);
-            luma([0, 1, 2].map(|i| e[i] - caixa * ph2d_light::ENV_BASE[i]))
-        })
-        .sum::<f32>()
-        / ns.len() as f32;
+    let estudio: f32 =
+        ns.iter().map(|n| luma(st.irradiance(*n))).sum::<f32>() / ns.len() as f32;
     for e in [ph2d_sky::Embarcado::Por, ph2d_sky::Embarcado::Interior] {
-        let ceu = ph2d_sky::Ceu::novo(&e.panorama());
-        let k = normalizacao(&ceu);
+        let ceu = ph2d_sky::Ceu::com_sol(&e.panorama());
+        assert!(ceu.sol().is_some(), "{e:?} tem sol");
+        let env = ph2d_sky::Orientado {
+            ceu: &ceu,
+            giro: [1.0, 0.0],
+            forca: normalizacao(&ceu),
+            sol: 1.0,
+        };
         let media: f32 =
-            ns.iter().map(|n| luma(ceu.irradiance(*n)) * k).sum::<f32>() / ns.len() as f32;
+            ns.iter().map(|n| luma(env.irradiance(*n))).sum::<f32>() / ns.len() as f32;
         let rel = (media - estudio).abs() / estudio;
         eprintln!("{e:?}: céu {media:.5} · estúdio {estudio:.5} · {:.2} %", 100.0 * rel);
         assert!(rel < 0.02, "{e:?}: {media} contra {estudio}");

@@ -28,8 +28,12 @@ struct Quadro {
     peca: vec4<f32>,
     // O CEU FOTOGRAFICO: xy = (cos, sin) do giro · z = forca · w = ligado (0/1)
     foto: vec4<f32>,
-    // x = peso da caixa sob o ceu fotografico · y = alfa do fundo · z = ha' fundo (0/1) · w = _
+    // x = _ · y = alfa do fundo · z = ha' fundo (0/1) · w = _
     foto_fundo: vec4<f32>,
+    // O SOL do ceu fotografico: xyz = direccao PARA ele no referencial do CEU · w = ha' sol (0/1)
+    sol: vec4<f32>,
+    // rgb = a radiancia da calote (ja' com a forca do ceu e o peso da luz-chave) · w = _
+    sol_rad: vec4<f32>,
     // O inverso do `view_proj` (o fundo pergunta a direccao de cada pixel).
     inv_view_proj: mat4x4<f32>,
     // pares (posicao, radiancia a 1), ate' `MAX_LUZES` luzes
@@ -49,6 +53,7 @@ struct Objeto {
 @group(0) @binding(6) var cobertura: texture_2d<f32>;
 @group(0) @binding(7) var liso: sampler;
 @group(0) @binding(8) var ceu_foto: texture_2d<f32>;
+@group(0) @binding(9) var sol_tab: texture_2d<f32>;
 @group(1) @binding(0) var<uniform> objeto: Objeto;
 
 fn tabela_ler(i: u32) -> f32 {
@@ -59,6 +64,10 @@ fn tabela_ler(i: u32) -> f32 {
 
 fn sky_atlas(x: u32, y: u32) -> vec3<f32> {
     return textureLoad(ceu_foto, vec2<i32>(i32(x), i32(y)), 0).rgb;
+}
+
+fn sky_sol_ler(i: u32) -> f32 {
+    return textureLoad(sol_tab, vec2<i32>(i32(i % {TAB_W}u), i32(i / {TAB_W}u)), 0).r;
 }
 
 {CEU_FOTO}
@@ -82,8 +91,24 @@ fn ceu_irr_sem(n: vec3<f32>) -> vec3<f32> {
     return ceu_irradiance_sem_caixa(n);
 }
 
-fn peso_da_caixa() -> f32 {
-    return select(1.0, quadro.foto_fundo.x, foto_ligada());
+// ⭐⭐ A parte DA caixa (a luz que a SOMBRA tapa): sob o ceu fotografico e' o SOL dele (tirado do
+// panorama: ceu sem sol + sol = o panorama), senao a caixa de quem chama. Sem sol, nada.
+fn caixa_rad(dir: vec3<f32>, alpha: f32) -> vec3<f32> {
+    if (foto_ligada()) {
+        if (quadro.sol.w < 0.5) {
+            return vec3<f32>(0.0);
+        }
+        let c = sky_sol_cos(sky_gira(dir, quadro.foto.xy), quadro.sol.xyz);
+        return quadro.sol_rad.rgb * sky_sol_tabela(alpha, c);
+    }
+    return ceu_radiance_da_caixa(dir, alpha);
+}
+
+fn caixa_irr(n: vec3<f32>) -> vec3<f32> {
+    if (foto_ligada()) {
+        return caixa_rad(n, 1.0);
+    }
+    return ceu_irradiance_da_caixa(n);
 }
 
 // ⭐ O ambiente da lei do material = as DUAS partes do ceu, cada uma com o seu peso por pixel: a
@@ -93,12 +118,11 @@ var<private> peso_ceu: f32 = 1.0;
 var<private> peso_caixa: f32 = 1.0;
 
 fn env_radiance_da_cena(dir: vec3<f32>, alpha: f32, shrink: f32) -> vec3<f32> {
-    return ceu_rad_sem(dir, alpha, shrink) * peso_ceu
-        + ceu_radiance_da_caixa(dir, alpha) * (peso_caixa * peso_da_caixa());
+    return ceu_rad_sem(dir, alpha, shrink) * peso_ceu + caixa_rad(dir, alpha) * peso_caixa;
 }
 
 fn env_irradiance_da_cena(n: vec3<f32>) -> vec3<f32> {
-    return ceu_irr_sem(n) * peso_ceu + ceu_irradiance_da_caixa(n) * (peso_caixa * peso_da_caixa());
+    return ceu_irr_sem(n) * peso_ceu + caixa_irr(n) * peso_caixa;
 }
 
 {MATERIAL}
@@ -400,7 +424,7 @@ fn fs_chao_brilho(i: ChaoOut) -> DoisAlvos {
 fn escuro_do_chao(i: ChaoOut) -> vec4<f32> {
     let up = vec3<f32>(0.0, 1.0, 0.0);
     let ceu_e = ceu_irr_sem(up);
-    let caixa_e = ceu_irradiance_da_caixa(up) * peso_da_caixa();
+    let caixa_e = caixa_irr(up);
     var lamp = vec3<f32>(0.0);
     let k = u32(quadro.olhar.z);
     for (var j = 0u; j < k; j = j + 1u) {

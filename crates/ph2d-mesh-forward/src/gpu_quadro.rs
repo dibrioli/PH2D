@@ -116,7 +116,12 @@ fn inversa(m: &[[f32; 4]; 4]) -> [[f32; 4]; 4] {
     out
 }
 
-pub(super) fn uniforme_do_quadro(cena: &Cena<'_>, e: &Enquadra, tem_ceu: bool) -> Vec<f32> {
+pub(super) fn uniforme_do_quadro(
+    cena: &Cena<'_>,
+    e: &Enquadra,
+    tem_ceu: bool,
+    sol: Option<&super::texturas::SolGpu>,
+) -> Vec<f32> {
     let mut u = Vec::with_capacity(QUADRO);
     for col in cena.camera.view_proj.iter().chain(e.sombra_vp.iter()) {
         u.extend_from_slice(col);
@@ -151,13 +156,27 @@ pub(super) fn uniforme_do_quadro(cena: &Cena<'_>, e: &Enquadra, tem_ceu: bool) -
         Some(f) => {
             u.extend_from_slice(&[f.giro[0], f.giro[1], f.forca, 1.0]);
             u.extend_from_slice(&[
-                f.caixa,
+                0.0,
                 f.fundo.unwrap_or(0.0),
                 f32::from(u8::from(f.fundo.is_some())),
                 0.0,
             ]);
         }
-        None => u.extend_from_slice(&[1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0]),
+        None => u.extend_from_slice(&[1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
+    }
+    // ⭐ O sol: a radiância da calote com a força do céu e o peso da luz-chave.
+    match (foto, sol) {
+        (Some(f), Some(s)) => {
+            u.extend_from_slice(&[s.dir[0], s.dir[1], s.dir[2], 1.0]);
+            let k = f.forca * f.caixa;
+            u.extend_from_slice(&[
+                s.radiancia[0] * k,
+                s.radiancia[1] * k,
+                s.radiancia[2] * k,
+                0.0,
+            ]);
+        }
+        _ => u.extend_from_slice(&[0.0; 8]),
     }
     for col in inversa(&cena.camera.view_proj) {
         u.extend_from_slice(&col);
@@ -345,6 +364,12 @@ impl Forward {
                     binding: 8,
                     resource: wgpu::BindingResource::TextureView(
                         self.foto.as_ref().map_or(&self.foto_vazia, |(_, v)| v),
+                    ),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 9,
+                    resource: wgpu::BindingResource::TextureView(
+                        self.sol.as_ref().map_or(&self.sol_vazia, |s| &s.vista),
                     ),
                 },
             ],

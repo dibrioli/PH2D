@@ -349,7 +349,11 @@ impl Brilho {
                 wgpu::ColorWrites::empty(),
             ),
         );
-        let fu = com_cena(fundo, "fs_fundo_brilho", &dois(None, wgpu::ColorWrites::ALL));
+        let fu = com_cena(
+            fundo,
+            "fs_fundo_brilho",
+            &dois(None, wgpu::ColorWrites::ALL),
+        );
         let tex = |binding| wgpu::BindGroupLayoutEntry {
             binding,
             visibility: wgpu::ShaderStages::FRAGMENT,

@@ -43,7 +43,7 @@ struct Linha {
 /// | céu | `0..8` | os nove céus |
 /// | giro | `0..360°` | uma volta |
 /// | força | `±4` stops | `16×` para cada lado; `0` = a luz média do estúdio |
-/// | luz-chave | `0..2` | `1` = a do estúdio; `0` = só o céu (sem sombra da caixa) |
+/// | luz-chave | `0..2` | o sol do céu: `1` = como foi fotografado; `0` = só o resto do céu (sem sombra) |
 /// | fundo | Off / On | o céu atrás da peça |
 /// | desfoque | `0..1` | o `√α` do lóbulo com que o fundo é lido (`1` = só a cor média de cada lado) |
 const LINHAS: [Linha; 6] = [

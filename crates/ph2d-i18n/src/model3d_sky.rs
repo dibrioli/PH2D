@@ -22,8 +22,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.model3d.sky.night" => "Night",
         "panel.model3d.sky.rotation" => "Rotation",
         "panel.model3d.sky.strength" => "Strength",
-        // ⚠️ **"Key Light"**: é o nome de fotógrafo para a luz principal — a caixa do estúdio, a que
-        // faz a sombra.
+        // ⚠️ **"Key Light"**: é o nome de fotógrafo para a luz principal — sob um céu fotografado, o
+        // SOL dele (ou a lâmpada mais forte), a que faz a sombra.
         "panel.model3d.sky.key_light" => "Key Light",
         "panel.model3d.sky.background" => "Background",
         "panel.model3d.sky.off" => "Off",
@@ -43,8 +43,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
              switching skies does not blow out or darken the scene."
         }
         "panel.model3d.sky.key_light.tip" => {
-            "The Studio's main light from above, the one that casts the shadow. 1 is as in the \
-             Studio; 0 leaves only the sky."
+            "The sky's sun (or its brightest lamp), the light that casts the shadow. 1 is as \
+             photographed; 0 leaves only the rest of the sky."
         }
         "panel.model3d.sky.background.tip" => "Shows the sky behind the model.",
         "panel.model3d.sky.blur.tip" => {

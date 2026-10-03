@@ -19,7 +19,7 @@ const VERTICE: u64 = 32;
 pub(crate) const SLOT: u64 = 256;
 /// O tamanho do uniforme do quadro — o `Quadro` do WGSL.
 pub(crate) const QUADRO: usize =
-    2 * 16 + 6 * 4 + ph2d_style::wgsl::PACKED + 4 + 4 + 4 + 16 + 2 * crate::MAX_LUZES * 4;
+    2 * 16 + 6 * 4 + ph2d_style::wgsl::PACKED + 4 + 4 + 4 + 4 + 4 + 16 + 2 * crate::MAX_LUZES * 4;
 
 struct MalhaGpu {
     vertices: wgpu::Buffer,
@@ -59,6 +59,9 @@ pub struct Forward {
     /// então um texel vazio, e a cena ignora a [`crate::Foto`].
     foto: Option<(wgpu::Texture, wgpu::TextureView)>,
     foto_vazia: wgpu::TextureView,
+    /// O sol do céu subido (`None` = o céu não tem sol); a ligação lê então `sol_vazia`.
+    sol: Option<texturas::SolGpu>,
+    sol_vazia: wgpu::TextureView,
     mapa_sombra: wgpu::TextureView,
     compara: wgpu::Sampler,
     liso: wgpu::Sampler,
@@ -225,6 +228,7 @@ impl Forward {
                     count: None,
                 },
                 textura_float(8),
+                textura_float(9),
             ],
         });
         // ⚠️ O passe de sombra ESCREVE o mapa: não o pode ter ligado para leitura. Só o quadro.
@@ -389,9 +393,8 @@ impl Forward {
             ..chao_d.clone()
         };
         let fundo = device.create_render_pipeline(&fundo_d);
-        let brilho = (cor == crate::gpu_brilho::LINEAR).then(|| {
-            crate::gpu_brilho::Brilho::novo(&device, cor, &objeto_d, &chao_d, &fundo_d)
-        });
+        let brilho = (cor == crate::gpu_brilho::LINEAR)
+            .then(|| crate::gpu_brilho::Brilho::novo(&device, cor, &objeto_d, &chao_d, &fundo_d));
         let sombra = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("ph2d-mesh-forward sombra"),
             layout: Some(&pl_sombra),
@@ -461,6 +464,7 @@ impl Forward {
         queue.write_buffer(&ceu, 0, bytemuck::cast_slice(&ceu_dados));
         let tabela = texturas::textura_de_floats(&device, &queue, ambiente.tabela);
         let foto_vazia = texturas::vazia(&device, &queue);
+        let sol_vazia = texturas::textura_de_floats(&device, &queue, &[0.0]);
         let mapa_sombra = device
             .create_texture(&wgpu::TextureDescriptor {
                 label: Some("ph2d-mesh-forward mapa de sombra"),
@@ -528,6 +532,8 @@ impl Forward {
             tabela,
             foto: None,
             foto_vazia,
+            sol: None,
+            sol_vazia,
             mapa_sombra,
             compara,
             liso,
@@ -644,7 +650,12 @@ impl Forward {
         self.sobe_materiais(cena.materiais);
         let enquadra =
             quadro_impl::enquadra_sombra(cena, |id| self.malhas.get(&id).map(|m| m.caixa));
-        let dados = quadro_impl::uniforme_do_quadro(cena, &enquadra, self.foto.is_some());
+        let dados = quadro_impl::uniforme_do_quadro(
+            cena,
+            &enquadra,
+            self.foto.is_some(),
+            self.sol.as_ref(),
+        );
         self.queue
             .write_buffer(&self.quadro, 0, bytemuck::cast_slice(&dados));
         let visiveis: Vec<&crate::Instancia> = cena

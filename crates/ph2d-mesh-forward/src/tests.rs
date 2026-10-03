@@ -326,9 +326,12 @@ fn ceu_de(e: ph2d_sky::Embarcado) -> &'static ph2d_sky::Ceu {
     use std::sync::{Mutex, OnceLock};
     static CEUS: OnceLock<Mutex<BTreeMap<ph2d_sky::Embarcado, &'static ph2d_sky::Ceu>>> =
         OnceLock::new();
-    let mut m = CEUS.get_or_init(|| Mutex::new(BTreeMap::new())).lock().expect("trava");
+    let mut m = CEUS
+        .get_or_init(|| Mutex::new(BTreeMap::new()))
+        .lock()
+        .expect("trava");
     m.entry(e)
-        .or_insert_with(|| Box::leak(Box::new(ph2d_sky::Ceu::novo(&e.panorama()))))
+        .or_insert_with(|| Box::leak(Box::new(ph2d_sky::Ceu::com_sol(&e.panorama()))))
 }
 
 /// Os materiais COLORIDOS do gate do céu (⛔ uma fixtura cinzenta esconde efeitos de cor — a lição
@@ -356,9 +359,10 @@ fn materiais_do_ceu() -> Vec<ph2d_material::OpenPbr> {
     ]
 }
 
-/// ⭐⭐⭐ **O céu fotográfico é a lei da casa** — cada pixel da esfera sob o pôr do sol (girado, com
-/// força), para três materiais coloridos, contra o `Surface::indirect` da CPU com o
-/// [`ph2d_sky::Orientado`] na normal EXACTA da esfera, pelo mesmo olhar.
+/// ⭐⭐⭐ **O céu fotográfico é a lei da casa** — cada pixel da esfera sob o pôr do sol e sob a cidade
+/// (girados, com força, o SOL à parte com o peso da luz-chave), para três materiais coloridos, contra
+/// o `Surface::indirect` da CPU com o [`ph2d_sky::Orientado`] na normal EXACTA da esfera, pelo mesmo
+/// olhar. Controlo: o sol da cidade com peso `0` é outra imagem.
 ///
 /// ⚠️ A malha é uma esfera UV (`48 × 96`): a normal interpolada difere da exacta entre vértices, e
 /// num reflexo nítido isso move bytes — o centro (normal exacta) tem de bater a `≤ 1`.
@@ -368,12 +372,113 @@ fn o_ceu_foto_e_a_lei_da_casa() {
     let Some(mut fw) = desenhista_com_esfera() else {
         return;
     };
-    let ceu = ceu_de(ph2d_sky::Embarcado::Por);
-    fw.sobe_ceu(ceu);
     let objs = [Instancia {
         malha: 1,
         modelo: ID,
     }];
+    for (e, th, forca, peso) in [
+        (ph2d_sky::Embarcado::Por, 1.1f32, 0.6f32, 1.0f32),
+        (ph2d_sky::Embarcado::Cidade, 2.0, 0.05, 1.0),
+        (ph2d_sky::Embarcado::Cidade, 2.0, 0.05, 0.4),
+    ] {
+        let ceu = ceu_de(e);
+        assert!(ceu.sol().is_some(), "{e:?} tem sol");
+        fw.sobe_ceu(ceu);
+        let foto = Foto {
+            giro: [th.cos(), th.sin()],
+            forca,
+            caixa: peso,
+            fundo: None,
+        };
+        let env = ph2d_sky::Orientado {
+            ceu,
+            giro: foto.giro,
+            forca,
+            sol: peso,
+        };
+        let vista = ph2d_view_transform::ViewTransform::Standard;
+        for (k, m) in materiais_do_ceu().iter().enumerate() {
+            let s = m.prepare();
+            let mats = [ph2d_material::wgsl::pack(
+                &s,
+                ph2d_material::wgsl::EnvLobe::of(&s),
+            )];
+            let img = fw
+                .quadro(&Cena {
+                    foto: Some(foto),
+                    ..cena(&objs, &mats, camera(1.0, 0.0))
+                })
+                .expect("quadro");
+            let mut dif = Vec::new();
+            let mut centro = 0.0f32;
+            for y in (0..96).step_by(2) {
+                for x in (0..96).step_by(2) {
+                    let (wx, wy) = (
+                        ((x as f32 + 0.5) / 96.0) * 2.0 - 1.0,
+                        1.0 - ((y as f32 + 0.5) / 96.0) * 2.0,
+                    );
+                    let r2 = wx * wx + wy * wy;
+                    if r2 > (0.85f32 * 0.5).powi(2) {
+                        continue;
+                    }
+                    let n = [wx / 0.5, wy / 0.5, (0.25 - r2).sqrt() / 0.5];
+                    let c = s.indirect(n, [0.0, 0.0, 1.0], &env);
+                    let d = ph2d_view_transform::to_display(c, 0.0, vista);
+                    let i = (y * 96 + x) * 4;
+                    let pior = (0..3)
+                        .map(|q| (f32::from(img[i + q]) - (srgb(d[q]) * 255.0 + 0.5).floor()).abs())
+                        .fold(0.0, f32::max);
+                    if (x, y) == (48, 48) {
+                        centro = pior;
+                    }
+                    dif.push(pior);
+                }
+            }
+            dif.sort_by(f32::total_cmp);
+            let q = |p: f32| dif[((dif.len() - 1) as f32 * p) as usize];
+            eprintln!(
+                "{e:?} sol×{peso} material {k}: {} px · p50 {} p99 {} max {} · centro {centro}",
+                dif.len(),
+                q(0.5),
+                q(0.99),
+                dif.last().copied().unwrap_or(0.0)
+            );
+            assert!(
+                centro <= 1.0,
+                "material {k}: o centro (normal exacta) erra {centro} B"
+            );
+            assert!(
+                q(0.5) <= 1.0 && q(0.99) <= 3.0,
+                "material {k}: p50 {} p99 {}",
+                q(0.5),
+                q(0.99)
+            );
+        }
+    }
+    // O controlo do SOL: o mesmo céu com a luz-chave a `0` é outra imagem.
+    let s = materiais_do_ceu()[2].prepare();
+    let mats = [ph2d_material::wgsl::pack(
+        &s,
+        ph2d_material::wgsl::EnvLobe::of(&s),
+    )];
+    let com_peso = |caixa| Cena {
+        foto: Some(Foto {
+            giro: [2.0f32.cos(), 2.0f32.sin()],
+            forca: 0.05,
+            caixa,
+            fundo: None,
+        }),
+        ..cena(&objs, &mats, camera(1.0, 0.0))
+    };
+    let com = fw.quadro(&com_peso(1.0)).expect("com sol");
+    let sem = fw.quadro(&com_peso(0.0)).expect("sem sol");
+    let mudou = com.iter().zip(&sem).filter(|(a, b)| a != b).count();
+    assert!(
+        mudou > 1000,
+        "o controlo: o sol tem de mudar a imagem ({mudou} bytes)"
+    );
+    let ceu = ceu_de(ph2d_sky::Embarcado::Por);
+    fw.sobe_ceu(ceu);
     let (th, forca) = (1.1f32, 0.6f32);
     let foto = Foto {
         giro: [th.cos(), th.sin()],
@@ -381,70 +486,25 @@ fn o_ceu_foto_e_a_lei_da_casa() {
         caixa: 1.0,
         fundo: None,
     };
-    let env = ph2d_sky::Orientado {
-        ceu,
-        giro: foto.giro,
-        forca,
-        sol: 1.0,
-    };
-    let vista = ph2d_view_transform::ViewTransform::Standard;
-    for (k, m) in materiais_do_ceu().iter().enumerate() {
-        let s = m.prepare();
-        let mats = [ph2d_material::wgsl::pack(&s, ph2d_material::wgsl::EnvLobe::of(&s))];
-        let img = fw
-            .quadro(&Cena {
-                foto: Some(foto),
-                ..cena(&objs, &mats, camera(1.0, 0.0))
-            })
-            .expect("quadro");
-        let mut dif = Vec::new();
-        let mut centro = 0.0f32;
-        for y in (0..96).step_by(2) {
-            for x in (0..96).step_by(2) {
-                let (wx, wy) = (
-                    ((x as f32 + 0.5) / 96.0) * 2.0 - 1.0,
-                    1.0 - ((y as f32 + 0.5) / 96.0) * 2.0,
-                );
-                let r2 = wx * wx + wy * wy;
-                if r2 > (0.85f32 * 0.5).powi(2) {
-                    continue;
-                }
-                let n = [wx / 0.5, wy / 0.5, (0.25 - r2).sqrt() / 0.5];
-                let c = s.indirect(n, [0.0, 0.0, 1.0], &env);
-                let d = ph2d_view_transform::to_display(c, 0.0, vista);
-                let i = (y * 96 + x) * 4;
-                let pior = (0..3)
-                    .map(|q| (f32::from(img[i + q]) - (srgb(d[q]) * 255.0 + 0.5).floor()).abs())
-                    .fold(0.0, f32::max);
-                if (x, y) == (48, 48) {
-                    centro = pior;
-                }
-                dif.push(pior);
-            }
-        }
-        dif.sort_by(f32::total_cmp);
-        let q = |p: f32| dif[((dif.len() - 1) as f32 * p) as usize];
-        eprintln!(
-            "material {k}: {} px · p50 {} p99 {} max {} · centro {centro}",
-            dif.len(),
-            q(0.5),
-            q(0.99),
-            dif.last().copied().unwrap_or(0.0)
-        );
-        assert!(centro <= 1.0, "material {k}: o centro (normal exacta) erra {centro} B");
-        assert!(q(0.5) <= 1.0 && q(0.99) <= 3.0, "material {k}: p50 {} p99 {}", q(0.5), q(0.99));
-    }
     // O controlo: sem o céu fotográfico, a esfera é OUTRA imagem.
     let s = materiais_do_ceu()[0].prepare();
-    let mats = [ph2d_material::wgsl::pack(&s, ph2d_material::wgsl::EnvLobe::of(&s))];
+    let mats = [ph2d_material::wgsl::pack(
+        &s,
+        ph2d_material::wgsl::EnvLobe::of(&s),
+    )];
     let com = fw
         .quadro(&Cena {
             foto: Some(foto),
             ..cena(&objs, &mats, camera(1.0, 0.0))
         })
         .expect("com");
-    let sem = fw.quadro(&cena(&objs, &mats, camera(1.0, 0.0))).expect("sem");
-    assert_ne!(com, sem, "o controlo: o céu fotográfico tem de mudar a imagem");
+    let sem = fw
+        .quadro(&cena(&objs, &mats, camera(1.0, 0.0)))
+        .expect("sem");
+    assert_ne!(
+        com, sem,
+        "o controlo: o céu fotográfico tem de mudar a imagem"
+    );
 }
 
 /// Multiplica duas matrizes coluna a coluna.
@@ -504,14 +564,28 @@ fn o_fundo_e_o_ceu() {
             })
             .expect("quadro");
         let mut pior = 0.0f32;
-        for (x, y) in [(2usize, 2usize), (93, 5), (7, 90), (90, 88), (48, 3), (3, 48)] {
-            let ndc = [((x as f32 + 0.5) / 96.0) * 2.0 - 1.0, 1.0 - ((y as f32 + 0.5) / 96.0) * 2.0];
+        for (x, y) in [
+            (2usize, 2usize),
+            (93, 5),
+            (7, 90),
+            (90, 88),
+            (48, 3),
+            (3, 48),
+        ] {
+            let ndc = [
+                ((x as f32 + 0.5) / 96.0) * 2.0 - 1.0,
+                1.0 - ((y as f32 + 0.5) / 96.0) * 2.0,
+            ];
             // O raio do olho pelo pixel: `(ndc.x / f, ndc.y / f, −1)`.
             let dir = [ndc[0] / f, ndc[1] / f, -1.0];
             let c = ceu
                 .radiance(ph2d_sky::gira(dir, [th.cos(), th.sin()]), alfa)
                 .map(|v| v * forca);
-            let d = ph2d_view_transform::to_display(c, 0.0, ph2d_view_transform::ViewTransform::Standard);
+            let d = ph2d_view_transform::to_display(
+                c,
+                0.0,
+                ph2d_view_transform::ViewTransform::Standard,
+            );
             let i = (y * 96 + x) * 4;
             assert_eq!(img[i + 3], 255, "o fundo é opaco em ({x}, {y})");
             for q in 0..3 {

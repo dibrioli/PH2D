@@ -24,7 +24,8 @@ pub struct Ceu {
     pub giro: f32,
     /// A força em stops sobre a luz do estúdio (`0` = a mesma luz média que o estúdio).
     pub forca: f32,
-    /// O peso da luz-chave (a caixa do estúdio, a que faz sombra) sob o céu fotográfico.
+    /// O peso da luz-chave sob o céu fotográfico: o SOL dele (ou a lâmpada mais forte), a luz que faz
+    /// sombra — `1` = o céu como foi fotografado.
     pub caixa: f32,
     /// O céu aparece atrás da peça?
     pub fundo: bool,
@@ -54,7 +55,7 @@ pub const GIRO_MAX: f32 = 360.0;
 /// ⚠️ A força em STOPS e simétrica: `±4` são `16×` para cada lado — a faixa do olhar da casa
 /// (`ph2d_view_transform::Look`), e quem precisar de mais tem a exposição.
 pub const FORCA_MAX: f32 = 4.0;
-/// O tecto do peso da luz-chave: o dobro da do estúdio.
+/// O tecto do peso da luz-chave: o dobro do sol fotografado.
 pub const CAIXA_MAX: f32 = 2.0;
 
 impl Ceu {
@@ -107,8 +108,8 @@ impl Ceu {
         }
     }
 
-    /// ⭐⭐ **O que o desenhista recebe** — com a força NORMALIZADA: `0` stops dá a este céu a mesma
-    /// radiância média que a parte sem caixa do estúdio tem (trocar de céu não estoura nem apaga a
+    /// ⭐⭐ **O que o desenhista recebe** — com a força NORMALIZADA: `0` stops dá a este céu (com o
+    /// sol) a mesma radiância média que o estúdio inteiro tem (trocar de céu não estoura nem apaga a
     /// cena; quem quer mais escuro ou mais claro tem a fileira).
     #[must_use]
     pub fn foto(&self, ceu: &ph2d_sky::Ceu) -> ph2d_mesh_forward::Foto {
@@ -126,16 +127,13 @@ fn luma(c: [f32; 3]) -> f32 {
     0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
 }
 
-/// ⭐ **O fator que põe um céu à luz do estúdio** — a radiância média da parte SEM caixa do estúdio
-/// (a rampa tem média `AMBIENT · ENV_BASE` sobre a esfera, porque o declive em `y` se anula, e a caixa
-/// leva a fracção `share`) sobre a média do céu.
+/// ⭐ **O fator que põe um céu à luz do estúdio** — a radiância média do estúdio INTEIRO (a rampa tem
+/// média `AMBIENT · ENV_BASE` sobre a esfera, porque o declive em `y` se anula; a caixa só tira a
+/// fracção `share` da base e a devolve) sobre a média do panorama inteiro (com o sol): a foto
+/// substitui as DUAS partes do céu do estúdio.
 #[must_use]
 pub fn normalizacao(ceu: &ph2d_sky::Ceu) -> f32 {
-    let (_, _, share, _) = crate::studio::Studio::of_the_product()
-        .softbox
-        .expect("o estúdio do produto tem caixa")
-        .tables();
-    let estudio = ph2d_light::AMBIENT * luma(ph2d_light::ENV_BASE) * (1.0 - share);
+    let estudio = ph2d_light::AMBIENT * luma(ph2d_light::ENV_BASE);
     estudio / luma(ceu.media()).max(1.0e-9)
 }
 
@@ -150,8 +148,9 @@ fn cache() -> &'static Mutex<Cache> {
     C.get_or_init(|| Mutex::new(Cache::default()))
 }
 
-/// ⭐⭐ **O atlas do céu `e`, se já estiver montado** — da 1.ª vez lança a montagem NOUTRA thread
-/// (`~0,7 s` em release: é trabalho de CPU) e devolve `None`; o quadro espera, como a curvatura.
+/// ⭐⭐ **O atlas do céu `e`, com o SOL à parte, se já estiver montado** — da 1.ª vez lança a montagem
+/// NOUTRA thread (`~0,7 s` em release: é trabalho de CPU) e devolve `None`; o quadro espera, como a
+/// curvatura.
 #[must_use]
 pub fn pronto(e: Embarcado) -> Option<Arc<ph2d_sky::Ceu>> {
     let mut c = cache().lock().ok()?;
@@ -162,7 +161,7 @@ pub fn pronto(e: Embarcado) -> Option<Arc<ph2d_sky::Ceu>> {
         let lancou = std::thread::Builder::new()
             .name("ph2d-ceu-foto".to_owned())
             .spawn(move || {
-                let a = Arc::new(ph2d_sky::Ceu::novo(&e.panorama()));
+                let a = Arc::new(ph2d_sky::Ceu::com_sol(&e.panorama()));
                 if let Ok(mut c) = cache().lock() {
                     c.a_caminho.remove(&e);
                     c.prontos.insert(e, a);

@@ -8,6 +8,9 @@
 //!
 //! e recebe `sky_gira`, `sky_radiance(dir, alpha)` e `sky_irradiance(n)` — no referencial do céu,
 //! sem força (o giro e a força são do chamador, como no [`crate::Orientado`]).
+//!
+//! ⭐ **O sol** ([`crate::Sol`]): quem chama escreve também `fn sky_sol_ler(i: u32) -> f32` (a tabela
+//! dele) e recebe `sky_sol_tabela(alpha, cos_psi)` e `sky_sol_cos(d, s)`.
 
 use crate::{LADOS, NIVEIS, X0, Y0};
 
@@ -63,6 +66,26 @@ fn sky_radiance(dir: vec3<f32>, alpha: f32) -> vec3<f32> {
 fn sky_irradiance(n: vec3<f32>) -> vec3<f32> {
     return sky_bilinear(SKY_NIVEIS - 1u, sky_oct(n));
 }
+
+// O SOL: a calote de radiancia 1 sob o lobulo, bilinear em (sqrt(alfa), angulo) — `Sol::tabela_em`.
+fn sky_sol_tabela(alpha: f32, cos_psi: f32) -> f32 {
+    let r = sqrt(clamp(alpha, 0.0, 1.0)) * f32(SKY_SOL_RUG - 1u);
+    let a = sqrt(max(1.0 - clamp(cos_psi, -1.0, 1.0), 0.0)) / 1.4142135 * f32(SKY_SOL_ANG - 1u);
+    let r0 = min(u32(r), SKY_SOL_RUG - 2u);
+    let a0 = min(u32(a), SKY_SOL_ANG - 2u);
+    let fr = r - f32(r0);
+    let fa = a - f32(a0);
+    let i = r0 * SKY_SOL_ANG + a0;
+    let baixo = sky_sol_ler(i) + (sky_sol_ler(i + 1u) - sky_sol_ler(i)) * fa;
+    let j = i + SKY_SOL_ANG;
+    let cima = sky_sol_ler(j) + (sky_sol_ler(j + 1u) - sky_sol_ler(j)) * fa;
+    return baixo + (cima - baixo) * fr;
+}
+
+// O cosseno ao sol `s` (unitario), com a direccao `d` em qualquer escala — `sol::cosseno`.
+fn sky_sol_cos(d: vec3<f32>, s: vec3<f32>) -> f32 {
+    return dot(d, s) / max(length(d), 1.0e-20);
+}
 ";
 
 fn lista(v: &[u32]) -> String {
@@ -74,9 +97,13 @@ fn lista(v: &[u32]) -> String {
 pub fn fonte() -> String {
     format!(
         "const SKY_NIVEIS: u32 = {NIVEIS}u;\n\
+         const SKY_SOL_RUG: u32 = {}u;\n\
+         const SKY_SOL_ANG: u32 = {}u;\n\
          const SKY_LADOS: array<u32, {m}> = array<u32, {m}>({});\n\
          const SKY_X0: array<u32, {m}> = array<u32, {m}>({});\n\
          const SKY_Y0: array<u32, {m}> = array<u32, {m}>({});\n{CORPO}",
+        crate::sol::RUGOSIDADES,
+        crate::sol::ANGULOS,
         lista(&LADOS),
         lista(&X0),
         lista(&Y0),

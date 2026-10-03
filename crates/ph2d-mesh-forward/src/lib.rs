@@ -95,17 +95,18 @@ pub struct Luz {
     pub radiancia_a_um: [f32; 3],
 }
 
-/// ⭐⭐ **O CÉU FOTOGRÁFICO no quadro** ([`ph2d_sky`]) — substitui a parte SEM caixa do céu de quem
-/// chama (a que a oclusão tapa); a parte DA caixa (a luz-chave, com sombra) continua a de quem chama,
-/// com o peso [`Foto::caixa`]. O atlas sobe uma vez por céu ([`Forward::sobe_ceu`]); girar, mudar a
-/// força ou o fundo não sobe nem compila nada.
+/// ⭐⭐ **O CÉU FOTOGRÁFICO no quadro** ([`ph2d_sky`]) — substitui as DUAS partes do céu de quem chama:
+/// a SEM caixa (a que a oclusão tapa) é o panorama sem o sol, e a DA caixa (a que a sombra tapa) é o
+/// SOL dele ([`ph2d_sky::Sol`]), com o peso [`Foto::caixa`] — a `1` é o panorama inteiro. O atlas e a
+/// tabela do sol sobem uma vez por céu ([`Forward::sobe_ceu`]); girar, mudar a força ou o fundo não
+/// sobe nem compila nada.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Foto {
     /// `(cos θ, sin θ)` do giro do céu em torno de `+y`.
     pub giro: [f32; 2],
     /// O fator linear da radiância do céu.
     pub forca: f32,
-    /// O peso da parte DA caixa sob este céu (`1` = a luz-chave como no céu de quem chama).
+    /// O peso do SOL do céu (`1` = o panorama como foi fotografado; `0` = o céu sem o disco).
     pub caixa: f32,
     /// O céu ATRÁS da peça: `None` = transparente (o fundo é de quem chama); `Some(α)` = o céu
     /// filtrado pelo lóbulo de `α` (`0` nítido).

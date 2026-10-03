@@ -5,13 +5,25 @@
 use super::Forward;
 use crate::gpu_alvo::Alvos;
 
+/// ⭐ **O sol do céu subido** — a tabela dele (`R32Float`) e o que o uniforme do quadro leva.
+pub(super) struct SolGpu {
+    pub vista: wgpu::TextureView,
+    /// A direcção PARA o sol, no referencial do céu.
+    pub dir: [f32; 3],
+    pub radiancia: [f32; 3],
+    /// O raio angular (radianos) — a penumbra da sombra.
+    pub raio: f32,
+}
+
 impl Forward {
     /// ⭐⭐ **Sobe (ou troca) o céu fotográfico** — o atlas `f16` do [`ph2d_sky::Ceu`] numa textura
     /// `Rgba16Float` (só da 1.ª vez se cria; trocar de céu só escreve). Nada compila.
     pub fn sobe_ceu(&mut self, ceu: &ph2d_sky::Ceu) {
         let (w, h) = (ph2d_sky::ATLAS_W, ph2d_sky::ATLAS_H);
         let (t, _) = self.foto.get_or_insert_with(|| {
-            let t = self.device.create_texture(&textura_meia("ph2d-mesh-forward ceu foto", w, h));
+            let t = self
+                .device
+                .create_texture(&textura_meia("ph2d-mesh-forward ceu foto", w, h));
             let v = t.create_view(&wgpu::TextureViewDescriptor::default());
             (t, v)
         });
@@ -34,8 +46,14 @@ impl Forward {
                 depth_or_array_layers: 1,
             },
         );
+        // O sol: a tabela numa textura nova (`100 KB`, só ao trocar de céu); sem sol, nada.
+        self.sol = ceu.sol().map(|s| SolGpu {
+            vista: textura_de_floats(&self.device, &self.queue, s.tabela()),
+            dir: s.dir,
+            radiancia: s.radiancia,
+            raio: s.raio,
+        });
     }
-
 }
 
 /// O texel vazio que a ligação do céu fotográfico lê enquanto nenhum céu subiu.
@@ -116,7 +134,12 @@ impl Forward {
 }
 
 /// Uma imagem RGBA `f32` numa textura `Rgba16Float`.
-pub(super) fn sobe_meia(queue: &wgpu::Queue, t: &wgpu::Texture, v: &[[f32; 4]], (w, h): (u32, u32)) {
+pub(super) fn sobe_meia(
+    queue: &wgpu::Queue,
+    t: &wgpu::Texture,
+    v: &[[f32; 4]],
+    (w, h): (u32, u32),
+) {
     let dados: Vec<half::f16> = v
         .iter()
         .flatten()
@@ -144,7 +167,11 @@ pub(super) fn sobe_meia(queue: &wgpu::Queue, t: &wgpu::Texture, v: &[[f32; 4]], 
 }
 
 /// Uma textura `Rgba16Float` `w × h` para ler por `textureLoad`.
-pub(super) fn textura_meia(label: &'static str, w: u32, h: u32) -> wgpu::TextureDescriptor<'static> {
+pub(super) fn textura_meia(
+    label: &'static str,
+    w: u32,
+    h: u32,
+) -> wgpu::TextureDescriptor<'static> {
     wgpu::TextureDescriptor {
         label: Some(label),
         size: wgpu::Extent3d {
@@ -162,7 +189,11 @@ pub(super) fn textura_meia(label: &'static str, w: u32, h: u32) -> wgpu::Texture
 }
 
 /// Uma lista de floats numa textura `R32Float` de [`crate::TAB_W`] colunas.
-pub(super) fn textura_de_floats(device: &wgpu::Device, queue: &wgpu::Queue, v: &[f32]) -> wgpu::TextureView {
+pub(super) fn textura_de_floats(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    v: &[f32],
+) -> wgpu::TextureView {
     let w = crate::TAB_W;
     let h = (v.len() as u32).div_ceil(w).max(1);
     let mut dados = v.to_vec();

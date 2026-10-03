@@ -422,8 +422,18 @@ impl Contorno {
         if pedido_m > self.cap_celulas {
             let cap = ao_oitavo_do_degrau(pedido_m).min(tecto_m);
             let armazens = wgpu::BufferUsages::STORAGE;
-            self.celulas_buf = buffer(gpu, "ph2d-shape-gpu celulas do contorno", cap * REGISTO, armazens);
-            self.acumula = buffer(gpu, "ph2d-shape-gpu acumulacao das celulas", cap * ACUMULA, armazens);
+            self.celulas_buf = buffer(
+                gpu,
+                "ph2d-shape-gpu celulas do contorno",
+                cap * REGISTO,
+                armazens,
+            );
+            self.acumula = buffer(
+                gpu,
+                "ph2d-shape-gpu acumulacao das celulas",
+                cap * ACUMULA,
+                armazens,
+            );
             self.cap_celulas = cap;
             if self.relata {
                 let mb = cap * (REGISTO + ACUMULA) / (1024 * 1024);

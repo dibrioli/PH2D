@@ -24,8 +24,8 @@ use ph2d_shape_gpu::FillRule;
 use ph2d_vector::{BezPath, Cap, Circle, Join, Shape, Stroke};
 
 use super::paridade_com_o_vello::{
-    Copia, Forma, anel, circulo, copias, esticadas, estrela, gpu, pelo_passe_com,
-    pelo_passe_em_etapas, pelo_passe_celulas, pelo_passe_rota, zigue_zague,
+    Copia, Forma, anel, circulo, copias, esticadas, estrela, gpu, pelo_passe_celulas,
+    pelo_passe_com, pelo_passe_em_etapas, pelo_passe_rota, zigue_zague,
 };
 
 /// As MARCAS de um traço: um disco pequeno pintado com a cor dele, fora do contorno da estrela.

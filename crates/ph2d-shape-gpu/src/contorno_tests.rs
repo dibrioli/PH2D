@@ -41,5 +41,8 @@ fn numa_cena_que_cresce_as_celulas_recriam_se_no_maximo_oito_vezes_por_oitava() 
     let potencia = recriacoes(u64::next_power_of_two);
     let oitavo = recriacoes(ao_oitavo_do_degrau);
     assert_eq!(potencia, 18);
-    assert!(oitavo <= 8 * potencia, "{oitavo} recriações contra {potencia}");
+    assert!(
+        oitavo <= 8 * potencia,
+        "{oitavo} recriações contra {potencia}"
+    );
 }

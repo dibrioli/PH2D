@@ -145,7 +145,11 @@ fn a_patrulha_e_a_tag_dizem_o_que_lhes_falta() {
 
     let mut tag = agente();
     tag.alvo_modo = NavAlvoModo::Tag;
-    assert_eq!(tag.queixa(), Some(AgentQueixa::SemAlvo), "a tag por escolher");
+    assert_eq!(
+        tag.queixa(),
+        Some(AgentQueixa::SemAlvo),
+        "a tag por escolher"
+    );
     tag.alvo_tag = 9;
     assert_eq!(tag.queixa(), None);
 }

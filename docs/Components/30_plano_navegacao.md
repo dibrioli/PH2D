@@ -557,7 +557,7 @@ começa a andar (deixa de recortar) e quando pára.
 | os verbos ANUNCIAM e a ponte grava a ordem por tique (o idioma da vida); a ordem vive no anel e nunca toca no `NavAgent` | o que a corrida escreve a corrida desfaz (§10.7); o scrub refá-la ao bit (gate); tocar por cima depois de um scrub apaga a fita futura, como a da vida |
 | `Start Navigation` lê o NOME de quem perseguir (vazio = o alvo autorado) e liga um agente autorado desligado | é o que torna o exemplo patrulha → persegue autorável SEM um verbo por alvo: perseguir é `Start «Hero»`, voltar à ronda é `Start «»` |
 | a patrulha visita os pontos da forma COZIDA, em mundo; a curva parte-se ao meio até a flecha caber na `arrive_distance` do agente; o ponto avança a essa mesma distância | a régua é a do executor (detalhe mais fino ele não distingue) e o `On Arrived` não fala durante a ronda (gate) |
-| *a tag mais perto* = em linha recta, com a subárvore, o próprio agente fora, empate pela identidade; a árvore chega por `set_tag_tree` a partir da fase dos sinais | sem a árvore ninguém (falha fechado, gate); a fase dos sinais já tem a árvore e a ponte — a shell não cresce (+2 linhas, menos 2 da entrega) — e a árvore vale um tique depois de editada |
+| *a tag mais perto* = em linha recta, com a subárvore, o próprio agente fora, empate pela identidade; a árvore chega por `set_tag_tree` na fase do passo, ANTES do tique | sem a árvore ninguém (falha fechado, gate); ⛔ a 1.ª redacção entregava-a na fase dos sinais (DEPOIS do tique): o 1.º tique depois de editar as tags e o replay dele viam árvores diferentes — apanhado na auditoria do fecho, gate de texto `a_arvore_das_tags_vai_a_ponte_antes_do_tique` |
 | o `NavRoute` (os pontos da ronda) é DERIVADO e não registado, escrito pela família na passagem do seguidor de caminho | a geometria não entra no ECS (a doutrina do `VecPathRef`); a lei do `NavNow` |
 
 ### §14.3 — O que a medição derrubou
@@ -621,6 +621,5 @@ num braço de `match`) não compilava e foi trocada.
   deslizar desvia os agentes de longe.
 - **O Inspector diz *«Switched off»*** de um agente autorado desligado que um `Start` pôs a andar (a
   queixa lê o autorado; a leitura viva diz *Moving*).
-- A árvore das tags chega à ponte um tique depois de editada.
 - As waves seguintes: W7 (custo por área — com a decisão do dono §11.1: o inimigo evita a lava, com caixa
   para desligar —, atalhos) · W8 (a arena, o tutorial `03_navegacao.pdf`).

@@ -17,13 +17,13 @@ use crate::cena::{Lcg, obstaculos, retangulo};
 fn params(seed: u64) -> Params {
     Params {
         agent_radius: [0.0, 0.3, 0.7][(seed % 3) as usize],
-        corner: if seed % 5 == 0 {
+        corner: if seed.is_multiple_of(5) {
             Corner::Miter
         } else {
             Corner::Round
         },
         disk_sides: 8,
-        merge: seed % 2 == 0,
+        merge: seed.is_multiple_of(2),
     }
 }
 
@@ -214,5 +214,5 @@ fn a_juncao_em_t_da_costura_e_reparada() {
         "paredes deitadas na costura: {na_costura:?}"
     );
     // O CONTROLO: a fixtura tem MESMO o vértice na costura (a ponta do losango).
-    assert!(m.verts().iter().any(|v| *v == [4.0, 5.0]));
+    assert!(m.verts().contains(&[4.0, 5.0]));
 }

@@ -74,19 +74,13 @@ impl PhysicsBridge {
                 (quem, quem.and_then(|e| self.posicao_de(sim, e)))
             }
             NavTarget::NearestTagged(tag) => {
-                if !por_tag.contains_key(&tag) {
-                    let membros = ph2d_ecs::tags::tagged(
-                        sim.world(),
-                        &self.nav.arvore,
-                        ph2d_tags::TagId(tag),
-                    );
-                    let com_pos = membros
+                let candidatos = por_tag.entry(tag).or_insert_with(|| {
+                    ph2d_ecs::tags::tagged(sim.world(), &self.nav.arvore, ph2d_tags::TagId(tag))
                         .into_iter()
                         .filter_map(|e| self.posicao_de(sim, e).map(|p| (e, p)))
-                        .collect();
-                    por_tag.insert(tag, com_pos);
-                }
-                let mais_perto = por_tag[&tag]
+                        .collect()
+                });
+                let mais_perto = candidatos
                     .iter()
                     .filter(|(e, _)| *e != agente)
                     .map(|&(e, p)| (dist2(p, pos), e, p))

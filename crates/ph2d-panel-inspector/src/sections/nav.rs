@@ -300,6 +300,118 @@ pub(crate) fn paint_nav_agent_section(
             tr("panel.inspector.nav.on_stuck"),
         ],
     );
+    cur_y = linha_do_alvo(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        a,
+        seccao,
+    );
+    for (label, id, unidade) in [
+        (
+            tr("panel.inspector.nav.radius"),
+            crate::ids::INSP_NAV_RADIUS,
+            Unit::Meters,
+        ),
+        (
+            tr("panel.inspector.nav.arrive_at"),
+            crate::ids::INSP_NAV_ARRIVE,
+            Unit::Meters,
+        ),
+        (
+            tr("panel.inspector.nav.repath_after"),
+            crate::ids::INSP_NAV_REPATH,
+            Unit::Meters,
+        ),
+        (
+            tr("panel.inspector.nav.stuck_after"),
+            crate::ids::INSP_NAV_STUCK,
+            Unit::Seconds,
+        ),
+    ] {
+        cur_y = super::rows::fields_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            cur_y,
+            label,
+            &[id],
+            0.05, // LITERAL-PX-OK: passo de arrasto
+            Some(unidade),
+            seccao,
+        );
+    }
+    cur_y = paint_check_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        (
+            crate::ids::INSP_NAV_ACTIVE,
+            tr("panel.inspector.nav.active"),
+            a.active,
+        ),
+        seccao,
+    );
+    cur_y = paint_check_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        (
+            crate::ids::INSP_NAV_AVOIDANCE,
+            tr("panel.inspector.nav.avoidance"),
+            a.avoidance,
+        ),
+        seccao,
+    );
+    cur_y = sinais(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        seccao,
+    );
+    fold.finish(store, scene, hit_index, cur_y)
+}
+
+/// **A linha do ALVO** — o segmentado do modo e a linha que o modo pede. Devolve o `y` seguinte.
+/// ⚠️ Saiu do `paint_nav_agent_section` pelo tecto de função do painel (`221 > 200`, W6).
+#[allow(clippy::too_many_arguments)]
+fn linha_do_alvo(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    a: &InspectorNavAgent,
+    seccao: Seccao,
+) -> f32 {
+    let mut cur_y = y;
     let modos = [
         tr("panel.inspector.nav.target_none"),
         tr("panel.inspector.nav.target_object"),
@@ -403,88 +515,7 @@ pub(crate) fn paint_nav_agent_section(
             );
         }
     }
-    for (label, id, unidade) in [
-        (
-            tr("panel.inspector.nav.radius"),
-            crate::ids::INSP_NAV_RADIUS,
-            Unit::Meters,
-        ),
-        (
-            tr("panel.inspector.nav.arrive_at"),
-            crate::ids::INSP_NAV_ARRIVE,
-            Unit::Meters,
-        ),
-        (
-            tr("panel.inspector.nav.repath_after"),
-            crate::ids::INSP_NAV_REPATH,
-            Unit::Meters,
-        ),
-        (
-            tr("panel.inspector.nav.stuck_after"),
-            crate::ids::INSP_NAV_STUCK,
-            Unit::Seconds,
-        ),
-    ] {
-        cur_y = super::rows::fields_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            cur_y,
-            label,
-            &[id],
-            0.05, // LITERAL-PX-OK: passo de arrasto
-            Some(unidade),
-            seccao,
-        );
-    }
-    cur_y = paint_check_row(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        (
-            crate::ids::INSP_NAV_ACTIVE,
-            tr("panel.inspector.nav.active"),
-            a.active,
-        ),
-        seccao,
-    );
-    cur_y = paint_check_row(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        (
-            crate::ids::INSP_NAV_AVOIDANCE,
-            tr("panel.inspector.nav.avoidance"),
-            a.avoidance,
-        ),
-        seccao,
-    );
-    cur_y = sinais(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        seccao,
-    );
-    fold.finish(store, scene, hit_index, cur_y)
+    cur_y
 }
 
 /// Os três NOMES que o agente publica — vazio = calado, a regra do `SignalOnHit`.

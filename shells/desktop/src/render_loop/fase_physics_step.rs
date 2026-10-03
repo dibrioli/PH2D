@@ -19,6 +19,7 @@ impl crate::App {
             toasts,
             physics,
             health_bars,
+            tags,
             ..
         } = FrameGfx::of(gfx);
 
@@ -31,6 +32,7 @@ impl crate::App {
         // Which of them the clock reaches is the artist's call, armed on the
         // transport bar and OFF by default (`TimelineFlags::simulate_physics`).
         let simulate_physics = self.timeline.flags.simulate_physics;
+        physics.set_tag_tree(tags); // ⭐ (W6) ANTES do tique: um replay e a corrida veem a mesma árvore.
         ph2d_app_physics::bridge::dispatch::dispatch(
             physics,
             sim,

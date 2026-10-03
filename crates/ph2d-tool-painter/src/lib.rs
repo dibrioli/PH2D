@@ -43,6 +43,7 @@ pub use tool::paint::stamp_device::{DeviceDab, DeviceStamp, DeviceStampJob};
 
 pub use compositor::{
     LayerImage, LayerPixelSource, MapPixelSource, Region, composite, composite_region,
+    flatten_for_gpu,
 };
 pub use layers::{
     DEPTH_NEUTRAL, GroupLayer, HARD_CAP_LAYERS, Layer, LayerId, LayerKind, LayerModifiers,

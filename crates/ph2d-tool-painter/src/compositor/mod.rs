@@ -193,7 +193,9 @@ pub struct Region {
 // ── Submodules (god-module split, 2026-06-04; pure mechanical move) ──
 mod cache;
 mod compose;
+mod gpu_ops; // the stack → the GPU compositor's op-list (two consumers)
 #[cfg(test)]
 mod tests;
 pub use cache::CompositorCache;
 pub use compose::{composite, composite_below, composite_region, composite_with_cache};
+pub use gpu_ops::flatten_for_gpu;

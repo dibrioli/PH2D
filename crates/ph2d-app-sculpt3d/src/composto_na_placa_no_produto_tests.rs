@@ -396,7 +396,7 @@ fn uma_pilha_que_a_placa_recusa_compoe_na_cpu() {
     });
     let a = s.active;
     assert!(
-        ph2d_painter_layer_ops::flatten_for_gpu(
+        ph2d_tool_painter::flatten_for_gpu(
             s.objects[a].pilha.as_ref().expect("pilha").pilha()
         )
         .is_none(),

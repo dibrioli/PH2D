@@ -1,12 +1,11 @@
-//! Flatten a painter `LayerStack` → `Vec<LayerOp>` for the GPU
-//! `ph2d_render::LayerCompositor` (Painter GPU preview, ADR-0045 Phase 3).
+//! Flatten a painter `LayerStack` → `Vec<LayerOp>` for the GPU layer compositor
+//! (`ph2d_render::layer_compositor`; Painter GPU preview, ADR-0045 Phase 3).
 //!
-//! ⭐ **Two consumers, one door**: the Painter 2D preview
-//! (`ph2d_app_painter::painter_gpu_flatten`, a re-export) and the 3D piece's
-//! layer stack (`ph2d_app_sculpt3d::composto_na_placa`, `docs/3D/30` §13). It
-//! moved out of `ph2d-app-painter` into its own crate when the second one
-//! arrived (`ph2d-render` speaks raw codes and knows the `LayerStack` only in
-//! tests; an app crate does not depend on another).
+//! ⭐ **Two consumers, one door**: the Painter 2D preview (`ph2d-app-painter`)
+//! and the 3D piece's layer stack (`ph2d_app_sculpt3d::composto_na_placa`,
+//! `docs/3D/30` §13). It lives HERE, beside the `LayerStack`, and speaks the
+//! leaf vocabulary `ph2d-layer-ops`: a tool may not depend on the render engine
+//! nor a family on another family (`architecture_no_dependency_climbs_a_layer`).
 //!
 //! This is the **GPU-vs-CPU gate** (handoff §3). When the stack is not
 //! representable, [`flatten_for_gpu`] returns `None` and the bridge falls back to
@@ -30,7 +29,7 @@
 //! do (`gpu_code` 9/10/11, `gpu_spatial_code` 4/5). Each of those was a whole
 //! document routed to the slow producer over a flag or a stale sentence.
 //!
-//! The walk MIRRORS `ph2d_tool_painter::compositor::composite_into` EXACTLY —
+//! The walk MIRRORS `crate::compositor::composite_into` EXACTLY —
 //! `root().iter().rev()` (panel order is top-first, so iterate bottom-to-top),
 //! group recursion, skip invisible / zero-opacity / mask layers. Any divergence
 //! from that reference is a correctness bug; keep them in lock-step.
@@ -39,8 +38,8 @@ use ph2d_painter_effects::BlendMode;
 use ph2d_painter_effects::adjustments::{
     AdjustmentParams, curves_display_luts, levels_display_lut,
 };
-use ph2d_render::layer_compositor::{LayerMask, LayerOp};
-use ph2d_tool_painter::{LayerId, LayerKind, LayerStack};
+use crate::{LayerId, LayerKind, LayerStack};
+use ph2d_layer_ops::{LayerMask, LayerOp};
 
 /// Flatten `stack` into a GPU op-list, or `None` if it is not GPU-representable
 /// (mask / clipping / masked adjustment / non-ported adjustment kind) — the
@@ -97,7 +96,7 @@ fn flatten_ids(
         }
         // ⚠️ `is_reference` used to bail here. A reference layer is the *geometry source
         // for ColorDrop* (`layers/mod.rs` §2.9) — the CPU compositor never reads the flag
-        // (zero occurrences in `ph2d_tool_painter::compositor`), so refusing on it sent the
+        // (zero occurrences in `crate::compositor`), so refusing on it sent the
         // whole document to a producer up to 885× slower for a flag that changes no pixel.
         // Pinned by `a_reference_layer_composites_like_any_other_and_stays_on_the_gpu`.
         //
@@ -213,7 +212,6 @@ fn flatten_ids(
 mod tests {
     use super::*;
     use ph2d_painter_effects::adjustments::AdjustmentKind;
-    use ph2d_tool_painter::LayerStack;
 
     #[test]
     fn base_plus_ported_adjustment_is_gpu_representable() {
@@ -266,7 +264,7 @@ mod tests {
         let mut s = LayerStack::new();
         let _base = s.add_raster("base", 4, 4).unwrap();
         let tex = s
-            .add_texture(ph2d_tool_painter::TextureLayer::default())
+            .add_texture(crate::TextureLayer::default())
             .unwrap();
         let (ops, _luts) = flatten_for_gpu(&s).expect("a texture layer flattens to a GPU Layer op");
         assert!(
@@ -400,7 +398,7 @@ mod tests {
 
     /// A reference layer used to force the whole document onto the CPU producer, and the
     /// flag changes **nothing about the composite** — it is the ColorDrop geometry source
-    /// (`layers/mod.rs` §2.9), read by zero lines of `ph2d_tool_painter::compositor`.
+    /// (`layers/mod.rs` §2.9), read by zero lines of `crate::compositor`.
     ///
     /// The oracle is deliberately in TWO halves, because either alone is weak:
     ///
@@ -414,13 +412,13 @@ mod tests {
     /// red; making `is_reference` alter the composite would turn the second half red.
     #[test]
     fn a_reference_layer_composites_like_any_other_and_stays_on_the_gpu() {
-        use ph2d_tool_painter::compositor::{LayerPixelSource, composite};
+        use crate::compositor::{LayerPixelSource, composite};
 
         /// Serves no pixels: what is pinned here is that the two WALKS agree, and they can
         /// only disagree if something starts reading the flag.
         struct NoPixels;
         impl LayerPixelSource for NoPixels {
-            fn layer_rgba(&self, _id: ph2d_tool_painter::LayerId) -> Option<&[u8]> {
+            fn layer_rgba(&self, _id: crate::LayerId) -> Option<&[u8]> {
                 None
             }
         }

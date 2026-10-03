@@ -1,0 +1,20 @@
+[package]
+name = "ph2d-layer-ops"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# O VOCABULÁRIO do compositor de camadas (`LayerOp`, `LayerMask`): o que a pilha do Painter
+# (`ph2d-tool-painter`) produz e o compositor de GPU (`ph2d-render`) corre. Folha sem dependências:
+# a ferramenta não pode depender do motor (`architecture_no_dependency_climbs_a_layer`), e os dois
+# dependem daqui (`docs/3D/30` §13 — a pilha da peça 3D é o 2.º consumidor da tradução).
+
+[dependencies]
+
+[lints]
+workspace = true

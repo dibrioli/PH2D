@@ -340,7 +340,7 @@ quase tudo é recompor a peça inteira na CPU (a subida à placa é `7 %`). Pelo
 
 **O que existe (commit da medição, nada ligado ao produto):** o tradutor pilha → operações do
 compositor de GPU saiu de `ph2d-app-painter` para a crate nova `ph2d-painter-layer-ops`
-(`flatten_for_gpu`; o Painter reexporta-o em `painter_gpu_flatten`) — o `ph2d-render` só conhece a
+(`flatten_for_gpu`; o Painter reexporta-o em `painter_gpu_flatten`; ⚠️ casa final na §13.1) — o `ph2d-render` só conhece a
 `LayerStack` nos testes e uma crate de app não depende de outra. `composto_na_placa::CompostoNaPlaca`
 compõe a `PilhaDaPeca` pelo `LayerCompositor` do Painter; cada `PlanoDaCamada` leva `NaPlaca`
 (versão única no processo + linhas sujas da dobra desde a última subida; todo escritor de `rgba8`
@@ -396,7 +396,7 @@ CPU, ao bit; translúcido em luz sobre o fundo, que chega linear da CPU).
 | a recomposição do painel, do balde e dos desfazeres deles | `tinta_da_peca::pilha::recompoe` (+ a cor por vértice) / `recompoe_o_plano` (o desfazer do balde, que repõe a cor por vértice ele mesmo) — na CPU só o prefixo dos vértices (`PilhaDaPeca::por_vertice`, ao bit) |
 | o plano da CPU ATRASADO | `PilhaDaPeca::atrasada` (sessão); `em_dia` (CPU inteira); `tinta_da_peca::pilha::para_ler` (a peça inteira para quem a lê na CPU — o `assa` da exportação/doação) |
 | a recusa | a placa não exprime a pilha (os seis ajustes sem código de GPU) ou o slot não tem o plano ⇒ a CPU compõe e sobe como antes |
-| o tradutor pilha → operações | crate nova `ph2d-painter-layer-ops` (`flatten_for_gpu`, 2 consumidores) |
+| o tradutor pilha → operações | `ph2d_tool_painter::flatten_for_gpu` (`compositor/gpu_ops.rs`, ao lado da `LayerStack`; 2 consumidores) sobre o vocabulário da folha nova `ph2d-layer-ops` (`LayerOp`, `LayerMask`, saídos do `ph2d-render`, que os reexporta). ⚠️ A 1.ª casa (uma crate `ph2d-painter-layer-ops`) subia uma camada — folha → ferramenta, gate `architecture_no_dependency_climbs_a_layer` — e uma família não depende de outra |
 | o FUNDO fixo | `pilha_da_peca_fundo`: a cor por vértice no nascimento da pilha; documento **v7** (`CamadasDoc::fundo`; v6 congelado em `doc_migracao`, abre com a cor por vértice gravada) |
 | a cor por vértice sem o plano | `SceneObject::cores_sujas` → `upload_region_at` com todos os vértices |
 

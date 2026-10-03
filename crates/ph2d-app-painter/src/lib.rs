@@ -97,7 +97,6 @@ pub mod painter_bridge_shape_preview;
 /// HR-18 file-LOC cap.
 pub mod painter_bridge_upload;
 pub mod painter_bridge_wetness;
-pub mod painter_gpu_flatten;
 pub mod painter_gpu_preview;
 pub mod painter_lock;
 /// Display gates, producer-handoff half (upload-plan refusals + the CPU→GPU→CPU dance on real

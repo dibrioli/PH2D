@@ -64,8 +64,6 @@ ph2d-quadflow = { path = "../ph2d-quadflow" }
 ph2d-quantize = { path = "../ph2d-quantize" }
 ph2d-remesh-iso = { path = "../ph2d-remesh-iso" }
 ph2d-render = { path = "../ph2d-render" }
-# A pilha da peça composta na placa pela MESMA lista de operações do Painter (`composto_na_placa`).
-ph2d-painter-layer-ops = { path = "../ph2d-painter-layer-ops" }
 ph2d-sculpt3d = { path = "../ph2d-sculpt3d" }
 ph2d-sdf = { path = "../ph2d-sdf" }
 ph2d-trace = { path = "../ph2d-trace" }

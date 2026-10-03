@@ -3,7 +3,7 @@
 //! The CPU producer in [`super::painter_bridge`] composites the layer stack on
 //! the CPU (`take_preview_arc`) and uploads premultiplied bytes into the preview
 //! slot. This is the GPU sibling: when the stack is GPU-representable
-//! ([`crate::painter_gpu_flatten::flatten_for_gpu`] returns `Some`), it
+//! ([`ph2d_tool_painter::flatten_for_gpu`] returns `Some`), it
 //! composites on the GPU [`LayerCompositor`], premultiplies the straight output
 //! via [`PreviewPremul`], and copies the result straight into the SAME
 //! `IndividualTextureStore` preview slot — **no CPU readback**. Both producers
@@ -95,7 +95,7 @@ pub(crate) fn prewarm(
     // O slot do renderer é liberado no frame seguinte (a pilha ainda é trivial, então o produtor CPU
     // reassume) e isso está certo: o que precisava sobreviver são as texturas INTERNAS dos passes, que
     // moram no `session_slot` e que o `release_slot` não toca.
-    let Some((ops, adj_luts)) = crate::painter_gpu_flatten::flatten_for_gpu(painter.layers())
+    let Some((ops, adj_luts)) = ph2d_tool_painter::flatten_for_gpu(painter.layers())
     else {
         return;
     };
@@ -250,7 +250,7 @@ fn gpu_eligible(painter: &PainterTool) -> Option<(Vec<LayerOp>, Vec<f32>)> {
     if painter.mask_scratch_active() {
         return None;
     }
-    crate::painter_gpu_flatten::flatten_for_gpu(painter.layers())
+    ph2d_tool_painter::flatten_for_gpu(painter.layers())
 }
 
 /// Composite `ops` on the GPU, premultiply, and copy into the preview slot,

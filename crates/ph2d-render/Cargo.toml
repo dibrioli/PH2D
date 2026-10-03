@@ -10,6 +10,8 @@ authors.workspace = true
 [lib]
 
 [dependencies]
+# O vocabulário das operações do compositor de camadas (`layer_compositor::ops` reexporta-o).
+ph2d-layer-ops = { path = "../ph2d-layer-ops" }
 # O RIG DE LUZ: MAX_LIGHTS e o piso AMBIENT. Esta crate carregava um `4` com um
 # comentario dizendo "espelha impasto_rig::MAX_LIGHTS" e um gate que o comparava
 # contra o literal 4 -- um oraculo que nao podia falhar pelo motivo que alegava.

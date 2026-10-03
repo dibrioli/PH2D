@@ -816,7 +816,7 @@ fn every_object_reaches_the_device_not_only_the_active_one() {
         "o plano tem uma linha por peça À VISTA — nunca só a ativa"
     );
 
-    let sync = function_body(&src, "sync_mesh(&mut self, device");
+    let sync = function_body(&src, "sync_mesh(&mut self, gpu");
     assert!(
         sync.contains("self.slot_plan()") && sync.contains("for (k, line) in plan"),
         "e o sync percorre esse plano inteiro"

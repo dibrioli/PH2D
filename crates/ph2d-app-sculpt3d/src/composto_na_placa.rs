@@ -19,11 +19,10 @@ use ph2d_mesh::Mesh;
 use ph2d_mesh_render::{AchataDaTinta, MeshRenderer};
 
 use crate::objects::ObjectId;
-use ph2d_painter_layer_ops::flatten_for_gpu;
 use ph2d_render::layer_compositor::{
     LayerCompositeError, LayerCompositor, LayerOp, LayerPixelProvider, LayerPixels, Region,
 };
-use ph2d_tool_painter::LayerId;
+use ph2d_tool_painter::{LayerId, flatten_for_gpu};
 
 use crate::pilha_da_peca::{LARGURA_DA_DOBRA, PilhaDaPeca, dobra};
 

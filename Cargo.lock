@@ -5107,7 +5107,6 @@ dependencies = [
  "ph2d-paint-gpu",
  "ph2d-painter-brush",
  "ph2d-painter-effects",
- "ph2d-painter-layer-ops",
  "ph2d-panel-painter-layers",
  "ph2d-panel-wet-tuning",
  "ph2d-preview-slot",
@@ -5194,7 +5193,6 @@ dependencies = [
  "ph2d-mesh-colors",
  "ph2d-mesh-render",
  "ph2d-painter-brush",
- "ph2d-painter-layer-ops",
  "ph2d-panel-painter-layers",
  "ph2d-panel-sculpt3d",
  "ph2d-quadchain",
@@ -6429,6 +6427,10 @@ dependencies = [
 
 [[package]]
 name = "ph2d-label-path"
+version = "0.0.0"
+
+[[package]]
+name = "ph2d-layer-ops"
 version = "0.0.0"
 
 [[package]]
@@ -7876,15 +7878,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ph2d-painter-layer-ops"
-version = "0.0.0"
-dependencies = [
- "ph2d-painter-effects",
- "ph2d-render",
- "ph2d-tool-painter",
-]
-
-[[package]]
 name = "ph2d-pan-diag"
 version = "0.0.0"
 dependencies = [
@@ -8613,6 +8606,7 @@ dependencies = [
  "ph2d-gpu",
  "ph2d-host",
  "ph2d-imageio",
+ "ph2d-layer-ops",
  "ph2d-light",
  "ph2d-painter-brush",
  "ph2d-painter-effects",
@@ -9083,6 +9077,7 @@ dependencies = [
  "ph2d-gpu",
  "ph2d-i18n",
  "ph2d-inpaint",
+ "ph2d-layer-ops",
  "ph2d-light",
  "ph2d-painter-brush",
  "ph2d-painter-effects",

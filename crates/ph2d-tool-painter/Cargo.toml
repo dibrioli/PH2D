@@ -47,6 +47,8 @@ ph2d-core = { path = "../ph2d-core" }
 # adjustment editing fns). The layers + effects surface, extracted from the
 # (deleted) brush engine.
 ph2d-painter-effects = { path = "../ph2d-painter-effects" }
+# O vocabulário do compositor de GPU (`LayerOp`) — a pilha traduz-se nele (`compositor::gpu_ops`).
+ph2d-layer-ops = { path = "../ph2d-layer-ops" }
 # Pure clean-room Blender brush engine (BrushSpec / Stroke / stamp_dab). Driven
 # from `tool/paint.rs` to write dabs into the active layer's `canvas_rgba`.
 ph2d-painter-brush = { path = "../ph2d-painter-brush" }

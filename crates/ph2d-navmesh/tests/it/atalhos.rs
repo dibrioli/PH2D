@@ -210,3 +210,37 @@ fn a_meio_da_porta_nao_se_replaneia_mesmo_com_o_alvo_a_andar() {
     assert_eq!(rt.status, Status::Arrived);
     assert_eq!(cruzou, vec![3], "atravessou {cruzou:?}");
 }
+
+#[test]
+fn a_chegada_anuncia_se_uma_vez_por_aproximacao() {
+    // Chega; é EMPURRADO um pouco (para fora da chegada, dentro de chegada + recálculo) e volta —
+    // calado; vai MESMO embora (2 m) e volta — anuncia outra vez (o controlo).
+    let m = duas_salas();
+    let mut rt = AgentRuntime::default();
+    let mut s = Polyanya::new();
+    let dt = 1.0 / 60.0;
+    let alvo = [5.0, 5.0];
+    let q = Query::default();
+    let mut pos = [2.0, 5.0];
+    let mut chegou = 0;
+    let mut anda = |pos: &mut V2, rt: &mut AgentRuntime, chegou: &mut usize| {
+        for _ in 0..600 {
+            let st = step_with(rt, Some(&m), &mut s, &q, *pos, Some(alvo), &cfg(), dt);
+            if st.event == Some(ph2d_nav::Event::Arrived) {
+                *chegou += 1;
+            }
+            if rt.status == Status::Arrived {
+                return;
+            }
+            *pos = [pos[0] + st.dir[0] * 3.0 * dt, pos[1] + st.dir[1] * 3.0 * dt];
+        }
+    };
+    anda(&mut pos, &mut rt, &mut chegou);
+    assert_eq!(chegou, 1);
+    pos = [alvo[0] - 0.4, alvo[1]];
+    anda(&mut pos, &mut rt, &mut chegou);
+    assert_eq!(chegou, 1, "empurrado 0,4 m reanunciou");
+    pos = [alvo[0] - 2.0, alvo[1]];
+    anda(&mut pos, &mut rt, &mut chegou);
+    assert_eq!(chegou, 2, "ido embora 2 m não reanunciou");
+}

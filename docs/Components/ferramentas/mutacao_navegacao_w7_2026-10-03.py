@@ -98,6 +98,10 @@ M = [
      '        CINZENTO_RGBA,\n        false,\n', '        CINZENTO_RGBA,\n        true,\n'),
     ('M30 os espigões do Clipper ficam', 'NAVMESH', TRI,
      '.map(|r| limpa_anel(r))', '.map(|r| r.clone())'),
+    ('M31 a chegada reanuncia-se a cada empurrão', 'NAVMESH', AG,
+     '        if rt.arrival_told {\n            event = None;\n        }', '        let _ = rt.arrival_told;'),
+    ('M32 ido embora não reanuncia', 'NAVMESH', AG,
+     '        rt.arrival_told = false;\n', ''),
     # ── o Inspector (a juntar com o relatório da camada do painel) ──────────────────────────────
 ]
 

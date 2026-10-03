@@ -88,6 +88,9 @@ pub struct AgentRuntime {
     pub searches: u64,
     /// (W7) Os ATALHOS do caminho em curso (o troço `path[at] → path[at + 1]` de cada um).
     pub hops: Vec<Hop>,
+    /// (W7) «Chegou» já foi anunciado para esta aproximação — ver [`step_with`] (a chegada que se
+    /// anuncia UMA vez).
+    pub arrival_told: bool,
 }
 
 /// A resposta de um tique.
@@ -172,6 +175,11 @@ pub fn step_with(
         rt.forget_path();
         return halt(rt, prev, Status::NoPath, None);
     };
+    // (W7) Longe do alvo mais que chegada + recálculo (a régua de «mudou o bastante» do Q6), a
+    // próxima chegada é outra e volta a anunciar-se.
+    if dist(pos, t) > cfg.arrive_distance + cfg.repath_distance {
+        rt.arrival_told = false;
+    }
     if dist(pos, t) <= cfg.arrive_distance {
         return halt(rt, prev, Status::Arrived, None);
     }
@@ -297,9 +305,20 @@ pub fn step_with(
 /// Parado, num estado: a resposta e o evento da transição (se houve).
 fn halt(rt: &mut AgentRuntime, prev: Status, s: Status, forced: Option<Event>) -> Steer {
     rt.status = s;
+    let mut event = forced.or_else(|| transition(prev, s));
+    // ⭐ (W7) **A chegada anuncia-se UMA vez por aproximação.** Medido na cena `=4`: dois inimigos
+    // encostados ao mesmo herói empurram-se, e o empurrado saía e voltava a «chegou» — 6 sinais em
+    // 15 s. Ele continua a fechar o espaço (o movimento não muda); o anúncio volta só depois de ele
+    // ter ido MESMO embora (`step_with`).
+    if event == Some(Event::Arrived) {
+        if rt.arrival_told {
+            event = None;
+        }
+        rt.arrival_told = true;
+    }
     Steer {
         dir: [0.0; 2],
-        event: forced.or_else(|| transition(prev, s)),
+        event,
         teleport: None,
         crossed: None,
     }

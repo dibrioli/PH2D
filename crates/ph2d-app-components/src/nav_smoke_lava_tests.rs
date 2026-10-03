@@ -106,3 +106,32 @@ fn a_cena_contem_o_fenomeno() {
     assert!(cinza.vida < f64::from(VIDA), "a lava não feriu o cinzento");
     assert!(cinza.chegou, "o cinzento não chegou ao herói");
 }
+
+/// ⭐ **Cada inimigo diz «caught you» UMA vez** — os dois encostam-se ao mesmo herói e o que chega
+/// primeiro é empurrado pelo outro; medido antes da cura: o cinzento disparava 6 vezes em 15 s.
+#[test]
+fn cada_inimigo_diz_que_apanhou_uma_vez() {
+    let mut sim = SimWorld::new();
+    let l = crate::nav_smoke::montar(sim.world_mut(), 4)
+        .lava
+        .expect("a cena =4");
+    let mut bridge = PhysicsBridge::new();
+    let tree = ph2d_tags::TagTree::default();
+    let mut ouvidos: Vec<Entity> = Vec::new();
+    for t in 1..=900 {
+        bridge.dispatch(&mut sim, true, t);
+        ouvidos.extend(
+            bridge
+                .signal_events(&sim, &tree)
+                .into_iter()
+                .filter(|s| s.name == "caught you")
+                .map(|s| s.source),
+        );
+    }
+    let conta = |e: Entity| ouvidos.iter().filter(|&&x| x == e).count();
+    assert_eq!(
+        (conta(l.vermelho), conta(l.cinzento)),
+        (1, 1),
+        "{ouvidos:?}"
+    );
+}

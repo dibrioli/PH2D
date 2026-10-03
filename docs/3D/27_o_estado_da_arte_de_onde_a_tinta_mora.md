@@ -698,6 +698,34 @@ as duas primeiras mediam o instrumento, não o produto.*
 
 ---
 
+### §16.10 — O tecto do degrau (`NIVEL_MAX = 8`), medido
+
+Movido verbatim do doc-comment do `NIVEL_MAX` (`crates/ph2d-app-sculpt3d/src/tinta_da_peca.rs`) a
+03/10, pelo tecto de LOC do ficheiro (W3 das camadas, `docs/3D/30` §12).
+
+⭐⭐⭐ **Subiu de `4` para `8` em 2026-09-24, por report do dono** (*«a
+resolução de 16x não chega para o painter»*) — e o report estava certo, com
+número. O Painter pinta à resolução do ECRÃ, logo a pergunta é *quantos
+píxeis cabem entre duas amostras* (sonda
+`diag_pixeis_por_amostra_da_tinta_fina`, peça da cena `=52`, arestas de
+frente, na vista `1900×1000`):
+
+| `k` | lado | px por amostra p50 · p90 · máx | plano aqui | na peça de fábrica |
+|---|---|---|---|---|
+| `4` | `16` | `1,89` · `2,52` · `3,58` | `2,3 MB` | `302 MB` |
+| `5` | `32` | `0,94` · `1,26` · `1,79` | `9,1 MB` | `1,2 GB` |
+| `6` | `64` | `0,47` · `0,63` · `0,90` | `36 MB` | ⛔ `4,8 GB` |
+| `7` | `128` | `0,24` · `0,31` · `0,45` | `145 MB` | ⛔ `19 GB` |
+| `8` | `256` | `0,12` · `0,16` · `0,22` | `580 MB` | ⛔ `77 GB` |
+
+⛔⛔ **O tecto de ontem (`16x`) tinha sido medido na peça ERRADA:** os
+`288 MB` eram da peça de fábrica, e na peça em que o artista pinta com
+tinta fina (grossa, porque a resolução é da tinta) o mesmo degrau custa
+`2,3 MB`. *Um limite medido no caso mais caro e aplicado a todos é o caminho
+lento a definir o rápido* (§0.0). O recurso é por PEÇA, e quem o diz é a
+placa: `4 GiB` por buffer nesta máquina.
+
+
 ## §12 — Registo de contaminação, e é meu
 
 ⚠️ Ao pesquisar como a referência escreve os píxeis, uma busca devolveu-me **a descrição em prosa do

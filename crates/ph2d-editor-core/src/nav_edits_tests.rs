@@ -13,6 +13,8 @@ fn agente() -> InspectorNavAgent {
         stuck_after: 1.0,
         active: true,
         avoidance: true,
+        avoid_harm: true,
+        has_health: true,
         on_arrived: String::new(),
         on_no_path: String::new(),
         on_stuck: String::new(),
@@ -46,13 +48,25 @@ fn todo_campo_dos_dois_componentes_tem_uma_edicao() {
         NavFieldEdit::OnArrived(String::new()),
         NavFieldEdit::OnNoPath(String::new()),
         NavFieldEdit::OnStuck(String::new()),
+        NavFieldEdit::Avoidance(true),
+        NavFieldEdit::AlvoTag(0),
+        NavFieldEdit::AvoidHarm(true),
+        NavFieldEdit::CostAreaCost(1.0),
+        NavFieldEdit::CostAreaForbidden(false),
+        NavFieldEdit::LinkTo(String::new()),
+        NavFieldEdit::LinkTwoWay(false),
+        NavFieldEdit::LinkTeleport(true),
+        NavFieldEdit::LinkCost(0.0),
+        NavFieldEdit::LinkOnCrossed(String::new()),
     ];
     assert_eq!(
         variantes.len(),
-        15,
+        25,
         "a `NavRegion` tem DOIS campos (meias-extensões contam por dois) e a máscara; o `NavAgent` \
-         tem o alvo (modo · nome · ponto x/y), quatro números, o interruptor e três nomes — se um \
-         nasceu, ele precisa de uma variante aqui e de uma row no painel"
+         tem o alvo (modo · nome · ponto x/y · tag), quatro números, o interruptor, os dois desvios \
+         (W5 outros · W7 dano) e três nomes; (W7) a `NavCostArea` tem custo e proibida, e o \
+         `NavLink` tem saída, dois sentidos, teleporte, custo e o sinal — se um nasceu, ele precisa \
+         de uma variante aqui e de uma row no painel"
     );
 }
 
@@ -169,4 +183,66 @@ fn a_queixa_da_regiao_vai_do_tamanho_as_paredes() {
     assert_eq!(sem.queixa(), Some(RegionQueixa::SemTamanho));
     sem.half_h = 3.0;
     assert_eq!(sem.queixa(), Some(RegionQueixa::SemParedes));
+}
+
+/// ⭐ (W7) **A área sem forma queixa-se antes da que tem um corpo que anda** — e a boa cala-se.
+///
+/// **Mutações que devem sangrar:** trocar a ordem dos dois `if` · esquecer o `body_moves`.
+#[test]
+fn a_queixa_da_area_vai_da_forma_ao_corpo_que_anda() {
+    let boa = InspectorNavCostArea {
+        cost: 3.0,
+        forbidden: false,
+        has_shape: true,
+        body_moves: false,
+    };
+    assert_eq!(boa.queixa(), None);
+    let anda = InspectorNavCostArea {
+        body_moves: true,
+        ..boa
+    };
+    assert_eq!(anda.queixa(), Some(CostAreaQueixa::CorpoQueAnda));
+    let sem = InspectorNavCostArea {
+        has_shape: false,
+        ..anda
+    };
+    assert_eq!(sem.queixa(), Some(CostAreaQueixa::SemForma));
+}
+
+/// ⭐ (W7) **O atalho tem duas formas de não levar a lado nenhum**, e a perdida vem primeiro.
+#[test]
+fn o_atalho_sem_saida_e_o_de_saida_perdida() {
+    let bom = InspectorNavLink {
+        to_nome: "Exit".into(),
+        to_perdido: false,
+        two_way: false,
+        teleport: true,
+        cost: 0.0,
+        on_crossed: String::new(),
+    };
+    assert_eq!(bom.queixa(), None);
+    let vazio = InspectorNavLink {
+        to_nome: String::new(),
+        ..bom.clone()
+    };
+    assert_eq!(vazio.queixa(), Some(LinkQueixa::SemSaida));
+    let perdido = InspectorNavLink {
+        to_perdido: true,
+        ..vazio
+    };
+    assert_eq!(perdido.queixa(), Some(LinkQueixa::SaidaPerdida));
+}
+
+/// ⭐ (W7) ***Avoid Harm* sem `Health` não muda nada** — e desligado também não se queixa.
+#[test]
+fn evitar_dano_sem_vida_nao_muda_nada() {
+    let mut a = agente();
+    assert!(
+        !a.evitar_dano_nao_muda_nada(),
+        "com Health e ligado: faz efeito"
+    );
+    a.has_health = false;
+    assert!(a.evitar_dano_nao_muda_nada());
+    a.avoid_harm = false;
+    assert!(!a.evitar_dano_nao_muda_nada(), "desligado não promete nada");
 }

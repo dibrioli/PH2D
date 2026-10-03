@@ -349,4 +349,13 @@
 /// em voz alta — *o postcard é POSICIONAL*, e sem o degrau ele seria lido errado em silêncio.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
-pub(crate) const PROJECT_SCHEMA: u32 = 179;
+///
+/// # `179 → 180` — **o que FERE, o que CUSTA e os ATALHOS** (plano 30, W7, 2026-10-03)
+///
+/// UM degrau para três mudanças da mesma wave: `NavAgent` ganha `avoid_harm` (o último campo) e
+/// `NavCostArea` e `NavLink` passam a REGISTADOS no mesmo commit que as secções do Inspector. ⚠️
+/// **São da FÍSICA** ⇒ o registo dela sobe `+2` (`42 → 44`) e os dois espelhos (`ph2d-render`,
+/// `ph2d-script`) NÃO se mexem. ⛔ Sem degrau de migração: um v179 é recusado em voz alta.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
+pub(crate) const PROJECT_SCHEMA: u32 = 180;

@@ -1,4 +1,5 @@
-//! **As secções NAV REGION e NAV AGENT: o instantâneo e o dreno** (plano 30, W4).
+//! **As secções NAV REGION e NAV AGENT: o instantâneo e o dreno** (plano 30, W4) — e (W7) NAV COST
+//! AREA e NAV LINK, no mesmo vocabulário.
 //!
 //! ⚠️ **As duas metades vivem juntas de propósito** — o molde do [`super::ray_inspector`]: quem lê
 //! o mundo para o painel e quem escreve a edição de volta fazem a MESMA tradução.
@@ -19,11 +20,12 @@
 
 use ph2d_ecs::{Entity, SimWorld, World, stable_name_id, world_transform};
 use ph2d_editor_core::nav_edits::{
-    InspectorNavAgent, InspectorNavInfo, InspectorNavRegion, NavAgora, NavAlvoModo, NavEstado,
-    NavFieldEdit,
+    InspectorNavAgent, InspectorNavCostArea, InspectorNavInfo, InspectorNavLink,
+    InspectorNavRegion, NAV_AREA_COST_MIN, NavAgora, NavAlvoModo, NavEstado, NavFieldEdit,
 };
 use ph2d_physics_ecs::{
-    NavAgent, NavNow, NavRegion, NavStatus, NavTarget, PlatformPlayer, RigidBody, TopDownPlayer,
+    BodyKind, Collider, Health, NavAgent, NavCostArea, NavLink, NavNow, NavRegion, NavStatus,
+    NavTarget, PlatformPlayer, RigidBody, TopDownPlayer,
 };
 
 /// O estado da ponte, no vocabulário do painel.
@@ -93,6 +95,9 @@ fn info_do_agente(world: &World, e: Entity, a: &NavAgent) -> InspectorNavAgent {
         stuck_after: a.stuck_after_s,
         active: a.active,
         avoidance: a.avoidance,
+        avoid_harm: a.avoid_harm,
+        // ⚠️ A MESMA pergunta da ponte (`zonas_que_evita`): sem `Health` nada o fere.
+        has_health: world.get::<Health>(e).is_some(),
         on_arrived: a.on_arrived.clone(),
         on_no_path: a.on_no_path.clone(),
         on_stuck: a.on_stuck.clone(),
@@ -135,16 +140,81 @@ pub fn build_info(
     let agent = world
         .get::<NavAgent>(e)
         .map(|a| info_do_agente(world, e, a));
-    if region.is_none() && agent.is_none() {
+    let cost_area = world.get::<NavCostArea>(e).map(|c| {
+        let corpo = world.get::<RigidBody>(e);
+        InspectorNavCostArea {
+            cost: c.cost,
+            forbidden: c.forbidden,
+            // ⚠️ As MESMAS perguntas da ponte (`custos_deste_tique`): só um corpo com colisor tem
+            // forma, e só um corpo PARADO a recorta (um `Dynamic` nunca é obstáculo).
+            has_shape: corpo.is_some() && world.get::<Collider>(e).is_some(),
+            body_moves: corpo.is_some_and(|b| b.kind == BodyKind::Dynamic),
+        }
+    });
+    let link = world.get::<NavLink>(e).map(|l| {
+        let (to_nome, to_perdido) = crate::projectile_inspector::nome_do_alvo(world, l.to);
+        InspectorNavLink {
+            to_nome,
+            to_perdido,
+            two_way: l.two_way,
+            teleport: l.teleport,
+            cost: l.cost,
+            on_crossed: l.on_crossed.clone(),
+        }
+    });
+    if region.is_none() && agent.is_none() && cost_area.is_none() && link.is_none() {
         return None;
     }
     Some(InspectorNavInfo {
         entity_bits: bits,
         region,
         agent,
+        cost_area,
+        link,
         clock_playing,
         selected_count,
     })
+}
+
+/// ⭐ (W7) **O dreno da ÁREA e do ATALHO** — `None` = a edição não é destes dois.
+fn apply_custo_e_atalho(world: &mut World, e: Entity, edit: &NavFieldEdit) -> Option<bool> {
+    match edit {
+        NavFieldEdit::CostAreaCost(_) | NavFieldEdit::CostAreaForbidden(_) => {
+            let Some(mut c) = world.get_mut::<NavCostArea>(e) else {
+                return Some(false);
+            };
+            match edit {
+                // ⚠️ A lei só pede `> 0` (o custo multiplica um comprimento) — o piso é o do painel.
+                NavFieldEdit::CostAreaCost(v) => c.cost = v.max(NAV_AREA_COST_MIN),
+                NavFieldEdit::CostAreaForbidden(b) => c.forbidden = *b,
+                _ => return Some(false),
+            }
+            Some(true)
+        }
+        NavFieldEdit::LinkTo(_)
+        | NavFieldEdit::LinkTwoWay(_)
+        | NavFieldEdit::LinkTeleport(_)
+        | NavFieldEdit::LinkCost(_)
+        | NavFieldEdit::LinkOnCrossed(_) => {
+            let Some(mut l) = world.get_mut::<NavLink>(e) else {
+                return Some(false);
+            };
+            match edit {
+                // ⚠️ **O NOME cru vira o `stable_name_id`** — a regra do `AlvoNome` (vazio = `0`).
+                NavFieldEdit::LinkTo(nome) => {
+                    let t = nome.trim();
+                    l.to = if t.is_empty() { 0 } else { stable_name_id(t) };
+                }
+                NavFieldEdit::LinkTwoWay(b) => l.two_way = *b,
+                NavFieldEdit::LinkTeleport(b) => l.teleport = *b,
+                NavFieldEdit::LinkCost(v) => l.cost = v.max(0.0),
+                NavFieldEdit::LinkOnCrossed(s) => l.on_crossed.clone_from(s),
+                _ => return Some(false),
+            }
+            Some(true)
+        }
+        _ => None,
+    }
 }
 
 /// **O dreno.** `true` = tocou no mundo.
@@ -169,6 +239,9 @@ pub fn apply_nav_edit(world: &mut World, bits: u64, edit: &NavFieldEdit) -> bool
             return true;
         }
         _ => {}
+    }
+    if let Some(mexeu) = apply_custo_e_atalho(world, e, edit) {
+        return mexeu;
     }
     // ⚠️ **O nome resolve-se ANTES do empréstimo mutável** (ele varre o mundo). ⭐ (W6) E ele
     // escreve no alvo que o agente JÁ tem: na patrulha é o nome da FORMA (o modo vem primeiro).
@@ -231,11 +304,21 @@ pub fn apply_nav_edit(world: &mut World, bits: u64, edit: &NavFieldEdit) -> bool
         NavFieldEdit::StuckAfter(v) => a.stuck_after_s = v.max(0.0),
         NavFieldEdit::Active(b) => a.active = *b,
         NavFieldEdit::Avoidance(b) => a.avoidance = *b,
+        NavFieldEdit::AvoidHarm(b) => a.avoid_harm = *b,
         NavFieldEdit::AlvoTag(t) => a.target = NavTarget::NearestTagged(*t),
         NavFieldEdit::OnArrived(s) => a.on_arrived.clone_from(s),
         NavFieldEdit::OnNoPath(s) => a.on_no_path.clone_from(s),
         NavFieldEdit::OnStuck(s) => a.on_stuck.clone_from(s),
-        NavFieldEdit::HalfW(_) | NavFieldEdit::HalfH(_) | NavFieldEdit::ObstacleLayers(_) => {
+        NavFieldEdit::HalfW(_)
+        | NavFieldEdit::HalfH(_)
+        | NavFieldEdit::ObstacleLayers(_)
+        | NavFieldEdit::CostAreaCost(_)
+        | NavFieldEdit::CostAreaForbidden(_)
+        | NavFieldEdit::LinkTo(_)
+        | NavFieldEdit::LinkTwoWay(_)
+        | NavFieldEdit::LinkTeleport(_)
+        | NavFieldEdit::LinkCost(_)
+        | NavFieldEdit::LinkOnCrossed(_) => {
             return false;
         }
     }

@@ -266,6 +266,25 @@ pub const DESCS: &[D] = &[
         "component.nav_agent.name",
         &["ph2d::physics::TopDownPlayer"],
     ),
+    // ⭐⭐ **PORTAS 7 e 8 — o que CUSTA e os ATALHOS** (plano 30, W7): *aqui é lama / aqui ninguém
+    // entra* e *daqui salta-se para ali* são intenções do artista. ⛔ **Nenhuma pede companhia:** a
+    // área usa o colisor que o objecto JÁ tem (uma poça desenhada, um sensor) e a secção diz quando
+    // falta — trazer um `RigidBody` de fábrica entregava um corpo `Dynamic` que cai e que a ponte
+    // não recorta. O atalho só precisa da POSIÇÃO da entrada e do nome da saída.
+    D::authored(
+        "ph2d::physics::NavCostArea",
+        "component.nav_cost_area.name",
+        C::Physics,
+        O::ANY,
+        &[],
+    ),
+    D::authored(
+        "ph2d::physics::NavLink",
+        "component.nav_link.name",
+        C::Physics,
+        O::ANY,
+        &[],
+    ),
     D::authored(
         "ph2d::physics::NavRegion",
         "component.nav_region.name",
@@ -413,8 +432,11 @@ mod tests {
         //    está medido.
         // ⭐ **SEIS portas desde 2026-10-01** — as novas são a NAVEGAÇÃO (plano 30, W4): o agente
         //    (*este objecto persegue*, e pede o mover junto) e a região (*os agentes andam aqui*).
-        const PORTAS: [&str; 6] = [
+        // ⭐ **OITO desde 2026-10-03** — a área de custo e o atalho (plano 30, W7), sem companhia.
+        const PORTAS: [&str; 8] = [
             "ph2d::physics::NavAgent",
+            "ph2d::physics::NavCostArea",
+            "ph2d::physics::NavLink",
             "ph2d::physics::NavRegion",
             "ph2d::physics::ProjectileMotion",
             "ph2d::physics::RaySensor",

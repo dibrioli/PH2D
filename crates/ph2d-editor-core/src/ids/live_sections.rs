@@ -33,7 +33,7 @@ use super::*;
 /// ⚠️ `finish_section` lê `store.section_outline_color(<id da seção>)` para TODA seção viva, por
 /// isso uma seção ausente daqui tem um contorno que o passe de pintura está pronto a desenhar e
 /// gesto nenhum que o possa definir.
-pub const LIVE_SECTIONS: [(NodeId, NodeId); 45] = [
+pub const LIVE_SECTIONS: [(NodeId, NodeId); 47] = [
     (INSP_LIVE_NAME_SECTION, INSP_LIVE_NAME_GRIP),
     (INSP_LIVE_VISIBILITY_SECTION, INSP_LIVE_VISIBILITY_GRIP),
     (INSP_LIVE_TRANSFORM_SECTION, INSP_LIVE_TRANSFORM_GRIP),
@@ -124,6 +124,12 @@ pub const LIVE_SECTIONS: [(NodeId, NodeId); 45] = [
     // ⭐ A 44.ª e a 45.ª — NAV REGION e NAV AGENT (plano 30, W4), no mesmo commit que as secções.
     (INSP_LIVE_NAV_REGION_SECTION, INSP_LIVE_NAV_REGION_GRIP),
     (INSP_LIVE_NAV_AGENT_SECTION, INSP_LIVE_NAV_AGENT_GRIP),
+    // ⭐ A 46.ª e a 47.ª — NAV COST AREA e NAV LINK (plano 30, W7), no mesmo commit que as secções.
+    (
+        INSP_LIVE_NAV_COST_AREA_SECTION,
+        INSP_LIVE_NAV_COST_AREA_GRIP,
+    ),
+    (INSP_LIVE_NAV_LINK_SECTION, INSP_LIVE_NAV_LINK_GRIP),
 ];
 
 /// Só os cabeçalhos — **projeção** de [`LIVE_SECTIONS`], nunca uma segunda lista.

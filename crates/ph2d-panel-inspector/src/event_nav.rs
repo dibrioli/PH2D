@@ -9,7 +9,7 @@
 
 use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
 use ph2d_editor_core::interaction::WidgetEvent;
-use ph2d_editor_core::nav_edits::{NavAlvoModo, NavFieldEdit};
+use ph2d_editor_core::nav_edits::{InspectorNavInfo, NavAlvoModo, NavFieldEdit};
 use ph2d_editor_core::panel::PanelHostInternal;
 
 /// Despacha um evento das secções NAV. `true` = consumido.
@@ -60,6 +60,12 @@ pub(crate) fn apply_nav_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
         push(host, bits, NavFieldEdit::Avoidance(!a.avoidance));
         return true;
     }
+    if let WidgetEvent::Toggled(id) = ev
+        && let Some(edit) = interruptor_w7(&info, id)
+    {
+        push(host, bits, edit);
+        return true;
+    }
 
     if let WidgetEvent::TextChanged(id) = ev {
         // ⚠️ **O texto CRU** — quem o apara é quem o lê.
@@ -69,6 +75,8 @@ pub(crate) fn apply_nav_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
             crate::ids::INSP_NAV_ON_ARRIVED => NavFieldEdit::OnArrived(t),
             crate::ids::INSP_NAV_ON_NO_PATH => NavFieldEdit::OnNoPath(t),
             crate::ids::INSP_NAV_ON_STUCK => NavFieldEdit::OnStuck(t),
+            crate::ids::INSP_NAV_LINK_TO => NavFieldEdit::LinkTo(t),
+            crate::ids::INSP_NAV_LINK_ON_CROSSED => NavFieldEdit::LinkOnCrossed(t),
             _ => return false,
         };
         push(host, bits, edit);
@@ -89,12 +97,34 @@ pub(crate) fn apply_nav_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
             crate::ids::INSP_NAV_ARRIVE => NavFieldEdit::Arrive(f),
             crate::ids::INSP_NAV_REPATH => NavFieldEdit::Repath(f),
             crate::ids::INSP_NAV_STUCK => NavFieldEdit::StuckAfter(f),
+            crate::ids::INSP_NAV_AREA_COST => NavFieldEdit::CostAreaCost(f),
+            crate::ids::INSP_NAV_LINK_COST => NavFieldEdit::LinkCost(f),
             _ => return false,
         };
         push(host, bits, edit);
         return true;
     }
     false
+}
+
+/// (W7) Os quatro interruptores novos — cada um pede o INVERTIDO do snapshot, e só se o objecto
+/// TEM o componente da caixa (sem ele a caixa nem é pintada).
+fn interruptor_w7(info: &InspectorNavInfo, id: ph2d_a11y::NodeId) -> Option<NavFieldEdit> {
+    match id {
+        crate::ids::INSP_NAV_AVOID_HARM => {
+            Some(NavFieldEdit::AvoidHarm(!info.agent.as_ref()?.avoid_harm))
+        }
+        crate::ids::INSP_NAV_AREA_FORBIDDEN => {
+            Some(NavFieldEdit::CostAreaForbidden(!info.cost_area?.forbidden))
+        }
+        crate::ids::INSP_NAV_LINK_TWO_WAY => {
+            Some(NavFieldEdit::LinkTwoWay(!info.link.as_ref()?.two_way))
+        }
+        crate::ids::INSP_NAV_LINK_TELEPORT => {
+            Some(NavFieldEdit::LinkTeleport(!info.link.as_ref()?.teleport))
+        }
+        _ => None,
+    }
 }
 
 fn push(host: &mut dyn PanelHostInternal, entity_bits: u64, edit: NavFieldEdit) {

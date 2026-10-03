@@ -87,6 +87,9 @@ mod material_blend;
 /// ⭐⭐⭐ A secção LIVE MESH — o CATAVENTO (`docs/3D/02.2`, rota B).
 pub(crate) mod mesh3d;
 pub(crate) mod nav;
+/// ⭐ (W7) As secções NAV COST AREA e NAV LINK e os interruptores do agente — irmão do `nav` pelo
+/// tecto de LOC do painel.
+pub(crate) mod nav_custo;
 pub(crate) mod nav_tag_row;
 pub(crate) mod ordering;
 /// ⭐⭐⭐ A secção RAY SENSOR (suplente #21).

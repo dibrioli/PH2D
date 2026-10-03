@@ -135,5 +135,13 @@ pub const INSP_LIVE_NAV_REGION_GRIP: NodeId = hash_node_id("insp_live_nav_region
 pub const INSP_LIVE_NAV_AGENT_SECTION: NodeId = hash_node_id("insp_live_nav_agent_section");
 /// A pega de arrasto da secção NAV AGENT.
 pub const INSP_LIVE_NAV_AGENT_GRIP: NodeId = hash_node_id("insp_live_nav_agent_grip");
+/// O cabeçalho dobrável da secção NAV COST AREA — a lama, a zona proibida (plano 30, W7).
+pub const INSP_LIVE_NAV_COST_AREA_SECTION: NodeId = hash_node_id("insp_live_nav_cost_area_section");
+/// A pega de arrasto da secção NAV COST AREA.
+pub const INSP_LIVE_NAV_COST_AREA_GRIP: NodeId = hash_node_id("insp_live_nav_cost_area_grip");
+/// O cabeçalho dobrável da secção NAV LINK — o teleporte, a porta de um sentido (plano 30, W7).
+pub const INSP_LIVE_NAV_LINK_SECTION: NodeId = hash_node_id("insp_live_nav_link_section");
+/// A pega de arrasto da secção NAV LINK.
+pub const INSP_LIVE_NAV_LINK_GRIP: NodeId = hash_node_id("insp_live_nav_link_grip");
 /// Quantas opções o segmentado do ONDE tem — a porta que o painel lê para repartir a largura.
 pub const INSP_FACTORY_WHERE_LEN: usize = 3;

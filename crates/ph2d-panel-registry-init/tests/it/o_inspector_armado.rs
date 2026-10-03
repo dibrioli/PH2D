@@ -45,7 +45,8 @@ use ph2d_editor_core::factory_edits::{
 use ph2d_editor_core::hud_edits::InspectorHudInfo;
 use ph2d_editor_core::mesh3d_edits::InspectorMesh3dInfo;
 use ph2d_editor_core::nav_edits::{
-    InspectorNavAgent, InspectorNavInfo, InspectorNavRegion, NavAgora, NavAlvoModo, NavEstado,
+    InspectorNavAgent, InspectorNavCostArea, InspectorNavInfo, InspectorNavLink,
+    InspectorNavRegion, NavAgora, NavAlvoModo, NavEstado,
 };
 use ph2d_editor_core::particles_edits::InspectorParticlesInfo;
 use ph2d_editor_core::path_follow_edits::InspectorPathFollowInfo;
@@ -1144,6 +1145,9 @@ fn arma_o_top20() {
             stuck_after: 1.0,
             active: true,
             avoidance: true,
+            // (W7) Ligado e SEM vida: a frase «nada o fere» é mais uma linha condicional.
+            avoid_harm: true,
+            has_health: false,
             on_arrived: "arrived".to_string(),
             on_no_path: "no_path".to_string(),
             on_stuck: "stuck".to_string(),
@@ -1157,6 +1161,22 @@ fn arma_o_top20() {
                 restante: 12.5,
                 raio: 0.35,
             }),
+        }),
+        // (W7) A área sem forma e NÃO proibida (a queixa mais longa e a linha do custo) · o atalho
+        // com a saída PERDIDA (a queixa que pesa mais).
+        cost_area: Some(InspectorNavCostArea {
+            cost: 3.0,
+            forbidden: false,
+            has_shape: false,
+            body_moves: false,
+        }),
+        link: Some(InspectorNavLink {
+            to_nome: String::new(),
+            to_perdido: true,
+            two_way: false,
+            teleport: true,
+            cost: 1.5,
+            on_crossed: "crossed".to_string(),
         }),
         clock_playing: false,
         selected_count: selecionados(),

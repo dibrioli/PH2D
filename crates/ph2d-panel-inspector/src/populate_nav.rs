@@ -19,7 +19,7 @@ use ph2d_editor_core::widget::{CheckboxState, CheckboxValue, TextInputState};
 
 /// `(id, valor de partida, mínimo, máximo, passo)` — os de partida são os do `NavRegion::default()`
 /// e do `NavAgent::default()`, e não zeros (um raio de chegada a `0` lê-se como campo partido).
-pub(crate) const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 8] = [
+pub(crate) const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 10] = [
     (ids::INSP_NAV_HALF_W, 10.0, 0.0, 1_000.0, 0.1), // LITERAL-PX-OK: metros — ver o cabeçalho
     (ids::INSP_NAV_HALF_H, 10.0, 0.0, 1_000.0, 0.1), // LITERAL-PX-OK: metros — ver o cabeçalho
     (ids::INSP_NAV_TARGET_X, 0.0, -1_000.0, 1_000.0, 0.1), // LITERAL-PX-OK: metros, mundo
@@ -28,10 +28,33 @@ pub(crate) const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 8] = [
     (ids::INSP_NAV_ARRIVE, 0.1, 0.0, 50.0, 0.05),    // LITERAL-PX-OK: metros
     (ids::INSP_NAV_REPATH, 0.5, 0.0, 50.0, 0.05),    // LITERAL-PX-OK: metros
     (ids::INSP_NAV_STUCK, 1.0, 0.0, 60.0, 0.1),      // LITERAL-PX-OK: segundos; 0 desliga
+    // (W7) O custo da ÁREA: piso = a lei (`> 0`); o tecto é só o do stepper — o arrasto tem TAXA
+    // (abaixo), logo não pára nele. `3` = o `NavCostArea::default()`.
+    (ids::INSP_NAV_AREA_COST, 3.0, AREA_COST_MIN, 1_000.0, 0.05), // LITERAL-PX-OK: × chão
+    // (W7) O custo do ATALHO, em metros de chão — a mesma régua de cena das meias-extensões.
+    (ids::INSP_NAV_LINK_COST, 0.0, 0.0, 1_000.0, 0.1), // LITERAL-PX-OK: metros
+];
+
+/// O piso do custo da área — o MESMO número que o dreno aplica.
+const AREA_COST_MIN: f64 = ph2d_editor_core::nav_edits::NAV_AREA_COST_MIN as f64;
+
+/// (W7) As caixas de custo arrastam-se por TAXA (unidades por pixel), não pela proporção do
+/// intervalo: um intervalo que não acaba de facto não tem proporção (a receita do
+/// `set_number_drag_rate`).
+const TAXAS: [(ph2d_a11y::NodeId, f64); 2] = [
+    (ids::INSP_NAV_AREA_COST, 0.01), // LITERAL-PX-OK: × chão por pixel
+    (ids::INSP_NAV_LINK_COST, 0.05), // LITERAL-PX-OK: metros por pixel
 ];
 
 pub(crate) fn populate_nav(store: &mut WidgetStore) {
-    for id in [ids::INSP_NAV_ACTIVE, ids::INSP_NAV_AVOIDANCE] {
+    for id in [
+        ids::INSP_NAV_ACTIVE,
+        ids::INSP_NAV_AVOIDANCE,
+        ids::INSP_NAV_AVOID_HARM,
+        ids::INSP_NAV_AREA_FORBIDDEN,
+        ids::INSP_NAV_LINK_TWO_WAY,
+        ids::INSP_NAV_LINK_TELEPORT,
+    ] {
         store.register(
             id,
             InteractiveState::Checkbox {
@@ -58,6 +81,8 @@ pub(crate) fn populate_nav(store: &mut WidgetStore) {
         ids::INSP_NAV_ON_ARRIVED,
         ids::INSP_NAV_ON_NO_PATH,
         ids::INSP_NAV_ON_STUCK,
+        ids::INSP_NAV_LINK_TO,
+        ids::INSP_NAV_LINK_ON_CROSSED,
     ] {
         store.register(
             id,
@@ -91,5 +116,8 @@ pub(crate) fn populate_nav(store: &mut WidgetStore) {
             },
         );
         store.set_number_range(id, lo, hi, step);
+    }
+    for (id, taxa) in TAXAS {
+        store.set_number_drag_rate(id, taxa);
     }
 }

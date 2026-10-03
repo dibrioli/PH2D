@@ -68,11 +68,16 @@ fn na_tabela() -> BTreeSet<String> {
         panic!("a tabela LIVE_SECTIONS tem de existir neste ficheiro");
     };
     let corpo = corpo.split("\n];").next().unwrap_or("");
-    for linha in corpo.lines() {
-        let t = linha.trim();
-        let Some(resto) = t.strip_prefix('(') else {
-            continue;
-        };
+    // ⚠️ **Por PARÊNTESE e não por linha** (W7, 2026-10-03): um par mais largo que o `fn_call_width`
+    // do rustfmt (`60`) é partido em três linhas — `(` sozinho, o cabeçalho, a pega — e a leitura
+    // por linha acusava `INSP_LIVE_NAV_COST_AREA_SECTION` de faltar estando lá. Os comentários saem
+    // antes, para um `(…)` em prosa não contar.
+    let codigo: String = corpo
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("//"))
+        .collect::<Vec<_>>()
+        .join(" ");
+    for resto in codigo.split('(').skip(1) {
         if let Some(nome) = resto.split(',').next() {
             let nome = nome.trim();
             if nome.starts_with("INSP_LIVE_") && nome.ends_with("_SECTION") {

@@ -838,7 +838,7 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
     // ⚠️ **A isenção é MEDIDA**: zero ocorrências de `NodeId`, `hit_index.` ou `register(`.
     (
         "ph2d-panel-inspector/src/paint_optional_nav.rs",
-        "as DUAS MOLDURAS das seccoes da NAVEGACAO (a regiao e o agente); nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — e cada widget e' pintado pela seccao que ele chama, a moldura pelo paint_frame",
+        "as QUATRO MOLDURAS das seccoes da NAVEGACAO (a regiao, o agente e — W7 — a area de custo e o atalho); nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — e cada widget e' pintado pela seccao que ele chama, a moldura pelo paint_frame",
     ),
     (
         "ph2d-panel-inspector/src/paint_optional_top20_tail.rs",

@@ -50,6 +50,8 @@ fn agente(modo: NavAlvoModo) -> InspectorNavAgent {
         stuck_after: 2.5,
         active: true,
         avoidance: true,
+        avoid_harm: true,
+        has_health: true,
         on_arrived: "chegou".into(),
         on_no_path: "longe".into(),
         on_stuck: "preso".into(),
@@ -67,6 +69,8 @@ fn info(region: Option<InspectorNavRegion>, agent: Option<InspectorNavAgent>) ->
         entity_bits: 0x00CD_5678,
         region,
         agent,
+        cost_area: None,
+        link: None,
         clock_playing: true,
         selected_count: 1,
     }

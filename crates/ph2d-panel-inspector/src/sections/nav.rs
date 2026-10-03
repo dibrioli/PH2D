@@ -17,7 +17,7 @@ use super::*;
 use ph2d_editor_core::nav_edits::{
     AgentQueixa, InspectorNavAgent, InspectorNavRegion, NavAlvoModo, NavEstado, RegionQueixa,
 };
-use ph2d_editor_core::property_row::{Seccao, paint_check_row, paint_choice_row};
+use ph2d_editor_core::property_row::{Seccao, paint_choice_row};
 use ph2d_editor_core::widget::{SectionFold, Unit};
 use ph2d_i18n::{tr, tr_with};
 
@@ -48,9 +48,10 @@ const fn chave_da_regiao(q: RegionQueixa) -> &'static str {
     }
 }
 
-/// O cabeçalho dobrável comum às duas secções. `None` = dobrada (devolve o `y` por baixo dele).
+/// O cabeçalho dobrável comum às secções NAV (também as da W7, no [`super::nav_custo`]).
+/// `Err` = dobrada (devolve o `y` por baixo dele).
 #[allow(clippy::too_many_arguments)]
-fn cabecalho(
+pub(super) fn cabecalho(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -350,7 +351,7 @@ pub(crate) fn paint_nav_agent_section(
             seccao,
         );
     }
-    cur_y = paint_check_row(
+    cur_y = super::nav_custo::interruptores_do_agente(
         scene,
         text_system,
         theme,
@@ -359,27 +360,7 @@ pub(crate) fn paint_nav_agent_section(
         x,
         w,
         cur_y,
-        (
-            crate::ids::INSP_NAV_ACTIVE,
-            tr("panel.inspector.nav.active"),
-            a.active,
-        ),
-        seccao,
-    );
-    cur_y = paint_check_row(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        (
-            crate::ids::INSP_NAV_AVOIDANCE,
-            tr("panel.inspector.nav.avoidance"),
-            a.avoidance,
-        ),
+        a,
         seccao,
     );
     cur_y = sinais(

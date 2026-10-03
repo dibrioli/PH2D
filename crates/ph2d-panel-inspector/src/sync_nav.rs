@@ -31,6 +31,28 @@ fn numeros(info: &InspectorNavInfo) -> Vec<(ph2d_a11y::NodeId, f32)> {
         v.push((crate::ids::INSP_NAV_REPATH, a.repath));
         v.push((crate::ids::INSP_NAV_STUCK, a.stuck_after));
     }
+    if let Some(c) = info.cost_area {
+        v.push((crate::ids::INSP_NAV_AREA_COST, c.cost));
+    }
+    if let Some(l) = info.link.as_ref() {
+        v.push((crate::ids::INSP_NAV_LINK_COST, l.cost));
+    }
+    v
+}
+
+/// Os textos a semear — ⚠️ só os da secção que o objecto TEM, como os números.
+fn textos(info: &InspectorNavInfo) -> Vec<(ph2d_a11y::NodeId, &str)> {
+    let mut v = Vec::new();
+    if let Some(a) = info.agent.as_ref() {
+        v.push((crate::ids::INSP_NAV_TARGET_NAME, a.alvo_nome.as_str()));
+        v.push((crate::ids::INSP_NAV_ON_ARRIVED, a.on_arrived.as_str()));
+        v.push((crate::ids::INSP_NAV_ON_NO_PATH, a.on_no_path.as_str()));
+        v.push((crate::ids::INSP_NAV_ON_STUCK, a.on_stuck.as_str()));
+    }
+    if let Some(l) = info.link.as_ref() {
+        v.push((crate::ids::INSP_NAV_LINK_TO, l.to_nome.as_str()));
+        v.push((crate::ids::INSP_NAV_LINK_ON_CROSSED, l.on_crossed.as_str()));
+    }
     v
 }
 
@@ -42,11 +64,9 @@ fn assinatura(info: &InspectorNavInfo) -> u64 {
         id.hash(&mut h);
         v.to_bits().hash(&mut h);
     }
-    if let Some(a) = info.agent.as_ref() {
-        a.alvo_nome.hash(&mut h);
-        a.on_arrived.hash(&mut h);
-        a.on_no_path.hash(&mut h);
-        a.on_stuck.hash(&mut h);
+    for (id, t) in textos(info) {
+        id.hash(&mut h);
+        t.hash(&mut h);
     }
     h.finish()
 }
@@ -74,14 +94,7 @@ pub(crate) fn sync(
         }
         host.store_mut().set_number_value(id, f64::from(v));
     }
-    if let Some(a) = info.agent.as_ref() {
-        for (id, t) in [
-            (crate::ids::INSP_NAV_TARGET_NAME, a.alvo_nome.as_str()),
-            (crate::ids::INSP_NAV_ON_ARRIVED, a.on_arrived.as_str()),
-            (crate::ids::INSP_NAV_ON_NO_PATH, a.on_no_path.as_str()),
-            (crate::ids::INSP_NAV_ON_STUCK, a.on_stuck.as_str()),
-        ] {
-            crate::sync_text_field::escreve_texto(host, focus, id, t);
-        }
+    for (id, t) in textos(&info) {
+        crate::sync_text_field::escreve_texto(host, focus, id, t);
     }
 }

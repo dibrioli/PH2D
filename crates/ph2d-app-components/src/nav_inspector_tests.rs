@@ -384,3 +384,163 @@ fn a_patrulha_diz_quando_o_nome_nao_e_de_uma_forma() {
         .target = NavTarget::Patrol(stable_name_id("Ronda"));
     assert_eq!(agente_de(&sim, agente).queixa(), None);
 }
+
+/// ⭐⭐⭐ **(W7) A área, o atalho e o *Avoid Harm* vão e voltam** — cada edição chega ao componente, e
+/// o instantâneo seguinte devolve-a ao painel; os pisos da lei (`custo > 0`, `atalho >= 0`) valem no
+/// dreno, e o nome da saída é o NOME (nunca os bits).
+///
+/// **Mutações que devem sangrar:** tirar qualquer braço do `apply_custo_e_atalho` · o custo sem piso
+/// · o `LinkTo` guardar o texto sem aparar · o `AvoidHarm` escrever no `avoidance`.
+#[test]
+fn a_area_o_atalho_e_o_dano_vao_e_voltam() {
+    let mut sim = SimWorld::new();
+    let (agente, _) = cena(&mut sim);
+    let w = sim.world_mut();
+    let lama = w
+        .spawn((
+            Name::new("Lama"),
+            Transform::default(),
+            NavCostArea::default(),
+        ))
+        .id();
+    let porta = w
+        .spawn((Name::new("Porta"), Transform::default(), NavLink::default()))
+        .id();
+    w.spawn((Name::new("Saida"), Transform::default()));
+
+    // O agente: a caixa nova, e a pergunta da vida.
+    let a = agente_de(&sim, agente);
+    assert!(
+        a.avoid_harm && !a.has_health,
+        "de fábrica ligado, e a cena não tem Health"
+    );
+    assert!(apply_nav_edit(
+        sim.world_mut(),
+        agente.to_bits(),
+        &NavFieldEdit::AvoidHarm(false)
+    ));
+    let a = agente_de(&sim, agente);
+    assert!(!a.avoid_harm && a.avoidance, "o AvoidHarm mexeu no desvio");
+    sim.world_mut()
+        .entity_mut(agente)
+        .insert(ph2d_physics_ecs::Health::default());
+    assert!(agente_de(&sim, agente).has_health);
+
+    // A área.
+    for (edit, custo, proibida) in [
+        (NavFieldEdit::CostAreaCost(0.5), 0.5, false),
+        (NavFieldEdit::CostAreaForbidden(true), 0.5, true),
+        (NavFieldEdit::CostAreaCost(-4.0), NAV_AREA_COST_MIN, true),
+    ] {
+        assert!(apply_nav_edit(sim.world_mut(), lama.to_bits(), &edit));
+        let c = build_info(sim.world(), lama.to_bits(), 1, true)
+            .and_then(|i| i.cost_area)
+            .expect("a secção da área");
+        assert_eq!((c.cost, c.forbidden), (custo, proibida), "{edit:?}");
+    }
+
+    // O atalho.
+    for edit in [
+        NavFieldEdit::LinkTo("  Saida ".into()),
+        NavFieldEdit::LinkTwoWay(true),
+        NavFieldEdit::LinkTeleport(false),
+        NavFieldEdit::LinkCost(-2.0),
+        NavFieldEdit::LinkCost(2.5),
+        NavFieldEdit::LinkOnCrossed("passou".into()),
+    ] {
+        assert!(
+            apply_nav_edit(sim.world_mut(), porta.to_bits(), &edit),
+            "{edit:?}"
+        );
+    }
+    let guardado = sim
+        .world()
+        .get::<NavLink>(porta)
+        .cloned()
+        .expect("o atalho");
+    assert_eq!(
+        guardado.to,
+        stable_name_id("Saida"),
+        "o NOME aparado, nunca os bits"
+    );
+    let l = build_info(sim.world(), porta.to_bits(), 1, true)
+        .and_then(|i| i.link)
+        .expect("a secção do atalho");
+    assert_eq!(
+        l,
+        InspectorNavLink {
+            to_nome: "Saida".into(),
+            to_perdido: false,
+            two_way: true,
+            teleport: false,
+            cost: 2.5,
+            on_crossed: "passou".into(),
+        }
+    );
+    assert!(apply_nav_edit(
+        sim.world_mut(),
+        porta.to_bits(),
+        &NavFieldEdit::LinkCost(-2.0)
+    ));
+    assert_eq!(sim.world().get::<NavLink>(porta).map(|l| l.cost), Some(0.0));
+
+    // ⚠️ O CONTROLO: uma edição de outro componente não toca em quem não o tem.
+    assert!(!apply_nav_edit(
+        sim.world_mut(),
+        lama.to_bits(),
+        &NavFieldEdit::LinkTwoWay(true)
+    ));
+    assert!(!apply_nav_edit(
+        sim.world_mut(),
+        porta.to_bits(),
+        &NavFieldEdit::CostAreaForbidden(true)
+    ));
+}
+
+/// ⭐⭐ **(W7) As perguntas da PONTE sobre a área e o atalho chegam ao painel** — a forma (corpo +
+/// colisor), o corpo que anda, e a saída vazia ou perdida.
+///
+/// **Mutações que devem sangrar:** `has_shape` sem o `Collider` · `body_moves` fixo a `false` · o
+/// atalho a dizer «perdido» com o id `0`.
+#[test]
+fn as_perguntas_da_area_e_do_atalho_chegam_ao_painel() {
+    use ph2d_editor_core::nav_edits::{CostAreaQueixa, LinkQueixa};
+    let mut sim = SimWorld::new();
+    let w = sim.world_mut();
+    let lama = w.spawn((Transform::default(), NavCostArea::default())).id();
+    let porta = w.spawn((Transform::default(), NavLink::default())).id();
+    let area = |sim: &SimWorld| {
+        build_info(sim.world(), lama.to_bits(), 1, true)
+            .and_then(|i| i.cost_area)
+            .expect("a área")
+    };
+    let atalho = |sim: &SimWorld| {
+        build_info(sim.world(), porta.to_bits(), 1, true)
+            .and_then(|i| i.link)
+            .expect("o atalho")
+    };
+    assert_eq!(area(&sim).queixa(), Some(CostAreaQueixa::SemForma));
+    sim.world_mut()
+        .entity_mut(lama)
+        .insert(RigidBody::default());
+    assert_eq!(
+        area(&sim).queixa(),
+        Some(CostAreaQueixa::SemForma),
+        "um corpo SEM colisor não tem forma"
+    );
+    sim.world_mut()
+        .entity_mut(lama)
+        .insert(ph2d_physics_ecs::Collider::default());
+    assert_eq!(area(&sim).queixa(), Some(CostAreaQueixa::CorpoQueAnda));
+    sim.world_mut().entity_mut(lama).insert(RigidBody {
+        kind: BodyKind::Static,
+    });
+    assert_eq!(area(&sim).queixa(), None);
+
+    assert_eq!(atalho(&sim).queixa(), Some(LinkQueixa::SemSaida));
+    sim.world_mut()
+        .get_mut::<NavLink>(porta)
+        .expect("o atalho")
+        .to = stable_name_id("Ninguem");
+    assert_eq!(atalho(&sim).queixa(), Some(LinkQueixa::SaidaPerdida));
+}

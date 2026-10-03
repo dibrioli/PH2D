@@ -1,6 +1,9 @@
 //! ⭐⭐⭐ **O VOCABULÁRIO DA NAVEGAÇÃO** (plano 30, W4) — o instantâneo e a edição das secções NAV
 //! REGION e NAV AGENT, num módulo abaixo do [`crate::action_bus`] e do [`crate::screens`].
 //!
+//! ⭐ (W7) **Mais duas secções no MESMO vocabulário**: NAV COST AREA (a lama, a zona proibida) e NAV
+//! LINK (o teleporte, a porta de um sentido) — e o agente ganha *Avoid Harm*.
+//!
 //! ⚠️ **Duas secções e UM vocabulário**, pelo precedente do [`crate::vida_edits`]: um objecto pode
 //! ter as duas (uma arena que é também o agente, raro mas legal), e uma edição é sempre de um campo
 //! de um dos dois componentes — duas enums partiriam o despacho em dois sem ganhar nada.
@@ -40,6 +43,10 @@ pub struct InspectorNavInfo {
     pub region: Option<InspectorNavRegion>,
     /// A secção NAV AGENT — `None` se a entidade não tem o agente.
     pub agent: Option<InspectorNavAgent>,
+    /// (W7) A secção NAV COST AREA — `None` se a entidade não tem a área.
+    pub cost_area: Option<InspectorNavCostArea>,
+    /// (W7) A secção NAV LINK — `None` se a entidade não tem o atalho.
+    pub link: Option<InspectorNavLink>,
     pub clock_playing: bool,
     pub selected_count: usize,
 }
@@ -153,6 +160,10 @@ pub struct InspectorNavAgent {
     pub active: bool,
     /// Desvia dos outros corpos que andam (plano 30, W5).
     pub avoidance: bool,
+    /// (W7) Evita as zonas que o FEREM — um `Damage` parado que o `Health` dele sente.
+    pub avoid_harm: bool,
+    /// (W7) Tem um `Health` — sem ele nada o fere, e o *Avoid Harm* não muda nada (o painel diz).
+    pub has_health: bool,
     pub on_arrived: String,
     pub on_no_path: String,
     pub on_stuck: String,
@@ -206,6 +217,13 @@ impl InspectorNavAgent {
         }
         None
     }
+
+    /// ⭐ (W7) *Avoid Harm* ligado num agente SEM `Health`: nada o fere, logo ele não evita nada —
+    /// a caixa marcada não muda o caminho, e o painel tem de o DIZER (a ponte lê o `Health`).
+    #[must_use]
+    pub fn evitar_dano_nao_muda_nada(&self) -> bool {
+        self.avoid_harm && !self.has_health
+    }
 }
 
 /// As oito razões pelas quais um agente pode não andar — ver o cabeçalho do módulo.
@@ -250,6 +268,94 @@ pub enum NavFieldEdit {
     Avoidance(bool),
     /// (W6) A tag do modo `Tag` — apendado.
     AlvoTag(u64),
+    /// (W7) Evitar as zonas que o ferem — apendado.
+    AvoidHarm(bool),
+    /// (W7) O custo da área, em múltiplos do chão — quem aplica põe o piso [`NAV_AREA_COST_MIN`].
+    CostAreaCost(f32),
+    /// (W7) A área proibida (um furo para todos).
+    CostAreaForbidden(bool),
+    /// (W7) O NOME cru da saída do atalho — quem apara e resolve é quem lê (a regra do `AlvoNome`).
+    LinkTo(String),
+    LinkTwoWay(bool),
+    LinkTeleport(bool),
+    /// (W7) O custo a mais de atravessar, em metros de chão (`>= 0`).
+    LinkCost(f32),
+    LinkOnCrossed(String),
+}
+
+/// ⭐ (W7) **O piso do custo de uma área** — a lei só pede `> 0` (o custo multiplica um comprimento);
+/// `0,01` = o chão cem vezes mais barato, a estrada que o agente prefere sempre. O painel e o dreno
+/// leem o MESMO número.
+pub const NAV_AREA_COST_MIN: f32 = 0.01;
+
+/// ⭐ (W7) **Os campos da ÁREA DE CUSTO**, mais a pergunta que decide se ela faz alguma coisa.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct InspectorNavCostArea {
+    pub cost: f32,
+    pub forbidden: bool,
+    /// Tem `RigidBody` e `Collider` — a forma da área é o colisor, e sem ele a ponte não a vê.
+    pub has_shape: bool,
+    /// O corpo é `Dynamic` — só um corpo parado (estático, ou cinemático quieto) recorta a malha.
+    pub body_moves: bool,
+}
+
+impl InspectorNavCostArea {
+    /// A queixa da área — `None` quando ela recorta a malha. Da mais específica para a mais geral.
+    #[must_use]
+    pub fn queixa(&self) -> Option<CostAreaQueixa> {
+        if !self.has_shape {
+            return Some(CostAreaQueixa::SemForma);
+        }
+        if self.body_moves {
+            return Some(CostAreaQueixa::CorpoQueAnda);
+        }
+        None
+    }
+}
+
+/// Por que uma área de custo pode não fazer nada.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum CostAreaQueixa {
+    /// Sem `RigidBody` + `Collider`: a área não tem forma.
+    SemForma,
+    /// Um corpo `Dynamic` nunca é um obstáculo parado — a ponte salta-o.
+    CorpoQueAnda,
+}
+
+/// ⭐ (W7) **Os campos do ATALHO** — a entrada é esta entidade; a saída, quem tem o nome.
+#[derive(Clone, Debug, PartialEq)]
+pub struct InspectorNavLink {
+    /// O nome da saída — vazio quando ninguém tem o id guardado.
+    pub to_nome: String,
+    /// O id guardado não é o nome de ninguém (a saída foi apagada ou renomeada).
+    pub to_perdido: bool,
+    pub two_way: bool,
+    pub teleport: bool,
+    pub cost: f32,
+    pub on_crossed: String,
+}
+
+impl InspectorNavLink {
+    /// A queixa do atalho — o perdido vem antes do vazio (a lei do alvo `Objecto`).
+    #[must_use]
+    pub fn queixa(&self) -> Option<LinkQueixa> {
+        if self.to_perdido {
+            return Some(LinkQueixa::SaidaPerdida);
+        }
+        if self.to_nome.is_empty() {
+            return Some(LinkQueixa::SemSaida);
+        }
+        None
+    }
+}
+
+/// Por que um atalho pode não levar a lado nenhum — a ponte salta-o nos dois casos.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum LinkQueixa {
+    /// Nenhuma saída escrita.
+    SemSaida,
+    /// Ninguém tem esse nome.
+    SaidaPerdida,
 }
 
 #[cfg(test)]

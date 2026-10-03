@@ -451,6 +451,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.weapon_fire.name" => "Weapon",
         "component.nav_agent.name" => "Nav Agent",
         "component.nav_region.name" => "Nav Region",
+        "component.nav_cost_area.name" => "Nav Cost Area",
+        "component.nav_link.name" => "Nav Link",
         "component.damage.name" => "Damage",
         "component.health.name" => "Health",
         "component.health_bar.name" => "Health Bar",

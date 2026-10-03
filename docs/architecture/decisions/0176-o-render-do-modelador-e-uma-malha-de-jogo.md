@@ -63,6 +63,8 @@ Decisões do dono (a ordem é dele, não derivada):
   Ver [handoff O_BRILHO_E_O_ESTILO](../../3DModeling/handoffs/HANDOFF_line_3DModeling_O_BRILHO_E_O_ESTILO_2026-10-02.md).
 - **O céu fotográfico (HDRI) entrou em 03/10** (crate `ph2d-sky`): substitui a parte sem caixa do
   céu; a luz-chave com sombra fica. Ver [handoff O_CEU_DE_VERDADE](../../3DModeling/handoffs/HANDOFF_line_3DModeling_O_CEU_DE_VERDADE_2026-10-03.md).
+- **O sol do HDRI é a luz-chave desde 03/10**, com a sombra na direcção dele (mapa de faces de trás,
+  PCSS em 3 níveis), medida contra o Cycles. Ver [handoff O_SOL_E_A_SOMBRA](../../3DModeling/handoffs/HANDOFF_line_3DModeling_O_SOL_E_A_SOMBRA_2026-10-03.md).
 - **Kill-criterion escrito ANTES de medir:** quadro **≤ 8 ms** a 1080p e entrada no Render **≤ 1 s**.
   Medido: quadro **1,2–2,4 ms**, entrada **0,03–0,44 s** (a de 0,44 s a `load` 6–20 — re-medir calmo).
 - A malha tem de **concordar com o campo** (pose, partição, material): a lei vive nos gates do

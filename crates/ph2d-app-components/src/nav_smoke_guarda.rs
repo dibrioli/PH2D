@@ -19,13 +19,21 @@
 //!   «perseguir» ─► tabela do guarda: Start Navigation «Hero»
 //!               └► cérebro da porta: Open → Armed
 //! zona verde (SignalOnHit «salvo»), com a porta armada ─► Armed → Closed ─► «fechar»
-//!   «fechar» ─► tabela da porta: Start Timer «desliza» (o tween que a desce)
-//!   a porta (cinemática) desce e PÁRA ─► a malha recorta-a ─► o caminho do guarda fica parcial
+//!   «fechar» ─► a FÁBRICA do vão faz nascer UMA porta (uma parede estática)
+//!   a malha recorta-a ─► o caminho do guarda fica parcial
 //!   ─► On No Path «perdeu_heroi» ─► cérebro: Chase → Patrol ─► «patrulhar» ─► Start Navigation «»
 //! ```
 //!
-//! ⚠️ A porta FECHADA é uma parede para a malha porque é um cinemático PARADO (a W6); enquanto
-//! desce, não é (o contorno claro da área andável — tecla `B` — fecha o vão quando ela pára).
+//! ⚠️ A porta nascida é uma parede estática: a malha refaz os mosaicos que ela toca no tique em que
+//! nasce (o contorno claro da área andável — tecla `B` — fecha o vão). E o Rewind a abre porque é
+//! a casa que VARRE o que nasceu numa corrida.
+//!
+//! ⛔⛔ **Recusado, medido no report do dono (2026-10-02, *«a porta não volta para a posição
+//! aberta»*):** a 1.ª porta era um cinemático que um TWEEN descia. Quando o Rewind renasce o
+//! relógio, o tween deixa de escrever, e a pose fechada passa a ser DOCUMENTO (a lei do `settle`:
+//! *o que a corrida escreve a corrida desfaz*); e um tween de volta não corre com o relógio parado
+//! no início (a porta do rebobinar renasce os relógios a cada quadro). O que nasce numa corrida é
+//! varrido por ela — sem uma linha do artista.
 //!
 //! ⛔ **Recusado, medido nas contas da cena:** um ALARME de tempo fixo (a porta fecha `2,5 s` depois
 //! de o guarda ver). O guarda (`2,2 m/s`) chega à porta, do ponto da ronda mais perto, em `~1,1 s` —
@@ -34,8 +42,9 @@
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{
-    Entity, MachineState, Name, SignalAction, SignalActions, SignalVerb, SimWorld, StateMachine,
-    StateTransition, Timer, Timers, Transform, Tweens, stable_name_id,
+    Entity, Factory, MachineState, MasterRoot, Name, SignalAction, SignalActions, SignalVerb,
+    SimWorld, SpawnAt, StableId, StateMachine, StateTransition, Transform, Visibility,
+    stable_name_id,
 };
 use ph2d_physics_ecs::{
     BodyKind, Collider, ColliderShape, NavAgent, NavRegion, NavTarget, RigidBody, SignalOnHit,
@@ -43,7 +52,6 @@ use ph2d_physics_ecs::{
 };
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 use ph2d_topdown::{TopDownLaw, direction::DirectionMode};
-use ph2d_tween::{AoAcabar, Canal, Tween};
 use ph2d_vec_scene::{Rgba8, StrokeSpec, VecPath, VecVertex, VertexKind};
 
 use crate::nav_smoke::{CENTRO, MEIO_RECINTO, RAIO_HEROI};
@@ -65,11 +73,8 @@ pub const X_DIVISAO: f32 = 1.0;
 pub const Y_VAO: (f32, f32) = (0.3, 1.5);
 /// A porta: meia-largura e meia-altura (cobre o vão com folga quando fechada).
 pub const MEIA_PORTA: [f32; 2] = [0.2, 0.7];
-/// O centro da porta FECHADA e ABERTA (aberta, ela esconde-se dentro da parede de cima).
+/// O centro da porta (onde a fábrica a faz nascer).
 pub const Y_PORTA_FECHADA: f32 = 0.9;
-pub const Y_PORTA_ABERTA: f32 = 2.5;
-/// Quanto a porta demora a descer.
-pub const DESLIZE_US: u64 = 250_000;
 /// O raio dos guardas.
 pub const RAIO_GUARDA: f32 = 0.35;
 /// A velocidade dos guardas (o herói anda a `4 m/s`: fugir é possível).
@@ -305,13 +310,16 @@ pub fn monta_em(
     desenha(sim, cena, mapa, RONDA, CANTOS_RONDA);
     desenha(sim, cena, mapa, RONDA_CONTROLO, CANTOS_CONTROLO);
     let w = sim.world_mut();
-    // ⭐⭐ A PORTA: um cinemático que um tween desce quando o relógio «desliza» corre, e um cérebro
-    // de três estados que só a deixa fechar DEPOIS de o guarda ver o herói.
-    let porta = w
+    // ⭐⭐ A PORTA: uma FÁBRICA no vão, com o cérebro de três estados que só a deixa fechar DEPOIS de
+    // o guarda ver o herói; o «fechar» faz nascer UMA porta (uma parede estática). ⛔ Não um tween:
+    // ver o cabeçalho (o rebobinar não a abria).
+    let molde = w
         .spawn((
             Name::new("Door"),
+            MasterRoot,
+            Visibility::visible(),
             RigidBody {
-                kind: BodyKind::Kinematic,
+                kind: BodyKind::Static,
             },
             Collider {
                 shape: ColliderShape::Cuboid {
@@ -325,18 +333,21 @@ pub fn monta_em(
                 [MEIA_PORTA[0] * 2.0, MEIA_PORTA[1] * 2.0],
                 PORTA_RGBA,
             ),
-            // ⚠️ O tween `i` corre no relógio `i`.
-            Timers(vec![Timer {
-                name: "desliza".into(),
-                duration_us: DESLIZE_US,
-                // ⚠️ O de fábrica ARRANCA sozinho — e a porta abria a cena fechada.
-                autostart: false,
-                ..Timer::default()
-            }]),
-            Tweens(vec![Tween {
-                ao_acabar: AoAcabar::Hold,
-                ..Tween::linear(Canal::PositionY, Y_PORTA_ABERTA, Y_PORTA_FECHADA)
-            }]),
+            Transform::from_translation(Vec2::new(X_DIVISAO, Y_PORTA_FECHADA)),
+        ))
+        .id();
+    let porta = w
+        .spawn((
+            Name::new("Door Frame"),
+            Factory {
+                master: 0, // a identidade do molde só existe no fim desta montagem
+                on_signal: FECHAR.into(),
+                at: SpawnAt::Here,
+                burst: 1,
+                alive_max: 1,
+                total_max: 1,
+                ..Factory::default()
+            },
             StateMachine {
                 states: vec![
                     estado("Open", ""),
@@ -346,8 +357,7 @@ pub fn monta_em(
                 transitions: vec![passo(0, PERSEGUIR, 1), passo(1, SALVO, 2)],
                 initial: 0,
             },
-            SignalActions(vec![linha(FECHAR, SignalVerb::StartTimer, "desliza")]),
-            Transform::from_translation(Vec2::new(X_DIVISAO, Y_PORTA_ABERTA)),
+            Transform::from_translation(Vec2::new(X_DIVISAO, Y_PORTA_FECHADA)),
         ))
         .id();
 
@@ -400,6 +410,12 @@ pub fn monta_em(
         RONDA_CONTROLO,
         CONTROLO_RGBA,
     );
+    // ⚠️ A fábrica aponta o molde pela IDENTIDADE (nunca pelos bits), e ela só existe agora.
+    ph2d_ecs::assign_missing_stable_ids(w);
+    let id = w.get::<StableId>(molde).map_or(0, |s| s.0);
+    if let Some(mut f) = w.get_mut::<Factory>(porta) {
+        f.master = id;
+    }
     Guarda {
         guarda: vermelho,
         controlo,

@@ -74,7 +74,7 @@ pub enum Renascimento {
 /// | [`TimerRuntime`] | [`crate::timer::born`] por slot | um `autostart` nasce **a correr**; o `Default` é parado |
 /// | [`LifetimeRuntime`] | `Default` | zero microssegundos vividos |
 /// | [`FactoryRuntime`] | `Default` | ⭐ **`rng: 0` quer dizer «por semear»** ⇒ a corrida seguinte **repete** a primeira |
-/// | [`StateMachineRuntime`] | [`crate::state_machine::born`] | volta ao estado **inicial**, e `started = false` fá-lo anunciar a entrada outra vez |
+/// | [`StateMachineRuntime`] | [`crate::state_machine::born`] | volta ao estado **inicial**, e `started = false` fá-lo anunciar a entrada outra vez — ⚠️ no rebobinar, só quem SAIU do inicial (a porta corre a cada quadro parado) |
 /// | [`CameraRuntime`] | ⭐⭐ **APAGAR o componente** | o `ensure_runtime` da shell recria-o **da pose autorada**; um `Default` poria a câmera na ORIGEM |
 /// | [`CounterRuntime`] | ⭐ o **`start` da config** | a primeira espécie que LÊ a config: um `Default` poria todos a zero e apagaria as três vidas que o artista autorou. ⭐⭐ **E a única que lê o MOTIVO**: com [`Counter::keep_on_restart`] ele atravessa um recomeço e **não** um rebobinar |
 /// | [`CounterWatchRuntime`] | [`crate::counter_watch::born`] por slot | ⭐⭐ `held = false` **re-arma a aresta**: sem isso a 2.ª corrida nunca voltaria a anunciar a morte, porque a condição já estava satisfeita quando a 1.ª acabou |
@@ -102,9 +102,20 @@ pub fn rewind_runtime_state(world: &mut World, motivo: Renascimento) -> usize {
     // ⭐ **O membro que nasceu DEPOIS da porta**, e que passou por ela porque o censo o obrigou —
     // que é exactamente o que esta wave existiu para conseguir. A config entra na conta: um cérebro
     // renasce no estado INICIAL dele, e com `started = false` ele volta a anunciar a entrada.
+    //
+    // ⛔⛔ **E no REBOBINAR ela é IDEMPOTENTE** (report do dono, 2026-10-02: *«Rewind: milhões de
+    // mensagens»*): esta porta corre em TODO quadro em que o relógio está parado no início (ver o
+    // `fase_fabrica_e_morte` da shell), e o `started = false` de cada quadro fazia o cérebro
+    // anunciar a entrada no estado inicial OUTRA VEZ, a cada quadro — uma enxurrada de sinais e de
+    // acções. ⇒ quem já está no inicial e já o anunciou fica; quem saiu dele renasce e anuncia UMA
+    // vez. ⚠️ O RECOMEÇO não muda: ele é servido uma vez, e a entrada anuncia-se sempre.
     let mut q = world.query::<(&StateMachine, &mut StateMachineRuntime)>();
     for (cfg, mut rt) in q.iter_mut(world) {
-        *rt = crate::state_machine::born(cfg);
+        let nascido = crate::state_machine::born(cfg);
+        if motivo == Renascimento::Rebobinar && rt.started && rt.current == nascido.current {
+            continue;
+        }
+        *rt = nascido;
         n += 1;
     }
 

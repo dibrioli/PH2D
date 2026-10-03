@@ -342,3 +342,63 @@ fn a_conta_da_porta_nao_inclui_quem_atravessou() {
         "o rebobinar toca EXACTAMENTE um contador a mais: {no_rebobinar} contra {no_recomeco}"
     );
 }
+
+/// ⛔⛔ **O rebobinar corre a cada quadro parado, e não pode fazer um cérebro anunciar a entrada a
+/// cada quadro** (report do dono, 2026-10-02: *«Rewind: milhões de mensagens»*). Quem já está no
+/// estado inicial e já o anunciou FICA; quem saiu dele renasce (e anuncia UMA vez). O CONTROLO: o
+/// recomeço renasce sempre.
+///
+/// **Mutação que deve sangrar:** tirar o `continue` (todo cérebro renasce a cada quadro).
+#[test]
+fn rebobinar_parado_nao_faz_o_cerebro_reanunciar_a_cada_quadro() {
+    use ph2d_ecs::rewind_runtime::{Renascimento, rewind_runtime_state};
+    use ph2d_ecs::{MachineState, StateMachine, StateMachineRuntime};
+    let estado = |n: &str| MachineState {
+        name: n.into(),
+        on_enter: String::new(),
+        on_exit: String::new(),
+    };
+    let maquina = StateMachine {
+        states: vec![estado("A"), estado("B")],
+        transitions: Vec::new(),
+        initial: 0,
+    };
+    let mut w = World::new();
+    let anunciado = w
+        .spawn((
+            maquina.clone(),
+            StateMachineRuntime {
+                current: 0,
+                started: true,
+            },
+        ))
+        .id();
+    let saiu = w
+        .spawn((
+            maquina,
+            StateMachineRuntime {
+                current: 1,
+                started: true,
+            },
+        ))
+        .id();
+    let rt = |w: &World, e| *w.get::<StateMachineRuntime>(e).expect("o vivo");
+    rewind_runtime_state(&mut w, Renascimento::Rebobinar);
+    assert!(
+        rt(&w, anunciado).started,
+        "o que já estava no inicial voltou a anunciar a entrada"
+    );
+    assert_eq!(
+        rt(&w, saiu),
+        StateMachineRuntime {
+            current: 0,
+            started: false
+        },
+        "o que saiu do inicial não renasceu"
+    );
+    rewind_runtime_state(&mut w, Renascimento::Recomecar);
+    assert!(
+        !rt(&w, anunciado).started,
+        "o CONTROLO: o recomeço renasce sempre"
+    );
+}

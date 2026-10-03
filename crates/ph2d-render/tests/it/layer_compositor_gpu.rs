@@ -3288,3 +3288,37 @@ fn measure_the_masked_document() {
     }
     eprintln!();
 }
+
+/// ⭐ O encode final da placa ARREDONDA (ADR-0177): branco a 50 % sobre preto é exactamente `127,5`
+/// em tons de ecrã e tem de sair `128` em todo píxel, ao byte. A paridade `±1` com a CPU não
+/// distingue arredondar de truncar (a mutação G2 sobreviveu a ela).
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_a_metade_em_tons_de_ecra_e_128_ao_byte() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (16u32, 8u32);
+    let mut prov = MapProvider::default();
+    prov.insert(0, 1, [0u8, 0, 0, 255].repeat((w * h) as usize));
+    prov.insert(1, 1, [255u8, 255, 255, 255].repeat((w * h) as usize));
+    let camada = |key, opacity| LayerOp::Layer {
+        mask: None,
+        clipping: false,
+        key,
+        blend_mode: 0,
+        opacity,
+    };
+    let ops = vec![camada(0, 1.0), camada(1, 0.5)];
+    let mut comp = LayerCompositor::new(&gpu);
+    comp.composite(&gpu, &ops, &prov, w, h, Region::full(w, h))
+        .expect("composite");
+    let got = comp.read_output(&gpu).expect("readback");
+    assert_eq!(got.len(), (w * h * 4) as usize);
+    assert!(
+        got.chunks_exact(4).all(|p| p == [128, 128, 128, 255]),
+        "esperado 128 ao byte, primeiro píxel {:?}",
+        &got[..4]
+    );
+}

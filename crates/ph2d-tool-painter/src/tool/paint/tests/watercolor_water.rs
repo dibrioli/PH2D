@@ -269,42 +269,46 @@ fn watercolor_ground_is_the_real_backdrop_not_a_virtual_cream() {
         }
         assert!(t.on_canvas_pointer(cp([x, 48.0], PointerPhase::Up)));
     }
-    // (a) Reference: the stroke painted directly on an opaque white base.
-    let mut direct = PainterTool::default();
-    direct.set_source(vec![255u8; (size * size * 4) as usize], size, size);
-    direct.paint.brush = wet_brush();
-    direct.paint.brush_by_mode.fill(direct.paint.brush);
-    stroke(&mut direct);
-    // (b) The stroke on a TRANSPARENT layer added above the same white base.
-    let mut layered = PainterTool::default();
-    layered.set_source(vec![255u8; (size * size * 4) as usize], size, size);
-    layered.add_raster_layer("wash").expect("add layer");
-    layered.paint.brush = wet_brush();
-    layered.paint.brush_by_mode.fill(layered.paint.brush);
-    stroke(&mut layered);
-    // Flatten (b) through the real compositor and compare inside the wash.
-    let active = layered.layers.active().expect("active");
-    let src = crate::tool::ToolPixelSource {
-        active_id: active,
-        active_rgba: &layered.canvas_rgba,
-        images: &layered.images,
-    };
-    let flat = crate::compositor::composite(&layered.layers, &src, size, size);
-    let mut worst = 0i32;
-    for y in 40..57u32 {
-        for x in 24..72u32 {
-            let i = ((y * size + x) * 4) as usize;
-            let d = px(&direct, size, x, y);
-            for c in 0..3 {
-                worst = worst.max((i32::from(flat[i + c]) - i32::from(d[c])).abs());
+    // ⚠️ Branco E um meio-tom: sobre o branco a luz e o ecrã coincidem (`1 = 1`), e um
+    // des-premultiplicar no espaço errado passaria (ADR-0177; a mutação C6 sobreviveu só com o branco).
+    for chao in [[255u8, 255, 255, 255], [150, 120, 90, 255]] {
+        // (a) Reference: the stroke painted directly on an opaque white base.
+        let mut direct = PainterTool::default();
+        direct.set_source(chao.repeat((size * size) as usize), size, size);
+        direct.paint.brush = wet_brush();
+        direct.paint.brush_by_mode.fill(direct.paint.brush);
+        stroke(&mut direct);
+        // (b) The stroke on a TRANSPARENT layer added above the same white base.
+        let mut layered = PainterTool::default();
+        layered.set_source(chao.repeat((size * size) as usize), size, size);
+        layered.add_raster_layer("wash").expect("add layer");
+        layered.paint.brush = wet_brush();
+        layered.paint.brush_by_mode.fill(layered.paint.brush);
+        stroke(&mut layered);
+        // Flatten (b) through the real compositor and compare inside the wash.
+        let active = layered.layers.active().expect("active");
+        let src = crate::tool::ToolPixelSource {
+            active_id: active,
+            active_rgba: &layered.canvas_rgba,
+            images: &layered.images,
+        };
+        let flat = crate::compositor::composite(&layered.layers, &src, size, size);
+        let mut worst = 0i32;
+        for y in 40..57u32 {
+            for x in 24..72u32 {
+                let i = ((y * size + x) * 4) as usize;
+                let d = px(&direct, size, x, y);
+                for c in 0..3 {
+                    worst = worst.max((i32::from(flat[i + c]) - i32::from(d[c])).abs());
+                }
             }
         }
+        assert!(
+            worst <= 2,
+            "chão {chao:?}: flatten(transparent layer over it) must equal painting on it directly \
+             (un-premultiply bake, no ground baked in); worst channel delta {worst}"
+        );
     }
-    assert!(
-        worst <= 2,
-        "flatten(transparent layer over white) must equal painting on white directly \
-         (un-premultiply bake, no ground baked in); worst channel delta {worst}"
-    );
 }
 
 /// **T3-cinza (doc 11 §5 F1) — the rewet presence is ground-relative:** with the document PAPER

@@ -213,3 +213,13 @@ falhas, zero flakes):**
 ▸ linha line_uiux · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
     Finished `smoke` profile [optimized] target(s) in 0.24s
 ```
+
+## §9 — Depois do fecho (03/10)
+
+- ✅ **Smoke do dono aprovado** (03/10).
+- Um commit a mais, **só de docs**: o plano
+  [`../spec/06_tipos_e_modos_de_objeto.md`](../spec/06_tipos_e_modos_de_objeto.md) (tipos de
+  objecto no `+` da Hierarchy e modos por objecto, com as escolhas do dono) e o oráculo
+  [`../spec/oraculos/modos_e_tipos_2026-10-03.md`](../spec/oraculos/modos_e_tipos_2026-10-03.md).
+- Nenhum código mudou: o binário de smoke do §8 continua válido. A implementação é uma linha
+  nova (`line/ObjectModes`), aberta depois desta integração.

@@ -91,10 +91,10 @@ pub(crate) fn plan_with_links(
     let ponto = |i: usize| match i {
         0 => s,
         1 => t,
-        i if (i - 2) % 2 == 0 => dirigidos[(i - 2) / 2].0,
+        i if (i - 2).is_multiple_of(2) => dirigidos[(i - 2) / 2].0,
         i => dirigidos[(i - 2) / 2].1,
     };
-    let e_entrada = |i: usize| i >= 2 && (i - 2) % 2 == 0;
+    let e_entrada = |i: usize| i >= 2 && (i - 2).is_multiple_of(2);
     let wmin = q.costs.iter().copied().fold(1.0, f64::min);
     let mut best = vec![f64::INFINITY; n];
     // De onde se chegou a cada nó, e o troço (os pontos) que lá trouxe — `None` = o atalho.

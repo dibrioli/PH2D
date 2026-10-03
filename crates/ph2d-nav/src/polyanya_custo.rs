@@ -53,6 +53,10 @@ use crate::mesh::NavMesh;
 /// escolhe o corredor errado: 9 %). Abaixo de `1,0` é o oráculo a errar (`0,2 %` residual).
 pub const STEINER_M: f64 = 0.25;
 
+/// Um ponto do caminho a reconstruir: onde, o custo do troço que CHEGA a ele, e a gama onde uma raiz
+/// de fronteira pode deslizar no polimento (`None` = fica).
+type Ponto = (V2, f64, Option<(V2, V2)>);
+
 /// O tecto das varridas do polimento (cada varrida desliza cada raiz uma vez; pára antes quando
 /// nenhuma se mexe mais de [`EPS`]).
 const POLISH_SWEEPS: usize = 32;
@@ -470,7 +474,7 @@ impl Polyanya {
         t: V2,
     ) -> Path {
         // (ponto, custo do troço que chega a ele, a gama de deslize de uma raiz de fronteira)
-        let mut pts: Vec<(V2, f64, Option<(V2, V2)>)> = vec![(t, w, None)];
+        let mut pts: Vec<Ponto> = vec![(t, w, None)];
         if let Some(v) = via
             && !same(v, t)
         {
@@ -488,9 +492,7 @@ impl Polyanya {
             root = r.prev;
         }
         pts.reverse();
-        let length = |pts: &[(V2, f64, Option<(V2, V2)>)]| -> f64 {
-            pts.windows(2).map(|w| dist(w[0].0, w[1].0)).sum()
-        };
+        let length = |pts: &[Ponto]| -> f64 { pts.windows(2).map(|w| dist(w[0].0, w[1].0)).sum() };
         let mut cost: f64 = pts.windows(2).map(|w| w[1].1 * dist(w[0].0, w[1].0)).sum();
         if pts.iter().any(|p| p.2.is_some()) {
             polish(mesh, &self.costs, &mut pts);
@@ -553,7 +555,7 @@ struct Lado {
 
 /// O polimento de Snell sobre os pontos `(ponto, custo do troço que chega, gama de deslize)`. Só se
 /// mexem as raízes de fronteira; a partida, o alvo e os cantos ficam.
-pub(super) fn polish(mesh: &NavMesh, costs: &[f64], pts: &mut [(V2, f64, Option<(V2, V2)>)]) {
+pub(super) fn polish(mesh: &NavMesh, costs: &[f64], pts: &mut [Ponto]) {
     let real = |a: V2, b: V2, c: V2| -> Option<f64> {
         Some(segment_cost(mesh, costs, a, b)? + segment_cost(mesh, costs, b, c)?)
     };

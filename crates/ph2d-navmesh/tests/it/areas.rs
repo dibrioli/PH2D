@@ -17,7 +17,7 @@ pub fn areas(rng: &mut Lcg, n: usize, w: f64, h: f64) -> Vec<Area> {
     (0..n)
         .map(|i| {
             let c = [rng.range(-1.0, w + 1.0), rng.range(-1.0, h + 1.0)];
-            let shape = if rng.next_u32() % 2 == 0 {
+            let shape = if rng.next_u32().is_multiple_of(2) {
                 let (a, b) = (rng.range(-1.0, 1.0), rng.range(-1.0, 1.0));
                 let l = (a * a + b * b).sqrt().max(1e-6);
                 Shape::Convex(caixa_rodada(

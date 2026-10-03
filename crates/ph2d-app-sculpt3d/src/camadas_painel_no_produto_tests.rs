@@ -324,7 +324,7 @@ fn diag_o_preco_de_arrastar_a_opacidade_de_ponta_a_ponta() {
     use ph2d_tool_painter::PieceLayerOp;
     use std::time::Instant;
     let gpu = gpu_or_skip!();
-    for k in 3u8..=6 {
+    for k in 3u8..=8 {
         let mut s = cena_52(&gpu.device);
         s.tinta_nivel = Some(k);
         s.sync_mesh(&gpu);

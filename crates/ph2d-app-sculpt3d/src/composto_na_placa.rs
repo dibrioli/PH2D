@@ -24,7 +24,7 @@ use ph2d_render::layer_compositor::{
 };
 use ph2d_tool_painter::{LayerId, flatten_for_gpu};
 
-use crate::pilha_da_peca::{LARGURA_DA_DOBRA, PilhaDaPeca, dobra};
+use crate::pilha_da_peca::{PilhaDaPeca, dobra};
 
 /// Por que a placa não compôs a pilha — o chamador compõe na CPU.
 #[derive(Debug, PartialEq, Eq)]
@@ -50,7 +50,7 @@ impl LayerPixelProvider for Fonte<'_> {
             dirty: p.na_placa.linhas.map(|(a, b)| Region {
                 x: 0,
                 y: a,
-                w: LARGURA_DA_DOBRA,
+                w: p.largura(),
                 h: b - a + 1,
             }),
         })

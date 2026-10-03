@@ -99,13 +99,13 @@ fn compara(cpu: &[u8], placa: &[u8]) -> (usize, u8) {
 const FRACCAO_A_UM_DEGRAU: f64 = 0.001_2;
 
 /// ⭐⭐⭐⭐ **O composto da placa é o da CPU, a um degrau de sRGB8** — na pilha
-/// rica, nos degraus `8x..32x`; depois de mudar só o METADADO (nada sobe); e
+/// rica, nos degraus `8x..32x` e `128x` (a 1.ª dobra LARGA, `2 048`); depois de mudar só o METADADO (nada sobe); e
 /// depois de sujar uma FAIXA de uma camada (só ela sobe).
 #[test]
 #[ignore = "precisa de placa"]
 fn a_placa_compoe_a_pilha_rica_como_a_cpu() {
     let gpu = gpu_or_skip!();
-    for k in 3u8..=5 {
+    for k in [3u8, 4, 5, 7] {
         let (mut p, mult) = pilha_rica(k);
         let n = p.amostras();
         let mut placa = CompostoNaPlaca::novo(&gpu);

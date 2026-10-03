@@ -112,3 +112,44 @@ fn a_cor_por_vertice_e_o_prefixo_da_peca_composta() {
         "CONTROLO: a camada mudou os vértices"
     );
 }
+
+/// ⭐⭐ **GATE — A dobra cabe na textura que TODA placa garante** e é a mais
+/// estreita que cabe: `1 024` até onde a altura chega (a `64x` da peça da
+/// lição), e alarga em potências de 2 acima (`128x` = `12 M`, `256x` = `48 M`
+/// amostras) — senão a placa recusava a peça e ela caía na CPU (`153`/`646 ms`
+/// por passo, doc 30 §13.2).
+#[test]
+fn a_dobra_cabe_na_textura_garantida_e_e_a_mais_estreita() {
+    use crate::pilha_da_peca::{ALTURA_MAX_DA_DOBRA, LARGURA_DA_DOBRA};
+    for n in [
+        1usize,
+        47_106,
+        3_014_658,
+        1024 * 8192,
+        1024 * 8192 + 1,
+        12_058_626,
+        48_234_498,
+        8192 * 8192,
+    ] {
+        let (l, h) = dobra(n);
+        assert!(
+            l.is_power_of_two() && l >= LARGURA_DA_DOBRA,
+            "n {n}: largura {l}"
+        );
+        assert!(h <= ALTURA_MAX_DA_DOBRA, "n {n}: altura {h}");
+        assert!(
+            l as usize * h as usize >= n,
+            "n {n}: a dobra cobre as amostras"
+        );
+        assert!(
+            l == LARGURA_DA_DOBRA
+                || (n as u64).div_ceil(u64::from(l / 2)) > u64::from(ALTURA_MAX_DA_DOBRA),
+            "n {n}: {l} não é a mais estreita"
+        );
+    }
+    assert_eq!(
+        dobra(3_014_658).0,
+        LARGURA_DA_DOBRA,
+        "a 64x da lição fica a 1 024"
+    );
+}

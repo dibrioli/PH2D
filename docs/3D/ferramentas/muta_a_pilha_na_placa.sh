@@ -110,6 +110,8 @@ muta $A/doc_migracao.rs 'fundo: Vec::new(),' 'fundo: vec![[0.5; 3]; 1],' \
   'P16 de_v6 inventa um fundo' cpu
 muta $R/tinta_achata.rs '[gx, grupos.div_ceil(gx), gx * GRUPO]' '[gx, grupos.div_ceil(gx), gx]' \
   'P17 o passo_y da grade do despacho' render
+muta $A/pilha_da_peca.rs '    while n.div_ceil(largura) > teto && largura < teto {' '    while n.div_ceil(largura) >= teto && largura < teto {' \
+  'P20 a dobra alarga antes de precisar' cpu
 # (P18 saiu: «outra dobra, outro compositor» era uma 2.ª resposta — o `ensure_array` do compositor
 #  já reconstrói as fatias e esquece o cache quando a tela muda de tamanho; a mutação era equivalente.)
 muta $A/history_tinta_fina.rs 'crate::tinta_da_peca::pilha::recompoe_o_plano(obj);' 'crate::tinta_da_peca::pilha::recompoe(obj);' \

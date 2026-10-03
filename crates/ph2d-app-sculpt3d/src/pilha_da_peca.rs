@@ -35,8 +35,17 @@ use ph2d_tool_painter::{
 /// A largura da dobra: o plano de `N` amostras lê-se como uma imagem
 /// `1 024 × ⌈N/1 024⌉`. ⚠️ É a granularidade do paralelismo do compositor
 /// (uma linha = uma unidade de trabalho), não um recurso: a faixa de `1 024`
-/// amostras compõe em `0,114 ms` (doc 30 §6).
+/// amostras compõe em `0,114 ms` (doc 30 §6). É a largura MÍNIMA — ver
+/// [`ALTURA_MAX_DA_DOBRA`].
 pub(crate) const LARGURA_DA_DOBRA: u32 = 1024;
+
+/// ⛔ **A altura máxima da dobra** — o lado de textura 2D que TODA placa
+/// garante (o mínimo do WebGPU para `max_texture_dimension_2d`): o compositor de
+/// GPU lê a dobra como uma textura. Acima dela a dobra ALARGA (potências de 2):
+/// a `128x`/`256x` a peça da lição tem `12 M`/`48 M` amostras, e a `1 024` de
+/// largura a placa recusava-a — a peça caía na CPU, `153`/`646 ms` por passo do
+/// arrasto (doc 30 §13.2).
+pub(crate) const ALTURA_MAX_DA_DOBRA: u32 = 8192;
 
 /// O nome da camada em que um plano anterior às camadas abre — o mesmo que o
 /// Painter 2D dá à camada de um sprite novo, porque é o mesmo painel que o
@@ -49,8 +58,13 @@ pub(crate) fn nome_da_base() -> &'static str {
 /// As dimensões da dobra de um plano de `n` amostras.
 #[must_use]
 pub(crate) fn dobra(n: usize) -> (u32, u32) {
-    let altura = (n as u64).div_ceil(u64::from(LARGURA_DA_DOBRA)).max(1);
-    (LARGURA_DA_DOBRA, u32::try_from(altura).unwrap_or(u32::MAX))
+    let (n, teto) = (n as u64, u64::from(ALTURA_MAX_DA_DOBRA));
+    let mut largura = u64::from(LARGURA_DA_DOBRA);
+    while n.div_ceil(largura) > teto && largura < teto {
+        largura *= 2;
+    }
+    let altura = n.div_ceil(largura).max(1);
+    (largura as u32, u32::try_from(altura).unwrap_or(u32::MAX))
 }
 
 /// As amostras de UMA camada.
@@ -65,6 +79,8 @@ pub(crate) struct PlanoDaCamada {
     relevo: Option<Vec<[f32; 2]>>,
     /// O que a placa ainda não tem destes píxeis (`composto_na_placa`).
     pub(crate) na_placa: NaPlaca,
+    /// A largura da dobra deste plano ([`dobra`]).
+    largura: u32,
 }
 
 /// ⭐⭐ **A versão dos píxeis de uma camada e as linhas da dobra que mudaram
@@ -120,24 +136,30 @@ impl PlanoDaCamada {
             rgba8: vec![0; l as usize * h as usize * 4],
             relevo: None,
             na_placa: NaPlaca::nova(h),
+            largura: l,
         }
     }
 
     /// A camada inteira mudou.
     pub(crate) fn mudou_toda(&mut self) {
-        let h = self.rgba8.len() / (LARGURA_DA_DOBRA as usize * 4);
+        let h = self.rgba8.len() / (self.largura as usize * 4);
         self.na_placa.mudou(0, (h as u32).saturating_sub(1));
     }
 
     /// A amostra `i` mudou.
     pub(crate) fn mudou_amostra(&mut self, i: usize) {
-        let y = (i / LARGURA_DA_DOBRA as usize) as u32;
+        let y = (i / self.largura as usize) as u32;
         self.na_placa.mudou(y, y);
     }
 
     /// Os píxeis da dobra inteira (com a cauda) — o que a placa sobe.
     pub(crate) fn dobrado(&self) -> &[u8] {
         &self.rgba8
+    }
+
+    /// A largura da dobra deste plano.
+    pub(crate) fn largura(&self) -> u32 {
+        self.largura
     }
 
     /// Escreve as `px.len()` primeiras amostras e o relevo (a leitura do

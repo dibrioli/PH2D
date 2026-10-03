@@ -431,6 +431,26 @@ ANTES da 1.ª recomposição); a grade do despacho só tem 2.ª linha acima de `
 função pura com gate de tecto pequeno); e «outra dobra, outro compositor» era uma 2.ª resposta ao
 `ensure_array` do compositor, que já reconstrói as fatias — saiu.
 
+### 13.2 Os degraus de topo (`128x`, `256x`)
+
+O chip `Paint Detail` vai até `256x` (`NIVEL_MAX = 8`), e a dobra de `1 024` de largura dava `11 776` e
+`47 104` linhas — acima do lado de textura que toda placa garante (`8 192`): o compositor recusava e a
+peça caía EM SILÊNCIO na CPU. ⇒ `dobra(n)` alarga em potências de 2 só quando a altura passaria de
+`ALTURA_MAX_DA_DOBRA` (`1 024` até `64x`; `2 048` a `128x`; `8 192` a `256x`); cada plano guarda a sua
+largura. Gates `a_dobra_cabe_na_textura_garantida_e_e_a_mais_estreita` e a paridade com placa a `128x`.
+
+| degrau | amostras | antes (CPU, a placa recusava) | depois: `sync_mesh` mediana · pior |
+|---|---|---|---|
+| `128x` | 12,1 M | `153 ms` | `0,82` · `2,24 ms` |
+| `256x` | 48,2 M | `646 ms` | `5,7` · `12,6 ms` |
+
+⚠️ A `256x` são `~2 GB` de memória movidos por passo (compor + achatar `48 M` amostras): é o tecto
+da placa, dentro de um quadro a `60 Hz`. ⏳ **E o tecto de camadas do compositor**: o orçamento de
+cache é `1 GiB` numa placa discreta (`ph2d-render` `layer_cache_budget`, a política do Painter 2D) e
+uma camada a `256x` são `193 MB` ⇒ **5** camadas (máscaras contam); com mais, a placa recusa e a peça
+compõe na CPU (`~650 ms`). A `128x` cabem `21`. Subir o orçamento para a peça é decisão de memória
+de placa, medida quando o dono a pedir.
+
 **Fica para depois (nomeado):** o traço continua a compor as amostras sujas na CPU (`0,04 ms`, sem
 razão para a placa); a pilha translúcida num traço semeia o fundo inteiro em cada quadro (`fundo_semeado`
 na `compoe_amostras` — o caso da base a menos de `100 %`; cachear o fundo por amostra é a cura se o

@@ -373,3 +373,91 @@ fn diag_o_preco_de_arrastar_a_opacidade_de_ponta_a_ponta() {
         );
     }
 }
+
+/// 🔎 **SONDA — o MESMO traço preto na base e numa camada nova por cima** (report do dono, 03/10:
+/// *«o traço feito na camada 2 tem qualidade menor»*). A cena A pinta a base; a B pinta uma camada
+/// nova. Da A sai a cobertura `w` de cada amostra (`w = 1 − A/antes`, pincel preto); se a ÚNICA
+/// diferença da B fosse misturar em LUZ, a B seria `srgb(lin(antes)·(1 − w))`. Imprime o resíduo
+/// contra essa previsão e contra a A: pequeno em todo o lado = a lei de mistura; amostras soltas
+/// muito fora = defeito.
+#[test]
+#[ignore = "sonda: precisa de adaptador e imprime a tabela"]
+fn diag_o_traco_numa_camada_e_o_da_base() {
+    use ph2d_color::srgb::{linear_to_srgb_unit, srgb_to_linear_unit};
+    let gpu = gpu_or_skip!();
+    let pinta = |camada_nova: bool| {
+        let mut s = cena_52(&gpu.device);
+        s.sync_mesh(&gpu);
+        let mut p = PainterTool::default();
+        p.set_brush_color_srgb8([0, 0, 0]);
+        p.set_brush_strength(1.0);
+        p.set_brush_size_px(24.0);
+        quadro(Some(&mut s), Some(&mut p));
+        if camada_nova {
+            p.handle_panel_event(ph2d_editor_core::tool::PanelEvent::Click(
+                PAINTER_LAYERS_ADD,
+            ));
+            quadro(Some(&mut s), Some(&mut p));
+        }
+        s.sync_mesh(&gpu);
+        let antes = amostras(&s);
+        traco(&mut s, &mut p, 420.0);
+        quadro(Some(&mut s), Some(&mut p));
+        s.sync_mesh(&gpu);
+        (antes, amostras(&s), activa(&s).0)
+    };
+    let (antes, a, ca) = pinta(false);
+    let (antes_b, b, cb) = pinta(true);
+    assert_eq!(antes, antes_b, "as duas cenas partem da mesma peça");
+    eprintln!("camadas: A {ca} · B {cb} · amostras {}", a.len());
+    let (mut tocadas, mut fora_da_luz, mut fora_da_a) = (0usize, Vec::new(), Vec::new());
+    for i in 0..a.len() {
+        let w = (0..3)
+            .map(|c| {
+                if antes[i][c] > 0.05 {
+                    1.0 - a[i][c] / antes[i][c]
+                } else {
+                    0.0
+                }
+            })
+            .fold(0.0f32, f32::max)
+            .clamp(0.0, 1.0);
+        if w < 1e-4 && (0..3).all(|c| (b[i][c] - antes[i][c]).abs() < 1e-4) {
+            continue;
+        }
+        tocadas += 1;
+        let prev = (0..3)
+            .map(|c| linear_to_srgb_unit(srgb_to_linear_unit(antes[i][c]) * (1.0 - w)))
+            .collect::<Vec<_>>();
+        let d_luz = (0..3)
+            .map(|c| (b[i][c] - prev[c]).abs())
+            .fold(0.0f32, f32::max);
+        let d_a = (0..3)
+            .map(|c| (b[i][c] - a[i][c]).abs())
+            .fold(0.0f32, f32::max);
+        fora_da_luz.push((d_luz, i, w));
+        fora_da_a.push((d_a, i, w));
+    }
+    let resume = |nome: &str, v: &mut Vec<(f32, usize, f32)>| {
+        v.sort_by(|x, y| y.0.total_cmp(&x.0));
+        let n = v.len().max(1);
+        let acima = |t: f32| v.iter().filter(|x| x.0 > t).count();
+        eprintln!(
+            "{nome}: pior {:.3} · mediana {:.4} · > 4/255: {} · > 16/255: {} · > 64/255: {} (de {n})",
+            v.first().map_or(0.0, |x| x.0),
+            v[n / 2].0,
+            acima(4.0 / 255.0),
+            acima(16.0 / 255.0),
+            acima(64.0 / 255.0)
+        );
+        for (d, i, w) in v.iter().take(6) {
+            eprintln!(
+                "   amostra {i}: dif {d:.3} · w {w:.3} · antes {:?} · A {:?} · B {:?}",
+                antes[*i], a[*i], b[*i]
+            );
+        }
+    };
+    eprintln!("amostras tocadas: {tocadas}");
+    resume("B contra a previsão em LUZ", &mut fora_da_luz);
+    resume("B contra A", &mut fora_da_a);
+}

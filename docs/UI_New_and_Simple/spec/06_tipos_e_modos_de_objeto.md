@@ -102,8 +102,25 @@ ObjectTypeDecl {
 
 - **Um tipo que não está compilado não aparece**: o módulo é removível por feature. ⇒ Um tipo
   sem crate não deixa uma entrada morta no menu.
-- **O `+` da Hierarchy** abre o menu Add agrupado. ⏳ O mesmo menu no Shift+A do canvas é a
-  decisão §6.3.
+- ⭐ **O `+` da Hierarchy abre um MODAL, como o *Add shape…* do Modeling** (ordem do dono, 03/10:
+  *«os objetos devem ser selecionados num modal como os objetos de Modeling»*).
+  - ⛔ **Não é um modal novo:** é o `ph2d_editor_core::widget::command_palette`, genérico por
+    desenho. Ele recebe um `PaletteModel` (título, grupos coloridos, itens com `NodeId` opaco),
+    e quem o abriu mapeia o id de volta.
+  - Já tem scrim, cascata, **busca** (o mesmo predicado filtra a pintura e o `Enter`),
+    sub-grupos, rolagem e 2 colunas.
+  - O modelo copia os precedentes: [`ph2d-app-field3d/src/shape_palette.rs`](../../../crates/ph2d-app-field3d/src/shape_palette.rs)
+    (`build_from`, `item_id` = hash da chave i18n, `slot_of_pick`) e o `+` do Inspector
+    (`component_palette` da shell, ADR-0166/F3).
+  - Os **grupos** são *2D · 3D · Jogo · Vazio*, e os **presets** são itens de cada grupo:
+    `Sculpt ▸ Esfera · Cubo`.
+  - ⚠️ **A lei da paleta de formas vale aqui:** um tipo que existe mas não pode nascer agora
+    APARECE num sub-grupo cuja razão viaja no rótulo, e o clique responde. Um tipo NÃO
+    compilado não aparece.
+- **O mesmo modal no canvas** (Shift+A e botão direito, §6.3) **em modo Object**.
+  - Dentro de um modo, o `A`/Shift+A é o *Add* do PRÓPRIO modo: no Edit do Model são as
+    formas, como já é hoje. É a mesma divisão do Blender, em que o Shift+A no Edit acrescenta
+    dentro do objecto editado.
 - **Criar = um passo de undo.** O objecto novo nasce seleccionado e activo, em modo Object, com
   um nome que conta (`Sculpt`, `Sculpt.001`).
 
@@ -165,14 +182,18 @@ sozinho (§6.5).
 
   O resultado decide a ordem da F3. ⚠️ É o item caro do plano, e não se adivinha.
 - **F1 — Tipos e o menu Add:**
-  - a tabela `ObjectTypeDecl`, o registo por família e o `+` da Hierarchy com os grupos;
+  - a tabela `ObjectTypeDecl` e o registo por família;
+  - o `+` da Hierarchy e o Shift+A abrem a **paleta** (`command_palette`) com o modelo dos tipos;
   - o Ctrl+N passa a ser atalho da entrada *Image* (§6.2).
   - **Gates:**
-    - cada `ObjectKind` compilado tem uma entrada;
+    - cada `ObjectKind` compilado tem um item na paleta, e um id de item mapeia de volta a um
+      só tipo/preset;
+    - a busca acha cada tipo pelo nome;
     - o `spawn` de cada um produz uma entidade cujo tipo DERIVADO é esse;
     - criar e desfazer devolve o mundo ao bit;
     - o clique real (seam `ph2d-ui-testkit`) em cada entrada cria a entidade.
-  - **Foto:** o menu aberto.
+  - **Foto:** a paleta aberta pelo `+`, ao lado da do *Add shape…* (têm de ler-se como a
+    mesma janela).
 - **F2 — O modo:**
   - `ObjectMode`, `ModoActivo`, o selector no cabeçalho, Tab e o cadeado;
   - ainda sem módulos ligados: só Object, e o Edit de um tipo que já o tenha.
@@ -231,6 +252,7 @@ com uma janela por fase.
 | 3 | **sim, nos dois sítios** (`+` e Shift+A / botão direito) |
 | 4 | **não trocar** (o cadeado ligado) |
 | 6 | **sim, grupo «Jogo»** |
+| — | ⭐ **o `+` abre um MODAL como o *Add shape…* do Modeling** (pedido a seguir ao plano, §3.1) |
 
 Sem pergunta, ficam na recomendação (o dono pode mudar):
 - **2** — o Ctrl+N fica como atalho;

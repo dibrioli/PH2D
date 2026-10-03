@@ -95,7 +95,13 @@ Paridade placa/CPU na pilha rica: `23` de `188 424` bytes a um degrau (`0,012 %`
   peça compõe na CPU (`~650 ms`). A `128x` cabem `21`. Decisão de memória de placa, quando o dono a pedir.
 - O traço continua a compor as sujas na CPU (`0,04 ms`); com a base translúcida ele semeia o fundo
   inteiro em cada quadro (`fundo_semeado` na `compoe_amostras`) — cachear o fundo por amostra se pesar.
-- Pela ordem do doc 30 §7: **W4** (relevo por camada), W5, W6, W7.
+- ⭐ **Report do dono no smoke (03/10): o traço numa camada nova sai serrilhado e o da base liso.**
+  MEDIDO (`camadas_painel::diag_o_traco_numa_camada_e_o_da_base`): não é defeito da pilha — o pincel
+  do Painter mistura em sRGB codificado e o compositor em luz (resíduo `0,002` contra a previsão em
+  luz; até `0,286` contra a base). **Decisão do dono: opção 1 — as camadas juntam-se em tons de ecrã.**
+  Plano: [`docs/Painter/45`](../../Painter/45_plano_as_camadas_juntam_se_em_tons_de_ecra.md) — é a
+  **onda seguinte**, numa janela nova, antes da W4.
+- Depois, pela ordem do doc 30 §7: **W4** (relevo por camada), W5, W6, W7.
 
 ## §6. Fecho, smoke e binário
 

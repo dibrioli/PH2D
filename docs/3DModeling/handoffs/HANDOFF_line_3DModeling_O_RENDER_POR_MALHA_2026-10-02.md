@@ -132,6 +132,7 @@ flake de carga **pré-existente** (3/3 verde sozinho a `load 24`). clippy `-D wa
 
 ## §8 — ⭐ A PRÓXIMA ONDA: a ordem APROVADA pelo dono (02/10) — «qualidade Unreal/Fortnite, em mobile»
 
+✅ Item 2 (céu HDRI) FEITO em 03/10 — ver [HANDOFF … O_CEU_DE_VERDADE](HANDOFF_line_3DModeling_O_CEU_DE_VERDADE_2026-10-03.md).
 ✅ Item 1 (brilho + tom + estilo) FEITO em 02/10 — ver [HANDOFF … O_BRILHO_E_O_ESTILO](HANDOFF_line_3DModeling_O_BRILHO_E_O_ESTILO_2026-10-02.md).
 
 Pergunta do dono: *«o render parece rápido, mas temos a qualidade Unreal/Fortnite?»* Resposta: ainda

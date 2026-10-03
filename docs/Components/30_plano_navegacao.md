@@ -921,9 +921,31 @@ Mutação **15 / 15** a sangrar, zero defeitos de arnês
   folga): a montagem passaria a ser proporcional ao mosaico tocado. Mexe no núcleo da procura (todo
   `u32` de polígono), por isso é uma wave própria. Hoje uma porta custa `2,65 ms` (`0,6` o mosaico,
   `2,0` a montagem).
-- **O tique a 200 agentes SEM mudança nenhuma é `37,6 ms`** (o CONTROLO da `medir_replaneio`) — o
-  desvio e a física à escala; ninguém o mediu por fase ainda.
+- ✅ ~~O tique a 200 agentes SEM mudança nenhuma é `37,6 ms`~~ — **curado (§17.7)**: era o desvio a varrer
+  as arestas da malha inteira por agente; com a grelha das paredes, `2,3 ms`.
 - **A procura ponderada continua `~4×` os nós da uniforme** (a grelha das fronteiras, §17.3) e `~12×` o
   tempo na mediana; e o orçamento da fila em nós não é tempo uniforme entre as duas (`~110 ns` por nó na
   uniforme, `~330` na ponderada: os totais da §17.1 sobre os nós).
 - A 1.ª procura de agentes que nascem juntos não passa pela fila (só a mudança de malha passa).
+
+### §17.7 — (depois do smoke) O tique à escala: o desvio varria as paredes da malha inteira
+
+O CONTROLO da `medir_replaneio` (200 agentes, nada a mudar) era `37,6 ms`. Medido por fase (cronómetros
+provisórios na ponte, `FASES=200`, load `~7` — as proporções valem): **o desvio era `97 %`** do tique
+(`35,0` de `36,3 ms`); a condução `0,4`, os movers `0,2`, o passo da física `0,2`. E crescia LINEAR nos
+agentes (`8,9 ms` a 50): por agente, `Walls::near` percorria TODAS as arestas de parede da malha
+(milhares, com `1 000` obstáculos).
+
+**A cura:** uma grelha das arestas dentro de `ph2d_orca::Walls` (montada uma vez, com as paredes, quando
+a malha muda; o lado da célula sai da contagem — `~1` aresta por célula, a regra da grelha da
+`NavMesh`). `near` lê só as células ao alcance e devolve, **ao bit**, o que a varredura inteira devolvia
+(os mesmos índices pela mesma ordem — gate `a_grelha_das_paredes_da_o_mesmo_que_a_varredura_inteira`,
+2 000 perguntas com alcances de zero a infinito e posições fora da caixa; a paridade com o Godot verde).
+
+| tique, nada a mudar (`FASES=<n>`) | 10 agentes | 50 | 200 |
+|---|---|---|---|
+| antes (o CONTROLO da §17.1) | `2,1 ms` | `10,5` | `37,6` |
+| **com a grelha** | **`0,38`** | **`0,82`** | **`2,29`** |
+
+E o pior tique depois de uma porta, com a fila a `20 000` nós: `5,7 · 8,3 · 18,1 ms` (10 · 50 · 200 agentes
+— eram `10,4 · 34,3 · 124,3` antes da W9).

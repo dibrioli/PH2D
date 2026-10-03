@@ -19,13 +19,13 @@ use crate::bridge::PhysicsBridge;
 ///
 /// | orçamento | pior tique a 10 · 50 · 200 agentes | a fila esvazia (200) | o último PARTIDO (200) |
 /// |---|---|---|---|
-/// | sem fila (todos no tique) | `10,4 · 34,3 · 124,3 ms` | `1` tique | `1` |
-/// | `40 000` | `9,3 · 18,5 · 52,6` | `30` | `5` |
-/// | **`20 000`** | **`6,9 · 16,5 · 51,7`** | **`58`** (`~1 s`) | **`9`** |
-/// | `10 000` | `7,0 · 16,1 · 51,3` | `97` | `16` |
+/// | sem fila (todos no tique) | `8,8 · 24,2 · 85,6 ms` | `1` tique | `1` |
+/// | `40 000` | `7,8 · 10,1 · 21,3` | `30` | `5` |
+/// | **`20 000`** | **`5,7 · 8,3 · 18,1`** | **`58`** (`~1 s`) | **`9`** |
+/// | `10 000` | `5,5 · 8,1 · 17,6` | `97` | `16` |
 ///
-/// ⇒ abaixo de `20 000` o tique não desce mais (o resto é a malha refeita e o desvio — o CONTROLO sem
-/// a porta é `37,6 ms` a 200 agentes) e a espera dobra.
+/// (Depois da grelha das paredes do desvio; o CONTROLO sem a porta é `0,4 · 2,0 · 3,8 ms`.) ⇒ abaixo
+/// de `20 000` o tique quase não desce e a espera dobra.
 pub(super) const ORCAMENTO_DE_NOS_POR_TIQUE: u64 = 20_000;
 
 impl PhysicsBridge {

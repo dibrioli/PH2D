@@ -292,3 +292,51 @@ fn entalado_entre_duas_paredes_o_3d_nao_parte() {
         "{v:?}"
     );
 }
+
+/// (W9) A GRELHA das paredes devolve, ao bit, o que a varredura inteira devolve — os mesmos índices
+/// pela mesma ordem —, em paredes ao calhas (polígonos e segmentos soltos, arestas compridas que
+/// atravessam muitas células), com posições dentro e FORA da caixa e alcances de zero a infinito.
+#[test]
+fn a_grelha_das_paredes_da_o_mesmo_que_a_varredura_inteira() {
+    let mut s = 0x9E37_79B9_7F4A_7C15u64;
+    let mut r = || {
+        s = s.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+        (s >> 11) as f64 / (1u64 << 53) as f64
+    };
+    let mut polys: Vec<Vec<V2>> = Vec::new();
+    for k in 0..300 {
+        let c = [r() * 100.0, r() * 100.0];
+        if k % 10 == 0 {
+            // Um segmento solto, às vezes comprido.
+            polys.push(vec![
+                c,
+                [c[0] + (r() - 0.5) * 60.0, c[1] + (r() - 0.5) * 60.0],
+            ]);
+        } else {
+            let (hx, hy) = (0.2 + r() * 2.0, 0.2 + r() * 2.0);
+            polys.push(vec![
+                [c[0] - hx, c[1] - hy],
+                [c[0] + hx, c[1] - hy],
+                [c[0] + hx, c[1] + hy],
+                [c[0] - hx, c[1] + hy],
+            ]);
+        }
+    }
+    let w = Walls::from_polygons(&polys);
+    let (mut a, mut b) = (Vec::new(), Vec::new());
+    let mut com_algum = 0;
+    for k in 0..2_000 {
+        let pos = [r() * 140.0 - 20.0, r() * 140.0 - 20.0];
+        let range = match k % 5 {
+            0 => 0.0,
+            1 => f64::INFINITY,
+            _ => r() * 12.0,
+        };
+        w.near(pos, range, &mut a);
+        w.near_todas(pos, range, &mut b);
+        assert_eq!(a, b, "pos {pos:?}, alcance {range}");
+        com_algum += usize::from(!a.is_empty());
+    }
+    // A fixtura contém o fenómeno: a maioria das perguntas acha paredes.
+    assert!(com_algum > 1_000, "{com_algum} de 2 000 acharam paredes");
+}

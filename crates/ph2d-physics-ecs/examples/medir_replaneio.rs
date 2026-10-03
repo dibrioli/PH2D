@@ -154,6 +154,27 @@ fn janela(
 const JANELA: usize = 96;
 
 fn main() {
+    // `FASES=<n>`: o tique com `n` agentes e NADA a mudar (o CONTROLO), a média de 30.
+    if let Ok(n) = std::env::var("FASES") {
+        let n: usize = n.parse().expect("um número");
+        let (mut sim, _porta, _quem) = cena(n);
+        let mut b = PhysicsBridge::new();
+        let mut t = 0u64;
+        for _ in 0..30 {
+            t += 1;
+            b.dispatch(&mut sim, true, t);
+        }
+        let t0 = Instant::now();
+        for _ in 0..30 {
+            t += 1;
+            b.dispatch(&mut sim, true, t);
+        }
+        println!(
+            "{n} agentes, nada a mudar: {:.2} ms por tique",
+            t0.elapsed().as_secs_f64() * 1e3 / 30.0
+        );
+        return;
+    }
     let load = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
     println!("# loadavg: {}", load.trim());
     println!(

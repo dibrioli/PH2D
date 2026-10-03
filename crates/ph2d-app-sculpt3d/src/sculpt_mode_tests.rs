@@ -196,6 +196,9 @@ fn paint_on_the_piece_holds_the_painter_and_sculpt_lets_it_go() {
     assert!(f.holds(ObjectMode::Paint, B, &mut tools));
     assert!(!f.holds(ObjectMode::Sculpt, B, &mut tools));
     f.leave(ObjectMode::Paint, B, &mut tools);
+    // ⚠️ O Painter em mãos por OUTRA porta (sem modo): entrar em Sculpt larga-o — o `leave` acima
+    // não o cobre (prova de mutação, 03/10).
+    assert!(tools.set_active(&ToolId::new(PAINTER)));
     assert!(f.enter(ObjectMode::Sculpt, B, &mut tools));
     assert!(
         !painter_in_hand(&tools),
@@ -215,6 +218,10 @@ fn a_born_piece_asks_for_sculpt_once_and_otherwise_the_clay_leaves() {
     let mut tools = ToolRegistry::new();
     let mut f = familia(&mut scene);
     f.follow(None, &mut tools);
+    assert!(
+        f.scene.as_deref().is_some_and(Sculpt3dScene::clay_on_screen),
+        "o follow tirou o barro da peça nascida antes de ela entrar"
+    );
     assert!(
         f.wants().is_some(),
         "o follow largou a peça nascida antes de ela entrar"

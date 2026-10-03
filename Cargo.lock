@@ -5538,6 +5538,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-contacto"
+version = "0.0.0"
+dependencies = [
+ "half",
+ "rayon",
+]
+
+[[package]]
 name = "ph2d-core"
 version = "0.0.0"
 dependencies = [

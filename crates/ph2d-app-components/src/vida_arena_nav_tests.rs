@@ -5,8 +5,8 @@
 //! a régua que a W7 errou duas vezes com cantos vivos.
 
 use super::*;
-use ph2d_editor_core::nav_edits::{NavAlvoModo, NavFieldEdit};
 use ph2d_ecs::MasterRoot;
+use ph2d_editor_core::nav_edits::{NavAlvoModo, NavFieldEdit};
 
 /// O raio do corpo de um morcego.
 const R_MORCEGO: f32 = LADO_DO_MORCEGO / 2.0;

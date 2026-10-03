@@ -16,8 +16,7 @@ use super::o_tutorial_nomeia_rotulos_que_existem::{
 };
 
 /// A fonte do tutorial, tal como o gerador de PDF a lê.
-const TUTORIAL: &str =
-    include_str!("../../../../docs/Components/tutoriais/src/03_navegacao.html");
+const TUTORIAL: &str = include_str!("../../../../docs/Components/tutoriais/src/03_navegacao.html");
 
 /// Os pintores que produzem os rótulos citados.
 const PINTORES: [&str; 8] = [

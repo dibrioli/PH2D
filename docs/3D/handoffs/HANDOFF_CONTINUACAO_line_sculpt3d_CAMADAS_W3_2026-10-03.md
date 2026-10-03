@@ -13,6 +13,7 @@
 | ramo · worktree | `line/sculpt3d` · `Worktrees/line-sculpt3d` · merge-base `1ad60a1ce` (= `main` a 03/10) |
 | commits da W3 | `c7500a6c2` (o código) · `8a7458f0e` (doc 27) · `0893e81b9` (as 2 mutações sobreviventes + arnês) · `233e8b77d` (doc 30 §12) · este handoff |
 | plano | [`docs/3D/30`](../30_plano_camadas_e_efeitos_na_peca.md) — **W3 = §12** (desenho, portas, premissas derrubadas, medição, o que fica) |
+| smoke do dono (W3) | ✅ **APROVADO** pelo dono a 03/10 (os 7 passos do §6) |
 | `SCULPT_DOC_VERSION` · `PROJECT_SCHEMA` | `6` (intocado na W3) · intocado |
 | contratos §6 | intocados: nenhuma variante de `PanelEvent`/`Tool` — o painel fala pelo `PanelEvent` de sempre |
 | fora da família (W3) | `ph2d-tool-painter` (`tool/layer_edit.rs`, `tool/piece_layers.rs`; curvas e arrasto de linha viraram funções puras partilhadas; `seed_user_adjustment`; `PieceLayerOp` público) · `ph2d-panel-painter-layers` (`peca.rs`; barra, linha de máscara, linha de relevo e menu de ajustes em modo peça) · `ph2d-editor-core` (`DropdownOption::disabled`, campo novo `false` em todo chamador) · `ph2d-app-painter` (a ponte publica `panel_layers`/`panel_selection`/modo peça/recusa) · `ph2d-i18n` (chaves novas abaixo) |

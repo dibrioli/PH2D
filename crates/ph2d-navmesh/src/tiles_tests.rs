@@ -69,3 +69,28 @@ fn um_poligono_fora_do_rectangulo_some() {
     assert!(corta(&q, (20, 20), (30, 30)).is_empty());
     assert_eq!(corta(&q, (-5, -5), (50, 50)), q);
 }
+
+/// ⭐ (W9) **Onde a malha mudou**: tudo na 1.ª construção, nada quando nada muda, e só o mosaico de uma
+/// pedra que se mexe — é o que deixa a fila do replaneio não percorrer os caminhos longe dela.
+#[test]
+fn a_area_que_mudou_e_o_mosaico_da_pedra() {
+    let reg = vec![[0.0, 0.0], [40.0, 0.0], [40.0, 40.0], [0.0, 40.0]];
+    let pedra = |x: f64| Shape::Circle {
+        center: [x, 22.0],
+        radius: 0.5,
+    };
+    let mut t = TiledMesh::new(Params::default(), 10.0);
+    t.update(&reg, &[pedra(25.0)]);
+    assert_eq!(t.changed_area(), None, "a 1.ª construção muda tudo");
+    t.update(&reg, &[pedra(25.0)]);
+    assert_eq!(t.changed_area(), Some(Vec::new()), "nada mudou");
+    t.update(&reg, &[pedra(25.5)]);
+    let a = t.changed_area().expect("só os mosaicos refeitos");
+    assert_eq!(a.len(), 1, "{a:?}");
+    let (lo, hi) = a[0];
+    assert!(
+        lo[0] <= 25.5 && 25.5 <= hi[0] && lo[1] <= 22.0 && 22.0 <= hi[1],
+        "{a:?}"
+    );
+    assert!(hi[0] - lo[0] <= 10.0 + 1e-9, "um mosaico de 10 m: {a:?}");
+}

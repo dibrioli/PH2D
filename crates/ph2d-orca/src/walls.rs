@@ -228,7 +228,7 @@ impl Walls {
     pub fn near(&self, pos: V2, range: f64, out: &mut Vec<u32>) {
         out.clear();
         let g = &self.grade;
-        if self.point.is_empty() || !(range > 0.0) {
+        if self.point.is_empty() || range.is_nan() || range <= 0.0 {
             return;
         }
         let range_sq = range * range;

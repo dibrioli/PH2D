@@ -41,11 +41,14 @@ SCRUB = 'um_scrub_para_o_meio_da_fila_devolve_a_mesma_corrida'
 AVEZ = 'uma_malha_que_nao_para_de_mudar_serve_todos_a_vez'
 ENTALADO = 'entalado_entre_duas_paredes_o_3d_nao_parte'
 GRELHA = 'a_grelha_das_paredes_da_o_mesmo_que_a_varredura_inteira'
+TROCOS = 'so_os_trocos_que_tocam_a_mudanca_se_percorrem'
+AREA = 'a_area_que_mudou_e_o_mosaico_da_pedra'
 WALLS = 'crates/ph2d-orca/src/walls.rs'
 
 # grupo -> (comando base, os testes observadores do grupo)
 G = {
-    'NAV': (['cargo', 'test', '-p', 'ph2d-nav', '--lib'], [ORDEM, SOBREP, CONTORNA, EXACTO]),
+    'NAV': (['cargo', 'test', '-p', 'ph2d-nav', '--lib'], [ORDEM, SOBREP, CONTORNA, EXACTO, TROCOS]),
+    'TILES': (['cargo', 'test', '-p', 'ph2d-navmesh', '--lib'], [AREA]),
     'NAVMESH': (['cargo', 'test', '-p', 'ph2d-navmesh', '--test', 'it'], [DOMI, QUINA, MOSAICO]),
     'ORCA': (['cargo', 'test', '-p', 'ph2d-orca', '--lib'], [ENTALADO, GRELHA]),
     'PONTE': (['cargo', 'test', '-p', 'ph2d-physics-ecs', '--test', 'it'],
@@ -92,8 +95,8 @@ M = [
     ('M12 um caminho novo não salda a dívida', 'PONTE', AGENT,
      '        (rt.owed, rt.broken) = (0, false);\n', '', (SCRUB,)),
     ('M13 todo caminho conta como ainda andável', 'PONTE', FILA,
-     'rt.broken |= !malha.is_some_and(|m| path_still_walkable(m, rt, v.pos));',
-     'rt.broken |= !malha.is_some_and(|_| true);', (PARTIDO,)),
+     'path_still_walkable(m, rt, v.pos, onde.as_deref())',
+     'true', (PARTIDO,)),
     ('M14 o scrub não devolve a dívida', 'PONTE', TAPE,
      '            self.nav.agents = m.nav.clone();',
      '            self.nav.agents = m.nav.clone();\n            self.nav.agents.values_mut().for_each(|r| r.owed = 0);',
@@ -111,6 +114,12 @@ M = [
      (GRELHA,)),
     ('M18 a grelha não tira as repetidas', 'ORCA', WALLS,
      '        found.dedup_by_key(|x| x.1);\n', '', (GRELHA,)),
+    # ── o caminho só se percorre onde a malha mudou (§17.7) ──
+    ('M19 o troço percorre-se sempre', 'NAV', REFRESH,
+     'if !atalho && toca(a, b) && segment_cost', 'if !atalho && segment_cost', (TROCOS,)),
+    ('M20 a área que mudou é sempre a malha inteira', 'TILES', TILES,
+     '        let refeitos = self.refeitos.as_ref()?;', '        let refeitos: &Vec<(i64, i64)> = None?;',
+     (AREA,)),
 ]
 
 so = set(os.environ['MUTA_SO'].split(',')) if os.environ.get('MUTA_SO') else None

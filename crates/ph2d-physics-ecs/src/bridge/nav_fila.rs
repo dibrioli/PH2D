@@ -19,13 +19,13 @@ use crate::bridge::PhysicsBridge;
 ///
 /// | orçamento | pior tique a 10 · 50 · 200 agentes | a fila esvazia (200) | o último PARTIDO (200) |
 /// |---|---|---|---|
-/// | sem fila (todos no tique) | `8,8 · 24,2 · 85,6 ms` | `1` tique | `1` |
-/// | `40 000` | `7,8 · 10,1 · 21,3` | `30` | `5` |
-/// | **`20 000`** | **`5,7 · 8,3 · 18,1`** | **`58`** (`~1 s`) | **`9`** |
-/// | `10 000` | `5,5 · 8,1 · 17,6` | `97` | `16` |
+/// | sem fila (todos no tique) | `9,9 · 29,1 · 85,0 ms` | `1` tique | `1` |
+/// | `40 000` | `8,6 · 9,1 · 10,4` | `29` | `0` |
+/// | **`20 000`** | **`5,7 · 6,5 · 10,1`** | **`56`** (`~1 s`) | **`4`** |
+/// | `10 000` | `5,7 · 8,0 · 9,5` | `97` | `6` |
 ///
-/// (Depois da grelha das paredes do desvio; o CONTROLO sem a porta é `0,4 · 2,0 · 3,8 ms`.) ⇒ abaixo
-/// de `20 000` o tique quase não desce e a espera dobra.
+/// (Com a grelha das paredes do desvio e o caminho só percorrido onde a malha mudou; load `5–8`.)
+/// ⇒ abaixo de `20 000` o tique quase não desce e a espera dobra.
 pub(super) const ORCAMENTO_DE_NOS_POR_TIQUE: u64 = 20_000;
 
 impl PhysicsBridge {
@@ -43,15 +43,16 @@ impl PhysicsBridge {
         let mut fila: Vec<Owed> = Vec::new();
         let mut quem: BTreeMap<u64, Entity> = BTreeMap::new();
         for (i, (&e, v)) in por_entidade.iter().enumerate() {
-            let malha = v
-                .chave
-                .and_then(|k| self.nav.meshes.get(&k))
-                .map(ph2d_navmesh::TiledMesh::mesh);
+            let tiled = v.chave.and_then(|k| self.nav.meshes.get(&k));
+            let malha = tiled.map(ph2d_navmesh::TiledMesh::mesh);
+            // Só os troços que tocam os mosaicos refeitos se percorrem (a lei, `refresh`).
+            let onde = tiled.and_then(ph2d_navmesh::TiledMesh::changed_area);
             let Some(rt) = self.nav.agents.get_mut(&e) else {
                 continue;
             };
             if v.chave.is_some_and(|k| mudou.contains(&k)) && !rt.path.is_empty() {
-                rt.broken |= !malha.is_some_and(|m| path_still_walkable(m, rt, v.pos));
+                rt.broken |=
+                    !malha.is_some_and(|m| path_still_walkable(m, rt, v.pos, onde.as_deref()));
                 rt.owed = rt.owed.max(1);
             }
             if rt.owed > 0 {

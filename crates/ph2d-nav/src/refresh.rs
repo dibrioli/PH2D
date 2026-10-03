@@ -19,21 +19,41 @@
 
 use crate::agent::AgentRuntime;
 use crate::cost::segment_cost;
-use crate::geom::V2;
+use crate::geom::{EPS, V2};
 use crate::mesh::NavMesh;
 
 /// O caminho que falta (de `pos` até ao fim) ainda se anda na malha `mesh`? Os troços de um ATALHO
 /// não se andam (o teleporte salta; a porta de um sentido é um furo para quem não a atravessa).
+///
+/// ⭐ `onde`: os rectângulos onde a malha MUDOU (`None` = em toda a parte). Um troço cuja caixa não
+/// toca nenhum deles atravessa a MESMA geometria de antes — andava, anda — e não se percorre. Medido
+/// (`medir_replaneio`, 200 agentes, caminhos de `~100 m`): percorrer todos custava `12,4 ms` em cada
+/// tique em que a malha mudava.
 #[must_use]
-pub fn path_still_walkable(mesh: &NavMesh, rt: &AgentRuntime, pos: V2) -> bool {
+pub fn path_still_walkable(
+    mesh: &NavMesh,
+    rt: &AgentRuntime,
+    pos: V2,
+    onde: Option<&[(V2, V2)]>,
+) -> bool {
     if rt.next >= rt.path.len() {
         return false;
     }
+    let toca = |a: V2, b: V2| {
+        onde.is_none_or(|rs| {
+            rs.iter().any(|&(lo, hi)| {
+                a[0].min(b[0]) <= hi[0] + EPS
+                    && a[0].max(b[0]) >= lo[0] - EPS
+                    && a[1].min(b[1]) <= hi[1] + EPS
+                    && a[1].max(b[1]) >= lo[1] - EPS
+            })
+        })
+    };
     let mut a = pos;
     for i in rt.next..rt.path.len() {
         let b = rt.path[i];
         let atalho = i >= 1 && rt.hop_at(i - 1).is_some();
-        if !atalho && segment_cost(mesh, &[], a, b).is_none() {
+        if !atalho && toca(a, b) && segment_cost(mesh, &[], a, b).is_none() {
             return false;
         }
         a = b;
@@ -75,7 +95,46 @@ pub fn serve(fila: &mut [Owed], budget: u64) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use super::{Owed, serve};
+    use super::{Owed, path_still_walkable, serve};
+    use crate::{AgentRuntime, NavMesh};
+
+    /// Dois quadrados SEM ligação (um vão em `1 < x < 2`) e um caminho que os atravessa: partido —
+    /// salvo quando a mudança foi longe dele, e então nem se percorre (é o que poupa o tique).
+    #[test]
+    fn so_os_trocos_que_tocam_a_mudanca_se_percorrem() {
+        let m = NavMesh::from_polygons(
+            vec![
+                [0.0, 0.0],
+                [1.0, 0.0],
+                [1.0, 1.0],
+                [0.0, 1.0],
+                [2.0, 0.0],
+                [3.0, 0.0],
+                [3.0, 1.0],
+                [2.0, 1.0],
+            ],
+            vec![vec![0, 1, 2, 3], vec![4, 5, 6, 7]],
+        )
+        .expect("dois quadrados");
+        let mut rt = AgentRuntime::default();
+        rt.path = vec![[0.5, 0.5], [2.5, 0.5]];
+        rt.next = 1;
+        let pos = [0.5, 0.5];
+        assert!(
+            !path_still_walkable(&m, &rt, pos, None),
+            "sem zona: percorre e acha o vão"
+        );
+        let perto = [([1.2, 0.0], [1.8, 1.0])];
+        assert!(
+            !path_still_walkable(&m, &rt, pos, Some(&perto)),
+            "a zona toca o troço"
+        );
+        let longe = [([10.0, 10.0], [11.0, 11.0])];
+        assert!(
+            path_still_walkable(&m, &rt, pos, Some(&longe)),
+            "a zona longe: o troço não se percorre"
+        );
+    }
 
     fn o(id: u64, broken: bool, ticks: u32, nodes: u64) -> Owed {
         Owed {

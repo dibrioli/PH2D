@@ -77,6 +77,8 @@ pub struct TiledMesh {
     mosaicos: BTreeMap<(i64, i64), Mosaico>,
     mesh: NavMesh,
     stats: TileStats,
+    /// (W9) Os mosaicos refeitos na última actualização (`None` = a malha inteira pode ter mudado).
+    refeitos: Option<Vec<(i64, i64)>>,
 }
 
 impl TiledMesh {
@@ -91,6 +93,7 @@ impl TiledMesh {
             mosaicos: BTreeMap::new(),
             mesh: vazia(),
             stats: TileStats::default(),
+            refeitos: None,
         }
     }
 
@@ -104,6 +107,24 @@ impl TiledMesh {
     #[must_use]
     pub fn stats(&self) -> TileStats {
         self.stats
+    }
+
+    /// ⭐ (W9) **Onde a última actualização mudou a malha**: os rectângulos (mínimo, máximo, em metros,
+    /// fechados) dos mosaicos refeitos — fora deles a malha é a MESMA geometria de antes (as costuras
+    /// só ganham vértices colineares). `None` = a malha inteira pode ter mudado (a 1.ª construção, ou
+    /// mosaicos que saíram da região). Vazio = nada mudou.
+    pub fn changed_area(&self) -> Option<Vec<(V2, V2)>> {
+        let refeitos = self.refeitos.as_ref()?;
+        Some(
+            refeitos
+                .iter()
+                .map(|&(x, y)| {
+                    let lo = (x * self.lado, y * self.lado);
+                    let hi = (lo.0 + self.lado, lo.1 + self.lado);
+                    (to_world(lo), to_world(hi))
+                })
+                .collect(),
+        )
     }
 
     /// ⭐ **Põe a malha em dia** com esta região (convexa) e estes obstáculos. Devolve `true` se a
@@ -139,11 +160,15 @@ impl TiledMesh {
         }
         if self.sig == Some(h.0) {
             self.stats.rebuilt = 0;
+            self.refeitos = Some(Vec::new());
             return false;
         }
+        // A 1.ª construção muda tudo.
+        let primeira = self.sig.is_none();
         self.sig = Some(h.0);
 
         let mut stats = TileStats::default();
+        let mut refeitos: Vec<(i64, i64)> = Vec::new();
         let mut novos: BTreeMap<(i64, i64), Mosaico> = BTreeMap::new();
         if anel.len() >= 3 {
             let (lo, hi) = caixa_de(&anel);
@@ -194,6 +219,7 @@ impl TiledMesh {
                         Some(m) if m.sig == sig => m,
                         _ => {
                             stats.rebuilt += 1;
+                            refeitos.push((x, y));
                             let obs: Vec<&Shape> =
                                 quem.iter().map(|&i| obstacles[i].borrow()).collect();
                             let ars: Vec<&Area> = quais.iter().map(|&i| &areas[i]).collect();
@@ -208,6 +234,7 @@ impl TiledMesh {
         }
         // O que sobrou do mapa antigo saiu da região: também muda a malha.
         let mudou = stats.rebuilt > 0 || !self.mosaicos.is_empty();
+        self.refeitos = (!primeira && self.mosaicos.is_empty()).then_some(refeitos);
         self.mosaicos = novos;
         if mudou {
             self.mesh = monta(&self.mosaicos, self.lado);

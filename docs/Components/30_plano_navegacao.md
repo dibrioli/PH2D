@@ -947,5 +947,19 @@ a malha muda; o lado da célula sai da contagem — `~1` aresta por célula, a r
 | antes (o CONTROLO da §17.1) | `2,1 ms` | `10,5` | `37,6` |
 | **com a grelha** | **`0,38`** | **`0,82`** | **`2,29`** |
 
-E o pior tique depois de uma porta, com a fila a `20 000` nós: `5,7 · 8,3 · 18,1 ms` (10 · 50 · 200 agentes
-— eram `10,4 · 34,3 · 124,3` antes da W9).
+**E o tique em que a malha muda** (cronómetros por fase, 200 agentes, a porta a andar e a parar): a FILA
+custava `12,4 ms` — `path_still_walkable` percorria o caminho inteiro (`~100 m`) de cada um dos 200 na
+malha nova —, e a malha refeita `2,7–3,3 ms` (duas vezes: quando a porta começa a andar e quando pára).
+⇒ **só se percorrem os troços que tocam os mosaicos REFEITOS** (`TiledMesh::changed_area`; fora deles a
+geometria é a mesma — andava, anda). Gates `so_os_trocos_que_tocam_a_mudanca_se_percorrem` (o atalho
+dispara: com a zona longe, um caminho partido nem se percorre) e `a_area_que_mudou_e_o_mosaico_da_pedra`.
+De bónus, só é «partido» quem a mudança partiu: o último servido passa de `9` a `4` tiques.
+
+| o pior tique depois de uma porta (fila a `20 000`), 10 · 50 · 200 agentes | |
+|---|---|
+| antes da W9 | `10,4 · 34,3 · 124,3 ms` |
+| com a fila | `6,9 · 16,5 · 51,7` |
+| + a grelha das paredes | `5,7 · 8,3 · 18,1` |
+| **+ só os troços que tocam a mudança** | **`5,7 · 6,5 · 10,1`** (load `5–8`) |
+
+Mutação: M17–M20 sangram — a prova da W9 fica em **19 / 19**.

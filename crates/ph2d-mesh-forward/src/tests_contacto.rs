@@ -10,7 +10,7 @@ use crate::{Camera, Forward, Instancia, Malha};
 use ph2d_contacto::{Grade, Volume};
 
 const ORACULO: &str = include_str!("../../ph2d-contacto/fixtures/oraculo_contacto.csv");
-const LADO: u32 = 256;
+pub(crate) const LADO: u32 = 256;
 const DE: [f32; 3] = [1.0, 0.8, -1.3];
 const ALVO: [f32; 3] = [0.15, 0.3, -0.1];
 const MEIA: f32 = 0.75;
@@ -22,7 +22,7 @@ const PECAS: [([f32; 3], f32, bool); 4] = [
     ([0.0, 0.2, -0.37], 0.15, false),
 ];
 
-fn norm(v: [f32; 3]) -> [f32; 3] {
+pub(crate) fn norm(v: [f32; 3]) -> [f32; 3] {
     let l = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
     v.map(|c| c / l)
 }
@@ -41,18 +41,23 @@ fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
 
 /// A câmara ortográfica do Blender (`-Z` para o alvo, `Y` para cima) no nosso recorte.
 fn camera() -> Camera {
-    let f = norm(DE.map(|c| -c));
+    camera_do_blender(DE, ALVO, MEIA)
+}
+
+/// A câmara ortográfica de um oráculo do Blender: vinda de `de`, a olhar para `alvo`, meia-aresta `meia`.
+pub(crate) fn camera_do_blender(de: [f32; 3], alvo: [f32; 3], meia: f32) -> Camera {
+    let f = norm(de.map(|c| -c));
     let up0 = [0.0, 1.0, 0.0];
     let up = norm([0, 1, 2].map(|e| up0[e] - dot(up0, f) * f[e]));
     let r = cruz(f, up);
     let mut vp = [[0.0f32; 4]; 4];
     for c in 0..3 {
-        vp[c] = [r[c] / MEIA, up[c] / MEIA, 0.1 * f[c], 0.0];
+        vp[c] = [r[c] / meia, up[c] / meia, 0.1 * f[c], 0.0];
     }
     vp[3] = [
-        -dot(ALVO, r) / MEIA,
-        -dot(ALVO, up) / MEIA,
-        0.5 - 0.1 * dot(ALVO, f),
+        -dot(alvo, r) / meia,
+        -dot(alvo, up) / meia,
+        0.5 - 0.1 * dot(alvo, f),
         1.0,
     ];
     Camera {
@@ -63,8 +68,10 @@ fn camera() -> Camera {
     }
 }
 
-fn sdf_local(k: usize, q: [f32; 3]) -> f32 {
-    let (_, r, caixa) = PECAS[k];
+/// Uma peça de oráculo: `(centro, meia-aresta da caixa ou raio, é caixa)`.
+pub(crate) type Peca = ([f32; 3], f32, bool);
+
+fn sdf_local((_, r, caixa): Peca, q: [f32; 3]) -> f32 {
     if caixa {
         let d = q.map(|x| x.abs() - r);
         let fora = d.map(|x| x.max(0.0));
@@ -76,12 +83,17 @@ fn sdf_local(k: usize, q: [f32; 3]) -> f32 {
 
 /// A grelha de cada peça, no referencial da MALHA (centrada na origem).
 fn grades() -> Vec<Grade> {
-    (0..PECAS.len())
-        .map(|k| {
-            let (_, r, caixa) = PECAS[k];
+    grades_de(&PECAS)
+}
+
+pub(crate) fn grades_de(pecas: &[Peca]) -> Vec<Grade> {
+    pecas
+        .iter()
+        .map(|&peca| {
+            let (_, r, caixa) = peca;
             let m = r * (1.0 + 4.0 / 47.0);
             let vol = Volume::de([-m; 3], [m; 3], 48, |pts| {
-                pts.iter().map(|p| sdf_local(k, *p)).collect()
+                pts.iter().map(|p| sdf_local(peca, *p)).collect()
             });
             Grade::constroi(&vol, [0.0; 3], if caixa { r * 3.0f32.sqrt() } else { r })
         })
@@ -133,9 +145,14 @@ fn desenha_com(fw: &mut Forward, poe: impl Fn(usize, [f32; 3]) -> [[f32; 4]; 4])
 }
 
 fn desenhista(com_grades: bool) -> Option<Forward> {
+    desenhista_de(&PECAS, com_grades)
+}
+
+/// O desenhista com as malhas `1..` das peças e, se pedido, as grelhas do contacto delas.
+pub(crate) fn desenhista_de(pecas: &[Peca], com_grades: bool) -> Option<Forward> {
     let mut fw = Forward::no_aparelho(&ambiente())?;
-    let g = grades();
-    for (k, (_, r, caixa)) in PECAS.iter().enumerate() {
+    let g = grades_de(pecas);
+    for (k, (_, r, caixa)) in pecas.iter().enumerate() {
         let (p, n, idx) = if *caixa { cubo(2.0 * r) } else { esfera(*r) };
         let ao = vec![1.0; p.len()];
         let mat = vec![0u32; p.len()];
@@ -157,7 +174,7 @@ fn desenhista(com_grades: bool) -> Option<Forward> {
     Some(fw)
 }
 
-fn linear(b: u8) -> f32 {
+pub(crate) fn linear(b: u8) -> f32 {
     let x = f32::from(b) / 255.0;
     if x <= 0.04045 {
         x / 12.92
@@ -166,13 +183,13 @@ fn linear(b: u8) -> f32 {
     }
 }
 
-struct Ponto {
-    i: u32,
-    j: u32,
-    obj: usize,
-    p: [f32; 3],
-    n: [f32; 3],
-    vis: f32,
+pub(crate) struct Ponto {
+    pub(crate) i: u32,
+    pub(crate) j: u32,
+    pub(crate) obj: usize,
+    pub(crate) p: [f32; 3],
+    pub(crate) n: [f32; 3],
+    pub(crate) vis: f32,
 }
 
 fn oraculo() -> Vec<Ponto> {
@@ -196,7 +213,7 @@ fn oraculo() -> Vec<Ponto> {
 
 /// Os pixels que não se comparam: perto da silhueta, de outra peça ou de uma ARESTA da caixa (a
 /// normal salta, e o pixel de um lado cai na face vizinha do outro). `fundo` = um quadro qualquer.
-fn bordas(pontos: &[Ponto], fundo: &[u8]) -> Vec<bool> {
+pub(crate) fn bordas(pontos: &[Ponto], fundo: &[u8]) -> Vec<bool> {
     let mut dono = vec![usize::MAX; (LADO * LADO) as usize];
     let mut normal = vec![[0.0f32; 3]; (LADO * LADO) as usize];
     for p in pontos {

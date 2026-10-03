@@ -121,6 +121,23 @@ fn sem_contacto() -> bool {
     }
 }
 
+/// Nos testes: o quadro SEM o chão (o controlo do gate do chão que tapa as peças). Entra ANTES da
+/// assinatura: o quadro sem chão é outro quadro, e não o «mesmo» da cache.
+#[cfg(test)]
+pub(crate) static SEM_CHAO: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+
+fn sem_chao() -> bool {
+    #[cfg(test)]
+    {
+        SEM_CHAO.load(std::sync::atomic::Ordering::Relaxed)
+    }
+    #[cfg(not(test))]
+    {
+        false
+    }
+}
+
 /// O ângulo da caixa de luz do estúdio — a penumbra da sombra.
 fn caixa_tan() -> f32 {
     crate::studio::SOFTBOX_RADIUS_DEG.to_radians().tan()
@@ -236,7 +253,8 @@ pub(crate) fn desenha(
 
     let reg = crate::smoke::sampled_registry();
     let chao = crate::floor::anchored(&mut smoke.floor, crate::shading::Shading::Render, doc, &reg)
-        .map(|g| g.height);
+        .map(|g| g.height)
+        .filter(|_| !sem_chao());
     let luzes: Vec<Luz> = crate::lights::lamps_of(&smoke.lights)
         .into_iter()
         .map(|l| Luz {

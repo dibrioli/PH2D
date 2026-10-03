@@ -16,6 +16,7 @@
 //! olhar é o `ph2d_view_transform::wgsl`, e o CÉU é de quem chama ([`Ambiente`]) — o modelador dá o
 //! estúdio dele, um jogo dará o seu.
 
+pub mod chao_tapa;
 mod fonte;
 mod gpu;
 mod gpu_alvo;
@@ -176,9 +177,13 @@ mod tests;
 #[cfg(test)]
 mod tests_chao;
 #[cfg(test)]
+mod tests_chao_tapa;
+#[cfg(test)]
 mod tests_contacto;
 #[cfg(test)]
 mod tests_custo_chao;
+#[cfg(test)]
+mod tests_custo_chao_tapa;
 #[cfg(test)]
 mod tests_custo_contacto;
 #[cfg(test)]

@@ -160,13 +160,29 @@ fn caixa_irr(n: vec3<f32>) -> vec3<f32> {
 // exactamente a soma de duas avaliacoes — por metade do preco.
 var<private> peso_ceu: f32 = 1.0;
 var<private> peso_caixa: f32 = 1.0;
+// ⭐⭐ O CHAO QUE TAPA (`chao_tapa.rs`): o ponto do pixel e se ha' chao. A metade de baixo da parte
+// sem caixa perde `L_baixo x D`: o chao no lugar do ceu, escurecido onde as pecas o tapam.
+var<private> ponto: vec3<f32> = vec3<f32>(0.0);
+var<private> chao_tapa_ligado: bool = false;
+
+fn ceu_de_baixo() -> vec3<f32> {
+    return ceu_irr_sem(vec3<f32>(0.0, -1.0, 0.0));
+}
 
 fn env_radiance_da_cena(dir: vec3<f32>, alpha: f32, shrink: f32) -> vec3<f32> {
-    return ceu_rad_sem(dir, alpha, shrink) * peso_ceu + caixa_rad(dir, alpha) * peso_caixa;
+    var ceu = ceu_rad_sem(dir, alpha, shrink);
+    if (chao_tapa_ligado) {
+        ceu = ceu * (1.0 - chao_reflexo(ponto, dir, alpha));
+    }
+    return ceu * peso_ceu + caixa_rad(dir, alpha) * peso_caixa;
 }
 
 fn env_irradiance_da_cena(n: vec3<f32>) -> vec3<f32> {
-    return ceu_irr_sem(n) * peso_ceu + caixa_irr(n) * peso_caixa;
+    var ceu = ceu_irr_sem(n);
+    if (chao_tapa_ligado) {
+        ceu = max(ceu - ceu_de_baixo() * chao_tapa(ponto, n), vec3<f32>(0.0));
+    }
+    return ceu * peso_ceu + caixa_irr(n) * peso_caixa;
 }
 
 {MATERIAL}
@@ -466,6 +482,8 @@ fn luz_de_cena(i: VsOut) -> vec3<f32> {
     let v = vista(i.mundo);
     peso_ceu = i.ao * contacto(i.mundo, n);
     peso_caixa = visibilidade_da_caixa(i.mundo);
+    ponto = i.mundo;
+    chao_tapa_ligado = quadro.chao.y > 0.5 && quadro.sombra.w > 0.5;
     var c = mx_indirect(m, n, v);
     c = st_saturate_indirect(quadro.estilo, c);
     c = c + luz_das_lampadas(m, n, v, i.mundo);
@@ -523,6 +541,9 @@ fn fs_cobertura_baixo(i: CobOut) -> @location(0) vec4<f32> {
     return vec4<f32>(0.0, 0.0, clamp(i.z, 0.0, 1.0), 0.0);
 }
 
+// O ceu que o chao ve (`ceu_do_chao`) e o chao que tapa as pecas (`chao_tapa`): `chao_tapa.rs`.
+{CHAO_TAPA}
+
 // ⭐⭐ A SOMBRA QUE POUSA NO CHAO: o nivel da cobertura cujo borrao tem o tamanho FISICO da penumbra
 // (`tangente da caixa x distancia ao bloqueador`) — duro onde a peca encosta, mole longe dela.
 // Devolve (visibilidade da caixa, visibilidade do ceu). A do CEU vem do passe do ceu do chao.
@@ -540,9 +561,7 @@ fn visibilidade_do_chao(p: vec3<f32>) -> vec2<f32> {
     let texel = 2.0 * quadro.ceu.x / lado;
     let tan_p = quadro.ceu.z;
     let fundo = quadro.ceu.y;
-    // O ceu: o do passe do ceu do chao (`ceu_chao.wgsl`), pre-multiplicado pela validade.
-    let s = textureSampleLevel(ceu_chao, liso, uv, 0.0);
-    let ceu = select(1.0, s.r / s.g, s.g > 1.0e-3);
+    let ceu = ceu_do_chao(p);
     // 1) quem tapa, e a que altura: a caixa vista daqui ate' ao topo da cena.
     let busca = tan_p * c.z * fundo;
     let a = textureSampleLevel(cobertura, liso, uv, clamp(log2(max(2.0 * busca / texel, 1.0)), 0.0, topo));

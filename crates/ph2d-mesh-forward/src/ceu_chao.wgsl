@@ -41,6 +41,46 @@ fn sen2(h: f32, t: f32) -> f32 {
     return h * h / (h * h + t * t);
 }
 
+fn toca(a: vec2<f32>, b: vec2<f32>) -> bool {
+    return a.x <= a.y && b.x <= b.y && b.x <= a.y && b.y >= a.x;
+}
+
+fn uniao(a: vec2<f32>, b: vec2<f32>) -> vec2<f32> {
+    if (a.x > a.y) {
+        return b;
+    }
+    return vec2<f32>(min(a.x, b.x), max(a.y, b.y));
+}
+
+fn largura(a: vec2<f32>) -> f32 {
+    return max(a.y - a.x, 0.0);
+}
+
+// ⭐⭐ Ate' DOIS intervalos tapados por fatia (`xy`, `zw`; vazio = `x > y`): uma peca a flutuar a frente
+// de outra pousada tapa duas faixas com CEU entre elas, e unir tudo num so' enchia esse vao de peca
+// (a barriga da pousada lia `-0,05` contra o Cycles). Um terceiro disjunto junta-se ao mais perto.
+fn junta(ab: vec4<f32>, i: vec2<f32>) -> vec4<f32> {
+    var a = ab.xy;
+    var b = ab.zw;
+    if (a.x > a.y || toca(a, i)) {
+        a = uniao(a, i);
+    } else if (b.x > b.y || toca(b, i)) {
+        b = uniao(b, i);
+    } else {
+        let ga = max(i.x - a.y, a.x - i.y);
+        let gb = max(i.x - b.y, b.x - i.y);
+        if (ga <= gb) {
+            a = uniao(a, i);
+        } else {
+            b = uniao(b, i);
+        }
+    }
+    if (toca(a, b)) {
+        return vec4<f32>(uniao(a, b), 1.0, 0.0);
+    }
+    return vec4<f32>(a, b);
+}
+
 @fragment
 fn fs_ceu(@builtin(position) q: vec4<f32>) -> @location(0) vec4<f32> {
     let uv = q.xy / p.c.y;
@@ -64,8 +104,7 @@ fn fs_ceu(@builtin(position) q: vec4<f32>) -> @location(0) vec4<f32> {
     for (var d = 0u; d < fatias; d = d + 1u) {
         let ang = (f32(d) + desvio) * dphi;
         let dir = vec2<f32>(cos(ang), sin(ang));
-        var lo = 1.0;
-        var hi = 0.0;
+        var ab = vec4<f32>(1.0, 0.0, 1.0, 0.0);
         var w = 0.0;
         var t = t0;
         for (var k = 0u; k < passos; k = k + 1u) {
@@ -73,13 +112,14 @@ fn fs_ceu(@builtin(position) q: vec4<f32>) -> @location(0) vec4<f32> {
             let lod = clamp(log2(max(t * p.c.z / texel, 1.0)), 0.0, topo);
             let a = textureSampleLevel(fonte, liso, s, lod);
             if (a.r > 1.0e-3) {
-                hi = max(hi, sen2(max(zc - a.g / a.r, 0.0) * fundo, t));
-                lo = min(lo, sen2(max(zc - a.b / a.r, 0.0) * fundo, t));
+                let hi = sen2(max(zc - a.g / a.r, 0.0) * fundo, t);
+                let lo = sen2(max(zc - a.b / a.r, 0.0) * fundo, t);
+                ab = junta(ab, vec2<f32>(min(lo, hi), hi));
                 w = max(w, clamp(a.r, 0.0, 1.0));
             }
             t = t * razao;
         }
-        occ = occ + w * max(hi - lo, 0.0);
+        occ = occ + w * (largura(ab.xy) + largura(ab.zw));
     }
     // A borda do quadro: o que falta da cauda cai a zero, sem degrau.
     let borda = 1.0 - max(abs(2.0 * uv.x - 1.0), abs(2.0 * uv.y - 1.0));

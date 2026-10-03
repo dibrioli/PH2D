@@ -344,3 +344,48 @@ fn o_contacto_chega_ao_quadro_do_render() {
     );
     assert!(clareou < 20, "o contacto CLAREOU {clareou} px");
 }
+
+/// ⭐⭐⭐ **O chão que tapa CHEGA ao quadro do Render** — a costura app → desenhista
+/// (`ph2d_mesh_forward::chao_tapa`): a cena 40 com o chão e sem ele (o mesmo mundo, a mesma câmara).
+/// Com ele, a parte das peças que olha para baixo escurece (o chão à sombra delas no lugar do céu de
+/// baixo); nenhum pixel de peça CLAREIA (o chão só tira céu). Medido (03/10): `2 590` de `24 286` px
+/// escurecem `> 5 %`, o mais escuro `× 0,474`, nenhum clareia.
+#[test]
+#[ignore = "precisa de aparelho"]
+fn o_chao_que_tapa_chega_ao_quadro_do_render() {
+    let tamanho = (480u32, 270u32);
+    let com = quadro_do_render(40, tamanho);
+    crate::malha_render_quadro::SEM_CHAO.store(true, std::sync::atomic::Ordering::Relaxed);
+    let sem = quadro_do_render(40, tamanho);
+    crate::malha_render_quadro::SEM_CHAO.store(false, std::sync::atomic::Ordering::Relaxed);
+    let (Some(sem), Some(com)) = (sem, com) else {
+        eprintln!("sem aparelho — o gate não corre aqui");
+        return;
+    };
+    let lum =
+        |p: &[u8]| 0.2126 * f32::from(p[0]) + 0.7152 * f32::from(p[1]) + 0.0722 * f32::from(p[2]);
+    let (mut escuros, mut pior, mut clareou, mut pecas) = (0usize, 1.0f32, 0usize, 0usize);
+    for (a, b) in com.as_chunks::<4>().0.iter().zip(sem.as_chunks::<4>().0) {
+        if a[3] < 255 || b[3] < 255 {
+            continue;
+        }
+        pecas += 1;
+        let r = lum(a) / lum(b).max(1.0);
+        pior = pior.min(r);
+        if r < 0.95 {
+            escuros += 1;
+        }
+        if lum(a) > lum(b) + 2.0 {
+            clareou += 1;
+        }
+    }
+    eprintln!(
+        "{pecas} px de peça · {escuros} escurecem > 5 % · o mais escuro × {pior:.3} · {clareou} clareiam"
+    );
+    assert!(pecas > 10_000, "a cena encolheu: {pecas} px");
+    assert!(
+        escuros > 300 && pior < 0.85,
+        "o chão que tapa não chegou ao quadro: {escuros} px · × {pior}"
+    );
+    assert!(clareou < 20, "o chão CLAREOU {clareou} px");
+}

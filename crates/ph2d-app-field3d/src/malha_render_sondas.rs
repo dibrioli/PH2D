@@ -64,8 +64,18 @@ fn sonda_do_render_por_malha() {
             let brilho = std::env::var("PH2D_SONDA_BRILHO").is_ok_and(|v| v == "1");
             // `PH2D_SONDA_ESTILO=1`: tinta quente nas ARESTAS e fria nas COVAS (o roteiro da `=35`).
             let estilo = std::env::var("PH2D_SONDA_ESTILO").is_ok_and(|v| v == "1");
+            // `PH2D_SONDA_PITCH=<rad>`: a câmara mais baixa (a `=41` vê a barriga das peças a `0,08`).
+            let pitch = std::env::var("PH2D_SONDA_PITCH")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(0.52);
+            // `PH2D_SONDA_SEM_CHAO=1`: o mesmo quadro sem o chão (o antes do chão que tapa).
+            crate::malha_render_quadro::SEM_CHAO.store(
+                std::env::var("PH2D_SONDA_SEM_CHAO").is_ok_and(|v| v == "1"),
+                std::sync::atomic::Ordering::Relaxed,
+            );
             crate::smoke::with_smoke(|s| {
-                s.vp_mut().cam = ph2d_field_render::Orbit::from_yaw_pitch(0.72, 0.52);
+                s.vp_mut().cam = ph2d_field_render::Orbit::from_yaw_pitch(0.72, pitch);
                 crate::input::frame_the_part(s);
                 if estilo {
                     let mut st = s.style;

@@ -52,10 +52,12 @@ use ph2d_skeleton_demo::{
 ///
 /// - **`=5`** — OS EFEITOS NA PELE: seis barras presas, uma sem efeito e cinco com um, dobradas
 ///   iguais (F50, 2026-10-02). Ver [`crate::smoke_bone_efeitos`].
+/// - **`=6`** — O BOTÃO «Before bones | After bones»: o mesmo *Twist* forte nas duas ordens, lado a
+///   lado (F51, 2026-10-03). Ver [`crate::smoke_bone_efeitos`].
 ///
 /// ⚠️ **A env ERA de presença** (`is_some`) e passou a ter níveis: um valor ilegível cai em `1`, o
 /// caminho de omissão — *a cena que o dono já aprovou, nunca uma que ele não pediu*.
-pub const NIVEIS: u32 = 5;
+pub const NIVEIS: u32 = 6;
 
 /// ⭐ **A BARRA LARANJA da cena, num sítio só** — canto mínimo, canto máximo e o raio da quina.
 ///
@@ -131,8 +133,8 @@ pub fn build(
         crate::smoke_bone_envelope::build(scene, sim, st);
         return;
     }
-    if nivel() == 5 {
-        crate::smoke_bone_efeitos::build(scene, sim, st);
+    if nivel() >= 5 {
+        crate::smoke_bone_efeitos::build(scene, sim, st, nivel());
         return;
     }
     if nivel() >= 3 {
@@ -247,8 +249,8 @@ pub fn bind(
         crate::smoke_bone_envelope::bind(scene, sim, st);
         return;
     }
-    if nivel() == 5 {
-        crate::smoke_bone_efeitos::bind(scene, sim, st);
+    if nivel() >= 5 {
+        crate::smoke_bone_efeitos::bind(scene, sim, st, nivel());
         return;
     }
     if nivel() >= 3 {

@@ -14,9 +14,12 @@
 //! ⚠️ **A dobra é aplicada DEPOIS de prender** — prender fotografa a pose de repouso (ver o
 //! [`crate::smoke_bone_par`]).
 //!
-//! ⭐⭐ **A 4.ª linha é o BOTÃO «Before bones | After bones»** (F51, ordem do dono de 2026-10-03): o
-//! MESMO *Twist* forte nas duas ordens, lado a lado — à esquerda antes dos ossos (cozido em repouso,
-//! dobra com a barra), à direita depois (refeito sobre a barra dobrada).
+//! ⭐⭐ **`=6` — O BOTÃO «Before bones | After bones»** (F51, ordem do dono de 2026-10-03): o MESMO
+//! *Twist* forte ([`BOTAO`]) nas duas ordens, lado a lado — à esquerda antes dos ossos (cozido em
+//! repouso, dobra com a barra), à direita depois (refeito sobre a barra dobrada). ⛔ Cena própria e
+//! não uma 4.ª linha da `=5`: FOTOGRAFADO, um *Twist* forte ocupa um disco do comprimento da barra
+//! (ele roda cada ponto sem mudar a distância ao centro) e invadia a vizinha, e as quatro linhas
+//! não cabiam na vista.
 
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_vec_scene::effect::{FxEntry, FxStage, PathEffect};
@@ -46,15 +49,19 @@ pub(crate) type Barra = (&'static str, Option<fn() -> PathEffect>, FxStage);
 
 const ANTES: FxStage = FxStage::BeforeBones;
 
-/// ⭐⭐ **Os efeitos, pela ordem da grelha** (linha a linha, esquerda → direita) — `None` é o
-/// controlo. O nome é o que a cena escreve em cada barra.
-pub(crate) const EFEITOS: [Barra; 8] = [
+/// ⭐⭐ **Os efeitos da `=5`, pela ordem da grelha** (linha a linha, esquerda → direita) — `None` é
+/// o controlo. O nome é o que a cena escreve em cada barra.
+pub(crate) const EFEITOS: [Barra; 6] = [
     ("sem efeito", None, ANTES),
     ("Zig Zag", Some(zig_zag), ANTES),
     ("Twist", Some(twist), ANTES),
     ("Warp", Some(warp), ANTES),
     ("Bloat", Some(bloat), ANTES),
     ("Hatch", Some(hatch), ANTES),
+];
+
+/// ⭐⭐ **O par da `=6`** — o mesmo *Twist* forte, antes e depois dos ossos.
+pub(crate) const BOTAO: [Barra; 2] = [
     ("Twist forte, antes dos ossos", Some(twist_forte), ANTES),
     (
         "Twist forte, depois dos ossos",
@@ -63,10 +70,23 @@ pub(crate) const EFEITOS: [Barra; 8] = [
     ),
 ];
 
+/// As barras do nível — o [`BOTAO`] na `=6`, os [`EFEITOS`] na `=5`.
+pub(crate) fn barras(nivel: u32) -> &'static [Barra] {
+    if nivel == 6 { &BOTAO } else { &EFEITOS }
+}
+
 /// O *Twist* do report do dono (*«quanto mais veloz se arrasta o valor de twist mais deformações
-/// bizarras»*) — o que o botão existe para curar.
+/// bizarras»*; a `150°` as pontas mudam de osso, `[40, 53, 39]` nós) — o que o botão existe para
+/// curar.
 fn twist_forte() -> PathEffect {
-    PathEffect::Twist(ph2d_vec_scene::fx_twist::TwistSpec { angle: 120.0 })
+    PathEffect::Twist(ph2d_vec_scene::fx_twist::TwistSpec { angle: 150.0 })
+}
+
+/// O raio do disco que um *Twist* ocupa à volta do centro da barra — ele roda cada ponto sem lhe
+/// mudar a distância ao centro.
+fn raio_do_twist() -> f64 {
+    let (l, t) = PECA;
+    (l / 2.0).hypot(t / 2.0)
 }
 
 fn zig_zag() -> PathEffect {
@@ -126,17 +146,22 @@ pub(crate) fn caixa_dobrada() -> [f64; 4] {
     [c[0] - r, c[1] - r, c[2] + r, c[3] + r]
 }
 
-/// ⭐⭐ **O centro (recto) de cada barra** — duas colunas, quatro linhas, com a caixa DOBRADA de
-/// cada uma centrada na sua célula.
+/// ⭐⭐ **O centro (recto) de cada barra** — duas colunas, três linhas na `=5`, com a caixa
+/// DOBRADA de cada uma centrada na sua célula; na `=6` uma linha, com as colunas afastadas pelo
+/// disco do *Twist*.
 #[must_use]
-pub(crate) fn origens() -> Vec<[f64; 2]> {
+pub(crate) fn origens(nivel: u32) -> Vec<[f64; 2]> {
     let [x0, y0, x1, y1] = caixa_dobrada();
     let (w, h) = (x1 - x0, y1 - y0);
     let (cx, cy) = ((x0 + x1) / 2.0, (y0 + y1) / 2.0);
+    if nivel == 6 {
+        let passo = 2.0 * raio_do_twist() + VAO;
+        return vec![[-passo / 2.0, -cy], [passo / 2.0, -cy]];
+    }
     (0..EFEITOS.len())
         .map(|i| {
             let (col, lin) = ((i % 2) as f64, (i / 2) as f64);
-            [(col - 0.5) * (w + VAO) - cx, (1.5 - lin) * (h + VAO) - cy]
+            [(col - 0.5) * (w + VAO) - cx, (1.0 - lin) * (h + VAO) - cy]
         })
         .collect()
 }
@@ -160,11 +185,16 @@ fn esqueleto(sim: &mut SimWorld, centro: [f64; 2], nome: &str) -> Option<Entity>
     raiz
 }
 
-/// O 1.º tempo: as seis barras e os seis esqueletos, rectos.
-pub(crate) fn build(scene: &mut VecScene, sim: &mut SimWorld, st: &mut crate::state::VecState) {
+/// O 1.º tempo: as barras do `nivel` (`5` ou `6`) e os esqueletos delas, rectos.
+pub(crate) fn build(
+    scene: &mut VecScene,
+    sim: &mut SimWorld,
+    st: &mut crate::state::VecState,
+    nivel: u32,
+) {
     let (l, t) = PECA;
     let mut pend = Vec::new();
-    for ((nome, efeito, ordem), o) in EFEITOS.iter().zip(origens()) {
+    for ((nome, efeito, ordem), o) in barras(nivel).iter().zip(origens(nivel)) {
         let mut p = shape(
             ShapeKind::RoundRect,
             [o[0] - l / 2.0, o[1] - t / 2.0],
@@ -190,34 +220,50 @@ pub(crate) fn build(scene: &mut VecScene, sim: &mut SimWorld, st: &mut crate::st
 }
 
 /// O 2.º tempo: prende cada barra ao seu esqueleto RECTO, dá-lhe o nome do efeito e dobra.
-pub(crate) fn bind(scene: &mut VecScene, sim: &mut SimWorld, st: &mut crate::state::VecState) {
+pub(crate) fn bind(
+    scene: &mut VecScene,
+    sim: &mut SimWorld,
+    st: &mut crate::state::VecState,
+    nivel: u32,
+) {
     st.bone_smoke_step = 2;
     let Some(pecas) = st.bone_smoke_pend.take() else {
         return;
     };
     let mut presas = 0;
-    for ((id, raiz), (nome, _, _)) in pecas.iter().zip(EFEITOS) {
+    let lista = barras(nivel);
+    for ((id, raiz), (nome, _, _)) in pecas.iter().zip(lista) {
         presas += ph2d_skeleton_live::skin_live::bind(sim, scene, &st.entities, &[*id], *raiz);
         if let Some(e) = st.entities.get(id).and_then(|b| Entity::try_from_bits(*b)) {
             sim.world_mut()
                 .entity_mut(e)
-                .insert(ph2d_ecs::Name::new(nome));
+                .insert(ph2d_ecs::Name::new(*nome));
         }
         if let Some(r) = raiz {
             crate::smoke_bone_par::dobra_duas(sim, *r, DOBRA, DOBRA);
         }
     }
-    if presas != EFEITOS.len() {
+    if presas != lista.len() {
         eprintln!(
             "[vec-bone-smoke] PARE: so' {presas} de {} barras prenderam -- a cena nao montou",
-            EFEITOS.len()
+            lista.len()
         );
     }
+    if nivel == 6 {
+        println!(
+            "[vec-bone-smoke] O BOTAO ANTES/DEPOIS DOS OSSOS: duas barras iguais, presas a esqueletos \
+             iguais e dobradas em S ({DOBRA}° por junta), com o MESMO Twist forte. A da esquerda tem \
+             o Twist ANTES dos ossos (desenhado na barra recta e dobrado com ela); a da direita \
+             DEPOIS (refeito sobre a barra ja' dobrada).\n\
+             [vec-bone-smoke] Clique numa barra: no painel Vector, no cartao do Twist, a fileira \
+             Before bones | After bones troca a ordem."
+        );
+        return;
+    }
     println!(
-        "[vec-bone-smoke] OS EFEITOS NA PELE: oito barras iguais, cada uma presa a um esqueleto \
+        "[vec-bone-smoke] OS EFEITOS NA PELE: seis barras iguais, cada uma presa a um esqueleto \
          igual e dobrada em S ({DOBRA}° por junta). Da esquerda para a direita, de cima para baixo: \
-         SEM EFEITO, Zig Zag, Twist, Warp, Bloat, Hatch, e na ultima linha o MESMO Twist forte \
-         antes e depois dos ossos.\n\
+         SEM EFEITO, Zig Zag, Twist, Warp, Bloat, Hatch.\n\
          [vec-bone-smoke] 1) Olhe cada barra: o efeito deve DOBRAR junto com ela, como um desenho \
          feito na barra -- as riscas do Hatch acompanham a curva, o Zig Zag mantem os dentes do \
          mesmo tamanho dos dois lados de cada junta.\n\
@@ -226,10 +272,7 @@ pub(crate) fn bind(scene: &mut VecScene, sim: &mut SimWorld, st: &mut crate::sta
          dobrada: as cinco barras com efeito deixam de seguir o S (ficam uma salsicha torta) e as \
          riscas do Hatch ficam direitas no ecra'. A barra sem efeito fica igual nas duas.\n\
          [vec-bone-smoke] 3) Para mudar um efeito: clique numa barra e mexa no painel de efeitos; \
-         a barra continua a dobrar com o efeito novo.\n\
-         [vec-bone-smoke] 4) Ultima linha: a da esquerda tem o Twist ANTES dos ossos (desenhado na \
-         barra recta e dobrado com ela); a da direita DEPOIS (refeito sobre a barra ja' dobrada). \
-         Clique numa delas: no cartao do Twist, a fileira Before bones | After bones troca a ordem."
+         a barra continua a dobrar com o efeito novo."
     );
 }
 
@@ -237,19 +280,30 @@ pub(crate) fn bind(scene: &mut VecScene, sim: &mut SimWorld, st: &mut crate::sta
 mod tests {
     use super::*;
 
-    /// ⭐⭐⭐ **AS SEIS CABEM NA CÂMERA DE OMISSÃO e nenhuma toca outra** — a mesma régua do par
-    /// (largura visível `height × 16/9 × 0,63`, `90 %` de folga).
+    /// ⭐⭐⭐ **AS BARRAS CABEM NA CÂMERA DE OMISSÃO e nenhuma toca outra**, nas duas cenas — a
+    /// mesma régua do par (largura visível `height × 16/9 × 0,63`, `90 %` de folga). Na `=6` a caixa
+    /// de cada barra é o DISCO do *Twist* (a dobra não o alarga: os ossos rodam no repouso dele).
+    ///
+    /// ⛔ **A altura é a FAIXA MEDIDA, `±4,0 m`, e não `90 %`:** a `±4,5 m` este gate aprovou uma
+    /// grelha de quatro linhas e a FOTO (`1930 × 1040`) cortava-lhe o topo — a barra de ferramentas
+    /// tapa `~0,95 m` em cima e a de estado `~0,6 m` em baixo.
     #[test]
-    fn as_seis_cabem_na_camera_de_omissao_e_nao_se_tocam() {
+    fn as_barras_cabem_na_camera_de_omissao_e_nao_se_tocam() {
         let cam = ph2d_render::Camera2d::default();
         let h = f64::from(cam.height_world);
         let meia_largura = h * 16.0 / 9.0 * 0.63 * 0.9 / 2.0;
-        let meia_altura = h * 0.9 / 2.0;
+        let meia_altura = h * 0.8 / 2.0;
         let [x0, y0, x1, y1] = caixa_dobrada();
-        let caixas: Vec<[f64; 4]> = origens()
+        let dobradas: Vec<[f64; 4]> = origens(5)
             .iter()
             .map(|o| [x0 + o[0], y0 + o[1], x1 + o[0], y1 + o[1]])
             .collect();
+        let r = raio_do_twist();
+        let discos: Vec<[f64; 4]> = origens(6)
+            .iter()
+            .map(|o| [o[0] - r, o[1] - r, o[0] + r, o[1] + r])
+            .collect();
+        for caixas in [dobradas, discos] {
         for c in &caixas {
             assert!(
                 c[0].abs().max(c[2].abs()) <= meia_largura
@@ -261,7 +315,8 @@ mod tests {
         for (i, a) in caixas.iter().enumerate() {
             for b in &caixas[i + 1..] {
                 let separadas = a[2] < b[0] || b[2] < a[0] || a[3] < b[1] || b[3] < a[1];
-                assert!(separadas, "duas barras tocam-se: {a:?} {b:?}");
+                    assert!(separadas, "duas barras tocam-se: {a:?} {b:?}");
+                }
             }
         }
     }
@@ -271,12 +326,30 @@ mod tests {
     #[test]
     fn cada_barra_com_efeito_tem_um_efeito_activo() {
         assert!(EFEITOS[0].1.is_none(), "a 1.ª barra é o CONTROLO");
-        for (nome, f, _) in &EFEITOS[1..] {
+        for (nome, f, _) in EFEITOS[1..].iter().chain(&BOTAO) {
             let f = f.expect("efeito");
             assert!(
                 FxEntry::new(f()).is_active(),
                 "a barra «{nome}» tem um efeito NEUTRO — a cena mostraria o controlo"
             );
         }
+    }
+
+    /// ⭐⭐ **A `=6` COMPARA SÓ A ORDEM:** o mesmo efeito, antes à esquerda e depois à direita, e o
+    /// efeito pode ir para depois (não lê os nós) — senão as duas barras seriam a mesma.
+    #[test]
+    fn o_par_do_botao_e_o_mesmo_efeito_nas_duas_ordens() {
+        let [(_, a, sa), (_, b, sb)] = BOTAO;
+        let (a, b) = (a.expect("efeito")(), b.expect("efeito")());
+        assert_eq!(a, b, "o par tem de ser o MESMO efeito");
+        assert_eq!((sa, sb), (FxStage::BeforeBones, FxStage::AfterBones));
+        assert!(
+            FxEntry {
+                stage: sb,
+                ..FxEntry::new(b)
+            }
+            .runs_after_bones(),
+            "o «depois» do par não corre depois — a cena mostraria duas barras iguais"
+        );
     }
 }

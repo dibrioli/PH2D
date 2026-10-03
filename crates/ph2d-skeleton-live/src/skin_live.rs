@@ -410,7 +410,9 @@ pub fn recook_leis(
             crate::skin_desenho::Estilo::NaoServe,
             crate::skin_desenho::estilo_de,
         );
-        let Some(q) = crate::skin_desenho::quadro(e.to_bits(), &skin, &pele, leis, &estilo) else {
+        let eixos = || eixos_do_bind(sim, &skin, &index);
+        let Some(q) = crate::skin_desenho::quadro(e.to_bits(), &skin, &pele, leis, &estilo, &eixos)
+        else {
             continue;
         };
         if let Some(p) = scene.path_mut(id) {
@@ -616,6 +618,30 @@ pub(crate) fn tendons_and_axes(
             })
         })
         .collect()
+}
+
+/// ⭐⭐ **Os EIXOS dos ossos no REPOUSO do bind**, no espaço da forma — os que o [`bind_com`] deu ao
+/// solver ([`tendons_and_axes`]), lidos do que a pele guardou: o repouso de cada tendão e o
+/// comprimento do osso. Pela ordem dos tendões, que é a das colunas da tabela; vazio se um tendão
+/// não resolve (e quem o lê cai no campo da fonte).
+pub(crate) fn eixos_do_bind(
+    sim: &SimWorld,
+    skin: &SkinBind,
+    index: &BoneIndex,
+) -> Vec<ph2d_skin_weights::Handle> {
+    let eixos: Option<Vec<_>> = skin
+        .tendons
+        .iter()
+        .map(|t| {
+            let comprimento = sim.world().get::<Bone>(*index.get(&t.bone)?)?.length;
+            let rest = Xform(t.rest);
+            Some(ph2d_skin_weights::Handle {
+                a: rest.apply([0.0, 0.0]),
+                b: rest.apply([comprimento, 0.0]),
+            })
+        })
+        .collect();
+    eixos.unwrap_or_default()
 }
 
 /// **Solta as formas seleccionadas do esqueleto.** Devolve quantas soltou.

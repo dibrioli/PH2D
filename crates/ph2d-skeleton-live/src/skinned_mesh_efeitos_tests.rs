@@ -91,30 +91,49 @@ fn as_duas_leis(p: &BPalco) -> (VecPath, VecPath) {
     (nova, cru)
 }
 
-/// O afastamento MÁXIMO do padrão-ouro à curva `vista`, separado em `(dentro, fora)` do domínio.
-///
-/// ⚠️ **Fora do domínio o padrão-ouro é uma CONVENÇÃO**: a imagem presa não tem arte fora da
-/// malha, e a régua dá a um ponto de fora o peso do vértice mais próximo (constante aos degraus),
-/// enquanto a lei da curva mistura as linhas dos nós. Uma crista de *Zig Zag* sai da forma, e é aí
-/// que as duas convenções divergem (`~0,08` junto a uma junta a `60°`). ⇒ o gate julga DENTRO e
-/// só exige que fora a lei nova não seja pior do que a antiga.
-fn afastamento(
-    p: &BPalco,
-    pele: &ph2d_skeleton::Skin,
-    repouso: &VecPath,
-    vista: &[[f64; 2]],
-) -> (f64, f64) {
-    let (mut dentro, mut fora) = (0.0_f64, 0.0_f64);
-    for x in b_amostra_com(repouso, POR_SEG) {
-        let (y, no_campo) = b_ouro_pt(pele, &p.campo, &p.correcoes, x);
-        let d = b_dist(y, vista);
-        if no_campo {
-            dentro = dentro.max(d);
-        } else {
-            fora = fora.max(d);
-        }
-    }
-    (dentro, fora)
+/// Os efeitos FORTES do report do dono (2026-10-03, quatro fotos): pontas de *Bloat* e a cauda de
+/// um *Twist* muito fora da barra.
+fn efeitos_fortes() -> Vec<(&'static str, PathEffect)> {
+    let bloat = |amount| PathEffect::Bloat(ph2d_vec_scene::fx_warp::BloatSpec { amount });
+    let twist = |angle| PathEffect::Twist(ph2d_vec_scene::fx_twist::TwistSpec { angle });
+    vec![
+        ("Bloat-60", bloat(-60.0)),
+        ("Bloat-200", bloat(-200.0)),
+        ("Twist25", twist(25.0)),
+        ("Twist60", twist(60.0)),
+        ("Twist120", twist(120.0)),
+    ]
+}
+
+/// O padrão-ouro de uma forma com efeito: a lei da IMAGEM ponto a ponto sobre o campo cujo DOMÍNIO
+/// é o contorno cozido — o que o *Puppet* do After Effects faz com o que a camada desenha.
+fn ouro_do_cozido(p: &BPalco, pele: &ph2d_skeleton::Skin, repouso: &VecPath) -> Vec<[f64; 2]> {
+    let skin = p
+        .sim
+        .world()
+        .get::<ph2d_skeleton_ecs::SkinBind>(p.alvo)
+        .expect("pele");
+    let eixos =
+        crate::skin_live::eixos_do_bind(&p.sim, skin, &crate::skin_live::bone_index(&p.sim));
+    let campo = ph2d_vec_skin::pesos::campo_do_caminho(repouso, &eixos)
+        .expect("o solver responde sobre o contorno cozido");
+    b_amostra_com(repouso, POR_SEG)
+        .into_iter()
+        .map(|x| b_ouro_pt(pele, &campo, &p.correcoes, x).0)
+        .collect()
+}
+
+/// ⭐⭐ **O ESTICÃO MÁXIMO entre duas amostras vizinhas** — `|Δ dobrado| / |Δ repouso|`. Uma pele de
+/// ossos rígidos estica pouco; um RASGO (um pedaço a seguir um osso e o vizinho outro) lê-se aqui
+/// como um número enorme, sem convenção nenhuma sobre o que é o «certo».
+fn esticao(rest: &[[f64; 2]], def: &[[f64; 2]]) -> f64 {
+    rest.windows(2)
+        .zip(def.windows(2))
+        .filter_map(|(r, d)| {
+            let lr = (r[1][0] - r[0][0]).hypot(r[1][1] - r[0][1]);
+            (lr > 1e-6).then(|| (d[1][0] - d[0][0]).hypot(d[1][1] - d[0][1]) / lr)
+        })
+        .fold(0.0, f64::max)
 }
 
 /// ⭐⭐⭐ **GATE — O EFEITO DOBRA COM A FORMA: a lei nova segue o padrão-ouro e a antiga não.**
@@ -137,31 +156,85 @@ fn o_efeito_corre_no_repouso_e_dobra_com_a_forma() {
             p.dobra_em_s(graus);
             let pele = p.pele();
             let repouso = repouso_com(&p, &pilha);
+            let ouro = ouro_do_cozido(&p, &pele, &repouso);
             let (nova, antiga) = as_duas_leis(&p);
-            let [(nd, nf), (ad, af)] = [&nova, &antiga]
-                .map(|c| afastamento(&p, &pele, &repouso, &b_amostra_com(c, POR_SEG)));
+            let [(_, _, nmax), (_, _, amax)] =
+                [&nova, &antiga].map(|c| b_perfil(&ouro, &b_amostra_com(c, POR_SEG)));
             println!(
-                "  {nome:>7} {graus:>4}°: antiga máx {ad:.5} dentro · {af:.5} fora · nova ({} nós) \
-                 máx {nd:.5} dentro · {nf:.5} fora",
+                "  {nome:>7} {graus:>4}°: antiga máx {amax:.5} · nova ({} nós) máx {nmax:.5}",
                 nova.verts_all().count()
             );
             assert!(
-                nd < 0.01,
-                "{nome} a {graus}°: dentro do domínio a lei nova afasta-se {nd} do padrão-ouro \
-                 (diagonal ~7,07)"
+                nmax < 0.01,
+                "{nome} a {graus}°: a lei nova afasta-se {nmax} do padrão-ouro (diagonal ~7,07)"
             );
             if graus >= 60.0 {
                 assert!(
-                    ad > 0.05,
-                    "{nome} a {graus}°: a lei antiga leu máx {ad} — a fixtura deixou de conter o \
+                    amax > 0.05,
+                    "{nome} a {graus}°: a lei antiga leu máx {amax} — a fixtura deixou de conter o \
                      defeito"
                 );
                 assert!(
-                    nd * 10.0 < ad && nf < af,
-                    "{nome} a {graus}°: a lei nova ({nd} · {nf}) não é melhor que a antiga \
-                     ({ad} · {af})"
+                    nmax * 10.0 < amax,
+                    "{nome} a {graus}°: a lei nova ({nmax}) não é melhor que a antiga ({amax})"
                 );
             }
+        }
+    }
+}
+
+/// ⭐⭐⭐ **GATE — UM EFEITO QUE SAI DA FORMA NÃO RASGA, e o desenho segue-o em TODA a dobra**
+/// (report do dono de 2026-10-03: *«a depender do nível da deformação, tudo se deforma muito
+/// ruim»*, pontas de *Bloat* e a cauda de um *Twist*).
+///
+/// # As três metades
+///
+/// 1. ⛔ **O CONTROLO: o ideal sobre o campo da FONTE rasga** onde o efeito sai da barra (a cauda
+///    do *Twist* — `17`–`191×` de esticão entre amostras vizinhas). Um *Bloat* fica dentro do
+///    alcance da barra e não rasga; ele está aqui pela 3.ª metade.
+/// 2. **Sobre o campo do contorno COZIDO o ideal não rasga** (`≤ 3,6×`).
+/// 3. **O desenho do PRODUTO (com a lei do contacto ligada) fica no ideal até `120°`** — a
+///    silhueta reescrevia-o (`0,16`–`2,04`) e era a fonte dos pedaços soltos e da serrilha.
+#[test]
+fn um_efeito_que_sai_da_forma_nao_rasga() {
+    for (nome, efeito) in efeitos_fortes() {
+        let pilha = vec![FxEntry::new(efeito)];
+        for graus in [60.0_f32, 90.0, 120.0] {
+            let mut p = b_palco(false);
+            caminho_mut(&mut p.scene, p.id).effects = pilha.clone();
+            p.dobra_em_s(graus);
+            let pele = p.pele();
+            let repouso = repouso_com(&p, &pilha);
+            let rest = b_amostra_com(&repouso, POR_SEG);
+            let da_fonte: Vec<[f64; 2]> = rest
+                .iter()
+                .map(|&x| b_ouro_pt(&pele, &p.campo, &p.correcoes, x).0)
+                .collect();
+            let ouro = ouro_do_cozido(&p, &pele, &repouso);
+            let (ef, ec) = (esticao(&rest, &da_fonte), esticao(&rest, &ouro));
+            let d =
+                crate::skin_live::recook_leis(&p.sim, &mut p.scene.clone(), Leis::do_ambiente())
+                    .remove(&p.id)
+                    .expect("desenho");
+            let (_, _, nmax) = b_perfil(&ouro, &b_amostra_com(&d, POR_SEG));
+            println!(
+                "  {nome:>9} {graus:>4}°: esticão com o campo da fonte {ef:.2} · do cozido {ec:.2} \
+                 · o desenho afasta-se {nmax:.5} do ideal"
+            );
+            if nome.starts_with("Twist") {
+                assert!(
+                    ef > 10.0,
+                    "{nome} a {graus}°: o CONTROLO não rasga ({ef}) — a fixtura perdeu o defeito"
+                );
+            }
+            assert!(
+                ec < 4.0,
+                "{nome} a {graus}°: sobre o campo do contorno cozido o ideal estica {ec}"
+            );
+            assert!(
+                nmax < 0.01,
+                "{nome} a {graus}°: o desenho afasta-se {nmax} do ideal sem rasgo"
+            );
         }
     }
 }
@@ -311,6 +384,36 @@ fn diag_o_preco_do_efeito_por_quadro() {
         println!(
             "  {nome:>7}: µs/forma/quadro a mexer: antiga {antiga:.1} · nova {nova:.1} (sem a silhueta \
              {sem_contacto:.1}) · loadavg {}",
+            std::fs::read_to_string("/proc/loadavg")
+                .unwrap_or_default()
+                .trim()
+        );
+    }
+}
+
+/// ⭐ **SONDA — O PREÇO DO CAMPO DO CONTORNO COZIDO**, pago UMA vez por pilha nova (nunca por
+/// pose). Imprime; corra em `--release` e com a máquina calma.
+#[test]
+fn diag_o_preco_do_campo_do_cozido() {
+    for (nome, efeito) in efeitos().into_iter().chain(efeitos_fortes()) {
+        let p = b_palco(false);
+        let repouso = repouso_com(&p, &[FxEntry::new(efeito)]);
+        let skin = p
+            .sim
+            .world()
+            .get::<ph2d_skeleton_ecs::SkinBind>(p.alvo)
+            .expect("pele");
+        let eixos =
+            crate::skin_live::eixos_do_bind(&p.sim, skin, &crate::skin_live::bone_index(&p.sim));
+        let t = std::time::Instant::now();
+        let c = ph2d_vec_skin::pesos::campo_do_caminho(&repouso, &eixos);
+        let ms = t.elapsed().as_secs_f64() * 1e3;
+        let t = std::time::Instant::now();
+        let _ = ph2d_vec_skin::pesos::campo_do_caminho(&p.fonte, &eixos);
+        println!(
+            "  {nome:>8}: campo do cozido {ms:.1} ms ({} vértices) · da fonte {:.1} ms · loadavg {}",
+            c.as_ref().map_or(0, |c| c.malha.rest.len()),
+            t.elapsed().as_secs_f64() * 1e3,
             std::fs::read_to_string("/proc/loadavg")
                 .unwrap_or_default()
                 .trim()

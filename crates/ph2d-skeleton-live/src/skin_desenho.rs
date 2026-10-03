@@ -59,6 +59,12 @@
 //! CORRIDO (Blender 5.2, `GREASE_PENCIL_ARMATURE` com `parent_set(ARMATURE_AUTO)`): um modificador
 //! que já existe quando se prende fica ANTES do `Armature` na pilha — corre em repouso e dobra.
 //! `PH2D_SKIN_EFEITOS=0` volta à lei antiga, e é por onde se bissecta um report.
+//!
+//! ⭐⭐⭐ **E o DOMÍNIO do campo é o contorno COZIDO** (F50-d, report do dono de 2026-10-03): a cauda
+//! de um *Twist* sai da barra, e fora do domínio da fonte cada ponto herdava o vértice mais próximo
+//! — o ideal esticava `17`–`191×` entre amostras vizinhas (um rasgo). Sobre o cozido, `≤ 3,6×`. É o
+//! *Puppet* do After Effects: a malha tira-se do que a camada DESENHA. Preço: um solver por pilha
+//! nova (`20`–`100 ms` medidos a `load 53`), nunca por pose.
 
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -66,10 +72,11 @@ use std::rc::Rc;
 
 use ph2d_skeleton::Skin;
 use ph2d_skeleton_ecs::SkinBind;
+use ph2d_skin_weights::Handle;
 use ph2d_vec_scene::effect::FxEntry;
 use ph2d_vec_scene::{VecPath, VecPathId, VecXforms};
 use ph2d_vec_skin::curva::{Bake, CampoIndexado};
-use ph2d_vec_skin::pesos::IndiceDoCampo;
+use ph2d_vec_skin::pesos::{CampoDoDominio, IndiceDoCampo};
 
 use crate::skinned_mesh::SkinnedPath;
 
@@ -227,11 +234,11 @@ pub struct CozidoFx {
     pilha: Vec<FxEntry>,
     caminho: VecPath,
     tabela: Vec<f64>,
-    /// ⭐⭐ **A união do contacto é NEUTRA no repouso deste cozido?** Um efeito pode desenhar
-    /// contornos que se sobrepõem DE PROPÓSITO (as cópias de um *Repeat*, os traços de um
-    /// *Sketch*), e a união fundi-los-ia já na pose de repouso. ⛔ *Uma lei de contacto que muda o
-    /// repouso não é de contacto* ⇒ ali o desenho sai sem ela.
-    contacto: bool,
+    /// ⭐⭐⭐ **O campo do domínio resolvido sobre o CONTORNO COZIDO** (e o índice dele) — o que se
+    /// vê, pontas do efeito incluídas, é o domínio, como o *Puppet* do After Effects tira a malha
+    /// do que a camada desenha. `None` quando o solver não responde (um contorno que se cruza, o
+    /// *Repeat* sobreposto): aí vale o campo da fonte.
+    campo: Option<(CampoDoDominio, Option<IndiceDoCampo>)>,
 }
 
 struct Ultimo {
@@ -273,7 +280,8 @@ pub(crate) fn derivados() -> (usize, usize) {
 /// ⭐⭐⭐ **O QUADRO DE UMA FORMA PRESA** — da gaveta quando nada mudou, calculado quando mudou.
 ///
 /// `bits` é o endereço (a entidade da forma); `skin`, `pele` e `leis` são a prova. `estilo` é o
-/// [`estilo_de`] do caminho VIVO, que só quem chama tem na mão.
+/// [`estilo_de`] do caminho VIVO, que só quem chama tem na mão; `eixos` são os dos ossos no
+/// repouso do bind ([`crate::skin_live::eixos_do_bind`]) — só lidos quando a pilha muda.
 ///
 /// `None` quando a fonte não se lê — o chamador salta a forma, como sempre saltou.
 #[must_use]
@@ -283,6 +291,7 @@ pub fn quadro(
     pele: &Skin,
     leis: Leis,
     estilo: &Estilo,
+    eixos: &dyn Fn() -> Vec<Handle>,
 ) -> Option<Quadro> {
     com_a_gaveta(bits, skin, |g| {
         if let Some(u) = &g.ultimo
@@ -296,7 +305,7 @@ pub fn quadro(
         let fx = match estilo {
             Estilo::Efeitos(pilha) if leis.efeitos && leis.desenho => {
                 if g.efeitos.as_ref().is_none_or(|c| c.pilha != *pilha) {
-                    g.efeitos = cozido_com_efeitos(&prep.guardado, pilha).map(Rc::new);
+                    g.efeitos = cozido_com_efeitos(&prep.guardado, pilha, &eixos()).map(Rc::new);
                 }
                 g.efeitos.clone()
             }
@@ -432,23 +441,31 @@ fn cozido_para_o_bake(g: &SkinnedPath) -> Option<(VecPath, Vec<f64>)> {
 }
 
 /// ⭐⭐⭐ **A fonte com a PILHA DE EFEITOS viva cozida no REPOUSO** (quinas vivas incluídas, na
-/// ordem do `cooked`), a tabela de pesos dos nós dela, e se o contacto é neutro ali.
+/// ordem do `cooked`), a tabela de pesos dos nós dela e o campo do contorno cozido.
 ///
 /// ⚠️ O `FxCtx` de cada efeito (caixa, centro, `ref_size`) sai assim da forma EM REPOUSO, e o
 /// tamanho do efeito deixa de depender da pose. ⛔ Sem campo não há de onde amostrar a tabela ⇒
 /// `None`, e a forma desenha-se pela lei antiga.
-fn cozido_com_efeitos(g: &SkinnedPath, pilha: &[FxEntry]) -> Option<CozidoFx> {
-    let campo = g.campo.as_ref()?;
+fn cozido_com_efeitos(g: &SkinnedPath, pilha: &[FxEntry], eixos: &[Handle]) -> Option<CozidoFx> {
+    let da_fonte = g.campo.as_ref()?;
     let mut fonte = g.path.clone();
     fonte.effects = pilha.to_vec();
     let caminho = fonte.cooked().into_owned();
-    let tabela = ph2d_vec_skin::pesos::pesos_dos_pontos(&caminho, campo);
-    let contacto = ph2d_vec_boolean::resolve_overlap(&caminho).is_none();
+    let campo = ph2d_vec_skin::pesos::campo_do_caminho(&caminho, eixos)
+        .filter(|c| c.ossos() == da_fonte.ossos())
+        .map(|c| {
+            let i = IndiceDoCampo::novo(&c.malha);
+            (c, i)
+        });
+    let tabela = ph2d_vec_skin::pesos::pesos_dos_pontos(
+        &caminho,
+        campo.as_ref().map_or(da_fonte, |(c, _)| c),
+    );
     Some(CozidoFx {
         pilha: pilha.to_vec(),
         caminho,
         tabela,
-        contacto,
+        campo,
     })
 }
 
@@ -489,6 +506,19 @@ fn calcula(
         indice: campo.and(prep.indice.as_ref()),
         suave: suave.as_ref(),
     };
+    // ⭐⭐⭐ O bake de uma forma com efeito lê o campo do CONTORNO COZIDO ([`CozidoFx::campo`]).
+    let campo_fx = fx.and_then(|c| c.campo.as_ref()).filter(|_| leis.campo);
+    let suave_fx = campo_fx
+        .filter(|_| leis.c1)
+        .and_then(|(c, _)| ph2d_vec_skin::pesos_suave::CampoSuave::novo(c));
+    let lido_do_bake = match campo_fx {
+        Some((c, i)) => CampoIndexado {
+            campo: Some(c),
+            indice: i.as_ref(),
+            suave: suave_fx.as_ref(),
+        },
+        None => lido,
+    };
     let mut cru = guardado.path.clone();
     if leis.curva {
         ph2d_vec_skin::curva::aplica_pela_curva_indexada(
@@ -523,7 +553,7 @@ fn calcula(
                 tabela,
                 &correcoes,
                 leis.rigido,
-                lido,
+                lido_do_bake,
                 Bake {
                     amostras: amostras_por_segmento(segmentos(fonte)),
                     tolerancia: TOLERANCIA_DA_DIAGONAL * diagonal(fonte),
@@ -541,18 +571,14 @@ fn calcula(
         // encosto; sem vinco apertado a forma sai ao bit. ⛔ Só no DESENHADO — o
         // `cru` são os nós que o artista edita, e trocá-los pela silhueta mudar-lhe-ia a malha.
         .map(|(d, quinas)| {
-            if !leis.contacto {
+            // ⛔⛔ **Numa forma com EFEITO, nenhuma silhueta** (report do dono de 2026-10-03, quatro
+            // fotos: pedaços de traço soltos, serrilha, um quarto de círculo). Medido
+            // (`skinned_mesh::efeitos_tests`): sem ela o desenho fica a `0,002`–`0,006` do ideal em
+            // toda a dobra; com a UNIÃO lia `0,16`–`2,04` a `90°`–`120°` (*Bloat* e *Twist*), e a
+            // bola custava `3,5`–`7 ms` no *Zig Zag*. As cristas e as pontas de um efeito não são
+            // o contorno do artista que a silhueta foi feita para fechar.
+            if !leis.contacto || fx.is_some() {
                 d
-            } else if let Some(c) = fx {
-                // ⭐⭐ Numa forma com EFEITO só a UNIÃO: a bola arredonda o vinco do contorno do
-                // ARTISTA, e o de um efeito é feito de cristas e vales que ela lê como vincos a
-                // arredondar — no *Zig Zag* da fixtura `3,5`–`7 ms` por quadro (a união: `0,5`),
-                // sonda `skinned_mesh::efeitos_tests::diag_o_preco_do_efeito_por_quadro`.
-                if c.contacto {
-                    ph2d_vec_boolean::resolve_overlap(&d).unwrap_or(d)
-                } else {
-                    d
-                }
             } else {
                 ph2d_vec_boolean::silhueta_da_pele(&d, &quinas).unwrap_or(d)
             }

@@ -21,6 +21,9 @@
 
 use crate::{Rgb, Surface};
 
+/// O WGSL por pixel (a rugosidade de um mapa) — ver [`crate::Surface::at_roughness`].
+pub use crate::por_pixel::por_pixel_wgsl as por_pixel;
+
 /// Onde as duas funções do ambiente entram no [`SOURCE`].
 ///
 /// O que substituir esta marca tem de declarar **exactamente**:

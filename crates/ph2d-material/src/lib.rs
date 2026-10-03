@@ -52,6 +52,7 @@ mod prefilter;
 mod subsurface;
 
 pub use prefilter::lobe_shrink;
+mod por_pixel;
 
 use bsdf::{Bsdf, V3};
 

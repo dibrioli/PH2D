@@ -142,37 +142,34 @@ pub fn reflexo(
 }
 
 /// O gémeo WGSL de [`escurecimento`]: `fn chao_tapa(p, n) -> f32`, com a altura em `quadro.chao.x` e
-/// a visibilidade lida por `ceu_do_chao(p)` (do `forward.wgsl`). As direcções vão DESENROLADAS (uma
-/// chamada por direcção, sem arrays): nada que um compilador GLES tenha de indexar.
+/// a visibilidade lida por `ceu_do_chao(p)` (do `forward.wgsl`). As direcções CALCULAM-SE no laço (a
+/// mesma espiral da CPU), sem arrays: nada que um compilador GLES tenha de indexar.
 #[must_use]
 pub fn wgsl() -> String {
-    let raios: String = direcoes()
-        .iter()
-        .map(|d| {
-            format!(
-                "    a = a + chao_raio(p, n, h, vec3<f32>({:?}, {:?}, {:?}));\n",
-                d[0], d[1], d[2]
-            )
-        })
-        .collect();
-    let anel: String = (0..2)
-        .flat_map(|a| (0..TAPS_ANEL).map(move |j| (a, j)))
-        .map(|(a, j)| {
-            let psi = (j as f32 + 0.5 * a as f32) * std::f32::consts::TAU / TAPS_ANEL as f32;
-            format!(
-                "    b = b + reflexo_tap(p, r, h, c{a}, ({:?} * t1 + {:?} * t2));\n",
-                psi.cos(),
-                psi.sin()
-            )
-        })
-        .collect();
+    let ouro = std::f32::consts::PI * (3.0 - 5.0f32.sqrt());
     let q = QUANTIS.map(|q| format!("{:?}", (q / (1.0 - q)).sqrt()));
     format!(
-        "{CEU_DO_CHAO}\n{MEMO}\n{RAIO}\nfn chao_tapa(p: vec3<f32>, n: vec3<f32>) -> f32 {{\n{ABRE}{raios}{FECHA}}}\n\n\
+        "{CEU_DO_CHAO}\n{MEMO}\n{RAIO}\nfn chao_tapa(p: vec3<f32>, n: vec3<f32>) -> f32 {{\n{ABRE}\
+         \x20   for (var k = 0u; k < {k}u; k = k + 1u) {{\n\
+         \x20       let y = -(f32(k) + 0.5) / {kf:?};\n\
+         \x20       let r = sqrt(1.0 - y * y);\n\
+         \x20       let f = f32(k) * {ouro:?};\n\
+         \x20       a = a + chao_raio(p, n, h, vec3<f32>(r * cos(f), y, r * sin(f)));\n\
+         \x20   }}\n{FECHA}}}\n\n\
          {TAP}\nfn chao_reflexo(p: vec3<f32>, r: vec3<f32>, alpha: f32) -> f32 {{\n\
          \x20   let h = max(p.y - quadro.chao.x, 0.0);\n\
          \x20   let c0 = 2.0 * atan(alpha * {q0});\n\
-         \x20   let c1 = 2.0 * atan(alpha * {q1});\n{BASE}    var b = vec2<f32>(0.0);\n{anel}{FECHA_REFLEXO}}}\n",
+         \x20   let c1 = 2.0 * atan(alpha * {q1});\n{BASE}    var b = vec2<f32>(0.0);\n\
+         \x20   for (var j = 0u; j < {t2}u; j = j + 1u) {{\n\
+         \x20       let anel = j / {t}u;\n\
+         \x20       let psi = (f32(j % {t}u) + 0.5 * f32(anel)) * {passo:?};\n\
+         \x20       b = b + reflexo_tap(p, r, h, select(c0, c1, anel == 1u), cos(psi) * t1 + sin(psi) * t2);\n\
+         \x20   }}\n{FECHA_REFLEXO}}}\n",
+        k = RAIOS_CHAO,
+        kf = RAIOS_CHAO as f32,
+        t = TAPS_ANEL,
+        t2 = 2 * TAPS_ANEL,
+        passo = std::f32::consts::TAU / TAPS_ANEL as f32,
         q0 = q[0],
         q1 = q[1],
     )

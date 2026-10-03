@@ -117,8 +117,14 @@ fn entering_with_no_scene_creates_one_from_the_one_primitive_door() {
         src.contains("Sculpt3dScene::new(device, mesh, aspect)"),
         "entrar sem cena não cria nenhuma: o pill é um botão morto em todo run sem a env var"
     );
+    // ⚠️ Desde 03/10 a porta é a `new_scene` (o menu Add de objectos cria a cena com a peça
+    // escolhida, spec/06 F1): o pill passa-lhe a ESFERA, e ela tira a malha da primitiva.
     assert!(
-        src.contains("Primitive::Sphere.mesh()"),
+        src.contains("new_scene(device, size, crate::Primitive::Sphere)"),
+        "o pill deixou de nascer a escultura com a esfera pela porta única"
+    );
+    assert!(
+        src.contains("let mesh = first.mesh();"),
         "a peça inicial deixou de vir da porta única das primitivas"
     );
     // ⚠️ E SAIR nunca larga a cena: apagar a escultura num botão cujo nome não promete isso é

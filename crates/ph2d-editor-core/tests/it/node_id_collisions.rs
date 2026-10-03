@@ -76,6 +76,12 @@ const FORMAS_NAO_LITERAIS: &[(&str, &str, Especie, &str)] = &[
         "item da paleta de componentes = hash do NOME CANÓNICO do tipo (espaço de nomes Rust, não de slugs); só é hit-registado com a paleta aberta",
     ),
     (
+        "crates/ph2d-editor-core/src/object_add.rs",
+        "id",
+        Especie::HashDeExpressao,
+        "item do menu Add de objectos = hash da CHAVE i18n da entrada (`object_add.*`); só é hit-registado com a paleta aberta; a colisão com as outras paletas do canal de pick é o no_menu_id_belongs_to_another_palette da shell",
+    ),
+    (
         "crates/ph2d-app-field3d/src/shape_palette.rs",
         "item_id",
         Especie::HashDeExpressao,

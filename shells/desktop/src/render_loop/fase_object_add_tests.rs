@@ -16,7 +16,11 @@ fn all_ids() -> Vec<NodeId> {
 /// registados: um painel que consumisse o id calaria o clique, como já aconteceu com a paleta de
 /// pincéis (`a_paleta_de_pinceis_fecha_ao_escolher`).
 ///
-/// (Mutação: o dreno da fase perguntar `entry_of_pick(&FAMILIES[..1], …)` ⇒ RED.)
+/// ⚠️ O que ele prende é a ROTA do clique até ao pick, para cada id compilado; o dreno da fase
+/// pergunta pelo mesmo `entry_of_pick(FAMILIES, …)`, e a criação de cada família tem gate na
+/// crate dela.
+///
+/// (Mutação: o `apply` da paleta deixar de chamar `set_command_pick` ⇒ RED.)
 #[test]
 fn a_real_click_on_every_entry_reaches_the_drain() {
     let _ = ph2d_panel_registry_init::register_all_panels();

@@ -79,7 +79,8 @@ pub(crate) fn new_scene(
     first: crate::Primitive,
 ) -> Sculpt3dScene {
     let aspect = size.0 as f32 / size.1.max(1) as f32;
-    Sculpt3dScene::new(device, first.mesh(), aspect)
+    let mesh = first.mesh();
+    Sculpt3dScene::new(device, mesh, aspect)
 }
 
 impl Sculpt3dScene {

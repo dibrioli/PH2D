@@ -350,7 +350,9 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "strength",
         label: "node.force.vortex.param.strength",
-        min: 0.0,
+        // ⭐ Negativo = gira ao contrário, ao bit (`-s` horário ≡ `s` anti-horário, gate abaixo):
+        // o `clockwise` é o sentido AUTORADO, o sinal é o que um fio usa para inverter suave.
+        min: -40.0,
         max: 40.0,
         step: 0.1,
         widget: ParamWidget::Slider,
@@ -472,6 +474,10 @@ mod tests {
     }
 
     fn accel_with(clockwise: f32) -> Vec<[f32; 2]> {
+        accel_with_strength(clockwise, None)
+    }
+
+    fn accel_with_strength(clockwise: f32, strength: Option<f32>) -> Vec<[f32; 2]> {
         let mut g = Graph::new();
         let src = g.add_node("force.vortex.test.src");
         let vx = g.add_node("force.vortex");
@@ -482,6 +488,9 @@ mod tests {
         })
         .unwrap();
         g.set_param(vx, "clockwise", clockwise);
+        if let Some(s) = strength {
+            g.set_param(vx, "strength", s);
+        }
         let mut cook = Cook::new();
         let out = cook.cook(&g, &Ops, vx, 0.0).unwrap();
         match out[0].as_stream().get("accel").unwrap() {
@@ -514,6 +523,30 @@ mod tests {
             (a[0][1] - 8.0 / 3.0).abs() < 1e-4,
             "counter-clockwise pushes +Y on the right side"
         );
+    }
+
+    /// ⭐ **Força NEGATIVA é o outro sentido, ao bit** — a medição que abriu a faixa a `±40`
+    /// (report do Enio, 2026-10-03). O sinal atravessa `strength · t · falloff / d` sem arredondar,
+    /// então `-s` horário é `s` anti-horário em todo bit, e nada no meio da faixa é um terceiro
+    /// comportamento. CONTROLO: `+s` horário difere dos dois.
+    #[test]
+    fn a_negative_strength_is_the_other_turn_to_the_bit() {
+        for s in [0.5f32, 4.0, 17.3, 40.0] {
+            let negativo = accel_with_strength(1.0, Some(-s));
+            let outro_sentido = accel_with_strength(0.0, Some(s));
+            assert_eq!(
+                negativo
+                    .iter()
+                    .map(|v| v.map(f32::to_bits))
+                    .collect::<Vec<_>>(),
+                outro_sentido
+                    .iter()
+                    .map(|v| v.map(f32::to_bits))
+                    .collect::<Vec<_>>(),
+                "strength {s}"
+            );
+            assert_ne!(accel_with_strength(1.0, Some(s)), negativo, "controlo");
+        }
     }
 
     /// The focus field gates the force (audit 2026-07-10: untested until now):

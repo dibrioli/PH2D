@@ -82,6 +82,30 @@ fn repel_flips_the_sign() {
     assert!((a[0][0] - 2.5).abs() < 1e-4, "repel pushes away");
 }
 
+/// ⭐ **Força NEGATIVA é o `repel`, ao bit** — a medição que abriu a faixa a `±40` (report do
+/// Enio, 2026-10-03): o sinal entra no mesmo produto que o `repel` (`strength · w · sign · …`).
+/// CONTROLO: `+s` atrai, e difere dos dois.
+#[test]
+fn a_negative_strength_is_repel_to_the_bit() {
+    let bits = |a: Vec<[f32; 2]>| a.iter().map(|v| v.map(f32::to_bits)).collect::<Vec<_>>();
+    for curve in [0.0f32, 1.0, 2.0, 3.0] {
+        for s in [0.5f32, 5.0, 40.0] {
+            let negativo = accel_with(&[("curve", curve), ("strength", -s)]);
+            let repele = accel_with(&[("curve", curve), ("strength", s), ("repel", 1.0)]);
+            assert_eq!(
+                bits(negativo.clone()),
+                bits(repele),
+                "curve {curve}, strength {s}"
+            );
+            assert_ne!(
+                accel_with(&[("curve", curve), ("strength", s)]),
+                negativo,
+                "controlo"
+            );
+        }
+    }
+}
+
 #[test]
 fn falloff_column_gates_the_force() {
     // Same graph but the src emits falloff 0.5 on instance 0 → half force.

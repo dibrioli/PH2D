@@ -488,7 +488,8 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "strength",
         label: "node.force.curl.param.strength",
-        min: 0.0,
+        // Negativo = o mesmo campo, a correr ao contrário (`w = strength · falloff`).
+        min: -40.0,
         max: 40.0,
         step: 0.1,
         widget: ParamWidget::Slider,

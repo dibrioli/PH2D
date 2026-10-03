@@ -446,7 +446,8 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "strength",
         label: "node.force.attractor.param.strength",
-        min: 0.0,
+        // ⭐ Negativo = repele, ao bit (`-s` ≡ `s` com `repel`) — o sinal é o que um fio anima.
+        min: -40.0,
         max: 40.0,
         step: 0.1,
         widget: ParamWidget::Slider,

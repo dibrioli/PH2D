@@ -121,7 +121,9 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "strength",
         label: "node.force.wind.param.strength",
-        min: 0.0,
+        // Negativo = sopra para o lado oposto — o que um fio anima a passar pelo zero, e o
+        // `angle` (+180°) só diz aos saltos.
+        min: -40.0,
         max: 40.0,
         step: 0.1,
         widget: ParamWidget::Slider,

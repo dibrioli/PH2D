@@ -64,13 +64,12 @@ pub fn ecs_bridge(
     // intents do painel: o mundo é a verdade e este é o único sítio que a escreve.
     // ⭐⭐⭐ **O RENDER POR MALHA** (02/10): move-se o objeto INTEIRO, e um objeto que não se pode
     // mover sozinho trava o gizmo (e o teclado) com a frase do porquê.
-    let em_render = crate::malha_render_estado::ligado()
-        && with_smoke(|s| {
-            s.vps
-                .iter()
-                .any(|v| v.shading == crate::shading::Shading::Render)
-        })
-        .unwrap_or(false);
+    let em_render = with_smoke(|s| {
+        s.vps
+            .iter()
+            .any(|v| v.shading == crate::shading::Shading::Render)
+    })
+    .unwrap_or(false);
     let travado = em_render
         .then(|| crate::malha_render_estado::trava(sim.world(), &chosen))
         .flatten();

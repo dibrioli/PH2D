@@ -260,23 +260,17 @@ fn viewport_pass(
 ) {
     // Colhe o traçado que ficou pronto, se ficou.
     if let Some(job) = &smoke.vps[i].inflight {
-        // ⚠️ **Esvazia até ao MAIS NOVO.** Com o refinamento a mandar `32` quadros, colher um por
-        // frame faria a imagem andar atrás da acumulação — e cada quadro do refinamento já contém
-        // os anteriores. *Mostrar o mais velho de uma fila idempotente é escolher a versão pior.*
-        let mut colhido = None;
-        loop {
-            match job.rx.try_recv() {
-                Ok(r) => colhido = Some(r),
-                Err(TryRecvError::Empty) => break,
-                Err(TryRecvError::Disconnected) => {
-                    if colhido.is_none() {
-                        smoke.vps[i].inflight = None;
-                    }
-                    break;
-                }
+        // Um pedido, uma resposta: o canal fecha depois dela.
+        let colhido = match job.rx.try_recv() {
+            Ok(r) => Some(r),
+            Err(TryRecvError::Empty) => None,
+            Err(TryRecvError::Disconnected) => {
+                smoke.vps[i].inflight = None;
+                None
             }
-        }
+        };
         if let Some(r) = colhido {
+            smoke.vps[i].inflight = None;
             if !smoke.announced {
                 smoke.announced = true;
                 // ⚠️ Uma linha, uma vez. É ela que separa "o smoke subiu" de "o smoke
@@ -289,11 +283,7 @@ fn viewport_pass(
                     r.width, r.height, r.hits, r.edges, r.millis
                 );
             }
-            // ⭐⭐⭐ **SÓ A PASSAGEM `0` MEDE** — ver [`Ready::passagem`]. As passagens de
-            // oclusão trabalham sobre o G-buffer que já existe e custam outra coisa; deixá-las
-            // escrever aqui faria o laço do divisor engrossar o quadro de movimento por causa
-            // de um trabalho que ele não paga.
-            if r.passagem == 0 {
+            {
                 smoke.vps[i].last_trace_ms = r.millis as f32;
                 // ⭐ **A medição que fecha o laço** (W24): o tempo **com** os pixels a que foi
                 // medido. O pedido seguinte sai daqui, e é por isso que este módulo não precisa
@@ -306,9 +296,9 @@ fn viewport_pass(
                 // report *«ao rotacionar há redução severa da qualidade»*). O assente paga o
                 // ricochete — `252 ms` no nó com as sondas frias, contra `80,7` do movimento no
                 // mesmo tamanho — e deixá-lo escrever aqui fazia o PRIMEIRO quadro de cada rotação
-                // sair no tamanho mais grosso por causa de um trabalho que o movimento não paga. É
-                // a mesma lei da `passagem`, um degrau acima. ⚠️ Sem medição nenhuma o assente
-                // SEMEIA-a: o primeiro traçado continua a ser a medição.
+                // sair no tamanho mais grosso por causa de um trabalho que o movimento não paga.
+                // ⚠️ Sem medição nenhuma o assente SEMEIA-a: o primeiro traçado continua a ser a
+                // medição.
                 if !r.assente || smoke.vps[i].measured.ultima.is_none() {
                     smoke.vps[i].measured.regista(medida);
                 }
@@ -338,13 +328,6 @@ fn viewport_pass(
                 r.width,
                 r.height,
             );
-            // ⭐⭐⭐ **O TRABALHO CONTINUA ENQUANTO HOUVER `mais`** — e é isso que o mantém
-            // CANCELÁVEL. Largar o [`InFlight`] aqui deixaria a thread viva com a bandeira de
-            // cancelamento fora do alcance de quem a devia armar: a mão voltaria a mexer e o
-            // refinamento continuaria a queimar um núcleo por uma imagem que já não se vê.
-            if !r.mais {
-                smoke.vps[i].inflight = None;
-            }
         }
     }
 
@@ -382,10 +365,9 @@ fn viewport_pass(
     // o que está na tela ainda é grosso, sai o **cheio**. Uma cena parada e já nítida custa
     // **zero** — senão re-traçaria o mesmo quadro para sempre, queimando um núcleo por nada.
     // ⭐⭐⭐ **O RENDER POR MALHA** (02/10): desenhado na hora, em resolução cheia — nada de fila
-    // nem de traçado. Só volta ao traçado sem aparelho (ou com `PH2D_FIELD_RENDER_TRACADO=1`).
-    if smoke.vps[i].shading == crate::shading::Shading::Render
-        && crate::malha_render_estado::ligado()
-    {
+    // nem de traçado. Sem aparelho ele mostra o MATCAP traçado abaixo (o render traçado antigo
+    // saiu em 03/10).
+    if smoke.vps[i].shading == crate::shading::Shading::Render {
         let tem = smoke.vps[i].frame.is_some();
         match crate::malha_render_quadro::desenha(smoke, i, cheio, doc, tem) {
             crate::malha_render_quadro::Feito::SemAparelho => {}
@@ -499,93 +481,33 @@ fn viewport_pass(
         // diferentes, e não com leis diferentes. O que ship até à W84 era «engrossa a mexer,
         // autoral ao parar»; medido, o autoral acima de `0,5°` de erro de normal compra
         // `≤3/255` no pixel e custa o dobro. Ver `preview::SETTLED_NORMAL_ERR_DEG`.
-        // O documento REAL, antes de o contorno engrossar — é dele que o chão se lê.
-        let real = doc;
         let doc = crate::preview::coarse_doc(doc, coarse).unwrap_or_else(|| doc.clone());
         let assente = !coarse;
-        // ⭐⭐⭐ **LIMITADO, e não ilimitado** (`docs/Render3d/05` §30). Desde que um trabalho manda
-        // `32` quadros em vez de um, uma fila sem tecto guarda `32 × 8,3 MB = 265 MB` a
-        // `1920×1080` sempre que ninguém a esvazie (a janela minimizada, por exemplo).
-        //
-        // ⭐ **Dois, e perder uma passagem intermédia é INOFENSIVO** — cada quadro do refinamento
-        // *substitui* o anterior (ele traz a média acumulada, não um incremento), logo a passagem
-        // seguinte mostra mais. *É a contrapressão que uma sequência idempotente autoriza.*
-        let (tx, rx) = sync_channel::<Ready>(2);
-        let cam = smoke.vps[i].cam;
-        let matcap = Arc::clone(&smoke.matcap);
+        // Um pedido, uma resposta; o canal de `1` nunca bloqueia quem responde.
+        let (tx, rx) = sync_channel::<Ready>(1);
         let cancel = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        let flag = Arc::clone(&cancel);
-        // ⚠️ O registo de esculturas atravessa a fronteira da thread como **cópia dos `Arc`** —
-        // o `thread_local` que o guarda não existe do outro lado.
-        let reg = crate::smoke::sampled_registry();
-        // ⭐⭐⭐ **As fitas já compiladas atravessam a fronteira da thread** (W82) — ver
-        // [`ph2d_field_render::TapeCache`]. É um `Arc`: o que viaja é o ponteiro.
-        let tapes = std::sync::Arc::clone(&smoke.vps[i].tapes);
-        // ⚠️ **A porta de bissecção** — `PH2D_FIELD_TAPE_CACHE=0` traça sem cache nenhuma, que é
-        // o que o app fazia até à W82. Ela existe porque um report de *«piorou muito»* não diz
-        // **qual** mudança o causou, e duas corridas dizem.
-        let usa_cache = tape_cache_enabled();
-        // ⭐⭐⭐ **O modo e o olhar VIAJAM COM O PEDIDO** (`docs/Render3d/05`) — copiados aqui, e não
-        // lidos na thread: o estado do módulo não atravessa a fronteira, e um olhar lido depois
-        // podia já não ser o do pedido que este traçado responde.
-        // ⭐ O modo é do VIEWPORT; o olhar e o estilo são da CENA (`docs/Render3d/05`).
-        let (shading, look, style) = (smoke.vps[i].shading, smoke.look, smoke.style);
-        let bloom = smoke.bloom;
-        // ⭐⭐⭐ **O refinamento da oclusão só corre com o prato PARADO** — ver
-        // [`crate::preview::refines_occlusion`], que é onde a razão está escrita.
-        let refinar = crate::preview::refines_occlusion(assente, smoke.vps[i].manual);
-        // ⭐⭐⭐ **A TABELA DE MATERIAIS atravessa a fronteira como `Arc`** — o que viaja é o
-        // ponteiro, como a cache de fitas e o registo de esculturas.
-        let materials = smoke.materials.clone();
-        // ⭐ **As luzes viajam com o pedido**, como a tabela de materiais e pela mesma razão.
-        //
-        // ⚠️ **O que viaja são as ACESAS** — a lista do módulo tem também as apagadas, porque o gizmo
-        // do canvas precisa de as desenhar para se poderem voltar a acender.
-        let lights = crate::lights::lamps_of(&smoke.lights);
-        // ⭐⭐⭐ **O CHÃO viaja com o pedido** — lido do documento REAL (nunca do contorno engrossado)
-        // e ancorado quando o Render liga. Ver [`crate::floor`].
-        let ground = crate::floor::anchored(&mut smoke.floor, shading, real, &reg);
-        // ⭐⭐⭐ **O TRAÇADOR DO DISPOSITIVO atravessa a fronteira como PONTEIRO** — como a tabela
-        // de materiais e a cache de fitas, e pela mesma razão: abri-lo por quadro custa mais do que
-        // a CPU inteira (`130 ms` contra `13`, §35).
-        //
-        // ⚠️⚠️ **O quadro de MOVIMENTO TAMBÉM passa por aqui desde 2026-09-15** — a cerca do
-        // *«só o assente»* saiu, e ela era a causa directa do report do dono: *«e apagar o AO ao
-        // rotacionar a tela»*. O sombreado de contacto só existe no caminho do dispositivo, logo
-        // enquanto a cerca existiu ele **desaparecia** a cada gesto e voltava ao largar.
-        // ⭐ E a lei da W73 sobrevive: o `assente` viaja com o pedido e o dispositivo **salta o
-        // ricochete** quando ele é falso — *grosso a mexer, nítido ao assentar*.
-        // ⭐⭐⭐⭐ **PELA PORTA DO QUADRO e não pelo [`crate::gpu_frame::shared`]** — ver o doc
-        // dela: a thread que responde nasce DESANEXADA, e a placa vista de uma thread que ninguém
-        // espera mata o processo na saída (`3` de `3`, com a reprodução nas sondas do
-        // `gpu_frame::testes`). *A placa é do PRODUTO; um teste de unidade comum não a entrega
-        // aqui.*
-        let gpu = crate::gpu_frame::para_o_quadro();
         // ⭐⭐⭐ **O PEDIDO, montado aqui e respondido noutra thread** — ver
-        // [`super::thread::Pedido`]: tudo o que ele leva foi COPIADO do módulo antes de
-        // a thread nascer, e nada dele se lê depois.
+        // [`super::thread::Pedido`]: tudo o que ele leva foi COPIADO do módulo antes de a thread
+        // nascer (o olhar, a fotografia do matcap, o registo de esculturas e as fitas como `Arc`),
+        // e nada dele se lê depois.
         let pedido = super::thread::Pedido {
             doc,
-            reg,
-            cam,
+            reg: crate::smoke::sampled_registry(),
+            cam: smoke.vps[i].cam,
             tw,
             th,
             cheio,
             assente,
-            shading,
-            look,
-            style,
-            bloom,
-            matcap,
-            materials,
-            lights,
-            ground,
-            tapes,
-            usa_cache,
-            refinar,
-            flag,
+            look: smoke.look,
+            matcap: Arc::clone(&smoke.matcap),
+            tapes: Arc::clone(&smoke.vps[i].tapes),
+            usa_cache: tape_cache_enabled(),
+            flag: Arc::clone(&cancel),
             tx,
-            gpu,
+            // ⭐⭐⭐⭐ **PELA PORTA DO QUADRO e não pelo [`crate::gpu_frame::shared`]**: a thread
+            // que responde nasce DESANEXADA, e a placa vista de uma thread que ninguém espera mata
+            // o processo na saída (as sondas do `gpu_frame::testes`).
+            gpu: crate::gpu_frame::para_o_quadro(),
         };
         std::thread::spawn(move || super::thread::traca(&pedido));
         smoke.vps[i].inflight = Some(crate::smoke::InFlight {
@@ -620,3 +542,8 @@ fn viewport_pass(
         );
     }
 }
+
+/// ⭐⭐⭐ O modo Render não chega ao traçado (o render antigo saiu em 03/10).
+#[cfg(test)]
+#[path = "render_sem_tracado_tests.rs"]
+mod render_sem_tracado_tests;

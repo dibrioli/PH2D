@@ -80,7 +80,16 @@ pub(crate) fn tem_brilho() -> bool {
 /// A resposta do [`tem_brilho`], escrita UMA vez quando o desenhista nasce.
 static TEM_BRILHO: OnceLock<bool> = OnceLock::new();
 
+/// Nos testes: o aparelho como se não existisse (o recuo do Render sem placa).
+#[cfg(test)]
+pub(crate) static SEM_APARELHO: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+
 fn desenhista() -> Option<&'static Mutex<Desenhista>> {
+    #[cfg(test)]
+    if SEM_APARELHO.load(std::sync::atomic::Ordering::Relaxed) {
+        return None;
+    }
     DESENHISTA
         .get_or_init(|| {
             let constantes = crate::studio_wgsl::constants();

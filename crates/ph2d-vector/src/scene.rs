@@ -120,6 +120,12 @@ impl StableImage {
         self.data.height
     }
 
+    /// Os bytes da imagem, como entraram (`width × height × 4`).
+    #[must_use]
+    pub fn rgba(&self) -> &[u8] {
+        self.data.data.data()
+    }
+
     // ⛔ **Não acrescente aqui um `probe_id` do handle.** Ele existiu por um turno e a mutação que
     // o devia matar SOBREVIVEU: a identidade que interessa não é a que o produtor GUARDA, é a que
     // a **cena EMITE** — [`VectorScene::probe_image_ids`].

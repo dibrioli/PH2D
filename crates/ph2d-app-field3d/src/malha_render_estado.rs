@@ -107,12 +107,6 @@ pub fn anuncia(sel: &[Entity], porque: Option<&'static str>) -> bool {
     })
 }
 
-/// ⭐ **O Render por malha está ligado?** `PH2D_FIELD_RENDER_TRACADO=1` volta ao traçado (bissecção).
-#[must_use]
-pub fn ligado() -> bool {
-    std::env::var("PH2D_FIELD_RENDER_TRACADO").map_or(true, |v| v != "1")
-}
-
 /// Lê o estado (se houver).
 pub fn com<R>(f: impl FnOnce(&Estado) -> R) -> Option<R> {
     ESTADO.with(|c| c.borrow().as_ref().map(f))
@@ -156,7 +150,7 @@ fn particao(objs: &[ObjetoRender]) -> Vec<Vec<Entity>> {
 /// ⭐⭐ **O sincronismo do quadro.** `em_render` = algum viewport está no Render; `gesto` = um
 /// arrasto mexeu nas poses neste quadro.
 pub fn sync(sim: &mut ph2d_ecs::SimWorld, em_render: bool, gesto: bool) {
-    if !em_render || !ligado() {
+    if !em_render {
         ESTADO.with(|c| *c.borrow_mut() = None);
         return;
     }

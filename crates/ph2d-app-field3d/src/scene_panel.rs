@@ -41,8 +41,7 @@ pub fn publish_snapshot(
         with_smoke(|s| s.vp().shading),
         Some(crate::shading::Shading::Render)
     );
-    let malha = crate::malha_render_estado::ligado();
-    crate::textura_painel::junta(world, render && malha, &mut rows);
+    crate::textura_painel::junta(world, render, &mut rows);
     rows.extend(crate::estilo::rows(
         with_smoke(|s| s.style).unwrap_or_default(),
         render,
@@ -59,13 +58,12 @@ pub fn publish_snapshot(
     // compute), onde a placa desenha a cena-linear em `Rgba16Float`; sem isso, nada de fileiras.
     rows.extend(crate::brilho_painel::rows(
         with_smoke(|s| s.bloom).unwrap_or_default(),
-        render && (!malha || crate::malha_render_quadro::tem_brilho()),
+        render && crate::malha_render_quadro::tem_brilho(),
     ));
-    // ⭐⭐⭐ **E AS FILEIRAS DO CÉU** — só no Render por MALHA (o traçado desenha o estúdio de
-    // sempre: ali seriam controlos mortos).
+    // ⭐⭐⭐ **E AS FILEIRAS DO CÉU** — no Render (o desenhista de jogo é quem as lê).
     rows.extend(crate::ceu_painel::rows(
         with_smoke(|s| s.ceu).unwrap_or_default(),
-        render && malha,
+        render,
     ));
     let rows = rows;
     // ⚠️ A lista de verbos é **derivada de `Mode::ALL`**, que é a fonte da contagem. O painel não

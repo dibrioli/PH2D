@@ -195,6 +195,8 @@ mod cache;
 mod compose;
 mod gpu_ops; // the stack → the GPU compositor's op-list (two consumers)
 #[cfg(test)]
+mod oraculo_gimp_tests;
+#[cfg(test)]
 mod tests;
 pub use cache::CompositorCache;
 pub use compose::{composite, composite_below, composite_region, composite_with_cache};

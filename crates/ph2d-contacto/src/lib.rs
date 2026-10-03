@@ -20,7 +20,7 @@ mod volume;
 pub mod wgsl;
 
 pub use grade::{A_CONVOLUCAO, Grade, base_sh, direcoes};
-pub use propria::{ALFA, CONES, visibilidade_propria};
+pub use propria::{RAIOS_PROPRIOS, visibilidade_propria};
 pub use volume::Volume;
 
 /// Os pontos por aresta da grelha.

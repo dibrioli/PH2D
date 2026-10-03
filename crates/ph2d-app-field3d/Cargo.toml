@@ -37,6 +37,7 @@ ph2d-mesh-forward  = { path = "../ph2d-mesh-forward" }
 ph2d-sky           = { path = "../ph2d-sky" }
 # A TEXTURA sem UV (triplanar) e as imagens que o artista importa para ela.
 ph2d-triplanar     = { path = "../ph2d-triplanar" }
+ph2d-contacto      = { path = "../ph2d-contacto" }
 ph2d-imageio       = { path = "../ph2d-imageio" }
 ph2d-imageio-png   = { path = "../ph2d-imageio-png" }
 ph2d-imageio-jpeg  = { path = "../ph2d-imageio-jpeg" }

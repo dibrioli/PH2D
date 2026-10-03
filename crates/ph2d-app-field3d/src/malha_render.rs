@@ -143,6 +143,8 @@ pub struct ObjetoRender {
     /// vértice é assada a partir dele depois da malha, e refeita quando a suavidade do estilo muda
     /// (`malha_render_estado`), sem extrair de novo.
     pub campo: std::sync::Arc<FieldDoc>,
+    /// ⭐ O céu que este objeto tapa aos outros, no espaço da malha ([`crate::malha_render_contacto`]).
+    pub contacto: Option<ph2d_contacto::Grade>,
 }
 
 /// ⭐⭐⭐ **A PEÇA → OS OBJETOS DO RENDER.**
@@ -311,12 +313,19 @@ pub fn processa(e: &Entrada, reg: &ph2d_field_eval::hybrid::Registry) -> Vec<Obj
     todos
         .into_iter()
         .filter(|(us, _, _)| !us.is_empty())
-        .map(|(us, malha, campo)| ObjetoRender {
-            campo,
-            movel: us.iter().all(|&u| vezes[u] == 1),
-            pose_extraida: e.poses[us[0]],
-            unidades: us.iter().map(|&u| postos[u].0).collect(),
-            malha,
+        .map(|(us, mut malha, campo)| {
+            // ⭐ O campo DESTE objeto: as unidades dele, não o grupo (as vizinhas vêm das grelhas delas).
+            let proprio = uniao(&us.iter().map(|&u| postos[u].1.clone()).collect::<Vec<_>>());
+            let contacto =
+                proprio.and_then(|d| crate::malha_render_contacto::assa(&d, reg, &mut malha));
+            ObjetoRender {
+                campo,
+                movel: us.iter().all(|&u| vezes[u] == 1),
+                pose_extraida: e.poses[us[0]],
+                unidades: us.iter().map(|&u| postos[u].0).collect(),
+                malha,
+                contacto,
+            }
         })
         .collect()
 }

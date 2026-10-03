@@ -160,14 +160,13 @@ fn sdf_propria(peca: &str, p: [f32; 3]) -> f32 {
 }
 
 /// ⭐⭐⭐ **A oclusão própria é a do Cycles** — peças fundidas (um L de duas caixas, uma bola meio
-/// enterrada numa caixa, um toro), cada uma sozinha, no volume `64³` da caixa dela, nos pontos e
-/// normais do Cycles. Controlo: a oclusão de Quilez que a casa assava (`5` passos em `0,01..0,16`).
+/// enterrada numa caixa, um toro), cada uma sozinha, no volume `64³` da caixa dela (como distância),
+/// nos pontos e normais do Cycles. Controlo: a oclusão de Quilez que a casa assava (`5` passos em
+/// `0,01..0,16`).
 ///
-/// Medido (03/10, `48` cones de `0,2` rad, volume `64³`, `14 712` pontos), médio / onde o Cycles
-/// `< 0,9`: L `0,012` / `0,016` · bola `0,006` / `0,008` · toro `0,011` / `0,031` (o toro sai um pouco
-/// CLARO, viés `+0,013`: os cones moles subestimam um tubo fino do outro lado do furo — `64` cones dão
-/// `0,029`). Quilez: `0,115` / `0,209` · `0,051` / `0,142` · `0,073` / `0,218`. ⛔ Recusado (medido): o limite inferior
-/// de FORA da caixa do volume nos cones (escurecia os que saem rasantes, viés `−0,025`).
+/// Medido (03/10, `128` raios, `14 712` pontos), médio / onde o Cycles `< 0,9`: L `0,0037` / `0,0061`
+/// · bola `0,0042` / `0,0088` · toro `0,0040` / `0,0096`. Quilez: `0,115` / `0,209` · `0,051` /
+/// `0,142` · `0,073` / `0,218`. A tabela dos recusados está em `propria.rs`.
 #[test]
 fn a_oclusao_propria_e_a_do_cycles() {
     let mut por =
@@ -199,7 +198,8 @@ fn a_oclusao_propria_e_a_do_cycles() {
         let pts = &por[peca];
         let vol = Volume::de(lo, hi, 64, |q| {
             q.iter().map(|p| sdf_propria(peca, *p)).collect()
-        });
+        })
+        .como_distancia();
         let pos: Vec<[f32; 3]> = pts.iter().map(|p| p.1).collect();
         let nrm: Vec<[f32; 3]> = pts.iter().map(|p| p.2).collect();
         let diag = (0..3).map(|e| (hi[e] - lo[e]).powi(2)).sum::<f32>().sqrt();
@@ -235,7 +235,7 @@ fn a_oclusao_propria_e_a_do_cycles() {
             "{peca}: {} pontos · |Δ| médio {m:.4} · perto {p:.4} · máx {x:.3} (Quilez {qm:.4} · perto {qp:.4})",
             pts.len()
         );
-        if !(m < 0.02 && p < 0.035 && qp > 4.0 * p) {
+        if !(m < 0.008 && p < 0.015 && qp > 8.0 * p) {
             falhas.push(format!(
                 "{peca}: médio {m:.4} · perto {p:.4} · máx {x:.3} · Quilez perto {qp:.4}"
             ));

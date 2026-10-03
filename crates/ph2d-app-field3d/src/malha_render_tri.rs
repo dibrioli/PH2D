@@ -4,8 +4,8 @@
 //!   na quina — o vértice da quina parte-se em tantos quantos os lados que ela separa.
 //! - **Material por TRIÂNGULO**: a folha dona do centro dele; o vértice parte-se na fronteira de
 //!   cor, então a cor muda a pique onde a peça muda de folha, como no modelador.
-//! - **Oclusão ASSADA por vértice, do próprio campo** (o AO de 5 amostras do Quilez): custo ZERO por
-//!   quadro, que é o que um jogo de celular faz com a oclusão de cada objeto.
+//! - **Oclusão ASSADA por vértice** — não aqui: do campo do OBJETO, depois de a peça se partir
+//!   ([`crate::malha_render_contacto`]). Custo ZERO por quadro.
 
 use ph2d_field::FieldDoc;
 use ph2d_field_eval::hybrid::Registry;
@@ -15,17 +15,13 @@ use ph2d_field_eval::par;
 /// O ângulo acima do qual a aresta é viva.
 pub const AUTO_SMOOTH_DEG: f32 = 30.0;
 
-/// Onde o AO pergunta ao campo, em unidades do MUNDO ao longo da normal (dobra a cada amostra). ⛔
-/// Em células ele encolhia com a resolução: a prof `8` tinha metade do alcance da `7`.
-pub const AO_PASSOS: [f32; 5] = [0.01, 0.02, 0.04, 0.08, 0.16];
-
 /// ⭐ **A malha pronta para a placa** — indexada, em triângulos, com um vértice por
 /// (posição, lado da quina, material).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct MalhaPronta {
     pub posicoes: Vec<[f32; 3]>,
     pub normais: Vec<[f32; 3]>,
-    /// `1` = céu aberto, `0` = fechado.
+    /// `1` = céu aberto, `0` = fechado — assada por [`crate::malha_render_contacto::assa`].
     pub ao: Vec<f32>,
     /// O índice do material (o da folha, em [`crate::materials::folhas`]).
     pub material: Vec<u32>,
@@ -137,7 +133,7 @@ pub fn prepara(
     let mut emitidos: Vec<Vec<Lado>> = vec![Vec::new(); pos.len()];
     for (ti, t) in tris.iter().enumerate() {
         for (c, &v) in t.iter().enumerate() {
-            let (g, modulo, q) = cantos[ti * 3 + c];
+            let (g, q) = cantos[ti * 3 + c];
             let k = mat[ti];
             let slot = emitidos[v as usize]
                 .iter_mut()
@@ -145,7 +141,6 @@ pub fn prepara(
             let idx = if let Some(e) = slot {
                 e.normal = [e.normal[0] + g[0], e.normal[1] + g[1], e.normal[2] + g[2]];
                 e.ponto = [e.ponto[0] + q[0], e.ponto[1] + q[1], e.ponto[2] + q[2]];
-                e.modulos += modulo;
                 e.n += 1.0;
                 e.indice
             } else {
@@ -158,7 +153,6 @@ pub fn prepara(
                     semente: g,
                     normal: g,
                     ponto: q,
-                    modulos: modulo,
                     n: 1.0,
                     indice: i,
                 });
@@ -167,7 +161,6 @@ pub fn prepara(
             out.indices.push(idx);
         }
     }
-    let mut escala = vec![1.0f32; out.posicoes.len()];
     for (v, lista) in emitidos.iter().enumerate() {
         for e in lista {
             let l = dot(e.normal, e.normal).sqrt();
@@ -176,7 +169,6 @@ pub fn prepara(
             } else {
                 e.semente
             };
-            escala[e.indice as usize] = (e.modulos / e.n).clamp(0.05, 1.0);
         }
         // ⭐ A QUINA: o vértice vai ao encontro dos planos dos seus lados.
         if let Some(x) = na_quina(pos[v], lista, cos_lim, cell) {
@@ -185,7 +177,7 @@ pub fn prepara(
             }
         }
     }
-    out.ao = ao(doc, reg, &out.posicoes, &out.normais, &escala);
+    out.ao = vec![1.0; out.posicoes.len()];
     (unidades, out)
 }
 
@@ -198,7 +190,6 @@ struct Lado {
     normal: [f32; 3],
     /// A soma dos pontos onde os cantos foram perguntados (dentro dos triângulos deste lado).
     ponto: [f32; 3],
-    modulos: f32,
     n: f32,
     indice: u32,
 }
@@ -299,7 +290,7 @@ fn projeta_na_superficie(
 }
 
 /// ⭐ **A normal de cada CANTO de triângulo é o GRADIENTE do campo**, perguntado um pouco para
-/// DENTRO do triângulo (`30 %` do caminho até ao centro) — e o MÓDULO dele (a escala do AO).
+/// DENTRO do triângulo (`30 %` do caminho até ao centro), e o ponto onde foi perguntado.
 ///
 /// ⛔ A normal geométrica (a média das faces) MENTE perto da quina: o vértice do Dual Contouring
 /// fica preso à célula e senta `~0,1` célula fora do plano, e a face plana de uma caixa saía com
@@ -318,7 +309,7 @@ fn gradientes_dos_cantos(
     tris: &[[u32; 3]],
     n_area: &[[f32; 3]],
     cell: f32,
-) -> Vec<([f32; 3], f32, [f32; 3])> {
+) -> Vec<([f32; 3], [f32; 3])> {
     let mut pts = Vec::with_capacity(tris.len() * 3);
     for t in tris {
         let p = t.map(|i| pos[i as usize]);
@@ -333,47 +324,10 @@ fn gradientes_dos_cantos(
             let n = g.get(k).copied().unwrap_or([0.0; 3]);
             let l = dot(n, n).sqrt();
             if l.is_finite() && l > 1.0e-6 {
-                (n.map(|c| c / l), l, pts[k])
+                (n.map(|c| c / l), pts[k])
             } else {
-                (unit(n_area[k / 3]), 1.0, pts[k])
+                (unit(n_area[k / 3]), pts[k])
             }
-        })
-        .collect()
-}
-
-/// O AO de 5 amostras ao longo da normal, normalizado a `0..=1`: em cada passo `h`, quanto do
-/// caminho até à superfície está tapado (`(h − d)/h`), com o peso a cair para metade por passo.
-///
-/// ⚠️ **`d = f / |∇f|`, e não `f`**: o AO do Quilez assume um campo que é DISTÂNCIA, e um que a
-/// subestima (o nó de toro, `|∇f| ≈ 0,5`) lia-se «tapado» onde não está — uma faixa escura ao longo
-/// de todo o tubo (foto de 02/10). `escala` é o `|∇f|` no vértice.
-fn ao(
-    doc: &FieldDoc,
-    reg: &Registry,
-    pos: &[[f32; 3]],
-    nrm: &[[f32; 3]],
-    escala: &[f32],
-) -> Vec<f32> {
-    let mut pts = Vec::with_capacity(pos.len() * AO_PASSOS.len());
-    for (p, n) in pos.iter().zip(nrm) {
-        for &h in &AO_PASSOS {
-            pts.push([p[0] + n[0] * h, p[1] + n[1] * h, p[2] + n[2] * h]);
-        }
-    }
-    let Ok(f) = par::valores(doc, reg, &pts) else {
-        return vec![1.0; pos.len()];
-    };
-    let pesos: f32 = (0..AO_PASSOS.len()).map(|i| 0.5f32.powi(i as i32)).sum();
-    f.chunks(AO_PASSOS.len())
-        .zip(escala)
-        .map(|(amostras, &s)| {
-            let occ: f32 = amostras
-                .iter()
-                .zip(AO_PASSOS)
-                .enumerate()
-                .map(|(i, (&f, h))| 0.5f32.powi(i as i32) * ((h - f / s) / h).clamp(0.0, 1.0))
-                .sum();
-            1.0 - occ / pesos
         })
         .collect()
 }

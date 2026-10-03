@@ -327,6 +327,9 @@ pub(crate) fn desenha(
                         indices: &m.indices,
                     },
                 );
+                if let Some(g) = &o.contacto {
+                    fw.sobe_contacto(k as u64, g);
+                }
             }
             for k in objetos.len()..n_antes {
                 fw.esquece(k as u64);

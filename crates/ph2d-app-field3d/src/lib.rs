@@ -76,6 +76,7 @@ pub mod lights;
 pub mod lights_paint;
 /// ⭐⭐⭐ O Render por MALHA (02/10): a peça vira objetos de triângulos — um por sólido conexo.
 pub mod malha_render;
+pub mod malha_render_contacto;
 pub mod malha_render_estado;
 pub mod malha_render_quadro;
 pub mod malha_render_tri;

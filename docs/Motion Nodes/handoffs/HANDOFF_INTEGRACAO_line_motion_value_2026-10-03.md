@@ -168,6 +168,8 @@ integrador — releia a ORDEM das fases do quadro só se outra linha mexer em `f
 
 ## §7 — OS SMOKES
 
+✅ **Smoke do dono APROVADO em 03/10** (a `=127` pelo comando abaixo).
+
 Do dono (passos; binário já compilado — `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`
 corrido 2×, a 2.ª saída: `Finished smoke profile [optimized] target(s) in 0.23s`):
 

@@ -1,5 +1,6 @@
 //! ⭐⭐⭐ **Smoke da NAVEGAÇÃO** (plano 30, W3). `PH2D_NAV_SMOKE=1` (e `=2`, o DESVIO da W5:
-//! [`crate::nav_smoke_porta`]; e `=3`, O GUARDA da W6: [`crate::nav_smoke_guarda`]).
+//! [`crate::nav_smoke_porta`]; e `=3`, O GUARDA da W6: [`crate::nav_smoke_guarda`]; e `=4`, A LAVA E
+//! O PORTAL da W7: [`crate::nav_smoke_lava`]).
 //!
 //! # A cena: **o labirinto em S, e três perseguidores**
 //!
@@ -33,7 +34,7 @@ use ph2d_render::{Sprite, WHITE_TILE_KEY};
 use ph2d_topdown::{TopDownLaw, direction::DirectionMode};
 
 /// ⭐⭐ **Quantas cenas este roteador serve** — contado do `match` do [`montar`].
-pub const CENAS: u32 = 3;
+pub const CENAS: u32 = 4;
 
 const PAREDE_RGBA: [f32; 4] = [0.38, 0.40, 0.46, 1.0];
 const CHAO_RGBA: [f32; 4] = [0.16, 0.18, 0.22, 1.0];
@@ -73,6 +74,8 @@ pub struct Montada {
     pub porta: Option<crate::nav_smoke_porta::Porta>,
     /// As peças da cena `=3` (W6).
     pub guarda: Option<crate::nav_smoke_guarda::Guarda>,
+    /// As peças da cena `=4` (W7).
+    pub lava: Option<crate::nav_smoke_lava::Lava>,
 }
 
 /// As peças da cena `=1`.
@@ -83,7 +86,7 @@ pub struct Labirinto {
     pub heroi: Entity,
 }
 
-fn parede(world: &mut World, nome: &str, centro: Vec2, meio: Vec2) {
+pub(crate) fn parede(world: &mut World, nome: &str, centro: Vec2, meio: Vec2) {
     world.spawn((
         Name::new(nome),
         RigidBody {
@@ -113,7 +116,7 @@ fn parede_v(world: &mut World, nome: &str, x: f32, y0: f32, y1: f32) {
 
 /// Um perseguidor: o mover de vista de cima com os controlos DESLIGADOS (quem escreve a intenção é
 /// a navegação) e o agente.
-fn perseguidor(
+pub(crate) fn perseguidor(
     world: &mut World,
     nome: &str,
     em: Vec2,
@@ -288,11 +291,25 @@ fn cena_um(world: &mut World) -> Montada {
         }),
         porta: None,
         guarda: None,
+        lava: None,
     }
 }
 
 /// **Monta a cena `nivel`** — o roteador.
 pub fn montar(world: &mut World, nivel: u32) -> Montada {
+    if nivel == 4 {
+        let l = crate::nav_smoke_lava::montar(world);
+        crate::nav_smoke_lava::anuncia();
+        return Montada {
+            nivel: 4,
+            // ⭐ O VERMELHO escolhido: a caixa Avoid Harm dele é o passo do roteiro.
+            escolhido: l.vermelho,
+            labirinto: None,
+            porta: None,
+            guarda: None,
+            lava: Some(l),
+        };
+    }
     if nivel == 2 {
         let porta = crate::nav_smoke_porta::montar(world);
         println!(
@@ -308,6 +325,7 @@ pub fn montar(world: &mut World, nivel: u32) -> Montada {
             labirinto: None,
             porta: Some(porta),
             guarda: None,
+            lava: None,
         };
     }
     let m = cena_um(world);
@@ -347,6 +365,7 @@ pub fn monta_tres(
         labirinto: None,
         porta: None,
         guarda: Some(g),
+        lava: None,
     }
 }
 

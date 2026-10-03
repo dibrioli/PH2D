@@ -137,6 +137,7 @@ pub mod nav_rota;
 /// ⭐⭐⭐ A NAVEGAÇÃO (plano 30, W3) — `PH2D_NAV_SMOKE=1`.
 pub mod nav_smoke;
 pub mod nav_smoke_guarda;
+pub mod nav_smoke_lava;
 pub mod nav_smoke_porta;
 /// ⭐⭐⭐ **A PARALAXE** (plano 24, W1) — um objecto guarda uma fracção do movimento do mundo; a
 /// lei, a referência e o caso do arrasto estão no cabeçalho.

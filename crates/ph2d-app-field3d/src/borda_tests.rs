@@ -146,9 +146,10 @@ fn o_quadro_que_a_mao_arrasta_leva_cobertura_parcial() {
 /// ⭐⭐⭐ **E ELA É A BORDA DE PARAR** — o alfa do quadro de movimento é o do quadro assente, ao BYTE.
 ///
 /// ⚠️ **É esta a frase que o dono vai ler na tela:** *a peça que a mão arrasta deixa de ter uma
-/// silhueta pior do que a da peça parada.* Os dois quadros continuam a diferir na COR (o ricochete
-/// e a cor que a peça devolve ao chão são do assente, e custam `+284 ms` na cena `5`), e é por isso
-/// que a régua é o canal do ALFA e não a imagem.
+/// silhueta pior do que a da peça parada.* A régua é o canal do ALFA. (Até 03/10 os dois quadros
+/// diferiam na COR — o ricochete e o chão do Render traçado eram do assente —, e o controlo era essa
+/// diferença; com o Matcap a cor também é a mesma, e o controlo passou a ser a silhueta ter
+/// cobertura parcial de verdade.)
 ///
 /// ⛔ **O contorno engrossado não entra nesta igualdade por acaso:** medido em 2026-09-19
 /// (`borda_sondas::o_contorno_grosso_muda_alguma_coisa`), o [`crate::preview::coarse_doc`] **não
@@ -177,12 +178,15 @@ fn a_borda_que_a_mao_arrasta_e_a_de_parar() {
         p.rgba.as_chunks::<4>().0.iter().map(|px| px[3]).collect()
     };
     let (ca, cb) = (alfa(&a), alfa(&b));
-    // ⭐ O controlo: as duas imagens TÊM de diferir nalgum sítio, senão a igualdade abaixo seria
-    // trivialmente verdadeira sobre dois quadros idênticos e o gate não afirmaria nada.
+    // ⭐ O controlo: a silhueta tem de ter população e cobertura PARCIAL, senão a igualdade abaixo
+    // seria trivialmente verdadeira sobre dois quadros vazios ou binários.
+    let b_a = banda(&a.rgba, LW as usize, LH as usize);
     assert!(
-        a.rgba != b.rgba,
-        "o quadro de movimento e o assente saíram IDÊNTICOS — o ricochete e o campo do chão \
-         deixaram de correr no assente, e a igualdade de alfa abaixo deixou de dizer alguma coisa"
+        b_a.len() > 1_000 && parcial(&a.rgba, &b_a) > 0.20,
+        "o quadro de movimento não tem silhueta com cobertura parcial ({} px, {:.1} %) — a \
+         igualdade de alfa abaixo deixaria de dizer alguma coisa",
+        b_a.len(),
+        100.0 * parcial(&a.rgba, &b_a)
     );
     let difere = ca.iter().zip(&cb).filter(|(x, y)| x != y).count();
     assert_eq!(

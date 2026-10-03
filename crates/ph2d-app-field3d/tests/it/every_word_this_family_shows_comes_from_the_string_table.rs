@@ -80,7 +80,13 @@ fn every_named_exemption_still_shelters_what_it_names() {
 #[test]
 fn every_key_of_this_family_exists_on_both_sides() {
     let (_, repo) = gate::raizes(env!("CARGO_MANIFEST_DIR"));
-    let c = gate::chaves(&repo, "app.field3d.", &[TABLE]);
+    // ⚠️ As chaves das TEXTURAS (`app.field3d.texture.*`) vivem com as do painel delas, no
+    // `model3d_texture.rs` (a onda das texturas, 03/10) — o censo lê as duas tabelas.
+    let c = gate::chaves(
+        &repo,
+        "app.field3d.",
+        &[TABLE, "crates/ph2d-i18n/src/model3d_texture.rs"],
+    );
     assert!(
         c.declaradas >= 65 && c.usadas >= 65,
         "o censo achou {} declaradas e {} usadas — está a ler o sítio errado",

@@ -54,6 +54,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
 
         "app.field3d.texture.could_not_read" => "Could not read the texture: {why}",
         "app.field3d.texture.images" => "Images",
+        "app.field3d.texture.unknown_format" => "{path}: not an image format we read",
+        "app.field3d.texture.not_flat" => "{path}: not a flat image",
         _ => return None,
     })
 }

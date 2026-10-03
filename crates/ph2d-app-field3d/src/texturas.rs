@@ -291,7 +291,9 @@ fn le(caminho: &str) -> Result<ph2d_triplanar::Imagem, String> {
     let imp = importadores
         .into_iter()
         .find(|i| i.supports(MagicHint::Bytes(&b)) != MagicMatch::None)
-        .ok_or_else(|| format!("{caminho}: formato"))?;
+        .ok_or_else(|| {
+            ph2d_i18n::tr_with("app.field3d.texture.unknown_format", &[("path", &caminho)])
+        })?;
     match imp
         .import(&b, &ImportOpts::default())
         .map_err(|e| format!("{caminho}: {e}"))?
@@ -299,7 +301,10 @@ fn le(caminho: &str) -> Result<ph2d_triplanar::Imagem, String> {
         ph2d_imageio::DecodedImage::Flat(i) => {
             Ok((i.width, i.height, i.pixels.iter().map(|p| p.0).collect()))
         }
-        _ => Err(format!("{caminho}: não é uma imagem plana")),
+        _ => Err(ph2d_i18n::tr_with(
+            "app.field3d.texture.not_flat",
+            &[("path", &caminho)],
+        )),
     }
 }
 

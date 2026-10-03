@@ -66,79 +66,45 @@ fn o_vaso_desce_por_formula_e_a_fita_cabe_numa_mao() {
     );
 }
 
-/// ⭐⭐⭐⭐ **O MODO DE OMISSÃO DO MODELADOR VAI À PLACA** — e este gate substitui a catraca que
-/// afirmava o contrário.
+/// ⭐⭐⭐⭐ **O MODO DE OMISSÃO DO MODELADOR VAI À PLACA** — o Matcap é pintado no dispositivo quando
+/// a placa sabe marchar a peça, e só cai na CPU quando não sabe.
 ///
-/// # ⛔ A dívida que aqui vivia, e como ela morreu
+/// Sem ele, o arrasto de uma cena recém-aberta era **todo** de CPU (`90,17 ms` e `D=3` contra
+/// `16,63` e `D=1`, report de 2026-09-23 *«ao arrastar fica grosseiro ainda»*). ⛔ E abrir a MARCHA
+/// ao matcap não é a cura: o [`crate::gpu_frame::march`] devolve o G-buffer pelo barramento
+/// (`49,8 MB` a `1920×1080`) — *mais lento do que a CPU inteira*. O que ganha é a IMAGEM não
+/// atravessar o barramento. (Até 03/10 havia uma segunda lei de pintura, a de material do Render
+/// traçado; saiu com ele.)
 ///
-/// Até 2026-09-23 este ficheiro tinha o
-/// `a_marcha_no_dispositivo_ainda_pergunta_o_modo_e_isso_e_divida`: uma catraca **AO CONTRÁRIO**,
-/// que exigia que a condição do dispositivo nomeasse `Shading::Render` — porque o `#[default]` é o
-/// **`Matcap`** e, sem ele na placa, o arrasto de uma cena recém-aberta era **todo** de CPU
-/// (`90,17 ms` e `D=3` contra `16,63` e `D=1`).
-///
-/// ⚠️⚠️ **A cura NÃO foi tirar o modo daquela condição** — e é por isso que aquela catraca teria
-/// ficado **VERDE sobre a dívida paga**, que é o pior estado possível de um gate. A leitura dela
-/// era que havia **uma** pergunta a separar; medida, há **duas leis de pintura**:
-///
-/// | lei | o que ela lê | armazéns |
-/// |---|---|---:|
-/// | material | materiais · céu · olhar · lâmpadas · curvatura | `9` |
-/// | **matcap** | a normal de vista e uma fotografia | **`8`** |
-///
-/// ⇒ a condição do material **continua** a nomear o `Render` (e está certa: aquela lei precisa do
-/// que só o `Render` monta), e o matcap ganhou um **ramo e um passe próprios**. ⭐ O piso garantido
-/// do WebGPU é `8`: *o modo de omissão corre em toda placa conforme, e o de material só onde há
-/// folga* ([`ph2d_field_gpu::matcap::ARMAZENS`] contra [`ph2d_field_gpu::paint::ARMAZENS`], com
-/// gate naquela crate).
-///
-/// ⛔⛔ **E a leitura de que abrir a MARCHA ao matcap era a cura estava REFUTADA por medição:** o
-/// [`crate::gpu_frame::march`] devolve o G-buffer pelo barramento (`49,8 MB` a `1920×1080`,
-/// `119`–`123 ms`) — *mais lento do que a CPU inteira*. O que ganha é a IMAGEM não atravessar o
-/// barramento.
-///
-/// # ⚠️ A régua lê o CÓDIGO e não a prosa
-///
-/// O comentário que explica a wave nomeia o `Shading` meia dúzia de vezes, e uma varredura do
-/// ficheiro inteiro acusaria a própria nota. ⇒ cada metade recorta a **expressão** dela.
+/// ⚠️ **A régua lê o CÓDIGO e não a prosa**: cada metade recorta a expressão dela.
 #[test]
 fn o_modo_de_omissao_e_pintado_no_dispositivo() {
     const FONTE: &str = include_str!("smoke_draw_thread.rs");
+    let codigo = &FONTE[FONTE
+        .find("pub(crate) fn traca(")
+        .expect("a resposta ao pedido")..];
 
-    // ⭐⭐⭐ **METADE 1 — o matcap tem ramo e ele passa pela porta do dispositivo.**
-    let agulha = "if matches!(p.shading, crate::shading::Shading::Matcap)";
-    let i = FONTE.find(agulha).expect(
+    // ⭐⭐⭐ **METADE 1 — o ramo da placa passa pela porta do dispositivo e pinta.**
+    let i = codigo.find("if crate::gpu_frame::takes_the_frame(").expect(
         "⛔ O RAMO DO MATCAP NO DISPOSITIVO DESAPARECEU: o modo de OMISSÃO do modelador volta a \
          traçar inteiro na CPU (`90,17 ms` e `D=3` contra `16,63` e `D=1`), que é o report \
          «ao arrastar fica grosseiro ainda» de 2026-09-23 a voltar",
     );
-    let resto = &FONTE[i..];
-    let ramo = &resto[..resto.find('{').expect("um `if` abre um bloco")];
+    let ramo = &codigo[i..];
+    let ramo = &ramo[..ramo.find("return;").expect("o ramo da placa devolve")];
     assert!(
-        ramo.contains("takes_the_frame"),
-        "o ramo do matcap deixou de passar pela porta do dispositivo: {ramo}"
-    );
-    assert!(
-        resto.contains("pinta_matcap("),
-        "o ramo do matcap existe e NÃO chama o passe que pinta — um ramo que cai para a CPU em \
+        ramo.contains("pinta_matcap("),
+        "o ramo da placa existe e NÃO chama o passe que pinta — um ramo que cai para a CPU em \
          silêncio lê-se, no relógio, exactamente como não ter ramo nenhum"
     );
-
-    // ⭐⭐ **METADE 2 — o CONTROLO: são DUAS leis, e a do material continua a pedir o modo.**
-    //
-    // ⚠️ Sem esta metade, colapsar as duas condições numa só ficaria verde — e o material seria
-    // despachado sem os materiais, o céu e o olhar que só o `Render` monta.
-    let j = FONTE
-        .find("let pelo_dispositivo =")
-        .expect("a condição do pintor de MATERIAL saiu do despacho do quadro");
-    let expressao = {
-        let r = &FONTE[j..];
-        &r[..r.find(';').expect("uma atribuição acaba num `;`")]
-    };
+    // ⭐⭐ **METADE 2 — o CONTROLO: o recuo da CPU vem DEPOIS do ramo da placa.** Sem ela, um recuo
+    // posto antes ficaria verde na metade de cima e o dispositivo nunca seria tentado.
+    let cpu = codigo
+        .find("ph2d_field_render::trace_cancellable(")
+        .expect("o recuo da CPU saiu do despacho do quadro");
     assert!(
-        expressao.contains("takes_the_frame") && expressao.contains("Shading::Render"),
-        "as duas leis de pintura colapsaram numa: o pintor de MATERIAL precisa do que só o \
-         `Render` monta, e o matcap não ({expressao})"
+        cpu > i,
+        "o recuo da CPU corre ANTES do ramo da placa — o modo de omissão nunca chega ao dispositivo"
     );
 }
 

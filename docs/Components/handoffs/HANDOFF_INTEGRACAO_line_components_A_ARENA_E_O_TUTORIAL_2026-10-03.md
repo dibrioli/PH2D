@@ -97,9 +97,10 @@ Tudo 1× sobre o diff acumulado, régua no merge-base (`1ad60a1ce`), dentro da f
 
 | portão | resultado |
 |---|---|
-| `nextest-impacted.sh` | **`19 503 / 19 503`** no fecho da W8; **`19 507 / 19 507`** depois dos três defeitos (§2-bis), `138 s` |
+| `nextest-impacted.sh` | **`19 503 / 19 503`** no fecho da W8; **`19 507 / 19 507`** depois dos três defeitos (§2-bis), `138 s`; depois da porta e do defeito G **`19 509 / 19 510`** — o vermelho foi o gate do hash c9 (`no_std_transcendental_reaches_the_deterministic_hash`: um `sin_cos` do `std` no `nav_desvio.rs`), curado com `libm::sincos` e visto verde sozinho |
 | `CARGO_BUILD_WARNINGS=deny cargo check --workspace --all-targets` | verde |
 | clippy `--all-targets --all-features -D warnings` (app-components, panel-inspector, physics-ecs, nav, navmesh, editor-core, i18n, host-desktop) | zero |
+| clippy depois da porta e do G (+ `ph2d-physics`) | zero |
 | clippy, de novo depois do §2-bis (orca, physics-ecs, editor-core, app-components, panel-inspector, panel-registry-init, i18n, host-desktop) | zero (a 1.ª corrida acusou `too_many_arguments` no `perseguidor`: os dois raios passaram a um par) |
 | `cargo fmt --all --check` | verde (depois do commit de fmt) |
 | `typos` · `cargo machete` | zero · zero |
@@ -148,11 +149,11 @@ lava com `Avoid Harm`; a Salamandra parada depois do nome, ou a esperar na borda
 
 ### O smoke compilado (a 2.ª corrida, colada)
 
-Depois dos defeitos do §2-bis e de `rm -rf target/*/incremental` (29 G do `debug` + 2,3 G do `smoke`; na W8
+Depois de TODOS os defeitos do §2-bis (o último: a porta e o G; incremental `6,5 G` + `370 M`) e de `rm -rf target/*/incremental` (29 G do `debug` + 2,3 G do `smoke`; na W8
 tinham sido 15 G + 3,5 G), a 2.ª corrida de
 `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke` — zero linhas `Compiling`:
 
 ```
 ▸ linha line_components · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
-    Finished `smoke` profile [optimized] target(s) in 0.22s
+    Finished `smoke` profile [optimized] target(s) in 0.21s
 ```

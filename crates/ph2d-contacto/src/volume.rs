@@ -34,35 +34,6 @@ impl Volume {
         Self { lo, hi, n, d }
     }
 
-    /// ⭐ **O mesmo volume como DISTÂNCIA**: cada amostra dividida pelo módulo do gradiente ali
-    /// (diferenças centrais na grelha, chão de `0,05`). Um campo que subestima a distância (as formas
-    /// por fórmula, o nó de toro com `|∇f| ≈ 0,5`) lia-se «tapado» onde não está.
-    #[must_use]
-    pub fn como_distancia(mut self) -> Self {
-        let n = self.n;
-        let h: [f32; 3] = std::array::from_fn(|e| (self.hi[e] - self.lo[e]) / (n - 1) as f32);
-        let at = |d: &[f32], i: usize, j: usize, k: usize| d[(k * n + j) * n + i];
-        let mut out = self.d.clone();
-        for k in 0..n {
-            for j in 0..n {
-                for i in 0..n {
-                    let g = |e: usize| {
-                        let (mut a, mut b) = ([i, j, k], [i, j, k]);
-                        a[e] = (a[e] + 1).min(n - 1);
-                        b[e] = b[e].saturating_sub(1);
-                        let passos = (a[e] - b[e]) as f32;
-                        (at(&self.d, a[0], a[1], a[2]) - at(&self.d, b[0], b[1], b[2]))
-                            / (passos * h[e])
-                    };
-                    let m = (g(0).powi(2) + g(1).powi(2) + g(2).powi(2)).sqrt();
-                    out[(k * n + j) * n + i] /= m.max(0.05);
-                }
-            }
-        }
-        self.d = out;
-        self
-    }
-
     /// A aresta de um passo da grelha (a maior das três).
     #[must_use]
     pub fn passo(&self) -> f32 {

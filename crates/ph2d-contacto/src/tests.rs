@@ -160,7 +160,7 @@ fn sdf_propria(peca: &str, p: [f32; 3]) -> f32 {
 }
 
 /// ⭐⭐⭐ **A oclusão própria é a do Cycles** — peças fundidas (um L de duas caixas, uma bola meio
-/// enterrada numa caixa, um toro), cada uma sozinha, no volume `64³` da caixa dela (como distância),
+/// enterrada numa caixa, um toro), cada uma sozinha, no volume `64³` da caixa dela,
 /// nos pontos e normais do Cycles. Controlo: a oclusão de Quilez que a casa assava (`5` passos em
 /// `0,01..0,16`).
 ///
@@ -198,8 +198,7 @@ fn a_oclusao_propria_e_a_do_cycles() {
         let pts = &por[peca];
         let vol = Volume::de(lo, hi, 64, |q| {
             q.iter().map(|p| sdf_propria(peca, *p)).collect()
-        })
-        .como_distancia();
+        });
         let pos: Vec<[f32; 3]> = pts.iter().map(|p| p.1).collect();
         let nrm: Vec<[f32; 3]> = pts.iter().map(|p| p.2).collect();
         let diag = (0..3).map(|e| (hi[e] - lo[e]).powi(2)).sum::<f32>().sqrt();

@@ -1,6 +1,6 @@
 //! ⭐⭐ **O CONTACTO E A OCLUSÃO PRÓPRIA de cada objeto do Render** — do campo DELE (as unidades
-//! dele, não o grupo), amostrado num [`ph2d_contacto::Volume`] de [`LADO_VOLUME`]`³` sobre a caixa
-//! da malha. Do mesmo volume saem a oclusão própria por vértice (os raios de
+//! dele, não o grupo), amostrado CRU num [`ph2d_contacto::Volume`] de [`LADO_VOLUME`]`³` sobre a
+//! caixa da malha. Do mesmo volume saem a oclusão própria por vértice (os raios de
 //! [`ph2d_contacto::visibilidade_propria`]) e a grelha do céu que ele tapa aos OUTROS objetos
 //! ([`ph2d_contacto::Grade`]), lida pela placa com a pose de agora — mover não refaz nada.
 //!
@@ -55,8 +55,7 @@ pub fn assa_com(
             falhou = true;
             vec![1.0e3; pts.len()]
         })
-    })
-    .como_distancia();
+    });
     if falhou {
         return None;
     }

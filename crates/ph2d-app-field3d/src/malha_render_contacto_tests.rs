@@ -113,8 +113,7 @@ fn sonda_oclusao_da_malha() {
         let m2 = maior * (2.0 / (lado - 1) as f32);
         let vol = ph2d_contacto::Volume::de(lo.map(|c| c - m2), hi.map(|c| c + m2), lado, |q| {
             ph2d_field_eval::par::valores(&proprio, &reg, q).expect("campo")
-        })
-        .como_distancia();
+        });
         mede(
             &format!("volume {lado}³"),
             &ph2d_contacto::visibilidade_propria(&vol, &pos, &nrm, diag),

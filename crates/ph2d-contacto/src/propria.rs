@@ -10,7 +10,8 @@
 //! |---|---|---|
 //! | Quilez (`5` passos na normal, a que a casa assava) | `0,05–0,11` / `0,14–0,21` | `0,11–0,15` / `0,09–0,12` |
 //! | `48` cones moles de `0,2` rad | `0,006–0,011` / `0,008–0,031` | `0,042–0,044` / `0,064–0,067` (escuros: leem DISTÂNCIA, e o campo por fórmula não é uma) |
-//! | **`128` raios binários** | **`0,004`** / **`0,006–0,010`** | **`0,016–0,020`** / **`0,024–0,029`** |
+//! | `128` raios binários no volume DIVIDIDO por `|∇f|` | `0,004` / `0,006–0,010` | `0,016–0,020` / `0,024–0,029` (claros, viés `+0,014`) |
+//! | **`128` raios binários no volume CRU** | **`0,004`** / **`0,006–0,010`** | **`0,013–0,016`** / **`0,017–0,019`** (viés `−0,002..+0,003`) |
 
 use crate::Volume;
 use rayon::prelude::*;

@@ -229,6 +229,36 @@ impl MockPanelHost {
         dispatch_key(&mut self.store, key, &arena).to_vec()
     }
 
+    /// **O gesto de quem abre uma caixa já cheia e escreve por cima** — as teclas vão para o
+    /// widget COMO ELE ESTÁ (a seleção, o caret, a faixa que a pintura lhe deu) e o `Enter` comita.
+    /// Irmão de [`Self::type_into_number`], que limpa o buffer antes e por isso não exercita a
+    /// substituição da seleção (a caixa do cartão abre com o texto todo selecionado).
+    ///
+    /// Panics se `id` não estiver registrado.
+    pub fn type_keys_then_enter(&mut self, id: NodeId, text: &str) -> Vec<WidgetEvent> {
+        assert!(
+            self.store.get(id).is_some(),
+            "type_keys_then_enter: {id:?} is not registered"
+        );
+        self.store.set_focus(Some(id));
+        let arena = Bump::new();
+        for ch in text.chars() {
+            let _ = dispatch_text_input(&mut self.store, ch, &arena);
+        }
+        let key = ph2d_host::KeyEvent {
+            keycode: KEY_ENTER,
+            modifiers: ph2d_host::Modifiers {
+                shift: false,
+                ctrl: false,
+                alt: false,
+                meta: false,
+            },
+            kind: ph2d_host::KeyKind::Down,
+            timestamp_ns: 0,
+        };
+        dispatch_key(&mut self.store, key, &arena).to_vec()
+    }
+
     /// Set a registered text input's buffer — what a real keystroke would have
     /// left there before dispatch emits `TextChanged(id)`. Panics if `id` is
     /// absent or not a `TextInput`.

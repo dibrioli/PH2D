@@ -183,7 +183,8 @@ fn open_box(store: &mut WidgetStore, e: &ParamEdit) {
         },
     );
     // A faixa **digitável** (e o passo, que é quem faz as setinhas andarem de um em um num
-    // param inteiro). O `NumberInput` clampa a ela ao comitar.
+    // param inteiro). ⛔ Ela NÃO clampa o que se escreve: o `NumberInput` só clampa quando
+    // ligado a um slider, e esta caixa não está — quem aplica a faixa é o [`commit`].
     store.set_number_range(id, e.min, e.max, e.step.max(f64::EPSILON));
     store.set_focus(Some(id));
 }
@@ -295,6 +296,9 @@ pub(crate) fn commit(state: &MotionGraphPanelState, store: &WidgetStore) {
     // ⚠️ **O arredondamento é na FACE**, antes da conversão: escalar e arredondar não comutam, e
     // é a face que o artista vê inteira.
     let v = if e.step >= 1.0 { v.round() } else { v };
+    // ⛔ **A faixa DIGITÁVEL aplica-se AQUI** — a lei do painel (doc 88), que esta caixa dizia ter e
+    // não tinha: `999999` num tecto de `131 072` entrava (medido 2026-10-03, `sonda_o_tecto_digitavel`).
+    let v = ph2d_editor_core::math::safe_clamp_f64(v, e.min, e.max);
     let escala = f64::from(e.face_scale);
     let guardado = if escala.is_finite() && escala > 0.0 {
         v / escala

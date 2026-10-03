@@ -25,6 +25,17 @@ pub fn safe_clamp(v: f32, min: f32, max: f32) -> f32 {
     v.clamp(lo, hi)
 }
 
+/// [`safe_clamp`] em `f64` — a MESMA lei, para quem faz a conta em `f64` (a caixa de número do
+/// cartão do grafo: converter para `f32` antes da face mudaria o arredondamento do que se escreve).
+#[inline]
+pub fn safe_clamp_f64(v: f64, min: f64, max: f64) -> f64 {
+    let (lo, hi) = if min <= max { (min, max) } else { (max, min) };
+    if v.is_nan() {
+        return lo;
+    }
+    v.clamp(lo, hi)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -40,6 +51,14 @@ mod tests {
         assert_eq!(safe_clamp(0.5, 1.0, 0.0), 0.5);
         assert_eq!(safe_clamp(-1.0, 1.0, 0.0), 0.0);
         assert_eq!(safe_clamp(2.0, 1.0, 0.0), 1.0);
+    }
+
+    #[test]
+    fn the_f64_twin_obeys_the_same_law() {
+        assert_eq!(safe_clamp_f64(f64::NAN, 0.0, 1.0), 0.0);
+        assert_eq!(safe_clamp_f64(-1.0, 1.0, 0.0), 0.0);
+        assert_eq!(safe_clamp_f64(2.0, 0.0, 1.0), 1.0);
+        assert_eq!(safe_clamp_f64(0.503, 0.0, 1.0), 0.503);
     }
 
     #[test]

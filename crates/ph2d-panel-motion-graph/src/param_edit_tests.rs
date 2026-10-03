@@ -444,3 +444,81 @@ fn the_text_box_closes_by_blur_like_the_number_one() {
     assert_eq!(saida, ph2d_editor_core::panel::EventOutcome::Consumed);
     assert!(state.param_edit.is_none(), "o Blur FECHA a caixa de texto");
 }
+
+/// ⛔⛔ **«NUMBER NÃO ACEITA VALORES NEGATIVOS»** — report do Enio, 2026-10-03. O gesto INTEIRO
+/// do dono: a caixa abre com o texto todo selecionado, as teclas `-` `1` caem por cima pelo
+/// despacho real do teclado, o `Enter` comita, e o que sai é o que chega ao documento.
+///
+/// Duas faixas de arrasto, a MESMA faixa digitável: o `Number` solto arrasta em `±75`; ligado ao
+/// `Strength` do Vortex ele VESTE a faixa do destino (`ParamUnit::FromWire`). O teclado responde ao
+/// piso digitável (`±131 072`) nos dois.
+#[test]
+fn a_negative_number_typed_over_the_seed_reaches_the_document() {
+    use ph2d_editor_core::panel::PanelHostInternal;
+    for (caso, min, max) in [
+        ("solto", -75.0f32, 75.0f32),
+        ("ligado ao Strength", 0.0, 40.0),
+    ] {
+        let _ = drain_intents();
+        let mut p = CardParam::from_hint(
+            ParamUiHint {
+                param: "value",
+                label: "Value",
+                min,
+                max,
+                step: 0.01,
+                widget: ParamWidget::Slider,
+            },
+            1.0,
+        );
+        p.hard_min = -131_072.0;
+        p.hard_max = 131_072.0;
+        let snap = card(vec![p]);
+        let st = arm_row0(&snap);
+        let e = st.param_edit.clone().expect("a caixa arma");
+        let mut host = ph2d_ui_testkit::MockPanelHost::new();
+        super::open_box(host.store_mut(), &e);
+        host.type_keys_then_enter(crate::hits::param_edit_id(), "-1");
+        crate::param_edit::commit(&st, host.store());
+        let saiu = drain_intents();
+        let Some(GraphIntent::SetParam { value, .. }) = saiu.first() else {
+            panic!("{caso}: o commit tem de emitir um SetParam, e saiu {saiu:?}");
+        };
+        assert!(
+            (*value + 1.0).abs() < 1e-6,
+            "{caso}: escrevi -1 e chegou {value}"
+        );
+    }
+}
+
+/// ⛔ **O QUE SE ESCREVE FORA DA FAIXA DIGITÁVEL PARA NO LIMITE** — a lei do painel (doc 88), que o
+/// doc desta caixa dizia cumprir e o código não cumpria: medido em 2026-10-03, `999999` num tecto
+/// de `100` chegava ao documento inteiro, e `-50` num piso de `-5` também. CONTROLO: dentro da
+/// faixa o número chega como foi escrito.
+#[test]
+fn a_typed_number_outside_the_typed_range_stops_at_the_limit() {
+    use ph2d_editor_core::panel::PanelHostInternal;
+    for (escrito, chega) in [("999999", 100.0f32), ("-50", -5.0), ("-2.5", -2.5)] {
+        let _ = drain_intents();
+        let mut p = CardParam::from_hint(hint(ParamWidget::Slider), 1.0);
+        p.hard_min = -5.0;
+        p.hard_max = 100.0;
+        let snap = card(vec![p]);
+        let st = arm_row0(&snap);
+        let mut host = ph2d_ui_testkit::MockPanelHost::new();
+        super::open_box(
+            host.store_mut(),
+            &st.param_edit.clone().expect("a caixa arma"),
+        );
+        host.type_keys_then_enter(crate::hits::param_edit_id(), escrito);
+        crate::param_edit::commit(&st, host.store());
+        let saiu = drain_intents();
+        let Some(GraphIntent::SetParam { value, .. }) = saiu.first() else {
+            panic!("{escrito}: saiu {saiu:?}");
+        };
+        assert!(
+            (*value - chega).abs() < 1e-4,
+            "escrevi {escrito} numa faixa [-5, 100] e chegou {value}"
+        );
+    }
+}

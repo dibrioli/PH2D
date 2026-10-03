@@ -98,6 +98,8 @@ pub struct View {
     /// ⭐⭐⭐ **O BRILHO é VISTA pela MESMA lei do estilo** (`docs/Render3d/12`, a `W7`) — ele não é
     /// derivado de nada e ninguém o pode reconstruir.
     pub bloom: ph2d_field_render::Bloom,
+    /// ⭐⭐⭐ **O CÉU fotográfico é VISTA pela mesma lei** — ver [`crate::ceu_foto`].
+    pub ceu: crate::ceu_foto::Ceu,
 }
 
 impl Default for View {
@@ -117,6 +119,8 @@ impl Default for View {
             style: ph2d_style::Style::default(),
             // ⭐ **Desligado**, que é a identidade ao bit — o acabamento não corre até alguém o pedir.
             bloom: ph2d_field_render::Bloom::default(),
+            // ⭐ **O estúdio de sempre** — a imagem de quem nunca escolheu um céu, ao bit.
+            ceu: crate::ceu_foto::Ceu::default(),
             split: crate::layout::Split::One,
             cam: Orbit::default(),
             manual: false,
@@ -149,6 +153,8 @@ impl View {
             style,
             // ⭐⭐⭐ **E o brilho também** — ver [`View::bloom`].
             bloom,
+            // ⭐⭐⭐ **E o céu** — ver [`View::ceu`].
+            ceu,
             // ⚠️ Daqui para baixo, **cache do quadro ou gesto em curso** — nada disto atravessa.
             doc: _,
             seed: _,
@@ -216,6 +222,7 @@ impl View {
             look: *look,
             style: *style,
             bloom: *bloom,
+            ceu: *ceu,
             gizmo_mode: *gizmo_mode,
             gizmo_frame: *gizmo_frame,
             isolated: *isolated,

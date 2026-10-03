@@ -163,6 +163,9 @@ fn boot() -> Option<Smoke> {
             enabled: v.bloom.enabled || std::env::var("PH2D_FIELD_BLOOM").as_deref() == Ok("1"),
             ..v.bloom
         },
+        // `PH2D_FIELD_SKY=<nome>` abre com aquele céu (o `ph2d_sky::Embarcado::chave`) — para
+        // FOTOGRAFAR; o dono vai pela fileira «Sky».
+        ceu: crate::ceu_foto::do_ambiente(v.ceu),
         flight: None,
         flight_gen: 0,
         flight_fresh: false,

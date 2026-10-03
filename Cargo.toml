@@ -177,6 +177,14 @@ opt-level = 2
 # inlinada — cada nó da fita paga uma chamada.
 [profile.dev.package.ph2d-field-eval]
 opt-level = 2
+# ⭐ **E O CÉU FOTOGRÁFICO** (02/10): o pré-filtro do atlas é aritmética por amostra (Hammersley e a
+# convolução exacta), e quem o paga a `opt-0` é a suíte do modelador, que monta céus nos gates de
+# costura. Medido (três céus + `2 000` leituras, `o_espelho_e_o_panorama`, load ~4): `opt-0`
+# **`11,0 s`** → `opt-2` **`2,9 s`** (`3,9×`). O `exr` descodifica os céus embarcados.
+[profile.dev.package.ph2d-sky]
+opt-level = 2
+[profile.dev.package.exr]
+opt-level = 2
 [profile.dev.package.ph2d-field]
 opt-level = 2
 [profile.dev.package.fidget]

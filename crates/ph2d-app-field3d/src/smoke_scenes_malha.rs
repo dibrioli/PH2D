@@ -116,3 +116,73 @@ pub fn materiais() -> Vec<FieldMaterial> {
         cor([0.95, 0.45, 0.05]),
     ]
 }
+
+/// ⭐⭐⭐ **A CENA 38 — O CÉU** (02/10): quatro bolas e um nó, cada um mostra o céu de um jeito — o
+/// CROMO espelha-o, o OURO tinge-o, o plástico AZUL brilhante põe um reflexo nítido por cima da cor,
+/// a borracha VERMELHA fosca só recebe a luz dele, e o nó BRANCO mostra de onde ela vem.
+///
+/// # Errors
+/// Só se uma das formas violar uma cerca do documento.
+pub fn cena_38() -> Result<FieldDoc, ph2d_field::FieldError> {
+    println!("[field-smoke] cena 38 — O CEU: quatro bolas e um no' que mostram o ceu de jeitos diferentes.");
+    println!(
+        "[field-smoke]            (1) MODEL · painel do topo, Shading · Render. No painel, secao Sky, \
+         escolha Sunset: o por do sol aparece ATRAS das pecas e a bola de CROMO espelha-o."
+    );
+    println!(
+        "[field-smoke]            (2) Rotation: o ceu gira e os reflexos andam nas bolas. Strength: \
+         mais claro ou mais escuro. Key Light em 0: some a luz de cima e a sombra dela."
+    );
+    println!(
+        "[field-smoke]            (3) Background em Off: o ceu some de tras mas continua a iluminar. \
+         Sky em Studio volta a luz de sempre."
+    );
+    let bola = |r: f32, x: f32| leaf(Primitive::Sphere { radius: r }, em(x, r, 0.0));
+    let nodes = vec![
+        // 0 — CROMO
+        bola(0.22, -1.0),
+        // 1 — OURO
+        bola(0.22, -0.5),
+        // 2 — plástico AZUL brilhante
+        bola(0.22, 0.0),
+        // 3 — borracha VERMELHA fosca
+        bola(0.22, 0.5),
+        // 4 — o nó BRANCO, de pé
+        leaf(
+            Primitive::TorusKnot {
+                radius: 0.16,
+                tube: 0.05,
+                cord: ph2d_field::knot_cord_ceiling(0.16, 0.05, 2, 3) * 0.85,
+                winds: 2,
+                loops: 3,
+            },
+            em(1.0, 0.27, 0.0),
+        ),
+        Node::new(
+            Xform::IDENTITY,
+            NodeKind::Combine {
+                op: Op::Union(Blend::Sharp),
+                children: [0, 1, 2, 3, 4].map(NodeId).to_vec(),
+            },
+        ),
+    ];
+    FieldDoc::new(nodes, NodeId(5))
+}
+
+/// Os materiais da cena 38, na ordem das folhas: cromo, ouro, azul brilhante, vermelho fosco, branco.
+#[must_use]
+pub fn materiais_38() -> Vec<FieldMaterial> {
+    let m = |c: [f32; 3], metal: f32, rugoso: f32| FieldMaterial {
+        base_color: c,
+        metalness: metal,
+        roughness: rugoso,
+        ..FieldMaterial::default()
+    };
+    vec![
+        m([0.95, 0.95, 0.95], 1.0, 0.04),
+        m([1.0, 0.78, 0.34], 1.0, 0.25),
+        m([0.06, 0.2, 0.85], 0.0, 0.08),
+        m([0.75, 0.1, 0.07], 0.0, 0.85),
+        m([0.9, 0.9, 0.88], 0.0, 0.4),
+    ]
+}

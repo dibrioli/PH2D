@@ -4950,6 +4950,7 @@ dependencies = [
  "ph2d-quadchain",
  "ph2d-remesh-iso",
  "ph2d-sdf",
+ "ph2d-sky",
  "ph2d-style",
  "ph2d-text",
  "ph2d-tokens",

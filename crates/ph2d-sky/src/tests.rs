@@ -156,7 +156,7 @@ fn a_irradiancia_e_a_soma_crua() {
     for e in [Embarcado::Floresta, Embarcado::Por] {
         let p = e.panorama();
         let c = Ceu::novo(&p);
-        let crua = fontes_irr(&[p.clone()]);
+        let crua = fontes_irr(std::slice::from_ref(&p));
         let piso = 0.02 * luma(p.media());
         let erros: Vec<f32> = direcoes(300)
             .into_iter()

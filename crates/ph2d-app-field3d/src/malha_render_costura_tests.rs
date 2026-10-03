@@ -301,3 +301,80 @@ fn in_the_mesh_render_the_style_tint_and_its_softness_reach_the_frame() {
         );
     });
 }
+
+/// ⭐⭐⭐ **O CÉU NO RENDER POR MALHA, pela rota do produto** — o painel oferece as seis fileiras do
+/// céu; escolher o pôr do sol PELO PAINEL muda o quadro e põe o céu atrás das bolas (o fundo, que era
+/// transparente, fica opaco); desligar o fundo pelo painel devolve a transparência.
+///
+/// ⚠️ A metade da placa só corre com aparelho; a do painel corre em todo lado.
+#[test]
+fn in_the_mesh_render_the_panel_offers_the_sky_and_choosing_one_changes_the_frame() {
+    armed_with(&two_balls(), |sim| {
+        liga_o_render(sim);
+        crate::scene::ecs_bridge(sim, None, &[], &crate::scene::no_drawing());
+        let rows = ph2d_panel_model3d::state::current().rows;
+        let ceu = rows
+            .iter()
+            .filter(|r| matches!(r.param, ph2d_field::Param::Sky(_)))
+            .count();
+        assert_eq!(ceu, 6, "o céu corre no desenhista de jogo: as seis fileiras no painel");
+
+        let doc = crate::smoke::with_smoke(|s| s.doc.clone())
+            .flatten()
+            .expect("o documento");
+        let tamanho = (AREA.w.round() as u32, AREA.h.round() as u32);
+        let quadro = || {
+            let t = std::time::Instant::now();
+            loop {
+                let feito = crate::smoke::with_smoke(|s| {
+                    crate::malha_render_quadro::desenha(s, s.active, tamanho, &doc, false)
+                })
+                .expect("armado");
+                match feito {
+                    crate::malha_render_quadro::Feito::Novo(rgba) => return Some(rgba),
+                    crate::malha_render_quadro::Feito::SemAparelho => return None,
+                    _ if t.elapsed().as_secs() > 60 => panic!("o quadro nunca chegou"),
+                    _ => std::thread::sleep(std::time::Duration::from_millis(5)),
+                }
+            }
+        };
+        let painel = |slot: u8, value: f32| {
+            ph2d_panel_model3d::state::push_intent_for_test(
+                ph2d_panel_model3d::ModelIntent::SetParam {
+                    entity: 0,
+                    param: ph2d_field::Param::Sky(slot),
+                    value,
+                },
+            );
+        };
+        let Some(estudio) = quadro() else {
+            println!("sem aparelho — a metade da placa saltada");
+            return;
+        };
+        // O pôr do sol é o `qual = 7` (o «Sunset» do painel).
+        painel(0, 7.0);
+        crate::scene::apply_intents_for_test(sim.world_mut(), &[]);
+        assert_eq!(
+            crate::smoke::with_smoke(|s| s.ceu.embarcado()).flatten(),
+            Some(ph2d_sky::Embarcado::Por),
+            "o intent do painel não chegou ao céu da cena"
+        );
+        let por = quadro().expect("o quadro com o céu");
+        let opacos = |a: &[u8], b: &[u8]| {
+            a.as_chunks::<4>()
+                .0
+                .iter()
+                .zip(b.as_chunks::<4>().0)
+                .filter(|(x, y)| x[3] == 0 && y[3] == 255)
+                .count()
+        };
+        let fundo = opacos(&estudio, &por);
+        assert!(fundo > 1000, "o céu não apareceu atrás das bolas: {fundo} píxeis");
+        // E desligar o fundo pelo painel devolve a transparência — o céu continua a iluminar.
+        painel(4, 0.0);
+        crate::scene::apply_intents_for_test(sim.world_mut(), &[]);
+        let sem_fundo = quadro().expect("o quadro sem fundo");
+        assert_eq!(opacos(&estudio, &sem_fundo), 0, "o fundo desligado deixou céu atrás");
+        assert_ne!(sem_fundo, estudio, "o céu do pôr do sol tem de iluminar as bolas");
+    });
+}

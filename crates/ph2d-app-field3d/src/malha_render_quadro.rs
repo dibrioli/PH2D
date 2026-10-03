@@ -36,6 +36,8 @@ struct Assinatura {
     chao: Option<f32>,
     look: ph2d_view_transform::Look,
     brilho: ph2d_bloom::Bloom,
+    /// O céu escolhido (saneado) — o atlas dele já está montado quando a assinatura nasce.
+    ceu: crate::ceu_foto::Ceu,
     estilo: ph2d_style::Style,
     raio: f32,
     /// A chave das curvaturas com que este quadro foi desenhado.
@@ -49,6 +51,8 @@ struct Desenhista {
     subida: (u64, usize),
     /// A chave das curvaturas subidas (`None` = as malhas acabaram de subir, com zeros).
     curv_subida: Option<crate::malha_render_estado::ChaveCurv>,
+    /// O céu fotográfico cujo atlas está subido.
+    ceu_subido: Option<ph2d_sky::Embarcado>,
 }
 
 /// ⛔ **GLOBAL, e não `thread_local`** — medido (02/10): um `Forward` numa `thread_local` é largado
@@ -89,6 +93,7 @@ fn desenhista() -> Option<&'static Mutex<Desenhista>> {
                     fw,
                     subida: (0, 0),
                     curv_subida: None,
+                    ceu_subido: None,
                 })
             })
         })
@@ -255,6 +260,16 @@ pub(crate) fn desenha(
     } else {
         None
     };
+    // ⭐ O CÉU fotográfico: o atlas monta-se noutra thread da 1.ª vez; até lá o quadro espera, como a
+    // curvatura (mostrar o estúdio por um instante seria um piscar que ninguém pediu).
+    let ceu = smoke.ceu.sanitized();
+    let foto = match ceu.embarcado() {
+        Some(e) => match crate::ceu_foto::pronto(e) {
+            Some(atlas) => Some((e, atlas)),
+            None => return Feito::Espera,
+        },
+        None => None,
+    };
     let assinatura = Assinatura {
         geracao,
         modelos,
@@ -264,6 +279,7 @@ pub(crate) fn desenha(
         chao,
         look: smoke.look,
         brilho: smoke.bloom.sanitized(),
+        ceu,
         estilo: smoke.style.sanitized(),
         raio,
         curv: curv.as_ref().map(|c| c.0),
@@ -316,6 +332,12 @@ pub(crate) fn desenha(
             }
             d.curv_subida = Some(*chave);
         }
+        if let Some((e, atlas)) = &foto
+            && d.ceu_subido != Some(*e)
+        {
+            d.fw.sobe_ceu(atlas);
+            d.ceu_subido = Some(*e);
+        }
         let fw = &mut d.fw;
         let instancias: Vec<Instancia> = assinatura
             .modelos
@@ -339,6 +361,7 @@ pub(crate) fn desenha(
             brilho: assinatura.brilho,
             estilo: assinatura.estilo,
             raio_da_peca: assinatura.raio,
+            foto: foto.as_ref().map(|(_, atlas)| assinatura.ceu.foto(atlas)),
         })
     };
     rgba.map_or(Feito::Espera, Feito::Novo)

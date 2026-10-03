@@ -357,6 +357,16 @@ pub(super) fn apply(
                     s.set_bloom(crate::brilho_painel::with_number(s.bloom, slot, value));
                 });
             }
+            // ⭐⭐⭐ **O CÉU** — a mesma forma do brilho, e ANTES do genérico pela mesma razão.
+            ph2d_panel_model3d::ModelIntent::SetParam {
+                param: ph2d_field::Param::Sky(slot),
+                value,
+                ..
+            } => {
+                crate::smoke::with_smoke(|s| {
+                    s.set_ceu(crate::ceu_painel::with_number(s.ceu, slot, value));
+                });
+            }
             // ⭐⭐⭐ **UMA COR** (Enio, 2026-09-14) — a travessia sRGB → linear, e três escritas.
             //
             // ⚠️ **As três correm no MESMO quadro, e é isso que as torna UM passo de undo**: o

@@ -303,7 +303,7 @@ fn nada_compila_ao_editar() {
         .into_iter()
         .enumerate()
     {
-        fw.sobe_ceu(&ceu_de(e));
+        fw.sobe_ceu(ceu_de(e));
         for fundo in [None, Some(0.0), Some(0.3)] {
             let _ = fw.quadro(&Cena {
                 foto: Some(Foto {

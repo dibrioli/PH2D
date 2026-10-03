@@ -91,6 +91,8 @@ pub fn set_param(
         // porque o `match` não compilou* — que é a metade do desenho que o `Param::Style` acima já
         // declara por escrito, agora com um segundo caso a prová-la.
         Param::Bloom(_) => Err(FieldError::BadRoot),
+        // ⭐ **E o CÉU fotográfico**, pela mesma razão: vive na vista (`Smoke::ceu`).
+        Param::Sky(_) => Err(FieldError::BadRoot),
         Param::Material(k) => {
             let mut m = world
                 .get::<crate::FieldMaterial>(entity)

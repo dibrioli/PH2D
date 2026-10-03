@@ -54,6 +54,8 @@ use ph2d_app_host::{AppFamily, SmokeRouter};
 /// ⭐⭐⭐ **A CAMADA DE ESTILO no painel** (`docs/Render3d/03`, a `W8`) — as dez fileiras, derivadas
 /// da arrumação do `ph2d_style::wgsl::pack`.
 pub mod brilho_painel;
+pub mod ceu_foto;
+pub mod ceu_painel;
 pub mod estilo;
 pub mod export;
 pub mod export_job;

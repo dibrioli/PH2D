@@ -181,6 +181,10 @@ pub enum Param {
     /// ⚠️⚠️ **O `entity` de uma linha destas também NÃO É LIDO** — a herança é a do `Style`, e a
     /// razão é a mesma: o sujeito é a cena, e quem o decide é o dreno, pela FAMÍLIA.
     Bloom(u8),
+    /// ⭐ **Um botão do CÉU fotográfico** do Render por malha — a posição na arrumação do
+    /// `ph2d_app_field3d::ceu_foto::Ceu::pack`. Da cena, como o [`Param::Bloom`]: o `entity` não é
+    /// lido e quem o escreve é o dreno do painel, pela família.
+    Sky(u8),
 }
 
 /// Quantos números um material tem — ver [`Param::Material`].

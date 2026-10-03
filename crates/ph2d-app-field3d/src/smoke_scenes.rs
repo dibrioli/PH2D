@@ -132,7 +132,7 @@ pub fn leaf(p: Primitive, x: Xform) -> Node {
 /// ⚠️ Ele **conta-se lendo o `match` abaixo**, nunca de memória: o gate
 /// `the_router_answers_for_every_level_it_claims` mede-o pelas DUAS pontas — a cena `CENAS` tem de
 /// ser dela própria, e a `CENAS + 1` tem de cair no `_`.
-pub const CENAS: u32 = 37;
+pub const CENAS: u32 = 38;
 
 /// **As cenas PODADAS em 2026-09-11** — nenhum doc as citava pelo número e nenhum código as usava
 /// (ordem do Enio, briefing W2 §3.2). `952` linhas.
@@ -178,6 +178,9 @@ pub fn materiais_da_cena(n: u32) -> Option<Vec<ph2d_field_ecs::FieldMaterial>> {
     // **de propósito** (a barra fica no material de omissão), que é a lei escrita no doc acima.
     if n == 37 {
         return Some(malha::materiais());
+    }
+    if n == 38 {
+        return Some(malha::materiais_38());
     }
     if n == 36 {
         // ⛔⛔ **A BARRA LEVA MATERIAL PRÓPRIO, e a FOTO é que o exigiu:** sem ele ela herdava a
@@ -487,6 +490,8 @@ pub fn scene(n: u32) -> FieldDoc {
         36 => edge::cena_36(),
         // ⭐⭐⭐ O RENDER POR MALHA (02/10) — ver [`malha::cena_37`].
         37 => malha::cena_37(),
+        // ⭐⭐⭐ O CÉU fotográfico (02/10) — ver [`malha::cena_38`].
+        38 => malha::cena_38(),
         _ => {
             // ⛔⛔ **O ROTEADOR DIZ QUANDO O NÚMERO NÃO EXISTE** (W2).
             //

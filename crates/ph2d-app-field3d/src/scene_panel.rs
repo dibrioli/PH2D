@@ -60,6 +60,12 @@ pub fn publish_snapshot(
         with_smoke(|s| s.bloom).unwrap_or_default(),
         render && (!malha || crate::malha_render_quadro::tem_brilho()),
     ));
+    // ⭐⭐⭐ **E AS FILEIRAS DO CÉU** — só no Render por MALHA (o traçado desenha o estúdio de
+    // sempre: ali seriam controlos mortos).
+    rows.extend(crate::ceu_painel::rows(
+        with_smoke(|s| s.ceu).unwrap_or_default(),
+        render && malha,
+    ));
     let rows = rows;
     // ⚠️ A lista de verbos é **derivada de `Mode::ALL`**, que é a fonte da contagem. O painel não
     // conhece o enum — acrescentar um verbo lá faz o seletor seguir sem uma linha de mudança.

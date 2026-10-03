@@ -378,6 +378,8 @@ pub struct Smoke {
     /// documento no mesmo dia que eles. ⛔ E nasce DESLIGADO, logo a imagem de omissão é a de sempre
     /// **ao bit** (com gate).
     pub bloom: ph2d_field_render::Bloom,
+    /// ⭐⭐⭐ **O CÉU fotográfico do Render por malha** — VISTA, como o brilho ([`crate::ceu_foto`]).
+    pub ceu: crate::ceu_foto::Ceu,
     /// ⭐ **O nó ISOLADO** — mostrar só ele, ou `None` para a peça inteira (W38).
     ///
     /// ⚠️ **Estado de VISTA, e a lei é a do módulo irmão, lida e não re-decidida**

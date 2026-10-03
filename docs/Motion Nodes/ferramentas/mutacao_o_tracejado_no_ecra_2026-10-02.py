@@ -9,11 +9,12 @@ R = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 C = R + "/crates/ph2d-shape-gpu/src/contorno.wgsl"
 S = R + "/crates/ph2d-shape-gpu/src/shape.wgsl"
 E = R + "/crates/ph2d-shape-gpu/src/eixo.rs"
+U = R + "/crates/ph2d-vec-render/src/stroke_uniform.rs"
 
 MUTS = [
     ("T1 o padrao nao escala com a caneta", [
-        (S, "s.tr = it.traco * caneta;", "s.tr = it.traco;", 1),
-        (S, "s.per = (it.traco + it.vao) * caneta;", "s.per = (it.traco + it.vao);", 1)]),
+        (S, "s.tr = it.traco * caneta * ajuste;", "s.tr = it.traco * ajuste;", 1),
+        (S, "s.per = (it.traco + it.vao) * caneta * ajuste;", "s.per = (it.traco + it.vao) * ajuste;", 1)]),
     ("T2 o fechado nunca emenda", [(S,
         "s.emenda = s.a_fim < s.tot && s.tot < s.a_fim + s.tr;", "s.emenda = false;", 1)]),
     ("T3 o fechado emenda sempre", [(S,
@@ -53,11 +54,19 @@ MUTS = [
         "la = sub.tot - sub.a_fim;", "la = tr.s0 - a;", 1)]),
     ("T14 o pixel a pixel salta os blocos tracejados pela caixa", [(S,
         "if (cab.ponta & 1u) == 0u && (", "if (", 1)]),
+    ("T16 a placa sem o ajuste do tracejado no ecra", [(S,
+        "return melhor / denom * select(1.0, 1.0 + FOLGA_DO_AJUSTE, fechado);", "return 1.0;", 1)]),
+    ("T17 a placa sem a folga do fechado", [(S,
+        "return melhor / denom * select(1.0, 1.0 + FOLGA_DO_AJUSTE, fechado);", "return melhor / denom;", 1)]),
+    ("U1 a casa sem o ajuste no ecra", [(U,
+        "    let Some((total, fechado)) = maior_contorno(screen) else {\n        return;\n    };",
+        "    let Some((total, fechado)) = maior_contorno(screen) else {\n        return;\n    };\n    if total > 0.0 {\n        return;\n    }", 1)]),
+    ("U2 a casa sem a folga do fechado", [(U,
+        "let folga = if fechado { 1.0 + FOLGA_DO_AJUSTE } else { 1.0 };", "let folga = 1.0;", 1)]),
     ("R1 o sub-caminho fechado nao se marca", [(E,
         "flags |= SUB_INICIO | if s.fechado { SUB_FECHADO } else { 0 };", "flags |= SUB_INICIO;", 1)]),
     ("R2 o primeiro troco conta um troco a menos", [(E,
-        'pad = u32::try_from(troços).expect("um sub-caminho com mais de 4 mil milhoes de troços");',
-        'pad = u32::try_from(troços - 1).expect("x");', 1)]),
+        "pad = u32::try_from(troços)\n", "pad = u32::try_from(troços - 1)\n", 1)]),
 ]
 
 CMD = ["bash", "scripts/ph2d-run.sh", "cargo", "test", "-p", "ph2d-shape-gpu", "--release", "--test", "it",
@@ -138,7 +147,7 @@ def main():
         print(f"{nome}: {v} ({p} passed, {fl} failed) reprovou: {falhos}", flush=True)
         for l in placar(out):
             print("   ", l)
-    for f in (C, S, E):
+    for f in (C, S, E, U):
         assert not os.path.exists(f + ".muta_bk"), "restauro falhou"
     print(f"placar: {sangrou} de {len(muts)} sangraram")
 

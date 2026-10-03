@@ -21,10 +21,30 @@ use super::paridade_com_o_vello::{
 /// `5,7 %` (cada traço com pontas redondas é borda curva), e a emenda que falta lê `2,4 %`.
 const BARRA: u8 = 100;
 
+/// Uma estrela com um FURO hexagonal: dois sub-caminhos fechados de comprimentos diferentes. O ajuste
+/// no ecrã fecha o mais LONGO num número inteiro de períodos — o de dentro não, e é nele que o último
+/// traço EMENDA no primeiro. ⚠️ Hexágono e não estrela: numa quina de `120°` a faixa SERVE (numa ponta
+/// de estrela o recuo passa sempre dos pedaços), e é aí que o recuo da emenda decide alguma coisa.
+pub(super) fn estrela_com_furo() -> BezPath {
+    let mut bp = estrela();
+    for i in 0..6 {
+        let a = std::f64::consts::PI * f64::from(i) / 3.0 + 0.2;
+        let p = (0.14 * a.cos(), 0.14 * a.sin());
+        if i == 0 {
+            bp.move_to(p);
+        } else {
+            bp.line_to(p);
+        }
+    }
+    bp.close_path();
+    bp
+}
+
 fn casos<'a>(
     est: &'a BezPath,
     circ: &'a BezPath,
     zz: &'a BezPath,
+    furo: &'a BezPath,
 ) -> Vec<(&'static str, Forma<'a>, Vec<Copia>)> {
     let forma = |bp: &'a BezPath, linha: Option<&'a BezPath>, s: Stroke, cor: [f32; 4]| Forma {
         bp,
@@ -107,6 +127,22 @@ fn casos<'a>(
             ),
             esticadas(40, 40.0, 220.0, 24),
         ),
+        // ⭐ A EMENDA: desde o ajuste no ecrã o contorno mais longo nunca emenda (a folga põe o fim no
+        // último vão); o de DENTRO emenda conforme o esticão — pontas quadradas e esquadria, para a
+        // emenda (junta) e a falta dela (duas pontas) desenharem diferente.
+        (
+            "estrela com furo tracejada esticada",
+            forma(
+                furo,
+                None,
+                Stroke::new(0.05)
+                    .with_join(Join::Miter)
+                    .with_caps(Cap::Square)
+                    .with_dashes(0.0, [0.17, 0.09]),
+                [0.5, 0.1, 0.1, 1.0],
+            ),
+            esticadas(40, 40.0, 220.0, 28),
+        ),
         // CONTROLO: as mesmas estrelas CONFORMES vão pelo contorno pré-expandido (o do Vello ao bit).
         (
             "estrela tracejada conforme",
@@ -127,10 +163,10 @@ fn casos<'a>(
 #[test]
 #[ignore = "precisa de adapter de GPU"]
 fn o_tracejado_esticado_desenha_o_que_o_vello_desenha() {
-    let (est, circ, zz) = (estrela(), circulo(), zigue_zague());
+    let (est, circ, zz, furo) = (estrela(), circulo(), zigue_zague(), estrela_com_furo());
     // Todas as famílias medidas antes de reprovar — o placar inteiro é o que decide uma barra.
     let mut falhas = Vec::new();
-    for (nome, forma, cs) in &casos(&est, &circ, &zz) {
+    for (nome, forma, cs) in &casos(&est, &circ, &zz, &furo) {
         let Some(d) = corre(nome, forma, cs) else {
             eprintln!("sem adaptador — nada a medir");
             return;
@@ -163,9 +199,9 @@ fn o_tracejado_calculado_desenha_o_que_o_pixel_desenha() {
         eprintln!("sem adaptador — nada a medir");
         return;
     };
-    let (est, circ, zz) = (estrela(), circulo(), zigue_zague());
+    let (est, circ, zz, furo) = (estrela(), circulo(), zigue_zague(), estrela_com_furo());
     let mut falhas = Vec::new();
-    for (nome, forma, cs) in &casos(&est, &circ, &zz) {
+    for (nome, forma, cs) in &casos(&est, &circ, &zz, &furo) {
         let fmt = wgpu::TextureFormat::Rgba16Float;
         let (calc, com) = pelo_passe_com(&gpu, forma, cs, fmt, true, 4)
             .pop()

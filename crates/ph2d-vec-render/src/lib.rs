@@ -72,7 +72,9 @@ pub use standalone::{draw_path_isolated, draw_path_standalone};
 /// A tradução do modo de mistura do documento para o par do Vello (módulo irmão: ele é a fonte da
 /// lista que o painel oferece, e o `dispatch` é só um dos consumidores).
 pub mod blend;
-pub use stroke_uniform::{is_conformal, stroke_uniform, uniform_scale};
+pub use stroke_uniform::{
+    FOLGA_DO_AJUSTE, ajusta_no_ecra, is_conformal, pen_for, stroke_uniform, uniform_scale,
+};
 mod guides;
 pub use guides::{
     Guide, GuideKind, GuideLabel, draw_document_guides, draw_snap_guides, draw_text_caret,

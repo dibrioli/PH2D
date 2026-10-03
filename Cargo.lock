@@ -8679,6 +8679,7 @@ dependencies = [
  "bytemuck",
  "ph2d-gpu",
  "ph2d-render",
+ "ph2d-vec-render",
  "ph2d-vector",
  "pollster",
  "vello",

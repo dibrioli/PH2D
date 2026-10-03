@@ -255,24 +255,16 @@ fn pelo_vello(gpu: &GpuContext, forma: &Forma<'_>, cs: &[Copia]) -> Vec<u8> {
         cena.fill(regra, t, &Brush::Solid(Color::new(c.tint)), None, forma.bp);
         if let Some((s, cor)) = &forma.traco {
             let linha = forma.linha.unwrap_or(forma.bp);
-            if (c.aspecto - 1.0).abs() < 1e-6 {
-                cena.stroke(s, t, &Brush::Solid(Color::new(*cor)), None, linha);
-            } else {
-                // ⭐ A LEI DA CASA sob escala não uniforme (`ph2d_vec_render::stroke_uniform`, bug
-                // #27): a geometria atravessa o afim, a caneta não — ela é REDONDA, de largura
-                // `w·√|det|`, e o tracejado escala com ela (`pen_for`).
-                let k = t.determinant().abs().sqrt();
-                let mut pen = s.clone();
-                pen.width *= k;
-                pen.dash_pattern = s.dash_pattern.iter().map(|d| d * k).collect();
-                pen.dash_offset = s.dash_offset * k;
-                cena.stroke(
-                    &pen,
-                    Affine::IDENTITY,
-                    &Brush::Solid(Color::new(*cor)),
-                    None,
-                    &(t * linha.clone()),
-                );
+            // ⭐ A LEI DA CASA sob escala não uniforme (`ph2d_vec_render::stroke_uniform`, bug #27),
+            // CHAMADA: a geometria atravessa o afim, a caneta não — REDONDA, de largura `w·√|det|`,
+            // o tracejado escala com ela e ajusta-se ao contorno do ecrã (doc 121 §9.9).
+            match ph2d_vec_render::pen_for(s, t) {
+                (None, xf) => cena.stroke(s, xf, &Brush::Solid(Color::new(*cor)), None, linha),
+                (Some(mut pen), xf) => {
+                    let tela = t * linha.clone();
+                    ph2d_vec_render::ajusta_no_ecra(&mut pen, &tela);
+                    cena.stroke(&pen, xf, &Brush::Solid(Color::new(*cor)), None, &tela);
+                }
             }
         }
     }

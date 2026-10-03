@@ -34,7 +34,7 @@
 //! ⇒ **só o caso partido paga.** Um afim CONFORME (rotação + escala uniforme, com ou sem reflexão)
 //! desenha pela chamada de sempre, byte a byte. Há gate.
 
-use ph2d_vector::{Affine, BezPath, Brush, Stroke, VectorScene};
+use ph2d_vector::{Affine, BezPath, Brush, Shape, Stroke, VectorScene};
 
 /// Tolerância relativa para chamar um afim de conforme. Ela é **relativa** de propósito: um teste
 /// absoluto chamaria de não-uniforme todo afim de um documento em unidades grandes.
@@ -80,8 +80,9 @@ pub fn stroke_uniform(
         // O caminho de sempre, byte a byte — e é por aqui que passa a esmagadora maioria.
         None => target.inner_mut().stroke(stroke, pen_xf, brush, None, bp),
         // ⚠️ **A geometria atravessa o afim; a caneta não.**
-        Some(pen) => {
+        Some(mut pen) => {
             let screen = transform * bp.clone();
+            ajusta_no_ecra(&mut pen, &screen);
             target
                 .inner_mut()
                 .stroke(&pen, pen_xf, brush, None, &screen)
@@ -265,8 +266,9 @@ pub fn stroke_uniform_image(
         None => target.stroke_path_image(
             bp, stroke, pen_xf, image, brush.0, x_extend, y_extend, quality, alpha,
         ),
-        Some(pen) => {
+        Some(mut pen) => {
             let screen = transform * bp.clone();
+            ajusta_no_ecra(&mut pen, &screen);
             target.stroke_path_image(
                 &screen, &pen, pen_xf, image, brush.0, x_extend, y_extend, quality, alpha,
             );
@@ -302,10 +304,131 @@ pub fn pen_for(stroke: &Stroke, transform: Affine) -> (Option<Stroke>, Affine) {
     (Some(pen), Affine::IDENTITY)
 }
 
+/// A folga RELATIVA do período no ajuste de um FECHADO no ecrã: o padrão ajustado acaba EXACTAMENTE no
+/// início, e aí o `f64` do kurbo e o `f32` da placa (doc 121 §9.9) decidiriam por arredondamento se o
+/// último traço emenda no primeiro — um pontinho na emenda, ou não, conforme a máquina. Alongado em
+/// `1e-4`, o fim cai sempre DENTRO do último vão (`≤ 0,3 px` numa volta de `3 000 px`); o erro
+/// relativo do arco somado em `f32` na placa é `~1e-5`.
+pub const FOLGA_DO_AJUSTE: f64 = 1e-4;
+
+/// ⭐ **O AJUSTE DO TRACEJADO NO ECRÃ** (doc 121 §9.9) — a [`ph2d_vec_scene::dash_fit`] (a cura da emenda
+/// de 22/08) mediu o contorno no espaço LOCAL; sob escala não uniforme o comprimento no ecrã não é
+/// `√|det|` vezes o local, e a emenda voltava. ⇒ o padrão da caneta (já `× √|det|`) ajusta-se outra
+/// vez ao contorno mais longo da geometria JÁ transformada, pela mesma lei. Sob afim conforme o ecrã
+/// é o local escalado e o ajuste não muda nada — e esse caminho nem passa aqui.
+///
+/// ⚠️ A placa (`ph2d-shape-gpu`, `ajuste_do_tracejado`) faz a MESMA conta; só um `[traço, vão]` com
+/// fase `0` (o que o `kurbo_stroke` produz) se ajusta.
+pub fn ajusta_no_ecra(pen: &mut Stroke, screen: &BezPath) {
+    let &[traco, vao] = pen.dash_pattern.as_slice() else {
+        return;
+    };
+    if pen.dash_offset != 0.0 {
+        return;
+    }
+    let Some((total, fechado)) = maior_contorno(screen) else {
+        return;
+    };
+    let [t, v] = ph2d_vec_scene::dash_fit::fit([traco, vao], total, fechado);
+    let folga = if fechado { 1.0 + FOLGA_DO_AJUSTE } else { 1.0 };
+    pen.dash_pattern = [t * folga, v * folga].into_iter().collect();
+}
+
+/// O sub-caminho mais LONGO de `bp` e se é fechado — a [`ph2d_vec_scene::dash_fit::longest_contour`]
+/// sobre a geometria do ecrã (o fecho conta, como lá).
+fn maior_contorno(bp: &BezPath) -> Option<(f64, bool)> {
+    let mut melhor: Option<(f64, bool)> = None;
+    let mut sub = BezPath::new();
+    let mut inicio = ph2d_vector::Point::ZERO;
+    let mut fecha = |sub: &mut BezPath, fechado: bool| {
+        if sub.elements().len() > 1 {
+            let l = sub.perimeter(1e-6);
+            if l > 0.0 && melhor.is_none_or(|(m, _)| l > m) {
+                melhor = Some((l, fechado));
+            }
+        }
+        *sub = BezPath::new();
+    };
+    for el in bp.elements() {
+        match el {
+            ph2d_vector::PathEl::MoveTo(p) => {
+                fecha(&mut sub, false);
+                inicio = *p;
+                sub.push(*el);
+            }
+            ph2d_vector::PathEl::ClosePath => {
+                sub.push(*el);
+                fecha(&mut sub, true);
+            }
+            e => {
+                // Depois de um fecho sem `MoveTo`, o sub-caminho seguinte começa no mesmo início.
+                if sub.elements().is_empty() {
+                    sub.move_to(inicio);
+                }
+                sub.push(*e);
+            }
+        }
+    }
+    fecha(&mut sub, false);
+    melhor
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::f64::consts::FRAC_PI_4;
+
+    /// ⭐ doc 121 §9.9 — **sob escala não uniforme o tracejado FECHA no contorno do ecrã.** Um círculo
+    /// esticado `(2, 0,7)` com o padrão ajustado no LOCAL (a `dash_fit`) e escalado por `√|det|` deixa
+    /// a emenda a meio de um período (o CONTROLO); ajustado no ecrã, o contorno é um número inteiro
+    /// de períodos, alongados pela folga — o fim cai DENTRO do último vão.
+    #[test]
+    fn o_tracejado_esticado_fecha_no_contorno_do_ecra() {
+        use ph2d_vector::{Circle, Shape as _};
+        let bp = Circle::new((0.0, 0.0), 1.0).to_path(1e-4);
+        let local = ph2d_vec_scene::dash_fit::fit([0.3, 0.2], 2.0 * std::f64::consts::PI, true);
+        let m = Affine::scale_non_uniform(2.0, 0.7);
+        let (pen, xf) = pen_for(&Stroke::new(0.1).with_dashes(0.0, local), m);
+        let mut pen = pen.expect("nao conforme");
+        assert_eq!(xf, Affine::IDENTITY);
+        let ecra = m * bp;
+        let total = ecra.perimeter(1e-6);
+        let periodo = |p: &Stroke| p.dash_pattern.iter().sum::<f64>();
+        let antes = total / periodo(&pen);
+        assert!(
+            (antes - antes.round()).abs() > 0.2,
+            "CONTROLO: o ajuste local tem de deixar a emenda a meio ({antes})"
+        );
+        ajusta_no_ecra(&mut pen, &ecra);
+        let n = total / periodo(&pen) * (1.0 + FOLGA_DO_AJUSTE);
+        assert!((n - n.round()).abs() < 1e-6, "{n} periodos — nao fecha");
+        assert!(
+            total / periodo(&pen) < n.round(),
+            "o fim tem de cair DENTRO do ultimo vao"
+        );
+        let razao = pen.dash_pattern[0] / pen.dash_pattern[1];
+        assert!(
+            (razao - 1.5).abs() < 1e-9,
+            "o traço e o vao andam juntos ({razao})"
+        );
+    }
+
+    /// Num ABERTO a lei é `n` períodos mais um traço — o caminho começa e acaba com traço inteiro.
+    #[test]
+    fn o_tracejado_esticado_aberto_acaba_com_traco_inteiro() {
+        let mut bp = BezPath::new();
+        bp.move_to((0.0, 0.0));
+        bp.line_to((1.0, 0.0));
+        bp.line_to((1.0, 1.0));
+        let m = Affine::scale_non_uniform(4.0, 0.7);
+        let (pen, _) = pen_for(&Stroke::new(0.05).with_dashes(0.0, [0.11, 0.07]), m);
+        let mut pen = pen.expect("nao conforme");
+        let ecra = m * bp;
+        ajusta_no_ecra(&mut pen, &ecra);
+        let [t, v] = [pen.dash_pattern[0], pen.dash_pattern[1]];
+        let n = (ecra.perimeter(1e-9) - t) / (t + v);
+        assert!((n - n.round()).abs() < 1e-6, "{n}");
+    }
 
     /// ⭐ **ROTAÇÃO E ESCALA UNIFORME PASSAM PELO CAMINHO RÁPIDO.**
     ///

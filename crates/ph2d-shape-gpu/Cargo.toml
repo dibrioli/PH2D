@@ -25,6 +25,10 @@ vello = { version = "0.10.0", default-features = false, features = ["wgpu"] }
 # `ph2d-render` não depende desta crate ⇒ sem ciclo.
 ph2d-render = { path = "../ph2d-render" }
 pollster = "0.4.0"
+# ⭐ E a LEI DA CASA do traço sob escala não uniforme (`pen_for` + `ajusta_no_ecra`), chamada e não
+# copiada: a régua do tracejado (doc 121 §9.9) não pode ter uma cópia da lei que ela mede.
+# `ph2d-vec-render` não depende desta crate ⇒ sem ciclo.
+ph2d-vec-render = { path = "../ph2d-vec-render" }
 
 [lints]
 workspace = true

@@ -495,6 +495,8 @@ fn traco_do_eixo(inicio: u32, n: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32,
     let xb = xy + vec2<f32>(1.0);
     var s = 0.0;
     var i = 0u;
+    // O ajuste do tracejado é da CÓPIA (o contorno mais longo dela): calcula-se ao 1.º tracejado.
+    var ajuste = 0.0;
     loop {
         if i >= n {
             break;
@@ -516,7 +518,10 @@ fn traco_do_eixo(inicio: u32, n: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32,
             if !tracejado(it) {
                 s += peca_do_eixo(it, lin, t, caneta, xy);
             } else if (it.ponta & SUB_INICIO) != 0u {
-                s += tracejado_px(inicio + i, lin, t, caneta, xy);
+                if ajuste == 0.0 {
+                    ajuste = ajuste_do_tracejado(inicio, n, lin, t, caneta);
+                }
+                s += tracejado_px(inicio + i, lin, t, caneta, ajuste, xy);
             }
         }
     }
@@ -717,6 +722,55 @@ fn proximo_troco(i: u32) -> u32 {
     return j;
 }
 
+// ⭐ doc 121 §9.9 — **O AJUSTE DO TRACEJADO NO ECRÃ**, o `stroke_uniform::ajusta_no_ecra` da casa: o
+// padrão (já `× √|det|`) estica o mínimo para caber um número inteiro de vezes no sub-caminho
+// tracejado mais LONGO da cópia — `n` períodos num fechado, `n` mais um traço num aberto (a
+// `dash_fit::fit`) — e num fechado alonga `FOLGA_DO_AJUSTE`, para o fim cair DENTRO do último vão.
+// Devolve o factor do período (`1` sem tracejado). ⚠️ `floor(x + 0,5)` e não `round`: o do WGSL
+// arredonda as metades para o PAR, o `f64::round` da casa para longe do zero.
+const FOLGA_DO_AJUSTE: f32 = 1.0e-4;
+
+fn arredonda(x: f32) -> f32 {
+    return floor(x + 0.5);
+}
+
+fn ajuste_do_tracejado(inicio: u32, n: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32) -> f32 {
+    var melhor = 0.0;
+    var fechado = false;
+    var tr = 0.0;
+    var per = 0.0;
+    for (var i = inicio; i < inicio + n; i += 1u) {
+        let it = eixo[i];
+        if it.tipo != 0u || !tracejado(it) || (it.ponta & SUB_INICIO) == 0u {
+            continue;
+        }
+        var tot = 0.0;
+        var j = i;
+        for (var k = 0u; k < it._pad; k += 1u) {
+            j = proximo_troco(j);
+            tot = tot + arco(eixo[j], lin, t);
+            j += 1u;
+        }
+        if tot > melhor {
+            melhor = tot;
+            fechado = (it.ponta & SUB_FECHADO) != 0u;
+            tr = it.traco * caneta;
+            per = (it.traco + it.vao) * caneta;
+        }
+    }
+    if melhor <= 0.0 || per <= 0.0 {
+        return 1.0;
+    }
+    var denom = max(arredonda(melhor / per), 1.0) * per;
+    if !fechado {
+        denom = max(arredonda((melhor - tr) / per), 0.0) * per + tr;
+    }
+    if denom <= 0.0 {
+        return 1.0;
+    }
+    return melhor / denom * select(1.0, 1.0 + FOLGA_DO_AJUSTE, fechado);
+}
+
 struct SubTracejado {
     n: u32,
     fechado: bool,
@@ -729,13 +783,13 @@ struct SubTracejado {
     emenda: bool,
 }
 
-fn sub_tracejado(i0: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32) -> SubTracejado {
+fn sub_tracejado(i0: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32, ajuste: f32) -> SubTracejado {
     let it = eixo[i0];
     var s: SubTracejado;
     s.n = it._pad;
     s.fechado = (it.ponta & SUB_FECHADO) != 0u;
-    s.tr = it.traco * caneta;
-    s.per = (it.traco + it.vao) * caneta;
+    s.tr = it.traco * caneta * ajuste;
+    s.per = (it.traco + it.vao) * caneta * ajuste;
     s.tot = 0.0;
     s.emenda = false;
     if s.fechado && s.per > 0.0 {
@@ -891,8 +945,8 @@ fn pedaco_px(it: Eixo, lin: vec4<f32>, t: vec2<f32>, caneta: f32, tr: TrocoTrace
 }
 
 // O sub-caminho tracejado que começa no troço `i0`, pixel a pixel.
-fn tracejado_px(i0: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32, xy: vec2<f32>) -> f32 {
-    let sub = sub_tracejado(i0, lin, t, caneta);
+fn tracejado_px(i0: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32, ajuste: f32, xy: vec2<f32>) -> f32 {
+    let sub = sub_tracejado(i0, lin, t, caneta, ajuste);
     if sub.per <= 0.0 {
         return 0.0;
     }

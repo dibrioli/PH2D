@@ -300,8 +300,8 @@ fn emite_pedaco(it: Eixo, lin: vec4<f32>, t: vec2<f32>, caneta: f32, tr: TrocoTr
 }
 
 // O sub-caminho tracejado que começa no troço `i0` — o `tracejado_px` da soma por pixel.
-fn emite_tracejado(i0: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32) {
-    let sub = sub_tracejado(i0, lin, t, caneta);
+fn emite_tracejado(i0: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32, ajuste: f32) {
+    let sub = sub_tracejado(i0, lin, t, caneta, ajuste);
     if sub.per <= 0.0 {
         return;
     }
@@ -327,6 +327,7 @@ fn emite_tracejado(i0: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32) {
 fn percorre(cp: Copia) {
     cursor = 0u;
     let caneta = bitcast<f32>(cp.eixo_rg.w);
+    var ajuste = 0.0;
     for (var i = cp.eixo_rg.x; i < cp.eixo_rg.x + cp.eixo_rg.y; i += 1u) {
         let it = eixo[i];
         if it.tipo == 3u {
@@ -335,7 +336,10 @@ fn percorre(cp: Copia) {
         if !tracejado(it) {
             emite_peca(it, cp.lin, cp.t, caneta);
         } else if (it.ponta & SUB_INICIO) != 0u {
-            emite_tracejado(i, cp.lin, cp.t, caneta);
+            if ajuste == 0.0 {
+                ajuste = ajuste_do_tracejado(cp.eixo_rg.x, cp.eixo_rg.y, cp.lin, cp.t, caneta);
+            }
+            emite_tracejado(i, cp.lin, cp.t, caneta, ajuste);
         }
     }
 }
@@ -427,12 +431,17 @@ fn arestas_da_tampa(tampa: u32, r: f32) -> u32 {
 fn limite_de_arestas(cp: Copia) -> u32 {
     let caneta = bitcast<f32>(cp.eixo_rg.w);
     var n = 0u;
+    var ajuste = 0.0;
     for (var i = cp.eixo_rg.x; i < cp.eixo_rg.x + cp.eixo_rg.y; i += 1u) {
         let it = eixo[i];
         let r = it.meia * caneta;
         if it.tipo == 0u && tracejado(it) {
             // doc 121 §9.9 — cada traço que toca o troço: o quadrilátero, as duas pontas e a junta.
-            let per = (it.traco + it.vao) * caneta;
+            if ajuste == 0.0 {
+                ajuste = ajuste_do_tracejado(cp.eixo_rg.x, cp.eixo_rg.y, cp.lin, cp.t, caneta);
+            }
+            // ⚠️ `0,99`: o período ajustado é o que o percurso usa; a folga cobre o arredondamento.
+            let per = (it.traco + it.vao) * caneta * ajuste * 0.99;
             let len = arco(it, cp.lin, cp.t);
             let pecas = u32(min(ceil(len / max(per, 1.0e-30)), TRACOS_POR_TROCO_MAX)) + 2u;
             let tampa = max(arestas_da_tampa((it.ponta >> 6u) & 3u, r), arestas_da_tampa((it.ponta >> 8u) & 3u, r));

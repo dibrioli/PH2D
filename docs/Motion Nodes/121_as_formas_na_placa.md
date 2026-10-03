@@ -1298,3 +1298,48 @@ corridas, soma dos passes · células · pixels de grelha:
 `0,06 ms` nas densas e perde `0,09`–`0,18` nas esticadas. Fica `32`, como no §9.8. A memória não se
 cura pela largura: as alavancas que ficam são a cobertura gravada NO LUGAR do 1.º acumulador
 (`−4 B` por pixel, `−24 %`) e um arredondamento da capacidade mais fino que a potência de dois.
+
+✅ **A MEMÓRIA DAS CÉLULAS: `66 → 43 MB` na `=127` densa** (commit `9d1058a40`; kill-criterion escrito
+antes: capacidade `≤ 46 MB` no app, e nenhum arranjo pior que `+5 %` na iGPU nem `+10 %` na RTX na soma
+dos passes, contra o binário de `fab8999a8` intercalado na MESMA janela). As duas alavancas acima:
+
+1. **A cobertura NO LUGAR do 1.º acumulador.** O `cs_varre` grava o `pack2x16unorm` na palavra
+   `acumula[cel·ACUMULA + p]` (o depósito do preenchimento do PRÓPRIO pixel), que ele já leu antes das
+   barreiras: nenhum outro fio a lê (o prefixo vive na memória de grupo) e o `cs_zera` do quadro
+   seguinte apaga-a com as outras. Sai o buffer `cobertura` (ligação `9` do grupo `2`); a ligação `2`
+   do grupo `1` do desenho passa a ser a acumulação, `read` no passe de desenho e `read_write` no de
+   cálculo — passes separados, o regime que a `cobertura` já tinha. `528 → 400 B` por célula.
+   ⚠️ **O fragmento parte a coluna:** `x` corre a FILEIRA inteira, e com a cobertura contígua
+   `primeira·32 + x` caía sozinho na célula `primeira + x/32`; com o passo `ACUMULA` é
+   `(primeira + x/32)·ACUMULA + x%32`. O 1.º rascunho (`primeira·ACUMULA + x`) pôs **`7` dos `10`**
+   gates vermelhos — virou a mutação A19.
+2. **A capacidade ao OITAVO do degrau** (`ao_oitavo_do_degrau` em `contorno.rs`): o múltiplo seguinte
+   de `2^(⌊log₂ n⌋ − 3)`, só para as células (crescem só por medição). `107 520 → 114 688` em vez de
+   `131 072`. ⚠️ **O preço, medido:** numa cena que cresce UMA célula de cada vez até `107 520` (o pior
+   caso: cada medição passa a capacidade) os buffers recriam-se `118` vezes contra `18` — no máximo
+   `8` por oitava, com gate (`numa_cena_que_cresce_as_celulas_recriam_se_no_maximo_oito_vezes_por_oitava`).
+   Na `=127` do app a contagem não cresce: UMA criação, como antes.
+
+| medida | antes (`fab8999a8`) | depois |
+|---|---:|---:|
+| app `=127` densa (iGPU e RTX): capacidade | `131 072` · **`66 MB`** | `114 688` · **`43 MB`** (`45,9 × 10⁶ B`) |
+| app `=127` densa: quadro iGPU · RTX | `16,6 ms` · `16,7 ms` | `16,6`–`16,8 ms` · `16,6 ms` (`60 fps`) |
+| sonda: memória das esticadas · conformes · densas | `8` · `8` · `8 MB` (`16 384`) | `4` · `3` · `5 MB` |
+| iGPU esticadas (soma dos passes, ms) | `0,88` · `0,89` | `0,89` · `0,90` (`+1 %`) ✅ |
+| iGPU conformes | `0,61` · `0,61` | `0,59` · `0,59` ✅ |
+| iGPU densas | `1,01` · `1,01` | `1,01` · `1,01` ✅ |
+| RTX esticadas | `0,22` ×6 | `0,22` ×6 ✅ |
+| RTX conformes | `0,09` ×5 · `0,10` ×1 | `0,09` ×5 · `0,10` ×1 ✅¹ |
+| RTX densas | `0,10` ×6 | `0,10` ×6 ✅ |
+
+¹ o `0,10` aparece UMA vez em cada binário (o de depois na 1.ª janela, o de antes na repetição): é o degrau de `0,01 ms` do perfilador, `11 %` de `0,09`; o `gpu-busy` dá `0,10` igual nos
+dois. Cargas: a 1.ª janela com a média de 5 min entre `3,5` e `8,8` (duas outras linhas a testar); a
+repetição da RTX (`CORRIDAS=4`) entre `0,4` e `2,4`.
+
+**Registos** (`registos_dos_shaders.sh`, iGPU, os dois binários): o fragmento continua `56` VGPRs · `18`
+ondas · `15 336 B` (a partição da coluna em célula e pixel não custa registo); o `cs_varre`
+`1 008 → 1 000 B`; nada em scratch. **Gates** (RTX): `ph2d-shape-gpu` `10/10` + `3` unitários novos da
+capacidade, produto `5/5` + sonda, `ph2d-gpu-cook` formas `2/2`. **Mutação `19` de `19`** (o
+[arnês](ferramentas/mutacao_o_buffer_de_acumulacao_2026-10-03.py) com a A13 re-ancorada e duas novas: A18 a
+cobertura gravada na palavra das marcas · A19 a coluna sem a partição; pré-voo `19/19`, corrida limpa `10`
+verdes, nenhuma por shader inválido) e a do tracejado `21/21`.

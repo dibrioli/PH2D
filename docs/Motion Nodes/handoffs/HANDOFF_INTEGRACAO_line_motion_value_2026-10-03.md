@@ -17,7 +17,7 @@
 |---|---|
 | worktree | `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value` |
 | ramo | `line/motion-value` |
-| HEAD | `311413f1e` + este handoff · ⚠️ e, DEPOIS dele (03/10, após o smoke aprovado): `87e605534` (a capacidade só MEDIDA das células, código) e `9b133f887` (recusa da largura, doc) — ver §6.1 |
+| HEAD | `311413f1e` + este handoff · ⚠️ e, DEPOIS dele (03/10, após o smoke aprovado): `87e605534` (a capacidade só MEDIDA das células, código) e `9b133f887` (recusa da largura, doc) — ver §6.1; e `9d1058a40` · `650128529` · os docs (a memória das células `66 → 43 MB`) — ver §6.2 |
 | base / merge-base | `main` @ `1ad60a1ce` — **0** commits do `main` por trazer; `--ff-only` possível |
 | commits | **18** (2026-10-02 → 03) · `36` ficheiros (+3 621 / −685) |
 
@@ -159,7 +159,7 @@ integrador — releia a ORDEM das fases do quadro só se outra linha mexer em `f
 
 | item | o endereço |
 |---|---|
-| ✅ memória no app MEDIDA (§6.1) — `66 MB` na `=127` densa | alavancas que ficam: a cobertura NO LUGAR do 1.º acumulador (`−24 %`) e um arredondamento mais fino que a potência de dois |
+| ✅ memória no app MEDIDA (§6.1) e CORTADA (§6.2) — `66 → 43 MB` na `=127` densa | o resto é a variante ESPARSA (abaixo) |
 | **variante ESPARSA** (só as células tocadas; tira o `cs_zera`) | ⚠️ nas densas quase toda célula é tocada (estrelas de `~14 px`): MEÇA a fracção de células tocadas antes de a construir; a alavanca é das formas GRANDES |
 | a variante COMPLETA (com tracejado) a `128` VGPRs | encolher o ramo do tracejado; item próprio |
 | a mordida do traço rente depois de uma quina | divergência DECLARADA (§9.9), sem acção |
@@ -179,6 +179,31 @@ integrador — releia a ORDEM das fases do quadro só se outra linha mexer em `f
   só toca a capacidade em `garante`, fora das âncoras).
 - ⛔ **`9b133f887` — recusa medida: estreitar a célula** (`16` empata, `8` perde nas esticadas). Fica `32`.
   Tabela no doc 121 §9.12.
+
+### §6.2 — A memória das células: `66 → 43 MB` (03/10, mesma linha)
+
+- ✅ **`9d1058a40` — a cobertura NO LUGAR do 1.º acumulador e a capacidade ao OITAVO do degrau**
+  ([doc 121 §9.12](../121_as_formas_na_placa.md), o fim). O `cs_varre` grava o `pack2x16unorm` na palavra
+  do preenchimento do próprio pixel (já lida); sai o buffer `cobertura` (ligação `9` do grupo `2` do
+  cálculo) e a ligação `2` do grupo `1` do desenho passa a ser a ACUMULAÇÃO. `528 → 400 B` por célula.
+  A capacidade das células sobe a `n.next_multiple_of(2^(⌊log₂ n⌋−3))` (`ao_oitavo_do_degrau`, só as
+  células): `107 520 → 114 688` em vez de `131 072`. `650128529` = `cargo fmt` (inclui um `use` antigo do
+  `tests/it/contorno_calculado.rs`).
+- **Kill-criterion (escrito antes) PASSOU:** app `=127` densa `114 688` células = **`43 MB`** (`≤ 46`),
+  `60 fps` nas duas placas, uma só criação. Sonda intercalada contra `fab8999a8`, `PERFIL=1`: iGPU
+  `0,88–0,89 → 0,89–0,90` (esticadas, `+1 %`) · `0,61 → 0,59` · `1,01 → 1,01`; RTX igual em tudo (`0,10`
+  das conformes UMA vez em cada binário: o degrau de `0,01 ms`). Fragmento `56` VGPRs / `18` ondas, igual.
+- ⚠️ **O preço do arredondamento fino:** numa cena que cresce UMA célula de cada vez, `118` recriações
+  contra `18` (≤ `8` por oitava, com gate). Na `=127` a contagem não cresce.
+- ⛔ **Para quem lê o diff:** a coluna `x` do fragmento corre a FILEIRA inteira — com o passo `ACUMULA` ela
+  parte-se em célula (`x / 32`) e pixel (`x % 32`). O 1.º rascunho sem a partição deu `7/10` vermelhos
+  e virou a mutação A19.
+- **Gates re-corridos:** shape-gpu `10/10` + `3` unitários novos · produto `5/5` + sonda · gpu-cook formas
+  `2/2` · [mutação](../ferramentas/mutacao_o_buffer_de_acumulacao_2026-10-03.py) **`19/19`** (A13
+  re-ancorada; A18 e A19 novas; pré-voo `19/19`, corrida limpa `10` verdes, nenhuma por shader inválido)
+  · [tracejado](../ferramentas/mutacao_o_tracejado_no_ecra_2026-10-02.py) **`21/21`** (corrida limpa `16` verdes) · nextest-impacted `17 045/17 045` · `cargo check --workspace
+  --all-targets` com `-D warnings` · clippy das três crates · machete · os dois censos.
+- Foundational: nenhum. Ids/consts novos: nenhum (sai o `COBERTURA`; a ligação `9` do grupo `2` fica livre).
 
 ## §7 — OS SMOKES
 
